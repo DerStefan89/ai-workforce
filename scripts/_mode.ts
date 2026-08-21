@@ -21,3 +21,6 @@ export function startScript(): boolean {
 
   return execute
 }
+
+// TEMP-ROT-FALL CI (harness-setup-4b, wird sofort entfernt)
+const temp_rotfall_any: any = 1
