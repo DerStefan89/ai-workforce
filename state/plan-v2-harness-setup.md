@@ -112,7 +112,9 @@ AI-Workforce-Verträge.
 Die `check`-Kette selbst bleibt unverändert. `typecheck` und `test`
 verwenden die drei Konfigurationsauflagen aus Abschnitt 3 (`erasableSyntaxOnly`,
 `type: module` + `.ts`-Importendungen, `types: ["node"]`).
-**Prüfbar:** Jedes der drei Skripte läuft und liefert einen echten Exit-Code.
+**Prüfbar:** Jedes der drei Skripte läuft über eine nachweislich nichtleere
+Menge — die Ausgabe zeigt eine Datei-/Testanzahl > 0 — und liefert einen
+echten Exit-Code.
 
 ### AP 2 — Erster grüner Produkt-Prüflauf *(Kriterium 2)*
 Unverändert gegenüber Plan v1. `npm run check` läuft einmal vollständig mit
