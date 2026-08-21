@@ -1,3 +1,5 @@
+<!-- GESCHLOSSEN — Harness-Fix-Programm, nicht Teil von AI Workforce.
+     Verschoben aus state/ bzw. state/tasks/. -->
 SCHRITT 0: Arbeitsverzeichnis ausgeben und gegen das im Auftrag genannte
 Zielverzeichnis prüfen. Bei Abweichung: abbrechen, melden, nichts ändern.
 Danach `npm run check` laufen lassen und den Ausgangsstand protokollieren,

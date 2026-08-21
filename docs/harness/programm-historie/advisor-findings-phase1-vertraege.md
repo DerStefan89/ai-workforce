@@ -1,3 +1,5 @@
+<!-- GESCHLOSSEN — Harness-Fix-Programm, nicht Teil von AI Workforce.
+     Verschoben aus state/ bzw. state/tasks/. -->
 <!--
 Stand dieser Fassung: 17.08.2026
 Advisor-Befunde zu state/plan-v1-phase1-vertraege.md, mit Nachprüfung.

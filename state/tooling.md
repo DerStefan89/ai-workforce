@@ -31,3 +31,18 @@ Python-/Foundry-/ffmpeg-Projekt trägt, ist ungeklärt.
 zusammen mit der Prüfbefehl-Indirektion 3b
 (`state/plan-v2-phase2-adoptionsfaehigkeit.md`). Kein Fix in diesem
 Vertrag.
+
+## Harness-Herkunft
+
+[Fakt] Dieses Repository wurde am 2026-08-21 aus dem Vorlagen-Repo geklont,
+gepinnt auf den Stand `9189959a7d4de0486a4fee1e30b57ea8e5644661`
+(erreichbar über den Branch `template-baseline`).
+
+[Fakt] Remote-Namen laut `git remote -v`: `template` →
+`https://github.com/DerStefan89/claude-projekt-template.git` (fetch/push).
+Nur lesend zu verwenden — Upgrade und Rückfluss als gezielter
+Diff/Cherry-Pick, nie als Merge in `main` (Ziel-Fassung v1.4, Abschnitt 7).
+
+[Annahme] Ein Klon mit zwei Remotes berührt die im Repo dokumentierten
+Windows- und Cloud-Sync-Fallen nicht. Ungeprüft, kein Grund zum Anhalten —
+Beobachtung aus `state/tasks/harness-setup-0-repository-anlegen.md`.

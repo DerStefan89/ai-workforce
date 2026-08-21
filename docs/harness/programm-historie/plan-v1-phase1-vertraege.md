@@ -1,3 +1,5 @@
+<!-- GESCHLOSSEN — Harness-Fix-Programm, nicht Teil von AI Workforce.
+     Verschoben aus state/ bzw. state/tasks/. -->
 <!--
 Stand dieser Fassung: 17.08.2026
 Plan v1 für Phase 1 des Harness-Fix-Programms. Ziel-Pfad im Repo:
