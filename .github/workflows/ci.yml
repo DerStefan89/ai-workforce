@@ -1,0 +1,43 @@
+name: CI
+# [FÜLLUNG für Nicht-Node-Stacks] Dieser Workflow passt für Node/TypeScript-
+# Projekte (Expo eingeschlossen). Für andere Toolchains (z. B. Solidity/
+# Foundry) den Job-Namen "check" beibehalten (Branch Protection greift am
+# Namen), aber die Schritte darunter ersetzen.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Node einrichten
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+          # cache: 'npm' wieder aktivieren, sobald das Projekt echte
+          # Dependencies und eine package-lock.json hat — ohne Lock-Datei
+          # bricht setup-node hier ab.
+
+      - name: Abhängigkeiten installieren
+        run: npm install
+        # npm ci erwartet package-lock.json; das Template hat keine Abhängigkeiten
+        # und wird vom Nutzer mit npm install aufgesetzt. Nach echten Dependencies
+        # können wir zu npm ci wechseln.
+
+      - name: Harness-Selbstprüfung
+        run: npm run check:template
+
+      - name: Secret-Scan (gitleaks)
+        run: |
+          # Aktuelle stabile Version geprüft am 2026-08-17.
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.30.1 \
+            detect --source /repo --no-git -v

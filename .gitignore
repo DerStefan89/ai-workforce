@@ -1,0 +1,38 @@
+# Abhängigkeiten und Build-Artefakte — pro Stack anpassen/ergänzen
+node_modules/
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Umgebungsvariablen — nie committen
+.env
+.env.local
+.env.*.local
+
+# Persönliche Freigaben — trägt Freigaben, die nie reviewt werden.
+# MUSS ignoriert bleiben (siehe SETUP.md Punkt 7 / Befund G10).
+.claude/settings.local.json
+
+# Aufgaben-Gedächtnis — bewusst nicht committet, nur die Vorlage bleibt
+# getrackt (state/zwischenstand/VORLAGE.md via Ausnahme unten).
+state/zwischenstand/*.md
+!state/zwischenstand/VORLAGE.md
+
+# Einmal-Freigabe für den Commit-Guard (.claude/hooks/commit-guard.js) —
+# ephemer, ein personenbezogener Freigabe-Vorgang für genau einen Commit.
+# Nie committen: Läge sie im Repo, wäre sie kein zweiter Schlüssel mehr.
+state/freigabe-commit.md
+
+# Editor-/OS-Artefakte
+.DS_Store
+Thumbs.db
+
+# Programm-Ebene — Basislinie und Erfolgskriterium der vier Beteiligten.
+# Personenbezogen, gehört nicht in ein öffentliches Vorlagen-Repo und
+# nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das
+# Lern-Repo (Befund P4).
+programm/
