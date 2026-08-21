@@ -10,6 +10,8 @@ ungeprüftes Versprechen.
 |---|---|---|---|---|
 | Doku-Gate | `scripts/check-docs.mjs` | tote Verweise, Versionsnummern außerhalb package.json, Frische-Widerspruch in Einzeldokumenten, Frische-Widerspruch zwischen Dokumentenpaaren, Hedging-Wörter ohne Evidenz-Marker in state/Report-Dateien | Testzeile `React v19, siehe \`keine/existierende/datei.md\`` (temporär in CLAUDE.md eingefügt) → 2 Befunde: toter Verweis + Versionsnummer; echter Fund (kein Testfall) nach Erweiterung von Prüfung 1 auf `.claude/skills/*/SKILL.md` und `.claude/commands/*.md`: `.claude/skills/spec-schreiben/SKILL.md:88: Verweis auf \`state/triage.md\` — Datei existiert nicht` | CLAUDE.md:79 `npm run check` → Exit 0 löst keinen Versionsnummer-Befund aus; README.md:34 verweist auf `settings.local.json`, das per .gitignore absichtlich fehlt → kein Befund; nach Behebung von `spec-schreiben/SKILL.md:88` (Verweis auf `state/tasks/` umgebogen) → `npm run check` Exit 0, Doku-Check „Keine Befunde" |
 | Regel-Gate | `scripts/check-rules.mjs` | projektspezifische AST-Regeln | (leer bis zur ersten Regel) | (leer bis zur ersten Regel) |
+| Linter-Gate, `noExplicitAny` | `biome.json` (`linter.rules.suspicious.noExplicitAny`) | explizites `any` in Dateien unter `scripts/` | Testzeile `const temp_rotfall_any: any = 1` temporär in `scripts/_mode.ts` → 1 Befund `lint/suspicious/noExplicitAny: Unexpected any. Specify a different type.`, Exit 1 | Testzeile entfernt, `npm run lint` → „Checked 5 files … No fixes applied.", Exit 0 |
+| Linter-Gate, `noFloatingPromises` | `biome.json` (`linter.rules.nursery.noFloatingPromises`) | nicht abgewartete Promise in Dateien unter `scripts/` | Testcode `async function tempRotfallAsync(): Promise<void> {}` + Aufruf `tempRotfallAsync()` ohne `await`/`.then`/`.catch` temporär in `scripts/_mode.ts` → 1 Befund `lint/nursery/noFloatingPromises: A "floating" Promise was found …`, Exit 1 | Testcode entfernt, `npm run lint` → „Checked 5 files … No fixes applied.", Exit 0 |
 | Vertrags-Gate | `scripts/check-contract.mjs` | Handoff-Verträge in `state/tasks/` auf SCHRITT 0 (Präambel) und die acht Marker der sieben Sektionen (`## TASK:`, `GOAL:`, `CONTEXT:`, `SCOPE:`, `NICHT:`, `BUDGET:`, `OUTPUT:`, `ESCALATE:`) | Testdatei `state/tasks/_test-verstuemmelt.md` ohne `SCOPE:`/`NICHT:` (temporär, nicht committet) → 2 Befunde: „Marker \"SCOPE:\" fehlt", „Marker \"NICHT:\" fehlt", Exit 1 | Lauf gegen alle 5 echten Dateien in `state/tasks/` (`harness-fix-1…` bis `harness-fix-4…` plus `phase0-artefakte-committen.md`) → „5 Vertrag/Verträge geprüft, keine Befunde.", Exit 0 |
 | CI | `.github/workflows/ci.yml` | `npm run check` auf frischer Maschine + Secret-Scan | [FÜLLUNG] | [FÜLLUNG] |
 | Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, ohne Admin-Bypass | [FÜLLUNG] | [FÜLLUNG] |
@@ -395,3 +397,86 @@ nicht die Tabelle oben stillschweigend überschreiben.
   ```
   Damit ist die Gate-Abdeckung von `START-KLEIN.md` eine geprüfte
   Entscheidung und keine Vermutung.
+
+- 2026-08-21, Linter-Gate, Vertrag `harness-setup-4a-linter-regeln-kalibrieren`:
+  `biome.json` erstmals angelegt (vorher lief `npm run lint` mit Biomes
+  `recommended`-Standardsatz statt der zwei entschiedenen Regeln), mit
+  `recommended: false` und ausschließlich `suspicious.noExplicitAny` und
+  `nursery.noFloatingPromises` aktiviert. Beide Regeln je mit echtem,
+  real ausgelöstem Rot- und Grün-Fall in `scripts/_mode.ts` kalibriert
+  (Testcode danach vollständig entfernt, `git status` zeigt keinen Rest).
+  **Regel `noExplicitAny`, Rot:** Zeile `const temp_rotfall_any: any = 1`
+  temporär eingefügt, `npm run lint` → Exit 1, Ausgabe im Wortlaut:
+  ```
+  > projektname@0.1.0 lint
+  > biome lint scripts/
+
+  scripts\_mode.ts:26:25 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × Unexpected any. Specify a different type.
+
+      25 │ // TEMP-ROT-FALL noExplicitAny (harness-setup-4a, wird sofort entfernt)
+    > 26 │ const temp_rotfall_any: any = 1
+         │                         ^^^
+      27 │
+
+    i any disables many type checking rules. Its use should be avoided.
+
+
+  Checked 5 files in 44ms. No fixes applied.
+  Found 1 error.
+  lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × Some errors were emitted while running checks.
+  ```
+  **Regel `noExplicitAny`, Grün:** Testzeile entfernt, derselbe Befehl →
+  Exit 0, Ausgabe im Wortlaut:
+  ```
+  > projektname@0.1.0 lint
+  > biome lint scripts/
+
+  Checked 5 files in 41ms. No fixes applied.
+  ```
+  **Regel `noFloatingPromises`, Rot** (harte Bedingung aus
+  `state/plan-v2-harness-setup.md`, AP 4, Zeile 136–141): Testcode
+  `async function tempRotfallAsync(): Promise<void> {}` gefolgt vom
+  Aufruf `tempRotfallAsync()` ohne `await`/`.then`/`.catch` temporär
+  eingefügt, `npm run lint` → Exit 1, Ausgabe im Wortlaut:
+  ```
+  > projektname@0.1.0 lint
+  > biome lint scripts/
+
+  scripts\_mode.ts:27:1 lint/nursery/noFloatingPromises ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × A "floating" Promise was found, meaning it is not properly handled and could lead to ignored errors or unexpected behavior.
+
+      25 │ // TEMP-ROT-FALL noFloatingPromises (harness-setup-4a, wird sofort entfernt)
+      26 │ async function tempRotfallAsync(): Promise<void> {}
+    > 27 │ tempRotfallAsync()
+         │ ^^^^^^^^^^^^^^^^^^
+      28 │
+
+    i This happens when a Promise is not awaited, lacks a `.catch` or `.then` rejection handler, or is not explicitly ignored using the `void` operator.
+
+    i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+
+  Checked 5 files in 34ms. No fixes applied.
+  Found 1 error.
+  lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × Some errors were emitted while running checks.
+  ```
+  Der Rot-Fall fängt die nicht abgewartete Promise — die harte Bedingung
+  aus AP 4 ist damit erfüllt, kein Eskalationsfall, Biome bleibt gesetzt.
+  **Regel `noFloatingPromises`, Grün:** Testcode entfernt, derselbe Befehl
+  → Exit 0, Ausgabe im Wortlaut:
+  ```
+  > projektname@0.1.0 lint
+  > biome lint scripts/
+
+  Checked 5 files in 42ms. No fixes applied.
+  ```
+  `git status` direkt nach dem letzten Grün-Fall bestätigt, dass
+  `scripts/_mode.ts` keinen Rest der Testfälle trägt (nicht in der
+  Änderungsliste).
