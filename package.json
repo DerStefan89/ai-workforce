@@ -2,16 +2,22 @@
   "name": "projektname",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "engines": {
     "node": "24.x"
   },
   "scripts": {
     "dev": "echo '[FÜLLUNG] Dev-Server-Befehl'",
     "build": "echo '[FÜLLUNG] Build-Befehl'",
-    "lint": "node -e \"console.error('lint: kein Linter ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
-    "typecheck": "node -e \"console.error('typecheck: kein Typechecker ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
-    "test": "node -e \"console.error('test: kein Testrunner ausgewählt — siehe SETUP.md Punkt 3 (Skill werkzeug-auswahl)'); process.exit(1)\"",
+    "lint": "biome lint scripts/",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
     "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && npm run test",
     "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.9",
+    "@types/node": "^24.13.3",
+    "typescript": "7.0.2"
   }
 }
