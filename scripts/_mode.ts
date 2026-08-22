@@ -21,6 +21,3 @@ export function startScript(): boolean {
 
   return execute
 }
-
-// TEMP-ROT-FALL Branch-Protection (harness-setup-4c, wird sofort entfernt)
-const temp_rotfall_any: any = 1
