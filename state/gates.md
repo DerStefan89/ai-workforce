@@ -574,3 +574,25 @@ nicht die Tabelle oben stillschweigend überschreiben.
   --delete-branch`), Remote- und lokaler Wegwerf-Branch
   `harness-setup-4c-rotfall` gelöscht. `main` unverändert bei `21c708a`,
   `git status` danach zeigt keinen Rest.
+
+- 2026-08-22, Prozess-Lücke, aus dem Projektchat: Für AP 2 (CI auf
+  Produktkette umstellen) und AP 3 (Erster grüner Produkt-Prüflauf; laut
+  Ausführungsreihenfolge eigentlich AP 2/AP 3 vertauscht benannt, siehe
+  `state/plan-v2-harness-setup.md` Abschnitt 4 zur korrekten Zuordnung)
+  existiert keine committete Vertragsdatei unter `state/tasks/`, obwohl
+  beide real ausgeführt und ihre Ergebnisse in dieser Datei belegt sind.
+  Die Original-Vertragstexte sind nicht mehr verfügbar. Entscheidung:
+  nicht aus der Erinnerung rekonstruieren, um keine unbelegte Behauptung
+  als Beleg auszugeben.
+  Für AP 4a, AP 4b und AP 4c lag der Original-Wortlaut dagegen entgegen
+  der ursprünglichen Annahme dieses Nachtrags noch vor — beide Dateien
+  (`harness-setup-4a-linter-regeln-kalibrieren.md`,
+  `harness-setup-4b-ci-branch-protection-kalibrieren.md`) existierten
+  unangetastet lokal, nie committet, weil der jeweilige SCOPE das
+  Staging auf andere Dateien beschränkt hatte (bei AP 4a auf `biome.json`
+  und `state/gates.md`, bei AP 4b auf `state/gates.md`) — keine
+  Rekonstruktion, sondern der reale, unveränderte Text aus der
+  jeweiligen Ausführung. Mit diesem Nachtrag alle drei zusammen mit dem
+  von Anfang an vorgesehenen AP-4c-Text committet, keine Lücke.
+  Ab jetzt wird der Vertragstext für jedes künftige Arbeitspaket
+  konsequent vor Ausführung unter `state/tasks/` committet.
