@@ -14,7 +14,7 @@ ungeprüftes Versprechen.
 | Linter-Gate, `noFloatingPromises` | `biome.json` (`linter.rules.nursery.noFloatingPromises`) | nicht abgewartete Promise in Dateien unter `scripts/` | Testcode `async function tempRotfallAsync(): Promise<void> {}` + Aufruf `tempRotfallAsync()` ohne `await`/`.then`/`.catch` temporär in `scripts/_mode.ts` → 1 Befund `lint/nursery/noFloatingPromises: A "floating" Promise was found …`, Exit 1 | Testcode entfernt, `npm run lint` → „Checked 5 files … No fixes applied.", Exit 0 |
 | Vertrags-Gate | `scripts/check-contract.mjs` | Handoff-Verträge in `state/tasks/` auf SCHRITT 0 (Präambel) und die acht Marker der sieben Sektionen (`## TASK:`, `GOAL:`, `CONTEXT:`, `SCOPE:`, `NICHT:`, `BUDGET:`, `OUTPUT:`, `ESCALATE:`) | Testdatei `state/tasks/_test-verstuemmelt.md` ohne `SCOPE:`/`NICHT:` (temporär, nicht committet) → 2 Befunde: „Marker \"SCOPE:\" fehlt", „Marker \"NICHT:\" fehlt", Exit 1 | Lauf gegen alle 5 echten Dateien in `state/tasks/` (`harness-fix-1…` bis `harness-fix-4…` plus `phase0-artefakte-committen.md`) → „5 Vertrag/Verträge geprüft, keine Befunde.", Exit 0 |
 | CI | `.github/workflows/ci.yml` | `npm run check` auf frischer Maschine + Secret-Scan | PR #1 (`harness-setup-4b-ci-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` in `scripts/_mode.ts` → Run [32534644257](https://github.com/DerStefan89/ai-workforce/actions/runs/32534644257), Check `check` fail, Log-Zeile `scripts/_mode.ts:26:25 lint/suspicious/noExplicitAny … × Unexpected any. Specify a different type.` gefolgt von `##[error]Process completed with exit code 1.` | Testzeile entfernt, derselbe PR #1 → Run [32534688109](https://github.com/DerStefan89/ai-workforce/actions/runs/32534688109), Check `check` pass |
-| Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, ohne Admin-Bypass | **Nicht kalibrierbar — Regel existiert nicht.** `gh api repos/DerStefan89/ai-workforce/branches/main/protection` (2026-08-21) → `404 Branch not protected`. Repo ist öffentlich (`visibility: PUBLIC`, `gh repo view`), Free-Tarif-Einschränkung aus SETUP.md Punkt 1 greift hier also nicht — die Regel fehlt schlicht, unabhängig vom Tarif. Kein Rot-Fall möglich, solange kein Required Status Check gesetzt ist. Eskaliert an Stefan/Projektchat (Vertrag `harness-setup-4b-ci-branch-protection-kalibrieren`, ESCALATE) statt selbst angelegt. | (entfällt, solange die Regel nicht existiert) |
+| Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, `enforce_admins: true`, PR vor Merge erforderlich (`required_approving_review_count: 0`, Solo-Maintainer) | PR #2 (`harness-setup-4c-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` → CI-Check `check` fail (Run [32564555823](https://github.com/DerStefan89/ai-workforce/actions/runs/32564555823)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"blocked"}` — Git-seitig konfliktfrei, aber von der Regel gesperrt | Testzeile entfernt, derselbe PR #2 → CI-Check `check` pass (Run [32564664834](https://github.com/DerStefan89/ai-workforce/actions/runs/32564664834)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"clean"}` — mergebar, **nicht gemerged** |
 | `guard-settings.js`-Hook | `.claude/hooks/guard-settings.js` | Edit/Write auf geteilte `.claude/settings.json` und `state/freigabe-commit.md` | Zwei reale Edit-Versuche über das Edit-Tool auf `.claude/settings.json`, 2026-08-17, im Rahmen eines Diagnose-Auftrags (vermuteter Durchschlupf sollte reproduziert werden) → beide korrekt verweigert, identische Meldung: „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." Kein Durchschlupf reproduzierbar. | Edit-Versuch auf eine unbeteiligte Datei (Scratchpad, außerhalb des Repos), 2026-08-17 → lief ungehindert durch, keine Guard-Reaktion |
 | `commit-guard.js`-Hook | `.claude/hooks/commit-guard.js` | `git commit`/`git push` ohne frische Freigabe-Datei (Zeitzone/Offset und BOM/UTF-16 gehärtet, siehe Kalibrierungs-Log 2026-08-17 „Härtung Vertrag 5"); Bash-Zugriff auf `.claude/settings.json`; Bash-Zugriff auf `state/freigabe-commit.md` | `git commit --allow-empty -m test` auf `test/commit-guard-calibration` ohne vorhandene Freigabe-Datei, ca. 2026-08-17T11:40 → abgewiesen ("git commit/push ohne Freigabe-Datei … verweigert"); derselbe Befehl erneut um 2026-08-17T11:54:54+02:00, unmittelbar nach Verbrauch der vorherigen Freigabe → wieder abgewiesen, gleiche Meldung; **Push-Pfad, Härtung Vertrag 5:** `git push` auf `test/guard-haertung-calibration` unmittelbar nach Commit `7559cef` (2026-08-17T20:58:08+02:00), ohne neue Freigabe → abgewiesen, gleiche Meldungsklasse — erster dokumentierter Rot-Fall für `push` im Repo | `git commit --allow-empty -m test` mit frischer, vom Menschen angelegter Freigabe-Datei (`Freigegeben: <ISO-Zeitstempel>`) → Commit `129cd01` um 2026-08-17T11:54:13+02:00 durchgegangen; `git status` direkt danach zeigt `state/freigabe-commit.md` nicht mehr — Einmal-Verbrauch bestätigt; **Push-Pfad, Härtung Vertrag 5:** `git push -u origin harness-fix/5-commit-guard-haerten` auf dem echten Arbeitsbranch, nach Commit `8d89041`, ca. 2026-08-17T22:12:29+02:00 (zweiter Versuch, mit frischer Freigabe; erster Versuch ohne `-u` scheiterte an fehlendem Upstream — siehe Kalibrierungs-Log) → durchgegangen, `git status` direkt danach zeigt „up to date with origin/harness-fix/5-commit-guard-haerten", Freigabe-Datei verbraucht |
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
@@ -524,3 +524,53 @@ nicht die Tabelle oben stillschweigend überschreiben.
   --delete-branch`), Remote- und lokaler Wegwerf-Branch
   `harness-setup-4b-ci-rotfall` gelöscht. `main` unverändert bei
   `fde07ff`, `git status` danach zeigt keinen Rest.
+
+- 2026-08-22, Branch Protection, Vertrag
+  `harness-setup-4c-branch-protection-anlegen-und-kalibrieren`: Nachtrag
+  zum in AP 4b eskalierten Befund — die Regel wurde jetzt real angelegt
+  (nicht nur beschrieben) und mit echten Rot-/Grün-Fällen kalibriert.
+  Vor der Änderung erneut `gh api repos/DerStefan89/ai-workforce/
+  branches/main/protection` gelesen → unverändert `404 Branch not
+  protected`, deckt sich mit dem AP-4b-Befund.
+  **Angelegt** über `gh api -X PUT .../branches/main/protection` mit
+  `required_status_checks: {strict: true, contexts: ["check"]}`,
+  `enforce_admins: true`, `required_pull_request_reviews:
+  {required_approving_review_count: 0}` (bewusst 0 — Solo-Maintainer,
+  von der API klaglos akzeptiert, kein Selbstsperre-Risiko), keine
+  `restrictions`. GET-Bestätigung danach, Ausgabe im Wortlaut (gekürzt
+  auf die relevanten Felder):
+  ```
+  "required_status_checks":{"strict":true,"contexts":["check"],"checks":[{"context":"check","app_id":15368}]}
+  "required_pull_request_reviews":{"dismiss_stale_reviews":false,"require_code_owner_reviews":false,"require_last_push_approval":false,"required_approving_review_count":0}
+  "enforce_admins":{"enabled":true}
+  ```
+  **Rot-Fall:** Wegwerf-Branch `harness-setup-4c-rotfall` von `main`,
+  Testzeile `const temp_rotfall_any: any = 1` in `scripts/_mode.ts`, PR
+  #2 (`harness-setup-4c-rotfall` → `main`) geöffnet. CI-Check `check` →
+  `fail` (Run
+  [32564555823](https://github.com/DerStefan89/ai-workforce/actions/runs/32564555823)).
+  `gh api repos/DerStefan89/ai-workforce/pulls/2` → Ausgabe im Wortlaut:
+  ```
+  {"mergeable":true,"mergeable_state":"blocked"}
+  ```
+  `mergeable: true` (kein Git-Konflikt), aber `mergeable_state:
+  "blocked"` — die Regel verhindert den Merge trotz technisch
+  konfliktfreiem Branch. Ein echter `gh pr merge`-Versuch wurde vom
+  Auto-Mode-Classifier der Sitzung blockiert („Blocked by classifier",
+  Merge-Befehle gelten grundsätzlich als riskant); der lesende Beleg über
+  `mergeable_state` ist laut SCOPE Schritt 3 eine ausdrücklich zulässige
+  Alternative und wurde stattdessen verwendet.
+  **Grün-Fall:** Testzeile entfernt, derselbe PR #2. CI-Check `check` →
+  `pass` (Run
+  [32564664834](https://github.com/DerStefan89/ai-workforce/actions/runs/32564664834)).
+  `gh api repos/DerStefan89/ai-workforce/pulls/2` → Ausgabe im Wortlaut:
+  ```
+  {"mergeable":true,"mergeable_state":"clean"}
+  ```
+  `mergeable_state` wechselt auf `clean`, sobald CI grün ist — die Regel
+  ist damit nicht bloß vorhanden, sondern nachweislich wirksam in beide
+  Richtungen. PR #2 **nicht gemerged**.
+  **Aufräumen:** PR #2 geschlossen ohne Merge (`gh pr close 2
+  --delete-branch`), Remote- und lokaler Wegwerf-Branch
+  `harness-setup-4c-rotfall` gelöscht. `main` unverändert bei `21c708a`,
+  `git status` danach zeigt keinen Rest.
