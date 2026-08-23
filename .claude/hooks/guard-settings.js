@@ -1,9 +1,6 @@
-// Blockiert Schreibzugriff (Edit/Write) auf zwei geteilte Dateien:
+// Blockiert Schreibzugriff (Edit/Write) auf eine geteilte Datei:
 // - .claude/settings.json: Team-Policy (Permission-Freigaben gehoeren nach
 //   .claude/settings.local.json, nicht hierher).
-// - state/freigabe-commit.md: der zweite Schluessel des Commit-Guards
-//   (.claude/hooks/commit-guard.js) - darf nicht vom Modell erzeugt werden,
-//   sonst ist die Freigabe kein echter zweiter Schluessel mehr.
 // "ask" wird von der VS-Code-Extension ignoriert (Issue #13339 im
 // anthropics/claude-code-Repo) - daher "deny" statt Rueckfrage.
 const GUARDED_FILES = [
@@ -14,14 +11,6 @@ const GUARDED_FILES = [
       "Schreibzugriff auf geteilte settings.json blockiert. Absichtliche " +
       "Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer " +
       "entfernen, Grund im Commit nennen.",
-  },
-  {
-    path: "state/freigabe-commit.md",
-    suffix: "/state/freigabe-commit.md",
-    reason:
-      "Schreibzugriff auf state/freigabe-commit.md blockiert. Diese Freigabe " +
-      "kann nur der Mensch im eigenen Editor anlegen - sonst ist sie kein " +
-      "echter zweiter Schluessel fuer den Commit-Guard.",
   },
 ];
 

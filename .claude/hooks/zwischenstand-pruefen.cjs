@@ -1,5 +1,5 @@
 /**
- * Datei: .claude/hooks/zwischenstand-pruefen.js
+ * Datei: .claude/hooks/zwischenstand-pruefen.cjs
  *
  * Zweck: PreCompact-Hook. Prüft, ob der Zwischenstand des aktuellen Branch
  * frisch ist (Zeile "Zuletzt aktualisiert:" nicht älter als 60 Minuten). Bei

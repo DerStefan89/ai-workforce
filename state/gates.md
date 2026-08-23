@@ -15,8 +15,8 @@ ungeprüftes Versprechen.
 | Vertrags-Gate | `scripts/check-contract.mjs` | Handoff-Verträge in `state/tasks/` auf SCHRITT 0 (Präambel) und die acht Marker der sieben Sektionen (`## TASK:`, `GOAL:`, `CONTEXT:`, `SCOPE:`, `NICHT:`, `BUDGET:`, `OUTPUT:`, `ESCALATE:`) | Testdatei `state/tasks/_test-verstuemmelt.md` ohne `SCOPE:`/`NICHT:` (temporär, nicht committet) → 2 Befunde: „Marker \"SCOPE:\" fehlt", „Marker \"NICHT:\" fehlt", Exit 1 | Lauf gegen alle 5 echten Dateien in `state/tasks/` (`harness-fix-1…` bis `harness-fix-4…` plus `phase0-artefakte-committen.md`) → „5 Vertrag/Verträge geprüft, keine Befunde.", Exit 0 |
 | CI | `.github/workflows/ci.yml` | `npm run check` auf frischer Maschine + Secret-Scan | PR #1 (`harness-setup-4b-ci-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` in `scripts/_mode.ts` → Run [32534644257](https://github.com/DerStefan89/ai-workforce/actions/runs/32534644257), Check `check` fail, Log-Zeile `scripts/_mode.ts:26:25 lint/suspicious/noExplicitAny … × Unexpected any. Specify a different type.` gefolgt von `##[error]Process completed with exit code 1.` | Testzeile entfernt, derselbe PR #1 → Run [32534688109](https://github.com/DerStefan89/ai-workforce/actions/runs/32534688109), Check `check` pass |
 | Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, `enforce_admins: true`, PR vor Merge erforderlich (`required_approving_review_count: 0`, Solo-Maintainer) | PR #2 (`harness-setup-4c-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` → CI-Check `check` fail (Run [32564555823](https://github.com/DerStefan89/ai-workforce/actions/runs/32564555823)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"blocked"}` — Git-seitig konfliktfrei, aber von der Regel gesperrt | Testzeile entfernt, derselbe PR #2 → CI-Check `check` pass (Run [32564664834](https://github.com/DerStefan89/ai-workforce/actions/runs/32564664834)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"clean"}` — mergebar, **nicht gemerged** |
-| `guard-settings.js`-Hook | `.claude/hooks/guard-settings.js` | Edit/Write auf geteilte `.claude/settings.json` und `state/freigabe-commit.md` | Zwei reale Edit-Versuche über das Edit-Tool auf `.claude/settings.json`, 2026-08-17, im Rahmen eines Diagnose-Auftrags (vermuteter Durchschlupf sollte reproduziert werden) → beide korrekt verweigert, identische Meldung: „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." Kein Durchschlupf reproduzierbar. | Edit-Versuch auf eine unbeteiligte Datei (Scratchpad, außerhalb des Repos), 2026-08-17 → lief ungehindert durch, keine Guard-Reaktion |
-| `commit-guard.js`-Hook | `.claude/hooks/commit-guard.js` | `git commit`/`git push` ohne frische Freigabe-Datei (Zeitzone/Offset und BOM/UTF-16 gehärtet, siehe Kalibrierungs-Log 2026-08-17 „Härtung Vertrag 5"); Bash-Zugriff auf `.claude/settings.json`; Bash-Zugriff auf `state/freigabe-commit.md` | `git commit --allow-empty -m test` auf `test/commit-guard-calibration` ohne vorhandene Freigabe-Datei, ca. 2026-08-17T11:40 → abgewiesen ("git commit/push ohne Freigabe-Datei … verweigert"); derselbe Befehl erneut um 2026-08-17T11:54:54+02:00, unmittelbar nach Verbrauch der vorherigen Freigabe → wieder abgewiesen, gleiche Meldung; **Push-Pfad, Härtung Vertrag 5:** `git push` auf `test/guard-haertung-calibration` unmittelbar nach Commit `7559cef` (2026-08-17T20:58:08+02:00), ohne neue Freigabe → abgewiesen, gleiche Meldungsklasse — erster dokumentierter Rot-Fall für `push` im Repo | `git commit --allow-empty -m test` mit frischer, vom Menschen angelegter Freigabe-Datei (`Freigegeben: <ISO-Zeitstempel>`) → Commit `129cd01` um 2026-08-17T11:54:13+02:00 durchgegangen; `git status` direkt danach zeigt `state/freigabe-commit.md` nicht mehr — Einmal-Verbrauch bestätigt; **Push-Pfad, Härtung Vertrag 5:** `git push -u origin harness-fix/5-commit-guard-haerten` auf dem echten Arbeitsbranch, nach Commit `8d89041`, ca. 2026-08-17T22:12:29+02:00 (zweiter Versuch, mit frischer Freigabe; erster Versuch ohne `-u` scheiterte an fehlendem Upstream — siehe Kalibrierungs-Log) → durchgegangen, `git status` direkt danach zeigt „up to date with origin/harness-fix/5-commit-guard-haerten", Freigabe-Datei verbraucht |
+| `guard-settings.js`-Hook | `.claude/hooks/guard-settings.js` | Edit/Write auf geteilte `.claude/settings.json` | Zwei reale Edit-Versuche über das Edit-Tool auf `.claude/settings.json`, 2026-08-17, im Rahmen eines Diagnose-Auftrags (vermuteter Durchschlupf sollte reproduziert werden) → beide korrekt verweigert, identische Meldung: „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." Kein Durchschlupf reproduzierbar. | Edit-Versuch auf eine unbeteiligte Datei (Scratchpad, außerhalb des Repos), 2026-08-17 → lief ungehindert durch, keine Guard-Reaktion |
+| `commit-guard.cjs`-Hook | `.claude/hooks/commit-guard.cjs` | Bash-Zugriff auf `.claude/settings.json` (Freigabe-Datei-Pflicht mit Befund B6 ersatzlos entfernt, siehe Kalibrierungs-Log) | `cat .claude/settings.json` auf Wegwerf-Branch `diagnose-scope11-b6`, 2026-08-23 → abgewiesen, Meldung „commit-guard: Bash-Zugriff auf geteilte .claude/settings.json blockiert. Die Datei ist Team-Policy und wird nur vom Menschen im eigenen Editor geändert." | unbeteiligter Bash-Befehl `git status`, gleicher Branch, unmittelbar danach → lief regulär durch |
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
 
 ## Kalibrierungs-Log
@@ -596,3 +596,31 @@ nicht die Tabelle oben stillschweigend überschreiben.
   von Anfang an vorgesehenen AP-4c-Text committet, keine Lücke.
   Ab jetzt wird der Vertragstext für jedes künftige Arbeitspaket
   konsequent vor Ausführung unter `state/tasks/` committet.
+
+- 2026-08-23, `commit-guard.cjs`-Hook, Befund B6 Nachtrag N24 (Vertrag
+  `harness-b6-hooks-cjs-migration`): Der Hook wurde von `.js` auf `.cjs`
+  umbenannt (ESM-Kompatibilität) und inhaltlich verschlankt — die
+  Freigabe-Datei-Pflicht (bisherige Aufgabe 1) ist ersatzlos entfernt,
+  `state/freigabe-commit.md` wird nicht mehr verwendet. Verbleibende
+  Aufgabe: Bash-Zugriff auf die geteilte `.claude/settings.json`
+  blockieren. Rot-/Grün-Fall-Paare auf Wegwerf-Branches, nie gepusht,
+  danach gelöscht:
+  **Rot (SCOPE 11 a):** `cat .claude/settings.json` auf Wegwerf-Branch
+  `diagnose-scope11-b6`, 2026-08-23 → abgewiesen, Meldung im Wortlaut:
+  „commit-guard: Bash-Zugriff auf geteilte .claude/settings.json
+  blockiert. Die Datei ist Team-Policy und wird nur vom Menschen im
+  eigenen Editor geändert."
+  **Grün (SCOPE 11 a):** unbeteiligter Bash-Befehl `git status`,
+  unmittelbar danach, gleicher Branch → lief regulär durch, keine
+  Guard-Reaktion.
+  **Grün (SCOPE 11 b, neue Sollfunktion — Freigabe-Datei-Pflicht bewusst
+  entfernt, kein Befund):** `git commit --allow-empty -m
+  "diagnose-ohne-freigabe"` auf Wegwerf-Branch `diagnose-scope11b-b6`,
+  ohne `state/freigabe-commit.md`, 2026-08-23 → durchgegangen, Commit
+  `a168258`, Exit 0. Wegwerf-Branch danach per `git reset --soft` auf den
+  Stand vor dem Diagnose-Commit zurückgesetzt (die im Commit
+  mitgefassten Umbenennungen sind reguläre b6-Arbeit, nicht Teil des
+  Diagnose-Befunds) und gelöscht, nie gepusht.
+  Vorheriger, unklarer Ausgang von SCOPE 11 a) war kein Caching-Effekt im
+  Hook-Runner, sondern falsches Arbeitsverzeichnis der Sitzung — Details:
+  `state/plan-v1-harness-b6-hooks-cjs-migration.md`, Abschnitt „N25".

@@ -19,27 +19,24 @@ lesen müsste.
 ```
   Beim Tippen       Vor dem Commit      Beim Commit-Versuch     Vor dem Merge
   ───────────       ──────────────      ────────────────────    ─────────────
-  PostToolUse-Hook → npm run check   →  commit-guard.js      →  CI + Branch Protection
+  PostToolUse-Hook → npm run check   →  commit-guard.cjs     →  CI + Branch Protection
   (Linter, sofort)   (alles, lokal)     (PreToolUse, Bash)       (alles, fremde Maschine)
 
-  schnell, eng       vollständig, deins  wer darf drücken        vollständig, unbestechlich
+  schnell, eng       vollständig, deins  schützt die Konfiguration  vollständig, unbestechlich
 ```
 
 Jede Stufe fängt ab, was die vorige durchgelassen hat. Die letzte ist die
 einzige, die du selbst nicht umgehen kannst — deshalb ist sie die
 wichtigste.
 
-Die dritte Stufe prüft etwas anderes als die übrigen drei: nicht
-Codequalität, sondern **Autorisierung**. `npm run check` kann grün sein und
-der Commit trotzdem nicht laufen — weil niemand ihn freigegeben hat.
-`.claude/hooks/commit-guard.js` verweigert jeden `git commit`/`git push`
-über das Modell, außer eine frische Einmal-Freigabe
-(`state/freigabe-commit.md`, 10 Minuten Frischefenster) liegt vor; danach
-löscht er sie sofort. Die Freigabe-Datei kann **nur im Editor des
-Menschen** entstehen — `guard-settings.js` sperrt Edit/Write darauf, der
-Commit-Guard selbst sperrt jeden Bash-Zugriff darauf. Könnte das Modell
-sie sich selbst schreiben, wäre sie kein zweiter Schlüssel, sondern nur
-eine Formalität, die sich selbst erfüllt.
+Die dritte Stufe prüfte bis Befund B6 eine Autorisierungsfrage: `npm run
+check` konnte grün sein und der Commit trotzdem nicht laufen — weil
+niemand ihn freigegeben hatte. Diese Freigabe-Datei-Pflicht wurde mit B6
+ersatzlos entfernt (siehe `state/gates.md`, Kalibrierungs-Log).
+`.claude/hooks/commit-guard.cjs` erfüllt seitdem eine engere Aufgabe: Es
+verweigert jeden Bash-Befehl, der die geteilte `.claude/settings.json`
+referenziert — schließt also die Bash-Lücke von `guard-settings.js`, das
+nur `Edit`/`Write` abdeckt (siehe unten).
 
 ---
 

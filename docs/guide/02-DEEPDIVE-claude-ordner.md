@@ -110,16 +110,16 @@ Ereignis, und zwar auch dann, wenn alle schlafen.
 |---|---|---|
 | `PreToolUse` bei Edit/Write | `guard-settings.js` prüft, ob die geteilte `.claude/settings.json` geändert werden soll — und **blockiert** das | Berechtigungen sind Team-Policy. Persönliche Freigaben gehören in `settings.local.json`, die nie committet wird |
 | `PostToolUse` bei Edit/Write | Linter läuft automatisch | Fehler auffallen lassen, solange der Kontext noch frisch ist — nicht erst beim Commit |
-| `UserPromptSubmit` | `session-reminder.js` erinnert alle 30 Nachrichten an Kontext-Hygiene | Nach 30 Nachrichten hat man vergessen, wie voll der Kontext ist |
-| `SessionStart` | `zwischenstand-laden.js` liest `state/zwischenstand/<branch>.md` und gibt ihn der neuen Sitzung mit | Das Gegenmittel gegen „die KI vergisst alles" |
-| `PreCompact` | `zwischenstand-pruefen.js` blockiert eine **manuelle** Zusammenfassung, wenn der Zwischenstand fehlt oder älter als 60 Minuten ist | Verdichten ohne gesicherten Stand = Arbeit verlieren |
+| `UserPromptSubmit` | `session-reminder.cjs` erinnert alle 30 Nachrichten an Kontext-Hygiene | Nach 30 Nachrichten hat man vergessen, wie voll der Kontext ist |
+| `SessionStart` | `zwischenstand-laden.cjs` liest `state/zwischenstand/<branch>.md` und gibt ihn der neuen Sitzung mit | Das Gegenmittel gegen „die KI vergisst alles" |
+| `PreCompact` | `zwischenstand-pruefen.cjs` blockiert eine **manuelle** Zusammenfassung, wenn der Zwischenstand fehlt oder älter als 60 Minuten ist | Verdichten ohne gesicherten Stand = Arbeit verlieren |
 
 **Zwei Feinheiten, die zeigen, wie sorgfältig Hooks gebaut sein müssen:**
 
-- `zwischenstand-laden.js` beendet sich bei **jedem** Fehler still mit
+- `zwischenstand-laden.cjs` beendet sich bei **jedem** Fehler still mit
   Erfolgscode. Begründung steht im Dateikopf: Ein Hook, der den
   Sitzungsstart scheitern lässt, ist schlimmer als gar kein Hook.
-- `zwischenstand-pruefen.js` blockiert nur bei **manueller** Verdichtung.
+- `zwischenstand-pruefen.cjs` blockiert nur bei **manueller** Verdichtung.
   Bei automatischer warnt er nur — weil du dort ohnehin nicht eingreifen
   könntest und eine Blockade dich nur festfahren würde.
 

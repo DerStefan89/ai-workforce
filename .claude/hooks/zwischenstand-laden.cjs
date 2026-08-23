@@ -1,5 +1,5 @@
 /**
- * Datei: .claude/hooks/zwischenstand-laden.js
+ * Datei: .claude/hooks/zwischenstand-laden.cjs
  *
  * Zweck: SessionStart-Hook. Liest state/zwischenstand/<branch-slug>.md und gibt
  * den Inhalt als additionalContext aus, damit eine neue Sitzung den

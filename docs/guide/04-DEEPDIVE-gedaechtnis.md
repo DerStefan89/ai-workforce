@@ -132,19 +132,13 @@ würde Ehrlichkeit bestrafen und Einträge erzeugen statt Reibung zu messen.
 Die Datei trägt aus demselben Grund keinen `Stand dieser Fassung:`-Marker
 — sie ist ein Anhänge-Protokoll, kein Dokument mit festem Stand.
 
-### `state/freigabe-commit.md`
-Der zweite Schlüssel des Commit-Guards. Wird **nur vom Menschen** angelegt,
-im eigenen Editor — nicht von einem Modell, nicht über Bash. Format der
-Zeile: `Freigegeben: <ISO-Zeitstempel>` (mit oder ohne Offset, auch UTC
-mit `Z`).
-
-Eine Freigabe gilt für **einen** Git-Vorgang (`commit` ODER `push`, nicht
-beide) — ein vollständiger Iterationsabschluss laut `CLAUDE.md`
-(„committen UND pushen") braucht deshalb zwei Freigaben nacheinander. Die
-Datei wird **nie committet** (siehe `.gitignore`), und Bash-Zugriff auf
-sie ist absichtlich blockiert — auch harmlos wirkende Befehle wie `ls`
-oder `cat`, damit kein Modell ihren Inhalt lesen oder ihre Existenz über
-einen Umweg prüfen kann.
+### `state/freigabe-commit.md` (entfällt seit Befund B6)
+Trug bis Befund B6 den zweiten Schlüssel des Commit-Guards — eine vom
+Menschen im eigenen Editor angelegte Einmal-Freigabe pro Git-Vorgang. Die
+Pflicht wurde ersatzlos entfernt (siehe `state/gates.md`,
+Kalibrierungs-Log); die Datei wird nicht mehr erzeugt oder gelesen.
+`.claude/hooks/commit-guard.cjs` blockiert seitdem ausschließlich
+Bash-Zugriff auf die geteilte `.claude/settings.json`.
 
 ### `state/tasks/` — Handoff-Verträge
 **Was das ist:** Ein Auftrag, so aufgeschrieben, dass eine Sitzung ohne
