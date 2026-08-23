@@ -33,15 +33,6 @@ Deep Dives, `docs/harness/werkzeug-katalog.md`, Doktrin-Abschnitte in
 
 ## 4. Voller Zyklus — committen und pushen
 
-- Jeder Git-Vorgang (Commit, Push) braucht eine **eigene** Freigabe in
-  `state/freigabe-commit.md`, Format exakt:
-  `Freigegeben: <ISO-Zeitstempel>` (z. B. `Freigegeben:
-  2026-08-18T14:03:00`, mit oder ohne Offset, auch `Z`). Eine Freigabe
-  gilt für **einen** Vorgang — committen und pushen sind zwei Vorgänge,
-  zwei Freigaben.
-- `state/freigabe-commit.md` ist über Bash absichtlich nicht erreichbar —
-  auch nicht mit `ls` oder `cat`. Das ist kein Fehler, sondern der zweite
-  Schlüssel: nur im eigenen Editor lesen/schreiben.
 - Beim ersten Push eines Branches greift `SETUP.md` Punkt 1 (Branch
   Protection auf `main`) — dort nachschlagen, nicht `SETUP.md` als Ganzes
   lesen.

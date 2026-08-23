@@ -11,10 +11,10 @@ Commit-Guard hart verweigert, mit echtem Rot- und Grün-Fall kalibriert;
 mehr vor — als Textänderung, ausdrücklich ohne Verhaltensbeleg.
 
 CONTEXT:
-- [Fakt] `.claude/hooks/commit-guard.js:170-175` greift nur, wenn der
+- [Fakt] `.claude/hooks/commit-guard.cjs:170-175` greift nur, wenn der
   Befehlstext `git` UND `commit|push` je als eigenständiges Token enthält.
   `gh pr merge` enthält keines von beiden.
-- [Fakt] `.claude/hooks/commit-guard.js:170-171` — die Wortgrenzen
+- [Fakt] `.claude/hooks/commit-guard.cjs:170-171` — die Wortgrenzen
   `GRENZE_VOR`/`GRENZE_NACH` enthalten den Schrägstrich NICHT. Ein Muster,
   das nur `merge` als Token prüft, verfehlt deshalb
   `gh api --method PUT repos/O/R/pulls/<n>/merge` (Zeichen davor ist `/`)
@@ -59,7 +59,7 @@ CONTEXT:
 
 SCOPE:
 1. `git status` sauber, aktueller `main`, eigener Branch angelegt.
-2. `.claude/hooks/commit-guard.js`: eine VIERTE Aufgabe ergänzen — im Code
+2. `.claude/hooks/commit-guard.cjs`: eine VIERTE Aufgabe ergänzen — im Code
    an dritter Stelle, VOR der bestehenden git-commit/push-Prüfung, mit
    derselben `verweigern()`-Mechanik:
    a) Befehlstext enthält `gh` als eigenständiges Token UND mindestens
@@ -118,7 +118,7 @@ SCOPE:
 10. Grün-Fall Regression: `git commit --allow-empty -m test` auf einem
     Wegwerf-Branch ohne Freigabe-Datei → muss weiterhin mit der bisherigen
     Meldung abgewiesen werden. Wegwerf-Branch danach löschen, nie pushen.
-11. `state/gates.md`: Zeile `commit-guard.js`-Hook um die neue Aufgabe
+11. `state/gates.md`: Zeile `commit-guard.cjs`-Hook um die neue Aufgabe
     erweitern, Kalibrierungs-Log-Eintrag mit Datum und allen Wortlauten
     aus Schritt 5–10 ergänzen. Bestehenden Text nicht löschen.
 12. Für `git-flow` KEINE Gate-Zeile — ein Skill ist kein Gate. Stattdessen
@@ -135,7 +135,7 @@ SCOPE:
     `branches/` zusammen mit `/protection` enthalten — sonst blockiert die
     neue Regel den eigenen Commit. Zulässig ist die Bindestrichform
     (`gh-Merge-Pfad`, `Branch-Protection-Regel`); die Wortgrenzen aus
-    `commit-guard.js:170-171` greifen bei Bindestrichen nicht.
+    `commit-guard.cjs:170-171` greifen bei Bindestrichen nicht.
 
 NICHT:
 - `.claude/settings.json`, `package.json`, `.github/workflows/ci.yml`,
@@ -193,3 +193,9 @@ FOLGT:
   Projektchat-Dokumente hier nicht angefasst werden.
 - Harness-Kandidat 8 (`guard-settings.js` um `.claude/hooks/*.js`) bleibt
   offen; noch kein Vertrag geschnitten.
+
+---
+
+Nachtrag 23.08.2026: Dateinamen durch Vertrag
+`harness-b6-hooks-cjs-migration` von `.js` auf `.cjs` nachgezogen.
+Wortlaut sonst unverändert.

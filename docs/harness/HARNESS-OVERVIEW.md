@@ -38,8 +38,8 @@ ist und zusammenspielt. Für Lernstand und offene Punkte siehe
 │   │                          werkzeug-auswahl, advisor-pass, spec-schreiben,
 │   │                          handoff-vertrag
 │   ├── commands/            ← lessons.md
-│   └── hooks/               ← guard-settings.js, session-reminder.js,
-│                                zwischenstand-laden.js, zwischenstand-pruefen.js
+│   └── hooks/               ← guard-settings.js, session-reminder.cjs,
+│                                zwischenstand-laden.cjs, zwischenstand-pruefen.cjs
 ├── scripts/
 │   ├── check-docs.mjs      ← Doku-Gate (5 Prüfungen), Teil von `npm run check`
 │   ├── check-rules.mjs      ← Regel-Gate, leerer Harness bis zur ersten

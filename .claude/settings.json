@@ -2,6 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npm run *)"
+    ],
+    "deny": [
+      "Bash(echo PERMISSIONS_DENY_PROBE)"
     ]
   },
   "hooks": {
@@ -15,14 +18,14 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/commit-guard.js" }
+          { "type": "command", "command": "node .claude/hooks/commit-guard.cjs" }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/session-reminder.js" }
+          { "type": "command", "command": "node .claude/hooks/session-reminder.cjs" }
         ]
       }
     ],
@@ -30,7 +33,7 @@
       {
         "matcher": "startup|resume|compact|clear|fork",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/zwischenstand-laden.js" }
+          { "type": "command", "command": "node .claude/hooks/zwischenstand-laden.cjs" }
         ]
       }
     ],
@@ -38,7 +41,7 @@
       {
         "matcher": "manual|auto",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/zwischenstand-pruefen.js" }
+          { "type": "command", "command": "node .claude/hooks/zwischenstand-pruefen.cjs" }
         ]
       }
     ]

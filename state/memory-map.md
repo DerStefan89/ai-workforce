@@ -20,7 +20,6 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Strukturänderungen am Harness | `docs/harness/HARNESS-CHANGELOG.md` | |
 | Begriffe mit projektspezifischer Bedeutung | `docs/harness/HARNESS-GLOSSARY.md` | |
 | Zwischenstand einer unterbrochenen Aufgabe | `state/zwischenstand/<branch>.md` | nicht committen außer VORLAGE.md |
-| Einmal-Freigabe für den Commit-Guard | `state/freigabe-commit.md` | nicht in `state/zwischenstand/` — andere Aufgabe (Autorisierung, nicht Fortsetzung), andere Lebensdauer (ein Commit, nicht eine Sitzung); nie committen. Eine Freigabe gilt für genau einen Git-Vorgang (`commit` ODER `push`, nicht beide) — ein vollständiger Iterationsabschluss laut `CLAUDE.md` („committen UND pushen") braucht deshalb zwei Freigaben nacheinander. |
 | Spec: das WAS eines Vorhabens | `specs/` | Pläne und Verträge (das WIE) — die gehören nach `state/tasks/*.md` |
 | Was es an Werkzeugen gibt und wann es sich lohnt | `docs/harness/werkzeug-katalog.md` | was in diesem Projekt läuft |
 | Was in diesem Projekt läuft oder abgelehnt wurde | `state/tooling.md` | allgemeine Werkzeugkunde |

@@ -115,7 +115,7 @@ Hauptsitzung.
 
 ## Die Kontext-Hygiene-Erinnerung
 
-Der Hook `session-reminder.js` meldet sich alle 30 Nachrichten. Der Sinn:
+Der Hook `session-reminder.cjs` meldet sich alle 30 Nachrichten. Der Sinn:
 Nach 30 Nachrichten merkst du nicht mehr, wie voll das Fenster ist — die
 Antworten kommen weiter, nur teurer und ungenauer.
 
