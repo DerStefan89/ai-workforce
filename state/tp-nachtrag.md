@@ -1,4 +1,4 @@
-Stand dieser Fassung: 28.08.2026
+Stand dieser Fassung: 28.08.2026 (Ergänzung TP-01 e)
 
 ## Schritt 1, Werkzeugversionen
 
@@ -223,3 +223,88 @@ umbenannt).
   Alter Wert (`344CF9782AAEB33C2C0740D351408BFFFAFDD087937F85F202816641EACD1ADF`)
   bewusst nicht überschrieben — Änderung war erwartet und beabsichtigt,
   kein Drift-Befund.
+
+## TP-01 e
+
+Vertrag: tp-01e-fehllauf-beobachtungsbasis
+(`claude/66_VERTRAG_TP01E_OHNE_MESSFALL_C.md`). Deckt zwei der drei in
+`state/tasks/tp-03d-wirkungsgrenze-und-hash-baseline.md` SCOPE 7 als
+ungemessen benannten Fehlläufe ab (Abbruch, Zeitüberschreitung).
+Messfall C (Kontingentgrenze) bewusst nicht durchgeführt — siehe
+Vermerk am Ende dieses Abschnitts.
+
+Beide Messfälle nutzen denselben Basisaufruf:
+```
+claude -p "Fuehre den Bash-Befehl 'sleep 30' aus und melde danach das
+Ergebnis. Tu sonst nichts." --output-format json --setting-sources
+project
+```
+
+### Messfall A (Abbruch)
+
+- Aufruf: Basisaufruf im Hintergrund gestartet (`&` in Git Bash unter
+  Windows), nach 5 Sekunden Wartezeit per `kill -9 $PID` von außen
+  beendet, danach per `wait $PID` der Exit-Code der Shell abgefragt.
+- Prozess-Exit-Code: `137` (128+9, von Bash synthetisiert — kein
+  natives Windows-Signal, sondern die POSIX-Abbildung von Git Bash/MSYS
+  auf `kill -9`).
+- stderr: leer (Datei `messfallA_stderr.txt` nach dem Lauf mit 0 Byte
+  Inhalt).
+- Letzte Zeilen der strukturierten Ausgabe: keine — `messfallA_stdout.json`
+  ist leer. Der Prozess wurde beendet, bevor irgendeine Ausgabe (auch
+  keine Teil-/Streaming-Ausgabe) in die Datei geschrieben wurde.
+- Terminales Ergebnisobjekt: **nicht vorhanden**. Weder in stdout noch in
+  stderr liegt ein JSON-Objekt mit `"type":"result"` o. ä. vor — bei
+  einem von außen erzwungenen Abbruch entsteht kein Abschlussobjekt.
+- Restprozess/Kindprozess: Der von Git Bash vergebene `$!`-PID (888) war
+  über `tasklist`/`wmic` unter diesem PID nicht auffindbar (`tasklist
+  //FI "PID eq 888"` → „Es werden keine Aufgaben mit den angegebenen
+  Kriterien ausgeführt"; `wmic process where "ParentProcessId=888"` →
+  „Keine Instanzen verfügbar") — Git-Bash-PIDs bilden unter Windows
+  offenbar nicht 1:1 auf reale Windows-Prozess-IDs ab
+  ([offene Unsicherheit], Ursache nicht untersucht, außerhalb des
+  Geltungsbereichs dieses Vertrags). Deshalb zusätzlich per
+  Kommandozeilen-Suche geprüft (`Get-CimInstance Win32_Process`,
+  Filter auf `*sleep 30*` bzw. `claude.exe`/`node.exe` mit dem
+  Aufgabentext): **kein Treffer** — kein Rest- oder Kindprozess
+  gefunden.
+- Evidenz-Marker: [Fakt, dieser Vertragslauf]
+
+### Messfall B (Zeitüberschreitung)
+
+- Aufruf: derselbe Basisaufruf, mit `timeout 5s` (Git-Bash-Coreutils)
+  als äußerem Zeitlimit vorangestellt.
+- Prozess-Exit-Code: `124` — Standard-Exit-Code von `timeout`, wenn das
+  Zeitlimit erreicht wird (Signal an den Kindprozess, dann Beendigung
+  durch `timeout` selbst).
+- stderr: leer (Datei `messfallB_stderr.txt` nach dem Lauf mit 0 Byte
+  Inhalt).
+- Letzte Zeilen der strukturierten Ausgabe: keine — `messfallB_stdout.json`
+  ist leer, analog zu Messfall A.
+- Terminales Ergebnisobjekt: **nicht vorhanden**, aus demselben Grund
+  wie in Messfall A.
+- Restprozess/Kindprozess: per `Get-CimInstance Win32_Process` (gleicher
+  Filter wie Messfall A) geprüft — **kein Treffer**, kein Rest- oder
+  Kindprozess gefunden.
+- Evidenz-Marker: [Fakt, dieser Vertragslauf]
+
+### Gemeinsamer Befund A/B
+
+In beiden Fehlläufen: kein terminales Ergebnisobjekt, keine stderr-
+Ausgabe, kein zurückbleibender Kind- oder Werkzeugprozess (soweit über
+Kommandozeilen-Suche prüfbar). Beide Exit-Codes (`137`, `124`) sind
+Shell-/Coreutils-Konventionen der jeweiligen Abbruchmethode, keine von
+`claude` selbst gemeldeten Codes — worüber `claude` bei einem echten
+`SIGTERM`/`SIGKILL` intern hinaus etwas protokolliert (z. B. in eigene
+Log-Dateien außerhalb von stdout/stderr dieses Aufrufs), wurde NICHT
+geprüft ([offene Unsicherheit], außerhalb des Geltungsbereichs dieses
+Vertrags — nur Prozess-Exit-Code, stderr, stdout und Restprozesse waren
+Gegenstand).
+
+### Messfall C (Kontingentgrenze) — [offene Unsicherheit]
+
+Nicht gemessen, Entscheidung Stefan/Projektchat 28.08.2026,
+Betriebsrisiko Kontingentsperre (bis zu sieben Tage Sperre jeder
+weiteren Claude-Code-Sitzung bei absichtlicher Auslösung). Bleibt
+dauerhaft offene, dokumentierte Lücke — siehe
+`state/assumption-ledger.md`, Eintrag (c).
