@@ -10,4 +10,4 @@ sondern wird entweder bestätigt, widerlegt, oder bleibt sichtbar offen.
 |---|---|---|---|---|
 | 2026-08-28 | Claude-Code-Version zum Zeitpunkt der TP-Belege ist eindeutig bestimmbar | `claude/13_TP_ERGEBNISSE_LAUFEND.md`; Vertrag `tp-03d-wirkungsgrenze-und-hash-baseline`, `state/tp-nachtrag.md` Abschnitt „Schritt 1" | offen | |
 | 2026-08-28 | Dreifache Freigabe pro Iteration ist ungemessen (aus B3) | `state/tasks/tp-03d-wirkungsgrenze-und-hash-baseline.md` SCOPE 7 (b) | offen | |
-| 2026-08-28 | Verhalten an der Kontingentgrenze ist ungemessen | `state/tasks/tp-03d-wirkungsgrenze-und-hash-baseline.md` SCOPE 7 (c) | offen | Auflösung durch Vertrag `tp-01e-fehllauf-beobachtungsbasis` |
+| 2026-08-28 | Verhalten an der Kontingentgrenze ist ungemessen | `state/tasks/tp-03d-wirkungsgrenze-und-hash-baseline.md` SCOPE 7 (c) | offen — bewusst nicht gemessen, Messfall C ausgelassen, siehe `state/tp-nachtrag.md` Abschnitt TP-01e (28.08.2026) | |
