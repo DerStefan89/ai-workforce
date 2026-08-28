@@ -92,6 +92,93 @@ Stand dieser Fassung: 28.08.2026
 - Evidenz-Marker: [Fakt, dieser Vertragslauf]
 - Kein ESCALATE (nicht anwendbar — kein Fall von „keine Verweigerung").
 
+## Option B, Freigabeliste-Härtung
+
+Vertrag: harness-npm-run-allowlist-haertung (`claude/65_VERTRAG_OPTION_B_NPM_RUN_ALLOWLIST.md`).
+Schließt Messfall 1 aus „TP-03 d, Messfall 1" (Vertrag
+tp-03d-wirkungsgrenze-und-hash-baseline, PR #8) — **geschlossen**.
+
+- Umsetzung von `.claude/settings.json` (`permissions.allow`) erfolgte
+  manuell durch Stefan im Terminal, nicht durch die Claude-Instanz: der
+  vorgesehene Workaround (PreToolUse-Hook `guard-settings.js` temporär
+  per PowerShell entfernen) scheiterte an einer zusätzlichen, im Vertrag
+  nicht vorgesehenen Sperrschicht — dem Claude-Code-eigenen
+  Auto-Mode-Classifier, der den PowerShell-Schreibzugriff auf
+  `.claude/settings.json` unabhängig von den projekteigenen Hooks
+  verweigerte („Permission for this action was denied by the Claude Code
+  auto mode classifier."). Session hielt ESCALATE-konform an, Stefan
+  übernahm die Änderung händisch.
+
+**Alter Wortlaut** (`permissions.allow`):
+```json
+"allow": [
+  "Bash(npm run *)"
+]
+```
+
+**Neuer Wortlaut** (`permissions.allow`, bestätigt per `Read` nach
+Stefans manueller Änderung, `hooks` unverändert geblieben):
+```json
+"allow": [
+  "Bash(npm run check)",
+  "Bash(npm run check:template)",
+  "Bash(npm run lint)",
+  "Bash(npm run typecheck)",
+  "Bash(npm run test)"
+]
+```
+
+**Skriptnamen-Zuordnung** (SCOPE 3, Grundlage: `state/tasks/*.md`,
+`.github/workflows/ci.yml`, `.claude/skills/*/SKILL.md`):
+- Übernommen (Fundstelle `npm run <name>` bestätigt): `check` (u. a.
+  `.github/workflows/ci.yml:37`), `check:template` (mehrfach in
+  `state/tasks/harness-setup-0a/0b/0c-*.md`), `lint` (u. a.
+  `state/tasks/harness-setup-4a-linter-regeln-kalibrieren.md`),
+  `typecheck` (`state/tasks/harness-setup-1b-installation-und-pruefkette.md`),
+  `test` (`state/tasks/harness-setup-1b-installation-und-pruefkette.md`).
+- Ausgeschlossen (keine Fundstelle, nur `[FÜLLUNG]`-Platzhalter in
+  `package.json`): `dev`, `build`.
+
+**Rot-Fall** (`allowlist-redfall-probe`, neues Skript
+`node -e "console.log('ALLOWLIST_REDFALL_MARKER')"`, danach vollständig
+wieder aus `package.json` entfernt):
+- Aufruf: `claude -p "Führe genau den Befehl 'npm run
+  allowlist-redfall-probe' über das Bash-Werkzeug aus und gib danach die
+  Ausgabe wieder. Tu sonst nichts." --output-format json
+  --setting-sources project`
+- Erster Versuch enthielt eine Trust-Warnung („Ignoring 5
+  permissions.allow entries ... this workspace has not been trusted"),
+  die alle Allow-Einträge unabhängig von der Allowlist ignorierte —
+  Messung verworfen als einmaliger Ausreißer (vgl. CLAUDE.md „Bekannte
+  Fallen"). Kontrollprobe mit Grün-Fall `check:template` lief im
+  gleichen Sitzungskontext sauber ohne Trust-Warnung, danach Rot-Fall
+  wiederholt.
+- Wiederholtes Ergebnis, im Wortlaut: `"permission_denials":[{"tool_name":"Bash","tool_use_id":"toolu_01245zrQBLYwK3VjtkruxRWK","tool_input":{"command":"npm run allowlist-redfall-probe",...}}]`,
+  `result`: „Der Befehl wurde nicht ausgeführt — er benötigt eine
+  explizite Genehmigung, die ich nicht erhalten habe (die Ausführung
+  wurde blockiert/abgelehnt)." Kein Marker in der Ausgabe erschienen.
+- Bewertung: Grün-Fall im Sinne des Vertrags — Verweigerung trat wie
+  erwartet ein. Kein ESCALATE.
+
+**Grün-Fälle** (je Skriptname, `--output-format json --setting-sources
+project`, `permission_denials` jeweils `[]`):
+- `check:template`: Ausgabe enthält Doku-Check, Regel-Check (leerer
+  Harness), Vertrags-Check „14 Vertrag/Verträge geprüft, keine Befunde."
+- `check`: „alle Schritte grün (lint, typecheck, Doku-Check, Regel-Check,
+  Vertrags-Check, Tests: 1 pass, 0 fail)."
+- `lint`: ```> biome lint scripts/\nChecked 5 files in 39ms. No fixes
+  applied.```
+- `typecheck`: ```> tsc --noEmit``` — Exit ohne Fehler.
+- `test`: ```> node --test``` — „tests 1, pass 1, fail 0" (Dry-Run-Modus,
+  kein Schreibzugriff).
+- Bewertung: alle fünf Grün-Fälle bestanden, keine Verweigerung. Kein
+  ESCALATE.
+
+**Messfall 1 (Vertrag tp-03d-wirkungsgrenze-und-hash-baseline):
+geschlossen.** Die Präfix-Freigabe `Bash(npm run *)` existiert nicht
+mehr; ein neuer, nicht in der Allowlist enthaltener Skriptname wird
+verweigert.
+
 ## Gültigkeitsschlüssel, Ausgangsstand
 
 Kommt gemäß Nachtrag im Vertragstext statt der ursprünglichen SCOPE-6-
@@ -125,3 +212,14 @@ umbenannt).
 - Messumgebung: Zielmaschine = Windows, dieser Vertragslauf, 28.08.2026;
   externe Messung = Linux/LF-Arbeitsbaum, Zeitpunkt laut Vertrags-Nachtrag
   ebenfalls 28.08.2026, HEAD `7f1cd6c` zu beiden Zeitpunkten identisch.
+- 28.08.2026, nach Vertrag `harness-npm-run-allowlist-haertung`
+  (`permissions.allow` von `Bash(npm run *)` auf fünf feste Einträge
+  umgestellt, Änderung manuell durch Stefan, `hooks` unverändert),
+  gemessen auf der Zielmaschine (Windows, `Get-FileHash -Algorithm
+  SHA256`):
+  ```
+  .claude/settings.json: A35EE414AE8CC05387FA49436387B73DB1DD62608ECE4731E7F306EB3FD09B0F
+  ```
+  Alter Wert (`344CF9782AAEB33C2C0740D351408BFFFAFDD087937F85F202816641EACD1ADF`)
+  bewusst nicht überschrieben — Änderung war erwartet und beabsichtigt,
+  kein Drift-Befund.
