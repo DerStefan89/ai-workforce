@@ -97,7 +97,7 @@ Rolle: `architecture-advisor`, frischer Kontext, Read/Grep/Glob, kein Schreibrec
 
 **Fundstelle:** `state/plan-v1-af-f001-feature-akte.md:47-48`
 
-**Auswirkung:** Gering — vermutlich ein Copy/Paste-Rest aus einer anderen Abgrenzungsliste, aber nicht mit Sicherheit feststellbar aus dem Plan allein.
+**Auswirkung:** [offene Unsicherheit] Gering — vermutlich ein Copy/Paste-Rest aus einer anderen Abgrenzungsliste, aber nicht mit Sicherheit feststellbar aus dem Plan allein.
 
 **Empfehlung:** In Plan v2 entweder den Bezug in einem Halbsatz herstellen oder den Punkt streichen, falls er nicht zum Feature-Akte-Scope gehört.
 
