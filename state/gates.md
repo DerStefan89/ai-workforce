@@ -16,7 +16,7 @@ ungeprüftes Versprechen.
 | CI | `.github/workflows/ci.yml` | `npm run check` auf frischer Maschine + Secret-Scan | PR #1 (`harness-setup-4b-ci-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` in `scripts/_mode.ts` → Run [32534644257](https://github.com/DerStefan89/ai-workforce/actions/runs/32534644257), Check `check` fail, Log-Zeile `scripts/_mode.ts:26:25 lint/suspicious/noExplicitAny … × Unexpected any. Specify a different type.` gefolgt von `##[error]Process completed with exit code 1.` | Testzeile entfernt, derselbe PR #1 → Run [32534688109](https://github.com/DerStefan89/ai-workforce/actions/runs/32534688109), Check `check` pass |
 | Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, `enforce_admins: true`, PR vor Merge erforderlich (`required_approving_review_count: 0`, Solo-Maintainer) | PR #2 (`harness-setup-4c-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` → CI-Check `check` fail (Run [32564555823](https://github.com/DerStefan89/ai-workforce/actions/runs/32564555823)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"blocked"}` — Git-seitig konfliktfrei, aber von der Regel gesperrt | Testzeile entfernt, derselbe PR #2 → CI-Check `check` pass (Run [32564664834](https://github.com/DerStefan89/ai-workforce/actions/runs/32564664834)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"clean"}` — mergebar, **nicht gemerged** |
 | `guard-settings.js`-Hook | `.claude/hooks/guard-settings.js` | Edit/Write auf geteilte `.claude/settings.json` | Zwei reale Edit-Versuche über das Edit-Tool auf `.claude/settings.json`, 2026-08-17, im Rahmen eines Diagnose-Auftrags (vermuteter Durchschlupf sollte reproduziert werden) → beide korrekt verweigert, identische Meldung: „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." Kein Durchschlupf reproduzierbar. | Edit-Versuch auf eine unbeteiligte Datei (Scratchpad, außerhalb des Repos), 2026-08-17 → lief ungehindert durch, keine Guard-Reaktion |
-| `commit-guard.cjs`-Hook | `.claude/hooks/commit-guard.cjs` | Bash-Zugriff auf `.claude/settings.json` (Freigabe-Datei-Pflicht mit Befund B6 ersatzlos entfernt, siehe Kalibrierungs-Log) | `cat .claude/settings.json` auf Wegwerf-Branch `diagnose-scope11-b6`, 2026-08-23 → abgewiesen, Meldung „commit-guard: Bash-Zugriff auf geteilte .claude/settings.json blockiert. Die Datei ist Team-Policy und wird nur vom Menschen im eigenen Editor geändert." | unbeteiligter Bash-Befehl `git status`, gleicher Branch, unmittelbar danach → lief regulär durch |
+| `commit-guard.cjs`-Hook | `.claude/hooks/commit-guard.cjs` | Bash-Zugriff auf `.claude/settings.json` (Freigabe-Datei-Pflicht mit Befund B6 ersatzlos entfernt, siehe Kalibrierungs-Log); gh-Merge-Pfad nach main (PR-Merge-Unterbefehl, `/merge`/`/merges`-API-Endpunkt) und Bash-Zugriff, lesend wie schreibend, auf die Branch-Protection-Regel (`branches/…/protection`) — Vertrag `harness-b1b3-merge-guard-und-git-flow` | `cat .claude/settings.json` auf Wegwerf-Branch `diagnose-scope11-b6`, 2026-08-23 → abgewiesen, Meldung „commit-guard: Bash-Zugriff auf geteilte .claude/settings.json blockiert. Die Datei ist Team-Policy und wird nur vom Menschen im eigenen Editor geändert."; zusätzlich 2026-08-28: `gh pr merge 999` → abgewiesen, „commit-guard: gh-Merge-Pfad nach main blockiert (PR-Merge-Unterbefehl oder /merge(s)-API-Endpunkt). Merge auf main bleibt Menschensache, nicht Bash/gh. Lesewege wie mergeable_state bleiben offen."; `gh api --method PUT repos/DerStefan89/ai-workforce/pulls/999/merge` → dieselbe Meldung; `gh api repos/DerStefan89/ai-workforce/branches/main/protection` → abgewiesen, „commit-guard: Bash-Zugriff auf die Branch-Protection-Regel blockiert — lesend wie schreibend. Leseweg auf ihre Wirkung bleibt offen (gh api repos/…/pulls/<n> -> mergeable_state)."; Fail-Closed, Eingabe ohne `tool_input.command` → abgewiesen, „commit-guard: kein Befehlstext gefunden — fail-closed, Befehl verweigert." | unbeteiligter Bash-Befehl `git status`, gleicher Branch, unmittelbar danach → lief regulär durch; zusätzlich 2026-08-28: `gh pr list`, `gh repo view` und `gh api repos/DerStefan89/ai-workforce/pulls/2` (Leseweg auf `mergeable_state`) → alle drei liefen unverändert durch, Exit 0, keine Verweigerung |
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
 
 ## Kalibrierungs-Log
@@ -624,3 +624,72 @@ nicht die Tabelle oben stillschweigend überschreiben.
   Vorheriger, unklarer Ausgang von SCOPE 11 a) war kein Caching-Effekt im
   Hook-Runner, sondern falsches Arbeitsverzeichnis der Sitzung — Details:
   `state/plan-v1-harness-b6-hooks-cjs-migration.md`, Abschnitt „N25".
+
+- 2026-08-28, `commit-guard.cjs`-Hook, Vertrag
+  `harness-b1b3-merge-guard-und-git-flow` (Aufgabe 2 ergänzt: gh-Merge-Pfad
+  nach main und Bash-Zugriff auf die Branch-Protection-Regel selbst).
+  Vier Rot-Fälle und drei Grün-Fälle, alle über `node
+  .claude/hooks/commit-guard.cjs` mit synthetischer stdin-Eingabe (kein
+  echter `gh`-Aufruf — kein Netzwerkzugriff, kein reales PR/API-Objekt
+  nötig, der Hook greift bereits am Befehlstext).
+  **Rot-Fall B1a:** Eingabe `{"tool_input":{"command":"gh pr merge
+  999"}}` → abgewiesen, Wortlaut: „commit-guard: gh-Merge-Pfad nach main
+  blockiert (PR-Merge-Unterbefehl oder /merge(s)-API-Endpunkt). Merge auf
+  main bleibt Menschensache, nicht Bash/gh. Lesewege wie mergeable_state
+  bleiben offen." Kein `gh`-Ausgabetext, keine HTTP-/404-Meldung, keine
+  „Blocked by classifier"-Meldung erschienen — der Hook griff vor jedem
+  echten `gh`-Aufruf.
+  **Rot-Fall B1a-2:** Eingabe `{"tool_input":{"command":"gh api --method
+  PUT repos/DerStefan89/ai-workforce/pulls/999/merge"}}` → abgewiesen,
+  dieselbe Meldung wie B1a. Belegt die Erweiterung auf den
+  `/merge`-API-Endpunkt (SCOPE 2a).
+  **Rot-Fall B1b:** Eingabe `{"tool_input":{"command":"gh api
+  repos/DerStefan89/ai-workforce/branches/main/protection"}}` →
+  abgewiesen, Wortlaut: „commit-guard: Bash-Zugriff auf die
+  Branch-Protection-Regel blockiert — lesend wie schreibend. Leseweg auf
+  ihre Wirkung bleibt offen (gh api repos/…/pulls/<n> ->
+  mergeable_state)." Rein lesender Befehl, dennoch verweigert — wie in
+  SCOPE 2b/Annahme des Vertrags festgelegt.
+  **Rot-Fall Fail-Closed:** Eingabe `{"tool_input":{}}` (kein `command`)
+  → abgewiesen, Wortlaut: „commit-guard: kein Befehlstext gefunden —
+  fail-closed, Befehl verweigert." Belegt, dass die neue, vorangestellte
+  Prüfung die Fail-Closed-Eigenschaft nicht aufgehoben hat. Nebenbefund,
+  kein Hook-Fehler: Ein erster Versuch über `echo` (statt `printf`) mit
+  einem Windows-Pfad voller doppelter Backslashes im `cwd`-Feld
+  beschädigte das JSON durch Shell-Expansion und traf stattdessen den
+  `JSON.parse`-Fehlerzweig („Eingabe nicht lesbar") — ebenfalls eine
+  gültige Verweigerung, aber der falsche Fail-Closed-Zweig für den
+  beabsichtigten Testfall. Mit `printf` statt `echo` reproduziert, dann
+  der korrekte Wortlaut oben.
+  **Grün-Fälle:** `{"tool_input":{"command":"gh pr list"}}`,
+  `{"tool_input":{"command":"gh repo view"}}` und
+  `{"tool_input":{"command":"gh api
+  repos/DerStefan89/ai-workforce/pulls/2"}}` (Leseweg auf
+  `mergeable_state`, enthält weder `branches/`+`/protection` noch `merge`
+  als eigenständiges Token) → alle drei liefen unverändert durch, kein
+  JSON auf stdout, Exit 0. Der dritte Fall belegt die
+  `mergeable`-Ausnahme aus SCOPE 2a: `mergeable_state` enthält `merge` nur
+  als Teilstring innerhalb eines längeren Worts, nicht als eigenständiges
+  Token — die Wortgrenzen-Regex greift hier bewusst nicht.
+  Abdeckungsaussage im Wortlaut: Der Rot-Fall belegt ausschließlich den
+  Bash-Pfad. Ausdrücklich nicht belegt: GitHub-Weboberfläche, `curl` und
+  andere HTTP-Clients, MCP-Werkzeuge, WebFetch, freie Shell mit
+  Variablen. Ebenfalls nicht erfasst: die Rulesets-API
+  (`repos/…/rulesets`) — der Schutz dieses Repos liegt in der
+  klassischen Protection-API, nicht in Rulesets.
+  SCOPE 10 (Regressions-Grünfall für die mit Befund B6 bereits entfernte
+  Freigabe-Datei-Pflicht) entfällt laut Nachtrag zu diesem Vertrag —
+  nicht ausgeführt, kein Befund einzutragen.
+  `git-flow` Schritt 3 wurde textlich geändert (`git pull` → `git fetch
+  origin` plus expliziter Vergleich über `git rev-list --left-right
+  --count main...origin/main` mit vier Ausgängen). Durchsetzungsgrad
+  DEKLARIERT; das Verhalten wurde in diesem Lauf nicht ausgeführt, weil
+  Schritt 2 des Skills (dedizierter Branch/Worktree) hier nicht griff,
+  sondern real der Schritt-3-Pfad selbst durchlaufen wurde, um main auf
+  origin/main zu bringen (SCHRITT C dieses Vertragslaufs) — der
+  `0 N`-Ausgang trat dabei real ein (`git rev-list --left-right --count
+  main...origin/main` → `0 2`) und wurde wie im neuen Wortlaut behandelt
+  (`git checkout main && git merge --ff-only origin/main`). Der
+  Widerspruch zu Ziel-Fassung §9.2 Punkt 5 ist damit sowohl im Wortlaut
+  als auch einmal real im Verhalten belegt, nicht nur textlich
+  aufgelöst.
