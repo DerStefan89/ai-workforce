@@ -31,3 +31,4 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Zielbild, Rollen, Grenzen, Fassung-1-Scope | `docs/projekt/zielfassung.md` | nicht in `ARCHITECTURE.md` (dort stehen ausschließlich Code-Konventionen) und nicht in einen Chat |
 | Deliverables, Feature-Reihenfolge, Backlog | `docs/projekt/umsetzungsplan-fassung-1.md` | nicht in `docs/STATUS.md`, dort steht nur der aktuelle Stand |
 | Einzelne Architekturentscheidung samt Begründung und verworfener Alternative | `docs/adr/` | nicht in `ARCHITECTURE.md`, dort steht nur die geltende Regel ohne Herleitung |
+| Findings (Bugs, Harness-Verbesserungen, technische Schulden, Prozessverbesserungen) | `state/findings.md` | nicht in `state/reibung.md` (dort stehen Reibungsvorfälle) und nicht in `state/assumption-ledger.md` (dort stehen offene Annahmen) |
