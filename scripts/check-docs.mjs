@@ -133,16 +133,14 @@ for (const datei of anweisungsDateien) {
 // Eine Version an zwei Stellen ist an einer Stelle schon falsch — man weiß
 // nur noch nicht, an welcher.
 //
-// [FÜLLUNG] Die Namensliste unten ist ein Platzhalter (Beispiel aus einem
-// Next.js/Prisma-Projekt). Auf den eigenen Stack anpassen — z. B. für Expo:
-// "Expo|React Native|EAS", für Solidity: "Solidity|Foundry|OpenZeppelin".
+// Namensliste für dieses Projekt: TypeScript, Node, Biome, tsc, node:test.
 
 const versionsMuster = [
   /\bv?\d+\.\d+\.\d+\b/g,
   // Zahl muss ein `v`-Präfix ODER mindestens einen Punkt haben — sonst
   // greift das Muster an jeder Zahl nach einem großgeschriebenen Wort,
   // z. B. "Exit 0" in der Befehlsübersicht (kein Versionsverweis).
-  /\b([A-Z][a-zA-Z.]*(?:\s[A-Z][a-zA-Z.]*)?)\s+(?:v\d[\d.]*|\d+\.\d[\d.]*)/g, // [FÜLLUNG]: Platzhalter, ersetzt konkrete Techniknamen
+  /\b(TypeScript|Node|Biome|tsc|node:test)\s+(?:v\d[\d.]*|\d+\.\d[\d.]*)/g,
 ]
 
 const istDatum = (treffer) => /^\d{1,2}\.\d{1,2}\.\d{4}$/.test(treffer)
