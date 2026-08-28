@@ -18,6 +18,7 @@ ungeprüftes Versprechen.
 | `guard-settings.js`-Hook | `.claude/hooks/guard-settings.js` | Edit/Write auf geteilte `.claude/settings.json` | Zwei reale Edit-Versuche über das Edit-Tool auf `.claude/settings.json`, 2026-08-17, im Rahmen eines Diagnose-Auftrags (vermuteter Durchschlupf sollte reproduziert werden) → beide korrekt verweigert, identische Meldung: „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." Kein Durchschlupf reproduzierbar. | Edit-Versuch auf eine unbeteiligte Datei (Scratchpad, außerhalb des Repos), 2026-08-17 → lief ungehindert durch, keine Guard-Reaktion |
 | `commit-guard.cjs`-Hook | `.claude/hooks/commit-guard.cjs` | Bash-Zugriff auf `.claude/settings.json` (Freigabe-Datei-Pflicht mit Befund B6 ersatzlos entfernt, siehe Kalibrierungs-Log); gh-Merge-Pfad nach main (PR-Merge-Unterbefehl, `/merge`/`/merges`-API-Endpunkt) und Bash-Zugriff, lesend wie schreibend, auf die Branch-Protection-Regel (`branches/…/protection`) — Vertrag `harness-b1b3-merge-guard-und-git-flow` | `cat .claude/settings.json` auf Wegwerf-Branch `diagnose-scope11-b6`, 2026-08-23 → abgewiesen, Meldung „commit-guard: Bash-Zugriff auf geteilte .claude/settings.json blockiert. Die Datei ist Team-Policy und wird nur vom Menschen im eigenen Editor geändert."; zusätzlich 2026-08-28: `gh pr merge 999` → abgewiesen, „commit-guard: gh-Merge-Pfad nach main blockiert (PR-Merge-Unterbefehl oder /merge(s)-API-Endpunkt). Merge auf main bleibt Menschensache, nicht Bash/gh. Lesewege wie mergeable_state bleiben offen."; `gh api --method PUT repos/DerStefan89/ai-workforce/pulls/999/merge` → dieselbe Meldung; `gh api repos/DerStefan89/ai-workforce/branches/main/protection` → abgewiesen, „commit-guard: Bash-Zugriff auf die Branch-Protection-Regel blockiert — lesend wie schreibend. Leseweg auf ihre Wirkung bleibt offen (gh api repos/…/pulls/<n> -> mergeable_state)."; Fail-Closed, Eingabe ohne `tool_input.command` → abgewiesen, „commit-guard: kein Befehlstext gefunden — fail-closed, Befehl verweigert." | unbeteiligter Bash-Befehl `git status`, gleicher Branch, unmittelbar danach → lief regulär durch; zusätzlich 2026-08-28: `gh pr list`, `gh repo view` und `gh api repos/DerStefan89/ai-workforce/pulls/2` (Leseweg auf `mergeable_state`) → alle drei liefen unverändert durch, Exit 0, keine Verweigerung |
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
+| `npm run`-Freigabeliste | `.claude/settings.json` (`permissions.allow`) | Bash-Aufrufe `npm run <name>`, seit Vertrag `harness-npm-run-allowlist-haertung` auf feste Namen (`check`, `check:template`, `lint`, `typecheck`, `test`) beschränkt statt Präfix-Wildcard | 2026-08-28: nicht-interaktiver Lauf `npm run allowlist-redfall-probe` (neues, nicht freigegebenes Skript) → `permission_denials` enthält `Bash(npm run allowlist-redfall-probe)`, Befehl nicht ausgeführt | 2026-08-28: `npm run check`, `check:template`, `lint`, `typecheck`, `test` je einzeln über nicht-interaktive Claude-Instanz → `permission_denials: []`, alle fünf liefen durch |
 
 ## Kalibrierungs-Log
 
@@ -693,3 +694,41 @@ nicht die Tabelle oben stillschweigend überschreiben.
   Widerspruch zu Ziel-Fassung §9.2 Punkt 5 ist damit sowohl im Wortlaut
   als auch einmal real im Verhalten belegt, nicht nur textlich
   aufgelöst.
+
+- 2026-08-28, `npm run`-Freigabeliste, Vertrag
+  `harness-npm-run-allowlist-haertung` (schließt Messfall 1 aus Vertrag
+  `tp-03d-wirkungsgrenze-und-hash-baseline`): `permissions.allow` in
+  `.claude/settings.json` von der Präfix-Freigabe `Bash(npm run *)` auf
+  fünf feste Einträge (`check`, `check:template`, `lint`, `typecheck`,
+  `test`) umgestellt. Die Änderung an `.claude/settings.json` selbst
+  wurde **manuell von Stefan im Terminal** vorgenommen, nicht durch die
+  Claude-Instanz — der vertraglich vorgesehene Workaround
+  (`guard-settings.js`-Hook per PowerShell temporär entfernen) scheiterte
+  am Claude-Code-eigenen Auto-Mode-Classifier, unabhängig von den
+  projekteigenen Hooks.
+  **Rot-Fall:** neues, zuvor nicht existierendes Skript
+  `allowlist-redfall-probe` temporär in `package.json` ergänzt, per
+  nicht-interaktiver Claude-Instanz ausgeführt
+  (`claude -p "Führe genau den Befehl 'npm run allowlist-redfall-probe'
+  über das Bash-Werkzeug aus ..." --output-format json
+  --setting-sources project`). Erster Versuch verworfen (Trust-Warnung
+  „this workspace has not been trusted" ignorierte alle Allow-Einträge
+  unabhängig von der Allowlist — einmaliger Ausreißer, siehe CLAUDE.md
+  „Bekannte Fallen"). Kontrollprobe mit Grün-Fall `check:template` lief
+  im gleichen Sitzungskontext sauber, danach Rot-Fall wiederholt →
+  `permission_denials` enthält `{"tool_name":"Bash","tool_input":
+  {"command":"npm run allowlist-redfall-probe",...}}`, Befehl nicht
+  ausgeführt, kein Marker in der Ausgabe. Testskript danach vollständig
+  aus `package.json` entfernt, `git status` zeigt keinen Rest (Diff
+  neutralisiert sich, da Hinzufügen und Entfernen in derselben Sitzung).
+  **Grün-Fälle**, je einzeln über dieselbe nicht-interaktive Methode:
+  `check` → „alle Schritte grün (lint, typecheck, Doku-Check,
+  Regel-Check, Vertrags-Check, Tests: 1 pass, 0 fail)", `check:template`
+  → Doku-/Regel-/Vertrags-Check „keine Befunde", `lint` → „Checked 5
+  files in 39ms. No fixes applied.", `typecheck` → `tsc --noEmit` ohne
+  Fehler, `test` → „tests 1, pass 1, fail 0" (Dry-Run). Alle fünf
+  `permission_denials: []`.
+  Ausgeschlossen aus der Freigabeliste (keine Fundstelle für
+  `npm run <name>` in `state/tasks/*.md`, `.github/workflows/ci.yml`
+  oder `.claude/skills/*/SKILL.md`, nur `[FÜLLUNG]`-Platzhalter in
+  `package.json`): `dev`, `build`.
