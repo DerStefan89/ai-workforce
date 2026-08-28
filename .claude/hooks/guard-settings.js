@@ -1,6 +1,12 @@
-// Blockiert Schreibzugriff (Edit/Write) auf eine geteilte Datei:
+// Blockiert Schreibzugriff (Edit/Write) auf geteilte Dateien:
 // - .claude/settings.json: Team-Policy (Permission-Freigaben gehoeren nach
 //   .claude/settings.local.json, nicht hierher).
+// - state/freigabe-commit.md: der zweite Schluessel aus commit-guard.cjs.
+//   War bisher nur gegen Bash geschuetzt (siehe dort, Aufgabe 4), nicht
+//   gegen das Edit/Write-Werkzeug selbst - ein Modell haette die Datei mit
+//   einem plausiblen Zeitstempel selbst anlegen und damit die
+//   Freigabepruefung umgehen koennen, die nur Inhalt/Alter prueft, nicht
+//   Herkunft. Siehe state/plan-v2-harness-freigabedatei-wiederherstellung.md.
 // "ask" wird von der VS-Code-Extension ignoriert (Issue #13339 im
 // anthropics/claude-code-Repo) - daher "deny" statt Rueckfrage.
 const GUARDED_FILES = [
@@ -11,6 +17,13 @@ const GUARDED_FILES = [
       "Schreibzugriff auf geteilte settings.json blockiert. Absichtliche " +
       "Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer " +
       "entfernen, Grund im Commit nennen.",
+  },
+  {
+    path: "state/freigabe-commit.md",
+    suffix: "/state/freigabe-commit.md",
+    reason:
+      "Freigabedatei darf nur vom Menschen im eigenen Editor angelegt " +
+      "werden, nicht vom Modell.",
   },
 ];
 
