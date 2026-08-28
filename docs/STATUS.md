@@ -19,6 +19,10 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   Architektur-Baseline sind entschieden (`docs/projekt/zielfassung.md`).
 - Technischer Stack, Modulschnitt und Zustandsablage sind festgelegt.
 - Die Vertragsschiene zur Harness-Härtung ist abgeschlossen.
+- AF-F001 (Feature-Akte im Repo) ist umgesetzt: `features/<id>/feature.md`
+  + `journal.md` als Ablageort, `scripts/check-feature.mjs` als Gate
+  (eingehängt in `npm run check:template`), erste befüllte Akte
+  `features/AF-F001/` mit `Status: READY_FOR_TECH`.
 
 ## Offene Punkte
 
