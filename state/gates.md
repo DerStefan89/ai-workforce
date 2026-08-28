@@ -10,8 +10,9 @@ ungeprüftes Versprechen.
 |---|---|---|---|---|
 | Doku-Gate | `scripts/check-docs.mjs` | tote Verweise, Versionsnummern außerhalb package.json, Frische-Widerspruch in Einzeldokumenten, Frische-Widerspruch zwischen Dokumentenpaaren, Hedging-Wörter ohne Evidenz-Marker in state/Report-Dateien | Testzeile `React v19, siehe \`keine/existierende/datei.md\`` (temporär in CLAUDE.md eingefügt) → 2 Befunde: toter Verweis + Versionsnummer; echter Fund (kein Testfall) nach Erweiterung von Prüfung 1 auf `.claude/skills/*/SKILL.md` und `.claude/commands/*.md`: `.claude/skills/spec-schreiben/SKILL.md:88: Verweis auf \`state/triage.md\` — Datei existiert nicht` | CLAUDE.md:79 `npm run check` → Exit 0 löst keinen Versionsnummer-Befund aus; README.md:34 verweist auf `settings.local.json`, das per .gitignore absichtlich fehlt → kein Befund; nach Behebung von `spec-schreiben/SKILL.md:88` (Verweis auf `state/tasks/` umgebogen) → `npm run check` Exit 0, Doku-Check „Keine Befunde" |
 | Regel-Gate | `scripts/check-rules.mjs` | projektspezifische AST-Regeln | (leer bis zur ersten Regel) | (leer bis zur ersten Regel) |
-| Linter-Gate, `noExplicitAny` | `biome.json` (`linter.rules.suspicious.noExplicitAny`) | explizites `any` in Dateien unter `scripts/` | Testzeile `const temp_rotfall_any: any = 1` temporär in `scripts/_mode.ts` → 1 Befund `lint/suspicious/noExplicitAny: Unexpected any. Specify a different type.`, Exit 1 | Testzeile entfernt, `npm run lint` → „Checked 5 files … No fixes applied.", Exit 0 |
-| Linter-Gate, `noFloatingPromises` | `biome.json` (`linter.rules.nursery.noFloatingPromises`) | nicht abgewartete Promise in Dateien unter `scripts/` | Testcode `async function tempRotfallAsync(): Promise<void> {}` + Aufruf `tempRotfallAsync()` ohne `await`/`.then`/`.catch` temporär in `scripts/_mode.ts` → 1 Befund `lint/nursery/noFloatingPromises: A "floating" Promise was found …`, Exit 1 | Testcode entfernt, `npm run lint` → „Checked 5 files … No fixes applied.", Exit 0 |
+| Linter-Gate, `noExplicitAny` | `biome.json` (`linter.rules.suspicious.noExplicitAny`, `files.includes`) | explizites `any` in Dateien unter `scripts/` und `src/` | Testzeile `const temp_rotfall_any: any = 1` temporär in `src/_kalibrierung.ts` (Vertrag `harness-a1-kettenumfang-produktpfad`) → 1 Befund `lint/suspicious/noExplicitAny: Unexpected any. Specify a different type.`, Exit 1 | Testzeile entfernt, `npm run lint` → „Checked 6 files … No fixes applied.", Exit 0 |
+| Linter-Gate, `noFloatingPromises` | `biome.json` (`linter.rules.nursery.noFloatingPromises`, `files.includes`) | nicht abgewartete Promise in Dateien unter `scripts/` und `src/` | Testcode `async function tempRotfallAsync(): Promise<void> {}` + Aufruf `tempRotfallAsync()` ohne `await`/`.then`/`.catch` temporär in `src/_kalibrierung.ts` (Vertrag `harness-a1-kettenumfang-produktpfad`) → 1 Befund `lint/nursery/noFloatingPromises: A "floating" Promise was found …`, Exit 1 | Testcode entfernt, `npm run lint` → „Checked 6 files … No fixes applied.", Exit 0 |
+| Typecheck-Gate | `tsconfig.json` (`include`) | TypeScript-Typfehler in Dateien unter `scripts/` und `src/` | Testzeile `const temp_rotfall_typecheck: number = "abc";` temporär in `src/_kalibrierung.ts` (Vertrag `harness-a1-kettenumfang-produktpfad`) → `npm run typecheck` meldet `src/_kalibrierung.ts(2,7): error TS2322: Type 'string' is not assignable to type 'number'.`, Exit 1 | Testzeile entfernt, `npm run typecheck` → keine Ausgabe, Exit 0 |
 | Vertrags-Gate | `scripts/check-contract.mjs` | Handoff-Verträge in `state/tasks/` auf SCHRITT 0 (Präambel) und die acht Marker der sieben Sektionen (`## TASK:`, `GOAL:`, `CONTEXT:`, `SCOPE:`, `NICHT:`, `BUDGET:`, `OUTPUT:`, `ESCALATE:`) | Testdatei `state/tasks/_test-verstuemmelt.md` ohne `SCOPE:`/`NICHT:` (temporär, nicht committet) → 2 Befunde: „Marker \"SCOPE:\" fehlt", „Marker \"NICHT:\" fehlt", Exit 1 | Lauf gegen alle 5 echten Dateien in `state/tasks/` (`harness-fix-1…` bis `harness-fix-4…` plus `phase0-artefakte-committen.md`) → „5 Vertrag/Verträge geprüft, keine Befunde.", Exit 0 |
 | CI | `.github/workflows/ci.yml` | `npm run check` auf frischer Maschine + Secret-Scan | PR #1 (`harness-setup-4b-ci-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` in `scripts/_mode.ts` → Run [32534644257](https://github.com/DerStefan89/ai-workforce/actions/runs/32534644257), Check `check` fail, Log-Zeile `scripts/_mode.ts:26:25 lint/suspicious/noExplicitAny … × Unexpected any. Specify a different type.` gefolgt von `##[error]Process completed with exit code 1.` | Testzeile entfernt, derselbe PR #1 → Run [32534688109](https://github.com/DerStefan89/ai-workforce/actions/runs/32534688109), Check `check` pass |
 | Branch Protection | GitHub-Repo-Einstellung, kein Datei-Artefakt (siehe SETUP.md Punkt 1) | Required Status Check `check` vor Merge auf `main`, `enforce_admins: true`, PR vor Merge erforderlich (`required_approving_review_count: 0`, Solo-Maintainer) | PR #2 (`harness-setup-4c-rotfall` → `main`, geschlossen ohne Merge), Testzeile `const temp_rotfall_any: any = 1` → CI-Check `check` fail (Run [32564555823](https://github.com/DerStefan89/ai-workforce/actions/runs/32564555823)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"blocked"}` — Git-seitig konfliktfrei, aber von der Regel gesperrt | Testzeile entfernt, derselbe PR #2 → CI-Check `check` pass (Run [32564664834](https://github.com/DerStefan89/ai-workforce/actions/runs/32564664834)); `gh api repos/DerStefan89/ai-workforce/pulls/2` → `{"mergeable":true,"mergeable_state":"clean"}` — mergebar, **nicht gemerged** |
@@ -732,3 +733,77 @@ nicht die Tabelle oben stillschweigend überschreiben.
   `npm run <name>` in `state/tasks/*.md`, `.github/workflows/ci.yml`
   oder `.claude/skills/*/SKILL.md`, nur `[FÜLLUNG]`-Platzhalter in
   `package.json`): `dev`, `build`.
+
+- 2026-08-28, Linter-Gate (`noExplicitAny`, `noFloatingPromises`) und neues
+  Typecheck-Gate, Vertrag `harness-a1-kettenumfang-produktpfad`:
+  Geltungsbereich von `scripts/` auf `scripts/` + `src/` erweitert.
+  `package.json` → `lint` von `biome lint scripts/` auf `biome lint .`
+  umgestellt, Geltungsbereich stattdessen in `biome.json` über
+  `files.includes: ["scripts/**", "src/**"]` gesetzt (Schlüsselname aus
+  dem lokal gepinnten Schema `node_modules/@biomejs/biome/
+  configuration_schema.json`, `$defs.FilesConfiguration`, bestimmt — nicht
+  aus dem Gedächtnis; `includes` ist eine Positivliste, `scripts/**` und
+  `src/**` schließen damit implizit alles andere aus, ohne `!`-Negation).
+  `tsconfig.json` → `include` auf `["scripts/**/*.ts", "src/**/*.ts"]`
+  erweitert.
+  **Nachweis ohne vorhandenes `src/`:** `npm run check` → Exit 0 (nur eine
+  vorbestehende Info-Meldung zu `biome.json:6:13 deserialize DEPRECATED …
+  The use of the recommended field has been deprecated`, unverändert seit
+  vor diesem Vertrag, kein Fehler).
+  **Rot-Fall `noExplicitAny`** (temporäre Datei `src/_kalibrierung.ts`,
+  Zeile `const temp_rotfall_any: any = 1`): `npm run lint` → Exit 1,
+  Ausgabe im Wortlaut:
+  ```
+  src\_kalibrierung.ts:2:25 lint/suspicious/noExplicitAny ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × Unexpected any. Specify a different type.
+
+      1 │ // TEMP-ROT-FALL noExplicitAny (harness-a1-kettenumfang-produktpfad, wird sofort entfernt)
+    > 2 │ const temp_rotfall_any: any = 1
+        │                         ^^^
+      3 │
+
+    i any disables many type checking rules. Its use should be avoided.
+
+
+  Checked 7 files in 45ms. No fixes applied.
+  Found 1 error.
+  Found 1 info.
+  ```
+  **Rot-Fall `noFloatingPromises`** (dieselbe temporäre Datei ersetzt
+  durch `async function tempRotfallAsync(): Promise<void> {}` gefolgt von
+  `tempRotfallAsync()` ohne `await`/`.then`/`.catch`): `npm run lint` →
+  Exit 1, Ausgabe im Wortlaut:
+  ```
+  src\_kalibrierung.ts:3:1 lint/nursery/noFloatingPromises ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    × A "floating" Promise was found, meaning it is not properly handled and could lead to ignored errors or unexpected behavior.
+
+      1 │ // TEMP-ROT-FALL noFloatingPromises (harness-a1-kettenumfang-produktpfad, wird sofort entfernt)
+      2 │ async function tempRotfallAsync(): Promise<void> {}
+    > 3 │ tempRotfallAsync()
+        │ ^^^^^^^^^^^^^^^^^^
+      4 │
+
+    i This happens when a Promise is not awaited, lacks a `.catch` or `.then` rejection handler, or is not explicitly ignored using the `void` operator.
+
+    i This rule belongs to the nursery group, which means it is not yet stable and may change in the future. Visit https://biomejs.dev/linter/#nursery for more information.
+
+
+  Checked 7 files in 49ms. No fixes applied.
+  Found 1 error.
+  Found 1 info.
+  ```
+  **Rot-Fall Typecheck** (dieselbe temporäre Datei ersetzt durch
+  `const temp_rotfall_typecheck: number = "abc";`): `npm run typecheck` →
+  Exit 1, Ausgabe im Wortlaut:
+  ```
+  src/_kalibrierung.ts(2,7): error TS2322: Type 'string' is not assignable to type 'number'.
+  ```
+  **Grün-Fall:** `src/_kalibrierung.ts` vollständig entfernt, `npm run
+  check` → Exit 0, Lint-Teilausgabe im Wortlaut „Checked 6 files in 45ms.
+  No fixes applied." (plus dieselbe vorbestehende Info-Meldung wie oben),
+  Typecheck ohne Ausgabe. `git status` direkt danach zeigt kein `src/`
+  mehr (Verzeichnis selbst entfernt, keine Reste in der Änderungsliste).
+  Damit sind beide Linter-Zeilen und die neue Typecheck-Zeile für den
+  erweiterten Geltungsbereich real kalibriert, nicht nur behauptet.
