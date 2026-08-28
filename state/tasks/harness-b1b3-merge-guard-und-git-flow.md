@@ -199,3 +199,46 @@ FOLGT:
 Nachtrag 23.08.2026: Dateinamen durch Vertrag
 `harness-b6-hooks-cjs-migration` von `.js` auf `.cjs` nachgezogen.
 Wortlaut sonst unverändert.
+
+---
+
+Nachtrag 28.08.2026 — Korrektur SCOPE 2/3/10 gegenüber der Code-Realität
+nach Befund B6:
+
+[Fakt, aus dem Bauauftrag zu diesem Vertrag, Abschnitt 1 von
+`claude/63_VERTRAG1_NACHTRAG_UND_BAUAUFTRAG.md`, hier wiedergegeben nach
+der Paraphrase im erhaltenen Bauauftrag] Zwischen der Entstehung dieses
+Vertragstexts und seiner Ausführung hat Vertrag
+`harness-b6-hooks-cjs-migration` den Hook von `.claude/hooks/commit-guard.js`
+auf `.claude/hooks/commit-guard.cjs` migriert und dabei die bisherigen
+Aufgaben 1 und 3 (Freigabe-Datei-Pflicht vor `git commit`/`push`;
+Bash-Zugriff auf `state/freigabe-commit.md` blockieren) mit
+Stefan-Entscheidung 23.08.2026 ersatzlos entfernt (Befund B6, Nachtrag
+N24 in `state/gates.md`). `commit-guard.cjs` trug zum Zeitpunkt der
+Ausführung dieses Vertrags nur noch eine Aufgabe (Bash-Zugriff auf
+`.claude/settings.json`), nicht vier.
+
+Bei Widerspruch gilt dieser Nachtrag statt des SCOPE-Originaltexts oben:
+
+- SCOPE 2: Die neue Prüfung wird als ZWEITE Aufgabe ergänzt (nicht als
+  vierte), im Code AN ZWEITER STELLE — direkt nach dem bestehenden
+  `.claude/settings.json`-Block, vor dem abschließenden
+  `process.exit(0)`. Der Hinweis „VOR der bestehenden
+  git-commit/push-Prüfung" trifft nicht mehr zu — diese Prüfung existiert
+  in `commit-guard.cjs` nicht mehr.
+- SCOPE 3: Kopfkommentar von „Eine Aufgabe" auf „Zwei Aufgaben"
+  umstellen (nicht „Drei" auf „Vier"). Der Absatz „Geplante Erweiterung"
+  (der auf diesen Vertrag verweist) wird entfernt, statt eines Punkts 4
+  ergänzt. Die Rulesets-API-Grenze wird als Notiz bei der neuen Aufgabe
+  übernommen.
+- SCOPE 10 (Regressions-Grünfall für die Freigabe-Datei-Pflicht) entfällt
+  ersatzlos — die geprüfte Funktion existiert seit B6 nicht mehr.
+
+Alle übrigen SCOPE-Punkte (1, 4–9, 11–13), NICHT, BUDGET, OUTPUT und
+ESCALATE gelten unverändert.
+
+[Grenze, ausdrücklich festgehalten] Der genaue Wortlaut von
+`claude/63_VERTRAG1_NACHTRAG_UND_BAUAUFTRAG.md` Abschnitt 1 lag der
+ausführenden Sitzung nicht im Volltext vor — nur die Paraphrase im
+erhaltenen Bauauftragstext (SCHRITT A–F). Dieser Nachtrag gibt diese
+Paraphrase wieder, keine Volltextabschrift der Originaldatei.

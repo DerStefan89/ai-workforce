@@ -13,10 +13,18 @@ description: Fuehrt den Standard-Workflow fuer eine freigegebene, kleine Aenderu
 1. `git status` und `git branch -vv` zeigen, bevor irgendetwas passiert.
 2. Laeuft die Sitzung bereits in einem dedizierten Worktree auf dem passenden
    Branch: NICHT von `main` neu branchen. Direkt auf diesem Branch committen.
-3. Sonst Ziel main-Basis: `git checkout main && git pull` zuerst. Verweigert
-   Git den Checkout wegen uncommitted Aenderungen: NICHT force/reset.
-   Stattdessen `git stash`, wechseln, Branch anlegen, `git stash pop`, danach
-   das Ergebnis verifizieren statt dem Diff blind zu vertrauen.
+3. Sonst Ziel main-Basis: `git fetch origin`, dann
+   `git rev-list --left-right --count main...origin/main` pruefen:
+     `0 0`  Gleichstand → `git checkout main`, weiter.
+     `0 N`  nur zurueck → `git checkout main && git merge --ff-only origin/main`.
+     `N 0`  lokal voraus → anhalten und melden; unter Branch Protection ein
+            anomaler Zustand.
+     `N M`  Divergenz → anhalten und melden. Kein Merge, kein Rebase, kein
+            Force.
+   Verweigert Git den Checkout wegen uncommitted Aenderungen: NICHT
+   force/reset. Stattdessen `git stash`, wechseln, Branch anlegen, `git
+   stash pop`, danach das Ergebnis verifizieren statt dem Diff blind zu
+   vertrauen.
 4. `git add` NUR der explizit besprochenen Dateien — nie `git add .` oder
    `git add -A`.
 5. `git diff --staged` vollstaendig zeigen, ausdruecklich um Freigabe bitten.
