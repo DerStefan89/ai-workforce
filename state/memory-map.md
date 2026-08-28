@@ -32,3 +32,4 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Deliverables, Feature-Reihenfolge, Backlog | `docs/projekt/umsetzungsplan-fassung-1.md` | nicht in `docs/STATUS.md`, dort steht nur der aktuelle Stand |
 | Einzelne Architekturentscheidung samt Begründung und verworfener Alternative | `docs/adr/` | nicht in `ARCHITECTURE.md`, dort steht nur die geltende Regel ohne Herleitung |
 | Findings (Bugs, Harness-Verbesserungen, technische Schulden, Prozessverbesserungen) | `state/findings.md` | nicht in `state/reibung.md` (dort stehen Reibungsvorfälle) und nicht in `state/assumption-ledger.md` (dort stehen offene Annahmen) |
+| Feature-Akte (Status, Ziel, Nicht-Ziele, Akzeptanzkriterien, Dependencies, Workstreams) | `features/<id>/feature.md` | nicht `specs/` (dort steht nur die Spec, das WAS) und nicht `state/tasks/` (dort stehen Handoff-Verträge) |
