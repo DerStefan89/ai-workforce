@@ -845,3 +845,35 @@ nicht die Tabelle oben stillschweigend überschreiben.
   wird bei abweichendem Arbeitsverzeichnis fälschlich nicht gefunden);
   TOCTOU-Fenster zwischen Zeitstempel-Prüfung und `fs.unlinkSync` bei
   parallel laufenden git-Prozessen.
+
+- 2026-08-28, Doku-Gate Prüfung 2, Vertrag
+  `ebene2-architektur-in-repo-nachziehen`, Kalibrierung der auf dieses
+  Projekt umgestellten Namensliste (`TypeScript|Node|Biome|tsc|node:test`).
+  **Rot-Fall wie im Vertragstext vorgegeben** (SCOPE 7): `CLAUDE.md`
+  temporär von „TypeScript auf Node," auf „TypeScript auf Node 24,"
+  geändert, `node scripts/check-docs.mjs` gelaufen → Ausgabe im Wortlaut:
+  ```
+  === Doku-Check ===
+
+  ✓ Keine Befunde.
+  ```
+  Exit 0. **Kein Befund, entgegen der Erwartung im Vertragstext** (der
+  einen Befund und Exit 1 vorgab). `[Fakt]` Ursache: Das zweite
+  Versionsmuster in Prüfung 2 verlangt nach dem Namen zusätzlich entweder
+  ein `v`-Präfix oder mindestens einen Punkt in der Zahl
+  (`\d+\.\d[\d.]*`) — Kommentar in `scripts/check-docs.mjs` Zeile
+  143–144 benennt das ausdrücklich als Zweck der Einschränkung. „Node 24"
+  hat weder `v`-Präfix noch Punkt und matcht deshalb keines der beiden
+  Muster; per Skript verifiziert (`node -e` mit dem Live-Regex gegen den
+  String „auf Node 24, strip-only" → `null`). Änderung danach zurückgesetzt.
+  **Grün-Fall:** unveränderter Stand, derselbe Befehl → Ausgabe im
+  Wortlaut:
+  ```
+  === Doku-Check ===
+
+  ✓ Keine Befunde.
+  ```
+  Exit 0. `git status` nach dem Zurücksetzen zeigt `CLAUDE.md` ohne
+  gestagte Änderung aus diesem Test. Widerspruch unter OUTPUT gemeldet;
+  an der Prüflogik von Prüfung 2 wurde dem Vertragsauftrag entsprechend
+  nichts geändert.

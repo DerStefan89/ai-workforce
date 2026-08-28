@@ -4,34 +4,32 @@ ohne Zusatz sind Skelett — Mechanik, unverändert übertragbar. Abschnitte mit
 [FÜLLUNG] müssen pro Projekt neu geschrieben werden.
 -->
 
-# [PROJEKTNAME] — Master-Kontext
+# AI Workforce — Master-Kontext
 
 ## Pflichtlektüre
 Lies `ARCHITECTURE.md` bevor du Code schreibst. Alle Konventionen dort sind
-verbindlich.
+verbindlich. `docs/projekt/zielfassung.md`, wenn eine Anforderung, eine
+Rolle, eine Grenze oder ein Fassung-1-Scope zu klären ist.
+`docs/projekt/umsetzungsplan-fassung-1.md`, wenn die Reihenfolge oder die
+Zuordnung eines Features zu klären ist. `docs/STATUS.md` für den aktuellen
+Stand.
 
 ---
 
-[FÜLLUNG] Ein Satz: Was ist das Produkt, für wen ist es.
+**Produkt:** AI Workforce — eine lokale Orchestrierungsanwendung, die ein
+Vorhaben von der Idee bis zum abgenommenen Ergebnis durch klar getrennte
+KI-Positionen führt. Ein einziger Nutzer, der zugleich Vorarbeiter und
+einzige Entscheidungsinstanz ist.
 
 ---
 
-## 🏗️ Technischer Stack [FÜLLUNG]
+## 🏗️ Technischer Stack
 
-```
-Framework:    ...
-Sprache:      ...
-Datenbank:    ...
-Hosting:      ...
-```
+**Stack:** TypeScript auf Node, strip-only (kein Build-Schritt) · Biome für Lint · `tsc` für Typprüfung · `node:test` für Tests. Die gepinnte Laufzeitversion steht in `package.json` und im ADR, nicht hier.
 
-### Befehle [FÜLLUNG]
+### Befehle
 
-```
-npm install
-npm run dev
-npm run check     # das Tor vor jedem Commit — Kette siehe package.json
-```
+**Befehle:** `npm run check` (volle Kette) · `npm run check:template` (stack-unabhängige Gates).
 
 `npm run check` ist die volle Kette inklusive Projekt-Lint/Typecheck/Test;
 `npm run check:template` prüft nur den Harness selbst (Doku-Gate,
