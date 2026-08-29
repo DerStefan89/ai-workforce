@@ -28,6 +28,15 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   `schemas/*.schema.json` + `schemas/examples/` maschinell geprüft
   (`scripts/check-datenformate.mjs`, eingehängt in `npm run check` und
   `npm run check:template`). `F-010` ist damit erledigt.
+- Feature 1 (Checkpoint Store) ist umgesetzt: `src/checkpoint-store/`
+  schreibt, lädt und validiert eine Hash-Kette von Checkpoints je
+  `lauf_id` (Schreiben, Laden, Validierung, Hash-Kette, Gate
+  `scripts/check-checkpoint-store.mjs`, eingehängt in `npm run check` und
+  `npm run check:template`). Der Windows-Rename-Atomaritätsnachweis
+  (D4) ist als eigenständiges, manuelles Skript
+  (`scripts/verify-rename-atomicity.mjs`) real gelaufen, bewusst
+  **nicht** in die Standardkette eingehängt — bleibt ein einmaliger,
+  plattformabhängiger Nachweis, siehe `state/gates.md`.
 
 ## Offene Punkte
 

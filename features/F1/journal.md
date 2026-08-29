@@ -59,3 +59,42 @@ Windows-Rename-Nachweis (B4) als eigenen offenen CONTEXT-Abschnitt mit
 drei zu klärenden Punkten (Umfang, Störfaktoren, Ablageort) — nicht
 gebaut, bis Stefan diese beantwortet. Vertrag endet mit Freigabe-Halt:
 kein Bau, kein Commit ohne Stefans frische, explizite Freigabe.
+
+## 2026-08-29 — Nachtrag B4 (Option B) und B6 (Statusprüfung)
+
+B4 per Stefans Entscheidung gelöst (wenige hundert Rename-Zyklen,
+simuliertes Read-Handle, `scripts/verify-rename-atomicity.mjs`, einmalig
+manuell auf Windows gelaufen, zweimal real: 0 Leser-Befunde über
+858–944 Lesevorgänge, `EPERM`/`EBUSY` real ausgelöst). B6 (fünfter
+Testfall — Dateiname-Inhalt-Hash-Konsistenz) war bei einer Statusprüfung
+nicht in plan-v2/Vertrag eingearbeitet, mit einer Wegwerf-Diagnose real
+bestätigt und in plan-v2 Delta 4 sowie im Vertrag nachgezogen. Beide
+Ergebnisse in `state/gates.md` als Kalibrierungslog-Einträge dokumentiert.
+
+## 2026-08-29 — Handoff-Vertrag ausgeführt
+
+Vertrag `state/tasks/f1-checkpoint-store.md` nach Stefans frischer
+Freigabe vollständig gebaut. Artefakte:
+`schemas/kontrollzustand-checkpoint-payload.schema.json`,
+`schemas/examples/kontrollzustand-checkpoint*.json` (4 Dateien, real
+berechnete Hashes), `src/checkpoint-store/{types,index,
+checkpoint-store.test}.ts` (fünf `node:test`-Fälle),
+`scripts/check-checkpoint-store.mjs` (eingehängt in `npm run check` und
+`npm run check:template`), `.gitignore`-Eintrag für das
+Test-Wegwerfverzeichnis `kontrollzustand-test/`.
+
+Design-Entscheidung während des Baus, nicht vorab im Plan festgelegt:
+`schreibeCheckpoint`/`ladeLetztenGueltigenCheckpoint` bekamen ein
+optionales `basisVerzeichnis`-Feld (Default `kontrollzustand`), damit
+Tests und Gate-Skript wirklich unter `kontrollzustand-test/` statt im
+echten `kontrollzustand/` laufen können, ohne die von plan-v1
+vorgegebene Kernsignatur (`laufId, profilReferenz, daten`) zu ändern.
+
+Alle neun Kalibrierungen real durchgeführt und zurückgenommen: vier
+Gate-Fixtures (je Invalid-Beispiel temporär in `valid.json`-Position,
+benannte Regelverletzung, Original wiederhergestellt) und fünf
+`node:test`-Rot-Fälle (je ein echter, temporärer Codeeingriff in
+`index.ts` bzw. im Test, Fehlschlag beobachtet, zurückgenommen) —
+Belege in `state/gates.md`. `npm run check` und `npm run check:template`
+am Ende grün (6/6 Tests, keine Lint-/Typecheck-Befunde außer der
+vorbestehenden Biome-`recommended`-Deprecation-Info).

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-checkpoint-payload.schema.json",
+  "title": "Checkpoint-Payload",
+  "description": "Payload-Schema für Kontrollzustand-Einträge mit typ: \"checkpoint\" (F1). Bewusst getrennt von schemas/kontrollzustand.schema.json (F0) — die Hülle definiert payload absichtlich offen, damit spätere Unterarten (z. B. wirkungsmarke) eigene Payload-Schemas bekommen, ohne die Hülle zu ändern.",
+  "type": "object",
+  "required": ["lauf_id", "sequenz", "vorgaenger_hash", "selbst_hash"],
+  "additionalProperties": false,
+  "properties": {
+    "lauf_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequenz": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "vorgaenger_hash": {
+      "oneOf": [
+        { "type": "string", "minLength": 64 },
+        { "type": "null" }
+      ],
+      "description": "selbst_hash des vorherigen Checkpoints derselben lauf_id; null ausschließlich bei sequenz: 1 (Kettenanfang)."
+    },
+    "selbst_hash": {
+      "type": "string",
+      "minLength": 64,
+      "description": "SHA-256 (hex) über die kanonische Serialisierung des gesamten Kontrollzustand-Eintrags mit payload.selbst_hash entfernt vor dem Hashen."
+    },
+    "daten": {
+      "description": "Optionaler, nicht-profilbezogener Nutzinhalt des Aufrufers (AC11). Checkpoint Store liest diesen Inhalt nicht, kopiert ihn nur unverändert mit."
+    }
+  }
+}

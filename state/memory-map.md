@@ -34,3 +34,5 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Findings (Bugs, Harness-Verbesserungen, technische Schulden, Prozessverbesserungen) | `state/findings.md` | nicht in `state/reibung.md` (dort stehen Reibungsvorfälle) und nicht in `state/assumption-ledger.md` (dort stehen offene Annahmen) |
 | Feature-Akte (Status, Ziel, Nicht-Ziele, Akzeptanzkriterien, Dependencies, Workstreams) | `features/<id>/feature.md` | nicht `specs/` (dort steht nur die Spec, das WAS) und nicht `state/tasks/` (dort stehen Handoff-Verträge) |
 | Datenformat-Schema (JSON Schema für `profiles/`/`kontrollzustand/`) | `schemas/*.schema.json` + `schemas/examples/` | nicht direkt unter `profiles/`/`kontrollzustand/` — die tragen nur echte Produktivdaten |
+| Checkpoint-Payload-Schema (typ: "checkpoint") | `schemas/kontrollzustand-checkpoint-payload.schema.json` + `schemas/examples/kontrollzustand-checkpoint*` | nicht in `schemas/kontrollzustand.schema.json` (F0, gemergter Hülle-Vertrag) |
+| Checkpoint-Store-Modul (Schreiben, Laden, Kettenvalidierung) | `src/checkpoint-store/` | keine Ausführungslogik — das bleibt Execution Controller |

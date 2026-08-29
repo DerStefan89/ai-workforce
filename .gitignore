@@ -26,6 +26,11 @@ state/zwischenstand/*.md
 .DS_Store
 Thumbs.db
 
+# Checkpoint-Store-Tests (F1) — Wegwerfverzeichnis, kein Produktzustand.
+# Räumt sich in jedem Testfall selbst auf; Eintrag hier nur als Netz für
+# einen abgebrochenen Testlauf.
+kontrollzustand-test/
+
 # Programm-Ebene — Basislinie und Erfolgskriterium der vier Beteiligten.
 # Personenbezogen, gehört nicht in ein öffentliches Vorlagen-Repo und
 # nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das
