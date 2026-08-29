@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { kanonischesJson, ladeLetztenGueltigenCheckpoint, schreibeCheckpoint, sha256Hex } from './index.ts'
+import { kanonischesJson, ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoint, schreibeCheckpoint, sha256Hex } from './index.ts'
 import type { Ereignis, ProfilReferenz, Schreiber } from './types.ts'
 
 const BASIS = 'kontrollzustand-test'
@@ -152,6 +152,41 @@ test('jeder Vorgang erzeugt genau eine strukturierte Ereigniszeile — A11/AC9',
     raeumeAuf(laufIdGeschrieben)
     raeumeAuf(laufIdLeer)
     raeumeAuf(laufIdKorrupt)
+  }
+})
+
+test('ladeGueltigeCheckpoints liefert alle gültigen Checkpoints aufsteigend, schließt einen ungültigen Tail-Checkpoint aus, leere Kette liefert leeres Array — plan-v2-feature2 Delta 1', () => {
+  const laufId = neueLaufId('alle-gueltigen')
+  const laufIdLeer = neueLaufId('alle-gueltigen-leer')
+  try {
+    schreibeCheckpoint(laufId, PROFIL_REFERENZ, { schritt: 1 }, { basisVerzeichnis: BASIS })
+    schreibeCheckpoint(laufId, PROFIL_REFERENZ, { schritt: 2 }, { basisVerzeichnis: BASIS })
+    const dritter = schreibeCheckpoint(laufId, PROFIL_REFERENZ, { schritt: 3 }, { basisVerzeichnis: BASIS })
+
+    const vollstaendig = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: BASIS })
+    assert.strictEqual(vollstaendig.length, 3)
+    assert.deepStrictEqual(
+      vollstaendig.map((e) => e.payload.sequenz),
+      [1, 2, 3]
+    )
+    assert.deepStrictEqual(vollstaendig[2]?.payload.daten, { schritt: 3 })
+
+    // Tail-Checkpoint (sequenz 3) korrumpieren — Vorgänger (1, 2) hängen
+    // nicht von ihm ab und müssen gültig bleiben (D3: Ungültigkeit
+    // wirkt nur vorwärts über vorgaenger_hash, nie rückwärts).
+    writeFileSync(dritter.pfad, '{ das ist kein gueltiges JSON')
+    const nachKorruption = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: BASIS })
+    assert.strictEqual(nachKorruption.length, 2)
+    assert.deepStrictEqual(
+      nachKorruption.map((e) => e.payload.sequenz),
+      [1, 2]
+    )
+
+    const leer = ladeGueltigeCheckpoints(laufIdLeer, { basisVerzeichnis: BASIS })
+    assert.deepStrictEqual(leer, [])
+  } finally {
+    raeumeAuf(laufId)
+    raeumeAuf(laufIdLeer)
   }
 })
 
