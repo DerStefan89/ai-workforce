@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/profile.schema.json",
+  "title": "Projektprofil",
+  "description": "Ein-Ebenen-Modell (ADR-0004): eine vollständige, eigenständige Datei je Projekt unter profiles/. Nur die vier Container-Felder sind Pflicht; ihr Binnenaufbau ist kein Teil dieses Schemas (siehe features/F0/feature.md, Nicht-Ziele).",
+  "type": "object",
+  "required": ["projekt", "version", "gates", "dod", "werkzeuge", "reviewRegeln"],
+  "properties": {
+    "projekt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Vom Profil-Autor gepflegtes Feld, kein Inhalts-Hash (plan-v1 D1)."
+    },
+    "gates": {
+      "type": ["array", "object"],
+      "description": "Container, Binnenaufbau nicht Teil dieses Features."
+    },
+    "dod": {
+      "type": ["array", "object"],
+      "description": "Container, Binnenaufbau nicht Teil dieses Features."
+    },
+    "werkzeuge": {
+      "type": ["array", "object"],
+      "description": "Container, Binnenaufbau nicht Teil dieses Features."
+    },
+    "reviewRegeln": {
+      "type": ["array", "object"],
+      "description": "Container, Binnenaufbau nicht Teil dieses Features."
+    }
+  },
+  "additionalProperties": true
+}

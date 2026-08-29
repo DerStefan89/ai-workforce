@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand.schema.json",
+  "title": "Kontrollzustand-Hülle",
+  "description": "Generische Hülle für Einträge unter kontrollzustand/ (ADR-0002). additionalProperties: false auf Hülle und profil_referenz erzwingt strukturell, dass keine Profilkopie als Geschwister-Feld auf oberster Ebene landet (features/F0/feature.md AC). Restlücke: eine Profilkopie innerhalb eines künftigen payload-Inhalts bleibt möglich, siehe plan-v2 Delta 3 Punkt 2 — bewusst offen, kein Teil dieses Features.",
+  "type": "object",
+  "required": ["schema_version", "typ", "profil_referenz"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "typ": {
+      "type": "string",
+      "minLength": 1
+    },
+    "profil_referenz": {
+      "type": "object",
+      "required": ["pfad", "hash", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "pfad": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "payload": {
+      "description": "Optionaler, offener Erweiterungspunkt für künftige Unterarten (Checkpoint, Wirkungsmarke, Lineage, Transportpaket). Binnenaufbau ist Nicht-Ziel dieses Features."
+    }
+  }
+}

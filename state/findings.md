@@ -78,12 +78,14 @@ Auswirkung: kosmetisch, taucht in Lauf-Logs auf (`state/gates.md`).
 Maßnahme: auf `"ai-workforce"` setzen.
 Feature/Run: qa-Review Runde 1, 28.08.2026.
 
-**F-010** · `TECH_DEBT` · P4 · offen
+**F-010** · `TECH_DEBT` · P4 · **gelöst**
 Titel: `kontrollzustand/`/`profiles/` in `ARCHITECTURE.md` im Präsens beschrieben, existieren noch nicht.
 Fundstelle: `ARCHITECTURE.md` Abschnitt 1.
 Auswirkung: niedrig, über `docs/STATUS.md` indirekt auflösbar; `ARCHITECTURE.md` selbst macht Soll/Ist nicht kenntlich.
-Maßnahme: erledigt sich mit Feature 0 (Datenformate); optional vorher ein „geplant"-Hinweis ergänzen.
-Feature/Run: qa-Review Runde 1, 28.08.2026.
+Maßnahme: mit Feature 0 (Datenformate) erledigt — `kontrollzustand/.gitkeep` und
+`profiles/.gitkeep` existieren real, Format über `schemas/*.schema.json`
+maschinell geprüft (`scripts/check-datenformate.mjs`).
+Feature/Run: qa-Review Runde 1, 28.08.2026; gelöst in Feature F0, 29.08.2026.
 
 **F-011** · `TECH_DEBT` · P4 · offen, absichtlich zurückgestellt
 Titel: `[FÜLLUNG, nur UI]`-Reste in `CLAUDE.md` trotz entschiedener Web-UI.
@@ -129,4 +131,28 @@ Titel: `state/memory-map.md` Zeile 2 trägt noch `[PROJEKTNAME]` statt „AI Wor
 Fundstelle: `state/memory-map.md:2`.
 Auswirkung: niedrig, aber echter übersehener Platzhalter — inkonsistent mit den drei neu ergänzten, korrekt befüllten Zeilen direkt darunter.
 Maßnahme: `[PROJEKTNAME]` durch „AI Workforce" ersetzen.
+
+**F-017** · `PROCESS_IMPROVEMENT` · P4 · offen
+Titel: Zahlenfehler in der Selbstverifikation von plan-v1-feature0-datenformate.
+Beschreibung: plan-v1 Abschnitt 0 behauptet „24 Gates" in `state/gates.md`. Die reale Gate-Tabelle enthält 14 Datenzeilen; „24" trifft eher auf die Zeilennummer des letzten Tabelleneintrags zu als auf die Gate-Anzahl.
+Fundstelle: `state/plan-v1-feature0-datenformate.md` Abschnitt 0; `state/gates.md:9-24`.
+Auswirkung: keine auf die Design-Entscheidungen — reine Ungenauigkeit, aber gerade in einem Abschnitt, der explizit Sorgfalt beansprucht („real geprüft, nicht aus den Handoff-Dokumenten übernommen").
+Maßnahme: kosmetisch, kein Recheck nötig. Bei Gelegenheit in plan-v1 korrigieren.
+Feature/Run: architecture-advisor-Pass auf plan-v1-feature0-datenformate, 29.08.2026.
+
+**F-018** · `PROCESS_IMPROVEMENT` · P4 · offen
+Titel: D5 in plan-v1-feature0-datenformate zitiert `ARCHITECTURE.md` Abschnitt 6 etwas weiter, als der Wortlaut trägt.
+Beschreibung: plan-v1 D5 formuliert: „jedes neue Werkzeug verlangt laut `ARCHITECTURE.md` Abschnitt 6 vorher den Skill `werkzeug-auswahl`". `ARCHITECTURE.md:71` deckt wörtlich nur „Test-Framework" und „MCP-Werkzeug" ab, nicht jede neue npm-Dependency. Die gelebte Praxis in `state/tooling.md` (Biome, `tsc`, `gh` — reguläre Dependencies, trotzdem über `werkzeug-auswahl` geprüft) stützt die Schlussfolgerung von D5 (kein `ajv`) inhaltlich trotzdem — nur die Zitierschärfe ist ungenau.
+Fundstelle: `state/plan-v1-feature0-datenformate.md` D5; `ARCHITECTURE.md:71`; `state/tooling.md`.
+Auswirkung: keine auf das Ergebnis (kein `ajv` bleibt richtig), nur auf die Begründungsschärfe.
+Maßnahme: kosmetisch, kein Recheck nötig. Bei Gelegenheit in plan-v1 auf die gelebte Praxis in `state/tooling.md` statt auf Abschnitt 6 stützen.
+Feature/Run: architecture-advisor-Pass auf plan-v1-feature0-datenformate, 29.08.2026.
+
+**F-019** · `TECH_DEBT` · P4 · offen
+Titel: Typ des `version`-Felds in der Profil-Referenz ist eine unbelegte, aber offen benannte Festlegung.
+Beschreibung: Weder ADR-0002 noch die geprüften Stellen aus `docs/projekt/zielfassung.md` legen den Datentyp von „Version" für `profiles/` fest. plan-v1 wählt `integer, minimum: 1` als eigene Festlegung. Der Plan benennt diese Interpretation selbst ausdrücklich als Auslegung, nicht als wörtliche Ausnahme — genau das erwartete Verhalten, kein verstecktes Risiko.
+Fundstelle: `state/plan-v1-feature0-datenformate.md` D1.
+Auswirkung: keine Blockade nötig. Eine künftige Monotonie-Prüfung bräuchte eine Historie, die Feature 0 nicht liefert (bereits im Plan so benannt).
+Maßnahme: kein Recheck nötig, in plan-v2 unverändert stehen gelassen.
+Feature/Run: architecture-advisor-Pass auf plan-v1-feature0-datenformate, 29.08.2026.
 Feature/Run: Verifikation AF-F001-Planung, Schritt A, 28.08.2026.

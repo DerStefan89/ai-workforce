@@ -29,6 +29,7 @@ Pflichtlektüre vor jedem Commit. Verbindliche Code-Konventionen.
 - `state/` — Gedächtnis des Harness. Trägt keinen Kontrollzustand der Workforce.
 - `scripts/` — Prüf- und Hilfsskripte des Harness.
 - `docs/projekt/` — führende Projektdokumente: `docs/projekt/zielfassung.md` (Sollquelle für Zielbild, Rollen, Lifecycle, Sicherheits- und Evidenzmodell, Architektur-Baseline), `docs/projekt/umsetzungsplan-fassung-1.md` (Deliverables, Feature-Reihenfolge, Backlog).
+- `schemas/` — JSON-Schema (Draft 2020-12) für die Datenformate unter `kontrollzustand/` und `profiles/`, mit Beispielen unter `schemas/examples/`. Geprüft von `scripts/check-datenformate.mjs`.
 
 Bezeugungen menschlicher Freigaben liegen **außerhalb** dieses Repositoriums, in einem eigenen Git-Repository des Kerns. Rohereignisströme sind gitignoriert und werden aus der Laufakte über ihren Hash referenziert.
 
