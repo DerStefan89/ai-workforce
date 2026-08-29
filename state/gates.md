@@ -959,3 +959,60 @@ nicht die Tabelle oben stillschweigend überschreiben.
   keinen Rest der drei Testdateien.
   `npm run check:template` und `npm run check` nach der Korrektur erneut
   vollständig grün gelaufen (kein zweites Rot auf diesem Gate).
+
+- 2026-08-29, `scripts/verify-rename-atomicity.mjs` (Nachtrag B4 zu
+  Vertrag `f1-checkpoint-store`, Stefans Entscheidung Option B):
+  einmaliger, manueller Windows-Rename-Atomaritätsnachweis (D4, plan-v1
+  Abschnitt 4.4) — 300 Temp+Rename-Zyklen, jeder dritte mit simuliertem
+  offenem Read-Handle auf der Zieldatei, paralleler Leser-Kindprozess.
+  **Konstruktionsfehler erste Skriptversion, real aufgetreten, nicht
+  verschwiegen:** Der erste Lauf lieferte nur 1 Lesevorgang über alle
+  300 Zyklen — der geforkte Leser-Prozess startete langsamer, als die
+  rein synchrone Schreiber-Schleife durchlief, der Nachweis war damit
+  wertlos. Fix: Ready-Handshake (Leser meldet sich beim Start, Schreiber
+  wartet darauf) plus 5ms-Pause pro Zyklus. Danach zwei reale Läufe mit
+  der korrigierten Version.
+  **Lauf 1 (Grün-Fall: Leser sieht nie eine leere/unvollständige
+  Datei), Ausgabe im Wortlaut:**
+  ```
+  Leser-Lesevorgaenge: 944
+  Simulierte Sperr-Zyklen (offenes Read-Handle waehrend Rename): 100
+  EPERM/EBUSY beobachtet: 199
+  Unerwartete Fehler (Schreiber): 0
+  Leser-Befunde: 0
+
+  ✓ Kein Leser sah je eine leere oder unvollstaendige Zieldatei ueber 300 Zyklen (davon 100 mit simuliertem Read-Handle).
+  ```
+  Exit 0.
+  **Lauf 2 (Wiederholung zur Stabilitätsprüfung), Ausgabe im
+  Wortlaut:**
+  ```
+  Leser-Lesevorgaenge: 858
+  Simulierte Sperr-Zyklen (offenes Read-Handle waehrend Rename): 100
+  EPERM/EBUSY beobachtet: 198
+  Unerwartete Fehler (Schreiber): 0
+  Leser-Befunde: 0
+
+  ✓ Kein Leser sah je eine leere oder unvollstaendige Zieldatei ueber 300 Zyklen (davon 100 mit simuliertem Read-Handle).
+  ```
+  Exit 0.
+  **Befund, nicht geglättet:** `EPERM`/`EBUSY` trat in beiden Läufen bei
+  ~198–199 von 300 Renames auf, deutlich mehr als die 100 absichtlich
+  gesperrten Zyklen — der Leser-Prozess selbst erzeugte durch sein
+  eigenes `readFileSync` zusätzliche Kollisionen mit dem Rename.
+  Bestätigt real, dass die Retry-Logik in `atomarSchreiben` (plan-v1
+  SCOPE.3) keine hypothetische Vorsichtsmaßnahme ist, sondern auf diesem
+  System eine real beobachtete Notwendigkeit.
+  **Grenze, ausdrücklich dokumentiert statt behauptet:** Ein von Node
+  aus gehaltenes Read-Handle nutzt Windows' Standard-Sharing-Flags
+  (`FILE_SHARE_READ|WRITE|DELETE`) und reproduziert damit möglicherweise
+  nicht dieselbe Sperre wie ein Virenscanner-/Backup-Tool mit
+  exklusiverem Zugriff. Ein Wert von „`EPERM`/`EBUSY` beobachtet: 0"
+  wäre deshalb kein Beleg gegen echte Drittsperren gewesen — der reale,
+  deutlich von Null verschiedene Wert ändert daran nichts, macht die
+  Grenze aber nicht weniger real. Der Leser-Nachweis (leere/
+  unvollständige Datei) bleibt davon unabhängig der eigentliche Beleg
+  für D4.
+  Nicht in `npm run check`/`check:template` eingehängt (Stefans
+  Entscheidung: einmaliger manueller Lauf, kein Windows-CI, kein
+  Dauerbetrieb).
