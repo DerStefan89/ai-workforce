@@ -12,8 +12,8 @@
     "lint": "biome lint .",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
-    "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && npm run test",
-    "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs"
+    "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs && npm run test",
+    "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.9",

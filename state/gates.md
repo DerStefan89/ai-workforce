@@ -23,6 +23,7 @@ ungeprüftes Versprechen.
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
 | `npm run`-Freigabeliste | `.claude/settings.json` (`permissions.allow`) | Bash-Aufrufe `npm run <name>`, seit Vertrag `harness-npm-run-allowlist-haertung` auf feste Namen (`check`, `check:template`, `lint`, `typecheck`, `test`) beschränkt statt Präfix-Wildcard | 2026-08-28: nicht-interaktiver Lauf `npm run allowlist-redfall-probe` (neues, nicht freigegebenes Skript) → `permission_denials` enthält `Bash(npm run allowlist-redfall-probe)`, Befehl nicht ausgeführt | 2026-08-28: `npm run check`, `check:template`, `lint`, `typecheck`, `test` je einzeln über nicht-interaktive Claude-Instanz → `permission_denials: []`, alle fünf liefen durch |
 | Datenformate-Gate | `scripts/check-datenformate.mjs` | `schemas/profile.schema.json`/`schemas/kontrollzustand.schema.json` sind gültiges JSON; jedes `schemas/examples/*.valid.json` erfüllt sein Schema; jedes `*.invalid*.json` verletzt sein Schema mit benannter Regelverletzung; reale Dateien unter `profiles/*.json`/`kontrollzustand/*.json`,`*.jsonl` (aktuell nur `.gitkeep`, 0 Dateien) | 2026-08-29, Vertrag `f0-datenformate`: vier separate Rot-Fälle, je `schemas/examples/kontrollzustand.valid.json` bzw. `profile.valid.json` temporär durch den Inhalt eines Invalid-Beispiels ersetzt, `node scripts/check-datenformate.mjs` gelaufen, danach Original wiederhergestellt (`git status` zeigt keinen Rest). `profile.invalid.json` in `profile.valid.json`-Position → Exit 1, `- schemas/examples/profile.valid.json: sollte gültig sein, aber verletzt: Pflichtfeld 'version' fehlt`. `kontrollzustand.invalid-fehlender-pfad.json` → Exit 1, `Pflichtfeld 'profil_referenz.pfad' fehlt`. `kontrollzustand.invalid-fehlender-hash.json` → Exit 1, `Pflichtfeld 'profil_referenz.hash' fehlt`. `kontrollzustand.invalid-fehlende-version.json` → Exit 1, `Pflichtfeld 'profil_referenz.version' fehlt` | 2026-08-29, unveränderter Repo-Stand: `node scripts/check-datenformate.mjs` → `ⓘ profiles: 0 Dateien geprüft`, `ⓘ kontrollzustand: 0 Dateien geprüft`, `✓ Keine Befunde.`, Exit 0 |
+| Checkpoint-Store-Gate | `scripts/check-checkpoint-store.mjs` | `validiereCheckpointEintrag`/`ladeLetztenGueltigenCheckpoint`, direkt aus `src/checkpoint-store/` importiert (kein zweiter Regelsatz, D5): vier Payload-Fixtures gegen `validiereCheckpointEintrag`; synthetischer Drei-Checkpoint-Lauf (vollständig gültig vs. Checkpoint 3 korrumpiert); leere Kette | 2026-08-29, Vertrag `f1-checkpoint-store`: drei separate Rot-Fälle, je `schemas/examples/kontrollzustand-checkpoint.valid.json` temporär durch den Inhalt eines Invalid-Beispiels ersetzt (Original vorher als `.bak` gesichert), `node scripts/check-checkpoint-store.mjs` gelaufen, danach Original wiederhergestellt (`git status --short schemas/examples/` zeigt keinen `.bak`-Rest). `invalid-fehlende-sequenz.json` in `valid.json`-Position → Exit 1, `sollte gültig sein, aber verletzt: Pflichtfeld 'payload.sequenz' fehlt`. `invalid-hash-mismatch.json` → Exit 1, `'payload.selbst_hash' stimmt nicht mit dem real errechneten Hash überein (erwartet 02fd095bfcdc4c098aee463e95b42891fa3d91c4894d5cfe08dd3fe21e7d1f26)`. `invalid-vorgaenger-bei-sequenz-1.json` → Exit 1, `'payload.vorgaenger_hash' muss bei sequenz 1 null sein (Kettenanfang)`. Drei-Checkpoint-Lauf und leere Kette liefen bei jedem reparierten Zwischenstand automatisch mit (kein separater Rot-Fall dafür in diesem Gate-Skript nötig, da Gate immer alle drei Prüfungen (a)-(c) durchläuft) | 2026-08-29, unveränderter Repo-Stand: `node scripts/check-checkpoint-store.mjs` → `✓ 4 Payload-Fixture(s) geprüft.`, `✓ Drei-Checkpoint-Lauf: vollständig gültig → sequenz 3, Checkpoint 3 korrumpiert → sequenz 2.`, `✓ Leere Kette: ladeLetztenGueltigenCheckpoint liefert null, kein Fehler.`, `✓ Keine Befunde.`, Exit 0 |
 
 ## Kalibrierungs-Log
 
@@ -1016,3 +1017,42 @@ nicht die Tabelle oben stillschweigend überschreiben.
   Nicht in `npm run check`/`check:template` eingehängt (Stefans
   Entscheidung: einmaliger manueller Lauf, kein Windows-CI, kein
   Dauerbetrieb).
+
+- 2026-08-29, `src/checkpoint-store/checkpoint-store.test.ts`, Vertrag
+  `f1-checkpoint-store`: fünf `node:test`-Fälle (vier aus plan-v2 Delta 2,
+  einer aus Delta 4/B6), jeder mit einem echten, temporären Codeeingriff
+  in `src/checkpoint-store/index.ts` bzw. im Test selbst kalibriert,
+  danach zurückgenommen (`grep -r "TEMP-ROT-FALL" src/` zeigt danach
+  keinen Treffer mehr).
+  **Rot-Fall A4 (Rundlauf-Identität):** in der Kandidatenprüfung
+  `delete eintrag.payload.daten` vor der Rückgabe eingefügt → `node --test
+  src/checkpoint-store/checkpoint-store.test.ts` meldet genau 1 Fehlschlag
+  (nur dieser Test), `AssertionError` mit `+ undefined` statt
+  `- { schritt: 1 }`.
+  **Rot-Fall A5 (abgebrochene Persistierung):** `DATEINAME_MUSTER` von
+  `/^(\d+)-([0-9a-f]{64})\.json$/` auf `/^(\d+)-([0-9a-f]{64})\.json.*$/`
+  geweitet (akzeptiert Temp-Suffixe) → genau dieser Test schlägt fehl,
+  die liegen gebliebene Temp-Datei (mit vollständigem, gültigem
+  Checkpoint-Inhalt, korrekt berechnetem `selbst_hash`) wird fälschlich
+  als Checkpoint 1 zurückgegeben statt `null`.
+  **Rot-Fall A10 (Trennung Kontrollzustand/Produktdateien):** im Test
+  selbst (nicht im Modul) eine Zeile ergänzt, die zusätzlich
+  `fremdschreibung.json` in den Produkt-Fixture-Ordner schreibt → Snapshot-
+  Vergleich schlägt sichtbar fehl, Diff zeigt genau die neue Datei.
+  **Rot-Fall A11 (strukturierte Ereigniszeile):** den
+  `checkpoint_geschrieben`-Schreiber-Aufruf in `schreibeCheckpoint`
+  verdoppelt → `assert.strictEqual(ereignisse.length, 1)` meldet `2 !== 1`.
+  **Rot-Fall B6 (Dateiname-Inhalt-Hash-Konsistenz):** den Vergleich
+  `eintrag.payload.selbst_hash !== kandidat.hashImDateiname` in
+  `pruefeEinzelnenKandidaten` auskommentiert → der Test mit dem
+  manipulierten, aber intern konsistent nachgezogenen Checkpoint-Inhalt
+  schlägt fehl, der manipulierte Eintrag (`daten: { schritt: 'manipuliert'
+  }`) wird fälschlich statt `null` zurückgegeben — exakt der in plan-v2
+  Delta 4 vorhergesagte Fehlerfall, jetzt gegen echten Modulcode statt nur
+  gegen die Wegwerf-Diagnose aus dem B6-Nachtrag reproduziert.
+  **Grün-Fall (nach jeder einzelnen Rücknahme sowie am Ende):**
+  `node --test src/checkpoint-store/checkpoint-store.test.ts` → `tests 5,
+  pass 5, fail 0`, Exit 0. Zusätzlich `npm run check` (voller Kette
+  inklusive Lint/Typecheck/Checkpoint-Store-Gate/`npm run test`) am Ende
+  grün gelaufen, `tests 6, pass 6, fail 0` (die sechste, vorbestehende
+  Testdatei ist unabhängig von diesem Feature).
