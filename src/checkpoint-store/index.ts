@@ -455,3 +455,41 @@ export function ladeLetztenGueltigenCheckpoint(laufId: string, optionen: Optione
   // "keine Kandidaten vorhanden", nicht "alle abgelehnt").
   return null
 }
+
+/**
+ * Liefert alle gültigen Checkpoints der lauf_id, aufsteigend nach
+ * sequenz — leeres Array bei keinem gültigen Kandidaten, nie ein Wurf
+ * (D10-Muster, wie ladeLetztenGueltigenCheckpoint, nur für eine Liste
+ * statt eines Einzelwerts). Nutzt dieselbe Kandidaten-Ermittlung und
+ * denselben vollständigen Rückwärtslauf bis sequenz 1 (D3,
+ * istKandidatGueltig) wie ladeLetztenGueltigenCheckpoint — kein zweiter
+ * Regelsatz für Lesen, keine Abschwächung der Kettenprüfung: jeder
+ * einzelne Kandidat muss exakt dieselbe vollständige
+ * Rückwärtslauf-Gültigkeit bestehen, die ladeLetztenGueltigenCheckpoint
+ * für seinen einen Treffer verlangt. Emittiert keine eigene
+ * Ereigniszeile (kein neuer Ereignisname) — ungültige Kandidaten lösen
+ * weiterhin checkpoint_validierungsfehler über den bestehenden
+ * Schreiber-Pfad aus (istKandidatGueltig/pruefeEinzelnenKandidaten,
+ * unverändert, je Kandidat wegen des cache-Parameters genau einmal).
+ */
+export function ladeGueltigeCheckpoints(laufId: string, optionen: Optionen = {}): KontrollzustandEintrag[] {
+  pruefeLaufId(laufId)
+  const basisVerzeichnis = optionen.basisVerzeichnis ?? STANDARD_BASISVERZEICHNIS
+  const schreiber = optionen.schreiber ?? standardSchreiber
+  const verzeichnis = checkpointVerzeichnis(laufId, basisVerzeichnis)
+
+  const kandidaten = listeKandidaten(verzeichnis)
+  if (kandidaten.length === 0) return []
+
+  const nachSequenz = new Map(kandidaten.map((k) => [k.sequenz, k]))
+  const cache = new Map<number, boolean>()
+
+  const gueltige: KontrollzustandEintrag[] = []
+  for (const kandidat of kandidaten) {
+    if (istKandidatGueltig(kandidat, laufId, schreiber, nachSequenz, cache)) {
+      gueltige.push(kandidat.eintrag as KontrollzustandEintrag)
+    }
+  }
+  gueltige.sort((a, b) => a.payload.sequenz - b.payload.sequenz)
+  return gueltige
+}
