@@ -22,6 +22,7 @@ ungeprüftes Versprechen.
 | Freigabedatei Edit/Write-Guard (`guard-settings.js`) | `.claude/hooks/guard-settings.js` | Edit/Write auf `state/freigabe-commit.md` — Vertrag `harness-freigabedatei-wiederherstellung`; schließt die Lücke, dass die Datei vor diesem Vertrag nur gegen Bash geschützt war, nicht gegen das Editier-Werkzeug | 2026-08-28: Versuch, `state/freigabe-commit.md` per Write-Werkzeug anzulegen → abgewiesen, „Freigabedatei darf nur vom Menschen im eigenen Editor angelegt werden, nicht vom Modell." | 2026-08-28, unmittelbar danach: Write-Versuch auf `state/_test-guard-regression.md` (Wegwerf-Datei, sofort wieder gelöscht) → lief durch, keine Guard-Reaktion; Edit-Versuch auf `.claude/settings.json` (schema-gültige Änderung: zweiter Eintrag in `permissions.deny`) → weiterhin abgewiesen, unveränderte Meldung „Schreibzugriff auf geteilte settings.json blockiert. Absichtliche Aenderung: Hook in .claude/settings.json (hooks.PreToolUse) temporaer entfernen, Grund im Commit nennen." — bestehender Schutz nicht beschädigt. |
 | Zwischenstand-Loop | `.claude/hooks/zwischenstand-pruefen.js` (PreCompact), `.claude/hooks/zwischenstand-laden.js` (SessionStart) | Frische des Zwischenstands vor manueller Compaction; Laden des Zwischenstands nach Sitzungsstart/`/clear` | Zwischenstandsdatei mit `Zuletzt aktualisiert:` älter als 60 Minuten (`2026-08-17T08:00` bei Lauf um `11:14`) → `decision: block` bei `trigger: manual` | Zwischenstandsdatei mit frischem Zeitstempel (`2026-08-17T11:15`) → kein Block bei `trigger: manual`; SessionStart mit `source: clear` liefert den Dateiinhalt als `additionalContext` |
 | `npm run`-Freigabeliste | `.claude/settings.json` (`permissions.allow`) | Bash-Aufrufe `npm run <name>`, seit Vertrag `harness-npm-run-allowlist-haertung` auf feste Namen (`check`, `check:template`, `lint`, `typecheck`, `test`) beschränkt statt Präfix-Wildcard | 2026-08-28: nicht-interaktiver Lauf `npm run allowlist-redfall-probe` (neues, nicht freigegebenes Skript) → `permission_denials` enthält `Bash(npm run allowlist-redfall-probe)`, Befehl nicht ausgeführt | 2026-08-28: `npm run check`, `check:template`, `lint`, `typecheck`, `test` je einzeln über nicht-interaktive Claude-Instanz → `permission_denials: []`, alle fünf liefen durch |
+| Datenformate-Gate | `scripts/check-datenformate.mjs` | `schemas/profile.schema.json`/`schemas/kontrollzustand.schema.json` sind gültiges JSON; jedes `schemas/examples/*.valid.json` erfüllt sein Schema; jedes `*.invalid*.json` verletzt sein Schema mit benannter Regelverletzung; reale Dateien unter `profiles/*.json`/`kontrollzustand/*.json`,`*.jsonl` (aktuell nur `.gitkeep`, 0 Dateien) | 2026-08-29, Vertrag `f0-datenformate`: vier separate Rot-Fälle, je `schemas/examples/kontrollzustand.valid.json` bzw. `profile.valid.json` temporär durch den Inhalt eines Invalid-Beispiels ersetzt, `node scripts/check-datenformate.mjs` gelaufen, danach Original wiederhergestellt (`git status` zeigt keinen Rest). `profile.invalid.json` in `profile.valid.json`-Position → Exit 1, `- schemas/examples/profile.valid.json: sollte gültig sein, aber verletzt: Pflichtfeld 'version' fehlt`. `kontrollzustand.invalid-fehlender-pfad.json` → Exit 1, `Pflichtfeld 'profil_referenz.pfad' fehlt`. `kontrollzustand.invalid-fehlender-hash.json` → Exit 1, `Pflichtfeld 'profil_referenz.hash' fehlt`. `kontrollzustand.invalid-fehlende-version.json` → Exit 1, `Pflichtfeld 'profil_referenz.version' fehlt` | 2026-08-29, unveränderter Repo-Stand: `node scripts/check-datenformate.mjs` → `ⓘ profiles: 0 Dateien geprüft`, `ⓘ kontrollzustand: 0 Dateien geprüft`, `✓ Keine Befunde.`, Exit 0 |
 
 ## Kalibrierungs-Log
 
@@ -877,3 +878,84 @@ nicht die Tabelle oben stillschweigend überschreiben.
   gestagte Änderung aus diesem Test. Widerspruch unter OUTPUT gemeldet;
   an der Prüflogik von Prüfung 2 wurde dem Vertragsauftrag entsprechend
   nichts geändert.
+
+- 2026-08-29, Datenformate-Gate, Vertrag `f0-datenformate`: neues Skript
+  `scripts/check-datenformate.mjs`, kein generischer JSON-Schema-Validator
+  (plan-v1 D5) — zwei handgeschriebene Validierungsfunktionen
+  (`validiereProfil`, `validiereKontrollzustand`) bilden die Pflichtfeld-/
+  Typregeln von `schemas/profile.schema.json` und
+  `schemas/kontrollzustand.schema.json` nach.
+  **Grün-Fall, Ausgangsstand:** `node scripts/check-datenformate.mjs` →
+  Ausgabe im Wortlaut:
+  ```
+  === Datenformate-Check ===
+
+  ⓘ profiles: 0 Dateien geprüft
+  ⓘ kontrollzustand: 0 Dateien geprüft
+
+  ✓ Keine Befunde.
+  ```
+  Exit 0.
+  **Vier Rot-Fälle, je einzeln, Delta 3/4 verlangt getrennten Nachweis
+  pro `profil_referenz`-Pflichtfeld statt eines gemeinsamen:**
+  `schemas/examples/profile.invalid.json` temporär in die
+  `profile.valid.json`-Position kopiert (Original vorher als `.bak`
+  gesichert) → Exit 1, Befund im Wortlaut `schemas/examples/
+  profile.valid.json: sollte gültig sein, aber verletzt: Pflichtfeld
+  'version' fehlt`. Anschließend `schemas/examples/
+  kontrollzustand.valid.json` nacheinander durch die drei Invalid-Varianten
+  ersetzt (Original ebenfalls als `.bak` gesichert): fehlender Pfad → Exit
+  1, `Pflichtfeld 'profil_referenz.pfad' fehlt`; fehlender Hash → Exit 1,
+  `Pflichtfeld 'profil_referenz.hash' fehlt`; fehlende Version → Exit 1,
+  `Pflichtfeld 'profil_referenz.version' fehlt`. Jeder Rot-Fall benennt
+  genau eine Regelverletzung, keine Querkontamination zwischen den drei
+  `profil_referenz`-Feldern.
+  **Grün-Fall, wiederhergestellt:** beide `.bak`-Dateien zurückkopiert,
+  derselbe Befehl → identische Ausgabe wie oben, Exit 0. `git status
+  --short schemas/` direkt danach zeigt nur das neue, unveränderte
+  `schemas/`-Verzeichnis als `??`, keinen Rest der Swap-Dateien.
+  Reale Dateien unter `profiles/`/`kontrollzustand/` sind zum Zeitpunkt
+  dieses Vertrags ausschließlich `.gitkeep` (0 geprüfte Dateien,
+  ausdrücklich kein Fehler laut SCOPE 5d) — der Zweig für reale
+  Produktivdaten ist damit nur über den Leer-Fall belegt, nicht über eine
+  echte `profiles/*.json`- oder `kontrollzustand/*.jsonl`-Datei; das wird
+  erst mit dem ersten echten Gebrauch (Checkpoint Store) fällig.
+
+- 2026-08-29, Datenformate-Gate, Korrekturrunde nach code-reviewer/qa
+  (Vertrag `f0-datenformate`, Budget „ein Baudurchgang plus höchstens eine
+  Korrekturrunde"): code-reviewer fand eine Schema/Skript-Drift
+  (`profile.schema.json` verlangt `projekt` mit `minLength: 1`,
+  `validiereProfil()` prüfte nur den Typ) — behoben, `scripts/
+  check-datenformate.mjs`, `validiereProfil()`. qa fand zwei real
+  unexerzierte Codezweige trotz Spec-Behauptung „bereits real
+  kalibriert": den `additionalProperties: false`-Ablehnungspfad (das
+  Kern-AC „keine Profilkopie") und die `.jsonl`-Zeilenverarbeitung. Beide
+  jetzt mit echtem Rot-Fall nachkalibriert, ohne die im Vertrag
+  festgelegte SCOPE.3-Dateiliste (genau sechs Beispiele) oder SCOPE.4
+  (Ordner bleiben leer bis zum ersten echten Gebrauch) zu verletzen — alle
+  drei Tests über temporären Dateiinhalt, danach vollständig
+  zurückgesetzt.
+  **Rot-Fall `additionalProperties: false`, Hülle (Geschwister-Feld
+  einer Profilkopie):** `schemas/examples/kontrollzustand.valid.json`
+  temporär um ein zusätzliches Top-Level-Feld `profil` (vollständige
+  Profilkopie) ergänzt → Exit 1, Befund im Wortlaut `schemas/examples/
+  kontrollzustand.valid.json: sollte gültig sein, aber verletzt:
+  unbekanntes Feld 'profil' (additionalProperties: false)`.
+  **Rot-Fall `additionalProperties: false`, `profil_referenz`:** dieselbe
+  Datei stattdessen um ein zusätzliches Feld `profil_referenz.
+  inhalt_kopie` ergänzt → Exit 1, `unbekanntes Feld
+  'profil_referenz.inhalt_kopie' (additionalProperties: false)`.
+  **Rot-Fall `.jsonl`-Zeilenverarbeitung:** temporäre Datei
+  `kontrollzustand/_kalibrierung.jsonl` mit zwei Zeilen (Zeile 1 gültig,
+  Zeile 2 ohne `profil_referenz.pfad`) angelegt → `✓ kontrollzustand: 1
+  Datei(en) geprüft`, Befund im Wortlaut `kontrollzustand\
+  _kalibrierung.jsonl:2: Pflichtfeld 'profil_referenz.pfad' fehlt`, Exit
+  1 — bestätigt, dass nur die ungültige Zeile beanstandet wird, die
+  gültige Zeile 1 erzeugt keinen Befund.
+  **Grün-Fall, wiederhergestellt:** `kontrollzustand.valid.json` auf
+  Originalinhalt zurückgesetzt, `_kalibrierung.jsonl` gelöscht, `node
+  scripts/check-datenformate.mjs` → identische Ausgabe wie im
+  Ausgangs-Grün-Fall oben, Exit 0. `git status --short` danach zeigt
+  keinen Rest der drei Testdateien.
+  `npm run check:template` und `npm run check` nach der Korrektur erneut
+  vollständig grün gelaufen (kein zweites Rot auf diesem Gate).

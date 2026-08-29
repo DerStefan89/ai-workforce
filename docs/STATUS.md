@@ -23,6 +23,11 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   + `journal.md` als Ablageort, `scripts/check-feature.mjs` als Gate
   (eingehängt in `npm run check:template`), erste befüllte Akte
   `features/AF-F001/` mit `Status: READY_FOR_TECH`.
+- Feature 0 (Datenformate) ist umgesetzt: `kontrollzustand/` und
+  `profiles/` existieren real im Repo, ihr Format ist über
+  `schemas/*.schema.json` + `schemas/examples/` maschinell geprüft
+  (`scripts/check-datenformate.mjs`, eingehängt in `npm run check` und
+  `npm run check:template`). `F-010` ist damit erledigt.
 
 ## Offene Punkte
 

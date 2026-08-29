@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "typ": "beispiel",
+  "profil_referenz": {
+    "pfad": "profiles/beispielprojekt.json",
+    "hash": "sha256-abc123",
+    "version": 1
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "typ": "beispiel",
+  "profil_referenz": {
+    "hash": "sha256-abc123",
+    "version": 1
+  }
+}
