@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "typ": "checkpoint",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "lineage-beispiel-artefakt-werkzeug",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "daten": {
+      "typ": "lineage",
+      "art": "artefakt_version",
+      "artefakt_id": "beispiel-artefakt-werkzeug",
+      "erzeugungsart": "werkzeug",
+      "inhalts_hash": "fd211ea579a562f924ca191bccb60f3069042d8b63ed457361d8f7fb1d3a0a85",
+      "herkunft": {
+        "erzeuger": "werkzeug",
+        "name": "linter"
+      },
+      "eingaben": [],
+      "pfad": "src/beispiel.ts",
+      "zitierter_bereich": "Zeile 1-20"
+    },
+    "selbst_hash": "34ee7b49f793753fd3177c7dc200c1706611d2c20e326802d2d6f3b4ea3d55b8"
+  }
+}

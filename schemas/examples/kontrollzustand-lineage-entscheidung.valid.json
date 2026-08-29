@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "typ": "checkpoint",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "lineage-beispiel-artefakt-kern",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "daten": {
+      "typ": "lineage",
+      "art": "stale_entscheidung",
+      "artefakt_id": "beispiel-artefakt-kern",
+      "bezieht_sich_auf": {
+        "sequenz": 1
+      },
+      "entscheidung": "nachtrag",
+      "betroffene_eingaben": [
+        "docs/beispiel-eingabe.md"
+      ]
+    },
+    "selbst_hash": "bc0f5d356abad235eed31cfb25b0aa062bc74edbf44c9917b985581e178048ff"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-lineage-payload.schema.json",
+  "title": "Lineage-Payload",
+  "description": "Beschreibt ausschließlich die Form von checkpoint.payload.daten, wenn daten.typ === \"lineage\" (F2). Die äußere Checkpoint-Hülle (schema_version, typ: \"checkpoint\", profil_referenz, payload.{lauf_id,sequenz,vorgaenger_hash,selbst_hash}) validiert weiterhin ausschließlich validiereCheckpointEintrag aus F1 (kein zweiter Regelsatz dafür).",
+  "oneOf": [
+    { "$ref": "#/$defs/artefaktVersion" },
+    { "$ref": "#/$defs/staleEntscheidung" }
+  ],
+  "$defs": {
+    "eingabeReferenz": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pfad", "zitierter_bereich", "inhalts_hash"],
+      "properties": {
+        "pfad": { "type": "string", "minLength": 1 },
+        "zitierter_bereich": {},
+        "inhalts_hash": { "type": "string", "minLength": 64 }
+      }
+    },
+    "artefaktVersion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typ", "art", "artefakt_id", "erzeugungsart", "inhalts_hash", "herkunft"],
+      "properties": {
+        "typ": { "const": "lineage" },
+        "art": { "const": "artefakt_version" },
+        "artefakt_id": { "type": "string", "minLength": 1 },
+        "erzeugungsart": { "enum": ["kern", "werkzeug"] },
+        "inhalts_hash": { "type": "string", "minLength": 64 },
+        "herkunft": {},
+        "eingaben": { "type": "array", "items": { "$ref": "#/$defs/eingabeReferenz" } },
+        "daten": {},
+        "pfad": { "type": "string", "minLength": 1 },
+        "zitierter_bereich": {}
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "erzeugungsart": { "const": "werkzeug" } } },
+          "then": {
+            "required": ["pfad", "zitierter_bereich"],
+            "not": { "required": ["daten"] }
+          }
+        }
+      ]
+    },
+    "staleEntscheidung": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typ", "art", "artefakt_id", "bezieht_sich_auf", "entscheidung"],
+      "properties": {
+        "typ": { "const": "lineage" },
+        "art": { "const": "stale_entscheidung" },
+        "artefakt_id": { "type": "string", "minLength": 1 },
+        "bezieht_sich_auf": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sequenz"],
+          "properties": { "sequenz": { "type": "integer", "minimum": 1 } }
+        },
+        "entscheidung": { "enum": ["neu_erzeugen", "nachtrag", "unveraendert_gueltig"] },
+        "begruendung": { "type": "string", "minLength": 1 },
+        "betroffene_eingaben": { "type": "array", "items": { "type": "string" } }
+      },
+      "if": { "properties": { "entscheidung": { "const": "unveraendert_gueltig" } } },
+      "then": { "required": ["begruendung"] }
+    }
+  }
+}

@@ -37,6 +37,14 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   (`scripts/verify-rename-atomicity.mjs`) real gelaufen, bewusst
   **nicht** in die Standardkette eingehängt — bleibt ein einmaliger,
   plattformabhängiger Nachweis, siehe `state/gates.md`.
+- Feature 2 (Artifact Registry / Lineage) ist umgesetzt: `src/lineage-
+  registry/` registriert kern- und werkzeug-erzeugte Artefakt-Versionen,
+  hält Eingaben fest, prüft mechanisch auf STALE und hält eine
+  menschliche STALE-Entscheidung fest. Lineage-Einträge nutzen F1s
+  Checkpoint-Hash-Kette (`lauf_id = lineage-<artefakt_id>`) — kein
+  eigener Dateibaum unter `kontrollzustand/` (Gate
+  `scripts/check-lineage-registry.mjs`, eingehängt in `npm run check`
+  und `npm run check:template`).
 
 ## Offene Punkte
 

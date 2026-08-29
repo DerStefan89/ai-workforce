@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "typ": "checkpoint",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "lineage-beispiel-artefakt-kern",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "daten": {
+      "typ": "lineage",
+      "art": "artefakt_version",
+      "artefakt_id": "beispiel-artefakt-kern",
+      "erzeugungsart": "kern",
+      "inhalts_hash": "ac6cc5c3a4b53337a6097859ac8b0e9f12adb6f4266f4989c7b81d0b5974c562",
+      "herkunft": {
+        "erzeuger": "kern",
+        "schritt": "coach-output"
+      },
+      "eingaben": [
+        {
+          "pfad": "docs/beispiel-eingabe.md",
+          "zitierter_bereich": "Abschnitt 2",
+          "inhalts_hash": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+        }
+      ],
+      "daten": {
+        "inhalt": "kern-erzeugtes-artefakt"
+      }
+    },
+    "selbst_hash": "7edf7cdf61e8a3084e2c5a90b7fb921abe3eca16b7a6244be47a79629a2de306"
+  }
+}
