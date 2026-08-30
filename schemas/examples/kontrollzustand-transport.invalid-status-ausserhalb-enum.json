@@ -1,0 +1,7 @@
+{
+  "transport_schema": "v0",
+  "bezieht_sich_auf_bedarf": { "artefakt_id": "bedarf-beispiel-lauf", "versionSequenz": 1 },
+  "inhalt": "Bitte prüfe, ob es einen MCP-Server für X gibt, der Y erfüllt.",
+  "executor": "ChatGPT (manueller Kopierblock)",
+  "status": "UNTERWEGS"
+}
