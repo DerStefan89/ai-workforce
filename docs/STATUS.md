@@ -54,6 +54,17 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   mehreren offenen Marken) — nie automatischer Neustart (Gate
   `scripts/check-f1b-wirkungsmarke.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
+- F3 (Authorization Boundary, minimal) ist umgesetzt: `src/authorization-
+  boundary/` prüft eine Freigabe-/Verweigerungsentscheidung, die in einem
+  lokalen Git-Repository außerhalb dieses Produkt-Repos liegt
+  (`C:\Users\stefa\ai-workforce-autorisierung\`, D16), gegen den echten
+  Inhalt am referenzierten Commit (`git show`) — nie gegen die im
+  Kontrollzustand mitgeführte Referenz allein. Eine Verweigerung nutzt
+  F1Bs bestehendes Terminalartefakt `VERWEIGERT` weiter, kein neuer
+  Terminalzustand (Gate `scripts/check-f3-authorization-boundary.mjs`,
+  eingehängt in `npm run check` und `npm run check:template`). Deckt nur
+  die "Veränderungs"-Hälfte von E-189 — die "Erzeugungs"-Hälfte (OS-
+  seitige Schreibsperre) ist ausdrücklicher Nicht-Ziel-Rand.
 
 ## Offene Punkte
 

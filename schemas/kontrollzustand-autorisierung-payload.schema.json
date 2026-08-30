@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-autorisierung-payload.schema.json",
+  "title": "Autorisierungsdatei (extern)",
+  "description": "Struktur der Freigabe-/Verweigerungsdatei im externen Autorisierungs-Repository (F3, außerhalb dieses Produkt-Repos, D16). Diese Schema-Definition liegt im Produkt-Repo, weil sie nur Struktur beschreibt — der Inhalt einer konkreten Entscheidung bleibt extern und wird nie hierher kopiert.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lauf_id", "entscheidung", "zeitstempel"],
+  "properties": {
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "entscheidung": { "enum": ["FREIGEGEBEN", "VERWEIGERT"] },
+    "zeitstempel": { "type": "string", "minLength": 1 },
+    "begruendung": { "type": "string", "minLength": 1 }
+  },
+  "if": {
+    "properties": { "entscheidung": { "const": "VERWEIGERT" } }
+  },
+  "then": {
+    "required": ["begruendung"]
+  }
+}
