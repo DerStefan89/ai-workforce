@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-transport-payload.schema.json",
+  "title": "Transportpaket-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn transport_schema === \"v0\" (F9). Version 1 (vor Aushändigung) und Version 2 (nach Import der Antwort, erst nach Schemaprüfung durch validiereTransportantwort hier abgelegt) sind zwei disjunkte Formen derselben Artefakt-Kette, unterschieden über status. Wie beim Bedarf-Payload-Schema ist die Wurzel ein eigenständiges Objekt, keine Checkpoint-Hülle — Beispiele unter schemas/examples/ sind bare Transportpaket-Objekte.",
+  "oneOf": [
+    { "$ref": "#/$defs/version1" },
+    { "$ref": "#/$defs/version2" }
+  ],
+  "$defs": {
+    "bezugBedarf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artefakt_id", "versionSequenz"],
+      "properties": {
+        "artefakt_id": { "type": "string", "minLength": 1 },
+        "versionSequenz": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "version1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport_schema", "bezieht_sich_auf_bedarf", "inhalt", "executor", "status"],
+      "properties": {
+        "transport_schema": { "const": "v0" },
+        "bezieht_sich_auf_bedarf": { "$ref": "#/$defs/bezugBedarf" },
+        "inhalt": { "type": "string", "minLength": 1 },
+        "executor": { "type": "string", "minLength": 1 },
+        "status": { "const": "ERSTELLT" }
+      }
+    },
+    "version2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport_schema", "bezieht_sich_auf_bedarf", "antwort", "status", "importiert_am"],
+      "properties": {
+        "transport_schema": { "const": "v0" },
+        "bezieht_sich_auf_bedarf": { "$ref": "#/$defs/bezugBedarf" },
+        "antwort": { "type": "string" },
+        "status": { "const": "ANTWORT_EINGETROFFEN" },
+        "importiert_am": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

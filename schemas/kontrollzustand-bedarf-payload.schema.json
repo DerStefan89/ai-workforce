@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-bedarf-payload.schema.json",
+  "title": "Bedarf-Payload (BEDARF_V0)",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn bedarf_schema === \"v0\" (F9). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür, daten.daten bleibt dort bewusst offen: {}). Anders als F1s/F2s eigene Payload-Schemas beschreibt dieses Schema deshalb ein eigenständiges Objekt, keinen vollständigen Kontrollzustand-Eintrag — Beispiele unter schemas/examples/ sind bewusst die bare BEDARF_V0-Objekte selbst, nicht in eine Checkpoint-Hülle eingebettet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bedarf_schema", "lauf_id", "beschreibung", "werkzeug_auswahl", "erstellt_am"],
+  "properties": {
+    "bedarf_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "beschreibung": { "type": "string", "minLength": 1 },
+    "werkzeug_auswahl": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kandidat", "quelle", "manuell_bestaetigt_am"],
+          "properties": {
+            "kandidat": { "type": "string", "minLength": 1 },
+            "quelle": { "type": "string", "minLength": 1 },
+            "manuell_bestaetigt_am": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "erstellt_am": { "type": "string", "minLength": 1 }
+  }
+}

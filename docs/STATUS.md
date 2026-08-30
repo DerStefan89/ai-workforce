@@ -65,6 +65,20 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   eingehängt in `npm run check` und `npm run check:template`). Deckt nur
   die "Veränderungs"-Hälfte von E-189 — die "Erzeugungs"-Hälfte (OS-
   seitige Schreibsperre) ist ausdrücklicher Nicht-Ziel-Rand.
+- F9 (Human Transport) ist umgesetzt: `src/human-transport/` erfasst einen
+  `BEDARF_V0`, bündelt ihn zu einem Transportpaket (F2
+  `registriereKernArtefakt`), bezeugt die Aushändigung mit F1Bs
+  `RUN_PREPARED` und schließt den Lauf über ein F1B-Terminalartefakt ab.
+  Eine zurückkommende Antwort wird vor jeder Registrierung gegen ein
+  eigenes Schema geprüft (Schemaverstoß → `FEHLGESCHLAGEN`, D4). Vor
+  jeder Weiterverwendung blockiert `pruefeUndEntscheideStale` (D6) bei
+  veralteter `BEDARF_V0`-Referenz, bis eine menschliche Entscheidung über
+  F2s `haltFestStaleEntscheidung` festgehalten wurde. Der bestehende
+  Leitstand-Prototyp (`scripts/leitstand-server.mjs`,
+  `public/leitstand/`) zeigt Aufgabe/Status/Executor/Ergebnis für
+  Human-Transport-Läufe an, ohne neuen Schreibpfad (Gate
+  `scripts/check-f9-human-transport.mjs`, eingehängt in `npm run check`
+  und `npm run check:template`).
 
 ## Offene Punkte
 

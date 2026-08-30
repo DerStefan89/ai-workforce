@@ -1,0 +1,11 @@
+{
+  "bedarf_schema": "v0",
+  "lauf_id": "beispiel-lauf",
+  "beschreibung": "Werkzeugempfehlung für die Belegschaftskonfiguration klären",
+  "werkzeug_auswahl": {
+    "kandidat": "docs/harness/werkzeug-katalog.md#coach",
+    "quelle": "docs/harness/werkzeug-katalog.md",
+    "manuell_bestaetigt_am": "2026-08-30T12:05:00.000Z"
+  },
+  "erstellt_am": "2026-08-30T12:00:00.000Z"
+}

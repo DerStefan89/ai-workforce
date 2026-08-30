@@ -35,12 +35,44 @@ const CONTENT_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
 }
 
+/**
+ * F9-Erweiterung: die innere daten.daten (F2s registriereKernArtefakt-
+ * Parameter 'daten') trägt bei Human-Transport-Artefakten ihren eigenen
+ * Diskriminator (bedarf_schema/transport_schema) — daten.art ist bei
+ * jedem kern-erzeugten Artefakt unverändert "artefakt_version" (F2s
+ * eigener Diskriminator, eine Ebene höher), nie "bedarf"/"transportpaket".
+ */
+function humanTransportFelder(innereDaten) {
+  if (typeof innereDaten !== 'object' || innereDaten === null) return {}
+  if (innereDaten.bedarf_schema === 'v0') {
+    return { humanTransportArt: 'bedarf', beschreibung: innereDaten.beschreibung, werkzeugAuswahl: innereDaten.werkzeug_auswahl }
+  }
+  if (innereDaten.transport_schema === 'v0') {
+    return {
+      humanTransportArt: 'transportpaket',
+      transportStatus: innereDaten.status,
+      executor: innereDaten.executor,
+      bezugBedarf: innereDaten.bezieht_sich_auf_bedarf,
+    }
+  }
+  return {}
+}
+
 function lineageFelder(daten) {
   return {
     art: daten.art,
     artefaktId: daten.artefakt_id,
     ...(daten.art === 'artefakt_version' ? { erzeugungsart: daten.erzeugungsart } : {}),
     ...(daten.art === 'stale_entscheidung' ? { entscheidung: daten.entscheidung, beziehtSichAuf: daten.bezieht_sich_auf } : {}),
+    ...humanTransportFelder(daten.daten),
+  }
+}
+
+/** F9-Erweiterung: art/ergebnis einer Wirkungsmarke (F1B) — RUN_PREPARED/Terminal, für Status-/Ergebnis-Spalten. */
+function wirkungsmarkeFelder(payload) {
+  return {
+    art: payload.art,
+    ...(payload.ergebnis !== undefined ? { ergebnis: payload.ergebnis } : {}),
   }
 }
 
@@ -108,6 +140,7 @@ function sammleCheckpoints(laufId) {
     const daten = eintrag.payload.daten
     const istLineage = typeof daten === 'object' && daten !== null && daten.typ === 'lineage'
     const istStaleFaehig = istLineage && daten.art === 'artefakt_version' && (daten.eingaben?.length ?? 0) > 0
+    const istWirkungsmarke = eintrag.typ === 'wirkungsmarke'
 
     checkpoints.push({
       sequenz,
@@ -115,6 +148,7 @@ function sammleCheckpoints(laufId) {
       gueltig: true,
       typ: istLineage ? `lineage/${daten.art}` : eintrag.typ,
       ...(istLineage ? { lineage: lineageFelder(daten) } : {}),
+      ...(istWirkungsmarke ? { wirkungsmarke: wirkungsmarkeFelder(eintrag.payload) } : {}),
       ...(istStaleFaehig
         ? { stale: pruefeStale(daten.artefakt_id, sequenz, leseAktuelleEingaben(daten.eingaben), { basisVerzeichnis: BASISVERZEICHNIS, schreiber: () => {} }) }
         : {}),

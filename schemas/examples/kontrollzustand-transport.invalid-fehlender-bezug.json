@@ -1,0 +1,6 @@
+{
+  "transport_schema": "v0",
+  "inhalt": "Bitte prüfe, ob es einen MCP-Server für X gibt, der Y erfüllt.",
+  "executor": "ChatGPT (manueller Kopierblock)",
+  "status": "ERSTELLT"
+}

@@ -18,6 +18,11 @@ function staleZelle(cp) {
 
 function checkpointZeile(cp) {
   const lin = cp.lineage ?? {}
+  const wm = cp.wirkungsmarke ?? {}
+  const aufgabe = lin.beschreibung ?? ''
+  const status = lin.transportStatus ?? wm.art ?? ''
+  const executor = lin.executor ?? ''
+  const ergebnis = wm.ergebnis ?? ''
   return `<tr>
     <td>${cp.sequenz}</td>
     <td>${escapeHtml(cp.zeitstempel)}</td>
@@ -29,6 +34,10 @@ function checkpointZeile(cp) {
     <td>${escapeHtml(lin.entscheidung ?? '')}</td>
     <td>${lin.beziehtSichAuf ? escapeHtml(`sequenz ${lin.beziehtSichAuf.sequenz}`) : ''}</td>
     <td>${staleZelle(cp)}</td>
+    <td>${escapeHtml(aufgabe)}</td>
+    <td>${escapeHtml(status)}</td>
+    <td>${escapeHtml(executor)}</td>
+    <td>${escapeHtml(ergebnis)}</td>
   </tr>`
 }
 
@@ -40,6 +49,7 @@ function laufAbschnitt(lauf) {
           <th>sequenz</th><th>zeitstempel</th><th>kette</th><th>typ</th>
           <th>art</th><th>erzeugungsart</th><th>artefakt_id</th>
           <th>entscheidung</th><th>bezieht_sich_auf</th><th>staleness</th>
+          <th>Aufgabe</th><th>Status</th><th>Executor</th><th>Ergebnis</th>
         </tr></thead>
         <tbody>${lauf.checkpoints.map(checkpointZeile).join('')}</tbody>
       </table>`
