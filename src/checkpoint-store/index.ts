@@ -20,7 +20,9 @@
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { CheckpointPayload, Ereignis, KontrollzustandEintrag, ProfilReferenz, Schreiber } from './types.ts'
+import type { CheckpointPayload, Ereignis, KontrollzustandEintrag, LaufStatus, ProfilReferenz, Schreiber, WirkungsmarkePayload } from './types.ts'
+
+const ERGEBNIS_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT', 'FEHLGESCHLAGEN'])
 
 const STANDARD_BASISVERZEICHNIS = 'kontrollzustand'
 const DATEINAME_MUSTER = /^(\d+)-([0-9a-f]{64})\.json$/
@@ -113,6 +115,50 @@ function validiereProfilReferenz(wert: unknown): string[] {
 }
 
 /**
+ * Gemeinsamer Kettenfeld-Prüfblock (F1B, löst B7): lauf_id/sequenz/
+ * vorgaenger_hash/selbst_hash plus Kettenanfangs-Regel sind für Checkpoint-
+ * und Wirkungsmarke-Payloads identisch. zusaetzlicheErlaubteFelder nennt
+ * die je Payload-Art zusätzlich erlaubten Felder (additionalProperties:
+ * false gilt sonst identisch). Kennt keinen Dateinamen und rechnet
+ * selbst_hash nicht nach — das bleibt Aufgabe der aufrufenden
+ * validiereCheckpointEintrag/validiereWirkungsmarkeEintrag, die dafür den
+ * vollständigen Eintrag brauchen, nicht nur payload.
+ */
+function pruefeKettenfelder(p: Record<string, unknown>, zusaetzlicheErlaubteFelder: string[]): string[] {
+  const verstoesse: string[] = []
+  const erlaubtePayloadFelder = new Set(['lauf_id', 'sequenz', 'vorgaenger_hash', 'selbst_hash', ...zusaetzlicheErlaubteFelder])
+  for (const feld of Object.keys(p)) {
+    if (!erlaubtePayloadFelder.has(feld)) verstoesse.push(`unbekanntes Feld 'payload.${feld}' (additionalProperties: false)`)
+  }
+  for (const feld of ['lauf_id', 'sequenz', 'vorgaenger_hash', 'selbst_hash']) {
+    if (!(feld in p)) verstoesse.push(`Pflichtfeld 'payload.${feld}' fehlt`)
+  }
+  if ('lauf_id' in p && (typeof p.lauf_id !== 'string' || (p.lauf_id as string).length < 1)) {
+    verstoesse.push("'payload.lauf_id' muss ein nicht-leerer String sein")
+  }
+  if ('sequenz' in p && (!Number.isInteger(p.sequenz) || (p.sequenz as number) < 1)) {
+    verstoesse.push("'payload.sequenz' muss ein Integer >= 1 sein")
+  }
+  if ('vorgaenger_hash' in p && p.vorgaenger_hash !== null) {
+    if (typeof p.vorgaenger_hash !== 'string' || (p.vorgaenger_hash as string).length < 64) {
+      verstoesse.push("'payload.vorgaenger_hash' muss null oder ein String mit mindestens 64 Zeichen sein")
+    }
+  }
+  if ('sequenz' in p && Number.isInteger(p.sequenz)) {
+    if (p.sequenz === 1 && p.vorgaenger_hash !== null) {
+      verstoesse.push("'payload.vorgaenger_hash' muss bei sequenz 1 null sein (Kettenanfang)")
+    }
+    if (p.sequenz !== 1 && p.vorgaenger_hash === null) {
+      verstoesse.push("'payload.vorgaenger_hash' darf nur bei sequenz 1 null sein")
+    }
+  }
+  if ('selbst_hash' in p && (typeof p.selbst_hash !== 'string' || (p.selbst_hash as string).length < 64)) {
+    verstoesse.push("'payload.selbst_hash' muss ein String mit mindestens 64 Zeichen sein")
+  }
+  return verstoesse
+}
+
+/**
  * Reine Funktion: prüft einen geparsten Kontrollzustand-Eintrag gegen die
  * F0-Hülle, das Checkpoint-Payload-Schema und rechnet selbst_hash real
  * nach. Kennt keinen Dateinamen — der Dateiname-vs-Inhalt-Hash-Abgleich
@@ -148,34 +194,71 @@ export function validiereCheckpointEintrag(eintrag: unknown): string[] {
   }
   const p = obj.payload as Record<string, unknown>
 
-  const erlaubtePayloadFelder = new Set(['lauf_id', 'sequenz', 'vorgaenger_hash', 'selbst_hash', 'daten'])
-  for (const feld of Object.keys(p)) {
-    if (!erlaubtePayloadFelder.has(feld)) verstoesse.push(`unbekanntes Feld 'payload.${feld}' (additionalProperties: false)`)
-  }
-  for (const feld of ['lauf_id', 'sequenz', 'vorgaenger_hash', 'selbst_hash']) {
-    if (!(feld in p)) verstoesse.push(`Pflichtfeld 'payload.${feld}' fehlt`)
-  }
-  if ('lauf_id' in p && (typeof p.lauf_id !== 'string' || (p.lauf_id as string).length < 1)) {
-    verstoesse.push("'payload.lauf_id' muss ein nicht-leerer String sein")
-  }
-  if ('sequenz' in p && (!Number.isInteger(p.sequenz) || (p.sequenz as number) < 1)) {
-    verstoesse.push("'payload.sequenz' muss ein Integer >= 1 sein")
-  }
-  if ('vorgaenger_hash' in p && p.vorgaenger_hash !== null) {
-    if (typeof p.vorgaenger_hash !== 'string' || (p.vorgaenger_hash as string).length < 64) {
-      verstoesse.push("'payload.vorgaenger_hash' muss null oder ein String mit mindestens 64 Zeichen sein")
+  verstoesse.push(...pruefeKettenfelder(p, ['daten']))
+
+  if (verstoesse.length === 0) {
+    const echterHash = echterInhaltsHash(obj as unknown as KontrollzustandEintrag)
+    if (echterHash !== p.selbst_hash) {
+      verstoesse.push(`'payload.selbst_hash' stimmt nicht mit dem real errechneten Hash überein (erwartet ${echterHash})`)
     }
   }
-  if ('sequenz' in p && Number.isInteger(p.sequenz)) {
-    if (p.sequenz === 1 && p.vorgaenger_hash !== null) {
-      verstoesse.push("'payload.vorgaenger_hash' muss bei sequenz 1 null sein (Kettenanfang)")
-    }
-    if (p.sequenz !== 1 && p.vorgaenger_hash === null) {
-      verstoesse.push("'payload.vorgaenger_hash' darf nur bei sequenz 1 null sein")
+
+  return verstoesse
+}
+
+/**
+ * Reine Funktion, analog zu validiereCheckpointEintrag: prüft die F0-Hülle
+ * mit typ: "wirkungsmarke", die gemeinsamen Kettenfelder über
+ * pruefeKettenfelder (F1B, löst B7), die art/ergebnis-Regeln aus
+ * schemas/kontrollzustand-wirkungsmarke-payload.schema.json und rechnet
+ * selbst_hash real nach.
+ */
+export function validiereWirkungsmarkeEintrag(eintrag: unknown): string[] {
+  const verstoesse: string[] = []
+  if (typeof eintrag !== 'object' || eintrag === null || Array.isArray(eintrag)) {
+    return ['Wurzel ist kein Objekt']
+  }
+  const obj = eintrag as Record<string, unknown>
+
+  const erlaubteHuellenfelder = new Set(['schema_version', 'typ', 'profil_referenz', 'payload'])
+  for (const feld of Object.keys(obj)) {
+    if (!erlaubteHuellenfelder.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
+  }
+  for (const feld of ['schema_version', 'typ', 'profil_referenz', 'payload']) {
+    if (!(feld in obj)) verstoesse.push(`Pflichtfeld '${feld}' fehlt`)
+  }
+  if ('schema_version' in obj && (!Number.isInteger(obj.schema_version) || (obj.schema_version as number) < 1)) {
+    verstoesse.push("'schema_version' muss ein Integer >= 1 sein")
+  }
+  if ('typ' in obj && obj.typ !== 'wirkungsmarke') {
+    verstoesse.push("'typ' muss 'wirkungsmarke' sein")
+  }
+  if ('profil_referenz' in obj) {
+    verstoesse.push(...validiereProfilReferenz(obj.profil_referenz))
+  }
+
+  if (!('payload' in obj) || typeof obj.payload !== 'object' || obj.payload === null || Array.isArray(obj.payload)) {
+    if ('payload' in obj) verstoesse.push("'payload' muss ein Objekt sein")
+    return verstoesse
+  }
+  const p = obj.payload as Record<string, unknown>
+
+  verstoesse.push(...pruefeKettenfelder(p, ['art', 'ergebnis', 'daten']))
+
+  if (!('art' in p)) {
+    verstoesse.push("Pflichtfeld 'payload.art' fehlt")
+  } else if (p.art !== 'run_prepared' && p.art !== 'terminal') {
+    verstoesse.push("'payload.art' muss 'run_prepared' oder 'terminal' sein")
+  }
+  if (p.art === 'terminal') {
+    if (!('ergebnis' in p)) {
+      verstoesse.push("Pflichtfeld 'payload.ergebnis' fehlt (Pflicht bei art: 'terminal')")
+    } else if (typeof p.ergebnis !== 'string' || !ERGEBNIS_WERTE.has(p.ergebnis)) {
+      verstoesse.push("'payload.ergebnis' muss 'ERFOLGREICH', 'VERWEIGERT' oder 'FEHLGESCHLAGEN' sein")
     }
   }
-  if ('selbst_hash' in p && (typeof p.selbst_hash !== 'string' || (p.selbst_hash as string).length < 64)) {
-    verstoesse.push("'payload.selbst_hash' muss ein String mit mindestens 64 Zeichen sein")
+  if (p.art === 'run_prepared' && 'ergebnis' in p) {
+    verstoesse.push("'payload.ergebnis' ist bei art: 'run_prepared' nicht erlaubt")
   }
 
   if (verstoesse.length === 0) {
@@ -186,6 +269,16 @@ export function validiereCheckpointEintrag(eintrag: unknown): string[] {
   }
 
   return verstoesse
+}
+
+/**
+ * Typ-Guard (F1B, löst B15): narrowt die Payload-Union sicher auf
+ * WirkungsmarkePayload, damit stelleLaufstatusFest art/ergebnis ohne
+ * ungeprüften as-Cast lesen kann. art ist bei WirkungsmarkePayload
+ * Pflicht und bei CheckpointPayload nie vorhanden.
+ */
+export function istWirkungsmarkePayload(payload: CheckpointPayload | WirkungsmarkePayload): payload is WirkungsmarkePayload {
+  return 'art' in payload
 }
 
 // ─── Atomares Schreiben (Temp-Datei + rename, Windows-Retry) ────────────────
@@ -283,7 +376,18 @@ function pruefeEinzelnenKandidaten(kandidat: Kandidat, laufId: string, schreiber
     return false
   }
 
-  const verstoesse = validiereCheckpointEintrag(geparst)
+  const rohTyp =
+    typeof geparst === 'object' && geparst !== null && !Array.isArray(geparst)
+      ? (geparst as Record<string, unknown>).typ
+      : undefined
+  let verstoesse: string[]
+  if (rohTyp === 'checkpoint') {
+    verstoesse = validiereCheckpointEintrag(geparst)
+  } else if (rohTyp === 'wirkungsmarke') {
+    verstoesse = validiereWirkungsmarkeEintrag(geparst)
+  } else {
+    verstoesse = [`'typ' muss 'checkpoint' oder 'wirkungsmarke' sein (erhalten: ${JSON.stringify(rohTyp)})`]
+  }
   const eintrag = geparst as KontrollzustandEintrag
 
   if (verstoesse.length === 0 && eintrag.payload.sequenz !== kandidat.sequenz) {
@@ -417,6 +521,77 @@ export function schreibeCheckpoint(
 }
 
 /**
+ * Schreibt eine Wirkungsmarke (F1B, typ: "wirkungsmarke") in dieselbe
+ * Hash-Kette wie schreibeCheckpoint (gleiches Verzeichnis, gleiche
+ * Sequenz-/Hash-Ermittlung, gleiches atomarSchreiben). Wirft VOR jedem
+ * Schreibvorgang bei ungültiger art/ergebnis-Kombination (Muster wie F2s
+ * haltFestStaleEntscheidung) — kein halb geschriebener Zustand.
+ */
+export function schreibeWirkungsmarke(
+  laufId: string,
+  profilReferenz: ProfilReferenz,
+  art: 'run_prepared' | 'terminal',
+  zusatz: { ergebnis?: 'ERFOLGREICH' | 'VERWEIGERT' | 'FEHLGESCHLAGEN'; daten?: unknown } = {},
+  optionen: Optionen = {}
+): { pfad: string; selbstHash: string } {
+  pruefeLaufId(laufId)
+  if (art !== 'run_prepared' && art !== 'terminal') {
+    throw new Error(`art muss 'run_prepared' oder 'terminal' sein, erhalten: ${JSON.stringify(art)}`)
+  }
+  if (art === 'terminal' && (zusatz.ergebnis === undefined || !ERGEBNIS_WERTE.has(zusatz.ergebnis))) {
+    throw new Error(
+      `zusatz.ergebnis muss bei art 'terminal' 'ERFOLGREICH', 'VERWEIGERT' oder 'FEHLGESCHLAGEN' sein, erhalten: ${JSON.stringify(zusatz.ergebnis)}`
+    )
+  }
+  if (art === 'run_prepared' && zusatz.ergebnis !== undefined) {
+    throw new Error("zusatz.ergebnis ist bei art 'run_prepared' nicht erlaubt")
+  }
+
+  const basisVerzeichnis = optionen.basisVerzeichnis ?? STANDARD_BASISVERZEICHNIS
+  const schreiber = optionen.schreiber ?? standardSchreiber
+  const verzeichnis = checkpointVerzeichnis(laufId, basisVerzeichnis)
+  mkdirSync(verzeichnis, { recursive: true })
+
+  const vorhandene = listeKandidaten(verzeichnis)
+  const hoechster = vorhandene[0]
+  const naechsteSequenz = hoechster === undefined ? 1 : hoechster.sequenz + 1
+  let vorgaengerHash: string | null = null
+  if (hoechster !== undefined) {
+    const vorherigerInhalt = JSON.parse(readFileSync(hoechster.pfad, 'utf8')) as KontrollzustandEintrag
+    vorgaengerHash = vorherigerInhalt.payload.selbst_hash
+  }
+
+  const payloadOhneHash: Omit<WirkungsmarkePayload, 'selbst_hash'> = {
+    lauf_id: laufId,
+    sequenz: naechsteSequenz,
+    vorgaenger_hash: vorgaengerHash,
+    art,
+    ...(zusatz.ergebnis !== undefined ? { ergebnis: zusatz.ergebnis } : {}),
+    ...(zusatz.daten !== undefined ? { daten: zusatz.daten } : {}),
+  }
+  const eintragOhneHash = { schema_version: 1, typ: 'wirkungsmarke', profil_referenz: profilReferenz, payload: payloadOhneHash }
+  const selbstHash = sha256Hex(kanonischesJson(eintragOhneHash))
+  const eintrag: KontrollzustandEintrag = {
+    ...eintragOhneHash,
+    payload: { ...payloadOhneHash, selbst_hash: selbstHash },
+  }
+
+  const dateiname = `${naechsteSequenz}-${selbstHash}.json`
+  const zielpfad = join(verzeichnis, dateiname)
+  atomarSchreiben(zielpfad, kanonischesJson(eintrag))
+
+  schreiber({
+    ereignis: 'wirkungsmarke_geschrieben',
+    lauf_id: laufId,
+    zeitstempel: jetzt(),
+    sequenz: naechsteSequenz,
+    pfad: zielpfad,
+  })
+
+  return { pfad: zielpfad, selbstHash }
+}
+
+/**
  * Liefert den zuletzt gültigen Checkpoint der lauf_id, oder null, wenn
  * keiner existiert — ein regulärer, benannter Ausgang (D10), nie eine
  * Ausnahme für diesen Fall.
@@ -492,4 +667,90 @@ export function ladeGueltigeCheckpoints(laufId: string, optionen: Optionen = {})
   }
   gueltige.sort((a, b) => a.payload.sequenz - b.payload.sequenz)
   return gueltige
+}
+
+/**
+ * F1B, AC5/AC19: stellt für eine lauf_id fest, ob eine RUN_PREPARED-
+ * Wirkungsmarke ohne zugeordnetes Terminalartefakt vorliegt. Stellt fest,
+ * handelt nicht — kein Wiederaufnahme-/Neustart-Verb.
+ *
+ * FIFO-Paarung (löst B4, zweiter Advisor-Pass B11): die gefilterten
+ * Wirkungsmarke-Einträge werden aufsteigend nach sequenz mit einer
+ * Warteschlange offener run_prepared-Sequenzen verarbeitet. Ein Terminal
+ * entnimmt die ÄLTESTE offene Sequenz (FIFO) und markiert sie als
+ * aufgelöst; ist die Warteschlange bereits leer, ist das Terminal ein
+ * Orphan (terminaleOhneRunPrepared — Diagnosefeld, kein eigener
+ * status-Wert). Bleiben am Ende Sequenzen offen, ist der Lauf
+ * KLAERUNG_ERFORDERLICH — unabhängig davon, wie viele Terminals insgesamt
+ * vorkamen (kein Terminal kann eine offene Sequenz stillschweigend
+ * verdecken, weil jede Sequenz einzeln in der Warteschlange verbleibt).
+ *
+ * Vier Fälle (B11, zweiter Advisor-Pass — vierter Fall ergänzt gegenüber
+ * plan-v2, der eine reine Orphan-Terminal-Kette ohne jede run_prepared-
+ * Marke durch keinen der ursprünglich drei Fälle abgedeckt hätte):
+ * 1. Warteschlange am Ende nicht leer → KLAERUNG_ERFORDERLICH.
+ * 2. Warteschlange leer, mindestens ein Paar wurde aufgelöst →
+ *    ABGESCHLOSSEN mit dem ergebnis des zuletzt aufgelösten Paars.
+ * 3. Keine run_prepared-Marke kam in der Kette vor (unabhängig von
+ *    Orphan-Terminals) → NICHT_GESTARTET.
+ */
+export function stelleLaufstatusFest(laufId: string, optionen: Optionen = {}): LaufStatus {
+  pruefeLaufId(laufId)
+  const schreiber = optionen.schreiber ?? standardSchreiber
+  const kette = ladeGueltigeCheckpoints(laufId, optionen)
+  const wirkungsmarken = kette.filter((eintrag) => eintrag.typ === 'wirkungsmarke' && istWirkungsmarkePayload(eintrag.payload))
+
+  const offeneRunPrepared: number[] = []
+  const terminaleOhneRunPrepared: number[] = []
+  let irgendeinPaarAufgeloest = false
+  let letztesErgebnis: 'ERFOLGREICH' | 'VERWEIGERT' | 'FEHLGESCHLAGEN' | undefined
+  let letzteTerminalSequenz: number | undefined
+  let letzteRunPreparedSequenz: number | undefined
+
+  for (const eintrag of wirkungsmarken) {
+    const payload = eintrag.payload as WirkungsmarkePayload
+    if (payload.art === 'run_prepared') {
+      offeneRunPrepared.push(payload.sequenz)
+      continue
+    }
+    if (offeneRunPrepared.length > 0) {
+      letzteRunPreparedSequenz = offeneRunPrepared.shift()
+      letzteTerminalSequenz = payload.sequenz
+      letztesErgebnis = payload.ergebnis
+      irgendeinPaarAufgeloest = true
+    } else {
+      terminaleOhneRunPrepared.push(payload.sequenz)
+    }
+  }
+
+  let ergebnis: LaufStatus
+  if (offeneRunPrepared.length > 0) {
+    const betroffeneEintraege = wirkungsmarken.filter((eintrag) => {
+      const payload = eintrag.payload as WirkungsmarkePayload
+      return payload.art === 'run_prepared' && offeneRunPrepared.includes(payload.sequenz)
+    })
+    ergebnis = {
+      status: 'KLAERUNG_ERFORDERLICH',
+      blockerId: `wirkungsmarke-offene-run-prepared:${laufId}`,
+      grund: 'RUN_PREPARED-Wirkungsmarke(n) ohne zugeordnetes Terminalartefakt',
+      evidenz: { laufId, offeneRunPreparedSequenzen: [...offeneRunPrepared], eintraege: betroffeneEintraege },
+      aufloesungsbedingung:
+        "Menschliche Entscheidung: gültiges Terminalartefakt für die offene(n) RUN_PREPARED-Sequenz(en) nachtragen (schreibeWirkungsmarke mit art: 'terminal'), oder den Lauf als abgebrochen/geklärt einstufen",
+      resumeZiel: 'Kein automatischer Neustart dieser lauf_id (AC5) — ein bewusst neu gestarteter Lauf erhält eine eigene lauf_id (AC6, §16.6)',
+      terminaleOhneRunPrepared,
+    }
+  } else if (irgendeinPaarAufgeloest && letztesErgebnis !== undefined && letzteTerminalSequenz !== undefined && letzteRunPreparedSequenz !== undefined) {
+    ergebnis = {
+      status: 'ABGESCHLOSSEN',
+      ergebnis: letztesErgebnis,
+      terminalSequenz: letzteTerminalSequenz,
+      runPreparedSequenz: letzteRunPreparedSequenz,
+      terminaleOhneRunPrepared,
+    }
+  } else {
+    ergebnis = { status: 'NICHT_GESTARTET', terminaleOhneRunPrepared }
+  }
+
+  schreiber({ ereignis: 'laufstatus_festgestellt', lauf_id: laufId, zeitstempel: jetzt(), status: ergebnis.status })
+  return ergebnis
 }
