@@ -45,6 +45,15 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   eigener Dateibaum unter `kontrollzustand/` (Gate
   `scripts/check-lineage-registry.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
+- F1B (Wirkungsmarke, `RUN_PREPARED`, Terminalartefakt, Klärzustands-
+  Feststellung) ist umgesetzt: `src/checkpoint-store/` schreibt und lädt
+  zusätzlich zu Checkpoints auch Wirkungsmarken (`typ: "wirkungsmarke"`)
+  in derselben Hash-Kette; `stelleLaufstatusFest` stellt für eine
+  `lauf_id` fest, ob eine `RUN_PREPARED`-Marke ohne zugeordnetes
+  Terminalartefakt vorliegt (`KLAERUNG_ERFORDERLICH`, FIFO-Paarung bei
+  mehreren offenen Marken) — nie automatischer Neustart (Gate
+  `scripts/check-f1b-wirkungsmarke.mjs`, eingehängt in `npm run check`
+  und `npm run check:template`).
 
 ## Offene Punkte
 

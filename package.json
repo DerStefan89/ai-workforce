@@ -14,8 +14,8 @@
     "test": "node --test",
     "leitstand": "node scripts/leitstand-server.mjs",
     "leitstand:seed": "node scripts/leitstand-seed.mjs",
-    "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs && node scripts/check-lineage-registry.mjs && npm run test",
-    "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs && node scripts/check-lineage-registry.mjs"
+    "check": "npm run lint && npm run typecheck && node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs && node scripts/check-lineage-registry.mjs && node scripts/check-f1b-wirkungsmarke.mjs && npm run test",
+    "check:template": "node scripts/check-docs.mjs && node scripts/check-rules.mjs && node scripts/check-contract.mjs && node scripts/check-feature.mjs && node scripts/check-datenformate.mjs && node scripts/check-checkpoint-store.mjs && node scripts/check-lineage-registry.mjs && node scripts/check-f1b-wirkungsmarke.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.9",

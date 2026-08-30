@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-wirkungsmarke-payload.schema.json",
+  "title": "Wirkungsmarke-Payload",
+  "description": "Payload-Schema für Kontrollzustand-Einträge mit typ: \"wirkungsmarke\" (F1B). Teilt die Kettenfelder mit schemas/kontrollzustand-checkpoint-payload.schema.json (F1), ergänzt art als Diskriminator auf payload-Ebene (nicht in payload.daten, weil typ selbst schon \"wirkungsmarke\" ist) und ergebnis bei art: \"terminal\".",
+  "oneOf": [
+    { "$ref": "#/$defs/runPrepared" },
+    { "$ref": "#/$defs/terminal" }
+  ],
+  "$defs": {
+    "kettenfelder": {
+      "lauf_id": { "type": "string", "minLength": 1 },
+      "sequenz": { "type": "integer", "minimum": 1 },
+      "vorgaenger_hash": {
+        "oneOf": [
+          { "type": "string", "minLength": 64 },
+          { "type": "null" }
+        ],
+        "description": "selbst_hash des vorherigen Eintrags (Checkpoint oder Wirkungsmarke) derselben lauf_id; null ausschließlich bei sequenz: 1 (Kettenanfang)."
+      },
+      "selbst_hash": {
+        "type": "string",
+        "minLength": 64,
+        "description": "SHA-256 (hex) über die kanonische Serialisierung des gesamten Kontrollzustand-Eintrags mit payload.selbst_hash entfernt vor dem Hashen."
+      }
+    },
+    "runPrepared": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lauf_id", "sequenz", "vorgaenger_hash", "selbst_hash", "art"],
+      "properties": {
+        "lauf_id": { "$ref": "#/$defs/kettenfelder/lauf_id" },
+        "sequenz": { "$ref": "#/$defs/kettenfelder/sequenz" },
+        "vorgaenger_hash": { "$ref": "#/$defs/kettenfelder/vorgaenger_hash" },
+        "selbst_hash": { "$ref": "#/$defs/kettenfelder/selbst_hash" },
+        "art": { "const": "run_prepared" },
+        "daten": {
+          "description": "Optionaler, nicht-profilbezogener Nutzinhalt des Aufrufers. Checkpoint Store liest diesen Inhalt nicht, kopiert ihn nur unverändert mit."
+        }
+      },
+      "not": { "required": ["ergebnis"] }
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lauf_id", "sequenz", "vorgaenger_hash", "selbst_hash", "art", "ergebnis"],
+      "properties": {
+        "lauf_id": { "$ref": "#/$defs/kettenfelder/lauf_id" },
+        "sequenz": { "$ref": "#/$defs/kettenfelder/sequenz" },
+        "vorgaenger_hash": { "$ref": "#/$defs/kettenfelder/vorgaenger_hash" },
+        "selbst_hash": { "$ref": "#/$defs/kettenfelder/selbst_hash" },
+        "art": { "const": "terminal" },
+        "ergebnis": { "enum": ["ERFOLGREICH", "VERWEIGERT", "FEHLGESCHLAGEN"] },
+        "daten": {
+          "description": "Optionaler, nicht-profilbezogener Nutzinhalt des Aufrufers. Checkpoint Store liest diesen Inhalt nicht, kopiert ihn nur unverändert mit."
+        }
+      }
+    }
+  }
+}

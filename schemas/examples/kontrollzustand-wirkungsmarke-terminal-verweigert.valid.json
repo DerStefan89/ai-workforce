@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "typ": "wirkungsmarke",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "beispiel-lauf",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "art": "terminal",
+    "ergebnis": "VERWEIGERT",
+    "selbst_hash": "a66b8fa07b96c04e18bb30def4a0dc22ece00ca7c619b5352c4bf46e1b00316a"
+  }
+}
