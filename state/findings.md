@@ -325,3 +325,11 @@ Fundstelle: Challenger-Sitzung 30.08.2026, TERMINAL-Ausgabe.
 Auswirkung: gering, ein Fehlversuch pro Vorkommen.
 Maßnahme: `[EMPFEHLUNG]` F-026 um zwei Punkte ergänzen: Zielumgebung ist Windows/PowerShell, keine Unix-Notation, kein `~`; steht das Arbeitsverzeichnis bereits im Repo, keinen `-C`-Pfad konstruieren.
 Feature/Run: Challenge Bedarfsanalyse, 30.08.2026.
+
+**F-043** · `TECH_DEBT` · P2 · offen
+Titel: F5-Rollentabelle bindet an Besetzungsnamen statt an die §4-Verantwortungskategorien — Spannung zu E-191/N2.
+Beschreibung: `state/tasks/f5-context-builder.md` bzw. plan-v2 verwendet Besetzungsnamen (architecture-advisor, code-reviewer, qa, ausfuehrung) als Schlüssel der Rollentabelle statt der stabileren Verantwortungskategorien aus Zielfassung §4. E-191/N2 verlangt Rolle und Runtime als getrennte Felder — hier sind sie im selben Schlüssel vermischt. Bewusst so belassen (YAGNI, kein zweiter realer Aufrufer vorhanden).
+Fundstelle: `state/tasks/f5-context-builder.md`, Rollentabelle.
+Auswirkung: gering jetzt (N2 ist DEKLARIERT, nicht ERZWUNGEN); eine künftige Besetzungsänderung erzwingt sonst eine Änderung an dieser Kern-Datei statt einer Konfigurationszeile.
+Maßnahme: bei F6 (zweiter realer Aufrufer) oder beim nächsten ohnehin anstehenden Bauauftrag auf getrennte Rolle/Runtime-Felder umstellen.
+Feature/Run: F5 Context Builder, plan-v2, 31.08.2026.
