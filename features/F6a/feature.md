@@ -185,13 +185,16 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
   `schreibeWirkungsmarke`, `stelleLaufstatusFest`.
 - Hard, erfüllt: **F2** (Lineage Registry) — Registrierung der Laufakte
   als kern-erzeugtes Artefakt.
-- **Hard, offen und blockierend: F-030** — `.claude/settings.json`
-  `permissions.allow` enthält keinen freigegebenen Bash-Weg für einen
-  Werkzeugprozess-Start. Muss durch einen eigenen Harness-Vertrag nach
-  Muster der Option-B-npm-run-Allowlist-Härtung geschlossen werden,
-  **bevor** F6a gebaut wird. Der Vertrag entscheidet die konkrete
-  Erweiterung der Berechtigungsfläche — das ist eine
-  Sicherheitsentscheidung und gehört nicht in diese Akte.
+- **Nicht blockierend (korrigiert 31.08.2026): F-030** — Prämisse
+  widerlegt. `.claude/settings.json` `permissions.allow` gated nur
+  Bash-Aufrufe, die eine Claude-Code-Sitzung selbst als obersten
+  Tool-Call vorschlägt, nicht Node-`child_process`-Subprozesse aus
+  bereits freigegebenem Code. F6a/WS2 ist gewöhnlicher Node-Code, kein
+  Claude-Code-Tool-Call — unterliegt `permissions.allow` nicht. Kein
+  eigener Harness-Vertrag nötig. Die tatsächlich offene, engere Frage
+  (Argv-Array statt Shell-String beim Subprozessstart) ist als F-057
+  erfasst und in WS2 (AK14) umgesetzt. Siehe `state/findings.md` F-030
+  Nachtrag, `features/F6a/journal.md` „Challenge F-030".
 - Wird in dieser Akte geschlossen: **F-048** (Aufrufrepräsentation,
   siehe Scope und AK2).
 - Ausdrücklich **nicht** Voraussetzung: F-053 (E-188 ohne erbrachten

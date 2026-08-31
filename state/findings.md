@@ -664,6 +664,25 @@ Fundstelle: PR #36 → `feature/f6a-gateway-lesepfad` → PR #37.
 Auswirkung: bisher nur Merge-Reibung, kein Datenverlust; Risiko steigt mit Branch-Lebensdauer nach Squash-Merges.
 Maßnahme: Prozessregel — nach jedem Squash-Merge den Quell-Branch löschen (GitHub-Standardangebot nutzen) oder sofort per `git rebase --onto <main-HEAD> <alter-pre-squash-commit> <branch>` aktualisieren, bevor weitergearbeitet wird.
 Feature/Run: F6a WS1, PR #36/#37, 31.08.2026.
+**Nachtrag 31.08.2026 (zweites Auftreten, WS2/WS3-Planung):** Gleiches
+Muster erneut auf `docs/f6a-ws2-ws3-plan-v1` (PR #39 → #40) — diesmal
+zusätzlich verschärft, weil der zwischenzeitlich gemergte PR #39 bereits
+überholten Inhalt (Fassung 1 vor Advisor-Korrektur) auf `main` brachte.
+Diagnose identisch: `git diff 2eb7d60 d416a8d --stat` leer, behoben per
+`git rebase --onto d416a8d 2eb7d60 docs/f6a-ws2-ws3-plan-v1` und
+`git push --force-with-lease`, danach konfliktfrei gemergt (PR #40).
+Maßnahme bestätigt, Priorität unverändert P2, da weiterhin nur
+Merge-Reibung ohne Datenverlust — die eigentliche Prozessregel
+(Branch nach Merge löschen) wurde bisher nicht befolgt; das ist der
+eigentliche Wiederholungsgrund.
+
+**F-058** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Korrektur eines Findings propagiert nicht automatisch in referenzierende Feature-Akten.
+Beschreibung: Die F-030-Reprüfung (31.08.2026, PR #38) korrigierte den Finding-Eintrag selbst korrekt (Status „korrigiert", Nachtrag), aktualisierte aber nicht die Dependencies-Sektion in `features/F6a/feature.md`, die F-030 wörtlich als „Hard, offen und blockierend" zitierte. Der Widerspruch blieb bis zur WS2/WS3-Statusprüfung (31.08.2026) unbemerkt in der Feature-Akte stehen.
+Fundstelle: `features/F6a/feature.md`, Dependencies-Sektion, vor Korrektur in diesem Commit.
+Auswirkung: gering hier (rein dokumentarisch, kein Code betroffen), aber ein Muster, das bei einer echten Blockade-Aufhebung zu falscher Zurückhaltung oder bei einer neu entstandenen Blockade zu übersehenem Risiko führen könnte.
+Maßnahme: Konvention aufnehmen — wird ein Finding korrigiert, das in einer Feature-Akte wörtlich zitiert oder als Dependency referenziert ist, gehört die Prüfung dieser Referenzstellen zum selben Korrektur-Schritt, nicht zu einem späteren Zufallsfund.
+Feature/Run: F6a WS2/WS3-Statusprüfung, 31.08.2026.
 
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
