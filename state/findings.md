@@ -700,6 +700,22 @@ Auswirkung: kein aktueller Verstoß, aber die mechanische Absicherung von F-057 
 Maßnahme: Regel härten (Wortgrenzen-sicheres Muster für `exec`/`execSync`, Trennzeichen-unabhängige Join-Erkennung, ggf. Template-Literal-Heuristik) — Muster aus F4s Gate übernehmen. Kein Blocker für den aktuellen Merge, vor dem nächsten Gateway-bezogenen Bau nachziehen.
 Feature/Run: F6a WS2-Reviewer-/QA-Pass, 31.08.2026.
 
+**F-061** · `TECH_DEBT` · P2 · offen
+Titel: `is_error`/`non_execution_kind` (E-184) in `state/tp-nachtrag.md` an keiner Stelle real belegt.
+Beschreibung: `docs/projekt/zielfassung.md` E-184 verlangt für die Erfolgs-/Verweigerungs-Klassifikation eines Laufs u. a. `is_error` und `non_execution_kind` aus der strukturierten Ergebnisausgabe. Volltextsuche in `state/tp-nachtrag.md` (allen bisherigen realen `claude -p --output-format json`-Messungen, TP-03d Messfall 1-3, TP-01e Messfall A/B): beide Feldnamen kommen nirgends vor. Real belegt sind ausschließlich `permission_denials` und `result` (TP-03d Messfall 1/2, Wortlaut-Zitate) sowie das Fehlen jedes Ergebnisobjekts bei Abbruch/Zeitüberschreitung (TP-01e). Gleiches Muster wie F-059 (`modell_beobachtet`): ein in der Zielfassung benanntes Feld ohne empirischen Beleg.
+Fundstelle: `docs/projekt/zielfassung.md` Zeile 205 (E-184); `state/tp-nachtrag.md` (Volltextsuche negativ).
+Auswirkung: gering für F7 selbst — die Kernklassifikation (FEHLGESCHLAGEN/VERWEIGERT/ERFOLGREICH) stützt sich laut `state/plan-v1-f7-result-evaluator.md` ausschließlich auf real belegte Signale (`beobachtungsbasis_vollstaendig`, `permission_denials`); beide unbelegten Felder werden nur informativ, nicht klassifikationsrelevant geführt.
+Maßnahme: Feldnamen real klären, sobald ein echter Lauf ein vollständiges Ergebnisobjekt liefert — natürlicher Zeitpunkt ist WS3 (`state/tasks/f6a-ws3-realer-nachweis.md`). Danach kleiner Nachtrag an F7, keine Architekturänderung nötig.
+Feature/Run: F7-Challenge, 31.08.2026.
+
+**F-062** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: `leseErgebnisobjekt` (F6a) nicht exportiert — F7 kann die Ergebnisobjekt-Parsing-Logik ohne Export nicht wiederverwenden (D5).
+Beschreibung: `src/claude-code-gateway/index.ts:71` definiert `leseErgebnisobjekt(stdout): Record<string, unknown> | null` (parst `stdout` als JSON, akzeptiert nur `type === 'result'`) als modulinterne, nicht exportierte Funktion. F7 (Result Evaluator) braucht exakt diese Logik, um das strukturierte Ergebnisobjekt zu lesen — ohne Export müsste F7 sie duplizieren, ein D5-Verstoß (Nachbau von Logik, die ein anderes Modul bereits besitzt).
+Fundstelle: `src/claude-code-gateway/index.ts:71`.
+Auswirkung: gering — reine Sichtbarkeitsänderung (ein Schlüsselwort), kein Verhaltensunterschied, keine bestehenden Tests betroffen.
+Maßnahme: Als Teil des F7-Baus (`state/plan-v1-f7-result-evaluator.md` Abschnitt 2, Punkt 1) `leseErgebnisobjekt` exportieren. Kein eigener Vertrag nötig.
+Feature/Run: F7-Challenge, 31.08.2026.
+
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
 Beschreibung: F6a (`src/claude-code-gateway/index.ts`) liefert den Aufruf bereits als Tokens-Array (`baueAufruf`). WS2/WS3 (Prozessstart, noch nicht gebaut) darf dieses Array beim tatsächlichen Subprozessstart nicht zu einem Shell-Kommandostring zusammenfügen (z. B. `child_process.exec`/`execSync` mit interpoliertem String) — dynamischer Prompt-Inhalt im `-p`-Argument könnte sonst über Shell-Metazeichen (`;`, Backtick, `$()`, Anführungszeichen-Escape) aus dem beabsichtigten Einzelbefehl ausbrechen. Node bietet mit `child_process.execFile`/`spawn` samt Argv-Array einen Weg, der den Shell-Parser vollständig umgeht.
