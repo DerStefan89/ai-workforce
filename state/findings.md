@@ -504,3 +504,101 @@ erzeugt. Nicht F4-spezifisch, daher bewusst nicht in einem F4-Fix
 mitgelöst.
 Feature/Run: F4 Invocation Policy, retroactiver Review-Pass (qa Befund 8 +
 code-reviewer Befund 3), 31.08.2026.
+
+**F-051** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Umsetzungsplan-Tabellenzeilen 6/7 verschweigen die F6/F7-
+Systemgrenze zwischen Prozessstart und Klassifikation.
+Beschreibung: `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 2,
+Zeile 6 („Startet erst, wenn Invocation Policy (4) freigibt und Context
+Builder (5) liefert") und Zeile 7 („Verarbeitet die Ausgabe des
+Gateways") legen für sich gelesen nahe, das Gateway könnte oder müsste
+seine eigene Ausgabe selbst bewerten. Tatsächlich weist
+`docs/projekt/zielfassung.md` §16.2 (Zeile 334/335) die Klassifikation
+ausdrücklich dem Result Evaluator zu und dem Gateway „keine fachliche
+Bewertung, keine Fließtextdeutung". Beim F6-Challenge wäre ein naiver
+Zuschnitt (ein Feature #6) fast in dieses Duplikat-Muster gelaufen (D5).
+Fundstelle: `docs/projekt/umsetzungsplan-fassung-1.md`, Abschnitt 2,
+Tabellenzeilen 6/7.
+Auswirkung: gering jetzt (im F6-Challenge rechtzeitig erkannt und in
+F6a/F7-Zuschnitt aufgelöst), aber ein künftiger Leser der Tabelle allein
+würde denselben Fehler wiederholen.
+Maßnahme: `features/F6a/feature.md` benennt die Grenze bereits explizit
+als Nicht-Ziel (AK12 prüft sie sogar mechanisch per Grep). Optional:
+Tabellenzeile 6/7 im Umsetzungsplan um einen Verweis auf §16.2 Zeile
+334/335 ergänzen, wenn ohnehin am Dokument gearbeitet wird.
+Feature/Run: Challenge F6/F6a, 31.08.2026.
+
+**F-052** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Zielfassung §16.8 Punkt 5 (Absturz-Erkennung) als offen geführt,
+obwohl real gemessen.
+Beschreibung: `docs/projekt/zielfassung.md` §16.8 Punkt 5 lautet
+„Erkennung eines nach Absturz möglicherweise noch laufenden
+Werkzeugprozesses. (Weiterhin offen — an Vertrag 3 gebunden.)".
+`state/tp-nachtrag.md`, Abschnitt „TP-01 e", enthält aber bereits zwei
+reale Messfälle (A: Abbruch per `kill -9`, B: Zeitüberschreitung per
+`timeout 5s`) mit dokumentiertem Befund: kein terminales Ergebnisobjekt,
+leeres stderr, kein Rest- oder Kindprozess (per `Get-CimInstance
+Win32_Process` geprüft). Der Punkt ist damit faktisch beantwortet, aber
+die Zielfassung wurde nicht nachgezogen.
+Fundstelle: `docs/projekt/zielfassung.md` §16.8 Punkt 5;
+`state/tp-nachtrag.md`, Abschnitt „TP-01 e", Messfall A und B.
+Auswirkung: gering direkt, aber erzeugt unnötige Nacharbeit — F6a hätte
+sonst denselben Messvorgang für vermeintlich neu gehalten (im
+F6-Challenge bereits vermieden, siehe `features/F6a/journal.md`).
+Maßnahme: §16.8 Punkt 5 mit Verweis auf `state/tp-nachtrag.md`
+schließen oder den verbleibenden Restumfang (z. B. Windows-PID-Mapping
+von Git-Bash-Subshells, dort als offene Unsicherheit vermerkt) präzise
+benennen, statt den Punkt pauschal offen zu lassen.
+Feature/Run: Challenge F6/F6a, 31.08.2026.
+
+**F-053** · `TECH_DEBT` · P1 · offen
+Titel: E-188-Wirksamkeitsnachweis ohne je erbrachten Rot-Fall (§16.8
+Punkt 3) — blockierend für F6b.
+Beschreibung: `pruefeStartbedingung2`
+(`src/invocation-policy/index.ts`) prüft, dass ein
+Wirksamkeitsnachweis zum aktuellen Gültigkeitsschlüssel passt — nicht,
+dass dieser Nachweis je durch einen echten Rot-Fall (Schutzschicht
+tatsächlich wirksam gegen einen realen Umgehungsversuch getestet)
+verdient wurde. `docs/projekt/zielfassung.md` §16.8 Punkt 3 führt „Der
+konkrete bekannte Rot-Fall der Wirksamkeitsprüfung" weiterhin als offen.
+Solange kein Aufrufer schreibt, folgenlos; sobald F6b (Claude-Code-
+Gateway, Schreibwirkung) startet, ist F4s `FREIGEGEBEN` für E-188 eine
+ungedeckte Behauptung.
+Fundstelle: `src/invocation-policy/index.ts`
+(`pruefeStartbedingung2`); `docs/projekt/zielfassung.md` §16.8 Punkt 3.
+Auswirkung: hoch bei F6b, null bei F6a (F6a führt keine
+Schreibwirkung aus, siehe `features/F6a/feature.md` Nicht-Ziele).
+Maßnahme: Rot-Fall-Erzeugung und -Nachweis als Pflichtbestandteil von
+F6b, blockierend vor dem ersten Lauf mit Schreibwirkung. Nicht Teil von
+F6a.
+Feature/Run: Challenge F6/F6a, 31.08.2026.
+
+**F-054** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Mehrzeiliger `&&`-verketteter Terminalblock in PowerShell bricht
+mitten im Ablauf ab und hinterlässt einen halb ausgeführten Zustand.
+Beschreibung: Ein per 🖥️ TERMINAL ausgegebener Block der Form
+`git checkout main && git pull --ff-only origin main` scheitert unter
+Windows PowerShell mit `ParserError: Das Token "&&" ist in dieser
+Version kein gültiges Anweisungstrennzeichen` (PowerShell < 7 kennt kein
+`&&`). Zweimal in dieser Sitzung aufgetreten. Beim zweiten Mal blieb ein
+`git checkout -b feature/f6a-gateway-lesepfad` auf einer veralteten
+Branch-Basis stehen (`checkout main` war zuvor am `&&` gescheitert, ein
+stales `.git/index.lock` verhinderte danach zusätzlich den Fallback-
+Checkout), sodass der neue Feature-Branch 1 vor/1 hinter `origin/main`
+divergierte, bevor überhaupt ein Commit stattfand — nur durch
+`git reset --hard origin/main` vor dem ersten Commit folgenlos
+korrigierbar.
+Fundstelle: 🖥️ TERMINAL-Blöcke dieser Sitzung (PR-Merge- und
+Branch-Wechsel-Sequenzen); `.claude/`-Umgebung des Nutzers ist Windows
+PowerShell, nicht Git Bash/POSIX-sh.
+Auswirkung: mittel — kein Datenverlust in dieser Sitzung, aber ein
+Terminalblock, der stillschweigend mitten im Ablauf abbricht, kann bei
+destruktiveren Folgebefehlen (z. B. einem `git reset` auf den falschen
+Branch) real schaden.
+Maßnahme: Terminalblöcke für diesen Nutzer künftig zeilenweise ohne
+`&&`-Verkettung ausgeben (PowerShell-kompatibel), oder pro Zeile mit
+`;` trennen, das PowerShell akzeptiert. Bei mehrschrittigen Git-
+Sequenzen zusätzlich nach dem Lauf explizit den erreichten Zustand
+gegenprüfen (Branch, HEAD, ahead/behind), statt den Erfolg aus dem
+Terminaloutput anzunehmen.
+Feature/Run: PR #35 Merge- und F6a-Branch-Erstellung, 31.08.2026.
