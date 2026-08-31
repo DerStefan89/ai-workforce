@@ -118,3 +118,47 @@ Ergebnis: `npm run check` und `npm run check:template` grün, alle
 Kalibrierungen (Grün-/Rot-Fälle, F-048-Fenster-Fall) real ausgelöst,
 Regressionsbestand unverändert grün. Freigabe-Halt vor Commit/Push
 eingehalten (Vertragsvorgabe).
+
+## 31.08.2026 — Challenge F-030 (Bash-Kanal-Freigabe für WS2/WS3)
+
+Reprüfung von F-030 gegen den realen Harness, veranlasst durch Stefans
+Auftrag „F-030 challengen" vor der WS2-Planung. Ergebnis: **Prämisse von
+F-030 widerlegt.** Register korrigiert (`state/findings.md`, F-030 auf
+`korrigiert`, Nachtrag 31.08.2026).
+
+Kernbefund: `.claude/settings.json` `permissions.allow` gated nur Bash-
+Aufrufe, die eine Claude-Code-Sitzung selbst als **obersten** Tool-Call
+vorschlägt — nicht Subprozesse, die bereits freigegebener Code intern per
+Node `child_process` startet. Belege:
+
+- `npm run check` ruft bereits 15 verschachtelte Skripte/Prüfungen auf
+  (`package.json`), keines davon hat einen eigenen `permissions.allow`-
+  Eintrag — verschachtelte Subprozesse werden nicht einzeln gegated.
+- `state/tp-nachtrag.md`, „TP-03 d, Messfall 1/2": ein direkter
+  `claude -p "..." --output-format json --setting-sources project`-Aufruf
+  lief bereits real durch, obwohl `.claude/settings.json` nie einen
+  `claude -p`-Eintrag enthielt — belegt, dass unlistete Bash-Befehle in
+  einer menschlich anwesenden Sitzung zur Rückfrage führen, nicht zur
+  stillen Blockade. Kein Automatisierungs-Gap, sondern Normalzustand.
+- Die künftige Gateway-Komponente (`src/claude-code-gateway`, F6b) ist
+  gewöhnlicher Node-Code, kein Claude-Code-Tool-Call — sie unterliegt
+  `.claude/settings.json` nicht, weder heute noch im WS2/WS3-Bau, der
+  planmäßig innerhalb von `npm run test` läuft.
+
+Ersetzt die Einschätzung unter „Offen vor dem Bau" oben: **F-030
+blockiert WS2/WS3 nicht** und braucht keinen eigenen Harness-Vertrag
+nach Option-B-Muster. Sollte WS2/WS3 dennoch ein neues, eigenständiges
+npm-Kalibrierungsskript brauchen (analog `tp03d-probe`), folgt das dem
+bereits etablierten, unumstrittenen Option-B-Muster direkt im WS2-
+Bauauftrag — kein separater Vertrag davor nötig.
+
+Reale offene Frage aus dieser Reprüfung, enger gefasst als F-030: WS2/WS3
+muss den Subprozessstart über `child_process.execFile`/`spawn` mit
+Argv-Array umsetzen, nie über einen Shell-Kommandostring — sonst könnte
+dynamischer Prompt-Inhalt im `-p`-Argument über Shell-Metazeichen aus dem
+Einzelbefehl ausbrechen und E-182 faktisch aushöhlen, unabhängig von
+`pruefeAufrufparameter`. Erfasst als **F-057**, als bindende
+Design-Entscheidung für den WS2-plan-v1 vorgesehen, kein Blocker.
+
+**Verdict:** `GO_STANDARD` für WS2-Planung — bereit für plan-v1, kein
+offener Pre-Vertrag mehr.

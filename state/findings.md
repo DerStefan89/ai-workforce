@@ -239,13 +239,32 @@ Auswirkung: ohne Repo-Abgleich wäre auf falscher Vorbedingung weitergeplant wor
 Maßnahme: Product-Coach-Handoffs auf Ziel/Scope/AK begrenzen; IDs und Zustände holt der Challenger selbst aus dem Repo.
 Feature/Run: Challenge F4/E2E-Workstream, 29.08.2026.
 
-**F-030** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-030** · `HARNESS_IMPROVEMENT` · P2 · **korrigiert**
 Titel: Kein freigegebener Bash-Kanal für einen künftigen Executor-Start.
 Beschreibung: `.claude/settings.json` `permissions.allow` erlaubt nur `npm run check|check:template|lint|typecheck|test`. Ein späteres Gateway-Feature braucht einen freigegebenen Bash-Weg.
 Fundstelle: `.claude/settings.json`.
 Auswirkung: gering jetzt, blockierend bei Feature 6 (Gateway).
 Maßnahme: eigener Vertrag nach Muster der Option-B-npm-run-Allowlist-Härtung, vor Feature 6 einplanen.
 Feature/Run: Challenge F4/E2E-Workstream, 29.08.2026.
+**Nachtrag 31.08.2026 (F6a-Challenge, F-030 real geprüft):** Prämisse widerlegt.
+`.claude/settings.json` `permissions.allow` gated ausschließlich Bash-Aufrufe, die
+eine Claude-Code-Sitzung selbst als obersten Tool-Call vorschlägt — nicht
+Subprozesse, die bereits freigegebener Code (z. B. innerhalb von `npm run test`)
+intern per Node `child_process` startet. Beleg: `npm run check` ruft bereits 15
+verschachtelte Skripte/Prüfungen auf, keines davon hat einen eigenen
+`permissions.allow`-Eintrag. `state/tp-nachtrag.md` („TP-03 d“) zeigt zudem, dass
+ein direkter `claude -p ...`-Aufruf schon heute ohne jeden `permissions.allow`-
+Eintrag funktioniert (menschlich anwesende Sitzung, "ask"-Rückfrage statt
+Blockade) — normaler, unveränderter Zustand, keine Gateway-spezifische Lücke.
+Die künftige Gateway-Komponente (`src/claude-code-gateway`, F6b) ist selbst
+gewöhnlicher Node-Code, kein Claude-Code-Tool-Call — sie unterliegt
+`.claude/settings.json` nicht. **F-030 blockiert WS2/WS3 damit nicht** und
+braucht keinen eigenen Harness-Vertrag. Die tatsächlich offene,
+sicherheitsrelevante Frage (Subprozessstart per `execFile`/`spawn`-Argv-Array
+statt Shell-String, wegen Prompt-Injection-Risiko über Shell-Metazeichen im
+`-p`-Argument) ist als eigenständiges, enger gefasstes Finding **F-057**
+erfasst. Vollständige Herleitung: `features/F6a/journal.md`, Abschnitt
+„Challenge F-030“.
 
 **F-031** · `PROCESS_IMPROVEMENT` · P1 · offen
 Titel: Werkzeug-/Bedarfsauswahl (MCP, APIs, Agents, Tools, Skills) hat bereits einen manuellen Vorläufer im Harness — Feature direkt nach S3 einplanen.
@@ -638,3 +657,18 @@ den Lock-Fehler erst nach dem Auftreten zu behandeln. Kein Code-Fix
 nötig, reine Ablaufänderung dieser Rollenkette.
 Feature/Run: Challenge/Planung F6a, PR-Merge- und Branch-Sequenzen,
 31.08.2026.
+**F-056** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Feature-Branch nach Squash-Merge nicht gelöscht/rebased → zweite Divergenz-Kollision.
+Beschreibung: Nach PR #36 (Squash-Merge von Commit `4296504`) wurde auf `feature/f6a-gateway-lesepfad` weitergearbeitet statt der Branch gelöscht oder sofort neu von `main` abgezweigt. Dasselbe Muster wie F-054 (dort als Near-Miss dokumentiert), hier real mit GitHub-Merge-Konflikten in `feature.md`/`journal.md`/`findings.md` auf einem Branch mit echtem Produktcode (WS1-Build). Diagnose: `git diff 4296504 ad72e14 --stat` leer (identische Bäume), behoben per `git rebase --onto ad72e14 4296504 feature/f6a-gateway-lesepfad` und `git push --force-with-lease`, danach konfliktfrei gemergt (PR #37).
+Fundstelle: PR #36 → `feature/f6a-gateway-lesepfad` → PR #37.
+Auswirkung: bisher nur Merge-Reibung, kein Datenverlust; Risiko steigt mit Branch-Lebensdauer nach Squash-Merges.
+Maßnahme: Prozessregel — nach jedem Squash-Merge den Quell-Branch löschen (GitHub-Standardangebot nutzen) oder sofort per `git rebase --onto <main-HEAD> <alter-pre-squash-commit> <branch>` aktualisieren, bevor weitergearbeitet wird.
+Feature/Run: F6a WS1, PR #36/#37, 31.08.2026.
+
+**F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
+Beschreibung: F6a (`src/claude-code-gateway/index.ts`) liefert den Aufruf bereits als Tokens-Array (`baueAufruf`). WS2/WS3 (Prozessstart, noch nicht gebaut) darf dieses Array beim tatsächlichen Subprozessstart nicht zu einem Shell-Kommandostring zusammenfügen (z. B. `child_process.exec`/`execSync` mit interpoliertem String) — dynamischer Prompt-Inhalt im `-p`-Argument könnte sonst über Shell-Metazeichen (`;`, Backtick, `$()`, Anführungszeichen-Escape) aus dem beabsichtigten Einzelbefehl ausbrechen. Node bietet mit `child_process.execFile`/`spawn` samt Argv-Array einen Weg, der den Shell-Parser vollständig umgeht.
+Fundstelle: `src/claude-code-gateway/index.ts` (`baueAufruf`, liefert `AufrufTokens`), noch kein Subprozessstart-Code vorhanden (WS2/WS3 offen).
+Auswirkung: real erst mit dem WS2-Bau — ohne diese Vorgabe könnte ein einziger Fehlgriff (Shell-String statt Argv-Array) E-182 faktisch aushöhlen, unabhängig davon, wie sorgfältig `pruefeAufrufparameter` selbst geprüft hat.
+Maßnahme: In plan-v1 für WS2 als bindende Design-Entscheidung aufnehmen: Subprozessstart ausschließlich über `execFile`/`spawn` mit Argv-Array, nie über eine shell-interpretierte Kommandozeile. Kein eigener Vertrag nötig — normale Vorgabe im WS2-Plan.
+Feature/Run: Challenge F-030 (Reprüfung), im Zuge von F6a, 31.08.2026.
