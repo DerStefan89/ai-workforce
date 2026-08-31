@@ -162,3 +162,27 @@ Design-Entscheidung für den WS2-plan-v1 vorgesehen, kein Blocker.
 
 **Verdict:** `GO_STANDARD` für WS2-Planung — bereit für plan-v1, kein
 offener Pre-Vertrag mehr.
+
+## 31.08.2026 — Challenge WS2/WS3 (Prozessstart, F-053-Schließung)
+
+Vor plan-v1 für WS2/WS3 real gegen den Harness geprüft (Auftrag „F-030
+challengen" → direkt weiter „weiter"). Zwei materielle Befunde,
+gegenüber dem bisherigen `feature.md`-Stand:
+
+- **Befund A:** `ARCHITECTURE.md` §3 verlangt beide Autorisierungs-
+  schichten (F3 Authorization Boundary + F4 Invocation Policy)
+  unabhängig voneinander vor jeder Execution mit Schreibwirkung. Der
+  bisherige Plan sah für WS2 nur F4 vor. Korrigiert: `starteGateway`
+  ruft `pruefeAutorisierung` (F3) **und** `pruefeStartfreigabe` (F4)
+  vor `RUN_PREPARED`.
+- **Befund B:** `feature.md` behauptete „F-053 blockierend erst für
+  F6b, F6a schreibt nicht" — widerspricht der eigenen Workstream-Liste
+  (WS2 startet real einen Prozess). Mit Stefan entschieden: **Option
+  A** — WS3 (der eine echte Lauf) schließt F-053 selbst, durch einen
+  vorgeschalteten, bewusst herbeigeführten Rot-Fall vor dem
+  Erfolgslauf. `feature.md` korrigiert (Dependencies-Abschnitt,
+  Workstream-Liste WS2).
+
+`state/plan-v1-f6a-ws2-ws3-prozessstart.md` erstellt — vollständiger
+technischer Plan für WS2 (Bauauftrag) und WS3 (Design, eigener
+späterer Vertrag). Nächster Schritt: Advisor-Pass (frischer Kontext).
