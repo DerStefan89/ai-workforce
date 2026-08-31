@@ -84,7 +84,10 @@ function gueltigeBaselineInhalt(): string {
 function gueltigerIstZustand(): IstZustand {
   return {
     werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
-    schutzskript_hashes: [sha256Hex(SKRIPT_A_INHALT), sha256Hex(SKRIPT_B_INHALT)],
+    schutzskripte: [
+      { pfad: 'skript-a.js', hash: sha256Hex(SKRIPT_A_INHALT) },
+      { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+    ],
   }
 }
 
@@ -92,7 +95,7 @@ function gueltigerWirksamkeitsnachweis(istZustand: IstZustand, istUebrigeFelder:
   return {
     gueltigkeitsschluessel: {
       werkzeug_konfiguration_hash: istZustand.werkzeug_konfiguration_hash,
-      schutzskript_hashes: istZustand.schutzskript_hashes,
+      schutzskript_hashes: istZustand.schutzskripte.map((eintrag) => eintrag.hash),
       werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
       berechtigungskontext: istUebrigeFelder.berechtigungskontext,
       arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
@@ -133,7 +136,10 @@ test('manipuliertes Schutzskript liefert ABGELEHNT — AC10 Fall 2, E-183', () =
     const baselineReferenz = committeBaseline(repoWurzel, neueLaufId('rot-e183'), gueltigeBaselineInhalt())
     const istZustandManipuliert: IstZustand = {
       werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
-      schutzskript_hashes: [sha256Hex('skript-a-manipuliert'), sha256Hex(SKRIPT_B_INHALT)],
+      schutzskripte: [
+        { pfad: 'skript-a.js', hash: sha256Hex('skript-a-manipuliert') },
+        { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+      ],
     }
     const wirksamkeitsnachweis = gueltigerWirksamkeitsnachweis(istZustandManipuliert, ISTUEBRIGEFELDER)
 
@@ -198,6 +204,27 @@ test('Querkonsistenz zwischen Bedingung 1 und 2 über denselben istZustand: Nach
     assert.strictEqual(bedingung2.ok, false)
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /schutzskript_hashes/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('vertauschte Schutzskript-Inhalte (Hash-Menge gleich, Pfad-Zuordnung getauscht) liefert ABGELEHNT — F-047', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const baselineReferenz = committeBaseline(repoWurzel, neueLaufId('rot-swap'), gueltigeBaselineInhalt())
+    const istZustandVertauscht: IstZustand = {
+      werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
+      schutzskripte: [
+        { pfad: 'skript-a.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+        { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_A_INHALT) },
+      ],
+    }
+
+    const bedingung1 = pruefeStartbedingung1(baselineReferenz, istZustandVertauscht, { repoWurzel })
+    assert.strictEqual(bedingung1.ok, false)
+    assert.ok(!bedingung1.ok)
+    assert.match(bedingung1.grund, /E-183/)
   } finally {
     rmSync(repoWurzel, { recursive: true, force: true })
   }

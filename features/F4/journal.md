@@ -128,3 +128,70 @@ endet mit Diff-Vorlage und wartet auf Freigabe.
 ## Nächster sinnvoller Schritt
 `git status` prüfen, Diff zur Freigabe zeigen, `state/freigabe-commit.md`
 abwarten, dann committen (gezielte Pfade, `git-flow`-Skill) und pushen.
+
+## 2026-08-31 — Retroactiver Review-Pass (nach Merge, PR #33)
+
+F4 war bereits gemergt (main HEAD `d32f10c`), als das erstmalige Muster
+eines nachträglichen Review-Passes (Code-Reviewer + QA parallel, beide
+frischer Kontext, nur Lesezugriff) auf dieses Feature angewendet wurde —
+Anlass F-046. Ergebnisse in `state/code-reviewer-findings-f4-invocation-policy.md`
+und `state/qa-findings-f4-invocation-policy.md` abgelegt.
+
+Beide Rollen: **Freigegeben mit Hinweisen**, kein Blocker nach
+CLAUDE.md-Kriterien. Code-Reviewer: 3 Befunde (Mehrwort-Verbotsparameter
+`--permission-mode bypassPermissions` matcht nicht bei tokenisiertem
+Aufruf-Array; duplizierte Repo-Wurzel-Konstante F3/F4; projektweites
+Schema/Handvalidierer-Duplikationsmuster). QA: 8 Befunde, wichtigster ist
+ein Multiset- statt Pfad-zu-Hash-Vergleich bei der Schutzskript-Prüfung
+(`schutzskriptHashSaetzeGleich`) — ein Vertauschen zweier gültiger
+Schutzskript-Inhalte würde nicht erkannt, obwohl AC3 „jedes referenzierte"
+Skript einzeln prüfen lassen will; kein Test deckt diesen Fall ab. Übrige
+Befunde sind Testlücken (fehlendes statt manipuliertes Schutzskript,
+mehrere gleichzeitige Verbotsparameter, korrupte Teil-Liste,
+Pfadnormalisierung ohne Schreibvarianten-Test, kein End-to-End-Test der
+Ablehnungskette, AC1-Metaschema-Check fehlt projektweit) oder bereits als
+offene Entscheidung dokumentierte Punkte (Mehrwort-Verbotsparameter-Format,
+Pfadnormalisierung selbst — beide schon in plan-v1 als „offene
+Unsicherheit" benannt, keine stillschweigende Annahme).
+
+Kein Code unter `src/invocation-policy/` in diesem Schritt geändert — F4
+ist bereits gemergt, eine Korrektur bräuchte einen eigenen, freigegebenen
+Vertrag.
+
+## 2026-08-31 — F-047 behoben (Schutzskript-Hash-Prüfung pfadgebunden)
+
+Sachbefund aus dem retroactiven Review-Pass (F-047) direkt behoben —
+Entscheidung: kleiner, lokaler Fix innerhalb des bereits freigegebenen
+AC3-Scopes, keine Architekturänderung, kein Cross-Feature-Impact, daher
+kein neuer Vertrag/Advisor-Zyklus.
+
+`IstZustand.schutzskript_hashes: string[]` (`types.ts`) ersetzt durch
+`schutzskripte: SchutzskriptEintrag[]` (`{ pfad, hash }[]`, pfadgebunden,
+analog `BaselineEintrag.schutzskripte`). `pruefeStartbedingung1` (E-183,
+`index.ts`) vergleicht jetzt über die neue Funktion
+`schutzskripteStimmenUeberein` pfadgebunden statt mengenbasiert — jeder
+Baseline-Pfad braucht einen Ist-Eintrag mit demselben normalisierten Pfad
+UND Hash. `pruefeStartbedingung2` (E-188) bleibt bewusst mengenbasiert
+(`schutzskriptHashSaetzeGleich`, jetzt mit Kommentar begründet): das
+Wirksamkeitsnachweis-Schema trägt keine Pfadbindung, das bleibt laut
+§16.8 Punkt 8 ein eigener, weiterhin offener Punkt — nicht Teil dieses
+Fixes.
+
+TEMP-ROT-FALL-Beleg real durchgespielt: neuer Testfall „vertauschte
+Schutzskript-Inhalte (Hash-Menge gleich, Pfad-Zuordnung getauscht) liefert
+ABGELEHNT — F-047" zunächst gegen den unveränderten Code laufen lassen —
+`AssertionError: true !== false`, d. h. `pruefeStartbedingung1` lieferte
+`ok:true` (fälschlich FREIGEGEBEN-fähig) für vertauschte Skript-Inhalte.
+Nach dem Fix derselbe Fall korrekt `ok:false` (E-183). Alle Aufrufstellen
+der alten Form nachgezogen (`invocation-policy.test.ts`,
+`scripts/check-f4-invocation-policy.mjs` — dort zusätzlich als eigener
+Gate-Rot-Fall „Bedingung 1 Rot-Fall (vertauschte Schutzskript-Inhalte,
+F-047)" ergänzt). Schemas/Fixtures unter `schemas/` unverändert — sie
+bilden `BaselineEintrag`/`WirksamkeitsnachweisEintrag` ab, nicht den
+internen `IstZustand`-Typ.
+
+Verifiziert: `npx tsc --noEmit` sauber, `node --test
+src/invocation-policy/invocation-policy.test.ts` 7/7 grün,
+`node scripts/check-f4-invocation-policy.mjs` grün, `npm run check`
+Exit 0 (58/58 Tests gesamt). Kein Commit, kein Push in diesem Schritt —
+wartet auf Freigabe.

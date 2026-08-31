@@ -89,7 +89,10 @@ function gueltigeBaselineInhalt() {
 function gueltigerIstZustand() {
   return {
     werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
-    schutzskript_hashes: [sha256Hex(SKRIPT_A_INHALT), sha256Hex(SKRIPT_B_INHALT)],
+    schutzskripte: [
+      { pfad: 'skript-a.js', hash: sha256Hex(SKRIPT_A_INHALT) },
+      { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+    ],
   }
 }
 
@@ -97,7 +100,7 @@ function gueltigerWirksamkeitsnachweis(istZustand, istUebrigeFelder) {
   return {
     gueltigkeitsschluessel: {
       werkzeug_konfiguration_hash: istZustand.werkzeug_konfiguration_hash,
-      schutzskript_hashes: istZustand.schutzskript_hashes,
+      schutzskript_hashes: istZustand.schutzskripte.map((eintrag) => eintrag.hash),
       werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
       berechtigungskontext: istUebrigeFelder.berechtigungskontext,
       arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
@@ -167,13 +170,30 @@ try {
 
   const istZustandAbweichenderHash = {
     werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
-    schutzskript_hashes: [sha256Hex('skript-a-manipuliert'), sha256Hex(SKRIPT_B_INHALT)],
+    schutzskripte: [
+      { pfad: 'skript-a.js', hash: sha256Hex('skript-a-manipuliert') },
+      { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+    ],
   }
   const bedingung1RotHash = pruefeStartbedingung1(baselineReferenz, istZustandAbweichenderHash, { repoWurzel })
   if (bedingung1RotHash.ok) {
     befunde.push(`Bedingung 1 Rot-Fall (abweichender Schutzskript-Hash): erwartet ok:false, erhalten ${JSON.stringify(bedingung1RotHash)}`)
   } else {
     console.log(`✓ Bedingung 1 Rot-Fall (abweichender Schutzskript-Hash): abgelehnt (${bedingung1RotHash.grund}).`)
+  }
+
+  const istZustandVertauscht = {
+    werkzeug_konfiguration_hash: sha256Hex(KONFIG_INHALT),
+    schutzskripte: [
+      { pfad: 'skript-a.js', hash: sha256Hex(SKRIPT_B_INHALT) },
+      { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_A_INHALT) },
+    ],
+  }
+  const bedingung1RotSwap = pruefeStartbedingung1(baselineReferenz, istZustandVertauscht, { repoWurzel })
+  if (bedingung1RotSwap.ok) {
+    befunde.push(`Bedingung 1 Rot-Fall (vertauschte Schutzskript-Inhalte, F-047): erwartet ok:false, erhalten ${JSON.stringify(bedingung1RotSwap)}`)
+  } else {
+    console.log(`✓ Bedingung 1 Rot-Fall (vertauschte Schutzskript-Inhalte, F-047): abgelehnt (${bedingung1RotSwap.grund}).`)
   }
 
   const baselineReferenzAusserhalb = {

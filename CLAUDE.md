@@ -95,6 +95,9 @@ leeren Template grün.
 - [ ] Code ist sinnvoll kommentiert (Datei-Header + Funktionsdoku, siehe
       `docs/kommentar-standard.md`)
 - [ ] `npm run check` → Exit 0
+- [ ] Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer
+      Kontext) vor Freigabe/Commit durchlaufen — nicht optional, nicht
+      retroactiv nachgeholt (F-046)
 - [ ] KEINE Commits ohne explizite Freigabe
 
 ---

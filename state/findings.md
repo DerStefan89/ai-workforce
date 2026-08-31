@@ -350,3 +350,80 @@ Fundstelle: `.git/index.lock`-Kollisionen, F5-Merge-Abschluss, 31.08.2026.
 Auswirkung: gering im real beobachteten Fall (Inhalt vor Wiederherstellung byteidentisch gegen `origin/main` geprüft, kein Datenverlust) — potenziell höher bei einem `checkout`/`pull`/`reset` ohne vorherige Verifikation.
 Maßnahme: externe Verifikation auf index-neutrale Befehle beschränkt (`git log`, `git show <rev>:<pfad>`, `git diff <revA> <revB>`), kein `checkout`/`pull`/`reset` auf einem potenziell parallel genutzten Repo — als feste Regel in `docs/harness/geraete-bruecke-verifikation.md` festgehalten, zusammengeführt mit F-034.
 Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026; behoben Findings-Batch, 31.08.2026.
+
+**F-046** · `PROCESS_IMPROVEMENT` · P1 · **entschieden**
+Titel: F4 wurde ohne vorherigen Code-Reviewer-/QA-Pass gemergt — kein
+strukturell erzwungener Review-Schritt zwischen Ausführung und Merge.
+Beschreibung: Retroactiver Review-Pass auf F4 (bereits gemergt, PR #33, main
+HEAD `2c3f6f3`) durchgeführt: Subagent `code-reviewer` auf
+`src/invocation-policy/`, `src/authorization-boundary/index.ts`
+(additiver Diff), `scripts/check-f4-invocation-policy.mjs`, die beiden
+neuen Schemas angesetzt; Subagent `qa` auf F4 aus Nutzersicht angesetzt.
+Beide Ergebnisse in `state/code-reviewer-findings-f4-invocation-policy.md`
+und `state/qa-findings-f4-invocation-policy.md` abgelegt (erstmaliges
+Muster für einen nachträglichen Review-Pass in diesem Projekt). Beide
+Rollen: „Freigegeben mit Hinweisen", kein Blocker. Wichtigster
+Sachbefund: Schutzskript-Prüfung vergleicht nur die Menge der Hashes
+(Multiset), nicht Pfad-zu-Hash-Zuordnung — ein Vertauschen zweier gültiger
+Skript-Inhalte bliebe FREIGEGEBEN, obwohl AC3 „jedes referenzierte" Skript
+prüfen lassen will. Der eigentliche Prozess-Befund ist aber, dass diese
+Befunde erst nachträglich entstanden, weil kein Review-Schritt vor dem
+Merge strukturell erzwungen war — anders als beim üblichen Ablauf
+(Advisor-Pass vor dem Bau, aber kein Reviewer-/QA-Pass danach, vor dem
+Commit/Merge).
+Fundstelle: Ablauf F4 (`features/F4/journal.md`, Abschnitt „Ausführung" —
+endet direkt mit Diff-Vorlage/Freigabe/Commit, kein Reviewer-/QA-Schritt
+dazwischen).
+Auswirkung: mittel — kein Datenverlust, keine Sicherheitslücke im
+gemergten Stand (kein Befund war blockierend), aber die Sachbefunde
+(insbesondere der Multiset-Hash-Punkt) hätten vor dem Merge auffallen
+können, wenn ein Reviewer-/QA-Pass Teil des Standardablaufs gewesen wäre.
+Maßnahme: Reviewer-/QA-Pass (analog `code-reviewer`/`qa` Subagenten) als
+festen Pflichtpunkt in `CLAUDE.md` Definition of Done ergänzt (gleichrangig
+neben „`npm run check` → Exit 0"), zwischen Ausführung und Freigabe/Commit.
+Der konkrete Sachbefund (Multiset-Hash-Vergleich) ist als eigenständiges
+Finding **F-047** ausgelagert, statt hier mitgeführt zu werden.
+Entschieden mit dieser Prozessänderung — der Sachbefund selbst bleibt über
+F-047 offen und getrennt verfolgt.
+Feature/Run: F4 Invocation Policy, retroactiver Review-Pass, 31.08.2026.
+
+**F-047** · `BUG` · P1 · **behoben**
+Titel: Schutzskript-Hash-Prüfung mengenbasiert statt pfadgebunden (E-183/AC3 nur teilweise erfüllt).
+Beschreibung: `schutzskriptHashSaetzeGleich` (`src/invocation-policy/index.ts`)
+vergleicht Ist- und Baseline-Hashes als sortierte Menge;
+`IstZustand.schutzskript_hashes` (`types.ts`) hat kein Pfadfeld. Ein
+Inhalts-Swap zwischen zwei Schutzskripten ändert die Hash-Menge nicht und
+wird von `pruefeStartbedingung1` nicht erkannt, obwohl AC3 den Hash jedes
+einzelnen Schutzskripts fordert.
+Fundstelle: `src/invocation-policy/index.ts` (`schutzskriptHashSatz`,
+`schutzskriptHashSaetzeGleich`, `pruefeStartbedingung1`),
+`src/invocation-policy/types.ts` (`IstZustand`).
+Auswirkung: Sicherheitsgarantie von E-183 nicht vollständig eingehalten;
+aktuell folgenlos (kein Aufrufer), wird zur echten Lücke sobald F6 diese
+Prüfung produktiv nutzt.
+Maßnahme: `IstZustand` + Vergleichslogik auf pfadgebundene Hash-Paare
+umstellen. Muss vor F6-Anbindung geschlossen sein.
+Fix: `IstZustand.schutzskript_hashes: string[]` → `schutzskripte:
+{ pfad, hash }[]` (`src/invocation-policy/types.ts`, neuer Typ
+`SchutzskriptEintrag`). Neue Funktion `schutzskripteStimmenUeberein`
+(`src/invocation-policy/index.ts`) ersetzt den mengenbasierten Vergleich in
+`pruefeStartbedingung1` (E-183) durch einen pfadgebundenen: jeder
+Baseline-Pfad muss im Ist-Zustand mit demselben normalisierten Pfad UND
+Hash vorkommen. E-188 (`pruefeStartbedingung2`/`Gueltigkeitsschluessel`)
+bleibt bewusst mengenbasiert — das Wirksamkeitsnachweis-Schema trägt keine
+Pfadbindung, Repräsentation des Gültigkeitsschlüssels ist laut §16.8
+Punkt 8 ein eigener, weiterhin offener Punkt außerhalb dieses Fixes.
+Beleg (TEMP-ROT-FALL-Methodik): neuer Testfall „vertauschte
+Schutzskript-Inhalte … liefert ABGELEHNT — F-047" zunächst gegen den
+unveränderten Code laufen lassen — `bedingung1.ok` war `true` (fälschlich
+FREIGEGEBEN-fähig) statt der erwarteten `false`, AssertionError bestätigt
+die Lücke real. Nach dem Fix (Typ + Vergleichsfunktion + alle Aufrufstellen
+in `invocation-policy.test.ts` und `scripts/check-f4-invocation-policy.mjs`
+angepasst, dort zusätzlich als eigener Gate-Rot-Fall ergänzt) läuft
+derselbe Fall korrekt auf `ok:false` (E-183). `npx tsc --noEmit` sauber,
+`node --test src/invocation-policy/invocation-policy.test.ts` 7/7 grün,
+`node scripts/check-f4-invocation-policy.mjs` grün, `npm run check`
+Exit 0 (58/58 Tests).
+Feature/Run: F4 Invocation Policy, retroactiver Review-Pass, 31.08.2026;
+behoben 31.08.2026 (kein neuer Vertrag/Advisor-Zyklus, kleiner Fix
+innerhalb des freigegebenen AC3-Scopes).
