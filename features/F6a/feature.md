@@ -42,8 +42,14 @@ Lauf-Lebenszyklus, nicht dessen Deutung.
 - Aufrufkonstruktion: `--model` je Lauf explizit (E-185),
   `--output-format json`, `--setting-sources project`, Werkzeugsatz
   explizit begrenzt (E-187, Rang `DEKLARIERT`, siehe Nicht-Ziele).
-- Startfreigabe: `pruefeStartfreigabe` (F4) vor jedem Prozessstart.
-  `ABGELEHNT` → `verweigereStart` (F4) und **kein** Prozessstart.
+- Startfreigabe (korrigiert nach Advisor-Pass Befund 1, Option A,
+  31.08.2026): F6a ruft für den Lesepfad ausschließlich F4s
+  `pruefeAufrufparameter` (E-182) auf, **nicht** die volle
+  `pruefeStartfreigabe` (E-183/E-188). ARCHITECTURE.md §3 und
+  Zielfassung §16.4 skalieren `pruefeStartfreigabe` wörtlich auf die
+  **schreibende** Execution — F6a schreibt nicht (siehe Nicht-Ziele).
+  Liefert `pruefeAufrufparameter` einen Treffer: `verweigereStart` (F4)
+  und **kein** Prozessstart.
 - Materialisierung der beiden Gültigkeitsschlüssel-Anteile, die nur das
   Gateway kennt (E-188): Berechtigungskontext des Aufrufs und Pfad des
   Arbeitsverzeichnisses. F4 reicht beide heute als opake Werte durch —
@@ -108,8 +114,13 @@ Ablagepfade): folgt in `state/plan-v1-f6a-claude-code-gateway.md`.
 3. Jeder Aufruf trägt `--model` explizit (E-185); es existiert kein
    Codepfad, der ohne `--model` startet oder ein Modell implizit
    auswählt.
-4. `pruefeStartfreigabe` (F4) wird vor jedem Prozessstart aufgerufen. Bei
-   `ABGELEHNT` wird `verweigereStart` (F4) aufgerufen und **kein**
+4. Vor jedem Prozessstart wird ausschließlich F4s `pruefeAufrufparameter`
+   (E-182) geprüft — **nicht** die volle `pruefeStartfreigabe`
+   (E-183/E-188), die laut ARCHITECTURE.md §3 und Zielfassung §16.4
+   wörtlich auf die schreibende Execution skaliert ist (Advisor-Pass
+   Befund 1, Option A, 31.08.2026 — korrigiert AK4 gegenüber der
+   ursprünglichen Fassung dieser Akte). Liefert `pruefeAufrufparameter`
+   einen Treffer, wird `verweigereStart` (F4) aufgerufen und **kein**
    Prozess gestartet — nachgewiesen durch einen Test, der das
    Prozessstart-Primitiv beobachtbar macht.
 5. Vor jedem Start wird eine `RUN_PREPARED`-Wirkungsmarke über F1B
@@ -161,9 +172,13 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
 
 ## Dependencies
 
-- Hard, erfüllt: **F4** (Invocation Policy) — `pruefeStartfreigabe`,
-  `verweigereStart`, `pruefeAufrufparameter`, `VERBOTENE_AUFRUFPARAMETER`
-  aus `src/invocation-policy/index.ts`, unverändert von außen aufgerufen.
+- Hard, erfüllt: **F4** (Invocation Policy) — `pruefeAufrufparameter`,
+  `VERBOTENE_AUFRUFPARAMETER`, `verweigereStart` aus
+  `src/invocation-policy/index.ts`, unverändert von außen aufgerufen.
+  `pruefeStartfreigabe` (E-183/E-188, volle Startfreigabe) wird von F6a
+  **nicht** aufgerufen — laut ARCHITECTURE §3/Zielfassung §16.4 auf die
+  schreibende Execution skaliert, bleibt F6b vorbehalten (Advisor-Pass
+  Befund 1, Option A, 31.08.2026).
 - Hard, erfüllt: **F5** (Context Builder) — `baueKontextpaket`,
   `pruefeKontextpaketFrisch` aus `src/context-builder/index.ts`.
 - Hard, erfüllt: **F1B/F1** (Checkpoint Store, Wirkungsmarke) —

@@ -188,6 +188,20 @@ test('verbotener Aufrufparameter liefert ok:false — AC10 Fall 4, E-182', () =>
   assert.match(ergebnisRot.grund ?? '', /E-182/)
 })
 
+test('F-048: mehrwortiger Verbotseintrag als Tokens-Array liefert ok:false — E-182', () => {
+  const ergebnis = pruefeAufrufparameter(['--permission-mode', 'bypassPermissions'])
+  assert.strictEqual(ergebnis.ok, false)
+  assert.match(ergebnis.grund ?? '', /E-182/)
+  assert.match(ergebnis.grund ?? '', /--permission-mode bypassPermissions/)
+})
+
+test('F-048: mehrwortiger Verbotseintrag eingebettet in ein größeres Tokens-Array liefert ok:false — E-182', () => {
+  const ergebnis = pruefeAufrufparameter(['--model', 'x', '--permission-mode', 'bypassPermissions', '--output-format', 'json'])
+  assert.strictEqual(ergebnis.ok, false)
+  assert.match(ergebnis.grund ?? '', /E-182/)
+  assert.match(ergebnis.grund ?? '', /--permission-mode bypassPermissions/)
+})
+
 test('Querkonsistenz zwischen Bedingung 1 und 2 über denselben istZustand: Nachweis mit abweichendem schutzskript_hashes-Eintrag driftet trotz grüner Bedingung 1 — F11', () => {
   const repoWurzel = neuesExternesRepo()
   try {

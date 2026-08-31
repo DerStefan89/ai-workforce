@@ -59,3 +59,62 @@ Fünf materielle Befunde:
 - Danach: plan-v1 → Advisor-Pass (frischer Kontext) → plan-v2 →
   Handoff-Vertrag → Bau → Reviewer-/QA-Pass vor dem Merge
   (Definition of Done, seit F-046 verbindlich).
+
+## 31.08.2026 — Advisor-Pass (frischer Kontext, Subagent)
+
+Urteil: **Freigegeben mit Hinweisen**. Vier Befunde, zwei davon vor dem
+Handoff-Vertrag verbindlich zu klären:
+
+- **Befund 1 (Kern):** plan-v1 ließ F6a die volle `pruefeStartfreigabe`
+  (E-183+E-188, inkl. `rot_fall_beleg`) für den Lesepfad aufrufen —
+  widerspricht ARCHITECTURE §3 und Zielfassung §16.4 („Startbedingungen
+  des **schreibenden** Pfades", wortgleich in vier Quellen belegt) und
+  hätte F-053 auch für F6a blockierend gemacht, obwohl die 6a/6b-
+  Trennung aus dem Challenge genau das vermeiden sollte. Als
+  ❓ ENTSCHEIDUNG MENSCH an Stefan gegeben.
+  **Entschieden: Option A** — F6a ruft nur `pruefeAufrufparameter`
+  (E-182) auf, nicht die volle `pruefeStartfreigabe`. `feature.md` AK4,
+  der Scope-Punkt „Startfreigabe" und die F4-Dependency-Zeile wurden
+  entsprechend korrigiert. F6a bleibt damit unabhängig von F-053.
+- **Befund 2:** F2 (Lineage Registry) war in plan-v1 trotz harter
+  Dependency in `feature.md` nicht konkretisiert (wann/wie
+  `registriereKernArtefakt`/`registriereWerkzeugReferenz` aufgerufen
+  wird) — Nacharbeit für plan-v2.
+- **Befund 3:** AK11 (Nachweis-Eintrag in `state/gates.md`) in plan-v1
+  nur beiläufig als F1-Präzedenzfall zitiert, nicht als eigene Zusage —
+  Nacharbeit für plan-v2.
+- **Befund 4:** Extraktionsregel für `modell_beobachtet` aus der realen
+  Laufausgabe in plan-v1 unspezifiziert — darf mit dem Bau mitlaufen
+  (WS2/WS3), kein Scope-Problem.
+
+Entlastend bestätigt: F-048-Fix-Ort, „kein neuer Terminalzustand"-
+Behauptung, F6a/F7-Grenze, F-030-Stand, TP-01e-Referenz,
+`kontrollzustand-roh/`-Design — alle exakt am Code/Repo verifiziert.
+
+Fundstelle: `state/advisor-findings-f6a-claude-code-gateway.md`.
+
+## 31.08.2026 — WS1-Ausführung (Aufrufkonstruktion und Startfreigabe)
+
+Vertrag `state/tasks/f6a-claude-code-gateway-ws1.md` umgesetzt, ohne jeden
+Prozessstart (WS2/WS3 folgen als eigener Vertrag):
+
+- F-048-Fix in `src/invocation-policy/verbotene-aufrufparameter.ts`:
+  `pruefeAufrufparameter` erkennt mehrwortige Verbotseinträge zusätzlich
+  als zusammenhängendes Token-Fenster im Tokens-Array, additiv zum
+  bestehenden `includes`-Pfad, einwortige Einträge unverändert. Zwei neue
+  Testfälle in `invocation-policy.test.ts` (isoliert und eingebettet).
+- Neues, eigenständiges Modul `src/claude-code-gateway/` (`types.ts`,
+  `index.ts`): `baueAufruf` konstruiert den Aufruf ausschließlich als
+  Tokens-Array (`--model` pflicht, `--output-format json`,
+  `--setting-sources project`, `--tools`), wirft synchron ohne `modell`.
+  `pruefeUndVerweigereBeiTreffer` prüft über F4s `pruefeAufrufparameter`
+  (E-182) und ruft bei Treffer F4s `verweigereStart` auf — kein
+  Prozessstart, bewusst nicht `starteGateway` genannt (AK1-4).
+- Gate-Skript `scripts/check-f6a-claude-code-gateway.mjs` (Muster wie
+  F4-Gate), in `npm run check` und `check:template` eingehängt.
+- `state/memory-map.md`, `package.json` aktualisiert.
+
+Ergebnis: `npm run check` und `npm run check:template` grün, alle
+Kalibrierungen (Grün-/Rot-Fälle, F-048-Fenster-Fall) real ausgelöst,
+Regressionsbestand unverändert grün. Freigabe-Halt vor Commit/Push
+eingehalten (Vertragsvorgabe).

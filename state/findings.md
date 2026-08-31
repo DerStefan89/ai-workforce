@@ -602,3 +602,39 @@ Sequenzen zusätzlich nach dem Lauf explizit den erreichten Zustand
 gegenprüfen (Branch, HEAD, ahead/behind), statt den Erfolg aus dem
 Terminaloutput anzunehmen.
 Feature/Run: PR #35 Merge- und F6a-Branch-Erstellung, 31.08.2026.
+**F-055** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Wiederholt stale `.git/index.lock` durch Lesebefehle über die
+Geräte-Brücke blockiert nachfolgende echte Git-Operationen.
+Beschreibung: In dieser Sitzung dreimal aufgetreten. Ein über
+`mcp__remote-devices__device_bash` ausgeführter, rein lesender Git-Befehl
+(`git status`, `git fetch`, `git log`) hinterlässt gelegentlich eine
+`.git/index.lock`-Datei (0 Byte), die die Geräte-Brücke selbst nicht
+löschen kann (`Operation not permitted` beim Versuch, sie zu entfernen —
+vermutlich eine Dateisperren-Eigenheit der Windows/Bridge-Kombination,
+Ursache nicht untersucht, außerhalb des Geltungsbereichs dieses
+Findings). Jeder danach im echten Terminal des Nutzers ausgeführte
+schreibende Git-Befehl (`git add`, `git commit`, `git checkout`)
+scheitert mit „fatal: Unable to create '…/.git/index.lock': File
+exists." — unabhängig davon, ob der Nutzer selbst gerade einen Git-
+Prozess laufen hat. In einem Fall blieb dadurch ein `git checkout -b`
+auf einer veralteten Branch-Basis stehen, bevor der stale Lock bemerkt
+wurde (siehe F-054).
+Fundstelle: `mcp__remote-devices__device_bash`-Aufrufe dieser Sitzung
+(mehrere `git status`/`git fetch`/`git log`-Lesebefehle im Wechsel mit
+🖥️ TERMINAL-Anweisungen an den Nutzer); `.git/index.lock` im lokalen
+Repo-Klon des Nutzers (`C:\Users\stefa\Projekte\ai-workforce`).
+Auswirkung: mittel — kein Datenverlust in dieser Sitzung (jedes Mal
+rechtzeitig bemerkt, bevor destruktive Befehle liefen), aber
+wiederkehrende Reibung: der Nutzer muss den Terminalblock abbrechen,
+`Remove-Item .git\index.lock` manuell ausführen und den unterbrochenen
+Schritt erneut anstoßen. Bei einem unbeaufsichtigten oder eiligen Ablauf
+steigt das Risiko, einen halb ausgeführten Zustand zu übersehen.
+Maßnahme: Vor jedem 🖥️ TERMINAL-Block, der auf zuvor über die
+Geräte-Brücke gelesenen Git-Zustand aufbaut, den lesenden Git-Zugriff über
+die Brücke minimieren oder den Nutzer routinemäßig `Remove-Item
+.git\index.lock -ErrorAction SilentlyContinue` als ersten Schritt
+ausführen lassen, bevor irgendein schreibender Git-Befehl folgt — statt
+den Lock-Fehler erst nach dem Auftreten zu behandeln. Kein Code-Fix
+nötig, reine Ablaufänderung dieser Rollenkette.
+Feature/Run: Challenge/Planung F6a, PR-Merge- und Branch-Sequenzen,
+31.08.2026.
