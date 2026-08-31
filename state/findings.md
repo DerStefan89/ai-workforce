@@ -31,13 +31,13 @@ Auswirkung: ein künftiger Eintrag wie „Node 20" in `CLAUDE.md`/`ARCHITECTURE.
 Maßnahme: Regex um bare zwei-/dreistellige Zahlen direkt nach gelistetem Techniknamen erweitern.
 Feature/Run: Bauauftrag `ebene2-architektur-in-repo-nachziehen`, Kalibrierungsschritt, 28.08.2026.
 
-**F-004** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-004** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Handoff-Vertragsvorlage deckt fehlgeschlagenen Kalibrierungstest nicht ab.
 Beschreibung: ESCALATE-Klauseln decken „Prüfung meldet unerwarteten Befund", aber nicht „erwarteter Rot-Fall tritt nicht ein" (Kalibrierung reproduziert sich selbst nicht).
 Fundstelle: `state/tasks/ebene2-architektur-in-repo-nachziehen.md`, Abschnitt ESCALATE; betrifft den Skill `handoff-vertrag` generell.
 Auswirkung: ausführende Sitzung musste improvisieren (korrekt gehandelt, aber ungedeckt).
-Maßnahme: `handoff-vertrag`-Skill/Vorlage um diesen Fall ergänzen.
-Feature/Run: Bauauftrag `ebene2-architektur-in-repo-nachziehen`, 28.08.2026.
+Maßnahme: `.claude/skills/handoff-vertrag/SKILL.md`, ESCALATE-Bullet um den Fall „erwarteter Rot-Fall tritt nicht ein" ergänzt.
+Feature/Run: Bauauftrag `ebene2-architektur-in-repo-nachziehen`, 28.08.2026; behoben Findings-Batch, 31.08.2026.
 
 **F-005** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
 Titel: Vertragstext ordnete `docs/projekt/*.md` nicht explizit dem Change-Set zu.
@@ -71,12 +71,12 @@ Auswirkung: niedrig — aus Kontext erschließbar, nicht belegt.
 Maßnahme: Glossar füllen oder Gleichsetzungssatz ergänzen.
 Feature/Run: qa-Review Runde 1, 28.08.2026.
 
-**F-009** · `TECH_DEBT` · P3 · offen
+**F-009** · `TECH_DEBT` · P3 · **gelöst**
 Titel: `package.json` Name `"projektname"` nicht umbenannt.
 Fundstelle: `package.json:2`.
 Auswirkung: kosmetisch, taucht in Lauf-Logs auf (`state/gates.md`).
-Maßnahme: auf `"ai-workforce"` setzen.
-Feature/Run: qa-Review Runde 1, 28.08.2026.
+Maßnahme: auf `"ai-workforce"` gesetzt.
+Feature/Run: qa-Review Runde 1, 28.08.2026; behoben Findings-Batch, 31.08.2026.
 
 **F-010** · `TECH_DEBT` · P4 · **gelöst**
 Titel: `kontrollzustand/`/`profiles/` in `ARCHITECTURE.md` im Präsens beschrieben, existieren noch nicht.
@@ -126,11 +126,12 @@ Auswirkung: kosmetisch — kein Platzhalter im eigentlichen Inhalt, aber irrefü
 Maßnahme: Kopfkommentar bei Gelegenheit entfernen.
 Feature/Run: Verifikation AF-F001-Planung, Schritt A, 28.08.2026.
 
-**F-016** · `TECH_DEBT` · P3 · offen
+**F-016** · `TECH_DEBT` · P3 · **gelöst**
 Titel: `state/memory-map.md` Zeile 2 trägt noch `[PROJEKTNAME]` statt „AI Workforce".
 Fundstelle: `state/memory-map.md:2`.
 Auswirkung: niedrig, aber echter übersehener Platzhalter — inkonsistent mit den drei neu ergänzten, korrekt befüllten Zeilen direkt darunter.
-Maßnahme: `[PROJEKTNAME]` durch „AI Workforce" ersetzen.
+Maßnahme: `[PROJEKTNAME]` durch „AI Workforce" ersetzt.
+Feature/Run: behoben Findings-Batch, 31.08.2026.
 
 **F-017** · `PROCESS_IMPROVEMENT` · P4 · offen
 Titel: Zahlenfehler in der Selbstverifikation von plan-v1-feature0-datenformate.
@@ -190,20 +191,20 @@ Auswirkung: hätte unentdeckt bis zum Commit durchlaufen können.
 Maßnahme: „Git meldet Textdatei als binär" nie ohne Byte-Inspektion als False Positive abtun — Kandidat für code-reviewer/qa-Checkliste.
 Feature/Run: F1-Bauauftrag, 29.08.2026.
 
-**F-024** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-024** · `HARNESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Dokumentiertes git-flow-Risiko „Bequemlichkeits-Merge-Link" ist real erneut eingetreten — Skill-Präventionsregel fehlt noch.
 Beschreibung: `.claude/skills/git-flow/SKILL.md` benennt den Fall bereits, aber ohne feste Regel. PR #19 wurde nach dem ersten Push gemergt, während am zweiten Commit noch gearbeitet wurde. Richtig aufgefangen durch Draft-PR #20 (GitHub verweigert Merge eines Drafts strukturell).
 Fundstelle: `.claude/skills/git-flow/SKILL.md`, „Common Issues"; PR #19/#20, 29.08.2026.
 Auswirkung: kein Datenverlust, aber ein überflüssiger zweiter PR-Zyklus.
-Maßnahme: Skill um feste Regel ergänzen: mehrteiliger Bau → PR grundsätzlich als Draft öffnen, erst mit letztem Commit „ready for review". Status: bei F1B/PR #25 und F3/PR #26 beide Male als Draft geöffnet — bewährt sich, Skill-Text selbst noch nicht nachgezogen.
+Maßnahme: Skill um feste Regel ergänzt (Schritt 8): mehrteiliger Bau → PR grundsätzlich als Draft öffnen, erst mit letztem Commit „ready for review". Status: bei F1B/PR #25 und F3/PR #26 beide Male als Draft geöffnet — bewährt sich, Skill-Text jetzt nachgezogen.
 Feature/Run: F1-Bauauftrag, PR #19/#20, 29.08.2026; erneut angewendet PR #25/#26, 30.08.2026.
 
-**F-025** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-025** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
 Titel: Rollenketten-Durchlauf lief als Serie einzeln bestätigter Mikroschritte statt gebündelt — zu langsam.
 Beschreibung: Für Feature 2 wurde nach jedem Git-Vorgang einzeln rückgefragt, jeder Rollenketten-Schritt einzeln angestoßen — jeder Zyklus kostet eine volle manuelle Runde zwischen Challenger-Sitzung und lokaler Claude-Code-Sitzung.
 Fundstelle: Feature 2, plan-v1-Anlauf, 29.08.2026.
 Auswirkung: hoch für Geschwindigkeit, kein inhaltliches Risiko.
-Maßnahme: nicht verzweigende Rollenketten-Schritte bündeln, Rückfrage nur bei echter Verzweigung/Irreversiblem/Merge nach main. Verifikationspflicht bleibt in jedem Schritt bestehen. Ergänzung: Urteils-Schritte (Advisor) brauchen weiter frischen Kontext, sonst prüft die KI faktisch sich selbst. Ergänzung: commit-guard-Freigabe pro Commit bleibt bestehen (bewusste Sicherheitsarchitektur, keine Reibung). Status: bei F1B/F3 zweimal in Folge bewährt.
+Maßnahme: nicht verzweigende Rollenketten-Schritte bündeln, Rückfrage nur bei echter Verzweigung/Irreversiblem/Merge nach main. Verifikationspflicht bleibt in jedem Schritt bestehen. Ergänzung: Urteils-Schritte (Advisor) brauchen weiter frischen Kontext, sonst prüft die KI faktisch sich selbst. Ergänzung: commit-guard-Freigabe pro Commit bleibt bestehen (bewusste Sicherheitsarchitektur, keine Reibung). Status: bei F1B/F3 zweimal in Folge bewährt, jetzt zusätzlich als feste Regel in `CLAUDE.md` (Iterationsprinzip) verankert.
 Feature/Run: Feature 2, 29.08.2026; F1B, F3, 30.08.2026.
 
 **F-026** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -262,29 +263,29 @@ Auswirkung: gering jetzt, aber ein Skript mit Zugriff auf den externen Ordner k�
 Maßnahme: als bewusste Vereinfachung für Fassung 1 akzeptiert. Bei Bedarf später: zusätzlicher Herkunftsnachweis.
 Feature/Run: F3-Advisor-Pass, 30.08.2026.
 
-**F-033** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-033** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Rot-Fall-Kalibrierung an echter Sicherheitsprüfung löst den plattformseitigen Auto-Mode-Classifier aus.
 Beschreibung: Ein Kalibrierungsversuch, der Code der echten Autorisierungs-/Hash-Prüfung testweise veränderte, wurde vom Auto-Mode-Classifier blockiert (nicht über `.claude/settings.json` konfigurierbar). Behoben über manipulierte Testfixtures (falscher `datei_hash`/`commit_hash`) statt Code-Änderung — gleicher Beweiswert.
 Fundstelle: F3-Bauauftrag, Kalibrierungsschritt `node --test src/authorization-boundary/`.
 Auswirkung: gering pro Vorfall, wiederkehrend bei künftiger Rot-Fall-Kalibrierung an sicherheitsrelevantem Code.
-Maßnahme: Handoff-Vertrag-Konvention/Skill `handoff-vertrag` ergänzen: Rot-Fall-Kalibrierung an sicherheitsrelevantem Code standardmäßig über manipulierte Fixtures.
-Feature/Run: F3-Bauauftrag, 30.08.2026.
+Maßnahme: `.claude/skills/handoff-vertrag/SKILL.md`, neuer Abschnitt „Konvention: Rot-Fall-Kalibrierung an geprüfter Logik" ergänzt.
+Feature/Run: F3-Bauauftrag, 30.08.2026; behoben Findings-Batch, 31.08.2026.
 
-**F-034** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-034** · `HARNESS_IMPROVEMENT` · P3 · **zusammengeführt mit F-045**
 Titel: Geräte-Brücken-Lesebefehle (device_bash) können einen verwaisten `.git/index.lock` hinterlassen.
 Beschreibung: Mehrfach beobachtet (zuletzt 30.08.2026, dritte Wiederholung): ein reiner Lese-Git-Befehl über die Geräte-Brücke hinterlässt eine 0-Byte `.git/index.lock`, die reales `git commit` blockieren würde.
 Fundstelle: `mcp__remote-devices__device_bash`-Aufrufe gegen das lokale Repo.
 Auswirkung: gering, aber wiederkehrend.
-Maßnahme: vor jedem Terminal-Block routinemäßig `Remove-Item .git\index.lock -ErrorAction SilentlyContinue` voranstellen.
-Feature/Run: wiederholt seit F1B, zuletzt 30.08.2026.
+Maßnahme: mit F-045 zusammengeführt, gemeinsame Regel siehe `docs/harness/geraete-bruecke-verifikation.md`.
+Feature/Run: wiederholt seit F1B, zuletzt 30.08.2026; zusammengeführt Findings-Batch, 31.08.2026.
 
-**F-035** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-035** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
 Titel: Wiederholung von F-005 — `feature.md`/Planungsdokumente fehlten im ersten F3-Commit.
 Beschreibung: Erster F3-Commit (`c7b4974`) enthielt Modul/Schema/Gate/Tests, aber nicht `features/F3/feature.md` und zugehörige Planungsdateien — CI schlug fehl (check-feature.mjs: „feature.md fehlt"). Gleiches Muster wie F-005: OUTPUT-Liste im Vertrag wurde zu wörtlich genommen.
 Fundstelle: Commit `c7b4974`; `state/tasks/f3-authorization-boundary.md`.
 Auswirkung: ein zusätzlicher Korrektur-Commit, roter CI-Lauf vor Merge.
-Maßnahme: Handoff-Vertrag-Vorlage um festen OUTPUT-Punkt ergänzen: Feature-Akte und alle erzeugten Planungs-/Advisor-/Vertragsdokumente ausdrücklich Teil des Commits.
-Feature/Run: F3-Bauauftrag, Merge-Vorbereitung, 30.08.2026.
+Maßnahme: `.claude/skills/handoff-vertrag/SKILL.md`, OUTPUT-Bullet um festen Punkt ergänzt: Feature-Akte und alle erzeugten Planungs-/Advisor-/Vertragsdokumente ausdrücklich Teil des Commits.
+Feature/Run: F3-Bauauftrag, Merge-Vorbereitung, 30.08.2026; behoben Findings-Batch, 31.08.2026.
 
 **F-036** · `PROCESS_IMPROVEMENT` · P1 · offen
 Titel: Findings-Register war in zwei unabhängig fortgeschriebene Kopien gespalten (dieses Repo-Register vs. Claude-Projekt „AI Workforce").
@@ -342,10 +343,10 @@ Auswirkung: gering — führt zu einem Fehlversuch und einer erneuten Freigabe-A
 Maßnahme: Freigabe unmittelbar vor dem Commit-Versuch anlegen, nicht vorab.
 Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026.
 
-**F-045** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-045** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Lesende Verifikation über die Geräte-Bridge in einem parallel genutzten Arbeitsverzeichnis kann mit einem laufenden lokalen Git-Prozess kollidieren und über `git checkout`/`pull` unbeabsichtigt Working-Tree-Zustand verändern.
 Beschreibung: `.git/index.lock` trat während des F5-Merge-Abschlusses real zweimal auf; zusätzlich stand die lokale `main` nach dem PR-#30-Merge nicht mehr synchron zum Arbeitsverzeichnis (uncommittete Dateien identisch zum bereits gemergten Stand vorhanden, lokale `main` zwei Commits zurück). Ursache nicht abschließend geklärt, aber im Muster deckungsgleich mit einer Kollision zwischen einem parallel auf demselben Repo laufenden Git-Vorgang und einer lesenden Verifikation von außen.
 Fundstelle: `.git/index.lock`-Kollisionen, F5-Merge-Abschluss, 31.08.2026.
 Auswirkung: gering im real beobachteten Fall (Inhalt vor Wiederherstellung byteidentisch gegen `origin/main` geprüft, kein Datenverlust) — potenziell höher bei einem `checkout`/`pull`/`reset` ohne vorherige Verifikation.
-Maßnahme: externe Verifikation auf index-neutrale Befehle beschränken (`git log`, `git show <rev>:<pfad>`, `git diff <revA> <revB>`), kein `checkout`/`pull`/`reset` auf einem potenziell parallel genutzten Repo.
-Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026.
+Maßnahme: externe Verifikation auf index-neutrale Befehle beschränkt (`git log`, `git show <rev>:<pfad>`, `git diff <revA> <revB>`), kein `checkout`/`pull`/`reset` auf einem potenziell parallel genutzten Repo — als feste Regel in `docs/harness/geraete-bruecke-verifikation.md` festgehalten, zusammengeführt mit F-034.
+Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026; behoben Findings-Batch, 31.08.2026.

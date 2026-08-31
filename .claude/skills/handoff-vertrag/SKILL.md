@@ -41,8 +41,16 @@ auf der Platte (`state/tasks/<slug>.md`), nicht nur im Fenster — sonst
    - `SCOPE:` — was dazugehört, gefolgt von `NICHT:` mit dem, was
      ausdrücklich nicht dazugehört.
    - `BUDGET:` — erwartete Durchgänge oder Zeit.
-   - `OUTPUT:` — Artefakt, Pfad, Format, Belege.
+   - `OUTPUT:` — Artefakt, Pfad, Format, Belege. Fester Punkt: Feature-Akte
+     (`features/<id>/feature.md`) und alle im Zuge des Auftrags erzeugten
+     Planungs-/Advisor-/Vertragsdokumente sind ausdrücklich Teil desselben
+     Commits, nicht nur der Produktcode (real übersehen: F-005, wiederholt
+     F-035).
    - `ESCALATE:` — wann angehalten und berichtet wird statt weiterzumachen.
+     Deckt mindestens zwei Standardfälle ab: „Prüfung meldet unerwarteten
+     Befund" und „erwarteter Rot-Fall tritt nicht ein" (Kalibrierung
+     reproduziert sich selbst nicht — das ist kein Grund, einfach
+     weiterzuarbeiten, sondern ein eigener Escalate-Fall, F-004).
 5. **`FOLGT:` ist ein eigener, bedingter achter Punkt, kein Teil der
    sieben Sektionen.** Wird in der NICHT-Liste Arbeit vertagt, steht direkt
    danach der benannte Folgeauftrag (Datei/Slug). "Falls nötig" ohne diese
@@ -63,3 +71,9 @@ auf der Platte (`state/tasks/<slug>.md`), nicht nur im Fenster — sonst
 Dieser Skill schreibt den Auftrag, er führt ihn nicht aus. Bei Aufgaben mit
 Nebenwirkungen gehört vor den Vertrag ein Advisor-Pass (Skill
 `advisor-pass`) und danach ein Reviewer-Pass.
+
+## Konvention: Rot-Fall-Kalibrierung an geprüfter Logik
+
+Soll ein Vertrag den Rot-Fall einer Prüfung (z. B. Signatur- oder
+Abgleichslogik) kalibrieren, sieht die Testfixture dafür einen abweichenden
+Eingabewert vor — der geprüfte Modulcode selbst bleibt unverändert (F-033).

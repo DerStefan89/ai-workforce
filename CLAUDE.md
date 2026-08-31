@@ -73,6 +73,14 @@ leeren Template grün.
   (Test + grünes `npm run check`). Abhängigkeit von einer vorherigen Phase
   ist kein Zuschnittsfehler, solange sie im CONTEXT-Abschnitt explizit
   benannt ist.
+- Nicht verzweigende Rollenketten-Schritte bündeln, statt nach jedem
+  Git-Vorgang oder jedem Schritt einzeln rückzufragen. Rückfrage nur bei
+  echter Verzweigung, bei Irreversiblem oder vor einem Merge nach main.
+  Die Verifikationspflicht pro Schritt bleibt davon unberührt. Urteils-
+  Schritte (Advisor-Pass) brauchen weiterhin frischen Kontext, sonst prüft
+  die KI faktisch sich selbst; die Freigabe pro Commit (`commit-guard`)
+  bleibt ebenfalls bestehen — beides ist bewusste Sicherheitsarchitektur,
+  keine Reibung, die wegoptimiert werden soll (F-025, bewährt bei F1B/F3).
 
 ### Definition of Done
 - [ ] Komponenten/Module sind wiederverwendbar

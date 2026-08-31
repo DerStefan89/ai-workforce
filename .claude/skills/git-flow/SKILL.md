@@ -38,6 +38,11 @@ description: Fuehrt den Standard-Workflow fuer eine freigegebene, kleine Aenderu
    `gh pr checks`. Nicht verfuegbar → NICHT einrichten, stattdessen den
    "Create a pull request..."-Link aus der Push-Ausgabe nennen und per
    unauthentifizierter GitHub-API pruefen, ob bereits ein PR existiert.
+   Ist absehbar, dass der Bau in mehreren Commits ueber mehrere Zyklen
+   laeuft: PR grundsaetzlich als Draft eroeffnen (`gh pr create --draft`),
+   erst mit dem letzten Commit auf "ready for review" setzen
+   (`gh pr ready`). Verhindert strukturell den Bequemlichkeits-Merge-Link
+   nach einem Zwischen-Push (F-024, bewaehrt bei F1B/PR #25, F3/PR #26).
 9. CI-Status pruefen.
 10. NIEMALS selbst mergen — das bleibt beim Menschen. Nur melden, dass CI
     gruen ist und der PR bereit waere.
