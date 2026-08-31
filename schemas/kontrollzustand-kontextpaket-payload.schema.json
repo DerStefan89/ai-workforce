@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-kontextpaket-payload.schema.json",
+  "title": "Kontextpaket-Payload (KONTEXTPAKET_V0)",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn kontextpaket_schema === \"v0\" (F5). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). Kein runtime-/modell-Feld (E-191 N1/N2) — Beispiele unter schemas/examples/ sind bewusst die bare KONTEXTPAKET_V0-Objekte selbst, nicht in eine Checkpoint-Hülle eingebettet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kontextpaket_schema", "lauf_id", "rolle", "elemente", "ausgeschlossen", "erstellt_am"],
+  "properties": {
+    "kontextpaket_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "rolle": { "type": "string", "minLength": 1 },
+    "elemente": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pfad", "zitierter_bereich", "inhalts_hash"],
+        "properties": {
+          "pfad": { "type": "string", "minLength": 1 },
+          "zitierter_bereich": { "type": ["string", "null"] },
+          "inhalts_hash": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "ausgeschlossen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pfad", "grund"],
+        "properties": {
+          "pfad": { "type": "string", "minLength": 1 },
+          "grund": { "enum": ["rolle", "budget"] }
+        }
+      }
+    },
+    "erstellt_am": { "type": "string", "minLength": 1 }
+  }
+}

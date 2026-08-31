@@ -47,3 +47,49 @@ Repo-Recherche klärbar, kein Blocker.
 Handoff-Vertrag `state/tasks/f5-context-builder.md` angelegt, plan-v2
 inklusive Nachtrag wörtlich übernommen. Kein Produktcode in diesem
 Schritt — Vertrag endet mit Freigabe-Halt, noch nicht ausgeführt.
+
+## 2026-08-31 — Ausführung
+
+Vertrag `state/tasks/f5-context-builder.md` auf Branch
+`feature/f5-context-builder` (von `main` `1d6126e` abgezweigt, enthält
+die F5-Planungsdateien real) umgesetzt. SCHRITT-0-Prüfung: Arbeits-
+verzeichnis stimmte, `main` real gegen `1d6126e` verifiziert.
+
+Neues, eigenständiges Modul `src/context-builder/{index,types}.ts` (D1,
+kein F2-Touch — real bestätigt: `registriereKernArtefakt`/`pruefeStale`
+unverändert von außen aufgerufen). Ablauf wörtlich in der Vertragsreihen-
+folge umgesetzt: Rollenprüfung (fail-closed bei unbekannter Rolle, Delta
+2) → `#`-Validierung im rohen Pfad (Nachtrag V3) → Rollenfilter auf dem
+rohen Pfad (`ROLLEN_AUSSCHLUSSMUSTER` als Kern-Konstante, D1/D14) →
+Element-Schlüsselbildung mit Duplikat-Idempotenz und Widerspruchsprüfung
+(Delta 1, Nachtrag V4) → zweiphasige Budget-Vergabe (notwendige Anfragen
+zuerst, kumulativ gegen das volle Budget, Delta 4 + Nachtrag-Pseudocode)
+→ Registrierung über F2. `pruefeKontextpaketFrisch` als dünner Aufrufer
+von F2s `pruefeStale`, reicht dessen stilles `{stale:false}`-Verhalten
+bei nicht existierender Referenz unverändert durch (Delta 5).
+
+Neues Schema `schemas/kontrollzustand-kontextpaket-payload.schema.json`
+(fünf Fixtures), neues Gate `scripts/check-f5-context-builder.mjs`, elf
+`node:test`-Fälle in `context-builder.test.ts` (AC1–AC7, AC10/Delta 5,
+Delta 2, Nachtrag V3, Nachtrag V4).
+
+Kalibrierung real durchgespielt: ein Fixture-Rot-Fall (invalid-Fixture
+temporär in valid-Position, Original danach wiederhergestellt) plus drei
+reale, temporäre Codeeingriffe in `src/context-builder/index.ts`
+(Rollenfilter invertiert → 8 Fehlschläge, Budget-Phasentrennung
+aufgehoben → exakt AC5, Rollenprüfung/`#`-Validierung deaktiviert →
+exakt Delta 2 und Nachtrag V3), danach zurückgenommen
+(`grep -rn "TEMP-ROT-FALL" src/` zeigt keinen Treffer). Details und
+volle Belege in `state/gates.md`, F5-Context-Builder-Gate-Zeile.
+
+`npm run check` und `npm run check:template` grün.
+
+## Status
+- [ ] Freigegeben
+- [ ] Freigegeben mit Hinweisen
+- [ ] Nicht freigegeben
+- [ ] Blockiert
+
+## Nächster sinnvoller Schritt
+`git status` prüfen, Diff zur Freigabe zeigen, `state/freigabe-commit.md`
+abwarten, dann committen (gezielte Pfade, `git-flow`-Skill) und pushen.
