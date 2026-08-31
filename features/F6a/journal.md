@@ -92,3 +92,29 @@ Behauptung, F6a/F7-Grenze, F-030-Stand, TP-01e-Referenz,
 `kontrollzustand-roh/`-Design — alle exakt am Code/Repo verifiziert.
 
 Fundstelle: `state/advisor-findings-f6a-claude-code-gateway.md`.
+
+## 31.08.2026 — WS1-Ausführung (Aufrufkonstruktion und Startfreigabe)
+
+Vertrag `state/tasks/f6a-claude-code-gateway-ws1.md` umgesetzt, ohne jeden
+Prozessstart (WS2/WS3 folgen als eigener Vertrag):
+
+- F-048-Fix in `src/invocation-policy/verbotene-aufrufparameter.ts`:
+  `pruefeAufrufparameter` erkennt mehrwortige Verbotseinträge zusätzlich
+  als zusammenhängendes Token-Fenster im Tokens-Array, additiv zum
+  bestehenden `includes`-Pfad, einwortige Einträge unverändert. Zwei neue
+  Testfälle in `invocation-policy.test.ts` (isoliert und eingebettet).
+- Neues, eigenständiges Modul `src/claude-code-gateway/` (`types.ts`,
+  `index.ts`): `baueAufruf` konstruiert den Aufruf ausschließlich als
+  Tokens-Array (`--model` pflicht, `--output-format json`,
+  `--setting-sources project`, `--tools`), wirft synchron ohne `modell`.
+  `pruefeUndVerweigereBeiTreffer` prüft über F4s `pruefeAufrufparameter`
+  (E-182) und ruft bei Treffer F4s `verweigereStart` auf — kein
+  Prozessstart, bewusst nicht `starteGateway` genannt (AK1-4).
+- Gate-Skript `scripts/check-f6a-claude-code-gateway.mjs` (Muster wie
+  F4-Gate), in `npm run check` und `check:template` eingehängt.
+- `state/memory-map.md`, `package.json` aktualisiert.
+
+Ergebnis: `npm run check` und `npm run check:template` grün, alle
+Kalibrierungen (Grün-/Rot-Fälle, F-048-Fenster-Fall) real ausgelöst,
+Regressionsbestand unverändert grün. Freigabe-Halt vor Commit/Push
+eingehalten (Vertragsvorgabe).
