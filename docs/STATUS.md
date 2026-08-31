@@ -79,6 +79,23 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   Human-Transport-Läufe an, ohne neuen Schreibpfad (Gate
   `scripts/check-f9-human-transport.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
+- F5 (Context Builder) ist umgesetzt: `src/context-builder/` baut aus
+  einer Anfrageliste (Pfad, Frage, Begründung, vom Aufrufer bereits
+  gelesener Inhalt) ein begrenztes Kontextpaket je Auftrag und Rolle —
+  Rollenfilter (Kern-Konstante, keine Profilzuordnung, D1/D14),
+  Duplikat-/Widerspruchserkennung über einen zusammengesetzten
+  Element-Schlüssel, zweiphasige Budget-Vergabe (notwendige Anfragen
+  zuerst, kumulativ gegen das volle Budget — Evidenz vor Budget,
+  Entscheidung 115). Eine notwendige Anfrage, die nicht ins Budget
+  passt, stoppt den Bau vollständig statt eines Teilpakets. Das Paket
+  wird über F2s `registriereKernArtefakt` registriert, `pruefeKontext-
+  paketFrisch` prüft ein bereits gebautes Paket über F2s `pruefeStale`
+  auf STALE, bevor es erneut ausgeliefert wird. Kein Runtime-/Modell-
+  Feld im Schema (E-191 N1/N2). Zwei Advisor-Pässe (erster: nicht
+  freigegeben, sechs Deltas gelöst; zweiter, delta-beschränkt:
+  freigegeben mit Hinweisen) vor dem Bau (Gate
+  `scripts/check-f5-context-builder.mjs`, eingehängt in `npm run check`
+  und `npm run check:template`).
 
 ## Offene Punkte
 

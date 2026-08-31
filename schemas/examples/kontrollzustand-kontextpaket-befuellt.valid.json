@@ -1,0 +1,12 @@
+{
+  "kontextpaket_schema": "v0",
+  "lauf_id": "beispiel-lauf",
+  "rolle": "qa",
+  "elemente": [
+    { "pfad": "features/F5/feature.md", "zitierter_bereich": "Akzeptanzkriterien", "inhalts_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
+  ],
+  "ausgeschlossen": [
+    { "pfad": "state/tasks/f5-context-builder.md", "grund": "rolle" }
+  ],
+  "erstellt_am": "2026-08-31T09:00:00.000Z"
+}
