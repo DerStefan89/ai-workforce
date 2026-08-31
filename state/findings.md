@@ -333,3 +333,19 @@ Fundstelle: `state/tasks/f5-context-builder.md`, Rollentabelle.
 Auswirkung: gering jetzt (N2 ist DEKLARIERT, nicht ERZWUNGEN); eine künftige Besetzungsänderung erzwingt sonst eine Änderung an dieser Kern-Datei statt einer Konfigurationszeile.
 Maßnahme: bei F6 (zweiter realer Aufrufer) oder beim nächsten ohnehin anstehenden Bauauftrag auf getrennte Rolle/Runtime-Felder umstellen.
 Feature/Run: F5 Context Builder, plan-v2, 31.08.2026.
+
+**F-044** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `state/freigabe-commit.md` kann zwischen Vorbereitung und tatsächlichem Commit-Versuch das 10-Minuten-Fenster von `commit-guard.cjs` überschreiten.
+Beschreibung: Wird die Freigabedatei vorab angelegt (z. B. während noch Diff/Bericht geprüft werden), statt unmittelbar vor dem eigentlichen `git commit`/`git push`-Aufruf, kann das Frischefenster ablaufen, bevor der Befehl läuft — der Guard verweigert dann mit „ist N Minuten alt (Frischefenster 10 Minuten) — verweigert", obwohl die Freigabe inhaltlich noch galt.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (Frischefenster-Prüfung); real beobachtet während des F5-Merge-Vorgangs, 31.08.2026.
+Auswirkung: gering — führt zu einem Fehlversuch und einer erneuten Freigabe-Anlage, kein Datenverlust, keine Sicherheitslücke.
+Maßnahme: Freigabe unmittelbar vor dem Commit-Versuch anlegen, nicht vorab.
+Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026.
+
+**F-045** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Lesende Verifikation über die Geräte-Bridge in einem parallel genutzten Arbeitsverzeichnis kann mit einem laufenden lokalen Git-Prozess kollidieren und über `git checkout`/`pull` unbeabsichtigt Working-Tree-Zustand verändern.
+Beschreibung: `.git/index.lock` trat während des F5-Merge-Abschlusses real zweimal auf; zusätzlich stand die lokale `main` nach dem PR-#30-Merge nicht mehr synchron zum Arbeitsverzeichnis (uncommittete Dateien identisch zum bereits gemergten Stand vorhanden, lokale `main` zwei Commits zurück). Ursache nicht abschließend geklärt, aber im Muster deckungsgleich mit einer Kollision zwischen einem parallel auf demselben Repo laufenden Git-Vorgang und einer lesenden Verifikation von außen.
+Fundstelle: `.git/index.lock`-Kollisionen, F5-Merge-Abschluss, 31.08.2026.
+Auswirkung: gering im real beobachteten Fall (Inhalt vor Wiederherstellung byteidentisch gegen `origin/main` geprüft, kein Datenverlust) — potenziell höher bei einem `checkout`/`pull`/`reset` ohne vorherige Verifikation.
+Maßnahme: externe Verifikation auf index-neutrale Befehle beschränken (`git log`, `git show <rev>:<pfad>`, `git diff <revA> <revB>`), kein `checkout`/`pull`/`reset` auf einem potenziell parallel genutzten Repo.
+Feature/Run: F5 Context Builder, Merge/Abschluss, 31.08.2026.

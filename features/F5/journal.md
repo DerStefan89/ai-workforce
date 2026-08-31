@@ -85,7 +85,7 @@ volle Belege in `state/gates.md`, F5-Context-Builder-Gate-Zeile.
 `npm run check` und `npm run check:template` grün.
 
 ## Status
-- [ ] Freigegeben
+- [x] Freigegeben
 - [ ] Freigegeben mit Hinweisen
 - [ ] Nicht freigegeben
 - [ ] Blockiert
@@ -93,3 +93,19 @@ volle Belege in `state/gates.md`, F5-Context-Builder-Gate-Zeile.
 ## Nächster sinnvoller Schritt
 `git status` prüfen, Diff zur Freigabe zeigen, `state/freigabe-commit.md`
 abwarten, dann committen (gezielte Pfade, `git-flow`-Skill) und pushen.
+
+## 2026-08-31 — Gemergt, formaler Abschluss
+
+PR #30 gemergt, `main` `56cbc8c`, CI grün. `features/F5/feature.md`
+`Status:` auf `ABGESCHLOSSEN` gesetzt (Präzedenz `features/F9/
+feature.md`). F5 ist damit vollständig abgeschlossen.
+
+## Status
+- [x] Freigegeben
+- [ ] Freigegeben mit Hinweisen
+- [ ] Nicht freigegeben
+- [ ] Blockiert
+
+## Nächster sinnvoller Schritt
+Keiner — F5 ist abgeschlossen. Nächstes Feature laut Umsetzungsplan:
+F6 (Claude-Code-Gateway, Deliverable 3).
