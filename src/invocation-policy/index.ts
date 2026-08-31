@@ -34,6 +34,7 @@ import type {
   IstUebrigeFelder,
   IstZustand,
   Schreiber,
+  SchutzskriptEintrag,
   Starturteil,
   WirksamkeitsnachweisEintrag,
 } from './types.ts'
@@ -90,6 +91,15 @@ function normalisierePfadFuerVergleich(pfad: string): string {
   return pfad.replace(/\\/g, '/').toLowerCase()
 }
 
+/**
+ * E-188-Vergleich (Gültigkeitsschlüssel, WirksamkeitsnachweisEintrag): bleibt
+ * mengenbasiert, weil das Wirksamkeitsnachweis-Schema
+ * (gueltigkeitsschluessel.schutzskript_hashes) keine Pfadbindung trägt —
+ * Repräsentation des Gültigkeitsschlüssels ist laut feature.md §16.8
+ * Punkt 8 ein eigener, noch offener Punkt, NICHT Teil des F-047-Fixes
+ * (der betrifft ausschließlich E-183/AC3, siehe schutzskripteStimmenUeberein
+ * unten).
+ */
 function schutzskriptHashSatz(hashes: string[]): string[] {
   return [...hashes].map(normalisiereHash).sort()
 }
@@ -99,6 +109,25 @@ function schutzskriptHashSaetzeGleich(a: string[], b: string[]): boolean {
   const satzB = schutzskriptHashSatz(b)
   if (satzA.length !== satzB.length) return false
   return satzA.every((wert, index) => wert === satzB[index])
+}
+
+/**
+ * E-183-Vergleich (F-047-Fix): pfadgebunden statt mengenbasiert. Jeder
+ * Baseline-Eintrag muss einen Ist-Eintrag mit demselben normalisierten Pfad
+ * UND demselben Hash haben — AC3 verlangt den Hash JEDES einzelnen
+ * referenzierten Schutzskripts, nicht nur eine passende Gesamtmenge. Löst
+ * die Swap-Lücke: ein Inhalts-Tausch zwischen zwei Schutzskripten (Hash-Menge
+ * bleibt gleich, Pfad-Zuordnung ändert sich) galt vorher fälschlich als
+ * FREIGEGEBEN-fähig.
+ */
+function schutzskripteStimmenUeberein(ist: SchutzskriptEintrag[], baseline: { pfad: string; hash: string }[]): boolean {
+  if (ist.length !== baseline.length) return false
+  const istNachPfad = new Map<string, string>()
+  for (const eintrag of ist) {
+    istNachPfad.set(normalisierePfadFuerVergleich(eintrag.pfad), normalisiereHash(eintrag.hash))
+  }
+  if (istNachPfad.size !== ist.length) return false
+  return baseline.every((eintrag) => istNachPfad.get(normalisierePfadFuerVergleich(eintrag.pfad)) === normalisiereHash(eintrag.hash))
 }
 
 /** Reine Funktion: prüft einen geparsten Baseline-Eintrag gegen schemas/kontrollzustand-invocation-policy-baseline-payload.schema.json. */
@@ -290,9 +319,8 @@ export function pruefeStartbedingung1(baselineReferenz: BaselineReferenz, istZus
     return { ok: false, grund: 'Hash der Werkzeugkonfiguration weicht von der Baseline ab (E-183)' }
   }
 
-  const baselineSchutzskriptHashes = baseline.schutzskripte.map((eintrag) => eintrag.hash)
-  if (!schutzskriptHashSaetzeGleich(istZustand.schutzskript_hashes, baselineSchutzskriptHashes)) {
-    return { ok: false, grund: 'Schutzskript-Hash(es) weichen von der Baseline ab oder fehlen (E-183)' }
+  if (!schutzskripteStimmenUeberein(istZustand.schutzskripte, baseline.schutzskripte)) {
+    return { ok: false, grund: 'Schutzskript-Hash(es) weichen von der Baseline ab, fehlen, oder sind pfadvertauscht (E-183)' }
   }
 
   return { ok: true }
@@ -321,7 +349,7 @@ export function pruefeStartbedingung2(
 
   const istGueltigkeitsschluessel: Gueltigkeitsschluessel = {
     werkzeug_konfiguration_hash: istZustand.werkzeug_konfiguration_hash,
-    schutzskript_hashes: istZustand.schutzskript_hashes,
+    schutzskript_hashes: istZustand.schutzskripte.map((eintrag) => eintrag.hash),
     werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
     berechtigungskontext: istUebrigeFelder.berechtigungskontext,
     arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,

@@ -18,10 +18,16 @@ export interface BaselineEintrag {
   erzeugt_am?: string
 }
 
-/** Real gemessener Ist-Zustand (Hash der Werkzeugkonfiguration + Hashes der referenzierten Schutzskripte) — einmal je pruefeStartfreigabe-Aufruf gemessen, an beide Startbedingungen weitergereicht (plan-v2 Delta 1, löst F11). */
+/** Ein real gemessenes Schutzskript: Pfad + Hash, pfadgebunden (F-047-Fix). */
+export interface SchutzskriptEintrag {
+  pfad: string
+  hash: string
+}
+
+/** Real gemessener Ist-Zustand (Hash der Werkzeugkonfiguration + Pfad/Hash-Paare der referenzierten Schutzskripte) — einmal je pruefeStartfreigabe-Aufruf gemessen, an beide Startbedingungen weitergereicht (plan-v2 Delta 1, löst F11). schutzskripte ist pfadgebunden (F-047-Fix, löst den vorherigen mengenbasierten Vergleich ab, der einen Inhalts-Swap zwischen zwei Schutzskripten nicht erkannte). */
 export interface IstZustand {
   werkzeug_konfiguration_hash: string
-  schutzskript_hashes: string[]
+  schutzskripte: SchutzskriptEintrag[]
 }
 
 /** Übrige Bestandteile des Gültigkeitsschlüssels (E-188), die NICHT aus istZustand abgeleitet werden. */
