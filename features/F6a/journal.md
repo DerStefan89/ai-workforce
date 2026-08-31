@@ -186,3 +186,42 @@ gegenüber dem bisherigen `feature.md`-Stand:
 `state/plan-v1-f6a-ws2-ws3-prozessstart.md` erstellt — vollständiger
 technischer Plan für WS2 (Bauauftrag) und WS3 (Design, eigener
 späterer Vertrag). Nächster Schritt: Advisor-Pass (frischer Kontext).
+
+## 31.08.2026 — Advisor-Pass WS2/WS3 (Korrektur, Option B bestätigt)
+
+Advisor-Pass (frischer Kontext, Subagent) gegen `state/plan-v1-f6a-ws2-ws3-prozessstart.md`
+Fassung 1 (nie über den lokalen Branch hinaus gelangt). Urteil:
+**Nicht freigegeben, Überarbeitung nötig.**
+
+Befund 1 (kritisch): Fassung 1 verlangte für WS2/WS3 F3 +
+volle `pruefeStartfreigabe` — widerspricht dem Wortlaut von
+`ARCHITECTURE.md` §3 und `docs/projekt/zielfassung.md` §16.4 (beide
+skalieren die Prüfung auf „Execution mit Schreibwirkung"/den
+„schreibenden Pfad"; WS2/WS3 sind laut eigenem Scope lese-beschränkt)
+und kehrte damit Stefans bereits im WS1-Advisor-Pass getroffene
+Entscheidung still um, ohne das als neue Abzweigung zu kennzeichnen.
+`feature.md` stand dadurch an vier gegen zwei Stellen intern
+widersprüchlich, `findings.md`s F-053-Eintrag wurde nicht nachgezogen.
+
+Befund 2 (mittel): Design-Entscheidung 5 (Fassung 1) behauptete, ein
+`model`-Feld sei in `state/tp-nachtrag.md` belegt — Volltextsuche:
+null Treffer. Unbelegte Behauptung.
+
+Befund 3/4 (gering): möglicher gemeinsamer Lese-Helfer für die
+geschützte-Repo-Sequenz (F3/F4 dupliziert sie bereits), Zitatungenauigkeit.
+
+**Erneut Stefan vorgelegt, entschieden: Option B** — es bleibt bei der
+ursprünglichen WS1-Entscheidung. WS2/WS3 rufen weder F3 noch die volle
+`pruefeStartfreigabe` auf; F-053 bleibt vollständig außerhalb dieses
+Features. `state/plan-v1-f6a-ws2-ws3-prozessstart.md` auf Fassung 2
+korrigiert (Befund 1 vollständig zurückgenommen, Befund 2 als Annahme
+statt Fakt geführt). `feature.md` (Dependencies-Absatz, Workstream-
+Liste WS2) auf denselben, jetzt widerspruchsfreien Stand gebracht.
+`state/findings.md` F-053 unverändert (war nie falsch).
+
+Fundstelle: `state/advisor-findings-f6a-ws2-ws3-prozessstart.md`.
+
+Nächster Schritt: erneuter, frischer Advisor-Pass gegen Fassung 2
+(Kurzprüfung, ob die Rücknahme vollständig und widerspruchsfrei ist) —
+oder, falls Stefan das für ausreichend hält, direkt Handoff-Vertrag
+für WS2.
