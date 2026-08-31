@@ -427,3 +427,80 @@ Exit 0 (58/58 Tests).
 Feature/Run: F4 Invocation Policy, retroactiver Review-Pass, 31.08.2026;
 behoben 31.08.2026 (kein neuer Vertrag/Advisor-Zyklus, kleiner Fix
 innerhalb des freigegebenen AC3-Scopes).
+
+**F-048** · `BUG` · P1 · offen
+Titel: Mehrwort-Verbotsparameter matcht nicht gegen ein tokenisiertes
+Aufruf-Array (Fail-Open bei `--permission-mode bypassPermissions`).
+Beschreibung: `pruefeAufrufparameter` prüft `parameter.includes(verbotenerWert)`
+elementweise. Der Listeneintrag `'--permission-mode bypassPermissions'` ist ein
+einzelner String mit eingebettetem Leerzeichen. Übergibt ein Aufrufer den
+Aufruf als natürliches Tokens-Array (`['--permission-mode',
+'bypassPermissions']`, analog `process.argv`), matcht dieser Eintrag nie.
+Zusätzlich ungetestet: Groß-/Kleinschreibungs- und Whitespace-Varianten
+(strenger Stringvergleich ohne Normalisierung).
+Fundstelle: `src/invocation-policy/verbotene-aufrufparameter.ts:9-16,18-25`;
+bereits als „offene Unsicherheit 4" in
+`state/plan-v1-f4-invocation-policy.md` und `features/F4/journal.md`
+dokumentiert (nicht stillschweigend in Code verwandelt).
+Auswirkung: aktuell folgenlos (F4 hat keinen Aufrufer). Wird zur echten
+Sicherheitslücke, sobald F6 (Claude-Code-Gateway) `pruefeAufrufparameter`
+erstmals mit einer konkreten Aufrufrepräsentation aufruft — und zwar
+ausgerechnet beim gefährlichsten Listeneintrag.
+Maßnahme: Aufrufrepräsentation im F6-Challenge festlegen (Tokens-Array vs.
+Kommandozeilen-String) und `pruefeAufrufparameter` entsprechend härten;
+Testfall für die tokenisierte Form ergänzen. Muss vor der F6-Anbindung
+entschieden sein.
+Feature/Run: F4 Invocation Policy, retroactiver Review-Pass (code-reviewer
+Befund 1 = qa Befund 5), 31.08.2026.
+
+**F-049** · `TECH_DEBT` · P2 · offen
+Titel: Sammel-Finding F4-Testlücken aus dem retroactiven QA-Pass (fünf
+ungetestete Randfälle).
+Beschreibung: (1) AC10 Fall 2 deckt nur „manipuliertes", nicht „fehlendes"
+Schutzskript ab — die Längenprüfung fängt das vermutlich korrekt ab, ist
+aber unbewiesen. (2) Kein Testfall für mehrere gleichzeitige
+Verbotsparameter. (3) Keine Fixture für eine teilweise korrupte
+`schutzskripte`-Liste (einziger Negativfall ist „Array komplett leer").
+(4) `normalisierePfadFuerVergleich` ohne eigenen Test — reine
+Schreibvarianten (`C:\Foo\Bar` vs. `c:/foo/bar`) ungeprüft, eine
+Regression bliebe unbemerkt. (5) Kein End-to-End-Test der Kette
+`pruefeStartfreigabe()` → `ABGELEHNT` → `verweigereStart()`.
+Fundstelle: `src/invocation-policy/invocation-policy.test.ts`,
+`src/invocation-policy/index.ts:79-91`,
+`schemas/examples/kontrollzustand-invocation-policy-baseline.invalid-leere-schutzskripte.json`;
+Detailbelege in `state/qa-findings-f4-invocation-policy.md`
+(Befunde 2, 3, 4, 6, 7).
+Auswirkung: gering — kein bekanntes Fehlverhalten, der Kernablauf (AC10 vier
+Fälle inkl. realem VERWEIGERT-Terminalartefakt) ist real getestet. Risiko ist
+unbemerkte Regression, nicht aktueller Defekt.
+Maßnahme: eine kleine Nachtrags-Iteration an `invocation-policy.test.ts`,
+wenn ohnehin ein Workstream an F4 geöffnet wird (z. B. beim F-048-Fix vor
+F6). Kein eigenes Feature nötig. Bewusst als ein Finding geführt statt als
+fünf, weil es ein einziger Arbeitsschritt ist.
+Feature/Run: F4 Invocation Policy, retroactiver Review-Pass, 31.08.2026.
+
+**F-050** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Schema-Dateien werden weder gegen das Draft-2020-12-Metaschema noch
+gegen ihre Handvalidierer geprüft — projektweite Drift-Lücke.
+Beschreibung: Zwei zusammenhängende Bestandslücken. (a) Die Gate-Skripte
+validieren nur Fixtures gegen den handgeschriebenen Validierer, nie die
+Schema-Datei selbst gegen das JSON-Schema-Draft-2020-12-Metaschema — ein
+formal ungültiges Schema fällt nicht auf (AC1-artige Kriterien sind damit
+faktisch DEKLARIERT, nicht ERZWUNGEN). (b) Schema-Datei und Handvalidierer
+sind zwei unabhängige Wahrheitsquellen derselben Regeln; driften sie
+auseinander, meldet kein Check das.
+Fundstelle: durchgängiges Projektmuster —
+`scripts/check-f4-invocation-policy.mjs` und die gleichartigen Gate-Skripte
+von F0/F1B/F2/F3/F5/F9; `src/invocation-policy/index.ts:105-231` vs.
+`schemas/kontrollzustand-invocation-policy-*.schema.json`.
+Auswirkung: mittel auf Sicht — kein aktueller Defekt, aber die Zahl der
+Schema/Validierer-Paare wächst mit jedem Feature, und die Drift-Gefahr
+wächst mit.
+Maßnahme: eigener Harness-Schritt, kein Feature-Nachtrag — ein gemeinsames
+Check-Skript, das (a) jede Datei unter `schemas/` gegen das Metaschema
+validiert und (b) mindestens die vorhandenen Fixtures gegen Schema UND
+Handvalidierer laufen lässt, sodass ein Auseinanderlaufen einen Rot-Fall
+erzeugt. Nicht F4-spezifisch, daher bewusst nicht in einem F4-Fix
+mitgelöst.
+Feature/Run: F4 Invocation Policy, retroactiver Review-Pass (qa Befund 8 +
+code-reviewer Befund 3), 31.08.2026.
