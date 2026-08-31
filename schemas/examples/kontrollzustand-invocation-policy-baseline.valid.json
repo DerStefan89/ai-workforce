@@ -1,0 +1,17 @@
+{
+  "werkzeug_konfiguration": {
+    "pfad": ".claude/settings.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "schutzskripte": [
+    {
+      "pfad": ".claude/hooks/guard-settings.js",
+      "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "pfad": ".claude/hooks/commit-guard.cjs",
+      "hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "erzeugt_am": "2026-08-31T00:00:00.000Z"
+}

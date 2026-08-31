@@ -96,6 +96,28 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   freigegeben mit Hinweisen) vor dem Bau (Gate
   `scripts/check-f5-context-builder.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
+- F4 (Invocation Policy / Protection Validator, minimal) ist umgesetzt:
+  `src/invocation-policy/` stellt für eine geplante schreibende Execution
+  lokal, ohne Werkzeugaufruf fest, ob (a) die Werkzeugkonfiguration gültig
+  ist und jedes referenzierte Schutzskript mit dem in einer extern
+  bezeugten Baseline erwarteten Hash übereinstimmt (E-183, gelesen über
+  F3s additiv exportierten `leseAusCommit`-Pfad), und (b) ein
+  Wirksamkeitsnachweis noch zum aktuellen Gültigkeitsschlüssel passt
+  (E-188, kein Drift). Beide Bedingungen teilen sich denselben, einmal
+  gemessenen `istZustand` (Hash-Querkonsistenz, Advisor-Finding F11) —
+  ein Aufrufer kann Bedingung 1 nicht mit aktuellen und Bedingung 2
+  gleichzeitig mit veralteten, aber zueinander passenden Hashes bestehen
+  lassen. `werkzeugsatz_begrenzung` ist in jedem Rückgabepfad fest
+  "DEKLARIERT", nie "ERZWUNGEN" (E-187 bleibt unbelegt). Die
+  E-182-Verbotsliste liegt als eigenständige, von F6 aufrufbare
+  Prüffunktion vor. Bei ABGELEHNT wird F1Bs bestehendes Terminalartefakt
+  VERWEIGERT wiederverwendet, kein neuer Terminalzustand. F4 startet nie
+  selbst einen Werkzeugprozess (AC8, Gate-Grep gegen die Produktionsdateien
+  des Moduls). Advisor-Pass vor dem Bau (Freigegeben mit Hinweisen, zwei
+  Deltas verbindlich gelöst — F11 Hash-Querkonsistenz, F3 D16-analoge
+  Schreibschutz-Auflage für die künftige Wirksamkeitsnachweis-Ablageort-
+  Entscheidung) (Gate `scripts/check-f4-invocation-policy.mjs`, eingehängt
+  in `npm run check` und `npm run check:template`).
 
 ## Offene Punkte
 
