@@ -684,6 +684,22 @@ Auswirkung: gering hier (rein dokumentarisch, kein Code betroffen), aber ein Mus
 Maßnahme: Konvention aufnehmen — wird ein Finding korrigiert, das in einer Feature-Akte wörtlich zitiert oder als Dependency referenziert ist, gehört die Prüfung dieser Referenzstellen zum selben Korrektur-Schritt, nicht zu einem späteren Zufallsfund.
 Feature/Run: F6a WS2/WS3-Statusprüfung, 31.08.2026.
 
+**F-059** · `TECH_DEBT` · P2 · offen
+Titel: `modell_beobachtet` bleibt in WS2 hart `null` — keine Extraktion aus der realen Laufausgabe.
+Beschreibung: `state/tp-nachtrag.md` belegt an keiner Stelle ein `model`-Feld im `"type":"result"`-JSON von `claude -p --output-format json`. Statt eines geratenen Feldnamens setzt WS2 (`src/claude-code-gateway/index.ts`) den Wert bewusst hart auf `null`; Schema (`schemas/kontrollzustand-laufakte-payload.schema.json`) führt `modell_beobachtet` als `string | null`. Entspricht der ursprünglichen Design-Entscheidung 5 aus `state/plan-v1-f6a-ws2-ws3-prozessstart.md` (Annahme, nicht Fakt) und der expliziten Bauanweisung, nicht zu raten.
+Fundstelle: `src/claude-code-gateway/index.ts`, `schemas/kontrollzustand-laufakte-payload.schema.json`, `features/F6a/feature.md` AK8.
+Auswirkung: gering — Modellidentität war ohnehin nur Rang `OBSERVED`, nie Zusicherung (E-185); die Laufakte funktioniert vollständig auch ohne dieses Feld.
+Maßnahme: Feld gegen die reale Ausgabe eines echten `claude -p ...`-Laufs klären — fällt natürlich in WS3 (erster realer Lauf über dieses Modul). Danach kleiner Nachtrag: Extraktion ergänzen, Schema ggf. auf `required` ändern.
+Feature/Run: F6a WS2-Bau, 31.08.2026.
+
+**F-060** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: AK14-Grep-Regel (Shell-String-Verbot) im F6a-Gate hat reale Erkennungslücken.
+Beschreibung: Reviewer-/QA-Pass (frischer Kontext, 31.08.2026) hat die Regel in `scripts/check-f6a-claude-code-gateway.mjs` gegen gedachte Verstoßfälle laufen lassen: `execSync(cmd)` (Wortgrenze `\bexec\(` matcht nicht „execSync("), `tokens.join(',')` (Regel verlangt exakt ein Leerzeichen als Trennzeichen) und Template-Literal-Zusammenbau ohne `.join` werden **nicht** erkannt. Der tatsächlich gebaute Code (`prozessstart.ts`) ist sauber (`execFile` mit Argv-Array, F-057 eingehalten) — die Lücke betrifft nur die Regression-Erkennung für künftige Änderungen. Zum Vergleich: `scripts/check-f4-invocation-policy.mjs:259` nutzt für ein ähnliches Verbot bereits ein wortgrenzensicheres Muster für `execSync`.
+Fundstelle: `scripts/check-f6a-claude-code-gateway.mjs`, AK14-Grep-Regel; Vergleichsmuster `scripts/check-f4-invocation-policy.mjs:259`.
+Auswirkung: kein aktueller Verstoß, aber die mechanische Absicherung von F-057 ist schwächer als angenommen — ein künftiger Fehlgriff (z. B. `execSync` statt `execFile`) würde vom Gate nicht zuverlässig erkannt.
+Maßnahme: Regel härten (Wortgrenzen-sicheres Muster für `exec`/`execSync`, Trennzeichen-unabhängige Join-Erkennung, ggf. Template-Literal-Heuristik) — Muster aus F4s Gate übernehmen. Kein Blocker für den aktuellen Merge, vor dem nächsten Gateway-bezogenen Bau nachziehen.
+Feature/Run: F6a WS2-Reviewer-/QA-Pass, 31.08.2026.
+
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
 Beschreibung: F6a (`src/claude-code-gateway/index.ts`) liefert den Aufruf bereits als Tokens-Array (`baueAufruf`). WS2/WS3 (Prozessstart, noch nicht gebaut) darf dieses Array beim tatsächlichen Subprozessstart nicht zu einem Shell-Kommandostring zusammenfügen (z. B. `child_process.exec`/`execSync` mit interpoliertem String) — dynamischer Prompt-Inhalt im `-p`-Argument könnte sonst über Shell-Metazeichen (`;`, Backtick, `$()`, Anführungszeichen-Escape) aus dem beabsichtigten Einzelbefehl ausbrechen. Node bietet mit `child_process.execFile`/`spawn` samt Argv-Array einen Weg, der den Shell-Parser vollständig umgeht.
