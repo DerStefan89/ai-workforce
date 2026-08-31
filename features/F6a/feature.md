@@ -194,9 +194,16 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
   Sicherheitsentscheidung und gehört nicht in diese Akte.
 - Wird in dieser Akte geschlossen: **F-048** (Aufrufrepräsentation,
   siehe Scope und AK2).
-- Ausdrücklich **nicht** Voraussetzung: F-053 (E-188 ohne erbrachten
-  Rot-Fall) und §16.8 Punkt 3 — F6a schreibt nicht, die Lücke wird erst
-  für F6b blockierend.
+- **Korrigiert 31.08.2026 (WS2/WS3-Challenge, Befund B):** F-053 (E-188
+  ohne erbrachten Rot-Fall) ist **nicht** erst für F6b relevant — WS2/WS3
+  starten real einen (lese-beschränkten) Prozess, §16.4 hängt die volle
+  `pruefeStartfreigabe` an jeden Werkzeugstart, nicht an das
+  Vorhandensein schreibender Tools. WS2s automatisierte Tests bleiben
+  unproblematisch (Attrappe, Fixture-Nachweis). WS3 (der eine echte
+  Lauf) schließt F-053 selbst, statt mit einer ungedeckten Zusage zu
+  laufen (Stefans Entscheidung, Option A — siehe
+  `state/plan-v1-f6a-ws2-ws3-prozessstart.md`). §16.8 Punkt 3 bleibt
+  unverändert referenziert.
 - Nachgelagert: **F7** (Result Evaluator) — erster Konsument der von F6a
   erzeugten Beobachtungsbasis; ohne F7 bleibt jeder Lauf in
   `KLAERUNG_ERFORDERLICH` (AK5, bewusst so entschieden).
@@ -209,10 +216,13 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
   Pflicht, Werkzeugsatz-Begrenzung `DEKLARIERT`. Eigenständig prüfbar
   ohne jeden Prozessstart.
 - **WS2 — Prozessstart und Beobachtungsbasis.** Einsetzbares
-  Prozessstart-Primitiv, `RUN_PREPARED` vor dem Start, zwei getrennte
-  Ablagen (E-190), `LAUFAKTE_V0`-Schema, Gültigkeitsschlüssel-Anteile,
-  `OBSERVED`-Modellidentität, Fehllauf ohne Ergebnisobjekt, Gate + Tests
-  gegen das Attrappen-Werkzeug.
+  Prozessstart-Primitiv (Argv-Array, kein Shell-String — F-057), `RUN_PREPARED`
+  vor dem Start, **beide Autorisierungsschichten** (F3 `pruefeAutorisierung`
+  **und** F4 `pruefeStartfreigabe` vollständig — korrigiert 31.08.2026,
+  Befund A der WS2/WS3-Challenge), zwei getrennte Ablagen (E-190),
+  `LAUFAKTE_V0`-Schema, Gültigkeitsschlüssel-Anteile, `OBSERVED`-
+  Modellidentität, Fehllauf ohne Ergebnisobjekt, Gate + Tests gegen das
+  Attrappen-Werkzeug.
 - **WS3 — Realer Nachweis.** Manuell auszuführendes Nachweis-Skript, ein
   echter `claude -p`-Lauf, Eintrag in `state/gates.md`. Nicht in der
   Standardkette.
