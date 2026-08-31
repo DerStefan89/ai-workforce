@@ -1142,3 +1142,45 @@ nicht die Tabelle oben stillschweigend überschreiben.
   unverändert — die Fixtures liefen vorher durch kein Gate, jetzt durch
   das Gate-Skript, nicht durch `node:test`). Kein Commit, kein Push in
   diesem Schritt.
+
+- 2026-08-31, F6a-Claude-Code-Gateway-Gate, WS2-Baudurchgang
+  (`state/tasks/f6a-ws2-prozessstart.md`): `starteGateway` +
+  `starteProzess` (`src/claude-code-gateway/prozessstart.ts`, neu)
+  gebaut, Gate-Skript um drei Abschnitte erweitert — (e)
+  LAUFAKTE_V0-Fixture-Validierung (5 Fixtures, Muster F5), (f) AK14-Grep
+  gegen Shell-String-Zusammenbau (F-057) samt Selbsttest, dass das Muster
+  einen simulierten Verstoß erkennt, (g) AK12-Grep (kein
+  `permission_denials`-/`non_execution_kind`-Auswertungscode, F7-Grenze,
+  analog F4s AC8). **Zwei reale Selbstfunde beim ersten Lauf, keine
+  Kosmetik:** (1) das AK14-Muster für `shell: true` traf die eigene
+  erklärende Kommentarzeile in `prozessstart.ts`, die diesen Modus
+  ausdrücklich als NICHT umgesetzt beschreibt — Kommentar umformuliert
+  (kein `shell: true` mehr im Wortlaut), Code unverändert. (2) das
+  AK12-Muster traf drei eigene Kommentarstellen in `index.ts`/`types.ts`,
+  die das verbotene Feld beim Namen nannten, sowie die Attrappen-Fixtures
+  in `prozessstart.ts`, die `permission_denials: []` wörtlich aus
+  `state/tp-nachtrag.md` reproduzieren (reine Fixture-Daten, kein
+  Auswertungscode) — Kommentare umformuliert, `prozessstart.ts` analog zur
+  bestehenden `.test.ts`-Ausnahme aus AK14/F4s AC8 vom AK12-Scan
+  ausgenommen (mit Begründung im Skript). **TECH_DEBT, kein Blocker:**
+  `modell_beobachtet` bleibt in WS2 `null` — das reale JSON-Feld für die
+  Modellidentität ist durch `state/tp-nachtrag.md` nicht belegt
+  (Volltextsuche nach „model": kein Treffer), Stefans Entscheidung
+  31.08.2026: nicht raten, Klärung mit echtem Nachweislauf in WS3, eigener
+  Findings-Eintrag folgt separat durch Stefan. Ein Testfall zunächst rot:
+  „starteGateway verweigert … NICHT_GESTARTET" erwartet — Ursache:
+  `starteGateway` prüft vor dem `RUN_PREPARED`, nicht danach (anders als
+  der von Hand konstruierte WS1-Rot-Fall-Test), eine Verweigerung
+  hinterlässt daher eine Terminalmarke ohne vorangehendes `RUN_PREPARED` →
+  F1B liefert `NICHT_GESTARTET`, nicht `ABGESCHLOSSEN` — Testerwartung
+  korrigiert, kein Produktionscode geändert. Danach: `node
+  scripts/check-f6a-claude-code-gateway.mjs` → `✓ 5
+  LAUFAKTE_V0-Payload-Fixture(s) geprüft.`, `✓ AK14: kein
+  Shell-String-Zusammenbau …`, `✓ AK14-Selbsttest: … wird vom Muster
+  erkannt.`, `✓ AK12: kein permission_denials-/non_execution_kind-
+  Auswertungscode …`, `✓ Keine Befunde.`, Exit 0; `npm run check` →
+  Exit 0, `tests 70, pass 70, fail 0`; `npm run lint`/`npm run typecheck`
+  → je sauber (Lint-Info zu `biome.json` vorbestehend, unverändert). `git
+  status --short` nach dem Lauf zeigt keine liegen gebliebenen
+  `kontrollzustand-test/`- oder `kontrollzustand-roh/`-Testartefakte. Kein
+  Commit, kein Push in diesem Schritt.

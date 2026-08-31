@@ -31,6 +31,11 @@ Thumbs.db
 # einen abgebrochenen Testlauf.
 kontrollzustand-test/
 
+# Rohereignisstrom des Claude-Code-Gateways (F6a WS2, E-190) — rohe
+# stdout/stderr-Bytes je Lauf, nie committet. Aus der Laufakte
+# ausschließlich über ihren Inhalts-Hash referenziert.
+kontrollzustand-roh/
+
 # Programm-Ebene — Basislinie und Erfolgskriterium der vier Beteiligten.
 # Personenbezogen, gehört nicht in ein öffentliches Vorlagen-Repo und
 # nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das

@@ -1,0 +1,14 @@
+{
+  "laufakte_schema": "v0",
+  "lauf_id": "beispiel-lauf-abbruch",
+  "werkzeug_version_deklariert": "2.1.241",
+  "berechtigungskontext": "profil-standard",
+  "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+  "modell_beobachtet": null,
+  "beobachtungsbasis_vollstaendig": false,
+  "rohstrom_referenz": {
+    "pfad": "kontrollzustand-roh/beispiel-lauf-abbruch/rohstrom.json",
+    "inhalts_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "erstellt_am": "2026-08-31T09:05:00.000Z"
+}

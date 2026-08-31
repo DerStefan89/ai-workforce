@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-laufakte-payload.schema.json",
+  "title": "Laufakte-Payload (LAUFAKTE_V0)",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn laufakte_schema === \"v0\" (F6a WS2). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). modell_beobachtet ist bewusst nullable geführt: das reale JSON-Feld für die Modellidentität aus der Claude-Code-Laufausgabe ist durch state/tp-nachtrag.md nicht belegt (Volltextsuche nach 'model': kein Treffer) — WS2 rät nicht, sondern lässt den Wert null (TECH_DEBT, Klärung folgt in WS3 mit echtem Nachweislauf). Trägt bewusst kein ergebnis-/permission_denials-Feld (F7-Grenze, AK12).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "laufakte_schema",
+    "lauf_id",
+    "werkzeug_version_deklariert",
+    "berechtigungskontext",
+    "arbeitsverzeichnis_pfad",
+    "modell_beobachtet",
+    "beobachtungsbasis_vollstaendig",
+    "rohstrom_referenz",
+    "erstellt_am"
+  ],
+  "properties": {
+    "laufakte_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "werkzeug_version_deklariert": { "type": "string", "minLength": 1 },
+    "berechtigungskontext": { "type": "string", "minLength": 1 },
+    "arbeitsverzeichnis_pfad": { "type": "string", "minLength": 1 },
+    "modell_beobachtet": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ],
+      "description": "Rang OBSERVED (E-185), nie als Zusicherung verwendet. null solange das reale Extraktionsfeld nicht belegt ist (siehe description oben)."
+    },
+    "beobachtungsbasis_vollstaendig": {
+      "type": "boolean",
+      "description": "false bei einem Lauf ohne valides \"type\":\"result\"-Ergebnisobjekt (Abbruch/Zeitüberschreitung, TP-01e-Muster) — rein deskriptiv, keine Klassifikation."
+    },
+    "rohstrom_referenz": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pfad", "inhalts_hash"],
+      "properties": {
+        "pfad": { "type": "string", "minLength": 1 },
+        "inhalts_hash": { "type": "string", "minLength": 64 }
+      }
+    },
+    "erstellt_am": { "type": "string", "minLength": 1 }
+  }
+}

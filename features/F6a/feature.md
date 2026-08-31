@@ -158,6 +158,46 @@ Ablagepfade): folgt in `state/plan-v1-f6a-claude-code-gateway.md`.
     mechanisch per Grep im Gate geprüft, analog F4s AC8.
 13. `npm run check` → Exit 0.
 
+14. Kein Codepfad im Modul baut den Prozessaufruf als zusammengesetzten
+    Shell-String zusammen (kein `.join(' ')`-artiges Muster, kein
+    `shell: true`, kein shell-interpretierender `exec(`-Aufruf) —
+    mechanisch per Grep im Gate erzwungen, mit Selbsttest, dass die Regel
+    einen simulierten Verstoß auch tatsächlich erkennt (F-057, WS2).
+
+### Status (WS2, state/tasks/f6a-ws2-prozessstart.md)
+
+Nachweis/Status je betroffenem AK — Baudurchgang, `npm run check` grün,
+Reviewer-/QA-Pass vor Merge noch ausstehend:
+
+- **AK5** — `starteGateway` schreibt vor jedem `starteProzess`-Aufruf eine
+  `RUN_PREPARED`-Wirkungsmarke (F1B); Test „liefert eine vollständige
+  Laufakte … Grünfall" und „kennzeichnet die Laufakte als unvollständig …"
+  bestätigen je `stelleLaufstatusFest` → `KLAERUNG_ERFORDERLICH` (kein
+  Terminalausgang durch das Gateway selbst, wie vorgesehen).
+- **AK6** — zwei getrennte Ablagen real umgesetzt: Laufakte über F2s
+  `registriereKernArtefakt` unter `kontrollzustand/`, Rohereignisstrom
+  unter `kontrollzustand-roh/<lauf_id>/rohstrom.json` (nicht committet,
+  `.gitignore` ergänzt), aus der Laufakte nur über `rohstrom_referenz.
+  inhalts_hash` referenziert.
+- **AK7** — `berechtigungskontext`, `arbeitsverzeichnis_pfad` (roh,
+  `process.cwd()`) und `werkzeug_version_deklariert` sind Teil von
+  `LAUFAKTE_V0` — deskriptiv, **ohne** F4-Vollcheck (Option B, siehe
+  Dependencies-Abschnitt unten), kein Gültigkeitsschlüssel im F4-Sinn.
+- **AK8** — `modell_beobachtet` ist als `string | null` geführt.
+  **TECH_DEBT:** WS2 extrahiert den Wert nicht aus der realen
+  Laufausgabe — das JSON-Feld dafür ist durch `state/tp-nachtrag.md`
+  nicht belegt (Volltextsuche nach „model": kein Treffer), WS2 rät nicht.
+  Der Wert bleibt vorerst `null`; Klärung mit echtem `"type":"result"`-
+  JSON ist WS3 vorbehalten. Stefans Entscheidung (31.08.2026): eigener
+  Findings-Eintrag folgt separat, nicht Teil dieses Baudurchgangs.
+- **AK9** — Fehllauf ohne Ergebnisobjekt (TP-01e-Muster, Attrappe
+  `attrappeOhneErgebnisobjekt`) führt zu `beobachtungsbasis_vollstaendig:
+  false`, **keine** Terminal-Wirkungsmarke — Test vorhanden.
+- **AK11** — bleibt WS3 (`scripts/verify-f6a-real-run.mjs`), nicht Teil
+  dieses Baudurchgangs.
+- **AK14** — neu, siehe oben; Gate-Grep + Selbsttest in
+  `scripts/check-f6a-claude-code-gateway.mjs` umgesetzt.
+
 ## Zuordnung
 
 Deliverable 3, Feature #6 — Ausführungspfad
