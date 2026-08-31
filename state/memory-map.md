@@ -1,5 +1,5 @@
 <!-- Ziel-Pfad im Repo: state/memory-map.md -->
-# Memory Map — [PROJEKTNAME]
+# Memory Map — AI Workforce
 
 Wo welche Art von Information zuhause ist — damit nichts doppelt und an
 zwei Stellen leicht widersprüchlich gepflegt wird (vgl. G7-Falle:
@@ -45,3 +45,4 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Bedarf-/Transport-Payload-Schema (`daten.daten`, wenn `bedarf_schema`/`transport_schema === "v0"`, F9) | `schemas/kontrollzustand-bedarf-payload.schema.json`, `schemas/kontrollzustand-transport-payload.schema.json` | keine Checkpoint-/Lineage-Hülle — die beschreiben weiterhin ausschließlich `schemas/kontrollzustand-lineage-payload.schema.json` (F2) |
 | Context-Builder-Modul (baut ein begrenztes Kontextpaket je Auftrag/Rolle aus einer Anfrageliste — Rollenfilter, Duplikat-/Widerspruchserkennung, zweiphasige Budget-vs-Evidenz-Vergabe, Registrierung über F2, F5) | `src/context-builder/` | kein Touch an `src/lineage-registry/`, keine Rollentabelle unter `profiles/` (Rollen sind Kern, D1/D14/§16.7), kein Dateilesen durch das Modul selbst (Aufrufer liefert Inhalt), kein Runtime-/Modell-Feld (E-191 N1/N2) |
 | Kontextpaket-Payload-Schema (`daten.daten`, wenn `kontextpaket_schema === "v0"`, F5) | `schemas/kontrollzustand-kontextpaket-payload.schema.json` | keine Checkpoint-/Lineage-Hülle — die beschreiben weiterhin ausschließlich `schemas/kontrollzustand-lineage-payload.schema.json` (F2) |
+| Regel für lesende Verifikation über die Geräte-Brücke gegen ein parallel genutztes Repo | `docs/harness/geraete-bruecke-verifikation.md` | nicht in `state/findings.md` — dort steht nur der Befund (F-034/F-045), nicht die dauerhafte Regel |
