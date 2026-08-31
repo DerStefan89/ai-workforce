@@ -59,3 +59,36 @@ Fünf materielle Befunde:
 - Danach: plan-v1 → Advisor-Pass (frischer Kontext) → plan-v2 →
   Handoff-Vertrag → Bau → Reviewer-/QA-Pass vor dem Merge
   (Definition of Done, seit F-046 verbindlich).
+
+## 31.08.2026 — Advisor-Pass (frischer Kontext, Subagent)
+
+Urteil: **Freigegeben mit Hinweisen**. Vier Befunde, zwei davon vor dem
+Handoff-Vertrag verbindlich zu klären:
+
+- **Befund 1 (Kern):** plan-v1 ließ F6a die volle `pruefeStartfreigabe`
+  (E-183+E-188, inkl. `rot_fall_beleg`) für den Lesepfad aufrufen —
+  widerspricht ARCHITECTURE §3 und Zielfassung §16.4 („Startbedingungen
+  des **schreibenden** Pfades", wortgleich in vier Quellen belegt) und
+  hätte F-053 auch für F6a blockierend gemacht, obwohl die 6a/6b-
+  Trennung aus dem Challenge genau das vermeiden sollte. Als
+  ❓ ENTSCHEIDUNG MENSCH an Stefan gegeben.
+  **Entschieden: Option A** — F6a ruft nur `pruefeAufrufparameter`
+  (E-182) auf, nicht die volle `pruefeStartfreigabe`. `feature.md` AK4,
+  der Scope-Punkt „Startfreigabe" und die F4-Dependency-Zeile wurden
+  entsprechend korrigiert. F6a bleibt damit unabhängig von F-053.
+- **Befund 2:** F2 (Lineage Registry) war in plan-v1 trotz harter
+  Dependency in `feature.md` nicht konkretisiert (wann/wie
+  `registriereKernArtefakt`/`registriereWerkzeugReferenz` aufgerufen
+  wird) — Nacharbeit für plan-v2.
+- **Befund 3:** AK11 (Nachweis-Eintrag in `state/gates.md`) in plan-v1
+  nur beiläufig als F1-Präzedenzfall zitiert, nicht als eigene Zusage —
+  Nacharbeit für plan-v2.
+- **Befund 4:** Extraktionsregel für `modell_beobachtet` aus der realen
+  Laufausgabe in plan-v1 unspezifiziert — darf mit dem Bau mitlaufen
+  (WS2/WS3), kein Scope-Problem.
+
+Entlastend bestätigt: F-048-Fix-Ort, „kein neuer Terminalzustand"-
+Behauptung, F6a/F7-Grenze, F-030-Stand, TP-01e-Referenz,
+`kontrollzustand-roh/`-Design — alle exakt am Code/Repo verifiziert.
+
+Fundstelle: `state/advisor-findings-f6a-claude-code-gateway.md`.
