@@ -62,7 +62,7 @@ function normalisierePfad(pfad: string): string {
  * aber NICHT kleingeschrieben — die Kleinschreibung dient nur dem
  * Vergleich, `git show` braucht den im Repo tatsächlich committeten Pfad.
  */
-function leiteRepoRelativenPfadAb(pfad: string, repoWurzel: string): string | null {
+export function leiteRepoRelativenPfadAb(pfad: string, repoWurzel: string): string | null {
   const wurzelTrennerNormalisiert = repoWurzel.replace(/\\/g, '/').replace(/\/$/, '')
   const wurzelMitSlash = `${wurzelTrennerNormalisiert}/`
   if (!normalisierePfad(pfad).startsWith(normalisierePfad(wurzelMitSlash))) {
@@ -73,7 +73,7 @@ function leiteRepoRelativenPfadAb(pfad: string, repoWurzel: string): string | nu
 }
 
 /** Liest einen Pfad aus einem konkreten Commit des externen Repos. null bei jedem Fehlschlag (Commit/Pfad nicht auffindbar) — fail-closed, kein Wurf nach außen. */
-function leseAusCommit(repoWurzel: string, commitHash: string, relativerPfad: string): string | null {
+export function leseAusCommit(repoWurzel: string, commitHash: string, relativerPfad: string): string | null {
   try {
     return execFileSync('git', ['show', `${commitHash}:${relativerPfad}`], {
       cwd: repoWurzel,
@@ -86,7 +86,7 @@ function leseAusCommit(repoWurzel: string, commitHash: string, relativerPfad: st
 }
 
 /** Löst B18 (zweiter Advisor-Pass, D3/CRLF-Startbedingung): erkennt eine Zeile, die die Zeilenenden-Behandlung für jede Datei im Repo abschaltet. */
-function gitattributesPinntZeilenenden(inhalt: string): boolean {
+export function gitattributesPinntZeilenenden(inhalt: string): boolean {
   return inhalt.split(/\r?\n/).some((zeile) => zeile.trim() === '* -text')
 }
 

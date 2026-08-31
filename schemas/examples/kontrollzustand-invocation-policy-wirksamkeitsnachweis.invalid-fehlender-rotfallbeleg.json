@@ -1,0 +1,12 @@
+{
+  "gueltigkeitsschluessel": {
+    "werkzeug_konfiguration_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schutzskript_hashes": [
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    ],
+    "werkzeug_version_deklariert": "2.1.241",
+    "berechtigungskontext": "profil-standard",
+    "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce"
+  },
+  "geprueft_am": "2026-08-31T00:00:00.000Z"
+}

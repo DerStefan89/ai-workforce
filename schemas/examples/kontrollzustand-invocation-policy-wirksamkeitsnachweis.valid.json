@@ -1,0 +1,14 @@
+{
+  "gueltigkeitsschluessel": {
+    "werkzeug_konfiguration_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "schutzskript_hashes": [
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    ],
+    "werkzeug_version_deklariert": "2.1.241",
+    "berechtigungskontext": "profil-standard",
+    "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce"
+  },
+  "rot_fall_beleg": "Vertrag tp-03d-wirkungsgrenze-und-hash-baseline, Messfall 2",
+  "geprueft_am": "2026-08-31T00:00:00.000Z"
+}

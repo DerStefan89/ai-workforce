@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-invocation-policy-wirksamkeitsnachweis-payload.schema.json",
+  "title": "Invocation-Policy-Wirksamkeitsnachweis (extern)",
+  "description": "Struktur des Wirksamkeitsnachweises für den Gültigkeitsschlüssel eines geplanten Laufs (F4, E-188). gueltigkeitsschluessel deckt die fünf in E-188 genannten Bestandteile wörtlich ab. rot_fall_beleg ist Pflicht, weil E-188 den Nachweis gegen einen bekannten Rot-Fall verlangt, nicht aus bloßer Existenz gefolgert. Ablageort dieser Instanz ist bewusst nicht durch dieses Schema festgelegt (Design-Entscheidung 3, plan-v1-f4-invocation-policy.md) — siehe features/F4/journal.md für die D16-analoge Auflage an eine spätere Ablageort-Entscheidung.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["gueltigkeitsschluessel", "rot_fall_beleg", "geprueft_am"],
+  "properties": {
+    "gueltigkeitsschluessel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "werkzeug_konfiguration_hash",
+        "schutzskript_hashes",
+        "werkzeug_version_deklariert",
+        "berechtigungskontext",
+        "arbeitsverzeichnis_pfad"
+      ],
+      "properties": {
+        "werkzeug_konfiguration_hash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "schutzskript_hashes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }
+        },
+        "werkzeug_version_deklariert": { "type": "string", "minLength": 1 },
+        "berechtigungskontext": { "type": "string", "minLength": 1 },
+        "arbeitsverzeichnis_pfad": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rot_fall_beleg": { "type": "string", "minLength": 1 },
+    "geprueft_am": { "type": "string", "minLength": 1 }
+  }
+}
