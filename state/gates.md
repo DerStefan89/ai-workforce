@@ -1211,3 +1211,97 @@ nicht die Tabelle oben stillschweigend überschreiben.
   zeigt keine liegen gebliebenen `kontrollzustand-test/`- oder
   Rohstrom-Testartefakte außerhalb von `os.tmpdir()`. Kein Commit, kein
   Push in diesem Schritt.
+
+- 2026-09-02, `scripts/verify-f6a-real-run.mjs` (WS3 zu Vertrag
+  `f6a-ws3-realer-nachweis`, Delta 3 aus `state/plan-v2-f6a-claude-code-
+  gateway.md` verbindlich zugesagt): einmaliger, manueller Nachweis, ob
+  `starteGateway`/`starteProzess` (WS2, PR #42, Commit `7123041`) unter
+  Windows real einen `claude`-Prozess über `child_process.execFile`
+  starten kann — Offene Unsicherheit 2 aus
+  `state/plan-v1-f6a-ws2-ws3-prozessstart.md` Abschnitt 8. Nicht in
+  `npm run check`/`check:template` eingehängt (Präzedenz
+  `scripts/verify-rename-atomicity.mjs`, F1, Zeile 970ff.).
+
+  **Aufruf:** `starteGateway` ohne `optionen.starter` (WS2s realer
+  `echterStarter` läuft, kein Attrappen-Ergebnis), Tokens =
+  `baueAufruf({ modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT',
+  erlaubte_werkzeuge: ['Read', 'Grep'] } })` plus skriptseitig
+  angehängtem `-p <Prompt>` (`baueAufruf` liefert selbst kein
+  Prompt-Feld; keine Änderung an `baueAufruf`/`starteGateway`/
+  `starteProzess` selbst, SCOPE-NICHT dieses Vertrags):
+  ```
+  ["--model","sonnet","--output-format","json","--setting-sources","project","--tools","Read,Grep","-p","Lies die Datei package.json mit dem Read-Werkzeug und nenne ausschließlich den Wert des Feldes \"name\". Tu sonst nichts."]
+  ```
+
+  **Ergebnis, im Wortlaut — `execFile('claude', ...)` scheitert unter
+  Windows; Offene Unsicherheit 2 damit real geklärt (negativ):**
+  Vorlauf-Check `claude --version` (`execFileSync`, außerhalb von
+  `starteGateway`):
+  ```
+  FEHLER code: ENOENT
+  FEHLER message: spawnSync claude ENOENT
+  ```
+  Diagnose (`which`/`where claude`): `claude` löst nur auf einen
+  `.cmd`-Shim auf — `C:\Users\stefa\AppData\Roaming\npm\claude` (real
+  nicht vorhanden) und `C:\Users\stefa\AppData\Roaming\npm\claude.cmd`
+  (real vorhanden), dessen Verzeichnis im PATH steht. Zusätzlicher,
+  isolierter Diagnose-Einzeiler (nicht Teil von `prozessstart.ts`, kein
+  Produktionscode geändert) mit explizit angegebener `.cmd`-Endung:
+  ```
+  FEHLER code: EINVAL
+  FEHLER errno: -4071
+  FEHLER message: spawnSync claude.cmd EINVAL
+  ```
+  Mit `execFile` (statt `execFileSync`) trat derselbe `EINVAL`-Fall als
+  **synchroner Wurf** auf, nicht über den Callback — ein zusätzlicher,
+  über die ursprüngliche Offene Unsicherheit hinausgehender Befund:
+  `prozessstart.ts`s `echterStarter` fängt nur Callback-Fehler ab, keinen
+  synchronen Wurf von `execFile` selbst.
+
+  **Ursache (bekanntes Node/Windows-Verhalten, nicht weiter vertieft,
+  außerhalb des Geltungsbereichs dieses Vertrags):**
+  `child_process.execFile`/`spawn` lösen unter Windows ohne
+  `shell: true` keine `.cmd`/`.bat`-Dateien auf — weder über den bloßen
+  Namen (keine PATHEXT-Auflösung ohne echte Shell → `ENOENT`) noch über
+  die explizite `.cmd`-Endung (von Node seit der
+  CVE-2024-27980-Härtung synchron mit `EINVAL` verweigert, sofern
+  `shell: true` fehlt).
+
+  **Trotzdem real erreicht (SCOPE 2b-2d dieses Vertrags):**
+  `starteGateway` fängt den `ENOENT`-Fehler intern über den Callback ab
+  (kein Wurf, `prozessstart.ts`), schreibt real eine
+  `RUN_PREPARED`-Wirkungsmarke, einen Rohstrom und eine Laufakte mit
+  `beobachtungsbasis_vollstaendig: false`, `modell_beobachtet: null`,
+  und registriert sie real über F2:
+  ```
+  kontrollzustand/verify-f6a-real-run-51e99d1c-2bfa-43a2-8e1b-4a18e4e1ed10/checkpoints/1-74b591fddde22c263afe3ae13e8ea9f44657f3380b42471e120b19a4b9c3c91d.json
+  kontrollzustand/lineage-laufakte-verify-f6a-real-run-51e99d1c-2bfa-43a2-8e1b-4a18e4e1ed10/checkpoints/1-f26b0ee211828c5fa9822d3d608add909f1c0a9b9be6b2dfefafbd6d074e3601.json
+  kontrollzustand-roh/verify-f6a-real-run-51e99d1c-2bfa-43a2-8e1b-4a18e4e1ed10/rohstrom.json
+  ```
+  (Rohstrom nicht committet, `.gitignore`-Eintrag greift; Inhalt real
+  `{"stdout":"","stderr":"","exitCode":null}`.) `stelleLaufstatusFest`
+  bestätigt real `KLAERUNG_ERFORDERLICH` (offene `RUN_PREPARED`-Sequenz
+  1, kein Terminalartefakt) — der laut Design vorgesehene, korrekte
+  Zustand bei einem Lauf ohne valides Ergebnisobjekt, kein Fehlverhalten
+  von WS2 selbst.
+
+  **Bewertung: ESCALATE ausgelöst (Vertragspunkt 1, `state/tasks/
+  f6a-ws3-realer-nachweis.md`)** — `execFile('claude', ...)` scheitert
+  unter Windows, wie im Vertrag als mögliches Ergebnis ausdrücklich
+  benannt. Kein stiller Fix in diesem Vertrag (NICHT-Klausel: keine
+  Codeänderung an `starteGateway`/`starteProzess`). AK2a
+  („`execFile('claude', tokens, ...)` startet unter Windows tatsächlich")
+  ist damit **nicht** erfüllt — eine reale Windows-Ausführung von WS2
+  benötigt einen eigenen Folge-Vertrag, der `prozessstart.ts` entweder
+  auf `shell: true` umstellt (Spannung zu F-057s Zusage „execFile
+  umgeht den Shell-Parser vollständig" — eigener Advisor-Pass nötig) oder
+  eine andere reale Windows-Auflösung wählt (z. B. Auflösung des vollen
+  `.cmd`-Pfades plus `shell: true`, oder ein Node-`child_process`-Aufruf,
+  der `.cmd`-Dateien zulässt). F-059 (`modell_beobachtet`) bleibt aus
+  diesem Grund weiterhin ungeklärt — kein reales `"type":"result"`-
+  Objekt kam in diesem Lauf zurück; der FOLGT-Nachtrag aus dem Vertrag
+  entfällt damit für diesen Lauf.
+
+  Einmaliger, manueller Lauf, nicht in `npm run check`/`check:template`
+  eingehängt. Kein Commit, kein Push in diesem Schritt (Freigabe
+  ausstehend).
