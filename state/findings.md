@@ -708,13 +708,61 @@ Auswirkung: gering für F7 selbst — die Kernklassifikation (FEHLGESCHLAGEN/VER
 Maßnahme: Feldnamen real klären, sobald ein echter Lauf ein vollständiges Ergebnisobjekt liefert — natürlicher Zeitpunkt ist WS3 (`state/tasks/f6a-ws3-realer-nachweis.md`). Danach kleiner Nachtrag an F7, keine Architekturänderung nötig.
 Feature/Run: F7-Challenge, 31.08.2026.
 
-**F-062** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-062** · `HARNESS_IMPROVEMENT` · P3 · **gelöst**
 Titel: `leseErgebnisobjekt` (F6a) nicht exportiert — F7 kann die Ergebnisobjekt-Parsing-Logik ohne Export nicht wiederverwenden (D5).
 Beschreibung: `src/claude-code-gateway/index.ts:71` definiert `leseErgebnisobjekt(stdout): Record<string, unknown> | null` (parst `stdout` als JSON, akzeptiert nur `type === 'result'`) als modulinterne, nicht exportierte Funktion. F7 (Result Evaluator) braucht exakt diese Logik, um das strukturierte Ergebnisobjekt zu lesen — ohne Export müsste F7 sie duplizieren, ein D5-Verstoß (Nachbau von Logik, die ein anderes Modul bereits besitzt).
 Fundstelle: `src/claude-code-gateway/index.ts:71`.
 Auswirkung: gering — reine Sichtbarkeitsänderung (ein Schlüsselwort), kein Verhaltensunterschied, keine bestehenden Tests betroffen.
 Maßnahme: Als Teil des F7-Baus (`state/plan-v1-f7-result-evaluator.md` Abschnitt 2, Punkt 1) `leseErgebnisobjekt` exportieren. Kein eigener Vertrag nötig.
-Feature/Run: F7-Challenge, 31.08.2026.
+Feature/Run: F7-Challenge, 31.08.2026; behoben im F7-Baudurchgang (`src/claude-code-gateway/index.ts`, `export function leseErgebnisobjekt`), 02.09.2026.
+
+**F-063** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Advisor-Korrektur (Design-Entscheidung 2) im Plan nachgezogen, aber nicht an der zitierenden Stelle in `features/F7/feature.md` — gleiches Muster wie F-058.
+Beschreibung: `state/plan-v1-f7-result-evaluator.md` Design-Entscheidung 2 legt nach dem Advisor-Pass (31.08.2026) fest, dass der Aufrufer die bereits geladene `LaufakteV0Daten` an `klassifiziereLauf` übergibt (kein eigener Laufakte-Lesepfad in F7). `features/F7/feature.md`, Scope-Abschnitt, führte bis zum F7-Baudurchgang weiterhin die ältere Signatur `klassifiziereLauf(laufId, profilReferenz, optionen)` und die Formulierung „liest die Laufakte" — beides widerspricht der advisor-geprüften Planfassung. Im F7-Handoff-Vertrag (`state/tasks/f7-result-evaluator.md`, CONTEXT/OUTPUT) bereits vorab benannt und im selben Baudurchgang auf die Planfassung nachgezogen.
+Fundstelle: `features/F7/feature.md`, Scope-Abschnitt (vor Korrektur); `state/plan-v1-f7-result-evaluator.md` Design-Entscheidung 2.
+Auswirkung: gering hier (vor jedem Bau erkannt und korrigiert, kein Code auf der falschen Signatur aufgesetzt), aber ein wiederholtes Muster (siehe F-058): eine Advisor-Korrektur im Plan propagiert nicht automatisch in referenzierende Feature-Akten.
+Maßnahme: in diesem Baudurchgang behoben (`features/F7/feature.md` Scope-Abschnitt auf die Planfassung nachgezogen). F-058s Maßnahme (Konvention: Referenzstellen einer Korrektur im selben Schritt prüfen) bleibt die zutreffende Prozessregel — kein neuer Maßnahmenpunkt nötig, dieses Finding ist der zweite reale Beleg dafür.
+Feature/Run: F7-Baudurchgang, 02.09.2026.
+
+**F-064** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: AK4-Grep-Regel im F7-Gate hat dieselbe Schwächenklasse wie die bereits als F-060 erfasste AK14-Regel.
+Beschreibung: Reviewer-Pass (frischer Kontext, 02.09.2026) auf `scripts/check-f7-result-evaluator.mjs`: das Muster `/\.(includes|match|indexOf|search|test)\(/` erkennt keinen `.exec(`-Aufruf einer Regex (`/ERFOLG/.exec(result)` leitet dieselbe Konsolentext-Ableitung ab wie `.test(`, wird aber nicht erfasst), keine `.startsWith(`/`.endsWith(`/Substring-Vergleiche (`result.slice(0,3) === 'ERR'`) und keine Bracket-Notation-Umgehung (`stdout['includes'](...)`). Der Selbsttest deckt nur die vom Regelautor selbst gewählten Verstoßformen ab — strukturell dieselbe Blindheit wie F-060 (ein Selbsttest kann nur die antizipierten Formen prüfen, keine anderen).
+Fundstelle: `scripts/check-f7-result-evaluator.mjs`, AK4-Grep-Regel und Selbsttest; Vergleichsmuster F-060 (`scripts/check-f6a-claude-code-gateway.mjs`).
+Auswirkung: kein aktueller Verstoß im real gebauten Code — die mechanische Absicherung künftiger Änderungen an `src/result-evaluator/*.ts` ist aber schwächer, als der Name „AK4-Selbsttest bestanden" suggeriert.
+Maßnahme: Regel härten (`.exec(` ergänzen, ggf. `.startsWith(`/`.endsWith(`/Bracket-Notation) — idealerweise gemeinsam mit F-060 in einem Harness-Schritt, der beide Gates gleichzeitig auf ein gemeinsames, robusteres Muster hebt, statt jedes Feature-Gate einzeln nachzuziehen. Kein Blocker für den aktuellen Merge.
+Feature/Run: F7-Baudurchgang, Reviewer-Pass, 02.09.2026.
+
+**F-065** · `TECH_DEBT` · P3 · offen
+Titel: `tool_input`→Tokens-Adapter (F7) tokenisiert nur das Feld `command`; andere String-Felder bleiben ein Einzeltoken, Array-/Objekt-wertige Felder werden übersprungen.
+Beschreibung: `toolInputZuTokens` (`src/result-evaluator/index.ts`) tokenisiert am Leerzeichen ausschließlich das Feld `command`; jedes andere String-Feld (z. B. `query`) wird unverändert als ein einzelnes Token behandelt — ein mehrwortig eingebetteter Verbotswert in einem Nicht-`command`-Feld (z. B. `tool_input: { query: 'x --dangerously-skip-permissions y' }`) würde nicht erkannt. Nicht-String-Feldwerte (Arrays, verschachtelte Objekte, z. B. `{ args: ['echo', '--dangerously-skip-permissions'] }`) werden komplett übersprungen, nicht zerlegt. Für die drei real belegten TP-03d-`tool_input`-Formen irrelevant (keine davon nutzt Arrays oder mehrwortige Nicht-`command`-Felder).
+Fundstelle: `src/result-evaluator/index.ts`, `toolInputZuTokens`.
+Auswirkung: gering jetzt (keine reale Fixture verlangt es, E-186 ist ohnehin nur Zählung ohne Eskalation), wird relevant, falls künftige Werkzeugtypen mehrwortige Nicht-`command`-Parameter oder Array-/Objektparameter mit Sicherheitsrelevanz einführen.
+Maßnahme: bei Bedarf erweitern (alle String-Felder tokenisieren, Array-Elemente rekursiv aufnehmen) — kein aktueller Auftrag, da keine reale Evidenz für die Notwendigkeit vorliegt (YAGNI).
+Feature/Run: F7-Baudurchgang, Reviewer-Pass, 02.09.2026.
+
+**F-066** · `TECH_DEBT` · P2 · offen
+Titel: `pruefeAufrufparameter` (F4) erkennt einen Verbotswert nur als eigenständiges Token — ein ohne Wortgrenze angehängter Verbotswert (kein Leerzeichen-/Quoting-Trenner) bleibt ungezählt.
+Beschreibung: QA-/Reviewer-Pass (frischer Kontext, 02.09.2026) auf F7: der neue `tool_input`→Tokens-Adapter deckt die drei realen TP-03d-Formen und den im Plan (Abschnitt 8.4) benannten Shell-Quoting-Einbettungsfall real ab (eigener Test, `bypass_verdacht_anzahl: 1`). Ein Verbotswert, der ohne jede Wortgrenze an ein anderes Token angehängt ist (z. B. `command: 'npm run test--dangerously-skip-permissions'`), bleibt jedoch ungezählt — `pruefeAufrufparameter` vergleicht exakte Tokens (`Array.includes`), keine Teilstrings. Das ist keine F7-spezifische Lücke, sondern eine Eigenschaft von F4s Vergleichssemantik selbst (`src/invocation-policy/verbotene-aufrufparameter.ts`), die durch F7s Adapter erstmals sichtbar wird. Eigener Testfall in `result-evaluator.test.ts` belegt dieses Verhalten jetzt explizit, statt es unverifiziert zu lassen.
+Fundstelle: `src/invocation-policy/verbotene-aufrufparameter.ts` (`pruefeAufrufparameter`); sichtbar gemacht über `src/result-evaluator/index.ts` (`toolInputZuTokens`) und den Testfall „bekannte Grenze des tool_input-Adapters …" in `result-evaluator.test.ts`.
+Auswirkung: gering — E-186 ist in F7 ohnehin nur Zählung ohne Eskalation (kein Aufrufer, der auf Vollständigkeit dieser Zahl angewiesen wäre); ein künftiges F8, das `bypass_verdacht_anzahl` als vollständiges Sicherheitssignal behandelt, würde diese Lücke erben.
+Maßnahme: Änderung an F4s `pruefeAufrufparameter` (außerhalb des F7-Scopes, NICHT-Abschnitt des Vertrags verbietet F4-Änderungen in diesem Baudurchgang) — bei Bedarf eigener, kleiner F4-Nachtrag (Substring- oder Grenzzeichen-sensitive Prüfung), erst wenn ein realer Aufrufer auf Vollständigkeit angewiesen ist.
+Feature/Run: F7-Baudurchgang, Reviewer-/QA-Pass, 02.09.2026.
+
+**F-067** · `TECH_DEBT` · P2 · offen
+Titel: `stelleLaufstatusFest` (F1B) zeigt bei zwei Terminal-Schreibvorgängen für dieselbe `laufId` das ERSTE, nicht das zuletzt geschriebene `ergebnis`.
+Beschreibung: QA-Pass (frischer Kontext, 02.09.2026) auf F7: bei genau einer `run_prepared`-Marke gefolgt von zwei `terminal`-Marken paart die FIFO-Logik in `stelleLaufstatusFest` (`src/checkpoint-store/index.ts`) die einzige offene Sequenz mit dem ERSTEN Terminal; der zweite Terminal landet unpaariert in `terminaleOhneRunPrepared` (Diagnosefeld). Der über `status.ergebnis` sichtbare Wert bleibt damit der des ersten Aufrufs — ein Doppelaufruf „verschwindet nicht still" (der zweite Terminal ist über `terminaleOhneRunPrepared` sichtbar), aber ein Aufrufer, der naiv „letzter Schreibvorgang gewinnt" erwartet, würde das falsche `ergebnis` lesen. Neuer Testfall in `result-evaluator.test.ts` (F-067) belegt dieses Verhalten jetzt explizit.
+Fundstelle: `src/checkpoint-store/index.ts`, `stelleLaufstatusFest`, FIFO-Paarungslogik.
+Auswirkung: gering jetzt (F7 selbst hat laut Vertrag ausdrücklich keine eigene Idempotenzprüfung zu bauen, `state/tasks/f7-result-evaluator.md` CONTEXT), relevant für ein künftiges F8, das `klassifiziereLauf` möglicherweise wiederholt aufruft (z. B. bei einem Retry) und dabei „letzter Wert gewinnt" annehmen könnte.
+Maßnahme: keine Änderung an F1B in diesem Baudurchgang (außerhalb des F7-NICHT-Scopes). Bei F8-Planung berücksichtigen: entweder `terminaleOhneRunPrepared` aktiv auswerten, oder F1B um eine explizite „letzter Terminal gewinnt"-Semantik erweitern, falls ein realer Wiederholungsfall auftritt.
+Feature/Run: F7-Baudurchgang, QA-Pass, 02.09.2026.
+
+**F-068** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Geräte-Brücke (`device_bash`) kann `npm run check`/`lint`/`typecheck` nicht ausführen — fehlende Linux-Plattform-Binärdateien für Biome/TypeScript.
+Beschreibung: `node_modules` im Repo wurde unter Windows installiert (`stefans-laptop`, win32); die Geräte-Brücke läuft in einer separaten Linux-VM. `npx biome` bricht mit `Cannot find module '@biomejs/cli-linux-x64/biome'` ab, `npx tsc` mit `Unable to resolve @typescript/typescript-linux-x64`. `node --test` (reiner Node-Testrunner, keine plattformspezifischen nativen Binärdateien) läuft dagegen anstandslos — real geprüft im F7-Reviewer-Nachweis (86/86 Tests grün). Zusätzlich: `rm`/`rmdir` auf Testartefakte schlägt ohne vorherige `device_request_delete_permission`-Freigabe in EPERM fehl (jede Sitzung muss das neu anfordern).
+Fundstelle: Geräte-Brücke gegen `~/Projekte/ai-workforce`, 02.09.2026; deckt sich mit der in `claude/100_UEBERGABE_NEUER_CHAT_18_F6A_ABGESCHLOSSEN_F7_GEPLANT.md` dokumentierten Beobachtung zu F6a WS2 (dort musste Stefan Lint/Typecheck manuell bestätigen).
+Auswirkung: Eine Challenger-Sitzung kann `npm run check` über die Brücke nie vollständig eigenständig nachvollziehen — nur den Testrunner-Teil. Für Lint/Typecheck bleibt die bauende Terminalsitzung (Stefans Maschine, korrekte Plattform-Binärdateien) die einzige maßgebliche Quelle.
+Maßnahme: Kein Fix nötig/möglich (Plattformgrenze der Brücke) — als bekannte Grenze für künftige Challenger-seitige Verifikationen dokumentieren: Testrunner-Teil selbst nachprüfen, Lint-/Typecheck-Ergebnis aus der bauenden Sitzung übernehmen, nicht wiederholen versuchen.
+Feature/Run: F7-Reviewer-Nachprüfung (Challenger-Sitzung), 02.09.2026.
 
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.

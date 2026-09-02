@@ -10,7 +10,7 @@ Result Evaluator
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: IN_ARBEIT
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -31,11 +31,16 @@ anderer Module ein zweites Mal zu bauen (D5).
 
 - Neues, eigenständiges Modul `src/result-evaluator/`, ruft F1B, F6a
   und F4 ausschließlich von außen auf — kein Nachbau ihrer Logik.
-- `klassifiziereLauf(laufId, profilReferenz, optionen):
-  KlassifikationsErgebnis` — liest die Laufakte (`LaufakteV0Daten`, F6a)
-  und den referenzierten Rohstrom (`rohstrom_referenz.pfad`), prüft den
-  Rohstrom-Hash gegen `rohstrom_referenz.inhalts_hash`, klassifiziert
-  nach ARCHITECTURE §4, exakter Reihenfolge:
+- `klassifiziereLauf(laufId, profilReferenz, eingaben, optionen):
+  KlassifikationsErgebnis` — `eingaben.laufakte` trägt die vom Aufrufer
+  bereits geladene `LaufakteV0Daten` (F7 baut **keinen** eigenen
+  Laufakte-Lesepfad, Design-Entscheidung 2 in
+  `state/plan-v1-f7-result-evaluator.md` Abschnitt 4 — Korrektur
+  gegenüber einer früheren Formulierung dieses Abschnitts, siehe
+  `state/findings.md` F-063). Liest den referenzierten Rohstrom
+  (`rohstrom_referenz.pfad`), prüft den Rohstrom-Hash gegen
+  `rohstrom_referenz.inhalts_hash`, klassifiziert nach ARCHITECTURE §4,
+  exakter Reihenfolge:
   1. `beobachtungsbasis_vollstaendig === false` oder Rohstrom-Hash
      stimmt nicht → `FEHLGESCHLAGEN` (ungültige Beobachtungsbasis).
   2. Sonst: strukturiertes Ergebnisobjekt aus `stdout` extrahieren
@@ -124,6 +129,61 @@ Technische Konkretisierung: `state/plan-v1-f7-result-evaluator.md`.
    im `tool_input` werden gezählt/markiert, nicht wie normale
    Verweigerungen stillschweigend behandelt.
 10. `npm run check` → Exit 0.
+
+### Nachweis (Baudurchgang, state/tasks/f7-result-evaluator.md, 02.09.2026)
+
+Alle zehn AK real erfüllt, Modul `src/result-evaluator/`
+(`index.ts`/`types.ts`/`result-evaluator.test.ts`) plus
+`scripts/check-f7-result-evaluator.mjs` (in `npm run check` und
+`npm run check:template` eingehängt).
+
+1. `ermittleErgebnis` (`index.ts`) prüft in exakt dieser Reihenfolge:
+   Rohstrom-Integrität/-Fehlen → `beobachtungsbasis_vollstaendig` →
+   `leseErgebnisobjekt`-Ergebnis → `permission_denials` → sonst
+   `ERFOLGREICH`. Testfall „AK2" belegt real, dass FEHLGESCHLAGEN vor
+   VERWEIGERT gewinnt.
+2. Testfall „AK2: beobachtungsbasis_vollstaendig:false gewinnt gegen ein
+   gleichzeitig nicht-leeres permission_denials" — real grün.
+3. Testfälle TP-03d Messfall 2/3 (`VERWEIGERT` trotz `result`-Fließtext,
+   das für sich genommen keine Verweigerung nahelegt) — real grün.
+4. Gate-Abschnitt (a): Grep gegen `.includes(`/`.match(`/`.indexOf(`/
+   `.search(`/RegExp-`.test(` in `src/result-evaluator/*.ts` (ohne
+   `*.test.ts`), Selbsttest mit vier simulierten Verstoßformen, zusätzlich
+   real per TEMP-ROT-FALL-Injektion gegen den eigenen Code kalibriert
+   (Befund erschien, danach zurückgenommen).
+5. `leseErgebnisobjekt` in `src/claude-code-gateway/index.ts` exportiert
+   (reine Sichtbarkeitsänderung), `index.ts` importiert sie statt einer
+   eigenen Reimplementierung — F-062 gelöst.
+6. Gate-Abschnitt (c): Ende-zu-Ende-Lauf `RUN_PREPARED` →
+   `klassifiziereLauf` → `stelleLaufstatusFest` liefert `ABGESCHLOSSEN`
+   mit demselben `ergebnis` — belegt real, dass ausschließlich F1Bs
+   `schreibeWirkungsmarke` schreibt.
+7. Testfälle „Rohstrom-Hash weicht ab", „rohstrom_referenz.pfad
+   existiert nicht" (beide `FEHLGESCHLAGEN`, Gründe
+   `rohstrom_integritaet`/`rohstrom_fehlt`) sowie zwei ergänzte
+   Diagnosefälle für den dritten FEHLGESCHLAGEN-Grund
+   (`kein_ergebnisobjekt`): defekter Rohstrominhalt trotz passendem Hash,
+   und ein syntaktisch valides, aber nicht `"type":"result"`-Objekt trotz
+   `beobachtungsbasis_vollstaendig:true` (Reviewer-Befund vom
+   02.09.2026 nachgezogen).
+8. Testfall „is_error/non_execution_kind werden informativ
+   durchgereicht" (ERFOLGREICH-Zweig) sowie ein ergänzter Testfall für
+   denselben Durchreichungsmechanismus im VERWEIGERT-Zweig
+   (QA-Befund vom 02.09.2026 nachgezogen) — beide Felder erscheinen im
+   Rückgabeobjekt, `ergebnis` bleibt unverändert.
+9. Testfälle „E-186: konstruierter tool_input.command mit Verbotswert"
+   (einfaches Token) und „E-186 (plan-v1 8.4): in Shell-Quoting
+   eingebetteter Verbotswert" (Adapter tokenisiert `command` am
+   Leerzeichen, entfernt danach umschließende Anführungszeichen je
+   Token) — beide zählen `bypass_verdacht_anzahl: 1`, keine Eskalation.
+   **Dokumentierte Grenze** (QA-/Reviewer-Befund vom 02.09.2026, siehe
+   `state/findings.md` F-066): ein Verbotswert ohne Wortgrenze
+   (angehängtes Suffix statt eigenständigem Token, z. B.
+   `test--dangerously-skip-permissions`) wird von `pruefeAufrufparameter`
+   (F4, exakter Tokenvergleich) NICHT gezählt — eigener Testfall belegt
+   dieses Verhalten explizit, statt es unverifiziert zu lassen.
+10. `npm run check` → Exit 0, 87/87 Tests grün (Lauf 02.09.2026, nach
+    Reviewer-/QA-Nachbesserung).
 
 ## Zuordnung
 

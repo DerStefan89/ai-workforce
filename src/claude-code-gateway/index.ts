@@ -67,8 +67,8 @@ function laufakteArtefaktId(laufId: string): string {
   return `laufakte-${laufId}`
 }
 
-/** Liefert das geparste Ergebnisobjekt nur bei validem "type":"result"-JSON, sonst null — nur zur Unterscheidung Erfolg/Fehllauf, keine inhaltliche Auswertung des Ergebnisses (F7-Grenze, AK12). */
-function leseErgebnisobjekt(stdout: string): Record<string, unknown> | null {
+/** Liefert das geparste Ergebnisobjekt nur bei validem "type":"result"-JSON, sonst null — nur zur Unterscheidung Erfolg/Fehllauf, keine inhaltliche Auswertung des Ergebnisses (F7-Grenze, AK12). Exportiert (F-062), damit F7 dieselbe Parsing-Logik wiederverwendet statt sie nachzubauen (D5). */
+export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | null {
   let geparst: unknown
   try {
     geparst = JSON.parse(stdout)
