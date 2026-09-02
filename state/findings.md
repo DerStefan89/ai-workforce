@@ -764,6 +764,14 @@ Auswirkung: Eine Challenger-Sitzung kann `npm run check` über die Brücke nie v
 Maßnahme: Kein Fix nötig/möglich (Plattformgrenze der Brücke) — als bekannte Grenze für künftige Challenger-seitige Verifikationen dokumentieren: Testrunner-Teil selbst nachprüfen, Lint-/Typecheck-Ergebnis aus der bauenden Sitzung übernehmen, nicht wiederholen versuchen.
 Feature/Run: F7-Reviewer-Nachprüfung (Challenger-Sitzung), 02.09.2026.
 
+**F-069** · `BUG` · P1 · offen
+Titel: `starteGateway`/`starteProzess` (F6a) kann unter Windows keinen echten `claude`-Prozess starten — `execFile` scheitert an `.cmd`-Shims.
+Beschreibung: WS3-Nachweislauf (`scripts/verify-f6a-real-run.mjs`, `state/tasks/f6a-ws3-realer-nachweis.md`) zeigt real: `execFile('claude', tokens, ...)` löst unter Windows nur auf den `claude.cmd`-Shim auf. Ohne `shell: true` scheitert das mit `ENOENT` (bloßer Name); mit explizitem `.cmd`-Suffix scheitert es synchron mit `EINVAL` (Node blockiert `.cmd`/`.bat`-Spawns seit der CVE-2024-27980-Härtung). Damit ist die in F-057 geforderte Argv-Array-/`execFile`-Bauweise auf Windows faktisch nicht lauffähig — der Zielkonflikt zwischen Sicherheit (kein Shell-String, F-057) und Windows-Startfähigkeit war vorher nicht real geprüft.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (`starteProzess`); Beleg-Commit `97ef781` (Branch `docs/f6a-ws3-realer-nachweis`), `state/gates.md` Delta-3-Eintrag.
+Auswirkung: F6a WS2 ist auf der Zielmaschine (Windows) aktuell nicht benutzbar für einen echten Lauf — reine Testabdeckung (Attrappen) bleibt davon unberührt, aber der reale Zweck des Moduls (einen echten Claude-Code-Prozess zu starten) ist nicht erfüllt. F7 selbst ist nicht betroffen (konsumiert nur Laufakte/Rohstrom, unabhängig davon wie sie entstehen).
+Maßnahme: Eigener Folge-Vertrag für `prozessstart.ts` nötig — z. B. `shell: true` (Spannung mit F-057, eigener Advisor-Pass nötig, da F-057 „nie Shell-String" explizit als Sicherheitsgrenze markiert) oder direkte Ausführung über einen expliziten, nicht-Shell-Pfad zur `claude`-Binary. Nicht in diesem WS3-Vertrag behoben (NICHT-Klausel).
+Feature/Run: F6a WS3, realer Nachweislauf, 02.09.2026.
+
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
 Beschreibung: F6a (`src/claude-code-gateway/index.ts`) liefert den Aufruf bereits als Tokens-Array (`baueAufruf`). WS2/WS3 (Prozessstart, noch nicht gebaut) darf dieses Array beim tatsächlichen Subprozessstart nicht zu einem Shell-Kommandostring zusammenfügen (z. B. `child_process.exec`/`execSync` mit interpoliertem String) — dynamischer Prompt-Inhalt im `-p`-Argument könnte sonst über Shell-Metazeichen (`;`, Backtick, `$()`, Anführungszeichen-Escape) aus dem beabsichtigten Einzelbefehl ausbrechen. Node bietet mit `child_process.execFile`/`spawn` samt Argv-Array einen Weg, der den Shell-Parser vollständig umgeht.
