@@ -835,3 +835,51 @@ Fundstelle: Vorfall 03.09.2026, nach dem F-072/F-073/F-074-Nachtrag; Warnung „
 Auswirkung: Stefans Terminal ist blockiert, bis er die Lock-Datei manuell entfernt. Die Fehlermeldung nennt fälschlich einen laufenden Git-Prozess und führt damit in die Irre.
 Maßnahme: Sitzungen, die über die Geräte-Brücke arbeiten, führen dort **keine** Git-Kommandos aus — Lesen und Prüfen ja (`cat`, `grep`, `sed`, `wc`), Git nein. Git läuft ausschließlich in Stefans eigenem Terminal. Für Diffs gegen `origin/main` gibt die Sitzung stattdessen einen Terminalbefehl aus und liest die Ausgabe. Falls eine Sitzung doch Git braucht: vorher Löschrechte für den Ordner anfordern, sonst bleibt jede Lock-Datei liegen.
 Feature/Run: F6a WS4, Findings-Nachtrag, 03.09.2026.
+
+**F-078** · `TECH_DEBT` · P2 · **gelöst**
+Titel: Werkzeugsatz-Begrenzung von `--tools`/`--allowedTools` real gemessen — beide greifen, unabhängig voneinander.
+Beschreibung: `src/claude-code-gateway/index.ts` (`baueAufruf`) emittiert `--tools <liste>`; ob dieses Flag den Werkzeugsatz real begrenzt (statt nur Konsolentext zu erzeugen, ARCHITECTURE §7), war ungemessen. Sondierung (WS-A, Wegwerf-Arbeitsverzeichnis außerhalb dieses Repos, Werkzeugversion `2.1.258`, drei `claude -p`-Läufe mit Schreibauftrag „erstelle beweis.txt"): Messfall 1 (`--tools Read,Glob,Grep`, kein Write in der Liste) — Datei nicht entstanden, `permission_denials: []` (Write dem Modell gar nicht als Werkzeug bekannt, Modell meldet das selbst im Text). Messfall 2 (`--allowedTools Read,Glob,Grep`, `--tools` auf Default) — Datei nicht entstanden, `permission_denials` enthält einen realen Eintrag (`tool_name: "Write"`, `tool_use_id`, `tool_input` mit Pfad und Inhalt) — das Modell hat Write versucht und wurde real abgelehnt. Messfall 3 (beide Flags kombiniert) — Datei nicht entstanden, `permission_denials: []` (wie Messfall 1, da `--tools` bereits vor `--allowedTools` greift). Alle drei Rohausgaben (`rohausgabe.json`) und `exitCode` 0 in allen Fällen gesichert.
+Fundstelle: `src/claude-code-gateway/index.ts:118` (`baueAufruf`, `--tools`-Emission); Sondierungslauf 03.09.2026, Wegwerfverzeichnis außerhalb des Repos.
+Auswirkung: E-187 (zielfassung.md §9.4) verlangt zwei unabhängige Mechanismen zur Werkzeugsatz-Begrenzung. Die Messung zeigt zwei tatsächlich unabhängige Achsen: `--tools` entfernt ein Werkzeug vollständig aus dem Angebotssatz des Modells (Ablehnung ohne Permission-Event), `--allowedTools` lässt das Werkzeug im Angebotssatz, blockiert aber den Aufruf über eine echte Permission-Prüfung (Ablehnung mit Permission-Event in `permission_denials`). Ein Fehlgriff in der einen Achse würde durch die andere weiterhin aufgefangen. §16.8 Punkt 4 ist auf Basis dieser Messung inzwischen als geschlossen eingetragen (E7, 03.09.2026, `claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`) — der bisher dort referenzierte MCP-Kanal-Messfall 3 (Vertrag 2) gilt als überholt.
+Maßnahme: Keine Codeänderung nötig — Messung bestätigt die bestehende `baueAufruf`-Emission als wirksam. Für F6b-Folgearbeit relevant: `permission_denials` im JSON-Output ist der belastbare Nachweiskanal für „Werkzeug angeboten, aber abgelehnt" versus `--tools`, dessen Nachweis über die Abwesenheit der Datei plus leeres `permission_denials` läuft (kein direktes Denial-Signal, da das Werkzeug dem Modell nie angeboten wurde).
+Feature/Run: F6b WS-A Sondierung, 03.09.2026.
+
+**F-080** · `TECH_DEBT` · P3 · offen
+Titel: Startziel des Werkzeugprozesses sollte als normalisierter Pfad geführt werden, nicht als Binär-Hash.
+Beschreibung: E-188 (§9.4) führt seit E5 (03.09.2026) das „Startziel des Werkzeugprozesses" als sechsten Gültigkeitsschlüssel-Bestandteil. E5 empfiehlt dafür einen normalisierten Pfad statt eines Binär-Hashes der Werkzeug-Executable — ein Hash bricht bei jedem Patch-Update des Werkzeugs, ohne dass sich das eigentlich relevante Startziel (welches Programm an welchem Ort gestartet wird) geändert hat.
+Fundstelle: `docs/projekt/zielfassung.md` §9.4 E-188; `claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`, E5.
+Auswirkung: Eine naheliegende, aber zu strenge Implementierung (Binär-Hash) würde den Gültigkeitsschlüssel bei jedem Werkzeug-Update unnötig invalidieren.
+Maßnahme: Bei der Implementierung des sechsten Gültigkeitsschlüssel-Bestandteils (F6b) einen normalisierten Pfad verwenden, keinen Binär-Hash. Konkrete Normalisierungsregel ist Teil der F6b-Umsetzung.
+Feature/Run: F6b WS-B Dokumentation, 03.09.2026.
+
+**F-081** · `TECH_DEBT` · P3 · offen
+Titel: Zuordnung „Werkzeugkonfiguration" und „Schutzskripte" (E-183/E-188) auf konkrete Dateien noch nicht an der Entscheidungsstelle festgehalten.
+Beschreibung: E-183/E-188 sprechen von „Werkzeugkonfiguration" und „referenzierten Schutzskripten", ohne die konkreten Dateien zu benennen. Für dieses Projekt: Werkzeugkonfiguration = `.claude/settings.json`, Schutzskripte = die darin referenzierten Hook-Dateien. Diese Zuordnung ist bislang nirgends verbindlich festgehalten.
+Fundstelle: `docs/projekt/zielfassung.md` §9.4 E-183/E-188; `.claude/settings.json`.
+Auswirkung: Ohne die explizite Zuordnung bleibt offen, welche Datei(en) beim Gültigkeitsschlüssel-Nachweis tatsächlich gehasht werden müssen — Risiko einer Fehlimplementierung in F6b.
+Maßnahme: Bei der F6b-Umsetzung die Zuordnung Werkzeugkonfiguration=`.claude/settings.json`, Schutzskripte=dort referenzierte Hook-Dateien verbindlich übernehmen oder, falls abweichend, explizit begründen.
+Feature/Run: F6b WS-B Dokumentation, 03.09.2026.
+
+**F-077** · `BUG` · P1 · offen — Lösungsweg entschieden: E3, Umsetzung in WS-D
+Titel: `pruefeStartbedingung2` prüft die Herkunft des Wirksamkeitsnachweises nicht.
+Beschreibung: Bedingung 1 liest die Baseline commit-gepinnt aus dem externen Repo (Pfad-Präfix, `.gitattributes`, Hash-Vergleich Arbeitsbaum/Commit). Bedingung 2 nimmt den Nachweis als `unknown` direkt vom Aufrufer und prüft nur Schema und Feldgleichheit gegen den selbst gebauten Ist-Schlüssel. Ein Aufrufer, der den Nachweis konstruiert, passiert E-188 immer.
+Fundstelle: `src/invocation-policy/index.ts`, `pruefeStartbedingung2`; `features/F4/journal.md`, Nachtrag plan-v2 Delta 2.
+Auswirkung: null bei F6a (kein Aufrufer), blockierend bei F6b — E-188 wäre dort eine Selbstauskunft statt einer Schutzschicht.
+Maßnahme: D16-analoge Lesekette für den Nachweis (E3, WS-D). Nicht durch F-053 abgedeckt.
+Feature/Run: Challenge F6b, 03.09.2026.
+
+**F-079** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Verbindliche Auflage lebt nur in einem Feature-Journal, nicht im Findings-Register.
+Beschreibung: Die D16-analoge Schreibschutz-Auflage für den Wirksamkeitsnachweis-Ablageort stand ausschließlich in `features/F4/journal.md` (Nachtrag plan-v2 Delta 2) und im Schema-`description`. Grep über `state/findings.md` nach „Ablageort": null Treffer. Eine Sitzung, die nur das Register liest, übersieht sie.
+Fundstelle: `features/F4/journal.md`; `state/findings.md`.
+Auswirkung: mittel — die Auflage wurde in Übergabe 101 und 103 beide Male nicht erwähnt.
+Maßnahme: Auflagen, die eine spätere Entscheidung binden, gehören zusätzlich ins Register, nicht nur ins Journal.
+Feature/Run: Challenge F6b, 03.09.2026.
+
+**F-082** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Challenger-Sitzung hat Findings im Chat definiert, aber nicht in einem lesbaren Ort persistiert — Muster wie F-072/F-073/F-076.
+Beschreibung: F-077 und F-079 wurden im F6b-Challenge im Chat-Text ausgegeben und per ID referenziert, ihr Volltext stand aber weder in `claude/104_CHALLENGE_F6B_SCHREIBWIRKUNG.md` noch sonst im Projekt/Repo. Die bauende Sitzung (WS-B) konnte die IDs deshalb nicht auflösen und musste zurückfragen.
+Fundstelle: `claude/104_CHALLENGE_F6B_SCHREIBWIRKUNG.md`, `claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`.
+Auswirkung: ein vermeidbarer Rückfrage-Zyklus vor jedem Commit, in dem ein Handoff-Dokument Finding-IDs referenziert, deren Volltext nicht mitgeliefert wurde.
+Maßnahme: Jedes Finding, das in einem Handoff-Dokument per ID referenziert wird, bekommt seinen vollen Register-Text im selben Dokument mit.
+Feature/Run: Challenge F6b / WS-B, 03.09.2026.

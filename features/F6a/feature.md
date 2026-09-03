@@ -90,9 +90,13 @@ Ablagepfade): folgt in `state/plan-v1-f6a-claude-code-gateway.md`.
   Finding F-053) und jeder Lauf, der Produktdateien ändert, gehören zu
   F6b. F6a begrenzt den Werkzeugsatz auf lesende Werkzeuge.
 - **`ERZWUNGEN` als Zusicherung für die Werkzeugsatz-Begrenzung.** E-187
-  verlangt zwei unabhängige Mechanismen; Messfall 3 (MCP-Kanal) war auf
-  der Zielmaschine nicht messbar (`state/tp-nachtrag.md`), §16.8 Punkt 4
-  bleibt offen. F6a führt die Begrenzung wie F4 als `DEKLARIERT`.
+  verlangt zwei unabhängige Mechanismen; §16.8 Punkt 4 ist inzwischen
+  geschlossen (E7, F-078, 03.09.2026) — der bisher referenzierte
+  MCP-Kanal-Messfall 3 gilt als überholt. Die Messung lief in einem
+  Wegwerf-Arbeitsverzeichnis außerhalb dieses Repos, nicht gegen F6as
+  eigenen Aufruf; eine Hochstufung von F6as `DEKLARIERT` auf `ERZWUNGEN`
+  bleibt eine eigene, hier nicht getroffene Entscheidung. F6a führt die
+  Begrenzung bis dahin wie F4 als `DEKLARIERT`.
 - Orchestrierung mehrerer Executions, Wiederaufnahme, Resume-Ziele —
   Execution Controller (Deliverable 3, Feature #8).
 - Kontextpaket bauen (F5), Autorisierung prüfen (F3), Startfreigabe
@@ -295,7 +299,7 @@ Trennung, die F1 zwischen Standardkette und
   Gateway „keine fachliche Bewertung, keine Fließtextdeutung"; Result
   Evaluator „klassifiziert Läufe ausschließlich aus Ergebnishülle und
   Ereignisstrom". Begründet die F6a/F7-Grenze.
-- `docs/projekt/zielfassung.md` §16.8 Punkt 4 (E-187 offen), Punkt 5
+- `docs/projekt/zielfassung.md` §16.8 Punkt 4 (E-187, geschlossen E7/F-078), Punkt 5
   (Absturz-Erkennung, faktisch durch TP-01e gemessen — Finding F-052),
   Punkt 8 (Gültigkeitsschlüssel, wird durch AK7 adressiert).
 - `ARCHITECTURE.md` §4 (drei Terminalausgänge, zwei Ablagen, kein
