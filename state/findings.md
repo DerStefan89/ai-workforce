@@ -875,13 +875,13 @@ Auswirkung: Ohne die explizite Zuordnung bleibt offen, welche Datei(en) beim Gü
 Maßnahme: Bei der F6b-Umsetzung die Zuordnung Werkzeugkonfiguration=`.claude/settings.json`, Schutzskripte=dort referenzierte Hook-Dateien verbindlich übernehmen oder, falls abweichend, explizit begründen.
 Feature/Run: F6b WS-B Dokumentation, 03.09.2026.
 
-**F-077** · `BUG` · P1 · offen — Lösungsweg entschieden: E3, Umsetzung in WS-D
+**F-077** · `BUG` · P1 · gelöst
 Titel: `pruefeStartbedingung2` prüft die Herkunft des Wirksamkeitsnachweises nicht.
-Beschreibung: Bedingung 1 liest die Baseline commit-gepinnt aus dem externen Repo (Pfad-Präfix, `.gitattributes`, Hash-Vergleich Arbeitsbaum/Commit). Bedingung 2 nimmt den Nachweis als `unknown` direkt vom Aufrufer und prüft nur Schema und Feldgleichheit gegen den selbst gebauten Ist-Schlüssel. Ein Aufrufer, der den Nachweis konstruiert, passiert E-188 immer.
+Beschreibung: Bedingung 1 liest die Baseline commit-gepinnt aus dem externen Repo (Pfad-Präfix, `.gitattributes`, Hash-Vergleich Arbeitsbaum/Commit). Bedingung 2 nahm den Nachweis als `unknown` direkt vom Aufrufer und prüfte nur Schema und Feldgleichheit gegen den selbst gebauten Ist-Schlüssel. Ein Aufrufer, der den Nachweis konstruiert, passierte E-188 immer.
 Fundstelle: `src/invocation-policy/index.ts`, `pruefeStartbedingung2`; `features/F4/journal.md`, Nachtrag plan-v2 Delta 2.
 Auswirkung: null bei F6a (kein Aufrufer), blockierend bei F6b — E-188 wäre dort eine Selbstauskunft statt einer Schutzschicht.
-Maßnahme: D16-analoge Lesekette für den Nachweis (E3, WS-D). Nicht durch F-053 abgedeckt.
-Feature/Run: Challenge F6b, 03.09.2026.
+Maßnahme: Umgesetzt (E3, F6b WS-D). Neuer Typ `WirksamkeitsnachweisReferenz` (`src/invocation-policy/types.ts:15-19`). `pruefeStartbedingung2` (`src/invocation-policy/index.ts:371-421`) nimmt jetzt eine `WirksamkeitsnachweisReferenz` statt `unknown` entgegen und liest sie über die gemeinsame, aus `pruefeStartbedingung1` ausgelagerte private Lesekette `leseUndVerifiziereCommitGepinnteDatei` (`src/invocation-policy/index.ts:267-323`) — Pfad-Präfix, `.gitattributes`, Hash-Vergleich Arbeitsbaum/Commit, danach Schema-Validierung.
+Feature/Run: F6b WS-D, 03.09.2026.
 
 **F-079** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Verbindliche Auflage lebt nur in einem Feature-Journal, nicht im Findings-Register.
@@ -898,3 +898,11 @@ Fundstelle: `claude/104_CHALLENGE_F6B_SCHREIBWIRKUNG.md`, `claude/105_F6B_ENTSCH
 Auswirkung: ein vermeidbarer Rückfrage-Zyklus vor jedem Commit, in dem ein Handoff-Dokument Finding-IDs referenziert, deren Volltext nicht mitgeliefert wurde.
 Maßnahme: Jedes Finding, das in einem Handoff-Dokument per ID referenziert wird, bekommt seinen vollen Register-Text im selben Dokument mit.
 Feature/Run: Challenge F6b / WS-B, 03.09.2026.
+
+**F-083** · `PROCESS_IMPROVEMENT` · P2 · gelöst
+Titel: WS-D-Änderungen lagen auf bereits squash-gemergtem Branch.
+Beschreibung: Die WS-D-Umsetzung (Wirksamkeitsnachweis-Herkunftsprüfung) wurde auf `docs/f6b-ws-c-startziel-guelttigkeitsschluessel` gebaut — ein Branch, dessen zwei Commits bereits per Squash-Merge nach `origin/main` übernommen worden waren (F-056-Muster). Der Branch war damit gegenüber `origin/main` divergiert; der pre-push-Hook hätte den Push blockiert.
+Fundstelle: Branch `docs/f6b-ws-c-startziel-guelttigkeitsschluessel` zum Zeitpunkt des WS-D-Abschlusses.
+Auswirkung: gering, aber ein vermeidbarer Korrekturzyklus vor jedem Push — der Arbeitsauftrag hätte von vornherein einen neuen Branch von `origin/main` verlangen müssen statt auf dem WS-C-Branch weiterzubauen.
+Maßnahme: Korrigiert im WS-D-Abschluss-Vertrag — Arbeitsverzeichnis-Diff gesichert, neuer Branch `f6b-ws-d-wirksamkeitsnachweis-herkunftspruefung` von frisch geholtem `origin/main` erzeugt, Änderungen dorthin übertragen. Für künftige Workstream-Ketten: jeder neue WS-Vertrag sollte explizit auf einem Branch von aktuellem `origin/main` aufsetzen, nicht auf dem Vorgänger-WS-Branch, sobald dessen PR gemergt ist.
+Feature/Run: F6b WS-D-Abschluss, 03.09.2026.
