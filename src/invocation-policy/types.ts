@@ -35,6 +35,7 @@ export interface IstUebrigeFelder {
   werkzeug_version_deklariert: string
   berechtigungskontext: string
   arbeitsverzeichnis_pfad: string
+  startziel_pfad: string
 }
 
 export interface Gueltigkeitsschluessel {
@@ -43,6 +44,7 @@ export interface Gueltigkeitsschluessel {
   werkzeug_version_deklariert: string
   berechtigungskontext: string
   arbeitsverzeichnis_pfad: string
+  startziel_pfad: string
 }
 
 export interface WirksamkeitsnachweisEintrag {

@@ -45,6 +45,7 @@ const ISTUEBRIGEFELDER = {
   werkzeug_version_deklariert: '2.1.241',
   berechtigungskontext: 'profil-standard',
   arbeitsverzeichnis_pfad: 'C:\\Users\\stefa\\Projekte\\ai-workforce',
+  startziel_pfad: 'C:\\Program Files\\claude\\claude.exe',
 }
 
 console.log('\n=== F4-Invocation-Policy-Check ===\n')
@@ -104,6 +105,7 @@ function gueltigerWirksamkeitsnachweis(istZustand, istUebrigeFelder) {
       werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
       berechtigungskontext: istUebrigeFelder.berechtigungskontext,
       arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
+      startziel_pfad: istUebrigeFelder.startziel_pfad,
     },
     rot_fall_beleg: 'Gate-Skript — kein echter Rot-Fall-Nachweis',
     geprueft_am: new Date().toISOString(),
@@ -226,6 +228,15 @@ try {
     )
   } else {
     console.log(`✓ F11-Querkonsistenz-Fall: Bedingung 1 grün, Bedingung 2 lehnt denselben istZustand mit veraltetem Nachweis-Hash ab (${bedingung2Drift.grund}) — kein FREIGEGEBEN trotz grüner Bedingung 1.`)
+  }
+
+  const nachweisMitStartzielDrift = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
+  nachweisMitStartzielDrift.gueltigkeitsschluessel.startziel_pfad = 'C:\\ein\\anderes\\werkzeug.exe'
+  const bedingung2DriftStartziel = pruefeStartbedingung2(nachweisMitStartzielDrift, istZustand, ISTUEBRIGEFELDER)
+  if (bedingung2DriftStartziel.ok) {
+    befunde.push(`Bedingung 2 Drift-Fall (startziel_pfad, E-188): erwartet ok:false, erhalten ${JSON.stringify(bedingung2DriftStartziel)}`)
+  } else {
+    console.log(`✓ Bedingung 2 Drift-Fall (startziel_pfad, E-188): abgelehnt (${bedingung2DriftStartziel.grund}).`)
   }
 
   // ─── (d) pruefeAufrufparameter: Grün-Fall + Rot-Fall ───────────────────

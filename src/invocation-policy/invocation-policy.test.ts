@@ -36,6 +36,7 @@ const ISTUEBRIGEFELDER: IstUebrigeFelder = {
   werkzeug_version_deklariert: '2.1.241',
   berechtigungskontext: 'profil-standard',
   arbeitsverzeichnis_pfad: 'C:\\Users\\stefa\\Projekte\\ai-workforce',
+  startziel_pfad: 'C:\\Program Files\\claude\\claude.exe',
 }
 
 function neueLaufId(praefix: string): string {
@@ -99,6 +100,7 @@ function gueltigerWirksamkeitsnachweis(istZustand: IstZustand, istUebrigeFelder:
       werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
       berechtigungskontext: istUebrigeFelder.berechtigungskontext,
       arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
+      startziel_pfad: istUebrigeFelder.startziel_pfad,
     },
     rot_fall_beleg: 'Testfall — kein echter Rot-Fall-Nachweis',
     geprueft_am: new Date().toISOString(),
@@ -174,6 +176,28 @@ test('Drift im Gültigkeitsschlüssel (arbeitsverzeichnis_pfad) bei sonst gülti
     assert.ok(urteil.starturteil === 'ABGELEHNT')
     assert.match(urteil.grund, /E-188/)
     assert.match(urteil.grund, /arbeitsverzeichnis_pfad/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Drift im Gültigkeitsschlüssel (startziel_pfad) bei sonst gültiger Baseline liefert ABGELEHNT — E-188', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const baselineReferenz = committeBaseline(repoWurzel, neueLaufId('rot-e188-startziel'), gueltigeBaselineInhalt())
+    const istZustand = gueltigerIstZustand()
+    const nachweisMitDrift = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
+    nachweisMitDrift.gueltigkeitsschluessel.startziel_pfad = 'C:\\ein\\anderes\\werkzeug.exe'
+
+    const urteil = pruefeStartfreigabe(
+      { baselineReferenz, istZustand, wirksamkeitsnachweis: nachweisMitDrift, istUebrigeFelder: ISTUEBRIGEFELDER },
+      { repoWurzel }
+    )
+
+    assert.strictEqual(urteil.starturteil, 'ABGELEHNT')
+    assert.ok(urteil.starturteil === 'ABGELEHNT')
+    assert.match(urteil.grund, /E-188/)
+    assert.match(urteil.grund, /startziel_pfad/)
   } finally {
     rmSync(repoWurzel, { recursive: true, force: true })
   }

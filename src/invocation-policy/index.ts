@@ -220,6 +220,7 @@ export function validiereWirksamkeitsnachweisEintrag(eintrag: unknown): string[]
         'werkzeug_version_deklariert',
         'berechtigungskontext',
         'arbeitsverzeichnis_pfad',
+        'startziel_pfad',
       ])
       for (const feld of Object.keys(gsObj)) {
         if (!gsErlaubt.has(feld)) verstoesse.push(`unbekanntes Feld 'gueltigkeitsschluessel.${feld}' (additionalProperties: false)`)
@@ -245,6 +246,9 @@ export function validiereWirksamkeitsnachweisEintrag(eintrag: unknown): string[]
       }
       if ('arbeitsverzeichnis_pfad' in gsObj && (typeof gsObj.arbeitsverzeichnis_pfad !== 'string' || gsObj.arbeitsverzeichnis_pfad.length === 0)) {
         verstoesse.push("'gueltigkeitsschluessel.arbeitsverzeichnis_pfad' muss ein nicht-leerer String sein")
+      }
+      if ('startziel_pfad' in gsObj && (typeof gsObj.startziel_pfad !== 'string' || gsObj.startziel_pfad.length === 0)) {
+        verstoesse.push("'gueltigkeitsschluessel.startziel_pfad' muss ein nicht-leerer String sein")
       }
     }
   }
@@ -353,6 +357,7 @@ export function pruefeStartbedingung2(
     werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
     berechtigungskontext: istUebrigeFelder.berechtigungskontext,
     arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
+    startziel_pfad: istUebrigeFelder.startziel_pfad,
   }
 
   if (normalisiereHash(istGueltigkeitsschluessel.werkzeug_konfiguration_hash) !== normalisiereHash(nachgewiesen.werkzeug_konfiguration_hash)) {
@@ -369,6 +374,9 @@ export function pruefeStartbedingung2(
   }
   if (normalisierePfadFuerVergleich(istGueltigkeitsschluessel.arbeitsverzeichnis_pfad) !== normalisierePfadFuerVergleich(nachgewiesen.arbeitsverzeichnis_pfad)) {
     return { ok: false, grund: "Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)" }
+  }
+  if (normalisierePfadFuerVergleich(istGueltigkeitsschluessel.startziel_pfad) !== normalisierePfadFuerVergleich(nachgewiesen.startziel_pfad)) {
+    return { ok: false, grund: "Drift im Gültigkeitsschlüssel: 'startziel_pfad' (E-188)" }
   }
 
   return { ok: true }
