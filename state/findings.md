@@ -803,3 +803,35 @@ Fundstelle: `scripts/check-f6a-claude-code-gateway.mjs`, AK15-Rot-Fall-Liste (vo
 Auswirkung: gering — auf Windows (Zielplattform) griff die Sperrlisten-Prüfung real, der Guard selbst (`pruefeStartziel`) war nie fehlerhaft. Betroffen war ausschließlich die Testabdeckung: in einer Linux-CI-Umgebung wäre ein Regressionsfehler in der Basisnamen-Sperrliste durch diesen Testfall nicht aufgefallen.
 Maßnahme: Startziel auf `join(process.cwd(), 'cmd.exe')` umgestellt (absolut, plattformunabhängig, erreicht die Sperrlisten-Prüfung noch vor der Existenzprüfung). Jeder AK15-Rot-Fall prüft jetzt zusätzlich einen erwarteten Teilstring in `ergebnis.grund`, nicht nur `ok:false` — deckt auch einen falsch getroffenen Ablehnungsgrund auf.
 Feature/Run: F6a WS4, Challenger-Nachprüfung vor SCOPE-7-Freigabe, 03.09.2026.
+
+**F-072** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Challenger-Sitzungen liefern Verträge aus, ohne sie gegen `scripts/check-contract.mjs` zu prüfen.
+Beschreibung: Der Vertrag `f6a-ws4-windows-prozessstart` war inhaltlich vollständig, aber im falschen Format — neun Befunde, CI rot, obwohl das prüfende Skript seit Langem existiert und das Format in `.claude/skills/handoff-vertrag/SKILL.md` festgeschrieben ist. Die Prüfung fand erst in CI statt, nach Branch, Commit und PR. Ein vorangestellter HTML-Kommentar (`<!-- Ziel-Pfad im Repo: … -->`) hätte allein schon die `SCHRITT 0`-Präambelprüfung ausgelöst.
+Fundstelle: `scripts/check-contract.mjs`, `.claude/skills/handoff-vertrag/SKILL.md`; Vorfall PR #48, 02.09.2026.
+Auswirkung: ein vermeidbarer roter CI-Lauf plus Amend/Force-Push pro Vertrag; bei mehreren Verträgen je Feature ein wiederkehrender Reibungsposten.
+Maßnahme: Eine Sitzung, die einen Vertrag nach `state/tasks/` schreibt, prüft ihn vor der Übergabe mechanisch (`node scripts/check-contract.mjs`). Zusätzlich prüfenswert: `check-contract.mjs` in einen Pre-Commit-Hook hängen, damit das Format nicht erst in CI auffällt.
+Feature/Run: WS4-Vertragsübergabe, 02.09.2026.
+
+**F-073** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Challenger hat eine Abwesenheit aus einem einzigen Ort geschlossen und daraus eine Vertragsprämisse gemacht.
+Beschreibung: Der WS4-Vertrag behauptete in CONTEXT „keine native `claude.exe`" — belegt allein dadurch, dass `C:\Users\stefa\.local` nicht existiert. Real liegt die native Binary im `bin`-Verzeichnis des npm-Global-Pakets (`bin/claude.exe`, PE32+, 218.507.936 Bytes). Die naheliegende Gegenprobe (`bin`-Feld der `package.json` lesen) wurde nicht gemacht, obwohl der Vertrag genau diese Messung für Messschritt M vorschrieb — nur eben erst nach der Prämisse. Die bauende Sitzung hat korrekt eskaliert statt auszuweichen; behoben über Nachtrag 1 zum Vertrag.
+Fundstelle: `state/tasks/f6a-ws4-windows-prozessstart.md`, CONTEXT-Abschnitt und Nachtrag 1; Messschritt-M-Bericht vom 02.09.2026.
+Auswirkung: E1 wurde auf einer falschen Grundlage formuliert; ein Vertragsnachtrag war nötig. Kein Schaden, weil die ESCALATE-Klausel griff — genau dafür war sie da.
+Maßnahme: Eine Abwesenheitsaussage gehört nur dann als `[Fakt]` in einen Vertrag, wenn sie an der Stelle gemessen wurde, an der die Sache normalerweise liegt — bei npm-Paketen also am `bin`-Feld, nicht an einem vermuteten Installationspfad. Andernfalls als `[Offene Unsicherheit]` formulieren.
+Feature/Run: WS4 Messschritt M, 02.09.2026.
+
+**F-074** · `TECH_DEBT` · P2 · offen
+Titel: Werkzeugversion driftet weiter — `state/tp-nachtrag.md` ist als E-188-Quelle nicht belastbar.
+Beschreibung: In WS4 real gemessen: `2.1.258 (Claude Code)`. `state/tp-nachtrag.md` hält `2.1.241` (CLI) und `2.1.250` (VSCode-Extension). Dritter abweichender Wert. E-188 nennt die Version des Ausführungswerkzeugs als Bestandteil des Gültigkeitsschlüssels.
+Fundstelle: `state/tp-nachtrag.md`; `state/gates.md`, WS4-Eintrag (Messschritt M), 02.09.2026.
+Auswirkung: Ein aus Dokumentation gelesener Versionswert erzeugt einen falschen Gültigkeitsschlüssel und damit eine Prüfung, die formal besteht, ohne etwas zu belegen.
+Maßnahme: `werkzeugVersionDeklariert` stammt immer aus einer Messung zum Laufzeitpunkt, nie aus `tp-nachtrag.md`. Relevant für die F8-Planung: wer misst, wann, und was passiert bei Abweichung gegen den gepinnten Schlüssel.
+Feature/Run: WS4 Messschritt M, 02.09.2026.
+
+**F-076** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Git-Kommandos über die Geräte-Brücke hinterlassen eine stale `.git/index.lock` und blockieren Stefans Terminal.
+Beschreibung: Die Challenger-Sitzung hat `git status`/`git diff` über die Geräte-Brücke (`device_bash`) im echten Arbeitsverzeichnis ausgeführt. Git legt dabei `.git/index.lock` an; die Brücke darf Dateien standardmäßig nicht löschen („Operation not permitted"), also bleibt die Lock-Datei liegen. Jeder nachfolgende schreibende Git-Befehl in Stefans Terminal scheitert mit „Unable to create '.git/index.lock': File exists" — im Vorfall gleich drei Befehle hintereinander (`add`, `commit`, `push`), gefolgt von einem irreführenden `error: src refspec … does not match any`.
+Fundstelle: Vorfall 03.09.2026, nach dem F-072/F-073/F-074-Nachtrag; Warnung „unable to unlink … index.lock: Operation not permitted" in der Brückenausgabe.
+Auswirkung: Stefans Terminal ist blockiert, bis er die Lock-Datei manuell entfernt. Die Fehlermeldung nennt fälschlich einen laufenden Git-Prozess und führt damit in die Irre.
+Maßnahme: Sitzungen, die über die Geräte-Brücke arbeiten, führen dort **keine** Git-Kommandos aus — Lesen und Prüfen ja (`cat`, `grep`, `sed`, `wc`), Git nein. Git läuft ausschließlich in Stefans eigenem Terminal. Für Diffs gegen `origin/main` gibt die Sitzung stattdessen einen Terminalbefehl aus und liest die Ausgabe. Falls eine Sitzung doch Git braucht: vorher Löschrechte für den Ordner anfordern, sonst bleibt jede Lock-Datei liegen.
+Feature/Run: F6a WS4, Findings-Nachtrag, 03.09.2026.
