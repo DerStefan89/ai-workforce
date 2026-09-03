@@ -11,13 +11,16 @@
  * verweigereStart auf, startet selbst nie einen Prozess (D5-Muster: kein
  * Nachbau von F4).
  *
- * WS2: starteGateway orchestriert den tatsächlichen Prozessstart —
+ * WS2 + WS4: starteGateway orchestriert den tatsächlichen Prozessstart —
  * pruefeUndVerweigereBeiTreffer (unverändert, kein zweiter Aufruf von
- * pruefeAufrufparameter) → bei ok:true eine RUN_PREPARED-Wirkungsmarke
+ * pruefeAufrufparameter) → prozessstart.ts' pruefeStartziel (AK15,
+ * Hygiene-Guard, keine Vertrauensgrenze — die Vertrauensfrage liegt per E2
+ * beim Aufrufer) → bei beidem ok:true eine RUN_PREPARED-Wirkungsmarke
  * (F1B) → starteProzess (prozessstart.ts, Argv-Array, F-057) → Ergebnis
  * OHNE Klassifikation auswerten (kein ergebnis-Feld, keine Auswertung der
  * gemeldeten Genehmigungsverweigerungen, F7-Grenze, AK12) →
- * Rohereignisstrom nach kontrollzustand-roh/ schreiben
+ * Rohereignisstrom (inkl. werkzeugStartziel + startfehler, F-071) nach
+ * kontrollzustand-roh/ schreiben
  * → Laufakte über F2s registriereKernArtefakt registrieren. Schreibt
  * bewusst NIE eine Terminal-Wirkungsmarke für den Prozessausgang selbst
  * (weder bei validem noch bei fehlendem Ergebnisobjekt) — das bliebe eine
@@ -33,7 +36,7 @@ import { pruefeAufrufparameter, verweigereStart } from '../invocation-policy/ind
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
-import { starteProzess } from './prozessstart.ts'
+import { pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter } from './types.ts'
 
 interface Optionen {
@@ -78,6 +81,22 @@ export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | nu
   if (typeof geparst !== 'object' || geparst === null || Array.isArray(geparst)) return null
   const obj = geparst as Record<string, unknown>
   return obj.type === 'result' ? obj : null
+}
+
+/**
+ * Liefert den Modellnamen aus dem "type":"result"-Objekt (F6a AK8/F-059),
+ * real gemessen in SCOPE 7 (state/tasks/f6a-ws4-windows-prozessstart.md,
+ * FOLGT-Klausel): das Ergebnisobjekt trägt ein `modelUsage`-Objekt, dessen
+ * Schlüssel der Modellname ist. Nur bei GENAU EINEM Schlüssel eindeutig —
+ * kein Schlüssel oder mehr als einer bleibt null, es wird nicht geraten
+ * (Muster F-059/F-061).
+ */
+export function leseModellBeobachtet(ergebnisObjekt: Record<string, unknown> | null): string | null {
+  if (ergebnisObjekt === null) return null
+  const modelUsage = ergebnisObjekt.modelUsage
+  if (typeof modelUsage !== 'object' || modelUsage === null || Array.isArray(modelUsage)) return null
+  const schluessel = Object.keys(modelUsage)
+  return schluessel.length === 1 ? schluessel[0] : null
 }
 
 /**
@@ -129,15 +148,28 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     return { ok: false, grund: pruefung.grund }
   }
 
+  const startzielPruefung = pruefeStartziel(eingaben.werkzeugStartziel)
+  if (!startzielPruefung.ok) {
+    return { ok: false, grund: startzielPruefung.grund }
+  }
+
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)
 
-  const prozessErgebnis = await starteProzess(eingaben.tokens, { starter: optionen.starter })
-  const beobachtungsbasisVollstaendig = leseErgebnisobjekt(prozessErgebnis.stdout) !== null
+  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, { starter: optionen.starter })
+  const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
+  const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
+  const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
 
   const rohBasisVerzeichnis = optionen.rohBasisVerzeichnis ?? STANDARD_ROH_BASISVERZEICHNIS
   const rohVerzeichnis = join(rohBasisVerzeichnis, eingaben.laufId)
   mkdirSync(rohVerzeichnis, { recursive: true })
-  const rohInhalt = JSON.stringify({ stdout: prozessErgebnis.stdout, stderr: prozessErgebnis.stderr, exitCode: prozessErgebnis.exitCode })
+  const rohInhalt = JSON.stringify({
+    werkzeugStartziel: eingaben.werkzeugStartziel,
+    stdout: prozessErgebnis.stdout,
+    stderr: prozessErgebnis.stderr,
+    exitCode: prozessErgebnis.exitCode,
+    startfehler: prozessErgebnis.startfehler,
+  })
   const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
   writeFileSync(rohPfad, rohInhalt, 'utf8')
 
@@ -147,7 +179,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     werkzeug_version_deklariert: eingaben.werkzeugVersionDeklariert,
     berechtigungskontext: eingaben.berechtigungskontext,
     arbeitsverzeichnis_pfad: process.cwd(),
-    modell_beobachtet: null,
+    modell_beobachtet: modellBeobachtet,
     beobachtungsbasis_vollstaendig: beobachtungsbasisVollstaendig,
     rohstrom_referenz: { pfad: rohPfad, inhalts_hash: sha256Hex(rohInhalt) },
     erstellt_am: jetzt(),

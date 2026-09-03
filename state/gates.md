@@ -1305,3 +1305,89 @@ nicht die Tabelle oben stillschweigend überschreiben.
   Einmaliger, manueller Lauf, nicht in `npm run check`/`check:template`
   eingehängt. Kein Commit, kein Push in diesem Schritt (Freigabe
   ausstehend).
+
+- 2026-09-03, `scripts/verify-f6a-real-run.mjs` (WS4 zu Vertrag
+  `f6a-ws4-windows-prozessstart`, SCOPE 7) — Wiederholung des WS3-Nachweises
+  mit dem neuen, Windows-tauglichen Startziel (E1/E2, Nachtrag 1 im
+  Vertrag): `starteGateway`/`starteProzess` starten real einen
+  Claude-Code-Prozess, ohne aktivierten Shell-Modus, ohne Lockerung von
+  F-057/AK14. Behebt F-069, F-070, F-071 (siehe `state/findings.md`).
+
+  **Messschritt M, im Wortlaut:**
+  ```
+  npm-Global-Wurzel: C:\Users\stefa\AppData\Roaming\npm\node_modules
+  bin-Feld (package.json): {"claude":"bin/claude.exe"}
+  werkzeugStartziel: ["C:\\Users\\stefa\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe"]
+  process.execPath: C:\Program Files\nodejs\node.exe
+  ```
+  `<werkzeugStartziel[0]> --version` (real, vor SCOPE 7 geprüft):
+  `2.1.258 (Claude Code)` — weicht von `state/tp-nachtrag.md` ab (dort
+  2.1.241 CLI / 2.1.250 Extension, siehe Vertrag Nachtrag 1); dieser Wert
+  kommt aus der Messung, nicht aus `tp-nachtrag.md`.
+
+  **SCOPE 7, Aufruf-Tokens:**
+  ```
+  ["--model","sonnet","--output-format","json","--setting-sources","project","--tools","Read,Grep","-p","Lies die Datei package.json mit dem Read-Werkzeug und nenne ausschließlich den Wert des Feldes \"name\". Tu sonst nichts."]
+  ```
+
+  **Ergebnis von `starteGateway`, im Wortlaut (lauf_id
+  `verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73`, Dauer 12702 ms):**
+  ```json
+  {
+    "ok": true,
+    "laufakte": {
+      "laufakte_schema": "v0",
+      "lauf_id": "verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73",
+      "werkzeug_version_deklariert": "2.1.258 (Claude Code)",
+      "berechtigungskontext": "ws4-realer-nachweis",
+      "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+      "modell_beobachtet": "claude-sonnet-5",
+      "beobachtungsbasis_vollstaendig": true,
+      "rohstrom_referenz": {
+        "pfad": "kontrollzustand-roh\\verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73\\rohstrom.json",
+        "inhalts_hash": "f5e5222f09c866c0d7c184988c5ec46eff8847917117e656285488d126812058"
+      },
+      "erstellt_am": "2026-09-03T08:34:10.917Z"
+    },
+    "pfad": "kontrollzustand\\lineage-laufakte-verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73\\checkpoints\\1-ee859c14a919a92e2ad13336b73d74f8fe2993b66dae07bf50ac36f67ddb25c9.json",
+    "versionSequenz": 1
+  }
+  ```
+  Artefakte real erzeugt und registriert (committet als Beleg, Präzedenz
+  WS3-Eintrag oben):
+  ```
+  kontrollzustand/verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73/checkpoints/1-3b8cac3e420b3e4380ecb78990510e95922c324634dde919f57499e4b0bbc21f.json
+  kontrollzustand/lineage-laufakte-verify-f6a-real-run-d9ee29e0-681d-4ea3-b2e8-1cbc79c1bc73/checkpoints/1-ee859c14a919a92e2ad13336b73d74f8fe2993b66dae07bf50ac36f67ddb25c9.json
+  ```
+  (Rohstrom nicht committet, `.gitignore`-Eintrag greift.) `stelleLaufstatusFest`
+  bestätigt real `KLAERUNG_ERFORDERLICH` (offene `RUN_PREPARED`-Sequenz 1,
+  kein Terminalartefakt) — der vorgesehene Zustand, kein Fehlverhalten
+  (AK5/AK12, Terminalklassifikation bleibt F7 vorbehalten).
+
+  **FOLGT-Klausel (Vertrag, Zeile 168-172) aufgelöst:** das reale
+  `"type":"result"`-Objekt trägt ein `modelUsage`-Objekt mit genau einem
+  Schlüssel (`"claude-sonnet-5"`, deckungsgleich mit dessen
+  `canonicalModel`-Feld) — eindeutig. Extraktion umgesetzt
+  (`leseModellBeobachtet`, `src/claude-code-gateway/index.ts`, mit
+  Rot-Fall-Tests für mehrdeutige/fehlende `modelUsage`-Formen). Schließt
+  F6a AK8 und F-059.
+
+  **Bewertung:** AK2a und AK11 real erfüllt — `execFile` gegen die native
+  `bin/claude.exe` startet unter Windows tatsächlich, ein valides
+  Ergebnisobjekt kam zurück, Laufakte + Rohstrom real erzeugt, F2-
+  Registrierung erfolgte real. `npm run check` davor: Exit 0, 101/101
+  Tests grün. `node scripts/check-f6a-claude-code-gateway.mjs`: Exit 0,
+  alle sieben AK15-Rot-Fälle und der Grün-Fall einzeln sichtbar.
+
+  **Durchsetzungsgrad AK15: Hygiene, nicht ERZWUNGEN** (plan-v2 Delta 3).
+  `pruefeStartziel` prüft vier billige Regeln — absoluter Pfad, keine
+  .cmd/.bat/.com/.ps1-Endung, kein Shell-Basisname aus der Sperrliste,
+  existierende Datei. Das ist keine Vertrauensgrenze: ein umbenanntes
+  oder gewrapptes Shell-Programm, ein Symlink oder eine beliebige
+  andere .exe passieren den Guard. Die Frage, welches Programm
+  ausgeführt werden darf, liegt per Entscheidung E2 beim Aufrufer und
+  gehört in den E-188-Gültigkeitsschlüssel (F8). Nach ARCHITECTURE.md
+  §8 wird AK15 deshalb nicht als ERZWUNGEN geführt.
+
+  Einmaliger, manueller Lauf (Stefan hat live mitgesehen), nicht in
+  `npm run check`/`check:template` eingehängt.

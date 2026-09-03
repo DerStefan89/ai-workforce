@@ -684,13 +684,13 @@ Auswirkung: gering hier (rein dokumentarisch, kein Code betroffen), aber ein Mus
 Maßnahme: Konvention aufnehmen — wird ein Finding korrigiert, das in einer Feature-Akte wörtlich zitiert oder als Dependency referenziert ist, gehört die Prüfung dieser Referenzstellen zum selben Korrektur-Schritt, nicht zu einem späteren Zufallsfund.
 Feature/Run: F6a WS2/WS3-Statusprüfung, 31.08.2026.
 
-**F-059** · `TECH_DEBT` · P2 · offen
+**F-059** · `TECH_DEBT` · P2 · **gelöst**
 Titel: `modell_beobachtet` bleibt in WS2 hart `null` — keine Extraktion aus der realen Laufausgabe.
 Beschreibung: `state/tp-nachtrag.md` belegt an keiner Stelle ein `model`-Feld im `"type":"result"`-JSON von `claude -p --output-format json`. Statt eines geratenen Feldnamens setzt WS2 (`src/claude-code-gateway/index.ts`) den Wert bewusst hart auf `null`; Schema (`schemas/kontrollzustand-laufakte-payload.schema.json`) führt `modell_beobachtet` als `string | null`. Entspricht der ursprünglichen Design-Entscheidung 5 aus `state/plan-v1-f6a-ws2-ws3-prozessstart.md` (Annahme, nicht Fakt) und der expliziten Bauanweisung, nicht zu raten.
 Fundstelle: `src/claude-code-gateway/index.ts`, `schemas/kontrollzustand-laufakte-payload.schema.json`, `features/F6a/feature.md` AK8.
 Auswirkung: gering — Modellidentität war ohnehin nur Rang `OBSERVED`, nie Zusicherung (E-185); die Laufakte funktioniert vollständig auch ohne dieses Feld.
-Maßnahme: Feld gegen die reale Ausgabe eines echten `claude -p ...`-Laufs klären — fällt natürlich in WS3 (erster realer Lauf über dieses Modul). Danach kleiner Nachtrag: Extraktion ergänzen, Schema ggf. auf `required` ändern.
-Feature/Run: F6a WS2-Bau, 31.08.2026.
+Maßnahme: WS4 SCOPE 7 (03.09.2026, FOLGT-Klausel `state/tasks/f6a-ws4-windows-prozessstart.md`) lieferte erstmals ein echtes `"type":"result"`-Objekt — es trägt ein `modelUsage`-Objekt, dessen (einziger) Schlüssel den Modellnamen bildet (`"claude-sonnet-5"`, real gemessen). `leseModellBeobachtet` (`src/claude-code-gateway/index.ts`) extrahiert ihn nur bei genau einem Schlüssel, sonst bleibt der Wert `null` (nicht raten, Muster F-059/F-061 bleibt für den Ambiguitätsfall gültig).
+Feature/Run: F6a WS2-Bau, 31.08.2026; gelöst in WS4, 03.09.2026.
 
 **F-060** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: AK14-Grep-Regel (Shell-String-Verbot) im F6a-Gate hat reale Erkennungslücken.
@@ -764,13 +764,29 @@ Auswirkung: Eine Challenger-Sitzung kann `npm run check` über die Brücke nie v
 Maßnahme: Kein Fix nötig/möglich (Plattformgrenze der Brücke) — als bekannte Grenze für künftige Challenger-seitige Verifikationen dokumentieren: Testrunner-Teil selbst nachprüfen, Lint-/Typecheck-Ergebnis aus der bauenden Sitzung übernehmen, nicht wiederholen versuchen.
 Feature/Run: F7-Reviewer-Nachprüfung (Challenger-Sitzung), 02.09.2026.
 
-**F-069** · `BUG` · P1 · offen
+**F-069** · `BUG` · P1 · **gelöst**
 Titel: `starteGateway`/`starteProzess` (F6a) kann unter Windows keinen echten `claude`-Prozess starten — `execFile` scheitert an `.cmd`-Shims.
-Beschreibung: WS3-Nachweislauf (`scripts/verify-f6a-real-run.mjs`, `state/tasks/f6a-ws3-realer-nachweis.md`) zeigt real: `execFile('claude', tokens, ...)` löst unter Windows nur auf den `claude.cmd`-Shim auf. Ohne `shell: true` scheitert das mit `ENOENT` (bloßer Name); mit explizitem `.cmd`-Suffix scheitert es synchron mit `EINVAL` (Node blockiert `.cmd`/`.bat`-Spawns seit der CVE-2024-27980-Härtung). Damit ist die in F-057 geforderte Argv-Array-/`execFile`-Bauweise auf Windows faktisch nicht lauffähig — der Zielkonflikt zwischen Sicherheit (kein Shell-String, F-057) und Windows-Startfähigkeit war vorher nicht real geprüft.
-Fundstelle: `src/claude-code-gateway/prozessstart.ts` (`starteProzess`); Beleg-Commit `97ef781` (Branch `docs/f6a-ws3-realer-nachweis`), `state/gates.md` Delta-3-Eintrag.
-Auswirkung: F6a WS2 ist auf der Zielmaschine (Windows) aktuell nicht benutzbar für einen echten Lauf — reine Testabdeckung (Attrappen) bleibt davon unberührt, aber der reale Zweck des Moduls (einen echten Claude-Code-Prozess zu starten) ist nicht erfüllt. F7 selbst ist nicht betroffen (konsumiert nur Laufakte/Rohstrom, unabhängig davon wie sie entstehen).
-Maßnahme: Eigener Folge-Vertrag für `prozessstart.ts` nötig — z. B. `shell: true` (Spannung mit F-057, eigener Advisor-Pass nötig, da F-057 „nie Shell-String" explizit als Sicherheitsgrenze markiert) oder direkte Ausführung über einen expliziten, nicht-Shell-Pfad zur `claude`-Binary. Nicht in diesem WS3-Vertrag behoben (NICHT-Klausel).
-Feature/Run: F6a WS3, realer Nachweislauf, 02.09.2026.
+Beschreibung: WS3-Nachweislauf (`scripts/verify-f6a-real-run.mjs`, `state/tasks/f6a-ws3-realer-nachweis.md`) zeigt real: `execFile('claude', tokens, ...)` löst unter Windows nur auf den `claude.cmd`-Shim auf. Ohne `shell: true` scheitert das mit `ENOENT` (bloßer Name); mit explizitem `.cmd`-Suffix scheitert es synchron mit `EINVAL` (Node blockiert `.cmd`/`.bat`-Spawns seit der CVE-2024-27980-Härtung). Der Zielkonflikt zwischen Sicherheit (kein Shell-String, F-057) und Windows-Startfähigkeit besteht real **nicht**: die Ursache ist nicht die Argv-Bauweise, sondern das Startziel selbst (ein `.cmd`-Shim statt einer direkt startbaren Datei).
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (`starteProzess`); Beleg-Commit `97ef781` (Branch `docs/f6a-ws3-realer-nachweis`), `state/gates.md` Delta-3-Eintrag (WS3), WS4-Eintrag (Lösung).
+Auswirkung: F6a WS2 war auf der Zielmaschine (Windows) für einen echten Lauf nicht benutzbar; F7 war davon nicht betroffen (konsumiert nur Laufakte/Rohstrom, unabhängig davon wie sie entstehen).
+Maßnahme: Vertrag `f6a-ws4-windows-prozessstart` (Entscheidungen E1/E2, 02.09.2026): Startziel ist die native `bin/claude.exe` der npm-Global-Installation (kein `node`-Zwischenschritt, kein aktivierter Shell-Modus), vom Aufrufer als Pflichtfeld übergeben und über den neuen Hygiene-Guard `pruefeStartziel` (AK15) geprüft. F-057/AK14 unangetastet. Real bestätigt in SCOPE 7 (`scripts/verify-f6a-real-run.mjs`, 03.09.2026): echter Prozessstart unter Windows, valides `"type":"result"`-Objekt zurückerhalten (`state/gates.md` WS4-Eintrag).
+Feature/Run: F6a WS3, realer Nachweislauf, 02.09.2026; gelöst in WS4, 03.09.2026.
+
+**F-070** · `BUG` · P1 · **gelöst**
+Titel: `echterStarter` wandelt einen synchronen `execFile`-Wurf in eine unbehandelte Promise-Rejection statt in ein Ergebnisobjekt.
+Beschreibung: `src/claude-code-gateway/prozessstart.ts:30-36` ruft `execFile` innerhalb eines `new Promise((resolve) => …)`-Executors ohne `try/catch`. Wirft `execFile` synchron (real gemessen: `EINVAL` bei explizitem `.cmd`-Suffix, `state/gates.md` WS3-Eintrag; plattformunabhängig reproduzierbar mit einem NUL-Byte im Token → `ERR_INVALID_ARG_VALUE`), fängt der Promise-Konstruktor den Wurf und macht daraus eine Rejection. `starteGateway` bricht dann zwischen `RUN_PREPARED`-Wirkungsmarke und Rohstrom/Laufakte ab.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts:30-36`, `src/claude-code-gateway/index.ts:132-142`.
+Auswirkung: offene `RUN_PREPARED`-Sequenz ohne jede Ablage; der Lauf bleibt dauerhaft in `KLAERUNG_ERFORDERLICH`, ohne dass ein Artefakt den Grund trägt.
+Maßnahme: `try/catch` innerhalb des Executors, `resolve` mit gesetztem `startfehler`. Behoben in Vertrag `f6a-ws4-windows-prozessstart`.
+Feature/Run: Challenge F-069 / Advisor-Pass WS4, 02.09.2026.
+
+**F-071** · `BUG` · P1 · **gelöst**
+Titel: Der Rohstrom verliert Startfehler und Startziel — ein nicht gestarteter Prozess ist von einem abgebrochenen Lauf nicht unterscheidbar.
+Beschreibung: `echterStarter` verwirft `fehler.code`/`fehler.message`; bei `ENOENT` ist `fehler.code` ein String, der Typ-Guard setzt daher `exitCode: null`. `index.ts:140` schreibt nur `{ stdout, stderr, exitCode }`. Real entstanden im WS3-Lauf: `{"stdout":"","stderr":"","exitCode":null}` — der `ENOENT`-Beleg ist vollständig verloren. Zusätzlich hält nach Entscheidung E2 kein Artefakt fest, welches Programm real gestartet wurde.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts:32-34`, `src/claude-code-gateway/index.ts:140`; Beleg `state/gates.md`, WS3-Eintrag 2026-09-02.
+Auswirkung: trifft E-190 im Kern — die Laufakte meldet korrekt „Beobachtungsbasis unvollständig", wirft aber genau den Beleg weg, der erklärt, warum. Fehlersuche an einem realen Lauf ist ohne diesen Beleg nicht möglich.
+Maßnahme: `ProzessErgebnis.startfehler` eingeführt; Rohstrom trägt `werkzeugStartziel`, `startfehler`, `stdout`, `stderr`, `exitCode`. `LAUFAKTE_V0` unverändert. Behoben in Vertrag `f6a-ws4-windows-prozessstart`.
+Feature/Run: Challenge F-069, 02.09.2026.
 
 **F-057** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Subprozessstart des Claude-Code-Gateways muss Argv-Array nutzen, nicht Shell-String.
@@ -779,3 +795,11 @@ Fundstelle: `src/claude-code-gateway/index.ts` (`baueAufruf`, liefert `AufrufTok
 Auswirkung: real erst mit dem WS2-Bau — ohne diese Vorgabe könnte ein einziger Fehlgriff (Shell-String statt Argv-Array) E-182 faktisch aushöhlen, unabhängig davon, wie sorgfältig `pruefeAufrufparameter` selbst geprüft hat.
 Maßnahme: In plan-v1 für WS2 als bindende Design-Entscheidung aufnehmen: Subprozessstart ausschließlich über `execFile`/`spawn` mit Argv-Array, nie über eine shell-interpretierte Kommandozeile. Kein eigener Vertrag nötig — normale Vorgabe im WS2-Plan.
 Feature/Run: Challenge F-030 (Reprüfung), im Zuge von F6a, 31.08.2026.
+
+**F-075** · `HARNESS_IMPROVEMENT` · P2 · **gelöst**
+Titel: AK15-Rot-Fall 'Sperrlisten-Basisname (cmd.exe)' in `scripts/check-f6a-claude-code-gateway.mjs` mit fest verdrahtetem Windows-Pfad — auf Linux (CI) wirkungslos.
+Beschreibung: Der Rot-Fall nutzte `'C:\Windows\System32\cmd.exe'` als Startziel. `pruefeStartziel` prüft zuerst, ob `startziel[0]` ein absoluter Pfad ist (`resolve(programm) === programm`); unter Linux ist ein Windows-Pfad wie dieser nie absolut, also greift dort bereits die erste Regel ("kein absoluter Pfad") und die Sperrlisten-Basisname-Prüfung wird nie erreicht — der Rot-Fall testete in CI faktisch eine andere Regel als benannt. Zusätzlich prüfte der Test nur `ok:false`, nicht den erwarteten `grund` — ein falsch getroffener Ablehnungsgrund wäre so nicht aufgefallen.
+Fundstelle: `scripts/check-f6a-claude-code-gateway.mjs`, AK15-Rot-Fall-Liste (vor Korrektur Zeile 197).
+Auswirkung: gering — auf Windows (Zielplattform) griff die Sperrlisten-Prüfung real, der Guard selbst (`pruefeStartziel`) war nie fehlerhaft. Betroffen war ausschließlich die Testabdeckung: in einer Linux-CI-Umgebung wäre ein Regressionsfehler in der Basisnamen-Sperrliste durch diesen Testfall nicht aufgefallen.
+Maßnahme: Startziel auf `join(process.cwd(), 'cmd.exe')` umgestellt (absolut, plattformunabhängig, erreicht die Sperrlisten-Prüfung noch vor der Existenzprüfung). Jeder AK15-Rot-Fall prüft jetzt zusätzlich einen erwarteten Teilstring in `ergebnis.grund`, nicht nur `ok:false` — deckt auch einen falsch getroffenen Ablehnungsgrund auf.
+Feature/Run: F6a WS4, Challenger-Nachprüfung vor SCOPE-7-Freigabe, 03.09.2026.

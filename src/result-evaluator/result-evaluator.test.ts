@@ -78,7 +78,7 @@ function schreibeRohstromRoh(laufId: string, inhalt: string): { pfad: string; in
 test('ERFOLGREICH: TP-03d Messfall 1 (permission_denials leer, gültiges Ergebnisobjekt)', async () => {
   const laufId = neueLaufId('erfolgreich')
   try {
-    const prozessErgebnis = await attrappeMitValidemErgebnis([])
+    const prozessErgebnis = await attrappeMitValidemErgebnis([], [])
     const rohstromReferenz = schreibeRohstrom(laufId, prozessErgebnis)
     const laufakte = baueLaufakte(laufId, rohstromReferenz, true)
 
@@ -185,7 +185,7 @@ test('E-186 (plan-v1 8.4): in Shell-Quoting eingebetteter Verbotswert wird trotz
 test('FEHLGESCHLAGEN: Rohstrom-Hash weicht von rohstrom_referenz.inhalts_hash ab', async () => {
   const laufId = neueLaufId('hash-abweichung')
   try {
-    const prozessErgebnis = await attrappeMitValidemErgebnis([])
+    const prozessErgebnis = await attrappeMitValidemErgebnis([], [])
     const rohstromReferenz = schreibeRohstrom(laufId, prozessErgebnis)
     const laufakte = baueLaufakte(laufId, { pfad: rohstromReferenz.pfad, inhalts_hash: 'f'.repeat(64) }, true)
 
@@ -273,7 +273,7 @@ test('is_error/non_execution_kind werden informativ durchgereicht, ohne die Klas
 test('FEHLGESCHLAGEN: TP-01e Messfall A (kein Ergebnisobjekt, beobachtungsbasis_vollstaendig:false)', async () => {
   const laufId = neueLaufId('beobachtungsbasis-unvollstaendig')
   try {
-    const prozessErgebnis = await attrappeOhneErgebnisobjekt([])
+    const prozessErgebnis = await attrappeOhneErgebnisobjekt([], [])
     const rohstromReferenz = schreibeRohstrom(laufId, prozessErgebnis)
     const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
 
@@ -382,7 +382,7 @@ test('dokumentiertes F1B-Verhalten: ein zweiter Terminal-Schreibvorgang für die
   try {
     schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
 
-    const ersteFixture = await attrappeMitValidemErgebnis([])
+    const ersteFixture = await attrappeMitValidemErgebnis([], [])
     const ersteRohstromReferenz = schreibeRohstrom(laufId, ersteFixture)
     klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, ersteRohstromReferenz, true) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
 

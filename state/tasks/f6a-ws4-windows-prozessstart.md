@@ -193,8 +193,82 @@ Feature/Run: Challenge F-069, 02.09.2026.
 
 **F-069** — Maßnahme präzisieren, Status auf `in Arbeit`: Der Zielkonflikt „Sicherheit gegen Windows-Startfähigkeit" besteht real nicht. `execFile` scheitert nicht an der Argv-Bauweise, sondern daran, dass das Ziel ein `.cmd`-Shim ist. Lösung ohne Lockerung von F-057/AK14: Startziel ist die Node-Laufzeit plus absoluter Pfad zum CLI-JavaScript, vom Aufrufer übergeben (Vertrag `f6a-ws4-windows-prozessstart`, Entscheidungen E1/E2 vom 02.09.2026). Ein aktivierter Shell-Modus ist ausdrücklich verworfen.
 
+## Nachtrag 1 (Stefan, 02.09.2026) — E1 nach Messschritt M präzisiert
+
+Messschritt M hat die CONTEXT-Prämisse widerlegt: Die npm-Global-
+Installation liefert unter bin/claude.exe eine native Windows-Executable
+(PE32+, 218.507.936 Bytes, Version 2.1.258), keinen JS-Einstieg. Die
+Vertragsannahme "keine native claude.exe" war aus der Abwesenheit von
+C:\Users\stefa\.local abgeleitet und damit falsch.
+
+E1 gilt sinngemäß weiter, im Wortlaut präzisiert: Startziel ist ein
+direkt startbares, nicht shell-interpretiertes Programm — konkret
+<npm root -g>\@anthropic-ai\claude-code\bin\claude.exe. Kein node-
+Zwischenschritt, kein cli-wrapper.cjs, kein aktivierter Shell-Modus.
+werkzeugStartziel ist damit ein einelementiges Array. E2, F-057, AK14
+und der Guard aus plan-v2 Delta 4 bleiben unverändert gültig.
+
+Zusätzlich: der gemessene Wert 2.1.258 weicht von state/tp-nachtrag.md
+ab (dort 2.1.241 CLI / 2.1.250 Extension). werkzeugVersionDeklariert im
+Nachweislauf kommt aus der Messung, nicht aus tp-nachtrag.md. Beides in
+state/gates.md festhalten.
+
+Danach normal weiter ab SCOPE 2. Die Messwerte aus Messschritt M
+gehören wörtlich in den WS4-Eintrag in state/gates.md.
+
+Zwei Punkte, die sich durch die Präzisierung NICHT ändern:
+- AK15-Guard bleibt wie in plan-v2 Delta 4 (.exe passiert, Sperrliste
+  für Shell-Basisnamen bleibt).
+- Der AK15-Grün-Fall im Gate bleibt process.execPath mit
+  ['-e','process.exit(0)'] — er prüft den Guard, nicht Claude Code.
+
 ## Bericht
 
-Knapp: (1) was geändert wurde, (2) welche Checks liefen, (3) ob sie grün
-waren, (4) echte Blocker. Messwerte aus Messschritt M und SCOPE 7 wörtlich.
-Kein Entwicklungsbericht.
+(1) Geändert: `types.ts` (`werkzeugStartziel`, `startfehler`, `Starter`-
+Signatur), `prozessstart.ts` (`pruefeStartziel`/AK15-Guard, `try/catch`
+im `echterStarter`-Executor, F-070/F-071), `index.ts`
+(`leseModellBeobachtet`, AK8/F-059), `claude-code-gateway.test.ts` (Delta
+9/10/11-Tests, AK15-Rot-/Grün-Fälle, `leseModellBeobachtet`-Tests, F-075-
+Fix im Sperrlisten-Basisname-Test), `check-f6a-claude-code-gateway.mjs`
+(AK15-Gate-Ergänzung, F-075-Fix), `verify-f6a-real-run.mjs`
+(Messschritt-M-Auflösung des Startziels). `state/findings.md` (F-069
+gelöst, F-070/F-071/F-059/F-075 ergänzt), `features/F6a/feature.md` (AK8/
+AK11 real erfüllt, AK15 neu), `state/gates.md` (WS4-Eintrag).
+
+(2)+(3) Checks, alle grün: `npm run check` (Exit 0, 101/101 Tests);
+`node scripts/check-f6a-claude-code-gateway.mjs` (Exit 0, sieben AK15-
+Rot-Fälle + Grün-Fall einzeln sichtbar); `node scripts/verify-f6a-real-run.mjs`
+(SCOPE 7, Exit 0, echter Windows-Prozessstart, valides `"type":"result"`-
+Objekt, `modell_beobachtet: "claude-sonnet-5"`); `git status --short` ohne
+liegen gebliebene `kontrollzustand-test/`- oder `kontrollzustand-roh/`-
+Artefakte.
+
+Messschritt M, im Wortlaut:
+```
+npm-Global-Wurzel: C:\Users\stefa\AppData\Roaming\npm\node_modules
+bin-Feld (package.json): {"claude":"bin/claude.exe"}
+werkzeugStartziel: ["C:\\Users\\stefa\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe"]
+process.execPath: C:\Program Files\nodejs\node.exe
+```
+`--version`: `2.1.258 (Claude Code)`.
+
+SCOPE 7, Ergebnis-Auszug: `beobachtungsbasis_vollstaendig: true`,
+`modell_beobachtet: "claude-sonnet-5"`, Laufstatus (F1B):
+`KLAERUNG_ERFORDERLICH` (erwartet — Terminalklassifikation bleibt F7
+vorbehalten, AK5/AK12). Vollständiger Wortlaut in `state/gates.md`,
+WS4-Eintrag.
+
+(4) Echte Blocker: keine. Der ursprüngliche Zielkonflikt aus F-069
+(Sicherheit gegen Windows-Startfähigkeit) bestand real nicht — Ursache
+war das `.cmd`-Startziel, nicht die Argv-Bauweise (F-057/AK14
+unangetastet). FOLGT-Klausel aufgelöst: `modelUsage` im realen
+Ergebnisobjekt trug die Modellidentität eindeutig (genau ein Schlüssel),
+Extraktion umgesetzt statt geraten.
+
+Nebenbefund vor Commit behoben: der AK15-Rot-Fall „Sperrlisten-
+Basisname" nutzte einen fest verdrahteten Windows-Pfad
+(`C:\Windows\System32\cmd.exe`), der unter Linux-CI nie absolut ist und
+damit an der ersten Guard-Regel scheitert statt an der Sperrliste — die
+Sperrlisten-Prüfung selbst wäre dort nie getestet worden (F-075, in
+Gate-Skript und Testdatei behoben, Rot-Fälle prüfen jetzt zusätzlich den
+erwarteten Ablehnungsgrund statt nur `ok:false`).
