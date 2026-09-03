@@ -6,7 +6,8 @@
     ],
     "werkzeug_version_deklariert": "2.1.241",
     "berechtigungskontext": "profil-standard",
-    "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce"
+    "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+    "startziel_pfad": "C:\\Program Files\\claude\\claude.exe"
   },
   "geprueft_am": "2026-08-31T00:00:00.000Z"
 }

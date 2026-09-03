@@ -7,6 +7,7 @@
     "node": "24.x"
   },
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "echo '[FÜLLUNG] Dev-Server-Befehl'",
     "build": "echo '[FÜLLUNG] Build-Befehl'",
     "lint": "biome lint .",

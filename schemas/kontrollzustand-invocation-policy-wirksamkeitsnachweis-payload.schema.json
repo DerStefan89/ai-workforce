@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/kontrollzustand-invocation-policy-wirksamkeitsnachweis-payload.schema.json",
   "title": "Invocation-Policy-Wirksamkeitsnachweis (extern)",
-  "description": "Struktur des Wirksamkeitsnachweises für den Gültigkeitsschlüssel eines geplanten Laufs (F4, E-188). gueltigkeitsschluessel deckt die fünf in E-188 genannten Bestandteile wörtlich ab. rot_fall_beleg ist Pflicht, weil E-188 den Nachweis gegen einen bekannten Rot-Fall verlangt, nicht aus bloßer Existenz gefolgert. Ablageort dieser Instanz ist bewusst nicht durch dieses Schema festgelegt (Design-Entscheidung 3, plan-v1-f4-invocation-policy.md) — siehe features/F4/journal.md für die D16-analoge Auflage an eine spätere Ablageort-Entscheidung.",
+  "description": "Struktur des Wirksamkeitsnachweises für den Gültigkeitsschlüssel eines geplanten Laufs (F4, E-188). gueltigkeitsschluessel deckt die sechs in E-188 genannten Bestandteile wörtlich ab (startziel_pfad seit E5, 03.09.2026). rot_fall_beleg ist Pflicht, weil E-188 den Nachweis gegen einen bekannten Rot-Fall verlangt, nicht aus bloßer Existenz gefolgert. Ablageort dieser Instanz ist bewusst nicht durch dieses Schema festgelegt (Design-Entscheidung 3, plan-v1-f4-invocation-policy.md) — siehe features/F4/journal.md für die D16-analoge Auflage an eine spätere Ablageort-Entscheidung.",
   "type": "object",
   "additionalProperties": false,
   "required": ["gueltigkeitsschluessel", "rot_fall_beleg", "geprueft_am"],
@@ -15,7 +15,8 @@
         "schutzskript_hashes",
         "werkzeug_version_deklariert",
         "berechtigungskontext",
-        "arbeitsverzeichnis_pfad"
+        "arbeitsverzeichnis_pfad",
+        "startziel_pfad"
       ],
       "properties": {
         "werkzeug_konfiguration_hash": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
@@ -26,7 +27,8 @@
         },
         "werkzeug_version_deklariert": { "type": "string", "minLength": 1 },
         "berechtigungskontext": { "type": "string", "minLength": 1 },
-        "arbeitsverzeichnis_pfad": { "type": "string", "minLength": 1 }
+        "arbeitsverzeichnis_pfad": { "type": "string", "minLength": 1 },
+        "startziel_pfad": { "type": "string", "minLength": 1 }
       }
     },
     "rot_fall_beleg": { "type": "string", "minLength": 1 },

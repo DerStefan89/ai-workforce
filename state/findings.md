@@ -657,7 +657,7 @@ den Lock-Fehler erst nach dem Auftreten zu behandeln. Kein Code-Fix
 nötig, reine Ablaufänderung dieser Rollenkette.
 Feature/Run: Challenge/Planung F6a, PR-Merge- und Branch-Sequenzen,
 31.08.2026.
-**F-056** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-056** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Feature-Branch nach Squash-Merge nicht gelöscht/rebased → zweite Divergenz-Kollision.
 Beschreibung: Nach PR #36 (Squash-Merge von Commit `4296504`) wurde auf `feature/f6a-gateway-lesepfad` weitergearbeitet statt der Branch gelöscht oder sofort neu von `main` abgezweigt. Dasselbe Muster wie F-054 (dort als Near-Miss dokumentiert), hier real mit GitHub-Merge-Konflikten in `feature.md`/`journal.md`/`findings.md` auf einem Branch mit echtem Produktcode (WS1-Build). Diagnose: `git diff 4296504 ad72e14 --stat` leer (identische Bäume), behoben per `git rebase --onto ad72e14 4296504 feature/f6a-gateway-lesepfad` und `git push --force-with-lease`, danach konfliktfrei gemergt (PR #37).
 Fundstelle: PR #36 → `feature/f6a-gateway-lesepfad` → PR #37.
@@ -675,6 +675,21 @@ Maßnahme bestätigt, Priorität unverändert P2, da weiterhin nur
 Merge-Reibung ohne Datenverlust — die eigentliche Prozessregel
 (Branch nach Merge löschen) wurde bisher nicht befolgt; das ist der
 eigentliche Wiederholungsgrund.
+**Nachtrag 03.09.2026 (gelöst):** Manuelle Prozessregel durch einen
+mechanischen Diagnose-Hook ersetzt — `.githooks/pre-push` bricht `git
+push` auf einem Nicht-main/master-Branch ab, wenn `merge-base HEAD
+<remote>/main` von `<remote>/main` abweicht (Divergenz-Erkennung vor
+dem Push statt Merge-Konflikt erst im PR), mit der konkreten
+Fix-Anleitung (`git checkout main; git merge --ff-only …; git branch
+-f …; git cherry-pick …`) direkt in der Fehlermeldung. Fail-open bei
+nicht erreichbarem Remote (Diagnose-Hook, kein Sicherheits-Guard).
+Aktivierung über `"prepare": "git config core.hooksPath .githooks"`
+in `package.json` — läuft automatisch bei `npm install`, kein
+manueller Schritt pro Maschine. Real belegt: Branch von einem
+veralteten Commit abgezweigt → `git push` real abgelehnt mit der
+Fix-Meldung; Branch frisch von `origin/main` abgezweigt → `git push`
+real durchgelassen (beide Fälle gegen ein lokales Bare-Repo als
+simuliertes Remote, nicht gegen den echten `origin`).
 
 **F-058** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Korrektur eines Findings propagiert nicht automatisch in referenzierende Feature-Akten.
@@ -844,13 +859,13 @@ Auswirkung: E-187 (zielfassung.md §9.4) verlangt zwei unabhängige Mechanismen 
 Maßnahme: Keine Codeänderung nötig — Messung bestätigt die bestehende `baueAufruf`-Emission als wirksam. Für F6b-Folgearbeit relevant: `permission_denials` im JSON-Output ist der belastbare Nachweiskanal für „Werkzeug angeboten, aber abgelehnt" versus `--tools`, dessen Nachweis über die Abwesenheit der Datei plus leeres `permission_denials` läuft (kein direktes Denial-Signal, da das Werkzeug dem Modell nie angeboten wurde).
 Feature/Run: F6b WS-A Sondierung, 03.09.2026.
 
-**F-080** · `TECH_DEBT` · P3 · offen
+**F-080** · `TECH_DEBT` · P3 · **gelöst**
 Titel: Startziel des Werkzeugprozesses sollte als normalisierter Pfad geführt werden, nicht als Binär-Hash.
 Beschreibung: E-188 (§9.4) führt seit E5 (03.09.2026) das „Startziel des Werkzeugprozesses" als sechsten Gültigkeitsschlüssel-Bestandteil. E5 empfiehlt dafür einen normalisierten Pfad statt eines Binär-Hashes der Werkzeug-Executable — ein Hash bricht bei jedem Patch-Update des Werkzeugs, ohne dass sich das eigentlich relevante Startziel (welches Programm an welchem Ort gestartet wird) geändert hat.
 Fundstelle: `docs/projekt/zielfassung.md` §9.4 E-188; `claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`, E5.
 Auswirkung: Eine naheliegende, aber zu strenge Implementierung (Binär-Hash) würde den Gültigkeitsschlüssel bei jedem Werkzeug-Update unnötig invalidieren.
-Maßnahme: Bei der Implementierung des sechsten Gültigkeitsschlüssel-Bestandteils (F6b) einen normalisierten Pfad verwenden, keinen Binär-Hash. Konkrete Normalisierungsregel ist Teil der F6b-Umsetzung.
-Feature/Run: F6b WS-B Dokumentation, 03.09.2026.
+Maßnahme: Umgesetzt als Feld `startziel_pfad` (string) in `IstUebrigeFelder`/`Gueltigkeitsschluessel`, `src/invocation-policy/types.ts`. Vergleich über `normalisierePfadFuerVergleich` (dieselbe Trenner-/Groß-Kleinschreibungs-Normalisierung wie `arbeitsverzeichnis_pfad`) in `pruefeStartbedingung2`, `src/invocation-policy/index.ts` — kein Binär-Hash.
+Feature/Run: F6b WS-C, 03.09.2026.
 
 **F-081** · `TECH_DEBT` · P3 · offen
 Titel: Zuordnung „Werkzeugkonfiguration" und „Schutzskripte" (E-183/E-188) auf konkrete Dateien noch nicht an der Entscheidungsstelle festgehalten.
