@@ -867,13 +867,13 @@ Auswirkung: Eine naheliegende, aber zu strenge Implementierung (Binär-Hash) wü
 Maßnahme: Umgesetzt als Feld `startziel_pfad` (string) in `IstUebrigeFelder`/`Gueltigkeitsschluessel`, `src/invocation-policy/types.ts`. Vergleich über `normalisierePfadFuerVergleich` (dieselbe Trenner-/Groß-Kleinschreibungs-Normalisierung wie `arbeitsverzeichnis_pfad`) in `pruefeStartbedingung2`, `src/invocation-policy/index.ts` — kein Binär-Hash.
 Feature/Run: F6b WS-C, 03.09.2026.
 
-**F-081** · `TECH_DEBT` · P3 · offen
+**F-081** · `TECH_DEBT` · P3 · gelöst
 Titel: Zuordnung „Werkzeugkonfiguration" und „Schutzskripte" (E-183/E-188) auf konkrete Dateien noch nicht an der Entscheidungsstelle festgehalten.
 Beschreibung: E-183/E-188 sprechen von „Werkzeugkonfiguration" und „referenzierten Schutzskripten", ohne die konkreten Dateien zu benennen. Für dieses Projekt: Werkzeugkonfiguration = `.claude/settings.json`, Schutzskripte = die darin referenzierten Hook-Dateien. Diese Zuordnung ist bislang nirgends verbindlich festgehalten.
 Fundstelle: `docs/projekt/zielfassung.md` §9.4 E-183/E-188; `.claude/settings.json`.
 Auswirkung: Ohne die explizite Zuordnung bleibt offen, welche Datei(en) beim Gültigkeitsschlüssel-Nachweis tatsächlich gehasht werden müssen — Risiko einer Fehlimplementierung in F6b.
-Maßnahme: Bei der F6b-Umsetzung die Zuordnung Werkzeugkonfiguration=`.claude/settings.json`, Schutzskripte=dort referenzierte Hook-Dateien verbindlich übernehmen oder, falls abweichend, explizit begründen.
-Feature/Run: F6b WS-B Dokumentation, 03.09.2026.
+Maßnahme: Umgesetzt (F6b WS-E). `scripts/erzeuge-invocation-policy-nachweise.mjs` übernimmt die Zuordnung real: hasht `.claude/settings.json` als Werkzeugkonfiguration und jede darin referenzierte Hook-Datei (strukturell über `ermittleHookPfade` aus dem geparsten `hooks`-Objekt abgeleitet, nicht hartkodiert) als Schutzskripte, erzeugt daraus BaselineEintrag/WirksamkeitsnachweisEintrag-JSON und schreibt sie (ohne Commit) ins externe Autorisierungs-Repo. Selbsttest: `scripts/erzeuge-invocation-policy-nachweise.test.mjs`.
+Feature/Run: F6b WS-E, 03.09.2026.
 
 **F-077** · `BUG` · P1 · gelöst
 Titel: `pruefeStartbedingung2` prüft die Herkunft des Wirksamkeitsnachweises nicht.
