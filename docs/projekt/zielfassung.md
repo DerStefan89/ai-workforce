@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.9 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.10 (konsolidierte Sollquelle)
 
 Stand: 24.08.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -16,6 +16,8 @@ v1.6 → v1.7: **Vertrag 5 abgeschlossen und unabhängig verifiziert** (PR #12, 
 v1.7 → v1.8: **§15 nachgetragen** — Datenformate, Oberflächentechnik und Profilinhalte waren bereits am 28.08.2026 entschieden und in `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 0 festgehalten, aber nie nach §15 dieser Ziel-Fassung zurückgespiegelt worden. Kein neuer inhaltlicher Entscheid — reine Bookkeeping-Korrektur, analog zum A1-Nachtrag vom 24.08.2026.
 
 v1.8 → v1.9: **F6b-Entscheidungen E5 und E7 eingearbeitet** (`claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`, 03.09.2026): §9.4 E-188 (sechster Gültigkeitsschlüssel-Bestandteil „Startziel des Werkzeugprozesses", E5) · §16.8 Punkt 4 geschlossen (E7 — `--tools`/`--allowedTools` real gemessen als zwei unabhängige Mechanismen, F-078; MCP-Kanal-Messfall 3 aus Vertrag 2 gilt als überholt).
+
+v1.9 → v1.10: **§16.8 Punkt 3 geschlossen** (F6b WS-F, 03.09.2026, löst F-053): `scripts/verify-f6b-ws-f-rotfall.mjs` reproduziert den in F-078 beobachteten Rot-Fall (echter, real abgelehnter Write-Versuch über `--allowedTools` ohne Write) jederzeit über die reale F6a/F7-Kette gegen eine Wegwerf-Kopie außerhalb des Repos.
 
 ---
 
@@ -373,7 +375,7 @@ Aus Draft B und dem Final-Review, für die technische Planung:
 
 1. Identität eines Artefakts — was eigenständiges Kontrollartefakt ist und was Referenz auf ein Produktartefakt. **Geschlossen (A7):** Eigentümerschaft entscheidet — kern-erzeugt = Kontrollartefakt mit eigener Identität, werkzeug-erzeugt = Referenz (Pfad, Inhalts-Hash, zitierter Bereich, später Git-Blob-Id).
 2. Checkpoint-Granularität — je Zustandsübergang oder zusätzlich vor und nach jedem externen Seiteneffekt. Für D2 spricht Letzteres. **Geschlossen (A5):** Zwei Artefakttypen — `Checkpoint` je Execution-Übergang, `Wirkungsmarke` vor und nach jedem Lauf, nie Wiederaufnahmepunkt; beide in derselben Hash-Kette.
-3. Der konkrete bekannte Rot-Fall der Wirksamkeitsprüfung. *(Weiterhin offen — an die Kalibrierungen aus Vertrag 1 und Vertrag 2 gebunden.)*
+3. Der konkrete bekannte Rot-Fall der Wirksamkeitsprüfung. **Geschlossen (F6b WS-F):** `scripts/verify-f6b-ws-f-rotfall.mjs` reproduziert den in F-078 beobachteten Rot-Fall (echter, real abgelehnter Write-Versuch über `--allowedTools` ohne Write) jederzeit über die reale F6a/F7-Kette gegen eine Wegwerf-Kopie außerhalb des Repos — siehe `state/findings.md` F-053.
 4. Welche zwei unabhängigen Mechanismen den Werkzeugsatz begrenzen *(E-187)*. **Geschlossen (E7):** `--tools` (entfernt ein Werkzeug vollständig aus dem Angebotssatz des Modells, Ablehnung ohne Permission-Event) und `--allowedTools` (lässt das Werkzeug im Angebotssatz, blockiert den Aufruf über eine reale Permission-Prüfung) sind real gemessene, unabhängige Mechanismen — unterschiedliche Wirkmechanik, unterschiedlicher Nachweiskanal (F-078). Der bisher referenzierte MCP-Kanal-Messfall 3 (Vertrag 2, `state/tp-nachtrag.md`) gilt als überholt und wird nicht weiter verfolgt.
 5. Erkennung eines nach Absturz möglicherweise noch laufenden Werkzeugprozesses. *(Weiterhin offen — an Vertrag 3 gebunden.)*
 6. Positionen und fachliche Hauptzustände der ersten Execution-Kette. **Geschlossen (A4):** Drei Zustandsebenen — Workstream → Execution → Lauf. Execution = eine Position an einem Gegenstand, die Pinning-Einheit. Controller besitzt Workstream- und Execution-Automat, Gateway den Lauf.
@@ -381,7 +383,7 @@ Aus Draft B und dem Final-Review, für die technische Planung:
 8. Repräsentation des Gültigkeitsschlüssels und Normalisierung des Arbeitsverzeichnispfads. *(Weiterhin offen — Vertrag 5 hat die geerbte `cwd`-Abhängigkeit im commit-guard sichtbar gemacht und in `state/assumption-ledger.md` dokumentiert, aber ausdrücklich nicht behoben; bestätigt weiterhin offen.)*
 9. **Zeilenenden** — Verantwortung dafür ist noch keiner Systemgrenze zugeordnet *(D8)*. **Geschlossen (A9):** Keine Normalisierung; der Hash beschreibt die Bytes auf der Platte. Kern schreibt ausnahmslos LF; `eol=lf` wird in Vertrag 2 kalibriert; Git-Blob-Id beim Metadaten-Commit.
 
-`[Fakt]` Sechs von neun Punkten sind geschlossen (1, 2, 6, 7, 9 mit A1–A9; 4 mit E7). Drei bleiben an noch nicht ausgeführte Verträge gebunden (3, 5, 8).
+`[Fakt]` Sieben von neun Punkten sind geschlossen (1, 2, 6, 7, 9 mit A1–A9; 4 mit E7; 3 mit F6b WS-F). Zwei bleiben an noch nicht ausgeführte Verträge gebunden (5, 8).
 
 ---
 

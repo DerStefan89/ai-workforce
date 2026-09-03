@@ -570,7 +570,7 @@ von Git-Bash-Subshells, dort als offene Unsicherheit vermerkt) präzise
 benennen, statt den Punkt pauschal offen zu lassen.
 Feature/Run: Challenge F6/F6a, 31.08.2026.
 
-**F-053** · `TECH_DEBT` · P1 · offen
+**F-053** · `TECH_DEBT` · P1 · **gelöst**
 Titel: E-188-Wirksamkeitsnachweis ohne je erbrachten Rot-Fall (§16.8
 Punkt 3) — blockierend für F6b.
 Beschreibung: `pruefeStartbedingung2`
@@ -578,19 +578,40 @@ Beschreibung: `pruefeStartbedingung2`
 Wirksamkeitsnachweis zum aktuellen Gültigkeitsschlüssel passt — nicht,
 dass dieser Nachweis je durch einen echten Rot-Fall (Schutzschicht
 tatsächlich wirksam gegen einen realen Umgehungsversuch getestet)
-verdient wurde. `docs/projekt/zielfassung.md` §16.8 Punkt 3 führt „Der
-konkrete bekannte Rot-Fall der Wirksamkeitsprüfung" weiterhin als offen.
+verdient wurde. `docs/projekt/zielfassung.md` §16.8 Punkt 3 führte „Der
+konkrete bekannte Rot-Fall der Wirksamkeitsprüfung" bis dahin als offen.
 Solange kein Aufrufer schreibt, folgenlos; sobald F6b (Claude-Code-
-Gateway, Schreibwirkung) startet, ist F4s `FREIGEGEBEN` für E-188 eine
+Gateway, Schreibwirkung) startet, war F4s `FREIGEGEBEN` für E-188 eine
 ungedeckte Behauptung.
 Fundstelle: `src/invocation-policy/index.ts`
 (`pruefeStartbedingung2`); `docs/projekt/zielfassung.md` §16.8 Punkt 3.
 Auswirkung: hoch bei F6b, null bei F6a (F6a führt keine
 Schreibwirkung aus, siehe `features/F6a/feature.md` Nicht-Ziele).
-Maßnahme: Rot-Fall-Erzeugung und -Nachweis als Pflichtbestandteil von
-F6b, blockierend vor dem ersten Lauf mit Schreibwirkung. Nicht Teil von
-F6a.
-Feature/Run: Challenge F6/F6a, 31.08.2026.
+Maßnahme: `scripts/verify-f6b-ws-f-rotfall.mjs` (F6b WS-F) reproduziert
+den in F-078 (WS-A-Sondierung) beobachteten Rot-Fall jederzeit real über
+die echte F6a/F7-Kette: `starteGateway` mit handgebauten Tokens
+(`--allowedTools Read,Glob,Grep` statt `--tools`, Begründung im
+Skript-Kopfkommentar — `baueAufruf` emittiert immer `--tools`, das
+Zusammenspiel beider Flags würde den Nachweis laut F-078 Messfall 3
+verdecken) gegen eine selbst angelegte Wegwerf-Kopie unter
+`os.tmpdir()` außerhalb dieses Repos (E6), Schreibauftrag im Prompt,
+Auswertung über F7s unveränderten `klassifiziereLauf`. QA-Pass (frischer
+Kontext) fand vor Freigabe eine echte Lücke in der ersten
+Skriptversion: `ergebnis: 'VERWEIGERT'` allein bewies nicht, dass die
+Denial speziell den Write-Versuch betraf. Behoben: das Skript liest den
+Rohstrom zusätzlich selbst (F6as `leseErgebnisobjekt` wiederverwendet)
+und verlangt für Exit 0 zusätzlich einen `permission_denials`-Eintrag
+mit `tool_name: "Write"`. Realer Lauf 03.09.2026 (nach der Korrektur):
+`ergebnis: 'VERWEIGERT'`, `bypass_verdacht_anzahl: 0`,
+`permission_denials` enthält real `tool_name: "Write"` mit `tool_input`
+genau auf die im Prompt genannte Datei, die Datei selbst nicht
+entstanden — siehe `state/gates.md` für den vollständigen
+Konsolen-Beleg. Skript gibt am Ende einen kopierbaren
+`rot_fall_beleg`-Text aus (lauf_id, F1B-Wirkungsmarke-Pfad, Zeitstempel,
+Kurzfassung) — Ersatz für den Platzhaltertext im Wirksamkeitsnachweis
+von WS-E (F-085, ein WS-E-Re-Lauf mit diesem Text ist Stefans separate
+Entscheidung, nicht Teil dieser Lösung).
+Feature/Run: Challenge F6/F6a, 31.08.2026; gelöst F6b WS-F, 03.09.2026.
 
 **F-054** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Mehrzeiliger `&&`-verketteter Terminalblock in PowerShell bricht
