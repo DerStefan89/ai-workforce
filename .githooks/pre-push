@@ -1,0 +1,67 @@
+#!/bin/sh
+# Datei: .githooks/pre-push
+#
+# Zweck: Diagnose-Hook gegen die F-056-Divergenz (state/findings.md) —
+# Feature-Branches, die nicht frisch von origin/main abgezweigt oder nach
+# einem Squash-Merge des Basis-Commits weitergeführt wurden, kollidieren
+# beim nächsten PR mit main. Dieser Hook erkennt die Divergenz VOR dem
+# Push, statt sie erst als Merge-Konflikt im PR sichtbar zu machen.
+# Fail-open bei fehlendem Netzwerk/Remote (Diagnose-Hook, kein
+# Sicherheits-Guard — anders als .claude/hooks/commit-guard.cjs, das
+# bewusst fail-closed ist). Aktiviert über "prepare" in package.json
+# (git config core.hooksPath .githooks), kein manueller Schritt pro
+# Maschine nötig.
+#
+# Git ruft pre-push mit $1=Remote-Name, $2=Remote-URL auf; Ref-Updates
+# kommen zusätzlich über stdin (hier nicht benötigt — geprüft wird immer
+# der aktuelle Branch gegen den aktuellen Stand von <remote>/main).
+
+remote="$1"
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ -z "$branch" ]; then
+  exit 0
+fi
+
+case "$branch" in
+  main|master)
+    exit 0
+    ;;
+esac
+
+if [ -z "$remote" ]; then
+  remote="origin"
+fi
+
+if ! git fetch "$remote" main --quiet 2>/dev/null; then
+  exit 0
+fi
+
+remote_main=$(git rev-parse "$remote/main" 2>/dev/null)
+if [ -z "$remote_main" ]; then
+  exit 0
+fi
+
+merge_base=$(git merge-base HEAD "$remote/main" 2>/dev/null)
+if [ -z "$merge_base" ]; then
+  exit 0
+fi
+
+if [ "$merge_base" != "$remote_main" ]; then
+  echo "" >&2
+  echo "pre-push: '$branch' ist von $remote/main abgezweigt, aber $remote/main" >&2
+  echo "hat sich seither weiterbewegt (F-056-Muster: Squash-Merge-Divergenz)." >&2
+  echo "" >&2
+  echo "Fix:" >&2
+  echo "  git checkout main" >&2
+  echo "  git merge --ff-only $remote/main" >&2
+  echo "  git branch -f $branch $remote/main" >&2
+  echo "  git checkout $branch" >&2
+  echo "  git cherry-pick <eigene neue Commits>" >&2
+  echo "" >&2
+  echo "--no-verify umgeht diesen Hook (nicht empfohlen)." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

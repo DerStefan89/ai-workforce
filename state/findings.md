@@ -657,7 +657,7 @@ den Lock-Fehler erst nach dem Auftreten zu behandeln. Kein Code-Fix
 nötig, reine Ablaufänderung dieser Rollenkette.
 Feature/Run: Challenge/Planung F6a, PR-Merge- und Branch-Sequenzen,
 31.08.2026.
-**F-056** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-056** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Feature-Branch nach Squash-Merge nicht gelöscht/rebased → zweite Divergenz-Kollision.
 Beschreibung: Nach PR #36 (Squash-Merge von Commit `4296504`) wurde auf `feature/f6a-gateway-lesepfad` weitergearbeitet statt der Branch gelöscht oder sofort neu von `main` abgezweigt. Dasselbe Muster wie F-054 (dort als Near-Miss dokumentiert), hier real mit GitHub-Merge-Konflikten in `feature.md`/`journal.md`/`findings.md` auf einem Branch mit echtem Produktcode (WS1-Build). Diagnose: `git diff 4296504 ad72e14 --stat` leer (identische Bäume), behoben per `git rebase --onto ad72e14 4296504 feature/f6a-gateway-lesepfad` und `git push --force-with-lease`, danach konfliktfrei gemergt (PR #37).
 Fundstelle: PR #36 → `feature/f6a-gateway-lesepfad` → PR #37.
@@ -675,6 +675,21 @@ Maßnahme bestätigt, Priorität unverändert P2, da weiterhin nur
 Merge-Reibung ohne Datenverlust — die eigentliche Prozessregel
 (Branch nach Merge löschen) wurde bisher nicht befolgt; das ist der
 eigentliche Wiederholungsgrund.
+**Nachtrag 03.09.2026 (gelöst):** Manuelle Prozessregel durch einen
+mechanischen Diagnose-Hook ersetzt — `.githooks/pre-push` bricht `git
+push` auf einem Nicht-main/master-Branch ab, wenn `merge-base HEAD
+<remote>/main` von `<remote>/main` abweicht (Divergenz-Erkennung vor
+dem Push statt Merge-Konflikt erst im PR), mit der konkreten
+Fix-Anleitung (`git checkout main; git merge --ff-only …; git branch
+-f …; git cherry-pick …`) direkt in der Fehlermeldung. Fail-open bei
+nicht erreichbarem Remote (Diagnose-Hook, kein Sicherheits-Guard).
+Aktivierung über `"prepare": "git config core.hooksPath .githooks"`
+in `package.json` — läuft automatisch bei `npm install`, kein
+manueller Schritt pro Maschine. Real belegt: Branch von einem
+veralteten Commit abgezweigt → `git push` real abgelehnt mit der
+Fix-Meldung; Branch frisch von `origin/main` abgezweigt → `git push`
+real durchgelassen (beide Fälle gegen ein lokales Bare-Repo als
+simuliertes Remote, nicht gegen den echten `origin`).
 
 **F-058** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Korrektur eines Findings propagiert nicht automatisch in referenzierende Feature-Akten.
