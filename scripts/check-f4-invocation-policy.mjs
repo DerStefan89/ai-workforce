@@ -77,6 +77,17 @@ function committeBaseline(repoWurzel, baselineId, inhalt) {
   return { pfad: zielpfad, commit_hash: commitHash, datei_hash: sha256Hex(inhalt) }
 }
 
+function committeWirksamkeitsnachweis(repoWurzel, nachweisId, inhalt) {
+  const relativerPfad = `invocation-policy-wirksamkeitsnachweis/${nachweisId}.json`
+  const zielpfad = join(repoWurzel, relativerPfad)
+  mkdirSync(dirname(zielpfad), { recursive: true })
+  writeFileSync(zielpfad, inhalt)
+  git(repoWurzel, ['add', relativerPfad])
+  git(repoWurzel, ['commit', '--quiet', '-m', 'wirksamkeitsnachweis'])
+  const commitHash = git(repoWurzel, ['rev-parse', 'HEAD']).trim()
+  return { pfad: zielpfad, commit_hash: commitHash, datei_hash: sha256Hex(inhalt) }
+}
+
 function gueltigeBaselineInhalt() {
   return JSON.stringify({
     werkzeug_konfiguration: { pfad: '.claude/settings.json', hash: sha256Hex(KONFIG_INHALT) },
@@ -211,8 +222,15 @@ try {
   }
 
   // ─── (c) pruefeStartbedingung2: Grün-Fall + Drift-Fall (F11-Querkonsistenz) ──
-  const nachweisGruen = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
-  const bedingung2Gruen = pruefeStartbedingung2(nachweisGruen, istZustand, ISTUEBRIGEFELDER)
+  // Wirksamkeitsnachweis wird wie die Baseline über eine commit-gepinnte
+  // Datei-Referenz im selben externen Repo geprüft (F-077/E3), nicht mehr
+  // als Inline-Objekt.
+  const nachweisGruenReferenz = committeWirksamkeitsnachweis(
+    repoWurzel,
+    `nachweis-gruen-${randomUUID()}`,
+    JSON.stringify(gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER))
+  )
+  const bedingung2Gruen = pruefeStartbedingung2(nachweisGruenReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
   if (!bedingung2Gruen.ok) {
     befunde.push(`Bedingung 2 Grün-Fall: erwartet ok:true, erhalten ${JSON.stringify(bedingung2Gruen)}`)
   } else {
@@ -221,7 +239,8 @@ try {
 
   const nachweisMitVeraltetemHash = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
   nachweisMitVeraltetemHash.gueltigkeitsschluessel.schutzskript_hashes = [sha256Hex('veralteter-skript-a-inhalt'), sha256Hex(SKRIPT_B_INHALT)]
-  const bedingung2Drift = pruefeStartbedingung2(nachweisMitVeraltetemHash, istZustand, ISTUEBRIGEFELDER)
+  const nachweisMitVeraltetemHashReferenz = committeWirksamkeitsnachweis(repoWurzel, `nachweis-f11-${randomUUID()}`, JSON.stringify(nachweisMitVeraltetemHash))
+  const bedingung2Drift = pruefeStartbedingung2(nachweisMitVeraltetemHashReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
   if (bedingung2Drift.ok) {
     befunde.push(
       `F11-Querkonsistenz-Fall: Bedingung 1 war grün (${JSON.stringify(bedingung1Gruen)}), Bedingung 2 mit veraltetem schutzskript_hashes-Eintrag desselben istZustand erwartet ok:false, erhalten ${JSON.stringify(bedingung2Drift)}`
@@ -232,7 +251,12 @@ try {
 
   const nachweisMitStartzielDrift = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
   nachweisMitStartzielDrift.gueltigkeitsschluessel.startziel_pfad = 'C:\\ein\\anderes\\werkzeug.exe'
-  const bedingung2DriftStartziel = pruefeStartbedingung2(nachweisMitStartzielDrift, istZustand, ISTUEBRIGEFELDER)
+  const nachweisMitStartzielDriftReferenz = committeWirksamkeitsnachweis(
+    repoWurzel,
+    `nachweis-startziel-${randomUUID()}`,
+    JSON.stringify(nachweisMitStartzielDrift)
+  )
+  const bedingung2DriftStartziel = pruefeStartbedingung2(nachweisMitStartzielDriftReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
   if (bedingung2DriftStartziel.ok) {
     befunde.push(`Bedingung 2 Drift-Fall (startziel_pfad, E-188): erwartet ok:false, erhalten ${JSON.stringify(bedingung2DriftStartziel)}`)
   } else {

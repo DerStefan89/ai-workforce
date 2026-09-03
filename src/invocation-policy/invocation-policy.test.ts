@@ -23,7 +23,7 @@ import { test } from 'node:test'
 import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter, pruefeStartbedingung1, pruefeStartbedingung2, pruefeStartfreigabe, verweigereStart } from './index.ts'
-import type { BaselineReferenz, IstUebrigeFelder, IstZustand } from './types.ts'
+import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from './types.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -72,6 +72,18 @@ function committeBaseline(repoWurzel: string, baselineId: string, inhalt: string
   return { pfad: zielpfad, commit_hash: commitHash, datei_hash: sha256Hex(inhalt) }
 }
 
+/** Schreibt und committet eine Wirksamkeitsnachweis-Datei, liefert die passende Referenz (F-077/E3). */
+function committeWirksamkeitsnachweis(repoWurzel: string, nachweisId: string, inhalt: string): WirksamkeitsnachweisReferenz {
+  const relativerPfad = `invocation-policy-wirksamkeitsnachweis/${nachweisId}.json`
+  const zielpfad = join(repoWurzel, relativerPfad)
+  mkdirSync(dirname(zielpfad), { recursive: true })
+  writeFileSync(zielpfad, inhalt)
+  git(repoWurzel, ['add', relativerPfad])
+  git(repoWurzel, ['commit', '--quiet', '-m', 'wirksamkeitsnachweis'])
+  const commitHash = git(repoWurzel, ['rev-parse', 'HEAD']).trim()
+  return { pfad: zielpfad, commit_hash: commitHash, datei_hash: sha256Hex(inhalt) }
+}
+
 function gueltigeBaselineInhalt(): string {
   return JSON.stringify({
     werkzeug_konfiguration: { pfad: '.claude/settings.json', hash: sha256Hex(KONFIG_INHALT) },
@@ -116,10 +128,14 @@ test('gültige Baseline + gültiger Nachweis liefert FREIGEGEBEN — AC10 Fall 1
   try {
     const baselineReferenz = committeBaseline(repoWurzel, neueLaufId('gruen'), gueltigeBaselineInhalt())
     const istZustand = gueltigerIstZustand()
-    const wirksamkeitsnachweis = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(
+      repoWurzel,
+      neueLaufId('nachweis-gruen'),
+      JSON.stringify(gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER))
+    )
 
     const urteil = pruefeStartfreigabe(
-      { baselineReferenz, istZustand, wirksamkeitsnachweis, istUebrigeFelder: ISTUEBRIGEFELDER },
+      { baselineReferenz, istZustand, wirksamkeitsnachweisReferenz, istUebrigeFelder: ISTUEBRIGEFELDER },
       { repoWurzel }
     )
 
@@ -143,10 +159,14 @@ test('manipuliertes Schutzskript liefert ABGELEHNT — AC10 Fall 2, E-183', () =
         { pfad: 'skript-b.js', hash: sha256Hex(SKRIPT_B_INHALT) },
       ],
     }
-    const wirksamkeitsnachweis = gueltigerWirksamkeitsnachweis(istZustandManipuliert, ISTUEBRIGEFELDER)
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(
+      repoWurzel,
+      neueLaufId('nachweis-rot-e183'),
+      JSON.stringify(gueltigerWirksamkeitsnachweis(istZustandManipuliert, ISTUEBRIGEFELDER))
+    )
 
     const urteil = pruefeStartfreigabe(
-      { baselineReferenz, istZustand: istZustandManipuliert, wirksamkeitsnachweis, istUebrigeFelder: ISTUEBRIGEFELDER },
+      { baselineReferenz, istZustand: istZustandManipuliert, wirksamkeitsnachweisReferenz, istUebrigeFelder: ISTUEBRIGEFELDER },
       { repoWurzel }
     )
 
@@ -166,9 +186,10 @@ test('Drift im Gültigkeitsschlüssel (arbeitsverzeichnis_pfad) bei sonst gülti
     const istZustand = gueltigerIstZustand()
     const nachweisMitDrift = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
     nachweisMitDrift.gueltigkeitsschluessel.arbeitsverzeichnis_pfad = 'C:\\ein\\anderes\\verzeichnis'
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(repoWurzel, neueLaufId('nachweis-rot-e188'), JSON.stringify(nachweisMitDrift))
 
     const urteil = pruefeStartfreigabe(
-      { baselineReferenz, istZustand, wirksamkeitsnachweis: nachweisMitDrift, istUebrigeFelder: ISTUEBRIGEFELDER },
+      { baselineReferenz, istZustand, wirksamkeitsnachweisReferenz, istUebrigeFelder: ISTUEBRIGEFELDER },
       { repoWurzel }
     )
 
@@ -188,9 +209,10 @@ test('Drift im Gültigkeitsschlüssel (startziel_pfad) bei sonst gültiger Basel
     const istZustand = gueltigerIstZustand()
     const nachweisMitDrift = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
     nachweisMitDrift.gueltigkeitsschluessel.startziel_pfad = 'C:\\ein\\anderes\\werkzeug.exe'
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(repoWurzel, neueLaufId('nachweis-rot-e188-startziel'), JSON.stringify(nachweisMitDrift))
 
     const urteil = pruefeStartfreigabe(
-      { baselineReferenz, istZustand, wirksamkeitsnachweis: nachweisMitDrift, istUebrigeFelder: ISTUEBRIGEFELDER },
+      { baselineReferenz, istZustand, wirksamkeitsnachweisReferenz, istUebrigeFelder: ISTUEBRIGEFELDER },
       { repoWurzel }
     )
 
@@ -237,11 +259,111 @@ test('Querkonsistenz zwischen Bedingung 1 und 2 über denselben istZustand: Nach
 
     const nachweisMitVeraltetemHash = gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER)
     nachweisMitVeraltetemHash.gueltigkeitsschluessel.schutzskript_hashes = [sha256Hex('veralteter-skript-a-inhalt'), sha256Hex(SKRIPT_B_INHALT)]
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(repoWurzel, neueLaufId('f11-nachweis'), JSON.stringify(nachweisMitVeraltetemHash))
 
-    const bedingung2 = pruefeStartbedingung2(nachweisMitVeraltetemHash, istZustand, ISTUEBRIGEFELDER)
+    const bedingung2 = pruefeStartbedingung2(wirksamkeitsnachweisReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
     assert.strictEqual(bedingung2.ok, false)
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /schutzskript_hashes/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Wirksamkeitsnachweis-Referenz außerhalb des externen Repos liefert ABGELEHNT — E-188, F-077', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const istZustand = gueltigerIstZustand()
+    const wirksamkeitsnachweisReferenzAusserhalb: WirksamkeitsnachweisReferenz = {
+      pfad: join(tmpdir(), 'ausserhalb-des-repos', 'nachweis.json'),
+      commit_hash: 'a'.repeat(40),
+      datei_hash: 'a'.repeat(64),
+    }
+
+    const bedingung2 = pruefeStartbedingung2(wirksamkeitsnachweisReferenzAusserhalb, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
+    assert.strictEqual(bedingung2.ok, false)
+    assert.ok(!bedingung2.ok)
+    assert.match(bedingung2.grund, /ausserhalb/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Wirksamkeitsnachweis in externem Repo ohne pinnende .gitattributes liefert ABGELEHNT — E-188, F-077', () => {
+  const repoWurzel = join(tmpdir(), `f4-invocation-policy-test-nogitattr-${randomUUID()}`)
+  mkdirSync(repoWurzel, { recursive: true })
+  git(repoWurzel, ['init', '--quiet'])
+  git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
+  git(repoWurzel, ['config', 'user.name', 'Test'])
+  try {
+    const istZustand = gueltigerIstZustand()
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(
+      repoWurzel,
+      neueLaufId('nachweis-ohne-gitattributes'),
+      JSON.stringify(gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER))
+    )
+
+    const bedingung2 = pruefeStartbedingung2(wirksamkeitsnachweisReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
+    assert.strictEqual(bedingung2.ok, false)
+    assert.ok(!bedingung2.ok)
+    assert.match(bedingung2.grund, /gitattributes/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Wirksamkeitsnachweis mit abweichendem Arbeitsbaum-Inhalt liefert ABGELEHNT — E-188, F-077', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const istZustand = gueltigerIstZustand()
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(
+      repoWurzel,
+      neueLaufId('nachweis-arbeitsbaum-abweichung'),
+      JSON.stringify(gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER))
+    )
+    writeFileSync(wirksamkeitsnachweisReferenz.pfad, JSON.stringify({ manipuliert: true }))
+
+    const bedingung2 = pruefeStartbedingung2(wirksamkeitsnachweisReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
+    assert.strictEqual(bedingung2.ok, false)
+    assert.ok(!bedingung2.ok)
+    assert.match(bedingung2.grund, /weicht von der Referenz ab/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Wirksamkeitsnachweis-Referenz mit Pfad, der im referenzierten Commit nicht existiert, liefert ABGELEHNT — E-188, F-077', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const initCommitHash = git(repoWurzel, ['rev-parse', 'HEAD']).trim()
+    const istZustand = gueltigerIstZustand()
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(
+      repoWurzel,
+      neueLaufId('nachweis-pfad-fehlt-im-commit'),
+      JSON.stringify(gueltigerWirksamkeitsnachweis(istZustand, ISTUEBRIGEFELDER))
+    )
+    const referenzMitFruehemCommit: WirksamkeitsnachweisReferenz = { ...wirksamkeitsnachweisReferenz, commit_hash: initCommitHash }
+
+    const bedingung2 = pruefeStartbedingung2(referenzMitFruehemCommit, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
+    assert.strictEqual(bedingung2.ok, false)
+    assert.ok(!bedingung2.ok)
+    assert.match(bedingung2.grund, /nicht auffindbar/)
+  } finally {
+    rmSync(repoWurzel, { recursive: true, force: true })
+  }
+})
+
+test('Wirksamkeitsnachweis-Datei mit Schema-Verstoß liefert ABGELEHNT — E-188, F-077', () => {
+  const repoWurzel = neuesExternesRepo()
+  try {
+    const istZustand = gueltigerIstZustand()
+    const ungueltigerInhalt = JSON.stringify({ gueltigkeitsschluessel: {} })
+    const wirksamkeitsnachweisReferenz = committeWirksamkeitsnachweis(repoWurzel, neueLaufId('nachweis-schema-verstoss'), ungueltigerInhalt)
+
+    const bedingung2 = pruefeStartbedingung2(wirksamkeitsnachweisReferenz, istZustand, ISTUEBRIGEFELDER, { repoWurzel })
+    assert.strictEqual(bedingung2.ok, false)
+    assert.ok(!bedingung2.ok)
+    assert.match(bedingung2.grund, /Schema/)
   } finally {
     rmSync(repoWurzel, { recursive: true, force: true })
   }

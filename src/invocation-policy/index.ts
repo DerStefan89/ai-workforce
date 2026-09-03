@@ -37,6 +37,7 @@ import type {
   SchutzskriptEintrag,
   Starturteil,
   WirksamkeitsnachweisEintrag,
+  WirksamkeitsnachweisReferenz,
 } from './types.ts'
 
 export { pruefeAufrufparameter } from './verbotene-aufrufparameter.ts'
@@ -61,7 +62,7 @@ interface SchreibOptionen {
 export interface StartfreigabeEingaben {
   baselineReferenz: BaselineReferenz
   istZustand: IstZustand
-  wirksamkeitsnachweis: unknown
+  wirksamkeitsnachweisReferenz: WirksamkeitsnachweisReferenz
   istUebrigeFelder: IstUebrigeFelder
 }
 
@@ -263,6 +264,64 @@ export function validiereWirksamkeitsnachweisEintrag(eintrag: unknown): string[]
   return verstoesse
 }
 
+interface CommitGepinnteDateiReferenz {
+  pfad: string
+  commit_hash: string
+  datei_hash: string
+}
+
+type GelesenesDateiErgebnis = { ok: true; geparst: unknown } | { ok: false; grund: string }
+
+/**
+ * Gemeinsame Lesekette für Baseline- und Wirksamkeitsnachweis-Referenzen
+ * (Pfad-Präfix → .gitattributes → Hash-Vergleich Arbeitsbaum/Commit →
+ * JSON.parse) — von pruefeStartbedingung1 UND pruefeStartbedingung2 genutzt
+ * (F-077/E3), damit die beiden Prüfungen nicht auseinanderdriften können
+ * (Muster wie F11, wo genau eine solche Divergenz real ein Problem war).
+ * bezeichnung fließt nur in Fehlermeldungen ein.
+ */
+function leseUndVerifiziereCommitGepinnteDatei(referenz: CommitGepinnteDateiReferenz, repoWurzel: string, bezeichnung: string): GelesenesDateiErgebnis {
+  const relativerPfad = leiteRepoRelativenPfadAb(referenz.pfad, repoWurzel)
+  if (relativerPfad === null) {
+    return { ok: false, grund: `${bezeichnung}-Pfad ausserhalb des erwarteten externen Repos` }
+  }
+
+  const gitattributesInhalt = leseAusCommit(repoWurzel, referenz.commit_hash, '.gitattributes')
+  if (gitattributesInhalt === null || !gitattributesPinntZeilenenden(gitattributesInhalt)) {
+    return {
+      ok: false,
+      grund: "externes Repo ohne '.gitattributes: * -text' — Zeilenenden nicht gepinnt, Hash-Vergleich nicht zuverlässig",
+    }
+  }
+
+  let arbeitsbaumInhalt: string
+  try {
+    arbeitsbaumInhalt = readFileSync(referenz.pfad, 'utf8')
+  } catch {
+    return { ok: false, grund: `${bezeichnung}-Datei am referenzierten Pfad nicht lesbar` }
+  }
+
+  const commitInhalt = leseAusCommit(repoWurzel, referenz.commit_hash, relativerPfad)
+  if (commitInhalt === null) {
+    return { ok: false, grund: 'Commit oder Pfad im externen Repo nicht auffindbar' }
+  }
+
+  const arbeitsbaumHash = sha256Hex(arbeitsbaumInhalt)
+  const commitInhaltHash = sha256Hex(commitInhalt)
+  if (arbeitsbaumHash !== referenz.datei_hash || commitInhaltHash !== referenz.datei_hash) {
+    return { ok: false, grund: `${bezeichnung}-Inhalt am referenzierten Ort weicht von der Referenz ab` }
+  }
+
+  let geparst: unknown
+  try {
+    geparst = JSON.parse(commitInhalt)
+  } catch (fehler) {
+    return { ok: false, grund: `${bezeichnung} ist kein gueltiges JSON (${(fehler as Error).message})` }
+  }
+
+  return { ok: true, geparst }
+}
+
 /**
  * Startbedingung 1 (E-183): liest die Baseline über F3s additiv
  * exportierten Lesepfad, identischer Ablauf wie pruefeAutorisierung
@@ -274,50 +333,17 @@ export function validiereWirksamkeitsnachweisEintrag(eintrag: unknown): string[]
 export function pruefeStartbedingung1(baselineReferenz: BaselineReferenz, istZustand: IstZustand, optionen: PruefOptionen = {}): BedingungErgebnis {
   const repoWurzel = optionen.repoWurzel ?? STANDARD_REPO_WURZEL
 
-  const relativerPfad = leiteRepoRelativenPfadAb(baselineReferenz.pfad, repoWurzel)
-  if (relativerPfad === null) {
-    return { ok: false, grund: 'Baseline-Pfad ausserhalb des erwarteten externen Repos' }
+  const gelesen = leseUndVerifiziereCommitGepinnteDatei(baselineReferenz, repoWurzel, 'Baseline')
+  if (!gelesen.ok) {
+    return { ok: false, grund: gelesen.grund }
   }
 
-  const gitattributesInhalt = leseAusCommit(repoWurzel, baselineReferenz.commit_hash, '.gitattributes')
-  if (gitattributesInhalt === null || !gitattributesPinntZeilenenden(gitattributesInhalt)) {
-    return {
-      ok: false,
-      grund: "externes Repo ohne '.gitattributes: * -text' — Zeilenenden nicht gepinnt, Hash-Vergleich nicht zuverlässig",
-    }
-  }
-
-  let arbeitsbaumInhalt: string
-  try {
-    arbeitsbaumInhalt = readFileSync(baselineReferenz.pfad, 'utf8')
-  } catch {
-    return { ok: false, grund: 'Baseline-Datei am referenzierten Pfad nicht lesbar' }
-  }
-
-  const commitInhalt = leseAusCommit(repoWurzel, baselineReferenz.commit_hash, relativerPfad)
-  if (commitInhalt === null) {
-    return { ok: false, grund: 'Commit oder Pfad im externen Repo nicht auffindbar' }
-  }
-
-  const arbeitsbaumHash = sha256Hex(arbeitsbaumInhalt)
-  const commitInhaltHash = sha256Hex(commitInhalt)
-  if (arbeitsbaumHash !== baselineReferenz.datei_hash || commitInhaltHash !== baselineReferenz.datei_hash) {
-    return { ok: false, grund: 'Baseline-Inhalt am referenzierten Ort weicht von der Referenz ab' }
-  }
-
-  let geparst: unknown
-  try {
-    geparst = JSON.parse(commitInhalt)
-  } catch (fehler) {
-    return { ok: false, grund: `Baseline ist kein gueltiges JSON (${(fehler as Error).message})` }
-  }
-
-  const verstoesse = validiereBaselineEintrag(geparst)
+  const verstoesse = validiereBaselineEintrag(gelesen.geparst)
   if (verstoesse.length > 0) {
     return { ok: false, grund: `Baseline verletzt Schema: ${verstoesse.join('; ')}` }
   }
 
-  const baseline = geparst as BaselineEintrag
+  const baseline = gelesen.geparst as BaselineEintrag
 
   if (normalisiereHash(istZustand.werkzeug_konfiguration_hash) !== normalisiereHash(baseline.werkzeug_konfiguration.hash)) {
     return { ok: false, grund: 'Hash der Werkzeugkonfiguration weicht von der Baseline ab (E-183)' }
@@ -331,7 +357,11 @@ export function pruefeStartbedingung1(baselineReferenz: BaselineReferenz, istZus
 }
 
 /**
- * Startbedingung 2 (E-188): baut den zu vergleichenden
+ * Startbedingung 2 (E-188): liest den Wirksamkeitsnachweis über dieselbe
+ * commit-gepinnte Lesekette wie Bedingung 1 (F-077/E3) statt ihn als
+ * beliebiges, vom Aufrufer konstruiertes Objekt entgegenzunehmen — ein
+ * Aufrufer kann E-188 damit nicht mehr durch bloßes Konstruieren eines
+ * passenden Objekts umgehen. Baut danach wie zuvor den zu vergleichenden
  * istGueltigkeitsschluessel aus istZustand (Hash-Felder, dieselbe Quelle
  * wie Bedingung 1 — plan-v2 Delta 1, löst F11) plus istUebrigeFelder
  * zusammen und vergleicht ihn feldweise gegen
@@ -339,16 +369,24 @@ export function pruefeStartbedingung1(baselineReferenz: BaselineReferenz, istZus
  * (ABGELEHNT), nicht nur ein grober Gesamtvergleich.
  */
 export function pruefeStartbedingung2(
-  wirksamkeitsnachweis: unknown,
+  wirksamkeitsnachweisReferenz: WirksamkeitsnachweisReferenz,
   istZustand: IstZustand,
-  istUebrigeFelder: IstUebrigeFelder
+  istUebrigeFelder: IstUebrigeFelder,
+  optionen: PruefOptionen = {}
 ): BedingungErgebnis {
-  const verstoesse = validiereWirksamkeitsnachweisEintrag(wirksamkeitsnachweis)
+  const repoWurzel = optionen.repoWurzel ?? STANDARD_REPO_WURZEL
+
+  const gelesen = leseUndVerifiziereCommitGepinnteDatei(wirksamkeitsnachweisReferenz, repoWurzel, 'Wirksamkeitsnachweis')
+  if (!gelesen.ok) {
+    return { ok: false, grund: gelesen.grund }
+  }
+
+  const verstoesse = validiereWirksamkeitsnachweisEintrag(gelesen.geparst)
   if (verstoesse.length > 0) {
     return { ok: false, grund: `Wirksamkeitsnachweis verletzt Schema: ${verstoesse.join('; ')}` }
   }
 
-  const nachweis = wirksamkeitsnachweis as WirksamkeitsnachweisEintrag
+  const nachweis = gelesen.geparst as WirksamkeitsnachweisEintrag
   const nachgewiesen = nachweis.gueltigkeitsschluessel
 
   const istGueltigkeitsschluessel: Gueltigkeitsschluessel = {
@@ -399,7 +437,7 @@ export function pruefeStartfreigabe(eingaben: StartfreigabeEingaben, optionen: P
     return { starturteil: 'ABGELEHNT', grund: bedingung1.grund, werkzeugsatz_begrenzung: 'DEKLARIERT' }
   }
 
-  const bedingung2 = pruefeStartbedingung2(eingaben.wirksamkeitsnachweis, eingaben.istZustand, eingaben.istUebrigeFelder)
+  const bedingung2 = pruefeStartbedingung2(eingaben.wirksamkeitsnachweisReferenz, eingaben.istZustand, eingaben.istUebrigeFelder, optionen)
   if (!bedingung2.ok) {
     schreiber({ ereignis: 'startfreigabe_abgelehnt', zeitstempel: jetzt(), grund: bedingung2.grund })
     return { starturteil: 'ABGELEHNT', grund: bedingung2.grund, werkzeugsatz_begrenzung: 'DEKLARIERT' }

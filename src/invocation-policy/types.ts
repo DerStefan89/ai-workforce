@@ -12,6 +12,13 @@ export interface BaselineReferenz {
   datei_hash: string
 }
 
+/** Referenz auf eine commit-gepinnte Wirksamkeitsnachweis-Datei im externen Autorisierungs-Repo (F-077/E3) — eigener Typ trotz gleicher Form wie BaselineReferenz, weil die Semantik (Wirksamkeitsnachweis statt Baseline) eine andere ist. */
+export interface WirksamkeitsnachweisReferenz {
+  pfad: string
+  commit_hash: string
+  datei_hash: string
+}
+
 export interface BaselineEintrag {
   werkzeug_konfiguration: { pfad: string; hash: string }
   schutzskripte: { pfad: string; hash: string }[]
