@@ -183,20 +183,33 @@ Reviewer-/QA-Pass vor Merge noch ausstehend:
   `process.cwd()`) und `werkzeug_version_deklariert` sind Teil von
   `LAUFAKTE_V0` — deskriptiv, **ohne** F4-Vollcheck (Option B, siehe
   Dependencies-Abschnitt unten), kein Gültigkeitsschlüssel im F4-Sinn.
-- **AK8** — `modell_beobachtet` ist als `string | null` geführt.
-  **TECH_DEBT:** WS2 extrahiert den Wert nicht aus der realen
-  Laufausgabe — das JSON-Feld dafür ist durch `state/tp-nachtrag.md`
-  nicht belegt (Volltextsuche nach „model": kein Treffer), WS2 rät nicht.
-  Der Wert bleibt vorerst `null`; Klärung mit echtem `"type":"result"`-
-  JSON ist WS3 vorbehalten. Stefans Entscheidung (31.08.2026): eigener
-  Findings-Eintrag folgt separat, nicht Teil dieses Baudurchgangs.
+- **AK8** — real erfüllt seit WS4 SCOPE 7 (02./03.09.2026): das echte
+  `"type":"result"`-Objekt trägt ein `modelUsage`-Objekt, dessen
+  Schlüssel den Modellnamen bildet. `leseModellBeobachtet`
+  (`src/claude-code-gateway/index.ts`) extrahiert ihn nur bei **genau
+  einem** Schlüssel — mehrdeutig (kein oder mehrere Schlüssel) bleibt
+  `null`, es wird nicht geraten (Muster F-059/F-061). Real gemessen:
+  `modell_beobachtet: "claude-sonnet-5"` (`state/gates.md` WS4-Eintrag).
+  Schließt F-059.
 - **AK9** — Fehllauf ohne Ergebnisobjekt (TP-01e-Muster, Attrappe
   `attrappeOhneErgebnisobjekt`) führt zu `beobachtungsbasis_vollstaendig:
   false`, **keine** Terminal-Wirkungsmarke — Test vorhanden.
-- **AK11** — bleibt WS3 (`scripts/verify-f6a-real-run.mjs`), nicht Teil
-  dieses Baudurchgangs.
+- **AK11** — real erfüllt seit WS4 (`scripts/verify-f6a-real-run.mjs`,
+  SCOPE 7, 02./03.09.2026): `starteGateway`/`starteProzess` starten unter
+  Windows real einen Claude-Code-Prozess (`execFile` gegen die native
+  `bin/claude.exe` der npm-Global-Installation, kein aktivierter
+  Shell-Modus) und liefern ein valides `"type":"result"`-Objekt.
 - **AK14** — neu, siehe oben; Gate-Grep + Selbsttest in
   `scripts/check-f6a-claude-code-gateway.mjs` umgesetzt.
+- **AK15** — neu (WS4, Hygiene-Guard, keine Vertrauensgrenze — die
+  Vertrauensfrage liegt per Entscheidung E2 beim Aufrufer):
+  `pruefeStartziel` (`src/claude-code-gateway/prozessstart.ts`) prüft ein
+  Startziel gegen vier billige Regeln (absoluter Pfad, keine
+  `.cmd`/`.bat`/`.com`/`.ps1`-Endung über den getrimmten Basisnamen, kein
+  Shell-Basisname aus einer Sperrliste, existierende Datei) — greift in
+  `starteGateway` vor jeder `RUN_PREPARED`-Wirkungsmarke. Sieben Rot-Fälle
+  einzeln plus ein Grün-Fall in
+  `scripts/check-f6a-claude-code-gateway.mjs`.
 
 ## Zuordnung
 

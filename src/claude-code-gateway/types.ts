@@ -1,9 +1,10 @@
 /**
  * Datei: src/claude-code-gateway/types.ts
  *
- * Zweck: Typen für das Claude-Code-Gateway (F6a WS1 + WS2,
+ * Zweck: Typen für das Claude-Code-Gateway (F6a WS1 + WS2 + WS4,
  * state/tasks/f6a-claude-code-gateway-ws1.md,
- * state/tasks/f6a-ws2-prozessstart.md). AufrufTokens ist die
+ * state/tasks/f6a-ws2-prozessstart.md,
+ * state/tasks/f6a-ws4-windows-prozessstart.md). AufrufTokens ist die
  * einzige zulässige Aufrufrepräsentation (kein zusammengesetzter
  * Kommandozeilen-String, AK1). WerkzeugsatzBegrenzung bleibt wie F4
  * ausschließlich im Rang 'DEKLARIERT' (E-187).
@@ -30,21 +31,23 @@ export interface AufrufEingaben {
   werkzeugsatz: WerkzeugsatzBegrenzung
 }
 
-/** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). */
+/** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. */
 export interface ProzessErgebnis {
   stdout: string
   stderr: string
   exitCode: number | null
+  startfehler: { code: string | null; message: string } | null
 }
 
-/** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. */
-export type Starter = (tokens: AufrufTokens) => Promise<ProzessErgebnis>
+/** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. */
+export type Starter = (startziel: string[], tokens: AufrufTokens) => Promise<ProzessErgebnis>
 
-/** Eingaben für starteGateway (WS2). tokens kommt vom Aufrufer bereits über WS1s baueAufruf konstruiert — starteGateway baut keinen zweiten Aufruf (D5). */
+/** Eingaben für starteGateway (WS2). tokens kommt vom Aufrufer bereits über WS1s baueAufruf konstruiert — starteGateway baut keinen zweiten Aufruf (D5). werkzeugStartziel ist Pflichtfeld (F6a WS4, E2): das Gateway rät nichts und liest nichts aus dem Arbeitsbaum, die Vertrauensfrage liegt beim Aufrufer. */
 export interface GatewayEingaben {
   laufId: string
   profilReferenz: ProfilReferenz
   tokens: AufrufTokens
+  werkzeugStartziel: string[]
   werkzeugVersionDeklariert: string
   berechtigungskontext: string
 }

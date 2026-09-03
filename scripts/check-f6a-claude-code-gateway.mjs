@@ -1,20 +1,29 @@
 /**
  * Datei: scripts/check-f6a-claude-code-gateway.mjs
  *
- * Zweck: Claude-Code-Gateway-Gate, WS1 + WS2 (F6a). Importiert baueAufruf,
- * pruefeUndVerweigereBeiTreffer und validiereLaufakteDaten direkt aus
- * src/claude-code-gateway/index.ts (kein zweiter, von Hand nachgebauter
- * Regelsatz, D5-Muster wie F4): (a) baueAufruf Grün-Fall (erwartetes
- * Tokens-Array); (b) pruefeUndVerweigereBeiTreffer Grün-Fall (unauffällige
- * Tokens); (c) pruefeUndVerweigereBeiTreffer Rot-Fall (verbotener
- * Aufrufparameter); (d) F-048-Fenster-Rot-Fall (mehrwortiger
+ * Zweck: Claude-Code-Gateway-Gate, WS1 + WS2 + WS4 (F6a). Importiert
+ * baueAufruf, pruefeUndVerweigereBeiTreffer und validiereLaufakteDaten
+ * direkt aus src/claude-code-gateway/index.ts sowie pruefeStartziel und
+ * starteProzess direkt aus prozessstart.ts (kein zweiter, von Hand
+ * nachgebauter Regelsatz, D5-Muster wie F4): (a) baueAufruf Grün-Fall
+ * (erwartetes Tokens-Array); (b) pruefeUndVerweigereBeiTreffer Grün-Fall
+ * (unauffällige Tokens); (c) pruefeUndVerweigereBeiTreffer Rot-Fall
+ * (verbotener Aufrufparameter); (d) F-048-Fenster-Rot-Fall (mehrwortiger
  * Verbotseintrag im Tokens-Array); (e) LAUFAKTE_V0-Fixture-Validierung
  * gegen validiereLaufakteDaten; (f) AK14-Grep — kein Shell-String-
  * Zusammenbau (F-057) in src/claude-code-gateway/*.ts, mit Selbsttest,
  * dass das Muster einen simulierten Verstoß auch tatsächlich erkennt; (g)
  * AK12-Grep — kein permission_denials-/non_execution_kind-Auswertungscode
  * im Modul (F7-Grenze), analog F4s AC8; (h) Kontrollzustand-Testfixture
- * aufräumen.
+ * aufräumen; (i) AK15 — Hygiene-Guard pruefeStartziel: sieben Rot-Fälle
+ * einzeln (relativer Pfad; .cmd; .cmd. mit nachgestelltem Punkt; .cmd mit
+ * nachgestelltem Leerzeichen; Sperrlisten-Basisname; Verzeichnis statt
+ * Datei; leeres Array) und ein Grün-Fall direkt gegen starteProzess mit
+ * [process.execPath] und ['-e', 'process.exit(0)'] als Tokens — nicht
+ * über starteGateway, dessen raeumeKette hier nur kontrollzustand-test/
+ * aufräumt, nicht kontrollzustand-roh/ (plan-v2 Delta 7). AK15 ist
+ * ausdrücklich ein Hygiene-Guard, keine Vertrauensgrenze (plan-v2 Delta 3)
+ * — die Vertrauensfrage liegt per E2 beim Aufrufer.
  *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
@@ -26,6 +35,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { baueAufruf, pruefeUndVerweigereBeiTreffer, validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
+import { pruefeStartziel, starteProzess } from '../src/claude-code-gateway/prozessstart.ts'
 
 const befunde = []
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
@@ -176,6 +186,37 @@ if (ak12Verstoss !== null) {
   befunde.push(`AK12: verbotenes Muster (permission_denials/non_execution_kind) in src/claude-code-gateway/${ak12Verstoss} gefunden`)
 } else {
   console.log('✓ AK12: kein permission_denials-/non_execution_kind-Auswertungscode in den Produktionsdateien von src/claude-code-gateway/*.ts — F6a klassifiziert keinen Lauf (F7-Grenze).')
+}
+
+// ─── (i) AK15: Hygiene-Guard pruefeStartziel (F6a WS4) ─────────────────────
+const ak15RotFaelle = [
+  { name: 'relativer Pfad', startziel: ['claude.exe'], erwarteterGrundteil: 'ist kein absoluter Pfad' },
+  { name: '.cmd-Endung', startziel: [join(process.cwd(), 'claude.cmd')], erwarteterGrundteil: 'gesperrte Endung' },
+  { name: '.cmd. mit nachgestelltem Punkt', startziel: [join(process.cwd(), 'claude.cmd.')], erwarteterGrundteil: 'gesperrte Endung' },
+  { name: '.cmd mit nachgestelltem Leerzeichen', startziel: [join(process.cwd(), 'claude.cmd ')], erwarteterGrundteil: 'gesperrte Endung' },
+  { name: 'Sperrlisten-Basisname (cmd.exe)', startziel: [join(process.cwd(), 'cmd.exe')], erwarteterGrundteil: 'Shell-Basisnamen-Sperrliste' },
+  { name: 'Verzeichnis statt Datei', startziel: [process.cwd()], erwarteterGrundteil: 'ist keine existierende Datei' },
+  { name: 'leeres Array', startziel: [], erwarteterGrundteil: 'ist ein leeres Array' },
+]
+for (const { name, startziel, erwarteterGrundteil } of ak15RotFaelle) {
+  const ergebnis = pruefeStartziel(startziel)
+  if (ergebnis.ok) {
+    befunde.push(`AK15 Rot-Fall '${name}': erwartet ok:false, erhalten ok:true für ${JSON.stringify(startziel)}`)
+  } else if (!ergebnis.grund.includes(erwarteterGrundteil)) {
+    befunde.push(`AK15 Rot-Fall '${name}': erwartet Grund mit '${erwarteterGrundteil}', erhalten '${ergebnis.grund}'`)
+  } else {
+    console.log(`✓ AK15 Rot-Fall '${name}': abgelehnt (${ergebnis.grund}).`)
+  }
+}
+
+// Grün-Fall direkt gegen starteProzess, nicht starteGateway (Delta 7) —
+// process.execPath ist eine reale, absolute, endungs- und
+// sperrlistenkonforme Datei; kein Claude-Code-Prozess, kein Netz (AK10).
+const ak15GruenErgebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)'])
+if (ak15GruenErgebnis.exitCode !== 0 || ak15GruenErgebnis.startfehler !== null) {
+  befunde.push(`AK15 Grün-Fall: erwartet exitCode:0 und startfehler:null, erhalten ${JSON.stringify(ak15GruenErgebnis)}`)
+} else {
+  console.log('✓ AK15 Grün-Fall: starteProzess mit [process.execPath] + [\'-e\', \'process.exit(0)\'] real gestartet, exitCode 0.')
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────
