@@ -1228,3 +1228,11 @@ Fundstelle: `.claude/hooks/commit-guard.cjs` Dateikopf, Aufgabe 3/4; Technical-C
 Auswirkung: keine akute — der Terminal-Pfad wird aktuell ausschließlich nach expliziter Freigabe im Chat genutzt (funktionierendes Ersatzverfahren). Die Datei täuscht aber ein einheitliches Schutzniveau vor, das für den Terminal-Pfad tatsächlich nicht besteht.
 Maßnahme: bei Gelegenheit im Hook-Dateikopf oder in SETUP.md dokumentieren, dass das Freigabefenster nur den CLI-Session-Bau-Pfad absichert, nicht direkte Terminal-Commits.
 Feature/Run: F8 WS-2b-Verifikation, 04.09.2026.
+
+**F-118** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
+Titel: F-100 in dieser Sitzung ein zweites Mal verletzt — `git fetch` erneut aus der Bridge ausgeführt, trotz F-115.
+Beschreibung: Nach Merge von PR #71 wollte die Cloud-Sitzung den Merge-Commit auf `origin/main` verifizieren und führte dafür `git fetch origin --quiet` über die Remote-Devices-Bridge aus — exakt das in F-100 benannte und in F-115 bereits einmal in derselben Sitzung real aufgetretene verbotene Muster. Diesmal blieb der Arbeitsbaum unbeschädigt (kein `.git/index.lock`, `git status --short` leer), reiner Zufall der Zustandslage, kein struktureller Unterschied zum F-115-Vorfall.
+Fundstelle: diese Sitzung, direkt nach Merge von PR #71, 04.09.2026.
+Auswirkung: keine (diesmal) — belegt aber, dass die in F-115 vorgenommene Selbstverpflichtung nicht ausreichte, den Fehler zu verhindern.
+Maßnahme/Auflösung: für den Rest dieser Sitzung ausschließlich `git log origin/main`/`gh pr view --json`/`gh api` zur Fernstand-Prüfung verwenden, niemals `git fetch` — auch nicht „nur lesend geplant". Empfehlung an den Menschen: ein technischer Guard (z. B. Wrapper-Skript, das `git fetch`/`switch`/`merge`/`pull` aus Bridge-Kontexten ablehnt) wäre robuster als eine wiederholte Selbstverpflichtung, die bereits zweimal versagt hat.
+Feature/Run: F8-Abschluss, Findings-Nachtrag, 04.09.2026.
