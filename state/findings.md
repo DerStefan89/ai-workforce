@@ -1008,6 +1008,14 @@ Auswirkung: Jeder Bauauftrag mit reinem Pfadverweis auf ein Projekt-Dokument erz
 Maßnahme: Generalisierung von F-082s Maßnahme: ein Bauauftrag darf sich auf ein `claude/*`-Projekt-Dokument nur per Pfad beziehen, wenn der relevante Volltext im selben Prompt mitgeliefert wird. Reiner Pfadverweis ist nur für nachweislich committete Pfade zulässig (`docs/`, `state/`, `features/`, `src/`).
 Feature/Run: Challenge F8, Bauauftrag `features/F8/feature.md`, 04.09.2026.
 
+**F-094** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: F2 hat kein dediziertes Lauf-zu-Lauf-Lineage-Primitiv — F8s Wiederaufnahme-/Eskalationsverweis (AK6/AK7) wiederverwendet F9s D2-Muster in einer neuen, noch nie geprüften Anwendung.
+Beschreibung: `registriereKernArtefakt`s `eingaben: EingabeReferenz[]` (`src/lineage-registry/index.ts:85-114`) verlangt nur einen frei gewählten `pfad`-String, keine erzwungene Dateisystemsemantik — F9 nutzt das bereits für einen synthetischen `artefakt:<id>`-Schlüssel, aber ausschließlich für eine Referenz **innerhalb derselben `laufId`** (BEDARF_V0 → Transportpaket, `state/plan-v1-f9-human-transport.md` D2, dort per Advisor-Pass als „fachlich tragfähig" bestätigt, `state/advisor-findings-f9-human-transport.md`). `state/plan-v1-f8-execution-controller.md` Abschnitt 2.2/2.3 wendet dasselbe Muster erstmals **über eine `laufId`-Grenze hinweg** an (Eskalations-BEDARF_V0 referenziert `laufakte-<ausloesenderLaufId>`; der Wiederaufnahme-Kontextpaket referenziert `laufakte-<vorgaengerLaufId>`) — strukturell von F2 gedeckt (kein Code-Widerspruch), aber ohne eigene Prüfung dieser spezifischen Anwendung.
+Fundstelle: `src/lineage-registry/index.ts:85-114`; `state/plan-v1-f8-execution-controller.md` Abschnitt 2.2/2.3/4 (D2), Abschnitt 10 Frage 1.
+Auswirkung: gering — kein Blocker für plan-v1, aber ein echter, unentschiedener Punkt vor dem WS-2-Bauauftrag: ohne Advisor-Bestätigung bliebe der einzige Lineage-Beleg für AK6/AK7 ungeprüfte Neuware.
+Maßnahme: Advisor-Pass auf `state/plan-v1-f8-execution-controller.md` mit explizitem Fokus D2 (Lauf-zu-Lauf-Anwendung), vor dem WS-2-Handoff-Vertrag.
+Feature/Run: Planung F8 (plan-v1), 04.09.2026.
+
 **F-093** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Feature-Akten-Status wird beim Abschluss eines Features nicht verlässlich nachgezogen.
 Beschreibung: F-088 hat den Drift zwischen Feature-Akten-Status und realem Bauzustand bei F4/F6a/F7 aufgedeckt und behoben. Bei der Bereinigung stellte sich heraus, dass derselbe Drift unabhängig davon auch bei F0, F1 und F3 vorlag — alle drei standen weiterhin auf `READY_FOR_TECH`, obwohl längst gemergt und real abgeschlossen. Der Drift wurde beide Male nicht während des Baus bemerkt, sondern erst durch eine spätere, eigens dafür angesetzte manuelle Gegenprüfung entdeckt.
@@ -1015,3 +1023,41 @@ Fundstelle: `features/F0/feature.md:13`, `features/F1/feature.md:13`, `features/
 Auswirkung: Zweites Auftreten desselben Grundmusters — der Status-Drift ist kein Einzelfall, sondern ein strukturelles Loch im Abschluss-Schritt. Ohne Gegenmaßnahme ist ein drittes Auftreten (z. B. bei F2, F5, F9) wahrscheinlich.
 Maßnahme: Statuswechsel der Feature-Akte auf `ABGESCHLOSSEN` als verbindlicher Bestandteil des Abschluss-Schritts, geprüft im selben Commit wie der letzte Bau-Commit des Features — nicht als spätere, separate Dokumentationskorrektur.
 Feature/Run: Bereinigung F-088-Nachtrag (F0/F1/F3), 04.09.2026.
+
+**F-095** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: plan-v2-f8-execution-controller.md ordnet Frage 4
+(GatewayOptionen-Durchreichung) in der Zusammenfassung dem falschen
+Workstream zu.
+Beschreibung: Die Zusammenfassung von plan-v2 weist die aus plan-v1
+Abschnitt 7 offene Frage 4 (Form der GatewayOptionen-Durchreichung)
+„vor WS-2b" zu, obwohl sie laut plan-v1 Abschnitt 7 und
+features/F8/feature.md unmittelbar AK8 betrifft, das WS-1 zugeordnet
+ist. Im Vertrag state/tasks/f8-execution-controller-ws1.md wurde das
+richtiggestellt (SCOPE Punkt 2, Widerspruch im CONTEXT-Abschnitt
+dokumentiert) — plan-v2 selbst wurde nicht korrigiert.
+Fundstelle: state/plan-v2-f8-execution-controller.md (Zusammenfassung),
+state/tasks/f8-execution-controller-ws1.md SCOPE Punkt 2 / CONTEXT.
+Auswirkung: Wer plan-v2 direkt liest (z. B. beim WS-2b-Vertrag), erbt
+die falsche Zuordnung erneut. Gleiches Muster wie F-088/F-093:
+Korrektur unten in der Kette statt an der Quelle.
+Maßnahme: plan-v2-Zusammenfassung auf AK8/WS-1 korrigieren, bei
+Gelegenheit (z. B. zusammen mit dem WS-2b-Vertrag).
+Feature/Run: F8 WS-1-Vertrag, 04.09.2026.
+
+**F-096** · `TECH_DEBT` · P2 · offen
+Titel: D2 (artefakt:<id>-Pfadschlüssel über laufId-Grenze hinweg) als
+„bereits durch F9 geprüft" abgetan, ohne Fundstelle in der Sollquelle.
+Beschreibung: Advisor-Befund 7
+(state/advisor-findings-f8-execution-controller.md) erklärt D2 für
+erledigt mit Verweis auf ein angeblich bereits durch F9 geprüftes
+Muster — ohne konkrete Fundstelle (Code, Test oder F9-Advisor-
+Dokument). state/findings.md (laut F-036 die einzige Sollquelle)
+enthält dazu keinen eigenen Eintrag.
+Fundstelle: state/advisor-findings-f8-execution-controller.md
+Befund 7; state/findings.md (kein Eintrag).
+Auswirkung: Blockiert WS-1 nicht. Ein künftiger WS-2a-Vertrag würde
+aber auf einer unbelegten Behauptung aufbauen.
+Maßnahme: Vor dem WS-2a-Vertrag konkrete Fundstelle nachliefern (Code
+oder F9-Advisor-Dokument); danach hier aufnehmen oder als erledigt
+schließen.
+Feature/Run: F8 Advisor-Pass / WS-1-Vertrag, 04.09.2026.
