@@ -204,3 +204,136 @@ abgeschlossen, kein Statuswechsel auf `ABGESCHLOSSEN` für einen
 Teil-Workstream (vermeidet den in F-093 beschriebenen Drift-Musterfall
 in die andere Richtung). WS-2a/2b offen, hängen weiterhin an der noch
 unbeantworteten D2-Anwendungsfrage (F-094/F-096).
+
+## 2026-09-04 — WS-2a-Vertrag, Bauauftrag ausgeführt
+
+Handoff-Vertrag `state/tasks/f8-execution-controller-ws2a.md`
+(commit `8dff0fe`, #66) ausgeführt. Freigabe für Bau/Commit direkt an
+den Technical Challenger erteilt (04.09.2026); Push bleibt separat
+autorisiert (Vertrag-OUTPUT).
+
+Reale Signaturen vor dem Bau gegengelesen (F7 `KlassifikationsErgebnis`
+Union, F6a `GatewayErgebnis`/`laufakteArtefaktId`, F9
+`erfasseBedarf`/`erzeugeTransportpaket`/`haendigeAus`, F1B `pruefeLaufId`,
+F2 `pruefeStale`/`ladeArtefaktVersion`) — keine Abweichung vom Vertrag
+gefunden. Einzige Auffälligkeit: SCOPE Punkt 4 spricht von "vier
+F9-Aufrufen", tatsächlich (und an anderer Stelle desselben Vertrags,
+SCOPE Punkt 5, korrekt als "drei" benannt) sind es drei
+(`erfasseBedarf`, `erzeugeTransportpaket`, `haendigeAus`) — offensichtlicher
+Zahlendreher im Vertragstext, kein Widerspruch zu plan-v1/v2/feature.md/
+Code (Vorrangregel F-104 nicht einschlägig), nicht eskaliert, alle drei
+Aufrufe erhalten `optionen` unverändert.
+
+Umgesetzt (SCOPE Punkte 1-6):
+
+- `src/execution-controller/index.ts`: Eskalationsschritt zwischen
+  Schritt 4 (`klassifiziereLauf`) und Schritt 5
+  (`stelleLaufstatusFest`) eingesetzt (plan-v2 Delta 2). Auslösekriterium
+  `klassifikation.ergebnis === 'VERWEIGERT' && klassifikation.
+  bypass_verdacht_anzahl > 0` — TypeScript verengt die Union bereits über
+  das erste Konjunkt, kein `?? 0`-Fallback. `versionSequenz` aus dem
+  `starteGateway`-Erfolgsergebnis festgehalten (vorher verworfen).
+  Hilfsfunktion `eskalationsLaufId` (`randomUUID`-Suffix, plan-v1
+  Abschnitt 2.2, D3). Ein Wurf aus einem der drei F9-Aufrufe wird nicht
+  gefangen (Delta 1) — propagiert unverändert als Promise-Rejection.
+  Dateikopf hält fest, dass die Eskalations-Lineage-Referenz Herkunft
+  belegt, aber bewusst nicht stale-geprüft wird (SCOPE Punkt 6,
+  Fundstellen `lineage-registry/index.ts:222`,
+  `human-transport/index.ts:348-360`).
+- `src/execution-controller/types.ts`: `AusfuehrungsErgebnis`s
+  `ok: true`-Zweig um ein optionales Feld `eskalation?: { laufId,
+  bedarfVersionSequenz, transportVersionSequenz }` erweitert, gesetzt
+  genau dann, wenn eskaliert wurde. Die drei bestehenden Zweige
+  unverändert.
+- `src/execution-controller/execution-controller.test.ts`: fünf neue
+  `node:test`-Fälle. Zwei lokale `Starter`-Attrappen (`VERWEIGERT` mit
+  `permission_denials`-Eintrag, `tool_input.command` = verbotener
+  Aufrufparameter bzw. unauffälliger Befehl), vorab in
+  `Attrappen-Vorprüfung` belegt (real `bypass_verdacht_anzahl` 1 bzw. 0,
+  F-103-Muster). `AK4-positiv`/`AK4-negativ` gegen `fuehreAufgabeDurch`.
+  `AK6 (F-091)`: Schritte 1-4 manuell nachvollzogen (nicht über
+  `fuehreAufgabeDurch`, dessen Rückkehr bereits nach der Eskalation
+  liegt), `stelleLaufstatusFest(ausloesenderLaufId)` vor und nach der
+  (ebenfalls manuell nachvollzogenen) F9-Eskalation gegen `ABGESCHLOSSEN`/
+  `VERWEIGERT` geprüft; Lineage-Check gegen die real geladene Laufakte,
+  nicht gegen einen im Test nachgebauten Wert; `stelleLaufstatusFest(
+  eskLaufId) === 'KLAERUNG_ERFORDERLICH'`. `Delta 1 (Wurf)`: Wurf in
+  `erzeugeTransportpaket` über einen realen Vorbedingungsbruch ausgelöst
+  (`human-transport/index.ts:114-117`, kein Modul-Mock, D1) — ein
+  `schreiber`-Hook löscht das von `erfasseBedarf` gerade geschriebene
+  BEDARF_V0-Lineage-Verzeichnis unmittelbar nach dessen
+  `lineage_registriert`-Ereignis, sodass der nachfolgende
+  `erzeugeTransportpaket`-Aufruf die Version real nicht mehr findet;
+  geprüft, dass die Rejection unverändert beim Aufrufer ankommt und
+  `stelleLaufstatusFest(ausloesenderLaufId)` danach weiterhin
+  `ABGESCHLOSSEN` liefert. `raeumeKette` um die Eskalations-Ketten
+  erweitert (`eskLaufId`, `lineage-bedarf-<eskLaufId>`,
+  `lineage-transport-<eskLaufId>`). F-109: alle WS-2a-Test-`laufId`s mit
+  Präfix ≤4 Zeichen (`ak4p`, `ak4n`, `ak6`, `esk`, `avpa`/`avpb`).
+- `scripts/check-f8-execution-controller.mjs` unverändert gelassen
+  (SCOPE Punkt 7) — nach dem Bau erneut geprüft, beide Greps weiterhin
+  grün.
+
+Pflicht-Kalibrierungen real erbracht (SCOPE Punkt 5, Beleg in
+`state/gates.md`):
+
+- **AK4-negativ (Nichtaufruf-Nachweis, F-103):** Eskalationsbedingung
+  testweise von `bypass_verdacht_anzahl > 0` auf `>= 0` gesetzt →
+  `node --test execution-controller.test.ts` → `tests 8, pass 7, fail
+  1`, `AK4-negativ` rot (`AssertionError`, `actual` zeigte eine real
+  entstandene `eskalation` statt `undefined`); danach zurückgebaut →
+  `tests 8, pass 8, fail 0`.
+- **Attrappen-Vorprüfung:** lief in beiden Kalibrierungsläufen (Rot- und
+  Grün-Zustand der Eskalationsbedingung) unverändert grün — die
+  Fixture-Klassifikation selbst hängt nicht an der geprüften Bedingung,
+  ihre Korrektheit ist strukturell über den direkten `klassifiziereLauf`-
+  Aufruf belegt, nicht über die Kalibrierung der Eskalationsbedingung.
+- **Delta-1-Kalibrierung:** der Testfall selbst trägt eine eingebaute
+  Kalibrierungs-Assertion (`hookAusgeloest === true`) — belegt bei jedem
+  Lauf, dass der Wurf über den real ausgelösten Vorbedingungsbruch
+  entstand, nicht zufällig.
+
+`npm run check` und `npm run check:template` → je Exit 0, `tests 124,
+pass 124, fail 0` (119 + 5 neue WS-2a-Testfälle). Längster real
+erzeugter Pfad unter den WS-2a-Testfällen: 249 Zeichen ab Repo-Wurzel
+absolut, unter der Windows-MAX_PATH-Grenze von 260 (F-109).
+
+`features/F8/feature.md` Status bleibt `READY_FOR_TECH` — F8 ist erst
+mit WS-2b abgeschlossen (F-093-Muster, kein Statuswechsel für einen
+Teil-Workstream).
+
+Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, je frischer
+Kontext, parallel) vor dieser Freigabe durchlaufen (CLAUDE.md DoD,
+F-046):
+
+- `code-reviewer`: **Freigegeben mit Hinweisen**. Alle sieben geprüften
+  Punkte (Eskalationsbedingung typsicher, `optionen` unverändert
+  durchgereicht, kein try/catch um die drei F9-Aufrufe, kein direkter
+  F5/F6a/F7-Regelaufruf, Delta-1-Testmechanik ein realer
+  Vorbedingungsbruch statt Modul-Mock, Kommentar-Standard eingehalten)
+  bestätigt, keine kritischen Befunde. Ein Hinweis: `AK6` ruft
+  `fuehreAufgabeDurch` bewusst nicht auf (Vertrag SCOPE Punkt 5 verlangt
+  das so, wegen der "vorher"-Assertion), dadurch prüfte bis dahin kein
+  Testfall den echten `ergebnis.laufStatus` nach einer über den
+  Produktionscode ausgelösten Eskalation.
+- `qa`: **Freigegeben mit Hinweisen**. Sechs Testfälle (AK4-positiv/
+  -negativ, AK6/F-091, Delta-1-Fehlerpfad, Vertrags-Randfälle, WS-2b-
+  Grenze, Testcode-Plausibilität gegen reale Signaturen) bestanden, kein
+  F-103-Muster gefunden (AK4-negativ-Nachweis real kalibriert). Derselbe
+  Hinweis wie `code-reviewer` (Schweregrad niedrig): `AK4-positiv` prüfe
+  `ergebnis.laufStatus` nicht, obwohl es der einzige Testfall mit einer
+  über `fuehreAufgabeDurch` real ausgelösten Eskalation ist — aktuell
+  kein Bug (`index.ts:139` verwendet korrekt `laufId`, nicht `eskLaufId`),
+  aber eine Lücke im Regressionsnetz.
+
+Beide Pässe unabhängig voneinander zum selben Punkt gekommen — sofort
+behoben (Ein-Zeiler, keine zweite Korrekturrunde nötig): `AK4-positiv` um
+`assert.strictEqual(ergebnis.laufStatus.status, 'ABGESCHLOSSEN')` und
+`assert.strictEqual(ergebnis.laufStatus.ergebnis, 'VERWEIGERT')` ergänzt.
+`npm run check` danach erneut Exit 0, `tests 124, pass 124, fail 0`
+(unverändert, kein neuer Testfall, nur zwei zusätzliche Assertions in
+einem bestehenden).
+
+Freigabe für Bau/Commit direkt an den Technical Challenger erteilt
+(Stefan, 04.09.2026) — Vertrag `state/tasks/f8-execution-controller-ws2a.md`
+OUTPUT-Abschnitt. Push bleibt separat autorisiert.
