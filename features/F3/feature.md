@@ -10,7 +10,7 @@ Authorization Boundary (minimal)
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
