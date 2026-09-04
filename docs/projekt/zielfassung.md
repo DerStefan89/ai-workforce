@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.10 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.11 (konsolidierte Sollquelle)
 
 Stand: 24.08.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -18,6 +18,8 @@ v1.7 → v1.8: **§15 nachgetragen** — Datenformate, Oberflächentechnik und P
 v1.8 → v1.9: **F6b-Entscheidungen E5 und E7 eingearbeitet** (`claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`, 03.09.2026): §9.4 E-188 (sechster Gültigkeitsschlüssel-Bestandteil „Startziel des Werkzeugprozesses", E5) · §16.8 Punkt 4 geschlossen (E7 — `--tools`/`--allowedTools` real gemessen als zwei unabhängige Mechanismen, F-078; MCP-Kanal-Messfall 3 aus Vertrag 2 gilt als überholt).
 
 v1.9 → v1.10: **§16.8 Punkt 3 geschlossen** (F6b WS-F, 03.09.2026, löst F-053): `scripts/verify-f6b-ws-f-rotfall.mjs` reproduziert den in F-078 beobachteten Rot-Fall (echter, real abgelehnter Write-Versuch über `--allowedTools` ohne Write) jederzeit über die reale F6a/F7-Kette gegen eine Wegwerf-Kopie außerhalb des Repos.
+
+v1.10 → v1.11: **E-192 und E-193 ergänzt** (Challenge F8, 04.09.2026): §9.4 E-192 (Execution Controller in Fassung 1 als minimaler Orchestrator auf Lauf-Ebene, Workstream-/Execution-Automaten aus §16.8 Punkt 6/A4 werden in Fassung 1 nicht implementiert, F-090) · E-193 (E-189-Autorisierungsgate bleibt im Claude-Code-Gateway, nicht im Execution Controller) · §9.4 Zeile 219 (E-189) und §16.2 Zeile 332 (Modultabelle) auf den Ist-Zustand nachgezogen · §16.8 Punkt 6 um den Hinweis „Automaten in Fassung 1 nicht implementiert (E-192)" ergänzt.
 
 ---
 
@@ -216,9 +218,13 @@ Core liest Produktpfade read-only *(32)* · Produktdateien ändert nur Claude Co
 
 **E-188** *(präzisiert)* — Die Wirksamkeit der Schutzschichten wird gegen einen bekannten Rot-Fall nachgewiesen, nicht aus ihrer Existenz gefolgert. Der Nachweis gilt für einen **Gültigkeitsschlüssel** aus mindestens: Hash der Werkzeugkonfiguration, Hashes der referenzierten Schutzskripte, Version des Ausführungswerkzeugs, Berechtigungskontext des Aufrufs, Pfad des Arbeitsverzeichnisses, **Startziel des Werkzeugprozesses** *(E5, 03.09.2026)*. Ändert sich ein Bestandteil, wird erneut geprüft.
 
-**E-189** — Der Execution Controller akzeptiert eine Autorisierung nur, wenn ihre Bezeugung nachweislich gegen Erzeugung und Veränderung durch das Ausführungswerkzeug geschützt ist. Eine im Produkt-Repository sichtbare Kopie oder Referenz ist niemals alleinige Autoritätsquelle.
+**E-189** *(präzisiert E-193)* — Eine Autorisierung wird nur akzeptiert, wenn ihre Bezeugung nachweislich gegen Erzeugung und Veränderung durch das Ausführungswerkzeug geschützt ist. Eine im Produkt-Repository sichtbare Kopie oder Referenz ist niemals alleinige Autoritätsquelle. Die Durchsetzung liegt im Claude-Code-Gateway (`starteGateway`), nicht im Execution Controller — siehe E-193.
 
 **E-190** — Ein Werkzeuglauf erzeugt zwei getrennte Ablagen. Die **kanonische Laufakte** trägt ausschließlich, was Zustand, Freigabe oder Qualitätsdaten verbraucht, und ist Teil des Metadaten-Commits. Der **Rohereignisstrom** dient Audit und Diagnose, wird nicht committet und ist aus der Laufakte über seinen Hash referenziert. Kein Modellkontext wird aus dem Rohstrom gebildet *(107, 133)*.
+
+**E-192** *(Challenge F8, 04.09.2026)* — F8 wird als minimaler Orchestrator auf Lauf-Ebene gebaut. Der Execution Controller in Fassung 1 orchestriert F4 → F5 → F6a → F7 auf der bestehenden `laufId`-Identität. Die in §16.8 Punkt 6 (A4) beschlossenen Zustandsebenen Workstream und Execution werden in Fassung 1 nicht implementiert. Begründung: Es existiert heute kein realer Fall mit mehr als einem Lauf je Execution; A4 wurde entschieden, bevor F6a/F7 real liefen — ein Zustandsmodell für einen unbeobachteten Bedarf fällt unter YAGNI. Auflage: als TECH_DEBT P1 geführt (F-090), in `features/F8/feature.md` als ausdrückliches Nicht-Ziel benannt. Neu bewerten, sobald ein realer Mehr-Lauf-je-Execution-Fall auftritt.
+
+**E-193** *(Challenge F8, 04.09.2026)* — Das E-189-Autorisierungsgate bleibt im Claude-Code-Gateway. `starteGateway` (`src/claude-code-gateway/index.ts`) bleibt der Durchsetzungsort für E-183/E-188/E-189: es liest `state/aktuelle-autorisierung.json` selbst und ruft `pruefeStartfreigabe` vor jedem Prozessstart auf. Der Execution Controller prüft die Autorisierung nicht selbst und baut sie nicht nach (D5). Begründung: Ein Gate im Aufrufer ist umgehbar, sobald irgendein anderer Codepfad `starteGateway` direkt aufruft; ein Gate im Gateway ist es nicht (dieselbe Begründung wie F-086).
 
 ---
 
@@ -329,7 +335,7 @@ Verbindlich. Ausführliche Fassung: Draft B (Architektur-Council, 20.08.2026) mi
 
 | Modul | Verantwortung | Tut nicht |
 |---|---|---|
-| **Execution Controller** | besitzt **zwei** Automaten — Workstream-Ebene und Execution-Ebene *(A4)* — prüft Übergänge, veranlasst Checkpoints | keine Produktänderung, keine Shell-Aktion, keine Prosa als Übergang |
+| **Execution Controller** | besitzt **zwei** Automaten — Workstream-Ebene und Execution-Ebene *(A4)* — prüft Übergänge, veranlasst Checkpoints. **Automaten in Fassung 1 nicht implementiert** (E-192, F-090): der Controller veranlasst, das Gateway setzt durch (E-193) | keine Produktänderung, keine Shell-Aktion, keine Prosa als Übergang |
 | **Checkpoint Store** | persistiert zwei Artefakttypen in einer gemeinsamen, append-only Hash-Kette im Arbeitsbaum: `Checkpoint` je Execution-Übergang und `Wirkungsmarke` vor/nach jedem Lauf; kein Commit pro Übergang *(A2, A5)* | keine Produktdateien, keine Bewertung, keine Autorisierung |
 | **Artifact Registry / Lineage** | Identität, Version, Herkunft, Input-Beziehungen; Veraltungsprüfung. Identitätsregel nach Eigentümerschaft *(A7)*: kern-erzeugt = Kontrollartefakt mit eigener Identität; werkzeug-erzeugt = Referenz (Pfad, Inhalts-Hash, zitierter Bereich, später Git-Blob-Id) | keine fachliche Relevanzbewertung |
 | **Authorization Boundary** | eigener Eingang für menschliche Entscheidungen; hält beide Schlüsselarten auseinander | keine Deutung von Modelltext als Freigabe; erzeugt nie die Git-Freigabe-Datei |
@@ -378,7 +384,7 @@ Aus Draft B und dem Final-Review, für die technische Planung:
 3. Der konkrete bekannte Rot-Fall der Wirksamkeitsprüfung. **Geschlossen (F6b WS-F):** `scripts/verify-f6b-ws-f-rotfall.mjs` reproduziert den in F-078 beobachteten Rot-Fall (echter, real abgelehnter Write-Versuch über `--allowedTools` ohne Write) jederzeit über die reale F6a/F7-Kette gegen eine Wegwerf-Kopie außerhalb des Repos — siehe `state/findings.md` F-053.
 4. Welche zwei unabhängigen Mechanismen den Werkzeugsatz begrenzen *(E-187)*. **Geschlossen (E7):** `--tools` (entfernt ein Werkzeug vollständig aus dem Angebotssatz des Modells, Ablehnung ohne Permission-Event) und `--allowedTools` (lässt das Werkzeug im Angebotssatz, blockiert den Aufruf über eine reale Permission-Prüfung) sind real gemessene, unabhängige Mechanismen — unterschiedliche Wirkmechanik, unterschiedlicher Nachweiskanal (F-078). Der bisher referenzierte MCP-Kanal-Messfall 3 (Vertrag 2, `state/tp-nachtrag.md`) gilt als überholt und wird nicht weiter verfolgt.
 5. Erkennung eines nach Absturz möglicherweise noch laufenden Werkzeugprozesses. *(Weiterhin offen — an Vertrag 3 gebunden.)*
-6. Positionen und fachliche Hauptzustände der ersten Execution-Kette. **Geschlossen (A4):** Drei Zustandsebenen — Workstream → Execution → Lauf. Execution = eine Position an einem Gegenstand, die Pinning-Einheit. Controller besitzt Workstream- und Execution-Automat, Gateway den Lauf.
+6. Positionen und fachliche Hauptzustände der ersten Execution-Kette. **Geschlossen (A4):** Drei Zustandsebenen — Workstream → Execution → Lauf. Execution = eine Position an einem Gegenstand, die Pinning-Einheit. Controller besitzt Workstream- und Execution-Automat, Gateway den Lauf. **Automaten in Fassung 1 nicht implementiert (E-192).**
 7. Versionierungssemantik des Kontrollbereichs — wann welcher Versionsstand entsteht. **Geschlossen (A8):** Inhaltsadressiert, kein mutierbarer Zeiger. Version = Inhalts-Hash; der letzte Checkpoint ist die einzige Stelle, die den aktuellen Stand benennt. Pfade dürfen Artefakttyp und Execution-Identität im Klartext tragen.
 8. Repräsentation des Gültigkeitsschlüssels und Normalisierung des Arbeitsverzeichnispfads. *(Weiterhin offen — Vertrag 5 hat die geerbte `cwd`-Abhängigkeit im commit-guard sichtbar gemacht und in `state/assumption-ledger.md` dokumentiert, aber ausdrücklich nicht behoben; bestätigt weiterhin offen.)*
 9. **Zeilenenden** — Verantwortung dafür ist noch keiner Systemgrenze zugeordnet *(D8)*. **Geschlossen (A9):** Keine Normalisierung; der Hash beschreibt die Bytes auf der Platte. Kern schreibt ausnahmslos LF; `eol=lf` wird in Vertrag 2 kalibriert; Git-Blob-Id beim Metadaten-Commit.

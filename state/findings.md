@@ -447,7 +447,7 @@ Feature/Run: F4 Invocation Policy, retroactiver Review-Pass, 31.08.2026;
 behoben 31.08.2026 (kein neuer Vertrag/Advisor-Zyklus, kleiner Fix
 innerhalb des freigegebenen AC3-Scopes).
 
-**F-048** · `BUG` · P1 · offen
+**F-048** · `BUG` · P1 · gelöst
 Titel: Mehrwort-Verbotsparameter matcht nicht gegen ein tokenisiertes
 Aufruf-Array (Fail-Open bei `--permission-mode bypassPermissions`).
 Beschreibung: `pruefeAufrufparameter` prüft `parameter.includes(verbotenerWert)`
@@ -470,7 +470,11 @@ Kommandozeilen-String) und `pruefeAufrufparameter` entsprechend härten;
 Testfall für die tokenisierte Form ergänzen. Muss vor der F6-Anbindung
 entschieden sein.
 Feature/Run: F4 Invocation Policy, retroactiver Review-Pass (code-reviewer
-Befund 1 = qa Befund 5), 31.08.2026.
+Befund 1 = qa Befund 5), 31.08.2026; gelöst F6a WS1, 31.08.2026 —
+`enthaeltTokenFenster` in
+`src/invocation-policy/verbotene-aufrufparameter.ts` erkennt einen
+Mehrwort-Verbotseintrag jetzt gegen ein tokenisiertes Aufruf-Array
+(F-048-Fix-Kommentar im Code), gefordert von F6a AK2.
 
 **F-049** · `TECH_DEBT` · P2 · offen
 Titel: Sammel-Finding F4-Testlücken aus dem retroactiven QA-Pass (fünf
@@ -937,13 +941,16 @@ Maßnahme: Reviewer-Zugriffe über die Bridge sind ausschließlich `fetch`/`show
 Status: offen (Verhaltensänderung der Challenger-Rolle aktiv seit 03.09.2026)
 Feature/Run: F6b WS-D/WS-E/WS-F Reviews, 03.09.2026.
 
-**F-085** · `TECH_DEBT` · P3 · offen
+**F-085** · `TECH_DEBT` · P3 · gelöst
 Titel: Realer Wirksamkeitsnachweis trägt Platzhaltertext statt echter Werkzeugversion.
 Beschreibung: `werkzeug_version_deklariert` im committeten Nachweis (externes Repo, Commit `c282de9`) steht wörtlich `<deine Claude-Code-Version>`. Kein Schema-Verstoß, aber inhaltlich falsch.
 Fundstelle: `ai-workforce-autorisierung`, Commit `c282de9`.
 Auswirkung: Keine bislang — mit WS-G bekommt dieser Wert erstmals echte Bedeutung (Vergleich gegen istUebrigeFelder. werkzeug_version_deklariert).
 Maßnahme: `erzeuge-invocation-policy-nachweise.mjs` erneut mit echter Version und dem realen `rot_fall_beleg`-Text aus WS-F laufen lassen, neu committen — danach state/aktuelle-autorisierung.json auf den neuen Commit aktualisieren.
-Status: offen · Feature/Run: F6b WS-E, 03.09.2026.
+Status: gelöst · Feature/Run: F6b WS-E, 03.09.2026; gelöst F6b WS-G,
+03.09.2026 — `state/aktuelle-autorisierung.json` verweist jetzt auf den
+Wirksamkeitsnachweis-Commit `75e31465`, nicht mehr auf den beanstandeten
+`c282de9`.
 
 **F-086** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Bauauftrag 108 (F6b WS-G) widersprüchlich zwischen CONTEXT und SCOPE-Punkt 2 bei der Referenzquelle für startfreigabe.
@@ -960,3 +967,35 @@ Fundstelle: scripts/verify-f6b-ws-g-schreiblauf.mjs, Review 03.09.2026.
 Auswirkung: Realer Grün-Fall-Beleg war bis zur Entscheidung blockiert.
 Maßnahme: verify-Skript chdir't nicht mehr, nur Schreibziel umgeleitet (Option A); C:\Program Files\claude\claude.exe als Symlink auf die reale npm-global-Binary angelegt, um den bewusst gewählten admin-geschützten Installationsort als Vertrauensanker zu erhalten (Option B), statt die Prüfung auf den user-schreibbaren npm-Pfad abzusenken.
 Status: gelöst · Feature/Run: F6b WS-G, 03.09.2026.
+
+**F-088** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Feature-Akten-Status driftet gegenüber der Realität; F6b hat überhaupt keine Akte.
+Beschreibung: `features/F4/feature.md` und `features/F6a/feature.md` stehen auf `READY_FOR_TECH`, `features/F7/feature.md` auf `IN_ARBEIT` — alle drei Features sind real abgeschlossen und gemergt. `features/F6b/` existiert nicht, ebenso kein `state/plan-v1-f6b-*`, obwohl F6b über sieben Workstreams gebaut wurde. `scripts/check-feature.mjs` prüft den Status nur gegen die erlaubte Werteliste, nicht gegen den realen Abschluss.
+Fundstelle: `features/F4/feature.md:13`, `features/F6a/feature.md:13`, `features/F7/feature.md:13`; fehlendes `features/F6b/`.
+Auswirkung: Eine Sitzung, die den Projektstand aus den Feature-Akten liest, hält abgeschlossene Features für offen und F6b für nie gebaut. Für F8 unmittelbar relevant, weil F8 seine Dependencies genau aus diesen Akten ableiten würde.
+Maßnahme: Status der drei Akten auf `ABGESCHLOSSEN` gezogen; F6b als Workstream-Kette in `features/F6a/feature.md` dokumentiert.
+Feature/Run: Challenge F8, 04.09.2026.
+
+**F-089** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `state/findings.md` führt zwei real gelöste Findings weiterhin als offen.
+Beschreibung: F-048 ist in `src/invocation-policy/verbotene-aufrufparameter.ts` per `enthaeltTokenFenster` behoben (Kommentar nennt den Fix explizit, F6a AK2 fordert ihn) — Register sagt `offen`. F-085 ist behoben, `state/aktuelle-autorisierung.json` verweist auf Wirksamkeitsnachweis-Commit `75e31465` statt des beanstandeten `c282de9` — Register sagt `offen`. Übergabe 109 zitiert F-048 daraufhin als offenen P1-Faden für die F8-Planung.
+Fundstelle: `state/findings.md` Zeilen 450 (F-048) und 940 (F-085).
+Auswirkung: Falsche P1-Last in der F8-Planung; das Register ist laut F-036 die einzige Sollquelle und verliert Verlässlichkeit, wenn Statuswechsel am Ende eines Baudurchgangs nicht zurückfließen.
+Maßnahme: Beide Statuszeilen nachgezogen. Zusätzlich: Statuswechsel gehören in denselben Commit wie der Fix, nicht in einen späteren Dokumentations-PR.
+Feature/Run: Challenge F8, 04.09.2026.
+
+**F-090** · `TECH_DEBT` · P1 · offen
+Titel: Drei-Ebenen-Zustandsmodell (Workstream → Execution → Lauf, §16.8 Punkt 6 / A4) existiert im Kern nicht und wird in Fassung 1 bewusst nicht gebaut.
+Beschreibung: Grep über `src/` findet keine Workstream- oder Execution-Identität; `src/checkpoint-store/` führt ausschließlich `laufId`. Die Zielfassung erklärt §16.8 Punkt 6 als geschlossen und weist dem Execution Controller zwei Automaten zu — beide Ebenen sind nie gebaut worden. Mit E-192 ist entschieden, sie in Fassung 1 auch nicht zu bauen.
+Fundstelle: `docs/projekt/zielfassung.md:332`, `:381`; `src/checkpoint-store/types.ts`.
+Auswirkung: Bewusste, dokumentierte Abweichung von einer als geschlossen geführten Architekturentscheidung. Wird teuer, falls sich später zeigt, dass eine Execution mehrere Läufe bündeln muss — der Checkpoint Store bekäme nachträglich eine zweite Identitätsachse, was Hash-Kette und Artefaktpfade berührt.
+Maßnahme: Als P1-Schuld sichtbar halten. In `features/F8/feature.md` als ausdrückliches Nicht-Ziel benannt; `zielfassung.md` §16.8 Punkt 6 und §16.2 Zeile 332 bekommen den Zusatz „Automaten in Fassung 1 nicht implementiert (E-192)". Neu bewerten, sobald ein realer Mehr-Lauf-je-Execution-Fall auftritt.
+Feature/Run: Challenge F8, 04.09.2026.
+
+**F-091** · `TECH_DEBT` · P2 · offen
+Titel: F9s `haendigeAus` schreibt `run_prepared` — eine Eskalation unter der `laufId` des auslösenden Laufs kippt dessen Status zurück auf `KLAERUNG_ERFORDERLICH`.
+Beschreibung: `haendigeAus` (`src/human-transport/index.ts:147`) schreibt bewusst eine `run_prepared`-Wirkungsmarke, weil die Außenwirkung mit dem Verlassen des Systems beginnt (D3). `stelleLaufstatusFest` (`src/checkpoint-store/index.ts:697`) paart `run_prepared` und `terminal` FIFO; eine zusätzliche, unpaarige `run_prepared` führt immer zu `KLAERUNG_ERFORDERLICH`. Löst F8 die E-186-Eskalation unter der `laufId` des bereits klassifizierten Laufs aus, gilt dieser Lauf danach als ungeklärt, obwohl er sauber klassifiziert wurde.
+Fundstelle: `src/human-transport/index.ts:147`; `src/checkpoint-store/index.ts:697-740`.
+Auswirkung: Ohne Klärung würde jede E-186-Eskalation den auslösenden Lauf scheinbar entwerten. Kein Datenverlust, aber ein falscher Statuswert an genau der Stelle, an der ein Sicherheitsverdacht gemeldet wird.
+Maßnahme: F8 führt die Eskalation unter einer eigenen `laufId` und verbindet sie über die Lineage (F2) mit dem auslösenden Lauf. Als AK6 in `features/F8/feature.md` festgeschrieben, in plan-v1 real nachzuweisen.
+Feature/Run: Challenge F8, 04.09.2026.
