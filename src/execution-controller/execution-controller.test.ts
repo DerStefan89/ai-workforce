@@ -56,6 +56,17 @@
  *
  * F-109 (Windows-Pfadlänge): alle WS-2a-Test-laufIds verwenden ein Präfix
  * von höchstens 4 Zeichen (Vertrag SCOPE Punkt 5).
+ *
+ * WS-2b (state/tasks/f8-execution-controller-ws2b.md) ergänzt AK7: die
+ * KLAERUNG_ERFORDERLICH-Fixture ruft starteGateway direkt auf und lässt
+ * klassifiziereLauf bewusst aus, damit ein offenes run_prepared stehen
+ * bleibt; die FEHLGESCHLAGEN-Fixture nutzt die bestehende F6a-Attrappe
+ * attrappeOhneErgebnisobjekt über einen echten fuehreAufgabeDurch-Lauf.
+ * Beide AK7-positiv-Fälle prüfen den Lineage-Verweis gegen die real
+ * geladene Vorgänger-Laufakte (AK6-2-Muster) und belegen die Isolation
+ * des Vorgängerlaufs über einen echten Vorher/Nachher-Vergleich statt
+ * einer Grep-Prüfung über die mehrzeilige starteGateway-Aufrufstelle
+ * (Vertrag SCOPE Punkt 4, Begründung SCOPE Punkt 4/OUTPUT).
  */
 
 import { execFileSync } from 'node:child_process'
@@ -65,7 +76,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
-import { attrappeMitValidemErgebnis } from '../claude-code-gateway/prozessstart.ts'
+import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
 import { baueAufruf, starteGateway } from '../claude-code-gateway/index.ts'
 import type { Starter } from '../claude-code-gateway/types.ts'
 import { baueKontextpaket } from '../context-builder/index.ts'
@@ -86,7 +97,7 @@ function neueLaufId(praefix: string): string {
   return `${praefix}-${randomUUID()}`
 }
 
-function raeumeKette(laufId: string, eskLaufId?: string): void {
+function raeumeKette(laufId: string, eskLaufId?: string, vorgaengerLaufId?: string): void {
   rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
   rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-kontextpaket-${laufId}`), { recursive: true, force: true })
   rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
@@ -95,6 +106,13 @@ function raeumeKette(laufId: string, eskLaufId?: string): void {
     rmSync(join(KONTROLLZUSTAND_BASIS, eskLaufId), { recursive: true, force: true })
     rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-bedarf-${eskLaufId}`), { recursive: true, force: true })
     rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-transport-${eskLaufId}`), { recursive: true, force: true })
+  }
+  // WS-2b (AK7): der Lineage-Verweis liest lineage-laufakte-<vorgaengerLaufId>
+  // nur, erzeugt aber keinen neuen Eintrag darunter — trotzdem hier
+  // benennbar, damit ein Aufrufer die volle Kette in einem Aufruf aufräumen
+  // kann, statt raeumeKette(vorgaengerLaufId) separat zu benötigen.
+  if (vorgaengerLaufId !== undefined) {
+    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${vorgaengerLaufId}`), { recursive: true, force: true })
   }
 }
 
@@ -596,5 +614,147 @@ test('Delta 1 (Wurf): ein Wurf in erzeugeTransportpaket propagiert unverändert,
     assert.strictEqual(laufStatusNachWurf.ergebnis, 'VERWEIGERT')
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+// ─── WS-2b: AK7 ──────────────────────────────────────────────────────────
+
+test('AK7-positiv-A (KLAERUNG_ERFORDERLICH): Wiederaufnahme erhält Lineage-Verweis auf den Vorgängerlauf, dieser bleibt unverändert', async () => {
+  const vorgaengerLaufId = neueLaufId('k7a')
+  const laufId = `${vorgaengerLaufId}-retry-1`
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+
+    // Fixture "Vorgängerlauf KLAERUNG_ERFORDERLICH" (Vertrag SCOPE Punkt 3):
+    // starteGateway direkt aufgerufen, klassifiziereLauf bewusst nicht
+    // aufgerufen — offene run_prepared bleibt stehen.
+    const vorgaengerGateway = await starteGateway(
+      {
+        laufId: vorgaengerLaufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: baueAufruf(eingaben.aufrufEingaben),
+        werkzeugStartziel: eingaben.werkzeugStartziel,
+        werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+        berechtigungskontext: eingaben.berechtigungskontext,
+      },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+    )
+    assert.strictEqual(vorgaengerGateway.ok, true)
+    assert.ok(vorgaengerGateway.ok)
+
+    const vorherStatus = stelleLaufstatusFest(vorgaengerLaufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(vorherStatus.status, 'KLAERUNG_ERFORDERLICH')
+
+    const retryEingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), vorgaengerLaufId }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+
+    // Gegen die real geladene Vorgänger-Laufakte, nicht gegen einen im Test
+    // nachgebauten Wert (AK6-2-Muster).
+    const vorgaengerLaufakteVersion = ladeArtefaktVersion(`laufakte-${vorgaengerLaufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(vorgaengerLaufakteVersion !== null)
+
+    const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketVersion !== null)
+    // Index [0], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
+    // (plan-v1 Abschnitt 2.3) — eine künftige Umkehrung auf Anhängen soll hier rot werden.
+    const lineageEintrag = kontextpaketVersion.eingaben[0]
+    assert.ok(lineageEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Vorgängerlauf fehlt')
+    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (erstes Element)')
+    assert.strictEqual(lineageEintrag.inhalts_hash, sha256Hex(kanonischesJson(vorgaengerLaufakteVersion.daten)))
+
+    // Isolationsnachweis (F-091-Muster): echter Vorher/Nachher-Vergleich
+    // statt einer Grep-Prüfung über die mehrzeilige starteGateway-Aufrufstelle.
+    const nachherStatus = stelleLaufstatusFest(vorgaengerLaufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(nachherStatus.status, 'KLAERUNG_ERFORDERLICH', 'Vorgängerlauf muss nach der Wiederaufnahme unverändert KLAERUNG_ERFORDERLICH bleiben')
+  } finally {
+    raeumeKette(laufId, undefined, vorgaengerLaufId)
+    raeumeKette(vorgaengerLaufId)
+  }
+})
+
+test('AK7-positiv-B (FEHLGESCHLAGEN): Wiederaufnahme erhält Lineage-Verweis auf den Vorgängerlauf, dieser bleibt unverändert', async () => {
+  const vorgaengerLaufId = neueLaufId('k7b')
+  const laufId = `${vorgaengerLaufId}-retry-1`
+  try {
+    // Vorgängerlauf real bis zum Abschluss durchlaufen (bestehende F6a-
+    // Attrappe attrappeOhneErgebnisobjekt, TP-01e Messfall A) — erzeugt real
+    // FEHLGESCHLAGEN (result-evaluator.test.ts, grund beobachtungsbasis_unvollstaendig).
+    const vorgaengerErgebnis = await fuehreAufgabeDurch(vorgaengerLaufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeOhneErgebnisobjekt,
+      schreiber: () => {},
+    })
+    assert.strictEqual(vorgaengerErgebnis.ok, true)
+    assert.ok(vorgaengerErgebnis.ok)
+    assert.strictEqual(vorgaengerErgebnis.laufStatus.status, 'ABGESCHLOSSEN')
+    assert.ok(vorgaengerErgebnis.laufStatus.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(vorgaengerErgebnis.laufStatus.ergebnis, 'FEHLGESCHLAGEN')
+
+    const vorherStatus = stelleLaufstatusFest(vorgaengerLaufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(vorherStatus.status, 'ABGESCHLOSSEN')
+    assert.ok(vorherStatus.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(vorherStatus.ergebnis, 'FEHLGESCHLAGEN')
+
+    const retryEingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), vorgaengerLaufId }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+
+    const vorgaengerLaufakteVersion = ladeArtefaktVersion(`laufakte-${vorgaengerLaufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(vorgaengerLaufakteVersion !== null)
+
+    const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketVersion !== null)
+    // Index [0], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
+    // (plan-v1 Abschnitt 2.3) — eine künftige Umkehrung auf Anhängen soll hier rot werden.
+    const lineageEintrag = kontextpaketVersion.eingaben[0]
+    assert.ok(lineageEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Vorgängerlauf fehlt')
+    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (erstes Element)')
+    assert.strictEqual(lineageEintrag.inhalts_hash, sha256Hex(kanonischesJson(vorgaengerLaufakteVersion.daten)))
+
+    const nachherStatus = stelleLaufstatusFest(vorgaengerLaufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(nachherStatus.status, 'ABGESCHLOSSEN')
+    assert.ok(nachherStatus.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(nachherStatus.ergebnis, 'FEHLGESCHLAGEN', 'Vorgängerlauf muss nach der Wiederaufnahme unverändert FEHLGESCHLAGEN bleiben')
+  } finally {
+    raeumeKette(laufId, undefined, vorgaengerLaufId)
+    raeumeKette(vorgaengerLaufId)
+  }
+})
+
+test('Vorbedingungsverstoß: vorgaengerLaufId ohne existierende Laufakte wirft mit der laufId im Fehlertext', async () => {
+  const laufId = neueLaufId('k7v')
+  const nieExistierendeVorgaengerLaufId = neueLaufId('k7ne')
+  try {
+    const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), vorgaengerLaufId: nieExistierendeVorgaengerLaufId }
+    await assert.rejects(
+      fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+        ...startfreigabeOptionen(),
+        basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        starter: attrappeMitValidemErgebnis,
+        schreiber: () => {},
+      }),
+      (error: unknown) => error instanceof Error && error.message.includes(nieExistierendeVorgaengerLaufId)
+    )
+  } finally {
+    raeumeKette(laufId)
+    raeumeKette(nieExistierendeVorgaengerLaufId)
   }
 })

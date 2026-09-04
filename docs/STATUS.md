@@ -118,25 +118,34 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   Schreibschutz-Auflage für die künftige Wirksamkeitsnachweis-Ablageort-
   Entscheidung) (Gate `scripts/check-f4-invocation-policy.mjs`, eingehängt
   in `npm run check` und `npm run check:template`).
-- F8 WS-1 (Execution Controller, Kette) und WS-2a (E-186-Eskalation) sind
-  umgesetzt: `src/execution-controller/` führt einen Lauf vollständig
-  durch F5 (`baueKontextpaket`) → F6a (`baueAufruf`, `starteGateway`) →
-  F7 (`klassifiziereLauf`) → F1B (`stelleLaufstatusFest`), in fester
-  Reihenfolge, ohne eine der orchestrierten Prüf- oder
-  Klassifikationsregeln nachzubauen (mechanisch per Grep geprüft,
-  `scripts/check-f8-execution-controller.mjs`, eingehängt in `npm run
-  check` und `npm run check:template`). Bricht bei einer Ablehnung von F5
-  oder F6a sofort mit deren unverändertem Grund ab. Liefert F7
-  `VERWEIGERT` mit `bypass_verdacht_anzahl > 0`, eskaliert der Controller
-  zwischen Schritt 4 und Schritt 5 (plan-v2 Delta 2) real über F9
-  (`erfasseBedarf` → `erzeugeTransportpaket` → `haendigeAus`) unter einer
-  eigenen, vom auslösenden Lauf verschiedenen `laufId` — der Status des
-  auslösenden Laufs bleibt danach unverändert `ABGESCHLOSSEN` (F-091, real
-  getestet). Ein Wurf aus einem der drei F9-Aufrufe propagiert unverändert
-  als Promise-Rejection (plan-v2 Delta 1, kein vierter Ergebnis-Zweig).
-  WS-2b (erneuter Anlauf nach `KLAERUNG_ERFORDERLICH`/`FEHLGESCHLAGEN`) ist
-  bewusst nicht Teil dieses Baudurchgangs — hängt an der noch offenen
-  Wiederaufnahme-`laufId`-Konvention (plan-v1 Abschnitt 10, Frage 2).
+- F8 (Execution Controller) ist mit WS-1/WS-2a/WS-2b vollständig
+  umgesetzt und `ABGESCHLOSSEN`: `src/execution-controller/` führt einen
+  Lauf vollständig durch F5 (`baueKontextpaket`) → F6a (`baueAufruf`,
+  `starteGateway`) → F7 (`klassifiziereLauf`) → F1B
+  (`stelleLaufstatusFest`), in fester Reihenfolge, ohne eine der
+  orchestrierten Prüf- oder Klassifikationsregeln nachzubauen (mechanisch
+  per Grep geprüft, `scripts/check-f8-execution-controller.mjs`,
+  eingehängt in `npm run check` und `npm run check:template`). Bricht bei
+  einer Ablehnung von F5 oder F6a sofort mit deren unverändertem Grund ab.
+  Liefert F7 `VERWEIGERT` mit `bypass_verdacht_anzahl > 0`, eskaliert der
+  Controller zwischen Schritt 4 und Schritt 5 (plan-v2 Delta 2) real über
+  F9 (`erfasseBedarf` → `erzeugeTransportpaket` → `haendigeAus`) unter
+  einer eigenen, vom auslösenden Lauf verschiedenen `laufId` — der Status
+  des auslösenden Laufs bleibt danach unverändert `ABGESCHLOSSEN` (F-091,
+  real getestet). Ein Wurf aus einem der drei F9-Aufrufe propagiert
+  unverändert als Promise-Rejection (plan-v2 Delta 1, kein vierter
+  Ergebnis-Zweig). WS-2b (AK7) ergänzt einen erneuten Anlauf nach
+  `KLAERUNG_ERFORDERLICH` oder `ABGESCHLOSSEN`/`FEHLGESCHLAGEN`: bei
+  gesetztem `eingaben.vorgaengerLaufId` lädt der Controller die Laufakte
+  des Vorgängerlaufs über `ladeArtefaktVersion` und stellt sie der
+  Anfragenliste als `notwendig:true`-Eintrag voran (Lineage-Verweis) — die
+  Wiederaufnahme-`laufId` (`<vorgaengerLaufId>-retry-<n>`) wählt der
+  Aufrufer, der Controller generiert oder prüft sie nicht. Fehlt die
+  Vorgänger-Laufakte, wirft die Funktion (Vorbedingungsverletzung). Es
+  existiert kein Codepfad, der die Vorgänger-`laufId` an
+  `schreibeWirkungsmarke`/`schreibeCheckpoint`/`starteGateway` übergibt —
+  der Vorgängerlauf bleibt unverändert (real getestet, echter
+  Vorher/Nachher-Vergleich).
 
 ## Offene Punkte
 

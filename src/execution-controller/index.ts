@@ -1,9 +1,10 @@
 /**
  * Datei: src/execution-controller/index.ts
  *
- * Zweck: Execution Controller (F8 WS-1/WS-2a, state/tasks/f8-execution-
+ * Zweck: Execution Controller (F8 WS-1/WS-2a/WS-2b, state/tasks/f8-execution-
  * controller-ws1.md, state/tasks/f8-execution-controller-ws2a.md,
- * state/plan-v1-f8-execution-controller.md Abschnitt 2.1/2.2,
+ * state/tasks/f8-execution-controller-ws2b.md,
+ * state/plan-v1-f8-execution-controller.md Abschnitt 2.1/2.2/2.3,
  * state/plan-v2-f8-execution-controller.md Delta 1/2). Führt einen Lauf
  * vollständig durch die Kette F5 → F6a → F7 → F1B in fester Reihenfolge:
  * Kontextpaket bauen, Aufruf konstruieren, Lauf starten, Laufakte
@@ -34,14 +35,26 @@
  * baueAktuelleEingabeInhalte nur den BEDARF-Schlüssel (:329-336). Eine
  * STALE-Prüfung dieser Referenz hätte damit kein Aufrufziel
  * (lineage-registry/index.ts:222).
+ *
+ * WS-2b (state/tasks/f8-execution-controller-ws2b.md) ergänzt AK7: bei
+ * gesetztem eingaben.vorgaengerLaufId wird vor dem baueKontextpaket-Aufruf
+ * die Laufakte des Vorgängerlaufs geladen und der Anfragenliste als
+ * notwendig:true-Eintrag vorangestellt (Lineage-Verweis, plan-v1 Abschnitt
+ * 2.3). Fehlt sie, wirft die Funktion — Vorbedingungsverletzung, kein
+ * Fachergebnis (Muster lineage-registry/index.ts:243-245,
+ * human-transport/index.ts:90-92,114-117). Es existiert kein Codepfad, der
+ * die Vorgänger-laufId an schreibeWirkungsmarke/schreibeCheckpoint/
+ * starteGateway übergibt — der Vorgängerlauf bleibt unverändert.
  */
 
 import { randomUUID } from 'node:crypto'
 import { starteGateway, baueAufruf } from '../claude-code-gateway/index.ts'
 import { baueKontextpaket } from '../context-builder/index.ts'
+import type { Anfrage } from '../context-builder/types.ts'
 import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
+import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import type { AusfuehrungsEingaben, AusfuehrungsErgebnis, AusfuehrungsOptionen } from './types.ts'
 
@@ -50,12 +63,18 @@ function eskalationsLaufId(ausloesenderLaufId: string): string {
   return `${ausloesenderLaufId}-eskalation-${randomUUID()}`
 }
 
+/** Artefakt-ID der Laufakte eines Vorgängerlaufs (WS-2b, AK7) — eigene Kleinstfunktion, konsistent mit eskalationsLaufId oben, statt Zugriff auf die nicht exportierte gleichnamige Hilfsfunktion in claude-code-gateway/index.ts. */
+function vorgaengerLaufakteArtefaktId(vorgaengerLaufId: string): string {
+  return `laufakte-${vorgaengerLaufId}`
+}
+
 /**
  * Führt einen Lauf vollständig durch F5 → F6a → F7 → F1B (feste
  * Reihenfolge, plan-v1 Abschnitt 2.1, Schritte 1–5).
  * @param laufId - eindeutige Lauf-Kennung, unverändert an jeden Schritt gereicht
  * @param profilReferenz - Profilbezug, unverändert an F5/F6a/F7 gereicht
- * @param eingaben - Rolle, Anfragen, Budget, Aufrufkonstruktion, Startziel
+ * @param eingaben - Rolle, Anfragen, Budget, Aufrufkonstruktion, Startziel,
+ *   optional vorgaengerLaufId für eine Wiederaufnahme (WS-2b, AK7)
  * @param optionen - reine Durchreichung an F5/F6a/F7/F1B, nicht selbst interpretiert (D5)
  * @returns den Abbruchgrund von F5/F6a, oder bei vollständigem Durchlauf Klassifikation + Laufstatus
  *   (plus eskalation bei VERWEIGERT mit bypass_verdacht_anzahl > 0). Ein Wurf aus einem der drei
@@ -67,7 +86,28 @@ export async function fuehreAufgabeDurch(
   eingaben: AusfuehrungsEingaben,
   optionen: AusfuehrungsOptionen = {}
 ): Promise<AusfuehrungsErgebnis> {
-  const kontextpaketErgebnis = baueKontextpaket(laufId, eingaben.rolle, eingaben.anfragen, profilReferenz, eingaben.budget, {
+  let anfragen: Anfrage[] = eingaben.anfragen
+  if (eingaben.vorgaengerLaufId !== undefined) {
+    const vorgaengerLaufakteVersion = ladeArtefaktVersion(vorgaengerLaufakteArtefaktId(eingaben.vorgaengerLaufId), undefined, {
+      basisVerzeichnis: optionen.basisVerzeichnis,
+      schreiber: optionen.schreiber,
+    })
+    if (vorgaengerLaufakteVersion === null) {
+      throw new Error(`Vorgängerlauf '${eingaben.vorgaengerLaufId}' hat keine Laufakte — kein gültiger Vorgängerlauf für eine Wiederaufnahme (WS-2b, AK7)`)
+    }
+    anfragen = [
+      {
+        pfad: `artefakt:laufakte-${eingaben.vorgaengerLaufId}`,
+        frage: 'Kontext des vorherigen, klärungsbedürftigen/fehlgeschlagenen Laufs',
+        begruendung: 'Lineage-Verweis auf den Vorgängerlauf (AK7)',
+        inhalt: kanonischesJson(vorgaengerLaufakteVersion.daten),
+        notwendig: true,
+      },
+      ...eingaben.anfragen,
+    ]
+  }
+
+  const kontextpaketErgebnis = baueKontextpaket(laufId, eingaben.rolle, anfragen, profilReferenz, eingaben.budget, {
     basisVerzeichnis: optionen.basisVerzeichnis,
     schreiber: optionen.schreiber,
   })
