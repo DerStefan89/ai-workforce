@@ -1237,13 +1237,13 @@ Auswirkung: keine (diesmal) — belegt aber, dass die in F-115 vorgenommene Selb
 Maßnahme/Auflösung: für den Rest dieser Sitzung ausschließlich `git log origin/main`/`gh pr view --json`/`gh api` zur Fernstand-Prüfung verwenden, niemals `git fetch` — auch nicht „nur lesend geplant". Empfehlung an den Menschen: ein technischer Guard (z. B. Wrapper-Skript, das `git fetch`/`switch`/`merge`/`pull` aus Bridge-Kontexten ablehnt) wäre robuster als eine wiederholte Selbstverpflichtung, die bereits zweimal versagt hat.
 Feature/Run: F8-Abschluss, Findings-Nachtrag, 04.09.2026.
 
-**F-119** · `BUG` · P1 · offen
+**F-119** · `BUG` · P1 · **gelöst**
 Titel: `werkzeugStartziel[1..n]` passiert weder den E-188-Gültigkeitsschlüssel noch die E-182-Parameterprüfung.
 Beschreibung: `pruefeStartfreigabe` vergleicht nur `startziel_pfad = werkzeugStartziel[0]`; `pruefeAufrufparameter` prüft nur `tokens`. `echterStarter` übergibt jedoch `[...startziel.slice(1), ...tokens]` an `execFile`. `prozessstart.ts` sagt im Kopf selbst, der Hygiene-Guard sei „keine Vertrauensgrenze — die Vertrauensfrage liegt per E2 beim Aufrufer".
 Fundstelle: `src/invocation-policy/index.ts:466,484`; `src/claude-code-gateway/index.ts:219`; `src/claude-code-gateway/prozessstart.ts:49-51,85-87`.
 Auswirkung: Heute folgenlos (einziger Aufrufer ist ein Test). Mit einem HTTP-Einstiegspunkt wird ungeprüftes argv aus einem Request zum Prozessargument, ohne dass ein Aufrufer die E2-Vertrauensfrage noch hält.
-Maßnahme: `slice(1)` durch `pruefeAufrufparameter` führen (F10 WS-0). Blockiert F10 WS-1, nicht F8.
-Feature/Run: Gegenchallenge F10, 04.09.2026.
+Maßnahme/Auflösung: `starteGateway` (`src/claude-code-gateway/index.ts`) führt `eingaben.werkzeugStartziel.slice(1)` jetzt zusätzlich durch F4s `pruefeAufrufparameter`, unmittelbar nach der bestehenden `tokens`-Prüfung und vor `pruefeStartziel` — bei Treffer `verweigereStart` wie im bestehenden E-182-Zweig, kein Prozessstart, keine RUN_PREPARED-Marke. Rein additive Prüfung, `werkzeugStartziel` bleibt bewusst außerhalb des F4-Gültigkeitsschlüssels (kein Schemabruch, keine Neuerzeugung der externen Autorisierungsartefakte). Zwei neue `node:test`-Fälle in `claude-code-gateway.test.ts` (verbotener Parameter in `werkzeugStartziel[1]` → verweigert; gültiges mehrgliedriges `werkzeugStartziel` → Regression bestanden). Blockierte F10 WS-1, jetzt entblockt.
+Feature/Run: Gegenchallenge F10, 04.09.2026; behoben F10 WS-0, 04.09.2026.
 
 **F-120** · `BUG` · P2 · offen
 Titel: Leitstand-Server bindet an alle Netzwerkschnittstellen statt Loopback.
@@ -1267,4 +1267,12 @@ Beschreibung: Die Gegenchallenge-Sitzung eröffnete mit `git status --short`, be
 Fundstelle: Gegenchallenge-Sitzung 04.09.2026; `state/findings.md` F-100, F-118.
 Auswirkung: Wiederkehrender Prozessfehler mit real eingetretenem Folgeschaden (F-112).
 Maßnahme: Technischer Guard — Git-Zugriff aus Bridge-Sitzungen nur über ein Wrapper-Skript, das die erlaubte Befehlsliste (`log`, `ls-tree`, `ls-remote`, `rev-parse`, `cat`) durchsetzt.
+Feature/Run: Gegenchallenge F10, 04.09.2026.
+
+**F-123** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: F-100 zum vierten Mal verletzt — `git fetch` aus der Bridge, diesmal mit realem Schaden.
+Beschreibung: Die Challenger-Sitzung (Gegenchallenge F10) führte nach Merge von PR #74 `git fetch origin` aus der Bridge aus, um den main-Stand zu verifizieren. Ergebnis: `.git/index.lock` wurde angelegt und war aus der Bridge nicht löschbar (`Operation not permitted`), zusätzlich eine Warnung `unable to unlink '.git/objects/.../tmp_obj_...'`. Blockierte danach jede Git-Operation im Nutzerterminal, bis Stefan den Lock manuell entfernt hat (`Remove-Item .git\index.lock`).
+Fundstelle: `state/findings.md` F-100, F-118, F-122 (dieselbe Ursache, jetzt vierte Wiederholung); Gegenchallenge-Sitzung 04.09.2026, nach Merge PR #74.
+Auswirkung: Erster real eingetretener Arbeitsausfall aus dieser Fehlerklasse (F-100/F-118/F-122 waren bisher folgenlos oder nur PR-Verwechslungen). Bestätigt, dass eine wiederholte Selbstverpflichtung („kein git fetch aus der Bridge") die Praxis real nicht verhindert.
+Maßnahme: F-118/F-122s Empfehlung eines technischen Guards ist jetzt nicht mehr optional. Vorschlag: ein Wrapper-Skript/Alias, das aus erkennbaren Bridge-Sitzungen (z. B. über eine Umgebungsvariable oder den Arbeitsverzeichnis-Pfad `/sessions/.../mnt/...`) nur log/ls-tree/ls-remote/rev-parse/cat zulässt und alles andere (fetch/pull/status/commit/push) hart verweigert, statt sich auf Rollenverhalten zu verlassen.
 Feature/Run: Gegenchallenge F10, 04.09.2026.
