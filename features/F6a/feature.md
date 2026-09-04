@@ -10,7 +10,7 @@ Claude-Code-Gateway, Lesepfad
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -224,6 +224,46 @@ Reviewer-/QA-Pass vor Merge noch ausstehend:
   `starteGateway` vor jeder `RUN_PREPARED`-Wirkungsmarke. Sieben Rot-Fälle
   einzeln plus ein Grün-Fall in
   `scripts/check-f6a-claude-code-gateway.mjs`.
+
+## F6b — Schreibwirkung (Workstreams A–G)
+
+F6b ist kein eigenständiges Feature mit eigener Akte, sondern die
+Weiterführung von F6a auf die schreibende Execution (E-183/E-188 scharf,
+siehe Nicht-Ziele oben). Dokumentiert hier statt in einer eigenen
+`features/F6b/`, weil F6b keinen eigenen Modulschnitt hat — jeder
+Workstream ändert F6a-, F4- oder F1B-Code direkt (F-088).
+
+**Ziel:** den bislang nie erbrachten Rot-Fall-Nachweis der
+Wirksamkeitsprüfung erbringen (§16.8 Punkt 3, F-053) und `starteGateway`
+so härten, dass jeder Aufruf — nicht nur der F6a-Lesepfad — das volle
+F4-Gate (`pruefeStartfreigabe`, E-183/E-188/E-189) durchläuft.
+
+**Scope:** sechster Gültigkeitsschlüssel-Bestandteil „Startziel des
+Werkzeugprozesses" (E5, E-188), reale Invocation-Policy-Nachweise,
+Herkunftsprüfung des Wirksamkeitsnachweises, realer Rot-Fall gegen eine
+Wegwerf-Kopie außerhalb des Repos, `starteGateway` liest
+`state/aktuelle-autorisierung.json` selbst statt es sich mitgeben zu
+lassen (E-189/E-193).
+
+**Nicht-Ziele:** kein eigener Modulschnitt, keine neue
+`state/plan-v1-f6b-*`-Datei, keine Execution-Controller-Automaten
+(§16.8 Punkt 6, siehe F-090/E-192).
+
+**Workstreams:**
+
+| WS | Inhalt | PR |
+|---|---|---|
+| A | Sondierung — Bestandsaufnahme Wirksamkeitsprüfung, kein eigener Code-Commit | — |
+| B | E-188 sechster Gültigkeitsschlüssel-Bestandteil, §16.8 Punkt 4 geschlossen (E7), Findings F-077–F-082 | #51 |
+| C | Startziel als Gültigkeitsschlüssel-Bestandteil | #52 |
+| D | E-188 Wirksamkeitsnachweis-Herkunftsprüfung (F-077 gelöst) | #53 |
+| E | Invocation-Policy-Nachweise real erzeugen (F-081 gelöst) | #54 |
+| F | Rot-Fall real reproduzierbar (F-053 gelöst, §16.8 Punkt 3 geschlossen) | #55 |
+| G | Autorisierungsreferenz aktuell gehalten + Schreibpfad scharf — `starteGateway` prüft volles F4-Gate (E-183/E-188/E-189) | #56, #57, #58 (Review-Nachträge F-086/F-087) |
+
+**Herkunft:** `claude/104_...` (Challenge F6) und
+`claude/105_F6B_ENTSCHEIDUNGEN_UND_WORKSTREAM_SCHNITT.md`
+(Entscheidungen/Workstream-Schnitt, E5/E7, 03.09.2026).
 
 ## Zuordnung
 
