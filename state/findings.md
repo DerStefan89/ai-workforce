@@ -944,3 +944,19 @@ Fundstelle: `ai-workforce-autorisierung`, Commit `c282de9`.
 Auswirkung: Keine bislang — mit WS-G bekommt dieser Wert erstmals echte Bedeutung (Vergleich gegen istUebrigeFelder. werkzeug_version_deklariert).
 Maßnahme: `erzeuge-invocation-policy-nachweise.mjs` erneut mit echter Version und dem realen `rot_fall_beleg`-Text aus WS-F laufen lassen, neu committen — danach state/aktuelle-autorisierung.json auf den neuen Commit aktualisieren.
 Status: offen · Feature/Run: F6b WS-E, 03.09.2026.
+
+**F-086** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bauauftrag 108 (F6b WS-G) widersprüchlich zwischen CONTEXT und SCOPE-Punkt 2 bei der Referenzquelle für startfreigabe.
+Beschreibung: CONTEXT beschrieb state/aktuelle-autorisierung.json als von starteGateway selbst gelesene Pfad-Konstante; SCOPE-Punkt 2 verlangte zusätzlich ein startfreigabe-Feld in GatewayEingaben, über das der Aufrufer dieselben Referenzen mitliefert. Claude Code ist während der Umsetzung darauf gestoßen und hat korrekt eskaliert statt eigenmächtig zu entscheiden. Entschieden: starteGateway liest die Datei selbst, kein Feld in GatewayEingaben (Sicherheitsgrund: kein Aufrufer soll die geprüfte Autorisierung selbst bestimmen können).
+Fundstelle: claude/108_F6B_WS_G_BAUAUFTRAG.md, CONTEXT vs. SCOPE Punkt 2.
+Auswirkung: kein Schaden (Eskalation griff), unnötige Rückfrage.
+Maßnahme: Bauaufträge vor Vergabe auf Konsistenz zwischen CONTEXT und SCOPE prüfen, insbesondere bei sicherheitsrelevanten Schnittstellen.
+Status: gelöst · Feature/Run: F6b WS-G, 03.09.2026.
+
+**F-087** · `TECH_DEBT` · P2 · gelöst
+Titel: arbeitsverzeichnis_pfad/startziel_pfad kollidierten strukturell mit E6-Wegwerfläufen; startziel_pfad-Referenzwert war nie real kalibriert.
+Beschreibung: E5 und E6 wurden unabhängig entschieden und widersprachen sich beim realen Grün-Fall-Nachweis: ein chdir'ter Wegwerflauf kann arbeitsverzeichnis_pfad nie mit einem gegen das reale Repo erzeugten Nachweis matchen. Zusätzlich existierte der committete startziel_pfad (C:\Program Files\claude\claude.exe) auf der Zielmaschine real nicht.
+Fundstelle: scripts/verify-f6b-ws-g-schreiblauf.mjs, Review 03.09.2026.
+Auswirkung: Realer Grün-Fall-Beleg war bis zur Entscheidung blockiert.
+Maßnahme: verify-Skript chdir't nicht mehr, nur Schreibziel umgeleitet (Option A); C:\Program Files\claude\claude.exe als Symlink auf die reale npm-global-Binary angelegt, um den bewusst gewählten admin-geschützten Installationsort als Vertrauensanker zu erhalten (Option B), statt die Prüfung auf den user-schreibbaren npm-Pfad abzusenken.
+Status: gelöst · Feature/Run: F6b WS-G, 03.09.2026.
