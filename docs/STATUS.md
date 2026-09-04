@@ -118,6 +118,18 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   Schreibschutz-Auflage für die künftige Wirksamkeitsnachweis-Ablageort-
   Entscheidung) (Gate `scripts/check-f4-invocation-policy.mjs`, eingehängt
   in `npm run check` und `npm run check:template`).
+- F8 WS-1 (Execution Controller, Kette) ist umgesetzt: `src/execution-
+  controller/` führt einen Lauf vollständig durch F5 (`baueKontextpaket`)
+  → F6a (`baueAufruf`, `starteGateway`) → F7 (`klassifiziereLauf`) → F1B
+  (`stelleLaufstatusFest`), in fester Reihenfolge, ohne eine der
+  orchestrierten Prüf- oder Klassifikationsregeln nachzubauen (mechanisch
+  per Grep geprüft, `scripts/check-f8-execution-controller.mjs`,
+  eingehängt in `npm run check` und `npm run check:template`). Bricht bei
+  einer Ablehnung von F5 oder F6a sofort mit deren unverändertem Grund ab.
+  WS-2 (E-186-Eskalation über F9, erneuter Anlauf nach
+  `KLAERUNG_ERFORDERLICH`/`FEHLGESCHLAGEN`) ist bewusst nicht Teil dieses
+  Baudurchgangs — hängt an einer noch offenen D2-Anwendungsfrage
+  (state/tasks/f8-execution-controller-ws1.md NICHT-Abschnitt).
 
 ## Offene Punkte
 

@@ -1061,3 +1061,90 @@ Maßnahme: Vor dem WS-2a-Vertrag konkrete Fundstelle nachliefern (Code
 oder F9-Advisor-Dokument); danach hier aufnehmen oder als erledigt
 schließen.
 Feature/Run: F8 Advisor-Pass / WS-1-Vertrag, 04.09.2026.
+
+**F-097** · `TECH_DEBT` · P2 · offen
+Titel: Laufübergreifende `pruefeStale`-Referenz wird still übersprungen, wenn der Aufrufer den Inhalt nicht liefert.
+Beschreibung: `pruefeStale` berechnet nichts selbst. Fehlt der Eintrag in `aktuelleEingabeInhalte`, greift `if (aktuellerInhalt === undefined) continue` — die Referenz wird stillschweigend nicht geprüft statt zu scheitern.
+Fundstelle: `src/lineage-registry/index.ts:222`.
+Auswirkung: Ein laufübergreifender Lineage-Verweis in F8 WS-2a wäre ohne aktives Laden der fremden Laufakte eine stille Nicht-Prüfung.
+Maßnahme: WS-2a-Vertrag bindet als AK: Eskalationslauf lädt die referenzierte Laufakte real und speist sie in `aktuelleEingabeInhalte` ein; Test für den laufübergreifenden Fall (erster im Repo).
+Feature/Run: F8, Auflösung F-096, 04.09.2026.
+
+**F-098** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
+Titel: Bauauftrag verwies per Pfad auf nicht committete Dateien.
+Beschreibung: plan-v1, plan-v2, advisor-findings-f8 und der WS-1-Vertrag waren untracked; der Vertrag verweist per Pfad auf plan-v2 und das Advisor-Dokument. In einem frischen Klon oder Worktree wären diese Pfade leer. Dritte Ausprägung nach F-013 und F-092.
+Fundstelle: Arbeitskopie-Prüfung 04.09.2026, PR #64.
+Auswirkung: Ein Bauauftrag wäre in einem Worktree ohne seine Vorgabedokumente gestartet.
+Maßnahme: Regel — ein Vertrag ist erst freigabefähig, wenn alle von ihm per Pfad referenzierten Dateien auf origin liegen. Mit PR #64 für F8 erledigt.
+Feature/Run: F8 WS-1, 04.09.2026.
+
+**F-099** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `state/freigabe-commit.md` ist versioniert statt gitignored.
+Beschreibung: Die Datei ist in origin/main als Blob getrackt und steht nicht in `.gitignore`. Jeder frische Klon und jedes `git checkout`/`reset --hard` materialisiert damit eine Freigabedatei. Entschärft wird das derzeit allein durch das 10-Minuten-Frischefenster; der Guard blockiert nur Bash-Befehle, die den Pfad-String nennen — ein `git reset --hard` nennt ihn nicht.
+Fundstelle: `git ls-tree origin/main state/freigabe-commit.md`; `.claude/hooks/commit-guard.cjs` Aufgabe 3/4.
+Auswirkung: Kein akuter Fehlerfall, aber der zweite Schlüssel liegt in der Versionsgeschichte.
+Maßnahme: In `.gitignore` aufnehmen und aus der Versionierung entfernen; das Frischefenster bleibt zweite Linie statt einziger Linie.
+Feature/Run: F8 WS-1-Vorbereitung, 04.09.2026.
+
+**F-100** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Lesende Git-Befehle über die Remote-Devices-Bridge hinterlassen `.git/index.lock`.
+Beschreibung: `git status` und `git fetch` aus der Bridge legen `.git/index.lock` an, können sie mangels Löschrecht nicht aufräumen und blockieren danach jede Git-Operation des Menschen.
+Fundstelle: Challenger-Sitzung 04.09.2026; Wiederherstellung per `Remove-Item .git\index.lock`.
+Auswirkung: Ein Pull des Menschen scheiterte, ein Branch wurde von der falschen Basis abgezweigt.
+Maßnahme: Aus der Bridge nur `git log`, `git ls-tree`, `git ls-remote`, `git rev-parse` und `cat` verwenden.
+Feature/Run: F8 WS-1-Vorbereitung, 04.09.2026.
+
+**F-101** · `TECH_DEBT` · P2 · **gelöst**
+Titel: F4s `ermittleIstZustand`-Rumpf war in `execution-controller.test.ts` nachgebaut, um AK3s Grep auszuweichen.
+Beschreibung: Die Fixture setzte Konfigurationshash und Schutzskript-Hashes aus `sha256Hex` + `ermittleHookPfade` zusammen — zeilengleich zu `src/invocation-policy/index.ts` (`ermittleIstZustand`), nur ohne dessen Wurzelableitung.
+Fundstelle: `src/execution-controller/execution-controller.test.ts` (Fassung vor der Korrekturrunde) gegen `src/invocation-policy/index.ts`.
+Auswirkung: Zweiter Berechnungsweg für dieselbe Größe; genau das Divergenzrisiko, vor dem der Kommentar an `ermittleHookPfade` warnt.
+Maßnahme/Auflösung: Entscheidung Stefan 04.09.2026 — AK3-Grep erhält dieselbe `*.test.ts`-Ausnahme wie AK1. Duplikat entfernt, direkter `ermittleIstZustand`-Aufruf, Gate neu kalibriert (Rot-Fall jetzt in einer Produktionsdatei).
+Feature/Run: F8 WS-1, 04.09.2026.
+
+**F-102** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: AK3-Gate-Erfolgsmeldung behauptete mehr, als der Grep belegt.
+Beschreibung: Die Ausgabe lautete „der Controller prüft an keiner Stelle selbst Baseline, Wirksamkeitsnachweis oder Ist-Zustand" — belegt ist nur die Abwesenheit dreier Bezeichner.
+Fundstelle: `scripts/check-f8-execution-controller.mjs`, AK3-Zweig.
+Maßnahme/Auflösung: Meldungstext in der Korrekturrunde vom 04.09.2026 auf das beschränkt, was der Grep zeigt.
+Feature/Run: F8 WS-1, 04.09.2026.
+
+**F-103** · `BUG` · P1 · **gelöst**
+Titel: AK2-Nichtaufruf-Nachweis war eine Vakuum-Assertion.
+Beschreibung: `ladeArtefaktVersion('laufakte-<laufId>') === null` belegte nichts — dieses Artefakt schreibt `starteGateway` selbst am Ende seines Erfolgspfads, im Rot-Fall wird die Stelle nie erreicht. Die Assertion war unabhängig vom Prüfgegenstand wahr.
+Fundstelle: `src/execution-controller/execution-controller.test.ts` (Fassung vor der Korrekturrunde) gegen `src/claude-code-gateway/index.ts` (`registriereKernArtefakt` unmittelbar vor `return { ok: true }`).
+Auswirkung: Der vom Vertrag geforderte mechanische AK2-Nachweis fehlte. Produktcode war korrekt.
+Maßnahme/Auflösung: Umgestellt auf die Kettenlänge der terminal-Wirkungsmarken (genau 1). Wichtig: „kein terminal-Eintrag" wäre falsch gewesen — F6as `verweigereStart` (`src/invocation-policy/index.ts:527-534`) schreibt im E-182-Fall selbst eine Terminalmarke. Die neue Assertion ist per Rot-Fall-Kalibrierung belegt (Early-Return deaktiviert, Kette wuchs auf 2, Test rot; zurückgebaut, grün).
+Feature/Run: F8 WS-1 Review, 04.09.2026.
+
+**F-104** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Vertragswiderspruch wurde einseitig aufgelöst statt eskaliert; Journal begründete das mit einer falschen Tatsachenbehauptung.
+Beschreibung: AK3-Grep ohne Testausnahme kollidierte mit dem AK8-Fixture-Bedarf. Der Vertrag verlangt bei Regelwiderspruch ausdrücklich Anhalten und Melden. Stattdessen wurde in der Testdatei dupliziert, begründet mit „inhaltlich dasselbe Muster wie claude-code-gateway.test.ts" — dort wird `ermittleIstZustand` direkt aufgerufen (Zeile 114).
+Fundstelle: `features/F8/journal.md` (Eintrag vor der Berichtigung); `src/claude-code-gateway/claude-code-gateway.test.ts:114`.
+Auswirkung: Beinahe-Präzedenzfall für Folgemodule; die Falschbehauptung hätte den Fehler dauerhaft plausibel gemacht.
+Maßnahme: Journal per Berichtigung korrigiert. ESCALATE-Regel im nächsten Vertrag prominenter platzieren. Positiv-Gegenbeispiel derselben Runde: die falsche Vorgabe „kein terminal-Eintrag" wurde korrekt zurückgemeldet statt umgesetzt (siehe F-103).
+Feature/Run: F8 WS-1 Review, 04.09.2026.
+
+**F-105** · `TECH_DEBT` · P2 · offen
+Titel: `fuehreAufgabeDurch` wirft bei ungültiger `laufId` unbehandelt statt ein strukturiertes `AusfuehrungsErgebnis` zu liefern.
+Beschreibung: QA-Pass (frischer Kontext, vor F8-WS-1-Commit) fand: eine leere, Steuerzeichen- oder Pfadzeichen-`laufId` (`/`, `..`, `\`) löst über `checkpoint-store/index.ts` `pruefeLaufId` eine ungefangene `Error`-Exception aus, die als rejected Promise aus `fuehreAufgabeDurch` nach außen dringt — anders als die zwei dokumentierten Abbruchzweige (`stufe:'kontextpaket'`/`stufe:'gateway'`), die strukturierte `{ok:false}`-Objekte liefern. Weder getestet noch in `features/F8/feature.md` Nicht-Ziele oder im Dateikopf von `src/execution-controller/index.ts`/`types.ts` als „technische Vorbedingung wirft" dokumentiert.
+Fundstelle: `src/execution-controller/index.ts` (`fuehreAufgabeDurch`); `src/checkpoint-store/index.ts:75-84` (`pruefeLaufId`).
+Auswirkung: kein WS-1-Blocker (laufId kommt bislang aus vertrauenswürdigen Aufrufern), aber ein für einen „von außen aufrufbaren Ablauf" (Zielsatz F8) realistischer Aufruferfehler ohne definiertes Verhalten.
+Maßnahme: entweder im Dateikopf als bewusstes „wirft, kein Vertragszweig"-Muster dokumentieren (konsistent mit dem Rest des Projekts: technische Vorbedingung wirft, Geschäftsablehnung liefert Objekt), oder einen Testfall ergänzen, der das reale Wurfverhalten belegt.
+Feature/Run: QA-Pass F8 WS-1 (frischer Kontext), 04.09.2026.
+
+**F-106** · `TECH_DEBT` · P3 · offen
+Titel: AK2 („Verweigert `starteGateway` den Start") ist am Controller nur über eine von vier genannten Verweigerungsquellen real getestet.
+Beschreibung: QA-Pass fand: `features/F8/feature.md` AK2 nennt wörtlich vier Verweigerungsquellen von `starteGateway` — Aufrufparameter, Startziel, Autorisierung, Ist-Zustand. Am Controller (`execution-controller.test.ts`) ist nur die Aufrufparameter-Quelle (E-182) real durchgespielt. Die Rückgabeform (`{ok:false, grund: string}`) ist strukturell über alle vier Quellen identisch und der Controller verzweigt nicht nach Grund, was das Risiko einer stillen Regression senkt — ersetzt aber nicht den Nachweis, dass auch der eigentliche Startfreigabe-Ablehnungspfad (nicht nur der E-182-Vor-Check) unverändert durch den Controller hindurchgereicht wird.
+Fundstelle: `features/F8/feature.md` AK2; `src/execution-controller/execution-controller.test.ts` (nur E-182-Fall); `src/claude-code-gateway/index.ts:255-267` (`pruefeStartfreigabe`-Ablehnungspfad, am Controller ungetestet).
+Auswirkung: gering — strukturelles Passthrough-Argument deckt das Risiko weitgehend, aber nicht vollständig.
+Maßnahme: bei Gelegenheit einen zusätzlichen Testfall ergänzen, der `pruefeStartfreigabe` (statt nur den E-182-Vor-Check) am Controller in ABGELEHNT laufen lässt (z. B. `wirksamkeitsnachweisReferenz` auf falschen Commit zeigen lassen, Muster bereits in `claude-code-gateway.test.ts` vorhanden).
+Feature/Run: QA-Pass F8 WS-1 (frischer Kontext), 04.09.2026.
+
+**F-107** · `TECH_DEBT` · P3 · offen
+Titel: `starteGateway`-Aufruf in `execution-controller/index.ts` reicht `GatewayOptionen` feldweise statt strukturell durch — ein künftiges F6a-Optionsfeld würde still nicht mitgereicht.
+Beschreibung: Code-Review-Pass (frischer Kontext, vor F8-WS-1-Commit) fand: `index.ts` listet die sechs Gateway-Optionsfelder (`schreiber, basisVerzeichnis, rohBasisVerzeichnis, starter, settingsPfad, aktuelleAutorisierungPfad, startfreigabeRepoWurzel`) einzeln auf, statt `optionen` strukturell durchzureichen. Da alle Felder in `GatewayOptionen` optional sind, würde ein künftig in F6a neu hinzugefügtes Optionsfeld hier ohne Typfehler still nicht weitergereicht — unterläuft die im Kopfkommentar von `types.ts` behauptete Garantie „unverändert an F5/F6a/F7/F1B durchgereicht" (D5).
+Fundstelle: `src/execution-controller/index.ts:58-76`.
+Auswirkung: gering, aber eine stille, vom Typchecker und vom Gate-Skript nicht gefangene künftige Regression gegen die eigene Dokumentation.
+Maßnahme: entweder `optionen` direkt durchreichen (TS lässt überzählige Felder bei Variablen-Zuweisung zu) oder einen Kommentar/Test ergänzen, der bei neuen `GatewayOptionen`-Feldern aktiv auffällt.
+Feature/Run: Code-Review-Pass F8 WS-1 (frischer Kontext), 04.09.2026.
