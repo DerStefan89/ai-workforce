@@ -1236,3 +1236,35 @@ Fundstelle: diese Sitzung, direkt nach Merge von PR #71, 04.09.2026.
 Auswirkung: keine (diesmal) — belegt aber, dass die in F-115 vorgenommene Selbstverpflichtung nicht ausreichte, den Fehler zu verhindern.
 Maßnahme/Auflösung: für den Rest dieser Sitzung ausschließlich `git log origin/main`/`gh pr view --json`/`gh api` zur Fernstand-Prüfung verwenden, niemals `git fetch` — auch nicht „nur lesend geplant". Empfehlung an den Menschen: ein technischer Guard (z. B. Wrapper-Skript, das `git fetch`/`switch`/`merge`/`pull` aus Bridge-Kontexten ablehnt) wäre robuster als eine wiederholte Selbstverpflichtung, die bereits zweimal versagt hat.
 Feature/Run: F8-Abschluss, Findings-Nachtrag, 04.09.2026.
+
+**F-119** · `BUG` · P1 · offen
+Titel: `werkzeugStartziel[1..n]` passiert weder den E-188-Gültigkeitsschlüssel noch die E-182-Parameterprüfung.
+Beschreibung: `pruefeStartfreigabe` vergleicht nur `startziel_pfad = werkzeugStartziel[0]`; `pruefeAufrufparameter` prüft nur `tokens`. `echterStarter` übergibt jedoch `[...startziel.slice(1), ...tokens]` an `execFile`. `prozessstart.ts` sagt im Kopf selbst, der Hygiene-Guard sei „keine Vertrauensgrenze — die Vertrauensfrage liegt per E2 beim Aufrufer".
+Fundstelle: `src/invocation-policy/index.ts:466,484`; `src/claude-code-gateway/index.ts:219`; `src/claude-code-gateway/prozessstart.ts:49-51,85-87`.
+Auswirkung: Heute folgenlos (einziger Aufrufer ist ein Test). Mit einem HTTP-Einstiegspunkt wird ungeprüftes argv aus einem Request zum Prozessargument, ohne dass ein Aufrufer die E2-Vertrauensfrage noch hält.
+Maßnahme: `slice(1)` durch `pruefeAufrufparameter` führen (F10 WS-0). Blockiert F10 WS-1, nicht F8.
+Feature/Run: Gegenchallenge F10, 04.09.2026.
+
+**F-120** · `BUG` · P2 · offen
+Titel: Leitstand-Server bindet an alle Netzwerkschnittstellen statt Loopback.
+Beschreibung: `server.listen(PORT, cb)` ohne Host-Argument → Node bindet 0.0.0.0/::.
+Fundstelle: `scripts/leitstand-server.mjs:196`.
+Auswirkung: Rein lesend geringfügig (Zustandspreisgabe im LAN). Mit Schreibpfad: fremdauslösbarer Prozessstart auf dem Entwicklerrechner.
+Maßnahme: `server.listen(PORT, '127.0.0.1', …)`, als AK4 im Gate nachgewiesen.
+Feature/Run: Gegenchallenge F10, 04.09.2026.
+
+**F-121** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Übergabedokumente behaupten „existiert bereits" ohne Nachweis am Artefakt.
+Beschreibung: `claude/117` stützte eine Empfehlung auf ein UI-Polling, das es nicht gibt, und nannte sieben Eingabefelder, wo die Signatur vier Parameter hat.
+Fundstelle: `public/leitstand/app.js:66-71`; `src/execution-controller/index.ts:82-87`.
+Auswirkung: Eine Empfehlung wirkt aufwandsneutral, obwohl sie neuen Scope enthält — dieselbe Klasse wie F-112.
+Maßnahme: Aussagen der Form „X existiert bereits" im Handoff mit Datei + Zeile belegen, analog zur bestehenden SHA-Regel.
+Feature/Run: Gegenchallenge F10, 04.09.2026.
+
+**F-122** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: F-100 zum dritten Mal verletzt — `git status` aus der Bridge.
+Beschreibung: Die Gegenchallenge-Sitzung eröffnete mit `git status --short`, bevor F-100 gelesen war. Folgenlos (keine `.git/index.lock` zurückgeblieben, geprüft), aber die dritte Wiederholung. F-118 hat für genau diesen Fall festgelegt: kein viertes Selbstversprechen.
+Fundstelle: Gegenchallenge-Sitzung 04.09.2026; `state/findings.md` F-100, F-118.
+Auswirkung: Wiederkehrender Prozessfehler mit real eingetretenem Folgeschaden (F-112).
+Maßnahme: Technischer Guard — Git-Zugriff aus Bridge-Sitzungen nur über ein Wrapper-Skript, das die erlaubte Befehlsliste (`log`, `ls-tree`, `ls-remote`, `rev-parse`, `cat`) durchsetzt.
+Feature/Run: Gegenchallenge F10, 04.09.2026.
