@@ -927,3 +927,20 @@ Fundstelle: Branch `docs/f6b-ws-c-startziel-guelttigkeitsschluessel` zum Zeitpun
 Auswirkung: gering, aber ein vermeidbarer Korrekturzyklus vor jedem Push — der Arbeitsauftrag hätte von vornherein einen neuen Branch von `origin/main` verlangen müssen statt auf dem WS-C-Branch weiterzubauen.
 Maßnahme: Korrigiert im WS-D-Abschluss-Vertrag — Arbeitsverzeichnis-Diff gesichert, neuer Branch `f6b-ws-d-wirksamkeitsnachweis-herkunftspruefung` von frisch geholtem `origin/main` erzeugt, Änderungen dorthin übertragen. Für künftige Workstream-Ketten: jeder neue WS-Vertrag sollte explizit auf einem Branch von aktuellem `origin/main` aufsetzen, nicht auf dem Vorgänger-WS-Branch, sobald dessen PR gemergt ist.
 Feature/Run: F6b WS-D-Abschluss, 03.09.2026.
+
+**F-084** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Git-Schreibzugriffe auf `ai-workforce` über die Desktop-Bridge sind unzuverlässig (Unlink-/Lock-Berechtigungsfehler) — wiederholt aufgetreten trotz dokumentierter Gegenmaßnahme.
+Beschreibung: Bei drei Reviews (WS-D, WS-E, WS-F) hat ein `git checkout`/`merge`/`pull` über die Bridge einen hängenden `.git/index.lock` bzw. `.git/ORIG_HEAD.lock` hinterlassen (Netzwerk-Mount-Unlink-Semantik), der Stefans eigenes Terminal danach blockierte.
+Fundstelle: Review-Sitzungen 03.09.2026 (WS-D, WS-E, WS-F), `mcp__remote-devices__device_bash` gegen `C:\Users\stefa\Projekte\ai-workforce`.
+Auswirkung: Kein Datenverlust (Inhalt jedes Mal hash-verifiziert identisch), aber wiederholter manueller Korrekturaufwand für Stefan.
+Maßnahme: Reviewer-Zugriffe über die Bridge sind ausschließlich `fetch`/`show`/`log`/`diff`/Hash-Vergleich. Jeder Branch-Sync (`checkout main`, `merge`/`pull`/`reset --hard origin/main`) geht als Terminalbefehl an Stefan, nie als eigener Bridge-Aufruf.
+Status: offen (Verhaltensänderung der Challenger-Rolle aktiv seit 03.09.2026)
+Feature/Run: F6b WS-D/WS-E/WS-F Reviews, 03.09.2026.
+
+**F-085** · `TECH_DEBT` · P3 · offen
+Titel: Realer Wirksamkeitsnachweis trägt Platzhaltertext statt echter Werkzeugversion.
+Beschreibung: `werkzeug_version_deklariert` im committeten Nachweis (externes Repo, Commit `c282de9`) steht wörtlich `<deine Claude-Code-Version>`. Kein Schema-Verstoß, aber inhaltlich falsch.
+Fundstelle: `ai-workforce-autorisierung`, Commit `c282de9`.
+Auswirkung: Keine bislang — mit WS-G bekommt dieser Wert erstmals echte Bedeutung (Vergleich gegen istUebrigeFelder. werkzeug_version_deklariert).
+Maßnahme: `erzeuge-invocation-policy-nachweise.mjs` erneut mit echter Version und dem realen `rot_fall_beleg`-Text aus WS-F laufen lassen, neu committen — danach state/aktuelle-autorisierung.json auf den neuen Commit aktualisieren.
+Status: offen · Feature/Run: F6b WS-E, 03.09.2026.

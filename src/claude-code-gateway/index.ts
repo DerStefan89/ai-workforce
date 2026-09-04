@@ -26,18 +26,82 @@
  * (weder bei validem noch bei fehlendem Ergebnisobjekt) — das bliebe eine
  * Klassifikation und ist F7 vorbehalten (AK5); der Lauf bleibt bis dahin
  * KLAERUNG_ERFORDERLICH (F1B), das ist der vorgesehene Zustand, kein
- * Fehler. Kein F3-, kein volles F4-Startfreigabe-Gate (Option B, Stefans
- * Entscheidung 31.08.2026, siehe state/tasks/f6a-ws2-prozessstart.md).
+ * Fehler.
+ *
+ * F4-Startfreigabe (F6b WS-G, hebt Option B auf, Stefan 03.09.2026 —
+ * vorher Option B, Stefans Entscheidung 31.08.2026): zwischen dem
+ * AK15-Hygiene-Guard und der RUN_PREPARED-Wirkungsmarke ruft starteGateway
+ * real F4s pruefeStartfreigabe auf (E-183/E-188, voller
+ * Gültigkeitsschlüssel-Vergleich) — nicht mehr nur WS1s
+ * pruefeAufrufparameter (E-182). baselineReferenz/wirksamkeitsnachweisReferenz
+ * kommen NICHT vom Aufrufer (der könnte sonst selbst bestimmen, gegen
+ * welche Autorisierung geprüft wird): starteGateway liest sie aus
+ * STANDARD_AKTUELLE_AUTORISIERUNG_PFAD (state/aktuelle-autorisierung.json,
+ * überschreibbar über optionen.aktuelleAutorisierungPfad, u.a. für Tests).
+ * istZustand misst starteGateway selbst über F4s ermittleIstZustand
+ * (dasselbe .claude/settings.json wie im echten Repo, Pfad überschreibbar
+ * über optionen.settingsPfad); istUebrigeFelder baut es aus bereits
+ * vorhandenen GatewayEingaben ab (kein Doppel-Input). Fehlt die
+ * Referenzdatei oder liefert pruefeStartfreigabe ABGELEHNT: verweigereStart
+ * (Muster wie der E-182-Zweig), kein Prozessstart, keine
+ * RUN_PREPARED-Wirkungsmarke.
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { pruefeAufrufparameter, verweigereStart } from '../invocation-policy/index.ts'
+import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartfreigabe, verweigereStart } from '../invocation-policy/index.ts'
+import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from '../invocation-policy/types.ts'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter } from './types.ts'
+
+/**
+ * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
+ * (state/aktuelle-autorisierung.json, dieses Repo) — absolut, damit er auch
+ * nach einem process.chdir() in eine Wegwerf-Kopie (E6-Muster,
+ * scripts/verify-f6b-ws-f-rotfall.mjs) noch auf die reale Datei zeigt.
+ * Überschreibbar über optionen.aktuelleAutorisierungPfad, u.a. für Tests.
+ */
+const STANDARD_AKTUELLE_AUTORISIERUNG_PFAD = 'C:\\Users\\stefa\\Projekte\\ai-workforce\\state\\aktuelle-autorisierung.json'
+
+interface AktuelleAutorisierung {
+  baselineReferenz: BaselineReferenz
+  wirksamkeitsnachweisReferenz: WirksamkeitsnachweisReferenz
+}
+
+/** pfad/commit_hash/datei_hash sind bei BaselineReferenz und WirksamkeitsnachweisReferenz identisch geformt (beide non-leere Strings) — eine gemeinsame Formprüfung statt zwei fast gleicher. */
+function istGueltigeCommitGepinnteReferenz(wert: unknown): wert is { pfad: string; commit_hash: string; datei_hash: string } {
+  if (typeof wert !== 'object' || wert === null) return false
+  const obj = wert as Record<string, unknown>
+  return typeof obj.pfad === 'string' && obj.pfad.length > 0 && typeof obj.commit_hash === 'string' && obj.commit_hash.length > 0 && typeof obj.datei_hash === 'string' && obj.datei_hash.length > 0
+}
+
+/**
+ * Liefert null statt zu werfen, wenn die Referenzdatei fehlt, kein gültiges
+ * JSON ist, oder nicht die erwartete Form { baselineReferenz,
+ * wirksamkeitsnachweisReferenz } trägt — kein Absturz, ABGELEHNT-artiges
+ * Verhalten (siehe CONTEXT des Auftrags; die Formprüfung verhindert eine
+ * ungefangene TypeError weiter unten in pruefeStartbedingung1/2 bei
+ * valide-JSON-aber-falsch-geformtem Inhalt). Ein führendes UTF-8-BOM
+ * (übliches Artefakt von Windows-Editoren) wird toleriert, JSON.parse
+ * selbst tut das nicht.
+ */
+function leseAktuelleAutorisierung(pfad: string): AktuelleAutorisierung | null {
+  let geparst: unknown
+  try {
+    let inhalt = readFileSync(pfad, 'utf8')
+    if (inhalt.charCodeAt(0) === 0xfeff) inhalt = inhalt.slice(1)
+    geparst = JSON.parse(inhalt)
+  } catch {
+    return null
+  }
+  if (typeof geparst !== 'object' || geparst === null) return null
+  const obj = geparst as Record<string, unknown>
+  if (!istGueltigeCommitGepinnteReferenz(obj.baselineReferenz) || !istGueltigeCommitGepinnteReferenz(obj.wirksamkeitsnachweisReferenz)) return null
+  return obj as unknown as AktuelleAutorisierung
+}
 
 interface Optionen {
   schreiber?: CheckpointSchreiber
@@ -58,6 +122,12 @@ interface GatewayOptionen {
   basisVerzeichnis?: string
   rohBasisVerzeichnis?: string
   starter?: Starter
+  /** Überschreibt den Pfad zu .claude/settings.json für F4s ermittleIstZustand (Standard: process.cwd()-relativ) — u.a. für Tests und für Aufrufer, die nach einem process.chdir() (E6) noch das reale Repo messen müssen. */
+  settingsPfad?: string
+  /** Überschreibt STANDARD_AKTUELLE_AUTORISIERUNG_PFAD — u.a. für Tests gegen eine Attrappen-Referenzdatei. */
+  aktuelleAutorisierungPfad?: string
+  /** Überschreibt F4s STANDARD_REPO_WURZEL (externes Autorisierungs-Repo) — u.a. für Tests gegen ein Wegwerf-Git-Repo. */
+  startfreigabeRepoWurzel?: string
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -108,6 +178,7 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
   if (!eingaben.modell) {
     throw new Error('AufrufEingaben.modell ist Pflichtfeld (E-185) — leer oder fehlend')
   }
+  const werkzeugListe = eingaben.werkzeugsatz.erlaubte_werkzeuge.join(',')
   return [
     '--model',
     eingaben.modell,
@@ -116,7 +187,9 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--setting-sources',
     'project',
     '--tools',
-    eingaben.werkzeugsatz.erlaubte_werkzeuge.join(','),
+    werkzeugListe,
+    '--allowedTools',
+    werkzeugListe,
   ]
 }
 
@@ -151,6 +224,46 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const startzielPruefung = pruefeStartziel(eingaben.werkzeugStartziel)
   if (!startzielPruefung.ok) {
     return { ok: false, grund: startzielPruefung.grund }
+  }
+
+  const aktuelleAutorisierungPfad = optionen.aktuelleAutorisierungPfad ?? STANDARD_AKTUELLE_AUTORISIERUNG_PFAD
+  const aktuelleAutorisierung = leseAktuelleAutorisierung(aktuelleAutorisierungPfad)
+  if (aktuelleAutorisierung === null) {
+    const grund = existsSync(aktuelleAutorisierungPfad)
+      ? 'Referenzdatei ist kein gültiges JSON oder hat nicht die erwartete Form, siehe state/aktuelle-autorisierung.json'
+      : 'Referenzdatei fehlt, siehe state/aktuelle-autorisierung.json'
+    verweigereStart(eingaben.laufId, eingaben.profilReferenz, grund, optionen)
+    return { ok: false, grund }
+  }
+
+  const settingsPfad = optionen.settingsPfad ?? join(process.cwd(), '.claude', 'settings.json')
+  let istZustand: IstZustand
+  try {
+    istZustand = ermittleIstZustand(settingsPfad)
+  } catch (fehler) {
+    const grund = `Ist-Zustand (.claude/settings.json + Schutzskripte) nicht messbar: ${(fehler as Error).message}`
+    verweigereStart(eingaben.laufId, eingaben.profilReferenz, grund, optionen)
+    return { ok: false, grund }
+  }
+  const istUebrigeFelder: IstUebrigeFelder = {
+    werkzeug_version_deklariert: eingaben.werkzeugVersionDeklariert,
+    berechtigungskontext: eingaben.berechtigungskontext,
+    arbeitsverzeichnis_pfad: process.cwd(),
+    startziel_pfad: eingaben.werkzeugStartziel[0],
+  }
+
+  const starturteil = pruefeStartfreigabe(
+    {
+      baselineReferenz: aktuelleAutorisierung.baselineReferenz,
+      istZustand,
+      wirksamkeitsnachweisReferenz: aktuelleAutorisierung.wirksamkeitsnachweisReferenz,
+      istUebrigeFelder,
+    },
+    { repoWurzel: optionen.startfreigabeRepoWurzel, schreiber: optionen.schreiber }
+  )
+  if (starturteil.starturteil === 'ABGELEHNT') {
+    verweigereStart(eingaben.laufId, eingaben.profilReferenz, starturteil.grund, optionen)
+    return { ok: false, grund: starturteil.grund }
   }
 
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)

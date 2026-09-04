@@ -8,7 +8,9 @@
  * versuchter, real abgelehnter Write-Aufruf — über die echte F6a/F7-Kette
  * reproduzierbar ist. Nicht in `npm run check`/`check:template` eingehängt
  * (Präzedenz scripts/verify-rename-atomicity.mjs, F1, state/gates.md Zeile
- * 970; scripts/verify-f6a-real-run.mjs, WS3/WS4).
+ * 970; ursprünglich auch scripts/verify-f6a-real-run.mjs, WS3/WS4 — seit
+ * F6b WS-G gelöscht, siehe scripts/verify-f6b-ws-g-schreiblauf.mjs für den
+ * aktuellen Grün-Fall-Nachweis nach demselben E6-Muster).
  *
  * Handgebaute Tokens statt WS1s baueAufruf() (E-185): baueAufruf emittiert
  * IMMER `--tools <erlaubte_werkzeuge>` (src/claude-code-gateway/index.ts,
@@ -57,7 +59,8 @@ const PROMPT = `Erstelle eine Datei ${ZIELDATEINAME} mit dem Inhalt "ROTFALL_PRO
 
 console.log('\n=== F6b WS-F — Rot-Fall real reproduziert (state/tasks/f6b-ws-f-rotfall-reproduzierbar.md, löst F-053) ===\n')
 
-// Dieselbe Messung wie verify-f6a-real-run.mjs: bin-Feld der package.json
+// Dieselbe Messung wie scripts/verify-f6b-ws-g-schreiblauf.mjs (ursprünglich
+// verify-f6a-real-run.mjs, seit F6b WS-G gelöscht): bin-Feld der package.json
 // der npm-Global-Installation, nicht geraten.
 const npmRootGlobal = join(process.env.APPDATA ?? '', 'npm', 'node_modules')
 const paketPfad = join(npmRootGlobal, '@anthropic-ai', 'claude-code', 'package.json')

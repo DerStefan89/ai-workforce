@@ -19,6 +19,11 @@
  * dessen `hooks`-Array → `command`-String), nicht aus einer
  * hartkodierten Liste — kommt morgen ein sechster Hook dazu, nimmt
  * `ermittleHookPfade` ihn automatisch mit, ohne Codeänderung.
+ * `ermittleHookPfade`/`ermittleIstZustand` sind seit F6b WS-G nach
+ * src/invocation-policy/index.ts verschoben (von dort importiert, hier nur
+ * re-exportiert für den bestehenden Selbsttest) — dieselbe Messung nutzt
+ * jetzt auch `starteGateway`, kein zweiter, unabhängig gebauter Messweg
+ * (F11-Divergenzrisiko).
  * `werkzeug_version_deklariert`, `berechtigungskontext`,
  * `arbeitsverzeichnis_pfad` und `startziel_pfad` beschreiben eine
  * deklarierte Startabsicht, keinen Datei-Ist-Zustand — sie werden daher
@@ -51,45 +56,19 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { sha256Hex } from '../src/checkpoint-store/index.ts'
-import { validiereBaselineEintrag, validiereWirksamkeitsnachweisEintrag } from '../src/invocation-policy/index.ts'
+import { ermittleIstZustand, validiereBaselineEintrag, validiereWirksamkeitsnachweisEintrag } from '../src/invocation-policy/index.ts'
+
+export { ermittleHookPfade } from '../src/invocation-policy/index.ts'
 
 // Identisch zu STANDARD_REPO_WURZEL in src/invocation-policy/index.ts:50
 // (dort nicht exportiert) — über --repo-wurzel überschreibbar, u.a. für
 // den Selbsttest gegen ein Wegwerf-Zielverzeichnis.
 const STANDARD_REPO_WURZEL = 'C:\\Users\\stefa\\ai-workforce-autorisierung'
 const STANDARD_SETTINGS_PFAD = '.claude/settings.json'
-
-/**
- * Liest jeden `command`-String aus `hooks` (beliebiges Ereignis, mit
- * oder ohne `matcher`) und extrahiert daraus referenzierte
- * `.claude/hooks/...`-Pfade. Strukturell aus dem geparsten Objekt
- * abgeleitet, keine hartkodierte Dateiliste (siehe SCOPE des Auftrags).
- * @param {unknown} settingsGeparst - JSON.parse(inhalt von settings.json)
- * @returns {string[]} sortierte, eindeutige repo-relative Hook-Pfade
- */
-export function ermittleHookPfade(settingsGeparst) {
-  const hooksSektion = settingsGeparst?.hooks
-  const pfade = new Set()
-  if (typeof hooksSektion !== 'object' || hooksSektion === null) return []
-
-  for (const matcherEintraege of Object.values(hooksSektion)) {
-    if (!Array.isArray(matcherEintraege)) continue
-    for (const matcherEintrag of matcherEintraege) {
-      const hooks = matcherEintrag?.hooks
-      if (!Array.isArray(hooks)) continue
-      for (const hook of hooks) {
-        if (typeof hook?.command !== 'string') continue
-        const treffer = /\.claude[\\/]hooks[\\/][^\s"']+/.exec(hook.command)
-        if (treffer) pfade.add(treffer[0].replace(/\\/g, '/'))
-      }
-    }
-  }
-  return [...pfade].sort()
-}
 
 /** Aktueller Zeitstempel im ISO-8601-Format. */
 function jetzt() {
@@ -106,16 +85,10 @@ function jetzt() {
  */
 export function erzeugeNachweise(eingaben) {
   const settingsPfad = eingaben.settingsPfad ?? join(process.cwd(), STANDARD_SETTINGS_PFAD)
-  const settingsInhalt = readFileSync(settingsPfad, 'utf8')
-  const settingsGeparst = JSON.parse(settingsInhalt)
-  const werkzeugKonfigurationHash = sha256Hex(settingsInhalt)
-
-  const hookPfade = ermittleHookPfade(settingsGeparst)
+  const istZustand = ermittleIstZustand(settingsPfad)
+  const werkzeugKonfigurationHash = istZustand.werkzeug_konfiguration_hash
+  const schutzskripte = istZustand.schutzskripte
   const repoWurzelFuerHooks = dirname(dirname(settingsPfad)) // .claude/settings.json → Repo-Wurzel
-  const schutzskripte = hookPfade.map((pfad) => ({
-    pfad,
-    hash: sha256Hex(readFileSync(join(repoWurzelFuerHooks, pfad), 'utf8')),
-  }))
 
   // Repo-relativer Pfad wird aus dem tatsächlich gelesenen settingsPfad
   // abgeleitet (nicht aus der Konstante) — ein Aufrufer, der settingsPfad
