@@ -999,3 +999,11 @@ Fundstelle: `src/human-transport/index.ts:147`; `src/checkpoint-store/index.ts:6
 Auswirkung: Ohne Klärung würde jede E-186-Eskalation den auslösenden Lauf scheinbar entwerten. Kein Datenverlust, aber ein falscher Statuswert an genau der Stelle, an der ein Sicherheitsverdacht gemeldet wird.
 Maßnahme: F8 führt die Eskalation unter einer eigenen `laufId` und verbindet sie über die Lineage (F2) mit dem auslösenden Lauf. Als AK6 in `features/F8/feature.md` festgeschrieben, in plan-v1 real nachzuweisen.
 Feature/Run: Challenge F8, 04.09.2026.
+
+**F-092** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Challenger-Handoffs referenzieren Claude-Projekt-Dokumente per Pfad, die für die bauende Sitzung nicht erreichbar sind — Muster wiederholt sich jetzt auf Dokumentebene, nicht nur bei einzelnen Finding-IDs.
+Beschreibung: Im F8-Bauauftrag wurde `claude/110_CHALLENGE_F8_ENTSCHEIDUNGEN_UND_FEATURE_AKTE.md` zunächst nur als Pfadverweis übergeben. Die bauende Sitzung hat bestätigt, dass sie keine Claude-Projekt-Dokumente erreicht — nur was real im Repo liegt. Repo-seitig verifiziert: `claude/` enthält nur `65_...` und `66_...`, alle anderen 108 Dokumente (inkl. `109`, `110`) existieren ausschließlich im Claude-Projekt. Strukturell verwandt mit F-013 (Sync Repo→Projekt liefert nichts) und F-082 (Finding-IDs ohne Volltext) — dieselbe Grundursache, jetzt erstmals bei ganzen Handoff-Dokumenten.
+Fundstelle: `claude/` (Repo, 2 von 110 Dateien vorhanden) vs. Claude-Projekt „AI Workforce" (alle 110); Vorfall F8-Feature-Akte, 04.09.2026.
+Auswirkung: Jeder Bauauftrag mit reinem Pfadverweis auf ein Projekt-Dokument erzeugt einen vermeidbaren Rückfrage-Zyklus — zweiter Auftreten dieses Grundmusters in derselben Challenge-Runde.
+Maßnahme: Generalisierung von F-082s Maßnahme: ein Bauauftrag darf sich auf ein `claude/*`-Projekt-Dokument nur per Pfad beziehen, wenn der relevante Volltext im selben Prompt mitgeliefert wird. Reiner Pfadverweis ist nur für nachweislich committete Pfade zulässig (`docs/`, `state/`, `features/`, `src/`).
+Feature/Run: Challenge F8, Bauauftrag `features/F8/feature.md`, 04.09.2026.
