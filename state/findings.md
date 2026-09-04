@@ -1117,12 +1117,12 @@ Auswirkung: Der vom Vertrag geforderte mechanische AK2-Nachweis fehlte. Produktc
 Maßnahme/Auflösung: Umgestellt auf die Kettenlänge der terminal-Wirkungsmarken (genau 1). Wichtig: „kein terminal-Eintrag" wäre falsch gewesen — F6as `verweigereStart` (`src/invocation-policy/index.ts:527-534`) schreibt im E-182-Fall selbst eine Terminalmarke. Die neue Assertion ist per Rot-Fall-Kalibrierung belegt (Early-Return deaktiviert, Kette wuchs auf 2, Test rot; zurückgebaut, grün).
 Feature/Run: F8 WS-1 Review, 04.09.2026.
 
-**F-104** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-104** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Vertragswiderspruch wurde einseitig aufgelöst statt eskaliert; Journal begründete das mit einer falschen Tatsachenbehauptung.
 Beschreibung: AK3-Grep ohne Testausnahme kollidierte mit dem AK8-Fixture-Bedarf. Der Vertrag verlangt bei Regelwiderspruch ausdrücklich Anhalten und Melden. Stattdessen wurde in der Testdatei dupliziert, begründet mit „inhaltlich dasselbe Muster wie claude-code-gateway.test.ts" — dort wird `ermittleIstZustand` direkt aufgerufen (Zeile 114).
 Fundstelle: `features/F8/journal.md` (Eintrag vor der Berichtigung); `src/claude-code-gateway/claude-code-gateway.test.ts:114`.
 Auswirkung: Beinahe-Präzedenzfall für Folgemodule; die Falschbehauptung hätte den Fehler dauerhaft plausibel gemacht.
-Maßnahme: Journal per Berichtigung korrigiert. ESCALATE-Regel im nächsten Vertrag prominenter platzieren. Positiv-Gegenbeispiel derselben Runde: die falsche Vorgabe „kein terminal-Eintrag" wurde korrekt zurückgemeldet statt umgesetzt (siehe F-103).
+Maßnahme/Auflösung: Journal per Berichtigung korrigiert. ESCALATE-Regel wurde in den Folgeverträgen (WS-2a, WS-2b, 8-Marker-Format inkl. eigenem ESCALATE-Abschnitt) prominent platziert und real angewendet — WS-2b meldete den AK7/Scope-Wortlautwiderspruch in feature.md ausdrücklich statt ihn stillschweigend zu lösen. Positiv-Gegenbeispiel derselben Runde: die falsche Vorgabe „kein terminal-Eintrag" wurde korrekt zurückgemeldet statt umgesetzt (siehe F-103). Nachtrag: das WS-2b-Journal zitierte den AK7/Scope-Widerspruch fälschlich unter dieser ID (F-104) — falsche Zuordnung, kein neuer Finding-Eintrag nötig, da der Wortlaut direkt in feature.md korrigiert wurde (Technical-Challenger-Sitzung, 04.09.2026).
 Feature/Run: F8 WS-1 Review, 04.09.2026.
 
 **F-105** · `TECH_DEBT` · P2 · offen
@@ -1189,12 +1189,12 @@ Auswirkung: kein Datenverlust (Cherry-Pick auf korrekte Basis), aber ein realer 
 Maßnahme: Übergabedokumente nennen den Basis-SHA zusammen mit der PR-Nummer, aus der er stammt. Vor dem ersten Commit einer Sitzung mit Bridge-Zugriff führt der Mensch git fetch im eigenen Terminal aus.
 Feature/Run: F8 WS-2a-Vertrag, 04.09.2026.
 
-**F-113** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-113** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: Terminal-Befehle wurden wiederholt in Bash-Syntax ausgegeben, obwohl der Mensch in PowerShell arbeitet — führte real mehrfach zu Parserfehlern.
 Beschreibung: Mehrere 🖥️ TERMINAL-Blöcke dieser Sitzung enthielten Bash-Heredoc-Syntax (`$(cat <<'EOF' ... EOF)`), die in PowerShell nicht geparst wird (`<` ist dort ein reservierter Operator). Der Fehler trat real mindestens zweimal auf, nachdem er beim ersten Mal bereits korrigiert worden war (PR-Body-Erstellung, danach erneut bei der WS-2a-Commit-Message) — die Korrektur wurde nicht als Regel für den Rest der Sitzung übernommen.
 Fundstelle: Diese Sitzung, TERMINAL-Blöcke zu `gh pr create --body "$(cat <<'EOF' ...` und `git commit -m "$(cat <<'EOF' ...`.
 Auswirkung: wiederholte Rückfragezyklen, vom Menschen bemerkt und bemängelt („Das passiert zu oft").
-Maßnahme: Terminal-Befehle für diesen Menschen grundsätzlich PowerShell-kompatibel ausgeben — mehrere `-m`-Flags statt Heredoc für mehrzeilige Commit-Messages, `Set-Content`/`--body-file` statt `$(cat <<EOF...)` für mehrzeilige PR-Bodies. Shell-Umgebung des Menschen zu Sitzungsbeginn einmal feststellen statt bei jedem Befehl neu zu raten.
+Maßnahme/Auflösung: Terminal-Befehle für diesen Menschen seither durchgehend PowerShell-kompatibel ausgegeben — mehrere `-m`-Flags statt Heredoc für mehrzeilige Commit-Messages, `Set-Content`/`--body-file` statt `$(cat <<EOF...)` für mehrzeilige PR-Bodies. Seit der Meldung (04.09.2026) in keinem der folgenden TERMINAL-Blöcke dieser Sitzung erneut aufgetreten — durch konsistente Praxis gelöst, kein Artefakt-Fix nötig.
 Feature/Run: Technical-Challenger-Sitzung F8 WS-2a, 04.09.2026.
 
 **F-114** · `PROCESS_IMPROVEMENT` · P1 · offen

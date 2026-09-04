@@ -89,10 +89,11 @@ nachzubauen (D5) und ohne selbst einen Werkzeugprozess zu starten.
 6. Eine E-186-Eskalation läuft unter einer **eigenen** `laufId`; der
    Status des auslösenden Laufs bleibt danach `ABGESCHLOSSEN` und kippt
    nicht auf `KLAERUNG_ERFORDERLICH` — real getestet (F-091).
-7. Ein erneuter Anlauf nach `KLAERUNG_ERFORDERLICH` erzeugt eine neue
-   `laufId` und einen Lineage-Verweis auf den Vorgängerlauf; es
-   existiert kein Codepfad, der eine bestehende `laufId` fortsetzt
-   (`resumeZiel`-Invariante, `src/checkpoint-store/index.ts:739`).
+7. Ein erneuter Anlauf nach `KLAERUNG_ERFORDERLICH` oder `FEHLGESCHLAGEN`
+   erzeugt eine neue `laufId` und einen Lineage-Verweis auf den
+   Vorgängerlauf; es existiert kein Codepfad, der eine bestehende
+   `laufId` fortsetzt (`resumeZiel`-Invariante,
+   `src/checkpoint-store/index.ts:739`).
 8. `npm run check` startet keinen echten Claude-Code-Prozess und braucht
    kein Netz; Tests laufen gegen das einsetzbare Prozessstart-Primitiv
    aus F6a.
