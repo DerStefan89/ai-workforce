@@ -40,11 +40,27 @@
  * direkt ermittelt (Entscheidung Stefan, 04.09.2026: AK3-Grep erhält
  * dieselbe *.test.ts-Ausnahme wie AK1, siehe features/F8/journal.md) —
  * keine handgebaute Parallelrechnung mehr.
+ *
+ * WS-2a (state/tasks/f8-execution-controller-ws2a.md) ergänzt AK4/AK6 und
+ * den Delta-1-Wurfpfad. Die beiden neuen Starter-Attrappen erzeugen
+ * VERWEIGERT mit bypass_verdacht_anzahl 1 bzw. 0 (Vertrag SCOPE Punkt 5,
+ * einmal vorab im Test 'Attrappen-Vorprüfung' belegt, F-103-Muster). Der
+ * Delta-1-Wurftest löst den Wurf über einen realen Vorbedingungsbruch aus
+ * (F9s erzeugeTransportpaket, human-transport/index.ts:114-117): ein
+ * schreiber-Hook löscht das gerade von erfasseBedarf geschriebene
+ * BEDARF_V0-Lineage-Verzeichnis unmittelbar nach dessen
+ * 'lineage_registriert'-Ereignis, sodass der nachfolgende
+ * erzeugeTransportpaket-Aufruf die Version real nicht mehr findet — kein
+ * Modul-Mock (D1), reine Filesystem-Manipulation über den ohnehin
+ * öffentlichen optionen.schreiber-Injektionspunkt.
+ *
+ * F-109 (Windows-Pfadlänge): alle WS-2a-Test-laufIds verwenden ein Präfix
+ * von höchstens 4 Zeichen (Vertrag SCOPE Punkt 5).
  */
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -53,10 +69,12 @@ import { attrappeMitValidemErgebnis } from '../claude-code-gateway/prozessstart.
 import { baueAufruf, starteGateway } from '../claude-code-gateway/index.ts'
 import type { Starter } from '../claude-code-gateway/types.ts'
 import { baueKontextpaket } from '../context-builder/index.ts'
-import { istWirkungsmarkePayload, ladeGueltigeCheckpoints, sha256Hex } from '../checkpoint-store/index.ts'
+import { istWirkungsmarkePayload, kanonischesJson, ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
+import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { fuehreAufgabeDurch } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 
@@ -68,11 +86,16 @@ function neueLaufId(praefix: string): string {
   return `${praefix}-${randomUUID()}`
 }
 
-function raeumeKette(laufId: string): void {
+function raeumeKette(laufId: string, eskLaufId?: string): void {
   rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
   rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-kontextpaket-${laufId}`), { recursive: true, force: true })
   rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
   rmSync(join('kontrollzustand-roh', laufId), { recursive: true, force: true })
+  if (eskLaufId !== undefined) {
+    rmSync(join(KONTROLLZUSTAND_BASIS, eskLaufId), { recursive: true, force: true })
+    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-bedarf-${eskLaufId}`), { recursive: true, force: true })
+    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-transport-${eskLaufId}`), { recursive: true, force: true })
+  }
 }
 
 function gueltigeEingaben(uebrigeFelder: { werkzeug_version_deklariert: string; berechtigungskontext: string }): AusfuehrungsEingaben {
@@ -321,6 +344,256 @@ test('F5-Abbruchzweig: kontextpaket-Rot-Fall bricht sofort ab, Grund unveränder
 
     const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
     assert.strictEqual(laufakteVersion, null)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── WS-2a: AK4/AK6, Delta 1 ──────────────────────────────────────────────
+
+/** VERWEIGERT-Attrappe (kein bisheriges Fixture erzeugt diese Klassifikation, siehe Vertrag CONTEXT): ein permission_denials-Eintrag mit dem übergebenen command, sonst identisch zu attrappeMitValidemErgebnis geformt (TP-03d-Muster). */
+function attrappeVerweigertMitCommand(command: string): Starter {
+  return async (_startziel, _tokens) => ({
+    stdout: JSON.stringify({
+      type: 'result',
+      permission_denials: [{ tool_input: { command } }],
+      result: 'Verweigert (Testfixture, WS-2a)',
+    }),
+    stderr: '',
+    exitCode: 0,
+    startfehler: null,
+  })
+}
+
+/** (a): verbotener Aufrufparameter (E-182) im tool_input.command → bypass_verdacht_anzahl 1. */
+const attrappeVerweigertBypass1 = attrappeVerweigertMitCommand('claude --dangerously-skip-permissions')
+/** (b): unauffälliger command → bypass_verdacht_anzahl 0. */
+const attrappeVerweigertBypass0 = attrappeVerweigertMitCommand('ls -la')
+
+test('Attrappen-Vorprüfung: attrappeVerweigertBypass1/-0 erzeugen wirklich VERWEIGERT mit bypass_verdacht_anzahl 1 bzw. 0', async () => {
+  const laufIdA = neueLaufId('avpa')
+  const laufIdB = neueLaufId('avpb')
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+
+    const gatewayA = await starteGateway(
+      {
+        laufId: laufIdA,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: baueAufruf(eingaben.aufrufEingaben),
+        werkzeugStartziel: eingaben.werkzeugStartziel,
+        werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+        berechtigungskontext: eingaben.berechtigungskontext,
+      },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass1, schreiber: () => {} }
+    )
+    assert.strictEqual(gatewayA.ok, true)
+    assert.ok(gatewayA.ok)
+    const klassifikationA = klassifiziereLauf(laufIdA, PROFIL_REFERENZ, { laufakte: gatewayA.laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(klassifikationA.ergebnis, 'VERWEIGERT')
+    assert.ok(klassifikationA.ergebnis === 'VERWEIGERT')
+    assert.strictEqual(klassifikationA.bypass_verdacht_anzahl, 1, 'attrappeVerweigertBypass1 muss real bypass_verdacht_anzahl 1 erzeugen')
+
+    const gatewayB = await starteGateway(
+      {
+        laufId: laufIdB,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: baueAufruf(eingaben.aufrufEingaben),
+        werkzeugStartziel: eingaben.werkzeugStartziel,
+        werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+        berechtigungskontext: eingaben.berechtigungskontext,
+      },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass0, schreiber: () => {} }
+    )
+    assert.strictEqual(gatewayB.ok, true)
+    assert.ok(gatewayB.ok)
+    const klassifikationB = klassifiziereLauf(laufIdB, PROFIL_REFERENZ, { laufakte: gatewayB.laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(klassifikationB.ergebnis, 'VERWEIGERT')
+    assert.ok(klassifikationB.ergebnis === 'VERWEIGERT')
+    assert.strictEqual(klassifikationB.bypass_verdacht_anzahl, 0, 'attrappeVerweigertBypass0 muss real bypass_verdacht_anzahl 0 erzeugen')
+  } finally {
+    raeumeKette(laufIdA)
+    raeumeKette(laufIdB)
+  }
+})
+
+test('AK4-positiv: VERWEIGERT mit bypass_verdacht_anzahl > 0 eskaliert real über F9 unter eigener laufId', async () => {
+  const laufId = neueLaufId('ak4p')
+  let eskLaufId: string | undefined
+  try {
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeVerweigertBypass1,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+    assert.ok(ergebnis.eskalation !== undefined, 'eskalation muss bei bypass_verdacht_anzahl > 0 gesetzt sein')
+    eskLaufId = ergebnis.eskalation.laufId
+    assert.notStrictEqual(eskLaufId, laufId, 'Eskalations-laufId muss vom auslösenden Lauf verschieden sein')
+    // F-091 auch über den realen fuehreAufgabeDurch-Rückgabepfad belegt
+    // (nicht nur über die manuelle Nachbildung im AK6-Testfall) — Schritt 5
+    // (stelleLaufstatusFest(laufId)) muss den auslösenden Lauf betreffen,
+    // nicht die Eskalation (Reviewer-/QA-Pass, code-reviewer + qa, 04.09.2026).
+    assert.strictEqual(ergebnis.laufStatus.status, 'ABGESCHLOSSEN')
+    assert.ok(ergebnis.laufStatus.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(ergebnis.laufStatus.ergebnis, 'VERWEIGERT')
+
+    const bedarfVersion = ladeArtefaktVersion(`bedarf-${eskLaufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(bedarfVersion !== null, 'BEDARF_V0 der Eskalation muss real über F9 geschrieben worden sein')
+  } finally {
+    raeumeKette(laufId, eskLaufId)
+  }
+})
+
+test('AK4-negativ: VERWEIGERT mit bypass_verdacht_anzahl === 0 eskaliert nicht', async () => {
+  const laufId = neueLaufId('ak4n')
+  try {
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeVerweigertBypass0,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+    assert.strictEqual(ergebnis.klassifikation.ergebnis, 'VERWEIGERT')
+    assert.ok(ergebnis.klassifikation.ergebnis === 'VERWEIGERT')
+    assert.strictEqual(ergebnis.klassifikation.bypass_verdacht_anzahl, 0)
+    assert.strictEqual(ergebnis.eskalation, undefined, 'keine Eskalation bei bypass_verdacht_anzahl === 0')
+
+    // Nichtaufruf-Nachweis ohne Vakuum-Assertion (F-103): Verzeichnisscan
+    // statt eines Vergleichs gegen eine (unbekannte) Eskalations-laufId —
+    // die eskLaufId trägt randomUUID (D3) und ist bei Nichtaufruf nie
+    // beobachtbar. Kalibriert (Bedingung > 0 testweise auf >= 0 gesetzt,
+    // siehe Bericht): mit der Kalibrierung liefert dieser Scan einen
+    // Treffer und die folgende Assertion wird rot.
+    const eskalationsPraefix = `lineage-bedarf-${laufId}-eskalation-`
+    const vorhandeneEintraege = existsSync(KONTROLLZUSTAND_BASIS) ? readdirSync(KONTROLLZUSTAND_BASIS) : []
+    const gefundeneEskalationsArtefakte = vorhandeneEintraege.filter((eintrag) => eintrag.startsWith(eskalationsPraefix))
+    assert.deepStrictEqual(gefundeneEskalationsArtefakte, [], 'kein bedarf-*-Artefakt unter einer von laufId abgeleiteten Eskalations-ID')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK6 (F-091): E-186-Eskalation unter eigener laufId lässt stelleLaufstatusFest(ausloesenderLaufId) vor und nach unverändert ABGESCHLOSSEN/VERWEIGERT', async () => {
+  const laufId = neueLaufId('ak6')
+  let eskLaufId: string | undefined
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    const f9Optionen = { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} }
+
+    // Schritte 1-4 (F5→F6a→F7) direkt nachvollzogen, nicht über
+    // fuehreAufgabeDurch — dessen Rückkehr liegt bereits NACH der
+    // Eskalation, die "vorher"-Assertion braucht einen eigenen,
+    // unabhängigen Zwischenstand (Vertrag SCOPE Punkt 5).
+    const kontextpaketErgebnis = baueKontextpaket(laufId, eingaben.rolle, eingaben.anfragen, PROFIL_REFERENZ, eingaben.budget, f9Optionen)
+    assert.ok(kontextpaketErgebnis.ok)
+    const gatewayErgebnis = await starteGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: baueAufruf(eingaben.aufrufEingaben),
+        werkzeugStartziel: eingaben.werkzeugStartziel,
+        werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+        berechtigungskontext: eingaben.berechtigungskontext,
+      },
+      { ...startfreigabeOptionen(), ...f9Optionen, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeVerweigertBypass1 }
+    )
+    assert.strictEqual(gatewayErgebnis.ok, true)
+    assert.ok(gatewayErgebnis.ok)
+    const klassifikation = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: gatewayErgebnis.laufakte }, f9Optionen)
+    assert.strictEqual(klassifikation.ergebnis, 'VERWEIGERT')
+    assert.ok(klassifikation.ergebnis === 'VERWEIGERT')
+    assert.strictEqual(klassifikation.bypass_verdacht_anzahl, 1)
+
+    // AK6-1, "vorher": eigener, direkter Aufruf.
+    const laufStatusVorher = stelleLaufstatusFest(laufId, f9Optionen)
+    assert.strictEqual(laufStatusVorher.status, 'ABGESCHLOSSEN')
+    assert.ok(laufStatusVorher.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(laufStatusVorher.ergebnis, 'VERWEIGERT')
+
+    // WS-2a-Eskalation, manuell nachvollzogen (Vertrag SCOPE Punkt 4).
+    eskLaufId = `${laufId}-eskalation-${randomUUID()}`
+    const beschreibung = `E-186-Eskalation: Lauf ${laufId} wurde VERWEIGERT mit bypass_verdacht_anzahl ${klassifikation.bypass_verdacht_anzahl}. Menschliche Prüfung der Genehmigungsverweigerungen erforderlich.`
+    const { versionSequenz: bedarfVersionSequenz } = erfasseBedarf(
+      eskLaufId,
+      PROFIL_REFERENZ,
+      beschreibung,
+      [
+        {
+          pfad: `artefakt:laufakte-${laufId}`,
+          zitierter_bereich: `LAUFAKTE_V0 versionSequenz ${gatewayErgebnis.versionSequenz}, bypass_verdacht_anzahl ${klassifikation.bypass_verdacht_anzahl}`,
+          inhalts_hash: sha256Hex(kanonischesJson(gatewayErgebnis.laufakte)),
+        },
+      ],
+      f9Optionen
+    )
+    erzeugeTransportpaket(eskLaufId, PROFIL_REFERENZ, bedarfVersionSequenz, kanonischesJson(gatewayErgebnis.laufakte), 'mensch', f9Optionen)
+    haendigeAus(eskLaufId, PROFIL_REFERENZ, f9Optionen)
+
+    // AK6-1, "nachher".
+    const laufStatusNachher = stelleLaufstatusFest(laufId, f9Optionen)
+    assert.strictEqual(laufStatusNachher.status, 'ABGESCHLOSSEN')
+    assert.ok(laufStatusNachher.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(laufStatusNachher.ergebnis, 'VERWEIGERT')
+
+    // AK6-2 (Lineage) — gegen die real geladene Laufakte, nicht gegen
+    // einen im Test nachgebauten Wert.
+    const realeLaufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, f9Optionen)
+    assert.ok(realeLaufakteVersion !== null)
+    const bedarfVersion = ladeArtefaktVersion(`bedarf-${eskLaufId}`, undefined, f9Optionen)
+    assert.ok(bedarfVersion !== null)
+    assert.strictEqual(bedarfVersion.eingaben.length, 1)
+    assert.strictEqual(bedarfVersion.eingaben[0].pfad, `artefakt:laufakte-${laufId}`)
+    assert.strictEqual(bedarfVersion.eingaben[0].inhalts_hash, sha256Hex(kanonischesJson(realeLaufakteVersion.daten)))
+
+    // AK6-3: die Eskalation selbst wartet auf eine menschliche Antwort.
+    const eskLaufStatus = stelleLaufstatusFest(eskLaufId, f9Optionen)
+    assert.strictEqual(eskLaufStatus.status, 'KLAERUNG_ERFORDERLICH')
+  } finally {
+    raeumeKette(laufId, eskLaufId)
+  }
+})
+
+test('Delta 1 (Wurf): ein Wurf in erzeugeTransportpaket propagiert unverändert, ausloesender Lauf bleibt ABGESCHLOSSEN', async () => {
+  const laufId = neueLaufId('esk')
+  let hookAusgeloest = false
+  const werferSchreiber = (...args: unknown[]): void => {
+    const ereignis = args[0]
+    if (typeof ereignis !== 'object' || ereignis === null) return
+    const rec = ereignis as Record<string, unknown>
+    if (rec.ereignis !== 'lineage_registriert' || typeof rec.artefakt_id !== 'string') return
+    const artefaktId = rec.artefakt_id
+    if (!artefaktId.startsWith('bedarf-') || !artefaktId.includes('-eskalation-')) return
+    // Realer Vorbedingungsbruch (D1, kein Modul-Mock): das gerade
+    // geschriebene BEDARF_V0-Lineage-Verzeichnis wird sofort wieder
+    // entfernt, sodass erzeugeTransportpaket die Version nicht mehr
+    // findet und real wirft (human-transport/index.ts:114-117).
+    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-${artefaktId}`), { recursive: true, force: true })
+    hookAusgeloest = true
+  }
+  try {
+    const promise = fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeVerweigertBypass1,
+      schreiber: werferSchreiber,
+    })
+    await assert.rejects(promise, /BEDARF_V0 'bedarf-.+' Version \d+ nicht gefunden/)
+    assert.strictEqual(hookAusgeloest, true, 'Kalibrierung: der Schreiber-Hook muss real ausgelöst worden sein, sonst beweist der Wurf keinen echten Vorbedingungsbruch')
+
+    const laufStatusNachWurf = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.strictEqual(laufStatusNachWurf.status, 'ABGESCHLOSSEN')
+    assert.ok(laufStatusNachWurf.status === 'ABGESCHLOSSEN')
+    assert.strictEqual(laufStatusNachWurf.ergebnis, 'VERWEIGERT')
   } finally {
     raeumeKette(laufId)
   }

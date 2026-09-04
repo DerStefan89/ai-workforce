@@ -1,10 +1,11 @@
 /**
  * Datei: src/execution-controller/types.ts
  *
- * Zweck: Typen für den Execution Controller (F8 WS-1,
- * state/tasks/f8-execution-controller-ws1.md, state/plan-v1-f8-execution-
- * controller.md Abschnitt 2.1). AusfuehrungsOptionen bündelt alle Felder,
- * die F5/F6a/F7/F1B für einen Testlauf (AK8) oder eine andere Ablage
+ * Zweck: Typen für den Execution Controller (F8 WS-1/WS-2a,
+ * state/tasks/f8-execution-controller-ws1.md,
+ * state/tasks/f8-execution-controller-ws2a.md, state/plan-v1-f8-execution-
+ * controller.md Abschnitt 2.1/2.2). AusfuehrungsOptionen bündelt alle Felder,
+ * die F5/F6a/F7/F1B/F9 für einen Testlauf (AK8) oder eine andere Ablage
  * brauchen, und reicht sie unverändert an die jeweilige Funktion durch —
  * der Controller interpretiert keinen dieser Werte selbst (D5, SCOPE
  * Punkt 2 des Vertrags). Vorbehalt (F-107): die Garantie gilt für die
@@ -62,4 +63,10 @@ export interface AusfuehrungsEingaben {
 export type AusfuehrungsErgebnis =
   | { ok: false; stufe: 'kontextpaket'; ergebnis: KontextpaketErgebnis & { ok: false } }
   | { ok: false; stufe: 'gateway'; grund: string }
-  | { ok: true; klassifikation: KlassifikationsErgebnis; laufStatus: LaufStatus }
+  | {
+      ok: true
+      klassifikation: KlassifikationsErgebnis
+      laufStatus: LaufStatus
+      /** Gesetzt genau dann, wenn eine E-186-Eskalation (WS-2a) stattgefunden hat — die intern erzeugte laufId ist sonst nach Rückkehr unauffindbar (Vertrag SCOPE Punkt 3). */
+      eskalation?: { laufId: string; bedarfVersionSequenz: number; transportVersionSequenz: number }
+    }

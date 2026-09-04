@@ -1148,3 +1148,51 @@ Fundstelle: `src/execution-controller/index.ts:58-76`.
 Auswirkung: gering, aber eine stille, vom Typchecker und vom Gate-Skript nicht gefangene künftige Regression gegen die eigene Dokumentation.
 Maßnahme: entweder `optionen` direkt durchreichen (TS lässt überzählige Felder bei Variablen-Zuweisung zu) oder einen Kommentar/Test ergänzen, der bei neuen `GatewayOptionen`-Feldern aktiv auffällt.
 Feature/Run: Code-Review-Pass F8 WS-1 (frischer Kontext), 04.09.2026.
+
+**F-108** · `TECH_DEBT` · P2 · **gelöst**
+Titel: F-097 als WS-2a-Akzeptanzkriterium nicht umsetzbar — kein Aufrufer wendet pruefeStale auf bedarf-<laufId> an, Laufakte ist unveränderlich.
+Beschreibung: Der in claude/114 vorgesehene AK („Eskalationslauf lädt die referenzierte Laufakte real und speist sie in aktuelleEingabeInhalte ein") wäre eine Vakuum-Assertion gewesen (F-103-Muster): F9s einziger STALE-Einstiegspunkt pruefeUndEntscheideStale prüft ausschließlich transport-<laufId>, baueAktuelleEingabeInhalte befüllt nur den BEDARF-Schlüssel — kein Aufrufer im Repo wendet pruefeStale je auf bedarf-* an. Zusätzlich ist laufakte-<laufId> nach starteGateway unveränderlich (eingaben: [], einziger Schreibpfad). Ein Hashvergleich dagegen kann strukturell nie stale:true liefern.
+Fundstelle: `src/human-transport/index.ts:329-336,348-360`; `src/claude-code-gateway/index.ts:301-308`.
+Auswirkung: keine — die Referenz wird stattdessen als Herkunftsbeleg geführt (AK6-2 prüft ihr korrektes Schreiben), kein STALE-Prüfpfad gebaut.
+Maßnahme/Auflösung: Entscheidung Stefan 04.09.2026 (Option A). Im WS-2a-Vertrag (SCOPE Punkt 6) und im Dateikopf von execution-controller/index.ts dokumentiert.
+Feature/Run: F8 WS-2a-Vertrag, 04.09.2026.
+
+**F-109** · `TECH_DEBT` · P2 · **gelöst**
+Titel: Windows-Pfadlänge in WS-2a-Testketten lag real bei ~250/260 Zeichen — Advisor-Finding 13 hatte das unterschätzt.
+Beschreibung: Der längste in den WS-2a-Tests entstehende Pfad (kontrollzustand-test\lineage-transport-<laufId>-eskalation-<uuid>\checkpoints\<n>-<64 Hex>.json) liegt mit einem kurzen Testpräfix nahe an MAX_PATH (260). Advisor-Finding 13 (state/advisor-findings-f8-execution-controller.md) bewertete das als „keine bekannte Falle, keine Aktion nötig", ohne lineage-transport- als längstes Präfix zu rechnen.
+Fundstelle: state/advisor-findings-f8-execution-controller.md Befund 13; execution-controller.test.ts (WS-2a-Testfälle).
+Auswirkung: keine real eingetretene — mit Präfix ≤4 Zeichen (Vertragsauflage) lag der längste real erzeugte Pfad bei 249 Zeichen.
+Maßnahme/Auflösung: WS-2a-Vertrag SCOPE Punkt 5 schreibt kurze Test-laufId-Präfixe vor und verlangt den Nachweis im Bericht — erbracht (249/260).
+Feature/Run: F8 WS-2a-Vertrag/Bau, 04.09.2026.
+
+**F-110** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: plan-v1 sagt AK4/AK6-Testfälle zu, ohne zu prüfen, ob eine passende Starter-Attrappe existiert.
+Beschreibung: plan-v1 Abschnitt 2.2 benennt die AK4/AK6-Testfälle als selbstverständlich umsetzbar. Real existierten zum Zeitpunkt der Vertragserstellung nur zwei Attrappen (attrappeMitValidemErgebnis → ERFOLGREICH, attrappeOhneErgebnisobjekt → FEHLGESCHLAGEN) — keine erzeugte VERWEIGERT. Ohne die im WS-2a-Vertrag nachgetragene Fixture-Vorgabe hätte die bauende Sitzung entweder eine neue Attrappe in prozessstart.ts bauen müssen (D1-Verletzung) oder wäre steckengeblieben.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts:122,134` (Stand vor WS-2a); `state/plan-v1-f8-execution-controller.md` Abschnitt 2.2/7.
+Auswirkung: gering, real durch den Vertrag aufgefangen (Fixtures dort definiert, in der Testdatei statt in prozessstart.ts).
+Maßnahme: Bei künftigen Plänen, die einen bestimmten Klassifikationsausgang testen wollen, vor der Vertragserstellung prüfen, ob eine passende Attrappe/Fixture bereits existiert.
+Feature/Run: F8 WS-2a-Vertrag, 04.09.2026.
+
+**F-111** · `TECH_DEBT` · P3 · **gelöst**
+Titel: AusfuehrungsErgebnis gab die intern erzeugte Eskalations-laufId nicht zurück — ohne sie war AK6 nicht prüfbar.
+Beschreibung: Die Eskalations-laufId entsteht intern per randomUUID (D3). plan-v1 sah keine Rückgabe vor. Ohne Rückgabe kann kein Test die Eskalation gezielt nachschlagen oder ihre Kette aufräumen.
+Fundstelle: `state/plan-v1-f8-execution-controller.md` Abschnitt 2.1 (Entwurf AusfuehrungsErgebnis, vor WS-2a).
+Auswirkung: keine — im WS-2a-Vertrag (SCOPE Punkt 3) durch ein optionales eskalation-Feld behoben, additive Erweiterung der diskriminierten Union.
+Maßnahme/Auflösung: `src/execution-controller/types.ts` — `eskalation?: { laufId, bedarfVersionSequenz, transportVersionSequenz }`.
+Feature/Run: F8 WS-2a-Vertrag/Bau, 04.09.2026.
+
+**F-112** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Übergabedokumente nennen origin/main-SHAs, die aus der Remote-Devices-Bridge nicht verifizierbar sind (F-100-Folgefehler, real eingetreten).
+Beschreibung: claude/114 nannte origin/main = df4730d. Das lokale origin/main-Ref stand zu dem Zeitpunkt noch auf 4664b32 (F-100 verbietet git fetch aus der Bridge). Der WS-2a-Vertragscommit landete dadurch zuerst auf dem bereits über PR #65 gemergten Branch feat/f8-execution-controller-ws1, bevor ein manueller git fetch im Nutzerterminal den Widerspruch aufdeckte.
+Fundstelle: Challenger-Sitzung 04.09.2026 (Branch-Korrektur vor PR #66).
+Auswirkung: kein Datenverlust (Cherry-Pick auf korrekte Basis), aber ein realer Fehlversuch und ein Zwischenschritt, der ohne menschliches Terminal nicht auflösbar gewesen wäre.
+Maßnahme: Übergabedokumente nennen den Basis-SHA zusammen mit der PR-Nummer, aus der er stammt. Vor dem ersten Commit einer Sitzung mit Bridge-Zugriff führt der Mensch git fetch im eigenen Terminal aus.
+Feature/Run: F8 WS-2a-Vertrag, 04.09.2026.
+
+**F-113** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Terminal-Befehle wurden wiederholt in Bash-Syntax ausgegeben, obwohl der Mensch in PowerShell arbeitet — führte real mehrfach zu Parserfehlern.
+Beschreibung: Mehrere 🖥️ TERMINAL-Blöcke dieser Sitzung enthielten Bash-Heredoc-Syntax (`$(cat <<'EOF' ... EOF)`), die in PowerShell nicht geparst wird (`<` ist dort ein reservierter Operator). Der Fehler trat real mindestens zweimal auf, nachdem er beim ersten Mal bereits korrigiert worden war (PR-Body-Erstellung, danach erneut bei der WS-2a-Commit-Message) — die Korrektur wurde nicht als Regel für den Rest der Sitzung übernommen.
+Fundstelle: Diese Sitzung, TERMINAL-Blöcke zu `gh pr create --body "$(cat <<'EOF' ...` und `git commit -m "$(cat <<'EOF' ...`.
+Auswirkung: wiederholte Rückfragezyklen, vom Menschen bemerkt und bemängelt („Das passiert zu oft").
+Maßnahme: Terminal-Befehle für diesen Menschen grundsätzlich PowerShell-kompatibel ausgeben — mehrere `-m`-Flags statt Heredoc für mehrzeilige Commit-Messages, `Set-Content`/`--body-file` statt `$(cat <<EOF...)` für mehrzeilige PR-Bodies. Shell-Umgebung des Menschen zu Sitzungsbeginn einmal feststellen statt bei jedem Befehl neu zu raten.
+Feature/Run: Technical-Challenger-Sitzung F8 WS-2a, 04.09.2026.
