@@ -12,10 +12,16 @@
  * Nachbau von F4).
  *
  * WS2 + WS4: starteGateway orchestriert den tatsächlichen Prozessstart —
- * pruefeUndVerweigereBeiTreffer (unverändert, kein zweiter Aufruf von
- * pruefeAufrufparameter) → prozessstart.ts' pruefeStartziel (AK15,
- * Hygiene-Guard, keine Vertrauensgrenze — die Vertrauensfrage liegt per E2
- * beim Aufrufer) → bei beidem ok:true eine RUN_PREPARED-Wirkungsmarke
+ * pruefeUndVerweigereBeiTreffer (tokens gegen F4s pruefeAufrufparameter,
+ * E-182) → zweiter pruefeAufrufparameter-Aufruf gegen
+ * werkzeugStartziel.slice(1) (F-119: werkzeugStartziel[1..n] landet
+ * unverändert in execFiles argv, siehe prozessstart.ts' echterStarter,
+ * passierte bisher weder diesen Guard noch F4s E-188-Gültigkeitsschlüssel
+ * — additive Prüfung, kein Schemabruch, werkzeugStartziel bleibt bewusst
+ * außerhalb des F4-Gültigkeitsschlüssels, state/findings.md F-119) →
+ * prozessstart.ts' pruefeStartziel (AK15, Hygiene-Guard, keine
+ * Vertrauensgrenze — die Vertrauensfrage liegt per E2 beim Aufrufer) →
+ * bei allen dreien ok:true eine RUN_PREPARED-Wirkungsmarke
  * (F1B) → starteProzess (prozessstart.ts, Argv-Array, F-057) → Ergebnis
  * OHNE Klassifikation auswerten (kein ergebnis-Feld, keine Auswertung der
  * gemeldeten Genehmigungsverweigerungen, F7-Grenze, AK12) →
@@ -219,6 +225,13 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const pruefung = pruefeUndVerweigereBeiTreffer(eingaben.tokens, eingaben.laufId, eingaben.profilReferenz, optionen)
   if (!pruefung.ok) {
     return { ok: false, grund: pruefung.grund }
+  }
+
+  const startzielArgvPruefung = pruefeAufrufparameter(eingaben.werkzeugStartziel.slice(1))
+  if (!startzielArgvPruefung.ok) {
+    const grund = startzielArgvPruefung.grund ?? 'verbotener Aufrufparameter (E-182)'
+    verweigereStart(eingaben.laufId, eingaben.profilReferenz, grund, optionen)
+    return { ok: false, grund }
   }
 
   const startzielPruefung = pruefeStartziel(eingaben.werkzeugStartziel)

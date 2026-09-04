@@ -596,6 +596,62 @@ test('starteGateway verweigert bei ungültigem werkzeugStartziel — kein RUN_PR
   }
 })
 
+// ─── starteGateway prüft werkzeugStartziel[1..n] gegen E-182 (F-119) ───────
+
+test('starteGateway verweigert bei verbotenem Aufrufparameter in werkzeugStartziel[1] — kein Prozessstart (F-119)', async () => {
+  const laufId = neueLaufId('gateway-rot-startziel-argv')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben: GatewayEingaben = {
+      ...gueltigeGatewayEingaben(laufId),
+      werkzeugStartziel: [...GUELTIGES_STARTZIEL, '--dangerously-skip-permissions'],
+    }
+    const ergebnis = await starteGateway(eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, false)
+    assert.ok(!ergebnis.ok)
+    assert.match(ergebnis.grund, /E-182/)
+    assert.strictEqual(starterAufgerufen, false, 'starteProzess darf bei verbotenem werkzeugStartziel[1..n] nie aufgerufen werden')
+
+    const status = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.strictEqual(status.status, 'NICHT_GESTARTET')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway lässt ein gültiges mehrgliedriges werkzeugStartziel weiterhin durch — Regression (F-119)', async () => {
+  const laufId = neueLaufId('gateway-gruen-startziel-argv')
+  try {
+    const eingaben: GatewayEingaben = {
+      ...gueltigeGatewayEingaben(laufId),
+      werkzeugStartziel: [...GUELTIGES_STARTZIEL, '--harmless-flag'],
+    }
+    const ergebnis = await starteGateway(eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 test('starteGateway trägt werkzeugStartziel und startfehler im Rohstrom (F-071)', async () => {
   const laufId = neueLaufId('gateway-rohstrom-startfehler')
   try {
