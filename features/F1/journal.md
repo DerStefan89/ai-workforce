@@ -98,3 +98,14 @@ benannte Regelverletzung, Original wiederhergestellt) und fünf
 Belege in `state/gates.md`. `npm run check` und `npm run check:template`
 am Ende grün (6/6 Tests, keine Lint-/Typecheck-Befunde außer der
 vorbestehenden Biome-`recommended`-Deprecation-Info).
+
+## 2026-09-04 — Statuskorrektur (F-088-Nachtrag)
+
+`feature.md`-Status stand seit dem Bau fälschlich auf `READY_FOR_TECH`,
+obwohl WS1 gemäß diesem Journal, `state/plan-v2-feature1-checkpoint-store.md`
+und `state/tasks/f1-checkpoint-store.md` real abgeschlossen ist. Beleg:
+Commit `d9595f6` (`feature: F1 Checkpoint Store - Modul, Gate, Tests real
+gebaut`) auf `main`, `src/checkpoint-store/{types,index,
+checkpoint-store.test}.ts` real vorhanden und Hard-Dependency praktisch
+jedes anderen Features, `npm run check` Exit 0. Status auf `ABGESCHLOSSEN`
+korrigiert (Nachtrag zu F-088, siehe `state/findings.md`).

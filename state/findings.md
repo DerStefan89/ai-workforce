@@ -968,20 +968,20 @@ Auswirkung: Realer Grün-Fall-Beleg war bis zur Entscheidung blockiert.
 Maßnahme: verify-Skript chdir't nicht mehr, nur Schreibziel umgeleitet (Option A); C:\Program Files\claude\claude.exe als Symlink auf die reale npm-global-Binary angelegt, um den bewusst gewählten admin-geschützten Installationsort als Vertrauensanker zu erhalten (Option B), statt die Prüfung auf den user-schreibbaren npm-Pfad abzusenken.
 Status: gelöst · Feature/Run: F6b WS-G, 03.09.2026.
 
-**F-088** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-088** · `PROCESS_IMPROVEMENT` · P2 · gelöst
 Titel: Feature-Akten-Status driftet gegenüber der Realität; F6b hat überhaupt keine Akte.
 Beschreibung: `features/F4/feature.md` und `features/F6a/feature.md` stehen auf `READY_FOR_TECH`, `features/F7/feature.md` auf `IN_ARBEIT` — alle drei Features sind real abgeschlossen und gemergt. `features/F6b/` existiert nicht, ebenso kein `state/plan-v1-f6b-*`, obwohl F6b über sieben Workstreams gebaut wurde. `scripts/check-feature.mjs` prüft den Status nur gegen die erlaubte Werteliste, nicht gegen den realen Abschluss.
 Fundstelle: `features/F4/feature.md:13`, `features/F6a/feature.md:13`, `features/F7/feature.md:13`; fehlendes `features/F6b/`.
 Auswirkung: Eine Sitzung, die den Projektstand aus den Feature-Akten liest, hält abgeschlossene Features für offen und F6b für nie gebaut. Für F8 unmittelbar relevant, weil F8 seine Dependencies genau aus diesen Akten ableiten würde.
-Maßnahme: Status der drei Akten auf `ABGESCHLOSSEN` gezogen; F6b als Workstream-Kette in `features/F6a/feature.md` dokumentiert.
-Feature/Run: Challenge F8, 04.09.2026.
+Maßnahme: Status der drei Akten auf `ABGESCHLOSSEN` gezogen; F6b als Workstream-Kette in `features/F6a/feature.md` dokumentiert. Nachtrag 04.09.2026: derselbe Drift auch bei `features/F0/feature.md`, `features/F1/feature.md`, `features/F3/feature.md` gefunden (alle drei auf `READY_FOR_TECH`, real gemergt und abgeschlossen — Commits `8559400`, `d9595f6`, `c7b4974` auf `main`, `npm run check` Exit 0) und ebenfalls auf `ABGESCHLOSSEN` korrigiert, siehe `features/F0/journal.md`, `features/F1/journal.md`, `features/F3/journal.md`.
+Feature/Run: Challenge F8, 04.09.2026; Nachtrag F0/F1/F3, 04.09.2026.
 
-**F-089** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-089** · `PROCESS_IMPROVEMENT` · P2 · gelöst
 Titel: `state/findings.md` führt zwei real gelöste Findings weiterhin als offen.
 Beschreibung: F-048 ist in `src/invocation-policy/verbotene-aufrufparameter.ts` per `enthaeltTokenFenster` behoben (Kommentar nennt den Fix explizit, F6a AK2 fordert ihn) — Register sagt `offen`. F-085 ist behoben, `state/aktuelle-autorisierung.json` verweist auf Wirksamkeitsnachweis-Commit `75e31465` statt des beanstandeten `c282de9` — Register sagt `offen`. Übergabe 109 zitiert F-048 daraufhin als offenen P1-Faden für die F8-Planung.
 Fundstelle: `state/findings.md` Zeilen 450 (F-048) und 940 (F-085).
 Auswirkung: Falsche P1-Last in der F8-Planung; das Register ist laut F-036 die einzige Sollquelle und verliert Verlässlichkeit, wenn Statuswechsel am Ende eines Baudurchgangs nicht zurückfließen.
-Maßnahme: Beide Statuszeilen nachgezogen. Zusätzlich: Statuswechsel gehören in denselben Commit wie der Fix, nicht in einen späteren Dokumentations-PR.
+Maßnahme: Beide Statuszeilen nachgezogen. Zusätzlich: Statuswechsel gehören in denselben Commit wie der Fix, nicht in einen späteren Dokumentations-PR. Nachtrag 04.09.2026: verifiziert — F-048 (Zeile 450) und F-085 (Zeile 944) stehen im Register beide bereits auf `gelöst`; F-089 selbst wird hiermit ebenfalls auf `gelöst` gezogen.
 Feature/Run: Challenge F8, 04.09.2026.
 
 **F-090** · `TECH_DEBT` · P1 · offen
@@ -1007,3 +1007,11 @@ Fundstelle: `claude/` (Repo, 2 von 110 Dateien vorhanden) vs. Claude-Projekt „
 Auswirkung: Jeder Bauauftrag mit reinem Pfadverweis auf ein Projekt-Dokument erzeugt einen vermeidbaren Rückfrage-Zyklus — zweiter Auftreten dieses Grundmusters in derselben Challenge-Runde.
 Maßnahme: Generalisierung von F-082s Maßnahme: ein Bauauftrag darf sich auf ein `claude/*`-Projekt-Dokument nur per Pfad beziehen, wenn der relevante Volltext im selben Prompt mitgeliefert wird. Reiner Pfadverweis ist nur für nachweislich committete Pfade zulässig (`docs/`, `state/`, `features/`, `src/`).
 Feature/Run: Challenge F8, Bauauftrag `features/F8/feature.md`, 04.09.2026.
+
+**F-093** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Feature-Akten-Status wird beim Abschluss eines Features nicht verlässlich nachgezogen.
+Beschreibung: F-088 hat den Drift zwischen Feature-Akten-Status und realem Bauzustand bei F4/F6a/F7 aufgedeckt und behoben. Bei der Bereinigung stellte sich heraus, dass derselbe Drift unabhängig davon auch bei F0, F1 und F3 vorlag — alle drei standen weiterhin auf `READY_FOR_TECH`, obwohl längst gemergt und real abgeschlossen. Der Drift wurde beide Male nicht während des Baus bemerkt, sondern erst durch eine spätere, eigens dafür angesetzte manuelle Gegenprüfung entdeckt.
+Fundstelle: `features/F0/feature.md:13`, `features/F1/feature.md:13`, `features/F3/feature.md:13` (vor Korrektur); `F-088`.
+Auswirkung: Zweites Auftreten desselben Grundmusters — der Status-Drift ist kein Einzelfall, sondern ein strukturelles Loch im Abschluss-Schritt. Ohne Gegenmaßnahme ist ein drittes Auftreten (z. B. bei F2, F5, F9) wahrscheinlich.
+Maßnahme: Statuswechsel der Feature-Akte auf `ABGESCHLOSSEN` als verbindlicher Bestandteil des Abschluss-Schritts, geprüft im selben Commit wie der letzte Bau-Commit des Features — nicht als spätere, separate Dokumentationskorrektur.
+Feature/Run: Bereinigung F-088-Nachtrag (F0/F1/F3), 04.09.2026.

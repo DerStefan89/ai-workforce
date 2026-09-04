@@ -55,3 +55,14 @@ in `npm run check` und `npm run check:template`), `specs/F0/spec.md`,
 `features/F0/journal.md` (diese Datei). `F-010` auf `gelöst` gesetzt.
 Vier Rot-Fälle (je ein Invalid-Beispiel) und der Grün-Zustand real
 kalibriert, Beleg in `state/gates.md`.
+
+## 2026-09-04 — Statuskorrektur (F-088-Nachtrag)
+
+`feature.md`-Status stand seit dem Bau fälschlich auf `READY_FOR_TECH`,
+obwohl WS1 gemäß diesem Journal, `state/plan-v2-feature0-datenformate.md`
+und `state/advisor-findings-feature0-datenformate.md` real abgeschlossen
+ist. Beleg: Commit `8559400` (`feature: F0 datenformate - schemas, gate,
+feature-akte`) auf `main`, `schemas/profile.schema.json` und
+`schemas/kontrollzustand.schema.json` real vorhanden, `npm run check`
+Exit 0. Status auf `ABGESCHLOSSEN` korrigiert (Nachtrag zu F-088, siehe
+`state/findings.md`).

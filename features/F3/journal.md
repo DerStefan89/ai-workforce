@@ -133,3 +133,16 @@ fail 0`.
 ## Nächster sinnvoller Schritt
 `git status` prüfen, Diff zur Freigabe zeigen, `state/freigabe-commit.md`
 abwarten, dann committen (gezielte Pfade, `git-flow`-Skill) und pushen.
+
+## 2026-09-04 — Statuskorrektur (F-088-Nachtrag)
+
+`feature.md`-Status stand seit dem Bau fälschlich auf `READY_FOR_TECH`,
+obwohl WS1 gemäß diesem Journal (Status oben: Freigegeben),
+`state/plan-v2-f3-authorization-boundary.md` und
+`state/advisor-findings-f3-authorization-boundary-v2.md` real
+abgeschlossen ist. Beleg: Commit `c7b4974` (`feature: F3 Authorization
+Boundary (minimal) - Modul, Schema, Gate, Tests real gebaut`) auf `main`,
+`src/authorization-boundary/{types,index,
+authorization-boundary.test}.ts` real vorhanden, `npm run check` Exit 0.
+Status auf `ABGESCHLOSSEN` korrigiert (Nachtrag zu F-088, siehe
+`state/findings.md`).
