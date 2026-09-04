@@ -1,10 +1,14 @@
 /**
  * Datei: src/execution-controller/types.ts
  *
- * Zweck: Typen für den Execution Controller (F8 WS-1/WS-2a,
+ * Zweck: Typen für den Execution Controller (F8 WS-1/WS-2a/WS-2b,
  * state/tasks/f8-execution-controller-ws1.md,
- * state/tasks/f8-execution-controller-ws2a.md, state/plan-v1-f8-execution-
- * controller.md Abschnitt 2.1/2.2). AusfuehrungsOptionen bündelt alle Felder,
+ * state/tasks/f8-execution-controller-ws2a.md,
+ * state/tasks/f8-execution-controller-ws2b.md, state/plan-v1-f8-execution-
+ * controller.md Abschnitt 2.1/2.2/2.3). WS-2b ergänzt AusfuehrungsEingaben um
+ * das optionale vorgaengerLaufId (AK7) — Lineage-Verweis bei Wiederaufnahme,
+ * kein Feld von AusfuehrungsOptionen (der Controller liest und verarbeitet
+ * es aktiv, anders als die reine Durchreichung unten). AusfuehrungsOptionen bündelt alle Felder,
  * die F5/F6a/F7/F1B/F9 für einen Testlauf (AK8) oder eine andere Ablage
  * brauchen, und reicht sie unverändert an die jeweilige Funktion durch —
  * der Controller interpretiert keinen dieser Werte selbst (D5, SCOPE
@@ -57,6 +61,8 @@ export interface AusfuehrungsEingaben {
   werkzeugStartziel: string[]
   werkzeugVersionDeklariert: string
   berechtigungskontext: string
+  /** Lineage-Verweis auf einen Vorgängerlauf bei Wiederaufnahme nach KLAERUNG_ERFORDERLICH oder ABGESCHLOSSEN/FEHLGESCHLAGEN (WS-2b, plan-v1 Abschnitt 2.3, AK7). Vom Aufrufer gewählt — der Controller generiert und prüft diese ID nicht. */
+  vorgaengerLaufId?: string
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */

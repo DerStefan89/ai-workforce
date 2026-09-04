@@ -337,3 +337,123 @@ einem bestehenden).
 Freigabe für Bau/Commit direkt an den Technical Challenger erteilt
 (Stefan, 04.09.2026) — Vertrag `state/tasks/f8-execution-controller-ws2a.md`
 OUTPUT-Abschnitt. Push bleibt separat autorisiert.
+
+## 2026-09-04 — WS-2b-Vertrag, Bauauftrag ausgeführt, F8 ABGESCHLOSSEN
+
+Handoff-Vertrag `state/tasks/f8-execution-controller-ws2b.md` (commit
+`3064ca9`, #69) ausgeführt. Freigabe für Bau/Commit direkt an den
+Technical Challenger erteilt (Stefan, 04.09.2026, Auftragstext); Push
+bleibt separat autorisiert.
+
+Reale Signaturen vor dem Bau gegengelesen (`AusfuehrungsEingaben`,
+`Anfrage`-Typ inkl. `notwendig`-Default, `baueKontextpaket`s
+Budget-Phase-A-EVIDENZLUECKE-Abbruch, `ladeArtefaktVersion`s
+`null`-statt-Wurf-Verhalten, `laufakteArtefaktId` in
+`claude-code-gateway/index.ts:139`, das Repo-Idiom "throw =
+Vorbedingungsverletzung" aus `lineage-registry/index.ts:243-245` und
+`human-transport/index.ts:90-92,114-117`) — keine Abweichung vom Vertrag
+gefunden. Der im Vertrag als bekannt/nicht-blockierend deklarierte
+Widerspruch zwischen `feature.md` AK7-Wortlaut (nennt nur
+`KLAERUNG_ERFORDERLICH`) und dem Scope-Abschnitt derselben Datei (nennt
+zusätzlich `FEHLGESCHLAGEN`) wurde nicht neu eskaliert, wie vom Vertrag
+vorgegeben.
+
+Umgesetzt (SCOPE Punkte 1-3):
+
+- `src/execution-controller/types.ts`: `AusfuehrungsEingaben` um
+  optionales `vorgaengerLaufId?: string` erweitert, mit Kommentar auf
+  plan-v1 Abschnitt 2.3 und AK7. Bewusst auf `AusfuehrungsEingaben`, nicht
+  `AusfuehrungsOptionen` — der Controller liest und verarbeitet das Feld
+  aktiv, anders als die reine Durchreichung der Optionen (D5).
+- `src/execution-controller/index.ts`: neue Hilfsfunktion
+  `vorgaengerLaufakteArtefaktId` (Muster `eskalationsLaufId`). Bei
+  gesetztem `eingaben.vorgaengerLaufId` lädt `fuehreAufgabeDurch` vor dem
+  bestehenden `baueKontextpaket`-Aufruf die Laufakte des Vorgängerlaufs
+  über `ladeArtefaktVersion`; bei `null` wirft die Funktion (Vorbedingungs-
+  verletzung, Fehlertext enthält die `vorgaengerLaufId`); bei Treffer wird
+  ein `notwendig:true`-`Anfrage`-Eintrag (`pfad:
+  'artefakt:laufakte-' + vorgaengerLaufId`, `inhalt:
+  kanonischesJson(vorgaengerLaufakteVersion.daten)`) der Anfragenliste
+  vorangestellt und diese erweiterte Liste — nicht `eingaben.anfragen` —
+  an `baueKontextpaket` übergeben. Ohne `vorgaengerLaufId`: Verhalten
+  unverändert. Kein Codepfad übergibt die Vorgänger-`laufId` an
+  `schreibeWirkungsmarke`/`schreibeCheckpoint`/`starteGateway` — der
+  Vorgängerlauf bleibt unverändert. Dateikopf/Funktionsdoku um WS-2b
+  ergänzt (Muster WS-1/WS-2a-Nachträge).
+- `src/execution-controller/execution-controller.test.ts`: drei neue
+  `node:test`-Fälle. `AK7-positiv-A (KLAERUNG_ERFORDERLICH)`:
+  Vorgängerlauf über einen direkten `starteGateway`-Aufruf erzeugt,
+  `klassifiziereLauf` bewusst nicht aufgerufen (offene `run_prepared`
+  bleibt stehen), `stelleLaufstatusFest(vorgaengerLaufId).status ===
+  'KLAERUNG_ERFORDERLICH'` vorab belegt. `AK7-positiv-B
+  (FEHLGESCHLAGEN)`: Vorgängerlauf real über `fuehreAufgabeDurch` mit der
+  bestehenden F6a-Attrappe `attrappeOhneErgebnisobjekt` (TP-01e Messfall
+  A) bis `FEHLGESCHLAGEN` durchlaufen. Beide Fälle prüfen den
+  Lineage-Eintrag als `eingaben[0]` (nicht `.find()`) gegen die real
+  geladene Vorgänger-Laufakte — belegt sowohl Anwesenheit, Hash-Gleichheit
+  als auch die vom Vertrag verlangte Voranstellung (plan-v1 Abschnitt
+  2.3, Korrekturrunde s. u.) — und einen echten Vorher/Nachher-Vergleich
+  von `stelleLaufstatusFest(vorgaengerLaufId)` als Isolationsnachweis
+  (F-091-Muster) statt einer Grep-Prüfung über die mehrzeilige
+  `starteGateway`-Aufrufstelle. `Vorbedingungsverstoß`: `vorgaengerLaufId`
+  auf eine nie existierende `laufId` → `assert.rejects`, Fehlertext prüft
+  auf die angegebene `vorgaengerLaufId`. `raeumeKette` um einen optionalen
+  dritten `vorgaengerLaufId`-Parameter erweitert
+  (`lineage-laufakte-<vorgaengerLaufId>`).
+- `scripts/check-f8-execution-controller.mjs` unverändert gelassen
+  (Vertrag SCOPE Punkt 4, Design-Entscheidung `[EMPFEHLUNG]`: ein Grep
+  gegen die mehrzeilige `starteGateway`-Aufrufstelle wäre nicht robust
+  baubar, der Vorher/Nachher-Test belegt die Isolation direkt und
+  strenger) — nach dem Bau erneut geprüft, beide bestehenden Greps
+  (AK1, AK3) weiterhin grün.
+
+`npm run check:template` und `npm run check` → je Exit 0, `tests 127,
+pass 127, fail 0` (124 + 3 neue WS-2b-Testfälle). Beleg in
+`state/gates.md` (F8-Execution-Controller-Gate, Nachtrag WS-2b).
+
+Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, je frischer
+Kontext, parallel) vor dieser Freigabe durchlaufen (CLAUDE.md DoD,
+F-046):
+
+- `code-reviewer`: erste Runde **Nicht freigegeben** — einziger Befund
+  (kritisch): dieser Journal-Nachtrag fehlte, obwohl `feature.md` bereits
+  auf `ABGESCHLOSSEN` stand und `state/gates.md`/`state/memory-map.md`/
+  `docs/STATUS.md` bereits nachgezogen waren (SCOPE Punkt 6 des Vertrags
+  nicht vollständig erfüllt — genau das Muster, das F-093, auf das der
+  Vertrag selbst verweist, verhindern soll). Alle inhaltlichen Punkte
+  (SCOPE 1-3 wörtlich umgesetzt, Throw-Semantik konsistent mit
+  `lineage-registry`/`human-transport`, keine Veränderung des
+  Vorgängerlaufs, Lineage-Hash-Vergleich gegen real geladene Daten,
+  Typisierung/Kommentar-Standard) bereits in der ersten Runde bestätigt,
+  keine weiteren Befunde.
+- `qa`: **Freigegeben mit Hinweisen**. AK7 durch die drei Testfälle
+  strukturell abgedeckt (beide Vorgängerzustände, Lineage-Verweis,
+  Isolation, Vorbedingungsverstoß), Modulgrenze eingehalten (kein
+  Zustands-Zweig auf den Vorgängerlauf im Controller), Testkalibrierung
+  überzeugend (kein F-103-Vakuum-Muster), der F-104-Widerspruch
+  `feature.md` AK7/Scope sauber dokumentiert. Ein Hinweis mit Schweregrad
+  niedrig: kein Testfall verifizierte ursprünglich die im Vertrag
+  wörtlich verlangte Position ("vorangestellt") des Lineage-Eintrags,
+  nur Anwesenheit und Hash — ein hypothetischer Regressionsfehler
+  (Anhängen statt Voranstellen) wäre damals unentdeckt geblieben.
+
+Korrekturrunde (beide Befunde in einem Durchgang behoben, kein zweites
+Rot): dieser Journal-Nachtrag ergänzt (behebt den Reviewer-Befund);
+`AK7-positiv-A`/`-B` von `kontextpaketVersion.eingaben.find(...)` auf
+direkten Zugriff `kontextpaketVersion.eingaben[0]` umgestellt, mit
+eigener Assertion auf `pfad` an Index 0 (behebt den QA-Hinweis, belegt
+jetzt auch die Voranstellung). `node --test
+execution-controller.test.ts` danach erneut `tests 11, pass 11, fail 0`.
+
+Statuswechsel-Begründung (SCOPE Punkt 6, F-093-Muster): mit diesem
+Vertrag ist AK7 vollständig umgesetzt und real getestet, AK1–6/8/9 bleiben
+unverändert erfüllt (WS-1/WS-2a), AK7-Restlücke aus dem Vertrag (keine
+Mehrfach-Wiederaufnahme-Ketten, keine `-retry-N`-Konventionsprüfung im
+Produktcode, keine Leitstand-Anbindung) ist ausdrücklich NICHT Teil des
+AK7-Wortlauts und bleibt bewusst offen (Vertrag NICHT-Abschnitt). Damit
+sind alle neun Akzeptanzkriterien aus `features/F8/feature.md` erfüllt —
+`features/F8/feature.md` Status wechselt im selben Commit wie dieser
+Bau von `READY_FOR_TECH` auf `ABGESCHLOSSEN` (kein separater Nachtrag,
+F-093-Auflage erfüllt). Gesamtstand F8: WS-1 (Kette), WS-2a
+(E-186-Eskalation über F9) und WS-2b (Wiederaufnahme mit Lineage-Verweis)
+vollständig umgesetzt und real getestet.
