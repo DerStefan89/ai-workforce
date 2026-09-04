@@ -1212,3 +1212,19 @@ Fundstelle: diese Sitzung, 04.09.2026, direkt nach Merge von PR #67.
 Auswirkung: kein Datenverlust (Fast-Forward am Ende sauber, Diff-Gegenprüfung vor jedem destruktiven Schritt bestätigte keine echte Abweichung), aber ein vermeidbarer Mehrfach-Rückfragezyklus.
 Maßnahme/Auflösung: F-100s Verbotsliste (`git log`, `git ls-tree`, `git ls-remote`, `git rev-parse`, `cat`, `grep`) ab sofort ausnahmslos einhalten, keine Ausnahme für „nur schnell synchronisieren". Für diesen Vorfall real aufgelöst (sauberer `git status`, `main` = `origin/main`).
 Feature/Run: F8 WS-2a-Nacharbeit, 04.09.2026.
+
+**F-116** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: Geräte-Bridge-Shell hatte kein Löschrecht auf den verbundenen Ordner — führte zu falsch-negativem Testergebnis bei der WS-2b-Verifikation.
+Beschreibung: Bei der unabhängigen Verifikation des WS-2b-Baus lief `node --test src/execution-controller/execution-controller.test.ts` über die Remote-Devices-Bridge zunächst mit 9 von 11 Fehlschlägen, alle mit identischem `EPERM: operation not permitted, unlink ...` beim Cleanup (`raeumeKette`s `rmSync`) — auch der unveränderte WS-1-Grünpfad-Test war betroffen. Ursache war kein Code-Fehler, sondern fehlendes Löschrecht der Bridge-Shell auf den verbundenen Ordner (dokumentierte Grundeinstellung). Nach `device_request_delete_permission` lief derselbe Testlauf 11/11 grün, die volle Suite 127/127 grün — deckungsgleich mit dem Build-Report.
+Fundstelle: Technical-Challenger-Sitzung, WS-2b-Verifikation, 04.09.2026.
+Auswirkung: hätte ohne die Gegenprobe am unveränderten WS-1-Test fälschlich als echte Regression im WS-2b-Code missverstanden werden können.
+Maßnahme/Auflösung: `device_request_delete_permission` einmalig für den Projektordner erteilt (gilt für den Rest der Sitzung). Für künftige Sitzungen: bei Testverifikation über die Bridge grundsätzlich vorab Löschrecht anfragen statt erst bei einem EPERM zu reagieren.
+Feature/Run: F8 WS-2b-Verifikation, 04.09.2026.
+
+**F-117** · `TECH_DEBT` · P3 · offen
+Titel: `state/freigabe-commit.md`-Gate (`commit-guard.cjs`) sichert nur den Pfad über die lokale Claude-Code-CLI-Session ab, nicht Commits, die der Mensch direkt im Terminal ausführt.
+Beschreibung: Der Hook blockt `git commit`/`git push` sowie jeden Bash-/Edit/Write-Zugriff auf die Freigabedatei ausschließlich innerhalb der lokalen Claude-Code-CLI-Session (PreToolUse-Hook auf deren eigenes Bash-Werkzeug). Führt der Mensch denselben Befehl direkt in seinem eigenen Terminal aus (wie in dieser Sitzung durchgehend praktiziert, 🖥️ TERMINAL-Konvention), greift dieses zweite Sicherheitsnetz nicht.
+Fundstelle: `.claude/hooks/commit-guard.cjs` Dateikopf, Aufgabe 3/4; Technical-Challenger-Sitzung, WS-2b-Verifikation, 04.09.2026.
+Auswirkung: keine akute — der Terminal-Pfad wird aktuell ausschließlich nach expliziter Freigabe im Chat genutzt (funktionierendes Ersatzverfahren). Die Datei täuscht aber ein einheitliches Schutzniveau vor, das für den Terminal-Pfad tatsächlich nicht besteht.
+Maßnahme: bei Gelegenheit im Hook-Dateikopf oder in SETUP.md dokumentieren, dass das Freigabefenster nur den CLI-Session-Bau-Pfad absichert, nicht direkte Terminal-Commits.
+Feature/Run: F8 WS-2b-Verifikation, 04.09.2026.
