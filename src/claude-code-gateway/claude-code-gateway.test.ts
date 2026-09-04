@@ -20,13 +20,16 @@
  * falschen Argument binden (Delta 10).
  */
 
+import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
-import { schreibeWirkungsmarke, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
+import { after, test } from 'node:test'
+import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { baueAufruf, leseModellBeobachtet, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
@@ -47,24 +50,162 @@ function raeumeKette(laufId: string): void {
   rmSync(join('kontrollzustand-roh', laufId), { recursive: true, force: true })
 }
 
+function gueltigeEingaben(): AufrufEingaben {
+  return { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep'] } }
+}
+
+// ─── F4-Startfreigabe-Fixture (F6b WS-G): starteGateway ruft ab jetzt bei
+// jedem Aufruf real pruefeStartfreigabe auf — jeder starteGateway-Test
+// braucht deshalb eine zu istUebrigeFelder/istZustand passende Baseline +
+// einen passenden Wirksamkeitsnachweis in einem Wegwerf-Git-Repo (Muster
+// invocation-policy.test.ts), plus eine Attrappen-Referenzdatei
+// (aktuelle-autorisierung.json), einmal modul-weit aufgebaut und über
+// startfreigabeOptionen() an jeden starteGateway-Aufruf gereicht. ───────────
+
+function git(repoWurzel: string, argumente: string[]): string {
+  return execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
+}
+
+function neuesExternesRepo(): string {
+  const repoWurzel = join(tmpdir(), `f6a-gateway-test-${randomUUID()}`)
+  mkdirSync(repoWurzel, { recursive: true })
+  git(repoWurzel, ['init', '--quiet'])
+  git(repoWurzel, ['config', 'user.email', 'test@example.invalid'])
+  git(repoWurzel, ['config', 'user.name', 'Test'])
+  writeFileSync(join(repoWurzel, '.gitattributes'), '* -text\n')
+  git(repoWurzel, ['add', '.gitattributes'])
+  git(repoWurzel, ['commit', '--quiet', '-m', 'init: Zeilenenden pinnen'])
+  return repoWurzel
+}
+
+function committeDatei(repoWurzel: string, relativerPfad: string, inhalt: string): { pfad: string; commit_hash: string; datei_hash: string } {
+  const zielpfad = join(repoWurzel, relativerPfad)
+  mkdirSync(dirname(zielpfad), { recursive: true })
+  writeFileSync(zielpfad, inhalt)
+  git(repoWurzel, ['add', relativerPfad])
+  git(repoWurzel, ['commit', '--quiet', '-m', relativerPfad])
+  const commitHash = git(repoWurzel, ['rev-parse', 'HEAD']).trim()
+  return { pfad: zielpfad, commit_hash: commitHash, datei_hash: sha256Hex(inhalt) }
+}
+
+const STARTFREIGABE_REPO = neuesExternesRepo()
+
+// Wegwerf-"Projektverzeichnis" mit eigenem .claude/settings.json + Hook —
+// GENAU das misst ermittleIstZustand, unabhängig vom echten Repo dieses
+// Prozesses (dessen .claude/settings.json/Hooks sich ändern könnten, ohne
+// dass dieser Test mitziehen soll).
+const PROJEKT_VERZEICHNIS = join(tmpdir(), `f6a-gateway-projekt-${randomUUID()}`)
+const HOOK_INHALT = 'hook-inhalt-fixture'
+mkdirSync(join(PROJEKT_VERZEICHNIS, '.claude', 'hooks'), { recursive: true })
+writeFileSync(join(PROJEKT_VERZEICHNIS, '.claude', 'hooks', 'guard.js'), HOOK_INHALT)
+const SETTINGS_PFAD = join(PROJEKT_VERZEICHNIS, '.claude', 'settings.json')
+writeFileSync(
+  SETTINGS_PFAD,
+  JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: 'node .claude/hooks/guard.js' }] }] } })
+)
+
+const ISTUEBRIGEFELDER_FIXTURE = {
+  werkzeug_version_deklariert: '2.1.241',
+  berechtigungskontext: 'profil-standard',
+  arbeitsverzeichnis_pfad: process.cwd(),
+  startziel_pfad: GUELTIGES_STARTZIEL[0],
+}
+
+const ISTZUSTAND_FIXTURE = ermittleIstZustand(SETTINGS_PFAD)
+
+const BASELINE_REFERENZ = committeDatei(
+  STARTFREIGABE_REPO,
+  'invocation-policy-baseline/gueltig.json',
+  JSON.stringify({
+    werkzeug_konfiguration: { pfad: '.claude/settings.json', hash: ISTZUSTAND_FIXTURE.werkzeug_konfiguration_hash },
+    schutzskripte: ISTZUSTAND_FIXTURE.schutzskripte,
+  })
+)
+
+function nachweisInhalt(istUebrigeFelder: typeof ISTUEBRIGEFELDER_FIXTURE): string {
+  return JSON.stringify({
+    gueltigkeitsschluessel: {
+      werkzeug_konfiguration_hash: ISTZUSTAND_FIXTURE.werkzeug_konfiguration_hash,
+      schutzskript_hashes: ISTZUSTAND_FIXTURE.schutzskripte.map((eintrag) => eintrag.hash),
+      werkzeug_version_deklariert: istUebrigeFelder.werkzeug_version_deklariert,
+      berechtigungskontext: istUebrigeFelder.berechtigungskontext,
+      arbeitsverzeichnis_pfad: istUebrigeFelder.arbeitsverzeichnis_pfad,
+      startziel_pfad: istUebrigeFelder.startziel_pfad,
+    },
+    rot_fall_beleg: 'Testfall — kein echter Rot-Fall-Nachweis',
+    geprueft_am: new Date().toISOString(),
+  })
+}
+
+const WIRKSAMKEITSNACHWEIS_REFERENZ = committeDatei(
+  STARTFREIGABE_REPO,
+  'invocation-policy-wirksamkeitsnachweis/gueltig.json',
+  nachweisInhalt(ISTUEBRIGEFELDER_FIXTURE)
+)
+
+const AKTUELLE_AUTORISIERUNG_PFAD = join(PROJEKT_VERZEICHNIS, 'aktuelle-autorisierung.json')
+writeFileSync(
+  AKTUELLE_AUTORISIERUNG_PFAD,
+  JSON.stringify({ baselineReferenz: BASELINE_REFERENZ, wirksamkeitsnachweisReferenz: WIRKSAMKEITSNACHWEIS_REFERENZ })
+)
+
+// Zweite, mit ISTUEBRIGEFELDER_FIXTURE NICHT übereinstimmende Referenzdatei
+// (E-188-Drift bei sonst gültiger Baseline) für den ABGELEHNT-Rot-Fall.
+const NACHWEIS_MIT_DRIFT_REFERENZ = committeDatei(
+  STARTFREIGABE_REPO,
+  'invocation-policy-wirksamkeitsnachweis/drift.json',
+  nachweisInhalt({ ...ISTUEBRIGEFELDER_FIXTURE, berechtigungskontext: 'ein-anderes-profil' })
+)
+const AKTUELLE_AUTORISIERUNG_MIT_DRIFT_PFAD = join(PROJEKT_VERZEICHNIS, 'aktuelle-autorisierung-drift.json')
+writeFileSync(
+  AKTUELLE_AUTORISIERUNG_MIT_DRIFT_PFAD,
+  JSON.stringify({ baselineReferenz: BASELINE_REFERENZ, wirksamkeitsnachweisReferenz: NACHWEIS_MIT_DRIFT_REFERENZ })
+)
+
+// Valides JSON, aber falsche Form (kein baselineReferenz/wirksamkeitsnachweisReferenz
+// mit den erwarteten String-Feldern) — deckt die Formprüfung in
+// leseAktuelleAutorisierung ab, nicht nur "Datei fehlt".
+const AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD = join(PROJEKT_VERZEICHNIS, 'aktuelle-autorisierung-falsche-form.json')
+writeFileSync(AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD, JSON.stringify({ baselineReferenz: {}, wirksamkeitsnachweisReferenz: null }))
+
+after(() => {
+  rmSync(STARTFREIGABE_REPO, { recursive: true, force: true })
+  rmSync(PROJEKT_VERZEICHNIS, { recursive: true, force: true })
+})
+
+function startfreigabeOptionen() {
+  return {
+    settingsPfad: SETTINGS_PFAD,
+    aktuelleAutorisierungPfad: AKTUELLE_AUTORISIERUNG_PFAD,
+    startfreigabeRepoWurzel: STARTFREIGABE_REPO,
+  }
+}
+
 function gueltigeGatewayEingaben(laufId: string): GatewayEingaben {
   return {
     laufId,
     profilReferenz: PROFIL_REFERENZ,
     tokens: baueAufruf(gueltigeEingaben()),
     werkzeugStartziel: GUELTIGES_STARTZIEL,
-    werkzeugVersionDeklariert: '2.1.241',
-    berechtigungskontext: 'profil-standard',
+    werkzeugVersionDeklariert: ISTUEBRIGEFELDER_FIXTURE.werkzeug_version_deklariert,
+    berechtigungskontext: ISTUEBRIGEFELDER_FIXTURE.berechtigungskontext,
   }
-}
-
-function gueltigeEingaben(): AufrufEingaben {
-  return { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep'] } }
 }
 
 test('baueAufruf liefert das erwartete Tokens-Array — Grünfall', () => {
   const tokens = baueAufruf(gueltigeEingaben())
-  assert.deepStrictEqual(tokens, ['--model', 'sonnet', '--output-format', 'json', '--setting-sources', 'project', '--tools', 'Read,Grep'])
+  assert.deepStrictEqual(tokens, [
+    '--model',
+    'sonnet',
+    '--output-format',
+    'json',
+    '--setting-sources',
+    'project',
+    '--tools',
+    'Read,Grep',
+    '--allowedTools',
+    'Read,Grep',
+  ])
 })
 
 test('baueAufruf wirft ohne modell', () => {
@@ -125,6 +266,7 @@ test('starteGateway liefert eine vollständige Laufakte bei validem Ergebnisobje
   const laufId = neueLaufId('gateway-gruen')
   try {
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: attrappeMitValidemErgebnis,
@@ -161,6 +303,7 @@ test('starteGateway verweigert bei verbotenem Aufrufparameter — WS1-Check grei
       tokens: ['--model', 'sonnet', '--dangerously-skip-permissions'],
     }
     const ergebnis = await starteGateway(eingaben, {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: spyStarter,
@@ -189,6 +332,7 @@ test('starteGateway kennzeichnet die Laufakte als unvollständig bei einem Fehll
   const laufId = neueLaufId('gateway-abbruch')
   try {
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: attrappeOhneErgebnisobjekt,
@@ -207,10 +351,121 @@ test('starteGateway kennzeichnet die Laufakte als unvollständig bei einem Fehll
   }
 })
 
+test('starteGateway verweigert bei Drift im F4-Gültigkeitsschlüssel — kein Prozessstart, kein RUN_PREPARED (F6b WS-G, E-188)', async () => {
+  const laufId = neueLaufId('gateway-rot-f4-drift')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      aktuelleAutorisierungPfad: AKTUELLE_AUTORISIERUNG_MIT_DRIFT_PFAD,
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, false)
+    assert.ok(!ergebnis.ok)
+    assert.match(ergebnis.grund, /E-188/)
+    assert.strictEqual(starterAufgerufen, false, 'starteProzess darf bei ABGELEHNT nie aufgerufen werden')
+
+    const status = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.strictEqual(status.status, 'NICHT_GESTARTET')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway verweigert, wenn die Autorisierungs-Referenzdatei fehlt — kein Absturz, klarer Grund (F6b WS-G)', async () => {
+  const laufId = neueLaufId('gateway-rot-referenzdatei-fehlt')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      aktuelleAutorisierungPfad: join(PROJEKT_VERZEICHNIS, 'existiert-nicht.json'),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, false)
+    assert.ok(!ergebnis.ok)
+    assert.match(ergebnis.grund, /Referenzdatei fehlt/)
+    assert.strictEqual(starterAufgerufen, false, 'starteProzess darf ohne Referenzdatei nie aufgerufen werden')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway verweigert, wenn die Autorisierungs-Referenzdatei valides JSON aber die falsche Form hat — kein Absturz (F6b WS-G)', async () => {
+  const laufId = neueLaufId('gateway-rot-referenzdatei-falsche-form')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      aktuelleAutorisierungPfad: AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD,
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, false)
+    assert.ok(!ergebnis.ok)
+    assert.match(ergebnis.grund, /nicht die erwartete Form/)
+    assert.strictEqual(starterAufgerufen, false, 'starteProzess darf bei falsch geformter Referenzdatei nie aufgerufen werden')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway verweigert, wenn .claude/settings.json am gemessenen Pfad fehlt — kein Absturz, keine ungefangene Exception (F6b WS-G)', async () => {
+  const laufId = neueLaufId('gateway-rot-settings-fehlt')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      settingsPfad: join(PROJEKT_VERZEICHNIS, '.claude', 'settings-existiert-nicht.json'),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, false)
+    assert.ok(!ergebnis.ok)
+    assert.match(ergebnis.grund, /Ist-Zustand/)
+    assert.strictEqual(starterAufgerufen, false, 'starteProzess darf ohne messbaren Ist-Zustand nie aufgerufen werden')
+
+    const status = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.strictEqual(status.status, 'NICHT_GESTARTET')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 test('starteGateway registriert die Laufakte über F2 (Lineage) mit dem exakten Inhalt', async () => {
   const laufId = neueLaufId('gateway-lineage')
   try {
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: attrappeMitValidemErgebnis,
@@ -323,6 +578,7 @@ test('starteGateway verweigert bei ungültigem werkzeugStartziel — kein RUN_PR
       werkzeugStartziel: [],
     }
     const ergebnis = await starteGateway(eingaben, {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: spyStarter,
@@ -344,6 +600,7 @@ test('starteGateway trägt werkzeugStartziel und startfehler im Rohstrom (F-071)
   const laufId = neueLaufId('gateway-rohstrom-startfehler')
   try {
     const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
       starter: attrappeOhneErgebnisobjekt,

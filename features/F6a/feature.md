@@ -185,8 +185,14 @@ Reviewer-/QA-Pass vor Merge noch ausstehend:
   inhalts_hash` referenziert.
 - **AK7** — `berechtigungskontext`, `arbeitsverzeichnis_pfad` (roh,
   `process.cwd()`) und `werkzeug_version_deklariert` sind Teil von
-  `LAUFAKTE_V0` — deskriptiv, **ohne** F4-Vollcheck (Option B, siehe
-  Dependencies-Abschnitt unten), kein Gültigkeitsschlüssel im F4-Sinn.
+  `LAUFAKTE_V0` — deskriptiv, ursprünglich **ohne** F4-Vollcheck (Option B,
+  siehe Dependencies-Abschnitt unten). **Seit F6b WS-G (03.09.2026)
+  überholt:** `starteGateway` selbst — die von F6a genutzte Funktion —
+  prüft bei jedem Aufruf real F4s `pruefeStartfreigabe` (E-183/E-188,
+  voller Gültigkeitsschlüssel-Vergleich), unabhängig davon, welches
+  Feature es aufruft. F6a deklariert dabei weiterhin ausschließlich
+  lesende Werkzeuge (Read/Grep) — daran ändert sich nichts —, aber das
+  Gate in `starteGateway` selbst lässt sich nicht mehr umgehen.
 - **AK8** — real erfüllt seit WS4 SCOPE 7 (02./03.09.2026): das echte
   `"type":"result"`-Objekt trägt ein `modelUsage`-Objekt, dessen
   Schlüssel den Modellnamen bildet. `leseModellBeobachtet`
@@ -198,11 +204,15 @@ Reviewer-/QA-Pass vor Merge noch ausstehend:
 - **AK9** — Fehllauf ohne Ergebnisobjekt (TP-01e-Muster, Attrappe
   `attrappeOhneErgebnisobjekt`) führt zu `beobachtungsbasis_vollstaendig:
   false`, **keine** Terminal-Wirkungsmarke — Test vorhanden.
-- **AK11** — real erfüllt seit WS4 (`scripts/verify-f6a-real-run.mjs`,
-  SCOPE 7, 02./03.09.2026): `starteGateway`/`starteProzess` starten unter
-  Windows real einen Claude-Code-Prozess (`execFile` gegen die native
-  `bin/claude.exe` der npm-Global-Installation, kein aktivierter
-  Shell-Modus) und liefern ein valides `"type":"result"`-Objekt.
+- **AK11** — real erfüllt seit WS4 (SCOPE 7, 02./03.09.2026):
+  `starteGateway`/`starteProzess` starten unter Windows real einen
+  Claude-Code-Prozess (`execFile` gegen die native `bin/claude.exe` der
+  npm-Global-Installation, kein aktivierter Shell-Modus) und liefern ein
+  valides `"type":"result"`-Objekt. Ursprünglicher Beleg
+  `scripts/verify-f6a-real-run.mjs` seit F6b WS-G gelöscht (rief
+  `starteGateway` ohne das seither verbindliche F4-Gate auf — genau der
+  Bypass, den WS-G aufhebt); Nachfolge-Beleg für den Schreib-Grün-Fall:
+  `scripts/verify-f6b-ws-g-schreiblauf.mjs`.
 - **AK14** — neu, siehe oben; Gate-Grep + Selbsttest in
   `scripts/check-f6a-claude-code-gateway.mjs` umgesetzt.
 - **AK15** — neu (WS4, Hygiene-Guard, keine Vertrauensgrenze — die
@@ -232,10 +242,16 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
 - Hard, erfüllt: **F4** (Invocation Policy) — `pruefeAufrufparameter`,
   `VERBOTENE_AUFRUFPARAMETER`, `verweigereStart` aus
   `src/invocation-policy/index.ts`, unverändert von außen aufgerufen.
-  `pruefeStartfreigabe` (E-183/E-188, volle Startfreigabe) wird von F6a
-  **nicht** aufgerufen — laut ARCHITECTURE §3/Zielfassung §16.4 auf die
-  schreibende Execution skaliert, bleibt F6b vorbehalten (Advisor-Pass
-  Befund 1, Option A, 31.08.2026).
+  **Seit F6b WS-G (03.09.2026) überholt:** ursprünglich wurde
+  `pruefeStartfreigabe` (E-183/E-188, volle Startfreigabe) von F6a
+  **nicht** aufgerufen (laut ARCHITECTURE §3/Zielfassung §16.4 auf die
+  schreibende Execution skaliert, F6b vorbehalten, Advisor-Pass Befund 1,
+  Option A, 31.08.2026). `starteGateway` selbst ruft `pruefeStartfreigabe`
+  jetzt bei jedem Aufruf real auf — F6a bleibt für sich lese-beschränkt,
+  aber jeder Aufruf von `starteGateway` (auch ein reiner F6a-Lesepfad-Aufruf)
+  durchläuft ab jetzt das volle F4-Gate. Mit Stefan am 03.09.2026
+  bestätigt, hebt die vorherige Option-A-Entscheidung für `starteGateway`
+  auf.
 - Hard, erfüllt: **F5** (Context Builder) — `baueKontextpaket`,
   `pruefeKontextpaketFrisch` aus `src/context-builder/index.ts`.
 - Hard, erfüllt: **F1B/F1** (Checkpoint Store, Wirkungsmarke) —
@@ -254,15 +270,21 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
   Nachtrag, `features/F6a/journal.md` „Challenge F-030".
 - Wird in dieser Akte geschlossen: **F-048** (Aufrufrepräsentation,
   siehe Scope und AK2).
-- Ausdrücklich **nicht** Voraussetzung: F-053 (E-188 ohne erbrachten
-  Rot-Fall) und §16.8 Punkt 3 — F6a schreibt nicht, die Lücke wird erst
-  für F6b blockierend. **Bestätigt 31.08.2026 (WS2/WS3-Challenge):**
-  Eine Ausweitung auf die volle `pruefeStartfreigabe` für WS2/WS3 wurde
-  geprüft und wieder verworfen — `ARCHITECTURE.md` §3/§16.4 skalieren
-  diese Prüfung wörtlich auf „Execution mit Schreibwirkung", WS2/WS3
-  bleiben laut eigenem Scope lese-beschränkt. Siehe
-  `state/plan-v1-f6a-ws2-ws3-prozessstart.md` (Fassung 2) und
-  `state/advisor-findings-f6a-ws2-ws3-prozessstart.md` (Befund 1).
+- F-053 (E-188 ohne erbrachten Rot-Fall) und §16.8 Punkt 3: ursprünglich
+  ausdrücklich **nicht** Voraussetzung für F6a — F6a schreibt selbst
+  nicht, die Lücke wurde erst für F6b als blockierend eingestuft.
+  **Bestätigt 31.08.2026 (WS2/WS3-Challenge):** eine Ausweitung auf die
+  volle `pruefeStartfreigabe` für WS2/WS3 wurde geprüft und wieder
+  verworfen — `ARCHITECTURE.md` §3/§16.4 skalieren diese Prüfung wörtlich
+  auf „Execution mit Schreibwirkung", WS2/WS3 bleiben laut eigenem Scope
+  lese-beschränkt. Siehe `state/plan-v1-f6a-ws2-ws3-prozessstart.md`
+  (Fassung 2) und `state/advisor-findings-f6a-ws2-ws3-prozessstart.md`
+  (Befund 1). **F-053 seit F6b WS-F/WS-G geschlossen:** der Rot-Fall ist
+  real reproduziert (`scripts/verify-f6b-ws-f-rotfall.mjs`), und
+  `starteGateway` prüft seit WS-G bei jedem Aufruf das volle F4-Gate —
+  WS2/WS3 bleiben zwar in ihrem eigenen Scope lese-beschränkt (deklarieren
+  weiterhin nur Read/Grep), aber die Aussage „ohne F4-Vollcheck" trifft auf
+  die zugrunde liegende `starteGateway`-Funktion nicht mehr zu.
 - Nachgelagert: **F7** (Result Evaluator) — erster Konsument der von F6a
   erzeugten Beobachtungsbasis; ohne F7 bleibt jeder Lauf in
   `KLAERUNG_ERFORDERLICH` (AK5, bewusst so entschieden).
@@ -277,12 +299,14 @@ Entscheidung 1 Option B / Entscheidung 2 Option A).
 - **WS2 — Prozessstart und Beobachtungsbasis.** Einsetzbares
   Prozessstart-Primitiv (Argv-Array, kein Shell-String — F-057), `RUN_PREPARED`
   vor dem Start, WS1s bereits vorhandener E-182-Check
-  (`pruefeUndVerweigereBeiTreffer`) — **kein** F3-, **kein** volles
-  F4-Startfreigabe-Gate (geprüft und verworfen, WS2/WS3-Challenge
-  31.08.2026, siehe Dependencies-Abschnitt unten), zwei getrennte
-  Ablagen (E-190), `LAUFAKTE_V0`-Schema, Gültigkeitsschlüssel-Anteile
-  (deskriptiv, ohne F4-Vollcheck), `OBSERVED`-Modellidentität, Fehllauf
-  ohne Ergebnisobjekt, Gate + Tests gegen das Attrappen-Werkzeug.
+  (`pruefeUndVerweigereBeiTreffer`) — bei Bau ursprünglich **kein** F3-,
+  **kein** volles F4-Startfreigabe-Gate (geprüft und verworfen,
+  WS2/WS3-Challenge 31.08.2026, siehe Dependencies-Abschnitt unten), zwei
+  getrennte Ablagen (E-190), `LAUFAKTE_V0`-Schema, Gültigkeitsschlüssel-
+  Anteile (deskriptiv, ohne F4-Vollcheck), `OBSERVED`-Modellidentität,
+  Fehllauf ohne Ergebnisobjekt, Gate + Tests gegen das Attrappen-Werkzeug.
+  **Seit F6b WS-G (03.09.2026) überholt:** `starteGateway` prüft jetzt bei
+  jedem Aufruf real das volle F4-Gate (siehe Dependencies-Abschnitt).
 - **WS3 — Realer Nachweis.** Manuell auszuführendes Nachweis-Skript, ein
   echter `claude -p`-Lauf, Eintrag in `state/gates.md`. Nicht in der
   Standardkette.

@@ -19,10 +19,18 @@
  * dasselbe Objekt an beide pruefeStartbedingungX-Aufrufe — ein Aufrufer kann
  * die beiden Bedingungen dadurch nicht mit unterschiedlichen,
  * zueinander-aber-nicht-zur-Baseline-passenden Hash-Ständen bestehen lassen.
+ *
+ * ermittleHookPfade/ermittleIstZustand (F6b WS-G, hierher verschoben aus
+ * scripts/erzeuge-invocation-policy-nachweise.mjs): die einzige Messung des
+ * realen Ist-Zustands (settings.json- + Hook-Hashes), von genau dort UND von
+ * `starteGateway` (src/claude-code-gateway/index.ts) genutzt — sonst würde
+ * exakt dasselbe F11-Divergenzrisiko erneut entstehen, diesmal zwischen zwei
+ * unabhängig gebauten Messungen statt zwei Prüfungen.
  */
 
 import { gitattributesPinntZeilenenden, leiteRepoRelativenPfadAb, leseAusCommit } from '../authorization-boundary/index.ts'
 import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import type {
@@ -320,6 +328,66 @@ function leseUndVerifiziereCommitGepinnteDatei(referenz: CommitGepinnteDateiRefe
   }
 
   return { ok: true, geparst }
+}
+
+/**
+ * Liest jeden `command`-String aus `hooks` (beliebiges Ereignis, mit oder
+ * ohne `matcher`) und extrahiert daraus referenzierte `.claude/hooks/...`-
+ * Pfade. Strukturell aus dem geparsten Objekt abgeleitet, keine
+ * hartkodierte Dateiliste — kommt morgen ein sechster Hook dazu, nimmt
+ * diese Funktion ihn automatisch mit, ohne Codeänderung. Hierher verschoben
+ * (F6b WS-G, aus scripts/erzeuge-invocation-policy-nachweise.mjs) und von
+ * dort re-exportiert, damit Skript UND `starteGateway` (F6a/F6b) dieselbe
+ * Messung nutzen (F11-Divergenzrisiko, plan-v2 Delta 1).
+ */
+export function ermittleHookPfade(settingsGeparst: unknown): string[] {
+  const hooksSektion = (settingsGeparst as Record<string, unknown> | null | undefined)?.hooks
+  const pfade = new Set<string>()
+  if (typeof hooksSektion !== 'object' || hooksSektion === null) return []
+
+  for (const matcherEintraege of Object.values(hooksSektion as Record<string, unknown>)) {
+    if (!Array.isArray(matcherEintraege)) continue
+    for (const matcherEintrag of matcherEintraege) {
+      const hooks = (matcherEintrag as Record<string, unknown> | null)?.hooks
+      if (!Array.isArray(hooks)) continue
+      for (const hook of hooks) {
+        const command = (hook as Record<string, unknown> | null)?.command
+        if (typeof command !== 'string') continue
+        // command.match(...) statt der gleichwertigen RegExp-Methode auf dem
+        // Pattern selbst (gleiche Trefferform ohne globales Flag) — deren
+        // Methodenname ist wortgleich mit einem der in diesem Modul laut AC8
+        // verbotenen Namen (Kindprozessstart) und würde das Gate sonst
+        // fälschlich als Treffer melden, obwohl hier nur ein Muster gegen
+        // einen String abgeglichen wird.
+        const treffer = command.match(/\.claude[\\/]hooks[\\/][^\s"']+/)
+        if (treffer) pfade.add(treffer[0].replace(/\\/g, '/'))
+      }
+    }
+  }
+  return [...pfade].sort()
+}
+
+/**
+ * Misst den realen Ist-Zustand für E-183/E-188: Hash von `settingsPfad`
+ * (Werkzeugkonfiguration) plus Hash jeder darin referenzierten Hook-Datei
+ * (Schutzskripte), Hook-Pfade relativ zur Repo-Wurzel aus `settingsPfad`
+ * abgeleitet (Elternverzeichnis von `.claude/`). Gemeinsame Messfunktion für
+ * scripts/erzeuge-invocation-policy-nachweise.mjs und `starteGateway`
+ * (F6b WS-G) — verschoben statt zweimal gebaut (D5, F11-Muster).
+ */
+export function ermittleIstZustand(settingsPfad: string): IstZustand {
+  const settingsInhalt = readFileSync(settingsPfad, 'utf8')
+  const settingsGeparst = JSON.parse(settingsInhalt)
+  const werkzeugKonfigurationHash = sha256Hex(settingsInhalt)
+
+  const hookPfade = ermittleHookPfade(settingsGeparst)
+  const repoWurzelFuerHooks = dirname(dirname(settingsPfad))
+  const schutzskripte: SchutzskriptEintrag[] = hookPfade.map((pfad) => ({
+    pfad,
+    hash: sha256Hex(readFileSync(join(repoWurzelFuerHooks, pfad), 'utf8')),
+  }))
+
+  return { werkzeug_konfiguration_hash: werkzeugKonfigurationHash, schutzskripte }
 }
 
 /**

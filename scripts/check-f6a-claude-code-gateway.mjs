@@ -53,7 +53,7 @@ function raeumeKette(laufId) {
 
 // ─── (a) baueAufruf: Grün-Fall ─────────────────────────────────────────────
 const eingaben = { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep'] } }
-const erwartet = ['--model', 'sonnet', '--output-format', 'json', '--setting-sources', 'project', '--tools', 'Read,Grep']
+const erwartet = ['--model', 'sonnet', '--output-format', 'json', '--setting-sources', 'project', '--tools', 'Read,Grep', '--allowedTools', 'Read,Grep']
 const tokens = baueAufruf(eingaben)
 if (JSON.stringify(tokens) !== JSON.stringify(erwartet)) {
   befunde.push(`baueAufruf Grün-Fall: erwartet ${JSON.stringify(erwartet)}, erhalten ${JSON.stringify(tokens)}`)

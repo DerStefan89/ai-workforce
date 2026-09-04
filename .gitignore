@@ -36,6 +36,14 @@ kontrollzustand-test/
 # ausschließlich über ihren Inhalts-Hash referenziert.
 kontrollzustand-roh/
 
+# Scratch-Zielordner für scripts/verify-f6b-ws-g-schreiblauf.mjs (F6b
+# WS-G, Option A, 03.09.2026) — reale Schreibwirkung eines echten
+# Claude-Code-Laufs, kein Produktzustand. Kein chdir mehr (Option A:
+# process.cwd() muss das reale Repo bleiben, damit arbeitsverzeichnis_pfad
+# zum committeten Wirksamkeitsnachweis passt) — die Schreibwirkung wird
+# stattdessen hierher umgeleitet statt über einen Prozessumzug.
+scratch-f6b-ws-g/
+
 # Programm-Ebene — Basislinie und Erfolgskriterium der vier Beteiligten.
 # Personenbezogen, gehört nicht in ein öffentliches Vorlagen-Repo und
 # nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das
