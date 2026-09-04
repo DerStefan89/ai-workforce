@@ -1196,3 +1196,19 @@ Fundstelle: Diese Sitzung, TERMINAL-Blöcke zu `gh pr create --body "$(cat <<'EO
 Auswirkung: wiederholte Rückfragezyklen, vom Menschen bemerkt und bemängelt („Das passiert zu oft").
 Maßnahme: Terminal-Befehle für diesen Menschen grundsätzlich PowerShell-kompatibel ausgeben — mehrere `-m`-Flags statt Heredoc für mehrzeilige Commit-Messages, `Set-Content`/`--body-file` statt `$(cat <<EOF...)` für mehrzeilige PR-Bodies. Shell-Umgebung des Menschen zu Sitzungsbeginn einmal feststellen statt bei jedem Befehl neu zu raten.
 Feature/Run: Technical-Challenger-Sitzung F8 WS-2a, 04.09.2026.
+
+**F-114** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Zwei Claude-Sitzungen haben real gleichzeitig in dasselbe Arbeitsverzeichnis geschrieben — Verstoß gegen „Ein Schreiber pro Arbeitsverzeichnis".
+Beschreibung: Die Cloud-Sitzung (Technical Challenger, Zugriff über die Remote-Devices-Bridge) und eine zweite, lokale Bash-Sitzung (aus dem 🤖-PROMPT-Handoff für den WS-2a-Bau gestartet) haben unkoordiniert im selben Repo-Arbeitsverzeichnis committet. Die zweite Sitzung fand einen ihr unbekannten Commit (`3b68271`, Findings F-108–F-113) auf ihrem Branch und musste beim Menschen nachfragen, ob er echt ist.
+Fundstelle: Branch `feat/f8-execution-controller-ws2a`, Commits `ac79ad3` und `3b68271`, gemergt als PR #67 (`853792f`), 04.09.2026.
+Auswirkung: diesmal keine — orthogonale Dateien, kein Konflikt. Strukturell aber ein reales Kollisionsrisiko (Git-Index-Lock-Race, überschriebene Datei, stiller Verlust), nicht nur ein theoretisches.
+Maßnahme: Vor jedem weiteren Schreibzugriff einer Cloud-Sitzung auf ein Arbeitsverzeichnis nach einem 🤖-PROMPT-Handoff klären, ob die ausführende Sitzung noch aktiv ist.
+Feature/Run: F8 WS-2a, 04.09.2026.
+
+**F-115** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
+Titel: F-100 in derselben Sitzung erneut verletzt — `git fetch`/`git switch`/`git merge` aus der Bridge ausgeführt.
+Beschreibung: Nach Merge von PR #67 wollte die Cloud-Sitzung den lokalen Stand synchronisieren und lief dabei genau in das von F-100 beschriebene Muster: `.git/index.lock` und ein `tmp_obj` ließen sich aus der Bridge nicht entfernen, der Merge brach mit „local changes would be overwritten" ab und hinterließ einen Arbeitsbaum mit unveränderten main-Tracking-Infos, aber stale WS-2a-Dateiinhalten. Der Mensch musste den Zustand über drei Runden im eigenen Terminal auflösen (Diff-Gegenprüfung, `Remove-Item index.lock`, `git restore` + `git pull --ff-only`).
+Fundstelle: diese Sitzung, 04.09.2026, direkt nach Merge von PR #67.
+Auswirkung: kein Datenverlust (Fast-Forward am Ende sauber, Diff-Gegenprüfung vor jedem destruktiven Schritt bestätigte keine echte Abweichung), aber ein vermeidbarer Mehrfach-Rückfragezyklus.
+Maßnahme/Auflösung: F-100s Verbotsliste (`git log`, `git ls-tree`, `git ls-remote`, `git rev-parse`, `cat`, `grep`) ab sofort ausnahmslos einhalten, keine Ausnahme für „nur schnell synchronisieren". Für diesen Vorfall real aufgelöst (sauberer `git status`, `main` = `origin/main`).
+Feature/Run: F8 WS-2a-Nacharbeit, 04.09.2026.
