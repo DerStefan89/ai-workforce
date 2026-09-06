@@ -7,7 +7,26 @@
 </head>
 <body>
   <h1>Leitstand</h1>
-  <p class="hinweis">Rein lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage.</p>
+  <p class="hinweis">Rein lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahme: die Wiederaufnahme-Bedienung unten löst reale Läufe über F8 aus.</p>
+  <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
+
+  <section id="wiederaufnahme">
+    <h2>Wiederaufnahme</h2>
+    <p class="hinweis">„Wiederaufnahme starten" bei einem Lauf unten befüllt dieses Feld mit einer Vorlage
+      (<code>laufId</code>/<code>vorgaengerLaufId</code> gesetzt, die übrigen sieben Startauftrag-Felder als
+      Platzhalter). Vor dem Absenden prüfen und ergänzen — es gibt bewusst keine geführte Formular-UI.</p>
+    <textarea id="wiederaufnahme-json" rows="12" spellcheck="false"></textarea>
+    <div><button id="wiederaufnahme-starten">Starten</button></div>
+    <p id="wiederaufnahme-erfolg" class="erfolg" hidden></p>
+    <p id="wiederaufnahme-fehler" class="fehler" hidden></p>
+  </section>
+
+  <section id="startfehler-abschnitt">
+    <h2>Startfehler</h2>
+    <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
+    <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
+  </section>
+
   <div id="laeufe"></div>
   <script src="/app.js"></script>
 </body>
