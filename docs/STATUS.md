@@ -170,6 +170,13 @@ Scope von Fassung 1 (Auszug, Reihenfolge und Details siehe
 
 - Ein vollständig belegter End-to-End-Durchlauf über alle vier
   Workflow-Layer, mit dem Referenzfeature Belegschaftskonfiguration.
+  Mechanik-Nachweis real erbracht (§13.1): über den Leitstand (F10)
+  ausgelöster echter Durchlauf F5→F6a→F7→F1B mit echtem
+  Claude-Code-Kindprozess, `laufId` `e2e-referenzfeature-2026-09-06`,
+  Terminalzustand `ABGESCHLOSSEN`/`FEHLGESCHLAGEN` (Mechanik lief
+  vollständig real durch, der Kindprozess selbst scheiterte an
+  fehlender Prompt-Übergabe in F6a WS1 — siehe
+  `state/e2e-nachweis-meilenstein-1.md` für Details und Einordnung).
 - Genau ein aktiver Workstream; jeder Passtyp mindestens einmal.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,

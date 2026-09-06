@@ -1,0 +1,13 @@
+{
+  "projekt": "ai-workforce",
+  "version": 1,
+  "gates": [],
+  "dod": [],
+  "werkzeuge": {
+    "ausfuehrer": {
+      "modell": "claude-sonnet-5",
+      "werkzeugVersionDeklariert": "2.1.258 (Claude Code)"
+    }
+  },
+  "reviewRegeln": []
+}
