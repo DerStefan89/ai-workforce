@@ -25,6 +25,13 @@
  * leitstand.mjs), die eigene Serverinstanzen gegen ein Testverzeichnis
  * starten, ohne sich gegenseitig zu beeinflussen. Seed-Daten kommen separat
  * aus scripts/leitstand-seed.mjs, nicht aus diesem Server.
+ *
+ * F11 WS-1 (Option B, state/plan-v1-f11-auftrag-ws1.md Abschnitt 2.4):
+ * auftragstext ist jetzt Pflichtfeld eines Startauftrags (AK2 macht es zum
+ * Pflichtfeld von AusfuehrungsEingaben) — ERLAUBTE_STARTAUFTRAG_FELDER/
+ * PFLICHT_STARTAUFTRAG_FELDER/pruefeStartauftrags eingaben-Rückgabe
+ * entsprechend erweitert. Reine Formprüfung, keine Verhaltens-/Routen-
+ * Änderung.
  */
 
 import { createServer } from 'node:http'
@@ -226,6 +233,7 @@ const ERLAUBTE_STARTAUFTRAG_FELDER = new Set([
   'werkzeugStartziel',
   'werkzeugVersionDeklariert',
   'berechtigungskontext',
+  'auftragstext',
   'vorgaengerLaufId',
 ])
 
@@ -242,6 +250,7 @@ const PFLICHT_STARTAUFTRAG_FELDER = [
   'werkzeugStartziel',
   'werkzeugVersionDeklariert',
   'berechtigungskontext',
+  'auftragstext',
 ]
 
 /**
@@ -302,6 +311,7 @@ export function pruefeStartauftrag(body) {
       werkzeugStartziel: body.werkzeugStartziel,
       werkzeugVersionDeklariert: body.werkzeugVersionDeklariert,
       berechtigungskontext: body.berechtigungskontext,
+      auftragstext: body.auftragstext,
       ...(body.vorgaengerLaufId !== undefined ? { vorgaengerLaufId: body.vorgaengerLaufId } : {}),
     },
   }

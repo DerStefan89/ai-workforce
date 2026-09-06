@@ -61,6 +61,8 @@ export interface AusfuehrungsEingaben {
   werkzeugStartziel: string[]
   werkzeugVersionDeklariert: string
   berechtigungskontext: string
+  /** Auftragstext, dem Evidenzteil des Prompts als eigener, getrennter Abschnitt vorangestellt (F11 WS-1, plan-v1-f11-auftrag-ws1 Abschnitt 2.3, AK2). Nie ein Kontextpaket-Element (AK3). */
+  auftragstext: string
   /** Lineage-Verweis auf einen Vorgängerlauf bei Wiederaufnahme nach KLAERUNG_ERFORDERLICH oder ABGESCHLOSSEN/FEHLGESCHLAGEN (WS-2b, plan-v1 Abschnitt 2.3, AK7). Vom Aufrufer gewählt — der Controller generiert und prüft diese ID nicht. */
   vorgaengerLaufId?: string
 }
