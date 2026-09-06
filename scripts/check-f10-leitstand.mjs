@@ -79,6 +79,7 @@ const gueltigerStartauftrag = (laufId) => ({
   werkzeugStartziel: ['node', '--version'],
   werkzeugVersionDeklariert: 'test',
   berechtigungskontext: 'test',
+  auftragstext: 'Testauftragstext',
 })
 
 /**
@@ -124,6 +125,23 @@ function verzoegerung(ms) {
     }
     if (befunde.length === 0) {
       console.log(`✓ AK3: alle ${VERBOTENE_OPTIONEN_FELDER.size} AusfuehrungsOptionen-Felder plus ein unbekanntes Feld werden mit 400 abgelehnt.`)
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (c2) F11 AK2: Startauftrag ohne 'auftragstext' → 400 ──────────────────
+{
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-f11' })
+  try {
+    const { auftragstext, ...ohneAuftragstext } = gueltigerStartauftrag(`check-f10-f11-${randomUUID()}`)
+    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(ohneAuftragstext) })
+    const body = await antwort.json()
+    if (antwort.status !== 400 || !body.grund.includes("Pflichtfeld 'auftragstext' fehlt")) {
+      befunde.push(`F11 AK2: Startauftrag ohne 'auftragstext' erwartet 400 mit "Pflichtfeld 'auftragstext' fehlt", erhalten status=${antwort.status}, grund=${JSON.stringify(body.grund)}`)
+    } else {
+      console.log("✓ F11 AK2: Startauftrag ohne 'auftragstext' wird mit 400 abgelehnt (\"Pflichtfeld 'auftragstext' fehlt\").")
     }
   } finally {
     await schliessen()

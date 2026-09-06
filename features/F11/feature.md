@@ -10,7 +10,7 @@ Auftrag als Kontrollartefakt und geführter Start
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: IN_ARBEIT
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,

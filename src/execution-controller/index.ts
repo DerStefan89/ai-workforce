@@ -53,6 +53,17 @@
  * human-transport/index.ts:90-92,114-117). Es existiert kein Codepfad, der
  * die Vorgänger-laufId an schreibeWirkungsmarke/schreibeCheckpoint/
  * starteGateway übergibt — der Vorgängerlauf bleibt unverändert.
+ *
+ * F11 WS-1 (state/plan-v1-f11-auftrag-ws1.md Abschnitt 2.3,
+ * state/tasks/f11-auftrag-ws1.md): eingaben.auftragstext (Pflichtfeld,
+ * AK2) wird dem aus dem Kontextpaket gebauten Evidenzteil als eigener,
+ * durch "===" sichtbar getrennter Abschnitt vorangestellt. Bei leerem
+ * Kontextpaket entfällt der Evidenzabschnitt vollständig statt eines
+ * leeren Trenners ohne Inhalt danach. bauePromptAusKontextpaket selbst
+ * bleibt unverändert — sie baut weiterhin ausschließlich den Evidenzteil
+ * aus den von F5 akzeptierten Elementen (F-124-Vertrag). auftragstext wird
+ * an keiner Stelle an baueKontextpaket gereicht (AK3, mechanisch geprüft
+ * über scripts/check-f11-auftrag.mjs).
  */
 
 import { randomUUID } from 'node:crypto'
@@ -150,7 +161,9 @@ export async function fuehreAufgabeDurch(
     return { ok: false, stufe: 'kontextpaket', ergebnis: kontextpaketErgebnis }
   }
 
-  const promptText = bauePromptAusKontextpaket(kontextpaketErgebnis.paket, anfragen)
+  const evidenzText = bauePromptAusKontextpaket(kontextpaketErgebnis.paket, anfragen)
+  const promptText =
+    evidenzText.length === 0 ? `Auftrag:\n${eingaben.auftragstext}` : `Auftrag:\n${eingaben.auftragstext}\n\n===\n\n${evidenzText}`
   const tokens = baueAufruf({ ...eingaben.aufrufEingaben, prompt: promptText })
 
   const gatewayErgebnis = await starteGateway(

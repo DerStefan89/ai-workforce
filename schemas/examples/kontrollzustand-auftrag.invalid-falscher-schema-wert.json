@@ -1,0 +1,7 @@
+{
+  "auftrag_schema": "v1",
+  "auftrag_id": "beispiel-auftrag",
+  "titel": "Beispielauftrag",
+  "auftragstext": "Setze die Beispieländerung im Referenzfeature um.",
+  "erstellt_am": "2026-09-06T09:00:00.000Z"
+}

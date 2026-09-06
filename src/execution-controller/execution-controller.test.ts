@@ -67,6 +67,17 @@
  * des Vorgängerlaufs über einen echten Vorher/Nachher-Vergleich statt
  * einer Grep-Prüfung über die mehrzeilige starteGateway-Aufrufstelle
  * (Vertrag SCOPE Punkt 4, Begründung SCOPE Punkt 4/OUTPUT).
+ *
+ * F11 WS-1 (state/tasks/f11-auftrag-ws1.md) ergänzt drei Fälle:
+ * `gueltigeEingaben` bekommt das neue Pflichtfeld `auftragstext`. Zwei
+ * AK2-Tests belegen über einen `spyStarter` (Muster Zeile 269-273 des
+ * F6a-Rot-Falls), dass die an F6a übergebenen `-p`-Tokens aus Auftrags-
+ * und Evidenzabschnitt bestehen, getrennt durch `"==="`, und dass ein
+ * leeres Kontextpaket den Evidenzabschnitt vollständig entfallen lässt.
+ * Ein AK3(b)-Test belegt über zwei reale Läufe mit unterschiedlichem
+ * `auftragstext`, dass die Marke nie im registrierten Kontextpaket
+ * auftaucht und die Elementanzahl unverändert bleibt (AK3-Grep-Gegenstück
+ * siehe `scripts/check-f11-auftrag.mjs`).
  */
 
 import { execFileSync } from 'node:child_process'
@@ -125,6 +136,7 @@ function gueltigeEingaben(uebrigeFelder: { werkzeug_version_deklariert: string; 
     werkzeugStartziel: GUELTIGES_STARTZIEL,
     werkzeugVersionDeklariert: uebrigeFelder.werkzeug_version_deklariert,
     berechtigungskontext: uebrigeFelder.berechtigungskontext,
+    auftragstext: 'Testauftrag',
   }
 }
 
@@ -258,6 +270,98 @@ test('AK1/AK5/AK8: Grün-Durchlauf ruft F5/F6a/F7/F1B je genau einmal und liefer
     assert.strictEqual(laufakteVersion.versionSequenz, 1)
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+// ─── F11 AK2: getrennter Prompt-Abschnitt (Auftrag/Evidenz, Trenner "===") ──
+
+test('F11 AK2: promptText besteht aus Auftragsabschnitt und Evidenzabschnitt, getrennt durch "==="', async () => {
+  const laufId = neueLaufId('f11a')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await fuehreAufgabeDurch(
+      laufId,
+      PROFIL_REFERENZ,
+      { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: 'Testauftragstext' },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: spyStarter, schreiber: () => {} }
+    )
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    const pIndex = erfassteTokens.indexOf('-p')
+    assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
+    assert.strictEqual(
+      erfassteTokens[pIndex + 1],
+      'Auftrag:\nTestauftragstext\n\n===\n\nPfad: test/anfrage.md\nFrage: Testfrage\nBegründung: Testbegruendung\nInhalt:\nTestinhalt'
+    )
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F11 AK2: leeres Kontextpaket → kein Evidenzabschnitt, kein "==="', async () => {
+  const laufId = neueLaufId('f11b')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await fuehreAufgabeDurch(
+      laufId,
+      PROFIL_REFERENZ,
+      { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), anfragen: [], auftragstext: 'Testauftragstext' },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: spyStarter, schreiber: () => {} }
+    )
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    const pIndex = erfassteTokens.indexOf('-p')
+    assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[pIndex + 1], 'Auftrag:\nTestauftragstext')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── F11 AK3(b): Auftragstext wird nie zu einem Kontextpaket-Element ───────────
+
+test('F11 AK3(b): Auftragstext-Marke fehlt im registrierten Kontextpaket, Elementanzahl unverändert bei anderem Auftragstext', async () => {
+  const laufIdA = neueLaufId('f11ca')
+  const laufIdB = neueLaufId('f11cb')
+  const marke = `MARKE-${randomUUID()}`
+  try {
+    const ergebnisA = await fuehreAufgabeDurch(
+      laufIdA,
+      PROFIL_REFERENZ,
+      { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: marke },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+    )
+    const ergebnisB = await fuehreAufgabeDurch(
+      laufIdB,
+      PROFIL_REFERENZ,
+      { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragstext: 'Ein völlig anderer Auftragstext' },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+    )
+    assert.strictEqual(ergebnisA.ok, true)
+    assert.strictEqual(ergebnisB.ok, true)
+
+    const kontextpaketA = ladeArtefaktVersion(`kontextpaket-${laufIdA}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    const kontextpaketB = ladeArtefaktVersion(`kontextpaket-${laufIdB}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketA)
+    assert.ok(kontextpaketB)
+
+    assert.strictEqual(kanonischesJson(kontextpaketA.daten).includes(marke), false, 'Auftragstext-Marke darf nicht im registrierten Kontextpaket auftauchen')
+    assert.strictEqual(
+      (kontextpaketA.daten as { elemente: unknown[] }).elemente.length,
+      (kontextpaketB.daten as { elemente: unknown[] }).elemente.length,
+      'Elementanzahl darf sich zwischen unterschiedlichen Auftragstexten nicht unterscheiden'
+    )
+  } finally {
+    raeumeKette(laufIdA)
+    raeumeKette(laufIdB)
   }
 })
 
