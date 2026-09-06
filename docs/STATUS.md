@@ -11,7 +11,8 @@ Einzige Quelle für Phasenstand und Scope.
 
 Ebene 1 (Produktgrundlage) und Ebene 2 (Technische Grundlage) sind
 abgeschlossen. Die Vertragsschiene (1, 2, Option B, 3, 4, 5) ist
-abgeschlossen. Meilenstein 1 ist in Arbeit.
+abgeschlossen. Meilenstein 1 ist abgeschlossen. Meilenstein 2 (Bedienbarer
+Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
 
 ## Erledigt
 
@@ -165,22 +166,34 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
 
 ## Offene Punkte
 
-Scope von Fassung 1 (Auszug, Reihenfolge und Details siehe
-`docs/projekt/umsetzungsplan-fassung-1.md`):
+### Meilenstein 1 — abgeschlossen
 
-- Ein vollständig belegter End-to-End-Durchlauf über alle vier
-  Workflow-Layer, mit dem Referenzfeature Belegschaftskonfiguration.
-  **Erbracht** (§13.1): über den Leitstand (F10) ausgelöster echter
-  Durchlauf F5→F6a→F7→F1B mit echtem Claude-Code-Kindprozess. Erster
-  Lauf (`e2e-referenzfeature-2026-09-06`) belegte die Mechanik,
-  scheiterte inhaltlich an fehlender Prompt-Übergabe in F6a WS1
-  (F-124). Nach dessen Fix (PR #80) Nachlauf mit neuer `laufId`
+- ✅ **Erledigt** — Ein vollständig belegter End-to-End-Durchlauf über
+  alle vier Workflow-Layer, mit dem Referenzfeature
+  Belegschaftskonfiguration (§13.1): über den Leitstand (F10) ausgelöster
+  echter Durchlauf F5→F6a→F7→F1B mit echtem Claude-Code-Kindprozess.
+  Erster Lauf (`e2e-referenzfeature-2026-09-06`) belegte die Mechanik,
+  scheiterte inhaltlich an fehlender Prompt-Übergabe in F6a WS1 (F-124).
+  Nach dessen Fix (PR #80) Nachlauf mit neuer `laufId`
   `e2e-referenzfeature-2026-09-06-f124-nachlauf`: Terminalzustand
   `ABGESCHLOSSEN`/`ERFOLGREICH`, echter Kindprozess ohne
   Genehmigungsverweigerung (`exitCode 0`, `permission_denials: []`) —
   siehe `state/e2e-nachweis-meilenstein-1.md` für beide Läufe und
   `state/findings.md` F-124 (gelöst).
-- Genau ein aktiver Workstream; jeder Passtyp mindestens einmal.
+- ✅ **Erledigt** — Genau ein aktiver Workstream; jeder Passtyp
+  mindestens einmal.
+
+### Meilenstein 2 — in Arbeit (`docs/projekt/zielfassung.md` §13.3)
+
+Scope, Reihenfolge und Details siehe
+`docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1b:
+
+- **F11** — Auftrag und geführter Start.
+- **F12** — Laufliste und Lauf-Detailansicht.
+- **F13** — Entscheiden und Wiederaufnehmen.
+- **F14** — Timeout und Abbruch.
+
+Reihenfolge zwingend F11 → F12 → F13 → F14 → Dogfooding.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder

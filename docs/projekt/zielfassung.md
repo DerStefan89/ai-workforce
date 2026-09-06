@@ -1,6 +1,6 @@
-# AI Workforce — Ziel-Fassung v1.11 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.12 (konsolidierte Sollquelle)
 
-Stand: 24.08.2026
+Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
 
 v1.2 → v1.3: **Architektur-Baseline aufgenommen (Abschnitt 16)** · sechzehn Drivers verbindlich · E-189 und E-190 ergänzt · 142a korrigiert · Durchsetzungsgrad-Tabelle um zwei Zeilen erweitert · TP-Stand nachgezogen.
@@ -20,6 +20,8 @@ v1.8 → v1.9: **F6b-Entscheidungen E5 und E7 eingearbeitet** (`claude/105_F6B_E
 v1.9 → v1.10: **§16.8 Punkt 3 geschlossen** (F6b WS-F, 03.09.2026, löst F-053): `scripts/verify-f6b-ws-f-rotfall.mjs` reproduziert den in F-078 beobachteten Rot-Fall (echter, real abgelehnter Write-Versuch über `--allowedTools` ohne Write) jederzeit über die reale F6a/F7-Kette gegen eine Wegwerf-Kopie außerhalb des Repos.
 
 v1.10 → v1.11: **E-192 und E-193 ergänzt** (Challenge F8, 04.09.2026): §9.4 E-192 (Execution Controller in Fassung 1 als minimaler Orchestrator auf Lauf-Ebene, Workstream-/Execution-Automaten aus §16.8 Punkt 6/A4 werden in Fassung 1 nicht implementiert, F-090) · E-193 (E-189-Autorisierungsgate bleibt im Claude-Code-Gateway, nicht im Execution Controller) · §9.4 Zeile 219 (E-189) und §16.2 Zeile 332 (Modultabelle) auf den Ist-Zustand nachgezogen · §16.8 Punkt 6 um den Hinweis „Automaten in Fassung 1 nicht implementiert (E-192)" ergänzt.
+
+v1.11 → v1.12: **§13.3 Meilenstein 2 ergänzt** (Stefan, 06.09.2026, nach realem Abschluss von Meilenstein 1 — `state/e2e-nachweis-meilenstein-1.md`, `docs/STATUS.md`): Fassung 1 hatte bislang nur Meilenstein 1 (§13.1); Meilenstein 2 „Bedienbarer Leitstand" ergänzt Zielsatz, Bestehensbedingung, Nicht-Ziele und zwei neue Entscheidungen E-M2-1/E-M2-2. Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig. Kein Widerspruch zu §13.1/§13.2 — Meilenstein 2 ist eine Erweiterung von Fassung 1, keine neue Fassung.
 
 ---
 
@@ -279,6 +281,22 @@ Mehrbenutzerbetrieb, Hosting, Abrechnung · Provider-Adapter *(13)* · parallele
 - **Core als Halter der Git-Freigabe.** `[Fakt, Nachtrag 24.08.2026]` Bleibt Fassung-2-Kandidat — keine volle Core-Eigentümerschaft über `git commit`/`push` in Fassung 1 (kollidiert potenziell mit D3, keine gemessene Baseline für diesen größeren Umbau). Die ursprüngliche Begründung „der Guard ist gemessen wirksam" ist falsifiziert (B6: neun Commits ungeschützt; Freigabedatei-Pflicht seit 23.08.2026 ersatzlos aus dem Harness entfernt) und entfällt ersatzlos. **Für Fassung 1 umgesetzt:** kleinerer Ersatzmechanismus über Vertrag 5 (Wiederherstellung der Freigabedatei-Pflicht im Harness, inklusive Lade-/Smoke-Test-Nachweis, zusätzlich Edit/Write-Schutz der Freigabedatei) — Entscheidung `59_...`, Umsetzung `41_...`, abgeschlossen und unabhängig verifiziert: PR #12, Merge-Commit `19a5d07`, 28.08.2026. Volle Core-Eigentümerschaft über `git commit`/`push` bleibt Fassung-2-Kandidat.
 - **Core-kontrollierte Ausführungsumgebung.** Wiedervorlage bei belegtem Vorfall mit Schreibwirkung außerhalb des Zielverzeichnisses.
 - **Sicherung des Bezeugungsbereichs.** Die Decision-Ablage außerhalb des Produkt-Repositoriums braucht eine eigene Sicherung; ihr Verlust blockiert alles.
+
+### 13.3 Meilenstein 2 — Bedienbarer Leitstand
+
+`[Fakt, Nachtrag 06.09.2026]` Stefan hat Fassung 1 nach realem Abschluss von Meilenstein 1 (§13.1, `state/e2e-nachweis-meilenstein-1.md`) um einen zweiten Meilenstein erweitert.
+
+**Zielsatz:** Stefan legt im Leitstand einen Auftrag an, startet dazu reale Läufe ohne JSON und ohne Terminal, sieht je Lauf verständlich was hinein- und herausging, entscheidet bei Rückfragen und Fehlschlägen im Leitstand, nimmt kontrolliert wieder auf, und arbeitet damit mehrere Tage real.
+
+**Bestehensbedingung:** mindestens fünf reale Arbeitsaufträge über den Leitstand, über mindestens drei Tage, darunter je mindestens ein erfolgreicher Lauf, ein fehlgeschlagener Lauf mit Wiederaufnahme, ein Lauf mit echter Rückfrage, ein Lauf mit ausgeschlossener Evidenz. Messgrößen: nötige Terminalwechsel im Normalfall = 0 (Git-Commits zählen nicht, sie bleiben laut D3/§9.1 beim Menschen), manuell geöffnete Dateien unter `kontrollzustand/` = 0, Fehldarstellungen des realen Zustands = 0.
+
+**Nicht in Meilenstein 2:** automatische Bedarfsanalyse, dynamische Rollen-/Modell-/Werkzeugwahl, Vorschlag des nächsten Schritts (A4), Findings-Ansicht im Produkt, History als eigene Ansicht, Analytics, Design-System, Mehrbenutzer, Mehrprojektverwaltung über das eine reale Profil hinaus, Zustandsautomaten (E-192/F-090 bleiben offen und unberührt).
+
+**E-M2-1** *(Stefan, 06.09.2026)* — Der Auftragstext bekommt ein eigenes Feld in `AusfuehrungsEingaben` und wird dem aus dem Kontextpaket gebauten Evidenzteil des Prompts als getrennter Abschnitt vorangestellt. Er wird nie ein Kontextpaket-Element — die F-124-Entscheidung bleibt in Kraft.
+
+**E-M2-2** *(Stefan, 06.09.2026)* — Ein Auftrag ist ein Kontrollartefakt und hält N Läufe, ohne Automat. Welcher Lauf als Nächstes startet, wählt weiterhin ausschließlich der Mensch (Orchestrierungs-Grundsatz Stufe 1, `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1).
+
+Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig.
 
 ---
 
