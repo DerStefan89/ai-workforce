@@ -36,7 +36,7 @@ import type { Anfrage, Budget, KontextpaketErgebnis } from '../context-builder/t
 import type { LaufStatus } from '../checkpoint-store/types.ts'
 import type { KlassifikationsErgebnis } from '../result-evaluator/types.ts'
 
-/** Durchreichung an F5/F6a/F7/F1B — kein Feld wird vom Controller selbst gelesen oder ausgewertet (D5). */
+/** Durchreichung an F5/F6a/F7/F1B — kein Feld wird vom Controller selbst gelesen oder ausgewertet (D5). Jedes Feld hier muss auch in scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER stehen (F10 AK3, Options-Sperre) — sonst kann ein Startauftrag-Body dieses Feld künftig unbemerkt durchreichen. */
 export interface AusfuehrungsOptionen {
   schreiber?: () => void
   basisVerzeichnis?: string
