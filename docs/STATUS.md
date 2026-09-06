@@ -163,6 +163,22 @@ Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
   `laufId` und `vorgaengerLaufId` erzeugt; die UI aktualisiert Läufe und
   Startfehler periodisch (Gate `scripts/check-f10-leitstand.mjs`,
   eingehängt in `npm run check`).
+- F11 (Auftrag und geführter Start) ist mit WS-1/WS-2/WS-3 vollständig
+  umgesetzt und `ABGESCHLOSSEN`: ein Auftrag wird als eigenes
+  Kernartefakt (`AUFTRAG_V0`) registriert, der Auftragstext geht als
+  eigener, von der Evidenz getrennter Abschnitt in den Prompt (AK1-3);
+  eine versionierte, schemageprüfte Startvorlage
+  (`startvorlagen/beispielprojekt.json`) liefert die
+  maschinenkonstanten Startfelder und benannte lesende/schreibende
+  Werkzeugsätze, der Server liest benannte Evidenzdateien selbst und
+  erzwingt D13 (genau ein aktiver Lauf je Serverinstanz) (AK4-7,9). Real
+  über den Leitstand nachgewiesen (AK8, `state/e2e-nachweis-f11-ws3.md`):
+  ein lesender und ein zweistufig schreibender Lauf mit echtem
+  Claude-Code-Kindprozess, belegt über Rohereignisstrom und
+  tatsächlichen Dateiinhalt/`git diff`, nie über die Selbstauskunft des
+  Kindprozesses. Dabei real gefunden und behoben: ein
+  Konfigurationsfehler in der Startvorlage (`werkzeugStartziel`-Drift
+  gegen den Wirksamkeitsnachweis, E-188, `state/findings.md` F-136).
 
 ## Offene Punkte
 
@@ -188,7 +204,7 @@ Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
 Scope, Reihenfolge und Details siehe
 `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1b:
 
-- **F11** — Auftrag und geführter Start.
+- ✅ **F11** — Auftrag und geführter Start. **Erledigt**, siehe oben.
 - **F12** — Laufliste und Lauf-Detailansicht.
 - **F13** — Entscheiden und Wiederaufnehmen.
 - **F14** — Timeout und Abbruch.

@@ -264,3 +264,86 @@ Byte-Korruption, real geklärt, kein Blocker mehr):**
   unter Windows unauffällig) — `loeseEvidenzPfadAuf` prüft jetzt zusätzlich
   explizit auf Laufwerksbuchstaben- und UNC-Pfad-Muster, unabhängig vom
   Ausführungs-Betriebssystem; Testfixtures unverändert.
+
+## 2026-09-06 — WS-3 umgesetzt (AK8), Status IN_ARBEIT → ABGESCHLOSSEN
+
+Zwei reale, über `POST /api/laeufe` ausgelöste Läufe mit echtem
+Claude-Code-Kindprozess, vollständiger Beleg in
+`state/e2e-nachweis-f11-ws3.md`:
+
+- **(a) lesend** (`e2e-f11-ws3-lesend-2026-09-06-v2`, `werkzeugsatz:
+  'lesend'`): Auftragstext beantwortet eine Frage zur real vom Server
+  gelesenen Evidenzdatei `features/F11/feature.md` — Ergebnis `"9"`
+  (korrekte AK-Anzahl), `exitCode 0`, `permission_denials: []`,
+  `ABGESCHLOSSEN`/`ERFOLGREICH`.
+- **(b1) schreibend, Scratch** (`e2e-f11-ws3-schreibend-scratch-2026-09-06`,
+  `werkzeugsatz: 'schreibend'`): Kindprozess erzeugte real
+  `scratch-f11-ws3/beweis-schreiblauf.txt` mit exakt dem verlangten
+  Inhalt (neuer git-ignorierter Ordner, `.gitignore` ergänzt, Muster
+  `scripts/verify-f6b-ws-g-schreiblauf.mjs`, kein `chdir`).
+- **(b2) schreibend, echte Datei** (`e2e-f11-ws3-schreibend-real-2026-09-06`,
+  Nachtrag `e2e-f11-ws3-schreibend-real-b2fix-2026-09-06`): zunächst
+  derselbe Mechanismus gegen `state/e2e-nachweis-f11-ws3.md` selbst
+  ([EMPFEHLUNG] — real getrackte, dauerhafte Nachweisdatei statt einer
+  thematisch fremden Dokudatei), nach dem Reviewer-/QA-Pass ergänzt um
+  einen zweiten Lauf gegen die eigens dafür angelegte, thematisch
+  neutrale `state/e2e-beleg-f11-ws3-b2.md`. Beide Läufe: Kindprozess
+  fügte real genau eine Zeile mit einem vorab generierten UUID-Marker
+  ein, belegt über echten `git diff`, nicht über die Selbstauskunft des
+  Kindprozesses.
+
+**Echter Blocker unterwegs, real gelöst (F-136):** der erste Versuch von
+Lauf (a) endete `VERWEIGERT` — `startvorlagen/beispielprojekt.json`s
+`werkzeugStartziel` (npm-Global-Pfad) driftete gegen den committeten
+Wirksamkeitsnachweis (erwartet `C:\Program Files\claude\claude.exe`,
+E-188). Ein bisher unentdeckter Konfigurationsfehler aus WS-2, weil die
+Startvorlage dort nur gegen Testattrappen geprüft wurde. Fix: einzige
+Änderung an `startvorlagen/beispielprojekt.json` (`werkzeugStartziel`
+korrigiert), kein Eingriff in `src/`. Danach beide Läufe real
+erfolgreich.
+
+Nicht angefasst: `src/`, Gate-Logik (`scripts/check-f11-auftrag.mjs`,
+bereits in WS-2 vollständig), keine neuen AK.
+
+`npm run check` → Exit 0, `tests 143, pass 143, fail 0` (unveränderte
+Zahl gegenüber WS-2 — WS-3 fügte keinen neuen `node:test`-Fall hinzu,
+reine Konfigurations-/Dokuänderung plus reale Läufe außerhalb der
+Testsuite).
+
+**Reviewer-/QA-Pass (frischer Kontext, F-046), beide „Freigegeben mit
+Hinweisen", keine Blocker:**
+
+- **code-reviewer:** vier Hinweise. (1) `npm run check`-Beleg fehlte im
+  ersten Entwurf dieses Journal-Eintrags („siehe unten" ohne Fortsetzung)
+  — oben nachgetragen. (2) `docs/STATUS.md` war nach dem F11-Abschluss
+  noch nicht nachgezogen — ergänzt (F11 als erledigt markiert, unter
+  „Erledigt" und in der Meilenstein-2-Liste). (3) der ursprüngliche
+  b2-Lauf gegen die Nachweisdatei selbst sei sauber dokumentiert, aber
+  eine dedizierte, eigens getrennte Datei wäre für künftige Leser
+  einfacher — als Nachtrag umgesetzt (`state/e2e-beleg-f11-ws3-b2.md`,
+  zweiter realer Lauf). (4) der QA-Pass fehlte zum Zeitpunkt des
+  code-reviewer-Durchgangs noch — parallel nachgeholt (unten).
+- **qa:** „Freigegeben mit Hinweisen", vier Funde. Zwei davon deckungsgleich
+  mit dem code-reviewer-Fund (b2-Selbstbezüglichkeit; fehlender
+  `npm run check`-Beleg) — beide wie oben behoben. Ein dritter, niedrig
+  eingestufter Fund (Beleg-Tiefe von (b1)/(b2) unter dem
+  Meilenstein-1-Referenzmuster — dort volle `checkpoints`-Liste je Lauf,
+  hier teils nur der `laufStatus`-Endzustand) bewusst nicht nachgezogen:
+  die relevanten Felder (`exitCode`, `permission_denials`, tatsächlicher
+  Dateiinhalt/`git diff`) sind vollständig vorhanden, die vollständige
+  `checkpoints`-Liste trägt für den AK8-Nachweis keinen zusätzlichen
+  Belegwert. Der vierte, kritischste Fund — `feature.md`/Journal
+  hätten den Status erst NACH einem dokumentierten Reviewer-/QA-Pass auf
+  `ABGESCHLOSSEN` setzen dürfen, nicht davor (F-046, „nicht retroaktiv
+  nachgeholt") — ist durch die Reihenfolge dieses Auftrags selbst
+  entstanden (Status wurde vor Abschluss beider Pässe gesetzt); da vor
+  diesem Nachtrag noch kein Commit erfolgt war, wird das hier korrigiert
+  dokumentiert statt rückwirkend verschleiert: der Status gilt erst mit
+  diesem vollständigen Journal-Eintrag (inklusive beider Pässe und ihrer
+  Behebung) als tatsächlich abgeschlossen.
+- `npm run check` nach allen Nachbesserungen erneut geprüft → Exit 0,
+  `tests 143, pass 143, fail 0` (unverändert).
+
+Status `IN_ARBEIT` → `ABGESCHLOSSEN` — F11 ist damit vollständig
+umgesetzt (AK1–AK9 erbracht, Reviewer-/QA-Pass durchlaufen und
+dokumentiert).

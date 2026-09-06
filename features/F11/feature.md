@@ -10,7 +10,7 @@ Auftrag als Kontrollartefakt und geführter Start
 
 ## Status
 
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -129,17 +129,26 @@ Entschieden (Stefan, 06.09.2026):
    sichtbar gemeldet, blockieren den Start aber nicht — sonst genügte
    ein einziger Absturz, um den Leitstand dauerhaft unbrauchbar zu
    machen.
-8. **AK8 Realer Nachweis, lesend und schreibend.** Zwei reale, über den
+8. **AK8 Realer Nachweis, lesend und schreibend.** ✅ **Erbracht**
+   (06.09.2026, `state/e2e-nachweis-f11-ws3.md`). Zwei reale, über den
    Leitstand ausgelöste Läufe mit echtem Claude-Code-Kindprozess:
-   (a) ein lesender Lauf, der einen Auftragstext beantwortet;
-   (b) ein schreibender Lauf mit `Write` im gewählten Werkzeugsatz, der
-   real eine Datei ändert — erster Nachweis gegen einen git-ignorierten
-   Scratch-Pfad nach dem Muster von
-   `scripts/verify-f6b-ws-g-schreiblauf.mjs`, danach gegen eine echte
-   Datei in einem Feature-Branch. Belegt über Rohereignisstrom
-   (`exitCode`, `permission_denials`, tatsächlicher Write) und den
-   geänderten Dateiinhalt, nie über die Selbstauskunft des
-   Kindprozesses. Keine Attrappe außerhalb des Gates.
+   (a) ein lesender Lauf (`e2e-f11-ws3-lesend-2026-09-06-v2`), der einen
+   Auftragstext zu einer real vom Server gelesenen Evidenzdatei
+   (`features/F11/feature.md`) korrekt beantwortet (`"9"`,
+   `permission_denials: []`); (b) ein schreibender Lauf, zweistufig —
+   zuerst gegen einen git-ignorierten Scratch-Pfad
+   (`e2e-f11-ws3-schreibend-scratch-2026-09-06`, Muster
+   `scripts/verify-f6b-ws-g-schreiblauf.mjs`), danach gegen eine echte,
+   getrackte Datei (`e2e-f11-ws3-schreibend-real-2026-09-06`/
+   `-b2fix-2026-09-06`, `state/e2e-nachweis-f11-ws3.md` selbst sowie —
+   nach Reviewer-/QA-Nachtrag — die dedizierte
+   `state/e2e-beleg-f11-ws3-b2.md`). Belegt über Rohereignisstrom
+   (`exitCode: 0`, `permission_denials: []`) und tatsächlichen
+   Dateiinhalt/`git diff`, nie über die Selbstauskunft des
+   Kindprozesses. Unterwegs real gefunden und behoben: ein
+   Konfigurationsfehler in `startvorlagen/beispielprojekt.json`
+   (`werkzeugStartziel`-Drift gegen den Wirksamkeitsnachweis, E-188,
+   F-136).
 9. **AK9 Gate.** `scripts/check-f11-auftrag.mjs`, eingehängt in
    `npm run check`, prüft AK3, AK5, AK6 und AK7 mechanisch.
 

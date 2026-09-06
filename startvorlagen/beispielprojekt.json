@@ -1,7 +1,7 @@
 {
   "startvorlage_schema": "v0",
   "profilPfad": "profiles/beispielprojekt.json",
-  "werkzeugStartziel": ["C:\\Users\\stefa\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe"],
+  "werkzeugStartziel": ["C:\\Program Files\\claude\\claude.exe"],
   "werkzeugVersionDeklariert": "2.1.258 (Claude Code)",
   "berechtigungskontext": "profil-standard",
   "modell": "claude-sonnet-5",
