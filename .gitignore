@@ -44,6 +44,13 @@ kontrollzustand-roh/
 # stattdessen hierher umgeleitet statt über einen Prozessumzug.
 scratch-f6b-ws-g/
 
+# Scratch-Zielordner für den F11 WS-3 AK8(b1)-Schreibnachweis
+# (features/F11/feature.md, state/e2e-nachweis-f11-ws3.md) — erster,
+# git-ignorierter Schreiblauf über den echten Leitstand-Schreibpfad
+# (POST /api/laeufe, Werkzeugsatz 'schreibend'), bevor derselbe Mechanismus
+# gegen eine echte, getrackte Datei (b2) läuft. Kein Produktzustand.
+scratch-f11-ws3/
+
 # Programm-Ebene — Basislinie und Erfolgskriterium der vier Beteiligten.
 # Personenbezogen, gehört nicht in ein öffentliches Vorlagen-Repo und
 # nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das

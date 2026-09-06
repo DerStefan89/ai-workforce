@@ -1372,3 +1372,11 @@ Fundstelle: scripts/check-f10-leitstand.mjs (F11 AK7(D13)-Verwaist-Testfall).
 Auswirkung: keine — vor Commit gefunden, kein Schaden an echtem kontrollzustand/, kein Kindprozess gestartet. Gleiche Fehlerklasse wie F-114 (zwei Schreiber im selben Zustand), hier selbst abgefangen statt real beobachtet.
 Maßnahme: keine akute; als Erinnerung, dass jeder starteTestserver-Aufruf immer eine fuehreAufgabeDurchFn-Attrappe braucht (Konvention bereits in der Datei etabliert, hier einmalig verfehlt).
 Feature/Run: F11 WS-2, 06.09.2026.
+
+**F-136** · `TECH_DEBT` · P2 · **gelöst**
+Titel: Startvorlage verwies auf einen zum Wirksamkeitsnachweis driftenden claude.exe-Pfad.
+Beschreibung: `startvorlagen/beispielprojekt.json`s `werkzeugStartziel` zeigte auf den npm-Global-Installationspfad (`C:\Users\stefa\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe`), der committete Wirksamkeitsnachweis erwartet aber `C:\Program Files\claude\claude.exe` (denselben Pfad wie `scripts/verify-f6b-ws-g-schreiblauf.mjs` und der Meilenstein-1-Nachweis). Der erste reale F11-WS-3-Lauf über den Leitstand endete dadurch real `VERWEIGERT` (F4 `pruefeStartfreigabe`, "Drift im Gültigkeitsschlüssel: 'startziel_pfad' (E-188)"). WS-2 hatte die Startvorlage nur gegen Testattrappen geprüft (`scripts/check-f10-leitstand.mjs`), nie live gegen den echten F4/F6a-Pfad — der Fehler blieb deshalb bis zum ersten realen Lauf unentdeckt.
+Fundstelle: `startvorlagen/beispielprojekt.json`; real beobachtet in `kontrollzustand/e2e-f11-ws3-lesend-2026-09-06/` (VERWEIGERT-Wirkungsmarke).
+Auswirkung: kein Sicherheitsproblem (F4 hat korrekt abgelehnt, kein Kindprozess gestartet) — aber ohne Fix wäre AK8 nicht real erbringbar gewesen.
+Maßnahme: `werkzeugStartziel` auf `["C:\\Program Files\\claude\\claude.exe"]` korrigiert (reine Konfigurationsdatei, kein Eingriff in `src/`), Server neu gestartet, beide folgenden F11-WS-3-Läufe real erfolgreich.
+Feature/Run: F11 WS-3, 06.09.2026, siehe `state/e2e-nachweis-f11-ws3.md`.
