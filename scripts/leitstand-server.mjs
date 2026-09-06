@@ -352,12 +352,26 @@ export function pruefeStartauftrag(body) {
  * Angesichts des Bedrohungsmodells (Server bindet nur auf 127.0.0.1, ein
  * einziger lokaler Nutzer, F10 AK4) kein Blocker für WS-2, aber bewusst
  * nicht durch diese Funktion abgedeckt.
+ *
+ * CI-Rotfall (F11 WS-2, real auf dem Linux-CI-Runner beobachtet, lokal unter
+ * Windows grün): node:path's isAbsolute() ist plattformabhängig — unter
+ * POSIX erkennt es einen Windows-Laufwerksbuchstaben-Pfad (`C:\...`) oder
+ * einen UNC-Pfad (`\\...`) NICHT als absolut, weil ein Doppelpunkt bzw.
+ * Backslash dort kein reserviertes Pfad-Zeichen ist. AK6 verlangt aber die
+ * Ablehnung JEDES absoluten Pfads, unabhängig vom Ausführungs-Betriebssystem
+ * (das Repo läuft nachweislich auf beiden — CI auf Linux, Stefans
+ * Dev-Rechner auf Windows). Deshalb zusätzlich zu isAbsolute() explizit auf
+ * beide Muster geprüft, statt sich auf das plattformabhängige Verhalten von
+ * node:path allein zu verlassen.
  * @param pfad - vom Startauftrag gelieferter Pfad (anfrage.pfad)
  * @param repoWurzel - absoluter Pfad der Repo-Wurzel
  * @returns bei Erfolg den repo-relativen Pfad, sonst einen Ablehnungsgrund
  */
+const WINDOWS_LAUFWERKSBUCHSTABE_PFAD = /^[a-zA-Z]:[\\/]/
+const WINDOWS_UNC_PFAD = /^\\\\/
+
 export function loeseEvidenzPfadAuf(pfad, repoWurzel) {
-  if (isAbsolute(pfad)) {
+  if (isAbsolute(pfad) || WINDOWS_LAUFWERKSBUCHSTABE_PFAD.test(pfad) || WINDOWS_UNC_PFAD.test(pfad)) {
     return { ok: false, grund: 'Pfad ist absolut' }
   }
   if (pfad.split(/[/\\]/).includes('..')) {

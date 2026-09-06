@@ -258,3 +258,9 @@ Byte-Korruption, real geklärt, kein Blocker mehr):**
   zugehörigen `lineage-kontextpaket-*`-Verzeichnisse), Testfall um die
   Attrappe ergänzt, `npm run check` erneut Exit 0 ohne neue
   `kontrollzustand/`-Einträge in `git status`.
+- **CI-Rotfall-Fix (Vor-Merge, kein eigenständiger Befund):** `isAbsolute()`
+  aus `node:path` ist plattformabhängig und erkannte auf dem Linux-CI-Runner
+  einen Windows-Laufwerksbuchstaben-Pfad (`C:\...`) nicht als absolut (lokal
+  unter Windows unauffällig) — `loeseEvidenzPfadAuf` prüft jetzt zusätzlich
+  explizit auf Laufwerksbuchstaben- und UNC-Pfad-Muster, unabhängig vom
+  Ausführungs-Betriebssystem; Testfixtures unverändert.
