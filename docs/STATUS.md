@@ -146,6 +146,22 @@ abgeschlossen. Meilenstein 1 ist in Arbeit.
   `schreibeWirkungsmarke`/`schreibeCheckpoint`/`starteGateway` übergibt —
   der Vorgängerlauf bleibt unverändert (real getestet, echter
   Vorher/Nachher-Vergleich).
+- F10 (Leitstand-Schreibpfad) ist mit WS-1/WS-2 vollständig umgesetzt und
+  `ABGESCHLOSSEN`: der bislang wegwerfbare, vertragsfreie Leitstand-
+  Prototyp (`scripts/leitstand-server.mjs`, `public/leitstand/`) bekommt
+  einen Schreibpfad mit eigenem Vertrag. `POST /api/laeufe` löst reale
+  Läufe ausschließlich über F8s `fuehreAufgabeDurch` aus, liest
+  `AusfuehrungsOptionen` nie aus dem Body (Options-Sperre) und bindet
+  ausschließlich auf `127.0.0.1` (F-120). Eine `laufId` wird synchron vor
+  dem `fuehreAufgabeDurch`-Aufruf reserviert, ein Wurf aus der Kette
+  beendet den Serverprozess nicht, sondern landet in einer flüchtigen
+  `GET /api/startfehler`-Projektion. `/api/laeufe` liefert je Lauf den
+  echten `LaufStatus` aus F1Bs `stelleLaufstatusFest`. Ein Lauf in
+  `KLAERUNG_ERFORDERLICH` oder `ABGESCHLOSSEN`/`FEHLGESCHLAGEN` bekommt
+  eine Wiederaufnahme-Bedienung, die einen neuen Startauftrag mit neuer
+  `laufId` und `vorgaengerLaufId` erzeugt; die UI aktualisiert Läufe und
+  Startfehler periodisch (Gate `scripts/check-f10-leitstand.mjs`,
+  eingehängt in `npm run check`).
 
 ## Offene Punkte
 
