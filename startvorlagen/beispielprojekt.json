@@ -1,0 +1,21 @@
+{
+  "startvorlage_schema": "v0",
+  "profilPfad": "profiles/beispielprojekt.json",
+  "werkzeugStartziel": ["C:\\Users\\stefa\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\bin\\claude.exe"],
+  "werkzeugVersionDeklariert": "2.1.258 (Claude Code)",
+  "berechtigungskontext": "profil-standard",
+  "modell": "claude-sonnet-5",
+  "standardBudget": { "maxElemente": 20, "maxBytes": 200000 },
+  "werkzeugsaetze": {
+    "lesend": {
+      "art": "lesend",
+      "modus": "DEKLARIERT",
+      "erlaubte_werkzeuge": ["Read", "Grep", "Glob"]
+    },
+    "schreibend": {
+      "art": "schreibend",
+      "modus": "DEKLARIERT",
+      "erlaubte_werkzeuge": ["Read", "Grep", "Glob", "Write", "Edit"]
+    }
+  }
+}

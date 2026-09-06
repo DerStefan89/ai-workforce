@@ -29,6 +29,17 @@
  * Datei läge unbeprüft in abAufruf. Das Gate ersetzt keine tiefere Prüfung,
  * sondern deckt genau den einen, in AK3 benannten Verstoßtyp mechanisch ab.
  *
+ * F11 WS-2 (AK9) ergänzt drei mechanische Prüfungen, ergänzend zu den
+ * echten Live-Server-Testfällen in scripts/check-f10-leitstand.mjs: (c)
+ * AK5/AK6 rufen die reinen, aus scripts/leitstand-server.mjs exportierten
+ * Funktionen (pruefeStartauftrag, loeseEvidenzPfadAuf) direkt auf, ohne
+ * einen Server zu starten — Rot-/Grün-Fall je Regel. (d) AK7 (D13) ist
+ * closure-gekapselter Zustand in erzeugeRequestHandler und deshalb ohne
+ * Live-Server nicht direkt aufrufbar; die Prüfung ist deshalb ein
+ * Grep+Selbsttest nach dem Muster von AK3 oben — sie belegt, dass die
+ * D13-Sperre im Quelltext an der richtigen Stelle (vor laufIdBelegt) prüft
+ * und in JEDEM Rückkehrzweig (.then UND .catch) zurückgesetzt wird.
+ *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
  * Aufruf: node scripts/check-f11-auftrag.mjs
@@ -38,6 +49,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { validiereAuftragDaten } from '../src/auftrag/index.ts'
+import { validiereStartvorlageDaten } from '../src/startvorlage/index.ts'
+import { loeseEvidenzPfadAuf, pruefeStartauftrag } from './leitstand-server.mjs'
 
 const befunde = []
 const EXECUTION_CONTROLLER_INDEX = join('src', 'execution-controller', 'index.ts')
@@ -118,6 +131,168 @@ if (geteilterVerstoss === null || !/auftragstext/.test(geteilterVerstoss.vorAufr
   befunde.push('AK3-Selbsttest: Muster erkennt einen simulierten Verstoß NICHT — Grep-Regel ist wirkungslos')
 } else {
   console.log('✓ AK3-Selbsttest: simulierter Verstoß (auftragstext im anfragen-Konstruktionsblock) wird erkannt.')
+}
+
+// ─── (c0) F11 WS-2 AK4: Startvorlage-Fixtures + reale Datei gegen validiereStartvorlageDaten ──
+{
+  const startvorlageFixtures = [
+    { pfad: 'schemas/examples/startvorlage.valid.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/startvorlage.invalid-falscher-schema-wert.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/startvorlage.invalid-kein-schreibender-werkzeugsatz.json', sollGueltigSein: false },
+    { pfad: 'startvorlagen/beispielprojekt.json', sollGueltigSein: true },
+  ]
+
+  let ak4Befunde = 0
+  for (const { pfad, sollGueltigSein } of startvorlageFixtures) {
+    if (!existsSync(pfad)) {
+      befunde.push(`AK4: ${pfad}: Datei fehlt`)
+      ak4Befunde++
+      continue
+    }
+    let obj
+    try {
+      obj = JSON.parse(readFileSync(pfad, 'utf-8'))
+    } catch (fehler) {
+      befunde.push(`AK4: ${pfad}: kein gültiges JSON (${fehler.message})`)
+      ak4Befunde++
+      continue
+    }
+    const verstoesse = validiereStartvorlageDaten(obj)
+    if (sollGueltigSein && verstoesse.length > 0) {
+      befunde.push(`AK4: ${pfad}: sollte gültig sein, aber verletzt: ${verstoesse.join('; ')}`)
+      ak4Befunde++
+    }
+    if (!sollGueltigSein && verstoesse.length === 0) {
+      befunde.push(`AK4: ${pfad}: sollte ungültig sein, aber keine Regelverletzung gefunden`)
+      ak4Befunde++
+    }
+  }
+  if (ak4Befunde === 0) {
+    console.log(`✓ AK4: ${startvorlageFixtures.length} Startvorlage-Datei(en) (Fixtures + reale Datei) gegen validiereStartvorlageDaten geprüft.`)
+  }
+}
+
+// ─── (c) F11 WS-2 AK5: pruefeStartauftrag lehnt Startvorlage-Felder und freie Werkzeugliste ab ──
+const gueltigerKoerperOhneStartvorlagenFelder = {
+  laufId: 'check-f11-ak5',
+  rolle: 'ausfuehrung',
+  anfragen: [],
+  budget: {},
+  aufrufEingaben: { modell: 'test-modell' },
+  werkzeugsatz: 'lesend',
+  auftragstext: 'x',
+}
+
+{
+  const gruenFall = pruefeStartauftrag(gueltigerKoerperOhneStartvorlagenFelder)
+  if (gruenFall.ok !== true) {
+    befunde.push(`AK5-Grünfall: gültiger Body ohne Startvorlage-Felder sollte durchgehen, wurde abgelehnt: ${gruenFall.grund}`)
+  }
+
+  const rotFallProfilReferenz = pruefeStartauftrag({ ...gueltigerKoerperOhneStartvorlagenFelder, profilReferenz: { pfad: 'x', hash: 'x', version: 1 } })
+  if (rotFallProfilReferenz.ok !== false) {
+    befunde.push("AK5-Rotfall: Body mit 'profilReferenz' sollte abgelehnt werden, wurde durchgelassen")
+  }
+
+  const rotFallFreieListe = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    aufrufEingaben: { modell: 'test-modell', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Bash'] } },
+  })
+  if (rotFallFreieListe.ok !== false) {
+    befunde.push("AK5-Rotfall: Body mit freier 'aufrufEingaben.werkzeugsatz'-Liste sollte abgelehnt werden, wurde durchgelassen")
+  }
+
+  if (gruenFall.ok === true && rotFallProfilReferenz.ok === false && rotFallFreieListe.ok === false) {
+    console.log("✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz' sowie eine freie 'aufrufEingaben.werkzeugsatz'-Liste ab.")
+  }
+}
+
+// ─── (d) F11 WS-2 AK6: loeseEvidenzPfadAuf lehnt absolute/'..'/repo-fremde Pfade ab, lässt reale repo-relative Pfade durch ──
+{
+  const repoWurzel = process.cwd()
+
+  const gruenFall = loeseEvidenzPfadAuf('package.json', repoWurzel)
+  if (gruenFall.ok !== true || gruenFall.relativerPfad !== 'package.json') {
+    befunde.push(`AK6-Grünfall: 'package.json' sollte auflösbar sein, erhalten: ${JSON.stringify(gruenFall)}`)
+  }
+
+  const rotFaelle = ['../ausserhalb.txt', 'C:\\Windows\\win.ini', '/etc/passwd', 'a/../../ausserhalb.txt']
+  const rotFallErgebnisse = rotFaelle.map((pfad) => loeseEvidenzPfadAuf(pfad, repoWurzel))
+  const nichtAbgelehnt = rotFaelle.filter((_, i) => rotFallErgebnisse[i].ok !== false)
+  if (nichtAbgelehnt.length > 0) {
+    befunde.push(`AK6-Rotfall: folgende Pfade sollten abgelehnt werden, wurden aber durchgelassen: ${nichtAbgelehnt.join(', ')}`)
+  }
+
+  const rotFallInhalt = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    anfragen: [{ pfad: 'package.json', frage: 'x', begruendung: 'x', inhalt: 'verboten' }],
+  })
+  if (rotFallInhalt.ok !== false) {
+    befunde.push("AK6-Rotfall: eine Anfrage mit 'inhalt' sollte von pruefeStartauftrag abgelehnt werden, wurde durchgelassen")
+  }
+
+  if (gruenFall.ok === true && nichtAbgelehnt.length === 0 && rotFallInhalt.ok === false) {
+    console.log(`✓ AK6: loeseEvidenzPfadAuf löst 'package.json' korrekt auf und lehnt ${rotFaelle.length} unsichere Pfade ab; pruefeStartauftrag lehnt 'inhalt' im Body ab.`)
+  }
+}
+
+// ─── (e) F11 WS-2 AK7 (D13): Grep+Selbsttest — Sperre wird VOR laufIdBelegt geprüft und in .then UND .catch zurückgesetzt ──
+{
+  const LEITSTAND_SERVER_PFAD = join('scripts', 'leitstand-server.mjs')
+  const quelltext = readFileSync(LEITSTAND_SERVER_PFAD, 'utf-8')
+
+  /**
+   * Prüft den D13-Vertrag an einem Quelltext: eine 'if (laufAktiv)'-Prüfung mit 409-Antwort muss
+   * VOR dem ersten 'laufIdBelegt('-Aufruf stehen, und 'laufAktiv = false' muss sowohl im .then- als
+   * auch im .catch-Zweig des fuehreAufgabeDurchFn-Aufrufs vorkommen.
+   *
+   * Bekannte Grenze (real beobachtet beim Kalibrieren dieses Gates, Muster wie AK3s Substring-
+   * Vergleich oben): reiner Text-/Regex-Vergleich, keine AST-Prüfung. Ein Reset, der nur als
+   * KOMMENTARTEXT im .catch-Block steht (z. B. "// laufAktiv = false wurde entfernt"), zählt für
+   * /laufAktiv\s*=\s*false/ als vorhanden, obwohl der echte Reset fehlt — beim ersten Kalibrierlauf
+   * dieses Gates real so aufgetreten (die Rotfall-Injektion musste umformuliert werden, damit sie
+   * nicht selbst den Text "laufAktiv = false" enthält).
+   * @param text - zu prüfender Quelltext
+   * @returns true, wenn der D13-Vertrag im Text erkennbar eingehalten ist
+   */
+  function erfuelltD13Vertrag(text) {
+    const sperrIndex = text.indexOf('if (laufAktiv)')
+    // 'if (laufIdBelegt(' statt nur 'laufIdBelegt(' — sonst träfe indexOf zuerst die weiter oben
+    // stehende FunktionsDEFINITION 'function laufIdBelegt(laufId) {' statt ihres Aufrufs.
+    const belegtIndex = text.indexOf('if (laufIdBelegt(')
+    if (sperrIndex === -1 || belegtIndex === -1 || sperrIndex >= belegtIndex) return false
+
+    const aufrufIndex = text.indexOf('fuehreAufgabeDurchFn(')
+    if (aufrufIndex === -1) return false
+    const nachAufruf = text.slice(aufrufIndex)
+    const thenIndex = nachAufruf.indexOf('.then(')
+    const catchIndex = nachAufruf.indexOf('.catch(')
+    if (thenIndex === -1 || catchIndex === -1 || catchIndex <= thenIndex) return false
+
+    const thenBlock = nachAufruf.slice(thenIndex, catchIndex)
+    const catchBlock = nachAufruf.slice(catchIndex)
+    return /laufAktiv\s*=\s*false/.test(thenBlock) && /laufAktiv\s*=\s*false/.test(catchBlock)
+  }
+
+  if (!erfuelltD13Vertrag(quelltext)) {
+    befunde.push(`AK7: ${LEITSTAND_SERVER_PFAD} erfüllt den D13-Vertrag nicht erkennbar (Sperre vor laufIdBelegt, Reset in .then UND .catch)`)
+  } else {
+    console.log(`✓ AK7: ${LEITSTAND_SERVER_PFAD} prüft die D13-Sperre vor laufIdBelegt und setzt sie in .then UND .catch zurück.`)
+  }
+
+  // Selbsttest (Muster AK3 oben): eine simulierte Verletzung (Reset fehlt im .catch-Zweig) muss real erkannt werden.
+  const simulierteVerletzung = `
+    if (laufAktiv) { sendeJson(res, 409, {}) ; return }
+    if (laufIdBelegt(laufId)) { return }
+    fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben)
+      .then((ergebnis) => { laufAktiv = false })
+      .catch((fehler) => { /* Reset fehlt hier */ })
+  `
+  if (erfuelltD13Vertrag(simulierteVerletzung)) {
+    befunde.push('AK7-Selbsttest: Muster erkennt eine simulierte Verletzung (fehlender Reset im .catch-Zweig) NICHT — Grep-Regel ist wirkungslos')
+  } else {
+    console.log('✓ AK7-Selbsttest: simulierte Verletzung (fehlender Reset im .catch-Zweig) wird erkannt.')
+  }
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

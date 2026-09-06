@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/startvorlage.schema.json",
+  "title": "Startvorlage (STARTVORLAGE_V0)",
+  "description": "F11 WS-2, AK4. Trägt die maschinenkonstanten Startfelder eines Leitstand-Startauftrags (werkzeugStartziel, werkzeugVersionDeklariert, berechtigungskontext, profilPfad, modell, standardBudget) sowie benannte Werkzeugsätze, aus denen ein Startauftrag über seinen Namen wählt (nie über eine freie Werkzeugliste, AK5). Kein Profil (schemas/profile.schema.json bleibt unverändert) — profilPfad ist nur ein Verweis, der Server liest die referenzierte Profildatei frisch und berechnet ihren Hash selbst (Muster scripts/check-f10-leitstand.mjs AK1), statt einen im Repo gepflegten Hash zu vertrauen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "startvorlage_schema",
+    "profilPfad",
+    "werkzeugStartziel",
+    "werkzeugVersionDeklariert",
+    "berechtigungskontext",
+    "modell",
+    "standardBudget",
+    "werkzeugsaetze"
+  ],
+  "properties": {
+    "startvorlage_schema": { "const": "v0" },
+    "profilPfad": { "type": "string", "minLength": 1 },
+    "werkzeugStartziel": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "werkzeugVersionDeklariert": { "type": "string", "minLength": 1 },
+    "berechtigungskontext": { "type": "string", "minLength": 1 },
+    "modell": { "type": "string", "minLength": 1 },
+    "standardBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxElemente": { "type": "integer", "minimum": 1 },
+        "maxBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "werkzeugsaetze": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["art", "modus", "erlaubte_werkzeuge"],
+        "properties": {
+          "art": { "enum": ["lesend", "schreibend"] },
+          "modus": { "const": "DEKLARIERT" },
+          "erlaubte_werkzeuge": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "description": "Mindestens ein Werkzeugsatz mit art='lesend' und mindestens einer mit art='schreibend' (AK4) — semantisch geprüft von validiereStartvorlageDaten (src/startvorlage/index.ts), nicht durch dieses Schema allein abbildbar."
+    }
+  }
+}

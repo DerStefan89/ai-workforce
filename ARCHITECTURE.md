@@ -26,6 +26,7 @@ Pflichtlektüre vor jedem Commit. Verbindliche Code-Konventionen.
 - `src/` — Kern-Code der AI Workforce. Einziger Produktpfad.
 - `kontrollzustand/` — Kontrollzustand als JSON/JSONL: Checkpoints, Wirkungsmarken, Artefakt- und Lineage-Einträge, Transportpakete, wegwerfbarer Index. Kein Markdown.
 - `profiles/` — Profilkonfiguration als JSON. Ein-Ebenen-Modell: je Projekt genau eine vollständige, eigenständige Profildatei; kein Domänen-Profil mit Projekt-Overlay.
+- `startvorlagen/` — Startvorlagen als JSON (F11 WS-2): die maschinenkonstanten Startfelder eines Leitstand-Startauftrags (Startziel, Werkzeugversion, Berechtigungskontext, Profilverweis, Modell, Standard-Budget) und benannte Werkzeugsätze. Eigener Ordner statt `profiles/`, damit die bestehende Ein-Ebenen-Profilvalidierung (`scripts/check-datenformate.mjs`) nicht bricht — eine Startvorlage ist kein Profil.
 - `state/` — Gedächtnis des Harness. Trägt keinen Kontrollzustand der Workforce.
 - `scripts/` — Prüf- und Hilfsskripte des Harness.
 - `docs/projekt/` — führende Projektdokumente: `docs/projekt/zielfassung.md` (Sollquelle für Zielbild, Rollen, Lifecycle, Sicherheits- und Evidenzmodell, Architektur-Baseline), `docs/projekt/umsetzungsplan-fassung-1.md` (Deliverables, Feature-Reihenfolge, Backlog).
