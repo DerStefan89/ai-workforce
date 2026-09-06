@@ -1340,3 +1340,35 @@ Fundstelle: Challenger-Chat, Auftrag 1 zur M2-Sollquelle, 06.09.2026.
 Auswirkung: ein vermeidbarer Rückfragezyklus; identische Familie wie F-013, F-082, F-092, F-100 — die Volltext-Regel wurde formal eingehalten (Volltext lag im Projektdokument), aber nicht im Prompt selbst.
 Maßnahme: Prompts an Claude Code nie mit Einfüge-Platzhaltern ausgeben. Der für den Auftrag relevante Volltext steht direkt im Prompt-Block, auch wenn er lang ist.
 Feature/Run: F11-Aktenanlage, 06.09.2026.
+
+**F-132** · `TECH_DEBT` · P3 · offen
+Titel: auftrag_id folgt nicht derselben Zeichenregel wie laufId.
+Beschreibung: src/auftrag/index.ts prüft auftrag_id nicht gegen dieselbe Zeichenklasse wie checkpoint-store's laufId-Regel (LAUFID_UNZULAESSIGE_ZEICHEN-Äquivalent) — ein auftrag_id-Wert mit Leerzeichen/Sonderzeichen würde erst beim Dateisystemzugriff auffallen, nicht vorab.
+Fundstelle: src/auftrag/index.ts (validiereAuftragDaten); src/checkpoint-store/index.ts (pruefeLaufId).
+Auswirkung: gering — bislang kein realer Fehlschlag, da auftrag_id serverseitig bisher immer aus derselben Quelle wie laufId erzeugt wurde.
+Maßnahme: bei nächster Berührung von src/auftrag/index.ts dieselbe Zeichenregel per D5 wiederverwenden statt eigenständig zu lassen.
+Feature/Run: F11 WS-1 Advisor-Pass, 06.09.2026.
+
+**F-133** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: node --test schlägt in der Remote-Devices-Bridge-VM systematisch mit EPERM bei der Testfixture-Bereinigung fehl.
+Beschreibung: node --test in der Bridge-VM meldet EPERM: operation not permitted, unlink ... beim rimrafSync-Cleanup unter dem Windows-gemounteten Arbeitsverzeichnis (85/137 bzw. 14/? Fehlschläge je nach Lauf) — 0 AssertionError darunter, ausschließlich Cleanup-Rauschen, bestätigt durch gezielten Re-Lauf der betroffenen Testdateien.
+Fundstelle: Bridge-Sitzung, F11-WS-1-Verifikation, 06.09.2026.
+Auswirkung: Verifikation über die Bridge kann node --test nicht als alleinigen Nachweis nutzen; reine .mjs-Gate-Skripte plus Stefans eigener Windows-Lauf bleiben maßgeblich (wie F-125).
+Maßnahme: kein Produktcode-Fix; dokumentierte Grenze der Bridge-Verifikation.
+Feature/Run: F11 WS-1 Verifikation, 06.09.2026.
+
+**F-134** · `TECH_DEBT` · P2 · offen
+Titel: Lauf→Auftrag-Lineage-Verweis zum zweiten Mal zurückgestellt.
+Beschreibung: Der WS-1-Plan stellte den Lineage-Verweis "welcher Auftrag hat diesen Lauf ausgelöst" auf WS-2 zurück (nicht ohne Eingriff in F6as starteGateway/GatewayEingaben erreichbar). WS-2 baut ihn ebenfalls nicht — kein AK in F11 verlangt ihn.
+Fundstelle: state/plan-v1-f11-auftrag-ws1.md Abschnitt 2 (Frage 2); features/F11/journal.md (WS-2-Eintrag).
+Auswirkung: kein Blocker für F11. Wird real gebraucht ab F12 (Laufliste/Detailansicht — "welcher Auftrag hat diesen Lauf ausgelöst").
+Maßnahme: Design-Entscheidung spätestens bei F12-Planung treffen, nicht weiter stillschweigend verschieben.
+Feature/Run: F11 WS-1/WS-2, 06.09.2026.
+
+**F-135** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Neuer Testfall lief kurzzeitig real gegen kontrollzustand/ statt gegen eine Attrappe.
+Beschreibung: Ein neuer AK7(D13)-Testfall in check-f10-leitstand.mjs überließ starteTestserver ohne fuehreAufgabeDurchFn-Attrappe (anders als jeder andere Testfall in der Datei) und lief dadurch real bis F4s Invocation Policy durch, die den Start korrekt mit E-188 verweigerte — aber vorher entstanden zwei echte Lineage-/Wirkungsmarke-Einträge unter dem echten kontrollzustand/. Vor Commit gefunden und entfernt (rm -rf kontrollzustand/check-f11-ak7-verwaist-neu-* und zugehörige lineage-kontextpaket-*), Testfall korrigiert.
+Fundstelle: scripts/check-f10-leitstand.mjs (F11 AK7(D13)-Verwaist-Testfall).
+Auswirkung: keine — vor Commit gefunden, kein Schaden an echtem kontrollzustand/, kein Kindprozess gestartet. Gleiche Fehlerklasse wie F-114 (zwei Schreiber im selben Zustand), hier selbst abgefangen statt real beobachtet.
+Maßnahme: keine akute; als Erinnerung, dass jeder starteTestserver-Aufruf immer eine fuehreAufgabeDurchFn-Attrappe braucht (Konvention bereits in der Datei etabliert, hier einmalig verfehlt).
+Feature/Run: F11 WS-2, 06.09.2026.

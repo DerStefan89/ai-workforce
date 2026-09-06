@@ -1,21 +1,25 @@
 /**
  * Datei: scripts/check-f10-leitstand.mjs
  *
- * Zweck: F10-WS-1-Gate (Leitstand-Schreibpfad). Prüft AK1 (reales Profil
- * unter profiles/, ProfilReferenz mit real aus dem Dateiinhalt berechnetem
- * Hash — sha256Hex aus src/checkpoint-store/index.ts, kein zweiter
- * Hasher), AK3 (Options-Sperre — ein AusfuehrungsOptionen-Feld oder ein
- * unbekanntes Feld im Body → 400), AK4 (Loopback-Bindung — Grep gegen den
- * bootstrap-Aufruf), AK5 (laufId-Eindeutigkeit — zwei unmittelbar
- * aufeinanderfolgende POSTs mit identischer laufId erzeugen genau einen
- * fuehreAufgabeDurch-Aufruf, der zweite POST bekommt 409) und AK6 (kein
- * Prozesstod — eine werfende fuehreAufgabeDurch-Attrappe belegt, dass der
- * Serverprozess den Wurf übersteht und GET /api/startfehler den Eintrag
- * zeigt). AK3/AK5/AK6 laufen real gegen einen laufenden Testserver
- * (erzeugeRequestHandler + createServer + fetch auf einem Ephemeral-Port),
- * nicht gegen eine zweite, von Hand nachgebaute Prüfung — die echte
- * fuehreAufgabeDurch-Abhängigkeit wird dafür per erzeugeRequestHandler-
- * Option durch eine Attrappe ersetzt (Muster wie F6as Starter).
+ * Zweck: F10-WS-1-Gate (Leitstand-Schreibpfad), erweitert um F11 WS-2.
+ * Prüft AK1 (reales, valides Profil unter profiles/), AK3 (Options-Sperre
+ * — ein AusfuehrungsOptionen-Feld oder ein unbekanntes Feld im Body → 400),
+ * AK4 (Loopback-Bindung — Grep gegen den bootstrap-Aufruf), AK5
+ * (laufId-Eindeutigkeit — zwei unmittelbar aufeinanderfolgende POSTs mit
+ * identischer laufId erzeugen genau einen fuehreAufgabeDurch-Aufruf, der
+ * zweite POST bekommt 409) und AK6 (kein Prozesstod — eine werfende
+ * fuehreAufgabeDurch-Attrappe belegt, dass der Serverprozess den Wurf
+ * übersteht und GET /api/startfehler den Eintrag zeigt). F11 WS-2 ergänzt
+ * je einen echten Testfall für AK5 (verbotenes Startvorlage-Feld → 400),
+ * AK6 (verbotenes `inhalt` → 400, unsicherer Pfad → 400, fehlende Datei →
+ * 400) und AK7 (zweiter Start während laufender Lauf → 409, D13). Alle
+ * laufen real gegen einen laufenden Testserver (erzeugeRequestHandler +
+ * createServer + fetch auf einem Ephemeral-Port), nicht gegen eine zweite,
+ * von Hand nachgebaute Prüfung — die echte fuehreAufgabeDurch-Abhängigkeit
+ * wird dafür per erzeugeRequestHandler-Option durch eine Attrappe ersetzt
+ * (Muster wie F6as Starter). profilReferenz kommt für keinen dieser Tests
+ * mehr aus dem Body — die Startvorlage (startvorlagen/beispielprojekt.json)
+ * liefert sie serverseitig (F11 WS-2 AK4).
  *
  * Wird aufgerufen von: `npm run check`
  *
@@ -27,22 +31,23 @@ import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { sha256Hex } from '../src/checkpoint-store/index.ts'
-import { erzeugeRequestHandler, pruefeStartauftrag, VERBOTENE_OPTIONEN_FELDER } from './leitstand-server.mjs'
+import { erzeugeRequestHandler, pruefeStartauftrag, VERBOTENE_OPTIONEN_FELDER, VERBOTENE_STARTVORLAGE_FELDER } from './leitstand-server.mjs'
 
 const befunde = []
 console.log('\n=== F10-Leitstand-Check (WS-1) ===\n')
 
-// ─── (a) AK1: reales Profil + ProfilReferenz mit real berechnetem Hash ──────
+// ─── (a) AK1: reales Profil ist valide ──────────────────────────────────────
+// (F11 WS-2: profilReferenz kommt nicht mehr aus dem Body/Testfixture, sondern serverseitig aus
+// der Startvorlage — src/startvorlage/index.ts:leiteProfilReferenzAb liest profiles/beispielprojekt.json
+// bei jedem erzeugeRequestHandler-Aufruf unten ohnehin frisch. Diese Prüfung bleibt als eigenständiger
+// Sanity-Check auf die reale Profildatei bestehen.)
 const PROFIL_PFAD = 'profiles/beispielprojekt.json'
-let profilReferenz
 if (!existsSync(PROFIL_PFAD)) {
   befunde.push(`AK1: ${PROFIL_PFAD} fehlt`)
 } else {
-  const inhalt = readFileSync(PROFIL_PFAD, 'utf-8')
   let obj
   try {
-    obj = JSON.parse(inhalt)
+    obj = JSON.parse(readFileSync(PROFIL_PFAD, 'utf-8'))
   } catch (fehler) {
     befunde.push(`AK1: ${PROFIL_PFAD} ist kein gültiges JSON (${fehler.message})`)
   }
@@ -52,13 +57,10 @@ if (!existsSync(PROFIL_PFAD)) {
     if (fehlend.length > 0) {
       befunde.push(`AK1: ${PROFIL_PFAD} fehlen Pflichtfelder: ${fehlend.join(', ')}`)
     } else {
-      profilReferenz = { pfad: PROFIL_PFAD, hash: sha256Hex(inhalt), version: obj.version }
-      console.log(`✓ AK1: ${PROFIL_PFAD} valide, ProfilReferenz mit echtem Inhalts-Hash gebaut.`)
+      console.log(`✓ AK1: ${PROFIL_PFAD} valide.`)
     }
   }
 }
-// Fallback, falls AK1 oben einen Befund gemeldet hat — AK3/AK5/AK6 unten sollen trotzdem laufen können.
-profilReferenz ??= { pfad: PROFIL_PFAD, hash: 'a'.repeat(64), version: 1 }
 
 // ─── (b) AK4: Loopback-Bindung (Grep gegen den bootstrap-Aufruf) ───────────
 const serverQuelltext = readFileSync('scripts/leitstand-server.mjs', 'utf-8')
@@ -71,14 +73,11 @@ if (!/\.listen\(\s*PORT\s*,\s*'127\.0\.0\.1'/.test(serverQuelltext)) {
 // ─── Testserver-Infrastruktur für AK3/AK5/AK6 ──────────────────────────────
 const gueltigerStartauftrag = (laufId) => ({
   laufId,
-  profilReferenz,
   rolle: 'ausfuehrung',
   anfragen: [],
   budget: {},
-  aufrufEingaben: { modell: 'test-modell', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: [] } },
-  werkzeugStartziel: ['node', '--version'],
-  werkzeugVersionDeklariert: 'test',
-  berechtigungskontext: 'test',
+  aufrufEingaben: { modell: 'test-modell' },
+  werkzeugsatz: 'lesend',
   auftragstext: 'Testauftragstext',
 })
 
@@ -265,6 +264,130 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
+  }
+}
+
+// ─── (f) F11 WS-2 AK5: verbotenes Startvorlage-Feld und freie werkzeugsatz-Liste → 400 ──
+{
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak5' })
+  try {
+    for (const feld of VERBOTENE_STARTVORLAGE_FELDER) {
+      const body = { ...gueltigerStartauftrag(`check-f11-ak5-${randomUUID()}`), [feld]: 'verboten' }
+      const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(body) })
+      if (antwort.status !== 400) {
+        befunde.push(`F11 AK5: Body mit Startvorlage-Feld '${feld}' erwartet 400, erhalten ${antwort.status}`)
+      }
+    }
+    const freieListe = { ...gueltigerStartauftrag(`check-f11-ak5-liste-${randomUUID()}`) }
+    freieListe.aufrufEingaben = { ...freieListe.aufrufEingaben, werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Bash'] } }
+    const antwortListe = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(freieListe) })
+    if (antwortListe.status !== 400) {
+      befunde.push(`F11 AK5: Body mit freier 'aufrufEingaben.werkzeugsatz'-Liste erwartet 400, erhalten ${antwortListe.status}`)
+    }
+    if (befunde.length === 0) {
+      console.log(`✓ F11 AK5: alle ${VERBOTENE_STARTVORLAGE_FELDER.size} Startvorlage-Felder plus eine freie 'aufrufEingaben.werkzeugsatz'-Liste werden mit 400 abgelehnt.`)
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (g) F11 WS-2 AK6: verbotenes 'inhalt', unsicherer Pfad, fehlende Datei → je 400 ──
+{
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak6' })
+  try {
+    const mitInhalt = {
+      ...gueltigerStartauftrag(`check-f11-ak6-inhalt-${randomUUID()}`),
+      anfragen: [{ pfad: 'package.json', frage: 'x', begruendung: 'x', inhalt: 'sollte verboten sein' }],
+    }
+    const antwortInhalt = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitInhalt) })
+    if (antwortInhalt.status !== 400) {
+      befunde.push(`F11 AK6: Anfrage mit 'inhalt' erwartet 400, erhalten ${antwortInhalt.status}`)
+    }
+
+    for (const unsichererPfad of ['../ausserhalb.txt', 'C:\\Windows\\win.ini', '/etc/passwd']) {
+      const mitUnsicheremPfad = {
+        ...gueltigerStartauftrag(`check-f11-ak6-pfad-${randomUUID()}`),
+        anfragen: [{ pfad: unsichererPfad, frage: 'x', begruendung: 'x' }],
+      }
+      const antwortPfad = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitUnsicheremPfad) })
+      if (antwortPfad.status !== 400) {
+        befunde.push(`F11 AK6: unsicherer Anfrage-Pfad '${unsichererPfad}' erwartet 400, erhalten ${antwortPfad.status}`)
+      }
+    }
+
+    const mitFehlenderDatei = {
+      ...gueltigerStartauftrag(`check-f11-ak6-fehlend-${randomUUID()}`),
+      anfragen: [{ pfad: 'diese-datei-gibt-es-nicht.md', frage: 'x', begruendung: 'x' }],
+    }
+    const antwortFehlend = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitFehlenderDatei) })
+    if (antwortFehlend.status !== 400) {
+      befunde.push(`F11 AK6: fehlende Anfrage-Datei erwartet 400, erhalten ${antwortFehlend.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log("✓ F11 AK6: verbotenes 'inhalt', drei unsichere Pfade und eine fehlende Datei werden je mit 400 abgelehnt.")
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (h) F11 WS-2 AK7 (D13): zweiter Start während laufender Lauf → 409, unabhängig von der laufId ──
+{
+  let laufendeAufrufe = 0
+  const fuehreAufgabeDurchFn = async () => {
+    laufendeAufrufe += 1
+    await verzoegerung(60)
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak7', fuehreAufgabeDurchFn })
+  try {
+    const erste = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-a-${randomUUID()}`)) })
+    // Zweiter Startauftrag mit einer ANDEREN laufId, unmittelbar danach, während der erste Lauf noch aktiv ist (D13, nicht laufId-Kollision).
+    const zweite = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-b-${randomUUID()}`)) })
+    const zweiteBody = await zweite.json()
+    if (erste.status !== 202 || zweite.status !== 409 || !zweiteBody.grund.includes('D13') || laufendeAufrufe !== 1) {
+      befunde.push(
+        `F11 AK7: zweiter Start mit anderer laufId während laufendem Lauf erwartet erste=202/zweite=409 mit 'D13' im Grund und genau einen Aufruf, erhalten ${JSON.stringify({ ersteStatus: erste.status, zweiteStatus: zweite.status, grund: zweiteBody.grund, laufendeAufrufe })}`
+      )
+    }
+
+    await verzoegerung(90)
+    const dritte = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-c-${randomUUID()}`)) })
+    if (dritte.status !== 202) {
+      befunde.push(`F11 AK7: nach Rückkehr des ersten Laufs erwartet ein dritter Start 202, erhalten ${dritte.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log("✓ F11 AK7 (D13): ein zweiter Start mit ANDERER laufId während eines laufenden Laufs bekommt 409 ('D13' im Grund), nach dessen Rückkehr gelingt ein neuer Start.")
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (i) F11 WS-2 AK7 (D13): ein verwaister, unabgeschlossener Lauf aus einer FRÜHEREN Serverinstanz blockiert eine neue NICHT (F-128) ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f11-ak7-verwaist'
+  const verwaisteLaufId = `check-f11-ak7-verwaist-${randomUUID()}`
+  // Simuliert einen Lauf, der von einer früheren, längst beendeten Serverinstanz gestartet wurde und
+  // nie zurückgekehrt ist (z. B. Serverabsturz) — kein laufAktiv-Zustand kann davon wissen, weil eine
+  // NEUE erzeugeRequestHandler-Instanz ihr laufAktiv immer frisch mit false initialisiert (D13 ist NIE
+  // aus kontrollzustand/ abgeleitet, F-128).
+  mkdirSync(join(basisVerzeichnis, verwaisteLaufId), { recursive: true })
+  const fuehreAufgabeDurchFn = async (id) => ({ ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } })
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+  try {
+    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-verwaist-neu-${randomUUID()}`)) })
+    if (antwort.status !== 202) {
+      befunde.push(`F11 AK7(D13)-Verwaist: ein verwaister Lauf aus kontrollzustand/ sollte einen neuen Start (andere laufId) NICHT blockieren, erwartet 202, erhalten ${antwort.status}`)
+    } else {
+      console.log('✓ F11 AK7 (D13): ein verwaister, unabgeschlossener Lauf aus kontrollzustand/ (frühere Serverinstanz) blockiert einen neuen Start nicht (F-128).')
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
   }
 }
 

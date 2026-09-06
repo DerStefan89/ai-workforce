@@ -1,0 +1,13 @@
+{
+  "startvorlage_schema": "v0",
+  "profilPfad": "profiles/beispielprojekt.json",
+  "werkzeugStartziel": ["node"],
+  "werkzeugVersionDeklariert": "test",
+  "berechtigungskontext": "test",
+  "modell": "claude-sonnet-5",
+  "standardBudget": { "maxElemente": 10, "maxBytes": 100000 },
+  "werkzeugsaetze": {
+    "lesend": { "art": "lesend", "modus": "DEKLARIERT", "erlaubte_werkzeuge": ["Read"] },
+    "auch-lesend": { "art": "lesend", "modus": "DEKLARIERT", "erlaubte_werkzeuge": ["Grep"] }
+  }
+}

@@ -6,10 +6,15 @@
  * Wiederaufnahme-Bedienung (AK7): ein Lauf in KLAERUNG_ERFORDERLICH oder
  * ABGESCHLOSSEN/FEHLGESCHLAGEN bekommt einen Button, der ein Textfeld mit
  * einer Startauftrag-Vorlage befüllt (laufId/vorgaengerLaufId real gesetzt,
- * die übrigen sieben Felder als Platzhalter — bewusst kein Formular, siehe
+ * die übrigen sechs Felder als Platzhalter — bewusst kein Formular, siehe
  * Nicht-Ziele in features/F10/feature.md). AK9 pollt /api/laeufe und
  * /api/startfehler periodisch, damit ein laufender Lauf ohne manuellen
  * Reload sichtbar seinen Terminalzustand erreicht.
+ *
+ * F11 WS-2: die Vorlage trägt seit AK4/AK5 kein profilReferenz/
+ * werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext mehr
+ * (kommt serverseitig aus der Startvorlage) — stattdessen werkzeugsatz
+ * (Name aus der Startvorlage) und auftragstext (AK2, Pflichtfeld).
  *
  * Wird aufgerufen von: public/leitstand/index.html
  *
@@ -129,19 +134,17 @@ async function ladeStartfehler() {
   }
 }
 
-/** Baut die Vorlage fürs Wiederaufnahme-Textfeld — laufId/vorgaengerLaufId real gesetzt, die übrigen sieben Startauftrag-Felder als zu füllende Platzhalter (kein Formular, Nicht-Ziel laut feature.md). @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird @returns Startauftrag-Objekt zur Anzeige im Textfeld */
+/** Baut die Vorlage fürs Wiederaufnahme-Textfeld — laufId/vorgaengerLaufId real gesetzt, die übrigen sechs Startauftrag-Felder als zu füllende Platzhalter (kein Formular, Nicht-Ziel laut feature.md). werkzeugsatz nennt einen in der Startvorlage benannten Werkzeugsatz (F11 WS-2 AK4/AK5), auftragstext ist seit F11 WS-1 AK2 Pflichtfeld. @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird @returns Startauftrag-Objekt zur Anzeige im Textfeld */
 function baueWiederaufnahmeVorlage(alterLaufId) {
   return {
     laufId: `${alterLaufId}-wiederaufnahme-${crypto.randomUUID()}`,
     vorgaengerLaufId: alterLaufId,
-    profilReferenz: { pfad: '', hash: '', version: '' },
     rolle: '',
     anfragen: [],
     budget: {},
     aufrufEingaben: {},
-    werkzeugStartziel: [],
-    werkzeugVersionDeklariert: '',
-    berechtigungskontext: '',
+    werkzeugsatz: '',
+    auftragstext: '',
   }
 }
 
