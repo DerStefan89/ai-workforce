@@ -1284,3 +1284,59 @@ Fundstelle: `src/claude-code-gateway/index.ts:183-199`; `src/claude-code-gateway
 Auswirkung: Keine Sicherheitslücke (Prozess bricht vor jeder Werkzeugnutzung ab), aber eine vollständige funktionale Blockade — das System kann aktuell keine einzige reale Aufgabe erfolgreich ausführen. Betrifft jede künftige reale Nutzung, bis behoben. Meilenstein 1 bleibt laut Stefans Entscheidung (06.09.2026) deshalb offen, bis dies behoben und ein realer ERFOLGREICH-Lauf erbracht ist.
 Maßnahme: F6a braucht ein Prompt-Feld in `AufrufEingaben` (oder eine äquivalente Kontextpaket-Übergabe, z. B. via Stdin) und eine Verdrahtung in `fuehreAufgabeDurch`, die `kontextpaketErgebnis` real als Prompt weiterreicht. Eigener kleiner Workstream, kein neues Feature. Fix in PR #80 (Branch `fix/f124-prompt-uebergabe`, gemergt auf `main`, 06.09.2026). Real ERFOLGREICH-Nachlauf erbracht: `laufId` `e2e-referenzfeature-2026-09-06-f124-nachlauf`, `GET /api/laeufe` → `ABGESCHLOSSEN`/`ERFOLGREICH`, echter Kindprozess mit `exitCode 0`, `permission_denials: []` (siehe `state/e2e-nachweis-meilenstein-1.md`, Abschnitt „Nachlauf nach F-124-Fix"). Damit geschlossen.
 Feature/Run: E2E-Nachweis Meilenstein 1, 06.09.2026 (Fix + Nachlauf).
+
+**F-125** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: device_bash-VM (Remote-Devices-Bridge) hat plattformfremde native Binaries im gemounteten node_modules.
+Beschreibung: `npm run check` schlägt in der Bridge-VM mit MODULE_NOT_FOUND @biomejs/cli-linux-x64 bzw. "Unable to resolve @typescript/typescript-linux-x64" fehl — node_modules wurde unter Windows installiert, die Linux-VM kann die nativen Anteile nicht nutzen.
+Fundstelle: Bridge-Sitzung 06.09.2026, F-124-Fix-Verifikation.
+Auswirkung: Verifikation über die Bridge kann Lint/Typecheck nicht selbst laufen lassen, nur node --test und die reinen .mjs-Gate-Skripte. Deckt Logikfehler ab, keine Typ-/Lint-Fehler.
+Maßnahme: Kein Produktcode-Fix nötig; bekannte Grenze der Bridge-Verifikation, bei Freigaben auf Stefans echten `npm run check`-Lauf verlassen.
+Feature/Run: F-124-Fix-Verifikation, 06.09.2026.
+
+**F-126** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Fünfte Verletzung von "aus der Bridge nur lesende Git-Befehle" (F-100/F-118/F-122/F-123), folgenlos.
+Beschreibung: Eine Bridge-Sitzung hat git fetch, git checkout, git pull --ff-only, git branch und git reset --hard ausgeführt. Kein Schaden (kein .git/index.lock, git status danach sauber), aber die fünfte dokumentierte Wiederholung derselben Fehlerklasse.
+Fundstelle: state/findings.md F-100, F-118, F-122, F-123; Sitzung 06.09.2026.
+Auswirkung: Wiederkehrender Prozessfehler; zweimal folgenlos, zweimal mit realem Schaden (F-112, F-123). Reine Selbstverpflichtung verhindert das Muster nachweislich nicht.
+Maßnahme: Den in F-118/F-122/F-123 vorgeschlagenen technischen Guard (Wrapper/Alias, der aus der Bridge nur log/ls-tree/ls-remote/rev-parse/cat zulässt) vor Beginn von Meilenstein 2 umsetzen.
+Feature/Run: F-124-Verifikation/M1-Abschluss, 06.09.2026.
+
+**F-127** · `TECH_DEBT` · P1 · offen
+Titel: Kein Timeout und kein Abbruchweg für einen gestarteten Werkzeugprozess.
+Beschreibung: echterStarter in src/claude-code-gateway/prozessstart.ts ruft execFile ohne timeout-Option; das ChildProcess-Handle verlässt die Funktion nicht, und der Leitstand ruft fuehreAufgabeDurch fire-and-forget auf. Ein hängender Kindprozess lässt den Lauf unbegrenzt in RUN_PREPARED ohne Terminalartefakt.
+Fundstelle: src/claude-code-gateway/prozessstart.ts (execFile-Optionen); scripts/leitstand-server.mjs (Fire-and-forget-Zweig).
+Auswirkung: In Meilenstein 1 tolerierbar. Ab Meilenstein 2 Alltagsbedingung — der einzige Ausweg ist heute der Task-Manager.
+Maßnahme: Feature F14 (Meilenstein 2).
+Feature/Run: M2-Challenge, 06.09.2026.
+
+**F-128** · `TECH_DEBT` · P1 · offen
+Titel: Der Leitstand erzwingt D13 ("genau ein aktiver Arbeitsstrang") nicht.
+Beschreibung: POST /api/laeufe prüft ausschließlich die Eindeutigkeit der laufId (laufIdBelegt). Zwei Startaufträge mit verschiedenen IDs starten zwei echte Claude-Code-Kindprozesse gleichzeitig im selben Arbeitsverzeichnis.
+Fundstelle: scripts/leitstand-server.mjs, requestHandler POST-Zweig.
+Auswirkung: Verstoß gegen D13 per Klick auslösbar; verschärft F-114 (zwei Schreiber im selben Verzeichnis, real beobachtet). Bislang folgenlos, weil nur einzelne Läufe von Hand gestartet wurden.
+Maßnahme: F11 AK7 (409, solange ein Lauf dieser Serverinstanz nicht zurückgekehrt ist).
+Feature/Run: M2-Challenge, 06.09.2026.
+
+**F-129** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: "Meilenstein 2" existierte in der Sollquelle nicht.
+Beschreibung: docs/projekt/zielfassung.md §13 kannte nur Fassung 1 mit Meilenstein 1; umsetzungsplan-fassung-1.md Abschnitt 1 nannte M1 "einziger für Fassung 1" und ordnete die M2-Inhalte Deliverable 5 zu.
+Fundstelle: docs/projekt/zielfassung.md §13, docs/projekt/umsetzungsplan-fassung-1.md Abschnitt 1/2.
+Auswirkung: Ohne Nachtrag Drift zwischen Chat-Planung und Repo — die Fehlerklasse, die P5/E-073 verhindern sollen.
+Maßnahme: dieser Doku-PR.
+Feature/Run: M2-Challenge, 06.09.2026.
+
+**F-130** · `PROCESS_IMPROVEMENT` · P2 · **gelöst**
+Titel: Feature-Akte F11 verwies auf Claude-Projekt-Dokumente, die nicht im Repo liegen.
+Beschreibung: Die aus dem Challenger-Chat übernommene Vorlage nannte unter "Zuordnung" `claude/120` und `claude/121`. `claude/` enthält im Repo nur `65_...` und `66_...` — beide Verweise waren für jede Claude-Code-Sitzung nicht auflösbar. Dieselbe Grundursache wie F-013, F-082, F-092 und F-100.
+Fundstelle: `features/F11/feature.md`, Abschnitt "Zuordnung", vor der Korrektur.
+Auswirkung: gering, weil vor dem Commit gefunden. `scripts/check-docs.mjs` Prüfung 1 hätte es nicht gemeldet — sie matcht nur Pfade mit Dateiendung (F-007, weiterhin offen).
+Maßnahme: Verweis auf die real im Repo liegenden Stellen umgestellt (`zielfassung.md` §13.3, `umsetzungsplan-fassung-1.md` Abschnitt 1b). Regel für künftige Akten: eine Repo-Datei verweist nie auf `claude/*`, solange das Dokument nicht real im Repo liegt.
+Feature/Run: F11-Aktenanlage, 06.09.2026.
+
+**F-131** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Bauauftrag enthielt einen Einfüge-Platzhalter statt des Volltexts.
+Beschreibung: Der Auftrag zur Aktenanlage enthielt an der Stelle des Akten-Volltexts den Platzhalter `<<<HIER DEN VOLLTEXT AUS ABSCHNITT 1 VON claude/122 EINFÜGEN>>>`. Die bauende Sitzung musste zurückfragen, der Volltext wurde manuell nachgereicht.
+Fundstelle: Challenger-Chat, Auftrag 1 zur M2-Sollquelle, 06.09.2026.
+Auswirkung: ein vermeidbarer Rückfragezyklus; identische Familie wie F-013, F-082, F-092, F-100 — die Volltext-Regel wurde formal eingehalten (Volltext lag im Projektdokument), aber nicht im Prompt selbst.
+Maßnahme: Prompts an Claude Code nie mit Einfüge-Platzhaltern ausgeben. Der für den Auftrag relevante Volltext steht direkt im Prompt-Block, auch wenn er lang ist.
+Feature/Run: F11-Aktenanlage, 06.09.2026.

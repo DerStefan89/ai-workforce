@@ -28,7 +28,13 @@ Marker: `[Fakt]` · `[Schlussfolgerung]` · `[Annahme]` · `[offene Unsicherheit
 
 ---
 
-## 1. Meilenstein 1 (einziger für Fassung 1)
+## 1. Meilenstein 1
+
+`[Fakt, Nachtrag 06.09.2026]` Meilenstein 1 wurde am 06.09.2026 real
+erbracht (§13.1 der Ziel-Fassung, `state/e2e-nachweis-meilenstein-1.md`).
+Fassung 1 wurde am selben Tag um einen Meilenstein 2 erweitert (Abschnitt
+1b) — Meilenstein 1 ist damit nicht mehr der einzige Meilenstein dieser
+Fassung.
 
 AI Workforce lauffähig für die Referenzfeature „Belegschaftskonfiguration an
 der AI Workforce selbst" (§13.1).
@@ -48,6 +54,24 @@ ist Backlog, nicht Fassung 1. `[Schlussfolgerung]` Das betrifft nur, *wer*
 einen Schritt auslöst — die Ausführungs-Sicherheitsinfrastruktur (D3: „Der
 Kern ruft auf") ist auch bei rein manueller Auslösung von Anfang an nötig,
 weil sie jeden Aufruf absichert, unabhängig davon, wer ihn ausgelöst hat.
+
+---
+
+## 1b. Meilenstein 2
+
+`[Fakt, Nachtrag 06.09.2026]` Bedienbarer Leitstand (§13.3 der
+Ziel-Fassung). Vier Features plus eine Dogfooding-Phase, in zwingender
+Reihenfolge:
+
+| # | Feature | Begründung Reihenfolge |
+|---|---|---|
+| F11 | **Auftrag und geführter Start** | Grundlage — ohne Auftrag als Kontrollartefakt (E-M2-2) und geführten Start kein Lauf über den Leitstand |
+| F12 | **Laufliste und Lauf-Detailansicht** | Braucht F11s Auftrag/Lauf-Struktur, um Läufe verständlich darzustellen |
+| F13 | **Entscheiden und Wiederaufnehmen** | Braucht F12s Detailansicht, um Rückfragen/Fehlschläge anzuzeigen, bevor darauf entschieden werden kann |
+| F14 | **Timeout und Abbruch** | Braucht einen laufenden, sichtbaren Lauf (F11–F13), um ihn abbrechen zu können |
+| — | **Dogfooding-Phase** | Erst nach F11–F14 sinnvoll — die Bestehensbedingung aus §13.3 (fünf reale Aufträge über mindestens drei Tage) braucht alle vier Features |
+
+Reihenfolge zwingend F11 → F12 → F13 → F14 → Dogfooding.
 
 ---
 
@@ -95,6 +119,14 @@ Handoff-Informationen etc.) vermischen Position (§4), Execution (§7) und
 Artifact (Artifact Registry, §16.2) in einer flachen Struktur — muss beim
 TECH_PLAN für Deliverable 5 auf die bestehende Modultrennung abgebildet
 werden, nicht als neue Entity übernommen werden.
+
+`[Fakt, Nachtrag 06.09.2026]` Zugeschnitten: „Projekt anlegen/verwalten"
+und „Chat-/Kontext-Detailansicht" gehen zugeschnitten in Meilenstein 2 auf
+(F11 Auftrag und geführter Start, F12 Laufliste und Lauf-Detailansicht,
+Abschnitt 1b) — nicht im vollen, hier beschriebenen Umfang, sondern im für
+die §13.3-Bestehensbedingung nötigen Zuschnitt (ein reales Profil, ein
+Auftrag mit Läufen, keine Mehrprojektverwaltung). Das vollständige
+Rollenmodell mit allen Feldern bleibt späteren Meilensteinen vorbehalten.
 
 ---
 
