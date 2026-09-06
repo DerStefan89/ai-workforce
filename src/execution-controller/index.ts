@@ -17,6 +17,14 @@
  * selbst auf, nur deren öffentliche Einstiegspunkte — mechanisch per Grep
  * geprüft (AK1-/AK3-Gate, scripts/check-f8-execution-controller.mjs).
  *
+ * F-124 (Prompt-Übergabe): zwischen Kontextpaket und Aufrufkonstruktion baut
+ * bauePromptAusKontextpaket den `-p`-Prompttext ausschließlich aus F5s
+ * bereits akzeptierten Kontextpaket-Elementen (kontextpaketErgebnis.paket),
+ * zurückgeführt auf die ursprünglichen Anfrage-Objekte über F5s eigene
+ * elementSchluessel-Funktion (D5, kein Nachbau der Rollenfilter-/Budget-
+ * Regel). eingaben.aufrufEingaben selbst bleibt unverändert (D5, reine
+ * Durchreichung) — baueAufruf bekommt ein neu zusammengesetztes Objekt.
+ *
  * Wird aufgerufen von:
  * - (noch niemand — WS-1/WS-2a ist der erste Aufrufer dieser Kette)
  *
@@ -49,8 +57,8 @@
 
 import { randomUUID } from 'node:crypto'
 import { starteGateway, baueAufruf } from '../claude-code-gateway/index.ts'
-import { baueKontextpaket } from '../context-builder/index.ts'
-import type { Anfrage } from '../context-builder/types.ts'
+import { baueKontextpaket, elementSchluessel } from '../context-builder/index.ts'
+import type { Anfrage, KontextpaketV0Daten } from '../context-builder/types.ts'
 import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
@@ -66,6 +74,33 @@ function eskalationsLaufId(ausloesenderLaufId: string): string {
 /** Artefakt-ID der Laufakte eines Vorgängerlaufs (WS-2b, AK7) — eigene Kleinstfunktion, konsistent mit eskalationsLaufId oben, statt Zugriff auf die nicht exportierte gleichnamige Hilfsfunktion in claude-code-gateway/index.ts. */
 function vorgaengerLaufakteArtefaktId(vorgaengerLaufId: string): string {
   return `laufakte-${vorgaengerLaufId}`
+}
+
+/**
+ * Baut den Prompttext für F6as `-p`-Argument ausschließlich aus den von F5
+ * tatsächlich AKZEPTIERTEN Kontextpaket-Elementen (F-124) — eine von F5
+ * ausgeschlossene Anfrage (Rollenfilter D1/D14, Budget) landet damit nie im
+ * Prompt, das wäre ein Bruch der bereits getroffenen F5-Entscheidung durch
+ * die Hintertür. Kein Nachbau von F5s Element-Schlüsselbildung: elementSchluessel
+ * ist F5s eigene, hier nur wiederverwendete Funktion (D5).
+ * @param paket - von F5 zurückgegebenes, bereits gefiltertes/budgetiertes Kontextpaket
+ * @param anfragen - dieselbe Anfragenliste, die an baueKontextpaket ging (inkl. WS-2b-Lineage-Voranstellung)
+ * @returns lesbarer Text, ein Abschnitt je akzeptiertem Element
+ */
+function bauePromptAusKontextpaket(paket: KontextpaketV0Daten, anfragen: Anfrage[]): string {
+  const anfrageNachSchluessel = new Map<string, Anfrage>()
+  for (const anfrage of anfragen) {
+    const schluessel = elementSchluessel(anfrage)
+    if (!anfrageNachSchluessel.has(schluessel)) anfrageNachSchluessel.set(schluessel, anfrage)
+  }
+  const abschnitte = paket.elemente.map((element) => {
+    const anfrage = anfrageNachSchluessel.get(element.pfad)
+    if (anfrage === undefined) {
+      throw new Error(`Kontextpaket-Element '${element.pfad}' hat keine zugehörige Anfrage — F5/F8-Vertragsbruch`)
+    }
+    return `Pfad: ${anfrage.pfad}\nFrage: ${anfrage.frage}\nBegründung: ${anfrage.begruendung}\nInhalt:\n${anfrage.inhalt}`
+  })
+  return abschnitte.join('\n\n---\n\n')
 }
 
 /**
@@ -115,7 +150,8 @@ export async function fuehreAufgabeDurch(
     return { ok: false, stufe: 'kontextpaket', ergebnis: kontextpaketErgebnis }
   }
 
-  const tokens = baueAufruf(eingaben.aufrufEingaben)
+  const promptText = bauePromptAusKontextpaket(kontextpaketErgebnis.paket, anfragen)
+  const tokens = baueAufruf({ ...eingaben.aufrufEingaben, prompt: promptText })
 
   const gatewayErgebnis = await starteGateway(
     {

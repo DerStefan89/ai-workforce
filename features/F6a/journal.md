@@ -225,3 +225,40 @@ Nächster Schritt: erneuter, frischer Advisor-Pass gegen Fassung 2
 (Kurzprüfung, ob die Rücknahme vollständig und widerspruchsfrei ist) —
 oder, falls Stefan das für ausreichend hält, direkt Handoff-Vertrag
 für WS2.
+
+## 06.09.2026 — F-124-Fix: Prompt-Übergabe an `-p`
+
+Bug behoben (`state/findings.md` F-124, P0): `baueAufruf` konstruierte
+Tokens ohne Prompt-Argument — jeder reale Lauf brach beim ersten echten
+Nachweis (`e2e-referenzfeature-2026-09-06`) mit „Input must be provided
+either through stdin or as a prompt argument when using --print" ab, bevor
+irgendein Werkzeug genutzt wurde.
+
+Vor dem Bau real gegen `claude --help` gegenprüft: `-p`/`--print` ist der
+aktuelle Flag-Name dieser Claude-Code-Version ("Your prompt"), deckungsgleich
+mit dem bereits real erprobten Muster aus
+`scripts/verify-f6b-ws-g-schreiblauf.mjs` — keine Design-Entscheidung,
+sondern ein Nachholen eines Musters, das dort schon einmal manuell
+funktioniert hatte.
+
+`AufrufEingaben` (`src/claude-code-gateway/types.ts`) trägt jetzt ein
+Pflichtfeld `prompt: string`. `baueAufruf` wirft bei leerem/fehlendem
+Prompt (gleiches Muster wie beim `modell`-Feld) und hängt bei vorhandenem
+Prompt `'-p', eingaben.prompt` als letztes Token-Paar an (AK16). Der
+eigentliche Prompttext-Zusammenbau bleibt bewusst außerhalb von F6a — der
+liegt in F8s `fuehreAufgabeDurch` (siehe `features/F8/journal.md`, selbes
+Datum), F6a nimmt nur noch entgegen, was ihm übergeben wird (D5).
+
+`scripts/verify-f6b-ws-g-schreiblauf.mjs` (baute den Prompt bisher manuell
+außerhalb von `baueAufruf` zusammen, mit demselben `-p`-Muster) auf den
+neuen Parameter umgestellt — kein doppeltes `-p` mehr.
+
+Tests: zwei neue Grünfälle (`baueAufruf` mit Prompt → Tokens enden auf
+`-p, <Text>`) und zwei neue Rot-Fälle (fehlender/leerer Prompt → Wurf) in
+`claude-code-gateway.test.ts`; `scripts/check-f6a-claude-code-gateway.mjs`
+Fixture entsprechend nachgezogen. `npm run check` → Exit 0 (neue Tests
+eingeschlossen).
+
+`state/findings.md` F-124 bleibt `offen`, bis der reale ERFOLGREICH-Lauf
+nachgezogen ist (Stefans Entscheidung 06.09.2026, separater Folgeauftrag) —
+nur `Maßnahme` um den Fix-PR ergänzt.

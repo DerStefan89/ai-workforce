@@ -224,6 +224,16 @@ Reviewer-/QA-Pass vor Merge noch ausstehend:
   `starteGateway` vor jeder `RUN_PREPARED`-Wirkungsmarke. Sieben Rot-Fälle
   einzeln plus ein Grün-Fall in
   `scripts/check-f6a-claude-code-gateway.mjs`.
+- **AK16** — F-124-Fix, 06.09.2026: `AufrufEingaben` trägt jetzt ein
+  Pflichtfeld `prompt: string`; `baueAufruf` wirft ohne (leeren) Prompt
+  wie beim `modell`-Feld und hängt bei vorhandenem Prompt `'-p',
+  eingaben.prompt` als letztes Token-Paar an. `-p`/`--print` real gegen
+  `claude --help` gegenprüft ("Your prompt"), deckungsgleich mit dem
+  bereits real erprobten Muster aus `scripts/verify-f6b-ws-g-
+  schreiblauf.mjs` (baute den Prompt bisher manuell außerhalb von
+  `baueAufruf` zusammen, jetzt auf den neuen Parameter umgestellt). Der
+  eigentliche Prompttext-Zusammenbau aus F5s Kontextpaket bleibt bewusst
+  außerhalb von F6a — siehe F8 AK10.
 
 ## F6b — Schreibwirkung (Workstreams A–G)
 

@@ -1510,3 +1510,42 @@ nicht die Tabelle oben stillschweigend überschreiben.
   `scripts/erzeuge-invocation-policy-nachweise.mjs`, kein Commit im
   externen Autorisierungs-Repo (Stefans Entscheidung, außerhalb dieses
   Schritts).
+
+- 2026-09-06, F-124-Fix (Prompt-Übergabe an den Claude-Code-Kindprozess,
+  `fix/f124-prompt-uebergabe`): `baueAufruf`
+  (`src/claude-code-gateway/index.ts`) hängt bei vorhandenem
+  `AufrufEingaben.prompt` jetzt `'-p', eingaben.prompt` als letztes
+  Token-Paar an und wirft bei leerem/fehlendem Prompt — real gegen
+  `claude --help` gegenprüft (`-p`/`--print`: "Your prompt"),
+  deckungsgleich mit dem oben (2026-09-02, `verify-f6a-real-run.mjs`)
+  bereits real erprobten, dort noch skriptseitig von Hand angehängten
+  `-p <Prompt>`-Muster. `scripts/check-f6a-claude-code-gateway.mjs`s
+  Grün-Fall-Fixture (a) entsprechend auf das erwartete Tokens-Array mit
+  `-p`/`Testprompt` am Ende nachgezogen — sonst wäre der Gate-Lauf mit
+  dem neuen Pflichtfeld sofort rot gelaufen.
+
+  `src/execution-controller/index.ts`s `fuehreAufgabeDurch` liest jetzt
+  real `kontextpaketErgebnis.paket.elemente` (bisher ungenutzter
+  Rückgabewert, siehe `state/findings.md` F-124) und baut daraus über
+  die neue Funktion `bauePromptAusKontextpaket` den Prompttext,
+  ausschließlich aus den von F5 akzeptierten Elementen, zurückgeführt
+  auf die ursprünglichen `Anfrage`-Objekte über F5s eigene
+  `elementSchluessel`-Funktion (D5). Gegen
+  `scripts/check-f8-execution-controller.mjs`s AK1/AK3-Grep geprüft:
+  kein Treffer.
+
+  Vier neue Tests in `claude-code-gateway.test.ts` (Grün-/Rot-Fälle
+  `-p`), ein neuer Test in `execution-controller.test.ts` (Budget-
+  Ausschluss, Prompt enthält nur die akzeptierte Anfrage, real über die
+  an die Starter-Attrappe übergebenen Tokens belegt, nicht nur
+  behauptet). `npm run check` → Exit 0, `tests 133, pass 133, fail 0`.
+
+  `scripts/verify-f6b-ws-g-schreiblauf.mjs` (bisher manueller `-p`-
+  Anbau außerhalb von `baueAufruf`) auf den neuen Parameter umgestellt —
+  kein doppeltes `-p` mehr; nicht erneut real gelaufen (kein
+  Prozessstart in diesem Schritt, reine Quelltextanpassung an den
+  geänderten Aufrufvertrag).
+
+  `state/findings.md` F-124 bleibt `offen` bis zum realen
+  ERFOLGREICH-Nachlauf (Stefans Entscheidung 06.09.2026, separater
+  Folgeauftrag) — nur `Maßnahme` um den Fix-PR ergänzt.

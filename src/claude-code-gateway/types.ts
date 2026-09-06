@@ -29,6 +29,8 @@ export interface WerkzeugsatzBegrenzung {
 export interface AufrufEingaben {
   modell: string
   werkzeugsatz: WerkzeugsatzBegrenzung
+  /** Von F5s Kontextpaket abgeleiteter Prompttext, unverändert als `-p`-Argument durchgereicht (F-124) — baueAufruf baut den Text nicht selbst, das leistet F8s fuehreAufgabeDurch. */
+  prompt: string
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. */
