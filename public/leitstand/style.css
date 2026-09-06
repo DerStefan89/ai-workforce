@@ -67,3 +67,46 @@ th {
   color: #8a1f1f;
   margin-top: 0.2rem;
 }
+
+#wiederaufnahme, #startfehler-abschnitt {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  max-width: 100%;
+}
+
+#wiederaufnahme-json {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.wiederaufnahme-btn {
+  font-size: 0.8rem;
+  font-family: system-ui, sans-serif;
+  vertical-align: middle;
+  margin-left: 0.5rem;
+}
+
+.fehler {
+  color: #8a1f1f;
+  font-weight: 600;
+}
+
+.erfolg {
+  color: #116631;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.startfehler-eintrag {
+  font-size: 0.85rem;
+  margin: 0.3rem 0;
+}
