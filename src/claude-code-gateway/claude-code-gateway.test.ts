@@ -51,7 +51,7 @@ function raeumeKette(laufId: string): void {
 }
 
 function gueltigeEingaben(): AufrufEingaben {
-  return { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep'] } }
+  return { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Grep'] }, prompt: 'Testprompt' }
 }
 
 // ─── F4-Startfreigabe-Fixture (F6b WS-G): starteGateway ruft ab jetzt bei
@@ -205,11 +205,30 @@ test('baueAufruf liefert das erwartete Tokens-Array — Grünfall', () => {
     'Read,Grep',
     '--allowedTools',
     'Read,Grep',
+    '-p',
+    'Testprompt',
   ])
 })
 
 test('baueAufruf wirft ohne modell', () => {
-  const eingaben = { modell: '', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read'] } } as AufrufEingaben
+  const eingaben = { ...gueltigeEingaben(), modell: '' }
+  assert.throws(() => baueAufruf(eingaben))
+})
+
+// ─── F-124: Prompt-Übergabe (baueAufruf um `-p` erweitert) ─────────────────
+
+test('baueAufruf: Tokens enden auf -p, <Prompttext> — Grünfall', () => {
+  const tokens = baueAufruf({ ...gueltigeEingaben(), prompt: 'Realer Prompttext aus F5s Kontextpaket' })
+  assert.deepStrictEqual(tokens.slice(-2), ['-p', 'Realer Prompttext aus F5s Kontextpaket'])
+})
+
+test('baueAufruf wirft ohne prompt (fehlend)', () => {
+  const eingaben = { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read'] } } as AufrufEingaben
+  assert.throws(() => baueAufruf(eingaben))
+})
+
+test('baueAufruf wirft bei leerem prompt', () => {
+  const eingaben = { ...gueltigeEingaben(), prompt: '' }
   assert.throws(() => baueAufruf(eingaben))
 })
 

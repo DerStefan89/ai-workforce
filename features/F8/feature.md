@@ -98,6 +98,15 @@ nachzubauen (D5) und ohne selbst einen Werkzeugprozess zu starten.
    kein Netz; Tests laufen gegen das einsetzbare Prozessstart-Primitiv
    aus F6a.
 9. `npm run check` → Exit 0.
+10. (F-124-Fix, 06.09.2026) Der an F6as `baueAufruf` übergebene Prompttext
+    wird ausschließlich aus den von F5 tatsächlich akzeptierten
+    Kontextpaket-Elementen gebaut (`kontextpaketErgebnis.paket.elemente`,
+    zurückgeführt auf die ursprünglichen `Anfrage`-Objekte über F5s
+    eigene `elementSchluessel`-Funktion, D5 — kein Nachbau von F5s
+    Rollenfilter-/Budget-Regel). Eine von F5 ausgeschlossene Anfrage
+    (Rollenfilter oder Budget) landet nie im Prompt — real getestet
+    (Budget-Ausschluss, zwei Anfragen, nur die akzeptierte im
+    Starter-übergebenen Prompt).
 
 ## Zuordnung
 

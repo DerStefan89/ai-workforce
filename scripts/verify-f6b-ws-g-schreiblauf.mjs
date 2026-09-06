@@ -98,7 +98,7 @@ try {
 }
 
 const laufId = `verify-f6b-ws-g-schreiblauf-${randomUUID()}`
-const tokens = [...baueAufruf({ modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Write'] } }), '-p', PROMPT]
+const tokens = baueAufruf({ modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Write'] }, prompt: PROMPT })
 
 console.log(`lauf_id: ${laufId}`)
 console.log(`arbeitsverzeichnis_pfad (real, process.cwd(), KEIN chdir — Option A): ${process.cwd()}`)

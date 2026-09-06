@@ -177,12 +177,19 @@ export function leseModellBeobachtet(ergebnisObjekt: Record<string, unknown> | n
 
 /**
  * Wirft synchron (D4-Ausnahme wie F1Bs schreibeWirkungsmarke bei
- * ungültigem art/ergebnis), wenn eingaben.modell leer oder fehlt — E-185
- * ist eine Aufrufer-Vertragsverletzung, kein externer Rot-Fall.
+ * ungültigem art/ergebnis), wenn eingaben.modell oder eingaben.prompt leer
+ * oder fehlt — E-185 (modell explizit) bzw. F-124 (prompt) sind
+ * Aufrufer-Vertragsverletzungen, kein externer Rot-Fall. `-p` ist das real
+ * bestätigte Prompt-Argument dieser Claude-Code-Version (`claude --help`:
+ * "Your prompt"; state/gates.md dokumentiert dasselbe Muster bereits aus
+ * einem manuellen Verifikationslauf, F-124).
  */
 export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
   if (!eingaben.modell) {
     throw new Error('AufrufEingaben.modell ist Pflichtfeld (E-185) — leer oder fehlend')
+  }
+  if (!eingaben.prompt) {
+    throw new Error('AufrufEingaben.prompt ist Pflichtfeld (F-124) — leer oder fehlend')
   }
   const werkzeugListe = eingaben.werkzeugsatz.erlaubte_werkzeuge.join(',')
   return [
@@ -196,6 +203,8 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     werkzeugListe,
     '--allowedTools',
     werkzeugListe,
+    '-p',
+    eingaben.prompt,
   ]
 }
 

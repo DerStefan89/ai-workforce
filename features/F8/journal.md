@@ -457,3 +457,39 @@ Bau von `READY_FOR_TECH` auf `ABGESCHLOSSEN` (kein separater Nachtrag,
 F-093-Auflage erfüllt). Gesamtstand F8: WS-1 (Kette), WS-2a
 (E-186-Eskalation über F9) und WS-2b (Wiederaufnahme mit Lineage-Verweis)
 vollständig umgesetzt und real getestet.
+
+## 2026-09-06 — F-124-Fix: Prompt-Übergabe aus dem Kontextpaket
+
+Gegenstück zu `features/F6a/journal.md` (selbes Datum): `fuehreAufgabeDurch`
+rief bisher `baueAufruf(eingaben.aufrufEingaben)` auf, ohne
+`kontextpaketErgebnis.paket` je zu verwenden — F6as neues Prompt-Feld
+blieb damit unbefüllt, jeder reale Lauf brach strukturell ab
+(`state/findings.md` F-124).
+
+Neue Funktion `bauePromptAusKontextpaket` (`src/execution-controller/
+index.ts`) baut den Prompttext ausschließlich aus F5s bereits
+akzeptierten Kontextpaket-Elementen (`kontextpaketErgebnis.paket.elemente`),
+zurückgeführt auf die ursprünglichen `Anfrage`-Objekte über F5s eigene,
+exportierte `elementSchluessel`-Funktion (D5 — kein Nachbau der
+Rollenfilter-/Budget-Regel, nur Wiederverwendung eines bereits
+vorhandenen Rückgabewerts). Eine von F5 ausgeschlossene Anfrage
+(Rollenfilter D1/D14 oder Budget) landet dadurch nie im Prompt — kein
+Bruch der bereits getroffenen F5-Entscheidung durch die Hintertür.
+`eingaben.aufrufEingaben` selbst bleibt unverändert (D5, reine
+Durchreichung); `baueAufruf` bekommt ein frisch zusammengesetztes
+`{ ...eingaben.aufrufEingaben, prompt: promptText }`.
+
+Gegen `scripts/check-f8-execution-controller.mjs`s AK1/AK3-Grep geprüft:
+kein Treffer, da `elementSchluessel`/`KontextpaketV0Daten` nicht zu den
+verbotenen Regelbezeichnern gehören — reines Verwenden eines bereits
+gebauten Rückgabewerts, keine Neuimplementierung.
+
+Test: zwei Anfragen, eine davon durch `budget.maxElemente` ausgeschlossen
+— der real an den Starter übergebene Prompt (letztes Tokens-Paar `-p,
+<Text>`) enthält nur den Marker der akzeptierten Anfrage, nicht den der
+ausgeschlossenen (`execution-controller.test.ts`, "F-124: der an den
+Starter übergebene Prompt enthält nur die von F5 akzeptierte Anfrage").
+`npm run check` → Exit 0.
+
+`state/findings.md` F-124 bleibt `offen` bis zum realen ERFOLGREICH-
+Nachlauf (separater Folgeauftrag) — nur `Maßnahme` um den Fix-PR ergänzt.

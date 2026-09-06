@@ -121,7 +121,7 @@ function gueltigeEingaben(uebrigeFelder: { werkzeug_version_deklariert: string; 
     rolle: 'ausfuehrung',
     anfragen: [{ pfad: 'test/anfrage.md', frage: 'Testfrage', begruendung: 'Testbegruendung', inhalt: 'Testinhalt', notwendig: true }],
     budget: {},
-    aufrufEingaben: { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read'] } },
+    aufrufEingaben: { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read'] }, prompt: 'Testprompt' },
     werkzeugStartziel: GUELTIGES_STARTZIEL,
     werkzeugVersionDeklariert: uebrigeFelder.werkzeug_version_deklariert,
     berechtigungskontext: uebrigeFelder.berechtigungskontext,
@@ -275,7 +275,7 @@ test('AK2/AK8: F6a-Rot-Fall bricht mit dem unveränderten Gateway-Grund ab, kein
     const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
     // Verbotener Aufrufparameter (E-182) über die Werkzeugliste eingeschleust
     // — baueAufruf reicht erlaubte_werkzeuge unverändert in --tools/--allowedTools durch.
-    eingaben.aufrufEingaben = { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['--dangerously-skip-permissions'] } }
+    eingaben.aufrufEingaben = { modell: 'sonnet', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['--dangerously-skip-permissions'] }, prompt: 'Testprompt' }
 
     // Unabhängiger Referenzaufruf mit identischen Eingaben (eigene laufId,
     // damit er die zu prüfende Kette nicht mitbeschreibt): beweist
@@ -362,6 +362,43 @@ test('F5-Abbruchzweig: kontextpaket-Rot-Fall bricht sofort ab, Grund unveränder
 
     const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
     assert.strictEqual(laufakteVersion, null)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── F-124: Prompt-Übergabe ──────────────────────────────────────────────────
+
+test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzeptierte Anfrage, nicht die budgetbedingt ausgeschlossene', async () => {
+  const laufId = neueLaufId('f124')
+  let empfangeneTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    empfangeneTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.anfragen = [
+      { pfad: 'test/akzeptiert.md', frage: 'Akzeptierte Frage', begruendung: 'Akzeptierte Begruendung', inhalt: 'AKZEPTIERTER-INHALT-MARKER', notwendig: false },
+      { pfad: 'test/ausgeschlossen.md', frage: 'Ausgeschlossene Frage', begruendung: 'Ausgeschlossene Begruendung', inhalt: 'AUSGESCHLOSSENER-INHALT-MARKER', notwendig: false },
+    ]
+    eingaben.budget = { maxElemente: 1 }
+
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(ergebnis.ok)
+
+    assert.ok(empfangeneTokens !== undefined, 'Starter muss real aufgerufen worden sein')
+    assert.strictEqual(empfangeneTokens.at(-2), '-p', 'Prompt muss als letztes Token-Paar (-p, <Text>) übergeben werden')
+    const promptText = empfangeneTokens.at(-1) as string
+    assert.match(promptText, /AKZEPTIERTER-INHALT-MARKER/)
+    assert.doesNotMatch(promptText, /AUSGESCHLOSSENER-INHALT-MARKER/, 'die budgetbedingt ausgeschlossene Anfrage darf nicht im Prompt landen (F-124)')
   } finally {
     raeumeKette(laufId)
   }
