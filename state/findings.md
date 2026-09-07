@@ -1522,3 +1522,31 @@ Titel: Kein Schutz gegen Mehrfachklick auf "Starten" im Leitstand-Startformular.
 Beschreibung: Fünf statt zwei Läufe im WS-4-Nachweis entstanden, alle real und valide. YAGNI-Rückstellung.
 Maßnahme: Button während des laufenden POST deaktivieren, falls im Dogfooding erneut störend.
 Feature/Run: F12 WS-4, 07.09.2026.
+
+**F-156** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: F-152 bis F-155 wurden nicht ins Register übernommen.
+Beschreibung: state/findings.md endete bei F-151, während claude/137 "Vollständiges Register: state/findings.md" behauptete. Vier Findings, davon eines P1 (Bridge-Regel, F-154), existierten nur außerhalb des Repos.
+Auswirkung: die Findings-Regel verfehlt genau den Zweck, für den sie existiert — Findings bleiben im Chat.
+Maßnahme: Register-Nachtrag als Pflichtschritt in die Übergaberoutine aufnehmen; nachgetragen mit PR docs/findings-f152-f155.
+Feature/Run: Challenge F13, 07.09.2026.
+
+**F-157** · `TECH_DEBT` · P1 · offen
+Titel: Wiederaufnahme im Leitstand nur über rohes JSON bedienbar.
+Beschreibung: public/leitstand/index.html:49–58 hält ein JSON-Textfeld; baueWiederaufnahmeVorlage (public/leitstand/app.js:174) belegt nur laufId und vorgaengerLaufId vor und liefert rolle:'', anfragen:[], budget:{}, aufrufEingaben:{}, werkzeugsatz:'', auftragId:'' — sechs Felder werden von Hand in JSON getippt.
+Auswirkung: §13.3-Zielsatz "ohne JSON" und die Messgröße "Terminalwechsel = 0" sind für den geforderten Wiederaufnahme-Fall real nicht erfüllt.
+Maßnahme: F13 WS-1 (AK1).
+Feature/Run: Challenge F13, 07.09.2026.
+
+**F-158** · `TECH_DEBT` · P1 · offen
+Titel: Kein Schreibpfad für menschliche Entscheidungen im Leitstand.
+Beschreibung: scripts/leitstand-server.mjs kennt genau zwei POSTs (/api/auftraege, /api/laeufe). Für "entscheidet bei Rückfragen und Fehlschlägen im Leitstand" (§13.3 Zielsatz) existiert kein Endpunkt, obwohl alle Kernverben vorhanden sind (F9 importiereAntwort/entscheideStale, F1B schreibeWirkungsmarke).
+Auswirkung: der Zielsatz von Meilenstein 2 ist zur Hälfte unbedienbar.
+Maßnahme: F13 WS-2 (AK3), ausschließlich über bestehende Kernverben.
+Feature/Run: Challenge F13, 07.09.2026.
+
+**F-159** · `TECH_DEBT` · P1 · offen
+Titel: F9-Transportkette im Produktpfad real nie ausgelöst; E-186 kein planbarer Nachweisfall.
+Beschreibung: grep -rl "bedarf_schema" kontrollzustand/ → 0 Treffer; genau ein VERWEIGERT im gesamten Kontrollzustand. Ursache real geprüft: bypass_verdacht_anzahl (src/result-evaluator/index.ts:115–122) zählt nur permission_denials, deren tool_input selbst einen E-182-Verbotsparameter enthält — ein normal abgelehnter Write liefert VERWEIGERT mit 0 und damit keine Eskalation.
+Auswirkung: §13.3 verlangt "ein Lauf mit echter Rückfrage" real; der E-186-Pfad ist dafür nicht zuverlässig provozierbar.
+Maßnahme: F13 AK8 setzt auf den normalen VERWEIGERT-Lauf als Klärfall, nicht auf E-186.
+Feature/Run: Challenge F13, 07.09.2026.

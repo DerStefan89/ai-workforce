@@ -179,6 +179,18 @@ Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
   Kindprozesses. Dabei real gefunden und behoben: ein
   Konfigurationsfehler in der Startvorlage (`werkzeugStartziel`-Drift
   gegen den Wirksamkeitsnachweis, E-188, `state/findings.md` F-136).
+- F12 (Bedienbarer Lauf: Auftrag, Liste, Detail) ist mit WS-1/WS-2/WS-3/
+  WS-4 vollständig umgesetzt und `ABGESCHLOSSEN`: die Laufliste zeigt
+  ausschließlich echte Laufketten mit Zeitstempeln aus dem Artefakt
+  statt der Dateizeit, ein Auftrag wird über einen eigenen Endpunkt
+  angelegt und dem Start zugeordnet, der Start läuft ohne JSON über das
+  geführte Formular (AK1-6). Die Detailansicht liest den Rohstrom sicher
+  und geprüft (AK7, AK8). Real über den Leitstand nachgewiesen (AK9,
+  `features/F12/nachweis-ws4.md`): ein Auftrag mit zwei Läufen (lesend,
+  schreibend), vom Technical Challenger gegen Laufketten,
+  Kontextpaket-Bezüge und Rohstrom-Hashes verifiziert, nie über die
+  Selbstauskunft des Kindprozesses. Gate `scripts/check-f12-leitstand-
+  ansicht.mjs` (AK10).
 
 ## Offene Punkte
 
@@ -205,8 +217,9 @@ Scope, Reihenfolge und Details siehe
 `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1b:
 
 - ✅ **F11** — Auftrag und geführter Start. **Erledigt**, siehe oben.
-- **F12** — Laufliste und Lauf-Detailansicht.
-- **F13** — Entscheiden und Wiederaufnehmen.
+- ✅ **F12** — Laufliste und Lauf-Detailansicht. **Erledigt**, siehe oben.
+- **F13** — Entscheiden und Wiederaufnehmen. In Arbeit
+  (`features/F13/feature.md`, Status `READY_FOR_TECH`).
 - **F14** — Timeout und Abbruch.
 
 Reihenfolge zwingend F11 → F12 → F13 → F14 → Dogfooding.
