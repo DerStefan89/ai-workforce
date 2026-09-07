@@ -16,6 +16,22 @@
  * (kommt serverseitig aus der Startvorlage) — stattdessen werkzeugsatz
  * (Name aus der Startvorlage) und auftragstext (AK2, Pflichtfeld).
  *
+ * F12 WS-2 (AK4-AK6): das geführte Startformular („Auftrag & Start") ist
+ * seither der Normalweg — Auftrag anlegen (POST /api/auftraege), Auftrag/
+ * Werkzeugsatz wählen (GET /api/auftraege, GET /api/startvorlage/
+ * werkzeugsaetze), Evidenzdateien über eine dynamische Zeilenliste
+ * benennen, starten (POST /api/laeufe mit auftragId statt auftragstext —
+ * AK5). Das JSON-Textfeld unter #wiederaufnahme bleibt als gekennzeichneter
+ * Notweg bestehen; baueWiederaufnahmeVorlage trägt seither auftragId statt
+ * auftragstext (F12 WS-2 AK5 — ein auftragstext im Body wird jetzt mit 400
+ * abgelehnt). rolle/budget/aufrufEingaben.modell sind im Startformular
+ * NICHT wählbar (§13.3-Nicht-Ziel „keine dynamische Rollen-/Modell-/
+ * Werkzeugwahl") — initStartformular() setzt dafür feste Client-Werte.
+ * laufId bleibt ein vom Nutzer überschreibbares Textfeld mit
+ * vorausgefülltem Vorschlagswert (aus Auftragstitel + Zeitstempel
+ * abgeleitet) — keine Server-Generierung (feature.md AK6 nennt laufId
+ * nicht in der Feldliste, aber auch keine Automatik).
+ *
  * F12 WS-1: /api/laeufe liefert seit AK2 nur noch Kopfdaten (kein
  * checkpoints-Array mehr) — laufAbschnitt zeigt deshalb eine Kopfdaten-Zeile
  * statt der vollen Checkpoint-Tabelle. checkpointZeile/statusZelle/
@@ -141,7 +157,7 @@ async function ladeStartfehler() {
   }
 }
 
-/** Baut die Vorlage fürs Wiederaufnahme-Textfeld — laufId/vorgaengerLaufId real gesetzt, die übrigen sechs Startauftrag-Felder als zu füllende Platzhalter (kein Formular, Nicht-Ziel laut feature.md). werkzeugsatz nennt einen in der Startvorlage benannten Werkzeugsatz (F11 WS-2 AK4/AK5), auftragstext ist seit F11 WS-1 AK2 Pflichtfeld. @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird @returns Startauftrag-Objekt zur Anzeige im Textfeld */
+/** Baut die Vorlage fürs Wiederaufnahme-Textfeld — laufId/vorgaengerLaufId real gesetzt, die übrigen sechs Startauftrag-Felder als zu füllende Platzhalter (kein Formular, Nicht-Ziel laut feature.md). werkzeugsatz nennt einen in der Startvorlage benannten Werkzeugsatz (F11 WS-2 AK4/AK5), auftragId ist seit F12 WS-2 AK5 Pflichtfeld (ersetzt auftragstext, das serverseitig aus dem Auftragsartefakt geladen wird). @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird @returns Startauftrag-Objekt zur Anzeige im Textfeld */
 function baueWiederaufnahmeVorlage(alterLaufId) {
   return {
     laufId: `${alterLaufId}-wiederaufnahme-${crypto.randomUUID()}`,
@@ -151,7 +167,7 @@ function baueWiederaufnahmeVorlage(alterLaufId) {
     budget: {},
     aufrufEingaben: {},
     werkzeugsatz: '',
-    auftragstext: '',
+    auftragId: '',
   }
 }
 
@@ -166,6 +182,208 @@ function zeigeWiederaufnahmeErfolg(text) {
   const anzeige = document.getElementById('wiederaufnahme-erfolg')
   anzeige.textContent = text
   anzeige.hidden = text === ''
+}
+
+/** Reduziert einen Auftragstitel auf ein für laufId zulässiges Muster (kein '/','\\','..' — Server-Regel LAUFID_UNZULAESSIGE_ZEICHEN) als Baustein eines Vorschlagswerts, nicht als Validierung selbst. @param titel - Auftragstitel oder anderer Anzeigetext @returns kleingeschriebener, mit '-' getrennter Kurzname, max. 40 Zeichen */
+function slugifiereFuerLaufId(titel) {
+  return (
+    titel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'lauf'
+  )
+}
+
+function zeigeAuftragAnlegenFehler(text) {
+  const anzeige = document.getElementById('auftrag-anlegen-fehler')
+  anzeige.textContent = text
+  anzeige.hidden = text === ''
+}
+
+function zeigeStartFehler(text) {
+  const anzeige = document.getElementById('start-fehler')
+  anzeige.textContent = text
+  anzeige.hidden = text === ''
+}
+
+function zeigeStartErfolg(text) {
+  const anzeige = document.getElementById('start-erfolg')
+  anzeige.textContent = text
+  anzeige.hidden = text === ''
+}
+
+/** Lädt GET /api/auftraege in das Auftrag-Dropdown des Startformulars (AK6) — Anzeige aus titel/erstellt_am, Wert auftragId (AK4/Q7: Auftragstext bewusst nicht in der Liste). Erhält die vorherige Auswahl über einen Reload hinweg, wenn sie noch existiert. */
+async function ladeAuftraege() {
+  const select = document.getElementById('start-auftrag')
+  const vorherAusgewaehlt = select.value
+  try {
+    const auftraege = await fetch('/api/auftraege').then((r) => r.json())
+    select.innerHTML =
+      auftraege.length === 0
+        ? '<option value="">— kein Auftrag vorhanden, zuerst anlegen —</option>'
+        : auftraege.map((a) => `<option value="${escapeHtml(a.auftragId)}">${escapeHtml(a.titel)} (${escapeHtml(a.erstellt_am ?? 'Zeit unbekannt')})</option>`).join('')
+    if (auftraege.some((a) => a.auftragId === vorherAusgewaehlt)) {
+      select.value = vorherAusgewaehlt
+    }
+  } catch (fehler) {
+    zeigeStartFehler(`Aufträge konnten nicht geladen werden: ${fehler.message}`)
+  }
+}
+
+/** Lädt GET /api/startvorlage/werkzeugsaetze in das Werkzeugsatz-Dropdown des Startformulars (AK6) — die Antwort trägt bereits nur name/modus/erlaubte_werkzeuge (D5, serverseitige Allowlist). Anzeige nennt erlaubte_werkzeuge statt modus (Reviewer-Hinweis: modus ist laut Schema immer die Konstante 'DEKLARIERT' und trägt keine Information — art selbst bleibt weiterhin unausgeliefert, D5). */
+async function ladeWerkzeugsaetze() {
+  const select = document.getElementById('start-werkzeugsatz')
+  try {
+    const werkzeugsaetze = await fetch('/api/startvorlage/werkzeugsaetze').then((r) => r.json())
+    select.innerHTML = werkzeugsaetze.map((w) => `<option value="${escapeHtml(w.name)}">${escapeHtml(w.name)} (${escapeHtml(w.erlaubte_werkzeuge.join(', '))})</option>`).join('')
+  } catch (fehler) {
+    zeigeStartFehler(`Werkzeugsätze konnten nicht geladen werden: ${fehler.message}`)
+  }
+}
+
+/** Formular „Auftrag anlegen" (AK4/AK6): POST /api/auftraege, danach Dropdown-Reload (AK6 — neuer Auftrag muss sofort wählbar sein, kein eigener Client-Zustand über die DOM-Darstellung hinaus, Muster laden()). */
+function initAuftragFormular() {
+  const button = document.getElementById('auftrag-anlegen')
+  button.addEventListener('click', async () => {
+    if (button.disabled) return
+    const titelFeld = document.getElementById('auftrag-titel')
+    const auftragstextFeld = document.getElementById('auftrag-auftragstext')
+    zeigeAuftragAnlegenFehler('')
+    button.disabled = true
+    try {
+      let antwort
+      try {
+        antwort = await fetch('/api/auftraege', { method: 'POST', body: JSON.stringify({ titel: titelFeld.value, auftragstext: auftragstextFeld.value }) })
+      } catch (fehler) {
+        zeigeAuftragAnlegenFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+        return
+      }
+      if (antwort.status !== 201) {
+        const koerper = await antwort.json().catch(() => ({}))
+        zeigeAuftragAnlegenFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+        return
+      }
+      titelFeld.value = ''
+      auftragstextFeld.value = ''
+      await ladeAuftraege()
+      aktualisiereLaufIdVorschlag()
+    } finally {
+      button.disabled = false
+    }
+  })
+}
+
+/** Fügt dem Startformular eine leere Evidenzdatei-Zeile hinzu (AK6, +/- Zeilen). */
+function fuegeEvidenzdateiZeileHinzu() {
+  const zeile = document.createElement('div')
+  zeile.className = 'evidenzdatei-zeile'
+  zeile.innerHTML = '<input type="text" class="evidenzdatei-pfad" placeholder="repo-relativer Pfad, z. B. src/beispiel.ts" /><button type="button" class="evidenzdatei-entfernen">–</button>'
+  document.getElementById('start-evidenzdateien-liste').appendChild(zeile)
+}
+
+/** Nicht-leere, getrimmte Pfade aus den Evidenzdatei-Zeilen des Startformulars. @returns Liste repo-relativer Pfade */
+function sammleEvidenzdateien() {
+  return Array.from(document.querySelectorAll('.evidenzdatei-pfad'))
+    .map((eingabe) => eingabe.value.trim())
+    .filter((pfad) => pfad.length > 0)
+}
+
+/** Klick-Delegation für die "–"-Buttons (dynamisch hinzugefügte Zeilen), analog zu initWiederaufnahmeBedienung unten. */
+function initEvidenzdateien() {
+  document.getElementById('start-evidenzdatei-hinzufuegen').addEventListener('click', fuegeEvidenzdateiZeileHinzu)
+  document.getElementById('start-evidenzdateien-liste').addEventListener('click', (ereignis) => {
+    const button = ereignis.target.closest('.evidenzdatei-entfernen')
+    if (!button) return
+    button.closest('.evidenzdatei-zeile').remove()
+  })
+  fuegeEvidenzdateiZeileHinzu()
+}
+
+/** Zuletzt in #start-laufid eingetragener Vorschlagswert — aktualisiereLaufIdVorschlag() überschreibt das Feld nur, wenn es noch diesen Wert (oder leer) trägt, nie eine manuelle Nutzereingabe (Q9: laufId bleibt überschreibbares Textfeld, kein Auto-Generate). */
+let letzterLaufIdVorschlag = ''
+
+/** Baut einen laufId-Vorschlag aus dem Titel des gewählten Auftrags plus Zeitstempel (Q9) — lesbar statt einer UUID, vom Nutzer überschreibbar. @returns Vorschlagswert für #start-laufid */
+function baueLaufIdVorschlag() {
+  const auftragSelect = document.getElementById('start-auftrag')
+  const titel = auftragSelect.options[auftragSelect.selectedIndex]?.textContent ?? 'lauf'
+  return `${slugifiereFuerLaufId(titel)}-${Date.now()}`
+}
+
+/** Aktualisiert #start-laufid mit einem frischen Vorschlag, außer der Nutzer hat das Feld bereits manuell geändert. */
+function aktualisiereLaufIdVorschlag() {
+  const feld = document.getElementById('start-laufid')
+  if (feld.value === '' || feld.value === letzterLaufIdVorschlag) {
+    letzterLaufIdVorschlag = baueLaufIdVorschlag()
+    feld.value = letzterLaufIdVorschlag
+  }
+}
+
+/**
+ * Startformular (AK6) — POST /api/laeufe mit auftragId statt auftragstext
+ * (F12 WS-2 AK5). rolle/budget/aufrufEingaben.modell sind im Formular NICHT
+ * wählbar (Q10, §13.3-Nicht-Ziel) — feste Client-Werte statt Nutzerwahl.
+ * Serverseitige Ablehnungen (400/409, inkl. D13) werden im Klartext
+ * angezeigt (AK6-Wortlaut), nicht verschluckt.
+ */
+function initStartformular() {
+  document.getElementById('start-auftrag').addEventListener('change', aktualisiereLaufIdVorschlag)
+
+  const startenButton = document.getElementById('start-starten')
+  startenButton.addEventListener('click', async () => {
+    if (startenButton.disabled) return
+    const auftragId = document.getElementById('start-auftrag').value
+    zeigeStartFehler('')
+    if (auftragId === '') {
+      zeigeStartFehler('Bitte zuerst einen Auftrag anlegen oder wählen.')
+      return
+    }
+
+    const startauftrag = {
+      laufId: document.getElementById('start-laufid').value,
+      // Q10: rolle/budget/aufrufEingaben.modell sind serverseitig fest vorgegeben, im Formular nicht editierbar.
+      rolle: 'ausfuehrung',
+      anfragen: sammleEvidenzdateien().map((pfad) => ({ pfad, frage: 'Evidenz', begruendung: 'Vom Startformular benannte Evidenzdatei' })),
+      budget: {},
+      // F-144 (TECH_DEBT): dieser Literalwert ist bewusst vom vorlage.modell-Feld der Startvorlage
+      // entkoppelt (startvorlagen/beispielprojekt.json) — Letzteres wird serverseitig weder gelesen noch
+      // an einen Client-Endpunkt ausgeliefert (vorbestehende Lücke, nicht Teil von WS-2s Scope). Ein
+      // künftiger Workstream sollte entscheiden, ob das Startformular vorlage.modell über einen
+      // Endpunkt bezieht, statt zwei unabhängige Quellen für "welches Modell wird real aufgerufen" zu
+      // pflegen — hier bewusst dokumentiert statt stillschweigend gekoppelt (Entscheidungsregel CLAUDE.md).
+      aufrufEingaben: { modell: 'sonnet' },
+      werkzeugsatz: document.getElementById('start-werkzeugsatz').value,
+      auftragId,
+    }
+
+    zeigeStartErfolg('')
+    startenButton.disabled = true
+    try {
+      let antwort
+      try {
+        antwort = await fetch('/api/laeufe', { method: 'POST', body: JSON.stringify(startauftrag) })
+      } catch (fehler) {
+        zeigeStartFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+        return
+      }
+
+      if (antwort.status !== 202) {
+        const koerper = await antwort.json().catch(() => ({}))
+        zeigeStartFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+        return
+      }
+
+      const angenommen = await antwort.json().catch(() => ({}))
+      zeigeStartErfolg(`Angenommen: laufId '${angenommen.laufId ?? startauftrag.laufId}'. Erscheint in der Liste unten, sobald der erste Checkpoint geschrieben ist.`)
+      document.querySelectorAll('.evidenzdatei-pfad').forEach((eingabe) => {
+        eingabe.value = ''
+      })
+      aktualisiereLaufIdVorschlag()
+      await laden()
+    } finally {
+      startenButton.disabled = false
+    }
+  })
 }
 
 /** Klick-Delegation statt eines Listeners pro Zeile — laden() ersetzt #laeufe komplett bei jedem Poll (AK9), ein direkt gebundener Listener würde dabei verloren gehen. */
@@ -223,8 +441,13 @@ function initWiederaufnahmeBedienung() {
 
 const POLL_INTERVALL_MS = 2000
 
+initEvidenzdateien()
+initAuftragFormular()
+initStartformular()
 initWiederaufnahmeBedienung()
 laden()
 ladeStartfehler()
+ladeAuftraege().then(aktualisiereLaufIdVorschlag)
+ladeWerkzeugsaetze()
 setInterval(laden, POLL_INTERVALL_MS)
 setInterval(ladeStartfehler, POLL_INTERVALL_MS)

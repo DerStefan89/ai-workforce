@@ -60,17 +60,35 @@
  * kommen seit E-M2-5 aus payload.erstellt_am (Artefaktinhalt), nicht mehr
  * aus statSync(pfad).mtime (F-141); fehlt das Feld (Bestandsdaten), liefert
  * der Server null statt eines Ersatzwerts.
+ *
+ * F12 WS-2 (AK4-AK6, state/plan-v1-f12-ws2.md): POST/GET /api/auftraege
+ * legt einen Auftrag über den unveränderten registriereAuftrag-Pfad an
+ * bzw. listet alle Aufträge (Verzeichnis-Scan nach dem Präfix
+ * lineage-auftrag-, Abschnitt 0 des Plans — keine Lineage-Registry-
+ * Funktion listet alle Artefakt-IDs einer Art). Ein Startauftrag trägt
+ * seither `auftragId` statt `auftragstext` (VERBOTENE_AUFTRAG_FELDER);
+ * der Auftragstext wird serverseitig aus dem Auftragsartefakt geladen. Die
+ * auftragId-Existenzprüfung läuft SYNCHRON in erzeugeRequestHandler, nach
+ * D13/laufIdBelegt und vor jeder Zustandsänderung — anders als das
+ * vorgaengerLaufId-Vorbild (das erst innerhalb von fuehreAufgabeDurch,
+ * also nach der bereits gesendeten 202-Antwort, wirft), weil AK5 einen
+ * synchronen 400 vor jedem Schreibzugriff verlangt (D2, Plan Abschnitt 4).
+ * GET /api/startvorlage/werkzeugsaetze liefert die Werkzeugsätze der
+ * Startvorlage auf { name, modus, erlaubte_werkzeuge } reduziert — nie
+ * werkzeugStartziel/berechtigungskontext/profilReferenz (D5).
  */
 
 import { createServer } from 'node:http'
+import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ladeGueltigeCheckpoints, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
-import { pruefeStale } from '../src/lineage-registry/index.ts'
+import { ladeArtefaktVersion, pruefeStale } from '../src/lineage-registry/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
+import { registriereAuftrag } from '../src/auftrag/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -273,6 +291,57 @@ function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
     .filter((kopfdaten) => kopfdaten !== null)
 }
 
+/** Verzeichnispräfix eines Auftrags unter basisVerzeichnis (Abschnitt 0 des Plans — registriereAuftrag→registriereKernArtefakt schreibt real unter lineage-auftrag-<auftragId>, nicht auftrag-<auftragId>). */
+const AUFTRAG_VERZEICHNIS_PRAEFIX = 'lineage-auftrag-'
+
+/**
+ * Kopfdaten aller Aufträge unter basisVerzeichnis (AK4) — es gibt keine
+ * Lineage-Registry-Funktion, die alle Artefakt-IDs einer Art listet
+ * (Abschnitt 0), deshalb selbst per Verzeichnis-Scan gefiltert (Muster
+ * sammleLaeufe). auftragstext bewusst NICHT enthalten (D4, Q2/Offene
+ * Frage 2) — nur beim Start/in der Detailansicht relevant. Ein Auftrag,
+ * dessen Kette keine gültige Version mehr liefert, wird übersprungen statt
+ * den gesamten Request 500en zu lassen (Q4).
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns Kopfdaten je Auftrag, neueste zuerst (erstellt_am, Fallback Verzeichnis-mtime)
+ */
+function sammleAuftraege(basisVerzeichnis = BASISVERZEICHNIS) {
+  if (!existsSync(basisVerzeichnis)) return []
+  const eintraege = []
+  for (const verzeichnisName of readdirSync(basisVerzeichnis, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .sort()) {
+    if (!verzeichnisName.startsWith(AUFTRAG_VERZEICHNIS_PRAEFIX)) continue
+    const auftragId = verzeichnisName.slice(AUFTRAG_VERZEICHNIS_PRAEFIX.length)
+    const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+    if (version === null) continue
+    const erstelltAm = version.daten?.erstellt_am ?? statSync(join(basisVerzeichnis, verzeichnisName)).mtime.toISOString()
+    eintraege.push({ auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm })
+  }
+  eintraege.sort((a, b) => (a.erstellt_am < b.erstellt_am ? 1 : a.erstellt_am > b.erstellt_am ? -1 : 0))
+  return eintraege
+}
+
+/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Felder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext, sonst grund der Ablehnung */
+export function pruefeAuftragsformular(body) {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { ok: false, grund: 'Body muss ein JSON-Objekt sein' }
+  }
+  for (const feld of Object.keys(body)) {
+    if (!ERLAUBTE_AUFTRAG_FELDER.has(feld)) {
+      return { ok: false, grund: `unbekanntes Feld '${feld}'` }
+    }
+  }
+  if (typeof body.titel !== 'string' || body.titel.length === 0) {
+    return { ok: false, grund: "'titel' muss ein nicht-leerer String sein" }
+  }
+  if (typeof body.auftragstext !== 'string' || body.auftragstext.length === 0) {
+    return { ok: false, grund: "'auftragstext' muss ein nicht-leerer String sein" }
+  }
+  return { ok: true, titel: body.titel, auftragstext: body.auftragstext }
+}
+
 function sendeDatei(res, pfad) {
   const inhalt = readFileSync(pfad)
   res.writeHead(200, { 'Content-Type': CONTENT_TYPES[extname(pfad)] ?? 'application/octet-stream' })
@@ -296,15 +365,21 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
 ])
 
 /** Erlaubte Top-Level-Felder eines Startauftrags (AK2, F11 WS-2 AK4/AK5) — laufId plus die AusfuehrungsEingaben-Felder, die noch aus dem Body kommen, plus werkzeugsatz (Name aus der Startvorlage) und optional vorgaengerLaufId. werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext/profilReferenz sind NICHT mehr erlaubt (VERBOTENE_STARTVORLAGE_FELDER) — sie kommen serverseitig aus der Startvorlage. */
-const ERLAUBTE_STARTAUFTRAG_FELDER = new Set(['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragstext', 'werkzeugsatz', 'vorgaengerLaufId'])
+const ERLAUBTE_STARTAUFTRAG_FELDER = new Set(['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz', 'vorgaengerLaufId'])
 
 /** F11 WS-2, AK5: diese vier Felder sind jetzt Sache der Startvorlage, nicht mehr des Body — ein Vorkommen wird wie ein AusfuehrungsOptionen-Feld mit 400 abgelehnt, nicht still ignoriert. */
 export const VERBOTENE_STARTVORLAGE_FELDER = new Set(['werkzeugStartziel', 'werkzeugVersionDeklariert', 'berechtigungskontext', 'profilReferenz'])
 
+/** F12 WS-2, AK5: auftragstext kommt jetzt ausschließlich aus dem Auftragsartefakt (ladeArtefaktVersion) — ein Vorkommen im Body wird wie ein Startvorlage-Feld mit 400 abgelehnt, nicht still ignoriert (Muster F11 WS-2 AK5). */
+export const VERBOTENE_AUFTRAG_FELDER = new Set(['auftragstext'])
+
+/** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
+const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
+
 /** Spiegelt src/checkpoint-store/index.ts' pruefeLaufId (nicht exportiert) — dieselbe rein strukturelle Zeichenregel, kein zweiter fachlicher Regelsatz (D5). Fängt einen unzulässigen Wert ab, BEVOR laufIdBelegt() ihn ungeprüft in einen existsSync-Pfad einsetzt. */
 const LAUFID_UNZULAESSIGE_ZEICHEN = /[/\\]|\.\.|[ -]/
 
-const PFLICHT_STARTAUFTRAG_FELDER = ['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragstext', 'werkzeugsatz']
+const PFLICHT_STARTAUFTRAG_FELDER = ['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz']
 
 /**
  * Prüft einen geparsten Startauftrag-Body gegen AK2/AK3 und F11 WS-2
@@ -331,6 +406,9 @@ export function pruefeStartauftrag(body) {
     if (VERBOTENE_STARTVORLAGE_FELDER.has(feld)) {
       return { ok: false, grund: `Feld '${feld}' gehört zur Startvorlage und wird nicht mehr aus dem Body gelesen (F11 WS-2 AK5)` }
     }
+    if (VERBOTENE_AUFTRAG_FELDER.has(feld)) {
+      return { ok: false, grund: `Feld '${feld}' wird serverseitig aus dem Auftragsartefakt geladen und nicht mehr aus dem Body gelesen (F12 WS-2 AK5)` }
+    }
     if (!ERLAUBTE_STARTAUFTRAG_FELDER.has(feld)) {
       return { ok: false, grund: `unbekanntes Feld '${feld}'` }
     }
@@ -350,6 +428,9 @@ export function pruefeStartauftrag(body) {
   }
   if (typeof body.werkzeugsatz !== 'string' || body.werkzeugsatz.length === 0) {
     return { ok: false, grund: "'werkzeugsatz' muss ein nicht-leerer String sein (F11 WS-2 AK5 — Name eines in der Startvorlage benannten Werkzeugsatzes)" }
+  }
+  if (typeof body.auftragId !== 'string' || body.auftragId.length === 0) {
+    return { ok: false, grund: "'auftragId' muss ein nicht-leerer String sein (F12 WS-2 AK5)" }
   }
   if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'werkzeugsatz' in body.aufrufEingaben) {
     return {
@@ -384,7 +465,7 @@ export function pruefeStartauftrag(body) {
       anfragen: body.anfragen,
       budget: body.budget,
       aufrufEingaben: body.aufrufEingaben,
-      auftragstext: body.auftragstext,
+      auftragId: body.auftragId,
       ...(body.vorgaengerLaufId !== undefined ? { vorgaengerLaufId: body.vorgaengerLaufId } : {}),
     },
   }
@@ -536,6 +617,51 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    if (req.method === 'GET' && pfad === '/api/auftraege') {
+      sendeJson(res, 200, sammleAuftraege(basisVerzeichnis))
+      return
+    }
+
+    if (req.method === 'GET' && pfad === '/api/startvorlage/werkzeugsaetze') {
+      // AK6, D5: strikte Allowlist — nie art/werkzeugStartziel/berechtigungskontext/profilReferenz ausliefern.
+      const werkzeugsaetze = Object.entries(vorlage.werkzeugsaetze).map(([name, w]) => ({ name, modus: w.modus, erlaubte_werkzeuge: w.erlaubte_werkzeuge }))
+      sendeJson(res, 200, werkzeugsaetze)
+      return
+    }
+
+    if (req.method === 'POST' && pfad === '/api/auftraege') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+
+      const pruefung = pruefeAuftragsformular(body)
+      if (!pruefung.ok) {
+        sendeJson(res, 400, { grund: pruefung.grund })
+        return
+      }
+
+      // D1: auftragId wird serverseitig per randomUUID() erzeugt, nie vom Client gewählt (AK4).
+      const auftragId = randomUUID()
+      // registriereAuftrag führt echte, synchrone Disk-I/O aus und kann werfen (Disk voll,
+      // Berechtigungsfehler, transientes Sperrverhalten — CLAUDE.md "Bekannte Fallen"). requestHandler
+      // ist eine async function, deren Promise niemand awaitet — ein ungefangener Wurf würde zur
+      // unhandled promise rejection und (Node 24) zum Prozessabsturz führen, Reviewer-Pass F12 WS-2.
+      try {
+        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis })
+      } catch (fehler) {
+        console.error(`[leitstand] Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
+        return
+      }
+      sendeJson(res, 201, { auftragId })
+      return
+    }
+
     if (req.method === 'POST' && pfad === '/api/laeufe') {
       let body
       try {
@@ -562,6 +688,19 @@ export function erzeugeRequestHandler(optionen = {}) {
       const { laufId, werkzeugsatzName, eingaben: eingabenRoh } = startauftrag
       if (laufIdBelegt(laufId)) {
         sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
+        return
+      }
+
+      // F12 WS-2, AK5: auftragId-Existenzprüfung SYNCHRON, vor jeder Zustandsänderung (Reservierung/202) —
+      // anders als das vorgaengerLaufId-Muster in fuehreAufgabeDurch, das erst NACH der 202-Antwort wirft
+      // (D2, Plan Abschnitt 0/4). ladeArtefaktVersion ist rein synchron, kein Umbau nötig.
+      // Reihenfolge bewusst NACH D13/laufIdBelegt (nicht davor, wie der ursprüngliche Plantext vorsah) —
+      // Stefans Korrektur zum Bauauftrag: D13 ist unbedingt und läuft vor jedem request-feld-spezifischen
+      // Check, weil es unabhängig vom konkreten Request gilt (Prinzip aus F11 WS-2). D13/laufIdBelegt sind
+      // reine Lesezugriffe ohne Zustandsänderung — AK5s "vor jeder Zustandsänderung" bleibt davon unberührt.
+      const auftragVersion = ladeArtefaktVersion(`auftrag-${eingabenRoh.auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (auftragVersion === null) {
+        sendeJson(res, 400, { grund: `Auftrag '${eingabenRoh.auftragId}' nicht gefunden` })
         return
       }
 
@@ -603,7 +742,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         werkzeugStartziel: vorlage.werkzeugStartziel,
         werkzeugVersionDeklariert: vorlage.werkzeugVersionDeklariert,
         berechtigungskontext: vorlage.berechtigungskontext,
-        auftragstext: eingabenRoh.auftragstext,
+        auftragstext: auftragVersion.daten.auftragstext,
+        auftragId: eingabenRoh.auftragId,
         ...(eingabenRoh.vorgaengerLaufId !== undefined ? { vorgaengerLaufId: eingabenRoh.vorgaengerLaufId } : {}),
       }
 

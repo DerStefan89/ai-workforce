@@ -1430,3 +1430,19 @@ Fundstelle: Auftrag „docs(f12): E-M2-5, TECH_PLAN v1 WS-1" (PR #88).
 Auswirkung: keine — korrekt aufgefangen, aber ein potenzieller Rückfrage-Zyklus (F-013-Klasse), der diesmal ausblieb.
 Maßnahme: vor jedem Prompt, der eine Finding-ID referenziert, gegen den realen state/findings.md-Stand verifizieren, dass sie dort existiert.
 Feature/Run: F12 WS-1 Vorbereitung, 07.09.2026.
+
+**F-144** · `TECH_DEBT` · P3 · offen
+Titel: Startvorlage-Feld 'modell' ungenutzt, Startformular hat eigenen hartkodierten Wert.
+Beschreibung: `startvorlagen/*.json` deklariert ein `modell`-Feld, `validiereStartvorlageDaten` prüft es, aber `erzeugeRequestHandler` liest es nie. Das F12-WS2-Startformular (AK6) setzt stattdessen clientseitig `aufrufEingaben.modell = 'sonnet'` hartkodiert (`public/leitstand/app.js`). Zwei Quellen der Wahrheit, aktuell nur per Code-Kommentar dokumentiert.
+Fundstelle: `public/leitstand/app.js` (Startformular-Submit-Handler), `startvorlagen/beispielprojekt.json` (`modell`-Feld), F12 WS-2.
+Auswirkung: Ändert sich künftig das `modell`-Feld einer Startvorlage, hat das auf den geführten Start keine Wirkung — stille Divergenz.
+Maßnahme: bei nächster Berührung vereinheitlichen (Formular liest `vorlage.modell` über `GET /api/startvorlage/werkzeugsaetze`, oder Feld bewusst als entkoppelt dokumentieren/entfernen).
+Feature/Run: F12 WS-2, 07.09.2026.
+
+**F-145** · `BUG` · P1 · offen
+Titel: Fire-and-Forget-Aufruf in POST /api/laeufe reicht optionen/basisVerzeichnis nicht an fuehreAufgabeDurchFn durch.
+Beschreibung: `scripts/leitstand-server.mjs:769` ruft `fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben)` ohne drittes `optionen`-Argument auf. Alle synchronen Prüfungen davor (D13, `laufIdBelegt`, `auftragId`-Existenz) respektieren ein serverseitiges `basisVerzeichnis`-Override, der eigentliche Lauf (`fuehreAufgabeDurch`) fällt intern auf den Default `'kontrollzustand'` zurück.
+Fundstelle: `scripts/leitstand-server.mjs:769`, entdeckt bei echtem HTTP-Smoke-Test gegen Scratch-Verzeichnis, F12 WS-2, 07.09.2026. Bestätigt vorbestehend seit `10a60ef` (F12 WS-1) — nicht durch WS-2 eingeführt.
+Auswirkung: stille Divergenz zwischen geprüftem und tatsächlich beschriebenem Verzeichnis bei Nicht-Default-`basisVerzeichnis`. In Produktion unsichtbar (Default=Default). Potenzieller Blocker für F12 WS-4 (realer Nachweis), falls dort ein Nicht-Default-Pfad gebraucht wird.
+Maßnahme: `optionen`-Objekt strukturell (nicht Einzelfelder) an `fuehreAufgabeDurchFn` durchreichen.
+Feature/Run: F12 WS-2, 07.09.2026.

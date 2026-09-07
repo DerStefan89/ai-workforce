@@ -64,6 +64,20 @@
  * aus den von F5 akzeptierten Elementen (F-124-Vertrag). auftragstext wird
  * an keiner Stelle an baueKontextpaket gereicht (AK3, mechanisch geprüft
  * über scripts/check-f11-auftrag.mjs).
+ *
+ * F12 WS-2 (state/plan-v1-f12-ws2.md Abschnitt 2.2, AK5): eingaben.auftragId
+ * (Pflichtfeld) wird nach demselben Muster wie vorgaengerLaufId behandelt —
+ * das Auftragsartefakt wird geladen und der Anfragenliste als
+ * notwendig:true-Eintrag vorangestellt, VOR einem etwaigen
+ * vorgaengerLaufId-Verweis (Reihenfolge [auftragRef, vorgaengerRef, …]).
+ * Anders als bei vorgaengerLaufId ist der Check unbedingt (kein `if`) — ein
+ * Lauf ohne Auftrag existiert seit WS-2 nicht mehr. Fehlt die Auftragsakte,
+ * wirft die Funktion (Vorbedingungsverletzung) — der eigentliche AK5-400-
+ * Vertrag ("Start wird abgelehnt, bevor irgendetwas geschrieben wird") wird
+ * NICHT hier, sondern synchron VOR dem fuehreAufgabeDurch-Aufruf in
+ * scripts/leitstand-server.mjs durchgesetzt (D2, Plan Abschnitt 0/4) — der
+ * Wurf hier ist die zweite, unabhängige Ladung desselben Artefakts (D3,
+ * bewusste Duplikation, kein Transportfeld für den bereits geladenen Wert).
  */
 
 import { randomUUID } from 'node:crypto'
@@ -120,7 +134,8 @@ function bauePromptAusKontextpaket(paket: KontextpaketV0Daten, anfragen: Anfrage
  * @param laufId - eindeutige Lauf-Kennung, unverändert an jeden Schritt gereicht
  * @param profilReferenz - Profilbezug, unverändert an F5/F6a/F7 gereicht
  * @param eingaben - Rolle, Anfragen, Budget, Aufrufkonstruktion, Startziel,
- *   optional vorgaengerLaufId für eine Wiederaufnahme (WS-2b, AK7)
+ *   Pflichtfeld auftragId (F12 WS-2, AK5), optional vorgaengerLaufId für
+ *   eine Wiederaufnahme (WS-2b, AK7)
  * @param optionen - reine Durchreichung an F5/F6a/F7/F1B, nicht selbst interpretiert (D5)
  * @returns den Abbruchgrund von F5/F6a, oder bei vollständigem Durchlauf Klassifikation + Laufstatus
  *   (plus eskalation bei VERWEIGERT mit bypass_verdacht_anzahl > 0). Ein Wurf aus einem der drei
@@ -152,6 +167,27 @@ export async function fuehreAufgabeDurch(
       ...eingaben.anfragen,
     ]
   }
+
+  // F12 WS-2 (AK5): unbedingt, anders als der vorgaengerLaufId-Block oben — auftragId ist seit WS-2
+  // Pflichtfeld. Nach dem vorgaengerLaufId-Block eingefügt, damit die Anfragenliste bei gleichzeitiger
+  // Wiederaufnahme in der Reihenfolge [auftragRef, vorgaengerRef, …eingaben.anfragen] steht.
+  const auftragVersion = ladeArtefaktVersion(`auftrag-${eingaben.auftragId}`, undefined, {
+    basisVerzeichnis: optionen.basisVerzeichnis,
+    schreiber: optionen.schreiber,
+  })
+  if (auftragVersion === null) {
+    throw new Error(`Auftrag '${eingaben.auftragId}' hat keine Auftragsakte — Vorbedingungsverletzung (AK5)`)
+  }
+  anfragen = [
+    {
+      pfad: `artefakt:auftrag-${eingaben.auftragId}`,
+      frage: 'Auftragsbezug dieses Laufs',
+      begruendung: 'Lineage-Verweis auf den Auftrag (E-M2-4, AK5)',
+      inhalt: kanonischesJson(auftragVersion.daten),
+      notwendig: true,
+    },
+    ...anfragen,
+  ]
 
   const kontextpaketErgebnis = baueKontextpaket(laufId, eingaben.rolle, anfragen, profilReferenz, eingaben.budget, {
     basisVerzeichnis: optionen.basisVerzeichnis,

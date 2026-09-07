@@ -30,6 +30,17 @@
  * GET /api/laeufe/<laufId> (laufId mit unzulässigen Zeichen → 400, kein
  * Dateisystempfad-Escape).
  *
+ * F12 WS-2 (state/plan-v1-f12-ws2.md) ergänzt AK4 (POST /api/auftraege legt
+ * über registriereAuftrag an, 201 mit auftragId; GET /api/auftraege listet
+ * ihn danach) und AK5 (Startauftrag trägt jetzt auftragId statt
+ * auftragstext — gueltigerStartauftrag() referenziert dafür einen über
+ * registriereTestAuftrag() real registrierten Auftrag im jeweiligen
+ * basisVerzeichnis des Testblocks; ein Body mit auftragstext → 400, eine
+ * unbekannte auftragId → 400 vor der 202-Antwort). Der alte F11-AK2-
+ * Testfall (c2) prüft seither das GEGENTEIL: `auftragstext` im Body ist
+ * jetzt verboten, `auftragId` ist das neue Pflichtfeld (Risiko 4/5 des
+ * Plans).
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f10-leitstand.mjs
@@ -42,10 +53,20 @@ import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { erzeugeRequestHandler, pruefeStartauftrag, VERBOTENE_OPTIONEN_FELDER, VERBOTENE_STARTVORLAGE_FELDER } from './leitstand-server.mjs'
 import { kanonischesJson, schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
-import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { registriereAuftrag } from '../src/auftrag/index.ts'
 
 const befunde = []
 console.log('\n=== F10-Leitstand-Check (WS-1) ===\n')
+
+const F12_PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+
+/** F12 WS-2, AK5: registriert einen echten Auftrag unter basisVerzeichnis — gueltigerStartauftrag() referenziert ihn über auftragId statt (F11-Stil) einen freien auftragstext direkt zu senden. @param basisVerzeichnis - Kontrollzustand-Wurzel des jeweiligen Testblocks @returns auftragId des registrierten Auftrags */
+function registriereTestAuftrag(basisVerzeichnis) {
+  const auftragId = `test-auftrag-${randomUUID()}`
+  registriereAuftrag(auftragId, F12_PROFIL_REFERENZ, 'Testtitel', 'Testauftragstext', { basisVerzeichnis, schreiber: () => {} })
+  return auftragId
+}
 
 // ─── (a) AK1: reales Profil ist valide ──────────────────────────────────────
 // (F11 WS-2: profilReferenz kommt nicht mehr aus dem Body/Testfixture, sondern serverseitig aus
@@ -82,14 +103,15 @@ if (!/\.listen\(\s*PORT\s*,\s*'127\.0\.0\.1'/.test(serverQuelltext)) {
 }
 
 // ─── Testserver-Infrastruktur für AK3/AK5/AK6 ──────────────────────────────
-const gueltigerStartauftrag = (laufId) => ({
+/** @param laufId - laufId des Startauftrags @param auftragId - über registriereTestAuftrag() real registrierte Auftrags-ID (F12 WS-2, AK5) */
+const gueltigerStartauftrag = (laufId, auftragId) => ({
   laufId,
   rolle: 'ausfuehrung',
   anfragen: [],
   budget: {},
   aufrufEingaben: { modell: 'test-modell' },
   werkzeugsatz: 'lesend',
-  auftragstext: 'Testauftragstext',
+  auftragId,
 })
 
 /**
@@ -113,10 +135,12 @@ function verzoegerung(ms) {
 
 // ─── (c) AK3: Options-Sperre — verbotenes Feld und unbekanntes Feld → 400 ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-ak3' })
+  const basisVerzeichnis = 'kontrollzustand-test-f10-ak3'
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
   try {
     for (const feld of VERBOTENE_OPTIONEN_FELDER) {
-      const body = { ...gueltigerStartauftrag(`check-f10-ak3-${randomUUID()}`), [feld]: 'verboten' }
+      const body = { ...gueltigerStartauftrag(`check-f10-ak3-${randomUUID()}`, auftragId), [feld]: 'verboten' }
       const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(body) })
       if (antwort.status !== 400) {
         befunde.push(`AK3: Body mit AusfuehrungsOptionen-Feld '${feld}' erwartet 400, erhalten ${antwort.status}`)
@@ -124,12 +148,12 @@ function verzoegerung(ms) {
     }
     const unbekannt = await fetch(`${basisUrl}/api/laeufe`, {
       method: 'POST',
-      body: JSON.stringify({ ...gueltigerStartauftrag(`check-f10-ak3-unbekannt-${randomUUID()}`), unbekanntesFeld: 1 }),
+      body: JSON.stringify({ ...gueltigerStartauftrag(`check-f10-ak3-unbekannt-${randomUUID()}`, auftragId), unbekanntesFeld: 1 }),
     })
     if (unbekannt.status !== 400) {
       befunde.push(`AK3: Body mit unbekanntem Top-Level-Feld erwartet 400, erhalten ${unbekannt.status}`)
     }
-    const pruefungDirekt = pruefeStartauftrag({ ...gueltigerStartauftrag('x'), schreiber: () => {} })
+    const pruefungDirekt = pruefeStartauftrag({ ...gueltigerStartauftrag('x', auftragId), schreiber: () => {} })
     if (pruefungDirekt.ok !== false) {
       befunde.push('AK3: pruefeStartauftrag lässt ein Objekt mit schreiber-Feld fälschlich durch')
     }
@@ -141,17 +165,55 @@ function verzoegerung(ms) {
   }
 }
 
-// ─── (c2) F11 AK2: Startauftrag ohne 'auftragstext' → 400 ──────────────────
+// ─── (c2) F12 WS-2 AK5: Startauftrag ohne 'auftragId' → 400; mit 'auftragstext' im Body → 400 ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-f11' })
+  const basisVerzeichnis = 'kontrollzustand-test-f10-f12-ak5'
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
+  // Attrappe statt der echten fuehreAufgabeDurch (Muster Block (d)/(d2)) — der Retry-Fall unten erreicht
+  // real die Reservierung/202, ein echter Aufruf würde ohne Startfreigabe-Fixture einen realen Prozess
+  // zu starten versuchen.
+  const fuehreAufgabeDurchFn = async () => ({ ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } })
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
   try {
-    const { auftragstext, ...ohneAuftragstext } = gueltigerStartauftrag(`check-f10-f11-${randomUUID()}`)
-    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(ohneAuftragstext) })
-    const body = await antwort.json()
-    if (antwort.status !== 400 || !body.grund.includes("Pflichtfeld 'auftragstext' fehlt")) {
-      befunde.push(`F11 AK2: Startauftrag ohne 'auftragstext' erwartet 400 mit "Pflichtfeld 'auftragstext' fehlt", erhalten status=${antwort.status}, grund=${JSON.stringify(body.grund)}`)
-    } else {
-      console.log("✓ F11 AK2: Startauftrag ohne 'auftragstext' wird mit 400 abgelehnt (\"Pflichtfeld 'auftragstext' fehlt\").")
+    const { auftragId: _ignoriert, ...ohneAuftragId } = gueltigerStartauftrag(`check-f10-f12-ak5-fehlend-${randomUUID()}`, auftragId)
+    const antwortFehlend = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(ohneAuftragId) })
+    const koerperFehlend = await antwortFehlend.json()
+    if (antwortFehlend.status !== 400 || !koerperFehlend.grund.includes("Pflichtfeld 'auftragId' fehlt")) {
+      befunde.push(
+        `F12 AK5: Startauftrag ohne 'auftragId' erwartet 400 mit "Pflichtfeld 'auftragId' fehlt", erhalten status=${antwortFehlend.status}, grund=${JSON.stringify(koerperFehlend.grund)}`
+      )
+    }
+
+    const mitAuftragstext = { ...gueltigerStartauftrag(`check-f10-f12-ak5-verboten-${randomUUID()}`, auftragId), auftragstext: 'sollte verboten sein' }
+    const antwortVerboten = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitAuftragstext) })
+    const koerperVerboten = await antwortVerboten.json()
+    if (antwortVerboten.status !== 400 || !koerperVerboten.grund.includes("Feld 'auftragstext'")) {
+      befunde.push(
+        `F12 AK5: Startauftrag mit 'auftragstext' im Body erwartet 400 mit Hinweis auf das verbotene Feld, erhalten status=${antwortVerboten.status}, grund=${JSON.stringify(koerperVerboten.grund)}`
+      )
+    }
+
+    const laufIdUnbekannt = `check-f10-f12-ak5-unbekannt-${randomUUID()}`
+    const unbekannteAuftragId = { ...gueltigerStartauftrag(laufIdUnbekannt, `nie-existent-${randomUUID()}`) }
+    const antwortUnbekannt = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(unbekannteAuftragId) })
+    const koerperUnbekannt = await antwortUnbekannt.json()
+    if (antwortUnbekannt.status !== 400 || !koerperUnbekannt.grund.includes('nicht gefunden')) {
+      befunde.push(
+        `F12 AK5: Startauftrag mit unbekannter 'auftragId' erwartet 400 ("nicht gefunden"), erhalten status=${antwortUnbekannt.status}, grund=${JSON.stringify(koerperUnbekannt.grund)}`
+      )
+    }
+
+    // AK5-Vertrag: "kein laufId-Reservierungseffekt danach" (Plan Abschnitt 8) — derselbe laufId-Wert,
+    // diesmal mit einer gültigen auftragId, muss unmittelbar danach gelingen (202), sonst hätte der
+    // 400-Fall oben fälschlich schon reserviert.
+    const retryMitGueltigerAuftragId = { ...gueltigerStartauftrag(laufIdUnbekannt, auftragId) }
+    const antwortRetry = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(retryMitGueltigerAuftragId) })
+    if (antwortRetry.status !== 202) {
+      befunde.push(`F12 AK5: Retry mit derselben laufId '${laufIdUnbekannt}' und gültiger auftragId nach dem 400-Fall erwartet 202 (kein Reservierungseffekt), erhalten ${antwortRetry.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log("✓ F12 AK5: Startauftrag ohne 'auftragId' → 400, mit 'auftragstext' im Body → 400, mit unbekannter 'auftragId' → 400 (vor jeder Zustandsänderung).")
     }
   } finally {
     await schliessen()
@@ -166,10 +228,12 @@ function verzoegerung(ms) {
     await verzoegerung(30)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-ak5', fuehreAufgabeDurchFn })
+  const basisVerzeichnisAk5 = 'kontrollzustand-test-f10-ak5'
+  const auftragIdAk5 = registriereTestAuftrag(basisVerzeichnisAk5)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk5, fuehreAufgabeDurchFn })
   try {
     const laufId = `check-f10-ak5-${randomUUID()}`
-    const body = JSON.stringify(gueltigerStartauftrag(laufId))
+    const body = JSON.stringify(gueltigerStartauftrag(laufId, auftragIdAk5))
     const [erste, zweite] = await Promise.all([
       fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body }),
       fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body }),
@@ -191,6 +255,7 @@ function verzoegerung(ms) {
   const basisVerzeichnis = 'kontrollzustand-test-f10-ak5a'
   const laufId = `check-f10-ak5a-${randomUUID()}`
   mkdirSync(join(basisVerzeichnis, laufId), { recursive: true })
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
   const aufrufe = []
   const fuehreAufgabeDurchFn = async (id) => {
     aufrufe.push(id)
@@ -198,7 +263,7 @@ function verzoegerung(ms) {
   }
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
   try {
-    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId)) })
+    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragId)) })
     if (antwort.status !== 409 || aufrufe.length !== 0) {
       befunde.push(`AK5(a): laufId mit vorab existierendem Verzeichnis erwartet 409 ohne fuehreAufgabeDurch-Aufruf, erhalten status=${antwort.status}, aufrufe=${aufrufe.length}`)
     } else {
@@ -217,10 +282,12 @@ function verzoegerung(ms) {
     stufe: 'kontextpaket',
     ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'nicht-existent' },
   })
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-ak5b', fuehreAufgabeDurchFn })
+  const basisVerzeichnisAk5b = 'kontrollzustand-test-f10-ak5b'
+  const auftragIdAk5b = registriereTestAuftrag(basisVerzeichnisAk5b)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk5b, fuehreAufgabeDurchFn })
   try {
     const laufId = `check-f10-ak5b-${randomUUID()}`
-    const body = JSON.stringify(gueltigerStartauftrag(laufId))
+    const body = JSON.stringify(gueltigerStartauftrag(laufId, auftragIdAk5b))
     const erste = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body })
     await verzoegerung(30)
 
@@ -248,10 +315,12 @@ function verzoegerung(ms) {
   const fuehreAufgabeDurchFn = async () => {
     throw new Error('synthetischer Wurf aus der Attrappe (AK6)')
   }
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f10-ak6', fuehreAufgabeDurchFn })
+  const basisVerzeichnisAk6 = 'kontrollzustand-test-f10-ak6'
+  const auftragIdAk6 = registriereTestAuftrag(basisVerzeichnisAk6)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisAk6, fuehreAufgabeDurchFn })
   try {
     const laufId = `check-f10-ak6-${randomUUID()}`
-    const start = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId)) })
+    const start = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragIdAk6)) })
     if (start.status !== 202) {
       befunde.push(`AK6: Start-POST erwartet 202, erhalten ${start.status}`)
     }
@@ -265,7 +334,7 @@ function verzoegerung(ms) {
     }
 
     // Server übersteht den Wurf: ein weiterer, unabhängiger Request muss weiterhin bedient werden.
-    const retry = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f10-ak6-weiterhin-${randomUUID()}`)) })
+    const retry = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f10-ak6-weiterhin-${randomUUID()}`, auftragIdAk6)) })
     if (retry.status !== 202) {
       befunde.push(`AK6: Server nach Wurf nicht mehr erreichbar/funktionsfähig, Folge-POST erwartet 202, erhalten ${retry.status}`)
     }
@@ -280,16 +349,18 @@ function verzoegerung(ms) {
 
 // ─── (f) F11 WS-2 AK5: verbotenes Startvorlage-Feld und freie werkzeugsatz-Liste → 400 ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak5' })
+  const basisVerzeichnisF11Ak5 = 'kontrollzustand-test-f11-ak5'
+  const auftragIdF11Ak5 = registriereTestAuftrag(basisVerzeichnisF11Ak5)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak5 })
   try {
     for (const feld of VERBOTENE_STARTVORLAGE_FELDER) {
-      const body = { ...gueltigerStartauftrag(`check-f11-ak5-${randomUUID()}`), [feld]: 'verboten' }
+      const body = { ...gueltigerStartauftrag(`check-f11-ak5-${randomUUID()}`, auftragIdF11Ak5), [feld]: 'verboten' }
       const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(body) })
       if (antwort.status !== 400) {
         befunde.push(`F11 AK5: Body mit Startvorlage-Feld '${feld}' erwartet 400, erhalten ${antwort.status}`)
       }
     }
-    const freieListe = { ...gueltigerStartauftrag(`check-f11-ak5-liste-${randomUUID()}`) }
+    const freieListe = { ...gueltigerStartauftrag(`check-f11-ak5-liste-${randomUUID()}`, auftragIdF11Ak5) }
     freieListe.aufrufEingaben = { ...freieListe.aufrufEingaben, werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Bash'] } }
     const antwortListe = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(freieListe) })
     if (antwortListe.status !== 400) {
@@ -305,10 +376,12 @@ function verzoegerung(ms) {
 
 // ─── (g) F11 WS-2 AK6: verbotenes 'inhalt', unsicherer Pfad, fehlende Datei → je 400 ──
 {
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak6' })
+  const basisVerzeichnisF11Ak6 = 'kontrollzustand-test-f11-ak6'
+  const auftragIdF11Ak6 = registriereTestAuftrag(basisVerzeichnisF11Ak6)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak6 })
   try {
     const mitInhalt = {
-      ...gueltigerStartauftrag(`check-f11-ak6-inhalt-${randomUUID()}`),
+      ...gueltigerStartauftrag(`check-f11-ak6-inhalt-${randomUUID()}`, auftragIdF11Ak6),
       anfragen: [{ pfad: 'package.json', frage: 'x', begruendung: 'x', inhalt: 'sollte verboten sein' }],
     }
     const antwortInhalt = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitInhalt) })
@@ -318,7 +391,7 @@ function verzoegerung(ms) {
 
     for (const unsichererPfad of ['../ausserhalb.txt', 'C:\\Windows\\win.ini', '/etc/passwd']) {
       const mitUnsicheremPfad = {
-        ...gueltigerStartauftrag(`check-f11-ak6-pfad-${randomUUID()}`),
+        ...gueltigerStartauftrag(`check-f11-ak6-pfad-${randomUUID()}`, auftragIdF11Ak6),
         anfragen: [{ pfad: unsichererPfad, frage: 'x', begruendung: 'x' }],
       }
       const antwortPfad = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitUnsicheremPfad) })
@@ -328,7 +401,7 @@ function verzoegerung(ms) {
     }
 
     const mitFehlenderDatei = {
-      ...gueltigerStartauftrag(`check-f11-ak6-fehlend-${randomUUID()}`),
+      ...gueltigerStartauftrag(`check-f11-ak6-fehlend-${randomUUID()}`, auftragIdF11Ak6),
       anfragen: [{ pfad: 'diese-datei-gibt-es-nicht.md', frage: 'x', begruendung: 'x' }],
     }
     const antwortFehlend = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(mitFehlenderDatei) })
@@ -352,11 +425,13 @@ function verzoegerung(ms) {
     await verzoegerung(60)
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f11-ak7', fuehreAufgabeDurchFn })
+  const basisVerzeichnisF11Ak7 = 'kontrollzustand-test-f11-ak7'
+  const auftragIdF11Ak7 = registriereTestAuftrag(basisVerzeichnisF11Ak7)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: basisVerzeichnisF11Ak7, fuehreAufgabeDurchFn })
   try {
-    const erste = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-a-${randomUUID()}`)) })
+    const erste = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-a-${randomUUID()}`, auftragIdF11Ak7)) })
     // Zweiter Startauftrag mit einer ANDEREN laufId, unmittelbar danach, während der erste Lauf noch aktiv ist (D13, nicht laufId-Kollision).
-    const zweite = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-b-${randomUUID()}`)) })
+    const zweite = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-b-${randomUUID()}`, auftragIdF11Ak7)) })
     const zweiteBody = await zweite.json()
     if (erste.status !== 202 || zweite.status !== 409 || !zweiteBody.grund.includes('D13') || laufendeAufrufe !== 1) {
       befunde.push(
@@ -365,7 +440,7 @@ function verzoegerung(ms) {
     }
 
     await verzoegerung(90)
-    const dritte = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-c-${randomUUID()}`)) })
+    const dritte = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-c-${randomUUID()}`, auftragIdF11Ak7)) })
     if (dritte.status !== 202) {
       befunde.push(`F11 AK7: nach Rückkehr des ersten Laufs erwartet ein dritter Start 202, erhalten ${dritte.status}`)
     }
@@ -387,10 +462,11 @@ function verzoegerung(ms) {
   // NEUE erzeugeRequestHandler-Instanz ihr laufAktiv immer frisch mit false initialisiert (D13 ist NIE
   // aus kontrollzustand/ abgeleitet, F-128).
   mkdirSync(join(basisVerzeichnis, verwaisteLaufId), { recursive: true })
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
   const fuehreAufgabeDurchFn = async (id) => ({ ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } })
   const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
   try {
-    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-verwaist-neu-${randomUUID()}`)) })
+    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(`check-f11-ak7-verwaist-neu-${randomUUID()}`, auftragId)) })
     if (antwort.status !== 202) {
       befunde.push(`F11 AK7(D13)-Verwaist: ein verwaister Lauf aus kontrollzustand/ sollte einen neuen Start (andere laufId) NICHT blockieren, erwartet 202, erhalten ${antwort.status}`)
     } else {
@@ -401,8 +477,6 @@ function verzoegerung(ms) {
     rmSync(basisVerzeichnis, { recursive: true, force: true })
   }
 }
-
-const F12_PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 
 // ─── (j) F12 AK1: nur Läufe mit mindestens einer Wirkungsmarke erscheinen in GET /api/laeufe, eine reine Lineage-Kette nicht ──
 {
@@ -525,6 +599,62 @@ const F12_PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(6
     }
     if (befunde.length === 0) {
       console.log('✓ F12 Pfadsicherheit: GET /api/laeufe/<laufId> mit unzulässigen Zeichen (nach decodeURIComponent) wird mit 400 abgelehnt, nie als Dateisystempfad aufgelöst.')
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (n) F12 WS-2 AK4: POST /api/auftraege legt über registriereAuftrag an (201, echte Version unter auftrag-<auftragId>), GET /api/auftraege listet ihn danach ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f12-ak4'
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const antwort = await fetch(`${basisUrl}/api/auftraege`, {
+      method: 'POST',
+      body: JSON.stringify({ titel: 'Testtitel AK4', auftragstext: 'Testauftragstext AK4' }),
+    })
+    const koerper = await antwort.json()
+    if (antwort.status !== 201 || typeof koerper.auftragId !== 'string' || koerper.auftragId.length === 0) {
+      befunde.push(`F12 AK4: POST /api/auftraege erwartet 201 mit nicht-leerer 'auftragId', erhalten status=${antwort.status}, body=${JSON.stringify(koerper)}`)
+    } else {
+      const version = ladeArtefaktVersion(`auftrag-${koerper.auftragId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (version === null || version.daten.titel !== 'Testtitel AK4' || version.daten.auftragstext !== 'Testauftragstext AK4') {
+        befunde.push(`F12 AK4: registriereAuftrag hat kein reales Artefakt mit den gesendeten Feldern angelegt, erhalten ${JSON.stringify(version)}`)
+      }
+
+      const liste = await (await fetch(`${basisUrl}/api/auftraege`)).json()
+      const eintrag = liste.find((e) => e.auftragId === koerper.auftragId)
+      if (eintrag === undefined || eintrag.titel !== 'Testtitel AK4' || 'auftragstext' in eintrag) {
+        befunde.push(`F12 AK4: GET /api/auftraege sollte den angelegten Auftrag mit Titel, ohne auftragstext, listen, erhalten ${JSON.stringify(eintrag)}`)
+      }
+    }
+
+    const rotFall = await fetch(`${basisUrl}/api/auftraege`, { method: 'POST', body: JSON.stringify({ titel: '', auftragstext: 'x' }) })
+    if (rotFall.status !== 400) {
+      befunde.push(`F12 AK4: POST /api/auftraege mit leerem 'titel' erwartet 400, erhalten ${rotFall.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log("✓ F12 AK4: POST /api/auftraege legt über registriereAuftrag real an (201), GET /api/auftraege listet ihn (Kopfdaten ohne auftragstext), leerer 'titel' → 400.")
+    }
+  } finally {
+    await schliessen()
+  }
+}
+
+// ─── (o) F12 WS-2 AK6: GET /api/startvorlage/werkzeugsaetze liefert nur name/modus/erlaubte_werkzeuge — nie art/werkzeugStartziel/berechtigungskontext/profilReferenz ──
+{
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f12-ak6' })
+  try {
+    const antwort = await fetch(`${basisUrl}/api/startvorlage/werkzeugsaetze`)
+    const liste = await antwort.json()
+    const verbotenerFund = liste.some((w) => 'art' in w || 'werkzeugStartziel' in w || 'berechtigungskontext' in w || 'profilReferenz' in w)
+    const erlaubteFelder = liste.every((w) => Object.keys(w).sort().join(',') === 'erlaubte_werkzeuge,modus,name')
+    if (antwort.status !== 200 || liste.length === 0 || verbotenerFund || !erlaubteFelder) {
+      befunde.push(`F12 AK6: GET /api/startvorlage/werkzeugsaetze erwartet 200 mit ausschließlich name/modus/erlaubte_werkzeuge je Eintrag, erhalten status=${antwort.status}, body=${JSON.stringify(liste)}`)
+    } else {
+      console.log('✓ F12 AK6: GET /api/startvorlage/werkzeugsaetze liefert ausschließlich name/modus/erlaubte_werkzeuge, nie art/werkzeugStartziel/berechtigungskontext/profilReferenz.')
     }
   } finally {
     await schliessen()
