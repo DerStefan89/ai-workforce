@@ -34,10 +34,20 @@
  *
  * F12 WS-1: /api/laeufe liefert seit AK2 nur noch Kopfdaten (kein
  * checkpoints-Array mehr) — laufAbschnitt zeigt deshalb eine Kopfdaten-Zeile
- * statt der vollen Checkpoint-Tabelle. checkpointZeile/statusZelle/
- * staleZelle bleiben unbenutzt liegen (D6) — WS-3/AK7 baut die
- * Detailansicht gegen den neuen GET /api/laeufe/<laufId> darauf auf, statt
- * sie identisch neu zu schreiben.
+ * statt der vollen Checkpoint-Tabelle.
+ *
+ * F12 WS-3 (AK7): jede laufAbschnitt-Zeile bekommt einen "Details"-Button
+ * (data-lauf-id), Klick-Delegation an #laeufe (Muster
+ * initWiederaufnahmeBedienung) ruft ladeLaufDetail(laufId) — NICHT Teil von
+ * laden()/dem 2-Sekunden-Poll (AK2-Wortlaut: "Detail nur auf Anforderung").
+ * #lauf-detail liegt in index.html bewusst AUSSERHALB von #laeufe, weil
+ * laden() #laeufe.innerHTML bei jedem Poll vollständig überschreibt — ein
+ * Detail-Panel innerhalb dieses Containers würde die gewählte laufId sonst
+ * jede 2 Sekunden verlieren. checkpointZeile/statusZelle/staleZelle (seit
+ * WS-1 unbenutzt, D6) rendern hier die Checkpoint-Kette der Detailansicht.
+ * Ein Fehlschlag von ladeLaufDetail (Netzwerk, 404 bei zwischenzeitlich
+ * verschwundenem Lauf) zeigt Klartext im Panel (Muster zeigeStartFehler),
+ * nie einen leeren Container.
  *
  * Wird aufgerufen von: public/leitstand/index.html
  *
@@ -52,14 +62,14 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[z])
 }
 
-/** F12 WS-1 (D6): seit AK2 unbenutzt — laufAbschnitt zeigt keine Checkpoint-Tabelle mehr. Bleibt liegen für WS-3/AK7 (Detailansicht gegen GET /api/laeufe/<laufId>), statt identisch neu geschrieben zu werden. */
+/** F12 WS-3 (AK7): rendert die Gültigkeits-Zelle einer Checkpoint-Zeile in der Detailansicht (GET /api/laeufe/<laufId>) — seit F12 WS-1 (D6) bis WS-3 unbenutzt liegen geblieben, laufAbschnitt (Kopfdaten-Liste) zeigt keine Checkpoint-Tabelle. */
 function statusZelle(cp) {
   if (cp.gueltig) return '<span class="badge ok">gültig</span>'
   const gruende = (cp.gruende ?? []).join('; ')
   return `<span class="badge fehler" title="${escapeHtml(gruende)}">ungültig</span><div class="grund">${escapeHtml(gruende)}</div>`
 }
 
-/** F12 WS-1 (D6): seit AK2 unbenutzt, siehe statusZelle. */
+/** F12 WS-3 (AK7): siehe statusZelle. */
 function staleZelle(cp) {
   if (!cp.stale) return ''
   if (cp.stale.stale) {
@@ -68,7 +78,7 @@ function staleZelle(cp) {
   return '<span class="badge aktuell">aktuell</span>'
 }
 
-/** F12 WS-1 (D6): seit AK2 unbenutzt, siehe statusZelle. */
+/** F12 WS-3 (AK7): eine Checkpoint-Zeile der Detailansicht-Kette, siehe statusZelle. */
 function checkpointZeile(cp) {
   const lin = cp.lineage ?? {}
   const wm = cp.wirkungsmarke ?? {}
@@ -78,7 +88,7 @@ function checkpointZeile(cp) {
   const ergebnis = wm.ergebnis ?? ''
   return `<tr>
     <td>${cp.sequenz}</td>
-    <td>${escapeHtml(cp.zeitstempel)}</td>
+    <td>${cp.zeitstempel ? escapeHtml(cp.zeitstempel) : '<span class="unbekannt">Zeit unbekannt</span>'}</td>
     <td>${statusZelle(cp)}</td>
     <td>${escapeHtml(cp.typ)}</td>
     <td>${escapeHtml(lin.art ?? '')}</td>
@@ -105,9 +115,10 @@ function laufAbschnitt(lauf) {
   const wiederaufnahmeButton = darfWiederaufnehmen(lauf.laufStatus)
     ? `<button class="wiederaufnahme-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Wiederaufnahme starten</button>`
     : ''
+  const detailsButton = `<button class="details-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Details</button>`
 
   return `<section class="lauf">
-    <h2>${escapeHtml(lauf.laufId)} ${wiederaufnahmeButton}</h2>
+    <h2>${escapeHtml(lauf.laufId)} ${detailsButton} ${wiederaufnahmeButton}</h2>
     <table class="lauf-kopfdaten">
       <tbody>
         <tr><th>Status</th><td>${escapeHtml(lauf.laufStatus?.status ?? '')}</td></tr>
@@ -439,12 +450,163 @@ function initWiederaufnahmeBedienung() {
   })
 }
 
+// ─── F12 WS-3 (AK7): Lauf-Detailansicht (GET /api/laeufe/<laufId>, nur auf Anforderung) ──
+
+/** laufId des aktuell im Detail-Panel angezeigten Laufs, oder null — reiner UI-Zustand, keine eigene Fachbedeutung (Muster letzterLaufIdVorschlag). */
+let gewaehlteLaufId = null
+
+/** @param status - Nicht-'ok'-Ausprägung von detail.auftrag/kontextpaket/laufakte/rohstrom @param texte - Map status → lesbarer Text @returns lesbarer Hinweistext, oder der rohe status-Wert als Fallback, falls texte ihn nicht kennt */
+function unbekanntStatusText(status, texte) {
+  return texte[status] ?? status
+}
+
+/** @param auftrag - detail.auftrag aus GET /api/laeufe/<laufId> (vier Ausprägungen, D1) @returns HTML-Block für den Auftragsabschnitt der Detailansicht */
+function renderAuftrag(auftrag) {
+  if (auftrag.status === 'ok') {
+    return `<div class="detail-block"><h3>Auftrag: ${escapeHtml(auftrag.titel ?? '')}</h3><p>${escapeHtml(auftrag.auftragstext ?? '')}</p></div>`
+  }
+  const texte = {
+    kein_auftragsbezug: 'Kein Auftragsbezug (Bestandslauf ohne Auftrag).',
+    kontextpaket_fehlt: 'Auftragsbezug nicht ermittelbar — Kontextpaket fehlt.',
+    auftrag_fehlt: `Auftragsreferenz vorhanden ('${escapeHtml(auftrag.auftragId ?? '')}'), Auftragsartefakt fehlt.`,
+  }
+  return `<div class="detail-block"><h3>Auftrag</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(auftrag.status, texte))}</p></div>`
+}
+
+/** @param kontextpaket - detail.kontextpaket aus GET /api/laeufe/<laufId> @returns HTML-Block für den Kontextpaket-Abschnitt (Elemente, eingeklappte Ausschlüsse, Q4) */
+function renderKontextpaket(kontextpaket) {
+  if (kontextpaket.status !== 'ok') {
+    return '<div class="detail-block"><h3>Kontextpaket</h3><p class="unbekannt">Kein Kontextpaket vorhanden.</p></div>'
+  }
+  const elemente =
+    kontextpaket.elemente.length === 0
+      ? '<p class="leer">Keine Elemente.</p>'
+      : `<ul>${kontextpaket.elemente.map((e) => `<li><code>${escapeHtml(e.pfad)}</code>${e.zitierter_bereich ? ` (${escapeHtml(e.zitierter_bereich)})` : ''}</li>`).join('')}</ul>`
+  // Q4/Risiko 4: ausgeschlossen wird mitgeliefert, in der UI eingeklappt.
+  const ausgeschlossen =
+    kontextpaket.ausgeschlossen.length === 0
+      ? ''
+      : `<details><summary>${kontextpaket.ausgeschlossen.length} ausgeschlossen</summary><ul>${kontextpaket.ausgeschlossen.map((a) => `<li><code>${escapeHtml(a.pfad)}</code> (${escapeHtml(a.grund)})</li>`).join('')}</ul></details>`
+  return `<div class="detail-block"><h3>Kontextpaket (Rolle: ${escapeHtml(kontextpaket.rolle ?? '')})</h3>${elemente}${ausgeschlossen}</div>`
+}
+
+/** @param laufakte - detail.laufakte aus GET /api/laeufe/<laufId> @returns HTML-Block für den Laufakte-Abschnitt (Modell/Beobachtungsbasis/Arbeitsverzeichnis) */
+function renderLaufakte(laufakte) {
+  if (laufakte.status !== 'ok') {
+    return '<div class="detail-block"><h3>Laufakte</h3><p class="unbekannt">Keine Laufakte vorhanden.</p></div>'
+  }
+  return `<div class="detail-block"><h3>Laufakte</h3><table class="lauf-kopfdaten"><tbody>
+    <tr><th>Modell</th><td>${laufakte.modellBeobachtet ? escapeHtml(laufakte.modellBeobachtet) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
+    <tr><th>Beobachtungsbasis vollständig</th><td>${laufakte.beobachtungsbasisVollstaendig ? 'Ja' : 'Nein'}</td></tr>
+    <tr><th>Arbeitsverzeichnis</th><td><code>${escapeHtml(laufakte.arbeitsverzeichnisPfad ?? '')}</code></td></tr>
+  </tbody></table></div>`
+}
+
+/** Q7: anzahl zählt roh (alle Denials), toolNamen ist dedupliziert und darf leer sein, während anzahl > 0 — bewusst nicht "repariert". Ein fehlendes Ergebnisobjekt (K1) zeigt "unbekannt", nie 0. */
+function renderRohstrom(rohstrom) {
+  const texte = {
+    hash_weicht_ab: 'Hash weicht ab — Inhalt wird nicht angezeigt.',
+    nicht_verfuegbar: 'Rohstrom nicht verfügbar (Datei fehlt oder nicht lesbar).',
+    nicht_parsebar: 'Rohstrom ist kein gültiges JSON.',
+    laufakte_fehlt: 'Keine Laufakte — kein Rohstrom-Bezug.',
+  }
+  if (rohstrom.status !== 'ok') {
+    return `<div class="detail-block"><h3>Rohstrom</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(rohstrom.status, texte))}</p></div>`
+  }
+  const ergebnisobjekt = rohstrom.ergebnisobjekt
+  const permissionZeile =
+    ergebnisobjekt.status === 'ok'
+      ? `<tr><th>Permission Denials</th><td>${ergebnisobjekt.permissionDenials.anzahl}${ergebnisobjekt.permissionDenials.toolNamen.length > 0 ? ` (${ergebnisobjekt.permissionDenials.toolNamen.map(escapeHtml).join(', ')})` : ''}</td></tr>`
+      : '<tr><th>Permission Denials</th><td><span class="unbekannt">unbekannt (kein Ergebnisobjekt)</span></td></tr>'
+  return `<div class="detail-block"><h3>Rohstrom</h3><table class="lauf-kopfdaten"><tbody>
+    <tr><th>Exit-Code</th><td>${rohstrom.exitCode ?? '<span class="unbekannt">unbekannt</span>'}</td></tr>
+    <tr><th>Startfehler</th><td>${rohstrom.startfehler ? escapeHtml(JSON.stringify(rohstrom.startfehler)) : '—'}</td></tr>
+    ${permissionZeile}
+    <tr><th>stdout-Länge</th><td>${rohstrom.stdoutLaenge ?? '—'}</td></tr>
+    <tr><th>stderr-Länge</th><td>${rohstrom.stderrLaenge ?? '—'}</td></tr>
+  </tbody></table></div>`
+}
+
+const CHECKPOINT_TABELLE_KOPF = `<tr>
+  <th>Sequenz</th><th>Zeit</th><th>Status</th><th>Typ</th><th>Lineage-Art</th><th>Erzeugungsart</th>
+  <th>Artefakt-ID</th><th>Entscheidung</th><th>Bezieht sich auf</th><th>Stale</th><th>Aufgabe</th><th>Transport-Status</th><th>Executor</th><th>Ergebnis</th>
+</tr>`
+
+/** Rendert die volle Checkpoint-Kette (checkpointZeile, seit WS-1 unbenutzt liegend) als Tabelle der Detailansicht. */
+function renderCheckpoints(checkpoints) {
+  if (checkpoints.length === 0) return '<p class="leer">Keine Checkpoints.</p>'
+  return `<table class="lauf-kopfdaten"><thead>${CHECKPOINT_TABELLE_KOPF}</thead><tbody>${checkpoints.map(checkpointZeile).join('')}</tbody></table>`
+}
+
+/**
+ * Lädt und rendert den Detailendpunkt für einen Lauf (AK7) — nicht Teil von
+ * laden()/dem 2-Sekunden-Poll, nur auf Knopfdruck. Ein Fehlschlag (Netzwerk,
+ * 404 bei zwischenzeitlich verschwundenem Lauf) zeigt Klartext im Panel
+ * statt eines leeren Containers (Muster zeigeStartFehler).
+ * @param laufId - Lauf-Kennung, aus dem geklickten Details-Button
+ */
+async function ladeLaufDetail(laufId) {
+  gewaehlteLaufId = laufId
+  const abschnitt = document.getElementById('lauf-detail')
+  const fehleranzeige = document.getElementById('lauf-detail-fehler')
+  const inhalt = document.getElementById('lauf-detail-inhalt')
+
+  document.getElementById('lauf-detail-titel').textContent = laufId
+  fehleranzeige.hidden = true
+  abschnitt.hidden = false
+  inhalt.innerHTML = '<p class="leer">Lädt…</p>'
+  abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  try {
+    const antwort = await fetch(`/api/laeufe/${encodeURIComponent(laufId)}`)
+    // Race-Schutz: ein schnellerer zweiter Klick auf einen ANDEREN Lauf hat gewaehlteLaufId
+    // inzwischen überschrieben — diese, spätere Antwort gehört nicht mehr zum sichtbaren Panel.
+    if (gewaehlteLaufId !== laufId) return
+    if (!antwort.ok) {
+      const koerper = await antwort.json().catch(() => ({}))
+      if (gewaehlteLaufId !== laufId) return
+      inhalt.innerHTML = ''
+      fehleranzeige.textContent = `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`
+      fehleranzeige.hidden = false
+      return
+    }
+    const detail = await antwort.json()
+    if (gewaehlteLaufId !== laufId) return
+    inhalt.innerHTML = [
+      renderAuftrag(detail.auftrag),
+      renderKontextpaket(detail.kontextpaket),
+      renderLaufakte(detail.laufakte),
+      renderRohstrom(detail.rohstrom),
+      `<div class="detail-block"><h3>Checkpoint-Kette</h3>${renderCheckpoints(detail.checkpoints)}</div>`,
+    ].join('')
+  } catch (fehler) {
+    if (gewaehlteLaufId !== laufId) return
+    inhalt.innerHTML = ''
+    fehleranzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
+    fehleranzeige.hidden = false
+  }
+}
+
+/** Klick-Delegation (Muster initWiederaufnahmeBedienung) — laden() ersetzt #laeufe komplett bei jedem Poll, ein direkt gebundener Listener ginge dabei verloren. */
+function initDetailBedienung() {
+  document.getElementById('laeufe').addEventListener('click', (ereignis) => {
+    const button = ereignis.target.closest('.details-btn')
+    if (!button) return
+    ladeLaufDetail(button.dataset.laufId)
+  })
+  document.getElementById('lauf-detail-schliessen').addEventListener('click', () => {
+    gewaehlteLaufId = null
+    document.getElementById('lauf-detail').hidden = true
+  })
+}
+
 const POLL_INTERVALL_MS = 2000
 
 initEvidenzdateien()
 initAuftragFormular()
 initStartformular()
 initWiederaufnahmeBedienung()
+initDetailBedienung()
 laden()
 ladeStartfehler()
 ladeAuftraege().then(aktualisiereLaufIdVorschlag)
