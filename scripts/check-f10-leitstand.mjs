@@ -41,6 +41,12 @@
  * jetzt verboten, `auftragId` ist das neue Pflichtfeld (Risiko 4/5 des
  * Plans).
  *
+ * F-145-Fix ergänzt (p): eine `fuehreAufgabeDurchFn`-Attrappe zeichnet das
+ * vierte Argument (`optionen`) auf, mit dem der Fire-and-forget-Aufruf in
+ * `POST /api/laeufe` sie real aufruft — belegt, dass `optionen.basisVerzeichnis`
+ * denselben Wert trägt, mit dem der Testserver konfiguriert wurde (vor dem
+ * Fix: `undefined`, da kein viertes Argument übergeben wurde).
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f10-leitstand.mjs
@@ -658,6 +664,39 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
+  }
+}
+
+// ─── (p) F-145: der Fire-and-forget-Aufruf reicht optionen strukturell an fuehreAufgabeDurchFn durch ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f145-optionen'
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
+  let empfangeneOptionen
+  const fuehreAufgabeDurchFn = async (laufId, profilReferenz, eingaben, optionen) => {
+    empfangeneOptionen = optionen
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+  try {
+    const laufId = `check-f10-f145-${randomUUID()}`
+    const antwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragId)) })
+    await verzoegerung(30)
+
+    // Vor dem F-145-Fix wurde fuehreAufgabeDurchFn ohne viertes Argument aufgerufen — empfangeneOptionen
+    // wäre hier `undefined` geblieben, obwohl der Testserver mit basisVerzeichnis auf ein
+    // Nicht-Default-Verzeichnis übergewiesen wurde (der eigentliche Lauf wäre real auf den Default
+    // 'kontrollzustand' zurückgefallen). Nach dem Fix trägt optionen.basisVerzeichnis denselben Wert,
+    // mit dem erzeugeRequestHandler selbst aufgerufen wurde.
+    if (antwort.status !== 202 || empfangeneOptionen?.basisVerzeichnis !== basisVerzeichnis) {
+      befunde.push(
+        `F-145: fuehreAufgabeDurchFn sollte optionen.basisVerzeichnis '${basisVerzeichnis}' erhalten (dasselbe, mit dem der Server konfiguriert wurde), erhalten status=${antwort.status}, optionen=${JSON.stringify(empfangeneOptionen)}`
+      )
+    } else {
+      console.log("✓ F-145: der Fire-and-forget-Aufruf reicht optionen (inkl. basisVerzeichnis) strukturell an fuehreAufgabeDurchFn durch — keine stille Divergenz bei Nicht-Default-basisVerzeichnis mehr.")
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
   }
 }
 

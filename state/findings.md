@@ -1439,13 +1439,14 @@ Auswirkung: Ändert sich künftig das `modell`-Feld einer Startvorlage, hat das 
 Maßnahme: bei nächster Berührung vereinheitlichen (Formular liest `vorlage.modell` über `GET /api/startvorlage/werkzeugsaetze`, oder Feld bewusst als entkoppelt dokumentieren/entfernen).
 Feature/Run: F12 WS-2, 07.09.2026.
 
-**F-145** · `BUG` · P1 · offen
+**F-145** · `BUG` · P1 · **gelöst**
 Titel: Fire-and-Forget-Aufruf in POST /api/laeufe reicht optionen/basisVerzeichnis nicht an fuehreAufgabeDurchFn durch.
 Beschreibung: `scripts/leitstand-server.mjs:769` ruft `fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben)` ohne drittes `optionen`-Argument auf. Alle synchronen Prüfungen davor (D13, `laufIdBelegt`, `auftragId`-Existenz) respektieren ein serverseitiges `basisVerzeichnis`-Override, der eigentliche Lauf (`fuehreAufgabeDurch`) fällt intern auf den Default `'kontrollzustand'` zurück.
 Fundstelle: `scripts/leitstand-server.mjs:769`, entdeckt bei echtem HTTP-Smoke-Test gegen Scratch-Verzeichnis, F12 WS-2, 07.09.2026. Bestätigt vorbestehend seit `10a60ef` (F12 WS-1) — nicht durch WS-2 eingeführt.
 Auswirkung: stille Divergenz zwischen geprüftem und tatsächlich beschriebenem Verzeichnis bei Nicht-Default-`basisVerzeichnis`. In Produktion unsichtbar (Default=Default). Potenzieller Blocker für F12 WS-4 (realer Nachweis), falls dort ein Nicht-Default-Pfad gebraucht wird.
 Maßnahme: `optionen`-Objekt strukturell (nicht Einzelfelder) an `fuehreAufgabeDurchFn` durchreichen.
-Feature/Run: F12 WS-2, 07.09.2026.
+Maßnahme-Nachtrag: behoben — der Fire-and-forget-Aufruf reicht seither `optionen` (dasselbe Objekt, mit dem `erzeugeRequestHandler` selbst aufgerufen wurde) strukturell als viertes Argument durch (`scripts/leitstand-server.mjs`, POST-/api/laeufe-Handler). Testbeleg: neuer Fall (p) in `scripts/check-f10-leitstand.mjs` — eine `fuehreAufgabeDurchFn`-Attrappe zeichnet das empfangene `optionen`-Objekt auf und prüft `optionen.basisVerzeichnis` gegen den beim Testserver konfigurierten Nicht-Default-Wert. Real kalibriert: Rotfall (Durchreichung testweise entfernt) → Exit 1 mit `optionen=undefined`; Grünfall (Fix aktiv) → Exit 0.
+Feature/Run: F12 WS-2, 07.09.2026; behoben F12-Nachtrag, 07.09.2026.
 
 **F-146** · `TECH_DEBT` · P2 · offen
 Titel: `klassifiziereLauf` persistiert nur `wirkungsmarke.ergebnis` — `bypass_verdacht_anzahl`/`is_error`/`non_execution_kind`/der `FEHLGESCHLAGEN`-Grund gehen verloren.
