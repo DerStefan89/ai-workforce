@@ -1422,3 +1422,11 @@ Auswirkung: Fehldarstellung des realen Zustands (§13.3-Messgröße) — klein, 
 Maßnahme: F12 AK3.
 Feature/Run: F12-Challenge, 06.09.2026.
 Maßnahme-Nachtrag: E-M2-5 (07.09.2026): optionales `erstellt_am` in Checkpoint-/Wirkungsmarke-Payload, additiv, bestehende Einträge bleiben gültig. Umsetzung in F12 WS-1 (`state/plan-v1-f12-ws1.md`).
+
+**F-143** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Finding-ID in einem Claude-Code-Prompt referenziert, die nie im Repo committet wurde.
+Beschreibung: Der Challenger-Chat hat in einem Auftrag „F-142 von offen auf entschieden setzen" verlangt, obwohl F-142 nur im Chat genannt und nie über einen eigenen Doku-Auftrag nach state/findings.md geschrieben wurde. Die bauende Sitzung hat es sinnvoll auf F-141 gemappt.
+Fundstelle: Auftrag „docs(f12): E-M2-5, TECH_PLAN v1 WS-1" (PR #88).
+Auswirkung: keine — korrekt aufgefangen, aber ein potenzieller Rückfrage-Zyklus (F-013-Klasse), der diesmal ausblieb.
+Maßnahme: vor jedem Prompt, der eine Finding-ID referenziert, gegen den realen state/findings.md-Stand verifizieren, dass sie dort existiert.
+Feature/Run: F12 WS-1 Vorbereitung, 07.09.2026.

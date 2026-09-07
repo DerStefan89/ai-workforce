@@ -16,6 +16,13 @@
  * (kommt serverseitig aus der Startvorlage) — stattdessen werkzeugsatz
  * (Name aus der Startvorlage) und auftragstext (AK2, Pflichtfeld).
  *
+ * F12 WS-1: /api/laeufe liefert seit AK2 nur noch Kopfdaten (kein
+ * checkpoints-Array mehr) — laufAbschnitt zeigt deshalb eine Kopfdaten-Zeile
+ * statt der vollen Checkpoint-Tabelle. checkpointZeile/statusZelle/
+ * staleZelle bleiben unbenutzt liegen (D6) — WS-3/AK7 baut die
+ * Detailansicht gegen den neuen GET /api/laeufe/<laufId> darauf auf, statt
+ * sie identisch neu zu schreiben.
+ *
  * Wird aufgerufen von: public/leitstand/index.html
  *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
@@ -29,12 +36,14 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[z])
 }
 
+/** F12 WS-1 (D6): seit AK2 unbenutzt — laufAbschnitt zeigt keine Checkpoint-Tabelle mehr. Bleibt liegen für WS-3/AK7 (Detailansicht gegen GET /api/laeufe/<laufId>), statt identisch neu geschrieben zu werden. */
 function statusZelle(cp) {
   if (cp.gueltig) return '<span class="badge ok">gültig</span>'
   const gruende = (cp.gruende ?? []).join('; ')
   return `<span class="badge fehler" title="${escapeHtml(gruende)}">ungültig</span><div class="grund">${escapeHtml(gruende)}</div>`
 }
 
+/** F12 WS-1 (D6): seit AK2 unbenutzt, siehe statusZelle. */
 function staleZelle(cp) {
   if (!cp.stale) return ''
   if (cp.stale.stale) {
@@ -43,6 +52,7 @@ function staleZelle(cp) {
   return '<span class="badge aktuell">aktuell</span>'
 }
 
+/** F12 WS-1 (D6): seit AK2 unbenutzt, siehe statusZelle. */
 function checkpointZeile(cp) {
   const lin = cp.lineage ?? {}
   const wm = cp.wirkungsmarke ?? {}
@@ -74,26 +84,23 @@ function darfWiederaufnehmen(laufStatus) {
   return laufStatus?.status === 'ABGESCHLOSSEN' && laufStatus?.ergebnis === 'FEHLGESCHLAGEN'
 }
 
+/** F12 WS-1 (AK2): zeigt die Kopfdaten-Zeile aus GET /api/laeufe — die volle Checkpoint-Tabelle zieht in die WS-3-Detailansicht (GET /api/laeufe/<laufId>) um. */
 function laufAbschnitt(lauf) {
-  const tabelle = lauf.checkpoints.length === 0
-    ? '<p class="leer">Keine Checkpoints</p>'
-    : `<table>
-        <thead><tr>
-          <th>sequenz</th><th>zeitstempel</th><th>kette</th><th>typ</th>
-          <th>art</th><th>erzeugungsart</th><th>artefakt_id</th>
-          <th>entscheidung</th><th>bezieht_sich_auf</th><th>staleness</th>
-          <th>Aufgabe</th><th>Status</th><th>Executor</th><th>Ergebnis</th>
-        </tr></thead>
-        <tbody>${lauf.checkpoints.map(checkpointZeile).join('')}</tbody>
-      </table>`
-
   const wiederaufnahmeButton = darfWiederaufnehmen(lauf.laufStatus)
     ? `<button class="wiederaufnahme-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Wiederaufnahme starten</button>`
     : ''
 
   return `<section class="lauf">
     <h2>${escapeHtml(lauf.laufId)} ${wiederaufnahmeButton}</h2>
-    ${tabelle}
+    <table class="lauf-kopfdaten">
+      <tbody>
+        <tr><th>Status</th><td>${escapeHtml(lauf.laufStatus?.status ?? '')}</td></tr>
+        <tr><th>Ergebnis</th><td>${escapeHtml(lauf.ergebnis ?? '')}</td></tr>
+        <tr><th>Zeitpunkt</th><td>${lauf.zeitpunkt ? escapeHtml(lauf.zeitpunkt) : '<span class="unbekannt">Zeit unbekannt</span>'}</td></tr>
+        <tr><th>Checkpoints</th><td>${lauf.anzahlCheckpoints}</td></tr>
+        <tr><th>Kettenintegrität</th><td>${lauf.kettenintegritaet ? '<span class="badge ok">Ja</span>' : '<span class="badge fehler">Nein</span>'}</td></tr>
+      </tbody>
+    </table>
   </section>`
 }
 

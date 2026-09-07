@@ -22,6 +22,11 @@
         "type": "string",
         "minLength": 64,
         "description": "SHA-256 (hex) über die kanonische Serialisierung des gesamten Kontrollzustand-Eintrags mit payload.selbst_hash entfernt vor dem Hashen."
+      },
+      "erstellt_am": {
+        "type": "string",
+        "format": "date-time",
+        "description": "Vom Checkpoint Store beim Schreiben gesetzter ISO-8601-Zeitpunkt (E-M2-5). Fehlt bei Bestandsdaten aus der Zeit vor E-M2-5 — optional, additiv, nicht Teil von 'required'."
       }
     },
     "runPrepared": {
@@ -34,6 +39,7 @@
         "vorgaenger_hash": { "$ref": "#/$defs/kettenfelder/vorgaenger_hash" },
         "selbst_hash": { "$ref": "#/$defs/kettenfelder/selbst_hash" },
         "art": { "const": "run_prepared" },
+        "erstellt_am": { "$ref": "#/$defs/kettenfelder/erstellt_am" },
         "daten": {
           "description": "Optionaler, nicht-profilbezogener Nutzinhalt des Aufrufers. Checkpoint Store liest diesen Inhalt nicht, kopiert ihn nur unverändert mit."
         }
@@ -51,6 +57,7 @@
         "selbst_hash": { "$ref": "#/$defs/kettenfelder/selbst_hash" },
         "art": { "const": "terminal" },
         "ergebnis": { "enum": ["ERFOLGREICH", "VERWEIGERT", "FEHLGESCHLAGEN"] },
+        "erstellt_am": { "$ref": "#/$defs/kettenfelder/erstellt_am" },
         "daten": {
           "description": "Optionaler, nicht-profilbezogener Nutzinhalt des Aufrufers. Checkpoint Store liest diesen Inhalt nicht, kopiert ihn nur unverändert mit."
         }

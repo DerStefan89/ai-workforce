@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "typ": "checkpoint",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "beispiel-lauf",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "erstellt_am": "2026-01-01T00:00:00.000Z",
+    "daten": {
+      "hinweis": "beispiel"
+    },
+    "selbst_hash": "be8a93f12e111bfe4057b6e7bd2361324034161131b1e6ff4b3450fe185618bb"
+  }
+}

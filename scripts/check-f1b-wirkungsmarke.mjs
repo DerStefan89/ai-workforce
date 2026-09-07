@@ -33,6 +33,7 @@ const fixtures = [
   { pfad: 'schemas/examples/kontrollzustand-wirkungsmarke.invalid-fehlendes-ergebnis.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-wirkungsmarke.invalid-ergebnis-ausserhalb-enum.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-wirkungsmarke.invalid-ergebnis-bei-run-prepared.json', sollGueltigSein: false },
+  { pfad: 'schemas/examples/kontrollzustand-wirkungsmarke-run-prepared-mit-erstellt-am.valid.json', sollGueltigSein: true },
 ]
 
 for (const { pfad, sollGueltigSein } of fixtures) {

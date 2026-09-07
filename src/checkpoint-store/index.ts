@@ -155,6 +155,9 @@ function pruefeKettenfelder(p: Record<string, unknown>, zusaetzlicheErlaubteFeld
   if ('selbst_hash' in p && (typeof p.selbst_hash !== 'string' || (p.selbst_hash as string).length < 64)) {
     verstoesse.push("'payload.selbst_hash' muss ein String mit mindestens 64 Zeichen sein")
   }
+  if ('erstellt_am' in p && (typeof p.erstellt_am !== 'string' || Number.isNaN(Date.parse(p.erstellt_am as string)))) {
+    verstoesse.push("'payload.erstellt_am' muss ein ISO-8601-Zeitstempel sein")
+  }
   return verstoesse
 }
 
@@ -194,7 +197,7 @@ export function validiereCheckpointEintrag(eintrag: unknown): string[] {
   }
   const p = obj.payload as Record<string, unknown>
 
-  verstoesse.push(...pruefeKettenfelder(p, ['daten']))
+  verstoesse.push(...pruefeKettenfelder(p, ['daten', 'erstellt_am']))
 
   if (verstoesse.length === 0) {
     const echterHash = echterInhaltsHash(obj as unknown as KontrollzustandEintrag)
@@ -243,7 +246,7 @@ export function validiereWirkungsmarkeEintrag(eintrag: unknown): string[] {
   }
   const p = obj.payload as Record<string, unknown>
 
-  verstoesse.push(...pruefeKettenfelder(p, ['art', 'ergebnis', 'daten']))
+  verstoesse.push(...pruefeKettenfelder(p, ['art', 'ergebnis', 'daten', 'erstellt_am']))
 
   if (!('art' in p)) {
     verstoesse.push("Pflichtfeld 'payload.art' fehlt")
@@ -496,6 +499,7 @@ export function schreibeCheckpoint(
     lauf_id: laufId,
     sequenz: naechsteSequenz,
     vorgaenger_hash: vorgaengerHash,
+    erstellt_am: jetzt(),
     ...(daten !== undefined ? { daten } : {}),
   }
   const eintragOhneHash = { schema_version: 1, typ: 'checkpoint', profil_referenz: profilReferenz, payload: payloadOhneHash }
@@ -566,6 +570,7 @@ export function schreibeWirkungsmarke(
     sequenz: naechsteSequenz,
     vorgaenger_hash: vorgaengerHash,
     art,
+    erstellt_am: jetzt(),
     ...(zusatz.ergebnis !== undefined ? { ergebnis: zusatz.ergebnis } : {}),
     ...(zusatz.daten !== undefined ? { daten: zusatz.daten } : {}),
   }

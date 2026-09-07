@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "typ": "wirkungsmarke",
+  "profil_referenz": {
+    "pfad": "profiles/beispiel.json",
+    "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": 1
+  },
+  "payload": {
+    "lauf_id": "beispiel-lauf",
+    "sequenz": 1,
+    "vorgaenger_hash": null,
+    "art": "run_prepared",
+    "erstellt_am": "2026-01-01T00:00:00.000Z",
+    "selbst_hash": "0031bf7bf822c9eb3a03ad64996bbcc6d80c77354a9590e185c67cd33f79ad8b"
+  }
+}
