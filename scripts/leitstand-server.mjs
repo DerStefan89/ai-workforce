@@ -46,6 +46,20 @@
  * ausstehenden fuehreAufgabeDurch-Aufruf gleichzeitig zu (AK7, D13, löst
  * F-128) — nie aus kontrollzustand/ abgeleitet, ein Serverneustart setzt
  * sie zurück.
+ *
+ * F12 WS-1 (AK1-AK3, state/plan-v1-f12-ws1.md): GET /api/laeufe listet nur
+ * noch echte Läufe (mindestens eine Wirkungsmarke in der gültigen Kette,
+ * istLaufkette) - F2-Lineage-Ketten (lauf_id-Präfix "lineage-") erscheinen
+ * nicht mehr (F-137). Die Antwort ist auf Kopfdaten geschrumpft
+ * (sammleLaufKopfdaten); die volle Checkpoint-Projektion (unverändert
+ * sammleCheckpoints) zieht in den neuen Detailendpunkt GET
+ * /api/laeufe/<laufId> um (404 bei unbekannter laufId). Dessen laufId wird
+ * nach decodeURIComponent gegen dieselbe Zeichenregel wie ein
+ * Startauftrag geprüft (LAUFID_UNZULAESSIGE_ZEICHEN), bevor sie in einen
+ * Dateisystempfad eingesetzt wird - sonst 400. Angezeigte Zeitpunkte
+ * kommen seit E-M2-5 aus payload.erstellt_am (Artefaktinhalt), nicht mehr
+ * aus statSync(pfad).mtime (F-141); fehlt das Feld (Bestandsdaten), liefert
+ * der Server null statt eines Ersatzwerts.
  */
 
 import { createServer } from 'node:http'
@@ -133,7 +147,10 @@ function leseAktuelleEingaben(eingaben) {
  * echten F1-Validierung (ladeGueltigeCheckpoints) — keine zweite,
  * selbstgebaute Prüfung. Staleness wird für artefakt_version-Einträge mit
  * Eingaben live über die echte pruefeStale-Funktion berechnet, nicht
- * vorberechnet.
+ * vorberechnet. Seit F12 WS-1 (AK3, E-M2-5) liefert zeitstempel bei
+ * gültigen Einträgen payload.erstellt_am (null bei Bestandsdaten ohne das
+ * Feld) statt statSync(pfad).mtime — nur die "ungültig"-Zeile ohne
+ * validierten Payload zeigt weiterhin die Datei-mtime als Diagnosewert.
  * @param laufId - Lauf-Kennung
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (Default 'kontrollzustand', überschreibbar für Tests)
  * @returns Checkpoint-Liste, aufsteigend nach sequenz
@@ -162,13 +179,14 @@ function sammleCheckpoints(laufId, basisVerzeichnis = BASISVERZEICHNIS) {
 
   const checkpoints = []
   for (const [sequenz, pfad] of pfadNachSequenz) {
-    const zeitstempel = statSync(pfad).mtime.toISOString()
     const eintrag = gueltigNachSequenz.get(sequenz)
 
     if (eintrag === undefined) {
       checkpoints.push({
         sequenz,
-        zeitstempel,
+        // Kein validierter Payload vorhanden (Parse-/Ketten-/Hash-Fehler) — Diagnosewert für die
+        // "ungültig"-Zeile, keine Aussage über einen Artefaktinhalt. AK3 betrifft nur gültige Einträge.
+        zeitstempel: statSync(pfad).mtime.toISOString(),
         gueltig: false,
         gruende: gruendeNachSequenz.get(sequenz) ?? ['unbekannter Validierungsfehler'],
         typ: '(ungültig)',
@@ -183,7 +201,9 @@ function sammleCheckpoints(laufId, basisVerzeichnis = BASISVERZEICHNIS) {
 
     checkpoints.push({
       sequenz,
-      zeitstempel,
+      // AK3, E-M2-5: aus dem Artefaktinhalt (payload.erstellt_am), nicht mehr aus statSync(pfad).mtime
+      // (F-141) — fehlt das Feld (Bestandsdaten), null statt eines Ersatzwerts.
+      zeitstempel: eintrag.payload.erstellt_am ?? null,
       gueltig: true,
       typ: istLineage ? `lineage/${daten.art}` : eintrag.typ,
       ...(istLineage ? { lineage: lineageFelder(daten) } : {}),
@@ -197,12 +217,51 @@ function sammleCheckpoints(laufId, basisVerzeichnis = BASISVERZEICHNIS) {
   return checkpoints
 }
 
+/** Eine gültige Kette zählt nur als Lauf, wenn sie mindestens eine Wirkungsmarke enthält — Konvention (lauf_id-Präfix) ist dafür nie maßgeblich (F-137, AK1). */
+function istLaufkette(gueltigeEintraege) {
+  return gueltigeEintraege.some((eintrag) => eintrag.typ === 'wirkungsmarke')
+}
+
 /**
- * Liefert alle lauf_id-Verzeichnisse unter basisVerzeichnis samt ihren
- * Checkpoints und (AK8) dem echten F1B-Laufstatus — direkt aus
- * stelleLaufstatusFest, keine zweite, selbstgebaute Ableitung.
+ * Kopfdaten eines einzelnen Laufs (AK2) — die schlanke Projektion für GET
+ * /api/laeufe. Ruft ladeGueltigeCheckpoints genau einmal auf (D1, F-140);
+ * die volle Checkpoint-Projektion liefert erst GET /api/laeufe/<laufId>
+ * (sammleCheckpoints, unverändert). zeitpunkt kommt aus payload.erstellt_am
+ * des letzten gültigen Eintrags (AK3, E-M2-5) — statSync/mtime wird hier
+ * nicht mehr gelesen; fehlt erstellt_am (Bestandsdaten), liefert dieses
+ * Feld null.
+ * @param laufId - Lauf-Kennung
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns Kopfdaten, oder null, wenn das Verzeichnis keine echte Laufkette ist (AK1)
+ */
+function sammleLaufKopfdaten(laufId, basisVerzeichnis) {
+  const gueltigeEintraege = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  if (!istLaufkette(gueltigeEintraege)) return null
+
+  const verzeichnis = join(basisVerzeichnis, laufId, 'checkpoints')
+  const alleDateien = existsSync(verzeichnis) ? readdirSync(verzeichnis).filter((datei) => DATEINAME_MUSTER.test(datei)) : []
+  const kettenintegritaet = gueltigeEintraege.length === alleDateien.length
+  const laufStatus = stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const letzter = gueltigeEintraege.at(-1)
+
+  return {
+    laufId,
+    laufStatus,
+    ergebnis: laufStatus.status === 'ABGESCHLOSSEN' ? laufStatus.ergebnis : null,
+    zeitpunkt: letzter?.payload.erstellt_am ?? null,
+    auftragsbezug: null, // WS-2/AK5 füllt dieses Feld; WS-1 liefert es bewusst leer, kein Rückschritt.
+    anzahlCheckpoints: gueltigeEintraege.length,
+    kettenintegritaet,
+  }
+}
+
+/**
+ * Liefert die Kopfdaten aller echten Läufe unter basisVerzeichnis (AK1,
+ * AK2) — reine F2-Lineage-Ketten ohne jede Wirkungsmarke werden
+ * inhaltsbasiert ausgefiltert (istLaufkette), nicht über den
+ * lauf_id-Präfix.
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (Default 'kontrollzustand', überschreibbar für Tests)
- * @returns Liste aller Läufe mit Checkpoints und laufStatus
+ * @returns Liste aller Lauf-Kopfdaten
  */
 function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
   if (!existsSync(basisVerzeichnis)) return []
@@ -210,11 +269,8 @@ function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
     .sort()
-    .map((laufId) => ({
-      laufId,
-      checkpoints: sammleCheckpoints(laufId, basisVerzeichnis),
-      laufStatus: stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }),
-    }))
+    .map((laufId) => sammleLaufKopfdaten(laufId, basisVerzeichnis))
+    .filter((kopfdaten) => kopfdaten !== null)
 }
 
 function sendeDatei(res, pfad) {
@@ -447,6 +503,28 @@ export function erzeugeRequestHandler(optionen = {}) {
 
   return async function requestHandler(req, res) {
     const pfad = new URL(req.url, `http://${req.headers.host}`).pathname
+
+    // Detailendpunkt (AK2) VOR dem Listenendpunkt geprüft — längeres, spezielleres
+    // Präfix zuerst. laufId wird nach decodeURIComponent gegen dieselbe Zeichenregel
+    // wie ein Startauftrag geprüft (Offene Frage 2/Advisor-Entscheidung), BEVOR sie
+    // in join(basisVerzeichnis, laufId) eingesetzt wird — sonst 400 statt Pfad-Escape.
+    if (req.method === 'GET' && pfad.startsWith('/api/laeufe/')) {
+      const laufId = decodeURIComponent(pfad.slice('/api/laeufe/'.length))
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(laufId)) {
+        sendeJson(res, 400, { grund: `laufId enthält unzulässige Zeichen: ${JSON.stringify(laufId)}` })
+        return
+      }
+      if (!existsSync(join(basisVerzeichnis, laufId))) {
+        sendeJson(res, 404, { grund: `Lauf '${laufId}' nicht gefunden` })
+        return
+      }
+      sendeJson(res, 200, {
+        laufId,
+        checkpoints: sammleCheckpoints(laufId, basisVerzeichnis),
+        laufStatus: stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }),
+      })
+      return
+    }
 
     if (req.method === 'GET' && pfad === '/api/laeufe') {
       sendeJson(res, 200, sammleLaeufe(basisVerzeichnis))

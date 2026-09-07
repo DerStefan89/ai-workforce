@@ -23,6 +23,8 @@ export interface CheckpointPayload {
   sequenz: number
   vorgaenger_hash: string | null
   selbst_hash: string
+  /** ISO-8601, vom Checkpoint Store selbst gesetzt (E-M2-5). Additiv — bei Bestandsdaten aus der Zeit vor E-M2-5 nicht vorhanden. */
+  erstellt_am?: string
   daten?: unknown
 }
 
@@ -33,6 +35,8 @@ export interface WirkungsmarkePayload {
   selbst_hash: string
   art: 'run_prepared' | 'terminal'
   ergebnis?: 'ERFOLGREICH' | 'VERWEIGERT' | 'FEHLGESCHLAGEN'
+  /** ISO-8601, vom Checkpoint Store selbst gesetzt (E-M2-5). Additiv — bei Bestandsdaten aus der Zeit vor E-M2-5 nicht vorhanden. */
+  erstellt_am?: string
   daten?: unknown
 }
 

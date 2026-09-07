@@ -21,17 +21,28 @@
  * mehr aus dem Body — die Startvorlage (startvorlagen/beispielprojekt.json)
  * liefert sie serverseitig (F11 WS-2 AK4).
  *
+ * F12 WS-1 ergänzt AK1 (nur Läufe mit mindestens einer Wirkungsmarke
+ * erscheinen in GET /api/laeufe, eine reine Lineage-Kette nicht), AK2
+ * (GET /api/laeufe ohne checkpoints-Array, GET /api/laeufe/<laufId> mit
+ * der vollen Projektion, unbekannte laufId → 404), AK3(c) (Kopfdaten/Detail
+ * zeigen payload.erstellt_am, null/"Zeit unbekannt" bei fehlendem Feld,
+ * nie statSync-mtime) und die Advisor-Ergänzung zur Pfadsicherheit von
+ * GET /api/laeufe/<laufId> (laufId mit unzulässigen Zeichen → 400, kein
+ * Dateisystempfad-Escape).
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f10-leitstand.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { erzeugeRequestHandler, pruefeStartauftrag, VERBOTENE_OPTIONEN_FELDER, VERBOTENE_STARTVORLAGE_FELDER } from './leitstand-server.mjs'
+import { kanonischesJson, schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
+import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 
 const befunde = []
 console.log('\n=== F10-Leitstand-Check (WS-1) ===\n')
@@ -388,6 +399,135 @@ function verzoegerung(ms) {
   } finally {
     await schliessen()
     rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+const F12_PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+
+// ─── (j) F12 AK1: nur Läufe mit mindestens einer Wirkungsmarke erscheinen in GET /api/laeufe, eine reine Lineage-Kette nicht ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f12-ak1'
+  const laufIdEcht = `check-f12-ak1-echt-${randomUUID()}`
+  const artefaktIdLineage = `check-f12-ak1-lineage-${randomUUID()}`
+  schreibeWirkungsmarke(laufIdEcht, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+  registriereKernArtefakt(artefaktIdLineage, F12_PROFIL_REFERENZ, { quelle: 'check-f10-leitstand' }, { hinweis: 'keine Wirkungsmarke' }, [], {
+    basisVerzeichnis,
+    schreiber: () => {},
+  })
+
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const laeufe = await (await fetch(`${basisUrl}/api/laeufe`)).json()
+    const laufIds = laeufe.map((l) => l.laufId)
+    if (!laufIds.includes(laufIdEcht)) {
+      befunde.push(`F12 AK1: echter Lauf '${laufIdEcht}' (Wirkungsmarke) fehlt in GET /api/laeufe, erhalten laufIds=${JSON.stringify(laufIds)}`)
+    }
+    if (laufIds.includes(`lineage-${artefaktIdLineage}`)) {
+      befunde.push(`F12 AK1: reine Lineage-Kette 'lineage-${artefaktIdLineage}' (keine Wirkungsmarke) erscheint fälschlich in GET /api/laeufe`)
+    }
+    if (befunde.length === 0) {
+      console.log('✓ F12 AK1: nur Läufe mit mindestens einer Wirkungsmarke erscheinen in GET /api/laeufe, eine reine Lineage-Kette (F2, registriereKernArtefakt) nicht.')
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (k) F12 AK2: GET /api/laeufe ohne checkpoints-Array, GET /api/laeufe/<laufId> mit voller Projektion, unbekannte laufId → 404 ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f12-ak2'
+  const laufId = `check-f12-ak2-${randomUUID()}`
+  schreibeWirkungsmarke(laufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const laeufe = await (await fetch(`${basisUrl}/api/laeufe`)).json()
+    const kopf = laeufe.find((l) => l.laufId === laufId)
+    if (kopf === undefined || 'checkpoints' in kopf) {
+      befunde.push(`F12 AK2: GET /api/laeufe-Eintrag für '${laufId}' fehlt oder enthält noch 'checkpoints', erhalten ${JSON.stringify(kopf)}`)
+    }
+
+    const detailAntwort = await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufId)}`)
+    const detail = await detailAntwort.json()
+    if (detailAntwort.status !== 200 || !Array.isArray(detail.checkpoints) || detail.checkpoints.length !== 1 || detail.laufStatus === undefined) {
+      befunde.push(`F12 AK2: GET /api/laeufe/<laufId> erwartet 200 mit einem Checkpoint und laufStatus, erhalten status=${detailAntwort.status}, body=${JSON.stringify(detail)}`)
+    }
+
+    const unbekannteAntwort = await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(`check-f12-ak2-unbekannt-${randomUUID()}`)}`)
+    if (unbekannteAntwort.status !== 404) {
+      befunde.push(`F12 AK2: GET /api/laeufe/<unbekannte laufId> erwartet 404, erhalten ${unbekannteAntwort.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log('✓ F12 AK2: GET /api/laeufe ist schlank (kein checkpoints-Array), GET /api/laeufe/<laufId> liefert die volle Projektion, unbekannte laufId → 404.')
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (l) F12 AK3(c): Kopfdaten/Detail zeigen payload.erstellt_am, null bei fehlendem Feld — nie statSync-mtime ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f12-ak3'
+  const laufId = `check-f12-ak3-${randomUUID()}`
+  const { pfad: ersterPfad } = schreibeWirkungsmarke(laufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+  const ersterInhalt = JSON.parse(readFileSync(ersterPfad, 'utf8'))
+  const ersterErstelltAm = ersterInhalt.payload.erstellt_am
+
+  // Sequenz 2 direkt ins Kettenverzeichnis geschrieben, OHNE erstellt_am — simuliert Bestandsdaten aus
+  // der Zeit vor E-M2-5 (additiv, optional). Muster wie checkpoint-store.test.ts ("unbekannter typ").
+  const payloadOhneHash = { lauf_id: laufId, sequenz: 2, vorgaenger_hash: ersterInhalt.payload.selbst_hash, art: 'terminal', ergebnis: 'ERFOLGREICH' }
+  const eintragOhneHash = { schema_version: 1, typ: 'wirkungsmarke', profil_referenz: F12_PROFIL_REFERENZ, payload: payloadOhneHash }
+  const selbstHash = sha256Hex(kanonischesJson(eintragOhneHash))
+  writeFileSync(
+    join(basisVerzeichnis, laufId, 'checkpoints', `2-${selbstHash}.json`),
+    kanonischesJson({ ...eintragOhneHash, payload: { ...payloadOhneHash, selbst_hash: selbstHash } })
+  )
+
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const laeufe = await (await fetch(`${basisUrl}/api/laeufe`)).json()
+    const kopf = laeufe.find((l) => l.laufId === laufId)
+    if (kopf?.zeitpunkt !== null) {
+      befunde.push(`F12 AK3(c): Kopfdaten-zeitpunkt erwartet null (letzter Eintrag ohne erstellt_am, Bestandsdaten-Simulation), erhalten ${JSON.stringify(kopf?.zeitpunkt)}`)
+    }
+
+    const detail = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufId)}`)).json()
+    const cp1 = detail.checkpoints?.find((cp) => cp.sequenz === 1)
+    const cp2 = detail.checkpoints?.find((cp) => cp.sequenz === 2)
+    if (cp1?.zeitstempel !== ersterErstelltAm) {
+      befunde.push(`F12 AK3(c): Detail-zeitstempel für sequenz 1 erwartet payload.erstellt_am (${ersterErstelltAm}), erhalten ${JSON.stringify(cp1?.zeitstempel)}`)
+    }
+    if (cp2?.zeitstempel !== null) {
+      befunde.push(`F12 AK3(c): Detail-zeitstempel für sequenz 2 (ohne erstellt_am) erwartet null, erhalten ${JSON.stringify(cp2?.zeitstempel)} — nie statSync-mtime als Ersatzwert`)
+    }
+
+    if (befunde.length === 0) {
+      console.log('✓ F12 AK3(c): Kopfdaten/Detail zeigen payload.erstellt_am, null bei fehlendem Feld (Bestandsdaten) — nie statSync-mtime.')
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (m) F12 WS-1 Advisor-Ergänzung: GET /api/laeufe/<laufId> mit unzulässigen Zeichen (nach decodeURIComponent) → 400, kein Pfad-Escape ──
+{
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis: 'kontrollzustand-test-f12-pfad' })
+  try {
+    for (const unsichereLaufId of ['../ausserhalb', 'a/b', 'a\\b']) {
+      const antwort = await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(unsichereLaufId)}`)
+      if (antwort.status !== 400) {
+        befunde.push(`F12 Pfadsicherheit: GET /api/laeufe/<laufId> mit '${unsichereLaufId}' erwartet 400, erhalten ${antwort.status}`)
+      }
+    }
+    if (befunde.length === 0) {
+      console.log('✓ F12 Pfadsicherheit: GET /api/laeufe/<laufId> mit unzulässigen Zeichen (nach decodeURIComponent) wird mit 400 abgelehnt, nie als Dateisystempfad aufgelöst.')
+    }
+  } finally {
+    await schliessen()
   }
 }
 

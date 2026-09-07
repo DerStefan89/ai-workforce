@@ -443,6 +443,32 @@ test('reine Orphan-Terminal-Kette ohne jede RUN_PREPARED-Marke liefert NICHT_GES
   }
 })
 
+test('erstellt_am wird VOR der Hash-Berechnung in payloadOhneHash gesetzt und ist Teil von selbst_hash — AK3(b), E-M2-5', () => {
+  const laufId = neueLaufId('erstellt-am-hash')
+  try {
+    const { pfad, selbstHash } = schreibeCheckpoint(laufId, PROFIL_REFERENZ, { schritt: 1 }, { basisVerzeichnis: BASIS })
+    const eintrag = JSON.parse(readFileSync(pfad, 'utf8'))
+    assert.strictEqual(typeof eintrag.payload.erstellt_am, 'string')
+    assert.doesNotThrow(() => new Date(eintrag.payload.erstellt_am).toISOString())
+    assert.strictEqual(eintrag.payload.selbst_hash, selbstHash)
+
+    // Denselben Eintrag mit unterschiedlichem erstellt_am neu hashen (dieselbe kanonische
+    // Serialisierung, die schreibeCheckpoint intern verwendet) — ändert sich der Hash NICHT,
+    // wäre erstellt_am nicht Teil der gehashten Nutzlast (der reale Bug-Fall aus plan-v1-f12-ws1
+    // Abschnitt 0: ein nachträglich angehängtes Feld bleibt außerhalb von selbst_hash).
+    const { selbst_hash: _entfernt, ...payloadOhneHash } = eintrag.payload
+    const mitAnderemErstelltAm = { ...payloadOhneHash, erstellt_am: '2000-01-01T00:00:00.000Z' }
+    const hashMitAnderemErstelltAm = sha256Hex(kanonischesJson({ ...eintrag, payload: mitAnderemErstelltAm }))
+    assert.notStrictEqual(hashMitAnderemErstelltAm, selbstHash, 'ein anderer erstellt_am-Wert muss einen anderen selbst_hash ergeben')
+
+    const { erstellt_am: _ohneErstelltAm, ...ohneErstelltAmFeld } = payloadOhneHash
+    const hashOhneErstelltAm = sha256Hex(kanonischesJson({ ...eintrag, payload: ohneErstelltAmFeld }))
+    assert.notStrictEqual(hashOhneErstelltAm, selbstHash, 'entfernt man erstellt_am komplett, muss sich der Hash ebenfalls ändern')
+  } finally {
+    raeumeAuf(laufId)
+  }
+})
+
 test('lauf_id ohne jede Wirkungsmarke liefert NICHT_GESTARTET, kein Wurf — A7', () => {
   const laufId = neueLaufId('wm-nie-gestartet')
   try {

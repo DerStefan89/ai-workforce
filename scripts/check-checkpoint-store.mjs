@@ -36,6 +36,7 @@ const fixtures = [
   { pfad: 'schemas/examples/kontrollzustand-checkpoint.invalid-fehlende-sequenz.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-checkpoint.invalid-hash-mismatch.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-checkpoint.invalid-vorgaenger-bei-sequenz-1.json', sollGueltigSein: false },
+  { pfad: 'schemas/examples/kontrollzustand-checkpoint.valid-mit-erstellt-am.json', sollGueltigSein: true },
 ]
 
 for (const { pfad, sollGueltigSein } of fixtures) {
