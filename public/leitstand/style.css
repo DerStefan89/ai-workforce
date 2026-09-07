@@ -68,7 +68,7 @@ th {
   margin-top: 0.2rem;
 }
 
-#wiederaufnahme, #startfehler-abschnitt, #auftrag-start {
+#startfehler-abschnitt, #auftrag-start {
   margin-bottom: 2rem;
   padding: 1rem;
   border: 1px solid #ccc;
@@ -127,14 +127,6 @@ th {
 
 #auftrag-start button {
   margin-top: 0.6rem;
-}
-
-#wiederaufnahme-json {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: monospace;
-  font-size: 0.85rem;
 }
 
 .wiederaufnahme-btn {

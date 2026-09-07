@@ -346,6 +346,37 @@ function baueLaufakteProjektion(laufakteVersion) {
 }
 
 /**
+ * F13 WS-1 (AK2): bei ABGESCHLOSSEN/VERWEIGERT das daten-Feld der
+ * terminalen Wirkungsmarke (bypass_verdacht_anzahl, is_error,
+ * non_execution_kind — src/result-evaluator/index.ts, Schritt 0 dieser
+ * Iteration) direkt aus der Checkpoint-Kette lesen. NICHT aus
+ * baueLaufakteProjektion (die Felder liegen dort nicht, siehe oben) — ein
+ * eigener, kleiner Projektionszweig (D5: kein neuer Endpunkt, GET
+ * /api/laeufe/<laufId> bleibt der einzige Lieferant). Ein Bestandslauf vor
+ * dieser Änderung trägt kein daten-Feld — 'unbekannt' je fehlendem Feld,
+ * nie 0/false raten (Muster renderRohstrom "unbekannt (kein
+ * Ergebnisobjekt)").
+ * @param laufId - Lauf-Kennung
+ * @param laufStatus - Ergebnis von stelleLaufstatusFest, unverändert übernommen
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns null außer bei ABGESCHLOSSEN/VERWEIGERT, sonst { bypassVerdachtAnzahl, isError, nonExecutionKind } (je 'unbekannt' bei fehlendem Feld)
+ */
+function baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis) {
+  if (laufStatus.status !== 'ABGESCHLOSSEN' || laufStatus.ergebnis !== 'VERWEIGERT') return null
+
+  const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const terminal = kette.find((eintrag) => eintrag.typ === 'wirkungsmarke' && eintrag.payload.sequenz === laufStatus.terminalSequenz)
+  const daten = terminal?.payload?.daten
+  const hatDaten = typeof daten === 'object' && daten !== null
+
+  return {
+    bypassVerdachtAnzahl: hatDaten && typeof daten.bypass_verdacht_anzahl === 'number' ? daten.bypass_verdacht_anzahl : 'unbekannt',
+    isError: hatDaten && 'is_error' in daten ? daten.is_error : 'unbekannt',
+    nonExecutionKind: hatDaten && 'non_execution_kind' in daten ? daten.non_execution_kind : 'unbekannt',
+  }
+}
+
+/**
  * Begrenzte, hashgeprüfte Rohstrom-Projektion (AK8). Auflösung
  * AUSSCHLIESSLICH über laufakteVersion.daten.rohstrom_referenz.pfad (nie
  * aus der laufId gebaut), Pfadsicherheit über F11s loeseEvidenzPfadAuf
@@ -791,11 +822,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Artefaktkette), rohstrom nutzt dieselbe laufakteVersion (kein zweiter Ladevorgang).
       const kontextpaketVersion = ladeKontextpaketVersion(laufId, basisVerzeichnis)
       const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const laufStatus = stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
 
       sendeJson(res, 200, {
         laufId,
         checkpoints: sammleCheckpoints(laufId, basisVerzeichnis),
-        laufStatus: stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }),
+        laufStatus,
+        verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
         laufakte: baueLaufakteProjektion(laufakteVersion),
