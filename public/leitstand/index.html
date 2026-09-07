@@ -7,14 +7,51 @@
 </head>
 <body>
   <h1>Leitstand</h1>
-  <p class="hinweis">Rein lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahme: die Wiederaufnahme-Bedienung unten löst reale Läufe über F8 aus.</p>
+  <p class="hinweis">Rein lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahme: das Startformular und die Wiederaufnahme-Bedienung unten lösen reale Läufe über F8 aus.</p>
   <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
 
+  <section id="auftrag-start">
+    <h2>Auftrag &amp; Start</h2>
+
+    <div class="unterabschnitt">
+      <h3>Auftrag anlegen</h3>
+      <label for="auftrag-titel">Titel</label>
+      <input type="text" id="auftrag-titel" />
+      <label for="auftrag-auftragstext">Auftragstext</label>
+      <textarea id="auftrag-auftragstext" rows="4"></textarea>
+      <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
+      <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
+    </div>
+
+    <div class="unterabschnitt">
+      <h3>Starten</h3>
+      <label for="start-auftrag">Auftrag wählen</label>
+      <select id="start-auftrag"></select>
+
+      <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
+      <select id="start-werkzeugsatz"></select>
+
+      <fieldset id="start-evidenzdateien">
+        <legend>Evidenzdateien (repo-relative Pfade)</legend>
+        <div id="start-evidenzdateien-liste"></div>
+        <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
+      </fieldset>
+
+      <label for="start-laufid">laufId</label>
+      <input type="text" id="start-laufid" />
+
+      <div><button id="start-starten">Starten</button></div>
+      <p id="start-erfolg" class="erfolg" hidden></p>
+      <p id="start-fehler" class="fehler" hidden></p>
+    </div>
+  </section>
+
   <section id="wiederaufnahme">
-    <h2>Wiederaufnahme</h2>
-    <p class="hinweis">„Wiederaufnahme starten" bei einem Lauf unten befüllt dieses Feld mit einer Vorlage
-      (<code>laufId</code>/<code>vorgaengerLaufId</code> gesetzt, die übrigen sieben Startauftrag-Felder als
-      Platzhalter). Vor dem Absenden prüfen und ergänzen — es gibt bewusst keine geführte Formular-UI.</p>
+    <h2>Notweg (rohes JSON)</h2>
+    <p class="hinweis">Ausdrücklich gekennzeichneter Notweg — der Normalweg ist das Startformular oben.
+      „Wiederaufnahme starten" bei einem Lauf unten befüllt dieses Feld mit einer Vorlage
+      (<code>laufId</code>/<code>vorgaengerLaufId</code> gesetzt, die übrigen sechs Startauftrag-Felder als
+      Platzhalter). Vor dem Absenden prüfen und ergänzen.</p>
     <textarea id="wiederaufnahme-json" rows="12" spellcheck="false"></textarea>
     <div><button id="wiederaufnahme-starten">Starten</button></div>
     <p id="wiederaufnahme-erfolg" class="erfolg" hidden></p>

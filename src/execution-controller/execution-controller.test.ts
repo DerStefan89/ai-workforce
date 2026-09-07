@@ -78,6 +78,21 @@
  * `auftragstext`, dass die Marke nie im registrierten Kontextpaket
  * auftaucht und die Elementanzahl unverändert bleibt (AK3-Grep-Gegenstück
  * siehe `scripts/check-f11-auftrag.mjs`).
+ *
+ * F12 WS-2 (state/plan-v1-f12-ws2.md, AK5) ergänzt `gueltigeEingaben` um
+ * das neue Pflichtfeld `auftragId`, das auf eine einzige, real über
+ * `registriereAuftrag` angelegte Modul-Fixture (`AUFTRAG_ID_FIXTURE`)
+ * zeigt — fuehreAufgabeDurch lädt sie real über `ladeArtefaktVersion`
+ * (kein Modul-Mock, D1). Der daraus resultierende `artefakt:auftrag-
+ * <auftragId>`-Verweis wird JEDEM Lauf unbedingt als erstes
+ * Kontextpaket-Element vorangestellt (vor einem etwaigen vorgaengerRef,
+ * Reihenfolge [auftragRef, vorgaengerRef, …]) — deshalb tragen die
+ * WS-2b-AK7-Tests jetzt `eingaben[1]` statt `eingaben[0]` für den
+ * vorgaengerRef, und die beiden F11-AK2-Prompttests (getrennter Auftrags-/
+ * Evidenzabschnitt, vormals „leeres Kontextpaket") erwarten seither immer
+ * mindestens den `AUFTRAG_REF_SEGMENT`-Textblock im Evidenzteil — ein
+ * über einen normalen Aufrufer wirklich leeres Kontextpaket ist seit AK5
+ * nicht mehr erreichbar.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -97,12 +112,23 @@ import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-tran
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
+import { registriereAuftrag } from '../auftrag/index.ts'
 import { fuehreAufgabeDurch } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const GUELTIGES_STARTZIEL = [process.execPath]
+
+/** F12 WS-2 (AK5): eine einzige, real registrierte Auftrags-Fixture für die gesamte Testdatei — gueltigeEingaben() referenziert sie über auftragId, fuehreAufgabeDurch lädt sie real über ladeArtefaktVersion (kein Modul-Mock, D1). */
+const AUFTRAG_ID_FIXTURE = 'f8-controller-test-auftrag'
+registriereAuftrag(AUFTRAG_ID_FIXTURE, PROFIL_REFERENZ, 'Testtitel', 'Testauftragstext-Fixture', { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+const AUFTRAG_VERSION_FIXTURE = ladeArtefaktVersion(`auftrag-${AUFTRAG_ID_FIXTURE}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+if (AUFTRAG_VERSION_FIXTURE === null) {
+  throw new Error('Auftrag-Fixture wurde nicht korrekt registriert')
+}
+/** Erwarteter Prompt-Abschnitt des von fuehreAufgabeDurch unbedingt vorangestellten auftragRef-Elements (AK5) — gegen den REAL geladenen Fixture-Inhalt berechnet (AK6-2-Muster), nicht im Test nachgebaut. */
+const AUFTRAG_REF_SEGMENT = `Pfad: artefakt:auftrag-${AUFTRAG_ID_FIXTURE}\nFrage: Auftragsbezug dieses Laufs\nBegründung: Lineage-Verweis auf den Auftrag (E-M2-4, AK5)\nInhalt:\n${kanonischesJson(AUFTRAG_VERSION_FIXTURE.daten)}`
 
 function neueLaufId(praefix: string): string {
   return `${praefix}-${randomUUID()}`
@@ -137,6 +163,7 @@ function gueltigeEingaben(uebrigeFelder: { werkzeug_version_deklariert: string; 
     werkzeugVersionDeklariert: uebrigeFelder.werkzeug_version_deklariert,
     berechtigungskontext: uebrigeFelder.berechtigungskontext,
     auftragstext: 'Testauftrag',
+    auftragId: AUFTRAG_ID_FIXTURE,
   }
 }
 
@@ -293,16 +320,21 @@ test('F11 AK2: promptText besteht aus Auftragsabschnitt und Evidenzabschnitt, ge
     assert.ok(erfassteTokens)
     const pIndex = erfassteTokens.indexOf('-p')
     assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
+    // F12 WS-2 (AK5): der Evidenzabschnitt trägt seither immer zuerst den unbedingt vorangestellten
+    // auftragRef-Eintrag, getrennt per "---" vom ursprünglichen Evidenzelement (bauePromptAusKontextpaket).
     assert.strictEqual(
       erfassteTokens[pIndex + 1],
-      'Auftrag:\nTestauftragstext\n\n===\n\nPfad: test/anfrage.md\nFrage: Testfrage\nBegründung: Testbegruendung\nInhalt:\nTestinhalt'
+      `Auftrag:\nTestauftragstext\n\n===\n\n${AUFTRAG_REF_SEGMENT}\n\n---\n\nPfad: test/anfrage.md\nFrage: Testfrage\nBegründung: Testbegruendung\nInhalt:\nTestinhalt`
     )
   } finally {
     raeumeKette(laufId)
   }
 })
 
-test('F11 AK2: leeres Kontextpaket → kein Evidenzabschnitt, kein "==="', async () => {
+test('F12 WS-2 (AK5): anfragen leer → Evidenzabschnitt enthält ausschließlich den unbedingt vorangestellten auftragRef', async () => {
+  // Vor F12 WS-2 bedeutete anfragen:[] ein leeres Kontextpaket (kein Evidenzabschnitt, kein "===")
+  // — seit AK5 stellt fuehreAufgabeDurch IMMER einen artefakt:auftrag-<auftragId>-Verweis voran,
+  // ein "leeres" Kontextpaket im ursprünglichen Sinn ist über einen normalen Aufrufer nicht mehr erreichbar.
   const laufId = neueLaufId('f11b')
   let erfassteTokens: string[] | undefined
   const spyStarter: Starter = async (startziel, tokens) => {
@@ -320,7 +352,7 @@ test('F11 AK2: leeres Kontextpaket → kein Evidenzabschnitt, kein "==="', async
     assert.ok(erfassteTokens)
     const pIndex = erfassteTokens.indexOf('-p')
     assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
-    assert.strictEqual(erfassteTokens[pIndex + 1], 'Auftrag:\nTestauftragstext')
+    assert.strictEqual(erfassteTokens[pIndex + 1], `Auftrag:\nTestauftragstext\n\n===\n\n${AUFTRAG_REF_SEGMENT}`)
   } finally {
     raeumeKette(laufId)
   }
@@ -486,7 +518,10 @@ test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzep
       { pfad: 'test/akzeptiert.md', frage: 'Akzeptierte Frage', begruendung: 'Akzeptierte Begruendung', inhalt: 'AKZEPTIERTER-INHALT-MARKER', notwendig: false },
       { pfad: 'test/ausgeschlossen.md', frage: 'Ausgeschlossene Frage', begruendung: 'Ausgeschlossene Begruendung', inhalt: 'AUSGESCHLOSSENER-INHALT-MARKER', notwendig: false },
     ]
-    eingaben.budget = { maxElemente: 1 }
+    // maxElemente: 2, nicht 1 — F12 WS-2 (AK5) stellt seit jedem Lauf den auftragRef als notwendig:true
+    // voran, der in Phase A bereits 1 Element des Budgets belegt; Phase B (die beiden hier geprüften
+    // optionalen Anfragen) hat damit noch genau 1 Element frei, das Budget-Verhalten unter Test bleibt unverändert.
+    eingaben.budget = { maxElemente: 2 }
 
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       ...startfreigabeOptionen(),
@@ -804,11 +839,16 @@ test('AK7-positiv-A (KLAERUNG_ERFORDERLICH): Wiederaufnahme erhält Lineage-Verw
 
     const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
     assert.ok(kontextpaketVersion !== null)
-    // Index [0], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
+    // F12 WS-2 (AK5): Index [0] ist seither IMMER der unbedingt vorangestellte auftragRef, [1] der
+    // vorgaengerRef — Reihenfolge [auftragRef, vorgaengerRef, …] (plan-v1-f12-ws2 Abschnitt 2.2).
+    const auftragEintrag = kontextpaketVersion.eingaben[0]
+    assert.ok(auftragEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Auftrag fehlt')
+    assert.strictEqual(auftragEintrag.pfad, `artefakt:auftrag-${AUFTRAG_ID_FIXTURE}`, 'Auftrag-Verweis muss an Index 0 stehen (vor dem vorgaengerRef)')
+    // Index [1], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
     // (plan-v1 Abschnitt 2.3) — eine künftige Umkehrung auf Anhängen soll hier rot werden.
-    const lineageEintrag = kontextpaketVersion.eingaben[0]
+    const lineageEintrag = kontextpaketVersion.eingaben[1]
     assert.ok(lineageEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Vorgängerlauf fehlt')
-    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (erstes Element)')
+    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (zweites Element, nach dem auftragRef)')
     assert.strictEqual(lineageEintrag.inhalts_hash, sha256Hex(kanonischesJson(vorgaengerLaufakteVersion.daten)))
 
     // Isolationsnachweis (F-091-Muster): echter Vorher/Nachher-Vergleich
@@ -862,11 +902,16 @@ test('AK7-positiv-B (FEHLGESCHLAGEN): Wiederaufnahme erhält Lineage-Verweis auf
 
     const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
     assert.ok(kontextpaketVersion !== null)
-    // Index [0], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
+    // F12 WS-2 (AK5): Index [0] ist seither IMMER der unbedingt vorangestellte auftragRef, [1] der
+    // vorgaengerRef — Reihenfolge [auftragRef, vorgaengerRef, …] (plan-v1-f12-ws2 Abschnitt 2.2).
+    const auftragEintrag = kontextpaketVersion.eingaben[0]
+    assert.ok(auftragEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Auftrag fehlt')
+    assert.strictEqual(auftragEintrag.pfad, `artefakt:auftrag-${AUFTRAG_ID_FIXTURE}`, 'Auftrag-Verweis muss an Index 0 stehen (vor dem vorgaengerRef)')
+    // Index [1], nicht .find(): SCOPE Punkt 2 verlangt wörtlich "vorangestellt"
     // (plan-v1 Abschnitt 2.3) — eine künftige Umkehrung auf Anhängen soll hier rot werden.
-    const lineageEintrag = kontextpaketVersion.eingaben[0]
+    const lineageEintrag = kontextpaketVersion.eingaben[1]
     assert.ok(lineageEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Vorgängerlauf fehlt')
-    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (erstes Element)')
+    assert.strictEqual(lineageEintrag.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'Lineage-Verweis muss der Anfragenliste vorangestellt sein (zweites Element, nach dem auftragRef)')
     assert.strictEqual(lineageEintrag.inhalts_hash, sha256Hex(kanonischesJson(vorgaengerLaufakteVersion.daten)))
 
     const nachherStatus = stelleLaufstatusFest(vorgaengerLaufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
@@ -897,5 +942,50 @@ test('Vorbedingungsverstoß: vorgaengerLaufId ohne existierende Laufakte wirft m
   } finally {
     raeumeKette(laufId)
     raeumeKette(nieExistierendeVorgaengerLaufId)
+  }
+})
+
+// ─── F12 WS-2: AK5 ──────────────────────────────────────────────────────────
+
+test('F12 AK5: ein gültiger Grün-Durchlauf ohne vorgaengerLaufId erhält den auftragRef als einziges/erstes Kontextpaket-Element', async () => {
+  const laufId = neueLaufId('f12a')
+  try {
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+
+    const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketVersion !== null)
+    const auftragEintrag = kontextpaketVersion.eingaben[0]
+    assert.ok(auftragEintrag !== undefined, 'Kontextpaket-Eingaben sind leer — Lineage-Verweis auf den Auftrag fehlt')
+    assert.strictEqual(auftragEintrag.pfad, `artefakt:auftrag-${AUFTRAG_ID_FIXTURE}`)
+    assert.strictEqual(auftragEintrag.inhalts_hash, sha256Hex(kanonischesJson(AUFTRAG_VERSION_FIXTURE.daten)))
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F12 Vorbedingungsverstoß: auftragId ohne existierende Auftragsakte wirft mit der auftragId im Fehlertext', async () => {
+  const laufId = neueLaufId('f12v')
+  const nieExistierendeAuftragId = `nie-existent-${randomUUID()}`
+  try {
+    const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), auftragId: nieExistierendeAuftragId }
+    await assert.rejects(
+      fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+        ...startfreigabeOptionen(),
+        basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        starter: attrappeMitValidemErgebnis,
+        schreiber: () => {},
+      }),
+      (error: unknown) => error instanceof Error && error.message.includes(nieExistierendeAuftragId)
+    )
+  } finally {
+    raeumeKette(laufId)
   }
 })

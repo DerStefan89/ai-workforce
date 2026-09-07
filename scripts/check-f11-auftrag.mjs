@@ -40,6 +40,15 @@
  * D13-Sperre im Quelltext an der richtigen Stelle (vor laufIdBelegt) prüft
  * und in JEDEM Rückkehrzweig (.then UND .catch) zurückgesetzt wird.
  *
+ * F12 WS-2 (state/plan-v1-f12-ws2.md) ergänzt (f) pruefeAuftragsformular-
+ * Rot-/Grünfall (AK4, reine Funktion, kein Server) und (g) einen
+ * pruefeStartauftrag-Rotfall für das jetzt verbotene 'auftragstext'-Feld
+ * (AK5). Der gemeinsame Grundkörper (c)/(d)/(e) trägt seither `auftragId`
+ * statt `auftragstext` (Risiko 4/5 des Plans) — pruefeStartauftrag ist eine
+ * reine Formprüfung ohne Datei-I/O, die auftragId muss hier deshalb NICHT
+ * real über registriereAuftrag existieren (anders als die echten
+ * HTTP-Testfälle in check-f10-leitstand.mjs).
+ *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
  * Aufruf: node scripts/check-f11-auftrag.mjs
@@ -50,7 +59,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { validiereAuftragDaten } from '../src/auftrag/index.ts'
 import { validiereStartvorlageDaten } from '../src/startvorlage/index.ts'
-import { loeseEvidenzPfadAuf, pruefeStartauftrag } from './leitstand-server.mjs'
+import { loeseEvidenzPfadAuf, pruefeAuftragsformular, pruefeStartauftrag } from './leitstand-server.mjs'
 
 const befunde = []
 const EXECUTION_CONTROLLER_INDEX = join('src', 'execution-controller', 'index.ts')
@@ -180,7 +189,7 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
   budget: {},
   aufrufEingaben: { modell: 'test-modell' },
   werkzeugsatz: 'lesend',
-  auftragstext: 'x',
+  auftragId: 'check-f11-ak5-auftrag',
 }
 
 {
@@ -233,6 +242,35 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
 
   if (gruenFall.ok === true && nichtAbgelehnt.length === 0 && rotFallInhalt.ok === false) {
     console.log(`✓ AK6: loeseEvidenzPfadAuf löst 'package.json' korrekt auf und lehnt ${rotFaelle.length} unsichere Pfade ab; pruefeStartauftrag lehnt 'inhalt' im Body ab.`)
+  }
+}
+
+// ─── (f) F12 WS-2 AK4: pruefeAuftragsformular lässt Grünfall durch, lehnt leere Felder und unbekanntes Feld ab ──
+{
+  const gruenFall = pruefeAuftragsformular({ titel: 'Titel', auftragstext: 'Text' })
+  if (gruenFall.ok !== true || gruenFall.titel !== 'Titel' || gruenFall.auftragstext !== 'Text') {
+    befunde.push(`AK4-Grünfall: gültiger Auftragsformular-Body sollte durchgehen, erhalten: ${JSON.stringify(gruenFall)}`)
+  }
+
+  const rotFallLeererTitel = pruefeAuftragsformular({ titel: '', auftragstext: 'Text' })
+  const rotFallFehlenderText = pruefeAuftragsformular({ titel: 'Titel' })
+  const rotFallUnbekannt = pruefeAuftragsformular({ titel: 'Titel', auftragstext: 'Text', auftragId: 'sollte verboten sein' })
+  if (rotFallLeererTitel.ok !== false || rotFallFehlenderText.ok !== false || rotFallUnbekannt.ok !== false) {
+    befunde.push('AK4-Rotfall: leerer Titel, fehlender auftragstext oder ein unbekanntes Feld sollten abgelehnt werden, mindestens einer wurde durchgelassen')
+  }
+
+  if (gruenFall.ok === true && rotFallLeererTitel.ok === false && rotFallFehlenderText.ok === false && rotFallUnbekannt.ok === false) {
+    console.log('✓ AK4: pruefeAuftragsformular lässt den Grünfall durch und lehnt leeren Titel, fehlenden auftragstext und ein unbekanntes Feld ab.')
+  }
+}
+
+// ─── (g) F12 WS-2 AK5: pruefeStartauftrag lehnt 'auftragstext' im Body ab (kommt seither serverseitig aus dem Auftragsartefakt) ──
+{
+  const rotFallAuftragstext = pruefeStartauftrag({ ...gueltigerKoerperOhneStartvorlagenFelder, auftragstext: 'sollte verboten sein' })
+  if (rotFallAuftragstext.ok !== false) {
+    befunde.push("F12 AK5-Rotfall: Body mit 'auftragstext' sollte abgelehnt werden (kommt serverseitig aus dem Auftragsartefakt), wurde durchgelassen")
+  } else {
+    console.log("✓ F12 AK5: pruefeStartauftrag lehnt 'auftragstext' im Body ab.")
   }
 }
 

@@ -8,7 +8,9 @@
  * controller.md Abschnitt 2.1/2.2/2.3). WS-2b ergänzt AusfuehrungsEingaben um
  * das optionale vorgaengerLaufId (AK7) — Lineage-Verweis bei Wiederaufnahme,
  * kein Feld von AusfuehrungsOptionen (der Controller liest und verarbeitet
- * es aktiv, anders als die reine Durchreichung unten). AusfuehrungsOptionen bündelt alle Felder,
+ * es aktiv, anders als die reine Durchreichung unten). F12 WS-2 (AK5,
+ * state/plan-v1-f12-ws2.md Abschnitt 2.2) ergänzt das PFLICHTfeld
+ * auftragId, nach demselben Muster. AusfuehrungsOptionen bündelt alle Felder,
  * die F5/F6a/F7/F1B/F9 für einen Testlauf (AK8) oder eine andere Ablage
  * brauchen, und reicht sie unverändert an die jeweilige Funktion durch —
  * der Controller interpretiert keinen dieser Werte selbst (D5, SCOPE
@@ -61,8 +63,10 @@ export interface AusfuehrungsEingaben {
   werkzeugStartziel: string[]
   werkzeugVersionDeklariert: string
   berechtigungskontext: string
-  /** Auftragstext, dem Evidenzteil des Prompts als eigener, getrennter Abschnitt vorangestellt (F11 WS-1, plan-v1-f11-auftrag-ws1 Abschnitt 2.3, AK2). Nie ein Kontextpaket-Element (AK3). */
+  /** Auftragstext, dem Evidenzteil des Prompts als eigener, getrennter Abschnitt vorangestellt (F11 WS-1, plan-v1-f11-auftrag-ws1 Abschnitt 2.3, AK2). Nie ein Kontextpaket-Element (AK3). Bleibt Pflichtfeld (F12 WS-2, AK5) — nur seine Quelle wechselt: der Aufrufer (scripts/leitstand-server.mjs) lädt ihn serverseitig aus dem Auftragsartefakt statt ihn unverändert aus dem Body durchzureichen. */
   auftragstext: string
+  /** Lineage-Verweis auf den Auftrag, dem dieser Lauf zugeordnet ist (F12 WS-2, plan-v1-f12-ws2 Abschnitt 2.2, AK5) — Pflichtfeld, anders als vorgaengerLaufId unten: jeder reale Start hat seit WS-2 einen Auftrag. Der Controller lädt das Auftragsartefakt selbst und stellt der Anfragenliste einen `artefakt:auftrag-<auftragId>`-Verweis voran (Muster vorgaengerLaufId, AK7). */
+  auftragId: string
   /** Lineage-Verweis auf einen Vorgängerlauf bei Wiederaufnahme nach KLAERUNG_ERFORDERLICH oder ABGESCHLOSSEN/FEHLGESCHLAGEN (WS-2b, plan-v1 Abschnitt 2.3, AK7). Vom Aufrufer gewählt — der Controller generiert und prüft diese ID nicht. */
   vorgaengerLaufId?: string
 }

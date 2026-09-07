@@ -68,12 +68,65 @@ th {
   margin-top: 0.2rem;
 }
 
-#wiederaufnahme, #startfehler-abschnitt {
+#wiederaufnahme, #startfehler-abschnitt, #auftrag-start {
   margin-bottom: 2rem;
   padding: 1rem;
   border: 1px solid #ccc;
   border-radius: 0.5rem;
   max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.unterabschnitt {
+  margin-bottom: 1.5rem;
+}
+
+.unterabschnitt:last-child {
+  margin-bottom: 0;
+}
+
+.unterabschnitt h3 {
+  margin-bottom: 0.5rem;
+}
+
+#auftrag-start label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+}
+
+#auftrag-start input[type="text"],
+#auftrag-start select,
+#auftrag-start textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.4rem;
+}
+
+#start-evidenzdateien {
+  margin-top: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 0.4rem;
+  padding: 0.6rem;
+}
+
+.evidenzdatei-zeile {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.evidenzdatei-zeile input[type="text"] {
+  flex: 1;
+}
+
+#auftrag-start button {
+  margin-top: 0.6rem;
 }
 
 #wiederaufnahme-json {
