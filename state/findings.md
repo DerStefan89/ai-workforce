@@ -1446,3 +1446,19 @@ Fundstelle: `scripts/leitstand-server.mjs:769`, entdeckt bei echtem HTTP-Smoke-T
 Auswirkung: stille Divergenz zwischen geprüftem und tatsächlich beschriebenem Verzeichnis bei Nicht-Default-`basisVerzeichnis`. In Produktion unsichtbar (Default=Default). Potenzieller Blocker für F12 WS-4 (realer Nachweis), falls dort ein Nicht-Default-Pfad gebraucht wird.
 Maßnahme: `optionen`-Objekt strukturell (nicht Einzelfelder) an `fuehreAufgabeDurchFn` durchreichen.
 Feature/Run: F12 WS-2, 07.09.2026.
+
+**F-146** · `TECH_DEBT` · P2 · offen
+Titel: `klassifiziereLauf` persistiert nur `wirkungsmarke.ergebnis` — `bypass_verdacht_anzahl`/`is_error`/`non_execution_kind`/der `FEHLGESCHLAGEN`-Grund gehen verloren.
+Beschreibung: `src/result-evaluator/index.ts` (`ermittleErgebnis`) berechnet `bypass_verdacht_anzahl`, `is_error`, `non_execution_kind` und den `FEHLGESCHLAGEN`-Grund (`rohstrom_fehlt`/`rohstrom_integritaet`/`beobachtungsbasis_unvollstaendig`/`kein_ergebnisobjekt`) als `ErgebnisOhneWirkungsmarke`, aber `klassifiziereLauf` schreibt nur `{ ergebnis: teilergebnis.ergebnis }` in die terminale Wirkungsmarke (`schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: teilergebnis.ergebnis }, optionen)`) — der Rest des Teilergebnisses bleibt flüchtig, nur der reine Rückgabewert der Funktion trägt es, nicht die persistierte Kette.
+Fundstelle: `src/result-evaluator/index.ts:125-134` (`klassifiziereLauf`), `76-123` (`ermittleErgebnis`).
+Auswirkung: Aus der Laufkette ist nach Prozessende nur `wirkungsmarke.ergebnis` der `'terminal'`-Marke lesbar. F12 AK7 (Lauf-Detailansicht) kann die F7-Klassifikation im Leitstand deshalb nur auf dieses eine Feld reduziert zeigen — der Leitstand darf `klassifiziereLauf` nicht selbst aufrufen (F10-Invariante: kein Serverschreibzugriff auf `kontrollzustand/`) und die Klassifikationsregeln nicht nachbauen (D5), eine Behebung bräuchte zusätzliches Persistieren in Wirkungsmarke oder Laufakte.
+Maßnahme: nicht in F12 WS-3 behoben (bewusstes Nicht-Ziel, kein zusätzliches Persistieren von Klassifikationsdetails in diesem Workstream). Bei Bedarf eigener kleiner Vertrag: Wirkungsmarke- oder Laufakte-Schema additiv um die übrigen Felder erweitern.
+Feature/Run: F12-Challenge/WS-3-Planvorbereitung, 07.09.2026.
+
+**F-147** · `BUG` · P2 · offen
+Titel: `sammleLaufKopfdaten` liefert `auftragsbezug` bis heute konstant `null`, obwohl AK2 es als Kopfdatum verlangt.
+Beschreibung: `scripts/leitstand-server.mjs` (`sammleLaufKopfdaten`) setzt `auftragsbezug: null` mit dem Kommentar „WS-2/AK5 füllt dieses Feld; WS-1 liefert es bewusst leer, kein Rückschritt" — WS-2 (PR #91, `main` `63e4059`) hat AK5 (Auftrag→Lauf-Zuordnung als Lineage-Eingabe-Referenz) real gebaut, diese Stelle aber nicht angefasst. `GET /api/laeufe` liefert das Feld dadurch für jeden Lauf konstant `null`, auch für Läufe mit echtem, über `artefakt:auftrag-<auftragId>` referenziertem Auftragsbezug.
+Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaufKopfdaten`, Zeile `auftragsbezug: null, // WS-2/AK5 füllt dieses Feld`).
+Auswirkung: `features/F12/feature.md` AK2 nennt Auftragsbezug ausdrücklich als Kopfdatum der Laufliste („`laufId`, `laufStatus`, Ergebnis, Zeitpunkt, Auftragsbezug, …") — heute nicht erfüllt, obwohl AK5 die Datengrundlage dafür bereits liefert.
+Maßnahme: F12 WS-3 (`state/plan-v1-f12-ws3.md`, Abschnitt 2.3) — `auftragsbezug` aus dem Kontextpaket-Element `artefakt:auftrag-<auftragId>` ableiten (dieselbe Ableitung wie AK7s Detailansicht, wiederverwendet). Bestandsläufe ohne dieses Element behalten `null`.
+Feature/Run: F12-Challenge/WS-3-Planvorbereitung, 07.09.2026.
