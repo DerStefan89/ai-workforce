@@ -1496,3 +1496,29 @@ Fundstelle: Challenger-Sitzung 07.09.2026, unmittelbar vor Freigabe von F12 WS-3
 Auswirkung: identisch zu F-100 — jede Git-Operation blockiert, bis der Lock manuell entfernt wird. Zeigt, dass die dokumentierte Regel allein Wiederholung nicht verhindert.
 Maßnahme: [EMPFEHLUNG] die erlaubte Befehlsliste vor jedem Bridge-Verifikationsschritt als feste Checkliste behandeln statt aus dem Gedächtnis; für den hier üblichen Diff-/Log-basierten Verifikationsablauf reichen `log`/`diff`/`show`/`grep` durchgängig aus, `status`/`branch` werden nie gebraucht.
 Feature/Run: F12 WS-3-Verifikation, 07.09.2026.
+
+**F-152** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Messgröße "Fehldarstellungen = 0" ohne Phasentrennung nicht ehrlich messbar.
+Beschreibung: §13.3 misst Terminalwechsel und manuell geöffnete Dateien in der Bedienphase, stellt Fehldarstellungen aber erst in der Verifikationsphase fest — diese Feststellung erfordert selbst eine Kreuzprüfung gegen kontrollzustand/. Ohne Phasentrennung ist mindestens eine der drei Zahlen zwangsläufig unehrlich.
+Maßnahme: Protokollstruktur aus features/F12/nachweis-ws4.md für die Dogfooding-Phase übernehmen.
+Feature/Run: F12 WS-4, 07.09.2026.
+
+**F-153** · `TECH_DEBT` · P2 · offen
+Titel: Leitstand nutzt fest startvorlagen/beispielprojekt.json.
+Beschreibung: profiles/beispielprojekt.json ist die einzige Startvorlage; ein Lauf gegen das reale Projekt ai-workforce ist damit nicht startbar.
+Auswirkung: kein AK9-Blocker, aber Blocker für die Dogfooding-Phase am realen Projekt.
+Maßnahme: Startvorlage ai-workforce vor Beginn der Dogfooding-Phase nachziehen.
+Feature/Run: F12 WS-4, 07.09.2026.
+
+**F-154** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Bridge-Git-Sicherheitsregel zum zweiten Mal in Folge verletzt.
+Beschreibung: git status über die Bridge ausgeführt, obwohl nur log, ls-tree, ls-remote, rev-parse, cat, diff, grep, show erlaubt sind. Zweiter Vorfall nach F-151, diesmal ohne bleibenden Schaden.
+Auswirkung: fünf dokumentierte Vorfälle mit .git/index.lock, einmal mit realem Arbeitsausfall.
+Maßnahme: technische statt rein dokumentarischer Absicherung prüfen — Dokumentation allein hat zweimal nicht gereicht.
+Feature/Run: F12 WS-4, 07.09.2026.
+
+**F-155** · `TECH_DEBT` · P3 · offen
+Titel: Kein Schutz gegen Mehrfachklick auf "Starten" im Leitstand-Startformular.
+Beschreibung: Fünf statt zwei Läufe im WS-4-Nachweis entstanden, alle real und valide. YAGNI-Rückstellung.
+Maßnahme: Button während des laufenden POST deaktivieren, falls im Dogfooding erneut störend.
+Feature/Run: F12 WS-4, 07.09.2026.
