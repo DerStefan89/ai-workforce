@@ -66,7 +66,7 @@ Reihenfolge:
 | # | Feature | Begründung Reihenfolge |
 |---|---|---|
 | F11 | **Auftrag und geführter Start** | Grundlage — ohne Auftrag als Kontrollartefakt (E-M2-2) und geführten Start kein Lauf über den Leitstand |
-| F12 | **Laufliste und Lauf-Detailansicht** | Braucht F11s Auftrag/Lauf-Struktur, um Läufe verständlich darzustellen |
+| F12 | **Bedienbarer Lauf: Auftrag, Liste, Detail** | Baut auf F11s Auftrag/Startpfad auf und liefert die Bedienung dazu — F11 hat den Startpfad serverseitig gebaut, aber keine Oberfläche (E-M2-3) |
 | F13 | **Entscheiden und Wiederaufnehmen** | Braucht F12s Detailansicht, um Rückfragen/Fehlschläge anzuzeigen, bevor darauf entschieden werden kann |
 | F14 | **Timeout und Abbruch** | Braucht einen laufenden, sichtbaren Lauf (F11–F13), um ihn abbrechen zu können |
 | — | **Dogfooding-Phase** | Erst nach F11–F14 sinnvoll — die Bestehensbedingung aus §13.3 (fünf reale Aufträge über mindestens drei Tage) braucht alle vier Features |

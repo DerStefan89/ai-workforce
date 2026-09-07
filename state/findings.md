@@ -1364,6 +1364,7 @@ Fundstelle: state/plan-v1-f11-auftrag-ws1.md Abschnitt 2 (Frage 2); features/F11
 Auswirkung: kein Blocker für F11. Wird real gebraucht ab F12 (Laufliste/Detailansicht — "welcher Auftrag hat diesen Lauf ausgelöst").
 Maßnahme: Design-Entscheidung spätestens bei F12-Planung treffen, nicht weiter stillschweigend verschieben.
 Feature/Run: F11 WS-1/WS-2, 06.09.2026.
+Nachtrag (06.09.2026): entschieden durch E-M2-4 (Lineage-Eingabe-Referenz `artefakt:auftrag-<auftragId>`, nach dem F8-WS-2b-Muster `vorgaengerLaufId`), F12 AK5 zugeordnet.
 
 **F-135** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Neuer Testfall lief kurzzeitig real gegen kontrollzustand/ statt gegen eine Attrappe.
@@ -1380,3 +1381,43 @@ Fundstelle: `startvorlagen/beispielprojekt.json`; real beobachtet in `kontrollzu
 Auswirkung: kein Sicherheitsproblem (F4 hat korrekt abgelehnt, kein Kindprozess gestartet) — aber ohne Fix wäre AK8 nicht real erbringbar gewesen.
 Maßnahme: `werkzeugStartziel` auf `["C:\\Program Files\\claude\\claude.exe"]` korrigiert (reine Konfigurationsdatei, kein Eingriff in `src/`), Server neu gestartet, beide folgenden F11-WS-3-Läufe real erfolgreich.
 Feature/Run: F11 WS-3, 06.09.2026, siehe `state/e2e-nachweis-f11-ws3.md`.
+
+**F-137** · `BUG` · P1 · offen
+Titel: Leitstand zeigt Lineage-Artefaktketten als Läufe.
+Beschreibung: `sammleLaeufe` listet jedes Verzeichnis unter `kontrollzustand/`; real sind 18 von 28 keine Läufe, sondern F2-Artefaktketten, und erscheinen mit `laufStatus: NICHT_GESTARTET`. Ursache: F2s `registriereKernArtefakt` schreibt über `laufId(artefaktId) = "lineage-" + artefaktId` in eine eigene Kette.
+Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaeufe`); `src/lineage-registry/index.ts:47-49`.
+Auswirkung: verletzt die §13.3-Messgröße „Fehldarstellungen des realen Zustands = 0"; wächst mit jeder Eskalation und jedem Lauf weiter.
+Maßnahme: inhaltsbasiert filtern (gültige Kette enthält mindestens eine Wirkungsmarke), nicht über den Präfix `lineage-`. Regel real gegen alle 28 Verzeichnisse verifiziert: 10 mit Marke, 18 ohne, 0 Abweichungen. F12 AK1.
+Feature/Run: F12-Challenge, 06.09.2026.
+
+**F-138** · `BUG` · P1 · offen
+Titel: F11s Zielsatz „ohne JSON, ohne Terminal" ist real nicht erfüllt.
+Beschreibung: Die F11-Workstream-Liste nennt in WS-2 „das Startformular", aber kein AK fordert es und kein Gate prüft es; die einzige Startbedienung ist ein Textfeld für rohes Startauftrag-JSON. F11 ist auf AK-Ebene korrekt abgeschlossen, AK8 wurde per direktem `POST /api/laeufe` erbracht.
+Fundstelle: `public/leitstand/index.html`; `features/F11/feature.md` (Ziel, Workstream-Liste WS-2).
+Auswirkung: keine der drei §13.3-Messgrößen ist heute erreichbar; die Dogfooding-Phase ist ohne Formular nicht durchführbar.
+Maßnahme: über E-M2-3 F12 WS-2 zugeordnet (AK6).
+Feature/Run: F12-Challenge, 06.09.2026.
+
+**F-139** · `TECH_DEBT` · P2 · offen
+Titel: Rohereignisstrom ist über keine API erreichbar.
+Beschreibung: `kontrollzustand-roh/<laufId>/rohstrom.json` ist gitignoriert und liegt außerhalb des Server-Lesebereichs; die Laufakte trägt jedoch bereits `rohstrom_referenz: { pfad, inhalts_hash }`.
+Fundstelle: `src/claude-code-gateway/index.ts:298-309`; `kontrollzustand/lineage-laufakte-*/checkpoints/`.
+Auswirkung: „was kam heraus" (exitCode, permission_denials) ist im Leitstand nicht sichtbar — Kernbestandteil des M2-Zielsatzes.
+Maßnahme: F12 WS-3 (AK7/AK8) — Auflösung über die Laufakte mit Hash-Prüfung, Pfadsicherheit über F11s `loeseEvidenzPfadAuf`.
+Feature/Run: F12-Challenge, 06.09.2026.
+
+**F-140** · `TECH_DEBT` · P2 · offen
+Titel: Vollprojektion des Kontrollzustands im 2-Sekunden-Poll.
+Beschreibung: `/api/laeufe` validiert bei jedem Poll die komplette Hash-Kette jedes Verzeichnisses und liest für die Staleness-Prüfung referenzierte Dateien live von der Platte; der Aufwand wächst linear mit der Historie. Messung in der Bridge-VM über einen gemounteten Windows-Ordner: 3860/3528/3657 ms je Runde bei 28 Verzeichnissen und 35 Checkpoints, ohne Staleness und statSync. Der absolute Wert ist wegen der Mount-Latenz nicht belastbar, das Skalierungsverhalten schon.
+Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaeufe`, `sammleCheckpoints`, `leseAktuelleEingaben`); `public/leitstand/app.js` (`POLL_INTERVALL_MS = 2000`).
+Auswirkung: die Anzeige kann hinter dem Poll zurückbleiben; verschärft sich mit realer Nutzung.
+Maßnahme: Listen- und Detailprojektion trennen (F12 AK2); nativen Wert bei Gelegenheit auf der Windows-Maschine messen, bevor weiter optimiert wird.
+Feature/Run: F12-Challenge, 06.09.2026.
+
+**F-141** · `BUG` · P3 · offen
+Titel: Checkpoint-Zeitstempel stammen aus der Datei-mtime.
+Beschreibung: `sammleCheckpoints` setzt `zeitstempel: statSync(pfad).mtime.toISOString()` statt der Zeit aus dem Artefakt; nach einem frischen Clone oder Checkout zeigt der Leitstand Checkout-Zeiten als Ereigniszeiten.
+Fundstelle: `scripts/leitstand-server.mjs` (`sammleCheckpoints`).
+Auswirkung: Fehldarstellung des realen Zustands (§13.3-Messgröße) — klein, aber genau in der Zielmetrik.
+Maßnahme: F12 AK3.
+Feature/Run: F12-Challenge, 06.09.2026.
