@@ -167,3 +167,25 @@ Duplikat-Branch `docs/f12-ws3-tech-plan`). **F-151** (neu, Selbstbefund
 des Challenger-Chats): `git status`/`git branch` erneut über die
 Remote-Devices-Bridge ausgeführt trotz F-100 und der dokumentierten
 Bridge-Regel — `.git/index.lock` blieb stehen, manuell entfernt.
+
+## 2026-09-07 — WS-4/AK9 real durchgeführt, Nachweis erbracht
+
+Der in WS-3 offen gebliebene Nachtrag (Zeile 158–160: kein
+Browser-Test, kein Automatisierungswerkzeug verfügbar) ist geschlossen:
+Stefan hat AK9 real im Browser bedient (`http://localhost:4173`), ein
+Auftrag angelegt und daraus zwei Läufe (lesend, schreibend) gestartet
+und in der neuen Detailansicht nachvollzogen, ohne Terminalwechsel und
+ohne manuelles Öffnen von `kontrollzustand/`-Dateien im Zählfenster.
+Der Technical Challenger hat beide Laufketten, Kontextpaket-Bezüge,
+Rohstrom-Hashes und `exitCode`/`beobachtungsbasis_vollstaendig` real
+gegen die Artefakte verifiziert (Klasse A, acht Prüfpunkte, alle
+bestanden). Vollständiges Protokoll: `features/F12/nachweis-ws4.md`.
+
+Randnotiz: durch Mehrfachklick beim Testen sind fünf statt zwei Läufe
+unter demselben Auftrag entstanden (drei lesend, zwei schreibend statt
+je einem) — alle real und valide, bewusst unbereinigt als vollständiger
+Beleg mitcommittet (**F-155**, P3, kein Blocker). **F-154** (P1)
+neu erfasst: die Bridge-Regel wurde erneut verletzt.
+
+Status auf `ABGESCHLOSSEN` gesetzt — alle zehn Akzeptanzkriterien
+(AK1–AK10) real erfüllt.
