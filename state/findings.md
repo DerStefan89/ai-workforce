@@ -1455,10 +1455,43 @@ Auswirkung: Aus der Laufkette ist nach Prozessende nur `wirkungsmarke.ergebnis` 
 Maßnahme: nicht in F12 WS-3 behoben (bewusstes Nicht-Ziel, kein zusätzliches Persistieren von Klassifikationsdetails in diesem Workstream). Bei Bedarf eigener kleiner Vertrag: Wirkungsmarke- oder Laufakte-Schema additiv um die übrigen Felder erweitern.
 Feature/Run: F12-Challenge/WS-3-Planvorbereitung, 07.09.2026.
 
-**F-147** · `BUG` · P2 · offen
+**F-147** · `BUG` · P2 · **gelöst**
 Titel: `sammleLaufKopfdaten` liefert `auftragsbezug` bis heute konstant `null`, obwohl AK2 es als Kopfdatum verlangt.
 Beschreibung: `scripts/leitstand-server.mjs` (`sammleLaufKopfdaten`) setzt `auftragsbezug: null` mit dem Kommentar „WS-2/AK5 füllt dieses Feld; WS-1 liefert es bewusst leer, kein Rückschritt" — WS-2 (PR #91, `main` `63e4059`) hat AK5 (Auftrag→Lauf-Zuordnung als Lineage-Eingabe-Referenz) real gebaut, diese Stelle aber nicht angefasst. `GET /api/laeufe` liefert das Feld dadurch für jeden Lauf konstant `null`, auch für Läufe mit echtem, über `artefakt:auftrag-<auftragId>` referenziertem Auftragsbezug.
 Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaufKopfdaten`, Zeile `auftragsbezug: null, // WS-2/AK5 füllt dieses Feld`).
 Auswirkung: `features/F12/feature.md` AK2 nennt Auftragsbezug ausdrücklich als Kopfdatum der Laufliste („`laufId`, `laufStatus`, Ergebnis, Zeitpunkt, Auftragsbezug, …") — heute nicht erfüllt, obwohl AK5 die Datengrundlage dafür bereits liefert.
 Maßnahme: F12 WS-3 (`state/plan-v1-f12-ws3.md`, Abschnitt 2.3) — `auftragsbezug` aus dem Kontextpaket-Element `artefakt:auftrag-<auftragId>` ableiten (dieselbe Ableitung wie AK7s Detailansicht, wiederverwendet). Bestandsläufe ohne dieses Element behalten `null`.
-Feature/Run: F12-Challenge/WS-3-Planvorbereitung, 07.09.2026.
+Maßnahme-Nachtrag: umgesetzt in `baueAuftragsbezug` (`scripts/leitstand-server.mjs`), wiederverwendet von `sammleLaufKopfdaten` (Kopfdaten, `{auftragId, titel}`) und dem Detailendpunkt (volles Feld inkl. `auftragstext`) — Request-lokales Memo je `auftragId` (F12 WS-3, PR ausstehend).
+Feature/Run: F12-Challenge/WS-3-Planvorbereitung, 07.09.2026; behoben F12 WS-3, 07.09.2026.
+
+**F-148** · `TECH_DEBT` · P3 · offen
+Titel: `GET /api/laeufe/<laufId>` prüft `istLaufkette` nicht — eine reine Artefaktkette liefert 200 statt 404.
+Beschreibung: Der Detailendpunkt (`scripts/leitstand-server.mjs`) prüft nur `LAUFID_UNZULAESSIGE_ZEICHEN` und `existsSync(join(basisVerzeichnis, laufId))` — anders als `sammleLaeufe`/`sammleLaufKopfdaten`, die zusätzlich `istLaufkette` (mindestens eine Wirkungsmarke) verlangen (AK1). Eine reine Artefaktkette (z. B. `lineage-auftrag-<id>`, Verzeichnisname trägt den `lineage-`-Präfix) liefert dadurch `200` mit `checkpoints`/`laufStatus` statt `404`.
+Fundstelle: `scripts/leitstand-server.mjs`, `GET /api/laeufe/<laufId>`-Handler.
+Auswirkung: kein WS-1-Bug im Sinne der AK1-Abnahme (AK1 gilt für die Liste, nicht den Detailendpunkt; `feature.md` AK2 nennt für den Detailendpunkt nur „404 bei unbekannter laufId") und über die UI nicht erreichbar (das Detail-Panel öffnet nur aus bereits gefilterten Listeneinträgen). Über die rohe API weiterhin erreichbar.
+Maßnahme: bewusst NICHT in F12 WS-3 behoben (Offene Frage 8 des WS-3-Plans, mit dem Plan entschieden) — nicht im Wortlaut von AK7/AK8/AK10, über die UI nicht erreichbar, eine saubere Behebung bräuchte einen zweiten `ladeGueltigeCheckpoints`-Aufruf oder eine zweite `istLaufkette`-Ableitung auf der bereits gesendeten Projektion (D5-Verstoß). Bei Bedarf eigener kleiner Vertrag.
+Feature/Run: F12 WS-3-Planvorbereitung/Bauauftrag, 07.09.2026.
+
+**F-149** · `HARNESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: `LAUFID_UNZULAESSIGE_ZEICHEN` enthielt das Intervall U+0000–U+001F als rohe Bytes statt als Escape — `grep` behandelte die Datei dadurch als Binärdatei.
+Beschreibung: `scripts/leitstand-server.mjs` (Offset ~19626) schrieb die Steuerzeichen-Zeichenklasse als literale Kontrollbytes (`[<NUL>-<US>]`) statt als `[U+0000-U+001F]`. Node interpretiert beides identisch (RegExp-Zeichenklasse), aber die rohen Bytes lassen `grep` (und andere Zeilen-orientierte Text-Tools) die gesamte Datei als Binärdatei einstufen — `grep -n "pathname" scripts/leitstand-server.mjs` lieferte „binary file matches" statt echter Treffer.
+Fundstelle: `scripts/leitstand-server.mjs`, `LAUFID_UNZULAESSIGE_ZEICHEN`.
+Auswirkung: jedes künftige Grep-basierte Gate oder jede manuelle Textsuche gegen diese Datei lief ins Leere, ohne sichtbaren Fehler (stille Lücke, keine Fehlermeldung außer der „binary file"-Notiz). Rein syntaktisch, keine Verhaltensänderung des Regex selbst.
+Maßnahme: auf das Escape `[U+0000-U+001F]` umgestellt — semantisch identisch, real verifiziert: `grep -n "pathname" scripts/leitstand-server.mjs` liefert danach echte Zeilentreffer statt „binary file matches".
+Feature/Run: F12 WS-3, 07.09.2026 (Auftrag, Zusatzaufgabe 1).
+
+**F-150** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Verwaiste Remote-Branches und ein aus einem Challenger-Fehler entstandener Duplikat-Branch.
+Beschreibung: `git ls-remote` zeigte vor dieser Runde ~30 bereits gemergte `docs/*`-Branches auf `origin`. Zusätzlich hat der Challenger-Chat vor dem WS-3-Plan-Auftrag einen Terminal-Block ausgegeben, der den bereits existierenden Branch `docs/f12-ws3-techplan` nicht kannte (kein vorheriges `git ls-remote`) und dadurch einen lokalen Duplikat-Branch `docs/f12-ws3-tech-plan` erzeugen ließ. Stefan hat ihn wieder gelöscht.
+Fundstelle: Challenger-Sitzung 07.09.2026, vor dem WS-3-Bauauftrag.
+Auswirkung: Branch-Liste unübersichtlich, Verwechslungsgefahr bei Merge-Bestätigungen.
+Maßnahme: gemergte Branches nach PR-Merge zeitnah löschen (lokal und remote); im Challenger-Chat vor jedem vorgeschlagenen Branch-Namen `git ls-remote refs/heads/*` lesen statt einen Namen aus dem Gesprächsverlauf zu erinnern.
+Feature/Run: F12 WS-3-Planvorbereitung, 07.09.2026.
+
+**F-151** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Trotz F-100 und der dokumentierten Bridge-Regel erneut `git status`/`git branch` aus der Bridge ausgeführt — `.git/index.lock` blieb stehen.
+Beschreibung: Der Technical-Challenger-Chat hat am 07.09.2026 vor der Verifikation von F12 WS-3 `git status` und `git branch --show-current` über die Remote-Devices-Bridge ausgeführt, obwohl sowohl F-100 als auch die eigenen Projektinstruktionen (Abschnitt „Bridge- und Git-Sicherheitsregel") diese Befehle explizit ausschließen (erlaubt: log, ls-tree, ls-remote, rev-parse, cat, diff, grep, show). Ergebnis: `.git/index.lock` blieb zurück, von der Bridge nicht löschbar — Stefan musste ihn manuell per `Remove-Item .git\index.lock` entfernen.
+Fundstelle: Challenger-Sitzung 07.09.2026, unmittelbar vor Freigabe von F12 WS-3 zum Commit/Push.
+Auswirkung: identisch zu F-100 — jede Git-Operation blockiert, bis der Lock manuell entfernt wird. Zeigt, dass die dokumentierte Regel allein Wiederholung nicht verhindert.
+Maßnahme: [EMPFEHLUNG] die erlaubte Befehlsliste vor jedem Bridge-Verifikationsschritt als feste Checkliste behandeln statt aus dem Gedächtnis; für den hier üblichen Diff-/Log-basierten Verifikationsablauf reichen `log`/`diff`/`show`/`grep` durchgängig aus, `status`/`branch` werden nie gebraucht.
+Feature/Run: F12 WS-3-Verifikation, 07.09.2026.

@@ -76,6 +76,31 @@
  * GET /api/startvorlage/werkzeugsaetze liefert die Werkzeugsätze der
  * Startvorlage auf { name, modus, erlaubte_werkzeuge } reduziert — nie
  * werkzeugStartziel/berechtigungskontext/profilReferenz (D5).
+ *
+ * F12 WS-3 (AK7/AK8/AK10, state/plan-v1-f12-ws3.md): GET /api/laeufe/<laufId>
+ * trägt seither vier zusätzliche Top-Level-Felder — kontextpaket, auftrag,
+ * laufakte, rohstrom —, jedes mit eigenem status-Unterfeld statt Weglassen
+ * bei Fehlen (kein 500 bei fehlender Zusatzquelle, sechs von sieben
+ * Bestandsläufen haben keinen Auftragsbezug). auftrag hängt kausal vom
+ * Kontextpaket ab (baueAuftragsbezug liest die artefakt:auftrag-<id>-
+ * Referenz aus dessen elemente[]) — ohne Kontextpaket ist die Referenz nicht
+ * auffindbar (status 'kontextpaket_fehlt', nicht 'kein_auftragsbezug').
+ * baueAuftragsbezug wird zusätzlich von sammleLaufKopfdaten wiederverwendet
+ * (F-147: auftragsbezug-Kopfdatum), mit einem Request-lokalen Memo
+ * (auftragMemo, in sammleLaeufe angelegt) — eine von mehreren Läufen
+ * geteilte Auftragskette wird pro Poll nur einmal geladen, kein
+ * serverübergreifender Cache. rohstrom löst rohstrom_referenz.pfad
+ * AUSSCHLIESSLICH über die Laufakte auf (nie aus der laufId gebaut), prüft
+ * den Inhalts-Hash VOR jeder Feldprojektion (D2: hash_weicht_ab liefert kein
+ * einziges Inhaltsfeld) und liest permission_denials ausschließlich über
+ * F6as leseErgebnisobjekt(rohstrom.stdout) — nie eigenes Parsing (D5).
+ * ergebnisobjekt.status 'kein_ergebnisobjekt' deckt sowohl ein leeres/nicht-
+ * JSON-stdout als auch ein Nicht-"result"-Objekt ab (K1-Korrektur: die
+ * ursprüngliche Planfassung nahm fälschlich an, leseErgebnisobjekt liefere
+ * bei rohstrom.status 'ok' immer ein Objekt — real beobachtet in
+ * kontrollzustand/lineage-laufakte-e2e-referenzfeature-2026-09-06,
+ * beobachtungsbasis_vollstaendig: false). tool_input wird nie ausgeliefert,
+ * nur tool_name (dedupliziert in toolNamen, anzahl zählt roh).
  */
 
 import { createServer } from 'node:http'
@@ -83,12 +108,13 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ladeGueltigeCheckpoints, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
+import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, pruefeStale } from '../src/lineage-registry/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -240,6 +266,143 @@ function istLaufkette(gueltigeEintraege) {
   return gueltigeEintraege.some((eintrag) => eintrag.typ === 'wirkungsmarke')
 }
 
+// ─── F12 WS-3 (AK7/AK8): Detailprojektion — Kontextpaket, Auftragsbezug, Laufakte, Rohstrom ──
+
+/** Lädt die Kontextpaket-Version eines Laufs, oder null (Bestandslauf ohne Kontextpaket, Befund 6). @param laufId - Lauf-Kennung @param basisVerzeichnis - Kontrollzustand-Wurzel @returns ArtefaktVersion des Kontextpakets, oder null */
+function ladeKontextpaketVersion(laufId, basisVerzeichnis) {
+  return ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+}
+
+/** Detailprojektion des Kontextpakets (AK7) — rolle/elemente/ausgeschlossen aus dem bereits geladenen Artefakt, kein zweiter Ladevorgang. @param kontextpaketVersion - Ergebnis von ladeKontextpaketVersion @returns { status: 'ok', rolle, elemente, ausgeschlossen } | { status: 'nicht_vorhanden' } */
+function baueKontextpaketProjektion(kontextpaketVersion) {
+  if (kontextpaketVersion === null) return { status: 'nicht_vorhanden' }
+  const daten = kontextpaketVersion.daten
+  return {
+    status: 'ok',
+    rolle: daten?.rolle,
+    elemente: Array.isArray(daten?.elemente) ? daten.elemente : [],
+    ausgeschlossen: Array.isArray(daten?.ausgeschlossen) ? daten.ausgeschlossen : [],
+  }
+}
+
+const ARTEFAKT_AUFTRAG_PRAEFIX = 'artefakt:auftrag-'
+
+/**
+ * Leitet den Auftragsbezug eines Laufs aus dem Kontextpaket-Element mit
+ * Pfad 'artefakt:auftrag-<auftragId>' ab (E-M2-4, Befund 2) und lädt bei
+ * Treffer das Auftragsartefakt — lädt IMMER titel + auftragstext (D4, Q2):
+ * der Kopfdaten-Aufrufer (sammleLaufKopfdaten) schneidet auftragstext weg,
+ * die Detailansicht (GET /api/laeufe/<laufId>) nutzt die volle Rückgabe
+ * unverändert als 'auftrag'-Feld. auftragMemo ist ein Request-lokales
+ * Map(auftragId → Ergebnis), von sammleLaeufe angelegt — eine von mehreren
+ * Läufen geteilte Auftragskette wird pro Poll nur einmal geladen (Q2),
+ * kein serverübergreifender Cache, kein Zustand über den Request hinaus.
+ * @param kontextpaketVersion - Ergebnis von ladeKontextpaketVersion
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param auftragMemo - optionales Request-lokales Memo (Map)
+ * @returns vier Ausprägungen, siehe state/plan-v1-f12-ws3.md Abschnitt 2.1 (D1)
+ */
+function baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis, auftragMemo) {
+  if (kontextpaketVersion === null) return { status: 'kontextpaket_fehlt' }
+  const elemente = Array.isArray(kontextpaketVersion.daten?.elemente) ? kontextpaketVersion.daten.elemente : []
+  const element = elemente.find((e) => typeof e?.pfad === 'string' && e.pfad.startsWith(ARTEFAKT_AUFTRAG_PRAEFIX))
+  if (element === undefined) return { status: 'kein_auftragsbezug' }
+
+  const auftragId = element.pfad.slice(ARTEFAKT_AUFTRAG_PRAEFIX.length)
+  if (auftragMemo?.has(auftragId)) return auftragMemo.get(auftragId)
+
+  const auftragVersion = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const ergebnis =
+    auftragVersion === null
+      ? { status: 'auftrag_fehlt', auftragId }
+      : { status: 'ok', auftragId, titel: auftragVersion.daten?.titel, auftragstext: auftragVersion.daten?.auftragstext }
+  auftragMemo?.set(auftragId, ergebnis)
+  return ergebnis
+}
+
+/** Detailprojektion der Laufakte (AK7) — modellBeobachtet/beobachtungsbasisVollstaendig/arbeitsverzeichnisPfad, ohne rohstrom_referenz (die bleibt intern, AK8: nie aus der laufId gebaut, nie an den Client ausgeliefert). @param laufakteVersion - ArtefaktVersion der Laufakte, oder null @returns { status: 'ok', ... } | { status: 'nicht_vorhanden' } */
+function baueLaufakteProjektion(laufakteVersion) {
+  if (laufakteVersion === null) return { status: 'nicht_vorhanden' }
+  const daten = laufakteVersion.daten ?? {}
+  return {
+    status: 'ok',
+    modellBeobachtet: daten.modell_beobachtet ?? null,
+    beobachtungsbasisVollstaendig: daten.beobachtungsbasis_vollstaendig ?? null,
+    arbeitsverzeichnisPfad: daten.arbeitsverzeichnis_pfad ?? null,
+  }
+}
+
+/**
+ * Begrenzte, hashgeprüfte Rohstrom-Projektion (AK8). Auflösung
+ * AUSSCHLIESSLICH über laufakteVersion.daten.rohstrom_referenz.pfad (nie
+ * aus der laufId gebaut), Pfadsicherheit über F11s loeseEvidenzPfadAuf
+ * (D5, kein zweiter Check). Reihenfolge zwingend (D2): Hash zuerst, dann
+ * JSON.parse des Wurzelobjekts, dann Feldprojektion — bei hash_weicht_ab
+ * oder nicht_parsebar wird KEIN Inhaltsfeld ausgeliefert, auch nicht
+ * teilweise. exitCode/startfehler/stdoutLaenge/stderrLaenge stammen direkt
+ * aus dem geparsten Wurzelobjekt (ProzessErgebnis-Form); permissionDenials
+ * kommt ausschließlich über F6as leseErgebnisobjekt(wurzel.stdout) (Befund
+ * 4, D5) — ergebnisobjekt.status 'kein_ergebnisobjekt' deckt sowohl
+ * leeres/kaputtes stdout als auch ein Nicht-"result"-Objekt ab (K1: real
+ * beobachtet bei beobachtungsbasis_vollstaendig: false, e2e-
+ * referenzfeature-2026-09-06). tool_input wird nie ausgeliefert (D3), nur
+ * der dedupliziert String-Wert tool_name (toolNamen); anzahl zählt roh
+ * (Q7) — toolNamen darf leer sein, während anzahl > 0.
+ * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Muster)
+ * @returns siehe state/plan-v1-f12-ws3.md Abschnitt 2.1/2.2 (K1-Korrektur)
+ */
+function baueRohstromProjektion(laufakteVersion, repoWurzel) {
+  if (laufakteVersion === null) return { status: 'laufakte_fehlt' }
+  const referenz = laufakteVersion.daten?.rohstrom_referenz
+  if (typeof referenz?.pfad !== 'string' || typeof referenz?.inhalts_hash !== 'string') return { status: 'nicht_verfuegbar' }
+
+  const pfadErgebnis = loeseEvidenzPfadAuf(referenz.pfad, repoWurzel)
+  if (!pfadErgebnis.ok) return { status: 'nicht_verfuegbar' }
+  const zielPfad = join(repoWurzel, pfadErgebnis.relativerPfad)
+  if (!existsSync(zielPfad) || !statSync(zielPfad).isFile()) return { status: 'nicht_verfuegbar' }
+
+  let rohInhalt
+  try {
+    rohInhalt = readFileSync(zielPfad, 'utf8')
+  } catch {
+    return { status: 'nicht_verfuegbar' }
+  }
+
+  // D2: Hash zuerst, DANN projizieren — bei Abweichung kein einziges Inhaltsfeld.
+  if (sha256Hex(rohInhalt) !== referenz.inhalts_hash) return { status: 'hash_weicht_ab' }
+
+  let wurzel
+  try {
+    wurzel = JSON.parse(rohInhalt)
+  } catch {
+    return { status: 'nicht_parsebar' }
+  }
+  if (typeof wurzel !== 'object' || wurzel === null || Array.isArray(wurzel)) return { status: 'nicht_parsebar' }
+
+  const ergebnisobjekt = typeof wurzel.stdout === 'string' ? leseErgebnisobjekt(wurzel.stdout) : null
+  const denialsRoh = ergebnisobjekt?.permission_denials
+  const denials = Array.isArray(denialsRoh) ? denialsRoh.filter((d) => typeof d === 'object' && d !== null) : []
+
+  return {
+    status: 'ok',
+    exitCode: wurzel.exitCode ?? null,
+    startfehler: wurzel.startfehler ?? null,
+    stdoutLaenge: typeof wurzel.stdout === 'string' ? wurzel.stdout.length : null,
+    stderrLaenge: typeof wurzel.stderr === 'string' ? wurzel.stderr.length : null,
+    ergebnisobjekt:
+      ergebnisobjekt === null
+        ? { status: 'kein_ergebnisobjekt' }
+        : {
+            status: 'ok',
+            permissionDenials: {
+              anzahl: denials.length,
+              toolNamen: [...new Set(denials.map((d) => d.tool_name).filter((t) => typeof t === 'string'))],
+            },
+          },
+  }
+}
+
 /**
  * Kopfdaten eines einzelnen Laufs (AK2) — die schlanke Projektion für GET
  * /api/laeufe. Ruft ladeGueltigeCheckpoints genau einmal auf (D1, F-140);
@@ -247,12 +410,16 @@ function istLaufkette(gueltigeEintraege) {
  * (sammleCheckpoints, unverändert). zeitpunkt kommt aus payload.erstellt_am
  * des letzten gültigen Eintrags (AK3, E-M2-5) — statSync/mtime wird hier
  * nicht mehr gelesen; fehlt erstellt_am (Bestandsdaten), liefert dieses
- * Feld null.
+ * Feld null. auftragsbezug kommt seit F12 WS-3 (F-147) aus baueAuftragsbezug
+ * (status 'ok') → { auftragId, titel }, sonst null — auftragstext bleibt
+ * bewusst außen vor (D4 aus WS-2 gilt weiter, nur die Detailansicht braucht
+ * den Volltext).
  * @param laufId - Lauf-Kennung
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param auftragMemo - Request-lokales Memo für baueAuftragsbezug (F-147, Q2)
  * @returns Kopfdaten, oder null, wenn das Verzeichnis keine echte Laufkette ist (AK1)
  */
-function sammleLaufKopfdaten(laufId, basisVerzeichnis) {
+function sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo) {
   const gueltigeEintraege = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
   if (!istLaufkette(gueltigeEintraege)) return null
 
@@ -262,12 +429,15 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis) {
   const laufStatus = stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
   const letzter = gueltigeEintraege.at(-1)
 
+  const auftragsbezugVoll = baueAuftragsbezug(ladeKontextpaketVersion(laufId, basisVerzeichnis), basisVerzeichnis, auftragMemo)
+  const auftragsbezug = auftragsbezugVoll.status === 'ok' ? { auftragId: auftragsbezugVoll.auftragId, titel: auftragsbezugVoll.titel } : null
+
   return {
     laufId,
     laufStatus,
     ergebnis: laufStatus.status === 'ABGESCHLOSSEN' ? laufStatus.ergebnis : null,
     zeitpunkt: letzter?.payload.erstellt_am ?? null,
-    auftragsbezug: null, // WS-2/AK5 füllt dieses Feld; WS-1 liefert es bewusst leer, kein Rückschritt.
+    auftragsbezug,
     anzahlCheckpoints: gueltigeEintraege.length,
     kettenintegritaet,
   }
@@ -277,17 +447,20 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis) {
  * Liefert die Kopfdaten aller echten Läufe unter basisVerzeichnis (AK1,
  * AK2) — reine F2-Lineage-Ketten ohne jede Wirkungsmarke werden
  * inhaltsbasiert ausgefiltert (istLaufkette), nicht über den
- * lauf_id-Präfix.
+ * lauf_id-Präfix. auftragMemo (F-147, Q2) lebt genau einen Aufruf lang —
+ * eine von mehreren Läufen geteilte Auftragskette wird pro Poll nur einmal
+ * geladen, kein serverübergreifender Cache.
  * @param basisVerzeichnis - Kontrollzustand-Wurzel (Default 'kontrollzustand', überschreibbar für Tests)
  * @returns Liste aller Lauf-Kopfdaten
  */
 function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
   if (!existsSync(basisVerzeichnis)) return []
+  const auftragMemo = new Map()
   return readdirSync(basisVerzeichnis, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
     .sort()
-    .map((laufId) => sammleLaufKopfdaten(laufId, basisVerzeichnis))
+    .map((laufId) => sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo))
     .filter((kopfdaten) => kopfdaten !== null)
 }
 
@@ -377,7 +550,7 @@ export const VERBOTENE_AUFTRAG_FELDER = new Set(['auftragstext'])
 const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
 
 /** Spiegelt src/checkpoint-store/index.ts' pruefeLaufId (nicht exportiert) — dieselbe rein strukturelle Zeichenregel, kein zweiter fachlicher Regelsatz (D5). Fängt einen unzulässigen Wert ab, BEVOR laufIdBelegt() ihn ungeprüft in einen existsSync-Pfad einsetzt. */
-const LAUFID_UNZULAESSIGE_ZEICHEN = /[/\\]|\.\.|[ -]/
+const LAUFID_UNZULAESSIGE_ZEICHEN = /[/\\]|\.\.|[\u0000-\u001f]/
 
 const PFLICHT_STARTAUFTRAG_FELDER = ['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz']
 
@@ -599,10 +772,21 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 404, { grund: `Lauf '${laufId}' nicht gefunden` })
         return
       }
+
+      // F12 WS-3 (AK7/AK8): vier Zusatzquellen, jede unabhängig ladbar/fehlerfähig (2.1) —
+      // kontextpaket zuerst (auftrag hängt kausal davon ab, Befund 2), laufakte danach (eigene
+      // Artefaktkette), rohstrom nutzt dieselbe laufakteVersion (kein zweiter Ladevorgang).
+      const kontextpaketVersion = ladeKontextpaketVersion(laufId, basisVerzeichnis)
+      const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+
       sendeJson(res, 200, {
         laufId,
         checkpoints: sammleCheckpoints(laufId, basisVerzeichnis),
         laufStatus: stelleLaufstatusFest(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }),
+        kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
+        auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
+        laufakte: baueLaufakteProjektion(laufakteVersion),
+        rohstrom: baueRohstromProjektion(laufakteVersion, repoWurzel),
       })
       return
     }
