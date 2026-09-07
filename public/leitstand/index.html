@@ -25,6 +25,13 @@
 
     <div class="unterabschnitt">
       <h3>Starten</h3>
+      <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
+        Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
+        unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
+        <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
+      </p>
+      <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
+
       <label for="start-auftrag">Auftrag wählen</label>
       <select id="start-auftrag"></select>
 
@@ -44,18 +51,6 @@
       <p id="start-erfolg" class="erfolg" hidden></p>
       <p id="start-fehler" class="fehler" hidden></p>
     </div>
-  </section>
-
-  <section id="wiederaufnahme">
-    <h2>Notweg (rohes JSON)</h2>
-    <p class="hinweis">Ausdrücklich gekennzeichneter Notweg — der Normalweg ist das Startformular oben.
-      „Wiederaufnahme starten" bei einem Lauf unten befüllt dieses Feld mit einer Vorlage
-      (<code>laufId</code>/<code>vorgaengerLaufId</code> gesetzt, die übrigen sechs Startauftrag-Felder als
-      Platzhalter). Vor dem Absenden prüfen und ergänzen.</p>
-    <textarea id="wiederaufnahme-json" rows="12" spellcheck="false"></textarea>
-    <div><button id="wiederaufnahme-starten">Starten</button></div>
-    <p id="wiederaufnahme-erfolg" class="erfolg" hidden></p>
-    <p id="wiederaufnahme-fehler" class="fehler" hidden></p>
   </section>
 
   <section id="startfehler-abschnitt">

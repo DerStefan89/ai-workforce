@@ -4,10 +4,9 @@
  * Zweck: Client-Skript des F10-Leitstands. Rendert kontrollzustand/ read-only
  * (F1-Checkpoints, F2-Lineage) und bietet seit WS-2 (F10-Feature-Akte) die
  * Wiederaufnahme-Bedienung (AK7): ein Lauf in KLAERUNG_ERFORDERLICH oder
- * ABGESCHLOSSEN/FEHLGESCHLAGEN bekommt einen Button, der ein Textfeld mit
- * einer Startauftrag-Vorlage befüllt (laufId/vorgaengerLaufId real gesetzt,
- * die übrigen sechs Felder als Platzhalter — bewusst kein Formular, siehe
- * Nicht-Ziele in features/F10/feature.md). AK9 pollt /api/laeufe und
+ * ABGESCHLOSSEN/FEHLGESCHLAGEN (seit F13 zusätzlich VERWEIGERT) bekommt
+ * einen Button, der das geführte Startformular vorbelegt (siehe F13 WS-1
+ * unten — kein Textfeld/Notweg mehr). AK9 pollt /api/laeufe und
  * /api/startfehler periodisch, damit ein laufender Lauf ohne manuellen
  * Reload sichtbar seinen Terminalzustand erreicht.
  *
@@ -21,10 +20,8 @@
  * Werkzeugsatz wählen (GET /api/auftraege, GET /api/startvorlage/
  * werkzeugsaetze), Evidenzdateien über eine dynamische Zeilenliste
  * benennen, starten (POST /api/laeufe mit auftragId statt auftragstext —
- * AK5). Das JSON-Textfeld unter #wiederaufnahme bleibt als gekennzeichneter
- * Notweg bestehen; baueWiederaufnahmeVorlage trägt seither auftragId statt
- * auftragstext (F12 WS-2 AK5 — ein auftragstext im Body wird jetzt mit 400
- * abgelehnt). rolle/budget/aufrufEingaben.modell sind im Startformular
+ * AK5, ein auftragstext im Body wird mit 400 abgelehnt). rolle/budget/
+ * aufrufEingaben.modell sind im Startformular
  * NICHT wählbar (§13.3-Nicht-Ziel „keine dynamische Rollen-/Modell-/
  * Werkzeugwahl") — initStartformular() setzt dafür feste Client-Werte.
  * laufId bleibt ein vom Nutzer überschreibbares Textfeld mit
@@ -35,6 +32,25 @@
  * F12 WS-1: /api/laeufe liefert seit AK2 nur noch Kopfdaten (kein
  * checkpoints-Array mehr) — laufAbschnitt zeigt deshalb eine Kopfdaten-Zeile
  * statt der vollen Checkpoint-Tabelle.
+ *
+ * F13 WS-1 (AK1/AK2): das JSON-Notweg-Textfeld unter #wiederaufnahme ist
+ * entfallen — "Wiederaufnahme starten" befüllt seither dasselbe
+ * Startformular (initStartformular), das auch der Neustart nutzt: GET
+ * /api/laeufe/<laufId> liefert auftragId (nur bei auftrag.status === 'ok')
+ * und die echten, nicht-synthetischen Kontextpaket-Elemente als
+ * Evidenzdateien (filtereEchteEvidenzPfade — Präfix 'artefakt:' filtert
+ * die vom Server selbst vorangestellten Lineage-Referenzen aus,
+ * execution-controller/index.ts). vorgaengerLaufId liegt danach gesperrt
+ * in aktiveVorgaengerLaufId und geht in den nächsten POST /api/laeufe-Body
+ * ein, bis "Wiederaufnahme abbrechen" oder ein erfolgreicher Start sie
+ * zurücksetzt. werkzeugsatz bleibt unvorbelegt (F-161, real geprüft:
+ * nirgends rekonstruierbar). darfWiederaufnehmen bietet den Knopf seither
+ * auch bei ABGESCHLOSSEN/VERWEIGERT an (F-159, häufigster realer Klärfall).
+ * Die Detailansicht zeigt seither zusätzlich renderLaufStatus (AK2):
+ * KLAERUNG_ERFORDERLICH unverändert aus stelleLaufstatusFest übernommen,
+ * VERWEIGERT zusätzlich aus dem neuen detail.verweigertDaten-Projektionszweig
+ * (leitstand-server.mjs, aus dem daten-Feld der terminalen Wirkungsmarke,
+ * NICHT aus der Laufakte — die trägt diese Felder nicht).
  *
  * F12 WS-3 (AK7): jede laufAbschnitt-Zeile bekommt einen "Details"-Button
  * (data-lauf-id), Klick-Delegation an #laeufe (Muster
@@ -104,10 +120,11 @@ function checkpointZeile(cp) {
   </tr>`
 }
 
-/** AK7: Wiederaufnahme-Bedienung ist nur für einen Lauf sinnvoll, dessen letzter Zustand entweder auf eine offene Klärung oder auf einen Fehlschlag zeigt (D-F10-1, feature.md AK7). @param laufStatus - der von stelleLaufstatusFest gelieferte LaufStatus (AK8) @returns true, wenn eine Wiederaufnahme angeboten wird */
+/** AK7/F13 WS-1 AK1: Wiederaufnahme-Bedienung ist nur für einen Lauf sinnvoll, dessen letzter Zustand entweder auf eine offene Klärung oder auf einen Fehlschlag zeigt (D-F10-1, feature.md AK7) — seit F13 zusätzlich ABGESCHLOSSEN/VERWEIGERT (F-159: der laut Nachweis häufigste reale Klärfall hatte bisher keinen Knopf). @param laufStatus - der von stelleLaufstatusFest gelieferte LaufStatus (AK8) @returns true, wenn eine Wiederaufnahme angeboten wird */
 function darfWiederaufnehmen(laufStatus) {
   if (laufStatus?.status === 'KLAERUNG_ERFORDERLICH') return true
-  return laufStatus?.status === 'ABGESCHLOSSEN' && laufStatus?.ergebnis === 'FEHLGESCHLAGEN'
+  if (laufStatus?.status !== 'ABGESCHLOSSEN') return false
+  return laufStatus.ergebnis === 'FEHLGESCHLAGEN' || laufStatus.ergebnis === 'VERWEIGERT'
 }
 
 /** F12 WS-1 (AK2): zeigt die Kopfdaten-Zeile aus GET /api/laeufe — die volle Checkpoint-Tabelle zieht in die WS-3-Detailansicht (GET /api/laeufe/<laufId>) um. */
@@ -168,31 +185,48 @@ async function ladeStartfehler() {
   }
 }
 
-/** Baut die Vorlage fürs Wiederaufnahme-Textfeld — laufId/vorgaengerLaufId real gesetzt, die übrigen sechs Startauftrag-Felder als zu füllende Platzhalter (kein Formular, Nicht-Ziel laut feature.md). werkzeugsatz nennt einen in der Startvorlage benannten Werkzeugsatz (F11 WS-2 AK4/AK5), auftragId ist seit F12 WS-2 AK5 Pflichtfeld (ersetzt auftragstext, das serverseitig aus dem Auftragsartefakt geladen wird). @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird @returns Startauftrag-Objekt zur Anzeige im Textfeld */
-function baueWiederaufnahmeVorlage(alterLaufId) {
-  return {
-    laufId: `${alterLaufId}-wiederaufnahme-${crypto.randomUUID()}`,
-    vorgaengerLaufId: alterLaufId,
-    rolle: '',
-    anfragen: [],
-    budget: {},
-    aufrufEingaben: {},
-    werkzeugsatz: '',
-    auftragId: '',
+/** Präfix der synthetischen Kontextpaket-Elemente, die der Server selbst voranstellt (artefakt:laufakte-<vorgaengerLaufId>, artefakt:auftrag-<auftragId> — execution-controller/index.ts). AK1: diese Pfade sind keine vom Nutzer benannten Evidenzdateien und dürfen nicht als anfragen-Element erneut eingereicht werden, sie werden serverseitig ohnehin wieder vorangestellt. */
+const ARTEFAKT_PRAEFIX = 'artefakt:'
+
+/** Filtert die echten, vom Nutzer ursprünglich benannten Kontextpaket-Elemente eines Vorgängerlaufs für die Wiederaufnahme-Vorbelegung (AK1). @param elemente - detail.kontextpaket.elemente aus GET /api/laeufe/<laufId> @returns Liste repo-relativer Pfade, ohne die artefakt:-Lineage-Referenzen */
+function filtereEchteEvidenzPfade(elemente) {
+  return elemente.filter((e) => typeof e?.pfad === 'string' && !e.pfad.startsWith(ARTEFAKT_PRAEFIX)).map((e) => e.pfad)
+}
+
+/** laufId des Laufs, dessen Wiederaufnahme gerade vorbereitet wird, oder null im Normalstart (AK1) — geht als vorgaengerLaufId in den nächsten POST /api/laeufe-Body ein, bis loescheWiederaufnahmeVorbelegung() sie zurücksetzt. Bewusst kein editierbares Formularfeld (fest/gesperrt laut feature.md AK1). */
+let aktiveVorgaengerLaufId = null
+
+function zeigeVorbelegungsFehler(text) {
+  const anzeige = document.getElementById('start-vorbelegung-fehler')
+  anzeige.textContent = text
+  anzeige.hidden = text === ''
+}
+
+/** Setzt die Wiederaufnahme-Sperre (AK1) — Hinweistext mit der Vorgänger-laufId, Klartext im Startformular statt eines editierbaren Felds. @param alterLaufId - laufId des Laufs, der wiederaufgenommen wird */
+function setzeWiederaufnahmeVorbelegung(alterLaufId) {
+  aktiveVorgaengerLaufId = alterLaufId
+  document.getElementById('start-wiederaufnahme-laufid').textContent = alterLaufId
+  document.getElementById('start-wiederaufnahme-hinweis').hidden = false
+}
+
+/** Hebt die Wiederaufnahme-Sperre auf — nach "Wiederaufnahme abbrechen" oder einem erfolgreichen Start (der nächste Start soll nicht stillschweigend wieder dieselbe vorgaengerLaufId tragen). */
+function loescheWiederaufnahmeVorbelegung() {
+  aktiveVorgaengerLaufId = null
+  document.getElementById('start-wiederaufnahme-hinweis').hidden = true
+}
+
+/** Ersetzt die Evidenzdatei-Zeilen des Startformulars durch die übergebenen Pfade (AK1) — mindestens eine leere Zeile bleibt bestehen (Muster initEvidenzdateien), auch wenn pfade leer ist. @param pfade - repo-relative Pfade, vorbelegt aus filtereEchteEvidenzPfade */
+function ersetzeEvidenzdateien(pfade) {
+  document.getElementById('start-evidenzdateien-liste').innerHTML = ''
+  if (pfade.length === 0) {
+    fuegeEvidenzdateiZeileHinzu()
+    return
   }
-}
-
-function zeigeWiederaufnahmeFehler(text) {
-  const anzeige = document.getElementById('wiederaufnahme-fehler')
-  anzeige.textContent = text
-  anzeige.hidden = text === ''
-}
-
-/** Kurzes Erfolgsfeedback direkt nach 202 — bis zum ersten Checkpoint vergehen laut Server-Kommentar Sekunden, ohne diesen Hinweis sähe der Nutzer nach „Starten" nur ein leeres Textfeld. @param text - Erfolgstext, leerer String blendet ihn aus */
-function zeigeWiederaufnahmeErfolg(text) {
-  const anzeige = document.getElementById('wiederaufnahme-erfolg')
-  anzeige.textContent = text
-  anzeige.hidden = text === ''
+  for (const pfad of pfade) {
+    fuegeEvidenzdateiZeileHinzu()
+    const zeilen = document.querySelectorAll('.evidenzdatei-pfad')
+    zeilen[zeilen.length - 1].value = pfad
+  }
 }
 
 /** Reduziert einen Auftragstitel auf ein für laufId zulässiges Muster (kein '/','\\','..' — Server-Regel LAUFID_UNZULAESSIGE_ZEICHEN) als Baustein eines Vorschlagswerts, nicht als Validierung selbst. @param titel - Auftragstitel oder anderer Anzeigetext @returns kleingeschriebener, mit '-' getrennter Kurzname, max. 40 Zeichen */
@@ -365,6 +399,8 @@ function initStartformular() {
       aufrufEingaben: { modell: 'sonnet' },
       werkzeugsatz: document.getElementById('start-werkzeugsatz').value,
       auftragId,
+      // F13 WS-1 (AK1): fest/gesperrt, kein Formularfeld — gesetzt über "Wiederaufnahme starten".
+      ...(aktiveVorgaengerLaufId !== null ? { vorgaengerLaufId: aktiveVorgaengerLaufId } : {}),
     }
 
     zeigeStartErfolg('')
@@ -389,6 +425,7 @@ function initStartformular() {
       document.querySelectorAll('.evidenzdatei-pfad').forEach((eingabe) => {
         eingabe.value = ''
       })
+      loescheWiederaufnahmeVorbelegung()
       aktualisiereLaufIdVorschlag()
       await laden()
     } finally {
@@ -397,57 +434,55 @@ function initStartformular() {
   })
 }
 
-/** Klick-Delegation statt eines Listeners pro Zeile — laden() ersetzt #laeufe komplett bei jedem Poll (AK9), ein direkt gebundener Listener würde dabei verloren gehen. */
+/**
+ * Klick-Delegation für "Wiederaufnahme starten" (AK1) — laden() ersetzt
+ * #laeufe komplett bei jedem Poll (AK9), ein direkt gebundener Listener
+ * würde dabei verloren gehen (Muster initDetailBedienung). Lädt GET
+ * /api/laeufe/<laufId> und belegt damit dasselbe Startformular vor, das
+ * initStartformular() für den Neustart nutzt: auftragId (nur bei
+ * auftrag.status === 'ok', sonst Feld leer — kein Absturz bei fehlendem
+ * Auftragsbezug), echte Evidenz-Anfragen (filtereEchteEvidenzPfade),
+ * vorgaengerLaufId fest über aktiveVorgaengerLaufId. werkzeugsatz bleibt
+ * bewusst unverändert (F-161).
+ */
 function initWiederaufnahmeBedienung() {
-  document.getElementById('laeufe').addEventListener('click', (ereignis) => {
+  document.getElementById('laeufe').addEventListener('click', async (ereignis) => {
     const button = ereignis.target.closest('.wiederaufnahme-btn')
     if (!button) return
-    const textfeld = document.getElementById('wiederaufnahme-json')
-    textfeld.value = JSON.stringify(baueWiederaufnahmeVorlage(button.dataset.laufId), null, 2)
-    zeigeWiederaufnahmeFehler('')
-    zeigeWiederaufnahmeErfolg('')
-    textfeld.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    textfeld.focus()
-  })
+    const alterLaufId = button.dataset.laufId
+    zeigeVorbelegungsFehler('')
 
-  const startenButton = document.getElementById('wiederaufnahme-starten')
-  startenButton.addEventListener('click', async () => {
-    if (startenButton.disabled) return // Doppel-Submit-Schutz — der Server lehnt den zweiten POST zwar korrekt mit 409 ab, aber nach einem bereits erfolgreichen 202 wäre die 409-Meldung nur verwirrend.
-    const textfeld = document.getElementById('wiederaufnahme-json')
-    let startauftrag
+    let detail
     try {
-      startauftrag = JSON.parse(textfeld.value)
+      const antwort = await fetch(`/api/laeufe/${encodeURIComponent(alterLaufId)}`)
+      if (!antwort.ok) {
+        const koerper = await antwort.json().catch(() => ({}))
+        zeigeVorbelegungsFehler(`Vorbelegung fehlgeschlagen (${antwort.status}): ${koerper.grund ?? 'unbekannter Fehler'}`)
+        return
+      }
+      detail = await antwort.json()
     } catch (fehler) {
-      zeigeWiederaufnahmeFehler(`Feld ist kein gültiges JSON: ${fehler.message}`)
+      zeigeVorbelegungsFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
       return
     }
 
-    zeigeWiederaufnahmeErfolg('')
-    startenButton.disabled = true
-    try {
-      let antwort
-      try {
-        antwort = await fetch('/api/laeufe', { method: 'POST', body: JSON.stringify(startauftrag) })
-      } catch (fehler) {
-        zeigeWiederaufnahmeFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
-        return
-      }
-
-      if (antwort.status !== 202) {
-        const koerper = await antwort.json().catch(() => ({}))
-        zeigeWiederaufnahmeFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
-        return
-      }
-
-      const angenommen = await antwort.json().catch(() => ({}))
-      zeigeWiederaufnahmeFehler('')
-      zeigeWiederaufnahmeErfolg(`Angenommen: laufId '${angenommen.laufId ?? startauftrag.laufId}'. Erscheint in der Liste unten, sobald der erste Checkpoint geschrieben ist.`)
-      textfeld.value = ''
-      await laden()
-    } finally {
-      startenButton.disabled = false
+    const auftragSelect = document.getElementById('start-auftrag')
+    if (detail.auftrag?.status === 'ok') {
+      await ladeAuftraege()
+      auftragSelect.value = detail.auftrag.auftragId
+    } else {
+      auftragSelect.value = ''
     }
+
+    const evidenzPfade = detail.kontextpaket?.status === 'ok' ? filtereEchteEvidenzPfade(detail.kontextpaket.elemente) : []
+    ersetzeEvidenzdateien(evidenzPfade)
+
+    setzeWiederaufnahmeVorbelegung(alterLaufId)
+    aktualisiereLaufIdVorschlag()
+    document.getElementById('start-starten').scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
+
+  document.getElementById('start-wiederaufnahme-abbrechen').addEventListener('click', loescheWiederaufnahmeVorbelegung)
 }
 
 // ─── F12 WS-3 (AK7): Lauf-Detailansicht (GET /api/laeufe/<laufId>, nur auf Anforderung) ──
@@ -471,6 +506,42 @@ function renderAuftrag(auftrag) {
     auftrag_fehlt: `Auftragsreferenz vorhanden ('${escapeHtml(auftrag.auftragId ?? '')}'), Auftragsartefakt fehlt.`,
   }
   return `<div class="detail-block"><h3>Auftrag</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(auftrag.status, texte))}</p></div>`
+}
+
+/**
+ * F13 WS-1 (AK2): Klärzustand unverfälscht sichtbar — bei
+ * KLAERUNG_ERFORDERLICH werden blockerId/grund/aufloesungsbedingung/
+ * resumeZiel/Anzahl offener run_prepared-Sequenzen unverändert aus
+ * stelleLaufstatusFest (detail.laufStatus) übernommen, kein Text neu
+ * formuliert. Bei ABGESCHLOSSEN/VERWEIGERT kommen bypass_verdacht_anzahl/
+ * is_error/non_execution_kind aus dem separaten detail.verweigertDaten-
+ * Projektionszweig (leitstand-server.mjs) — NICHT aus der Laufakte, die
+ * diese Felder nicht trägt. Jedes Feld zeigt dort bereits 'unbekannt' statt
+ * eines geratenen 0/false bei einem Bestandslauf ohne daten-Feld.
+ * @param laufStatus - detail.laufStatus aus GET /api/laeufe/<laufId>
+ * @param verweigertDaten - detail.verweigertDaten (null außer bei ABGESCHLOSSEN/VERWEIGERT)
+ * @returns HTML-Block für den Klärzustand-Abschnitt der Detailansicht
+ */
+function renderLaufStatus(laufStatus, verweigertDaten) {
+  if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
+    return `<div class="detail-block"><h3>Klärzustand: Klärung erforderlich</h3><table class="lauf-kopfdaten"><tbody>
+      <tr><th>blockerId</th><td><code>${escapeHtml(laufStatus.blockerId)}</code></td></tr>
+      <tr><th>Grund</th><td>${escapeHtml(laufStatus.grund)}</td></tr>
+      <tr><th>Auflösungsbedingung</th><td>${escapeHtml(laufStatus.aufloesungsbedingung)}</td></tr>
+      <tr><th>Resume-Ziel</th><td>${escapeHtml(laufStatus.resumeZiel)}</td></tr>
+      <tr><th>Offene run_prepared-Sequenzen</th><td>${laufStatus.evidenz.offeneRunPreparedSequenzen.length}</td></tr>
+    </tbody></table></div>`
+  }
+  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT') {
+    const vd = verweigertDaten ?? { bypassVerdachtAnzahl: 'unbekannt', isError: 'unbekannt', nonExecutionKind: 'unbekannt' }
+    return `<div class="detail-block"><h3>Klärzustand: Abgeschlossen (VERWEIGERT)</h3><table class="lauf-kopfdaten"><tbody>
+      <tr><th>bypass_verdacht_anzahl</th><td>${escapeHtml(String(vd.bypassVerdachtAnzahl))}</td></tr>
+      <tr><th>is_error</th><td>${escapeHtml(String(vd.isError))}</td></tr>
+      <tr><th>non_execution_kind</th><td>${escapeHtml(String(vd.nonExecutionKind))}</td></tr>
+    </tbody></table></div>`
+  }
+  const statusText = laufStatus.status === 'ABGESCHLOSSEN' ? `${laufStatus.status} (${laufStatus.ergebnis})` : laufStatus.status
+  return `<div class="detail-block"><h3>Klärzustand</h3><p>${escapeHtml(statusText)}</p></div>`
 }
 
 /** @param kontextpaket - detail.kontextpaket aus GET /api/laeufe/<laufId> @returns HTML-Block für den Kontextpaket-Abschnitt (Elemente, eingeklappte Ausschlüsse, Q4) */
@@ -574,6 +645,7 @@ async function ladeLaufDetail(laufId) {
     if (gewaehlteLaufId !== laufId) return
     inhalt.innerHTML = [
       renderAuftrag(detail.auftrag),
+      renderLaufStatus(detail.laufStatus, detail.verweigertDaten),
       renderKontextpaket(detail.kontextpaket),
       renderLaufakte(detail.laufakte),
       renderRohstrom(detail.rohstrom),

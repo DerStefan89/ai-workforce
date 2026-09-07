@@ -23,7 +23,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
-import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
+import { ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { klassifiziereLauf } from './index.ts'
 
@@ -350,6 +350,34 @@ test('is_error/non_execution_kind werden auch im VERWEIGERT-Zweig informativ dur
     assert.equal(ergebnis.ergebnis, 'VERWEIGERT')
     assert.equal(ergebnis.ergebnis === 'VERWEIGERT' && ergebnis.is_error, true)
     assert.equal(ergebnis.ergebnis === 'VERWEIGERT' && ergebnis.non_execution_kind, 'diagnose-wert-verweigert')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('VERWEIGERT: daten.bypass_verdacht_anzahl kommt im geschriebenen Wirkungsmarke-Eintrag an (F-160)', () => {
+  const laufId = neueLaufId('daten-bypass-verdacht')
+  try {
+    const stdout = JSON.stringify({
+      type: 'result',
+      permission_denials: [{ tool_name: 'Bash', tool_use_id: 'toolu_daten_bypass', tool_input: { command: 'npm run test --dangerously-skip-permissions' } }],
+      is_error: true,
+      non_execution_kind: 'diagnose-wert-daten',
+      result: 'verweigert',
+    })
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout, stderr: '', exitCode: 0 })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, true)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'VERWEIGERT')
+
+    const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    const terminal = kette.find((eintrag) => eintrag.payload.selbst_hash === ergebnis.wirkungsmarke.selbstHash)
+    assert.ok(terminal, 'terminaler Wirkungsmarke-Eintrag muss in der Kette auffindbar sein')
+    const daten = (terminal?.payload as { daten?: { bypass_verdacht_anzahl?: number; is_error?: unknown; non_execution_kind?: unknown } }).daten
+    assert.equal(daten?.bypass_verdacht_anzahl, 1)
+    assert.equal(daten?.is_error, true)
+    assert.equal(daten?.non_execution_kind, 'diagnose-wert-daten')
   } finally {
     raeumeKette(laufId)
   }

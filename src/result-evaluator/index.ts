@@ -129,6 +129,16 @@ export function klassifiziereLauf(
   optionen: KlassifikationsOptionen = {}
 ): KlassifikationsErgebnis {
   const teilergebnis = ermittleErgebnis(eingaben.laufakte)
-  const { pfad, selbstHash } = schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: teilergebnis.ergebnis }, optionen)
+  const zusatzDaten =
+    teilergebnis.ergebnis === 'VERWEIGERT'
+      ? {
+          daten: {
+            bypass_verdacht_anzahl: teilergebnis.bypass_verdacht_anzahl,
+            ...('is_error' in teilergebnis ? { is_error: teilergebnis.is_error } : {}),
+            ...('non_execution_kind' in teilergebnis ? { non_execution_kind: teilergebnis.non_execution_kind } : {}),
+          },
+        }
+      : {}
+  const { pfad, selbstHash } = schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: teilergebnis.ergebnis, ...zusatzDaten }, optionen)
   return { ...teilergebnis, wirkungsmarke: { pfad, selbstHash } }
 }
