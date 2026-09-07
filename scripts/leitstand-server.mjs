@@ -101,6 +101,19 @@
  * kontrollzustand/lineage-laufakte-e2e-referenzfeature-2026-09-06,
  * beobachtungsbasis_vollstaendig: false). tool_input wird nie ausgeliefert,
  * nur tool_name (dedupliziert in toolNamen, anzahl zählt roh).
+ *
+ * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
+ * reicht seither sein viertes Argument (optionen) strukturell durch
+ * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
+ * wurde) — vorher respektierten nur die synchronen Prüfungen davor (D13,
+ * laufIdBelegt, auftragId-Existenz) ein Nicht-Default-basisVerzeichnis, der
+ * eigentliche Lauf fiel intern auf den Default 'kontrollzustand' zurück
+ * (stille Divergenz, in Produktion unsichtbar bei Default=Default). Hinweis
+ * für künftige Codeeingriffe: check-f11-auftrag.mjs' D13-Vertragsprüfung
+ * findet die reale Aufrufstelle des Fire-and-forget-Laufs über deren
+ * ERSTES Vorkommen im Quelltext — Kommentare oberhalb dürfen den
+ * zusammengesetzten Funktionsnamen und die öffnende Klammer deshalb nie
+ * unmittelbar hintereinander als Literalstring nennen.
  */
 
 import { createServer } from 'node:http'
@@ -950,7 +963,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       // starteGateway ok:false zurückgibt — die laufId bleibt danach absichtlich belegt (F1s
       // Hash-Kette ist append-only, kein Überschreiben eines persistierten Artefakts,
       // ARCHITECTURE.md §7). Ein Retry braucht dann eine neue laufId.
-      fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben)
+      // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
+      // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
+      // respektieren die synchronen Prüfungen oben (D13, laufIdBelegt, auftragId-Existenz) ein
+      // Nicht-Default-basisVerzeichnis, der eigentliche Lauf aber nicht (stille Divergenz). Extra
+      // Felder von optionen (fuehreAufgabeDurchFn/publicVerzeichnis/startvorlagePfad/repoWurzel),
+      // die AusfuehrungsOptionen nicht kennt: fuehreAufgabeDurch kopiert für starteGateway nur die
+      // sieben bekannten Felder einzeln heraus (src/execution-controller/index.ts, F-107), das rohe
+      // Objekt selbst reicht es nur an die F9-Eskalationshelfer (erfasseBedarf/erzeugeTransportpaket/
+      // haendigeAus) unverändert weiter — auch die lesen nur bekannte Felder per Property-Zugriff,
+      // Extrafelder bleiben überall ungelesen (D5, kein Verhalten im Default-Fall geändert).
+      fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, optionen)
         .then((ergebnis) => {
           laufAktiv = false
           laufAktivLaufId = null
