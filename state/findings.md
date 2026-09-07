@@ -1414,10 +1414,11 @@ Auswirkung: die Anzeige kann hinter dem Poll zurückbleiben; verschärft sich mi
 Maßnahme: Listen- und Detailprojektion trennen (F12 AK2); nativen Wert bei Gelegenheit auf der Windows-Maschine messen, bevor weiter optimiert wird.
 Feature/Run: F12-Challenge, 06.09.2026.
 
-**F-141** · `BUG` · P3 · offen
+**F-141** · `BUG` · P3 · **entschieden**
 Titel: Checkpoint-Zeitstempel stammen aus der Datei-mtime.
 Beschreibung: `sammleCheckpoints` setzt `zeitstempel: statSync(pfad).mtime.toISOString()` statt der Zeit aus dem Artefakt; nach einem frischen Clone oder Checkout zeigt der Leitstand Checkout-Zeiten als Ereigniszeiten.
 Fundstelle: `scripts/leitstand-server.mjs` (`sammleCheckpoints`).
 Auswirkung: Fehldarstellung des realen Zustands (§13.3-Messgröße) — klein, aber genau in der Zielmetrik.
 Maßnahme: F12 AK3.
 Feature/Run: F12-Challenge, 06.09.2026.
+Maßnahme-Nachtrag: E-M2-5 (07.09.2026): optionales `erstellt_am` in Checkpoint-/Wirkungsmarke-Payload, additiv, bestehende Einträge bleiben gültig. Umsetzung in F12 WS-1 (`state/plan-v1-f12-ws1.md`).
