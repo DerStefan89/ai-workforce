@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.12 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.13 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -22,6 +22,8 @@ v1.9 → v1.10: **§16.8 Punkt 3 geschlossen** (F6b WS-F, 03.09.2026, löst F-05
 v1.10 → v1.11: **E-192 und E-193 ergänzt** (Challenge F8, 04.09.2026): §9.4 E-192 (Execution Controller in Fassung 1 als minimaler Orchestrator auf Lauf-Ebene, Workstream-/Execution-Automaten aus §16.8 Punkt 6/A4 werden in Fassung 1 nicht implementiert, F-090) · E-193 (E-189-Autorisierungsgate bleibt im Claude-Code-Gateway, nicht im Execution Controller) · §9.4 Zeile 219 (E-189) und §16.2 Zeile 332 (Modultabelle) auf den Ist-Zustand nachgezogen · §16.8 Punkt 6 um den Hinweis „Automaten in Fassung 1 nicht implementiert (E-192)" ergänzt.
 
 v1.11 → v1.12: **§13.3 Meilenstein 2 ergänzt** (Stefan, 06.09.2026, nach realem Abschluss von Meilenstein 1 — `state/e2e-nachweis-meilenstein-1.md`, `docs/STATUS.md`): Fassung 1 hatte bislang nur Meilenstein 1 (§13.1); Meilenstein 2 „Bedienbarer Leitstand" ergänzt Zielsatz, Bestehensbedingung, Nicht-Ziele und zwei neue Entscheidungen E-M2-1/E-M2-2. Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig. Kein Widerspruch zu §13.1/§13.2 — Meilenstein 2 ist eine Erweiterung von Fassung 1, keine neue Fassung.
+
+v1.12 → v1.13: **§13.3 E-M2-3 und E-M2-4 ergänzt** (Challenge F12, 06.09.2026): E-M2-3 (der geführte Start gehört in F12, nicht in einen Nachzügler-Workstream von F11; F11 bleibt abgeschlossen, F12 heißt „Bedienbarer Lauf: Auftrag, Liste, Detail") · E-M2-4 (Lauf→Auftrag-Zuordnung über die Lineage-Eingabe-Referenz `artefakt:auftrag-<auftragId>`, nach dem F8-WS-2b-Muster `vorgaengerLaufId`; kein eigener Serverzustand im Leitstand, §16.2; löst F-134).
 
 ---
 
@@ -295,6 +297,10 @@ Mehrbenutzerbetrieb, Hosting, Abrechnung · Provider-Adapter *(13)* · parallele
 **E-M2-1** *(Stefan, 06.09.2026)* — Der Auftragstext bekommt ein eigenes Feld in `AusfuehrungsEingaben` und wird dem aus dem Kontextpaket gebauten Evidenzteil des Prompts als getrennter Abschnitt vorangestellt. Er wird nie ein Kontextpaket-Element — die F-124-Entscheidung bleibt in Kraft.
 
 **E-M2-2** *(Stefan, 06.09.2026)* — Ein Auftrag ist ein Kontrollartefakt und hält N Läufe, ohne Automat. Welcher Lauf als Nächstes startet, wählt weiterhin ausschließlich der Mensch (Orchestrierungs-Grundsatz Stufe 1, `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1).
+
+**E-M2-3** *(Stefan, 06.09.2026)* — Der geführte Start (Startformular im Leitstand) gehört in Feature F12, nicht in einen Nachzügler-Workstream von F11. F11 bleibt abgeschlossen; F12 heißt „Bedienbarer Lauf: Auftrag, Liste, Detail".
+
+**E-M2-4** *(Stefan, 06.09.2026)* — Ein Lauf wird seinem Auftrag über eine Lineage-Eingabe-Referenz `artefakt:auftrag-<auftragId>` zugeordnet, nach dem in F8 WS-2b real verwendeten `vorgaengerLaufId`-Muster. Der Auftrag ist ein `AUFTRAG_V0`-Kernartefakt; der Leitstand hält keine eigene Zuordnungswahrheit (§16.2). Löst F-134.
 
 Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig.
 
