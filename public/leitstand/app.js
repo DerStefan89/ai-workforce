@@ -52,6 +52,18 @@
  * (leitstand-server.mjs, aus dem daten-Feld der terminalen Wirkungsmarke,
  * NICHT aus der Laufakte — die trägt diese Felder nicht).
  *
+ * F13 WS-2 (AK3-AK6): #entscheidung-block in der Detailansicht bietet den
+ * einzigen Entscheidungs-Schreibpfad — POST /api/entscheidungen. Bei
+ * KLAERUNG_ERFORDERLICH art:'terminal' (Ergebnis-Auswahl + Pflicht-
+ * begruendung, F-162). Bei ABGESCHLOSSEN/VERWEIGERT art:'antwort'
+ * (Antworttext + Einstufung) — ein 400 aus importiereAntwort (keine
+ * bestehende transport-<laufId>-Kette, F-159: der Normalfall, kein Bug) wird
+ * als Klartext gezeigt, wie jeder andere Serverfehler in dieser Datei (Muster
+ * zeigeStartFehler). Kein Formular für art:'stale' (AK5-Prüfung, YAGNI: im
+ * Leitstand aktuell kein real erreichbarer STALE-Fall). Nach Erfolg wird die
+ * Detailansicht neu geladen (der Klärzustand wechselt) und laden()
+ * angestoßen (Kopfdaten-Liste zeigt den neuen Status).
+ *
  * F12 WS-3 (AK7): jede laufAbschnitt-Zeile bekommt einen "Details"-Button
  * (data-lauf-id), Klick-Delegation an #laeufe (Muster
  * initWiederaufnahmeBedienung) ruft ladeLaufDetail(laufId) — NICHT Teil von
@@ -610,6 +622,116 @@ function renderCheckpoints(checkpoints) {
 }
 
 /**
+ * F13 WS-2 (AK3-AK6): baut den Entscheidungs-Block der Detailansicht —
+ * art:'terminal' bei KLAERUNG_ERFORDERLICH, art:'antwort' bei
+ * ABGESCHLOSSEN/VERWEIGERT, sonst leer (kein offener Klärfall). Kein
+ * Formular für art:'stale' (AK5, YAGNI).
+ * @param laufStatus - detail.laufStatus aus GET /api/laeufe/<laufId>
+ * @returns HTML-Block, oder leerer String außerhalb der beiden Klärfälle
+ */
+function renderEntscheidungBlock(laufStatus) {
+  if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
+    return `<div class="detail-block">
+      <h3>Entscheidung: Klärung auflösen</h3>
+      <label for="entscheidung-terminal-ergebnis">Ergebnis</label>
+      <select id="entscheidung-terminal-ergebnis">
+        <option value="ERFOLGREICH">ERFOLGREICH</option>
+        <option value="VERWEIGERT">VERWEIGERT</option>
+        <option value="FEHLGESCHLAGEN">FEHLGESCHLAGEN</option>
+      </select>
+      <label for="entscheidung-terminal-begruendung">Begründung (Pflichtfeld)</label>
+      <textarea id="entscheidung-terminal-begruendung" rows="3"></textarea>
+      <div><button id="entscheidung-terminal-speichern">Entscheidung speichern</button></div>
+      <p id="entscheidung-terminal-erfolg" class="erfolg" hidden></p>
+      <p id="entscheidung-terminal-fehler" class="fehler" hidden></p>
+    </div>`
+  }
+  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT') {
+    return `<div class="detail-block">
+      <h3>Entscheidung: Antwort auf Rückfrage</h3>
+      <label for="entscheidung-antwort-text">Antwort</label>
+      <textarea id="entscheidung-antwort-text" rows="3"></textarea>
+      <label for="entscheidung-antwort-einstufung">Einstufung</label>
+      <select id="entscheidung-antwort-einstufung">
+        <option value="ERFOLGREICH">ERFOLGREICH</option>
+        <option value="VERWEIGERT">VERWEIGERT</option>
+      </select>
+      <div><button id="entscheidung-antwort-speichern">Antwort speichern</button></div>
+      <p id="entscheidung-antwort-erfolg" class="erfolg" hidden></p>
+      <p id="entscheidung-antwort-fehler" class="fehler" hidden></p>
+    </div>`
+  }
+  return ''
+}
+
+/**
+ * Sendet eine Entscheidung über POST /api/entscheidungen (AK3-AK6) und
+ * zeigt Erfolg/Fehler in den übergebenen Anzeigeelementen — ein 400 (z. B.
+ * F-159s fehlende transport-Kette) wird als Klartext gezeigt, kein
+ * verschluckter Fehler (Muster zeigeStartFehler).
+ * @param koerper - Body für POST /api/entscheidungen
+ * @param laufId - Lauf-Kennung, für den Detail-Reload nach Erfolg
+ * @param erfolgId - ID des Erfolgs-Absatzes im aktuell gerenderten Block
+ * @param fehlerId - ID des Fehler-Absatzes im aktuell gerenderten Block
+ */
+async function sendeEntscheidung(koerper, laufId, erfolgId, fehlerId) {
+  document.getElementById(erfolgId).hidden = true
+  document.getElementById(fehlerId).hidden = true
+  try {
+    const antwort = await fetch('/api/entscheidungen', { method: 'POST', body: JSON.stringify(koerper) })
+    if (!antwort.ok) {
+      const rueckgabe = await antwort.json().catch(() => ({}))
+      const anzeige = document.getElementById(fehlerId)
+      anzeige.textContent = `${antwort.status}: ${rueckgabe.grund ?? 'unbekannter Fehler'}`
+      anzeige.hidden = false
+      return
+    }
+    const anzeige = document.getElementById(erfolgId)
+    anzeige.textContent = 'Entscheidung gespeichert.'
+    anzeige.hidden = false
+    await ladeLaufDetail(laufId)
+    await laden()
+  } catch (fehler) {
+    const anzeige = document.getElementById(fehlerId)
+    anzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
+    anzeige.hidden = false
+  }
+}
+
+/** Klick-Delegation für den Entscheidungs-Block (Muster initWiederaufnahmeBedienung) — #entscheidung-block wird bei jedem ladeLaufDetail()-Aufruf komplett neu gerendert. */
+function initEntscheidungBedienung() {
+  document.getElementById('entscheidung-block').addEventListener('click', (ereignis) => {
+    if (ereignis.target.id === 'entscheidung-terminal-speichern') {
+      sendeEntscheidung(
+        {
+          art: 'terminal',
+          laufId: gewaehlteLaufId,
+          ergebnis: document.getElementById('entscheidung-terminal-ergebnis').value,
+          begruendung: document.getElementById('entscheidung-terminal-begruendung').value,
+        },
+        gewaehlteLaufId,
+        'entscheidung-terminal-erfolg',
+        'entscheidung-terminal-fehler'
+      )
+      return
+    }
+    if (ereignis.target.id === 'entscheidung-antwort-speichern') {
+      sendeEntscheidung(
+        {
+          art: 'antwort',
+          laufId: gewaehlteLaufId,
+          antwort: document.getElementById('entscheidung-antwort-text').value,
+          einstufung: document.getElementById('entscheidung-antwort-einstufung').value,
+        },
+        gewaehlteLaufId,
+        'entscheidung-antwort-erfolg',
+        'entscheidung-antwort-fehler'
+      )
+    }
+  })
+}
+
+/**
  * Lädt und rendert den Detailendpunkt für einen Lauf (AK7) — nicht Teil von
  * laden()/dem 2-Sekunden-Poll, nur auf Knopfdruck. Ein Fehlschlag (Netzwerk,
  * 404 bei zwischenzeitlich verschwundenem Lauf) zeigt Klartext im Panel
@@ -622,10 +744,12 @@ async function ladeLaufDetail(laufId) {
   const fehleranzeige = document.getElementById('lauf-detail-fehler')
   const inhalt = document.getElementById('lauf-detail-inhalt')
 
+  const entscheidungBlock = document.getElementById('entscheidung-block')
   document.getElementById('lauf-detail-titel').textContent = laufId
   fehleranzeige.hidden = true
   abschnitt.hidden = false
   inhalt.innerHTML = '<p class="leer">Lädt…</p>'
+  entscheidungBlock.innerHTML = ''
   abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   try {
@@ -651,6 +775,7 @@ async function ladeLaufDetail(laufId) {
       renderRohstrom(detail.rohstrom),
       `<div class="detail-block"><h3>Checkpoint-Kette</h3>${renderCheckpoints(detail.checkpoints)}</div>`,
     ].join('')
+    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus)
   } catch (fehler) {
     if (gewaehlteLaufId !== laufId) return
     inhalt.innerHTML = ''
@@ -669,6 +794,7 @@ function initDetailBedienung() {
   document.getElementById('lauf-detail-schliessen').addEventListener('click', () => {
     gewaehlteLaufId = null
     document.getElementById('lauf-detail').hidden = true
+    document.getElementById('entscheidung-block').innerHTML = ''
   })
 }
 
@@ -679,6 +805,7 @@ initAuftragFormular()
 initStartformular()
 initWiederaufnahmeBedienung()
 initDetailBedienung()
+initEntscheidungBedienung()
 laden()
 ladeStartfehler()
 ladeAuftraege().then(aktualisiereLaufIdVorschlag)

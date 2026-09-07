@@ -102,6 +102,26 @@
  * beobachtungsbasis_vollstaendig: false). tool_input wird nie ausgeliefert,
  * nur tool_name (dedupliziert in toolNamen, anzahl zählt roh).
  *
+ * F13 WS-2 (AK3-AK7, features/F13/feature.md): POST /api/entscheidungen ist
+ * der einzige Schreibpfad für eine menschliche Entscheidung — Body-
+ * Diskriminator `art` ('antwort'|'stale'|'terminal') wählt zwischen genau
+ * drei bestehenden Kernverben: F9s importiereAntwort (E-186-Eskalation),
+ * F9s entscheideStale (STALE-Entscheidung), F1Bs
+ * schreibeWirkungsmarke(art:'terminal') (Auflösung von
+ * KLAERUNG_ERFORDERLICH) — kein neuer Speicher, keine eigene Schreibfunktion
+ * (D5, AK3). pruefeEntscheidungsformular ist reine Formprüfung (kein
+ * Dateizugriff) und lehnt ein unbekanntes `art` UND ein Pflichtfeld ab, BEVOR
+ * irgendetwas geschrieben wird (D2). F-162: das Wirkungsmarke-Schema kennt
+ * kein erzeuger-Feld — AK4 wird für Fall 'terminal' stattdessen über ein
+ * Pflichtfeld `begruendung` erfüllt (nicht-leerer String), das als
+ * daten.mensch_begruendung mitgeschrieben wird; für 'antwort'/'stale' ist
+ * `erzeuger: 'mensch'` bereits in den F9-Funktionen selbst fest codiert.
+ * Eine geworfene Vorbedingungsverletzung aus importiereAntwort/entscheideStale
+ * (keine bestehende transport-<laufId>-Kette, D3-Muster) wird als 400 mit
+ * Klartext durchgereicht, kein 500/Absturz — der Aufruf ist synchron, kein
+ * 202/Polling nötig. AK6 (D13): dieser Endpunkt prüft laufAktiv nicht — ein
+ * Entscheidungs-POST ist kein Laufstart und bleibt von der Sperre unberührt.
+ *
  * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
  * reicht seither sein viertes Argument (optionen) strukturell durch
  * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
@@ -121,8 +141,9 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
+import { ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, pruefeStale } from '../src/lineage-registry/index.ts'
+import { entscheideStale, importiereAntwort } from '../src/human-transport/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
@@ -557,6 +578,82 @@ export function pruefeAuftragsformular(body) {
     return { ok: false, grund: "'auftragstext' muss ein nicht-leerer String sein" }
   }
   return { ok: true, titel: body.titel, auftragstext: body.auftragstext }
+}
+
+const ENTSCHEIDUNG_ARTEN = new Set(['antwort', 'stale', 'terminal'])
+const ENTSCHEIDUNG_EINSTUFUNG_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT'])
+const ENTSCHEIDUNG_ENTSCHEIDUNG_WERTE = new Set(['neu_erzeugen', 'nachtrag', 'unveraendert_gueltig'])
+const ENTSCHEIDUNG_ERGEBNIS_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT', 'FEHLGESCHLAGEN'])
+
+/**
+ * Reine Formprüfung eines POST /api/entscheidungen-Bodys (F13 WS-2, AK3) —
+ * lehnt ein unbekanntes `art`, eine unzulässige laufId (Muster GET
+ * /api/laeufe/<laufId>, D5 — dieselbe Zeichenregel) und je Art fehlende/
+ * ungültige Pflichtfelder ab, BEVOR irgendetwas geschrieben wird (D2).
+ * `begruendung` ist bei art 'terminal' Pflicht (F-162, das Wirkungsmarke-
+ * Schema kennt kein erzeuger-Feld) — bei 'stale' bleibt sie optional, die
+ * eigentliche Pflicht nur bei entscheidung 'unveraendert_gueltig' erzwingt
+ * bereits haltFestStaleEntscheidung selbst (D5, keine Zweitprüfung hier).
+ * @param body - geparster JSON-Body
+ * @returns bei Erfolg die geprüften Felder, sonst { ok: false, grund }
+ */
+export function pruefeEntscheidungsformular(body) {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { ok: false, grund: 'Body muss ein JSON-Objekt sein' }
+  }
+  if (!ENTSCHEIDUNG_ARTEN.has(body.art)) {
+    return { ok: false, grund: `unbekannte Entscheidungsart ${JSON.stringify(body.art)} — erlaubt: ${[...ENTSCHEIDUNG_ARTEN].join(', ')}` }
+  }
+  if (typeof body.laufId !== 'string' || body.laufId.length === 0) {
+    return { ok: false, grund: "'laufId' muss ein nicht-leerer String sein" }
+  }
+  if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.laufId)) {
+    return { ok: false, grund: `'laufId' enthält unzulässige Zeichen: ${JSON.stringify(body.laufId)}` }
+  }
+
+  if (body.art === 'antwort') {
+    for (const feld of Object.keys(body)) {
+      if (!new Set(['art', 'laufId', 'antwort', 'einstufung']).has(feld)) {
+        return { ok: false, grund: `unbekanntes Feld '${feld}' für art 'antwort'` }
+      }
+    }
+    if (typeof body.antwort !== 'string' || body.antwort.length === 0) {
+      return { ok: false, grund: "'antwort' muss ein nicht-leerer String sein" }
+    }
+    if (!ENTSCHEIDUNG_EINSTUFUNG_WERTE.has(body.einstufung)) {
+      return { ok: false, grund: `'einstufung' muss eines von ${[...ENTSCHEIDUNG_EINSTUFUNG_WERTE].join(', ')} sein, erhalten: ${JSON.stringify(body.einstufung)}` }
+    }
+    return { ok: true, art: 'antwort', laufId: body.laufId, antwort: body.antwort, einstufung: body.einstufung }
+  }
+
+  if (body.art === 'stale') {
+    for (const feld of Object.keys(body)) {
+      if (!new Set(['art', 'laufId', 'entscheidung', 'begruendung']).has(feld)) {
+        return { ok: false, grund: `unbekanntes Feld '${feld}' für art 'stale'` }
+      }
+    }
+    if (!ENTSCHEIDUNG_ENTSCHEIDUNG_WERTE.has(body.entscheidung)) {
+      return { ok: false, grund: `'entscheidung' muss eines von ${[...ENTSCHEIDUNG_ENTSCHEIDUNG_WERTE].join(', ')} sein, erhalten: ${JSON.stringify(body.entscheidung)}` }
+    }
+    if (body.begruendung !== undefined && (typeof body.begruendung !== 'string' || body.begruendung.length === 0)) {
+      return { ok: false, grund: "'begruendung' muss, wenn angegeben, ein nicht-leerer String sein" }
+    }
+    return { ok: true, art: 'stale', laufId: body.laufId, entscheidung: body.entscheidung, begruendung: body.begruendung }
+  }
+
+  // art === 'terminal'
+  for (const feld of Object.keys(body)) {
+    if (!new Set(['art', 'laufId', 'ergebnis', 'begruendung']).has(feld)) {
+      return { ok: false, grund: `unbekanntes Feld '${feld}' für art 'terminal'` }
+    }
+  }
+  if (!ENTSCHEIDUNG_ERGEBNIS_WERTE.has(body.ergebnis)) {
+    return { ok: false, grund: `'ergebnis' muss eines von ${[...ENTSCHEIDUNG_ERGEBNIS_WERTE].join(', ')} sein, erhalten: ${JSON.stringify(body.ergebnis)}` }
+  }
+  if (typeof body.begruendung !== 'string' || body.begruendung.length === 0) {
+    return { ok: false, grund: "'begruendung' muss ein nicht-leerer String sein (F-162, Pflichtfeld bei art 'terminal')" }
+  }
+  return { ok: true, art: 'terminal', laufId: body.laufId, ergebnis: body.ergebnis, begruendung: body.begruendung }
 }
 
 function sendeDatei(res, pfad) {
@@ -1026,6 +1123,60 @@ export function erzeugeRequestHandler(optionen = {}) {
           console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
         })
       return
+    }
+
+    // F13 WS-2 (AK3-AK7): einziger Entscheidungs-Schreibpfad — kein laufAktiv-Bezug (AK6, D13
+    // gilt nur für Laufstarts), keine eigene Schreibfunktion (D5): ausschließlich importiereAntwort/
+    // entscheideStale/schreibeWirkungsmarke, synchron, unbekanntes `art` und fehlende Pflichtfelder
+    // (inkl. F-162s begruendung bei 'terminal') werden VOR jedem Aufruf abgelehnt (D2).
+    if (req.method === 'POST' && pfad === '/api/entscheidungen') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+
+      const pruefung = pruefeEntscheidungsformular(body)
+      if (!pruefung.ok) {
+        sendeJson(res, 400, { grund: pruefung.grund })
+        return
+      }
+
+      // Eine geworfene Vorbedingungsverletzung (keine bestehende transport-<laufId>-Kette,
+      // D3-Muster) ist bei (a)/(b) korrekt, kein Bug — 400 mit Klartext statt 500/Absturz.
+      try {
+        if (pruefung.art === 'antwort') {
+          const ergebnis = importiereAntwort(pruefung.laufId, profilReferenz, { antwort: pruefung.antwort }, pruefung.einstufung, optionen)
+          if (ergebnis.ok === false) {
+            sendeJson(res, 400, { grund: ergebnis.grund })
+            return
+          }
+          sendeJson(res, 200, { versionSequenz: ergebnis.versionSequenz })
+          return
+        }
+        if (pruefung.art === 'stale') {
+          const ergebnis = entscheideStale(pruefung.laufId, profilReferenz, pruefung.entscheidung, pruefung.begruendung, optionen)
+          sendeJson(res, 200, ergebnis)
+          return
+        }
+        // art === 'terminal': F-162 — begruendung landet als daten.mensch_begruendung, das
+        // Wirkungsmarke-Schema selbst kennt kein erzeuger-Feld.
+        const ergebnis = schreibeWirkungsmarke(
+          pruefung.laufId,
+          profilReferenz,
+          'terminal',
+          { ergebnis: pruefung.ergebnis, daten: { mensch_begruendung: pruefung.begruendung } },
+          optionen
+        )
+        sendeJson(res, 200, ergebnis)
+        return
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: fehler.message })
+        return
+      }
     }
 
     const statischerPfad = join(publicVerzeichnis, pfad === '/' ? 'index.html' : pfad)
