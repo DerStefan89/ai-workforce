@@ -133,6 +133,34 @@
  * Kette, F9). Die Response trägt seither zusätzlich artefaktId/versionSequenz dieses
  * Lineage-Artefakts.
  *
+ * F13 WS-4 (F-166/F-167, features/F13/feature.md): vor WS-4 war ein über den
+ * Leitstand gestarteter Lauf real nie entscheidbar — art:'terminal' wurde nur
+ * bei KLAERUNG_ERFORDERLICH angeboten (praktisch unerreichbar, weil
+ * klassifiziereLauf jeden Ausgang terminal markiert), der reale Klärfall
+ * VERWEIGERT-durch-Werkzeuggrenze landet in ABGESCHLOSSEN und bekam dort nur
+ * das art:'antwort'-Formular, das ohne transport-<laufId>-Kette (nur bei der
+ * E-186-Eskalation vorhanden) garantiert 400 wirft (F-166). Deshalb eine
+ * vierte Entscheidungsart 'kenntnisnahme': erlaubt nur bei ABGESCHLOSSEN mit
+ * ergebnis VERWEIGERT oder FEHLGESCHLAGEN, schreibt KEINE zweite
+ * Wirkungsmarke (der Lauf ist bereits terminal) — nur dieselbe
+ * registriereKernArtefakt(entscheidung-<laufId>-…)-Registrierung, die der
+ * terminal-Zweig für die Lineage-Sichtbarkeit schon nutzt (D5, kein neuer
+ * Speicher). ergebnis kommt dabei ausschließlich aus stelleLaufstatusFest,
+ * nie aus dem Body (verhindert Divergenz zwischen angezeigtem und
+ * festgehaltenem Ergebnis). Zusätzlich (F-167): art:'terminal' prüfte den
+ * Laufstatus bisher nicht und konnte auf einem bereits ABGESCHLOSSENEN Lauf
+ * eine verwaiste zweite Terminalmarke erzeugen — beide Zweige rufen jetzt VOR
+ * jedem Schreiben stelleLaufstatusFest auf: 'terminal' nur bei
+ * KLAERUNG_ERFORDERLICH, 'kenntnisnahme' nur bei ABGESCHLOSSEN/VERWEIGERT
+ * oder ABGESCHLOSSEN/FEHLGESCHLAGEN, sonst 400 mit Klartext-Grund, bevor
+ * irgendetwas geschrieben wird (D2). QA-Nachtrag: bei VERWEIGERT lehnt
+ * 'kenntnisnahme' zusätzlich ab, wenn die Terminalmarke einen echten
+ * Bypass-Verdacht trägt (bypass_verdacht_anzahl > 0, über dieselbe
+ * baueVerweigertDatenProjektion wie das GET-Detail) — das ist der E-186-Fall,
+ * für den die UI bewusst 'antwort' statt 'kenntnisnahme' anbietet; ohne
+ * diese Spiegelung wäre die Unterscheidung nur eine client-seitige
+ * Formularweiche und der Server nicht mehr maßgeblich (D2-Verstoß).
+ *
  * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
  * reicht seither sein viertes Argument (optionen) strukturell durch
  * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
@@ -591,7 +619,7 @@ export function pruefeAuftragsformular(body) {
   return { ok: true, titel: body.titel, auftragstext: body.auftragstext }
 }
 
-const ENTSCHEIDUNG_ARTEN = new Set(['antwort', 'stale', 'terminal'])
+const ENTSCHEIDUNG_ARTEN = new Set(['antwort', 'stale', 'terminal', 'kenntnisnahme'])
 const ENTSCHEIDUNG_EINSTUFUNG_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT'])
 const ENTSCHEIDUNG_ENTSCHEIDUNG_WERTE = new Set(['neu_erzeugen', 'nachtrag', 'unveraendert_gueltig'])
 const ENTSCHEIDUNG_ERGEBNIS_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT', 'FEHLGESCHLAGEN'])
@@ -605,6 +633,9 @@ const ENTSCHEIDUNG_ERGEBNIS_WERTE = new Set(['ERFOLGREICH', 'VERWEIGERT', 'FEHLG
  * Schema kennt kein erzeuger-Feld) — bei 'stale' bleibt sie optional, die
  * eigentliche Pflicht nur bei entscheidung 'unveraendert_gueltig' erzwingt
  * bereits haltFestStaleEntscheidung selbst (D5, keine Zweitprüfung hier).
+ * F13 WS-4: `begruendung` ist auch bei art 'kenntnisnahme' Pflicht — kein
+ * `ergebnis`-Feld erlaubt, das kommt serverseitig aus stelleLaufstatusFest
+ * (verhindert Divergenz zwischen angezeigtem und festgehaltenem Ergebnis).
  * @param body - geparster JSON-Body
  * @returns bei Erfolg die geprüften Felder, sonst { ok: false, grund }
  */
@@ -650,6 +681,18 @@ export function pruefeEntscheidungsformular(body) {
       return { ok: false, grund: "'begruendung' muss, wenn angegeben, ein nicht-leerer String sein" }
     }
     return { ok: true, art: 'stale', laufId: body.laufId, entscheidung: body.entscheidung, begruendung: body.begruendung }
+  }
+
+  if (body.art === 'kenntnisnahme') {
+    for (const feld of Object.keys(body)) {
+      if (!new Set(['art', 'laufId', 'begruendung']).has(feld)) {
+        return { ok: false, grund: `unbekanntes Feld '${feld}' für art 'kenntnisnahme'` }
+      }
+    }
+    if (typeof body.begruendung !== 'string' || body.begruendung.length === 0) {
+      return { ok: false, grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld bei art 'kenntnisnahme')" }
+    }
+    return { ok: true, art: 'kenntnisnahme', laufId: body.laufId, begruendung: body.begruendung }
   }
 
   // art === 'terminal'
@@ -1139,7 +1182,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // F13 WS-2 (AK3-AK7): einziger Entscheidungs-Schreibpfad — kein laufAktiv-Bezug (AK6, D13
     // gilt nur für Laufstarts), keine eigene Schreibfunktion (D5): ausschließlich importiereAntwort/
     // entscheideStale/schreibeWirkungsmarke, synchron, unbekanntes `art` und fehlende Pflichtfelder
-    // (inkl. F-162s begruendung bei 'terminal') werden VOR jedem Aufruf abgelehnt (D2).
+    // (inkl. F-162s begruendung bei 'terminal') werden VOR jedem Aufruf abgelehnt (D2). F13 WS-4
+    // (F-166/F-167): zusätzlich eine vierte Art 'kenntnisnahme' — beide Arten 'terminal'/
+    // 'kenntnisnahme' prüfen VOR jedem Schreiben den echten Laufstatus (stelleLaufstatusFest).
     if (req.method === 'POST' && pfad === '/api/entscheidungen') {
       let body
       try {
@@ -1173,30 +1218,80 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 200, ergebnis)
           return
         }
-        // art === 'terminal': F-162 — begruendung landet als daten.mensch_begruendung, das
-        // Wirkungsmarke-Schema selbst kennt kein erzeuger-Feld.
-        const ergebnis = schreibeWirkungsmarke(
-          pruefung.laufId,
-          profilReferenz,
-          'terminal',
-          { ergebnis: pruefung.ergebnis, daten: { mensch_begruendung: pruefung.begruendung } },
-          optionen
-        )
-        // F13 WS-3 (AK5, nur art:'terminal' — Stefan-Entscheidung, siehe features/F13/feature.md):
-        // die Wirkungsmarke allein ist für eine Wiederaufnahme unsichtbar (context-builder liest nie
-        // selbst von der Platte, execution-controller löst 'artefakt:'-Pfade ausschließlich gegen
-        // per registriereKernArtefakt registrierte Lineage-Artefakte auf). Deshalb zusätzlich als
-        // eigenes Lineage-Artefakt registriert, exakt nach dem Transportpaket-Vorbild
-        // (human-transport/index.ts:106-138) — kein neues Schema, daten bleibt unknown wie dort (D5).
-        const entscheidungsArtefakt = registriereKernArtefakt(
+
+        // F13 WS-4 (F-167): 'terminal' und 'kenntnisnahme' brauchen beide den aktuellen
+        // Laufstatus VOR jedem Schreiben (D2) — derselbe synchrone Aufruf, den auch der
+        // GET /api/laeufe/<laufId>-Detailendpunkt nutzt (D5, kein zweiter Regelsatz).
+        const laufStatus = stelleLaufstatusFest(pruefung.laufId, optionen)
+
+        if (pruefung.art === 'terminal') {
+          // F-167: vorher ungeprüft — konnte auf einem bereits ABGESCHLOSSENEN Lauf eine
+          // verwaiste zweite Terminalmarke erzeugen. 'terminal' löst ausschließlich die von
+          // stelleLaufstatusFest selbst benannte aufloesungsbedingung auf.
+          if (laufStatus.status !== 'KLAERUNG_ERFORDERLICH') {
+            sendeJson(res, 400, { grund: `art 'terminal' ist nur bei Status KLAERUNG_ERFORDERLICH erlaubt (F-167), aktueller Status: ${laufStatus.status}` })
+            return
+          }
+          // art === 'terminal': F-162 — begruendung landet als daten.mensch_begruendung, das
+          // Wirkungsmarke-Schema selbst kennt kein erzeuger-Feld.
+          const ergebnis = schreibeWirkungsmarke(
+            pruefung.laufId,
+            profilReferenz,
+            'terminal',
+            { ergebnis: pruefung.ergebnis, daten: { mensch_begruendung: pruefung.begruendung } },
+            optionen
+          )
+          // F13 WS-3 (AK5, nur art:'terminal' — Stefan-Entscheidung, siehe features/F13/feature.md):
+          // die Wirkungsmarke allein ist für eine Wiederaufnahme unsichtbar (context-builder liest nie
+          // selbst von der Platte, execution-controller löst 'artefakt:'-Pfade ausschließlich gegen
+          // per registriereKernArtefakt registrierte Lineage-Artefakte auf). Deshalb zusätzlich als
+          // eigenes Lineage-Artefakt registriert, exakt nach dem Transportpaket-Vorbild
+          // (human-transport/index.ts:106-138) — kein neues Schema, daten bleibt unknown wie dort (D5).
+          const entscheidungsArtefakt = registriereKernArtefakt(
+            `entscheidung-${pruefung.laufId}`,
+            profilReferenz,
+            { erzeuger: 'mensch', schritt: 'entscheidung-terminal' },
+            { entscheidung_schema: 'v0', ergebnis: pruefung.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
+            [],
+            optionen
+          )
+          sendeJson(res, 200, { ...ergebnis, artefaktId: `entscheidung-${pruefung.laufId}`, versionSequenz: entscheidungsArtefakt.versionSequenz })
+          return
+        }
+
+        // art === 'kenntnisnahme' (F13 WS-4, F-166): der Lauf ist bereits terminal — keine
+        // zweite Wirkungsmarke, nur dieselbe Lineage-Registrierung wie im terminal-Zweig (D5).
+        // ergebnis kommt ausschließlich aus laufStatus, nie vom Client (verhindert Divergenz
+        // zwischen angezeigtem und festgehaltenem Ergebnis).
+        if (laufStatus.status !== 'ABGESCHLOSSEN' || (laufStatus.ergebnis !== 'VERWEIGERT' && laufStatus.ergebnis !== 'FEHLGESCHLAGEN')) {
+          const statusText = laufStatus.status === 'ABGESCHLOSSEN' ? `${laufStatus.status} (${laufStatus.ergebnis})` : laufStatus.status
+          sendeJson(res, 400, { grund: `art 'kenntnisnahme' ist nur bei Status ABGESCHLOSSEN mit Ergebnis VERWEIGERT oder FEHLGESCHLAGEN erlaubt, aktueller Status: ${statusText}` })
+          return
+        }
+        // QA-Befund (F13 WS-4): ein VERWEIGERT MIT echtem Bypass-Verdacht ist der E-186-Fall —
+        // renderEntscheidungBlock zeigt dafür bewusst 'antwort' statt 'kenntnisnahme' (app.js,
+        // hatBypassVerdacht). Diese client-seitige Weiche allein wäre ein zweiter, nur im Client
+        // durchgesetzter Regelsatz (Verstoß gegen "Server ist maßgeblich") — deshalb serverseitig
+        // gespiegelt, über dieselbe Projektion (baueVerweigertDatenProjektion), die auch das
+        // GET /api/laeufe/<laufId>-Detail nutzt (D5, kein zweiter Regelsatz, keine neue Prüfung).
+        if (laufStatus.ergebnis === 'VERWEIGERT') {
+          const verweigertDaten = baueVerweigertDatenProjektion(pruefung.laufId, laufStatus, basisVerzeichnis)
+          if (typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0) {
+            sendeJson(res, 400, {
+              grund: `art 'kenntnisnahme' ist bei VERWEIGERT mit Bypass-Verdacht (bypass_verdacht_anzahl=${verweigertDaten.bypassVerdachtAnzahl}) nicht erlaubt — das ist der E-186-Fall, der eine echte Antwort (art 'antwort') statt einer bloßen Kenntnisnahme erfordert`,
+            })
+            return
+          }
+        }
+        const kenntnisnahmeArtefakt = registriereKernArtefakt(
           `entscheidung-${pruefung.laufId}`,
           profilReferenz,
-          { erzeuger: 'mensch', schritt: 'entscheidung-terminal' },
-          { entscheidung_schema: 'v0', ergebnis: pruefung.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
+          { erzeuger: 'mensch', schritt: 'entscheidung-kenntnisnahme' },
+          { entscheidung_schema: 'v0', ergebnis: laufStatus.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
           [],
           optionen
         )
-        sendeJson(res, 200, { ...ergebnis, artefaktId: `entscheidung-${pruefung.laufId}`, versionSequenz: entscheidungsArtefakt.versionSequenz })
+        sendeJson(res, 200, { artefaktId: `entscheidung-${pruefung.laufId}`, versionSequenz: kenntnisnahmeArtefakt.versionSequenz })
         return
       } catch (fehler) {
         sendeJson(res, 400, { grund: fehler.message })

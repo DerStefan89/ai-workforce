@@ -64,6 +64,16 @@
  * Detailansicht neu geladen (der Klärzustand wechselt) und laden()
  * angestoßen (Kopfdaten-Liste zeigt den neuen Status).
  *
+ * F13 WS-4 (F-166): das art:'antwort'-Formular lief bei ABGESCHLOSSEN/
+ * VERWEIGERT ohne Bypass-Verdacht (der reale, häufigste Klärfall) garantiert
+ * in ein 400, weil es eine transport-<laufId>-Kette voraussetzt, die nur bei
+ * der E-186-Eskalation entsteht. renderEntscheidungBlock unterscheidet
+ * seither über hatBypassVerdacht(detail.verweigertDaten): mit Bypass-Verdacht
+ * weiterhin das art:'antwort'-Formular (E-186, unverändert), ohne Bypass-
+ * Verdacht oder bei FEHLGESCHLAGEN das neue art:'kenntnisnahme'-Formular
+ * (nur eine Begründung, kein Ergebnis-Feld — das kommt serverseitig aus dem
+ * echten Laufstatus).
+ *
  * F12 WS-3 (AK7): jede laufAbschnitt-Zeile bekommt einen "Details"-Button
  * (data-lauf-id), Klick-Delegation an #laeufe (Muster
  * initWiederaufnahmeBedienung) ruft ladeLaufDetail(laufId) — NICHT Teil von
@@ -621,15 +631,26 @@ function renderCheckpoints(checkpoints) {
   return `<table class="lauf-kopfdaten"><thead>${CHECKPOINT_TABELLE_KOPF}</thead><tbody>${checkpoints.map(checkpointZeile).join('')}</tbody></table>`
 }
 
+/** F13 WS-4 (F-166): true, wenn ein VERWEIGERT-Lauf einen Bypass-Verdacht des Modells trägt (E-186-Fall) — nur dann bleibt das art:'antwort'-Formular zuständig, sonst übernimmt 'kenntnisnahme'. Ein fehlendes/nicht-numerisches Feld (Bestandslauf, 'unbekannt') zählt NICHT als Bypass-Verdacht. @param verweigertDaten - detail.verweigertDaten aus GET /api/laeufe/<laufId>, oder null @returns true nur bei einer echten, positiven bypassVerdachtAnzahl */
+function hatBypassVerdacht(verweigertDaten) {
+  return typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0
+}
+
 /**
- * F13 WS-2 (AK3-AK6): baut den Entscheidungs-Block der Detailansicht —
- * art:'terminal' bei KLAERUNG_ERFORDERLICH, art:'antwort' bei
- * ABGESCHLOSSEN/VERWEIGERT, sonst leer (kein offener Klärfall). Kein
+ * F13 WS-2 (AK3-AK6), erweitert WS-4 (F-166): baut den Entscheidungs-Block
+ * der Detailansicht — art:'terminal' bei KLAERUNG_ERFORDERLICH, art:'antwort'
+ * bei ABGESCHLOSSEN/VERWEIGERT MIT Bypass-Verdacht (echter E-186-Fall),
+ * art:'kenntnisnahme' bei ABGESCHLOSSEN/FEHLGESCHLAGEN oder ABGESCHLOSSEN/
+ * VERWEIGERT OHNE Bypass-Verdacht (der reale, häufigste Klärfall — vor WS-4
+ * garantiert ein 400 aus dem art:'antwort'-Formular, F-166), sonst ein
+ * expliziter Leerzustandstext (kein offener Klärfall, QA-Hinweis: DoD "Leere
+ * Zustände berücksichtigt" statt eines kommentarlos leeren Containers). Kein
  * Formular für art:'stale' (AK5, YAGNI).
  * @param laufStatus - detail.laufStatus aus GET /api/laeufe/<laufId>
- * @returns HTML-Block, oder leerer String außerhalb der beiden Klärfälle
+ * @param verweigertDaten - detail.verweigertDaten aus GET /api/laeufe/<laufId> (null außer bei ABGESCHLOSSEN/VERWEIGERT)
+ * @returns HTML-Block, außerhalb der drei Klärfälle ein Leerzustandstext
  */
-function renderEntscheidungBlock(laufStatus) {
+function renderEntscheidungBlock(laufStatus, verweigertDaten) {
   if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
     return `<div class="detail-block">
       <h3>Entscheidung: Klärung auflösen</h3>
@@ -646,7 +667,7 @@ function renderEntscheidungBlock(laufStatus) {
       <p id="entscheidung-terminal-fehler" class="fehler" hidden></p>
     </div>`
   }
-  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT') {
+  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT' && hatBypassVerdacht(verweigertDaten)) {
     return `<div class="detail-block">
       <h3>Entscheidung: Antwort auf Rückfrage</h3>
       <label for="entscheidung-antwort-text">Antwort</label>
@@ -661,7 +682,19 @@ function renderEntscheidungBlock(laufStatus) {
       <p id="entscheidung-antwort-fehler" class="fehler" hidden></p>
     </div>`
   }
-  return ''
+  if (laufStatus.status === 'ABGESCHLOSSEN' && (laufStatus.ergebnis === 'FEHLGESCHLAGEN' || (laufStatus.ergebnis === 'VERWEIGERT' && !hatBypassVerdacht(verweigertDaten)))) {
+    return `<div class="detail-block">
+      <h3>Entscheidung: Kenntnisnahme</h3>
+      <label for="entscheidung-kenntnisnahme-begruendung">Begründung (Pflichtfeld)</label>
+      <textarea id="entscheidung-kenntnisnahme-begruendung" rows="3"></textarea>
+      <div><button id="entscheidung-kenntnisnahme-speichern">Kenntnisnahme speichern</button></div>
+      <p id="entscheidung-kenntnisnahme-erfolg" class="erfolg" hidden></p>
+      <p id="entscheidung-kenntnisnahme-fehler" class="fehler" hidden></p>
+    </div>`
+  }
+  // QA-Hinweis: Leerzustand jetzt explizit statt eines kommentarlos leeren Containers (DoD "Leere
+  // Zustände berücksichtigt") — deckt u. a. ABGESCHLOSSEN/ERFOLGREICH und NICHT_GESTARTET ab.
+  return '<p class="leer">Keine offene Entscheidung für diesen Lauf.</p>'
 }
 
 /**
@@ -727,6 +760,19 @@ function initEntscheidungBedienung() {
         'entscheidung-antwort-erfolg',
         'entscheidung-antwort-fehler'
       )
+      return
+    }
+    if (ereignis.target.id === 'entscheidung-kenntnisnahme-speichern') {
+      sendeEntscheidung(
+        {
+          art: 'kenntnisnahme',
+          laufId: gewaehlteLaufId,
+          begruendung: document.getElementById('entscheidung-kenntnisnahme-begruendung').value,
+        },
+        gewaehlteLaufId,
+        'entscheidung-kenntnisnahme-erfolg',
+        'entscheidung-kenntnisnahme-fehler'
+      )
     }
   })
 }
@@ -775,7 +821,7 @@ async function ladeLaufDetail(laufId) {
       renderRohstrom(detail.rohstrom),
       `<div class="detail-block"><h3>Checkpoint-Kette</h3>${renderCheckpoints(detail.checkpoints)}</div>`,
     ].join('')
-    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus)
+    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus, detail.verweigertDaten)
   } catch (fehler) {
     if (gewaehlteLaufId !== laufId) return
     inhalt.innerHTML = ''

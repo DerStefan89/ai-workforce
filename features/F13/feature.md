@@ -174,6 +174,12 @@ vier M2-Features (F11 → F12 → **F13** → F14).
 
 ## Workstream-Liste
 
+Randnotiz (F-165, nachträglich, keine rückwirkende Umnummerierung): AK5 kam
+real nicht über WS-2 (PR #99), sondern über einen eigenen, als „WS-3"
+betitelten PR (#100, Commit `c7fc435`) — WS-2 deckte real nur AK3/AK4/AK6/AK7
+ab. Die Liste unten bleibt trotzdem in der ursprünglich geplanten Zuordnung
+stehen, der reale Verlauf ist hier dokumentiert.
+
 - **WS-1** — AK1, AK2: geführte Wiederaufnahme statt Roh-JSON,
   Klärzustand unverfälscht sichtbar. Server-Projektion plus UI, kein
   Eingriff in `src/`.
@@ -181,8 +187,17 @@ vier M2-Features (F11 → F12 → **F13** → F14).
   menschliche Bezeugung, Wirkung im Folgelauf, Gate. Einziger Workstream
   mit Kerneingriff (F8s Anfragenkonstruktion, AK5).
 - **WS-3** — AK8, AK9: der reale Nachweis über die Oberfläche.
+- **WS-4** (Nachtrag, branch `feat/f13-ws4-entscheidbarkeit`) — der in AK8
+  geplante Klärfall (VERWEIGERT durch Werkzeuggrenze) war mit dem WS-1/WS-2/
+  WS-3-Bau real nicht entscheidbar: art:'terminal' wurde nur bei
+  KLAERUNG_ERFORDERLICH angeboten (praktisch unerreichbar), art:'antwort'
+  bei VERWEIGERT ohne Bypass lief garantiert in ein 400 (F-166). Vierte
+  Entscheidungsart `kenntnisnahme` (kein neues Schema, keine zweite
+  Wirkungsmarke, D5) plus eine bisher fehlende Vorbedingungsprüfung für
+  art:'terminal' (F-167). Kein Eingriff in AK8/AK9 selbst — deren realer
+  Nachweis bleibt WS-3 zugeordnet, WS-4 macht ihn erst durchführbar.
 
-Reihenfolge zwingend WS-1 → WS-2 → WS-3.
+Reihenfolge zwingend WS-1 → WS-2 → WS-3 → WS-4.
 
 ## Entscheidungs-Referenzen
 
