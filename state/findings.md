@@ -1550,3 +1550,30 @@ Beschreibung: grep -rl "bedarf_schema" kontrollzustand/ → 0 Treffer; genau ein
 Auswirkung: §13.3 verlangt "ein Lauf mit echter Rückfrage" real; der E-186-Pfad ist dafür nicht zuverlässig provozierbar.
 Maßnahme: F13 AK8 setzt auf den normalen VERWEIGERT-Lauf als Klärfall, nicht auf E-186.
 Feature/Run: Challenge F13, 07.09.2026.
+
+**F-160** · `BUG` · P2 · gelöst
+Titel: Terminale VERWEIGERT-Wirkungsmarke trug keine bypass_verdacht_anzahl/is_error/non_execution_kind.
+Beschreibung: klassifiziereLauf schrieb bei VERWEIGERT keine dieser drei Felder in daten der terminalen Wirkungsmarke — die Leitstand-Detailansicht (AK2, "Klärzustand: Abgeschlossen (VERWEIGERT)") hätte nichts anzuzeigen gehabt.
+Auswirkung: keine reale Regression (additiv, Schema bereits offen), aber AK2 wäre für den VERWEIGERT-Fall leer geblieben.
+Maßnahme: behoben in F13 WS-1 (src/result-evaluator/index.ts), verifiziert claude/139.
+Feature/Run: F13 WS-1, 07.09.2026.
+
+**F-161** · `TECH_DEBT` · P3 · offen
+Titel: werkzeugsatz bleibt in der Wiederaufnahme-Vorbelegung leer.
+Beschreibung: baueWiederaufnahmeVorlage/initWiederaufnahmeBedienung (public/leitstand/app.js) belegt beim Wiederaufnahme-Formular alle rekonstruierbaren Felder vor, werkzeugsatz bewusst nicht — real geprüft: aus dem persistierten Zustand nirgends rekonstruierbar.
+Auswirkung: Mensch muss werkzeugsatz bei jeder Wiederaufnahme erneut wählen.
+Maßnahme: keine vorgesehen, außer der Wert wird künftig doch irgendwo mitgeführt.
+Feature/Run: F13 WS-1, 07.09.2026.
+
+**F-162** · `TECH_DEBT` · P2 · gelöst
+Titel: begruendung muss bei Entscheidungsart 'terminal' Pflichtfeld sein.
+Beschreibung: ohne erzwungene Begründung könnte eine Klärung ohne nachvollziehbaren Grund aufgelöst werden — pruefeEntscheidungsformular lehnt art:'terminal' ohne begruendung serverseitig mit 400 ab, vor jeder Zustandsänderung.
+Maßnahme: umgesetzt in F13 WS-2 (scripts/leitstand-server.mjs), getestet (check-f13-entscheiden.mjs).
+Feature/Run: F13 WS-2, 07.09.2026.
+
+**F-163** · `TECH_DEBT` · P3 · offen
+Titel: Kein Lineage-Verweis für Entscheidungen der Art 'antwort'/'stale'.
+Beschreibung: F13 WS-3 (AK5) registriert das entscheidung-<laufId>-Artefakt nur im art:'terminal'-Zweig; bei 'antwort'/'stale' bewusst zurückgestellt, weil der Folgelauf dort bereits über die Transportpaket-Kette (F9) verweist.
+Auswirkung: keine bekannte reale Lücke, rein dokumentarisch nachgetragen.
+Maßnahme: bei Bedarf (falls doch ein realer Klärfall mit art 'antwort'/'stale' eine Wiederaufnahme mit Lineage-Verweis braucht) erneut aufgreifen.
+Feature/Run: F13 WS-3, 07.09.2026.

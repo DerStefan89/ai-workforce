@@ -15,6 +15,13 @@
  * trägt ergebnis + daten.mensch_begruendung genau wie eingereicht, AK6 (D13)
  * — ein Entscheidungs-POST wird durch einen aktiven Lauf NICHT blockiert.
  *
+ * F13 WS-3 (AK5, nur art:'terminal'): (d) erweitert um den Nachweis, dass
+ * registriereKernArtefakt( ausschließlich im art:'terminal'-Zweig steht (nie
+ * in 'antwort'/'stale') — Grep-Positionsprüfung plus Selbsttest gegen einen
+ * simulierten Verstoß. (f) erweitert um den realen Nachweis, dass das
+ * geschriebene entscheidung-<laufId>-Lineage-Artefakt ergebnis/begruendung
+ * trägt und die Response artefaktId/versionSequenz dafür liefert.
+ *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
  * Aufruf: node scripts/check-f13-entscheiden.mjs
@@ -89,27 +96,39 @@ const STILLER_SCHREIBER = () => {}
 const LEITSTAND_SERVER_PFAD = 'scripts/leitstand-server.mjs'
 const HANDLER_START_MARKER = "pfad === '/api/entscheidungen'"
 const STATISCHER_FALLBACK_MARKER = 'const statischerPfad = join(publicVerzeichnis'
-const ERLAUBTE_SCHREIBAUFRUFE = ['importiereAntwort(', 'entscheideStale(', 'schreibeWirkungsmarke(']
+// F13 WS-3, AK5: registriereKernArtefakt( ist jetzt erlaubt, aber NUR im art:'terminal'-Zweig
+// (entscheidung-<laufId>-Registrierung) — die Positionsprüfung unten (TERMINAL_MARKER) erzwingt das.
+const ERLAUBTE_SCHREIBAUFRUFE = ['importiereAntwort(', 'entscheideStale(', 'schreibeWirkungsmarke(', 'registriereKernArtefakt(']
 // Bekannte Grenze (Muster check-f11-auftrag.mjs, Kommentar zu FUNKTIONSSTART_MARKER): reiner
 // Substring-Vergleich, keine AST-Prüfung — ein indirekter Aufruf über eine ausgelagerte
 // Hilfsfunktion außerhalb dieses Fensters würde nicht erkannt.
-const VERBOTENE_SCHREIBAUFRUFE = ['registriereKernArtefakt(', 'haltFestStaleEntscheidung(', 'writeFileSync(', 'registriereAuftrag(']
+const VERBOTENE_SCHREIBAUFRUFE = ['haltFestStaleEntscheidung(', 'writeFileSync(', 'registriereAuftrag(']
+// Trennt den Handlerblock in "vor terminal" (antwort/stale-Zweige) und "terminal" (Rest inkl.
+// catch) — registriereKernArtefakt( darf ausschließlich im zweiten Teil vorkommen (F13 WS-3, AK5).
+const TERMINAL_MARKER = "art === 'terminal':"
 
 /**
  * Extrahiert den POST /api/entscheidungen-Handlerblock (von HANDLER_START_MARKER bis
- * STATISCHER_FALLBACK_MARKER, dem nächsten Code nach allen POST-Routen) und prüft: alle drei
- * erlaubten Schreibaufrufe kommen vor, keiner der verbotenen. @param text - zu prüfender Quelltext
- * @returns true, wenn der D5-Vertrag im Text erkennbar eingehalten ist, false sonst — null, wenn
- * die Marker fehlen (Gate kann nicht prüfen)
+ * STATISCHER_FALLBACK_MARKER, dem nächsten Code nach allen POST-Routen) und prüft: alle
+ * erlaubten Schreibaufrufe kommen vor, keiner der verbotenen, und registriereKernArtefakt(
+ * steht ausschließlich nach TERMINAL_MARKER (F13 WS-3, AK5 — nur art:'terminal'). @param text -
+ * zu prüfender Quelltext @returns true, wenn der D5-Vertrag im Text erkennbar eingehalten ist,
+ * false sonst — null, wenn ein Marker fehlt (Gate kann nicht prüfen)
  */
 function erfuelltD5Vertrag(text) {
   const startIndex = text.indexOf(HANDLER_START_MARKER)
   const endeIndex = text.indexOf(STATISCHER_FALLBACK_MARKER)
   if (startIndex === -1 || endeIndex === -1 || endeIndex <= startIndex) return null
   const block = text.slice(startIndex, endeIndex)
+
+  const terminalIndex = block.indexOf(TERMINAL_MARKER)
+  if (terminalIndex === -1) return null
+
   const fehltErlaubt = ERLAUBTE_SCHREIBAUFRUFE.filter((a) => !block.includes(a))
   const vorhandenVerboten = VERBOTENE_SCHREIBAUFRUFE.filter((v) => block.includes(v))
-  return fehltErlaubt.length === 0 && vorhandenVerboten.length === 0
+  const registriereVorTerminal = block.slice(0, terminalIndex).includes('registriereKernArtefakt(')
+
+  return fehltErlaubt.length === 0 && vorhandenVerboten.length === 0 && !registriereVorTerminal
 }
 
 {
@@ -123,12 +142,29 @@ function erfuelltD5Vertrag(text) {
     console.log('✓ AK3: Handlerblock von POST /api/entscheidungen ruft ausschließlich importiereAntwort/entscheideStale/schreibeWirkungsmarke auf, keine selbstgebaute Schreibfunktion.')
   }
 
-  // Selbsttest (Muster check-f11-auftrag.mjs): ein simulierter Verstoß (direkter registriereKernArtefakt-Aufruf im Block) muss real erkannt werden.
-  const simulierterVerstoss = `${HANDLER_START_MARKER}\n  importiereAntwort(x)\n  entscheideStale(x)\n  schreibeWirkungsmarke(x)\n  registriereKernArtefakt(x)\n${STATISCHER_FALLBACK_MARKER}`
+  // Selbsttest (Muster check-f11-auftrag.mjs): ein simulierter Verstoß (verbotener Aufruf im Block) muss real erkannt werden.
+  const simulierterVerstoss = `${HANDLER_START_MARKER}\n  importiereAntwort(x)\n  entscheideStale(x)\n  ${TERMINAL_MARKER}\n  schreibeWirkungsmarke(x)\n  registriereKernArtefakt(x)\n  writeFileSync(x)\n${STATISCHER_FALLBACK_MARKER}`
   if (erfuelltD5Vertrag(simulierterVerstoss) !== false) {
-    befunde.push('AK3-Selbsttest: Muster erkennt einen simulierten Verstoß (registriereKernArtefakt im Handlerblock) NICHT — Grep-Regel ist wirkungslos')
+    befunde.push('AK3-Selbsttest: Muster erkennt einen simulierten Verstoß (writeFileSync im Handlerblock) NICHT — Grep-Regel ist wirkungslos')
   } else {
-    console.log('✓ AK3-Selbsttest: simulierter Verstoß (registriereKernArtefakt im Handlerblock) wird erkannt.')
+    console.log('✓ AK3-Selbsttest: simulierter Verstoß (writeFileSync im Handlerblock) wird erkannt.')
+  }
+
+  // F13 WS-3, AK5-Selbsttest: registriereKernArtefakt( VOR dem TERMINAL_MARKER (also im
+  // 'antwort'/'stale'-Zweig) muss als Verstoß erkannt werden, auch wenn sonst alles erlaubt ist.
+  const simulierterPositionsVerstoss = `${HANDLER_START_MARKER}\n  importiereAntwort(x)\n  registriereKernArtefakt(x)\n  entscheideStale(x)\n  ${TERMINAL_MARKER}\n  schreibeWirkungsmarke(x)\n${STATISCHER_FALLBACK_MARKER}`
+  if (erfuelltD5Vertrag(simulierterPositionsVerstoss) !== false) {
+    befunde.push("AK5-Selbsttest: registriereKernArtefakt( VOR dem art:'terminal'-Zweig wird NICHT erkannt — Positionsprüfung ist wirkungslos")
+  } else {
+    console.log("✓ AK5-Selbsttest: registriereKernArtefakt( vor dem art:'terminal'-Zweig (simulierter Verstoß) wird erkannt.")
+  }
+
+  // Grünfall-Selbsttest: registriereKernArtefakt( NACH dem TERMINAL_MARKER, sonst nichts Verbotenes — muss durchgehen.
+  const simulierterGruenfall = `${HANDLER_START_MARKER}\n  importiereAntwort(x)\n  entscheideStale(x)\n  ${TERMINAL_MARKER}\n  schreibeWirkungsmarke(x)\n  registriereKernArtefakt(x)\n${STATISCHER_FALLBACK_MARKER}`
+  if (erfuelltD5Vertrag(simulierterGruenfall) !== true) {
+    befunde.push("AK5-Selbsttest: registriereKernArtefakt( NACH dem art:'terminal'-Zweig sollte durchgehen, wurde abgelehnt")
+  } else {
+    console.log("✓ AK5-Selbsttest: registriereKernArtefakt( nach dem art:'terminal'-Zweig wird korrekt durchgelassen.")
   }
 }
 
@@ -265,6 +301,19 @@ function baueTransportKette(laufId, basisVerzeichnis) {
         befunde.push(`AK4/F-162: geschriebene Wirkungsmarke trägt nicht ergebnis/daten.mensch_begruendung wie eingereicht, erhalten ${JSON.stringify(geschrieben.payload)}`)
       } else {
         console.log("✓ AK3(c)/AK4/F-162: art 'terminal' schreibt real eine Wirkungsmarke mit ergebnis und daten.mensch_begruendung wie eingereicht.")
+      }
+
+      // F13 WS-3 (AK5, nur art:'terminal'): die Response trägt zusätzlich artefaktId/versionSequenz
+      // des entscheidung-<laufId>-Lineage-Artefakts, und dieses Artefakt trägt real ergebnis/begruendung.
+      if (koerper.artefaktId !== `entscheidung-${laufId}` || typeof koerper.versionSequenz !== 'number') {
+        befunde.push(`AK5: Response von art 'terminal' erwartet artefaktId 'entscheidung-${laufId}' und numerische versionSequenz, erhalten ${JSON.stringify(koerper)}`)
+      } else {
+        const entscheidungsVersion = ladeArtefaktVersion(`entscheidung-${laufId}`, koerper.versionSequenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        if (entscheidungsVersion?.daten?.ergebnis !== 'VERWEIGERT' || entscheidungsVersion?.daten?.begruendung !== begruendungstext) {
+          befunde.push(`AK5: reales entscheidung-<laufId>-Artefakt trägt nicht ergebnis/begruendung wie eingereicht, erhalten ${JSON.stringify(entscheidungsVersion?.daten)}`)
+        } else {
+          console.log("✓ AK5: art 'terminal' registriert real ein entscheidung-<laufId>-Lineage-Artefakt mit ergebnis und begruendung wie eingereicht.")
+        }
       }
     }
 
