@@ -93,6 +93,15 @@
  * mindestens den `AUFTRAG_REF_SEGMENT`-Textblock im Evidenzteil — ein
  * über einen normalen Aufrufer wirklich leeres Kontextpaket ist seit AK5
  * nicht mehr erreichbar.
+ *
+ * F13 WS-3 (features/F13/feature.md, AK5 — nur art:'terminal'): zwei neue
+ * Fälle. Der Positiv-Fall registriert real ein entscheidung-<vorgaengerLaufId>-
+ * Artefakt (exakt wie scripts/leitstand-server.mjs' art:'terminal'-Zweig,
+ * kein Modul-Mock) und belegt Index [2] als entscheidungRef, Reihenfolge
+ * [auftragRef, laufakteRef, entscheidungRef, …] — der bestehende Index-0/1-
+ * Vorrang aus F12 WS-2/WS-2b bleibt unverändert. Der Selbsttest belegt das
+ * Gegenteil: ohne ein solches Artefakt (der Normalfall) wirft
+ * fuehreAufgabeDurch nicht und fügt keinen dritten Eintrag ein.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -110,7 +119,7 @@ import { istWirkungsmarkePayload, kanonischesJson, ladeGueltigeCheckpoints, sha2
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../human-transport/index.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
-import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
+import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
 import { fuehreAufgabeDurch } from './index.ts'
@@ -918,6 +927,101 @@ test('AK7-positiv-B (FEHLGESCHLAGEN): Wiederaufnahme erhält Lineage-Verweis auf
     assert.strictEqual(nachherStatus.status, 'ABGESCHLOSSEN')
     assert.ok(nachherStatus.status === 'ABGESCHLOSSEN')
     assert.strictEqual(nachherStatus.ergebnis, 'FEHLGESCHLAGEN', 'Vorgängerlauf muss nach der Wiederaufnahme unverändert FEHLGESCHLAGEN bleiben')
+  } finally {
+    raeumeKette(laufId, undefined, vorgaengerLaufId)
+    raeumeKette(vorgaengerLaufId)
+  }
+})
+
+// ─── F13 WS-3: AK5 (nur art:'terminal', siehe features/F13/feature.md) ────
+
+test("F13 AK5-positiv: existiert ein entscheidung-<vorgaengerLaufId>-Artefakt, erhält die Wiederaufnahme einen dritten Lineage-Verweis darauf", async () => {
+  const vorgaengerLaufId = neueLaufId('f13a')
+  const laufId = `${vorgaengerLaufId}-retry-1`
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    const vorgaengerGateway = await starteGateway(
+      {
+        laufId: vorgaengerLaufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: baueAufruf(eingaben.aufrufEingaben),
+        werkzeugStartziel: eingaben.werkzeugStartziel,
+        werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+        berechtigungskontext: eingaben.berechtigungskontext,
+      },
+      { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', starter: attrappeMitValidemErgebnis, schreiber: () => {} }
+    )
+    assert.strictEqual(vorgaengerGateway.ok, true)
+
+    // Simuliert exakt, was scripts/leitstand-server.mjs' POST /api/entscheidungen(art:'terminal')
+    // NACH der Wirkungsmarke real registriert (F13 WS-3) — kein Modul-Mock, echter Lineage-Eintrag.
+    const entscheidungsDaten = { entscheidung_schema: 'v0', ergebnis: 'VERWEIGERT', begruendung: 'AK5-Testnachweis.', entschieden_am: new Date().toISOString() }
+    registriereKernArtefakt(
+      `entscheidung-${vorgaengerLaufId}`,
+      PROFIL_REFERENZ,
+      { erzeuger: 'mensch', schritt: 'entscheidung-terminal' },
+      entscheidungsDaten,
+      [],
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} }
+    )
+
+    const retryEingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), vorgaengerLaufId }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+
+    const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketVersion !== null)
+    // Reihenfolge [auftragRef, laufakteRef, entscheidungRef, …] — der bereits getestete
+    // auftragRef/laufakteRef-Vorrang aus F12 WS-2 bleibt unverändert (Index 0/1).
+    const entscheidungEintrag = kontextpaketVersion.eingaben[2]
+    assert.ok(entscheidungEintrag !== undefined, 'Kontextpaket-Eingaben haben keinen dritten Eintrag — Lineage-Verweis auf die Entscheidung fehlt')
+    assert.strictEqual(entscheidungEintrag.pfad, `artefakt:entscheidung-${vorgaengerLaufId}`)
+    assert.strictEqual(entscheidungEintrag.inhalts_hash, sha256Hex(kanonischesJson(entscheidungsDaten)))
+  } finally {
+    raeumeKette(laufId, undefined, vorgaengerLaufId)
+    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-entscheidung-${vorgaengerLaufId}`), { recursive: true, force: true })
+    raeumeKette(vorgaengerLaufId)
+  }
+})
+
+test('F13 AK5-Selbsttest: kein Wurf und kein zusätzlicher Eintrag, wenn kein entscheidung-<vorgaengerLaufId>-Artefakt existiert', async () => {
+  const vorgaengerLaufId = neueLaufId('f13n')
+  const laufId = `${vorgaengerLaufId}-retry-1`
+  try {
+    const vorgaengerErgebnis = await fuehreAufgabeDurch(vorgaengerLaufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(vorgaengerErgebnis.ok, true)
+
+    // Bewusst KEIN entscheidung-<vorgaengerLaufId>-Artefakt registriert — der Normalfall, wenn ein
+    // Lauf direkt ERFOLGREICH/FEHLGESCHLAGEN endet, ohne dass jemand über den Leitstand entschieden hat.
+    const retryEingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), vorgaengerLaufId }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, retryEingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: attrappeMitValidemErgebnis,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true, 'ein fehlendes entscheidung-Artefakt darf NICHT werfen (anders als eine fehlende Laufakte)')
+
+    const kontextpaketVersion = ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(kontextpaketVersion !== null)
+    assert.strictEqual(kontextpaketVersion.eingaben[1]?.pfad, `artefakt:laufakte-${vorgaengerLaufId}`, 'laufakteRef muss weiterhin an Index 1 stehen')
+    assert.ok(
+      !kontextpaketVersion.eingaben.some((e) => e.pfad.startsWith('artefakt:entscheidung-')),
+      'ohne existierendes Entscheidungs-Artefakt darf kein entscheidungRef eingefügt werden'
+    )
   } finally {
     raeumeKette(laufId, undefined, vorgaengerLaufId)
     raeumeKette(vorgaengerLaufId)

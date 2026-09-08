@@ -122,6 +122,17 @@
  * 202/Polling nötig. AK6 (D13): dieser Endpunkt prüft laufAktiv nicht — ein
  * Entscheidungs-POST ist kein Laufstart und bleibt von der Sperre unberührt.
  *
+ * F13 WS-3 (AK5, nur art:'terminal' — features/F13/feature.md): eine Wirkungsmarke allein
+ * ist für eine Wiederaufnahme unsichtbar (execution-controller löst 'artefakt:'-Pfade
+ * ausschließlich gegen per registriereKernArtefakt registrierte Lineage-Artefakte auf, nie
+ * gegen einen rohen Checkpoint-/Wirkungsmarke-Eintrag). Deshalb registriert der
+ * art:'terminal'-Zweig NACH der Wirkungsmarke zusätzlich ein entscheidung-<laufId>-
+ * Lineage-Artefakt (Vorbild: erzeugeTransportpaket, human-transport/index.ts:106-138) — kein
+ * neues Schema, daten bleibt unknown (D5). Für 'antwort'/'stale' bewusst zurückgestellt
+ * (F-163, kein belegter Fall — der Folgelauf verweist dort bereits über die Transportpaket-
+ * Kette, F9). Die Response trägt seither zusätzlich artefaktId/versionSequenz dieses
+ * Lineage-Artefakts.
+ *
  * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
  * reicht seither sein viertes Argument (optionen) strukturell durch
  * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
@@ -142,7 +153,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
-import { ladeArtefaktVersion, pruefeStale } from '../src/lineage-registry/index.ts'
+import { ladeArtefaktVersion, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { entscheideStale, importiereAntwort } from '../src/human-transport/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
@@ -1171,7 +1182,21 @@ export function erzeugeRequestHandler(optionen = {}) {
           { ergebnis: pruefung.ergebnis, daten: { mensch_begruendung: pruefung.begruendung } },
           optionen
         )
-        sendeJson(res, 200, ergebnis)
+        // F13 WS-3 (AK5, nur art:'terminal' — Stefan-Entscheidung, siehe features/F13/feature.md):
+        // die Wirkungsmarke allein ist für eine Wiederaufnahme unsichtbar (context-builder liest nie
+        // selbst von der Platte, execution-controller löst 'artefakt:'-Pfade ausschließlich gegen
+        // per registriereKernArtefakt registrierte Lineage-Artefakte auf). Deshalb zusätzlich als
+        // eigenes Lineage-Artefakt registriert, exakt nach dem Transportpaket-Vorbild
+        // (human-transport/index.ts:106-138) — kein neues Schema, daten bleibt unknown wie dort (D5).
+        const entscheidungsArtefakt = registriereKernArtefakt(
+          `entscheidung-${pruefung.laufId}`,
+          profilReferenz,
+          { erzeuger: 'mensch', schritt: 'entscheidung-terminal' },
+          { entscheidung_schema: 'v0', ergebnis: pruefung.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
+          [],
+          optionen
+        )
+        sendeJson(res, 200, { ...ergebnis, artefaktId: `entscheidung-${pruefung.laufId}`, versionSequenz: entscheidungsArtefakt.versionSequenz })
         return
       } catch (fehler) {
         sendeJson(res, 400, { grund: fehler.message })

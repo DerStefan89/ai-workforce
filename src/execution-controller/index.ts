@@ -78,6 +78,17 @@
  * scripts/leitstand-server.mjs durchgesetzt (D2, Plan Abschnitt 0/4) — der
  * Wurf hier ist die zweite, unabhängige Ladung desselben Artefakts (D3,
  * bewusste Duplikation, kein Transportfeld für den bereits geladenen Wert).
+ *
+ * F13 WS-3 (features/F13/feature.md, AK5 — nur für art:'terminal', siehe
+ * dortige Scope-Einschränkung): der vorgaengerLaufId-Block prüft zusätzlich,
+ * ob ein entscheidung-<vorgaengerLaufId>-Artefakt existiert (von
+ * scripts/leitstand-server.mjs' POST /api/entscheidungen im
+ * art:'terminal'-Zweig registriert). Anders als die Laufakte-Prüfung ist das
+ * KEIN Wurf bei null — nicht jeder Vorgängerlauf hatte eine Entscheidung.
+ * Bei Treffer wird der Anfragenliste ein weiterer notwendig:true-Eintrag
+ * NACH dem Laufakte-Eintrag eingefügt (Reihenfolge bleibt [auftragRef,
+ * laufakteRef, entscheidungRef?, …eingaben.anfragen] — der bereits getestete
+ * auftragRef/laufakteRef-Vorrang aus F12 WS-2 wird nicht verändert).
  */
 
 import { randomUUID } from 'node:crypto'
@@ -99,6 +110,11 @@ function eskalationsLaufId(ausloesenderLaufId: string): string {
 /** Artefakt-ID der Laufakte eines Vorgängerlaufs (WS-2b, AK7) — eigene Kleinstfunktion, konsistent mit eskalationsLaufId oben, statt Zugriff auf die nicht exportierte gleichnamige Hilfsfunktion in claude-code-gateway/index.ts. */
 function vorgaengerLaufakteArtefaktId(vorgaengerLaufId: string): string {
   return `laufakte-${vorgaengerLaufId}`
+}
+
+/** Artefakt-ID einer über POST /api/entscheidungen(art:'terminal') festgehaltenen Entscheidung zum Vorgängerlauf (F13 WS-3, AK5) — Gegenstück zu scripts/leitstand-server.mjs' entscheidung-<laufId>-Registrierung. */
+function vorgaengerEntscheidungArtefaktId(vorgaengerLaufId: string): string {
+  return `entscheidung-${vorgaengerLaufId}`
 }
 
 /**
@@ -156,6 +172,15 @@ export async function fuehreAufgabeDurch(
     if (vorgaengerLaufakteVersion === null) {
       throw new Error(`Vorgängerlauf '${eingaben.vorgaengerLaufId}' hat keine Laufakte — kein gültiger Vorgängerlauf für eine Wiederaufnahme (WS-2b, AK7)`)
     }
+
+    // F13 WS-3 (AK5): nicht jeder Vorgängerlauf hatte eine über POST /api/entscheidungen(art:'terminal')
+    // festgehaltene Entscheidung (z.B. ein direkt ERFOLGREICH/FEHLGESCHLAGEN beendeter Lauf) — anders als
+    // die Laufakte-Prüfung oben ist das KEIN Wurf bei null, sondern ein optional übersprungener Eintrag.
+    const vorgaengerEntscheidungVersion = ladeArtefaktVersion(vorgaengerEntscheidungArtefaktId(eingaben.vorgaengerLaufId), undefined, {
+      basisVerzeichnis: optionen.basisVerzeichnis,
+      schreiber: optionen.schreiber,
+    })
+
     anfragen = [
       {
         pfad: `artefakt:laufakte-${eingaben.vorgaengerLaufId}`,
@@ -164,6 +189,17 @@ export async function fuehreAufgabeDurch(
         inhalt: kanonischesJson(vorgaengerLaufakteVersion.daten),
         notwendig: true,
       },
+      ...(vorgaengerEntscheidungVersion !== null
+        ? [
+            {
+              pfad: `artefakt:entscheidung-${eingaben.vorgaengerLaufId}`,
+              frage: 'Menschliche Entscheidung zum vorherigen, klärungsbedürftigen Lauf',
+              begruendung: 'Lineage-Verweis auf die im Leitstand getroffene Entscheidung (F13 WS-3, AK5)',
+              inhalt: kanonischesJson(vorgaengerEntscheidungVersion.daten),
+              notwendig: true,
+            },
+          ]
+        : []),
       ...eingaben.anfragen,
     ]
   }
