@@ -1577,3 +1577,73 @@ Beschreibung: F13 WS-3 (AK5) registriert das entscheidung-<laufId>-Artefakt nur 
 Auswirkung: keine bekannte reale Lücke, rein dokumentarisch nachgetragen.
 Maßnahme: bei Bedarf (falls doch ein realer Klärfall mit art 'antwort'/'stale' eine Wiederaufnahme mit Lineage-Verweis braucht) erneut aufgreifen.
 Feature/Run: F13 WS-3, 07.09.2026.
+
+**F-164** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Findings-Register-Nachtrag bleibt Handarbeit — dritte Wiederholung.
+Beschreibung: Wie schon bei F-151/F-154 (Bridge-Sicherheitsregel) zeigt sich erneut, dass eine rein dokumentarische Regel ohne technische Absicherung wiederholt verfehlt wird — F-156 hatte das für F-152 bis F-155 bereits einmal real belegt. Auch dieser Auftrag (F13 WS-4) musste den real vergebenen Findings-ID-Bereich (F-164 ff.) erst von Hand gegen state/findings.md prüfen, statt dass ein Gate das automatisch sicherstellt.
+Auswirkung: ohne technische Absicherung bleibt jeder Findings-Nachtrag von der Disziplin der jeweiligen Sitzung abhängig.
+Maßnahme: [EMPFEHLUNG] ein Gate, das im Code vorkommende F-\d+-Referenzen (Kommentare, Testnamen) gegen state/findings.md abgleicht und eine fehlende Registrierung meldet.
+Feature/Run: F13 WS-4, 08.09.2026.
+
+**F-165** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: F13-Workstream-Nummerierung in feature.md weicht vom real gebauten Verlauf ab.
+Beschreibung: features/F13/feature.md listete AK5 unter WS-2 ("AK3, AK4, AK5, AK6, AK7"); real kam AK5 aber über einen eigenen, als "WS-3" betitelten PR (#100, Commit c7fc435) — WS-2 (PR #99) deckte real nur AK3/AK4/AK6/AK7 ab.
+Auswirkung: die Workstream-Liste in feature.md war keine verlässliche Karte des realen Bauverlaufs mehr.
+Maßnahme: Randnotiz in feature.md unter „Workstream-Liste" ergänzt (keine rückwirkende Umnummerierung).
+Feature/Run: F13 WS-4, 08.09.2026.
+
+**F-166** · `BUG` · P1 · gelöst
+Titel: Kein über den Leitstand gestarteter Lauf war vor WS-4 real entscheidbar.
+Beschreibung: art:'terminal' wurde nur bei Status KLAERUNG_ERFORDERLICH angeboten — ein Status, den ein über den Leitstand gestarteter Lauf praktisch nie erreicht, weil klassifiziereLauf (src/result-evaluator/index.ts) in jedem Ausgang eine Terminalmarke schreibt. Der reale, geplante Klärfall (VERWEIGERT durch Werkzeuggrenze, AK8) landet in ABGESCHLOSSEN und bekam dort nur das art:'antwort'-Formular — das lief garantiert in ein 400, weil importiereAntwort (src/human-transport/index.ts) eine transport-<laufId>-Kette voraussetzt, die nur bei der E-186-Eskalation (unter einer anderen laufId) entsteht.
+Auswirkung: AK8 war mit dem Bau vor WS-4 nicht erfüllbar — der §13.3-Zielsatz "entscheidet bei Rückfragen und Fehlschlägen im Leitstand" hatte für den häufigsten realen Klärfall keinen funktionierenden Pfad.
+Maßnahme: behoben in F13 WS-4 — neue Entscheidungsart 'kenntnisnahme' (scripts/leitstand-server.mjs, public/leitstand/app.js), getestet (check-f13-entscheiden.mjs).
+Feature/Run: F13 WS-4, 08.09.2026.
+
+**F-167** · `TECH_DEBT` · P2 · gelöst
+Titel: art:'terminal' prüfte den Laufstatus nicht vor dem Schreiben.
+Beschreibung: POST /api/entscheidungen akzeptierte art:'terminal' unabhängig vom tatsächlichen Laufstatus — auf einem bereits ABGESCHLOSSENEN Lauf konnte dadurch eine verwaiste zweite Terminalmarke entstehen.
+Auswirkung: keine bekannte reale Instanz, aber ein stiller Fehlbedienungsfall ohne Fehlermeldung.
+Maßnahme: behoben in F13 WS-4 — Vorbedingungsprüfung (stelleLaufstatusFest) vor jedem Schreiben, 'terminal' nur bei KLAERUNG_ERFORDERLICH; getestet (check-f13-entscheiden.mjs, Nebenbefund-Testfall).
+Feature/Run: F13 WS-4, 08.09.2026.
+
+**F-168** · `TECH_DEBT` · P2 · offen
+Titel: art:'antwort' verwendet dieselbe laufId statt eskalationsLaufId(laufId).
+Beschreibung: das art:'antwort'-Formular (renderEntscheidungBlock/initEntscheidungBedienung, public/leitstand/app.js) und der zugehörige POST /api/entscheidungen-Zweig (importiereAntwort) verwenden die laufId des ursprünglichen, blockierten Laufs (gewaehlteLaufId aus der Detailansicht) — die reale E-186-Eskalation läuft aber unter einer eigenen eskalationsLaufId(laufId) = `${laufId}-eskalation-<uuid>` (src/execution-controller/index.ts:106–108), unter der die transport-<...>-Kette tatsächlich liegt.
+Auswirkung: real ungeprüft (kein E-186-Nachweisfall in AK8/AK9 vorgesehen, siehe F-159) — potenziell dieselbe Fehlerklasse wie F-166, aber für den selteneren E-186-Fall statt des häufigen VERWEIGERT-Falls.
+Maßnahme: bewusst zurückgestellt (Nicht-Ziel von F13 WS-4) — bei Bedarf gesondert aufgreifen, sobald ein realer E-186-Nachweisfall ansteht.
+Feature/Run: F13 WS-4, 08.09.2026.
+
+**F-169** · `TECH_DEBT` · P2 · offen
+Titel: Kein Schutz gegen Doppelklick bei den drei Entscheidungs-Buttons (terminal/antwort/kenntnisnahme).
+Beschreibung: QA-Pass (F13 WS-4): initEntscheidungBedienung (public/leitstand/app.js) hat — anders als initAuftragFormular/initStartformular (Muster `if (button.disabled) return` / `button.disabled = true` / `finally { button.disabled = false }`) — keinen Disable-Guard für die Entscheidungs-Buttons. Zusätzlich verschwindet die Erfolgsmeldung sofort durch den automatischen `ladeLaufDetail`-Reload; bei 'kenntnisnahme' bleibt danach ein identisch leeres Formular sichtbar (keine neue Wirkungsmarke ändert den Laufstatus), was zu einem versehentlichen zweiten Absenden verleiten kann.
+Auswirkung: mehrfache, harmlose aber unbeabsichtigte Zusatzversionen des entscheidung-<laufId>-Artefakts sind möglich; bei 'terminal'/'antwort' vorbestehend (WS-2), bei 'kenntnisnahme' neu durch WS-4 reproduziert (gleiches Muster, wie im Auftrag vorgegeben).
+Maßnahme: [EMPFEHLUNG] alle drei Buttons auf das bestehende Disable-Guard-Muster umstellen; Erfolgsmeldung sichtbar halten, bis der Nutzer sie aktiv verlässt.
+Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
+
+**F-170** · `TECH_DEBT` · P3 · offen
+Titel: Begründungsfelder werden nicht getrimmt — eine reine Leerzeichen-Begründung wird akzeptiert.
+Beschreibung: QA-Pass (F13 WS-4): pruefeEntscheidungsformular prüft bei 'terminal'/'stale'/'kenntnisnahme' nur `typeof !== 'string' || length === 0`, ohne `.trim()`; die Client-Textareas senden `.value` ebenfalls ungetrimmt.
+Auswirkung: eine inhaltsleere Begründung (nur Leerzeichen) wird dauerhaft in der Lineage festgehalten — bei 'terminal' zusätzlich in daten.mensch_begruendung der Wirkungsmarke selbst — und unterläuft damit AK4 ("menschlich bezeugter Entscheidungstext").
+Maßnahme: [EMPFEHLUNG] `.trim().length === 0` statt `.length === 0` prüfen, für alle drei Begründungsfelder einheitlich.
+Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
+
+**F-171** · `TECH_DEBT` · P3 · offen
+Titel: Ein zwischenzeitlich anderswo aufgelöster Klärfall zeigt im offenen Detail-Panel nur einen unerklärten 400.
+Beschreibung: QA-Pass (F13 WS-4): ladeLaufDetail ist nicht Teil des 2-Sekunden-Polls — bleibt ein Detail-Panel offen, während derselbe Lauf über einen zweiten Tab/API-Aufruf entschieden wird, liefert ein anschließender Entscheidungsversuch im ersten Panel korrekt 400 (kein Dateninkonsistenz-Risiko), aber ohne Hinweis auf den geänderten Zustand oder automatisches Nachladen.
+Auswirkung: UX-Verwirrung, keine Datenintegritätsverletzung — der Server bleibt in jedem Fall maßgeblich.
+Maßnahme: [EMPFEHLUNG] bei 400 im Entscheidungsblock automatisch `ladeLaufDetail` erneut anstoßen statt nur den Fehlertext zu zeigen.
+Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
+
+**F-172** · `TECH_DEBT` · P2 · offen
+Titel: KLAERUNG_ERFORDERLICH ist strukturell ununterscheidbar von "Lauf läuft noch".
+Beschreibung: QA-Pass (F13 WS-4, vorbestehend, nicht durch WS-4 verursacht, aber dieselbe Verzweigung betroffen): stelleLaufstatusFest (src/checkpoint-store/index.ts:702–757) liefert für eine offene RUN_PREPARED-Sequenz immer KLAERUNG_ERFORDERLICH — auch während `fuehreAufgabeDurch` für denselben Lauf noch aktiv läuft. Die In-Memory-laufAktiv-Sperre (D13) wird nirgends an GET /api/laeufe/<laufId> durchgereicht, und der Entscheidungs-POST bleibt bewusst ungesperrt (AK6). Ein Mensch könnte also während eines noch laufenden Prozesses eine vorzeitige art:'terminal'-Entscheidung schreiben.
+Auswirkung: die spätere, echte Terminalmarke des Laufs würde als terminaleOhneRunPrepared-Waise landen, ohne den bereits von Hand gesetzten Status/das Ergebnis zu korrigieren — F-167 (dieser Workstream) schützt nur gegen "terminal auf bereits ABGESCHLOSSEN", nicht gegen diesen umgekehrten Fall.
+Maßnahme: [EMPFEHLUNG] bei Bedarf gesondert aufgreifen — außerhalb des WS-4-Diffs entstanden, kein WS-4-Blocker.
+Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
+
+**F-173** · `TECH_DEBT` · P3 · offen
+Titel: Auflösen eines Klärfalls über art:'terminal' (VERWEIGERT/FEHLGESCHLAGEN) zeigt sofort ein zweites, separates Kenntnisnahme-Formular für denselben Lauf.
+Beschreibung: QA-Pass (F13 WS-4): renderEntscheidungBlock zeigt nach einer erfolgreichen art:'terminal'-Entscheidung mit Ergebnis VERWEIGERT (ohne Bypass-Verdacht) oder FEHLGESCHLAGEN sofort ein neues, leeres Kenntnisnahme-Formular — obwohl bereits ein entscheidung-<laufId>-Artefakt aus dem terminal-Zweig existiert und die menschliche Begründung dafür schon vorliegt (AK4 bereits erfüllt). Exakt die im Auftrag vorgegebene Bedingung (ABGESCHLOSSEN/VERWEIGERT ohne Bypass, ODER FEHLGESCHLAGEN → Kenntnisnahme-Formular), nur ohne Ausnahme für den Fall "gerade erst selbst terminal entschieden".
+Auswirkung: unnötige doppelte Begründungsabfrage; keine Dateninkonsistenz (eine zweite Kenntnisnahme legt nur eine weitere harmlose Artefaktversion an).
+Maßnahme: [EMPFEHLUNG] bei Bedarf prüfen, ob GET /api/laeufe/<laufId> künftig meldet, ob bereits ein entscheidung-<laufId>-Artefakt existiert, und die UI das Kenntnisnahme-Formular dann unterdrückt — eigener Workstream, da das eine neue Server-Projektion erfordert (über den WS-4-Vertrag hinaus).
+Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
