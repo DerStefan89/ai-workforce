@@ -161,6 +161,22 @@
  * diese Spiegelung wäre die Unterscheidung nur eine client-seitige
  * Formularweiche und der Server nicht mehr maßgeblich (D2-Verstoß).
  *
+ * F14 WS-4 (features/F14/feature.md, AK7/AK8, F-177): ergänzt einen
+ * AbortController je aktivem Lauf (laufAktivAbortController, D13 — genau
+ * einer, kein Multi-Lauf-Registry), dessen .signal als abbruchSignal in die
+ * AusfuehrungsOptionen DIESES Laufs gegeben wird. POST
+ * /api/laeufe/<laufId>/abbrechen löst ihn aus (404 bei unbekannter/inaktiver
+ * laufId, sonst 202 sofort, ohne auf das Laufende zu warten — die
+ * bestehende fuehreAufgabeDurch-Kette WS-1/WS-2/WS-3 läuft danach
+ * unverändert asynchron fertig). AK8 (löst F-175): POST /api/entscheidungen
+ * lehnt 'terminal'/'kenntnisnahme' auf der gerade aktiven laufId mit 400 ab
+ * (VOR jedem Schreiben) — 'antwort'/'stale' bleiben unberührt (AK6 aus F13
+ * WS-2 gilt weiter). F-177: zeitgrenzeMs kommt jetzt ebenfalls serverseitig
+ * aus der Startvorlage (Muster werkzeugStartziel/berechtigungskontext, F11
+ * WS-2) statt nirgends gesetzt zu werden — Voraussetzung für AK10 (WS-5).
+ * F-172 (trivialer Nachtrag, kein vollständiger Fix): GET
+ * /api/laeufe/<laufId> trägt seither zusätzlich `aktiv`.
+ *
  * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
  * reicht seither sein viertes Argument (optionen) strukturell durch
  * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
@@ -732,6 +748,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'startfreigabeRepoWurzel',
   // F14 WS-1, AK2: neu in AusfuehrungsOptionen (src/execution-controller/types.ts), PFLICHT-Nachtrag.
   'zeitgrenzeMs',
+  // F14 WS-4, AK7: ebenso — entsteht serverseitig (ein AbortController je aktivem Lauf), kommt nie über den Body.
+  'abbruchSignal',
 ])
 
 /** Erlaubte Top-Level-Felder eines Startauftrags (AK2, F11 WS-2 AK4/AK5) — laufId plus die AusfuehrungsEingaben-Felder, die noch aus dem Body kommen, plus werkzeugsatz (Name aus der Startvorlage) und optional vorgaengerLaufId. werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext/profilReferenz sind NICHT mehr erlaubt (VERBOTENE_STARTVORLAGE_FELDER) — sie kommen serverseitig aus der Startvorlage. */
@@ -946,6 +964,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let laufAktiv = false
   /** laufId des gerade aktiven Laufs (QA-Hinweis, F11 WS-2) — nur für die 409-Ablehnungsmeldung unten, keine eigene Fachbedeutung. */
   let laufAktivLaufId = null
+  /** F14 WS-4 (AK7, D13): AbortController des gerade aktiven Laufs — genau einer, weil D13 genau einen aktiven Arbeitsstrang je Serverinstanz garantiert. Lebt nur so lange wie laufAktiv true ist, wird in JEDEM Fall (ok:false, ok:true, Wurf) zusammen mit laufAktiv/laufAktivLaufId zurückgesetzt (kein Leak, keine Wiederverwendung über Läufe hinweg). */
+  let laufAktivAbortController = null
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
@@ -981,6 +1001,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufId,
         checkpoints: sammleCheckpoints(laufId, basisVerzeichnis),
         laufStatus,
+        // F14 WS-4 (F-172, trivialer Nachtrag): ob DIESER Lauf gerade der aktive Arbeitsstrang der
+        // Serverinstanz ist (D13) — kein Ersatz für eine vollständige F-172-Lösung (auch andere
+        // Leitstand-Ansichten), nur dieses eine, bereits vorhandene In-Memory-Feld mitgeliefert.
+        aktiv: laufAktiv && laufId === laufAktivLaufId,
         verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
@@ -1135,6 +1159,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       angenommeneLaufIds.add(laufId)
       laufAktiv = true
       laufAktivLaufId = laufId
+      // F14 WS-4 (AK7): ein AbortController je aktivem Lauf — sein .signal wird unten als
+      // abbruchSignal in die AusfuehrungsOptionen DIESES EINEN Laufs gegeben. POST
+      // /api/laeufe/<laufId>/abbrechen löst später genau diesen Controller aus (D13: genau ein
+      // aktiver Lauf, ein einzelner Controller reicht, kein Multi-Lauf-Registry).
+      laufAktivAbortController = new AbortController()
       sendeJson(res, 202, { laufId })
 
       // Fire-and-forget mit Pflicht-.catch() (AK6) — ein Wurf aus fuehreAufgabeDurch beendet den
@@ -1155,14 +1184,26 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Nicht-Default-basisVerzeichnis, der eigentliche Lauf aber nicht (stille Divergenz). Extra
       // Felder von optionen (fuehreAufgabeDurchFn/publicVerzeichnis/startvorlagePfad/repoWurzel),
       // die AusfuehrungsOptionen nicht kennt: fuehreAufgabeDurch kopiert für starteGateway nur die
-      // sieben bekannten Felder einzeln heraus (src/execution-controller/index.ts, F-107), das rohe
+      // neun bekannten Felder einzeln heraus (src/execution-controller/index.ts, F-107; F14 WS-4
+      // ergänzt abbruchSignal als neuntes), das rohe
       // Objekt selbst reicht es nur an die F9-Eskalationshelfer (erfasseBedarf/erzeugeTransportpaket/
       // haendigeAus) unverändert weiter — auch die lesen nur bekannte Felder per Property-Zugriff,
       // Extrafelder bleiben überall ungelesen (D5, kein Verhalten im Default-Fall geändert).
-      fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, optionen)
+      // F14 WS-4 (AK7, F-177): zeitgrenzeMs kommt serverseitig aus der Startvorlage (Muster
+      // werkzeugStartziel/berechtigungskontext oben), abbruchSignal aus dem gerade angelegten
+      // Controller — beide reine Durchreichung an AusfuehrungsOptionen (D5, execution-controller
+      // interpretiert keins der beiden selbst). optionen bleibt strukturell erhalten (F-145).
+      const laufOptionen = {
+        ...optionen,
+        ...(vorlage.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: vorlage.zeitgrenzeMs } : {}),
+        abbruchSignal: laufAktivAbortController.signal,
+      }
+
+      fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
         .then((ergebnis) => {
           laufAktiv = false
           laufAktivLaufId = null
+          laufAktivAbortController = null
           if (ergebnis.ok === false) {
             angenommeneLaufIds.delete(laufId)
             const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
@@ -1173,11 +1214,35 @@ export function erzeugeRequestHandler(optionen = {}) {
         .catch((fehler) => {
           laufAktiv = false
           laufAktivLaufId = null
+          laufAktivAbortController = null
           angenommeneLaufIds.delete(laufId)
           const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: String(fehler?.message ?? fehler) }
           startfehlerListe.push(eintrag)
           console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
         })
+      return
+    }
+
+    // F14 WS-4 (AK7, Teil 2): manueller Abbruch des gerade aktiven Laufs. Prüft ausschließlich gegen
+    // laufAktivLaufId (D13, kein Multi-Lauf-Registry) — bei Treffer wird der bei dessen Start angelegte
+    // AbortController ausgelöst und SOFORT geantwortet, ohne auf das Laufende zu warten (die bestehende
+    // fuehreAufgabeDurch-Kette WS-1/WS-2/WS-3 läuft danach asynchron wie bisher fertig, siehe .then oben).
+    if (req.method === 'POST' && pfad.startsWith('/api/laeufe/') && pfad.endsWith('/abbrechen')) {
+      const laufId = decodeURIComponent(pfad.slice('/api/laeufe/'.length, pfad.length - '/abbrechen'.length))
+      if (laufId.length === 0) {
+        sendeJson(res, 400, { grund: "laufId darf nicht leer sein (Pfadform '/api/laeufe/<laufId>/abbrechen')" })
+        return
+      }
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(laufId)) {
+        sendeJson(res, 400, { grund: `laufId enthält unzulässige Zeichen: ${JSON.stringify(laufId)}` })
+        return
+      }
+      if (!laufAktiv || laufId !== laufAktivLaufId) {
+        sendeJson(res, 404, { grund: `kein aktiver Lauf mit laufId '${laufId}' (D13) — Abbruch nicht möglich` })
+        return
+      }
+      laufAktivAbortController.abort()
+      sendeJson(res, 202, { grund: 'Abbruch angefordert' })
       return
     }
 
@@ -1200,6 +1265,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       const pruefung = pruefeEntscheidungsformular(body)
       if (!pruefung.ok) {
         sendeJson(res, 400, { grund: pruefung.grund })
+        return
+      }
+
+      // F14 WS-4 (AK8, löst F-175): eine terminale Entscheidung auf dem gerade aktiven Lauf würde
+      // die noch laufende fuehreAufgabeDurch-Kette unterlaufen — nur 'terminal'/'kenntnisnahme' sind
+      // betroffen (D13 gilt für Laufstarts, nicht für 'antwort'/'stale', AK6 aus F13 WS-2 bleibt
+      // unverändert). Geprüft VOR jedem Schreiben, synchron gegen laufAktivLaufId (kein Dateizugriff nötig).
+      if ((pruefung.art === 'terminal' || pruefung.art === 'kenntnisnahme') && laufAktiv && pruefung.laufId === laufAktivLaufId) {
+        sendeJson(res, 400, { grund: `Lauf '${pruefung.laufId}' ist noch aktiv, Entscheidung nicht möglich (AK8)` })
         return
       }
 

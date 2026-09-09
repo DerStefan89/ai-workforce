@@ -27,6 +27,10 @@
  * scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER (Options-Sperre,
  * F10 AK3).
  *
+ * F14 WS-4 (AK7): abbruchSignal ebenso — hier UND in index.ts
+ * (starteGateway-Aufruf) nachgetragen, UND in
+ * scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER.
+ *
  * Wird aufgerufen von:
  * - src/execution-controller/index.ts
  *
@@ -59,6 +63,8 @@ export interface AusfuehrungsOptionen {
   startfreigabeRepoWurzel?: string
   /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — harte Wanduhr-Grenze in Millisekunden (F14 WS-1, AK2). Kein fachlich fest codierter Default hier; fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet — siehe src/claude-code-gateway/prozessstart.ts. */
   zeitgrenzeMs?: number
+  /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — Signal für einen gezielten manuellen Abbruch derselben Invocation (F14 WS-4, AK7). Folgt demselben Durchreichungsmuster wie zeitgrenzeMs. */
+  abbruchSignal?: AbortSignal
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */
