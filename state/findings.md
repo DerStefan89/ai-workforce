@@ -990,6 +990,7 @@ Beschreibung: Grep über `src/` findet keine Workstream- oder Execution-Identit�
 Fundstelle: `docs/projekt/zielfassung.md:332`, `:381`; `src/checkpoint-store/types.ts`.
 Auswirkung: Bewusste, dokumentierte Abweichung von einer als geschlossen geführten Architekturentscheidung. Wird teuer, falls sich später zeigt, dass eine Execution mehrere Läufe bündeln muss — der Checkpoint Store bekäme nachträglich eine zweite Identitätsachse, was Hash-Kette und Artefaktpfade berührt.
 Maßnahme: Als P1-Schuld sichtbar halten. In `features/F8/feature.md` als ausdrückliches Nicht-Ziel benannt; `zielfassung.md` §16.8 Punkt 6 und §16.2 Zeile 332 bekommen den Zusatz „Automaten in Fassung 1 nicht implementiert (E-192)". Neu bewerten, sobald ein realer Mehr-Lauf-je-Execution-Fall auftritt.
+M3-Relevanz: F15 (Workflow-Artefakt + Schritt-Automat) ist der in der Maßnahme genannte reale Mehr-Lauf-je-Execution-Fall — vor F15-WS-1 gegen das geplante WORKFLOW_V0-Datenmodell prüfen, ob eine zweite Identitätsachse (Schritt vs. Lauf) die bestehende Hash-Kette/Artefaktpfade berührt.
 Feature/Run: Challenge F8, 04.09.2026.
 
 **F-091** · `TECH_DEBT` · P2 · offen
@@ -1301,20 +1302,22 @@ Auswirkung: Wiederkehrender Prozessfehler; zweimal folgenlos, zweimal mit realem
 Maßnahme: Den in F-118/F-122/F-123 vorgeschlagenen technischen Guard (Wrapper/Alias, der aus der Bridge nur log/ls-tree/ls-remote/rev-parse/cat zulässt) vor Beginn von Meilenstein 2 umsetzen.
 Feature/Run: F-124-Verifikation/M1-Abschluss, 06.09.2026.
 
-**F-127** · `TECH_DEBT` · P1 · offen
+**F-127** · `TECH_DEBT` · P1 · **erledigt durch F14**
 Titel: Kein Timeout und kein Abbruchweg für einen gestarteten Werkzeugprozess.
 Beschreibung: echterStarter in src/claude-code-gateway/prozessstart.ts ruft execFile ohne timeout-Option; das ChildProcess-Handle verlässt die Funktion nicht, und der Leitstand ruft fuehreAufgabeDurch fire-and-forget auf. Ein hängender Kindprozess lässt den Lauf unbegrenzt in RUN_PREPARED ohne Terminalartefakt.
 Fundstelle: src/claude-code-gateway/prozessstart.ts (execFile-Optionen); scripts/leitstand-server.mjs (Fire-and-forget-Zweig).
 Auswirkung: In Meilenstein 1 tolerierbar. Ab Meilenstein 2 Alltagsbedingung — der einzige Ausweg ist heute der Task-Manager.
 Maßnahme: Feature F14 (Meilenstein 2).
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F14. Beleg: `startvorlagen/ai-workforce.json:9` (`zeitgrenzeMs`); `src/claude-code-gateway/prozessstart.ts:166` (`timeout: optionen.zeitgrenzeMs`); `scripts/leitstand-server.mjs:1230-1233` (Route `/api/laeufe/<laufId>/abbrechen`); Gate `scripts/check-f14-abbruch.mjs`, real per AK10 nachgewiesen (`docs/STATUS.md`, F14 ABGESCHLOSSEN).
 Feature/Run: M2-Challenge, 06.09.2026.
 
-**F-128** · `TECH_DEBT` · P1 · offen
+**F-128** · `TECH_DEBT` · P1 · **erledigt durch F11 WS-2**
 Titel: Der Leitstand erzwingt D13 ("genau ein aktiver Arbeitsstrang") nicht.
 Beschreibung: POST /api/laeufe prüft ausschließlich die Eindeutigkeit der laufId (laufIdBelegt). Zwei Startaufträge mit verschiedenen IDs starten zwei echte Claude-Code-Kindprozesse gleichzeitig im selben Arbeitsverzeichnis.
 Fundstelle: scripts/leitstand-server.mjs, requestHandler POST-Zweig.
 Auswirkung: Verstoß gegen D13 per Klick auslösbar; verschärft F-114 (zwei Schreiber im selben Verzeichnis, real beobachtet). Bislang folgenlos, weil nur einzelne Läufe von Hand gestartet wurden.
 Maßnahme: F11 AK7 (409, solange ein Lauf dieser Serverinstanz nicht zurückgekehrt ist).
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F11 WS-2. Beleg: `scripts/leitstand-server.mjs:964` (`laufAktiv`-Flag, Kommentar zitiert F-128 explizit), `:1090-1091` (409-Ablehnung „ein anderer... Lauf ist noch aktiv (D13)").
 Feature/Run: M2-Challenge, 06.09.2026.
 
 **F-129** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -1382,20 +1385,22 @@ Auswirkung: kein Sicherheitsproblem (F4 hat korrekt abgelehnt, kein Kindprozess 
 Maßnahme: `werkzeugStartziel` auf `["C:\\Program Files\\claude\\claude.exe"]` korrigiert (reine Konfigurationsdatei, kein Eingriff in `src/`), Server neu gestartet, beide folgenden F11-WS-3-Läufe real erfolgreich.
 Feature/Run: F11 WS-3, 06.09.2026, siehe `state/e2e-nachweis-f11-ws3.md`.
 
-**F-137** · `BUG` · P1 · offen
+**F-137** · `BUG` · P1 · **erledigt durch F12 (AK1)**
 Titel: Leitstand zeigt Lineage-Artefaktketten als Läufe.
 Beschreibung: `sammleLaeufe` listet jedes Verzeichnis unter `kontrollzustand/`; real sind 18 von 28 keine Läufe, sondern F2-Artefaktketten, und erscheinen mit `laufStatus: NICHT_GESTARTET`. Ursache: F2s `registriereKernArtefakt` schreibt über `laufId(artefaktId) = "lineage-" + artefaktId` in eine eigene Kette.
 Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaeufe`); `src/lineage-registry/index.ts:47-49`.
 Auswirkung: verletzt die §13.3-Messgröße „Fehldarstellungen des realen Zustands = 0"; wächst mit jeder Eskalation und jedem Lauf weiter.
 Maßnahme: inhaltsbasiert filtern (gültige Kette enthält mindestens eine Wirkungsmarke), nicht über den Präfix `lineage-`. Regel real gegen alle 28 Verzeichnisse verifiziert: 10 mit Marke, 18 ohne, 0 Abweichungen. F12 AK1.
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F12 (AK1) — real gegengeprüft, Filter bleibt heute inhaltsbasiert. Beleg: `scripts/leitstand-server.mjs:353-356` (`istLaufkette` prüft `eintrag.typ === 'wirkungsmarke'`, nicht den `lineage-`-Präfix, Kommentar zitiert F-137). M3-Relevanz geprüft: da der Filter inhaltsbasiert bleibt, würden auch künftige Artefaktketten ohne Wirkungsmarke (F15/F18) automatisch mit ausgefiltert — kein Zusatzrisiko, kein weiterer Vermerk nötig.
 Feature/Run: F12-Challenge, 06.09.2026.
 
-**F-138** · `BUG` · P1 · offen
+**F-138** · `BUG` · P1 · **erledigt durch F12 WS-2 (AK6)**
 Titel: F11s Zielsatz „ohne JSON, ohne Terminal" ist real nicht erfüllt.
 Beschreibung: Die F11-Workstream-Liste nennt in WS-2 „das Startformular", aber kein AK fordert es und kein Gate prüft es; die einzige Startbedienung ist ein Textfeld für rohes Startauftrag-JSON. F11 ist auf AK-Ebene korrekt abgeschlossen, AK8 wurde per direktem `POST /api/laeufe` erbracht.
 Fundstelle: `public/leitstand/index.html`; `features/F11/feature.md` (Ziel, Workstream-Liste WS-2).
 Auswirkung: keine der drei §13.3-Messgrößen ist heute erreichbar; die Dogfooding-Phase ist ohne Formular nicht durchführbar.
 Maßnahme: über E-M2-3 F12 WS-2 zugeordnet (AK6).
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F12 WS-2 (AK6). Beleg: `public/leitstand/index.html:19,36,39,48` (echtes Formular: `input#auftrag-titel`, `select#start-auftrag`, `select#start-werkzeugsatz`, `input#start-laufid` statt Roh-JSON-Feld).
 Feature/Run: F12-Challenge, 06.09.2026.
 
 **F-139** · `TECH_DEBT` · P2 · offen
@@ -1530,25 +1535,28 @@ Auswirkung: die Findings-Regel verfehlt genau den Zweck, für den sie existiert 
 Maßnahme: Register-Nachtrag als Pflichtschritt in die Übergaberoutine aufnehmen; nachgetragen mit PR docs/findings-f152-f155.
 Feature/Run: Challenge F13, 07.09.2026.
 
-**F-157** · `TECH_DEBT` · P1 · offen
+**F-157** · `TECH_DEBT` · P1 · **erledigt durch F13 WS-1 (AK1)**
 Titel: Wiederaufnahme im Leitstand nur über rohes JSON bedienbar.
 Beschreibung: public/leitstand/index.html:49–58 hält ein JSON-Textfeld; baueWiederaufnahmeVorlage (public/leitstand/app.js:174) belegt nur laufId und vorgaengerLaufId vor und liefert rolle:'', anfragen:[], budget:{}, aufrufEingaben:{}, werkzeugsatz:'', auftragId:'' — sechs Felder werden von Hand in JSON getippt.
 Auswirkung: §13.3-Zielsatz "ohne JSON" und die Messgröße "Terminalwechsel = 0" sind für den geforderten Wiederaufnahme-Fall real nicht erfüllt.
 Maßnahme: F13 WS-1 (AK1).
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F13 WS-1 (AK1). Beleg: `public/leitstand/index.html:36,39,44-47` (`select#start-auftrag`, `select#start-werkzeugsatz`, `fieldset#start-evidenzdateien`); `baueWiederaufnahmeVorlage` nicht mehr in `public/leitstand/app.js` vorhanden — durch geführte Bedienung abgelöst.
 Feature/Run: Challenge F13, 07.09.2026.
 
-**F-158** · `TECH_DEBT` · P1 · offen
+**F-158** · `TECH_DEBT` · P1 · **erledigt durch F13 WS-2 (AK3)**
 Titel: Kein Schreibpfad für menschliche Entscheidungen im Leitstand.
 Beschreibung: scripts/leitstand-server.mjs kennt genau zwei POSTs (/api/auftraege, /api/laeufe). Für "entscheidet bei Rückfragen und Fehlschlägen im Leitstand" (§13.3 Zielsatz) existiert kein Endpunkt, obwohl alle Kernverben vorhanden sind (F9 importiereAntwort/entscheideStale, F1B schreibeWirkungsmarke).
 Auswirkung: der Zielsatz von Meilenstein 2 ist zur Hälfte unbedienbar.
 Maßnahme: F13 WS-2 (AK3), ausschließlich über bestehende Kernverben.
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F13 WS-2 (AK3). Beleg: `scripts/leitstand-server.mjs:1255` (`POST /api/entscheidungen`), `:105-123` (Verdrahtung auf `importiereAntwort`/`entscheideStale`/`schreibeWirkungsmarke`).
 Feature/Run: Challenge F13, 07.09.2026.
 
-**F-159** · `TECH_DEBT` · P1 · offen
+**F-159** · `TECH_DEBT` · P1 · **erledigt durch F13 (AK8)**
 Titel: F9-Transportkette im Produktpfad real nie ausgelöst; E-186 kein planbarer Nachweisfall.
 Beschreibung: grep -rl "bedarf_schema" kontrollzustand/ → 0 Treffer; genau ein VERWEIGERT im gesamten Kontrollzustand. Ursache real geprüft: bypass_verdacht_anzahl (src/result-evaluator/index.ts:115–122) zählt nur permission_denials, deren tool_input selbst einen E-182-Verbotsparameter enthält — ein normal abgelehnter Write liefert VERWEIGERT mit 0 und damit keine Eskalation.
 Auswirkung: §13.3 verlangt "ein Lauf mit echter Rückfrage" real; der E-186-Pfad ist dafür nicht zuverlässig provozierbar.
 Maßnahme: F13 AK8 setzt auf den normalen VERWEIGERT-Lauf als Klärfall, nicht auf E-186.
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F13 (AK8). Beleg: `features/F13/nachweis-ws3.md:110-115` („AK8 erfüllt: JA" — realer VERWEIGERT-Lauf über den Leitstand entschieden, Folgelauf trägt die Entscheidung als Evidenzelement).
 Feature/Run: Challenge F13, 07.09.2026.
 
 **F-160** · `BUG` · P2 · gelöst
@@ -1648,7 +1656,7 @@ Auswirkung: unnötige doppelte Begründungsabfrage; keine Dateninkonsistenz (ein
 Maßnahme: [EMPFEHLUNG] bei Bedarf prüfen, ob GET /api/laeufe/<laufId> künftig meldet, ob bereits ein entscheidung-<laufId>-Artefakt existiert, und die UI das Kenntnisnahme-Formular dann unterdrückt — eigener Workstream, da das eine neue Server-Projektion erfordert (über den WS-4-Vertrag hinaus).
 Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
 
-**F-175** · `BUG` · P1 · offen
+**F-175** · `BUG` · P1 · **erledigt durch F14 WS-4 (AK8)**
 Titel: Laufender Lauf kann über den Leitstand terminal gesetzt werden
 Beschreibung: stelleLaufstatusFest liefert für einen aktiven Lauf
 KLAERUNG_ERFORDERLICH (F-172); POST /api/entscheidungen prüft laufAktiv bewusst
@@ -1664,6 +1672,7 @@ abgeschlossenen Fall behoben.
 Beleglage: aus Code abgeleitet, NICHT real reproduziert. Reproduktion ist
 Bestandteil von F14 WS-4.
 Empfohlene Maßnahme: In F14 AK8 lösen (löst zugleich F-172).
+Status-Update (09.09.2026, Findings-Triage vor M3): erledigt durch F14 WS-4 (AK8). Beleg: `scripts/leitstand-server.mjs:1270-1274` (Ablehnung eines Terminalergebnisses für einen aktiven Lauf, Kommentar „(AK8)"); Gate `scripts/check-f14-abbruch.mjs:267-275,327-335` (regressionsgeprüft). `features/F14/feature.md:114` bestätigt „Löst F-175"; die „Offene Findings"-Liste in derselben Datei (Zeile 130) ist an dieser Stelle nicht nachgezogen — reine Dokumentationsinkonsistenz innerhalb `features/F14/feature.md`, nicht Teil dieses Doku-PRs (kein Produktcode/Feature-Akten-Scope hier).
 Entdeckt bei: F14-Challenge, 08.09.2026
 
 **F-176** · `TECH_DEBT` · P2 · gelöst
@@ -1777,3 +1786,79 @@ solange der Kindprozess noch lebt) — größerer Eingriff, der WS-1s
 Fehlerklassifikation (fehler.killed/ABORT_ERR) neu empirisch prüfen
 müsste.
 Entdeckt bei: Verifikation F14 WS-2, 09.09.2026
+
+**F-182** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Findings-Register führt gelöste P1-Einträge weiter als `offen`.
+Beschreibung: 26 Einträge mit P1 und Status `offen`; F-158 (F13
+feature.md:42/222), F-175 (F14 feature.md:114 „Löst F-175") und F-128
+(laufAktiv, scripts/leitstand-server.mjs:964) sind laut Akten/Code
+gelöst, F-127 durch F14 (zeitgrenzeMs, abbrechen-Route) funktional
+erledigt — die Statuszeilen wurden nicht nachgezogen.
+Fundstelle: state/findings.md, Einträge F-127, F-128, F-158, F-175.
+Auswirkung: E-M2-9 knüpft die Fortführung an „kein P0"; ein Register,
+dessen P1-Stand nicht stimmt, taugt nicht als Grundlage für diese Regel
+und für die M3-Planung.
+Empfohlene Maßnahme: Vor dem ersten M3-Doku-PR alle P1-offen-Einträge
+gegen die Akten F11–F14 abgleichen und Status setzen (dieser PR).
+Feature/Run: M3-Challenge, 09.09.2026.
+
+**F-183** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: M3-Zielbild kollidiert an neun Stellen mit der geltenden Sollquelle
+(Fassung-1-Grenzen).
+Beschreibung: Provider-Adapter, Stufe-1-Orchestrierung, Rollen-Injektion,
+Abo-Regel (30), automatische Modellwahl, Geld statt Kontingent,
+Versionsverwaltung, Werkzeug-Sammeln, Parallelität — Tabelle in
+Claude-Projekt claude/153 §3.
+Fundstelle: docs/projekt/zielfassung.md §2, §4, §11, §12, §13.2, §13.3,
+§16.1, §16.7; docs/projekt/umsetzungsplan-fassung-1.md §1, §4, §5.
+Auswirkung: Ohne nummerierte Entscheidungen wäre jeder M3-Bauauftrag ein
+Verstoß gegen §0 der Zielfassung.
+Empfohlene Maßnahme: E-M3-1…E-M3-3 entscheiden (im Projektchat am
+09.09.2026 mündlich freigegeben), Zielfassung v1.17 mit §13.4 als
+Doku-PR vor F15.
+Feature/Run: M3-Challenge, 09.09.2026.
+
+**F-184** · `TECH_DEBT` · P2 · offen
+Titel: Rollen existieren im Kern nur als Kontextfilter, nicht als
+Vertrag.
+Beschreibung: `rolle` ist ein freier String im Startauftrag; einzige
+Prüfung ist ROLLEN_AUSSCHLUSSMUSTER (vier Schlüssel). Die
+Agent-Definitionen unter .claude/agents/ werden in -p-Läufen nicht
+geladen; kein Systemprompt, kein Output-Schema, keine Stop-Bedingung je
+Rolle.
+Fundstelle: src/context-builder/types.ts (ROLLEN_AUSSCHLUSSMUSTER);
+scripts/leitstand-server.mjs:756/852; src/claude-code-gateway/
+index.ts:199–221.
+Auswirkung: Kein Blocker für M2; für M3 ist ein Rollenvertrag
+Voraussetzung jeder Nicht-Ausführer-Rolle.
+Empfohlene Maßnahme: F17 WS-1 (rollen/<name>.json mit Output-Schema),
+abhängig von E-M3-1.
+Feature/Run: M3-Challenge, 09.09.2026.
+
+**F-185** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Secret-Ausschluss (.claudeignore, Entscheidung 35) wirkt nur für
+Claude Code — ein zweiter Worker braucht eine eigene Egress-Grenze.
+Beschreibung: Codex liest .claudeignore nicht; ebenso greifen
+guard-settings.js/commit-guard.cjs (Claude-Code-Hooks) für Codex nicht.
+E-183/E-188 haben für einen zweiten Worker keinen Wirksamkeitsnachweis.
+Fundstelle: .claudeignore; .claude/settings.json (Hooks);
+src/invocation-policy/types.ts (Gültigkeitsschlüssel bindet
+.claude/settings.json).
+Auswirkung: Ein schreibender Codex-Lauf wäre ungegatet (§16.4-Verstoß);
+ein lesender Lauf könnte .env*/state/tasks/** sehen.
+Empfohlene Maßnahme: F16: Codex strukturell nur read-only; Context
+Builder erhält Worker-Attribut `extern` mit Zusatz-Ausschlüssen; Spike
+S-M3-01 misst den Rot-Fall.
+Feature/Run: M3-Challenge, 09.09.2026.
+
+**F-186** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: device_bash erneut nicht verfügbar; claude/152 verweist mit
+falscher ID auf das Bridge-Finding.
+Beschreibung: Sitzung 09.09.2026: „no Plan9 drive shares mounted" —
+Workaround device_stage_files + Read trägt vollständig (Muster F-174).
+claude/152 §2 nennt „F-155, F-174" für die Bridge-Zuverlässigkeit; F-155
+ist real „Mehrfachklick auf Starten".
+Fundstelle: Claude-Projekt claude/152 §2; state/findings.md F-155.
+Auswirkung: Gering — nur Verweisqualität.
+Empfohlene Maßnahme: Keine im Repo; Korrektur im Claude-Projekt.
+Feature/Run: M3-Challenge, 09.09.2026.
