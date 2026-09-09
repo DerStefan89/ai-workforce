@@ -1862,3 +1862,29 @@ Fundstelle: Claude-Projekt claude/152 §2; state/findings.md F-155.
 Auswirkung: Gering — nur Verweisqualität.
 Empfohlene Maßnahme: Keine im Repo; Korrektur im Claude-Projekt.
 Feature/Run: M3-Challenge, 09.09.2026.
+
+**F-187** · `TECH_DEBT` · P3 · offen
+Titel: Unversionierte Testlauf-Artefakte in kontrollzustand/.
+Beschreibung: 34+ untracked Verzeichnisse unter kontrollzustand/
+(Testläufe), weder committet noch gitignored.
+Fundstelle: kontrollzustand/ (Beobachtung 09.09.2026, M3-Challenge-Session).
+Auswirkung: Kein Blocker (Ziel-Fassung v1.17 §9.2 Punkt 2 nimmt
+Workforce-State von der Arbeitsbaum-Sauberkeitsbedingung aus); F18
+(Capability-Register) würde diese Testartefakte sonst mitscannen.
+Empfohlene Maßnahme: Vor F18-Bau bereinigen oder Scan-Filter definieren.
+Feature/Run: M3-Vorbereitung.
+
+**F-188** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Codex-CLI-Standard-Sandbox blockiert auch Lesebefehle.
+Beschreibung: In Lauf 1 der Spike S-M3-01 wurden reine Lesebefehle
+(PowerShell Get-ChildItem, rg --files) von der Standard-Sandbox mit
+„blocked by policy" abgelehnt — read-only heißt bei Codex CLI nicht
+automatisch nutzbarer Lesezugriff.
+Fundstelle: state/tp-m3-01-codex.md, Lauf 1.
+Auswirkung: F16 (zweiter Worker, lesende Rollen, E-M3-2) kann nicht von
+„Default-Sandbox reicht für lesende Rollen" ausgehen — sonst scheitern
+reale lesende Aufträge.
+Empfohlene Maßnahme: Vor F16-Bau klären, welche Sandbox-/
+Approval-Konfiguration tatsächlich Lesezugriff erlaubt, ohne E-M3-2s
+Schreibverbot zu verletzen.
+Feature/Run: Spike S-M3-01.
