@@ -15,6 +15,10 @@
  * (Volltextsuche nach "model": kein Treffer) — WS2 rät nicht, sondern
  * lässt den Wert null (TECH_DEBT, siehe state/findings.md, Klärung mit
  * echtem Nachweislauf in WS3).
+ *
+ * F14 WS-1 (features/F14/feature.md, AK1/AK3): StarterOptionen ergänzt
+ * Starter additiv um zeitgrenzeMs/abbruchSignal, ProzessErgebnis additiv um
+ * beendigungsart — löst F-176.
  */
 
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
@@ -33,16 +37,23 @@ export interface AufrufEingaben {
   prompt: string
 }
 
-/** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. */
+/** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */
 export interface ProzessErgebnis {
   stdout: string
   stderr: string
   exitCode: number | null
   startfehler: { code: string | null; message: string } | null
+  beendigungsart: 'TIMEOUT' | 'ABBRUCH' | null
 }
 
-/** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. */
-export type Starter = (startziel: string[], tokens: AufrufTokens) => Promise<ProzessErgebnis>
+/** Zusätzliche, additive Abbruchfähigkeit für einen Starter-Aufruf (F14 WS-1, AK1): zeitgrenzeMs setzt eine harte Wanduhr-Grenze, abbruchSignal erlaubt einen gezielten manuellen Abbruch derselben Invocation. Beide optional — ein Starter, der sie ignoriert, bleibt gültig. */
+export interface StarterOptionen {
+  zeitgrenzeMs?: number
+  abbruchSignal?: AbortSignal
+}
+
+/** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. Der dritte, optionale Parameter (F14 WS-1, AK1) ist additiv: eine bestehende, zweiparametrige Starter-Implementierung (z.B. attrappeMitValidemErgebnis) bleibt ohne Anpassung zuweisungskompatibel. */
+export type Starter = (startziel: string[], tokens: AufrufTokens, optionen?: StarterOptionen) => Promise<ProzessErgebnis>
 
 /** Eingaben für starteGateway (WS2). tokens kommt vom Aufrufer bereits über WS1s baueAufruf konstruiert — starteGateway baut keinen zweiten Aufruf (D5). werkzeugStartziel ist Pflichtfeld (F6a WS4, E2): das Gateway rät nichts und liest nichts aus dem Arbeitsbaum, die Vertrauensfrage liegt beim Aufrufer. */
 export interface GatewayEingaben {

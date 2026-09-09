@@ -51,6 +51,10 @@
  * Referenzdatei oder liefert pruefeStartfreigabe ABGELEHNT: verweigereStart
  * (Muster wie der E-182-Zweig), kein Prozessstart, keine
  * RUN_PREPARED-Wirkungsmarke.
+ *
+ * F14 WS-1 (AK2): GatewayOptionen.zeitgrenzeMs ist reine Durchreichung an
+ * prozessstart.ts' starteProzess, unverändert im Rohstrom mitgeführt
+ * (beendigungsart). starteGateway interpretiert den Wert selbst nicht.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -134,6 +138,8 @@ interface GatewayOptionen {
   aktuelleAutorisierungPfad?: string
   /** Überschreibt F4s STANDARD_REPO_WURZEL (externes Autorisierungs-Repo) — u.a. für Tests gegen ein Wegwerf-Git-Repo. */
   startfreigabeRepoWurzel?: string
+  /** Harte Wanduhr-Grenze für den Prozessstart in Millisekunden (F14 WS-1, AK2) — unverändert an prozessstart.ts' starteProzess durchgereicht. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet. */
+  zeitgrenzeMs?: number
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -290,7 +296,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
 
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)
 
-  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, { starter: optionen.starter })
+  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, { starter: optionen.starter, zeitgrenzeMs: optionen.zeitgrenzeMs })
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
@@ -304,6 +310,8 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     stderr: prozessErgebnis.stderr,
     exitCode: prozessErgebnis.exitCode,
     startfehler: prozessErgebnis.startfehler,
+    // F14 WS-1: gleiches Audit-Motiv wie F-071 (werkzeugStartziel/startfehler oben) — TIMEOUT/ABBRUCH landen im Rohstrom, nicht nur im Rückgabewert.
+    beendigungsart: prozessErgebnis.beendigungsart,
   })
   const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
   writeFileSync(rohPfad, rohInhalt, 'utf8')

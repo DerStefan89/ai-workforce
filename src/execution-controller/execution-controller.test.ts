@@ -552,6 +552,32 @@ test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzep
   }
 })
 
+// ─── F14 WS-1 (AK2): zeitgrenzeMs von AusfuehrungsOptionen bis zum Starter ──
+
+test('F14 WS-1 AK2: zeitgrenzeMs aus AusfuehrungsOptionen kommt unverändert am dritten Starter-Parameter an — Laufzeitbeleg der F8→F6a-Durchreichung', async () => {
+  const laufId = neueLaufId('f14-ak2-zeitgrenze')
+  let empfangeneOptionen: Parameters<Starter>[2]
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      zeitgrenzeMs: 12345,
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.zeitgrenzeMs, 12345, 'zeitgrenzeMs muss unverändert bis zum Starter durchgereicht werden (AK2)')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // ─── WS-2a: AK4/AK6, Delta 1 ──────────────────────────────────────────────
 
 /** VERWEIGERT-Attrappe (kein bisheriges Fixture erzeugt diese Klassifikation, siehe Vertrag CONTEXT): ein permission_denials-Eintrag mit dem übergebenen command, sonst identisch zu attrappeMitValidemErgebnis geformt (TP-03d-Muster). */
@@ -565,6 +591,7 @@ function attrappeVerweigertMitCommand(command: string): Starter {
     stderr: '',
     exitCode: 0,
     startfehler: null,
+    beendigungsart: null,
   })
 }
 

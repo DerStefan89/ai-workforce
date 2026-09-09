@@ -22,6 +22,11 @@
  * Feld wird dadurch NICHT automatisch durchgereicht, sondern muss hier
  * UND in index.ts explizit nachgetragen werden.
  *
+ * F14 WS-1 (AK2): zeitgrenzeMs folgt demselben Muster — hier UND in
+ * index.ts (starteGateway-Aufruf) nachgetragen, UND in
+ * scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER (Options-Sperre,
+ * F10 AK3).
+ *
  * Wird aufgerufen von:
  * - src/execution-controller/index.ts
  *
@@ -52,6 +57,8 @@ export interface AusfuehrungsOptionen {
   aktuelleAutorisierungPfad?: string
   /** Nur für F6as starteGateway — überschreibt die Repo-Wurzel der Startfreigabeprüfung (Tests). */
   startfreigabeRepoWurzel?: string
+  /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — harte Wanduhr-Grenze in Millisekunden (F14 WS-1, AK2). Kein fachlich fest codierter Default hier; fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet — siehe src/claude-code-gateway/prozessstart.ts. */
+  zeitgrenzeMs?: number
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

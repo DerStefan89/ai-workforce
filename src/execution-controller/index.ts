@@ -255,6 +255,7 @@ export async function fuehreAufgabeDurch(
       settingsPfad: optionen.settingsPfad,
       aktuelleAutorisierungPfad: optionen.aktuelleAutorisierungPfad,
       startfreigabeRepoWurzel: optionen.startfreigabeRepoWurzel,
+      zeitgrenzeMs: optionen.zeitgrenzeMs,
     }
   )
   if (!gatewayErgebnis.ok) {
