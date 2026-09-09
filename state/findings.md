@@ -1888,3 +1888,30 @@ Empfohlene Maßnahme: Vor F16-Bau klären, welche Sandbox-/
 Approval-Konfiguration tatsächlich Lesezugriff erlaubt, ohne E-M3-2s
 Schreibverbot zu verletzen.
 Feature/Run: Spike S-M3-01.
+
+**F-191** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: check:template enthält stackgebundene Gates.
+Beschreibung: check:template ruft check-f11-auftrag.mjs,
+check-f12-leitstand-ansicht.mjs und check-f13-entscheiden.mjs auf; alle
+drei importieren aus src/ bzw. scripts/leitstand-server.mjs.
+Fundstelle: package.json:19.
+Auswirkung: Die Zusage „bleibt im leeren Template grün" trägt heute nicht
+— ein frisch geklontes Template scheitert an diesen drei Gates. Nicht
+F15-blockierend.
+Empfohlene Maßnahme: Entweder die drei Gates aus check:template entfernen
+oder die Zusage neu formulieren.
+Feature/Run: F15 WS-1 (Nebenbefund).
+
+**F-192** · `TECH_DEBT` · P3 · offen
+Titel: kontrollzustand-workflow.valid.json zeigt nicht die
+M3-Bestehensbedingung.
+Beschreibung: Die Referenz-Beispieldatei nutzt für beide Schritte worker
+„claude-code"; die Bestehensbedingung aus zielfassung.md §13.4 ist
+„lesender Schritt auf Codex → schreibender Schritt auf Claude Code".
+Fundstelle: schemas/examples/kontrollzustand-workflow.valid.json:18.
+Auswirkung: Keine — in WS-1 ist Codex nicht dispatchbar, ein
+Codex-Beispiel wäre irreführend. Der Codex-Grünfall liegt in
+src/workflow/workflow.test.ts.
+Empfohlene Maßnahme: Bei F16 Schritt 1 der Beispieldatei auf worker
+„codex" umstellen.
+Feature/Run: F15 WS-1.

@@ -1,0 +1,14 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "beispiel-workflow",
+  "auftrag_id": "beispiel-auftrag",
+  "version": 1,
+  "ziel": "Die Beispieländerung im Referenzfeature prüfen und anschließend umsetzen.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": null,
+  "grenzen": {
+    "max_schritte": 8,
+    "max_replans": 2
+  },
+  "schritte": []
+}

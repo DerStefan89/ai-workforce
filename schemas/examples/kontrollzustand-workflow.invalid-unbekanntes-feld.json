@@ -1,0 +1,31 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "beispiel-workflow",
+  "auftrag_id": "beispiel-auftrag",
+  "version": 1,
+  "ziel": "Die Beispieländerung im Referenzfeature prüfen und anschließend umsetzen.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-pruefung",
+  "grenzen": {
+    "max_schritte": 8,
+    "max_replans": 2
+  },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-pruefung",
+      "rolle": "code-reviewer",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "beispiel-modell",
+      "eingaben": ["artefakt:auftrag-beispiel-auftrag"],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Kein Schreibzugriff — reine Lesepruefung des Auftragsartefakts.",
+      "zeitgrenze_ms": 600000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null,
+      "wiederholungen": 3
+    }
+  ]
+}
