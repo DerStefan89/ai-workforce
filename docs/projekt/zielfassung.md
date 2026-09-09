@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.15 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.16 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -28,6 +28,8 @@ v1.12 → v1.13: **§13.3 E-M2-3 und E-M2-4 ergänzt** (Challenge F12, 06.09.202
 v1.13 → v1.14: **§13.3 E-M2-5 ergänzt** (Stefan, 07.09.2026, TECH_PLAN-Vorbereitung F12 WS-1): Checkpoint- und Wirkungsmarken-Payloads bekommen ein optionales `erstellt_am`-Feld (ISO-8601, vom Schreiber gesetzt); bestehende Einträge ohne das Feld bleiben gültig, die Anzeige weist sie als „Zeit unbekannt" aus statt eine Dateizeit zu unterstellen. Löst F-141, macht F12 AK3 erfüllbar. Umsetzung in `state/plan-v1-f12-ws1.md`.
 
 v1.14 → v1.15: **§13.3 E-M2-6 ergänzt** (Challenge F13, 07.09.2026): die echte Rückfrage ist ein Klärzyklus zwischen zwei Läufen; das Gateway bleibt One-Shot, kein interaktiver Modus. Grundlage für Feature F13.
+
+v1.15 → v1.16: **§13.3 E-M2-7, E-M2-8 und E-M2-9 ergänzt** (Stefan, 08./09.09.2026): E-M2-7 (Abbruch und Timeout additiv als `FEHLGESCHLAGEN` mit eigenem `grund`, kein vierter Terminalwert; Grundlage für Feature F14) · E-M2-8 (ein Abbruch wirkt auf genau eine `laufId`, das Auftragsartefakt bleibt unberührt) · E-M2-9 (die Bestehensbedingung läuft ohne gesonderte vorgeschaltete Bedienphase mit dem Beginn der realen M3-Arbeit mit; einzige unveränderte Fortführungsbedingung bleibt der Stopp bei einem `P0`-Finding).
 
 ---
 
@@ -296,6 +298,8 @@ Mehrbenutzerbetrieb, Hosting, Abrechnung · Provider-Adapter *(13)* · parallele
 
 **Bestehensbedingung:** mindestens fünf reale Arbeitsaufträge über den Leitstand, über mindestens drei Tage, darunter je mindestens ein erfolgreicher Lauf, ein fehlgeschlagener Lauf mit Wiederaufnahme, ein Lauf mit echter Rückfrage, ein Lauf mit ausgeschlossener Evidenz. Messgrößen: nötige Terminalwechsel im Normalfall = 0 (Git-Commits zählen nicht, sie bleiben laut D3/§9.1 beim Menschen), manuell geöffnete Dateien unter `kontrollzustand/` = 0, Fehldarstellungen des realen Zustands = 0.
 
+**E-M2-9** *(Stefan, 09.09.2026)* — Die Bestehensbedingung wird nicht als eigene, dem M3-Beginn vorgeschaltete Phase durchgeführt, sondern deckt sich mit dem Beginn der realen M3-Arbeit über den Leitstand: die fünf realen Arbeitsaufträge und die drei Messgrößen laufen ab der ersten echten Nutzung mit, ohne gesonderte Bedienphase. Einzige unveränderte Fortführungsbedingung: ein dabei auftretendes `P0`-Finding stoppt die Weiterarbeit bis zur Behebung.
+
 **Nicht in Meilenstein 2:** automatische Bedarfsanalyse, dynamische Rollen-/Modell-/Werkzeugwahl, Vorschlag des nächsten Schritts (A4), Findings-Ansicht im Produkt, History als eigene Ansicht, Analytics, Design-System, Mehrbenutzer, Mehrprojektverwaltung über das eine reale Profil hinaus, Zustandsautomaten (E-192/F-090 bleiben offen und unberührt).
 
 **E-M2-1** *(Stefan, 06.09.2026)* — Der Auftragstext bekommt ein eigenes Feld in `AusfuehrungsEingaben` und wird dem aus dem Kontextpaket gebauten Evidenzteil des Prompts als getrennter Abschnitt vorangestellt. Er wird nie ein Kontextpaket-Element — die F-124-Entscheidung bleibt in Kraft.
@@ -309,6 +313,10 @@ Mehrbenutzerbetrieb, Hosting, Abrechnung · Provider-Adapter *(13)* · parallele
 **E-M2-5** *(Stefan, 07.09.2026)* — Checkpoint- und Wirkungsmarken-Payloads bekommen ein optionales `erstellt_am`-Feld (ISO-8601, vom Schreiber gesetzt). Bestehende Einträge ohne das Feld bleiben gültig; die Anzeige weist sie als „Zeit unbekannt" aus statt eine Dateizeit zu unterstellen. Löst F-141, macht F12 AK3 erfüllbar.
 
 **E-M2-6** *(Stefan, 07.09.2026, Challenge F13)* — Eine „echte Rückfrage" im Sinne von §13.3 ist ein Klärzyklus zwischen zwei Läufen, nicht eine Frage des Modells im laufenden Prozess. Ein Lauf endet in einem klärungsbedürftigen Zustand (`VERWEIGERT`, `FEHLGESCHLAGEN`, `KLAERUNG_ERFORDERLICH`); der Leitstand zeigt Zustand, Grund und Auflösungsbedingung; Stefan entscheidet und antwortet im Leitstand; die Antwort wird über bestehende Kernverben festgehalten und geht als Evidenzelement in einen Folgelauf mit eigener `lauf_id` und `vorgaengerLaufId`. Das Gateway bleibt One-Shot (`-p`, `--output-format json`); kein interaktiver Modus, keine Session-Wiederaufnahme über `--resume`. D2, AC6 und der Rohstrom-Hash-Nachweis bleiben unberührt.
+
+**E-M2-7** *(Stefan, 08.09.2026)* — Abbruch und Timeout werden additiv als `FEHLGESCHLAGEN` mit eigenem, maschinenlesbarem `grund` festgehalten, nicht als vierter Terminalwert. Die Menge der drei Terminalausgänge bleibt unangetastet. Grundlage für Feature F14.
+
+**E-M2-8** *(Stefan, 08.09.2026)* — Ein Abbruch wirkt auf genau eine `laufId`. Das Auftragsartefakt (F11/F12) bleibt unberührt.
 
 Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig.
 
