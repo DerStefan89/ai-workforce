@@ -1684,3 +1684,60 @@ timeout-/signal-Optionen, Unterscheidung empirisch gegen die reale
 execFile-Fehlerform verifiziert (nicht geraten). Getestet in
 claude-code-gateway.test.ts.
 Feature/Run: F14 WS-1, 09.09.2026.
+
+**F-177** · `TECH_DEBT` · P2 · offen
+Titel: zeitgrenzeMs ist durchgereicht, hat aber keinen Setzer im Realbetrieb
+Beschreibung: AusfuehrungsOptionen.zeitgrenzeMs wird korrekt von F8 bis zu
+starteProzess durchgereicht und ist als Body-Feld gesperrt
+(VERBOTENE_OPTIONEN_FELDER). Kein Codepfad setzt den Wert. Über den Leitstand
+gestartete Läufe haben damit weiterhin kein Timeout.
+Fundstelle: scripts/leitstand-server.mjs:734 (einziger Treffer);
+src/execution-controller/index.ts:258
+Auswirkung: AK2 (F14) strukturell erfüllt, praktisch wirkungslos. Ohne
+Auflösung ist der AK10-Nachweislauf nicht durchführbar.
+Empfohlene Maßnahme: In F14 WS-4 die Herkunft festlegen (Vorschlag:
+Startvorlage, konsistent zu werkzeugStartziel/berechtigungskontext, die seit
+F11 WS-2 ebenfalls serverseitig von dort kommen).
+Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
+
+**F-178** · `TECH_DEBT` · P3 · offen
+Titel: TIMEOUT/maxBuffer-Abgrenzung hängt an undokumentiertem Node-Verhalten
+Beschreibung: Die Unterscheidung stützt sich darauf, dass ein maxBuffer-
+Überlauf fehler.killed !== true liefert — empirisch für die aktuelle
+Node-Version geprüft, aber nicht dokumentiertes Verhalten. Bei einem
+Node-Upgrade könnte ein Überlauf still als TIMEOUT klassifiziert werden.
+Fundstelle: src/claude-code-gateway/prozessstart.ts:94-96, 131
+Auswirkung: Fehlklassifikation nach Node-Upgrade. Durch bestehenden
+Regressionstest abgefangen — kein Betriebsrisiko, solange npm run check vor
+einem Upgrade läuft.
+Empfohlene Maßnahme: Keine Codeänderung. Beim nächsten Node-Upgrade gezielt
+gegenprüfen.
+Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
+
+**F-179** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: .gitignore deckt nur kontrollzustand-test/ exakt ab, nicht die
+Suffix-Varianten der Gate-Skripte
+Beschreibung: check-f10-leitstand.mjs, check-f11-auftrag.mjs,
+check-f12-leitstand-ansicht.mjs u.a. schreiben in
+kontrollzustand-test-<feature>-<ak>/-Verzeichnisse. .gitignore:32 ignoriert
+nur den literalen Namen kontrollzustand-test/. Über 150 solcher Dateien
+standen dadurch ungetrackt im Arbeitsbaum und wurden erst durch git add -A
+sichtbar.
+Fundstelle: .gitignore:29-32; Testverzeichnisse kontrollzustand-test-f10-*,
+-f11-*, -f12-*
+Auswirkung: Ein arglos ausgeführtes git add -A reißt Hunderte Testartefakte
+in einen Commit. Real passiert (F14 WS-1 Commit-Vorbereitung).
+Empfohlene Maßnahme: .gitignore-Muster auf kontrollzustand-test*/
+verallgemeinern (Wildcard).
+Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
+
+**F-180** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Scratch-Ordner "Claude outputs/" außerhalb der Repo-Konventionen
+Beschreibung: Enthält Duplikate bereits committeter F13-Nachweise
+(nachweis-ws3.md identisch mit features/F13/nachweis-ws3.md). Kein Bezug zu
+docs/, state/, features/, nachweis/.
+Fundstelle: Claude outputs/nachweis-ws3.md, Claude outputs/nachweis-ws4.md
+Auswirkung: Gering — nur relevant, wenn erneut versehentlich mitcommitet.
+Empfohlene Maßnahme: Bei Gelegenheit lokal aufräumen oder Ordner in
+.gitignore aufnehmen. Kein aktiver Handlungsbedarf.
+Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
