@@ -47,6 +47,18 @@
  * denselben Wert trägt, mit dem der Testserver konfiguriert wurde (vor dem
  * Fix: `undefined`, da kein viertes Argument übergeben wurde).
  *
+ * F14 WS-4 (features/F14/feature.md) ergänzt (q) AK7 Teil 2 — POST
+ * /api/laeufe/<laufId>/abbrechen: unbekannte/andere laufId → 404 (auch
+ * während EIN anderer Lauf aktiv ist), Treffer → 202 sofort und der beim
+ * Laufstart angelegte AbortController wird real ausgelöst (signal.aborted),
+ * ein zweiter Abbruch-Klick bleibt idempotent (202, kein Absturz,
+ * QA-Befund) — und (r) F-177: zeitgrenzeMs aus einer eigens präparierten
+ * Testvorlage landet unverändert in den AusfuehrungsOptionen des
+ * gestarteten Laufs. (q) belegt zusätzlich F-172s 'aktiv'-Feld
+ * (QA-Befund): true für die konkret laufende laufId, false für eine
+ * andere, ebenfalls existierende laufId UND nach Laufende für dieselbe
+ * laufId — nicht nur "irgendein Lauf aktiv".
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Aufruf: node scripts/check-f10-leitstand.mjs
@@ -697,6 +709,130 @@ function verzoegerung(ms) {
   } finally {
     await schliessen()
     rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (q) F14 WS-4 (AK7, Teil 2): POST /api/laeufe/<laufId>/abbrechen löst den aktiven Lauf aus ──
+{
+  let empfangenesAbbruchSignal
+  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, _eingaben, optionen) => {
+    empfangenesAbbruchSignal = optionen?.abbruchSignal
+    await verzoegerung(120)
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-abbrechen'
+  const auftragId = registriereTestAuftrag(basisVerzeichnis)
+  const laufId = `check-f14-ws4-abbrechen-${randomUUID()}`
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+  try {
+    // (q1) unbekannte/inaktive laufId → 404, kein aktiver Lauf betroffen.
+    const antwortUnbekannt = await fetch(`${basisUrl}/api/laeufe/${laufId}/abbrechen`, { method: 'POST' })
+    if (antwortUnbekannt.status !== 404) {
+      befunde.push(`F14 WS-4 AK7: Abbruch einer unbekannten/inaktiven laufId erwartet 404, erhalten ${antwortUnbekannt.status}`)
+    }
+
+    const start = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragId)) })
+    if (start.status !== 202) {
+      befunde.push(`F14 WS-4 AK7: Laufstart erwartet 202, erhalten ${start.status}`)
+    }
+    await verzoegerung(20)
+
+    // QA-Befund: eine reale Checkpoint-Kette für laufId (NACH der Reservierung angelegt, sonst würde
+    // laufIdBelegt() den Start oben mit 409 ablehnen) und eine zweite, unabhängige laufId — Vorbedingung
+    // für den 'aktiv'-Nachweis unten, da GET /api/laeufe/<laufId> ohne echtes Verzeichnis 404 liefert,
+    // bevor es je das 'aktiv'-Feld baut.
+    schreibeWirkungsmarke(laufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+    const andereLaufId = `check-f14-ws4-abbrechen-andere-${randomUUID()}`
+    schreibeWirkungsmarke(andereLaufId, F12_PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+
+    // (q2) laufAktivLaufId != gesuchte laufId → 404, unabhängig davon, dass EIN Lauf aktiv ist.
+    const antwortFalscheId = await fetch(`${basisUrl}/api/laeufe/eine-andere-laufid/abbrechen`, { method: 'POST' })
+    if (antwortFalscheId.status !== 404) {
+      befunde.push(`F14 WS-4 AK7: Abbruch einer ANDEREN laufId während eines laufenden Laufs erwartet 404, erhalten ${antwortFalscheId.status}`)
+    }
+
+    // QA-Befund (F-172): 'aktiv' bezieht sich auf DIESE konkrete laufId, nicht auf "irgendein Lauf
+    // aktiv" — die aktive laufId muss true zeigen, eine andere, ebenfalls existierende laufId false.
+    const detailAktiv = await (await fetch(`${basisUrl}/api/laeufe/${laufId}`)).json()
+    const detailAndere = await (await fetch(`${basisUrl}/api/laeufe/${andereLaufId}`)).json()
+    if (detailAktiv.aktiv !== true || detailAndere.aktiv !== false) {
+      befunde.push(
+        `F14 WS-4 F-172: 'aktiv' sollte für die laufende laufId true und für eine ANDERE, existierende laufId false sein, erhalten ${JSON.stringify({ aktiv: detailAktiv.aktiv, andereAktiv: detailAndere.aktiv })}`
+      )
+    } else {
+      console.log("✓ F14 WS-4 F-172: 'aktiv' unterscheidet korrekt DIESE laufId von einer anderen, ebenfalls existierenden laufId — nicht nur 'irgendein Lauf aktiv'.")
+    }
+
+    // (q3) Grünfall: laufAktivLaufId trifft → 202 sofort, ohne auf das Laufende zu warten, UND der beim
+    // Start angelegte AbortController wird real ausgelöst (empfangenesAbbruchSignal.aborted === true).
+    const antwortAbbruch = await fetch(`${basisUrl}/api/laeufe/${laufId}/abbrechen`, { method: 'POST' })
+    if (antwortAbbruch.status !== 202) {
+      befunde.push(`F14 WS-4 AK7: Abbruch des aktiven Laufs erwartet 202, erhalten ${antwortAbbruch.status}`)
+    } else if (empfangenesAbbruchSignal?.aborted !== true) {
+      befunde.push('F14 WS-4 AK7: der beim Laufstart angelegte AbortController wurde durch den Abbruch-Endpunkt nicht real ausgelöst (signal.aborted sollte true sein)')
+    }
+
+    // QA-Befund: ein zweiter Abbruch-Klick auf denselben, noch aktiven Lauf darf nicht abstürzen —
+    // AbortController.abort() ist idempotent (WHATWG-Spezifikation), der zweite Aufruf bekommt
+    // dasselbe 202 wie der erste, kein 500.
+    const antwortDoppelklick = await fetch(`${basisUrl}/api/laeufe/${laufId}/abbrechen`, { method: 'POST' })
+    if (antwortDoppelklick.status !== 202) {
+      befunde.push(`F14 WS-4 AK7: ein zweiter Abbruch-Klick auf denselben, noch aktiven Lauf erwartet ebenfalls 202 (idempotent), erhalten ${antwortDoppelklick.status}`)
+    }
+
+    if (befunde.length === 0) {
+      console.log('✓ F14 WS-4 AK7: unbekannte/andere laufId → 404, Abbruch der aktiven laufId → 202 mit real ausgelöstem AbortController, Doppelklick bleibt idempotent (202, kein Absturz).')
+    }
+
+    // Nach Laufende (mock-Verzögerung 120ms, längst abgelaufen): laufAktiv wurde im .then zurückgesetzt —
+    // dieselbe laufId zeigt jetzt 'aktiv:false' (QA-Befund, F-172 vollständig belegt, nicht nur der true-Fall).
+    await verzoegerung(150)
+    const detailNachEnde = await (await fetch(`${basisUrl}/api/laeufe/${laufId}`)).json()
+    if (detailNachEnde.aktiv !== false) {
+      befunde.push(`F14 WS-4 F-172: nach Laufende sollte 'aktiv' auf false zurückfallen, erhalten ${detailNachEnde.aktiv}`)
+    } else {
+      console.log("✓ F14 WS-4 F-172: nach Laufende zeigt dieselbe laufId 'aktiv:false' — laufAktiv wurde real zurückgesetzt.")
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (r) F14 WS-4 (F-177): zeitgrenzeMs aus der Startvorlage landet unverändert in den optionen des Laufs ──
+{
+  // Reviewer-Befund: Datei-Erzeugung UND Serverstart liegen jetzt selbst im try — ein Wurf an
+  // irgendeiner Stelle (auch vor starteTestserver) lässt weder die Testvorlage noch basisVerzeichnis
+  // zurück (anders als zuvor, wo beides vor dem try lag und bei einem frühen Wurf nie geräumt worden wäre).
+  const testStartvorlagePfad = 'startvorlagen/test-f14-ws4-zeitgrenze.json'
+  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-zeitgrenze'
+  let schliessen = async () => {}
+  try {
+    const testVorlage = JSON.parse(readFileSync('startvorlagen/beispielprojekt.json', 'utf-8'))
+    testVorlage.zeitgrenzeMs = 42000
+    writeFileSync(testStartvorlagePfad, JSON.stringify(testVorlage))
+
+    let empfangeneOptionen
+    const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, _eingaben, optionen) => {
+      empfangeneOptionen = optionen
+      return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+    }
+    const auftragId = registriereTestAuftrag(basisVerzeichnis)
+    const testserver = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad: testStartvorlagePfad })
+    schliessen = testserver.schliessen
+
+    const laufId = `check-f14-ws4-zeitgrenze-${randomUUID()}`
+    const antwort = await fetch(`${testserver.basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragId)) })
+    await verzoegerung(30)
+    if (antwort.status !== 202 || empfangeneOptionen?.zeitgrenzeMs !== 42000) {
+      befunde.push(`F14 WS-4 F-177: erwartet 202 und optionen.zeitgrenzeMs 42000 aus der Startvorlage, erhalten status=${antwort.status}, zeitgrenzeMs=${empfangeneOptionen?.zeitgrenzeMs}`)
+    } else {
+      console.log('✓ F14 WS-4 F-177: zeitgrenzeMs aus der Startvorlage landet unverändert in den AusfuehrungsOptionen des Laufs.')
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    rmSync(testStartvorlagePfad, { force: true })
   }
 }
 

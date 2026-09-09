@@ -34,6 +34,11 @@
         "maxBytes": { "type": "integer", "minimum": 1 }
       }
     },
+    "zeitgrenzeMs": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "F14 WS-4 (F-177). Optional — fehlt sie, bleibt der Prozessstart ohne Wanduhr-Grenze."
+    },
     "werkzeugsaetze": {
       "type": "object",
       "minProperties": 2,

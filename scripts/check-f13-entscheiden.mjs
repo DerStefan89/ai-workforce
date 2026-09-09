@@ -33,6 +33,17 @@
  * Wirkungsmarke (D5); (j) 'terminal' auf einem bereits ABGESCHLOSSENEN Lauf
  * → 400 (F-167-Nebenbefund, bisher ungeprüft).
  *
+ * F14 WS-4 (AK8, löst F-175) ergänzt (k): 'terminal' UND 'kenntnisnahme' auf
+ * der gerade aktiven laufId (D13, laufAktivLaufId) → 400 mit 'aktiv' im
+ * Grund, real gegen einen laufenden Testserver mit einer langsamen
+ * fuehreAufgabeDurchFn-Attrappe belegt (Muster (g)/AK6) — anders als (g)
+ * trifft hier dieselbe laufId, kein Checkpoint für sie nötig, weil der Lock
+ * vor jedem Dateizugriff greift. Reviewer-Nachtrag: zusätzlich belegt (k),
+ * dass 'antwort'/'stale' auf GENAU DERSELBEN aktiven laufId (echte
+ * transport-Kette über baueTransportKette) weiterhin mit 200 durchgehen —
+ * (g) allein deckt nur eine ANDERE laufId ab, nicht die zugesicherte
+ * Ausnahme auf dem aktiven Lauf selbst.
+ *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
  * Aufruf: node scripts/check-f13-entscheiden.mjs
@@ -594,6 +605,81 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     } else {
       console.log("✓ F-167: art 'terminal' auf einem bereits ABGESCHLOSSENEN Lauf wird mit 400 abgelehnt — keine verwaiste zweite Terminalmarke mehr möglich.")
     }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
+  }
+}
+
+// ─── (k) F14 WS-4 (AK8, löst F-175): 'terminal'/'kenntnisnahme' auf der GERADE AKTIVEN laufId → 400 ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-schreibsperre'
+  const fuehreAufgabeDurchFn = async () => {
+    await verzoegerung(400)
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const { registriereAuftrag } = await import('../src/auftrag/index.ts')
+  const auftragId = `check-f14-ws4-ak8-auftrag-${randomUUID()}`
+  registriereAuftrag(auftragId, PROFIL_REFERENZ, 'Testtitel', 'Testauftragstext', { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+  try {
+    const aktiveLaufId = `check-f14-ws4-ak8-aktiv-${randomUUID()}`
+    const start = await fetch(`${basisUrl}/api/laeufe`, {
+      method: 'POST',
+      body: JSON.stringify({ laufId: aktiveLaufId, rolle: 'ausfuehrung', anfragen: [], budget: {}, aufrufEingaben: { modell: 'test-modell' }, werkzeugsatz: 'lesend', auftragId }),
+    })
+    if (start.status !== 202) {
+      befunde.push(`F14 WS-4 AK8-Vorbereitung: Laufstart erwartet 202, erhalten ${start.status}`)
+    }
+
+    // Während laufAktiv=true UND aktiveLaufId === laufAktivLaufId (D13): 'terminal' auf GENAU dieser
+    // laufId wird abgelehnt, BEVOR stelleLaufstatusFest/schreibeWirkungsmarke überhaupt aufgerufen wird
+    // (kein Checkpoint für aktiveLaufId nötig, um das zu belegen — der Lock greift vor jedem Dateizugriff).
+    const terminalAufAktivem = await fetch(`${basisUrl}/api/entscheidungen`, {
+      method: 'POST',
+      body: JSON.stringify({ art: 'terminal', laufId: aktiveLaufId, ergebnis: 'ERFOLGREICH', begruendung: 'sollte abgelehnt werden' }),
+    })
+    const terminalKoerper = await terminalAufAktivem.json()
+    const kenntnisnahmeAufAktivem = await fetch(`${basisUrl}/api/entscheidungen`, {
+      method: 'POST',
+      body: JSON.stringify({ art: 'kenntnisnahme', laufId: aktiveLaufId, begruendung: 'sollte abgelehnt werden' }),
+    })
+    const kenntnisnahmeKoerper = await kenntnisnahmeAufAktivem.json()
+
+    if (
+      terminalAufAktivem.status !== 400 ||
+      !terminalKoerper.grund.includes('aktiv') ||
+      kenntnisnahmeAufAktivem.status !== 400 ||
+      !kenntnisnahmeKoerper.grund.includes('aktiv')
+    ) {
+      befunde.push(
+        `F14 WS-4 AK8: 'terminal'/'kenntnisnahme' auf der aktiven laufId sollten beide 400 mit 'aktiv' im Grund liefern, erhalten ${JSON.stringify({ terminalStatus: terminalAufAktivem.status, terminalGrund: terminalKoerper.grund, kenntnisnahmeStatus: kenntnisnahmeAufAktivem.status, kenntnisnahmeGrund: kenntnisnahmeKoerper.grund })}`
+      )
+    } else {
+      console.log("✓ F14 WS-4 AK8: 'terminal' und 'kenntnisnahme' auf der gerade aktiven laufId werden mit 400 abgelehnt (löst F-175), BEVOR irgendetwas geschrieben wird.")
+    }
+
+    // Reviewer-Befund: die zugesicherte Ausnahme ('antwort'/'stale' bleiben unberührt, AK6 aus F13
+    // WS-2) muss auf GENAU DERSELBEN aktiven laufId belegt werden, nicht nur auf einer anderen (das
+    // deckt bereits Test (g)/AK6 ab) — sonst würde ein fehlender Art-Guard hier unbemerkt bleiben.
+    baueTransportKette(aktiveLaufId, basisVerzeichnis)
+    const antwortAufAktivem = await fetch(`${basisUrl}/api/entscheidungen`, {
+      method: 'POST',
+      body: JSON.stringify({ art: 'antwort', laufId: aktiveLaufId, antwort: 'Ja.', einstufung: 'ERFOLGREICH' }),
+    })
+    const staleAufAktivem = await fetch(`${basisUrl}/api/entscheidungen`, {
+      method: 'POST',
+      body: JSON.stringify({ art: 'stale', laufId: aktiveLaufId, entscheidung: 'nachtrag' }),
+    })
+    if (antwortAufAktivem.status !== 200 || staleAufAktivem.status !== 200) {
+      befunde.push(
+        `F14 WS-4 AK8-Regression: 'antwort'/'stale' auf der GERADE AKTIVEN laufId müssen weiterhin durchgehen (AK6, unberührt vom Lock), erhalten ${JSON.stringify({ antwortStatus: antwortAufAktivem.status, staleStatus: staleAufAktivem.status })}`
+      )
+    } else {
+      console.log("✓ F14 WS-4 AK8-Regression: 'antwort' und 'stale' auf derselben, gerade aktiven laufId bleiben unberührt vom Lock (200) — nur 'terminal'/'kenntnisnahme' sind betroffen.")
+    }
+
+    await verzoegerung(450)
   } finally {
     await schliessen()
     rmSync(basisVerzeichnis, { recursive: true, force: true })

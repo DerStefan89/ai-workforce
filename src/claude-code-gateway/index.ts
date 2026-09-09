@@ -55,6 +55,10 @@
  * F14 WS-1 (AK2): GatewayOptionen.zeitgrenzeMs ist reine Durchreichung an
  * prozessstart.ts' starteProzess, unverändert im Rohstrom mitgeführt
  * (beendigungsart). starteGateway interpretiert den Wert selbst nicht.
+ *
+ * F14 WS-4 (AK7): GatewayOptionen.abbruchSignal folgt demselben Muster wie
+ * zeitgrenzeMs — reine Durchreichung an starteProzess, starteGateway liest
+ * den Wert selbst nicht.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -140,6 +144,8 @@ interface GatewayOptionen {
   startfreigabeRepoWurzel?: string
   /** Harte Wanduhr-Grenze für den Prozessstart in Millisekunden (F14 WS-1, AK2) — unverändert an prozessstart.ts' starteProzess durchgereicht. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Timeout) unangetastet. */
   zeitgrenzeMs?: number
+  /** Manuelles Abbruchsignal für den Prozessstart (F14 WS-4, AK7) — unverändert an prozessstart.ts' starteProzess durchgereicht, nach demselben Muster wie zeitgrenzeMs. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Signal) unangetastet. */
+  abbruchSignal?: AbortSignal
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -296,7 +302,11 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
 
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)
 
-  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, { starter: optionen.starter, zeitgrenzeMs: optionen.zeitgrenzeMs })
+  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, {
+    starter: optionen.starter,
+    zeitgrenzeMs: optionen.zeitgrenzeMs,
+    abbruchSignal: optionen.abbruchSignal,
+  })
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)

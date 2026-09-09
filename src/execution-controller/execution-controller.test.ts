@@ -578,6 +578,33 @@ test('F14 WS-1 AK2: zeitgrenzeMs aus AusfuehrungsOptionen kommt unverändert am 
   }
 })
 
+// ─── F14 WS-4 (AK7): abbruchSignal von AusfuehrungsOptionen bis zum Starter ──
+
+test('F14 WS-4 AK7: abbruchSignal aus AusfuehrungsOptionen kommt unverändert am dritten Starter-Parameter an — Laufzeitbeleg der F8→F6a-Durchreichung', async () => {
+  const laufId = neueLaufId('f14-ak7-abbruchsignal')
+  const controller = new AbortController()
+  let empfangeneOptionen: Parameters<Starter>[2]
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      abbruchSignal: controller.signal,
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.abbruchSignal, controller.signal, 'abbruchSignal muss unverändert bis zum Starter durchgereicht werden (AK7)')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // ─── WS-2a: AK4/AK6, Delta 1 ──────────────────────────────────────────────
 
 /** VERWEIGERT-Attrappe (kein bisheriges Fixture erzeugt diese Klassifikation, siehe Vertrag CONTEXT): ein permission_denials-Eintrag mit dem übergebenen command, sonst identisch zu attrappeMitValidemErgebnis geformt (TP-03d-Muster). */

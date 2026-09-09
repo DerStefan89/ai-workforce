@@ -18,6 +18,11 @@
  * und Spies sind explizit zweiparametrig (startziel, tokens) — ein
  * Ein-Parameter-Callback würde nach dem WS4-Signaturwechsel still am
  * falschen Argument binden (Delta 10).
+ *
+ * F14 WS-4 (AK7) deckt zusätzlich GatewayOptionen.abbruchSignal ab — reine
+ * Durchreichung von starteGateway an starteProzess, per Spy-Starter belegt
+ * (Grünfall: gesetzt, Regression: fehlt es, bleibt es undefined statt eines
+ * erratenen Werts).
  */
 
 import { execFileSync } from 'node:child_process'
@@ -304,6 +309,54 @@ test('starteGateway liefert eine vollständige Laufakte bei validem Ergebnisobje
     // bleibt bis F7 bewusst KLAERUNG_ERFORDERLICH.
     const status = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
     assert.strictEqual(status.status, 'KLAERUNG_ERFORDERLICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway reicht optionen.abbruchSignal unverändert an starteProzess durch (F14 WS-4, AK7)', async () => {
+  const laufId = neueLaufId('gateway-abbruchsignal')
+  const controller = new AbortController()
+  let empfangeneOptionen: { zeitgrenzeMs?: number; abbruchSignal?: AbortSignal } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      abbruchSignal: controller.signal,
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.abbruchSignal, controller.signal, 'starteGateway darf optionen.abbruchSignal weder verwerfen noch neu bauen')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway übergibt kein abbruchSignal an starteProzess, wenn optionen.abbruchSignal fehlt — Regression (F14 WS-4)', async () => {
+  const laufId = neueLaufId('gateway-ohne-abbruchsignal')
+  let empfangeneOptionen: { zeitgrenzeMs?: number; abbruchSignal?: AbortSignal } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.abbruchSignal, undefined)
   } finally {
     raeumeKette(laufId)
   }
