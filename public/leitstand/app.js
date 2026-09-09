@@ -87,6 +87,17 @@
  * verschwundenem Lauf) zeigt Klartext im Panel (Muster zeigeStartFehler),
  * nie einen leeren Container.
  *
+ * F14 WS-5 (AK7-Bedienung, Vorbereitung AK10): #lauf-detail-inhalt trägt bei
+ * detail.aktiv === true (GET /api/laeufe/<laufId>, WS-4/F-172) zusätzlich
+ * einen Abbrechen-Block (renderAbbrechenBlock) — POST
+ * /api/laeufe/<laufId>/abbrechen (WS-4, bereits idempotent/404-sicher, daher
+ * kein Bestätigungsdialog). Die Rückmeldung ist rein clientseitig (Button
+ * deaktivieren, Text "Abbruch angefordert", Muster initStartformular) — kein
+ * neuer Poll: die Kopfdaten-Liste (#laeufe) zeigt den Terminalzustand des
+ * abgebrochenen Laufs bereits über den bestehenden 2-Sekunden-Poll (laden()),
+ * das Detail-Panel selbst aktualisiert sich wie gehabt nur auf erneuten
+ * "Details"-Klick oder nach einer Entscheidung (Muster sendeEntscheidung).
+ *
  * Wird aufgerufen von: public/leitstand/index.html
  *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
@@ -620,6 +631,25 @@ function renderRohstrom(rohstrom) {
   </tbody></table></div>`
 }
 
+/**
+ * F14 WS-5 (AK7-Bedienung): Abbrechen-Button, nur bei detail.aktiv === true
+ * (WS-4/F-172 — dieser Lauf ist gerade der aktive Arbeitsstrang der
+ * Serverinstanz, D13). Kein Bestätigungsdialog (Server ist bereits
+ * idempotent/404-sicher, WS-4). Klick-Rückmeldung übernimmt
+ * initAbbrechenBedienung rein clientseitig (Button deaktivieren, Text
+ * "Abbruch angefordert").
+ * @param aktiv - detail.aktiv aus GET /api/laeufe/<laufId>
+ * @param laufId - Lauf-Kennung
+ * @returns HTML-Block, oder leerer String, wenn der Lauf nicht aktiv ist
+ */
+function renderAbbrechenBlock(aktiv, laufId) {
+  if (!aktiv) return ''
+  return `<div class="detail-block">
+    <button id="abbrechen-btn" data-lauf-id="${escapeHtml(laufId)}">Abbrechen</button>
+    <p id="abbrechen-fehler" class="fehler" hidden></p>
+  </div>`
+}
+
 const CHECKPOINT_TABELLE_KOPF = `<tr>
   <th>Sequenz</th><th>Zeit</th><th>Status</th><th>Typ</th><th>Lineage-Art</th><th>Erzeugungsart</th>
   <th>Artefakt-ID</th><th>Entscheidung</th><th>Bezieht sich auf</th><th>Stale</th><th>Aufgabe</th><th>Transport-Status</th><th>Executor</th><th>Ergebnis</th>
@@ -814,6 +844,7 @@ async function ladeLaufDetail(laufId) {
     const detail = await antwort.json()
     if (gewaehlteLaufId !== laufId) return
     inhalt.innerHTML = [
+      renderAbbrechenBlock(detail.aktiv, laufId),
       renderAuftrag(detail.auftrag),
       renderLaufStatus(detail.laufStatus, detail.verweigertDaten),
       renderKontextpaket(detail.kontextpaket),
@@ -844,6 +875,60 @@ function initDetailBedienung() {
   })
 }
 
+/**
+ * F14 WS-5 (AK7-Bedienung): Klick-Delegation für #abbrechen-btn (Muster
+ * initDetailBedienung — #lauf-detail-inhalt wird bei jedem ladeLaufDetail()
+ * komplett neu gerendert). Löst POST /api/laeufe/<laufId>/abbrechen aus und
+ * gibt sofort clientseitige Rückmeldung (Button deaktivieren, Text "Abbruch
+ * angefordert") — kein Reload des Detail-Panels danach, weil laufAktiv
+ * serverseitig erst nach dem Laufende zurückgesetzt wird (D13) und ein
+ * sofortiger Reload den Button daher nicht zuverlässig verschwinden ließe;
+ * der reale Terminalzustand erscheint stattdessen wie gehabt in der über
+ * laden() gepollten Kopfdaten-Liste. Ein 404 (Lauf inzwischen bereits
+ * beendet) wird als Klartext gezeigt, kein verschluckter Fehler (Muster
+ * zeigeStartFehler).
+ *
+ * QA-Befund: wechselt der Nutzer das Detail-Panel (erneuter "Details"-Klick,
+ * auch auf denselben Lauf), während diese Anfrage noch offen ist, hat
+ * ladeLaufDetail() #lauf-detail-inhalt bereits neu gerendert — #abbrechen-btn/
+ * #abbrechen-fehler dieses Klicks existieren dann nicht mehr im DOM. Derselbe
+ * Race-Schutz wie in ladeLaufDetail (gewaehlteLaufId-Vergleich) verhindert
+ * den sonst ungefangenen TypeError beim Schreiben auf ein verschwundenes
+ * Element — bei einem Panel-Wechsel wird der Fehler nur noch geloggt, nie
+ * verschluckt, aber auch nicht mehr gegen ein fremdes Panel angezeigt.
+ */
+function initAbbrechenBedienung() {
+  document.getElementById('lauf-detail-inhalt').addEventListener('click', async (ereignis) => {
+    const button = ereignis.target.closest('#abbrechen-btn')
+    if (!button || button.disabled) return
+    const laufId = button.dataset.laufId
+    button.disabled = true
+    button.textContent = 'Abbruch angefordert'
+    try {
+      const antwort = await fetch(`/api/laeufe/${encodeURIComponent(laufId)}/abbrechen`, { method: 'POST' })
+      if (!antwort.ok) {
+        const koerper = await antwort.json().catch(() => ({}))
+        meldeAbbrechenFehler(laufId, `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`, button)
+      }
+    } catch (fehler) {
+      meldeAbbrechenFehler(laufId, `Anfrage fehlgeschlagen: ${fehler.message}`, button)
+    }
+  })
+}
+
+/** Siehe initAbbrechenBedienung-Kommentar (QA-Befund) — zeigt den Fehler nur, wenn das Detail-Panel noch denselben Lauf zeigt, sonst nur Konsolen-Log statt eines Zugriffs auf ein bereits verschwundenes DOM-Element. @param laufId - Lauf-Kennung des fehlgeschlagenen Abbruchversuchs @param text - anzuzeigender Fehlertext @param button - der geklickte Button, wird bei noch aktuellem Panel reaktiviert */
+function meldeAbbrechenFehler(laufId, text, button) {
+  if (gewaehlteLaufId !== laufId) {
+    console.error(`Abbruch für '${laufId}' fehlgeschlagen (Detail-Panel zeigt inzwischen einen anderen Lauf): ${text}`)
+    return
+  }
+  const anzeige = document.getElementById('abbrechen-fehler')
+  anzeige.textContent = text
+  anzeige.hidden = false
+  button.disabled = false
+  button.textContent = 'Abbrechen'
+}
+
 const POLL_INTERVALL_MS = 2000
 
 initEvidenzdateien()
@@ -852,6 +937,7 @@ initStartformular()
 initWiederaufnahmeBedienung()
 initDetailBedienung()
 initEntscheidungBedienung()
+initAbbrechenBedienung()
 laden()
 ladeStartfehler()
 ladeAuftraege().then(aktualisiereLaufIdVorschlag)

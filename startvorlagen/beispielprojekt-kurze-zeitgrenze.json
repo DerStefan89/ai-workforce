@@ -1,0 +1,22 @@
+{
+  "startvorlage_schema": "v0",
+  "profilPfad": "profiles/beispielprojekt.json",
+  "werkzeugStartziel": ["C:\\Program Files\\claude\\claude.exe"],
+  "werkzeugVersionDeklariert": "2.1.258 (Claude Code)",
+  "berechtigungskontext": "profil-standard",
+  "modell": "claude-sonnet-5",
+  "standardBudget": { "maxElemente": 20, "maxBytes": 200000 },
+  "zeitgrenzeMs": 15000,
+  "werkzeugsaetze": {
+    "lesend": {
+      "art": "lesend",
+      "modus": "DEKLARIERT",
+      "erlaubte_werkzeuge": ["Read", "Grep", "Glob"]
+    },
+    "schreibend": {
+      "art": "schreibend",
+      "modus": "DEKLARIERT",
+      "erlaubte_werkzeuge": ["Read", "Grep", "Glob", "Write", "Edit"]
+    }
+  }
+}
