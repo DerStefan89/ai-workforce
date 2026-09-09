@@ -573,6 +573,7 @@ test('starteProzess prüft das Startziel vor optionen.starter — Rot-Fall, Spy-
   assert.strictEqual(starterAufgerufen, false, 'starter darf bei ungültigem Startziel nie aufgerufen werden')
   assert.strictEqual(ergebnis.exitCode, null)
   assert.ok(ergebnis.startfehler)
+  assert.strictEqual(ergebnis.beendigungsart, null, 'ein Guard-Rot-Fall ist kein Timeout/Abbruch (F14 WS-1, AK3)')
 })
 
 test('starteProzess resolved statt zu werfen, wenn execFile synchron wirft — NUL-Byte-Token, plattformunabhängig (Delta 5/6)', async () => {
@@ -580,6 +581,63 @@ test('starteProzess resolved statt zu werfen, wenn execFile synchron wirft — N
   assert.strictEqual(ergebnis.exitCode, null)
   assert.ok(ergebnis.startfehler, 'startfehler muss bei einem synchronen execFile-Wurf gesetzt sein')
   assert.ok(ergebnis.startfehler.message.length > 0)
+  assert.strictEqual(ergebnis.beendigungsart, null, 'ein Startfehler ist kein Timeout/Abbruch (F14 WS-1, AK3)')
+})
+
+// ─── F14 WS-1: Abbruchfähigkeit im Starter-Vertrag (AK1), zeitgrenzeMs/
+// abbruchSignal über echterStarter (AK3). Empirisch gegen die reale
+// execFile-Fehlerform dieser Node-Version geprüft (Timeout: code null,
+// killed true, signal 'SIGTERM'; Abbruch: code 'ABORT_ERR') — kein
+// erratenes Verhalten. ────────────────────────────────────────────────────
+
+test('starteProzess reicht zeitgrenzeMs/abbruchSignal an einen bestehenden, zweiparametrigen Starter durch, ohne ihn zu brechen — Regression (Starter-Vertrag additiv, AK1)', async () => {
+  const controller = new AbortController()
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, [], {
+    starter: attrappeMitValidemErgebnis,
+    zeitgrenzeMs: 5000,
+    abbruchSignal: controller.signal,
+  })
+  assert.strictEqual(ergebnis.exitCode, 0)
+  assert.strictEqual(ergebnis.beendigungsart, null)
+})
+
+test('starteProzess killt einen langsamen Kindprozess bei Überschreiten von zeitgrenzeMs — Timeout, Grünfall (F14 WS-1, AK1/AK3)', async () => {
+  const start = Date.now()
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'setTimeout(() => {}, 5000)'], { zeitgrenzeMs: 300 })
+  const dauerMs = Date.now() - start
+  assert.strictEqual(ergebnis.beendigungsart, 'TIMEOUT')
+  assert.strictEqual(ergebnis.exitCode, null)
+  assert.strictEqual(ergebnis.startfehler, null)
+  assert.ok(dauerMs < 4500, `Prozess hätte nach ~300ms gekillt werden müssen, lief tatsächlich ${dauerMs}ms`)
+})
+
+test('starteProzess markiert einen regulär beendeten Prozess trotz gesetzter zeitgrenzeMs nicht als TIMEOUT — Regression (F14 WS-1, AK3)', async () => {
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.exit(0)'], { zeitgrenzeMs: 5000 })
+  assert.strictEqual(ergebnis.beendigungsart, null)
+  assert.strictEqual(ergebnis.exitCode, 0)
+})
+
+test('starteProzess bricht einen laufenden Kindprozess über abbruchSignal ab — Abbruch, Grünfall (F14 WS-1, AK1/AK3)', async () => {
+  const controller = new AbortController()
+  const laufendesErgebnis = starteProzess(GUELTIGES_STARTZIEL, ['-e', 'setTimeout(() => {}, 5000)'], { abbruchSignal: controller.signal })
+  setTimeout(() => controller.abort(), 200)
+  const ergebnis = await laufendesErgebnis
+  assert.strictEqual(ergebnis.beendigungsart, 'ABBRUCH')
+  assert.strictEqual(ergebnis.exitCode, null)
+  assert.strictEqual(ergebnis.startfehler, null)
+})
+
+test('starteProzess lässt einen Prozess mit unbenutztem abbruchSignal regulär beenden — Regression (F14 WS-1, AK3)', async () => {
+  const controller = new AbortController()
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.exit(0)'], { abbruchSignal: controller.signal })
+  assert.strictEqual(ergebnis.beendigungsart, null)
+  assert.strictEqual(ergebnis.exitCode, 0)
+})
+
+test('starteProzess markiert einen maxBuffer-Überlauf nicht als TIMEOUT — Regression (Code-Review-Hinweis F14 WS-1: killed bleibt bei diesem Fehlerpfad undefined statt true, empirisch geprüft, kein erratenes Verhalten)', async () => {
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.stdout.write("x".repeat(1024 * 1024 * 65))'])
+  assert.strictEqual(ergebnis.beendigungsart, null)
+  assert.ok(ergebnis.startfehler, 'ein maxBuffer-Überlauf muss weiterhin als startfehler klassifiziert werden, nicht als TIMEOUT')
 })
 
 // ─── WS4: starteGateway mit ungültigem Startziel (Delta 11) ─────────────────

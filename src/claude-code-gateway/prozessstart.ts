@@ -25,12 +25,18 @@
  * TP-01e Messfall A: Abbruch, leeres stdout/stderr, Exit 137, kein
  * Ergebnisobjekt) — für Tests und Gate-Skript gemeinsam nutzbar (D5, kein
  * zweimal von Hand abgetipptes Fixture).
+ *
+ * F14 WS-1 (features/F14/feature.md, AK1-AK3, löst F-176): echterStarter
+ * nutzt execFiles eingebaute timeout-/signal-Optionen für Wanduhr-Grenze
+ * und manuellen Abbruch — Details am echterStarter selbst. Kein
+ * Prozessbaum-Kill unter Windows (WS-2, bewusst offen), keine
+ * F7-Klassifikation dieser neuen ProzessErgebnis-Form (WS-3).
  */
 
 import { execFile } from 'node:child_process'
 import { statSync } from 'node:fs'
 import { extname, resolve as aufgeloesterPfad } from 'node:path'
-import type { AufrufTokens, ProzessErgebnis, Starter } from './types.ts'
+import type { AufrufTokens, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 
 const ENDUNGS_SPERRLISTE = new Set(['.cmd', '.bat', '.com', '.ps1'])
 const BASISNAME_SPERRLISTE = new Set(['cmd.exe', 'powershell.exe', 'pwsh.exe', 'wsl.exe', 'bash.exe', 'sh.exe'])
@@ -78,47 +84,90 @@ export function pruefeStartziel(startziel: string[]): { ok: true } | { ok: false
   return { ok: true }
 }
 
-const echterStarter: Starter = (startziel, tokens) =>
+/**
+ * F14 WS-1 (AK1-AK3): nutzt execFiles eingebaute timeout-/signal-Optionen
+ * statt eines eigenen Timers — Node killt den Kindprozess selbst und meldet
+ * das Ergebnis über den bestehenden Callback-Fehlerpfad. Unterscheidung im
+ * Callback: ein Abbruch über abbruchSignal liefert fehler.code ===
+ * 'ABORT_ERR' (Node-Konvention für AbortSignal-Integrationen); ein
+ * Timeout-Kill über zeitgrenzeMs liefert fehler.killed === true ohne
+ * diesen Code. Ein maxBuffer-Überlauf (bestehende Grenze, unverändert seit
+ * vor F14) liefert dagegen empirisch geprüft killed: undefined — verwechselt
+ * sich nicht mit TIMEOUT (Regressionstest in claude-code-gateway.test.ts).
+ * Beide Timeout/Abbruch-Fälle haben keinen numerischen exitCode (der Prozess
+ * wurde per Signal beendet, nicht regulär), deshalb exitCode: null wie
+ * beim bestehenden Startfehler-Zweig — beendigungsart ist das einzige neue
+ * Unterscheidungsmerkmal (additiv, F-176).
+ *
+ * Ohne zeitgrenzeMs/abbruchSignal wird timeout/signal in den execFile-
+ * Optionen gar nicht gesetzt — execFiles eigener Default (timeout: 0 =
+ * kein Timeout) greift unverändert. Kein fachlich fest codierter Default
+ * (Vorgabe AK2): dies ist die einzige Stelle, die überhaupt einen
+ * Timeout-Wert an den Prozessstart weiterreicht.
+ *
+ * WS-2 (bewusst NICHT hier gelöst, F14 Scope): unter Windows killt weder
+ * execFiles timeout-Mechanismus noch signal Unterprozesse des
+ * Kindprozesses mit — nur der direkte Kindprozess stirbt. Ein von diesem
+ * gestarteter Unterprozessbaum bleibt verwaist.
+ */
+const echterStarter: Starter = (startziel, tokens, optionen) =>
   new Promise((resolve) => {
     try {
-      execFile(
-        startziel[0],
-        [...startziel.slice(1), ...tokens],
-        { encoding: 'utf8', maxBuffer: 1024 * 1024 * 64 },
-        (fehler, stdout, stderr) => {
-          if (fehler === null) {
-            resolve({ stdout, stderr, exitCode: 0, startfehler: null })
-            return
-          }
-          if (typeof fehler.code === 'number') {
-            resolve({ stdout, stderr, exitCode: fehler.code, startfehler: null })
-            return
-          }
-          resolve({
-            stdout,
-            stderr,
-            exitCode: null,
-            startfehler: { code: typeof fehler.code === 'string' ? fehler.code : null, message: fehler.message },
-          })
+      const execFileOptionen = {
+        encoding: 'utf8' as const,
+        maxBuffer: 1024 * 1024 * 64,
+        ...(optionen?.zeitgrenzeMs !== undefined ? { timeout: optionen.zeitgrenzeMs } : {}),
+        ...(optionen?.abbruchSignal !== undefined ? { signal: optionen.abbruchSignal } : {}),
+      }
+      execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
+        if (fehler === null) {
+          resolve({ stdout, stderr, exitCode: 0, startfehler: null, beendigungsart: null })
+          return
         }
-      )
+        if (fehler.code === 'ABORT_ERR') {
+          resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' })
+          return
+        }
+        if (fehler.killed === true) {
+          resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'TIMEOUT' })
+          return
+        }
+        if (typeof fehler.code === 'number') {
+          resolve({ stdout, stderr, exitCode: fehler.code, startfehler: null, beendigungsart: null })
+          return
+        }
+        resolve({
+          stdout,
+          stderr,
+          exitCode: null,
+          startfehler: { code: typeof fehler.code === 'string' ? fehler.code : null, message: fehler.message },
+          beendigungsart: null,
+        })
+      })
     } catch (fehler) {
       const f = fehler as NodeJS.ErrnoException
-      resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: typeof f.code === 'string' ? f.code : null, message: f.message } })
+      resolve({
+        stdout: '',
+        stderr: '',
+        exitCode: null,
+        startfehler: { code: typeof f.code === 'string' ? f.code : null, message: f.message },
+        beendigungsart: null,
+      })
     }
   })
 
-/** Der Guard greift vor optionen.starter (plan-v2 Delta 9) — ein Rot-Fall mit injiziertem Spy-Starter belegt damit, dass bei ungültigem Startziel kein Spawn versucht wird. */
-export function starteProzess(startziel: string[], tokens: AufrufTokens, optionen: { starter?: Starter } = {}): Promise<ProzessErgebnis> {
+/** Der Guard greift vor optionen.starter (plan-v2 Delta 9) — ein Rot-Fall mit injiziertem Spy-Starter belegt damit, dass bei ungültigem Startziel kein Spawn versucht wird. zeitgrenzeMs/abbruchSignal (F14 WS-1, AK1) werden unverändert an den Starter durchgereicht, egal ob echterStarter oder ein injizierter Starter. */
+export function starteProzess(startziel: string[], tokens: AufrufTokens, optionen: { starter?: Starter } & StarterOptionen = {}): Promise<ProzessErgebnis> {
   const pruefung = pruefeStartziel(startziel)
   if (!pruefung.ok) {
-    return Promise.resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: null, message: pruefung.grund } })
+    return Promise.resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: null, message: pruefung.grund }, beendigungsart: null })
   }
   const starter = optionen.starter ?? echterStarter
-  return starter(startziel, tokens)
+  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal }
+  return starter(startziel, tokens, starterOptionen)
 }
 
-/** TP-03d Messfall 1, wörtlich übernommen (state/tp-nachtrag.md, Zeile 27-31). Beide Parameter explizit (Delta 10) — kein Ein-Parameter-Callback, der still am falschen Argument bindet. */
+/** TP-03d Messfall 1, wörtlich übernommen (state/tp-nachtrag.md, Zeile 27-31). Beide Parameter explizit (Delta 10) — kein Ein-Parameter-Callback, der still am falschen Argument bindet. Ignoriert den optionalen dritten Parameter (F14 WS-1) — bleibt additiv zuweisungskompatibel. */
 export const attrappeMitValidemErgebnis: Starter = async (_startziel, _tokens) => ({
   stdout: JSON.stringify({
     type: 'result',
@@ -128,6 +177,7 @@ export const attrappeMitValidemErgebnis: Starter = async (_startziel, _tokens) =
   stderr: '',
   exitCode: 0,
   startfehler: null,
+  beendigungsart: null,
 })
 
 /** TP-01e Messfall A, wörtlich übernommen (state/tp-nachtrag.md, Zeile 243-256): kein Ergebnisobjekt, leeres stdout/stderr, Exit 137. Beide Parameter explizit (Delta 10). */
@@ -136,4 +186,5 @@ export const attrappeOhneErgebnisobjekt: Starter = async (_startziel, _tokens) =
   stderr: '',
   exitCode: 137,
   startfehler: null,
+  beendigungsart: null,
 })

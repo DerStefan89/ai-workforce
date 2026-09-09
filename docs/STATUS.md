@@ -220,7 +220,8 @@ Scope, Reihenfolge und Details siehe
 - ✅ **F12** — Laufliste und Lauf-Detailansicht. **Erledigt**, siehe oben.
 - **F13** — Entscheiden und Wiederaufnehmen. In Arbeit
   (`features/F13/feature.md`, Status `READY_FOR_TECH`).
-- **F14** — Timeout und Abbruch.
+- **F14** — Timeout und Abbruch. In Arbeit (`features/F14/feature.md`,
+  Status `READY_FOR_TECH`) — WS-1 (AK1, AK2, AK3) gebaut.
 
 Reihenfolge zwingend F11 → F12 → F13 → F14 → Dogfooding.
 

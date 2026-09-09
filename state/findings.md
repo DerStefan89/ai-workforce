@@ -1647,3 +1647,40 @@ Beschreibung: QA-Pass (F13 WS-4): renderEntscheidungBlock zeigt nach einer erfol
 Auswirkung: unnötige doppelte Begründungsabfrage; keine Dateninkonsistenz (eine zweite Kenntnisnahme legt nur eine weitere harmlose Artefaktversion an).
 Maßnahme: [EMPFEHLUNG] bei Bedarf prüfen, ob GET /api/laeufe/<laufId> künftig meldet, ob bereits ein entscheidung-<laufId>-Artefakt existiert, und die UI das Kenntnisnahme-Formular dann unterdrückt — eigener Workstream, da das eine neue Server-Projektion erfordert (über den WS-4-Vertrag hinaus).
 Feature/Run: F13 WS-4 (QA-Pass), 08.09.2026.
+
+**F-175** · `BUG` · P1 · offen
+Titel: Laufender Lauf kann über den Leitstand terminal gesetzt werden
+Beschreibung: stelleLaufstatusFest liefert für einen aktiven Lauf
+KLAERUNG_ERFORDERLICH (F-172); POST /api/entscheidungen prüft laufAktiv bewusst
+nicht (leitstand-server.mjs:122-123, AK6/D13); art:'terminal' ist genau bei
+KLAERUNG_ERFORDERLICH erlaubt (:150-155). Ein Mensch kann damit einem noch
+laufenden Lauf ein Terminalergebnis zuschreiben; kehrt der Kindprozess zurück,
+schreibt klassifiziereLauf eine zweite Terminalmarke.
+Fundstelle: scripts/leitstand-server.mjs:122-123, 150-155;
+src/execution-controller/index.ts:264-269
+Auswirkung: Inkonsistenter Kontrollzustand, zwei Terminalmarken auf einer
+Laufkette. Selbe Defektfamilie wie F-167, dort nur für den bereits
+abgeschlossenen Fall behoben.
+Beleglage: aus Code abgeleitet, NICHT real reproduziert. Reproduktion ist
+Bestandteil von F14 WS-4.
+Empfohlene Maßnahme: In F14 AK8 lösen (löst zugleich F-172).
+Entdeckt bei: F14-Challenge, 08.09.2026
+
+**F-176** · `TECH_DEBT` · P2 · gelöst
+Titel: ProzessErgebnis und Starter können Prozessabbruch nicht ausdrücken
+Beschreibung: execFile mit Callback verwirft das ChildProcess-Handle;
+ProzessErgebnis hat kein Feld für killed/signal. Ein gekillter Prozess ist von
+einem Startfehler nicht unterscheidbar.
+Fundstelle: src/claude-code-gateway/prozessstart.ts:81-109;
+src/claude-code-gateway/types.ts:37-45
+Auswirkung: Blockiert F14 vollständig — Abbruch ist ohne diese Änderung nicht
+implementierbar.
+Empfohlene Maßnahme: F14 WS-1 (AK1, AK3).
+Entdeckt bei: F14-Challenge, 08.09.2026
+Maßnahme: behoben in F14 WS-1 — Starter trägt additiv optionen
+(zeitgrenzeMs, abbruchSignal), ProzessErgebnis trägt additiv beendigungsart
+('TIMEOUT' | 'ABBRUCH' | null), echterStarter nutzt execFiles eingebaute
+timeout-/signal-Optionen, Unterscheidung empirisch gegen die reale
+execFile-Fehlerform verifiziert (nicht geraten). Getestet in
+claude-code-gateway.test.ts.
+Feature/Run: F14 WS-1, 09.09.2026.
