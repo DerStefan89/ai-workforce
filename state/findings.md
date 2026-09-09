@@ -1744,3 +1744,36 @@ Auswirkung: Gering — nur relevant, wenn erneut versehentlich mitcommitet.
 Empfohlene Maßnahme: Bei Gelegenheit lokal aufräumen oder Ordner in
 .gitignore aufnehmen. Kein aktiver Handlungsbedarf.
 Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
+
+**F-181** · `TECH_DEBT` · P3 · offen
+Titel: Detachte Enkelprozesse unter Windows sind durch keinen der beiden
+Kill-Mechanismen abgedeckt
+Beschreibung: F14 WS-2 (AK4) real gemessen (`node --test`, echter
+Prozessbaum, `execFile`-Timeout, Windows 11/Node 24.16.0): ein *nicht*
+detachter Enkelprozess stirbt bereits durch Node 24s eigenen
+Windows-Job-Object-Mechanismus mit, sobald der direkte Kindprozess
+gekillt wird — unabhängig vom zusätzlichen `taskkill /T /F`-Aufruf in
+`killeProzessbaumFallsWindows`. Ein mit `detached: true` gestarteter
+Enkelprozess entkommt diesem Job-Object jedoch (Windows-Breakaway) und
+bleibt ohne Gegenmaßnahme am Leben. `taskkill /T /F` KANN einen solchen
+Fall abdecken, aber nur, wenn der Ziel-PID zum Aufrufzeitpunkt noch lebt
+— in der bestehenden Kill-Reihenfolge (Node killt zuerst über
+`execFile`s `timeout`/`signal`, danach erst `taskkill` im Callback) ist
+der direkte Kindprozess zu diesem Zeitpunkt bereits tot, `taskkill`
+liefert real reproduzierbar „Der Prozess ... wurde nicht gefunden" und
+kann den Baum nicht mehr aufbauen. Weder Node noch `taskkill` garantieren
+also etwas für einen detachten Enkelprozess in der aktuellen Architektur.
+Fundstelle: src/claude-code-gateway/prozessstart.ts (killeProzessbaumFallsWindows,
+echterStarter)
+Auswirkung: Kein bekannter Anwendungsfall — der von starteProzess
+gestartete Claude-Code-Kindprozess und seine bislang beobachteten
+Unterprozesse sind nicht detached. Falls ein künftiges Werkzeug oder ein
+MCP-Server einen eigenen Hintergrundprozess mit `detached: true` startet,
+bleibt dieser nach einem TIMEOUT/ABBRUCH-Kill als Waise zurück.
+Empfohlene Maßnahme: Kein Handlungsbedarf ohne konkreten Anwendungsfall
+(YAGNI). Bei Bedarf: eigene Kill-Auslösung vor statt nach Node's
+execFile-Timeout (eigener Timer/Abort-Listener, der taskkill aufruft,
+solange der Kindprozess noch lebt) — größerer Eingriff, der WS-1s
+Fehlerklassifikation (fehler.killed/ABORT_ERR) neu empirisch prüfen
+müsste.
+Entdeckt bei: Verifikation F14 WS-2, 09.09.2026

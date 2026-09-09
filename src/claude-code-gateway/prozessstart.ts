@@ -28,12 +28,31 @@
  *
  * F14 WS-1 (features/F14/feature.md, AK1-AK3, löst F-176): echterStarter
  * nutzt execFiles eingebaute timeout-/signal-Optionen für Wanduhr-Grenze
- * und manuellen Abbruch — Details am echterStarter selbst. Kein
- * Prozessbaum-Kill unter Windows (WS-2, bewusst offen), keine
+ * und manuellen Abbruch — Details am echterStarter selbst. Keine
  * F7-Klassifikation dieser neuen ProzessErgebnis-Form (WS-3).
+ *
+ * F14 WS-2 (AK4): der in WS-1 dokumentierte Vorbehalt „unter Windows killt
+ * execFiles timeout-/signal-Mechanismus nur den direkten Kindprozess" war
+ * eine unbelegte Annahme aus der Challenge-Vorgabe — real gemessen (siehe
+ * features/F14/nachweis-ws2.md, F-181) killt Node 24.16.0 einen *nicht*
+ * detachten Unterprozessbaum unter Windows bereits selbst (eigener
+ * Job-Object-Mechanismus), sobald der direkte Kindprozess stirbt. Das
+ * zusätzliche `taskkill /T /F` in killeProzessbaumFallsWindows ist damit
+ * für diesen Fall ein wirkungsloses, aber harmloses Sicherheitsnetz: die
+ * Kind-PID ist zum Aufrufzeitpunkt (nach Node's eigenem Kill) bereits tot,
+ * taskkill scheitert real reproduzierbar mit „Prozess nicht gefunden" und
+ * wird als erwarteter Fehlerfall geschluckt. Für einen *detachten*
+ * Enkelprozess (Windows-Breakaway aus Node's Job-Object) würde taskkill
+ * grundsätzlich funktionieren, aber nur, wenn die Kind-PID beim Aufruf
+ * noch lebt — in dieser Kill-Reihenfolge (Node zuerst, taskkill danach)
+ * ist das nie der Fall. Bewusst nicht behoben (würde WS-1s
+ * Fehlerklassifikation neu empirisch prüfen erfordern), siehe F-181. Nur
+ * unter process.platform === 'win32' aktiv (kein ungetesteter Fallback für
+ * macOS/Linux, YAGNI).
  */
 
 import { execFile } from 'node:child_process'
+import type { ExecFileException } from 'node:child_process'
 import { statSync } from 'node:fs'
 import { extname, resolve as aufgeloesterPfad } from 'node:path'
 import type { AufrufTokens, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
@@ -85,6 +104,34 @@ export function pruefeStartziel(startziel: string[]): { ok: true } | { ok: false
 }
 
 /**
+ * F14 WS-2 (AK4): dokumentierter Best-Effort-Sicherheitsnetz-Aufruf, kein
+ * verlässlicher Baum-Kill. Versucht `taskkill /T /F` auf `pid` — kein
+ * eigener execFile-String über eine Shell (taskkill.exe direkt als
+ * execFile-Programm, kein startziel[0] im Sinne von pruefeStartziel,
+ * verletzt die Shell-Sperrlisten-Doktrin nicht). Real gemessen (F-181):
+ * zum Aufrufzeitpunkt (nach Node's eigenem timeout-/signal-Kill) ist die
+ * Kind-PID auf dieser Node/Windows-Kombination bereits tot — taskkill
+ * scheitert deshalb erwartbar mit „Prozess nicht gefunden", was diese
+ * Funktion bewusst schluckt, statt den bestehenden TIMEOUT/ABBRUCH-
+ * Beendigungspfad zu stören (idempotent, nie reject). Das ist kein Bug:
+ * ein *nicht* detachter Unterprozessbaum ist zu diesem Zeitpunkt bereits
+ * durch Node selbst tot (Windows-Job-Object-Mechanismus, siehe
+ * echterStarter-Kommentar); nur ein *detachter* Enkelprozess könnte durch
+ * taskkill noch erreicht werden, aber genau der ist zum Aufrufzeitpunkt
+ * ebenfalls nicht mehr erreichbar, da taskkill /T eine lebende Ziel-PID
+ * braucht, um den Baum aufzubauen. Auf anderen Plattformen (kein realer
+ * Nachweis möglich, YAGNI) und ohne bekannte pid ein No-op.
+ */
+function killeProzessbaumFallsWindows(pid: number | undefined): Promise<void> {
+  if (process.platform !== 'win32' || pid === undefined) {
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => {
+    execFile('taskkill', ['/PID', String(pid), '/T', '/F'], () => resolve())
+  })
+}
+
+/**
  * F14 WS-1 (AK1-AK3): nutzt execFiles eingebaute timeout-/signal-Optionen
  * statt eines eigenen Timers — Node killt den Kindprozess selbst und meldet
  * das Ergebnis über den bestehenden Callback-Fehlerpfad. Unterscheidung im
@@ -105,10 +152,10 @@ export function pruefeStartziel(startziel: string[]): { ok: true } | { ok: false
  * (Vorgabe AK2): dies ist die einzige Stelle, die überhaupt einen
  * Timeout-Wert an den Prozessstart weiterreicht.
  *
- * WS-2 (bewusst NICHT hier gelöst, F14 Scope): unter Windows killt weder
- * execFiles timeout-Mechanismus noch signal Unterprozesse des
- * Kindprozesses mit — nur der direkte Kindprozess stirbt. Ein von diesem
- * gestarteter Unterprozessbaum bleibt verwaist.
+ * WS-2 (AK4): bei TIMEOUT/ABBRUCH läuft killeProzessbaumFallsWindows vor
+ * dem resolve — real trägt dabei Node 24s eigener Windows-Job-Object-
+ * Mechanismus die Wirkung für nicht detachte Unterprozesse (siehe
+ * killeProzessbaumFallsWindows-Kommentar, F-181), nicht taskkill selbst.
  */
 const echterStarter: Starter = (startziel, tokens, optionen) =>
   new Promise((resolve) => {
@@ -119,16 +166,22 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         ...(optionen?.zeitgrenzeMs !== undefined ? { timeout: optionen.zeitgrenzeMs } : {}),
         ...(optionen?.abbruchSignal !== undefined ? { signal: optionen.abbruchSignal } : {}),
       }
-      execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
+      const kindprozess = execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
+        void behandeleErgebnis(fehler, stdout, stderr)
+      })
+
+      async function behandeleErgebnis(fehler: ExecFileException | null, stdout: string, stderr: string): Promise<void> {
         if (fehler === null) {
           resolve({ stdout, stderr, exitCode: 0, startfehler: null, beendigungsart: null })
           return
         }
         if (fehler.code === 'ABORT_ERR') {
+          await killeProzessbaumFallsWindows(kindprozess.pid)
           resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' })
           return
         }
         if (fehler.killed === true) {
+          await killeProzessbaumFallsWindows(kindprozess.pid)
           resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'TIMEOUT' })
           return
         }
@@ -143,7 +196,7 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
           startfehler: { code: typeof fehler.code === 'string' ? fehler.code : null, message: fehler.message },
           beendigungsart: null,
         })
-      })
+      }
     } catch (fehler) {
       const f = fehler as NodeJS.ErrnoException
       resolve({
