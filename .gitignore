@@ -29,7 +29,7 @@ Thumbs.db
 # Checkpoint-Store-Tests (F1) — Wegwerfverzeichnis, kein Produktzustand.
 # Räumt sich in jedem Testfall selbst auf; Eintrag hier nur als Netz für
 # einen abgebrochenen Testlauf.
-kontrollzustand-test/
+kontrollzustand-test*/
 
 # Rohereignisstrom des Claude-Code-Gateways (F6a WS2, E-190) — rohe
 # stdout/stderr-Bytes je Lauf, nie committet. Aus der Laufakte
