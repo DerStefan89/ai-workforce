@@ -1714,7 +1714,7 @@ Empfohlene Maßnahme: Keine Codeänderung. Beim nächsten Node-Upgrade gezielt
 gegenprüfen.
 Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
 
-**F-179** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-179** · `HARNESS_IMPROVEMENT` · P2 · gelöst
 Titel: .gitignore deckt nur kontrollzustand-test/ exakt ab, nicht die
 Suffix-Varianten der Gate-Skripte
 Beschreibung: check-f10-leitstand.mjs, check-f11-auftrag.mjs,
@@ -1729,7 +1729,10 @@ Auswirkung: Ein arglos ausgeführtes git add -A reißt Hunderte Testartefakte
 in einen Commit. Real passiert (F14 WS-1 Commit-Vorbereitung).
 Empfohlene Maßnahme: .gitignore-Muster auf kontrollzustand-test*/
 verallgemeinern (Wildcard).
+Maßnahme: .gitignore:32 auf kontrollzustand-test*/ verallgemeinert — deckt
+alle Suffix-Varianten der Gate-Skripte ab.
 Entdeckt bei: Verifikation F14 WS-1, 09.09.2026
+Feature/Run: (dieser PR), 09.09.2026
 
 **F-180** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Scratch-Ordner "Claude outputs/" außerhalb der Repo-Konventionen
