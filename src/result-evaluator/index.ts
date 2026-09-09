@@ -13,6 +13,18 @@
  * (Design-Entscheidung 2, plan-v1 Abschnitt 4) — der Aufrufer übergibt die
  * bereits geladene LaufakteV0Daten.
  *
+ * F14 WS-3 (AK5/AK6, löst die Lücke aus WS-1): ein TIMEOUT/ABBRUCH-Rohstrom
+ * (claude-code-gateway/index.ts:314, beendigungsart) hat leeres/kein
+ * stdout und würde ohne eigenen Zweig als generisches
+ * beobachtungsbasis_unvollstaendig klassifiziert. Der neue Zweig steht
+ * NACH der Rohstrom-Integritätsprüfung (auch ein TIMEOUT/ABBRUCH-Rohstrom
+ * kann korrupt sein) und VOR dem beobachtungsbasis_unvollstaendig-Zweig
+ * (spezifischer schlägt generischer) — Reihenfolge der übrigen Zweige
+ * unverändert. klassifiziereLauf ergänzt für diesen Fall die Terminalmarke
+ * um daten.letzter_gueltiger_checkpoint (F1Bs bereits bestehender, exportierter
+ * ladeLetztenGueltigenCheckpoint — kein neuer Lesepfad), gelesen VOR dem
+ * eigenen Terminal-Schreibvorgang, sonst fände er sich selbst.
+ *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens/tokenisiereCommand) ist
  * neuer Code (Design-Entscheidung 5): pruefeAufrufparameter (F4) erwartet ein
  * Tokens-Array, tool_input ist ein werkzeugabhängiges Objekt (`{"command":…}`,
@@ -27,7 +39,7 @@
 import { readFileSync } from 'node:fs'
 import { leseErgebnisobjekt } from '../claude-code-gateway/index.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
-import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
+import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter } from '../invocation-policy/index.ts'
 import type { KlassifikationsEingaben, KlassifikationsErgebnis, KlassifikationsOptionen } from './types.ts'
@@ -60,6 +72,19 @@ function toolInputZuTokens(toolInput: unknown): string[] {
   return tokens
 }
 
+/** Tolerantes Auslesen von rohstrom.beendigungsart (F14 WS-1, claude-code-gateway/index.ts:314) — liefert null bei ungültigem JSON, fehlendem Feld oder einem anderen Wert als 'TIMEOUT'/'ABBRUCH', wirft nie. Eigenständig vom stdout-Parsing weiter unten (das bei defektem JSON eine eigene, differenziertere Fehlerbehandlung braucht). */
+function leseBeendigungsart(rohInhalt: string): 'TIMEOUT' | 'ABBRUCH' | null {
+  let geparst: unknown
+  try {
+    geparst = JSON.parse(rohInhalt)
+  } catch {
+    return null
+  }
+  if (typeof geparst !== 'object' || geparst === null) return null
+  const wert = (geparst as Record<string, unknown>).beendigungsart
+  return wert === 'TIMEOUT' || wert === 'ABBRUCH' ? wert : null
+}
+
 interface PermissionDenial {
   tool_input?: unknown
 }
@@ -83,6 +108,17 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten): ErgebnisOhneWirkungsmarke 
 
   if (sha256Hex(rohInhalt) !== laufakte.rohstrom_referenz.inhalts_hash) {
     return { ergebnis: 'FEHLGESCHLAGEN', grund: 'rohstrom_integritaet' }
+  }
+
+  // AK5: spezifischer (TIMEOUT/ABBRUCH) schlägt generischer
+  // (beobachtungsbasis_unvollstaendig) — beide Fälle haben leeres/kein
+  // stdout, deshalb muss dieser Zweig vor dem generischen stehen.
+  const beendigungsart = leseBeendigungsart(rohInhalt)
+  if (beendigungsart === 'TIMEOUT') {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'timeout' }
+  }
+  if (beendigungsart === 'ABBRUCH') {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'abgebrochen_manuell' }
   }
 
   if (laufakte.beobachtungsbasis_vollstaendig === false) {
@@ -129,16 +165,43 @@ export function klassifiziereLauf(
   optionen: KlassifikationsOptionen = {}
 ): KlassifikationsErgebnis {
   const teilergebnis = ermittleErgebnis(eingaben.laufakte)
-  const zusatzDaten =
-    teilergebnis.ergebnis === 'VERWEIGERT'
-      ? {
-          daten: {
-            bypass_verdacht_anzahl: teilergebnis.bypass_verdacht_anzahl,
-            ...('is_error' in teilergebnis ? { is_error: teilergebnis.is_error } : {}),
-            ...('non_execution_kind' in teilergebnis ? { non_execution_kind: teilergebnis.non_execution_kind } : {}),
-          },
-        }
-      : {}
+
+  let zusatzDaten: { daten?: unknown } = {}
+  if (teilergebnis.ergebnis === 'VERWEIGERT') {
+    zusatzDaten = {
+      daten: {
+        bypass_verdacht_anzahl: teilergebnis.bypass_verdacht_anzahl,
+        ...('is_error' in teilergebnis ? { is_error: teilergebnis.is_error } : {}),
+        ...('non_execution_kind' in teilergebnis ? { non_execution_kind: teilergebnis.non_execution_kind } : {}),
+      },
+    }
+  } else if (teilergebnis.ergebnis === 'FEHLGESCHLAGEN' && (teilergebnis.grund === 'timeout' || teilergebnis.grund === 'abgebrochen_manuell')) {
+    // AK6: letzter gültiger Checkpoint MUSS vor dem eigenen
+    // Terminal-Schreibvorgang gelesen werden, sonst fände er sich selbst —
+    // bestehender, bereits exportierter Checkpoint-Store-Lesepfad, kein
+    // neuer. Bekannte Grenze (wie F-067s dokumentierter Doppelaufruf-Fall
+    // unten): ein zweiter TIMEOUT/ABBRUCH-Klassifikationsaufruf für
+    // dieselbe laufId fände die zuvor geschriebene Terminalmarke selbst
+    // als "letzten gültigen Checkpoint" und verschachtelt deren eigenes
+    // letzter_gueltiger_checkpoint mit — kein normaler Ablauf (klassifiziereLauf
+    // wird pro laufId einmal aufgerufen), deshalb bewusst nicht extra
+    // abgefangen.
+    const letzterGueltigerCheckpoint = ladeLetztenGueltigenCheckpoint(laufId, optionen)
+    zusatzDaten = {
+      daten: {
+        art: teilergebnis.grund === 'timeout' ? 'TIMEOUT' : 'MANUELL',
+        grund: teilergebnis.grund,
+        // Beendigungsart wie im Rohstrom beobachtet (claude-code-gateway/
+        // index.ts:314). Ihr bloßes Vorliegen belegt bereits, dass
+        // killeProzessbaumFallsWindows (prozessstart.ts) für diesen Lauf
+        // aufgerufen wurde — beide Zweige (TIMEOUT/ABBRUCH) rufen sie dort
+        // unbedingt vor dem resolve auf, kein zusätzliches Feld nötig.
+        beendigungsart: teilergebnis.grund === 'timeout' ? 'TIMEOUT' : 'ABBRUCH',
+        letzter_gueltiger_checkpoint: letzterGueltigerCheckpoint,
+      },
+    }
+  }
+
   const { pfad, selbstHash } = schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: teilergebnis.ergebnis, ...zusatzDaten }, optionen)
   return { ...teilergebnis, wirkungsmarke: { pfad, selbstHash } }
 }

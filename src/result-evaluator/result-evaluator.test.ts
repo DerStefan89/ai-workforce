@@ -13,6 +13,12 @@
  * `is_error`/`non_execution_kind` (F-061). Nutzt F6as
  * attrappeMitValidemErgebnis/attrappeOhneErgebnisobjekt wörtlich (D5, statt
  * TP-03d Messfall 1 / TP-01e Messfall A neu abzutippen).
+ *
+ * F14 WS-3 (AK5/AK6): TIMEOUT/ABBRUCH-Rohstrom → grund 'timeout'/
+ * 'abgebrochen_manuell' statt des generischen beobachtungsbasis_
+ * unvollstaendig, plus Regression, dass beendigungsart:null/fehlend die
+ * bestehende Klassifikation unverändert lässt, und dass die geschriebene
+ * Terminalmarke daten.letzter_gueltiger_checkpoint (AK6) trägt.
  */
 
 import assert from 'node:assert/strict'
@@ -23,7 +29,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
-import { ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
+import { ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { klassifiziereLauf } from './index.ts'
 
@@ -35,7 +41,10 @@ function neueLaufId(praefix: string): string {
   return `${praefix}-${randomUUID()}`
 }
 
-function schreibeRohstrom(laufId: string, prozessErgebnis: { stdout: string; stderr: string; exitCode: number | null }): { pfad: string; inhalts_hash: string } {
+function schreibeRohstrom(
+  laufId: string,
+  prozessErgebnis: { stdout: string; stderr: string; exitCode: number | null; beendigungsart?: 'TIMEOUT' | 'ABBRUCH' | null }
+): { pfad: string; inhalts_hash: string } {
   const verzeichnis = join(ROH_BASIS, laufId)
   mkdirSync(verzeichnis, { recursive: true })
   const inhalt = JSON.stringify(prozessErgebnis)
@@ -431,6 +440,126 @@ test('dokumentiertes F1B-Verhalten: ein zweiter Terminal-Schreibvorgang für die
     // aber das ergebnis-Feld zeigt nicht automatisch den zuletzt geschriebenen Wert.
     assert.equal(status.status === 'ABGESCHLOSSEN' && status.ergebnis, 'ERFOLGREICH')
     assert.equal(status.terminaleOhneRunPrepared.length, 1)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 AK5: beendigungsart TIMEOUT klassifiziert als FEHLGESCHLAGEN/timeout, nicht beobachtungsbasis_unvollstaendig', () => {
+  const laufId = neueLaufId('timeout')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart: 'TIMEOUT' })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'timeout')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 AK5: beendigungsart ABBRUCH klassifiziert als FEHLGESCHLAGEN/abgebrochen_manuell, nicht beobachtungsbasis_unvollstaendig', () => {
+  const laufId = neueLaufId('abbruch')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart: 'ABBRUCH' })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'abgebrochen_manuell')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 Regression: beendigungsart:null lässt beobachtungsbasis_unvollstaendig unverändert', () => {
+  const laufId = neueLaufId('regression-beendigungsart-null')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: 137, beendigungsart: null })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'beobachtungsbasis_unvollstaendig')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 AK6: Terminalmarke für TIMEOUT trägt daten.art/grund/beendigungsart und den davor gültigen Checkpoint', () => {
+  const laufId = neueLaufId('ak6-timeout-daten')
+  try {
+    const { selbstHash: runPreparedHash } = schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    const vorherigerCheckpoint = ladeLetztenGueltigenCheckpoint(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(vorherigerCheckpoint?.payload.selbst_hash, runPreparedHash)
+
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart: 'TIMEOUT' })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+
+    const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    const terminal = kette.find((eintrag) => eintrag.payload.selbst_hash === ergebnis.wirkungsmarke.selbstHash)
+    assert.ok(terminal, 'terminaler Wirkungsmarke-Eintrag muss in der Kette auffindbar sein')
+    const daten = (
+      terminal?.payload as {
+        daten?: { art?: string; grund?: string; beendigungsart?: string; letzter_gueltiger_checkpoint?: { payload: { selbst_hash: string } } | null }
+      }
+    ).daten
+
+    assert.equal(daten?.art, 'TIMEOUT')
+    assert.equal(daten?.grund, 'timeout')
+    assert.equal(daten?.beendigungsart, 'TIMEOUT')
+    assert.equal(daten?.letzter_gueltiger_checkpoint?.payload.selbst_hash, runPreparedHash)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 AK6: Terminalmarke für ABBRUCH trägt daten.art:MANUELL/beendigungsart:ABBRUCH', () => {
+  const laufId = neueLaufId('ak6-abbruch-daten')
+  try {
+    const { selbstHash: runPreparedHash } = schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart: 'ABBRUCH' })
+    const laufakte = baueLaufakte(laufId, rohstromReferenz, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+
+    const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    const terminal = kette.find((eintrag) => eintrag.payload.selbst_hash === ergebnis.wirkungsmarke.selbstHash)
+    assert.ok(terminal, 'terminaler Wirkungsmarke-Eintrag muss in der Kette auffindbar sein')
+    const daten = (
+      terminal?.payload as {
+        daten?: { art?: string; grund?: string; beendigungsart?: string; letzter_gueltiger_checkpoint?: { payload: { selbst_hash: string } } | null }
+      }
+    ).daten
+
+    assert.equal(daten?.art, 'MANUELL')
+    assert.equal(daten?.grund, 'abgebrochen_manuell')
+    assert.equal(daten?.beendigungsart, 'ABBRUCH')
+    assert.equal(daten?.letzter_gueltiger_checkpoint?.payload.selbst_hash, runPreparedHash)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F14 WS-3 AK5: Rohstrom-Integritätsprüfung schlägt auch bei beendigungsart:TIMEOUT zuerst zu (grund bleibt rohstrom_integritaet)', async () => {
+  const laufId = neueLaufId('timeout-plus-hash-abweichung')
+  try {
+    const rohstromReferenz = schreibeRohstrom(laufId, { stdout: '', stderr: '', exitCode: null, beendigungsart: 'TIMEOUT' })
+    const laufakte = baueLaufakte(laufId, { pfad: rohstromReferenz.pfad, inhalts_hash: 'f'.repeat(64) }, false)
+
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'rohstrom_integritaet')
   } finally {
     raeumeKette(laufId)
   }
