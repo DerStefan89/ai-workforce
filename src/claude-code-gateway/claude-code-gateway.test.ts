@@ -640,6 +640,51 @@ test('starteProzess markiert einen maxBuffer-Überlauf nicht als TIMEOUT — Reg
   assert.ok(ergebnis.startfehler, 'ein maxBuffer-Überlauf muss weiterhin als startfehler klassifiziert werden, nicht als TIMEOUT')
 })
 
+// ─── F14 WS-2 (AK4): Windows-Prozessbaum-Kill bei TIMEOUT ──────────────────
+// Realer Rot-/Grün-Nachweis: ein Kindprozess spawnt selbst einen Enkel-
+// Prozess (schreibt dessen PID in eine Datei) und hängt danach absichtlich.
+// Nach dem Timeout-Kill darf laut process.kill(pid, 0) (ESRCH bei totem
+// Prozess, real auf dieser Windows-Maschine geprüft) kein Prozess der
+// gestarteten Baumhierarchie mehr laufen. Real gemessen (F-181,
+// features/F14/nachweis-ws2.md): dieser Grünfall entsteht durch Node
+// 24.16.0s eigenen Windows-Job-Object-Mechanismus, nicht durch das
+// zusätzliche taskkill in killeProzessbaumFallsWindows (dessen eigener
+// taskkill-Aufruf zu diesem Zeitpunkt real reproduzierbar mit „Prozess
+// nicht gefunden" scheitert, siehe Finding). Der Test bleibt trotzdem ein
+// echter Nachweis von AK4s Kernaussage — kein Prozess der Baumhierarchie
+// überlebt den Timeout-Kill —, nur die Ursache ist eine andere als
+// ursprünglich angenommen.
+
+function existiertProzess(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+test('starteProzess killt bei TIMEOUT unter Windows den kompletten Prozessbaum, kein Waisenprozess übrig (F14 WS-2, AK4)', { skip: process.platform !== 'win32' ? 'nur unter Windows real geprüft (WS-2-Scope)' : false }, async () => {
+  const enkelPidDatei = join(tmpdir(), `f14-ws2-enkel-pid-${randomUUID()}.txt`)
+  const grosskindSkript = [
+    "const { spawn } = require('node:child_process');",
+    "const enkel = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 15000)'], { stdio: 'ignore' });",
+    'require(\'node:fs\').writeFileSync(process.argv[1], String(enkel.pid));',
+    'setTimeout(() => {}, 15000);',
+  ].join('\n')
+
+  try {
+    const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', grosskindSkript, enkelPidDatei], { zeitgrenzeMs: 500 })
+    assert.strictEqual(ergebnis.beendigungsart, 'TIMEOUT')
+
+    const enkelPid = Number(readFileSync(enkelPidDatei, 'utf8'))
+    assert.ok(Number.isInteger(enkelPid) && enkelPid > 0, 'Enkelprozess muss seine PID real geschrieben haben, bevor der Baum gekillt wurde')
+    assert.strictEqual(existiertProzess(enkelPid), false, 'Enkelprozess darf nach dem WS-2-Kill nicht mehr laufen — sonst Waise')
+  } finally {
+    rmSync(enkelPidDatei, { force: true })
+  }
+})
+
 // ─── WS4: starteGateway mit ungültigem Startziel (Delta 11) ─────────────────
 
 test('starteGateway verweigert bei ungültigem werkzeugStartziel — kein RUN_PREPARED, stelleLaufstatusFest liefert NICHT_GESTARTET', async () => {

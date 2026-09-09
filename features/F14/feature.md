@@ -88,6 +88,18 @@ Entschieden (Stefan, 08.09.2026):
   bestehender Felder.
 - **AK4** — Unter Windows sterben Unterprozesse des Kindprozesses mit. Realer
   Rot-/Grün-Nachweis auf der Zielmaschine, nicht nur mit Attrappe.
+
+  **Korrektur (Nachtrag WS-2, 09.09.2026):** Die ursprüngliche Annahme
+  „unter Windows killt execFiles timeout-/signal-Mechanismus nur den
+  direkten Kindprozess" (Challenge-Vorgabe, WS-1-Kommentar) war unbelegt
+  und ist durch den realen WS-2-Nachweis widerlegt: Node 24.16.0 killt
+  einen *nicht* detachten Unterprozessbaum unter Windows bereits selbst
+  (eigener Job-Object-Mechanismus), unabhängig vom zusätzlichen
+  `taskkill /T /F` in `killeProzessbaumFallsWindows`. AK4 gilt für diesen
+  Fall damit als durch die Node-Laufzeit selbst erfüllt, real gemessen,
+  siehe `features/F14/nachweis-ws2.md`. Ein *detachter* Enkelprozess bleibt
+  ungetestet und ohne Garantie (F-181, TECH_DEBT, kein bekannter
+  Anwendungsfall).
 - **AK5** — F7 klassifiziert einen Timeout- oder Abbruchlauf als
   `FEHLGESCHLAGEN` mit eigenem `grund` (`'timeout'` bzw.
   `'abgebrochen_manuell'`), unterscheidbar von `'kein_ergebnisobjekt'`.
