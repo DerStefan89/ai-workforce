@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.16 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.17 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -30,6 +30,8 @@ v1.13 → v1.14: **§13.3 E-M2-5 ergänzt** (Stefan, 07.09.2026, TECH_PLAN-Vorbe
 v1.14 → v1.15: **§13.3 E-M2-6 ergänzt** (Challenge F13, 07.09.2026): die echte Rückfrage ist ein Klärzyklus zwischen zwei Läufen; das Gateway bleibt One-Shot, kein interaktiver Modus. Grundlage für Feature F13.
 
 v1.15 → v1.16: **§13.3 E-M2-7, E-M2-8 und E-M2-9 ergänzt** (Stefan, 08./09.09.2026): E-M2-7 (Abbruch und Timeout additiv als `FEHLGESCHLAGEN` mit eigenem `grund`, kein vierter Terminalwert; Grundlage für Feature F14) · E-M2-8 (ein Abbruch wirkt auf genau eine `laufId`, das Auftragsartefakt bleibt unberührt) · E-M2-9 (die Bestehensbedingung läuft ohne gesonderte vorgeschaltete Bedienphase mit dem Beginn der realen M3-Arbeit mit; einzige unveränderte Fortführungsbedingung bleibt der Stopp bei einem `P0`-Finding).
+
+v1.16 → v1.17: **§13.4 Meilenstein 3 ergänzt** (Stefan, 09.09.2026, Challenge im Claude-Projekt „AI Workforce"): E-M3-1 (Ausnahme vom Orchestrierungs-Grundsatz Stufe 1 und E-M2-2 innerhalb eines freigegebenen WORKFLOW_V0, D13 bleibt unverändert) · E-M3-2 (zweiter Worker Codex CLI, nur lesende Rollen, Spike S-M3-01 vor jedem Bau) · E-M3-3 (feste Besetzung Rolle→Worker→Modell, keine automatische Modellwahl in v1).
 
 ---
 
@@ -319,6 +321,61 @@ Mehrbenutzerbetrieb, Hosting, Abrechnung · Provider-Adapter *(13)* · parallele
 **E-M2-8** *(Stefan, 08.09.2026)* — Ein Abbruch wirkt auf genau eine `laufId`. Das Auftragsartefakt (F11/F12) bleibt unberührt.
 
 Der Orchestrierungs-Grundsatz Stufe 1 und die Nicht-Ziele aus §2 bleiben unverändert gültig.
+
+### 13.4 Meilenstein 3 — Intelligente Orchestrierung (v1)
+
+`[Fakt, Nachtrag 09.09.2026]` Stefan hat Fassung 1 um einen dritten
+Meilenstein erweitert und drei benannte Ausnahmen von bestehenden
+Entscheidungen freigegeben (Projektchat, Claude-Projekt „AI Workforce",
+`claude/153`).
+
+**Zielsatz:** Stefan beschreibt ein Ziel im Leitstand; die Workforce
+schlägt einen Workflow mit Rollen-/Worker-Besetzung vor, Stefan gibt ihn
+frei, freigegebene Schritte laufen automatisch bis zur nächsten
+Freigabe- oder Klärgrenze, Fortschritt und Begründung sind im Leitstand
+sichtbar.
+
+**E-M3-1** *(Stefan, 09.09.2026)* — Ausnahme vom Orchestrierungs-Grundsatz
+Stufe 1 und von E-M2-2: Innerhalb eines vom Menschen freigegebenen
+`WORKFLOW_V0` darf der Execution Controller den nächsten Schritt
+automatisch starten, wenn dessen `freigabe`-Feld ≠ `ZWINGEND` ist und der
+vorherige Schritt `ERFOLGREICH` endete. D13 (genau ein aktiver
+Arbeitsstrang) bleibt unverändert — ein Schritt-Automat auf einer
+sequenziellen Kette, keine Parallelisierung. Welcher Workflow überhaupt
+zur Freigabe vorgelegt wird und ob ein Schritt freigabepflichtig ist,
+bleibt Menschenentscheidung.
+
+**E-M3-2** *(Stefan, 09.09.2026)* — Ein zweiter Worker (OpenAI Codex CLI,
+ChatGPT-Anmeldung, kein API-Schlüssel — Entscheidung 30 bleibt in Kraft)
+darf für lesende Rollen (Review, Advisor, Router, Scout) eingesetzt
+werden. Schreibende Execution bleibt ausschließlich Claude Code: E-183/
+E-188 haben für Codex keinen Wirksamkeitsnachweis. Voraussetzung vor
+jedem Bau mit Codex: Spike S-M3-01 liefert einen realen, nicht-
+interaktiven Codex-Lauf mit ChatGPT-Anmeldung und einen gemessenen
+Rot-Fall (Schreibversuch im Read-Only-Sandbox wird verweigert).
+
+**E-M3-3** *(Stefan, 09.09.2026)* — Modellwahl bleibt für Fassung 1/M3 v1
+eine vom Menschen gepflegte, feste Besetzung `Rolle → Worker → Modell`
+in der Startvorlage (Muster E-185, kein stiller Fallback E-159).
+Automatische Modellwahl nach Fähigkeitskriterien bleibt
+Fassung-2-Kandidat.
+
+**Bestehensbedingung:** ein zweistufiger Workflow (lesender Schritt auf
+Codex → schreibender Schritt auf Claude Code) läuft real über den
+Leitstand ohne manuellen Zwischenstart; ein Fast-Lane-Workflow (ein
+Schritt) und ein Standard-Workflow (Review + Ausführung) sind beide real
+mindestens einmal durchlaufen (Szenario A/B); das Router-Eval-Gate misst
+mindestens 10 Aufgaben mit je ≥3 Läufen gegen die Baseline „immer
+Standard-Workflow".
+
+**Nicht in Meilenstein 3 v1:** automatische Modellwahl · Provider
+jenseits Claude Code/Codex · Versionsverwaltung für Ressourcen (§11
+„Nicht bauen") · Coverage jenseits einer kuratierten, kleinen Taxonomie ·
+Parallelität (D13 bleibt) · autonome Installation oder Freigabe von
+Werkzeugen · vollautomatische URL-/Repo-Analyse.
+
+Der Orchestrierungs-Grundsatz Stufe 1 gilt unverändert für jeden Schritt
+außerhalb eines freigegebenen Workflows.
 
 ---
 
