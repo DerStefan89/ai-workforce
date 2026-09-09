@@ -1389,8 +1389,13 @@ export function erzeugeRequestHandler(optionen = {}) {
 // Nur beim direkten Aufruf (`npm run leitstand`) tatsächlich binden — ein Import dieser Datei aus
 // scripts/check-f10-leitstand.mjs darf keinen echten Server starten.
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const server = createServer(erzeugeRequestHandler())
+  // F14 WS-5 (Vorbereitung AK10): Startvorlage per Umgebungsvariable überschreibbar (Muster
+  // LEITSTAND_PORT oben) — erlaubt Stefan einen realen Lauf gegen z. B.
+  // startvorlagen/beispielprojekt-kurze-zeitgrenze.json, ohne startvorlagen/beispielprojekt.json
+  // anzufassen: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/beispielprojekt-kurze-zeitgrenze.json npm run leitstand`.
+  const startvorlagePfad = process.env.LEITSTAND_STARTVORLAGE_PFAD ?? STANDARD_STARTVORLAGE_PFAD
+  const server = createServer(erzeugeRequestHandler({ startvorlagePfad }))
   server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Leitstand läuft auf http://127.0.0.1:${PORT}`)
+    console.log(`Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad})`)
   })
 }
