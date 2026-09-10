@@ -984,7 +984,7 @@ Auswirkung: Falsche P1-Last in der F8-Planung; das Register ist laut F-036 die e
 Maßnahme: Beide Statuszeilen nachgezogen. Zusätzlich: Statuswechsel gehören in denselben Commit wie der Fix, nicht in einen späteren Dokumentations-PR. Nachtrag 04.09.2026: verifiziert — F-048 (Zeile 450) und F-085 (Zeile 944) stehen im Register beide bereits auf `gelöst`; F-089 selbst wird hiermit ebenfalls auf `gelöst` gezogen.
 Feature/Run: Challenge F8, 04.09.2026.
 
-**F-090** · `TECH_DEBT` · P1 · offen
+**F-090** · `TECH_DEBT` · P1 · offen, zurückgestellt (E-192)
 Titel: Drei-Ebenen-Zustandsmodell (Workstream → Execution → Lauf, §16.8 Punkt 6 / A4) existiert im Kern nicht und wird in Fassung 1 bewusst nicht gebaut.
 Beschreibung: Grep über `src/` findet keine Workstream- oder Execution-Identität; `src/checkpoint-store/` führt ausschließlich `laufId`. Die Zielfassung erklärt §16.8 Punkt 6 als geschlossen und weist dem Execution Controller zwei Automaten zu — beide Ebenen sind nie gebaut worden. Mit E-192 ist entschieden, sie in Fassung 1 auch nicht zu bauen.
 Fundstelle: `docs/projekt/zielfassung.md:332`, `:381`; `src/checkpoint-store/types.ts`.
@@ -1787,13 +1787,18 @@ Fehlerklassifikation (fehler.killed/ABORT_ERR) neu empirisch prüfen
 müsste.
 Entdeckt bei: Verifikation F14 WS-2, 09.09.2026
 
-**F-182** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-182** · `PROCESS_IMPROVEMENT` · P1 · gelöst
 Titel: Findings-Register führt gelöste P1-Einträge weiter als `offen`.
 Beschreibung: 26 Einträge mit P1 und Status `offen`; F-158 (F13
 feature.md:42/222), F-175 (F14 feature.md:114 „Löst F-175") und F-128
 (laufAktiv, scripts/leitstand-server.mjs:964) sind laut Akten/Code
 gelöst, F-127 durch F14 (zeitgrenzeMs, abbrechen-Route) funktional
 erledigt — die Statuszeilen wurden nicht nachgezogen.
+Gelöst: die vier genannten Beispiele (F-127, F-128, F-158, F-175) sind
+korrekt als erledigt geführt (Stichprobe Technical Challenger,
+10.09.2026). Ein Vollabgleich aller ursprünglich genannten 26
+P1-offen-Einträge gegen den Code steht weiterhin aus — dafür bei Bedarf
+einen eigenen, abgegrenzten Auftrag anlegen, kein Teil dieser Lösung.
 Fundstelle: state/findings.md, Einträge F-127, F-128, F-158, F-175.
 Auswirkung: E-M2-9 knüpft die Fortführung an „kein P0"; ein Register,
 dessen P1-Stand nicht stimmt, taugt nicht als Grundlage für diese Regel
