@@ -253,11 +253,25 @@
  * ERSTES Vorkommen im Quelltext — Kommentare oberhalb dürfen den
  * zusammengesetzten Funktionsnamen und die öffnende Klammer deshalb nie
  * unmittelbar hintereinander als Literalstring nennen.
+ *
+ * F15 WS-2c-Vorbereitung (F-201): belegeInstanzLock schreibt vor dem Binden
+ * eine Datei <basis>/.leitstand.lock mit { pid, port, gestartetAm } und
+ * bricht den Start ab, wenn die darin genannte PID noch lebt. Damit können
+ * nicht mehr zwei Serverprozesse aus demselben Arbeitsverzeichnis dasselbe
+ * kontrollzustand/ bespielen (auf Standardport verhinderte das bisher allein
+ * EADDRINUSE; LEITSTAND_PORT=<anderer> blieb offen). Das ist die EINZIGE
+ * Ausnahme zur Regel "kein eigener Schreibzugriff auf kontrollzustand/":
+ * die Lock-Datei ist flüchtiger Betriebszustand, kein Kernartefakt — kein
+ * registriereKernArtefakt, keine Lineage, keine Hash-Kette, git-ignoriert.
+ * Sie wird ausschließlich aus dem CLI-Bindeblock am Dateiende belegt, nie
+ * aus erzeugeRequestHandler oder einem Request-Handler heraus: parallele,
+ * voneinander unabhängige Serverinstanzen in Tests (scripts/check-f10-
+ * leitstand.mjs, check-f13/f14) müssen möglich bleiben.
  */
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
@@ -2285,6 +2299,138 @@ export function erzeugeRequestHandler(optionen = {}) {
   }
 }
 
+/**
+ * Prüft, ob die genannte PID noch lebt. process.kill(pid, 0) sendet kein Signal, sondern
+ * fragt nur die Existenz ab: ESRCH = Prozess weg, EPERM = Prozess da, aber fremder
+ * Eigentümer (zählt als lebend — Abbruch ist hier die sichere Seite).
+ * @param pid - zu prüfende Prozesskennung
+ * @returns true, wenn der Prozess existiert
+ */
+function pidLebt(pid) {
+  // Ein pid-Feld, das keine positive Ganzzahl ist (fehlend, null, String, negativ), gilt
+  // bewusst als tot und führt damit in den Heilungspfad — dieselbe Entscheidung wie bei
+  // kaputtem JSON, kein Sonderfall. Eine Lock-Datei mit unbrauchbarem Inhalt ist kein Beleg
+  // für eine laufende Instanz.
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (fehler) {
+    return fehler.code === 'EPERM'
+  }
+}
+
+/**
+ * Belegt den prozessübergreifenden Instanz-Lock für ein Arbeitsverzeichnis (F-201).
+ *
+ * Der Erwerb läuft über EXKLUSIVES Anlegen (Flag 'wx'), nicht über existsSync-dann-
+ * schreiben: zwei gleichzeitig gestartete Instanzen fänden beide keine Datei vor und
+ * belegten beide den Lock — exakt die Race-Klasse, gegen die F-201 gebaut wurde. Nur
+ * wenn 'wx' mit EEXIST scheitert, wird die vorgefundene Datei überhaupt gelesen.
+ *
+ * Lebt die darin genannte PID, wirft die Funktion — der Aufrufer (CLI-Bindeblock)
+ * bricht damit VOR server.listen ab; die fremde Datei bleibt dabei unangetastet. Ist
+ * die Datei unlesbar, kein gültiges JSON oder nennt sie eine tote PID, wird sie
+ * entfernt und GENAU EINMAL neu angelegt: das ist der Heilungspfad nach einem harten
+ * Absturz und führt bewusst NICHT zum Abbruch. Scheitert auch dieser zweite Versuch an
+ * EEXIST, hat eine andere Instanz das Rennen um die verwaiste Datei gewonnen — dann
+ * wird geworfen statt weiterprobiert.
+ *
+ * Bewusst als eigenständige Funktion und nicht inline im Bindeblock, damit
+ * scripts/check-f15-instanzlock.mjs beide Pfade prüfen kann, ohne einen echten Server
+ * zu binden. Aufgerufen wird sie ausschließlich aus dem CLI-Bindeblock unten — nie aus
+ * erzeugeRequestHandler oder einem Request-Handler (siehe Dateikopf).
+ *
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel, in der die Lock-Datei liegt
+ * @param port - Port, den diese Instanz binden will (nur zur Diagnose in der Datei)
+ * @returns { lockPfad, uebernommen } — uebernommen:true genau dann, wenn eine vorgefundene Datei entfernt und ersetzt wurde
+ * @throws Error mit menschenlesbarer Meldung (PID, Port, Startzeit, Dateipfad), wenn eine lebende Instanz den Lock hält oder eine andere Instanz das Rennen gewonnen hat
+ */
+export function belegeInstanzLock(basisVerzeichnis, port) {
+  const lockPfad = join(basisVerzeichnis, '.leitstand.lock')
+  // Leerzustand wiederherstellen: vor dem Lock startete der Server auch ohne vorhandenes
+  // kontrollzustand/ sauber mit leeren Listen (sammleLaeufe/sammleAuftraege/sammleWorkflows
+  // prüfen alle mit existsSync). Der wx-Erwerb hat daraus einen ENOENT-Abbruch gemacht —
+  // ein frisch geklontes Arbeitsverzeichnis wäre damit nicht mehr startbar. recursive:true
+  // ist ein No-op, wenn das Verzeichnis schon existiert.
+  mkdirSync(basisVerzeichnis, { recursive: true })
+  /** Legt die Lock-Datei exklusiv an. @returns true bei Erfolg, false bei EEXIST (jeder andere fs-Fehler wird eingekleidet weitergeworfen) */
+  const legeExklusivAn = () => {
+    try {
+      writeFileSync(lockPfad, `${JSON.stringify({ pid: process.pid, port, gestartetAm: new Date().toISOString() }, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' })
+      return true
+    } catch (fehler) {
+      if (fehler.code === 'EEXIST') return false
+      // Jeder andere fs-Fehler wird NICHT geschluckt, aber eingekleidet: der nackte
+      // Node-Text nennt weder den Leitstand noch eine Handlung. Deckt zugleich den Fall ab,
+      // dass .leitstand.lock ein Verzeichnis ist (EISDIR/EPERM) — dafür bewusst kein eigener
+      // Zweig. Originalfehler bleibt als cause erhalten.
+      throw new Error(
+        `Der Leitstand konnte die Lock-Datei ${lockPfad} nicht anlegen (Fehlercode ${fehler.code ?? 'unbekannt'}). ` +
+          'Prüfe die Schreibrechte auf das Verzeichnis; unter Windows kann auch ein Virenscanner- oder ' +
+          'OneDrive-Handle die Datei kurzzeitig sperren — dann hilft ein zweiter Versuch.',
+        { cause: fehler }
+      )
+    }
+  }
+
+  let uebernommen = false
+  if (!legeExklusivAn()) {
+    let vorgefunden = null
+    try {
+      const gelesen = JSON.parse(readFileSync(lockPfad, 'utf8'))
+      if (typeof gelesen === 'object' && gelesen !== null) vorgefunden = gelesen
+    } catch {
+      // Unlesbar oder kaputtes JSON: wie eine verwaiste Datei behandeln (Heilungspfad).
+      vorgefunden = null
+    }
+    if (vorgefunden !== null && pidLebt(vorgefunden.pid)) {
+      throw new Error(
+        `Es läuft bereits eine Leitstand-Instanz für dieses Arbeitsverzeichnis: PID ${vorgefunden.pid}, Port ${vorgefunden.port ?? 'unbekannt'}, gestartet ${vorgefunden.gestartetAm ?? 'unbekannt'}. ` +
+          `Beende sie, oder entferne nach einem harten Absturz die Lock-Datei ${lockPfad} von Hand.`
+      )
+    }
+    unlinkSync(lockPfad)
+    uebernommen = true
+    if (!legeExklusivAn()) {
+      throw new Error(
+        `Die verwaiste Lock-Datei ${lockPfad} wurde im selben Moment von einer anderen Leitstand-Instanz übernommen — diese hier startet nicht. Versuche es erneut, sobald klar ist, welche Instanz laufen soll.`
+      )
+    }
+  }
+
+  // Nur die EIGENE Datei wieder aufräumen: hat sie inzwischen eine fremde pid, gehört sie
+  // einer anderen Instanz, die den Lock nach unserem Ende legitim übernommen hat.
+  const raeumeAuf = () => {
+    try {
+      const aktuell = JSON.parse(readFileSync(lockPfad, 'utf8'))
+      if (aktuell?.pid === process.pid) unlinkSync(lockPfad)
+    } catch {
+      // Datei bereits weg oder unlesbar — nichts zu tun.
+    }
+  }
+  process.on('exit', raeumeAuf)
+  // Signale lösen 'exit' NICHT aus. Ohne die beiden Handler bliebe nach jedem normalen
+  // Ctrl+C eine Lock-Datei liegen, und der nächste Start meldete "Verwaiste Lock-Datei
+  // übernommen" — eine Meldung, die bei fast jedem Start kommt, verliert ihre Warnwirkung
+  // für den Fall, für den sie gedacht ist (echter Absturz bei laufendem Schritt).
+  // SIGTERM wird unter Windows nicht real zugestellt; der Handler schadet dort nicht, der
+  // Aufräumpfad läuft dort über SIGINT (Ctrl+C). Der exit-Hook bleibt als Netz für den
+  // normalen Programmablauf. Kein Graceful-Shutdown des HTTP-Servers — bewusst nicht Teil
+  // dieses Auftrags.
+  // Exit-Code 0 statt der konventionellen 130/143 ist bewusst gewählt: der Leitstand wird
+  // interaktiv über `npm run leitstand` beendet, und npm druckt bei jedem Exit != 0 einen
+  // ELIFECYCLE-Fehlerblock nach einem völlig normalen Ctrl+C. Der Vertragsfall, der Exit 0
+  // festschreibt, prüft damit eine gewollte Entscheidung, keine Nachlässigkeit.
+  for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => {
+      raeumeAuf()
+      process.exit(0)
+    })
+  }
+  return { lockPfad, uebernommen }
+}
+
 // Nur beim direkten Aufruf (`npm run leitstand`) tatsächlich binden — ein Import dieser Datei aus
 // scripts/check-f10-leitstand.mjs darf keinen echten Server starten.
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -2293,6 +2439,16 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // startvorlagen/beispielprojekt-kurze-zeitgrenze.json, ohne startvorlagen/beispielprojekt.json
   // anzufassen: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/beispielprojekt-kurze-zeitgrenze.json npm run leitstand`.
   const startvorlagePfad = process.env.LEITSTAND_STARTVORLAGE_PFAD ?? STANDARD_STARTVORLAGE_PFAD
+  // F-201: prozessübergreifender Instanz-Lock, VOR dem Binden. Dasselbe BASISVERZEICHNIS,
+  // das erzeugeRequestHandler hier per Default benutzt — der Lock schützt genau dieses
+  // kontrollzustand/, nicht den Port (den schützt EADDRINUSE ohnehin).
+  try {
+    const { lockPfad, uebernommen } = belegeInstanzLock(BASISVERZEICHNIS, PORT)
+    if (uebernommen) console.log(`Verwaiste Lock-Datei ${lockPfad} übernommen (kein lebender Vorbesitzer).`)
+  } catch (fehler) {
+    console.error(fehler.message)
+    process.exit(1)
+  }
   const server = createServer(erzeugeRequestHandler({ startvorlagePfad }))
   server.listen(PORT, '127.0.0.1', () => {
     console.log(`Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad})`)
