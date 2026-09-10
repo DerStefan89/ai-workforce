@@ -41,6 +41,13 @@
  * selbst (D13-UEBERGABE-OHNE-FENSTER, mit Selbsttest). (d) Die Zusage, dass
  * ein Halt seinen Grund im Workflow-Artefakt hinterlässt (F-202).
  *
+ * F15 WS-3b ergänzt einen Abschnitt für die beiden ADDITIVEN
+ * Projektionsfelder: naechster (je ein Fall für alle sechs Ausgangsarten, in
+ * BEIDEN Projektionen und dort wortgleich) und verstoesse (leer bei gültiger,
+ * gefüllt bei ungültiger Fassung — und die ungültige antwortet weiterhin 200
+ * mit vollem Datensatz, F-247). Dazu die Auflage, dass naechster in KEINEM
+ * Artefakt landet: es ist eine Projektion, kein Feld von WORKFLOW_V0.
+ *
  * Wichtig: Jede der fünf Regeln, die nur validiereWorkflowDaten kennt und
  * JSON Schema nicht ausdrücken kann, hat hier einen eigenen Rotfall —
  * unbekannter nachfolger, doppelte schritt_id, unbekannte
@@ -2555,6 +2562,15 @@ async function starteTestserver(optionen) {
       if (typeof gestoppt?.daten?.grund !== 'string' || !gestoppt.daten.grund.includes('Gate: Stopp ohne laufenden Schritt.')) {
         befunde.push(`(b2) F-216: die Begründung des Menschen muss im Artefakt stehen, erhalten ${JSON.stringify(gestoppt?.daten?.grund)}`)
       }
+      // F15 WS-3a (löst F-221 (a)): der Grund muss auch in den KOPFDATEN stehen, nicht nur im
+      // Artefakt und im Detailendpunkt. Hier geprüft und nicht bei den übrigen Kopfdaten-Zusagen
+      // (Fall „GET-Liste und GET-Detail projizieren"), weil erst dieser Stopp einen Workflow mit
+      // real gesetztem grund hinterlässt — ein frisch angelegter trägt null, und null bewiese
+      // nichts über die Weiterführung des Feldes.
+      const kopfNachStopp = (await (await fetch(`${basisUrl}/api/workflows`)).json()).find((e) => e.workflowId === workflowId)
+      if (typeof kopfNachStopp?.grund !== 'string' || !kopfNachStopp.grund.includes('Gate: Stopp ohne laufenden Schritt.')) {
+        befunde.push(`(WS-3a) F-221 (a): GET /api/workflows muss 'grund' führen, erhalten ${JSON.stringify(kopfNachStopp)}`)
+      }
       if (gestartete !== 0) {
         befunde.push(`(b2) F-216: ein Stopp darf nichts starten, erhalten ${gestartete} Läufe`)
       }
@@ -2790,6 +2806,136 @@ async function starteTestserver(optionen) {
   // bestanden haben (Muster check-f15-automat-real.mjs).
   if (befundeVorStopp === befundeVorStart) {
     console.log('✓ POST /api/workflows/<id>/starten: ein Schritt startet real (202, LAEUFT + lauf_id, Eingaben nach (A)/(B)); 404, 409 (D13), 409 (nicht startbar), 400 (Eingabe-Artefakt fehlt), 400 (ausbrechende auftrag_id, auch als Bestandsartefakt) und 400 (kaputte Prozentkodierung) halten an — der Server lebt danach. Der Automat setzt nach einem erfolgreichen Schritt selbst fort (AK6b: EIN Aufruf, zwei Läufe, danach ist D13 wieder belegt; ZWINGEND hält bei WARTET_FREIGABE, mit persistiertem grund), eine Ablehnung OHNE Checkpoint heilt die lauf_id, eine MIT Wirkungsmarke nicht, und eine neue Fassung ist in LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN gesperrt, in OFFEN/KLAERUNG_ERFORDERLICH/GESTOPPT erlaubt (Reparaturzug Tippfehler -> Heilung -> Korrektur -> Start belegt); ein stale LAEUFT wird als KLAERUNG_ERFORDERLICH festgeschrieben, ohne den Schritt anzufassen; ein eingereichter Datensatz darf sich nicht selbst aussperren (400), und ein ungültiger Bestand bleibt in jedem Status ersetzbar. AK7 (b1): POST .../freigabe löst den ZWINGEND-Halt real auf (202, freigabe_erteilt am Schritt, Entscheidungsartefakt, Kette läuft zu Ende) — auch ohne persistiertes WARTET_FREIGABE, also beim ERSTEN Schritt eines Workflows; ABGELEHNT stoppt und lässt den Reparaturpfad offen; 404/400 (Body, Zeichenregel für workflowId UND schrittId)/409 (Stale-schrittId, keine offene Freigabefrage, nicht dispatchbarer Schritt, GESTOPPT, D13) halten an, ohne etwas zu schreiben, und der Server lebt danach; ein gescheiterter Start NACH erteilter Freigabe endet als KLAERUNG_ERFORDERLICH statt zugemauert; und weder eine Nachbereitung noch eine Heilung überschreibt ein bestehendes GESTOPPT.')
+  }
+}
+
+// ─── naechster und verstoesse in den Projektionen (F15 WS-3b) ───────────────
+//
+// Zwei ADDITIVE Felder, ein Zweck: der Zustand, in dem der Mensch die einzige
+// Entscheidungsinstanz ist, muss sichtbar sein, OHNE dass die Oberfläche ihn selbst ausrechnet
+// (F-253) — und eine ungültige Fassung muss ansehbar bleiben, statt hinter einem Fehlercode zu
+// verschwinden (F-247).
+//
+// Die Fixtures entstehen hier über registriereWorkflow DIREKT und nicht über POST
+// /api/workflows, und das ist kein Umweg, sondern Bedingung: der Endpunkt lehnt ABGESCHLOSSEN
+// ab (400, sonst wäre die Fassung weder startbar noch ersetzbar) und validiert, sodass für den
+// verstoesse-Fall gar keine ungültige Fassung entstehen könnte. Genau diese beiden Fassungen
+// LIEGEN aber real im Bestand: die erste, weil ein durchgelaufener Workflow so endet, die
+// zweite, weil eine neue Validatorregel Bestandsdaten ungültig machen kann.
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f15-ws3b'
+  const befundeVorProjektion = befunde.length
+  const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
+  const lege = (workflowId, daten) => registriereWorkflow({ ...daten, workflow_id: workflowId }, profilReferenz, { basisVerzeichnis, schreiber: () => {} })
+
+  // Je Ausgangsart mindestens ein Fall. Der erste ist der Kern von F-253: ein Workflow auf
+  // OFFEN, dessen ERSTER Schritt ZWINGEND trägt — nichts ist gelaufen, also steht nirgends
+  // WARTET_FREIGABE, und ohne dieses Feld hätte der Halt keine Anzeige.
+  const faelle = [
+    {
+      art: 'haltFreigabe',
+      workflowId: 'ws3b-haltfreigabe',
+      schrittId: 'schritt-1',
+      daten: gateWorkflow([gateSchritt('schritt-1', null, { freigabe: 'ZWINGEND' })]),
+    },
+    { art: 'starte', workflowId: 'ws3b-starte', schrittId: 'schritt-1', daten: gateWorkflow([gateSchritt('schritt-1', null)]) },
+    // schrittId null, obwohl der Halt einen Schritt betrifft: 'haltKlaerung' trägt in der Union
+    // keinen schritt_id-Namen, nur einen Grundtext (der ihn nennt). Die Projektion erfindet
+    // dafür nichts — sie gibt weiter, was der Ausgang trägt.
+    { art: 'haltKlaerung', workflowId: 'ws3b-haltklaerung', schrittId: null, daten: gateWorkflow([gateSchritt('schritt-1', null, { worker: 'codex' })]) },
+    {
+      art: 'haltGrenze',
+      workflowId: 'ws3b-haltgrenze',
+      schrittId: null,
+      daten: gateWorkflow([gelaufen('schritt-2'), gateSchritt('schritt-2', null)], { aktiver_schritt_id: 'schritt-2', grenzen: { max_schritte: 1, max_replans: 2 } }),
+    },
+    {
+      art: 'haltGestoppt',
+      workflowId: 'ws3b-haltgestoppt',
+      schrittId: null,
+      daten: gateWorkflow([gateSchritt('schritt-1', null)], { status: 'GESTOPPT', aktiver_schritt_id: null }),
+    },
+    {
+      art: 'fertig',
+      workflowId: 'ws3b-fertig',
+      schrittId: null,
+      daten: gateWorkflow([gelaufen(null)], { status: 'ABGESCHLOSSEN', aktiver_schritt_id: null }),
+    },
+  ]
+  for (const fall of faelle) lege(fall.workflowId, fall.daten)
+
+  // Die ungültige Fassung: unbekannter nachfolger. Sie ist gültig genug, um eine formal
+  // befüllte Schrittliste zu tragen — genau der Fall, den WS-3a als normalen Plan gezeigt hat,
+  // obwohl der Startendpunkt ihn mit 409 ablehnt.
+  lege('ws3b-ungueltig', gateWorkflow([gateSchritt('schritt-1', 'gibt-es-nicht')]))
+
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const liste = await (await fetch(`${basisUrl}/api/workflows`)).json()
+    for (const fall of faelle) {
+      // (1) Die LISTE trägt das Verdikt. Ohne sie müsste der Mensch jeden Workflow einzeln
+      // öffnen, um zu sehen, wo er gebraucht wird — der Kern von F-253.
+      const kopf = liste.find((eintrag) => eintrag.workflowId === fall.workflowId)
+      if (kopf?.naechster?.art !== fall.art) {
+        befunde.push(`GET /api/workflows: '${fall.workflowId}' erwartet naechster.art '${fall.art}', erhalten ${JSON.stringify(kopf?.naechster)}`)
+      }
+      if ((kopf?.naechster?.schrittId ?? null) !== fall.schrittId) {
+        befunde.push(`GET /api/workflows: '${fall.workflowId}' erwartet naechster.schrittId ${JSON.stringify(fall.schrittId)}, erhalten ${JSON.stringify(kopf?.naechster?.schrittId ?? null)}`)
+      }
+      if (typeof kopf?.naechster?.grund !== 'string' || kopf.naechster.grund.length === 0) {
+        befunde.push(`GET /api/workflows: '${fall.workflowId}' liefert keinen lesbaren naechster.grund, erhalten ${JSON.stringify(kopf?.naechster?.grund)}`)
+      }
+
+      // (2) Dasselbe Verdikt im DETAIL, und zwar wortgleich: zwei Projektionen, die für
+      // denselben Workflow Verschiedenes sagen, wären zwei Wahrheiten (§16.2).
+      const detail = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(fall.workflowId)}`)).json()
+      if (JSON.stringify(detail.naechster) !== JSON.stringify(kopf?.naechster)) {
+        befunde.push(`GET /api/workflows/<id>: '${fall.workflowId}' liefert ein anderes Verdikt als die Liste — Detail ${JSON.stringify(detail.naechster)}, Liste ${JSON.stringify(kopf?.naechster)}`)
+      }
+      // (3) Eine gültige Fassung hat keine Verstöße — sonst wäre der Rotfall unten durch
+      // "meldet immer etwas" erfüllbar.
+      if (!Array.isArray(detail.verstoesse) || detail.verstoesse.length !== 0) {
+        befunde.push(`GET /api/workflows/<id>: gültige Fassung '${fall.workflowId}' erwartet verstoesse [], erhalten ${JSON.stringify(detail.verstoesse)}`)
+      }
+    }
+
+    // (4) Die ungültige Fassung: 200 mit vollem Datensatz, gefüllten Verstößen und einem
+    // ausdrücklich NICHT bestimmbaren Verdikt. Kein 409 — sie anzusehen ist der erste Schritt
+    // ihrer Reparatur (F-247).
+    const antwortUngueltig = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent('ws3b-ungueltig')}`)
+    const ungueltig = await antwortUngueltig.json()
+    if (antwortUngueltig.status !== 200) {
+      befunde.push(`GET /api/workflows/<id>: ungültige Fassung erwartet 200 (ansehbar bleiben), erhalten ${antwortUngueltig.status}`)
+    }
+    if (!Array.isArray(ungueltig.verstoesse) || ungueltig.verstoesse.length === 0) {
+      befunde.push(`GET /api/workflows/<id>: ungültige Fassung erwartet gefüllte verstoesse, erhalten ${JSON.stringify(ungueltig.verstoesse)}`)
+    }
+    if (ungueltig.daten?.schritte?.length !== 1) {
+      befunde.push(`GET /api/workflows/<id>: ungültige Fassung muss den vollen Datensatz behalten, erhalten ${JSON.stringify(ungueltig.daten)}`)
+    }
+    if (ungueltig.naechster !== null) {
+      befunde.push(`GET /api/workflows/<id>: ungültige Fassung erwartet naechster null (nicht bestimmbar), erhalten ${JSON.stringify(ungueltig.naechster)}`)
+    }
+    const listeUngueltig = (await (await fetch(`${basisUrl}/api/workflows`)).json()).find((eintrag) => eintrag.workflowId === 'ws3b-ungueltig')
+    if (listeUngueltig === undefined || listeUngueltig.naechster !== null) {
+      befunde.push(`GET /api/workflows: ungültige Fassung erwartet naechster null in der Liste, erhalten ${JSON.stringify(listeUngueltig?.naechster)}`)
+    }
+
+    // (5) Die AUFLAGE: naechster ist eine Projektion und darf nirgends im Artefakt landen. Ein
+    // Feld, das der Automat nicht berechnet, sondern vorfindet, wäre eine zweite Wahrheit über
+    // seinen Zustand — und WORKFLOW_V0 ist additionalProperties:false, ein mitgeschriebenes
+    // Feld machte den Datensatz still ungültig.
+    const abgelegt = ladeArtefaktVersion('workflow-ws3b-starte', undefined, { basisVerzeichnis, schreiber: () => {} })
+    if (abgelegt === null || 'naechster' in abgelegt.daten) {
+      befunde.push(`Auflage WS-3b: 'naechster' darf NICHT im Artefakt stehen — es ist eine Projektion, erhalten ${JSON.stringify(abgelegt?.daten)}`)
+    }
+
+    if (befunde.length === befundeVorProjektion) {
+      console.log(`✓ naechster in Liste UND Detail, je ein Fall für alle ${faelle.length} Ausgangsarten und wortgleich in beiden Projektionen; verstoesse leer bei gültiger und gefüllt bei ungültiger Fassung (200, voller Datensatz, naechster null); 'naechster' steht in keinem Artefakt.`)
+    }
+  } finally {
+    await schliessen()
+    rmSync(basisVerzeichnis, { recursive: true, force: true })
   }
 }
 

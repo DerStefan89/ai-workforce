@@ -7,7 +7,7 @@
 </head>
 <body>
   <h1>Leitstand</h1>
-  <p class="hinweis">Rein lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahme: das Startformular und die Wiederaufnahme-Bedienung unten lösen reale Läufe über F8 aus.</p>
+  <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: das Startformular, die Wiederaufnahme-Bedienung, die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
   <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
 
   <section id="auftrag-start">
@@ -57,6 +57,30 @@
     <h2>Startfehler</h2>
     <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
     <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
+  </section>
+
+  <section id="workflows-abschnitt">
+    <h2>Workflows</h2>
+    <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
+    <div id="workflows"></div>
+  </section>
+
+  <section id="workflow-detail" hidden>
+    <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
+    <p id="workflow-detail-fehler" class="fehler" hidden></p>
+    <!--
+      Drei Container statt einem, und die Trennung ist die Bedingung dafür, dass die
+      Bedienung überhaupt bedienbar ist: #workflow-detail-inhalt wird vom Poll alle zwei
+      Sekunden vollständig ersetzt (F15 WS-3a). Eine Pflichtbegründung, die dort stünde,
+      wäre nach zwei Sekunden weg. #workflow-bedienung wird deshalb nur bei ECHTER
+      Zustandsänderung neu gebaut (Signatur-Vergleich in app.js), und #workflow-reparatur
+      fasst der Poll überhaupt nicht an — der Entwurf gehört dem Menschen, bis er ihn
+      einreicht oder verwirft (F-249).
+    -->
+    <div id="workflow-bedienung"></div>
+    <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
+    <div id="workflow-detail-inhalt"></div>
+    <div id="workflow-reparatur"></div>
   </section>
 
   <div id="laeufe"></div>

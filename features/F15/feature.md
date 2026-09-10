@@ -267,16 +267,145 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   Rotfall gegen die Selbstfreigabe über den Body, der Fall „`ZWINGEND` als
   erster Schritt ist freigebbar" und der Fall „gescheiterter Start NACH
   erteilter Freigabe endet als `KLAERUNG_ERFORDERLICH` statt zugemauert".
-- **AK8** *(WS-3, OFFEN)* — Der Leitstand zeigt Workflow, Schrittliste, Status
-  je Schritt und den aktiven Schritt. Freigeben, Überspringen und
+- **AK8** *(WS-3a + WS-3b, ERFÜLLT)* — Der Leitstand zeigt Workflow,
+  Schrittliste, Status je Schritt und den aktiven Schritt. Freigeben und
   Stoppen wirken über den bestehenden Entscheidungs-Schreibpfad.
 
-  **Ausdrücklich weiterhin offen, obwohl WS-2c (b2) das Stoppen gebaut hat:**
-  entstanden ist der ENDPUNKT `POST /api/workflows/<id>/stoppen` (F-216), nicht
-  die Oberfläche. Es gibt keine Ansicht, kein Bedienelement und keine
-  Schrittliste; wer heute stoppen will, setzt den POST von Hand ab. Genauso
-  fehlt das Überspringen vollständig. AK8 gilt erst als erfüllt, wenn die
-  Ansicht steht — der Endpunkt ist ihre Vorbedingung, nicht ihr Ersatz.
+  **Erfüllt mit WS-3b (10.09.2026), belegt in
+  `nachweis/f15-ws3b-oberflaechennachweis.md`** — realer Chrome, echte Seite,
+  echter Server, geprüft am Artefakt auf der Platte. Bis dahin war AK8 auch
+  LESEND unerfüllt (F-253): der Zustand, in dem der Mensch die einzige
+  Entscheidungsinstanz ist, hatte keine Anzeige, solange er nicht persistiert
+  war.
+
+  **Was WS-3a (10.09.2026) erbracht hat — die Ansicht, rein lesend:**
+  `public/leitstand/index.html` trägt einen Abschnitt „Workflows",
+  `public/leitstand/app.js` projiziert `GET /api/workflows` (Kopfdaten je
+  Workflow: `workflow_id`, Ziel, Fassung, Status, Cursor und — neu, F-221 (a)
+  — der Halt-`grund` als sichtbare Zeile) und `GET /api/workflows/<id>`
+  (Schrittliste in Planreihenfolge entlang der `nachfolger`-Kette, je Schritt
+  `schritt_id`, Rolle, Worker, Modell, `freigabe`/`freigabe_erteilt`, Status,
+  `lauf_id` als Verweis in den bestehenden Lauf-Abschnitt, `nachfolger`,
+  `zeitgrenze_ms`). Der Schritt, dessen `lauf_id` der Server über
+  `GET /api/laeufe/<laufId>` als `aktiv` meldet (D13), ist als laufend
+  markiert; eine Fassung, die der Server mit 409 ablehnt, erscheint als
+  benannter Zustand „Fassung ungültig" statt als halbe Schrittliste.
+  Serverseitig war dafür genau EINE Änderung nötig: `grund` in
+  `baueWorkflowKopfdaten`.
+
+  Neu gegatet: `scripts/check-f15-workflow-oberflaeche.mjs` (in
+  `npm run check`) prüft den Quelltext von `public/leitstand/` gegen diese
+  Zusagen, jedes Feld einzeln, dazu die Syntax von `app.js` und die
+  WS-3a-Scope-Grenze („app.js ruft keinen der drei Schreibendpunkte auf").
+  42 Zusagen einzeln rot kalibriert. **Wichtig für die nächste Sitzung:**
+  `public/leitstand/` war bis dahin von KEINEM Gate berührt —
+  `scripts/check-f12-leitstand-ansicht.mjs` prüft trotz seines Namens die
+  API-Projektionen hinter der Ansicht, nicht die Ansicht (F-251).
+
+  **Was WS-3b (10.09.2026) erbracht hat — die Bedienung und der
+  Reparaturzug:**
+
+  *Serverseitig zwei ADDITIVE Projektionsfelder, kein geänderter
+  Antwortvertrag.* (1) `naechster` (`{ art, schrittId, grund }`) in BEIDEN
+  Workflow-Projektionen, ausschließlich aus `ermittleNaechstenSchritt` ohne
+  Vorschrittergebnis (`baueNaechsterProjektion`, D5) — dieselbe Funktion und
+  derselbe Aufruf, den auch der Start- und der Freigabe-Endpunkt für ihre
+  Entscheidung benutzen. Auch in der LISTE, weil F-253s Kern ist, dass der
+  Mensch sehen muss, WO er gebraucht wird, ohne jeden Workflow einzeln zu
+  öffnen. **Auflage, im Code vermerkt:** `naechster` ist eine Projektion und
+  wird nirgends persistiert; das Gate hält fest, dass es in keinem Artefakt
+  steht. (2) `verstoesse` (aus `validiereWorkflowDaten`) im Detail, weiterhin
+  mit 200 und vollem Datensatz (F-247): eine ungültige Fassung muss ansehbar
+  bleiben, denn sie anzusehen ist der erste Schritt ihrer Reparatur. Der in
+  WS-3a gebaute, vom echten Server unerreichbare 409-Zweig im Client ist auf
+  diesen realen Weg umgestellt.
+
+  *Oberfläche: vier Bedienungen, alle an bestehenden Endpunkten.* Starten
+  (`naechster.art === 'starte'`), Freigeben und Ablehnen (`haltFreigabe`,
+  F-222), Stoppen (`status` in den stoppbaren Zuständen, F-216). Freigeben,
+  Ablehnen und Stoppen tragen ein Pflicht-Begründungsfeld — die Oberfläche
+  provoziert den 400 des Servers nicht erst. Angeboten wird ausschließlich,
+  was der Server ausweist; D13 wird dagegen NICHT vorhergesagt: kommt ein
+  409, steht sein Grundtext als Meldung am Workflow. Nach jeder Bedienung
+  läuft ein Poll außer der Reihe; der Generationszähler aus F-252 greift auch
+  für den neuen Ladeweg.
+
+  *Der Reparaturzug (löst F-240, F-218).* „Reparaturfassung vorbereiten" bei
+  `GESTOPPT` und `KLAERUNG_ERFORDERLICH` lädt die aktuelle Fassung und wendet
+  die vier Korrekturen an, die bis dahin nur `check-f15-automat-real.mjs`
+  Block (e) vollständig machte: `status` auf `OFFEN`; die Schrittfelder des
+  abgebrochenen oder gescheiterten Schritts zurückgesetzt; der Cursor bleibt,
+  wo er steht, und zeigt bei `null` auf den ersten Schritt ohne `lauf_id`; der
+  Halt-`grund` bleibt im Entwurf sichtbar. Ergebnis ist ein BEARBEITBARER
+  JSON-Text mit „Einreichen" (`POST /api/workflows`) — kein Formular, das wäre
+  ein Plan-Editor und eine zweite, alternde Beschreibung von `WORKFLOW_V0`.
+  **Auflage, im Code vermerkt:** die Cursor-Vorbelegung ist ein Vorschlag für
+  einen Entwurf, den der Mensch ändert — KEINE Durchsetzung und kein zweiter
+  Cursor-Regelsatz.
+
+  *Fünf Warnungen über dem Entwurf*, alle aus der geladenen Fassung
+  ableitbar: F-223 (eine erteilte, noch nicht verbrauchte Freigabe geht beim
+  Einreichen verloren), F-219 (ein Schritt, dessen `lauf_id` zurückgesetzt
+  wird, fällt als Lineage-Vorgänger aus), F-226 (nimmt der Entwurf eine
+  ZWINGEND-Pflicht zurück, verlangt der Server eine Begründung — das Feld
+  dafür steht sichtbar am Entwurf, und die Warnung wird beim Tippen neu
+  gerechnet, nicht erst beim Absenden), dazu aus dem QA-Pass zwei weitere
+  Verluste, die F-240 selbst aufzählt: der Halt-`grund` wird beim Einreichen
+  wegnormalisiert, und eine bereits erreichte `grenzen.max_schritte` hebt der
+  Entwurf nicht an. **Die Warnungen LÖSEN F-219 und F-223 nicht**, sie machen
+  sie sichtbar; beide bleiben offen, weil das, was sie beschreiben, eine
+  zulässige menschliche Entscheidung ist.
+
+  *Aus Reviewer- und QA-Pass im selben Commit nachgezogen:* die Reparatur wird
+  auch bei einer UNGÜLTIGEN Fassung angeboten (der Server lässt einen
+  ungültigen Bestand in jedem Status ersetzen — ohne diesen Öffner wäre genau
+  die Fassung, für die F-247 die Lesbarkeit erkämpft hat, ansehbar und nicht
+  reparierbar), und der Stopp-Knopf verschwindet dort (der Stopp-Endpunkt
+  lehnt sie mit 409 ab, F-241); der Reparaturentwurf hat einen eigenen
+  Überholschutz; jede Bedienung quittiert auch den ERFOLG und wertet dabei
+  `laufAbgebrochen` und `bezeugt` aus; der Workflow-Kopf wird auch dann
+  gerendert, wenn die Schrittliste unlesbar ist. Neue Findings daraus: F-262
+  bis F-267.
+
+  *F-253 geschlossen:* je Workflow eine abgeleitete LAGE („wartet auf dich —
+  Freigabe nötig" / „läuft" / „steht — …" / „durchgelaufen"), in Liste UND
+  Detail, dazu die Markierung des fälligen und des Cursor-Schritts in der
+  Tabelle und der Ausweis von `EMPFOHLEN`/`AUTOMATISCH` als „hält nicht an".
+
+  *F-249 beantwortet, ohne den Poll abzuschalten:* die Schrittliste wird
+  weiter bei jedem Tick ersetzt, der Bedienblock nur bei echter Lageänderung,
+  der Reparaturentwurf gar nicht — eine angefangene Pflichtbegründung
+  überlebt damit den Poll, eine zu einer weggefallenen Frage nicht.
+
+  *Gate:* `scripts/check-f15-workflow-oberflaeche.mjs` prüft (g) Verdikt,
+  Bedienungen und Pflichtbegründungen, (h) den Reparaturzug mit seinen vier
+  Korrekturen und drei Warnungen; der Scope-Fall (e) ist UMGEDREHT statt
+  gelöscht (er verlangt jetzt genau die drei Aufrufe, die er vorher verbot),
+  ebenso die Zusage über den Einleitungssatz in `index.html`.
+  `scripts/check-f15-workflow.mjs` prüft `naechster` in beiden Projektionen
+  mit je einem Fall für alle sechs Ausgangsarten und `verstoesse` gefüllt wie
+  leer. **65 Zusagen einzeln rot kalibriert**, Rückbau über Datei-Hash
+  gegengeprüft (F-211) — dabei real gefunden, dass eine Zusage durch ihre
+  eigene Funktionsdeklaration erfüllbar war.
+
+  **Was offen bleibt:** F-254 (Zeiten, Plandaten wie `eingaben`/`werkzeugsatz`
+  in der Schrittliste, Leseseite der Entscheidungsartefakte), F-255 (ein
+  Workflow mit unlesbarer Kette verschwindet lautlos aus der Liste), F-256
+  (vier kleinere Anzeigemängel), F-248 (die Markierung „läuft jetzt" fehlt
+  still, solange das Laufverzeichnis noch nicht existiert). Keiner davon
+  gehört zu AK8s Wortlaut; AK10 (realer Nachweis mit echtem Kindprozess über
+  den Leitstand) ist WS-4.
+
+  **Bekannte Lücke, keine Vergessenheit: „Überspringen" ist gestrichen**
+  *(Entscheidung Stefan, 10.09.2026)* — AK8 nannte ursprünglich auch
+  Überspringen als Bedienung. Der Schrittstatus `UEBERSPRUNGEN` bleibt im
+  Schema (`schemas/kontrollzustand-workflow-payload.schema.json`), wird aber
+  von niemandem gesetzt: weder Automat noch Endpunkt noch Oberfläche. Einen
+  Schritt für unnötig zu erklären ist eine PLANÄNDERUNG und läuft über eine
+  neue Fassung via `POST /api/workflows` — seit WS-2c (b3) wird eine solche
+  Änderung bezeugt, sobald sie eine Freigabepflicht abschwächt. Ein zweiter
+  Weg, einen ZWINGEND-Schritt loszuwerden, wäre genau die Umgehung, gegen die
+  (b3) gebaut ist.
 - **AK9** *(WS-1/WS-2a, erfüllt)* — Gate-Skript
   `scripts/check-f15-workflow.mjs`, Teil von `npm run check`.
 - **AK10** *(WS-4)* — Realer Nachweis über den Leitstand: ein

@@ -362,6 +362,18 @@
  * geschrieben (Unterschied zum Stopp, wo die Wirkung schon eingetreten war).
  * OHNE Treffer ändert sich nichts: gewöhnliche Planänderungen, die Erstanlage
  * und die VERSCHÄRFUNG AUTOMATISCH -> ZWINGEND bleiben begründungsfrei.
+ *
+ * F15 WS-3b: zwei ADDITIVE Projektionsfelder für die Leitstand-Bedienung, kein
+ * geänderter Antwortvertrag. (1) 'naechster' ({ art, schrittId, grund }) in
+ * BEIDEN Workflow-Projektionen — GET /api/workflows und GET
+ * /api/workflows/<id> —, ausschließlich aus ermittleNaechstenSchritt ohne
+ * Vorschrittergebnis (baueNaechsterProjektion, D5). Damit rendert die Ansicht
+ * das Verdikt des Servers, statt einen zweiten Regelsatz im Browser zu führen;
+ * ohne das Feld hätte der wichtigste Zustand überhaupt — ein fälliger
+ * ZWINGEND-Schritt OHNE persistierten Halt — keine Anzeige (F-253). (2)
+ * 'verstoesse' (string[] aus validiereWorkflowDaten) im Detail, weiterhin mit
+ * 200 und vollem Datensatz (F-247): eine ungültige Fassung muss ansehbar
+ * bleiben, denn sie anzusehen ist der erste Schritt ihrer Reparatur.
  */
 
 import { createServer } from 'node:http'
@@ -793,11 +805,66 @@ function sammleAuftraege(basisVerzeichnis = BASISVERZEICHNIS) {
 const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
 
 /**
+ * Das Verdikt des Schritt-Automaten zu EINEM Workflow, als Projektion für die
+ * Ansicht (F15 WS-3b, löst F-253).
+ *
+ * WARUM DER SERVER DAS MITLIEFERT: der Zustand "ein fälliger ZWINGEND-Schritt
+ * wartet auf einen Menschen" ist ABGELEITET, nicht persistiert. Trägt der
+ * ERSTE Schritt eines Workflows ZWINGEND, ist nichts gelaufen, also steht
+ * nirgends WARTET_FREIGABE — und genau dort ist der Mensch die einzige
+ * Entscheidungsinstanz. Die Oberfläche darf diesen Zustand nicht selbst
+ * ausrechnen (D5, kein zweiter Regelsatz im Browser); sie rendert das Verdikt,
+ * das hier entsteht.
+ *
+ * Quelle ist ausschließlich ermittleNaechstenSchritt OHNE Vorschrittergebnis —
+ * dieselbe Funktion und derselbe Aufruf, den POST /api/workflows/<id>/starten
+ * und POST /api/workflows/<id>/freigabe für ihre Entscheidung benutzen. Was
+ * die Ansicht anbietet, kann deshalb nicht auseinanderlaufen mit dem, was der
+ * Endpunkt annimmt.
+ *
+ * AUFLAGE, bitte stehen lassen: 'naechster' ist eine PROJEKTION, kein Feld von
+ * WORKFLOW_V0. Es wird nirgends persistiert, steht in keinem Schema und darf
+ * in keinen Schreibpfad geraten — wer es in einen Artefaktinhalt schreibt,
+ * erzeugt eine zweite Wahrheit über den Automatenzustand neben der Regel, die
+ * ihn berechnet (§16.2). Die einzigen Felder, die der Automat wirklich ABLEGT,
+ * sind status, aktiver_schritt_id und grund.
+ *
+ * Ungültige Fassung -> null: ermittleNaechstenSchritt setzt einen bereits
+ * validierten Datensatz voraus (sie greift ungeprüft auf daten.schritte zu)
+ * und würde auf einer kaputten Fassung werfen. null heißt "nicht bestimmbar",
+ * und der Detailendpunkt liefert daneben die Verstöße, aus denen hervorgeht,
+ * warum.
+ * @param daten - WORKFLOW_V0-Datensatz einer geladenen Artefaktversion
+ * @param verstoesse - bereits ermitteltes validiereWorkflowDaten-Ergebnis, wenn der Aufrufer es ohnehin hat
+ * @returns { art, schrittId, grund } oder null, wenn die Fassung nicht validiert
+ */
+function baueNaechsterProjektion(daten, verstoesse = undefined) {
+  if ((verstoesse ?? validiereWorkflowDaten(daten)).length > 0) return null
+  const ausgang = ermittleNaechstenSchritt(daten)
+  // Nur zwei der sechs Ausgänge FÜHREN einen Schritt in einem eigenen Feld: 'starte' den ganzen
+  // Schritt, 'haltFreigabe' die Kennung. Die übrigen vier tragen `schrittId` nicht — das heißt
+  // aber NICHT, dass kein Schritt gemeint wäre (Reviewer-/QA-Pass 10.09.2026): 'haltKlaerung'
+  // und 'haltGestoppt' führen sehr wohl einen `aktiverSchrittId`, und bei Regel 3 und 4 ist das
+  // genau der blockierende Schritt. Ihn hier zusätzlich zu projizieren hieße, Cursor und
+  // Blockierer in EIN Feld zu legen — zwei verschiedene Aussagen unter einem Namen. Der Verlust
+  // ist real und als F-263 festgehalten; er wird hier nicht durch eine Vermischung geheilt.
+  const schrittId = ausgang.art === 'starte' ? ausgang.schritt.schritt_id : (ausgang.schrittId ?? null)
+  return { art: ausgang.art, schrittId, grund: beschreibeAutomatAusgang(ausgang) }
+}
+
+/**
  * Kopfdaten eines WORKFLOW_V0-Datensatzes für die Listenansicht (F15
  * WS-2a) — die Projektion, die GET /api/workflows je Eintrag liefert.
  * schritte[] bleibt bewusst draußen (Muster sammleAuftraege, das
  * auftragstext ebenfalls nur im Detail liefert): eine Liste zeigt, wo ein
  * Workflow steht, nicht seinen ganzen Inhalt.
+ *
+ * F15 WS-3a (löst F-221 (a)): grund gehört dazu. Eine Liste, die
+ * KLAERUNG_ERFORDERLICH oder GESTOPPT ohne Grund zeigt, ist genau die
+ * Ansicht, wegen der WS-2c (a) das Feld eingeführt hat — der Automat hält
+ * an, während niemand hinsieht, und die Startfehlerliste ist flüchtig.
+ * Anders als schritte[] ist grund ein Kopfdatum, kein Inhalt: er sagt, WO
+ * der Workflow steht, nicht was in ihm steht.
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param version - geladene Artefaktversion (ladeArtefaktVersion)
  * @returns Kopfdaten-Objekt für die Liste
@@ -810,6 +877,14 @@ function baueWorkflowKopfdaten(workflowId, version) {
     ziel: daten.ziel ?? null,
     status: daten.status ?? null,
     aktiverSchrittId: daten.aktiver_schritt_id ?? null,
+    grund: daten.grund ?? null,
+    // F15 WS-3b (löst F-253): das Automaten-Verdikt gehört auch in die LISTE,
+    // nicht nur ins Detail. Der Kern des Befunds ist, dass der Mensch sehen
+    // muss, WO er gebraucht wird, ohne jeden Workflow einzeln zu öffnen — und
+    // die Daten sind ohnehin geladen, es ist reine Rechnung ohne zusätzliches
+    // I/O. Wie grund ist das Verdikt ein Kopfdatum, kein Inhalt: es sagt, wo
+    // der Workflow steht, nicht was in ihm steht.
+    naechster: baueNaechsterProjektion(daten),
     schritteAnzahl: Array.isArray(daten.schritte) ? daten.schritte.length : 0,
     versionSequenz: version.versionSequenz,
   }
@@ -1619,10 +1694,16 @@ function workflowStatusZuAusgang(ausgang) {
 }
 
 /**
- * Übersetzt einen Nicht-'starte'-Ausgang von ermittleNaechstenSchritt in einen
- * lesbaren Grund für die 409-Antwort des Startendpunkts (F15 WS-2b). Nötig,
- * weil zwei der fünf Ausgänge kein grund-Feld tragen: 'haltFreigabe' nennt nur
- * die schrittId, 'fertig' gar nichts.
+ * Übersetzt einen Ausgang von ermittleNaechstenSchritt in einen lesbaren Grund
+ * (F15 WS-2b). Nötig, weil zwei der Ausgänge kein grund-Feld tragen:
+ * 'haltFreigabe' nennt nur die schrittId, 'fertig' gar nichts.
+ *
+ * Ursprünglich nur für die 409-Antwort des Startendpunkts geschrieben, also für
+ * einen Nicht-'starte'-Ausgang. Seit WS-2c (b1) reicht der Freigabe-Endpunkt
+ * auch ein 'starte' hinein, und seit WS-3b liefert die Funktion den grund ALLER
+ * sechs Ausgänge für die Anzeige (baueNaechsterProjektion) — die Texte werden
+ * also von jemandem gelesen, der nichts falsch gemacht hat, nicht nur von
+ * jemandem, dessen Aufruf gerade abgelehnt wurde (Reviewer-Pass 10.09.2026).
  * @param ausgang - Rückgabe von ermittleNaechstenSchritt
  * @returns lesbarer Grund
  */
@@ -1647,7 +1728,11 @@ function beschreibeAutomatAusgang(ausgang) {
   // Workflow freigeben, der gar keine Freigabe braucht. Beide antworteten mit dem Wort
   // 'undefined' im Grund (QA-Pass 10.09.2026, Befund 2).
   if (ausgang.art === 'starte') {
-    return `Schritt '${ausgang.schritt.schritt_id}' ist bereits startbar — für ihn liegt keine offene Freigabefrage (mehr) vor`
+    // Wortlaut bewusst neutral: dieser Text ist seit WS-3b auch die Anzeige eines völlig
+    // normalen, startbereiten Workflows und darf sich nicht wie die Rückweisung einer
+    // Fehlbedienung lesen. Für den Freigabe-Endpunkt bleibt er zutreffend — dort ist genau das
+    // der Grund, warum die Freigabe abprallt.
+    return `Schritt '${ausgang.schritt.schritt_id}' ist startbar — es liegt keine offene Freigabefrage vor`
   }
   return ausgang.grund
 }
@@ -2328,7 +2413,26 @@ export function erzeugeRequestHandler(optionen = {}) {
       // eine Auswahl reduziert: anders als bei der Startvorlage (D5, strikte Allowlist) trägt
       // ein Workflow kein einziges Feld, das ein Geheimnis wäre — er ist genau das, was der
       // Mensch vorher freigegeben hat.
-      sendeJson(res, 200, { workflowId, versionSequenz: version.versionSequenz, daten: version.daten })
+      //
+      // F15 WS-3b (löst F-247): zusätzlich die Verstöße und das Automaten-Verdikt. Beide sind
+      // ADDITIV — der bestehende Antwortvertrag ändert sich nicht, kein Feld verschwindet.
+      //
+      // KEIN 409 bei einer ungültigen Fassung, und das ist die eigentliche Entscheidung: eine
+      // Fassung anzusehen ist der erste Schritt ihrer Reparatur. Ein Detailendpunkt, der genau
+      // die Fassung verweigert, die repariert werden muss, wäre die zugemauerte Sackgasse aus
+      // F-207 in neuer Form — dieselbe Linie, aus der POST /api/workflows einen ungültigen
+      // Bestand ausdrücklich ersetzbar lässt (bestandUngueltig). Die Ansicht zeigt die
+      // Verstöße und lässt den Menschen daran arbeiten, statt ihn auszusperren.
+      const verstoesse = validiereWorkflowDaten(version.daten)
+      sendeJson(res, 200, {
+        workflowId,
+        versionSequenz: version.versionSequenz,
+        daten: version.daten,
+        verstoesse,
+        // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
+        // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
+        naechster: baueNaechsterProjektion(version.daten, verstoesse),
+      })
       return
     }
 
