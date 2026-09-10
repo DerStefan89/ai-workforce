@@ -1,7 +1,12 @@
 /**
  * Datei: src/workflow/workflow.test.ts
  *
- * Zweck: node:test-Fälle für validiereWorkflowDaten (F15 WS-1). Trägt die
+ * Zweck: node:test-Fälle für src/workflow/index.ts. Zwei Abschnitte:
+ * validiereWorkflowDaten (F15 WS-1, unten zuerst) und
+ * ermittleNaechstenSchritt (F15 WS-2a, am Ende der Datei — dort steht auch,
+ * warum dieser Abschnitt eine eigene, typisierte Testbasis hat).
+ *
+ * Abschnitt 1 — validiereWorkflowDaten (F15 WS-1). Trägt die
  * Rot-Abdeckung der Formregeln, die scripts/check-f15-workflow.mjs bewusst
  * NICHT als eigene JSON-Fixture führt — Enums, Zahlgrenzen, leere Strings,
  * fehlende Pflichtfelder, unbekannte Felder, Nicht-Objekt-/Nicht-Array-
@@ -23,7 +28,8 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { validiereWorkflowDaten } from './index.ts'
+import { ermittleNaechstenSchritt, validiereWorkflowDaten } from './index.ts'
+import type { WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
 
 /** Baut einen frischen, gültigen Zweischritt-Workflow als Mutationsbasis. */
 function gueltigerWorkflow(): Record<string, unknown> {
@@ -222,4 +228,426 @@ test('Rotfall Wurzel: Nicht-Objekte werden abgelehnt', () => {
   for (const wert of [null, undefined, 'text', 42, [], true]) {
     assert.deepStrictEqual(validiereWorkflowDaten(wert), ['Wurzel ist kein Objekt'], `Wert ${JSON.stringify(wert)}`)
   }
+})
+
+// ─── ermittleNaechstenSchritt (F15 WS-2a) ───────────────────────────────────
+//
+// Eigene, TYPISIERTE Basis statt der Record<string, unknown>-Mutationsbasis
+// oben: validiereWorkflowDaten nimmt bewusst unknown entgegen (sie ist die
+// Eingangsprüfung), ermittleNaechstenSchritt bewusst WorkflowV0Daten (sie
+// läuft hinter der Prüfung). Beides mit derselben Basis zu bedienen hieße,
+// an jeder Zeile zu casten.
+//
+// Jeder der fünf Ausgänge hat mindestens einen Fall; dazu die beiden Regeln,
+// die man am leichtesten falsch baut — EMPFOHLEN startet (statt anzuhalten)
+// und Codex hält an (statt still auf claude-code auszuweichen).
+
+/**
+ * Baut einen typisierten Schritt.
+ * @param schrittId - schritt_id des Schritts
+ * @param nachfolger - schritt_id des Folgeschritts oder null für das Ende
+ * @param felder - Abweichungen von der Vorgabe (worker, freigabe, lauf_id, …)
+ * @returns gültiger WORKFLOW_V0-Schritt
+ */
+function typisierterSchritt(schrittId: string, nachfolger: string | null, felder: Partial<WorkflowV0Schritt> = {}): WorkflowV0Schritt {
+  return {
+    schritt_id: schrittId,
+    rolle: 'code-reviewer',
+    werkzeugsatz: 'lesend',
+    worker: 'claude-code',
+    modell: 'test-modell',
+    eingaben: ['artefakt:auftrag-test-auftrag'],
+    output_schema: null,
+    freigabe: 'AUTOMATISCH',
+    risiko: 'Testrisiko',
+    zeitgrenze_ms: 600000,
+    nachfolger,
+    status: 'OFFEN',
+    lauf_id: null,
+    ...felder,
+  }
+}
+
+/**
+ * Baut einen typisierten Workflow um eine Schrittliste herum.
+ * @param schritte - die Schrittliste
+ * @param felder - Abweichungen von der Vorgabe (grenzen, aktiver_schritt_id, …)
+ * @returns gültiger WORKFLOW_V0-Datensatz
+ */
+function typisierterWorkflow(schritte: WorkflowV0Schritt[], felder: Partial<WorkflowV0Daten> = {}): WorkflowV0Daten {
+  return {
+    workflow_schema: 'v0',
+    workflow_id: 'test-workflow',
+    auftrag_id: 'test-auftrag',
+    version: 1,
+    ziel: 'Testziel',
+    status: 'OFFEN',
+    aktiver_schritt_id: schritte[0]?.schritt_id ?? null,
+    grenzen: { max_schritte: 8, max_replans: 2 },
+    schritte,
+    ...felder,
+  }
+}
+
+/** Die typisierte Basis muss auch die Laufzeitprüfung bestehen — sonst testen die Fälle unten eine Form, die real nie ankommt. */
+test('ermittleNaechstenSchritt: die typisierte Testbasis ist auch laut validiereWorkflowDaten gültig', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', 'schritt-2'), typisierterSchritt('schritt-2', null)])
+  assert.deepStrictEqual(validiereWorkflowDaten(workflow), [])
+})
+
+test("Ausgang 'starte': Erststart ohne Vorschrittergebnis startet den Cursor-Schritt", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', 'schritt-2'), typisierterSchritt('schritt-2', null)])
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.equal(ergebnis.art === 'starte' ? ergebnis.schritt.schritt_id : undefined, 'schritt-1')
+})
+
+test("Ausgang 'starte': Erststart ohne gesetzten Cursor nimmt den ersten Schritt der Liste", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', 'schritt-2'), typisierterSchritt('schritt-2', null)], {
+    aktiver_schritt_id: null,
+  })
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+})
+
+test("Ausgang 'starte': nach ERFOLGREICH startet der Folgeschritt", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test("Ausgang 'starte': freigabe EMPFOHLEN startet automatisch wie AUTOMATISCH (E-M3-1)", () => {
+  // Der Unterschied zwischen AUTOMATISCH und EMPFOHLEN ist rein anzeigend und
+  // gehört nach WS-3. Hielte der Automat bei EMPFOHLEN an, wäre daraus eine
+  // zweite, stille Freigabestufe geworden.
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null, { freigabe: 'EMPFOHLEN' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test("Ausgang 'haltFreigabe': freigabe ZWINGEND hält den Automaten an", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null, { freigabe: 'ZWINGEND' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.deepStrictEqual(ergebnis, { art: 'haltFreigabe', schrittId: 'schritt-2', aktiverSchrittId: 'schritt-2' })
+})
+
+test("Ausgang 'haltFreigabe': ZWINGEND gilt auch beim Erststart", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND' })])
+  assert.deepStrictEqual(ermittleNaechstenSchritt(workflow), { art: 'haltFreigabe', schrittId: 'schritt-1', aktiverSchrittId: 'schritt-1' })
+})
+
+for (const ausgang of ['VERWEIGERT', 'FEHLGESCHLAGEN'] as const) {
+  test(`Ausgang 'haltKlaerung': Vorschritt ${ausgang} läuft nicht weiter`, () => {
+    const workflow = typisierterWorkflow([
+      typisierterSchritt('schritt-1', 'schritt-2', { status: ausgang, lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ])
+    const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: ausgang, laufId: 'lauf-1' })
+    assert.equal(ergebnis.art, 'haltKlaerung')
+    // Der Cursor bleibt auf dem gescheiterten Schritt stehen — dort ist zu klären, nicht weiter vorn.
+    assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+    assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', new RegExp(ausgang))
+  })
+}
+
+test("Ausgang 'haltKlaerung': worker 'codex' ist nicht dispatchbar und wird nicht still durch claude-code ersetzt", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null, { worker: 'codex' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.deepStrictEqual(ergebnis, {
+    art: 'haltKlaerung',
+    grund: "Worker 'codex' ist erst ab F16 dispatchbar",
+    aktiverSchrittId: 'schritt-2',
+  })
+})
+
+test("Ausgang 'haltKlaerung': der Codex-Halt schlägt den ZWINGEND-Halt", () => {
+  // Ein Schritt, der gar nicht startbar ist, darf nicht als Freigabefrage
+  // vorgelegt werden — die Freigabe bliebe folgenlos.
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'codex', freigabe: 'ZWINGEND' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+test("Ausgang 'haltGrenze': grenzen.max_schritte hält den Automaten an, bevor Worker oder Freigabe zählen", () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { grenzen: { max_schritte: 1, max_replans: 0 } }
+  )
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltGrenze')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test("Ausgang 'haltGrenze': der gemeldete Lauf zählt mit, auch wenn seine lauf_id noch nicht in der Liste steht", () => {
+  // Sonst hinge die Grenze davon ab, ob der Aufrufer die Schrittliste VOR
+  // oder NACH dem Aufruf fortschreibt — und wäre um eins zu spät wirksam.
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH' }), typisierterSchritt('schritt-2', null)],
+    { grenzen: { max_schritte: 1, max_replans: 0 } }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'haltGrenze')
+})
+
+test("Ausgang 'haltGrenze': eine noch nicht erreichte Grenze hält nicht an", () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { grenzen: { max_schritte: 2, max_replans: 0 } }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'starte')
+})
+
+test("Ausgang 'fertig': ERFOLGREICH ohne nachfolger beendet den Workflow", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  assert.deepStrictEqual(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }), {
+    art: 'fertig',
+    aktiverSchrittId: null,
+  })
+})
+
+test("Ausgang 'fertig' schlägt die Grenze: ein beendeter Workflow läuft nicht in haltGrenze", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })], {
+    grenzen: { max_schritte: 1, max_replans: 0 },
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'fertig')
+})
+
+test('ermittleNaechstenSchritt: ein Ergebnis zu einer unbekannten schritt_id hält an, statt weiterzurechnen', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'gibt-es-nicht', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+// ─── Wiederaufnahme ohne Vorschrittergebnis (Reviewer K1 / QA TC-A1..A3) ────
+//
+// Der gefährlichste Aufruf dieser Funktion ist nicht der nach einem
+// Schrittergebnis, sondern der OHNE: so kommt eine Wiederaufnahme nach
+// Serverneustart an. Ohne die Regeln unten liefe ein fertiger oder ein an
+// einem Klärfall stehen gebliebener Workflow von vorn los — mit echten
+// Werkzeugläufen, auf bereits erledigten Schritten.
+
+test('Wiederaufnahme: ein Cursor auf einem bereits gelaufenen Schritt startet ihn NICHT erneut', () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { aktiver_schritt_id: 'schritt-1', status: 'LAEUFT' }
+  )
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /nicht startbereit/)
+})
+
+test('Wiederaufnahme: ein ABGESCHLOSSENER Workflow läuft nicht von vorn los', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })], {
+    status: 'ABGESCHLOSSEN',
+    aktiver_schritt_id: null,
+  })
+  assert.deepStrictEqual(ermittleNaechstenSchritt(workflow), { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Wiederaufnahme: ein GESTOPPTER Workflow wird nicht automatisch fortgesetzt', () => {
+  // F14: der Stopp ist eine Menschenentscheidung. Der Automat hebt sie nicht auf.
+  // Alle Schritte bewusst OFFEN und ohne lauf_id — sonst hinge das Ergebnis an
+  // der Startbereitschafts-Regel und der Fall prüfte daten.status gar nicht.
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)], { status: 'GESTOPPT', aktiver_schritt_id: null })
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test('Wiederaufnahme: ein auf VERWEIGERT stehen gebliebener Schritt wird nicht neu gestartet', () => {
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', 'schritt-2', { status: 'VERWEIGERT', lauf_id: 'lauf-1' }), typisierterSchritt('schritt-2', null)],
+    { aktiver_schritt_id: 'schritt-1', status: 'KLAERUNG_ERFORDERLICH' }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+test('Wiederaufnahme: ein LAEUFT-Schritt wird nicht ein zweites Mal gestartet', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'LAEUFT', lauf_id: 'lauf-1' })], {
+    aktiver_schritt_id: 'schritt-1',
+    status: 'LAEUFT',
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+test('Wiederaufnahme: ein UEBERSPRUNGEN-Schritt hält an, statt still übersprungen zu werden', () => {
+  // Überspringen hieße, die Kette an ihm vorbei fortzusetzen — eine
+  // Replan-Entscheidung, die WS-2a nicht trifft.
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', 'schritt-2', { status: 'UEBERSPRUNGEN' }), typisierterSchritt('schritt-2', null)],
+    { aktiver_schritt_id: 'schritt-1' }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+test('Wiederaufnahme: WARTET_FREIGABE ist ein startbereiter Schritt-Status', () => {
+  // Damit ein nach erteilter Freigabe fortgesetzter Schritt nicht an Regel 3
+  // hängen bleibt. Das ist NICHT der Ausweg aus haltFreigabe: `freigabe` ist
+  // ein Plandatum und ändert sich durch eine Freigabe nicht — ein Schritt mit
+  // freigabe 'ZWINGEND' liefert weiterhin haltFreigabe, egal welchen Status er
+  // trägt (nächster Test). Wie eine erteilte Freigabe den Automaten wirklich
+  // weiterlaufen lässt, entwirft WS-2b (Reviewer-Pass 10.09.2026, V5/R3).
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'WARTET_FREIGABE' })], {
+    aktiver_schritt_id: 'schritt-1',
+    status: 'WARTET_FREIGABE',
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
+})
+
+test('Wiederaufnahme: WARTET_FREIGABE hebt ein ZWINGEND nicht auf', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'WARTET_FREIGABE', freigabe: 'ZWINGEND' })], {
+    aktiver_schritt_id: 'schritt-1',
+    status: 'WARTET_FREIGABE',
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
+})
+
+// ─── Regel 0 im Zweig MIT Vorschrittergebnis (Reviewer R1) ──────────────────
+//
+// Der Abbruch-Endpunkt antwortet sofort, ohne auf das Laufende zu warten —
+// ein verspätetes Laufergebnis kann also auf einem bereits gestoppten
+// Workflow eintreffen. Genau dieser Zweig war die verbliebene Lücke.
+
+test('Regel 0: ein verspätetes ERFOLGREICH setzt einen GESTOPPTEN Workflow nicht fort', () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { status: 'GESTOPPT', aktiver_schritt_id: null }
+  )
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test('Regel 0: ein Ergebnis zu einem bereits ABGESCHLOSSENEN Workflow ist ein Klärfall, kein Normalende', () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { status: 'ABGESCHLOSSEN', aktiver_schritt_id: null }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'haltKlaerung')
+})
+
+test('Regel 0: fortsetzbare Workflow-Status bleiben fortsetzbar', () => {
+  for (const status of ['OFFEN', 'WARTET_FREIGABE', 'LAEUFT', 'KLAERUNG_ERFORDERLICH'] as const) {
+    const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)], { status })
+    assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte', `status ${status} sollte fortsetzbar sein`)
+  }
+})
+
+test('Wiederaufnahme mitten in der Kette: der Cursor auf einem offenen Schritt startet diesen', () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { aktiver_schritt_id: 'schritt-2', status: 'LAEUFT' }
+  )
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+// ─── Allowlist statt Blacklist (Reviewer K2) ────────────────────────────────
+//
+// Diese beiden Fälle bilden nach, was passiert, wenn jemand WORKER oder
+// FREIGABE in index.ts um einen Wert erweitert und types.ts vergisst: der
+// Wert kommt real bis hierher. Er MUSS anhalten, nicht starten. Der Cast ist
+// genau der Punkt des Tests — die Typen kennen den Wert nicht, die Laufzeit
+// schon.
+
+test('Allowlist: ein WORKER-Wert, den die Entscheidungsregel nicht kennt, startet nicht', () => {
+  const schritt = typisierterSchritt('schritt-1', null)
+  ;(schritt as unknown as Record<string, unknown>).worker = 'gemini'
+  const ergebnis = ermittleNaechstenSchritt(typisierterWorkflow([schritt]))
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /nicht dispatchbar/)
+})
+
+test('Allowlist: eine FREIGABE-Stufe, die die Entscheidungsregel nicht kennt, startet nicht', () => {
+  const schritt = typisierterSchritt('schritt-1', null)
+  ;(schritt as unknown as Record<string, unknown>).freigabe = 'VIER_AUGEN'
+  assert.equal(ermittleNaechstenSchritt(typisierterWorkflow([schritt])).art, 'haltFreigabe')
+})
+
+// ─── Verteidigende Zweige (QA TC-A7) ────────────────────────────────────────
+//
+// Bei validierten Daten unerreichbar — und genau deshalb prüft sonst
+// niemand, ob sie noch tun, was ihr Kommentar behauptet.
+
+test('Defensiv: eine leere schritte-Liste hält an, statt auf undefined weiterzurechnen', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)])
+  workflow.schritte = []
+  workflow.aktiver_schritt_id = null
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test('Defensiv: ein nachfolger ins Leere hält an', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'gibt-es-nicht', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test('Defensiv: ein Cursor ins Leere hält an', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)], { aktiver_schritt_id: 'gibt-es-nicht' })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+// ─── Grenzzählung beim Wiederholungslauf (QA TC-A4) ─────────────────────────
+
+test('Grenze: ein Wiederholungslauf desselben Schritts mit NEUER laufId wird mitgezählt', () => {
+  // Vor der Korrektur prüfte die Zählung nur auf lauf_id === null und zählte
+  // den Wiederholungslauf nicht mit — die Grenze wirkte um eins zu spät.
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { grenzen: { max_schritte: 2, max_replans: 1 } }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-2' }).art, 'haltGrenze')
+})
+
+test('Grenze: derselbe Lauf wird nicht doppelt gezählt', () => {
+  const workflow = typisierterWorkflow(
+    [
+      typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ],
+    { grenzen: { max_schritte: 2, max_replans: 1 } }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' }).art, 'starte')
 })

@@ -1915,3 +1915,132 @@ src/workflow/workflow.test.ts.
 Empfohlene Maßnahme: Bei F16 Schritt 1 der Beispieldatei auf worker
 „codex" umstellen.
 Feature/Run: F15 WS-1.
+
+**F-193** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: WS-2a hat zwei Regeln mehr gebaut, als der Bauauftrag verlangte —
+hier dokumentiert statt stillschweigend in Code verwandelt.
+Beschreibung: Der Bauauftrag für ermittleNaechstenSchritt nannte vier
+Regeln (Vorschritt-Ergebnis, max_schritte, worker 'codex', freigabe
+'ZWINGEND'). Gebaut sind sechs. Neu sind Regel 0 (Workflow-status ∉
+FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung/fertig, vor der Verzweigung
+nach mit/ohne Vorschrittergebnis) und Regel 3 (zu startender Schritt ist
+nicht startbereit: lauf_id gesetzt oder status ∉ {OFFEN,
+WARTET_FREIGABE} → haltKlaerung). Beide ändern das Verhalten real:
+dieselbe Eingabe liefert haltKlaerung statt starte. Anlass war der
+Reviewer-/QA-Pass 10.09.2026 (K1, R1, TC-A1/A2): ohne sie startete eine
+Wiederaufnahme ohne Vorschrittergebnis einen bereits gelaufenen Schritt
+erneut, und ein verspätetes Laufergebnis setzte einen vom Menschen
+GESTOPPTEN Workflow fort — beides ein Verstoß gegen ARCHITECTURE.md §4
+(„ein unterbrochener Baulauf wird nie automatisch neu gestartet").
+Zusätzlich sind die vier sicherheitsrelevanten Prüfungen als Allowlist
+statt als Blacklist formuliert (K2/R2), damit ein künftig ergänzter
+Enum-Wert in „hält an" fällt statt in „startet automatisch".
+Fundstelle: src/workflow/index.ts (Regeln 0 und 3, Konstanten
+FORTSETZBARE_WORKFLOW_STATUS/STARTBEREITE_SCHRITT_STATUS/
+AUTOMATISCH_STARTENDE_FREIGABE); src/workflow/types.ts (Begründung des
+Gate-Verzichts).
+Auswirkung: Keine Scope-Erweiterung gegenüber dem Auftragstext im heute
+gültigen Wertebereich — für worker/freigabe ist die Allowlist punktweise
+äquivalent zur verlangten Blacklist. Die beiden neuen Regeln sind echte
+Zusatzgrenzen; jede ist im Gate einzeln rot kalibriert.
+Empfohlene Maßnahme: Keine. Beim Anlegen der Feature-Akte F15 (existiert
+noch nicht, anders als F0–F14) diesen Eintrag dorthin übernehmen.
+Feature/Run: F15 WS-2a, 10.09.2026.
+
+**F-194** · `BUG` · P1 · offen
+Titel: grenzen.max_schritte ist ein Schritt-, kein Laufbudget — eine
+Wiederholungsschleife beendet es nicht.
+Beschreibung: WORKFLOW_V0 hält je Schritt genau eine lauf_id.
+zaehleGelaufeneSchritte zählt Schritte mit gesetzter lauf_id; führt der
+Automat denselben Schritt ein zweites Mal aus und überschreibt sie,
+steigt der Zähler nicht. Dass der Automat terminiert, hängt damit
+zusätzlich an der Zyklenfreiheit der nachfolger-Kette (nur beim Anlegen
+geprüft, nicht beim Laden) und daran, dass WS-2b keinen Schritt
+wiederholt, ohne selbst mitzuzählen.
+Fundstelle: src/workflow/index.ts, zaehleGelaufeneSchritte (Grenze der
+Grenze im Funktionskopf ausdrücklich benannt).
+Auswirkung: In WS-2a folgenlos (kein Startendpunkt). Mit dem
+Schritt-Automaten aus WS-2b: unbegrenzt viele echte Werkzeugläufe, ohne
+dass die Grenze je greift.
+Empfohlene Maßnahme: Vor WS-2b entscheiden — Laufzähler im Schema
+(WS-1-Änderung) oder ein vom Aufrufer geführtes Laufbudget als
+zusätzlicher Parameter. Danach einen Gate-Rotfall mit simulierter
+Schleife.
+Feature/Run: F15 WS-2a, QA-Pass 10.09.2026 (TC-A3).
+
+**F-195** · `TECH_DEBT` · P1 · offen
+Titel: haltFreigabe hat keinen Auflösungsweg — eine erteilte Freigabe
+ändert `freigabe` nicht.
+Beschreibung: `freigabe: 'ZWINGEND'` ist ein Plandatum des Schritts und
+bleibt nach der menschlichen Freigabe unverändert stehen.
+ermittleNaechstenSchritt liefert für denselben Schritt daher weiterhin
+haltFreigabe. Der Schritt-Status WARTET_FREIGABE ist zwar startbereit
+(Regel 3), hebt das ZWINGEND aber nicht auf.
+Fundstelle: src/workflow/index.ts, Regel 5; src/workflow/workflow.test.ts
+(„WARTET_FREIGABE hebt ein ZWINGEND nicht auf").
+Auswirkung: WS-2b braucht entweder einen zusätzlichen Parameter
+(freigabeErteiltFuer) oder einen zweiten Startpfad an der Funktion
+vorbei — und ein zweiter Startpfad ist genau das, wogegen die Extraktion
+von loeseAusfuehrungsEingabenAuf argumentiert.
+Empfohlene Maßnahme: Vor WS-2b festlegen, nicht dort improvisieren.
+Feature/Run: F15 WS-2a, Reviewer-Pass 10.09.2026 (V5/R3).
+
+**F-196** · `TECH_DEBT` · P2 · offen
+Titel: POST /api/workflows prüft weder auftrag_id noch eine belegte
+workflow_id.
+Beschreibung: Zwei bewusste Auslassungen von WS-2a, beide im Code
+benannt. (a) auftrag_id wird nicht auf Existenz geprüft — anders als
+POST /api/laeufe, das genau das synchron tut (F12 AK5); ein Workflow
+ohne existierenden Auftrag ist anlegbar und garantiert nicht startbar.
+(b) Ein zweiter POST derselben workflow_id erzeugt eine neue Version
+(ARCHITECTURE.md §2) und ersetzt damit die Definition eines Workflows,
+den WS-2b abarbeiten könnte — der Mensch hätte Fassung 1 freigegeben,
+der Automat liefe in Fassung 2 weiter.
+Fundstelle: scripts/leitstand-server.mjs, POST /api/workflows
+(Kommentarblock „Drei Prüfungen fehlen hier BEWUSST").
+Auswirkung: Solange nichts startet, folgenlos. (b) wäre mit Automat eine
+Freigabe-Umgehung im Kleinen.
+Empfohlene Maßnahme: Vor WS-2b entscheiden — Existenzprüfung analog AK5;
+409 bei nicht-OFFENem Workflow.
+Feature/Run: F15 WS-2a, Reviewer-/QA-Pass 10.09.2026 (V2/TC-B5/TC-B6).
+
+**F-197** · `BUG` · P2 · offen
+Titel: decodeURIComponent ohne Auffangnetz beendet den Serverprozess —
+zwei vorbestehende Fundstellen.
+Beschreibung: `GET /api/laeufe/%` und `POST /api/laeufe/%/abbrechen`
+werfen einen URIError aus einem async-Handler, dessen Promise niemand
+awaitet; Node 24 beendet daraufhin den Prozess. Real reproduziert am
+10.09.2026 an der dritten, neu hinzugekommenen Fundstelle (GET
+/api/workflows/%, Exit 127) — dort mit der neuen Hilfsfunktion
+dekodiereSegment behoben, die beiden alten bewusst nicht angefasst
+(Verhaltensänderung außerhalb des WS-2a-Zuschnitts: heute Prozesstod,
+danach 400).
+Fundstelle: scripts/leitstand-server.mjs, GET /api/laeufe/<laufId> und
+POST /api/laeufe/<laufId>/abbrechen; Gegenstück dekodiereSegment.
+Auswirkung: Verstoß gegen F10 AK6 („ein Wurf beendet den Prozess
+nicht"). Bedrohungsmodell entschärft es: der Server bindet nur auf
+127.0.0.1, ein einziger lokaler Nutzer.
+Empfohlene Maßnahme: Eigene kleine Iteration — beide Aufrufe auf
+dekodiereSegment umstellen, je ein Gate-Rotfall mit Lebendprüfung
+dahinter (Muster check-f15-workflow.mjs).
+Feature/Run: F15 WS-2a, Reviewer-/QA-Pass 10.09.2026 (V1/TC-B2).
+
+**F-198** · `TECH_DEBT` · P2 · offen
+Titel: workflow_id ohne Längen- und ohne Windows-Zeichenprüfung — 500
+statt 400, OS-divergent.
+Beschreibung: POST /api/workflows prüft workflow_id gegen
+LAUFID_UNZULAESSIGE_ZEICHEN (Spiegel von pruefeLaufId, D5 — bewusst kein
+zweiter Regelsatz im Server). Diese Regel lässt `:` `<` `>` `"` `|` `?`
+`*` und beliebige Längen durch. Unter Windows scheitert das anschließende
+mkdir → 500; unter Linux entsteht ein Verzeichnis, das die Windows-Sicht
+nie öffnen kann. Anders als eine auftragId (serverseitig per randomUUID)
+kommt workflow_id aus der Payload, ist also Client-Eingabe.
+Fundstelle: scripts/leitstand-server.mjs, POST /api/workflows (Punkt 3
+des Kommentarblocks); src/checkpoint-store/index.ts, pruefeLaufId.
+Auswirkung: Eine Client-Eingabe endet in einem 500 statt einem 400 (D2:
+prüfen vor dem Schreibversuch), und das Verhalten unterscheidet sich
+zwischen CI (Linux) und Dev-Rechner (Windows) — genau die Divergenz,
+gegen die loeseEvidenzPfadAuf ausdrücklich härtet.
+Empfohlene Maßnahme: Die strengere Regel in den Checkpoint Store ziehen
+(eine Wahrheitsquelle), nicht als Zweitregel in den Server.
+Feature/Run: F15 WS-2a, QA-Pass 10.09.2026 (TC-B3/TC-B4).
