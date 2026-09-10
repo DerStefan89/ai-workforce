@@ -105,6 +105,22 @@ test('Grünfall: leeres eingaben-Array und gesetzte optionale Felder sind gülti
   assert.deepStrictEqual(verstoesse, [])
 })
 
+test('Grünfall: freigabe_erteilt darf fehlen und darf true oder false sein (WS-2c (b1))', () => {
+  // Die Bestandsverträglichkeit selbst: jede vor (b1) geschriebene Version
+  // trägt das Feld nicht und muss gültig bleiben (append-only,
+  // ARCHITECTURE.md §7). Die Basis oben hat es nicht — das ist der erste Teil
+  // der Zusage; die beiden Mutationen sind der zweite.
+  assert.deepStrictEqual(validiereWorkflowDaten(gueltigerWorkflow()), [])
+  for (const wert of [true, false]) {
+    assert.deepStrictEqual(
+      pruefeMutiert((w) => {
+        ersterSchritt(w).freigabe_erteilt = wert
+      }),
+      []
+    )
+  }
+})
+
 test('Grünfall: aktiver_schritt_id darf null sein', () => {
   assert.deepStrictEqual(
     pruefeMutiert((w) => {
@@ -171,6 +187,9 @@ const schrittRotfaelle: [string, (s: Record<string, unknown>) => void][] = [
   ['status außerhalb des Enums', (s) => { s.status = 'FERTIG' }],
   ['lauf_id fehlt', (s) => { delete s.lauf_id }],
   ['lauf_id leerer String', (s) => { s.lauf_id = '' }],
+  // WS-2c (b1): optional heißt „darf fehlen", nicht „darf alles sein".
+  ['freigabe_erteilt als String', (s) => { s.freigabe_erteilt = 'true' }],
+  ['freigabe_erteilt null', (s) => { s.freigabe_erteilt = null }],
 ]
 
 for (const [name, mutiere] of schrittRotfaelle) {
@@ -498,10 +517,25 @@ test('Wiederaufnahme: ein GESTOPPTER Workflow wird nicht automatisch fortgesetzt
   // F14: der Stopp ist eine Menschenentscheidung. Der Automat hebt sie nicht auf.
   // Alle Schritte bewusst OFFEN und ohne lauf_id — sonst hinge das Ergebnis an
   // der Startbereitschafts-Regel und der Fall prüfte daten.status gar nicht.
+  //
+  // Seit WS-2c (b1) ist der Ausgang 'haltGestoppt' statt 'haltKlaerung' — ein
+  // eigener Ausgang, damit workflowStatusZuAusgang GESTOPPT zurückschreibt und
+  // kein Automaten-Schreibpfad den Stopp überschreibt.
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null)], { status: 'GESTOPPT', aktiver_schritt_id: null })
   const ergebnis = ermittleNaechstenSchritt(workflow)
-  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.art, 'haltGestoppt')
   assert.equal(ergebnis.aktiverSchrittId, null)
+})
+
+test("Ausgang 'haltGestoppt': der Cursor bleibt stehen, wo er stand", () => {
+  // Ein Stopp verschiebt den Cursor nicht — der Ausgang darf ihn deshalb auch
+  // nicht auf null zwingen, sonst verlöre ein Stopp mitten in der Kette die
+  // Stelle, an der weitergemacht werden könnte.
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }), typisierterSchritt('schritt-2', null)],
+    { status: 'GESTOPPT', aktiver_schritt_id: 'schritt-2' }
+  )
+  assert.deepStrictEqual(ermittleNaechstenSchritt(workflow), { art: 'haltGestoppt', aktiverSchrittId: 'schritt-2' })
 })
 
 test('Wiederaufnahme: ein auf VERWEIGERT stehen gebliebener Schritt wird nicht neu gestartet', () => {
@@ -552,6 +586,58 @@ test('Wiederaufnahme: WARTET_FREIGABE hebt ein ZWINGEND nicht auf', () => {
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
 })
 
+// ─── Regel 5 mit erteilter Freigabe (WS-2c (b1), löst F-207/F-195) ──────────
+//
+// Der Ausweg aus WARTET_FREIGABE. Beide Seiten brauchen einen Fall: ohne den
+// Grünfall wäre die Regel durch ein „startet nie" erfüllbar, ohne den Rotfall
+// durch ein „startet immer" — und Letzteres hieße, dass ein ZWINGEND-Schritt
+// ohne jede menschliche Entscheidung losliefe.
+
+test("Ausgang 'starte': ZWINGEND mit freigabe_erteilt true ist startbar", () => {
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', null, { status: 'WARTET_FREIGABE', freigabe: 'ZWINGEND', freigabe_erteilt: true })],
+    { aktiver_schritt_id: 'schritt-1', status: 'WARTET_FREIGABE' }
+  )
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
+})
+
+test("Ausgang 'haltFreigabe': ZWINGEND ohne das Feld hält unverändert an", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND' })], { aktiver_schritt_id: 'schritt-1' })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
+})
+
+test("Ausgang 'haltFreigabe': freigabe_erteilt false ist keine Freigabe", () => {
+  // Allowlist: nur exakt true startet. Ein false ist der ausdrückliche
+  // Vorgabewert und darf sich nicht wie ein fehlendes Feld mit Zweifel lesen.
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: false })], {
+    aktiver_schritt_id: 'schritt-1',
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
+})
+
+test('freigabe_erteilt hebt weder den Codex-Halt noch die Startbereitschafts-Regel auf', () => {
+  // Die Freigabe erlaubt einen Schritt, sie erzwingt ihn nicht: die Regeln 2-4
+  // stehen VOR ihr und bleiben wirksam.
+  const codex = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, worker: 'codex' })], {
+    aktiver_schritt_id: 'schritt-1',
+  })
+  assert.equal(ermittleNaechstenSchritt(codex).art, 'haltKlaerung')
+
+  const gelaufen = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })],
+    { aktiver_schritt_id: 'schritt-1' }
+  )
+  assert.equal(ermittleNaechstenSchritt(gelaufen).art, 'haltKlaerung')
+})
+
+test('freigabe_erteilt true auf einem GESTOPPTEN Workflow startet nichts (Regel 0 schlägt Regel 5)', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true })], {
+    status: 'GESTOPPT',
+    aktiver_schritt_id: null,
+  })
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltGestoppt')
+})
+
 // ─── Regel 0 im Zweig MIT Vorschrittergebnis (Reviewer R1) ──────────────────
 //
 // Der Abbruch-Endpunkt antwortet sofort, ohne auf das Laufende zu warten —
@@ -566,8 +652,12 @@ test('Regel 0: ein verspätetes ERFOLGREICH setzt einen GESTOPPTEN Workflow nich
     ],
     { status: 'GESTOPPT', aktiver_schritt_id: null }
   )
+  // WS-2c (b1): Der Ausgang ist 'haltGestoppt', nicht 'haltKlaerung' — und
+  // genau das ist der Punkt. Der Aufrufer schreibt den Ausgang unbesehen
+  // zurück; ein haltKlaerung machte aus dem menschlichen Stopp Sekunden später
+  // einen wieder fortsetzbaren Workflow.
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
-  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.art, 'haltGestoppt')
   assert.equal(ergebnis.aktiverSchrittId, null)
 })
 

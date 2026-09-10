@@ -26,6 +26,14 @@
  * soll nicht annehmen, hier werde bereits etwas dagegen geprüft (QA-Pass
  * 10.09.2026).
  *
+ * F15 WS-2c (b1) ergänzt zwei Regeländerungen und ein optionales Schrittfeld:
+ * GESTOPPT verlässt Regel 0 über den EIGENEN Ausgang 'haltGestoppt' (damit
+ * kein Automaten-Schreibpfad einen menschlichen Stopp überschreibt), und ein
+ * Schritt mit freigabe 'ZWINGEND' UND freigabe_erteilt true gilt als startbar
+ * (löst F-207/F-195 — WARTET_FREIGABE hatte bis dahin keinen Ausweg). Beides
+ * bleibt reine Entscheidung: wer freigabe_erteilt setzt und wer auf ein
+ * haltGestoppt hin was schreibt, steht in scripts/leitstand-server.mjs.
+ *
  * Abhängigkeitsarm wie src/auftrag (D1): dieses Modul importiert
  * ausschließlich F2s registriereKernArtefakt, NIE etwas aus
  * src/execution-controller. ermittleNaechstenSchritt nimmt deshalb ein
@@ -108,6 +116,13 @@ const WORKFLOW_FELDER = new Set([
   'ziel',
   'status',
   'aktiver_schritt_id',
+  // OPTIONAL (F15 WS-2c, löst F-202): der zuletzt festgestellte Halt-Grund des
+  // Automaten. Bewusst optional und NICHT required — jede bereits geschriebene
+  // Workflow-Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld
+  // nicht; ein Pflichtfeld machte den gesamten Bestand mit einem Schlag
+  // ungültig. Dieselbe Überlegung, aus der grenzen.max_replans nicht entfernt
+  // werden konnte (F-203).
+  'grund',
   'grenzen',
   'schritte',
 ])
@@ -128,6 +143,12 @@ const SCHRITT_FELDER = new Set([
   'nachfolger',
   'status',
   'lauf_id',
+  // OPTIONAL (F15 WS-2c (b1), löst F-207): die für genau diesen Schritt
+  // erteilte menschliche Freigabe. Bewusst optional und NICHT required —
+  // dieselbe Überlegung wie bei 'grund' (a5): jede bereits geschriebene
+  // Workflow-Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld
+  // nicht.
+  'freigabe_erteilt',
 ])
 
 /**
@@ -239,6 +260,12 @@ function pruefeSchrittForm(schritt: unknown, praefix: string, verstoesse: string
   if (!istStringOderNull(schritt, 'lauf_id')) {
     verstoesse.push(`'${praefix}lauf_id' muss ein nicht-leerer String oder null sein`)
   }
+  // Einziges OPTIONALES Feld auf Schrittebene (F15 WS-2c (b1)): ein FEHLENDES
+  // Feld ist gültig (Bestandsversionen), ein vorhandenes muss ein boolean
+  // sein. Deshalb die 'in'-Prüfung davor — Muster 'grund' auf Workflow-Ebene.
+  if ('freigabe_erteilt' in schritt && typeof schritt.freigabe_erteilt !== 'boolean') {
+    verstoesse.push(`'${praefix}freigabe_erteilt' muss ein boolean sein (optionales Feld)`)
+  }
 }
 
 /**
@@ -271,6 +298,14 @@ export function validiereWorkflowDaten(daten: unknown): string[] {
   }
   if (!istStringOderNull(obj, 'aktiver_schritt_id')) {
     verstoesse.push("'aktiver_schritt_id' muss ein nicht-leerer String oder null sein")
+  }
+  // grund ist das einzige OPTIONALE Feld auf Workflow-Ebene (F15 WS-2c): ein
+  // FEHLENDES Feld ist gültig (Bestandsversionen aus der Zeit vor WS-2c), ein
+  // vorhandenes muss die Form "nicht-leerer String oder null" tragen. Deshalb
+  // die 'in'-Prüfung davor — istStringOderNull allein wertet ein fehlendes Feld
+  // als Verstoß, so wie es bei jedem Pflichtfeld auch soll.
+  if ('grund' in obj && !istStringOderNull(obj, 'grund')) {
+    verstoesse.push("'grund' muss ein nicht-leerer String oder null sein (optionales Feld)")
   }
 
   if (!istObjekt(obj.grenzen)) {
@@ -533,7 +568,9 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
  *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
- *    wird). Als einzige Regel VOR der Verzweigung nach „mit/ohne
+ *    wird, bzw. haltGestoppt bei GESTOPPT — WS-2c (b1): ein menschlicher
+ *    Stopp darf von keinem Automaten-Ausgang überschrieben werden). Als
+ *    einzige Regel VOR der Verzweigung nach „mit/ohne
  *    Vorschrittergebnis", weil sie sonst genau den Fall verfehlt, für den
  *    sie da ist — ein verspätetes Laufergebnis auf einem gestoppten
  *    Workflow (Reviewer-Pass 10.09.2026, R1).
@@ -565,7 +602,10 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    Menschen nicht als Freigabefrage vorgelegt werden, die Freigabe bliebe
  *    folgenlos. Kein stiller Ersatz durch claude-code (E-159 kein stiller
  *    Fallback, E-M3-3 gepinnte Besetzung Rolle→Worker→Modell).
- * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} → haltFreigabe, sonst starte.
+ * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} UND freigabe_erteilt ≠ true →
+ *    haltFreigabe, sonst starte. Der zweite Halbsatz ist WS-2c (b1): ein
+ *    ZWINGEND-Schritt, für den ein Mensch real freigegeben hat, ist startbar;
+ *    ohne das Feld hält er unverändert an (F-207/F-195).
  *    AUTOMATISCH und EMPFOHLEN starten beide (E-M3-1: die Automatik hängt
  *    allein an ≠ ZWINGEND). Der Unterschied zwischen AUTOMATISCH und
  *    EMPFOHLEN ist rein anzeigend und gehört nach WS-3 — hier bewusst KEINE
@@ -616,6 +656,22 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     // etwas ein Laufende zu einem Workflow, der schon durch ist.
     if (daten.status === 'ABGESCHLOSSEN' && vorschrittErgebnis === undefined) {
       return { art: 'fertig', aktiverSchrittId: null }
+    }
+    // GESTOPPT bekommt seit WS-2c (b1) einen EIGENEN Ausgang statt eines
+    // haltKlaerung (F-216, features/F15/feature.md, Vorbehalt zum
+    // Regel-0-Ausgang). Der Unterschied ist nicht kosmetisch: die
+    // Nachbereitung eines gerade noch laufenden Schritts schreibt den
+    // Ausgang unbesehen zurück, und KLAERUNG_ERFORDERLICH ist wieder
+    // fortsetzbar — ein vom Menschen gesetzter Stopp wäre nach wenigen
+    // Sekunden weg. Mit der eigenen Zeile hier bildet workflowStatusZuAusgang
+    // ihn auf 'GESTOPPT' ab, und der Schutz gilt in ALLEN Schreibpfaden
+    // (Nachbereitung, Heilung, gescheiterte Fortsetzung) ohne einen einzigen
+    // Sonderfallwächter in der I/O-Schale.
+    //
+    // Der Cursor bleibt, wie er ist: ein Stopp verschiebt ihn nicht, und der
+    // Ausgang darf ihn deshalb auch nicht auf null zwingen.
+    if (daten.status === 'GESTOPPT') {
+      return { art: 'haltGestoppt', aktiverSchrittId: daten.aktiver_schritt_id }
     }
     return {
       art: 'haltKlaerung',
@@ -693,8 +749,15 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     }
   }
 
+  // Die erteilte Freigabe (WS-2c (b1), löst F-207/F-195): `freigabe` ist und
+  // bleibt Plandatum — es ändert sich durch eine menschliche Entscheidung
+  // nicht. Was sich ändert, ist `freigabe_erteilt` am Schritt, gesetzt
+  // ausschließlich über POST /api/workflows/<id>/freigabe. Auch das ist eine
+  // ALLOWLIST: nur exakt `true` startet; ein fehlendes Feld, false oder ein
+  // Nicht-Boolean fallen in „hält an". Ohne diese Zeile hätte WARTET_FREIGABE
+  // keinen Ausweg — der Zustand war bis hierher endgültig zugemauert.
   const freigabe: string = naechsterSchritt.freigabe
-  if (!AUTOMATISCH_STARTENDE_FREIGABE.includes(freigabe)) {
+  if (!AUTOMATISCH_STARTENDE_FREIGABE.includes(freigabe) && naechsterSchritt.freigabe_erteilt !== true) {
     return { art: 'haltFreigabe', schrittId: naechsterSchritt.schritt_id, aktiverSchrittId: naechsterSchritt.schritt_id }
   }
 
