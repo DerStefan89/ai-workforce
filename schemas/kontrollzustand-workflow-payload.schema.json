@@ -68,7 +68,7 @@
           "worker": { "enum": ["claude-code", "codex"] },
           "modell": { "type": "string", "minLength": 1 },
           "eingaben": {
-            "description": "Artefakt-Referenzen im Format 'artefakt:<artefakt-id>'. Leeres Array = der Schritt zitiert kein Vorgängerartefakt.",
+            "description": "Artefakt-Referenzen im Format 'artefakt:<artefakt-id>' auf Artefakte, die VOR dem Workflow-Start existieren — der Automat löst jede einzeln über ladeArtefaktVersion auf und hält an, wenn eine fehlt (F15 WS-2b). Die Ausgabe eines Vorschritts ist hier nicht referenzierbar: ihre Artefakt-ID hängt an der erst zur Laufzeit erzeugten lauf_id; sie fließt über vorgaengerLaufId in den Folgeschritt. Leeres Array = der Schritt zitiert kein vorbestehendes Artefakt.",
             "type": "array",
             "items": { "type": "string", "pattern": "^artefakt:.+" }
           },
@@ -81,7 +81,7 @@
           "risiko": { "type": "string", "minLength": 1 },
           "zeitgrenze_ms": { "type": "integer", "minimum": 1 },
           "nachfolger": {
-            "description": "schritt_id des Folgeschritts, oder null für das Workflow-Ende. Wenn gesetzt, muss der Wert eine schritt_id aus derselben 'schritte'-Liste sein (Referenzregel, siehe validiereWorkflowDaten).",
+            "description": "schritt_id des Folgeschritts, oder null für das Workflow-Ende. Wenn gesetzt, muss der Wert eine schritt_id aus derselben 'schritte'-Liste sein, darf keinen Zyklus bilden und darf nicht von einem zweiten Schritt ebenfalls getragen werden — eine Zusammenführung macht den Lineage-Vorgänger unbestimmbar (F15 WS-2b). Alle drei Regeln prüft validiereWorkflowDaten, nicht dieses Schema.",
             "type": ["string", "null"],
             "minLength": 1
           },

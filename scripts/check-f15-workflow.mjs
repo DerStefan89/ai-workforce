@@ -19,15 +19,29 @@
  * (WS-2b) und die Leitstand-Ansicht (WS-3) bringen ihre eigenen Prüfungen
  * mit.
  *
- * Wichtig: Jede der vier Regeln, die nur validiereWorkflowDaten kennt und
+ * F15 WS-2b ergänzt zwei Abschnitte: (d) POST /api/workflows/<id>/starten real
+ * gegen einen Testserver mit vier Rotfällen (404 unbekannter Workflow, 409 bei
+ * aktivem Lauf/D13, 409 bei nicht startbarem Workflow, 400 bei fehlendem
+ * Eingabe-Artefakt) und einem Grünfall, der zusätzlich die Abbildung (A)/(B)
+ * festnagelt — rolle/modell/zeitgrenzeMs/auftragId/budget und die als
+ * notwendig:true vorangestellte, aufgelöste Artefakt-Anfrage. Jeder Rotfall
+ * prüft zusätzlich, dass NICHTS gestartet und keine neue Workflow-Version
+ * geschrieben wurde: ein Statuscode allein belegt die Zusage nicht.
+ * (e) Die Auflage aus dem Bauauftrag — genau EIN Aufrufpunkt des Werkzeuglaufs
+ * in scripts/leitstand-server.mjs — als Zählung im Quelltext. WS-2b hätte sie
+ * leicht gebrochen; ein zweiter Aufrufpunkt wäre eine zweite Fassung der
+ * D13-Rückgabe und der Startfehlerliste.
+ *
+ * Wichtig: Jede der fünf Regeln, die nur validiereWorkflowDaten kennt und
  * JSON Schema nicht ausdrücken kann, hat hier einen eigenen Rotfall —
  * unbekannter nachfolger, doppelte schritt_id, unbekannte
- * aktiver_schritt_id, Zyklus in der nachfolger-Kette (ARCHITECTURE.md §8:
+ * aktiver_schritt_id, Zyklus in der nachfolger-Kette und (F15 WS-2b) die
+ * Zusammenführung zweier Schritte auf denselben nachfolger (ARCHITECTURE.md §8:
  * eine behauptete Grenze ohne kalibrierten Rot- und Grün-Fall heißt nicht
  * ERZWUNGEN). Wer eine Regel entfernt, ohne den Rotfall anzufassen, lässt
  * hier ein grünes Gate über einer stillen Lücke stehen.
  *
- * Bekannte Grenze der Abdeckung: die Fixtures unten kalibrieren die sechs
+ * Bekannte Grenze der Abdeckung: die Fixtures unten kalibrieren die sieben
  * Regeln mit dem höchsten Vorbildwert je einzeln rot. Die übrige Formprüfung
  * (Enums, Zahlgrenzen, leere Strings, fehlende Pflichtfelder, Nicht-Objekt-/
  * Nicht-Array-Wurzeln) trägt src/workflow/workflow.test.ts tabellengetrieben
@@ -46,13 +60,15 @@ import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
-import { ermittleNaechstenSchritt, validiereWorkflowDaten } from '../src/workflow/index.ts'
+import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
-import { ladeStartvorlage } from '../src/startvorlage/index.ts'
+import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
+import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 
 const befunde = []
 
-console.log('\n=== F15-Workflow-Check (WS-1 + WS-2a) ===\n')
+console.log('\n=== F15-Workflow-Check (WS-1 + WS-2a + WS-2b) ===\n')
 
 // ─── Payload-Fixtures gegen validiereWorkflowDaten ──────────────────────────
 const fixtures = [
@@ -64,6 +80,7 @@ const fixtures = [
   { pfad: 'schemas/examples/kontrollzustand-workflow.invalid-leere-schritte.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-workflow.invalid-unbekanntes-feld.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-workflow.invalid-zyklus.json', sollGueltigSein: false },
+  { pfad: 'schemas/examples/kontrollzustand-workflow.invalid-zusammenfuehrung.json', sollGueltigSein: false },
 ]
 
 for (const { pfad, sollGueltigSein } of fixtures) {
@@ -500,6 +517,889 @@ async function starteTestserver(optionen) {
     console.log('✓ loeseAusfuehrungsEingabenAuf: Feldsatz, vorgaengerLaufId, vier Ablehnungsgründe und die Prüfreihenfolge festgenagelt.')
   }
 }
+// ─── POST /api/workflows/<id>/starten: der Automatenpfad, ein Schritt (WS-2b) ──
+//
+// Vier Rotfälle und ein Grünfall. Die Rotfälle sind die Grenzen, die dieser
+// Endpunkt behauptet — 404 (unbekannter Workflow), 409 (D13 aktiv), 409 (der
+// Workflow ist nicht startbar), 400 (eine erklärte Eingabe fehlt). Ohne sie
+// wäre „hält an" durch ein „hält immer an" erfüllbar; der Grünfall daneben ist
+// der Beleg, dass real etwas startet (ARCHITECTURE.md §8).
+//
+// fuehreAufgabeDurchFn ist in allen Fällen eine Attrappe (Muster
+// check-f10-leitstand.mjs): das Gate prüft den Automatenpfad, nicht F8.
+
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f15-ws2b'
+  const befundeVorStart = befunde.length
+  rmSync(basisVerzeichnis, { recursive: true, force: true })
+
+  /** @returns ein AusfuehrungsErgebnis, das normalisiereSchrittAusgang als ERFOLGREICH liest */
+  const erfolgreichesErgebnis = () => ({
+    ok: true,
+    klassifikation: { ergebnis: 'ERFOLGREICH' },
+    laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' },
+  })
+
+  // Ein Auftrag muss real existieren: der Startendpunkt lädt seinen Text aus dem
+  // Auftragsartefakt (Muster POST /api/laeufe, F12 WS-2 AK5).
+  let auftragId
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+    try {
+      const antwort = await fetch(`${basisUrl}/api/auftraege`, {
+        method: 'POST',
+        body: JSON.stringify({ titel: 'F15-WS-2b-Gate', auftragstext: 'Auftragstext des Gate-Workflows.' }),
+      })
+      auftragId = (await antwort.json()).auftragId
+      if (antwort.status !== 201 || typeof auftragId !== 'string') {
+        befunde.push(`WS-2b-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${antwort.status}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  /**
+   * Legt einen Workflow über POST /api/workflows an.
+   * @param basisUrl - Basis-URL des Testservers
+   * @param workflowId - workflow_id
+   * @param schritte - Schrittliste
+   * @param felder - Abweichungen auf Workflow-Ebene
+   * @returns die angelegte Payload
+   */
+  async function legeWorkflowAn(basisUrl, workflowId, schritte, felder = {}) {
+    const payload = gateWorkflow(schritte, { workflow_id: workflowId, auftrag_id: auftragId, ...felder })
+    const antwort = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(payload) })
+    if (antwort.status !== 201) {
+      befunde.push(`WS-2b-Vorbereitung: POST /api/workflows für '${workflowId}' erwartet 201, erhalten ${antwort.status} (${await antwort.text()})`)
+    }
+    return payload
+  }
+
+  // ─── Grünfall: ein Schritt startet real ───────────────────────────────────
+  {
+    const workflowId = `ws2b-gruen-${randomUUID()}`
+    let gesehen = null
+    const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben, laufOptionen) => {
+      gesehen = { laufId, eingaben, laufOptionen }
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      // schritte[].eingaben verweist auf das reale Auftragsartefakt — die einzige Artefakt-Art,
+      // die dieses Gate ohne echten Lauf sicher zur Verfügung hat. Dass fuehreAufgabeDurch den
+      // Auftrag ohnehin selbst voranstellt, ist hier ohne Belang: die Attrappe tut das nicht,
+      // und geprüft wird die Auflösung durch den Automaten.
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', null, { eingaben: [`artefakt:auftrag-${auftragId}`], modell: 'schritt-modell', zeitgrenze_ms: 12345 }),
+      ])
+
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const koerper = await antwort.json()
+      if (antwort.status !== 202 || koerper.workflowId !== workflowId || koerper.schrittId !== 'schritt-1' || typeof koerper.laufId !== 'string') {
+        befunde.push(`POST /api/workflows/<id>/starten: erwartet 202 mit { workflowId, schrittId, laufId }, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+
+      // Die VOR dem Laufstart geschriebene Version muss LAEUFT + lauf_id tragen. Sie ist nach
+      // dem Laufende bereits von der Nachbereitung überholt — deshalb wird die Version mit
+      // versionSequenz 2 gelesen (1 = das Anlegen), nicht die jüngste.
+      const vorher = ladeArtefaktVersion(`workflow-${workflowId}`, 2, { basisVerzeichnis, schreiber: () => {} })
+      const schrittVorher = vorher?.daten?.schritte?.[0]
+      if (vorher === null || vorher.daten.status !== 'LAEUFT' || schrittVorher?.status !== 'LAEUFT' || schrittVorher?.lauf_id !== koerper.laufId) {
+        befunde.push(`POST /api/workflows/<id>/starten: die vor dem Lauf geschriebene Version trägt nicht LAEUFT + lauf_id, erhalten ${JSON.stringify(vorher?.daten)}`)
+      }
+      if (vorher?.daten?.aktiver_schritt_id !== 'schritt-1') {
+        befunde.push(`POST /api/workflows/<id>/starten: aktiver_schritt_id erwartet 'schritt-1', erhalten ${JSON.stringify(vorher?.daten?.aktiver_schritt_id)}`)
+      }
+
+      // Die Abbildung (A)/(B) — der Feldsatz, den der Automat gebaut hat.
+      if (gesehen === null) {
+        befunde.push('POST /api/workflows/<id>/starten: der Lauf wurde nicht gestartet (Attrappe nie aufgerufen)')
+      } else {
+        if (gesehen.eingaben.rolle !== 'code-reviewer') {
+          befunde.push(`WS-2b (A): rolle erwartet 'code-reviewer' (schritt.rolle), erhalten ${JSON.stringify(gesehen.eingaben.rolle)}`)
+        }
+        if (gesehen.eingaben.aufrufEingaben?.modell !== 'schritt-modell') {
+          befunde.push(`WS-2b (A): aufrufEingaben.modell erwartet 'schritt-modell' (gepinntes Plandatum, E-185), erhalten ${JSON.stringify(gesehen.eingaben.aufrufEingaben?.modell)}`)
+        }
+        if (gesehen.laufOptionen?.zeitgrenzeMs !== 12345) {
+          befunde.push(`WS-2b (A): laufOptionen.zeitgrenzeMs erwartet 12345 (schritt.zeitgrenze_ms schlägt vorlage.zeitgrenzeMs), erhalten ${JSON.stringify(gesehen.laufOptionen?.zeitgrenzeMs)}`)
+        }
+        if (gesehen.eingaben.auftragId !== auftragId) {
+          befunde.push(`WS-2b (A): auftragId erwartet '${auftragId}' (daten.auftrag_id), erhalten ${JSON.stringify(gesehen.eingaben.auftragId)}`)
+        }
+        if ('vorgaengerLaufId' in gesehen.eingaben) {
+          befunde.push("WS-2b (A): beim ERSTEN Schritt darf 'vorgaengerLaufId' NICHT gesetzt sein")
+        }
+        const vorlageBudget = ladeStartvorlage('startvorlagen/beispielprojekt.json').standardBudget
+        if (JSON.stringify(gesehen.eingaben.budget) !== JSON.stringify(vorlageBudget)) {
+          befunde.push(`WS-2b (A): budget erwartet vorlage.standardBudget ${JSON.stringify(vorlageBudget)}, erhalten ${JSON.stringify(gesehen.eingaben.budget)}`)
+        }
+        const erste = gesehen.eingaben.anfragen?.[0]
+        if (erste?.pfad !== `artefakt:auftrag-${auftragId}` || erste?.notwendig !== true || typeof erste?.inhalt !== 'string' || erste.inhalt.length === 0) {
+          befunde.push(`WS-2b (B): schritte[].eingaben wurde nicht als vorangestellte notwendig:true-Anfrage aufgelöst, erhalten ${JSON.stringify(gesehen.eingaben.anfragen)}`)
+        }
+      }
+
+      // Nach dem Laufende: der Schritt trägt seinen Ausgang. Das .then läuft asynchron nach der
+      // 202 — kurz warten, statt auf ein Ereignis zu horchen, das der Server nicht anbietet.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const nachher = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachher?.daten?.schritte?.[0]?.status !== 'ERFOLGREICH' || nachher?.daten?.status !== 'ABGESCHLOSSEN' || nachher?.daten?.aktiver_schritt_id !== null) {
+        befunde.push(`POST /api/workflows/<id>/starten: nach ERFOLGREICH ohne nachfolger erwartet Schritt ERFOLGREICH, Workflow ABGESCHLOSSEN, Cursor null (WS-2b (6)), erhalten ${JSON.stringify(nachher?.daten)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 1: unbekannter Workflow → 404 ────────────────────────────────
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(`gibt-es-nicht-${randomUUID()}`)}/starten`, { method: 'POST' })
+      if (antwort.status !== 404) {
+        befunde.push(`POST /api/workflows/<id>/starten: unbekannter Workflow erwartet 404, erhalten ${antwort.status}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 2: D13 aktiv → 409, nichts gestartet ─────────────────────────
+  //
+  // Der erste Lauf hängt (Muster check-f10-leitstand.mjs AK7), bis das Gate ihn freigibt —
+  // erst dann verlässt er den Aufruf und gibt laufAktiv zurück.
+  {
+    const workflowId = `ws2b-d13-${randomUUID()}`
+    let starts = 0
+    let gibFrei
+    const haengt = new Promise((resolve) => {
+      gibFrei = resolve
+    })
+    const fuehreAufgabeDurchFn = async () => {
+      starts += 1
+      await haengt
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+
+      const erster = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (erster.status !== 202) {
+        befunde.push(`WS-2b/D13: der erste Start erwartet 202, erhalten ${erster.status} (${await erster.text()})`)
+      }
+
+      const zweiter = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const grund = (await zweiter.json()).grund ?? ''
+      if (zweiter.status !== 409 || !grund.includes('(D13)')) {
+        befunde.push(`WS-2b/D13: der zweite Start bei aktivem Lauf erwartet 409 mit D13-Grund, erhalten ${zweiter.status} (${grund})`)
+      }
+
+      // Auch ein HTTP-Start muss an derselben Sperre scheitern — D13 gilt über beide Pfade.
+      const ueberLaeufe = await fetch(`${basisUrl}/api/laeufe`, {
+        method: 'POST',
+        body: JSON.stringify({
+          laufId: `d13-probe-${randomUUID()}`,
+          rolle: 'ausfuehrung',
+          anfragen: [],
+          budget: { maxElemente: 5 },
+          aufrufEingaben: { modell: 'gate-modell' },
+          auftragId,
+          werkzeugsatz: 'lesend',
+        }),
+      })
+      if (ueberLaeufe.status !== 409) {
+        befunde.push(`WS-2b/D13: POST /api/laeufe bei aktivem Workflow-Schritt erwartet 409, erhalten ${ueberLaeufe.status}`)
+      }
+      if (starts !== 1) {
+        befunde.push(`WS-2b/D13: erwartet genau EIN gestarteter Lauf, erhalten ${starts}`)
+      }
+    } finally {
+      gibFrei()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 3: Workflow nicht startbar (GESTOPPT) → 409, nichts gestartet ─
+  {
+    const workflowId = `ws2b-gestoppt-${randomUUID()}`
+    let starts = 0
+    const fuehreAufgabeDurchFn = async () => {
+      starts += 1
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })], {
+        status: 'GESTOPPT',
+        aktiver_schritt_id: null,
+      })
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const koerper = await antwort.json()
+      if (antwort.status !== 409 || koerper.art !== 'haltKlaerung') {
+        befunde.push(`WS-2b: ein GESTOPPTER Workflow erwartet 409 mit art 'haltKlaerung', erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+      if (starts !== 0) {
+        befunde.push(`WS-2b: ein GESTOPPTER Workflow darf keinen Lauf starten, erhalten ${starts}`)
+      }
+      // Nichts geschrieben: die Version bleibt die eine vom Anlegen.
+      const zweiteVersion = ladeArtefaktVersion(`workflow-${workflowId}`, 2, { basisVerzeichnis, schreiber: () => {} })
+      if (zweiteVersion !== null) {
+        befunde.push('WS-2b: ein abgelehnter Start hat trotzdem eine neue Workflow-Version geschrieben')
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 4: eine erklärte Eingabe fehlt → 400, Halt statt stillem Start ─
+  {
+    const workflowId = `ws2b-eingabe-fehlt-${randomUUID()}`
+    let starts = 0
+    const fuehreAufgabeDurchFn = async () => {
+      starts += 1
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: ['artefakt:auftrag-gibt-es-nicht'] })])
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const grund = (await antwort.json()).grund ?? ''
+      if (antwort.status !== 400 || !grund.includes('auftrag-gibt-es-nicht')) {
+        befunde.push(`WS-2b (B): ein fehlendes Eingabe-Artefakt erwartet 400 mit der Artefakt-ID im Grund, erhalten ${antwort.status} (${grund})`)
+      }
+      if (starts !== 0) {
+        befunde.push(`WS-2b (B): bei fehlendem Eingabe-Artefakt darf kein Lauf starten, erhalten ${starts}`)
+      }
+      const zweiteVersion = ladeArtefaktVersion(`workflow-${workflowId}`, 2, { basisVerzeichnis, schreiber: () => {} })
+      if (zweiteVersion !== null) {
+        befunde.push('WS-2b (B): bei fehlendem Eingabe-Artefakt wurde trotzdem eine neue Workflow-Version geschrieben')
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 5: auftrag_id als Pfad-Ausbruch → 400, Server lebt ───────────
+  //
+  // Real reproduziert (Reviewer-Pass 10.09.2026): auftrag_id geht über
+  // 'lineage-auftrag-<id>' in einen Dateisystempfad ein, und ladeArtefaktVersion WIRFT
+  // dort (F1s pruefeLaufId) statt null zu liefern. Aus einem async-Handler, dessen
+  // Promise niemand awaitet, war das eine unhandled rejection — also Prozesstod statt
+  // Antwort. Zwei Stellen, zwei Fälle: das Anlegen lehnt ab, und ein BESTANDSartefakt
+  // (hier direkt über registriereWorkflow angelegt, am Endpunkt vorbei) wird beim Starten
+  // abgelehnt. Hinter beiden steht eine Lebendprüfung — ein Statuscode allein bewiese
+  // nichts, wenn der Prozess erst danach fällt.
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      for (const boese of ['../../ausbruch', 'a/b', 'a\\b', 'ab']) {
+        const payload = gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], {
+          workflow_id: `ws2b-auftragid-${randomUUID()}`,
+          auftrag_id: boese,
+        })
+        const antwort = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(payload) })
+        if (antwort.status !== 400) {
+          befunde.push(`POST /api/workflows: auftrag_id ${JSON.stringify(boese)} erwartet 400, erhalten ${antwort.status}`)
+        }
+      }
+
+      // Bestandsartefakt: am Endpunkt vorbei angelegt, wie es ein früherer Serverstand
+      // hinterlassen haben kann. Der Startendpunkt muss es abfangen, statt daran zu sterben.
+      const bestandId = `ws2b-bestand-${randomUUID()}`
+      registriereWorkflow(
+        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], { workflow_id: bestandId, auftrag_id: '../../ausbruch' }),
+        leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+        { basisVerzeichnis, schreiber: () => {} }
+      )
+      const gestartet = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(bestandId)}/starten`, { method: 'POST' })
+      const grund = (await gestartet.json()).grund ?? ''
+      if (gestartet.status !== 400 || !grund.includes('auftrag_id')) {
+        befunde.push(`WS-2b: ein Bestandsworkflow mit ausbrechender auftrag_id erwartet 400, erhalten ${gestartet.status} (${grund})`)
+      }
+
+      // Rotfall 6: kaputte/ausbrechende Prozentkodierung am neuen POST — dieselbe Klasse, die
+      // in WS-2a real den Serverprozess getötet hat (siehe Kopf von leitstand-server.mjs).
+      for (const roh of ['%2E%2E%2Fausbruch', 'a%2Fb', 'a%5Cb', '%00', '%', '%zz']) {
+        const antwort = await fetch(`${basisUrl}/api/workflows/${roh}/starten`, { method: 'POST' })
+        if (antwort.status !== 400) {
+          befunde.push(`POST /api/workflows/${roh}/starten: erwartet 400, erhalten ${antwort.status}`)
+        }
+      }
+
+      const lebtNoch = await fetch(`${basisUrl}/api/workflows`)
+      if (lebtNoch.status !== 200) {
+        befunde.push(`GET /api/workflows nach den WS-2b-Rotfällen: Server antwortet nicht mehr mit 200, erhalten ${lebtNoch.status}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 2 (WS-2b (6)): der Cursor wandert weiter, ein zweiter /starten führt ─
+  //     den nächsten Schritt aus.
+  //
+  // Das ist der manuelle Schritt-für-Schritt-Modus, den WS-2b liefert: nach einem
+  // erfolgreichen Schritt steht der Cursor auf dem nächsten fälligen Schritt und der
+  // Workflow auf LAEUFT — gestartet wird dabei NICHTS (das ist WS-2c). Ohne diesen Fall
+  // wäre „der Cursor wandert weiter" eine Behauptung: vor der Korrektur blieb er auf dem
+  // fertigen Schritt stehen, und ein zweiter Aufruf endete zwangsläufig in 409.
+  {
+    const workflowId = `ws2b-cursor-${randomUUID()}`
+    const gestartete = []
+    const gesehene = []
+    const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
+      gestartete.push(laufId)
+      gesehene.push(eingaben)
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: [] }),
+      ])
+
+      const ersterStart = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (ersterStart.status !== 202) {
+        befunde.push(`WS-2b (6): der erste Start erwartet 202, erhalten ${ersterStart.status} (${await ersterStart.text()})`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const nachSchritt1 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachSchritt1?.daten?.aktiver_schritt_id !== 'schritt-2' || nachSchritt1?.daten?.status !== 'LAEUFT') {
+        befunde.push(`WS-2b (6): nach ERFOLGREICH erwartet Cursor auf 'schritt-2' und Workflow LAEUFT, erhalten ${JSON.stringify({ cursor: nachSchritt1?.daten?.aktiver_schritt_id, status: nachSchritt1?.daten?.status })}`)
+      }
+      if (nachSchritt1?.daten?.schritte?.[0]?.status !== 'ERFOLGREICH' || nachSchritt1?.daten?.schritte?.[1]?.status !== 'OFFEN') {
+        befunde.push(`WS-2b (6): Schritt 1 muss ERFOLGREICH und Schritt 2 unberührt OFFEN sein, erhalten ${JSON.stringify(nachSchritt1?.daten?.schritte)}`)
+      }
+      if (gestartete.length !== 1) {
+        befunde.push(`WS-2b (6): der Cursor darf NICHTS starten (das ist WS-2c), erhalten ${gestartete.length} Läufe`)
+      }
+
+      // Und jetzt der eigentliche Beleg: der zweite Aufruf führt Schritt 2 wirklich aus.
+      const zweiterStart = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const zweiterKoerper = await zweiterStart.json()
+      if (zweiterStart.status !== 202 || zweiterKoerper.schrittId !== 'schritt-2') {
+        befunde.push(`WS-2b (6): der zweite Start erwartet 202 für 'schritt-2', erhalten ${zweiterStart.status} (${JSON.stringify(zweiterKoerper)})`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const nachSchritt2 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachSchritt2?.daten?.status !== 'ABGESCHLOSSEN' || nachSchritt2?.daten?.aktiver_schritt_id !== null) {
+        befunde.push(`WS-2b (6): nach dem letzten Schritt erwartet ABGESCHLOSSEN mit Cursor null, erhalten ${JSON.stringify({ cursor: nachSchritt2?.daten?.aktiver_schritt_id, status: nachSchritt2?.daten?.status })}`)
+      }
+      if (gestartete.length !== 2 || gestartete[0] === gestartete[1]) {
+        befunde.push(`WS-2b (6): erwartet zwei Läufe mit verschiedenen laufIds, erhalten ${JSON.stringify(gestartete)}`)
+      }
+      // Lineage über die Schrittgrenze: Schritt 2 wird mit der lauf_id von Schritt 1 als
+      // vorgaengerLaufId gestartet (Nicht-Ziel "Keine neue Lineage-Mechanik"). Vor der
+      // Cursor-Wanderung konnte ein zweiter Schritt nie starten — die Zusage war damit unbelegt
+      // und beim Bau von (6) real verlorengegangen (QA-Pass 10.09.2026).
+      if ('vorgaengerLaufId' in (gesehene[0] ?? {})) {
+        befunde.push("WS-2b: der ERSTE Schritt darf keine vorgaengerLaufId tragen")
+      }
+      if (gesehene[1]?.vorgaengerLaufId !== gestartete[0]) {
+        befunde.push(`WS-2b: Schritt 2 muss mit vorgaengerLaufId '${gestartete[0]}' (lauf_id von Schritt 1) starten, erhalten ${JSON.stringify(gesehene[1]?.vorgaengerLaufId)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 3 (WS-2b (6)): ZWINGEND hinter einem erfolgreichen Schritt ──────────
+  //
+  // Der Cursor wandert auf den ZWINGEND-Schritt, der Workflow geht auf WARTET_FREIGABE,
+  // und ein zweiter /starten startet ihn NICHT (409 haltFreigabe). Das ist die Grenze aus
+  // E-M3-1, jetzt über den Endpunkt kalibriert und nicht nur über die reine Funktion.
+  {
+    const workflowId = `ws2b-zwingend-${randomUUID()}`
+    const gestartete = []
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: [], freigabe: 'ZWINGEND' }),
+      ])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (stand?.daten?.status !== 'WARTET_FREIGABE' || stand?.daten?.aktiver_schritt_id !== 'schritt-2') {
+        befunde.push(`WS-2b (6): vor einem ZWINGEND-Schritt erwartet WARTET_FREIGABE mit Cursor 'schritt-2', erhalten ${JSON.stringify({ cursor: stand?.daten?.aktiver_schritt_id, status: stand?.daten?.status })}`)
+      }
+      const zweiter = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const koerper = await zweiter.json()
+      if (zweiter.status !== 409 || koerper.art !== 'haltFreigabe') {
+        befunde.push(`WS-2b (6): ein ZWINGEND-Schritt erwartet 409 mit art 'haltFreigabe', erhalten ${zweiter.status} (${JSON.stringify(koerper)})`)
+      }
+      if (gestartete.length !== 1) {
+        befunde.push(`WS-2b (6): ein ZWINGEND-Schritt darf nicht gestartet werden, erhalten ${gestartete.length} Läufe`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (3) Heilung einer verwaisten lauf_id — beide Seiten der Bedingung ────────────
+  //
+  // Die Bedingung ist ENGER als ok === false: F6as verweigereStart schreibt in fünf von
+  // sieben Ablehnungszweigen eine reale VERWEIGERT-Wirkungsmarke, bevor starteGateway
+  // ok:false zurückgibt. Deshalb zwei kalibrierte Fälle, die sich NUR darin unterscheiden,
+  // ob unter der laufId etwas auf der Platte steht. Ohne den zweiten wäre „kein Rücksetzen,
+  // wo real ein Artefakt entstanden ist" unbelegt — und ein Rücksetzen auf ok:false allein
+  // liefe grün durch.
+  {
+    // (a) Fachliche Ablehnung OHNE Checkpoint (F5-Fall, z. B. Tippfehler in schritt.rolle):
+    //     lauf_id zurück auf null, Schritt zurück auf OFFEN, Workflow KLAERUNG_ERFORDERLICH.
+    const workflowId = `ws2b-heilung-${randomUUID()}`
+    const fuehreAufgabeDurchFn = async () => ({ ok: false, stufe: 'kontextpaket', ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'code-reviewr' } })
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [], rolle: 'code-reviewr' })])
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (antwort.status !== 202) {
+        befunde.push(`WS-2b (3): der Start erwartet 202, erhalten ${antwort.status}`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      const schritt = stand?.daten?.schritte?.[0]
+      if (schritt?.status !== 'OFFEN' || schritt?.lauf_id !== null) {
+        befunde.push(`WS-2b (3): eine Ablehnung ohne Checkpoint muss den Schritt auf OFFEN mit lauf_id null zurücksetzen, erhalten ${JSON.stringify(schritt)}`)
+      }
+      if (stand?.daten?.status !== 'KLAERUNG_ERFORDERLICH' || stand?.daten?.aktiver_schritt_id !== 'schritt-1') {
+        befunde.push(`WS-2b (3): erwartet Workflow KLAERUNG_ERFORDERLICH mit Cursor auf dem Schritt, erhalten ${JSON.stringify({ cursor: stand?.daten?.aktiver_schritt_id, status: stand?.daten?.status })}`)
+      }
+      // Der eigentliche Zweck der Heilung: der Schritt ist danach wieder startbar.
+      const erneut = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (erneut.status !== 202) {
+        befunde.push(`WS-2b (3): nach der Heilung muss derselbe Schritt wieder startbar sein, erhalten ${erneut.status} (${await erneut.text()})`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    } finally {
+      await schliessen()
+    }
+  }
+  {
+    // (b) Fachliche Ablehnung MIT geschriebener Wirkungsmarke (F6a-verweigereStart-Fall):
+    //     KEIN Rücksetzen — F1s Kette ist append-only, ein OFFEN darüber wäre eine Lüge.
+    const workflowId = `ws2b-keine-heilung-${randomUUID()}`
+    const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      // Bildet verweigereStart nach: eine reale VERWEIGERT-Wirkungsmarke VOR dem ok:false.
+      schreibeWirkungsmarke(laufId, profilReferenz, 'terminal', { ergebnis: 'VERWEIGERT' }, { basisVerzeichnis, schreiber: () => {} })
+      return { ok: false, stufe: 'gateway', grund: 'Startfreigabe ABGELEHNT' }
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      const schritt = stand?.daten?.schritte?.[0]
+      if (schritt?.status !== 'FEHLGESCHLAGEN' || typeof schritt?.lauf_id !== 'string') {
+        befunde.push(`WS-2b (3): eine Ablehnung MIT Wirkungsmarke darf NICHT zurückgesetzt werden (Schritt FEHLGESCHLAGEN, lauf_id bleibt), erhalten ${JSON.stringify(schritt)}`)
+      }
+      if (stand?.daten?.status !== 'KLAERUNG_ERFORDERLICH') {
+        befunde.push(`WS-2b (3): erwartet Workflow KLAERUNG_ERFORDERLICH, erhalten ${JSON.stringify(stand?.daten?.status)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 4 (WS-2b (6)): grenzen.max_schritte hält den Workflow an ───────────
+  //
+  // Die einzige Abbildung in workflowStatusZuAusgang, die auf einen terminalen
+  // Nicht-Erfolgs-Status führt — ohne diesen Fall bliebe sie ungeprüft, und ein Vertippen
+  // auf ABGESCHLOSSEN liefe grün durch.
+  {
+    const workflowId = `ws2b-grenze-${randomUUID()}`
+    const gestartete = []
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(
+        basisUrl,
+        workflowId,
+        [gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }), gateSchritt('schritt-2', null, { eingaben: [] })],
+        { grenzen: { max_schritte: 1, max_replans: 0 } }
+      )
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (stand?.daten?.status !== 'GESTOPPT' || stand?.daten?.aktiver_schritt_id !== null) {
+        befunde.push(`WS-2b (6): bei erreichtem max_schritte erwartet GESTOPPT mit Cursor null, erhalten ${JSON.stringify({ cursor: stand?.daten?.aktiver_schritt_id, status: stand?.daten?.status })}`)
+      }
+      const zweiter = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (zweiter.status !== 409 || gestartete.length !== 1) {
+        befunde.push(`WS-2b (6): ein GESTOPPTER Workflow erwartet 409 und keinen zweiten Lauf, erhalten ${zweiter.status} / ${gestartete.length} Läufe`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (4) POST /api/workflows auf einen nicht-OFFENen Workflow → 409 ──────────────
+  //
+  // Bis WS-2b ersetzte ein zweiter POST die Definition eines Workflows, den der Automat
+  // gerade abarbeitet: der Mensch gibt Fassung 1 frei, der Schritt schreibt seinen Ausgang
+  // in Fassung 2. Der Grünfall daneben (OFFEN → 201, versionSequenz 2) steht bereits im
+  // Abschnitt zu POST /api/workflows oben und bleibt unberührt.
+  {
+    const workflowId = `ws2b-ersetzen-${randomUUID()}`
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      const payload = await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const antwort = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify({ ...payload, ziel: 'Untergeschobene zweite Fassung.' }) })
+      const koerper = await antwort.json()
+      if (antwort.status !== 409 || koerper.status !== 'ABGESCHLOSSEN') {
+        befunde.push(`POST /api/workflows: ein bereits gelaufener Workflow erwartet 409, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+      // Nichts überschrieben: der letzte Stand trägt weiterhin das ursprüngliche Ziel.
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (stand?.daten?.ziel === 'Untergeschobene zweite Fassung.') {
+        befunde.push('POST /api/workflows: die abgelehnte zweite Fassung wurde trotzdem geschrieben')
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (A) Ersetzbarkeit je Workflow-Status ────────────────────────────────────────
+  //
+  // Die Regel trennt drei gesperrte von drei erlaubten Zuständen, und beide Seiten
+  // brauchen einen Fall: eine reine Rotfall-Prüfung wäre durch ein "sperrt immer"
+  // erfüllbar, eine reine Grünfall-Prüfung durch ein "erlaubt immer". Der wichtigste
+  // Grünfall ist KLAERUNG_ERFORDERLICH — der motivierende Reparaturzug.
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      // Die Zustände werden direkt über registriereWorkflow gesetzt (am Endpunkt vorbei) —
+      // sonst müsste jeder Fall über einen echten Lauf erzeugt werden, und der Testfall
+      // prüfte dann den Weg dorthin statt der Regel.
+      const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
+      for (const [status, erwartet] of [
+        ['LAEUFT', 409],
+        ['WARTET_FREIGABE', 409],
+        ['ABGESCHLOSSEN', 409],
+        ['OFFEN', 201],
+        ['KLAERUNG_ERFORDERLICH', 201],
+        ['GESTOPPT', 201],
+      ]) {
+        const workflowId = `ws2b-ersetzbar-${randomUUID()}`
+        const bestand = gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], {
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          status,
+          // ABGESCHLOSSEN und GESTOPPT verlangen laut Cursor-Festlegung aktiver_schritt_id null.
+          ...(status === 'ABGESCHLOSSEN' || status === 'GESTOPPT' ? { aktiver_schritt_id: null } : {}),
+        })
+        registriereWorkflow(bestand, profilReferenz, { basisVerzeichnis, schreiber: () => {} })
+
+        // Der eingereichte Body trägt IMMER 'OFFEN' — sonst prüfte dieser Fall zwei Variablen
+        // auf einmal (Bestandsstatus und Body-Status) und die Body-Regel unten wäre nicht mehr
+        // von der Bestandsregel unterscheidbar.
+        const antwort = await fetch(`${basisUrl}/api/workflows`, {
+          method: 'POST',
+          body: JSON.stringify({ ...bestand, status: 'OFFEN', aktiver_schritt_id: 'schritt-1', ziel: 'Zweite Fassung des Menschen.' }),
+        })
+        if (antwort.status !== erwartet) {
+          befunde.push(`POST /api/workflows: Bestand mit status '${status}' erwartet ${erwartet}, erhalten ${antwort.status} (${await antwort.text()})`)
+          continue
+        }
+        const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+        const uebernommen = stand?.daten?.ziel === 'Zweite Fassung des Menschen.'
+        if (erwartet === 201 && !uebernommen) {
+          befunde.push(`POST /api/workflows: Bestand mit status '${status}' wurde angenommen, aber die neue Fassung steht nicht auf der Platte`)
+        }
+        if (erwartet === 409 && uebernommen) {
+          befunde.push(`POST /api/workflows: Bestand mit status '${status}' wurde abgelehnt, aber die neue Fassung wurde trotzdem geschrieben`)
+        }
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (A) Der eingereichte status darf sich nicht selbst aussperren ──────────────
+  //
+  // Ohne diese Regel genügte EINE falsche Feldangabe: eine Fassung mit status
+  // 'ABGESCHLOSSEN' wurde mit 201 angenommen und war danach weder startbar (Regel 0)
+  // noch ersetzbar (der Bestand ist jetzt gesperrt). Das hebelte die zentrale Zusage
+  // dieser Runde aus — "aus jedem Halt heraus über eine neue Fassung".
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      for (const [status, erwartet] of [
+        ['LAEUFT', 400],
+        ['WARTET_FREIGABE', 400],
+        ['ABGESCHLOSSEN', 400],
+        ['OFFEN', 201],
+        ['KLAERUNG_ERFORDERLICH', 201],
+        ['GESTOPPT', 201],
+      ]) {
+        const workflowId = `ws2b-bodystatus-${randomUUID()}`
+        const payload = gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], {
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          status,
+          ...(status === 'ABGESCHLOSSEN' || status === 'GESTOPPT' ? { aktiver_schritt_id: null } : {}),
+        })
+        const antwort = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(payload) })
+        if (antwort.status !== erwartet) {
+          befunde.push(`POST /api/workflows: eingereichter status '${status}' erwartet ${erwartet}, erhalten ${antwort.status} (${await antwort.text()})`)
+        }
+        if (erwartet === 400 && ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} }) !== null) {
+          befunde.push(`POST /api/workflows: eingereichter status '${status}' wurde abgelehnt, aber trotzdem geschrieben`)
+        }
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (A) Ein UNGÜLTIGER Bestand ist immer ersetzbar, auch in einem gesperrten Status ──
+  //
+  // Sonst wäre ein Workflow, den eine neu hinzugekommene Validatorregel ungültig macht,
+  // dauerhaft unerreichbar: der Startendpunkt lehnt ihn beim Laden ab (409), und die
+  // Ersatzfassung scheiterte am Status. Zusammenführungen waren bis WS-2b gültig UND
+  // startbar — der Fall ist real, nicht konstruiert.
+  {
+    const workflowId = `ws2b-ungueltiger-bestand-${randomUUID()}`
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn: async () => erfolgreichesErgebnis() })
+    try {
+      // Am Endpunkt vorbei angelegt: eine Zusammenführung im Status LAEUFT.
+      registriereWorkflow(
+        gateWorkflow(
+          [
+            gateSchritt('schritt-1', 'schritt-3', { eingaben: [] }),
+            gateSchritt('schritt-2', 'schritt-3', { eingaben: [] }),
+            gateSchritt('schritt-3', null, { eingaben: [] }),
+          ],
+          { workflow_id: workflowId, auftrag_id: auftragId, status: 'LAEUFT' }
+        ),
+        leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+        { basisVerzeichnis, schreiber: () => {} }
+      )
+      const gestartet = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (gestartet.status !== 409) {
+        befunde.push(`WS-2b: ein Bestand mit Zusammenführung erwartet beim Start 409, erhalten ${gestartet.status}`)
+      }
+      const ersetzt = await fetch(`${basisUrl}/api/workflows`, {
+        method: 'POST',
+        body: JSON.stringify(gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], { workflow_id: workflowId, auftrag_id: auftragId })),
+      })
+      if (ersetzt.status !== 201) {
+        befunde.push(`WS-2b: ein UNGÜLTIGER Bestand muss auch in einem gesperrten Status ersetzbar sein, erhalten ${ersetzt.status} (${await ersetzt.text()})`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (A) Der motivierende Fall, in einem Zug: Tippfehler → Heilung → Korrektur → Start ──
+  //
+  // Das ist der Grund, aus dem die 409-Bedingung verengt wurde. Vorher endete diese Kette
+  // im vierten Schritt in einem 409, und der Tippfehler war nicht mehr korrigierbar.
+  {
+    const workflowId = `ws2b-reparatur-${randomUUID()}`
+    let laeufe = 0
+    const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+      laeufe += 1
+      if (eingaben.rolle !== 'code-reviewer') {
+        return { ok: false, stufe: 'kontextpaket', ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: eingaben.rolle } }
+      }
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      const kaputt = await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [], rolle: 'code-reviewr' })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const nachHeilung = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachHeilung?.daten?.status !== 'KLAERUNG_ERFORDERLICH') {
+        befunde.push(`WS-2b-Reparatur: nach der Heilung erwartet KLAERUNG_ERFORDERLICH, erhalten ${JSON.stringify(nachHeilung?.daten?.status)}`)
+      }
+
+      // Die Korrektur: dieselbe workflow_id, richtige Rolle. Vor der Verengung: 409.
+      const korrigiert = {
+        ...kaputt,
+        status: 'KLAERUNG_ERFORDERLICH',
+        schritte: [{ ...kaputt.schritte[0], rolle: 'code-reviewer' }],
+      }
+      const angenommen = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(korrigiert) })
+      if (angenommen.status !== 201) {
+        befunde.push(`WS-2b-Reparatur: die korrigierte Fassung erwartet 201, erhalten ${angenommen.status} (${await angenommen.text()})`)
+      }
+
+      const erneut = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (erneut.status !== 202) {
+        befunde.push(`WS-2b-Reparatur: nach der Korrektur muss der Schritt starten, erhalten ${erneut.status} (${await erneut.text()})`)
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      const fertig = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (fertig?.daten?.status !== 'ABGESCHLOSSEN' || laeufe !== 2) {
+        befunde.push(`WS-2b-Reparatur: erwartet ABGESCHLOSSEN nach zwei Läufen, erhalten status ${JSON.stringify(fertig?.daten?.status)} / ${laeufe} Läufe`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (B) Stale LAEUFT: Serverneustart mitten im Schritt ──────────────────────────
+  //
+  // Nachgebildet, wie es real entsteht: ein Workflow, dessen Schritt auf LAEUFT mit
+  // lauf_id steht, während die Serverinstanz nichts davon weiß (laufAktiv === false —
+  // eine frische Instanz kennt keine Läufe früherer Prozesse, F-128). Ohne die Heilung
+  // liefe der Aufruf in Regel 3 und der Workflow bliebe dauerhaft auf 409 stehen.
+  {
+    const workflowId = `ws2b-stale-${randomUUID()}`
+    const toteLaufId = `tote-lauf-id-${randomUUID()}`
+    let starts = 0
+    const fuehreAufgabeDurchFn = async () => {
+      starts += 1
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      registriereWorkflow(
+        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], status: 'LAEUFT', lauf_id: toteLaufId })], {
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          status: 'LAEUFT',
+        }),
+        leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+        { basisVerzeichnis, schreiber: () => {} }
+      )
+
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      const koerper = await antwort.json()
+      if (antwort.status !== 409 || koerper.stale !== true) {
+        befunde.push(`WS-2b (B): ein stale LAEUFT erwartet 409 mit stale:true, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+      if (starts !== 0) {
+        befunde.push(`WS-2b (B): ein stale LAEUFT darf nichts starten, erhalten ${starts} Läufe`)
+      }
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (stand?.daten?.status !== 'KLAERUNG_ERFORDERLICH') {
+        befunde.push(`WS-2b (B): der Stale-State muss als KLAERUNG_ERFORDERLICH festgeschrieben werden, erhalten ${JSON.stringify(stand?.daten?.status)}`)
+      }
+      // Der Schritt bleibt unangetastet — unter seiner lauf_id kann real ein Lauf gelaufen
+      // sein, dessen Ausgang niemand eingesammelt hat. Das ist der Unterschied zur Heilung
+      // nach einem Laufende, wo BELEGT ist, dass nichts geschrieben wurde.
+      const schritt = stand?.daten?.schritte?.[0]
+      if (schritt?.lauf_id !== toteLaufId || schritt?.status !== 'LAEUFT') {
+        befunde.push(`WS-2b (B): der betroffene Schritt darf NICHT angefasst werden (lauf_id und status bleiben), erhalten ${JSON.stringify(schritt)}`)
+      }
+      // Und der Zustand ist jetzt reparierbar: KLAERUNG_ERFORDERLICH ist nach (A) ersetzbar.
+      const reparatur = await fetch(`${basisUrl}/api/workflows`, {
+        method: 'POST',
+        body: JSON.stringify(gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })], { workflow_id: workflowId, auftrag_id: auftragId })),
+      })
+      if (reparatur.status !== 201) {
+        befunde.push(`WS-2b (B): nach der Stale-Heilung muss eine neue Fassung angenommen werden, erhalten ${reparatur.status}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (C) Ein technischer WURF heilt, wenn nichts entstand — und nur dann ─────────
+  {
+    // (a) Wurf, bevor irgendetwas geschrieben wurde: derselbe Befund wie bei einer
+    //     F5-Ablehnung — es ist nichts passiert.
+    const workflowId = `ws2b-wurf-${randomUUID()}`
+    const fuehreAufgabeDurchFn = async () => {
+      throw new Error('Vorbedingungsverletzung vor dem ersten Schreibvorgang')
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      const schritt = stand?.daten?.schritte?.[0]
+      if (schritt?.status !== 'OFFEN' || schritt?.lauf_id !== null) {
+        befunde.push(`WS-2b (C): ein Wurf OHNE geschriebenes Verzeichnis muss heilen, erhalten ${JSON.stringify(schritt)}`)
+      }
+      if (stand?.daten?.status !== 'KLAERUNG_ERFORDERLICH') {
+        befunde.push(`WS-2b (C): nach einem geheilten Wurf erwartet KLAERUNG_ERFORDERLICH, erhalten ${JSON.stringify(stand?.daten?.status)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+  {
+    // (b) Wurf NACH einer geschriebenen Wirkungsmarke: keine Heilung. Das ist die Grenze,
+    //     ohne die (C) zu einem "heilt immer bei Misserfolg" verkäme.
+    const workflowId = `ws2b-wurf-mit-marke-${randomUUID()}`
+    const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      schreibeWirkungsmarke(laufId, profilReferenz, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+      throw new Error('Prozessfehler nach dem run_prepared')
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      const schritt = stand?.daten?.schritte?.[0]
+      if (schritt?.status !== 'FEHLGESCHLAGEN' || typeof schritt?.lauf_id !== 'string') {
+        befunde.push(`WS-2b (C): ein Wurf NACH einer Wirkungsmarke darf NICHT heilen, erhalten ${JSON.stringify(schritt)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  if (befunde.length === befundeVorStart) {
+    console.log('✓ POST /api/workflows/<id>/starten: ein Schritt startet real (202, LAEUFT + lauf_id, Eingaben nach (A)/(B)); 404, 409 (D13), 409 (nicht startbar), 400 (Eingabe-Artefakt fehlt), 400 (ausbrechende auftrag_id, auch als Bestandsartefakt) und 400 (kaputte Prozentkodierung) halten an — der Server lebt danach. Der Cursor wandert nach jedem Schritt weiter (zweiter Aufruf startet Schritt 2, ZWINGEND hält bei WARTET_FREIGABE), eine Ablehnung OHNE Checkpoint heilt die lauf_id, eine MIT Wirkungsmarke nicht, und eine neue Fassung ist in LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN gesperrt, in OFFEN/KLAERUNG_ERFORDERLICH/GESTOPPT erlaubt (Reparaturzug Tippfehler -> Heilung -> Korrektur -> Start belegt); ein stale LAEUFT wird als KLAERUNG_ERFORDERLICH festgeschrieben, ohne den Schritt anzufassen; ein eingereichter Datensatz darf sich nicht selbst aussperren (400), und ein ungültiger Bestand bleibt in jedem Status ersetzbar.')
+  }
+}
+
+// ─── Genau EIN Aufrufpunkt des Werkzeuglaufs (Auflage WS-2b) ────────────────
+//
+// AK4 aus WS-2a sagt es zu, WS-2b hätte es leicht brechen können: der
+// Automatenpfad braucht denselben Fire-and-forget-Block wie POST /api/laeufe.
+// Ein zweiter Aufrufpunkt wäre eine zweite Fassung der D13-Rückgabe und der
+// Startfehlerliste — geprüft wird deshalb die Zahl der Aufrufstellen im
+// Quelltext, nicht bloß, dass es überhaupt eine gibt.
+{
+  const quelltext = readFileSync(join('scripts', 'leitstand-server.mjs'), 'utf-8')
+  // Zusammengesetzt, damit dieses Gate den gesuchten Text nicht selbst enthält, wenn es
+  // eines Tages im selben Verzeichnis mitgelesen wird.
+  const muster = new RegExp(`${'fuehreAufgabeDurch'}${'Fn'}\\(`, 'g')
+  const treffer = quelltext.match(muster) ?? []
+  if (treffer.length !== 1) {
+    befunde.push(`Auflage WS-2b: erwartet genau EINEN Aufrufpunkt des Werkzeuglaufs in scripts/leitstand-server.mjs, gefunden ${treffer.length}`)
+  } else {
+    console.log('✓ Auflage WS-2b: genau ein Aufrufpunkt des Werkzeuglaufs in scripts/leitstand-server.mjs (AK4 aus WS-2a hält).')
+  }
+}
+
 // ─── Ergebnis ───────────────────────────────────────────────────────────────
 //
 // process.exitCode statt process.exit() — bewusste Abweichung von den

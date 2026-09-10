@@ -36,11 +36,13 @@
  * - scripts/check-f15-workflow.mjs
  * - scripts/leitstand-server.mjs (POST/GET /api/workflows, F15 WS-2a)
  *
- * Wichtig: Vier Regeln lassen sich in JSON Schema nicht ausdrücken und leben
+ * Wichtig: Fünf Regeln lassen sich in JSON Schema nicht ausdrücken und leben
  * nur hier — Eindeutigkeit der schritt_id, die Querverweise nachfolger und
- * aktiver_schritt_id INNERHALB derselben schritte-Liste sowie die
- * Zyklenfreiheit der nachfolger-Kette. Wer das Schema ändert, muss diese
- * Funktion mitändern; das Gate hält beide über dieselben Fixtures aneinander.
+ * aktiver_schritt_id INNERHALB derselben schritte-Liste, die Zyklenfreiheit
+ * der nachfolger-Kette und (F15 WS-2b) die Zusammenführungsfreiheit: zwei
+ * Schritte dürfen nicht denselben nachfolger tragen. Wer das Schema ändert,
+ * muss diese Funktion mitändern; das Gate hält beide über dieselben Fixtures
+ * aneinander.
  *
  * aktiver_schritt_id ist ein CURSOR ([EMPFEHLUNG] Technical Challenger,
  * 09.09.2026, F15 WS-1 — reversibel, solange keine realen
@@ -326,6 +328,36 @@ export function validiereWorkflowDaten(daten: unknown): string[] {
   const aktiv = obj.aktiver_schritt_id
   if (istNichtLeererString(aktiv) && !bekannteIds.has(aktiv)) {
     verstoesse.push(`'aktiver_schritt_id' verweist auf die unbekannte schritt_id '${aktiv}'`)
+  }
+
+  // Fünfte Querverweisregel (F15 WS-2b): zwei Schritte dürfen nicht denselben
+  // nachfolger tragen. Bis WS-2b galt eine Zusammenführung ausdrücklich als
+  // Grünfall — sie ist ja kein Zyklus. Der Startendpunkt bestimmt den
+  // Lineage-Vorgänger eines Schritts aber über
+  // 'nachfolger === schritt_id && lauf_id !== null'; bei einer Zusammenführung
+  // ist er nicht bestimmbar, und der Endpunkt hält mit 409 an, statt zu raten
+  // (D2). Ein Validator, der so einen Workflow annimmt, ließe also einen Plan
+  // durch, der sich nicht zu Ende ausführen lässt — die Ablehnung gehört
+  // hierher, an die Stelle, an der der Mensch den Plan noch ändern kann, und
+  // nicht erst an den Start.
+  //
+  // Der 409 im Startendpunkt bleibt als zweite Verteidigungslinie stehen:
+  // Bestandsartefakte aus der Zeit vor dieser Regel sind bereits geschrieben
+  // und passieren validiereWorkflowDaten nie wieder — außer beim Laden im
+  // Startendpunkt, wo sie jetzt an dieser Regel als 409 hängen bleiben.
+  const zusammenfuehrungen = new Map<string, string[]>()
+  for (const schritt of obj.schritte) {
+    if (!istObjekt(schritt) || !istNichtLeererString(schritt.nachfolger) || !istNichtLeererString(schritt.schritt_id)) continue
+    const vorgaenger = zusammenfuehrungen.get(schritt.nachfolger) ?? []
+    vorgaenger.push(schritt.schritt_id)
+    zusammenfuehrungen.set(schritt.nachfolger, vorgaenger)
+  }
+  for (const [nachfolger, vorgaenger] of zusammenfuehrungen) {
+    if (vorgaenger.length > 1) {
+      verstoesse.push(
+        `'schritte' führt ${vorgaenger.length} Schritte (${vorgaenger.join(', ')}) auf denselben nachfolger '${nachfolger}' zusammen — der Lineage-Vorgänger wäre nicht bestimmbar`
+      )
+    }
   }
 
   for (const zyklus of findeZyklen(obj.schritte)) {
