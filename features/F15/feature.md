@@ -135,10 +135,106 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   Der Zusammenspielfall aus F-208 (manueller Abbruch von Schritt 1 setzt
   NICHT auf Schritt 2 fort) ist real belegt, nicht angenommen —
   `check-f15-automat-real.mjs` (b).
-- **AK7** *(WS-2b)* — Bei `freigabe: ZWINGEND` hält der Automat real an.
-  Die erteilte Freigabe wird als Entscheidungsartefakt festgehalten und
-  ist die einzige Auflösung; `freigabe` selbst bleibt unverändertes
-  Plandatum.
+- **AK7** *(WS-2b/WS-2c (b1), erfüllt)* — Bei `freigabe: ZWINGEND` hält der
+  Automat real an. Die erteilte Freigabe wird als Entscheidungsartefakt
+  festgehalten und ist die einzige Auflösung; `freigabe` selbst bleibt
+  unverändertes Plandatum.
+
+  Satz 1 hielt seit WS-2b (Halt auf `WARTET_FREIGABE`), Satz 2 ist WS-2c
+  (b1): `POST /api/workflows/<id>/freigabe` nimmt `FREIGEGEBEN` oder
+  `ABGELEHNT` mit Pflichtbegründung entgegen, registriert beides als
+  Kernartefakt `entscheidung-workflow-<workflowId>-<schrittId>`
+  (`erzeuger: 'mensch'`, mit `eingaben`-Verweis auf die freigegebene
+  Workflow-**Version**, damit später feststellbar bleibt, WELCHEN Plan der
+  Mensch freigegeben hat) und setzt bei `FREIGEGEBEN` das neue, optionale
+  Schrittfeld `freigabe_erteilt`. Nur dieses Feld löst den Halt auf —
+  `freigabe` bleibt unangetastet, und `POST /api/workflows` normalisiert ein
+  im Body mitgeschicktes `freigabe_erteilt` weg, sonst erteilte sich eine
+  eingereichte Fassung die Freigabe selbst (ARCHITECTURE.md §3).
+  `ABGELEHNT` setzt `GESTOPPT` — bewusst nicht `KLAERUNG_ERFORDERLICH`,
+  weil `GESTOPPT` ersetzbar bleibt und damit der Reparaturpfad offen steht.
+
+  **Vorbedingung ist die Regel, nicht der abgelegte Status** (QA-Pass
+  10.09.2026, TC-05/TC-06): der Endpunkt fragt `ermittleNaechstenSchritt`
+  und verlangt `haltFreigabe` für genau die eingereichte `schrittId`.
+  `WARTET_FREIGABE` schreibt ausschließlich die Nachbereitung eines
+  erfolgreichen Vorschritts; ein Workflow, dessen ERSTER Schritt `ZWINGEND`
+  ist, und jede Reparaturfassung mit fälligem `ZWINGEND`-Schritt erreichen
+  diesen Status nie (`POST .../starten` lehnt ab und schreibt bewusst
+  nichts). Hinge die Freigabe am Status, wäre der Governance-Fall in genau
+  diesen Bauformen unbedienbar und der einzige Ausweg das Entfernen von
+  `ZWINGEND` aus dem Plan — eine Freigabe-Umgehung ohne Entscheidungs-
+  artefakt. Die Regel ist dabei die **schärfere** Prüfung: sie lehnt
+  zusätzlich alles ab, was aus einem anderen Grund nicht startbar wäre
+  (`GESTOPPT`, laufender Schritt, erreichte Grenze, nicht dispatchbarer
+  Worker) — eine Freigabe, die schon am Zustand des Automaten folgenlos
+  bliebe, wird gar nicht erst entgegengenommen. Belegt über zwei
+  Bestandsfassungen, die `WARTET_FREIGABE` tragen und trotzdem abgelehnt
+  werden (nicht dispatchbarer Worker, erreichte Grenze); ohne sie wäre ein
+  Rückbau auf den Statusvergleich unbemerkt grün geblieben (Reviewer-Pass
+  10.09.2026, W1).
+
+  Was die Vorprüfung NICHT abdeckt, sind die Plandaten, die erst
+  `starteWorkflowSchritt` auflöst — Zeichenregel und Existenz von
+  `auftrag_id`, Auflösbarkeit von `schritte[].eingaben` (Reviewer-Pass, W3).
+  Eine Freigabe kann daran nach der Entscheidung noch scheitern; sie endet
+  dann als `KLAERUNG_ERFORDERLICH` mit festgeschriebenem Grund (eigener
+  Gate-Fall). Die Prüfung hier um eine zweite Fassung der Plandatenauflösung
+  zu erweitern, wäre der schlechtere Tausch.
+
+  **Festlegung — „einzige Auflösung" heißt: innerhalb eines gegebenen Plans**
+  (QA-Pass 10.09.2026, Befund 1). Ein Mensch kann in `OFFEN`,
+  `KLAERUNG_ERFORDERLICH` und `GESTOPPT` eine neue Fassung einreichen, in der
+  derselbe Schritt `AUTOMATISCH` statt `ZWINGEND` trägt — und ihn dann ohne
+  Entscheidungsartefakt starten. Das ist keine Lücke, die (b1) gerissen hat
+  (die Ersetzungsregel ist älter), und es ist **kein** Widerspruch zum
+  Rollenmodell: der einzige Nutzer ist zugleich die einzige
+  Entscheidungsinstanz, und eine Planänderung IST seine Entscheidung —
+  festgehalten als neue, append-only Workflow-Version neben der alten
+  Fassung und dem alten Entscheidungsartefakt. Was fehlt, ist die
+  ausdrückliche Bezeugung: eine Planänderung schreibt kein
+  `entscheidung-*`-Artefakt. Wer das ändern will, muss die Ersetzungssperre an
+  die Regel hängen statt an den Status — mit dem Preis, dass ein Tippfehler in
+  einem `ZWINGEND`-Schritt dann nicht mehr korrigierbar wäre. Bewusst nicht in
+  (b1) entschieden; als **F-226** festgehalten.
+
+  **Festlegung — eine Freigabe gilt für die Schrittfassung, nicht für einen
+  einzelnen Startversuch** (Reviewer-/QA-Pass 10.09.2026): `freigabe_erteilt`
+  wird beim Laufstart nicht verbraucht. Scheitert der freigegebene Schritt so,
+  dass die Heilung ihn auf `OFFEN` zurücksetzt, ist er ohne neue Entscheidung
+  erneut startbar — derselbe Schritt, derselbe Plan, derselbe Mensch, der den
+  Start auslöst. Verbraucht wird sie durch eine neue Fassung: `POST
+  /api/workflows` normalisiert `freigabe_erteilt` weg, ein geänderter Plan
+  braucht also eine neue Freigabe. Belegt über einen eigenen Gate-Fall
+  (Freigabe → heilbarer Fehlschlag → Start ohne zweite Entscheidung → läuft).
+
+  **Invariante — ein `ZWINGEND`-Schritt startet nie automatisch** (QA-Pass
+  10.09.2026, Befund 6). Sie ist ausdrücklich KEINE Regel: die Regel startet
+  einen `ZWINGEND`-Schritt sehr wohl, sobald `freigabe_erteilt` gesetzt ist,
+  und die Auto-Fortsetzung nimmt jedes `starte` unbesehen. Die Invariante hält
+  allein, weil zwei Tatsachen zusammenwirken — (1) `freigabe_erteilt` wird an
+  genau EINER Stelle gesetzt, im Freigabe-Endpunkt, für den fälligen Schritt,
+  der unmittelbar danach startet; (2) `POST /api/workflows` normalisiert das
+  Feld aus jedem eingereichten Körper weg. Beide sind im Gate festgenagelt,
+  (1) als Zählung im Quelltext. **Wer in WS-3 einen Cursor-, Überspringen-
+  oder Wiederaufnahmepfad baut, bricht diese Invariante, sobald er
+  `freigabe_erteilt` an einem noch nicht fälligen Schritt stehen lässt.**
+
+  Reale Nachweise: `scripts/check-f15-automat-real.mjs` (c) — ein Workflow
+  mit `ZWINGEND`-Schritt hält über die GESAMTE reale Kette (echter
+  Kindprozess) auf `WARTET_FREIGABE` an, EIN `POST .../freigabe` löst den
+  Halt, Schritt 2 läuft mit eigener terminaler Checkpoint-Kette zu Ende;
+  (d) — eine reale Ablehnung stoppt den Workflow, der abgelehnte Schritt
+  läuft nicht, und der Reparaturpfad wird bis zum Ende begangen: korrigierte
+  Fassung angenommen, erneut freigegeben (ohne persistiertes
+  `WARTET_FREIGABE`) und real bis `ABGESCHLOSSEN` durchgelaufen. Dazu in
+  `scripts/check-f15-workflow.mjs` die Vertragsform beider Zweige mit ihren
+  Ablehnungsgründen (404, 400 bei Zeichenregel für `workflowId` UND
+  `schrittId` sowie bei Body-Randfällen, 409 bei fehlender Freigabefrage,
+  Stale-`schrittId`, nicht dispatchbarem Schritt, `GESTOPPT` und D13), der
+  Rotfall gegen die Selbstfreigabe über den Body, der Fall „`ZWINGEND` als
+  erster Schritt ist freigebbar" und der Fall „gescheiterter Start NACH
+  erteilter Freigabe endet als `KLAERUNG_ERFORDERLICH` statt zugemauert".
 - **AK8** *(WS-3)* — Der Leitstand zeigt Workflow, Schrittliste, Status
   je Schritt und den aktiven Schritt. Freigeben, Überspringen und
   Stoppen wirken über den bestehenden Entscheidungs-Schreibpfad.
@@ -359,8 +455,11 @@ fünf fest, damit der verbliebene nicht als Einzelfall untergeht.
 | Zustand | wie erreicht | Ausweg |
 |---|---|---|
 | `KLAERUNG_ERFORDERLICH` | Schritt endete nicht `ERFOLGREICH` (`lauf_id` bleibt, Regel 3) | neue Fassung derselben `workflow_id` |
-| `KLAERUNG_ERFORDERLICH` | nach einer Heilung; der Planfehler steht noch im Artefakt | neue Fassung mit korrigiertem Plan |
-| `WARTET_FREIGABE` | Folgeschritt trägt `freigabe: ZWINGEND` | **keiner** — neue Fassung gesperrt, kein Freigabe-Endpunkt (AK7, siehe unten) |
+| `KLAERUNG_ERFORDERLICH` | nach einer Heilung; der Planfehler steht noch im Artefakt | neue Fassung mit korrigiertem Plan — oder, wenn der Fehler außerhalb des Plans lag, schlicht erneut starten: der geheilte Schritt ist wieder startbereit |
+| `WARTET_FREIGABE` | Folgeschritt trägt `freigabe: ZWINGEND` | `POST /api/workflows/<id>/freigabe` — `FREIGEGEBEN` setzt `freigabe_erteilt` und startet den Schritt sofort, `ABGELEHNT` führt nach `GESTOPPT` (AK7, WS-2c (b1)). Eine neue Fassung ist in DIESEM Status gesperrt |
+| **Freigabefrage OHNE persistierten Status** *(WS-2c (b1))* | erster Schritt eines Workflows trägt `ZWINGEND`, oder der fällige Schritt einer Reparaturfassung tut es — `POST .../starten` antwortet 409 und schreibt nichts, der Workflow bleibt auf `OFFEN` bzw. `KLAERUNG_ERFORDERLICH` | derselbe Freigabe-Endpunkt: er fragt die Regel, nicht den Status. **Hier ist die neue Fassung nicht gesperrt** — siehe die Festlegung zur Planänderung unten |
+| `GESTOPPT` *(neu in WS-2c (b1))* | eine Freigabe wurde abgelehnt | neue Fassung derselben `workflow_id` — `GESTOPPT` steht nicht in `GESPERRTE_ERSETZUNGS_STATUS` |
+| `KLAERUNG_ERFORDERLICH` *(neu in WS-2c (b1))* | der Start scheiterte NACH erteilter Freigabe an einem Plandatum (`auftrag_id`, unauflösbare `eingaben`) | erneutes `POST .../starten` (die Freigabe steht noch) ODER neue Fassung — die verwirft `freigabe_erteilt` und verlangt eine neue Freigabe |
 | `GESTOPPT` | `grenzen.max_schritte` erreicht | neue Fassung mit angehobener Grenze |
 | Schritt `LAEUFT` nach Serverneustart | Prozess starb mitten im Lauf | der nächste Startversuch schreibt `KLAERUNG_ERFORDERLICH` fest, dann neue Fassung |
 | `KLAERUNG_ERFORDERLICH` *(neu in WS-2c)* | die automatische Fortsetzung scheiterte vor dem Laufstart (Planfehler im Folgeschritt: unauflösbare `eingaben`-Referenz, unbekannter `werkzeugsatz`, Schreibfehler) | neue Fassung mit korrigiertem Plan |
@@ -381,22 +480,43 @@ Startversuch selbst nach `KLAERUNG_ERFORDERLICH` überführt. Der Mensch kommt
 aus jedem der vier Zustände über eine korrigierte Fassung derselben
 `workflow_id` weiter; einen Replan-Zähler gibt es dafür bewusst nicht.
 
-Offen bleibt `WARTET_FREIGABE`: dort ist die neue Fassung gesperrt (sie wäre
-eine Freigabe-Umgehung), und einen Endpunkt, der eine Freigabe entgegennimmt,
-gibt es nicht. Das ist der einzige verbliebene Halt ohne Ausweg und gehört zu
-AK7 (siehe unten).
+`WARTET_FREIGABE` war bis WS-2c (b1) der letzte Halt ohne Ausweg (F-207) und
+ist es nicht mehr: der Freigabe-Endpunkt aus AK7 löst ihn auf, in beide
+Richtungen. Die neue Fassung bleibt dort gesperrt — das ist kein Restmangel,
+sondern die Regel, die eine Freigabe-Umgehung verhindert.
 
-Zwei weitere Punkte, die WS-3 bzw. WS-2c prüfen müssen:
+Ein weiterer Punkt, den WS-3 prüfen muss:
 
 - **Ein Regel-0-Ausgang kann `KLAERUNG_ERFORDERLICH` über ein bestehendes
-  `GESTOPPT` schreiben.** Endet ein Lauf, während der Workflow schon auf
-  `GESTOPPT` steht, liefert `ermittleNaechstenSchritt` korrekt `haltKlaerung`
-  (Regel 0) — die Nachbereitung schreibt diesen Ausgang aber unbesehen zurück,
-  und `KLAERUNG_ERFORDERLICH` ist wieder fortsetzbar. Ein vom Menschen bewusst
-  gestoppter Workflow wäre damit überschrieben. Heute unerreichbar: kein
-  Endpunkt setzt `GESTOPPT` während eines Laufs. Mit dem Stoppen aus WS-3
-  (AK8) wird es real und ist dort als Vorbedingung zu prüfen — ein bestehender
-  `GESTOPPT`-Status darf von der Nachbereitung nicht überschrieben werden.
+  `GESTOPPT` schreiben.** — **eingelöst in WS-2c (b1), an zwei Stellen.**
+  `GESTOPPT` verlässt Regel 0 seither über den EIGENEN Ausgang
+  `haltGestoppt`, den `workflowStatusZuAusgang` auf `GESTOPPT` abbildet — das
+  deckt die Nachbereitung ab. Es deckt aber NICHT alle Schreibpfade ab, wie
+  die erste Fassung dieses Absatzes behauptete (Reviewer-Pass 10.09.2026,
+  K1): die Heilung einer verwaisten `lauf_id` und der Halt nach einem
+  gescheiterten Start schreiben `KLAERUNG_ERFORDERLICH` hart, ohne die Regel
+  überhaupt zu fragen. Ein Stopp mitten in einem Schritt, dessen Lauf gleich
+  darauf heilbar scheitert, wäre also weiterhin überschrieben worden.
+  Deshalb liegt der Schreibschutz in `schreibeWorkflowFortschritt` —
+  der EINEN Funktion, durch die jeder Schreibpfad läuft: steht auf der Platte
+  `GESTOPPT`, bleiben Status, Cursor und Grund eingefroren, während die
+  Schrittfelder weiter gelten (der Schritt bekommt seinen tatsächlichen
+  Ausgang; ein Stopp verschweigt nicht, was gelaufen ist).
+
+  Die Arbeitsteilung der beiden Hälften ist damit **nicht** symmetrisch, und
+  eine frühere Fassung dieses Absatzes behauptete das zu Unrecht
+  (Reviewer-Pass 10.09.2026, W2): den Schreibschutz leistet der Wächter in
+  `schreibeWorkflowFortschritt` allein — `workflowStatusZuAusgang` sieht ein
+  `haltGestoppt` nie, weil `leiteWorkflowFelderAb` auf einem `GESTOPPT` gar
+  nicht mehr aufgerufen wird. Der eigene Ausgang trägt stattdessen die
+  409-Antworten von `POST .../starten` und `POST .../freigabe` (`art:
+  'haltGestoppt'` statt eines irreführenden `haltKlaerung`) und hält die
+  Allowlist-Bauart der Regel geschlossen. Rot kalibriert sind beide, aber auf
+  verschiedene Weise: `haltGestoppt` entfernt → die `art`-Zusagen des Gates
+  werden rot; der Wächter entfernt → die Heilung überschreibt den Stopp real,
+  Gate rot. Verhaltensbelege in `scripts/check-f15-workflow.mjs` („ein
+  Automaten-Ausgang überschreibt ein bestehendes GESTOPPT NICHT" und „ein
+  GESTOPPT überlebt auch die HEILUNG").
 - **`grenzen.max_replans` wird validiert, aber von keiner Codestelle
   gelesen.** Die Terminierung steht ohne das Feld (F-194, gelöst): zyklen- und
   zusammenführungsfreie Kette plus Regel 3. Braucht WS-2c es nicht, gehört es
@@ -406,9 +526,10 @@ Zwei weitere Punkte, die WS-3 bzw. WS-2c prüfen müssen:
   niemand verlassen kann).
 
 Zusammenhang mit **AK7**: dessen zweiter Satz — die erteilte Freigabe wird
-als Entscheidungsartefakt festgehalten und ist die einzige Auflösung — ist
-auf dem WS-2b-Stand nicht gebaut. WS-2b hält bei `WARTET_FREIGABE` real an
-(AK7 Satz 1), löst den Halt aber nicht auf.
+als Entscheidungsartefakt festgehalten und ist die einzige Auflösung — war
+auf dem WS-2b-Stand nicht gebaut; WS-2b hielt bei `WARTET_FREIGABE` real an
+(AK7 Satz 1), löste den Halt aber nicht auf. WS-2c (b1) hat ihn gebaut, siehe
+AK7 oben.
 
 ## Dependencies
 

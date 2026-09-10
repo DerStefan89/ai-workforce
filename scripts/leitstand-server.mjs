@@ -1356,7 +1356,35 @@ function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leite
     ...daten,
     schritte: daten.schritte.map((s) => (s.schritt_id === schrittId ? { ...s, ...schrittFelder } : s)),
   }
-  const neueDaten = { ...datenMitSchritt, ...leiteWorkflowFelderAb(datenMitSchritt) }
+  // GESTOPPT-Schutz (F15 WS-2c (b1), Reviewer-Pass 10.09.2026, K1): ein auf der Platte
+  // stehendes GESTOPPT überschreibt diese Funktion NIE.
+  //
+  // Der eigene Automaten-Ausgang haltGestoppt deckt nur den Pfad ab, der über
+  // ermittleNaechstenSchritt läuft — die Nachbereitung. Zwei weitere Schreibpfade fragen die
+  // Regel gar nicht: die Heilung einer verwaisten lauf_id und schreibeStartfehlerHalt schreiben
+  // KLAERUNG_ERFORDERLICH hart. Damit wäre der Schutz genau dort gelöchert, wo er zuerst
+  // gebraucht wird: stoppt der Mensch während eines Schritts, dessen Lauf gleich darauf
+  // heilbar scheitert, machte die Heilung aus dem Stopp einen wieder fortsetzbaren Workflow —
+  // derselbe Defekt, gegen den haltGestoppt gebaut ist, eine Verzweigung daneben.
+  //
+  // Deshalb steht der Schutz hier, an der EINEN Funktion, durch die jeder Schreibpfad läuft,
+  // und nicht als Wächter an drei Aufrufstellen. Was geschrieben wird, ist trotzdem nicht
+  // nichts: die SCHRITTfelder gelten weiter (der Schritt bekommt seinen tatsächlichen Ausgang),
+  // eingefroren werden nur status, Cursor und Grund des Menschen. Ein Stopp verschweigt nicht,
+  // was gelaufen ist — er verhindert nur, dass daraus weitergefahren wird.
+  //
+  // leiteWorkflowFelderAb wird in diesem Fall NICHT aufgerufen. Das ist beabsichtigt und
+  // trägt eine zweite Wirkung: die Nachbereitung erfährt darüber kein Ergebnis von
+  // ermittleNaechstenSchritt (ihr `naechster` bleibt null) und bricht die Auto-Fortsetzung ab,
+  // ohne dass es dafür eine eigene Bedingung braucht.
+  //
+  // Der Weg aus GESTOPPT heraus führt nicht durch diese Funktion, sondern über POST
+  // /api/workflows — eine neue Fassung, also eine menschliche Entscheidung (GESTOPPT steht
+  // nicht in GESPERRTE_ERSETZUNGS_STATUS).
+  const neueDaten =
+    daten.status === 'GESTOPPT'
+      ? { ...datenMitSchritt, status: 'GESTOPPT', aktiver_schritt_id: daten.aktiver_schritt_id, grund: daten.grund ?? null }
+      : { ...datenMitSchritt, ...leiteWorkflowFelderAb(datenMitSchritt) }
   // Vor dem Schreiben validieren (Reviewer-Pass 10.09.2026, V5): registriereWorkflow prüft
   // bewusst nicht selbst, und der Startendpunkt validiert beim LADEN — ein hier geschriebener
   // ungültiger Datensatz käme also erst später als 409 zurück, und der Workflow wäre zugemauert.
@@ -1392,6 +1420,18 @@ function workflowStatusZuAusgang(ausgang) {
   if (ausgang.art === 'starte') return 'LAEUFT'
   if (ausgang.art === 'haltFreigabe') return 'WARTET_FREIGABE'
   if (ausgang.art === 'haltGrenze') return 'GESTOPPT'
+  // F15 WS-2c (b1): der Ausgang, der zu einem bestehenden Stopp gehört.
+  //
+  // Als SCHREIBSCHUTZ ist diese Zeile unerreichbar, und das ist kein Versehen
+  // (Reviewer-Pass 10.09.2026, W2): schreibeWorkflowFortschritt ruft
+  // leiteWorkflowFelderAb — den einzigen Aufrufer dieser Funktion — auf einem
+  // GESTOPPT gar nicht mehr auf. Den Stopp hält dort der eigene Schutz, nicht
+  // diese Abbildung. Die Zeile bleibt trotzdem stehen, aus demselben Grund wie
+  // jede andere ALLOWLIST-Zeile hier: fiele haltGestoppt in den Default, hinge
+  // die Richtigkeit an einer zweiten Stelle, die ihn zufällig abfängt.
+  // Wirksam ist der Ausgang selbst dagegen sehr wohl — er trägt die
+  // 409-Antworten von POST .../starten und POST .../freigabe.
+  if (ausgang.art === 'haltGestoppt') return 'GESTOPPT'
   if (ausgang.art === 'fertig') return 'ABGESCHLOSSEN'
   if (ausgang.art === 'haltKlaerung') return 'KLAERUNG_ERFORDERLICH'
   // ALLOWLIST wie überall in F15 (Reviewer-Pass 10.09.2026, V6): ein künftiger sechster Ausgang
@@ -1411,10 +1451,26 @@ function workflowStatusZuAusgang(ausgang) {
  */
 function beschreibeAutomatAusgang(ausgang) {
   if (ausgang.art === 'haltFreigabe') {
-    return `Schritt '${ausgang.schrittId}' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet nicht über diesen Endpunkt`
+    // Der Text landet seit (a5) auch als dauerhafter grund im Artefakt und wird dort von einem
+    // Menschen gelesen, der den Workflow ansieht — nicht von dem, der gerade einen Endpunkt
+    // aufgerufen hat (QA-Pass 10.09.2026, Fehler 7). Er nennt deshalb die Bedingung und den
+    // Ausweg, nicht den Aufrufweg.
+    return `Schritt '${ausgang.schrittId}' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet erst, wenn für ihn eine Freigabe erteilt ist (POST /api/workflows/<id>/freigabe)`
   }
   if (ausgang.art === 'fertig') {
     return 'der Workflow hat keinen zu startenden Schritt mehr — er ist durchgelaufen'
+  }
+  if (ausgang.art === 'haltGestoppt') {
+    return 'der Workflow ist GESTOPPT — daraus wird kein Schritt fortgesetzt, solange der Stopp steht'
+  }
+  // 'starte' trägt kein grund-Feld. Bis (b1) war das folgenlos — nur der Startendpunkt rief
+  // diese Funktion, und dort kam ein 'starte' nie in den Nicht-'starte'-Zweig. Der
+  // Freigabe-Endpunkt reicht ihn sehr wohl hinein, und zwar auf den zwei WAHRSCHEINLICHSTEN
+  // Fehlbedienungen: zweimal freigeben (nach der ersten liefert die Regel 'starte') und einen
+  // Workflow freigeben, der gar keine Freigabe braucht. Beide antworteten mit dem Wort
+  // 'undefined' im Grund (QA-Pass 10.09.2026, Befund 2).
+  if (ausgang.art === 'starte') {
+    return `Schritt '${ausgang.schritt.schritt_id}' ist bereits startbar — für ihn liegt keine offene Freigabefrage (mehr) vor`
   }
   return ausgang.grund
 }
@@ -1595,6 +1651,56 @@ export function erzeugeRequestHandler(optionen = {}) {
         console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
         meldeLaufende(null, fehler)
       })
+  }
+
+  /**
+   * Schreibt den Halt fest, den ein GESCHEITERTER Start hinterlässt, und meldet
+   * ihn in der Startfehlerliste (F15 WS-2c; seit (b1) an zwei Stellen gebraucht
+   * und deshalb hier statt zweimal inline).
+   *
+   * Der Zustand, den dieser Schreibvorgang verhindert, ist der zugemauerte
+   * Workflow: die vorangegangene Fortschreibung hat LAEUFT mit einem Cursor auf
+   * dem Folgeschritt hinterlassen, aber KEIN Schritt steht auf LAEUFT. Dort
+   * greift die Stale-Heilung nicht (sie verlangt einen SCHRITT auf LAEUFT),
+   * jeder weitere Start scheitert an derselben Ursache, und eine korrigierte
+   * Fassung ist gesperrt, weil LAEUFT in GESPERRTE_ERSETZUNGS_STATUS steht. Ein
+   * gewöhnlicher Planfehler im Folgeschritt reichte damit aus, um den Workflow
+   * endgültig zu verlieren. KLAERUNG_ERFORDERLICH ist dagegen ersetzbar — der
+   * Mensch kommt über eine neue Fassung wieder heraus.
+   *
+   * Zwei Aufrufer, ein Regelsatz: die automatische Fortsetzung nach einem
+   * erfolgreichen Schritt (a) und der Start nach einer erteilten Freigabe (b1).
+   * Ein zweiter Satz Formulierungen und ein zweiter Fehlerkanal wären genau die
+   * Doppelung, die beim nächsten Eingriff halb vergessen wird.
+   * @param workflowId - Kennung des Workflows
+   * @param schrittId - Schritt, dessen Start gescheitert ist (nur zur Adressierung, es werden keine Schrittfelder geändert)
+   * @param aktiverSchrittId - Cursor, der stehen bleiben soll
+   * @param laufId - laufId für den Startfehlereintrag, oder null, wenn kein Lauf im Spiel war
+   * @param anlass - lesbarer Grund; geht wortgleich in die Startfehlerliste UND in das Artefakt
+   * @param ladeOptionen - basisVerzeichnis/schreiber
+   * @returns Rückgabe von schreibeWorkflowFortschritt
+   */
+  function schreibeStartfehlerHalt(workflowId, schrittId, aktiverSchrittId, laufId, anlass, ladeOptionen) {
+    // Kein neuer Fehlerkanal: dieselbe Startfehlerliste, die auch ein abgelehnter Lauf füllt.
+    // Ein zweiter Kanal wäre eine zweite Stelle, an der der Mensch nachsehen muss.
+    const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: anlass }
+    startfehlerListe.push(eintrag)
+    console.error(`[leitstand] ${eintrag.fehler}`)
+
+    const halt = schreibeWorkflowFortschritt(
+      workflowId,
+      schrittId,
+      {},
+      () => ({ status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: aktiverSchrittId, grund: anlass }),
+      profilReferenz,
+      ladeOptionen
+    )
+    if (!halt.ok) {
+      const haltEintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Halt nach gescheitertem Start konnte nicht festgeschrieben werden: ${halt.grund}` }
+      startfehlerListe.push(haltEintrag)
+      console.error(`[leitstand] ${haltEintrag.fehler}`)
+    }
+    return halt
   }
 
   /**
@@ -1820,6 +1926,11 @@ export function erzeugeRequestHandler(optionen = {}) {
             aktiver_schritt_id: naechster.aktiverSchrittId,
             // (a5): der Halt-Grund wird persistiert, ein Start räumt ihn ab. Derselbe Text, den
             // die 409-Antwort des Startendpunkts nennt — kein zweiter Formulierungssatz.
+            //
+            // Den Grund eines vom Menschen gestoppten Workflows kann dieser Ausdruck nicht mehr
+            // überschreiben: auf einem GESTOPPT ruft schreibeWorkflowFortschritt
+            // leiteWorkflowFelderAb gar nicht erst auf (b1, GESTOPPT-Schutz dort). Eine zweite
+            // Bedingung hier wäre eine zweite Fassung derselben Regel.
             grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
           }
         },
@@ -1871,45 +1982,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (!fortsetzung.ok) {
         const anlassDerFortsetzung = `automatische Fortsetzung von Workflow '${workflowId}' nach Schritt '${schritt.schritt_id}' fehlgeschlagen (${fortsetzung.art}): ${fortsetzung.grund}`
 
-        // Kein neuer Fehlerkanal: dieselbe Startfehlerliste, die auch ein abgelehnter Lauf
-        // füllt. Ein zweiter Kanal wäre eine zweite Stelle, an der der Mensch nachsehen muss.
-        const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: anlassDerFortsetzung }
-        startfehlerListe.push(eintrag)
-        console.error(`[leitstand] ${eintrag.fehler}`)
-
         // Der SECHSTE Halt-Anlass, den erst WS-2c geschaffen hat — und der einzige, den (a5)
-        // in seiner ersten Fassung nicht abdeckte (Reviewer-/QA-Pass 10.09.2026). Ohne diesen
-        // Schreibvorgang bleibt auf der Platte stehen, was der Nachlauf oben geschrieben hat:
-        // Workflow LAEUFT, Cursor auf dem Folgeschritt, KEIN Schritt auf LAEUFT, grund null.
-        // Dieser Zustand ist zugemauert, und zwar dauerhaft:
-        //   - die Stale-LAEUFT-Heilung greift nicht, sie verlangt einen SCHRITT auf LAEUFT;
-        //   - jeder weitere POST .../starten scheitert an derselben Ursache erneut;
-        //   - eine korrigierte Fassung ist gesperrt, weil LAEUFT in
-        //     GESPERRTE_ERSETZUNGS_STATUS steht.
-        // Ein gewöhnlicher Planfehler im Folgeschritt (unauflösbare eingaben-Referenz,
-        // unbekannter werkzeugsatz) reichte damit aus, um den Workflow endgültig zu verlieren —
-        // genau die Klasse, für die die Heilung einer verwaisten lauf_id gebaut wurde.
-        //
-        // KLAERUNG_ERFORDERLICH ist ersetzbar (GESPERRTE_ERSETZUNGS_STATUS kennt es nicht),
-        // der Mensch kommt also über eine neue Fassung wieder heraus. Der Cursor bleibt auf
-        // dem Schritt stehen, an dem es hakt.
+        // in seiner ersten Fassung nicht abdeckte (Reviewer-/QA-Pass 10.09.2026). Warum ohne
+        // diesen Schreibvorgang ein zugemauerter Workflow zurückbliebe, steht bei
+        // schreibeStartfehlerHalt; der Cursor bleibt dabei auf dem Schritt stehen, an dem es
+        // hakt.
         //
         // Der Aufruf liegt hinter dem markierten Übergabebereich: laufAktiv ist hier bereits
         // false (jeder ok:false-Rückgabepunkt von starteWorkflowSchritt liegt VOR der
         // D13-Belegung), die Invariante bleibt unberührt.
-        const halt = schreibeWorkflowFortschritt(
-          workflowId,
-          naechster.schritt.schritt_id,
-          {},
-          () => ({ status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: naechster.aktiverSchrittId, grund: anlassDerFortsetzung }),
-          profilReferenz,
-          ladeOptionen
-        )
-        if (!halt.ok) {
-          const haltEintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Halt nach gescheiterter Fortsetzung konnte nicht festgeschrieben werden: ${halt.grund}` }
-          startfehlerListe.push(haltEintrag)
-          console.error(`[leitstand] ${haltEintrag.fehler}`)
-        }
+        schreibeStartfehlerHalt(workflowId, naechster.schritt.schritt_id, naechster.aktiverSchrittId, laufId, anlassDerFortsetzung, ladeOptionen)
       }
     })
 
@@ -2141,9 +2223,31 @@ export function erzeugeRequestHandler(optionen = {}) {
       // die gar nicht angehalten ist. Das Feld gehört dem Automaten, nicht dem Body; eine
       // Ablehnung wie bei status wäre hier zu scharf, weil ein kopierter grund ein
       // nachvollziehbarer Bedienfehler ist und keine Umgehung.
+      //
+      // F15 WS-2c (b1): dasselbe für schritte[].freigabe_erteilt, aber aus einem SCHÄRFEREN
+      // Grund. Bliebe das Feld aus dem Body stehen, wäre der ganze Freigabe-Endpunkt
+      // umgehbar: ein POST /api/workflows, der das Feld selbst auf wahr setzt, auf einem
+      // ZWINGEND-Schritt startete ihn beim nächsten /starten, ohne dass je eine
+      // Entscheidung festgehalten wurde — eine Freigabe, die sich der Body selbst erteilt,
+      // gegen AK7 Satz 2 und gegen ARCHITECTURE.md §3 ("Der Kern erzeugt niemals ein
+      // Freigabeartefakt; Autorisierungen entstehen ausschließlich aus direkter
+      // menschlicher Eingabe" — die hier gerade NICHT stattgefunden hat).
+      //
+      // Normalisiert statt abgelehnt, wie bei grund: der Mensch baut seine Reparaturfassung
+      // typischerweise aus der aktuellen Version, und dann kopiert er das Feld versehentlich
+      // mit. Die Wirkung ist die sichere Richtung — eine neue Fassung ist ein neuer Plan und
+      // braucht eine neue Freigabe; der Schritt hält wieder an, statt ungefragt loszulaufen.
+      const koerperOhneFreigaben = {
+        ...body,
+        grund: null,
+        schritte: body.schritte.map((schritt) => {
+          const { freigabe_erteilt: _verworfen, ...rest } = schritt
+          return rest
+        }),
+      }
       let registriert
       try {
-        registriert = registriereWorkflow({ ...body, grund: null }, profilReferenz, { basisVerzeichnis })
+        registriert = registriereWorkflow(koerperOhneFreigaben, profilReferenz, { basisVerzeichnis })
       } catch (fehler) {
         console.error(`[leitstand] Workflow '${body.workflow_id}' konnte nicht registriert werden:`, fehler)
         sendeJson(res, 500, { grund: `Workflow konnte nicht registriert werden: ${fehler.message}` })
@@ -2360,6 +2464,308 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Rückruf des Laufs kann frühestens im nächsten Microtask feuern, die Antwort ist da
       // längst geschrieben.
       sendeJson(res, 202, { workflowId, schrittId: gestartet.schrittId, laufId: gestartet.laufId })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/freigabe (F15 WS-2c (b1), AK7, löst F-207) ─────────────
+    //
+    // Der Ausweg aus WARTET_FREIGABE — bis hierher der einzige Halt ohne jeden Weg zurück:
+    // FORTSETZBARE_WORKFLOW_STATUS enthält WARTET_FREIGABE, aber ein erneuter POST
+    // .../starten läuft über dieselbe Regel wieder in haltFreigabe, und eine korrigierte
+    // Fassung ist gesperrt, weil WARTET_FREIGABE in GESPERRTE_ERSETZUNGS_STATUS steht (das ist
+    // richtig so: sie wäre eine Freigabe-Umgehung durch die Hintertür). Seit der
+    // Auto-Fortsetzung aus (a) fährt der Automat unbeaufsichtigt dorthin.
+    //
+    // Warum NICHT über POST /api/entscheidungen (D5 wäre das nähere Muster): dessen
+    // pruefeEntscheidungsformular verlangt in allen vier Arten eine laufId, und bei
+    // WARTET_FREIGABE existiert noch kein Lauf — die Freigabe entscheidet ja gerade darüber,
+    // ob einer entsteht. Ein Umbau dort hieße, vier bestehende Arten um einen laufId-losen
+    // Sonderfall zu erweitern; das wäre der größere Eingriff am empfindlicheren Pfad.
+    //
+    // `freigabe` selbst bleibt unverändertes Plandatum (AK7 Satz 2, F-195). Was dieser
+    // Endpunkt setzt, ist das Schrittfeld freigabe_erteilt — und nur das löst den Halt auf.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/freigabe')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/freigabe'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+
+      // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, (b1))
+      //
+      // Der Bereich beginnt hier, direkt hinter dem Einlesen des Bodys, und nicht erst bei der
+      // D13-Prüfung (QA-Pass 10.09.2026, Fehler 6): er schützt ZWEI Eindeutigkeiten, nicht eine.
+      // D13 (genau ein aktiver Arbeitsstrang) hängt daran, dass zwischen der Prüfung und der
+      // Belegung in starteWorkflowSchritt kein Kontrollflusswechsel liegt. Die Eindeutigkeit der
+      // ENTSCHEIDUNG hängt daran, dass zwischen dem Laden des Workflows und dem Schreiben der
+      // neuen Fassung ebenfalls keiner liegt — sonst könnten zwei gleichzeitige Freigaben
+      // denselben Halt beide auflösen. Alles hier drin ist synchron: ladeArtefaktVersion,
+      // validiereWorkflowDaten, ermittleNaechstenSchritt, registriereKernArtefakt,
+      // schreibeWorkflowFortschritt, starteWorkflowSchritt.
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+
+      // (1) Laden und validieren — wortgleich zum Startendpunkt und aus demselben Grund: 409
+      // statt 400, weil bei einem ungültigen Bestand nicht der Body schuld ist, sondern der
+      // abgelegte Zustand.
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+      const verstoesse = validiereWorkflowDaten(workflowDaten)
+      if (verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        return
+      }
+
+      // (2) Body-Form. `JSON.parse('null')` und `JSON.parse('[]')` sind gültiges JSON, aber
+      // kein Formular: ohne diese Zeile warf der Feldzugriff darunter aus einem async-Handler,
+      // dessen Promise niemand einsammelt — Prozesstod statt 400. Real beim ersten Lauf des
+      // neuen Gate-Falls reproduziert; POST /api/workflows fängt dieselbe Klasse über
+      // validiereWorkflowDaten ("Wurzel ist kein Objekt") ab.
+      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      // schrittId-Form. Vor der SACHprüfung (3), aber nach dem Laden: ein kaputter Body auf
+      // einem unbekannten Workflow ergibt deshalb 404 und nicht 400 (Reviewer-Pass
+      // 10.09.2026, V5). Ohne Schreibwirkung, und die Reihenfolge Laden→Validieren bleibt
+      // damit wortgleich zum Startendpunkt — das ist der Tausch, der hier bewusst gemacht ist.
+      if (typeof body.schrittId !== 'string' || body.schrittId.length === 0) {
+        sendeJson(res, 400, { grund: "'schrittId' muss ein nicht-leerer String sein" })
+        return
+      }
+      // Tiefenverteidigung, keine Bequemlichkeit: schritt_id ist im Schema nur „nicht-leerer
+      // String", geht hier aber über 'entscheidung-workflow-<workflowId>-<schrittId>' in einen
+      // Dateisystempfad ein. Ohne diese Zeile würfe der Checkpoint Store (F1s pruefeLaufId) aus
+      // einem async-Handler, dessen Promise niemand einsammelt — Prozesstod statt 400, dieselbe
+      // Klasse wie bei auftrag_id (Reviewer-Pass 10.09.2026).
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.schrittId)) {
+        sendeJson(res, 400, { grund: `'schrittId' enthält unzulässige Zeichen: ${JSON.stringify(body.schrittId)}` })
+        return
+      }
+
+      // (3) Liegt für GENAU DIESEN Schritt wirklich eine Freigabefrage vor? Die Antwort gibt
+      // F15s ermittleNaechstenSchritt (D5), nicht der abgelegte status.
+      //
+      // Die erste Fassung dieses Endpunkts verlangte status === 'WARTET_FREIGABE' und war damit
+      // in der häufigsten Bauform unbedienbar (QA-Pass 10.09.2026, TC-05/TC-06): diesen Status
+      // schreibt AUSSCHLIESSLICH die Nachbereitung eines erfolgreichen Vorschritts. Ist der
+      // ERSTE Schritt eines Workflows ZWINGEND — oder der fällige Schritt einer
+      // Reparaturfassung —, antwortet POST .../starten 409 und schreibt bewusst nichts; der
+      // Workflow bleibt auf OFFEN bzw. KLAERUNG_ERFORDERLICH. Die Freigabe war dann nicht
+      // erteilbar, und der einzige verbleibende Weg wäre gewesen, ZWINGEND aus dem Plan zu
+      // entfernen — also die Governance-Regel abzuschaffen, ohne dass je eine Entscheidung
+      // festgehalten wird. Genau das, was AK7 verhindern soll.
+      //
+      // Die Regel ist zugleich die SCHÄRFERE Prüfung, nicht die laxere: sie fängt alles, was
+      // der Statusvergleich fing (LAEUFT, GESTOPPT, ABGESCHLOSSEN enden in Regel 0/3 und damit
+      // nicht in haltFreigabe), und zusätzlich jeden Fall, in dem der Schritt aus einem anderen
+      // Grund gar nicht startbar wäre — erreichte Grenze, nicht dispatchbarer Worker. Eine
+      // Freigabe, die folgenlos bliebe, wird gar nicht erst entgegengenommen (D2: vor jeder
+      // Zustandsänderung, Reviewer-Pass V1). Ein bereits freigegebener Schritt liefert 'starte'
+      // statt 'haltFreigabe' — eine zweite Freigabe prallt damit ebenfalls hier ab.
+      const ausgang = ermittleNaechstenSchritt(workflowDaten)
+      if (ausgang.art !== 'haltFreigabe') {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' hat keine offene Freigabefrage (${ausgang.art}): ${beschreibeAutomatAusgang(ausgang)}`,
+          art: ausgang.art,
+        })
+        return
+      }
+      // Stale-Schutz: die Entscheidung gilt genau dem Schritt, den der Mensch vor Augen hatte.
+      // Ist der Halt zwischen Anzeige und Klick weitergewandert (neue Fassung, Heilung), wird
+      // die Freigabe abgelehnt statt auf den neuen Schritt umgedeutet — eine Freigabe für
+      // Schritt A darf nie Schritt B starten.
+      if (body.schrittId !== ausgang.schrittId) {
+        sendeJson(res, 409, {
+          grund: `Freigabe nennt Schritt '${body.schrittId}', die offene Freigabefrage betrifft aber '${ausgang.schrittId}' — die Anzeige ist veraltet`,
+        })
+        return
+      }
+
+      // (4) Entscheidung und Begründung. Die Begründung ist Pflicht, wie bei F13s 'terminal'
+      // und 'kenntnisnahme' (F-162): eine festgehaltene Menschenentscheidung ohne Begründung
+      // ist ein Artefakt, das später niemand mehr einordnen kann.
+      if (body.entscheidung !== 'FREIGEGEBEN' && body.entscheidung !== 'ABGELEHNT') {
+        sendeJson(res, 400, { grund: "'entscheidung' muss 'FREIGEGEBEN' oder 'ABGELEHNT' sein" })
+        return
+      }
+      if (typeof body.begruendung !== 'string' || body.begruendung.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)" })
+        return
+      }
+
+      // (5) D13, wortgleich zu POST /api/laeufe und POST .../starten und aus demselben Grund an
+      // derselben Stelle: die Sperre gilt unabhängig vom konkreten Request und läuft deshalb
+      // vor jeder Zustandsänderung. Sie gilt auch für ABGELEHNT — dort startet zwar nichts,
+      // aber eine zweite Wahrheit über den aktiven Arbeitsstrang entstünde genauso.
+      //
+      // Der Zusatz zum sonst wortgleichen Text ist hier nötig (QA-Pass 10.09.2026, Befund 9):
+      // dieser Endpunkt verbindet ZWEI Akte, entscheiden und starten. Wer hier abgewiesen wird,
+      // hat auch seine Entscheidung nicht abgelegt — das sagt eine Meldung über eine fremde
+      // laufId von sich aus nicht.
+      if (laufAktiv) {
+        sendeJson(res, 409, {
+          grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang. Die Entscheidung wurde NICHT festgehalten; nach dem Ende des Laufs erneut einreichen.`,
+        })
+        return
+      }
+      const schrittId = body.schrittId
+      const begruendung = body.begruendung
+      const entschiedenAm = new Date().toISOString()
+
+      // Das Entscheidungsartefakt entsteht VOR jeder Zustandsänderung und in BEIDEN Zweigen
+      // (D2, AK7 Satz 2). Muster: der kenntnisnahme-Zweig in POST /api/entscheidungen — kein
+      // neues Schema, daten bleibt unknown wie dort (D5). Der Kern erzeugt hier kein
+      // Freigabeartefakt aus eigenem Antrieb (ARCHITECTURE.md §3): erzeuger ist 'mensch', und
+      // der Inhalt kommt vollständig aus dieser einen menschlichen Eingabe.
+      //
+      // Die eingaben-Referenz auf die freigegebene Workflow-VERSION ist nicht Zierrat
+      // (QA-Pass 10.09.2026, Fehler 5): ohne sie ist später nicht feststellbar, WELCHEN Plan
+      // der Mensch freigegeben hat — und eine Freigabe, die nicht sagt, wofür sie gilt, ist als
+      // Bezeugung wertlos. Mit ihr greift zusätzlich F2s STALE-Mechanik (D6). Form wortgleich
+      // zum Transportpaket in src/human-transport/index.ts (D5, kein zweiter Regelsatz):
+      // synthetischer 'artefakt:'-Schlüssel, zitierter_bereich mit versionSequenz,
+      // inhalts_hash der geladenen Version.
+      const freigegebeneVersion = [
+        {
+          pfad: `artefakt:workflow-${workflowId}`,
+          zitierter_bereich: `WORKFLOW_V0 versionSequenz ${workflowVersion.versionSequenz}, Schritt '${schrittId}'`,
+          inhalts_hash: workflowVersion.inhaltsHash,
+        },
+      ]
+      let entscheidungsArtefakt
+      try {
+        entscheidungsArtefakt = registriereKernArtefakt(
+          `entscheidung-workflow-${workflowId}-${schrittId}`,
+          profilReferenz,
+          { erzeuger: 'mensch', schritt: 'entscheidung-workflow-freigabe' },
+          { entscheidung_schema: 'v0', ergebnis: body.entscheidung, begruendung, entschieden_am: entschiedenAm },
+          freigegebeneVersion,
+          ladeOptionen
+        )
+      } catch (fehler) {
+        console.error(`[leitstand] Freigabeartefakt für Workflow '${workflowId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Freigabeentscheidung konnte nicht festgehalten werden: ${fehler.message}` })
+        return
+      }
+
+      if (body.entscheidung === 'ABGELEHNT') {
+        // GESTOPPT, nicht KLAERUNG_ERFORDERLICH: die Ablehnung ist eine bewusste
+        // Menschenentscheidung, kein ungeklärter Zustand — und GESTOPPT steht NICHT in
+        // GESPERRTE_ERSETZUNGS_STATUS. Genau das ist der Reparaturpfad: der Mensch kann danach
+        // eine korrigierte Fassung desselben Workflows einreichen. Der Cursor geht auf null,
+        // wie bei jedem GESTOPPT (Cursor-Festlegung aus WS-1).
+        const gestoppt = schreibeWorkflowFortschritt(
+          workflowId,
+          schrittId,
+          {},
+          () => ({ status: 'GESTOPPT', aktiver_schritt_id: null, grund: `Freigabe für Schritt '${schrittId}' ABGELEHNT: ${begruendung}` }),
+          profilReferenz,
+          ladeOptionen
+        )
+        if (!gestoppt.ok) {
+          console.error(`[leitstand] Workflow '${workflowId}' konnte nach der Ablehnung nicht fortgeschrieben werden:`, gestoppt.grund)
+          sendeJson(res, 500, { grund: gestoppt.grund })
+          return
+        }
+        sendeJson(res, 200, {
+          workflowId,
+          schrittId,
+          entscheidung: 'ABGELEHNT',
+          status: 'GESTOPPT',
+          artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+
+      // FREIGEGEBEN: das Schrittfeld setzen, den Workflow aus dem Wartezustand holen und den
+      // Halt-Grund abräumen (a5 — ein laufender Workflow trägt keinen Halt-Grund).
+      const fortschritt = schreibeWorkflowFortschritt(
+        workflowId,
+        schrittId,
+        { freigabe_erteilt: true },
+        () => ({ status: 'LAEUFT', aktiver_schritt_id: schrittId, grund: null }),
+        profilReferenz,
+        ladeOptionen
+      )
+      if (!fortschritt.ok) {
+        console.error(`[leitstand] Workflow '${workflowId}' konnte nach der Freigabe nicht fortgeschrieben werden:`, fortschritt.grund)
+        sendeJson(res, 500, { grund: fortschritt.grund })
+        return
+      }
+
+      // Die Entscheidung, ob jetzt wirklich gestartet wird, trifft auch hier ausschließlich
+      // F15s ermittleNaechstenSchritt (D5) — auf dem eben geschriebenen Stand, frisch geladen.
+      // Ein selbst zusammengebauter 'starte'-Ausgang wäre die zweite Fassung derselben Regel
+      // und umginge jede der sechs Prüfungen, die dort hängen (Grenze, Startbereitschaft,
+      // Worker). Die Freigabe erlaubt einen Schritt; sie erzwingt ihn nicht.
+      const neueVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      const startAusgang = neueVersion === null ? null : ermittleNaechstenSchritt(neueVersion.daten)
+      if (startAusgang === null || startAusgang.art !== 'starte') {
+        const anlass = `Freigabe für Schritt '${schrittId}' von Workflow '${workflowId}' erteilt, aber der Schritt ist nicht startbar (${startAusgang === null ? 'nichtLadbar' : startAusgang.art}): ${startAusgang === null ? 'Workflow nicht mehr ladbar' : beschreibeAutomatAusgang(startAusgang)}`
+        schreibeStartfehlerHalt(workflowId, schrittId, schrittId, null, anlass, ladeOptionen)
+        sendeJson(res, 409, {
+          grund: anlass,
+          art: startAusgang === null ? 'nichtLadbar' : startAusgang.art,
+          status: 'KLAERUNG_ERFORDERLICH',
+          entscheidung: 'FREIGEGEBEN',
+          artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+
+      const gestartet = starteWorkflowSchritt(workflowId, startAusgang)
+      // D13-UEBERGABE-OHNE-FENSTER: ENDE
+      if (!gestartet.ok) {
+        // Derselbe Behandlungspfad wie bei der gescheiterten Auto-Fortsetzung aus (a), über
+        // dieselbe Funktion: ohne festgeschriebenen Halt bliebe der Workflow auf LAEUFT ohne
+        // laufenden Schritt stehen — zugemauert, weil LAEUFT in GESPERRTE_ERSETZUNGS_STATUS
+        // steht. Kein zweiter Regelsatz dafür.
+        //
+        // BEWUSST NICHT über STARTFEHLER_STATUS (QA-Pass 10.09.2026, Fehler 3): dort stünde
+        // 400 für ein untaugliches Plandatum — derselbe Code, den dieser Endpunkt sonst für
+        // „Body falsch, NICHTS geschrieben" benutzt. Hier ist sehr wohl etwas geschrieben: die
+        // Entscheidung ist festgehalten, freigabe_erteilt steht, und der Workflow ist auf
+        // KLAERUNG_ERFORDERLICH verschoben. Ein eigener Code mit ausdrücklichem status-Feld,
+        // damit die Antwort nicht das Gegenteil dessen nahelegt, was auf der Platte steht.
+        const anlass = `Start nach erteilter Freigabe für Schritt '${schrittId}' von Workflow '${workflowId}' fehlgeschlagen (${gestartet.art}): ${gestartet.grund}. Die Entscheidung ist festgehalten; der Workflow steht auf KLAERUNG_ERFORDERLICH und ist über eine korrigierte Fassung erreichbar.`
+        schreibeStartfehlerHalt(workflowId, schrittId, schrittId, null, anlass, ladeOptionen)
+        sendeJson(res, 409, {
+          grund: anlass,
+          art: gestartet.art,
+          status: 'KLAERUNG_ERFORDERLICH',
+          entscheidung: 'FREIGEGEBEN',
+          artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+      // Antwortform bewusst deckungsgleich mit dem ABGELEHNT-Zweig, bis auf die laufId (QA-Pass
+      // 10.09.2026, Fehler 7): ein Endpunkt, zwei Entscheidungen, ein Antwortschnitt.
+      sendeJson(res, 202, {
+        workflowId,
+        schrittId: gestartet.schrittId,
+        entscheidung: 'FREIGEGEBEN',
+        status: 'LAEUFT',
+        laufId: gestartet.laufId,
+        artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
+        versionSequenz: entscheidungsArtefakt.versionSequenz,
+      })
       return
     }
 

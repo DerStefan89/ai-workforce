@@ -97,6 +97,10 @@
             "description": "laufId des Werkzeuglaufs, der diesen Schritt ausgeführt hat, oder null, solange der Schritt nicht gelaufen ist.",
             "type": ["string", "null"],
             "minLength": 1
+          },
+          "freigabe_erteilt": {
+            "description": "OPTIONAL (F15 WS-2c (b1), löst F-207): true, sobald ein Mensch für genau diesen Schritt eine Freigabe erteilt hat (POST /api/workflows/<id>/freigabe). Nur dieses Feld löst einen ZWINGEND-Halt auf; 'freigabe' selbst bleibt unverändertes Plandatum (AK7 Satz 2, F-195). Bewusst NICHT in 'required': jede vor (b1) geschriebene Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld nicht — ein Pflichtfeld machte den gesamten Bestand ungültig (Muster: 'grund' auf Workflow-Ebene). Ein fehlendes Feld heißt 'keine Freigabe erteilt'; nur exakt true startet.",
+            "type": "boolean"
           }
         }
       }

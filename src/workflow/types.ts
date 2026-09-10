@@ -44,6 +44,14 @@
  * damit in „hält an", nicht in „startet automatisch". Ein vergessener
  * Zwilling kostet eine überflüssige Rückfrage an den Menschen — nicht einen
  * ungewollten Start.
+ *
+ * F15 WS-2c (b1) ändert an dieser Bauart nichts: `freigabe_erteilt` ist kein
+ * fünfter Zwilling, sondern ein optionales boolean, das die ZWINGEND-Zeile in
+ * Regel 5 um genau eine Ausnahme erweitert — und auch die ist eine Allowlist
+ * (nur exakt `true` startet, jeder andere Wert und das fehlende Feld halten
+ * an). GESTOPPT wandert dabei aus Regel 0s haltKlaerung in den eigenen
+ * Ausgang haltGestoppt; die Allowlist FORTSETZBARE_WORKFLOW_STATUS bleibt
+ * unverändert, es ändert sich nur, WOHIN der nicht fortsetzbare Fall fällt.
  */
 
 /** Status auf Workflow-Ebene. Zwilling von WORKFLOW_STATUS in index.ts. */
@@ -80,6 +88,19 @@ export interface WorkflowV0Schritt {
   nachfolger: string | null
   status: SchrittStatus
   lauf_id: string | null
+  /**
+   * OPTIONAL (F15 WS-2c (b1), löst F-207): true, sobald ein Mensch für genau
+   * diesen Schritt eine Freigabe erteilt hat (POST /api/workflows/<id>/
+   * freigabe). Nur DIESES Feld löst einen ZWINGEND-Halt auf — `freigabe`
+   * selbst bleibt unverändertes Plandatum (AK7 Satz 2, F-195).
+   *
+   * Bewusst optional und NICHT in 'required': jede vor (b1) geschriebene
+   * Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld nicht;
+   * ein Pflichtfeld machte den gesamten Bestand ungültig. Dieselbe Bauart
+   * wie `grund` aus (a5). Ein fehlendes Feld heißt „keine Freigabe erteilt" —
+   * der sichere Vorgabewert, denn nur die Anwesenheit von `true` startet.
+   */
+  freigabe_erteilt?: boolean
 }
 
 export interface WorkflowV0Daten {
@@ -142,6 +163,14 @@ export type NaechsterSchritt =
   | { art: 'haltFreigabe'; schrittId: string; aktiverSchrittId: string }
   /** Der Automat kommt nicht weiter (Vorschritt nicht ERFOLGREICH, oder Schritt nicht dispatchbar). */
   | { art: 'haltKlaerung'; grund: string; aktiverSchrittId: string | null }
+  /**
+   * Der Workflow steht auf GESTOPPT (F15 WS-2c (b1)). EIGENER Ausgang, nicht
+   * haltKlaerung: workflowStatusZuAusgang bildet ihn auf 'GESTOPPT' ab, und
+   * damit überschreibt kein Automaten-Schreibpfad einen Stopp, den ein Mensch
+   * gesetzt hat. Der Cursor kommt unverändert aus dem Datensatz — ein Stopp
+   * verschiebt ihn nicht.
+   */
+  | { art: 'haltGestoppt'; aktiverSchrittId: string | null }
   /** grenzen.max_schritte ist erreicht — kein weiterer Schritt startet. */
   | { art: 'haltGrenze'; grund: string; aktiverSchrittId: null }
   /** Der letzte Schritt endete ERFOLGREICH und hat keinen nachfolger. */
