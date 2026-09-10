@@ -10,7 +10,7 @@ Workflow-Artefakt und Schritt-Automat
 
 ## Status
 
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -100,7 +100,7 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
 - **AK5** *(WS-2a, erfüllt)* — `POST /api/workflows` legt einen
   validierten Workflow als Kernartefakt an; `GET /api/workflows` und
   `GET /api/workflows/<id>` lesen ihn.
-- **AK6a** *(WS-2b)* — `POST /api/workflows/<id>/starten` startet den
+- **AK6a** *(WS-2b, erfüllt)* — `POST /api/workflows/<id>/starten` startet den
   fälligen Schritt eines Workflows über den Automatenpfad
   (`ermittleNaechstenSchritt` → `loeseAusfuehrungsEingabenAuf` →
   `fuehreAufgabeDurch`, kein zweiter Startpfad). Endet der Schritt, wandert
@@ -408,10 +408,20 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   (b3) gebaut ist.
 - **AK9** *(WS-1/WS-2a, erfüllt)* — Gate-Skript
   `scripts/check-f15-workflow.mjs`, Teil von `npm run check`.
-- **AK10** *(WS-4)* — Realer Nachweis über den Leitstand: ein
+- **AK10** *(WS-4, erfüllt)* — Realer Nachweis über den Leitstand: ein
   zweistufiger Workflow (lesender Schritt, dann schreibender Schritt)
   läuft ohne manuellen Zwischenstart; ein `ZWINGEND`-Halt tritt real
   ein; ein Abbruch nach F14 wirkt auf den aktiven Schritt.
+  Protokoll: `features/F15/nachweis-ak10.md` (10.09.2026, Bedienung durch
+  Stefan im Browser, Verifikation an den Artefakten unter
+  `kontrollzustand/` und am `git diff`). Die drei Teilsätze schließen sich
+  in EINEM Lauf gegenseitig aus und brauchten deshalb drei Läufe (L1/L2/L3,
+  Pläne unter `nachweis/ws4/`) — als **F-268** festgehalten, nicht
+  stillschweigend umgedeutet. Aus L2 stammt der erste Codeeingriff dieses
+  Repos, den die Workforce selbst erzeugt hat (F-243, eine Zeile).
+  Das Protokoll benennt seine Grenzen ausdrücklich: der Automatenhalt nach
+  dem Abbruch ist überdeterminiert (F-272), und der Werkzeugsatz eines
+  Laufs ist aus den Artefakten nicht rekonstruierbar (F-271).
 
 ## Entschieden
 

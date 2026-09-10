@@ -1,0 +1,42 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "f15-ws4-l1",
+  "auftrag_id": "5efe706f-2e88-43c7-a877-c85ef59c9e42",
+  "version": 1,
+  "ziel": "AK10 Satz 1: ein zweistufiger Workflow laeuft nach EINEM Startaufruf durch. Schritt 1 liest F-243, Schritt 2 schreibt die Analyse nach features/F15/nachweis-ak10-analyse.md.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-analyse",
+  "grenzen": { "max_schritte": 8, "max_replans": 0 },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-analyse",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Keine Schreibwirkung: Werkzeugsatz 'lesend' (Read, Grep, Glob). Der Schritt kann hoechstens Rechenzeit und Kontextbudget verbrauchen.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": "schritt-2-doku",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-doku",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Schreibend, aber unbeaufsichtigt vertretbar: das Ziel ist eine NEUE Dokumentationsdatei (features/F15/nachweis-ak10-analyse.md), kein Produktcode. Ein Fehlgriff ist per git diff sichtbar und folgenlos rueckgaengig zu machen. Genau deshalb steht dieser Schritt vor dem Codeeingriff und nicht dahinter.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}

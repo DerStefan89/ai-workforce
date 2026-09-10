@@ -1,0 +1,42 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "f15-ws4-l3",
+  "auftrag_id": "6eeed289-074f-4427-99d7-8b52cdffc768",
+  "version": 1,
+  "ziel": "AK10 Satz 3: ein Abbruch nach F14 wirkt auf den aktiven Schritt. Schritt 1 wird gestartet und waehrend er laeuft ueber den Leitstand gestoppt; Schritt 2 darf davon unberuehrt bleiben.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-analyse",
+  "grenzen": { "max_schritte": 8, "max_replans": 0 },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-analyse",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Keine Schreibwirkung: Werkzeugsatz 'lesend'. Dieser Schritt ist der Abbruchkandidat - er wird absichtlich mitten im Lauf gestoppt.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": "schritt-2-fix",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-fix",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Darf in diesem Lauf gar nicht erst starten. ZWINGEND ist hier die zweite Sicherung: greift der Abbruch nicht wie erwartet, haelt der Automat spaetestens hier an, statt ungeplant Produktcode zu aendern.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}

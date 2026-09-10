@@ -1,0 +1,42 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "f15-ws4-l2",
+  "auftrag_id": "6eeed289-074f-4427-99d7-8b52cdffc768",
+  "version": 1,
+  "ziel": "AK10 Satz 2: ein ZWINGEND-Halt tritt real ein. Schritt 1 liest F-243 und laeuft automatisch; Schritt 2 aendert Produktcode und haelt vorher an, bis ein Mensch freigibt.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-analyse",
+  "grenzen": { "max_schritte": 8, "max_replans": 0 },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-analyse",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Keine Schreibwirkung: Werkzeugsatz 'lesend' (Read, Grep, Glob).",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": "schritt-2-fix",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-fix",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Eingriff in ausgelieferten Produktcode (scripts/leitstand-server.mjs) - dieselbe Datei, aus der der Leitstand selbst laeuft. Deshalb ZWINGEND: der Mensch sieht den Plan, bevor geschrieben wird, und den Diff, nachdem geschrieben wurde. Ein Fehlgriff hier trifft den Stopp-Endpunkt, also genau den Notausgang.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}

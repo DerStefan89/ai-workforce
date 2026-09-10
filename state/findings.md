@@ -3396,7 +3396,7 @@ ausdünnen: eine Kommentarkürzung ohne Anlass ist ein Diff ohne Nachweis.
 Status: offen.
 Feature/Run: F15 WS-2c (b2), 10.09.2026 (Reviewer-Pass, Befund 7).
 
-**F-243** · `TECH_DEBT` · P3 · offen
+**F-243** · `TECH_DEBT` · P3 · **gelöst**
 Titel: Eine Sicherheitsbedingung wird von einer Protokollzeile mitgetragen.
 Beschreibung: Bei der Rot-Kalibrierung zu F-239 wurde die
 Zugehörigkeitsprüfung des Stopp-Abbruchs auf `const laufAbgebrochen =
@@ -3421,8 +3421,26 @@ sie soll.
 Empfohlene Maßnahme: Den Feldzugriff im Protokolltext gegen `undefined`
 absichern (`laufenderSchritt?.schritt_id ?? '—'`) oder den Text auf
 `laufAktivLaufId` beschränken, die ohnehin gesetzt ist. Eine Zeile.
-Status: offen.
-Feature/Run: F15 WS-2c (b2, Nachtrag), 10.09.2026 (Rot-Kalibrierung F-239).
+Status: gelöst — umgesetzt in der ersten Variante (`laufenderSchritt?.schritt_id
+?? '—'`), `scripts/leitstand-server.mjs` Zeile 3402.
+Besonderheit: Dieser Fix ist der ERSTE Codeeingriff dieses Repos, den die
+Workforce selbst erzeugt hat, und nicht ein Mensch oder eine Sitzung am
+Repo. Er entstand als Schritt 2 des Nachweislaufs L2 zu F15 AK10 (Workflow
+`f15-ws4-l2`, Lauf `ef1efbd4-717e-41a8-8a00-df8e93471bfd`): geplant als
+Workflow-Schritt mit `freigabe: ZWINGEND`, real angehalten, von Stefan über
+den Leitstand freigegeben (Entscheidungsartefakt
+`entscheidung-workflow-f15-ws4-l2-schritt-2-fix`, `erzeuger: mensch`), dann
+von einem echten Kindprozess ausgeführt. Beleg:
+`features/F15/nachweis-ak10.md`, Abschnitt L2.
+NICHT mitgelöst, bewusst: dieselbe Fehlerklasse lebt an einer zweiten Stelle
+weiter — `scripts/leitstand-server.mjs` Zeile 2873/2876 liest
+`laufenderSchritt.schritt_id` ebenfalls unter einer Bedingung, die die Existenz
+nur mittelbar garantiert (`workflowDaten.status === 'LAEUFT' &&
+laufenderSchritt !== undefined`). Der Nachweislauf war auf GENAU EINE Zeile
+verpflichtet, deshalb blieb sie stehen. F-243 gilt für den Stopp-Endpunkt als
+gelöst, die Klasse ist es nicht (Reviewer-Pass F15 WS-4).
+Feature/Run: F15 WS-2c (b2, Nachtrag), 10.09.2026 (Rot-Kalibrierung F-239);
+gelöst F15 WS-4, 10.09.2026 (Nachweislauf L2).
 
 **F-244** · `TECH_DEBT` · P3 · offen
 Titel: Die Abschwächungserkennung und `ermittleNaechstenSchritt` lesen
@@ -4043,3 +4061,159 @@ Umkehrung bilden ("alles, was nicht startbereit ist und eine lauf_id trägt")
 F-262 entscheiden.
 Status: offen.
 Feature/Run: F15 WS-3b, 10.09.2026 (Reviewer-Pass).
+
+**F-268** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: AK10 verlangt in einem Satz, was sich in einem Lauf gegenseitig
+ausschließt.
+Beschreibung: F15s AK10 lautet: „ein zweistufiger Workflow (lesender Schritt,
+dann schreibender Schritt) läuft ohne manuellen Zwischenstart; ein
+`ZWINGEND`-Halt tritt real ein; ein Abbruch nach F14 wirkt auf den aktiven
+Schritt." Die ersten beiden Teilsätze widersprechen sich, sobald man versucht,
+sie in EINEM Lauf zu belegen: ein `ZWINGEND`-Halt IST der manuelle
+Zwischenschritt, dessen Abwesenheit Satz 1 zeigen soll. Der dritte Teilsatz
+beendet den Lauf, in dem er stattfindet — nach einem Abbruch gibt es keinen
+Folgeschritt mehr zu beobachten. Der Nachweis brauchte deshalb drei getrennte
+Läufe (`nachweis/ws4/L1.json`, `L2.json`, `L3.json`).
+Fundstelle: `features/F15/feature.md`, AK10.
+Auswirkung: Wer AK10 wörtlich als EIN Kriterium liest, baut entweder einen
+Nachweis, der einen der drei Teilsätze nur behauptet, oder er hält das
+Kriterium für unerfüllbar. Beides ist schlechter als die Aufteilung. Dieselbe
+Klasse wie F13s AK8 (ein Akzeptanzkriterium, das mehrere unabhängige
+Beobachtungen in einen Satz packt) — zweites Vorkommen, also ein Muster und
+kein Einzelfall.
+Empfohlene Maßnahme: Beim Schneiden von Akzeptanzkriterien pro Kriterium EINE
+Beobachtung verlangen. Wo drei Beobachtungen zusammengehören, drei nummerierte
+Teilkriterien schreiben (AK10a/b/c), nicht drei Halbsätze. Kandidat für eine
+Regel im Feature-Akte-Gate (`scripts/check-feature.mjs`): ein AK-Text mit mehr
+als einem Semikolon-getrennten Prüfsatz ist ein Befund.
+Status: offen.
+Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis).
+
+**F-269** · `TECH_DEBT` · P2 · offen
+Titel: Ein Workflow-Schritt hat keine eigene Anweisung — und weiß nicht, zu
+welchem Workflow er gehört.
+Beschreibung: Die einzige Anweisung, die ein Schritt bekommt, ist der
+`auftragstext` seines Auftrags (`fuehreAufgabeDurch`: `prompt = "Auftrag:\n" +
+auftragstext` plus Evidenzteil). `WORKFLOW_V0` kennt kein Feld für eine
+schrittbezogene Anweisung, und im Kontextpaket eines Schritts stehen nur das
+Auftragsartefakt und — falls vorhanden — die Laufakte des Vorgängerlaufs.
+Der Workflow selbst wird nicht mitgereicht. Damit sind zwei schreibende
+Schritte, die zu verschiedenen Workflows desselben Auftrags gehören, für den
+Worker nicht unterscheidbar: er kann nur ableiten, DASS er einen Vorgänger
+hat, nicht, in welchem Plan er steht.
+Fundstelle: `schemas/kontrollzustand-workflow-payload.schema.json`
+(`schritte[]` ohne Anweisungsfeld) gegen `src/execution-controller/index.ts`
+(Promptbau aus `eingaben.auftragstext`).
+Auswirkung: Beim AK10-Nachweis real aufgetreten. L1s Schritt 2 („schreibe die
+Analyse nach `features/F15/nachweis-ak10-analyse.md`") und L2s Schritt 2
+(„ändere die eine Zeile in `scripts/leitstand-server.mjs`") ließen sich aus
+einem gemeinsamen Auftragstext nicht ansteuern; der Nachweis brauchte deshalb
+zwei Aufträge statt einem. Praktisch heißt das: ein Auftrag kann heute nur
+EINEN Workflow sinnvoll tragen, und die Schrittanweisungen müssen als
+„wenn du Schritt 1 bist, dann …"-Prosa in den Auftragstext geschrieben werden.
+Das ist eine Umgehung, die bei drei Schritten unlesbar wird.
+Empfohlene Maßnahme: Nicht sofort bauen. Zuerst entscheiden, ob die Anweisung
+ein `WORKFLOW_V0`-Schrittfeld wird (z. B. `anweisung`, optional wie `grund`,
+damit der Bestand gültig bleibt) oder ob der Schritt sein Workflow-Artefakt im
+Kontextpaket bekommt. Das Erste ist präziser, das Zweite billiger. Gemeinsam
+mit F-270 entscheiden — beide betreffen dieselbe Lücke: was ein Schritt über
+seinen Platz in der Kette weiß.
+Status: offen.
+Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis, Planungsphase).
+
+**F-270** · `TECH_DEBT` · P2 · offen
+Titel: Der Handoff zwischen zwei Schritten trägt kein Ergebnis, nur einen
+Dateipfad.
+Beschreibung: Endet Schritt n, bekommt Schritt n+1 über `vorgaengerLaufId`
+dessen Laufakte ins Kontextpaket. `LaufakteV0Daten` hat aber kein Feld für das
+Arbeitsergebnis — nur `rohstrom_referenz: { pfad, inhalts_hash }`. Der
+Antworttext des Vorgängers steht in
+`kontrollzustand-roh/<lauf_id>/rohstrom.json` unter `stdout`, dort als
+JSON-String, dessen Feld `result` der eigentliche Text ist. Schritt n+1 kommt
+also nur an das Ergebnis seines Vorgängers, wenn er diesen Pfad selbst öffnet,
+das JSON zweimal auspackt — und wenn er zufällig dasselbe Dateisystem sieht
+und `Read` im Werkzeugsatz hat.
+Fundstelle: `src/claude-code-gateway/types.ts`, `LaufakteV0Daten`; gegen
+`src/execution-controller/index.ts`, `vorgaengerLaufId`-Block.
+Auswirkung: Beim AK10-Nachweis real aufgetreten. L1s Schritt 2 hätte ohne eine
+ausdrückliche Leseanweisung im Auftragstext („die Laufakte nennt
+`rohstrom_referenz.pfad`; darin `stdout`, darin `result`") nicht gewusst, was
+Schritt 1 herausgefunden hat. Der Handoff funktioniert damit nicht kraft
+Datenmodell, sondern kraft Prosa plus Dateisystem-Zufall. Ein lesender
+Folgeschritt ohne `Read` im Werkzeugsatz käme gar nicht an das Ergebnis.
+Empfohlene Maßnahme: Nicht sofort bauen. Entscheiden, ob das Ergebnis in ein
+eigenes Artefakt gehört (ein `ergebnis-<lauf_id>` mit dem `result`-Text, das
+F8 nach der Klassifikation registriert und das der Folgeschritt wie Auftrag
+und Laufakte vorangestellt bekommt) — oder ob die Laufakte selbst um ein
+Ergebnisfeld wächst. Gegen das Zweite spricht, dass die Laufakte heute reine
+Aufrufdokumentation ist und ihr `inhalts_hash` an mehreren Stellen als stabile
+Lineage-Referenz benutzt wird. Gemeinsam mit F-269 entscheiden.
+Status: offen.
+Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis, Planungsphase).
+
+**F-271** · `TECH_DEBT` · P3 · offen
+Titel: Die Laufakte hält nicht fest, welchen Werkzeugsatz ein Lauf hatte.
+Beschreibung: `LaufakteV0Daten` (`src/claude-code-gateway/types.ts`) trägt
+`werkzeug_version_deklariert`, `berechtigungskontext`,
+`arbeitsverzeichnis_pfad` und `modell_beobachtet` — aber nicht die
+`erlaubte_werkzeuge` des Laufs. Der Rohstrom hält nur `werkzeugStartziel`
+fest, nicht die `argv` mit `--tools`/`--allowedTools`. Aus den Artefakten
+allein lässt sich damit nicht feststellen, ob ein Lauf schreiben DURFTE.
+`permission_denials: []` beantwortet die Frage nicht: der leere Wert ist mit
+„hatte keine Schreibrechte und versuchte nichts" und mit „hatte sie und nutzte
+sie nicht" gleich verträglich.
+Fundstelle: `src/claude-code-gateway/types.ts`, `LaufakteV0Daten`; gegen
+`src/claude-code-gateway/index.ts`, Rohstrom-Serialisierung (nur
+`werkzeugStartziel`, `stdout`, `stderr`, `exitCode`, `startfehler`,
+`beendigungsart`).
+Auswirkung: Beim AK10-Nachweis real aufgetreten. Ein zusätzlicher, von Hand
+gestarteter Lauf gegen denselben Auftrag musste vom Nachweis abgegrenzt
+werden („hat der etwa auch geschrieben?"). Die Abgrenzung gelang nur über
+einen Umweg — ein späterer Lauf zitierte die fragliche Codezeile noch in der
+alten Fassung. Ohne diesen Zufall wäre die Frage aus den Artefakten nicht
+beantwortbar gewesen. Für ein System, dessen Kern die Bezeugung von
+Schreibwirkung ist, ist das eine Lücke im Auditpfad: die
+Werkzeugsatz-Begrenzung ist die zentrale Sicherheitszusage (E-187/AC9,
+`werkzeugsatz_begrenzung: DEKLARIERT`), und sie hinterlässt je Lauf keine
+Spur.
+Empfohlene Maßnahme: Die aufgelöste Werkzeugsatz-Begrenzung (`modus` +
+`erlaubte_werkzeuge`) additiv in `LaufakteV0Daten` aufnehmen — dieselbe Stelle,
+an der `berechtigungskontext` schon steht, und derselbe Wert, den
+`loeseAusfuehrungsEingabenAuf` ohnehin schon in `aufrufEingaben.werkzeugsatz`
+gelegt hat. Additiv, weil jede bestehende Laufakte append-only ist
+(ARCHITECTURE.md §7); das Feld ist für Bestandsakten nicht rekonstruierbar und
+darf deshalb nicht Pflicht werden.
+Status: offen.
+Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis, QA-Pass).
+
+**F-272** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Der Abbruch-Nachweis konnte den Automatenhalt nicht isolieren — die
+zweite Sicherung war zugleich der zweite Grund.
+Beschreibung: L3 des AK10-Nachweises sollte belegen, dass ein Abbruch auf den
+aktiven Schritt wirkt UND der Automat danach nicht fortsetzt. Der Folgeschritt
+`schritt-2-fix` trug im Plan aber `freigabe: ZWINGEND` — bewusst als zweite
+Sicherung gegen einen ungeplanten Codeeingriff, falls der Abbruch nicht
+greift. Genau diese Sicherung macht die Beobachtung überdeterminiert: hätte
+der Abbruch den Automaten gar nicht erreicht, wäre der Folgeschritt trotzdem
+`OFFEN` geblieben, weil ihn die Freigabepflicht ohnehin angehalten hätte. Der
+Nachweis belegt damit den Wortlaut von AK10 („wirkt auf den aktiven Schritt"),
+nicht die stärkere Lesart („und stoppt die Kette").
+Fundstelle: `nachweis/ws4/L3.json`, `schritte[1].freigabe`; Protokoll
+`features/F15/nachweis-ak10.md`, Zeile L3-8.
+Auswirkung: Kein Defekt am Produkt — die Regel selbst ist gate-geprüft
+(`scripts/check-f15-automat-real.mjs`, Block (b): ein abgebrochener Schritt 1
+setzt NICHT auf Schritt 2 fort). Der Befund liegt am Nachweisdesign: eine
+Sicherung im Testaufbau, die denselben Ausgang erzeugt wie der zu belegende
+Mechanismus, entwertet die Beobachtung. Das ist eine allgemeine Falle, keine
+F15-Besonderheit — sie tritt überall dort auf, wo man einen Halt beweisen will
+und den Aufbau vorsichtshalber zusätzlich absichert.
+Empfohlene Maßnahme: Beim Entwerfen eines Nachweislaufs je Behauptung prüfen,
+ob der erwartete Ausgang auch ohne den zu belegenden Mechanismus einträte.
+Wenn ja, ist entweder die Sicherung zu entfernen (und das Risiko bewusst zu
+tragen) oder die Behauptung zu schwächen. Für diesen konkreten Fall: ein
+vierter Lauf, dessen Folgeschritt `freigabe: AUTOMATISCH` und einen HARMLOSEN,
+nicht-schreibenden Auftrag hat — dann kostet die fehlende Sicherung nichts,
+und der Halt wird isoliert sichtbar. Lohnt sich, wenn ohnehin ein weiterer
+realer Automatenlauf ansteht; nicht als eigener Zyklus.
+Status: offen.
+Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis, QA-Pass).
