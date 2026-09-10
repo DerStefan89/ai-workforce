@@ -798,6 +798,13 @@ const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
  * schritte[] bleibt bewusst draußen (Muster sammleAuftraege, das
  * auftragstext ebenfalls nur im Detail liefert): eine Liste zeigt, wo ein
  * Workflow steht, nicht seinen ganzen Inhalt.
+ *
+ * F15 WS-3a (löst F-221 (a)): grund gehört dazu. Eine Liste, die
+ * KLAERUNG_ERFORDERLICH oder GESTOPPT ohne Grund zeigt, ist genau die
+ * Ansicht, wegen der WS-2c (a) das Feld eingeführt hat — der Automat hält
+ * an, während niemand hinsieht, und die Startfehlerliste ist flüchtig.
+ * Anders als schritte[] ist grund ein Kopfdatum, kein Inhalt: er sagt, WO
+ * der Workflow steht, nicht was in ihm steht.
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param version - geladene Artefaktversion (ladeArtefaktVersion)
  * @returns Kopfdaten-Objekt für die Liste
@@ -810,6 +817,7 @@ function baueWorkflowKopfdaten(workflowId, version) {
     ziel: daten.ziel ?? null,
     status: daten.status ?? null,
     aktiverSchrittId: daten.aktiver_schritt_id ?? null,
+    grund: daten.grund ?? null,
     schritteAnzahl: Array.isArray(daten.schritte) ? daten.schritte.length : 0,
     versionSequenz: version.versionSequenz,
   }

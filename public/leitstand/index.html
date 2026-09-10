@@ -59,6 +59,18 @@
     <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
   </section>
 
+  <section id="workflows-abschnitt">
+    <h2>Workflows</h2>
+    <p class="hinweis">Projektion von <code>GET /api/workflows</code> — Bedienung (Starten, Freigeben, Stoppen, Reparaturfassung) ist noch nicht gebaut.</p>
+    <div id="workflows"></div>
+  </section>
+
+  <section id="workflow-detail" hidden>
+    <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
+    <p id="workflow-detail-fehler" class="fehler" hidden></p>
+    <div id="workflow-detail-inhalt"></div>
+  </section>
+
   <div id="laeufe"></div>
 
   <section id="lauf-detail" hidden>

@@ -2675,8 +2675,12 @@ entscheiden, nicht hier. (b) ist mit einer `async`-Funktion unerreichbar —
 `fuehreAufgabeDurch` ist eine, und nur eine Testattrappe könnte es verletzen.
 Empfohlene Maßnahme: (a) in WS-3 mitentscheiden. (b) keine — dokumentiert,
 damit ein künftiger Umbau des Aufrufvertrags den Fall kennt.
-Status: offen.
-Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-/QA-Pass).
+Status: (a) **gelöst** in F15 WS-3a — `baueWorkflowKopfdaten` führt `grund`,
+die Workflow-Liste im Leitstand zeigt ihn als eigene Zeile. Als Vertrag in
+`scripts/check-f15-workflow.mjs` festgehalten (Kopfdaten nach einem Stopp
+tragen die Begründung des Menschen), rot kalibriert durch Entfernen des
+Feldes aus der Projektion. (b) unverändert offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-/QA-Pass); (a) gelöst F15 WS-3a, 10.09.2026.
 
 **F-222** · `TECH_DEBT` · P2 · offen
 Titel: Freigabe und Ablehnung sind nur über HTTP erreichbar, die
@@ -3085,6 +3089,15 @@ den F15 „ein Endpunkt, ein Antwortschnitt" ausdrücklich begründet — KEIN
 Entscheidungsartefakts, nicht die der neuen Workflow-Version. Solange der
 Endpunkt von Hand bedient wird (AK8 offen), erzwingt das eine Rückfrage per
 `GET /api/workflows/<id>` ohne Not.
+Nachtrag F15 WS-3a, 10.09.2026: NICHT gelöst. Der Auftrag für WS-3a las
+F-234 als „der aktive Lauf muss in der Ansicht erkennbar sein" — das ist
+gebaut (die Schrittliste markiert den Schritt, dessen `lauf_id` der Server
+über `GET /api/laeufe/<laufId>` als `aktiv` meldet, ohne Serveränderung),
+aber es ist eine ZWEITE, unabhängige Auskunft neben der Stopp-Antwort und
+ändert deren Mehrdeutigkeit nicht. Wer `laufAbgebrochen: false` liest, liest
+weiterhin drei Fälle als einen. Die Ansicht senkt nur den Preis: der Mensch
+kann jetzt nachsehen, statt raten zu müssen. Siehe auch F-248 (dieselbe
+Mehrdeutigkeit in der Markierung selbst).
 Empfohlene Maßnahme: Ein zusätzliches Feld in der 200-Antwort, das den Grund
 nennt (`kein aktiver Lauf` / `aktiver Lauf gehört nicht zu diesem Workflow` /
 `zugehöriger Lauf am Artefakt nicht mehr auffindbar`), plus `status` und die
@@ -3294,6 +3307,13 @@ Auswirkung: Sehr schmal — der Startendpunkt validiert ebenfalls, ein solcher
 Workflow kann also kaum laufen. Aber die Zusage „Bremse für den Workflow"
 gilt dort nicht, und fliegt doch ein Lauf, bleibt nur
 `POST /api/laeufe/<laufId>/abbrechen`.
+Nachtrag F15 WS-3a, 10.09.2026: NICHT gelöst, und eine Klarstellung. Der
+Auftrag für WS-3a ordnete F-241 dem DETAILendpunkt zu („beantwortet mit
+409") — dieser Befund betrifft ausschließlich den STOPP-Endpunkt. Der
+Detailendpunkt validiert überhaupt nicht und antwortet immer mit 200; das ist
+als eigener Befund F-247 festgehalten. Die Ansicht trägt seit WS-3a einen
+benannten Zustand „Fassung ungültig" (409-Zweig plus clientseitige
+Formprüfung), der Stopp-Endpunkt ist unverändert.
 Empfohlene Maßnahme: Prüfen, ob der Stopp die Gültigkeitsprüfung überhaupt
 braucht — er schreibt nur Workflow-Felder und liest die Schrittliste; oder die
 `bestandUngueltig`-Ausnahme aus `POST /api/workflows` sinngemäß übernehmen.
@@ -3421,3 +3441,275 @@ Oberfläche gibt (AK8/WS-3). Wenn doch: dort entscheiden, ob eine Umbenennung
 `nachfolger`, `aktiver_schritt_id` und Entscheidungsartefakte.
 Status: offen.
 Feature/Run: F15 WS-2c (b3), 10.09.2026.
+
+**F-247** · `TECH_DEBT` · P2 · offen
+Titel: `GET /api/workflows/<id>` validiert nicht — die Anzeige „Fassung
+ungültig" hängt an einer Client-Formprüfung.
+Beschreibung: Beim Bau von WS-3a stand im Auftrag, der Detailendpunkt
+beantworte eine nicht mehr gegen `WORKFLOW_V0` validierende Fassung mit 409
+(unter Verweis auf F-241). Das trifft nicht zu: F-241 beschreibt den
+STOPP-Endpunkt, und der Detailendpunkt liefert den Datensatz unverändert mit
+200, ohne `validiereWorkflowDaten` je aufzurufen. Der 409-Zweig in der
+Ansicht ist deshalb gebaut, aber vom echten Server heute unerreichbar; was
+real greift, ist die zweite, clientseitige Prüfung (`daten.schritte` ist kein
+nicht-leeres Array).
+Fundstelle: `scripts/leitstand-server.mjs`, `GET /api/workflows/<id>`;
+`public/leitstand/app.js`, `ladeWorkflowDetail`.
+Auswirkung: Eine Fassung, die eine der Querverweisregeln verletzt
+(unbekannter `nachfolger`, Zyklus, Zusammenführung), aber eine formal
+befüllte `schritte`-Liste trägt, wird als normale Schrittliste gezeigt — der
+Mensch sieht einen Plan, den der Startendpunkt bereits mit 409 ablehnt, ohne
+Hinweis darauf. Die Ansicht behauptet damit mehr Gültigkeit, als der Server
+zusagt.
+Empfohlene Maßnahme: Den Detailendpunkt `validiereWorkflowDaten` aufrufen
+lassen und die Verstöße als eigenes Feld MITLIEFERN, statt den Datensatz
+zurückzuhalten (Lesbarkeit einer kaputten Fassung ist genau das, was der
+Mensch für die Reparatur braucht — die `bestandUngueltig`-Ausnahme in
+`POST /api/workflows` folgt derselben Linie). Die Ansicht liest dann das
+Feld. Serveränderung, also eigener Rot-Fall; bewusst NICHT in WS-3a gemacht,
+dessen Auftrag genau eine Serveränderung zuließ.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026.
+
+**F-248** · `TECH_DEBT` · P3 · offen
+Titel: Die Markierung „läuft jetzt" fehlt still, solange das Laufverzeichnis
+noch nicht existiert.
+Beschreibung: `ermittleAktiveLaufIds` liest `aktiv` aus
+`GET /api/laeufe/<laufId>` (D13). Dieser Endpunkt antwortet 404, solange
+`kontrollzustand/<laufId>/` fehlt — und das Verzeichnis entsteht erst mit der
+`RUN_PREPARED`-Wirkungsmarke des Execution Controllers. Zwischen dem
+Schreiben der Workflow-Version (Schritt auf `LAEUFT` mit `lauf_id`) und
+dieser Marke liegt ein Fenster, in dem der Schritt `LAEUFT` zeigt und die
+Markierung fehlt. Real beobachtet: im WS-3a-Nachweis blieb die Markierung
+zunächst ganz aus, weil die Werkzeug-Attrappe keine Marke schrieb.
+Fundstelle: `public/leitstand/app.js`, `ermittleAktiveLaufIds`, gegen
+`scripts/leitstand-server.mjs`, `GET /api/laeufe/<laufId>`.
+Auswirkung: Das Fenster ist kurz, aber die fehlende Markierung ist von
+„läuft nicht mehr" nicht unterscheidbar — dieselbe Klasse von
+Mehrdeutigkeit, die F-234 am Stopp-Endpunkt beschreibt. Ein 404 und ein
+`aktiv: false` sagen dem Leser dasselbe, obwohl sie Verschiedenes bedeuten.
+Empfohlene Maßnahme: Entweder drei Zustände zeigen (`läuft jetzt` /
+`nicht aktiv` / `noch nicht ermittelbar`), oder die Aktivauskunft nicht über
+den Lauf-Detailendpunkt beziehen, sondern über ein Feld, das der Server ohne
+Laufverzeichnis beantworten kann. Zusammen mit F-234 entscheiden.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026.
+
+**F-249** · `TECH_DEBT` · P3 · offen
+Titel: Das Workflow-Detail pollt — anders als das Lauf-Detail, und mit einer
+Zusatzanfrage je Tick.
+Beschreibung: `ladeLaufDetail` ist bewusst NICHT Teil des 2-Sekunden-Polls
+(F12 WS-3 AK2: „Detail nur auf Anforderung"). `ladeWorkflowDetail` ist es,
+weil die Ansicht sonst ihren Zweck verfehlt — der wandernde Cursor ist genau
+das, was man sehen will. Der Preis: je Tick eine Anfrage an
+`GET /api/workflows/<id>` plus je `LAEUFT`-Schritt eine an
+`GET /api/laeufe/<laufId>`, und das offene Panel wird alle zwei Sekunden
+vollständig neu gerendert.
+Fundstelle: `public/leitstand/app.js`, `pollWorkflows` /
+`ladeWorkflowDetail`.
+Auswirkung: Heute folgenlos — WS-3a hat kein einziges Eingabefeld, das ein
+Neurendern zerstören könnte, und D13 begrenzt die Zusatzanfragen auf
+höchstens eine. Ab WS-3b gilt beides nicht mehr: ein Reparaturentwurf in
+einem Textfeld überlebt kein Neurendern.
+Empfohlene Maßnahme: In WS-3b entscheiden — entweder den Poll auf die Liste
+beschränken und das Detail wieder auf Anforderung laden, oder beim
+Neurendern gezielt aussparen, was der Mensch gerade bearbeitet. Nicht
+vorwegnehmen, solange kein Bedienelement existiert.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026.
+
+**F-250** · `TECH_DEBT` · P4 · offen
+Titel: Zwei verschiedene Zahlen heißen in der Ansicht „Version".
+Beschreibung: Die Workflow-Liste zeigt `versionSequenz` (die Artefaktversion
+aus F2, „die wievielte Fassung dieses Workflows") unter der Überschrift
+„Version". `WORKFLOW_V0` trägt zusätzlich ein eigenes Feld `version`, das der
+Mensch in der Payload selbst setzt. Beide sind im Detail nebeneinander
+sichtbar („Version (Plan / Artefakt)"), in der Liste nur die zweite.
+Fundstelle: `public/leitstand/app.js`, `workflowKopfzeile`;
+`schemas/kontrollzustand-workflow-payload.schema.json`.
+Auswirkung: Gering, aber verwechselbar: wer eine korrigierte Fassung mit
+unverändertem `version`-Feld einreicht, sieht die Listenzahl steigen und
+könnte sie für sein eigenes Feld halten.
+Empfohlene Maßnahme: Die Liste beschriftet die Zahl als „Fassung", oder sie
+zeigt beide. Kosmetik, gemeinsam mit der WS-3b-Ansicht entscheiden.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026.
+
+**F-251** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `public/` liegt außerhalb von Lint und Typprüfung — WS-3a schließt
+davon nur die Syntaxlücke.
+Beschreibung: `biome.json` führt unter `files.includes` ausschließlich
+`scripts/**` und `src/**`; `tsconfig.json` ebenso, und dort nur `*.ts`.
+`public/leitstand/app.js` (rund 1200 Zeilen, der gesamte Client) wird also
+weder gelintet noch typgeprüft, und war bis WS-3a von keinem Gate berührt —
+`scripts/check-f12-leitstand-ansicht.mjs` prüft trotz seines Namens die
+API-Projektionen, nicht die Ansicht. WS-3as neues Gate prüft den Quelltext
+gegen die Zusagen der Workflow-Ansicht und ruft zusätzlich `node --check`
+auf; damit ist die Syntax gedeckt, Lint und Typen sind es nicht, und
+`index.html`/`style.css` bleiben ganz ungeprüft.
+Fundstelle: `biome.json`, `tsconfig.json`,
+`scripts/check-f15-workflow-oberflaeche.mjs`.
+Auswirkung: Eine tote Variable, ein vergessenes `await` (die Regel
+`noFloatingPromises` ist im Projekt auf `error` gestellt und greift hier
+nicht) oder eine falsch geschriebene Feldabfrage fällt in der gesamten Kette
+nicht auf, solange sie das Textmuster des Gates nicht verletzt.
+Empfohlene Maßnahme: `public/**` in `biome.json` aufnehmen und den daraus
+folgenden Befundberg in einem eigenen Durchgang abtragen — nicht nebenbei in
+einem Feature-Commit. Vorher prüfen, ob die Browser-Globals (`document`,
+`fetch`, `console`) eine eigene Biome-Domain brauchen.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026.
+
+**F-252** · `BUG` · P2 · **gelöst**
+Titel: Überholende Poll-Antworten desselben Workflows rendern älteren über
+neueren Zustand.
+Beschreibung: `pollWorkflows` startet alle zwei Sekunden ein neues
+`ladeWorkflowDetail`, ohne zu prüfen, ob der vorige Lauf noch fliegt; der
+langsamere hängt zusätzlich an `ermittleAktiveLaufIds`. Der Race-Schutz
+verglich zunächst nur `gewaehlteWorkflowId !== workflowId` — bei zwei Ticks
+für DENSELBEN Workflow ist der Vergleich für beide falsch, beide schreiben
+`inhalt.innerHTML`. Landet Tick n nach Tick n+1, springt der Cursor zurück
+und ein bereits `ERFOLGREICH`-Schritt zeigt wieder `LAEUFT`.
+Fundstelle: `public/leitstand/app.js`, `ladeWorkflowDetail`/`pollWorkflows`.
+Auswirkung: Die Ansicht zeigt kurzzeitig einen älteren Stand als den, den sie
+schon hatte — genau bei einem Workflow, den man beim Wandern zusieht, also im
+Normalbetrieb dieser Ansicht. Von Reviewer- und QA-Pass unabhängig
+voneinander gefunden.
+Maßnahme: Behoben im selben Commit. `ladeWorkflowDetail` zieht eine
+fortlaufende Nummer (`workflowRenderZaehler`); `istUeberholt()` prüft
+zusätzlich, ob inzwischen ein jüngerer Aufruf gestartet ist, und nur der
+jüngste darf schreiben. Alle sechs Abbruchstellen der Funktion nutzen es.
+Feature/Run: F15 WS-3a, 10.09.2026 (Reviewer-Pass Befund 4, QA-Pass Fehler 6).
+
+**F-253** · `TECH_DEBT` · P3 · offen
+Titel: Die Ansicht zeigt den Zustand nicht, in dem der Mensch gefragt ist,
+solange er nicht persistiert wurde.
+Beschreibung: Ein Workflow auf `OFFEN` oder `KLAERUNG_ERFORDERLICH`, dessen
+fälliger Schritt `freigabe: ZWINGEND` trägt, wartet real auf eine
+menschliche Freigabe — aber dieser Halt ist kein persistierter Status
+(feature.md: „Freigabefrage OHNE persistierten Status", ein
+`POST .../starten` antwortet 409 und schreibt nichts). Die Ansicht zeigt
+deshalb `OFFEN`, keinen `grund`, und als einzigen Hinweis das Wort `ZWINGEND`
+in einer von zehn Spalten. Verwandt: `EMPFOHLEN` wird als Wort gezeigt,
+obwohl der Automat dort NICHT anhält — feature.md hat unter „Entschieden"
+ausdrücklich festgehalten, der Unterschied sei „rein anzeigend und gehört
+nach WS-3". Ebenso ist der Cursor-Schritt in der Tabelle nicht markiert, nur
+im Kopf genannt; AK8 nennt „den aktiven Schritt" wörtlich.
+Fundstelle: `public/leitstand/app.js`, `workflowKopfzeile` /
+`workflowSchrittZeile`, gegen `features/F15/feature.md` AK8 und „Entschieden".
+Auswirkung: Der Zustand, in dem der Mensch die einzige Entscheidungsinstanz
+ist, ist der einzige ohne eigene Anzeige. AK8 ist damit auch LESEND noch
+nicht erfüllt — was WS-3a nicht in Abrede stellt (AK8 bleibt OFFEN), aber es
+ist keine reine Bedienungslücke, sondern eine Anzeigelücke.
+Empfohlene Maßnahme: In WS-3b EINEN abgeleiteten Zustand je Workflow
+einführen („wartet auf dich" / „läuft" / „steht — Grund" / „fertig"), der die
+Freigabefrage ohne persistierten Status einschließt, den fälligen Schritt in
+der Tabelle markiert und `EMPFOHLEN` als „hält nicht an" ausweist. Vor den
+Bedienelementen bauen, nicht danach.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026 (QA-Pass, Fehler 1 bis 3).
+
+**F-254** · `TECH_DEBT` · P3 · offen
+Titel: Die Ansicht zeigt weder Zeitpunkte noch die Plandaten, an denen Halte
+real entstehen, noch die Entscheidungsartefakte.
+Beschreibung: Drei Lücken derselben Art — der Mensch liest einen Grund und
+kann ihn nicht verorten. (1) Keine Zeitangabe: `WORKFLOW_V0` trägt kein
+Zeitfeld (im Server als Grund für die alphabetische Sortierung notiert), also
+lässt sich kein Halt datieren und ein stale `LAEUFT` nicht von einem frisch
+gestarteten unterscheiden. (2) Die Schrittliste zeigt `eingaben`,
+`werkzeugsatz`, `output_schema`, `risiko` und `grenzen` NICHT — genau die
+Felder, an denen ein Start real scheitert. (3) Kein Entscheidungsartefakt ist
+lesbar: weder Freigabe/Ablehnung mit Pflichtbegründung noch der Stopp noch
+die Planänderung; `freigabe_erteilt: true` ist ein nackter Boolescher Wert
+ohne Begründung, Zeitpunkt oder Verweis, und die Stopp-Begründung steht nur
+im flüchtigen `grund`, den die nächste Fassung überschreibt.
+Fundstelle: `public/leitstand/app.js`, `renderWorkflowKopf` /
+`workflowSchrittZeile`; `schemas/kontrollzustand-workflow-payload.schema.json`.
+Auswirkung: Die Ansicht taugt zum Zusehen, aber nur begrenzt zur Diagnose vor
+einer Reparaturfassung — dem Zweck, für den AK8 sie vorsieht. Die Schreibseite
+der Entscheidungsartefakte ist WS-3b zugeordnet, ihre LESESEITE bisher
+keinem Workstream.
+Empfohlene Maßnahme: (2) ist eine reine Anzeigeerweiterung und gehört nach
+WS-3b. (3) braucht eine Entscheidung, ob die Ansicht die Entscheidungskette
+je Workflow liest — ausdrücklich entscheiden, nicht implizit vertagen. (1)
+ist eine Schema-/Serverfrage und größer als WS-3.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026 (QA-Pass, Fehler 5, 7, 9).
+
+**F-255** · `TECH_DEBT` · P3 · offen
+Titel: Ein Workflow mit unlesbarer Artefaktkette verschwindet lautlos aus der
+Liste.
+Beschreibung: `sammleWorkflows` überspringt jeden Eintrag, für den
+`ladeArtefaktVersion` `null` liefert (`if (version === null) continue`) —
+bewusst, damit ein defekter Datensatz nicht den ganzen Request 500en lässt.
+Die Ansicht macht diese Entscheidung erstmals spürbar: Der Workflow fehlt
+ohne Hinweis, und ist er der einzige, meldet der Leerzustand „Keine Workflows
+unter kontrollzustand/ gefunden" — ein verlorener Workflow ist von „es gibt
+keinen" nicht unterscheidbar, und der Mensch hat nicht einmal die ID, um das
+Detail zu öffnen.
+Fundstelle: `scripts/leitstand-server.mjs`, `sammleWorkflows`;
+`public/leitstand/app.js`, `ladeWorkflows`.
+Auswirkung: Schmal (setzt eine beschädigte Kette voraus), aber der Ausfall
+ist total und stumm — dieselbe Klasse wie F-247/F-248: ein nicht
+darstellbarer Zustand sieht aus wie ein normaler.
+Empfohlene Maßnahme: `sammleWorkflows` liefert den übersprungenen Eintrag als
+Platzhalter mit `workflowId` und einem Status „Kette nicht lesbar", statt ihn
+zu unterschlagen. Serveränderung, eigener Rot-Fall; bewusst nicht in WS-3a.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026 (QA-Pass, Fehler 8).
+
+**F-256** · `TECH_DEBT` · P4 · offen
+Titel: Vier kleinere Anzeigemängel der Workflow-Ansicht, gesammelt.
+Beschreibung: (a) `zeigePollFehler` hat mit `ladeWorkflows` jetzt drei
+Schreiber auf einem einzigen `#poll-fehler`; ein erfolgreicher Poller blendet
+den Hinweis des fehlgeschlagenen wieder aus, und die Workflow-Liste friert
+dann stumm ein — genau das, wogegen der Hinweis gebaut ist. Das Muster ist
+älter als WS-3a, WS-3a erhöht die Trefferwahrscheinlichkeit. (b) `Grund:
+fertig` bei `ABGESCHLOSSEN` liest sich wie eine Fehlermeldung; das Schema
+warnt ausdrücklich, das Feld sei „ohne Blick auf status keine
+Fehlermeldung". (c) Fehlt einer Bestandsfassung ein Pflichtfeld, rendert
+`escapeHtml(String(undefined))` das Wort `undefined` in die Zelle (Folge von
+F-247: der Detailendpunkt validiert nicht). (d) Der Schrittstatus
+`UEBERSPRUNGEN` wird als gleichrangig gezeigt, obwohl ihn niemand setzt und
+das Überspringen gestrichen ist; kein Rückweg von einem Lauf zu seinem
+Workflow; das Detail-Panel bleibt bei 404 dauerhaft offen und wiederholt den
+Fehler alle zwei Sekunden; das unbedingte Neurendern zerstört alle zwei
+Sekunden eine Textauswahl — gerade bei dem langen `grund`, den man für die
+Reparaturfassung kopieren will.
+Fundstelle: `public/leitstand/app.js`, Workflow-Ansicht.
+Auswirkung: Einzeln gering, in Summe die Alltagsreibung der Ansicht.
+Empfohlene Maßnahme: In WS-3b mitnehmen. (a) braucht einen Fehlerzähler je
+Quelle statt eines geteilten Kennzeichens und betrifft dann auch `laden` und
+`ladeStartfehler`.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026 (Reviewer-Pass Befund 5/9, QA-Pass Fehler 10 bis 16).
+
+**F-257** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `npm run check` scheitert wiederholt an umgebungsbedingten Rennen,
+und die Regel dagegen ist "einmal wiederholen".
+Beschreibung: Innerhalb von zwei aufeinanderfolgenden Bauabschnitten ist
+die Prüfkette an drei verschiedenen Stellen ohne Zutun des jeweiligen
+Diffs rot geworden: ENOENT auf die Enkel-PID-Datei beim Beenden des
+Prozessbaums (F14-Test, WS-2c (b3)), ENOENT im Gateway-Timeout-Test und
+ENOTEMPTY beim Aufräumen im Execution-Controller (WS-3a). Alle drei
+verschwanden bei unverändertem Diff im nächsten Durchgang; der rote Lauf
+in (b3) dauerte 99 s gegen sonst 73-82 s, die Maschine war also spürbar
+belastet. CLAUDE.md führt das als bekannte Falle mit der Regel "erst
+wiederholen".
+Fundstelle: CLAUDE.md, "Bekannte Fallen"; Laufprotokolle F15 WS-2c (b3)
+und WS-3a.
+Auswirkung: Die Regel "erst wiederholen" ist als Sofortmaßnahme richtig,
+als Dauerzustand entwertet sie die Prüfkette. Wer einen roten Lauf sieht,
+kann nicht mehr unterscheiden, ob er einen Befund oder Rauschen vor sich
+hat — und die naheliegende Gewohnheit ist, im Zweifel zu wiederholen.
+Genau daran ist F-211 (Gate ohne Rot-Nachweis) schon einmal gescheitert:
+eine Prüfung, deren Rot nicht ernst genommen wird, prüft nichts.
+Empfohlene Maßnahme: Eigene kleine Iteration, nicht nebenbei. Die drei
+Stellen haben denselben Bau (Kindprozess oder Temp-Verzeichnis, dessen
+Aufräumen mit dem Prozessende rennt): erst zusammentragen, ob eine
+gemeinsame Aufräum-Hilfe mit Wiederholung und Timeout die Klasse
+schließt, statt drei Einzelpflaster. Bis dahin: jedes Auftreten hier mit
+Datum und Fehlercode nachtragen, damit die Häufigkeit sichtbar bleibt
+statt in Chatverläufen zu verschwinden.
+Status: offen.
+Feature/Run: F15 WS-3a, 10.09.2026 (Challenger, zweites Auftreten).

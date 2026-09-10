@@ -98,6 +98,13 @@
  * das Detail-Panel selbst aktualisiert sich wie gehabt nur auf erneuten
  * "Details"-Klick oder nach einer Entscheidung (Muster sendeEntscheidung).
  *
+ * F15 WS-3a (AK8, erster von zwei Commits): der Abschnitt „Workflows"
+ * projiziert GET /api/workflows und GET /api/workflows/<id> — Kopfdaten je
+ * Workflow (inkl. grund, F-221 (a)) und die Schrittliste in
+ * Planreihenfolge. REIN LESEND: kein Starten, kein Freigeben, kein Stoppen,
+ * kein Reparaturentwurf — das ist WS-3b, und scripts/check-f15-workflow-
+ * oberflaeche.mjs hält die Grenze als Vertrag fest.
+ *
  * Wird aufgerufen von: public/leitstand/index.html
  *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
@@ -929,6 +936,267 @@ function meldeAbbrechenFehler(laufId, text, button) {
   button.textContent = 'Abbrechen'
 }
 
+// ─── F15 WS-3a (AK8, rein lesend): Workflow-Ansicht ─────────────────────────
+
+/**
+ * Eine Kopfdaten-Zeile aus GET /api/workflows.
+ *
+ * grund steht als eigene Tabellenzeile, nicht in einem title-Attribut: bei
+ * KLAERUNG_ERFORDERLICH und GESTOPPT ist er die einzige Auskunft darüber,
+ * warum der Automat steht (F-221 (a)) — die Startfehlerliste, die ihn sonst
+ * trüge, ist flüchtig.
+ * @param workflow - ein Eintrag aus GET /api/workflows
+ * @returns HTML-Block für die Workflow-Liste
+ */
+function workflowKopfzeile(workflow) {
+  const detailsButton = `<button class="workflow-details-btn" data-workflow-id="${escapeHtml(workflow.workflowId)}">Details</button>`
+  const grundZeile = workflow.grund === null || workflow.grund === undefined ? '' : `<tr><th>Grund</th><td>${escapeHtml(workflow.grund)}</td></tr>`
+  return `<section class="workflow">
+    <h3>${escapeHtml(workflow.workflowId)} ${detailsButton}</h3>
+    <table class="lauf-kopfdaten">
+      <tbody>
+        <tr><th>Ziel</th><td>${escapeHtml(workflow.ziel ?? '')}</td></tr>
+        <tr><th>Version</th><td>${escapeHtml(String(workflow.versionSequenz))}</td></tr>
+        <tr><th>Status</th><td>${escapeHtml(workflow.status ?? '')}</td></tr>
+        <tr><th>Aktiver Schritt (Cursor)</th><td>${workflow.aktiverSchrittId ? `<code>${escapeHtml(workflow.aktiverSchrittId)}</code>` : '<span class="unbekannt">kein Cursor</span>'}</td></tr>
+        ${grundZeile}
+        <tr><th>Schritte</th><td>${escapeHtml(String(workflow.schritteAnzahl))}</td></tr>
+      </tbody>
+    </table>
+  </section>`
+}
+
+/** Lädt GET /api/workflows in die Workflow-Liste (Muster laden(), inklusive des geteilten Poll-Fehlerhinweises). */
+async function ladeWorkflows() {
+  const container = document.getElementById('workflows')
+  try {
+    const workflows = await fetch('/api/workflows').then((r) => r.json())
+    container.innerHTML = workflows.length === 0 ? '<p class="leer">Keine Workflows unter kontrollzustand/ gefunden.</p>' : workflows.map(workflowKopfzeile).join('')
+    zeigePollFehler(false)
+  } catch {
+    zeigePollFehler(true)
+  }
+}
+
+/**
+ * Bringt die Schritte in Planreihenfolge: entlang der nachfolger-Kette ab dem
+ * Schritt, den kein anderer als nachfolger nennt. Nötig, weil die
+ * Array-Reihenfolge die Reihenfolge der Niederschrift ist —
+ * validiereWorkflowDaten erzwingt keinen Gleichlauf mit der Kette.
+ *
+ * Jeder Schritt trägt im Ergebnis, OB die Kette ihn erreicht hat. Der
+ * Detailendpunkt validiert nicht (F-247): ein Zyklus ohne Wurzel, zwei
+ * Wurzeln oder eine doppelt vergebene schritt_id kommen hier real an. In
+ * diesen Fällen ist die Reihenfolge keine Planreihenfolge mehr, und die
+ * Überschrift allein wäre dann eine falsche Zusage — deshalb wird der
+ * angehängte Rest ausgewiesen statt still eingereiht. Verglichen wird über
+ * Objektidentität, nicht über schritt_id: sonst verschwände der Zwilling
+ * einer doppelt vergebenen Kennung spurlos aus der Ansicht.
+ * @param schritte - daten.schritte aus GET /api/workflows/<id>
+ * @returns je Schritt { schritt, inKette }, Kettenteil zuerst
+ */
+function ordneSchritteNachPlan(schritte) {
+  const nachId = new Map()
+  for (const s of schritte) if (!nachId.has(s.schritt_id)) nachId.set(s.schritt_id, s)
+  const genannteNachfolger = new Set(schritte.map((s) => s.nachfolger).filter((n) => typeof n === 'string'))
+  const kette = []
+  const inKette = new Set()
+  let aktuell = schritte.find((s) => !genannteNachfolger.has(s.schritt_id))
+  while (aktuell !== undefined && !inKette.has(aktuell)) {
+    inKette.add(aktuell)
+    kette.push(aktuell)
+    aktuell = typeof aktuell.nachfolger === 'string' ? nachId.get(aktuell.nachfolger) : undefined
+  }
+  return [...kette.map((schritt) => ({ schritt, inKette: true })), ...schritte.filter((s) => !inKette.has(s)).map((schritt) => ({ schritt, inKette: false }))]
+}
+
+/**
+ * F-234: welche lauf_id gerade WIRKLICH fliegt. Quelle ist das aktiv-Feld aus
+ * GET /api/laeufe/<laufId> (D13) — dafür braucht es keine Serveränderung, und
+ * es ist bewusst nicht aus dem Schrittstatus abgeleitet: LAEUFT im Artefakt
+ * heißt nur, dass der Schritt gestartet WURDE, nicht dass sein Lauf noch lebt.
+ * Gefragt wird nur für Schritte auf LAEUFT — D13 lässt höchstens einen aktiven
+ * Lauf zu, die Zahl der Anfragen bleibt also klein. Ein Fehlschlag lässt die
+ * Markierung weg, statt die Schrittliste zu verhindern.
+ * @param eintraege - Ergebnis von ordneSchritteNachPlan
+ * @returns Menge der lauf_id, die der Server als aktiv meldet
+ */
+async function ermittleAktiveLaufIds(eintraege) {
+  const aktive = new Set()
+  for (const { schritt } of eintraege) {
+    if (schritt.status !== 'LAEUFT' || typeof schritt.lauf_id !== 'string') continue
+    try {
+      const antwort = await fetch(`/api/laeufe/${encodeURIComponent(schritt.lauf_id)}`)
+      if (!antwort.ok) {
+        // Nicht stillschweigend übergehen: ein 404 heißt "Laufverzeichnis noch nicht da"
+        // (F-248) und sieht in der Ansicht aus wie "läuft nicht mehr".
+        console.error(`[leitstand] Aktivzustand von '${schritt.lauf_id}' nicht ermittelbar: HTTP ${antwort.status}`)
+        continue
+      }
+      const detail = await antwort.json()
+      if (detail.aktiv === true) aktive.add(schritt.lauf_id)
+    } catch (fehler) {
+      console.error(`[leitstand] Aktivzustand von '${schritt.lauf_id}' nicht ermittelbar: ${fehler.message}`)
+    }
+  }
+  return aktive
+}
+
+/** @param eintrag - ein { schritt, inKette } aus ordneSchritteNachPlan @param aktiveLaufIds - Ergebnis von ermittleAktiveLaufIds @returns Tabellenzeile der Schrittliste */
+function workflowSchrittZeile(eintrag, aktiveLaufIds) {
+  const { schritt } = eintrag
+  const laeuftJetzt = typeof schritt.lauf_id === 'string' && aktiveLaufIds.has(schritt.lauf_id)
+  const laufVerweis =
+    typeof schritt.lauf_id === 'string'
+      ? `<button class="workflow-lauf-verweis" data-lauf-id="${escapeHtml(schritt.lauf_id)}">${escapeHtml(schritt.lauf_id)}</button>`
+      : '<span class="unbekannt">kein Lauf</span>'
+  // freigabe_erteilt ist optional: eine Fassung vor WS-2c (b1) trägt es nicht. Ein fehlendes Feld
+  // heißt "keine Freigabe erteilt" und wird als Strich gezeigt, nicht als ausgesprochenes "false".
+  const freigabeErteilt = schritt.freigabe_erteilt === undefined ? '—' : String(schritt.freigabe_erteilt)
+  return `<tr>
+    <td><code>${escapeHtml(schritt.schritt_id)}</code>${eintrag.inKette ? '' : ' <span class="badge fehler" title="Die nachfolger-Kette erreicht diesen Schritt nicht">außerhalb der Kette</span>'}</td>
+    <td>${escapeHtml(schritt.rolle)}</td>
+    <td>${escapeHtml(schritt.worker)}</td>
+    <td>${escapeHtml(schritt.modell)}</td>
+    <td>${escapeHtml(schritt.freigabe)}</td>
+    <td>${escapeHtml(freigabeErteilt)}</td>
+    <td>${escapeHtml(schritt.status)}${laeuftJetzt ? ' <span class="badge aktiv">läuft jetzt</span>' : ''}</td>
+    <td>${laufVerweis}</td>
+    <td>${schritt.nachfolger ? `<code>${escapeHtml(schritt.nachfolger)}</code>` : '<span class="unbekannt">Ende</span>'}</td>
+    <td>${escapeHtml(String(schritt.zeitgrenze_ms))}</td>
+  </tr>`
+}
+
+const WORKFLOW_SCHRITT_TABELLE_KOPF = `<tr>
+  <th>Schritt</th><th>Rolle</th><th>Worker</th><th>Modell</th><th>Freigabe</th><th>Freigabe erteilt</th>
+  <th>Status</th><th>Lauf</th><th>Nachfolger</th><th>Zeitgrenze (ms)</th>
+</tr>`
+
+/** @param daten - der WORKFLOW_V0-Datensatz aus GET /api/workflows/<id> @param versionSequenz - Artefaktversion derselben Antwort @returns HTML-Block mit den Workflow-Feldern oberhalb der Schrittliste */
+function renderWorkflowKopf(daten, versionSequenz) {
+  return `<div class="detail-block"><h3>Workflow</h3><table class="lauf-kopfdaten"><tbody>
+    <tr><th>Ziel</th><td>${escapeHtml(daten.ziel ?? '')}</td></tr>
+    <tr><th>Auftrag</th><td><code>${escapeHtml(daten.auftrag_id ?? '')}</code></td></tr>
+    <tr><th>Version (Plan / Artefakt)</th><td>${escapeHtml(String(daten.version))} / ${escapeHtml(String(versionSequenz))}</td></tr>
+    <tr><th>Status</th><td>${escapeHtml(daten.status ?? '')}</td></tr>
+    <tr><th>Aktiver Schritt (Cursor)</th><td>${daten.aktiver_schritt_id ? `<code>${escapeHtml(daten.aktiver_schritt_id)}</code>` : '<span class="unbekannt">kein Cursor</span>'}</td></tr>
+    <tr><th>Grund</th><td>${daten.grund ? escapeHtml(daten.grund) : '<span class="unbekannt">kein Halt-Grund hinterlegt</span>'}</td></tr>
+  </tbody></table></div>`
+}
+
+/** Der Zustand, in dem eine abgelegte Fassung nicht mehr gegen WORKFLOW_V0 validiert (F-241) — als eigener, benannter Zustand statt einer halb gerenderten Schrittliste. @param grundtext - Begründung des Servers, oder der clientseitig festgestellte Grund @returns HTML-Block */
+function renderWorkflowUngueltig(grundtext) {
+  return `<div class="detail-block"><h3>Fassung ungültig</h3><p class="fehler">Diese Fassung validiert nicht gegen WORKFLOW_V0 — die Schrittliste wird nicht angezeigt.</p><p>${escapeHtml(grundtext)}</p></div>`
+}
+
+/** workflowId des aktuell im Workflow-Panel angezeigten Workflows, oder null (Muster gewaehlteLaufId). */
+let gewaehlteWorkflowId = null
+
+/** Fortlaufende Nummer je ladeWorkflowDetail-Aufruf. Siehe istUeberholt in ladeWorkflowDetail. */
+let workflowRenderZaehler = 0
+
+/**
+ * Lädt GET /api/workflows/<id> und rendert Kopf und Schrittliste.
+ *
+ * Anders als ladeLaufDetail hängt diese Funktion am Poll: der Zweck der
+ * Ansicht ist zu sehen, wie der Cursor wandert und Schrittstatus umspringen,
+ * und WS-3a hat kein einziges Eingabefeld, das ein Neurendern zerstören
+ * könnte. Sobald WS-3b Bedienelemente einzieht, ist das neu zu entscheiden.
+ *
+ * Der Poll macht einen zweiten Race-Fall nötig, den ladeLaufDetail nicht hat:
+ * dort löst nur ein Klick einen Ladevorgang aus, hier alle zwei Sekunden der
+ * Zeitgeber. Zwei Ticks für DENSELBEN Workflow können sich überholen (der
+ * langsamere hängt zusätzlich an ermittleAktiveLaufIds), und ein Vergleich
+ * der workflowId allein ließe beide rendern — der ältere Stand landete als
+ * letzter im Panel, der Cursor spränge zurück. Deshalb gilt zusätzlich: nur
+ * der jüngste Aufruf darf schreiben.
+ * @param workflowId - Kennung, aus dem geklickten Details-Button
+ * @param scrollen - true beim Öffnen per Klick, false beim Neurendern durch den Poll
+ */
+async function ladeWorkflowDetail(workflowId, scrollen = true) {
+  gewaehlteWorkflowId = workflowId
+  workflowRenderZaehler += 1
+  const meineRenderNummer = workflowRenderZaehler
+  const istUeberholt = () => gewaehlteWorkflowId !== workflowId || workflowRenderZaehler !== meineRenderNummer
+  const abschnitt = document.getElementById('workflow-detail')
+  const fehleranzeige = document.getElementById('workflow-detail-fehler')
+  const inhalt = document.getElementById('workflow-detail-inhalt')
+
+  document.getElementById('workflow-detail-titel').textContent = workflowId
+  fehleranzeige.hidden = true
+  abschnitt.hidden = false
+  if (scrollen) {
+    inhalt.innerHTML = '<p class="leer">Lädt…</p>'
+    abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  try {
+    const antwort = await fetch(`/api/workflows/${encodeURIComponent(workflowId)}`)
+    if (istUeberholt()) return
+    if (antwort.status === 409) {
+      const koerper = await antwort.json().catch(() => ({}))
+      if (istUeberholt()) return
+      inhalt.innerHTML = renderWorkflowUngueltig(koerper.grund ?? 'Der Server nennt keinen Grund.')
+      return
+    }
+    if (!antwort.ok) {
+      const koerper = await antwort.json().catch(() => ({}))
+      if (istUeberholt()) return
+      inhalt.innerHTML = ''
+      fehleranzeige.textContent = `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`
+      fehleranzeige.hidden = false
+      return
+    }
+    const detail = await antwort.json()
+    if (istUeberholt()) return
+    const daten = detail.daten ?? {}
+    if (!Array.isArray(daten.schritte) || daten.schritte.length === 0) {
+      inhalt.innerHTML = renderWorkflowUngueltig('Die gelieferte Fassung trägt keine lesbare Schrittliste.')
+      return
+    }
+    const geordnet = ordneSchritteNachPlan(daten.schritte)
+    const aktiveLaufIds = await ermittleAktiveLaufIds(geordnet)
+    if (istUeberholt()) return
+    // Überschrift nur dort, wo sie stimmt: erreicht die nachfolger-Kette nicht jeden Schritt,
+    // ist die Reihenfolge keine Planreihenfolge (siehe ordneSchritteNachPlan).
+    const ausserhalbDerKette = geordnet.filter((e) => !e.inKette).length
+    const ueberschrift = ausserhalbDerKette === 0 ? 'Schritte (Planreihenfolge)' : `Schritte (Planreihenfolge, ${ausserhalbDerKette} außerhalb der Kette)`
+    inhalt.innerHTML = [
+      renderWorkflowKopf(daten, detail.versionSequenz),
+      `<div class="detail-block"><h3>${escapeHtml(ueberschrift)}</h3><table class="lauf-kopfdaten"><thead>${WORKFLOW_SCHRITT_TABELLE_KOPF}</thead><tbody>${geordnet.map((e) => workflowSchrittZeile(e, aktiveLaufIds)).join('')}</tbody></table></div>`,
+    ].join('')
+  } catch (fehler) {
+    if (istUeberholt()) return
+    inhalt.innerHTML = ''
+    fehleranzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
+    fehleranzeige.hidden = false
+  }
+}
+
+/** Klick-Delegation der Workflow-Ansicht (Muster initDetailBedienung) — beide Container werden bei jedem Poll komplett neu gerendert. Der Lauf-Verweis öffnet das bestehende Lauf-Detail-Panel derselben Seite, statt die laufId nur als Text zu zeigen. */
+function initWorkflowBedienung() {
+  document.getElementById('workflows').addEventListener('click', (ereignis) => {
+    const button = ereignis.target.closest('.workflow-details-btn')
+    if (!button) return
+    ladeWorkflowDetail(button.dataset.workflowId)
+  })
+  document.getElementById('workflow-detail-inhalt').addEventListener('click', (ereignis) => {
+    const button = ereignis.target.closest('.workflow-lauf-verweis')
+    if (!button) return
+    ladeLaufDetail(button.dataset.laufId)
+  })
+  document.getElementById('workflow-detail-schliessen').addEventListener('click', () => {
+    gewaehlteWorkflowId = null
+    document.getElementById('workflow-detail').hidden = true
+  })
+}
+
+/** Poll-Tick der Workflow-Ansicht: die Liste immer, das Detail-Panel nur, solange eines offen ist. */
+function pollWorkflows() {
+  ladeWorkflows()
+  if (gewaehlteWorkflowId !== null) ladeWorkflowDetail(gewaehlteWorkflowId, false)
+}
+
 const POLL_INTERVALL_MS = 2000
 
 initEvidenzdateien()
@@ -938,9 +1206,12 @@ initWiederaufnahmeBedienung()
 initDetailBedienung()
 initEntscheidungBedienung()
 initAbbrechenBedienung()
+initWorkflowBedienung()
 laden()
 ladeStartfehler()
+ladeWorkflows()
 ladeAuftraege().then(aktualisiereLaufIdVorschlag)
 ladeWerkzeugsaetze()
 setInterval(laden, POLL_INTERVALL_MS)
 setInterval(ladeStartfehler, POLL_INTERVALL_MS)
+setInterval(pollWorkflows, POLL_INTERVALL_MS)

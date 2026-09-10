@@ -268,15 +268,68 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   erster Schritt ist freigebbar" und der Fall „gescheiterter Start NACH
   erteilter Freigabe endet als `KLAERUNG_ERFORDERLICH` statt zugemauert".
 - **AK8** *(WS-3, OFFEN)* — Der Leitstand zeigt Workflow, Schrittliste, Status
-  je Schritt und den aktiven Schritt. Freigeben, Überspringen und
-  Stoppen wirken über den bestehenden Entscheidungs-Schreibpfad.
+  je Schritt und den aktiven Schritt. Freigeben und Stoppen wirken über den
+  bestehenden Entscheidungs-Schreibpfad.
 
   **Ausdrücklich weiterhin offen, obwohl WS-2c (b2) das Stoppen gebaut hat:**
   entstanden ist der ENDPUNKT `POST /api/workflows/<id>/stoppen` (F-216), nicht
-  die Oberfläche. Es gibt keine Ansicht, kein Bedienelement und keine
-  Schrittliste; wer heute stoppen will, setzt den POST von Hand ab. Genauso
-  fehlt das Überspringen vollständig. AK8 gilt erst als erfüllt, wenn die
-  Ansicht steht — der Endpunkt ist ihre Vorbedingung, nicht ihr Ersatz.
+  die Oberfläche. AK8 gilt erst als erfüllt, wenn auch die BEDIENUNG steht —
+  der Endpunkt ist ihre Vorbedingung, nicht ihr Ersatz.
+
+  **Was WS-3a (10.09.2026) erbracht hat — die Ansicht, rein lesend:**
+  `public/leitstand/index.html` trägt einen Abschnitt „Workflows",
+  `public/leitstand/app.js` projiziert `GET /api/workflows` (Kopfdaten je
+  Workflow: `workflow_id`, Ziel, Fassung, Status, Cursor und — neu, F-221 (a)
+  — der Halt-`grund` als sichtbare Zeile) und `GET /api/workflows/<id>`
+  (Schrittliste in Planreihenfolge entlang der `nachfolger`-Kette, je Schritt
+  `schritt_id`, Rolle, Worker, Modell, `freigabe`/`freigabe_erteilt`, Status,
+  `lauf_id` als Verweis in den bestehenden Lauf-Abschnitt, `nachfolger`,
+  `zeitgrenze_ms`). Der Schritt, dessen `lauf_id` der Server über
+  `GET /api/laeufe/<laufId>` als `aktiv` meldet (D13), ist als laufend
+  markiert; eine Fassung, die der Server mit 409 ablehnt, erscheint als
+  benannter Zustand „Fassung ungültig" statt als halbe Schrittliste.
+  Serverseitig war dafür genau EINE Änderung nötig: `grund` in
+  `baueWorkflowKopfdaten`.
+
+  Neu gegatet: `scripts/check-f15-workflow-oberflaeche.mjs` (in
+  `npm run check`) prüft den Quelltext von `public/leitstand/` gegen diese
+  Zusagen, jedes Feld einzeln, dazu die Syntax von `app.js` und die
+  WS-3a-Scope-Grenze („app.js ruft keinen der drei Schreibendpunkte auf").
+  42 Zusagen einzeln rot kalibriert. **Wichtig für die nächste Sitzung:**
+  `public/leitstand/` war bis dahin von KEINEM Gate berührt —
+  `scripts/check-f12-leitstand-ansicht.mjs` prüft trotz seines Namens die
+  API-Projektionen hinter der Ansicht, nicht die Ansicht (F-251).
+
+  **Was WS-3b noch fehlt:** jede Bedienung. Kein Starten
+  (`POST /api/workflows/<id>/starten`), kein Freigeben/Ablehnen
+  (`.../freigabe`, F-222), kein Stoppen (`.../stoppen`, F-216), kein
+  Reparaturentwurf für eine neue Fassung. Der Einleitungssatz in
+  `index.html` („Ausnahme: das Startformular und die
+  Wiederaufnahme-Bedienung") stimmt nach WS-3a noch und ist in WS-3b zu
+  korrigieren; der Scope-Fall (e) des neuen Gates wird dort UMGEDREHT, nicht
+  gelöscht. Offen dazu: F-249 (das Detail-Panel pollt — mit einem Eingabefeld
+  ist das neu zu entscheiden).
+
+  **AK8 ist auch LESEND noch nicht erfüllt** (QA-Pass, F-253): Der Zustand,
+  in dem der Mensch gefragt ist, hat keine eigene Anzeige, solange er nicht
+  persistiert ist — ein fälliger `ZWINGEND`-Schritt auf einem `OFFEN`-Workflow
+  zeigt nur das Wort `ZWINGEND` in einer von zehn Spalten. Ebenso ist
+  `EMPFOHLEN` nicht als „hält nicht an" ausgewiesen (unter „Entschieden"
+  ausdrücklich nach WS-3 vertagt) und der Cursor-Schritt in der Tabelle nicht
+  markiert, obwohl AK8 „den aktiven Schritt" wörtlich nennt. F-253 gehört vor
+  die Bedienelemente, nicht dahinter. Weitere Anzeigelücken: F-254 (Zeiten,
+  Plandaten, Entscheidungsartefakte), F-255, F-256.
+
+  **Bekannte Lücke, keine Vergessenheit: „Überspringen" ist gestrichen**
+  *(Entscheidung Stefan, 10.09.2026)* — AK8 nannte ursprünglich auch
+  Überspringen als Bedienung. Der Schrittstatus `UEBERSPRUNGEN` bleibt im
+  Schema (`schemas/kontrollzustand-workflow-payload.schema.json`), wird aber
+  von niemandem gesetzt: weder Automat noch Endpunkt noch Oberfläche. Einen
+  Schritt für unnötig zu erklären ist eine PLANÄNDERUNG und läuft über eine
+  neue Fassung via `POST /api/workflows` — seit WS-2c (b3) wird eine solche
+  Änderung bezeugt, sobald sie eine Freigabepflicht abschwächt. Ein zweiter
+  Weg, einen ZWINGEND-Schritt loszuwerden, wäre genau die Umgehung, gegen die
+  (b3) gebaut ist.
 - **AK9** *(WS-1/WS-2a, erfüllt)* — Gate-Skript
   `scripts/check-f15-workflow.mjs`, Teil von `npm run check`.
 - **AK10** *(WS-4)* — Realer Nachweis über den Leitstand: ein

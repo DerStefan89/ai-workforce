@@ -2555,6 +2555,15 @@ async function starteTestserver(optionen) {
       if (typeof gestoppt?.daten?.grund !== 'string' || !gestoppt.daten.grund.includes('Gate: Stopp ohne laufenden Schritt.')) {
         befunde.push(`(b2) F-216: die Begründung des Menschen muss im Artefakt stehen, erhalten ${JSON.stringify(gestoppt?.daten?.grund)}`)
       }
+      // F15 WS-3a (löst F-221 (a)): der Grund muss auch in den KOPFDATEN stehen, nicht nur im
+      // Artefakt und im Detailendpunkt. Hier geprüft und nicht bei den übrigen Kopfdaten-Zusagen
+      // (Fall „GET-Liste und GET-Detail projizieren"), weil erst dieser Stopp einen Workflow mit
+      // real gesetztem grund hinterlässt — ein frisch angelegter trägt null, und null bewiese
+      // nichts über die Weiterführung des Feldes.
+      const kopfNachStopp = (await (await fetch(`${basisUrl}/api/workflows`)).json()).find((e) => e.workflowId === workflowId)
+      if (typeof kopfNachStopp?.grund !== 'string' || !kopfNachStopp.grund.includes('Gate: Stopp ohne laufenden Schritt.')) {
+        befunde.push(`(WS-3a) F-221 (a): GET /api/workflows muss 'grund' führen, erhalten ${JSON.stringify(kopfNachStopp)}`)
+      }
       if (gestartete !== 0) {
         befunde.push(`(b2) F-216: ein Stopp darf nichts starten, erhalten ${gestartete} Läufe`)
       }
