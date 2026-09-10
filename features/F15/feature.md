@@ -235,9 +235,16 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   Rotfall gegen die Selbstfreigabe über den Body, der Fall „`ZWINGEND` als
   erster Schritt ist freigebbar" und der Fall „gescheiterter Start NACH
   erteilter Freigabe endet als `KLAERUNG_ERFORDERLICH` statt zugemauert".
-- **AK8** *(WS-3)* — Der Leitstand zeigt Workflow, Schrittliste, Status
+- **AK8** *(WS-3, OFFEN)* — Der Leitstand zeigt Workflow, Schrittliste, Status
   je Schritt und den aktiven Schritt. Freigeben, Überspringen und
   Stoppen wirken über den bestehenden Entscheidungs-Schreibpfad.
+
+  **Ausdrücklich weiterhin offen, obwohl WS-2c (b2) das Stoppen gebaut hat:**
+  entstanden ist der ENDPUNKT `POST /api/workflows/<id>/stoppen` (F-216), nicht
+  die Oberfläche. Es gibt keine Ansicht, kein Bedienelement und keine
+  Schrittliste; wer heute stoppen will, setzt den POST von Hand ab. Genauso
+  fehlt das Überspringen vollständig. AK8 gilt erst als erfüllt, wenn die
+  Ansicht steht — der Endpunkt ist ihre Vorbedingung, nicht ihr Ersatz.
 - **AK9** *(WS-1/WS-2a, erfüllt)* — Gate-Skript
   `scripts/check-f15-workflow.mjs`, Teil von `npm run check`.
 - **AK10** *(WS-4)* — Realer Nachweis über den Leitstand: ein
@@ -463,6 +470,7 @@ fünf fest, damit der verbliebene nicht als Einzelfall untergeht.
 | `GESTOPPT` | `grenzen.max_schritte` erreicht | neue Fassung mit angehobener Grenze |
 | Schritt `LAEUFT` nach Serverneustart | Prozess starb mitten im Lauf | der nächste Startversuch schreibt `KLAERUNG_ERFORDERLICH` fest, dann neue Fassung |
 | `KLAERUNG_ERFORDERLICH` *(neu in WS-2c)* | die automatische Fortsetzung scheiterte vor dem Laufstart (Planfehler im Folgeschritt: unauflösbare `eingaben`-Referenz, unbekannter `werkzeugsatz`, Schreibfehler) | neue Fassung mit korrigiertem Plan |
+| `GESTOPPT` *(neu in WS-2c (b2))* | **der Mensch hat gestoppt** — `POST /api/workflows/<id>/stoppen` mit Pflichtbegründung. Zulässig aus `OFFEN`, `LAEUFT`, `WARTET_FREIGABE` und `KLAERUNG_ERFORDERLICH`; gehört ein aktiver Lauf zu diesem Workflow, wird er abgebrochen (`laufAbgebrochen: true`), sonst nicht (`false`) — beides 200 | neue Fassung derselben `workflow_id` — `GESTOPPT` steht nicht in `GESPERRTE_ERSETZUNGS_STATUS`. Real belegt: `check-f15-automat-real.mjs` (e) geht den Reparaturzug nach einem Stopp mitten im Schritt zu Ende |
 
 Der letzte Zustand ist der einzige, den WS-2c hinzugefügt hat, und er war in
 der ersten Fassung von Teil (a) eine Falle: die gescheiterte Fortsetzung
@@ -524,6 +532,115 @@ Ein weiterer Punkt, den WS-3 prüfen muss:
   in diesem Workstream für `schritte[].eingaben` angewandt wurde (ein Feld,
   das erklärt wird und wirkungslos bleibt, ist eine Zusage, auf die sich
   niemand verlassen kann).
+
+## Der Workflow-Stopp (WS-2c (b2), löst F-216)
+
+`POST /api/workflows/<id>/stoppen` mit `{ begruendung }`. Er ist die Bremse,
+die WS-2c gebraucht hat, seit die Kette selbsttätig fährt: `POST
+/api/laeufe/<laufId>/abbrechen` zielt auf eine `laufId`, die sich mit jedem
+Schritt ändert, antwortet zwischen zwei Schritten 404 und ist damit als
+Notbremse unbrauchbar; eine neue Fassung ist in `LAEUFT` gesperrt. Dieser
+Endpunkt zielt deshalb auf den **Workflow**.
+
+Abgebrochen wird **nur der eigene Lauf**: die Zugehörigkeit wird am Artefakt
+abgelesen (ein Schritt auf `LAEUFT`, dessen `lauf_id` die des aktiven Laufs
+ist), nicht aus `laufAktiv` geraten — D13 kennt genau einen aktiven
+Arbeitsstrang, aber nicht, wem er gehört. Real belegt in
+`check-f15-automat-real.mjs` (g): Workflow B stoppen, während der Kindprozess
+von Workflow A läuft — B ist gestoppt, A läuft unangetastet bis
+`ABGESCHLOSSEN` durch. Rot kalibriert durch Rückbau auf `laufAktiv` (F-239).
+
+Die Reihenfolge ist die Wirkung, nicht ihr Beiwerk: **zuerst** wird
+`GESTOPPT` / `aktiver_schritt_id: null` / `grund` geschrieben, **dann** der
+aktive Lauf abgebrochen — und nur, wenn er zu diesem Workflow gehört
+(abgelesen am Artefakt: ein Schritt auf `LAEUFT`, dessen `lauf_id` die des
+aktiven Laufs ist, nicht geraten aus `laufAktiv`). Gewartet wird auf nichts
+(Muster `/abbrechen`). Danach wird die Entscheidung bezeugt (siehe unten);
+die Antwort ist `200 { workflowId, laufAbgebrochen, bezeugt }` plus
+`artefaktId`/`versionSequenz`. Der abgebrochene Lauf endet Sekunden später, seine
+Nachbereitung lädt frisch, findet `GESTOPPT` vor, und der Schutz in
+`schreibeWorkflowFortschritt` hält: der Schritt bekommt seinen tatsächlichen
+Ausgang, der Workflow bleibt `GESTOPPT`, Schritt n+1 startet nicht. Real
+belegt in `check-f15-automat-real.mjs` (e)/(f), mit Attrappe und Riegel
+deterministisch in `check-f15-workflow.mjs`.
+
+**Grenze der Reihenfolge-Zusage, ausdrücklich benannt:** Schreiben und
+Abbrechen liegen heute in EINEM synchronen Block. Vertauscht man sie, ändert
+sich am beobachtbaren Ablauf nichts — der Rückruf des Laufs kann frühestens
+im nächsten Microtask feuern. Die Reihenfolge ist damit verhaltensmäßig nicht
+ansteuerbar (dieselbe Lage wie bei der AK6b-Invariante, F-212) und wird als
+Quelltextzusage geprüft: der Bereich `STOPP-REIHENFOLGE` in
+`scripts/leitstand-server.mjs`, mit Selbsttest. Rot kalibriert durch
+Vertauschen der beiden Blöcke.
+
+**Die Bezeugung (F-233, Challenger-Entscheidung 10.09.2026).** Ein vom
+Menschen ausgelöster Stopp ist dieselbe Klasse wie eine abgelehnte Freigabe
+und bekommt dieselbe Spur: Kernartefakt
+`entscheidung-workflow-<workflowId>-stopp`, `erzeuger: 'mensch'`,
+`ergebnis: 'GESTOPPT'`, Pflichtbegründung, Zeitstempel und ein
+`eingaben`-Verweis auf die Workflow-Version, die der Mensch beim Stoppen vor
+sich hatte. Ohne sie stünde die Begründung nur im Feld `grund` — und die
+nächste eingereichte Fassung überschreibt den; `GESTOPPT` ist ausdrücklich
+ersetzbar, das ist der Reparaturzug. Der Stopp wäre damit die einzige
+Menschenentscheidung im System ohne Bezeugung gewesen.
+
+Zwei Punkte sind bewusst und benannt:
+
+- **Reihenfolge gegenüber dem Freigabe-Endpunkt.** D2 ist eingehalten: alle
+  sechs Prüfungen des Stopp-Endpunkts liegen VOR dem ersten Schreibvorgang.
+  Was abweicht, ist die Stellung des Entscheidungsartefakts — beim
+  Freigabe-Endpunkt entsteht es vor der Zustandsänderung, hier danach: nach
+  dem Schreiben und nach dem Abbruch. Der Stopp muss zuerst auf der Platte
+  stehen (daran hängt die ganze F-216-Wirkung), und der Abbruch darf nicht auf
+  Artefakt-I/O warten. Die Reihenfolge ist: stoppen, abbrechen, bezeugen.
+- **Kein Rückrollen.** Scheitert das Schreiben des Artefakts, bleibt der Stopp
+  gültig: er ist die Wirkung, die der Mensch wollte, und ein Workflow, der
+  nach einem 500 doch weiterliefe, wäre der schlimmere Ausgang. Stattdessen
+  Startfehlereintrag und eine 200 mit `bezeugt: false` samt Grund — eine
+  ehrliche Teilmeldung statt eines stillen Verlusts. **Dieser Zweig ist über
+  die HTTP-Oberfläche nicht ansteuerbar und deshalb unbelegt** (F-238).
+
+**Zwei Vorsorgen im realen Gate (F-231).** Die Rot-Kalibrierung zu F-216 hat
+eine Lücke im Gate selbst aufgedeckt: `check-f15-automat-real.mjs` endet über
+`process.exitCode`, und ein überlebender Kindprozess — genau der Fall, gegen
+den Block (e) gebaut ist — hielt die Event-Loop offen. Das Gate meldete
+nichts, es lief nicht zu Ende, und `npm run check` blieb stehen. Seither: ein
+`unref()`-Wachhund (fünf Minuten gegen zehn Sekunden reale Laufzeit) beendet
+die Datei MIT Befund und Exit 1, und die Blöcke mit hängendem Kindprozess
+brechen einen noch fliegenden Lauf in ihrer Aufräumroutine aktiv ab. Beide
+sind einzeln rot kalibriert.
+
+Zwei Härtungen gehören in denselben Zuschnitt, weil erst der Stopp sie
+erreichbar macht:
+
+- **F-227 (Identitätsprüfung, gelöst).** Die Nachbereitung eines Laufs
+  schreibt nur noch, wenn der geladene Schritt die `lauf_id` GENAU DIESES
+  Laufs trägt. Der Weg dorthin ist seit dem Stopp offen: stoppen (`GESTOPPT`
+  ist ersetzbar), neue Fassung einreichen, während der alte Lauf noch fliegt —
+  die neue Fassung steht auf `OFFEN`, der `GESTOPPT`-Schutz greift also nicht,
+  weil er den ZUSTAND liest und nicht die IDENTITÄT. Ohne die Prüfung bekommt
+  ein fremder Plan den Ausgang eines Laufs, den niemand für ihn gestartet hat,
+  und die Auto-Fortsetzung fährt in ihm weiter — real reproduziert (Rot-Fall:
+  Prüfung entfernt, der fremde Schritt steht auf `ERFOLGREICH`, ein zweiter
+  Lauf startet). Gesetzt wird sie NUR von der Nachbereitung; Freigabe,
+  Ablehnung, Stopp und beide Heilungen adressieren keinen bestimmten Lauf und
+  sollen auf dem Stand wirken, der jetzt daliegt.
+- **F-228 (der Schutz meldet sich, gelöst).** `schreibeWorkflowFortschritt`
+  gibt im eingefrorenen Fall `{ ok: true, eingefroren: true }` zurück — EINE
+  Form, kein zweiter Rückgabetyp. `starteWorkflowSchritt` bricht daraufhin ab,
+  ohne zu starten und ohne D13 zu belegen, und setzt den gerade geschriebenen
+  Schrittstand zurück (`OFFEN`, `lauf_id: null`) — es ist nichts gelaufen,
+  also steht auch nichts am Schritt. Alle acht Aufrufstellen lesen das Feld.
+  **Diese Zusage ist Tiefenverteidigung und hat bewusst keinen
+  Verhaltens-Rotfall:** es führt kein Weg dorthin, weil alle drei Aufrufer des
+  Startpfads vorher `ermittleNaechstenSchritt` fragen und `GESTOPPT` dessen
+  Regel 0 über `haltGestoppt` verlässt, nie über `'starte'`; der Stopp
+  schreibt sein `GESTOPPT` synchron, es gibt also auch kein Fenster dazwischen.
+  Die Aussage von F-228 („der Stopp aus (b2) macht das erreichbar") trifft
+  deshalb so nicht zu — geprüft wird die Behandlung im Quelltext (Zählung der
+  Aufrufstellen gegen die Lesestellen), rot kalibriert durch Entfernen der
+  Behandlung. Als ERZWUNGENE Grenze wird sie nicht behauptet
+  (`ARCHITECTURE.md` §8).
 
 Zusammenhang mit **AK7**: dessen zweiter Satz — die erteilte Freigabe wird
 als Entscheidungsartefakt festgehalten und ist die einzige Auflösung — war

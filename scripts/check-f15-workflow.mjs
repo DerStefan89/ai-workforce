@@ -2371,8 +2371,312 @@ async function starteTestserver(optionen) {
     }
   }
 
+  // ─── (b2) POST /api/workflows/<id>/stoppen: Vertragsform (F-216) ────────────────
+  //
+  // Die Ablehnungsgründe zuerst. Ohne sie wäre „stoppt" durch ein „stoppt immer"
+  // erfüllbar — und ein Endpunkt, der jeden Körper annimmt, stoppt irgendwann den
+  // falschen Workflow oder legt einen Stopp ohne Begründung ab.
+  const befundeVorStopp = befunde.length
+  {
+    let gestartete = 0
+    const fuehreAufgabeDurchFn = async () => {
+      gestartete += 1
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    /** @param zielId - roher Pfadabschnitt @param koerper - Body-Text @returns die Antwort */
+    const stoppe = (zielId, koerper) => fetch(`${basisUrl}/api/workflows/${zielId}/stoppen`, { method: 'POST', body: koerper })
+    try {
+      const workflowId = `ws2c-stopp-vertrag-${randomUUID()}`
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      const gueltigerKoerper = JSON.stringify({ begruendung: 'Gate: Stopp.' })
+
+      // 400/404/409 wortgleich zum Startendpunkt (Auflage aus dem Bauauftrag).
+      const faelle = [
+        ['unzulässige Zeichen in workflowId', '..%2Fausbruch', gueltigerKoerper, 400],
+        ['kaputte Prozentkodierung', 'kaputt%ZZ', gueltigerKoerper, 400],
+        ['unbekannter Workflow', `gibt-es-nicht-${randomUUID()}`, gueltigerKoerper, 404],
+        ['Body ist kein JSON', encodeURIComponent(workflowId), '{kein json', 400],
+        // Die vier Körper, an denen (b1) den Prozess riss, bevor der Feldzugriff abgesichert war.
+        ['Body null', encodeURIComponent(workflowId), 'null', 400],
+        ['Body Array', encodeURIComponent(workflowId), '[]', 400],
+        ['begruendung fehlt', encodeURIComponent(workflowId), '{}', 400],
+        ['begruendung leer', encodeURIComponent(workflowId), JSON.stringify({ begruendung: '   ' }), 400],
+      ]
+      for (const [name, zielId, koerper, erwartet] of faelle) {
+        const antwort = await stoppe(zielId, koerper)
+        if (antwort.status !== erwartet) {
+          befunde.push(`(b2) F-216: Stopp-Fall '${name}' erwartet ${erwartet}, erhalten ${antwort.status} (${await antwort.text()})`)
+        }
+      }
+
+      // Der Server lebt danach — der Prozesstod aus (b1) wiederholt sich nicht.
+      const lebt = await fetch(`${basisUrl}/api/laeufe`)
+      if (lebt.status !== 200) {
+        befunde.push(`(b2) F-216: nach den Randfällen muss der Server weiterleben, GET /api/laeufe erhielt ${lebt.status}`)
+      }
+      // Und NICHTS davon hat geschrieben.
+      const unberuehrt = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (unberuehrt?.versionSequenz !== 1 || unberuehrt?.daten?.status !== 'OFFEN') {
+        befunde.push(`(b2) F-216: ein abgelehnter Stopp darf nichts schreiben, erhalten ${JSON.stringify({ v: unberuehrt?.versionSequenz, status: unberuehrt?.daten?.status })}`)
+      }
+
+      // Grünfall OHNE aktiven Lauf: 200, laufAbgebrochen false, GESTOPPT mit Begründung.
+      const ohneLauf = await stoppe(encodeURIComponent(workflowId), JSON.stringify({ begruendung: 'Gate: Stopp ohne laufenden Schritt.' }))
+      const ohneLaufKoerper = await ohneLauf.json()
+      if (ohneLauf.status !== 200 || ohneLaufKoerper.workflowId !== workflowId || ohneLaufKoerper.laufAbgebrochen !== false) {
+        befunde.push(`(b2) F-216: ein Stopp ohne aktiven Lauf erwartet 200 mit laufAbgebrochen:false, erhalten ${ohneLauf.status} (${JSON.stringify(ohneLaufKoerper)})`)
+      }
+      // F-233: auch ein Stopp ohne laufenden Schritt ist eine Menschenentscheidung und wird
+      // bezeugt. Der Realcheck (e) prüft denselben Vertrag am laufenden Schritt; hier steht
+      // er, weil ein Fehler dann in Sekunden auffällt und nicht erst im langsamen Gate.
+      const bezeugung = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-stopp`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (ohneLaufKoerper.bezeugt !== true || bezeugung === null) {
+        befunde.push(`(b2) F-233: der Stopp muss ein Entscheidungsartefakt hinterlassen, erhalten ${JSON.stringify(ohneLaufKoerper)} / ${bezeugung === null ? 'kein Artefakt' : 'ok'}`)
+      } else if (bezeugung.daten?.ergebnis !== 'GESTOPPT' || !String(bezeugung.daten?.begruendung).includes('Gate: Stopp ohne laufenden Schritt.')) {
+        befunde.push(`(b2) F-233: das Entscheidungsartefakt trägt nicht Ergebnis und Begründung, erhalten ${JSON.stringify(bezeugung.daten)}`)
+      }
+      const gestoppt = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (gestoppt?.daten?.status !== 'GESTOPPT' || gestoppt?.daten?.aktiver_schritt_id !== null) {
+        befunde.push(`(b2) F-216: nach dem Stopp erwartet GESTOPPT mit Cursor null, erhalten ${JSON.stringify({ status: gestoppt?.daten?.status, cursor: gestoppt?.daten?.aktiver_schritt_id })}`)
+      }
+      if (typeof gestoppt?.daten?.grund !== 'string' || !gestoppt.daten.grund.includes('Gate: Stopp ohne laufenden Schritt.')) {
+        befunde.push(`(b2) F-216: die Begründung des Menschen muss im Artefakt stehen, erhalten ${JSON.stringify(gestoppt?.daten?.grund)}`)
+      }
+      if (gestartete !== 0) {
+        befunde.push(`(b2) F-216: ein Stopp darf nichts starten, erhalten ${gestartete} Läufe`)
+      }
+
+      // Nichts mehr zu stoppen: GESTOPPT und ABGESCHLOSSEN enden als 409.
+      const zweimal = await stoppe(encodeURIComponent(workflowId), gueltigerKoerper)
+      if (zweimal.status !== 409) {
+        befunde.push(`(b2) F-216: ein zweiter Stopp auf GESTOPPT erwartet 409, erhalten ${zweimal.status} (${await zweimal.text()})`)
+      }
+      const abgeschlossenId = `ws2c-stopp-fertig-${randomUUID()}`
+      registriereWorkflow(
+        gateWorkflow([gelaufen(null)], { workflow_id: abgeschlossenId, auftrag_id: auftragId, status: 'ABGESCHLOSSEN', aktiver_schritt_id: null }),
+        leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+        { basisVerzeichnis, schreiber: () => {} }
+      )
+      const fertig = await stoppe(encodeURIComponent(abgeschlossenId), gueltigerKoerper)
+      if (fertig.status !== 409) {
+        befunde.push(`(b2) F-216: ein Stopp auf ABGESCHLOSSEN erwartet 409, erhalten ${fertig.status} (${await fertig.text()})`)
+      }
+
+      // Die vier Werte aus STOPPBARE_WORKFLOW_STATUS vollständig geübt (QA-Pass 10.09.2026,
+      // Fehler 6): OFFEN steht oben im Grünfall, LAEUFT im Block „Stopp mitten im Schritt".
+      // Fehlten bis hierher WARTET_FREIGABE und KLAERUNG_ERFORDERLICH — beide fielen aus der
+      // Menge, ohne dass etwas rot geworden wäre.
+      //
+      // WARTET_FREIGABE ist dabei der governance-relevante: es ist der einzige Zustand, in dem
+      // der Stopp die Ersetzungssperre legitim aushebelt. Wer nicht entscheiden, sondern
+      // anhalten will, kommt sonst nicht heraus — eine neue Fassung ist dort gesperrt (und das
+      // zu Recht, sie wäre eine Freigabe-Umgehung), der Stopp dagegen ist selbst eine
+      // festgehaltene Menschenentscheidung und keine Umgehung.
+      //
+      // KEINE eigene Rot-Kalibrierung: das ist Abdeckung derselben Zusage über weitere
+      // Eingaben, keine neue Zusage. Der Rot-Fall der Zusage selbst liegt beim Grünfall oben
+      // (ohne Schreibvorgang bleibt versionSequenz 1).
+      for (const status of ['WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH']) {
+        const haltId = `ws2c-stopp-${status.toLowerCase()}-${randomUUID()}`
+        registriereWorkflow(
+          gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], ...(status === 'WARTET_FREIGABE' ? { freigabe: 'ZWINGEND' } : {}) })], {
+            workflow_id: haltId,
+            auftrag_id: auftragId,
+            status,
+            aktiver_schritt_id: 'schritt-1',
+          }),
+          leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+          { basisVerzeichnis, schreiber: () => {} }
+        )
+        const antwort = await stoppe(encodeURIComponent(haltId), JSON.stringify({ begruendung: `Gate: Stopp aus ${status}.` }))
+        const koerper = await antwort.json().catch(() => ({}))
+        if (antwort.status !== 200 || koerper.laufAbgebrochen !== false || koerper.bezeugt !== true) {
+          befunde.push(`(b2) F-216: ein Stopp aus '${status}' erwartet 200 mit laufAbgebrochen:false und bezeugt:true, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+        }
+        const stand = ladeArtefaktVersion(`workflow-${haltId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+        if (stand?.daten?.status !== 'GESTOPPT' || stand?.daten?.aktiver_schritt_id !== null || !String(stand?.daten?.grund).includes(`Gate: Stopp aus ${status}.`)) {
+          befunde.push(
+            `(b2) F-216: nach einem Stopp aus '${status}' erwartet GESTOPPT mit Cursor null und der Begründung im grund, erhalten ${JSON.stringify({ status: stand?.daten?.status, cursor: stand?.daten?.aktiver_schritt_id, grund: stand?.daten?.grund })}`
+          )
+        }
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (b2) Stopp MITTEN im Schritt: der Lauf wird abgebrochen, GESTOPPT hält ──────
+  //
+  // Der Ablauf, um den es überhaupt geht. Der Lauf hängt an einem Riegel, den erst
+  // dieser Block löst — nicht am Abbruchsignal: so ist die Reihenfolge (stoppen,
+  // dann Laufende, dann Nachbereitung) deterministisch und nicht dem Zufall
+  // überlassen. Dass das Abbruchsignal real ausgelöst wird, prüft der Block über
+  // laufOptionen.abbruchSignal.aborted; dass ein echter Kindprozess daran wirklich
+  // stirbt, ist Sache von check-f15-automat-real.mjs.
+  {
+    const workflowId = `ws2c-stopp-laufend-${randomUUID()}`
+    let riegelLoesen
+    const riegel = new Promise((resolve) => {
+      riegelLoesen = resolve
+    })
+    const gestartete = []
+    let signalGesehen = null
+    const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, _eingaben, laufOptionen) => {
+      gestartete.push(laufId)
+      if (gestartete.length === 1) {
+        await riegel
+        signalGesehen = laufOptionen.abbruchSignal?.aborted === true
+        // Ein abgebrochener Lauf endet nicht ERFOLGREICH — hier als klassifiziertes
+        // FEHLGESCHLAGEN, also MIT Ausgang und ohne Heilung (es ist etwas gelaufen).
+        return { ok: true, klassifikation: { ergebnis: 'FEHLGESCHLAGEN' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } }
+      }
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: [] }),
+      ])
+      const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (start.status !== 202) {
+        befunde.push(`(b2) F-216: der Startaufruf erwartet 202, erhalten ${start.status} (${await start.text()})`)
+      }
+
+      const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/stoppen`, {
+        method: 'POST',
+        body: JSON.stringify({ begruendung: 'Gate: Stopp mitten im Schritt.' }),
+      })
+      const koerper = await antwort.json()
+      if (antwort.status !== 200 || koerper.laufAbgebrochen !== true) {
+        befunde.push(`(b2) F-216: ein Stopp mit laufendem, zugehörigem Schritt erwartet 200 mit laufAbgebrochen:true, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+      // Der Stopp steht auf der Platte, BEVOR der Lauf endet — das ist die Reihenfolge,
+      // an der die ganze Wirkung hängt.
+      const waehrendDesLaufs = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (waehrendDesLaufs?.daten?.status !== 'GESTOPPT') {
+        befunde.push(`(b2) F-216: der Stopp muss geschrieben sein, BEVOR der Lauf endet, erhalten ${JSON.stringify(waehrendDesLaufs?.daten?.status)}`)
+      }
+      // Der laufende Schritt bleibt bis zu seiner Nachbereitung unangetastet: sein Ausgang
+      // steht noch nicht fest, und ihn zu raten wäre eine Lüge auf der Platte.
+      if (waehrendDesLaufs?.daten?.schritte?.[0]?.status !== 'LAEUFT') {
+        befunde.push(`(b2) F-216: der Stopp darf den laufenden Schritt nicht anfassen, erhalten ${JSON.stringify(waehrendDesLaufs?.daten?.schritte?.[0])}`)
+      }
+
+      riegelLoesen()
+      await new Promise((resolve) => setTimeout(resolve, 80))
+
+      if (signalGesehen !== true) {
+        befunde.push(`(b2) F-216: der Stopp muss das reale Abbruchsignal des zugehörigen Laufs auslösen, erhalten ${JSON.stringify(signalGesehen)}`)
+      }
+      const danach = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (danach?.daten?.status !== 'GESTOPPT') {
+        befunde.push(`(b2) F-216: GESTOPPT muss die Nachbereitung überleben, erhalten ${JSON.stringify({ status: danach?.daten?.status, grund: danach?.daten?.grund })}`)
+      }
+      if (!String(danach?.daten?.grund).includes('Gate: Stopp mitten im Schritt.')) {
+        befunde.push(`(b2) F-216: die Begründung des Menschen darf nicht von der Nachbereitung überschrieben werden, erhalten ${JSON.stringify(danach?.daten?.grund)}`)
+      }
+      // Der Schritt bekommt seinen TATSÄCHLICHEN Ausgang — ein Stopp verschweigt nicht,
+      // was gelaufen ist, er verhindert nur, dass daraus weitergefahren wird.
+      if (danach?.daten?.schritte?.[0]?.status !== 'FEHLGESCHLAGEN') {
+        befunde.push(`(b2) F-216: der abgebrochene Schritt muss seinen tatsächlichen Ausgang bekommen, erhalten ${JSON.stringify(danach?.daten?.schritte?.[0])}`)
+      }
+      if (danach?.daten?.schritte?.[1]?.status !== 'OFFEN' || danach?.daten?.schritte?.[1]?.lauf_id !== null || gestartete.length !== 1) {
+        befunde.push(
+          `(b2) F-216: nach einem Stopp darf Schritt n+1 NICHT starten, erhalten ${JSON.stringify({ s2: danach?.daten?.schritte?.[1], laeufe: gestartete.length })}`
+        )
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (b2) F-227: die Nachbereitung stempelt nicht in eine fremde Fassung ─────────
+  //
+  // Erst der Stopp macht das erreichbar, und deshalb steht die Prüfung hier: stoppen
+  // (GESTOPPT), neue Fassung einreichen (in GESTOPPT erlaubt) — während der alte Lauf
+  // noch fliegt. Die neue Fassung steht auf OFFEN, der GESTOPPT-Schutz greift also
+  // nicht mehr: er liest den Zustand, nicht die Identität. Ohne die Identitätsprüfung
+  // bekäme dieser fremde Plan den Ausgang eines Laufs, den niemand für ihn gestartet
+  // hat — und die Auto-Fortsetzung führe in ihm weiter.
+  {
+    const workflowId = `ws2c-f227-${randomUUID()}`
+    let riegelLoesen
+    const riegel = new Promise((resolve) => {
+      riegelLoesen = resolve
+    })
+    const gestartete = []
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      if (gestartete.length === 1) await riegel
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: [] }),
+      ])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/stoppen`, {
+        method: 'POST',
+        body: JSON.stringify({ begruendung: 'Gate: Stopp vor der Neufassung.' }),
+      })
+      // Die neue Fassung: derselbe Workflow, frische Schritte, KEINE lauf_id. Genau der
+      // Reparaturzug, den die Halte-Zustands-Tabelle für GESTOPPT vorsieht.
+      const neueFassung = await fetch(`${basisUrl}/api/workflows`, {
+        method: 'POST',
+        body: JSON.stringify(
+          gateWorkflow([gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }), gateSchritt('schritt-2', null, { eingaben: [] })], {
+            workflow_id: workflowId,
+            auftrag_id: auftragId,
+            ziel: 'Korrigierte Fassung nach dem Stopp.',
+          })
+        ),
+      })
+      if (neueFassung.status !== 201) {
+        befunde.push(`(b2) F-227: nach einem Stopp muss eine neue Fassung angenommen werden, erhalten ${neueFassung.status} (${await neueFassung.text()})`)
+      }
+
+      riegelLoesen()
+      await new Promise((resolve) => setTimeout(resolve, 80))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (stand?.daten?.ziel !== 'Korrigierte Fassung nach dem Stopp.') {
+        befunde.push(`(b2) F-227: die neue Fassung muss die jüngste bleiben, erhalten ${JSON.stringify(stand?.daten?.ziel)}`)
+      }
+      // Der eigentliche Befund: der fremde Plan ist unberührt. Kein Ausgang, keine lauf_id.
+      const schritt1 = stand?.daten?.schritte?.[0]
+      if (schritt1?.status !== 'OFFEN' || schritt1?.lauf_id !== null) {
+        befunde.push(`(b2) F-227: der Ausgang eines Laufs darf NICHT in eine fremde Fassung geschrieben werden, erhalten ${JSON.stringify(schritt1)}`)
+      }
+      if (stand?.daten?.status !== 'OFFEN' || gestartete.length !== 1) {
+        befunde.push(
+          `(b2) F-227: auf einer fremden Fassung wird nichts fortgesetzt, erhalten ${JSON.stringify({ status: stand?.daten?.status, laeufe: gestartete.length })}`
+        )
+      }
+      // Und der Vorfall ist nicht still: er steht in der Liste, in der der Mensch nachsieht.
+      const gemeldet = await (await fetch(`${basisUrl}/api/startfehler`)).json().catch(() => [])
+      if (!gemeldet.some((eintrag) => String(eintrag?.fehler).includes('F-227'))) {
+        befunde.push(`(b2) F-227: der abgewiesene Schreibvorgang muss als Startfehler gemeldet werden, erhalten ${JSON.stringify(gemeldet)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  if (befunde.length === befundeVorStopp) {
+    console.log(
+      '✓ (b2) POST /api/workflows/<id>/stoppen (F-216): 400 (Zeichenregel, kaputte Kodierung, Body null/Array/kein JSON, fehlende oder leere begruendung), 404 und 409 (GESTOPPT, ABGESCHLOSSEN) halten an, ohne zu schreiben — der Server lebt danach. Ein Stopp ohne aktiven Lauf antwortet 200/laufAbgebrochen:false, und zwar aus allen vier stoppbaren Zuständen (OFFEN, LAEUFT, WARTET_FREIGABE, KLAERUNG_ERFORDERLICH); ein Stopp MITTEN im Schritt schreibt GESTOPPT VOR dem Laufende, löst das reale Abbruchsignal aus, überlebt die Nachbereitung samt Begründung, gibt dem Schritt seinen tatsächlichen Ausgang und startet Schritt n+1 NICHT. F-227: der Ausgang eines fliegenden Laufs landet nicht in einer nach dem Stopp eingereichten Fassung. F-233: jeder Stopp hinterlässt ein Entscheidungsartefakt.'
+    )
+  }
+
   rmSync(basisVerzeichnis, { recursive: true, force: true })
-  if (befunde.length === befundeVorStart) {
+  // Gegen den Stand VOR den (b2)-Blöcken geprüft, nicht gegen die Endsumme: sonst
+  // unterdrückte ein Stopp-Befund die Erfolgsmeldung der WS-2b/(b1)-Fälle, obwohl die
+  // bestanden haben (Muster check-f15-automat-real.mjs).
+  if (befundeVorStopp === befundeVorStart) {
     console.log('✓ POST /api/workflows/<id>/starten: ein Schritt startet real (202, LAEUFT + lauf_id, Eingaben nach (A)/(B)); 404, 409 (D13), 409 (nicht startbar), 400 (Eingabe-Artefakt fehlt), 400 (ausbrechende auftrag_id, auch als Bestandsartefakt) und 400 (kaputte Prozentkodierung) halten an — der Server lebt danach. Der Automat setzt nach einem erfolgreichen Schritt selbst fort (AK6b: EIN Aufruf, zwei Läufe, danach ist D13 wieder belegt; ZWINGEND hält bei WARTET_FREIGABE, mit persistiertem grund), eine Ablehnung OHNE Checkpoint heilt die lauf_id, eine MIT Wirkungsmarke nicht, und eine neue Fassung ist in LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN gesperrt, in OFFEN/KLAERUNG_ERFORDERLICH/GESTOPPT erlaubt (Reparaturzug Tippfehler -> Heilung -> Korrektur -> Start belegt); ein stale LAEUFT wird als KLAERUNG_ERFORDERLICH festgeschrieben, ohne den Schritt anzufassen; ein eingereichter Datensatz darf sich nicht selbst aussperren (400), und ein ungültiger Bestand bleibt in jedem Status ersetzbar. AK7 (b1): POST .../freigabe löst den ZWINGEND-Halt real auf (202, freigabe_erteilt am Schritt, Entscheidungsartefakt, Kette läuft zu Ende) — auch ohne persistiertes WARTET_FREIGABE, also beim ERSTEN Schritt eines Workflows; ABGELEHNT stoppt und lässt den Reparaturpfad offen; 404/400 (Body, Zeichenregel für workflowId UND schrittId)/409 (Stale-schrittId, keine offene Freigabefrage, nicht dispatchbarer Schritt, GESTOPPT, D13) halten an, ohne etwas zu schreiben, und der Server lebt danach; ein gescheiterter Start NACH erteilter Freigabe endet als KLAERUNG_ERFORDERLICH statt zugemauert; und weder eine Nachbereitung noch eine Heilung überschreibt ein bestehendes GESTOPPT.')
   }
 }
@@ -2442,6 +2746,83 @@ async function starteTestserver(optionen) {
     )
   } else {
     console.log('✓ AK6b/AK7: genau drei Aufrufstellen des Automaten-Startpfads (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt) — kein vierter, ungeschützter Startpfad.')
+  }
+
+  // ─── Jede Schreibstelle liest den GESTOPPT-Schutz (F15 WS-2c (b2), F-228) ──────
+  //
+  // Der Schutz friert die Workflow-Ebene ein und gibt trotzdem ok:true zurück. Wer nur
+  // ok liest, hält seinen Wunsch für geschrieben, obwohl auf der Platte etwas anderes
+  // steht — genau daran startete starteWorkflowSchritt einen Lauf unter einem
+  // gestoppten Workflow. Seit (b2) meldet die Funktion den Fall über ein zusätzliches
+  // Feld, und JEDE Aufrufstelle muss es lesen.
+  //
+  // Warum als Zählung und nicht als Verhaltensfall: es führt kein Verhaltensweg dorthin.
+  // Alle drei Aufrufer des Startpfads fragen vorher ermittleNaechstenSchritt, und ein
+  // GESTOPPT verlässt dessen Regel 0 über haltGestoppt, nie über 'starte'; der Stopp aus
+  // (b2) schreibt sein GESTOPPT synchron, es gibt also auch kein Fenster dazwischen. Die
+  // Zusage ist damit Tiefenverteidigung und wird als solche geprüft — im Quelltext, wie
+  // die AK6b-Invariante darunter, und ausdrücklich NICHT als erzwungene Grenze behauptet
+  // (ARCHITECTURE.md §8).
+  //
+  // Zusammengesetzte Muster, damit dieses Gate den gesuchten Text nicht selbst enthält.
+  //
+  // WARNUNG für spätere Umbauten (Reviewer-Pass 10.09.2026), dieselbe wie bei der
+  // VERBOTEN-Liste unten: beide Zählungen sehen auch KOMMENTARE. Ein neuer Kommentar, der
+  // den Funktionsnamen mit öffnender Klammer oder das eingefroren-Feld mit Punkt nennt,
+  // macht dieses Gate ohne realen Anlass rot. Das ist die sichere Richtung — aber wer hier
+  // landet, weil eine Zahl um eins danebenliegt, soll zuerst nachsehen, ob der Treffer
+  // überhaupt Code ist.
+  const schreiberMuster = new RegExp(`${'schreibeWorkflow'}${'Fortschritt'}\\(`, 'g')
+  const schreiberTreffer = (quelltext.match(schreiberMuster) ?? []).length
+  const gelesenMuster = new RegExp(`\\.${'eingefroren'}`, 'g')
+  const gelesenTreffer = (quelltext.match(gelesenMuster) ?? []).length
+  // 9 = eine Definition + acht Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
+  // Nachbereitung, Stale-Heilung, Ablehnung, Freigabe, Stopp). 8 = je Aufrufstelle EIN
+  // Lesen des Feldes. Kommen beide Zahlen auseinander, hat ein Aufrufer das Feld
+  // vergessen — oder ein neuer Aufrufer ist dazugekommen, ohne es zu behandeln.
+  if (schreiberTreffer !== 9 || gelesenTreffer !== 8) {
+    befunde.push(
+      `F-228: erwartet 9 Vorkommen des Workflow-Schreibers (1 Definition + 8 Aufrufe) und 8 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
+    )
+  } else {
+    console.log('✓ F-228: alle acht Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
+  }
+
+  // ─── Im Stopp wird ZUERST geschrieben, DANN abgebrochen (F-216, (b2)) ─────────
+  //
+  // Die Begründung steht am Endpunkt: der abgebrochene Lauf endet Sekunden später, und
+  // seine Nachbereitung darf keinen Workflow vorfinden, der noch nicht gestoppt ist.
+  //
+  // Warum als Quelltextprüfung und nicht als Verhaltensfall (dieselbe Lage wie bei der
+  // AK6b-Invariante darunter): beide Schritte liegen heute in EINEM synchronen Block.
+  // Vertauscht man sie, ändert sich am beobachtbaren Ablauf nichts — der Rückruf des
+  // Laufs kann frühestens im nächsten Microtask feuern, die neue Version ist da längst
+  // geschrieben. Verhaltensmäßig ist der Fehler also nicht ansteuerbar; er wird es in dem
+  // Moment, in dem zwischen Abbruch und Schreiben je ein Kontrollflusswechsel gerät. Die
+  // Reihenfolge ist deshalb eine Eigenschaft des Quelltextes und wird als solche geprüft
+  // — nachweisbar rot, wenn man die beiden Blöcke tauscht.
+  const marke = 'STOPP-REIHENFOLGE'
+  /** @param text - zu prüfender Quelltext @returns true, wenn im markierten Bereich zuerst geschrieben und dann abgebrochen wird */
+  function stopptInRichtigerReihenfolge(text) {
+    const start = text.indexOf(`${marke}: START`)
+    const ende = text.indexOf(`${marke}: ENDE`, start)
+    if (start === -1 || ende === -1) return false
+    const bereich = text.slice(start, ende)
+    const schreibIndex = bereich.indexOf(`${'schreibeWorkflow'}${'Fortschritt'}(`)
+    const abbruchIndex = bereich.indexOf(`.${'abort'}()`)
+    return schreibIndex !== -1 && abbruchIndex !== -1 && schreibIndex < abbruchIndex
+  }
+  if (!stopptInRichtigerReihenfolge(quelltext)) {
+    befunde.push(
+      `F-216: im mit ${marke} markierten Bereich von scripts/leitstand-server.mjs muss der GESTOPPT-Schreibvorgang VOR dem Abbruch des aktiven Laufs stehen — sonst trifft die Nachbereitung des abgebrochenen Laufs einen noch nicht gestoppten Workflow`
+    )
+  } else {
+    console.log('✓ F-216: der Stopp schreibt GESTOPPT, bevor er den aktiven Lauf abbricht (Selbsttest erkennt die vertauschte Reihenfolge).')
+  }
+  // Selbsttest (Muster AK6b unten, F-211): die vertauschte Reihenfolge muss real auffallen.
+  const vertauscht = [`${marke}: START`, '  laufAktivAbortController.abort()', `  const x = ${'schreibeWorkflow'}${'Fortschritt'}(a, b)`, `${marke}: ENDE`].join('\n')
+  if (stopptInRichtigerReihenfolge(vertauscht)) {
+    befunde.push(`F-216-Selbsttest: die vertauschte Reihenfolge (erst abbrechen, dann schreiben) wird NICHT erkannt — die Prüfung ist wirkungslos`)
   }
 }
 

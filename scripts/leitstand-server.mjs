@@ -298,6 +298,50 @@
  * aus erzeugeRequestHandler oder einem Request-Handler heraus: parallele,
  * voneinander unabhängige Serverinstanzen in Tests (scripts/check-f10-
  * leitstand.mjs, check-f13/f14) müssen möglich bleiben.
+ *
+ * F15 WS-2c (b2): POST /api/workflows/<id>/stoppen (löst F-216) — die Bremse
+ * für eine laufende automatische Kette. Sie zielt auf den WORKFLOW, nicht auf
+ * einen Lauf: POST /api/laeufe/<laufId>/abbrechen trifft eine laufId, die
+ * sich mit jedem Schritt ändert, und war zwischen zwei Schritten gar nicht
+ * bedienbar. Der Endpunkt verlangt eine Pflichtbegründung, setzt ZUERST
+ * status GESTOPPT / aktiver_schritt_id null / grund und bricht ERST DANN den
+ * aktiven Lauf ab, falls er zu diesem Workflow gehört (abgelesen am
+ * Artefakt: ein Schritt auf LAEUFT, dessen lauf_id die des aktiven Laufs
+ * ist). Die Reihenfolge ist die Wirkung: der abgebrochene Lauf endet Sekunden
+ * später, seine Nachbereitung lädt frisch, findet GESTOPPT vor und wird vom
+ * Schutz in schreibeWorkflowFortschritt eingefroren — der Schritt bekommt
+ * seinen tatsächlichen Ausgang, der Workflow bleibt GESTOPPT, Schritt n+1
+ * startet nicht. Es wird NICHT auf das Laufende gewartet (Muster
+ * /abbrechen). Danach — und nur danach, weil der Stopp zuerst stehen muss und
+ * der Abbruch nicht auf I/O warten darf — wird die Entscheidung bezeugt
+ * (F-233): Kernartefakt entscheidung-workflow-<id>-stopp, erzeuger 'mensch',
+ * ergebnis 'GESTOPPT', mit Pflichtbegründung und einem eingaben-Verweis auf
+ * die Workflow-Version, die der Mensch beim Stoppen VOR SICH HATTE (also die
+ * Fassung vor dem Stopp, nicht die neue GESTOPPT-Fassung — eine Freigabe
+ * bezeugt ebenfalls den Plan, über den entschieden wurde). Aufrufform
+ * wortgleich zum ABGELEHNT-Zweig der Freigabe. Scheitert das, wird NICHT
+ * zurückgerollt: der Stopp bleibt gültig, der Fehlschlag geht in die
+ * Startfehlerliste, und die Antwort trägt bezeugt: false samt grund. Die
+ * Antwort ist 200 mit { workflowId, laufAbgebrochen, bezeugt }, dazu
+ * artefaktId/versionSequenz bei bezeugt true und grund bei false. AK8
+ * (Leitstand-Ansicht mit Freigeben/Überspringen/Stoppen) bleibt WS-3 und
+ * bleibt offen — hier entsteht nur der Endpunkt.
+ *
+ * Zwei Härtungen desselben Zuschnitts kommen mit ihm, weil erst der Stopp sie
+ * erreichbar macht:
+ * (F-227) schreibeWorkflowFortschritt kennt eine Identitätsprüfung: die
+ * Nachbereitung eines Laufs schreibt nur, wenn der geladene Schritt noch die
+ * lauf_id GENAU DIESES Laufs trägt. Sonst bekäme ein fremder Plan den Ausgang
+ * eines Laufs, den niemand für ihn gestartet hat — möglich, seit man stoppen
+ * und danach (GESTOPPT ist ersetzbar) eine neue Fassung einreichen kann,
+ * während der alte Lauf noch fliegt. Nur die Nachbereitung setzt sie; jeder
+ * andere Schreibpfad soll auf dem Stand wirken, der jetzt daliegt.
+ * (F-228) Der GESTOPPT-Schutz MELDET seither, dass er gegriffen hat
+ * ({ ok: true, eingefroren: true }). Vorher fror er die Workflow-Ebene ein,
+ * gab aber ok:true zurück — starteWorkflowSchritt las das als Erfolg und
+ * startete den Lauf samt D13-Belegung: ein Schritt auf LAEUFT unter einem
+ * Workflow auf GESTOPPT. Alle Aufrufstellen lesen das Feld; keine darf es
+ * stillschweigend als Erfolg nehmen.
  */
 
 import { createServer } from 'node:http'
@@ -965,6 +1009,28 @@ const GESPERRTE_ERSETZUNGS_STATUS = new Set(['LAEUFT', 'WARTET_FREIGABE', 'ABGES
 /** Nur für den Ablehnungstext — die Gegenmenge zu GESPERRTE_ERSETZUNGS_STATUS, damit der Mensch liest, was geht. */
 const ERSETZBARE_STATUS_TEXT = ['OFFEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
 
+/**
+ * Zustände, aus denen POST /api/workflows/<id>/stoppen einen Workflow stoppt
+ * (F15 WS-2c (b2), löst F-216).
+ *
+ * Die Gegenmenge ist klein und absichtlich so: bei ABGESCHLOSSEN und GESTOPPT
+ * gibt es nichts mehr anzuhalten — der Automat setzt aus keinem der beiden
+ * fort (Regel 0), und ein zweiter Stopp überschriebe nur die Begründung des
+ * ersten mit einer jüngeren. Beide enden als 409.
+ *
+ * NICHT gemeint ist „dort läuft kein Prozess mehr" (Reviewer-Pass 10.09.2026):
+ * unmittelbar nach einem Stopp mitten im Schritt steht der Workflow auf
+ * GESTOPPT, während der abgebrochene Lauf noch fliegt — das ist der
+ * Normalfall, den check-f15-automat-real.mjs (e) belegt, nicht die Ausnahme.
+ * Wer diesen Lauf beenden will, benutzt POST /api/laeufe/<laufId>/abbrechen.
+ *
+ * ALLOWLIST wie überall in F15: ein künftiger WORKFLOW_STATUS, den niemand
+ * hier einträgt, ist nicht stoppbar — die sichere Richtung, weil ein nicht
+ * gestoppter Workflow sichtbar bleibt, ein fälschlich gestoppter dagegen eine
+ * laufende Kette abreißt.
+ */
+const STOPPBARE_WORKFLOW_STATUS = new Set(['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH'])
+
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
 const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
 
@@ -1331,7 +1397,7 @@ export function normalisiereSchrittAusgang(ergebnis) {
  * Fortschreibung soll auf der jüngsten aufsetzen, nicht eine ältere
  * wiederbeleben.
  * @param workflowId - Kennung des Workflows
- * @param schrittId - der fortzuschreibende Schritt
+ * @param schrittId - der fortzuschreibende Schritt, oder null, wenn NUR die Workflow-Ebene fortgeschrieben wird (Workflow-Stopp, WS-2c (b2))
  * leiteWorkflowFelderAb bekommt den bereits fortgeschriebenen Datensatz und nicht
  * den geladenen (F15 WS-2b (6)): der Cursor entsteht aus ermittleNaechstenSchritt,
  * und das braucht die Schrittliste MIT dem gerade gesetzten Schrittausgang. Eine
@@ -1341,21 +1407,56 @@ export function normalisiereSchrittAusgang(ergebnis) {
  * @param leiteWorkflowFelderAb - (datenMitSchritt) => { status, aktiver_schritt_id, grund }
  * @param profilReferenz - Profilbezug, unverändert an F2 gereicht
  * @param ladeOptionen - basisVerzeichnis/schreiber
- * @returns bei Erfolg { ok: true, versionSequenz }, sonst { ok: false, grund }
+ * @param erwarteteLaufId - Identitätsprüfung (F-227, WS-2c (b2)): ist sie gesetzt, muss der GELADENE Schritt genau diese lauf_id tragen, sonst wird NICHTS geschrieben. Nur die Nachbereitung eines Laufs setzt sie.
+ * @returns bei Erfolg { ok: true, versionSequenz } — zusätzlich eingefroren: true, wenn der GESTOPPT-Schutz gegriffen hat (F-228); sonst { ok: false, grund }
  */
-function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leiteWorkflowFelderAb, profilReferenz, ladeOptionen) {
+function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leiteWorkflowFelderAb, profilReferenz, ladeOptionen, erwarteteLaufId = undefined) {
   const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
   if (version === null) {
     return { ok: false, grund: `Workflow '${workflowId}' nicht mehr ladbar` }
   }
   const daten = version.daten
-  if (!Array.isArray(daten?.schritte) || !daten.schritte.some((s) => s.schritt_id === schrittId)) {
+  if (!Array.isArray(daten?.schritte)) {
+    return { ok: false, grund: `Workflow '${workflowId}' hat keine lesbare Schrittliste mehr` }
+  }
+  // schrittId null heißt: KEIN Schritt adressiert, nur die Workflow-Ebene wird fortgeschrieben
+  // (WS-2c (b2), Workflow-Stopp). Der Stopp hat keinen Schritt, dem er etwas zuschreiben
+  // könnte — er beendet den Workflow, nicht einen Schritt. Ein Platzhalter-Schritt (Cursor,
+  // erster der Liste) wäre eine Adressierung ohne Aussage, und die Existenzprüfung darunter
+  // ließe einen Stopp an einem Workflow scheitern, dessen Cursor gerade auf null steht.
+  const geladenerSchritt = schrittId === null ? null : daten.schritte.find((s) => s.schritt_id === schrittId)
+  if (geladenerSchritt === undefined) {
     return { ok: false, grund: `Workflow '${workflowId}' kennt den Schritt '${schrittId}' nicht mehr` }
   }
-  const datenMitSchritt = {
-    ...daten,
-    schritte: daten.schritte.map((s) => (s.schritt_id === schrittId ? { ...s, ...schrittFelder } : s)),
+
+  // IDENTITÄTSPRÜFUNG (F-227, Reviewer-Pass 10.09.2026, V1): die Nachbereitung eines Laufs
+  // adressiert ihren Schritt allein über die schritt_id und stempelt ihren Ausgang in den
+  // Datensatz, der beim LAUFENDE auf der Platte liegt — nicht in den, der beim Start dort lag.
+  // Der Workflow-Stopp aus (b2) öffnet genau die Tür, die das erreichbar macht: GESTOPPT
+  // setzen, neue Fassung einreichen (GESTOPPT ist ersetzbar), während der alte Lauf noch
+  // fliegt. Die neue Fassung steht auf OFFEN — der GESTOPPT-Schutz darunter greift also nicht
+  // mehr, weil er den ZUSTAND liest und nicht die IDENTITÄT. Ohne diese Prüfung bekäme ein
+  // fremder Plan den Ausgang eines Laufs, den niemand für ihn gestartet hat, und die
+  // Auto-Fortsetzung führe in ihm weiter.
+  //
+  // NUR die Nachbereitung setzt erwarteteLaufId. Freigabe, Ablehnung, Stopp und die beiden
+  // Heilungen adressieren keinen bestimmten Lauf — für sie wäre dieselbe Prüfung falsch: sie
+  // sollen auf dem Stand wirken, der jetzt daliegt.
+  if (erwarteteLaufId !== undefined && geladenerSchritt?.lauf_id !== erwarteteLaufId) {
+    const jetzt = geladenerSchritt?.lauf_id === null || geladenerSchritt?.lauf_id === undefined ? 'null' : `'${geladenerSchritt.lauf_id}'`
+    return {
+      ok: false,
+      grund: `Workflow '${workflowId}': Schritt '${schrittId}' trägt nicht mehr die lauf_id '${erwarteteLaufId}' dieses Laufs (dort steht jetzt ${jetzt}) — der Ausgang dieses Laufs wird NICHT in eine fremde Fassung geschrieben (F-227)`,
+    }
   }
+
+  const datenMitSchritt =
+    schrittId === null
+      ? daten
+      : {
+          ...daten,
+          schritte: daten.schritte.map((s) => (s.schritt_id === schrittId ? { ...s, ...schrittFelder } : s)),
+        }
   // GESTOPPT-Schutz (F15 WS-2c (b1), Reviewer-Pass 10.09.2026, K1): ein auf der Platte
   // stehendes GESTOPPT überschreibt diese Funktion NIE.
   //
@@ -1381,10 +1482,18 @@ function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leite
   // Der Weg aus GESTOPPT heraus führt nicht durch diese Funktion, sondern über POST
   // /api/workflows — eine neue Fassung, also eine menschliche Entscheidung (GESTOPPT steht
   // nicht in GESPERRTE_ERSETZUNGS_STATUS).
-  const neueDaten =
-    daten.status === 'GESTOPPT'
-      ? { ...datenMitSchritt, status: 'GESTOPPT', aktiver_schritt_id: daten.aktiver_schritt_id, grund: daten.grund ?? null }
-      : { ...datenMitSchritt, ...leiteWorkflowFelderAb(datenMitSchritt) }
+  //
+  // WS-2c (b2) (F-228): dass der Schutz gegriffen hat, wird SEITHER GEMELDET und nicht nur
+  // getan. Die eingefrorene Fassung sieht von außen aus wie jede andere erfolgreiche
+  // Fortschreibung — ok:true, eine neue versionSequenz —, obwohl status, Cursor und Grund
+  // NICHT das sind, was der Aufrufer verlangt hat. Wer daraufhin weiterarbeitet, als wäre sein
+  // Wunsch geschrieben worden, baut auf einer Annahme. Genau das tat starteWorkflowSchritt: es
+  // las ok:true und startete den Lauf samt D13-Belegung, während der Workflow auf GESTOPPT
+  // stand. EINE Form, kein zweiter Rückgabetyp — dasselbe Objekt, ein zusätzliches Feld.
+  const eingefroren = daten.status === 'GESTOPPT'
+  const neueDaten = eingefroren
+    ? { ...datenMitSchritt, status: 'GESTOPPT', aktiver_schritt_id: daten.aktiver_schritt_id, grund: daten.grund ?? null }
+    : { ...datenMitSchritt, ...leiteWorkflowFelderAb(datenMitSchritt) }
   // Vor dem Schreiben validieren (Reviewer-Pass 10.09.2026, V5): registriereWorkflow prüft
   // bewusst nicht selbst, und der Startendpunkt validiert beim LADEN — ein hier geschriebener
   // ungültiger Datensatz käme also erst später als 409 zurück, und der Workflow wäre zugemauert.
@@ -1396,7 +1505,7 @@ function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leite
   }
   try {
     const registriert = registriereWorkflow(neueDaten, profilReferenz, { basisVerzeichnis: ladeOptionen.basisVerzeichnis })
-    return { ok: true, versionSequenz: registriert.versionSequenz }
+    return { ok: true, versionSequenz: registriert.versionSequenz, eingefroren }
   } catch (fehler) {
     return { ok: false, grund: `Workflow-Version konnte nicht geschrieben werden: ${fehler.message}` }
   }
@@ -1699,6 +1808,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       const haltEintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Halt nach gescheitertem Start konnte nicht festgeschrieben werden: ${halt.grund}` }
       startfehlerListe.push(haltEintrag)
       console.error(`[leitstand] ${haltEintrag.fehler}`)
+    } else if (halt.eingefroren) {
+      // F-228, (b2): der Halt wurde NICHT geschrieben — der Workflow ist gestoppt und bleibt es.
+      // Das ist kein Fehler (GESTOPPT ist selbst ein Halt, und zwar der stärkere), aber es
+      // stillschweigend als geschriebenen KLAERUNG_ERFORDERLICH zu lesen wäre eine Behauptung
+      // über die Platte, die dort nicht steht.
+      const eingefrorenEintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Workflow '${workflowId}' ist GESTOPPT — der Halt nach dem gescheiterten Start wurde NICHT festgeschrieben, der Stopp bleibt stehen` }
+      startfehlerListe.push(eingefrorenEintrag)
+      console.error(`[leitstand] ${eingefrorenEintrag.fehler}`)
     }
     return halt
   }
@@ -1836,6 +1953,54 @@ export function erzeugeRequestHandler(optionen = {}) {
       console.error(`[leitstand] Workflow '${workflowId}' konnte nicht fortgeschrieben werden:`, fortschritt.grund)
       return { ok: false, art: 'schreibfehler', grund: fortschritt.grund }
     }
+    // F-228, (b2): der GESTOPPT-Schutz hat gegriffen — die Workflow-Ebene wurde eingefroren,
+    // status/Cursor/Grund des Menschen stehen unverändert. Bis (b1) las diese Stelle nur
+    // fortschritt.ok, sah true und startete den Lauf samt D13-Belegung: ein Schritt auf LAEUFT
+    // unter einem Workflow auf GESTOPPT, mit einem Cursor, der woanders hinzeigt. Hier wird
+    // deshalb VOR der laufId-Reservierung und VOR der D13-Belegung abgebrochen; nichts läuft,
+    // und der Aufrufer macht daraus einen Startfehler.
+    //
+    // Die SCHRITTfelder sind allerdings mitgeschrieben worden — der Schutz friert nur die
+    // Workflow-Ebene ein (das ist bei der Nachbereitung genau richtig, dort trägt der Schritt
+    // seinen tatsächlichen Ausgang). Hier ist es das nicht: LAEUFT mit einer lauf_id, unter der
+    // nie etwas lief, machte den Schritt nach Regel 3 dauerhaft nicht mehr startbereit. Also
+    // zurück auf den Stand davor — dieselbe Regel wie bei der Heilung einer verwaisten lauf_id:
+    // es ist nichts gelaufen, also steht auch nichts am Schritt. Der zweite Schreibvorgang wird
+    // ebenfalls eingefroren, der Stopp des Menschen bleibt also unangetastet.
+    //
+    // HEUTE UNERREICHBAR und bewusst trotzdem gebaut (wie der unbestimmbare Lineage-Vorgänger
+    // oben): alle drei Aufrufer prüfen vorher ermittleNaechstenSchritt, und ein GESTOPPT
+    // verlässt dessen Regel 0 über haltGestoppt, nie über 'starte'. Der Stopp aus (b2) schreibt
+    // sein GESTOPPT synchron, es gibt also auch kein Fenster zwischen Prüfung und Schreiben.
+    // Die Zusage hängt damit an einer Regel anderswo — genau die Art Annahme, die F-228
+    // benennt. Kein eigener Rot-Fall im Gate, weil kein Verhaltensweg dorthin führt
+    // (ARCHITECTURE.md §8: eine Grenze ohne Rot-Fall wird nicht als ERZWUNGEN behauptet); die
+    // Behandlung selbst prüft das Gate im Quelltext.
+    if (fortschritt.eingefroren) {
+      const zurueck = schreibeWorkflowFortschritt(
+        workflowId,
+        schritt.schritt_id,
+        { status: 'OFFEN', lauf_id: null },
+        () => ({ status: workflowDaten.status, aktiver_schritt_id: workflowDaten.aktiver_schritt_id, grund: workflowDaten.grund ?? null }),
+        profilReferenz,
+        ladeOptionen
+      )
+      // Auch dieser Rückgabewert wird auf eingefroren gelesen, und zwar auf das Gegenteil: hier
+      // ist true das Erwartete. Käme false zurück, stünde der Workflow nicht mehr auf GESTOPPT,
+      // und der Rücksetzer hätte gerade den Zustand des Menschen überschrieben — das gehört
+      // gemeldet, nicht verschwiegen.
+      if (!zurueck.ok || !zurueck.eingefroren) {
+        console.error(
+          `[leitstand] Workflow '${workflowId}': Schritt '${schritt.schritt_id}' konnte nach dem Abbruch am Stopp nicht sauber zurückgesetzt werden:`,
+          zurueck.ok ? 'der Workflow stand beim Rücksetzen nicht mehr auf GESTOPPT' : zurueck.grund
+        )
+      }
+      return {
+        ok: false,
+        art: 'konflikt',
+        grund: `Workflow '${workflowId}' ist GESTOPPT — es wurde kein Schritt gestartet (der Stopp bleibt stehen; der Weg heraus ist eine neue Fassung über POST /api/workflows)`,
+      }
+    }
 
     // Reservierung und D13-Belegung synchron vor dem Laufstart — Muster POST /api/laeufe.
     angenommeneLaufIds.add(laufId)
@@ -1935,7 +2100,12 @@ export function erzeugeRequestHandler(optionen = {}) {
           }
         },
         profilReferenz,
-        ladeOptionen
+        ladeOptionen,
+        // Der EINZIGE Aufruf mit Identitätsprüfung (F-227): dieser Schreibvorgang gehört zu
+        // GENAU DIESEM Lauf und darf seinen Ausgang nur dem Schritt geben, der beim Laufende
+        // noch dessen lauf_id trägt. Liegt inzwischen eine andere Fassung da — nach einem Stopp
+        // ist genau das erlaubt —, wird nichts geschrieben und nichts fortgesetzt.
+        laufId
       )
       if (heilbar) {
         const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Workflow '${workflowId}', ${heilungsGrund}` }
@@ -1975,6 +2145,22 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Anlegen UND beim Laden erzwingt.
       if (!nachlauf.ok) return
       if (heilbar) return
+      // 1b. Der GESTOPPT-Schutz hat gegriffen (F-228, (b2)): der Schritt hat seinen
+      //     tatsächlichen Ausgang bekommen, die Workflow-Ebene ist eingefroren, und `naechster`
+      //     bleibt null, weil der Updater nie gelaufen ist. Die Bedingung darunter fängt den
+      //     Fall damit ohnehin — aber still. Dass ein vom Menschen gestoppter Workflow gerade
+      //     ein Laufende eingesammelt hat, gehört in die Liste, in der der Mensch nachsieht:
+      //     es ist die einzige Spur davon, dass der Stopp gehalten hat.
+      if (nachlauf.eingefroren) {
+        const eintrag = {
+          zeitstempel: new Date().toISOString(),
+          laufId,
+          fehler: `Workflow '${workflowId}' ist GESTOPPT — Schritt '${schritt.schritt_id}' hat seinen Ausgang (${schrittStatus}) bekommen, die Kette wird NICHT fortgesetzt`,
+        }
+        startfehlerListe.push(eintrag)
+        console.error(`[leitstand] ${eintrag.fehler}`)
+        return
+      }
       if (naechster === null || naechster.art !== 'starte') return
 
       const fortsetzung = starteWorkflowSchritt(workflowId, naechster)
@@ -2425,6 +2611,13 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 500, { grund: geheilt.grund })
           return
         }
+        // F-228, (b2): unerreichbar — die Bedingung oben verlangt status 'LAEUFT', also gerade
+        // NICHT 'GESTOPPT'. Trotzdem gelesen statt als Erfolg unterstellt: sonst meldete diese
+        // Antwort eine Heilung, die nicht stattgefunden hat.
+        if (geheilt.eingefroren) {
+          sendeJson(res, 409, { grund: `Workflow '${workflowId}' ist GESTOPPT — es wurde nichts geheilt und nichts gestartet`, art: 'haltGestoppt' })
+          return
+        }
         sendeJson(res, 409, { grund, stale: true })
         return
       }
@@ -2681,6 +2874,14 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 500, { grund: gestoppt.grund })
           return
         }
+        // F-228, (b2): unerreichbar — ein GESTOPPT verlässt Regel 0 über haltGestoppt, und die
+        // Prüfung (3) oben verlangt haltFreigabe. Gelesen wird es trotzdem: die Ablehnung will
+        // GESTOPPT setzen, und wenn der Workflow schon gestoppt IST, ist das Ergebnis dasselbe,
+        // aber der Grund im Artefakt ist der ältere. Die Antwort sagt das, statt eine Begründung
+        // zu behaupten, die nirgends steht.
+        if (gestoppt.eingefroren) {
+          console.error(`[leitstand] Workflow '${workflowId}' war bei der Ablehnung bereits GESTOPPT — die Begründung der Ablehnung steht nur im Entscheidungsartefakt.`)
+        }
         sendeJson(res, 200, {
           workflowId,
           schrittId,
@@ -2705,6 +2906,23 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (!fortschritt.ok) {
         console.error(`[leitstand] Workflow '${workflowId}' konnte nach der Freigabe nicht fortgeschrieben werden:`, fortschritt.grund)
         sendeJson(res, 500, { grund: fortschritt.grund })
+        return
+      }
+      // F-228, (b2): unerreichbar aus demselben Grund wie im ABGELEHNT-Zweig. Wäre der Workflow
+      // gestoppt, stünde freigabe_erteilt zwar am Schritt, der Workflow bliebe aber GESTOPPT —
+      // eine 202 „status: LAEUFT" wäre dann schlicht falsch. Hier wird deshalb abgebrochen,
+      // bevor irgendetwas gestartet wird.
+      if (fortschritt.eingefroren) {
+        const anlassGestoppt = `Freigabe für Schritt '${schrittId}' von Workflow '${workflowId}' ist festgehalten, aber der Workflow ist GESTOPPT — es wurde nichts gestartet`
+        console.error(`[leitstand] ${anlassGestoppt}`)
+        sendeJson(res, 409, {
+          grund: anlassGestoppt,
+          art: 'haltGestoppt',
+          status: 'GESTOPPT',
+          entscheidung: 'FREIGEGEBEN',
+          artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
         return
       }
 
@@ -2765,6 +2983,221 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufId: gestartet.laufId,
         artefaktId: `entscheidung-workflow-${workflowId}-${schrittId}`,
         versionSequenz: entscheidungsArtefakt.versionSequenz,
+      })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/stoppen (F15 WS-2c (b2), löst F-216) ──────────────────
+    //
+    // Die Bremse für eine laufende automatische Kette. Bis hierher war der einzige Eingriff
+    // POST /api/laeufe/<laufId>/abbrechen — und der zielt auf eine laufId, die sich mit jedem
+    // Schritt ändert: trifft die Anfrage nach dem Ende von Schritt n ein, antwortet sie 404,
+    // während Schritt n+1 bereits läuft. Eine neue Fassung als Notbremse ist in LAEUFT gesperrt.
+    // Der Mensch hatte also, seit die Kette selbsttätig fährt, keinen verlässlichen Halt.
+    //
+    // Dieser Endpunkt zielt auf den WORKFLOW, nicht auf einen Lauf. Er ist damit auch dann
+    // bedienbar, wenn zwischen zwei Schritten gerade gar nichts läuft.
+    //
+    // NICHT über POST /api/entscheidungen (D5 wäre das nähere Muster): dessen
+    // pruefeEntscheidungsformular verlangt in allen vier Arten eine laufId — genau die Bindung,
+    // von der dieser Endpunkt wegkommen soll. Dieselbe Begründung wie beim Freigabe-Endpunkt.
+    //
+    // AK8 (Leitstand-Oberfläche mit Freigeben/Überspringen/Stoppen) bleibt WS-3 und bleibt
+    // offen: hier entsteht der Endpunkt, keine Ansicht und kein Bedienelement.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/stoppen')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/stoppen'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+
+      // (1) Laden und validieren — wortgleich zum Start- und zum Freigabe-Endpunkt und aus
+      // demselben Grund: 409 statt 400, weil bei einem ungültigen Bestand nicht der Body schuld
+      // ist, sondern der abgelegte Zustand.
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+      const verstoesse = validiereWorkflowDaten(workflowDaten)
+      if (verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        return
+      }
+
+      // (2) Body-Form, wortgleich zum Freigabe-Endpunkt: JSON.parse('null') und JSON.parse('[]')
+      // sind gültiges JSON, aber kein Formular. Ohne diese Zeile würfe der Feldzugriff darunter
+      // aus einem Handler, dessen Promise niemand einsammelt — Prozesstod statt 400. Genau der
+      // Defekt, der in (b1) am Freigabe-Endpunkt real reproduziert wurde; er wiederholt sich
+      // hier nicht.
+      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+
+      // (3) Ist überhaupt etwas zu stoppen? ABGESCHLOSSEN und GESTOPPT sind es nicht.
+      if (!STOPPBARE_WORKFLOW_STATUS.has(workflowDaten.status)) {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — daran ist nichts zu stoppen (stoppbar: ${[...STOPPBARE_WORKFLOW_STATUS].join(', ')})`,
+          art: 'nichtStoppbar',
+        })
+        return
+      }
+
+      // (4) Begründung ist Pflicht, wie bei der Freigabe und bei F13s 'terminal' (F-162): ein
+      // Stopp ist eine festgehaltene Menschenentscheidung, und er ist der Text, den derselbe
+      // Mensch in drei Tagen liest, wenn er wissen will, warum die Kette steht.
+      if (typeof body.begruendung !== 'string' || body.begruendung.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)" })
+        return
+      }
+      const begruendung = body.begruendung
+
+      // (5) ZUERST SCHREIBEN, DANN ABBRECHEN — die Reihenfolge ist die Wirkung, nicht ihr
+      // Beiwerk.
+      //
+      // Der abgebrochene Lauf endet Sekunden später, und seine Nachbereitung lädt den Workflow
+      // FRISCH von der Platte. Steht dort schon GESTOPPT, greift der Schutz in
+      // schreibeWorkflowFortschritt: der Schritt bekommt seinen tatsächlichen Ausgang, der
+      // Workflow bleibt GESTOPPT, und Schritt n+1 startet nicht. Wäre erst abgebrochen und dann
+      // geschrieben worden, träfe die Nachbereitung im ungünstigen Fall auf einen noch nicht
+      // gestoppten Workflow — und der Automat setzte einen Workflow fort, den der Mensch gerade
+      // angehalten hat. Genau dagegen ist der ganze Endpunkt gebaut.
+      //
+      // schrittId null: der Stopp adressiert keinen Schritt. Der laufende Schritt behält seinen
+      // Status LAEUFT und seine lauf_id, bis SEINE Nachbereitung den tatsächlichen Ausgang
+      // einträgt — hier etwas anderes hinzuschreiben, hieße den Ausgang eines noch fliegenden
+      // Laufs zu raten.
+      //
+      // Cursor auf null wie bei jedem GESTOPPT (Cursor-Festlegung aus WS-1).
+      // STOPP-REIHENFOLGE: START (F15 WS-2c (b2), F-216)
+      const grund = `Vom Menschen gestoppt: ${begruendung}`
+      const gestoppt = schreibeWorkflowFortschritt(
+        workflowId,
+        null,
+        {},
+        () => ({ status: 'GESTOPPT', aktiver_schritt_id: null, grund }),
+        profilReferenz,
+        ladeOptionen
+      )
+      if (!gestoppt.ok) {
+        console.error(`[leitstand] Workflow '${workflowId}' konnte nicht gestoppt werden:`, gestoppt.grund)
+        sendeJson(res, 500, { grund: gestoppt.grund })
+        return
+      }
+      // F-228, (b2): unerreichbar — (3) oben lässt GESTOPPT gar nicht erst durch. Gelesen wird
+      // es trotzdem, wie an jeder anderen Aufrufstelle: ein eingefrorener Schreibvorgang hieße,
+      // dass die Begründung dieses Stopps nicht auf der Platte steht, und die 200 darunter
+      // behauptete das Gegenteil.
+      if (gestoppt.eingefroren) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' war bereits GESTOPPT — die neue Begründung wurde NICHT festgeschrieben`, art: 'nichtStoppbar' })
+        return
+      }
+
+      // (6) DANN abbrechen — aber nur, wenn der aktive Lauf wirklich zu DIESEM Workflow gehört.
+      //
+      // Die Zugehörigkeit wird am Artefakt abgelesen und nicht geraten: es braucht einen Schritt
+      // mit status LAEUFT, dessen lauf_id die des aktiven Laufs IST. Ein bloßes laufAktiv würde
+      // auch einen Lauf abbrechen, den jemand über POST /api/laeufe gestartet hat, oder den
+      // eines ganz anderen Workflows — D13 kennt genau einen aktiven Arbeitsstrang, aber nicht,
+      // wem er gehört. Gehört keiner dazu, wird nichts abgebrochen, und das ist kein Fehler:
+      // ein Stopp zwischen zwei Schritten ist der Normalfall, für den dieser Endpunkt existiert.
+      //
+      // KEIN Warten auf das Laufende — Muster POST /api/laeufe/<laufId>/abbrechen: die Antwort
+      // geht sofort raus, der abgebrochene Lauf fliegt noch. Was danach passiert, hält der
+      // GESTOPPT-Schutz, nicht dieser Handler.
+      const laufenderSchritt = workflowDaten.schritte.find((s) => s.status === 'LAEUFT' && s.lauf_id !== null && s.lauf_id === laufAktivLaufId)
+      const laufAbgebrochen = laufAktiv && laufenderSchritt !== undefined
+      if (laufAbgebrochen) {
+        laufAktivAbortController.abort()
+        console.error(`[leitstand] Workflow '${workflowId}' gestoppt — laufender Schritt '${laufenderSchritt.schritt_id}' (Lauf '${laufAktivLaufId}') abgebrochen.`)
+      }
+      // STOPP-REIHENFOLGE: ENDE
+
+      // (7) Die Bezeugung (F-233, Challenger-Entscheidung 10.09.2026): ein vom Menschen
+      // ausgelöster Stopp ist dieselbe Klasse wie eine abgelehnte Freigabe und bekommt
+      // dieselbe Spur. Ohne sie stünde die Begründung NUR im Feld grund der neuen
+      // Workflow-Version — und GESTOPPT ist ausdrücklich ersetzbar, das ist der vorgesehene
+      // Reparaturzug. Die nächste eingereichte Fassung überschriebe den Text, und danach wäre
+      // nicht mehr feststellbar, dass ein Mensch gestoppt hat, warum, und welchen Plan er
+      // dabei vor Augen hatte. Der Stopp wäre die einzige Menschenentscheidung im System ohne
+      // Bezeugung gewesen (ARCHITECTURE.md §3).
+      //
+      // Aufrufform wortgleich zum ABGELEHNT-Zweig des Freigabe-Endpunkts (D5, kein zweiter
+      // Regelsatz): erzeuger 'mensch', entscheidung_schema v0, Pflichtbegründung, Zeitstempel,
+      // und ein eingaben-Verweis auf die Workflow-VERSION, die der Mensch beim Stoppen vor
+      // sich hatte. Mehrere Stopps desselben Workflows brauchen keine eigene Regel: die
+      // artefaktId ist stabil, F2 legt jedes Mal eine neue Version an.
+      //
+      // D2 ist eingehalten: sämtliche Prüfungen dieses Endpunkts — Zeichenregel der
+      // workflowId, Ladbarkeit, WORKFLOW_V0-Gültigkeit, Body-Form, Stoppbarkeit des Status und
+      // Pflichtbegründung — liegen VOR dem ersten Schreibvorgang. Es gibt keinen Pfad, auf dem
+      // hier etwas geschrieben wird, bevor geprüft wurde.
+      //
+      // Was abweicht, ist die Reihenfolge GEGENÜBER DEM FREIGABE-ENDPUNKT: dort steht das
+      // Entscheidungsartefakt vor der Zustandsänderung, hier steht es danach. Der Stopp muss
+      // zuerst auf der Platte stehen — daran hängt, dass die Nachbereitung des abgebrochenen
+      // Laufs ihn vorfindet (siehe (5)) —, und der Abbruch darf nicht auf Artefakt-I/O warten.
+      // Die Reihenfolge ist damit: stoppen, abbrechen, bezeugen.
+      //
+      // Die frühere Fassung dieses Absatzes nannte das eine „ABWEICHUNG von D2" und glossierte
+      // D2 als „Artefakt vor jeder Zustandsänderung". Beides war falsch: D2 heißt in dieser
+      // Datei an vierzehn Stellen „prüfen VOR jedem Schreibzugriff", nirgends „Artefakt zuerst".
+      // Eine Textstelle, die eine D-Entscheidung für verhandelbar erklärt, wird von der
+      // nächsten Sitzung als Präzedenzfall gelesen — dasselbe Muster wie bei F-215, wo eine
+      // Gate-Prüfung die Codeform anderswo diktierte, weil niemand ihre Reichweite nachlas.
+      const gestopptAm = new Date().toISOString()
+      const stoppArtefaktId = `entscheidung-workflow-${workflowId}-stopp`
+      let stoppArtefakt = null
+      try {
+        stoppArtefakt = registriereKernArtefakt(
+          stoppArtefaktId,
+          profilReferenz,
+          { erzeuger: 'mensch', schritt: 'entscheidung-workflow-stopp' },
+          { entscheidung_schema: 'v0', ergebnis: 'GESTOPPT', begruendung, entschieden_am: gestopptAm },
+          [
+            {
+              pfad: `artefakt:workflow-${workflowId}`,
+              zitierter_bereich: `WORKFLOW_V0 versionSequenz ${workflowVersion.versionSequenz}`,
+              inhalts_hash: workflowVersion.inhaltsHash,
+            },
+          ],
+          ladeOptionen
+        )
+      } catch (fehler) {
+        // KEIN Rückrollen: der Stopp steht bereits auf der Platte und bleibt gültig — er ist
+        // die Wirkung, die der Mensch wollte, und ein Workflow, der nach einem 500 doch
+        // weiterliefe, wäre der schlimmere Ausgang. Was fehlt, ist die Bezeugung, und genau
+        // das sagt die Antwort: eine ehrliche Teilmeldung statt eines stillen Verlusts.
+        const eintrag = {
+          zeitstempel: gestopptAm,
+          laufId: laufAbgebrochen ? laufAktivLaufId : null,
+          fehler: `Workflow '${workflowId}' ist gestoppt, aber die Entscheidung konnte nicht als Artefakt festgehalten werden: ${fehler.message}`,
+        }
+        startfehlerListe.push(eintrag)
+        console.error(`[leitstand] ${eintrag.fehler}`)
+      }
+
+      sendeJson(res, 200, {
+        workflowId,
+        laufAbgebrochen,
+        bezeugt: stoppArtefakt !== null,
+        ...(stoppArtefakt === null
+          ? { grund: 'Der Workflow ist gestoppt, aber die Entscheidung wurde NICHT als Artefakt festgehalten — siehe GET /api/startfehler.' }
+          : { artefaktId: stoppArtefaktId, versionSequenz: stoppArtefakt.versionSequenz }),
       })
       return
     }

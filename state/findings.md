@@ -2529,7 +2529,7 @@ fremden Sicherheits-Gate eine eigene Rot-Kalibrierung braucht.
 Status: offen.
 Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-Pass).
 
-**F-216** · `TECH_DEBT` · P1 · offen
+**F-216** · `TECH_DEBT` · P1 · erledigt
 Titel: Eine laufende automatische Kette hat keine verlässliche Bremse.
 Beschreibung: Seit WS-2c fährt der Automat mehrere Schritte hintereinander.
 Der einzige Eingriff des Menschen ist
@@ -2554,7 +2554,17 @@ Bauauftrag-Nachtrag: entweder ein Workflow-Stopp
 Lauf ab) wird vorgezogen, oder AK8/WS-3 folgt unmittelbar. Der bereits
 festgehaltene Vorbehalt gilt zusätzlich: ein Regel-0-Ausgang darf ein
 bestehendes GESTOPPT nicht überschreiben (`features/F15/feature.md`).
-Status: offen.
+Status: erledigt in F15 WS-2c (b2), 10.09.2026 — der Workflow-Stopp wurde
+vorgezogen (die erste der beiden vorgeschlagenen Verzweigungen):
+`POST /api/workflows/<id>/stoppen` mit Pflichtbegründung setzt GESTOPPT,
+Cursor null und Grund und bricht danach den aktiven Lauf ab, falls er zu
+diesem Workflow gehört. Der Vorbehalt zum Regel-0-Ausgang war bereits in (b1)
+eingelöst und hält hier: `scripts/leitstand-server.mjs`, Gates
+`scripts/check-f15-workflow.mjs` (Vertragsform, Stopp mitten im Schritt mit
+Riegel, Quelltextzusage zur Reihenfolge mit Selbsttest) und
+`scripts/check-f15-automat-real.mjs` (e)/(f) (realer Kindprozess, realer
+Reparaturpfad). AK8/WS-3 bleibt davon unberührt und OFFEN — hier ist nur der
+Endpunkt entstanden, keine Oberfläche und kein Überspringen.
 Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
 
 **F-217** · `TECH_DEBT` · P2 · offen
@@ -2786,7 +2796,7 @@ schließt die Bezeugungslücke, ohne einen Reparaturpfad zu opfern.
 Status: offen.
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (QA-Pass, Befund 1).
 
-**F-227** · `BUG` · P2 · offen
+**F-227** · `BUG` · P2 · erledigt
 Titel: Die Nachbereitung stempelt ihren Laufausgang ohne Identitätsprüfung.
 Beschreibung: Der `nachLauf`-Rückruf adressiert den Schritt allein über
 `schritt_id` und schreibt `lauf_id` und Ausgang in den Datensatz, der beim
@@ -2808,10 +2818,18 @@ Empfohlene Maßnahme: Im Nachbereitungs-Updater (nur dort, nicht bei
 Freigabe/Ablehnung) verlangen, dass der geladene Schritt `lauf_id === laufId`
 trägt, sonst Abbruch mit Startfehlereintrag. Gehört zu (b2)/WS-3, weil dort
 entschieden wird, wie ein Stopp einen fliegenden Lauf behandelt.
-Status: offen.
+Status: erledigt in F15 WS-2c (b2), 10.09.2026 — wie empfohlen umgesetzt:
+`schreibeWorkflowFortschritt` nimmt einen optionalen Parameter
+`erwarteteLaufId`; ist er gesetzt, muss der GELADENE Schritt genau diese
+`lauf_id` tragen, sonst wird nichts geschrieben, ein Startfehlereintrag
+gemeldet und nicht fortgesetzt. Gesetzt wird er ausschließlich von der
+Nachbereitung. Verhaltensfall in `scripts/check-f15-workflow.mjs` ((b2)
+F-227: stoppen, neue Fassung einreichen, den alten Lauf enden lassen); rot
+kalibriert — ohne die Prüfung steht der fremde Schritt auf ERFOLGREICH und
+die Auto-Fortsetzung startet einen zweiten Lauf.
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (Reviewer-Pass, V1).
 
-**F-228** · `BUG` · P2 · offen
+**F-228** · `BUG` · P2 · erledigt
 Titel: Der GESTOPPT-Schutz friert den Datensatz ein, hält den Start aber nicht
 an.
 Beschreibung: Steht die Platte beim Fortschreiben in `starteWorkflowSchritt`
@@ -2832,7 +2850,20 @@ Empfohlene Maßnahme: `schreibeWorkflowFortschritt` gibt den eingefrorenen Fall
 aus (`{ ok: true, eingefroren: true }`), `starteWorkflowSchritt` bricht
 daraufhin VOR der laufId-Reservierung und der D13-Belegung ab. In (b2)
 mitbauen, mit eigenem Rot-Fall.
-Status: offen.
+Status: erledigt in F15 WS-2c (b2), 10.09.2026 — in der vorgeschlagenen Form
+umgesetzt (`{ ok: true, eingefroren: true }`, eine Form, kein zweiter
+Rückgabetyp). `starteWorkflowSchritt` bricht ab, ohne zu starten und ohne D13
+zu belegen, und setzt den gerade geschriebenen Schrittstand zurück (OFFEN,
+lauf_id null — es ist nichts gelaufen). Alle acht Aufrufstellen lesen das Feld.
+KORREKTUR ZUR ANNAHME DIESES BEFUNDS: der Workflow-Stopp aus (b2) macht den
+Fall NICHT erreichbar. Alle drei Aufrufer des Startpfads fragen vorher
+`ermittleNaechstenSchritt`, und GESTOPPT verlässt dessen Regel 0 über
+`haltGestoppt`, nie über `'starte'`; der Stopp schreibt sein GESTOPPT synchron,
+es bleibt also auch kein Fenster dazwischen. Ein VERHALTENS-Rotfall ist damit
+nicht konstruierbar, und die Zusage wird nicht als erzwungene Grenze behauptet
+(ARCHITECTURE.md §8). Geprüft wird die Behandlung im Quelltext — Zählung der
+Aufrufstellen gegen die Lesestellen in `scripts/check-f15-workflow.mjs`, rot
+kalibriert durch Entfernen der Behandlung (8/6 statt 9/8).
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (Reviewer-Pass, V2).
 
 **F-229** · `TECH_DEBT` · P3 · offen
@@ -2845,7 +2876,11 @@ Beschreibung: `POST /api/auftraege`, `POST /api/entscheidungen` und
 Der Freigabe-Endpunkt prüft stattdessen inline an fünf Stellen und lässt
 unbekannte Body-Felder stumm durch.
 Fundstelle: `scripts/leitstand-server.mjs`, POST
-/api/workflows/<id>/freigabe.
+/api/workflows/<id>/freigabe. WS-2c (b2) ergänzt eine zweite Fundstelle
+derselben Art: `POST /api/workflows/<id>/stoppen` prüft `begruendung`
+ebenfalls inline und lässt unbekannte Body-Felder stumm durch. Der Befund
+umfasst seither beide Endpunkte — `pruefeFreigabeFormular` und
+`pruefeStoppFormular` gehören in dieselbe Iteration.
 Auswirkung: Kein Defekt — jede einzelne Prüfung hat ihren Rot-Fall im Gate.
 Aber ein Tippfehler im Feldnamen (`begründung` statt `begruendung`) meldet
 sich als „Pflichtfeld fehlt" statt als „unbekanntes Feld", und die
@@ -2876,3 +2911,417 @@ führen. Die erste Variante ist eine Regeländerung und braucht einen eigenen
 Rot-Fall.
 Status: offen.
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (Reviewer-Pass, V3).
+
+**F-231** · `HARNESS_IMPROVEMENT` · P2 · erledigt
+Titel: `check-f15-automat-real.mjs` hat keine obere Schranke — ein Lauf, der
+nie endet, lässt das Gate hängen statt rot zu werden.
+Beschreibung: Beim Rot-Fall zu F-216 (Abbruch im Stopp-Endpunkt entfernt)
+lief der hängende Kindprozess weiter, die Poll-Schleife lief in ihr
+60-Sekunden-Zeitfenster, und danach terminierte der Node-Prozess nicht mehr:
+der Kindprozess hält den Event-Loop offen. Das Gate meldete nichts — es lief
+einfach nicht zu Ende und musste von außen abgebrochen werden. Der
+Attrappen-Zwilling in `scripts/check-f15-workflow.mjs` wurde bei derselben
+Manipulation korrekt rot (zwei Befunde).
+Fundstelle: `scripts/check-f15-automat-real.mjs`, Blöcke (b) und (e) —
+`HAENGE_SKRIPT` mit `zeitgrenze_ms` 600000 und `warteAufWorkflowStatus`.
+Auswirkung: Genau der Defekt, gegen den der Block gebaut ist (der Abbruch
+wirkt nicht), erzeugt kein Rot, sondern einen Hänger. In `npm run check` heißt
+das: kein Befund, keine Meldung, kein Ende. Ein Gate, das bei der Verletzung
+seiner eigenen Zusage hängt statt fehlzuschlagen, ist genau die Art
+Behauptung, gegen die F-211 sich richtet.
+Empfohlene Maßnahme: Die Blöcke, die einen hängenden Kindprozess benutzen,
+mit einer eigenen Obergrenze versehen — nach Ablauf der Poll-Schleife den
+noch aktiven Lauf über `POST /api/laeufe/<laufId>/abbrechen` beenden und den
+Zeitüberschreitungsfall als Befund melden. Alternativ `zeitgrenze_ms` so
+wählen, dass die F14-Zeitgrenze selbst greift, bevor das Gate aufgibt — dann
+endet der Prozess in jedem Fall. Eigene kleine Iteration; betrifft auch
+`scripts/check-f14-abbruch.mjs`, das dasselbe Muster benutzt.
+Status: erledigt in F15 WS-2c (b2, Auflage 1), 10.09.2026 — zwei Maßnahmen,
+beide in `scripts/check-f15-automat-real.mjs`:
+(a) ein Wachhund-Timer am Dateianfang, per `unref()` registriert. Er hält den
+Prozess nicht offen (Normalfall unverändert), feuert aber, wenn ihn etwas
+ANDERES offen hält, gibt eine Befundzeile aus und beendet mit
+`process.exit(1)`. Frist fünf Minuten — die vollständige Datei läuft real in
+rund zehn Sekunden (gemessen 10.09.2026), das ist die dreißigfache Reserve
+und ausdrücklich eine Reißleine, kein Zeitlimit für den Test.
+(b) die Blöcke mit `HAENGE_SKRIPT` ((b) und (e)) brechen einen noch
+fliegenden Lauf in ihrer Aufräumroutine über den realen `/abbrechen`-Endpunkt
+ab, BEVOR sie den Testserver schließen (`beendeLaufFallsAktiv`, best effort
+und still — ein 404 ist der Normalfall).
+Beide sind einzeln rot kalibriert: nur (a) lahmgelegt → das Gate endet nach
+70 Sekunden mit Befund und Exit 1 statt zu hängen; (a) und (b) gemeinsam
+lahmgelegt → der Wachhund feuert und beendet mit Befund und Exit 1.
+GEPRÜFT, nicht angenommen: `scripts/check-f14-abbruch.mjs` und
+`scripts/check-f15-instanzlock.mjs` haben die Lücke NICHT — beide beenden über
+`process.exit()` statt `process.exitCode` und kehren deshalb auch bei einem
+offenen Handle zurück; `check-f15-instanzlock.mjs` benutzt zusätzlich
+`spawnSync` mit `timeout`. Ein Rest bleibt dort trotzdem und ist als F-236
+festgehalten.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (Rot-Kalibrierung).
+
+**F-232** · `TECH_DEBT` · P3 · offen
+Titel: Die Reihenfolge-Zusage des Stopps ist eine Quelltextzusage, wie schon
+die AK6b-Invariante.
+Beschreibung: „Zuerst GESTOPPT schreiben, dann abbrechen" ist die tragende
+Regel des Stopp-Endpunkts, aber verhaltensmäßig nicht ansteuerbar: beide
+Schritte liegen in EINEM synchronen Block, und der Rückruf des abgebrochenen
+Laufs kann frühestens im nächsten Microtask feuern. Vertauscht man sie,
+bleiben alle Verhaltensfälle grün — real geprüft, nur die Quelltextprüfung
+`STOPP-REIHENFOLGE` wurde rot. Damit hängt eine zweite Sicherheitszusage von
+F15 an einem `indexOf` im Quelltext.
+Fundstelle: `scripts/leitstand-server.mjs`, Bereich `STOPP-REIHENFOLGE`;
+`scripts/check-f15-workflow.mjs`, gleichnamige Prüfung. Dieselbe Klasse wie
+F-212 (AK6b-Invariante).
+Auswirkung: Kein Defekt heute. Aber die Prüfung sieht, wie die
+AK6b-Invariante, nur den markierten Bereich und nicht seine Callees: würde
+`schreibeWorkflowFortschritt` je asynchron, wäre die Reihenfolge real
+verletzbar und die Textprüfung bliebe grün.
+Zwei Nachträge aus dem Reviewer-/QA-Pass vom 10.09.2026, beide dieselbe Klasse:
+(1) Die Strecke LADEN→SCHREIBEN im Stopp-Endpunkt ist gar nicht markiert.
+`STOPP-REIHENFOLGE` deckt schreiben→abbrechen ab; dass zwischen
+`ladeArtefaktVersion` und `schreibeWorkflowFortschritt` kein `await` liegt,
+trägt aber die Zusagen „ein abgelehnter Stopp schreibt nichts" und „der
+eingefroren-Zweig ist unerreichbar". Beim Freigabe-Endpunkt ist genau diese
+Strecke als Bereich markiert und begründet, beim Stopp nicht.
+(2) Der `eingefroren`-Rücksetzer in `starteWorkflowSchritt` leitet seine
+Workflow-Felder aus dem bei Funktionseintritt geladenen `workflowDaten` ab.
+Der Ausdruck wird heute nie ausgewertet (der Schutz greift), aber der Code
+sieht den Zweig vor und würde darin einen veralteten Status über den neueren
+Stand des Menschen schreiben — gemeldet erst NACH dem Schreibvorgang.
+Empfohlene Maßnahme: gemeinsam mit F-212 und F-217 behandeln — es ist
+viermal dieselbe Frage (eine Synchronitätsannahme, die kein Gate mitliest).
+Für (2) zusätzlich: im nicht-eingefrorenen Fall gar nicht schreiben oder die
+Felder aus `datenMitSchritt` ableiten statt aus dem Eintrittsstand.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (Rot-Kalibrierung).
+
+**F-233** · `TECH_DEBT` · P2 · erledigt
+Titel: Der Workflow-Stopp legt kein Entscheidungsartefakt an — anders als
+Freigabe und Ablehnung.
+Beschreibung: `POST /api/workflows/<id>/freigabe` registriert in BEIDEN
+Zweigen ein Kernartefakt `entscheidung-workflow-<id>-<schrittId>`
+(`erzeuger: 'mensch'`, mit `eingaben`-Verweis auf die entschiedene
+Workflow-Version), weil eine festgehaltene Menschenentscheidung sonst später
+nicht mehr einzuordnen ist (AK7 Satz 2, F-162). Der Stopp aus (b2) verlangt
+dieselbe Pflichtbegründung, legt aber KEIN Artefakt an: der Text steht nur im
+Feld `grund` der neuen Workflow-Version.
+Fundstelle: `scripts/leitstand-server.mjs`, `POST /api/workflows/<id>/stoppen`
+gegen den Freigabe-Endpunkt darüber.
+Auswirkung: Die nächste eingereichte Fassung überschreibt `grund` — und
+GESTOPPT ist ausdrücklich ersetzbar, das ist der vorgesehene Reparaturzug.
+Danach ist nicht mehr feststellbar, DASS ein Mensch gestoppt hat, warum, und
+welchen Plan er dabei vor Augen hatte. Die Versionshistorie des
+Workflow-Artefakts enthält es zwar noch, aber nur, wer die alte Version
+gezielt lädt, findet es; als Bezeugung ist das schwächer als bei jeder anderen
+Menschenentscheidung im System (ARCHITECTURE.md §3).
+Empfohlene Maßnahme: Entweder ein Artefakt `entscheidung-workflow-<id>-stopp`
+nach dem Muster des Freigabe-Endpunkts anlegen (dann aber mit einer
+Festlegung, wie mehrere Stopps desselben Workflows versioniert werden), oder
+ausdrücklich entscheiden und in `features/F15/feature.md` festhalten, dass der
+Stopp bewusst nur im Workflow-Artefakt steht. Beides ist eine Entscheidung des
+Menschen, kein Bauauftrag-Nachtrag.
+Status: erledigt in F15 WS-2c (b2, Auflage 2), 10.09.2026 — die Entscheidung
+ist gefallen (Challenger, 10.09.2026): ein vom Menschen ausgelöster Stopp ist
+dieselbe Klasse wie eine abgelehnte Freigabe und bekommt dieselbe Spur. Der
+Stopp-Endpunkt registriert `entscheidung-workflow-<workflowId>-stopp`
+(`erzeuger: 'mensch'`, `ergebnis: 'GESTOPPT'`, Pflichtbegründung, Zeitstempel,
+`eingaben`-Verweis auf die gestoppte Workflow-Version), Aufrufform wortgleich
+zum ABGELEHNT-Zweig. Die offene Frage zur Versionierung mehrerer Stopps
+desselben Workflows beantwortet F2: stabile artefaktId, je Stopp eine neue
+Version. D2 ist dabei eingehalten — alle sechs Prüfungen liegen vor dem ersten
+Schreibvorgang; abweichend ist nur die Stellung des Artefakts GEGENÜBER DEM
+FREIGABE-ENDPUNKT: es entsteht NACH dem Schreiben und NACH dem Abbruch, weil
+der Stopp zuerst auf der Platte stehen muss (daran hängt F-216) und der
+Abbruch nicht auf Artefakt-I/O warten darf. Scheitert das Schreiben, wird nicht zurückgerollt:
+Startfehlereintrag, und die 200 trägt `bezeugt: false` mit Grund. Geprüft in
+`check-f15-automat-real.mjs` (e) und `check-f15-workflow.mjs` (b2); rot
+kalibriert durch Entfernen der Artefaktschreibung.
+Feature/Run: F15 WS-2c (b2), 10.09.2026.
+
+**F-234** · `TECH_DEBT` · P3 · offen
+Titel: `laufAbgebrochen: false` ist mehrdeutig — es heißt nicht, dass nichts
+läuft.
+Beschreibung: Die Antwort des Stopp-Endpunkts unterscheidet zwei Fälle nicht:
+„es lief gar nichts" und „es lief etwas, aber es gehörte nicht zu diesem
+Workflow" (ein Lauf aus `POST /api/laeufe`, oder D13 ist von einem anderen
+Workflow belegt). Beide antworten `200 { laufAbgebrochen: false }`.
+Fundstelle: `scripts/leitstand-server.mjs`, Antwort von
+`POST /api/workflows/<id>/stoppen`.
+Auswirkung: Der Mensch stoppt, liest `false` und schließt daraus, es laufe
+nichts mehr — während ein fremder Arbeitsstrang weiterläuft. Der Workflow ist
+korrekt gestoppt, die Aussage der Antwort ist es nicht.
+Zwei Nachträge aus dem Reviewer-/QA-Pass vom 10.09.2026:
+(1) Ein dritter Fall fällt in dasselbe `false`: hat der Mensch nach dem Stopp
+eine Reparaturfassung eingereicht, während der alte Lauf noch fliegt, trägt
+kein Schritt mehr `LAEUFT` mit dessen `lauf_id` — ein erneuter Stopp findet
+den Lauf am Artefakt nicht mehr und bricht ihn nicht ab. Die Ableseregel ist
+richtig (raten wäre schlimmer), aber die Notbremse deckt diesen Fall nicht;
+der Ausweg ist `POST /api/laeufe/<laufId>/abbrechen`.
+(2) Die 200-Antwort trägt — anders als der Schwesterendpunkt `/freigabe`, für
+den F15 „ein Endpunkt, ein Antwortschnitt" ausdrücklich begründet — KEIN
+`status: 'GESTOPPT'`, und ihre `versionSequenz` ist die des
+Entscheidungsartefakts, nicht die der neuen Workflow-Version. Solange der
+Endpunkt von Hand bedient wird (AK8 offen), erzwingt das eine Rückfrage per
+`GET /api/workflows/<id>` ohne Not.
+Empfohlene Maßnahme: Ein zusätzliches Feld in der 200-Antwort, das den Grund
+nennt (`kein aktiver Lauf` / `aktiver Lauf gehört nicht zu diesem Workflow` /
+`zugehöriger Lauf am Artefakt nicht mehr auffindbar`), plus `status` und die
+Workflow-`versionSequenz` im Antwortschnitt — oder, belastbarer, die Frage der
+WS-3-Ansicht überlassen, die den aktiven Lauf ohnehin anzeigt. Erst mit AK8
+entscheidbar.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026.
+
+**F-235** · `TECH_DEBT` · P3 · offen
+Titel: `schreibeWorkflowFortschritt` hat sieben Positionsparameter, davon
+zwei stumme.
+Beschreibung: Die Funktion nimmt inzwischen `workflowId`, `schrittId`
+(seit (b2) auch `null`), `schrittFelder`, `leiteWorkflowFelderAb`,
+`profilReferenz`, `ladeOptionen` und `erwarteteLaufId`. An sechs der acht
+Aufrufstellen stehen `{}` und ein Pfeil-Ausdruck nebeneinander, und die
+Bedeutung von `null` als zweitem Argument ist ohne Blick auf die Signatur
+nicht erkennbar. `erwarteteLaufId` steht an genau einer Aufrufstelle und ist
+an den übrigen sieben unsichtbar — dass die Identitätsprüfung „nur in der
+Nachbereitung" gilt, sieht man dem Aufrufort nicht an.
+Fundstelle: `scripts/leitstand-server.mjs`, `schreibeWorkflowFortschritt` und
+seine acht Aufrufstellen.
+Auswirkung: Kein Defekt — jede einzelne Regel hat ihren Rot-Fall. Aber die
+nächste Erweiterung fügt ein achtes Positionsargument hinzu, und ein
+vertauschtes Argumentpaar fiele nur auf, wenn ein Gate zufällig danebenliegt.
+Verstoß gegen dieselbe Lesbarkeitsregel, die F-229 beim Freigabe-Endpunkt
+benennt.
+Empfohlene Maßnahme: Auf ein Optionsobjekt umstellen
+(`{ workflowId, schrittId, schrittFelder, leiteWorkflowFelderAb,
+erwarteteLaufId }`) — eine mechanische Änderung an acht Stellen, die aber die
+Zählungen im Gate berührt und deshalb eine eigene Iteration braucht.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026.
+
+**F-236** · `TECH_DEBT` · P3 · offen
+Titel: `check-f14-abbruch.mjs` hinterlässt bei einem fehlgeschlagenen Abbruch
+einen verwaisten Kindprozess.
+Beschreibung: Bei der Prüfung zu F-231 wurde die Hänge-Lücke in
+`scripts/check-f14-abbruch.mjs` ausdrücklich WIDERLEGT — die Datei endet über
+`process.exit()` und kehrt deshalb auch bei einem offenen Handle zurück, und
+ihre Wartefunktionen sind mit 20 Sekunden begrenzt. Ein Rest bleibt aber: der
+Block (b) startet einen Kindprozess über `HAENGE_SKRIPT`, der ausschließlich
+durch den geprüften Abbruch endet. Wirkt der Abbruch nicht, meldet das Gate
+korrekt einen Befund und beendet sich — der Kindprozess überlebt das,
+`process.exit()` beendet unter Windows keine Kindprozesse. Zurück bleibt eine
+`node.exe`, die niemand mehr kennt.
+Fundstelle: `scripts/check-f14-abbruch.mjs`, Block (b) und seine
+`finally`-Routine (nur `schliessen()`, kein Abbruch des Laufs).
+Auswirkung: Kein falsches Gate-Ergebnis — der Befund kommt, der Exit-Code
+stimmt. Aber jeder rote Lauf hinterlässt einen Prozess, der bis zum
+Neustart lebt. Bei wiederholter Fehlersuche summiert sich das, und die
+Ursache ist von außen nicht erkennbar.
+Empfohlene Maßnahme: `beendeLaufFallsAktiv` aus
+`scripts/check-f15-automat-real.mjs` übernehmen (dieselbe Aufrufform, D5) und
+in der `finally`-Routine von Block (b) vor `schliessen()` aufrufen. Bewusst
+NICHT in dieser Iteration mitgezogen: `check-f14-abbruch.mjs` gehört zu F14,
+ist unverändert grün, und eine Änderung dort ohne eigenen Rot-Fall wäre die
+Art Nebenbei-Korrektur, gegen die F-046 sich richtet.
+Status: offen.
+Feature/Run: F15 WS-2c (b2, Auflage 1), 10.09.2026.
+
+**F-237** · `TECH_DEBT` · P4 · offen
+Titel: Der Gate-Wachhund kann einen langsamen Rechner nicht von einem
+überlebenden Kindprozess unterscheiden.
+Beschreibung: Feuert der Wachhund in `scripts/check-f15-automat-real.mjs`,
+meldet er „vermutlich überlebender Kindprozess". Das ist eine Vermutung und
+als solche formuliert: derselbe Timer schlägt auch an, wenn die Maschine so
+belastet ist, dass die realen Läufe die Frist überschreiten. Die Frist ist
+mit fünf Minuten gegen zehn Sekunden reale Laufzeit sehr großzügig gewählt,
+aber sie ist eine feste Zahl im Quelltext.
+Fundstelle: `scripts/check-f15-automat-real.mjs`, `WACHHUND_FRIST_MS`.
+Auswirkung: Ein falsch-roter Lauf ist möglich und würde als Kindprozess-Leck
+gelesen. Die sichere Richtung (lieber rot als hängend) ist gewahrt, aber die
+Meldung könnte in die Irre führen.
+Empfohlene Maßnahme: Beim Feuern zusätzlich ausgeben, welche Blöcke bereits
+durchgelaufen sind (Zahl der bisherigen Erfolgsmeldungen) — dann ist am
+Ausgabetext ablesbar, ob die Datei kurz vor dem Ende hing oder mitten im
+Testlauf. Eine Zeile, aber sie gehört zu einer Iteration, die den Wachhund
+ohnehin anfasst.
+Status: offen.
+Feature/Run: F15 WS-2c (b2, Auflage 1), 10.09.2026.
+
+**F-238** · `TECH_DEBT` · P3 · offen
+Titel: Der `bezeugt: false`-Zweig des Stopps hat keinen Rot-Fall.
+Beschreibung: Scheitert `registriereKernArtefakt` im Stopp-Endpunkt, bleibt
+der Stopp gültig, ein Startfehlereintrag entsteht, und die 200-Antwort trägt
+`bezeugt: false` mit Grund (F-233). Dieser Zweig ist über die HTTP-Oberfläche
+nicht ansteuerbar: `workflowId` ist zu dem Zeitpunkt bereits gegen die
+Zeichenregel geprüft, und ein I/O-Fehler von F2 lässt sich ohne
+Fehlerinjektion nicht auslösen. Er ist damit gebaut, aber unbelegt — dieselbe
+Klasse wie die F-228-Behandlung, nur ohne die Quelltextzählung, die dort den
+Ersatznachweis trägt.
+Fundstelle: `scripts/leitstand-server.mjs`, `catch`-Zweig der Bezeugung in
+`POST /api/workflows/<id>/stoppen`.
+Auswirkung: Gering — der Zweig ist vier Zeilen und schreibt nichts. Aber die
+Zusage „ein stiller Verlust ist ausgeschlossen" hängt an ungeprüftem Code,
+und `ARCHITECTURE.md` §8 verlangt, das nicht als erzwungene Grenze zu
+behaupten.
+Empfohlene Maßnahme: Entweder eine Fehlerinjektion für den F2-Schreibpfad
+vorsehen (eine Testnaht, die es heute nicht gibt und die weitere Fragen
+aufwirft), oder den Zweig ausdrücklich als unbelegt in `features/F15/
+feature.md` führen. Gemeinsam mit F-228 behandeln — es ist dieselbe Frage:
+was tun mit einer Zusage, zu der kein Verhaltensweg führt.
+Status: offen.
+Feature/Run: F15 WS-2c (b2, Auflage 2), 10.09.2026.
+
+**F-239** · `BUG` · P1 · erledigt
+Titel: Die Identitätsbedingung des Stopp-Abbruchs hat keinen Rot-Fall — sie
+gilt damit als nicht gebaut.
+Beschreibung: Der Stopp bricht einen aktiven Lauf nur ab, wenn er laut
+Artefakt zu DIESEM Workflow gehört: `s.status === 'LAEUFT' && s.lauf_id !==
+null && s.lauf_id === laufAktivLaufId`. Der Kommentar darüber trägt die
+tragende Zusage des Endpunkts — ein bloßes `laufAktiv` würde auch einen Lauf
+abbrechen, den jemand über `POST /api/laeufe` gestartet hat, oder den eines
+ganz anderen Workflows. In ALLEN vorhandenen Gate-Fällen ist entweder kein
+Lauf aktiv oder der aktive Lauf gehört zum gestoppten Workflow; beide Male
+liefert `laufAktiv` allein dasselbe Ergebnis. Wer die Bedingung auf
+`const laufAbgebrochen = laufAktiv` zurückbaut, bleibt in
+`check-f15-workflow.mjs` UND in `check-f15-automat-real.mjs` grün und bricht
+dabei fremde Arbeitsstränge ab.
+Dieselbe Lücke, eine Ebene daneben: `STOPPBARE_WORKFLOW_STATUS` zählt vier
+Zustände, die Gates üben zwei (`OFFEN`, `LAEUFT`). `WARTET_FREIGABE` und
+`KLAERUNG_ERFORDERLICH` fielen aus der Menge, ohne dass etwas rot würde —
+und `WARTET_FREIGABE` ist der governance-relevante: es ist der einzige
+Zustand, in dem der Stopp die Ersetzungssperre legitim aushebelt („nicht
+entscheiden, sondern anhalten").
+Fundstelle: `scripts/leitstand-server.mjs`, Zugehörigkeitsprüfung im
+Stopp-Endpunkt und `STOPPBARE_WORKFLOW_STATUS`; fehlende Fälle in beiden
+F15-Gates.
+Auswirkung: Kein Defekt heute — das Verhalten ist richtig. Aber
+ARCHITECTURE.md §8 sagt: eine Grenze ohne Rot-Fall heißt nicht ERZWUNGEN.
+Genau diese Regel hat AK7 für den Statusvergleich angewandt; hier ist sie
+verletzt, und es trifft die Sicherheitszusage des Endpunkts.
+Empfohlene Maßnahme: Ein Gate-Fall, klein und rot kalibrierbar: Workflow A
+läuft (D13 belegt), Workflow B wird gestoppt → 200, `laufAbgebrochen: false`,
+A läuft weiter und endet regulär; zweite Hälfte: ein Lauf aus
+`POST /api/laeufe` ohne Workflow-Bezug wird von einem Stopp ebenfalls nicht
+getroffen. Rot-Kalibrierung: Identitätsbedingung durch `laufAktiv` ersetzen.
+Dazu zwei Zeilen im Vertragsblock für `WARTET_FREIGABE` und
+`KLAERUNG_ERFORDERLICH`. Nächste Iteration, vor dem Merge nach main.
+Status: erledigt in F15 WS-2c (b2, Nachtrag), 10.09.2026 — beides umgesetzt:
+(1) Neuer Block (g) in `scripts/check-f15-automat-real.mjs`: Workflow A läuft
+mit einem realen Kindprozess, Workflow B wird gestoppt → 200 mit
+`laufAbgebrochen: false`, B ist gestoppt und bezeugt, A ist weder gestoppt
+noch angehalten, sein Schritt läuft beim Stopp noch, und A läuft anschließend
+real bis `ABGESCHLOSSEN` durch (mit terminaler ERFOLGREICH-Kette). Der Fall
+braucht die reale Kette: dass ein fremder Kindprozess den Stopp überlebt, kann
+eine Attrappe nicht belegen. Dafür ein drittes Skript-Fixture
+(`VERZOEGERTER_ERFOLG_SKRIPT`, zwei Sekunden) — `HAENGE_SKRIPT` endet nie,
+`ERFOLG_SKRIPT` ist beim Stopp längst fertig.
+(2) Die vier Werte aus `STOPPBARE_WORKFLOW_STATUS` sind vollständig geübt:
+`OFFEN` und `LAEUFT` standen bereits, `WARTET_FREIGABE` und
+`KLAERUNG_ERFORDERLICH` sind als schnelle Fälle im Attrappen-Gate ergänzt.
+Ohne eigene Rot-Kalibrierung, ausdrücklich: das ist Abdeckung derselben Zusage
+über weitere Eingaben, keine neue Zusage.
+Rot kalibriert: Zugehörigkeitsprüfung auf `laufAktiv` reduziert (samt der
+Logzeile, die sie sonst über einen Feldzugriff mitträgt — siehe F-243) →
+zwei Befunde in (g), der fremde Lauf wird abgebrochen und A endet
+`FEHLGESCHLAGEN`. Datei-Hash vor und nach dem Rückbau identisch.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (QA-Pass, Fehler 1 und 6).
+
+**F-240** · `TECH_DEBT` · P2 · offen
+Titel: Was eine Reparaturfassung nach einem Stopp wirklich braucht, steht
+nirgends — und wann sie gefahrlos ist, auch nicht.
+Beschreibung: Die Halte-Zustands-Tabelle nennt als Ausweg aus dem gestoppten
+Workflow „neue Fassung derselben `workflow_id`". Der naheliegende Handgriff —
+`GET /api/workflows/<id>`, Plan korrigieren, zurück-`POST`en — führt zu einem
+Workflow, der sofort wieder gestoppt ist: `status: 'GESTOPPT'` wird
+übernommen (die Sperrliste blockt nur `LAEUFT`/`WARTET_FREIGABE`/
+`ABGESCHLOSSEN`), `grund` wird auf `null` normalisiert (der Workflow sagt dann
+nicht mehr, warum er steht), `aktiver_schritt_id` muss von Hand gesetzt werden
+(F-218), und ZUSÄTZLICH müssen die Schrittfelder des abgebrochenen Schritts
+(`status`, `lauf_id`) zurückgesetzt werden, sonst hält Regel 3 ihn für nicht
+startbereit. Das eigene Gate weiß das und tut es alles
+(`check-f15-automat-real.mjs`, Block (e)); die Dokumentation sagt es nirgends.
+Zweitens fehlt ein Signal, WANN die Reparatur gefahrlos ist: die 200 geht
+sofort raus, der abgebrochene Lauf fliegt noch. Wird die neue Fassung vor der
+Nachbereitung eingereicht, greift F-227 und verwirft den Ausgang des Laufs —
+korrekt, aber die einzige Spur ist ein Eintrag in `GET /api/startfehler`, und
+die neue Fassung zeigt dauerhaft den Schrittstand, den der Mensch beim
+Kopieren erwischt hat.
+Fundstelle: `features/F15/feature.md`, Tabellenzeile `GESTOPPT` (neu in
+WS-2c (b2)) und der Abschnitt „Der Workflow-Stopp"; `scripts/leitstand-
+server.mjs`, Normalisierung in `POST /api/workflows`.
+Auswirkung: Ohne Oberfläche (AK8 offen) ist der Reparaturzug reine Handarbeit
+an einem JSON, und der Stopp macht diesen Zustand vom Randfall zum Normalfall.
+F-218 deckt Cursor und Status ab, ist aber auf `haltGrenze`/`ABGELEHNT`
+geschrieben und kennt die Schrittfelder nicht.
+Empfohlene Maßnahme: Die Ausweg-Spalte um das nennen, was die
+Reparaturfassung wirklich braucht (Status, Cursor, Schrittfelder des
+abgebrochenen Schritts), plus den Hinweis, auf die Nachbereitung zu warten
+oder in die Startfehlerliste zu sehen. Gemeinsam mit F-218 und mit AK8/WS-3,
+das den Handgriff ohnehin ersetzen soll.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (QA-Pass, Fehler 2 und 3).
+
+**F-241** · `TECH_DEBT` · P3 · offen
+Titel: Ein ungültiger Bestandsdatensatz lässt sich nicht stoppen.
+Beschreibung: Der Stopp-Endpunkt verlangt `validiereWorkflowDaten`-
+Gültigkeit (409), und `schreibeWorkflowFortschritt` validiert zusätzlich das
+Ergebnis vor dem Schreiben. Ein Workflow, dessen abgelegte Fassung durch eine
+nachträglich verschärfte Querverweisregel ungültig geworden ist, lässt sich
+damit nicht anhalten — während er für die ERSETZUNG ausdrücklich in jedem
+Status offen bleibt (`bestandUngueltig`-Ausnahme in `POST /api/workflows`).
+Fundstelle: `scripts/leitstand-server.mjs`, Prüfung (1) im Stopp-Endpunkt.
+Auswirkung: Sehr schmal — der Startendpunkt validiert ebenfalls, ein solcher
+Workflow kann also kaum laufen. Aber die Zusage „Bremse für den Workflow"
+gilt dort nicht, und fliegt doch ein Lauf, bleibt nur
+`POST /api/laeufe/<laufId>/abbrechen`.
+Empfohlene Maßnahme: Prüfen, ob der Stopp die Gültigkeitsprüfung überhaupt
+braucht — er schreibt nur Workflow-Felder und liest die Schrittliste; oder die
+`bestandUngueltig`-Ausnahme aus `POST /api/workflows` sinngemäß übernehmen.
+Beides ist eine Regeländerung und braucht einen eigenen Rot-Fall.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (Reviewer-Pass, Befund 3).
+
+**F-242** · `TECH_DEBT` · P4 · offen
+Titel: Der Stopp-Endpunkt trägt mehr Kommentar als Code, darunter Korrekturen
+früherer Kommentarfassungen.
+Beschreibung: Rund 60 Kommentarzeilen auf etwa 50 Zeilen Code, mit Absätzen,
+die frühere Fassungen DESSELBEN Kommentars richtigstellen (die D2-Glosse, der
+GESTOPPT-Schutz, der Wachhund). Die Sachaussagen stimmen — im Reviewer-Pass
+einzeln geprüft —, aber Review-Historie gehört nach `features/F15/feature.md`
+bzw. hierher, wo sie ohnehin steht.
+Fundstelle: `scripts/leitstand-server.mjs`, `POST /api/workflows/<id>/stoppen`
+und `schreibeWorkflowFortschritt`.
+Auswirkung: Im Server erhöht die Masse die Wahrscheinlichkeit genau der Drift,
+gegen die sie geschrieben ist — der Reviewer-Pass hat dafür im selben Zug ein
+Beispiel gefunden (die Behauptung „bei GESTOPPT läuft nichts mehr", die für
+die Sekunden nach einem Stopp mitten im Schritt falsch war).
+Empfohlene Maßnahme: Als Leitplanke für WS-3 vormerken, nicht rückwirkend
+ausdünnen: eine Kommentarkürzung ohne Anlass ist ein Diff ohne Nachweis.
+Status: offen.
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (Reviewer-Pass, Befund 7).
+
+**F-243** · `TECH_DEBT` · P3 · offen
+Titel: Eine Sicherheitsbedingung wird von einer Protokollzeile mitgetragen.
+Beschreibung: Bei der Rot-Kalibrierung zu F-239 wurde die
+Zugehörigkeitsprüfung des Stopp-Abbruchs auf `const laufAbgebrochen =
+laufAktiv` reduziert. Ergebnis war NICHT der erwartete Gate-Befund, sondern
+ein Prozesstod: die `console.error`-Zeile darunter liest
+`laufenderSchritt.schritt_id`, und `laufenderSchritt` ist in diesem Fall
+`undefined` — `TypeError` aus einem async-Handler, dessen Promise niemand
+einsammelt. Dieselbe Fehlerklasse, die (b1) und (b2) an drei anderen Stellen
+ausdrücklich abgefangen haben (Body-Form, `auftrag_id`, `schrittId`).
+Der Rot-Fall wurde daraufhin als PLAUSIBLER Rückbau wiederholt (Bedingung und
+Logzeile gemeinsam) und liefert die erwarteten zwei Befunde. Der Absturz
+selbst ist aber ein realer Befund: er tritt heute nur unter einer Manipulation
+auf, hängt aber an einem ungeprüften Feldzugriff, nicht an einer Zusicherung.
+Fundstelle: `scripts/leitstand-server.mjs`, Protokollzeile im
+`if (laufAbgebrochen)`-Zweig des Stopp-Endpunkts.
+Auswirkung: Heute kein Defekt — `laufAbgebrochen` ist true nur, wenn
+`laufenderSchritt` gefunden wurde. Aber die Invariante steht nirgends, und der
+nächste Umbau der Bedingung reißt den Serverprozess statt eine Antwort zu
+verfehlen. Nebenwirkung fürs Gate: eine Manipulation der Bedingung fällt als
+Absturz auf, nicht als Befund — die Rot-Kalibrierung sagt dann weniger, als
+sie soll.
+Empfohlene Maßnahme: Den Feldzugriff im Protokolltext gegen `undefined`
+absichern (`laufenderSchritt?.schritt_id ?? '—'`) oder den Text auf
+`laufAktivLaufId` beschränken, die ohnehin gesetzt ist. Eine Zeile.
+Status: offen.
+Feature/Run: F15 WS-2c (b2, Nachtrag), 10.09.2026 (Rot-Kalibrierung F-239).
