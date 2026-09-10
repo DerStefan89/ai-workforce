@@ -13,13 +13,28 @@
  * die Funktion hier ist die ausgeführte Regel, und das Gate hält beide über
  * dieselben Fixtures aneinander.
  *
- * Nicht in WS-1: der Schritt-Automat und die Dispatch-Integration in
- * scripts/leitstand-server.mjs (WS-2) sowie die Leitstand-Ansicht (WS-3).
- * Dieses Modul registriert deshalb noch KEIN Artefakt — anders als
- * src/auftrag/index.ts gibt es hier bewusst noch kein registriereWorkflow.
+ * F15 WS-2a ergänzt zwei Dinge: registriereWorkflow (Muster
+ * registriereAuftrag aus src/auftrag/index.ts — das Modul registriert
+ * seither sehr wohl ein Artefakt, anders als der WS-1-Stand hier behauptete)
+ * und ermittleNaechstenSchritt, die reine Entscheidungsregel des
+ * Schritt-Automaten. Der Automat SELBST — wer sie aufruft, wann, und was er
+ * mit einem 'starte' anfängt — ist WS-2b und steht bewusst nicht hier.
+ * Ebenso wenig die Leitstand-Ansicht (WS-3).
+ *
+ * Ohne Wirkung in WS-2a: grenzen.max_replans wird validiert, aber von keiner
+ * Funktion gelesen — es greift erst mit dem Replan-Pfad. Wer das Feld liest,
+ * soll nicht annehmen, hier werde bereits etwas dagegen geprüft (QA-Pass
+ * 10.09.2026).
+ *
+ * Abhängigkeitsarm wie src/auftrag (D1): dieses Modul importiert
+ * ausschließlich F2s registriereKernArtefakt, NIE etwas aus
+ * src/execution-controller. ermittleNaechstenSchritt nimmt deshalb ein
+ * normalisiertes SchrittErgebnis entgegen statt eines AusfuehrungsErgebnis —
+ * der Aufrufer normalisiert.
  *
  * Wird aufgerufen von:
  * - scripts/check-f15-workflow.mjs
+ * - scripts/leitstand-server.mjs (POST/GET /api/workflows, F15 WS-2a)
  *
  * Wichtig: Vier Regeln lassen sich in JSON Schema nicht ausdrücken und leben
  * nur hier — Eindeutigkeit der schritt_id, die Querverweise nachfolger und
@@ -37,6 +52,16 @@
  * lauf_id — zwei Wahrheitsquellen für dieselbe Tatsache (§16.2).
  */
 
+import { registriereKernArtefakt } from '../lineage-registry/index.ts'
+import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import type { Ereignis, NaechsterSchritt, Optionen, SchrittErgebnis, WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
+
+// Die vier Enum-Arrays unten sind die einzige laufzeitwirksame Wahrheit über
+// die erlaubten Werte. src/workflow/types.ts trägt dieselben Listen ein
+// zweites Mal als Literal-Unions (für ermittleNaechstenSchritt); wer eine
+// Liste ändert, ändert beide. Warum das ohne Gate vertretbar ist, steht im
+// Kopf von types.ts.
+
 /** Erlaubte Werte von status auf Workflow-Ebene. */
 const WORKFLOW_STATUS = ['OFFEN', 'WARTET_FREIGABE', 'LAEUFT', 'ABGESCHLOSSEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
 
@@ -48,6 +73,22 @@ const WORKER = ['claude-code', 'codex']
 
 /** Erlaubte Werte von freigabe — Freigabebedarf eines Schritts. */
 const FREIGABE = ['AUTOMATISCH', 'EMPFOHLEN', 'ZWINGEND']
+
+// Die DREI Allowlists von ermittleNaechstenSchritt (F15 WS-2a). Alle drei sind
+// bewusst Teilmengen der Arrays oben und keine Negation davon: wächst
+// WORKFLOW_STATUS, SCHRITT_STATUS oder FREIGABE um einen Wert, fällt der neue
+// Wert damit in „hält an" statt in „startet automatisch" (Reviewer-Pass
+// 10.09.2026, K2/R2). Eine Sperrliste an derselben Stelle hätte die umgekehrte
+// Wirkung — der vergessene Wert nähme sich die Automatik lautlos.
+
+/** Workflow-Status, aus denen heraus überhaupt noch ein Schritt entstehen darf. ABGESCHLOSSEN und GESTOPPT fehlen absichtlich. */
+const FORTSETZBARE_WORKFLOW_STATUS = ['OFFEN', 'WARTET_FREIGABE', 'LAEUFT', 'KLAERUNG_ERFORDERLICH']
+
+/** Schritt-Status, aus denen heraus ein Schritt gestartet werden darf. Alles andere ist entweder gelaufen, läuft oder wurde übersprungen. */
+const STARTBEREITE_SCHRITT_STATUS = ['OFFEN', 'WARTET_FREIGABE']
+
+/** Freigabewerte, die den Automaten ohne Rückfrage starten lassen (E-M3-1: die Automatik hängt allein an ≠ ZWINGEND). */
+const AUTOMATISCH_STARTENDE_FREIGABE = ['AUTOMATISCH', 'EMPFOHLEN']
 
 /**
  * Muster jeder Artefakt-Referenz in schritte[].eingaben. Wortgleich mit
@@ -346,4 +387,284 @@ function findeZyklen(schritte: unknown[]): string[][] {
   }
 
   return zyklen
+}
+
+// ─── Registrierung (F15 WS-2a) ─────────────────────────────────────────────
+
+function jetzt(): string {
+  return new Date().toISOString()
+}
+
+function standardSchreiber(ereignis: Ereignis): void {
+  console.log(JSON.stringify(ereignis))
+}
+
+function stillerLineageSchreiber(): void {
+  // Unterdrückt F2s eigene lineage_*-Ereignisse — dieses Modul protokolliert
+  // sein eigenes, höherstufiges workflow_registriert-Ereignis (Muster
+  // src/auftrag/index.ts, dort wortgleich begründet).
+}
+
+/**
+ * Registriert einen vollständigen WORKFLOW_V0-Datensatz als Kernartefakt
+ * unter der Artefakt-ID `workflow-<workflow_id>` (F15 WS-2a), über F2s
+ * registriereKernArtefakt — Muster registriereAuftrag (F11 WS-1), kein
+ * Eingriff in src/lineage-registry/.
+ *
+ * Prüft NICHT selbst: `daten` muss bereits validiereWorkflowDaten passiert
+ * haben. Bewusst dieselbe Arbeitsteilung wie bei registriereAuftrag (die
+ * Formprüfung sitzt beim Aufrufer, nicht ein zweites Mal hier) — der einzige
+ * Aufrufer in WS-2a, POST /api/workflows, lehnt vorher mit 400 ab.
+ *
+ * eingaben bleibt [] wie beim Auftrag: eine EingabeReferenz trägt Pfad UND
+ * Inhalts-Hash des zitierten Artefakts, beides hat dieser Schreibpfad nicht
+ * geladen (er startet nichts, er legt nur an). Der Bezug zum Auftrag steht
+ * im Datensatz selbst (auftrag_id). Wenn WS-2b den Workflow real startet und
+ * das Auftragsartefakt ohnehin lädt, ist das die Stelle, an der ein echtes
+ * Zitat entstehen kann — nicht hier.
+ * @param daten - vollständiger, bereits validierter WORKFLOW_V0-Datensatz
+ * @param profilReferenz - Profilbezug, unverändert an F2 gereicht
+ * @param optionen - basisVerzeichnis/schreiber, Muster F5/F2
+ * @returns pfad, versionSequenz und inhaltsHash der geschriebenen Version
+ */
+export function registriereWorkflow(
+  daten: WorkflowV0Daten,
+  profilReferenz: ProfilReferenz,
+  optionen: Optionen = {}
+): { pfad: string; versionSequenz: number; inhaltsHash: string } {
+  const schreiber = optionen.schreiber ?? standardSchreiber
+  const lineageOptionen = { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: stillerLineageSchreiber }
+
+  const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
+    `workflow-${daten.workflow_id}`,
+    profilReferenz,
+    { quelle: 'workflow' },
+    daten,
+    [],
+    lineageOptionen
+  )
+
+  schreiber({ ereignis: 'workflow_registriert', zeitstempel: jetzt(), workflow_id: daten.workflow_id, versionSequenz })
+  return { pfad, versionSequenz, inhaltsHash }
+}
+
+// ─── Schritt-Entscheidung (F15 WS-2a) ──────────────────────────────────────
+
+/**
+ * Zählt die real gelaufenen Schritte gegen grenzen.max_schritte.
+ *
+ * „Real gelaufen" heißt: der Schritt trägt eine lauf_id. Der gerade
+ * gemeldete Vorschritt wird zusätzlich gezählt, wenn die Liste seine lauf_id
+ * noch nicht trägt (Vergleich gegen den gemeldeten Wert, nicht bloß gegen
+ * null — sonst bliebe ein Wiederholungslauf desselben Schritts ungezählt,
+ * QA-Pass 10.09.2026, TC-A4). Ohne diesen Zusatz hinge das Ergebnis davon
+ * ab, ob der Aufrufer die Schrittliste VOR oder NACH dem Aufruf
+ * fortschreibt, und die Grenze wäre um eins zu spät wirksam.
+ *
+ * GRENZE DIESER GRENZE, ausdrücklich (QA-Pass 10.09.2026, TC-A3):
+ * max_schritte ist ein SCHRITT-Budget, kein LAUF-Budget. WORKFLOW_V0 hält je
+ * Schritt genau eine lauf_id; führt der Automat denselben Schritt ein zweites
+ * Mal aus und überschreibt sie, steigt der Zähler nicht. Diese Funktion kann
+ * eine Wiederholungsschleife also NICHT beenden — sie begrenzt die Zahl
+ * verschiedener gelaufener Schritte, nicht die Zahl der Werkzeugaufrufe.
+ * Dass der Automat terminiert, hängt zusätzlich an der Zyklenfreiheit der
+ * nachfolger-Kette (validiereWorkflowDaten, nur beim Anlegen geprüft) und
+ * daran, dass WS-2b keinen Schritt wiederholt, ohne selbst mitzuzählen. Ein
+ * echtes Laufbudget bräuchte ein Zählfeld im Schema — eine WS-1-Änderung und
+ * bewusst nicht Teil von WS-2a.
+ * @param schritte - die Schrittliste des Workflows
+ * @param vorschrittErgebnis - Ergebnis des zuletzt gelaufenen Schritts, falls vorhanden
+ * @returns Anzahl der real gelaufenen Schritte
+ */
+function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebnis?: SchrittErgebnis): number {
+  let gelaufen = 0
+  for (const schritt of schritte) {
+    if (schritt.lauf_id !== null) gelaufen += 1
+  }
+  if (vorschrittErgebnis !== undefined) {
+    const vorschritt = schritte.find((schritt) => schritt.schritt_id === vorschrittErgebnis.schrittId)
+    if (vorschritt !== undefined && vorschritt.lauf_id !== vorschrittErgebnis.laufId) gelaufen += 1
+  }
+  return gelaufen
+}
+
+/**
+ * Reine Entscheidungsregel des Schritt-Automaten (F15 WS-2a, E-M3-1): was
+ * geschieht nach dem gemeldeten Schrittergebnis — und beim Erststart eines
+ * Workflows, wenn kein Ergebnis vorliegt. Kein Datei-I/O, kein Schreiben,
+ * kein Import aus src/execution-controller: die Funktion entscheidet, sie
+ * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
+ * übersetzt, ist WS-2b.
+ *
+ * Sechs Regeln, in genau dieser Reihenfolge geprüft, und die Reihenfolge ist
+ * die eigentliche Aussage:
+ *
+ * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
+ *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
+ *    wird). Als einzige Regel VOR der Verzweigung nach „mit/ohne
+ *    Vorschrittergebnis", weil sie sonst genau den Fall verfehlt, für den
+ *    sie da ist — ein verspätetes Laufergebnis auf einem gestoppten
+ *    Workflow (Reviewer-Pass 10.09.2026, R1).
+ * 1. Vorschritt nicht ERFOLGREICH → haltKlaerung. Kein Weiterlaufen über
+ *    einen VERWEIGERT/FEHLGESCHLAGEN-Ausgang hinweg (ARCHITECTURE.md §4:
+ *    Blockieren ist ein normaler Ausgang; ein unterbrochener Baulauf wird
+ *    nie automatisch neu gestartet).
+ * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den drei
+ *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
+ *    der nächste Schritt zufällig für einen Zustand, Worker oder
+ *    Freigabebedarf trägt — eine erreichte Grenze startet nichts und legt
+ *    auch nichts zur Freigabe vor.
+ * 3. Der zu startende Schritt ist nicht startbereit (lauf_id gesetzt, oder
+ *    status außerhalb OFFEN/WARTET_FREIGABE) → haltKlaerung. Das ist
+ *    dieselbe Regel wie 1, nur für den Fall OHNE Vorschrittergebnis: eine
+ *    Wiederaufnahme nach Serverneustart liest den Workflow frisch ein und
+ *    kommt hier ohne Ergebnis an. Ohne diese Regel liefe ein bereits
+ *    ABGESCHLOSSENER oder ein auf VERWEIGERT stehen gebliebener Workflow von
+ *    vorn los — ARCHITECTURE.md §4, „ein unterbrochener Baulauf wird nie
+ *    automatisch neu gestartet", verletzt an genau der Stelle, die den
+ *    Automaten sichern soll (Reviewer-Pass 10.09.2026, K1).
+ *    UEBERSPRUNGEN hält hier ebenfalls an und wird NICHT übersprungen: einen
+ *    Schritt zu überspringen heißt, die Kette an ihm vorbei fortzusetzen,
+ *    und das ist eine Replan-Entscheidung (grenzen.max_replans), die WS-2a
+ *    nicht trifft. Anhalten ist der sichere Vorgabewert.
+ * 4. worker ≠ 'claude-code' → haltKlaerung. VOR der Freigabeprüfung, obwohl
+ *    beide anhalten ([EMPFEHLUNG], WS-2a — zu verwerfen, sobald F16 Codex
+ *    dispatchbar macht): ein Schritt, der gar nicht startbar ist, darf dem
+ *    Menschen nicht als Freigabefrage vorgelegt werden, die Freigabe bliebe
+ *    folgenlos. Kein stiller Ersatz durch claude-code (E-159 kein stiller
+ *    Fallback, E-M3-3 gepinnte Besetzung Rolle→Worker→Modell).
+ * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} → haltFreigabe, sonst starte.
+ *    AUTOMATISCH und EMPFOHLEN starten beide (E-M3-1: die Automatik hängt
+ *    allein an ≠ ZWINGEND). Der Unterschied zwischen AUTOMATISCH und
+ *    EMPFOHLEN ist rein anzeigend und gehört nach WS-3 — hier bewusst KEINE
+ *    Sonderbehandlung, sonst entstünde eine zweite, stille Freigabestufe.
+ *
+ * Die Regeln 0, 3, 4 und 5 sind bewusst als ALLOWLIST formuliert („ist es
+ * genau das Erlaubte?") und nicht als Blacklist („ist es das eine
+ * Verbotene?"). Der Unterschied wird erst sichtbar, wenn jemand
+ * WORKFLOW_STATUS, SCHRITT_STATUS, WORKER oder FREIGABE oben um einen Wert
+ * erweitert: bei einer Blacklist fiele der neue Wert still in „startet
+ * automatisch", bei der Allowlist in „hält an". Ein neuer Status, Worker oder
+ * eine neue Freigabestufe muss hier eine bewusste Zeile bekommen, statt sich
+ * die Automatik lautlos zu nehmen (Reviewer-Pass 10.09.2026, K2/R2).
+ *
+ * Zwei Ausgänge stehen quer dazu: `fertig` (Vorschritt ERFOLGREICH,
+ * nachfolger === null) wird direkt nach Regel 1 entschieden, weil dann gar
+ * kein nächster Schritt existiert, auf den die Regeln 2-5 anwendbar wären.
+ * Und ein Verweis ins Leere (unbekannte schritt_id im Ergebnis, im
+ * nachfolger oder im Cursor) endet als haltKlaerung mit aktiverSchrittId
+ * null: bei validierten Daten unerreichbar (validiereWorkflowDaten prüft
+ * alle drei Querverweise), aber die Union bleibt geschlossen und der Automat
+ * hält an, statt auf undefined weiterzurechnen.
+ * @param daten - vollständiger, bereits validierter WORKFLOW_V0-Datensatz
+ * @param vorschrittErgebnis - normalisiertes Ergebnis des zuletzt gelaufenen Schritts; weglassen beim Erststart
+ * @returns der zu wählende Ausgang samt zu setzendem aktiver_schritt_id
+ */
+export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgebnis?: SchrittErgebnis): NaechsterSchritt {
+  const schrittNachId = new Map(daten.schritte.map((schritt) => [schritt.schritt_id, schritt]))
+
+  // Regel 0, VOR der Verzweigung und damit in BEIDEN Zweigen: aus einem nicht
+  // fortsetzbaren Workflow entsteht kein Schritt.
+  //
+  // Sie steht hier oben und nicht nur im Erststart-Zweig, weil der gefährliche
+  // Fall der andere ist (Reviewer-Pass 10.09.2026, R1): POST
+  // /api/laeufe/<laufId>/abbrechen antwortet sofort, ohne auf das Laufende zu
+  // warten — der abgebrochene Lauf fliegt noch. Setzt WS-2b daraufhin
+  // status = 'GESTOPPT' und trifft danach das verspätete ERFOLGREICH des alten
+  // Laufs ein, käme dieser Aufruf MIT Vorschrittergebnis an. Der Folgeschritt
+  // wäre völlig startbereit, und der Automat setzte einen vom Menschen
+  // gestoppten Workflow fort. Regel 3 fängt das nicht — sie prüft den Schritt,
+  // nicht den Workflow.
+  //
+  // Auch diese Liste ist eine ALLOWLIST (siehe Regeln 4/5): ein künftiger
+  // WORKFLOW_STATUS, den niemand hier einträgt, fällt in „hält an".
+  if (!FORTSETZBARE_WORKFLOW_STATUS.includes(daten.status)) {
+    // ABGESCHLOSSEN ohne Ergebnis ist das Normalende — der Automat schaut auf
+    // einen fertigen Workflow. MIT Ergebnis ist es ein Klärfall: da meldet
+    // etwas ein Laufende zu einem Workflow, der schon durch ist.
+    if (daten.status === 'ABGESCHLOSSEN' && vorschrittErgebnis === undefined) {
+      return { art: 'fertig', aktiverSchrittId: null }
+    }
+    return {
+      art: 'haltKlaerung',
+      grund: `Workflow ist ${daten.status} — daraus wird kein Schritt automatisch fortgesetzt`,
+      aktiverSchrittId: null,
+    }
+  }
+
+  let naechsteId: string
+  if (vorschrittErgebnis === undefined) {
+    // Erststart: der Cursor zeigt bereits auf den als Nächstes fälligen
+    // Schritt (Cursor-Lesart aus WS-1). Ist er null — ein frisch gebauter
+    // Workflow, der ihn noch nicht gesetzt hat —, ist es der erste Schritt
+    // der Liste.
+    const ersterSchritt = daten.schritte[0]
+    if (ersterSchritt === undefined) {
+      return { art: 'haltKlaerung', grund: "'schritte' ist leer — kein Schritt zu starten", aktiverSchrittId: null }
+    }
+    naechsteId = daten.aktiver_schritt_id ?? ersterSchritt.schritt_id
+  } else {
+    const vorschritt = schrittNachId.get(vorschrittErgebnis.schrittId)
+    if (vorschritt === undefined) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schrittergebnis nennt die unbekannte schritt_id '${vorschrittErgebnis.schrittId}'`,
+        aktiverSchrittId: null,
+      }
+    }
+    if (vorschrittErgebnis.ergebnis !== 'ERFOLGREICH') {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' endete ${vorschrittErgebnis.ergebnis} (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    if (vorschritt.nachfolger === null) {
+      return { art: 'fertig', aktiverSchrittId: null }
+    }
+    naechsteId = vorschritt.nachfolger
+  }
+
+  const naechsterSchritt = schrittNachId.get(naechsteId)
+  if (naechsterSchritt === undefined) {
+    return { art: 'haltKlaerung', grund: `es gibt keinen Schritt mit der schritt_id '${naechsteId}'`, aktiverSchrittId: null }
+  }
+
+  const gelaufen = zaehleGelaufeneSchritte(daten.schritte, vorschrittErgebnis)
+  if (gelaufen >= daten.grenzen.max_schritte) {
+    return {
+      art: 'haltGrenze',
+      grund: `grenzen.max_schritte (${daten.grenzen.max_schritte}) ist erreicht — ${gelaufen} Schritt(e) sind bereits gelaufen`,
+      aktiverSchrittId: null,
+    }
+  }
+
+  if (!STARTBEREITE_SCHRITT_STATUS.includes(naechsterSchritt.status) || naechsterSchritt.lauf_id !== null) {
+    return {
+      art: 'haltKlaerung',
+      grund: `Schritt '${naechsterSchritt.schritt_id}' ist nicht startbereit (status ${naechsterSchritt.status}, lauf_id ${naechsterSchritt.lauf_id === null ? 'null' : `'${naechsterSchritt.lauf_id}'`}) — ein bereits gelaufener Schritt wird nie automatisch neu gestartet`,
+      aktiverSchrittId: naechsterSchritt.schritt_id,
+    }
+  }
+
+  // worker/freigabe absichtlich über die breiteren Typen string gelesen: die
+  // laufzeitwirksame Wertemenge sind die Arrays WORKER/FREIGABE am Kopf dieser
+  // Datei, nicht die Literal-Unions aus types.ts. Genau deshalb prüfen die
+  // beiden Regeln unten gegen das ERLAUBTE (Allowlist) — ein Wert, den die
+  // Arrays kennen und diese Funktion nicht, muss anhalten, nicht starten.
+  const worker: string = naechsterSchritt.worker
+  if (worker !== 'claude-code') {
+    return {
+      art: 'haltKlaerung',
+      grund: worker === 'codex' ? "Worker 'codex' ist erst ab F16 dispatchbar" : `Worker '${worker}' ist nicht dispatchbar`,
+      aktiverSchrittId: naechsterSchritt.schritt_id,
+    }
+  }
+
+  const freigabe: string = naechsterSchritt.freigabe
+  if (!AUTOMATISCH_STARTENDE_FREIGABE.includes(freigabe)) {
+    return { art: 'haltFreigabe', schrittId: naechsterSchritt.schritt_id, aktiverSchrittId: naechsterSchritt.schritt_id }
+  }
+
+  return { art: 'starte', schritt: naechsterSchritt, aktiverSchrittId: naechsterSchritt.schritt_id }
 }
