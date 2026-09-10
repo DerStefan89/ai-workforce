@@ -108,14 +108,33 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   `status` folgt dem Ausgang von `ermittleNaechstenSchritt`
   (`starte` → `LAEUFT`, `haltFreigabe` → `WARTET_FREIGABE`,
   `haltKlaerung` → `KLAERUNG_ERFORDERLICH`, `haltGrenze` → `GESTOPPT`,
-  `fertig` → `ABGESCHLOSSEN`). Gestartet wird dabei nichts: ein zweiter
-  Aufruf führt den nächsten Schritt aus.
-- **AK6b** *(WS-2c)* — Endet ein Schritt `ERFOLGREICH` und ist der
+  `fertig` → `ABGESCHLOSSEN`).
+  *Überholt durch AK6b (WS-2c):* Der zweite Satz dieses Kriteriums lautete
+  „Gestartet wird dabei nichts: ein zweiter Aufruf führt den nächsten Schritt
+  aus." Das beschreibt den WS-2b-Stand und nicht mehr das gebaute System —
+  seit WS-2c startet die Nachbereitung den Folgeschritt selbst, und ein
+  einzelner Schritt lässt sich nicht mehr isoliert ausführen. Der Satz bleibt
+  hier stehen, weil AK6a als erfüllt gilt und ein stillschweigend geänderter
+  Wortlaut die Historie verwischen würde.
+- **AK6b** *(WS-2c, erfüllt)* — Endet ein Schritt `ERFOLGREICH` und ist der
   Folgeschritt startbereit mit `freigabe ≠ ZWINGEND`, startet er ohne
   menschliches Zutun — der zweite Aufruf aus AK6a entfällt. Die
   D13-Übergabe erfolgt im selben synchronen Tick, in dem `laufAktiv`
   zurückgesetzt wird — kein Fenster, durch das ein paralleler
   `POST /api/laeufe` schlüpfen kann.
+  Reale Nachweise: `scripts/check-f15-automat-real.mjs` (a) — ein
+  zweistufiger Workflow läuft über die GESAMTE reale Kette (echter
+  Kindprozess, F8→F5→F6a inkl. F4→F7→F1B) nach EINEM
+  `POST /api/workflows/<id>/starten` durch; Schritt 2 trägt eine eigene
+  `lauf_id` mit eigener terminaler Checkpoint-Kette. Dazu in
+  `scripts/check-f15-workflow.mjs`: Grünfall 2 (ein Aufruf, zwei Läufe,
+  Lineage-Kette intakt), Grünfall 2b (nach der Übergabe ist D13 belegt) und
+  die Quelltext-Invariante `D13-UEBERGABE-OHNE-FENSTER` mit Selbsttest. Die
+  Grenze der Invariantenprüfung ist als F-212 festgehalten: das Fenster
+  selbst ist verhaltensmäßig nicht ansteuerbar, geprüft wird der Quelltext.
+  Der Zusammenspielfall aus F-208 (manueller Abbruch von Schritt 1 setzt
+  NICHT auf Schritt 2 fort) ist real belegt, nicht angenommen —
+  `check-f15-automat-real.mjs` (b).
 - **AK7** *(WS-2b)* — Bei `freigabe: ZWINGEND` hält der Automat real an.
   Die erteilte Freigabe wird als Entscheidungsartefakt festgehalten und
   ist die einzige Auflösung; `freigabe` selbst bleibt unverändertes
@@ -344,6 +363,16 @@ fünf fest, damit der verbliebene nicht als Einzelfall untergeht.
 | `WARTET_FREIGABE` | Folgeschritt trägt `freigabe: ZWINGEND` | **keiner** — neue Fassung gesperrt, kein Freigabe-Endpunkt (AK7, siehe unten) |
 | `GESTOPPT` | `grenzen.max_schritte` erreicht | neue Fassung mit angehobener Grenze |
 | Schritt `LAEUFT` nach Serverneustart | Prozess starb mitten im Lauf | der nächste Startversuch schreibt `KLAERUNG_ERFORDERLICH` fest, dann neue Fassung |
+| `KLAERUNG_ERFORDERLICH` *(neu in WS-2c)* | die automatische Fortsetzung scheiterte vor dem Laufstart (Planfehler im Folgeschritt: unauflösbare `eingaben`-Referenz, unbekannter `werkzeugsatz`, Schreibfehler) | neue Fassung mit korrigiertem Plan |
+
+Der letzte Zustand ist der einzige, den WS-2c hinzugefügt hat, und er war in
+der ersten Fassung von Teil (a) eine Falle: die gescheiterte Fortsetzung
+schrieb nichts, der Workflow blieb auf `LAEUFT` stehen — ohne Schritt auf
+`LAEUFT`, also ohne Stale-Heilung, und mit gesperrter Ersetzung. Ein
+gewöhnlicher Planfehler im zweiten Schritt hätte den Workflow endgültig
+verloren. Reviewer- und QA-Pass am 10.09.2026 haben das unabhängig
+voneinander gefunden; die Fortsetzung schreibt seither ihren eigenen Halt
+fest (Rotfall 7 in `scripts/check-f15-workflow.mjs`).
 
 Aufgelöst wurde davon die Spalte „kein Weg zurück": eine neue Fassung
 desselben Workflows ist in `KLAERUNG_ERFORDERLICH` und `GESTOPPT` erlaubt

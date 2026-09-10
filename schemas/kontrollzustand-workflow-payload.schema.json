@@ -30,6 +30,11 @@
       "type": ["string", "null"],
       "minLength": 1
     },
+    "grund": {
+      "description": "OPTIONAL (F15 WS-2c, löst F-202): warum der Schritt-Automat zuletzt NICHT weitergelaufen ist — der Text, den beschreibeAutomatAusgang (scripts/leitstand-server.mjs) für einen nicht-'starte'-Ausgang erzeugt, dazu der Heilungs-, der Stale-LAEUFT- und der Fortsetzungsfehler-Text. null, sobald ein Schritt startet. Bewusst nicht 'Halt-Grund': auch ein sauber durchgelaufener Workflow trägt hier einen Text ('fertig'), das Feld ist ohne Blick auf 'status' keine Fehlermeldung. Bewusst NICHT in 'required': jede vor WS-2c geschriebene Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld nicht — ein Pflichtfeld machte den gesamten Bestand ungültig. Ab WS-2c hält der Automat an, während niemand hinsieht; die Startfehlerliste des Servers ist flüchtig und nach einem Neustart weg.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
     "grenzen": {
       "description": "Harte Obergrenzen des Schritt-Automaten (WS-2 setzt sie durch).",
       "type": "object",

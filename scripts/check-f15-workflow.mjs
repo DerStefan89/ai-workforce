@@ -32,6 +32,15 @@
  * leicht gebrochen; ein zweiter Aufrufpunkt wäre eine zweite Fassung der
  * D13-Rückgabe und der Startfehlerliste.
  *
+ * F15 WS-2c ergänzt (a) den Grünfall der automatischen Fortsetzung — EIN
+ * POST .../starten führt einen zweistufigen Workflow zu Ende, ohne dass
+ * irgendwo ein zweiter Aufruf steht (AK6b); der frühere Fall, der genau das
+ * Gegenteil zusagte („der Cursor darf NICHTS starten"), ist damit ersetzt
+ * und nicht bloß ergänzt. (b) Den Verhaltensbeleg, dass D13 nach der
+ * Übergabe wieder belegt ist. (c) Die Quelltext-Invariante der Übergabe
+ * selbst (D13-UEBERGABE-OHNE-FENSTER, mit Selbsttest). (d) Die Zusage, dass
+ * ein Halt seinen Grund im Workflow-Artefakt hinterlässt (F-202).
+ *
  * Wichtig: Jede der fünf Regeln, die nur validiereWorkflowDaten kennt und
  * JSON Schema nicht ausdrücken kann, hat hier einen eigenen Rotfall —
  * unbekannter nachfolger, doppelte schritt_id, unbekannte
@@ -839,16 +848,15 @@ async function starteTestserver(optionen) {
     }
   }
 
-  // ─── Grünfall 2 (WS-2b (6)): der Cursor wandert weiter, ein zweiter /starten führt ─
-  //     den nächsten Schritt aus.
+  // ─── Grünfall 2 (WS-2c, AK6b): EIN /starten führt beide Schritte aus ──────────────
   //
-  // Das ist der manuelle Schritt-für-Schritt-Modus, den WS-2b liefert: nach einem
-  // erfolgreichen Schritt steht der Cursor auf dem nächsten fälligen Schritt und der
-  // Workflow auf LAEUFT — gestartet wird dabei NICHTS (das ist WS-2c). Ohne diesen Fall
-  // wäre „der Cursor wandert weiter" eine Behauptung: vor der Korrektur blieb er auf dem
-  // fertigen Schritt stehen, und ein zweiter Aufruf endete zwangsläufig in 409.
+  // Bis WS-2b war das der manuelle Schritt-für-Schritt-Modus: der Cursor wanderte nach
+  // einem erfolgreichen Schritt weiter, gestartet wurde nichts, und ein ZWEITER Aufruf
+  // führte Schritt 2 aus. WS-2c ersetzt genau diesen zweiten Aufruf — der Automat setzt
+  // selbst fort. Der Fall prüft deshalb jetzt das Gegenteil der WS-2b-Zusage: nach EINEM
+  // Aufruf sind BEIDE Schritte gelaufen, ohne dass irgendwo ein zweiter POST steht.
   {
-    const workflowId = `ws2b-cursor-${randomUUID()}`
+    const workflowId = `ws2c-auto-${randomUUID()}`
     const gestartete = []
     const gesehene = []
     const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
@@ -864,36 +872,30 @@ async function starteTestserver(optionen) {
       ])
 
       const ersterStart = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
-      if (ersterStart.status !== 202) {
-        befunde.push(`WS-2b (6): der erste Start erwartet 202, erhalten ${ersterStart.status} (${await ersterStart.text()})`)
+      const ersterKoerper = await ersterStart.json()
+      if (ersterStart.status !== 202 || ersterKoerper.schrittId !== 'schritt-1') {
+        befunde.push(`AK6b: der einzige Start erwartet 202 für 'schritt-1', erhalten ${ersterStart.status} (${JSON.stringify(ersterKoerper)})`)
       }
-      await new Promise((resolve) => setTimeout(resolve, 50))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
-      const nachSchritt1 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
-      if (nachSchritt1?.daten?.aktiver_schritt_id !== 'schritt-2' || nachSchritt1?.daten?.status !== 'LAEUFT') {
-        befunde.push(`WS-2b (6): nach ERFOLGREICH erwartet Cursor auf 'schritt-2' und Workflow LAEUFT, erhalten ${JSON.stringify({ cursor: nachSchritt1?.daten?.aktiver_schritt_id, status: nachSchritt1?.daten?.status })}`)
-      }
-      if (nachSchritt1?.daten?.schritte?.[0]?.status !== 'ERFOLGREICH' || nachSchritt1?.daten?.schritte?.[1]?.status !== 'OFFEN') {
-        befunde.push(`WS-2b (6): Schritt 1 muss ERFOLGREICH und Schritt 2 unberührt OFFEN sein, erhalten ${JSON.stringify(nachSchritt1?.daten?.schritte)}`)
-      }
-      if (gestartete.length !== 1) {
-        befunde.push(`WS-2b (6): der Cursor darf NICHTS starten (das ist WS-2c), erhalten ${gestartete.length} Läufe`)
-      }
-
-      // Und jetzt der eigentliche Beleg: der zweite Aufruf führt Schritt 2 wirklich aus.
-      const zweiterStart = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
-      const zweiterKoerper = await zweiterStart.json()
-      if (zweiterStart.status !== 202 || zweiterKoerper.schrittId !== 'schritt-2') {
-        befunde.push(`WS-2b (6): der zweite Start erwartet 202 für 'schritt-2', erhalten ${zweiterStart.status} (${JSON.stringify(zweiterKoerper)})`)
-      }
-      await new Promise((resolve) => setTimeout(resolve, 50))
-
+      // KEIN zweiter POST .../starten. Was jetzt auf der Platte steht, hat der Automat
+      // geschrieben.
       const nachSchritt2 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachSchritt2?.daten?.schritte?.[1]?.status !== 'ERFOLGREICH' || nachSchritt2?.daten?.schritte?.[1]?.lauf_id === null) {
+        befunde.push(`AK6b: Schritt 2 muss ohne zweiten Aufruf gelaufen sein, erhalten ${JSON.stringify(nachSchritt2?.daten?.schritte?.[1])}`)
+      }
       if (nachSchritt2?.daten?.status !== 'ABGESCHLOSSEN' || nachSchritt2?.daten?.aktiver_schritt_id !== null) {
-        befunde.push(`WS-2b (6): nach dem letzten Schritt erwartet ABGESCHLOSSEN mit Cursor null, erhalten ${JSON.stringify({ cursor: nachSchritt2?.daten?.aktiver_schritt_id, status: nachSchritt2?.daten?.status })}`)
+        befunde.push(`AK6b: nach dem letzten Schritt erwartet ABGESCHLOSSEN mit Cursor null, erhalten ${JSON.stringify({ cursor: nachSchritt2?.daten?.aktiver_schritt_id, status: nachSchritt2?.daten?.status })}`)
       }
       if (gestartete.length !== 2 || gestartete[0] === gestartete[1]) {
-        befunde.push(`WS-2b (6): erwartet zwei Läufe mit verschiedenen laufIds, erhalten ${JSON.stringify(gestartete)}`)
+        befunde.push(`AK6b: erwartet zwei Läufe mit verschiedenen laufIds aus EINEM Aufruf, erhalten ${JSON.stringify(gestartete)}`)
+      }
+      // (a4): grenzen.max_schritte über haltGrenze ist die einzige Abbruchbedingung — hier
+      // greift sie nicht (max_schritte 8), der Automat endet über 'fertig'. Der Halt-Grund
+      // steht seit (a5) im Artefakt und nicht mehr nur in einer HTTP-Antwort, die bei einem
+      // automatischen Ende niemand mehr sieht.
+      if (typeof nachSchritt2?.daten?.grund !== 'string' || !nachSchritt2.daten.grund.includes('durchgelaufen')) {
+        befunde.push(`(a5): der Halt-Grund muss im Workflow-Artefakt stehen, erhalten ${JSON.stringify(nachSchritt2?.daten?.grund)}`)
       }
       // Lineage über die Schrittgrenze: Schritt 2 wird mit der lauf_id von Schritt 1 als
       // vorgaengerLaufId gestartet (Nicht-Ziel "Keine neue Lineage-Mechanik"). Vor der
@@ -904,6 +906,219 @@ async function starteTestserver(optionen) {
       }
       if (gesehene[1]?.vorgaengerLaufId !== gestartete[0]) {
         befunde.push(`WS-2b: Schritt 2 muss mit vorgaengerLaufId '${gestartete[0]}' (lauf_id von Schritt 1) starten, erhalten ${JSON.stringify(gesehene[1]?.vorgaengerLaufId)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 2b (WS-2c, AK6b): nach der Übergabe ist D13 belegt ─────────────────
+  //
+  // Der Verhaltensbeleg zur Invariante, soweit ein Test ihn führen kann: Schritt 2 hängt,
+  // der Automat hat ihn also gerade selbst gestartet — und ein POST /api/laeufe muss in
+  // diesem Zustand mit 409 abgewiesen werden. Das belegt das ENDE der Übergabe (D13 ist
+  // danach wieder belegt), nicht die Lücke davor; die prüft die Quelltext-Invariante unten.
+  {
+    const workflowId = `ws2c-d13-uebergabe-${randomUUID()}`
+    const gestartete = []
+    let gibFrei
+    const haengt = new Promise((resolve) => {
+      gibFrei = resolve
+    })
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      // Nur der ZWEITE Lauf hängt — der erste muss durchlaufen, damit der Automat überhaupt
+      // fortsetzt.
+      if (gestartete.length === 2) await haengt
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: [] }),
+      ])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      if (gestartete.length !== 2) {
+        befunde.push(`AK6b/D13: der Automat muss Schritt 2 selbst gestartet haben, erhalten ${gestartete.length} Läufe`)
+      }
+      const ueberLaeufe = await fetch(`${basisUrl}/api/laeufe`, {
+        method: 'POST',
+        body: JSON.stringify({
+          laufId: `d13-uebergabe-probe-${randomUUID()}`,
+          rolle: 'ausfuehrung',
+          anfragen: [],
+          budget: { maxElemente: 5 },
+          aufrufEingaben: { modell: 'gate-modell' },
+          auftragId,
+          werkzeugsatz: 'lesend',
+        }),
+      })
+      const grund = (await ueberLaeufe.json()).grund ?? ''
+      if (ueberLaeufe.status !== 409 || !grund.includes('(D13)')) {
+        befunde.push(`AK6b/D13: während des automatisch fortgesetzten Schritts erwartet POST /api/laeufe 409 mit D13-Grund, erhalten ${ueberLaeufe.status} (${grund})`)
+      }
+    } finally {
+      gibFrei()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      await schliessen()
+    }
+  }
+
+  // ─── Rotfall 7 (WS-2c): die Auto-Fortsetzung scheitert — kein zugemauerter Workflow ─
+  //
+  // Der Fall, den Reviewer- und QA-Pass am 10.09.2026 beide gefunden haben. Schritt 1 läuft
+  // erfolgreich, die Fortsetzung auf Schritt 2 scheitert VOR dem Laufstart (unauflösbare
+  // eingaben-Referenz — ein gewöhnlicher Planfehler, kein Sonderfall). Ohne den Halt, den
+  // die Fortsetzung seither festschreibt, bliebe stehen: Workflow LAEUFT, Cursor auf
+  // Schritt 2, KEIN Schritt auf LAEUFT, grund null. Dieser Zustand ist endgültig: die
+  // Stale-Heilung greift nicht (sie verlangt einen SCHRITT auf LAEUFT), jeder weitere
+  // /starten scheitert gleich, und eine korrigierte Fassung ist gesperrt, weil LAEUFT in
+  // GESPERRTE_ERSETZUNGS_STATUS steht.
+  //
+  // Geprüft werden deshalb DREI Dinge: der Status, der persistierte Grund, und — der
+  // eigentliche Zweck — dass der Mensch mit einer neuen Fassung wieder herauskommt.
+  {
+    const workflowId = `ws2c-fortsetzung-scheitert-${randomUUID()}`
+    const gestartete = []
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [
+        gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+        gateSchritt('schritt-2', null, { eingaben: ['artefakt:gibt-es-wirklich-nicht'] }),
+      ])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (gestartete.length !== 1) {
+        befunde.push(`WS-2c: bei gescheiterter Fortsetzung darf kein zweiter Lauf starten, erhalten ${gestartete.length}`)
+      }
+      if (stand?.daten?.status !== 'KLAERUNG_ERFORDERLICH') {
+        befunde.push(`WS-2c: eine gescheiterte Auto-Fortsetzung muss als KLAERUNG_ERFORDERLICH festgeschrieben werden (sonst ist der Workflow zugemauert), erhalten ${JSON.stringify(stand?.daten?.status)}`)
+      }
+      if (typeof stand?.daten?.grund !== 'string' || !stand.daten.grund.includes('gibt-es-wirklich-nicht')) {
+        befunde.push(`WS-2c: der Grund der gescheiterten Fortsetzung muss im Artefakt stehen und die Ursache nennen, erhalten ${JSON.stringify(stand?.daten?.grund)}`)
+      }
+      // Der eigentliche Zweck: der Mensch kommt über eine korrigierte Fassung wieder heraus.
+      const repariert = await fetch(`${basisUrl}/api/workflows`, {
+        method: 'POST',
+        body: JSON.stringify(
+          gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], status: 'ERFOLGREICH', lauf_id: gestartete[0] })], {
+            workflow_id: workflowId,
+            auftrag_id: auftragId,
+            status: 'KLAERUNG_ERFORDERLICH',
+          })
+        ),
+      })
+      if (repariert.status !== 201) {
+        befunde.push(`WS-2c: nach einer gescheiterten Fortsetzung muss eine korrigierte Fassung angenommen werden, erhalten ${repariert.status} (${await repariert.text()})`)
+      }
+      // Und der eingereichte grund wird dabei NICHT übernommen — er gehört dem Automaten.
+      const nachReparatur = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachReparatur?.daten?.grund !== null) {
+        befunde.push(`WS-2c: eine neu eingereichte Fassung darf keinen Halt-Grund tragen, erhalten ${JSON.stringify(nachReparatur?.daten?.grund)}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 5 (WS-2c): DREI Schritte, Grenze mitten in der laufenden Kette ───────
+  //
+  // Bis WS-2c benutzte kein Fall im Repo mehr als zwei Schritte (QA-Pass 10.09.2026): die
+  // Grenze griff immer schon bei der ERSTEN Fortsetzungsentscheidung, „Halt mitten in einer
+  // Kette" war damit unbelegt. Hier laufen zwei Schritte automatisch, dann hält
+  // grenzen.max_schritte die Kette an — mit persistiertem Grund und konsistentem Cursor.
+  {
+    const workflowId = `ws2c-drei-schritte-${randomUUID()}`
+    const gestartete = []
+    const fuehreAufgabeDurchFn = async (laufId) => {
+      gestartete.push(laufId)
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(
+        basisUrl,
+        workflowId,
+        [
+          gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }),
+          gateSchritt('schritt-2', 'schritt-3', { eingaben: [] }),
+          gateSchritt('schritt-3', null, { eingaben: [] }),
+        ],
+        { grenzen: { max_schritte: 2, max_replans: 0 } }
+      )
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 150))
+
+      const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (gestartete.length !== 2) {
+        befunde.push(`WS-2c: bei max_schritte 2 erwartet GENAU ZWEI automatisch gelaufene Schritte, erhalten ${gestartete.length}`)
+      }
+      if (stand?.daten?.status !== 'GESTOPPT' || stand?.daten?.aktiver_schritt_id !== null) {
+        befunde.push(`WS-2c: nach erreichtem max_schritte mitten in der Kette erwartet GESTOPPT mit Cursor null, erhalten ${JSON.stringify({ status: stand?.daten?.status, cursor: stand?.daten?.aktiver_schritt_id })}`)
+      }
+      if (typeof stand?.daten?.grund !== 'string' || !stand.daten.grund.includes('max_schritte')) {
+        befunde.push(`(a5): der haltGrenze-Halt muss seinen Grund im Artefakt nennen, erhalten ${JSON.stringify(stand?.daten?.grund)}`)
+      }
+      if (stand?.daten?.schritte?.[2]?.status !== 'OFFEN' || stand?.daten?.schritte?.[2]?.lauf_id !== null) {
+        befunde.push(`WS-2c: der dritte Schritt muss unberührt bleiben, erhalten ${JSON.stringify(stand?.daten?.schritte?.[2])}`)
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── Grünfall 6 (WS-2c, a5): ein Start räumt den Halt-Grund wieder ab ─────────────
+  //
+  // Die Gegenrichtung zu allen grund-Fällen oben. Ohne sie wäre „auf null gesetzt, sobald ein
+  // Schritt startet" durch ein „wird nie genullt" erfüllbar, und der Mensch läse in WS-3
+  // dauerhaft den Grund eines längst behobenen Halts.
+  {
+    const workflowId = `ws2c-grund-reset-${randomUUID()}`
+    let laeufe = 0
+    const fuehreAufgabeDurchFn = async () => {
+      laeufe += 1
+      // Der ERSTE Lauf wird ohne Checkpoint abgelehnt (Heilung: Schritt zurück auf OFFEN,
+      // Workflow KLAERUNG_ERFORDERLICH mit Grund), der zweite gelingt. Bewusst am Zähler
+      // festgemacht und nicht am Plan: der Workflow bleibt zwischen den beiden Starts
+      // UNVERÄNDERT, sonst käme das null auch aus der Normalisierung des eingereichten
+      // Körpers und der Fall bewiese nicht, was er behauptet.
+      if (laeufe === 1) {
+        return { ok: false, stufe: 'kontextpaket', ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'code-reviewr' } }
+      }
+      return erfolgreichesErgebnis()
+    }
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+    try {
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      const nachHeilung = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachHeilung?.daten?.status !== 'KLAERUNG_ERFORDERLICH' || typeof nachHeilung?.daten?.grund !== 'string' || !nachHeilung.daten.grund.includes('kein Checkpoint')) {
+        befunde.push(`(a5): auch die Heilung muss ihren Grund im Artefakt hinterlassen, erhalten ${JSON.stringify({ status: nachHeilung?.daten?.status, grund: nachHeilung?.daten?.grund })}`)
+      }
+
+      // Zweiter Start auf demselben, unveränderten Artefakt.
+      await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Version 4 ist die VOR dem zweiten Laufstart geschriebene (1 Anlegen, 2 erster Start,
+      // 3 Heilung, 4 zweiter Start) — die jüngste ist bereits die Nachbereitung.
+      const beimStart = ladeArtefaktVersion(`workflow-${workflowId}`, 4, { basisVerzeichnis, schreiber: () => {} })
+      if (beimStart?.daten?.status !== 'LAEUFT' || beimStart?.daten?.grund !== null) {
+        befunde.push(`(a5): ein startender Schritt muss den Halt-Grund auf null zurücksetzen, erhalten ${JSON.stringify({ status: beimStart?.daten?.status, grund: beimStart?.daten?.grund })}`)
+      }
+      if (laeufe !== 2) {
+        befunde.push(`(a5): erwartet zwei Läufe (Ablehnung, dann Erfolg), erhalten ${laeufe}`)
       }
     } finally {
       await schliessen()
@@ -934,6 +1149,11 @@ async function starteTestserver(optionen) {
       const stand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
       if (stand?.daten?.status !== 'WARTET_FREIGABE' || stand?.daten?.aktiver_schritt_id !== 'schritt-2') {
         befunde.push(`WS-2b (6): vor einem ZWINGEND-Schritt erwartet WARTET_FREIGABE mit Cursor 'schritt-2', erhalten ${JSON.stringify({ cursor: stand?.daten?.aktiver_schritt_id, status: stand?.daten?.status })}`)
+      }
+      // (a5): der Automat ist hier von selbst angehalten — der Grund muss die Platte
+      // erreichen, sonst ist er nach einem Serverneustart weg (F-202).
+      if (typeof stand?.daten?.grund !== 'string' || !stand.daten.grund.includes('ZWINGEND')) {
+        befunde.push(`(a5): der ZWINGEND-Halt muss seinen Grund im Workflow-Artefakt hinterlassen, erhalten ${JSON.stringify(stand?.daten?.grund)}`)
       }
       const zweiter = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
       const koerper = await zweiter.json()
@@ -1376,7 +1596,7 @@ async function starteTestserver(optionen) {
 
   rmSync(basisVerzeichnis, { recursive: true, force: true })
   if (befunde.length === befundeVorStart) {
-    console.log('✓ POST /api/workflows/<id>/starten: ein Schritt startet real (202, LAEUFT + lauf_id, Eingaben nach (A)/(B)); 404, 409 (D13), 409 (nicht startbar), 400 (Eingabe-Artefakt fehlt), 400 (ausbrechende auftrag_id, auch als Bestandsartefakt) und 400 (kaputte Prozentkodierung) halten an — der Server lebt danach. Der Cursor wandert nach jedem Schritt weiter (zweiter Aufruf startet Schritt 2, ZWINGEND hält bei WARTET_FREIGABE), eine Ablehnung OHNE Checkpoint heilt die lauf_id, eine MIT Wirkungsmarke nicht, und eine neue Fassung ist in LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN gesperrt, in OFFEN/KLAERUNG_ERFORDERLICH/GESTOPPT erlaubt (Reparaturzug Tippfehler -> Heilung -> Korrektur -> Start belegt); ein stale LAEUFT wird als KLAERUNG_ERFORDERLICH festgeschrieben, ohne den Schritt anzufassen; ein eingereichter Datensatz darf sich nicht selbst aussperren (400), und ein ungültiger Bestand bleibt in jedem Status ersetzbar.')
+    console.log('✓ POST /api/workflows/<id>/starten: ein Schritt startet real (202, LAEUFT + lauf_id, Eingaben nach (A)/(B)); 404, 409 (D13), 409 (nicht startbar), 400 (Eingabe-Artefakt fehlt), 400 (ausbrechende auftrag_id, auch als Bestandsartefakt) und 400 (kaputte Prozentkodierung) halten an — der Server lebt danach. Der Automat setzt nach einem erfolgreichen Schritt selbst fort (AK6b: EIN Aufruf, zwei Läufe, danach ist D13 wieder belegt; ZWINGEND hält bei WARTET_FREIGABE, mit persistiertem grund), eine Ablehnung OHNE Checkpoint heilt die lauf_id, eine MIT Wirkungsmarke nicht, und eine neue Fassung ist in LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN gesperrt, in OFFEN/KLAERUNG_ERFORDERLICH/GESTOPPT erlaubt (Reparaturzug Tippfehler -> Heilung -> Korrektur -> Start belegt); ein stale LAEUFT wird als KLAERUNG_ERFORDERLICH festgeschrieben, ohne den Schritt anzufassen; ein eingereichter Datensatz darf sich nicht selbst aussperren (400), und ein ungültiger Bestand bleibt in jedem Status ersetzbar.')
   }
 }
 
@@ -1397,6 +1617,94 @@ async function starteTestserver(optionen) {
     befunde.push(`Auflage WS-2b: erwartet genau EINEN Aufrufpunkt des Werkzeuglaufs in scripts/leitstand-server.mjs, gefunden ${treffer.length}`)
   } else {
     console.log('✓ Auflage WS-2b: genau ein Aufrufpunkt des Werkzeuglaufs in scripts/leitstand-server.mjs (AK4 aus WS-2a hält).')
+  }
+
+  // Dieselbe Zählung eine Ebene höher, für den Startpfad des Automaten (F15 WS-2c,
+  // Reviewer-Pass 10.09.2026). starteWorkflowSchritt prüft die D13-Sperre NICHT selbst — es
+  // verlässt sich darauf, dass genau zwei Stellen es aufrufen: der HTTP-Endpunkt, der laufAktiv
+  // unmittelbar davor prüft, und die Auto-Fortsetzung, in der laufAktiv gerade zurückgesetzt
+  // wurde. Ein DRITTER Aufrufer wäre ein Startpfad ohne D13-Prüfung, und weder der D13-Vertrag
+  // in check-f11-auftrag.mjs (der nur das erste Vorkommen im Quelltext betrachtet, F-215) noch
+  // die Invariante unten fingen ihn. Gezählt werden die Aufrufe, nicht die Definition — deshalb
+  // das Muster mit öffnender Klammer und einem vorangehenden Nicht-Wortzeichen außer 'n' aus
+  // 'function'.
+  const startpfadMuster = new RegExp(`${'starteWorkflow'}${'Schritt'}\\(`, 'g')
+  const startpfadTreffer = (quelltext.match(startpfadMuster) ?? []).length
+  // 3 = eine Definition + zwei Aufrufe. Die Definition trägt dieselbe Zeichenfolge.
+  if (startpfadTreffer !== 3) {
+    befunde.push(
+      `AK6b: erwartet GENAU ZWEI Aufrufstellen des Automaten-Startpfads in scripts/leitstand-server.mjs (HTTP-Endpunkt und Auto-Fortsetzung) plus die Definition, gefunden ${startpfadTreffer} Vorkommen — ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung`
+    )
+  } else {
+    console.log('✓ AK6b: genau zwei Aufrufstellen des Automaten-Startpfads (HTTP-Endpunkt und Auto-Fortsetzung) — kein dritter, ungeschützter Startpfad.')
+  }
+}
+
+// ─── D13-Übergabe ohne Fenster (AK6b, WS-2c) ────────────────────────────────
+//
+// Die Invariante, die AK6b ausmacht: zwischen dem Reset von laufAktiv im .then
+// des Fire-and-forget-Blocks und dem erneuten `laufAktiv = true` in
+// starteWorkflowSchritt liegt KEIN Kontrollflusswechsel. Läge dort einer, könnte
+// ein paralleler POST /api/laeufe durchschlüpfen und es liefen zwei
+// Arbeitsstränge — D13 wäre über den Automatenpfad aushebelbar, ohne dass eine
+// Antwort falsch aussieht.
+//
+// Das ist eine Eigenschaft des KONTROLLFLUSSES, nicht des Ergebnisses: ein Test,
+// der zwischen zwei Schritten einen POST absetzt, kann das Fenster nicht
+// zuverlässig treffen (es wäre ein Microtask breit). Geprüft wird deshalb der
+// Quelltext der drei markierten Bereiche. Die Verhaltensbelege daneben stehen im
+// Grünfall 2 oben (ein Aufruf, zwei Läufe) und im Grünfall 2b (nach der Übergabe
+// ist D13 belegt); die Textprüfung hier ist die einzige, die das FENSTER selbst
+// adressiert — die beiden Verhaltensfälle prüfen die Enden, nicht die Lücke.
+{
+  const quelltext = readFileSync(join('scripts', 'leitstand-server.mjs'), 'utf-8')
+  const marke = 'D13-UEBERGABE-OHNE-FENSTER'
+  const bereiche = []
+  let rest = quelltext
+  while (true) {
+    const start = rest.indexOf(`${marke}: START`)
+    if (start === -1) break
+    const ende = rest.indexOf(`${marke}: ENDE`, start)
+    if (ende === -1) {
+      befunde.push(`AK6b-Invariante: ein ${marke}-Bereich hat keine ENDE-Marke`)
+      break
+    }
+    bereiche.push(rest.slice(start, ende))
+    rest = rest.slice(ende + 1)
+  }
+
+  // Drei Bereiche: (1) der .then-Zweig, in dem laufAktiv zurückgesetzt und der
+  // Rückruf gemeldet wird, (2) der Rückruf selbst bis zur Fortsetzung, (3)
+  // starteWorkflowSchritt vom Eintritt bis zur D13-Belegung. Fehlt einer, ist die
+  // Kette nicht mehr lückenlos abgedeckt und die Zusage nicht mehr geprüft.
+  if (bereiche.length !== 3) {
+    befunde.push(`AK6b-Invariante: erwartet GENAU DREI mit ${marke} markierte Bereiche in scripts/leitstand-server.mjs, gefunden ${bereiche.length}`)
+  }
+
+  // Jede dieser Zeichenketten gibt die Kontrolle an den Event-Loop zurück und
+  // öffnet damit das Fenster. `.then(` steht mit auf der Liste, weil eine
+  // Fortsetzung, die erst im Promise-Callback belegt, dasselbe Loch reißt wie ein
+  // await — auch wenn sie synchron aussieht.
+  const VERBOTEN = ['await ', 'queueMicrotask', 'setTimeout', 'setImmediate', 'nextTick', '.then(', 'async ']
+  for (const [i, bereich] of bereiche.entries()) {
+    for (const verboten of VERBOTEN) {
+      if (bereich.includes(verboten)) {
+        befunde.push(`AK6b-Invariante: Bereich ${i + 1} zwischen ${marke}-START und -ENDE enthält '${verboten.trim()}' — zwischen D13-Reset und D13-Belegung darf kein Kontrollflusswechsel liegen`)
+      }
+    }
+  }
+
+  // Selbsttest (Muster check-f11-auftrag.mjs AK7): eine simulierte Verletzung muss
+  // real erkannt werden. Ohne ihn belegte die Prüfung oben nur, dass die Marken da
+  // sind — nicht, dass sie etwas fangen (F-211).
+  const simulierteVerletzung = [`${marke}: START`, '  await verzoegerung(0)', '  laufAktiv = true', `${marke}: ENDE`].join('\n')
+  const trefferImSelbsttest = VERBOTEN.filter((verboten) => simulierteVerletzung.includes(verboten))
+  if (trefferImSelbsttest.length === 0) {
+    befunde.push('AK6b-Invariante-Selbsttest: ein eingefügtes await im markierten Bereich wird NICHT erkannt — die Prüfung ist wirkungslos')
+  }
+
+  if (bereiche.length === 3) {
+    console.log(`✓ AK6b: die drei ${marke}-Bereiche in scripts/leitstand-server.mjs enthalten keinen Kontrollflusswechsel (Selbsttest erkennt ein eingefügtes await).`)
   }
 }
 

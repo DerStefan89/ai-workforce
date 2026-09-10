@@ -108,6 +108,13 @@ const WORKFLOW_FELDER = new Set([
   'ziel',
   'status',
   'aktiver_schritt_id',
+  // OPTIONAL (F15 WS-2c, löst F-202): der zuletzt festgestellte Halt-Grund des
+  // Automaten. Bewusst optional und NICHT required — jede bereits geschriebene
+  // Workflow-Version ist append-only (ARCHITECTURE.md §7) und trägt das Feld
+  // nicht; ein Pflichtfeld machte den gesamten Bestand mit einem Schlag
+  // ungültig. Dieselbe Überlegung, aus der grenzen.max_replans nicht entfernt
+  // werden konnte (F-203).
+  'grund',
   'grenzen',
   'schritte',
 ])
@@ -271,6 +278,14 @@ export function validiereWorkflowDaten(daten: unknown): string[] {
   }
   if (!istStringOderNull(obj, 'aktiver_schritt_id')) {
     verstoesse.push("'aktiver_schritt_id' muss ein nicht-leerer String oder null sein")
+  }
+  // grund ist das einzige OPTIONALE Feld auf Workflow-Ebene (F15 WS-2c): ein
+  // FEHLENDES Feld ist gültig (Bestandsversionen aus der Zeit vor WS-2c), ein
+  // vorhandenes muss die Form "nicht-leerer String oder null" tragen. Deshalb
+  // die 'in'-Prüfung davor — istStringOderNull allein wertet ein fehlendes Feld
+  // als Verstoß, so wie es bei jedem Pflichtfeld auch soll.
+  if ('grund' in obj && !istStringOderNull(obj, 'grund')) {
+    verstoesse.push("'grund' muss ein nicht-leerer String oder null sein (optionales Feld)")
   }
 
   if (!istObjekt(obj.grenzen)) {

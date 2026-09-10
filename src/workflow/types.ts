@@ -94,6 +94,24 @@ export interface WorkflowV0Daten {
    * sonst der als Nächstes fällige; null bei ABGESCHLOSSEN oder GESTOPPT.
    */
   aktiver_schritt_id: string | null
+  /**
+   * OPTIONAL (F15 WS-2c, löst F-202): warum der Schritt-Automat zuletzt NICHT
+   * weitergelaufen ist — der Text, den beschreibeAutomatAusgang für einen
+   * nicht-'starte'-Ausgang erzeugt, dazu der Heilungs-, der Stale-LAEUFT- und
+   * der Fortsetzungsfehler-Text. null, sobald ein Schritt startet; ganz
+   * abwesend bei Versionen aus der Zeit vor WS-2c.
+   *
+   * Bewusst NICHT „Halt-Grund" genannt (QA-Pass 10.09.2026): auch ein sauber
+   * durchgelaufener Workflow trägt hier einen Text ('fertig' →
+   * „…er ist durchgelaufen"). Das Feld beantwortet „warum steht der Automat?",
+   * nicht „was ist schiefgegangen?" — eine Anzeige darf es deshalb nicht ohne
+   * Blick auf status als Fehlermeldung rendern.
+   *
+   * Ab WS-2c hält der Automat an, während niemand hinsieht; stünde der Grund
+   * nur in der flüchtigen Startfehlerliste des Servers, wäre er nach einem
+   * Serverneustart weg.
+   */
+  grund?: string | null
   grenzen: WorkflowV0Grenzen
   schritte: WorkflowV0Schritt[]
 }

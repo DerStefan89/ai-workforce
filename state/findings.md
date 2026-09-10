@@ -2184,7 +2184,7 @@ scripts/leitstand-server.mjs (nur CLI-Bindeblock), Gate
 scripts/check-f15-instanzlock.mjs.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
-**F-202** · `TECH_DEBT` · P2 · offen
+**F-202** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Kein dauerhaftes Klärgrund-Feld in WORKFLOW_V0.
 Beschreibung: Der Grund für KLAERUNG_ERFORDERLICH wird nur in der
 409-Antwort und im startfehlerListe-Eintrag mitgegeben, nicht im
@@ -2197,7 +2197,13 @@ Auswirkung: WS-3 (Leitstand-UI) müsste den Grund aus einem anderen Kanal
 beziehen als dem Workflow-Artefakt selbst.
 Empfohlene Maßnahme: in WS-3 prüfen, ob ein optionales grund-Feld auf
 Workflow-Ebene sinnvoll ist.
-Status: offen.
+Status: gelöst in F15 WS-2c (a5), 10.09.2026 — WORKFLOW_V0 trägt ein
+OPTIONALES Feld grund auf Workflow-Ebene (Schema, Validator, Typ). Gesetzt
+bei jedem nicht-'starte'-Ausgang aus dem Text, den beschreibeAutomatAusgang
+ohnehin erzeugt, sowie beim Heilungs- und beim Stale-LAEUFT-Halt; auf null
+gesetzt, sobald ein Schritt startet. Nicht in WS-3 verschoben, weil WS-2c den
+Halt ohne HTTP-Aufruf erzeugt: der Grund stand danach nur noch in der
+flüchtigen startfehlerListe und war nach einem Serverneustart weg.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
 **F-203** · `TECH_DEBT` · P3 · offen
@@ -2300,7 +2306,7 @@ fehlt jeder Weg zurück.
 Status: offen.
 Feature/Run: F15 WS-2c-Vorabdesign, 10.09.2026.
 
-**F-208** · `TECH_DEBT` · P2 · offen
+**F-208** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Interaktion zwischen manuellem Laufabbruch und dem
 Schritt-Automaten ungeprüft.
 Beschreibung: POST /api/laeufe/<laufId>/abbrechen (F14 WS-4) löst den
@@ -2318,7 +2324,16 @@ Empfohlene Maßnahme: In WS-2c ein realer Test "Schritt 1 starten,
 abbrechen, Laufende abwarten" mit der Zusage, dass Schritt 2 nicht
 startet. Fällt der Test anders aus, ist das ein Blocker für WS-2c, kein
 Nachtrag.
-Status: offen.
+Status: gelöst in F15 WS-2c (a6), 10.09.2026 — die Annahme trägt, real
+belegt statt behauptet. `scripts/check-f15-automat-real.mjs` (b) startet
+über die GESAMTE reale Kette (echter Kindprozess, kein Mock) einen
+zweistufigen Workflow, bricht Schritt 1 über den echten
+POST /api/laeufe/<laufId>/abbrechen ab und wartet das Laufende ab: der
+abgebrochene Lauf endet FEHLGESCHLAGEN, Regel 1 von
+ermittleNaechstenSchritt greift, der Workflow steht auf
+KLAERUNG_ERFORDERLICH, Schritt 2 bleibt OFFEN mit lauf_id null. Rot
+kalibriert: mit entfernter Regel 1 startet Schritt 2 real, und beide
+Zusagen des Falls werden rot.
 Feature/Run: F15 WS-2c-Vorabdesign, 10.09.2026.
 
 **F-209** · `TECH_DEBT` · P3 · offen
@@ -2392,3 +2407,230 @@ eigene Iteration prüfen, welche bestehenden Gates nie rot kalibriert
 wurden.
 Status: offen.
 Feature/Run: F15 WS-2c-Vorbereitung, 10.09.2026 (Reviewer-Pass).
+
+**F-212** · `TECH_DEBT` · P2 · offen
+Titel: Die D13-Übergabe ohne Fenster ist nicht verhaltensmäßig prüfbar.
+Beschreibung: Beim Rot-Kalibrieren von AK6b (F15 WS-2c) wurde die
+Fortsetzung testweise in ein `setTimeout(..., 0)` verschoben — genau der
+Defekt, den die Invariante ausschließen soll (D13 ist zwischen Reset und
+Neubelegung frei). BEIDE Verhaltensfälle in
+`scripts/check-f15-workflow.mjs` blieben grün: der Automat setzte weiterhin
+fort, und nach der Übergabe war D13 wieder belegt. Rot wurde allein die
+Quelltext-Invariante (`D13-UEBERGABE-OHNE-FENSTER`). Ein Test müsste einen
+Request in ein Fenster von einem Microtask Breite legen; das ist von außen
+nicht ansteuerbar.
+Fundstelle: `scripts/check-f15-workflow.mjs`, Abschnitt „D13-Übergabe ohne
+Fenster"; `scripts/leitstand-server.mjs`, die drei markierten Bereiche.
+Auswirkung: Die Zusage hängt an einer Textprüfung. Sie fängt jede
+Formulierung, die eine der bekannten Zeichenketten (`await`, `setTimeout`,
+`queueMicrotask`, `.then(`, …) benutzt — nicht aber einen Kontrollflusswechsel,
+der über eine eigene Hilfsfunktion außerhalb des markierten Bereichs
+eingeführt wird.
+Empfohlene Maßnahme: keine sofortige. Dokumentiert, damit ein künftiger
+Eingriff die Textprüfung nicht für stärker hält, als sie ist. Falls der
+Automat je mehr als zwei Schritte am Stück fährt oder ein zweiter
+Fortsetzungspfad entsteht, erneut prüfen — dann wäre ein
+Instrumentierungshaken (Zähler auf laufAktiv-Wechseln) das nächste Mittel.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026.
+
+**F-213** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Ein Gate-Fall, der eine Scope-Grenze zusagt, wird beim Aufheben der
+Grenze rot und muss ersetzt statt ergänzt werden.
+Beschreibung: `scripts/check-f15-workflow.mjs` sagte in WS-2b ausdrücklich
+zu, dass der Cursor NICHTS startet („das ist WS-2c"), inklusive eines
+zweiten `POST .../starten`, der Schritt 2 ausführt. WS-2c hebt genau diese
+Grenze auf — vier Befunde beim ersten Lauf, alle korrekt, keiner ein Defekt.
+Der Fall musste durch sein Gegenteil ersetzt werden.
+Fundstelle: `scripts/check-f15-workflow.mjs`, früherer „Grünfall 2 (WS-2b
+(6))", jetzt „Grünfall 2 (WS-2c, AK6b)".
+Auswirkung: keine funktionale. Aber: ein rot werdendes Gate ist normalerweise
+ein Defektsignal, und hier war es ein Fahrplansignal. Wer den Unterschied
+nicht sieht, repariert am falschen Ende — oder schwächt den Fall ab, statt
+ihn zu ersetzen.
+Empfohlene Maßnahme: Fälle, die eine bewusst temporäre Scope-Grenze zusagen,
+im Fallnamen als solche kennzeichnen (z. B. „SCOPE-GRENZE WS-2b"), damit die
+nächste Iteration sie als Umbaustelle und nicht als Regression liest.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026.
+
+**F-214** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Die Feature-Gates F10–F15 stehen nicht in `state/gates.md`.
+Beschreibung: `state/gates.md` führt jedes objektive Gate mit bekanntem Rot-
+und Grün-Fall — die Datei nennt aber keines der Feature-Gates
+`check-f10-leitstand.mjs` bis `check-f15-*.mjs`. Die Rot-Kalibrierungen
+dieser Gates leben damit ausschließlich in Commit-Botschaften und
+Berichten.
+Fundstelle: `state/gates.md` (keine Zeile zu F10–F15);
+`package.json`, `npm run check`.
+Auswirkung: F-211 verlangt für jede neue oder verschärfte Gate-Zusage einen
+Rotbeleg. Ohne Ablageort verfällt der Beleg mit dem Bericht, in dem er
+steht — und die nächste Iteration kann nicht nachsehen, welche Zusage je rot
+kalibriert wurde und welche nicht.
+Empfohlene Maßnahme: gemeinsam mit F-211 als eigene Iteration — dieselbe
+Frage, dieselbe Datei. Nicht in WS-2c nachgezogen, weil eine
+Nachdokumentation von sechs Gates ohne erneute Kalibrierung genau die Art
+Behauptung wäre, gegen die F-211 sich richtet.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026.
+
+**F-215** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der D13-Vertrag in `check-f11-auftrag.mjs` prüft nur das ERSTE
+Vorkommen im Quelltext und diktiert dadurch die Codeform anderswo.
+Beschreibung: `erfuelltD13Vertrag` sucht per `indexOf` die erste
+D13-Sperrbedingung und die erste Belegtprüfung und verlangt jene vor dieser.
+Die Prüfung ist damit an eine Position im Quelltext gebunden, nicht an einen
+benannten Handler. In F15 WS-2c musste die neue Funktion
+`starteWorkflowSchritt` ihre Belegtprüfung deshalb über eine
+Zwischenvariable formulieren, weil sie VOR dem Handler von
+`POST /api/laeufe` steht und sonst dessen geprüftes erstes Vorkommen
+verdrängt hätte. Dieselbe Falle ist bereits im Kopf von
+`scripts/leitstand-server.mjs` und an der `/starten`-Route dokumentiert — sie
+wirkt inzwischen an drei Stellen.
+Fundstelle: `scripts/check-f11-auftrag.mjs`, `erfuelltD13Vertrag`;
+`scripts/leitstand-server.mjs`, Belegtprüfung in `starteWorkflowSchritt`.
+Auswirkung: Die Codeform wird von einem Textvergleich diktiert statt von der
+Sache. Schlimmer: eine künftige Umstellung, die die Routen-Reihenfolge
+ändert, verschiebt lautlos, WELCHER Handler geprüft wird — das Gate bleibt
+grün und prüft etwas anderes.
+Empfohlene Maßnahme: den geprüften Bereich per Marker eingrenzen, statt ihn
+über das erste Vorkommen zu erraten — das Muster steht bereits in derselben
+Datei (`teileAmAufrufMarker`). Danach entfällt die Zwischenvariable in
+`starteWorkflowSchritt`. Nicht in WS-2c gemacht, weil eine Änderung an einem
+fremden Sicherheits-Gate eine eigene Rot-Kalibrierung braucht.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-Pass).
+
+**F-216** · `TECH_DEBT` · P1 · offen
+Titel: Eine laufende automatische Kette hat keine verlässliche Bremse.
+Beschreibung: Seit WS-2c fährt der Automat mehrere Schritte hintereinander.
+Der einzige Eingriff des Menschen ist
+`POST /api/laeufe/<laufId>/abbrechen` — und der zielt auf eine `laufId`, die
+sich mit jedem Schritt ändert. Trifft die Anfrage nach dem Ende von Schritt n
+ein, antwortet der Endpunkt 404, während Schritt n+1 bereits läuft. Trifft
+sie kurz vor dem Laufende ein, kommt 202 "Abbruch angefordert" zurück, der
+Lauf endet trotzdem ERFOLGREICH und die Kette setzt fort — eine 202 ist also
+keine Zusage, dass die Kette steht. Eine neue Fassung als Notbremse ist in
+`LAEUFT` gesperrt (`GESPERRTE_ERSETZUNGS_STATUS`).
+Fundstelle: `scripts/leitstand-server.mjs`,
+`POST /api/laeufe/<laufId>/abbrechen` im Zusammenspiel mit der
+Auto-Fortsetzung; `features/F15/feature.md`, AK8 (WS-3).
+Auswirkung: In WS-2b war das Nicht-Aufrufen des zweiten `/starten` die
+Bremse. WS-2c entfernt sie, ohne Ersatz — der Workflow-Stopp ist AK8 und
+gehört zu WS-3. Bis dahin kann der Mensch eine unbeabsichtigt gestartete
+Kette nur schritt-für-schritt abbrechen und muss dabei jedes Mal die neue
+`laufId` treffen.
+Empfohlene Maßnahme: Verzweigungsentscheidung für Stefan, kein
+Bauauftrag-Nachtrag: entweder ein Workflow-Stopp
+(`POST /api/workflows/<id>/stoppen`, setzt GESTOPPT und bricht den aktiven
+Lauf ab) wird vorgezogen, oder AK8/WS-3 folgt unmittelbar. Der bereits
+festgehaltene Vorbehalt gilt zusätzlich: ein Regel-0-Ausgang darf ein
+bestehendes GESTOPPT nicht überschreiben (`features/F15/feature.md`).
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
+
+**F-217** · `TECH_DEBT` · P2 · offen
+Titel: Die D13-Übergabe hängt an der Synchronität von Funktionen, die das
+nicht wissen.
+Beschreibung: Die Invariante aus AK6b hält nur, solange
+`schreibeWorkflowFortschritt`, `ladeArtefaktVersion`, `registriereWorkflow`,
+`validiereWorkflowDaten`, `loeseSchrittEingabenAuf` und
+`ermittleNaechstenSchritt` synchron bleiben. Die Quelltextprüfung in
+`scripts/check-f15-workflow.mjs` sieht nur die drei markierten Bereiche, nicht
+deren Callees: würde eine dieser Funktionen `async`, bräche die Invariante
+lautlos und kein Gate schlüge an.
+Fundstelle: `scripts/leitstand-server.mjs`, `schreibeWorkflowFortschritt`
+(trägt seit WS-2c eine Warnzeile in der Funktionsdoku);
+`src/lineage-registry/index.ts`, `ladeArtefaktVersion`;
+`src/workflow/index.ts`, `registriereWorkflow` / `validiereWorkflowDaten` /
+`ermittleNaechstenSchritt` (ohne Warnzeile).
+Auswirkung: Ein Umbau in `src/`, der von F15 nichts weiß, kann eine
+Sicherheitszusage des Leitstands brechen, ohne dass irgendwo etwas rot wird.
+Empfohlene Maßnahme: gemeinsam mit F-212 behandeln. Entweder je eine
+Warnzeile an den betroffenen `src/`-Funktionen, oder — belastbarer — eine
+Gate-Prüfung, die die Callees mitliest. Beides ist mehr als eine Zeile und
+gehört in dieselbe Iteration wie F-212.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-Pass).
+
+**F-218** · `TECH_DEBT` · P3 · offen
+Titel: Der Ausweg aus `haltGrenze` verlangt ungenannt ein Nachziehen des
+Cursors.
+Beschreibung: Hält `grenzen.max_schritte` die Kette an, steht der Workflow
+auf `GESTOPPT` mit `aktiver_schritt_id: null`. Die neue Fassung des Menschen
+muss deshalb nicht nur die Grenze anheben und den `status` setzen, sondern
+zusätzlich `aktiver_schritt_id` auf den nächsten fälligen Schritt. Vergisst
+er das, greift der Fallback "Cursor sonst erster Schritt der Liste" und zeigt
+auf Schritt 1 — der trägt eine `lauf_id`, also 409 "Schritt 'schritt-1' ist
+nicht startbereit". Die Meldung nennt den falschen Schritt und nicht die
+Ursache.
+Fundstelle: `src/workflow/index.ts`, Erststart-Zweig von
+`ermittleNaechstenSchritt`; `features/F15/feature.md`, Tabelle
+"Halte-Zustände", Zeile `GESTOPPT`.
+Auswirkung: Der dokumentierte Reparaturzug funktioniert, aber nur mit einem
+Schritt, den nirgends jemand nennt. Der Mensch liest eine irreführende
+Fehlermeldung.
+Empfohlene Maßnahme: entweder die 409-Meldung um den Hinweis auf
+`aktiver_schritt_id` ergänzen, oder den Fallback bei gesetzten `lauf_id`s auf
+den ersten NICHT gelaufenen Schritt zeigen lassen. Die zweite Variante ist
+eine Regeländerung in einer reinen Funktion und braucht einen eigenen
+Rot-Fall — deshalb nicht in WS-2c.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
+
+**F-219** · `TECH_DEBT` · P3 · offen
+Titel: Eine Reparaturfassung kann die `vorgaengerLaufId`-Kette still
+verlieren.
+Beschreibung: Der Lineage-Vorgänger eines Schritts entsteht aus
+"nachfolger === schritt_id und lauf_id !== null". Setzt der Mensch in einer
+korrigierten Fassung alle Schritte auf `OFFEN` mit `lauf_id: null` — die
+naheliegende Geste, wenn er "von vorn" meint —, startet ein späterer Schritt
+ohne `vorgaengerLaufId`. Kein Fehler, keine Warnung, aber der Verweis aus
+F8/F13 fehlt für diesen Übergang.
+Fundstelle: `scripts/leitstand-server.mjs`, `gelaufeneVorschritte` in
+`starteWorkflowSchritt`.
+Auswirkung: gering im Ergebnis, aber mit WS-2c wird die Reparatur mitten in
+der Kette zum Normalfall — der Fall geht von theoretisch nach wahrscheinlich.
+Empfohlene Maßnahme: in WS-3 (AK8) prüfen, ob die Ansicht beim Einreichen
+einer Fassung auf verlorene Vorgängerverweise hinweisen soll. Kein
+Serverzwang: ein Neustart von vorn ist eine zulässige menschliche
+Entscheidung.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
+
+**F-220** · `TECH_DEBT` · P3 · offen
+Titel: Die F4-Startfreigabe-Fixture liegt jetzt doppelt im Repo.
+Beschreibung: `scripts/check-f15-automat-real.mjs` übernimmt rund hundert
+Zeilen Fixture-Aufbau (Wegwerf-Git-Repo, Baseline, Wirksamkeitsnachweis,
+Autorisierungsreferenz, Test-Startvorlage, Testserver) fast wörtlich aus
+`scripts/check-f14-abbruch.mjs`. Der Dateikopf nennt das "D5, kein zweiter
+Regelsatz" — zutreffend ist das Gegenteil: es IST der zweite.
+Fundstelle: `scripts/check-f15-automat-real.mjs` gegen
+`scripts/check-f14-abbruch.mjs`.
+Auswirkung: Ändert sich F4s Nachweisformat, müssen zwei Gates nachgezogen
+werden, und das zweite ist das, das vergessen wird. Verstoß gegen CLAUDE.md
+("Bestehende Helper NUTZEN, nicht neu schreiben").
+Empfohlene Maßnahme: `scripts/testhilfen/startfreigabe-fixture.mjs` mit
+Präfix-Parameter, beide Gates darauf umstellen. Eigene, kleine Iteration —
+ein Umbau am Fixture zweier realer Ende-zu-Ende-Gates gehört nicht in
+denselben Commit wie die Funktion, die sie prüfen sollen.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-Pass).
+
+**F-221** · `TECH_DEBT` · P4 · offen
+Titel: Zwei Restlücken am Rand des Automaten-Startpfads.
+Beschreibung: (a) `GET /api/workflows` führt das neue Feld `grund` nicht mit
+(`baueWorkflowKopfdaten`) — die Liste zeigt `KLAERUNG_ERFORDERLICH` ohne
+Grund, nur der Detailendpunkt hat ihn. (b) Würfe `fuehreAufgabeDurchFn`
+SYNCHRON statt ein abgelehntes Promise zu liefern, bliebe `laufAktiv` auf
+true stehen (der `.then`/`.catch`-Reset wird nie angehängt, der Wurf endet im
+try/catch der Nachbereitung) — D13 wäre bis zum Serverneustart blockiert.
+Fundstelle: (a) `scripts/leitstand-server.mjs`, `baueWorkflowKopfdaten`;
+(b) ebenda, Fire-and-forget-Block.
+Auswirkung: (a) betrifft ausschließlich die WS-3-Ansicht und ist dort zu
+entscheiden, nicht hier. (b) ist mit einer `async`-Funktion unerreichbar —
+`fuehreAufgabeDurch` ist eine, und nur eine Testattrappe könnte es verletzen.
+Empfohlene Maßnahme: (a) in WS-3 mitentscheiden. (b) keine — dokumentiert,
+damit ein künftiger Umbau des Aufrufvertrags den Fall kennt.
+Status: offen.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-/QA-Pass).
