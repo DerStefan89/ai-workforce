@@ -2154,7 +2154,7 @@ Register gegen die höchste im Chat vergebene prüfen; eine Lücke bedeutet,
 dass etwas nur im Chat steht. Regel (2) hätte alle drei Fälle gefunden.
 Feature/Run: F15 WS-2a, 10.09.2026.
 
-**F-201** · `BUG` · P1 · offen
+**F-201** · `BUG` · P2 · erledigt
 Titel: Zwei-Server-Instanzen-Stale-Heal-Race (D13 ist prozesslokal).
 Beschreibung: laufAktiv, laufAktivLaufId, laufAktivAbortController sind
 modul-lokale Variablen in scripts/leitstand-server.mjs, nicht
@@ -2168,11 +2168,20 @@ Fundstelle: scripts/leitstand-server.mjs, D13-Variablen (~Zeile 1419).
 Auswirkung: Datenintegrität bei parallelen Prozessen gefährdet. Wird mit
 WS-2c relevant, da der Automat dort unbeaufsichtigt weiterläuft und das
 Zeitfenster für diese Race sich vergrößert.
+Nachtrag 10.09.2026 (Challenger): PORT wird per server.listen(PORT,
+'127.0.0.1') ohne error-Handler gebunden. Ein zweiter Start auf
+Standardkonfiguration scheitert damit bereits an EADDRINUSE — der versehentliche
+Doppelstart war nie möglich. Real möglich blieb allein LEITSTAND_PORT=<anderer>
+aus demselben Arbeitsverzeichnis. Entscheidung Stefan 10.09.2026: Instanz-Lock
+im CLI-Bindeblock (kontrollzustand/.leitstand.lock mit PID-Liveness-Prüfung),
+nicht bloße Betriebsregel.
 Empfohlene Maßnahme: vor WS-2c klären — entweder prozessübergreifendes
 Lock (Datei-/PID-Lock) oder explizit dokumentierte Betriebsregel "genau
 eine Serverinstanz". Harte Vorbedingung für WS-2c (Challenger-Entscheidung
 09.09.2026).
-Status: offen.
+Status: erledigt durch PR #121, 10.09.2026 — belegeInstanzLock in
+scripts/leitstand-server.mjs (nur CLI-Bindeblock), Gate
+scripts/check-f15-instanzlock.mjs.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
 **F-202** · `TECH_DEBT` · P2 · offen
@@ -2191,7 +2200,7 @@ Workflow-Ebene sinnvoll ist.
 Status: offen.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
-**F-203** · `TECH_DEBT` · P2 · offen
+**F-203** · `TECH_DEBT` · P3 · offen
 Titel: grenzen.max_replans wird validiert, aber nirgends gelesen oder
 durchgesetzt.
 Beschreibung: Das Schema definiert grenzen.max_replans als Pflichtfeld,
@@ -2201,8 +2210,14 @@ Fundstelle: src/workflow/types.ts (WorkflowV0Grenzen), Validator in
 src/workflow/index.ts.
 Auswirkung: künftige Bauaufträge könnten fälschlich annehmen, ein
 Replan-Limit sei bereits durchgesetzt.
-Empfohlene Maßnahme: in WS-2c entweder implementieren oder per YAGNI aus
-dem Schema entfernen.
+Empfohlene Maßnahme: Korrigiert 10.09.2026 (Challenger): Die ursprünglich
+vorgeschlagene YAGNI-Entfernung von grenzen.max_replans aus dem Schema ist
+NICHT durchführbar. meldeUnbekannteFelder(obj.grenzen, GRENZEN_FELDER, ...) in
+src/workflow/index.ts:279 lehnt unbekannte Felder unter grenzen ab, und
+max_replans ist dort Pflichtfeld (:281). Eine Entfernung würde jede bereits
+geschriebene Workflow-Version ungültig machen; Kernartefakte sind append-only
+(ARCHITECTURE.md §7), die Bestandsdaten lassen sich nicht nachziehen. Das Feld
+bleibt und wird im Schema als reserviert dokumentiert. Priorität auf P3.
 Status: offen.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
@@ -2218,6 +2233,9 @@ Fundstelle: src/workflow/index.ts, Schritt-Zählung in
 ermittleNaechstenSchritt.
 Auswirkung: aktuell keine — rein vorsorglich für WS-2c.
 Empfohlene Maßnahme: bei Umsetzung von F-203 gemeinsam erneut prüfen.
+Nachtrag 10.09.2026 (Challenger): Da grenzen.max_replans laut F-203 im
+Schema bleibt, aber weiterhin nichts durchsetzt, existieren keine Replans —
+dieser Befund bleibt bis dahin gegenstandslos und ist kein Blocker für WS-2c.
 Status: offen.
 Feature/Run: F15 WS-2b, 10.09.2026.
 
@@ -2257,3 +2275,120 @@ für WS-2c.
 Status: offen.
 Feature/Run: F15 WS-2b, 10.09.2026 (bei Verifikation gefunden, nicht im
 Bauauftrag selbst).
+
+**F-207** · `BUG` · P1 · offen
+Titel: WARTET_FREIGABE ist ein Zustand ohne jeden Reparaturpfad.
+Beschreibung: FORTSETZBARE_WORKFLOW_STATUS (src/workflow/index.ts:86)
+enthält WARTET_FREIGABE, aber ein erneuter POST
+/api/workflows/<id>/starten läuft über ermittleNaechstenSchritt wieder in
+haltFreigabe (409). Einen Endpunkt, der eine Freigabeentscheidung
+entgegennimmt, gibt es nicht (F-195/AK7). Zusätzlich steht
+WARTET_FREIGABE in GESPERRTE_ERSETZUNGS_STATUS
+(scripts/leitstand-server.mjs:932), sodass auch keine korrigierte Fassung
+desselben workflow_id eingereicht werden kann. Ein Workflow, der auf
+einem Schritt mit freigabe: ZWINGEND anhält, ist damit endgültig
+zugemauert — auch für den Menschen.
+Fundstelle: src/workflow/index.ts:86; scripts/leitstand-server.mjs:932.
+Auswirkung: Im heutigen manuellen Schritt-für-Schritt-Modus trifft man
+das nur absichtlich. WS-2c fährt automatisch hinein, beim ersten
+ZWINGEND-Schritt. AK10 (realer Ende-zu-Ende-Nachweis) wäre ohne
+Auflösung nur über einen Workflow ganz ohne ZWINGEND-Schritt erreichbar,
+also am Governance-Fall vorbei.
+Empfohlene Maßnahme: AK7 (POST /api/workflows/<id>/freigabe) gehört in
+WS-2c, nicht dahinter. Schärft F-195: dort fehlt die Automatik, hier
+fehlt jeder Weg zurück.
+Status: offen.
+Feature/Run: F15 WS-2c-Vorabdesign, 10.09.2026.
+
+**F-208** · `TECH_DEBT` · P2 · offen
+Titel: Interaktion zwischen manuellem Laufabbruch und dem
+Schritt-Automaten ungeprüft.
+Beschreibung: POST /api/laeufe/<laufId>/abbrechen (F14 WS-4) löst den
+AbortController aus und antwortet sofort, ohne das Laufende abzuwarten.
+Ob der abgebrochene Lauf danach jemals mit ERFOLGREICH klassifiziert
+zurückkommt, ist nicht belegt. Käme er so zurück, würde der Automat ab
+WS-2c den Folgeschritt starten und damit einen vom Menschen
+abgebrochenen Arbeitsstrang fortsetzen.
+Fundstelle: scripts/leitstand-server.mjs, POST
+/api/laeufe/<laufId>/abbrechen (~Zeile 2143ff) im Zusammenspiel mit der
+nachLauf-Kette.
+Auswirkung: aktuell keine (WS-2b startet nichts von selbst). Ab WS-2c
+ein möglicher Verstoß gegen die menschliche Abbruchentscheidung.
+Empfohlene Maßnahme: In WS-2c ein realer Test "Schritt 1 starten,
+abbrechen, Laufende abwarten" mit der Zusage, dass Schritt 2 nicht
+startet. Fällt der Test anders aus, ist das ein Blocker für WS-2c, kein
+Nachtrag.
+Status: offen.
+Feature/Run: F15 WS-2c-Vorabdesign, 10.09.2026.
+
+**F-209** · `TECH_DEBT` · P3 · offen
+Titel: Instanz-Lock kann bei PID-Wiederverwendung fälschlich blockieren.
+Beschreibung: belegeInstanzLock entscheidet allein über
+process.kill(pid, 0), ob der Vorbesitzer noch lebt. Betriebssysteme
+vergeben PIDs wieder; stirbt der Leitstand hart und bekommt ein
+beliebiger anderer Prozess dieselbe PID, hält der Lock den Neustart für
+blockiert, obwohl keine Leitstand-Instanz läuft.
+Fundstelle: scripts/leitstand-server.mjs, pidLebt/belegeInstanzLock
+(~Zeile 2309ff).
+Auswirkung: gering und selbstheilend — die Fehlermeldung nennt den
+Dateipfad, der Mensch entfernt die Datei von Hand. Kein Datenverlust,
+keine stille Fehlfunktion.
+Empfohlene Maßnahme: keine. Eine belastbarere Prüfung (Prozessname,
+Startzeit gegen Boot-Zeit) wäre plattformabhängig und steht in keinem
+Verhältnis zum Risiko. Dokumentiert, damit ein künftiger Bauauftrag den
+Fall nicht für einen Bug hält.
+Status: offen.
+Feature/Run: F15 WS-2c-Vorbereitung, 10.09.2026
+(Challenger-Verifikation).
+
+**F-210** · `TECH_DEBT` · P3 · offen
+Titel: Zwei Restlücken im Heilungszweig des Instanz-Locks.
+Beschreibung: (a) unlinkSync(lockPfad) im Heilungszweig von
+belegeInstanzLock ist ungeschützt. Hat eine andere Instanz die verwaiste
+Datei in derselben Millisekunde entfernt, wirft ENOENT und der Start
+bricht mit einem rohen Fehler statt mit der vorgesehenen Meldung ab. (b)
+Starten zwei Instanzen gleichzeitig auf eine bereits verwaiste
+Lock-Datei, können beide sie als verwaist lesen; die zweite entfernt
+danach die inzwischen frisch und gültig belegte Datei der ersten und
+legt ihre eigene an. Beide laufen dann.
+Fundstelle: scripts/leitstand-server.mjs, belegeInstanzLock, unlinkSync
+im EEXIST-Zweig.
+Auswirkung: (a) nur kosmetisch — der Start bricht in der sicheren
+Richtung ab, es laufen nie zwei Instanzen. (b) ist die eigentliche
+Restlücke, setzt aber einen harten Absturz UND zwei zeitgleiche Starts
+voraus. Der Normalbetrieb (ein Mensch, ein npm run leitstand) erreicht
+sie nicht.
+Empfohlene Maßnahme: Keine. Bewusst offen gelassen (Challenger,
+10.09.2026, Fast-Prototyping): eine dichte Fassung bräuchte
+Schreiben-und-Umbenennen oder ein Inhaltsvergleich vor dem Entfernen,
+und das steht in keinem Verhältnis zu einer lokalen
+Einzelplatzanwendung. Erneut prüfen, falls der Leitstand je
+mehrbenutzerfähig oder als Dienst betrieben werden soll.
+Status: offen.
+Feature/Run: F15 WS-2c-Vorbereitung, 10.09.2026
+(Challenger-Verifikation).
+
+**F-211** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Neue Gates werden nicht auf Rot kalibriert.
+Beschreibung: Der Vertragsfall (d) in
+scripts/check-f15-instanzlock.mjs war in seiner ersten Fassung grün,
+obwohl der Instanz-Lock-Aufruf im CLI-Bindeblock entfernt war — er
+prüfte einen leeren Quelltextausschnitt und meldete Erfolg. Aufgefallen
+ist das erst im Reviewer-Pass, nicht beim Bau. Die Definition of Done
+verlangt grüne Gates, aber nirgends den Nachweis, dass ein Gate rot
+wird, wenn die zugesagte Eigenschaft fehlt.
+Fundstelle: scripts/check-f15-instanzlock.mjs, Vertragsfall (d), erste
+Fassung; DoD in CLAUDE.md.
+Auswirkung: Ein Gate ohne Rot-Nachweis belegt nur, dass die Datei läuft.
+Bei einem Sicherheitsvertrag wie D13 oder dem Instanz-Lock heißt das:
+der Schutz kann abgeschaltet werden, ohne dass etwas anschlägt. Betrifft
+potenziell alle bestehenden check-*.mjs, nicht nur dieses.
+Empfohlene Maßnahme: DoD ergänzen — für jede NEUE oder VERSCHÄRFTE
+Gate-Zusage wird einmal belegt, dass sie rot wird, wenn man die
+zugesagte Eigenschaft im Quelltext bricht (Manipulation, Rotbeleg,
+Rückbau, Diff unverändert). Das Verfahren ist in diesem Branch bereits
+real angewandt worden und hat drei Zusagen geprüft. Zusätzlich als
+eigene Iteration prüfen, welche bestehenden Gates nie rot kalibriert
+wurden.
+Status: offen.
+Feature/Run: F15 WS-2c-Vorbereitung, 10.09.2026 (Reviewer-Pass).

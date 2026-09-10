@@ -56,3 +56,9 @@ scratch-f11-ws3/
 # nicht in einen abgeleiteten Projekt-Klon. Zieht in Phase 3 in das
 # Lern-Repo (Befund P4).
 programm/
+
+# Instanz-Lock des Leitstand-Servers (F15 WS-2c-Vorbereitung, F-201) —
+# flüchtiger Betriebszustand mit PID/Port des laufenden Prozesses, kein
+# Kernartefakt (keine Lineage, keine Hash-Kette). kontrollzustand/ selbst
+# ist getrackt, deshalb hier gezielt nur diese eine Datei.
+kontrollzustand/.leitstand.lock
