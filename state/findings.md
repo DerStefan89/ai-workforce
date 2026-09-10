@@ -2763,7 +2763,7 @@ nicht erfunden.
 Status: offen.
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (QA-Pass Fehler 5).
 
-**F-226** · `TECH_DEBT` · P2 · offen
+**F-226** · `TECH_DEBT` · P2 · erledigt
 Titel: Eine Planänderung umgeht die Freigabepflicht, ohne eine Bezeugung zu
 hinterlassen.
 Beschreibung: Ein `ZWINGEND`-Schritt lässt sich nicht nur über
@@ -2793,7 +2793,29 @@ Ersetzungsregel verengt wurde. Variante B: bei der heutigen Fassung bleiben
 und eine Planänderung, die ein `ZWINGEND` entfernt, zusätzlich als
 Entscheidungsartefakt festhalten. Variante B ist die kleinere Änderung und
 schließt die Bezeugungslücke, ohne einen Reparaturpfad zu opfern.
-Status: offen.
+Status: erledigt in F15 WS-2c (b3), 10.09.2026 — Variante B gebaut
+(Challenger-Entscheidung 10.09.2026). `POST /api/workflows` vergleicht die
+eingereichte Fassung mit dem für die Ersetzungsprüfung ohnehin geladenen
+Bestand (`ermittleFreigabeAbschwaechungen`, kein zusätzliches I/O) und meldet
+jeden Schritt, der unter derselben `schritt_id` nicht mehr `ZWINGEND` trägt
+oder ganz entfällt. Bei einem Treffer: `begruendung` ist Pflicht (400 sonst,
+mit den `schritt_id`s NAMENTLICH im Grund — das ist der eigentliche Zweck,
+nicht die Begründung), und es entsteht
+`entscheidung-workflow-<workflowId>-planaenderung` (`erzeuger: 'mensch'`,
+`ergebnis: 'FREIGABEPFLICHT_ABGESCHWAECHT'`, Begründung, Zeitstempel, Liste
+der Schritte mit alter und neuer Stufe, `eingaben`-Verweis auf die VORHERIGE
+Version). Artefakt VOR dem Schreiben der neuen Fassung; scheitert es, wird die
+Fassung NICHT geschrieben (500) — anders als beim Stopp aus (b2), wo die
+Wirkung schon eingetreten war.
+Ohne Treffer ändert sich nichts: gewöhnliche Planänderungen, Erstanlage und
+die VERSCHÄRFUNG (`AUTOMATISCH` -> `ZWINGEND`) bleiben begründungsfrei — eine
+Pflicht, die bei jedem Speichern anschlägt, wird zur Klickstrecke.
+Abweichend vom Bauauftrag als „nicht mehr ZWINGEND" formuliert statt als
+Aufzählung der beiden heutigen Gegenwerte: eine künftige vierte Freigabestufe
+fiele sonst still aus der Bezeugungspflicht (F-244).
+Fünf Gate-Fälle in `scripts/check-f15-workflow.mjs` ((b3)); rot kalibriert
+durch Entfernen der Abschwächungserkennung — sechs Befunde, kein Absturz,
+Datei-Hash vor und nach dem Rückbau identisch.
 Feature/Run: F15 WS-2c (b1), 10.09.2026 (QA-Pass, Befund 1).
 
 **F-227** · `BUG` · P2 · erledigt
@@ -3325,3 +3347,77 @@ absichern (`laufenderSchritt?.schritt_id ?? '—'`) oder den Text auf
 `laufAktivLaufId` beschränken, die ohnehin gesetzt ist. Eine Zeile.
 Status: offen.
 Feature/Run: F15 WS-2c (b2, Nachtrag), 10.09.2026 (Rot-Kalibrierung F-239).
+
+**F-244** · `TECH_DEBT` · P3 · offen
+Titel: Die Abschwächungserkennung und `ermittleNaechstenSchritt` lesen
+`freigabe` in entgegengesetzter Richtung.
+Beschreibung: `ermittleNaechstenSchritt` prüft `freigabe` als ALLOWLIST — nur
+was in `AUTOMATISCH_STARTENDE_FREIGABE` steht, startet automatisch; ein
+künftiger vierter Wert fällt in „hält an". `ermittleFreigabeAbschwaechungen`
+aus (b3) prüft dieselbe Eigenschaft umgekehrt: alles, was nicht `ZWINGEND`
+ist, gilt als Abschwächung. Beide Richtungen sind je für sich die sichere —
+„hält an" bzw. „wird bezeugt" —, aber sie sind gegenläufig, und das steht nur
+in den Kommentaren der beiden Funktionen, nirgends an einer Stelle zusammen.
+Ein vierter Wert, etwa `ZWINGEND_MIT_VIER_AUGEN`, wäre nach der einen Regel
+nicht automatisch startend (richtig) und nach der anderen eine Abschwächung
+gegenüber `ZWINGEND` (falsch, es ist eine Verschärfung) — die Folge wäre eine
+Begründungspflicht ohne Anlass, also die harmlose Richtung, aber eine, die
+niemand erwartet.
+Fundstelle: `src/workflow/index.ts`, `AUTOMATISCH_STARTENDE_FREIGABE`;
+`scripts/leitstand-server.mjs`, `ermittleFreigabeAbschwaechungen`.
+Auswirkung: Heute keine — `FREIGABE` hat genau drei Werte, und beide Regeln
+liefern für alle drei dasselbe. Der Unterschied zeigt sich erst bei einer
+Erweiterung, und dann an einer Stelle, an die niemand denkt.
+Empfohlene Maßnahme: Eine gemeinsame, geordnete Definition der
+Freigabestufen in `src/workflow/index.ts` (welche Stufe ist strenger als
+welche), aus der beide Regeln ihre Antwort ziehen — dann ist „Abschwächung"
+ein Vergleich statt zweier Aufzählungen. Gehört in dieselbe Iteration wie eine
+etwaige vierte Stufe, nicht davor.
+Status: offen.
+Feature/Run: F15 WS-2c (b3), 10.09.2026.
+
+**F-245** · `TECH_DEBT` · P3 · offen
+Titel: `begruendung` in `POST /api/workflows` wird still verworfen, wenn keine
+Abschwächung vorliegt.
+Beschreibung: Damit das Feld überhaupt transportierbar ist, wird es vor
+`validiereWorkflowDaten` aus dem Rumpf gelöst (das Schema ist
+`additionalProperties: false`). Liegt keine Abschwächung vor, verschwindet es
+damit spurlos — vorher wäre derselbe Rumpf mit 400 „unbekanntes Feld
+'begruendung'" abgelehnt worden. Die Behandlung ist dieselbe wie bei `grund`
+und `freigabe_erteilt` (beide werden ebenfalls still normalisiert), aber bei
+denen ist das Verwerfen die SCHUTZWIRKUNG; hier ist es nur Bequemlichkeit.
+Fundstelle: `scripts/leitstand-server.mjs`, Herauslösen von `begruendung` in
+POST /api/workflows.
+Auswirkung: Gering und in die harmlose Richtung. Wer aus Gewohnheit immer eine
+Begründung mitschickt, bekommt keine Rückmeldung, dass sie diesmal nirgends
+gelandet ist — und könnte glauben, jede seiner Planänderungen sei bezeugt.
+Empfohlene Maßnahme: Gemeinsam mit F-229 (Formular-Prüfobjekte) behandeln: ein
+`pruefeWorkflowFormular`, das Transportfelder von Schemafeldern trennt und
+unbekannte Felder weiterhin ablehnt. Alternativ die 201-Antwort um ein
+ausdrückliches `bezeugt: false` ergänzen, wenn eine Begründung kam, aber keine
+Abschwächung vorlag.
+Status: offen.
+Feature/Run: F15 WS-2c (b3), 10.09.2026.
+
+**F-246** · `TECH_DEBT` · P3 · offen
+Titel: Die Bezeugung einer Planänderung ist an die schritt_id gebunden — ein
+umbenannter Schritt entgeht ihr.
+Beschreibung: `ermittleFreigabeAbschwaechungen` paart alte und neue Fassung
+über die `schritt_id`. Wird ein `ZWINGEND`-Schritt in derselben Fassung
+UMBENANNT und dabei abgeschwächt, sieht die Regel zwei Vorgänge: der alte
+Schritt entfällt (Treffer, wird bezeugt) und ein neuer kommt hinzu (kein
+Treffer). Das Ergebnis ist richtig — es wird bezeugt —, aber der Text nennt
+den alten Namen und sagt „Schritt entfällt", obwohl er unter neuem Namen
+weiterlebt. Der Mensch liest damit eine irreführende Beschreibung dessen, was
+er gerade tut.
+Fundstelle: `scripts/leitstand-server.mjs`,
+`ermittleFreigabeAbschwaechungen`.
+Auswirkung: Keine Umgehung — die Pflicht greift in beiden Fällen. Nur die
+Meldung und der Artefaktinhalt beschreiben den Vorgang ungenau, und genau
+diese Meldung ist der eigentliche Zweck der Prüfung.
+Empfohlene Maßnahme: Nichts bauen, solange es keinen Umbenennungs-Pfad in der
+Oberfläche gibt (AK8/WS-3). Wenn doch: dort entscheiden, ob eine Umbenennung
+überhaupt zulässig sein soll — eine `schritt_id` ist ein Bezugspunkt für
+`nachfolger`, `aktiver_schritt_id` und Entscheidungsartefakte.
+Status: offen.
+Feature/Run: F15 WS-2c (b3), 10.09.2026.

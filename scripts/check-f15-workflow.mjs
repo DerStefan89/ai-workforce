@@ -1729,15 +1729,21 @@ async function starteTestserver(optionen) {
       // Der Punkt, für den GESTOPPT und nicht KLAERUNG_ERFORDERLICH gewählt wurde: GESTOPPT
       // steht NICHT in GESPERRTE_ERSETZUNGS_STATUS, der Mensch kommt also mit einer
       // korrigierten Fassung weiter. Das ist der Reparaturpfad, nicht bloß die Erlaubnis.
+      //
+      // begruendung seit (b3): diese Reparaturfassung LÄSST DEN ABGELEHNTEN SCHRITT WEG, und
+      // das ist die Rücknahme einer Freigabepflicht (F-226). Der Fall ist damit nicht bloß an
+      // die neue Regel angepasst, sondern deren Musterbeispiel — wer einen ZWINGEND-Schritt
+      // nach einer Ablehnung entfernt, trifft genau die Entscheidung, die bezeugt gehört.
       const repariert = await fetch(`${basisUrl}/api/workflows`, {
         method: 'POST',
-        body: JSON.stringify(
-          gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], status: 'ERFOLGREICH', lauf_id: gestartete[0] })], {
+        body: JSON.stringify({
+          ...gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], status: 'ERFOLGREICH', lauf_id: gestartete[0] })], {
             workflow_id: workflowId,
             auftrag_id: auftragId,
             status: 'KLAERUNG_ERFORDERLICH',
-          })
-        ),
+          }),
+          begruendung: 'Gate: der abgelehnte Schritt 2 entfällt ersatzlos.',
+        }),
       })
       if (repariert.status !== 201) {
         befunde.push(`AK7: nach einer Ablehnung muss eine korrigierte Fassung angenommen werden, erhalten ${repariert.status} (${await repariert.text()})`)
@@ -2369,6 +2375,112 @@ async function starteTestserver(optionen) {
     } finally {
       await schliessen()
     }
+  }
+
+  // ─── (b3) Bezeugung einer abgeschwächten Freigabepflicht (F-226) ────────────────
+  //
+  // Der zweite Weg an der Freigabe vorbei: ein ZWINGEND-Schritt lässt sich über eine neue
+  // Fassung startbar machen, in der er AUTOMATISCH trägt. Seit (b3) verlangt genau dieser
+  // Fall eine Begründung und hinterlässt ein Entscheidungsartefakt.
+  //
+  // Der Block prüft BEIDE Richtungen, und die zweite ist die wichtigere: dass die Pflicht bei
+  // gewöhnlichen Planänderungen NICHT anschlägt. Eine Bezeugungspflicht, die bei jedem
+  // Speichern zuschlägt, wird zur Klickstrecke und dann von niemandem mehr gelesen.
+  const befundeVorPlanaenderung = befunde.length
+  {
+    const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+    /** @param workflowId - Ziel @param koerper - Payload-Objekt @returns die Antwort */
+    const reiche = (workflowId, koerper) =>
+      fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify({ ...koerper, workflow_id: workflowId, auftrag_id: auftragId }) })
+    /** @param workflowId - Ziel @returns die Daten des Planänderungs-Artefakts oder null */
+    const bezeugung = (workflowId) =>
+      ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-planaenderung`, undefined, { basisVerzeichnis, schreiber: () => {} })?.daten ?? null
+    /** @param freigabe - Freigabestufe von schritt-2 @returns Payload mit zwei Schritten */
+    const zweiSchritte = (freigabe) =>
+      gateWorkflow([gateSchritt('schritt-1', 'schritt-2', { eingaben: [] }), gateSchritt('schritt-2', null, { eingaben: [], freigabe })])
+    try {
+      // (1) Erstanlage: es gibt keine Vorfassung, also nichts abzuschwächen — keine Pflicht.
+      const erstId = `ws2c-b3-erstanlage-${randomUUID()}`
+      const erstanlage = await reiche(erstId, zweiSchritte('ZWINGEND'))
+      if (erstanlage.status !== 201) {
+        befunde.push(`(b3) F-226: eine Erstanlage mit ZWINGEND darf keine Begründung verlangen, erhalten ${erstanlage.status} (${await erstanlage.text()})`)
+      }
+      if (bezeugung(erstId) !== null) {
+        befunde.push('(b3) F-226: eine Erstanlage darf kein Planänderungs-Artefakt erzeugen')
+      }
+
+      // (2) ZWINGEND -> AUTOMATISCH ohne begruendung: 400, und die Meldung nennt die schritt_id.
+      // Das NAMENTLICHE Nennen ist der eigentliche Zweck der Prüfung: der Mensch soll lesen
+      // können, welche Freigabepflicht er gerade aufgibt.
+      const ohne = await reiche(erstId, zweiSchritte('AUTOMATISCH'))
+      const ohneKoerper = await ohne.json().catch(() => ({}))
+      if (ohne.status !== 400 || !String(ohneKoerper.grund).includes("'schritt-2'")) {
+        befunde.push(`(b3) F-226: ZWINGEND -> AUTOMATISCH ohne begruendung erwartet 400 mit der schritt_id im Grund, erhalten ${ohne.status} (${JSON.stringify(ohneKoerper)})`)
+      }
+      // Und es ist NICHTS geschrieben worden — die abgelehnte Fassung darf nicht durchrutschen.
+      const nachAblehnung = ladeArtefaktVersion(`workflow-${erstId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      if (nachAblehnung?.versionSequenz !== 1 || nachAblehnung?.daten?.schritte?.[1]?.freigabe !== 'ZWINGEND') {
+        befunde.push(`(b3) F-226: eine abgelehnte Abschwächung darf nichts schreiben, erhalten ${JSON.stringify({ v: nachAblehnung?.versionSequenz, freigabe: nachAblehnung?.daten?.schritte?.[1]?.freigabe })}`)
+      }
+
+      // (3) Dieselbe Fassung MIT begruendung: 201, und das Artefakt trägt alte und neue Stufe.
+      const mit = await reiche(erstId, { ...zweiSchritte('AUTOMATISCH'), begruendung: 'Gate: Schritt 2 ist nach Rücksprache unkritisch.' })
+      const mitKoerper = await mit.json().catch(() => ({}))
+      if (mit.status !== 201) {
+        befunde.push(`(b3) F-226: ZWINGEND -> AUTOMATISCH mit begruendung erwartet 201, erhalten ${mit.status} (${JSON.stringify(mitKoerper)})`)
+      }
+      const daten = bezeugung(erstId)
+      const eintrag = daten?.abgeschwaechte_freigaben?.[0]
+      if (daten?.ergebnis !== 'FREIGABEPFLICHT_ABGESCHWAECHT' || daten?.begruendung !== 'Gate: Schritt 2 ist nach Rücksprache unkritisch.') {
+        befunde.push(`(b3) F-226: das Planänderungs-Artefakt trägt nicht Ergebnis und Begründung, erhalten ${JSON.stringify(daten)}`)
+      } else if (eintrag?.schritt_id !== 'schritt-2' || eintrag?.vorher !== 'ZWINGEND' || eintrag?.nachher !== 'AUTOMATISCH') {
+        befunde.push(`(b3) F-226: das Artefakt muss alte UND neue Stufe je Schritt tragen, erhalten ${JSON.stringify(daten?.abgeschwaechte_freigaben)}`)
+      }
+      if (mitKoerper.artefaktId !== `entscheidung-workflow-${erstId}-planaenderung`) {
+        befunde.push(`(b3) F-226: die 201-Antwort muss die Bezeugung nennen, erhalten ${JSON.stringify(mitKoerper)}`)
+      }
+
+      // (4) Ein ZWINGEND-Schritt, der GANZ ENTFÄLLT, wird gleich behandelt — er ist keine
+      // kleinere Änderung als ein abgestufter, sondern eine größere.
+      const entfallId = `ws2c-b3-entfall-${randomUUID()}`
+      await reiche(entfallId, zweiSchritte('ZWINGEND'))
+      const entfaelltOhne = await reiche(entfallId, gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })]))
+      const entfaelltKoerper = await entfaelltOhne.json().catch(() => ({}))
+      if (entfaelltOhne.status !== 400 || entfaelltKoerper.abgeschwaechteFreigaben?.[0]?.nachher !== null) {
+        befunde.push(`(b3) F-226: ein entfallener ZWINGEND-Schritt erwartet 400 mit nachher:null, erhalten ${entfaelltOhne.status} (${JSON.stringify(entfaelltKoerper)})`)
+      }
+      const entfaelltMit = await reiche(entfallId, {
+        ...gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [] })]),
+        begruendung: 'Gate: Schritt 2 wird nicht mehr gebraucht.',
+      })
+      if (entfaelltMit.status !== 201 || bezeugung(entfallId)?.abgeschwaechte_freigaben?.[0]?.nachher !== null) {
+        befunde.push(`(b3) F-226: der entfallene Schritt muss mit begruendung durchgehen und bezeugt sein, erhalten ${entfaelltMit.status}`)
+      }
+
+      // (5) Gewöhnliche Planänderung: KEINE Pflicht, KEIN Artefakt. Zwei Formen, beide frei —
+      // ein geänderter ziel-Text und die VERSCHÄRFUNG AUTOMATISCH -> ZWINGEND. Wer sich selbst
+      // eine Freigabepflicht auferlegt, muss das nicht begründen.
+      const freiId = `ws2c-b3-frei-${randomUUID()}`
+      await reiche(freiId, zweiSchritte('AUTOMATISCH'))
+      const zielGeaendert = await reiche(freiId, { ...zweiSchritte('AUTOMATISCH'), ziel: 'Gate: neues Ziel, gleiche Freigaben.' })
+      if (zielGeaendert.status !== 201) {
+        befunde.push(`(b3) F-226: eine gewöhnliche Planänderung darf keine Begründung verlangen, erhalten ${zielGeaendert.status} (${await zielGeaendert.text()})`)
+      }
+      const verschaerft = await reiche(freiId, zweiSchritte('ZWINGEND'))
+      if (verschaerft.status !== 201) {
+        befunde.push(`(b3) F-226: eine VERSCHÄRFUNG (AUTOMATISCH -> ZWINGEND) muss ohne Begründung durchgehen, erhalten ${verschaerft.status} (${await verschaerft.text()})`)
+      }
+      if (bezeugung(freiId) !== null) {
+        befunde.push('(b3) F-226: ohne Abschwächung darf KEIN Planänderungs-Artefakt entstehen — sonst wird die Bezeugung zur Klickstrecke')
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+  if (befunde.length === befundeVorPlanaenderung) {
+    console.log(
+      '✓ (b3) F-226: eine Fassung, die eine Freigabepflicht zurücknimmt (ZWINGEND -> AUTOMATISCH oder Schritt entfällt), verlangt eine begruendung — 400 nennt die schritt_id NAMENTLICH und schreibt nichts; mit Begründung 201 plus Artefakt entscheidung-workflow-<id>-planaenderung mit alter und neuer Stufe. Erstanlage, geänderter ziel-Text und die VERSCHÄRFUNG AUTOMATISCH -> ZWINGEND bleiben frei und erzeugen kein Artefakt.'
+    )
   }
 
   // ─── (b2) POST /api/workflows/<id>/stoppen: Vertragsform (F-216) ────────────────

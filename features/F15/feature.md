@@ -135,10 +135,13 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   Der Zusammenspielfall aus F-208 (manueller Abbruch von Schritt 1 setzt
   NICHT auf Schritt 2 fort) ist real belegt, nicht angenommen —
   `check-f15-automat-real.mjs` (b).
-- **AK7** *(WS-2b/WS-2c (b1), erfüllt)* — Bei `freigabe: ZWINGEND` hält der
-  Automat real an. Die erteilte Freigabe wird als Entscheidungsartefakt
+- **AK7** *(WS-2b/WS-2c (b1)/(b3), erfüllt)* — Bei `freigabe: ZWINGEND` hält
+  der Automat real an. Die erteilte Freigabe wird als Entscheidungsartefakt
   festgehalten und ist die einzige Auflösung; `freigabe` selbst bleibt
-  unverändertes Plandatum.
+  unverändertes Plandatum. Seit (b3) gilt „einzige Auflösung" ohne
+  Einschränkung: der zweite Weg — eine neue Fassung, die die Freigabepflicht
+  zurücknimmt — ist keine Auflösung mehr an der Entscheidung vorbei, sondern
+  selbst eine bezeugte Entscheidung (F-226, siehe die Festlegung unten).
 
   Satz 1 hielt seit WS-2b (Halt auf `WARTET_FREIGABE`), Satz 2 ist WS-2c
   (b1): `POST /api/workflows/<id>/freigabe` nimmt `FREIGEGEBEN` oder
@@ -182,21 +185,50 @@ einen Schritt- oder Workflow-Begriff; `LaufStatus` gilt je `laufId`.
   Gate-Fall). Die Prüfung hier um eine zweite Fassung der Plandatenauflösung
   zu erweitern, wäre der schlechtere Tausch.
 
-  **Festlegung — „einzige Auflösung" heißt: innerhalb eines gegebenen Plans**
-  (QA-Pass 10.09.2026, Befund 1). Ein Mensch kann in `OFFEN`,
-  `KLAERUNG_ERFORDERLICH` und `GESTOPPT` eine neue Fassung einreichen, in der
-  derselbe Schritt `AUTOMATISCH` statt `ZWINGEND` trägt — und ihn dann ohne
-  Entscheidungsartefakt starten. Das ist keine Lücke, die (b1) gerissen hat
-  (die Ersetzungsregel ist älter), und es ist **kein** Widerspruch zum
-  Rollenmodell: der einzige Nutzer ist zugleich die einzige
-  Entscheidungsinstanz, und eine Planänderung IST seine Entscheidung —
-  festgehalten als neue, append-only Workflow-Version neben der alten
-  Fassung und dem alten Entscheidungsartefakt. Was fehlt, ist die
-  ausdrückliche Bezeugung: eine Planänderung schreibt kein
-  `entscheidung-*`-Artefakt. Wer das ändern will, muss die Ersetzungssperre an
-  die Regel hängen statt an den Status — mit dem Preis, dass ein Tippfehler in
-  einem `ZWINGEND`-Schritt dann nicht mehr korrigierbar wäre. Bewusst nicht in
-  (b1) entschieden; als **F-226** festgehalten.
+  **Festlegung — „einzige Auflösung" heißt: die einzige UNBEZEUGTE. Beide Wege
+  hinterlassen eine Entscheidung** (WS-2c (b3), löst F-226; die Fassung aus
+  (b1), die den Satz auf „innerhalb eines gegebenen Plans" einschränkte, ist
+  damit überholt).
+
+  Es gibt zwei Wege, einen `ZWINGEND`-Schritt startbar zu machen: den
+  Freigabe-Endpunkt, und eine neue Fassung, in der derselbe Schritt nicht mehr
+  `ZWINGEND` trägt (zulässig in `OFFEN`, `KLAERUNG_ERFORDERLICH` und
+  `GESTOPPT`). Der zweite Weg blieb bis (b3) **unbezeugt** — kein
+  `entscheidung-*`-Artefakt, keine Begründungspflicht. Der Bedrohungsfall ist
+  dabei nicht Böswilligkeit, sondern Unachtsamkeit: der Mensch ändert einen
+  Plan und merkt nicht, dass er dabei eine Freigabepflicht verloren hat — der
+  Automat fährt den Schritt danach unbeaufsichtigt.
+
+  Seit (b3) erkennt `POST /api/workflows` die **Abschwächung** beim Vergleich
+  mit der ohnehin geladenen Vorfassung: ein Schritt, der unter derselben
+  `schritt_id` nicht mehr `ZWINGEND` trägt, oder ein `ZWINGEND`-Schritt, der
+  ganz entfällt. Dann ist `begruendung` Pflicht (400 sonst, mit den
+  betroffenen `schritt_id`s **namentlich** im Grund), und es entsteht
+  `entscheidung-workflow-<workflowId>-planaenderung` (`erzeuger: 'mensch'`,
+  `ergebnis: 'FREIGABEPFLICHT_ABGESCHWAECHT'`, mit Begründung, Zeitstempel,
+  der Liste der Schritte samt alter und neuer Stufe und einem
+  `eingaben`-Verweis auf die **vorherige** Version — sie ist der Plan, in dem
+  die Pflicht noch stand). Das Artefakt entsteht VOR dem Schreiben der neuen
+  Fassung; scheitert es, wird die Fassung NICHT geschrieben (500). Das ist der
+  Unterschied zum Stopp aus (b2): dort war die Wirkung schon eingetreten, hier
+  ist sie es noch nicht.
+
+  **Was ausdrücklich frei bleibt** — und das ist der Kern der gewählten
+  Variante B: gewöhnliche Planänderungen, die Erstanlage, und die
+  VERSCHÄRFUNG (`AUTOMATISCH` → `ZWINGEND`). Wer sich selbst eine
+  Freigabepflicht auferlegt, begründet das nicht. Eine Pflicht, die bei jedem
+  Speichern anschlägt, wird zur Klickstrecke und dann von niemandem mehr
+  gelesen — dieselbe Erosion, gegen die der Lock-Hinweis aus der
+  WS-2c-Vorbereitung geschrieben ist.
+
+  Die Alternative (Variante A: die Ersetzungssperre an die Regel hängen statt
+  an den Status) ist bewusst verworfen — ihr Preis wäre, dass ein Tippfehler
+  in einem `ZWINGEND`-Schritt nicht mehr korrigierbar ist, also genau der
+  zugemauerte Zustand, gegen den die Ersetzungsregel verengt wurde. Der
+  eigentliche Zweck der gewählten Lösung ist ohnehin nicht die Begründung,
+  sondern die Meldung davor: der Mensch liest, welche Freigabepflicht er
+  gerade aufgibt, und korrigiert im Regelfall die Fassung, statt sie zu
+  begründen.
 
   **Festlegung — eine Freigabe gilt für die Schrittfassung, nicht für einen
   einzelnen Startversuch** (Reviewer-/QA-Pass 10.09.2026): `freigabe_erteilt`
@@ -646,7 +678,10 @@ Zusammenhang mit **AK7**: dessen zweiter Satz — die erteilte Freigabe wird
 als Entscheidungsartefakt festgehalten und ist die einzige Auflösung — war
 auf dem WS-2b-Stand nicht gebaut; WS-2b hielt bei `WARTET_FREIGABE` real an
 (AK7 Satz 1), löste den Halt aber nicht auf. WS-2c (b1) hat ihn gebaut, siehe
-AK7 oben.
+AK7 oben. WS-2c (b3) hat ihn vollendet: bis dahin galt „einzige Auflösung"
+nur innerhalb eines gegebenen Plans, weil eine Fassung, die die
+Freigabepflicht zurücknimmt, unbezeugt durchging. Seither ist auch dieser Weg
+begründungspflichtig und hinterlässt ein Entscheidungsartefakt (F-226).
 
 ## Dependencies
 

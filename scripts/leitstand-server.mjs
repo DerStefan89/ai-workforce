@@ -342,6 +342,26 @@
  * startete den Lauf samt D13-Belegung: ein Schritt auf LAEUFT unter einem
  * Workflow auf GESTOPPT. Alle Aufrufstellen lesen das Feld; keine darf es
  * stillschweigend als Erfolg nehmen.
+ *
+ * F15 WS-2c (b3, löst F-226): POST /api/workflows bezeugt eine Fassung, die
+ * eine FREIGABEPFLICHT ZURÜCKNIMMT. Ein ZWINGEND-Schritt war bis dahin auf
+ * zwei Wegen startbar zu machen — über den Freigabe-Endpunkt (mit
+ * Pflichtbegründung und Artefakt) und über eine neue Fassung, in der derselbe
+ * Schritt AUTOMATISCH trägt (unbezeugt). Der Bedrohungsfall ist nicht
+ * Böswilligkeit, sondern Unachtsamkeit: der Mensch ändert einen Plan und
+ * merkt nicht, dass er dabei eine Freigabepflicht verloren hat — der Automat
+ * fährt den Schritt danach unbeaufsichtigt.
+ * ermittleFreigabeAbschwaechungen vergleicht die eingereichte Fassung mit dem
+ * ohnehin geladenen Bestand (kein zusätzliches I/O) und meldet jeden Schritt,
+ * der nicht mehr ZWINGEND trägt oder ganz entfällt. Bei einem Treffer ist
+ * begruendung Pflicht — ein Transportfeld, das VOR der Schemaprüfung aus dem
+ * Rumpf gelöst wird und nie im Workflow landet —, die 400-Meldung nennt die
+ * betroffenen schritt_ids NAMENTLICH, und es entsteht
+ * entscheidung-workflow-<id>-planaenderung. Das Artefakt entsteht VOR dem
+ * Schreiben der neuen Fassung; scheitert es, wird die Fassung NICHT
+ * geschrieben (Unterschied zum Stopp, wo die Wirkung schon eingetreten war).
+ * OHNE Treffer ändert sich nichts: gewöhnliche Planänderungen, die Erstanlage
+ * und die VERSCHÄRFUNG AUTOMATISCH -> ZWINGEND bleiben begründungsfrei.
  */
 
 import { createServer } from 'node:http'
@@ -1030,6 +1050,54 @@ const ERSETZBARE_STATUS_TEXT = ['OFFEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
  * laufende Kette abreißt.
  */
 const STOPPBARE_WORKFLOW_STATUS = new Set(['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH'])
+
+/**
+ * Vergleicht zwei Fassungen desselben Workflows und meldet jeden Schritt, der
+ * dabei seine Freigabepflicht verliert (F15 WS-2c (b3), löst F-226).
+ *
+ * Der zweite Weg an der Freigabe vorbei: ein ZWINGEND-Schritt lässt sich seit
+ * (b1) über POST /api/workflows/<id>/freigabe auflösen — mit Pflichtbegründung
+ * und Entscheidungsartefakt —, aber ebenso über eine neue Fassung, in der
+ * derselbe Schritt AUTOMATISCH trägt. Der Bedrohungsfall ist nicht
+ * Böswilligkeit, sondern Unachtsamkeit: der Mensch ändert einen Plan und merkt
+ * nicht, dass er dabei eine Freigabepflicht verloren hat — der Automat fährt
+ * den Schritt danach unbeaufsichtigt.
+ *
+ * Zwei Formen von Abschwächung, beide gleich behandelt:
+ *   - derselbe Schritt trägt nicht mehr ZWINGEND (nachher: der neue Wert),
+ *   - der Schritt fehlt in der neuen Fassung ganz (nachher: null). Ein
+ *     entfernter ZWINGEND-Schritt ist keine kleinere Änderung als ein
+ *     abgestufter, sondern eine größere.
+ *
+ * ABSICHTLICH als "nicht mehr ZWINGEND" formuliert und nicht als Aufzählung
+ * der beiden heutigen Gegenwerte (EMPFOHLEN, AUTOMATISCH): käme je eine vierte
+ * Freigabestufe dazu, fiele sie sonst still aus der Bezeugungspflicht. Die
+ * sichere Richtung ist hier die umgekehrte als bei den Allowlists in
+ * ermittleNaechstenSchritt — dort heißt sie "hält an", hier "wird bezeugt".
+ *
+ * Die VERSCHÄRFUNG ist ausdrücklich frei: wer AUTOMATISCH auf ZWINGEND hebt,
+ * legt sich selbst eine Pflicht auf und braucht dafür keine Begründung.
+ * @param vorherigeSchritte - schritte-Liste der abgelegten Fassung
+ * @param neueSchritte - schritte-Liste der eingereichten Fassung
+ * @returns [{ schritt_id, vorher: 'ZWINGEND', nachher: <neuer Wert> | null }], leer bei keinem Treffer
+ */
+function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
+  if (!Array.isArray(vorherigeSchritte)) return []
+  const neueNachId = new Map((Array.isArray(neueSchritte) ? neueSchritte : []).map((schritt) => [schritt?.schritt_id, schritt]))
+  const treffer = []
+  for (const alt of vorherigeSchritte) {
+    if (alt?.freigabe !== 'ZWINGEND') continue
+    const neu = neueNachId.get(alt.schritt_id)
+    if (neu === undefined) {
+      treffer.push({ schritt_id: alt.schritt_id, vorher: 'ZWINGEND', nachher: null })
+      continue
+    }
+    if (neu.freigabe !== 'ZWINGEND') {
+      treffer.push({ schritt_id: alt.schritt_id, vorher: 'ZWINGEND', nachher: neu.freigabe ?? null })
+    }
+  }
+  return treffer
+}
 
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
 const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
@@ -2322,6 +2390,23 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
+      // begruendung ist KEIN WORKFLOW_V0-Feld und wird deshalb vor der Validierung aus dem
+      // Rumpf gelöst (F15 WS-2c (b3)): das Schema ist additionalProperties:false, ein
+      // mitgeschicktes Feld käme sonst als "unbekanntes Feld" zurück. Es ist ein
+      // TRANSPORTfeld — es begründet nicht den Plan, sondern die ENTSCHEIDUNG, ihn so zu
+      // ändern, und landet ausschließlich im Entscheidungsartefakt, nie im Workflow.
+      //
+      // Nebenwirkung, bewusst in Kauf genommen: ein versehentlich mitgeschicktes begruendung
+      // ohne Freigabe-Abschwächung wird jetzt still verworfen statt mit 400 abgelehnt. Das ist
+      // dieselbe Behandlung wie bei grund und freigabe_erteilt weiter unten — ein Feld, das dem
+      // Server gehört und nicht dem Body.
+      let begruendungDerPlanaenderung
+      if (body !== null && typeof body === 'object' && !Array.isArray(body) && 'begruendung' in body) {
+        const { begruendung, ...ohneBegruendung } = body
+        begruendungDerPlanaenderung = begruendung
+        body = ohneBegruendung
+      }
+
       // Einzige fachliche Prüfung: F15s validiereWorkflowDaten (D5, kein zweiter,
       // selbstgebauter Regelsatz im Server). Die Verstoßtexte gehen unverändert an den Client.
       const verstoesse = validiereWorkflowDaten(body)
@@ -2400,6 +2485,80 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
+      // ─── Bezeugung einer abgeschwächten Freigabepflicht (F15 WS-2c (b3), löst F-226) ────
+      //
+      // Der Vergleich läuft gegen den ohnehin geladenen Bestand — kein zusätzliches I/O. Bei
+      // einer Erstanlage (bestand === null) gibt es nichts abzuschwächen; dort greift nichts.
+      //
+      // Auch auf einem UNGÜLTIGEN Bestand wird verglichen: er kann sehr wohl ZWINGEND-Schritte
+      // tragen, und dass er die heutigen Formregeln verletzt, macht die Freigabepflicht darin
+      // nicht wertlos. ermittleFreigabeAbschwaechungen liest nur schritte[].freigabe und
+      // schritt_id, beides prüft die Validierung ohnehin nicht auf Sinn.
+      //
+      // KEINE Begründungspflicht für gewöhnliche Planänderungen. Das ist der Kern der
+      // Variante B (Challenger-Entscheidung 10.09.2026, F-226): eine Pflicht, die bei jedem
+      // Speichern anschlägt, wird zur Klickstrecke und dann von niemandem mehr gelesen —
+      // dieselbe Erosion, gegen die der Lock-Hinweis aus der WS-2c-Vorbereitung geschrieben
+      // ist. Sie greift nur dort, wo real eine Freigabepflicht verschwindet.
+      const abschwaechungen = bestand === null ? [] : ermittleFreigabeAbschwaechungen(bestand.daten?.schritte, body.schritte)
+      let planaenderungsArtefakt = null
+      if (abschwaechungen.length > 0) {
+        // Die schritt_ids stehen NAMENTLICH in der Meldung, und das ist der eigentliche Zweck
+        // dieser Prüfung — nicht die Begründung selbst. Der Mensch soll lesen können, WELCHE
+        // Freigabepflicht er gerade aufgibt; der häufigste Fall ist, dass er es gar nicht
+        // bemerkt hat und die Fassung daraufhin korrigiert, statt sie zu begründen.
+        const aufzaehlung = abschwaechungen
+          .map((eintrag) => `'${eintrag.schritt_id}' (ZWINGEND -> ${eintrag.nachher === null ? 'Schritt entfällt' : eintrag.nachher})`)
+          .join(', ')
+        if (typeof begruendungDerPlanaenderung !== 'string' || begruendungDerPlanaenderung.trim().length === 0) {
+          sendeJson(res, 400, {
+            grund: `Diese Fassung nimmt eine Freigabepflicht zurück: ${aufzaehlung}. Dafür ist 'begruendung' Pflicht (nicht-leerer String) — sie wird als Entscheidung festgehalten. War die Abschwächung nicht beabsichtigt, korrigiere die Fassung statt sie zu begründen.`,
+            abgeschwaechteFreigaben: abschwaechungen,
+          })
+          return
+        }
+
+        // Das Artefakt entsteht VOR dem Schreiben der neuen Fassung (D2, Muster
+        // ABGELEHNT-Zweig des Freigabe-Endpunkts). Anders als beim Stopp aus (b2), wo die
+        // Wirkung schon eingetreten war und deshalb nicht zurückgerollt wurde, ist hier noch
+        // nichts geschehen: scheitert die Bezeugung, wird die neue Fassung NICHT geschrieben.
+        // Eine abgeschwächte Freigabepflicht ohne Bezeugung ist genau der Zustand, den F-226
+        // benennt — er darf nicht als Nebenwirkung eines I/O-Fehlers entstehen.
+        //
+        // Der eingaben-Verweis zeigt auf die VORHERIGE Version: sie ist der Plan, in dem die
+        // Freigabepflicht noch stand, und ohne sie ist später nicht mehr feststellbar, WAS
+        // aufgegeben wurde. Form wortgleich zu (b1)/(b2) (D5).
+        try {
+          planaenderungsArtefakt = registriereKernArtefakt(
+            `entscheidung-workflow-${body.workflow_id}-planaenderung`,
+            profilReferenz,
+            { erzeuger: 'mensch', schritt: 'entscheidung-workflow-planaenderung' },
+            {
+              entscheidung_schema: 'v0',
+              ergebnis: 'FREIGABEPFLICHT_ABGESCHWAECHT',
+              begruendung: begruendungDerPlanaenderung,
+              entschieden_am: new Date().toISOString(),
+              abgeschwaechte_freigaben: abschwaechungen,
+            },
+            [
+              {
+                pfad: `artefakt:workflow-${body.workflow_id}`,
+                zitierter_bereich: `WORKFLOW_V0 versionSequenz ${bestand.versionSequenz}, abgeschwächt: ${aufzaehlung}`,
+                inhalts_hash: bestand.inhaltsHash,
+              },
+            ],
+            { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+          )
+        } catch (fehler) {
+          console.error(`[leitstand] Planänderung an Workflow '${body.workflow_id}' konnte nicht bezeugt werden:`, fehler)
+          sendeJson(res, 500, {
+            grund: `Die Rücknahme einer Freigabepflicht konnte nicht als Entscheidung festgehalten werden (${fehler.message}) — die neue Fassung wurde deshalb NICHT geschrieben.`,
+            abgeschwaechteFreigaben: abschwaechungen,
+          })
+          return
+        }
+      }
+
       // registriereWorkflow führt echte, synchrone Disk-I/O aus und kann werfen — derselbe
       // Grund wie bei registriereAuftrag oben (requestHandler ist eine async function, deren
       // Promise niemand awaitet; ein ungefangener Wurf würde den Prozess beenden).
@@ -2454,7 +2613,20 @@ export function erzeugeRequestHandler(optionen = {}) {
       //     unzulässigen Zeichen (: < > " | ? *) bleiben ungeprüft und enden als 500 statt 400,
       //     unter Linux dagegen als 201 — OS-divergent. Eine strengere Regel gehört in den
       //     Checkpoint Store (eine Wahrheitsquelle), nicht als Zweitregel hierher.
-      sendeJson(res, 201, { workflowId: body.workflow_id, versionSequenz: registriert.versionSequenz })
+      // Bei einer bezeugten Abschwächung trägt die Antwort, WAS bezeugt wurde (b3): sonst
+      // sieht der Mensch am 201 nicht, dass er gerade eine Freigabepflicht aufgegeben und
+      // dafür ein Entscheidungsartefakt erzeugt hat.
+      sendeJson(res, 201, {
+        workflowId: body.workflow_id,
+        versionSequenz: registriert.versionSequenz,
+        ...(planaenderungsArtefakt === null
+          ? {}
+          : {
+              abgeschwaechteFreigaben: abschwaechungen,
+              artefaktId: `entscheidung-workflow-${body.workflow_id}-planaenderung`,
+              entscheidungVersionSequenz: planaenderungsArtefakt.versionSequenz,
+            }),
+      })
       return
     }
 
