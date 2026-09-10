@@ -3399,7 +3399,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       const laufAbgebrochen = laufAktiv && laufenderSchritt !== undefined
       if (laufAbgebrochen) {
         laufAktivAbortController.abort()
-        console.error(`[leitstand] Workflow '${workflowId}' gestoppt — laufender Schritt '${laufenderSchritt.schritt_id}' (Lauf '${laufAktivLaufId}') abgebrochen.`)
+        console.error(`[leitstand] Workflow '${workflowId}' gestoppt — laufender Schritt '${laufenderSchritt?.schritt_id ?? '—'}' (Lauf '${laufAktivLaufId}') abgebrochen.`)
       }
       // STOPP-REIHENFOLGE: ENDE
 
