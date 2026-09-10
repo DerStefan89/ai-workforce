@@ -236,3 +236,40 @@ button:disabled {
   background: #d6e8ff;
   color: #1b4b8a;
 }
+
+/*
+ * F15 WS-3b: die Eingabefelder der Workflow-Bedienung und des
+ * Reparaturentwurfs. Wortgleich zur Regel des Startformulars, aber als eigener
+ * Selektor: die dortige ist auf #auftrag-start geschnitten, und ein
+ * Zusammenlegen hieße, den Selektor eines fremden Abschnitts zu erweitern.
+ * width UND max-width zusammen (Definition of Done: jeder Container mit
+ * max-width trägt auch width: 100%).
+ */
+#workflow-bedienung label,
+#workflow-reparatur label {
+  display: block;
+  margin-top: 0.75rem;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+}
+
+#workflow-bedienung textarea,
+#workflow-reparatur textarea,
+#workflow-reparatur input[type="text"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.4rem;
+}
+
+#workflow-reparatur textarea {
+  font-family: monospace;
+}
+
+#workflow-bedienung button,
+#workflow-reparatur button {
+  margin-top: 0.6rem;
+  margin-right: 0.4rem;
+}

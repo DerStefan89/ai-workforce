@@ -1,7 +1,7 @@
 /**
  * Datei: scripts/check-f15-workflow-oberflaeche.mjs
  *
- * Zweck: F15-WS-3a-Gate für die OBERFLÄCHE des Leitstands. Es prüft den
+ * Zweck: F15-WS-3a/3b-Gate für die OBERFLÄCHE des Leitstands. Es prüft den
  * Quelltext von public/leitstand/index.html und public/leitstand/app.js
  * gegen die Zusagen der Workflow-Ansicht (AK8, erster von zwei Commits).
  *
@@ -20,23 +20,31 @@
  * die Seite bleibt Sache des Nachweises, nicht dieses Gates.
  *
  * Geprüft wird:
- * (a) index.html — der Abschnitt und seine Container-ids.
+ * (a) index.html — der Abschnitt, seine Container-ids und der Einleitungssatz,
+ *     der die schreibenden Ausnahmen benennt.
  * (b) app.js — die beiden Leseendpunkte GET /api/workflows und
  *     GET /api/workflows/<id>.
  * (c) app.js — Kopfdaten- und Schrittfelder, jedes EINZELN nachgewiesen.
  *     Eine Sammelprüfung („irgendwas mit schritt") bliebe grün, während die
  *     halbe Liste fehlt.
- * (d) app.js — der Zweig für eine ungültige Fassung (409, F-241) und die
- *     Markierung des aktiven Laufs (F-234).
- * (e) app.js — die WS-3a-Scope-Grenze als Vertrag: KEIN Aufruf von
- *     POST /api/workflows/<id>/starten, /freigabe oder /stoppen.
- *     WS-3b dreht diesen Fall bewusst um — dort wird er ANGEPASST, nicht
- *     gelöscht.
+ * (d) app.js — der Zustand „Fassung ungültig", seit WS-3b aus dem
+ *     Server-Feld verstoesse statt aus einem nie gesendeten 409 (F-247), und
+ *     die Markierung des aktiven Laufs (F-234).
+ * (e) app.js — die UMGEDREHTE Scope-Zusage. WS-3a hielt hier fest, dass app.js
+ *     KEINEN der Schreibendpunkte aufruft; WS-3b verlangt genau diese
+ *     Aufrufe. Der Fall ist umgedreht, nicht gelöscht: eine gelöschte Grenze
+ *     hinterlässt keine Spur.
  * (f) app.js — Syntaxprüfung (node --check). Der Ordner public liegt
  *     AUSSERHALB von Biome (biome.json führt nur scripts und src) und
  *     außerhalb von tsc (tsconfig ebenso, und nur .ts). Ohne diese Prüfung
  *     bliebe eine syntaktisch kaputte app.js in der gesamten Kette grün:
  *     eine Quelltextsuche findet ihre Muster auch dann noch.
+ * (g) app.js — F15 WS-3b: das Automaten-Verdikt (naechster) als Quelle der
+ *     angezeigten Lage, jede der vier Bedienungen an GENAU ihrem Endpunkt,
+ *     die Pflichtbegründungen und die ehrliche 409-Meldung statt eines
+ *     Vorabsperrens.
+ * (h) app.js — F15 WS-3b: der Reparaturentwurf mit seinen vier Korrekturen
+ *     und den drei Warnungen (F-219, F-223, F-226).
  *
  * Alle app.js-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
  * (entferneKommentare). Sonst hielte ein Kommentar, der einen Endpunkt nur
@@ -53,7 +61,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 
 const befunde = []
-console.log('\n=== F15-WS-3a-Check (Workflow-Ansicht, Quelltext von public/leitstand/) ===\n')
+console.log('\n=== F15-WS-3a/3b-Check (Workflow-Ansicht und -Bedienung, Quelltext von public/leitstand/) ===\n')
 
 /**
  * Entfernt Block- und Zeilenkommentare aus JavaScript-Quelltext, damit eine
@@ -103,10 +111,21 @@ for (const id of ['workflows', 'workflow-detail', 'workflow-detail-titel', 'work
   verlangeVorkommen('a', `Container-id '${id}'`, htmlQuelltext, `id="${id}"`)
 }
 
-// Der Einleitungssatz nennt seit F13 das Startformular und die Wiederaufnahme als einzige
-// Ausnahmen von "rein lesend". WS-3a fügt keine dritte hinzu; WS-3b tut es und muss den Satz
-// dann korrigieren. Hier festgehalten, damit die Korrektur nicht vergessen wird.
-verlangeVorkommen('a', 'Einleitungssatz nennt die Ausnahmen von "rein lesend"', htmlQuelltext, 'Ausnahme: das Startformular und die Wiederaufnahme-Bedienung')
+// F15 WS-3b: die neuen Container. Sie sind die Bedingung dafür, dass eine Pflichtbegründung
+// den 2-Sekunden-Poll überlebt — stünden Bedienung und Reparaturentwurf in
+// #workflow-detail-inhalt, wäre jede angefangene Eingabe nach zwei Sekunden weg (F-249).
+for (const id of ['workflow-bedienung', 'workflow-bedienung-meldung', 'workflow-reparatur']) {
+  verlangeVorkommen('a', `Container-id '${id}' (WS-3b)`, htmlQuelltext, `id="${id}"`)
+}
+
+// Der Einleitungssatz nannte seit F13 das Startformular und die Wiederaufnahme als einzige
+// Ausnahmen von "rein lesend". Mit der Workflow-Bedienung stimmt das nicht mehr — WS-3b
+// korrigiert ihn, und diese Zusage ist wie (e) UMGEDREHT statt gelöscht: der alte Wortlaut darf
+// nicht mehr dastehen, der neue muss die Workflow-Bedienung nennen.
+if (htmlQuelltext.includes('Ausnahme: das Startformular und die Wiederaufnahme-Bedienung')) {
+  befunde.push('(a) Der Einleitungssatz nennt weiterhin nur Startformular und Wiederaufnahme als schreibende Ausnahmen — seit WS-3b schreibt auch die Workflow-Bedienung, der Satz ist damit unwahr')
+}
+verlangeVorkommen('a', 'Einleitungssatz nennt die Workflow-Bedienung als schreibende Ausnahme', htmlQuelltext, 'Workflow-Bedienung')
 
 // ─── (b) app.js: die beiden Leseendpunkte ───────────────────────────────────
 verlangeVorkommen('b', "GET /api/workflows (Liste)", appQuelltext, "fetch('/api/workflows')")
@@ -135,23 +154,35 @@ verlangeVorkommen('c', 'lauf_id-Verweis öffnet das bestehende Lauf-Detail', app
 // Schrittliste in Planreihenfolge, nicht in Niederschriftreihenfolge.
 verlangeVorkommen('c', 'Planreihenfolge (ordneSchritteNachPlan)', appQuelltext, 'ordneSchritteNachPlan(daten.schritte)')
 
-// ─── (d) Ungültige Fassung (409, F-241) und aktiver Lauf (F-234) ────────────
-verlangeVorkommen('d', '409-Zweig für eine ungültige Fassung', appQuelltext, 'antwort.status === 409')
+// ─── (d) Ungültige Fassung (F-247) und aktiver Lauf (F-234) ─────────────────
+// WS-3b stellt diesen Fall UM statt ihn zu löschen: der 409-Zweig aus WS-3a war vom echten
+// Server unerreichbar (GET /api/workflows/<id> antwortete immer 200, F-247). Seit WS-3b liefert
+// derselbe Endpunkt das Feld verstoesse — die Zusage lautet jetzt auf den realen Weg, und
+// zusätzlich darauf, dass die Ansicht die kaputte Fassung TROTZDEM zeigt: sie anzusehen ist der
+// erste Schritt ihrer Reparatur.
 verlangeVorkommen('d', 'benannter Zustand "Fassung ungültig"', appQuelltext, 'Fassung ungültig')
-verlangeVorkommen('d', '409-Zweig zeigt den Grundtext des Servers', appQuelltext, 'renderWorkflowUngueltig(koerper.grund')
+verlangeVorkommen('d', 'F-247: die Verstöße kommen aus der Server-Antwort', appQuelltext, 'detail.verstoesse')
+// Gesucht wird die AUFRUFSTELLE, nicht der Funktionsname: 'renderWorkflowUngueltig(verstoesse)'
+// allein stünde auch in der Deklaration der Funktion, und die Zusage wäre dann durch ihre
+// eigene Signatur erfüllbar (bei der Rotkalibrierung real aufgefallen).
+verlangeVorkommen('d', 'F-247: die Verstöße werden gerendert', appQuelltext, 'verstoesse.length > 0 ? renderWorkflowUngueltig(verstoesse)')
+if (/antwort\.status === 409/.test(appQuelltext)) {
+  befunde.push('(d) F-247: app.js führt weiterhin einen 409-Zweig für den Detailendpunkt — der Endpunkt sendet diesen Status nicht, der Zweig ist tot und gehört auf verstoesse umgestellt')
+}
 verlangeVorkommen('d', 'F-234: aktiver Lauf aus GET /api/laeufe/<laufId>', appQuelltext, /fetch\(`\/api\/laeufe\/\$\{encodeURIComponent\(schritt\.lauf_id\)\}`\)/)
 verlangeVorkommen('d', 'F-234: Quelle ist das aktiv-Feld (D13), nicht der Schrittstatus', appQuelltext, 'detail.aktiv === true')
 verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, 'läuft jetzt')
 
-// ─── (e) WS-3a-Scope-Grenze: keine Bedienung ────────────────────────────────
-// WS-3b DREHT diesen Fall um: dann MUSS app.js diese Endpunkte aufrufen, und die Prüfung wird
-// dort angepasst — nicht gelöscht. Eine gelöschte Grenze hinterlässt keine Spur, eine
-// umgedrehte schon.
+// ─── (e) WS-3b: die Bedienung IST da — die umgedrehte Scope-Zusage ──────────
+//
+// WS-3a hielt hier fest, dass app.js KEINEN der drei Schreibendpunkte aufruft. WS-3b dreht
+// denselben Fall um, statt ihn zu löschen: eine gelöschte Grenze hinterlässt keine Spur, eine
+// umgedrehte schon — und die Zusage bleibt eine Zusage, sie zeigt nur in die andere Richtung.
 //
 // Vier Schreibwege, nicht drei: /starten, /freigabe und /stoppen sind am Pfad erkennbar, der
-// vierte — POST /api/workflows, über den eine Reparaturfassung eingereicht würde — ist es
-// nicht, weil die Ansicht denselben Pfad LESEND benutzt. Er wird deshalb an der Methode im
-// selben fetch-Aufruf erkannt.
+// vierte — POST /api/workflows, über den die Reparaturfassung eingereicht wird — ist es nicht,
+// weil die Ansicht denselben Pfad LESEND benutzt. Er wird deshalb an der Methode im selben
+// fetch-Aufruf erkannt.
 const SCHREIBFENSTER = 200
 
 /** @param quelltext - zu durchsuchender app.js-Text @returns Namen der gefundenen Schreibwege über die Pfadregel */
@@ -167,21 +198,110 @@ function hatWorkflowPost(quelltext) {
   return false
 }
 
-for (const weg of findePfadSchreibwege(appQuelltext)) {
-  befunde.push(`(e) WS-3a-Scope: app.js ruft '${weg}' auf — WS-3a ist rein lesend, Bedienung ist WS-3b`)
+const gefundeneSchreibwege = findePfadSchreibwege(appQuelltext)
+for (const erwartet of ['/api/workflows/<id>/starten', '/api/workflows/<id>/freigabe', '/api/workflows/<id>/stoppen']) {
+  if (!gefundeneSchreibwege.includes(erwartet)) {
+    befunde.push(`(e) WS-3b-Bedienung: app.js ruft '${erwartet}' NICHT auf — AK8 verlangt die Bedienung, nicht nur die Ansicht`)
+  }
 }
-if (hatWorkflowPost(appQuelltext)) {
-  befunde.push("(e) WS-3a-Scope: app.js schickt ein POST an '/api/workflows' — eine neue Fassung einzureichen ist Bedienung (Reparaturentwurf), also WS-3b")
+if (!hatWorkflowPost(appQuelltext)) {
+  befunde.push("(e) WS-3b-Bedienung: app.js schickt kein POST an '/api/workflows' — ohne das ist der Reparaturentwurf nicht einreichbar (F-240)")
 }
 
-// Dieselbe Methodenregel noch einmal gegen den UNGESTRIPPTEN Quelltext. Grund: die
-// Positivprüfungen (a)-(d) gehen bei einem zu gierigen entferneKommentare ins ROT und fallen
-// damit auf; (e) ginge als einzige ins GRÜN — ein Schreibaufruf, den der Stripper versehentlich
-// mitentfernt, verschwände spurlos. Die Methodenregel ist dafür geeignet und die Pfadregel
-// nicht: Prosa nennt Endpunktpfade, aber kein "method: 'POST'".
-if (hatWorkflowPost(readFileSync('public/leitstand/app.js', 'utf8'))) {
-  befunde.push("(e) WS-3a-Scope: im ungestrippten Quelltext steht ein POST an '/api/workflows' — falls es nur ein Kommentarbeispiel ist, gehört es umformuliert, sonst ist es Bedienung (WS-3b)")
+// ─── (g) WS-3b: Verdikt als Quelle, vier Bedienungen, Pflichtbegründungen ───
+//
+// Die Kernzusage dieses Blocks ist nicht "es gibt Knöpfe", sondern WORAN sie hängen: an
+// naechster.art und status, beides Aussagen des Servers. Eine Oberfläche, die selbst
+// ausrechnet, ob ein ZWINGEND-Schritt gerade fällig ist, wäre ein zweiter Regelsatz im Browser
+// (D5) — und würde bei der nächsten Regeländerung in src/workflow/index.ts still falsch.
+verlangeVorkommen('g', 'Lage kommt aus naechster (Liste)', appQuelltext, 'workflow.naechster')
+verlangeVorkommen('g', 'Lage kommt aus naechster (Detail)', appQuelltext, 'detail.naechster')
+verlangeVorkommen('g', 'je Ausgang ein Lagetext (LAGE_JE_AUSGANG)', appQuelltext, 'LAGE_JE_AUSGANG')
+for (const ausgang of ['starte', 'haltFreigabe', 'haltKlaerung', 'haltGrenze', 'haltGestoppt', 'fertig']) {
+  verlangeVorkommen('g', `Lagetext für den Ausgang '${ausgang}'`, appQuelltext, `${ausgang}:`)
 }
+// F-253: der fällige Schritt ist in der Tabelle markiert, und EMPFOHLEN ist als "hält nicht an"
+// ausgewiesen — beides Anzeigelücken, die AK8 auch LESEND unerfüllt ließen.
+verlangeVorkommen('g', 'F-253: der fällige Schritt ist in der Schrittliste markiert', appQuelltext, 'faelligMarke')
+verlangeVorkommen('g', 'F-253: der Cursor-Schritt ist in der Schrittliste markiert', appQuelltext, 'cursorMarke')
+verlangeVorkommen('g', 'F-253: die Freigabestufe ist als haltend/nicht haltend ausgewiesen', appQuelltext, '(hält nicht an)')
+
+// Jede der vier Bedienungen ruft GENAU ihren Endpunkt — je einzeln nachgewiesen, nicht als
+// Sammelprüfung: drei von vier zu haben ist der wahrscheinliche Fehler, nicht null von vier.
+verlangeVorkommen('g', 'Starten ruft POST .../starten', appQuelltext, /sendeWorkflowBedienung\(\s*`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/starten`/)
+verlangeVorkommen('g', 'Freigeben/Ablehnen rufen POST .../freigabe', appQuelltext, /`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/freigabe`/)
+verlangeVorkommen('g', 'Stoppen ruft POST .../stoppen', appQuelltext, /`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/stoppen`/)
+verlangeVorkommen('g', 'Freigeben schickt entscheidung FREIGEGEBEN', appQuelltext, "'FREIGEGEBEN'")
+verlangeVorkommen('g', 'Ablehnen schickt entscheidung ABGELEHNT', appQuelltext, "'ABGELEHNT'")
+verlangeVorkommen('g', 'die Freigabe nennt den Schritt, für den sie gilt', appQuelltext, 'schrittId: button.dataset.schrittId')
+
+// Pflichtbegründungen: der Server antwortet ohne sie mit 400, und die Oberfläche darf diesen
+// 400 nicht erst provozieren.
+verlangeVorkommen('g', 'Pflichtbegründung der Freigabe/Ablehnung', appQuelltext, 'wf-freigabe-begruendung')
+verlangeVorkommen('g', 'Pflichtbegründung des Stopps', appQuelltext, 'wf-stopp-begruendung')
+
+// D13 wird gemeldet, nicht vorhergesagt: kein Vorabsperren anhand eines vermuteten aktiven
+// Laufs, sondern der Grundtext des 409.
+verlangeVorkommen('g', 'Fehlerantworten werden als Meldung am Workflow gezeigt', appQuelltext, 'zeigeBedienungsMeldung')
+// Auch der ERFOLG bekommt eine Rückmeldung, und sie wertet den Antwortkörper aus: ob ein
+// fliegender Lauf abgebrochen wurde (laufAbgebrochen) und ob die Entscheidung bezeugt werden
+// konnte (bezeugt). Ohne diese Auswertung schwiege die Oberfläche ausgerechnet nach den
+// Bedienungen, die etwas Unwiderrufliches tun (QA-Pass 10.09.2026).
+verlangeVorkommen('g', 'Erfolgsmeldung je Bedienung', appQuelltext, 'erfolgstext')
+verlangeVorkommen('g', 'der Erfolgskörper wird ausgewertet (laufAbgebrochen)', appQuelltext, 'inhalt.laufAbgebrochen === true')
+verlangeVorkommen('g', 'der Erfolgskörper wird ausgewertet (bezeugt)', appQuelltext, 'inhalt.bezeugt === false')
+verlangeVorkommen('g', 'Poll außer der Reihe nach jeder Bedienung', appQuelltext, 'pollWorkflows()')
+// Der Überholschutz aus F-252 muss auch für den neuen Ladeweg greifen: ein älterer Tick darf
+// weder Schrittliste noch Bedienknöpfe zurückschreiben.
+verlangeVorkommen('g', 'F-252: der Bedienblock hängt am Überholschutz des Detail-Ladewegs', appQuelltext, 'aktualisiereWorkflowBedienung(workflowId')
+
+// ─── (h) WS-3b: der Reparaturzug ────────────────────────────────────────────
+//
+// Die vier Korrekturen aus F-240 einzeln, weil sie einzeln vergessen werden können und jede
+// einzelne Auslassung denselben Endzustand erzeugt: eine Fassung, die angenommen wird und
+// sofort wieder steht.
+verlangeVorkommen('h', 'Knopf "Reparaturfassung vorbereiten"', appQuelltext, 'Reparaturfassung vorbereiten')
+verlangeVorkommen('h', 'Reparatur nur aus GESTOPPT/KLAERUNG_ERFORDERLICH', appQuelltext, "REPARIERBARE_WORKFLOW_STATUS = ['GESTOPPT', 'KLAERUNG_ERFORDERLICH']")
+verlangeVorkommen('h', 'Korrektur (1): status -> OFFEN', appQuelltext, "status: 'OFFEN', aktiver_schritt_id: cursor")
+verlangeVorkommen('h', 'Korrektur (2): Schrittfelder des abgebrochenen/gescheiterten Schritts', appQuelltext, "REPARIERBARE_SCHRITT_STATUS = ['LAEUFT', 'FEHLGESCHLAGEN', 'VERWEIGERT']")
+verlangeVorkommen('h', 'Korrektur (2): status OFFEN und lauf_id null je Schritt', appQuelltext, "{ ...schritt, status: 'OFFEN', lauf_id: null }")
+verlangeVorkommen('h', 'Korrektur (3): Cursor bleibt, sonst erster Schritt ohne lauf_id', appQuelltext, 'daten.aktiver_schritt_id ?? schritte.find((schritt) => schritt.lauf_id === null)')
+// Korrektur (4) ist eine UNTERLASSUNG — grund bleibt stehen. Sie ist deshalb nicht an einer
+// Zeile nachweisbar, sondern nur daran, dass der Entwurf das Feld nicht überschreibt: ein
+// 'grund:' im Objektliteral von baueReparaturEntwurf wäre der Fehler.
+if (/function baueReparaturEntwurf[\s\S]{0,600}?grund:/.test(appQuelltext)) {
+  befunde.push('(h) Korrektur (4): baueReparaturEntwurf setzt grund selbst — der Halt-Grund soll im Entwurf sichtbar BLEIBEN, damit der Mensch liest, warum der Workflow stand')
+}
+verlangeVorkommen('h', 'der Entwurf ist bearbeitbarer JSON-Text, kein Formular', appQuelltext, 'JSON.stringify(entwurf, null, 2)')
+verlangeVorkommen('h', 'Einreichen geht an POST /api/workflows', appQuelltext, /fetch\('\/api\/workflows', \{ method: 'POST'/)
+
+// Die drei Warnungen, jede an ihrer Befundnummer erkennbar — der Text ist die Zusage, nicht
+// bloß Beiwerk: er sagt dem Menschen, WAS er verliert.
+for (const befund of ['F-223', 'F-219', 'F-226']) {
+  verlangeVorkommen('h', `Warnung ${befund} über dem Entwurf`, appQuelltext, `${befund}:`)
+}
+verlangeVorkommen('h', 'F-223: erkannt an erteilter Freigabe ohne Lauf', appQuelltext, 'schritt.freigabe_erteilt === true && schritt.lauf_id === null')
+verlangeVorkommen('h', 'F-226: Begründungsfeld steht am Entwurf, nicht erst im 400', appQuelltext, 'wf-reparatur-begruendung')
+// Die Warnung muss beim BEARBEITEN entstehen, nicht erst beim Absenden — sonst erscheint sie
+// gleichzeitig mit dem Ergebnis und wird nie gelesen (QA-Pass 10.09.2026).
+verlangeVorkommen('h', 'F-226: die Warnungen werden beim Tippen neu gerechnet', appQuelltext, 'aktualisiereReparaturWarnungen')
+// Zwei weitere Verluste derselben Klasse, beide aus F-240s eigener Aufzählung: der Halt-Grund
+// wird beim Einreichen wegnormalisiert, und eine erreichte Schrittgrenze hebt der Entwurf nicht
+// an — ohne Hinweis wird die Fassung angenommen und steht sofort wieder.
+verlangeVorkommen('h', 'F-240: Warnung vor dem Verlust des Halt-Grunds', appQuelltext, 'wird beim Einreichen auf null normalisiert')
+verlangeVorkommen('h', 'F-240: Warnung vor der bereits erreichten Schrittgrenze', appQuelltext, 'grenzen.max_schritte ${grenze}')
+
+// Der Reparaturweg darf NICHT allein am Status hängen: POST /api/workflows lässt einen
+// ungültigen Bestand in JEDEM Status ersetzen (bestandUngueltig). Ohne diesen Öffner wäre genau
+// die Fassung, für die F-247 die Lesbarkeit erkämpft hat, ansehbar und nicht reparierbar
+// (QA-Pass 10.09.2026).
+verlangeVorkommen('h', 'F-247: eine ungültige Fassung ist auch außerhalb GESTOPPT/KLAERUNG reparierbar', appQuelltext, 'REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig')
+// Umgekehrt: kein Stopp-Knopf auf einer ungültigen Fassung — der Stopp-Endpunkt lehnt sie mit
+// 409 ab (F-241), der Knopf wäre eine Zusage, die der Server sicher bricht.
+verlangeVorkommen('h', 'F-241: kein Stopp-Knopf auf einer ungültigen Fassung', appQuelltext, 'STOPPBARE_WORKFLOW_STATUS.includes(status) && !ungueltig')
+// Der Entwurf hat einen eigenen Überholschutz: ein Doppelklick oder ein Schließen während des
+// Ladens darf eingetippte Änderungen nicht überschreiben (Reviewer-Pass 10.09.2026).
+verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 'reparaturZaehler')
 
 // ─── (f) app.js ist syntaktisch gültig ──────────────────────────────────────
 try {

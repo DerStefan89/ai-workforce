@@ -2591,7 +2591,7 @@ gehört in dieselbe Iteration wie F-212.
 Status: offen.
 Feature/Run: F15 WS-2c (a), 10.09.2026 (Reviewer-Pass).
 
-**F-218** · `TECH_DEBT` · P3 · offen
+**F-218** · `TECH_DEBT` · P3 · **teilweise gelöst** (Bedienweg)
 Titel: Der Ausweg aus `haltGrenze` verlangt ungenannt ein Nachziehen des
 Cursors.
 Beschreibung: Hält `grenzen.max_schritte` die Kette an, steht der Workflow
@@ -2618,8 +2618,20 @@ Randfall auf Normalfall. Eine abgelehnte Freigabe setzt aktiver_schritt_id auf
 null (GESTOPPT), und die korrigierte Fassung, die der Mensch danach einreicht,
 muss den Cursor selbst wieder setzen — genau der Fall, in dem die irreführende
 Meldung entsteht. Beim Aufgreifen mit P2 statt P3 behandeln.
-Status: offen.
-Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
+Status: **gelöst für den BEDIENWEG** in F15 WS-3b, 10.09.2026 — und nur für
+ihn. Der Reparaturentwurf im Leitstand belegt den Cursor vor: er bleibt, wo er
+steht, und zeigt bei `null` auf den ersten Schritt ohne `lauf_id`. Damit
+entsteht der Fall, in dem die irreführende 409-Meldung erscheint, auf dem
+vorgesehenen Weg nicht mehr; real belegt in
+`nachweis/f15-ws3b-oberflaechennachweis.md` (Fall 2, Entwurf-Cursor springt
+von `null` auf `schritt-1`).
+UNVERÄNDERT ist die Meldung SELBST: wer die Fassung direkt über HTTP
+einreicht und den Cursor vergisst, liest weiterhin „Schritt 'schritt-1' ist
+nicht startbereit" statt der Ursache. Die empfohlene Maßnahme (409-Meldung um
+den Hinweis auf `aktiver_schritt_id` ergänzen) ist damit NICHT erledigt — die
+Oberfläche umgeht den Fall, sie behebt ihn nicht. Wer den Endpunkt ohne
+Leitstand benutzt, braucht sie weiterhin.
+Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass); Bedienweg gelöst F15 WS-3b, 10.09.2026.
 
 **F-219** · `TECH_DEBT` · P3 · offen
 Titel: Eine Reparaturfassung kann die `vorgaengerLaufId`-Kette still
@@ -2638,8 +2650,17 @@ Empfohlene Maßnahme: in WS-3 (AK8) prüfen, ob die Ansicht beim Einreichen
 einer Fassung auf verlorene Vorgängerverweise hinweisen soll. Kein
 Serverzwang: ein Neustart von vorn ist eine zulässige menschliche
 Entscheidung.
-Status: offen.
-Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass).
+Nachtrag F15 WS-3b, 10.09.2026: SICHTBAR GEMACHT, NICHT GELÖST — und der
+Unterschied ist Absicht. Der Reparaturentwurf im Leitstand warnt namentlich,
+welcher Schritt seine `lauf_id` verliert und für welchen Folgeschritt damit
+der `vorgaengerLaufId`-Verweis ausfällt (real belegt in
+`nachweis/f15-ws3b-oberflaechennachweis.md`, Fall 2). Verhindert wird nichts:
+die Prüfung dieses Befunds war „soll die Ansicht hinweisen?", und die Antwort
+ist ja — der Zwang bleibt aus, weil ein Neustart von vorn eine zulässige
+Entscheidung ist. Der Befund bleibt OFFEN, solange nicht entschieden ist, ob
+der Verweis stattdessen erhalten werden soll.
+Status: offen (Hinweis gebaut, Ursache unverändert).
+Feature/Run: F15 WS-2c (a), 10.09.2026 (QA-Pass); Hinweis F15 WS-3b, 10.09.2026.
 
 **F-220** · `TECH_DEBT` · P3 · offen
 Titel: Die F4-Startfreigabe-Fixture liegt jetzt doppelt im Repo.
@@ -2670,7 +2691,7 @@ true stehen (der `.then`/`.catch`-Reset wird nie angehängt, der Wurf endet im
 try/catch der Nachbereitung) — D13 wäre bis zum Serverneustart blockiert.
 Fundstelle: (a) `scripts/leitstand-server.mjs`, `baueWorkflowKopfdaten`;
 (b) ebenda, Fire-and-forget-Block.
-Auswirkung: (a) betrifft ausschließlich die WS-3-Ansicht und ist dort zu
+**F-222** · `TECH_DEBT` · P2 · **gelöst**
 entscheiden, nicht hier. (b) ist mit einer `async`-Funktion unerreichbar —
 `fuehreAufgabeDurch` ist eine, und nur eine Testattrappe könnte es verletzen.
 Empfohlene Maßnahme: (a) in WS-3 mitentscheiden. (b) keine — dokumentiert,
@@ -2700,8 +2721,13 @@ Empfohlene Maßnahme: In WS-3 (AK8) zusammen mit der Schrittliste bauen —
 dort ist ohnehin zu entscheiden, wie ein Halt angezeigt wird. Kein
 Nachtrag zu (b1): eine Bedienung ohne die übrige Workflow-Ansicht wäre ein
 Knopf ohne Kontext.
-Status: offen.
-Feature/Run: F15 WS-2c (b1), 10.09.2026.
+Status: **gelöst** in F15 WS-3b, 10.09.2026. Der Bedienblock im
+Workflow-Detail bietet „Freigeben" und „Ablehnen" mit Pflichtbegründung an,
+sobald der Server `naechster.art === 'haltFreigabe'` meldet — die schritt_id
+kommt aus derselben Antwort, nicht aus einer Eingabe des Menschen. Kein curl
+mehr nötig. Real belegt in `nachweis/f15-ws3b-oberflaechennachweis.md`
+(Fall 1).
+Feature/Run: F15 WS-2c (b1), 10.09.2026; gelöst F15 WS-3b, 10.09.2026.
 
 **F-223** · `TECH_DEBT` · P3 · offen
 Titel: Eine neue Fassung verwirft alle erteilten Freigaben stillschweigend.
@@ -2721,8 +2747,15 @@ ein Vorrat an Freigaben in WS-3).
 Empfohlene Maßnahme: Zusammen mit F-219 entscheiden (dieselbe Klasse: eine
 Reparaturfassung verliert still etwas, dort die vorgaengerLaufId-Kette, hier die
 Freigabe), ob die Antwort auf verworfene Felder hinweist. Kein eigener Zug.
-Status: offen.
-Feature/Run: F15 WS-2c (b1), 10.09.2026.
+Nachtrag F15 WS-3b, 10.09.2026: SICHTBAR GEMACHT, NICHT GELÖST. Der
+Reparaturentwurf warnt namentlich, für welche Schritte eine erteilte, aber
+noch nicht verbrauchte Freigabe beim Einreichen verworfen wird. Die
+Normalisierung selbst bleibt unverändert — sie MUSS bleiben, sonst erteilte
+sich eine eingereichte Fassung ihre Freigabe selbst (F-207). Der Hinweis
+steht in der Oberfläche, NICHT in der Serverantwort; wer über HTTP einreicht,
+erfährt weiterhin nichts. Deshalb offen.
+Status: offen (Hinweis in der Oberfläche, Serverantwort unverändert).
+Feature/Run: F15 WS-2c (b1), 10.09.2026; Hinweis F15 WS-3b, 10.09.2026.
 
 **F-224** · `TECH_DEBT` · P3 · offen
 Titel: Die Artefakt-ID einer Workflow-Freigabe ist nicht eindeutig zerlegbar.
@@ -3259,7 +3292,7 @@ zwei Befunde in (g), der fremde Lauf wird abgebrochen und A endet
 `FEHLGESCHLAGEN`. Datei-Hash vor und nach dem Rückbau identisch.
 Feature/Run: F15 WS-2c (b2), 10.09.2026 (QA-Pass, Fehler 1 und 6).
 
-**F-240** · `TECH_DEBT` · P2 · offen
+**F-240** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Was eine Reparaturfassung nach einem Stopp wirklich braucht, steht
 nirgends — und wann sie gefahrlos ist, auch nicht.
 Beschreibung: Die Halte-Zustands-Tabelle nennt als Ausweg aus dem gestoppten
@@ -3291,8 +3324,31 @@ Reparaturfassung wirklich braucht (Status, Cursor, Schrittfelder des
 abgebrochenen Schritts), plus den Hinweis, auf die Nachbereitung zu warten
 oder in die Startfehlerliste zu sehen. Gemeinsam mit F-218 und mit AK8/WS-3,
 das den Handgriff ohnehin ersetzen soll.
-Status: offen.
-Feature/Run: F15 WS-2c (b2), 10.09.2026 (QA-Pass, Fehler 2 und 3).
+Status: **gelöst** in F15 WS-3b, 10.09.2026. Der Handgriff ist ersetzt: der
+Knopf „Reparaturfassung vorbereiten" (bei `GESTOPPT` und
+`KLAERUNG_ERFORDERLICH`) lädt die aktuelle Fassung frisch von der Platte —
+also nicht den womöglich überholten Anzeigestand — und wendet alle vier
+Korrekturen an: `status` auf `OFFEN`, die Schrittfelder des abgebrochenen
+oder gescheiterten Schritts (`status`/`lauf_id`) zurückgesetzt, der Cursor auf
+den ersten Schritt ohne `lauf_id`, wenn er `null` war, und der Halt-`grund`
+bleibt im Entwurf lesbar. Der Entwurf ist bearbeitbarer JSON-Text (kein
+Formular — das wäre ein Plan-Editor), „Einreichen" schickt ihn an
+POST /api/workflows. Real belegt in
+`nachweis/f15-ws3b-oberflaechennachweis.md` (Fall 2: Stopp mitten im
+laufenden Schritt -> Entwurf -> einreichen -> Kette läuft weiter, ohne
+Handarbeit am JSON).
+Zwei weitere Verluste, die dieser Befund selbst aufzählt, sind als WARNUNG
+über dem Entwurf sichtbar (QA-Pass 10.09.2026): der Halt-`grund` wird beim
+Einreichen auf `null` normalisiert, und eine bereits erreichte
+`grenzen.max_schritte` hebt der Entwurf nicht an — ohne Hinweis wäre die
+Fassung angenommen worden und hätte sofort wieder gestanden. Beide Ursachen
+bleiben unverändert; sichtbar ist jetzt, was sie kosten.
+OFFEN BLEIBT der zweite Teil des Befunds: ein Signal, WANN die Reparatur
+gefahrlos ist. Der Entwurf wird zwar frisch geladen, aber wenn die
+Nachbereitung des abgebrochenen Laufs erst danach eintrifft, greift
+weiterhin F-227, und die einzige Spur ist ein Eintrag in
+`GET /api/startfehler`. Dafür ist ein neues Finding aufgemacht (F-260).
+Feature/Run: F15 WS-2c (b2), 10.09.2026 (QA-Pass, Fehler 2 und 3); erster Teil gelöst F15 WS-3b, 10.09.2026.
 
 **F-241** · `TECH_DEBT` · P3 · offen
 Titel: Ein ungültiger Bestandsdatensatz lässt sich nicht stoppen.
@@ -3442,7 +3498,7 @@ Oberfläche gibt (AK8/WS-3). Wenn doch: dort entscheiden, ob eine Umbenennung
 Status: offen.
 Feature/Run: F15 WS-2c (b3), 10.09.2026.
 
-**F-247** · `TECH_DEBT` · P2 · offen
+**F-247** · `TECH_DEBT` · P2 · **gelöst**
 Titel: `GET /api/workflows/<id>` validiert nicht — die Anzeige „Fassung
 ungültig" hängt an einer Client-Formprüfung.
 Beschreibung: Beim Bau von WS-3a stand im Auftrag, der Detailendpunkt
@@ -3468,8 +3524,16 @@ Mensch für die Reparatur braucht — die `bestandUngueltig`-Ausnahme in
 `POST /api/workflows` folgt derselben Linie). Die Ansicht liest dann das
 Feld. Serveränderung, also eigener Rot-Fall; bewusst NICHT in WS-3a gemacht,
 dessen Auftrag genau eine Serveränderung zuließ.
-Status: offen.
-Feature/Run: F15 WS-3a, 10.09.2026.
+Status: **gelöst** in F15 WS-3b, 10.09.2026. `GET /api/workflows/<id>` ruft
+`validiereWorkflowDaten` auf und liefert die Verstöße als ADDITIVES Feld
+`verstoesse` mit — weiterhin mit 200 und vollem Datensatz, ausdrücklich KEIN
+409: eine ungültige Fassung anzusehen ist der erste Schritt ihrer Reparatur
+(dieselbe Linie wie die `bestandUngueltig`-Ausnahme in POST /api/workflows).
+Die Ansicht zeigt sie als benannten Block ÜBER der Schrittliste, nicht statt
+ihrer. Der in WS-3a gebaute, vom echten Server unerreichbare 409-Zweig ist
+damit auf den realen Weg umgestellt und nicht als Leiche stehen geblieben;
+das Gate verlangt seither ausdrücklich, dass er nicht wiederkehrt.
+Feature/Run: F15 WS-3a, 10.09.2026; gelöst F15 WS-3b, 10.09.2026.
 
 **F-248** · `TECH_DEBT` · P3 · offen
 Titel: Die Markierung „läuft jetzt" fehlt still, solange das Laufverzeichnis
@@ -3495,7 +3559,7 @@ Laufverzeichnis beantworten kann. Zusammen mit F-234 entscheiden.
 Status: offen.
 Feature/Run: F15 WS-3a, 10.09.2026.
 
-**F-249** · `TECH_DEBT` · P3 · offen
+**F-249** · `TECH_DEBT` · P3 · **gelöst**
 Titel: Das Workflow-Detail pollt — anders als das Lauf-Detail, und mit einer
 Zusatzanfrage je Tick.
 Beschreibung: `ladeLaufDetail` ist bewusst NICHT Teil des 2-Sekunden-Polls
@@ -3515,8 +3579,17 @@ Empfohlene Maßnahme: In WS-3b entscheiden — entweder den Poll auf die Liste
 beschränken und das Detail wieder auf Anforderung laden, oder beim
 Neurendern gezielt aussparen, was der Mensch gerade bearbeitet. Nicht
 vorwegnehmen, solange kein Bedienelement existiert.
-Status: offen.
-Feature/Run: F15 WS-3a, 10.09.2026.
+Status: **gelöst** in F15 WS-3b, 10.09.2026 — entschieden wurde die zweite
+Variante, in drei Containern: `#workflow-detail-inhalt` (Schrittliste) wird
+weiterhin bei jedem Tick ersetzt, weil genau dort der wandernde Cursor zu
+sehen sein soll; `#workflow-bedienung` (mit den Pflichtbegründungen) nur bei
+ECHTER Lageänderung, erkannt an einem Kennzeichen aus workflowId, status und
+naechster; `#workflow-reparatur` (der Entwurf) gar nicht — den schließt allein
+der Mensch. Eine angefangene Begründung überlebt damit den Poll; ändert sich
+die Frage, zu der sie gehört, wird sie bewusst verworfen, statt zur nächsten
+Entscheidung weitergereicht zu werden. Die Zusatzanfragen je Tick bleiben
+unverändert (D13 begrenzt sie auf höchstens eine).
+Feature/Run: F15 WS-3a, 10.09.2026; gelöst F15 WS-3b, 10.09.2026.
 
 **F-250** · `TECH_DEBT` · P4 · offen
 Titel: Zwei verschiedene Zahlen heißen in der Ansicht „Version".
@@ -3581,7 +3654,7 @@ zusätzlich, ob inzwischen ein jüngerer Aufruf gestartet ist, und nur der
 jüngste darf schreiben. Alle sechs Abbruchstellen der Funktion nutzen es.
 Feature/Run: F15 WS-3a, 10.09.2026 (Reviewer-Pass Befund 4, QA-Pass Fehler 6).
 
-**F-253** · `TECH_DEBT` · P3 · offen
+**F-253** · `TECH_DEBT` · P3 · **gelöst**
 Titel: Die Ansicht zeigt den Zustand nicht, in dem der Mensch gefragt ist,
 solange er nicht persistiert wurde.
 Beschreibung: Ein Workflow auf `OFFEN` oder `KLAERUNG_ERFORDERLICH`, dessen
@@ -3606,8 +3679,18 @@ einführen („wartet auf dich" / „läuft" / „steht — Grund" / „fertig")
 Freigabefrage ohne persistierten Status einschließt, den fälligen Schritt in
 der Tabelle markiert und `EMPFOHLEN` als „hält nicht an" ausweist. Vor den
 Bedienelementen bauen, nicht danach.
-Status: offen.
-Feature/Run: F15 WS-3a, 10.09.2026 (QA-Pass, Fehler 1 bis 3).
+Status: **gelöst** in F15 WS-3b, 10.09.2026. Der Server liefert das Verdikt
+von ermittleNaechstenSchritt als Projektion `naechster` in BEIDEN
+Workflow-Projektionen mit (baueNaechsterProjektion, D5 — die Oberfläche
+rechnet nichts selbst); die Ansicht rendert daraus eine LAGE je Workflow
+(„wartet auf dich — Freigabe nötig" / „läuft" / „steht — …" /
+„durchgelaufen"), in Liste UND Detail, markiert den fälligen und den
+Cursor-Schritt in der Tabelle und weist `AUTOMATISCH`/`EMPFOHLEN` als „hält
+nicht an" aus. Real belegt in `nachweis/f15-ws3b-oberflaechennachweis.md`
+(Fall 1: ein Workflow, dessen ERSTER Schritt ZWINGEND trägt, wird als fällig
+angezeigt, obwohl nichts gelaufen ist). Gate: je ein Fall für alle sechs
+Ausgangsarten in beiden Projektionen.
+Feature/Run: F15 WS-3a, 10.09.2026 (QA-Pass, Fehler 1 bis 3); gelöst F15 WS-3b, 10.09.2026.
 
 **F-254** · `TECH_DEBT` · P3 · offen
 Titel: Die Ansicht zeigt weder Zeitpunkte noch die Plandaten, an denen Halte
@@ -3713,3 +3796,250 @@ Datum und Fehlercode nachtragen, damit die Häufigkeit sichtbar bleibt
 statt in Chatverläufen zu verschwinden.
 Status: offen.
 Feature/Run: F15 WS-3a, 10.09.2026 (Challenger, zweites Auftreten).
+
+**F-258** · `TECH_DEBT` · P3 · offen
+Titel: Zwei Serverregeln liegen seit WS-3b als Anzeige-Zwilling im Browser —
+ohne Gate, das sie zusammenhält.
+Beschreibung: `public/leitstand/app.js` führt zwei Listen bzw. Regeln ein
+zweites Mal, die in `scripts/leitstand-server.mjs` die eigentliche Wahrheit
+sind: (a) `STOPPBARE_WORKFLOW_STATUS` (entscheidet, ob der Stopp-Knopf
+angeboten wird) und (b) `ermittleAbgeschwaechteFreigabenAnzeige`, die
+`ermittleFreigabeAbschwaechungen` nachbildet, damit die F-226-Warnung VOR dem
+Einreichen erscheint statt erst im 400. Beides ist bewusst als ANZEIGE-
+Zwilling gebaut und im Code so benannt — der Server entscheidet, die
+Oberfläche bietet nur an —, aber kein Gate hält die beiden Fassungen
+aneinander.
+Fundstelle: `public/leitstand/app.js`, `STOPPBARE_WORKFLOW_STATUS` und
+`ermittleAbgeschwaechteFreigabenAnzeige`, gegen `scripts/leitstand-server.mjs`.
+Nachtrag (Reviewer-/QA-Pass 10.09.2026): es sind DREI, nicht zwei — der dritte
+ist `REPARIERBARE_WORKFLOW_STATUS` und als F-262 eigens festgehalten, weil er
+als einziger einen Bedienweg VERSCHLIESSEN kann statt nur einen Knopf zu viel
+oder zu wenig anzubieten.
+Auswirkung: Läuft (a) auseinander, fehlt ein Knopf oder er liefert einen 409
+mit lesbarem Grund — sichtbar, nicht gefährlich. Bei (b) ist die Richtung
+schlechter: die Warnung bliebe aus, und der Mensch liest die abgeschwächte
+Freigabepflicht erst im Fehlertext. Die WIRKUNG bleibt in beiden Fällen beim
+Server; falsch werden kann nur die Vorschau.
+Empfohlene Maßnahme: Entweder einen Gate-Fall, der beide Listen textlich
+gegeneinander prüft (Muster: die Zwillings-Enums in `src/workflow/types.ts`,
+dort mit derselben Begründung ohne Gate gelassen), oder (b) über einen
+Vorschau-Endpunkt beantworten lassen, statt die Regel zu spiegeln. Nicht
+nebenbei: ein Vorschau-Endpunkt ist ein neuer Vertrag.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026.
+
+**F-259** · `TECH_DEBT` · P2 · offen
+Titel: Ein bearbeiteter Reparaturentwurf mit geänderter `workflow_id` legt
+lautlos einen NEUEN Workflow an.
+Beschreibung: Der Entwurf ist bearbeitbarer JSON-Text (bewusst — ein Formular
+wäre ein Plan-Editor). `POST /api/workflows` legt anhand der `workflow_id` an
+oder versioniert; ändert der Mensch beim Bearbeiten diese Zeile — ein
+Tippfehler genügt —, entsteht ein zweiter Workflow mit 201, und der
+reparaturbedürftige bleibt unverändert stehen. Die Erfolgsmeldung der Ansicht
+nennt die workflowId, unter der sie den Entwurf geöffnet hat, nicht die aus
+dem eingereichten Text: sie behauptet dann eine Wirkung am falschen Workflow.
+Fundstelle: `public/leitstand/app.js`, `reicheReparaturEntwurfEin`; gegen
+`scripts/leitstand-server.mjs`, POST /api/workflows.
+Auswirkung: Kein Datenverlust (append-only, beide Workflows bleiben lesbar),
+aber die Rückmeldung ist falsch, und der Mensch sucht den Fehler am falschen
+Ende. Dieselbe Klasse wie F-224: zwei frei gewählte Kennungen, deren
+Verwechslung niemand bemerkt.
+Empfohlene Maßnahme: Beim Einreichen die `workflow_id` des Entwurfs gegen die
+geöffnete vergleichen und bei Abweichung warnen (nicht sperren — eine neue
+`workflow_id` kann gewollt sein, etwa als Kopie); die Erfolgsmeldung aus der
+Antwort des Servers nehmen, nicht aus dem Öffnungskontext.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026.
+
+**F-260** · `TECH_DEBT` · P3 · offen
+Titel: Der Reparaturentwurf sagt nicht, ob die Nachbereitung des
+abgebrochenen Laufs schon durch ist.
+Beschreibung: Zweiter Teil von F-240, beim Bau von WS-3b bewusst nicht
+mitgelöst. Der Entwurf wird zwar frisch geladen (`GET /api/workflows/<id>`
+beim Klick, nicht aus dem Anzeigestand), aber der abgebrochene Lauf fliegt
+nach dem Stopp noch. Trifft seine Nachbereitung erst NACH dem Einreichen ein,
+greift F-227 und verwirft den Ausgang des Laufs — richtig, aber die einzige
+Spur ist ein Eintrag in `GET /api/startfehler`, und der Entwurf zeigt
+dauerhaft den Schrittstand, den der Mensch beim Öffnen erwischt hat.
+Fundstelle: `public/leitstand/app.js`, `oeffneReparaturEntwurf`; gegen
+`scripts/leitstand-server.mjs`, F-227-Schutz in `schreibeWorkflowFortschritt`.
+Auswirkung: Das Fenster ist klein und der Ausgang sicher (es wird nichts
+Falsches geschrieben), aber der Mensch bekommt keinen Hinweis, dass er zu
+früh war. Verwandt mit F-254 (1): ohne Zeitfeld in WORKFLOW_V0 lässt sich
+„gerade eben gestoppt" von „steht seit gestern" nicht unterscheiden.
+Empfohlene Maßnahme: Entweder ein Zustandssignal am Workflow („ein Lauf
+dieses Workflows ist noch aktiv", aus D13 ableitbar) über dem Entwurf zeigen,
+oder den Entwurf beim Eintreffen einer neueren Version als veraltet
+kennzeichnen. Das Zweite braucht die versionSequenz im Entwurf, also eine
+kleine Erweiterung — nicht nebenbei.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (aus F-240 abgespalten).
+
+**F-261** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Das Oberflächen-Gate nagelt Bezeichner fest, nicht nur Verhalten —
+und eine seiner Pfadregeln ist zu locker.
+Beschreibung: Zwei Beobachtungen aus dem WS-3b-Bau, beide am Muster F-215
+(„das Gate diktiert die Form des Codes, statt ihn zu prüfen"). (a) Mehrere
+Fälle in `scripts/check-f15-workflow-oberflaeche.mjs` suchen nach lokalen
+Bezeichnern (`faelligMarke`, `cursorMarke`, `aktualisiereWorkflowBedienung`,
+`REPARIERBARE_SCHRITT_STATUS`). Eine reine Umbenennung ohne jede
+Verhaltensänderung macht das Gate rot. Das ist der Preis einer
+Quelltextprüfung ohne Rendern und war beim Bau tragbar — der Umbau musste
+NICHT gegen das Gate arbeiten —, aber es wächst mit jeder Zusage. (b) Die
+Pfadregel in Fall (e) prüft auf `/api/workflows/<irgendwas>/starten` und
+schlägt deshalb auch bei `/starten-weg` noch an: bei der Rotkalibrierung real
+aufgefallen, weil die erste Manipulation den Endpunkt umbenannte und die
+Zusage grün blieb.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`, Fälle (e), (g), (h).
+Auswirkung: (a) Reibung bei jedem Refactoring der Oberfläche. (b) Ein
+umbenannter Endpunkt fällt nicht auf, solange der alte Name Teil des neuen
+ist — der Fall ist konstruiert, aber die Zusage sagt mehr, als sie prüft.
+Empfohlene Maßnahme: (b) die Pfadregel am Ende verankern (Backtick oder
+Anführungszeichen direkt hinter dem Endpunktnamen). (a) beim nächsten
+größeren Umbau der Ansicht entscheiden, ob ein Rendertest (Kopfloser Browser,
+wie im WS-3b-Nachweis) die Quelltextfälle ablösen soll — dann prüft das Gate
+Verhalten statt Bezeichner. Beides eigene Iteration.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (Rotkalibrierung).
+
+**F-262** · `TECH_DEBT` · P3 · offen
+Titel: Der Reparaturweg der Oberfläche bildet die Ersetzungsregel des Servers
+nach, statt sie zu erfragen.
+Beschreibung: Dritter Anzeige-Zwilling neben den beiden aus F-258:
+`REPARIERBARE_WORKFLOW_STATUS` in `public/leitstand/app.js` entscheidet, wann
+"Reparaturfassung vorbereiten" angeboten wird, und bildet damit die Regel von
+`POST /api/workflows` nach (`GESPERRTE_ERSETZUNGS_STATUS` plus die Ausnahme
+`bestandUngueltig`). In WS-3b ist der ungültige Bestand als zweiter Öffner
+nachgezogen (aus dem neuen Feld `verstoesse`), weil sonst genau die Fassung,
+für die F-247 die Lesbarkeit erkämpft hat, ansehbar und nicht reparierbar
+gewesen wäre. Die Regel selbst liegt aber weiterhin zweimal im Repo, und die
+Oberfläche ist die engere von beiden.
+Fundstelle: `public/leitstand/app.js`, `REPARIERBARE_WORKFLOW_STATUS` und
+`renderWorkflowBedienung`, gegen `scripts/leitstand-server.mjs`,
+POST /api/workflows.
+Auswirkung: Fehlt ein Öffner, ist ein realer Reparaturweg unsichtbar — die
+Wirkung ist ein zugemauerter Zustand, und das ist die Fehlerform, gegen die
+F-207 und F-247 geschrieben sind. Die umgekehrte Richtung ist harmlos: ein zu
+viel angebotener Knopf endet in einem 409 mit lesbarem Grund.
+Empfohlene Maßnahme: Gemeinsam mit F-258 entscheiden — entweder ein
+Gate-Fall, der beide Listen gegeneinander hält, oder ein Feld `ersetzbar` in
+der Workflow-Projektion, das der Server beantwortet. Das Zweite passt zu
+`naechster` und `verstoesse` und wäre die Auflösung aller drei Zwillinge.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (Reviewer- und QA-Pass, unabhängig gefunden).
+
+**F-263** · `TECH_DEBT` · P3 · offen
+Titel: `naechster.schrittId` wirft den blockierenden Schritt weg, obwohl der
+Server ihn kennt.
+Beschreibung: `baueNaechsterProjektion` liefert `schrittId` nur für die
+Ausgänge `starte` und `haltFreigabe`. `haltKlaerung` und `haltGestoppt`
+führen ihren Schritt unter `aktiverSchrittId` (`src/workflow/types.ts`), und
+bei Regel 3 ("nicht startbereit") und Regel 4 ("Worker nicht dispatchbar")
+ist das genau der blockierende Schritt. Folge in der Ansicht: keine
+Markierung "fällig" in der Schrittliste, kein Schrittname in der Liste, und
+bei Regel 4 nennt auch der Grundtext den Schritt nicht — im Diagnosefall,
+für den AK8 die Ansicht vorsieht.
+Fundstelle: `scripts/leitstand-server.mjs`, `baueNaechsterProjektion`;
+`src/workflow/index.ts`, Regel 3 und Regel 4.
+Auswirkung: Der Mensch sieht "steht — Klärung nötig" und muss den Schritt aus
+dem Fließtext des Grundes heraussuchen, statt ihn in der Tabelle markiert zu
+finden.
+Empfohlene Maßnahme: NICHT `aktiverSchrittId` in dasselbe Feld legen — das
+wären Cursor und Blockierer unter einem Namen, zwei verschiedene Aussagen
+(§16.2). Stattdessen ein eigenes Feld (`blockierterSchrittId`) oder die
+Union in `src/workflow/types.ts` um einen benannten Schrittbezug erweitern.
+Beides ändert einen Vertrag und braucht einen eigenen Rot-Fall.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass).
+
+**F-264** · `TECH_DEBT` · P3 · offen
+Titel: Ein stale `LAEUFT` zeigt in der Liste dauerhaft "läuft", und der
+dokumentierte Ausweg ist über die Oberfläche nicht auslösbar.
+Beschreibung: Die Lage "läuft" entsteht aus dem abgelegten `status` und sagt
+nichts darüber, ob ein Lauf noch lebt. Nach einem Serverneustart mitten im
+Schritt steht derselbe Status auf der Platte, und die Ansicht zeigt
+unverändert "läuft". Die einzige Gegenprobe ist die Markierung "läuft jetzt"
+an der Schrittzeile (D13) — sie steht nur im DETAIL, nicht in der Liste, und
+ihr Fehlen ist laut F-248 ohnehin nicht von "läuft nicht mehr"
+unterscheidbar. Zweitens ist der in `features/F15/feature.md`
+("Halte-Zustände") dokumentierte Ausweg — der nächste Startversuch schreibt
+`KLAERUNG_ERFORDERLICH` fest — über die Oberfläche nicht auslösbar: "Starten"
+erscheint nur bei `naechster.art === 'starte'`, und ein stale `LAEUFT`
+liefert `haltKlaerung`. Es bleibt "Stoppen", das über `GESTOPPT` in den
+Reparaturzug führt — ein anderer Weg als der dokumentierte.
+Fundstelle: `public/leitstand/app.js`, `beschreibeLage`;
+`scripts/leitstand-server.mjs`, Stale-LAEUFT-Heilung in
+POST /api/workflows/<id>/starten.
+Auswirkung: Der Mensch wartet auf einen Lauf, den es nicht mehr gibt. Die
+Ursache ist das fehlende Zeitfeld in `WORKFLOW_V0` (F-254 (1)): ohne es
+lässt sich "gerade gestartet" von "steht seit gestern" nicht trennen.
+Empfohlene Maßnahme: Gemeinsam mit F-248 und F-254 (1) entscheiden. Der
+kleinste ehrliche Schritt wäre, die Aktivauskunft (D13) auch in die
+Workflow-Projektion zu nehmen, statt sie je Schritt einzeln zu erfragen —
+dann kann die Liste "läuft" von "steht auf LAEUFT, aber nichts läuft"
+trennen, und der Heilungsweg ließe sich anbieten.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass).
+
+**F-265** · `TECH_DEBT` · P4 · offen
+Titel: Die Ablehnungsgründe der Workflow-Endpunkte sagen uneinheitlich, ob
+die Entscheidung festgehalten wurde.
+Beschreibung: Im selben Bedienfeld treffen drei Klassen aufeinander: Zweige,
+die ausdrücklich "Die Entscheidung wurde NICHT festgehalten" sagen (D13 am
+Freigabe-Endpunkt, zweiter Stopp); Zweige, die ausdrücklich das Gegenteil
+sagen (die beiden 409 nach bereits erteilter Freigabe); und stumme Zweige
+(Stale-`schrittId`, "keine offene Freigabefrage", sämtliche 400, alle
+Vorprüfungen des Stopp-Endpunkts). Alle stummen Zweige liegen VOR jedem
+Schreibvorgang, es ist also nie etwas verlorengegangen — aber wenn die
+Nachbarmeldung es ausspricht, liest sich das Schweigen als "vielleicht doch".
+Fundstelle: `scripts/leitstand-server.mjs`, POST /api/workflows/<id>/freigabe
+und /stoppen.
+Auswirkung: Rein sprachlich, aber an der empfindlichsten Stelle — der Mensch
+muss wissen, ob er seine Entscheidung wiederholen muss.
+Empfohlene Maßnahme: Eine Regel festlegen (etwa: jede Ablehnung eines
+Endpunkts, der etwas festhalten würde, sagt es) und die Texte einmal
+durchziehen. Sprachliche Sammeländerung, eigene kleine Iteration.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass).
+
+**F-266** · `TECH_DEBT` · P4 · offen
+Titel: `docs/STATUS.md` kennt weder Meilenstein 3 noch F15.
+Beschreibung: `CLAUDE.md` erklärt `docs/STATUS.md` zur einzigen Quelle für
+Phasenstand und Scope. Das Dokument führt Meilenstein 2 mit F11 bis F14, aber
+Meilenstein 3 (`docs/projekt/zielfassung.md` §13.4) und F15 kommen darin
+nicht vor — obwohl F15 seit mehreren Bauabschnitten der aktive Workstream ist
+und mit WS-3b sein achtes Akzeptanzkriterium erfüllt.
+Fundstelle: `docs/STATUS.md`, Abschnitt "Aktuelle Phase" und "Offene Punkte".
+Auswirkung: Wer sich an der laut CLAUDE.md maßgeblichen Statusdatei
+orientiert, hält F14 für den aktuellen Stand. Genau die Drift, gegen die der
+Sanierungsdurchgang (`repo-audit`) geschrieben ist.
+Empfohlene Maßnahme: In einer eigenen Doku-Iteration nachziehen — Meilenstein
+3 als Abschnitt, F15 mit seinem Stand. Bewusst NICHT nebenbei in einem
+Feature-Commit: eine Statusdatei, die im Vorbeigehen fortgeschrieben wird,
+wird ungeprüft fortgeschrieben.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (Reviewer-Pass).
+
+**F-267** · `TECH_DEBT` · P4 · offen
+Titel: `UEBERSPRUNGEN` fällt durch beide Raster des Reparaturentwurfs.
+Beschreibung: `REPARIERBARE_SCHRITT_STATUS` (Oberfläche) setzt `LAEUFT`,
+`FEHLGESCHLAGEN` und `VERWEIGERT` zurück; `STARTBEREITE_SCHRITT_STATUS`
+(`src/workflow/index.ts`) lässt nur `OFFEN` und `WARTET_FREIGABE` starten.
+`UEBERSPRUNGEN` steht in keiner der beiden Listen: ein Schritt in diesem
+Status wird vom Entwurf nicht zurückgesetzt und hält den Automaten
+anschließend erneut an — die eingereichte Fassung wird angenommen und steht
+sofort wieder. Heute unerreichbar, weil das Überspringen gestrichen ist und
+niemand den Status setzt (feature.md AK8, Entscheidung Stefan 10.09.2026);
+ein künftiger `SCHRITT_STATUS`-Wert landete jedoch automatisch in derselben
+Falle, weil die Liste in der Oberfläche eine Aufzählung ist und keine
+Allowlist-Umkehrung.
+Fundstelle: `public/leitstand/app.js`, `REPARIERBARE_SCHRITT_STATUS`, gegen
+`src/workflow/index.ts`, `STARTBEREITE_SCHRITT_STATUS`.
+Auswirkung: Heute keine. Als Bauart dieselbe Klasse wie F-244: eine Liste,
+die beim Wachsen der Grundmenge stillschweigend falsch wird.
+Empfohlene Maßnahme: Den Entwurf statt über eine Aufzählung über die
+Umkehrung bilden ("alles, was nicht startbereit ist und eine lauf_id trägt")
+— oder, sauberer, den Reparaturentwurf vom Server bauen lassen. Gemeinsam mit
+F-262 entscheiden.
+Status: offen.
+Feature/Run: F15 WS-3b, 10.09.2026 (Reviewer-Pass).
