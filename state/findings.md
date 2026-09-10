@@ -1957,7 +1957,7 @@ Allowlist statt Sperrliste. Die konkreten Fundstellen (Konstantennamen,
 wiederholt.
 Feature/Run: F15 WS-2a, 10.09.2026.
 
-**F-194** · `BUG` · P1 · offen
+**F-194** · `BUG` · P1 · **gelöst**
 Titel: grenzen.max_schritte ist ein Schritt-, kein Laufbudget — eine
 Wiederholungsschleife beendet es nicht.
 Beschreibung: WORKFLOW_V0 hält je Schritt genau eine lauf_id.
@@ -1977,6 +1977,15 @@ Empfohlene Maßnahme: Vor WS-2b entscheiden — Laufzähler im Schema
 zusätzlicher Parameter. Danach einen Gate-Rotfall mit simulierter
 Schleife.
 Feature/Run: F15 WS-2a, QA-Pass 10.09.2026 (TC-A3).
+Status neu: **gelöst durch Regel 3 und die Akten-Festlegung, 10.09.2026**
+Auflösung: Kein Laufzähler im Schema. Die Terminierung steht ohne ihn: die
+nachfolger-Kette ist zyklenfrei UND zusammenführungsfrei validiert, und ein
+Schritt ist nur startbereit, solange lauf_id null ist (Regel 3) — der Automat
+kann keinen Schritt zweimal starten. Die einzige Wiederholung wäre ein Replan;
+einen Replan-Pfad gibt es nicht, und eine vom Menschen neu eingereichte Fassung
+ist durch den Menschen begrenzt, nicht durch einen Zähler. Restpunkt:
+max_replans hat damit weiterhin keinen Leser — siehe „Halte-Zustände nach
+WS-2b und ihr Ausweg" in features/F15/feature.md.
 
 **F-195** · `TECH_DEBT` · P1 · offen
 Titel: haltFreigabe hat keinen Auflösungsweg — eine erteilte Freigabe
@@ -1995,7 +2004,7 @@ von loeseAusfuehrungsEingabenAuf argumentiert.
 Empfohlene Maßnahme: Vor WS-2b festlegen, nicht dort improvisieren.
 Feature/Run: F15 WS-2a, Reviewer-Pass 10.09.2026 (V5/R3).
 
-**F-196** · `TECH_DEBT` · P2 · offen
+**F-196** · `TECH_DEBT` · P2 · **teilweise gelöst**
 Titel: POST /api/workflows prüft weder auftrag_id noch eine belegte
 workflow_id.
 Beschreibung: Zwei bewusste Auslassungen von WS-2a, beide im Code
@@ -2013,6 +2022,20 @@ Freigabe-Umgehung im Kleinen.
 Empfohlene Maßnahme: Vor WS-2b entscheiden — Existenzprüfung analog AK5;
 409 bei nicht-OFFENem Workflow.
 Feature/Run: F15 WS-2a, Reviewer-/QA-Pass 10.09.2026 (V2/TC-B5/TC-B6).
+Status neu: **(b) gelöst, (a) weiterhin offen, 10.09.2026**
+Auflösung (b): POST /api/workflows lehnt eine neue Fassung mit 409 ab,
+solange der Bestand LAEUFT, WARTET_FREIGABE oder ABGESCHLOSSEN trägt
+(GESPERRTE_ERSETZUNGS_STATUS); in OFFEN, KLAERUNG_ERFORDERLICH und GESTOPPT
+ist sie erlaubt, weil sie dort der menschliche Reparaturzug ist. Zusätzlich
+darf der eingereichte Datensatz selbst keinen gesperrten status tragen, und
+ein bereits ungültiger Bestand ist in jedem Status ersetzbar — sonst wäre er
+unerreichbar. Rot- und Grünfall je Status in scripts/check-f15-workflow.mjs.
+Der Kommentarblock „Drei Prüfungen fehlen hier BEWUSST" ist entsprechend auf
+zwei Prüfungen zurückgeschnitten.
+Rest (a): auftrag_id wird beim ANLEGEN weiterhin nicht auf Existenz geprüft
+(die Zeichenregel greift seit WS-2b, die Existenzprüfung nicht). Der
+Startendpunkt fängt es mit 400 ab — ein Workflow ohne existierenden Auftrag
+bleibt anlegbar und ist dann nicht startbar.
 
 **F-197** · `BUG` · P2 · offen
 Titel: decodeURIComponent ohne Auffangnetz beendet den Serverprozess —

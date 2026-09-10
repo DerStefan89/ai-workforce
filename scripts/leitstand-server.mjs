@@ -196,6 +196,51 @@
  * daraus (Muster /api/auftraege bzw. /api/laeufe). Ein Startendpunkt gehört
  * bewusst nicht dazu — er ist WS-2b.
  *
+ *
+ * F15 WS-2b (Meilenstein 3): POST /api/workflows/<id>/starten startet GENAU
+ * EINEN Schritt eines Workflows über den Automatenpfad — die automatische
+ * Fortsetzung auf Schritt n+1 ist WS-2c und steht bewusst nicht hier. Drei
+ * Dinge sind dafür neu: (1) loeseSchrittEingabenAuf baut aus einem
+ * WORKFLOW_V0-Schritt dieselben AusfuehrungsEingaben wie ein Startauftrag-Body
+ * und löst dabei schritte[].eingaben ('artefakt:<id>') über ladeArtefaktVersion
+ * auf — als notwendig:true-Anfragen VORANGESTELLT, mit Halt statt stillem
+ * Überspringen, wenn ein Artefakt fehlt; budget kommt aus
+ * vorlage.standardBudget, modell und zeitgrenze_ms aus dem Schritt (E-185/
+ * E-M3-3: das gepinnte Plandatum gewinnt gegen die Startvorlage).
+ * (2) starteLaufUndVergiss ist seither der EINZIGE Aufrufpunkt des
+ * Werkzeuglaufs in dieser Datei — der Block stand bis WS-2a inline im POST
+ * /api/laeufe-Handler und ist verhaltensgleich extrahiert, damit der
+ * Automatenpfad keinen zweiten, divergierenden bekommt. (3)
+ * schreibeWorkflowFortschritt legt über registriereWorkflow eine neue
+ * Workflow-Version an: einmal VOR dem Laufstart (Schritt auf LAEUFT mit
+ * lauf_id, Workflow auf LAEUFT), einmal nach dem Laufende. Die laufId erzeugt
+ * der Server per randomUUID; sie kommt nie aus einer Payload. POST /api/laeufe
+ * ist unverändert.
+ *
+ * Nach dem Laufende passieren zwei Dinge, beide in derselben neuen Version:
+ * (a) der Schritt bekommt seinen normalisierten Ausgang — es sei denn, der Lauf
+ * wurde FACHLICH abgelehnt, OHNE dass ein Checkpoint entstanden ist; dann geht
+ * er auf OFFEN mit lauf_id null zurück, weil eine lauf_id ohne Kette den Schritt
+ * über Regel 3 dauerhaft unstartbar machte (ein Tippfehler in schritt.rolle
+ * mauerte ihn zu). Die Bedingung ist ENGER als ok === false und wird am
+ * Dateisystem abgelesen: F6as verweigereStart schreibt in fünf von sieben
+ * Ablehnungszweigen eine reale VERWEIGERT-Wirkungsmarke, und wo ein Artefakt
+ * entstanden ist, wird nichts zurückgesetzt (F1s Kette ist append-only).
+ * (b) der Cursor wandert über ermittleNaechstenSchritt auf den nächsten fälligen
+ * Schritt weiter, und der Workflow-Status folgt dessen Ausgang
+ * (workflowStatusZuAusgang). Gestartet wird dabei NICHTS: WS-2b ist ein
+ * manueller Schritt-für-Schritt-Modus, in dem ein zweiter POST .../starten den
+ * nächsten Schritt ausführt; WS-2c ersetzt nur diesen zweiten Aufruf.
+ *
+ * Zusätzlich seit WS-2b: POST /api/workflows lehnt eine neue Fassung eines
+ * Workflows mit 409 ab, solange sein aktueller Stand LAEUFT, WARTET_FREIGABE oder
+ * ABGESCHLOSSEN ist (GESPERRTE_ERSETZUNGS_STATUS) — sonst gäbe der Mensch Fassung 1
+ * frei und der laufende Schritt schriebe seinen Ausgang in Fassung 2, oder eine
+ * Freigabe ließe sich durch eine neue Fassung umgehen. In OFFEN,
+ * KLAERUNG_ERFORDERLICH und GESTOPPT ist die neue Fassung dagegen der menschliche
+ * Reparaturzug und ausdrücklich erlaubt; ein ungültiger Bestand ist es immer. Der
+ * eingereichte Datensatz selbst darf keinen gesperrten status tragen, sonst sperrte
+ * sich der Mensch mit einer Feldangabe aus.
  * F-145-Fix: der Fire-and-forget-Aufruf des Startlaufs in POST /api/laeufe
  * reicht seither sein viertes Argument (optionen) strukturell durch
  * (dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen
@@ -215,14 +260,14 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
+import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { entscheideStale, importiereAntwort } from '../src/human-transport/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
-import { registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
+import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
@@ -862,6 +907,19 @@ export const VERBOTENE_STARTVORLAGE_FELDER = new Set(['werkzeugStartziel', 'werk
 /** F12 WS-2, AK5: auftragstext kommt jetzt ausschließlich aus dem Auftragsartefakt (ladeArtefaktVersion) — ein Vorkommen im Body wird wie ein Startvorlage-Feld mit 400 abgelehnt, nicht still ignoriert (Muster F11 WS-2 AK5). */
 export const VERBOTENE_AUFTRAG_FELDER = new Set(['auftragstext'])
 
+/**
+ * Workflow-Status, in denen POST /api/workflows eine neue Fassung mit 409 ablehnt (F15 WS-2b).
+ * Bewusst eine SPERRliste und keine Allowlist — anders als bei den Entscheidungsregeln in
+ * src/workflow/index.ts ist die sichere Richtung hier "erlauben", nicht "anhalten": ein
+ * Workflow, den niemand mehr ersetzen darf, ist zugemauert, und der Mensch verliert seinen
+ * Reparaturzug. Ein künftig ergänzter WORKFLOW_STATUS ist deshalb erst einmal ersetzbar und
+ * muss hier eine bewusste Zeile bekommen, wenn er es nicht sein soll.
+ */
+const GESPERRTE_ERSETZUNGS_STATUS = new Set(['LAEUFT', 'WARTET_FREIGABE', 'ABGESCHLOSSEN'])
+
+/** Nur für den Ablehnungstext — die Gegenmenge zu GESPERRTE_ERSETZUNGS_STATUS, damit der Mensch liest, was geht. */
+const ERSETZBARE_STATUS_TEXT = ['OFFEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
+
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
 const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
 
@@ -1078,6 +1136,234 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   }
 }
 
+/**
+ * Baut aus einem WORKFLOW_V0-Schritt dieselben AusfuehrungsEingaben, die
+ * POST /api/laeufe aus einem Startauftrag-Body baut (F15 WS-2b, (A)/(B) des
+ * Bauauftrags). Der letzte Schritt ist deshalb bewusst ein Aufruf von
+ * loeseAusfuehrungsEingabenAuf und keine eigene Zusammenstellung: Werkzeugsatz-
+ * Auflösung und AK6-Pfadprüfung sollen für Automat und HTTP-Start EIN Weg
+ * bleiben, nicht zwei, von denen einer altert (Begründung wortgleich zur
+ * Extraktion in WS-2a).
+ *
+ * Abbildung (Bauauftrag (A)):
+ *   schritt.rolle            -> eingabenRoh.rolle
+ *   schritt.werkzeugsatz     -> Name des Werkzeugsatzes in der Startvorlage
+ *   schritt.modell           -> aufrufEingaben.modell (E-185/E-M3-3: das
+ *                               gepinnte Plandatum des Schritts, nie
+ *                               vorlage.modell)
+ *   workflowDaten.auftrag_id -> eingabenRoh.auftragId
+ *   schritt.eingaben[]       -> aufgelöste Artefakt-Anfragen, siehe unten
+ * schritt.zeitgrenze_ms gehört NICHT hierher: es ist eine AusfuehrungsOption,
+ * keine Eingabe, und wird vom Aufrufer an laufOptionen gereicht — dort
+ * gewinnt es ebenso gegenüber vorlage.zeitgrenzeMs.
+ *
+ * budget kommt aus vorlage.standardBudget — der einzige verwendbare Wert, den
+ * eine Serverkonfiguration dafür trägt (F11 WS-2 AK4). Ein Workflow-Schritt
+ * hat keine eigene Budgetquelle: WORKFLOW_V0 kennt kein Budgetfeld, und ein
+ * hier erfundener Default wäre eine stille fachliche Entscheidung. Damit weicht
+ * der Automat bewusst von der F11-WS-2-[EMPFEHLUNG] ab, standardBudget nicht
+ * anzuwenden — die galt für einen Body, der ein eigenes budget mitbringt; ein
+ * Schritt bringt keins.
+ *
+ * (B) schritte[].eingaben: jede 'artefakt:<id>'-Referenz wird über
+ * ladeArtefaktVersion aufgelöst und der Anfragenliste als notwendig:true-
+ * Eintrag VORANGESTELLT — dasselbe Muster, mit dem
+ * src/execution-controller/index.ts Auftrag, Laufakte und Entscheidung
+ * einhängt, mit kanonischesJson(daten) als inhalt. Fehlt ein Artefakt, entsteht
+ * KEINE Anfrage weniger, sondern eine Ablehnung, die die Artefakt-ID nennt: ein
+ * Schritt, dem eine erklärte Eingabe fehlt, liefe mit stillschweigend weniger
+ * Kontext, als der Mensch geplant hat.
+ *
+ * Auftrag, Laufakte und Entscheidung des Vorgängerlaufs werden hier NICHT
+ * eingehängt — fuehreAufgabeDurch stellt genau diese drei selbst voran. Wer sie
+ * zusätzlich in schritte[].eingaben schreibt, bekommt sie doppelt; das ist eine
+ * Eigenschaft des Workflows, keine des Automaten.
+ * @param schritt - der zu startende WORKFLOW_V0-Schritt (bereits validiert)
+ * @param workflowDaten - der Workflow, zu dem der Schritt gehört
+ * @param vorgaengerLaufId - lauf_id des Vorschritts, oder undefined beim ersten Schritt
+ * @param auftragstext - Text aus dem bereits geladenen Auftragsartefakt
+ * @param vorlage - die geladene Startvorlage
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Pfadsicherheit)
+ * @param ladeOptionen - basisVerzeichnis/schreiber für ladeArtefaktVersion
+ * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
+ */
+export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen) {
+  const artefaktAnfragen = []
+  for (const referenz of schritt.eingaben) {
+    if (typeof referenz !== 'string' || !referenz.startsWith('artefakt:')) {
+      return { ok: false, grund: `Schritt '${schritt.schritt_id}': Eingabe ${JSON.stringify(referenz)} ist keine 'artefakt:<id>'-Referenz` }
+    }
+    const artefaktId = referenz.slice('artefakt:'.length)
+    // Dieselbe Zeichenregel wie für laufId/workflow_id (D5, kein zweiter Regelsatz): die
+    // artefaktId geht über 'lineage-<id>' in einen Dateisystempfad ein, und ihr Wert stammt
+    // aus einer Workflow-Payload, nicht aus dem Server. validiereWorkflowDaten verlangt an
+    // dieser Stelle nur das Muster '^artefakt:.+'.
+    if (artefaktId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(artefaktId)) {
+      return { ok: false, grund: `Schritt '${schritt.schritt_id}': Eingabe-Artefakt-ID ${JSON.stringify(artefaktId)} enthält unzulässige Zeichen` }
+    }
+    const version = ladeArtefaktVersion(artefaktId, undefined, ladeOptionen)
+    if (version === null) {
+      return { ok: false, grund: `Schritt '${schritt.schritt_id}': Eingabe-Artefakt '${artefaktId}' nicht gefunden — der Schritt wird nicht gestartet` }
+    }
+    artefaktAnfragen.push({
+      pfad: `artefakt:${artefaktId}`,
+      frage: `Erklärte Eingabe des Workflow-Schritts '${schritt.schritt_id}'`,
+      begruendung: `In schritte[].eingaben des Workflows '${workflowDaten.workflow_id}' festgelegt (F15 WS-2b)`,
+      inhalt: kanonischesJson(version.daten),
+      notwendig: true,
+    })
+  }
+
+  // anfragen bleibt hier leer: ein Schritt benennt seine Eingaben ausschließlich als
+  // Artefakt-Referenzen, nie als Dateipfade. Die aufgelösten Artefakt-Anfragen dürfen NICHT
+  // durch loeseAusfuehrungsEingabenAuf laufen — die Funktion behandelt jede Anfrage als
+  // repo-relativen Dateipfad und läse 'artefakt:...' als Datei, die es nicht gibt.
+  const eingabenRoh = {
+    rolle: schritt.rolle,
+    anfragen: [],
+    budget: vorlage.standardBudget,
+    aufrufEingaben: { modell: schritt.modell },
+    auftragId: workflowDaten.auftrag_id,
+    ...(vorgaengerLaufId !== undefined ? { vorgaengerLaufId } : {}),
+  }
+
+  const ergebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, schritt.werkzeugsatz, auftragstext, vorlage, repoWurzel)
+  if (!ergebnis.ok) {
+    return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${ergebnis.grund}` }
+  }
+  return { ok: true, eingaben: { ...ergebnis.eingaben, anfragen: [...artefaktAnfragen, ...ergebnis.eingaben.anfragen] } }
+}
+
+/**
+ * Normalisiert ein AusfuehrungsErgebnis (F8) zu einem der drei SCHRITT_STATUS-
+ * Ausgänge, die WORKFLOW_V0 für einen gelaufenen Schritt kennt (F15 WS-2b,
+ * Schritt 8 des Bauauftrags).
+ *
+ * ALLOWLIST wie in ermittleNaechstenSchritt (Reviewer-Pass 10.09.2026, K2/R2):
+ * ERFOLGREICH entsteht nur, wenn F7s Klassifikation UND F1Bs Laufstatus es
+ * beide sagen. Jeder andere Ausgang — eine F5-/F6a-Ablehnung (ok:false), ein
+ * KLAERUNG_ERFORDERLICH, ein Laufstatus, den diese Funktion nicht kennt —
+ * fällt auf FEHLGESCHLAGEN und damit auf einen Workflow-Halt. Der Preis ist
+ * eine überflüssige Rückfrage an den Menschen; der umgekehrte Fehler wäre eine
+ * Automatik, die auf einem ungeklärten Lauf weiterrechnet.
+ *
+ * Bewusste Ungenauigkeit, ausdrücklich benannt: SCHRITT_STATUS kennt kein
+ * KLAERUNG_ERFORDERLICH. Ein Lauf, der dort landet, erscheint am Schritt als
+ * FEHLGESCHLAGEN; die Klärbedürftigkeit trägt der Workflow-Status
+ * (KLAERUNG_ERFORDERLICH), nicht der Schritt.
+ * @param ergebnis - Rückgabe von fuehreAufgabeDurch
+ * @returns 'ERFOLGREICH', 'VERWEIGERT' oder 'FEHLGESCHLAGEN'
+ */
+export function normalisiereSchrittAusgang(ergebnis) {
+  if (ergebnis?.ok !== true) return 'FEHLGESCHLAGEN'
+  const klassifiziert = ergebnis.klassifikation?.ergebnis
+  if (klassifiziert === 'ERFOLGREICH') {
+    return ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH' ? 'ERFOLGREICH' : 'FEHLGESCHLAGEN'
+  }
+  if (klassifiziert === 'VERWEIGERT') return 'VERWEIGERT'
+  return 'FEHLGESCHLAGEN'
+}
+
+/**
+ * Schreibt eine neue Workflow-Version, in der genau ein Schritt und die beiden
+ * Workflow-Felder status/aktiver_schritt_id fortgeschrieben sind (F15 WS-2b).
+ * Kein Überschreiben: registriereWorkflow legt über F2 eine neue Version an
+ * (ARCHITECTURE.md §2, versioniert statt überschrieben).
+ *
+ * Der Datensatz wird bewusst FRISCH geladen und nicht aus einem im Speicher
+ * gehaltenen Stand fortgeschrieben: zwischen Start und Laufende kann ein
+ * zweiter POST /api/workflows eine neue Fassung angelegt haben, und die
+ * Fortschreibung soll auf der jüngsten aufsetzen, nicht eine ältere
+ * wiederbeleben.
+ * @param workflowId - Kennung des Workflows
+ * @param schrittId - der fortzuschreibende Schritt
+ * leiteWorkflowFelderAb bekommt den bereits fortgeschriebenen Datensatz und nicht
+ * den geladenen (F15 WS-2b (6)): der Cursor entsteht aus ermittleNaechstenSchritt,
+ * und das braucht die Schrittliste MIT dem gerade gesetzten Schrittausgang. Eine
+ * vorher berechnete Feldmenge müsste den Datensatz ein zweites Mal laden oder auf
+ * einem veralteten Stand rechnen.
+ * @param schrittFelder - zu setzende Schrittfelder (status, lauf_id)
+ * @param leiteWorkflowFelderAb - (datenMitSchritt) => { status, aktiver_schritt_id }
+ * @param profilReferenz - Profilbezug, unverändert an F2 gereicht
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @returns bei Erfolg { ok: true, versionSequenz }, sonst { ok: false, grund }
+ */
+function schreibeWorkflowFortschritt(workflowId, schrittId, schrittFelder, leiteWorkflowFelderAb, profilReferenz, ladeOptionen) {
+  const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+  if (version === null) {
+    return { ok: false, grund: `Workflow '${workflowId}' nicht mehr ladbar` }
+  }
+  const daten = version.daten
+  if (!Array.isArray(daten?.schritte) || !daten.schritte.some((s) => s.schritt_id === schrittId)) {
+    return { ok: false, grund: `Workflow '${workflowId}' kennt den Schritt '${schrittId}' nicht mehr` }
+  }
+  const datenMitSchritt = {
+    ...daten,
+    schritte: daten.schritte.map((s) => (s.schritt_id === schrittId ? { ...s, ...schrittFelder } : s)),
+  }
+  const neueDaten = { ...datenMitSchritt, ...leiteWorkflowFelderAb(datenMitSchritt) }
+  // Vor dem Schreiben validieren (Reviewer-Pass 10.09.2026, V5): registriereWorkflow prüft
+  // bewusst nicht selbst, und der Startendpunkt validiert beim LADEN — ein hier geschriebener
+  // ungültiger Datensatz käme also erst später als 409 zurück, und der Workflow wäre zugemauert.
+  // Eine Zeile schließt die ganze Klasse; die Invariante hält heute, aber sie hängt an vier
+  // Aufrufstellen, nicht an einer.
+  const verstoesse = validiereWorkflowDaten(neueDaten)
+  if (verstoesse.length > 0) {
+    return { ok: false, grund: `fortgeschriebener Workflow '${workflowId}' wäre kein gültiger WORKFLOW_V0: ${verstoesse.join('; ')}` }
+  }
+  try {
+    const registriert = registriereWorkflow(neueDaten, profilReferenz, { basisVerzeichnis: ladeOptionen.basisVerzeichnis })
+    return { ok: true, versionSequenz: registriert.versionSequenz }
+  } catch (fehler) {
+    return { ok: false, grund: `Workflow-Version konnte nicht geschrieben werden: ${fehler.message}` }
+  }
+}
+
+/**
+ * Workflow-Status, der zu einem Ausgang von ermittleNaechstenSchritt gehört
+ * (F15 WS-2b (6)). Der Cursor kommt in allen fünf Fällen unverändert aus
+ * ausgang.aktiverSchrittId — die Union trägt ihn selbst, es gibt hier nichts
+ * zu rechnen.
+ *
+ * 'starte' setzt LAEUFT, startet aber NICHTS: WS-2b ist ein manueller
+ * Schritt-für-Schritt-Modus, in dem der Cursor nach jedem Schritt auf den
+ * nächsten fälligen weiterwandert und ein zweiter POST .../starten ihn
+ * ausführt. WS-2c ersetzt nur diesen zweiten Aufruf durch den automatischen —
+ * der Zustand auf der Platte ist derselbe.
+ * @param ausgang - Rückgabe von ermittleNaechstenSchritt
+ * @returns der zu setzende Workflow-Status
+ */
+function workflowStatusZuAusgang(ausgang) {
+  if (ausgang.art === 'starte') return 'LAEUFT'
+  if (ausgang.art === 'haltFreigabe') return 'WARTET_FREIGABE'
+  if (ausgang.art === 'haltGrenze') return 'GESTOPPT'
+  if (ausgang.art === 'fertig') return 'ABGESCHLOSSEN'
+  if (ausgang.art === 'haltKlaerung') return 'KLAERUNG_ERFORDERLICH'
+  // ALLOWLIST wie überall in F15 (Reviewer-Pass 10.09.2026, V6): ein künftiger sechster Ausgang
+  // fällt in "hält an" und muss hier eine bewusste Zeile bekommen, statt sich still einen Status
+  // zu nehmen. KLAERUNG_ERFORDERLICH ist dabei nicht der Default, sondern eine eigene Zeile —
+  // sonst wäre die Unterscheidung nur behauptet.
+  return 'KLAERUNG_ERFORDERLICH'
+}
+
+/**
+ * Übersetzt einen Nicht-'starte'-Ausgang von ermittleNaechstenSchritt in einen
+ * lesbaren Grund für die 409-Antwort des Startendpunkts (F15 WS-2b). Nötig,
+ * weil zwei der fünf Ausgänge kein grund-Feld tragen: 'haltFreigabe' nennt nur
+ * die schrittId, 'fertig' gar nichts.
+ * @param ausgang - Rückgabe von ermittleNaechstenSchritt
+ * @returns lesbarer Grund
+ */
+function beschreibeAutomatAusgang(ausgang) {
+  if (ausgang.art === 'haltFreigabe') {
+    return `Schritt '${ausgang.schrittId}' verlangt eine menschliche Freigabe (freigabe 'ZWINGEND') — er startet nicht über diesen Endpunkt`
+  }
+  if (ausgang.art === 'fertig') {
+    return 'der Workflow hat keinen zu startenden Schritt mehr — er ist durchgelaufen'
+  }
+  return ausgang.grund
+}
+
 /** Baut einen lesbaren Ablehnungsgrund aus einem ok:false-AusfuehrungsErgebnis (F5- oder F6a-Stufe). @param ergebnis - ok:false-Zweig von AusfuehrungsErgebnis @returns lesbarer Text für die Startfehlerliste */
 function beschreibeAblehnung(ergebnis) {
   if (ergebnis.stufe === 'kontextpaket') {
@@ -1139,6 +1425,107 @@ export function erzeugeRequestHandler(optionen = {}) {
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
     return angenommeneLaufIds.has(laufId) || existsSync(join(basisVerzeichnis, laufId))
+  }
+
+  /**
+   * Der EINZIGE Aufrufpunkt des Werkzeuglaufs in dieser Datei (F10 AK2/AK6,
+   * F11 WS-2 AK7, F15 WS-2b). Vor WS-2b stand dieser Block inline im
+   * POST /api/laeufe-Handler; seit WS-2b braucht ihn zusätzlich der
+   * Startendpunkt des Schritt-Automaten. Ein zweiter Aufrufpunkt ist bewusst
+   * NICHT entstanden: die D13-Rückgabe und die Startfehlerliste sind
+   * Sicherheitsverhalten, und die zweite Fassung davon ist die, die beim
+   * nächsten Eingriff vergessen wird. scripts/check-f11-auftrag.mjs prüft
+   * genau diesen Block als D13-Vertrag (Sperre vor laufIdBelegt, Reset in
+   * .then UND .catch) über das ERSTE Vorkommen des zusammengesetzten
+   * Funktionsnamens im Quelltext — Kommentare oberhalb dürfen ihn deshalb nie
+   * unmittelbar vor einer öffnenden Klammer nennen.
+   *
+   * Vorbedingung, vom Aufrufer zu erfüllen (unverändert zum Stand vor der
+   * Extraktion): laufAktiv/laufAktivLaufId/laufAktivAbortController sind
+   * gesetzt, die laufId ist reserviert, und die 202-Antwort ist bereits raus.
+   *
+   * nachLauf läuft im selben synchronen Tick, in dem laufAktiv zurückgesetzt
+   * wird — Vorbedingung für AK6 (D13-Übergabe ohne Fenster) in WS-2c. Ein Wurf
+   * daraus wird gefangen und als Startfehler protokolliert: er darf weder die
+   * D13-Rückgabe noch den Serverprozess mitreißen.
+   * @param laufId - reservierte laufId dieses Laufs
+   * @param eingaben - fertige AusfuehrungsEingaben
+   * @param zeitgrenzeMsUeberschreibung - überstimmt vorlage.zeitgrenzeMs (F15 WS-2b: das gepinnte schritt.zeitgrenze_ms), sonst undefined
+   * @param nachLauf - optionaler Rückruf (ergebnis, fehler) nach Laufende
+   */
+  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined) {
+    // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
+    // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
+    // respektieren die synchronen Prüfungen im Handler (D13, laufIdBelegt, auftragId-Existenz)
+    // ein Nicht-Default-basisVerzeichnis, der eigentliche Lauf aber nicht (stille Divergenz).
+    // Extra Felder von optionen (fuehreAufgabeDurchFn/publicVerzeichnis/startvorlagePfad/
+    // repoWurzel), die AusfuehrungsOptionen nicht kennt: fuehreAufgabeDurch kopiert für
+    // starteGateway nur die neun bekannten Felder einzeln heraus (src/execution-controller/
+    // index.ts, F-107; F14 WS-4 ergänzt abbruchSignal als neuntes), das rohe Objekt selbst
+    // reicht es nur an die F9-Eskalationshelfer (erfasseBedarf/erzeugeTransportpaket/
+    // haendigeAus) unverändert weiter — auch die lesen nur bekannte Felder per
+    // Property-Zugriff, Extrafelder bleiben überall ungelesen (D5).
+    // F14 WS-4 (AK7, F-177): zeitgrenzeMs kommt serverseitig aus der Startvorlage (Muster
+    // werkzeugStartziel/berechtigungskontext), abbruchSignal aus dem gerade angelegten
+    // Controller — beide reine Durchreichung an AusfuehrungsOptionen (D5, execution-controller
+    // interpretiert keins der beiden selbst). F15 WS-2b: zeitgrenzeMsUeberschreibung steht NACH
+    // der Startvorlage und gewinnt deshalb gegen sie — das gepinnte zeitgrenze_ms eines
+    // Workflow-Schritts ist ein Plandatum, das der Mensch freigegeben hat (E-M3-3). Bewusst ein
+    // SKALAR und kein Optionen-Objekt: ein durchgereichtes Objekt an dieser Stelle überstimmte
+    // auch basisVerzeichnis/starter/settingsPfad — genau die Felder, die diese Datei sonst mit
+    // VERBOTENE_OPTIONEN_FELDER am härtesten verteidigt (Reviewer-Pass 10.09.2026).
+    const laufOptionen = {
+      ...optionen,
+      ...(vorlage.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: vorlage.zeitgrenzeMs } : {}),
+      ...(zeitgrenzeMsUeberschreibung !== undefined ? { zeitgrenzeMs: zeitgrenzeMsUeberschreibung } : {}),
+      abbruchSignal: laufAktivAbortController.signal,
+    }
+
+    /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
+    const meldeLaufende = (ergebnis, fehler) => {
+      if (nachLauf === undefined) return
+      try {
+        nachLauf(ergebnis, fehler)
+      } catch (nachLaufFehler) {
+        const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Nachbereitung fehlgeschlagen: ${String(nachLaufFehler?.message ?? nachLaufFehler)}` }
+        startfehlerListe.push(eintrag)
+        console.error(`[leitstand] Nachbereitung von Lauf '${laufId}' fehlgeschlagen:`, nachLaufFehler)
+      }
+    }
+
+    // Fire-and-forget mit Pflicht-.catch() (AK6) — ein Wurf aus dem Lauf beendet den Server
+    // nicht. laufAktiv wird in JEDEM Fall zurückgesetzt (AK7, D13) — anders als die
+    // laufId-Reservierung, die nur bei ok:false/Wurf freigegeben wird. Ein korrigierter Retry
+    // unter DERSELBEN laufId gelingt danach nur, wenn die Ablehnung keinen Checkpoint
+    // geschrieben hat (reine F5-Ablehnung, oder F6as pruefeStartziel-Zweig) — laufIdBelegt()
+    // prüft zusätzlich das Dateisystem, und die meisten F6a-Ablehnungen (Invocation Policy,
+    // E-182, fehlende/ungültige Autorisierung, Startfreigabe ABGELEHNT) schreiben über
+    // verweigereStart bereits eine reale VERWEIGERT-Wirkungsmarke, BEVOR starteGateway
+    // ok:false zurückgibt — die laufId bleibt danach absichtlich belegt (F1s Hash-Kette ist
+    // append-only, kein Überschreiben eines persistierten Artefakts, ARCHITECTURE.md §7).
+    fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
+      .then((ergebnis) => {
+        laufAktiv = false
+        laufAktivLaufId = null
+        laufAktivAbortController = null
+        if (ergebnis.ok === false) {
+          angenommeneLaufIds.delete(laufId)
+          const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
+          startfehlerListe.push(eintrag)
+          console.error(`[leitstand] Lauf '${laufId}' abgelehnt:`, eintrag.fehler)
+        }
+        meldeLaufende(ergebnis, null)
+      })
+      .catch((fehler) => {
+        laufAktiv = false
+        laufAktivLaufId = null
+        laufAktivAbortController = null
+        angenommeneLaufIds.delete(laufId)
+        const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: String(fehler?.message ?? fehler) }
+        startfehlerListe.push(eintrag)
+        console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
+        meldeLaufende(null, fehler)
+      })
   }
 
   return async function requestHandler(req, res) {
@@ -1296,6 +1683,66 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: `'workflow_id' enthält unzulässige Zeichen: ${JSON.stringify(body.workflow_id)}` })
         return
       }
+      // F15 WS-2b: der eingereichte Datensatz darf selbst keinen der Zustände tragen, in denen
+      // er anschließend nicht mehr ersetzbar wäre. Ohne diese Zeile sperrte sich der Mensch mit
+      // EINER falschen Feldangabe dauerhaft aus — eine Fassung mit status 'ABGESCHLOSSEN' wurde
+      // angenommen und war danach weder ersetzbar (der Bestand ist jetzt gesperrt) noch startbar
+      // (Regel 0). 400 statt 409: hier ist der Body schuld, nicht der abgelegte Zustand
+      // (QA-Pass 10.09.2026).
+      if (GESPERRTE_ERSETZUNGS_STATUS.has(body.status)) {
+        sendeJson(res, 400, {
+          grund: `'status' darf beim Anlegen oder Ersetzen nicht '${body.status}' sein — ein so eingereichter Workflow wäre weder startbar noch ersetzbar (erlaubt: ${ERSETZBARE_STATUS_TEXT.join(', ')})`,
+        })
+        return
+      }
+
+      // Dieselbe Regel für auftrag_id, aus demselben Grund und seit F15 WS-2b nicht mehr
+      // theoretisch: der Startendpunkt lädt 'auftrag-<auftrag_id>', und ladeArtefaktVersion
+      // WIRFT bei einem unzulässigen Zeichen (F1s pruefeLaufId) — aus einem async-Handler,
+      // dessen Promise niemand awaitet, also mit Prozesstod statt 400 (Reviewer-Pass
+      // 10.09.2026, real reproduziert). Hier abgefangen, damit ein solches Artefakt gar nicht
+      // erst entsteht; der Startendpunkt prüft zusätzlich, weil Bestandsartefakte es schon
+      // sein können.
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.auftrag_id)) {
+        sendeJson(res, 400, { grund: `'auftrag_id' enthält unzulässige Zeichen: ${JSON.stringify(body.auftrag_id)}` })
+        return
+      }
+
+      // F15 WS-2b (4): ein zweiter POST ersetzte bis hierher die Definition eines Workflows,
+      // den der Automat gerade abarbeitet — der Mensch hätte Fassung 1 freigegeben, der Schritt
+      // schriebe seinen Ausgang in Fassung 2, und E-M3-1s Voraussetzung ("innerhalb eines vom
+      // Menschen freigegebenen Workflows") wäre unterlaufen. Gesperrt sind deshalb genau die
+      // drei Zustände, in denen eine neue Fassung wirklich Schaden anrichtet:
+      //
+      //   LAEUFT           — es läuft etwas; die Fassung würde unter dem laufenden Schritt getauscht.
+      //   WARTET_FREIGABE  — es wartet etwas auf eine menschliche Freigabe; eine neue Fassung wäre
+      //                      eine Freigabe-Umgehung durch die Hintertür.
+      //   ABGESCHLOSSEN    — eine fertige Historie wird nicht umgeschrieben; dafür gibt es eine
+      //                      neue workflow_id.
+      //
+      // OFFEN, KLAERUNG_ERFORDERLICH und GESTOPPT sind ERLAUBT. Eine frühere, breitere Fassung
+      // dieser Regel ("alles außer OFFEN") sperrte auch die beiden Zustände, in denen die neue
+      // Fassung der menschliche REPARATURZUG selbst ist — und mauerte damit genau den Fall zu,
+      // für den die Heilung einer verwaisten lauf_id gebaut wurde: ein Tippfehler in
+      // schritt.rolle war danach nicht mehr korrigierbar (Reviewer-/QA-Pass 10.09.2026).
+      //
+      // KEIN max_replans-Verbrauch: max_replans begrenzt die AUTOMATISCHE Wiederholung. Ein
+      // Mensch, der eine neue Fassung einreicht, ist selbst die Grenze.
+      // Ein Bestand, der die heutigen WORKFLOW_V0-Regeln verletzt, ist IMMER ersetzbar,
+      // unabhängig von seinem status: aus ihm kann kein Lauf mehr gestartet werden (der
+      // Startendpunkt validiert beim Laden und antwortet 409), also gibt es nichts zu schützen —
+      // und ohne diese Ausnahme wäre er dauerhaft unerreichbar. Der Fall entsteht real, sobald
+      // eine neue Validatorregel dazukommt: Zusammenführungen waren bis WS-2b gültig UND
+      // startbar (Reviewer-Pass 10.09.2026).
+      const bestand = ladeArtefaktVersion(`workflow-${body.workflow_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const bestandUngueltig = bestand !== null && validiereWorkflowDaten(bestand.daten).length > 0
+      if (bestand !== null && !bestandUngueltig && GESPERRTE_ERSETZUNGS_STATUS.has(bestand.daten?.status)) {
+        sendeJson(res, 409, {
+          grund: `Workflow '${body.workflow_id}' existiert bereits mit status '${bestand.daten?.status}' — in diesem Zustand wird er nicht durch eine neue Fassung ersetzt (erlaubt: ${[...ERSETZBARE_STATUS_TEXT].join(', ')})`,
+          status: bestand.daten?.status ?? null,
+        })
+        return
+      }
 
       // registriereWorkflow führt echte, synchrone Disk-I/O aus und kann werfen — derselbe
       // Grund wie bei registriereAuftrag oben (requestHandler ist eine async function, deren
@@ -1312,18 +1759,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // desselben Artefakts (ARCHITECTURE.md §2: versioniert, nicht überschrieben) — deshalb
       // trägt die Antwort versionSequenz, damit der Aufrufer sieht, welche er bekommen hat.
       //
-      // Drei Prüfungen fehlen hier BEWUSST, alle drei mit demselben Grund: sie betreffen den
-      // Startpfad, und der ist WS-2b. Sie sind benannt, damit sie dort nicht vergessen werden
-      // (Reviewer-/QA-Pass 10.09.2026):
-      // (1) auftrag_id wird NICHT auf Existenz geprüft — anders als POST /api/laeufe, das genau
+      // Zwei Prüfungen fehlen hier weiterhin BEWUSST (die dritte, der zweite POST auf einen
+      // laufenden Workflow, ist seit F15 WS-2b oben umgesetzt):
+      // (1) auftrag_id wird NICHT auf EXISTENZ geprüft — anders als POST /api/laeufe, das genau
       //     das synchron tut (F12 AK5). Ein Workflow ohne existierenden Auftrag ist hier ein
       //     zulässiger Zwischenzustand (der Auftrag kann später entstehen); beim Start ist er es
-      //     nicht mehr.
-      // (2) Ein zweiter POST ersetzt die Definition eines Workflows, den WS-2b gerade abarbeiten
-      //     könnte — der Mensch hätte Fassung 1 freigegeben, der Automat liefe in Fassung 2
-      //     weiter. Solange nichts startet, ist das folgenlos; vor WS-2b braucht es eine
-      //     Entscheidung (409 bei nicht-OFFENem Workflow?).
-      // (3) workflow_id wird nur gegen LAUFID_UNZULAESSIGE_ZEICHEN geprüft (Spiegel von
+      //     nicht mehr (400 dort). Die ZEICHENregel dagegen greift seit WS-2b auch hier.
+      // (2) workflow_id wird nur gegen LAUFID_UNZULAESSIGE_ZEICHEN geprüft (Spiegel von
       //     pruefeLaufId, D5 — kein zweiter Regelsatz). Länge und die unter Windows
       //     unzulässigen Zeichen (: < > " | ? *) bleiben ungeprüft und enden als 500 statt 400,
       //     unter Linux dagegen als 201 — OS-divergent. Eine strengere Regel gehört in den
@@ -1399,60 +1841,284 @@ export function erzeugeRequestHandler(optionen = {}) {
       laufAktivAbortController = new AbortController()
       sendeJson(res, 202, { laufId })
 
-      // Fire-and-forget mit Pflicht-.catch() (AK6) — ein Wurf aus fuehreAufgabeDurch beendet den
-      // Server nicht. laufAktiv wird in JEDEM Fall zurückgesetzt (AK7, D13) — anders als die
-      // laufId-Reservierung, die nur bei ok:false/Wurf freigegeben wird. Bei Ablehnung durch F5/F6a
-      // (ok:false) oder Wurf wird die In-Memory-Reservierung wieder freigegeben (AK5). Ein
-      // korrigierter Retry unter DERSELBEN laufId gelingt danach nur, wenn die Ablehnung keinen
-      // Checkpoint geschrieben hat (reine F5-Ablehnung, oder F6as pruefeStartziel-Zweig) —
-      // laufIdBelegt() prüft zusätzlich das Dateisystem, und die meisten F6a-Ablehnungen
-      // (Invocation Policy, E-182, fehlende/ungültige Autorisierung, Startfreigabe ABGELEHNT)
-      // schreiben über verweigereStart bereits eine reale VERWEIGERT-Wirkungsmarke, BEVOR
-      // starteGateway ok:false zurückgibt — die laufId bleibt danach absichtlich belegt (F1s
-      // Hash-Kette ist append-only, kein Überschreiben eines persistierten Artefakts,
-      // ARCHITECTURE.md §7). Ein Retry braucht dann eine neue laufId.
-      // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
-      // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
-      // respektieren die synchronen Prüfungen oben (D13, laufIdBelegt, auftragId-Existenz) ein
-      // Nicht-Default-basisVerzeichnis, der eigentliche Lauf aber nicht (stille Divergenz). Extra
-      // Felder von optionen (fuehreAufgabeDurchFn/publicVerzeichnis/startvorlagePfad/repoWurzel),
-      // die AusfuehrungsOptionen nicht kennt: fuehreAufgabeDurch kopiert für starteGateway nur die
-      // neun bekannten Felder einzeln heraus (src/execution-controller/index.ts, F-107; F14 WS-4
-      // ergänzt abbruchSignal als neuntes), das rohe
-      // Objekt selbst reicht es nur an die F9-Eskalationshelfer (erfasseBedarf/erzeugeTransportpaket/
-      // haendigeAus) unverändert weiter — auch die lesen nur bekannte Felder per Property-Zugriff,
-      // Extrafelder bleiben überall ungelesen (D5, kein Verhalten im Default-Fall geändert).
-      // F14 WS-4 (AK7, F-177): zeitgrenzeMs kommt serverseitig aus der Startvorlage (Muster
-      // werkzeugStartziel/berechtigungskontext oben), abbruchSignal aus dem gerade angelegten
-      // Controller — beide reine Durchreichung an AusfuehrungsOptionen (D5, execution-controller
-      // interpretiert keins der beiden selbst). optionen bleibt strukturell erhalten (F-145).
-      const laufOptionen = {
-        ...optionen,
-        ...(vorlage.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: vorlage.zeitgrenzeMs } : {}),
-        abbruchSignal: laufAktivAbortController.signal,
+      // F15 WS-2b: der Fire-and-forget-Block stand bis hier inline; seit WS-2b liegt er in
+      // starteLaufUndVergiss (oben), weil der Startendpunkt des Schritt-Automaten denselben
+      // Block braucht. Verhaltensgleich extrahiert — dieselben Optionen (F-145, F-177), dieselbe
+      // D13-Rückgabe in .then UND .catch (AK7), dieselbe Startfehlerliste (AK6). Kein zweiter
+      // Aufrufpunkt des Werkzeuglaufs; die Begründung steht am Helfer.
+      starteLaufUndVergiss(laufId, eingaben)
+      return
+    }
+
+    // F15 WS-2b (Meilenstein 3, docs/projekt/zielfassung.md §13.4 E-M3-1): startet GENAU EINEN
+    // Schritt eines Workflows über den Automatenpfad. Die automatische Fortsetzung auf Schritt
+    // n+1 ist NICHT hier — sie ist WS-2c. Die Route steht bewusst NACH POST /api/laeufe: die
+    // D13-Vertragsprüfung in scripts/check-f11-auftrag.mjs sucht das ERSTE 'if (laufAktiv)' und
+    // das ERSTE 'if (laufIdBelegt(' im Quelltext; stünde diese Route davor, prüfte das Gate
+    // seine Zusage nicht mehr an dem Handler, für den sie geschrieben wurde (Reviewer-Pass
+    // 10.09.2026). Gegen die GET-Detailroute ist sie nicht mehrdeutig: dort req.method === 'GET'.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/starten')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/starten'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
       }
 
-      fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
-        .then((ergebnis) => {
-          laufAktiv = false
-          laufAktivLaufId = null
-          laufAktivAbortController = null
-          if (ergebnis.ok === false) {
-            angenommeneLaufIds.delete(laufId)
-            const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
-            startfehlerListe.push(eintrag)
-            console.error(`[leitstand] Lauf '${laufId}' abgelehnt:`, eintrag.fehler)
+      // (1) Workflow laden.
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+
+      // (2) validiereWorkflowDaten auch beim LADEN, nicht nur beim Anlegen (features/F15/
+      // feature.md, „Entschieden", max_schritte-Eintrag): die Terminierung des Automaten hängt
+      // an der Zyklenfreiheit der nachfolger-Kette, und zwischen Anlegen und Start kann eine
+      // zweite Fassung desselben Workflows angelegt worden sein. 409 statt 400: der Body ist
+      // nicht schuld, der abgelegte Zustand ist es.
+      const verstoesse = validiereWorkflowDaten(workflowDaten)
+      if (verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        return
+      }
+
+      // (2b) Stale LAEUFT: der abgelegte Zustand sagt "läuft", D13 sagt "nichts läuft". Dann ist
+      // der Server mitten im Schritt gestorben — der aufgezeichnete Zustand ist veraltet, nicht
+      // falsch. Ohne diese Heilung liefe der Aufruf in Regel 3 ("Schritt trägt eine lauf_id")
+      // und der Workflow bliebe dauerhaft auf 409 stehen, ohne dass irgendwo steht, warum.
+      //
+      // Muster: F1Bs stelleLaufstatusFest erkennt denselben Zustand eine Ebene tiefer — ein
+      // run_prepared ohne Terminalmarke — und liefert dafür KLAERUNG_ERFORDERLICH statt eines
+      // Fehlers. Genau das hier auf Workflow-Ebene: der Zustand wird als klärungsbedürftig
+      // FESTGESCHRIEBEN und der Mensch bekommt einen reparierbaren Workflow (er darf jetzt eine
+      // neue Fassung einreichen, siehe (A)), statt eines zugemauerten.
+      //
+      // Der betroffene Schritt wird dabei NICHT angefasst: seine lauf_id bleibt stehen. Das ist
+      // der Unterschied zur Heilung nach einem Laufende — dort ist BELEGT, dass nichts
+      // geschrieben wurde; hier ist unbekannt, ob unter dieser lauf_id real ein Lauf gelaufen
+      // ist, dessen Ausgang niemand mehr eingesammelt hat. Eine lauf_id wegzuwerfen, die auf
+      // eine reale Kette zeigt, wäre der schlimmere Fehler.
+      //
+      // GENAUER als "Workflow steht auf LAEUFT" (Kalibrierung am Gate, 10.09.2026): seit der
+      // Cursor-Wanderung steht ein Workflow auch dann auf LAEUFT, wenn der letzte Schritt sauber
+      // fertig ist und der Cursor auf dem nächsten, noch OFFENEN Schritt wartet — das ist der
+      // gesunde Zwischenstand des Schritt-für-Schritt-Modus, kein Stale-State. Der belastbare
+      // Marker ist ein SCHRITT auf LAEUFT: den setzt der Endpunkt unmittelbar vor dem Laufstart,
+      // und die Nachbereitung nimmt ihn in jedem Fall wieder herunter. Steht er noch, obwohl D13
+      // nichts kennt, hat die Nachbereitung nie stattgefunden.
+      const laufenderSchritt = laufAktiv ? undefined : workflowDaten.schritte.find((s) => s.status === 'LAEUFT')
+      if (workflowDaten.status === 'LAEUFT' && laufenderSchritt !== undefined) {
+        const grund = `Workflow '${workflowId}' steht auf LAEUFT und Schritt '${laufenderSchritt.schritt_id}' ebenfalls, aber über diese Serverinstanz ist kein Lauf aktiv (D13) — der aufgezeichnete Zustand ist veraltet (Serverneustart mitten im Schritt). Der Workflow wurde auf KLAERUNG_ERFORDERLICH gesetzt; die lauf_id des Schritts bleibt unverändert, weil unbekannt ist, ob unter ihr real ein Lauf gelaufen ist.`
+        const geheilt = schreibeWorkflowFortschritt(
+          workflowId,
+          laufenderSchritt.schritt_id,
+          {},
+          (datenMitSchritt) => ({ status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: datenMitSchritt.aktiver_schritt_id }),
+          profilReferenz,
+          { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+        )
+        if (!geheilt.ok) {
+          console.error(`[leitstand] Stale-LAEUFT-Heilung für Workflow '${workflowId}' fehlgeschlagen:`, geheilt.grund)
+          sendeJson(res, 500, { grund: geheilt.grund })
+          return
+        }
+        sendeJson(res, 409, { grund, stale: true })
+        return
+      }
+
+      // (3) D13, wortgleich zu POST /api/laeufe und aus demselben Grund an derselben Stelle:
+      // die Sperre gilt unabhängig vom konkreten Request und läuft deshalb vor jeder
+      // request-spezifischen Prüfung.
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+
+      // (4) Die Entscheidung trifft ausschließlich F15s ermittleNaechstenSchritt (D5) — ohne
+      // Vorschrittergebnis, weil dieser Endpunkt den ERSTEN Schritt startet. Jeder Ausgang
+      // außer 'starte' ist ein 409, bei dem nichts geschrieben und nichts gestartet wird.
+      const ausgang = ermittleNaechstenSchritt(workflowDaten)
+      if (ausgang.art !== 'starte') {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' ist nicht startbar (${ausgang.art}): ${beschreibeAutomatAusgang(ausgang)}`, art: ausgang.art })
+        return
+      }
+      const schritt = ausgang.schritt
+
+      // Die laufId eines Workflow-Schritts erzeugt der Server (Muster auftragId, D1) — sie kommt
+      // nie aus einer Payload. laufIdBelegt bleibt trotzdem geprüft: randomUUID ist praktisch
+      // kollisionsfrei, aber die Reservierung ist die Zusage, nicht die Wahrscheinlichkeit.
+      const laufId = randomUUID()
+      if (laufIdBelegt(laufId)) {
+        sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
+        return
+      }
+
+      // (5) Eingaben nach (A)/(B). Der Auftragstext kommt aus dem Auftragsartefakt — dieselbe
+      // synchrone Existenzprüfung wie in POST /api/laeufe (F12 WS-2 AK5), vor jeder
+      // Zustandsänderung (D2). POST /api/workflows prüft auftrag_id bewusst NICHT; beim Start
+      // ist der Zwischenzustand „Auftrag kommt später" nicht mehr zulässig.
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowDaten.auftrag_id)) {
+        sendeJson(res, 400, { grund: `'auftrag_id' des Workflows enthält unzulässige Zeichen: ${JSON.stringify(workflowDaten.auftrag_id)}` })
+        return
+      }
+      const auftragVersion = ladeArtefaktVersion(`auftrag-${workflowDaten.auftrag_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (auftragVersion === null) {
+        sendeJson(res, 400, { grund: `Auftrag '${workflowDaten.auftrag_id}' nicht gefunden` })
+        return
+      }
+      // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
+      // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
+      // vorgaengerLaufId weg (Bauauftrag (A)). Kein neuer Mechanismus, nur die bestehende
+      // Verweisbildung aus F8 WS-2b / F13 WS-3 (Nicht-Ziel "Keine neue Lineage-Mechanik").
+      //
+      // Ein geheilter Schritt trägt lauf_id null und ist damit kein Vorschritt — richtig so, es
+      // lief nichts, worauf ein Verweis zeigen könnte.
+      //
+      // Sind ZWEI Vorschritte gelaufen, ist der Lineage-Vorgänger nicht bestimmbar — dann wird
+      // angehalten statt geraten (D2).
+      //
+      // HEUTE UNERREICHBAR, und das ist Absicht: seit der fünften Querverweisregel lehnt
+      // validiereWorkflowDaten jede Zusammenführung ab, und dieser Handler validiert den
+      // geladenen Datensatz oben (409), bevor er hierher kommt — auch Bestandsartefakte aus der
+      // Zeit vor der Regel. Die Prüfung bleibt als Tiefenverteidigung stehen, falls die
+      // Validierung je verschoben wird; sie wird deshalb NICHT als eigene Grenze im Gate
+      // behauptet (ARCHITECTURE.md §8: eine Grenze ohne Rotfall heißt nicht ERZWUNGEN).
+      // Frühere Fassung dieses Kommentars berief sich auf einen Testfall, den dieselbe
+      // Iteration in sein Gegenteil gedreht hat (Reviewer-Pass 10.09.2026).
+      const gelaufeneVorschritte = workflowDaten.schritte.filter((s) => s.nachfolger === schritt.schritt_id && s.lauf_id !== null)
+      if (gelaufeneVorschritte.length > 1) {
+        sendeJson(res, 409, {
+          grund: `Schritt '${schritt.schritt_id}' hat ${gelaufeneVorschritte.length} gelaufene Vorschritte (${gelaufeneVorschritte.map((s) => s.schritt_id).join(', ')}) — der Lineage-Vorgänger ist nicht bestimmbar`,
+        })
+        return
+      }
+      const vorgaengerLaufId = gelaufeneVorschritte[0]?.lauf_id ?? undefined
+
+      const eingabenErgebnis = loeseSchrittEingabenAuf(
+        schritt,
+        workflowDaten,
+        vorgaengerLaufId,
+        auftragVersion.daten.auftragstext,
+        vorlage,
+        repoWurzel,
+        { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      )
+      if (!eingabenErgebnis.ok) {
+        sendeJson(res, 400, { grund: eingabenErgebnis.grund })
+        return
+      }
+
+      // (6) Die neue Workflow-Version wird geschrieben, BEVOR der Lauf startet: stirbt der
+      // Server danach, zeigt der Zustand auf der Platte, welcher Schritt lief — ein Schritt auf
+      // LAEUFT mit gesetzter lauf_id ist nach Regel 3 von ermittleNaechstenSchritt nicht mehr
+      // startbereit und wird nie automatisch neu gestartet (ARCHITECTURE.md §4).
+      // workflowDaten.version bleibt unangetastet: das Feld zählt Planfassungen (Replans), nicht
+      // Artefaktversionen — die zählt F2 als versionSequenz.
+      const fortschritt = schreibeWorkflowFortschritt(
+        workflowId,
+        schritt.schritt_id,
+        { status: 'LAEUFT', lauf_id: laufId },
+        () => ({ status: 'LAEUFT', aktiver_schritt_id: ausgang.aktiverSchrittId }),
+        profilReferenz,
+        { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      )
+      if (!fortschritt.ok) {
+        console.error(`[leitstand] Workflow '${workflowId}' konnte nicht fortgeschrieben werden:`, fortschritt.grund)
+        sendeJson(res, 500, { grund: fortschritt.grund })
+        return
+      }
+
+      // (7) Reservierung synchron vor dem Laufstart, dann 202 — Muster POST /api/laeufe.
+      angenommeneLaufIds.add(laufId)
+      laufAktiv = true
+      laufAktivLaufId = laufId
+      laufAktivAbortController = new AbortController()
+      sendeJson(res, 202, { workflowId, schrittId: schritt.schritt_id, laufId })
+
+      // (8) Nach dem Laufende: der Schritt bekommt seinen Ausgang, dann wandert der Cursor über
+      // ermittleNaechstenSchritt auf den nächsten fälligen Schritt weiter und der Workflow-Status
+      // folgt diesem Ausgang (F15 WS-2b (6)). Es wird dabei NICHTS gestartet — ein zweiter POST
+      // .../starten führt den nächsten Schritt aus. WS-2c ersetzt nur diesen zweiten Aufruf.
+      //
+      // (3) Heilung einer verwaisten lauf_id: schlägt der Lauf FACHLICH fehl, ohne dass ein
+      // Checkpoint entstanden ist, trägt der Schritt sonst eine lauf_id, unter der es nichts zu
+      // sehen gibt — und Regel 3 von ermittleNaechstenSchritt macht ihn damit dauerhaft nicht
+      // mehr startbar. Ein Tippfehler in schritt.rolle mauerte den Schritt zu. Deshalb: lauf_id
+      // zurück auf null, Schritt zurück auf OFFEN, Workflow auf KLAERUNG_ERFORDERLICH mit dem
+      // Ablehnungsgrund. Das ist KEIN Replan (es lief nichts) und verbraucht kein max_replans.
+      //
+      // Die Bedingung ist ENGER als ok === false und wird deshalb am Dateisystem abgelesen, nicht
+      // am Ergebnistyp: F6as verweigereStart schreibt in fünf von sieben Ablehnungszweigen eine
+      // reale VERWEIGERT-Wirkungsmarke, BEVOR starteGateway ok:false zurückgibt. Wo eine solche
+      // Marke liegt, wird nichts zurückgesetzt — F1s Kette ist append-only (ARCHITECTURE.md §7),
+      // und ein OFFEN über einer realen Wirkungsmarke wäre eine Lüge auf der Platte.
+      // existsSync(<basis>/<laufId>) ist genau die Prüfung, mit der laufIdBelegt() schon heute
+      // entscheidet, ob ein Retry unter derselben laufId möglich ist (D5, kein zweiter Regelsatz).
+      //
+      // GENAU gelesen (Reviewer-Pass 10.09.2026, K2): die Prüfung sagt "kein Checkpoint und keine
+      // Wirkungsmarke unter <basis>/<laufId>", NICHT "kein Artefakt". Lineage-Artefakte liegen
+      // woanders — registriereKernArtefakt schreibt nach <basis>/lineage-<artefaktId>/. Es gibt
+      // deshalb einen realen Pfad, auf dem geheilt wird, obwohl etwas entstanden ist: F5 gelingt
+      // und registriert kontextpaket-<laufId>, danach lehnt F6as pruefeStartziel-Zweig OHNE
+      // Wirkungsmarke ab. Zurück bleibt ein verwaistes Kontextpaket, auf das kein Schritt mehr
+      // zeigt. Die Kette selbst bleibt heil (der nächste Start zieht eine frische randomUUID) —
+      // benannt, damit die Zusage nicht weiter reicht, als sie trägt.
+      //
+      // schritt.zeitgrenze_ms überstimmt vorlage.zeitgrenzeMs (E-M3-3, gepinntes Plandatum).
+      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, schritt.zeitgrenze_ms, (ergebnis, fehler) => {
+        // Das Dateisystem ist das faktische Prädikat, nicht der Ergebnistyp: ein Wurf, BEVOR
+        // etwas geschrieben wurde, heißt genauso "nichts ist passiert" wie eine F5-Ablehnung
+        // (fuehreAufgabeDurch wirft z.B. bei einer Vorbedingungsverletzung, lange vor dem
+        // ersten Checkpoint); ein Wurf DANACH findet das Verzeichnis und heilt nicht. Die
+        // frühere Zusatzbedingung 'fehler === null' schloss den technischen Wurf aus und ließ
+        // damit dieselbe verwaiste lauf_id zurück, die die Heilung verhindern soll
+        // (Reviewer-Pass 10.09.2026, V1).
+        //
+        // Was das Dateisystem NICHT ersetzt: ein ok:true-Lauf wird nie geheilt, auch wenn unter
+        // seiner laufId nichts läge. Ein ok:true ist durch F6a und F7 gelaufen, hat also
+        // per Konstruktion eine Wirkungsmarke — läge trotzdem nichts da, wäre das ein Defekt und
+        // kein Anlass, ein reales Ergebnis wegzuwerfen.
+        const nichtErfolgreich = fehler !== null || ergebnis?.ok === false
+        const heilbar = nichtErfolgreich && !existsSync(join(basisVerzeichnis, laufId))
+
+        const schrittStatus = fehler !== null ? 'FEHLGESCHLAGEN' : normalisiereSchrittAusgang(ergebnis)
+        const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
+
+        const nachlauf = schreibeWorkflowFortschritt(
+          workflowId,
+          schritt.schritt_id,
+          schrittFelder,
+          (datenMitSchritt) => {
+            // Ein geheilter Schritt hat nicht stattgefunden — es gibt kein Schrittergebnis, aus
+            // dem ein Folgeschritt entstehen dürfte. Der Cursor bleibt auf ihm stehen, der
+            // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
+            if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id }
+            const naechster = ermittleNaechstenSchritt(datenMitSchritt, { schrittId: schritt.schritt_id, ergebnis: schrittStatus, laufId })
+            return { status: workflowStatusZuAusgang(naechster), aktiver_schritt_id: naechster.aktiverSchrittId }
+          },
+          profilReferenz,
+          { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+        )
+        if (heilbar) {
+          const anlass = fehler !== null ? `Wurf: ${String(fehler?.message ?? fehler)}` : beschreibeAblehnung(ergebnis)
+          const eintrag = {
+            zeitstempel: new Date().toISOString(),
+            laufId,
+            fehler: `Workflow '${workflowId}', Schritt '${schritt.schritt_id}': ${anlass} — kein Checkpoint geschrieben, Schritt auf OFFEN zurückgesetzt (kein Replan)`,
           }
-        })
-        .catch((fehler) => {
-          laufAktiv = false
-          laufAktivLaufId = null
-          laufAktivAbortController = null
-          angenommeneLaufIds.delete(laufId)
-          const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: String(fehler?.message ?? fehler) }
           startfehlerListe.push(eintrag)
-          console.error(`[leitstand] Lauf '${laufId}' fehlgeschlagen:`, fehler)
-        })
+          console.error(`[leitstand] ${eintrag.fehler}`)
+        }
+        if (!nachlauf.ok) {
+          // Kein Wurf: starteLaufUndVergiss fängt ihn zwar, aber ein stiller Startfehler-Eintrag
+          // ist hier die ehrlichere Meldung — der Lauf selbst ist real gelaufen.
+          const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Workflow '${workflowId}' nach Schritt '${schritt.schritt_id}': ${nachlauf.grund}` }
+          startfehlerListe.push(eintrag)
+          console.error(`[leitstand] ${eintrag.fehler}`)
+        }
+      })
       return
     }
 

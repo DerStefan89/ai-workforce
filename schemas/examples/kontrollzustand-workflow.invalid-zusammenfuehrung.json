@@ -3,7 +3,7 @@
   "workflow_id": "beispiel-workflow",
   "auftrag_id": "beispiel-auftrag",
   "version": 1,
-  "ziel": "Die Beispieländerung im Referenzfeature prüfen und anschließend umsetzen.",
+  "ziel": "Zwei Pruefschritte, die auf denselben Ausfuehrungsschritt zusammenlaufen.",
   "status": "OFFEN",
   "aktiver_schritt_id": "schritt-1-pruefung",
   "grenzen": {
@@ -22,12 +22,27 @@
       "freigabe": "AUTOMATISCH",
       "risiko": "Kein Schreibzugriff — reine Lesepruefung des Auftragsartefakts.",
       "zeitgrenze_ms": 600000,
-      "nachfolger": "schritt-2-ausfuehrung",
+      "nachfolger": "schritt-3-ausfuehrung",
       "status": "OFFEN",
       "lauf_id": null
     },
     {
-      "schritt_id": "schritt-2-ausfuehrung",
+      "schritt_id": "schritt-2-qa",
+      "rolle": "qa",
+      "werkzeugsatz": "lesend",
+      "worker": "claude-code",
+      "modell": "beispiel-modell",
+      "eingaben": ["artefakt:auftrag-beispiel-auftrag"],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Kein Schreibzugriff — reine Lesepruefung des Auftragsartefakts.",
+      "zeitgrenze_ms": 600000,
+      "nachfolger": "schritt-3-ausfuehrung",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-3-ausfuehrung",
       "rolle": "ausfuehrung",
       "werkzeugsatz": "schreibend",
       "worker": "claude-code",

@@ -203,19 +203,45 @@ test('Rotfall Querverweis: Zweierzyklus wird genau einmal gemeldet', () => {
 
 test('Zyklus: ein Vorlauf in den Kreis meldet nur den Kreis, nicht den Vorlauf', () => {
   // schritt-0 -> schritt-1 -> schritt-2 -> schritt-1: schritt-0 gehört nicht dazu.
+  //
+  // Seit der Zusammenführungsregel (F15 WS-2b) meldet dieselbe Fixture ZWEI Verstöße, und
+  // zwangsläufig: ein Vorlauf IN einen Kreis heißt, dass der Einstiegsknoten zwei Vorgänger
+  // hat — den von außen und den aus dem Kreis. Beide Meldungen sind richtig. Der Prüfzweck
+  // dieses Falls bleibt der Zyklus-Teil: GENAU EINE Zyklusmeldung, und schritt-0 steht nicht
+  // darin.
   const workflow = gueltigerWorkflow()
   const schritte = workflow.schritte as Record<string, unknown>[]
   schritte.unshift(gueltigerSchritt('schritt-0', 'schritt-1'))
   schritte[2].nachfolger = 'schritt-1'
-  assert.deepStrictEqual(validiereWorkflowDaten(workflow), [
+  const verstoesse = validiereWorkflowDaten(workflow)
+  assert.deepStrictEqual(verstoesse.filter((v) => v.includes('Zyklus')), [
+    "'schritte' enthält einen Zyklus über 'nachfolger': schritt-1 -> schritt-2 -> schritt-1",
+  ])
+  assert.deepStrictEqual(verstoesse, [
+    "'schritte' führt 2 Schritte (schritt-0, schritt-2) auf denselben nachfolger 'schritt-1' zusammen — der Lineage-Vorgänger wäre nicht bestimmbar",
     "'schritte' enthält einen Zyklus über 'nachfolger': schritt-1 -> schritt-2 -> schritt-1",
   ])
 })
 
-test('Grünfall Zyklus: zwei Schritte, die auf denselben Nachfolger zeigen, sind kein Zyklus', () => {
+test('Rotfall Querverweis: zwei Schritte auf denselben Nachfolger sind eine Zusammenführung — kein Zyklus, aber ungültig (F15 WS-2b)', () => {
+  // Bis WS-2b war das ausdrücklich ein Grünfall. Der Startendpunkt bestimmt den
+  // Lineage-Vorgänger über 'nachfolger === schritt_id && lauf_id !== null' und
+  // kann bei einer Zusammenführung nur anhalten — ein solcher Plan ist nicht
+  // ausführbar und wird deshalb schon beim Anlegen abgelehnt. Die Meldung nennt
+  // NUR die Zusammenführung: der Zyklus-Aspekt bleibt richtig, die Gültigkeit nicht.
   const workflow = gueltigerWorkflow()
   const schritte = workflow.schritte as Record<string, unknown>[]
   schritte.unshift(gueltigerSchritt('schritt-0', 'schritt-2'))
+  assert.deepStrictEqual(validiereWorkflowDaten(workflow), [
+    "'schritte' führt 2 Schritte (schritt-0, schritt-1) auf denselben nachfolger 'schritt-2' zusammen — der Lineage-Vorgänger wäre nicht bestimmbar",
+  ])
+})
+
+test('Grünfall: eine lineare Kette ist keine Zusammenführung (F15 WS-2b)', () => {
+  // Der Grünfall neben der Regel — sonst wäre sie durch ein 'lehnt alles ab' erfüllbar.
+  const workflow = gueltigerWorkflow()
+  const schritte = workflow.schritte as Record<string, unknown>[]
+  schritte.unshift(gueltigerSchritt('schritt-0', 'schritt-1'))
   assert.deepStrictEqual(validiereWorkflowDaten(workflow), [])
 })
 
