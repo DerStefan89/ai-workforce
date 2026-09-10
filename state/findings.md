@@ -1945,6 +1945,16 @@ gültigen Wertebereich — für worker/freigabe ist die Allowlist punktweise
 Zusatzgrenzen; jede ist im Gate einzeln rot kalibriert.
 Empfohlene Maßnahme: Keine. Beim Anlegen der Feature-Akte F15 (existiert
 noch nicht, anders als F0–F14) diesen Eintrag dorthin übernehmen.
+Status-Update (10.09.2026, Anlegen der Feature-Akte F15): empfohlene
+Maßnahme erledigt — der Eintrag ist in die Akte übernommen. Beleg:
+`features/F15/feature.md`, Abschnitt „Abweichung vom Bauauftrag WS-2a
+(F-193)": sechs statt vier Regeln, Regel 0
+(`FORTSETZBARE_WORKFLOW_STATUS`) und Regel 3 (nicht startbereiter
+Schritt), reale Verhaltensänderung, Anlass Reviewer-/QA-Pass 10.09.2026,
+Verstoß gegen ARCHITECTURE.md §4, je Regel einzeln rot kalibriert,
+Allowlist statt Sperrliste. Die konkreten Fundstellen (Konstantennamen,
+`src/workflow/types.ts`) bleiben hier stehen und werden in der Akte nicht
+wiederholt.
 Feature/Run: F15 WS-2a, 10.09.2026.
 
 **F-194** · `BUG` · P1 · offen
@@ -2044,3 +2054,79 @@ gegen die loeseEvidenzPfadAuf ausdrücklich härtet.
 Empfohlene Maßnahme: Die strengere Regel in den Checkpoint Store ziehen
 (eine Wahrheitsquelle), nicht als Zweitregel in den Server.
 Feature/Run: F15 WS-2a, QA-Pass 10.09.2026 (TC-B3/TC-B4).
+
+**F-189** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: Advisor-Pass-Schritt seit F13 stillschweigend ausgelassen.
+Beschreibung: Der bei F11/F12 genutzte Advisor-Plan-Schritt (Skill
+advisor-pass, Subagent architecture-advisor) wurde ab F13 nicht mehr
+durchlaufen, ohne dass die Auslassung je als Prozessänderung entschieden
+oder dokumentiert wurde. Aufgefallen bei der Vorbereitung von F15 WS-1.
+Fundstelle: Claude-Projekt, vier ADVISOR_PLAN_V1-Dokumente zu F11/F12,
+keine zu F13/F14/F15.
+Auswirkung: Keine belegte — F13 und F14 sind real abgeschlossen. Ohne
+Klärung laufen Prozessregel und Praxis aber auseinander.
+Empfohlene Maßnahme: Keine offen. Aufgelöst durch Stefan am 09.09.2026
+(Projektchat): Der Advisor-Pass ist kein Pflichtschritt, sondern eine
+risiko- und umfangsabhängige Entscheidung je Workstream. Angewandt bei
+F15: WS-1 ohne (exakter AUFTRAG_V0-Präzedenzfall), WS-2 mit
+vorgeschaltetem Vorabdesign statt Advisor-Runde.
+Feature/Run: F15-Vorbereitung, 09.09.2026.
+
+**F-190** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
+Titel: Bauauftrag F15 WS-1 enthielt eine in sich widersprüchliche
+Vorgabe.
+Beschreibung: Der Auftrag forderte die Beispieldatei „eingebettet in
+eine vollständige Kontrollzustand-Hülle … nach demselben Aufbau wie
+kontrollzustand-auftrag.valid.json" — letztere ist eine nackte Payload
+ohne Hülle. Beide Vorgaben zugleich sind nicht erfüllbar.
+Fundstelle: Bauauftrag F15 WS-1 (Projektchat 09.09.2026);
+schemas/examples/kontrollzustand-auftrag.valid.json.
+Auswirkung: Kein Schaden — die Bausitzung hat den Widerspruch erkannt,
+ist dem Präzedenzfall gefolgt und hat die Abweichung offengelegt. Ohne
+diese Rückfrage hätte der 1:1 gespiegelte Gate die Datei abgelehnt.
+Empfohlene Maßnahme: Keine im Repo. Regel für künftige Bauaufträge:
+Nennt ein Auftrag einen Präzedenzfall, darf daneben keine abweichende
+Strukturvorgabe stehen — der Präzedenzfall gewinnt, und das wird
+ausdrücklich so formuliert.
+Feature/Run: F15 WS-1, 09.09.2026.
+
+**F-199** · `PROCESS_IMPROVEMENT` · P2 · **erledigt durch features/F15/feature.md, 10.09.2026**
+Titel: F15 wurde ohne Feature-Akte im Repo gebaut.
+Beschreibung: features/ enthielt F0-F14, aber kein F15. Die Feature-Akte
+zu F15 existierte nur im Claude-Projekt, auf das keine
+Claude-Code-Sitzung zugreifen kann. WS-1 und WS-2a sind ohne
+repo-erreichbare Akte gebaut worden.
+Fundstelle: features/ (Verzeichnislisting 10.09.2026);
+scripts/check-feature.mjs prüft nur vorhandene Akten, nicht deren Fehlen.
+Auswirkung: Die Abweichungsdokumentation aus F-193 hatte keinen Zielort,
+und jede künftige Sitzung hätte den Kontext aus Prompts rekonstruieren
+müssen — dasselbe Muster wie F-013, F-082, F-092.
+Empfohlene Maßnahme: Akte angelegt. Offen bleibt die Frage, ob
+check-feature.mjs eine fehlende Akte zu einem in Arbeit befindlichen
+Feature erkennen sollte — dafür bräuchte es eine Quelle, welche Features
+in Arbeit sind. Als eigene kleine Iteration prüfen, nicht hier.
+Feature/Run: F15 WS-2a, 10.09.2026.
+
+**F-200** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Im Projektchat formulierte Findings erreichen das Register nicht
+zuverlässig.
+Beschreibung: F-189, F-190 und F-199 wurden im Challenger-Chat vollständig
+ausformuliert und nie in einen Bauauftrag gegeben. Das Register springt
+dadurch von F-188 auf F-191. Aufgefallen erst, als die Feature-Akte F15
+auf das nicht existierende F-199 verwies und die Bausitzung den Verweis
+nicht auflösen konnte. Betroffen ist genau die Projektregel „Erkannte
+Schulden dürfen nicht nur im Chat verbleiben" — der Kanal vom
+FINDINGS-Abschnitt in die Datei ist rein manuell und hat dreimal
+versagt.
+Fundstelle: state/findings.md (Nummernlücke 189/190); Projektchat
+09.-10.09.2026.
+Auswirkung: Findings gehen verloren, sobald der Chat endet. Ein Verweis
+aus einem Repo-Dokument auf eine nur im Chat vergebene Nummer zeigt ins
+Leere und blockiert eine Bausitzung.
+Empfohlene Maßnahme: Zwei Regeln auf Challenger-Seite. (1) Jeder
+ausgegebene FINDINGS-Abschnitt benennt in derselben Nachricht den
+Bauauftrag, der ihn schreibt — oder wird in den unmittelbar folgenden
+Prompt aufgenommen. (2) Vor jeder Freigabe die höchste Nummer im
+Register gegen die höchste im Chat vergebene prüfen; eine Lücke bedeutet,
+dass etwas nur im Chat steht. Regel (2) hätte alle drei Fälle gefunden.
+Feature/Run: F15 WS-2a, 10.09.2026.
