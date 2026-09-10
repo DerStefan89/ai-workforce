@@ -2153,3 +2153,107 @@ Prompt aufgenommen. (2) Vor jeder Freigabe die höchste Nummer im
 Register gegen die höchste im Chat vergebene prüfen; eine Lücke bedeutet,
 dass etwas nur im Chat steht. Regel (2) hätte alle drei Fälle gefunden.
 Feature/Run: F15 WS-2a, 10.09.2026.
+
+**F-201** · `BUG` · P1 · offen
+Titel: Zwei-Server-Instanzen-Stale-Heal-Race (D13 ist prozesslokal).
+Beschreibung: laufAktiv, laufAktivLaufId, laufAktivAbortController sind
+modul-lokale Variablen in scripts/leitstand-server.mjs, nicht
+prozessübergreifend. Laufen (versehentlich oder während eines Neustarts)
+zwei Serverinstanzen gleichzeitig, sieht jede nur ihr eigenes laufAktiv.
+Die Stale-LAEUFT-Erkennung (laufAktiv ? undefined :
+schritte.find(status LAEUFT)) kann in einer zweiten Instanz fälschlich
+"stale" melden, obwohl die erste Instanz den Schritt real noch ausführt
+— oder beide Instanzen starten denselben Schritt parallel.
+Fundstelle: scripts/leitstand-server.mjs, D13-Variablen (~Zeile 1419).
+Auswirkung: Datenintegrität bei parallelen Prozessen gefährdet. Wird mit
+WS-2c relevant, da der Automat dort unbeaufsichtigt weiterläuft und das
+Zeitfenster für diese Race sich vergrößert.
+Empfohlene Maßnahme: vor WS-2c klären — entweder prozessübergreifendes
+Lock (Datei-/PID-Lock) oder explizit dokumentierte Betriebsregel "genau
+eine Serverinstanz". Harte Vorbedingung für WS-2c (Challenger-Entscheidung
+09.09.2026).
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026.
+
+**F-202** · `TECH_DEBT` · P2 · offen
+Titel: Kein dauerhaftes Klärgrund-Feld in WORKFLOW_V0.
+Beschreibung: Der Grund für KLAERUNG_ERFORDERLICH wird nur in der
+409-Antwort und im startfehlerListe-Eintrag mitgegeben, nicht im
+Workflow-Artefakt selbst gespeichert. Nach Server-Neustart oder beim
+Betrachten der Workflow-Historie ist er aus dem Artefakt allein nicht
+rekonstruierbar.
+Fundstelle: schemas/kontrollzustand-workflow-payload.schema.json (kein
+grund-Feld auf Workflow-Ebene).
+Auswirkung: WS-3 (Leitstand-UI) müsste den Grund aus einem anderen Kanal
+beziehen als dem Workflow-Artefakt selbst.
+Empfohlene Maßnahme: in WS-3 prüfen, ob ein optionales grund-Feld auf
+Workflow-Ebene sinnvoll ist.
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026.
+
+**F-203** · `TECH_DEBT` · P2 · offen
+Titel: grenzen.max_replans wird validiert, aber nirgends gelesen oder
+durchgesetzt.
+Beschreibung: Das Schema definiert grenzen.max_replans als Pflichtfeld,
+kein Codepfad in src/workflow/index.ts oder scripts/leitstand-server.mjs
+liest oder dekrementiert es. Totes Feld.
+Fundstelle: src/workflow/types.ts (WorkflowV0Grenzen), Validator in
+src/workflow/index.ts.
+Auswirkung: künftige Bauaufträge könnten fälschlich annehmen, ein
+Replan-Limit sei bereits durchgesetzt.
+Empfohlene Maßnahme: in WS-2c entweder implementieren oder per YAGNI aus
+dem Schema entfernen.
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026.
+
+**F-204** · `TECH_DEBT` · P3 · offen
+Titel: max_schritte zählt anhand der aktuellen schritte[]-Liste, nicht
+geprüft gegen künftige Replan-Fälle.
+Beschreibung: Die Zählung der gelaufenen Schritte in
+ermittleNaechstenSchritt liest die aktuelle schritte[]-Liste der
+geladenen Fassung. Solange es keine Replans gibt, ist das korrekt (die
+Liste ist vollständig und kumulativ). Führt WS-2c echte Replans ein
+(siehe F-203), ist ungeprüft, ob die Zählung dann noch stimmt.
+Fundstelle: src/workflow/index.ts, Schritt-Zählung in
+ermittleNaechstenSchritt.
+Auswirkung: aktuell keine — rein vorsorglich für WS-2c.
+Empfohlene Maßnahme: bei Umsetzung von F-203 gemeinsam erneut prüfen.
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026.
+
+**F-205** · `TECH_DEBT` · P3 · offen
+Titel: Ambiguitäts-409 aus F-196(b) ist nach Einführung von
+GESPERRTE_ERSETZUNGS_STATUS für bestimmte Zwischenzustände faktisch
+unerreichbar.
+Beschreibung: Rein informativ — kein Verhalten falsch, aber ein
+Codepfad, der nach der (3)/(4)-Korrektur in WS-2b in der Praxis seltener
+oder nie mehr greift als ursprünglich angenommen. Dokumentiert, damit
+ein künftiger Bauauftrag ihn nicht für einen aktiv genutzten Pfad hält.
+Fundstelle: scripts/leitstand-server.mjs, POST /api/workflows,
+GESPERRTE_ERSETZUNGS_STATUS-Prüfung.
+Auswirkung: keine.
+Empfohlene Maßnahme: keine Handlung nötig, nur zur Kenntnis.
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026.
+
+**F-206** · `TECH_DEBT` · P3 · offen
+Titel: Verwaistes Kontextpaket-Artefakt nach Heilung eines Schritts
+möglich.
+Beschreibung: Heilt der Automat eine lauf_id (Heilungslogik in
+scripts/leitstand-server.mjs, ~Zeile 2083ff), prüft er nur
+<basis>/<laufId> auf Checkpoint/Wirkungsmarke. Registriert F5 vorher
+erfolgreich ein kontextpaket-<laufId> und lehnt F6a danach ohne
+Wirkungsmarke ab (2 von 7 Ablehnungszweigen in verweigereStart), bleibt
+dieses Kontextpaket bestehen, ohne dass ein Schritt mehr darauf zeigt.
+Fundstelle: scripts/leitstand-server.mjs, Kommentar bei der
+Heilungslogik, ~Zeile 2050–2056 (im Code selbst bereits benannt).
+Auswirkung: keine funktionale — die Lineage-Kette bleibt heil (nächster
+Start zieht eine frische randomUUID). Reiner Speicher-/Übersichtlichkeits-
+Rest.
+Empfohlene Maßnahme: bei Gelegenheit (z.B. F18 Capability-Register oder
+eine spätere Aufräum-Iteration) prüfen, ob verwaiste kontextpaket-*-
+Artefakte identifizierbar/löschbar gemacht werden sollen. Kein Blocker
+für WS-2c.
+Status: offen.
+Feature/Run: F15 WS-2b, 10.09.2026 (bei Verifikation gefunden, nicht im
+Bauauftrag selbst).
