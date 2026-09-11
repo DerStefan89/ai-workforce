@@ -267,8 +267,12 @@ const LAUF_3_KORRIGIERT_ZEILEN = [
 ]
 
 // Die beiden ERROR-Tracing-Zeilen aus dem Protokoll von Lauf 1, wörtlich.
-// Ob sie real in stdout oder stderr standen, ist widersprüchlich
-// protokolliert (F-296) — hier dienen sie ausschließlich als Fremdzeilen.
+// Ob sie real in stdout oder stderr standen, war widersprüchlich
+// protokolliert (F-301) — hier dienen sie ausschließlich als Fremdzeilen.
+// S-M3-01b (l) hat geklärt: die ERROR-Tracing-Zeilen des Routers stehen
+// ausschließlich auf stderr, nie auf stdout — dieser Fixture-Fall testet
+// deshalb einen Strom, der in der Praxis nicht vorkommt, und dient nur der
+// Parser-Robustheit gegen ein hypothetisches Fremdformat.
 const ERROR_TRACING_ZEILEN = [
   '2026-09-09T17:24:58.779565Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\\"`\\\\\\"C:\\\\\\\\WINDOWS\\\\\\\\System32\\\\\\\\WindowsPowerShell\\\\\\\\v1.0\\\\\\\\powershell.exe\\\\\\" -Command \'$files = @(Get-ChildItem -LiteralPath . -File -Force); Write-Output \\\\\\"Anzahl Dateien: $($files.Count)\\\\\\"; $files | Select-Object -ExpandProperty Name\'` rejected: blocked by policy\\")" }',
   '2026-09-09T17:25:01.747617Z ERROR codex_core::tools::router: error=exec_command failed: CreateProcess { message: "Rejected(\\"`\\\\\\"C:\\\\\\\\WINDOWS\\\\\\\\System32\\\\\\\\WindowsPowerShell\\\\\\\\v1.0\\\\\\\\powershell.exe\\\\\\" -Command \'rg --files --hidden -g !*/**\'` rejected: blocked by policy\\")" }',

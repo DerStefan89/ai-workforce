@@ -4648,3 +4648,183 @@ außerhalb des Repos schreibt, ist Stefans Terminal-Schritt oder Teil eines
 Messauftrags.
 Status: offen.
 Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-299** · `TECH_DEBT` · P1 · offen
+Titel: `windows.sandbox = "unelevated"` in `~/.codex/config.toml` ist auf
+dieser Maschine die Bedingung dafür, dass Codex überhaupt Befehle ausführen
+darf.
+Beschreibung: Ohne sie wird jeder Befehl mit `rejected: blocked by policy`
+abgewiesen, auch lesende. Löst F-294; erklärt den Negativbefund von S-M3-01
+rückwirkend.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (h).
+Auswirkung: Ohne diesen Vorab-Schritt ist eine Codex-Rolle auf dieser
+Maschine funktionsunfähig.
+Empfohlene Maßnahme: `config.toml`-Schritt als Bedingung der
+Codex-Inbetriebnahme festschreiben, nicht als optionale Empfehlung.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-300** · `TECH_DEBT` · P1 · offen
+Titel: Ein an der Ausführungsrichtlinie gescheiterter Befehl erzeugt KEIN
+JSONL-Ereignis auf stdout.
+Beschreibung: Der Evaluator kann für Codex keine VERWEIGERT-Zeile aus stdout
+gewinnen. Betrifft F-275 unmittelbar.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (f).
+Auswirkung: Eine strukturierte Verweigerungserkennung über stdout ist für
+Codex nicht möglich; F16 WS-1/AK3 muss das berücksichtigen.
+Empfohlene Maßnahme: AK3-Fixtures und die Verweigerungserwartung des
+Evaluators an diesen Befund anpassen.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-301** · `TECH_DEBT` · P2 · offen
+Titel: Die ERROR-Tracing-Zeilen des Routers stehen auf stderr, stdout bleibt
+reines JSONL.
+Beschreibung: Löst den Widerspruch aus F-296; AK3-Fixtures in F16 WS-1
+entsprechend zuschneiden.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (l).
+Auswirkung: Der fünfte AK3-Fixture-Fall testet einen Strom, der in der
+Praxis nicht vorkommt.
+Empfohlene Maßnahme: Fixture-Kommentar auf diesen Befund umstellen; Fall als
+reine Parser-Robustheit gegen ein hypothetisches Fremdformat führen.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-302** · `TECH_DEBT` · P1 · offen
+Titel: `-c` ersetzt die gesamte Nutzerkonfiguration am Argv vorbei.
+Beschreibung: Mit `--ignore-user-config -c 'windows.sandbox="unelevated"'`
+verhält sich Codex wie mit Stefans `config.toml`. Belegt die Sperre von `-c`
+in der Allowlist (F-274/F-281) als notwendig, nicht nur vorsorglich.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt zur
+Konfigurationsüberschreibung.
+Auswirkung: Ein durchgelassenes `-c` hebelt jede über `config.toml`
+deklarierte Grenze aus.
+Empfohlene Maßnahme: Allowlist-Sperre von `-c` beibehalten und mit diesem
+Befund begründen.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-303** · `TECH_DEBT` · P1 · offen
+Titel: Eine Lesebereich-Verengung für `codex exec` existiert nicht.
+Beschreibung: `--sandbox-state-readable-root` ist nur am Unterbefehl
+`sandbox` verfügbar, erweitert (statt zu verengen) und verlangt
+`--sandbox-state-json`. Der Konfigurationsweg
+(`permissions.<profil>.filesystem`, `"pfad" = "deny"`) wird zur Laufzeit mit
+`Restricted read-only access requires the elevated Windows sandbox backend`
+abgewiesen.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (i).
+Auswirkung: Betrifft F-287/E-M3-4: DEKLARIERT vs. ERZWUNGEN ist eine Frage
+des Administrator-Setups, nicht der Konfiguration.
+Empfohlene Maßnahme: Stefan entscheidet zwischen Variante A (DEKLARIERT,
+kein Setup) und Variante B (ERZWUNGEN, elevated Backend als
+Administrator-Setup).
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-304** · `TECH_DEBT` · P1 · offen
+Titel: Der Vorgabe-Lesebereich der Windows-Sandbox ist maschinenweit.
+Beschreibung: Aus einem Wegwerf-Verzeichnis heraus ließ sich der
+ai-workforce-Arbeitsbaum ohne Zusatzflag lesen. Eine lesende Codex-Rolle
+sieht heute das gesamte Dateisystem des Nutzers.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (i).
+Auswirkung: Die Lesegrenze einer Codex-Rolle ist heute nicht erzwungen,
+sondern nur behauptet.
+Empfohlene Maßnahme: Zusammen mit F-303 entscheiden; bis dahin die
+Lesegrenze ausdrücklich als DEKLARIERT führen.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-305** · `TECH_DEBT` · P2 · offen
+Titel: Der Modellname erscheint in keinem JSONL-Ereignis.
+Beschreibung: Das verwendete Modell muss aus dem Argv protokolliert werden;
+die Laufakte kann es nicht aus der Ausgabe rekonstruieren.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (m).
+Auswirkung: Ohne Argv-Protokollierung bleibt die Modellidentität eines Laufs
+unbelegt.
+Empfohlene Maßnahme: Modellname beim Start aus dem Argv in die Laufakte
+schreiben.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-306** · `TECH_DEBT` · P3 · offen
+Titel: Codex' TOML-Parser verträgt eine UTF-8-BOM, sein JSON-Parser für
+`--output-schema` nicht.
+Beschreibung: Isoliert gegen eine bewusst kaputte Kontrollvariante gemessen;
+der JSON-Fall stammt aus S-M3-01 Lauf 3. Gleiches Programm,
+unterschiedliche Toleranz.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, BOM-Messung;
+`state/tp-m3-01-codex.md`, Lauf 3.
+Auswirkung: Eine mit BOM erzeugte Schemadatei lässt den Lauf scheitern.
+Empfohlene Maßnahme: Beim Erzeugen von Schemadateien bleibt BOM-frei
+Pflicht.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-307** · `TECH_DEBT` · P2 · offen
+Titel: Ohne angebundenes stdin schreibt Codex `Reading additional input from
+stdin...` auf stderr.
+Beschreibung: Nicht-interaktive Läufe müssen stdin schließen oder leer
+liefern, sonst besteht Blockadegefahr.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, stdin-Messung.
+Auswirkung: Ein Lauf ohne stdin-Behandlung kann hängen bleiben.
+Empfohlene Maßnahme: Prozessstart des Codex-Gateways schließt stdin
+ausdrücklich oder liefert einen leeren Strom.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-308** · `TECH_DEBT` · P1 · offen
+Titel: Bei `--output-schema` ist nur die LETZTE `agent_message`
+schemakonform.
+Beschreibung: Frühere `agent_message`-Ereignisse enthalten freien Text. Ein
+Auswerter, der die erste nimmt, bekommt kein JSON.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, Messpunkt (o).
+Auswirkung: Ein falsch gewählter Auswertepunkt macht schemakonforme
+Ergebnisse unbrauchbar.
+Empfohlene Maßnahme: Auswerter nimmt ausdrücklich die letzte
+`agent_message`; AK3 hält das fest.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-309** · `TECH_DEBT` · P2 · offen
+Titel: Auf stderr erscheinen betriebsbedingte ERROR-Zeilen auch bei
+Exit-Code 0.
+Beschreibung: `codex_models_manager: failed to refresh available models`
+erscheint bei erfolgreichen Läufen. Ein Evaluator darf „ERROR auf stderr"
+nicht als Fehlschlag werten — was ohnehin gilt, weil er stderr nach
+ARCHITECTURE §7 nicht auswerten darf.
+Fundstelle: `state/tp-m3-01b-codex-sandbox.md`, stderr-Protokoll.
+Auswirkung: Eine stderr-basierte Fehlerheuristik würde grüne Läufe als
+gescheitert melden.
+Empfohlene Maßnahme: stderr bleibt Diagnosekanal; Erfolg/Misserfolg
+ausschließlich aus Exit-Code und stdout-JSONL.
+Status: offen.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+
+**F-310** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Ungenaue Erstdiagnose „nicht-existenter Push-Guard" — realer
+Freigabe-Mechanismus (`commit-guard.cjs`) initial übersehen.
+Beschreibung: Bei einem blockierten `git push` (Branch `docs/tp-m3-01b`)
+wurde zunächst berichtet, der Push scheitere an einem nicht-existenten bzw.
+unklaren „Push-Guard", der `state/freigabe-commit.md` verlange. Tatsächlich
+existiert ein realer, git-getrackter PreToolUse-Hook
+`.claude/hooks/commit-guard.cjs` (verankert in `.claude/settings.json`,
+Historie bis `3b4f124`/Template-Baseline zurückverfolgbar, zuletzt gehärtet
+in `57ee3af` „harness-freigabedatei-wiederherstellung"), der `git commit`/
+`git push` aus einem Claude-Code-Bash-Aufruf ohne frische (<10 Min)
+Freigabedatei blockiert. Die Erstdiagnose war in der Bezeichnung ungenau:
+kein fehlender Guard, sondern ein Guard auf Harness-Hook-Ebene statt auf
+Git-Hook-Ebene (`.githooks/pre-push` ist davon unabhängig, rein
+diagnostisch, fail-open).
+Fundstelle: `.claude/hooks/commit-guard.cjs`; `.claude/settings.json`
+(`hooks.PreToolUse`, matcher `Bash`);
+`state/plan-v2-harness-freigabedatei-wiederherstellung.md`.
+Auswirkung: Keine Auswirkung auf F16-Funktionalität. Prozessrisiko: eine
+ungenaue Diagnose eines realen Sicherheitsmechanismus kann künftig zu
+falschen Schlüssen führen (z. B. „Guard umgehbar"/„nicht vorhanden"), wenn
+sie unkorrigiert im Register steht.
+Empfohlene Maßnahme: Künftige Diagnosen eines blockierten Commits/Pushes
+zuerst gegen `.claude/settings.json` und `.claude/hooks/*` prüfen, bevor eine
+Aussage über Existenz/Nichtexistenz eines Guards getroffen wird. Keine
+Code-Änderung nötig.
+Status: offen (Dokumentationskorrektur).
+Feature/Run: F16, Findings-Nacherfassung F-299–F-310.
