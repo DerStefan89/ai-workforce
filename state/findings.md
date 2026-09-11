@@ -3790,7 +3790,7 @@ Quelle statt eines geteilten Kennzeichens und betrifft dann auch `laden` und
 Status: offen.
 Feature/Run: F15 WS-3a, 10.09.2026 (Reviewer-Pass Befund 5/9, QA-Pass Fehler 10 bis 16).
 
-**F-257** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-257** · `HARNESS_IMPROVEMENT` · P1 · offen
 Titel: `npm run check` scheitert wiederholt an umgebungsbedingten Rennen,
 und die Regel dagegen ist "einmal wiederholen".
 Beschreibung: Innerhalb von zwei aufeinanderfolgenden Bauabschnitten ist
@@ -3817,8 +3817,83 @@ gemeinsame Aufräum-Hilfe mit Wiederholung und Timeout die Klasse
 schließt, statt drei Einzelpflaster. Bis dahin: jedes Auftreten hier mit
 Datum und Fehlercode nachtragen, damit die Häufigkeit sichtbar bleibt
 statt in Chatverläufen zu verschwinden.
+Auftreten (nach der empfohlenen Maßnahme fortgeschrieben):
+- 10.09.2026, F15 WS-2c (b3): ENOENT auf die Enkel-PID-Datei beim Beenden
+  des Prozessbaums; roter Lauf 99 s gegen sonst 73-82 s.
+- 10.09.2026, F15 WS-3a: ENOENT im Gateway-Timeout-Test und ENOTEMPTY beim
+  Aufräumen im Execution Controller.
+- 11.09.2026 ~10:25 UTC, F16 WS-3a: ENOTEMPTY beim Aufräumen in
+  src/execution-controller/execution-controller.test.ts:147 (rmSync in
+  raeumeKette). Wiederholung bei UNVERÄNDERTEM Diff grün, 374/374. Viertes
+  Auftreten, dieselbe Klasse (Temp-/Kontrollzustand-Verzeichnis, dessen
+  Aufräumen mit dem Prozessende rennt) — die Häufigkeit stützt die
+  empfohlene Maßnahme, eine gemeinsame Aufräum-Hilfe zu bauen, statt drei
+  Einzelpflaster.
+- 11.09.2026 ~10:51 UTC, F16 WS-3a: ENOENT auf die Enkel-PID-Datei
+  (`f14-ws2-enkel-pid-<uuid>.txt`) in
+  src/claude-code-gateway/claude-code-gateway.test.ts:733 — derselbe Fall
+  wie das erste Auftreten vom 10.09. Wiederholung bei unverändertem Diff
+  grün, 380/380, Exit 0. Fünftes Auftreten, zwei davon am selben Tag: die
+  Klasse ist damit reproduzierbar häufig genug, dass "erst wiederholen" als
+  Dauerzustand real gelebt wird — genau die Gewohnheit, vor der die
+  Auswirkung oben warnt.
+- 11.09.2026 ~11:40 UTC, F16 WS-3a: ENOTEMPTY beim Aufräumen in
+  src/execution-controller/execution-controller.test.ts:153 (rmSync in
+  raeumeKette), Testfall 'F11 AK2'. Wiederholung bei unverändertem Diff grün,
+  383/383, Exit 0. SECHSTES Auftreten, drei davon an EINEM Tag und in EINEM
+  Workstream. Damit ist 'erst wiederholen' in diesem Bauabschnitt nicht mehr
+  die Ausnahme, sondern die Regel — die empfohlene Maßnahme (gemeinsame
+  Aufräum-Hilfe mit Wiederholung und Timeout) ist fällig, bevor die nächste
+  Prüfkette eine echte Regression hinter dem Rauschen versteckt.
+- 11.09.2026 ~11:52 UTC, F16 WS-3a: erneut ENOENT auf die Enkel-PID-Datei in
+  src/claude-code-gateway/claude-code-gateway.test.ts:733. Wiederholung bei
+  unverändertem Diff grün, 383/383, Exit 0. SIEBTES Auftreten, vier davon an
+  diesem Tag — abwechselnd die beiden bekannten Stellen, ohne dass ein Diff
+  sie berührt hätte. Die Trefferquote lag in diesem Workstream bei etwa jedem
+  zweiten Kettenlauf.
+- 11.09.2026 ~12:05 UTC, F16 WS-3a: NEUE Ausprägung, dritte Stelle —
+  src/codex-gateway/codex-gateway.test.ts:853 ('F-307 grün, real gemessen')
+  meldete beendigungsart 'TIMEOUT' statt null, Laufzeit 13,2 s. Wiederholung
+  bei unverändertem Diff grün, 383/383, Exit 0. Achtes Auftreten. Wichtig für
+  die Diagnose: dieser Fall ist KEIN Aufräum-Rennen, sondern ein Prozess, der
+  unter Last die eigene Zeitgrenze reißt — die Klasse ist also breiter als
+  die in der empfohlenen Maßnahme vermutete 'gemeinsame Aufräum-Hilfe'. Wer
+  sie angeht, braucht zusätzlich eine Antwort auf zeitgrenzenabhängige Tests
+  mit echtem Prozessstart.
+- 11.09.2026 ~12:20 UTC, F16 WS-3a: VIERTE Stelle —
+  src/authorization-boundary/authorization-boundary.test.ts:75 (rmSync in
+  raeumeKette), ENOTEMPTY. Wiederholung bei unverändertem Diff grün,
+  383/383, Exit 0. Neuntes Auftreten, fünftes an diesem Tag. Dieselbe
+  Aufräum-Klasse wie execution-controller.test.ts — und der Beleg, dass sie
+  nicht an einer einzelnen Testdatei hängt, sondern an jedem raeumeKette
+  im Repo.
+Nachtrag 11.09.2026 (Hochstufung P2 → P1): Fünf der neun Auftreten fielen
+auf EINEN Tag und EINEN Workstream (F16 WS-3a), die Trefferquote lag bei
+etwa jedem zweiten Kettenlauf. Damit ist "erst wiederholen" nicht mehr die
+Ausnahme, sondern der Normalfall — und die oben unter Auswirkung
+beschriebene Gefahr ist nicht länger abstrakt, sondern eingetreten: ein
+roter Lauf ist in diesem Repo derzeit nicht mehr von Rauschen zu
+unterscheiden, ohne ihn ein zweites Mal zu fahren. Genau daran ist F-211
+schon einmal gescheitert. Die Priorität folgt nicht der Schwere eines
+einzelnen Auftretens, sondern der Häufigkeit: eine Prüfkette, deren Rot
+man gewohnheitsmäßig wegwiederholt, schützt nichts mehr.
+Teilbehebung: Das achte Auftreten (codex-gateway.test.ts:853) ist
+ursächlich behoben — es war kein Aufräum-Rennen, sondern eine zu kurz
+gewählte Testkonstante. STDIN_ZEITGRENZE_MS ist in
+STDIN_ZEITGRENZE_ROT_MS (2000 ms, dort IST die Grenze der Prüfgegenstand)
+und STDIN_ZEITGRENZE_GRUEN_MS (30000 ms, dort ist sie nur Notausgang)
+getrennt; die grünen Fälle prüfen die reguläre Beendigung und liefen
+vorher gegen den Node-Start unter Last. Ohne Laufzeitkosten: ein nicht
+überlasteter Prozess endet sofort und erreicht die lange Grenze nie.
+Die beiden anderen Stellen — ENOENT auf die Enkel-PID-Datei
+(claude-code-gateway.test.ts:733) und ENOTEMPTY beim Aufräumen
+(execution-controller.test.ts, raeumeKette) — sind UNVERÄNDERT OFFEN und
+tragen die Hochstufung. Sie sind echte Aufräum-Rennen und brauchen die
+oben empfohlene gemeinsame Hilfe.
 Status: offen.
-Feature/Run: F15 WS-3a, 10.09.2026 (Challenger, zweites Auftreten).
+Feature/Run: F15 WS-3a, 10.09.2026 (Challenger, zweites Auftreten);
+viertes bis neuntes Auftreten F16 WS-3a, 11.09.2026; dort auf P1
+hochgestuft und das achte Auftreten ursächlich behoben.
 
 **F-258** · `TECH_DEBT` · P3 · offen
 Titel: Zwei Serverregeln liegen seit WS-3b als Anzeige-Zwilling im Browser —
@@ -4783,8 +4858,16 @@ Auswirkung: Ein falsch gewählter Auswertepunkt macht schemakonforme
 Ergebnisse unbrauchbar.
 Empfohlene Maßnahme: Auswerter nimmt ausdrücklich die letzte
 `agent_message`; AK3 hält das fest.
+Beleg-Nachtrag (S-M3-02, 11.09.2026): Lauf A in
+`state/tp-m3-02-codex-output-schema.md` belegt real, dass
+`--output-schema` frühere Freitext-`agent_message`s NICHT unterdrückt — der
+Lauf trug zwei `agent_message`-Items, #1 mit 69 Zeichen freiem Text, #2 mit
+dem schemakonformen JSON. Die naheliegende Gegenannahme, ein erzwungenes
+Ausgabeschema forme alle Nachrichten des Turns, ist damit widerlegt. Die
+Regel „ausdrücklich die LETZTE" gilt mit und ohne Flag.
 Status: offen.
-Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026.
+Feature/Run: S-M3-01b (Codex-Sandbox-Kalibrierung), 11.09.2026;
+Beleg-Nachtrag S-M3-02, 11.09.2026.
 
 **F-309** · `TECH_DEBT` · P2 · offen
 Titel: Auf stderr erscheinen betriebsbedingte ERROR-Zeilen auch bei
@@ -5024,3 +5107,100 @@ kein Detail.
 Status: gelöst (beide Basisverzeichnisse liegen außerhalb, Vergleich ist
 rekursiv, Lauf 3 real grün).
 Feature/Run: F16 WS-2 (AK9), 11.09.2026, Reviewer-/QA-Pass.
+
+**F-320** · `TECH_DEBT` · P3 · **verworfen**
+Titel: Codex-Modellname zusätzlich in der Startvorlage führen.
+Beschreibung: Vorschlag aus WS-3a, den für einen Codex-Lauf zu nutzenden
+Modellnamen (zusätzlich) in der Startvorlage abzulegen. Verworfen: Der
+Modellname ist bereits Pflichtfeld `modell` am Workflow-Schritt
+(`schemas/kontrollzustand-workflow-payload.schema.json`) und wird von
+`loeseSchrittEingabenAuf` als `aufrufEingaben.modell` durchgereicht. Ein
+zusätzliches Feld in der Startvorlage wäre eine zweite, unabhängig
+verfallende Quelle desselben Werts — genau das Motiv, aus dem E-193
+Doppelquellen ablehnt.
+Fundstelle: `schemas/kontrollzustand-workflow-payload.schema.json` (Feld
+`modell`); `loeseSchrittEingabenAuf`.
+Auswirkung: keine — der Wert ist vollständig vorhanden; die Umsetzung hätte
+eine Drift-Quelle geschaffen.
+Empfohlene Maßnahme: keine. Modellname bleibt einzig am Workflow-Schritt.
+Status: verworfen.
+Feature/Run: S-M3-02 (Codex `--output-schema`), 11.09.2026.
+
+**F-321** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Die Aufrufverfolgung in Gate (g) findet nur `function <name>(`,
+keine Pfeilfunktionen.
+Beschreibung: `funktionsKoerper` in
+`scripts/check-f16-codex-gateway.mjs` erkennt ausschließlich
+`function <name>(`-Deklarationen. Ein als `const helfer = (r) => r.stderr`
+geschriebener Helfer liefert dort `null` und wird in
+`pruefeZweigAufStderr` stillschweigend übersprungen
+(`if (koerper === null) continue`) — also genau der ausgelagerte Fall, den
+die Verfolgung schließen soll, bleibt für diese Schreibweise offen. Heute
+nicht erreichbar: alle Helfer im geprüften Pfad sind
+`function`-Deklarationen.
+Fundstelle: `scripts/check-f16-codex-gateway.mjs`, `funktionsKoerper`
+(L421), `pruefeZweigAufStderr` (L458–L472).
+Auswirkung: latent — eine stderr-Heuristik in einer Pfeilfunktion würde das
+Gate unbemerkt passieren.
+Empfohlene Maßnahme: Muster um `const <name> = (…) =>` erweitern plus
+dritte Rot-Kalibrierung mit Pfeilfunktion — ODER ein Befund, wenn ein
+aufgerufener lokaler Bezeichner keinen auffindbaren Körper hat.
+Status: offen.
+Feature/Run: S-M3-02 (Codex `--output-schema`), 11.09.2026.
+
+**F-322** · `TECH_DEBT` · P3 · **gelöst**
+Titel: Kopfkommentar zu `unparsbareZeilen` beschreibt den Zähler enger als
+sein Verhalten.
+Beschreibung: Der Kommentar in `src/codex-gateway/types.ts` nannte
+`unparsbareZeilen` „Zeilen, die kein gültiges JSON sind".
+`leseCodexEreignisse` zählt zusätzlich syntaktisch GÜLTIGE JSON-Skalare und
+-Arrays mit — bewusst, damit `ereignisse` ausschließlich Objekte trägt und
+kein Aufrufer auf einer Zahl `.type` liest. Das Verhalten ist richtig, der
+Kommentar beschrieb es falsch.
+Fundstelle: `src/codex-gateway/types.ts` (Kopfkommentar zu
+`CodexEreignisse`); `src/codex-gateway/index.ts`, Zweig unmittelbar nach
+dem `JSON.parse`; `state/tp-m3-02-codex-output-schema.md`,
+Findings-Vorschlag 4.
+Auswirkung: gering, aber irreführend — ein Leser hätte den Zähler beim
+Auswerten als reinen Syntaxzähler gelesen.
+Empfohlene Maßnahme: Kommentar präzisieren, kein Verhalten ändern, kein
+Test ändern.
+Status: gelöst (Kommentar präzisiert; Verhalten und Tests unverändert).
+Feature/Run: S-M3-02 (Codex `--output-schema`), 11.09.2026.
+
+**F-323** · `TECH_DEBT` · P2 · offen
+Titel: Der geplante Werkzeugsatz eines `codex`-Schritts wird aufgelöst, aber
+von nichts durchgesetzt.
+Beschreibung: `loeseAusfuehrungsEingabenAuf` löst den benannten Werkzeugsatz
+auf und legt `modus`/`erlaubte_werkzeuge` in `aufrufEingaben.werkzeugsatz`.
+Der Claude-Code-Zweig reicht das über `baueAufruf` ins Argv weiter; der
+Codex-Zweig liest aus `aufrufEingaben` ausschließlich `modell`
+(`src/execution-controller/index.ts`, Codex-Zweig der Worker-Weiche).
+`baueCodexAufruf` kennt kein Werkzeugsatz-Feld — `codex exec` hat keinen
+entsprechenden Schalter, und die Argv-Allowlist (AK2) ließe einen
+nachträglich erfundenen ohnehin nicht durch. Ein Schritt, der einen
+BESTIMMTEN lesenden Werkzeugsatz plant (etwa nur `Read` ohne `Grep`),
+bekommt für Codex also keinerlei Durchsetzung.
+Fundstelle: `scripts/leitstand-server.mjs`, `loeseAusfuehrungsEingabenAuf`
+(Zusammenbau von `aufrufEingaben.werkzeugsatz`);
+`src/execution-controller/index.ts`, Codex-Zweig; `src/codex-gateway/index.ts`,
+`baueCodexAufruf`.
+Auswirkung: gering für die Sicherheitszusage, hoch für die Lesbarkeit des
+Plans. Die strukturelle Grenze trägt `--sandbox read-only` (E-M3-2, AK9 real
+belegt), und die Ablehnung „codex + nicht-lesender Werkzeugsatz" hält den
+gefährlichen Fall vorher an. Es bleibt aber genau die Klasse, gegen die
+Regel 4b in `src/workflow/index.ts` gebaut wurde — eine Planangabe, die kein
+Aufrufbauer einlöst —, nur ohne Halt: der Mensch liest im Workflow einen
+Werkzeugsatz, der für diesen Schritt nichts bedeutet. Sichtbar wird das
+zuerst bei AK12, dem realen zweistufigen Workflow.
+Empfohlene Maßnahme: Nicht im laufenden Workstream lösen — die Entscheidung
+gehört zum Rollenvertrag (F-184/F17), wo Rolle, Worker und Werkzeugsatz
+ohnehin zusammen entschieden werden. Drei Wege stehen offen: (a) der
+Werkzeugsatz wird für `codex` auf `DEKLARIERT` heruntergestuft und im
+Leitstand als solcher angezeigt; (b) WORKFLOW_V0 erlaubt für `codex`
+überhaupt keinen Werkzeugsatz-Namen und der Dispatcher hält sonst an
+(Regel-4b-Muster, konsequent, aber eine Schemaänderung); (c) es bleibt, wie
+es ist, und der Kopfkommentar der Weiche benennt es — der billigste Weg und
+zugleich der, der die Frage offen lässt. Vor AK12 entscheiden.
+Status: offen.
+Feature/Run: F16 WS-3a, 11.09.2026 (Reviewer-Pass, Befund 4).

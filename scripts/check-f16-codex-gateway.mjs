@@ -43,6 +43,16 @@
  *     durchließe — dafür gibt es eine eigene Rot-Kalibrierung, neben der
  *     für den direkten Zugriff und einer Grün-Gegenprobe gegen die bloße
  *     Kommentarerwähnung.
+ * (h) WS-3a (AK10/AK11): die sechs Ablehnungen des Dispatchers einzeln rot
+ *     kalibriert — Schemaname außerhalb der Allowlist SCHEMANAME_MUSTER,
+ *     fehlende Schemadatei, UTF-8-BOM, fehlendes additionalProperties:false
+ *     auf der Wurzel, nicht-lesender Werkzeugsatz bei worker 'codex' und
+ *     fehlender worker.codex-Block — dazu ein unbekannter Worker, die
+ *     Body-Sperre für worker/ausgabeSchemaPfad, der Grünfall der worker-abhängigen
+ *     Auflösung und die Gegenprobe, dass ein Claude-Code-Lauf denselben
+ *     Feldsatz behält wie vor F16 (F-286). Die Schema-Rotfälle laufen gegen
+ *     eine Wegwerf-Repo-Wurzel, nicht gegen schemas/ — eine Datei mit BOM im
+ *     echten Verzeichnis brächte (d) beim nächsten Lauf zu Fall.
  *
  * Wird aufgerufen von: `npm run check`
  *
@@ -51,7 +61,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 // win32.basename statt basename: Startziele sind Windows-Pfade. Unter
 // POSIX liefert das plattformabhängige basename() für
@@ -59,8 +69,10 @@ import { tmpdir } from 'node:os'
 // entfiele — die Regel wäre aus der Linux-Sicht auf dasselbe Repo blind
 // (CLAUDE.md, bekannte Falle: gemountetes Windows-Verzeichnis). win32
 // verhält sich auf jeder Plattform gleich.
-import { join, win32 } from 'node:path'
-import { baueCodexAufruf, pruefeUndVerweigereCodexBeiTreffer } from '../src/codex-gateway/index.ts'
+import { isAbsolute, join, win32 } from 'node:path'
+import { CODEX_BERECHTIGUNGSKONTEXT, baueCodexAufruf, pruefeUndVerweigereCodexBeiTreffer } from '../src/codex-gateway/index.ts'
+import { ladeStartvorlage } from '../src/startvorlage/index.ts'
+import { loeseAusfuehrungsEingabenAuf, loeseAusgabeSchemaAuf, pruefeStartauftrag } from './leitstand-server.mjs'
 
 const befunde = []
 const CODEX_GATEWAY_DIR = join('src', 'codex-gateway')
@@ -544,6 +556,196 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
   befunde.push('(g): Grün-Gegenprobe fehlgeschlagen — eine bloße Kommentarerwähnung von stderr erzeugt einen Befund')
 } else {
   console.log('✓ (g): Grün-Gegenprobe — eine bloße Kommentarerwähnung von stderr erzeugt keinen Befund.')
+}
+
+
+// ─── (h) WS-3a: die sechs Ablehnungen des Dispatchers (AK10/AK11) ───────────
+//
+// Muster: check-f15-workflow.mjs testet loeseAusfuehrungsEingabenAuf ebenso
+// direkt. Jede Ablehnung bekommt einen eigenen Fall — eine Grenze, deren
+// Rot-Fall nie gemessen wurde, heißt nicht ERZWUNGEN (ARCHITECTURE.md §8).
+// Ohne die Einzelfälle wäre "lehnt ab" durch ein "lehnt immer ab" erfüllbar,
+// weshalb neben jedem Rotfall eine Grün-Gegenprobe steht.
+
+{
+  const befundeVorWs3a = befunde.length
+
+  // Wegwerf-Repo-Wurzel mit eigenem schemas/-Verzeichnis: die drei
+  // Dateifehler (fehlend, BOM, additionalProperties) brauchen real
+  // existierende Dateien, und eine BOM-Datei im echten schemas/ brächte (d)
+  // beim nächsten Lauf zu Fall.
+  const wegwerfWurzel = mkdtempSync(join(tmpdir(), 'f16-ws3a-'))
+  const wegwerfSchemas = join(wegwerfWurzel, 'schemas')
+  mkdirSync(wegwerfSchemas, { recursive: true })
+  const schreibeSchema = (name, inhalt) => writeFileSync(join(wegwerfSchemas, name + '.schema.json'), inhalt, 'utf8')
+
+  const GUELTIG = JSON.stringify({ type: 'object', additionalProperties: false, properties: { ergebnis: { type: 'string' } }, required: ['ergebnis'] }, null, 2) + '\n'
+  schreibeSchema('gueltig', GUELTIG)
+  schreibeSchema('mit-bom', '\uFEFF' + GUELTIG)
+  schreibeSchema('ohne-strict', JSON.stringify({ type: 'object', properties: { ergebnis: { type: 'string' } } }, null, 2) + '\n')
+  schreibeSchema('kaputtes-json', '{ "type": "object",\n')
+  // Ein VERZEICHNIS mit dem Namen einer Schemadatei: existsSync sagt true,
+  // isFile() sagt false. Ohne diesen Fall wäre der isFile()-Teil der Prüfung
+  // nicht kalibriert — "Datei fehlt" allein deckt ihn nicht ab.
+  mkdirSync(join(wegwerfSchemas, 'ist-ein-verzeichnis.schema.json'), { recursive: true })
+
+  try {
+    // Grün zuerst: ein gültiges Schema löst zu einem ABSOLUTEN Pfad auf —
+    // baueCodexAufruf wirft bei einem relativen (AK1), der Dispatcher muss
+    // also einen absoluten liefern.
+    const gruen = loeseAusgabeSchemaAuf('gueltig', wegwerfWurzel)
+    if (!gruen.ok) {
+      befunde.push(`(h) loeseAusgabeSchemaAuf: Grünfall erwartet ok:true, erhalten ${JSON.stringify(gruen)}`)
+    } else if (!isAbsolute(gruen.pfad)) {
+      befunde.push(`(h) loeseAusgabeSchemaAuf: aufgelöster Pfad ist nicht absolut — baueCodexAufruf wirft darauf (AK1): ${gruen.pfad}`)
+    } else {
+      // Gegenprobe, dass der Grünfall nicht zufällig grün ist: baueCodexAufruf
+      // nimmt genau diesen Pfad an, ohne zu werfen (D5, kein zweiter
+      // Pfadbegriff im Gateway).
+      baueCodexAufruf({ modell: 'gpt-5-codex', prompt: 'Prüfe die Änderung.', ausgabeSchemaPfad: gruen.pfad })
+      console.log('✓ (h): ein gültiges output_schema löst zu einem absoluten Pfad auf, den baueCodexAufruf annimmt.')
+    }
+
+    // Die Namensfälle prüfen eine positive Allowlist, keine Sperrliste: jeder
+    // Wert unten scheitert am Muster, nicht an einer Aufzählung verbotener
+    // Zeichen. Die beiden Windows-Fälle (':' und Großbuchstaben) sind der
+    // Grund für die Umstellung (QA-Pass 11.09.2026, Befund 3) — eine
+    // Sperrliste aus '/', '\\' und '..' ließ beide durch.
+    const schemaRotfaelle = [
+      { name: 'Pfadtrennzeichen /', wert: 'unter/gueltig', muster: /kein zulässiger Schemaname/ },
+      { name: 'Pfadtrennzeichen \\', wert: 'unter\\gueltig', muster: /kein zulässiger Schemaname/ },
+      { name: "'..'-Segment", wert: '..', muster: /kein zulässiger Schemaname/ },
+      { name: "Doppelpunkt (NTFS-Datenstrom)", wert: 'gueltig:strom', muster: /kein zulässiger Schemaname/ },
+      { name: 'laufwerksrelativer Name', wert: 'C:x', muster: /kein zulässiger Schemaname/ },
+      { name: 'Großbuchstaben (plattformabhängig auflösbar)', wert: 'GUELTIG', muster: /kein zulässiger Schemaname/ },
+      { name: 'Leerstring', wert: '', muster: /kein zulässiger Schemaname/ },
+      { name: 'führender Bindestrich', wert: '-gueltig', muster: /kein zulässiger Schemaname/ },
+      { name: 'Datei fehlt', wert: 'gibt-es-nicht', muster: /nicht gefunden/ },
+      { name: 'Verzeichnis statt Datei', wert: 'ist-ein-verzeichnis', muster: /nicht gefunden/ },
+      { name: 'kein gültiges JSON', wert: 'kaputtes-json', muster: /kein gültiges JSON/ },
+      { name: 'UTF-8-BOM', wert: 'mit-bom', muster: /BOM/ },
+      { name: 'kein additionalProperties: false auf der Wurzel', wert: 'ohne-strict', muster: /additionalProperties/ },
+    ]
+    for (const fall of schemaRotfaelle) {
+      const ergebnis = loeseAusgabeSchemaAuf(fall.wert, wegwerfWurzel)
+      if (ergebnis.ok !== false || !fall.muster.test(ergebnis.grund)) {
+        befunde.push(`(h) loeseAusgabeSchemaAuf / ${fall.name}: erwartet ok:false mit Grund nach ${fall.muster}, erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    if (befunde.length === befundeVorWs3a) {
+      console.log(`✓ (h): alle ${schemaRotfaelle.length} Rotfälle von loeseAusgabeSchemaAuf einzeln kalibriert (Namens-Allowlist, fehlende Datei/Verzeichnis, kaputtes JSON, BOM, additionalProperties) — Ablehnungen 1-4 von 6.`)
+    }
+  } finally {
+    rmSync(wegwerfWurzel, { recursive: true, force: true })
+  }
+
+  // ─── AK11: worker-abhängige Auflösung ────────────────────────────────────
+  const befundeVorAk11 = befunde.length
+  const vorlageOhneCodex = ladeStartvorlage(join('startvorlagen', 'beispielprojekt.json'))
+  // Der worker.codex-Block wird hier im Speicher angehängt statt in eine
+  // Repo-Startvorlage geschrieben: startvorlagen/ai-workforce.json muss nach
+  // AK5 ausdrücklich OHNE Block gültig bleiben, und beispielprojekt.json ist
+  // die Fixture mehrerer anderer Gates.
+  const vorlageMitCodex = {
+    ...vorlageOhneCodex,
+    worker: { codex: { startziel: ['C:\\Program Files\\codex\\codex.exe'], versionDeklariert: '0.153.4 (Codex CLI)', sandbox: 'read-only' } },
+  }
+  const basis = {
+    rolle: 'code-reviewer',
+    anfragen: [],
+    budget: { maxElemente: 5 },
+    aufrufEingaben: { modell: 'gpt-5-codex' },
+    auftragId: 'gate-auftrag',
+  }
+
+  // Ablehnung 5 von 6: codex mit einem nicht-lesenden Werkzeugsatz.
+  const schreibend = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'codex' }, 'schreibend', 'text', vorlageMitCodex, process.cwd())
+  if (schreibend.ok !== false || !/schreibende Execution bleibt Claude Code/.test(schreibend.grund)) {
+    befunde.push(`(h) codex + schreibender Werkzeugsatz: erwartet ok:false, erhalten ${JSON.stringify(schreibend)}`)
+  }
+  // Grün-Gegenprobe: derselbe schreibende Werkzeugsatz bleibt für claude-code
+  // erlaubt — die Ablehnung hängt am Worker, nicht am Werkzeugsatz.
+  if (loeseAusfuehrungsEingabenAuf(basis, 'schreibend', 'text', vorlageMitCodex, process.cwd()).ok !== true) {
+    befunde.push('(h) claude-code + schreibender Werkzeugsatz muss unverändert erlaubt bleiben')
+  }
+
+  // QA-Pass 11.09.2026, Befund 7: ein Worker, den die Auflösung nicht kennt,
+  // muss ABLEHNEN und darf nicht still in den Claude-Code-Zweig fallen — dort
+  // bekäme er Startziel und Berechtigungskontext aus den flachen
+  // Vorlagenfeldern und liefe mit dem geplanten, hier schreibenden
+  // Werkzeugsatz los. Der schreibende Satz steht bewusst im Fall: er macht den
+  // Unterschied zwischen "lehnt ab" und "startet etwas Falsches" sichtbar.
+  const fremderWorker = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'gemini' }, 'schreibend', 'text', vorlageMitCodex, process.cwd())
+  if (fremderWorker.ok !== false || !/keinem Aufrufbauer zugeordnet/.test(fremderWorker.grund)) {
+    befunde.push(`(h) unbekannter Worker: erwartet ok:false, erhalten ${JSON.stringify(fremderWorker)}`)
+  }
+
+  // Ablehnung 6 von 6: fehlender worker.codex-Block.
+  const ohneBlock = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'codex' }, 'lesend', 'text', vorlageOhneCodex, process.cwd())
+  if (ohneBlock.ok !== false || !/worker\.codex/.test(ohneBlock.grund)) {
+    befunde.push(`(h) codex ohne worker.codex-Block: erwartet ok:false, erhalten ${JSON.stringify(ohneBlock)}`)
+  }
+
+  // Grünfall AK11: die drei Felder kommen aus worker.codex bzw. der
+  // Gateway-Konstante, NICHT aus den flachen Claude-Code-Feldern.
+  const codexGruen = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'codex', ausgabeSchemaPfad: null }, 'lesend', 'text', vorlageMitCodex, process.cwd())
+  if (!codexGruen.ok) {
+    befunde.push(`(h) AK11-Grünfall: erwartet ok:true, erhalten ${JSON.stringify(codexGruen)}`)
+  } else {
+    const e = codexGruen.eingaben
+    if (JSON.stringify(e.werkzeugStartziel) !== JSON.stringify(vorlageMitCodex.worker.codex.startziel)) {
+      befunde.push(`(h) AK11: werkzeugStartziel kommt nicht aus worker.codex.startziel, erhalten ${JSON.stringify(e.werkzeugStartziel)}`)
+    }
+    if (e.werkzeugVersionDeklariert !== vorlageMitCodex.worker.codex.versionDeklariert) {
+      befunde.push(`(h) AK11: werkzeugVersionDeklariert kommt nicht aus worker.codex.versionDeklariert, erhalten ${JSON.stringify(e.werkzeugVersionDeklariert)}`)
+    }
+    if (e.berechtigungskontext !== CODEX_BERECHTIGUNGSKONTEXT) {
+      befunde.push(`(h) AK11: berechtigungskontext ist nicht die Gateway-Konstante '${CODEX_BERECHTIGUNGSKONTEXT}', erhalten ${JSON.stringify(e.berechtigungskontext)}`)
+    }
+    if (e.worker !== 'codex' || !('ausgabeSchemaPfad' in e)) {
+      befunde.push(`(h) AK11: worker/ausgabeSchemaPfad fehlen im Ergebnis eines Codex-Laufs, erhalten ${JSON.stringify(Object.keys(e))}`)
+    }
+  }
+
+  // F-286: ein Claude-Code-Lauf behält EXAKT den Feldsatz von vor F16 —
+  // worker und ausgabeSchemaPfad dürfen dort nicht auftauchen. Ohne diesen
+  // Fall wäre die Zusage "byte-identisch" durch nichts gedeckt.
+  const ccGruen = loeseAusfuehrungsEingabenAuf(basis, 'lesend', 'text', vorlageMitCodex, process.cwd())
+  if (!ccGruen.ok) {
+    befunde.push(`(h) F-286-Gegenprobe: Claude-Code-Grünfall erwartet ok:true, erhalten ${JSON.stringify(ccGruen)}`)
+  } else {
+    const erwartet = ['anfragen', 'aufrufEingaben', 'auftragId', 'auftragstext', 'berechtigungskontext', 'budget', 'rolle', 'werkzeugStartziel', 'werkzeugVersionDeklariert']
+    const erhalten = Object.keys(ccGruen.eingaben).sort()
+    if (JSON.stringify(erhalten) !== JSON.stringify(erwartet)) {
+      befunde.push(`(h) F-286: Claude-Code-Feldsatz erwartet ${JSON.stringify(erwartet)}, erhalten ${JSON.stringify(erhalten)}`)
+    }
+    if (ccGruen.eingaben.berechtigungskontext !== vorlageOhneCodex.berechtigungskontext) {
+      befunde.push('(h) F-286: der Claude-Code-Berechtigungskontext kommt nicht mehr aus der Vorlagenwurzel')
+    }
+  }
+
+  // Die Body-Sperre als eigener Rot-Fall (Reviewer-Pass 11.09.2026, Befund 8).
+  // Der Kopfkommentar von loeseAusfuehrungsEingabenAuf macht daraus eine
+  // Sicherheitsaussage — "ohne diese Sperre könnte ein Body den
+  // Berechtigungskontext eines Laufs umdeklarieren" —, und eine
+  // Sicherheitsaussage ohne gemessenes Rot heißt nach ARCHITECTURE.md §8
+  // nicht ERZWUNGEN. Der generische "unbekanntes Feld"-Fall in
+  // check-f10-leitstand.mjs deckt sie nicht: er belegt, dass IRGENDEIN
+  // unbekanntes Feld abgelehnt wird, nicht dass GENAU diese beiden es sind.
+  // Die Feldnamen-Schleife in pruefeStartauftrag läuft vor jeder
+  // Pflichtfeldprüfung, deshalb reicht ein Minimalobjekt.
+  for (const feld of ['worker', 'ausgabeSchemaPfad']) {
+    const abgelehnt = pruefeStartauftrag({ [feld]: 'codex' })
+    if (abgelehnt.ok !== false || !new RegExp(`unbekanntes Feld '${feld}'`).test(abgelehnt.grund)) {
+      befunde.push(`(h) Body-Sperre: ein Startauftrag mit '${feld}' muss abgelehnt werden, erhalten ${JSON.stringify(abgelehnt)}`)
+    }
+  }
+
+  if (befunde.length === befundeVorAk11) {
+    console.log(
+      '✓ (h): AK11 — Startziel/Version/Berechtigungskontext folgen dem Worker, ein unbekannter Worker wird abgelehnt, Claude-Code-Läufe behalten ihren Feldsatz (F-286), und weder worker noch ausgabeSchemaPfad sind über einen Startauftrag-Body setzbar.'
+    )
+  }
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

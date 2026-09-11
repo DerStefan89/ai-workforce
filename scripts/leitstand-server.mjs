@@ -47,6 +47,24 @@
  * F-128) — nie aus kontrollzustand/ abgeleitet, ein Serverneustart setzt
  * sie zurück.
  *
+ * F16 WS-3a (features/F16/feature.md, AK10/AK11): der Dispatcher startet
+ * auch Schritte mit worker 'codex'. Zwei Stellen tragen das:
+ * loeseAusgabeSchemaAuf löst schritt.output_schema — einen SCHEMANAMEN — zu
+ * schemas/<name>.schema.json auf und lehnt vor jedem Prozessstart ab, wenn
+ * der Name nicht auf SCHEMANAME_MUSTER passt (positive Allowlist: nur
+ * Kleinbuchstaben, Ziffern, Bindestriche), die Datei fehlt, eine
+ * UTF-8-BOM trägt (F-306) oder auf der Wurzel kein
+ * additionalProperties:false führt (HTTP 400 invalid_json_schema,
+ * state/tp-m3-01-codex.md Lauf 3). Und loeseAusfuehrungsEingabenAuf wählt
+ * werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext nach dem
+ * Worker: für Codex aus vorlage.worker.codex bzw. aus der importierten
+ * Gateway-Konstante CODEX_BERECHTIGUNGSKONTEXT, und lehnt einen
+ * Codex-Schritt mit schreibendem Werkzeugsatz oder ohne worker.codex-Block
+ * ab. Ein Claude-Code-Lauf behält dabei exakt seinen bisherigen Feldsatz
+ * (F-286): worker und ausgabeSchemaPfad erscheinen nur im Codex-Zweig.
+ * Beide Felder kommen ausschließlich aus einem geplanten Schritt, nie aus
+ * einem HTTP-Body — sie stehen nicht in ERLAUBTE_STARTAUFTRAG_FELDER.
+ *
  * F12 WS-1 (AK1-AK3, state/plan-v1-f12-ws1.md): GET /api/laeufe listet nur
  * noch echte Läufe (mindestens eine Wirkungsmarke in der gültigen Kette,
  * istLaufkette) - F2-Lineage-Ketten (lauf_id-Präfix "lineage-") erscheinen
@@ -390,6 +408,7 @@ import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '.
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
+import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -1082,6 +1101,15 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'abbruchSignal',
 ])
 
+/**
+ * Zulässige Form eines output_schema-Werts (F16 WS-3a, AK10). Positive
+ * Allowlist statt einer Liste verbotener Zeichen: Kleinbuchstaben, Ziffern
+ * und Bindestriche, beginnend mit Buchstabe oder Ziffer. Alle mitgelieferten
+ * Schemata unter schemas/ tragen bereits Namen dieser Form. Begründung am
+ * Kopf von loeseAusgabeSchemaAuf.
+ */
+const SCHEMANAME_MUSTER = /^[a-z0-9][a-z0-9-]*$/
+
 /** Erlaubte Top-Level-Felder eines Startauftrags (AK2, F11 WS-2 AK4/AK5) — laufId plus die AusfuehrungsEingaben-Felder, die noch aus dem Body kommen, plus werkzeugsatz (Name aus der Startvorlage) und optional vorgaengerLaufId. werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext/profilReferenz sind NICHT mehr erlaubt (VERBOTENE_STARTVORLAGE_FELDER) — sie kommen serverseitig aus der Startvorlage. */
 const ERLAUBTE_STARTAUFTRAG_FELDER = new Set(['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz', 'vorgaengerLaufId'])
 
@@ -1349,9 +1377,89 @@ export function loeseEvidenzPfadAuf(pfad, repoWurzel) {
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel) {
+  // Worker-Vorgabe (F16 WS-3a, AK11): fehlt das Feld, ist es 'claude-code'.
+  // Dieselbe Lesart wie in der Laufakte (AK4) und im Result Evaluator (AK8) —
+  // eine dritte, abweichende Vorgabe an dieser Stelle wäre der Anfang zweier
+  // Wahrheiten darüber, was ein Lauf ohne worker-Angabe ist.
+  //
+  // Die Angabe kommt ausschließlich aus loeseSchrittEingabenAuf, nie aus einem
+  // HTTP-Body: 'worker' steht nicht in ERLAUBTE_STARTAUFTRAG_FELDER, ein
+  // Startauftrag mit diesem Feld wird schon in pruefeStartauftrag mit 400
+  // abgelehnt. Ohne diese Sperre könnte ein Body den Berechtigungskontext
+  // eines Laufs umdeklarieren.
+  const worker = eingabenRoh.worker ?? 'claude-code'
+  // ALLOWLIST, keine `=== 'codex'`-Abfrage mit stillem Rest (QA-Pass
+  // 11.09.2026, Befund 7): ein unbekannter Worker fiele sonst in den
+  // Claude-Code-Zweig und bekäme Startziel, Version und Berechtigungskontext
+  // aus den flachen Vorlagenfeldern — samt des geplanten, womöglich
+  // schreibenden Werkzeugsatzes. Dass ermittleNaechstenSchritt denselben Wert
+  // schon abfängt, ist kein Ersatz: das ist eine Regel ANDERSWO, und genau
+  // diese Konstruktion benennt src/workflow/index.ts in seinem eigenen
+  // Kommentar als Fehler.
+  if (worker !== 'claude-code' && worker !== 'codex') {
+    return { ok: false, grund: `Worker '${worker}' ist keinem Aufrufbauer zugeordnet — bekannt: claude-code, codex` }
+  }
+
   const werkzeugsatz = loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)
   if (werkzeugsatz === undefined) {
     return { ok: false, grund: `unbekannter Werkzeugsatz '${werkzeugsatzName}' — bekannt: ${Object.keys(vorlage.werkzeugsaetze).join(', ')}` }
+  }
+
+  // AK10, Ablehnung 5 von 6 (siehe die Zählung am Kopf von
+  // loeseAusgabeSchemaAuf): codex + nicht-lesender Werkzeugsatz. Steht
+  // HIER und nicht im Dispatcher, weil die Art eines Werkzeugsatzes erst nach
+  // loeseWerkzeugsatzAuf feststeht — ermittleNaechstenSchritt kennt nur den
+  // NAMEN und hat die Startvorlage überhaupt nicht (sie entscheidet, sie liest
+  // nicht, siehe Kopf von src/workflow/index.ts). Ablehnung VOR dem
+  // Prozessstart, nicht erst an der Sandbox: '--sandbox read-only' fängt die
+  // Schreibwirkung zwar real ab (AK9), aber ein Lauf, der mit einem Werkzeugsatz
+  // startet, den er strukturell nicht einlösen kann, ist ein Planungsfehler und
+  // kein Laufergebnis. Schreibende Execution bleibt Claude Code (E-M3-2).
+  // Formuliert als `art !== 'lesend'` und nicht als `art === 'schreibend'`
+  // (Reviewer-Pass 11.09.2026, Befund 3): dieselbe Allowlist-Richtung wie in
+  // src/workflow/index.ts. Wächst die Wertemenge von 'art' je um eine dritte
+  // Stufe, fällt sie hier in "abgelehnt" statt lautlos in "erlaubt".
+  if (worker === 'codex' && werkzeugsatz.art !== 'lesend') {
+    return {
+      ok: false,
+      grund: `Worker 'codex' mit dem nicht-lesenden Werkzeugsatz '${werkzeugsatzName}' (art '${werkzeugsatz.art}') — schreibende Execution bleibt Claude Code (E-M3-2), Codex läuft strukturell nur lesend`,
+    }
+  }
+
+  // AK11: Startziel, deklarierte Version und Berechtigungskontext kommen je
+  // nach Worker aus verschiedenen Quellen. Die Asymmetrie — Claude-Code-Felder
+  // flach an der Vorlagenwurzel, Codex genestet unter worker.codex — ist
+  // bewusste v0-Schuld und in der Schema-description benannt (AK5).
+  //
+  // Für Codex ist der Berechtigungskontext KEIN Vorlagenfeld, sondern die
+  // importierte Konstante des Gateways: '--sandbox read-only' steht fest im
+  // Argv und ist über die Allowlist nicht abwählbar (AK2). Ein aus der Vorlage
+  // umdeklarierbarer Kontext wäre eine Behauptung ohne Deckung.
+  //
+  // Ausdrücklich benannte Grenze (QA-Pass 11.09.2026, Befund 8): dieser Wert
+  // hat im Codex-Zweig heute KEINEN Verbraucher. CodexGatewayEingaben trägt
+  // kein berechtigungskontext-Feld; starteCodexGateway schreibt dieselbe
+  // Konstante selbst in die Laufakte (AK7), und genau das ist die Absicht —
+  // ein vom Aufrufer setzbarer Kontext wäre wieder umdeklarierbar. Der Wert
+  // steht hier, damit die AusfuehrungsEingaben eines Codex-Laufs nicht den
+  // FALSCHEN (Claude-Code-)Kontext behaupten, nicht weil er etwas bewirkt.
+  // Dass beide Stellen denselben Wert führen, ist über den gemeinsamen Import
+  // gesichert und nicht über zwei Literale.
+  let werkzeugStartziel = vorlage.werkzeugStartziel
+  let werkzeugVersionDeklariert = vorlage.werkzeugVersionDeklariert
+  let berechtigungskontext = vorlage.berechtigungskontext
+  if (worker === 'codex') {
+    const codexBlock = vorlage.worker?.codex
+    if (codexBlock === undefined) {
+      // Ablehnung 6 von 6.
+      return {
+        ok: false,
+        grund: "Worker 'codex' verlangt den Block 'worker.codex' in der Startvorlage (startziel, versionDeklariert, sandbox) — er fehlt",
+      }
+    }
+    werkzeugStartziel = codexBlock.startziel
+    werkzeugVersionDeklariert = codexBlock.versionDeklariert
+    berechtigungskontext = CODEX_BERECHTIGUNGSKONTEXT
   }
 
   const anfragenMitInhalt = []
@@ -1380,14 +1488,141 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
       aufrufEingaben: { ...eingabenRoh.aufrufEingaben, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: werkzeugsatz.erlaubte_werkzeuge } },
-      werkzeugStartziel: vorlage.werkzeugStartziel,
-      werkzeugVersionDeklariert: vorlage.werkzeugVersionDeklariert,
-      berechtigungskontext: vorlage.berechtigungskontext,
+      werkzeugStartziel,
+      werkzeugVersionDeklariert,
+      berechtigungskontext,
       auftragstext,
       auftragId: eingabenRoh.auftragId,
       ...(eingabenRoh.vorgaengerLaufId !== undefined ? { vorgaengerLaufId: eingabenRoh.vorgaengerLaufId } : {}),
+      // worker/ausgabeSchemaPfad erscheinen NUR beim Codex-Zweig im Ergebnis
+      // (F-286): ein Claude-Code-Lauf behält damit exakt den Feldsatz, den er
+      // vor F16 hatte — byte-identisch, kein bestehender Test muss angepasst
+      // werden. Die Vorgabe 'fehlend = claude-code' macht das tragbar; zwei
+      // zusätzliche Felder mit Vorgabewerten wären hier reines Rauschen in
+      // jedem einzelnen Claude-Code-Lauf.
+      //
+      // Beide stehen eine Ebene ÜBER aufrufEingaben, neben werkzeugStartziel.
+      // aufrufEingaben ist der Parametersatz genau EINES Aufrufbauers, und
+      // baueAufruf/baueCodexAufruf haben unterschiedliche Pflichtfelder — wer
+      // den Worker dort hineinlegt, reicht dem einen Bauer ein Feld, das er
+      // nicht kennt, und macht die Weiche unsichtbar.
+      ...(worker !== 'claude-code' ? { worker } : {}),
+      ...(worker === 'codex' ? { ausgabeSchemaPfad: eingabenRoh.ausgabeSchemaPfad ?? null } : {}),
     },
   }
+}
+
+/**
+ * Löst schritt.output_schema — einen SCHEMANAMEN, keinen Pfad — zum absoluten
+ * Pfad von schemas/<name>.schema.json auf (F16 WS-3a, AK10) und prüft die
+ * Datei, bevor irgendein Prozess startet.
+ *
+ * Warum hier und nicht im Gateway (E-193 gilt nicht dagegen, sondern dafür):
+ * baueCodexAufruf VERLANGT einen absoluten Pfad und wirft sonst — es nimmt
+ * einen Pfad entgegen, es beschafft keinen. Die Beschaffung ist eine
+ * Auflösung aus Planungsdaten gegen das Dateisystem des Repos, und die sitzt
+ * in dieser Datei, gleich neben der AK6-Pfadsicherheit für Evidenzpfade. Ein
+ * Gateway, das aus einem Namen einen Repo-Pfad baut, hätte damit eine zweite
+ * Vorstellung davon, wo die Repo-Wurzel liegt.
+ *
+ * Vier der insgesamt sechs Ablehnungen des Dispatchers stehen hier (1)-(4);
+ * die beiden übrigen sitzen in loeseAusfuehrungsEingabenAuf, weil sie die
+ * geladene Startvorlage brauchen: (5) codex mit nicht-lesendem Werkzeugsatz,
+ * (6) codex ohne worker.codex-Block. Alle sechs greifen vor dem Prozessstart
+ * und alle als { ok: false, grund } statt eines Wurfs: ein fehlerhaft
+ * geplanter Schritt ist ein Fachergebnis des Schrittstarts (der Automat hält
+ * an und legt es dem Menschen vor), kein Konfigurationsfehler des Servers.
+ *
+ * (1) Der Name passt nicht auf SCHEMANAME_MUSTER. Das ist eine positive
+ *     Allowlist (Kleinbuchstaben, Ziffern, Bindestriche) und keine Liste
+ *     verbotener Zeichen (QA-Pass 11.09.2026, Befund 3). Eine Sperrliste aus
+ *     '/', '\\' und '..' ließ real mehr durch, als sie sollte: unter Windows
+ *     etwa 'C:x' oder 'gueltig:strom' — der Doppelpunkt öffnet einen
+ *     NTFS-Alternate-Data-Stream, der Pfad zeigt dann auf ein Dateiobjekt,
+ *     das der Name nicht meint. Die Allowlist nimmt zugleich die
+ *     Groß-/Kleinschreibungsfrage aus der Welt: ein Name mit Großbuchstaben
+ *     wird abgelehnt, statt auf NTFS zu funktionieren und auf einem
+ *     case-sensitiven Dateisystem zu scheitern — derselbe Workflow-Datensatz
+ *     wäre sonst plattformabhängig startbar. Alle mitgelieferten Schemata
+ *     unter schemas/ tragen bereits Namen dieser Form.
+ * (2) Die Datei existiert nicht ODER ist keine reguläre Datei (ein
+ *     Verzeichnis 'name.schema.json/' fällt hierher). Ohne diese Prüfung
+ *     liefe der Codex-Prozess an und scheiterte erst in seiner eigenen
+ *     Fehlerbehandlung.
+ * (3) Die Datei trägt eine UTF-8-BOM. Real gemessen (F-306,
+ *     state/tp-m3-01-codex.md): Codex' JSON-Parser verträgt keine BOM, sein
+ *     TOML-Parser schon — die Datei sieht in jedem Editor korrekt aus und
+ *     zerstört den Lauf trotzdem. scripts/check-f16-codex-gateway.mjs (d)
+ *     prüft dasselbe für alle mitgelieferten Schemata; diese Prüfung hier
+ *     gilt auch dem Schema, das erst nach dem Gate-Lauf ins Repo kam.
+ * (4) Die Wurzel trägt kein additionalProperties: false. Ebenfalls real
+ *     gemessen (state/tp-m3-01-codex.md, Lauf 3): die Modell-API antwortet im
+ *     Strict-Modus sonst mit HTTP 400 invalid_json_schema. Geprüft wird nur
+ *     die WURZEL, nicht rekursiv — die rekursive Fassung steht im Gate für
+ *     die mitgelieferten Schemata; hier soll die Ablehnung genau das treffen,
+ *     was der gemessene Fehlerfall hergibt, und nicht mehr.
+ * Zwei weitere Zweige lehnen ebenfalls ab, ohne eigene Nummer, weil sie
+ * keine fachliche Regel sind, sondern ein kaputtes Artefakt: eine Datei, die
+ * kein gültiges JSON ist, und eine, die sich nicht lesen lässt. Der
+ * JSON-Zweig ist rot kalibriert (scripts/check-f16-codex-gateway.mjs (h),
+ * Fall 'kaputtes-json'). Der Lesefehler-Zweig ist es NICHT und bleibt ein
+ * unkalibrierter Defensivzweig: eine existierende reguläre Datei unlesbar zu
+ * machen, verlangt eine ACL-Änderung, die ein Gate auf jedem Rechner anders
+ * herbeiführen müsste. Hier ausdrücklich benannt statt stillschweigend
+ * mitgezählt — ein Zweig ohne Rot-Fall heißt nach ARCHITECTURE.md §8 nicht
+ * ERZWUNGEN, und ein Kommentar, der ihn trotzdem als kalibriert ausgibt,
+ * wäre die schlimmere Hälfte davon (QA-Pass 11.09.2026, Nachprüfung).
+ *
+ * Symlinks sind ein benanntes Restrisiko, keine geprüfte Grenze: existsSync
+ * und statSync FOLGEN Links, ein schemas/x.schema.json, das aus dem Repo
+ * hinauszeigt, passiert diese Funktion. Voraussetzung dafür ist
+ * Schreibzugriff auf schemas/ — wer den hat, kann die Schemadatei ohnehin
+ * ersetzen, und die Auflösung ist nicht die Stelle, die das abwehren könnte.
+ * @param name - der Wert von schritt.output_schema (nie null, das prüft der Aufrufer)
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel
+ * @returns bei Erfolg { ok: true, pfad } mit absolutem Pfad, sonst { ok: false, grund }
+ */
+export function loeseAusgabeSchemaAuf(name, repoWurzel) {
+  if (typeof name !== 'string' || !SCHEMANAME_MUSTER.test(name)) {
+    return {
+      ok: false,
+      grund: `output_schema ${JSON.stringify(name)} ist kein zulässiger Schemaname — erlaubt sind Kleinbuchstaben, Ziffern und Bindestriche (${SCHEMANAME_MUSTER.source}); ein Pfad ist es nie`,
+    }
+  }
+
+  const pfad = join(repoWurzel, 'schemas', `${name}.schema.json`)
+  if (!existsSync(pfad) || !statSync(pfad).isFile()) {
+    return { ok: false, grund: `output_schema '${name}': schemas/${name}.schema.json nicht gefunden (fehlt oder ist keine reguläre Datei)` }
+  }
+
+  let inhalt
+  try {
+    inhalt = readFileSync(pfad, 'utf8')
+  } catch (fehler) {
+    return { ok: false, grund: `output_schema '${name}': schemas/${name}.schema.json nicht lesbar (${fehler.message})` }
+  }
+
+  // '﻿' an Position 0: readFileSync('utf8') entfernt die BOM NICHT, sie
+  // erscheint als erstes Zeichen. Genau deshalb ist der Fehler im Editor
+  // unsichtbar und hier prüfbar.
+  if (inhalt.charCodeAt(0) === 0xfeff) {
+    return { ok: false, grund: `output_schema '${name}': schemas/${name}.schema.json trägt eine UTF-8-BOM — Codex' JSON-Parser verträgt keine (F-306)` }
+  }
+
+  let geparst
+  try {
+    geparst = JSON.parse(inhalt)
+  } catch (fehler) {
+    return { ok: false, grund: `output_schema '${name}': schemas/${name}.schema.json ist kein gültiges JSON (${fehler.message})` }
+  }
+  if (typeof geparst !== 'object' || geparst === null || Array.isArray(geparst) || geparst.additionalProperties !== false) {
+    return {
+      ok: false,
+      grund: `output_schema '${name}': schemas/${name}.schema.json trägt auf der Wurzel kein 'additionalProperties: false' — die Modell-API antwortet im Strict-Modus sonst mit HTTP 400 invalid_json_schema`,
+    }
+  }
+
+  return { ok: true, pfad }
 }
 
 /**
@@ -1442,6 +1677,28 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
 export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen) {
+  // AK10, ZUERST: der Schemaname wird aufgelöst und geprüft, bevor diese
+  // Funktion irgendetwas lädt oder zusammenstellt. Die Reihenfolge ist die
+  // Aussage (QA-Pass 11.09.2026, Befund 4): ein Schritt mit kaputtem
+  // Ausgabeschema soll den Schemafehler melden und nicht zuerst über eine
+  // fehlende Artefakt-Eingabe stolpern — der Schemaname ist die Angabe, die
+  // der Mensch gerade geplant hat, die Artefakt-Referenz stand schon vorher
+  // da. Gepinnt in scripts/check-f16-codex-gateway.mjs (h).
+  //
+  // Unabhängig vom Worker geprüft: ein claude-code-Schritt mit gesetztem
+  // output_schema kommt hier gar nicht an (Regel 4b in
+  // ermittleNaechstenSchritt hält ihn vorher), und eine zweite,
+  // worker-abhängige Bedingung an dieser Stelle wäre ein stiller Durchlass,
+  // falls diese Funktion je aus einem anderen Pfad gerufen wird.
+  let ausgabeSchemaPfad = null
+  if (schritt.output_schema !== null) {
+    const schemaErgebnis = loeseAusgabeSchemaAuf(schritt.output_schema, repoWurzel)
+    if (!schemaErgebnis.ok) {
+      return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${schemaErgebnis.grund}` }
+    }
+    ausgabeSchemaPfad = schemaErgebnis.pfad
+  }
+
   const artefaktAnfragen = []
   for (const referenz of schritt.eingaben) {
     if (typeof referenz !== 'string' || !referenz.startsWith('artefakt:')) {
@@ -1478,6 +1735,11 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     budget: vorlage.standardBudget,
     aufrufEingaben: { modell: schritt.modell },
     auftragId: workflowDaten.auftrag_id,
+    // AK11/AK10: die beiden einzigen Felder, die ein Startauftrag über HTTP
+    // NICHT setzen kann (nicht in ERLAUBTE_STARTAUFTRAG_FELDER) — sie stammen
+    // ausschließlich aus dem geplanten Schritt.
+    worker: schritt.worker,
+    ausgabeSchemaPfad,
     ...(vorgaengerLaufId !== undefined ? { vorgaengerLaufId } : {}),
   }
 

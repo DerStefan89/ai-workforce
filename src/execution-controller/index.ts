@@ -89,10 +89,26 @@
  * NACH dem Laufakte-Eintrag eingefügt (Reihenfolge bleibt [auftragRef,
  * laufakteRef, entscheidungRef?, …eingaben.anfragen] — der bereits getestete
  * auftragRef/laufakteRef-Vorrang aus F12 WS-2 wird nicht verändert).
+ *
+ * F16 WS-3a (features/F16/feature.md, AK11): GENAU EINE Worker-Weiche, nach
+ * dem Promptbau und vor dem Gateway-Aufruf. eingaben.worker (additiv,
+ * optional, fehlend = 'claude-code') wählt zwischen baueAufruf +
+ * starteGateway und baueCodexAufruf + starteCodexGateway; eingaben
+ * .ausgabeSchemaPfad ist der bereits vom Dispatcher aufgelöste und geprüfte
+ * ABSOLUTE Pfad des Ausgabeschemas (scripts/leitstand-server.mjs,
+ * loeseAusgabeSchemaAuf, AK10) — der Controller reicht ihn durch und
+ * beschafft ihn nicht.
+ *
+ * Alles vor und nach der Weiche bleibt gemeinsam: Kontextpaket (F5),
+ * Prompttext, Klassifikation (F7) und der E-186-Eskalationszweig. Eine zweite
+ * Weiche in der Klassifikation gibt es bewusst nicht — klassifiziereLauf
+ * verzweigt seit F16 WS-2 (AK8) selbst nach laufakte.worker. Zwei Stellen,
+ * die dieselbe Worker-Frage beantworten, laufen auseinander.
  */
 
 import { randomUUID } from 'node:crypto'
 import { starteGateway, baueAufruf } from '../claude-code-gateway/index.ts'
+import { starteCodexGateway, baueCodexAufruf } from '../codex-gateway/index.ts'
 import { baueKontextpaket, elementSchluessel } from '../context-builder/index.ts'
 import type { Anfrage, KontextpaketV0Daten } from '../context-builder/types.ts'
 import { kanonischesJson, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
@@ -163,6 +179,31 @@ export async function fuehreAufgabeDurch(
   eingaben: AusfuehrungsEingaben,
   optionen: AusfuehrungsOptionen = {}
 ): Promise<AusfuehrungsErgebnis> {
+  // ALLOWLIST des Ausführungswerkzeugs (F16 WS-3a, AK11), ganz vorn und vor
+  // jeder Schreibwirkung — dieselbe Stelle wie die beiden Schwesterprüfungen
+  // dieser Klasse (vorgaengerLaufId, auftragId). Ein Wert, den die
+  // Worker-Weiche weiter unten nicht kennt, darf NICHT in den
+  // Claude-Code-Zweig fallen: er bekäme dort Startziel und
+  // Berechtigungskontext aus den flachen Vorlagenfeldern und liefe mit dem
+  // geplanten — womöglich schreibenden — Werkzeugsatz los. Dieselbe Richtung,
+  // die src/workflow/index.ts für seine Entscheidungsregeln festschreibt.
+  //
+  // Die Position ist Teil der Aussage (Reviewer-Pass 11.09.2026, V1): an der
+  // Weiche selbst hätte baueKontextpaket längst einen Checkpoint geschrieben,
+  // und laufIdBelegt() sperrte die laufId danach dauerhaft — die
+  // Vorbedingungsverletzung hinterließe einen halb angelegten Lauf.
+  //
+  // Ein Wurf und keine Ablehnung: die Worker-Allowlists des Dispatchers
+  // (Regel 4 in ermittleNaechstenSchritt, loeseAusfuehrungsEingabenAuf) haben
+  // diesen Fall bereits abgefangen; ein Wert, der trotzdem hier ankommt, ist
+  // eine Vorbedingungsverletzung des Aufrufers (Muster auftragId ohne
+  // Auftragsakte). scripts/leitstand-server.mjs fängt ihn und meldet ihn über
+  // meldeLaufende(null, fehler); der Workflow hält als FEHLGESCHLAGEN an.
+  const workerGewaehlt: string = eingaben.worker ?? 'claude-code'
+  if (workerGewaehlt !== 'claude-code' && workerGewaehlt !== 'codex') {
+    throw new Error(`AusfuehrungsEingaben.worker '${workerGewaehlt}' ist keinem Aufrufbauer zugeordnet — Vorbedingungsverletzung (F16 WS-3a, AK11)`)
+  }
+
   let anfragen: Anfrage[] = eingaben.anfragen
   if (eingaben.vorgaengerLaufId !== undefined) {
     const vorgaengerLaufakteVersion = ladeArtefaktVersion(vorgaengerLaufakteArtefaktId(eingaben.vorgaengerLaufId), undefined, {
@@ -236,29 +277,94 @@ export async function fuehreAufgabeDurch(
   const evidenzText = bauePromptAusKontextpaket(kontextpaketErgebnis.paket, anfragen)
   const promptText =
     evidenzText.length === 0 ? `Auftrag:\n${eingaben.auftragstext}` : `Auftrag:\n${eingaben.auftragstext}\n\n===\n\n${evidenzText}`
-  const tokens = baueAufruf({ ...eingaben.aufrufEingaben, prompt: promptText })
-
-  const gatewayErgebnis = await starteGateway(
-    {
-      laufId,
-      profilReferenz,
-      tokens,
-      werkzeugStartziel: eingaben.werkzeugStartziel,
-      werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
-      berechtigungskontext: eingaben.berechtigungskontext,
-    },
-    {
-      schreiber: optionen.schreiber,
-      basisVerzeichnis: optionen.basisVerzeichnis,
-      rohBasisVerzeichnis: optionen.rohBasisVerzeichnis,
-      starter: optionen.starter,
-      settingsPfad: optionen.settingsPfad,
-      aktuelleAutorisierungPfad: optionen.aktuelleAutorisierungPfad,
-      startfreigabeRepoWurzel: optionen.startfreigabeRepoWurzel,
-      zeitgrenzeMs: optionen.zeitgrenzeMs,
-      abbruchSignal: optionen.abbruchSignal,
-    }
-  )
+  // ─── Die EINE Worker-Weiche (F16 WS-3a, AK11) ────────────────────────────
+  //
+  // Die zugehörige Allowlist-Prüfung steht NICHT hier, sondern ganz am Anfang
+  // dieser Funktion, vor jeder Schreibwirkung (Reviewer-Pass 11.09.2026, V1):
+  // an dieser Stelle hätte baueKontextpaket längst einen Checkpoint
+  // geschrieben, und laufIdBelegt() sperrte die laufId danach dauerhaft.
+  //
+  // Sie liegt genau hier: nach dem Promptbau, vor dem Gateway-Aufruf. Alles
+  // davor ist workerunabhängig und bleibt es bewusst — Kontextpaket (F5),
+  // Prompttext, und alles danach ebenso: Klassifikation (F7) und der
+  // E-186-Eskalationszweig. Eine zweite Weiche in der Klassifikation gibt es
+  // nicht und darf es nicht geben: klassifiziereLauf verzweigt seit F16 WS-2
+  // (AK8) SELBST nach laufakte.worker, und der Controller weiß davon nichts.
+  // Zwei Stellen, die dieselbe Worker-Frage beantworten, sind zwei Stellen,
+  // die auseinanderlaufen können.
+  //
+  // Vorgabe 'fehlend = claude-code' (AK4): jeder Aufrufer von vor F16 landet
+  // unverändert im bisherigen Zweig, ohne ein Feld zu setzen.
+  //
+  // ALLOWLIST, kein `=== 'codex' ? … : …` (Reviewer-/QA-Pass 11.09.2026,
+  // Befund 1/7): ein Wert, den diese Weiche nicht kennt, darf NICHT in den
+  // Claude-Code-Zweig fallen. Er bekäme dort Startziel und
+  // Berechtigungskontext aus den flachen Vorlagenfeldern und liefe mit dem
+  // geplanten — womöglich schreibenden — Werkzeugsatz los. Dieselbe Richtung,
+  // die src/workflow/index.ts für seine Entscheidungsregeln festschreibt.
+  // Hier ein Wurf und keine Ablehnung: die Worker-Allowlist des Dispatchers
+  // (Regel 4) hat diesen Fall bereits abgefangen, ein Wert, der trotzdem
+  // ankommt, ist eine Vorbedingungsverletzung des Aufrufers (Muster
+  // auftragId ohne Auftragsakte oben).
+  const gatewayErgebnis =
+    workerGewaehlt === 'codex'
+      ? await starteCodexGateway(
+          {
+            laufId,
+            profilReferenz,
+            // baueCodexAufruf verlangt einen ABSOLUTEN ausgabeSchemaPfad und
+            // wirft sonst (AK1). Aufgelöst hat ihn der Dispatcher; hier wird
+            // nur durchgereicht — der Controller kennt die Repo-Wurzel nicht.
+            tokens: baueCodexAufruf({
+              modell: eingaben.aufrufEingaben.modell,
+              prompt: promptText,
+              ausgabeSchemaPfad: eingaben.ausgabeSchemaPfad ?? null,
+            }),
+            werkzeugStartziel: eingaben.werkzeugStartziel,
+            werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+            // modell_beobachtet bleibt für Codex null (F-305); der Modellname
+            // ist nur DEKLARIERT bekannt, aus demselben Wert, der eben ins
+            // Argv ging (E-185).
+            modellDeklariert: eingaben.aufrufEingaben.modell,
+            // Benannte Grenze, nicht vergessen (F-323): aus aufrufEingaben
+            // liest dieser Zweig NUR modell. Der aufgelöste Werkzeugsatz
+            // bleibt hier ohne Wirkung — 'codex exec' hat keinen Schalter
+            // dafür, und die Argv-Allowlist (AK2) ließe einen erfundenen
+            // nicht durch. Die strukturelle Grenze trägt '--sandbox
+            // read-only'; die Entscheidung, was ein geplanter Werkzeugsatz
+            // an einem Codex-Schritt bedeuten soll, gehört zum Rollenvertrag
+            // (F-184/F17) und ist vor AK12 zu treffen.
+          },
+          {
+            schreiber: optionen.schreiber,
+            basisVerzeichnis: optionen.basisVerzeichnis,
+            rohBasisVerzeichnis: optionen.rohBasisVerzeichnis,
+            starter: optionen.starter,
+            zeitgrenzeMs: optionen.zeitgrenzeMs,
+            abbruchSignal: optionen.abbruchSignal,
+          }
+        )
+      : await starteGateway(
+          {
+            laufId,
+            profilReferenz,
+            tokens: baueAufruf({ ...eingaben.aufrufEingaben, prompt: promptText }),
+            werkzeugStartziel: eingaben.werkzeugStartziel,
+            werkzeugVersionDeklariert: eingaben.werkzeugVersionDeklariert,
+            berechtigungskontext: eingaben.berechtigungskontext,
+          },
+          {
+            schreiber: optionen.schreiber,
+            basisVerzeichnis: optionen.basisVerzeichnis,
+            rohBasisVerzeichnis: optionen.rohBasisVerzeichnis,
+            starter: optionen.starter,
+            settingsPfad: optionen.settingsPfad,
+            aktuelleAutorisierungPfad: optionen.aktuelleAutorisierungPfad,
+            startfreigabeRepoWurzel: optionen.startfreigabeRepoWurzel,
+            zeitgrenzeMs: optionen.zeitgrenzeMs,
+            abbruchSignal: optionen.abbruchSignal,
+          }
+        )
   if (!gatewayErgebnis.ok) {
     return { ok: false, stufe: 'gateway', grund: gatewayErgebnis.grund }
   }

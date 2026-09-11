@@ -39,9 +39,12 @@ export interface CodexAufrufEingaben {
  * Ergebnis des zeilenweisen JSONL-Parsers (AK3). Rein deskriptiv, keine
  * Klassifikation (ARCHITECTURE.md §4, F7-Grenze): turnCompleted und
  * turnFailed beschreiben nur, welche Ereignisse im Strom vorkamen, nicht
- * wie der Lauf ausgeht. unparsbareZeilen zählt Zeilen, die kein gültiges
- * JSON sind — der Parser wirft deswegen nie, weil ein einzelnes
- * Fremdformat im Strom die Beobachtungsbasis nicht vernichten darf.
+ * wie der Lauf ausgeht. unparsbareZeilen zählt Zeilen, die kein
+ * Ereignisobjekt ergeben — sowohl syntaktisch ungültiges JSON als auch
+ * syntaktisch gültige JSON-Skalare und -Arrays, damit `ereignisse`
+ * ausschließlich Objekte trägt (F-322). Der Parser wirft deswegen nie,
+ * weil ein einzelnes Fremdformat im Strom die Beobachtungsbasis nicht
+ * vernichten darf.
  */
 export interface CodexEreignisse {
   ereignisse: Array<Record<string, unknown>>
