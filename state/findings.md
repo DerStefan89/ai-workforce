@@ -5440,3 +5440,26 @@ Einzelauftrag — die Datei ist erst dann wieder aussagekräftig, wenn der
 nächste Stand feststeht.
 Status: offen.
 Feature/Run: F16 WS-3b AK12, 11.09.2026.
+
+**F-331** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `state/freigabe-commit.md` fehlt in `.gitignore`, obwohl der Guard
+sie als Einmal-Schlüssel behandelt.
+Beschreibung: `.claude/hooks/commit-guard.cjs` verlangt die Datei vor jedem
+`git commit`/`push` (Aufgabe 3, Frischefenster 10 Minuten) und verweigert
+jeden Bash-Zugriff auf sie (Aufgabe 4); `guard-settings.js` schützt sie
+zusätzlich gegen Edit/Write. Sie ist damit als verbrauchbarer Schlüssel
+entworfen, der nach Gebrauch verschwindet — steht aber in keiner
+Ignore-Regel. Der Abschnitt „Persönliche Freigaben" in `.gitignore` deckt
+bisher nur `.claude/settings.local.json`, obwohl er genau diese Klasse
+meint.
+Fundstelle: `.gitignore`, Abschnitt „Persönliche Freigaben" (Zeile 16–18)
+gegenüber `.claude/hooks/commit-guard.cjs:67` (`FREIGABE_DATEI`).
+Auswirkung: Kein Sicherheitsleck — der Inhalt ist ein Zeitstempel. Aber ein
+Widerspruch zum Einmalgebrauchs-Design: ein `git add -A` im Fenster zwischen
+dem Anlegen der Datei und ihrem Verbrauch durch den Guard zöge sie
+versehentlich ins Repo. Real beobachtet: bei der Commit-Vorbereitung zu F16
+WS-3b Teil C erschien sie als untracked-und-nicht-ignoriert im `git status`.
+Empfohlene Maßnahme: Zeile `state/freigabe-commit.md` im Abschnitt
+„Persönliche Freigaben" ergänzen.
+Status: offen.
+Feature/Run: F16 WS-3b Teil C (Commit-Vorbereitung), 11.09.2026.

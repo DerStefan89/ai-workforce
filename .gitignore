@@ -17,6 +17,12 @@ coverage/
 # MUSS ignoriert bleiben (siehe SETUP.md Punkt 7 / Befund G10).
 .claude/settings.local.json
 
+# Commit-Freigabe des Menschen — Einmal-Schlüssel, den der Guard nach
+# Gebrauch löscht (.claude/hooks/commit-guard.cjs, Aufgabe 3/4). Gehört nie
+# ins Repo; ohne diese Zeile zieht ein vollflaechiges "git add" sie im
+# Fenster zwischen Anlegen und Verbrauch versehentlich mit hinein (F-331).
+state/freigabe-commit.md
+
 # Aufgaben-Gedächtnis — bewusst nicht committet, nur die Vorlage bleibt
 # getrackt (state/zwischenstand/VORLAGE.md via Ausnahme unten).
 state/zwischenstand/*.md
