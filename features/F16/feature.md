@@ -99,7 +99,7 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   existiert, trägt `additionalProperties: false` auf jeder Objektebene,
   ist BOM-frei und LF; das Gate `scripts/check-f16-codex-gateway.mjs`
   prüft das und die Grep-Regeln.
-- **AK7** *(WS-2)* — `starteCodexGateway`: bei Allowlist-Treffer kein
+- **AK7** *(WS-2, erfüllt)* — `starteCodexGateway`: bei Allowlist-Treffer kein
   Prozessstart (Spy-Starter), keine Wirkungsmarke, keine Laufakte; sonst
   `run_prepared` → `starteProzess` → Rohstrom `{ werkzeugStartziel,
   tokens, stdout, stderr, exitCode, startfehler, beendigungsart }` →
@@ -109,7 +109,7 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   gilt für den schreibenden Pfad), im Kopfkommentar begründet, mit
   ausdrücklichem Bezug auf E-193: die Allowlist liegt IM Gateway, nie im
   Aufrufer.
-- **AK8** *(WS-2)* — Der Result Evaluator verzweigt nach
+- **AK8** *(WS-2, erfüllt)* — Der Result Evaluator verzweigt nach
   `laufakte.worker ?? 'claude-code'` VOR dem Aufruf von
   `leseErgebnisobjekt` (das `JSON.parse` über das gesamte `stdout` macht
   und `type: "result"` verlangt — für Codex-JSONL scheitert das immer,
@@ -121,7 +121,7 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   die letzte `agent_message` ist kein JSON-Objekt) → `ERFOLGREICH`; je
   rot kalibriert; ein Gate-Grep belegt, dass der Codex-Zweig `stderr`
   nicht liest.
-- **AK9** *(WS-2)* — Realer Rot-Fall mit Sandbox
+- **AK9** *(WS-2, erfüllt)* — Realer Rot-Fall mit Sandbox
   (`verify-f16-codex-rotfall.mjs`, Wegwerf-Repo mit `git init`):
   Schreibauftrag über `starteCodexGateway`, Zustandsvergleich vorher/
   nachher byteweise gleich, `features/F16/nachweis-rotfall.md`.

@@ -4606,7 +4606,7 @@ Empfohlene Maßnahme: entfällt mit der Allowlist (F-281).
 Status: offen.
 Feature/Run: F16-Gegenprüfung, 11.09.2026.
 
-**F-296** · `TECH_DEBT` · P2 · offen
+**F-296** · `TECH_DEBT` · P2 · gelöst
 Titel: Ob die ERROR-Tracing-Zeilen in `stdout` oder `stderr` stehen, ist im
 Spike widersprüchlich protokolliert.
 Beschreibung: Das Protokoll zitiert die Zeilen im Block „Vollständige `stdout`
@@ -4617,7 +4617,8 @@ Auswirkung: AK3-Fixtures könnten ein Verhalten festschreiben, das es nicht
 gibt.
 Empfohlene Maßnahme: S-M3-01b Messpunkt (l) leitet `stdout` und `stderr`
 getrennt um; bis dahin führt AK3 die Zeilen als eigenen Fixture-Fall.
-Status: offen.
+Status: gelöst durch F-301 (S-M3-01b, Messpunkt (l)): die Zeilen stehen auf
+stderr, stdout ist reines JSONL.
 Feature/Run: F16-Gegenprüfung, 11.09.2026.
 
 **F-297** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -4828,3 +4829,198 @@ Aussage über Existenz/Nichtexistenz eines Guards getroffen wird. Keine
 Code-Änderung nötig.
 Status: offen (Dokumentationskorrektur).
 Feature/Run: F16, Findings-Nacherfassung F-299–F-310.
+
+**F-311** · `TECH_DEBT` · P1 · gelöst
+Titel: Ein für die vorliegende ChatGPT-Anmeldung nicht freigeschalteter
+Modellname lässt einen Codex-Lauf scheitern, BEVOR ein einziger Befehl
+läuft — und sieht dabei wie ein bestandener Rot-Fall aus.
+Beschreibung: Der erste reale AK9-Lauf verwendete den fest eingetragenen
+Namen `gpt-5-codex`. Ergebnis: Exit-Code 1, `{"type":"error", …}` mit
+HTTP 400 `The 'gpt-5-codex' model is not supported when using Codex with a
+ChatGPT account.`, `turn.failed`. Dateizustand unverändert, `beweis.txt`
+nicht entstanden — äußerlich exakt das Bild eines bestandenen
+Schreib-Rot-Falls. Nur die Kalibrierungsprüfung (`command_execution` mit
+`exit_code: 0` als Pflichtbeleg) hat den Lauf als NICHT KALIBRIERT
+abgewiesen. Dies ist ein dritter, in F-299/F-273 noch nicht erfasster Weg
+in denselben Fehlermodus: derselbe Ausgang, andere Ursache.
+Fundstelle: `features/F16/nachweis-rotfall.md`, Lauf 1;
+`scripts/verify-f16-codex-rotfall.mjs` (`ermittleModell`).
+Auswirkung: Ohne strukturierte Kalibrierung wäre ein Lauf, der die
+Modell-API nie erreicht hat, als Sandbox-Nachweis durchgegangen.
+Empfohlene Maßnahme: Modellnamen für Codex-Läufe nie fest eintragen,
+sondern aus `~/.codex/models_cache.json` beziehen (so umgesetzt,
+überschreibbar über `F16_ROTFALL_MODELL`). Jeder künftige Codex-Nachweis
+belegt seine Kalibrierung an einem Ereignis, nicht an einem Modelltext.
+Status: gelöst (Modellwahl umgestellt; der Befund bleibt als Muster
+stehen).
+Feature/Run: F16 WS-2 (AK9), 11.09.2026.
+
+**F-312** · `TECH_DEBT` · P2 · offen
+Titel: `starteCodexGateway` prüft `werkzeugStartziel.slice(1)` nicht gegen
+`pruefeAufrufparameter` — bewusste Lücke gegenüber `starteGateway`.
+Beschreibung: `starteGateway` (F6a) führt seit F-119 eine zweite
+`pruefeAufrufparameter`-Prüfung über die Zusatzelemente des Startziels, weil
+diese unverändert in `execFile`s argv landen und weder den E-182-Guard noch
+den E-188-Gültigkeitsschlüssel passieren. `starteCodexGateway` hat diese
+Prüfung nicht: die AK7-Reihenfolge ist wörtlich
+`pruefeUndVerweigereCodexBeiTreffer` → `pruefeStartziel` →
+Wirkungsmarke → `starteProzess`. Real trägt das Codex-Startziel heute genau
+ein Element (`codex.exe`), die Lücke ist also derzeit nicht erreichbar.
+Fundstelle: `src/codex-gateway/index.ts` (Kopfkommentar von
+`starteCodexGateway`); `src/claude-code-gateway/index.ts`
+(`startzielArgvPruefung`).
+Auswirkung: Sobald ein Codex-Startziel mehr als ein Element trägt, gehen
+diese Elemente ungeprüft ins Argv.
+Empfohlene Maßnahme: Vor dem ersten mehrelementigen Codex-Startziel die
+Prüfung nachziehen — oder das Startziel für Codex auf genau ein Element
+festschreiben und das mechanisch prüfen.
+Status: offen.
+Feature/Run: F16 WS-2 (AK7), 11.09.2026.
+
+**F-313** · `TECH_DEBT` · P2 · offen
+Titel: Der Codex-Zweig des Result Evaluators prüft `--output-schema`-
+Ergebnisse nur auf JSON-Objektform, nicht gegen das Schema selbst.
+Beschreibung: `ergebnis_nicht_schemakonform` greift, wenn `tokens`
+`--output-schema` enthält und die letzte `agent_message` kein JSON-Objekt
+ist. Ein JSON-Objekt mit falschen oder fehlenden Feldern besteht diese
+Prüfung. Bewusst so gebaut: welches Schema für den Lauf galt, steht nicht in
+der Laufakte, und eine hier nachgebaute Schemaprüfung wäre eine unabhängig
+verfallende Kopie der Schemadatei. Der Name des Prüfgrundes verspricht
+allerdings mehr, als er hält.
+Fundstelle: `src/result-evaluator/index.ts` (`ermittleErgebnisCodex`,
+`istJsonObjekt`).
+Auswirkung: Ein strukturell gültiges, inhaltlich schemawidriges Ergebnis
+wird als ERFOLGREICH klassifiziert.
+Empfohlene Maßnahme: Mit F17 (Rollenvertrag) entscheiden, ob der
+Schemapfad in die Laufakte gehört; dann gegen die reale Schemadatei prüfen
+oder den Prüfgrund umbenennen.
+Status: offen.
+Feature/Run: F16 WS-2 (AK8), 11.09.2026.
+
+**F-314** · `TECH_DEBT` · P3 · offen
+Titel: `StarterOptionen.stdinLeer` ist opt-in, obwohl ein Prozessstart ohne
+stdin-Behandlung grundsätzlich hängen kann.
+Beschreibung: F-307 ist mit `stdinLeer` für Codex gelöst; der
+Claude-Code-Pfad bleibt bewusst unverändert (kein bestehender Test musste
+angepasst werden — das war das Abnahmekriterium der Änderung). Damit gilt
+die Absicherung aber nur für den einen Aufrufer, der sie ausdrücklich
+setzt. Ein künftiger dritter Worker erbt das Problem erneut.
+Fundstelle: `src/claude-code-gateway/types.ts` (`StarterOptionen`);
+`src/claude-code-gateway/prozessstart.ts` (`echterStarter`).
+Auswirkung: Ein neuer Aufrufer, der `stdinLeer` vergisst, läuft in dieselbe
+Falle wie Codex vor F-307.
+Empfohlene Maßnahme: Beim nächsten Worker entscheiden, ob `stdinLeer` zum
+Vorgabewert wird — das verlangt eine erneute reale Messung des
+Claude-Code-Pfads, deshalb jetzt nicht getan.
+Status: offen.
+Feature/Run: F16 WS-2 (F-307), 11.09.2026.
+
+**F-315** · `PROCESS_IMPROVEMENT` · P3 · gelöst
+Titel: Ein Grep-Gate über einen nackten Modulnamen bestraft die Begründung,
+warum dieser Modul NICHT benutzt wird.
+Beschreibung: Gate (a) in `scripts/check-f16-codex-gateway.mjs` prüfte auf
+`/node:child_process/` über die gesamte Datei. Sobald der Kopfkommentar von
+`src/codex-gateway/index.ts` festhielt, dass `node:child_process`
+ausdrücklich NICHT importiert wird, schlug das Gate auf genau dieser
+Begründung an — der bequemste Weg zu einem grünen Gate wäre gewesen, die
+Begründung zu löschen. Das Muster prüft jetzt den Import (`from`/`require`)
+und hat eine Grün-Gegenprobe gegen die bloße Kommentarerwähnung.
+Fundstelle: `scripts/check-f16-codex-gateway.mjs`, Abschnitt (a).
+Auswirkung: Gering für den Lauf, relevant als Muster: ein Gate, das
+Dokumentation statt Code prüft, erzeugt Druck, Dokumentation zu entfernen.
+Empfohlene Maßnahme: Grep-Gates gegen Codestrukturen richten (Import,
+Aufruf), nicht gegen Wörter; jedem neuen Grep-Gate eine Grün-Gegenprobe
+gegen eine unverdächtige Erwähnung beistellen.
+Status: gelöst (Muster verschärft und rot/grün kalibriert).
+Feature/Run: F16 WS-2, 11.09.2026.
+
+**F-316** · `TECH_DEBT` · P2 · offen
+Titel: Ein Startfehler eines Codex-Laufs verschwindet in der Klassifikation
+hinter dem generischen `beobachtungsbasis_unvollstaendig`.
+Beschreibung: Scheitert der Spawn (z. B. `ENOENT`), schreibt
+`starteCodexGateway` eine reguläre Laufakte mit
+`beobachtungsbasis_vollstaendig: false`; der Rohstrom trägt den konkreten
+`startfehler`, das Klassifikationsergebnis nennt ihn aber nicht. Der Fall
+ist jetzt getestet (`codex-gateway.test.ts`), der Informationsverlust in der
+Klassifikation bleibt. Derselbe Verlust besteht im Claude-Code-Zweig seit
+F6a — es ist keine neue Schwäche, aber eine bisher nirgends benannte.
+Fundstelle: `src/codex-gateway/index.ts` (Laufakte-Block);
+`src/result-evaluator/index.ts` (`ermittleErgebnis`,
+`beobachtungsbasis_unvollstaendig`).
+Auswirkung: „Prozess ließ sich nicht starten" und „Strom war abgeschnitten"
+sind im Ergebnis ununterscheidbar; die Unterscheidung steht nur im
+Rohstrom.
+Empfohlene Maßnahme: Mit dem nächsten Evaluator-Schnitt einen eigenen
+`startfehler`-Grund einführen — für beide Worker gemeinsam, nicht nur für
+Codex.
+Status: offen.
+Feature/Run: F16 WS-2 (AK7/AK8), 11.09.2026, QA-Pass.
+
+**F-317** · `TECH_DEBT` · P2 · offen
+Titel: Der Rohstrom-/Laufakte-/Lineage-Block ist in beiden Gateways fast
+wörtlich doppelt vorhanden.
+Beschreibung: `starteCodexGateway` wiederholt den Schluss von
+`starteGateway` (Rohstrom schreiben, Laufakte bauen,
+`registriereKernArtefakt`). Die Bauartentscheidung „zweites Gateway nach
+F6a-Muster statt generischem Worker-Contract" deckt die Doppelung dem Grunde
+nach; nicht gedeckt ist, dass das ROHSTROMFORMAT damit an zwei Stellen
+gepflegt werden muss — und die beiden Formen weichen bereits ab (`tokens`
+nur im Codex-Rohstrom). F-312 erfasst nur die Guard-Lücke, nicht diese
+Formatdivergenz.
+Fundstelle: `src/codex-gateway/index.ts` (Rohstrom-/Laufakte-Block);
+`src/claude-code-gateway/index.ts` (gleichnamiger Block).
+Auswirkung: Eine künftige Erweiterung des Rohstroms wird in einem der
+beiden Gateways vergessen; der Evaluator sieht dann je nach Worker ein
+anderes Artefakt.
+Empfohlene Maßnahme: Vor dem dritten Worker den gemeinsamen Schluss
+extrahieren (ein `schreibeLaufakteUndRohstrom`, das beide Gateways nutzen)
+— nicht jetzt, weil das F6as bereits abgenommenen Pfad anfasst.
+Status: offen.
+Feature/Run: F16 WS-2 (AK7), 11.09.2026, Reviewer-Pass.
+
+**F-318** · `TECH_DEBT` · P3 · offen
+Titel: Dass ein Codex-Lauf ohne `stdinLeer` hängen bliebe, ist NICHT
+gemessen — gemessen ist nur der Mechanismus.
+Beschreibung: F-307 belegt, dass Codex auf stdin zugreift (`Reading
+additional input from stdin...` auf stderr). Der einzige reale Codex-Lauf
+dazu (S-M3-01b Lauf (a)) endete jedoch mit Exit-Code 0, also regulär. Der
+Hang ist ausschließlich gegen ein synthetisches `node -e`-Skript gemessen,
+das stdin bis EOF liest. Die erste Fassung der Kommentare in
+`prozessstart.ts` und `codex-gateway/index.ts` behauptete den Codex-Hang
+als Tatsache; die Formulierung ist korrigiert. Die Maßnahme selbst bleibt
+richtig und kostenlos — nur ihre Begründung war stärker als der Beleg.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (Kopfkommentar zu
+F-307); `state/tp-m3-01b-codex-sandbox.md`, Lauf (a).
+Auswirkung: Gering für die Funktion, relevant für die Evidenzhygiene: eine
+als gemessen ausgegebene Schlussfolgerung hätte sich später als Annahme
+entpuppt.
+Empfohlene Maßnahme: Bei Gelegenheit einen Codex-Lauf OHNE `stdinLeer`
+gegen eine kurze Zeitgrenze fahren und das Ergebnis hier nachtragen —
+entweder ist der Hang real, oder das Feld ist reine Vorsorge. Beides ist
+eine brauchbare Antwort.
+Status: offen (Formulierung korrigiert, Messung offen).
+Feature/Run: F16 WS-2 (F-307), 11.09.2026, Reviewer-Pass.
+
+**F-319** · `PROCESS_IMPROVEMENT` · P2 · gelöst
+Titel: Ein Nachweis-Skript, das seine eigenen Schreibspuren in den
+Messbereich legt, misst sich selbst.
+Beschreibung: `verify-f16-codex-rotfall.mjs` rief in seiner ersten Fassung
+`starteCodexGateway`/`klassifiziereLauf` ohne eigene Basisverzeichnisse auf.
+Beide Standardpfade sind cwd-relativ, und das Skript wechselt per
+`process.chdir` in das gemessene Wegwerf-Repo — `kontrollzustand/` und
+`kontrollzustand-roh/` entstanden also mitten im Messbereich. Unbemerkt
+blieb das nur, weil der Zustandsvergleich flach war und Verzeichnisse
+ignorierte. Die naheliegende Härtung (Rekursion) hätte sofort ein falsches
+`ESCALATE` erzeugt und zur bequemen Gegenmaßnahme eingeladen: die eigenen
+Spuren wegfiltern.
+Fundstelle: `scripts/verify-f16-codex-rotfall.mjs`
+(`BASIS_KONTROLLZUSTAND`/`BASIS_ROHSTROM`, `zustand()`).
+Auswirkung: Der Zustandsvergleich belegte weniger, als AK9 zusichert
+(„byteweise gleich").
+Empfohlene Maßnahme: Als Muster festhalten — ein Nachweisskript legt seine
+Artefakte außerhalb des gemessenen Bereichs ab, statt sie aus der Messung
+herauszufiltern. Ein Filter auf eigene Schreibspuren ist ein Warnzeichen,
+kein Detail.
+Status: gelöst (beide Basisverzeichnisse liegen außerhalb, Vergleich ist
+rekursiv, Lauf 3 real grün).
+Feature/Run: F16 WS-2 (AK9), 11.09.2026, Reviewer-/QA-Pass.
