@@ -6,3 +6,6 @@
 /coverage/
 *.tsbuildinfo
 *.log
+.env
+.env.*
+programm/

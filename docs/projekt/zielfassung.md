@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.17 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.18 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -32,6 +32,8 @@ v1.14 → v1.15: **§13.3 E-M2-6 ergänzt** (Challenge F13, 07.09.2026): die ech
 v1.15 → v1.16: **§13.3 E-M2-7, E-M2-8 und E-M2-9 ergänzt** (Stefan, 08./09.09.2026): E-M2-7 (Abbruch und Timeout additiv als `FEHLGESCHLAGEN` mit eigenem `grund`, kein vierter Terminalwert; Grundlage für Feature F14) · E-M2-8 (ein Abbruch wirkt auf genau eine `laufId`, das Auftragsartefakt bleibt unberührt) · E-M2-9 (die Bestehensbedingung läuft ohne gesonderte vorgeschaltete Bedienphase mit dem Beginn der realen M3-Arbeit mit; einzige unveränderte Fortführungsbedingung bleibt der Stopp bei einem `P0`-Finding).
 
 v1.16 → v1.17: **§13.4 Meilenstein 3 ergänzt** (Stefan, 09.09.2026, Challenge im Claude-Projekt „AI Workforce"): E-M3-1 (Ausnahme vom Orchestrierungs-Grundsatz Stufe 1 und E-M2-2 innerhalb eines freigegebenen WORKFLOW_V0, D13 bleibt unverändert) · E-M3-2 (zweiter Worker Codex CLI, nur lesende Rollen, Spike S-M3-01 vor jedem Bau) · E-M3-3 (feste Besetzung Rolle→Worker→Modell, keine automatische Modellwahl in v1).
+
+v1.17 → v1.18: **§13.4 um E-M3-4 ergänzt und E-M3-3 präzisiert** (Stefan, 10./11.09.2026, F16-Vorplanung und Challenger-Gegenprüfung): E-M3-3 (Besetzung lebt je WORKFLOW_V0-Schritt, nicht in der Startvorlage — der ursprüngliche Wortlaut traf den seit F15 gebauten Stand nicht, F-288) · E-M3-4 (Lesebereich eines Codex-Laufs, Durchsetzungsgrad DEKLARIERT, F-276/F-287).
 
 ---
 
@@ -359,6 +361,27 @@ eine vom Menschen gepflegte, feste Besetzung `Rolle → Worker → Modell`
 in der Startvorlage (Muster E-185, kein stiller Fallback E-159).
 Automatische Modellwahl nach Fähigkeitskriterien bleibt
 Fassung-2-Kandidat.
+
+**E-M3-3** *(präzisiert, Stefan, 11.09.2026)* — Die feste Besetzung lebt als
+`worker` + `modell` je `WORKFLOW_V0`-Schritt, als gepinntes Plandatum des
+Schritts, nie aus der Startvorlage abgeleitet (`scripts/leitstand-server.mjs`,
+F15 WS-2b). Die Startvorlage trägt ausschließlich die worker-abhängigen
+Maschinenkonstanten (Startziel, deklarierte Version, Berechtigungskontext).
+Der ursprüngliche Wortlaut „in der Startvorlage“ traf den seit F15 gebauten
+Stand nicht (F-288).
+
+**E-M3-4** *(Stefan, 10.09.2026)* — Lesebereich eines Codex-Laufs: Ein
+lesender Codex-Lauf darf alles lesen, was der Benutzerkontext auf der Maschine
+lesen kann; der Kern zieht keine engere Grenze (`.claudeignore` und Context
+Builder wirken für Codex nicht, F-276). Auflage: keine personenbezogenen oder
+geheimen Dateien im Arbeitsbaum (`programm/` außerhalb des Repos, keine
+`.env*`). **Durchsetzungsgrad: `DEKLARIERT`** — solange S-M3-01b keinen
+Mechanismus belegt, der den Lesebereich real verengt, ist dies eine
+Zusicherung ohne kalibrierten Rot-Fall und wird nicht `ERZWUNGEN` genannt
+(`ARCHITECTURE.md` §8, F-287). Die native Windows-Sandbox von Codex läuft im
+Modus unelevated, konfiguriert außerhalb des Repos (`~/.codex/config.toml`),
+real vermessen in S-M3-01b (F-273, F-274, F-294). Neu zu stellen, sobald eine
+Lese-Verengung real nachgewiesen ist.
 
 **Bestehensbedingung:** ein zweistufiger Workflow (lesender Schritt auf
 Codex → schreibender Schritt auf Claude Code) läuft real über den

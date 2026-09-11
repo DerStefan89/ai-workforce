@@ -4222,3 +4222,429 @@ und der Halt wird isoliert sichtbar. Lohnt sich, wenn ohnehin ein weiterer
 realer Automatenlauf ansteht; nicht als eigener Zyklus.
 Status: offen.
 Feature/Run: F15 WS-4, 10.09.2026 (AK10-Nachweis, QA-Pass).
+
+**F-273** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Der Spike-Rot-Fall (Lauf 2) belegt nicht, dass ein Read-Only-Sandbox den
+Schreibversuch verweigert hat.
+Beschreibung: Lauf 1 (reiner Lesebefehl, `Get-ChildItem` und `rg --files`) und
+Lauf 2 (Schreibbefehl) tragen dieselbe Fehlerform — `CreateProcess { message:
+"Rejected(... powershell.exe ...) rejected: blocked by policy" }`. Die
+Ablehnung greift bei `CreateProcess`, also vor jeder Schreibprüfung: die
+execpolicy-Schicht lehnt das Programm `powershell.exe` ab (`codex exec --help`:
+„`--ignore-rules`: Do not load user or project execpolicy `.rules` files"). Eine
+Ablehnung, die Lesen und Schreiben gleich behandelt, belegt keinen
+Read-Only-Sandbox. E-M3-2s Voraussetzung ist damit formal, nicht substanziell
+erfüllt. Nicht belegt ist die frühere Annahme „keine Windows-Sandbox aktiv" —
+siehe F-294.
+Fundstelle: `state/tp-m3-01-codex.md` Lauf 1/2; `docs/projekt/zielfassung.md`
+E-M3-2; `ARCHITECTURE.md` §8.
+Auswirkung: Blocker für die Freigabe von F16 WS-2, kein Blocker für WS-1.
+Empfohlene Maßnahme: S-M3-01b misst den Schreib-Rot-Fall mit Kalibrierung (im
+selben Lauf muss ein Lesebefehl gelingen); Nachtrag in
+`state/tp-m3-01-codex.md` (Aufgabe 4).
+Status: offen.
+Feature/Run: F16-Vorplanung 10.09.2026, korrigiert Gegenprüfung 11.09.2026.
+
+**F-274** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Codex' Sandbox-Konfiguration liegt außerhalb des Repos, außerhalb jedes
+Gültigkeitsschlüssels und ist am Argv abwählbar.
+Beschreibung: `[windows] sandbox`, `sandbox_mode`, `approval_policy` stehen in
+`~/.codex/config.toml`; Drift dort ist für den Kern unsichtbar
+(`ermittleIstZustand` misst nur `.claude/settings.json`). `codex exec` 0.153.4
+kennt `--ignore-user-config`, `-c`/`--config` (generischer TOML-Override,
+Hilfe-Beispiel `-c 'sandbox_permissions=["disk-full-read-access"]'`),
+`-p`/`--profile`, `--enable`/`--disable` („Equivalent to
+`-c features.<name>=…`"). Jeder dieser Parameter hebt A1 auf.
+Fundstelle: `src/invocation-policy/index.ts` (`ermittleIstZustand`);
+`codex exec --help`, real gemessen 11.09.2026.
+Auswirkung: Ein lesender Codex-Lauf könnte still unter einer anderen Policy
+laufen, als die Startvorlage behauptet.
+Empfohlene Maßnahme: `--sandbox read-only` zusätzlich am Argv pinnen (dort
+protokolliert und pinnt E-182); die Argv-Allowlist lässt keinen der genannten
+Parameter durch. `--ask-for-approval` existiert an `codex exec` nicht (F-279).
+Status: offen.
+Feature/Run: F16-Vorplanung 10.09.2026, korrigiert 11.09.2026.
+
+**F-275** · `TECH_DEBT` · P2 · offen
+Titel: `VERWEIGERT` ist für Codex-Läufe in v1 nicht erzeugbar — Schreibversuche
+sind im Terminalausgang unsichtbar.
+Beschreibung: Codex meldet Sandbox-Verweigerungen nur als Tracing-Zeile des
+Routers und als Modell-Prosa (Spike Lauf 1/2, „kein eigenes strukturiertes
+Feld"). `ARCHITECTURE.md` §7 verbietet Klassifikation aus Konsolentext,
+Ausnahmespalte leer. Der Codex-Zweig des Evaluators kennt deshalb nur
+`FEHLGESCHLAGEN`/`ERFOLGREICH`.
+Fundstelle: `state/tp-m3-01-codex.md` Lauf 2; `ARCHITECTURE.md` §7;
+`src/result-evaluator/index.ts`.
+Auswirkung: Ein verhinderter Schreibversuch hält die Kette nicht an; er ist nur
+im Rohstrom auditierbar. Die Sicherheitszusage (Sandbox + Allowlist +
+Rot-Fall-Nachweis) ist nicht betroffen.
+Empfohlene Maßnahme: S-M3-01b Messpunkt (f) prüft, ob Codex verweigerte
+Befehle als strukturiertes `item` ausgibt; falls ja, Evaluator-Zeile
+`VERWEIGERT` mit `sandbox_verweigerungen_anzahl`; sonst offen halten und im
+Leitstand-Laufdetail die `stderr`-Zeilenzahl des Rohstroms anzeigen (Anzeige,
+keine Klassifikation). Gemeinsam mit F-283 entscheiden.
+Status: offen.
+Feature/Run: F16-Vorplanung, 10.09.2026.
+
+**F-276** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Egress-Grenze für Codex ist nicht durch den Kern ziehbar.
+Beschreibung: Codex liest im `read-only`-Modus überall; `.claudeignore` gilt nur
+für Claude Code. Im Arbeitsbaum liegen gitignorierte, personenbezogene bzw.
+geheime Pfade (`programm/`, `.env*`, `.claude/settings.local.json`,
+`state/zwischenstand/`). Ein Verengungsmechanismus existiert —
+`codex sandbox --sandbox-state-readable-root` („Add a readable root to the
+supplied sandbox state") —, steht aber nur am Unterbefehl `sandbox`, nicht an
+`codex exec`. Konkretisiert F-185, hängt mit F-287 zusammen.
+Fundstelle: `.gitignore` (Kommentar zu `programm/`), `.claudeignore`;
+`codex sandbox --help`, real gemessen 11.09.2026.
+Auswirkung: Datenabfluss an OpenAI bei jedem lesenden Codex-Lauf möglich, nicht
+rückholbar.
+Empfohlene Maßnahme: E-M3-4 (Aufgabe 3); `programm/` vor dem ersten realen
+Codex-Lauf aus dem Arbeitsbaum; S-M3-01b Messpunkt (i).
+Status: offen.
+Feature/Run: F16-Vorplanung, 10.09.2026.
+
+**F-277** · `TECH_DEBT` · P3 · offen
+Titel: `WORKFLOW_V0.output_schema` wird validiert, aber von keinem Pfad gelesen.
+Beschreibung: Einzige Treffer sind `validiereWorkflowDaten`
+(`src/workflow/index.ts:246`) und die Typdefinition; kein Dispatch-Pfad wertet
+das Feld aus. Sobald F16 es für Codex ehrt, ist ein gesetztes Schema bei
+`worker: claude-code` ein uneingelöstes Versprechen.
+Fundstelle: `src/workflow/index.ts:246`; `scripts/leitstand-server.mjs` (kein
+Lesezugriff).
+Auswirkung: Gering heute, irreführend ab F16.
+Empfohlene Maßnahme: F16 WS-3 lehnt `output_schema ≠ null` bei `claude-code` im
+Dispatcher ab (`ermittleNaechstenSchritt` → `haltKlaerung`), nicht in
+`validiereWorkflowDaten` — siehe F-285.
+Status: offen.
+Feature/Run: F16-Vorplanung 10.09.2026, korrigiert 11.09.2026.
+
+**F-278** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Roadmap-Zeilen zu F16 („`modell_beobachtet` aus JSONL", „`-m` verfügbar")
+beruhten auf Doku-Lesung, nicht auf dem Spike.
+Beschreibung: Die M3-Roadmap wurde vor dem Spike geschrieben; drei Annahmen
+(Modellidentität im JSONL, Default-Sandbox reicht für Lesen, Rot-Fall erbracht)
+sind durch `state/tp-m3-01-codex.md` widerlegt oder relativiert.
+Fundstelle: `docs/projekt/zielfassung.md` §13.4 Umfeld;
+`state/tp-m3-01-codex.md`.
+Auswirkung: Ohne Vorplanung wäre der Bauauftrag mit falschen Vorgaben
+gestartet.
+Empfohlene Maßnahme: Regel für M3: Roadmap-Zeilen zu einem Feature erst nach
+dem zugehörigen Spike in einen Bauauftrag übernehmen; Feature-Akte F16 zitiert
+den Spike.
+Status: offen.
+Feature/Run: F16-Vorplanung, 10.09.2026.
+
+**F-279** · `TECH_DEBT` · P3 · offen
+Titel: `codex exec` kennt kein `--ask-for-approval`; `--approve-for-me`
+impliziert `workspace-write`.
+Beschreibung: `-a`/`--ask-for-approval` existiert nur am Top-Level-`codex`,
+nicht an `exec`. `exec` bietet stattdessen `--approve-for-me`, laut Hilfe
+„Route approval requests through automatic review using the workspace-write
+sandbox" — für lesende Rollen verboten. `-m`/`--model` existiert und ist
+bestätigt.
+Fundstelle: `codex exec --help`, `codex --help`, `codex-cli` 0.153.4, real
+gemessen 11.09.2026.
+Auswirkung: Messpunkte (c)/(d) aus S-M3-01b vorab beantwortet.
+Empfohlene Maßnahme: `--approve-for-me` in die Rot-Kalibrierung der Allowlist
+aufnehmen.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-280** · `TECH_DEBT` · P1 · offen
+Titel: Alle npm-Shims von Codex scheitern an `pruefeStartziel` — nur der native
+Vendor-Pfad ist startbar.
+Beschreibung: `%APPDATA%\npm` enthält `codex`, `codex.cmd`, `codex.ps1`. `.cmd`
+und `.ps1` stehen in `ENDUNGS_SPERRLISTE`; `codex` ohne Endung ist ein
+POSIX-sh-Skript und unter Windows nicht per `execFile` startbar. Startbar ist
+nur `…\npm\node_modules\@openai\codex\node_modules\@openai\codex-win32-x64\
+vendor\x86_64-pc-windows-msvc\bin\codex.exe` — absolut, erlaubte Endung, kein
+Shell-Basisname, existiert. Der Pfad enthält Paketname, Plattform-Triple und
+Vendor-Layout und ist damit versions- und maschinenabhängig.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts:60–61`; `@openai/codex`
+`bin/codex.js`; real geprüft 11.09.2026.
+Auswirkung: Ohne diesen Befund wäre WS-2 am ersten Prozessstart gescheitert.
+Empfohlene Maßnahme: Pfad als `worker.codex.startziel` in `startvorlagen/`
+pinnen; Gate lehnt `.cmd`/`.bat`/`.ps1`-Startziele ab.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-281** · `TECH_DEBT` · P1 · offen
+Titel: Eine Verbotsliste ist für Codex strukturell untauglich — es braucht eine
+Argv-Allowlist.
+Beschreibung: Die entworfene Liste übersah mindestens elf real existierende
+abwählende Parameter von `codex exec` 0.153.4
+(`--dangerously-bypass-approvals-and-sandbox`,
+`--dangerously-bypass-hook-trust`, `--ignore-user-config`, `--ignore-rules`,
+`--enable`, `--disable`, `-p`/`--profile`, `--add-dir`, `-C`/`--cd`, `--oss`,
+`--local-provider`, `--approve-for-me`). Entscheidend: `-c <key=value>` ist ein
+generischer TOML-Override über einen offenen Schlüsselraum — eine Verbotsliste
+dagegen ist nicht schließbar. `ARCHITECTURE.md` §7 („Aufrufparameter, die eine
+Schutzschicht abwählen — Ausnahme: keine") verlangt eine Allowlist: nur
+explizit aufgezählte Tokens passieren, alles Unbekannte lehnt ab.
+Fundstelle: `codex exec --help`, real gemessen 11.09.2026; `ARCHITECTURE.md`
+§7.
+Auswirkung: Eine Verbotsliste erzeugt eine Schutzbehauptung, die bei der
+nächsten Codex-Version still bricht.
+Empfohlene Maßnahme: Allowlist in WS-1 AK2.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-282** · `TECH_DEBT` · P2 · offen
+Titel: `pruefeAufrufparameter` kann keine Präfixe — Präfix-Verbote wären eine
+Bauart-Änderung am schreibenden Pfad.
+Beschreibung: Die Funktion prüft `parameter.includes(wert)` auf exakte Token
+plus ein Token-Fenster für Einträge mit Leerzeichen. Ein Token wie
+`-c sandbox_mode="danger-full-access"` ist EIN Token mit `=` und matcht nie.
+Präfixfähigkeit nachzurüsten änderte die von Claude Code mitbenutzte
+E-182-Funktion.
+Fundstelle: `src/invocation-policy/verbotene-aufrufparameter.ts`.
+Auswirkung: Regressionsrisiko am schreibenden Pfad für einen Bedarf, den nur
+Codex hat.
+Empfohlene Maßnahme: Codex-Allowlist als eigene Funktion in
+`src/codex-gateway/`; `pruefeAufrufparameter` unverändert.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-283** · `TECH_DEBT` · P1 · offen
+Titel: Der Result Evaluator ist durchgehend Claude-Code-spezifisch — ohne
+Worker-Schalter vor `leseErgebnisobjekt` würde jeder Codex-Lauf
+`FEHLGESCHLAGEN`.
+Beschreibung: `ermittleErgebnis` ruft `leseErgebnisobjekt`, das `JSON.parse`
+über das GESAMTE `stdout` macht und `obj.type === 'result'` verlangt. Codex
+`--json` liefert JSONL (mehrere Zeilen) — `JSON.parse` scheitert, Rückgabe
+`null`, Ergebnis `FEHLGESCHLAGEN`/`kein_ergebnisobjekt`. Der
+`VERWEIGERT`-Zweig hängt zusätzlich an `ergebnisobjekt.permission_denials`,
+einem Claude-Code-Feld. Betroffen sind also alle Ausgänge, nicht nur
+`VERWEIGERT` (F-275).
+Fundstelle: `src/result-evaluator/index.ts:135`;
+`src/claude-code-gateway/index.ts:162–172`.
+Auswirkung: Ohne Codex-Zweig zeigt WS-3 keinen grünen Schritt.
+Empfohlene Maßnahme: WS-2 AK8 — Worker-Schalter VOR `leseErgebnisobjekt`.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-284** · `TECH_DEBT` · P2 · offen
+Titel: E-193 verlangt das Gate im Gateway — eine Codex-Allowlist im Dispatcher
+wäre genau das verworfene Aufrufer-Gate.
+Beschreibung: E-193: „Ein Gate im Aufrufer ist umgehbar, sobald irgendein
+anderer Codepfad `starteGateway` direkt aufruft; ein Gate im Gateway ist es
+nicht." `starteGateway` ist eine Kette ohne Modusschalter —
+`pruefeStartfreigabe` läuft immer. Codex braucht ein eigenes Gateway, das
+Allowlist, `verweigereStart`, `run_prepared`-Wirkungsmarke, Rohstrom und
+Laufakte selbst durchsetzt.
+Fundstelle: `docs/projekt/zielfassung.md:239` (E-193);
+`src/claude-code-gateway/index.ts:245–302`.
+Auswirkung: Ohne diese Auflage verlöre der Codex-Pfad die Auditierbarkeit des
+Claude-Pfades.
+Empfohlene Maßnahme: WS-2 AK7.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-285** · `TECH_DEBT` · P2 · offen
+Titel: Eine `output_schema`-Ablehnung in `validiereWorkflowDaten` bräche das
+F15-Gate.
+Beschreibung: `schemas/examples/kontrollzustand-workflow.valid.json` trägt in
+`schritt-2-ausfuehrung` `"worker": "claude-code"` mit `"output_schema":
+"kontrollzustand-laufakte"`; `scripts/check-f15-workflow.mjs` führt diese Datei
+mit `sollGueltigSein: true`. Eine Validierungsregel „`claude-code` +
+`output_schema` → ungültig" machte `npm run check` rot und den Bestand ungültig
+(`ARCHITECTURE.md` §7, append-only).
+Fundstelle: `schemas/examples/kontrollzustand-workflow.valid.json:33–36`;
+`scripts/check-f15-workflow.mjs:91`.
+Auswirkung: Falscher Ort für eine richtige Regel.
+Empfohlene Maßnahme: Regel als sechste Zeile in `ermittleNaechstenSchritt`
+(Allowlist-Bauart, → `haltKlaerung`); Bestandsdaten bleiben gültig.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-286** · `TECH_DEBT` · P2 · offen
+Titel: `loeseAusfuehrungsEingabenAuf` zieht Startziel, Version und
+Berechtigungskontext pauschal aus der Startvorlage.
+Beschreibung: Die Funktion setzt `werkzeugStartziel`,
+`werkzeugVersionDeklariert` und `berechtigungskontext` unbedingt aus
+`vorlage.*`; nur `modell` kommt bereits aus dem Schritt. Für einen
+`codex`-Schritt müssen alle drei nach `schritt.worker` gewählt werden.
+`werkzeugsaetze.erlaubte_werkzeuge` ist ein `--allowedTools`-Begriff ohne
+Codex-Entsprechung — der `worker.codex`-Block braucht eine eigene Form.
+Fundstelle: `scripts/leitstand-server.mjs:1351–1390`;
+`src/startvorlage/types.ts`.
+Auswirkung: WS-3-Umfang, jetzt als AK11 benannt.
+Empfohlene Maßnahme: WS-3 AK11.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-287** · `TECH_DEBT` · P1 · offen
+Titel: Die B1-Auflage hat keinen Durchsetzungsmechanismus.
+Beschreibung: `.claudeignore` enthält weder `.env*` noch `programm/` — obwohl
+`docs/projekt/zielfassung.md:257` `.env`/`.env.local` in `.claudeignore` als
+Projektkonfiguration führt. `.claudeignore` ist ohnehin ein
+Claude-Code-Mechanismus, den Codex nicht liest. Der einzige gefundene
+Verengungsmechanismus (`--sandbox-state-readable-root`) steht nur an
+`codex sandbox`, nicht an `codex exec`.
+Fundstelle: `.claudeignore`; `docs/projekt/zielfassung.md:257`;
+`codex exec --help` vs. `codex sandbox --help`.
+Auswirkung: E-M3-4 schriebe eine Grenze fest, die niemand durchsetzt —
+`ARCHITECTURE.md` §8 („Ohne kalibrierten Rot- und Grün-Fall wird sie nicht
+`ERZWUNGEN` genannt").
+Empfohlene Maßnahme: E-M3-4 trägt Durchsetzungsgrad `DEKLARIERT`; S-M3-01b
+Messpunkt (i); Stefan entscheidet nach der Messung, ob `ERZWUNGEN` erreichbar
+ist. Zusätzlich `.env*` in `.claudeignore` nachtragen (Zielfassung Z. 257
+verlangt es ohnehin).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-288** · `TECH_DEBT` · P3 · offen
+Titel: E-M3-3s Wortlaut „in der Startvorlage" widerspricht dem seit F15
+gebauten Stand.
+Beschreibung: `scripts/leitstand-server.mjs:1400` kommentiert
+„`schritt.modell` -> `aufrufEingaben.modell` (E-185/E-M3-3: das gepinnte
+Plandatum des Schritts, nie `vorlage.modell`)". Die Besetzung lebt am Schritt,
+mit ausdrücklicher E-M3-3-Berufung. Nicht F16 weicht ab — `main` weicht bereits
+ab.
+Fundstelle: `docs/projekt/zielfassung.md:357`;
+`scripts/leitstand-server.mjs:1400`; `src/workflow/types.ts`.
+Auswirkung: Doku-Drift; ein späterer Leser hielte die gebaute Lösung für einen
+Regelbruch.
+Empfohlene Maßnahme: E-M3-3-Präzisierung (Aufgabe 3, von Stefan bestätigt).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-289** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Die Spike-Verweigerung stammt aus der execpolicy-Schicht
+(`CreateProcess`), nicht aus dem Read-Only-Sandbox.
+Beschreibung: Lauf 1 (reiner Lesebefehl) wurde mit exakt derselben Fehlerform
+abgelehnt wie der Schreibbefehl in Lauf 2; die Ablehnung erfolgt beim
+Programmstart von `powershell.exe`, vor jeder Schreibprüfung.
+`codex exec --help` nennt mit `--ignore-rules` genau diese Schicht („Do not
+load user or project execpolicy `.rules` files").
+Fundstelle: `state/tp-m3-01-codex.md` Lauf 1/2; `codex exec --help`.
+Auswirkung: Ursachenbefund zu F-273; jeder künftige Rot-Fall braucht einen
+gelingenden Lesebefehl als Kalibrierung.
+Empfohlene Maßnahme: Kalibrierungspflicht in AK9 und in S-M3-01b (b).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-290** · `TECH_DEBT` · P2 · offen
+Titel: A1s `config.toml` ist nicht hash-pinnbar (E-188) und am Argv abwählbar.
+Beschreibung: `~/.codex/config.toml` liegt außerhalb des Repos und außerhalb
+des E-188-Gültigkeitsschlüssels; `--ignore-user-config`, `-c`/`--config`,
+`-p`/`--profile`, `--enable`/`--disable` heben sie am Argv vorbei auf.
+Fundstelle: `codex exec --help`; `src/invocation-policy/types.ts`
+(`Gueltigkeitsschluessel`).
+Auswirkung: Die Zusicherung „read-only" hinge sonst an einer Datei, die der
+Kern weder sieht noch schützt.
+Empfohlene Maßnahme: `--sandbox read-only` zusätzlich am Argv (dort
+protokolliert und pinnt E-182); Allowlist lässt keinen Abwahlparameter durch.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-291** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Gegenprüfung lief gegen ein veraltetes lokales `origin/main`.
+Beschreibung: Der lokale Arbeitsbaum kannte nur `94c57fe` (PR #124); der reale
+Kopf von `main` auf GitHub ist `20d7d80` (PR #125, „docs(findings): F-182
+gelöst …"), gegen den die Planungssitzung gelesen hat. Ursache: kein
+`git fetch` seit PR #124 — kein Planungsfehler.
+Fundstelle: `git log origin/main` lokal vs. GitHub.
+Auswirkung: Zeilenangaben können um wenige Zeilen abweichen; keine inhaltliche
+Abweichung festgestellt.
+Empfohlene Maßnahme: Vor jeder Gegenprüfung und jedem Bau `git fetch` (Stefan,
+Terminal).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-292** · `TECH_DEBT` · P2 · offen
+Titel: Die Windows-Sandbox bringt einen eigenen Setup-Pfad mit.
+Beschreibung: Das Paket enthält
+`codex-resources/codex-windows-sandbox-setup.exe`; `codex sandbox` beschreibt
+sich als „Windows restricted token sandbox". Ein Setup-Schritt über
+`config.toml` hinaus ist möglich.
+Fundstelle: `@openai/codex-win32-x64/vendor/…/codex-resources/`.
+Auswirkung: Ohne Klärung misst S-M3-01b erneut nur die execpolicy-Schicht.
+Empfohlene Maßnahme: S-M3-01b Messpunkte (h)/(k).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-293** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: „`codex sandbox windows`" ist kein Prüfbefehl — der geplante
+Vorab-Schritt für Stefan war wirkungslos.
+Beschreibung: `codex sandbox` nimmt `[COMMAND]...` als freie Argumente;
+„windows" wurde als auszuführendes Kommando interpretiert und real gestartet:
+„windows sandbox failed: `CreateProcessAsUserW` failed: 2 … cmd=windows
+--help". Es gibt keinen Unterbefehl „windows". Der Schritt stammte aus einer
+[Annahme] der Planungssitzung, die nicht real geprüft war.
+Fundstelle: `codex sandbox --help`; real gemessen 11.09.2026.
+Auswirkung: Der Vorab-Schritt richtet nichts ein und belegt nichts.
+Empfohlene Maßnahme: Schritt ersatzlos gestrichen; Vorbedingungen in S-M3-01b
+neu gefasst. Regel: Befehle für Stefans Terminal nur aus real geprüfter Hilfe,
+nie aus Doku-Lesung.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-294** · `TECH_DEBT` · P2 · offen
+Titel: Der Windows-Restricted-Token-Sandbox greift ohne `~/.codex/config.toml`.
+Beschreibung: Ein `codex sandbox`-Aufruf versuchte `CreateProcessAsUserW`,
+obwohl `~/.codex/config.toml` nicht existiert; `~/.codex/.sandbox_migration`
+datiert vom Spike-Tag (09.09.), `~/.codex/cap_sid` und `~/.codex/.sandbox`
+existieren. Belegt für `codex sandbox`, ungemessen für `codex exec`.
+Fundstelle: `~/.codex/`-Verzeichnislisting; Ausgabe von `codex sandbox`,
+11.09.2026.
+Auswirkung: A1s `config.toml`-Schritt könnte redundant oder wirkungslos sein.
+Empfohlene Maßnahme: S-M3-01b Messpunkt (h) misst mit und ohne `config.toml`.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-295** · `TECH_DEBT` · P3 · offen
+Titel: Zwei Einträge der entworfenen Codex-Verbotsliste existieren in
+`codex exec` 0.153.4 nicht.
+Beschreibung: `--full-auto` und `--yolo` kommen weder in `codex exec --help`
+noch in `codex --help` vor. Eine Rot-Kalibrierung darauf misst nichts und
+erzeugt einen falschen Eindruck von Abdeckung.
+Fundstelle: `codex exec --help`, `codex --help`, 11.09.2026.
+Auswirkung: keine (Liste ersetzt).
+Empfohlene Maßnahme: entfällt mit der Allowlist (F-281).
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-296** · `TECH_DEBT` · P2 · offen
+Titel: Ob die ERROR-Tracing-Zeilen in `stdout` oder `stderr` stehen, ist im
+Spike widersprüchlich protokolliert.
+Beschreibung: Das Protokoll zitiert die Zeilen im Block „Vollständige `stdout`
+(JSONL, `lauf1-stdout.jsonl`)" und sagt an anderer Stelle, die Verweigerung
+„erscheint als Stderr-Zeile des Routers". Beides kann nicht stimmen.
+Fundstelle: `state/tp-m3-01-codex.md`, Lauf 1 und Lauf 2.
+Auswirkung: AK3-Fixtures könnten ein Verhalten festschreiben, das es nicht
+gibt.
+Empfohlene Maßnahme: S-M3-01b Messpunkt (l) leitet `stdout` und `stderr`
+getrennt um; bis dahin führt AK3 die Zeilen als eigenen Fixture-Fall.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-297** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Falsche Belegstelle für das Shell-String-Grep-Muster im Auftragsentwurf.
+Beschreibung: Zitiert war `scripts/check-f4-invocation-policy.mjs:259` — dort
+steht ein Bedingung-2-Drift-Fall. Das wortgrenzensichere Muster samt Selbsttest
+steht in `scripts/check-f6a-claude-code-gateway.mjs:150–177` (AK14, F-057).
+Fundstelle: beide Dateien.
+Auswirkung: keine (vor Ausgabe korrigiert).
+Empfohlene Maßnahme: Verweis in Auftrag 2 korrigiert.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
+
+**F-298** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Eine nur lesend gedachte Gegenprüfung hat einen zustandsändernden Befehl
+auf der Maschine ausgeführt.
+Beschreibung: Der Aufruf „`codex sandbox windows`" (zur Prüfung des
+Vorab-Schritts) hat `~/.codex/cap_sid` und `~/.codex/.sandbox` angelegt bzw.
+aktualisiert. Außerhalb des Repos, offengelegt, kein Schaden — aber die
+Bridge-Regel kennt nur Git-Befehle; für Werkzeugaufrufe mit Seiteneffekt
+außerhalb des Repos gibt es keine Regel.
+Fundstelle: `~/.codex/` (Zeitstempel 11.09.2026 07:36); Bridge- und
+Git-Sicherheitsregel (Projektinstruktion).
+Auswirkung: gering.
+Empfohlene Maßnahme: Regel ergänzen: Aus Prüfsitzungen nur `--help`/
+`--version` fremder Werkzeuge; jeder Aufruf, der Prozesse startet oder Dateien
+außerhalb des Repos schreibt, ist Stefans Terminal-Schritt oder Teil eines
+Messauftrags.
+Status: offen.
+Feature/Run: F16-Gegenprüfung, 11.09.2026.
