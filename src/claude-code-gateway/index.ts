@@ -367,6 +367,10 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     'beobachtungsbasis_vollstaendig',
     'rohstrom_referenz',
     'erstellt_am',
+    // F16 WS-1 (AK4): additiv erlaubt, bewusst nicht Pflicht — siehe
+    // Typkommentar in types.ts und die Schema-description.
+    'worker',
+    'modell_deklariert',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -406,6 +410,16 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
   }
   if (typeof obj.erstellt_am !== 'string' || obj.erstellt_am.length === 0) {
     verstoesse.push("'erstellt_am' muss ein nicht-leerer String sein")
+  }
+  // F16 WS-1 (AK4): beide Felder sind erlaubt, aber nicht Pflicht — geprüft
+  // wird deshalb nur der Typ, und nur wenn das Feld überhaupt da ist. Eine
+  // vor F16 geschriebene Laufakte bleibt dadurch unverändert gültig
+  // (append-only, Muster freigabe_erteilt/F-207 und zeitgrenzeMs/F-177).
+  if ('worker' in obj && obj.worker !== 'claude-code' && obj.worker !== 'codex') {
+    verstoesse.push("'worker' muss, wenn angegeben, 'claude-code' oder 'codex' sein")
+  }
+  if ('modell_deklariert' in obj && (typeof obj.modell_deklariert !== 'string' || obj.modell_deklariert.length === 0)) {
+    verstoesse.push("'modell_deklariert' muss, wenn angegeben, ein nicht-leerer String sein")
   }
   return verstoesse
 }

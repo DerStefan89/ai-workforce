@@ -42,6 +42,15 @@
         "inhalts_hash": { "type": "string", "minLength": 64 }
       }
     },
-    "erstellt_am": { "type": "string", "minLength": 1 }
+    "erstellt_am": { "type": "string", "minLength": 1 },
+    "worker": {
+      "enum": ["claude-code", "codex"],
+      "description": "F16 WS-1 (AK4). Welcher Worker den Lauf ausgeführt hat. Bewusst in properties und NICHT in required: die Feldliste ist über additionalProperties:false geschlossen, aber jede vor F16 geschriebene Laufakte ist append-only und trägt das Feld nicht — sie bliebe bei einer Pflichtangabe rückwirkend ungültig (dasselbe Muster wie freigabe_erteilt/F-207 und zeitgrenzeMs/F-177). Ein FEHLENDES worker bedeutet deshalb 'claude-code'; das ist kein Default im Schema, sondern die Lesart jedes Verbrauchers (laufakte.worker ?? 'claude-code')."
+    },
+    "modell_deklariert": {
+      "type": "string",
+      "minLength": 1,
+      "description": "F16 WS-1 (AK4). Der dem Werkzeug im Argv übergebene Modellname, Rang DEKLARIERT (E-185) — nicht zu verwechseln mit modell_beobachtet (Rang OBSERVED, oben). Für einen Codex-Lauf bleibt modell_beobachtet null, weil der JSONL-Strom keine Modellkennung trägt (state/tp-m3-01-codex.md, Abschnitt 'Modellidentität': kein Feld gefunden) — erst dieses Feld macht den Lauf einem Modell zuordenbar. Optional aus demselben Append-only-Grund wie worker."
+    }
   }
 }

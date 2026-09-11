@@ -88,3 +88,64 @@ test('validiereStartvorlageDaten: zeitgrenzeMs <= 0 oder nicht-ganzzahlig ist ei
   assert.ok(nichtGanzzahlig.some((v) => v.includes('zeitgrenzeMs')))
   assert.ok(keineZahl.some((v) => v.includes('zeitgrenzeMs')))
 })
+
+// ─── F16 WS-1 (AK5): optionaler worker.codex-Block ──────────────────────────
+
+const CODEX_BLOCK = {
+  startziel: [String.raw`C:\Program Files\codex\codex.exe`],
+  versionDeklariert: 'codex-cli 0.153.4',
+  sandbox: 'read-only',
+}
+
+test('validiereStartvorlageDaten: Vorlage OHNE worker-Block bleibt gültig (F16 AK5, additiv)', () => {
+  assert.deepStrictEqual(validiereStartvorlageDaten(GUELTIGE_VORLAGE), [])
+})
+
+test('validiereStartvorlageDaten: Vorlage MIT gültigem worker.codex-Block ist gültig (F16 AK5)', () => {
+  const mitCodex = { ...GUELTIGE_VORLAGE, worker: { codex: CODEX_BLOCK } }
+  assert.deepStrictEqual(validiereStartvorlageDaten(mitCodex), [])
+})
+
+test("validiereStartvorlageDaten: worker.codex.sandbox 'workspace-write' ist ein Verstoß (E-M3-2)", () => {
+  const verstoesse = validiereStartvorlageDaten({
+    ...GUELTIGE_VORLAGE,
+    worker: { codex: { ...CODEX_BLOCK, sandbox: 'workspace-write' } },
+  })
+  assert.ok(verstoesse.some((v) => v.includes('worker.codex.sandbox')))
+})
+
+test('validiereStartvorlageDaten: leeres worker.codex.startziel ist ein Verstoß (F16 AK5)', () => {
+  const verstoesse = validiereStartvorlageDaten({
+    ...GUELTIGE_VORLAGE,
+    worker: { codex: { ...CODEX_BLOCK, startziel: [] } },
+  })
+  assert.ok(verstoesse.some((v) => v.includes('worker.codex.startziel')))
+})
+
+test('validiereStartvorlageDaten: worker.codex.startziel[0] mit .cmd-Endung ist ein Verstoß (F-280)', () => {
+  const verstoesse = validiereStartvorlageDaten({
+    ...GUELTIGE_VORLAGE,
+    worker: { codex: { ...CODEX_BLOCK, startziel: [String.raw`C:\Program Files\codex\codex.cmd`] } },
+  })
+  assert.ok(verstoesse.some((v) => v.includes('F-280')))
+})
+
+test('validiereStartvorlageDaten: unbekanntes Feld im worker.codex-Block ist ein Verstoß', () => {
+  const verstoesse = validiereStartvorlageDaten({
+    ...GUELTIGE_VORLAGE,
+    worker: { codex: { ...CODEX_BLOCK, zusatz: 'x' } },
+  })
+  assert.ok(verstoesse.some((v) => v.includes('worker.codex.zusatz')))
+})
+
+test('validiereStartvorlageDaten: startvorlage_schema bleibt auch mit worker-Block v0 (Präzedenz zeitgrenzeMs, F14 WS-4)', () => {
+  const mitCodex = { ...GUELTIGE_VORLAGE, worker: { codex: CODEX_BLOCK } }
+  assert.strictEqual(mitCodex.startvorlage_schema, 'v0')
+  assert.deepStrictEqual(validiereStartvorlageDaten(mitCodex), [])
+})
+
+test('ladeStartvorlage: startvorlagen/ai-workforce.json bleibt ohne worker-Block gültig (F16 AK5)', () => {
+  const vorlage = ladeStartvorlage('startvorlagen/ai-workforce.json')
+  assert.strictEqual(vorlage.startvorlage_schema, 'v0')
+  assert.strictEqual(vorlage.worker, undefined)
+})

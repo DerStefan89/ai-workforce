@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-code-reviewer.schema.json",
+  "title": "Rollen-Ergebnis: code-reviewer",
+  "description": "F16 WS-1 (AK6). Erstes Rollen-Ergebnisschema für --output-schema. Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-code-reviewer\" — der Name wird zu schemas/<name>.schema.json aufgelöst (kein Pfadtrennzeichen erlaubt, AK10), nie als freier Pfad übergeben. additionalProperties:false auf JEDER Objektebene ist hier keine Stilfrage, sondern Pflicht der Modell-API im Strict-Modus: fehlt das Feld, antwortet sie mit HTTP 400 invalid_json_schema ('additionalProperties' is required to be supplied and to be false) und es kommt gar kein Ergebnis zustande — real gemessen im Spike, state/tp-m3-01-codex.md, Lauf 3. Dies ist ausdrücklich KEIN Rollenvertrag (F-184): das Schema beschreibt allein die Form der Antwort, nicht die Pflichten, Befugnisse oder Abnahmekriterien der Rolle; der Rollenvertrag kommt mit F17.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["urteil", "befunde", "empfehlung"],
+  "properties": {
+    "urteil": {
+      "enum": ["BEREIT", "BEREIT_NACH_KORREKTUR", "BLOCKIERT"],
+      "description": "Gesamturteil des Prüfdurchgangs. Geschlossene Wertemenge — ein Freitext-Urteil wäre maschinell nicht auswertbar."
+    },
+    "befunde": {
+      "type": "array",
+      "description": "Einzelbefunde. Leeres Array ist zulässig und bedeutet: kein Befund (nicht: nicht geprüft).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schwere", "fundstelle", "zusammenfassung", "beleg"],
+        "properties": {
+          "schwere": { "enum": ["NIEDRIG", "MITTEL", "HOCH"] },
+          "fundstelle": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Datei und, wenn bestimmbar, Zeile — damit ein Befund nachprüfbar bleibt statt nur behauptet."
+          },
+          "zusammenfassung": { "type": "string", "minLength": 1 },
+          "beleg": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Der konkrete Beleg (zitierte Stelle, beobachtetes Verhalten) — ein Befund ohne Beleg ist eine Meinung."
+          }
+        }
+      }
+    },
+    "empfehlung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Die empfohlene nächste Handlung. Nicht bindend: die Entscheidung trifft der Mensch."
+    }
+  }
+}
