@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.19 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.20 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -36,6 +36,8 @@ v1.16 → v1.17: **§13.4 Meilenstein 3 ergänzt** (Stefan, 09.09.2026, Challeng
 v1.17 → v1.18: **§13.4 um E-M3-4 ergänzt und E-M3-3 präzisiert** (Stefan, 10./11.09.2026, F16-Vorplanung und Challenger-Gegenprüfung): E-M3-3 (Besetzung lebt je WORKFLOW_V0-Schritt, nicht in der Startvorlage — der ursprüngliche Wortlaut traf den seit F15 gebauten Stand nicht, F-288) · E-M3-4 (Lesebereich eines Codex-Laufs, Durchsetzungsgrad DEKLARIERT, F-276/F-287).
 
 v1.18 → v1.19: **Feature F16 abgeschlossen; erster Satz der §13.4-Bestehensbedingung real erfüllt** (Stefan, 11.09.2026, F16 WS-3b AK12): ein zweistufiger Workflow (Codex `code-reviewer`, lesend → Claude Code `ausfuehrung`, schreibend) ist real über den Leitstand ohne manuellen Zwischenstart durchgelaufen — genau ein `OFFEN → LAEUFT`-Übergang, 29 ms zwischen Cursor-Wanderung und Start des zweiten Schritts. Damit ist der zweite Worker aus E-M3-2 nicht mehr nur gebaut, sondern in der realen Kette belegt. Nachweis `features/F16/nachweis-ak12.md`, Plan `nachweis/ws3b/L1.json`. **Kein neuer Entscheid** — reine Fortschreibung des Belegstands; die beiden übrigen Sätze der Bestehensbedingung (Szenario A/B, Router-Eval-Gate) bleiben offen.
+
+v1.19 → v1.20: **Meilenstein 3 real abgeschlossen; F19 als Bridge-Feature verortet** (Stefan, 11./12.09.2026, Challenge-Runde F19 im Claude-Projekt „AI Workforce"): Satz 2 (Szenario A/B) und Satz 3 (Router-Eval-Gate) der §13.4-Bestehensbedingung sind mit F18 WS-3 real erfüllt (`features/F18/nachweis-ws3-szenario-a.md`, `features/F18/nachweis-ws3-szenario-b.md`, `features/F18/eval-bericht-ws3.md`); damit ist Meilenstein 3 mit allen drei Sätzen bestanden. F19 (Capability Foundation, PR #145/#146) ist weder Teil von Meilenstein 3 noch von Meilenstein 4, sondern ein eigenständiges Bridge-Feature dazwischen. **Kein neuer Entscheid** zu E-M3-1…E-M3-4 — Fortschreibung des Belegstands plus Verortung. Löst `state/findings.md` F-340.
 
 ---
 
@@ -435,6 +437,42 @@ nicht bestanden, nur sein erster Satz.
 verlangt `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`; der
 Server-Default `startvorlagen/beispielprojekt.json` trägt keinen
 `worker.codex`-Block (F-326, offen).
+
+`[Fakt, Nachtrag 12.09.2026]` **Satz 2 und Satz 3 sind real erfüllt —
+Meilenstein 3 ist mit allen drei Sätzen der Bestehensbedingung bestanden.**
+Dieser Nachtrag überholt den Absatz „Satz 2 und Satz 3 bleiben offen" oben;
+dessen Belegstand galt am 11.09.2026 vor F18 WS-3. Satz 2 (Szenario A/B):
+ein Fast-Lane-Workflow mit einem Schritt und ein Standard-Workflow mit
+Review + Ausführung sind je einmal real über den Leitstand durchgelaufen,
+der Übergang Review → Ausführung ohne manuellen Zwischenstart — Belege
+`features/F18/nachweis-ws3-szenario-a.md` und
+`features/F18/nachweis-ws3-szenario-b.md` (F18 WS-3 AK6/AK7). Satz 3
+(Router-Eval-Gate): 10 Aufgaben mit je 3 echten Läufen = 30 Läufe gegen die
+Baseline „immer Standard-Workflow", Router-Trefferquote 16/30 gegen
+Baseline 9/30 — Beleg `features/F18/eval-bericht-ws3.md` (F18 WS-3 AK5);
+der dabei gemessene Blocker (Markdown-Codezäune um das JSON in rund 27 %
+der `claude-code`-Läufe) ist als `state/findings.md` F-337 offen und nicht
+Teil der Bestehensbedingung. Satz 1 bleibt wie oben belegt
+(`features/F16/nachweis-ak12.md`). Meilenstein 3 umfasst damit F15–F18;
+letztes Feature F18 Router v1 (`features/F18/feature.md`, Status
+`FEATURE_GATE`, AK1–AK7 erfüllt).
+
+`[Fakt, Nachtrag 12.09.2026]` **F19 (Capability Foundation) ist kein
+Bestandteil von Meilenstein 3 und noch nicht Meilenstein 4, sondern ein
+eigenständiges Bridge-Feature dazwischen** (Stefan, 11.09.2026;
+`state/findings.md` F-340). Grund: die Bestehensbedingung dieses Abschnitts
+war mit F18 WS-3 vollständig erfüllt, bevor F19 begann; F19 liefert die
+Grundlage, auf der die Meilenstein-4-Challenge aufsetzt — maschinenlesbares
+Register `ressourcen.json` mit Vertrag `schemas/ressourcen.schema.json`,
+Auflösung der Verfügbarkeit zur Abfragezeit in `src/ressourcen/index.ts`,
+`benoetigte_capabilities` je Rollenvertrag in `src/rollen/index.ts`, Gate
+`scripts/check-f19-ressourcen.mjs`. Beide Workstreams sind gemergt (PR #145
+WS-1, PR #146 WS-2), `features/F19/feature.md` Status `FEATURE_GATE`,
+AK1–AK8 erfüllt, Realnachweis `features/F19/nachweis-ws2.md`. Das
+Verzeichnis „Nicht in Meilenstein 3 v1" unten bleibt unverändert; F19
+prüft und meldet Verfügbarkeit, es wählt nicht (E-M3-3 unverändert).
+Meilenstein 4 wird als eigener Abschnitt ergänzt, sobald seine Challenge
+abgeschlossen ist — bis dahin gibt es in dieser Sollquelle keinen M4-Scope.
 
 **Nicht in Meilenstein 3 v1:** automatische Modellwahl · Provider
 jenseits Claude Code/Codex · Versionsverwaltung für Ressourcen (§11

@@ -13,8 +13,13 @@ Ebene 1 (Produktgrundlage) und Ebene 2 (Technische Grundlage) sind
 abgeschlossen. Die Vertragsschiene (1, 2, Option B, 3, 4, 5) ist
 abgeschlossen. Meilenstein 1 und Meilenstein 2 (Bedienbarer Leitstand,
 `docs/projekt/zielfassung.md` §13.3) sind abgeschlossen (Stand
-09.09.2026). Das Projekt ist in Meilenstein 3 (Intelligente
-Orchestrierung, `docs/projekt/zielfassung.md` §13.4).
+09.09.2026). Meilenstein 3 (Intelligente Orchestrierung,
+`docs/projekt/zielfassung.md` §13.4) ist abgeschlossen (Stand 11.09.2026,
+alle drei Sätze der Bestehensbedingung real erfüllt). F19 (Capability
+Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
+4, ist abgeschlossen (12.09.2026). Das Projekt steht am Übergang zu
+Meilenstein 4; dessen Challenge läuft, ein M4-Scope ist in der Sollquelle
+noch nicht festgelegt.
 
 ## Erledigt
 
@@ -309,7 +314,7 @@ Scope, Reihenfolge und Details siehe
 
 Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
 
-### Meilenstein 3 — in Arbeit (`docs/projekt/zielfassung.md` §13.4)
+### Meilenstein 3 — abgeschlossen (`docs/projekt/zielfassung.md` §13.4)
 
 - ✅ **F15** — Workflow-Artefakt und Schritt-Automat. **Erledigt**, siehe
   oben (`features/F15/feature.md`, Status `ABGESCHLOSSEN`).
@@ -319,13 +324,6 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
   (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F18** — Router v1 (WS-1–WS-3). **Erledigt**, siehe oben
   (`features/F18/feature.md`, Status `FEATURE_GATE`, AK1–AK7 erfüllt).
-- 🔧 **F19** — Capability Foundation (Bridge-Feature vor Meilenstein 4).
-  WS-1 ist umgesetzt: Vertrag `schemas/ressourcen.schema.json` und Register
-  `ressourcen.json` (Repo-Wurzel, 21 Einträge: 2 Worker, 6 Skills, 13
-  externe Kandidaten) führen, welche Ressource welche Capability
-  bereitstellt; `src/rollen/index.ts` trägt zusätzlich
-  `benoetigte_capabilities` je Rolle. Kein Produktionscode in `src/`, kein
-  Gate — das ist WS-2 (`features/F19/feature.md`, Status `IN_ARBEIT`).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 
@@ -356,9 +354,26 @@ abgeschlossen, löst `state/findings.md` F-184 und F-323; F-313 bleibt
 ausdrücklich offen (F17 „Nicht-Ziele": Schemakonformität des
 Codex-Ergebnisses ist ein Evaluator-, kein Rollenproblem). Satz 2
 (Szenario A/B) und Satz 3 (Router-Eval-Gate) sind mit F18 WS-3 jetzt
-beide real erfüllt; noch nicht in `docs/projekt/zielfassung.md` §13.4
-selbst nachgetragen (dort steht weiterhin nur Satz 1) — das bleibt ein
-separater, kleiner Doku-Schritt.
+beide real erfüllt; in `docs/projekt/zielfassung.md` §13.4 nachgetragen
+(v1.20, 12.09.2026, löst F-340).
+
+### Bridge-Feature F19 — zwischen Meilenstein 3 und 4
+
+- ✅ **F19** — Capability Foundation (Bridge-Feature zwischen Meilenstein 3
+  und 4, Stefan 11.09.2026 — kein Bestandteil von M3, noch nicht M4).
+  **Erledigt**: WS-1 (PR #145) und WS-2 (PR #146) gemergt.
+  `schemas/ressourcen.schema.json` und `ressourcen.json` (Repo-Wurzel, 22
+  Einträge) führen, welche Ressource welche Capability bereitstellt;
+  `src/rollen/index.ts` trägt `benoetigte_capabilities` je Rolle;
+  `src/ressourcen/index.ts` löst Verfügbarkeit ausschließlich zur
+  Abfragezeit auf (kein gespeichertes Statusfeld);
+  `scripts/check-f19-ressourcen.mjs` läuft in `npm run check`
+  (`features/F19/feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt,
+  Realnachweis `features/F19/nachweis-ws2.md`). Bekannter, bewusst offener
+  Gap: `state/findings.md` F-346 — `claude-code` kann `STRUCTURED_OUTPUT`
+  strukturell nicht bereitstellen; das Gate trägt zwei eng benannte,
+  geprüfte Ausnahmen für `code-reviewer` und `router` statt einer Verengung
+  von `erlaubte_worker` (siehe `features/F19/nachweis-ws2.md`).
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder
