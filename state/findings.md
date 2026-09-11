@@ -5493,8 +5493,14 @@ Auswirkung: Fehlalarm, kein Sicherheitsproblem. Workaround bekannt:
 Empfohlene Maßnahme: Bedingung in Aufgabe 4 verengen (Zugriffsverb oder
 Pfad-als-Argument statt reines Vorkommen). Konstante in Zeile 67 nicht
 umdefinieren — Aufgabe 3 benutzt sie ebenfalls.
+Beleg-Nachtrag (11.09.2026): Das Finding ist im Moment seiner eigenen
+Registrierung erneut eingetreten — ein Heredoc-Anhang für diesen Eintrag
+wurde vom Guard verweigert, weil der Prosa-Text den Freigabedatei-Pfad
+nannte, obwohl der Befehl die Datei nicht angefasst hätte. Bestätigt den
+beschriebenen Fehlalarm live.
 Status: offen.
-Feature/Run: F16 WS-3b Teil C / PR #136, 11.09.2026.
+Feature/Run: F16 WS-3b Teil C / PR #136, 11.09.2026; Beleg-Nachtrag
+Statusnachzug F-334/F-335, 11.09.2026.
 
 **F-333** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Aufgabe 4 des Guards erkennt nur Befehle, die den
@@ -5524,3 +5530,54 @@ entschieden.
 Status: offen.
 Feature/Run: abgespalten aus F-099 beim Statusnachzug nach F16,
 11.09.2026.
+
+**F-334** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `device_bash` über die Remote-Devices-Bridge ist seit dem
+Windows-Update vom 08.09.2026 nicht nutzbar (no Plan9 drive shares
+mounted).
+Beschreibung: Aus der Bridge sind keine Git-Befehle mehr möglich, auch
+keine lesenden. Verfügbar bleiben `device_list_dir`, `device_stage_files`
+und Read/Bash auf die gestagte Kopie — also ausschließlich der Working
+Tree.
+Fundstelle/Kontext: real reproduziert am 08.09.2026 und erneut am
+11.09.2026.
+Auswirkung: Der Technical Challenger kann Git-Zustände (Branch-Stand,
+Merge-Stand, `origin/main`) nicht mehr selbst belegen; entsprechende
+Aussagen sind ohne Terminal-Beleg offene Unsicherheit. Claude Code ist
+nicht betroffen.
+Maßnahme: Ursache klären; bis dahin Git-Belege ausschließlich über
+Stefans Terminal einholen.
+Status: offen.
+Feature/Run: Verifikationsrunde PR #137, 11.09.2026.
+
+**F-335** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Statusfeld in `state/findings.md` führt uneinheitliche Werte.
+Beschreibung: Im Register real vorhanden sind u. a.: `offen`, auch mit
+Zusätzen wie „offen, absichtlich zurückgestellt" (F-011), „offen (Prio
+von P2 auf P1 angehoben)" (F-013) oder „offen, zurückgestellt (E-192)"
+(F-090); `gelöst` sowohl unformatiert (z. B. F-020, F-081, F-311) als
+auch als `**gelöst**` (z. B. F-001, F-247, F-330), dazu „gelöst (vor
+Push behoben)" (F-022); `erledigt` unformatiert (z. B. F-201, F-226,
+F-239) und als wachsende Familie von `**erledigt durch <Bezug>**`-
+Varianten mit Feature-/AK-Referenz (u. a. F-037, F-127, F-128, F-137,
+F-138, F-157–F-159, F-175, F-199); `**behoben**` in der Kopfzeile
+(F-047) und `behoben` unformatiert in einer separaten Status-Zeile
+(F-328); außerdem `**korrigiert**` (F-030), `**entschieden**` (F-046,
+F-141), `**zusammengeführt mit F-045**` (F-034), `**teilweise gelöst**`
+bzw. `**teilweise gelöst** (Bedienweg)` (F-196, F-218), `**verworfen**`
+(F-320) und `teilweise adressiert` (F-327). Die in diesem Finding
+ursprünglich vorgegebene Fünf-Werte-Liste war damit unvollständig — real
+ist die Streuung deutlich größer, besonders bei der uneinheitlichen
+Fettung von „gelöst"/„erledigt" und bei den frei formulierten „erledigt
+durch X"-Varianten. Bestätigt ist auch die Doppelführung: bei neueren
+Einträgen (z. B. F-327, F-328, F-332, F-333) trägt sowohl die Kopfzeile
+als auch eine separate `Status:`-Zeile den Status.
+Fundstelle: `state/findings.md`, Kopfzeilen F-001–F-333 und die
+`Status:`-Zeilen der neueren Einträge.
+Auswirkung: Folgenlos, solange kein Gate das Feld parst. Relevant,
+sobald offene Findings maschinell gezählt werden sollen.
+Maßnahme: Bei F17 ein geschlossenes Statusvokabular festlegen und
+einmalig über das ganze Register durchziehen. Keine Vereinheitlichung in
+diesem PR.
+Status: offen.
+Feature/Run: Verifikationsrunde PR #137, 11.09.2026.
