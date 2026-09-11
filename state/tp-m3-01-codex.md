@@ -1,5 +1,5 @@
-Stand dieser Fassung: 09.09.2026 (Spike S-M3-01, claude/153, Claude-Projekt
-„AI Workforce")
+Stand dieser Fassung: 11.09.2026 (Spike S-M3-01 vom 09.09.2026, claude/153,
+Claude-Projekt „AI Workforce“)
 
 Zweck: realer Nachweis, dass Codex CLI nicht-interaktiv mit
 ChatGPT-Anmeldung ansprechbar ist, bevor F16 (zweiter Worker) gebaut wird
@@ -188,3 +188,23 @@ lesende Rollen" ist noch zu klären.
 ## Nächster sinnvoller Schritt
 `state/tooling.md`-Eintrag ergänzen (Aufgabe 3), dann Freigabe einholen,
 committen und pushen (Skill `git-flow`).
+
+## Nachtrag 11.09.2026 (Lesart, F-273/F-289/F-294/F-296)
+
+Nichts am Protokoll oben ist geändert — dieser Abschnitt korrigiert nur die
+Lesart der bereits festgehaltenen Messungen.
+
+- Lauf 1 (reiner Lesebefehl) und Lauf 2 (Schreibbefehl) tragen dieselbe
+  Fehlerform und scheitern beide bei `CreateProcess` an der
+  execpolicy-Schicht (das Programm `powershell.exe` wird abgelehnt). Lauf 2
+  belegt deshalb keinen Read-Only-Sandbox: eine Ablehnung, die Lesen und
+  Schreiben gleich behandelt, unterscheidet nicht zwischen beidem (F-273,
+  F-289).
+- Die Lesart „ohne Sandbox wird jeder Befehl verweigert“ ist nicht belegt:
+  der Windows-Restricted-Token-Sandbox greift auf dieser Maschine auch ohne
+  `~/.codex/config.toml` (F-294).
+- Offen bleibt, ob die ERROR-Tracing-Zeilen in `stdout` oder `stderr`
+  stehen — das Protokoll sagt an einer Stelle das eine, an anderer das
+  andere (F-296).
+- Der Schreib-Rot-Fall nach E-M3-2 wird in S-M3-01b neu gemessen, mit
+  Kalibrierung: im selben Lauf muss ein Lesebefehl gelingen.
