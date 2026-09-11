@@ -10,7 +10,7 @@ Zweiter Worker (Codex CLI, nur lesend)
 
 ## Status
 
-Status: WORKSTREAM_SCHNITT_GENEHMIGT
+Status: IN_ARBEIT
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -61,11 +61,11 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
 
 ## Akzeptanzkriterien
 
-- **AK1** *(WS-1)* — `baueCodexAufruf` liefert ausschließlich ein
+- **AK1** *(WS-1, erfüllt)* — `baueCodexAufruf` liefert ausschließlich ein
   Tokens-Array `['exec', '--json', '--sandbox', 'read-only', '--model',
   <m>, optional '--output-schema', <abs. Pfad>, <prompt>]`; wirft bei
   leerem `modell`/`prompt` und bei `prompt`, das mit `-` beginnt.
-- **AK2** *(WS-1)* — `pruefeCodexAufruf` ist eine ALLOWLIST: jedes Token
+- **AK2** *(WS-1, erfüllt)* — `pruefeCodexAufruf` ist eine ALLOWLIST: jedes Token
   muss aus der erlaubten Grammatik stammen (`exec` an Position 0;
   `--json` höchstens einmal; `--sandbox read-only` genau einmal;
   `--model <wert>`; `--output-schema <abs. Pfad>`; genau ein
@@ -78,24 +78,24 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   `--add-dir`, `-C`/`--cd`, `--oss`, `--local-provider`,
   `--approve-for-me`, `--skip-git-repo-check`), jedes `-c`/`--config`,
   sowie `-s`/`--sandbox` mit `workspace-write` oder `danger-full-access`.
-- **AK3** *(WS-1)* — `leseCodexEreignisse` parst JSONL zeilenweise; die
+- **AK3** *(WS-1, erfüllt)* — `leseCodexEreignisse` parst JSONL zeilenweise; die
   vier Spike-Läufe aus `state/tp-m3-01-codex.md` sind wörtliche Fixtures;
   `turn.completed`, `turn.failed`, `{"type":"error"}`, letzte
   `agent_message` und `unparsbare_zeilen` werden erkannt/gezählt. Die
   ERROR-Tracing-Zeilen sind ein eigener Fixture-Fall, NICHT als belegte
   `stdout`-Zeilen von Lauf 1/2 (F-296).
-- **AK4** *(WS-1)* — `LAUFAKTE_V0` trägt additiv `worker?`
+- **AK4** *(WS-1, erfüllt)* — `LAUFAKTE_V0` trägt additiv `worker?`
   (`'claude-code' | 'codex'`) und `modell_deklariert?`; Typ, Schema und
   `validiereLaufakteDaten` sind synchron; jede bestehende Beispiel-Laufakte
   bleibt gültig; fehlendes `worker` bedeutet `claude-code`.
-- **AK5** *(WS-1)* — Startvorlage: optionaler Block
+- **AK5** *(WS-1, erfüllt)* — Startvorlage: optionaler Block
   `worker.codex { startziel: string[], versionDeklariert: string,
   sandbox: "read-only" }`; `startvorlage_schema` bleibt `v0`;
   `startvorlagen/ai-workforce.json` bleibt ohne Block gültig; Validator
   und Schema sind synchron; die Schema-`description` benennt die
   Asymmetrie (Claude-Code-Felder flach, Codex genestet) als bewusste
   v0-Schuld.
-- **AK6** *(WS-1)* — `schemas/ergebnis-code-reviewer.schema.json`
+- **AK6** *(WS-1, erfüllt)* — `schemas/ergebnis-code-reviewer.schema.json`
   existiert, trägt `additionalProperties: false` auf jeder Objektebene,
   ist BOM-frei und LF; das Gate `scripts/check-f16-codex-gateway.mjs`
   prüft das und die Grep-Regeln.

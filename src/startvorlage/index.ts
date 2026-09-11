@@ -44,6 +44,7 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'standardBudget',
     'werkzeugsaetze',
     'zeitgrenzeMs',
+    'worker',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -92,6 +93,68 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   // F14 WS-4 (F-177): optional — fehlt sie, bleibt der Prozessstart ohne Wanduhr-Grenze.
   if ('zeitgrenzeMs' in obj && (typeof obj.zeitgrenzeMs !== 'number' || !Number.isInteger(obj.zeitgrenzeMs) || obj.zeitgrenzeMs <= 0)) {
     verstoesse.push("'zeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
+  }
+
+  verstoesse.push(...pruefeWorkerBlock(obj.worker))
+
+  return verstoesse
+}
+
+/**
+ * Gesperrte Startziel-Endungen (F-280). Eine .cmd/.bat/.ps1-Datei ist kein
+ * Programm, sondern ein Skript, das der Betriebssystem-Loader an einen
+ * Interpreter weiterreicht — das Argv geht dann durch eine
+ * Shell-Zeilenzerlegung, die die Argv-Zusicherung (F-057) aufhebt. Dieselbe
+ * Regel setzt bereits pruefeStartziel in
+ * src/claude-code-gateway/prozessstart.ts zur Startzeit durch; hier greift
+ * sie schon beim Laden der Vorlage, also bevor überhaupt ein Lauf beginnt.
+ */
+const GESPERRTE_STARTZIEL_ENDUNGEN = ['.cmd', '.bat', '.ps1']
+
+/**
+ * Prüft den optionalen worker-Block (F16 WS-1, AK5) gegen dieselbe Form wie
+ * schemas/startvorlage.schema.json. Fehlt der Block, ist das kein Verstoß.
+ * @param wert - der rohe Wert von obj.worker
+ * @returns Liste der Verstöße (leer, wenn der Block fehlt oder gültig ist)
+ */
+function pruefeWorkerBlock(wert: unknown): string[] {
+  if (wert === undefined) return []
+  if (typeof wert !== 'object' || wert === null || Array.isArray(wert)) return ["'worker' muss, wenn angegeben, ein Objekt sein"]
+
+  const verstoesse: string[] = []
+  const worker = wert as Record<string, unknown>
+  for (const feld of Object.keys(worker)) {
+    if (feld !== 'codex') verstoesse.push(`unbekanntes Feld 'worker.${feld}' (additionalProperties: false)`)
+  }
+
+  const codex = worker.codex
+  if (codex === undefined) return verstoesse
+  if (typeof codex !== 'object' || codex === null || Array.isArray(codex)) {
+    verstoesse.push("'worker.codex' muss, wenn angegeben, ein Objekt sein")
+    return verstoesse
+  }
+
+  const c = codex as Record<string, unknown>
+  const erlaubt = new Set(['startziel', 'versionDeklariert', 'sandbox'])
+  for (const feld of Object.keys(c)) {
+    if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld 'worker.codex.${feld}' (additionalProperties: false)`)
+  }
+
+  if (!Array.isArray(c.startziel) || c.startziel.length === 0 || c.startziel.some((t) => typeof t !== 'string' || t.length === 0)) {
+    verstoesse.push("'worker.codex.startziel' muss ein nicht-leeres Array nicht-leerer Strings sein")
+  } else {
+    const programm = (c.startziel[0] as string).toLowerCase()
+    const gesperrt = GESPERRTE_STARTZIEL_ENDUNGEN.find((endung) => programm.endsWith(endung))
+    if (gesperrt !== undefined) {
+      verstoesse.push(`'worker.codex.startziel[0]' darf nicht auf '${gesperrt}' enden (F-280) — ein Skript-Startziel hebt die Argv-Zusicherung auf`)
+    }
+  }
+
+  if (typeof c.versionDeklariert !== 'string' || c.versionDeklariert.length === 0) {
+    verstoesse.push("'worker.codex.versionDeklariert' muss ein nicht-leerer String sein")
+  }
+  if (c.sandbox !== 'read-only') {
+    verstoesse.push("'worker.codex.sandbox' muss 'read-only' sein — schreibende Execution bleibt Claude Code (E-M3-2)")
   }
 
   return verstoesse

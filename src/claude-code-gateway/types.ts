@@ -76,6 +76,10 @@ export interface LaufakteV0Daten {
   beobachtungsbasis_vollstaendig: boolean
   rohstrom_referenz: { pfad: string; inhalts_hash: string }
   erstellt_am: string
+  /** Welcher Worker den Lauf ausgeführt hat (F16 WS-1, AK4). Optional und NICHT Pflicht: jede vor F16 geschriebene Laufakte ist append-only und trägt das Feld nicht — ein fehlendes worker bedeutet deshalb 'claude-code' (Muster freigabe_erteilt/F-207 und zeitgrenzeMs/F-177). starteGateway setzt das Feld in WS-1 noch nicht. */
+  worker?: 'claude-code' | 'codex'
+  /** Der dem Werkzeug im Argv übergebene Modellname, Rang DEKLARIERT (E-185) — nicht zu verwechseln mit modell_beobachtet (Rang OBSERVED). Für Codex bleibt modell_beobachtet null, weil der JSONL-Strom keine Modellkennung trägt (state/tp-m3-01-codex.md, „Modellidentität": kein Feld gefunden); erst dieses Feld macht den Lauf überhaupt einem Modell zuordenbar. Optional aus demselben Append-only-Grund wie worker. */
+  modell_deklariert?: string
 }
 
 export type GatewayErgebnis =

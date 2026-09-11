@@ -39,6 +39,31 @@
       "minimum": 1,
       "description": "F14 WS-4 (F-177). Optional — fehlt sie, bleibt der Prozessstart ohne Wanduhr-Grenze."
     },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "F16 WS-1 (AK5). Startfelder je zusätzlichem Worker. Optional — eine Vorlage ohne diesen Block bleibt gültig, und startvorlage_schema bleibt 'v0' (Präzedenz zeitgrenzeMs, F14 WS-4: ein additives optionales Feld bricht keine bestehende Vorlage). BEWUSSTE v0-ASYMMETRIE: die Claude-Code-Startfelder stehen flach auf oberster Ebene (werkzeugStartziel, werkzeugVersionDeklariert, berechtigungskontext), die Codex-Felder genestet unter worker.codex. Das ist v0-Schuld, die ein späteres v1 normalisiert; ein Umbau jetzt wäre ein Schemabruch ohne Verbraucher. werkzeugsaetze wird für Codex NICHT wiederverwendet: erlaubte_werkzeuge ist ein --allowedTools-Begriff von Claude Code ohne Codex-Entsprechung (F-286).",
+      "properties": {
+        "codex": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["startziel", "versionDeklariert", "sandbox"],
+          "properties": {
+            "startziel": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Argv-Präfix des Codex-Prozessstarts ([0] ist das Programm). startziel[0] darf nicht auf .cmd/.bat/.ps1 enden (F-280) — semantisch geprüft von validiereStartvorlageDaten (src/startvorlage/index.ts), nicht durch dieses Schema allein abbildbar."
+            },
+            "versionDeklariert": { "type": "string", "minLength": 1 },
+            "sandbox": {
+              "const": "read-only",
+              "description": "Einziger zulässiger Wert: schreibende Execution bleibt ausschließlich Claude Code (E-M3-2). Der Wert wird zusätzlich am Argv gepinnt (F-290)."
+            }
+          }
+        }
+      }
+    },
     "werkzeugsaetze": {
       "type": "object",
       "minProperties": 2,
