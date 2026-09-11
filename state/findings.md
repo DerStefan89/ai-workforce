@@ -5682,7 +5682,7 @@ befolgt (Branch feat/f18-ws3-router-eval-gate, von origin/main abgezweigt).
 Status: gelöst.
 Feature/Run: F18 WS-2/WS-3.
 
-**F-340** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-340** · `PROCESS_IMPROVEMENT` · P1 · gelöst
 Titel: `zielfassung.md` §13.4 nennt F19 nicht.
 Beschreibung: Die Übergabe claude/179 führte F19 als letztes Feature von
 Meilenstein 3. `docs/projekt/zielfassung.md` §13.4 nennt F19 aber nicht,
@@ -5695,7 +5695,9 @@ Auswirkung: Feature ohne verbindliche Sollquelle; Wiederholung der
 Fehleinschätzung, vor der claude/179 selbst warnt.
 Maßnahme: §13.4 um den M3-Abschluss und die F19-Verortung ergänzen,
 zusammen mit dem dort ohnehin offenen Nachzug von Satz 2 und Satz 3.
-Status: offen.
+Status: gelöst — Nachtrag in `docs/projekt/zielfassung.md` §13.4 (v1.20,
+12.09.2026): M3-Abschluss mit Satz 2/3 nachgezogen, F19 als Bridge-Feature
+verortet; `docs/STATUS.md` im selben PR nachgezogen.
 Feature/Run: F19-Challenge, 11.09.2026.
 
 **F-341** · `TECH_DEBT` · P2 · offen
@@ -5745,6 +5747,28 @@ Maßnahme: Verifikationsweg in der nächsten Übergabe anpassen; Brücke
 erneut prüfen, sobald ein Desktop-Update vorliegt.
 Status: offen.
 Feature/Run: F19-Challenge, 11.09.2026.
+
+**F-344** · `BUG` · P2 · offen
+Titel: Worker-Verfügbarkeit hängt real von `LEITSTAND_STARTVORLAGE_PFAD` ab.
+Beschreibung: `loeseRessourcenAuf` (`src/ressourcen/index.ts`) leitet die
+Verfügbarkeit eines Workers aus der geladenen Startvorlage ab. Der
+Server-Default `startvorlagen/beispielprojekt.json` trägt keinen
+`worker.codex`-Block; ohne
+`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json` wird `codex`
+deshalb real als nicht verfügbar aufgelöst, `claude-code` gegen dieselbe
+Datei als verfügbar (`features/F19/nachweis-ws2.md`, Abschnitt „Red 3").
+Fundstelle: `startvorlagen/beispielprojekt.json`, `src/ressourcen/index.ts`,
+`features/F19/nachweis-ws2.md`.
+Auswirkung: dieselbe Ursache wie F-326, jetzt mechanisch sichtbar — jede
+Capability-Abfrage gegen den Default meldet Codex-Rollen als nicht
+besetzbar. F19 macht das sichtbar, behebt es nicht.
+Maßnahme: gemeinsam mit F-326 lösen (Default-Startvorlage mit vollständigem
+`worker.codex`-Block oder Pflicht-Umgebungsvariable); bis dahin
+`LEITSTAND_STARTVORLAGE_PFAD` explizit setzen. Nachträglich erfasst:
+`features/F19/nachweis-ws2.md` verweist seit PR #146 auf F-344, der
+Eintrag fehlte auf `main`.
+Status: offen.
+Feature/Run: F19 WS-2, 12.09.2026.
 
 **F-345** · `TECH_DEBT` · P3 · offen
 Titel: Skill-Ressourcen mit 1:1-Capability tragen keine Information.
@@ -5808,3 +5832,24 @@ Status: offen — die zugrunde liegende Lücke (`claude-code` kann
 nur mechanisch sichtbar gehalten. Löst sich erst mit F-337 oder einer
 eigenen Iteration, die die F15-Testfixtur vom Rollenvertrag entkoppelt.
 Feature/Run: F19 WS-1-Verifikation, F19 WS-2.
+
+**F-347** · `PROCESS_IMPROVEMENT` · P1 · gelöst
+Titel: `docs/STATUS.md` nach dem F19-Merge veraltet.
+Beschreibung: Nach dem Merge von PR #146 führte `docs/STATUS.md` F19 weiter
+als „WS-2 offen" (`IN_ARBEIT`), die Phase als „in Meilenstein 3" und den
+Nachzug von Satz 2/3 nach §13.4 als ausstehend. Die Datei nennt sich
+„Einzige Quelle für Phasenstand und Scope"; kein Gate prüft sie inhaltlich
+(`scripts/check-docs.mjs` Prüfung 1 klammert sie bewusst aus,
+`docs/projekt/zielfassung.md` liegt außerhalb aller fünf Prüfungen) —
+Drift fällt nur beim Lesen auf. §11 „Nicht bauen: eigener
+Doku-Konsistenzprüfer" bleibt gültig.
+Fundstelle: `docs/STATUS.md`, Abschnitte „Aktuelle Phase" und
+„Meilenstein 3".
+Auswirkung: die M4-Challenge hätte auf einem falschen Phasenstand
+aufgesetzt — die Fehleinschätzung, vor der claude/179 und claude/181
+warnen.
+Maßnahme: erledigt in diesem PR (Branch `docs/f19-abschluss-nachtrag`).
+Prozessregel: der Bauauftrag, der den letzten Workstream eines Features
+merged, trägt den STATUS.md-Nachzug im selben PR.
+Status: gelöst.
+Feature/Run: F19-Abschluss, 12.09.2026.
