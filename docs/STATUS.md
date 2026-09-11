@@ -319,6 +319,13 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
   (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F18** — Router v1 (WS-1–WS-3). **Erledigt**, siehe oben
   (`features/F18/feature.md`, Status `FEATURE_GATE`, AK1–AK7 erfüllt).
+- 🔧 **F19** — Capability Foundation (Bridge-Feature vor Meilenstein 4).
+  WS-1 ist umgesetzt: Vertrag `schemas/ressourcen.schema.json` und Register
+  `ressourcen.json` (Repo-Wurzel, 21 Einträge: 2 Worker, 6 Skills, 13
+  externe Kandidaten) führen, welche Ressource welche Capability
+  bereitstellt; `src/rollen/index.ts` trägt zusätzlich
+  `benoetigte_capabilities` je Rolle. Kein Produktionscode in `src/`, kein
+  Gate — das ist WS-2 (`features/F19/feature.md`, Status `IN_ARBEIT`).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 

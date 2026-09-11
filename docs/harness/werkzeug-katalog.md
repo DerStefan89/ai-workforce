@@ -79,6 +79,10 @@ Eintrag.
 eine Quelle für alle Projekte, die an einer Stelle altert statt in jedem
 Klon. In diesem Repo steht nur die Mechanik.
 
+Im Produktkontext dieses Repos führt ressourcen.json, welche Ressource welche
+Capability bereitstellt und ob sie freigegeben ist. Bewertung, Vetting-Status,
+Prüfdatum und bewusst verworfene Werkzeuge bleiben im Katalog.
+
 ## Benannte Leerstellen
 
 Eine benannte Leerstelle ist ein Befund, eine unbenannte ist ein Irrtum.

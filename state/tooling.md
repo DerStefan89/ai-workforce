@@ -1,6 +1,10 @@
 <!-- Ziel-Pfad im Repo: state/tooling.md -->
 # Tooling-Bestand — [PROJEKTNAME]
 
+Diese Datei führt die Dev-Werkzeuge des Bauprozesses. Die Capability-Träger
+der Workforce (Worker, Skills, bekannte externe Kandidaten) stehen in
+ressourcen.json.
+
 ## Im Einsatz
 
 | Werkzeug | Zweck | Eingeführt (Datum) | Über Skill `werkzeug-auswahl` geprüft? |

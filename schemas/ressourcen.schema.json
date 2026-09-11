@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ressourcen.schema.json",
+  "title": "Ressourcen-Register (RESSOURCEN_V0)",
+  "description": "F19 WS-1. Trägt das Register der Ressourcen (Worker, Skills, bekannte externe Kandidaten), die eine Capability bereitstellen können — getrennt von der Rolle, die eine Capability benötigt (src/rollen/index.ts, Feld benoetigte_capabilities). Kein Verfügbarkeitszustand: dieses Schema kennt kein Feld 'status' und keinen Wert 'AVAILABLE' — Verfügbarkeit wird erst zur Abfragezeit abgeleitet (F19 WS-2). Dies ist kein Ersatz für state/tooling.md (Dev-Werkzeuge des Bauprozesses) oder docs/harness/werkzeug-katalog.md (Bewertung, Vetting-Status, Prüfdatum) — siehe dort für die Abgrenzung.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ressourcen_schema", "ressourcen"],
+  "properties": {
+    "ressourcen_schema": {
+      "const": "v0",
+      "description": "Schemaversion des Ressourcen-Registers."
+    },
+    "ressourcen": {
+      "type": "array",
+      "description": "Alle registrierten Ressourcen. Reihenfolge ist ohne Bedeutung.",
+      "items": { "$ref": "#/$defs/ressource" }
+    }
+  },
+  "$defs": {
+    "ressource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "typ", "capabilities", "freigabe", "herkunft"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Eindeutige Kennung der Ressource, kleinbuchstabig mit Bindestrich."
+        },
+        "typ": {
+          "enum": ["worker", "skill", "extern"],
+          "description": "Art der Ressource. Bestimmt, welche herkunft.art-Variante zulässig ist (R3) und ob name/beschreibung getragen werden dürfen (R1) — semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts, WS-2), nicht durch dieses Schema allein abbildbar (Muster schemas/startvorlage.schema.json / validiereStartvorlageDaten)."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "R1: nur bei typ 'extern' zulässig und dort Pflicht — für typ 'worker'/'skill' wird der Name aus der Herkunft gelesen (SKILL.md-Frontmatter bzw. Worker-Kennung) und darf hier NICHT stehen. Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts, WS-2), nicht durch dieses Schema allein abbildbar."
+        },
+        "beschreibung": {
+          "type": "string",
+          "minLength": 1,
+          "description": "R1: nur bei typ 'extern' zulässig und dort Pflicht — für typ 'worker'/'skill' wird die Beschreibung aus der Herkunft gelesen und darf hier NICHT stehen. Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts, WS-2), nicht durch dieses Schema allein abbildbar."
+        },
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Fähigkeiten, die diese Ressource bereitstellt. Zwilling der benoetigte_capabilities-Werte in src/rollen/index.ts.",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          }
+        },
+        "freigabe": {
+          "enum": ["FREIGEGEBEN", "OFFEN"],
+          "description": "R2: typ 'extern' darf ausschließlich 'OFFEN' tragen — Registrierung erzeugt keine Verfügbarkeit. Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts, WS-2), nicht durch dieses Schema allein abbildbar."
+        },
+        "herkunft": {
+          "description": "R3: herkunft.art muss zum typ der Ressource passen (worker→startvorlage, skill→skill, extern→extern). Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts, WS-2), nicht durch dieses Schema allein abbildbar.",
+          "oneOf": [
+            { "$ref": "#/$defs/herkunftStartvorlage" },
+            { "$ref": "#/$defs/herkunftSkill" },
+            { "$ref": "#/$defs/herkunftExtern" }
+          ]
+        }
+      }
+    },
+    "herkunftStartvorlage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["art", "worker"],
+      "properties": {
+        "art": { "const": "startvorlage" },
+        "worker": {
+          "enum": ["claude-code", "codex"],
+          "description": "Zwilling von WORKER in src/workflow/index.ts."
+        }
+      }
+    },
+    "herkunftSkill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["art", "pfad"],
+      "properties": {
+        "art": { "const": "skill" },
+        "pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pfad zum Skill-Verzeichnis, z. B. '.claude/skills/<name>'."
+        }
+      }
+    },
+    "herkunftExtern": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["art", "url"],
+      "properties": {
+        "art": { "const": "extern" },
+        "url": {
+          "type": "string",
+          "pattern": "^https?://",
+          "description": "Quelle des externen Kandidaten. Bewertung, Vetting-Status und Prüfdatum bleiben in docs/harness/werkzeug-katalog.md."
+        }
+      }
+    }
+  }
+}

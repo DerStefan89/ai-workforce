@@ -17,6 +17,10 @@
  * byte-gleich zu den vor der Migration gültigen Werten der früheren
  * Ausschlussmuster-Konstante. `router` kommt mit F18 WS-1 hinzu (E-M3-2,
  * docs/projekt/zielfassung.md §13.4, erlaubt Codex für die Rolle Router).
+ *
+ * F19 WS-1: jeder Vertrag trägt zusätzlich benoetigte_capabilities — Zwilling
+ * der capabilities-Werte in ressourcen.json (Repo-Wurzel). Rein deklarativ,
+ * noch ohne Durchsetzung (kein Produktionscode, kein Gate in WS-1).
  */
 
 import type { Rollenvertrag } from './types.ts'
@@ -28,6 +32,7 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code', 'codex'],
     erlaubtes_output_schema: null,
     ausschlussmuster: ['src/**'],
+    benoetigte_capabilities: ['PLAN_REVIEW', 'REPO_READ'],
   },
   'code-reviewer': {
     zweck: 'Prüft fertigen Code nach dem Bau, ohne Freigabeartefakte zu sehen.',
@@ -35,6 +40,7 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code', 'codex'],
     erlaubtes_output_schema: 'ergebnis-code-reviewer',
     ausschlussmuster: ['state/tasks/**'],
+    benoetigte_capabilities: ['CODE_REVIEW', 'REPO_READ', 'STRUCTURED_OUTPUT'],
   },
   qa: {
     zweck: 'Definiert Akzeptanztests und Randfälle, ohne Freigabeartefakte zu sehen.',
@@ -42,6 +48,7 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code', 'codex'],
     erlaubtes_output_schema: null,
     ausschlussmuster: ['state/tasks/**'],
+    benoetigte_capabilities: ['TEST_DESIGN', 'REPO_READ'],
   },
   ausfuehrung: {
     zweck: 'Baut und ändert Code, ohne Pfadeinschränkung.',
@@ -49,6 +56,7 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code'],
     erlaubtes_output_schema: null,
     ausschlussmuster: [],
+    benoetigte_capabilities: ['CODE_WRITE', 'REPO_READ'],
   },
   router: {
     zweck:
@@ -57,6 +65,7 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code', 'codex'],
     erlaubtes_output_schema: 'ergebnis-router',
     ausschlussmuster: ['src/**'],
+    benoetigte_capabilities: ['TASK_CLASSIFICATION', 'STRUCTURED_OUTPUT'],
   },
 }
 
