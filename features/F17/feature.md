@@ -130,6 +130,19 @@ Stefan, 11.09.2026, nach Challenge von PlanV0:
 - F-323 nach Weg (a): `DEKLARIERT` + Anzeige, keine Schemaänderung.
   Weg (b) hätte die real wirksame Ablehnung „codex + nicht-lesender
   Werkzeugsatz" (F16 AK10) ihrer Grundlage beraubt.
+  Nachtrag WS-2 (Reviewer-/QA-Pass 11.09.2026): die AK10-Ablehnung selbst
+  ist unverändert im Code (F-323 Weg a bleibt gültig), aber inzwischen für
+  jede reale Rolle unerreichbar geworden — keine der vier
+  `ROLLENVERTRAEGE`-Rollen erlaubt gleichzeitig einen nicht-lesenden
+  Werkzeugsatz UND den Worker `codex`, die neue Rollenvertrag-Ablehnung
+  (Ablehnung 6/7) greift für jede reale Anfrage zuerst. Dieselbe Anfrage
+  bleibt abgelehnt, nur mit anderer Meldung — kein Sicherheitsverlust,
+  aber AK10 ist damit ab WS-2 Tiefenverteidigung statt eines über eine
+  reale Rolle kalibrierbaren Rotfalls. Für WS-3s AK10 („Durchsetzungsgrad
+  ERZWUNGEN mit kalibriertem Rot-/Grün-Fall") wichtig: ein Rot-Fall für
+  diese Zeile lässt sich nur noch direkt gegen `loeseAusfuehrungsEingabenAuf`
+  mit einer erfundenen Rolle führen, nicht mehr über einen realen,
+  rollenvertrag-konformen Plan.
 - Rollenregister als Kern-Modul `src/rollen/` (TypeScript-Konstante), nicht
   als `rollen/<name>.json`. Abweichung von der Maßnahme in F-184: §16.7
   weist Rollen dem Kern zu, und Datendateien kosten Loader, Schema,

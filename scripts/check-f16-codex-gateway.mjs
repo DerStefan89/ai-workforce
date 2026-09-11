@@ -43,16 +43,24 @@
  *     durchließe — dafür gibt es eine eigene Rot-Kalibrierung, neben der
  *     für den direkten Zugriff und einer Grün-Gegenprobe gegen die bloße
  *     Kommentarerwähnung.
- * (h) WS-3a (AK10/AK11): die sechs Ablehnungen des Dispatchers einzeln rot
- *     kalibriert — Schemaname außerhalb der Allowlist SCHEMANAME_MUSTER,
- *     fehlende Schemadatei, UTF-8-BOM, fehlendes additionalProperties:false
- *     auf der Wurzel, nicht-lesender Werkzeugsatz bei worker 'codex' und
- *     fehlender worker.codex-Block — dazu ein unbekannter Worker, die
- *     Body-Sperre für worker/ausgabeSchemaPfad, der Grünfall der worker-abhängigen
- *     Auflösung und die Gegenprobe, dass ein Claude-Code-Lauf denselben
- *     Feldsatz behält wie vor F16 (F-286). Die Schema-Rotfälle laufen gegen
- *     eine Wegwerf-Repo-Wurzel, nicht gegen schemas/ — eine Datei mit BOM im
- *     echten Verzeichnis brächte (d) beim nächsten Lauf zu Fall.
+ * (h) WS-3a (AK10/AK11): die sechs AK10/AK11-Ablehnungen des Dispatchers einzeln
+ *     angesteuert (F17 WS-2 reiht vier weitere Rollenvertrag-Ablehnungen davor ein,
+ *     siehe scripts/leitstand-server.mjs — insgesamt zehn, hier unverändert nur diese
+ *     sechs) — Schemaname außerhalb der Allowlist SCHEMANAME_MUSTER, fehlende
+ *     Schemadatei, UTF-8-BOM, fehlendes additionalProperties:false auf der Wurzel,
+ *     fehlender worker.codex-Block, und der Fall "nicht-lesender Werkzeugsatz bei
+ *     worker 'codex'": dessen EIGENE Meldung ("schreibende Execution bleibt Claude
+ *     Code") ist über keine der vier ROLLENVERTRAEGE-Rollen mehr real auslösbar — die
+ *     Rollenvertrag-Ablehnung greift für jede reale Rolle zuerst (Reviewer-Pass
+ *     11.09.2026). Der hiesige Test prüft deshalb nur noch, dass die Kombination
+ *     WEITERHIN abgelehnt wird (jetzt mit der Rollenvertrag-Meldung), nicht mehr die
+ *     AK10-Zeile selbst — die bleibt unverändert im Code stehen (F-323 Weg a) als
+ *     Tiefenverteidigung für eine künftige fünfte Rolle. Dazu ein unbekannter Worker,
+ *     die Body-Sperre für worker/ausgabeSchemaPfad, der Grünfall der worker-abhängigen
+ *     Auflösung und die Gegenprobe, dass ein Claude-Code-Lauf denselben Feldsatz
+ *     behält wie vor F16 (F-286). Die Schema-Rotfälle laufen gegen eine Wegwerf-Repo-
+ *     Wurzel, nicht gegen schemas/ — eine Datei mit BOM im echten Verzeichnis brächte
+ *     (d) beim nächsten Lauf zu Fall.
  *
  * Wird aufgerufen von: `npm run check`
  *
@@ -562,7 +570,7 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
 }
 
 
-// ─── (h) WS-3a: die sechs Ablehnungen des Dispatchers (AK10/AK11) ───────────
+// ─── (h) WS-3a: die sechs AK10/AK11-Ablehnungen des Dispatchers (von zehn seit F17 WS-2) ───
 //
 // Muster: check-f15-workflow.mjs testet loeseAusfuehrungsEingabenAuf ebenso
 // direkt. Jede Ablehnung bekommt einen eigenen Fall — eine Grenze, deren
@@ -636,7 +644,7 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
       }
     }
     if (befunde.length === befundeVorWs3a) {
-      console.log(`✓ (h): alle ${schemaRotfaelle.length} Rotfälle von loeseAusgabeSchemaAuf einzeln kalibriert (Namens-Allowlist, fehlende Datei/Verzeichnis, kaputtes JSON, BOM, additionalProperties) — Ablehnungen 1-4 von 6.`)
+      console.log(`✓ (h): alle ${schemaRotfaelle.length} Rotfälle von loeseAusgabeSchemaAuf einzeln kalibriert (Namens-Allowlist, fehlende Datei/Verzeichnis, kaputtes JSON, BOM, additionalProperties) — Ablehnungen 1-4 von 10.`)
     }
   } finally {
     raeumeVerzeichnis(wegwerfWurzel)
@@ -664,14 +672,23 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
     auftragId: 'gate-auftrag',
   }
 
-  // Ablehnung 5 von 6: codex mit einem nicht-lesenden Werkzeugsatz.
-  const schreibend = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'codex' }, 'schreibend', 'text', vorlageMitCodex, process.cwd())
-  if (schreibend.ok !== false || !/schreibende Execution bleibt Claude Code/.test(schreibend.grund)) {
-    befunde.push(`(h) codex + schreibender Werkzeugsatz: erwartet ok:false, erhalten ${JSON.stringify(schreibend)}`)
+  // F17 WS-2: 'basis' trägt die Rolle 'code-reviewer' (nur 'lesend' erlaubt) — für die
+  // beiden Fälle mit schreibendem Werkzeugsatz unten wird stattdessen 'ausfuehrung'
+  // gebraucht (die einzige Rolle, die 'schreibend' erlaubt). Die AK10-Ablehnung
+  // "codex + nicht-lesender Werkzeugsatz" weiter unten in loeseAusfuehrungsEingabenAuf
+  // bleibt unverändert stehen (F-323 Weg a) — sie greift hier nicht mehr zuerst, weil
+  // keine der vier Rollen sowohl 'schreibend' als auch den Worker 'codex' erlaubt: der
+  // Rollenvertrag fängt die Kombination bereits vorher ab (Reihenfolge in
+  // loeseAusfuehrungsEingabenAuf, F17 WS-2).
+  const basisSchreibend = { ...basis, rolle: 'ausfuehrung' }
+  // Ablehnung 7 von 10 (F17 WS-2): codex ist für 'ausfuehrung' kein erlaubter Worker.
+  const schreibend = loeseAusfuehrungsEingabenAuf({ ...basisSchreibend, worker: 'codex' }, 'schreibend', 'text', vorlageMitCodex, process.cwd())
+  if (schreibend.ok !== false || !/erlaubt den Worker 'codex' nicht/.test(schreibend.grund)) {
+    befunde.push(`(h) codex + schreibender Werkzeugsatz (jetzt über den Rollenvertrag abgefangen, nicht mehr über AK10): erwartet ok:false, erhalten ${JSON.stringify(schreibend)}`)
   }
   // Grün-Gegenprobe: derselbe schreibende Werkzeugsatz bleibt für claude-code
   // erlaubt — die Ablehnung hängt am Worker, nicht am Werkzeugsatz.
-  if (loeseAusfuehrungsEingabenAuf(basis, 'schreibend', 'text', vorlageMitCodex, process.cwd()).ok !== true) {
+  if (loeseAusfuehrungsEingabenAuf(basisSchreibend, 'schreibend', 'text', vorlageMitCodex, process.cwd()).ok !== true) {
     befunde.push('(h) claude-code + schreibender Werkzeugsatz muss unverändert erlaubt bleiben')
   }
 
@@ -686,7 +703,7 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
     befunde.push(`(h) unbekannter Worker: erwartet ok:false, erhalten ${JSON.stringify(fremderWorker)}`)
   }
 
-  // Ablehnung 6 von 6: fehlender worker.codex-Block.
+  // Ablehnung 10 von 10: fehlender worker.codex-Block.
   const ohneBlock = loeseAusfuehrungsEingabenAuf({ ...basis, worker: 'codex' }, 'lesend', 'text', vorlageOhneCodex, process.cwd())
   if (ohneBlock.ok !== false || !/worker\.codex/.test(ohneBlock.grund)) {
     befunde.push(`(h) codex ohne worker.codex-Block: erwartet ok:false, erhalten ${JSON.stringify(ohneBlock)}`)
