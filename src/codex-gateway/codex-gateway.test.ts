@@ -1,8 +1,8 @@
 /**
  * Datei: src/codex-gateway/codex-gateway.test.ts
  *
- * Zweck: node:test-Fälle für das Codex-Gateway, WS-1 (F16,
- * features/F16/feature.md, AK1–AK3).
+ * Zweck: node:test-Fälle für das Codex-Gateway, WS-1 + WS-2 (F16,
+ * features/F16/feature.md, AK1–AK3 und AK7).
  *
  * AK1 — baueCodexAufruf liefert exakt das erwartete Tokens-Array (mit und
  * ohne Ausgabeschema) und wirft bei leerem modell, leerem prompt und einem
@@ -23,19 +23,51 @@
  * AK3 — leseCodexEreignisse gegen die JSONL-Zeilen der realen Spike-Läufe
  * aus state/tp-m3-01-codex.md, wörtlich übernommen. Die
  * ERROR-Tracing-Zeilen sind bewusst KEIN Bestandteil der Lauf-Fixtures,
- * sondern ein eigener fünfter Fall: ob sie real in stdout oder in stderr
- * standen, ist im Spike widersprüchlich protokolliert (F-296) und wird
- * erst in S-M3-01b (l) geklärt. Der fünfte Fall belegt deshalb
- * ausschließlich die Robustheit des Parsers gegenüber Fremdzeilen, nicht
- * die Zuordnung dieser Zeilen zu einem Ausgabekanal.
+ * sondern ein eigener fünfter Fall. Der Widerspruch im Spike (F-296) ist
+ * inzwischen aufgelöst: S-M3-01b, Messpunkt (l), hat stdout und stderr in
+ * getrennte Dateien geleitet — die Zeilen stehen auf stderr, stdout ist
+ * reines JSONL (F-301). Der fünfte Fall belegt deshalb ausschließlich die
+ * Robustheit des Parsers gegenüber Fremdzeilen; ein solcher Strom kommt in
+ * der Praxis nicht vor.
+ *
+ * AK7 (WS-2) — starteCodexGateway: Grün-Fall mit protokollierendem Starter
+ * (das Argv geht UNVERÄNDERT durch, stdinLeer ist gesetzt), Laufakte mit
+ * worker/modell_deklariert/berechtigungskontext, Rohstrom mit ALLEN sieben
+ * von AK7 geforderten Feldern (ein Feld, das kein Test liest, ließe sich
+ * ersatzlos löschen), die beiden beobachtungsbasis-Fälle, ein
+ * Startfehler-Lauf, ein TIMEOUT-Lauf als Naht zum AK8-timeout-Zweig, die
+ * Durchreichung von zeitgrenzeMs/abbruchSignal sowie zwei Rot-Fälle mit
+ * Spy-Starter (Allowlist-Treffer, ungültiges Startziel), die beide am real
+ * geschriebenen Artefakt geprüft werden, nicht am Rückgabewert — beim
+ * Allowlist-Treffer inklusive art und ergebnis der Marke, weil ihre bloße
+ * Anzahl auch eine falsch geschriebene Marke durchließe.
+ *
+ * F-307 — stdin: REALE Läufe über prozessstart.ts (kein Spy) gegen ein
+ * node -e-Prüfskript, das stdin liest und erst danach beendet. Ohne
+ * stdinLeer endet der Lauf in der Zeitgrenze (TIMEOUT), mit stdinLeer
+ * regulär mit Exit 0 — ohne diesen Rot-Fall wäre die Wirkung des Feldes
+ * nur behauptet. Dazu ein Lauf gegen ein sofort endendes Kind: er belegt,
+ * dass der stdin-Fehlerkanal behandelt ist und ein EPIPE nicht den
+ * gesamten Node-Prozess abreißt.
+ *
+ * Gemessen ist damit der MECHANISMUS, nicht ein Codex-Hang: kein
+ * Codex-Lauf wurde je ohne stdinLeer gegen eine Zeitgrenze gefahren
+ * (F-318).
  */
 
 import assert from 'node:assert/strict'
-import { resolve } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 import { pruefeCodexAufruf } from './codex-argv-allowlist.ts'
 import { validiereLaufakteDaten } from '../claude-code-gateway/index.ts'
-import { baueCodexAufruf, leseCodexEreignisse } from './index.ts'
+import { starteProzess } from '../claude-code-gateway/prozessstart.ts'
+import type { Starter, StarterOptionen } from '../claude-code-gateway/types.ts'
+import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
+import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { baueCodexAufruf, leseCodexEreignisse, starteCodexGateway } from './index.ts'
 
 const ABSOLUTER_SCHEMAPFAD = resolve(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
 
@@ -445,4 +477,392 @@ test("AK2: die Kurzform '-s read-only' ist bewusst NICHT erlaubt", () => {
 test("AK2: '--sandbox read-only' als EIN Token wird abgelehnt (Shell-Denkfehler)", () => {
   const ergebnis = pruefeCodexAufruf(['exec', '--json', '--sandbox read-only', '--model', 'gpt-5-codex', 'Prompt'])
   assert.equal(ergebnis.ok, false)
+})
+
+// ─── AK7: starteCodexGateway ────────────────────────────────────────────────
+
+const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
+const ROH_BASIS = join(tmpdir(), 'f16-codex-gateway-test')
+const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+
+/** Ein reales, absolutes und existierendes Startziel, das pruefeStartziel besteht — process.execPath ist node.exe, steht auf keiner Sperrliste und existiert auf jeder Maschine, auf der dieser Test läuft. Kein erfundener Pfad, der den Guard nur scheinbar passierte. */
+const STARTZIEL = [process.execPath]
+
+const TOKENS_GUELTIG = baueCodexAufruf({ modell: 'gpt-5-codex', prompt: 'Nenne die Dateien im Verzeichnis.', ausgabeSchemaPfad: null })
+
+/** Wörtlich aus Lauf (a), state/tp-m3-01b-codex-sandbox.md — gekürzt auf die tragenden Zeilen. */
+const STDOUT_LAUF_A = [
+  '{"type":"thread.started","thread_id":"01a08f5d-1ab2-7ac2-9b41-6bdb224047af"}',
+  '{"type":"turn.started"}',
+  '{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Im aktuellen Verzeichnis liegen 2 Dateien."}}',
+  '{"type":"turn.completed","usage":{"input_tokens":31560,"output_tokens":175}}',
+].join('\n')
+
+function neueGatewayLaufId(praefix: string): string {
+  return `${praefix}-${randomUUID()}`
+}
+
+function raeumeGatewayLauf(laufId: string): void {
+  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  rmSync(join(ROH_BASIS, laufId), { recursive: true, force: true })
+  rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
+}
+
+/** Starter-Attrappe, die mitschreibt, womit sie aufgerufen wurde — der Grün-Fall prüft daran, dass das Argv UNVERÄNDERT durchgereicht wird (D5, keine zweite Konkatenation) und dass die Optionen (stdinLeer, zeitgrenzeMs, abbruchSignal) wirklich ankommen. startfehler/beendigungsart sind überschreibbar, damit auch die nicht-regulären Prozessausgänge einen eigenen Fall bekommen. */
+function protokollierenderStarter(ergebnis: {
+  stdout: string
+  stderr: string
+  exitCode: number | null
+  startfehler?: { code: string | null; message: string } | null
+  beendigungsart?: 'TIMEOUT' | 'ABBRUCH' | null
+}): {
+  starter: Starter
+  aufrufe: Array<{ startziel: string[]; tokens: string[]; optionen?: StarterOptionen }>
+} {
+  const aufrufe: Array<{ startziel: string[]; tokens: string[]; optionen?: StarterOptionen }> = []
+  const starter: Starter = async (startziel, tokens, optionen) => {
+    aufrufe.push({ startziel, tokens, optionen })
+    return {
+      stdout: ergebnis.stdout,
+      stderr: ergebnis.stderr,
+      exitCode: ergebnis.exitCode,
+      startfehler: ergebnis.startfehler ?? null,
+      beendigungsart: ergebnis.beendigungsart ?? null,
+    }
+  }
+  return { starter, aufrufe }
+}
+
+/** Eingabenbaukasten für starteCodexGateway — spart in jedem Fall sechs Zeilen Wiederholung und hält die Pflichtfelder an einer Stelle. */
+function gatewayEingaben(laufId: string, tokens: string[] = TOKENS_GUELTIG, werkzeugStartziel: string[] = STARTZIEL) {
+  return {
+    laufId,
+    profilReferenz: PROFIL_REFERENZ,
+    tokens,
+    werkzeugStartziel,
+    werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+    modellDeklariert: 'gpt-5-codex',
+  }
+}
+
+test('AK7 grün: starteCodexGateway registriert eine Laufakte mit worker/modell_deklariert/berechtigungskontext', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-gruen')
+  try {
+    const { starter, aufrufe } = protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 })
+    const ergebnis = await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: TOKENS_GUELTIG,
+        werkzeugStartziel: STARTZIEL,
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter }
+    )
+
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    assert.equal(ergebnis.laufakte.worker, 'codex')
+    assert.equal(ergebnis.laufakte.modell_deklariert, 'gpt-5-codex')
+    // Rang OBSERVED bleibt leer: der Modellname steht in keinem
+    // JSONL-Ereignis (F-305), er wird nicht aus dem Argv abgeschrieben und
+    // als beobachtet ausgegeben.
+    assert.equal(ergebnis.laufakte.modell_beobachtet, null)
+    assert.equal(ergebnis.laufakte.berechtigungskontext, 'codex-sandbox-read-only')
+    assert.equal(ergebnis.laufakte.beobachtungsbasis_vollstaendig, true)
+    assert.equal(validiereLaufakteDaten(ergebnis.laufakte).length, 0)
+
+    // D5: exakt das Argv von baueCodexAufruf, kein zusätzliches Token.
+    assert.equal(aufrufe.length, 1)
+    assert.deepStrictEqual(aufrufe[0].tokens, TOKENS_GUELTIG)
+    assert.deepStrictEqual(aufrufe[0].startziel, STARTZIEL)
+    // F-307: stdinLeer ist für Codex Pflicht, nicht optional.
+    assert.equal(aufrufe[0].optionen?.stdinLeer, true)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7 grün: der Rohstrom trägt tokens (neu gegenüber F6a) und der Laufakte-Hash passt zu seinem Inhalt', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-rohstrom')
+  try {
+    // stderr trägt hier bewusst die real gemessene ERROR-Zeile aus Lauf (a)
+    // (F-309) — sie MUSS im Rohstrom landen, obwohl der Evaluator sie nie
+    // auswertet: der Rohstrom ist Beweismittel, nicht Klassifikationsinput.
+    const ECHTES_STDERR = 'ERROR codex_models_manager::manager: failed to refresh available models'
+    const { starter } = protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: ECHTES_STDERR, exitCode: 0 })
+    const ergebnis = await starteCodexGateway(gatewayEingaben(laufId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter,
+    })
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+
+    const rohInhalt = readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8')
+    assert.equal(sha256Hex(rohInhalt), ergebnis.laufakte.rohstrom_referenz.inhalts_hash)
+    const rohstrom = JSON.parse(rohInhalt)
+    // Alle sieben von AK7 geforderten Felder, keines ausgelassen — ein Feld,
+    // das kein Test liest, könnte ersatzlos gelöscht werden, ohne dass es
+    // auffiele.
+    assert.deepStrictEqual(rohstrom.werkzeugStartziel, STARTZIEL)
+    assert.deepStrictEqual(rohstrom.tokens, TOKENS_GUELTIG)
+    assert.equal(rohstrom.stdout, STDOUT_LAUF_A)
+    assert.equal(rohstrom.stderr, ECHTES_STDERR)
+    assert.equal(rohstrom.exitCode, 0)
+    assert.equal(rohstrom.startfehler, null)
+    assert.equal(rohstrom.beendigungsart, null)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: ein Startfehler (Spawn scheitert) landet im Rohstrom und macht die Beobachtungsbasis unvollständig', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-startfehler')
+  try {
+    const startfehler = { code: 'ENOENT', message: 'spawn ENOENT' }
+    const { starter } = protokollierenderStarter({ stdout: '', stderr: '', exitCode: null, startfehler })
+    const ergebnis = await starteCodexGateway(gatewayEingaben(laufId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter,
+    })
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    assert.equal(ergebnis.laufakte.beobachtungsbasis_vollstaendig, false)
+    const rohstrom = JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8'))
+    assert.deepStrictEqual(rohstrom.startfehler, startfehler)
+    // Bekannte Grenze, hier festgehalten statt stillschweigend hingenommen
+    // (F-316): der Evaluator meldet für diesen Lauf das generische
+    // 'beobachtungsbasis_unvollstaendig' — der konkrete Startfehler steht
+    // nur im Rohstrom, nicht im Klassifikationsergebnis.
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: ein TIMEOUT des Starters landet unverändert im Rohstrom (die Naht zu AK8s timeout-Zweig)', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-timeout')
+  try {
+    const { starter } = protokollierenderStarter({ stdout: '', stderr: '', exitCode: null, beendigungsart: 'TIMEOUT' })
+    const ergebnis = await starteCodexGateway(gatewayEingaben(laufId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter,
+    })
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    const rohstrom = JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8'))
+    // Genau der Feldname und der Wert, die der Codex-Zweig des Evaluators
+    // liest — ohne diesen Fall wäre die Naht zwischen Gateway und Evaluator
+    // nur über Typgleichheit begründet, nicht gemessen.
+    assert.equal(rohstrom.beendigungsart, 'TIMEOUT')
+    assert.equal(rohstrom.exitCode, null)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: zeitgrenzeMs und abbruchSignal werden unverändert an den Starter durchgereicht', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-durchreichung')
+  try {
+    const { starter, aufrufe } = protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 })
+    const abbruchSignal = new AbortController().signal
+    await starteCodexGateway(gatewayEingaben(laufId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter,
+      zeitgrenzeMs: 12345,
+      abbruchSignal,
+    })
+    assert.equal(aufrufe.length, 1)
+    // Ohne diesen Fall ließen sich beide Durchreichungen ersatzlos
+    // streichen, ohne dass ein Test rot würde — Zeitgrenze und Abbruch wären
+    // für Codex dann wirkungslos.
+    assert.equal(aufrufe[0].optionen?.zeitgrenzeMs, 12345)
+    assert.equal(aufrufe[0].optionen?.abbruchSignal, abbruchSignal)
+    assert.equal(aufrufe[0].optionen?.stdinLeer, true)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: ein abgeschnittener Strom (weder turn.completed noch turn.failed) setzt beobachtungsbasis_vollstaendig auf false', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-basis')
+  try {
+    const { starter } = protokollierenderStarter({ stdout: '{"type":"turn.started"}', stderr: '', exitCode: 0 })
+    const ergebnis = await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: TOKENS_GUELTIG,
+        werkzeugStartziel: STARTZIEL,
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter }
+    )
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    assert.equal(ergebnis.laufakte.beobachtungsbasis_vollstaendig, false)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: ein turn.failed-Strom gilt als vollständig beobachtet (der Ausgang ist beobachtet, nur negativ)', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-failed')
+  try {
+    const { starter } = protokollierenderStarter({ stdout: '{"type":"turn.started"}\n{"type":"turn.failed"}', stderr: '', exitCode: 0 })
+    const ergebnis = await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: TOKENS_GUELTIG,
+        werkzeugStartziel: STARTZIEL,
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter }
+    )
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    assert.equal(ergebnis.laufakte.beobachtungsbasis_vollstaendig, true)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7 rot: bei einem Allowlist-Treffer wird KEIN Prozess gestartet, KEINE Wirkungsmarke und KEINE Laufakte geschrieben', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-rot')
+  try {
+    // Spy-Starter, der bei Aufruf wirft UND zählt: der Rückgabewert
+    // ok:false allein belegt nichts — entfiele der Guard, liefe dieser
+    // Starter und der Test scheiterte an der Ausnahme, nicht an einer
+    // Zusicherung.
+    let starterAufrufe = 0
+    const spyStarter: Starter = async () => {
+      starterAufrufe++
+      throw new Error('Der Starter darf bei einem Allowlist-Treffer NIE aufgerufen werden')
+    }
+    const verbotenesArgv = ['exec', '--json', '--sandbox', 'read-only', '--model', 'gpt-5-codex', '--skip-git-repo-check', 'Prompt']
+
+    const ergebnis = await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: verbotenesArgv,
+        werkzeugStartziel: STARTZIEL,
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: spyStarter }
+    )
+
+    assert.equal(ergebnis.ok, false)
+    assert.equal(starterAufrufe, 0)
+
+    // Geprüft wird das real geschriebene Artefakt, nicht der Rückgabewert:
+    // die Kette trägt GENAU die Verweigerungsmarke aus F4s verweigereStart
+    // — keine run_prepared-Marke daneben. Die ANZAHL allein genügt dafür
+    // nicht: eine Implementierung, die verweigereStart wegließe und
+    // stattdessen run_prepared schriebe, käme ebenfalls auf eins. Deshalb
+    // werden art und ergebnis mitgeprüft.
+    const checkpoints = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(checkpoints.length, 1)
+    const marke = checkpoints[0].payload as { art?: string; ergebnis?: string }
+    assert.equal(marke.art, 'terminal')
+    assert.equal(marke.ergebnis, 'VERWEIGERT')
+    assert.equal(existsSync(join(ROH_BASIS, laufId, 'rohstrom.json')), false)
+    assert.equal(existsSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`)), false)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7 rot: ein ungültiges Startziel verhindert den Prozessstart, bevor der Starter läuft', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-startziel')
+  try {
+    let starterAufrufe = 0
+    const spyStarter: Starter = async () => {
+      starterAufrufe++
+      throw new Error('Der Starter darf bei ungültigem Startziel NIE aufgerufen werden')
+    }
+    const ergebnis = await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: TOKENS_GUELTIG,
+        werkzeugStartziel: ['C:\\Windows\\System32\\cmd.exe'],
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter: spyStarter }
+    )
+    assert.equal(ergebnis.ok, false)
+    assert.equal(starterAufrufe, 0)
+    // Der Startziel-Guard ist ein Hygiene-Guard, keine F4-Verweigerung —
+    // er schreibt bewusst KEINE Wirkungsmarke (Muster starteGateway).
+    assert.equal(existsSync(join(KONTROLLZUSTAND_BASIS, laufId)), false)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('AK7: der Grün-Fall schreibt genau eine run_prepared-Wirkungsmarke und KEINE Terminalmarke (F7-Grenze)', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-marke')
+  try {
+    const { starter } = protokollierenderStarter({ stdout: STDOUT_LAUF_A, stderr: '', exitCode: 0 })
+    await starteCodexGateway(
+      {
+        laufId,
+        profilReferenz: PROFIL_REFERENZ,
+        tokens: TOKENS_GUELTIG,
+        werkzeugStartziel: STARTZIEL,
+        werkzeugVersionDeklariert: 'codex-cli 0.153.4',
+        modellDeklariert: 'gpt-5-codex',
+      },
+      { basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: ROH_BASIS, starter }
+    )
+    const status = stelleLaufstatusFest(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(status.status, 'KLAERUNG_ERFORDERLICH')
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+// ─── F-307: stdin, real und kalibriert (kein Spy) ───────────────────────────
+// Beide Fälle starten einen ECHTEN Prozess über prozessstart.ts. Das
+// Prüfskript liest stdin und beendet sich erst, wenn der Strom endet —
+// genau das Verhalten, das Codex real zeigt (state/tp-m3-01b-codex-
+// sandbox.md, Nebenbefund zu Lauf (a): `Reading additional input from
+// stdin...`). Die Zeitgrenze ist bewusst kurz (2000 ms), damit `npm run
+// check` nicht spürbar langsamer wird.
+
+/** Hält den Prozess am Leben, bis stdin EOF meldet. Ohne geschlossenen stdin endet er nie von selbst. */
+const STDIN_PRUEFSKRIPT = "process.stdin.resume(); process.stdin.on('end', () => process.exit(0))"
+const STDIN_ZEITGRENZE_MS = 2000
+
+test('F-307 rot (real gemessen, kein Spy): OHNE stdinLeer läuft ein stdin-lesender Prozess in die Zeitgrenze', async () => {
+  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS })
+  assert.equal(ergebnis.beendigungsart, 'TIMEOUT')
+  assert.equal(ergebnis.exitCode, null)
+})
+
+test('F-307 grün (real gemessen, kein Spy): MIT stdinLeer terminiert derselbe Prozess regulär mit Exit 0', async () => {
+  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS, stdinLeer: true })
+  assert.equal(ergebnis.beendigungsart, null)
+  assert.equal(ergebnis.exitCode, 0)
+})
+
+test('F-307: stdinLeer gegen ein Kind, das sofort endet — der stdin-Fehlerkanal reißt den Node-Prozess nicht ab', async () => {
+  // Das Kind beendet sich, bevor/während end() auf seinem stdin läuft. Ohne
+  // einen error-Listener auf kindprozess.stdin wäre ein EPIPE/
+  // ERR_STREAM_DESTROYED hier ein unbehandeltes Stream-Ereignis — das
+  // beendet unter Node nicht nur den Lauf, sondern den gesamten Prozess.
+  // Dass dieser Test überhaupt bis zur Zusicherung kommt, IST der Nachweis.
+  const ergebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)'], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS, stdinLeer: true })
+  assert.equal(ergebnis.exitCode, 0)
+  assert.equal(ergebnis.startfehler, null)
 })

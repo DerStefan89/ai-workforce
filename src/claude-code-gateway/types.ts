@@ -46,10 +46,11 @@ export interface ProzessErgebnis {
   beendigungsart: 'TIMEOUT' | 'ABBRUCH' | null
 }
 
-/** Zusätzliche, additive Abbruchfähigkeit für einen Starter-Aufruf (F14 WS-1, AK1): zeitgrenzeMs setzt eine harte Wanduhr-Grenze, abbruchSignal erlaubt einen gezielten manuellen Abbruch derselben Invocation. Beide optional — ein Starter, der sie ignoriert, bleibt gültig. */
+/** Zusätzliche, additive Abbruchfähigkeit für einen Starter-Aufruf (F14 WS-1, AK1): zeitgrenzeMs setzt eine harte Wanduhr-Grenze, abbruchSignal erlaubt einen gezielten manuellen Abbruch derselben Invocation. Beide optional — ein Starter, der sie ignoriert, bleibt gültig. stdinLeer (F16 WS-2, F-307) schließt den stdin des Kindprozesses unmittelbar nach dem Spawn: Codex meldet ohne angebundenes stdin real `Reading additional input from stdin...` und wartet auf Eingabe, statt zu beenden (state/tp-m3-01b-codex-sandbox.md, stdin-Nebenbefund zu Lauf (a)). Default false — der Claude-Code-Pfad setzt das Feld nicht und bleibt damit unverändert. */
 export interface StarterOptionen {
   zeitgrenzeMs?: number
   abbruchSignal?: AbortSignal
+  stdinLeer?: boolean
 }
 
 /** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. Der dritte, optionale Parameter (F14 WS-1, AK1) ist additiv: eine bestehende, zweiparametrige Starter-Implementierung (z.B. attrappeMitValidemErgebnis) bleibt ohne Anpassung zuweisungskompatibel. */

@@ -1,7 +1,7 @@
 /**
  * Datei: scripts/check-f16-codex-gateway.mjs
  *
- * Zweck: Codex-Gateway-Gate, WS-1 (F16, features/F16/feature.md, AK6).
+ * Zweck: Codex-Gateway-Gate (F16, features/F16/feature.md, AK6 und AK8).
  * Gebaut nach dem Muster von scripts/check-f6a-claude-code-gateway.mjs:
  * importiert baueCodexAufruf direkt aus src/codex-gateway/index.ts statt
  * einen zweiten, von Hand nachgebauten Regelsatz zu führen (D5).
@@ -9,8 +9,9 @@
  * (a) Grep über src/codex-gateway/*.ts (ohne Tests): kein
  *     Shell-String-Zusammenbau (F-057) — Muster und Selbsttest wortgleich
  *     aus scripts/check-f6a-claude-code-gateway.mjs übernommen (AK14);
- *     zusätzlich kein Import aus node:child_process, weil WS-1
- *     ausdrücklich keinen Prozessstart trägt (der kommt mit WS-2, AK7).
+ *     zusätzlich kein Import aus node:child_process: der Prozessstart
+ *     läuft ausschließlich über src/claude-code-gateway/prozessstart.ts
+ *     (AK7), nie über ein zweites, hier nachgebautes Spawn-Primitiv (D5).
  * (b) baueCodexAufruf führt '--sandbox' und 'read-only' als GETRENNTE
  *     Array-Elemente — ein zusammengesetztes '--sandbox read-only' wäre
  *     ein Shell-Denkfehler und käme bei Codex als ein einziges,
@@ -33,6 +34,15 @@
  * (f) Rot-Kalibrierung für (b) und (d) über Wegwerfkopien: eine Grenze,
  *     deren Rot-Fall nie gemessen wurde, heißt nicht ERZWUNGEN
  *     (ARCHITECTURE.md §8).
+ * (g) Grep über src/result-evaluator/index.ts (AK8): weder
+ *     ermittleErgebnisCodex noch eine von dort aus erreichbare lokale
+ *     Hilfsfunktion greift in ihrem ausführbaren Teil auf stderr zu
+ *     (ARCHITECTURE.md §7, F-309); die Worker-Weiche steht VOR dem
+ *     leseErgebnisobjekt-Aufruf (F-283). Die Aufrufverfolgung ist nötig,
+ *     weil ein namensgebundener Grep einen ausgelagerten stderr-Zugriff
+ *     durchließe — dafür gibt es eine eigene Rot-Kalibrierung, neben der
+ *     für den direkten Zugriff und einer Grün-Gegenprobe gegen die bloße
+ *     Kommentarerwähnung.
  *
  * Wird aufgerufen von: `npm run check`
  *
@@ -65,7 +75,7 @@ function raeumeKette(laufId) {
   rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
 }
 
-console.log('\n=== F16-Codex-Gateway-Check (WS-1) ===\n')
+console.log('\n=== F16-Codex-Gateway-Check (WS-1 + WS-2) ===\n')
 
 /** Liefert die Produktionsdateien des Moduls (ohne Tests) als [name, inhalt]-Paare. */
 function produktionsdateien(ausnahmen = []) {
@@ -102,7 +112,12 @@ if (!shellStringMuster.test(simulierterVerstoss)) {
   console.log('✓ (a)-Selbsttest: simulierter Shell-String-Zusammenbau wird vom Muster erkannt.')
 }
 
-const kindProcessMuster = /node:child_process/
+// Das Muster trifft den IMPORT, nicht die bloße Erwähnung: der
+// Kopfkommentar von src/codex-gateway/index.ts benennt node:child_process
+// ausdrücklich, um festzuhalten, dass es NICHT importiert wird. Ein Grep
+// über den nackten Modulnamen würde genau diese Begründung bestrafen und
+// damit dazu einladen, sie zu löschen.
+const kindProcessMuster = /(?:from|require\()\s*['"]node:child_process['"]/
 let kindProcessVerstoss = null
 for (const [datei, inhalt] of produktionsdateien()) {
   if (kindProcessMuster.test(inhalt)) {
@@ -111,9 +126,9 @@ for (const [datei, inhalt] of produktionsdateien()) {
   }
 }
 if (kindProcessVerstoss !== null) {
-  befunde.push(`(a): Import aus node:child_process in ${CODEX_GATEWAY_DIR}/${kindProcessVerstoss} — WS-1 startet ausdrücklich keinen Prozess (AK7 ist WS-2)`)
+  befunde.push(`(a): Import aus node:child_process in ${CODEX_GATEWAY_DIR}/${kindProcessVerstoss} — der Prozessstart läuft über src/claude-code-gateway/prozessstart.ts, nicht über ein zweites Spawn-Primitiv`)
 } else {
-  console.log('✓ (a): kein Import aus node:child_process — WS-1 startet keinen Prozess.')
+  console.log('✓ (a): kein Import aus node:child_process — der Prozessstart läuft über prozessstart.ts.')
 }
 
 // ─── (b) '--sandbox' und 'read-only' als getrennte Array-Elemente ──────────
@@ -203,10 +218,17 @@ if (abwaehlerMuster.test("const t = '--modell-ohne-abwahl'")) {
   console.log('✓ (c)-Selbsttest: beide Präfixe werden erkannt, ein unverdächtiges Token nicht.')
 }
 // Ebenso für die node:child_process-Regel aus (a).
-if (!kindProcessMuster.test("import { execFile } from 'node:child_process'")) {
-  befunde.push('(a)-Selbsttest: Muster erkennt einen simulierten Prozessstart-Import NICHT — Grep-Regel ist wirkungslos')
+for (const simuliert of ["import { execFile } from 'node:child_process'", "const cp = require('node:child_process')"]) {
+  if (!kindProcessMuster.test(simuliert)) {
+    befunde.push(`(a)-Selbsttest: Muster erkennt einen simulierten Prozessstart-Import NICHT: ${simuliert}`)
+  }
+}
+// Grün-Gegenprobe: die bloße Erwähnung im Fließtext darf KEINEN Befund
+// erzeugen, sonst prüft die Regel die Dokumentation statt des Codes.
+if (kindProcessMuster.test(' * Diese Datei importiert nie node:child_process direkt.')) {
+  befunde.push('(a)-Selbsttest: Muster schlägt auf einer bloßen Kommentarerwähnung von node:child_process an — zu breit')
 } else {
-  console.log('✓ (a)-Selbsttest: simulierter node:child_process-Import wird erkannt.')
+  console.log('✓ (a)-Selbsttest: Import (import/require) wird erkannt, eine bloße Kommentarerwähnung nicht.')
 }
 
 // ─── (d) Schemadateien: BOM-frei, LF, additionalProperties rekursiv ────────
@@ -377,6 +399,151 @@ try {
   }
 } finally {
   rmSync(wegwerfVerzeichnis, { recursive: true, force: true })
+}
+
+
+// ─── (g) Der Codex-Zweig des Result Evaluators liest kein stderr ───────────
+// ARCHITECTURE.md §7 verbietet, ein Laufergebnis aus Konsolentext
+// abzuleiten. F-309 zeigt real, warum das hier mehr als Formalismus ist:
+// auf stderr stehen ERROR-Zeilen des Modellkatalog-Refresh auch bei einem
+// vollständig erfolgreichen Lauf mit Exit-Code 0 — eine stderr-Heuristik
+// meldete grüne Läufe als gescheitert. Geprüft wird deshalb mechanisch per
+// Grep über genau den Funktionskörper, nicht per Zusicherung im Kommentar.
+const EVALUATOR_DATEI = join('src', 'result-evaluator', 'index.ts')
+const CODEX_FUNKTION = 'ermittleErgebnisCodex'
+
+/**
+ * Schneidet den Körper einer Top-Level-Funktion aus einer Quelldatei:
+ * von `function <name>` bis zur ersten schließenden Klammer in Spalte 0.
+ * Reine Funktion, damit (g) seine eigene Rot-Kalibrierung gegen einen
+ * konstruierten Körper fahren kann.
+ */
+function funktionsKoerper(quelle, name) {
+  const start = quelle.indexOf(`function ${name}(`)
+  if (start < 0) return null
+  const ende = quelle.indexOf('\n}\n', start)
+  return ende < 0 ? quelle.slice(start) : quelle.slice(start, ende + 3)
+}
+
+/** Nur der ausführbare Teil: Kommentarzeilen dürfen 'stderr' sehr wohl benennen (die Begründung, warum es NICHT gelesen wird, gehört genau dorthin). */
+function ohneKommentare(koerper) {
+  return koerper
+    .split('\n')
+    .filter((zeile) => !zeile.trimStart().startsWith('//') && !zeile.trimStart().startsWith('*'))
+    .join('\n')
+}
+
+/**
+ * Sammelt die Namen aller aus `koerper` heraus aufgerufenen Funktionen
+ * (ohne Kommentare). Grob, aber für diesen Zweck ausreichend: gesucht wird
+ * jeder Bezeichner unmittelbar vor einer öffnenden Klammer.
+ */
+function aufgerufeneNamen(koerper) {
+  const namen = new Set()
+  for (const treffer of ohneKommentare(koerper).matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)) {
+    namen.add(treffer[1])
+  }
+  return namen
+}
+
+/**
+ * Prüft `ermittleErgebnisCodex` UND jede lokale Funktion, die von dort aus
+ * erreichbar ist, auf stderr-Zugriff. Ein namensgebundener Grep über nur
+ * eine Funktion wäre zu schwach: eine ausgelagerte Hilfsfunktion, die
+ * stderr auswertet, passierte ihn unbemerkt, während AK8 die Aussage über
+ * den ganzen Codex-Zweig verlangt. Liefert die Liste der Verstöße plus die
+ * tatsächlich geprüften Funktionsnamen (damit das Häkchen benennt, worüber
+ * es spricht).
+ */
+function pruefeZweigAufStderr(quelle, einstieg) {
+  const offen = [einstieg]
+  const geprueft = []
+  const verstoesse = []
+  while (offen.length > 0) {
+    const name = offen.pop()
+    if (geprueft.includes(name)) continue
+    const koerper = funktionsKoerper(quelle, name)
+    if (koerper === null) continue
+    geprueft.push(name)
+    if (/stderr/.test(ohneKommentare(koerper))) verstoesse.push(name)
+    for (const aufgerufen of aufgerufeneNamen(koerper)) {
+      // Nur lokale Funktionen derselben Datei sind hier verfolgbar; alles
+      // andere (Importe, eingebaute Methoden) hat keinen Körper zum Prüfen.
+      if (!geprueft.includes(aufgerufen) && funktionsKoerper(quelle, aufgerufen) !== null) offen.push(aufgerufen)
+    }
+  }
+  return { verstoesse, geprueft }
+}
+
+const evaluatorQuelle = readFileSync(EVALUATOR_DATEI, 'utf-8')
+const codexKoerper = funktionsKoerper(evaluatorQuelle, CODEX_FUNKTION)
+if (codexKoerper === null) {
+  befunde.push(`(g): ${CODEX_FUNKTION} in ${EVALUATOR_DATEI} nicht gefunden — der Codex-Zweig (AK8) fehlt oder heißt anders`)
+} else {
+  const { verstoesse, geprueft } = pruefeZweigAufStderr(evaluatorQuelle, CODEX_FUNKTION)
+  if (verstoesse.length > 0) {
+    befunde.push(`(g): stderr-Zugriff im Codex-Zweig von ${EVALUATOR_DATEI}, in: ${verstoesse.join(', ')} (ARCHITECTURE.md §7, F-309)`)
+  } else {
+    console.log(`✓ (g): kein stderr-Zugriff im Codex-Zweig (geprüft: ${geprueft.join(', ')}) — ARCHITECTURE.md §7, F-309.`)
+  }
+}
+
+// Die Weiche selbst: sie MUSS vor dem leseErgebnisobjekt-Aufruf stehen
+// (F-283) — steht sie danach, scheitert jeder Codex-Lauf an einem
+// JSON.parse über das gesamte stdout, und zwar lautlos als
+// 'kein_ergebnisobjekt'.
+const weicheIndex = evaluatorQuelle.indexOf(`return ${CODEX_FUNKTION}(rohInhalt)`)
+const leseErgebnisIndex = evaluatorQuelle.indexOf('leseErgebnisobjekt(rohstrom.stdout)')
+if (weicheIndex < 0 || leseErgebnisIndex < 0) {
+  befunde.push(`(g): Worker-Weiche oder leseErgebnisobjekt-Aufruf in ${EVALUATOR_DATEI} nicht auffindbar — Reihenfolge nicht prüfbar`)
+} else if (weicheIndex > leseErgebnisIndex) {
+  befunde.push(`(g): die Worker-Weiche steht NACH dem leseErgebnisobjekt-Aufruf in ${EVALUATOR_DATEI} — jeder Codex-Lauf scheitert dort (F-283)`)
+} else {
+  console.log('✓ (g): die Worker-Weiche steht vor dem leseErgebnisobjekt-Aufruf (F-283).')
+}
+
+// Rot-Kalibrierung für (g): ohne sie wäre das Häkchen oben nur die Aussage
+// „der Grep hat nichts gefunden", nicht „der Grep findet etwas, wenn es da
+// ist" (ARCHITECTURE.md §8).
+const gRotKoerper = [
+  'function ermittleErgebnisCodex(rohInhalt) {',
+  '  // stderr wird hier nur im Kommentar erwähnt',
+  '  if (rohstrom.stderr.includes("ERROR")) return { ergebnis: "FEHLGESCHLAGEN" }',
+  '  return { ergebnis: "ERFOLGREICH" }',
+  '}',
+  '',
+].join('\n')
+if (pruefeZweigAufStderr(gRotKoerper, CODEX_FUNKTION).verstoesse.length === 0) {
+  befunde.push('(g): Rot-Kalibrierung fehlgeschlagen — ein simulierter stderr-Zugriff im Funktionskörper wird NICHT erkannt')
+} else {
+  console.log('✓ (g): Rot-Kalibrierung — ein simulierter stderr-Zugriff im Funktionskörper wird erkannt.')
+}
+// Zweite Rot-Kalibrierung, der eigentliche Punkt der Aufrufverfolgung: der
+// stderr-Zugriff liegt in einer AUSGELAGERTEN lokalen Hilfsfunktion. Genau
+// dieser Fall passierte die frühere, namensgebundene Fassung dieses Gates
+// unbemerkt — das Gate belegte dann „diese eine Funktion nennt stderr
+// nicht", während AK8 die Aussage über den ganzen Zweig verlangt.
+const gRotAusgelagert = [
+  'function leseStderrHeuristik(rohstrom) {',
+  '  return rohstrom.stderr.length > 0',
+  '}',
+  '',
+  'function ermittleErgebnisCodex(rohInhalt) {',
+  '  if (leseStderrHeuristik(JSON.parse(rohInhalt))) return { ergebnis: "FEHLGESCHLAGEN" }',
+  '  return { ergebnis: "ERFOLGREICH" }',
+  '}',
+  '',
+].join('\n')
+if (!pruefeZweigAufStderr(gRotAusgelagert, CODEX_FUNKTION).verstoesse.includes('leseStderrHeuristik')) {
+  befunde.push('(g): Rot-Kalibrierung fehlgeschlagen — ein in eine Hilfsfunktion AUSGELAGERTER stderr-Zugriff wird NICHT erkannt')
+} else {
+  console.log('✓ (g): Rot-Kalibrierung — auch ein ausgelagerter stderr-Zugriff wird über die Aufrufverfolgung erkannt.')
+}
+const gGruenKoerper = ['function ermittleErgebnisCodex(rohInhalt) {', '  // liest bewusst kein stderr', '  return { ergebnis: "ERFOLGREICH" }', '}', ''].join('\n')
+if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
+  befunde.push('(g): Grün-Gegenprobe fehlgeschlagen — eine bloße Kommentarerwähnung von stderr erzeugt einen Befund')
+} else {
+  console.log('✓ (g): Grün-Gegenprobe — eine bloße Kommentarerwähnung von stderr erzeugt keinen Befund.')
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

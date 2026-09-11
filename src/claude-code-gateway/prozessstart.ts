@@ -49,6 +49,28 @@
  * Fehlerklassifikation neu empirisch prüfen erfordern), siehe F-181. Nur
  * unter process.platform === 'win32' aktiv (kein ungetesteter Fallback für
  * macOS/Linux, YAGNI).
+ *
+ * F16 WS-2 (F-307): StarterOptionen.stdinLeer schließt den stdin des
+ * Kindprozesses unmittelbar nach dem Spawn.
+ *
+ * Was dazu real gemessen ist und was nicht — die Unterscheidung zählt:
+ * GEMESSEN ist, dass Codex ohne angebundenes stdin
+ * `Reading additional input from stdin...` auf stderr meldet
+ * (state/tp-m3-01b-codex-sandbox.md, Nebenbefund zu Lauf (a)) — derselbe
+ * Lauf endete dort aber mit Exit-Code 0, also regulär. GEMESSEN ist
+ * außerdem, dass ein Kind, das stdin bis EOF liest, unter execFile mit
+ * gepipetem stdin ohne dieses Feld in die Zeitgrenze läuft und mit ihm
+ * regulär endet (Rot-/Grün-Fall in codex-gateway.test.ts gegen ein
+ * node -e-Skript). NICHT gemessen ist, dass Codex selbst unter execFile
+ * hängt — kein Codex-Lauf wurde ohne stdinLeer gegen eine Zeitgrenze
+ * gefahren. Das Feld ist damit eine belegte Absicherung gegen einen
+ * belegten Mechanismus, nicht die Behebung eines beobachteten
+ * Codex-Hangs (F-318).
+ *
+ * Bewusst OPT-IN und nicht als neuer Vorgabewert:
+ * der Claude-Code-Pfad setzt das Feld nicht und verhält sich unverändert
+ * (kein bestehender Test musste dafür angepasst werden — hätte einer
+ * angepasst werden müssen, wäre die Änderung falsch geschnitten gewesen).
  */
 
 import { execFile } from 'node:child_process'
@@ -169,6 +191,19 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
       const kindprozess = execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
         void behandeleErgebnis(fehler, stdout, stderr)
       })
+      // F16 WS-2 (F-307): unmittelbar nach dem Spawn, nicht später — ein
+      // Kind, das stdin liest, bekommt so sofort EOF. Optional chaining,
+      // weil stdin je nach stdio-Konfiguration null sein kann. Der
+      // error-Listener ist kein Schmuck: stirbt das Kind im selben Tick,
+      // meldet der Stream EPIPE/ERR_STREAM_DESTROYED, und ein unbehandeltes
+      // error-Ereignis auf einem Stream beendet den gesamten Node-Prozess,
+      // nicht nur diesen Lauf. Bewusst geschluckt — für den Prozessausgang
+      // ist ein gescheitertes stdin-Schließen bedeutungslos (Regressionsfall
+      // in codex-gateway.test.ts: Kind mit sofortigem process.exit(0)).
+      if (optionen?.stdinLeer === true) {
+        kindprozess.stdin?.on('error', () => {})
+        kindprozess.stdin?.end()
+      }
 
       async function behandeleErgebnis(fehler: ExecFileException | null, stdout: string, stderr: string): Promise<void> {
         if (fehler === null) {
@@ -216,7 +251,7 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     return Promise.resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: null, message: pruefung.grund }, beendigungsart: null })
   }
   const starter = optionen.starter ?? echterStarter
-  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal }
+  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal, stdinLeer: optionen.stdinLeer }
   return starter(startziel, tokens, starterOptionen)
 }
 

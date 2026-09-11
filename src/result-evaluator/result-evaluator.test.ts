@@ -19,6 +19,13 @@
  * unvollstaendig, plus Regression, dass beendigungsart:null/fehlend die
  * bestehende Klassifikation unverändert lässt, und dass die geschriebene
  * Terminalmarke daten.letzter_gueltiger_checkpoint (AK6) trägt.
+ *
+ * F16 WS-2 (AK8): der Codex-Zweig, jeder Prüfschritt einzeln rot
+ * kalibriert. Die JSONL-Fixtures sind wörtlich aus den realen Läufen in
+ * state/tp-m3-01b-codex-sandbox.md übernommen. Zwei Fälle sind der
+ * eigentliche Punkt der Weiche: derselbe Rohstrom OHNE worker-Feld landet
+ * im Claude-Code-Zweig und scheitert dort an leseErgebnisobjekt (F-283),
+ * und ein Lauf mit Klartext-Blockademeldung wird NICHT VERWEIGERT (F-300).
  */
 
 import assert from 'node:assert/strict'
@@ -560,6 +567,406 @@ test('F14 WS-3 AK5: Rohstrom-Integritätsprüfung schlägt auch bei beendigungsa
 
     assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
     assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' && ergebnis.grund, 'rohstrom_integritaet')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── F16 WS-2 (AK8): Codex-Zweig ────────────────────────────────────────────
+// Jeder Zweig einzeln rot kalibriert. Die JSONL-Zeilen sind wörtlich aus den
+// realen Läufen in state/tp-m3-01b-codex-sandbox.md übernommen (Lauf (a) für
+// den Erfolgsfall, Lauf (o) für den schemakonformen Fall, Lauf (n) für das
+// error-Ereignis, Lauf (h) für die Klartext-Blockade) — kein erfundenes JSONL.
+
+/** Lauf (a), gekürzt auf die für die Klassifikation tragenden Zeilen: thread.started → turn.started → agent_message → turn.completed. */
+const CODEX_STDOUT_ERFOLG = [
+  '{"type":"thread.started","thread_id":"01a08f5d-1ab2-7ac2-9b41-6bdb224047af"}',
+  '{"type":"turn.started"}',
+  '{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Im aktuellen Verzeichnis liegen 2 Dateien."}}',
+  '{"type":"turn.completed","usage":{"input_tokens":31560,"output_tokens":175}}',
+].join('\n')
+
+/** Lauf (o): die LETZTE agent_message trägt das schemakonforme JSON-Objekt, die erste freien Text (F-308). */
+const CODEX_STDOUT_SCHEMAKONFORM = [
+  '{"type":"thread.started","thread_id":"01a08f64-5c5c-7a41-98cf-f4bdf9c4387b"}',
+  '{"type":"turn.started"}',
+  '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Ich lese a.txt und prüfe den Inhalt auf konkrete Fehler."}}',
+  '{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"{\\"urteil\\":\\"BLOCKIERT\\",\\"befunde\\":[],\\"empfehlung\\":\\"kein prüfbarer Code\\"}"}}',
+  '{"type":"turn.completed","usage":{"input_tokens":32158,"output_tokens":167}}',
+].join('\n')
+
+/** Lauf (n): ohne Anmeldung erscheint ein error-Ereignis auf stdout — der einzige real belegte Weg, auf dem ein Codex-Fehlschlag strukturiert sichtbar wird. */
+const CODEX_STDOUT_ERROR = [
+  '{"type":"thread.started","thread_id":"01a08f61-0c6e-7662-99a5-a843c049f88a"}',
+  '{"type":"turn.started"}',
+  '{"type":"error","message":"Reconnecting... 2/5 (unexpected status 401 Unauthorized)"}',
+].join('\n')
+
+const CODEX_TOKENS_OHNE_SCHEMA = ['exec', '--json', '--sandbox', 'read-only', '--model', 'gpt-5-codex', 'Prompt']
+const CODEX_TOKENS_MIT_SCHEMA = [
+  'exec',
+  '--json',
+  '--sandbox',
+  'read-only',
+  '--model',
+  'gpt-5-codex',
+  '--output-schema',
+  'C:\\repo\\schemas\\ergebnis-code-reviewer.schema.json',
+  'Prompt',
+]
+
+/** Schreibt einen Rohstrom in der von starteCodexGateway erzeugten Form (inkl. tokens, AK7). */
+function schreibeCodexRohstrom(
+  laufId: string,
+  werte: { stdout: string; exitCode: number | null; tokens?: string[]; beendigungsart?: 'TIMEOUT' | 'ABBRUCH' | null }
+): { pfad: string; inhalts_hash: string } {
+  const verzeichnis = join(ROH_BASIS, laufId)
+  mkdirSync(verzeichnis, { recursive: true })
+  const inhalt = JSON.stringify({
+    werkzeugStartziel: ['C:\\codex\\codex.exe'],
+    tokens: werte.tokens ?? CODEX_TOKENS_OHNE_SCHEMA,
+    stdout: werte.stdout,
+    // Wörtlich aus Lauf (a): eine ERROR-Zeile auf stderr bei Exit-Code 0
+    // (F-309). Sie steht in JEDEM dieser Fixtures, damit ein Evaluator, der
+    // stderr auswerten würde, hier zwangsläufig falsch klassifizierte.
+    stderr: 'ERROR codex_models_manager::manager: failed to refresh available models',
+    exitCode: werte.exitCode,
+    startfehler: null,
+    beendigungsart: werte.beendigungsart ?? null,
+  })
+  const pfad = join(verzeichnis, 'rohstrom.json')
+  writeFileSync(pfad, inhalt, 'utf8')
+  return { pfad, inhalts_hash: sha256Hex(inhalt) }
+}
+
+function baueCodexLaufakte(
+  laufId: string,
+  rohstromReferenz: { pfad: string; inhalts_hash: string },
+  beobachtungsbasisVollstaendig: boolean
+): LaufakteV0Daten {
+  return {
+    ...baueLaufakte(laufId, rohstromReferenz, beobachtungsbasisVollstaendig),
+    berechtigungskontext: 'codex-sandbox-read-only',
+    worker: 'codex',
+    modell_deklariert: 'gpt-5-codex',
+  }
+}
+
+test('AK8 gruen: ein Codex-Lauf mit turn.completed und Exit 0 ist ERFOLGREICH', () => {
+  const laufId = neueLaufId('codex-erfolg')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 (F-283, der Punkt der Weiche): derselbe Rohstrom OHNE worker-Feld landet im Claude-Code-Zweig und scheitert an leseErgebnisobjekt', () => {
+  const laufId = neueLaufId('codex-ohne-worker')
+  try {
+    // Identischer Rohstrom, einziger Unterschied: kein worker: 'codex'.
+    // Ohne die Weiche wäre das der Normalfall JEDES Codex-Laufs — der Fall
+    // belegt, dass die Weiche und nicht ein Zufall den Erfolgsfall oben
+    // trägt.
+    const laufakte = baueLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'kein_ergebnisobjekt')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: fehlender Rohstrom → rohstrom_fehlt (vor allen Codex-Zweigen)', () => {
+  const laufId = neueLaufId('codex-rohstrom-fehlt')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, { pfad: join(ROH_BASIS, laufId, 'gibt-es-nicht.json'), inhalts_hash: 'b'.repeat(64) }, true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'rohstrom_fehlt')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: manipulierter Rohstrom-Hash → rohstrom_integritaet', () => {
+  const laufId = neueLaufId('codex-integritaet')
+  try {
+    const referenz = schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0 })
+    const laufakte = baueCodexLaufakte(laufId, { ...referenz, inhalts_hash: 'c'.repeat(64) }, true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'rohstrom_integritaet')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: beendigungsart TIMEOUT schlaegt den Codex-Zweig (spezifischer vor generischer)', () => {
+  const laufId = neueLaufId('codex-timeout')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: '', exitCode: null, beendigungsart: 'TIMEOUT' }), false)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'timeout')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: beendigungsart ABBRUCH → abgebrochen_manuell', () => {
+  const laufId = neueLaufId('codex-abbruch')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: '', exitCode: null, beendigungsart: 'ABBRUCH' }), false)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'abgebrochen_manuell')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: abgeschnittener Strom (weder turn.completed noch turn.failed) → beobachtungsbasis_unvollstaendig', () => {
+  const laufId = neueLaufId('codex-basis')
+  try {
+    const abgeschnitten = '{"type":"thread.started","thread_id":"01a08f5d"}\n{"type":"turn.started"}'
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: abgeschnitten, exitCode: 0 }), false)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'beobachtungsbasis_unvollstaendig')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: ein error-Ereignis im Strom → turn_failed, auch bei Exit-Code 0', () => {
+  const laufId = neueLaufId('codex-error')
+  try {
+    // Exit-Code 0 ist hier bewusst gesetzt: turn_failed muss VOR exit_code
+    // greifen, sonst ginge ein gescheiterter Turn mit sauberem Prozessende
+    // verloren.
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERROR, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'turn_failed')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: turn.failed im Strom → turn_failed', () => {
+  const laufId = neueLaufId('codex-turn-failed')
+  try {
+    const stdout = '{"type":"turn.started"}\n{"type":"turn.failed","error":{"message":"HTTP 400"}}'
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'turn_failed')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: Exit-Code ungleich 0 bei sonst vollstaendigem Strom → exit_code', () => {
+  const laufId = neueLaufId('codex-exit')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 1 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'exit_code')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 gruen: mit --output-schema und JSON-Objekt in der LETZTEN agent_message → ERFOLGREICH', () => {
+  const laufId = neueLaufId('codex-schema-gruen')
+  try {
+    const laufakte = baueCodexLaufakte(
+      laufId,
+      schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_SCHEMAKONFORM, exitCode: 0, tokens: CODEX_TOKENS_MIT_SCHEMA }),
+      true
+    )
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: mit --output-schema, aber freier Text in der letzten agent_message → ergebnis_nicht_schemakonform', () => {
+  const laufId = neueLaufId('codex-schema-rot')
+  try {
+    const laufakte = baueCodexLaufakte(
+      laufId,
+      schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0, tokens: CODEX_TOKENS_MIT_SCHEMA }),
+      true
+    )
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'ergebnis_nicht_schemakonform')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 (F-308): es zaehlt die LETZTE agent_message — eine fruehere mit JSON rettet einen freien Schlusstext NICHT', () => {
+  const laufId = neueLaufId('codex-schema-letzte')
+  try {
+    const stdout = [
+      '{"type":"turn.started"}',
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"{\\"urteil\\":\\"FREIGEGEBEN\\"}"}}',
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Fertig, siehe oben."}}',
+      '{"type":"turn.completed"}',
+    ].join('\n')
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout, exitCode: 0, tokens: CODEX_TOKENS_MIT_SCHEMA }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'ergebnis_nicht_schemakonform')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8: ein JSON-Array in der letzten agent_message ist kein Objekt → ergebnis_nicht_schemakonform', () => {
+  const laufId = neueLaufId('codex-schema-array')
+  try {
+    const stdout = [
+      '{"type":"turn.started"}',
+      '{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"[1,2,3]"}}',
+      '{"type":"turn.completed"}',
+    ].join('\n')
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout, exitCode: 0, tokens: CODEX_TOKENS_MIT_SCHEMA }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'ergebnis_nicht_schemakonform')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8: OHNE --output-schema bleibt freier Text in der letzten agent_message ERFOLGREICH', () => {
+  const laufId = neueLaufId('codex-ohne-schema')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 (F-300): ein Codex-Lauf wird NIE VERWEIGERT — auch nicht bei einer Klartext-Blockademeldung im Strom', () => {
+  const laufId = neueLaufId('codex-nie-verweigert')
+  try {
+    // Wörtlich aus Lauf (h): der blockierte Befehl erzeugt KEIN Ereignis,
+    // die Blockade steht nur als Klartext in der agent_message. Genau
+    // dieser Lauf darf nicht als VERWEIGERT durchgehen — es gibt keine
+    // strukturierte Beobachtung, auf die sich das stützen ließe.
+    const stdout = [
+      '{"type":"thread.started","thread_id":"01a08f60-109f-70d1-819e-69a442cab65d"}',
+      '{"type":"turn.started"}',
+      '{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Das Lesen von a.txt wurde durch die Ausfuehrungsrichtlinie blockiert."}}',
+      '{"type":"turn.completed"}',
+    ].join('\n')
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.notEqual(ergebnis.ergebnis, 'VERWEIGERT')
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8: der Codex-Zweig schreibt eine reale Terminalmarke (genau eine, ueber F1B)', () => {
+  const laufId = neueLaufId('codex-marke')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    const checkpoints = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(checkpoints.length, 1)
+    assert.ok(ergebnis.wirkungsmarke.pfad.length > 0)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── AK8, Nachtrag aus dem QA-/Reviewer-Pass ────────────────────────────────
+// Vier Zweige, die zuvor nur mitgetragen und nicht einzeln gemessen waren.
+
+test('AK8 rot: nicht parsbarer Rohstrom bei PASSENDEM Hash → rohstrom_integritaet (innerer Zweig des Codex-Pfads)', () => {
+  const laufId = neueLaufId('codex-integritaet-innen')
+  try {
+    // Hash passt zum Inhalt — die vorgelagerte Integritätsprüfung greift
+    // also NICHT. Erst das JSON.parse im Codex-Zweig scheitert. Ohne diesen
+    // Fall wäre das dortige try/catch durch keinen Test erreicht und ließe
+    // sich ersatzlos entfernen.
+    const referenz = schreibeRohstromRoh(laufId, 'kein JSON, sondern Text')
+    const laufakte = baueCodexLaufakte(laufId, referenz, true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'rohstrom_integritaet')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: beobachtungsbasis_vollstaendig true, aber abgeschnittener Strom → der Evaluator glaubt dem Flag nicht', () => {
+  const laufId = neueLaufId('codex-flag-luegt')
+  try {
+    // Das Flag der Laufakte ist eine abgeleitete Behauptung des Gateways.
+    // Hier steht es auf true, der Strom trägt aber weder turn.completed noch
+    // turn.failed. Ohne die Nachrechnung im Codex-Zweig ginge das still als
+    // ERFOLGREICH durch.
+    const abgeschnitten = '{"type":"thread.started","thread_id":"01a08f5d"}\n{"type":"turn.started"}'
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: abgeschnitten, exitCode: 0 }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'beobachtungsbasis_unvollstaendig')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8: ein Rohstrom OHNE tokens/stdout (Form aus dem Claude-Code-Pfad) stürzt nicht ab, sondern klassifiziert defensiv', () => {
+  const laufId = neueLaufId('codex-felder-fehlen')
+  try {
+    // Real erreichbar, sobald eine Laufakte worker: 'codex' trägt, ihr
+    // Rohstrom aber aus einer anderen Quelle stammt — genau die Form, die
+    // F6as starteGateway schreibt (kein tokens-Feld).
+    const inhalt = JSON.stringify({ werkzeugStartziel: ['C:\\codex\\codex.exe'], stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
+    const laufakte = baueCodexLaufakte(laufId, schreibeRohstromRoh(laufId, inhalt), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    // Fehlendes stdout heißt: leerer Strom, also weder turn.completed noch
+    // turn.failed — die Beobachtungsbasis ist unvollständig, kein Absturz.
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'beobachtungsbasis_unvollstaendig')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8: fehlendes tokens-Feld bedeutet „kein --output-schema" — der Schemazweig greift dann nicht', () => {
+  const laufId = neueLaufId('codex-tokens-fehlen')
+  try {
+    const inhalt = JSON.stringify({ stdout: CODEX_STDOUT_ERFOLG, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
+    const laufakte = baueCodexLaufakte(laufId, schreibeRohstromRoh(laufId, inhalt), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: mit --output-schema und GAR KEINER agent_message → ergebnis_nicht_schemakonform', () => {
+  const laufId = neueLaufId('codex-schema-keine-nachricht')
+  try {
+    // Der null-Pfad von istJsonObjekt: kein Auswertepunkt vorhanden. Ein
+    // Ergebnis, das es nicht gibt, ist nicht schemakonform — nicht
+    // „unentschieden".
+    const stdout = '{"type":"turn.started"}\n{"type":"turn.completed"}'
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout, exitCode: 0, tokens: CODEX_TOKENS_MIT_SCHEMA }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'ergebnis_nicht_schemakonform')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('AK8 rot: exitCode null bei sonst vollständigem Strom → exit_code (null ist kein 0)', () => {
+  const laufId = neueLaufId('codex-exit-null')
+  try {
+    const laufakte = baueCodexLaufakte(laufId, schreibeCodexRohstrom(laufId, { stdout: CODEX_STDOUT_ERFOLG, exitCode: null }), true)
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'exit_code')
   } finally {
     raeumeKette(laufId)
   }

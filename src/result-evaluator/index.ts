@@ -25,6 +25,17 @@
  * ladeLetztenGueltigenCheckpoint — kein neuer Lesepfad), gelesen VOR dem
  * eigenen Terminal-Schreibvorgang, sonst fände er sich selbst.
  *
+ * F16 WS-2 (AK8): ermittleErgebnis verzweigt nach laufakte.worker ??
+ * 'claude-code' — die Weiche steht VOR dem leseErgebnisobjekt-Aufruf, weil
+ * dessen JSON.parse über das gesamte stdout für Codex-JSONL immer
+ * scheitert (F-283). Der Codex-Zweig (ermittleErgebnisCodex) teilt sich mit
+ * dem Claude-Code-Zweig die vier vorgelagerten Prüfungen (rohstrom_fehlt,
+ * rohstrom_integritaet, timeout/abgebrochen_manuell,
+ * beobachtungsbasis_unvollstaendig) und prüft danach turn_failed →
+ * exit_code → ergebnis_nicht_schemakonform → ERFOLGREICH. Er kennt bewusst
+ * KEIN VERWEIGERT und liest kein stderr — beides real begründet (F-300,
+ * F-309), Details am Funktionskommentar.
+ *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens/tokenisiereCommand) ist
  * neuer Code (Design-Entscheidung 5): pruefeAufrufparameter (F4) erwartet ein
  * Tokens-Array, tool_input ist ein werkzeugabhängiges Objekt (`{"command":…}`,
@@ -39,6 +50,7 @@
 import { readFileSync } from 'node:fs'
 import { leseErgebnisobjekt } from '../claude-code-gateway/index.ts'
 import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
+import { leseCodexEreignisse } from '../codex-gateway/index.ts'
 import { ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter } from '../invocation-policy/index.ts'
@@ -94,6 +106,116 @@ function istPermissionDenial(wert: unknown): wert is PermissionDenial {
 }
 
 /**
+ * Liefert true, wenn text ein JSON-OBJEKT ist (kein Skalar, kein Array,
+ * kein null) — der Schemaprüfpunkt von AK8. Prüft bewusst NICHT gegen das
+ * konkrete Ausgabeschema: welches Schema galt, steht nicht in der Laufakte,
+ * und eine zweite, hier nachgebaute Schemaprüfung wäre eine unabhängig
+ * verfallende Kopie der Schemadatei. Geprüft wird die Form, die ein
+ * schemakonformes Ergebnis zwingend hat.
+ */
+function istJsonObjekt(text: string | null): boolean {
+  if (text === null) return false
+  let geparst: unknown
+  try {
+    geparst = JSON.parse(text)
+  } catch {
+    return false
+  }
+  return typeof geparst === 'object' && geparst !== null && !Array.isArray(geparst)
+}
+
+/**
+ * Codex-Zweig der Klassifikation (AK8). Ausgangspunkt ist der bereits
+ * gelesene und auf Integrität geprüfte Rohstrom — rohstrom_fehlt,
+ * rohstrom_integritaet, timeout/abgebrochen_manuell und
+ * beobachtungsbasis_unvollstaendig hat der gemeinsame Teil von
+ * ermittleErgebnis davor schon entschieden; diese vier Zweige sind für
+ * beide Worker wortgleich und werden deshalb nicht zweimal gebaut (D5).
+ *
+ * Reihenfolge hier: turn_failed → exit_code → ergebnis_nicht_schemakonform
+ * → ERFOLGREICH. turn_failed steht vor exit_code, weil ein gescheiterter
+ * Turn real mit Exit-Code 0 einhergehen kann (der Prozess selbst lief
+ * sauber) — die umgekehrte Reihenfolge würde den Fehlschlag verlieren.
+ *
+ * KEIN VERWEIGERT-Zweig, und das ist kein Versehen: real gemessen
+ * (state/tp-m3-01b-codex-sandbox.md, Messpunkt (f), F-300) erzeugt ein an
+ * der Ausführungsrichtlinie gescheiterter Befehl GAR KEIN JSONL-Ereignis
+ * auf stdout — kein item.started, kein item.completed, kein exit_code. Die
+ * Verweigerung erscheint nur auf stderr und als Klartext in der
+ * agent_message. Eine VERWEIGERT-Klassifikation ist für Codex damit
+ * strukturell nicht gewinnbar; ein „vorsorglicher" Zweig wäre eine
+ * Klassifikation ohne Beobachtungsgrundlage.
+ *
+ * Liest ausdrücklich KEIN stderr (ARCHITECTURE.md §7: Laufergebnis nie aus
+ * Konsolentext). F-309 zeigt real, warum das mehr als Formalismus ist: auf
+ * stderr stehen betriebsbedingte ERROR-Zeilen des Modellkatalog-Refresh
+ * auch bei einem vollständig erfolgreichen Lauf mit Exit-Code 0 — eine
+ * stderr-Heuristik würde grüne Läufe als gescheitert melden. Gate (g) in
+ * scripts/check-f16-codex-gateway.mjs belegt die Abwesenheit per Grep über
+ * genau diese Funktion.
+ *
+ * @param rohInhalt - der bereits gelesene, hash-geprüfte Rohstrominhalt
+ * @returns Terminalausgang ohne Wirkungsmarke
+ */
+function ermittleErgebnisCodex(rohInhalt: string): ErgebnisOhneWirkungsmarke {
+  let rohstrom: { stdout?: unknown; exitCode?: unknown; tokens?: unknown }
+  try {
+    rohstrom = JSON.parse(rohInhalt) as { stdout?: unknown; exitCode?: unknown; tokens?: unknown }
+  } catch {
+    // Erreichbar, nicht theoretisch: leseBeendigungsart oben schluckt einen
+    // nicht parsbaren Rohstrom tolerant (liefert null), und der Hash kann
+    // dabei passen — eine Datei, die als Nicht-JSON geschrieben wurde, ist
+    // zu ihrem eigenen Hash konsistent. Eigener Rot-Fall in
+    // result-evaluator.test.ts.
+    //
+    // Abweichung vom Claude-Code-Zweig, bewusst: dort liefert derselbe
+    // Defekt 'kein_ergebnisobjekt' (weiter unten). Für Codex wäre dieser
+    // Grund irreführend — es gibt kein Ergebnisobjekt, das fehlen könnte,
+    // der Strom ist JSONL. Ein unlesbarer Rohstrom bei passendem Hash ist
+    // genau ein Integritätsbefund, und so heißt er hier auch.
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'rohstrom_integritaet' }
+  }
+
+  const ereignisse = leseCodexEreignisse(typeof rohstrom.stdout === 'string' ? rohstrom.stdout : '')
+
+  // Defense in depth, an der von AK8 vorgesehenen Stelle (nach
+  // beobachtungsbasis_unvollstaendig, vor turn_failed): der gemeinsame Teil
+  // hat das gleichnamige Flag der Laufakte bereits geprüft — dieses Flag ist
+  // aber eine ABGELEITETE Behauptung des Gateways (turnCompleted ||
+  // turnFailed, codex-gateway/index.ts). Der Evaluator parst den Strom hier
+  // ohnehin erneut und kann deshalb billig nachrechnen, statt zu glauben.
+  // Ohne diese Zeilen ginge ein Paar aus Flag 'true' und abgeschnittenem
+  // Strom still als ERFOLGREICH durch.
+  if (!ereignisse.turnCompleted && !ereignisse.turnFailed) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'beobachtungsbasis_unvollstaendig' }
+  }
+
+  if (ereignisse.turnFailed) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'turn_failed' }
+  }
+  if (rohstrom.exitCode !== 0) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'exit_code' }
+  }
+
+  // Der Auswertepunkt ist ausdrücklich die LETZTE agent_message (F-308):
+  // frühere tragen real freien Text („Ich lese a.txt und prüfe …"), nur die
+  // letzte ist bei --output-schema das schemakonforme JSON-Objekt.
+  // .some(exakter Vergleich) statt .includes/.indexOf: Gate (a) in
+  // scripts/check-f7-result-evaluator.mjs verbietet diese Methoden in
+  // src/result-evaluator/*.ts, weil sie der Weg sind, auf dem ein Ergebnis
+  // aus Konsolentext abgeleitet wird (AK4). Hier geht es um die
+  // Mitgliedschaft eines Tokens in einem Argv-Array, nicht um Textsuche —
+  // die exakte Gleichheit macht genau das sichtbar und darf nicht zu einem
+  // vermeintlich kürzeren .includes zurückvereinfacht werden.
+  const tokens = Array.isArray(rohstrom.tokens) ? rohstrom.tokens : []
+  if (tokens.some((token) => token === '--output-schema') && !istJsonObjekt(ereignisse.letzteAgentMessage)) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'ergebnis_nicht_schemakonform' }
+  }
+
+  return { ergebnis: 'ERFOLGREICH' }
+}
+
+/**
  * Reine Klassifikationslogik ohne Wirkungsmarken-Schreibzugriff — getrennt
  * von klassifiziereLauf, damit die Prüfreihenfolge (SCOPE.2) an einer Stelle
  * steht und der Schreibaufruf in allen drei Ausgängen identisch bleibt.
@@ -123,6 +245,19 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten): ErgebnisOhneWirkungsmarke 
 
   if (laufakte.beobachtungsbasis_vollstaendig === false) {
     return { ergebnis: 'FEHLGESCHLAGEN', grund: 'beobachtungsbasis_unvollstaendig' }
+  }
+
+  // AK8: Die Worker-Weiche MUSS hier stehen — vor dem leseErgebnisobjekt
+  // weiter unten. Dessen JSON.parse läuft über das GESAMTE stdout und
+  // verlangt type:"result"; für Codex-JSONL (mehrere JSON-Objekte, je
+  // eines pro Zeile) scheitert das IMMER, nicht nur im Fehlerfall (F-283,
+  // ausführlich in src/codex-gateway/index.ts). Ein Codex-Lauf darf dort
+  // gar nicht erst hineinlaufen, sonst wäre jeder Codex-Lauf
+  // 'kein_ergebnisobjekt'. Fehlendes worker bedeutet 'claude-code'
+  // (append-only, AK4) — jede vor F16 geschriebene Laufakte bleibt damit
+  // unverändert klassifiziert.
+  if ((laufakte.worker ?? 'claude-code') === 'codex') {
+    return ermittleErgebnisCodex(rohInhalt)
   }
 
   let rohstrom: { stdout?: unknown }
