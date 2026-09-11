@@ -257,6 +257,24 @@ Orchestrierung, `docs/projekt/zielfassung.md` §13.4).
   (`features/F16/nachweis-rotfall.md`) und ein zweistufiger Workflow
   (`features/F16/nachweis-ak12.md`) (Gate
   `scripts/check-f16-codex-gateway.mjs`, eingehängt in `npm run check`).
+- F17 (Rollenvertrag) ist mit WS-1/WS-2/WS-3 vollständig umgesetzt und
+  `ABGESCHLOSSEN`: eine Rolle ist ein maschinenlesbarer Vertrag —
+  `src/rollen/` (`ROLLENVERTRAEGE`) ist die einzige Stelle im Repo, die
+  Rollennamen definiert (löst F-184), `ROLLEN_AUSSCHLUSSMUSTER` ist dorthin
+  migriert. `validiereWorkflowDaten` lehnt eine unbekannte `rolle` zur
+  Planzeit ab; `loeseAusfuehrungsEingabenAuf` lehnt zur Startzeit vor jedem
+  Workerstart ab, wenn Werkzeugsatz-Art, Worker oder `output_schema` eines
+  geplanten Schritts den Vertrag seiner Rolle verletzen (vier neue
+  Ablehnungen, ALLOWLIST-formuliert, in die bestehende Zählung eingereiht).
+  Der Werkzeugsatz eines `codex`-Schritts bleibt Plandatum mit
+  Durchsetzungsgrad `DEKLARIERT` und wird in der Leitstand-Projektion als
+  solcher gekennzeichnet (löst F-323, Weg a). Real belegt: derselbe
+  zweistufige F16-AK12-Workflow läuft unverändert und ohne manuellen
+  Zwischenstart durch (AK8), eine rollenvertragswidrige Variante wird real
+  vor jedem Worker-Start abgehalten (AK9) — die Grenze trägt damit den
+  Durchsetzungsgrad `ERZWUNGEN` (AK10, `features/F17/nachweis-ws3.md`,
+  Gate `scripts/check-f17-rollenvertrag.mjs`, eingehängt in
+  `npm run check`).
 
 ## Offene Punkte
 
@@ -297,10 +315,8 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
   oben (`features/F15/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F16** — Zweiter Worker (Codex CLI, nur lesend). **Erledigt**, siehe
   oben (`features/F16/feature.md`, Status `ABGESCHLOSSEN`).
-- 🔄 **F17** — Rollenvertrag. **In Arbeit** (`features/F17/feature.md`,
-  Status `READY_FOR_TECH`). WS-1 (Kern-Modul `src/rollen/`, Migration von
-  `ROLLEN_AUSSCHLUSSMUSTER`) umgesetzt; WS-2 (Plan-/Startzeitprüfung) und
-  WS-3 (realer Nachweis über den Leitstand) offen.
+- ✅ **F17** — Rollenvertrag. **Erledigt**, siehe oben
+  (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 
@@ -318,12 +334,14 @@ Stand der §13.4-Bestehensbedingung (drei Sätze):
 Zuordnung von Satz 2 und Satz 3 — **Planungsstand aus der
 Challenge-Runde vom 11.09.2026, noch nicht in
 `docs/projekt/zielfassung.md` §13.4 festgeschrieben**, also hier
-Absichtserklärung und nicht Sollquelle: F17 bleibt schmal und umfasst
-ausschließlich den Rollenvertrag (löst `state/findings.md` F-313 und
-F-323); Satz 2 (Szenario A/B) und Satz 3 (Router-Eval-Gate) werden
-gemeinsam ein eigener Nachweis-Workstream **nach** F17. Verbindlich wird
-das erst mit einem Eintrag in §13.4. Eine Reihenfolge für Meilenstein 3
-ist nicht festgelegt.
+Absichtserklärung und nicht Sollquelle: F17 blieb schmal und umfasste
+ausschließlich den Rollenvertrag — real abgeschlossen, löst
+`state/findings.md` F-184 und F-323; F-313 bleibt ausdrücklich offen
+(F17 „Nicht-Ziele": Schemakonformität des Codex-Ergebnisses ist ein
+Evaluator-, kein Rollenproblem). Satz 2 (Szenario A/B) und Satz 3
+(Router-Eval-Gate) werden gemeinsam ein eigener Nachweis-Workstream
+**nach** F17. Verbindlich wird das erst mit einem Eintrag in §13.4. Eine
+Reihenfolge für Meilenstein 3 ist nicht festgelegt.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder

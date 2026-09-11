@@ -10,7 +10,7 @@ Rollenvertrag (Rolle als Vertrag statt Kontextfilter)
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -106,20 +106,25 @@ Stelle im Repo, die Rollen definiert.
   `codex`-Schritts weist den Werkzeugsatz als `DEKLARIERT` aus; bei
   `claude-code` als `ERZWUNGEN`. Der Kopfkommentar der Worker-Weiche
   benennt, dass `baueCodexAufruf` kein Werkzeugsatz-Feld kennt.
-- **AK8** *(WS-3)* — Grün, real: der zweistufige Workflow aus F16 AK12
-  (`nachweis/ws3b/L1.json`, Codex `code-reviewer` lesend → Claude Code
-  `ausfuehrung` schreibend) läuft unverändert über den Leitstand durch,
-  ohne manuellen Zwischenstart. Kein neuer Workflow.
-- **AK9** *(WS-3)* — Rot, real: derselbe Plan mit
+- **AK8** *(WS-3)* — **Erfüllt.** Grün, real: der zweistufige Workflow aus
+  F16 AK12 (`nachweis/ws3b/L1.json`, Codex `code-reviewer` lesend → Claude
+  Code `ausfuehrung` schreibend) läuft unverändert über den Leitstand
+  durch, ohne manuellen Zwischenstart (9 ms zwischen Cursor-Wanderung und
+  Start des zweiten Schritts). Kein neuer Workflow — nur eine neue
+  `workflow_id`, weil die ursprüngliche (`f16-ws3b-ak12`) als
+  `ABGESCHLOSSEN` gesperrt ist. Nachweis: `features/F17/nachweis-ws3.md`.
+- **AK9** *(WS-3)* — **Erfüllt.** Rot, real: derselbe Plan mit
   `rolle: "code-reviewer"` und schreibendem Werkzeugsatz startet den
-  Schritt nicht; der Workflow hält sichtbar an, der `grund` nennt Rolle und
-  Werkzeugsatz-Art. Nachweis nach Muster `features/F16/nachweis-ak12.md`.
-  F-272 beachten: keine Sicherung im Aufbau, die denselben Ausgang erzeugt
-  wie der zu belegende Mechanismus.
-- **AK10** *(WS-3)* — Der Durchsetzungsgrad der neuen Grenze ist mit
-  kalibriertem Rot- und Grün-Fall belegt und heißt deshalb `ERZWUNGEN`
-  (`ARCHITECTURE.md` §8). F-184 geschlossen, F-323 geschlossen, F-336
-  angelegt.
+  Schritt nicht; der Workflow hält sichtbar auf `OFFEN`/`schritt-1-review`
+  an, der `grund` nennt Rolle und Werkzeugsatz-Art. Kein Worker-Prozess,
+  keine `lauf_id`. F-272 beachtet: die Ablehnung entstand real am
+  Produktionsendpunkt `POST /api/workflows/<id>/starten`, keine
+  Testattrappe. Nachweis: `features/F17/nachweis-ws3.md`.
+- **AK10** *(WS-3)* — **Erfüllt.** Der Durchsetzungsgrad der neuen Grenze
+  ist mit kalibriertem Rot- (AK9) und Grün-Fall (AK8, plus vier
+  Rot-/ein Grün-Fall aus dem WS-2-Gate) belegt und heißt deshalb
+  `ERZWUNGEN` (`ARCHITECTURE.md` §8). F-184 geschlossen, F-323 geschlossen,
+  F-336 angelegt (`state/findings.md`).
 
 ## Entschieden
 
@@ -161,5 +166,5 @@ Stefan, 11.09.2026, nach Challenge von PlanV0:
 - F16 — `loeseAusfuehrungsEingabenAuf` (Ablehnungszählung),
   `schemas/ergebnis-code-reviewer.schema.json`, Nachweis AK12.
 - F11 — Startvorlage, `werkzeugsaetze[].art`.
-- Findings: F-184 (löst), F-323 (löst), F-313 (ausdrücklich nicht),
-  F-336 (anlegen).
+- Findings: F-184 (gelöst), F-323 (gelöst), F-313 (ausdrücklich nicht),
+  F-336 (angelegt).

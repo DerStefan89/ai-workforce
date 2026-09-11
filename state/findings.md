@@ -1824,7 +1824,7 @@ Empfohlene Maßnahme: E-M3-1…E-M3-3 entscheiden (im Projektchat am
 Doku-PR vor F15.
 Feature/Run: M3-Challenge, 09.09.2026.
 
-**F-184** · `TECH_DEBT` · P2 · offen
+**F-184** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Rollen existieren im Kern nur als Kontextfilter, nicht als
 Vertrag.
 Beschreibung: `rolle` ist ein freier String im Startauftrag; einzige
@@ -1839,7 +1839,13 @@ Auswirkung: Kein Blocker für M2; für M3 ist ein Rollenvertrag
 Voraussetzung jeder Nicht-Ausführer-Rolle.
 Empfohlene Maßnahme: F17 WS-1 (rollen/<name>.json mit Output-Schema),
 abhängig von E-M3-1.
-Feature/Run: M3-Challenge, 09.09.2026.
+Status: gelöst. `src/rollen/` (`ROLLENVERTRAEGE`) ist die einzige Stelle
+im Repo, die Rollennamen definiert (F17 WS-1); Planzeitprüfung in
+`validiereWorkflowDaten` und Startzeitprüfung in
+`loeseAusfuehrungsEingabenAuf` setzen Werkzeugsatz-Art, Worker und
+Ausgabeschema real durch (F17 WS-2), real belegt am Leitstand
+(`features/F17/nachweis-ws3.md`, AK8/AK9).
+Feature/Run: M3-Challenge, 09.09.2026. Gelöst: F17 WS-1–WS-3, 11.09.2026.
 
 **F-185** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Secret-Ausschluss (.claudeignore, Entscheidung 35) wirkt nur für
@@ -5226,7 +5232,7 @@ Test ändern.
 Status: gelöst (Kommentar präzisiert; Verhalten und Tests unverändert).
 Feature/Run: S-M3-02 (Codex `--output-schema`), 11.09.2026.
 
-**F-323** · `TECH_DEBT` · P2 · offen
+**F-323** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Der geplante Werkzeugsatz eines `codex`-Schritts wird aufgelöst, aber
 von nichts durchgesetzt.
 Beschreibung: `loeseAusfuehrungsEingabenAuf` löst den benannten Werkzeugsatz
@@ -5260,8 +5266,18 @@ Leitstand als solcher angezeigt; (b) WORKFLOW_V0 erlaubt für `codex`
 (Regel-4b-Muster, konsequent, aber eine Schemaänderung); (c) es bleibt, wie
 es ist, und der Kopfkommentar der Weiche benennt es — der billigste Weg und
 zugleich der, der die Frage offen lässt. Vor AK12 entscheiden.
-Status: offen.
-Feature/Run: F16 WS-3a, 11.09.2026 (Reviewer-Pass, Befund 4).
+Status: gelöst nach Weg (a) — der Werkzeugsatz eines `codex`-Schritts bleibt
+Plandatum mit Durchsetzungsgrad `DEKLARIERT`, die Leitstand-Projektion
+kennzeichnet ihn als solchen (`werkzeugsatzDurchsetzung`, F17 Entschieden
+11.09.2026). Querverweis auf den F17-WS-2-Nachtrag
+(`features/F17/feature.md`, Abschnitt „Entschieden"): die reale Ablehnung
+„codex + nicht-lesender Werkzeugsatz" (F16 AK10) ist für jede der vier
+`ROLLENVERTRAEGE`-Rollen inzwischen unerreichbar, weil die neue
+Rollenvertrag-Ablehnung zuerst greift — dieselbe Anfrage bleibt abgelehnt,
+kein Sicherheitsverlust, aber AK10 ist ab WS-2 Tiefenverteidigung statt
+eines über eine reale Rolle kalibrierbaren Rotfalls.
+Feature/Run: F16 WS-3a, 11.09.2026 (Reviewer-Pass, Befund 4). Gelöst: F17
+WS-2/WS-3, 11.09.2026.
 
 **F-324** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Terminalblöcke geben `git checkout -b` ohne vorheriges
@@ -5581,3 +5597,22 @@ einmalig über das ganze Register durchziehen. Keine Vereinheitlichung in
 diesem PR.
 Status: offen.
 Feature/Run: Verifikationsrunde PR #137, 11.09.2026.
+
+**F-336** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: features/F16/feature.md verweist auf einen F17-Verbraucher, den
+E-M3-3 (präzisiert) ausgeschlossen hat.
+Beschreibung: `features/F16/feature.md` verweist im Abschnitt
+„Nicht-Ziele" auf einen F17-WS-2-Verbraucher einer `besetzung`-Tabelle,
+den `docs/projekt/zielfassung.md` §13.4 E-M3-3 (präzisiert) inzwischen
+ausdrücklich ausgeschlossen hat — F17 hat keine eigene
+Assignment-/Besetzungsschicht und keine `besetzung`-Tabelle gebaut (die
+feste Besetzung lebt je `WORKFLOW_V0`-Schritt, siehe `features/F17/
+feature.md`, Abschnitt „Nicht-Ziele").
+Fundstelle: `features/F16/feature.md`, Abschnitt „Nicht-Ziele";
+`docs/projekt/zielfassung.md` §13.4 E-M3-3 (präzisiert).
+Auswirkung: Eine Sitzung, die F17 aus der F16-Akte ableitet, baut eine
+Besetzungstabelle, die eine zweite Wahrheit wäre.
+Maßnahme: Satz in `features/F16/feature.md` beim nächsten Doku-PR
+korrigieren.
+Status: offen.
+Feature/Run: F17-Challenge, 11.09.2026.
