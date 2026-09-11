@@ -12,7 +12,9 @@
  * Eigenständiges Modul (D1, wie F2 gegenüber F1, F3/F9 gegenüber F1B/F2):
  * ruft F2s registriereKernArtefakt/pruefeStale ausschließlich von außen
  * auf, kein Eingriff in src/lineage-registry/. Liest keine Dateien selbst
- * (AC8) — jeder Inhalt kommt vom Aufrufer als Anfrage.inhalt.
+ * (AC8) — jeder Inhalt kommt vom Aufrufer als Anfrage.inhalt. Rollenprüfung
+ * und Ausschlussmuster kommen seit F17 WS-1 aus src/rollen/index.ts
+ * (ROLLENVERTRAEGE) — dieses Modul definiert keine Rollen mehr selbst.
  *
  * Kein Runtime-/Modell-Feld im Schema (E-191 N1/N2) — Rollenname bleibt vom
  * Anbieter-/Modellbezug getrennt.
@@ -22,7 +24,7 @@ import { sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeStale, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import type { EingabeReferenz } from '../lineage-registry/types.ts'
-import { ROLLEN_AUSSCHLUSSMUSTER } from './types.ts'
+import { istBekannteRolle, ROLLENVERTRAEGE } from '../rollen/index.ts'
 import type { Anfrage, Budget, Ereignis, KontextpaketAusschluss, KontextpaketElement, KontextpaketErgebnis, KontextpaketV0Daten, Schreiber } from './types.ts'
 
 interface Optionen {
@@ -89,7 +91,7 @@ export function baueKontextpaket(
   const lineageOptionen = { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: stillerLineageSchreiber }
 
   // 1. Rollenprüfung — fail-closed bei unbekannter Rolle (Delta 2)
-  if (!Object.hasOwn(ROLLEN_AUSSCHLUSSMUSTER, rolle)) {
+  if (!istBekannteRolle(rolle)) {
     schreiber({ ereignis: 'kontextpaket_unbekannte_rolle', zeitstempel: jetzt(), lauf_id: laufId, rolle })
     return { ok: false, grund: 'unbekannte_rolle', rolle }
   }
@@ -103,7 +105,7 @@ export function baueKontextpaket(
   }
 
   // 3. Rollenfilter auf dem rohen Pfad, vor jeder Schlüsselbildung
-  const ausschlussmuster = ROLLEN_AUSSCHLUSSMUSTER[rolle]
+  const ausschlussmuster = ROLLENVERTRAEGE[rolle].ausschlussmuster
   const ausgeschlossen: KontextpaketAusschluss[] = []
   const nachRollenfilter: Anfrage[] = []
   for (const anfrage of anfragen) {
