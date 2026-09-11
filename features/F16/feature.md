@@ -10,7 +10,7 @@ Zweiter Worker (Codex CLI, nur lesend)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -140,10 +140,10 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   `werkzeugStartziel`, `werkzeugVersionDeklariert` und
   `berechtigungskontext` nach `schritt.worker` statt pauschal aus
   `vorlage.*`; Claude-Code-Schritte bleiben byte-identisch (F-286).
-- **AK12** *(WS-3b)* — Realer zweistufiger Workflow über den Leitstand:
-  Codex `code-reviewer` (lesend, schemakonformes Ergebnis in der letzten
-  `agent_message`) → Claude Code `ausfuehrung` (schreibend), ohne
-  manuellen Zwischenstart; das Leitstand-Laufdetail zeigt `worker` und
+- **AK12** *(WS-3b, erfüllt)* — Realer zweistufiger Workflow über den
+  Leitstand: Codex `code-reviewer` (lesend, schemakonformes Ergebnis in
+  der letzten `agent_message`) → Claude Code `ausfuehrung` (schreibend),
+  ohne manuellen Zwischenstart; das Leitstand-Laufdetail zeigt `worker` und
   `modell_deklariert`; Nachweis nach dem Muster
   `features/F15/nachweis-ak10.md`; F-272 beachten (keine Sicherung im
   Aufbau, die denselben Ausgang erzeugt wie der zu belegende

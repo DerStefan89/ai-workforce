@@ -1,0 +1,42 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "f16-ws3b-ak12",
+  "auftrag_id": "89c10996-cbb2-4d56-94db-31f905bb6cd1",
+  "version": 1,
+  "ziel": "AK12: ein zweistufiger Workflow laeuft nach EINEM Startaufruf durch. Schritt 1 laeuft auf Codex (worker codex, sandbox read-only) und liefert ein schemakonformes Ergebnis in der letzten agent_message. Schritt 2 laeuft auf Claude Code und schreibt features/F16/nachweis-ak12-analyse.md.",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-review",
+  "grenzen": { "max_schritte": 8, "max_replans": 0 },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-review",
+      "rolle": "code-reviewer",
+      "werkzeugsatz": "lesend",
+      "worker": "codex",
+      "modell": "gpt-6-astra",
+      "eingaben": [],
+      "output_schema": "ergebnis-code-reviewer",
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Keine Schreibwirkung: der Prozess laeuft mit --sandbox read-only, zusaetzlich am Argv gepinnt (F-290). Die reale Grenze ist die Sandbox, nicht der deklarierte Werkzeugsatz (F-323).",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": "schritt-2-doku",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-doku",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": [],
+      "output_schema": null,
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Schreibend, aber unbeaufsichtigt vertretbar: das Ziel ist eine NEUE Dokumentationsdatei (features/F16/nachweis-ak12-analyse.md), kein Produktcode. Ein Fehlgriff ist per git diff sichtbar und folgenlos rueckgaengig zu machen.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}

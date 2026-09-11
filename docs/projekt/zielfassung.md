@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.18 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.19 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -34,6 +34,8 @@ v1.15 → v1.16: **§13.3 E-M2-7, E-M2-8 und E-M2-9 ergänzt** (Stefan, 08./09.0
 v1.16 → v1.17: **§13.4 Meilenstein 3 ergänzt** (Stefan, 09.09.2026, Challenge im Claude-Projekt „AI Workforce"): E-M3-1 (Ausnahme vom Orchestrierungs-Grundsatz Stufe 1 und E-M2-2 innerhalb eines freigegebenen WORKFLOW_V0, D13 bleibt unverändert) · E-M3-2 (zweiter Worker Codex CLI, nur lesende Rollen, Spike S-M3-01 vor jedem Bau) · E-M3-3 (feste Besetzung Rolle→Worker→Modell, keine automatische Modellwahl in v1).
 
 v1.17 → v1.18: **§13.4 um E-M3-4 ergänzt und E-M3-3 präzisiert** (Stefan, 10./11.09.2026, F16-Vorplanung und Challenger-Gegenprüfung): E-M3-3 (Besetzung lebt je WORKFLOW_V0-Schritt, nicht in der Startvorlage — der ursprüngliche Wortlaut traf den seit F15 gebauten Stand nicht, F-288) · E-M3-4 (Lesebereich eines Codex-Laufs, Durchsetzungsgrad DEKLARIERT, F-276/F-287).
+
+v1.18 → v1.19: **Feature F16 abgeschlossen; erster Satz der §13.4-Bestehensbedingung real erfüllt** (Stefan, 11.09.2026, F16 WS-3b AK12): ein zweistufiger Workflow (Codex `code-reviewer`, lesend → Claude Code `ausfuehrung`, schreibend) ist real über den Leitstand ohne manuellen Zwischenstart durchgelaufen — genau ein `OFFEN → LAEUFT`-Übergang, 29 ms zwischen Cursor-Wanderung und Start des zweiten Schritts. Damit ist der zweite Worker aus E-M3-2 nicht mehr nur gebaut, sondern in der realen Kette belegt. Nachweis `features/F16/nachweis-ak12.md`, Plan `nachweis/ws3b/L1.json`. **Kein neuer Entscheid** — reine Fortschreibung des Belegstands; die beiden übrigen Sätze der Bestehensbedingung (Szenario A/B, Router-Eval-Gate) bleiben offen.
 
 ---
 
@@ -390,6 +392,31 @@ Schritt) und ein Standard-Workflow (Review + Ausführung) sind beide real
 mindestens einmal durchlaufen (Szenario A/B); das Router-Eval-Gate misst
 mindestens 10 Aufgaben mit je ≥3 Läufen gegen die Baseline „immer
 Standard-Workflow".
+
+`[Fakt, Nachtrag 11.09.2026]` **Satz 1 ist real erfüllt.** Der zweistufige
+Workflow (Codex `code-reviewer`, lesend → Claude Code `ausfuehrung`,
+schreibend) ist am 11.09.2026 über die Leitstand-Endpunkte ohne manuellen
+Zwischenstart durchgelaufen: Workflow `f16-ws3b-ak12`, genau ein
+`OFFEN → LAEUFT`-Übergang, 29 ms zwischen Cursor-Wanderung und Start des
+zweiten Schritts, beide Läufe `ERFOLGREICH`, Lineage per Hash geschlossen.
+Beleg: `features/F16/nachweis-ak12.md`, Plan `nachweis/ws3b/L1.json`.
+Damit ist Feature F16 (`features/F16/feature.md`, AK1–AK12) abgeschlossen.
+Eine Einschränkung steht im Nachweis und wird hier nicht weggelassen: der
+AK12-Teilsatz „das Leitstand-Laufdetail *zeigt* `worker` und
+`modell_deklariert`" ist **teilbelegt** — Datenschicht real belegt,
+Verdrahtung quelltextgeprüft, die Darstellung im Browser auf Aussage des
+Bedieners. Ein Oberflächennachweis nach dem Muster von F15 AK8
+(`nachweis/f15-ws3b-oberflaechennachweis.md`) existiert für F16 nicht.
+
+`[Fakt]` **Satz 2 und Satz 3 bleiben offen** — Szenario A/B (Fast-Lane- und
+Standard-Workflow je real mindestens einmal) und das Router-Eval-Gate sind
+nicht Gegenstand von F16 und nicht belegt. Der Meilenstein 3 ist damit
+nicht bestanden, nur sein erster Satz.
+
+`[Fakt]` Vorbedingung des Belegs, damit er reproduzierbar bleibt: der Lauf
+verlangt `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`; der
+Server-Default `startvorlagen/beispielprojekt.json` trägt keinen
+`worker.codex`-Block (F-326, offen).
 
 **Nicht in Meilenstein 3 v1:** automatische Modellwahl · Provider
 jenseits Claude Code/Codex · Versionsverwaltung für Ressourcen (§11
