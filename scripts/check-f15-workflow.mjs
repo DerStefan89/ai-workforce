@@ -817,9 +817,11 @@ async function starteTestserver(optionen) {
   // ersatzlos löschen, ohne dass ein Gate rot wurde. Genau das ist der Fall,
   // vor dem ARCHITECTURE.md §8 warnt: eine Zusage ohne Rot-Nachweis.
   //
-  // Gebraucht wird dafür eine Startvorlage MIT worker.codex-Block. Keine
-  // Repo-Vorlage trägt einen (startvorlagen/ai-workforce.json muss nach AK5
-  // ausdrücklich ohne gültig bleiben), deshalb eine Wegwerfkopie im
+  // Gebraucht wird dafür eine Startvorlage MIT worker.codex-Block. Seit F16
+  // AK12 trägt startvorlagen/ai-workforce.json einen — dieses Gate greift
+  // trotzdem nicht darauf zu, sondern baut sich den Block selbst: eine
+  // Fixture, die von einer Repo-Datei abhängt, wird still rot, sobald jemand
+  // dort einen Pfad pflegt. Deshalb weiterhin eine Wegwerfkopie im
   // Temp-Verzeichnis, die über die injizierbare Option startvorlagePfad
   // hereinkommt. Die Pfade darin bleiben repo-relativ — ladeStartvorlage löst
   // profilPfad gegen das Arbeitsverzeichnis auf, und das ist die Repo-Wurzel.

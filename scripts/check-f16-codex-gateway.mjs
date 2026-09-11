@@ -348,10 +348,12 @@ for (const datei of vorlagenDateien) {
 if (startzielBefunde === 0) {
   console.log(`✓ (e): alle ${vorlagenDateien.length} Startvorlage(n) tragen zulässige Startziele (auch worker.codex.startziel).`)
 }
-// Rot-Kalibrierung für (e). Nötig, weil heute KEINE reale Vorlage einen
-// worker.codex-Block trägt: ohne diese Wegwerf-Objekte liefe der
-// Codex-Zweig von alleStartziele nie und das Häkchen oben behauptete mehr
-// Deckung, als gemessen wurde.
+// Rot-Kalibrierung für (e). Seit F16 AK12 trägt startvorlagen/ai-workforce.json
+// einen echten worker.codex-Block, der Codex-Zweig von alleStartziele läuft
+// oben also real. Diese Wegwerf-Objekte bleiben trotzdem: sie belegen, dass
+// der Zweig eine gesperrte Endung auch WIRKLICH ablehnt — das Häkchen oben
+// misst nur, dass die vorhandenen Startziele zulässig sind, nicht dass eine
+// unzulässige auffiele.
 const eRotFaelle = [
   { name: 'worker.codex.startziel mit .cmd', vorlage: { worker: { codex: { startziel: [String.raw`C:\codex\codex.cmd`] } } } },
   { name: 'worker.codex.startziel = powershell.exe', vorlage: { worker: { codex: { startziel: [String.raw`C:\Windows\powershell.exe`] } } } },
@@ -644,9 +646,12 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
   const befundeVorAk11 = befunde.length
   const vorlageOhneCodex = ladeStartvorlage(join('startvorlagen', 'beispielprojekt.json'))
   // Der worker.codex-Block wird hier im Speicher angehängt statt in eine
-  // Repo-Startvorlage geschrieben: startvorlagen/ai-workforce.json muss nach
-  // AK5 ausdrücklich OHNE Block gültig bleiben, und beispielprojekt.json ist
-  // die Fixture mehrerer anderer Gates.
+  // Repo-Startvorlage geschrieben: beispielprojekt.json ist die Fixture
+  // mehrerer anderer Gates und bleibt bewusst ohne Block — AK5 verlangt, dass
+  // eine Vorlage OHNE worker-Block gültig bleibt, nicht dass keine reale
+  // Vorlage einen trägt. (startvorlagen/ai-workforce.json trägt seit F16
+  // AK12 einen echten Block; der Abwesenheitsfall wird hier und in
+  // src/startvorlage/startvorlage.test.ts weiter mitgeprüft.)
   const vorlageMitCodex = {
     ...vorlageOhneCodex,
     worker: { codex: { startziel: ['C:\\Program Files\\codex\\codex.exe'], versionDeklariert: '0.153.4 (Codex CLI)', sandbox: 'read-only' } },
