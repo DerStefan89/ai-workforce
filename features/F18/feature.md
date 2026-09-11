@@ -10,7 +10,7 @@ Router v1 (Klassifikation eines Auftrags zu Kontrolltiefe und Workflow-Vorlage)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -40,7 +40,7 @@ zielfassung.md` §13.4, E-M3-2.
   Ergebnis, registriert den gewählten Workflow über das bestehende
   `POST /api/workflows` — WS-2.
 - Router-Eval-Gate und Szenario-A/B-Nachweis über den echten Automaten —
-  WS-3 (noch nicht begonnen).
+  WS-3 (abgeschlossen).
 
 ## Nicht-Ziele
 
@@ -74,6 +74,29 @@ zielfassung.md` §13.4, E-M3-2.
   klassifiziert `fast-lane`/`niedrig`, führt zu einem real registrierten
   Workflow mit einem `ausfuehrung`/`schreibend`/`ZWINGEND`-Schritt.
   Nachweis: `features/F18/nachweis-ws2.md`.
+- **AK5** *(WS-3)* — Router-Eval-Gate: `scripts/eval-router.mjs`
+  (`npm run eval:router`, kein Teil von `npm run check`) führt für zehn
+  Aufgaben (`[Annahme]`-v1-Startsatz, siehe Bericht) je drei echte
+  `router`-Läufe durch und stellt die Trefferquote der Baseline „immer
+  'standard' wählen" gegenüber. **Erfüllt**, real belegt: 30 echte Läufe,
+  Router-Trefferquote 16/30 (53,3 %) gegen Baseline 9/30 (30,0 %).
+  Real gefundener Blocker unterwegs: 8/30 Läufe scheiterten an
+  Markdown-Codezäunen um das JSON-Ergebnis (F-337, `state/findings.md`) —
+  forensisch nachgerechnet läge die reine Urteilsgüte bei 23/30 (76,7 %).
+  Bericht: `features/F18/eval-bericht-ws3.md`.
+- **AK6** *(WS-3)* — Szenario A (Fast-Lane), real bis `ABGESCHLOSSEN`: ein
+  echter `router`-Lauf klassifiziert real als `fast-lane`; der registrierte
+  1-Schritt-Workflow wird über `POST /api/workflows/<id>/starten`
+  gestartet, hält real am `ZWINGEND`-Freigabe-Halt, wird real freigegeben
+  und läuft mit geprüfter Schreibwirkung bis `ABGESCHLOSSEN` durch.
+  **Erfüllt.** Nachweis: `features/F18/nachweis-ws3-szenario-a.md`.
+- **AK7** *(WS-3)* — Szenario B (Standard), real bis `ABGESCHLOSSEN`: ein
+  echter `router`-Lauf klassifiziert real als `standard`; Schritt 1
+  (`code-reviewer`/`codex`/`AUTOMATISCH`) läuft real und löst den
+  automatischen Übergang zu Schritt 2 aus (kein manueller Zwischenstart);
+  Schritt 2 (`ausfuehrung`/`ZWINGEND`) wird real freigegeben und läuft mit
+  geprüfter Schreibwirkung bis `ABGESCHLOSSEN` durch. **Erfüllt.**
+  Nachweis: `features/F18/nachweis-ws3-szenario-b.md`.
 
 ## Entschieden
 

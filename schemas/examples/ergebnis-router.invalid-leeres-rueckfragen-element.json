@@ -1,0 +1,7 @@
+{
+  "kontrolltiefe": "standard",
+  "risikoklasse": "mittel",
+  "task_typen": ["bugfix"],
+  "rueckfragen": [""],
+  "begruendung": "rueckfragen enthält einen leeren String — jedes Element muss ein nicht-leerer String sein."
+}

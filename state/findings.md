@@ -5616,3 +5616,68 @@ Maßnahme: Satz in `features/F16/feature.md` beim nächsten Doku-PR
 korrigieren.
 Status: offen.
 Feature/Run: F17-Challenge, 11.09.2026.
+
+**F-337** · `TECH_DEBT` · P2 · offen
+Titel: Router-Klassifikation als `claude-code` scheitert real in ~27 % der
+Fälle an Markdown-Codezäunen um das JSON-Ergebnis.
+Beschreibung: 8 von 30 echten `router`-Läufen im F18-WS-3-Eval
+(`features/F18/eval-bericht-ws3.md`) lieferten ihr Klassifikationsobjekt
+in einen ```` ```json ... ``` ````-Codezaun eingebettet statt als reines
+JSON — trotz expliziter Prompt-Anweisung „Kein Freitext davor oder
+danach". `scripts/route-auftrag.mjs` UND `scripts/eval-router.mjs` parsen
+`ergebnisobjekt.result` strikt mit `JSON.parse` (kein Fence-Stripping) —
+beide scheitern an diesen Läufen identisch. Forensische Nachprüfung (nicht
+Teil des Produktionspfads): von den 8 eingezäunten Antworten war die
+eingebettete Klassifikation in 7 Fällen inhaltlich korrekt — das
+Urteilsvermögen des Routers ist also besser als die 53,3 %-Trefferquote
+des Berichts zeigt, aber die Formatzusicherung ist es nicht. Ursache
+strukturell erwartbar: ein `router`-Lauf über den direkten
+`POST /api/laeufe`-Pfad hat keinen `--output-schema`-Mechanismus (nur
+`codex` hat einen), siehe „Entschieden" in `features/F18/feature.md`.
+Fundstelle: `features/F18/eval-bericht-ws3.md`; `scripts/route-auftrag.mjs`
+(Zeilen ~108-131); `scripts/eval-router.mjs` (`leseKlassifikation`).
+Auswirkung: Ein realer Routing-Versuch kann an einem reinen
+Formatierungsartefakt scheitern, obwohl die Klassifikation selbst
+brauchbar wäre — `route-auftrag.mjs` bricht dann mit Exit 1 ab, kein
+Workflow wird registriert.
+Maßnahme: In einem künftigen WS ein einmaliges, an einer Stelle
+gepflegtes Fence-Stripping vor dem `JSON.parse` einführen (z. B. in
+`leseErgebnisobjekt` oder einem gemeinsamen Helfer für beide Skripte,
+D5) — nicht in diesem WS behoben, da F18 WS-3 misst, nicht repariert.
+Status: offen.
+Feature/Run: F18 WS-3 (Router-Eval-Gate), 11.09.2026.
+
+**F-338** · `TECH_DEBT` · P2 · offen
+Titel: Wiederholt flakige Windows-Tests in vollem `npm run check`, isoliert
+immer grün.
+Beschreibung: Während F18-WS-2-Verifikation zeigten zwei aufeinanderfolgende
+volle `npm run check`-Läufe je einen anderen Testausfall —
+`execution-controller.test.ts` F12 AK5 (EPERM bei rmSync/raeumeVerzeichnis)
+und `claude-code-gateway.test.ts:721` F14 WS-2 AK4 (ENOENT bei einer
+Temp-PID-Marker-Datei aus einem Enkelprozess). Beide isoliert erneut
+gelaufen: 25/25 bzw. 42/42 grün.
+Fundstelle: src/execution-controller/execution-controller.test.ts;
+src/claude-code-gateway/claude-code-gateway.test.ts:721.
+Auswirkung: Kein Produktfehler, aber verlangsamt jede Verifikationsrunde
+durch nötige isolierte Re-Läufe.
+Maßnahme: Bei Gelegenheit prüfen, ob die Cleanup-/Prozessbaum-Routinen
+unter Windows einen kurzen Retry/Delay vor rmSync/Dateizugriff vertragen.
+Status: offen.
+Feature/Run: F18 WS-2 Verifikation, 11.09.2026.
+
+**F-339** · `PROCESS_IMPROVEMENT` · P3 · gelöst
+Titel: F18 WS-2 wurde auf dem bereits gemergten WS-1-Branch weitergebaut
+statt auf neuem Branch von main.
+Beschreibung: feat/f18-ws1-router-rollenvertrag war nach Merge von PR #142
+bereits in main; WS-2 lief auf demselben lokalen Branch weiter, was beim
+Push eine reale Squash-Merge-Divergenz auslöste (F-056-Muster) — vom
+bestehenden pre-push-Hook real abgefangen, kein Datenverlust, aber ein
+manueller Reflog-Recovery-Umweg war nötig.
+Fundstelle: git-Historie feat/f18-ws1-router-rollenvertrag, F18-WS-2-
+Verifikationsrunde, 11.09.2026.
+Auswirkung: Keine reale Beschädigung, aber unnötiger manueller Aufwand.
+Maßnahme: Künftige Workstreams explizit auf neuem Branch von aktuellem
+main beauftragen — für F18 WS-3 bereits so gemacht und real korrekt
+befolgt (Branch feat/f18-ws3-router-eval-gate, von origin/main abgezweigt).
+Status: gelöst.
+Feature/Run: F18 WS-2/WS-3.
