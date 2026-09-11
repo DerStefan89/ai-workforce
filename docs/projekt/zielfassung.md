@@ -401,12 +401,30 @@ Zwischenstart durchgelaufen: Workflow `f16-ws3b-ak12`, genau ein
 zweiten Schritts, beide Läufe `ERFOLGREICH`, Lineage per Hash geschlossen.
 Beleg: `features/F16/nachweis-ak12.md`, Plan `nachweis/ws3b/L1.json`.
 Damit ist Feature F16 (`features/F16/feature.md`, AK1–AK12) abgeschlossen.
-Eine Einschränkung steht im Nachweis und wird hier nicht weggelassen: der
-AK12-Teilsatz „das Leitstand-Laufdetail *zeigt* `worker` und
-`modell_deklariert`" ist **teilbelegt** — Datenschicht real belegt,
-Verdrahtung quelltextgeprüft, die Darstellung im Browser auf Aussage des
-Bedieners. Ein Oberflächennachweis nach dem Muster von F15 AK8
-(`nachweis/f15-ws3b-oberflaechennachweis.md`) existiert für F16 nicht.
+
+`[Fakt, Nachtrag]` Der AK12-Teilsatz „das Leitstand-Laufdetail *zeigt*
+`worker` und `modell_deklariert`" ist **am realen Server-Endpunkt belegt**.
+Nach dem ursprünglichen Wortlaut dieses Nachtrags wurden für beide Läufe des
+AK12-Workflows echte `GET /api/laeufe/<laufId>`-Antworten eingeholt — also
+über genau den Endpunkt, aus dem das Laufdetail seinen Laufakte-Block speist.
+Beide Felder sind in beiden Antworten vorhanden und feldweise deckungsgleich
+mit den committeten Laufakten, inklusive der Asymmetrie (Lauf 1 `codex` /
+`gpt-6-astra` deklariert bei `modellBeobachtet: null`, Lauf 2 umgekehrt).
+Die Antworten sind wörtlich zitiert in `features/F16/nachweis-ak12.md`,
+Abschnitt „Leitstand-Anzeige". Der Beleg stützt sich damit weder auf den
+Quelltext allein noch auf die Aussage des Bedieners allein.
+
+`[offene Unsicherheit]` **Die Lücke ist schmaler geworden, nicht
+geschlossen.** Zwischen Serverantwort und gerendertem Pixel liegt weiterhin
+`renderLaufakte`; der zugehörige Gate-Fall (f) in
+`scripts/check-f12-leitstand-ansicht.mjs` beansprucht ausdrücklich nur
+Regressionsschutz und bezeichnet sich selbst als „KEIN AK12-BELEG (F-272)".
+Diese letzte Spanne bleibt quelltextgeprüft — sie ist jetzt aber eine Spanne
+von einer Funktion, nicht von der ganzen Kette. Ein Oberflächennachweis nach
+dem Muster von F15 AK8 (`nachweis/f15-ws3b-oberflaechennachweis.md`) würde
+auch sie schließen; für den AK12-Wortlaut ist er nach der API-Belegung nicht
+mehr erforderlich. F-327 ist für diesen Lauf geschlossen, als allgemeine
+Klasse weiterhin nur teilweise adressiert.
 
 `[Fakt]` **Satz 2 und Satz 3 bleiben offen** — Szenario A/B (Fast-Lane- und
 Standard-Workflow je real mindestens einmal) und das Router-Eval-Gate sind
