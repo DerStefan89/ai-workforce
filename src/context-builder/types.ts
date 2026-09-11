@@ -5,9 +5,10 @@
  * ist die Form von daten.daten — F2s registriereKernArtefakt-Parameter
  * 'daten' —, wenn kontextpaket_schema === "v0".
  * schemas/kontrollzustand-kontextpaket-payload.schema.json beschreibt
- * dieselbe Form maschinell. ROLLEN_AUSSCHLUSSMUSTER ist Kern-Konstante,
- * nicht Profil (D1, D14/§16.7 — Profile liefern nur Prüfmittel-Zuordnung,
- * keine Rollen). Eigenes Ereignisformat — kein Eingriff in
+ * dieselbe Form maschinell. Rollenbezogene Ausschlussmuster kommen seit F17
+ * WS-1 aus src/rollen/index.ts (ROLLENVERTRAEGE) — Kern-Konstante, nicht
+ * Profil (D1, D14/§16.7 — Profile liefern nur Prüfmittel-Zuordnung, keine
+ * Rollen). Eigenes Ereignisformat — kein Eingriff in
  * src/lineage-registry/types.ts' Ereignisname-Union.
  */
 
@@ -25,21 +26,6 @@ export interface Anfrage {
 export interface Budget {
   maxElemente?: number
   maxBytes?: number
-}
-
-/**
- * Rollenbezogene Ausschlussmuster (D1, plan-v1 Abschnitt 2.2): Advisor-Rollen
- * kein src/**-Code, Reviewer-Rollen keine state/tasks/**-Freigabeartefakte,
- * Ausführung ohne Einschränkung. Bewusst minimal und erweiterbar (kein
- * geschlossenes Enum) — eine unbekannte Rolle ist ein Fehlerzustand
- * (baueKontextpaket lehnt sie ab), keine implizite Vollzugriffs-Freigabe
- * (Delta 2, löst B2).
- */
-export const ROLLEN_AUSSCHLUSSMUSTER: Record<string, string[]> = {
-  'architecture-advisor': ['src/**'],
-  'code-reviewer': ['state/tasks/**'],
-  qa: ['state/tasks/**'],
-  ausfuehrung: [],
 }
 
 export interface KontextpaketElement {

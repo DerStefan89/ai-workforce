@@ -297,8 +297,10 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
   oben (`features/F15/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F16** — Zweiter Worker (Codex CLI, nur lesend). **Erledigt**, siehe
   oben (`features/F16/feature.md`, Status `ABGESCHLOSSEN`).
-- **F17** — Rollenvertrag. Geplant, noch keine Feature-Akte unter
-  `features/`.
+- 🔄 **F17** — Rollenvertrag. **In Arbeit** (`features/F17/feature.md`,
+  Status `READY_FOR_TECH`). WS-1 (Kern-Modul `src/rollen/`, Migration von
+  `ROLLEN_AUSSCHLUSSMUSTER`) umgesetzt; WS-2 (Plan-/Startzeitprüfung) und
+  WS-3 (realer Nachweis über den Leitstand) offen.
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 

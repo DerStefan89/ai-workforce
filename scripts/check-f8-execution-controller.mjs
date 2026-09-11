@@ -36,7 +36,14 @@ function produktionsdateien() {
 }
 
 // ─── AK1-Grep: keine F5/F6a/F7-Regelbezeichner im Controller (Produktionsdateien) ──
-const ak1Muster = /ROLLEN_AUSSCHLUSSMUSTER|pruefeUndVerweigereBeiTreffer|ermittleErgebnis|permission_denials|non_execution_kind/
+// F5s frühere, inzwischen migrierte Ausschlussmuster-Konstante stand hier
+// bis F17 WS-1, weil sie ein F5-INTERNER Regelsatz war (Vertrag SCOPE
+// Punkt 3.1). Das Rollenregister (src/rollen/index.ts, ROLLENVERTRAEGE)
+// ist das Gegenteil — eine öffentliche Kern-Schnittstelle mit eigenem
+// Modul und eigenem Gate — und bekommt deshalb keinen Ersatzeintrag hier.
+// Brauchte src/execution-controller/ es doch einmal, wäre das eine eigene
+// Entscheidung, keine stillschweigende Folge dieser Zeile.
+const ak1Muster = /pruefeUndVerweigereBeiTreffer|ermittleErgebnis|permission_denials|non_execution_kind/
 let ak1Verstoss = null
 for (const datei of produktionsdateien()) {
   const inhalt = readFileSync(join(EXECUTION_CONTROLLER_DIR, datei), 'utf-8')
@@ -49,7 +56,7 @@ if (ak1Verstoss !== null) {
   befunde.push(`AK1: verbotenes Muster (F5/F6a/F7-Regelbezeichner) in src/execution-controller/${ak1Verstoss} gefunden`)
 } else {
   console.log(
-    '✓ AK1: kein Vorkommen von ROLLEN_AUSSCHLUSSMUSTER/pruefeUndVerweigereBeiTreffer/ermittleErgebnis/permission_denials/non_execution_kind in den Produktionsdateien von src/execution-controller/*.ts — der Controller baut keine der F5/F6a/F7-Regeln nach.'
+    '✓ AK1: kein Vorkommen von pruefeUndVerweigereBeiTreffer/ermittleErgebnis/permission_denials/non_execution_kind in den Produktionsdateien von src/execution-controller/*.ts — der Controller baut keine der F5/F6a/F7-Regeln nach.'
   )
 }
 const ak1SimulierterVerstoss = 'if (permission_denials.length > 0) { /* Verstoss */ }'
