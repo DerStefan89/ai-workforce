@@ -187,6 +187,13 @@
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill" }
+    },
+    {
+      "id": "ponytail",
+      "typ": "skill",
+      "capabilities": ["SIMPLICITY_REVIEW"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/ponytail" }
     }
   ]
 }
