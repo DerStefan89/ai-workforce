@@ -1,0 +1,7 @@
+{
+  "kontrolltiefe": "standard",
+  "risikoklasse": "mittel",
+  "task_typen": ["bugfix"],
+  "rueckfragen": [],
+  "begruendung": "Auftrag ändert bestehende Logik in einem Kernmodul ohne neue Abhängigkeiten — Standardkontrolle ausreichend, mittleres Risiko wegen bestehender Testabdeckung."
+}

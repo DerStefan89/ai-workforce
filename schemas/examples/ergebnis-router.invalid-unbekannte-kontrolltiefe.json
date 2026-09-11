@@ -1,0 +1,7 @@
+{
+  "kontrolltiefe": "sehr-hoch",
+  "risikoklasse": "mittel",
+  "task_typen": ["bugfix"],
+  "rueckfragen": [],
+  "begruendung": "kontrolltiefe außerhalb der erlaubten Wertemenge ['fast-lane', 'standard', 'hoch']."
+}

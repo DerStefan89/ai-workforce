@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-router.schema.json",
+  "title": "Rollen-Ergebnis: router",
+  "description": "F18 WS-1. Output-Schema für die Rolle 'router' (src/rollen/index.ts). Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-router\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-code-reviewer.schema.json). Das Feld heißt bewusst 'risikoklasse', nicht 'risiko': WORKFLOW_V0-Schritte tragen bereits ein Freitextfeld 'risiko' mit anderer Bedeutung (Freitext-Risikohinweis für den Menschen, nicht Klassifikation) — eine Namensgleichheit würde beim Zusammenführen von Router-Ergebnis und Schritt-Feldern zu Verwechslung führen. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kontrolltiefe", "risikoklasse", "task_typen", "rueckfragen", "begruendung"],
+  "properties": {
+    "kontrolltiefe": {
+      "enum": ["fast-lane", "standard", "hoch"],
+      "description": "Vorgeschlagene Kontrolltiefe für den auszuführenden Workflow. Geschlossene Wertemenge, keine Freitext-Einstufung."
+    },
+    "risikoklasse": {
+      "enum": ["niedrig", "mittel", "hoch"],
+      "description": "Risikoeinstufung des Auftrags durch den Router. Bewusst nicht 'risiko' genannt — Kollision mit dem gleichnamigen Freitextfeld in WORKFLOW_V0-Schritten vermeiden."
+    },
+    "task_typen": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ein oder mehrere Auftragstypen aus fester Taxonomie. Leer ist nicht zulässig — der Router muss mindestens eine Einordnung treffen.",
+      "items": {
+        "enum": ["text-aenderung", "neues-feature", "bugfix", "refactoring", "dokumentation", "unklar"]
+      }
+    },
+    "rueckfragen": {
+      "type": "array",
+      "description": "Offene Rückfragen an den Menschen vor der Ausführung. Leeres Array ist zulässig und bedeutet: keine Rückfrage nötig.",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "begruendung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Die Begründung für Kontrolltiefe, Risikoklasse und Task-Typen — eine Einstufung ohne Begründung ist eine Behauptung."
+    }
+  }
+}
