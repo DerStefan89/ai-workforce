@@ -71,6 +71,7 @@ const beispiele = [
   { pfad: 'schemas/examples/ergebnis-router.valid.json', sollGueltigSein: true },
   { pfad: 'schemas/examples/ergebnis-router.invalid-unbekannte-kontrolltiefe.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/ergebnis-router.invalid-leere-task-typen.json', sollGueltigSein: false },
+  { pfad: 'schemas/examples/ergebnis-router.invalid-leeres-rueckfragen-element.json', sollGueltigSein: false },
 ]
 
 const befundeVorBeispielen = befunde.length
@@ -96,7 +97,7 @@ for (const { pfad, sollGueltigSein } of beispiele) {
   }
 }
 if (befunde.length === befundeVorBeispielen) {
-  console.log('✓ (c) Beispiele: valid.json erfüllt das Schema, beide invalid-*.json verletzen je eine benannte Regel.')
+  console.log('✓ (c) Beispiele: valid.json erfüllt das Schema, alle drei invalid-*.json verletzen je eine benannte Regel.')
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

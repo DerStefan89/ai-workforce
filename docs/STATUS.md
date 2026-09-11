@@ -317,6 +317,8 @@ Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
   oben (`features/F16/feature.md`, Status `ABGESCHLOSSEN`).
 - ✅ **F17** — Rollenvertrag. **Erledigt**, siehe oben
   (`features/F17/feature.md`, Status `ABGESCHLOSSEN`).
+- ✅ **F18** — Router v1 (WS-1–WS-3). **Erledigt**, siehe oben
+  (`features/F18/feature.md`, Status `FEATURE_GATE`, AK1–AK7 erfüllt).
 
 Stand der §13.4-Bestehensbedingung (drei Sätze):
 
@@ -327,21 +329,29 @@ Stand der §13.4-Bestehensbedingung (drei Sätze):
   `docs/projekt/zielfassung.md` §13.4.
 - Satz 2 (Szenario A/B: je ein real durchlaufener Fast-Lane-Workflow mit
   einem Schritt und ein Standard-Workflow mit Review + Ausführung) ist
-  **offen**.
+  **real erfüllt** — Nachweis `features/F18/nachweis-ws3-szenario-a.md`
+  (Fast-Lane) und `features/F18/nachweis-ws3-szenario-b.md` (Standard,
+  inkl. automatischem Übergang Review → Ausführung ohne manuellen
+  Zwischenstart), F18 WS-3 AK6/AK7.
 - Satz 3 (Router-Eval-Gate: mindestens 10 Aufgaben mit je ≥3 Läufen gegen
-  die Baseline „immer Standard-Workflow") ist **offen**.
+  die Baseline „immer Standard-Workflow") ist **real erfüllt** — Nachweis
+  `features/F18/eval-bericht-ws3.md` (30 echte Läufe, Router-Trefferquote
+  16/30 gegen Baseline 9/30), F18 WS-3 AK5. Realer Blocker unterwegs
+  (Markdown-Codezäune brechen die JSON-Ergebnisauswertung bei ~27 % der
+  `claude-code`-Läufe) als `state/findings.md` F-337 offen dokumentiert,
+  nicht in WS-3 behoben (Nicht-Ziel: kein Eingriff in die
+  Klassifikationslogik selbst).
 
-Zuordnung von Satz 2 und Satz 3 — **Planungsstand aus der
-Challenge-Runde vom 11.09.2026, noch nicht in
-`docs/projekt/zielfassung.md` §13.4 festgeschrieben**, also hier
-Absichtserklärung und nicht Sollquelle: F17 blieb schmal und umfasste
-ausschließlich den Rollenvertrag — real abgeschlossen, löst
-`state/findings.md` F-184 und F-323; F-313 bleibt ausdrücklich offen
-(F17 „Nicht-Ziele": Schemakonformität des Codex-Ergebnisses ist ein
-Evaluator-, kein Rollenproblem). Satz 2 (Szenario A/B) und Satz 3
-(Router-Eval-Gate) werden gemeinsam ein eigener Nachweis-Workstream
-**nach** F17. Verbindlich wird das erst mit einem Eintrag in §13.4. Eine
-Reihenfolge für Meilenstein 3 ist nicht festgelegt.
+Zuordnung von Satz 2 und Satz 3 — Planungsstand aus der Challenge-Runde
+vom 11.09.2026, umgesetzt als F18 WS-3 (`features/F18/feature.md`):
+F17 blieb schmal und umfasste ausschließlich den Rollenvertrag — real
+abgeschlossen, löst `state/findings.md` F-184 und F-323; F-313 bleibt
+ausdrücklich offen (F17 „Nicht-Ziele": Schemakonformität des
+Codex-Ergebnisses ist ein Evaluator-, kein Rollenproblem). Satz 2
+(Szenario A/B) und Satz 3 (Router-Eval-Gate) sind mit F18 WS-3 jetzt
+beide real erfüllt; noch nicht in `docs/projekt/zielfassung.md` §13.4
+selbst nachgetragen (dort steht weiterhin nur Satz 1) — das bleibt ein
+separater, kleiner Doku-Schritt.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder
