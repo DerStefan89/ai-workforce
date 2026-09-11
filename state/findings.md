@@ -5315,3 +5315,52 @@ sie nicht reißt. Nicht: den Test tolerant gegen eine fehlende PID-Datei
 machen — dann prüft er die Waisenfreiheit nicht mehr.
 Status: offen.
 Feature/Run: F-257-Aufräum-Iteration, 11.09.2026.
+
+**F-326** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Der Leitstand startet ohne `LEITSTAND_STARTVORLAGE_PFAD` gegen
+`startvorlagen/beispielprojekt.json`, die keinen `worker.codex`-Block trägt.
+Beschreibung: `STANDARD_STARTVORLAGE_PFAD` zeigt auf
+`startvorlagen/beispielprojekt.json`; die Umgebungsvariable
+`LEITSTAND_STARTVORLAGE_PFAD` überschreibt sie erst beim Serverstart. Den
+`worker.codex`-Block trägt seit F16 WS-3b ausschließlich
+`startvorlagen/ai-workforce.json`. Wer den Leitstand ohne gesetzte Variable
+startet, fährt also gegen eine Vorlage, die für Codex-Schritte gar nicht
+ausgestattet ist.
+Fundstelle: `scripts/leitstand-server.mjs:416` (STANDARD_STARTVORLAGE_PFAD),
+`scripts/leitstand-server.mjs:4058` (Auflösung über `process.env`),
+`scripts/leitstand-server.mjs:2067` (derselbe Default als Parameterwert von
+`erzeugeRequestHandler` — wer den Handler einbettet, umgeht die
+Umgebungsvariable ganz).
+Auswirkung: Ein AK12-Lauf ohne gesetzte Variable scheitert an der
+AK10-Ablehnung „fehlender worker.codex-Block". Die Meldung ist inhaltlich
+korrekt — und sieht dabei aus wie ein Codefehler im Dispatch, obwohl nur die
+falsche Vorlage geladen wurde. Genau diese Verwechslung kostet die Zeit.
+Empfohlene Maßnahme: In `features/F16/feature.md` unter „Entschieden" und im
+AK12-Nachweis festhalten. `features/F15/nachweis-ak10.md` führt es im
+Nachweiskopf, F16 bisher nirgends — die Präzedenz existiert also, sie wurde
+nur nicht übernommen.
+Status: offen.
+Feature/Run: F16 WS-3b Teil A, 11.09.2026.
+
+**F-327** · `TECH_DEBT` · P2 · teilweise adressiert
+Titel: Detailprojektion und `renderLaufakte` haben kein gemeinsames Gate;
+API-Feld und angezeigte Zeile können auseinanderlaufen.
+Beschreibung: `baueLaufakteProjektion` liefert die Felder, `renderLaufakte`
+zeigt sie — geprüft wurden bis F16 WS-3b nur die Felder. Ein Umbau der
+Anzeige, der eine Zeile verliert oder zwei Labels vertauscht, blieb in der
+gesamten Kette grün, weil der Gate-Fall die API befragt und nicht die Seite.
+Das gilt für ALLE FÜNF Zeilen des Laufakte-Blocks, nicht nur die zwei in
+F16 hinzugekommenen: Worker, Modell (deklariert), Modell (beobachtet),
+Beobachtungsbasis, Arbeitsverzeichnis.
+Fundstelle: `scripts/check-f12-leitstand-ansicht.mjs` Fall (e) gegenüber
+`public/leitstand/app.js:637` (`renderLaufakte`).
+Auswirkung: Eine falsche Anzeige ist hier teuer, weil die Seite die einzige
+menschliche Kontrolle über Herkunft und Rang der Modellangabe ist. Ein
+vertauschtes Label wiese einen Codex-Lauf als `claude-code` aus, ohne dass
+irgendetwas rot würde.
+Empfohlene Maßnahme: Für AK12 durch Fall (f) desselben Gates geschlossen
+(Label-zu-Feld-Paarung je Zeile, rot kalibriert). Die allgemeine Klasse
+bleibt offen: die übrigen Zeilen des Blocks und die anderen render-Funktionen
+in `app.js` haben weiterhin kein solches Gegenstück.
+Status: teilweise adressiert.
+Feature/Run: F16 WS-3b Teil A, 11.09.2026.

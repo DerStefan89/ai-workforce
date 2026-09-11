@@ -167,6 +167,10 @@ Stefan, 10./11.09.2026, nach Challenger-Gegenprüfung:
 - Windows-Sandbox unelevated (Entscheidung A1).
 - Lesebereich akzeptiert mit Auflage, Durchsetzungsgrad `DEKLARIERT`
   (E-M3-4).
+- Der AK12-Lauf verlangt
+  `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`; der
+  Server-Default ist `startvorlagen/beispielprojekt.json` ohne
+  `worker.codex`-Block (F-326).
 
 ## Dependencies
 

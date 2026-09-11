@@ -2,8 +2,9 @@
  * Datei: scripts/check-f12-leitstand-ansicht.mjs
  *
  * Zweck: F12-WS-3-Gate (AK7/AK8/AK10 mechanisch, state/plan-v1-f12-ws3.md
- * Abschnitt 2.5). Vier Fälle, alle real gegen einen laufenden Testserver
- * (Muster scripts/check-f10-leitstand.mjs):
+ * Abschnitt 2.5), seit F16 AK12 um (e)/(f) erweitert. Sechs Fälle; (a)-(e)
+ * laufen real gegen einen laufenden Testserver (Muster
+ * scripts/check-f10-leitstand.mjs), (f) ist eine reine Quelltextprüfung:
  * (a) AK1 — eine reine Artefaktkette (registriereAuftrag, keine
  *     Wirkungsmarke) erscheint nicht in GET /api/laeufe. Regressionsschutz:
  *     WS-3 fügt hier keine neue Logik hinzu, das Gate sichert nur ab, dass
@@ -33,6 +34,24 @@
  *     (Verzeichnis lineage-laufakte-<laufId>) reicht als Fixture NICHT,
  *     das Laufverzeichnis <laufId> muss real existieren (Muster Fall (k)
  *     in check-f10-leitstand.mjs, hier über schreibeWirkungsmarke erfüllt).
+ * (e) F16 AK12 — worker/modellDeklariert der Laufakte-Detailprojektion.
+ *     Liegt hier und nicht in einem eigenen Gate, weil AK7 (ebendiese
+ *     Detailprojektion) hier bereits abgesichert ist: die beiden Felder
+ *     sind eine additive Erweiterung derselben Projektion, kein neuer
+ *     Gegenstand. Zwei Fälle: eine Codex-Laufakte liefert beide Felder,
+ *     eine Bestands-Laufakte ohne beide Felder liefert worker
+ *     'claude-code' (AK4) und modellDeklariert null — kein geratener Wert.
+ * (f) F16 AK12 — die ANZEIGE dazu: renderLaufakte in public/leitstand/app.js
+ *     führt worker, modellDeklariert und modellBeobachtet als je eigene
+ *     Zeile, jedes Label an seinem Feld. REGRESSIONSSCHUTZ, KEIN AK12-BELEG
+ *     (F-272): AK12 belegt der reale zweistufige Lauf, nicht dieses Gate —
+ *     eine Quelltextprüfung zeigt, dass die Oberfläche die Felder FÜHRT,
+ *     nicht, dass ein Browser sie darstellt. Der einzige Fall ohne
+ *     Testserver. Anmerkung zum Kopfkommentar von
+ *     check-f15-workflow-oberflaeche.mjs: dessen Satz, dieses Gate enthalte
+ *     „keinen einzigen Verweis auf public/leitstand/", gilt seit (f) nicht
+ *     mehr — die Arbeitsteilung bleibt aber, dort die Workflow-Ansicht,
+ *     hier die fünf Zeilen des Laufakte-Blocks (F-327).
  *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
@@ -42,7 +61,7 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
@@ -249,6 +268,141 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
   } finally {
     await schliessen()
     raeumeVerzeichnis(repoWurzel)
+  }
+}
+
+// ─── (e) F16 AK12: worker/modellDeklariert in der Detailprojektion — Codex-Laufakte liefert beide Felder, Bestands-Laufakte ohne beide Felder fällt auf 'claude-code'/null ──
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f12-ws3-ak12'
+  const laufIdCodex = `check-f12-ws3-ak12-codex-${randomUUID()}`
+  const laufIdBestand = `check-f12-ws3-ak12-bestand-${randomUUID()}`
+  const laufIdCodexOhneModell = `check-f12-ws3-ak12-codex-ohne-modell-${randomUUID()}`
+
+  // Fixture-Aufbau wie in (d): schreibeWirkungsmarke für die Laufkette (das Laufverzeichnis
+  // <laufId> muss real existieren, sonst antwortet der Detailendpunkt gar nicht) PLUS
+  // registriereKernArtefakt für die Laufakte. rohstrom_referenz ist nach
+  // validiereLaufakteDaten (src/claude-code-gateway/index.ts) ein Pflichtfeld und steht
+  // deshalb hier, obwohl dieser Fall die Rohstrom-Projektion nicht prüft — eine Fixture,
+  // die eine real nie entstehende Form nachbaut, belegt am Ende die falsche Sache. Die
+  // Datei dahinter wird bewusst nicht angelegt: rohstrom.status fällt damit auf
+  // 'nicht_verfuegbar', was diesen Fall nicht berührt.
+  const laufakteBasis = (laufId) => ({
+    laufakte_schema: 'v0',
+    lauf_id: laufId,
+    werkzeug_version_deklariert: 'test-version',
+    berechtigungskontext: 'test-kontext',
+    arbeitsverzeichnis_pfad: basisVerzeichnis,
+    modell_beobachtet: null,
+    beobachtungsbasis_vollstaendig: false,
+    rohstrom_referenz: { pfad: join('kontrollzustand-roh', laufId, 'rohstrom.json'), inhalts_hash: '0'.repeat(64) },
+    erstellt_am: new Date().toISOString(),
+  })
+
+  for (const [laufId, zusatz] of [
+    // Codex-Lauf: beide Felder real gesetzt. modell_beobachtet bleibt null — für Codex ist
+    // die Beobachtung korrekt leer, die deklarierte Angabe ersetzt sie nicht.
+    [laufIdCodex, { worker: 'codex', modell_deklariert: 'gpt-6-astra' }],
+    // Bestands-Laufakte: beide Felder fehlen vollständig (Zustand vor F16).
+    [laufIdBestand, {}],
+    // Zwischenstück: die beiden Felder sind unabhängig optional, ein Codex-Lauf OHNE
+    // deklarierte Angabe ist schema-zulässig. Belegt, dass das fehlende Feld auch dann
+    // null bleibt und nicht etwa aus dem worker abgeleitet wird.
+    [laufIdCodexOhneModell, { worker: 'codex' }],
+  ]) {
+    schreibeWirkungsmarke(laufId, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+    registriereKernArtefakt(
+      `laufakte-${laufId}`,
+      PROFIL_REFERENZ,
+      { erzeuger: 'kern', schritt: 'check-f12-ws3-ak12-fixture' },
+      { ...laufakteBasis(laufId), ...zusatz },
+      [],
+      { basisVerzeichnis, schreiber: () => {} }
+    )
+  }
+
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const codex = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdCodex)}`)).json()
+    if (codex.laufakte?.worker !== 'codex' || codex.laufakte?.modellDeklariert !== 'gpt-6-astra') {
+      befunde.push(`AK12-Codexfall: Laufakte mit worker 'codex' und modell_deklariert 'gpt-6-astra' erwartet beide Felder in der Detailprojektion, erhalten ${JSON.stringify(codex.laufakte)}`)
+    }
+
+    const bestand = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdBestand)}`)).json()
+    if (bestand.laufakte?.worker !== 'claude-code') {
+      befunde.push(`AK12-Bestandsfall: Laufakte ohne 'worker' erwartet worker 'claude-code' (AK4: fehlend bedeutet claude-code), erhalten ${JSON.stringify(bestand.laufakte?.worker)}`)
+    }
+    // Strikt auf null, nicht auf falsy: ein geratener Wert (z. B. 'claude-sonnet-5' aus der
+    // Startvorlage) wäre genau der Fehler, den dieser Fall verhindern soll.
+    if (bestand.laufakte?.modellDeklariert !== null) {
+      befunde.push(`AK12-Bestandsfall: Laufakte ohne 'modell_deklariert' erwartet modellDeklariert null (kein Raten aus Startvorlage/Beobachtung), erhalten ${JSON.stringify(bestand.laufakte?.modellDeklariert)}`)
+    }
+
+    const codexOhneModell = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdCodexOhneModell)}`)).json()
+    if (codexOhneModell.laufakte?.worker !== 'codex' || codexOhneModell.laufakte?.modellDeklariert !== null) {
+      befunde.push(
+        `AK12-Zwischenstück: Laufakte mit worker 'codex' ohne 'modell_deklariert' erwartet worker 'codex' und modellDeklariert null, erhalten ${JSON.stringify(codexOhneModell.laufakte)}`
+      )
+    }
+
+    if (befunde.length === 0) {
+      console.log(
+        "✓ AK12: eine Codex-Laufakte liefert worker/modellDeklariert aus GET /api/laeufe/<laufId>; eine Bestands-Laufakte ohne beide Felder liefert worker 'claude-code' und modellDeklariert null; ein Codex-Lauf ohne deklarierte Angabe behält modellDeklariert null — kein geratener Wert."
+      )
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (f) F16 AK12: renderLaufakte führt worker/modellDeklariert/modellBeobachtet als je eigene Zeile, Label dem richtigen Feld zugeordnet ──
+//
+// REGRESSIONSSCHUTZ, KEIN AK12-BELEG (F-272). AK12 wird durch den realen
+// zweistufigen Lauf belegt, nicht durch dieses Gate: eine Quelltextprüfung
+// zeigt, dass die Oberfläche die Felder im Code FÜHRT — nicht, dass ein
+// Browser sie darstellt. Sie schützt die Anzeige nur dagegen, dass ein
+// späterer Umbau von renderLaufakte eine Zeile still verliert oder zwei
+// Labels vertauscht, während Fall (e) weiter grün bleibt (F-327: API-Feld
+// und angezeigte Zeile haben sonst kein gemeinsames Gate).
+//
+// Muster: scripts/check-f15-workflow-oberflaeche.mjs. Geprüft wird der
+// KOMMENTARFREIE Quelltext — der Kopfkommentar von renderLaufakte nennt
+// alle drei Feldnamen, ohne dass eine einzige Zeile gerendert würde.
+//
+// Label UND Feld stehen in EINEM Muster je Zeile. Eine reine
+// Vorkommensprüfung ("irgendwo steht 'Worker', irgendwo steht
+// laufakte.worker") bliebe grün, wenn jemand die Werte vertauscht — genau
+// der Fehler, der einen Codex-Lauf als claude-code ausweisen würde.
+{
+  const appQuelltext = readFileSync('public/leitstand/app.js', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+
+  for (const [label, feld] of [
+    ['Worker', 'worker'],
+    ['Modell \\(deklariert\\)', 'modellDeklariert'],
+    ['Modell \\(beobachtet\\)', 'modellBeobachtet'],
+  ]) {
+    // <tr><th>LABEL</th><td>${laufakte.FELD ? escapeHtml(laufakte.FELD) : ...
+    const muster = new RegExp(`<tr><th>${label}</th><td>\\$\\{laufakte\\.${feld}\\s*\\?\\s*escapeHtml\\(laufakte\\.${feld}\\)`)
+    if (!muster.test(appQuelltext)) {
+      befunde.push(
+        `AK12-Anzeige: renderLaufakte führt keine Zeile, die das Label '${label.replace(/\\/g, '')}' mit dem Feld laufakte.${feld} paart (escapeHtml inbegriffen) — Zeile fehlt, Label und Feld sind vertauscht, oder der Wert wird ungeescaped eingesetzt (gesucht: ${muster})`
+      )
+    }
+  }
+
+  // Die unqualifizierte Zeile darf NICHT zurückkehren: "Modell" neben "Modell (deklariert)"
+  // liest sich als die maßgebliche Angabe, obwohl sie die beobachtete ist. Umgedrehte
+  // Zusage statt gelöschter Grenze (Muster check-f15-workflow-oberflaeche.mjs Fall (e)).
+  if (/<tr><th>Modell<\/th>/.test(appQuelltext)) {
+    befunde.push("AK12-Anzeige: renderLaufakte führt wieder eine unqualifizierte Zeile '<th>Modell</th>' — beide Modellzeilen müssen ihren Rang nennen ('beobachtet'/'deklariert')")
+  }
+
+  if (befunde.length === 0) {
+    console.log(
+      '✓ AK12-Anzeige (Regressionsschutz, kein AK12-Beleg — F-272): renderLaufakte paart Worker/Modell (deklariert)/Modell (beobachtet) mit je ihrem Feld, alle über escapeHtml; keine unqualifizierte Modell-Zeile.'
+    )
   }
 }
 

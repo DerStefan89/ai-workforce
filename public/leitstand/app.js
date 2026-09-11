@@ -619,13 +619,29 @@ function renderKontextpaket(kontextpaket) {
   return `<div class="detail-block"><h3>Kontextpaket (Rolle: ${escapeHtml(kontextpaket.rolle ?? '')})</h3>${elemente}${ausgeschlossen}</div>`
 }
 
-/** @param laufakte - detail.laufakte aus GET /api/laeufe/<laufId> @returns HTML-Block für den Laufakte-Abschnitt (Modell/Beobachtungsbasis/Arbeitsverzeichnis) */
+/**
+ * F16 AK12: Worker und deklariertes Modell stehen VOR dem beobachteten
+ * Modell — der Worker bestimmt, wie die Zeile darunter zu lesen ist. Für
+ * einen Codex-Lauf ist "Modell (beobachtet)" korrekt "unbekannt" (F-305):
+ * die deklarierte Angabe steht daneben und ersetzt die Beobachtung NICHT.
+ * Bestandsläufe ohne die Felder zeigen 'claude-code' bzw. "unbekannt"
+ * (Muster modellBeobachtet), nie "undefined".
+ *
+ * Beide Modellzeilen nennen ihren Rang ausdrücklich ("beobachtet" /
+ * "deklariert"). Eine unqualifizierte Zeile "Modell" neben einer
+ * qualifizierten liest sich als die maßgebliche — der Rang ist hier aber
+ * die eigentliche Aussage (zielfassung.md E-185).
+ * @param laufakte - detail.laufakte aus GET /api/laeufe/<laufId>
+ * @returns HTML-Block für den Laufakte-Abschnitt (Worker/Modell/Beobachtungsbasis/Arbeitsverzeichnis)
+ */
 function renderLaufakte(laufakte) {
   if (laufakte.status !== 'ok') {
     return '<div class="detail-block"><h3>Laufakte</h3><p class="unbekannt">Keine Laufakte vorhanden.</p></div>'
   }
   return `<div class="detail-block"><h3>Laufakte</h3><table class="lauf-kopfdaten"><tbody>
-    <tr><th>Modell</th><td>${laufakte.modellBeobachtet ? escapeHtml(laufakte.modellBeobachtet) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
+    <tr><th>Worker</th><td>${laufakte.worker ? escapeHtml(laufakte.worker) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
+    <tr><th>Modell (deklariert)</th><td>${laufakte.modellDeklariert ? escapeHtml(laufakte.modellDeklariert) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
+    <tr><th>Modell (beobachtet)</th><td>${laufakte.modellBeobachtet ? escapeHtml(laufakte.modellBeobachtet) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
     <tr><th>Beobachtungsbasis vollständig</th><td>${laufakte.beobachtungsbasisVollstaendig ? 'Ja' : 'Nein'}</td></tr>
     <tr><th>Arbeitsverzeichnis</th><td><code>${escapeHtml(laufakte.arbeitsverzeichnisPfad ?? '')}</code></td></tr>
   </tbody></table></div>`

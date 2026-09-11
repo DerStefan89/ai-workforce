@@ -7,12 +7,16 @@
  *
  * WARUM ES DIESES GATE ÜBERHAUPT GIBT — bitte vor dem Löschen lesen:
  * `public/leitstand/` war bis hierher NICHT gegatet. scripts/check-f12-
- * leitstand-ansicht.mjs trägt „Leitstand-Ansicht" im Namen, enthält aber
- * keinen einzigen Verweis auf public/leitstand/ — es prüft die
+ * leitstand-ansicht.mjs trug „Leitstand-Ansicht" im Namen, prüfte aber die
  * API-Projektionen HINTER der Ansicht (GET /api/laeufe, der Detailendpunkt,
  * der Rohstrom-Lesepfad), nicht die Ansicht selbst. Wer aus dem Namen auf
- * Deckung schließt, nimmt eine Deckung an, die es nicht gibt; genau diese
+ * Deckung schloss, nahm eine Deckung an, die es nicht gab; genau diese
  * Fehlannahme ist beim Challenger real aufgetreten.
+ *
+ * Seit F16 AK12 prüft jenes Gate in seinem Fall (f) auch renderLaufakte in
+ * app.js. Die Arbeitsteilung bleibt und ist der Grund, warum beide Gates
+ * getrennt stehen: dort die fünf Zeilen des Laufakte-Blocks, hier die
+ * Workflow-Ansicht und -Bedienung.
  *
  * WAS DIESES GATE NICHT IST: eine Quelltextprüfung, kein Rendern. Sie
  * belegt, dass die Oberfläche die genannten Felder und Endpunkte im Code

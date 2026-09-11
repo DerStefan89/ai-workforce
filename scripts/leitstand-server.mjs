@@ -614,7 +614,18 @@ function baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis, auftragMemo) {
   return ergebnis
 }
 
-/** Detailprojektion der Laufakte (AK7) — modellBeobachtet/beobachtungsbasisVollstaendig/arbeitsverzeichnisPfad, ohne rohstrom_referenz (die bleibt intern, AK8: nie aus der laufId gebaut, nie an den Client ausgeliefert). @param laufakteVersion - ArtefaktVersion der Laufakte, oder null @returns { status: 'ok', ... } | { status: 'nicht_vorhanden' } */
+/**
+ * Detailprojektion der Laufakte (AK7) — modellBeobachtet/beobachtungsbasisVollstaendig/arbeitsverzeichnisPfad,
+ * ohne rohstrom_referenz (die bleibt intern, AK8: nie aus der laufId gebaut, nie an den Client ausgeliefert).
+ *
+ * F16 AK12 additiv: worker und modellDeklariert. Ein Bestandslauf trägt
+ * beide Felder nicht — worker fällt dann auf 'claude-code' zurück (AK4:
+ * fehlend BEDEUTET claude-code, das ist kein Raten, sondern der definierte
+ * Vorzustand), modellDeklariert bleibt null (dort gibt es keine solche
+ * Bedeutung, also wird nichts erfunden).
+ * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
+ * @returns { status: 'ok', ... } | { status: 'nicht_vorhanden' }
+ */
 function baueLaufakteProjektion(laufakteVersion) {
   if (laufakteVersion === null) return { status: 'nicht_vorhanden' }
   const daten = laufakteVersion.daten ?? {}
@@ -623,6 +634,8 @@ function baueLaufakteProjektion(laufakteVersion) {
     modellBeobachtet: daten.modell_beobachtet ?? null,
     beobachtungsbasisVollstaendig: daten.beobachtungsbasis_vollstaendig ?? null,
     arbeitsverzeichnisPfad: daten.arbeitsverzeichnis_pfad ?? null,
+    worker: daten.worker ?? 'claude-code',
+    modellDeklariert: daten.modell_deklariert ?? null,
   }
 }
 

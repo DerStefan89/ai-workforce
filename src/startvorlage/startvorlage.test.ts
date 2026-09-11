@@ -144,8 +144,28 @@ test('validiereStartvorlageDaten: startvorlage_schema bleibt auch mit worker-Blo
   assert.deepStrictEqual(validiereStartvorlageDaten(mitCodex), [])
 })
 
-test('ladeStartvorlage: startvorlagen/ai-workforce.json bleibt ohne worker-Block gültig (F16 AK5)', () => {
+// F16 AK12: die reale Vorlage trägt den worker.codex-Block jetzt wirklich —
+// bis dahin belegte dieser Test seine Abwesenheit. Der Abwesenheitsfall
+// (eine Vorlage ohne worker bleibt gültig, startvorlage_schema bleibt 'v0')
+// ist unverändert durch GUELTIGE_VORLAGE oben abgedeckt und geht nicht
+// verloren. ladeStartvorlage wirft bei Verstößen, der Ladevorgang selbst ist
+// also bereits der Gültigkeitsbeleg; die Feldprüfungen pinnen zusätzlich die
+// Werte, auf denen der Codex-Prozessstart beruht.
+test('ladeStartvorlage: startvorlagen/ai-workforce.json ist mit worker.codex-Block gültig und bleibt v0 (F16 AK12)', () => {
   const vorlage = ladeStartvorlage('startvorlagen/ai-workforce.json')
   assert.strictEqual(vorlage.startvorlage_schema, 'v0')
-  assert.strictEqual(vorlage.worker, undefined)
+  assert.strictEqual(vorlage.worker?.codex?.sandbox, 'read-only')
+  // Form statt Exaktwert: der Test läse den Wert gegen dieselbe handgepflegte Datei,
+  // die ihn liefert — das belegt nichts über die installierte Binary, ginge aber bei
+  // jedem Codex-Update rot, ohne dass Code kaputt wäre. Der Exaktwert gehört in den
+  // AK12-Nachweis, wo er gegen die reale --version-Ausgabe belegt wird.
+  assert.match(vorlage.worker?.codex?.versionDeklariert ?? '', /^codex-cli \d+\.\d+\.\d+$/)
+  const startziel = vorlage.worker?.codex?.startziel ?? []
+  assert.ok(startziel.length >= 1 && startziel[0].length > 0)
+  // F-280: ein Skript-Startziel hebt die Argv-Zusicherung auf. validiereStartvorlageDaten
+  // prüft das bereits (ladeStartvorlage würde werfen) — hier zusätzlich an der realen
+  // Datei festgehalten, weil genau dieser Pfad von Hand gepflegt wird.
+  for (const endung of ['.cmd', '.bat', '.ps1']) {
+    assert.ok(!startziel[0].toLowerCase().endsWith(endung), `startziel[0] darf nicht auf '${endung}' enden (F-280)`)
+  }
 })
