@@ -915,8 +915,10 @@ async function starteTestserver(optionen) {
       //     reicht worker: 'claude-code' und ausgabeSchemaPfad: null immer mit,
       //     und genau dass diese beiden weggefiltert werden, ist die Zusage
       //     (QA-Pass 11.09.2026, Befund 5).
+      //     rolle 'ausfuehrung' (F17 WS-2): gateSchritt's Vorgabe 'code-reviewer' erlaubt
+      //     keinen schreibenden Werkzeugsatz — dieser Fall braucht real einen schreibenden.
       {
-        const ccLauf = await starteCodexSchritt({ worker: 'claude-code', werkzeugsatz: 'schreibend', output_schema: null })
+        const ccLauf = await starteCodexSchritt({ worker: 'claude-code', werkzeugsatz: 'schreibend', output_schema: null, rolle: 'ausfuehrung' })
         if (ccLauf.status !== 202 || ccLauf.gesehen === null) {
           befunde.push(`WS-3a TC-N1b: ein claude-code-Schritt muss unverändert starten, erhalten ${ccLauf.status} (${JSON.stringify(ccLauf.koerper)})`)
         } else {
@@ -944,10 +946,15 @@ async function starteTestserver(optionen) {
           muster: /nicht gefunden/,
         },
         {
-          name: 'TC-N3 (codex + schreibender Werkzeugsatz)',
+          // F17 WS-2: gateSchritts Vorgabe-Rolle 'code-reviewer' erlaubt nur einen lesenden
+          // Werkzeugsatz — der Rollenvertrag lehnt diesen Fall jetzt VOR der AK10-Ablehnung
+          // "codex + nicht-lesender Werkzeugsatz" ab (die selbst unverändert bleibt, F-323
+          // Weg a, aber für keine der vier bekannten Rollen mehr erreichbar ist: keine
+          // erlaubt sowohl 'schreibend' als auch den Worker 'codex').
+          name: 'TC-N3 (codex + schreibender Werkzeugsatz, jetzt über den Rollenvertrag abgefangen, nicht mehr über AK10)',
           felder: { werkzeugsatz: 'schreibend', output_schema: 'ergebnis-code-reviewer' },
           vorlage: vorlageMitCodexPfad,
-          muster: /schreibende Execution bleibt Claude Code/,
+          muster: /erlaubt die Werkzeugsatz-Art 'schreibend' nicht/,
         },
         {
           name: 'TC-N4 (Startvorlage ohne worker.codex-Block)',
@@ -1430,13 +1437,18 @@ async function starteTestserver(optionen) {
   // wo real ein Artefakt entstanden ist" unbelegt — und ein Rücksetzen auf ok:false allein
   // liefe grün durch.
   {
-    // (a) Fachliche Ablehnung OHNE Checkpoint (F5-Fall, z. B. Tippfehler in schritt.rolle):
-    //     lauf_id zurück auf null, Schritt zurück auf OFFEN, Workflow KLAERUNG_ERFORDERLICH.
+    // (a) Fachliche Ablehnung OHNE Checkpoint (F5-Fall). Vor F17 WS-2 stand hier ein
+    // Tippfehler in schritt.rolle ('code-reviewr') als Auslöser — der wird seit WS-2 schon
+    // bei POST /api/workflows abgelehnt (validiereWorkflowDaten prüft die Rolle strukturell
+    // gegen ROLLENVERTRAEGE) und kommt hier gar nicht mehr an. Der Auslöser ist deshalb eine
+    // reale, gültige Rolle, die die Attrappe unten als "unbekannt" zurückweist — die Attrappe
+    // steht für JEDE F5-Ablehnung, nicht nur für einen Tippfehler.
+    // lauf_id zurück auf null, Schritt zurück auf OFFEN, Workflow KLAERUNG_ERFORDERLICH.
     const workflowId = `ws2b-heilung-${randomUUID()}`
-    const fuehreAufgabeDurchFn = async () => ({ ok: false, stufe: 'kontextpaket', ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'code-reviewr' } })
+    const fuehreAufgabeDurchFn = async () => ({ ok: false, stufe: 'kontextpaket', ergebnis: { ok: false, grund: 'unbekannte_rolle', rolle: 'code-reviewer' } })
     const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
     try {
-      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [], rolle: 'code-reviewr' })])
+      await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [] })])
       const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
       if (antwort.status !== 202) {
         befunde.push(`WS-2b (3): der Start erwartet 202, erhalten ${antwort.status}`)
@@ -1687,10 +1699,17 @@ async function starteTestserver(optionen) {
     }
   }
 
-  // ─── (A) Der motivierende Fall, in einem Zug: Tippfehler → Heilung → Korrektur → Start ──
+  // ─── (A) Der motivierende Fall, in einem Zug: falsche Rolle → Heilung → Korrektur → Start ──
   //
   // Das ist der Grund, aus dem die 409-Bedingung verengt wurde. Vorher endete diese Kette
-  // im vierten Schritt in einem 409, und der Tippfehler war nicht mehr korrigierbar.
+  // im vierten Schritt in einem 409, und der Fehler war nicht mehr korrigierbar.
+  //
+  // rolle 'architecture-advisor' statt eines Tippfehlers (F17 WS-2): ein Tippfehler wie
+  // 'code-reviewr' wird seit WS-2 schon bei POST /api/workflows abgelehnt (Rolle strukturell
+  // gegen ROLLENVERTRAEGE geprüft) und käme hier nie mehr an. 'architecture-advisor' ist eine
+  // reale, gültige Rolle — die Attrappe unten weist sie trotzdem zurück (sie steht für JEDE
+  // F5-Ablehnung, deren Ursache F17 WS-2 nicht schon vorher abfängt), und die Korrektur auf
+  // 'code-reviewer' bleibt der Reparaturschritt, der die Kette zu Ende führt.
   {
     const workflowId = `ws2b-reparatur-${randomUUID()}`
     let laeufe = 0
@@ -1703,7 +1722,7 @@ async function starteTestserver(optionen) {
     }
     const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
     try {
-      const kaputt = await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [], rolle: 'code-reviewr' })])
+      const kaputt = await legeWorkflowAn(basisUrl, workflowId, [gateSchritt('schritt-1', null, { eingaben: [], rolle: 'architecture-advisor' })])
       await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
       await new Promise((resolve) => setTimeout(resolve, 50))
 

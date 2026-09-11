@@ -60,9 +60,20 @@
  * Nächstes fällige; null nur bei ABGESCHLOSSEN oder GESTOPPT. Die Lesart
  * „läuft gerade" wäre redundant zum Schritt mit status LAEUFT und gesetzter
  * lauf_id — zwei Wahrheitsquellen für dieselbe Tatsache (§16.2).
+ *
+ * F17 WS-2 (a), löst F-323 teilweise: pruefeSchrittForm prüft zusätzlich, ob
+ * schritt.rolle eine bekannte Rolle ist (istBekannteRolle, src/rollen/) — rein
+ * strukturell, kennt nur den Rollennamen, nicht Werkzeugsatz/Worker/Schema. Die
+ * inhaltliche Vertragsprüfung (Werkzeugsatz-Art, Worker, output_schema gegen
+ * ROLLENVERTRAEGE) sitzt bewusst NICHT hier, sondern in
+ * scripts/leitstand-server.mjs' loeseAusfuehrungsEingabenAuf — diese Funktion kennt
+ * die Startvorlage nicht (siehe oben) und kann die Werkzeugsatz-Art eines Schritts
+ * deshalb gar nicht auflösen. ermittleNaechstenSchritt bleibt von F17 WS-2
+ * unverändert: sie ist Dispatch zur Laufzeit und kennt die Startvorlage ebenso wenig.
  */
 
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
+import { bekannteRollen, istBekannteRolle } from '../rollen/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import type { Ereignis, NaechsterSchritt, Optionen, SchrittErgebnis, WorkflowV0Daten, WorkflowV0Schritt } from './types.ts'
 
@@ -227,6 +238,7 @@ function pruefeSchrittForm(schritt: unknown, praefix: string, verstoesse: string
 
   if (!istNichtLeererString(schritt.schritt_id)) verstoesse.push(`'${praefix}schritt_id' muss ein nicht-leerer String sein`)
   if (!istNichtLeererString(schritt.rolle)) verstoesse.push(`'${praefix}rolle' muss ein nicht-leerer String sein`)
+  else if (!istBekannteRolle(schritt.rolle)) verstoesse.push(`'${praefix}rolle' muss einer von ${bekannteRollen().join(', ')} sein`)
   if (!istNichtLeererString(schritt.werkzeugsatz)) verstoesse.push(`'${praefix}werkzeugsatz' muss ein nicht-leerer String sein`)
   if (typeof schritt.worker !== 'string' || !WORKER.includes(schritt.worker)) {
     verstoesse.push(`'${praefix}worker' muss einer von ${WORKER.join(', ')} sein`)

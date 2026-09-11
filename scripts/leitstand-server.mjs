@@ -392,12 +392,41 @@
  * 'verstoesse' (string[] aus validiereWorkflowDaten) im Detail, weiterhin mit
  * 200 und vollem Datensatz (F-247): eine ungültige Fassung muss ansehbar
  * bleiben, denn sie anzusehen ist der erste Schritt ihrer Reparatur.
+ *
+ * F17 WS-2 (Rollenvertrag, Startzeit-Durchsetzung, löst F-323 teilweise):
+ * loeseAusfuehrungsEingabenAuf prüft zusätzlich, ob eingabenRoh.rolle eine bekannte
+ * Rolle ist (istBekannteRolle, src/rollen/) und ob die aufgelöste Werkzeugsatz-Art,
+ * der Worker und ein GESETZTES output_schema zum Rollenvertrag passen
+ * (ROLLENVERTRAEGE) — vier neue Ablehnungen, in die bestehende Ablehnungszählung
+ * VOR der AK10-Ablehnung 'codex + nicht-lesender Werkzeugsatz' eingereiht (die jetzt
+ * Ablehnung 9 von 10 ist statt 5 von 6, siehe loeseAusgabeSchemaAuf für die
+ * Gesamtzählung). erlaubtes_output_schema ist dabei eine ALLOWLIST, keine Pflicht:
+ * ein Schritt mit output_schema null bleibt für jede Rolle erlaubt, auch für eine
+ * Rolle mit gesetztem erlaubtes_output_schema — nur ein GESETZTES Schema muss exakt
+ * das der Rolle sein. Die Prüfung greift zusätzlich zur rein strukturellen Prüfung
+ * in src/workflow/index.ts' validiereWorkflowDaten (kennt nur den Rollennamen, nicht
+ * Werkzeugsatz/Worker/Schema): loeseAusfuehrungsEingabenAuf wird auch über den
+ * direkten POST /api/laeufe-Pfad gerufen, den kein Workflow und damit keine
+ * Plan-Prüfung durchläuft. Auf diesem Pfad sind allerdings nur Rolle und
+ * Werkzeugsatz-Art überhaupt WIRKSAM prüfbar: worker/output_schema stehen nicht in
+ * ERLAUBTE_STARTAUFTRAG_FELDER, ein Startauftrag kann sie also gar nicht setzen —
+ * dort bleibt es bei 'claude-code' bzw. null, die Ablehnungen 7/8 greifen dort nie
+ * (kein Sicherheitsloch, die Werte sind auf diesem Pfad einfach nicht wählbar; QA-Pass
+ * 11.09.2026).
+ *
+ * Die bestehende AK10-Ablehnung 'codex + nicht-lesender Werkzeugsatz' bleibt
+ * UNVERÄNDERT (F-323 Weg a) — der Werkzeugsatz eines codex-Schritts bekommt keine
+ * neue Durchsetzung, er bleibt Plandatum mit Durchsetzungsgrad DEKLARIERT. Genau das
+ * zeigt zusätzlich das neue additive Feld 'werkzeugsatzDurchsetzung' in GET
+ * /api/workflows/<id> (AK7, Muster 'naechster', baueWerkzeugsatzDurchsetzungProjektion):
+ * 'ERZWUNGEN' je Schritt mit worker 'claude-code' (die --allowedTools-Grenze wirkt
+ * real), 'DEKLARIERT' bei worker 'codex'.
  */
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { extname, isAbsolute, join } from 'node:path'
+import { basename, extname, isAbsolute, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
@@ -409,6 +438,7 @@ import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
+import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -882,6 +912,25 @@ function baueNaechsterProjektion(daten, verstoesse = undefined) {
   // ist real und als F-263 festgehalten; er wird hier nicht durch eine Vermischung geheilt.
   const schrittId = ausgang.art === 'starte' ? ausgang.schritt.schritt_id : (ausgang.schrittId ?? null)
   return { art: ausgang.art, schrittId, grund: beschreibeAutomatAusgang(ausgang) }
+}
+
+/**
+ * Durchsetzungsgrad des geplanten Werkzeugsatzes je Schritt (F17 WS-2, AK7, löst
+ * F-323 Weg a) — additive Projektion für GET /api/workflows/<id>, kein Vertrags-
+ * oder Schemafeld (Muster baueNaechsterProjektion). 'ERZWUNGEN' bei worker
+ * 'claude-code': die --allowedTools-Grenze des Gateways wirkt real. 'DEKLARIERT'
+ * bei worker 'codex': kein Aufrufbauer setzt den geplanten Werkzeugsatz durch —
+ * die einzige reale Grenze dort ist '--sandbox read-only', unabhängig vom
+ * Werkzeugsatznamen im Schritt (F-323).
+ * @param daten - WORKFLOW_V0-Datensatz einer geladenen Artefaktversion
+ * @returns je Schritt { schrittId, durchsetzungsgrad }; [] wenn schritte kein Array ist
+ */
+function baueWerkzeugsatzDurchsetzungProjektion(daten) {
+  if (!Array.isArray(daten.schritte)) return []
+  return daten.schritte.map((schritt) => ({
+    schrittId: schritt?.schritt_id ?? null,
+    durchsetzungsgrad: schritt?.worker === 'claude-code' ? 'ERZWUNGEN' : 'DEKLARIERT',
+  }))
 }
 
 /**
@@ -1418,7 +1467,53 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     return { ok: false, grund: `unbekannter Werkzeugsatz '${werkzeugsatzName}' — bekannt: ${Object.keys(vorlage.werkzeugsaetze).join(', ')}` }
   }
 
-  // AK10, Ablehnung 5 von 6 (siehe die Zählung am Kopf von
+  // F17 WS-2, Ablehnung 5 von 10: unbekannte Rolle. (A) in src/workflow/index.ts
+  // (validiereWorkflowDaten) prüft dasselbe bereits strukturell für jeden über einen
+  // Workflow geplanten Schritt — aber diese Funktion wird auch aus dem direkten
+  // POST /api/laeufe-Pfad gerufen (kein Workflow, kein vorheriger Plan-Check), dort
+  // greift (A) nicht. Deshalb hier zusätzlich, VOR den drei Vertragsprüfungen a/b/c.
+  if (!istBekannteRolle(eingabenRoh.rolle)) {
+    return { ok: false, grund: `unbekannte Rolle '${eingabenRoh.rolle}' — bekannt: ${bekannteRollen().join(', ')}` }
+  }
+  const rollenvertrag = ROLLENVERTRAEGE[eingabenRoh.rolle]
+
+  // F17 WS-2, Ablehnung 6 von 10: die Werkzeugsatz-ART, die die Rolle erlaubt
+  // (Rollenvertrag WS-1, ROLLENVERTRAEGE). ALLOWLIST wie die Ablehnung darunter.
+  if (!rollenvertrag.erlaubte_werkzeugsatz_arten.includes(werkzeugsatz.art)) {
+    return {
+      ok: false,
+      grund: `Rolle '${eingabenRoh.rolle}' erlaubt die Werkzeugsatz-Art '${werkzeugsatz.art}' nicht (Werkzeugsatz '${werkzeugsatzName}') — erlaubt: ${rollenvertrag.erlaubte_werkzeugsatz_arten.join(', ')}`,
+    }
+  }
+
+  // F17 WS-2, Ablehnung 7 von 10: der Worker, den die Rolle erlaubt.
+  if (!rollenvertrag.erlaubte_worker.includes(worker)) {
+    return {
+      ok: false,
+      grund: `Rolle '${eingabenRoh.rolle}' erlaubt den Worker '${worker}' nicht — erlaubt: ${rollenvertrag.erlaubte_worker.join(', ')}`,
+    }
+  }
+
+  // F17 WS-2, Ablehnung 8 von 10: erlaubtes_output_schema ist eine ALLOWLIST, keine
+  // Pflicht (Rollenvertrag WS-1) — ein Schritt OHNE output_schema (ausgabeSchemaPfad
+  // null) bleibt für JEDE Rolle erlaubt, auch für eine Rolle mit gesetztem
+  // erlaubtes_output_schema. Nur ein GESETZTES Schema muss exakt das der Rolle sein.
+  // Der Schemaname wird aus dem bereits aufgelösten Pfad zurückgewonnen
+  // (loeseAusgabeSchemaAuf baut ihn als schemas/<name>.schema.json, SCHEMANAME_MUSTER
+  // verbietet Punkte im Namen — der Rückweg ist eindeutig), statt den rohen
+  // schritt.output_schema-Namen ein zweites Mal durchzureichen.
+  const ausgabeSchemaPfad = eingabenRoh.ausgabeSchemaPfad ?? null
+  if (ausgabeSchemaPfad !== null) {
+    const ausgabeSchemaName = basename(ausgabeSchemaPfad, '.schema.json')
+    if (ausgabeSchemaName !== rollenvertrag.erlaubtes_output_schema) {
+      return {
+        ok: false,
+        grund: `Rolle '${eingabenRoh.rolle}' erlaubt output_schema '${ausgabeSchemaName}' nicht — erlaubt: ${rollenvertrag.erlaubtes_output_schema === null ? 'kein Ausgabeschema' : `'${rollenvertrag.erlaubtes_output_schema}'`}`,
+      }
+    }
+  }
+
+  // AK10, Ablehnung 9 von 10 (siehe die Zählung am Kopf von
   // loeseAusgabeSchemaAuf): codex + nicht-lesender Werkzeugsatz. Steht
   // HIER und nicht im Dispatcher, weil die Art eines Werkzeugsatzes erst nach
   // loeseWerkzeugsatzAuf feststeht — ermittleNaechstenSchritt kennt nur den
@@ -1432,6 +1527,17 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   // (Reviewer-Pass 11.09.2026, Befund 3): dieselbe Allowlist-Richtung wie in
   // src/workflow/index.ts. Wächst die Wertemenge von 'art' je um eine dritte
   // Stufe, fällt sie hier in "abgelehnt" statt lautlos in "erlaubt".
+  //
+  // REICHWEITE seit F17 WS-2 (Reviewer-/QA-Pass 11.09.2026): mit den vier
+  // Rollenvertrag-Ablehnungen oben ist dieser Zweig für jede reale Anfrage über eine
+  // der vier ROLLENVERTRAEGE-Rollen praktisch unerreichbar geworden — keine Rolle
+  // erlaubt gleichzeitig einen nicht-lesenden Werkzeugsatz UND den Worker 'codex'
+  // (architecture-advisor, code-reviewer und qa erlauben nur 'lesend'; ausfuehrung
+  // erlaubt nur 'claude-code'). Dieselbe Anfrage wird also weiterhin abgelehnt, nur vorher und mit
+  // anderer Meldung (Ablehnung 6 oder 7). Der Zweig bleibt bewusst stehen (F-323 Weg
+  // a, NICHT geändert) als Tiefenverteidigung für eine künftige fünfte Rolle, die
+  // beides erlauben könnte — er ist aktuell aber kein kalibrierbarer Rotfall mehr über
+  // eine reale Rolle, nur noch direkt gegen diese Funktion mit einer erfundenen Rolle.
   if (worker === 'codex' && werkzeugsatz.art !== 'lesend') {
     return {
       ok: false,
@@ -1464,7 +1570,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   if (worker === 'codex') {
     const codexBlock = vorlage.worker?.codex
     if (codexBlock === undefined) {
-      // Ablehnung 6 von 6.
+      // Ablehnung 10 von 10.
       return {
         ok: false,
         grund: "Worker 'codex' verlangt den Block 'worker.codex' in der Startvorlage (startziel, versionDeklariert, sandbox) — er fehlt",
@@ -1538,13 +1644,17 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
  * Gateway, das aus einem Namen einen Repo-Pfad baut, hätte damit eine zweite
  * Vorstellung davon, wo die Repo-Wurzel liegt.
  *
- * Vier der insgesamt sechs Ablehnungen des Dispatchers stehen hier (1)-(4);
- * die beiden übrigen sitzen in loeseAusfuehrungsEingabenAuf, weil sie die
- * geladene Startvorlage brauchen: (5) codex mit nicht-lesendem Werkzeugsatz,
- * (6) codex ohne worker.codex-Block. Alle sechs greifen vor dem Prozessstart
- * und alle als { ok: false, grund } statt eines Wurfs: ein fehlerhaft
- * geplanter Schritt ist ein Fachergebnis des Schrittstarts (der Automat hält
- * an und legt es dem Menschen vor), kein Konfigurationsfehler des Servers.
+ * Vier der insgesamt zehn Ablehnungen des Dispatchers stehen hier (1)-(4); die
+ * sechs übrigen sitzen in loeseAusfuehrungsEingabenAuf. Zwei davon brauchen die
+ * geladene Startvorlage und stammen aus F16 WS-3a: (9) codex mit
+ * nicht-lesendem Werkzeugsatz, (10) codex ohne worker.codex-Block. Die
+ * restlichen vier prüfen den Rollenvertrag (F17 WS-2, ROLLENVERTRAEGE) und
+ * stehen VOR diesen beiden: (5) unbekannte Rolle, (6) Werkzeugsatz-Art nicht
+ * erlaubt, (7) Worker nicht erlaubt, (8) output_schema nicht erlaubt. Alle
+ * zehn greifen vor dem Prozessstart und alle als { ok: false, grund } statt
+ * eines Wurfs: ein fehlerhaft geplanter Schritt ist ein Fachergebnis des
+ * Schrittstarts (der Automat hält an und legt es dem Menschen vor), kein
+ * Konfigurationsfehler des Servers.
  *
  * (1) Der Name passt nicht auf SCHEMANAME_MUSTER. Das ist eine positive
  *     Allowlist (Kleinbuchstaben, Ziffern, Bindestriche) und keine Liste
@@ -2707,6 +2817,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
         // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
         naechster: baueNaechsterProjektion(version.daten, verstoesse),
+        // F17 WS-2 (AK7): additiv, reine Anzeige — siehe baueWerkzeugsatzDurchsetzungProjektion.
+        werkzeugsatzDurchsetzung: baueWerkzeugsatzDurchsetzungProjektion(version.daten),
       })
       return
     }
