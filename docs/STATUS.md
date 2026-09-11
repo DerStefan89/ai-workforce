@@ -11,8 +11,10 @@ Einzige Quelle für Phasenstand und Scope.
 
 Ebene 1 (Produktgrundlage) und Ebene 2 (Technische Grundlage) sind
 abgeschlossen. Die Vertragsschiene (1, 2, Option B, 3, 4, 5) ist
-abgeschlossen. Meilenstein 1 ist abgeschlossen. Meilenstein 2 (Bedienbarer
-Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
+abgeschlossen. Meilenstein 1 und Meilenstein 2 (Bedienbarer Leitstand,
+`docs/projekt/zielfassung.md` §13.3) sind abgeschlossen (Stand
+09.09.2026). Das Projekt ist in Meilenstein 3 (Intelligente
+Orchestrierung, `docs/projekt/zielfassung.md` §13.4).
 
 ## Erledigt
 
@@ -191,6 +193,70 @@ Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
   Kontextpaket-Bezüge und Rohstrom-Hashes verifiziert, nie über die
   Selbstauskunft des Kindprozesses. Gate `scripts/check-f12-leitstand-
   ansicht.mjs` (AK10).
+- F13 (Entscheiden und Wiederaufnehmen im Leitstand) ist umgesetzt und
+  `ABGESCHLOSSEN`: Stefan entscheidet bei Rückfragen und Fehlschlägen im
+  Leitstand und nimmt kontrolliert wieder auf — ohne JSON, ohne Terminal,
+  ohne eine Datei unter `kontrollzustand/` von Hand zu öffnen. Die
+  Wiederaufnahme ist ein geführtes, aus dem Vorgängerlauf vorbelegtes
+  Formular statt eines rohen JSON-Textfeldes, der Klärzustand ist
+  unverfälscht sichtbar, und eine menschliche Entscheidung bekommt einen
+  eigenen Schreibpfad — gebaut ausschließlich über bestehende Kernverben
+  (F9 `importiereAntwort`/`entscheideStale`, F2
+  `haltFestStaleEntscheidung`, F1B `schreibeWirkungsmarke`), kein neuer
+  Kernmechanismus. Entschieden dabei: E-M2-6 — die echte Rückfrage ist
+  ein Klärzyklus zwischen zwei Läufen, nicht eine Frage im laufenden
+  Prozess; das Gateway bleibt One-Shot (Gate
+  `scripts/check-f13-entscheiden.mjs`, eingehängt in `npm run check` und
+  `npm run check:template`).
+- F14 (Timeout und Abbruch) ist umgesetzt und `ABGESCHLOSSEN`: eine
+  aktive externe Ausführung kann kontrolliert beendet werden, ohne einen
+  inkonsistenten Kontrollzustand oder verwaiste Executor-Prozesse zu
+  hinterlassen — automatisch bei Überschreiten einer harten, pro
+  Invocation konfigurierbaren Wanduhr-Grenze oder manuell durch Stefan
+  über den Leitstand. Das Gateway hält dafür einen Prozessgriff,
+  Unterprozesse sterben unter Windows mit, und Timeout und Abbruch sind
+  strukturell voneinander und von einem Absturz unterscheidbar.
+  Entschieden dabei: E-M2-7 — beides wird additiv als `FEHLGESCHLAGEN`
+  mit eigenem, maschinenlesbarem `grund` festgehalten, nicht als vierter
+  Terminalwert; E-M2-8 — ein Abbruch wirkt auf genau eine `laufId`, das
+  Auftragsartefakt bleibt unberührt. Kein Schreibpfad kann einem aktiven
+  Lauf ein Terminalergebnis zuschreiben (Gate
+  `scripts/check-f14-abbruch.mjs`, eingehängt in `npm run check`).
+- F15 (Workflow-Artefakt und Schritt-Automat) ist umgesetzt und
+  `ABGESCHLOSSEN`: ein vom Menschen freigegebener Workflow arbeitet seine
+  Schritte nacheinander ab, ohne dass jeder einzelne Schritt von Hand
+  gestartet werden muss, und hält an jeder Freigabe- oder Klärgrenze an.
+  Grundlage ist `docs/projekt/zielfassung.md` §13.4, E-M3-1. `WORKFLOW_V0`
+  ist als Kernartefakt mit Schema, handgeschriebenem Validator und
+  Querverweisregeln umgesetzt (eindeutige `schritt_id`, geprüfte
+  `nachfolger`- und `aktiver_schritt_id`-Referenzen, Zyklenfreiheit);
+  `ermittleNaechstenSchritt` ist eine reine Entscheidungsfunktion ohne
+  Datei-I/O. Der Schritt-Automat setzt in der bestehenden Dispatch-Kette
+  fort, die D13-Übergabe liegt im selben synchronen Tick — ein
+  Schritt-Automat auf einer sequenziellen Kette, keine Parallelisierung.
+  Der Leitstand zeigt Schritte, Status und aktiven Schritt und bietet
+  Freigeben / Überspringen / Stoppen als Entscheidungsartefakt (Gates
+  `scripts/check-f15-workflow.mjs`,
+  `scripts/check-f15-workflow-oberflaeche.mjs`,
+  `scripts/check-f15-instanzlock.mjs`,
+  `scripts/check-f15-automat-real.mjs`, eingehängt in `npm run check`;
+  realer Nachweis `features/F15/nachweis-ak10.md`).
+- F16 (Zweiter Worker: Codex CLI, nur lesend) ist umgesetzt und
+  `ABGESCHLOSSEN`: ein Workflow-Schritt mit `worker: "codex"` läuft real
+  über den Leitstand auf OpenAI Codex CLI (ChatGPT-Anmeldung, E-M3-2),
+  strukturell nur lesend, mit typisiertem Ergebnis, und wird vom
+  bestehenden Execution-Controller-/Evaluator-Pfad genauso verarbeitet
+  wie ein Claude-Code-Schritt. `src/codex-gateway/` liefert
+  Aufrufkonstruktion, Argv-Allowlist und JSONL-Parser und startet den
+  Prozess über den bestehenden `src/claude-code-gateway/prozessstart.ts`;
+  die Laufakte trägt additiv `worker` und `modell_deklariert`, die
+  Auflösung von Startziel, Version und Berechtigungskontext ist
+  worker-abhängig. Bewiesen wird die Multi-Worker-Mechanik, nicht
+  Qualität (§13.1); schreibende Execution bleibt ausschließlich Claude
+  Code. Real belegt sind ein Rot-Fall mit eingerichteter Sandbox
+  (`features/F16/nachweis-rotfall.md`) und ein zweistufiger Workflow
+  (`features/F16/nachweis-ak12.md`) (Gate
+  `scripts/check-f16-codex-gateway.mjs`, eingehängt in `npm run check`).
 
 ## Offene Punkte
 
@@ -211,19 +277,51 @@ Leitstand, `docs/projekt/zielfassung.md` §13.3) ist in Arbeit.
 - ✅ **Erledigt** — Genau ein aktiver Workstream; jeder Passtyp
   mindestens einmal.
 
-### Meilenstein 2 — in Arbeit (`docs/projekt/zielfassung.md` §13.3)
+### Meilenstein 2 — abgeschlossen (`docs/projekt/zielfassung.md` §13.3)
 
 Scope, Reihenfolge und Details siehe
 `docs/projekt/umsetzungsplan-fassung-1.md` Abschnitt 1b:
 
 - ✅ **F11** — Auftrag und geführter Start. **Erledigt**, siehe oben.
 - ✅ **F12** — Laufliste und Lauf-Detailansicht. **Erledigt**, siehe oben.
-- **F13** — Entscheiden und Wiederaufnehmen. In Arbeit
-  (`features/F13/feature.md`, Status `READY_FOR_TECH`).
-- **F14** — Timeout und Abbruch. In Arbeit (`features/F14/feature.md`,
-  Status `READY_FOR_TECH`) — WS-1 (AK1, AK2, AK3) gebaut.
+- ✅ **F13** — Entscheiden und Wiederaufnehmen. **Erledigt**, siehe oben
+  (`features/F13/feature.md`, Status `ABGESCHLOSSEN`).
+- ✅ **F14** — Timeout und Abbruch. **Erledigt**, siehe oben
+  (`features/F14/feature.md`, Status `ABGESCHLOSSEN`).
 
-Reihenfolge zwingend F11 → F12 → F13 → F14 → Dogfooding.
+Reihenfolge war zwingend F11 → F12 → F13 → F14 → Dogfooding.
+
+### Meilenstein 3 — in Arbeit (`docs/projekt/zielfassung.md` §13.4)
+
+- ✅ **F15** — Workflow-Artefakt und Schritt-Automat. **Erledigt**, siehe
+  oben (`features/F15/feature.md`, Status `ABGESCHLOSSEN`).
+- ✅ **F16** — Zweiter Worker (Codex CLI, nur lesend). **Erledigt**, siehe
+  oben (`features/F16/feature.md`, Status `ABGESCHLOSSEN`).
+- **F17** — Rollenvertrag. Geplant, noch keine Feature-Akte unter
+  `features/`.
+
+Stand der §13.4-Bestehensbedingung (drei Sätze):
+
+- Satz 1 (zweistufiger Workflow: lesender Codex-Schritt → schreibender
+  Claude-Code-Schritt, real über den Leitstand ohne manuellen
+  Zwischenstart) ist **real erfüllt** — Nachweis
+  `features/F16/nachweis-ak12.md`, festgehalten in
+  `docs/projekt/zielfassung.md` §13.4.
+- Satz 2 (Szenario A/B: je ein real durchlaufener Fast-Lane-Workflow mit
+  einem Schritt und ein Standard-Workflow mit Review + Ausführung) ist
+  **offen**.
+- Satz 3 (Router-Eval-Gate: mindestens 10 Aufgaben mit je ≥3 Läufen gegen
+  die Baseline „immer Standard-Workflow") ist **offen**.
+
+Zuordnung von Satz 2 und Satz 3 — **Planungsstand aus der
+Challenge-Runde vom 11.09.2026, noch nicht in
+`docs/projekt/zielfassung.md` §13.4 festgeschrieben**, also hier
+Absichtserklärung und nicht Sollquelle: F17 bleibt schmal und umfasst
+ausschließlich den Rollenvertrag (löst `state/findings.md` F-313 und
+F-323); Satz 2 (Szenario A/B) und Satz 3 (Router-Eval-Gate) werden
+gemeinsam ein eigener Nachweis-Workstream **nach** F17. Verbindlich wird
+das erst mit einem Eintrag in §13.4. Eine Reihenfolge für Meilenstein 3
+ist nicht festgelegt.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder

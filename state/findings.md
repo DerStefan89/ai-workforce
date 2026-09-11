@@ -1079,13 +1079,14 @@ Auswirkung: Ein Bauauftrag wäre in einem Worktree ohne seine Vorgabedokumente g
 Maßnahme: Regel — ein Vertrag ist erst freigabefähig, wenn alle von ihm per Pfad referenzierten Dateien auf origin liegen. Mit PR #64 für F8 erledigt.
 Feature/Run: F8 WS-1, 04.09.2026.
 
-**F-099** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-099** · `HARNESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: `state/freigabe-commit.md` ist versioniert statt gitignored.
 Beschreibung: Die Datei ist in origin/main als Blob getrackt und steht nicht in `.gitignore`. Jeder frische Klon und jedes `git checkout`/`reset --hard` materialisiert damit eine Freigabedatei. Entschärft wird das derzeit allein durch das 10-Minuten-Frischefenster; der Guard blockiert nur Bash-Befehle, die den Pfad-String nennen — ein `git reset --hard` nennt ihn nicht.
 Fundstelle: `git ls-tree origin/main state/freigabe-commit.md`; `.claude/hooks/commit-guard.cjs` Aufgabe 3/4.
 Auswirkung: Kein akuter Fehlerfall, aber der zweite Schlüssel liegt in der Versionsgeschichte.
 Maßnahme: In `.gitignore` aufnehmen und aus der Versionierung entfernen; das Frischefenster bleibt zweite Linie statt einziger Linie.
-Feature/Run: F8 WS-1-Vorbereitung, 04.09.2026.
+Status: **gelöst**. Derselbe Sachverhalt wie F-331 und mit diesem gelöst: die `.gitignore`-Zeile `state/freigabe-commit.md` im Abschnitt „Persönliche Freigaben" kam mit PR #136; Wirksamkeit dort real belegt. Die zweite Hälfte der Maßnahme („aus der Versionierung entfernen") ist ebenfalls erfüllt: die Datei ist am 11.09.2026 weder im Index noch auf `origin/main` getrackt (`git ls-files`, `git ls-tree`). **Achtung:** Die in der Beschreibung als Nebenbemerkung genannte zweite Lücke — der Guard blockiert nur Bash-Befehle, die den Pfad-String nennen, ein `git reset --hard` nennt ihn nicht — ist damit **nicht** gelöst. Sie ist vor dem Schließen dieses Eintrags als eigenständiges Finding **F-333** erfasst und lebt dort weiter.
+Feature/Run: F8 WS-1-Vorbereitung, 04.09.2026; behoben PR #136, 11.09.2026.
 
 **F-100** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Lesende Git-Befehle über die Remote-Devices-Bridge hinterlassen `.git/index.lock`.
@@ -5423,7 +5424,7 @@ Vergleichslauf ohne das Flag.
 Status: offen.
 Feature/Run: F16 WS-3b AK12, 11.09.2026.
 
-**F-330** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-330** · `PROCESS_IMPROVEMENT` · P3 · **gelöst**
 Titel: `docs/STATUS.md` listet F13/F14 noch als „in Arbeit" und kennt F15
 und F16 nicht.
 Beschreibung: `CLAUDE.md` führt `docs/STATUS.md` als Quelle für den
@@ -5438,10 +5439,17 @@ veralteten Scope-Stand genannt.
 Empfohlene Maßnahme: Bei F17-Start einmalig nachziehen, nicht als
 Einzelauftrag — die Datei ist erst dann wieder aussagekräftig, wenn der
 nächste Stand feststeht.
-Status: offen.
-Feature/Run: F16 WS-3b AK12, 11.09.2026.
+Status: **gelöst**. Nachgezogen im Branch
+`chore/nachzug-f16-status-findings`: „Aktuelle Phase" nennt Meilenstein 1
+und 2 als abgeschlossen und Meilenstein 3 als laufend, F13–F16 haben je
+einen Absatz unter „Erledigt", der Meilenstein-2-Abschnitt steht auf
+abgeschlossen, und ein Abschnitt „Meilenstein 3" hält F15/F16 als
+erledigt, F17 als geplant ohne Feature-Akte sowie den Stand der drei
+Sätze der §13.4-Bestehensbedingung fest.
+Feature/Run: F16 WS-3b AK12, 11.09.2026; behoben im Statusnachzug nach
+F16, 11.09.2026.
 
-**F-331** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-331** · `HARNESS_IMPROVEMENT` · P2 · **gelöst**
 Titel: `state/freigabe-commit.md` fehlt in `.gitignore`, obwohl der Guard
 sie als Einmal-Schlüssel behandelt.
 Beschreibung: `.claude/hooks/commit-guard.cjs` verlangt die Datei vor jedem
@@ -5461,5 +5469,58 @@ versehentlich ins Repo. Real beobachtet: bei der Commit-Vorbereitung zu F16
 WS-3b Teil C erschien sie als untracked-und-nicht-ignoriert im `git status`.
 Empfohlene Maßnahme: Zeile `state/freigabe-commit.md` im Abschnitt
 „Persönliche Freigaben" ergänzen.
+Status: **gelöst**. Gelöst durch die `.gitignore`-Zeile
+`state/freigabe-commit.md` im Abschnitt „Persönliche Freigaben",
+eingebracht mit PR #136. Wirksamkeit real belegt, nicht nur behauptet:
+`git status --ignored` zeigt die real vorliegende Freigabedatei als
+`!!` und nicht mehr als untracked im normalen `git status`.
+Feature/Run: F16 WS-3b Teil C (Commit-Vorbereitung), 11.09.2026;
+behoben PR #136, 11.09.2026.
+
+**F-332** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: `commit-guard.cjs` löst bei jeder Commit-Message an, die den
+Freigabedatei-Pfad nur in Prosa nennt.
+Beschreibung: Aufgabe 4 des Guards prüft den Bash-Befehlstext mit
+`normalisiert.includes(FREIGABE_DATEI)` (`commit-guard.cjs` Zeile ~189) —
+ein reines String-Vorkommen über den gesamten Befehl, ohne Zugriffsverb,
+ohne Wortgrenze, ohne Ausschluss von Text innerhalb von `-m "…"`.
+Dadurch wird auch ein `git commit -m "… state/freigabe-commit.md …"`
+verweigert, obwohl der Befehl die Datei nicht anfasst.
+Fundstelle: `.claude/hooks/commit-guard.cjs`, Aufgabe 4 (Zeile ~186–195),
+Konstante `FREIGABE_DATEI` Zeile ~67. Real aufgetreten bei PR #136.
+Auswirkung: Fehlalarm, kein Sicherheitsproblem. Workaround bekannt:
+`git commit -F <Datei>` statt Heredoc, Pfad in der Message umschreiben.
+Empfohlene Maßnahme: Bedingung in Aufgabe 4 verengen (Zugriffsverb oder
+Pfad-als-Argument statt reines Vorkommen). Konstante in Zeile 67 nicht
+umdefinieren — Aufgabe 3 benutzt sie ebenfalls.
 Status: offen.
-Feature/Run: F16 WS-3b Teil C (Commit-Vorbereitung), 11.09.2026.
+Feature/Run: F16 WS-3b Teil C / PR #136, 11.09.2026.
+
+**F-333** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Aufgabe 4 des Guards erkennt nur Befehle, die den
+Freigabedatei-Pfad nennen — `git reset --hard` nennt ihn nicht.
+Beschreibung: Abgespalten aus F-099 beim Schließen von dessen erster
+Hälfte. F-099 hat zwei Lücken beschrieben; die versionierte
+Freigabedatei ist mit PR #136 gelöst (`.gitignore`-Zeile
+`state/freigabe-commit.md`, siehe F-331), die zweite nicht: Aufgabe 4 von
+`.claude/hooks/commit-guard.cjs` blockiert ausschließlich Bash-Befehle,
+die den Pfad-String selbst enthalten. Ein Befehl, der die Datei ohne
+Nennung des Pfades materialisiert oder verändert — etwa ein
+`git reset --hard` oder ein `git checkout <ref>` auf einen Stand, der
+sie noch trägt — läuft am Guard vorbei.
+Fundstelle: `.claude/hooks/commit-guard.cjs`, Aufgabe 4.
+Auswirkung: Der Guard ist gegen versehentliche, den Pfad nennende
+Zugriffe wirksam, gegen pfadlose Befehle nicht. Entschärft, aber nicht
+geschlossen, durch das 10-Minuten-Frischefenster aus Aufgabe 3 und
+dadurch, dass die Datei heute weder im Index noch auf `origin/main`
+getrackt ist (geprüft 11.09.2026 per `git ls-files` und `git ls-tree`) —
+ein `git reset --hard` materialisiert sie damit derzeit nicht mehr. Die
+Lücke im Guard selbst bleibt davon unberührt.
+Empfohlene Maßnahme: Offen — eine Pfad-String-Prüfung kann pfadlose
+Befehle grundsätzlich nicht erfassen; wirksam wäre nur eine Prüfung des
+Dateizustands nach dem Befehl oder eine Allowlist für
+zustandsverändernde Git-Befehle. Bewusst nicht in diesem Auftrag
+entschieden.
+Status: offen.
+Feature/Run: abgespalten aus F-099 beim Statusnachzug nach F16,
+11.09.2026.
