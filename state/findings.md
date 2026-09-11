@@ -5362,5 +5362,81 @@ Empfohlene Maßnahme: Für AK12 durch Fall (f) desselben Gates geschlossen
 (Label-zu-Feld-Paarung je Zeile, rot kalibriert). Die allgemeine Klasse
 bleibt offen: die übrigen Zeilen des Blocks und die anderen render-Funktionen
 in `app.js` haben weiterhin kein solches Gegenstück.
-Status: teilweise adressiert.
-Feature/Run: F16 WS-3b Teil A, 11.09.2026.
+Beleg-Nachtrag (F16 WS-3b AK12, 11.09.2026): Für die beiden Läufe des
+AK12-Nachweises ist die Lücke real geschlossen — nicht durch ein Gate,
+sondern durch zwei reale `GET /api/laeufe/<laufId>`-Antworten, die `worker`
+und `modellDeklariert` feldweise korrekt ausliefern (wörtlich zitiert in
+`features/F16/nachweis-ak12.md`, Abschnitt „Leitstand-Anzeige"). Damit ist
+für diesen Lauf belegt, dass Projektion und ausgelieferte Daten
+übereinstimmen. Die allgemeine Klasse bleibt offen: die übrigen Zeilen des
+Laufakte-Blocks und die weiteren `render`-Funktionen haben weiterhin kein
+gemeinsames Gate, und auch hier bleibt die Spanne zwischen Serverantwort
+und gerendertem Bild quelltextgeprüft.
+Status: teilweise adressiert (für den AK12-Lauf geschlossen).
+Feature/Run: F16 WS-3b Teil A, 11.09.2026; Beleg-Nachtrag F16 WS-3b AK12, 11.09.2026.
+
+**F-328** · `PROCESS_IMPROVEMENT` · P3 · behoben
+Titel: Challenger-Briefing zitierte F-308 fälschlich gegen
+`features/F16/nachweis-rotfall.md` Lauf 3 statt gegen Lauf A in
+`state/tp-m3-02-codex-output-schema.md`.
+Beschreibung: Das Briefing zum AK12-Nachweis führte Lauf 3 des Rot-Falls als
+Vorinstanz des F-308-Musters („nur die letzte `agent_message` ist
+schemakonform"). Lauf 3 lief jedoch ausdrücklich OHNE `--output-schema`
+(`features/F16/nachweis-rotfall.md`: „`turn.completed`, Exit 0, kein
+`--output-schema`") und verzeichnet keine frühere
+Freitext-`agent_message`. F-308 ist definitorisch an das Flag gebunden, ein
+Lauf ohne das Flag kann keine Instanz sein. Nebeneffekt: der Zähler stimmte
+nicht — mit Rotfall Lauf 3 als Vorinstanz wäre der AK12-Lauf die dritte, nicht
+die zweite reale Instanz.
+Fundstelle: Teil-C-Prompt der Challenger-Sitzung zu
+`features/F16/nachweis-ak12.md`; korrigierte Fassung dort im Abschnitt C.
+Auswirkung: Keine. Im Reviewer-Pass mit frischem Kontext gefunden und vor dem
+Commit korrigiert; die einzige belastbare Vorinstanz (Lauf A, so auch im
+Beleg-Nachtrag zu F-308) steht jetzt im Nachweis.
+Empfohlene Maßnahme: Zitate aus Spike- und Nachweisdokumenten an der Quelle
+prüfen, nicht aus dem Briefing übernehmen — auch dann, wenn das Briefing
+selbst die Belegstelle mitliefert.
+Status: behoben.
+Feature/Run: F16 WS-3b AK12, 11.09.2026.
+
+**F-329** · `TECH_DEBT` · P2 · offen
+Titel: Der AK12-Nachweis ist an einer Stelle überdeterminiert: Auftragstext
+und `--output-schema` erzwingen unabhängig voneinander reines JSON.
+Beschreibung: Der Auftragstext des AK12-Laufs verlangt die Antwortform
+selbst („Antworte AUSSCHLIESSLICH mit einem einzigen JSON-Objekt … Kein
+Freitext vor oder nach dem JSON-Objekt, keine Codebloecke"). Für die
+schemakonforme letzte `agent_message` gibt es damit zwei hinreichende
+Ursachen. Hätte `--output-schema` gar nicht gewirkt, sähe das Ergebnis
+identisch aus — der Lauf isoliert den Schalter nicht. Dieselbe Fehlerklasse,
+die F-272 beschreibt, hier in eigener Sache.
+Fundstelle: Auftragstext von Auftrag
+`89c10996-cbb2-4d56-94db-31f905bb6cd1`, zitiert in
+`features/F16/nachweis-ak12.md` Abschnitt C.
+Auswirkung: Für AK12 ausreichend — der AK-Wortlaut verlangt ein
+schemakonformes Ergebnis, nicht den Nachweis des Mechanismus; der Ausgang ist
+belegt. Für eine gezielte Wirksamkeitsprüfung von `--output-schema` trägt
+dieser Lauf nichts bei; dieser Beleg liegt allein in
+`state/tp-m3-02-codex-output-schema.md` (Lauf A).
+Empfohlene Maßnahme: Soll der Schalter selbst belegt werden, braucht es einen
+neutralen Auftragstext, der die JSON-Form NICHT verlangt, und einen
+Vergleichslauf ohne das Flag.
+Status: offen.
+Feature/Run: F16 WS-3b AK12, 11.09.2026.
+
+**F-330** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `docs/STATUS.md` listet F13/F14 noch als „in Arbeit" und kennt F15
+und F16 nicht.
+Beschreibung: `CLAUDE.md` führt `docs/STATUS.md` als Quelle für den
+aktuellen Phasen- und Scope-Stand. Die Datei nennt F14 „in Arbeit" und die
+Reihenfolge „F11 → F12 → F13 → F14 → Dogfooding"; F15 (abgeschlossen) und
+F16 (mit diesem Commit abgeschlossen) kommen nicht vor. Die Drift bestand vor
+diesem Branch und wächst mit jedem abgeschlossenen Feature.
+Fundstelle: `docs/STATUS.md`.
+Auswirkung: Reine Doku-Drift, keine Wirkung auf Code oder Gates. Ein frischer
+Kontext, der `CLAUDE.md` folgt und `docs/STATUS.md` liest, bekommt einen
+veralteten Scope-Stand genannt.
+Empfohlene Maßnahme: Bei F17-Start einmalig nachziehen, nicht als
+Einzelauftrag — die Datei ist erst dann wieder aussagekräftig, wenn der
+nächste Stand feststeht.
+Status: offen.
+Feature/Run: F16 WS-3b AK12, 11.09.2026.
