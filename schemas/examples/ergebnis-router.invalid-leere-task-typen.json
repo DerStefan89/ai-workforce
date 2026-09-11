@@ -1,0 +1,7 @@
+{
+  "kontrolltiefe": "standard",
+  "risikoklasse": "mittel",
+  "task_typen": [],
+  "rueckfragen": [],
+  "begruendung": "task_typen ist leer — Pflicht ist mindestens ein Eintrag."
+}

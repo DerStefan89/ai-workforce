@@ -45,6 +45,10 @@ const erwarteteRollen = {
   'code-reviewer': ['state/tasks/**'],
   qa: ['state/tasks/**'],
   ausfuehrung: [],
+  // 'router' kam mit F18 WS-1 hinzu — Ausschlussmuster ist neu, keine
+  // Migration von einem früheren Wert, daher hier direkt statt erst per
+  // separatem Nachweis dokumentiert.
+  router: ['src/**'],
 }
 
 const gefundeneRollen = Object.keys(ROLLENVERTRAEGE).sort()
@@ -74,7 +78,7 @@ if (JSON.stringify(gefundeneRollen) !== JSON.stringify(erwarteteNamen)) {
     }
   }
   if (befunde.length === 0) {
-    console.log('✓ AK2: alle vier Rollen vorhanden, alle fünf Felder gesetzt, Ausschlussmuster byte-gleich zu den Werten vor der Migration.')
+    console.log('✓ AK2: alle erwarteten Rollen vorhanden, alle fünf Felder gesetzt, Ausschlussmuster byte-gleich zu den Werten vor der Migration.')
   }
 }
 
@@ -121,7 +125,11 @@ for (const pfad of geprueftDateien) {
   const inhalt = readFileSync(pfad, 'utf-8')
   for (const rolle of bekannteRollen()) {
     const musterAnfuehrungszeichen = new RegExp(`['"]${rolle}['"]\\s*:`, 'm')
-    const musterBezeichner = new RegExp(`(?<![\\w'"-])${rolle}\\s*:`, 'm')
+    // ':' zusätzlich zum Bezeichner-Ausschluss: verhindert einen Fehltreffer
+    // bei Fremdformat-Pfaden wie Rusts 'codex_core::tools::router:' (kein
+    // gültiger JS/TS-Objektschlüssel, real beobachtet bei F18 WS-1 in
+    // src/codex-gateway/codex-gateway.test.ts).
+    const musterBezeichner = new RegExp(`(?<![\\w'"-:])${rolle}\\s*:`, 'm')
     if (musterAnfuehrungszeichen.test(inhalt) || musterBezeichner.test(inhalt)) {
       zweiteRollenlisteGefunden.push(`${pfad} (Rolle '${rolle}')`)
     }

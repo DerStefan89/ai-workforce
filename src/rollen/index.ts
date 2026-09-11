@@ -11,10 +11,12 @@
  * Wird aufgerufen von: src/context-builder/index.ts,
  * scripts/check-f17-rollenvertrag.mjs, src/rollen/rollen.test.ts.
  *
- * Wichtig: Die vier Einträge sind die real existierenden Rollen (F17
- * Entschieden, 11.09.2026) — keine neuen Rollen ohne Änderung an dieser
- * Datei. Die ausschlussmuster-Werte sind byte-gleich zu den vor der
- * Migration gültigen Werten der früheren Ausschlussmuster-Konstante.
+ * Wichtig: Die vier Einträge aus F17 sind die real existierenden
+ * Ausführungsrollen (F17 Entschieden, 11.09.2026) — keine neuen Rollen ohne
+ * Änderung an dieser Datei. Die ausschlussmuster-Werte dieser vier sind
+ * byte-gleich zu den vor der Migration gültigen Werten der früheren
+ * Ausschlussmuster-Konstante. `router` kommt mit F18 WS-1 hinzu (E-M3-2,
+ * docs/projekt/zielfassung.md §13.4, erlaubt Codex für die Rolle Router).
  */
 
 import type { Rollenvertrag } from './types.ts'
@@ -47,6 +49,14 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_worker: ['claude-code'],
     erlaubtes_output_schema: null,
     ausschlussmuster: [],
+  },
+  router: {
+    zweck:
+      'Klassifiziert einen Auftrag (Ziel-Text) und schlägt Kontrolltiefe und Vorlage für den auszuführenden Workflow vor, ohne selbst Code zu lesen.',
+    erlaubte_werkzeugsatz_arten: ['lesend'],
+    erlaubte_worker: ['claude-code', 'codex'],
+    erlaubtes_output_schema: 'ergebnis-router',
+    ausschlussmuster: ['src/**'],
   },
 }
 
