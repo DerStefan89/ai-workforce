@@ -1,0 +1,30 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "__WORKFLOW_ID__",
+  "auftrag_id": "__AUFTRAG_ID__",
+  "version": 1,
+  "ziel": "__ZIEL__",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-ausfuehrung",
+  "grenzen": {
+    "max_schritte": 4,
+    "max_replans": 1
+  },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-ausfuehrung",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend. 'fast-lane' heißt: kein Review-Schritt davor, nicht: keine Freigabe vor dem Schreiben.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}
