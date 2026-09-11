@@ -52,12 +52,13 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, readdirSync, rmSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { erzeugeRequestHandler, pruefeEntscheidungsformular } from './leitstand-server.mjs'
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { erfasseBedarf, erzeugeTransportpaket, haendigeAus } from '../src/human-transport/index.ts'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F13-Entscheiden-Check (WS-2) ===\n')
@@ -267,7 +268,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -289,7 +290,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -333,7 +334,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -387,7 +388,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -429,7 +430,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     await verzoegerung(250)
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -452,7 +453,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -511,7 +512,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -539,7 +540,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -561,7 +562,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -584,7 +585,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -607,7 +608,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -682,7 +683,7 @@ function zaehleCheckpointDateien(laufId, basisVerzeichnis) {
     await verzoegerung(450)
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 

@@ -15,7 +15,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -24,6 +24,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAutorisierung, verweigereAutorisierung } from './index.ts'
 import type { AutorisierungsReferenz } from './types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -72,7 +73,7 @@ function committeAutorisierung(repoWurzel: string, laufId: string, inhalt: strin
 }
 
 function raeumeKette(laufId: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 test('echte, committete, unveränderte Freigabe liefert ok:true/FREIGEGEBEN — AC7 Fall 1', () => {
@@ -88,7 +89,7 @@ test('echte, committete, unveränderte Freigabe liefert ok:true/FREIGEGEBEN — 
     assert.strictEqual(ergebnis.entscheidung, 'FREIGEGEBEN')
     assert.strictEqual(ergebnis.eintrag.lauf_id, laufId)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -118,7 +119,7 @@ test('echte Verweigerung: verweigereAutorisierung nach vorangehender RUN_PREPARE
     assert.strictEqual(status.ergebnis, 'VERWEIGERT')
   } finally {
     raeumeKette(laufId)
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -138,7 +139,7 @@ test('manipulierte Referenz: Arbeitsbaum nach dem Commit verändert, ohne neuen 
     assert.ok(!ergebnis.ok)
     assert.match(ergebnis.grund, /weicht von der Referenz ab/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -156,7 +157,7 @@ test('fehlender geschützter Ort: Pfad außerhalb des konfigurierten externen Re
     assert.ok(!ergebnis.ok)
     assert.match(ergebnis.grund, /ausserhalb des erwarteten externen Repos/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -173,7 +174,7 @@ test('externes Repo ohne .gitattributes liefert eine spezifische Fehlermeldung, 
     assert.match(ergebnis.grund, /\.gitattributes/)
     assert.doesNotMatch(ergebnis.grund, /weicht von der Referenz ab/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -197,6 +198,6 @@ test('Verweigerung ohne vorangehende RUN_PREPARED-Marke liefert NICHT_GESTARTET/
     assert.deepStrictEqual(status.terminaleOhneRunPrepared, [1])
   } finally {
     raeumeKette(laufId)
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })

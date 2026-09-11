@@ -46,12 +46,13 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { leseErgebnisobjekt, starteGateway } from '../src/claude-code-gateway/index.ts'
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
 import { stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const ZIELDATEINAME = 'beweis.txt'
@@ -221,7 +222,7 @@ console.log(rotFallBeleg)
 console.log('')
 
 try {
-  rmSync(wegwerfVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(wegwerfVerzeichnis)
   console.log(`Wegwerfverzeichnis aufgeräumt: ${wegwerfVerzeichnis}\n`)
 } catch (fehler) {
   console.log(`ⓘ Wegwerfverzeichnis-Aufräumung fehlgeschlagen (bekanntes Windows-Datei-Lock-Muster) — bleibt liegen: ${wegwerfVerzeichnis}`)

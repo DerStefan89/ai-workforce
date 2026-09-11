@@ -42,9 +42,11 @@ ist und zusammenspielt. Für Lernstand und offene Punkte siehe
 │                                zwischenstand-laden.cjs, zwischenstand-pruefen.cjs
 ├── scripts/
 │   ├── check-docs.mjs      ← Doku-Gate (5 Prüfungen), Teil von `npm run check`
-│   ├── check-rules.mjs      ← Regel-Gate, leerer Harness bis zur ersten
-│   │                            echten Regel
-│   └── _mode.ts             ← Dry-Run-per-Default für schreibende Scripts
+│   ├── check-rules.mjs      ← Regel-Gate; AST-Harness noch leer, eine
+│   │                            Textregel registriert (R1, F-257)
+│   ├── _mode.ts             ← Dry-Run-per-Default für schreibende Scripts
+│   └── _aufraeumen.ts       ← Aufräumen von Wegwerf-Verzeichnissen in
+│                                Tests und Gates, mit Wiederholung (F-257)
 ├── .worktreeinclude          ← in jeden neuen Worktree zu kopierende,
 │                                gitignorierte Dateien
 └── .github/workflows/ci.yml ← npm run check + Secret-Scan bei Push/PR

@@ -9,10 +9,11 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { readdirSync, readFileSync, rmSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import {
   haltFestStaleEntscheidung,
   ladeArtefaktVersion,
@@ -31,7 +32,7 @@ function neueArtefaktId(praefix: string): string {
 }
 
 function raeumeAuf(artefaktId: string): void {
-  rmSync(join(BASIS, `lineage-${artefaktId}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-${artefaktId}`))
 }
 
 function einzigeCheckpointDatei(artefaktId: string): string {

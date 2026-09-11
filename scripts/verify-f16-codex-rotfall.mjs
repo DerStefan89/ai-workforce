@@ -63,11 +63,12 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID, createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { baueCodexAufruf, leseCodexEreignisse, starteCodexGateway } from '../src/codex-gateway/index.ts'
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const ZIELDATEINAME = 'beweis.txt'
@@ -346,7 +347,7 @@ console.log('')
 // Nachweis dokumentiert.
 for (const verzeichnis of [wegwerfVerzeichnis, BASIS_KONTROLLZUSTAND, BASIS_ROHSTROM]) {
   try {
-    rmSync(verzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(verzeichnis)
     console.log(`Aufgeräumt: ${verzeichnis}`)
   } catch (fehler) {
     console.log(`ⓘ Aufräumen fehlgeschlagen (bekanntes Windows-Datei-Lock-Muster) — bleibt liegen: ${verzeichnis}`)

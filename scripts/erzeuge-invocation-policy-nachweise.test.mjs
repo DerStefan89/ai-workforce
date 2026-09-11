@@ -20,12 +20,13 @@
  */
 
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { validiereBaselineEintrag, validiereWirksamkeitsnachweisEintrag } from '../src/invocation-policy/index.ts'
 import { ermittleHookPfade, erzeugeNachweise } from './erzeuge-invocation-policy-nachweise.mjs'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const ISTUEBRIGEFELDER_FIXTURE = {
   werkzeug_version_deklariert: '2.1.241',
@@ -99,7 +100,7 @@ test('erzeugeNachweise: schreibt Baseline + Wirksamkeitsnachweis gegen ein Wegwe
     assert.equal(nachweisAufDisk.gueltigkeitsschluessel.werkzeug_version_deklariert, ISTUEBRIGEFELDER_FIXTURE.werkzeug_version_deklariert)
     assert.equal(nachweisAufDisk.rot_fall_beleg, 'Selbsttest — kein echter Rot-Fall-Nachweis')
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -116,6 +117,6 @@ test('erzeugeNachweise: fehlendes Pflichtfeld im Gültigkeitsschlüssel wirft VO
       /verletzt sein Schema/
     )
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })

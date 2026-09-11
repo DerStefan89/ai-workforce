@@ -76,6 +76,7 @@ import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F15-Automat-Realcheck (WS-2c, AK6b + F-208) ===\n')
@@ -222,8 +223,8 @@ function startfreigabeOptionen() {
 
 // Aufräumen auch nach einem unbehandelten Wurf (Reviewer-Befund aus F14 WS-5).
 process.on('exit', () => {
-  rmSync(STARTFREIGABE_REPO, { recursive: true, force: true })
-  rmSync(PROJEKT_VERZEICHNIS, { recursive: true, force: true })
+  raeumeVerzeichnis(STARTFREIGABE_REPO)
+  raeumeVerzeichnis(PROJEKT_VERZEICHNIS)
 })
 
 // ─── Test-Infrastruktur ────────────────────────────────────────────────────
@@ -351,7 +352,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 // ─── (a) AK6b real: EIN Startaufruf, zwei reale Läufe ──────────────────────
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-auto'
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-auto.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
   try {
@@ -387,7 +388,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -399,7 +400,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
   // 10.09.2026): sonst unterdrückte ein Befund aus (a) die Erfolgsmeldung von (b), obwohl (b)
   // bestanden hat — und der Bericht sagte weniger, als der Lauf belegt.
   const befundeVorAbbruch = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-abbruch.json', HAENGE_SKRIPT)
   let schliessen = async () => {}
   // Für die Aufräumroutine (F-231): dieser Block startet einen Kindprozess, der von sich
@@ -461,7 +462,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     // fliegenden Lauf und damit einen node.exe weiterlaufen.
     await beendeLaufFallsAktiv(basisUrl, laufIdDesBlocks)
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -476,7 +477,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-freigabe'
   const befundeVorFreigabe = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-freigabe.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
   try {
@@ -528,7 +529,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -542,7 +543,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-ablehnung'
   const befundeVorAblehnung = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-ablehnung.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
   try {
@@ -629,7 +630,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -648,7 +649,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-stopp'
   const befundeVorStopp = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const haengePfad = schreibeTestStartvorlage('test-f15-ws2c-stopp-haengt.json', HAENGE_SKRIPT)
   const erfolgPfad = schreibeTestStartvorlage('test-f15-ws2c-stopp-erfolg.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
@@ -782,7 +783,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     // Erst den Kindprozess, dann den Server (F-231), wie in (b).
     await beendeLaufFallsAktiv(basisUrl, laufIdDesBlocks)
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(haengePfad, { force: true })
     rmSync(erfolgPfad, { force: true })
   }
@@ -797,7 +798,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-stopp-leer'
   const befundeVorLeer = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-stopp-leer.json', ERFOLG_SKRIPT)
   let schliessen = async () => {}
   try {
@@ -831,7 +832,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -858,7 +859,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2c-fremdlauf'
   const befundeVorFremdlauf = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   const startvorlagePfad = schreibeTestStartvorlage('test-f15-ws2c-fremdlauf.json', VERZOEGERTER_ERFOLG_SKRIPT)
   let schliessen = async () => {}
   let basisUrl = null
@@ -933,7 +934,7 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
   } finally {
     await beendeLaufFallsAktiv(basisUrl, laufIdVonA)
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }

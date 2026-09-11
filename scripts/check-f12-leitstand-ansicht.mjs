@@ -42,13 +42,14 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F12-WS-3-Check (Detailansicht, Rohstrom-Lesepfad, Gate) ===\n')
@@ -93,7 +94,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -114,7 +115,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -147,7 +148,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -247,7 +248,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 }
 

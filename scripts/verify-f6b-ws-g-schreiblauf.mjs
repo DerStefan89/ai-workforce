@@ -60,6 +60,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { baueAufruf, starteGateway } from '../src/claude-code-gateway/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const PROFIL_REFERENZ = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const SCRATCH_VERZEICHNIS_RELATIV = 'scratch-f6b-ws-g'
@@ -152,7 +153,7 @@ if (!zieldateiExistiert || zieldateiInhalt !== ZIELINHALT) {
 }
 
 try {
-  rmSync(scratchVerzeichnisAbsolut, { recursive: true, force: true })
+  raeumeVerzeichnis(scratchVerzeichnisAbsolut)
   console.log(`Scratch-Unterordner aufgeräumt: ${scratchVerzeichnisAbsolut}\n`)
 } catch (fehler) {
   console.log(`ⓘ Scratch-Unterordner-Aufräumung fehlgeschlagen (bekanntes Windows-Datei-Lock-Muster) — bleibt liegen: ${scratchVerzeichnisAbsolut}`)

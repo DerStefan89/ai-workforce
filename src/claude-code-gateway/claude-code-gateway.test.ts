@@ -39,6 +39,7 @@ import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { baueAufruf, leseModellBeobachtet, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter } from './types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -50,9 +51,9 @@ function neueLaufId(praefix: string): string {
 }
 
 function raeumeKette(laufId: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
-  rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
-  rmSync(join('kontrollzustand-roh', laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`))
+  raeumeVerzeichnis(join('kontrollzustand-roh', laufId))
 }
 
 function gueltigeEingaben(): AufrufEingaben {
@@ -174,8 +175,8 @@ const AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD = join(PROJEKT_VERZEICHNIS, 'aktu
 writeFileSync(AKTUELLE_AUTORISIERUNG_FALSCHE_FORM_PFAD, JSON.stringify({ baselineReferenz: {}, wirksamkeitsnachweisReferenz: null }))
 
 after(() => {
-  rmSync(STARTFREIGABE_REPO, { recursive: true, force: true })
-  rmSync(PROJEKT_VERZEICHNIS, { recursive: true, force: true })
+  raeumeVerzeichnis(STARTFREIGABE_REPO)
+  raeumeVerzeichnis(PROJEKT_VERZEICHNIS)
 })
 
 function startfreigabeOptionen() {

@@ -3790,7 +3790,7 @@ Quelle statt eines geteilten Kennzeichens und betrifft dann auch `laden` und
 Status: offen.
 Feature/Run: F15 WS-3a, 10.09.2026 (Reviewer-Pass Befund 5/9, QA-Pass Fehler 10 bis 16).
 
-**F-257** · `HARNESS_IMPROVEMENT` · P1 · offen
+**F-257** · `HARNESS_IMPROVEMENT` · P1 · gelöst
 Titel: `npm run check` scheitert wiederholt an umgebungsbedingten Rennen,
 und die Regel dagegen ist "einmal wiederholen".
 Beschreibung: Innerhalb von zwei aufeinanderfolgenden Bauabschnitten ist
@@ -3890,10 +3890,67 @@ Die beiden anderen Stellen — ENOENT auf die Enkel-PID-Datei
 (execution-controller.test.ts, raeumeKette) — sind UNVERÄNDERT OFFEN und
 tragen die Hochstufung. Sie sind echte Aufräum-Rennen und brauchen die
 oben empfohlene gemeinsame Hilfe.
-Status: offen.
+Behebung 11.09.2026 (Aufräum-Klasse geschlossen): Die gemeinsame Hilfe
+steht als `raeumeVerzeichnis(pfad)` in `scripts/_aufraeumen.ts` und räumt
+mit `maxRetries: 10, retryDelay: 100` statt nackt. Alle 127 rekursiven
+`rmSync`-Aufräumungen in Tests und Gate-Skripten (33 Dateien) sind darauf
+umgestellt; Produktcode bewusst nicht, dort ist stilles Wiederholen kein
+gewünschtes Verhalten. Die je Datei nachgebauten `raeumeKette`-Varianten
+bleiben bestehen — sie räumen unterschiedliche Pfadmengen, ihre
+Vereinheitlichung wäre eine zweite, unabhängige Änderung. Gehalten wird
+der Zustand mechanisch, nicht durch Gewohnheit: Regel (R1) in
+`scripts/check-rules.mjs` meldet jedes rekursive `rmSync` ohne
+`maxRetries` in Prüfcode, mit Rot-Kalibrierung gegen drei konstruierte
+Verstöße (ein- und mehrzeilig) und einer Grün-Gegenprobe. Die Regel wurde
+zusätzlich gegen eine echte, zurückgebaute Datei rot kalibriert
+(`src/auftrag/auftrag.test.ts`, Exit 1) und danach wieder grün.
+In Kauf genommene Nebenwirkung, benannt statt verschwiegen: Das Aufräumen
+war bisher ein unbeabsichtigter Detektor für verwaiste Kindprozesse —
+ENOTEMPTY entsteht nicht nur durch Virenscanner, sondern auch durch einen
+Kindprozess, den ein Test nicht sauber beendet hat, und genau das ist hier
+ein realer Prüfgegenstand (F14 AK4, Prozessbaum-Kill). Jedes Leck, das
+sich innerhalb der Wiederholungsspanne von selbst löst, wird jetzt
+geräuschlos absorbiert. Der Tausch ist bewusst: Der Detektor war
+unzuverlässig (er sprach ebenso auf den Virenscanner an) und hat in neun
+Auftreten kein einziges Leck aufgedeckt, während er die Kette
+unbrauchbar machte. Wer ein Leck sucht, prüft es dort, wo es
+Prüfgegenstand ist — nicht am Aufräumen.
+Zuordnung der Auftretensliste beim Schließen (damit nichts unbemerkt
+mitgeschlossen wird): Auftreten 4, 6 und 9 sind die Aufräum-Klasse
+(geschlossen). Auftreten 1, 5 und 7 sind der Enkel-PID-Renner (läuft als
+F-325 weiter). Auftreten 8 ist die Zeitgrenze (ursächlich behoben, s. o.).
+Die Auftreten 2 und 3 stammen aus EINEM Sammeleintrag vom 10.09.2026, der
+zwei Symptome nennt ("ENOENT im Gateway-Timeout-Test und ENOTEMPTY beim
+Aufräumen im Execution Controller"): Das ENOTEMPTY gehört zur
+Aufräum-Klasse, das ENOENT im Gateway-Timeout-Test ist aus dem Eintrag
+heraus NICHT eindeutig einem der beiden ENOENT-Stränge zuzuordnen — es
+kann derselbe Enkel-PID-Fall gewesen sein (dann F-325) oder ein
+zeitgrenzenabhängiger. Es wird hier ausdrücklich als unzugeordnet geführt
+statt stillschweigend der geschlossenen Klasse zugeschlagen. Tritt es
+wieder auf, entscheidet der dann sichtbare Fehlertext, wohin es gehört.
+NICHT belegt ist, dass kein zehntes Auftreten kommt. `maxRetries`
+verkürzt das Fenster, in dem ein fremd gehaltenes Handle die Kette rot
+macht; es beseitigt die Ursache (Virenscanner, Dateiindizierung, eben
+beendeter Kindprozess) nicht. Ein weiteres Aufräum-Auftreten ist HIER
+wieder aufzunehmen und der Status zurückzusetzen — es ist kein neues
+Finding.
+Zur dritten Ausprägung: der zeitgrenzenabhängige Test mit echtem
+Prozessstart (achtes Auftreten, `codex-gateway.test.ts`) ist bereits
+durch die Trennung von STDIN_ZEITGRENZE_ROT_MS/GRUEN_MS in F16 WS-3a
+(PR #132) ursächlich behoben, siehe Teilbehebung oben.
+ABWEICHUNG vom Schließungsauftrag, ausdrücklich vermerkt statt
+stillschweigend mitgeschlossen: Das ENOENT auf die Enkel-PID-Datei
+(Auftreten 1, 5 und 7, `claude-code-gateway.test.ts`) ist WEDER ein
+Aufräum-Rennen NOCH von der STDIN-Zeitgrenzen-Trennung berührt. Es ist
+ein Lesen (`readFileSync`) einer Datei, die ein Enkelprozess unter Last
+noch nicht geschrieben hat, bei `zeitgrenzeMs: 500`. Die gemeinsame Hilfe
+kann daran nichts ändern. Damit dieser Strang beim Schließen von F-257
+nicht verschwindet, ist er als F-325 eigenständig aufgenommen.
+Status: gelöst (Aufräum-Klasse; der Enkel-PID-Strang läuft als F-325 weiter).
 Feature/Run: F15 WS-3a, 10.09.2026 (Challenger, zweites Auftreten);
 viertes bis neuntes Auftreten F16 WS-3a, 11.09.2026; dort auf P1
-hochgestuft und das achte Auftreten ursächlich behoben.
+hochgestuft und das achte Auftreten ursächlich behoben; Aufräum-Klasse
+geschlossen 11.09.2026 (F-257-Aufräum-Iteration).
 
 **F-258** · `TECH_DEBT` · P3 · offen
 Titel: Zwei Serverregeln liegen seit WS-3b als Anzeige-Zwilling im Browser —
@@ -5204,3 +5261,57 @@ es ist, und der Kopfkommentar der Weiche benennt es — der billigste Weg und
 zugleich der, der die Frage offen lässt. Vor AK12 entscheiden.
 Status: offen.
 Feature/Run: F16 WS-3a, 11.09.2026 (Reviewer-Pass, Befund 4).
+
+**F-324** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Terminalblöcke geben `git checkout -b` ohne vorheriges
+`checkout main` + `pull` aus und erzeugen so wiederholt die F-056-Divergenz.
+Beschreibung: Der Branch `feat/f16-ws3a-dispatch-und-aufloesung` zweigte vom
+bereits squash-gemergten `docs/s-m3-02-codex-output-schema` ab, weil der
+ausgegebene Terminalblock nur `git checkout -b <name>` enthielt.
+`.githooks/pre-push` hat es gefangen; die Korrektur kostete einen Cherry-Pick
+(efc0732 → `feat/f16-ws3a-dispatch-v2`, PR #132) und einen abgebrochenen
+gh-Prompt.
+Fundstelle: `.githooks/pre-push` (F-056-Divergenzprüfung);
+`state/findings.md` F-056; Challenger-Sitzung 11.09.2026.
+Auswirkung: Kein Datenverlust, der Hook hält zuverlässig. Kosten sind ein
+unterbrochener Push und die Gefahr, dass jemand `--no-verify` benutzt, weil
+der Hook „im Weg steht".
+Empfohlene Maßnahme: Ein Branch-Anlegen wird nie einzeilig ausgegeben.
+Verbindliche Form: `git checkout main` → `git pull --ff-only` →
+`git checkout -b <name>`. Auch dann, wenn der vorige Branch scheinbar gerade
+gemergt wurde — Squash-Merge ist genau der Fall, in dem „scheinbar gemergt"
+nicht „gleich origin/main" heißt.
+Status: offen.
+Feature/Run: F16 WS-3a, 11.09.2026 (Challenger-Sitzung).
+
+**F-325** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der Enkel-PID-Test liest eine Datei, die ein Enkelprozess unter Last
+noch nicht geschrieben hat — dreimal rot, ohne Aufräum-Bezug.
+Beschreibung: Herausgelöst aus F-257 beim Schließen von dessen
+Aufräum-Klasse. Die Auftreten 1, 5 und 7 von F-257 (10.09. und zweimal
+11.09.2026) sind ENOENT auf `f14-ws2-enkel-pid-<uuid>.txt` in
+`src/claude-code-gateway/claude-code-gateway.test.ts` (AK4, Prozessbaum-Kill).
+Der Test startet einen Prozess mit `zeitgrenzeMs: 500`, dessen Enkel seine
+PID in eine Temp-Datei schreibt, und liest sie nach dem Kill per
+`readFileSync`. Unter Last schafft der Enkel das Schreiben nicht innerhalb
+der 500 ms — die Datei fehlt, der Test ist rot, der nächste Lauf grün. Das
+ist WEDER ein Aufräum-Rennen (die gemeinsame Hilfe `raeumeVerzeichnis` greift
+hier nicht: aufgeräumt wird eine einzelne Datei mit `force: true`, und das
+Aufräumen war nie der rote Schritt) NOCH von der
+STDIN_ZEITGRENZE_ROT_MS/GRUEN_MS-Trennung aus F16 WS-3a berührt — die liegt
+in `codex-gateway.test.ts`.
+Fundstelle: `src/claude-code-gateway/claude-code-gateway.test.ts`, Testfall
+„starteProzess killt bei TIMEOUT unter Windows den kompletten Prozessbaum";
+`state/findings.md` F-257, Auftreten 1, 5 und 7.
+Auswirkung: Dieselbe wie bei F-257 — ein rotes Kettenglied, das man
+gewohnheitsmäßig wegwiederholt. Niedriger eingestuft, weil es eine einzelne
+bekannte Stelle ist und die Aufräum-Klasse, die die Häufigkeit trug, jetzt
+geschlossen ist.
+Empfohlene Maßnahme: Nach dem Muster der STDIN-Zeitgrenzen-Trennung: Die
+500 ms sind hier NICHT der Prüfgegenstand — geprüft wird, dass der Kill den
+ganzen Baum erfasst. Entweder auf das Erscheinen der PID-Datei warten, bevor
+die Zeitgrenze zuschlägt, oder die Zeitgrenze so wählen, dass der Enkelstart
+sie nicht reißt. Nicht: den Test tolerant gegen eine fehlende PID-Datei
+machen — dann prüft er die Waisenfreiheit nicht mehr.
+Status: offen.
+Feature/Run: F-257-Aufräum-Iteration, 11.09.2026.

@@ -16,9 +16,10 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import {
   ladeLetztenGueltigenCheckpoint,
   schreibeCheckpoint,
@@ -89,7 +90,7 @@ try {
     console.log('✓ Drei-Checkpoint-Lauf: vollständig gültig → sequenz 3, Checkpoint 3 korrumpiert → sequenz 2.')
   }
 } finally {
-  rmSync(join(BASIS, laufIdGueltig), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, laufIdGueltig))
 }
 
 // ─── (c) Leere Kette ────────────────────────────────────────────────────────

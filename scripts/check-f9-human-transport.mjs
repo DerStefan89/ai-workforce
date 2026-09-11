@@ -19,10 +19,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import {
   entscheideStale,
   erzeugeTransportpaket,
@@ -42,9 +43,9 @@ const stillerSchreiber = () => {}
 console.log('\n=== F9-Human-Transport-Check ===\n')
 
 function raeumeAuf(laufId) {
-  rmSync(join(BASIS, `lineage-bedarf-${laufId}`), { recursive: true, force: true })
-  rmSync(join(BASIS, `lineage-transport-${laufId}`), { recursive: true, force: true })
-  rmSync(join(BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-bedarf-${laufId}`))
+  raeumeVerzeichnis(join(BASIS, `lineage-transport-${laufId}`))
+  raeumeVerzeichnis(join(BASIS, laufId))
 }
 
 // ─── (a) Acht Payload-Fixtures gegen validiereBedarfDaten/validiereTransportpaketDaten ──

@@ -16,10 +16,11 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import {
   kanonischesJson,
   ladeGueltigeCheckpoints,
@@ -39,7 +40,7 @@ function neueLaufId(praefix: string): string {
 }
 
 function raeumeAuf(laufId: string): void {
-  rmSync(join(BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, laufId))
 }
 
 function pruefeEreignis(ereignis: Ereignis, erwartet: Ereignis['ereignis']): void {
@@ -130,7 +131,7 @@ test('kein Aufruf verändert Dateien außerhalb von kontrollzustand-test/<lauf_i
 
     assert.strictEqual(nachher, vorher)
   } finally {
-    rmSync(produktVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(produktVerzeichnis)
     raeumeAuf(laufId)
   }
 })

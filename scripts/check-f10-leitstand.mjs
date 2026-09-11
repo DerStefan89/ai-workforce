@@ -73,6 +73,7 @@ import { erzeugeRequestHandler, pruefeStartauftrag, VERBOTENE_OPTIONEN_FELDER, V
 import { kanonischesJson, schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F10-Leitstand-Check (WS-1) ===\n')
@@ -289,7 +290,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -492,7 +493,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -522,7 +523,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -556,7 +557,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -601,7 +602,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -708,7 +709,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -795,7 +796,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -831,7 +832,7 @@ function verzoegerung(ms) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(testStartvorlagePfad, { force: true })
   }
 }

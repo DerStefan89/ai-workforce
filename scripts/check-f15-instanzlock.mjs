@@ -49,10 +49,11 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { belegeInstanzLock } from './leitstand-server.mjs'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F15-Instanz-Lock-Check (WS-2c-Vorbereitung, F-201) ===\n')
@@ -110,7 +111,7 @@ function totePid() {
       }
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -138,7 +139,7 @@ function totePid() {
       }
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -158,7 +159,7 @@ function totePid() {
       befunde.push(`(c) Kaputte Lock-Datei führt zum Abbruch statt zur Übernahme: ${fehler.message}`)
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -211,7 +212,7 @@ function totePid() {
       console.log('✓ (e) Sauberes Prozessende entfernt die eigene Lock-Datei.')
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -241,7 +242,7 @@ function totePid() {
       console.log('✓ (f) Abbruch bei lebender Fremd-PID lässt die vorhandene Lock-Datei byteweise unverändert.')
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -272,7 +273,7 @@ function totePid() {
       console.log('✓ (g) SIGINT-Handler (Ctrl+C-Pfad) entfernt die eigene Lock-Datei; der Prozess endet mit 0.')
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -303,7 +304,7 @@ function totePid() {
       console.log('✓ (h) Der Aufräumer lässt eine inzwischen fremde (lebende) Lock-Datei unangetastet liegen.')
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
@@ -327,7 +328,7 @@ function totePid() {
       console.log('✓ (i) SIGTERM-Handler entfernt die eigene Lock-Datei; der Prozess endet mit 0.')
     }
   } finally {
-    rmSync(basis, { recursive: true, force: true })
+    raeumeVerzeichnis(basis)
   }
 }
 
