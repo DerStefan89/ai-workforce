@@ -1,0 +1,45 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "__WORKFLOW_ID__",
+  "auftrag_id": "__AUFTRAG_ID__",
+  "version": 1,
+  "ziel": "__ZIEL__",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-review",
+  "grenzen": {
+    "max_schritte": 6,
+    "max_replans": 1
+  },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-review",
+      "rolle": "code-reviewer",
+      "werkzeugsatz": "lesend",
+      "worker": "codex",
+      "modell": "gpt-6-astra",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": "ergebnis-code-reviewer",
+      "freigabe": "AUTOMATISCH",
+      "risiko": "Kein Schreibzugriff — reine Lesepruefung des Auftragsartefakts.",
+      "zeitgrenze_ms": 600000,
+      "nachfolger": "schritt-2-ausfuehrung",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-ausfuehrung",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}

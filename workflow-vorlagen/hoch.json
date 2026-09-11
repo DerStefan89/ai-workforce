@@ -1,0 +1,60 @@
+{
+  "workflow_schema": "v0",
+  "workflow_id": "__WORKFLOW_ID__",
+  "auftrag_id": "__AUFTRAG_ID__",
+  "version": 1,
+  "ziel": "__ZIEL__",
+  "status": "OFFEN",
+  "aktiver_schritt_id": "schritt-1-architektur",
+  "grenzen": {
+    "max_schritte": 8,
+    "max_replans": 2
+  },
+  "schritte": [
+    {
+      "schritt_id": "schritt-1-architektur",
+      "rolle": "architecture-advisor",
+      "werkzeugsatz": "lesend",
+      "worker": "codex",
+      "modell": "gpt-6-astra",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Kein Schreibzugriff — Plan wird vor dem Bau geprüft. Hohe Kontrolltiefe: Freigabe zwingend vor jedem Schritt, nicht nur vor dem Schreiben.",
+      "zeitgrenze_ms": 600000,
+      "nachfolger": "schritt-2-review",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-2-review",
+      "rolle": "code-reviewer",
+      "werkzeugsatz": "lesend",
+      "worker": "codex",
+      "modell": "gpt-6-astra",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": "ergebnis-code-reviewer",
+      "freigabe": "ZWINGEND",
+      "risiko": "Kein Schreibzugriff — reine Lesepruefung des Auftragsartefakts. Hohe Kontrolltiefe: Freigabe zwingend vor jedem Schritt.",
+      "zeitgrenze_ms": 600000,
+      "nachfolger": "schritt-3-ausfuehrung",
+      "status": "OFFEN",
+      "lauf_id": null
+    },
+    {
+      "schritt_id": "schritt-3-ausfuehrung",
+      "rolle": "ausfuehrung",
+      "werkzeugsatz": "schreibend",
+      "worker": "claude-code",
+      "modell": "claude-sonnet-5",
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__"],
+      "output_schema": null,
+      "freigabe": "ZWINGEND",
+      "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",
+      "zeitgrenze_ms": 1800000,
+      "nachfolger": null,
+      "status": "OFFEN",
+      "lauf_id": null
+    }
+  ]
+}
