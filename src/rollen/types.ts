@@ -23,4 +23,7 @@ export interface Rollenvertrag {
   erlaubte_worker: Array<'claude-code' | 'codex'>
   erlaubtes_output_schema: string | null
   ausschlussmuster: string[]
+  /** F19 WS-1. Capabilities, die eine Ressource mitbringen muss, um diese Rolle
+      auszuführen. Zwilling der capabilities-Werte in ressourcen.json. */
+  benoetigte_capabilities: string[]
 }

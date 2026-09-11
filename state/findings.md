@@ -5681,3 +5681,102 @@ main beauftragen — für F18 WS-3 bereits so gemacht und real korrekt
 befolgt (Branch feat/f18-ws3-router-eval-gate, von origin/main abgezweigt).
 Status: gelöst.
 Feature/Run: F18 WS-2/WS-3.
+
+**F-340** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: `zielfassung.md` §13.4 nennt F19 nicht.
+Beschreibung: Die Übergabe claude/179 führte F19 als letztes Feature von
+Meilenstein 3. `docs/projekt/zielfassung.md` §13.4 nennt F19 aber nicht,
+und die M3-Bestehensbedingung war mit F18 WS-3 bereits vollständig
+erfüllt. Entschieden (Stefan, 11.09.2026): M3 bleibt abgeschlossen, F19
+ist ein eigenständiges Bridge-Feature zwischen M3 und M4; danach folgt die
+M4-Challenge gegen den dann realen Repo-Stand.
+Fundstelle: `docs/projekt/zielfassung.md` §13.4.
+Auswirkung: Feature ohne verbindliche Sollquelle; Wiederholung der
+Fehleinschätzung, vor der claude/179 selbst warnt.
+Maßnahme: §13.4 um den M3-Abschluss und die F19-Verortung ergänzen,
+zusammen mit dem dort ohnehin offenen Nachzug von Satz 2 und Satz 3.
+Status: offen.
+Feature/Run: F19-Challenge, 11.09.2026.
+
+**F-341** · `TECH_DEBT` · P2 · offen
+Titel: v0-Asymmetrie der Startvorlage erzwingt zwei Lesepfade für
+`typ: "worker"`.
+Beschreibung: Die Claude-Code-Startfelder stehen flach auf oberster Ebene,
+die Codex-Felder genestet unter `worker.codex` (bewusste v0-Schuld,
+dokumentiert in `schemas/startvorlage.schema.json`, F-286). Die
+Verfügbarkeitsableitung in F19 WS-2 muss denselben Ressourcentyp `worker`
+deshalb über zwei verschiedene Lesepfade auflösen.
+Fundstelle: `schemas/startvorlage.schema.json`,
+`startvorlagen/ai-workforce.json`.
+Auswirkung: Sonderfall im WS-2-Modul und im Gate, kein Produktfehler.
+Maßnahme: in WS-2 zwei Lesepfade akzeptieren und im Kopfkommentar auf
+F-286 verweisen. Normalisierung erst bei `startvorlage_schema` v1.
+Status: offen.
+Feature/Run: F19-Challenge, 11.09.2026.
+
+**F-342** · `HARNESS_IMPROVEMENT` · P2 · gelöst
+Titel: Gefahr einer dritten Bestandsliste neben `tooling.md` und
+Werkzeug-Katalog.
+Beschreibung: `state/tooling.md` (Dev-Werkzeuge des Bauprozesses) und
+`docs/harness/werkzeug-katalog.md` (Bewertung, Vetting-Status, Prüfdatum)
+sind prosaische Bestandslisten mit eigenem Lebenszyklus. Ohne
+ausdrückliche Abgrenzung wäre `ressourcen.json` in kurzer Zeit als dritte
+Liste gepflegt worden.
+Fundstelle: `state/tooling.md`, `docs/harness/werkzeug-katalog.md`,
+`ressourcen.json`.
+Auswirkung: doppelte Pflege und widersprüchliche Bestandsangaben.
+Maßnahme: erledigt in F19 WS-1 — je ein Abgrenzungssatz in beiden Dateien
+plus `description` im Kopf von `schemas/ressourcen.schema.json`.
+Status: gelöst.
+Feature/Run: F19-Challenge, 11.09.2026.
+
+**F-343** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Geräte-Brücke kann den Arbeitsbaum seit Windows-Update nicht mehr
+mounten.
+Beschreibung: Seit dem Windows-Update vom 08.09.2026 schlägt der
+Shell-Zugriff der Geräte-Brücke auf den Arbeitsbaum fehl (Meldung: no
+Plan9 drive shares mounted). Der Challenger-Chat kann Dateien weiterhin
+lesen (stage und Read), aber keine Befehle im Repo ausführen.
+Fundstelle: Challenger-Chat 42, F19-Challenge und WS-1-Verifikation.
+Auswirkung: lesende Git-Gegenprüfungen (log, diff, ls-tree) sind aus dem
+Chat nicht mehr möglich und müssen als Terminalbefehle an den Menschen
+gehen. Die bewährte Verifikationsgewohnheit bleibt sonst unverändert.
+Maßnahme: Verifikationsweg in der nächsten Übergabe anpassen; Brücke
+erneut prüfen, sobald ein Desktop-Update vorliegt.
+Status: offen.
+Feature/Run: F19-Challenge, 11.09.2026.
+
+**F-345** · `TECH_DEBT` · P3 · offen
+Titel: Skill-Ressourcen mit 1:1-Capability tragen keine Information.
+Beschreibung: Die sechs Skill-Einträge in `ressourcen.json` tragen je genau
+eine Capability (`advisor-pass` → `PLAN_REVIEW`, `git-flow` →
+`GIT_WORKFLOW`, `handoff-vertrag` → `HANDOFF_WRITE`, `repo-audit` →
+`REPO_AUDIT`, `spec-schreiben` → `SPEC_WRITE`, `werkzeug-auswahl` →
+`TOOL_SELECTION`). Eine Capability mit genau einer Ressource ist ein
+umbenannter Skill, keine Abstraktion.
+Fundstelle: `ressourcen.json`.
+Auswirkung: gering, rein konzeptionell.
+Maßnahme: zusammenführen, sobald reale Nutzung Überschneidungen zeigt.
+Nicht vorab abstrahieren (YAGNI).
+Status: offen.
+Feature/Run: F19 WS-1.
+
+**F-346** · `BUG` · P2 · offen
+Titel: `erlaubte_worker` und Capability-Register widersprechen sich für
+`code-reviewer` und `router`.
+Beschreibung: Beide Rollen fordern in `benoetigte_capabilities` den Wert
+`STRUCTURED_OUTPUT` und führen `claude-code` in `erlaubte_worker`.
+`ressourcen.json` weist `claude-code` `STRUCTURED_OUTPUT` nicht zu, weil
+für `claude-code` kein `--output-schema`-Mechanismus existiert (F-337).
+Fundstelle: `src/rollen/index.ts` (`code-reviewer`, `router`);
+`ressourcen.json` (Eintrag `claude-code`).
+Auswirkung: ein Workflow-Schritt darf auf einem Worker geplant werden, der
+die Rolle nicht erfüllen kann. Real gemessen in F18 WS-3: Router-
+Klassifikation als `claude-code` scheitert in rund 27 % der Fälle an
+Markdown-Codezäunen um das JSON.
+Maßnahme: in F19 WS-2 als zusätzliche Gate-Regel aufnehmen — jeder Worker
+in `erlaubte_worker` muss die `benoetigte_capabilities` seiner Rolle
+vollständig decken. Danach entscheiden: `claude-code` aus den beiden
+`erlaubte_worker`-Listen streichen oder F-337 beheben.
+Status: offen.
+Feature/Run: F19 WS-1-Verifikation.

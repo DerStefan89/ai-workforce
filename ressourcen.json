@@ -1,0 +1,192 @@
+{
+  "ressourcen_schema": "v0",
+  "ressourcen": [
+    {
+      "id": "claude-code",
+      "typ": "worker",
+      "capabilities": [
+        "CODE_WRITE",
+        "CODE_REVIEW",
+        "REPO_READ",
+        "PLAN_REVIEW",
+        "TEST_DESIGN",
+        "TASK_CLASSIFICATION"
+      ],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "startvorlage", "worker": "claude-code" }
+    },
+    {
+      "id": "codex",
+      "typ": "worker",
+      "capabilities": [
+        "CODE_REVIEW",
+        "REPO_READ",
+        "PLAN_REVIEW",
+        "TEST_DESIGN",
+        "TASK_CLASSIFICATION",
+        "STRUCTURED_OUTPUT"
+      ],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "startvorlage", "worker": "codex" }
+    },
+    {
+      "id": "advisor-pass",
+      "typ": "skill",
+      "capabilities": ["PLAN_REVIEW"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/advisor-pass" }
+    },
+    {
+      "id": "git-flow",
+      "typ": "skill",
+      "capabilities": ["GIT_WORKFLOW"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/git-flow" }
+    },
+    {
+      "id": "handoff-vertrag",
+      "typ": "skill",
+      "capabilities": ["HANDOFF_WRITE"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/handoff-vertrag" }
+    },
+    {
+      "id": "repo-audit",
+      "typ": "skill",
+      "capabilities": ["REPO_AUDIT"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/repo-audit" }
+    },
+    {
+      "id": "spec-schreiben",
+      "typ": "skill",
+      "capabilities": ["SPEC_WRITE"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/spec-schreiben" }
+    },
+    {
+      "id": "werkzeug-auswahl",
+      "typ": "skill",
+      "capabilities": ["TOOL_SELECTION"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/werkzeug-auswahl" }
+    },
+    {
+      "id": "playwright-mcp",
+      "typ": "extern",
+      "name": "Playwright MCP",
+      "beschreibung": "Browser-Automatisierung für Agenten über Accessibility-Snapshots: Seiten öffnen, klicken, Formulare füllen, strukturiert auslesen.",
+      "capabilities": ["BROWSER_AUTOMATION", "UI_VISUAL_TESTING"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/microsoft/playwright-mcp" }
+    },
+    {
+      "id": "supabase-mcp",
+      "typ": "extern",
+      "name": "Supabase MCP",
+      "beschreibung": "Direkter Zugriff auf ein Supabase-Projekt: SQL ausführen, Schema und Migrationen verwalten, Edge Functions ausrollen, Logs lesen.",
+      "capabilities": ["DATABASE_ACCESS"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/supabase-community/supabase-mcp" }
+    },
+    {
+      "id": "firecrawl-mcp",
+      "typ": "extern",
+      "name": "Firecrawl MCP",
+      "beschreibung": "Web-Extraktion für Agenten: scrapen, crawlen, suchen, strukturiert extrahieren, Ausgabe als Markdown, HTML oder JSON.",
+      "capabilities": ["WEB_RESEARCH"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/firecrawl/firecrawl-mcp-server" }
+    },
+    {
+      "id": "context7-mcp",
+      "typ": "extern",
+      "name": "Context7 MCP",
+      "beschreibung": "Liefert versionsgenaue, aktuelle Bibliotheks-Dokumentation in den Kontext.",
+      "capabilities": ["LIBRARY_DOCS"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/upstash/context7" }
+    },
+    {
+      "id": "claude-in-chrome",
+      "typ": "extern",
+      "name": "Claude in Chrome",
+      "beschreibung": "Browser-Steuerung durch Claude selbst: Seiten öffnen, Inhalt nach JavaScript-Ausführung lesen, Formulare bedienen.",
+      "capabilities": ["BROWSER_AUTOMATION"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://www.anthropic.com/news/claude-for-chrome" }
+    },
+    {
+      "id": "perplexity-mcp",
+      "typ": "extern",
+      "name": "Perplexity MCP",
+      "beschreibung": "Websuche mit Quellenangaben: Kurzantworten und längere Rechercheberichte.",
+      "capabilities": ["WEB_RESEARCH"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/perplexityai/modelcontextprotocol" }
+    },
+    {
+      "id": "magic-21st-dev-mcp",
+      "typ": "extern",
+      "name": "21st.dev Magic MCP",
+      "beschreibung": "Generiert UI-Komponenten aus natürlicher Sprache und schreibt sie in das Arbeitsverzeichnis, dazu Suche in einem Komponenten-Katalog.",
+      "capabilities": ["UI_COMPONENT_GENERATION"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/21st-dev" }
+    },
+    {
+      "id": "obsidian-mcp",
+      "typ": "extern",
+      "name": "Obsidian MCP",
+      "beschreibung": "Lese- und Schreibzugriff auf einen Obsidian-Wissensspeicher: Notizen anlegen, durchsuchen, verknüpfen.",
+      "capabilities": ["NOTES_ACCESS"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/MarkusPfundstein/mcp-obsidian" }
+    },
+    {
+      "id": "frontend-design",
+      "typ": "extern",
+      "name": "frontend-design",
+      "beschreibung": "Erstanbieter-Plugin, das Claudes Frontend-Ausgabe von der Standard-AI-Optik wegführt (Typografie, Farbwahl, Motion, räumliche Komposition).",
+      "capabilities": ["UI_UX_DESIGN"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/anthropics/claude-plugins-official" }
+    },
+    {
+      "id": "taste-skill",
+      "typ": "extern",
+      "name": "taste-skill",
+      "beschreibung": "Liest die Design-Entscheidungen einer bestehenden Website aus und liefert Design-Tokens mit Begründung.",
+      "capabilities": ["UI_UX_DESIGN"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/senlindesign/taste-skill" }
+    },
+    {
+      "id": "animate-skill",
+      "typ": "extern",
+      "name": "animate-skill",
+      "beschreibung": "Animations- und Motion-Regeln (Dauer, Easing-Kurven, reduced-motion-Fallbacks).",
+      "capabilities": ["UI_ANIMATION"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/delphi-ai/animate-skill" }
+    },
+    {
+      "id": "impeccable",
+      "typ": "extern",
+      "name": "Impeccable",
+      "beschreibung": "Design-Kontext-Protokoll (Zielgruppe, Markenpersönlichkeit, Anwendungsfall) mit Katalog von AI-Design-Mustern und Browser-Editiermodus.",
+      "capabilities": ["UI_UX_DESIGN"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/pbakaus/impeccable" }
+    },
+    {
+      "id": "ui-ux-pro-max",
+      "typ": "extern",
+      "name": "UI/UX Pro Max",
+      "beschreibung": "Nachschlage-Ansatz aus UI-Stilen, Paletten, Schriftpaarungen, UX-Regeln und Accessibility-Prüfungen.",
+      "capabilities": ["UI_UX_DESIGN"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill" }
+    }
+  ]
+}
