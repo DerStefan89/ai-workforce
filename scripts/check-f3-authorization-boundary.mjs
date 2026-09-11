@@ -18,11 +18,12 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pruefeAutorisierung } from '../src/authorization-boundary/index.ts'
 import { sha256Hex } from '../src/checkpoint-store/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 
@@ -110,7 +111,7 @@ try {
     console.log('✓ CRLF-Fall: \\r\\n-Zeilenenden bei gepinntem .gitattributes ändern das Ergebnis nicht (Delta 3/B18).')
   }
 } finally {
-  rmSync(repoWurzel, { recursive: true, force: true })
+  raeumeVerzeichnis(repoWurzel)
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

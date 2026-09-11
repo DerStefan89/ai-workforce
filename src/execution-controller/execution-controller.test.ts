@@ -106,7 +106,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -130,6 +130,7 @@ import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
 import { fuehreAufgabeDurch } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -150,21 +151,21 @@ function neueLaufId(praefix: string): string {
 }
 
 function raeumeKette(laufId: string, eskLaufId?: string, vorgaengerLaufId?: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
-  rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-kontextpaket-${laufId}`), { recursive: true, force: true })
-  rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
-  rmSync(join('kontrollzustand-roh', laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-kontextpaket-${laufId}`))
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`))
+  raeumeVerzeichnis(join('kontrollzustand-roh', laufId))
   if (eskLaufId !== undefined) {
-    rmSync(join(KONTROLLZUSTAND_BASIS, eskLaufId), { recursive: true, force: true })
-    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-bedarf-${eskLaufId}`), { recursive: true, force: true })
-    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-transport-${eskLaufId}`), { recursive: true, force: true })
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, eskLaufId))
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-bedarf-${eskLaufId}`))
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-transport-${eskLaufId}`))
   }
   // WS-2b (AK7): der Lineage-Verweis liest lineage-laufakte-<vorgaengerLaufId>
   // nur, erzeugt aber keinen neuen Eintrag darunter — trotzdem hier
   // benennbar, damit ein Aufrufer die volle Kette in einem Aufruf aufräumen
   // kann, statt raeumeKette(vorgaengerLaufId) separat zu benötigen.
   if (vorgaengerLaufId !== undefined) {
-    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${vorgaengerLaufId}`), { recursive: true, force: true })
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${vorgaengerLaufId}`))
   }
 }
 
@@ -267,8 +268,8 @@ const AUTORISIERUNGSREFERENZ_PFAD = join(PROJEKT_VERZEICHNIS, 'autorisierungsref
 writeFileSync(AUTORISIERUNGSREFERENZ_PFAD, JSON.stringify({ baselineReferenz: BASELINE_REFERENZ, wirksamkeitsnachweisReferenz: WIRKSAMKEITSNACHWEIS_REFERENZ }))
 
 after(() => {
-  rmSync(STARTFREIGABE_REPO, { recursive: true, force: true })
-  rmSync(PROJEKT_VERZEICHNIS, { recursive: true, force: true })
+  raeumeVerzeichnis(STARTFREIGABE_REPO)
+  raeumeVerzeichnis(PROJEKT_VERZEICHNIS)
 })
 
 function startfreigabeOptionen() {
@@ -839,7 +840,7 @@ test('Delta 1 (Wurf): ein Wurf in erzeugeTransportpaket propagiert unverändert,
     // geschriebene BEDARF_V0-Lineage-Verzeichnis wird sofort wieder
     // entfernt, sodass erzeugeTransportpaket die Version nicht mehr
     // findet und real wirft (human-transport/index.ts:114-117).
-    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-${artefaktId}`), { recursive: true, force: true })
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-${artefaktId}`))
     hookAusgeloest = true
   }
   try {
@@ -1045,7 +1046,7 @@ test("F13 AK5-positiv: existiert ein entscheidung-<vorgaengerLaufId>-Artefakt, e
     assert.strictEqual(entscheidungEintrag.inhalts_hash, sha256Hex(kanonischesJson(entscheidungsDaten)))
   } finally {
     raeumeKette(laufId, undefined, vorgaengerLaufId)
-    rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-entscheidung-${vorgaengerLaufId}`), { recursive: true, force: true })
+    raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-entscheidung-${vorgaengerLaufId}`))
     raeumeKette(vorgaengerLaufId)
   }
 })

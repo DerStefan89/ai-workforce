@@ -11,13 +11,13 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import { ladeArtefaktVersion, listeVersionen } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 import {
   baueAktuelleEingabeInhalte,
   befuelleWerkzeugAuswahl,
@@ -38,9 +38,9 @@ function neueLaufId(praefix: string): string {
 }
 
 function raeumeAuf(laufId: string): void {
-  rmSync(join(BASIS, `lineage-bedarf-${laufId}`), { recursive: true, force: true })
-  rmSync(join(BASIS, `lineage-transport-${laufId}`), { recursive: true, force: true })
-  rmSync(join(BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-bedarf-${laufId}`))
+  raeumeVerzeichnis(join(BASIS, `lineage-transport-${laufId}`))
+  raeumeVerzeichnis(join(BASIS, laufId))
 }
 
 test('A2: BEDARF_V0 mit werkzeug_auswahl:null registrierbar und inhaltlich identisch wieder ladbar', () => {

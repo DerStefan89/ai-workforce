@@ -75,7 +75,7 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
@@ -84,6 +84,7 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 
@@ -452,7 +453,7 @@ async function starteTestserver(optionen) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
@@ -581,7 +582,7 @@ async function starteTestserver(optionen) {
 {
   const basisVerzeichnis = 'kontrollzustand-test-f15-ws2b'
   const befundeVorStart = befunde.length
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
 
   /** @returns ein AusfuehrungsErgebnis, das normalisiereSchrittAusgang als ERFOLGREICH liest */
   const erfolgreichesErgebnis = () => ({
@@ -1010,7 +1011,7 @@ async function starteTestserver(optionen) {
         )
       }
     } finally {
-      rmSync(wegwerfVerzeichnis, { recursive: true, force: true })
+      raeumeVerzeichnis(wegwerfVerzeichnis)
     }
   }
 
@@ -3023,7 +3024,7 @@ async function starteTestserver(optionen) {
     )
   }
 
-  rmSync(basisVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(basisVerzeichnis)
   // Gegen den Stand VOR den (b2)-Blöcken geprüft, nicht gegen die Endsumme: sonst
   // unterdrückte ein Stopp-Befund die Erfolgsmeldung der WS-2b/(b1)-Fälle, obwohl die
   // bestanden haben (Muster check-f15-automat-real.mjs).
@@ -3158,7 +3159,7 @@ async function starteTestserver(optionen) {
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 

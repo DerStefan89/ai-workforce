@@ -15,10 +15,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { baueKontextpaket, pruefeKontextpaketFrisch, validiereKontextpaketDaten } from '../src/context-builder/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const BASIS = 'kontrollzustand-test'
@@ -28,7 +29,7 @@ const stillerSchreiber = () => {}
 console.log('\n=== F5-Context-Builder-Check ===\n')
 
 function raeumeAuf(laufId) {
-  rmSync(join(BASIS, `lineage-kontextpaket-${laufId}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-kontextpaket-${laufId}`))
 }
 
 // ─── (a) Fünf Payload-Fixtures gegen validiereKontextpaketDaten ────────────

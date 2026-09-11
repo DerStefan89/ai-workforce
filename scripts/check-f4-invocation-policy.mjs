@@ -25,9 +25,10 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 import {
   pruefeAufrufparameter,
   pruefeStartbedingung1,
@@ -278,7 +279,7 @@ try {
     console.log(`✓ pruefeAufrufparameter Rot-Fall: '--dangerously-skip-permissions' abgelehnt (${parameterRot.grund}).`)
   }
 } finally {
-  rmSync(repoWurzel, { recursive: true, force: true })
+  raeumeVerzeichnis(repoWurzel)
 }
 
 // ─── (e) AC8: kein child_process/spawn/exec/execSync in den Produktionsdateien

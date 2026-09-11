@@ -15,10 +15,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { schreibeWirkungsmarke, stelleLaufstatusFest, validiereWirkungsmarkeEintrag } from '../src/checkpoint-store/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const BASIS = 'kontrollzustand-test'
@@ -87,7 +88,7 @@ try {
     console.log('✓ Synthetischer Lauf: RUN_PREPARED → KLAERUNG_ERFORDERLICH, danach Terminal ERFOLGREICH → ABGESCHLOSSEN.')
   }
 } finally {
-  rmSync(join(BASIS, laufIdSynthetisch), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, laufIdSynthetisch))
 }
 
 // ─── (c) Leere Kette ────────────────────────────────────────────────────────

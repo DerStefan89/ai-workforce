@@ -30,7 +30,7 @@
 
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -39,6 +39,7 @@ import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
 import { ladeGueltigeCheckpoints, ladeLetztenGueltigenCheckpoint, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { klassifiziereLauf } from './index.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const ROH_BASIS = join(tmpdir(), 'f7-result-evaluator-test')
@@ -79,7 +80,7 @@ function baueLaufakte(
 }
 
 function raeumeKette(laufId: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 /** Schreibt einen wörtlichen Rohstrom-String (statt eines serialisierten {stdout,stderr,exitCode}-Objekts) — für Fixtures, die einen defekten/untypischen Rohstrominhalt konstruieren. */

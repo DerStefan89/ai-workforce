@@ -34,11 +34,12 @@
  *          gesehen, oder ein unerwarteter (nicht EPERM/EBUSY) Fehler trat auf
  */
 
-import { writeFileSync, renameSync, openSync, closeSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { writeFileSync, renameSync, openSync, closeSync, mkdtempSync, existsSync } from 'node:fs'
 import { tmpdir, platform } from 'node:os'
 import { join } from 'node:path'
 import { fork } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const ZYKLEN = 300
 const SPERR_INTERVALL = 3 // jeder dritte Zyklus simuliert ein offenes Read-Handle
@@ -156,7 +157,7 @@ if (process.argv[2] === '--leser') {
     leser.send('stop')
   })
 
-  rmSync(arbeitsverzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(arbeitsverzeichnis)
 
   console.log(`Leser-Lesevorgaenge: ${leserErgebnis.lesevorgaenge}`)
   console.log(`Simulierte Sperr-Zyklen (offenes Read-Handle waehrend Rename): ${Math.floor(ZYKLEN / SPERR_INTERVALL)}`)

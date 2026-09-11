@@ -15,10 +15,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { haltFestStaleEntscheidung, pruefeStale, registriereKernArtefakt, validiereLineageEintrag } from '../src/lineage-registry/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const BASIS = 'kontrollzustand-test'
@@ -89,7 +90,7 @@ try {
     console.log('✓ AC14-Hauptfall: unveränderte Eingabe → stale:false, geänderte Eingabe → stale:true mit genau diesem Schlüssel.')
   }
 } finally {
-  rmSync(join(BASIS, `lineage-${artefaktIdAc14}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-${artefaktIdAc14}`))
 }
 
 // ─── (c) begruendung-Wurf-Fall bei haltFestStaleEntscheidung ───────────────
@@ -128,7 +129,7 @@ try {
     console.log('✓ haltFestStaleEntscheidung: ohne begruendung wirft, mit begruendung schreibt erfolgreich.')
   }
 } finally {
-  rmSync(join(BASIS, `lineage-${artefaktIdWurf}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-${artefaktIdWurf}`))
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

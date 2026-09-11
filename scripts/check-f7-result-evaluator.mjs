@@ -27,12 +27,13 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../src/claude-code-gateway/prozessstart.ts'
 import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { klassifiziereLauf } from '../src/result-evaluator/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
@@ -46,7 +47,7 @@ function neueLaufId(praefix) {
 }
 
 function raeumeKette(laufId) {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 function schreibeRohstrom(laufId, prozessErgebnis) {
@@ -168,7 +169,7 @@ try {
   }
 } finally {
   raeumeKette(laufIdE2E)
-  rmSync(ROH_BASIS, { recursive: true, force: true })
+  raeumeVerzeichnis(ROH_BASIS)
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

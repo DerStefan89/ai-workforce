@@ -32,10 +32,11 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { baueAufruf, pruefeUndVerweigereBeiTreffer, validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
 import { pruefeStartziel, starteProzess } from '../src/claude-code-gateway/prozessstart.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
@@ -48,7 +49,7 @@ function neueLaufId(praefix) {
 }
 
 function raeumeKette(laufId) {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 // ─── (a) baueAufruf: Grün-Fall ─────────────────────────────────────────────

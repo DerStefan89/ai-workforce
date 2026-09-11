@@ -61,7 +61,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 // win32.basename statt basename: Startziele sind Windows-Pfade. Unter
 // POSIX liefert das plattformabhängige basename() für
@@ -73,6 +73,7 @@ import { isAbsolute, join, win32 } from 'node:path'
 import { CODEX_BERECHTIGUNGSKONTEXT, baueCodexAufruf, pruefeUndVerweigereCodexBeiTreffer } from '../src/codex-gateway/index.ts'
 import { ladeStartvorlage } from '../src/startvorlage/index.ts'
 import { loeseAusfuehrungsEingabenAuf, loeseAusgabeSchemaAuf, pruefeStartauftrag } from './leitstand-server.mjs'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 const CODEX_GATEWAY_DIR = join('src', 'codex-gateway')
@@ -84,7 +85,7 @@ function neueLaufId(praefix) {
 }
 
 function raeumeKette(laufId) {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 console.log('\n=== F16-Codex-Gateway-Check (WS-1 + WS-2) ===\n')
@@ -410,7 +411,7 @@ try {
     console.log(`✓ (f): Rot-Kalibrierung (d/additionalProperties) — tiefe Lücke erkannt (${gefunden.join(', ')}).`)
   }
 } finally {
-  rmSync(wegwerfVerzeichnis, { recursive: true, force: true })
+  raeumeVerzeichnis(wegwerfVerzeichnis)
 }
 
 
@@ -636,7 +637,7 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
       console.log(`✓ (h): alle ${schemaRotfaelle.length} Rotfälle von loeseAusgabeSchemaAuf einzeln kalibriert (Namens-Allowlist, fehlende Datei/Verzeichnis, kaputtes JSON, BOM, additionalProperties) — Ablehnungen 1-4 von 6.`)
     }
   } finally {
-    rmSync(wegwerfWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(wegwerfWurzel)
   }
 
   // ─── AK11: worker-abhängige Auflösung ────────────────────────────────────

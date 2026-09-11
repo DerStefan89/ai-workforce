@@ -15,7 +15,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -24,6 +24,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { pruefeAufrufparameter, pruefeStartbedingung1, pruefeStartbedingung2, pruefeStartfreigabe, verweigereStart } from './index.ts'
 import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from './types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -120,7 +121,7 @@ function gueltigerWirksamkeitsnachweis(istZustand: IstZustand, istUebrigeFelder:
 }
 
 function raeumeKette(laufId: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
 }
 
 test('gültige Baseline + gültiger Nachweis liefert FREIGEGEBEN — AC10 Fall 1', () => {
@@ -144,7 +145,7 @@ test('gültige Baseline + gültiger Nachweis liefert FREIGEGEBEN — AC10 Fall 1
     assert.strictEqual(urteil.berechtigungskontext, 'profil-standard')
     assert.strictEqual(urteil.werkzeugsatz_begrenzung, 'DEKLARIERT')
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -175,7 +176,7 @@ test('manipuliertes Schutzskript liefert ABGELEHNT — AC10 Fall 2, E-183', () =
     assert.match(urteil.grund, /E-183/)
     assert.strictEqual(urteil.werkzeugsatz_begrenzung, 'DEKLARIERT')
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -198,7 +199,7 @@ test('Drift im Gültigkeitsschlüssel (arbeitsverzeichnis_pfad) bei sonst gülti
     assert.match(urteil.grund, /E-188/)
     assert.match(urteil.grund, /arbeitsverzeichnis_pfad/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -221,7 +222,7 @@ test('Drift im Gültigkeitsschlüssel (startziel_pfad) bei sonst gültiger Basel
     assert.match(urteil.grund, /E-188/)
     assert.match(urteil.grund, /startziel_pfad/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -266,7 +267,7 @@ test('Querkonsistenz zwischen Bedingung 1 und 2 über denselben istZustand: Nach
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /schutzskript_hashes/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -285,7 +286,7 @@ test('Wirksamkeitsnachweis-Referenz außerhalb des externen Repos liefert ABGELE
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /ausserhalb/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -308,7 +309,7 @@ test('Wirksamkeitsnachweis in externem Repo ohne pinnende .gitattributes liefert
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /gitattributes/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -328,7 +329,7 @@ test('Wirksamkeitsnachweis mit abweichendem Arbeitsbaum-Inhalt liefert ABGELEHNT
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /weicht von der Referenz ab/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -349,7 +350,7 @@ test('Wirksamkeitsnachweis-Referenz mit Pfad, der im referenzierten Commit nicht
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /nicht auffindbar/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -365,7 +366,7 @@ test('Wirksamkeitsnachweis-Datei mit Schema-Verstoß liefert ABGELEHNT — E-188
     assert.ok(!bedingung2.ok)
     assert.match(bedingung2.grund, /Schema/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 
@@ -386,7 +387,7 @@ test('vertauschte Schutzskript-Inhalte (Hash-Menge gleich, Pfad-Zuordnung getaus
     assert.ok(!bedingung1.ok)
     assert.match(bedingung1.grund, /E-183/)
   } finally {
-    rmSync(repoWurzel, { recursive: true, force: true })
+    raeumeVerzeichnis(repoWurzel)
   }
 })
 

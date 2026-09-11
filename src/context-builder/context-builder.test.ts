@@ -8,13 +8,13 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { baueKontextpaket, pruefeKontextpaketFrisch } from './index.ts'
 import type { Anfrage } from './types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
@@ -25,7 +25,7 @@ function neueLaufId(praefix: string): string {
 }
 
 function raeumeAuf(laufId: string): void {
-  rmSync(join(BASIS, `lineage-kontextpaket-${laufId}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-kontextpaket-${laufId}`))
 }
 
 function anfrage(teil: Partial<Anfrage> & { pfad: string; inhalt: string }): Anfrage {

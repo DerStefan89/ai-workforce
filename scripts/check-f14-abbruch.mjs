@@ -61,6 +61,7 @@ import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 console.log('\n=== F14-Abbruch-Check (WS-5, AK9) ===\n')
@@ -157,8 +158,8 @@ function startfreigabeOptionen() {
 }
 
 function raeumeFixturen() {
-  rmSync(STARTFREIGABE_REPO, { recursive: true, force: true })
-  rmSync(PROJEKT_VERZEICHNIS, { recursive: true, force: true })
+  raeumeVerzeichnis(STARTFREIGABE_REPO)
+  raeumeVerzeichnis(PROJEKT_VERZEICHNIS)
 }
 
 // Reviewer-Befund: ein echter Wurf innerhalb eines Testblocks (nicht nur ein befunde.push) würde das
@@ -166,7 +167,7 @@ function raeumeFixturen() {
 // Dateiende erreicht wird — STARTFREIGABE_REPO/PROJEKT_VERZEICHNIS blieben dauerhaft im Tempverzeichnis
 // liegen. process.exit feuert auch nach einer unbehandelten Exception (Node beendet den Prozess erst
 // danach) — dieselbe Aufräum-Garantie wie node:test's after()-Hook in den .test.ts-Vorbildern, ohne den
-// gesamten Skriptkörper in ein try/finally umbauen zu müssen. rmSync mit force:true ist idempotent, ein
+// gesamten Skriptkörper in ein try/finally umbauen zu müssen. Das Aufräumen ist idempotent (force:true), ein
 // zusätzlicher expliziter Aufruf am Dateiende schadet nicht, ist aber wegen dieses Hooks nicht mehr nötig.
 process.on('exit', raeumeFixturen)
 
@@ -278,7 +279,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }
@@ -338,7 +339,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     }
   } finally {
     await schliessen()
-    rmSync(basisVerzeichnis, { recursive: true, force: true })
+    raeumeVerzeichnis(basisVerzeichnis)
     rmSync(startvorlagePfad, { force: true })
   }
 }

@@ -57,7 +57,7 @@
 
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
@@ -68,6 +68,7 @@ import type { Starter, StarterOptionen } from '../claude-code-gateway/types.ts'
 import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { baueCodexAufruf, leseCodexEreignisse, starteCodexGateway } from './index.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const ABSOLUTER_SCHEMAPFAD = resolve(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
 
@@ -503,9 +504,9 @@ function neueGatewayLaufId(praefix: string): string {
 }
 
 function raeumeGatewayLauf(laufId: string): void {
-  rmSync(join(KONTROLLZUSTAND_BASIS, laufId), { recursive: true, force: true })
-  rmSync(join(ROH_BASIS, laufId), { recursive: true, force: true })
-  rmSync(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, laufId))
+  raeumeVerzeichnis(join(ROH_BASIS, laufId))
+  raeumeVerzeichnis(join(KONTROLLZUSTAND_BASIS, `lineage-laufakte-${laufId}`))
 }
 
 /** Starter-Attrappe, die mitschreibt, womit sie aufgerufen wurde — der Grün-Fall prüft daran, dass das Argv UNVERÄNDERT durchgereicht wird (D5, keine zweite Konkatenation) und dass die Optionen (stdinLeer, zeitgrenzeMs, abbruchSignal) wirklich ankommen. startfehler/beendigungsart sind überschreibbar, damit auch die nicht-regulären Prozessausgänge einen eigenen Fall bekommen. */

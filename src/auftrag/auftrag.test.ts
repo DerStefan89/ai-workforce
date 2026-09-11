@@ -8,20 +8,20 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { registriereAuftrag } from './index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
+import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const BASIS = 'kontrollzustand-test'
 const PROFIL_REFERENZ: ProfilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
 const stillerSchreiber = () => {}
 
 function raeumeAuf(auftragId: string): void {
-  rmSync(join(BASIS, `lineage-auftrag-${auftragId}`), { recursive: true, force: true })
+  raeumeVerzeichnis(join(BASIS, `lineage-auftrag-${auftragId}`))
 }
 
 test('AK1: registriereAuftrag registriert AUFTRAG_V0 unter auftrag-<auftragId> mit leerem eingaben-Array', () => {
