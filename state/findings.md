@@ -5761,7 +5761,7 @@ Nicht vorab abstrahieren (YAGNI).
 Status: offen.
 Feature/Run: F19 WS-1.
 
-**F-346** · `BUG` · P2 · offen
+**F-346** · `BUG` · P2 · offen (Gate-Ausnahme dokumentiert, Ursache offen)
 Titel: `erlaubte_worker` und Capability-Register widersprechen sich für
 `code-reviewer` und `router`.
 Beschreibung: Beide Rollen fordern in `benoetigte_capabilities` den Wert
@@ -5774,9 +5774,37 @@ Auswirkung: ein Workflow-Schritt darf auf einem Worker geplant werden, der
 die Rolle nicht erfüllen kann. Real gemessen in F18 WS-3: Router-
 Klassifikation als `claude-code` scheitert in rund 27 % der Fälle an
 Markdown-Codezäunen um das JSON.
-Maßnahme: in F19 WS-2 als zusätzliche Gate-Regel aufnehmen — jeder Worker
-in `erlaubte_worker` muss die `benoetigte_capabilities` seiner Rolle
-vollständig decken. Danach entscheiden: `claude-code` aus den beiden
-`erlaubte_worker`-Listen streichen oder F-337 beheben.
-Status: offen.
-Feature/Run: F19 WS-1-Verifikation.
+Maßnahme (F19 WS-2, real umgesetzt): `scripts/check-f19-ressourcen.mjs`
+prüft mechanisch (Regel 6), ob jeder in `erlaubte_worker` genannte Worker
+die `benoetigte_capabilities` seiner Rolle vollständig deckt — das Gate wird
+für beide Rollen real rot, sobald diese Prüfung existiert. Ein Verengen von
+`erlaubte_worker` auf `['codex']` wurde für BEIDE Rollen geprüft und real
+verworfen:
+- `router`: ein Lauf über den direkten `POST /api/laeufe`-Pfad läuft
+  strukturell IMMER als `worker: 'claude-code'` (`worker` steht nicht in
+  `ERLAUBTE_STARTAUFTRAG_FELDER`, `router` erscheint in keiner
+  Workflow-Vorlage als Schritt) — ein Verengen hätte jeden realen
+  Router-Lauf abgelehnt, der Mechanismus wäre unbenutzbar gewesen.
+- `code-reviewer`: keine Workflow-Vorlage plant `code-reviewer` je auf
+  `claude-code` (alle drei Vorlagen setzen bereits `codex` ein) — für den
+  PRODUKTIVEN Pfad wäre die Verengung kollisionsfrei gewesen. Real
+  verworfen, weil `scripts/check-f15-workflow.mjs`s geteilte Testfixtur
+  (`gateSchritt()`) `code-reviewer`/`claude-code` als Default für rund 90
+  Testfälle verwendet, darunter einen Rotfall, der claude-code +
+  `output_schema` gezielt testet (Regel 4b, `ermittleNaechstenSchritt`) —
+  ein Verengen hätte dort ~85 Assertions zum Scheitern gebracht; die
+  einzelne Korrektur wäre eine eigene, review-würdige Refaktorierung
+  gewesen, kein WS-2-Minimalfix.
+Entschieden mit Stefan (Rückfrage während F19 WS-2, 12.09.2026— zunächst
+nur für `router` gefragt, die zweite Kollision bei `code-reviewer` wurde
+erst danach beim realen Testlauf sichtbar und nach demselben Muster
+gelöst): beide Rollen behalten `erlaubte_worker: ['claude-code', 'codex']`,
+Regel 6 trägt für beide eine eng benannte, geprüfte Ausnahme
+(`F346_AUSNAHMEN` in `scripts/check-f19-ressourcen.mjs`) statt der
+Verengung. Die Ausnahme deckt ausschließlich `STRUCTURED_OUTPUT` für genau
+diese Rolle/Worker-Kombinationen — jede andere Lücke bleibt ein Gate-Fehler.
+Status: offen — die zugrunde liegende Lücke (`claude-code` kann
+`STRUCTURED_OUTPUT` strukturell nicht bereitstellen) ist NICHT behoben,
+nur mechanisch sichtbar gehalten. Löst sich erst mit F-337 oder einer
+eigenen Iteration, die die F15-Testfixtur vom Rollenvertrag entkoppelt.
+Feature/Run: F19 WS-1-Verifikation, F19 WS-2.

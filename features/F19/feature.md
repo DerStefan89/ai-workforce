@@ -10,7 +10,7 @@ Capability Foundation (Register der Ressourcen, die Capabilities bereitstellen)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -77,7 +77,10 @@ meldet, es wählt nicht automatisch).
   erzwingt zur Laufzeit die drei semantischen Regeln, die das Schema
   allein nicht abbilden kann: R1 (nur `typ: "extern"` trägt `name`/
   `beschreibung`, dort Pflicht), R2 (`typ: "extern"` ausschließlich
-  `freigabe: "OFFEN"`), R3 (`herkunft.art` passt zu `typ`).
+  `freigabe: "OFFEN"`), R3 (`herkunft.art` passt zu `typ`). **Erfüllt.**
+  Real geprüft: 19 Fälle in `src/ressourcen/ressourcen.test.ts` (je ein
+  Rot-Fall pro Regel plus id-Eindeutigkeit), Gate-Regeln 1/4/5 in
+  `scripts/check-f19-ressourcen.mjs` gegen die reale `ressourcen.json`.
 - **AK4** *(WS-1)* — Jeder der fünf Rollenverträge in `ROLLENVERTRAEGE`
   (`src/rollen/index.ts`) trägt `benoetigte_capabilities` als Zwilling der
   `capabilities`-Werte aus `ressourcen.json`; das Feld ist in
@@ -86,18 +89,50 @@ meldet, es wählt nicht automatisch).
   additiv, keine erschöpfende Feldliste).
 - **AK5** *(WS-1 teilweise, Rest WS-2)* — Keine dritte Bestandsliste neben
   `ressourcen.json` (F-342). WS-1 liefert die beiden Abgrenzungssätze in
-  `state/tooling.md` und `docs/harness/werkzeug-katalog.md`; eine
-  mechanische Prüfung, dass keine vierte Liste entsteht (Muster AK1 in
-  `scripts/check-f17-rollenvertrag.mjs`), ist WS-2.
+  `state/tooling.md` und `docs/harness/werkzeug-katalog.md`. **Erfüllt.**
+  Der WS-2-Rest ist mechanisch, statt als eigener Repo-Scan: Gate-Regeln 6/7
+  in `scripts/check-f19-ressourcen.mjs` behandeln `ressourcen.json` als
+  einzige Quelle, gegen die `ROLLENVERTRAEGE.benoetigte_capabilities`
+  abgeglichen wird (Regel 7 verlangt zusätzlich, dass jede ungedeckte
+  Capability in `features/F19/bekannte-luecken.md` benannt ist statt in
+  einer eigenen vierten Liste zu verschwinden).
 - **AK6** *(WS-2)* — `src/ressourcen/index.ts` mit `validiereRessourcenDaten`
   (Muster `validiereStartvorlageDaten`, D5 — kein zweiter, von Hand
-  nachgebauter Regelsatz).
+  nachgebauter Regelsatz). **Erfüllt.** Nachweis: `features/F19/
+  nachweis-ws2.md`.
 - **AK7** *(WS-2)* — Verfügbarkeit einer Ressource wird ausschließlich zur
   Abfragezeit aus der laufenden Umgebung abgeleitet (z. B. fehlender
   `worker.codex`-Block in der Startvorlage), nie aus einem gespeicherten
-  Feld — real belegt mit einem Grün- und einem Rot-Fall.
+  Feld — real belegt mit einem Grün- und einem Rot-Fall. **Erfüllt.**
+  Nachweis: `features/F19/nachweis-ws2.md` (Green, Red 1-3, Change).
 - **AK8** *(WS-2)* — Gate `scripts/check-f19-ressourcen.mjs`
   (Muster `check-f18-router.mjs`), eingehängt in `npm run check`.
+  **Erfüllt.** `npm run check`: Exit 0, siehe `features/F19/
+  nachweis-ws2.md`.
+
+## Entschieden
+
+- **F-346 bleibt `offen`, nicht `gelöst`.** Der Bauauftrag sah vor,
+  `erlaubte_worker` von `code-reviewer` UND `router` auf `['codex']` zu
+  verengen (nach Prüfung, dass keine Workflow-Vorlage sie auf `claude-code`
+  plant). Diese Prüfung war für beide Rollen negativ — die Verengung wurde
+  trotzdem für beide real verworfen: `router` läuft über den direkten `POST
+  /api/laeufe`-Pfad strukturell IMMER als `worker: 'claude-code'` (eine
+  Verengung hätte den Mechanismus unbenutzbar gemacht, Rückfrage an Stefan,
+  12.09.2026); `code-reviewer`s Verengung brach real 85 Assertions in
+  `scripts/check-f15-workflow.mjs`, dessen geteilte Testfixtur den Default
+  `code-reviewer`/`claude-code` für einen claude-code-spezifischen Rotfall
+  braucht. Beide Fälle bekamen stattdessen dieselbe, bereits für `router`
+  entschiedene Lösung: eine eng benannte, geprüfte Gate-Ausnahme
+  (`F346_AUSNAHMEN` in `scripts/check-f19-ressourcen.mjs`), die
+  AUSSCHLIESSLICH `STRUCTURED_OUTPUT` für `claude-code` bei diesen beiden
+  Rollen duldet. Details: `state/findings.md` F-346, `features/F19/
+  nachweis-ws2.md` ("Real gefundener Blocker").
+- `src/rollen/index.ts` ist damit gegenüber dem WS-1-Stand UNVERÄNDERT
+  (`erlaubte_worker` beider Rollen bleibt `['claude-code', 'codex']`) — die
+  einzige Änderung liegt im Gate (`scripts/check-f19-ressourcen.mjs`), das
+  die Lücke seither mechanisch sichtbar hält, statt sie stillschweigend
+  bestehen zu lassen.
 
 ## Dependencies
 
