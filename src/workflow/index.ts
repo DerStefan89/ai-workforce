@@ -563,8 +563,8 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Sechs Regeln, in genau dieser Reihenfolge geprüft, und die Reihenfolge ist
- * die eigentliche Aussage:
+ * Sieben Prüfungen (0, 1, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * die Reihenfolge ist die eigentliche Aussage:
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
  *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
@@ -578,10 +578,10 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    einen VERWEIGERT/FEHLGESCHLAGEN-Ausgang hinweg (ARCHITECTURE.md §4:
  *    Blockieren ist ein normaler Ausgang; ein unterbrochener Baulauf wird
  *    nie automatisch neu gestartet).
- * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den drei
+ * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den vier
  *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
- *    der nächste Schritt zufällig für einen Zustand, Worker oder
- *    Freigabebedarf trägt — eine erreichte Grenze startet nichts und legt
+ *    der nächste Schritt zufällig für einen Zustand, Worker, Freigabebedarf
+ *    oder ein Ausgabeschema trägt — eine erreichte Grenze startet nichts und legt
  *    auch nichts zur Freigabe vor.
  * 3. Der zu startende Schritt ist nicht startbereit (lauf_id gesetzt, oder
  *    status außerhalb OFFEN/WARTET_FREIGABE) → haltKlaerung. Das ist
@@ -596,12 +596,30 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    Schritt zu überspringen heißt, die Kette an ihm vorbei fortzusetzen,
  *    und das ist eine Replan-Entscheidung (grenzen.max_replans), die WS-2a
  *    nicht trifft. Anhalten ist der sichere Vorgabewert.
- * 4. worker ≠ 'claude-code' → haltKlaerung. VOR der Freigabeprüfung, obwohl
- *    beide anhalten ([EMPFEHLUNG], WS-2a — zu verwerfen, sobald F16 Codex
- *    dispatchbar macht): ein Schritt, der gar nicht startbar ist, darf dem
- *    Menschen nicht als Freigabefrage vorgelegt werden, die Freigabe bliebe
- *    folgenlos. Kein stiller Ersatz durch claude-code (E-159 kein stiller
- *    Fallback, E-M3-3 gepinnte Besetzung Rolle→Worker→Modell).
+ * 4. worker ∉ WORKER → haltKlaerung. VOR der Freigabeprüfung, obwohl beide
+ *    anhalten: ein Schritt, der gar nicht startbar ist, darf dem Menschen
+ *    nicht als Freigabefrage vorgelegt werden, die Freigabe bliebe folgenlos.
+ *    Kein stiller Ersatz durch claude-code (E-159 kein stiller Fallback,
+ *    E-M3-3 gepinnte Besetzung Rolle→Worker→Modell).
+ *    Die WS-2a-[EMPFEHLUNG] an dieser Stelle — "worker ≠ 'claude-code' hält
+ *    an, zu verwerfen, sobald F16 Codex dispatchbar macht" — ist mit F16
+ *    WS-3a (AK10) eingelöst: 'codex' ist dispatchbar. Verworfen ist damit
+ *    aber nur der WERT, nicht die FORM. Die Regel prüft weiterhin gegen das
+ *    Erlaubte (WORKER) und nicht gegen das eine Verbotene: die naheliegende
+ *    Erweiterung auf `worker !== 'claude-code' && worker !== 'codex'` wäre
+ *    dieselbe Zeile in Blacklist-Form gewesen und hätte einem künftigen
+ *    dritten Worker die Automatik lautlos überlassen (Reviewer-Pass
+ *    10.09.2026, K2/R2 — siehe Absatz unten).
+ * 4b. worker = 'claude-code' UND output_schema ≠ null → haltKlaerung (F16
+ *    WS-3a, AK10). Ein Ausgabeschema gibt es ausschließlich als
+ *    '--output-schema' am Codex-Argv (AK1); an einem Claude-Code-Schritt ist
+ *    es eine Planangabe, die kein Aufrufbauer je einlöst — der Schritt liefe
+ *    scheinbar planmäßig und ohne das erwartete typisierte Ergebnis. Still
+ *    ignorieren ist die schlechtere Hälfte von E-159. Ausdrücklich HIER und
+ *    NICHT in validiereWorkflowDaten (F-277/F-285): der Validator läuft über
+ *    JEDEN Datensatz, auch über die bereits geschriebenen, append-only
+ *    (ARCHITECTURE.md §2) — dieselbe Regel dort machte den Bestand
+ *    rückwirkend ungültig, statt nur seinen nächsten Start anzuhalten.
  * 5. freigabe ∉ {AUTOMATISCH, EMPFOHLEN} UND freigabe_erteilt ≠ true →
  *    haltFreigabe, sonst starte. Der zweite Halbsatz ist WS-2c (b1): ein
  *    ZWINGEND-Schritt, für den ein Mensch real freigegeben hat, ist startbar;
@@ -611,10 +629,12 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    EMPFOHLEN ist rein anzeigend und gehört nach WS-3 — hier bewusst KEINE
  *    Sonderbehandlung, sonst entstünde eine zweite, stille Freigabestufe.
  *
- * Die Regeln 0, 3, 4 und 5 sind bewusst als ALLOWLIST formuliert („ist es
+ * Die Regeln 0, 3, 4, 4b und 5 sind bewusst als ALLOWLIST formuliert („ist es
  * genau das Erlaubte?") und nicht als Blacklist („ist es das eine
  * Verbotene?"). Der Unterschied wird erst sichtbar, wenn jemand
  * WORKFLOW_STATUS, SCHRITT_STATUS, WORKER oder FREIGABE oben um einen Wert
+ * erweitert (bei 4b: wenn ein zweiter Worker ein Ausgabeschema einlösen
+ * können soll)
  * erweitert: bei einer Blacklist fiele der neue Wert still in „startet
  * automatisch", bei der Allowlist in „hält an". Ein neuer Status, Worker oder
  * eine neue Freigabestufe muss hier eine bewusste Zeile bekommen, statt sich
@@ -741,10 +761,31 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
   // beiden Regeln unten gegen das ERLAUBTE (Allowlist) — ein Wert, den die
   // Arrays kennen und diese Funktion nicht, muss anhalten, nicht starten.
   const worker: string = naechsterSchritt.worker
-  if (worker !== 'claude-code') {
+  if (!WORKER.includes(worker)) {
     return {
       art: 'haltKlaerung',
-      grund: worker === 'codex' ? "Worker 'codex' ist erst ab F16 dispatchbar" : `Worker '${worker}' ist nicht dispatchbar`,
+      grund: `Worker '${worker}' ist nicht dispatchbar`,
+      aktiverSchrittId: naechsterSchritt.schritt_id,
+    }
+  }
+
+  // Regel 4b (F16 WS-3a, AK10), nach der Worker-Allowlist und vor der
+  // Freigabe: dieselbe Begründung wie bei Regel 4 — ein Schritt, der so nicht
+  // startbar ist, darf dem Menschen nicht als folgenlose Freigabefrage
+  // vorgelegt werden.
+  //
+  // Geschrieben als `worker !== 'codex'` und nicht als
+  // `worker === 'claude-code'` (Reviewer-Pass 11.09.2026, Befund 2): das ist
+  // dieselbe Allowlist-Richtung wie Regel 4 darüber. 'codex' ist der einzige
+  // Worker, der ein Ausgabeschema einlöst; ein künftiger dritter Worker mit
+  // gesetztem output_schema fällt damit in "hält an" statt lautlos zu starten.
+  // Der Vergleich steht trotz Regel 4 nicht überflüssig da — er ist die
+  // Tiefenverteidigung, falls WORKER je um einen Wert wächst, den diese
+  // Funktion nicht kennt.
+  if (worker !== 'codex' && naechsterSchritt.output_schema !== null) {
+    return {
+      art: 'haltKlaerung',
+      grund: `Schritt '${naechsterSchritt.schritt_id}' setzt output_schema '${naechsterSchritt.output_schema}', aber Worker '${worker}' kennt kein Ausgabeschema — nur 'codex' wird mit '--output-schema' gestartet`,
       aktiverSchrittId: naechsterSchritt.schritt_id,
     }
   }

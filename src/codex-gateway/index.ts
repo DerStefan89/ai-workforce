@@ -39,6 +39,8 @@
  * - scripts/check-f16-codex-gateway.mjs
  * - scripts/verify-f16-codex-rotfall.mjs (realer Rot-Fall, AK9)
  * - src/result-evaluator/index.ts (leseCodexEreignisse, AK8)
+ * - src/execution-controller/index.ts (baueCodexAufruf + starteCodexGateway im Codex-Zweig der Worker-Weiche, F16 WS-3a AK11)
+ * - scripts/leitstand-server.mjs (CODEX_BERECHTIGUNGSKONTEXT für die worker-abhängige Auflösung, F16 WS-3a AK11)
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -63,8 +65,8 @@ import type {
 /** Ablage des Rohereignisstroms, identisch zum Claude-Code-Gateway — ein Lauf ist ein Lauf, egal welcher Worker ihn ausgeführt hat. */
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
 
-/** Fester Berechtigungskontext jedes Codex-Laufs (AK7). Nicht vom Aufrufer setzbar: '--sandbox read-only' steht über baueCodexAufruf fest im Argv und ist über die Allowlist nicht abwählbar — ein umdeklarierbarer Kontext wäre eine Behauptung ohne Deckung. */
-const CODEX_BERECHTIGUNGSKONTEXT = 'codex-sandbox-read-only'
+/** Fester Berechtigungskontext jedes Codex-Laufs (AK7). Nicht vom Aufrufer setzbar: '--sandbox read-only' steht über baueCodexAufruf fest im Argv und ist über die Allowlist nicht abwählbar — ein umdeklarierbarer Kontext wäre eine Behauptung ohne Deckung. Seit F16 WS-3a (AK11) EXPORTIERT, weil scripts/leitstand-server.mjs denselben Wert in die AusfuehrungsEingaben eines Codex-Schritts schreiben muss: ein dort abgetippter Literalstring wäre eine zweite, unabhängig verfallende Kopie derselben Zusicherung (D5). */
+export const CODEX_BERECHTIGUNGSKONTEXT = 'codex-sandbox-read-only'
 
 /** Durchreichoptionen für verweigereStart (Muster: Optionen in src/claude-code-gateway/index.ts) — schreiber und basisVerzeichnis erlauben Tests eine Wegwerf-Kette statt des echten Kontrollzustands. */
 interface Optionen {

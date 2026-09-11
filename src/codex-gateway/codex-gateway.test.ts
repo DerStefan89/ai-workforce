@@ -833,25 +833,45 @@ test('AK7: der Grün-Fall schreibt genau eine run_prepared-Wirkungsmarke und KEI
 })
 
 // ─── F-307: stdin, real und kalibriert (kein Spy) ───────────────────────────
-// Beide Fälle starten einen ECHTEN Prozess über prozessstart.ts. Das
+// Alle drei Fälle starten einen ECHTEN Prozess über prozessstart.ts. Das
 // Prüfskript liest stdin und beendet sich erst, wenn der Strom endet —
 // genau das Verhalten, das Codex real zeigt (state/tp-m3-01b-codex-
 // sandbox.md, Nebenbefund zu Lauf (a): `Reading additional input from
-// stdin...`). Die Zeitgrenze ist bewusst kurz (2000 ms), damit `npm run
-// check` nicht spürbar langsamer wird.
+// stdin...`).
+//
+// ZWEI Zeitgrenzen, und der Unterschied ist der Punkt (F-257, achtes
+// Auftreten, 11.09.2026 ~12:05 UTC): im ROTEN Fall IST die kurze Grenze der
+// Prüfgegenstand — der Prozess soll in sie hineinlaufen, und sie kurz zu
+// halten kostet dort nichts. In den GRÜNEN Fällen ist sie es nicht: geprüft
+// wird die reguläre Beendigung, und eine kurze Grenze ist dort eine
+// Wettlaufbedingung gegen den Node-Start. Genau die ist real eingetreten —
+// der grüne Fall meldete unter Last beendigungsart 'TIMEOUT' statt null, bei
+// 13,2 s Laufzeit für einen Prozess, der normalerweise in Millisekunden
+// endet.
+//
+// Die lange Grenze kostet keine Laufzeit: ein nicht überlasteter Prozess
+// endet sofort und erreicht sie nie. Sie ist ein Notausgang, keine
+// Wartezeit. Die frühere Begründung an dieser Stelle — eine kurze Grenze
+// halte `npm run check` schnell — galt genau deshalb nur für den roten Fall
+// und war für die grünen falsch.
 
 /** Hält den Prozess am Leben, bis stdin EOF meldet. Ohne geschlossenen stdin endet er nie von selbst. */
 const STDIN_PRUEFSKRIPT = "process.stdin.resume(); process.stdin.on('end', () => process.exit(0))"
-const STDIN_ZEITGRENZE_MS = 2000
+
+/** Zeitgrenze des ROTEN Falls: hier soll der Prozess hineinlaufen, kurz gehalten spart das echte Wartezeit. */
+const STDIN_ZEITGRENZE_ROT_MS = 2000
+
+/** Zeitgrenze der GRÜNEN Fälle: großzügig, weil sie dort nicht der Prüfgegenstand ist, sondern nur der Notausgang. Wird bei regulärer Beendigung nie erreicht. */
+const STDIN_ZEITGRENZE_GRUEN_MS = 30000
 
 test('F-307 rot (real gemessen, kein Spy): OHNE stdinLeer läuft ein stdin-lesender Prozess in die Zeitgrenze', async () => {
-  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS })
+  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_ROT_MS })
   assert.equal(ergebnis.beendigungsart, 'TIMEOUT')
   assert.equal(ergebnis.exitCode, null)
 })
 
 test('F-307 grün (real gemessen, kein Spy): MIT stdinLeer terminiert derselbe Prozess regulär mit Exit 0', async () => {
-  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS, stdinLeer: true })
+  const ergebnis = await starteProzess([process.execPath], ['-e', STDIN_PRUEFSKRIPT], { zeitgrenzeMs: STDIN_ZEITGRENZE_GRUEN_MS, stdinLeer: true })
   assert.equal(ergebnis.beendigungsart, null)
   assert.equal(ergebnis.exitCode, 0)
 })
@@ -862,7 +882,7 @@ test('F-307: stdinLeer gegen ein Kind, das sofort endet — der stdin-Fehlerkana
   // ERR_STREAM_DESTROYED hier ein unbehandeltes Stream-Ereignis — das
   // beendet unter Node nicht nur den Lauf, sondern den gesamten Prozess.
   // Dass dieser Test überhaupt bis zur Zusicherung kommt, IST der Nachweis.
-  const ergebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)'], { zeitgrenzeMs: STDIN_ZEITGRENZE_MS, stdinLeer: true })
+  const ergebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)'], { zeitgrenzeMs: STDIN_ZEITGRENZE_GRUEN_MS, stdinLeer: true })
   assert.equal(ergebnis.exitCode, 0)
   assert.equal(ergebnis.startfehler, null)
 })

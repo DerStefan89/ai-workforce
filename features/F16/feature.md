@@ -128,7 +128,7 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   Kalibrierungspflicht: im selben Lauf muss ein Lesebefehl gelingen;
   scheitern Lesen und Schreiben gleich, ist der Rot-Fall nicht kalibriert
   (F-273/F-289).
-- **AK10** *(WS-3)* — `codex`-Schritte sind dispatchbar (Regel 4);
+- **AK10** *(WS-3a, erfüllt)* — `codex`-Schritte sind dispatchbar (Regel 4);
   `codex` + schreibender Werkzeugsatz → Ablehnung; fehlender
   `worker.codex`-Block → Ablehnung; `output_schema` wird als Schemaname
   zu `schemas/<name>.schema.json` aufgelöst (kein Pfadtrennzeichen
@@ -136,11 +136,11 @@ wird die Multi-Worker-Mechanik, nicht Qualität (§13.1).
   `additionalProperties: false` auf der Wurzel tragen; `claude-code` +
   `output_schema` ≠ `null` → `haltKlaerung` in `ermittleNaechstenSchritt`,
   NICHT in `validiereWorkflowDaten` (F-277/F-285).
-- **AK11** *(WS-3)* — `loeseAusfuehrungsEingabenAuf` wählt
+- **AK11** *(WS-3a, erfüllt)* — `loeseAusfuehrungsEingabenAuf` wählt
   `werkzeugStartziel`, `werkzeugVersionDeklariert` und
   `berechtigungskontext` nach `schritt.worker` statt pauschal aus
   `vorlage.*`; Claude-Code-Schritte bleiben byte-identisch (F-286).
-- **AK12** *(WS-3)* — Realer zweistufiger Workflow über den Leitstand:
+- **AK12** *(WS-3b)* — Realer zweistufiger Workflow über den Leitstand:
   Codex `code-reviewer` (lesend, schemakonformes Ergebnis in der letzten
   `agent_message`) → Claude Code `ausfuehrung` (schreibend), ohne
   manuellen Zwischenstart; das Leitstand-Laufdetail zeigt `worker` und

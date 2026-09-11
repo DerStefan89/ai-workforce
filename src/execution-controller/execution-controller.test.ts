@@ -113,6 +113,12 @@ import assert from 'node:assert/strict'
 import { after, test } from 'node:test'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt } from '../claude-code-gateway/prozessstart.ts'
 import { baueAufruf, starteGateway } from '../claude-code-gateway/index.ts'
+// Importiert statt als Literal geprüft (QA-Pass 11.09.2026, Befund 8): der
+// Berechtigungskontext eines Codex-Laufs steht an zwei Stellen (Gateway und
+// worker-abhängige Auflösung im Leitstand-Server) und ist genau deshalb eine
+// Konstante. Ein abgetipptes 'codex-sandbox-read-only' im Test hätte eine
+// Drift der Konstante NICHT bemerkt.
+import { CODEX_BERECHTIGUNGSKONTEXT } from '../codex-gateway/index.ts'
 import type { Starter } from '../claude-code-gateway/types.ts'
 import { baueKontextpaket } from '../context-builder/index.ts'
 import { istWirkungsmarkePayload, kanonischesJson, ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
@@ -1142,6 +1148,153 @@ test('F12 Vorbedingungsverstoß: auftragId ohne existierende Auftragsakte wirft 
         schreiber: () => {},
       }),
       (error: unknown) => error instanceof Error && error.message.includes(nieExistierendeAuftragId)
+    )
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── F16 WS-3a (AK11): die eine Worker-Weiche ───────────────────────────────
+//
+// Belegt wird, dass die Weiche real den ANDEREN Aufrufbauer und das ANDERE
+// Gateway wählt — nicht, dass Codex funktioniert (das ist F16 WS-2). Der
+// Spy-Starter ist dieselbe Attrappe wie in den Fällen oben; geprüft wird das
+// Argv, das bei ihm ankommt, und die Laufakte, die danach im Kontrollzustand
+// steht. Daneben steht die Grün-Gegenprobe für den Vorgabewert: ohne sie wäre
+// "wählt nach worker" durch ein "wählt immer Codex" erfüllbar.
+
+test('F16 AK11: worker "codex" baut das Codex-Argv und schreibt eine Codex-Laufakte', async () => {
+  const laufId = neueLaufId('f16w')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben: AusfuehrungsEingaben = {
+      ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE),
+      worker: 'codex',
+      ausgabeSchemaPfad: null,
+      werkzeugVersionDeklariert: '0.153.4 (Codex CLI)',
+    }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    // Codex-Argv statt Claude-Code-Argv: 'exec' an Position 0, '--sandbox
+    // read-only' als zwei getrennte Elemente, kein '-p'.
+    assert.strictEqual(erfassteTokens[0], 'exec')
+    assert.ok(erfassteTokens.includes('--sandbox'))
+    assert.strictEqual(erfassteTokens[erfassteTokens.indexOf('--sandbox') + 1], 'read-only')
+    assert.strictEqual(erfassteTokens.indexOf('-p'), -1, "'-p' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
+    // Das Modell kommt aus aufrufEingaben.modell und ist für Codex zugleich
+    // der DEKLARIERTE Modellname in der Laufakte (E-185, F-305).
+    assert.strictEqual(erfassteTokens[erfassteTokens.indexOf('--model') + 1], 'sonnet')
+
+    const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(laufakteVersion !== null)
+    const laufakte = laufakteVersion.daten as unknown as Record<string, unknown>
+    assert.strictEqual(laufakte.worker, 'codex')
+    assert.strictEqual(laufakte.modell_deklariert, 'sonnet')
+    assert.strictEqual(laufakte.modell_beobachtet, null)
+    assert.strictEqual(laufakte.berechtigungskontext, CODEX_BERECHTIGUNGSKONTEXT)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F16 AK11: ein gesetzter ausgabeSchemaPfad landet als --output-schema im Argv', async () => {
+  const laufId = neueLaufId('f16s')
+  const schemaPfad = join(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben: AusfuehrungsEingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), worker: 'codex', ausgabeSchemaPfad: schemaPfad }
+    await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.ok(erfassteTokens)
+    assert.strictEqual(erfassteTokens[erfassteTokens.indexOf('--output-schema') + 1], schemaPfad)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F16 AK11: ohne worker-Feld bleibt der Claude-Code-Zweig unverändert (Vorgabe "fehlend = claude-code")', async () => {
+  const laufId = neueLaufId('f16c')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.ok(erfassteTokens)
+    assert.notStrictEqual(erfassteTokens.indexOf('-p'), -1, 'der Claude-Code-Aufruf muss unverändert ein -p tragen')
+    const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} })
+    assert.ok(laufakteVersion !== null)
+    assert.strictEqual((laufakteVersion.daten as unknown as Record<string, unknown>).worker, undefined)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F16 AK11: ein Worker, den die Weiche nicht kennt, wirft VOR jeder Schreibwirkung', async () => {
+  // Verteidigender Zweig, aus TypeScript heraus nur per Cast erreichbar — aus
+  // scripts/leitstand-server.mjs (untypisiertes .mjs) aber real (QA-Pass
+  // 11.09.2026). Ohne diesen Fall wäre die Allowlist eine Behauptung: sie
+  // ließe sich durch ein stilles `?? 'claude-code'` ersetzen, ohne dass etwas
+  // rot wird.
+  //
+  // Geprüft wird nicht nur der Wurf, sondern seine POSITION: nach dem Wurf
+  // darf KEIN Kontextpaket und KEINE Laufakte existieren. Läge die Prüfung
+  // erst an der Worker-Weiche, hätte baueKontextpaket längst geschrieben und
+  // laufIdBelegt() sperrte die laufId dauerhaft.
+  const laufId = neueLaufId('f16x')
+  let starterAufgerufen = false
+  const spyStarter: Starter = async (startziel, tokens) => {
+    starterAufgerufen = true
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = { ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE) } as unknown as Record<string, unknown>
+    eingaben.worker = 'gemini'
+    await assert.rejects(
+      fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben as unknown as AusfuehrungsEingaben, {
+        ...startfreigabeOptionen(),
+        basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        starter: spyStarter,
+        schreiber: () => {},
+      }),
+      (fehler: unknown) => fehler instanceof Error && fehler.message.includes('gemini') && fehler.message.includes('keinem Aufrufbauer zugeordnet')
+    )
+    assert.strictEqual(starterAufgerufen, false, 'ein unbekannter Worker darf keinen Prozess starten')
+    assert.strictEqual(
+      ladeArtefaktVersion(`kontextpaket-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} }),
+      null,
+      'der Wurf steht vor baueKontextpaket — es darf kein Kontextpaket entstanden sein'
+    )
+    assert.strictEqual(
+      ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis: KONTROLLZUSTAND_BASIS, schreiber: () => {} }),
+      null,
+      'ein unbekannter Worker darf keine Laufakte hinterlassen'
     )
   } finally {
     raeumeKette(laufId)

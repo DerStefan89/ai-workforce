@@ -408,24 +408,70 @@ for (const ausgang of ['VERWEIGERT', 'FEHLGESCHLAGEN'] as const) {
   })
 }
 
-test("Ausgang 'haltKlaerung': worker 'codex' ist nicht dispatchbar und wird nicht still durch claude-code ersetzt", () => {
+test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
+  // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
+  // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.
   const workflow = typisierterWorkflow([
     typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
     typisierterSchritt('schritt-2', null, { worker: 'codex' }),
   ])
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
-  assert.deepStrictEqual(ergebnis, {
-    art: 'haltKlaerung',
-    grund: "Worker 'codex' ist erst ab F16 dispatchbar",
-    aktiverSchrittId: 'schritt-2',
-  })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
 })
 
-test("Ausgang 'haltKlaerung': der Codex-Halt schlägt den ZWINGEND-Halt", () => {
-  // Ein Schritt, der gar nicht startbar ist, darf nicht als Freigabefrage
-  // vorgelegt werden — die Freigabe bliebe folgenlos.
+test("Ausgang 'haltFreigabe': ein Codex-Schritt mit ZWINGEND wird dem Menschen vorgelegt statt still zu starten", () => {
+  // Bis F16 WS-2 schlug hier der Codex-Halt den Freigabe-Halt. Jetzt ist der
+  // Schritt startbar — also ist die Freigabefrage nicht mehr folgenlos und
+  // muss gestellt werden.
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'codex', freigabe: 'ZWINGEND' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
+})
+
+// ─── Regel 4b: output_schema an einem Claude-Code-Schritt (AK10) ────────────
+
+test("Ausgang 'haltKlaerung': claude-code mit gesetztem output_schema hält an, statt es still zu ignorieren", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null, { worker: 'claude-code', output_schema: 'ergebnis-code-reviewer' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /output_schema 'ergebnis-code-reviewer'/)
+})
+
+test("Regel 4b schlägt den ZWINGEND-Halt — ein so nicht startbarer Schritt wird nicht zur Freigabe vorgelegt", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer', freigabe: 'ZWINGEND' })])
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltKlaerung')
+})
+
+test('Regel 3 schlägt Regel 4b: ein bereits gelaufener Schritt meldet seine Startbereitschaft, nicht sein Schema', () => {
+  // Reihenfolge festgenagelt (QA-Pass 11.09.2026): ohne diesen Fall ließe sich
+  // Regel 4b vor Regel 3 schieben, und ein längst gelaufener Schritt bekäme
+  // einen Grundtext über sein Ausgabeschema statt über seinen Zustand.
+  const workflow = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })],
+    { aktiver_schritt_id: 'schritt-1' }
+  )
+  const ergebnis = ermittleNaechstenSchritt(workflow)
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /ist nicht startbereit/)
+})
+
+test('Regel 4 schlägt Regel 4b: ein unbekannter Worker meldet seine Nicht-Dispatchbarkeit, nicht sein Schema', () => {
+  const schritt = typisierterSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer' })
+  ;(schritt as unknown as Record<string, unknown>).worker = 'gemini'
+  const ergebnis = ermittleNaechstenSchritt(typisierterWorkflow([schritt]))
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /nicht dispatchbar/)
+})
+
+test("Regel 4b greift NICHT bei worker 'codex' — dort ist output_schema die vorgesehene Angabe", () => {
+  // Grün-Gegenprobe: ohne sie wäre Regel 4b auch durch ein pauschales
+  // „output_schema hält immer an" erfüllbar.
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer' })])
+  assert.equal(ermittleNaechstenSchritt(workflow).art, 'starte')
 })
 
 test("Ausgang 'haltGrenze': grenzen.max_schritte hält den Automaten an, bevor Worker oder Freigabe zählen", () => {
@@ -615,13 +661,15 @@ test("Ausgang 'haltFreigabe': freigabe_erteilt false ist keine Freigabe", () => 
   assert.equal(ermittleNaechstenSchritt(workflow).art, 'haltFreigabe')
 })
 
-test('freigabe_erteilt hebt weder den Codex-Halt noch die Startbereitschafts-Regel auf', () => {
-  // Die Freigabe erlaubt einen Schritt, sie erzwingt ihn nicht: die Regeln 2-4
-  // stehen VOR ihr und bleiben wirksam.
-  const codex = typisierterWorkflow([typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, worker: 'codex' })], {
-    aktiver_schritt_id: 'schritt-1',
-  })
-  assert.equal(ermittleNaechstenSchritt(codex).art, 'haltKlaerung')
+test('freigabe_erteilt hebt weder Regel 4b noch die Startbereitschafts-Regel auf', () => {
+  // Die Freigabe erlaubt einen Schritt, sie erzwingt ihn nicht: die Regeln 2-4b
+  // stehen VOR ihr und bleiben wirksam. Bis F16 WS-2 stand hier der Codex-Halt;
+  // seit AK10 ist Codex dispatchbar, die Rolle übernimmt Regel 4b.
+  const mitSchema = typisierterWorkflow(
+    [typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, output_schema: 'ergebnis-code-reviewer' })],
+    { aktiver_schritt_id: 'schritt-1' }
+  )
+  assert.equal(ermittleNaechstenSchritt(mitSchema).art, 'haltKlaerung')
 
   const gelaufen = typisierterWorkflow(
     [typisierterSchritt('schritt-1', null, { freigabe: 'ZWINGEND', freigabe_erteilt: true, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })],

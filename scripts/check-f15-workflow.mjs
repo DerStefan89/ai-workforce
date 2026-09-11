@@ -11,7 +11,8 @@
  *
  * F15 WS-2a ergänzt zwei Abschnitte: (b) je ein kalibrierter Fall für die
  * Ausgänge von ermittleNaechstenSchritt — der ZWINGEND-Halt und der
- * Codex-Halt sind die beiden, die eine Grenze tragen, die übrigen stehen
+ * Regel-4b-Halt (bis F16 WS-2: der Codex-Halt) sind die beiden, die eine
+ * Grenze tragen, die übrigen stehen
  * als Grünfall daneben, damit „hält an" nicht durch „hält immer an"
  * erfüllbar ist; (c) die drei Workflow-Endpunkte real gegen einen
  * laufenden Testserver (Muster check-f12-leitstand-ansicht.mjs), mit dem
@@ -74,13 +75,15 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
+import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
 
 const befunde = []
 
@@ -141,7 +144,7 @@ if (!existsSync(SCHEMA_PFAD)) {
 //
 // Diese Fälle stehen bewusst NICHT nur in src/workflow/workflow.test.ts:
 // sie sind die Regeln, an denen der Schritt-Automat (WS-2b) entweder anhält
-// oder eben nicht. Wer den Codex-Halt oder den ZWINGEND-Halt entfernt,
+// oder eben nicht. Wer den Regel-4b-Halt oder den ZWINGEND-Halt entfernt,
 // entfernt eine Grenze — und eine Grenze ohne Rotfall im Gate heißt nach
 // ARCHITECTURE.md §8 nicht ERZWUNGEN. Der Grünfall daneben ist der Beleg,
 // dass die Prüfung nicht einfach alles anhält.
@@ -204,10 +207,21 @@ const automatFaelle = [
     erwartet: { art: 'haltFreigabe', schrittId: 'schritt-2', aktiverSchrittId: 'schritt-2' },
   },
   {
-    name: "Codex-Halt (Rotfall der Automatik): worker 'codex' hält an, statt still auf claude-code auszuweichen (E-159, E-M3-3)",
-    workflow: gateWorkflow([gelaufen('schritt-2'), gateSchritt('schritt-2', null, { worker: 'codex' })]),
+    // Bis F16 WS-2 stand hier der Codex-Halt. Mit WS-3a (AK10) ist 'codex'
+    // dispatchbar; der verbliebene Rotfall derselben Stelle ist Regel 4b —
+    // ein Ausgabeschema an einem Claude-Code-Schritt, das kein Aufrufbauer je
+    // einlöst. Der Gate-Fall wandert mit der Regel, statt zu verschwinden:
+    // sonst hätte die Reihenfolge „Schritt-Eigenschaft vor Freigabe" keinen
+    // Beleg mehr.
+    name: 'Regel-4b-Halt (Rotfall der Automatik): claude-code mit gesetztem output_schema hält an, statt es still zu ignorieren (E-159)',
+    workflow: gateWorkflow([gelaufen('schritt-2'), gateSchritt('schritt-2', null, { output_schema: 'ergebnis-code-reviewer' })]),
     ergebnis: ERFOLG_1,
-    erwartet: { art: 'haltKlaerung', grund: "Worker 'codex' ist erst ab F16 dispatchbar", aktiverSchrittId: 'schritt-2' },
+    erwartet: {
+      art: 'haltKlaerung',
+      grund:
+        "Schritt 'schritt-2' setzt output_schema 'ergebnis-code-reviewer', aber Worker 'claude-code' kennt kein Ausgabeschema — nur 'codex' wird mit '--output-schema' gestartet",
+      aktiverSchrittId: 'schritt-2',
+    },
   },
   {
     name: 'Grenz-Halt: grenzen.max_schritte erreicht',
@@ -318,7 +332,7 @@ for (const fall of automatFaelle) {
 }
 if (befunde.length === befundeVorAutomat) {
   console.log(
-    `✓ ${automatFaelle.length} Fall/Fälle von ermittleNaechstenSchritt geprüft (Regel-0-/Gestoppt-, ZWINGEND-, Codex-, Grenz-, Klär-, Wiederaufnahme- und Allowlist-Halt; Erststart, EMPFOHLEN, erteilte Freigabe, fertig).`
+    `✓ ${automatFaelle.length} Fall/Fälle von ermittleNaechstenSchritt geprüft (Regel-0-/Gestoppt-, ZWINGEND-, Regel-4b-, Grenz-, Klär-, Wiederaufnahme- und Allowlist-Halt; Erststart, EMPFOHLEN, erteilte Freigabe, fertig).`
   )
 }
 
@@ -789,6 +803,214 @@ async function starteTestserver(optionen) {
       }
     } finally {
       await schliessen()
+    }
+  }
+
+  // ─── F16 WS-3a (AK10/AK11): ein codex-Schritt REAL über den Automatenpfad ──
+  //
+  // Der QA-Pass vom 11.09.2026 (Befund 1) hat die Lücke benannt, die dieser
+  // Abschnitt schließt: die Auflösung von output_schema und die Weitergabe von
+  // schritt.worker in loeseSchrittEingabenAuf waren von KEINEM Test erreichbar
+  // — ein claude-code-Schritt mit Schema wird von Regel 4b vorher angehalten,
+  // und einen codex-Schritt trug keine Fixture. Beide Zeilen ließen sich
+  // ersatzlos löschen, ohne dass ein Gate rot wurde. Genau das ist der Fall,
+  // vor dem ARCHITECTURE.md §8 warnt: eine Zusage ohne Rot-Nachweis.
+  //
+  // Gebraucht wird dafür eine Startvorlage MIT worker.codex-Block. Keine
+  // Repo-Vorlage trägt einen (startvorlagen/ai-workforce.json muss nach AK5
+  // ausdrücklich ohne gültig bleiben), deshalb eine Wegwerfkopie im
+  // Temp-Verzeichnis, die über die injizierbare Option startvorlagePfad
+  // hereinkommt. Die Pfade darin bleiben repo-relativ — ladeStartvorlage löst
+  // profilPfad gegen das Arbeitsverzeichnis auf, und das ist die Repo-Wurzel.
+  {
+    const befundeVorWs3a = befunde.length
+    const vorlageBasis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const CODEX_STARTZIEL = [process.execPath]
+    const CODEX_VERSION = '0.153.4 (Codex CLI)'
+    const wegwerfVerzeichnis = mkdtempSync(join(tmpdir(), 'f15-ws3a-vorlage-'))
+    const vorlageMitCodexPfad = join(wegwerfVerzeichnis, 'mit-codex.json')
+    const vorlageOhneCodexPfad = join(wegwerfVerzeichnis, 'ohne-codex.json')
+    writeFileSync(
+      vorlageMitCodexPfad,
+      JSON.stringify({ ...vorlageBasis, worker: { codex: { startziel: CODEX_STARTZIEL, versionDeklariert: CODEX_VERSION, sandbox: 'read-only' } } }),
+      'utf8'
+    )
+    writeFileSync(vorlageOhneCodexPfad, JSON.stringify(vorlageBasis), 'utf8')
+
+    // Das Wegwerf-Verzeichnis wird im finally geräumt, nicht am Blockende:
+    // wirft einer der fetch-Aufrufe darin, bliebe es sonst liegen (Muster
+    // check-f16-codex-gateway.mjs, Reviewer-Pass 11.09.2026, V6).
+    try {
+
+      /**
+       * Startet einen einzelnen codex-Schritt über POST /api/workflows/<id>/starten.
+       * @param schrittFelder - Abweichungen am Schritt (output_schema, werkzeugsatz, …)
+       * @param startvorlagePfad - Pfad der zu ladenden Startvorlage
+       * @returns { status, koerper, gesehen, starts, workflowId }
+       */
+      async function starteCodexSchritt(schrittFelder, startvorlagePfad = vorlageMitCodexPfad) {
+        const workflowId = `ws3a-codex-${randomUUID()}`
+        let gesehen = null
+        let starts = 0
+        const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben, laufOptionen) => {
+          starts += 1
+          gesehen = { laufId, eingaben, laufOptionen }
+          return erfolgreichesErgebnis()
+        }
+        const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad })
+        try {
+          await legeWorkflowAn(basisUrl, workflowId, [
+            gateSchritt('schritt-1', null, { eingaben: [`artefakt:auftrag-${auftragId}`], worker: 'codex', modell: 'gpt-5-codex', ...schrittFelder }),
+          ])
+          const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+          const koerper = await antwort.json()
+          // Das .then der Nachbereitung läuft asynchron nach der Antwort.
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          return { status: antwort.status, koerper, gesehen, starts, workflowId }
+        } finally {
+          await schliessen()
+        }
+      }
+
+      // ─── TC-N1: Grünfall. Ein codex-Schritt startet, und die AK11-Auflösung
+      //     kommt real bei fuehreAufgabeDurch an.
+      {
+        const gruen = await starteCodexSchritt({ werkzeugsatz: 'lesend', output_schema: 'ergebnis-code-reviewer' })
+        if (gruen.status !== 202) {
+          befunde.push(`WS-3a TC-N1: ein codex-Schritt erwartet 202, erhalten ${gruen.status} (${JSON.stringify(gruen.koerper)})`)
+        } else if (gruen.gesehen === null) {
+          befunde.push('WS-3a TC-N1: der codex-Lauf wurde nicht gestartet (Attrappe nie aufgerufen)')
+        } else {
+          const e = gruen.gesehen.eingaben
+          if (e.worker !== 'codex') {
+            befunde.push(`WS-3a TC-N1 (AK11): eingaben.worker erwartet 'codex' (aus schritt.worker), erhalten ${JSON.stringify(e.worker)}`)
+          }
+          // Der aufgelöste Schemapfad ist das eigentliche Beweisstück von AK10:
+          // ein NAME im Plan, ein ABSOLUTER Pfad in den Eingaben.
+          const erwarteterSchemaPfad = join(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
+          if (e.ausgabeSchemaPfad !== erwarteterSchemaPfad) {
+            befunde.push(`WS-3a TC-N1 (AK10): ausgabeSchemaPfad erwartet ${JSON.stringify(erwarteterSchemaPfad)}, erhalten ${JSON.stringify(e.ausgabeSchemaPfad)}`)
+          }
+          if (JSON.stringify(e.werkzeugStartziel) !== JSON.stringify(CODEX_STARTZIEL)) {
+            befunde.push(`WS-3a TC-N1 (AK11): werkzeugStartziel erwartet worker.codex.startziel, erhalten ${JSON.stringify(e.werkzeugStartziel)}`)
+          }
+          if (e.werkzeugVersionDeklariert !== CODEX_VERSION) {
+            befunde.push(`WS-3a TC-N1 (AK11): werkzeugVersionDeklariert erwartet ${JSON.stringify(CODEX_VERSION)}, erhalten ${JSON.stringify(e.werkzeugVersionDeklariert)}`)
+          }
+          if (e.berechtigungskontext !== CODEX_BERECHTIGUNGSKONTEXT) {
+            befunde.push(`WS-3a TC-N1 (AK11): berechtigungskontext erwartet die Gateway-Konstante, erhalten ${JSON.stringify(e.berechtigungskontext)}`)
+          }
+          if (e.berechtigungskontext === vorlageBasis.berechtigungskontext) {
+            befunde.push('WS-3a TC-N1 (AK11): der codex-Berechtigungskontext ist derselbe wie der flache Vorlagenwert — die worker-abhängige Auflösung greift nicht')
+          }
+        }
+      }
+
+      // ─── TC-N1b: Gegenprobe. Derselbe Aufbau mit worker 'claude-code' liefert
+      //     die FLACHEN Vorlagenfelder und trägt worker/ausgabeSchemaPfad NICHT
+      //     (F-286). Das ist der real vorkommende Aufruf — loeseSchrittEingabenAuf
+      //     reicht worker: 'claude-code' und ausgabeSchemaPfad: null immer mit,
+      //     und genau dass diese beiden weggefiltert werden, ist die Zusage
+      //     (QA-Pass 11.09.2026, Befund 5).
+      {
+        const ccLauf = await starteCodexSchritt({ worker: 'claude-code', werkzeugsatz: 'schreibend', output_schema: null })
+        if (ccLauf.status !== 202 || ccLauf.gesehen === null) {
+          befunde.push(`WS-3a TC-N1b: ein claude-code-Schritt muss unverändert starten, erhalten ${ccLauf.status} (${JSON.stringify(ccLauf.koerper)})`)
+        } else {
+          const e = ccLauf.gesehen.eingaben
+          const erwartet = ['anfragen', 'aufrufEingaben', 'auftragId', 'auftragstext', 'berechtigungskontext', 'budget', 'rolle', 'werkzeugStartziel', 'werkzeugVersionDeklariert']
+          const erhalten = Object.keys(e).sort()
+          if (JSON.stringify(erhalten) !== JSON.stringify(erwartet)) {
+            befunde.push(`WS-3a TC-N1b (F-286): Feldsatz eines Claude-Code-Schritts erwartet ${JSON.stringify(erwartet)}, erhalten ${JSON.stringify(erhalten)}`)
+          }
+          if (e.berechtigungskontext !== vorlageBasis.berechtigungskontext || JSON.stringify(e.werkzeugStartziel) !== JSON.stringify(vorlageBasis.werkzeugStartziel)) {
+            befunde.push('WS-3a TC-N1b (F-286): ein Claude-Code-Schritt bekommt nicht mehr die flachen Vorlagenfelder')
+          }
+        }
+      }
+
+      // ─── TC-N2/N3/N4: die drei Ablehnungen am REALEN Startendpunkt. Geprüft
+      //     wird nicht nur der Statuscode, sondern die Zusage "vor jedem
+      //     Schreiben": kein Lauf, keine zweite Workflow-Version, der Schritt
+      //     steht danach unverändert auf OFFEN mit lauf_id null.
+      const ablehnungen = [
+        {
+          name: 'TC-N2 (output_schema-Datei fehlt)',
+          felder: { werkzeugsatz: 'lesend', output_schema: 'gibt-es-nicht-im-repo' },
+          vorlage: vorlageMitCodexPfad,
+          muster: /nicht gefunden/,
+        },
+        {
+          name: 'TC-N3 (codex + schreibender Werkzeugsatz)',
+          felder: { werkzeugsatz: 'schreibend', output_schema: 'ergebnis-code-reviewer' },
+          vorlage: vorlageMitCodexPfad,
+          muster: /schreibende Execution bleibt Claude Code/,
+        },
+        {
+          name: 'TC-N4 (Startvorlage ohne worker.codex-Block)',
+          felder: { werkzeugsatz: 'lesend', output_schema: 'ergebnis-code-reviewer' },
+          vorlage: vorlageOhneCodexPfad,
+          muster: /worker\.codex/,
+        },
+      ]
+      for (const fall of ablehnungen) {
+        const ergebnis = await starteCodexSchritt(fall.felder, fall.vorlage)
+        // Der 400er dieses Endpunkts trägt nur { grund } — 'art' ist die interne
+        // Klassifikation von starteWorkflowSchritt und steht nur im 409er-Körper
+        // des Freigabe-Endpunkts. Geprüft wird deshalb der Grundtext, und zwar
+        // auf den Anteil, der die konkrete Regel benennt.
+        if (ergebnis.status !== 400 || !fall.muster.test(ergebnis.koerper.grund ?? '')) {
+          befunde.push(`WS-3a ${fall.name}: erwartet 400 mit Grund nach ${fall.muster}, erhalten ${ergebnis.status} (${JSON.stringify(ergebnis.koerper)})`)
+        }
+        if (!(ergebnis.koerper.grund ?? '').startsWith("Schritt 'schritt-1': ")) {
+          befunde.push(`WS-3a ${fall.name}: der Grund muss den Schritt benennen, erhalten ${JSON.stringify(ergebnis.koerper.grund)}`)
+        }
+        if (ergebnis.starts !== 0) {
+          befunde.push(`WS-3a ${fall.name}: eine Ablehnung darf keinen Lauf starten, erhalten ${ergebnis.starts}`)
+        }
+        const zweiteVersion = ladeArtefaktVersion(`workflow-${ergebnis.workflowId}`, 2, { basisVerzeichnis, schreiber: () => {} })
+        if (zweiteVersion !== null) {
+          befunde.push(`WS-3a ${fall.name}: eine Ablehnung hat trotzdem eine neue Workflow-Version geschrieben`)
+        }
+        const bestand = ladeArtefaktVersion(`workflow-${ergebnis.workflowId}`, undefined, { basisVerzeichnis, schreiber: () => {} })
+        const schrittDanach = bestand?.daten?.schritte?.[0]
+        if (schrittDanach?.status !== 'OFFEN' || schrittDanach?.lauf_id !== null) {
+          befunde.push(`WS-3a ${fall.name}: der Schritt steht nach der Ablehnung nicht mehr auf OFFEN/lauf_id null, erhalten ${JSON.stringify(schrittDanach)}`)
+        }
+      }
+
+      // ─── TC-N5: die Reihenfolge der Ablehnungen festnageln. Ohne diese beiden
+      //     Fälle ließen sich die Blöcke vertauschen, ohne dass etwas rot wird
+      //     (QA-Pass 11.09.2026, Befund 4).
+      //
+      //     (a) kaputtes Schema UND fehlendes Eingabe-Artefakt → das Schema
+      //         gewinnt. Es ist die Angabe, die der Mensch gerade geplant hat;
+      //         die Artefakt-Referenz stand schon vorher da. loeseSchrittEingabenAuf
+      //         löst das Schema deshalb als ERSTES auf, vor jedem ladeArtefaktVersion.
+      const reihenfolgeA = await starteCodexSchritt({
+        werkzeugsatz: 'lesend',
+        output_schema: 'gibt-es-nicht-im-repo',
+        eingaben: ['artefakt:gibt-es-auch-nicht'],
+      })
+      if (reihenfolgeA.status !== 400 || !/nicht gefunden/.test(reihenfolgeA.koerper.grund ?? '') || /Eingabe-Artefakt/.test(reihenfolgeA.koerper.grund ?? '')) {
+        befunde.push(
+          `WS-3a TC-N5a: bei kaputtem output_schema UND fehlendem Eingabe-Artefakt muss der Schema-Grund gewinnen, erhalten ${JSON.stringify(reihenfolgeA.koerper)}`
+        )
+      }
+      //     (b) kaputtes Schema UND schreibender Werkzeugsatz → ebenfalls das
+      //         Schema: loeseSchrittEingabenAuf läuft vor loeseAusfuehrungsEingabenAuf.
+      const reihenfolgeB = await starteCodexSchritt({ werkzeugsatz: 'schreibend', output_schema: 'gibt-es-nicht-im-repo' })
+      if (reihenfolgeB.status !== 400 || !/nicht gefunden/.test(reihenfolgeB.koerper.grund ?? '')) {
+        befunde.push(`WS-3a TC-N5b: bei kaputtem output_schema UND schreibendem Werkzeugsatz muss der Schema-Grund gewinnen, erhalten ${JSON.stringify(reihenfolgeB.koerper)}`)
+      }
+
+      if (befunde.length === befundeVorWs3a) {
+        console.log(
+          '✓ F16 WS-3a: ein codex-Schritt läuft real über POST /api/workflows/<id>/starten (output_schema als absoluter Pfad, Startziel/Version/Kontext aus worker.codex); die drei Ablehnungen greifen vor jedem Schreiben; Claude-Code-Schritte behalten ihren Feldsatz (F-286); die Reihenfolge der Gründe ist gepinnt.'
+        )
+      }
+    } finally {
+      rmSync(wegwerfVerzeichnis, { recursive: true, force: true })
     }
   }
 
@@ -2117,14 +2339,15 @@ async function starteTestserver(optionen) {
     }
     const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
     try {
-      // (a) Ein Schritt, der gar nicht dispatchbar ist (worker 'codex', Regel 4), darf keine
+      // (a) Ein Schritt, der gar nicht startbar ist (seit F16 WS-3a: Regel 4b, claude-code mit
+      //     gesetztem output_schema — 'codex' ist mit AK10 dispatchbar geworden), darf keine
       //     Freigabefrage sein — die Freigabe bliebe folgenlos.
-      const codexId = `ws2c-freigabe-codex-${randomUUID()}`
-      await legeWorkflowAn(basisUrl, codexId, [gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', worker: 'codex' })])
-      const codex = await freigebe(basisUrl, codexId, { schrittId: 'schritt-1', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' })
-      const codexKoerper = await codex.json()
-      if (codex.status !== 409 || codexKoerper.art !== 'haltKlaerung') {
-        befunde.push(`(b1): ein nicht dispatchbarer Schritt darf nicht freigegeben werden, erhalten ${codex.status} (${JSON.stringify(codexKoerper)})`)
+      const schemaHaltId = `ws2c-freigabe-schema-${randomUUID()}`
+      await legeWorkflowAn(basisUrl, schemaHaltId, [gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-code-reviewer' })])
+      const schemaHalt = await freigebe(basisUrl, schemaHaltId, { schrittId: 'schritt-1', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' })
+      const schemaHaltKoerper = await schemaHalt.json()
+      if (schemaHalt.status !== 409 || schemaHaltKoerper.art !== 'haltKlaerung') {
+        befunde.push(`(b1): ein nicht dispatchbarer Schritt darf nicht freigegeben werden, erhalten ${schemaHalt.status} (${JSON.stringify(schemaHaltKoerper)})`)
       }
       // (a2) Der Fall, der die Regel vom Statusvergleich UNTERSCHEIDET (Reviewer-Pass
       //      10.09.2026, W1): ein Bestand, der WARTET_FREIGABE trägt und trotzdem keine
@@ -2136,21 +2359,21 @@ async function starteTestserver(optionen) {
       //      Am Endpunkt vorbei angelegt, weil kein Automatenpfad diesen Zustand erzeugt: er
       //      entsteht aus einem Bestandsartefakt oder einer von Hand geschriebenen Fassung.
       const profilReferenzW1 = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
-      const wartetAberCodexId = `ws2c-freigabe-wartet-codex-${randomUUID()}`
+      const wartetAberSchemaId = `ws2c-freigabe-wartet-schema-${randomUUID()}`
       registriereWorkflow(
-        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', worker: 'codex' })], {
-          workflow_id: wartetAberCodexId,
+        gateWorkflow([gateSchritt('schritt-1', null, { eingaben: [], freigabe: 'ZWINGEND', output_schema: 'ergebnis-code-reviewer' })], {
+          workflow_id: wartetAberSchemaId,
           auftrag_id: auftragId,
           status: 'WARTET_FREIGABE',
         }),
         profilReferenzW1,
         { basisVerzeichnis, schreiber: () => {} }
       )
-      const wartetAberCodex = await freigebe(basisUrl, wartetAberCodexId, { schrittId: 'schritt-1', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' })
-      const wartetAberCodexKoerper = await wartetAberCodex.json()
-      if (wartetAberCodex.status !== 409 || wartetAberCodexKoerper.art !== 'haltKlaerung') {
+      const wartetAberSchema = await freigebe(basisUrl, wartetAberSchemaId, { schrittId: 'schritt-1', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate.' })
+      const wartetAberSchemaKoerper = await wartetAberSchema.json()
+      if (wartetAberSchema.status !== 409 || wartetAberSchemaKoerper.art !== 'haltKlaerung') {
         befunde.push(
-          `(b1) W1: ein Bestand mit status WARTET_FREIGABE, dessen Schritt nicht dispatchbar ist, darf KEINE Freigabe annehmen (die Regel ist schärfer als der Statusvergleich), erhalten ${wartetAberCodex.status} (${JSON.stringify(wartetAberCodexKoerper)})`
+          `(b1) W1: ein Bestand mit status WARTET_FREIGABE, dessen Schritt nicht dispatchbar ist, darf KEINE Freigabe annehmen (die Regel ist schärfer als der Statusvergleich), erhalten ${wartetAberSchema.status} (${JSON.stringify(wartetAberSchemaKoerper)})`
         )
       }
       // Dasselbe mit erreichter Grenze: WARTET_FREIGABE, aber max_schritte ist aufgebraucht.
@@ -2174,7 +2397,7 @@ async function starteTestserver(optionen) {
         )
       }
       for (const [name, id, schritt] of [
-        ['W1/codex', wartetAberCodexId, 'schritt-1'],
+        ['W1/output_schema', wartetAberSchemaId, 'schritt-1'],
         ['W1/grenze', wartetAberGrenzeId, 'schritt-2'],
       ]) {
         if (ladeArtefaktVersion(`entscheidung-workflow-${id}-${schritt}`, undefined, { basisVerzeichnis, schreiber: () => {} }) !== null) {
@@ -2197,7 +2420,7 @@ async function starteTestserver(optionen) {
         befunde.push(`(b1): keiner dieser Fälle darf einen Lauf starten, erhalten ${gestartete.length}`)
       }
       for (const [name, workflowId] of [
-        ['codex', codexId],
+        ['output_schema', schemaHaltId],
         ['gestoppt', gestopptId],
       ]) {
         if (ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-schritt-1`, undefined, { basisVerzeichnis, schreiber: () => {} }) !== null) {
@@ -2842,7 +3065,7 @@ async function starteTestserver(optionen) {
     // schrittId null, obwohl der Halt einen Schritt betrifft: 'haltKlaerung' trägt in der Union
     // keinen schritt_id-Namen, nur einen Grundtext (der ihn nennt). Die Projektion erfindet
     // dafür nichts — sie gibt weiter, was der Ausgang trägt.
-    { art: 'haltKlaerung', workflowId: 'ws3b-haltklaerung', schrittId: null, daten: gateWorkflow([gateSchritt('schritt-1', null, { worker: 'codex' })]) },
+    { art: 'haltKlaerung', workflowId: 'ws3b-haltklaerung', schrittId: null, daten: gateWorkflow([gateSchritt('schritt-1', null, { output_schema: 'ergebnis-code-reviewer' })]) },
     {
       art: 'haltGrenze',
       workflowId: 'ws3b-haltgrenze',

@@ -73,6 +73,27 @@ export interface AusfuehrungsEingaben {
   anfragen: Anfrage[]
   budget: Budget
   aufrufEingaben: AufrufEingaben
+  /**
+   * Ausführungswerkzeug dieses Laufs (F16 WS-3a, AK11). Additiv und optional;
+   * fehlend bedeutet 'claude-code' — dieselbe Vorgabe wie in der Laufakte
+   * (AK4) und im Result Evaluator (AK8), damit es über die Kette hinweg genau
+   * EINE Lesart eines fehlenden worker gibt.
+   *
+   * Bewusst NICHT in aufrufEingaben: das ist der Parametersatz genau eines
+   * Aufrufbauers, und baueAufruf/baueCodexAufruf haben unterschiedliche
+   * Pflichtfelder. Der Worker steht deshalb eine Ebene höher, neben
+   * werkzeugStartziel — er WÄHLT den Aufrufbauer, er ist keiner seiner
+   * Parameter. Präzedenz: der Wert der Laufakte (AK4).
+   */
+  worker?: 'claude-code' | 'codex'
+  /**
+   * Absoluter Pfad des Ausgabeschemas, bereits aufgelöst und geprüft vom
+   * Dispatcher (scripts/leitstand-server.mjs, loeseAusgabeSchemaAuf, AK10) —
+   * NIE ein Schemaname. baueCodexAufruf wirft bei einem relativen Pfad (AK1);
+   * der Controller reicht durch und beschafft nicht. Nur bei worker 'codex'
+   * gesetzt, dort null, wenn der Schritt ohne Ausgabeschema läuft.
+   */
+  ausgabeSchemaPfad?: string | null
   werkzeugStartziel: string[]
   werkzeugVersionDeklariert: string
   berechtigungskontext: string
