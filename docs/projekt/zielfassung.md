@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.20 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.21 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -38,6 +38,8 @@ v1.17 → v1.18: **§13.4 um E-M3-4 ergänzt und E-M3-3 präzisiert** (Stefan, 1
 v1.18 → v1.19: **Feature F16 abgeschlossen; erster Satz der §13.4-Bestehensbedingung real erfüllt** (Stefan, 11.09.2026, F16 WS-3b AK12): ein zweistufiger Workflow (Codex `code-reviewer`, lesend → Claude Code `ausfuehrung`, schreibend) ist real über den Leitstand ohne manuellen Zwischenstart durchgelaufen — genau ein `OFFEN → LAEUFT`-Übergang, 29 ms zwischen Cursor-Wanderung und Start des zweiten Schritts. Damit ist der zweite Worker aus E-M3-2 nicht mehr nur gebaut, sondern in der realen Kette belegt. Nachweis `features/F16/nachweis-ak12.md`, Plan `nachweis/ws3b/L1.json`. **Kein neuer Entscheid** — reine Fortschreibung des Belegstands; die beiden übrigen Sätze der Bestehensbedingung (Szenario A/B, Router-Eval-Gate) bleiben offen.
 
 v1.19 → v1.20: **Meilenstein 3 real abgeschlossen; F19 als Bridge-Feature verortet** (Stefan, 11./12.09.2026, Challenge-Runde F19 im Claude-Projekt „AI Workforce"): Satz 2 (Szenario A/B) und Satz 3 (Router-Eval-Gate) der §13.4-Bestehensbedingung sind mit F18 WS-3 real erfüllt (`features/F18/nachweis-ws3-szenario-a.md`, `features/F18/nachweis-ws3-szenario-b.md`, `features/F18/eval-bericht-ws3.md`); damit ist Meilenstein 3 mit allen drei Sätzen bestanden. F19 (Capability Foundation, PR #145/#146) ist weder Teil von Meilenstein 3 noch von Meilenstein 4, sondern ein eigenständiges Bridge-Feature dazwischen. **Kein neuer Entscheid** zu E-M3-1…E-M3-4 — Fortschreibung des Belegstands plus Verortung. Löst `state/findings.md` F-340.
+
+v1.20 → v1.21: **§13.5 Meilenstein 4 ergänzt** (Stefan, 12.09.2026, Challenge und PlanV1 im Claude-Projekt „AI Workforce", claude/183–184): Zielsatz, Bestehensbedingung, Nicht-Ziele und sieben Entscheidungen E-M4-1…E-M4-7. E-M4-2 hebt das M2-Nicht-Ziel „Mehrprojektverwaltung" für M4 auf; alle übrigen Entscheidungen von Fassung 1, M2 und M3 bleiben unverändert, insbesondere Entscheidung 30, E-M2-6, E-M3-1 bis E-M3-4, D3, D13. Löst `state/findings.md` F-349 (Verweis) mit; F-350/F-351 werden erst durch F23 gelöst.
 
 ---
 
@@ -482,6 +484,96 @@ Werkzeugen · vollautomatische URL-/Repo-Analyse.
 
 Der Orchestrierungs-Grundsatz Stufe 1 gilt unverändert für jeden Schritt
 außerhalb eines freigegebenen Workflows.
+
+---
+
+### 13.5 Meilenstein 4 — Jarvis Workspace
+
+`[Fakt, Nachtrag 12.09.2026]` Stefan hat Fassung 1 nach realem Abschluss von
+Meilenstein 3 und des Bridge-Features F19 um einen vierten Meilenstein
+erweitert (Challenge `claude/183`, PlanV1 `claude/184`, beide gegen
+`main` `d1127f3` geprüft).
+
+**Zielsatz:** Stefan — und ein Kollege in eigener lokaler Instanz — legt
+Projekte an oder importiert sie, sieht Arbeit, Aufmerksamkeit und
+Fähigkeiten der Workforce an einem Ort, startet Arbeit per Klick oder
+Chat, nimmt reale Ergebnisse ab oder fordert eine begrenzte Anpassung
+desselben Auftrags, und die Workforce entwickelt sich darüber selbst
+weiter.
+
+**Bestehensbedingung:** ein echter Harness Improvement und ein echter Bug
+der AI Workforce sind über Workboard → Click-to-Work → Post-Build-Prüfung
+→ Abnahme → Terminal-Commit real geschlossen; mindestens ein `ADJUST` an
+einem realen Ergebnis wurde als Anpassung desselben Auftrags erneut
+vorgelegt und angenommen; ein Kollege hat in eigener Instanz ein Projekt
+importiert und ein reales Feature durchlaufen; mindestens drei Tage
+reales Dogfooding sind protokolliert (Messgrößen aus §13.3 wiederverwendet,
+Git-Commits zählen weiterhin nicht).
+
+**Features:** F20 Jarvis Shell · F21 Workboard + Attention · F22
+Click-to-Work · F23 Abnahme + ADJUST-Loop · F24 Capabilities · F25
+Projekte · F26 Jarvis Chat · F27 Resource Scout · F28 Persona · F29
+Design Scout + visuelle Produktisierung · F30 Dogfooding + Team.
+Reihenfolge und Abhängigkeiten in `docs/STATUS.md`.
+
+**E-M4-1** *(Stefan, 12.09.2026)* — Der Apps Hub (Registry, Lifecycle,
+Start/Stop, Health) ist nicht Teil von Meilenstein 4. Er wird beim ersten
+realen App-Anlass als erstes Feature danach gebaut. Grund: keine Mini-App
+existiert; §13.2 verbietet vorsorgliche Architektur für Backlog-Kandidaten;
+ein laufender Prozess ist keiner der drei Terminalausgänge eines Laufs.
+
+**E-M4-2** *(Stefan, 12.09.2026)* — Mehrprojekt: die Workforce hält ein
+Projektregister (`projekte.json`, Schema unter `schemas/`) mit Pfaden zu
+Repository, Startvorlage, Profil und Basisverzeichnis. Der Kontrollzustand
+eines Projekts liegt in dessen eigenem Repository (D3 „im selben
+Repository"), nie zentral. D13 (genau ein aktiver Arbeitsstrang) gilt je
+Workforce-Instanz über alle Projekte. Der `projekt.status` ist wie
+`freigabe` in F19 eine gepflegte Menschenentscheidung; Health ist
+abgeleitet. Hebt das M2-Nicht-Ziel „Mehrprojektverwaltung über das eine
+reale Profil hinaus" für M4 auf; `LEITSTAND_STARTVORLAGE_PFAD` wird durch
+das Register abgelöst.
+
+**E-M4-3** *(Stefan, 12.09.2026)* — Der Chat ist eine lesende Rolle
+`jarvis` auf den bestehenden Workern (One-Shot-Lauf je Nachricht mit
+`output_schema`), Statusfragen werden deterministisch aus Projektionen
+beantwortet, der Verlauf ist Lineage. Kein neuer Provider, kein
+API-Schlüssel (Entscheidung 30, E-M2-6, E-M3-2 bleiben). Der Chat umgeht
+Router, Freigabe und Automat nicht.
+
+**E-M4-4** *(Stefan, 12.09.2026)* — Neue Werkzeugsatz-Art
+`recherchierend` (Read, Grep, Glob, WebSearch, WebFetch; kein Bash, kein
+Write/Edit), zulässig ausschließlich für die Rolle `scout`, Durchsetzungsgrad
+`DEKLARIERT`. Externe Web-Inhalte sind untrusted (P5) und dürfen keine
+Projekt-, Sicherheits- oder Systemregeln überschreiben; Ausgabe nur über
+Schema. Ein Scout installiert, aktiviert oder gibt nichts frei; ein
+Kandidat wird als Eintrag `typ: extern, freigabe: OFFEN` vorgemerkt — über
+einen normalen Lauf, nicht durch den Kern.
+
+**E-M4-5** *(Stefan, 12.09.2026)* — Git bleibt beim Menschen (§2, 142a;
+§9.1; commit-guard). Click-to-Work endet bei der Abnahme; Commit, Push und
+PR werden als Terminal-Schritt im Leitstand angezeigt. Der Fassung-2-
+Kandidat „Core als Halter der Git-Freigabe" bleibt unberührt.
+
+**E-M4-6** *(Stefan, 12.09.2026)* — Workitems, Review-Zustand,
+Capability-Phasen (DISCOVERED/ASSESSED/APPROVED/AVAILABLE) und
+Persona-Zustand sind Projektionen über bestehende Quellen
+(`state/findings.md`, `features/*/feature.md`, Wirkungsmarken, Workflows,
+`src/ressourcen`), keine gespeicherten Zustände. Menschliche
+Überschreibungen (Priorität, Abnahme, Schließen) sind Entscheidungsartefakte
+in der Lineage; das Entscheidungsartefakt erhält ein JSON-Schema und einen
+Validator (löst F-350).
+
+**E-M4-7** *(Stefan, 12.09.2026)* — Die Workflow-Vorlagen erhalten einen
+lesenden Post-Build-Prüfschritt nach `ausfuehrung`; der Schritt-Automat
+wertet das strukturierte `urteil` des Vorschritts aus und hält bei
+`BLOCKIERT` mit `KLAERUNG_ERFORDERLICH` an (löst F-351). E-M3-1 bleibt
+unverändert: kein Schritt startet ohne die dort genannten Bedingungen.
+
+**Nicht in Meilenstein 4:** Apps Hub (E-M4-1) · Commit durch den Kern ·
+Provider-Adapter · parallele Läufe · automatische Modellwahl ·
+schreibende Rollen-/Modell-Overrides im Leitstand · Persona-Mund, Avatar,
+Voice · Roadmap-/Workitem-Erzeugung für neue Projekte · Vorratssuche der
+Scouts · Mehrbenutzerbetrieb in einer Instanz.
 
 ---
 

@@ -1,5 +1,10 @@
 # Umsetzungsplan Fassung 1 (v1)
 
+`[Fakt, Nachtrag 12.09.2026]` Dieses Dokument endet inhaltlich bei
+Meilenstein 2 (Stand 28.08.2026). Feature-Reihenfolge und Scope ab
+Meilenstein 3 stehen in `docs/projekt/zielfassung.md` §13.4 und §13.5
+sowie in `docs/STATUS.md`; siehe `state/findings.md` F-349.
+
 Stand: 28.08.2026, korrigiert 28.08.2026 (Reihenfolgefehler Vertragsschiene,
 s. Abschnitt 3). Ergebnis der Teilaufgabe „Stack-/Architektur-Finalisierung,
 restliche Randfragen + Umsetzungsplan" (`claude/60_...`), entschieden im
