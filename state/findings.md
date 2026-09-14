@@ -6028,7 +6028,7 @@ Maßnahme: keine; bei künftigen Auftragsdokumenten Basisversion prüfen.
 Status: offen.
 Feature/Run: M4-Challenge, 12.09.2026.
 
-**F-359** · `BUG` · P3 · offen
+**F-359** · `BUG` · P3 · behoben
 Titel: Doppelte HTML-Escapierung im Leitstand bei `auftrag_fehlt` der
 Lauf-Detailansicht.
 Beschreibung: `renderAuftrag()` (seit F20 WS-1 in
@@ -6045,9 +6045,16 @@ Auswirkung: kosmetisch, nur bei einer `auftragId` mit HTML-Sonderzeichen
 sichtbar (in der Praxis bisher keine solche `auftragId` beobachtet).
 Maßnahme: `auftrag_fehlt` aus dem `texte`-Objekt herausziehen und als
 Funktion statt als vorgerenderten String bauen, dann nur einmal escapen.
-Status: offen.
+Status: behoben (14.09.2026, F22 WS-2 AK8-Re-Test) — real über den
+Click-to-Work-Pfad gefunden vom Router (`codex`, F-373-Re-Test) und vom
+Ausführungsschritt (`claude-code`) behoben:
+`texte.auftrag_fehlt` interpoliert `auftrag.auftragId` jetzt roh, die
+äußere `escapeHtml(unbekanntStatusText(...))`-Hülle bleibt die einzige
+Escapierung. Regressionsschutz (g) in
+`scripts/check-f12-leitstand-ansicht.mjs` ergänzt.
 Feature/Run: F20 WS-1, 14.09.2026 (Code-Review-Fund, vorbestehend, nicht
-durch die Modul-Aufteilung eingeführt).
+durch die Modul-Aufteilung eingeführt). Behoben F22 WS-2 AK8-Re-Test,
+14.09.2026.
 
 **F-360** · `PROCESS_IMPROVEMENT` · P3 · behoben
 Titel: F-352 als „behoben" markiert, obwohl ein Teil der eigenen Maßnahme
@@ -6282,7 +6289,7 @@ an `GET /api/workflows/<id>`), außerhalb von F22.
 Status: offen.
 Feature/Run: F22 WS-2, 14.09.2026.
 
-**F-373** · `BUG` · P1 · offen
+**F-373** · `BUG` · P1 · gelöst
 Titel: Router-Lauf über den `claude-code`-Rückfall folgt real 3/3 nicht der
 Rollenvorgabe (Freitext-Agentenverhalten statt JSON-Klassifikation).
 Beschreibung: Realer Click-to-Work-Test (F22 WS-2, AK8-Vorbereitung,
@@ -6320,5 +6327,73 @@ allgemeinen Coding-Agent-Verhalten (anders als bei `codex` mit
 `--output-schema`). Bis geklärt: `codex`-Verfügbarkeit in dieser Umgebung
 prüfen (würde den Rückfallpfad umgehen). Außerhalb von F22 (Nicht-Ziel:
 Änderung der Router-Klassifikationslogik).
-Status: offen.
+Status: gelöst.
 Feature/Run: F22 WS-2, realer Klick-Test, 14.09.2026.
+
+Nachtrag (14.09.2026, Root-Cause-Klärung): Ursache war eine reine
+Start-Konfigurationslücke, keine fehlende CLI-Installation — der
+Testlauf nutzte die Default-Startvorlage
+startvorlagen/beispielprojekt.json (kein worker-Feld), wodurch
+loeseRessourcenAuf codex strukturell als nicht verfügbar meldete.
+startvorlagen/ai-workforce.json trägt einen vollständigen
+worker.codex-Block. Re-Test mit `LEITSTAND_STARTVORLAGE_PFAD=
+startvorlagen/ai-workforce.json`, echter Server, derselbe Auftrag
+(`abcd6a25-…`, F-359): Router-Lauf `router-abcd6a25-…-1789403095705`
+lief über Worker `codex`, lieferte gültige JSON-Klassifikation über
+`--output-schema` (`beobachtung: null`, kein Fence-Stripping nötig,
+siehe `kontrollzustand/lineage-router-abcd6a25-1b40-4a97-9f6c-c6273157f0f4`).
+0/3 → 1/1 real. Root Cause damit bestätigt und behoben; kein Fix an
+Router- oder Rollenprompt-Logik nötig. Siehe `features/F22/feature.md`,
+Abschnitt „Realer Test (Re-Test)". Dabei ein NEUER, unabhängiger Blocker
+im weiteren Kettendurchlauf gefunden — siehe F-374.
+
+**F-374** · `BUG` · P1 · offen
+Titel: Workboard-„Freigeben" ruft nur `POST .../starten` auf, ohne den
+für einen `ZWINGEND`-Schritt zwingenden `POST .../freigabe`-Aufruf davor
+— AK4/AK6 sind über das Workboard strukturell unerreichbar.
+Beschreibung: Realer Click-to-Work-Test (F22 WS-2, AK8-Re-Test,
+14.09.2026) gegen den echten Leitstand-Server, nach behobenem F-373
+(Router lief erfolgreich über `codex`, Vorschlag erschien real). Klick
+auf „Freigeben" (`freigebenBearbeitung`, `public/leitstand/views/
+workboard.js:405-425`) ruft ausschließlich `starteWorkflowSchritt` →
+`POST /api/workflows/<id>/starten` auf. Der erste Schritt jedes über den
+Router erzeugten Workflows trägt aber `freigabe: 'ZWINGEND'`
+(`werkzeugsatz: 'schreibend'`, by design, AK4/E-M3-1) — für einen
+ZWINGEND-Schritt lehnt der Server `POST .../starten` real mit 409
+(`art: 'haltFreigabe'`) ab, solange nicht zuvor `POST /api/workflows/<id>/
+freigabe` mit `{schrittId, entscheidung: 'FREIGEGEBEN', begruendung}`
+aufgerufen wurde (`scripts/leitstand-server.mjs:3762-3872`). Der
+bestehende `sendeWorkflowFreigabe`-Client-Aufruf
+(`public/leitstand/api.js:60`) existiert bereits und wird von der
+älteren Workflow-Ansicht korrekt so verwendet
+(`public/leitstand/views/workflows.js:673`) — `workboard.js` importiert
+ihn aber gar nicht (Zeile 43) und ruft ihn folglich nirgends auf. Der
+Code-Kommentar über `freigebenBearbeitung`
+(`workboard.js:404`, „Muster views/workflows.js renderWorkflowBedienung")
+behauptet fälschlich, dem bestehenden Muster zu folgen.
+Fundstelle: `public/leitstand/views/workboard.js:43,404-425` (fehlender
+Import/Aufruf von `sendeWorkflowFreigabe`); Gegenprobe
+`public/leitstand/views/workflows.js:673`; Server-Verhalten
+`scripts/leitstand-server.mjs:3762-3872`.
+Auswirkung: Jeder reale „Freigeben"-Klick im Workboard auf einen frisch
+gerouteten Vorschlag scheitert mit 409/„Anfrage fehlgeschlagen" — genau
+der Normalfall (ZWINGEND vor jedem schreibenden ersten Schritt, AK4).
+AK4 (Freigabe startet die Kette) und AK6 (Terminal-Block nach
+ABGESCHLOSSEN) sind über den Workboard-Pfad damit strukturell
+unerreichbar; AK8 konnte in diesem Re-Test nur durch einen manuellen,
+UI-fremden `POST .../freigabe`-Aufruf per curl umgangen werden, um den
+Rest der Kette (Ausführungsschritt, Terminal-Block) zu verifizieren —
+dieser Teil lief danach real fehlerfrei durch (`status: 'ABGESCHLOSSEN'`,
+Schritt `ERFOLGREICH`, siehe `features/F22/feature.md`). Der Fehler liegt
+also isoliert in der Verdrahtung von `freigebenBearbeitung`, nicht in der
+Kette selbst.
+Maßnahme: `freigebenBearbeitung` in `workboard.js` vor (oder statt)
+`starteWorkflowSchritt` einen `sendeWorkflowFreigabe(zustand.workflowId,
+{schrittId: <aktiver ZWINGEND-Schritt>, entscheidung: 'FREIGEGEBEN',
+begruendung: <UI-Eingabe oder Standardtext>})`-Aufruf ergänzen (Muster
+`workflows.js:673`); prüfen, ob danach noch ein separater
+`starten`-Aufruf nötig ist (im Re-Test hat bereits die `freigabe`-Antwort
+`status: 'LAEUFT'` geliefert). Außerhalb dieses Auftrags (Nicht-Ziel laut
+Handoff), eigenständiger Fix nötig.
+Status: offen.
+Feature/Run: F22 WS-2, AK8-Re-Test, 14.09.2026.
