@@ -5645,6 +5645,13 @@ gepflegtes Fence-Stripping vor dem `JSON.parse` einführen (z. B. in
 D5) — nicht in diesem WS behoben, da F18 WS-3 misst, nicht repariert.
 Status: offen.
 Feature/Run: F18 WS-3 (Router-Eval-Gate), 11.09.2026.
+Nachtrag (F22-Challenge, 14.09.2026): Ursache ist der CLI-Startpfad —
+`worker`/`ausgabeSchemaPfad` stehen nicht in
+`ERLAUBTE_STARTAUFTRAG_FELDER` (`scripts/leitstand-server.mjs`), nicht die
+Rolle. Die Rolle `router` erlaubt laut `src/rollen/index.ts` bereits
+`codex` mit `erlaubtes_output_schema: 'ergebnis-router'`. In F22 WS-1
+lösbar (Router-Lauf über den regulären Startpfad mit `worker: 'codex'`
+starten) statt weiter zu umgehen.
 
 **F-338** · `TECH_DEBT` · P2 · offen
 Titel: Wiederholt flakige Windows-Tests in vollem `npm run check`, isoliert
@@ -6226,3 +6233,20 @@ korrekt filtern.
 Maßnahme: F21 WS-1 ergänzt kenntnisgenommen: boolean als Kopfdatum
 (Muster naechster-Projektion aus F15 WS-3b), siehe AK4.
 Feature/Run: Challenge F21, 14.09.2026.
+
+**F-371** · `TECH_DEBT` · P2 · offen
+Titel: scripts/leitstand-server.mjs ist eine 252-KB-Monolithdatei; F22/F23/
+F25 hängen weitere Endpunkte hinein.
+Beschreibung: Die Datei trägt bereits alle Leitstand-Endpunkte
+(Läufe, Aufträge, Workflows, Startfehler u.a.) in einer Datei. F22, F23
+und F25 planen jeweils weitere Endpunkte an derselben Stelle. Mehrere
+Gates matchen Quelltext-Strings direkt in dieser Datei (Zwilling zu
+F-352 — dieselbe Klasse von Zerbrechlichkeit bei jeder Umstrukturierung).
+Fundstelle: `scripts/leitstand-server.mjs`.
+Auswirkung: die Datei wird mit jedem weiteren Feature schwerer lesbar und
+riskanter zu ändern; String-Match-Gates brechen bei jeder Restrukturierung,
+unabhängig davon, ob funktional etwas kaputt ist.
+Maßnahme: Aufteilungsentscheidung spätestens vor F25 treffen, nicht in
+F22.
+Status: offen.
+Feature/Run: F22-Challenge, 14.09.2026.
