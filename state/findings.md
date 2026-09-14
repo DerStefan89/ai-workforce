@@ -6538,3 +6538,64 @@ dabei die fünf `ergebnis`-Familien explizit auseinanderziehen (löst F-350
 zusammen mit dieser Klärung).
 Status: offen.
 Feature/Run: F23 WS-0, 14.09.2026.
+
+**F-380** · `BUG` · P0 · gelöst
+Titel: `check-f20-leitstand-shell.mjs` hängt bei Chrome-Startfehler statt
+rot zu werden.
+Beschreibung: `starteChrome()` (Zeile ~109-132 vor dem Fix) lehnte die
+Promise beim Ablaufen der 15s-DevTools-Frist NUR ab (`reject`) — der
+gespawnte Chrome-Prozess wurde nie gekillt. Dessen offene stderr-Pipe hielt
+den Node-Prozess am Leben; der CI-Job hing 20+ Minuten statt nach 15s rot
+zu werden. Blockier-Regel: "blockiert jeden PR, Weiterarbeit nicht
+verantwortbar" — eigener Branch außerhalb F23 dafür angelegt.
+Root-Ursache dafür, dass der Timeout überhaupt zuschlägt: Chrome scheitert
+auf dem `ubuntu-latest`-Runner an dbus ("Could not connect to the bus:
+Could not parse server address"), bevor es die DevTools-Adresse meldet.
+`.github/workflows/ci.yml` trug dafür bereits einen Kommentar mit dem
+vorgesehenen Ausweg (Schritt entfernen statt rot laufen lassen, falls kein
+Chrome/Edge sicher verfügbar ist).
+Fundstelle: `scripts/check-f20-leitstand-shell.mjs` (`starteChrome`, Zeile
+~109-135 vor dem Fix), `.github/workflows/ci.yml:39-45`. Beleg: GitHub-
+Actions-Lauf https://github.com/DerStefan89/ai-workforce/actions/runs/34885699720
+(Log real gelesen).
+Auswirkung: kein PR konnte mehr grün werden, solange dieser CI-Schritt
+verpflichtend war — Blockade der gesamten Weiterarbeit über Branch
+Protection.
+Maßnahme, real umgesetzt (kein Wurf ohne Fix, siehe Bauauftrag):
+(1) PFLICHT, unabhängig vom dbus-Problem — `starteChrome()` killt den
+gespawnten Prozess jetzt über `beendeProzessUndWarte` (killt + wartet
+real auf `exit`) in JEDEM der drei Fehlerzweige (Timeout, Exit vor der
+DevTools-Meldung, neu ergänzter `error`-Zweig für Spawn-Fehler wie
+ENOENT/EACCES, der vorher unbehandelt geblieben wäre), bevor die Promise
+ablehnt. `haupt()`s bisherige, separat gepflegte Kill-Logik nutzt jetzt
+denselben Helfer (D5). Zusätzlich ein harter Watchdog auf Skriptebene
+(`WATCHDOG_OBERGRENZE_MS = 90_000`, deutlich über der 15s-Chrome-Frist,
+deutlich unter der real beobachteten Hängedauer) — erzwingt
+`process.exit(1)`, falls IRGENDWO sonst noch ein offener Handle übrig
+bliebe, unabhängig von der genauen Ursache. Vier neue Regressionstests in
+`scripts/check-f20-leitstand-shell.test.mjs` (Teil von `npm run check`,
+kein echtes Chrome nötig — Attrappenprozess über `process.execPath -e`)
+belegen für Timeout-, Exit- und Spawn-Fehler-Zweig je: der Kindprozess ist
+beim `reject` nachweislich beendet (`exitCode`/`signalCode`, Node-eigene
+Bewertung statt OS-Prozesstabellenabfrage), nicht nur, dass die
+Fehlermeldung stimmt.
+(2) dbus-Ursache — `.github/workflows/ci.yml` bekam einen zusätzlichen
+Schritt, der `dbus-x11` nachinstalliert und den D-Bus-Systemdienst
+startet (Standard-Workaround für "Could not connect to the bus" auf
+GitHub-gehosteten Ubuntu-Runnern). NICHT durch einen echten grünen Lauf
+mit echtem DevTools-Connect belegt — in dieser Sitzung kein Push/PR
+möglich (Terminal macht Commit/Push der Mensch), also kein Zugriff auf
+einen echten Actions-Lauf zur Gegenprobe. Deshalb zusätzlich, wie vom
+bestehenden ci.yml-Kommentar selbst vorgesehen: der F20-Schritt UND der
+neue D-Bus-Schritt stehen auf `continue-on-error: true` (mit Verweis auf
+diesen Fund) — der Schritt blockiert damit keinen PR mehr, unabhängig
+davon, ob die dbus-Mitigation auf dem Runner tatsächlich zieht.
+Status: gelöst (Kill-Fix + Watchdog real verifiziert über vier neue Tests,
+`npm run check` grün; Blockier-Wirkung durch `continue-on-error` entfernt).
+Offener Rest, kein Blocker: ob die dbus-Mitigation den Schritt auf
+`ubuntu-latest` tatsächlich wieder echt grün macht (statt nur
+`continue-on-error`-grün), ist erst mit dem nächsten echten CI-Lauf
+feststellbar — für die Blockade-Frage dieses Findings ohne Bedeutung,
+`continue-on-error` fängt beide Fälle ab.
+Feature/Run: CI-Hänger-Fix, 14.09.2026 (eigener Branch
+`fix/ci-f20-chrome-haenger`, getrennt von F23).

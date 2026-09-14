@@ -27,12 +27,27 @@
  * bleibt der ECHTE public/leitstand/-Ordner (Default von erzeugeRequestHandler),
  * damit real die aktuelle Modul-Aufteilung geladen wird.
  *
- * Wird aufgerufen von: manuell (node scripts/check-f20-leitstand-shell.mjs)
- * — NICHT in `npm run check` eingehängt: dieses Gate startet einen echten
- * Chrome-Prozess und ist damit langsamer und infrastrukturabhängiger
- * (Chrome/Edge-Installation nötig) als jedes andere Gate in der Kette. Ob es
- * dauerhaft eingehängt wird, ist eine eigene Entscheidung (Auswirkung auf
- * jede Umgebung, die `npm run check` ausführt).
+ * Wird aufgerufen von:
+ * - manuell / .github/workflows/ci.yml (node scripts/check-f20-leitstand-shell.mjs,
+ *   eigener CI-Schritt) — NICHT in `npm run check` eingehängt: dieses Gate startet
+ *   einen echten Chrome-Prozess und ist damit langsamer und infrastrukturabhängiger
+ *   (Chrome/Edge-Installation nötig) als jedes andere Gate in der Kette. Ob es
+ *   dauerhaft eingehängt wird, ist eine eigene Entscheidung (Auswirkung auf jede
+ *   Umgebung, die `npm run check` ausführt).
+ * - scripts/check-f20-leitstand-shell.test.mjs (node:test, Teil von `npm run check`)
+ *   — importiert starteChrome/beendeProzessUndWarte und spawnt einen ATTRAPPEN-
+ *   Prozess statt echtem Chrome (Muster scripts/erzeuge-invocation-policy-nachweise.mjs);
+ *   der `istDirekterAufruf`-Wächter am Dateiende sorgt dafür, dass dieser Import NIE
+ *   haupt() und damit NIE einen echten Chrome-Lauf auslöst.
+ *
+ * Befund BUG P0 (state/findings.md, GitHub-Actions-Lauf #34885699720, behoben):
+ * starteChrome lehnte die Promise bei einem Timeout NUR ab (reject), killte den
+ * gespawnten Chrome-Prozess aber nie — dessen offene stderr-Pipe hielt den
+ * Node-Prozess am Leben, der CI-Job hing 20+ Minuten statt nach 15s rot zu werden.
+ * Behoben über beendeProzessUndWarte (killt + wartet auf das echte Prozessende,
+ * in JEDEM der drei Fehlerzweige von starteChrome) PLUS einen harten
+ * Watchdog auf Skriptebene (WATCHDOG_OBERGRENZE_MS, siehe Dateiende) als zweite,
+ * ursachenunabhängige Sicherung.
  *
  * Aufruf: node scripts/check-f20-leitstand-shell.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -43,7 +58,8 @@ import { createServer } from 'node:http'
 import { existsSync, mkdirSync, rmSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
@@ -52,7 +68,6 @@ import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/ind
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
-console.log('\n=== F20-WS-1-Realnachweis (AK1, sechs Bedienflüsse per echtem Chrome-Klick) ===\n')
 
 const PROFIL_REFERENZ = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
 const STILL = () => {}
@@ -93,6 +108,35 @@ function legeChromeProfilAn() {
   return pfad
 }
 
+/** Feste Chrome-Flags von starteChrome — als Konstante ausgekoppelt, damit ein Test einen Attrappen-Prozess (kein echtes Chrome) mit EIGENEN Argumenten spawnen kann (siehe starteChrome-Parameter 'argumente'), ohne die Produktionswerte zu duplizieren (D5). */
+const STANDARD_CHROME_ARGUMENTE = ['--remote-debugging-port=0', '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-sync', '--disable-background-networking']
+
+/** Die Chrome-Startfrist aus starteChrome (F20 WS-1-Kommentar oben) — als benannte Konstante, damit der Watchdog unten seine Obergrenze sichtbar relativ dazu begründen kann, statt eine zweite, unabhängig gepflegte Zahl zu tragen. */
+const CHROME_DEVTOOLS_FRIST_MS = 15000
+
+/**
+ * Killt einen gespawnten Kindprozess und wartet auf sein TATSÄCHLICHES Ende,
+ * statt sich auf kill() allein zu verlassen (kill() liefert nur an, dass das
+ * Signal gesendet wurde, nicht dass der Prozess schon beendet ist). Ein
+ * reject()/return OHNE dieses Warten hält eine offene stdio-Pipe des noch
+ * laufenden Kindprozesses am Leben — genau das ließ diesen Gate-Schritt in
+ * CI 20+ Minuten hängen, statt nach der 15s-Frist rot zu werden (real
+ * beobachtet, GitHub-Actions-Lauf #34885699720): starteChrome lehnte die
+ * Promise beim Timeout NUR ab, der gespawnte Chrome-Prozess lief weiter.
+ * Bereits an einer Stelle (haupt()-finally) vorhanden gewesen — hierher
+ * gezogen, damit starteChrome UND haupt() denselben Regelsatz benutzen
+ * (D5), statt ihn zweimal leicht unterschiedlich zu pflegen.
+ * @param prozess - ein von node:child_process.spawn zurückgegebenes ChildProcess, oder null (No-op)
+ */
+export async function beendeProzessUndWarte(prozess) {
+  if (prozess === null) return
+  if (prozess.exitCode !== null || prozess.signalCode !== null) return
+  await new Promise((abschliessen) => {
+    prozess.once('exit', abschliessen)
+    prozess.kill()
+  })
+}
+
 /**
  * Startet Chrome headless mit einem eigenen, isolierten Profil und einem vom
  * Betriebssystem zugewiesenen Debug-Port (`--remote-debugging-port=0`) —
@@ -103,32 +147,66 @@ function legeChromeProfilAn() {
  * gewählte Port steht NUR auf dem stderr GENAU dieses gespawnten Prozesses
  * ("DevTools listening on ws://…") — das ist die einzige Quelle, aus der
  * dieser Code je einen Port oder eine WebSocket-Adresse liest.
+ *
+ * JEDER der drei Fehlerzweige (Timeout, Exit vor der DevTools-Meldung,
+ * Spawn-Fehler wie ENOENT/EACCES über das 'error'-Ereignis) lehnt die
+ * Promise ERST ab, NACHDEM beendeProzessUndWarte den Prozess nachweislich
+ * beendet hat — kein Fehlerfall darf einen laufenden Prozess zurücklassen
+ * (siehe beendeProzessUndWarte-Kommentar). Der Exit-Zweig ruft
+ * beendeProzessUndWarte ebenfalls auf, obwohl der Prozess dort per
+ * Definition bereits beendet ist (kill() wird dank der exitCode-Prüfung
+ * dort zum No-op) — EIN Regelsatz für alle drei Zweige statt einer
+ * stillschweigenden Ausnahme für den vermeintlich schon sicheren Fall.
  * @param profilVerzeichnis - absoluter, bereits existierender Pfad (legeChromeProfilAn)
+ * @param optionen.argumente - Chrome-Flags ohne --user-data-dir (Default STANDARD_CHROME_ARGUMENTE; ein Test setzt hier eigene Argumente für einen Attrappen-Prozess ein)
+ * @param optionen.timeoutMs - DevTools-Startfrist in ms (Default CHROME_DEVTOOLS_FRIST_MS; ein Test verkürzt das, um nicht real 15s zu warten)
  * @returns { prozess, browserWsUrl }
  */
-async function starteChrome(chromePfad, profilVerzeichnis) {
-  const prozess = spawn(
-    chromePfad,
-    ['--remote-debugging-port=0', '--headless=new', '--disable-gpu', '--no-sandbox', '--disable-sync', '--disable-background-networking', `--user-data-dir=${profilVerzeichnis}`],
-    { stdio: ['ignore', 'ignore', 'pipe'] }
-  )
-  const browserWsUrl = await new Promise((resolve, reject) => {
+export async function starteChrome(chromePfad, profilVerzeichnis, optionen = {}) {
+  const { argumente = STANDARD_CHROME_ARGUMENTE, timeoutMs = CHROME_DEVTOOLS_FRIST_MS } = optionen
+  const prozess = spawn(chromePfad, [...argumente, `--user-data-dir=${profilVerzeichnis}`], { stdio: ['ignore', 'ignore', 'pipe'] })
+  const browserWsUrl = await new Promise((promiseAufloesen, promiseAblehnen) => {
     let puffer = ''
+    let erledigt = false
+
+    /**
+     * Sorgt dafür, dass genau EIN Zweig die Promise abschließt (die drei Ereignis-Listener unten
+     * können nach einem Spawn-Fehler alle noch feuern — Node garantiert 'error' UND 'exit' bei
+     * einem gescheiterten Spawn, ab Node 15). Hängt den betroffenen Prozess als 'prozess' an den
+     * Fehler — nicht Zierrat: der Regressionstest in check-f20-leitstand-shell.test.mjs beweist
+     * darüber, dass der Prozess beim Reject nachweislich (Node-eigenes exitCode/signalCode) schon
+     * beendet ist, statt sich auf eine reine Fehlertext-Prüfung zu verlassen (Bauauftrag).
+     */
+    async function ablehnenUndAufraeumen(fehler) {
+      if (erledigt) return
+      erledigt = true
+      clearTimeout(timeout)
+      await beendeProzessUndWarte(prozess)
+      fehler.prozess = prozess
+      promiseAblehnen(fehler)
+    }
+
     const timeout = setTimeout(
-      () => reject(new Error(`Chrome hat innerhalb von 15s keine DevTools-Adresse auf stderr gemeldet. stderr bisher: ${puffer.trim().slice(-500) || '(leer)'}`)),
-      15000
+      () => ablehnenUndAufraeumen(new Error(`Chrome hat innerhalb von ${timeoutMs}ms keine DevTools-Adresse auf stderr gemeldet. stderr bisher: ${puffer.trim().slice(-500) || '(leer)'}`)),
+      timeoutMs
     )
     prozess.stderr.on('data', (chunk) => {
       puffer += chunk.toString()
       const treffer = puffer.match(/DevTools listening on (ws:\/\/\S+)/)
-      if (treffer) {
+      if (treffer && !erledigt) {
+        erledigt = true
         clearTimeout(timeout)
-        resolve(treffer[1])
+        promiseAufloesen(treffer[1])
       }
     })
     prozess.once('exit', (code) => {
-      clearTimeout(timeout)
-      reject(new Error(`Chrome ist vor der DevTools-Meldung beendet worden (Exit-Code ${code})`))
+      // ablehnenUndAufraeumen ist async (await beendeProzessUndWarte) — der Ereignis-Handler
+      // selbst kann sie nicht awaiten; 'void' markiert das Nicht-Warten hier ausdrücklich als
+      // beabsichtigt (kein verschlucktes Promise, lint/nursery/noFloatingPromises).
+      void ablehnenUndAufraeumen(new Error(`Chrome ist vor der DevTools-Meldung beendet worden (Exit-Code ${code})`))
+    })
+    prozess.once('error', (fehler) => {
+      void ablehnenUndAufraeumen(new Error(`Chrome konnte nicht gestartet werden: ${fehler.message}`))
     })
   })
   return { prozess, browserWsUrl }
@@ -453,16 +531,8 @@ async function haupt() {
     // Auf das tatsächliche Prozessende warten, nicht nur auf kill(): Chrome hält sein
     // --user-data-dir-Verzeichnis (Lock-Dateien) bis zum echten Exit offen — ein rmSync direkt
     // nach kill() lief real in ein EPERM, weil der Prozess zu diesem Zeitpunkt noch lief.
-    if (chromeProzess !== null) {
-      await new Promise((resolve) => {
-        if (chromeProzess.exitCode !== null || chromeProzess.signalCode !== null) {
-          resolve()
-          return
-        }
-        chromeProzess.once('exit', resolve)
-        chromeProzess.kill()
-      })
-    }
+    // beendeProzessUndWarte (Muster oben, jetzt gemeinsam mit starteChrome) übernimmt das.
+    await beendeProzessUndWarte(chromeProzess)
     if (httpServer !== null) await new Promise((resolve) => httpServer.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
     try {
@@ -476,15 +546,41 @@ async function haupt() {
   }
 }
 
-await haupt()
+// Nur beim direkten Aufruf (`node scripts/check-f20-leitstand-shell.mjs`, so auch in
+// .github/workflows/ci.yml) tatsächlich einen echten Chrome-Lauf starten — ein Import dieser
+// Datei aus scripts/check-f20-leitstand-shell.test.mjs (testet starteChrome/beendeProzessUndWarte
+// mit einem Attrappen-Prozess statt echtem Chrome) darf haupt() nicht mitausführen. Muster:
+// scripts/erzeuge-invocation-policy-nachweise.mjs, scripts/leitstand-server.mjs.
+const istDirekterAufruf = process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 
-console.log('')
-if (befunde.length === 0) {
-  console.log('✓ Keine Befunde.\n')
-  process.exitCode = 0
-} else {
-  console.log(`✗ ${befunde.length} Befund(e):\n`)
-  for (const b of befunde) console.log(`  - ${b}`)
+if (istDirekterAufruf) {
+  console.log('\n=== F20-WS-1-Realnachweis (AK1, sechs Bedienflüsse per echtem Chrome-Klick) ===\n')
+
+  // Harter Watchdog auf Skriptebene (Befund BUG P0, GitHub-Actions-Lauf #34885699720): egal WELCHE
+  // Ursache ein offener Handle künftig noch hätte (nicht nur die jetzt behobene fehlende
+  // Prozess-Beendigung in starteChrome) — dieses Gate darf in CI NIE wieder 20+ Minuten hängen,
+  // statt zeitnah rot zu werden. Obergrenze bewusst deutlich über der 15s-Chrome-DevTools-Frist
+  // (CHROME_DEVTOOLS_FRIST_MS): Raum für den worst case dort PLUS die sechs Testblöcke (je
+  // 500-800ms feste Wartezeit plus Navigation) PLUS Aufräumen auf einem langsamen Runner — aber
+  // weit unter der real beobachteten Hängedauer, damit ein echter Hänger den CI-Job zuverlässig
+  // in Minuten statt in einer halben Stunde beendet.
+  const WATCHDOG_OBERGRENZE_MS = 90_000
+  const watchdog = setTimeout(() => {
+    console.error(`\n✗ Watchdog: check-f20-leitstand-shell.mjs lief länger als ${WATCHDOG_OBERGRENZE_MS}ms (Obergrenze deutlich über der ${CHROME_DEVTOOLS_FRIST_MS}ms-Chrome-Frist) — erzwungenes Prozessende statt eines CI-Hängers (Befund BUG P0, state/findings.md).\n`)
+    process.exit(1)
+  }, WATCHDOG_OBERGRENZE_MS)
+
+  await haupt()
+  clearTimeout(watchdog)
+
   console.log('')
-  process.exitCode = 1
+  if (befunde.length === 0) {
+    console.log('✓ Keine Befunde.\n')
+    process.exitCode = 0
+  } else {
+    console.log(`✗ ${befunde.length} Befund(e):\n`)
+    for (const b of befunde) console.log(`  - ${b}`)
+    console.log('')
+    process.exitCode = 1
+  }
 }
