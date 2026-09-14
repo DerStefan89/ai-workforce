@@ -10,12 +10,16 @@ Workboard + Attention v1 (Findings-Projektion, Feature-Akten, Failed Runs)
 
 ## Status
 
-Status: WORKSTREAM_SCHNITT_GENEHMIGT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
 WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,
 BLOCKIERT, ABGEBROCHEN`.
+
+WS-1 (PR #152) und WS-2 (PR #153) sind gemergt, AK1–AK8 erfüllt. AK8:
+ACCEPT, Stefan, 14.09.2026 (Realtest, siehe oben). Analog zum
+F20-Muster (`features/F20/feature.md`, PR #151).
 
 ## Ziel
 

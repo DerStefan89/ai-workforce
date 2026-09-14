@@ -387,11 +387,17 @@ Feature unter `features/F2x/`):
   Poll-Konsolidierung, Gate-Kalibrierung, Biome-Scope) gebaut. AK7: ACCEPT,
   14.09.2026 (Stefan, echter manueller Durchklick — siehe
   `features/F20/feature.md` AK7).
-- ⏳ **F21** — Workboard + Attention v1 (Projektion über Findings,
-  Feature-Akten, Failed Runs, Capability Gaps). F20 AK7-Review erfüllt, F21
-  kann beginnen.
+- ✅ **F21** — Workboard + Attention v1 (Projektion über Findings,
+  Feature-Akten, Failed Runs, Capability Gaps). Akte `features/F21/
+  feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt. WS-1 (PR #152) und
+  WS-2 (PR #153) gemergt. AK8: ACCEPT, 14.09.2026 (Stefan, Realtest).
 - ⏳ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
-  Kernartefakt, Vorschlag → Freigabe → Kette). Nach F21.
+  Kernartefakt, Vorschlag → Freigabe → Kette). Nach F21. Zuschnitt gegen
+  den realen Stand gechallenged (14.09.2026, `features/F22/feature.md`):
+  der Router-Endpunkt ist strukturell asynchron (202 + `laufId`, D13-Sperre
+  greift vor jeder Request-Prüfung), und ein erfolgreicher Router-Lauf
+  registriert den Workflow-Vorschlag direkt beim Routen (nicht erst bei
+  „Freigeben") — Details und Worker-Wahl (noch offen) siehe Akte.
 - ⏳ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
   Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Nach F22.
 - ⏳ **F24** — Capabilities v1 (F19-Projektion, Coverage, Rollen lesend).
