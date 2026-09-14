@@ -6151,3 +6151,25 @@ Maßnahme: bei Bedarf (z. B. wenn ein Nachweis mit künstlich verzögertem
 Tick-Zähler nach demselben Muster wie `workflowRenderZaehler` ergänzen.
 Status: offen.
 Feature/Run: F20 WS-2 QA-Pass, 14.09.2026.
+
+**F-365** · `BUG` · P2 · offen
+Titel: Veraltetes Entscheidungs-Formular im Lauf-Detail führt zu rohem 400
+statt Re-Sync-Hinweis.
+Beschreibung: Weil das Lauf-Detail nicht gepollt wird (F-363), bleibt ein
+einmal geladenes "Klärung erforderlich"-Formular sichtbar, obwohl der Lauf
+serverseitig inzwischen ABGESCHLOSSEN ist. Ein Speichern-Versuch liefert
+einen technischen 400-Text ("art 'terminal' ist nur bei Status
+KLAERUNG_ERFORDERLICH erlaubt (F-167)") statt eines verständlichen Hinweises
+oder eines automatischen Re-Syncs. Real beobachtet im F20-WS-2-Realtest:
+ein Lauf wechselte während des Ausfüllens des Formulars im Hintergrund
+selbst zu ABGESCHLOSSEN (ERFOLGREICH), das Formular blieb unverändert
+sichtbar, der Speichern-Versuch wurde vom Server korrekt abgelehnt.
+Fundstelle: public/leitstand/views/runs.js (Entscheidung-Formular),
+scripts/leitstand-server.mjs (F-167-Guard, verhält sich korrekt).
+Auswirkung: gering, kein Datenintegritätsproblem (Server blockt korrekt),
+aber verwirrende UX bei einem real abgeschlossenen Lauf.
+Maßnahme: bei F21+ zusammen mit F-363 behandeln — entweder Lauf-Detail live
+pollen (abonniereDetailAuffrischer) oder den 400-Fall im Client freundlich
+abfangen und zum Reload auffordern.
+Status: offen.
+Feature/Run: F20-WS-2-Realtest mit Stefan, 14.09.2026.

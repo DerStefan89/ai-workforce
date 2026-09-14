@@ -10,7 +10,7 @@ Jarvis Shell v1 (Navigation, Routing, Design-Tokens, Aggregat-Endpunkt)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -73,6 +73,7 @@ neuen `GET /api/zustand` · Änderung an Kontrollzustand oder Schemas.
   PR/Merge und vor dem AK7-Feature-Review.
 - **AK7** Feature Review nach WS-1 mit Stefan (ACCEPT/ADJUST/REJECT) vor
   Beginn von F21.
+  ACCEPT, Stefan, 14.09.2026 — Realtest siehe unten.
 
 ## Dependencies
 
