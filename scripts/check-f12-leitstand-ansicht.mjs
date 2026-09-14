@@ -2,9 +2,10 @@
  * Datei: scripts/check-f12-leitstand-ansicht.mjs
  *
  * Zweck: F12-WS-3-Gate (AK7/AK8/AK10 mechanisch, state/plan-v1-f12-ws3.md
- * Abschnitt 2.5), seit F16 AK12 um (e)/(f) erweitert. Sechs Fälle; (a)-(e)
- * laufen real gegen einen laufenden Testserver (Muster
- * scripts/check-f10-leitstand.mjs), (f) ist eine reine Quelltextprüfung:
+ * Abschnitt 2.5), seit F16 AK12 um (e)/(f) erweitert, seit F-359 um (g).
+ * Sieben Fälle; (a)-(e) laufen real gegen einen laufenden Testserver (Muster
+ * scripts/check-f10-leitstand.mjs), (f) und (g) sind reine
+ * Quelltextprüfungen:
  * (a) AK1 — eine reine Artefaktkette (registriereAuftrag, keine
  *     Wirkungsmarke) erscheint nicht in GET /api/laeufe. Regressionsschutz:
  *     WS-3 fügt hier keine neue Logik hinzu, das Gate sichert nur ab, dass
@@ -54,6 +55,17 @@
  *     „keinen einzigen Verweis auf public/leitstand/", gilt seit (f) nicht
  *     mehr — die Arbeitsteilung bleibt aber, dort die Workflow-Ansicht,
  *     hier die fünf Zeilen des Laufakte-Blocks (F-327).
+ * (g) F-359 — renderAuftrag in public/leitstand/views/runs.js escapiert den
+ *     Text für auftrag.status === 'auftrag_fehlt' NICHT mehr doppelt.
+ *     REGRESSIONSSCHUTZ (Code-Review-Befund, unverändert aus dem Vorgänger
+ *     app.js übernommen gewesen): der Text lief vorher zweimal durch
+ *     escapeHtml() — einmal beim Aufbau von texte.auftrag_fehlt selbst,
+ *     ein zweites Mal über unbekanntStatusText() im Rückgabewert. Bei einer
+ *     auftragId mit '&', '<', '>', '"' oder '\'' zeigte der Browser
+ *     dadurch z. B. '&amp;amp;' statt '&amp;' an. Quelltextprüfung statt
+ *     Testserver-Fall, weil auftrag_fehlt keinen Lauf voraussetzt, der über
+ *     GET /api/laeufe/<laufId> real reproduzierbar wäre — der Zustand
+ *     entsteht aus einer Auftragsreferenz ohne Auftragsartefakt.
  *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
@@ -407,6 +419,38 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
   if (befunde.length === 0) {
     console.log(
       '✓ AK12-Anzeige (Regressionsschutz, kein AK12-Beleg — F-272): renderLaufakte paart Worker/Modell (deklariert)/Modell (beobachtet) mit je ihrem Feld, alle über escapeHtml; keine unqualifizierte Modell-Zeile.'
+    )
+  }
+}
+
+// ─── (g) F-359: renderAuftrag escapiert den auftrag_fehlt-Text genau EINMAL, nicht doppelt ──
+//
+// REGRESSIONSSCHUTZ. texte.auftrag_fehlt darf auftrag.auftragId NICHT selbst
+// über escapeHtml() führen — der gesamte texte[status]-Wert läuft bereits
+// über unbekanntStatusText() ein einziges Mal durch escapeHtml() (Zeile
+// `<p class="unbekannt">${escapeHtml(unbekanntStatusText(...))}</p>`). Eine
+// verschachtelte escapeHtml()-Verwendung wäre die exakte Regression von
+// F-359 (z. B. '&amp;' → '&amp;amp;' bei einer auftragId mit '&').
+{
+  const runsQuelltextRoh = readFileSync('public/leitstand/views/runs.js', 'utf8')
+  const runsQuelltextOhneKommentare = runsQuelltextRoh.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+
+  const auftragFehltZeile = runsQuelltextOhneKommentare.match(/auftrag_fehlt:[^\n]*/)
+  if (!auftragFehltZeile) {
+    befunde.push("F-359-Anzeige: renderAuftrag führt keine 'auftrag_fehlt'-Zeile in texte mehr — Fall entfernt oder umbenannt, Prüfung greift ins Leere")
+  } else if (!/\$\{auftrag\.auftragId\s*\?\?\s*''\}/.test(auftragFehltZeile[0])) {
+    befunde.push(`F-359-Anzeige: texte.auftrag_fehlt interpoliert auftrag.auftragId nicht mehr roh (erwartet '\${auftrag.auftragId ?? ''}' ohne escapeHtml), erhalten: ${auftragFehltZeile[0]}`)
+  } else if (/escapeHtml\(auftrag\.auftragId/.test(auftragFehltZeile[0])) {
+    befunde.push(`F-359-Anzeige: texte.auftrag_fehlt escapiert auftrag.auftragId erneut selbst (Doppel-Escaping-Regression) — Zeile: ${auftragFehltZeile[0]}`)
+  }
+
+  if (!/<p class="unbekannt">\$\{escapeHtml\(unbekanntStatusText\(auftrag\.status, texte\)\)\}<\/p>/.test(runsQuelltextOhneKommentare)) {
+    befunde.push('F-359-Anzeige: renderAuftrag escapiert den unbekanntStatusText-Rückgabewert nicht mehr genau einmal (äußere escapeHtml-Umhüllung fehlt oder wurde verändert)')
+  }
+
+  if (befunde.length === 0) {
+    console.log(
+      "✓ F-359-Anzeige (Regressionsschutz): renderAuftrag escapiert den auftrag_fehlt-Text genau einmal — texte.auftrag_fehlt interpoliert auftrag.auftragId roh, die äußere escapeHtml(unbekanntStatusText(...))-Umhüllung bleibt die einzige Escapierung."
     )
   }
 }

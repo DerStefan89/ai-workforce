@@ -18,24 +18,33 @@ Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,
 BLOCKIERT, ABGEBROCHEN`.
 
-WS-1 (PR #155) gemergt. WS-2 (dieser PR) implementiert, `npm run check`
-grün (Gate AK7 erfüllt). Real gegen den laufenden Server geprüft: Auftrag
-anlegen mit `workitem_referenz`-Zeile, `routeAuftrag` (202 + `laufId`),
-und der "routet…"-Zustand inkl. seiner Fehlererkennung (Poll auf
-`zustand.startfehler`) — alle drei real bestätigt. NICHT real erreicht:
-die Vorschlags-Anzeige, „Freigeben", der Kettendurchlauf und der
-Terminal-Block (AK2/AK4/AK6) — der Router-Lauf scheiterte real 3/3 an
-einem Blocker außerhalb von F22 (F-373, siehe Realer-Test-Abschnitt
-unten). AK3 (409/D13) wurde in diesem Testlauf NICHT gegen den echten
-Server geprüft (nur strukturell über den WS-1-Gate-Rotfall (b) belegt).
+WS-1 (PR #155) gemergt, WS-2 (PR #156) gemergt. `npm run check` grün
+(Gate AK7 erfüllt). AK8-Re-Test (14.09.2026, siehe „Realer Test
+(Re-Test)" unten) mit korrigierter Startvorlage: F-373 (Router-Rückfall
+ignoriert Rollenvorgabe) war eine reine Start-Konfigurationslücke,
+behoben — der Router-Lauf lief real über Worker `codex` und lieferte
+eine gültige JSON-Klassifikation, die Vorschlags-Anzeige erschien real.
+Dabei NEU gefunden: **F-374** (P1, offen) — Workboard-„Freigeben" ruft
+den für einen `ZWINGEND`-Schritt zwingenden `POST .../freigabe` nicht
+auf, bevor es `POST .../starten` aufruft, und scheitert dadurch real
+409/D13 mit einem NICHT-D13-Grund. AK4/AK6 sind über den Workboard-Pfad
+damit weiterhin strukturell unerreichbar — verifiziert nur über einen
+manuellen, UI-fremden `freigabe`-Aufruf, danach lief die Kette real bis
+ABGESCHLOSSEN mit Terminal-Block-fähigem Zustand durch. AK3 (409/D13)
+wurde in keinem Testlauf gegen den echten Server geprüft (nur
+strukturell über den WS-1-Gate-Rotfall (b) belegt).
 Zusätzlich beim Review festgestellt: AK5 („Workitem-Detail zeigt Auftrag,
 Workflow und Läufe über `workitem_referenz`") ist von der WS-2-SCOPE-Liste
 NICHT abgedeckt — die Oberfläche zeigt nur den VORWÄRTS-Fluss
 (Bearbeiten → neuer Auftrag), keinen Rückverweis von einem Finding auf
 einen BEREITS bestehenden Auftrag/Workflow. Offener AK, kein WS-2-Bug.
-Status bewusst NICHT auf FEATURE_GATE gehoben — das war an einen
-erfolgreichen realen Klick-Test bis zur Freigabe geknüpft, der nicht
-erreicht wurde. AK8 bleibt bei Stefan.
+Status weiterhin bewusst NICHT auf FEATURE_GATE gehoben — das war an
+einen erfolgreichen realen Klick-Test bis zur Freigabe geknüpft. Der
+Router-Teil (F-373) ist jetzt real grün, aber der „Freigeben"-Klick
+selbst scheitert strukturell an F-374 — ein echter, unveränderter Klick
+im Workboard erreicht AK4/AK6 also weiterhin nicht. AK8 bleibt bei
+Stefan, jetzt mit engerem, klar benanntem Rest-Blocker (F-374 statt
+F-373).
 
 ## Ziel
 
@@ -190,6 +199,81 @@ SIGTERM-Pfad griff unter Windows/git-bash nicht, der Instanzlock
 PID-Lebendprüfung in `belegeInstanzLock` selbst aus. Reale Artefakte
 dieses Tests liegen unter `kontrollzustand/*abcd6a25*` (nicht committet,
 flüchtiger Kontrollzustand außerhalb des Change-Sets).
+
+## Realer Test (Re-Test, 14.09.2026)
+
+Root-Cause-Klärung zu F-373: der obige Testlauf startete den Server mit
+der Default-Startvorlage `startvorlagen/beispielprojekt.json`, die
+keinen `worker`-Block trägt — `loeseRessourcenAuf` meldete `codex`
+dadurch strukturell als nicht verfügbar, jeder Lauf fiel auf
+`claude-code` zurück. `startvorlagen/ai-workforce.json` trägt einen
+vollständigen `worker.codex`-Block mit einem real installierten
+`codex.exe`.
+
+Server neu gestartet: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/
+ai-workforce.json node scripts/leitstand-server.mjs` (Log bestätigt
+`Startvorlage: startvorlagen/ai-workforce.json`, Port 4173, reale PID
+14004). Derselbe Auftrag wie im ersten Testlauf (`abcd6a25-…`, F-359,
+`workitem_referenz: workitem:finding:F-359`) erneut geroutet
+(entspricht dem UI-„Wiederholen"-Pfad, `wiederholeRouten` — derselbe
+Aufruf `POST /api/auftraege/<id>/routen`, den auch „Bearbeiten" beim
+Erststart auslöst):
+
+1. `POST /api/auftraege/abcd6a25-…/routen` → 202,
+   `laufId: router-abcd6a25-…-1789403095705`.
+2. `GET /api/workflows/router-abcd6a25-…` nach ca. 10s → 200. Router-Lauf
+   **erfolgreich** (0/3 → 1/1 real). Artefakt
+   (`kontrollzustand/lineage-router-abcd6a25-1b40-4a97-9f6c-c6273157f0f4`)
+   bestätigt `"worker":"codex"`, `"beobachtung":null` (kein
+   Fence-Stripping nötig), gültige Klassifikation
+   (`risikoklasse: niedrig`, `kontrolltiefe: fast-lane`,
+   `task_typen: [bugfix]`, inhaltlich zutreffend für F-359). AK1 (Worker
+   im Artefakt sichtbar) damit real erfüllt. Die Vorschlags-Anzeige wäre
+   an dieser Stelle real erschienen (`GET /api/workflows/<id>` liefert
+   200 mit `naechster.art: 'haltFreigabe'`).
+3. Klick auf „Freigeben" nachvollzogen (`POST /api/workflows/router-
+   abcd6a25-…/starten`, exakt der Aufruf aus `freigebenBearbeitung`) →
+   **409**, `art: 'haltFreigabe'`, weil der erste Schritt
+   `freigabe: 'ZWINGEND'` trägt und `workboard.js` nie zuvor
+   `POST .../freigabe` aufruft. Neuer, von F-373 unabhängiger Blocker —
+   als **F-374** (P1) erfasst, siehe `state/findings.md`. Ein echter
+   Nutzer-Klick auf „Freigeben" im Workboard bleibt an dieser Stelle mit
+   einer Fehlermeldung stehen; AK4/AK6 wurden dadurch über den
+   Workboard-Pfad NICHT real erreicht.
+4. Zur Abgrenzung des Blockers (liegt der Fehler nur in der
+   Freigeben-Verdrahtung, oder tiefer in der Kette?) zusätzlich manuell
+   — UI-fremd, nicht Teil des Workboard-Klickpfads —
+   `POST /api/workflows/router-abcd6a25-…/freigabe` mit
+   `{schrittId: 'schritt-1-ausfuehrung', entscheidung: 'FREIGEGEBEN',
+   begruendung: …}` aufgerufen (Muster `views/workflows.js:673`) → 202,
+   `status: 'LAEUFT'` (der Schritt startete direkt mit der Freigabe,
+   ohne separaten `starten`-Aufruf). Nach ca. 4 Minuten realem
+   Ausführungslauf (Worker `claude-code`, Werkzeugsatz `schreibend`):
+   `GET /api/workflows/router-abcd6a25-…` → `status: 'ABGESCHLOSSEN'`,
+   Schritt `status: 'ERFOLGREICH'`, `naechster.art: 'fertig'`. AK4
+   (Freigabe startet die Kette) und der serverseitige Teil von AK6
+   (Lauf erreicht ABGESCHLOSSEN) sind damit für den Ausführungsschritt
+   selbst real bestätigt — der Terminal-Block im UI wurde dabei nicht
+   visuell geprüft (kein Browser in dieser Sitzung), sein Auftreten hängt
+   laut `workboard.js` nur an `zustand.phase === 'abgeschlossen'`, was
+   der reale Server-Zustand jetzt liefert.
+5. Realer Nebeneffekt des Ausführungsschritts: der Worker hat F-359
+   tatsächlich behoben (`public/leitstand/views/runs.js`,
+   `texte.auftrag_fehlt` escapiert `auftrag.auftragId` nicht mehr
+   doppelt) und einen Regressionsschutz-Fall (g) in
+   `scripts/check-f12-leitstand-ansicht.mjs` ergänzt — geprüft und in
+   diesem Change-Set übernommen, siehe `state/findings.md` F-359.
+
+Ergebnis: F-373 real behoben (0/3 → 1/1, `codex` läuft, valide JSON).
+Router-Ergebnis-Artefakt, Vorschlagspfad und — sobald freigegeben — Kette
+bis ABGESCHLOSSEN sind real bestätigt. AK8 bleibt offen: der reale
+Klickpfad „Freigeben" im Workboard scheitert strukturell an F-374, einem
+Verdrahtungsfehler unabhängig von F-373 (Fix und Re-Test außerhalb dieses
+Auftrags). Server danach sauber beendet (`taskkill //PID 14004 //F`).
+Reale Artefakte dieses Re-Tests liegen unter
+`kontrollzustand/*abcd6a25*1789403095705*` und den zugehörigen
+`lineage-*`-Einträgen (nicht committet, flüchtiger Kontrollzustand
+außerhalb des Change-Sets).
 
 ## Reviewer-/QA-Pass (frischer Kontext, 14.09.2026)
 

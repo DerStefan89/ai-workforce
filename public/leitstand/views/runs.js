@@ -173,7 +173,7 @@ function renderAuftrag(auftrag) {
   const texte = {
     kein_auftragsbezug: 'Kein Auftragsbezug (Bestandslauf ohne Auftrag).',
     kontextpaket_fehlt: 'Auftragsbezug nicht ermittelbar — Kontextpaket fehlt.',
-    auftrag_fehlt: `Auftragsreferenz vorhanden ('${escapeHtml(auftrag.auftragId ?? '')}'), Auftragsartefakt fehlt.`,
+    auftrag_fehlt: `Auftragsreferenz vorhanden ('${auftrag.auftragId ?? ''}'), Auftragsartefakt fehlt.`,
   }
   return `<div class="detail-block"><h3>Auftrag</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(auftrag.status, texte))}</p></div>`
 }
