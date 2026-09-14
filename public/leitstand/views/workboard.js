@@ -40,7 +40,7 @@
  * offen ist (gewaehlteId-Gate, Muster ladeWorkflowDetail).
  */
 
-import { holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, starteWorkflowSchritt } from '../api.js'
+import { holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -401,18 +401,31 @@ async function wiederholeRouten(workitem) {
   }
 }
 
-/** Klick auf "Freigeben" am Vorschlag — bestehende Funktion starteWorkflowSchritt (Muster views/workflows.js renderWorkflowBedienung, naechster.art === 'haltFreigabe' bzw. erster Schritt). @param workitem - das Finding mit offenem Vorschlag */
+/** Standardbegründung für Freigaben über das Workboard — kein eigenes Eingabefeld (F-375, TECH_DEBT, YAGNI für dieses Fast-Prototype). */
+const FREIGABE_BEGRUENDUNG_STANDARD = 'Freigabe über Workboard Click-to-Work'
+
+/**
+ * Klick auf "Freigeben" am Vorschlag — ruft sendeWorkflowFreigabe (Muster views/workflows.js
+ * fuehreWorkflowAktionAus, Zeile ~673), NICHT starteWorkflowSchritt: der erste Schritt jedes
+ * Router-Workflows trägt freigabe: 'ZWINGEND', starten ohne vorherige Freigabe scheitert real mit
+ * 409/haltFreigabe (F-374). Die schrittId kommt aus zustand.workflowDetail.naechster.schrittId
+ * (vom Detail-Auffrischer beim Übergang in Phase 'vorschlag' gefüllt) — derselbe Wert, den
+ * workflows.js über naechster.schrittId ins data-schritt-id-Attribut schreibt. Die
+ * freigabe-Antwort liefert bereits status: 'LAEUFT' (real geprüft, AK8-Re-Test), ein separater
+ * starten-Aufruf danach entfällt. @param workitem - das Finding mit offenem Vorschlag
+ */
 async function freigebenBearbeitung(workitem) {
   const zustand = bearbeitungsZustand
   if (zustand === null || zustand.workitemId !== workitem.id) return
+  const schrittId = zustand.workflowDetail?.naechster?.schrittId ?? null
   zustand.phase = 'wird_gestartet'
   renderBearbeitungsAbschnitt(workitem)
   try {
-    const antwort = await starteWorkflowSchritt(zustand.workflowId)
+    const antwort = await sendeWorkflowFreigabe(zustand.workflowId, { schrittId, entscheidung: 'FREIGEGEBEN', begruendung: FREIGABE_BEGRUENDUNG_STANDARD })
     const inhalt = await antwort.json().catch(() => ({}))
     if (!antwort.ok) {
       zustand.phase = 'fehler'
-      zustand.meldung = `Start fehlgeschlagen: ${antwort.status} ${inhalt.grund ?? ''}`.trim()
+      zustand.meldung = `Freigabe fehlgeschlagen: ${antwort.status} ${inhalt.grund ?? ''}`.trim()
     } else {
       zustand.phase = 'gestartet'
     }

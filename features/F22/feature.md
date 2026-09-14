@@ -46,6 +46,24 @@ im Workboard erreicht AK4/AK6 also weiterhin nicht. AK8 bleibt bei
 Stefan, jetzt mit engerem, klar benanntem Rest-Blocker (F-374 statt
 F-373).
 
+Nachtrag (14.09.2026, F-374-Fix): `freigebenBearbeitung` (`workboard.js`)
+importiert und ruft jetzt `sendeWorkflowFreigabe` (Muster
+`views/workflows.js:673`) statt `starteWorkflowSchritt` auf —
+`schrittId` kommt aus `zustand.workflowDetail.naechster.schrittId`,
+`begruendung` aus einem festen Standardtext (kein Eingabefeld, bewusst
+als TECH_DEBT F-375 zurückgestellt statt jetzt gebaut). Da die
+`freigabe`-Antwort im Re-Test bereits `status: 'LAEUFT'` lieferte, entfällt
+ein zusätzlicher `starten`-Aufruf danach. `npm run check` läuft grün
+(450/450 Tests, alle Gates, Lint, Typecheck). Diese Sitzung hatte
+keinen Browser-Zugriff — der von Punkt 4 des Handoffs verlangte reale
+Klickpfad-Test (Bearbeiten → Freigeben im echten Browser) konnte NICHT
+durchgeführt werden, nur die statische Übereinstimmung mit dem bereits
+real erfolgreichen manuellen `freigabe`-Aufruf aus dem AK8-Re-Test
+(siehe oben, „Realer Test (Re-Test)", Schritt 4). Status bleibt deshalb
+IN_ARBEIT, F-374 bleibt offen (nicht „gelöst") und AK8 bleibt bei
+Stefan — der reale Klicktest ist der letzte fehlende Schritt vor
+FEATURE_GATE.
+
 ## Ziel
 
 Ein Klick auf ein reales Workitem im Workboard (F21) löst einen echten

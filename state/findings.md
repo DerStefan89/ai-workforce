@@ -6397,3 +6397,40 @@ begruendung: <UI-Eingabe oder Standardtext>})`-Aufruf ergänzen (Muster
 Handoff), eigenständiger Fix nötig.
 Status: offen.
 Feature/Run: F22 WS-2, AK8-Re-Test, 14.09.2026.
+
+Nachtrag (14.09.2026, Fix eingereicht, noch NICHT real verifiziert):
+`freigebenBearbeitung` (`workboard.js`) ruft jetzt `sendeWorkflowFreigabe`
+mit `schrittId: zustand.workflowDetail.naechster.schrittId` (derselbe Wert,
+den `workflows.js` über `data-schritt-id` nutzt) und der Standard-
+begründung `FREIGABE_BEGRUENDUNG_STANDARD` auf, kein `starteWorkflowSchritt`
+mehr davor/danach — die `freigabe`-Antwort lieferte im Re-Test bereits
+`status: 'LAEUFT'`, ein zweiter `starten`-Aufruf entfällt. Statisch geprüft
+(gleicher Endpunkt, gleiche Feldquelle wie der bereits real erfolgreiche
+manuelle `freigabe`-Aufruf oben), `npm run check` grün (450/450 Tests,
+Gates, Lint, Typecheck). NICHT verifiziert: ein echter Klick im Browser —
+diese Sitzung hatte keinen Browser-Zugriff, nur den Editor/CLI-Zugriff.
+Die Bewertung „gelöst" und die AK8-Freigabe bleiben deshalb an Stefans
+realem Klicktest gebunden, wie im Auftrag verlangt.
+
+**F-375** · `TECH_DEBT` · P3 · offen
+Titel: Workboard-Freigabe hat kein Begründungs-Eingabefeld — fester
+Standardtext statt Nutzereingabe.
+Beschreibung: Der F-374-Fix (Freigabe-Verdrahtung, `freigebenBearbeitung`
+in `workboard.js`) sendet für jede Freigabe dieselbe feste Begründung
+`FREIGABE_BEGRUENDUNG_STANDARD` ("Freigabe über Workboard Click-to-Work"),
+weil das Workboard-Panel — anders als `views/workflows.js`
+(`#wf-freigabe-begruendung`) — kein Eingabefeld dafür hat. Bewusst so
+entschieden (YAGNI, Handoff F22-AK8-Nachtrag, 14.09.2026): ein echtes
+Eingabefeld für dieses Fast-Prototype wäre Mehraufwand ohne aktuellen
+Bedarf.
+Fundstelle: `public/leitstand/views/workboard.js` (`freigebenBearbeitung`,
+`FREIGABE_BEGRUENDUNG_STANDARD`); Gegenbeispiel mit echtem Feld
+`public/leitstand/views/workflows.js:667` (`wf-freigabe-begruendung`).
+Auswirkung: Jede Freigabe über das Workboard trägt dieselbe generische
+Begründung im Entscheidungsartefakt — nachvollziehbar, aber ohne
+fallspezifischen Kontext, den ein Mensch beim Freigeben ggf. festhalten
+möchte.
+Maßnahme: Bei Bedarf ein Textfeld analog `views/workflows.js` in
+`renderBearbeitungsInhalt` (Phase 'vorschlag') ergänzen.
+Status: offen.
+Feature/Run: F22 WS-2, AK8-Nachtrag, 14.09.2026.
