@@ -6347,7 +6347,7 @@ Router- oder Rollenprompt-Logik nötig. Siehe `features/F22/feature.md`,
 Abschnitt „Realer Test (Re-Test)". Dabei ein NEUER, unabhängiger Blocker
 im weiteren Kettendurchlauf gefunden — siehe F-374.
 
-**F-374** · `BUG` · P1 · offen
+**F-374** · `BUG` · P1 · gelöst
 Titel: Workboard-„Freigeben" ruft nur `POST .../starten` auf, ohne den
 für einen `ZWINGEND`-Schritt zwingenden `POST .../freigabe`-Aufruf davor
 — AK4/AK6 sind über das Workboard strukturell unerreichbar.
@@ -6395,7 +6395,7 @@ begruendung: <UI-Eingabe oder Standardtext>})`-Aufruf ergänzen (Muster
 `starten`-Aufruf nötig ist (im Re-Test hat bereits die `freigabe`-Antwort
 `status: 'LAEUFT'` geliefert). Außerhalb dieses Auftrags (Nicht-Ziel laut
 Handoff), eigenständiger Fix nötig.
-Status: offen.
+Status: gelöst.
 Feature/Run: F22 WS-2, AK8-Re-Test, 14.09.2026.
 
 Nachtrag (14.09.2026, Fix eingereicht, noch NICHT real verifiziert):
@@ -6411,6 +6411,19 @@ Gates, Lint, Typecheck). NICHT verifiziert: ein echter Klick im Browser —
 diese Sitzung hatte keinen Browser-Zugriff, nur den Editor/CLI-Zugriff.
 Die Bewertung „gelöst" und die AK8-Freigabe bleiben deshalb an Stefans
 realem Klicktest gebunden, wie im Auftrag verlangt.
+
+Nachtrag (14.09.2026, real verifiziert): Stefan hat den Fix mit zwei
+echten Klicktests im Workboard gegen den echten Server
+(`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`) bestätigt.
+(1) Workitem `abcd6a25-…` (F-359): Bearbeiten → Router lief über `codex`
+→ Vorschlag erschien → Klick auf „Freigeben" → KEIN 409 → Kette lief bis
+`ABGESCHLOSSEN`, Schritt `ERFOLGREICH`, Terminal-Block erschien real im
+UI. (2) Workitem F-090: derselbe Klickpfad, ebenfalls Freigeben ohne 409,
+Kette bis `ABGESCHLOSSEN`, Terminal-Block erschien; der
+Ausführungsschritt änderte hier keine Datei (`git status`/`git diff`
+danach: keine Tracked-Änderungen) — unauffällig, da F-090 TECH_DEBT/
+zurückgestellt war (E-192), kein Blocker. Status damit auf „gelöst"
+gehoben.
 
 **F-375** · `TECH_DEBT` · P3 · offen
 Titel: Workboard-Freigabe hat kein Begründungs-Eingabefeld — fester
