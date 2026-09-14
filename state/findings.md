@@ -6447,3 +6447,94 @@ Maßnahme: Bei Bedarf ein Textfeld analog `views/workflows.js` in
 `renderBearbeitungsInhalt` (Phase 'vorschlag') ergänzen.
 Status: offen.
 Feature/Run: F22 WS-2, AK8-Nachtrag, 14.09.2026.
+
+**F-376** · `PROCESS_IMPROVEMENT` · P1 · **gelöst**
+Titel: PlanV1 (12.09.) und M5-Vermerk (14.09.) widersprachen sich zum
+Post-Build-Prüfschritt.
+Beschreibung: PlanV1 (`docs/STATUS.md`, Meilenstein 4) ordnet den
+Post-Build-Prüfschritt F23 zu. Der M5-Vermerk vom 14.09.2026 (strategische
+Vorab-Challenge zu Meilenstein 5) erwähnt denselben Mechanismus im
+Zusammenhang mit einer eigenen, strategischen Vorab-Prüfung — ohne
+Abgrenzung sah das nach zwei konkurrierenden Bauorten für dieselbe
+Fähigkeit aus.
+Fundstelle: `docs/STATUS.md` (F23-Eintrag), M5-Vermerk vom 14.09.2026.
+Auswirkung: ohne Klärung hätte F23 WS-0 einen Mechanismus bauen können, den
+Meilenstein 5 kurz danach unabhängig noch einmal baut oder ersetzt.
+Maßnahme: 14.09.2026 entschieden — F23 baut den Post-Build-Prüfschritt als
+Kernartefakt und Automaten-Verdrahtung; der M5-Vermerk gilt ausschließlich
+für die strategische Vorab-Challenge (ein menschlicher, planender Schritt
+vor Meilenstein 5, kein Laufzeitmechanismus) und bezeichnet keinen zweiten
+Bauort für dasselbe.
+Status: gelöst (14.09.2026).
+Feature/Run: F23 WS-0, 14.09.2026.
+
+**F-377** · `BUG` · P1 · offen
+Titel: Rolle `code-reviewer` läuft in den Standard-Workflow-Vorlagen VOR
+dem Bau, entgegen ihrem eigenen Rollenvertrag — ihr Urteil wird von
+niemandem ausgewertet.
+Beschreibung: `workflow-vorlagen/standard.json` und `workflow-vorlagen/
+hoch.json` planen `code-reviewer` als lesenden Schritt VOR `ausfuehrung`,
+gegen den reinen Auftragstext. Der Rollenvertrag (`src/rollen/index.ts`,
+F17) beschreibt `code-reviewer` aber als Prüfung fertigen Codes NACH dem
+Bau (CLAUDE.md: „Prüft fertigen Code nach dem Bauen"). Der Automat
+(`ermittleNaechstenSchritt`) wertet das Urteil dieses Vor-Schritts an
+keiner Stelle aus — ein `urteil: BLOCKIERT` hätte keine Wirkung, selbst
+wenn der Schritt inhaltlich sinnvoll liefe.
+Fundstelle: `workflow-vorlagen/standard.json`, `workflow-vorlagen/hoch.json`,
+`src/rollen/index.ts` (ROLLENVERTRAEGE.code-reviewer), `src/workflow/
+index.ts` (`ermittleNaechstenSchritt`).
+Auswirkung: der bestehende Vor-Bau-Schritt täuscht eine Code-Review vor,
+die technisch nicht stattfinden kann (es gibt noch keinen Code) und deren
+Ergebnis ohnehin folgenlos bliebe.
+Maßnahme: F23 WS-1/WS-2 — echter Post-Build-Prüfschritt NACH `ausfuehrung`
+mit ausgewertetem Urteil; die bestehenden Vor-Bau-Schritte in den Vorlagen
+bleiben bis dahin unverändert (F15-Testfixtures, Vorlagen sind in F23 WS-0
+ausdrücklich Nicht-Ziel).
+Status: offen.
+Feature/Run: F23 WS-0, 14.09.2026.
+
+**F-378** · `TECH_DEBT` · P2 · offen
+Titel: Kein Werkzeugsatz enthält ein lesendes Git/Bash — eine Rolle kann
+keinen Diff selbst ermitteln.
+Beschreibung: `startvorlagen/ai-workforce.json` definiert
+`werkzeugsaetze.lesend = [Read, Grep, Glob]` und `schreibend` als dieselbe
+Liste plus `[Write, Edit]`. Keiner der beiden Werkzeugsätze enthält Bash
+oder ein Git-Werkzeug — eine Rolle kann das Ergebnis eines Baulaufs also
+nicht selbst gegen den vorherigen Stand vergleichen.
+Fundstelle: `startvorlagen/ai-workforce.json` (`werkzeugsaetze`).
+Auswirkung: ein Post-Build-Prüfschritt, der wissen muss, WAS sich geändert
+hat, kann diese Information nicht über die Rolle selbst beschaffen.
+Maßnahme: F23 WS-0 umgeht das strukturell — der Kern (nicht die Rolle)
+ermittelt die Änderungsübersicht rein lesend über einen eigenen,
+serverseitigen `git`-Kindprozess (`src/aenderungsuebersicht/index.ts`,
+Muster: `src/authorization-boundary/index.ts` `leseAusCommit` macht das
+bereits für F3) und stellt sie als Kernartefakt bereit. Die zugrunde
+liegende Werkzeugsatz-Lücke selbst bleibt bestehen und ist kein
+Bestandteil dieser Lösung.
+Status: offen.
+Feature/Run: F23 WS-0, 14.09.2026.
+
+**F-379** · `TECH_DEBT` · P2 · offen
+Titel: Entscheidungsartefakte werden an fünf Stellen in
+`scripts/leitstand-server.mjs` inline ohne Schema geschrieben; das Feld
+`ergebnis` ist über fünf semantische Familien überladen.
+Beschreibung: `{entscheidung_schema: 'v0', ergebnis, begruendung,
+entschieden_am}` entsteht inline an fünf Schreibstellen
+(`scripts/leitstand-server.mjs` Z. ~3345, 3947, 4269, 4408, 4444) ohne
+gemeinsames JSON-Schema und ohne Validator (siehe bereits F-350). Das Feld
+`ergebnis` trägt dabei je nach Stelle Werte aus fünf verschiedenen,
+inhaltlich unabhängigen Wertemengen (u. a. Plan-Änderung, menschliche
+Freigabe-/Ablehnungsentscheidung, `GESTOPPT`, ein Prüfungsergebnis, der
+übernommene `LaufStatus.ergebnis`) — `ABGELEHNT` ist dabei doppelt belegt
+und je nach Stelle unterschiedlich zu lesen.
+Fundstelle: `scripts/leitstand-server.mjs` Z. ~3345, 3947, 4269, 4408, 4444.
+Auswirkung: ein Konsument des Feldes `ergebnis` kann seine Bedeutung nicht
+ohne Kenntnis der erzeugenden Stelle bestimmen; ein künftiges Schema
+(F-350) muss diese fünf Familien vor der Vereinheitlichung erst sauber
+trennen, sonst wird die Überladung nur in ein Schema gegossen statt
+aufgelöst.
+Maßnahme: F23 WS-1 — Schema und Validator für das Entscheidungsartefakt,
+dabei die fünf `ergebnis`-Familien explizit auseinanderziehen (löst F-350
+zusammen mit dieser Klärung).
+Status: offen.
+Feature/Run: F23 WS-0, 14.09.2026.

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-aenderungsuebersicht-payload.schema.json",
+  "title": "Änderungsübersicht-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' —, wenn aenderungsuebersicht_schema === \"v0\" (F23 WS-0). Der Kern registriert dieses Artefakt unter 'aenderungsuebersicht-<laufId>', wenn ein Lauf mit schreibendem Werkzeugsatz real ERFOLGREICH/ABGESCHLOSSEN endet (state/findings.md F-378: kein Werkzeugsatz enthält ein lesendes Git, eine Rolle kann keinen Diff selbst ermitteln — der Kern ermittelt ihn rein lesend über einen eigenen git-Kindprozess gegen die Repo-Wurzel). basis_ref ist null und dateien bleibt leer, wenn die Ermittlung selbst fehlschlägt (kein Git, kein Repo, kein Commit unter HEAD) — ein Fehlschlag der Ermittlung darf den auslösenden Lauf laut Bauauftrag nicht scheitern lassen, der Grund steht dann in stat_text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["aenderungsuebersicht_schema", "lauf_id", "erzeugt_am", "basis_ref", "dateien", "stat_text", "patch", "gekuerzt", "budget_bytes"],
+  "properties": {
+    "aenderungsuebersicht_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "erzeugt_am": { "type": "string", "minLength": 1 },
+    "basis_ref": {
+      "type": ["string", "null"],
+      "description": "HEAD-Commit-SHA zum Zeitpunkt der Ermittlung. null nur, wenn 'git rev-parse HEAD' fehlschlug (kein Repo, kein Commit)."
+    },
+    "dateien": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pfad", "status", "plus", "minus"],
+        "properties": {
+          "pfad": { "type": "string", "minLength": 1 },
+          "status": {
+            "enum": ["GEAENDERT", "NEU", "GELOESCHT", "UMBENANNT"],
+            "description": "NEU deckt sowohl von git als 'A' erkannte als auch über 'git status --porcelain' gefundene untracked Dateien ab (AK2) — beide sind aus Sicht der Übersicht neu."
+          },
+          "plus": { "type": ["integer", "null"], "minimum": 0, "description": "null bei Binärdateien oder untracked Dateien (Zeilenzahl nicht über git diff ermittelbar)." },
+          "minus": { "type": ["integer", "null"], "minimum": 0, "description": "null bei Binärdateien oder untracked Dateien." }
+        }
+      }
+    },
+    "stat_text": { "type": "string", "description": "Text von 'git diff --stat HEAD', oder ein Klartext-Grund, wenn die Ermittlung fehlschlug." },
+    "patch": { "type": "string", "description": "Text von 'git diff HEAD', ggf. auf budget_bytes gekappt (gekuerzt: true)." },
+    "gekuerzt": { "type": "boolean" },
+    "budget_bytes": { "type": "integer", "minimum": 0 }
+  }
+}

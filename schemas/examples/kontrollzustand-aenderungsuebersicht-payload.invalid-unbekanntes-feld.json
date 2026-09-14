@@ -1,0 +1,12 @@
+{
+  "aenderungsuebersicht_schema": "v0",
+  "lauf_id": "e2e-referenzfeature-2026-09-14",
+  "erzeugt_am": "2026-09-14T09:00:00.000Z",
+  "basis_ref": null,
+  "dateien": [],
+  "stat_text": "kein Git-Repository am Startziel.",
+  "patch": "",
+  "gekuerzt": false,
+  "budget_bytes": 200000,
+  "unerwartetes_feld": true
+}
