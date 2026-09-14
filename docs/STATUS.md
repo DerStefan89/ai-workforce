@@ -17,9 +17,9 @@ abgeschlossen. Meilenstein 1 und Meilenstein 2 (Bedienbarer Leitstand,
 `docs/projekt/zielfassung.md` §13.4) ist abgeschlossen (Stand 11.09.2026,
 alle drei Sätze der Bestehensbedingung real erfüllt). F19 (Capability
 Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
-4, ist abgeschlossen (12.09.2026). Das Projekt steht am Übergang zu
-Meilenstein 4; dessen Challenge läuft, ein M4-Scope ist in der Sollquelle
-noch nicht festgelegt.
+4, ist abgeschlossen (12.09.2026). Das Projekt ist in Meilenstein 4
+(Jarvis Workspace, `docs/projekt/zielfassung.md` §13.5), PlanV1 freigegeben
+(12.09.2026), noch kein Feature begonnen.
 
 ## Erledigt
 
@@ -374,6 +374,35 @@ beide real erfüllt; in `docs/projekt/zielfassung.md` §13.4 nachgetragen
   strukturell nicht bereitstellen; das Gate trägt zwei eng benannte,
   geprüfte Ausnahmen für `code-reviewer` und `router` statt einer Verengung
   von `erlaubte_worker` (siehe `features/F19/nachweis-ws2.md`).
+
+### Meilenstein 4 — in Planung (`docs/projekt/zielfassung.md` §13.5)
+
+Elf Features, Reihenfolge nach frühestem sichtbaren Closed Loop
+(Challenge `claude/183`, PlanV1 `claude/184`; Feature-Akten entstehen je
+Feature unter `features/F2x/`):
+
+- 🔧 **F20** — Jarvis Shell v1 (Navigation, Routing, Tokens,
+  `GET /api/zustand`). Akte `features/F20/feature.md`, Status
+  `READY_FOR_TECH`. Nächstes Feature.
+- ⏳ **F21** — Workboard + Attention v1 (Projektion über Findings,
+  Feature-Akten, Failed Runs, Capability Gaps). Nach F20.
+- ⏳ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
+  Kernartefakt, Vorschlag → Freigabe → Kette). Nach F21.
+- ⏳ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
+  Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Nach F22.
+- ⏳ **F24** — Capabilities v1 (F19-Projektion, Coverage, Rollen lesend).
+  Nach F20, unabhängig.
+- ⏳ **F25** — Projekte v1 (Register, Handler je Projekt, Health, Import).
+  Nach F20, unabhängig.
+- ⏳ **F26** — Jarvis Chat v1 (Rolle `jarvis`). Nach F22 und F25.
+- ⏳ **F27** — Resource Scout (Werkzeugsatz `recherchierend`, Rolle `scout`).
+  Nach F24.
+- ⏳ **F28** — Persona v1 (SVG, vier abgeleitete Zustände). Nach F20,
+  unabhängig.
+- ⏳ **F29** — Design Scout + visuelle Produktisierung. Nach F27 und F28.
+- ⏳ **F30** — Self- und Team-Dogfooding (Meilenstein-Gate). Nach F23, F25.
+
+Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder

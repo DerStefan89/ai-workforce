@@ -5853,3 +5853,143 @@ Prozessregel: der Bauauftrag, der den letzten Workstream eines Features
 merged, trägt den STATUS.md-Nachzug im selben PR.
 Status: gelöst.
 Feature/Run: F19-Abschluss, 12.09.2026.
+
+**F-349** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `umsetzungsplan-fassung-1.md` ist führend für Reihenfolge/Backlog,
+endet aber bei Meilenstein 2.
+Beschreibung: `state/memory-map.md` führt das Dokument als führende Quelle
+für Deliverables, Feature-Reihenfolge und Backlog; sein Inhalt endet bei
+M2 (Stand 28.08.2026), M3/M4/F19 fehlen vollständig.
+Fundstelle: `docs/projekt/umsetzungsplan-fassung-1.md`, `state/memory-map.md`.
+Auswirkung: eine Rolle, die sich an die Memory-Map hält, plant gegen einen
+drei Meilensteine alten Stand.
+Maßnahme: Hinweisabsatz im Dokument (dieser PR); Memory-Map-Zeile bei
+nächster Gelegenheit auf `zielfassung.md` §13 + `docs/STATUS.md` umstellen
+oder das Dokument nachziehen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-350** · `TECH_DEBT` · P1 · offen
+Titel: Entscheidungsartefakt (`entscheidung_schema: v0`) ohne JSON-Schema
+und Validator.
+Beschreibung: Das Format `{entscheidung_schema:'v0', ergebnis, begruendung,
+entschieden_am}` existiert nur inline an den Schreibstellen in
+`scripts/leitstand-server.mjs`; es gibt kein
+`schemas/kontrollzustand-entscheidung-payload.schema.json` und keine
+`validiere*`-Funktion — als einziges `*_V0`-Format.
+Fundstelle: `scripts/leitstand-server.mjs` (`entscheidung_schema`), `schemas/`.
+Auswirkung: das Bindeglied Mensch↔Lauf ist nicht validierbar; M4-F23
+(Abnahme `ANGENOMMEN|ANPASSUNG|ABGELEHNT`, Prioritäts-Override) setzt darauf
+auf.
+Maßnahme: Schema + Validator in F23 WS-1, bestehende Artefakte bleiben
+gültig (E-M4-6).
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-351** · `TECH_DEBT` · P1 · offen
+Titel: Review→Execution-Handoff transportiert kein Urteil; keine
+Post-Build-Prüfstufe.
+Beschreibung: In `workflow-vorlagen/standard.json` und `hoch.json` läuft
+`code-reviewer` vor `ausfuehrung` als Lesepruefung des Auftragsartefakts;
+kein Template hat einen Schritt nach `ausfuehrung`. `schritte[].eingaben`
+kann die Ausgabe eines Vorschritts nicht referenzieren; ein `urteil:
+BLOCKIERT` hat keine maschinelle Wirkung — der Automat startet den
+Folgeschritt allein aufgrund `ERFOLGREICH`.
+Fundstelle: `workflow-vorlagen/*.json`,
+`schemas/kontrollzustand-workflow-payload.schema.json` (`eingaben`),
+`src/workflow/index.ts` (`ermittleNaechstenSchritt`).
+Auswirkung: „Ausführung → Review → QA → schließen" (M4 Click-to-Work) ist
+mit den heutigen Vorlagen nicht ausführbar.
+Maßnahme: Post-Build-Schritt in den Vorlagen und Urteilsauswertung im
+Automaten in F23 WS-1 (E-M4-7); F15-Testfixtures unberührt lassen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-352** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: UI-Gate ist Quelltext-String-Matching; `public/` außerhalb Lint und
+Typecheck.
+Beschreibung: `scripts/check-f15-workflow-oberflaeche.mjs` prüft
+Container-IDs, Endpunkt-Strings und Feldnamen im Quelltext von
+`public/leitstand/` („kein Rendern"); `biome.json` führt nur `scripts` und
+`src`; repo-weit gibt es keinen DOM-Test.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`, `biome.json`.
+Auswirkung: jede Umstrukturierung der Oberfläche bricht das Gate, ohne
+dass funktional etwas kaputt sein muss — und umgekehrt.
+Maßnahme: in F20 WS-2 auf die neue Struktur kalibrieren (Rot-Fall
+Pflicht), `public/` in den Biome-Scope aufnehmen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-353** · `TECH_DEBT` · P2 · offen
+Titel: Router-Ergebnis wird nicht persistiert; Router nur per CLI erreichbar.
+Beschreibung: Die Klassifikation (`ergebnis-router`) wird in
+`scripts/route-auftrag.mjs` aus dem Laufergebnis geparst und nur in Form
+des erzeugten Workflows über `POST /api/workflows` abgelegt; das
+Klassifikationsobjekt selbst ist kein Artefakt. Der Leitstand hat keinen
+Router-Endpunkt.
+Fundstelle: `scripts/route-auftrag.mjs`, `src/router/index.ts`,
+`scripts/leitstand-server.mjs`.
+Auswirkung: „Grund der Auswahl" (Rolle→Worker→Modell) ist nicht
+nachvollziehbar; Click-to-Work aus der UI unmöglich.
+Maßnahme: F22 WS-1 — Endpunkt `POST /api/auftraege/<id>/routen`,
+Router-Ergebnis als Kernartefakt mit Schema.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-354** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `features/F19/feature.md` nennt 21 Einträge/6 Skills, real 22/7.
+Beschreibung: `ponytail` wurde in WS-2 in `ressourcen.json` nachgetragen,
+die Feature-Akte (Scope, AK2) nicht.
+Fundstelle: `features/F19/feature.md`, `ressourcen.json`.
+Auswirkung: Zahlenwiderspruch zwischen Akte und Register.
+Maßnahme: Akte bei nächster F19-Berührung nachziehen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-355** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: CI-Kommentare behaupten „keine package-lock.json"; `npm ci`/Cache
+ungenutzt.
+Beschreibung: `.github/workflows/ci.yml` erklärt zweimal, das Projekt habe
+keine Dependencies und keine Lock-Datei; beides ist seit den devDependencies
+falsch. `cache: npm` und `npm ci` bleiben deshalb aus.
+Fundstelle: `.github/workflows/ci.yml`, `package-lock.json`.
+Auswirkung: längere CI-Läufe, irreführende Kommentare.
+Maßnahme: auf `npm ci` + Cache umstellen, Kommentare entfernen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-356** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `START-KLEIN.md`, `SETUP.md`, `README.md` erwähnen den Leitstand nicht.
+Beschreibung: Der Betriebseinstieg (`npm run leitstand`, Port, Startvorlage,
+Freigabedatei, Bezeugungs-Repo) steht nur in Feature-Nachweisen.
+Fundstelle: die drei Dateien, `features/F15/nachweis-ak10.md`.
+Auswirkung: Team-Dogfooding (F30) ist ohne Einstiegsdoku nicht möglich.
+Maßnahme: F30 WS-1.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-357** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Feature-Gate erzwingt Pflichtabschnitte nur bei `READY_FOR_TECH`;
+`qa.md` und `HARNESS-LEARNING-STATE.md` weiter `[FÜLLUNG]`.
+Beschreibung: `scripts/check-feature.mjs` prüft die vier Pflichtabschnitte
+nur in diesem einen Status; eine Akte in `FEATURE_GATE`/`ABGESCHLOSSEN`
+kann sie verlieren. `.claude/agents/qa.md` und
+`docs/harness/HARNESS-LEARNING-STATE.md` sind nach 20 Features unausgefüllt.
+Fundstelle: `scripts/check-feature.mjs`, `.claude/agents/qa.md`,
+`docs/harness/HARNESS-LEARNING-STATE.md`.
+Auswirkung: Prüfdruck endet, wo gebaut wird; Lernstand nicht festgehalten.
+Maßnahme: Gate auf alle Status ab `READY_FOR_TECH` ausweiten; `qa.md` in
+F29 füllen; Learning-State im Dogfooding (F30) nachziehen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-358** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: M4-Challenge-Auftrag v2 referenziert Zielbild v3, gearbeitet wurde
+gegen v5.
+Beschreibung: Versionsverweis im Auftragsdokument veraltet; die Challenge
+hat das benannt und gegen v5 gearbeitet.
+Fundstelle: Claude-Projekt „AI Workforce", Uploads vom 12.09.2026.
+Auswirkung: keine, dokumentiert.
+Maßnahme: keine; bei künftigen Auftragsdokumenten Basisversion prüfen.
+Status: offen.
+Feature/Run: M4-Challenge, 12.09.2026.
