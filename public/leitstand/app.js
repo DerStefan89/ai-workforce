@@ -14,6 +14,9 @@
  * ihre Routen bei router.js, BEVOR starteRouter() den ersten dispatch()
  * auslöst. Wird eine neue View ergänzt, muss ihr init-Aufruf vor
  * starteRouter() stehen, sonst greift ihre Route beim ersten Laden nicht.
+ * Aus demselben Grund steht initZustandPoll() (F20 WS-2, AK3 — der eine
+ * Poll-Timer) NACH allen initXView()-Aufrufen: jede View registriert ihr
+ * abonniere() bei zustand.js, bevor der erste Tick etwas zu melden hätte.
  *
  * Dashboard/Projekt/Workboard/Capabilities haben kein eigenes onEnter (reine
  * Anzeige-Views ohne Detail-Unterrouten wie Runs/Workflows) — ihre Routen
@@ -28,6 +31,7 @@ import { initProjektView } from './views/projekt.js'
 import { initRunsView } from './views/runs.js'
 import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
+import { initZustandPoll } from './zustand.js'
 
 initDashboardView()
 initProjektView()
@@ -41,4 +45,5 @@ registriere(/^#\/projekt$/, 'projekt')
 registriere(/^#\/workboard$/, 'workboard')
 registriere(/^#\/capabilities$/, 'capabilities')
 
+initZustandPoll()
 starteRouter()

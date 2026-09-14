@@ -298,6 +298,6 @@ export function initProjektView() {
   initEvidenzdateien()
   initAuftragFormular()
   initStartformular()
-  ladeAuftraege().then(aktualisiereLaufIdVorschlag)
-  ladeWerkzeugsaetze()
+  void ladeAuftraege().then(aktualisiereLaufIdVorschlag)
+  void ladeWerkzeugsaetze()
 }

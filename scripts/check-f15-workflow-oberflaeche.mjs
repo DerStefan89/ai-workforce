@@ -18,6 +18,21 @@
  * mitbewegt (Rot-Fall bei jeder der beiden Dateien real erhalten, siehe
  * Ende dieser Datei / QA-Nachweis F20 WS-1).
  *
+ * F20 WS-2 (14.09.2026, F-362): die Poll-Konsolidierung (GET /api/zustand
+ * statt drei setInterval-Timer, siehe public/leitstand/zustand.js) hat Fall
+ * (b) real gebrochen — `views/workflows.js` ruft `holeWorkflows()` seither
+ * NICHT mehr auf, die Liste kommt als Abnehmer des einen Poll-Timers
+ * (`renderWorkflows(zustand.workflows)` in einem `abonniere(...)`-Callback).
+ * (b) prüft seither GENAU diese Verdrahtung statt des alten
+ * `await holeWorkflows()`-Aufrufs; Fall (g)s `pollWorkflows()`-Zusage ist aus
+ * demselben Grund auf `pollJetzt()` (zustand.js) umgestellt — beide
+ * Rot-Fälle real erhalten (Aufruf/Literal vorübergehend entfernt, Gate lief
+ * rot, danach zurückgesetzt). Die AK3-Invariante selbst (genau ein
+ * setInterval, in zustand.js, zielt auf /api/zustand) ist NICHT Teil dieses
+ * Gates — sie steht als eigener, cross-cutting Client-Check in
+ * `scripts/check-f20-zustand-poll.mjs` (Arbeitsteilung wie bei F-327: dort
+ * die gesamte Oberfläche, hier ausschließlich die Workflow-Ansicht).
+ *
  * WARUM ES DIESES GATE ÜBERHAUPT GIBT — bitte vor dem Löschen lesen:
  * `public/leitstand/` war bis hierher NICHT gegatet. scripts/check-f12-
  * leitstand-ansicht.mjs trug „Leitstand-Ansicht" im Namen, prüfte aber die
@@ -40,8 +55,11 @@
  * (a) index.html — der Abschnitt, seine Container-ids und der Einleitungssatz,
  *     der die schreibenden Ausnahmen benennt.
  * (b) views/workflows.js + api.js — die beiden Leseendpunkte GET
- *     /api/workflows und GET /api/workflows/<id>: api.js führt den Endpunkt,
- *     die View ruft die Funktion tatsächlich auf.
+ *     /api/workflows und GET /api/workflows/<id>: api.js führt beide.
+ *     Die Liste liest die View seit F20 WS-2 NICHT mehr per eigenem
+ *     fetch()-Aufruf, sondern als Abnehmer des Zustands-Aggregat-Polls
+ *     (abonniere(...) in zustand.js, renderWorkflows(zustand.workflows));
+ *     das Detail ruft weiterhin direkt holeWorkflowDetail(workflowId) auf.
  * (c) views/workflows.js (+ views/runs.js für den Lauf-Verweis) —
  *     Kopfdaten- und Schrittfelder, jedes EINZELN nachgewiesen. Eine
  *     Sammelprüfung („irgendwas mit schritt") bliebe grün, während die halbe
@@ -155,10 +173,15 @@ if (htmlQuelltext.includes('Ausnahme: das Startformular und die Wiederaufnahme-B
 }
 verlangeVorkommen('a', 'Einleitungssatz nennt die Workflow-Bedienung als schreibende Ausnahme', htmlQuelltext, 'Workflow-Bedienung')
 
-// ─── (b) die beiden Leseendpunkte: api.js führt sie, die View ruft sie auf ──
+// ─── (b) die beiden Leseendpunkte: api.js führt sie, die View liest sie ────
+// F20 WS-2 (F-362): die Liste kommt seither NICHT mehr aus einem direkten holeWorkflows()-Aufruf
+// in workflows.js, sondern als Abnehmer des einen Zustands-Aggregat-Polls (zustand.js) — die
+// Zusage lautet deshalb auf die Abonnement-Verdrahtung, nicht mehr auf den fetch()-Aufrufort. Der
+// Endpunkt selbst bleibt in api.js geführt (AK1, Zeile darüber unverändert).
 verlangeVorkommen('b', "GET /api/workflows (Liste) — api.js", apiQuelltext, "fetch('/api/workflows')")
 verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)/)
-verlangeVorkommen('b', 'ladeWorkflows() ruft holeWorkflows() auf', workflowsQuelltext, 'await holeWorkflows()')
+verlangeVorkommen('b', 'initWorkflowsView abonniert den Zustands-Aggregat-Poll für die Liste (F20 WS-2)', workflowsQuelltext, 'abonniere((zustand) => {')
+verlangeVorkommen('b', 'die Liste rendert aus dem Aggregat (renderWorkflows(zustand.workflows), F20 WS-2)', workflowsQuelltext, 'renderWorkflows(zustand.workflows)')
 verlangeVorkommen('b', 'ladeWorkflowDetail() ruft holeWorkflowDetail(workflowId) auf', workflowsQuelltext, 'await holeWorkflowDetail(workflowId)')
 
 // ─── (c) Kopfdaten- und Schrittfelder, jedes einzeln ────────────────────────
@@ -305,7 +328,9 @@ verlangeVorkommen('g', 'Fehlerantworten werden als Meldung am Workflow gezeigt',
 verlangeVorkommen('g', 'Erfolgsmeldung je Bedienung', appQuelltext, 'erfolgstext')
 verlangeVorkommen('g', 'der Erfolgskörper wird ausgewertet (laufAbgebrochen)', appQuelltext, 'inhalt.laufAbgebrochen === true')
 verlangeVorkommen('g', 'der Erfolgskörper wird ausgewertet (bezeugt)', appQuelltext, 'inhalt.bezeugt === false')
-verlangeVorkommen('g', 'Poll außer der Reihe nach jeder Bedienung', appQuelltext, 'pollWorkflows()')
+// F20 WS-2 (F-362): der lokale pollWorkflows() ist entfallen — "außer der Reihe" heißt seither
+// pollJetzt() aus zustand.js aufzurufen (derselbe eine Poll-Timer, nur außerhalb seines Taktes).
+verlangeVorkommen('g', 'Poll außer der Reihe nach jeder Bedienung', appQuelltext, 'pollJetzt()')
 // Der Überholschutz aus F-252 muss auch für den neuen Ladeweg greifen: ein älterer Tick darf
 // weder Schrittliste noch Bedienknöpfe zurückschreiben.
 verlangeVorkommen('g', 'F-252: der Bedienblock hängt am Überholschutz des Detail-Ladewegs', appQuelltext, 'aktualisiereWorkflowBedienung(workflowId')
@@ -360,11 +385,12 @@ verlangeVorkommen('h', 'F-241: kein Stopp-Knopf auf einer ungültigen Fassung', 
 // Ladens darf eingetippte Änderungen nicht überschreiben (Reviewer-Pass 10.09.2026).
 verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 'reparaturZaehler')
 
-// ─── (f) die vier hier geprüften Module sind syntaktisch gültig ─────────────
+// ─── (f) die hier geprüften Module sind syntaktisch gültig ──────────────────
 // F20 WS-1 (F-352): app.js allein zu prüfen reichte, solange es die gesamte Logik enthielt —
 // seither verteilt sich das auf mehrere Dateien, und eine kaputte views/workflows.js wäre sonst
-// unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe.
-for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js']) {
+// unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe. F20 WS-2 (F-362):
+// zustand.js ergänzt — der eine Poll-Timer, von dem seither jede hier geprüfte View abhängt.
+for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {
