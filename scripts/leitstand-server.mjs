@@ -439,6 +439,7 @@ import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten }
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
+import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -800,6 +801,13 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo) {
   const auftragsbezugVoll = baueAuftragsbezug(ladeKontextpaketVersion(laufId, basisVerzeichnis), basisVerzeichnis, auftragMemo)
   const auftragsbezug = auftragsbezugVoll.status === 'ok' ? { auftragId: auftragsbezugVoll.auftragId, titel: auftragsbezugVoll.titel } : null
 
+  // F21 WS-1 (AK4, F-370): dieselbe Quelle wie POST /api/entscheidungen, art 'kenntnisnahme'
+  // (ladeArtefaktVersion auf entscheidung-<laufId>) — keine zweite Leseroutine. herkunft.schritt
+  // unterscheidet die beiden Entscheidungsarten, die unter derselben Artefakt-ID landen
+  // ('entscheidung-terminal' vs. 'entscheidung-kenntnisnahme', siehe dort).
+  const entscheidungsVersion = ladeArtefaktVersion(`entscheidung-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const kenntnisgenommen = entscheidungsVersion?.herkunft?.schritt === 'entscheidung-kenntnisnahme'
+
   return {
     laufId,
     laufStatus,
@@ -808,6 +816,7 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo) {
     auftragsbezug,
     anzahlCheckpoints: gueltigeEintraege.length,
     kettenintegritaet,
+    kenntnisgenommen,
   }
 }
 
@@ -1019,6 +1028,38 @@ function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
     eintraege.push(baueWorkflowKopfdaten(workflowId, version))
   }
   return eintraege
+}
+
+/**
+ * Liest state/findings.md und alle features/<id>/feature.md unter repoWurzel
+ * und parst beide über src/workboard/ (F21 WS-1, AK1/AK2/AK3) — kein zweiter
+ * Regelsatz, dieselben reinen Funktionen wie scripts/check-f21-workboard.mjs.
+ * Query-Filter werden erst NACH dem Parsen angewendet, damit befunde[] immer
+ * den vollen Bestand widerspiegelt statt nur den gefilterten Ausschnitt.
+ * @param repoWurzel - Repo-Wurzel (Default process.cwd(), Muster erzeugeRequestHandler)
+ * @param filter - optional { typ, status, prioritaet }, an baueWorkitemListe durchgereicht
+ * @returns { workitems, befunde } — workitems bereits gefiltert/sortiert
+ */
+function sammleWorkitems(repoWurzel, filter = {}) {
+  const findingsPfad = join(repoWurzel, 'state', 'findings.md')
+  const findingsInhalt = existsSync(findingsPfad) ? readFileSync(findingsPfad, 'utf-8') : ''
+  const findingsErgebnis = parseFindings(findingsInhalt)
+
+  const featuresDir = join(repoWurzel, 'features')
+  const featureDateien = existsSync(featuresDir)
+    ? readdirSync(featuresDir, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort()
+        .map((ordner) => ({ ordner, pfad: join(featuresDir, ordner, 'feature.md') }))
+        .map((d) => ({ ...d, inhalt: existsSync(d.pfad) ? readFileSync(d.pfad, 'utf-8') : null }))
+    : []
+  const featuresErgebnis = parseFeatureAkten(featureDateien)
+
+  return {
+    workitems: baueWorkitemListe(findingsErgebnis.workitems, featuresErgebnis.workitems, filter),
+    befunde: [...findingsErgebnis.befunde, ...featuresErgebnis.befunde],
+  }
 }
 
 /** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Felder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext, sonst grund der Ablehnung */
@@ -2743,7 +2784,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   }
 
   return async function requestHandler(req, res) {
-    const pfad = new URL(req.url, `http://${req.headers.host}`).pathname
+    const angefragteUrl = new URL(req.url, `http://${req.headers.host}`)
+    const pfad = angefragteUrl.pathname
 
     // Detailendpunkt (AK2) VOR dem Listenendpunkt geprüft — längeres, spezielleres
     // Präfix zuerst. laufId wird nach decodeURIComponent gegen dieselbe Zeichenregel
@@ -2858,6 +2900,21 @@ export function erzeugeRequestHandler(optionen = {}) {
       const startfehlerWert = sammleZustandsQuelle('startfehler', () => startfehlerListe, fehler)
       const workflows = sammleZustandsQuelle('workflows', () => sammleWorkflows(basisVerzeichnis), fehler)
       sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler })
+      return
+    }
+
+    // F21 WS-1 (AK3): Findings-Register plus Feature-Akten als eine Liste, optional per
+    // Query-Parameter gefiltert. Eine defekte Quelle liefert null + fehler[]-Eintrag statt
+    // 500 für die gesamte Antwort (Muster GET /api/zustand, AK3 dort).
+    if (req.method === 'GET' && pfad === '/api/workitems') {
+      const filter = {}
+      for (const feld of ['typ', 'status', 'prioritaet']) {
+        const wert = angefragteUrl.searchParams.get(feld)
+        if (wert !== null) filter[feld] = wert
+      }
+      const fehler = []
+      const ergebnis = sammleZustandsQuelle('workitems', () => sammleWorkitems(repoWurzel, filter), fehler)
+      sendeJson(res, 200, { workitems: ergebnis?.workitems ?? null, befunde: ergebnis?.befunde ?? null, fehler })
       return
     }
 

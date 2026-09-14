@@ -2703,7 +2703,6 @@ true stehen (der `.then`/`.catch`-Reset wird nie angehängt, der Wurf endet im
 try/catch der Nachbereitung) — D13 wäre bis zum Serverneustart blockiert.
 Fundstelle: (a) `scripts/leitstand-server.mjs`, `baueWorkflowKopfdaten`;
 (b) ebenda, Fire-and-forget-Block.
-**F-222** · `TECH_DEBT` · P2 · **gelöst**
 entscheiden, nicht hier. (b) ist mit einer `async`-Funktion unerreichbar —
 `fuehreAufgabeDurch` ist eine, und nur eine Testattrappe könnte es verletzen.
 Empfohlene Maßnahme: (a) in WS-3 mitentscheiden. (b) keine — dokumentiert,
@@ -6173,3 +6172,57 @@ pollen (abonniereDetailAuffrischer) oder den 400-Fall im Client freundlich
 abfangen und zum Reload auffordern.
 Status: offen.
 Feature/Run: F20-WS-2-Realtest mit Stefan, 14.09.2026.
+
+**F-367** · `BUG` · P1 · behoben
+Titel: Doppelte ID F-222 in state/findings.md, Körper gehörte zu F-221.
+Beschreibung: Kopfzeile `**F-222** · TECH_DEBT · P2 · **gelöst**` war
+mitten im Fließtext von F-221 eingefügt (Kopier-Fehler), ohne eigenes
+Titel-Feld. 361 Kopfzeilen bei nur 360 verschiedenen IDs; einziger
+Eintrag im Register ohne Titel:-Feld.
+Fundstelle: state/findings.md, F-221/F-222-Übergang.
+Auswirkung: jeder Register-Parser (F21) hätte entweder einen
+Phantom-Eintrag gezeigt oder einen echten verloren.
+Maßnahme: fälschlich eingefügte Kopfzeile entfernt (dieser Commit),
+F-221 unverändert, F-222 unverändert.
+Feature/Run: Challenge F21, 14.09.2026.
+
+**F-368** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Feature-Akten nennen Stichtags-Bestandszahlen als Akzeptanzkriterium.
+Beschreibung: PlanV1 (claude/184) formulierte AK1/AK2 für F21 als feste
+Zahlen („344 Findings", „21 Akten") — beide bereits beim Schreiben der
+Challenge falsch (real 361 Kopfzeilen/23 Akten), weil das Register
+zwischen Planung und Bau weiterwächst.
+Fundstelle: claude/184 (Claude-Projekt), Akte F21, AK1/AK2 (Ursprungsfassung).
+Auswirkung: eine so formulierte AK ist am Tag nach dem Merge falsch,
+Gate wird rot ohne echten Fehler.
+Maßnahme: Akzeptanzkriterien auf Invarianten formulieren
+(„Anzahl Workitems = Anzahl gültiger Kopfzeilen"), nie auf Stichtagszahlen.
+Feature/Run: Challenge F21, 14.09.2026.
+
+**F-369** · `TECH_DEBT` · P2 · offen
+Titel: Status-Feld in findings.md ist Freitext, kein Enum.
+Beschreibung: 28 verschiedene Kopfzeilen-Status-Werte real beobachtet
+(offen/**gelöst**/gelöst/erledigt/behoben/… inkl. uneinheitlicher
+Markdown-Fettung); zusätzlich führen 172 Einträge ein zweites
+Status:-Feld im Fließtext, das die Kopfzeile präzisiert oder widerspricht.
+Fundstelle: state/findings.md, durchgehend.
+Auswirkung: ein Statusfilter über den Rohwert ist unbedienbar; das
+Körper-Status-Feld ist eine zweite Wahrheit.
+Maßnahme: F21 normalisiert im Parser auf OFFEN/ERLEDIGT/SONSTIGES,
+Rohwert bleibt als statusRoh sichtbar. Körper-Status-Feld wird in v1
+nicht interpretiert. Verwerfungsbedingung: bei SONSTIGES-Anteil > 5 %
+Vokabular im Register selbst vereinheitlichen.
+Feature/Run: Challenge F21, 14.09.2026.
+
+**F-370** · `TECH_DEBT` · P3 · offen
+Titel: sammleLaufKopfdaten führt keine Kenntnisnahme-Information.
+Beschreibung: Attention-AK „jeder FEHLGESCHLAGEN-Lauf ohne
+Kenntnisnahme erscheint" ist aus dem heutigen Zustands-Aggregat nicht
+ableitbar, weil kein Kopfdatum zeigt, ob eine Entscheidung
+art: 'kenntnisnahme' zu diesem Lauf existiert.
+Fundstelle: scripts/leitstand-server.mjs, sammleLaufKopfdaten.
+Auswirkung: ohne dieses Feld kann Attention „ohne Kenntnisnahme" nicht
+korrekt filtern.
+Maßnahme: F21 WS-1 ergänzt kenntnisgenommen: boolean als Kopfdatum
+(Muster naechster-Projektion aus F15 WS-3b), siehe AK4.
+Feature/Run: Challenge F21, 14.09.2026.
