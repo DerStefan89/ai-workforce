@@ -95,6 +95,10 @@
       <section id="workboard-detail" hidden>
         <h2>Detail: <span id="workboard-detail-titel"></span> <button id="workboard-detail-schliessen">Schließen</button></h2>
         <div id="workboard-detail-inhalt"></div>
+        <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
+             #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
+             Vorschlag/Kette) überlebt so ein stilles Nachrendern der Finding-Tabelle. -->
+        <div id="workboard-bearbeitung"></div>
       </section>
     </section>
 
