@@ -17,6 +17,7 @@
  * - public/leitstand/views/runs.js
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
+ * - public/leitstand/views/workboard.js (F22 WS-2)
  *
  * Wichtig: Kein Fehler-Handling hier (kein try/catch) — das bleibt Sache der
  * aufrufenden View, die weiß, wie sie einen Fehlschlag anzeigt (Muster
@@ -44,6 +45,9 @@ export const holeZustand = () => fetch('/api/zustand').then((r) => r.json())
 
 export const holeAuftraege = () => fetch('/api/auftraege').then((r) => r.json())
 export const legeAuftragAn = (koerper) => fetch('/api/auftraege', { method: 'POST', body: JSON.stringify(koerper) })
+
+// F22 WS-2: löst den asynchronen Router-Lauf aus (202 + laufId, 409 bei D13 — scripts/leitstand-server.mjs).
+export const routeAuftrag = (auftragId) => fetch(`/api/auftraege/${encodeURIComponent(auftragId)}/routen`, { method: 'POST' })
 
 export const holeWerkzeugsaetze = () => fetch('/api/startvorlage/werkzeugsaetze').then((r) => r.json())
 

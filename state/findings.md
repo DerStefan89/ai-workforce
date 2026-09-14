@@ -5947,7 +5947,7 @@ kalibriert (Fall (b)/(g), F-362). AK5 ist damit vollständig erfüllt.
 Feature/Run: M4-Challenge, 12.09.2026; F20 WS-1, 14.09.2026; F20 WS-2,
 14.09.2026.
 
-**F-353** · `TECH_DEBT` · P2 · offen
+**F-353** · `TECH_DEBT` · P2 · **gelöst**
 Titel: Router-Ergebnis wird nicht persistiert; Router nur per CLI erreichbar.
 Beschreibung: Die Klassifikation (`ergebnis-router`) wird in
 `scripts/route-auftrag.mjs` aus dem Laufergebnis geparst und nur in Form
@@ -5960,8 +5960,15 @@ Auswirkung: „Grund der Auswahl" (Rolle→Worker→Modell) ist nicht
 nachvollziehbar; Click-to-Work aus der UI unmöglich.
 Maßnahme: F22 WS-1 — Endpunkt `POST /api/auftraege/<id>/routen`,
 Router-Ergebnis als Kernartefakt mit Schema.
-Status: offen.
-Feature/Run: M4-Challenge, 12.09.2026.
+Status: gelöst (14.09.2026) — WS-1 (PR #155) liefert Endpunkt + persistiertes
+Router-Ergebnis-Artefakt; WS-2 (dieser PR) verdrahtet den Klick im
+Workboard bis zur Vorschlags-Anzeige/Freigabe. „Click-to-Work aus der UI
+unmöglich" trifft nicht mehr zu — real gegen den laufenden Server geprüft
+(Auftrag mit `workitem_referenz`, 202 + `laufId`, Fehlerzustand-Anzeige,
+siehe `features/F22/feature.md`, Realer-Test-Abschnitt). Offen bleibt die
+Zuverlässigkeit der Klassifikation selbst (F-337, F-373) — unabhängig von
+diesem Befund.
+Feature/Run: M4-Challenge, 12.09.2026; F22 WS-1/WS-2, 14.09.2026.
 
 **F-354** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: `features/F19/feature.md` nennt 21 Einträge/6 Skills, real 22/7.
@@ -6250,3 +6257,68 @@ Maßnahme: Aufteilungsentscheidung spätestens vor F25 treffen, nicht in
 F22.
 Status: offen.
 Feature/Run: F22-Challenge, 14.09.2026.
+
+**F-372** · `TECH_DEBT` · P2 · offen
+Titel: Router-Ergebnis-Artefakt (Kontrolltiefe/Risikoklasse/Begründung) hat
+keinen Lesepfad für die Oberfläche.
+Beschreibung: F22 WS-1 legt das Klassifikationsobjekt als Kernartefakt
+`router-<auftragId>` ab (AK1), aber `scripts/leitstand-server.mjs` bietet
+keinen GET-Endpunkt dafür — nur `GET /api/workflows/<id>` ist erreichbar,
+und der WORKFLOW_V0-Datensatz trägt Kontrolltiefe/Risikoklasse/Begründung
+nicht. Die Vorschlags-Anzeige in F22 WS-2 (`public/leitstand/views/
+workboard.js`) zeigt deshalb ersatzweise die Schrittkette
+Rolle→Worker→Modell aus dem Workflow-Vorschlag statt der eigentlichen
+Klassifikation.
+Fundstelle: `scripts/leitstand-server.mjs` (kein GET-Handler für
+`router-<auftragId>`); `public/leitstand/views/workboard.js`,
+`renderBearbeitungsInhalt` (Phase 'vorschlag').
+Auswirkung: „Grund der Auswahl" bleibt in der Oberfläche unvollständig
+sichtbar — die Akzeptanzkriterien-Formulierung „Kontrolltiefe, Risikoklasse,
+Begründung, Schrittkette" ist nur zum Teil erfüllt (bewusst akzeptiert,
+Bauauftrag F22 WS-2, Punkt 4 — kein neuer Endpunkt außerhalb des
+WS-2-Scopes).
+Maßnahme: eigener GET-Endpunkt für `router-<auftragId>` (oder additives Feld
+an `GET /api/workflows/<id>`), außerhalb von F22.
+Status: offen.
+Feature/Run: F22 WS-2, 14.09.2026.
+
+**F-373** · `BUG` · P1 · offen
+Titel: Router-Lauf über den `claude-code`-Rückfall folgt real 3/3 nicht der
+Rollenvorgabe (Freitext-Agentenverhalten statt JSON-Klassifikation).
+Beschreibung: Realer Click-to-Work-Test (F22 WS-2, AK8-Vorbereitung,
+14.09.2026) gegen den echten Leitstand-Server (`node scripts/
+leitstand-server.mjs`, kein Gate-Fixture): `codex` war nicht verfügbar
+(`loeseRessourcenAuf` meldet nicht `verfuegbar`), jeder Router-Lauf lief
+also über den `claude-code`-Rückfall. Drei unabhängige Läufe (`router-
+abcd6a25-…-1789400274244`, `…-1789400502966`, `…-1789400593914`) endeten
+alle mit demselben Startfehler „Klassifikationstext ist kein gültiges
+JSON". Der Rohstrom des zweiten Laufs (`kontrollzustand-roh/router-
+abcd6a25-…-1789400502966/rohstrom.json`) zeigt: das Modell hat NICHT nur
+ein Formatierungsproblem (Codezaun, F-337) — es hat die Rollenvorgabe
+„nur JSON, kein Freitext" vollständig ignoriert, stattdessen den
+tatsächlichen Bug (F-359) selbstständig untersucht, korrekt diagnostiziert
+und einen Fix-Vorschlag in Prosa formuliert („Could you re-enable the Edit
+or Write tool…"). Das ist ein qualitativ anderes Verhalten als das in
+F-337 dokumentierte Codezaun-Problem (~27 % Formatfehler bei sonst
+korrekter JSON-Antwort) — hier verlässt das Modell die Rolle vollständig
+und agiert als allgemeiner Coding-Agent.
+Fundstelle: Rollenprompt des `router`-Schritts für den `claude-code`-
+Rückfall (`src/rollen/index.ts` bzw. `loeseAusfuehrungsEingabenAuf`,
+`scripts/leitstand-server.mjs`); reale Rohströme unter
+`kontrollzustand-roh/router-abcd6a25-1b40-4a97-9f6c-c6273157f0f4-*`
+(lokal, nicht committet — flüchtiger Rohstrom).
+Auswirkung: Click-to-Work (F22) erreicht in dieser Umgebung mit dem
+`claude-code`-Rückfall reproduzierbar 0/3 einen Workflow-Vorschlag — nicht
+nur gelegentlich wie F-337 beschreibt. Der reale AK8-Klick-Test von F22
+WS-2 konnte deshalb nicht bis zur Vorschlags-Anzeige/Freigabe durchlaufen
+werden (siehe `features/F22/feature.md`, Realer-Test-Abschnitt). Die
+UI-seitige Fehlerbehandlung (Zustand 'fehler' über die
+`startfehler`-Projektion) hat dabei korrekt funktioniert.
+Maßnahme: Ursache klären — evtl. fehlt dem `claude-code`-Rückfall-Aufruf
+eine ausreichend scharfe System-Prompt-Isolierung gegenüber dem
+allgemeinen Coding-Agent-Verhalten (anders als bei `codex` mit
+`--output-schema`). Bis geklärt: `codex`-Verfügbarkeit in dieser Umgebung
+prüfen (würde den Rückfallpfad umgehen). Außerhalb von F22 (Nicht-Ziel:
+Änderung der Router-Klassifikationslogik).
+Status: offen.
+Feature/Run: F22 WS-2, realer Klick-Test, 14.09.2026.
