@@ -5923,9 +5923,14 @@ Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`,
 `scripts/check-f12-leitstand-ansicht.mjs` Fall (f), `biome.json`.
 Auswirkung: jede Umstrukturierung der Oberfläche bricht beide Gates, ohne
 dass funktional etwas kaputt sein muss — und umgekehrt.
-Maßnahme: in F20 WS-2 beide Gates auf die neue Modulstruktur kalibrieren
-(Rot-Fall Pflicht), `public/` in den Biome-Scope aufnehmen.
-Status: offen.
+Maßnahme: beide Gates auf die neue Modulstruktur kalibrieren (Rot-Fall
+Pflicht), `public/` in den Biome-Scope aufnehmen.
+Status: behoben (vorgezogen aus WS-2, 14.09.2026) — beide Gates lesen jetzt
+`views/workflows.js`/`views/runs.js`/`api.js`/`router.js` statt des
+aufgeteilten `app.js`, Rot-Fall je Gate real geprüft (verifizierte
+Regression je Datei, danach zurückgesetzt). AK5 damit nur TEILWEISE
+erfüllt: der Biome-Scope (`public/` in `biome.json`) bleibt unverändert
+WS-2-Scope, dieser Vorzug betraf ausdrücklich nur die Gate-Kalibrierung.
 Feature/Run: M4-Challenge, 12.09.2026; F20 WS-1, 14.09.2026.
 
 **F-353** · `TECH_DEBT` · P2 · offen

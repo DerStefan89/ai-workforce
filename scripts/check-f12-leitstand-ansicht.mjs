@@ -41,8 +41,10 @@
  *     Gegenstand. Zwei Fälle: eine Codex-Laufakte liefert beide Felder,
  *     eine Bestands-Laufakte ohne beide Felder liefert worker
  *     'claude-code' (AK4) und modellDeklariert null — kein geratener Wert.
- * (f) F16 AK12 — die ANZEIGE dazu: renderLaufakte in public/leitstand/app.js
- *     führt worker, modellDeklariert und modellBeobachtet als je eigene
+ * (f) F16 AK12 — die ANZEIGE dazu: renderLaufakte in
+ *     public/leitstand/views/runs.js (seit F20 WS-1, F-352 — davor
+ *     public/leitstand/app.js, unverändert portiert) führt worker,
+ *     modellDeklariert und modellBeobachtet als je eigene
  *     Zeile, jedes Label an seinem Feld. REGRESSIONSSCHUTZ, KEIN AK12-BELEG
  *     (F-272): AK12 belegt der reale zweistufige Lauf, nicht dieses Gate —
  *     eine Quelltextprüfung zeigt, dass die Oberfläche die Felder FÜHRT,
@@ -374,7 +376,10 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 // laufakte.worker") bliebe grün, wenn jemand die Werte vertauscht — genau
 // der Fehler, der einen Codex-Lauf als claude-code ausweisen würde.
 {
-  const appQuelltext = readFileSync('public/leitstand/app.js', 'utf8')
+  // F20 WS-1 (14.09.2026, F-352): renderLaufakte liegt seit der Modul-Aufteilung von app.js
+  // in views/runs.js (unverändert portiert, byte-gleich zur Vorgängerfassung) — nicht mehr in
+  // app.js selbst, das seither nur noch der Bootstrap ist.
+  const runsQuelltext = readFileSync('public/leitstand/views/runs.js', 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 
@@ -385,7 +390,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
   ]) {
     // <tr><th>LABEL</th><td>${laufakte.FELD ? escapeHtml(laufakte.FELD) : ...
     const muster = new RegExp(`<tr><th>${label}</th><td>\\$\\{laufakte\\.${feld}\\s*\\?\\s*escapeHtml\\(laufakte\\.${feld}\\)`)
-    if (!muster.test(appQuelltext)) {
+    if (!muster.test(runsQuelltext)) {
       befunde.push(
         `AK12-Anzeige: renderLaufakte führt keine Zeile, die das Label '${label.replace(/\\/g, '')}' mit dem Feld laufakte.${feld} paart (escapeHtml inbegriffen) — Zeile fehlt, Label und Feld sind vertauscht, oder der Wert wird ungeescaped eingesetzt (gesucht: ${muster})`
       )
@@ -395,7 +400,7 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
   // Die unqualifizierte Zeile darf NICHT zurückkehren: "Modell" neben "Modell (deklariert)"
   // liest sich als die maßgebliche Angabe, obwohl sie die beobachtete ist. Umgedrehte
   // Zusage statt gelöschter Grenze (Muster check-f15-workflow-oberflaeche.mjs Fall (e)).
-  if (/<tr><th>Modell<\/th>/.test(appQuelltext)) {
+  if (/<tr><th>Modell<\/th>/.test(runsQuelltext)) {
     befunde.push("AK12-Anzeige: renderLaufakte führt wieder eine unqualifizierte Zeile '<th>Modell</th>' — beide Modellzeilen müssen ihren Rang nennen ('beobachtet'/'deklariert')")
   }
 
