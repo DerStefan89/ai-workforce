@@ -11,7 +11,7 @@ Vorschlag -> Freigabe -> Kette)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -63,6 +63,18 @@ real erfolgreichen manuellen `freigabe`-Aufruf aus dem AK8-Re-Test
 IN_ARBEIT, F-374 bleibt offen (nicht „gelöst") und AK8 bleibt bei
 Stefan — der reale Klicktest ist der letzte fehlende Schritt vor
 FEATURE_GATE.
+
+Nachtrag (14.09.2026, AK8 real bestätigt, Status auf FEATURE_GATE
+gehoben): Stefan hat den F-374-Fix mit zwei echten Klicktests im
+Workboard gegen den echten Server verifiziert (Details siehe
+`state/findings.md`, F-374-Nachtrag) — Workitem `abcd6a25-…` (F-359) und
+Workitem F-090, beide: Freigeben-Klick ohne 409, Kette lief real bis
+`ABGESCHLOSSEN`, Terminal-Block erschien im UI. F-374 damit gelöst. AK1,
+AK2, AK4, AK6, AK7, AK8 sind damit real erfüllt. AK3 (409/D13) bleibt wie
+oben dokumentiert nur strukturell belegt (kein realer Testlauf gegen den
+echten Server) — Nicht-Ziel dieses Auftrags, separat vermerkt. AK5
+(Rückverweis Finding→bestehender Auftrag) bleibt offener AK, war bereits
+nicht Teil des WS-2-Scope.
 
 ## Ziel
 
