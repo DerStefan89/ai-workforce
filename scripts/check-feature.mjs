@@ -7,12 +7,18 @@
  * Pflichtabschnitte Ziel, Nicht-Ziele, Akzeptanzkriterien und Dependencies
  * verlangt (state/plan-v2-af-f001-feature-akte.md §2.2, §6).
  *
+ * gueltigeStatusWerte kommt seit F21 WS-1 (AK2) aus src/workboard/
+ * feature-status.ts — EINE Quelle für dieses Gate und für
+ * src/workboard/features.ts, Abhängigkeitsrichtung bleibt scripts/ → src/
+ * (D5, kein zweiter Regelsatz, kein umgekehrter Import aus src/).
+ *
  * Aufruf: node scripts/check-feature.mjs   (Teil von npm run check:template)
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { gueltigeStatusWerte } from '../src/workboard/feature-status.ts'
 
 const befunde = []
 
@@ -33,17 +39,6 @@ if (featureOrdner.length === 0) {
   console.log('ⓘ 0 Akten geprüft\n')
   process.exit(0)
 }
-
-const gueltigeStatusWerte = [
-  'ENTWURF',
-  'READY_FOR_TECH',
-  'WORKSTREAM_SCHNITT_GENEHMIGT',
-  'IN_ARBEIT',
-  'FEATURE_GATE',
-  'ABGESCHLOSSEN',
-  'BLOCKIERT',
-  'ABGEBROCHEN',
-]
 
 // Entscheidung (löst specs/AF-F001/spec.md §Offene Fragen, Punkt 2):
 // Überschriften werden exakt und case-sensitiv erkannt (`## Ziel`, kein
