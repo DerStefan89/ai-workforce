@@ -15,7 +15,8 @@
  * Wurf aus fuehreAufgabeDurch beendet den Prozess nicht (AK6) — er landet
  * in einer flüchtigen In-Memory-Liste unter GET /api/startfehler.
  *
- * Wird aufgerufen von: `npm run leitstand`, scripts/check-f10-leitstand.mjs
+ * Wird aufgerufen von: `npm run leitstand`, scripts/check-f10-leitstand.mjs,
+ * scripts/check-f22-click-to-work.mjs (F22 WS-1, entferneCodezaun/verarbeiteRouterErgebnis)
  *
  * Wichtig: Kein eigener Schreibzugriff auf kontrollzustand/ hinzufügen —
  * jede Schreibwirkung läuft ausschließlich mittelbar über
@@ -437,9 +438,11 @@ import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '.
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
-import { CODEX_BERECHTIGUNGSKONTEXT } from '../src/codex-gateway/index.ts'
+import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
+import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
+import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -887,10 +890,34 @@ function sammleAuftraege(basisVerzeichnis = BASISVERZEICHNIS) {
     const version = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
     if (version === null) continue
     const erstelltAm = version.daten?.erstellt_am ?? statSync(join(basisVerzeichnis, verzeichnisName)).mtime.toISOString()
-    eintraege.push({ auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm })
+    eintraege.push({ auftragId, titel: version.daten?.titel, erstellt_am: erstelltAm, workitem_referenz: leseWorkitemReferenz(version.daten?.auftragstext) })
   }
   eintraege.sort((a, b) => (a.erstellt_am < b.erstellt_am ? 1 : a.erstellt_am > b.erstellt_am ? -1 : 0))
   return eintraege
+}
+
+// [Annahme] F22 WS-1, Korrektur 3 der Akte: Format und Erzeuger einer
+// 'workitem:<quelle>:<id>'-Referenz im Auftragstext sind im Repo-Stand NICHT belegt (Advisor-
+// Pass 14.09.2026, state/advisor-findings-f22-ws1.md Befund 7 — weder F21/Workboard noch
+// POST /api/auftraege setzen heute eine solche Zeile). Diese Regex nimmt an, dass die Referenz
+// als EIGENE, sonst leere Zeile im Auftragstext steht — tolerant genug, um kein Parsing über
+// die Zeilenprüfung hinaus zu brauchen. Mit F22 WS-2 (UI-Anbindung im Workboard) zu
+// verifizieren; bis dahin liefert sammleAuftraege für jeden heutigen Auftragstext null.
+const WORKITEM_REFERENZ_MUSTER = /^workitem:[^:\s]+:[^:\s]+$/
+
+/**
+ * Sucht die erste Zeile im Auftragstext, die dem Workitem-Referenz-Muster entspricht — siehe
+ * [Annahme] oben. Bei mehreren passenden Zeilen gewinnt bewusst die erste (Array.find) —
+ * eine widersprüchliche zweite Referenz ist im heutigen Stand kein vorgesehener Fall, das
+ * Verhalten ist trotzdem festgenagelt (Reviewer-/QA-Pass 14.09.2026), damit es nicht
+ * stillschweigend von der Zeilenreihenfolge abhängt.
+ * @param auftragstext - roher Auftragstext, oder ein Nicht-String
+ * @returns die erste passende Zeile (getrimmt), oder null
+ */
+export function leseWorkitemReferenz(auftragstext) {
+  if (typeof auftragstext !== 'string') return null
+  const zeile = auftragstext.split('\n').find((z) => WORKITEM_REFERENZ_MUSTER.test(z.trim()))
+  return zeile !== undefined ? zeile.trim() : null
 }
 
 const WORKFLOW_VERZEICHNIS_PRAEFIX = 'lineage-workflow-'
@@ -1932,6 +1959,207 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${ergebnis.grund}` }
   }
   return { ok: true, eingaben: { ...ergebnis.eingaben, anfragen: [...artefaktAnfragen, ...ergebnis.eingaben.anfragen] } }
+}
+
+/**
+ * Lädt einen etwaigen Bestand unter 'workflow-<workflowId>' und meldet, ob er gegen Ersetzung
+ * gesperrt ist (GESPERRTE_ERSETZUNGS_STATUS) — geteilte Prüfung zwischen POST /api/workflows
+ * und verarbeiteRouterErgebnis (D5, Reviewer-Pass 14.09.2026: beide Stellen kopierten zuvor
+ * denselben Dreizeiler). Ein ungültiger Bestand (verletzt validiereWorkflowDaten) gilt NIE als
+ * gesperrt — aus ihm kann kein Lauf mehr gestartet werden (der Startendpunkt validiert beim
+ * Laden und antwortet 409), also gibt es nichts zu schützen, und ohne diese Ausnahme wäre er
+ * dauerhaft unerreichbar (F15 WS-2b).
+ * @param workflowId - vollständige workflow_id (ohne 'workflow-'-Präfix)
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @returns { bestand, gesperrt } — bestand ist die geladene Version oder null; gesperrt ist nur bei einem gültigen Bestand mit gesperrtem Status true
+ */
+function ladeWorkflowBestandUndPruefeSperre(workflowId, ladeOptionen) {
+  const bestand = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+  const bestandUngueltig = bestand !== null && validiereWorkflowDaten(bestand.daten).length > 0
+  const gesperrt = bestand !== null && !bestandUngueltig && GESPERRTE_ERSETZUNGS_STATUS.has(bestand.daten?.status)
+  return { bestand, gesperrt }
+}
+
+/**
+ * Entfernt einen umschließenden Markdown-Codezaun (```lang\n...\n```), falls vorhanden,
+ * sonst null. Reine Funktion, kein Wurf (F22 WS-1). NUR im worker 'claude-code'-
+ * Rückfallzweig von verarbeiteRouterErgebnis gebraucht (F-337/F-346, state/findings.md):
+ * 'codex' liefert strukturierte Ausgabe über '--output-schema' und braucht keinen
+ * Zweitversuch. Muster: scripts/eval-router.mjs' versucheForensischeEntzaunung — dort
+ * rein forensisch/berichtend, hier PRODUKTIV im Nachbearbeitungspfad.
+ * @param text - roher Klassifikationstext
+ * @returns entzäunter Text, oder null, wenn kein Codezaun vorlag
+ */
+export function entferneCodezaun(text) {
+  const getrimmt = text.trim()
+  if (!getrimmt.startsWith('```')) return null
+  return getrimmt
+    .replace(/^```[a-zA-Z]*\s*/, '')
+    .replace(/```\s*$/, '')
+    .trim()
+}
+
+/**
+ * Nachbearbeitung eines ERFOLGREICHEN Router-Laufs (F22 WS-1, Bauauftrag Punkt 2-4):
+ * liest den Klassifikationstext worker-abhängig aus dem Rohstrom (leseErgebnisobjekt für
+ * 'claude-code', leseCodexEreignisse für 'codex' — Muster scripts/route-auftrag.mjs bzw.
+ * src/codex-gateway/index.ts' Kopfkommentar zu F-283), validiert ihn gegen
+ * validiereErgebnisRouter, registriert das Router-Ergebnis als Kernartefakt
+ * (`router-<auftragId>`) und daraus über waehleWorkflowVorlage einen Workflow-Vorschlag —
+ * über denselben internen Pfad wie POST /api/workflows (validiereWorkflowDaten,
+ * Zeichenregel, GESPERRTE_ERSETZUNGS_STATUS-Prüfung gegen einen etwaigen Bestand,
+ * registriereWorkflow).
+ *
+ * Eigene, benannte Funktion statt Inline-Code im nachLauf-Callback (Advisor-Pass
+ * 14.09.2026, state/plan-v2-f22-ws1.md Korrektur D): AK7s Rot-Fall der Akte ("Vorschlag
+ * ohne persistiertes Router-Artefakt wird abgelehnt") ist rein STRUKTURELL — kein Codepfad
+ * in diesem Workstream erzeugt einen Workflow, ohne vorher dieses Router-Artefakt
+ * geschrieben zu haben —, und genau das kann scripts/check-f22-click-to-work.mjs nur
+ * belegen, wenn diese Funktion mit präparierten Laufakte-/Rohstrom-Daten direkt aufrufbar
+ * ist (Bauauftrag Punkt 6: "Rot-Faelle mit praeparierten Daten, nicht per Mock des
+ * Werkzeuglaufs").
+ *
+ * KEINE HTTP-Kenntnis (Muster loeseAusfuehrungsEingabenAuf): liefert ein Ergebnisobjekt,
+ * der Aufrufer (der nachLauf-Callback in erzeugeRequestHandler) übersetzt einen
+ * ok:false-Ausgang in einen startfehlerListe-Eintrag.
+ * @param laufakte - bereits geladene LaufakteV0Daten des erfolgreichen Router-Laufs
+ * @param auftragId - Auftrag, der geroutet wurde
+ * @param laufId - lauf_id des Router-Laufs
+ * @param auftragVersion - bereits geladene Artefaktversion 'auftrag-<auftragId>' (für inhalts_hash + titel)
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel (Pfadauflösung von waehleWorkflowVorlage)
+ * @param profilReferenz - gepinnte Profilreferenz des Laufs
+ * @param ladeOptionen - basisVerzeichnis/schreiber (Muster ladeOptionen in erzeugeRequestHandler)
+ * @returns bei Erfolg { ok: true, routerArtefaktPfad, workflowId, workflowVersionSequenz }, sonst { ok: false, grund }
+ */
+export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, ladeOptionen) {
+  // Pfad VOR dem try heben (Reviewer-Pass 14.09.2026): der catch-Zweig braucht ihn für die
+  // Fehlermeldung erneut — eine zweite Dereferenzierung von laufakte.rohstrom_referenz.pfad dort
+  // würfe bei einer kaputten Laufakte (rohstrom_referenz selbst null/undefined) ein zweites Mal,
+  // unbehandelt aus dieser Funktion heraus.
+  const rohstromPfad = laufakte.rohstrom_referenz.pfad
+  let rohInhalt
+  try {
+    rohInhalt = readFileSync(rohstromPfad, 'utf8')
+  } catch (fehler) {
+    return { ok: false, grund: `Rohstrom '${rohstromPfad}' nicht lesbar: ${fehler.message}` }
+  }
+  let rohstrom
+  try {
+    rohstrom = JSON.parse(rohInhalt)
+  } catch (fehler) {
+    return { ok: false, grund: `Rohstrom ist kein gültiges JSON: ${fehler.message}` }
+  }
+
+  // Worker-Vorgabe: fehlt das Feld, ist es 'claude-code' (Muster loeseAusfuehrungsEingabenAuf).
+  const worker = laufakte.worker ?? 'claude-code'
+  let klassifikationsText = null
+  if (worker === 'codex') {
+    const ereignisse = typeof rohstrom.stdout === 'string' ? leseCodexEreignisse(rohstrom.stdout) : null
+    klassifikationsText = ereignisse?.letzteAgentMessage ?? null
+  } else {
+    const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
+    klassifikationsText = typeof ergebnisobjekt?.result === 'string' ? ergebnisobjekt.result : null
+  }
+  if (klassifikationsText === null) {
+    return { ok: false, grund: `Router-Lauf '${laufId}' (worker '${worker}'): kein Klassifikationstext im Rohstrom gefunden` }
+  }
+
+  let beobachtung = null
+  let klassifikation
+  try {
+    klassifikation = JSON.parse(klassifikationsText)
+  } catch {
+    // Fence-Stripping NUR im claude-code-Rückfallzweig (F-337/F-346) — codex liefert
+    // strukturierte Ausgabe über --output-schema und braucht keinen Zweitversuch.
+    const entzaunt = worker === 'claude-code' ? entferneCodezaun(klassifikationsText) : null
+    if (entzaunt === null) {
+      return { ok: false, grund: `Router-Lauf '${laufId}': Klassifikationstext ist kein gültiges JSON` }
+    }
+    try {
+      klassifikation = JSON.parse(entzaunt)
+      beobachtung = 'fence_entfernt'
+    } catch (fehler) {
+      return { ok: false, grund: `Router-Lauf '${laufId}': Klassifikationstext ist auch nach Entfernen eines Codezauns kein gültiges JSON (${fehler.message})` }
+    }
+  }
+
+  const klassifikationsVerstoesse = validiereErgebnisRouter(klassifikation)
+  if (klassifikationsVerstoesse.length > 0) {
+    return { ok: false, grund: `Router-Lauf '${laufId}': Klassifikation verstößt gegen schemas/ergebnis-router.schema.json: ${klassifikationsVerstoesse.join('; ')}` }
+  }
+
+  const routerErgebnisDaten = {
+    router_ergebnis_schema: 'v0',
+    auftrag_id: auftragId,
+    lauf_id: laufId,
+    worker,
+    klassifikation,
+    vorlage: klassifikation.kontrolltiefe,
+    beobachtung,
+    erstellt_am: new Date().toISOString(),
+  }
+  const routerErgebnisVerstoesse = validiereRouterErgebnisDaten(routerErgebnisDaten)
+  if (routerErgebnisVerstoesse.length > 0) {
+    return {
+      ok: false,
+      grund: `Router-Lauf '${laufId}': Router-Ergebnis-Payload verstößt gegen schemas/kontrollzustand-router-ergebnis-payload.schema.json: ${routerErgebnisVerstoesse.join('; ')}`,
+    }
+  }
+
+  let routerArtefakt
+  try {
+    routerArtefakt = registriereKernArtefakt(
+      `router-${auftragId}`,
+      profilReferenz,
+      { erzeuger: 'kern', schritt: 'router-lauf' },
+      routerErgebnisDaten,
+      [{ pfad: `artefakt:auftrag-${auftragId}`, zitierter_bereich: 'auftragstext', inhalts_hash: auftragVersion.inhaltsHash }],
+      ladeOptionen
+    )
+  } catch (fehler) {
+    return { ok: false, grund: `Router-Ergebnis-Artefakt für Auftrag '${auftragId}' konnte nicht registriert werden: ${fehler.message}` }
+  }
+
+  // waehleWorkflowVorlage wirft bei fehlender/kaputter Vorlagendatei (Kopfkommentar
+  // src/router/index.ts) — abgefangen wie registriereKernArtefakt/registriereWorkflow unten,
+  // damit die Meldung denselben Kontext trägt (Router-Ergebnis ist bereits registriert) statt
+  // unbehandelt bis in starteLaufUndVergiss' generisches Catch durchzufallen (Reviewer-Pass
+  // 14.09.2026).
+  let workflow
+  try {
+    workflow = waehleWorkflowVorlage(klassifikation, auftragId, auftragVersion.daten?.titel ?? auftragId, repoWurzel)
+  } catch (fehler) {
+    return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow-Vorlage konnte nicht aufgelöst werden: ${fehler.message}` }
+  }
+  const workflowVerstoesse = validiereWorkflowDaten(workflow)
+  if (workflowVerstoesse.length > 0) {
+    return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow-Vorlage verstößt aber gegen WORKFLOW_V0: ${workflowVerstoesse.join('; ')}` }
+  }
+  if (LAUFID_UNZULAESSIGE_ZEICHEN.test(workflow.workflow_id)) {
+    return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), workflow_id '${workflow.workflow_id}' enthält aber unzulässige Zeichen` }
+  }
+  // Bestand prüfen (geteilter Helfer mit POST /api/workflows, D5): waehleWorkflowVorlage
+  // liefert selbst immer status:'OFFEN' (der eingereichte Datensatz ist nie gesperrt), aber
+  // ein VORHERIGER Workflow unter derselben deterministischen workflow_id (leiteWorkflowIdAb,
+  // src/router/index.ts) kann LAEUFT/WARTET_FREIGABE/ABGESCHLOSSEN tragen — ohne diese Prüfung
+  // ersetzte ein zweiter, nachgelagerter Routing-Versuch dessen Fassung unter dem laufenden
+  // Schritt (F15 WS-2b).
+  const { bestand, gesperrt } = ladeWorkflowBestandUndPruefeSperre(workflow.workflow_id, ladeOptionen)
+  if (gesperrt) {
+    return {
+      ok: false,
+      grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow '${workflow.workflow_id}' existiert bereits mit status '${bestand.daten?.status}' — in diesem Zustand nicht ersetzt`,
+    }
+  }
+
+  let registriert
+  try {
+    registriert = registriereWorkflow(workflow, profilReferenz, ladeOptionen)
+  } catch (fehler) {
+    return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow '${workflow.workflow_id}' konnte aber nicht registriert werden: ${fehler.message}` }
+  }
+
+  return { ok: true, routerArtefaktPfad: routerArtefakt.pfad, workflowId: workflow.workflow_id, workflowVersionSequenz: registriert.versionSequenz }
 }
 
 /**
@@ -3056,9 +3284,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       // und ohne diese Ausnahme wäre er dauerhaft unerreichbar. Der Fall entsteht real, sobald
       // eine neue Validatorregel dazukommt: Zusammenführungen waren bis WS-2b gültig UND
       // startbar (Reviewer-Pass 10.09.2026).
-      const bestand = ladeArtefaktVersion(`workflow-${body.workflow_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-      const bestandUngueltig = bestand !== null && validiereWorkflowDaten(bestand.daten).length > 0
-      if (bestand !== null && !bestandUngueltig && GESPERRTE_ERSETZUNGS_STATUS.has(bestand.daten?.status)) {
+      const { bestand, gesperrt } = ladeWorkflowBestandUndPruefeSperre(body.workflow_id, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (gesperrt) {
         sendeJson(res, 409, {
           grund: `Workflow '${body.workflow_id}' existiert bereits mit status '${bestand.daten?.status}' — in diesem Zustand wird er nicht durch eine neue Fassung ersetzt (erlaubt: ${[...ERSETZBARE_STATUS_TEXT].join(', ')})`,
           status: bestand.daten?.status ?? null,
@@ -3284,6 +3511,125 @@ export function erzeugeRequestHandler(optionen = {}) {
       // D13-Rückgabe in .then UND .catch (AK7), dieselbe Startfehlerliste (AK6). Kein zweiter
       // Aufrufpunkt des Werkzeuglaufs; die Begründung steht am Helfer.
       starteLaufUndVergiss(laufId, eingaben)
+      return
+    }
+
+    // ─── F22 WS-1: POST /api/auftraege/<auftragId>/routen ──────────────────────────────
+    //
+    // Löst einen echten Router-Lauf für einen bestehenden Auftrag aus und registriert nach
+    // erfolgreichem Abschluss ein Router-Ergebnis-Kernartefakt plus einen Workflow-Vorschlag
+    // (features/F22/feature.md, Korrektur 1-4). Route steht bewusst NACH POST /api/laeufe
+    // (dieselbe Begründung wie beim Startendpunkt des Schritt-Automaten direkt unten:
+    // scripts/check-f11-auftrag.mjs sucht das ERSTE 'if (laufAktiv)' im Quelltext, das liegt
+    // bereits in POST /api/laeufe oben) — strukturell nur ASYNCHRON möglich (202 + laufId,
+    // D13 sperrt jeden synchronen Vorschlag im selben Request, Korrektur 1 der Akte).
+    if (req.method === 'POST' && pfad.startsWith('/api/auftraege/') && pfad.endsWith('/routen')) {
+      const rohId = pfad.slice('/api/auftraege/'.length, pfad.length - '/routen'.length)
+      const auftragId = dekodiereSegment(rohId)
+      if (auftragId === null || auftragId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(auftragId)) {
+        sendeJson(res, 400, { grund: `Auftrag-ID ${JSON.stringify(rohId)} ist ungültig` })
+        return
+      }
+
+      // D13 VOR der Existenzprüfung (bewusst, Muster POST /api/laeufe: "D13 ist unbedingt und
+      // läuft vor jedem request-feld-spezifischen Check") — abweichend von POST
+      // /api/workflows/<id>/starten, das 404 vor 409 stellt; hier gilt der D13-Grundsatz des
+      // Direktstarts eines Laufs, nicht das Muster des Ladens eines Bestandsdatensatzes
+      // (Advisor-Pass 14.09.2026, state/plan-v2-f22-ws1.md Korrektur A).
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+
+      const auftragVersion = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      if (auftragVersion === null) {
+        sendeJson(res, 404, { grund: `Auftrag '${auftragId}' nicht gefunden` })
+        return
+      }
+
+      const laufId = `router-${auftragId}-${Date.now()}`
+      if (laufIdBelegt(laufId)) {
+        sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
+        return
+      }
+
+      // Worker-Auflösung (Korrektur 4 der Akte, entschieden 14.09.2026): 'codex' mit
+      // --output-schema, wenn loeseRessourcenAuf ihn als verfügbar meldet — sonst Rückfall auf
+      // 'claude-code' mit Fence-Stripping (verarbeiteRouterErgebnis). Besetzung bei 'codex'
+      // bewusst identisch zum lesenden Schritt in workflow-vorlagen/standard.json ('gpt-6-astra').
+      let ressourcenRoh
+      try {
+        ressourcenRoh = JSON.parse(readFileSync(join(repoWurzel, 'ressourcen.json'), 'utf8'))
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+        return
+      }
+      const aufgeloesteRessourcen = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
+      const codexEintrag = aufgeloesteRessourcen.find((r) => r.id === 'codex')
+      const codexVerfuegbar = codexEintrag !== undefined && codexEintrag.verfuegbar === true
+
+      let worker
+      let modell
+      let ausgabeSchemaPfad
+      if (codexVerfuegbar) {
+        const schemaErgebnis = loeseAusgabeSchemaAuf('ergebnis-router', repoWurzel)
+        if (!schemaErgebnis.ok) {
+          sendeJson(res, 500, { grund: schemaErgebnis.grund })
+          return
+        }
+        worker = 'codex'
+        modell = 'gpt-6-astra'
+        ausgabeSchemaPfad = schemaErgebnis.pfad
+      } else {
+        worker = 'claude-code'
+        modell = 'claude-sonnet-5'
+      }
+
+      const eingabenRoh = {
+        rolle: 'router',
+        anfragen: [],
+        budget: vorlage.standardBudget,
+        aufrufEingaben: { modell },
+        auftragId,
+        worker,
+        ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
+      }
+      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', auftragVersion.daten.auftragstext, vorlage, repoWurzel)
+      if (!eingabenErgebnis.ok) {
+        sendeJson(res, 400, { grund: eingabenErgebnis.grund })
+        return
+      }
+
+      angenommeneLaufIds.add(laufId)
+      laufAktiv = true
+      laufAktivLaufId = laufId
+      laufAktivAbortController = new AbortController()
+      sendeJson(res, 202, { laufId })
+
+      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, undefined, (ergebnis, fehler) => {
+        // starteLaufUndVergiss selbst pusht bei ok:false/Wurf bereits einen
+        // startfehlerListe-Eintrag (siehe Kopfkommentar dort) — hier NICHTS Zusätzliches, sonst
+        // Dopplung. Anders als beim Workflow-Schritt-Callback hängt an einem nicht-erfolgreichen
+        // Router-Lauf kein Automatenzustand, der fortgeschrieben werden müsste.
+        if (fehler !== null || ergebnis?.ok === false) return
+
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        if (laufakteVersion === null) {
+          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Router-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
+          return
+        }
+
+        const verarbeitung = verarbeiteRouterErgebnis(laufakteVersion.daten, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, {
+          basisVerzeichnis,
+          schreiber: STILLER_SCHREIBER,
+        })
+        if (!verarbeitung.ok) {
+          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
+          console.error(`[leitstand] ${verarbeitung.grund}`)
+        } else {
+          console.log(`[leitstand] Router-Lauf '${laufId}': Workflow '${verarbeitung.workflowId}' (Version ${verarbeitung.workflowVersionSequenz}) registriert.`)
+        }
+      })
       return
     }
 

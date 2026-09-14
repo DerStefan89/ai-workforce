@@ -1,0 +1,16 @@
+{
+  "router_ergebnis_schema": "v0",
+  "auftrag_id": "a0caa25e-5f0c-491a-804f-f1a99508eeae",
+  "lauf_id": "router-a0caa25e-5f0c-491a-804f-f1a99508eeae-1757845200000",
+  "worker": "codex",
+  "klassifikation": {
+    "kontrolltiefe": "standard",
+    "risikoklasse": "mittel",
+    "task_typen": ["bugfix"],
+    "rueckfragen": [],
+    "begruendung": "Auftrag ändert bestehende Logik in einem Kernmodul ohne neue Abhängigkeiten — Standardkontrolle ausreichend, mittleres Risiko wegen bestehender Testabdeckung."
+  },
+  "vorlage": "standard",
+  "beobachtung": null,
+  "erstellt_am": "2026-09-14T09:00:00.000Z"
+}

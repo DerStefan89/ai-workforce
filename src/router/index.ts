@@ -1,18 +1,23 @@
 /**
  * Datei: src/router/index.ts
  *
- * Zweck: Router-Modul (F18 WS-2, Meilenstein 3, docs/projekt/
- * zielfassung.md §13.4). Zwei reine Verantwortlichkeiten, keine
+ * Zweck: Router-Modul (F18 WS-2, F22 WS-1, Meilenstein 3, docs/projekt/
+ * zielfassung.md §13.4). Drei reine Verantwortlichkeiten, keine
  * Klassifikationslogik: validiereErgebnisRouter prüft ein geparstes Objekt
  * gegen schemas/ergebnis-router.schema.json (Muster validiereWorkflowDaten,
- * D5 — handgeschrieben statt ajv, dieselbe Repo-Entscheidung), und
+ * D5 — handgeschrieben statt ajv, dieselbe Repo-Entscheidung),
  * waehleWorkflowVorlage bildet eine bereits validierte Klassifikation
  * (ErgebnisRouter) auf ein vollständiges WORKFLOW_V0-Gerüst ab — reiner
  * Lookup einer statischen Vorlage unter workflow-vorlagen/<kontrolltiefe>.json
  * plus Platzhalter-Befüllung, keine eigene Einstufung von Kontrolltiefe oder
- * Risiko. Die Klassifikation selbst entsteht ausschließlich über die Rolle
- * 'router' (src/rollen/index.ts) als echten Werkzeuglauf — dieses Modul
- * bekommt ihr Ergebnis bereits fertig.
+ * Risiko —, und validiereRouterErgebnisDaten (F22 WS-1) prüft ein geparstes
+ * Objekt gegen schemas/kontrollzustand-router-ergebnis-payload.schema.json,
+ * das Hüllenformat des Router-Ergebnis-Kernartefakts (worker, klassifikation,
+ * vorlage, beobachtung) — NICHT die Form von 'klassifikation' selbst, die
+ * bleibt Sache von validiereErgebnisRouter (D5, keine zweite Formkopie). Die
+ * Klassifikation selbst entsteht ausschließlich über die Rolle 'router'
+ * (src/rollen/index.ts) als echten Werkzeuglauf — dieses Modul bekommt ihr
+ * Ergebnis bereits fertig.
  *
  * ENTSCHIEDEN (Kopfkommentar-Pflicht aus dem Bauauftrag): das erzeugte
  * WORKFLOW_V0 trägt status 'OFFEN', NICHT 'WARTET_FREIGABE'. Zwei
@@ -39,7 +44,8 @@
  *    ist damit zweifach abgesichert: kein Autostart bei der Registrierung,
  *    und ein expliziter Freigabe-Halt vor jedem schreibenden Schritt.
  *
- * Wird aufgerufen von: scripts/route-auftrag.mjs, src/router/router.test.ts.
+ * Wird aufgerufen von: scripts/route-auftrag.mjs, scripts/leitstand-server.mjs
+ * (F22 WS-1), scripts/check-f22-click-to-work.mjs, src/router/router.test.ts.
  */
 
 import { readFileSync } from 'node:fs'
@@ -112,6 +118,63 @@ export function validiereErgebnisRouter(daten: unknown): string[] {
 
   if ('begruendung' in daten && !istNichtLeererString(daten.begruendung)) {
     verstoesse.push("'begruendung' muss ein nicht-leerer String sein")
+  }
+
+  return verstoesse
+}
+
+const ROUTER_ERGEBNIS_FELDER = new Set(['router_ergebnis_schema', 'auftrag_id', 'lauf_id', 'worker', 'klassifikation', 'vorlage', 'beobachtung', 'erstellt_am'])
+const ROUTER_ERGEBNIS_WORKER = ['claude-code', 'codex']
+const ROUTER_ERGEBNIS_BEOBACHTUNG = [null, 'fence_entfernt']
+
+/**
+ * Reine Funktion: prüft ein geparstes Objekt gegen
+ * schemas/kontrollzustand-router-ergebnis-payload.schema.json (F22 WS-1).
+ * Muster validiereErgebnisRouter (D5 — handgeschrieben statt ajv). 'klassifikation'
+ * wird NICHT gegen die Form von schemas/ergebnis-router.schema.json geprüft — das ist
+ * Sache von validiereErgebnisRouter selbst, bereits VOR der Registrierung des
+ * Router-Ergebnis-Artefakts durchlaufen; eine zweite Formprüfung hier wäre eine
+ * unabhängig verfallende Kopie (D5). Diese Funktion verlangt nur, dass 'klassifikation'
+ * ein Objekt ist.
+ * @param daten - geparstes, sonst unbekanntes Objekt
+ * @returns Liste der Regelverletzungen; leeres Array = gültig
+ */
+export function validiereRouterErgebnisDaten(daten: unknown): string[] {
+  if (!istObjekt(daten)) {
+    return ['Wurzel ist kein Objekt']
+  }
+  const verstoesse: string[] = []
+
+  for (const feld of Object.keys(daten)) {
+    if (!ROUTER_ERGEBNIS_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
+  }
+  for (const feld of ROUTER_ERGEBNIS_FELDER) {
+    if (!(feld in daten)) verstoesse.push(`Pflichtfeld '${feld}' fehlt`)
+  }
+
+  if ('router_ergebnis_schema' in daten && daten.router_ergebnis_schema !== 'v0') {
+    verstoesse.push("'router_ergebnis_schema' muss 'v0' sein")
+  }
+  if ('auftrag_id' in daten && !istNichtLeererString(daten.auftrag_id)) {
+    verstoesse.push("'auftrag_id' muss ein nicht-leerer String sein")
+  }
+  if ('lauf_id' in daten && !istNichtLeererString(daten.lauf_id)) {
+    verstoesse.push("'lauf_id' muss ein nicht-leerer String sein")
+  }
+  if ('worker' in daten && (typeof daten.worker !== 'string' || !ROUTER_ERGEBNIS_WORKER.includes(daten.worker))) {
+    verstoesse.push(`'worker' muss einer von ${ROUTER_ERGEBNIS_WORKER.join(', ')} sein`)
+  }
+  if ('klassifikation' in daten && !istObjekt(daten.klassifikation)) {
+    verstoesse.push("'klassifikation' muss ein Objekt sein")
+  }
+  if ('vorlage' in daten && (typeof daten.vorlage !== 'string' || !KONTROLLTIEFE.includes(daten.vorlage))) {
+    verstoesse.push(`'vorlage' muss einer von ${KONTROLLTIEFE.join(', ')} sein`)
+  }
+  if ('beobachtung' in daten && !ROUTER_ERGEBNIS_BEOBACHTUNG.includes(daten.beobachtung as string | null)) {
+    verstoesse.push("'beobachtung' muss null oder 'fence_entfernt' sein")
+  }
+  if ('erstellt_am' in daten && !istNichtLeererString(daten.erstellt_am)) {
+    verstoesse.push("'erstellt_am' muss ein nicht-leerer String sein")
   }
 
   return verstoesse
