@@ -1,0 +1,10 @@
+{
+  "entscheidung_schema": "v0",
+  "art": "planaenderung",
+  "ergebnis": "FREIGABEPFLICHT_ABGESCHWAECHT",
+  "begruendung": "Ein unbekanntes Feld im abgeschwaechte_freigaben-Eintrag muss abgelehnt werden.",
+  "entschieden_am": "2026-09-14T09:50:00.000Z",
+  "abgeschwaechte_freigaben": [
+    { "schritt_id": "schritt-2", "vorher": "ZWINGEND", "nachher": null, "kommentar": "unerwartet" }
+  ]
+}

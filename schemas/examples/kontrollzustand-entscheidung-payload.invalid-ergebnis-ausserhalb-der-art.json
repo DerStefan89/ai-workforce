@@ -1,0 +1,7 @@
+{
+  "entscheidung_schema": "v0",
+  "art": "freigabe",
+  "ergebnis": "GESTOPPT",
+  "begruendung": "GESTOPPT gehört zu art 'stopp', nicht zu 'freigabe'.",
+  "entschieden_am": "2026-09-14T09:35:00.000Z"
+}

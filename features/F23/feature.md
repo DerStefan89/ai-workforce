@@ -27,7 +27,23 @@ schreibendem Werkzeugsatz (`scripts/leitstand-server.mjs`,
 `artefakt:aenderungsuebersicht-@<schrittId>` in `loeseSchrittEingabenAuf`,
 Gate `scripts/check-f23-abnahme.mjs` (WS-0-Teil, sieben Rot-/Grün-Fälle inkl.
 echtem Dispatch über `POST /api/laeufe`), in `npm run check` eingehängt.
-WS-1 bis WS-3 sind noch nicht begonnen.
+
+WS-1a (dieser Auftrag) ist gebaut: `schemas/kontrollzustand-entscheidung-
+payload.schema.json` (löst F-350/F-379 — Pflichtfeld `art` trennt die fünf
+zuvor überladenen `ergebnis`-Familien, je `art` eine eigene, exklusive
+`ergebnis`-Wertemenge über `if`/`then` mit `additionalProperties:false` je
+Zweig; `abnahme` ist bereits schemagültig, hat aber noch keine
+Schreibstelle), `src/entscheidung/` (`validiereEntscheidungsDaten`,
+handgeschrieben wie `src/aenderungsuebersicht/`, D5; `leiteArtAusHerkunftAb`
+für E-M4-6 — ein vor WS-1a geschriebenes Artefakt ohne `art`-Feld wird über
+seine Lineage-`herkunft.schritt` gelesen, nicht ungültig). Alle fünf
+Schreibstellen in `scripts/leitstand-server.mjs` (`entscheidung-workflow-
+planaenderung/-freigabe/-stopp`, `entscheidung-terminal`, `entscheidung-
+kenntnisnahme`) setzen `art` jetzt explizit und validieren vor der
+Registrierung. Gate `scripts/check-f23-abnahme.mjs` um Block (f) erweitert
+(sechs valid-*.json, drei invalid-*.json gegen `validiereEntscheidungsDaten`).
+WS-1b (Vorlagen-Umbau + Urteilsauswertung im Automaten, löst F-351/F-377)
+und WS-2/WS-3 sind noch nicht begonnen.
 
 ### Reviewer-/QA-Pass (frischer Kontext, 14.09.2026)
 
@@ -88,12 +104,12 @@ verwaister Auftrag für dieselbe Sache). Grundlage: `docs/STATUS.md`
 
 Über alle Workstreams hinweg schließt F23:
 
-- **F-350** (`TECH_DEBT`, P1): das Entscheidungsartefakt
+- **F-350** (`TECH_DEBT`, P1, gelöst in WS-1a): das Entscheidungsartefakt
   (`entscheidung_schema: v0`) hat kein JSON-Schema und keinen Validator —
   einziges `*_V0`-Format ohne beides.
-- **F-351** (`TECH_DEBT`, P1): der Review→Execution-Handoff transportiert
-  kein Urteil; es gibt keine Post-Build-Prüfstufe, und ein `urteil:
-  BLOCKIERT` hätte selbst dann keine maschinelle Wirkung.
+- **F-351** (`TECH_DEBT`, P1, offen — WS-1b): der Review→Execution-Handoff
+  transportiert kein Urteil; es gibt keine Post-Build-Prüfstufe, und ein
+  `urteil: BLOCKIERT` hätte selbst dann keine maschinelle Wirkung.
 
 Zusätzlich beim Zuschnitt dieses WS-0-Auftrags real belegt und hier
 festgehalten (Auftrag, 14.09.2026):
@@ -102,17 +118,18 @@ festgehalten (Auftrag, 14.09.2026):
   nach zwei konkurrierenden Bauorten für den Post-Build-Prüfschritt aus —
   geklärt: F23 baut ihn, der M5-Vermerk gilt nur der strategischen
   Vorab-Challenge vor Meilenstein 5, kein Laufzeitmechanismus.
-- **F-377** (offen, Maßnahme F23 WS-1/WS-2): `code-reviewer` läuft in
+- **F-377** (offen, Maßnahme F23 WS-1b/WS-2): `code-reviewer` läuft in
   `workflow-vorlagen/standard.json`/`hoch.json` heute VOR dem Bau, entgegen
   seinem eigenen Rollenvertrag — sein Urteil wird von niemandem
   ausgewertet.
 - **F-378** (offen, in WS-0 strukturell umgangen): kein Werkzeugsatz
   enthält ein lesendes Git/Bash — eine Rolle kann keinen Diff selbst
   ermitteln. Der Kern ermittelt ihn stattdessen selbst.
-- **F-379** (offen, Maßnahme F23 WS-1): die fünf inline geschriebenen
-  Entscheidungsartefakte in `scripts/leitstand-server.mjs` überladen das
-  Feld `ergebnis` mit fünf unabhängigen Wertemengen — vor dem
-  Vereinheitlichen (F-350) müssen diese fünf Familien erst getrennt werden.
+- **F-379** (gelöst in WS-1a): die fünf inline geschriebenen
+  Entscheidungsartefakte in `scripts/leitstand-server.mjs` überluden das
+  Feld `ergebnis` mit fünf unabhängigen Wertemengen — durch das neue
+  Pflichtfeld `art` getrennt, bevor das Schema (F-350) sie vereinheitlicht
+  hätte.
 
 ## Nicht-Ziele
 
@@ -163,11 +180,10 @@ festgehalten (Auftrag, 14.09.2026):
   selbstreferenzierende `@<schrittId>`-Referenz je als Rot-Fall, AK1/AK4
   zusätzlich über einen echten `POST /api/laeufe`-Dispatch belegt (nicht nur
   über direkte Funktionsaufrufe); `npm run check` grün.
-- **AK9** [WS-1–WS-3, außerhalb dieses Auftrags] Entscheidungs-Schema +
-  Validator (löst F-350), Post-Build-Prüfschritt mit ausgewertetem Urteil
-  im Automaten (löst F-351), `BLOCKIERT`-Wirkung, ACCEPT/ADJUST/REJECT im
-  Leitstand, ADJUST-Folgeworkflow unter demselben Auftrag, Feature Review
-  mit Stefan (Muster F22 AK8).
+- **AK9** [WS-1b–WS-3, außerhalb dieses Auftrags] Post-Build-Prüfschritt mit
+  ausgewertetem Urteil im Automaten (löst F-351/F-377), `BLOCKIERT`-Wirkung,
+  ACCEPT/ADJUST/REJECT im Leitstand, ADJUST-Folgeworkflow unter demselben
+  Auftrag, Feature Review mit Stefan (Muster F22 AK8).
 
 ## Dependencies
 
@@ -177,16 +193,18 @@ Meilenstein-Gate, `docs/STATUS.md`).
 
 ## Workstreams
 
-- **WS-0** (dieser Auftrag, gebaut): Änderungsübersicht als Kernartefakt —
-  Schema, Ermittlung (rein lesend über `git` gegen die Repo-Wurzel),
-  Registrierung nach einem real erfolgreichen schreibenden Lauf,
-  Eingabe-Platzhalter `@<schrittId>`, Gate.
-- **WS-1**: Entscheidungs-Schema + Validator (löst F-350, dabei F-379s
-  fünf `ergebnis`-Familien auseinanderziehen); Post-Build-Prüfschritt in
-  den Vorlagen und Urteilsauswertung im Automaten (löst F-351/F-377).
+- **WS-0** (gebaut): Änderungsübersicht als Kernartefakt — Schema,
+  Ermittlung (rein lesend über `git` gegen die Repo-Wurzel), Registrierung
+  nach einem real erfolgreichen schreibenden Lauf, Eingabe-Platzhalter
+  `@<schrittId>`, Gate.
+- **WS-1a** (dieser Auftrag, gebaut): Entscheidungs-Schema + Validator
+  (löst F-350, dabei F-379s fünf `ergebnis`-Familien über das neue
+  Pflichtfeld `art` auseinandergezogen).
+- **WS-1b**: Vorlagen-Umbau (Post-Build-Prüfschritt in den
+  Workflow-Vorlagen) und Urteilsauswertung im Automaten (löst F-351/F-377).
 - **WS-2**: Abnahme-View im Leitstand — ACCEPT/ADJUST/REJECT als
-  Entscheidungsartefakt, `BLOCKIERT`-Wirkung, ADJUST-Folgeworkflow unter
-  demselben Auftrag.
+  Entscheidungsartefakt (`art: abnahme`), `BLOCKIERT`-Wirkung,
+  ADJUST-Folgeworkflow unter demselben Auftrag.
 - **WS-3**: Feature Review mit Stefan (realer Testlauf, Muster F22 AK8).
 
 ## Risiken

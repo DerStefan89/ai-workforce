@@ -27,6 +27,13 @@
  *     'lesend'-Lauf keine. fuehreAufgabeDurchFn ist gestubbt (Muster
  *     check-f22-click-to-work.mjs Rot-Fall (b)) — der Punkt ist die
  *     Verdrahtung um F8 herum, nicht F8 selbst.
+ * (f) [F23 WS-1a] Schema-Beispiele gegen validiereEntscheidungsDaten
+ *     (Muster Block (0) in dieser Datei) — sechs valid-*.json (je 'art'
+ *     eine) plus fünf invalid-*.json, darunter zwei gezielt für die
+ *     planaenderung-Sonderregel (Pflichtfeld abgeschwaechte_freigaben,
+ *     additionalProperties:false je Eintrag — QA-Pass 14.09.2026: bis
+ *     dahin nur über src/entscheidung/entscheidung.test.ts abgedeckt,
+ *     nicht über die Schema-Beispiele).
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -41,6 +48,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { erzeugeAenderungsuebersichtDaten, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
+import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
 import { ladeStartvorlage } from '../src/startvorlage/index.ts'
 import { erzeugeRequestHandler, loeseSchrittEingabenAuf } from './leitstand-server.mjs'
@@ -276,6 +284,62 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
   } finally {
     await schliessen()
     raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (f) Schema-Beispiele Entscheidung gegen validiereEntscheidungsDaten (F23 WS-1a) ──
+{
+  const befundeVor = befunde.length
+  const schemaPfad = 'schemas/kontrollzustand-entscheidung-payload.schema.json'
+  if (!existsSync(schemaPfad)) {
+    befunde.push(`${schemaPfad}: Datei fehlt`)
+  } else {
+    try {
+      JSON.parse(readFileSync(schemaPfad, 'utf-8'))
+    } catch (fehler) {
+      befunde.push(`${schemaPfad}: kein gültiges JSON (${fehler.message})`)
+    }
+  }
+
+  const beispiele = [
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-freigabe.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-stopp.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-planaenderung.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-terminal.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-kenntnisnahme.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.valid-abnahme.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-unbekannte-art.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-ergebnis-ausserhalb-der-art.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-fehlendes-feld.json', sollGueltigSein: false },
+    // QA-Pass 14.09.2026: die planaenderung-Sonderregel (Pflichtfeld abgeschwaechte_freigaben,
+    // additionalProperties:false je Eintrag) war bis hierhin nur über direkte Aufrufe in
+    // src/entscheidung/entscheidung.test.ts abgedeckt, nicht über die Schema-Beispiele/dieses
+    // Gate — beide Fälle jetzt ergänzt.
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-planaenderung-ohne-abgeschwaechte-freigaben.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-planaenderung-abgeschwaechte-freigaben-unbekanntes-feld.json', sollGueltigSein: false },
+  ]
+  for (const { pfad, sollGueltigSein } of beispiele) {
+    if (!existsSync(pfad)) {
+      befunde.push(`${pfad}: Datei fehlt`)
+      continue
+    }
+    let obj
+    try {
+      obj = JSON.parse(readFileSync(pfad, 'utf-8'))
+    } catch (fehler) {
+      befunde.push(`${pfad}: kein gültiges JSON (${fehler.message})`)
+      continue
+    }
+    const verstoesse = validiereEntscheidungsDaten(obj)
+    if (sollGueltigSein && verstoesse.length > 0) {
+      befunde.push(`${pfad}: sollte gültig sein, aber verletzt: ${verstoesse.join('; ')}`)
+    }
+    if (!sollGueltigSein && verstoesse.length === 0) {
+      befunde.push(`${pfad}: sollte ungültig sein, aber keine Regelverletzung gefunden`)
+    }
+  }
+  if (befunde.length === befundeVor) {
+    console.log('✓ (f) Schema-Beispiele Entscheidung: sechs valid-*.json (je art eine) erfüllen validiereEntscheidungsDaten, alle fünf invalid-*.json verletzen je eine benannte Regel (inkl. planaenderung-Sonderregel abgeschwaechte_freigaben).')
   }
 }
 

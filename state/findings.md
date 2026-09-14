@@ -5875,7 +5875,7 @@ oder das Dokument nachziehen.
 Status: offen.
 Feature/Run: M4-Challenge, 12.09.2026.
 
-**F-350** · `TECH_DEBT` · P1 · offen
+**F-350** · `TECH_DEBT` · P1 · gelöst
 Titel: Entscheidungsartefakt (`entscheidung_schema: v0`) ohne JSON-Schema
 und Validator.
 Beschreibung: Das Format `{entscheidung_schema:'v0', ergebnis, begruendung,
@@ -5887,10 +5887,13 @@ Fundstelle: `scripts/leitstand-server.mjs` (`entscheidung_schema`), `schemas/`.
 Auswirkung: das Bindeglied Mensch↔Lauf ist nicht validierbar; M4-F23
 (Abnahme `ANGENOMMEN|ANPASSUNG|ABGELEHNT`, Prioritäts-Override) setzt darauf
 auf.
-Maßnahme: Schema + Validator in F23 WS-1, bestehende Artefakte bleiben
-gültig (E-M4-6).
-Status: offen.
-Feature/Run: M4-Challenge, 12.09.2026.
+Maßnahme: `schemas/kontrollzustand-entscheidung-payload.schema.json` +
+`src/entscheidung/` (`validiereEntscheidungsDaten`, handgeschrieben, D5)
+gebaut, alle fünf Schreibstellen in `scripts/leitstand-server.mjs` rufen den
+Validator vor der Registrierung auf. Bestehende Artefakte ohne `art`-Feld
+bleiben lesbar über `leiteArtAusHerkunftAb` (E-M4-6), keine Migration nötig.
+Status: gelöst.
+Feature/Run: M4-Challenge, 12.09.2026 → F23 WS-1a, 14.09.2026.
 
 **F-351** · `TECH_DEBT` · P1 · offen
 Titel: Review→Execution-Handoff transportiert kein Urteil; keine
@@ -6514,7 +6517,7 @@ Bestandteil dieser Lösung.
 Status: offen.
 Feature/Run: F23 WS-0, 14.09.2026.
 
-**F-379** · `TECH_DEBT` · P2 · offen
+**F-379** · `TECH_DEBT` · P2 · gelöst
 Titel: Entscheidungsartefakte werden an fünf Stellen in
 `scripts/leitstand-server.mjs` inline ohne Schema geschrieben; das Feld
 `ergebnis` ist über fünf semantische Familien überladen.
@@ -6533,6 +6536,7 @@ ohne Kenntnis der erzeugenden Stelle bestimmen; ein künftiges Schema
 (F-350) muss diese fünf Familien vor der Vereinheitlichung erst sauber
 trennen, sonst wird die Überladung nur in ein Schema gegossen statt
 aufgelöst.
+<<<<<<< HEAD
 Maßnahme: F23 WS-1 — Schema und Validator für das Entscheidungsartefakt,
 dabei die fünf `ergebnis`-Familien explizit auseinanderziehen (löst F-350
 zusammen mit dieser Klärung).
@@ -6599,3 +6603,13 @@ feststellbar — für die Blockade-Frage dieses Findings ohne Bedeutung,
 `continue-on-error` fängt beide Fälle ab.
 Feature/Run: CI-Hänger-Fix, 14.09.2026 (eigener Branch
 `fix/ci-f20-chrome-haenger`, getrennt von F23).
+=======
+Maßnahme: F23 WS-1a — neues Pflichtfeld `art` (`freigabe|stopp|
+planaenderung|terminal|kenntnisnahme|abnahme`) trennt die fünf Familien
+explizit auseinander; je `art` eine eigene, exklusive `ergebnis`-
+Wertemenge im Schema (`if`/`then`, `additionalProperties:false` je Zweig)
+und im Validator (löst F-350 zusammen mit dieser Klärung). Alle fünf
+Schreibstellen setzen `art` jetzt explizit.
+Status: gelöst.
+Feature/Run: F23 WS-0, 14.09.2026 → F23 WS-1a, 14.09.2026.
+>>>>>>> 689e125 (F23 WS-1a: Entscheidungs-Schema + Validator)
