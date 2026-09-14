@@ -2,8 +2,21 @@
  * Datei: scripts/check-f15-workflow-oberflaeche.mjs
  *
  * Zweck: F15-WS-3a/3b-Gate für die OBERFLÄCHE des Leitstands. Es prüft den
- * Quelltext von public/leitstand/index.html und public/leitstand/app.js
- * gegen die Zusagen der Workflow-Ansicht (AK8, erster von zwei Commits).
+ * Quelltext von public/leitstand/index.html sowie der Workflow-Module gegen
+ * die Zusagen der Workflow-Ansicht (AK8, erster von zwei Commits).
+ *
+ * F20 WS-1 (14.09.2026, F-352): `public/leitstand/app.js` war bis zur
+ * Modul-Aufteilung die GESAMTE Client-Logik in einer Datei — dieses Gate las
+ * sie deshalb komplett. Seit der Aufteilung in `router.js`, `api.js`,
+ * `render.js` und `views/*.js` ist app.js nur noch ein dünner Bootstrap; die
+ * Workflow-Ansicht und -Bedienung liegen in `views/workflows.js`, die
+ * fetch()-Aufrufe selbst in `api.js` (eine View ruft dort eine benannte
+ * Funktion auf, die Endpunkt-Literale liegen NUR noch in api.js). Dieses
+ * Gate liest seither `views/workflows.js` UND `api.js` und verteilt seine
+ * Zusagen auf die Datei, in der sie tatsächlich stehen — WAS geprüft wird,
+ * ist unverändert, NUR die Fundstelle hat sich mit der Architektur
+ * mitbewegt (Rot-Fall bei jeder der beiden Dateien real erhalten, siehe
+ * Ende dieser Datei / QA-Nachweis F20 WS-1).
  *
  * WARUM ES DIESES GATE ÜBERHAUPT GIBT — bitte vor dem Löschen lesen:
  * `public/leitstand/` war bis hierher NICHT gegatet. scripts/check-f12-
@@ -13,10 +26,10 @@
  * Deckung schloss, nahm eine Deckung an, die es nicht gab; genau diese
  * Fehlannahme ist beim Challenger real aufgetreten.
  *
- * Seit F16 AK12 prüft jenes Gate in seinem Fall (f) auch renderLaufakte in
- * app.js. Die Arbeitsteilung bleibt und ist der Grund, warum beide Gates
- * getrennt stehen: dort die fünf Zeilen des Laufakte-Blocks, hier die
- * Workflow-Ansicht und -Bedienung.
+ * Seit F16 AK12 prüft jenes Gate in seinem Fall (f) auch renderLaufakte
+ * (seit F20 WS-1 in views/runs.js). Die Arbeitsteilung bleibt und ist der
+ * Grund, warum beide Gates getrennt stehen: dort die fünf Zeilen des
+ * Laufakte-Blocks, hier die Workflow-Ansicht und -Bedienung.
  *
  * WAS DIESES GATE NICHT IST: eine Quelltextprüfung, kein Rendern. Sie
  * belegt, dass die Oberfläche die genannten Felder und Endpunkte im Code
@@ -26,31 +39,37 @@
  * Geprüft wird:
  * (a) index.html — der Abschnitt, seine Container-ids und der Einleitungssatz,
  *     der die schreibenden Ausnahmen benennt.
- * (b) app.js — die beiden Leseendpunkte GET /api/workflows und
- *     GET /api/workflows/<id>.
- * (c) app.js — Kopfdaten- und Schrittfelder, jedes EINZELN nachgewiesen.
- *     Eine Sammelprüfung („irgendwas mit schritt") bliebe grün, während die
- *     halbe Liste fehlt.
- * (d) app.js — der Zustand „Fassung ungültig", seit WS-3b aus dem
- *     Server-Feld verstoesse statt aus einem nie gesendeten 409 (F-247), und
- *     die Markierung des aktiven Laufs (F-234).
- * (e) app.js — die UMGEDREHTE Scope-Zusage. WS-3a hielt hier fest, dass app.js
- *     KEINEN der Schreibendpunkte aufruft; WS-3b verlangt genau diese
- *     Aufrufe. Der Fall ist umgedreht, nicht gelöscht: eine gelöschte Grenze
- *     hinterlässt keine Spur.
- * (f) app.js — Syntaxprüfung (node --check). Der Ordner public liegt
- *     AUSSERHALB von Biome (biome.json führt nur scripts und src) und
- *     außerhalb von tsc (tsconfig ebenso, und nur .ts). Ohne diese Prüfung
- *     bliebe eine syntaktisch kaputte app.js in der gesamten Kette grün:
- *     eine Quelltextsuche findet ihre Muster auch dann noch.
- * (g) app.js — F15 WS-3b: das Automaten-Verdikt (naechster) als Quelle der
- *     angezeigten Lage, jede der vier Bedienungen an GENAU ihrem Endpunkt,
- *     die Pflichtbegründungen und die ehrliche 409-Meldung statt eines
- *     Vorabsperrens.
- * (h) app.js — F15 WS-3b: der Reparaturentwurf mit seinen vier Korrekturen
- *     und den drei Warnungen (F-219, F-223, F-226).
+ * (b) views/workflows.js + api.js — die beiden Leseendpunkte GET
+ *     /api/workflows und GET /api/workflows/<id>: api.js führt den Endpunkt,
+ *     die View ruft die Funktion tatsächlich auf.
+ * (c) views/workflows.js (+ views/runs.js für den Lauf-Verweis) —
+ *     Kopfdaten- und Schrittfelder, jedes EINZELN nachgewiesen. Eine
+ *     Sammelprüfung („irgendwas mit schritt") bliebe grün, während die halbe
+ *     Liste fehlt.
+ * (d) views/workflows.js (+ api.js für F-234) — der Zustand „Fassung
+ *     ungültig", seit WS-3b aus dem Server-Feld verstoesse statt aus einem
+ *     nie gesendeten 409 (F-247), und die Markierung des aktiven Laufs
+ *     (F-234).
+ * (e) api.js — die UMGEDREHTE Scope-Zusage. WS-3a hielt hier fest, dass die
+ *     Oberfläche KEINEN der Schreibendpunkte aufruft; WS-3b verlangt genau
+ *     diese Aufrufe. Der Fall ist umgedreht, nicht gelöscht: eine gelöschte
+ *     Grenze hinterlässt keine Spur. Seit F20 WS-1 liegen die Endpunkt-
+ *     Literale in api.js, nicht mehr am Bedienungs-Aufrufort.
+ * (f) views/workflows.js, api.js, views/runs.js, router.js — Syntaxprüfung
+ *     (node --check) auf allen vier. Der Ordner public liegt AUSSERHALB von
+ *     Biome (biome.json führt nur scripts und src) und außerhalb von tsc
+ *     (tsconfig ebenso, und nur .ts). Ohne diese Prüfung bliebe eine
+ *     syntaktisch kaputte Datei in der gesamten Kette grün: eine
+ *     Quelltextsuche findet ihre Muster auch dann noch.
+ * (g) views/workflows.js (+ api.js) — F15 WS-3b: das Automaten-Verdikt
+ *     (naechster) als Quelle der angezeigten Lage, jede der vier
+ *     Bedienungen an GENAU ihrem Endpunkt, die Pflichtbegründungen und die
+ *     ehrliche 409-Meldung statt eines Vorabsperrens.
+ * (h) views/workflows.js (+ api.js für das Einreichen) — F15 WS-3b: der
+ *     Reparaturentwurf mit seinen vier Korrekturen und den drei Warnungen
+ *     (F-219, F-223, F-226).
  *
- * Alle app.js-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
+ * Alle Quelltext-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
  * (entferneKommentare). Sonst hielte ein Kommentar, der einen Endpunkt nur
  * ERWÄHNT, die Scope-Grenze fälschlich für verletzt — und ein Feldname in
  * einem Kommentar zählte als „gerendert".
@@ -73,7 +92,7 @@ console.log('\n=== F15-WS-3a/3b-Check (Workflow-Ansicht und -Bedienung, Quelltex
  *
  * Bewusst einfach gehalten und deshalb mit einer Grenze: ein `//` innerhalb
  * eines Strings wird als Kommentarbeginn gelesen, außer es steht direkt
- * hinter einem `:` (das schützt `http://`). public/leitstand/app.js enthält
+ * hinter einem `:` (das schützt `http://`). Die geprüften Dateien enthalten
  * heute keinen anderen Fall.
  *
  * Fehlerverhalten, und es ist NICHT symmetrisch: strippt diese Funktion zu
@@ -89,7 +108,12 @@ function entferneKommentare(quelltext) {
 }
 
 const htmlQuelltext = readFileSync('public/leitstand/index.html', 'utf8')
-const appQuelltext = entferneKommentare(readFileSync('public/leitstand/app.js', 'utf8'))
+const workflowsQuelltext = entferneKommentare(readFileSync('public/leitstand/views/workflows.js', 'utf8'))
+const apiQuelltext = entferneKommentare(readFileSync('public/leitstand/api.js', 'utf8'))
+const runsQuelltext = entferneKommentare(readFileSync('public/leitstand/views/runs.js', 'utf8'))
+// Kombiniert für Zusagen, die über die Modulgrenze hinweg gelten: die View ruft eine
+// api.js-Funktion beim Namen auf, das Endpunkt-Literal steht in deren Definition.
+const appQuelltext = [workflowsQuelltext, apiQuelltext].join('\n')
 
 /**
  * Eine einzelne Zusage: `muster` muss in `quelltext` vorkommen.
@@ -131,9 +155,11 @@ if (htmlQuelltext.includes('Ausnahme: das Startformular und die Wiederaufnahme-B
 }
 verlangeVorkommen('a', 'Einleitungssatz nennt die Workflow-Bedienung als schreibende Ausnahme', htmlQuelltext, 'Workflow-Bedienung')
 
-// ─── (b) app.js: die beiden Leseendpunkte ───────────────────────────────────
-verlangeVorkommen('b', "GET /api/workflows (Liste)", appQuelltext, "fetch('/api/workflows')")
-verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail)', appQuelltext, /fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)/)
+// ─── (b) die beiden Leseendpunkte: api.js führt sie, die View ruft sie auf ──
+verlangeVorkommen('b', "GET /api/workflows (Liste) — api.js", apiQuelltext, "fetch('/api/workflows')")
+verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)/)
+verlangeVorkommen('b', 'ladeWorkflows() ruft holeWorkflows() auf', workflowsQuelltext, 'await holeWorkflows()')
+verlangeVorkommen('b', 'ladeWorkflowDetail() ruft holeWorkflowDetail(workflowId) auf', workflowsQuelltext, 'await holeWorkflowDetail(workflowId)')
 
 // ─── (c) Kopfdaten- und Schrittfelder, jedes einzeln ────────────────────────
 // Kopfdaten aus GET /api/workflows (baueWorkflowKopfdaten, scripts/leitstand-server.mjs).
@@ -152,8 +178,15 @@ for (const feld of ['aktiver_schritt_id', 'grund', 'version']) {
 }
 
 // Die lauf_id ist ein Verweis auf den bestehenden Lauf-Abschnitt, kein nackter String.
-verlangeVorkommen('c', 'lauf_id als Verweis (Klasse workflow-lauf-verweis)', appQuelltext, 'workflow-lauf-verweis')
-verlangeVorkommen('c', 'lauf_id-Verweis öffnet das bestehende Lauf-Detail', appQuelltext, 'ladeLaufDetail(button.dataset.laufId)')
+//
+// F20 WS-1 (F-352): der Verweis ruft seither NICHT mehr ladeLaufDetail() direkt auf (das wäre
+// ein Cross-View-Import ohne Not), sondern navigiert per Hash zur bestehenden Route
+// '#/runs/<laufId>' (router.js) — runs.js registriert diese Route und ruft dort ladeLaufDetail
+// auf. Zwei Zusagen statt einer, weil der Weg jetzt über zwei Dateien führt.
+verlangeVorkommen('c', 'lauf_id als Verweis (Klasse workflow-lauf-verweis)', workflowsQuelltext, 'workflow-lauf-verweis')
+verlangeVorkommen('c', "lauf_id-Verweis navigiert zur Lauf-Detail-Route ('#/runs/<laufId>')", workflowsQuelltext, 'navigiere(`#/runs/${encodeURIComponent(button.dataset.laufId)}`)')
+verlangeVorkommen('c', "runs.js registriert die Route '#/runs/<laufId>' (öffnet das bestehende Lauf-Detail)", runsQuelltext, "registriere(/^#\\/runs\\/([^/]+)$/, 'runs', (laufId) => {")
+verlangeVorkommen('c', "Die Route '#/runs/<laufId>' ruft ladeLaufDetail(laufId) auf", runsQuelltext, 'ladeLaufDetail(laufId)')
 
 // Schrittliste in Planreihenfolge, nicht in Niederschriftreihenfolge.
 verlangeVorkommen('c', 'Planreihenfolge (ordneSchritteNachPlan)', appQuelltext, 'ordneSchritteNachPlan(daten.schritte)')
@@ -173,15 +206,20 @@ verlangeVorkommen('d', 'F-247: die Verstöße werden gerendert', appQuelltext, '
 if (/antwort\.status === 409/.test(appQuelltext)) {
   befunde.push('(d) F-247: app.js führt weiterhin einen 409-Zweig für den Detailendpunkt — der Endpunkt sendet diesen Status nicht, der Zweig ist tot und gehört auf verstoesse umgestellt')
 }
-verlangeVorkommen('d', 'F-234: aktiver Lauf aus GET /api/laeufe/<laufId>', appQuelltext, /fetch\(`\/api\/laeufe\/\$\{encodeURIComponent\(schritt\.lauf_id\)\}`\)/)
+// F20 WS-1 (F-352): der fetch()-Aufruf für den aktiven Lauf liegt seither in api.js
+// (holeLaufDetail), die View ruft ihn nur noch mit schritt.lauf_id auf.
+verlangeVorkommen('d', 'F-234: aktiver Lauf über holeLaufDetail(schritt.lauf_id)', workflowsQuelltext, 'holeLaufDetail(schritt.lauf_id)')
+verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(laufId)}`)')
 verlangeVorkommen('d', 'F-234: Quelle ist das aktiv-Feld (D13), nicht der Schrittstatus', appQuelltext, 'detail.aktiv === true')
 verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, 'läuft jetzt')
 
 // ─── (e) WS-3b: die Bedienung IST da — die umgedrehte Scope-Zusage ──────────
 //
-// WS-3a hielt hier fest, dass app.js KEINEN der drei Schreibendpunkte aufruft. WS-3b dreht
-// denselben Fall um, statt ihn zu löschen: eine gelöschte Grenze hinterlässt keine Spur, eine
-// umgedrehte schon — und die Zusage bleibt eine Zusage, sie zeigt nur in die andere Richtung.
+// WS-3a hielt hier fest, dass die Oberfläche KEINEN der drei Schreibendpunkte aufruft. WS-3b
+// dreht denselben Fall um, statt ihn zu löschen: eine gelöschte Grenze hinterlässt keine Spur,
+// eine umgedrehte schon — und die Zusage bleibt eine Zusage, sie zeigt nur in die andere
+// Richtung. F20 WS-1 (F-352): die Endpunkt-Literale liegen seither in api.js, nicht mehr am
+// Bedienungs-Aufrufort in views/workflows.js — diese Prüfung läuft deshalb gegen apiQuelltext.
 //
 // Vier Schreibwege, nicht drei: /starten, /freigabe und /stoppen sind am Pfad erkennbar, der
 // vierte — POST /api/workflows, über den die Reparaturfassung eingereicht wird — ist es nicht,
@@ -189,12 +227,12 @@ verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, '
 // fetch-Aufruf erkannt.
 const SCHREIBFENSTER = 200
 
-/** @param quelltext - zu durchsuchender app.js-Text @returns Namen der gefundenen Schreibwege über die Pfadregel */
+/** @param quelltext - zu durchsuchender api.js-Text @returns Namen der gefundenen Schreibwege über die Pfadregel */
 function findePfadSchreibwege(quelltext) {
   return ['starten', 'freigabe', 'stoppen'].filter((endpunkt) => new RegExp(`/api/workflows/[^'"\`\\n]*/${endpunkt}`).test(quelltext)).map((endpunkt) => `/api/workflows/<id>/${endpunkt}`)
 }
 
-/** @param quelltext - zu durchsuchender app.js-Text @returns true, wenn hinter einem /api/workflows-Vorkommen im selben Aufruf eine POST-Methode steht */
+/** @param quelltext - zu durchsuchender api.js-Text @returns true, wenn hinter einem /api/workflows-Vorkommen im selben Aufruf eine POST-Methode steht */
 function hatWorkflowPost(quelltext) {
   for (let idx = quelltext.indexOf('/api/workflows'); idx !== -1; idx = quelltext.indexOf('/api/workflows', idx + 1)) {
     if (/method:\s*'POST'/.test(quelltext.slice(idx, idx + SCHREIBFENSTER))) return true
@@ -202,14 +240,19 @@ function hatWorkflowPost(quelltext) {
   return false
 }
 
-const gefundeneSchreibwege = findePfadSchreibwege(appQuelltext)
+const gefundeneSchreibwege = findePfadSchreibwege(apiQuelltext)
 for (const erwartet of ['/api/workflows/<id>/starten', '/api/workflows/<id>/freigabe', '/api/workflows/<id>/stoppen']) {
   if (!gefundeneSchreibwege.includes(erwartet)) {
-    befunde.push(`(e) WS-3b-Bedienung: app.js ruft '${erwartet}' NICHT auf — AK8 verlangt die Bedienung, nicht nur die Ansicht`)
+    befunde.push(`(e) WS-3b-Bedienung: api.js führt '${erwartet}' NICHT — AK8 verlangt die Bedienung, nicht nur die Ansicht`)
   }
 }
-if (!hatWorkflowPost(appQuelltext)) {
-  befunde.push("(e) WS-3b-Bedienung: app.js schickt kein POST an '/api/workflows' — ohne das ist der Reparaturentwurf nicht einreichbar (F-240)")
+if (!hatWorkflowPost(apiQuelltext)) {
+  befunde.push("(e) WS-3b-Bedienung: api.js schickt kein POST an '/api/workflows' — ohne das ist der Reparaturentwurf nicht einreichbar (F-240)")
+}
+// Und die View muss diese Endpunkt-Funktionen auch wirklich AUFRUFEN — api.js allein genügt
+// nicht, sonst wäre eine ungenutzte Funktion ausreichend (dieselbe Lehre wie bei (b)).
+for (const funktion of ['starteWorkflowSchritt', 'sendeWorkflowFreigabe', 'stoppeWorkflow', 'reicheWorkflowFassungEin']) {
+  verlangeVorkommen('e', `views/workflows.js ruft ${funktion}(...) auf`, workflowsQuelltext, `${funktion}(`)
 }
 
 // ─── (g) WS-3b: Verdikt als Quelle, vier Bedienungen, Pflichtbegründungen ───
@@ -232,9 +275,17 @@ verlangeVorkommen('g', 'F-253: die Freigabestufe ist als haltend/nicht haltend a
 
 // Jede der vier Bedienungen ruft GENAU ihren Endpunkt — je einzeln nachgewiesen, nicht als
 // Sammelprüfung: drei von vier zu haben ist der wahrscheinliche Fehler, nicht null von vier.
-verlangeVorkommen('g', 'Starten ruft POST .../starten', appQuelltext, /sendeWorkflowBedienung\(\s*`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/starten`/)
-verlangeVorkommen('g', 'Freigeben/Ablehnen rufen POST .../freigabe', appQuelltext, /`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/freigabe`/)
-verlangeVorkommen('g', 'Stoppen ruft POST .../stoppen', appQuelltext, /`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/stoppen`/)
+//
+// F20 WS-1 (F-352): sendeWorkflowBedienung nimmt seither keine Literal-URL mehr entgegen,
+// sondern eine Anfrage-Funktion aus api.js (Cross-Modul-Aufruf statt eines dritten Parameters
+// mit demselben Endpunkt-String wie vorher) — je zwei Zusagen statt einer: der Aufrufort nennt
+// die richtige api.js-Funktion MIT workflowId, und diese Funktion führt den richtigen Endpunkt.
+verlangeVorkommen('g', 'Starten ruft sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), ...) auf', workflowsQuelltext, 'sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button')
+verlangeVorkommen('g', 'api.js: starteWorkflowSchritt führt POST .../starten', apiQuelltext, /starteWorkflowSchritt = \(workflowId\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/starten`, \{ method: 'POST'/)
+verlangeVorkommen('g', 'Freigeben/Ablehnen rufen sendeWorkflowFreigabe(workflowId, ...) auf', workflowsQuelltext, 'sendeWorkflowFreigabe(workflowId, { schrittId: button.dataset.schrittId')
+verlangeVorkommen('g', 'api.js: sendeWorkflowFreigabe führt POST .../freigabe', apiQuelltext, /sendeWorkflowFreigabe = \(workflowId, koerper\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/freigabe`, \{ method: 'POST'/)
+verlangeVorkommen('g', 'Stoppen ruft sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, ...), ...) auf', workflowsQuelltext, 'sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung })')
+verlangeVorkommen('g', 'api.js: stoppeWorkflow führt POST .../stoppen', apiQuelltext, /stoppeWorkflow = \(workflowId, koerper\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/stoppen`, \{ method: 'POST'/)
 verlangeVorkommen('g', 'Freigeben schickt entscheidung FREIGEGEBEN', appQuelltext, "'FREIGEGEBEN'")
 verlangeVorkommen('g', 'Ablehnen schickt entscheidung ABGELEHNT', appQuelltext, "'ABGELEHNT'")
 verlangeVorkommen('g', 'die Freigabe nennt den Schritt, für den sie gilt', appQuelltext, 'schrittId: button.dataset.schrittId')
@@ -277,7 +328,9 @@ if (/function baueReparaturEntwurf[\s\S]{0,600}?grund:/.test(appQuelltext)) {
   befunde.push('(h) Korrektur (4): baueReparaturEntwurf setzt grund selbst — der Halt-Grund soll im Entwurf sichtbar BLEIBEN, damit der Mensch liest, warum der Workflow stand')
 }
 verlangeVorkommen('h', 'der Entwurf ist bearbeitbarer JSON-Text, kein Formular', appQuelltext, 'JSON.stringify(entwurf, null, 2)')
-verlangeVorkommen('h', 'Einreichen geht an POST /api/workflows', appQuelltext, /fetch\('\/api\/workflows', \{ method: 'POST'/)
+// F20 WS-1 (F-352): der fetch()-Aufruf liegt seither in api.js (reicheWorkflowFassungEin).
+verlangeVorkommen('h', 'Einreichen ruft reicheWorkflowFassungEin(koerper) auf', workflowsQuelltext, 'reicheWorkflowFassungEin(koerper)')
+verlangeVorkommen('h', 'api.js: reicheWorkflowFassungEin geht an POST /api/workflows', apiQuelltext, "reicheWorkflowFassungEin = (koerper) => fetch('/api/workflows', { method: 'POST'")
 
 // Die drei Warnungen, jede an ihrer Befundnummer erkennbar — der Text ist die Zusage, nicht
 // bloß Beiwerk: er sagt dem Menschen, WAS er verliert.
@@ -307,12 +360,17 @@ verlangeVorkommen('h', 'F-241: kein Stopp-Knopf auf einer ungültigen Fassung', 
 // Ladens darf eingetippte Änderungen nicht überschreiben (Reviewer-Pass 10.09.2026).
 verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 'reparaturZaehler')
 
-// ─── (f) app.js ist syntaktisch gültig ──────────────────────────────────────
-try {
-  execFileSync(process.execPath, ['--check', 'public/leitstand/app.js'], { encoding: 'utf8' })
-} catch (fehler) {
-  const meldung = String(fehler.stderr ?? fehler.message).trim().split(/\r?\n/)
-  befunde.push(`(f) public/leitstand/app.js ist syntaktisch ungültig: ${meldung.find((z) => z.includes('Error')) ?? meldung[0]}`)
+// ─── (f) die vier hier geprüften Module sind syntaktisch gültig ─────────────
+// F20 WS-1 (F-352): app.js allein zu prüfen reichte, solange es die gesamte Logik enthielt —
+// seither verteilt sich das auf mehrere Dateien, und eine kaputte views/workflows.js wäre sonst
+// unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe.
+for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js']) {
+  try {
+    execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
+  } catch (fehler) {
+    const meldung = String(fehler.stderr ?? fehler.message).trim().split(/\r?\n/)
+    befunde.push(`(f) ${pfad} ist syntaktisch ungültig: ${meldung.find((z) => z.includes('Error')) ?? meldung[0]}`)
+  }
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

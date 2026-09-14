@@ -1,11 +1,81 @@
+/*
+ * Datei: public/leitstand/style.css
+ *
+ * Zweck: Stylesheet der Jarvis Shell. Seit F20 WS-1 (AK4) trägt jede Farbe
+ * eine Token-Definition im :root-Block — nirgends sonst im Stylesheet steht
+ * ein Farbliteral (Gate: scripts/check-f20-design-tokens.mjs). Wer eine neue
+ * Regel ergänzt, referenziert ein bestehendes Token oder legt im :root-Block
+ * ein neues an, statt einen Hex-/rgb()-Wert direkt zu schreiben.
+ *
+ * Wird aufgerufen von:
+ * - public/leitstand/index.html
+ */
+
+:root {
+  --color-text: #1a1a1a;
+  --color-text-muted: #555;
+  --color-text-subtle: #777;
+  --color-border: #ccc;
+  --color-border-subtle: #ddd;
+  --color-surface-muted: #f0f0f0;
+  --color-success-bg: #d7f5dd;
+  --color-success-text: #116631;
+  --color-danger-bg: #fbdada;
+  --color-danger-text: #8a1f1f;
+  --color-warning-bg: #ffe6b3;
+  --color-warning-text: #7a4b00;
+  --color-info-bg: #d6e8ff;
+  --color-info-text: #1b4b8a;
+}
+
 body {
   font-family: system-ui, sans-serif;
-  margin: 2rem;
-  color: #1a1a1a;
+  margin: 0;
+  padding: 2rem;
+  color: var(--color-text);
+}
+
+#shell-kopf {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+#shell-kopf h1 {
+  margin: 0;
+}
+
+#shell-nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+#shell-nav a {
+  color: var(--color-text);
+  text-decoration: none;
+  padding: 0.3rem 0.1rem;
+  border-bottom: 2px solid transparent;
+}
+
+#shell-nav a[aria-current='page'] {
+  border-bottom-color: var(--color-info-text);
+  font-weight: 600;
+}
+
+/* F28 füllt diesen Platzhalter mit einer echten Persona (SVG, vier abgeleitete Zustände) — F20 liefert nur die leere, unbewegte Box. */
+#persona-platzhalter {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  margin-left: auto;
 }
 
 .hinweis {
-  color: #555;
+  color: var(--color-text-muted);
 }
 
 .lauf {
@@ -24,18 +94,18 @@ table {
 }
 
 th, td {
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   padding: 0.4rem 0.6rem;
   text-align: left;
   font-size: 0.9rem;
 }
 
 th {
-  background: #f0f0f0;
+  background: var(--color-surface-muted);
 }
 
 .leer {
-  color: #777;
+  color: var(--color-text-subtle);
   font-style: italic;
 }
 
@@ -48,30 +118,30 @@ th {
 }
 
 .badge.ok, .badge.aktuell {
-  background: #d7f5dd;
-  color: #116631;
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
 }
 
 .badge.fehler {
-  background: #fbdada;
-  color: #8a1f1f;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
 }
 
 .badge.stale {
-  background: #ffe6b3;
-  color: #7a4b00;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .grund {
   font-size: 0.75rem;
-  color: #8a1f1f;
+  color: var(--color-danger-text);
   margin-top: 0.2rem;
 }
 
 #startfehler-abschnitt, #auftrag-start {
   margin-bottom: 2rem;
   padding: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   max-width: 100%;
   width: 100%;
@@ -110,7 +180,7 @@ th {
 
 #start-evidenzdateien {
   margin-top: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--color-border-subtle);
   border-radius: 0.4rem;
   padding: 0.6rem;
 }
@@ -137,12 +207,12 @@ th {
 }
 
 .fehler {
-  color: #8a1f1f;
+  color: var(--color-danger-text);
   font-weight: 600;
 }
 
 .erfolg {
-  color: #116631;
+  color: var(--color-success-text);
   font-weight: 600;
 }
 
@@ -166,7 +236,7 @@ button:disabled {
 #lauf-detail {
   margin-bottom: 2rem;
   padding: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   max-width: 100%;
   width: 100%;
@@ -191,14 +261,14 @@ button:disabled {
 }
 
 .unbekannt {
-  color: #777;
+  color: var(--color-text-subtle);
   font-style: italic;
 }
 
 #workflows-abschnitt, #workflow-detail {
   margin-bottom: 2rem;
   padding: 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   max-width: 100%;
   width: 100%;
@@ -233,8 +303,8 @@ button:disabled {
 }
 
 .badge.aktiv {
-  background: #d6e8ff;
-  color: #1b4b8a;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
 }
 
 /*

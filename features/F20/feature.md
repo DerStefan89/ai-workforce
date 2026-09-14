@@ -50,7 +50,21 @@ neuen `GET /api/zustand` · Änderung an Kontrollzustand oder Schemas.
 - **AK5** `scripts/check-f15-workflow-oberflaeche.mjs` auf die neue
   Dateistruktur kalibriert, mit Rot-Fall (gelöschte Container-ID wird
   gemeldet); `public/` in den Biome-Scope aufgenommen.
-- **AK6** `npm run check` grün.
+  TEILWEISE VORGEZOGEN (14.09.2026, F-352, außerhalb der regulären
+  WS-2-Reihenfolge, weil CI sonst dauerhaft rot lief): die Gate-Kalibrierung
+  ist erledigt — `check-f15-workflow-oberflaeche.mjs` UND
+  `check-f12-leitstand-ansicht.mjs` Fall (f) lesen jetzt
+  `views/workflows.js`/`views/runs.js`/`api.js`/`router.js` statt des
+  aufgeteilten `app.js`, Rot-Fall je Gate real geprüft. Der Biome-Scope
+  (`public/` in `biome.json`) bleibt unverändert offen — echtes WS-2-Scope.
+- **AK6** `npm run check` grün. Zusätzlich, als Nachweis für die sechs
+  Bedienflüsse (AK1) nach der Modul-Aufteilung: `node
+  scripts/check-f20-leitstand-shell.mjs` grün — ein isolierter
+  Sandbox-Testserver plus echtem, headless Chrome klickt Auftrag anlegen,
+  Lauf starten, Freigabe erteilen, Stoppen, Reparaturfassung einreichen und
+  Entscheidung real durch. Bewusst NICHT in `npm run check` eingehängt
+  (Chrome/Edge-Abhängigkeit, ~10-15s echte Browserzeit) — manueller Lauf vor
+  PR/Merge und vor dem AK7-Feature-Review.
 - **AK7** Feature Review nach WS-1 mit Stefan (ACCEPT/ADJUST/REJECT) vor
   Beginn von F21.
 
