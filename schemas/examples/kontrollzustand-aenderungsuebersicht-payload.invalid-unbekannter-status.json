@@ -1,0 +1,13 @@
+{
+  "aenderungsuebersicht_schema": "v0",
+  "lauf_id": "e2e-referenzfeature-2026-09-14",
+  "erzeugt_am": "2026-09-14T09:00:00.000Z",
+  "basis_ref": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+  "dateien": [
+    { "pfad": "src/beispiel/index.ts", "status": "UNBEKANNT", "plus": 12, "minus": 3 }
+  ],
+  "stat_text": " src/beispiel/index.ts | 15 ++++++---\n1 file changed, 12 insertions(+), 3 deletions(-)",
+  "patch": "diff --git a/src/beispiel/index.ts b/src/beispiel/index.ts\n...",
+  "gekuerzt": false,
+  "budget_bytes": 200000
+}

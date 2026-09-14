@@ -443,6 +443,7 @@ import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
+import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -1915,7 +1916,48 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     if (typeof referenz !== 'string' || !referenz.startsWith('artefakt:')) {
       return { ok: false, grund: `Schritt '${schritt.schritt_id}': Eingabe ${JSON.stringify(referenz)} ist keine 'artefakt:<id>'-Referenz` }
     }
-    const artefaktId = referenz.slice('artefakt:'.length)
+    let artefaktId = referenz.slice('artefakt:'.length)
+
+    // F23 WS-0: 'aenderungsuebersicht-@<schrittId>' referenziert zur Planzeit die noch nicht
+    // bekannte lauf_id EINES ANDEREN Schritts desselben Workflows — die reale lauf_id
+    // entsteht erst, wenn jener Schritt startet. Aufgelöst GENAU HIER, beim Start DIESES
+    // Schritts, gegen die aktuelle Fassung von workflowDaten.schritte (nicht früher, sonst
+    // wäre die lauf_id des Zielschritts noch gar nicht bekannt). Rot-Fall (Bauauftrag Punkt
+    // 5): unbekannte schritt_id oder lauf_id === null (Zielschritt noch nicht gestartet) ->
+    // dieser Schritt startet NICHT, statt mit einer stillschweigend leeren Eingabe zu laufen.
+    const platzhalterTreffer = /^aenderungsuebersicht-@(.+)$/.exec(artefaktId)
+    let warPlatzhalter = false
+    if (platzhalterTreffer !== null) {
+      warPlatzhalter = true
+      const zielSchrittId = platzhalterTreffer[1]
+      // Reviewer-Pass 14.09.2026: eine Selbstreferenz löst bei einem Retry/Replan (dieselbe
+      // schritt_id läuft ein zweites Mal, die alte lauf_id des VORHERIGEN Versuchs steht noch im
+      // Datensatz) sonst still auf die Übersicht des vorherigen, unabhängigen Versuchs auf — kein
+      // Wurf, aber ein falsches "das hat sich geändert" für den gerade erst startenden Lauf. Ein
+      // Schritt kann seine eigene, noch gar nicht abgeschlossene Ausführung nicht sinnvoll
+      // referenzieren, deshalb ein eigener, klar benannter Rot-Fall statt eines stillen Fehlwerts.
+      if (zielSchrittId === schritt.schritt_id) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf sich selbst — ein Schritt kann seine eigene, noch laufende Ausführung nicht referenzieren`,
+        }
+      }
+      const zielSchritt = workflowDaten.schritte.find((s) => s.schritt_id === zielSchrittId)
+      if (zielSchritt === undefined) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf keine bekannte schritt_id in Workflow '${workflowDaten.workflow_id}' — der Schritt wird nicht gestartet`,
+        }
+      }
+      if (zielSchritt.lauf_id === null) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', der noch keine lauf_id hat (nicht gestartet) — der Schritt wird nicht gestartet`,
+        }
+      }
+      artefaktId = `aenderungsuebersicht-${zielSchritt.lauf_id}`
+    }
+
     // Dieselbe Zeichenregel wie für laufId/workflow_id (D5, kein zweiter Regelsatz): die
     // artefaktId geht über 'lineage-<id>' in einen Dateisystempfad ein, und ihr Wert stammt
     // aus einer Workflow-Payload, nicht aus dem Server. validiereWorkflowDaten verlangt an
@@ -1925,7 +1967,15 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     }
     const version = ladeArtefaktVersion(artefaktId, undefined, ladeOptionen)
     if (version === null) {
-      return { ok: false, grund: `Schritt '${schritt.schritt_id}': Eingabe-Artefakt '${artefaktId}' nicht gefunden — der Schritt wird nicht gestartet` }
+      // QA-Pass 14.09.2026: aus einem Platzhalter aufgelöst heißt "nicht gefunden" konkret, dass
+      // der referenzierte Zielschritt zwar eine lauf_id hat, aber (noch) keine Änderungsübersicht
+      // dazu registriert wurde — z. B. weil sein Werkzeugsatz lesend war oder er nicht real
+      // erfolgreich endete. Eigener Text statt der generischen Meldung, damit das nicht wie eine
+      // falsch geschriebene Artefakt-ID aussieht.
+      const grund = warPlatzhalter
+        ? `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter '${referenz}' löst auf '${artefaktId}' auf, aber dazu liegt keine Änderungsübersicht vor (Zielschritt war nicht schreibend/nicht real erfolgreich) — der Schritt wird nicht gestartet`
+        : `Schritt '${schritt.schritt_id}': Eingabe-Artefakt '${artefaktId}' nicht gefunden — der Schritt wird nicht gestartet`
+      return { ok: false, grund }
     }
     artefaktAnfragen.push({
       pfad: `artefakt:${artefaktId}`,
@@ -2511,8 +2561,12 @@ export function erzeugeRequestHandler(optionen = {}) {
    * @param eingaben - fertige AusfuehrungsEingaben
    * @param zeitgrenzeMsUeberschreibung - überstimmt vorlage.zeitgrenzeMs (F15 WS-2b: das gepinnte schritt.zeitgrenze_ms), sonst undefined
    * @param nachLauf - optionaler Rückruf (ergebnis, fehler) nach Laufende
+   * @param werkzeugsatzArt - 'art' (lesend/schreibend) des für diesen Lauf aufgelösten Werkzeugsatzes (F23 WS-0) —
+   *   NICHT Teil von AusfuehrungsEingaben (loeseAusfuehrungsEingabenAuf reicht nur modus/erlaubte_werkzeuge durch),
+   *   deshalb hier als eigener, rein serverlokaler Parameter: entscheidet, ob nach einem real erfolgreichen Lauf
+   *   eine Änderungsübersicht registriert wird. undefined (Router-Lauf, immer 'lesend') registriert nie eine.
    */
-  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined) {
+  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined) {
     // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
     // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
     // respektieren die synchronen Prüfungen im Handler (D13, laufIdBelegt, auftragId-Existenz)
@@ -2573,6 +2627,43 @@ export function erzeugeRequestHandler(optionen = {}) {
           const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
           startfehlerListe.push(eintrag)
           console.error(`[leitstand] Lauf '${laufId}' abgelehnt:`, eintrag.fehler)
+        } else if (werkzeugsatzArt === 'schreibend' && ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH') {
+          // F23 WS-0 (state/findings.md F-378): Änderungsübersicht NACH einem real erfolgreichen
+          // Lauf mit schreibendem Werkzeugsatz — dieselbe Erfolgsbedingung wie
+          // normalisiereSchrittAusgang (D5, kein zweiter Erfolgsbegriff). Bewusst SYNCHRON und VOR
+          // meldeLaufende: ein nachfolgender Workflow-Schritt kann diesen Lauf per
+          // 'artefakt:aenderungsuebersicht-@<dieserSchrittId>' referenzieren (loeseSchrittEingabenAuf)
+          // — das Artefakt muss existieren, BEVOR meldeLaufende den nächsten Schritt startet. Ein
+          // Fehlschlag hier ist Nachbereitung, kein Laufergebnis: er wird wie ein Wurf aus nachLauf
+          // abgefangen und in der Startfehlerliste protokolliert, der bereits geschriebene, terminale
+          // Laufstatus bleibt unverändert.
+          try {
+            // Number.isInteger(Infinity) ist false — validiereAenderungsuebersichtDaten verlangt eine
+            // ganze Zahl für budget_bytes. Ein Number.POSITIVE_INFINITY-Fallback ließ die Registrierung
+            // dadurch für JEDE Startvorlage ohne standardBudget.maxBytes (optional, src/startvorlage/
+            // types.ts) an der eigenen Schemaprüfung scheitern (Reviewer-Pass 14.09.2026, Befund 1).
+            const uebersichtDaten = erzeugeAenderungsuebersichtDaten(laufId, repoWurzel, vorlage.standardBudget?.maxBytes ?? STANDARD_MAX_BYTES)
+            const uebersichtVerstoesse = validiereAenderungsuebersichtDaten(uebersichtDaten)
+            if (uebersichtVerstoesse.length > 0) {
+              throw new Error(`verstößt gegen schemas/kontrollzustand-aenderungsuebersicht-payload.schema.json: ${uebersichtVerstoesse.join('; ')}`)
+            }
+            registriereKernArtefakt(
+              `aenderungsuebersicht-${laufId}`,
+              profilReferenz,
+              { erzeuger: 'kern', schritt: 'nach-lauf-aenderungsuebersicht' },
+              uebersichtDaten,
+              [],
+              { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+            )
+          } catch (uebersichtFehler) {
+            const eintrag = {
+              zeitstempel: new Date().toISOString(),
+              laufId,
+              fehler: `Änderungsübersicht konnte nicht registriert werden: ${String(uebersichtFehler?.message ?? uebersichtFehler)}`,
+            }
+            startfehlerListe.push(eintrag)
+            console.error(`[leitstand] Änderungsübersicht für Lauf '${laufId}' fehlgeschlagen:`, uebersichtFehler)
+          }
         }
         meldeLaufende(ergebnis, null)
         // D13-UEBERGABE-OHNE-FENSTER: ENDE
@@ -2866,6 +2957,11 @@ export function erzeugeRequestHandler(optionen = {}) {
     // randomUUID.
     //
     // schritt.zeitgrenze_ms überstimmt vorlage.zeitgrenzeMs (E-M3-3, gepinntes Plandatum).
+    // F23 WS-0: werkzeugsatz war bereits zur Planzeit über loeseWerkzeugsatzAuf bekannt
+    // (loeseAusfuehrungsEingabenAuf löst ihn intern erneut auf) — hier zusätzlich aufgelöst,
+    // weil nur 'art' (lesend/schreibend) über die Änderungsübersicht entscheidet und
+    // AusfuehrungsEingaben dieses Feld nicht führt (D5, kein zweiter Regelsatz über den
+    // WERT von 'art', nur ein zweiter LOOKUP desselben Namens).
     starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, schritt.zeitgrenze_ms, (ergebnis, fehler) => {
       // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
       //
@@ -3006,7 +3102,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // D13-Belegung), die Invariante bleibt unberührt.
         schreibeStartfehlerHalt(workflowId, naechster.schritt.schritt_id, naechster.aktiverSchrittId, laufId, anlassDerFortsetzung, ladeOptionen)
       }
-    })
+    }, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)
 
     return { ok: true, schrittId: schritt.schritt_id, laufId }
   }
@@ -3510,7 +3606,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Block braucht. Verhaltensgleich extrahiert — dieselben Optionen (F-145, F-177), dieselbe
       // D13-Rückgabe in .then UND .catch (AK7), dieselbe Startfehlerliste (AK6). Kein zweiter
       // Aufrufpunkt des Werkzeuglaufs; die Begründung steht am Helfer.
-      starteLaufUndVergiss(laufId, eingaben)
+      // F23 WS-0: werkzeugsatzName ist bereits oben (Zeile ~3489) aufgelöst worden
+      // (loeseAusfuehrungsEingabenAuf) — hier zusätzlich per loeseWerkzeugsatzAuf nach 'art'
+      // gefragt, weil AusfuehrungsEingaben dieses Feld nicht führt (Muster oben, WS-2b-Aufruf).
+      starteLaufUndVergiss(laufId, eingaben, undefined, undefined, loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.art)
       return
     }
 
