@@ -5905,7 +5905,7 @@ Automaten in F23 WS-1 (E-M4-7); F15-Testfixtures unberührt lassen.
 Status: offen.
 Feature/Run: M4-Challenge, 12.09.2026.
 
-**F-352** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-352** · `HARNESS_IMPROVEMENT` · P2 · behoben
 Titel: UI-Gate ist Quelltext-String-Matching; `public/` außerhalb Lint und
 Typecheck.
 Beschreibung: `scripts/check-f15-workflow-oberflaeche.mjs` prüft
@@ -5925,13 +5925,21 @@ Auswirkung: jede Umstrukturierung der Oberfläche bricht beide Gates, ohne
 dass funktional etwas kaputt sein muss — und umgekehrt.
 Maßnahme: beide Gates auf die neue Modulstruktur kalibrieren (Rot-Fall
 Pflicht), `public/` in den Biome-Scope aufnehmen.
-Status: behoben (vorgezogen aus WS-2, 14.09.2026) — beide Gates lesen jetzt
+Status: behoben (14.09.2026) — in zwei Schritten. WS-1 (vorgezogen, außerhalb
+der regulären WS-2-Reihenfolge, weil CI sonst dauerhaft rot lief) hat nur die
+Gate-Kalibrierung geliefert: beide Gates lesen seither
 `views/workflows.js`/`views/runs.js`/`api.js`/`router.js` statt des
 aufgeteilten `app.js`, Rot-Fall je Gate real geprüft (verifizierte
-Regression je Datei, danach zurückgesetzt). AK5 damit nur TEILWEISE
-erfüllt: der Biome-Scope (`public/` in `biome.json`) bleibt unverändert
-WS-2-Scope, dieser Vorzug betraf ausdrücklich nur die Gate-Kalibrierung.
-Feature/Run: M4-Challenge, 12.09.2026; F20 WS-1, 14.09.2026.
+Regression je Datei, danach zurückgesetzt) — AK5 damit zu diesem Zeitpunkt
+nur TEILWEISE erfüllt (siehe F-360, der genau diese Lücke zwischen dem hier
+zu früh gemeldeten „behoben" und dem tatsächlichen Teilstand festhält). WS-2
+hat den zweiten Teil nachgezogen: `public/**/*.js` in `biome.json`
+aufgenommen (`npx biome lint public` vor und nach der Aufnahme geprüft, 13
+`noFloatingPromises`-Befunde mit `void` behoben, keine Regel abgeschaltet)
+und dieselben Gates zusätzlich gegen die Poll-Konsolidierung selbst
+kalibriert (Fall (b)/(g), F-362). AK5 ist damit vollständig erfüllt.
+Feature/Run: M4-Challenge, 12.09.2026; F20 WS-1, 14.09.2026; F20 WS-2,
+14.09.2026.
 
 **F-353** · `TECH_DEBT` · P2 · offen
 Titel: Router-Ergebnis wird nicht persistiert; Router nur per CLI erreichbar.
@@ -6027,3 +6035,119 @@ Funktion statt als vorgerenderten String bauen, dann nur einmal escapen.
 Status: offen.
 Feature/Run: F20 WS-1, 14.09.2026 (Code-Review-Fund, vorbestehend, nicht
 durch die Modul-Aufteilung eingeführt).
+
+**F-360** · `PROCESS_IMPROVEMENT` · P3 · behoben
+Titel: F-352 als „behoben" markiert, obwohl ein Teil der eigenen Maßnahme
+(Biome-Scope für public/) noch aussteht.
+Beschreibung: `state/findings.md` setzte F-352 auf „behoben (vorgezogen aus
+WS-2, 14.09.2026)", nachdem nur die Gate-Kalibrierung erledigt war. Der
+zweite Teil („public/ in den Biome-Scope aufnehmen") war in PR #149 nicht
+enthalten (`biome.json` unverändert) und blieb regulärer WS-2-Scope.
+Fundstelle: `state/findings.md` F-352, `biome.json`.
+Auswirkung: gering, Verwechslungsgefahr beim nächsten Lesen der Findings-Liste.
+Maßnahme: F-352 präzisiert — der Statustext trennt seither WS-1
+(Gate-Kalibrierung, teilweise) von WS-2 (Biome-Scope, vollständig).
+Status: behoben (14.09.2026) — F-352 im selben Zug korrigiert, siehe dort.
+Feature/Run: F20 WS-1 Verifikation, PR #149, 14.09.2026; behoben F20 WS-2,
+14.09.2026.
+
+**F-361** · `PROCESS_IMPROVEMENT` · P2 · behoben
+Titel: docs/STATUS.md widersprach features/F20/feature.md AK7 in der
+Startbedingung für F21.
+Beschreibung: `docs/STATUS.md` (M4-Abschnitt) ordnete F21/F24/F25/F28
+„Nach F20" ein (impliziert das ganze Feature inkl. WS-2). AK7 in
+`features/F20/feature.md` bindet das F21-Startrecht wörtlich nur an die
+WS-1-Review. Beide Quellen waren gültig und widersprachen sich.
+`docs/STATUS.md` war zusätzlich nicht auf den WS-1-Merge nachgezogen.
+Fundstelle: `docs/STATUS.md` M4-Abschnitt, `features/F20/feature.md` AK7 und
+Dependencies.
+Auswirkung: Ohne Chat-Kontext war unklar, ob F21 vor oder nach F20 WS-2
+starten darf. Entschieden: erst F20 WS-2 (samt AK7-Review), dann F21
+(Stefan, 14.09.2026).
+Maßnahme: `docs/STATUS.md` beim WS-2-Abschluss aktualisiert — WS-1-Merge
+(PR #149) nachgetragen, F21-Startbedingung eindeutig auf „nach F20 WS-2
+(AK7-Review)" festgeschrieben.
+Status: behoben (14.09.2026).
+Feature/Run: F20 WS-1 AK7-Review, 14.09.2026; behoben F20 WS-2, 14.09.2026.
+
+**F-362** · `HARNESS_IMPROVEMENT` · P1 · behoben
+Titel: check-f15-workflow-oberflaeche.mjs (b) koppelte an
+"await holeWorkflows()" und brach bei der WS-2-Poll-Konsolidierung.
+Beschreibung: Zeile 161 verlangte das Literal "await holeWorkflows()" in
+`views/workflows.js`. Nach Umstellung der Liste auf `/api/zustand` existiert
+dieser Aufruf im Poll-Pfad nicht mehr — die Liste rendert seither als
+Abnehmer des Zustands-Aggregat-Polls (`renderWorkflows(zustand.workflows)`
+in einem `abonniere(...)`-Callback, `zustand.js`). Derselbe Bruch betraf
+Fall (g)s Zusage auf das Literal `pollWorkflows()` (entfallen zugunsten von
+`pollJetzt()`).
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs` Fall (b) und (g).
+Auswirkung: CI wäre rot gelaufen, sobald die Poll-Konsolidierung geliefert
+wurde — dasselbe Muster wie F-352.
+Maßnahme: Fall (b) auf `abonniere((zustand) => {` /
+`renderWorkflows(zustand.workflows)` umgestellt, Fall (g) auf `pollJetzt()`;
+beide Rot-Fälle real geprüft (Aufruf/Literal vorübergehend entfernt, Gate
+lief rot, danach zurückgesetzt). Zusätzlich `scripts/check-f20-zustand-poll.mjs`
+neu: cross-cutting Client-Check für AK3 (genau ein `setInterval`, in
+`zustand.js`, zielt auf `GET /api/zustand`) plus Server-Grün-/Rot-Fall des
+Aggregats, in `npm run check` eingehängt.
+Status: behoben (Code-Stand 14.09.2026, GELANDET erst mit dem F20-WS-2-Commit
+— siehe Nachtrag). NACHTRAG (14.09.2026, Verifikations-Widerspruch): der
+Status "behoben" wurde hier gesetzt, während die Kalibrierung nur im
+Arbeitsverzeichnis stand und noch NICHT committet war — eine gegen den
+letzten Commit laufende Verifikation fand deshalb an den alten Zeilen 161/308
+zu Recht noch die alten Literale `await holeWorkflows()`/`pollWorkflows()`.
+Dasselbe Muster wie F-360 (verfrüht "behoben" markiert, bevor die Maßnahme
+tatsächlich im Repo-Stand ankam), hier auf den eigenen Fund angewendet.
+Erneut real geprüft nach dem Widerspruch (14.09.2026): `npm run check` und
+`node scripts/check-f15-workflow-oberflaeche.mjs` liefen grün, beide
+Rot-Fälle (b)/(g) ein zweites Mal real erzeugt und zurückgesetzt — die
+Kalibrierung selbst war korrekt, es fehlte nur der Commit.
+Feature/Run: F20 WS-2 Challenge, 14.09.2026; behoben F20 WS-2, 14.09.2026;
+Commit-Lücke gefunden und Nachtrag verifiziert, 14.09.2026.
+
+**F-363** · `TECH_DEBT` · P3 · offen
+Titel: Lauf-Detail wird nicht gepollt, Workflow-Detail schon.
+Beschreibung: `views/runs.js` lädt das Lauf-Detail nur beim Routen-Eintritt
+(kein Detail-Auffrischer bei `zustand.js` registriert); `views/workflows.js`
+registriert für das offene Workflow-Detail einen Detail-Auffrischer, der bei
+jedem Poll-Tick nachzieht (solange eines offen ist). Bewusst so belassen
+(AK3 verlangt keine Symmetrie, ein zusätzlicher Detail-Poll wäre neue Last).
+Auswirkung: gering; ein offenes Lauf-Detail veraltet bis zum erneuten Öffnen.
+Maßnahme: bei F21+ entscheiden, ob das Lauf-Detail denselben Auffrisch-Haken
+(`abonniereDetailAuffrischer`) bekommt.
+Status: offen.
+Feature/Run: F20 WS-2 Challenge, 14.09.2026.
+
+**F-364** · `TECH_DEBT` · P3 · offen
+Titel: `pollZustand()` hat keinen Überholschutz — ein `pollJetzt()` kann von
+einem parallel laufenden Intervall-Tick mit älteren Daten überschrieben
+werden.
+Beschreibung: `zustand.js` `pollZustand()` läuft ohne Sequenznummer- oder
+Reentrancy-Prüfung, anders als jeder andere asynchrone Ladeweg in
+`public/leitstand/` (`ladeWorkflowDetail`s `workflowRenderZaehler`,
+`oeffneReparaturEntwurf`s `reparaturZaehler`, `ladeLaufDetail`s
+`gewaehlteLaufId`-Vergleich — das etablierte "Überholschutz"-Muster dieser
+Codebasis, F-252). Löst eine Bedienung `pollJetzt()` aus, während der
+reguläre 2-Sekunden-Timer bereits einen Fetch offen hat, laufen zwei
+`holeZustand()`-Aufrufe parallel; löst der ÄLTERE zufällig später auf,
+überschreibt er kurzzeitig die frischeren Daten. Beide Aufrufe fragen
+dieselbe globale Aggregat-Ressource fast zeitgleich ab (kein
+entitätsbezogener Fetch wie bei einem Detail-Ladeweg) — die "falschen" Daten
+sind bestenfalls Sekundenbruchteile älter, kein fachlich falscher Datensatz,
+und der nächste reguläre Tick (spätestens 2s später) korrigiert sich von
+selbst.
+Fundstelle: `public/leitstand/zustand.js`, Funktion `pollZustand`.
+Auswirkung: gering; nur unter echter Server-Last reproduzierbar
+(`sammleLaeufe`/`sammleWorkflows` sind synchrone Disk-I/O und können unter
+Last messbar blockieren) — von `scripts/check-f20-zustand-poll.mjs`
+(sequenziell, ohne echte Nebenläufigkeit) nicht erfasst. Bewusst NICHT
+sofort behoben (QA-Pass F20 WS-2): ein Überholschutz für eine global
+geteilte, nicht entitätsbezogene Ressource ist eine andere Form von Schutz
+als das bestehende Muster (dort schützt er vor FALSCH zugeordneten Daten,
+hier nur vor einem geringfügig veralteten Snapshot) und wäre eine
+Scope-Erweiterung über WS-2 hinaus gewesen.
+Maßnahme: bei Bedarf (z. B. wenn ein Nachweis mit künstlich verzögertem
+`sammleLaeufe`/`sammleWorkflows` das Muster real auslöst) einen
+Tick-Zähler nach demselben Muster wie `workflowRenderZaehler` ergänzen.
+Status: offen.
+Feature/Run: F20 WS-2 QA-Pass, 14.09.2026.

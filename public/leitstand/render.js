@@ -3,9 +3,11 @@
  *
  * Zweck: Kleinste gemeinsame Rendering-Helfer des F20-Leitstands, die von
  * mehreren Views gebraucht werden — escapeHtml (jede View, die Serverdaten in
- * innerHTML schreibt) und zeigePollFehler (der Poll-Fehlerhinweis liegt fest
- * im Shell-Header, nicht in einer View, weil er unabhängig von der aktiven
- * View sichtbar bleiben soll).
+ * innerHTML schreibt).
+ *
+ * F20 WS-2 (AK3): zeigePollFehler ist nach public/leitstand/zustand.js
+ * umgezogen — seit der Poll-Konsolidierung gibt es nur noch EINEN fetch()-
+ * Fehlerpfad (den des Aggregat-Polls), nicht mehr je View einen eigenen.
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/runs.js
@@ -20,10 +22,4 @@
 /** Escaped Text für sicheres Einsetzen in innerHTML. @param text - beliebiger Wert @returns HTML-sicherer String */
 export function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[z])
-}
-
-/** Zeigt/verbirgt den globalen Poll-Fehlerhinweis im Shell-Header. @param fehlgeschlagen - true, wenn der letzte Poll-Versuch fehlschlug */
-export function zeigePollFehler(fehlgeschlagen) {
-  const anzeige = document.getElementById('poll-fehler')
-  anzeige.hidden = !fehlgeschlagen
 }

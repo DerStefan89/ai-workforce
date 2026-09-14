@@ -19,16 +19,21 @@
  * - public/leitstand/app.js (initWorkflowsView beim Bootstrap)
  *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
- * Anzeige stammt direkt aus dem Server. #workflow-detail-inhalt wird bei
- * jedem 2-Sekunden-Poll komplett ersetzt, #workflow-bedienung nur bei ECHTER
+ * Anzeige stammt direkt aus dem Server. Die Liste (renderWorkflows) kommt
+ * seit F20 WS-2 aus dem Zustands-Aggregat (Abnehmer des einen Poll-Timers in
+ * zustand.js); das Detail bleibt ein eigener Endpunktaufruf
+ * (GET /api/workflows/<id>) und hängt als Detail-Auffrischer am selben
+ * Timer, solange eines offen ist. #workflow-detail-inhalt wird bei jedem
+ * Tick komplett ersetzt, #workflow-bedienung nur bei ECHTER
  * Zustandsänderung (Signatur-Vergleich, F-249) und #workflow-reparatur gar
  * nicht — der Entwurf gehört dem Menschen, bis er ihn einreicht oder
  * verwirft (F-249).
  */
 
-import { holeLaufDetail, holeWorkflowDetail, holeWorkflows, reicheWorkflowFassungEin, sendeWorkflowFreigabe, starteWorkflowSchritt, stoppeWorkflow } from '../api.js'
-import { escapeHtml, zeigePollFehler } from '../render.js'
+import { holeLaufDetail, holeWorkflowDetail, reicheWorkflowFassungEin, sendeWorkflowFreigabe, starteWorkflowSchritt, stoppeWorkflow } from '../api.js'
+import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
+import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 
 /**
  * Die LAGE eines Workflows in einem Satz, je Ausgang von
@@ -86,16 +91,14 @@ function workflowKopfzeile(workflow) {
   </section>`
 }
 
-/** Pollt GET /api/workflows in die Workflow-Liste. */
-async function ladeWorkflows() {
+/** Rendert die Workflow-Liste aus dem Zustands-Aggregat (F20 WS-2) — Abnehmer des einen Poll-Timers in zustand.js, kein eigener fetch() mehr. @param workflows - zustand.workflows aus GET /api/zustand, oder null bei defekter Quelle */
+function renderWorkflows(workflows) {
   const container = document.getElementById('workflows')
-  try {
-    const workflows = await holeWorkflows()
-    container.innerHTML = workflows.length === 0 ? '<p class="leer">Keine Workflows unter kontrollzustand/ gefunden.</p>' : workflows.map(workflowKopfzeile).join('')
-    zeigePollFehler(false)
-  } catch {
-    zeigePollFehler(true)
+  if (workflows === null) {
+    container.innerHTML = '<p class="unbekannt">Workflows nicht verfügbar (Quelle im Aggregat defekt).</p>'
+    return
   }
+  container.innerHTML = workflows.length === 0 ? '<p class="leer">Keine Workflows unter kontrollzustand/ gefunden.</p>' : workflows.map(workflowKopfzeile).join('')
 }
 
 /**
@@ -259,7 +262,7 @@ async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext) {
     zeigeBedienungsMeldung(`Anfrage fehlgeschlagen: ${fehler.message}`)
   }
   knopf.disabled = false
-  pollWorkflows()
+  void pollJetzt()
 }
 
 /**
@@ -543,7 +546,7 @@ async function reicheReparaturEntwurfEin(workflowId, knopf) {
     knopf.disabled = false
     return
   }
-  pollWorkflows()
+  void pollJetzt()
 }
 
 /** workflowId des aktuell im Workflow-Panel angezeigten Workflows, oder null. */
@@ -704,7 +707,7 @@ function initWorkflowBedienung() {
   document.getElementById('workflow-bedienung').addEventListener('click', (ereignis) => {
     const button = ereignis.target.closest('.wf-aktion')
     if (!button) return
-    fuehreWorkflowAktionAus(button)
+    void fuehreWorkflowAktionAus(button)
   })
   document.getElementById('workflow-reparatur').addEventListener('input', (ereignis) => {
     if (ereignis.target.id !== 'wf-reparatur-entwurf') return
@@ -717,7 +720,7 @@ function initWorkflowBedienung() {
     }
     const einreichen = ereignis.target.closest('#wf-reparatur-einreichen')
     if (!einreichen) return
-    reicheReparaturEntwurfEin(einreichen.dataset.workflowId, einreichen)
+    void reicheReparaturEntwurfEin(einreichen.dataset.workflowId, einreichen)
   })
   // Lokaler Aufruf statt navigiere('#/runs') aus demselben Grund wie in runs.js
   // initDetailBedienung: die exakte Route `#/runs` ist zugleich hier UND in runs.js
@@ -728,15 +731,7 @@ function initWorkflowBedienung() {
   })
 }
 
-/** Poll-Tick der Workflow-Ansicht: die Liste immer, das Detail-Panel nur, solange eines offen ist. */
-function pollWorkflows() {
-  ladeWorkflows()
-  if (gewaehlteWorkflowId !== null) ladeWorkflowDetail(gewaehlteWorkflowId, false)
-}
-
-const POLL_INTERVALL_MS = 2000
-
-/** Initialisiert die Workflow-Bedienung einmalig beim Bootstrap: Delegation, Routen, erster Ladevorgang, Poll-Timer. */
+/** Initialisiert die Workflow-Bedienung einmalig beim Bootstrap: Delegation, Routen, Abonnement des Zustands-Aggregats für die Liste, Detail-Auffrischer für ein offenes Workflow-Detail (F20 WS-2 — kein eigener Poll-Timer mehr, siehe zustand.js). */
 export function initWorkflowsView() {
   initWorkflowBedienung()
 
@@ -744,9 +739,16 @@ export function initWorkflowsView() {
     schliesseWorkflowDetail()
   })
   registriere(/^#\/workflows\/([^/]+)$/, 'runs', (workflowId) => {
-    ladeWorkflowDetail(workflowId)
+    void ladeWorkflowDetail(workflowId)
   })
 
-  ladeWorkflows()
-  setInterval(pollWorkflows, POLL_INTERVALL_MS)
+  abonniere((zustand) => {
+    renderWorkflows(zustand.workflows)
+  })
+  // Das Workflow-Detail bleibt gepollt, solange eines offen ist (anders als das Lauf-Detail,
+  // TECH_DEBT F-363) — hängt hier als Detail-Auffrischer am selben Timer statt an einem
+  // eigenen, siehe zustand.js.
+  abonniereDetailAuffrischer(() => {
+    if (gewaehlteWorkflowId !== null) void ladeWorkflowDetail(gewaehlteWorkflowId, false)
+  })
 }

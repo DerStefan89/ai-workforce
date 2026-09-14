@@ -30,6 +30,10 @@ export const abbrichLauf = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(l
 
 export const holeStartfehler = () => fetch('/api/startfehler').then((r) => r.json())
 
+// F20 WS-2 (AK3): Aggregat aus laeufe/startfehler/workflows, gepollt von zustand.js — einzige
+// Stelle, die noch periodisch fetch() aufruft.
+export const holeZustand = () => fetch('/api/zustand').then((r) => r.json())
+
 export const holeAuftraege = () => fetch('/api/auftraege').then((r) => r.json())
 export const legeAuftragAn = (koerper) => fetch('/api/auftraege', { method: 'POST', body: JSON.stringify(koerper) })
 

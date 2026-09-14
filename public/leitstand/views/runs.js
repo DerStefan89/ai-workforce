@@ -1,30 +1,33 @@
 /**
  * Datei: public/leitstand/views/runs.js
  *
- * Zweck: View `#/runs` (F20 WS-1) — Laufliste (GET /api/laeufe, 2-Sekunden-
- * Poll), Startfehler-Projektion (GET /api/startfehler) und die
- * Lauf-Detailansicht (GET /api/laeufe/<laufId>, Route `#/runs/<laufId>`,
- * nur auf Anforderung). Unverändert aus dem früheren app.js übernommen —
- * deckt vier der sechs Bedienflüsse ab, die laut F20 AK1 real funktionieren
- * müssen: Wiederaufnahme-Vorbelegung, Freigabe/Stopp gehören zur
- * Workflow-Bedienung (views/workflows.js, ebenfalls unter dieser View
- * gemountet), Entscheidung und Abbruch liegen hier in der Detailansicht.
+ * Zweck: View `#/runs` (F20 WS-1) — Laufliste und Startfehler-Projektion aus
+ * dem Zustands-Aggregat (GET /api/zustand, seit F20 WS-2 über den einen
+ * Poll-Timer in zustand.js — kein eigener fetch()/setInterval mehr, siehe
+ * renderLaeufe/renderStartfehler) sowie die Lauf-Detailansicht (GET
+ * /api/laeufe/<laufId>, Route `#/runs/<laufId>`, nur auf Anforderung, NICHT
+ * gepollt — TECH_DEBT F-363). Deckt vier der sechs Bedienflüsse ab, die laut
+ * F20 AK1 real funktionieren müssen: Wiederaufnahme-Vorbelegung,
+ * Freigabe/Stopp gehören zur Workflow-Bedienung (views/workflows.js,
+ * ebenfalls unter dieser View gemountet), Entscheidung und Abbruch liegen
+ * hier in der Detailansicht.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initRunsView beim Bootstrap)
  * - public/leitstand/views/workflows.js (Navigation zu `#/runs/<laufId>` für
  *   den lauf_id-Verweis einer Workflow-Schrittzeile)
  *
- * Wichtig: laden() ersetzt #laeufe bei jedem Poll komplett — jede Bedienung
- * an einer Laufzeile hängt deshalb per Event-Delegation am Container
- * #laeufe, nie an einem einzelnen Zeilen-Button (der wäre nach dem nächsten
- * Poll wieder weg). #lauf-detail liegt in index.html bewusst AUSSERHALB von
- * #laeufe aus demselben Grund.
+ * Wichtig: renderLaeufe() ersetzt #laeufe bei jedem Poll-Tick komplett —
+ * jede Bedienung an einer Laufzeile hängt deshalb per Event-Delegation am
+ * Container #laeufe, nie an einem einzelnen Zeilen-Button (der wäre nach dem
+ * nächsten Tick wieder weg). #lauf-detail liegt in index.html bewusst
+ * AUSSERHALB von #laeufe aus demselben Grund.
  */
 
-import { abbrichLauf, holeLaufDetail, holeLaeufe, holeStartfehler, sendeEntscheidungAnfrage } from '../api.js'
-import { escapeHtml, zeigePollFehler } from '../render.js'
+import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
+import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
+import { abonniere, pollJetzt } from '../zustand.js'
 import { wendeWiederaufnahmeAn, zeigeVorbelegungsFehler } from './projekt.js'
 
 /** Rendert die Gültigkeits-Zelle einer Checkpoint-Zeile in der Detailansicht. */
@@ -97,18 +100,16 @@ function laufAbschnitt(lauf) {
   </section>`
 }
 
-/** Pollt GET /api/laeufe in die Laufliste. */
-async function laden() {
+/** Rendert die Laufliste aus dem Zustands-Aggregat (F20 WS-2) — Abnehmer des einen Poll-Timers in zustand.js, kein eigener fetch() mehr. @param laeufe - zustand.laeufe aus GET /api/zustand, oder null bei defekter Quelle (siehe zustand.js/leitstand-server.mjs) */
+function renderLaeufe(laeufe) {
   const container = document.getElementById('laeufe')
-  try {
-    const laeufe = await holeLaeufe()
-    container.innerHTML = laeufe.length === 0
-      ? '<p class="leer">Keine Läufe unter kontrollzustand/ gefunden.</p>'
-      : laeufe.map(laufAbschnitt).join('')
-    zeigePollFehler(false)
-  } catch {
-    zeigePollFehler(true)
+  if (laeufe === null) {
+    container.innerHTML = '<p class="unbekannt">Läufe nicht verfügbar (Quelle im Aggregat defekt).</p>'
+    return
   }
+  container.innerHTML = laeufe.length === 0
+    ? '<p class="leer">Keine Läufe unter kontrollzustand/ gefunden.</p>'
+    : laeufe.map(laufAbschnitt).join('')
 }
 
 function startfehlerZeile(eintrag) {
@@ -116,18 +117,16 @@ function startfehlerZeile(eintrag) {
     <strong>${escapeHtml(eintrag.laufId)}</strong>: ${escapeHtml(eintrag.fehler)}</p>`
 }
 
-/** Pollt GET /api/startfehler — flüchtige Projektion, geht bei Serverneustart verloren. */
-async function ladeStartfehler() {
+/** Rendert die Startfehler-Projektion aus dem Zustands-Aggregat — flüchtig, geht bei Serverneustart verloren. @param startfehler - zustand.startfehler aus GET /api/zustand, oder null bei defekter Quelle */
+function renderStartfehler(startfehler) {
   const container = document.getElementById('startfehler')
-  try {
-    const startfehler = await holeStartfehler()
-    container.innerHTML = startfehler.length === 0
-      ? '<p class="leer">Keine Startfehler.</p>'
-      : startfehler.map(startfehlerZeile).join('')
-    zeigePollFehler(false)
-  } catch {
-    zeigePollFehler(true)
+  if (startfehler === null) {
+    container.innerHTML = '<p class="unbekannt">Startfehler nicht verfügbar (Quelle im Aggregat defekt).</p>'
+    return
   }
+  container.innerHTML = startfehler.length === 0
+    ? '<p class="leer">Keine Startfehler.</p>'
+    : startfehler.map(startfehlerZeile).join('')
 }
 
 /** Klick-Delegation für "Wiederaufnahme starten": lädt GET /api/laeufe/<laufId>, übergibt die Vorbelegung an die Projekt-View und navigiert dorthin (AK1: Wiederaufnahme bleibt real unverändert, jetzt view-übergreifend). */
@@ -342,7 +341,7 @@ async function sendeEntscheidung(koerper, laufId, erfolgId, fehlerId) {
     anzeige.textContent = 'Entscheidung gespeichert.'
     anzeige.hidden = false
     await ladeLaufDetail(laufId)
-    await laden()
+    await pollJetzt()
   } catch (fehler) {
     const anzeige = document.getElementById(fehlerId)
     anzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
@@ -354,7 +353,7 @@ async function sendeEntscheidung(koerper, laufId, erfolgId, fehlerId) {
 function initEntscheidungBedienung() {
   document.getElementById('entscheidung-block').addEventListener('click', (ereignis) => {
     if (ereignis.target.id === 'entscheidung-terminal-speichern') {
-      sendeEntscheidung(
+      void sendeEntscheidung(
         {
           art: 'terminal',
           laufId: gewaehlteLaufId,
@@ -368,7 +367,7 @@ function initEntscheidungBedienung() {
       return
     }
     if (ereignis.target.id === 'entscheidung-antwort-speichern') {
-      sendeEntscheidung(
+      void sendeEntscheidung(
         {
           art: 'antwort',
           laufId: gewaehlteLaufId,
@@ -382,7 +381,7 @@ function initEntscheidungBedienung() {
       return
     }
     if (ereignis.target.id === 'entscheidung-kenntnisnahme-speichern') {
-      sendeEntscheidung(
+      void sendeEntscheidung(
         {
           art: 'kenntnisnahme',
           laufId: gewaehlteLaufId,
@@ -515,9 +514,7 @@ function initAbbrechenBedienung() {
   })
 }
 
-const POLL_INTERVALL_MS = 2000
-
-/** Initialisiert die Runs-View einmalig beim Bootstrap: Bedienung, Routen, erster Ladevorgang, Poll-Timer. */
+/** Initialisiert die Runs-View einmalig beim Bootstrap: Bedienung, Routen, Abonnement des Zustands-Aggregats (F20 WS-2 — kein eigener Poll-Timer mehr, siehe zustand.js). */
 export function initRunsView() {
   initWiederaufnahmeBedienung()
   initDetailBedienung()
@@ -528,11 +525,11 @@ export function initRunsView() {
     schliesseLaufDetail()
   })
   registriere(/^#\/runs\/([^/]+)$/, 'runs', (laufId) => {
-    ladeLaufDetail(laufId)
+    void ladeLaufDetail(laufId)
   })
 
-  laden()
-  ladeStartfehler()
-  setInterval(laden, POLL_INTERVALL_MS)
-  setInterval(ladeStartfehler, POLL_INTERVALL_MS)
+  abonniere((zustand) => {
+    renderLaeufe(zustand.laeufe)
+    renderStartfehler(zustand.startfehler)
+  })
 }

@@ -812,6 +812,26 @@ function sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo) {
 }
 
 /**
+ * Ruft eine Zustandsquelle auf und fängt einen Wurf ab (F20 WS-2, AK3) —
+ * GET /api/zustand büschelt drei bislang unabhängige Endpunkte, von denen
+ * zwei echte, synchrone Disk-I/O ausführen (sammleLaeufe, sammleWorkflows)
+ * und dabei werfen können. Eine defekte Quelle liefert null und einen
+ * fehler[]-Eintrag statt den gesamten Aggregatzustand mit 500 zu verweigern.
+ * @param quelle - Kennung der Quelle für den fehler[]-Eintrag
+ * @param fn - () => Wert, wirft im Fehlerfall
+ * @param fehlerListe - Sammelliste, in die ein Fehlereintrag gepusht wird
+ * @returns der Wert von fn(), oder null bei einem Wurf
+ */
+function sammleZustandsQuelle(quelle, fn, fehlerListe) {
+  try {
+    return fn()
+  } catch (fehlerObjekt) {
+    fehlerListe.push({ quelle, grund: fehlerObjekt.message })
+    return null
+  }
+}
+
+/**
  * Liefert die Kopfdaten aller echten Läufe unter basisVerzeichnis (AK1,
  * AK2) — reine F2-Lineage-Ketten ohne jede Wirkungsmarke werden
  * inhaltsbasiert ausgefiltert (istLaufkette), nicht über den
@@ -2825,6 +2845,19 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     if (req.method === 'GET' && pfad === '/api/workflows') {
       sendeJson(res, 200, sammleWorkflows(basisVerzeichnis))
+      return
+    }
+
+    // F20 WS-2 (AK3): Aggregat für den EINEN Poll der Oberfläche (zustand.js) statt drei
+    // eigenständiger 2-Sekunden-Timer. Dieselben sammle*-Funktionen wie die drei Einzelendpunkte
+    // oben — keine neue Projektion, Elementform BYTE-GLEICH. Additiv: keiner der bestehenden
+    // Endpunkte ändert sich oder verschwindet (AK1).
+    if (req.method === 'GET' && pfad === '/api/zustand') {
+      const fehler = []
+      const laeufe = sammleZustandsQuelle('laeufe', () => sammleLaeufe(basisVerzeichnis), fehler)
+      const startfehlerWert = sammleZustandsQuelle('startfehler', () => startfehlerListe, fehler)
+      const workflows = sammleZustandsQuelle('workflows', () => sammleWorkflows(basisVerzeichnis), fehler)
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler })
       return
     }
 

@@ -10,7 +10,7 @@ Jarvis Shell v1 (Navigation, Routing, Design-Tokens, Aggregat-Endpunkt)
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: IN_ARBEIT
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -50,13 +50,19 @@ neuen `GET /api/zustand` · Änderung an Kontrollzustand oder Schemas.
 - **AK5** `scripts/check-f15-workflow-oberflaeche.mjs` auf die neue
   Dateistruktur kalibriert, mit Rot-Fall (gelöschte Container-ID wird
   gemeldet); `public/` in den Biome-Scope aufgenommen.
-  TEILWEISE VORGEZOGEN (14.09.2026, F-352, außerhalb der regulären
-  WS-2-Reihenfolge, weil CI sonst dauerhaft rot lief): die Gate-Kalibrierung
-  ist erledigt — `check-f15-workflow-oberflaeche.mjs` UND
-  `check-f12-leitstand-ansicht.mjs` Fall (f) lesen jetzt
+  VOLLSTÄNDIG (14.09.2026, WS-2): die Gate-Kalibrierung aus WS-1 (F-352)
+  steht weiterhin — `check-f15-workflow-oberflaeche.mjs` UND
+  `check-f12-leitstand-ansicht.mjs` Fall (f) lesen
   `views/workflows.js`/`views/runs.js`/`api.js`/`router.js` statt des
-  aufgeteilten `app.js`, Rot-Fall je Gate real geprüft. Der Biome-Scope
-  (`public/` in `biome.json`) bleibt unverändert offen — echtes WS-2-Scope.
+  aufgeteilten `app.js`. WS-2 hat zusätzlich die Poll-Konsolidierung selbst
+  gegen dieses Gate kalibriert (F-362: Fall (b)/(g) auf die neue
+  Zustands-Aggregat-Verdrahtung umgestellt, Rot-Fall je Fall real geprüft)
+  und `public/**/*.js` in `biome.json` aufgenommen (`npx biome lint public`
+  vorher/nachher geprüft, 13 `noFloatingPromises`-Befunde mit `void`
+  behoben, keine Regel abgeschaltet). Neuer, cross-cutting Client-Check
+  `scripts/check-f20-zustand-poll.mjs` (AK3: genau ein `setInterval`, in
+  `zustand.js`, zielt auf `GET /api/zustand`; Server-Grün-/Rot-Fall des
+  Aggregats), in `npm run check` eingehängt.
 - **AK6** `npm run check` grün. Zusätzlich, als Nachweis für die sechs
   Bedienflüsse (AK1) nach der Modul-Aufteilung: `node
   scripts/check-f20-leitstand-shell.mjs` grün — ein isolierter
