@@ -11,7 +11,7 @@ Vorschlag -> Freigabe -> Kette)
 
 ## Status
 
-Status: READY_FOR_TECH
+Status: WORKSTREAM_SCHNITT_GENEHMIGT
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -59,17 +59,14 @@ Akzeptanzkriterien und Risiken:
   `sammleAuftraege` (`scripts/leitstand-server.mjs`) — die Funktion lädt
   je Auftrag ohnehin `ladeArtefaktVersion`, das Feld kostet kein
   zusätzliches I/O. Kein neuer Endpunkt dafür.
-- **Korrektur 4 (Worker-Wahl offen):** Die Worker-Wahl für den
-  Router-Lauf (`claude-code` oder `codex`) ist eine offene Entscheidung
-  Stefans — hier NICHT vorentschieden, siehe „Offene Punkte" unten. Die
-  Rolle `router` erlaubt laut `src/rollen/index.ts` bereits beide Worker
-  mit `erlaubtes_output_schema: 'ergebnis-router'`.
-
-## Offene Punkte
-
-- **Worker-Wahl für den Router-Lauf** (`claude-code` vs. `codex`) ist noch
-  nicht entschieden — Entscheidung Stefan, vor oder in WS-1 zu treffen.
-  Nicht Gegenstand dieser Akte.
+- **Korrektur 4 (Worker-Wahl entschieden):** Der Router-Lauf läuft auf
+  Worker `codex` mit `--output-schema ergebnis-router` (Besetzung
+  identisch zum lesenden Schritt in `workflow-vorlagen/standard.json`).
+  Rückfall auf `claude-code` mit Fence-Stripping gilt NUR, wenn
+  `loeseRessourcenAuf` (`src/ressourcen/index.ts`) den Eintrag `codex` als
+  nicht verfügbar meldet. Der eingesetzte Worker und ein eventuelles
+  Fence-Stripping stehen im Router-Artefakt (AK1). Entscheidung Stefan,
+  14.09.2026.
 
 ## Nicht-Ziele
 
@@ -124,8 +121,9 @@ von der aus geklickt wird). Blockiert F23, F26.
 
 Die vier Korrekturen oben sind Zuschnittsrisiken, keine offenen Fragen —
 sie wurden gegen den realen Code geprüft (`scripts/leitstand-server.mjs`,
-`src/router/index.ts`, `src/rollen/index.ts`), nicht neu entschieden.
-Verbleibendes Risiko: die Worker-Wahl (Offene Punkte) kann die
-Artefaktform (AK1, „Worker steht im Artefakt") noch beeinflussen, falls
-`codex` einen anderen Rückgabepfad als `claude-code` nimmt — bei WS-1 zu
-prüfen, bevor das Schema fixiert wird.
+`src/router/index.ts`, `src/rollen/index.ts`), nicht neu entschieden. Die
+Worker-Wahl (Korrektur 4) ist mit dieser Fassung entschieden; das Schema
+des Router-Ergebnis-Artefakts trägt `worker` und `beobachtung`
+(fence_entfernt), weil `codex` (structured output) und der
+`claude-code`-Rückfall (Fence-Stripping) unterschiedliche Rückgabepfade
+nehmen.

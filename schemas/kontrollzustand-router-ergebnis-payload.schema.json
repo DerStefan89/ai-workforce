@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-router-ergebnis-payload.schema.json",
+  "title": "Router-Ergebnis-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' —, wenn router_ergebnis_schema === \"v0\" (F22 WS-1). Das Router-Ergebnis-Kernartefakt hält fest, welcher Worker den Router-Lauf ausgeführt hat und ob sein Klassifikationstext einen Codezaun trug (worker 'claude-code'-Rückfall, F-337/F-346) — beides entscheidet WS-2/spätere Auswertungen, ob ein Ergebnis über den strukturierten codex-Pfad oder über den weniger verlässlichen claude-code-Rückfall entstand. 'klassifikation' trägt bewusst KEIN eigenes Unterschema (D5): die Form ist bereits vor der Registrierung über validiereErgebnisRouter (src/router/index.ts, gegen schemas/ergebnis-router.schema.json) geprüft — ein zweites Formschema hier wäre eine unabhängig verfallende Kopie. Muster: schemas/kontrollzustand-workflow-payload.schema.json (F15 WS-1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["router_ergebnis_schema", "auftrag_id", "lauf_id", "worker", "klassifikation", "vorlage", "beobachtung", "erstellt_am"],
+  "properties": {
+    "router_ergebnis_schema": { "const": "v0" },
+    "auftrag_id": { "type": "string", "minLength": 1 },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "worker": {
+      "enum": ["claude-code", "codex"],
+      "description": "Der tatsächlich eingesetzte Worker dieses Router-Laufs (AK1 der Akte: 'der eingesetzte Worker steht im Artefakt') — aus der geladenen Laufakte übernommen, nicht neu entschieden."
+    },
+    "klassifikation": {
+      "type": "object",
+      "description": "Das bereits gegen schemas/ergebnis-router.schema.json validierte ErgebnisRouter-Objekt, unverändert übernommen."
+    },
+    "vorlage": {
+      "enum": ["fast-lane", "standard", "hoch"],
+      "description": "Kontrolltiefe, mit der waehleWorkflowVorlage (src/router/index.ts) die anschließend registrierte Workflow-Vorlage gewählt hat — identisch zu klassifikation.kontrolltiefe, als eigenes Feld gespiegelt, damit die Vorlagenwahl ohne Blick in klassifikation ablesbar ist."
+    },
+    "beobachtung": {
+      "enum": [null, "fence_entfernt"],
+      "description": "null im Regelfall. 'fence_entfernt', wenn der Klassifikationstext erst nach Entfernen eines Markdown-Codezauns gültiges JSON ergab — ausschließlich im worker 'claude-code'-Rückfallzweig möglich (F-337/F-346), 'codex' liefert strukturierte Ausgabe über --output-schema und braucht kein Fence-Stripping."
+    },
+    "erstellt_am": { "type": "string", "minLength": 1 }
+  }
+}
