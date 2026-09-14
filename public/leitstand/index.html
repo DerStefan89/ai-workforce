@@ -15,6 +15,7 @@
       <a href="#/workboard" data-nav-view="workboard">Workboard</a>
       <a href="#/runs" data-nav-view="runs">Runs</a>
       <a href="#/capabilities" data-nav-view="capabilities">Capabilities</a>
+      <a href="#/attention" data-nav-view="attention">Attention</a>
     </nav>
     <!-- F28 (Persona v1) füllt diesen Platzhalter — F20 liefert nur den leeren Container, keine Animation. -->
     <div id="persona-platzhalter" aria-hidden="true"></div>
@@ -72,7 +73,30 @@
       </section>
     </section>
 
-    <section id="view-workboard" data-view="workboard" hidden></section>
+    <section id="view-workboard" data-view="workboard" hidden>
+      <p class="hinweis">Reine Projektion über <code>state/findings.md</code> und <code>features/*/feature.md</code> (F21 WS-1) — rein lesend, kein Schreibpfad (Priorität ändern, Workitem schließen ist F23-Scope).</p>
+      <div id="workboard-befunde"></div>
+
+      <div id="workboard-filter">
+        <label for="workboard-filter-typ">Typ</label>
+        <select id="workboard-filter-typ"><option value="">Alle</option></select>
+
+        <label for="workboard-filter-status">Status</label>
+        <select id="workboard-filter-status"><option value="">Alle</option></select>
+
+        <label for="workboard-filter-prioritaet">Priorität</label>
+        <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
+
+        <button type="button" id="workboard-neu-laden">Neu laden</button>
+      </div>
+
+      <div id="workboard-liste"></div>
+
+      <section id="workboard-detail" hidden>
+        <h2>Detail: <span id="workboard-detail-titel"></span> <button id="workboard-detail-schliessen">Schließen</button></h2>
+        <div id="workboard-detail-inhalt"></div>
+      </section>
+    </section>
 
     <section id="view-runs" data-view="runs" hidden>
       <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
@@ -115,6 +139,31 @@
     </section>
 
     <section id="view-capabilities" data-view="capabilities" hidden></section>
+
+    <section id="view-attention" data-view="attention" hidden>
+      <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>
+      <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
+
+      <section id="attention-abschnitt-workflows" class="unterabschnitt" hidden>
+        <h2>Workflows</h2>
+        <div id="attention-workflows"></div>
+      </section>
+
+      <section id="attention-abschnitt-laeufe" class="unterabschnitt" hidden>
+        <h2>Läufe</h2>
+        <div id="attention-laeufe"></div>
+      </section>
+
+      <section id="attention-abschnitt-startfehler" class="unterabschnitt" hidden>
+        <h2>Startfehler</h2>
+        <div id="attention-startfehler"></div>
+      </section>
+
+      <section id="attention-abschnitt-workitems" class="unterabschnitt" hidden>
+        <h2>Offene P0/P1-Workitems</h2>
+        <div id="attention-workitems"></div>
+      </section>
+    </section>
   </main>
 
   <script type="module" src="/app.js"></script>

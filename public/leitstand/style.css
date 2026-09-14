@@ -343,3 +343,53 @@ button:disabled {
   margin-top: 0.6rem;
   margin-right: 0.4rem;
 }
+
+/* F21 WS-2: Workboard-Filter und -Liste. */
+#workboard-filter {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+#workboard-filter label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.workboard-zeile {
+  cursor: pointer;
+}
+
+.workboard-zeile:hover {
+  background: var(--color-surface-muted);
+}
+
+#workboard-detail {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* F21 WS-2: Attention-Einträge — Buttons statt <a href>, damit die Navigation über
+   navigiere() läuft (Muster router.js), aber optisch wie ein Link. */
+.attention-eintrag {
+  margin: 0.3rem 0;
+}
+
+.attention-link {
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
