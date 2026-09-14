@@ -5911,14 +5911,22 @@ Typecheck.
 Beschreibung: `scripts/check-f15-workflow-oberflaeche.mjs` prüft
 Container-IDs, Endpunkt-Strings und Feldnamen im Quelltext von
 `public/leitstand/` („kein Rendern"); `biome.json` führt nur `scripts` und
-`src`; repo-weit gibt es keinen DOM-Test.
-Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`, `biome.json`.
-Auswirkung: jede Umstrukturierung der Oberfläche bricht das Gate, ohne
+`src`; repo-weit gibt es keinen DOM-Test. F20 WS-1 (14.09.2026, Modul-
+Aufteilung von `app.js` in `router.js`/`api.js`/`render.js`/`views/*.js`)
+hat das real ausgelöst und dabei eine ZWEITE, bisher hier nicht genannte
+Betroffenheit gefunden: `scripts/check-f12-leitstand-ansicht.mjs` Fall (f)
+liest `renderLaufakte` ebenfalls direkt aus `public/leitstand/app.js`
+(F16-AK12-Anzeigebeleg) und bricht aus demselben Grund — `renderLaufakte`
+liegt seit WS-1 in `views/runs.js`. Beide Gates sind bei jeder künftigen
+Umstrukturierung betroffen, nicht nur das eine.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs`,
+`scripts/check-f12-leitstand-ansicht.mjs` Fall (f), `biome.json`.
+Auswirkung: jede Umstrukturierung der Oberfläche bricht beide Gates, ohne
 dass funktional etwas kaputt sein muss — und umgekehrt.
-Maßnahme: in F20 WS-2 auf die neue Struktur kalibrieren (Rot-Fall
-Pflicht), `public/` in den Biome-Scope aufnehmen.
+Maßnahme: in F20 WS-2 beide Gates auf die neue Modulstruktur kalibrieren
+(Rot-Fall Pflicht), `public/` in den Biome-Scope aufnehmen.
 Status: offen.
-Feature/Run: M4-Challenge, 12.09.2026.
+Feature/Run: M4-Challenge, 12.09.2026; F20 WS-1, 14.09.2026.
 
 **F-353** · `TECH_DEBT` · P2 · offen
 Titel: Router-Ergebnis wird nicht persistiert; Router nur per CLI erreichbar.
@@ -5993,3 +6001,24 @@ Auswirkung: keine, dokumentiert.
 Maßnahme: keine; bei künftigen Auftragsdokumenten Basisversion prüfen.
 Status: offen.
 Feature/Run: M4-Challenge, 12.09.2026.
+
+**F-359** · `BUG` · P3 · offen
+Titel: Doppelte HTML-Escapierung im Leitstand bei `auftrag_fehlt` der
+Lauf-Detailansicht.
+Beschreibung: `renderAuftrag()` (seit F20 WS-1 in
+`public/leitstand/views/runs.js`, davor in `public/leitstand/app.js`,
+Code-Review-Befund, unverändert aus dem Vorgänger übernommen) baut den
+Text für `auftrag.status === 'auftrag_fehlt'` bereits mit
+`escapeHtml(auftrag.auftragId)` und lässt das Ergebnis danach über
+`unbekanntStatusText()` ein zweites Mal durch `escapeHtml()` laufen.
+Enthält eine `auftragId` `&`, `<`, `>`, `"` oder `'`, wird die erste
+Escapierung (z. B. `&amp;`) fälschlich ein zweites Mal escaped
+(`&amp;amp;`) und im Browser falsch dargestellt.
+Fundstelle: `public/leitstand/views/runs.js`, Funktion `renderAuftrag`.
+Auswirkung: kosmetisch, nur bei einer `auftragId` mit HTML-Sonderzeichen
+sichtbar (in der Praxis bisher keine solche `auftragId` beobachtet).
+Maßnahme: `auftrag_fehlt` aus dem `texte`-Objekt herausziehen und als
+Funktion statt als vorgerenderten String bauen, dann nur einmal escapen.
+Status: offen.
+Feature/Run: F20 WS-1, 14.09.2026 (Code-Review-Fund, vorbestehend, nicht
+durch die Modul-Aufteilung eingeführt).

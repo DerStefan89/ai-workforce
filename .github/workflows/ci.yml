@@ -36,6 +36,14 @@ jobs:
       - name: Projekt-Prüfkette
         run: npm run check
 
+      - name: F20 WS-1 Realnachweis (Leitstand-Klicktest)
+        run: node scripts/check-f20-leitstand-shell.mjs
+        # Eigener Schritt, bewusst NICHT Teil von `npm run check` (dort Chrome-unabhängig
+        # bleiben, siehe features/F20/feature.md AK6). ubuntu-latest bringt Google Chrome
+        # vorinstalliert mit (GitHub-Runner-Image-Manifest) — auf einem Runner ohne
+        # sicher verfügbares Chrome/Edge diesen Schritt entfernen statt ihn rot laufen zu
+        # lassen.
+
       - name: Secret-Scan (gitleaks)
         run: |
           # Aktuelle stabile Version geprüft am 2026-08-17.

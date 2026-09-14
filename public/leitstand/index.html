@@ -2,96 +2,121 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leitstand</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <h1>Leitstand</h1>
-  <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: das Startformular, die Wiederaufnahme-Bedienung, die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
+  <header id="shell-kopf">
+    <h1>Leitstand</h1>
+    <nav id="shell-nav" aria-label="Hauptnavigation">
+      <a href="#/dashboard" data-nav-view="dashboard">Dashboard</a>
+      <a href="#/projekt" data-nav-view="projekt">Projekt</a>
+      <a href="#/workboard" data-nav-view="workboard">Workboard</a>
+      <a href="#/runs" data-nav-view="runs">Runs</a>
+      <a href="#/capabilities" data-nav-view="capabilities">Capabilities</a>
+    </nav>
+    <!-- F28 (Persona v1) füllt diesen Platzhalter — F20 liefert nur den leeren Container, keine Animation. -->
+    <div id="persona-platzhalter" aria-hidden="true"></div>
+  </header>
+
   <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
 
-  <section id="auftrag-start">
-    <h2>Auftrag &amp; Start</h2>
+  <main id="shell-hauptbereich">
+    <section id="view-dashboard" data-view="dashboard" hidden></section>
 
-    <div class="unterabschnitt">
-      <h3>Auftrag anlegen</h3>
-      <label for="auftrag-titel">Titel</label>
-      <input type="text" id="auftrag-titel" />
-      <label for="auftrag-auftragstext">Auftragstext</label>
-      <textarea id="auftrag-auftragstext" rows="4"></textarea>
-      <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
-      <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
-    </div>
+    <section id="view-projekt" data-view="projekt" hidden>
+      <p class="hinweis">Ausnahme vom sonst rein lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real (Auftrag anlegen, Lauf starten).</p>
 
-    <div class="unterabschnitt">
-      <h3>Starten</h3>
-      <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
-        Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
-        unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
-        <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
-      </p>
-      <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
+      <section id="auftrag-start">
+        <h2>Auftrag &amp; Start</h2>
 
-      <label for="start-auftrag">Auftrag wählen</label>
-      <select id="start-auftrag"></select>
+        <div class="unterabschnitt">
+          <h3>Auftrag anlegen</h3>
+          <label for="auftrag-titel">Titel</label>
+          <input type="text" id="auftrag-titel" />
+          <label for="auftrag-auftragstext">Auftragstext</label>
+          <textarea id="auftrag-auftragstext" rows="4"></textarea>
+          <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
+          <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
+        </div>
 
-      <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
-      <select id="start-werkzeugsatz"></select>
+        <div class="unterabschnitt">
+          <h3>Starten</h3>
+          <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
+            Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
+            unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
+            <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
+          </p>
+          <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
 
-      <fieldset id="start-evidenzdateien">
-        <legend>Evidenzdateien (repo-relative Pfade)</legend>
-        <div id="start-evidenzdateien-liste"></div>
-        <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
-      </fieldset>
+          <label for="start-auftrag">Auftrag wählen</label>
+          <select id="start-auftrag"></select>
 
-      <label for="start-laufid">laufId</label>
-      <input type="text" id="start-laufid" />
+          <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
+          <select id="start-werkzeugsatz"></select>
 
-      <div><button id="start-starten">Starten</button></div>
-      <p id="start-erfolg" class="erfolg" hidden></p>
-      <p id="start-fehler" class="fehler" hidden></p>
-    </div>
-  </section>
+          <fieldset id="start-evidenzdateien">
+            <legend>Evidenzdateien (repo-relative Pfade)</legend>
+            <div id="start-evidenzdateien-liste"></div>
+            <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
+          </fieldset>
 
-  <section id="startfehler-abschnitt">
-    <h2>Startfehler</h2>
-    <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
-    <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
-  </section>
+          <label for="start-laufid">laufId</label>
+          <input type="text" id="start-laufid" />
 
-  <section id="workflows-abschnitt">
-    <h2>Workflows</h2>
-    <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
-    <div id="workflows"></div>
-  </section>
+          <div><button id="start-starten">Starten</button></div>
+          <p id="start-erfolg" class="erfolg" hidden></p>
+          <p id="start-fehler" class="fehler" hidden></p>
+        </div>
+      </section>
+    </section>
 
-  <section id="workflow-detail" hidden>
-    <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
-    <p id="workflow-detail-fehler" class="fehler" hidden></p>
-    <!--
-      Drei Container statt einem, und die Trennung ist die Bedingung dafür, dass die
-      Bedienung überhaupt bedienbar ist: #workflow-detail-inhalt wird vom Poll alle zwei
-      Sekunden vollständig ersetzt (F15 WS-3a). Eine Pflichtbegründung, die dort stünde,
-      wäre nach zwei Sekunden weg. #workflow-bedienung wird deshalb nur bei ECHTER
-      Zustandsänderung neu gebaut (Signatur-Vergleich in app.js), und #workflow-reparatur
-      fasst der Poll überhaupt nicht an — der Entwurf gehört dem Menschen, bis er ihn
-      einreicht oder verwirft (F-249).
-    -->
-    <div id="workflow-bedienung"></div>
-    <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
-    <div id="workflow-detail-inhalt"></div>
-    <div id="workflow-reparatur"></div>
-  </section>
+    <section id="view-workboard" data-view="workboard" hidden></section>
 
-  <div id="laeufe"></div>
+    <section id="view-runs" data-view="runs" hidden>
+      <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
 
-  <section id="lauf-detail" hidden>
-    <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen">Schließen</button></h2>
-    <p id="lauf-detail-fehler" class="fehler" hidden></p>
-    <div id="lauf-detail-inhalt"></div>
-    <div id="entscheidung-block"></div>
-  </section>
+      <section id="startfehler-abschnitt">
+        <h2>Startfehler</h2>
+        <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
+        <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
+      </section>
 
-  <script src="/app.js"></script>
+      <section id="workflows-abschnitt">
+        <h2>Workflows</h2>
+        <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
+        <div id="workflows"></div>
+      </section>
+
+      <section id="workflow-detail" hidden>
+        <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
+        <p id="workflow-detail-fehler" class="fehler" hidden></p>
+        <!--
+          Drei Container statt einem: #workflow-detail-inhalt wird vom Poll alle zwei
+          Sekunden vollständig ersetzt (F15 WS-3a). #workflow-bedienung wird deshalb nur bei
+          ECHTER Zustandsänderung neu gebaut, und #workflow-reparatur fasst der Poll überhaupt
+          nicht an — der Entwurf gehört dem Menschen, bis er ihn einreicht oder verwirft (F-249).
+        -->
+        <div id="workflow-bedienung"></div>
+        <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
+        <div id="workflow-detail-inhalt"></div>
+        <div id="workflow-reparatur"></div>
+      </section>
+
+      <div id="laeufe"></div>
+
+      <section id="lauf-detail" hidden>
+        <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen">Schließen</button></h2>
+        <p id="lauf-detail-fehler" class="fehler" hidden></p>
+        <div id="lauf-detail-inhalt"></div>
+        <div id="entscheidung-block"></div>
+      </section>
+    </section>
+
+    <section id="view-capabilities" data-view="capabilities" hidden></section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
 </body>
 </html>
