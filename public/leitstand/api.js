@@ -30,6 +30,14 @@ export const abbrichLauf = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(l
 
 export const holeStartfehler = () => fetch('/api/startfehler').then((r) => r.json())
 
+// F21 WS-2: einmaliger Abruf beim Betreten der View bzw. bei Filterwechsel — kein Poll
+// (Findings/Feature-Akten ändern sich nur durch Commits, siehe views/workboard.js).
+export const holeWorkitems = (filter = {}) => {
+  const params = new URLSearchParams(filter)
+  const query = params.toString()
+  return fetch(`/api/workitems${query.length > 0 ? `?${query}` : ''}`).then((r) => r.json())
+}
+
 // F20 WS-2 (AK3): Aggregat aus laeufe/startfehler/workflows, gepollt von zustand.js — einzige
 // Stelle, die noch periodisch fetch() aufruft.
 export const holeZustand = () => fetch('/api/zustand').then((r) => r.json())

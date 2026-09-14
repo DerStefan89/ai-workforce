@@ -69,6 +69,7 @@ die normalisierte Kopfzeile plus Rohtext · Volltextsuche.
 - **AK8** Feature Review mit Stefan nach WS-1 (ACCEPT/ADJUST/REJECT) vor
   Beginn von WS-2 (Attention-View, Dashboard-Zahlen) — Änderungsrisiko
   HIGH (Informationsarchitektur).
+  ACCEPT, Stefan, 14.09.2026.
 
 ## Dependencies
 
