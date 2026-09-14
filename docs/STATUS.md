@@ -381,15 +381,15 @@ Elf Features, Reihenfolge nach frühestem sichtbaren Closed Loop
 (Challenge `claude/183`, PlanV1 `claude/184`; Feature-Akten entstehen je
 Feature unter `features/F2x/`):
 
-- 🔧 **F20** — Jarvis Shell v1 (Navigation, Routing, Tokens,
-  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `IN_ARBEIT`.
-  WS-1 (PR #149) gemergt. WS-2 (Aggregat-Endpunkt, Poll-Konsolidierung,
-  Gate-Kalibrierung, Biome-Scope) gebaut, AK7-Feature-Review steht noch aus.
-  **F21 startet erst nach dem AK7-Review von F20 WS-2** (Stefan, 14.09.2026
-  — löst F-361, dort stand vorher ein Widerspruch zwischen diesem Abschnitt
-  und `features/F20/feature.md` AK7).
+- ✅ **F20** — Jarvis Shell v1 (Navigation, Routing, Tokens,
+  `GET /api/zustand`). Akte `features/F20/feature.md`, Status `FEATURE_GATE`,
+  AK1–AK7 erfüllt. WS-1 (PR #149) gemergt. WS-2 (Aggregat-Endpunkt,
+  Poll-Konsolidierung, Gate-Kalibrierung, Biome-Scope) gebaut. AK7: ACCEPT,
+  14.09.2026 (Stefan, echter manueller Durchklick — siehe
+  `features/F20/feature.md` AK7).
 - ⏳ **F21** — Workboard + Attention v1 (Projektion über Findings,
-  Feature-Akten, Failed Runs, Capability Gaps). Nach F20 WS-2 (AK7-Review).
+  Feature-Akten, Failed Runs, Capability Gaps). F20 AK7-Review erfüllt, F21
+  kann beginnen.
 - ⏳ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
   Kernartefakt, Vorschlag → Freigabe → Kette). Nach F21.
 - ⏳ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
