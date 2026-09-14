@@ -444,6 +444,7 @@ import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/work
 import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
+import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -3433,17 +3434,23 @@ export function erzeugeRequestHandler(optionen = {}) {
         // Freigabepflicht noch stand, und ohne sie ist später nicht mehr feststellbar, WAS
         // aufgegeben wurde. Form wortgleich zu (b1)/(b2) (D5).
         try {
+          const planaenderungsDaten = {
+            entscheidung_schema: 'v0',
+            art: 'planaenderung',
+            ergebnis: 'FREIGABEPFLICHT_ABGESCHWAECHT',
+            begruendung: begruendungDerPlanaenderung,
+            entschieden_am: new Date().toISOString(),
+            abgeschwaechte_freigaben: abschwaechungen,
+          }
+          const planaenderungsVerstoesse = validiereEntscheidungsDaten(planaenderungsDaten)
+          if (planaenderungsVerstoesse.length > 0) {
+            throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${planaenderungsVerstoesse.join('; ')}`)
+          }
           planaenderungsArtefakt = registriereKernArtefakt(
             `entscheidung-workflow-${body.workflow_id}-planaenderung`,
             profilReferenz,
             { erzeuger: 'mensch', schritt: 'entscheidung-workflow-planaenderung' },
-            {
-              entscheidung_schema: 'v0',
-              ergebnis: 'FREIGABEPFLICHT_ABGESCHWAECHT',
-              begruendung: begruendungDerPlanaenderung,
-              entschieden_am: new Date().toISOString(),
-              abgeschwaechte_freigaben: abschwaechungen,
-            },
+            planaenderungsDaten,
             [
               {
                 pfad: `artefakt:workflow-${body.workflow_id}`,
@@ -4039,11 +4046,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       ]
       let entscheidungsArtefakt
       try {
+        const freigabeDaten = { entscheidung_schema: 'v0', art: 'freigabe', ergebnis: body.entscheidung, begruendung, entschieden_am: entschiedenAm }
+        const freigabeVerstoesse = validiereEntscheidungsDaten(freigabeDaten)
+        if (freigabeVerstoesse.length > 0) {
+          throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${freigabeVerstoesse.join('; ')}`)
+        }
         entscheidungsArtefakt = registriereKernArtefakt(
           `entscheidung-workflow-${workflowId}-${schrittId}`,
           profilReferenz,
           { erzeuger: 'mensch', schritt: 'entscheidung-workflow-freigabe' },
-          { entscheidung_schema: 'v0', ergebnis: body.entscheidung, begruendung, entschieden_am: entschiedenAm },
+          freigabeDaten,
           freigegebeneVersion,
           ladeOptionen
         )
@@ -4361,11 +4373,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       const stoppArtefaktId = `entscheidung-workflow-${workflowId}-stopp`
       let stoppArtefakt = null
       try {
+        const stoppDaten = { entscheidung_schema: 'v0', art: 'stopp', ergebnis: 'GESTOPPT', begruendung, entschieden_am: gestopptAm }
+        const stoppVerstoesse = validiereEntscheidungsDaten(stoppDaten)
+        if (stoppVerstoesse.length > 0) {
+          throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${stoppVerstoesse.join('; ')}`)
+        }
         stoppArtefakt = registriereKernArtefakt(
           stoppArtefaktId,
           profilReferenz,
           { erzeuger: 'mensch', schritt: 'entscheidung-workflow-stopp' },
-          { entscheidung_schema: 'v0', ergebnis: 'GESTOPPT', begruendung, entschieden_am: gestopptAm },
+          stoppDaten,
           [
             {
               pfad: `artefakt:workflow-${workflowId}`,
@@ -4500,11 +4517,16 @@ export function erzeugeRequestHandler(optionen = {}) {
           // per registriereKernArtefakt registrierte Lineage-Artefakte auf). Deshalb zusätzlich als
           // eigenes Lineage-Artefakt registriert, exakt nach dem Transportpaket-Vorbild
           // (human-transport/index.ts:106-138) — kein neues Schema, daten bleibt unknown wie dort (D5).
+          const terminalDaten = { entscheidung_schema: 'v0', art: 'terminal', ergebnis: pruefung.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() }
+          const terminalVerstoesse = validiereEntscheidungsDaten(terminalDaten)
+          if (terminalVerstoesse.length > 0) {
+            throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${terminalVerstoesse.join('; ')}`)
+          }
           const entscheidungsArtefakt = registriereKernArtefakt(
             `entscheidung-${pruefung.laufId}`,
             profilReferenz,
             { erzeuger: 'mensch', schritt: 'entscheidung-terminal' },
-            { entscheidung_schema: 'v0', ergebnis: pruefung.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
+            terminalDaten,
             [],
             optionen
           )
@@ -4536,11 +4558,16 @@ export function erzeugeRequestHandler(optionen = {}) {
             return
           }
         }
+        const kenntnisnahmeDaten = { entscheidung_schema: 'v0', art: 'kenntnisnahme', ergebnis: laufStatus.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() }
+        const kenntnisnahmeVerstoesse = validiereEntscheidungsDaten(kenntnisnahmeDaten)
+        if (kenntnisnahmeVerstoesse.length > 0) {
+          throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${kenntnisnahmeVerstoesse.join('; ')}`)
+        }
         const kenntnisnahmeArtefakt = registriereKernArtefakt(
           `entscheidung-${pruefung.laufId}`,
           profilReferenz,
           { erzeuger: 'mensch', schritt: 'entscheidung-kenntnisnahme' },
-          { entscheidung_schema: 'v0', ergebnis: laufStatus.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() },
+          kenntnisnahmeDaten,
           [],
           optionen
         )

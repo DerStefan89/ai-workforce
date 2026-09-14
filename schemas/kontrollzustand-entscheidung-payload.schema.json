@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-entscheidung-payload.schema.json",
+  "title": "Entscheidung-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' —, wenn entscheidung_schema === \"v0\" (F23 WS-1a, löst state/findings.md F-350/F-379). Fünf Schreibstellen in scripts/leitstand-server.mjs (herkunft.schritt entscheidung-workflow-planaenderung/-freigabe/-stopp, entscheidung-terminal, entscheidung-kenntnisnahme) registrieren dieses Format. 'art' trennt die fünf zuvor überladenen 'ergebnis'-Familien explizit (F-379); eine sechste, 'abnahme', ist bereits schemagültig, hat aber in F23 WS-1a noch keine Schreibstelle (folgt WS-1b/WS-2). Ein VOR F23 WS-1a geschriebenes Entscheidungsartefakt trägt kein 'art'-Feld — src/entscheidung/index.ts leiteArtAusHerkunftAb() leitet es aus der Lineage-herkunft.schritt ab, statt das alte Artefakt für ungültig zu erklären (E-M4-6).",
+  "type": "object",
+  "required": ["entscheidung_schema", "art", "ergebnis", "begruendung", "entschieden_am"],
+  "properties": {
+    "entscheidung_schema": { "const": "v0" },
+    "art": {
+      "enum": ["freigabe", "stopp", "planaenderung", "terminal", "kenntnisnahme", "abnahme"],
+      "description": "abnahme hat in F23 WS-1a noch keine Schreibstelle (folgt WS-1b/WS-2), ist aber bereits schemagültig."
+    },
+    "ergebnis": { "type": "string", "description": "Wertemenge hängt von 'art' ab, siehe die je-Art-Zweige unten." },
+    "begruendung": { "type": "string", "minLength": 1 },
+    "entschieden_am": { "type": "string", "minLength": 1 },
+    "abgeschwaechte_freigaben": {
+      "type": "array",
+      "description": "Nur bei art 'planaenderung' vorhanden — die ZWINGEND-Freigaben, die die neue Fassung zurücknimmt (F15 WS-2c (b3), F-226).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schritt_id", "vorher", "nachher"],
+        "properties": {
+          "schritt_id": { "type": "string", "minLength": 1 },
+          "vorher": { "const": "ZWINGEND" },
+          "nachher": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "art": { "const": "freigabe" } } },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "enum": ["FREIGEGEBEN", "ABGELEHNT"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "art": { "const": "stopp" } } },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "const": "GESTOPPT" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "art": { "const": "planaenderung" } } },
+      "then": {
+        "additionalProperties": false,
+        "required": ["abgeschwaechte_freigaben"],
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "const": "FREIGABEPFLICHT_ABGESCHWAECHT" },
+          "abgeschwaechte_freigaben": true
+        }
+      }
+    },
+    {
+      "if": { "properties": { "art": { "const": "terminal" } } },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "enum": ["ERFOLGREICH", "VERWEIGERT", "FEHLGESCHLAGEN"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "art": { "const": "kenntnisnahme" } } },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "enum": ["VERWEIGERT", "FEHLGESCHLAGEN"] }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "art": { "const": "abnahme" } } },
+      "then": {
+        "additionalProperties": false,
+        "properties": {
+          "entscheidung_schema": true,
+          "art": true,
+          "begruendung": true,
+          "entschieden_am": true,
+          "ergebnis": { "enum": ["ANGENOMMEN", "ANPASSUNG_ANGEFORDERT", "ABGELEHNT"] }
+        }
+      }
+    }
+  ]
+}
