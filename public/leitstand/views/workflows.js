@@ -7,7 +7,8 @@
  * Workboard, Runs, Capabilities), die Detailansicht ist über die Route
  * `#/workflows/<id>` direkt verlinkbar (AK2) und zeigt dabei die Runs-View.
  * Deckt zwei der sechs Bedienflüsse ab, die laut F20 AK1 real unverändert
- * funktionieren müssen: Freigabe/Stopp und Reparaturfassung.
+ * funktionieren müssen: Freigabe/Stopp und Reparaturfassung. Seit F23 WS-2a
+ * zusätzlich die Abnahme (ACCEPT/REJECT, ADJUST sichtbar/deaktiviert).
  *
  * Die Oberfläche entscheidet dabei NICHTS selbst (D5). Was angeboten wird,
  * hängt an zwei Aussagen des Servers: naechster.art (das Verdikt von
@@ -27,10 +28,12 @@
  * Tick komplett ersetzt, #workflow-bedienung nur bei ECHTER
  * Zustandsänderung (Signatur-Vergleich, F-249) und #workflow-reparatur gar
  * nicht — der Entwurf gehört dem Menschen, bis er ihn einreicht oder
- * verwirft (F-249).
+ * verwirft (F-249). #workflow-abnahme ist EIN WEITERER eigener Endpunktaufruf
+ * (GET /api/workflows/<id>/abnahme, nicht Teil des Zustands-Aggregats) mit
+ * demselben Signatur-Vergleich wie #workflow-bedienung (F23 WS-2a).
  */
 
-import { holeLaufDetail, holeWorkflowDetail, reicheWorkflowFassungEin, sendeWorkflowFreigabe, starteWorkflowSchritt, stoppeWorkflow } from '../api.js'
+import { holeAbnahme, holeLaufDetail, holeWorkflowDetail, reicheWorkflowFassungEin, sendeAbnahme, sendeWorkflowFreigabe, starteWorkflowSchritt, stoppeWorkflow } from '../api.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -216,6 +219,193 @@ function renderWorkflowKopf(daten, versionSequenz, naechster) {
 function renderWorkflowUngueltig(verstoesse) {
   const liste = verstoesse.map((verstoss) => `<li>${escapeHtml(verstoss)}</li>`).join('')
   return `<div class="detail-block"><h3>Fassung ungültig</h3><p class="fehler">Diese Fassung validiert nicht gegen WORKFLOW_V0 — der Startendpunkt lehnt sie mit 409 ab. Sie wird trotzdem vollständig gezeigt, weil die Reparatur damit beginnt, sie anzusehen.</p><ul>${liste}</ul></div>`
+}
+
+// ─── Abnahme (F23 WS-2a) ─────────────────────────────────────────────────────
+
+/** Anzeigetexte je Nicht-'ok'-Status der aenderungsuebersicht-Projektion aus GET .../abnahme — Muster LAGE_JE_AUSGANG. */
+const AENDERUNGSUEBERSICHT_STATUS_TEXT = {
+  kein_ausfuehrungs_schritt: 'Diese Vorlage hat keinen Schritt mit rolle \'ausfuehrung\'.',
+  noch_nicht_gelaufen: 'Der Ausführungsschritt ist noch nicht gelaufen.',
+  nicht_vorhanden: 'Zu diesem Lauf liegt keine Änderungsübersicht vor (lesender Werkzeugsatz, oder der Lauf endete nicht real erfolgreich).',
+}
+
+/** @param projektion - abnahme.aenderungsuebersicht aus GET .../abnahme @returns HTML-Block */
+function renderAenderungsuebersicht(projektion) {
+  if (projektion.status !== 'ok') {
+    return `<p class="unbekannt">${escapeHtml(AENDERUNGSUEBERSICHT_STATUS_TEXT[projektion.status] ?? projektion.status)}</p>`
+  }
+  const daten = projektion.daten
+  const zeilen = daten.dateien
+    .map(
+      (d) =>
+        `<tr><td>${escapeHtml(d.status)}</td><td><code>${escapeHtml(d.pfad)}</code></td><td>${d.plus === null ? '—' : `+${d.plus}`}</td><td>${d.minus === null ? '—' : `-${d.minus}`}</td></tr>`
+    )
+    .join('')
+  return `<p class="hinweis">Lauf <code>${escapeHtml(projektion.laufId)}</code>, Basis <code>${escapeHtml(daten.basis_ref ?? 'unbekannt')}</code>${daten.gekuerzt ? ' <span class="badge fehler">Patch gekürzt</span>' : ''}</p>
+    ${daten.dateien.length === 0 ? '<p class="leer">Keine Dateien geändert.</p>' : `<table class="lauf-kopfdaten"><thead><tr><th>Status</th><th>Datei</th><th>+</th><th>-</th></tr></thead><tbody>${zeilen}</tbody></table>`}`
+}
+
+/** Anzeigetexte je Nicht-'ok'-Status der urteil-Projektion aus GET .../abnahme. */
+const URTEIL_STATUS_TEXT = {
+  kein_review_schritt: 'Diese Vorlage hat keinen Post-Build-Review-Schritt (output_schema \'ergebnis-code-reviewer\').',
+  noch_nicht_gelaufen: 'Der Review-Schritt ist noch nicht gelaufen.',
+  laufakte_fehlt: 'Zum Review-Lauf liegt keine Laufakte vor.',
+  nicht_lesbar: 'Das Urteil konnte nicht aus dem Rohstrom des Review-Laufs gelesen werden.',
+}
+
+/** @param projektion - abnahme.urteil aus GET .../abnahme @returns HTML-Block */
+function renderUrteil(projektion) {
+  if (projektion.status !== 'ok') {
+    return `<p class="unbekannt">${escapeHtml(URTEIL_STATUS_TEXT[projektion.status] ?? projektion.status)}</p>`
+  }
+  const befundeZeilen = projektion.befunde
+    .map(
+      (b) =>
+        `<tr><td>${escapeHtml(b.schwere ?? '')}</td><td>${escapeHtml(b.fundstelle ?? '')}</td><td>${escapeHtml(b.zusammenfassung ?? '')}</td><td>${escapeHtml(b.beleg ?? '')}</td></tr>`
+    )
+    .join('')
+  return `<p><strong>Urteil:</strong> ${escapeHtml(projektion.urteil)} <span class="unbekannt">(Lauf <code>${escapeHtml(projektion.laufId)}</code> — nicht bindend, siehe schemas/ergebnis-code-reviewer.schema.json)</span></p>
+    ${projektion.befunde.length === 0 ? '<p class="leer">Keine Befunde.</p>' : `<table class="lauf-kopfdaten"><thead><tr><th>Schwere</th><th>Fundstelle</th><th>Zusammenfassung</th><th>Beleg</th></tr></thead><tbody>${befundeZeilen}</tbody></table>`}
+    <p><strong>Empfehlung:</strong> ${projektion.empfehlung ? escapeHtml(projektion.empfehlung) : '<span class="unbekannt">keine</span>'}</p>`
+}
+
+/**
+ * Der ACCEPT/REJECT/ADJUST-Teil des Abnahme-Blocks. Angeboten wird ausschließlich, was der
+ * Server als möglich ausweist (D5, Muster renderWorkflowBedienung): 'ANGENOMMEN' nur bei
+ * workflowStatus 'ABGESCHLOSSEN', 'ABGELEHNT' bei 'ABGESCHLOSSEN' oder 'KLAERUNG_ERFORDERLICH'.
+ * ANPASSUNG_ANGEFORDERT bleibt sichtbar, aber deaktiviert (F23 WS-2b, Bauauftrag Punkt 5). Liegt
+ * bereits eine AKTUELLE Entscheidung vor (status 'ok'), steht sie hier statt der Schaltflächen.
+ *
+ * QA-Pass 15.09.2026, TC-04 (kritisch), korrigiert in der Nacharbeit (F-384): status 'veraltet'
+ * bedeutet, die vorhandene Entscheidung bezeugt ein FRÜHERES BAU-ERGEBNIS
+ * (bezug.ausfuehrung_lauf_id stimmt nicht mit dem lauf_id des aktuellen Ausführungsschritts
+ * überein) — genau der Fall nach ABGELEHNT -> GESTOPPT -> Reparaturfassung mit einem neuen
+ * Ausführungslauf -> erneut ABGESCHLOSSEN. NICHT workflow_version: version ist ein Plandatum,
+ * kein Fassungszähler — der etablierte Reparaturweg (baueReparaturEntwurf unten) reicht bewusst
+ * eine Fassung mit UNVERÄNDERTER version ein. Ohne die ausfuehrung_lauf_id-Unterscheidung bliebe
+ * der in AK16 versprochene Reparaturpfad auf UI-Ebene eine Sackgasse: die alte Entscheidung
+ * stünde für immer als "erledigt" da, und es gäbe nie wieder Buttons für den neuen Bau. Die alte
+ * Entscheidung bleibt trotzdem sichtbar (Audit-Spur), nur als solche gekennzeichnet — nicht
+ * stillschweigend durch neue Buttons ersetzt.
+ * @param workflowId - Kennung des angezeigten Workflows
+ * @param workflowStatus - abnahme.workflowStatus aus GET .../abnahme
+ * @param entscheidung - abnahme.entscheidung aus GET .../abnahme
+ * @returns HTML-Block
+ */
+function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung) {
+  if (entscheidung.status === 'ok') {
+    return `<div class="unterabschnitt">
+      <p><strong>Entscheidung:</strong> ${escapeHtml(entscheidung.ergebnis)} — ${escapeHtml(entscheidung.begruendung)}</p>
+      <p class="unbekannt">Entschieden am ${escapeHtml(entscheidung.entschiedenAm)}</p>
+    </div>`
+  }
+  const kennung = escapeHtml(workflowId)
+  const angenommenErlaubt = workflowStatus === 'ABGESCHLOSSEN'
+  const abgelehntErlaubt = workflowStatus === 'ABGESCHLOSSEN' || workflowStatus === 'KLAERUNG_ERFORDERLICH'
+  const hinweis = angenommenErlaubt || abgelehntErlaubt ? '' : `<p class="unbekannt">Workflow-Status '${escapeHtml(workflowStatus)}' erlaubt derzeit keine Abnahme-Entscheidung.</p>`
+  const vorherigeEntscheidung =
+    entscheidung.status === 'veraltet'
+      ? `<p class="unbekannt">Vorherige Entscheidung (bezieht sich auf eine frühere Fassung): ${escapeHtml(entscheidung.ergebnis)} am ${escapeHtml(entscheidung.entschiedenAm)} — ${escapeHtml(entscheidung.begruendung)}</p>`
+      : ''
+  return `<div class="unterabschnitt">
+    ${vorherigeEntscheidung}
+    <label for="wf-abnahme-begruendung">Begründung (Pflicht)</label>
+    <textarea id="wf-abnahme-begruendung" rows="2"></textarea>
+    <div>
+      <button class="wf-abnahme-aktion" data-aktion="ANGENOMMEN" data-workflow-id="${kennung}"${angenommenErlaubt ? '' : ' disabled'}>Annehmen</button>
+      <button class="wf-abnahme-aktion" data-aktion="ABGELEHNT" data-workflow-id="${kennung}"${abgelehntErlaubt ? '' : ' disabled'}>Ablehnen</button>
+      <button class="wf-abnahme-aktion" data-aktion="ANPASSUNG_ANGEFORDERT" data-workflow-id="${kennung}" disabled title="Folgt in F23 WS-2b">Anpassung anfordern</button>
+    </div>
+    ${hinweis}
+  </div>`
+}
+
+/**
+ * @param workflowId - Kennung des angezeigten Workflows
+ * @param abnahme - Antwort von GET /api/workflows/<id>/abnahme
+ * @returns HTML-Block
+ */
+function renderAbnahme(workflowId, abnahme) {
+  return `<div class="detail-block"><h3>Abnahme</h3>
+    <h4>Änderungsübersicht</h4>
+    ${renderAenderungsuebersicht(abnahme.aenderungsuebersicht)}
+    <h4>Urteil (Post-Build-Review)</h4>
+    ${renderUrteil(abnahme.urteil)}
+    <h4>Entscheidung</h4>
+    ${renderAbnahmeEntscheidung(workflowId, abnahme.workflowStatus, abnahme.entscheidung)}
+  </div>`
+}
+
+/** Kennzeichen des zuletzt gerenderten Abnahme-Blocks — verhindert wie bedienungsKennzeichen, dass eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren geht. */
+let abnahmeKennzeichen = null
+
+/** @param workflowId - angezeigter Workflow @param abnahme - Antwort von GET .../abnahme */
+function aktualisiereAbnahme(workflowId, abnahme) {
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.entscheidung.status}|${abnahme.urteil.status}|${abnahme.aenderungsuebersicht.status}`
+  if (kennzeichen === abnahmeKennzeichen) return
+  abnahmeKennzeichen = kennzeichen
+  document.getElementById('workflow-abnahme').innerHTML = renderAbnahme(workflowId, abnahme)
+}
+
+/** @param text - anzuzeigender Text, oder null zum Ausblenden @param art - 'fehler' (Vorgabe) oder 'erfolg' */
+function zeigeAbnahmeMeldung(text, art = 'fehler') {
+  const anzeige = document.getElementById('workflow-abnahme-meldung')
+  if (text === null) {
+    anzeige.hidden = true
+    return
+  }
+  anzeige.className = art
+  anzeige.textContent = text
+  anzeige.hidden = false
+}
+
+/**
+ * Lädt GET .../abnahme separat vom Workflow-Detail (eigener Endpunkt, nicht Teil des
+ * Zustands-Aggregats) und rendert den Block — eigener Überholschutz über den von
+ * ladeWorkflowDetail durchgereichten istUeberholt (derselbe Render-Zyklus, kein zweiter Zähler).
+ * @param workflowId - Kennung des angezeigten Workflows
+ * @param istUeberholt - () => boolean aus ladeWorkflowDetail
+ */
+async function aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt) {
+  try {
+    const abnahme = await holeAbnahme(workflowId)
+    if (istUeberholt()) return
+    aktualisiereAbnahme(workflowId, abnahme)
+  } catch (fehler) {
+    if (istUeberholt()) return
+    console.error(`[leitstand] Abnahme-Projektion von '${workflowId}' nicht ladbar: ${fehler.message}`)
+  }
+}
+
+/**
+ * Schickt eine Abnahme-Bedienung (ANGENOMMEN/ABGELEHNT) und lädt den Abnahme-Block danach neu —
+ * anders als sendeWorkflowBedienung reicht pollJetzt() allein nicht: die Entscheidung ist nicht
+ * Teil des Zustands-Aggregats (GET /api/zustand), nur GET .../abnahme kennt sie.
+ * @param workflowId - Kennung des Workflows
+ * @param koerper - Body für POST .../abnahme
+ * @param knopf - auslösender Button
+ * @param erfolgstext - was im Erfolgsfall gemeldet wird
+ */
+async function sendeAbnahmeBedienung(workflowId, koerper, knopf, erfolgstext) {
+  zeigeAbnahmeMeldung(null)
+  knopf.disabled = true
+  try {
+    const antwort = await sendeAbnahme(workflowId, koerper)
+    const inhalt = await antwort.json().catch(() => ({}))
+    if (antwort.ok) {
+      zeigeAbnahmeMeldung(erfolgstext, 'erfolg')
+      abnahmeKennzeichen = null
+      const abnahme = await holeAbnahme(workflowId).catch(() => null)
+      if (abnahme !== null) aktualisiereAbnahme(workflowId, abnahme)
+    } else {
+      zeigeAbnahmeMeldung(`${antwort.status}: ${inhalt.grund ?? 'unbekannter Fehler'}`)
+    }
+  } catch (fehler) {
+    zeigeAbnahmeMeldung(`Anfrage fehlgeschlagen: ${fehler.message}`)
+  }
+  knopf.disabled = false
+  void pollJetzt()
 }
 
 // ─── Bedienung (Starten, Freigeben, Ablehnen, Stoppen) ──────────────────────
@@ -410,6 +600,29 @@ function ermittleReparaturWarnungen(daten, entwurf) {
   if (typeof grenze === 'number' && gelaufen >= grenze) {
     warnungen.push(`F-240: Der Entwurf trägt grenzen.max_schritte ${grenze}, und ${gelaufen} Schritt(e) tragen bereits eine lauf_id. Der Automat hält damit sofort wieder an ("Grenze erreicht") — die Grenze gehört angehoben, sonst ist die Reparatur wirkungslos.`)
   }
+
+  // QA-Pass 15.09.2026 (F-384, Nacharbeit): REPARIERBARE_SCHRITT_STATUS lässt einen ERFOLGREICHEN
+  // Ausführungsschritt absichtlich unangetastet (Lineage-Grund, siehe dortiger Kommentar) — der
+  // Automat startet ihn deshalb NIE automatisch neu (Regel 3, src/workflow/index.ts: ein bereits
+  // gelaufener Schritt wird nicht zweimal gestartet). Ohne diese Warnung sieht ein Vorarbeiter, der
+  // eine Abnahme ABGELEHNT und danach die vorbelegte Reparaturfassung unverändert einreicht, nie
+  // wieder ACCEPT/REJECT-Buttons: die Entscheidung bleibt an derselben lauf_id hängen (GET
+  // .../abnahme meldet weiter 'ok') und der Automat hält mit KLAERUNG_ERFORDERLICH an, ohne neu zu
+  // bauen — dieselbe Sackgasse, die F-384 eigentlich schließen sollte. Reales Neubauen verlangt ein
+  // manuelles Zurücksetzen (status:'OFFEN', lauf_id:null) im Entwurf-Textfeld.
+  // QA-Pass 15.09.2026 (Fehler 1, behoben): geprüft wird der EINGETIPPTE Entwurf, nicht die beim
+  // Öffnen eingefrorene Originalfassung — Muster der F-226-Prüfung direkt darüber
+  // (ermittleAbgeschwaechteFreigabenAnzeige liest ebenfalls entwurf?.schritte). Ohne das blieb die
+  // Warnung stehen, selbst wenn der Mensch genau das tat, was sie verlangt (Schritt im Textfeld
+  // manuell zurückgesetzt) — die eigene Handlungsanweisung ließ sich nie "quittieren".
+  const entwurfSchritte = Array.isArray(entwurf?.schritte) ? entwurf.schritte : []
+  const ausfuehrungUnveraendert = entwurfSchritte.find((schritt) => schritt?.rolle === 'ausfuehrung' && schritt?.status === 'ERFOLGREICH')
+  if (ausfuehrungUnveraendert !== undefined) {
+    warnungen.push(
+      `F-384: Der Ausführungsschritt '${ausfuehrungUnveraendert.schritt_id}' ist ERFOLGREICH und behält seine lauf_id '${ausfuehrungUnveraendert.lauf_id}' — ein Reparaturzug startet ihn NICHT automatisch neu. Eine Abnahme-Entscheidung zu diesem Bau bleibt nach dem Einreichen dieser Fassung weiter gültig, solange der Schritt nicht manuell auf status:'OFFEN', lauf_id:null zurückgesetzt wird — sonst hält der Automat mit KLAERUNG_ERFORDERLICH an, ohne neu zu bauen.`
+    )
+  }
+
   return warnungen
 }
 
@@ -606,6 +819,9 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const verstoesse = Array.isArray(detail.verstoesse) ? detail.verstoesse : []
     const naechster = detail.naechster ?? null
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0)
+    // Eigener Endpunkt, eigener Überholschutz (istUeberholt), fire-and-forget — blockiert das
+    // übrige Rendern nicht.
+    void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
     const ungueltigBlock = verstoesse.length > 0 ? renderWorkflowUngueltig(verstoesse) : ''
     if (!Array.isArray(daten.schritte) || daten.schritte.length === 0) {
       inhalt.innerHTML = [
@@ -637,6 +853,9 @@ function raeumeWorkflowBedienzustand() {
   bedienungsKennzeichen = null
   document.getElementById('workflow-bedienung').innerHTML = ''
   zeigeBedienungsMeldung(null)
+  abnahmeKennzeichen = null
+  document.getElementById('workflow-abnahme').innerHTML = ''
+  zeigeAbnahmeMeldung(null)
   verwirfReparaturEntwurf()
 }
 
@@ -692,6 +911,30 @@ async function fuehreWorkflowAktionAus(button) {
   }
 }
 
+/**
+ * Führt eine angeklickte Abnahme-Bedienung aus (F23 WS-2a). ANPASSUNG_ANGEFORDERT hat keinen
+ * bedienbaren Button (disabled in renderAbnahmeEntscheidung) — die Prüfung hier ist nur Schutz
+ * gegen ein synthetisches Klick-Event, kein zweiter Weg zum Ergebnis.
+ * @param button - der geklickte .wf-abnahme-aktion-Knopf
+ */
+async function fuehreAbnahmeAktionAus(button) {
+  const workflowId = button.dataset.workflowId
+  const aktion = button.dataset.aktion
+  if (aktion !== 'ANGENOMMEN' && aktion !== 'ABGELEHNT') return
+  zeigeAbnahmeMeldung(null)
+  const begruendung = document.getElementById('wf-abnahme-begruendung').value
+  if (begruendung.trim().length === 0) {
+    zeigeAbnahmeMeldung('Die Begründung ist Pflicht — ohne sie wird die Abnahme-Entscheidung nicht festgehalten.')
+    return
+  }
+  await sendeAbnahmeBedienung(
+    workflowId,
+    { ergebnis: aktion, begruendung },
+    button,
+    aktion === 'ANGENOMMEN' ? 'Abnahme festgehalten.' : 'Ablehnung festgehalten — der Workflow ist gestoppt.'
+  )
+}
+
 /** Klick-/Eingabe-Delegation der Workflow-Ansicht — jeder Container wird als Ganzes neu gerendert, die Zuhörer hängen deshalb am Container. */
 function initWorkflowBedienung() {
   document.getElementById('workflows').addEventListener('click', (ereignis) => {
@@ -708,6 +951,11 @@ function initWorkflowBedienung() {
     const button = ereignis.target.closest('.wf-aktion')
     if (!button) return
     void fuehreWorkflowAktionAus(button)
+  })
+  document.getElementById('workflow-abnahme').addEventListener('click', (ereignis) => {
+    const button = ereignis.target.closest('.wf-abnahme-aktion')
+    if (!button) return
+    void fuehreAbnahmeAktionAus(button)
   })
   document.getElementById('workflow-reparatur').addEventListener('input', (ereignis) => {
     if (ereignis.target.id !== 'wf-reparatur-entwurf') return

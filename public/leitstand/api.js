@@ -59,3 +59,7 @@ export const reicheWorkflowFassungEin = (koerper) => fetch('/api/workflows', { m
 export const starteWorkflowSchritt = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST', body: JSON.stringify({}) })
 export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/freigabe`, { method: 'POST', body: JSON.stringify(koerper) })
 export const stoppeWorkflow = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/stoppen`, { method: 'POST', body: JSON.stringify(koerper) })
+
+// F23 WS-2a: Abnahme-Projektion (Urteil, Änderungsübersicht, etwaige bereits vorhandene Entscheidung) und -Schreibstelle.
+export const holeAbnahme = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`).then((r) => r.json())
+export const sendeAbnahme = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, { method: 'POST', body: JSON.stringify(koerper) })

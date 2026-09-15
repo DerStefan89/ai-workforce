@@ -129,6 +129,11 @@
         <div id="workflow-bedienung"></div>
         <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
         <div id="workflow-detail-inhalt"></div>
+        <!-- F23 WS-2a: eigener Container, wie #workflow-bedienung nur bei ECHTER
+             Zustandsänderung neu gebaut (Kennzeichen-Vergleich) — sonst ginge eine angefangene
+             Pflichtbegründung durch den 2-Sekunden-Poll verloren (Muster F-249). -->
+        <div id="workflow-abnahme"></div>
+        <p id="workflow-abnahme-meldung" class="fehler" hidden></p>
         <div id="workflow-reparatur"></div>
       </section>
 

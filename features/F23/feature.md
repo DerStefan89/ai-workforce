@@ -43,7 +43,144 @@ kenntnisnahme`) setzen `art` jetzt explizit und validieren vor der
 Registrierung. Gate `scripts/check-f23-abnahme.mjs` um Block (f) erweitert
 (sechs valid-*.json, drei invalid-*.json gegen `validiereEntscheidungsDaten`).
 WS-1b (Vorlagen-Umbau + Urteilsauswertung im Automaten, löst F-351/F-377)
-und WS-2/WS-3 sind noch nicht begonnen.
+ist gebaut (siehe AK9, Workstreams unten).
+
+WS-2a (dieser Auftrag) ist gebaut: `leseUrteilAusLaufakte`
+(`scripts/leitstand-server.mjs`) liefert das vollständige
+ergebnis-code-reviewer-Objekt (`urteil`, `befunde[]`, `empfehlung`) statt nur
+den `urteil`-String — Regel 1b in `src/workflow/index.ts` bleibt
+unverändert, der Aufrufer in `starteLaufUndVergiss` greift weiterhin nur auf
+`.urteil` zu. `schemas/kontrollzustand-entscheidung-payload.schema.json`
+und `src/entscheidung/` (`validiereEntscheidungsDaten`,
+`EntscheidungAbnahmeV0Daten`) tragen für `art: 'abnahme'` jetzt das
+Pflichtfeld `bezug` (`workflow_version`, `ausfuehrung_lauf_id`,
+`review_lauf_id`). Neue Endpunkte in `scripts/leitstand-server.mjs`: `GET
+/api/workflows/<id>/abnahme` projiziert Workflow-Status, Urteil,
+Änderungsübersicht und eine etwaige bereits vorhandene Abnahme-Entscheidung
+in einer Antwort (fehlende Teile als `{status: '<Grund>'}`, kein 500); `POST
+/api/workflows/<id>/abnahme` schreibt die Abnahme-Entscheidung
+(`art: 'abnahme'`) — `ANGENOMMEN` nur bei Workflow-Status `ABGESCHLOSSEN`
+(sonst 409, Status bleibt unverändert), `ABGELEHNT` bei `ABGESCHLOSSEN` oder
+`KLAERUNG_ERFORDERLICH` (setzt `GESTOPPT`, Muster der `ABGELEHNT`-Zweig von
+`POST /api/workflows/<id>/freigabe`), `ANPASSUNG_ANGEFORDERT` lehnt der
+Endpunkt mit 400 ab ("folgt in F23 WS-2b"). `public/leitstand/api.js`
+(`holeAbnahme`/`sendeAbnahme`) und `public/leitstand/views/workflows.js`
+(Abnahme-Abschnitt in der Workflow-Detailansicht: Änderungsübersicht,
+Urteil mit Befunden/Empfehlung, ACCEPT/REJECT mit Pflichtbegründung, ADJUST
+sichtbar/deaktiviert mit Verweis auf WS-2b, bereits vorhandene Entscheidung
+statt der Schaltflächen) bedienen die neuen Endpunkte. Gate
+`scripts/check-f23-abnahme.mjs` um Block (g) erweitert (vier Rot-Fälle,
+ein Grünfall über einen echten Dispatch); `scripts/check-f15-workflow.mjs`
+F-228-Selbsttest auf die neue neunte Aufrufstelle des Workflow-Schreibers
+nachgezogen.
+
+Reviewer-/QA-Pass (frischer Kontext, 15.09.2026, F-046): Erstdurchlauf
+beider NICHT freigegeben. `code-reviewer` fand einen kritischen Befund:
+`findeAusfuehrungsSchritt`/`findeReviewSchritt` griffen ungeschützt auf
+`workflowDaten.schritte.find(...)` zu — anders als der POST-Endpunkt (der
+vorher `validiereWorkflowDaten` aufruft) validiert GET bewusst NICHT (Muster
+`GET /api/workflows/<id>`: eine ungültige Fassung bleibt ansehbar). Auf einer
+strukturell kaputten Fassung (`schritte` fehlt/kein Array) hätte das den
+ganzen Serverprozess abgeschossen — derselbe Absturzpfad, den
+`dekodiereSegment` schon einmal real gekostet hat. Behoben: beide Helfer
+prüfen jetzt selbst `Array.isArray`/Elementform, Regressionstest (g6)
+ergänzt. `qa` fand unabhängig einen kritischen Designfehler (TC-04): die
+Abnahme-Entscheidung war nicht an das beurteilte Bau-Ergebnis gebunden —
+nach ABGELEHNT → GESTOPPT → korrigierte Fassung → erneut ABGESCHLOSSEN
+(AK16s eigener Reparaturpfad) zeigte die View für immer die ALTE
+Entscheidung statt neuer ACCEPT/REJECT-Buttons. Erste Behebung (Diskriminator
+`bezug.workflow_version`) wurde in der Nacharbeit vom selben Tag verworfen
+und durch `bezug.ausfuehrung_lauf_id` ersetzt (s. u.) — hier nur der
+ursprüngliche Befund festgehalten. Zusätzlich (TC-05): keine serverseitige
+Sperre gegen eine zweite/widersprüchliche Entscheidung zu DEMSELBEN
+Bau-Ergebnis — `POST` lehnt das jetzt mit 409 ab (Muster: eine zweite
+Freigabe prallt an `ermittleNaechstenSchritt` ab, hier explizit geprüft, weil
+`ANGENOMMEN` den Workflow-Status bewusst nicht ändert). Gate-Fälle (g6)-(g8)
+ergänzt, (g7)/(g8) auch der bislang fehlende GET-Dispatch (Reviewer-Befund:
+Block (g) testete zuvor ausschließlich POST). `npm run check` nach allen
+Fixes erneut grün.
+
+Nacharbeit (Verifikationsbefund, 15.09.2026, F-384, P1, zwei Anläufe): der
+'veraltet'/409-Schutz aus dem obigen QA-Fix setzte voraus, dass zwei
+Fassungen DESSELBEN Workflows sich unterscheidbar bezeugen lassen —
+durchgesetzt war das nirgends (`waehleWorkflowVorlage` liefert immer die
+feste Vorlagen-`version`, ein zweiter Routing-Versuch nach `ABGELEHNT` wäre
+wieder `version` 1 gewesen).
+
+Erster Anlauf (verworfen): `version` als Diskriminator erzwingen
+(`verarbeiteRouterErgebnis` setzt sie auf `bestand.version + 1`,
+`POST /api/workflows` lehnt `version <= bestand.version` mit 409 ab). Real
+gebaut, real gegen `npm run check` geprüft — brach dabei 25 bestehende
+Tests in F15/F22: `version` ist ein Plandatum, kein Fassungszähler, und der
+etablierte Reparaturweg (`baueReparaturEntwurf`,
+`public/leitstand/views/workflows.js`) reicht seit F15 WS-2c bewusst eine
+Fassung mit UNVERÄNDERTER `version` ein (F-226/F-227 verlangen das
+ausdrücklich). Der Diskriminator war falsch gewählt, nicht das Produkt —
+verworfen, bevor committet wurde.
+
+Zweiter Anlauf (gebaut): der Bezug einer Abnahme hängt am beurteilten
+BAU-ERGEBNIS, nicht an der Planfassung — `bezug.ausfuehrung_lauf_id` statt
+`bezug.workflow_version` ist der Diskriminator. `GET .../abnahme`:
+`entscheidung.status` ist `'ok'`, wenn `bezug.ausfuehrung_lauf_id` der
+`lauf_id` des aktuellen Ausführungsschritts entspricht, sonst `'veraltet'`.
+`POST .../abnahme`, Doppelentscheidungs-Riegel: 409 nur, wenn die
+bestehende Entscheidung denselben Ausführungslauf bezeugt. `bezug` selbst
+bleibt unverändert (alle drei Felder, `workflow_version` bleibt als reine
+Audit-Information drin) — kein Schemawechsel, kein Validator-Wechsel.
+`POST /api/workflows`, `verarbeiteRouterErgebnis`, `src/workflow/index.ts`
+und die F15/F22-Fixtures blieben unangetastet. `check-f23-abnahme.mjs`
+Block (g8) umgebaut: die korrigierte Fassung entsteht über den realen Weg
+(Ausführungsschritt bekommt einen ECHT NEUEN Lauf, nicht eine hochgezählte
+`version`) — Grünfall belegt ABGELEHNT → neuer Ausführungslauf → erneut
+ABGESCHLOSSEN → GET meldet `'veraltet'` → ANGENOMMEN gelingt → zweite
+Entscheidung zu demselben Ausführungslauf wird mit 409 abgewiesen →
+zusätzlich: eine Fassung OHNE neuen Ausführungslauf lässt `'ok'`
+unangetastet (ein erfolgreicher Ausführungsschritt behält im
+Reparaturentwurf seine `lauf_id`, `REPARIERBARE_SCHRITT_STATUS` enthält
+`ERFOLGREICH` nicht). Neues AK20 für den Gate-Nachweis von Block (g), der
+zuvor keinem AK zugeordnet war. `bezug`s Innenform im abnahme-Zweig des
+Schemas war bereits vollständig beschrieben (F-385, ohne Codeänderung als
+gelöst dokumentiert). `npm run check` grün.
+
+Reviewer-/QA-Pass auf diese Nacharbeit (frischer Kontext, 15.09.2026,
+F-046): `code-reviewer` freigegeben (mit Hinweisen, kein Blocker) — der
+erste, verworfene `version`-Anlauf ist vollständig entfernt (kein
+Restcode/keine veralteten Kommentare), Reihenfolge/Guards in
+`POST .../abnahme` real geprüft und korrekt, F-228-Zählung passt. `qa`
+NICHT freigegeben, ein kritischer Befund: `REPARIERBARE_SCHRITT_STATUS`
+(`public/leitstand/views/workflows.js`) lässt einen ERFOLGREICHEN
+Ausführungsschritt absichtlich unangetastet (Lineage-Grund) —
+`baueReparaturEntwurf`, der etablierte Reparaturweg, setzt ihn deshalb NIE
+automatisch zurück. Reicht ein Vorarbeiter nach ABGELEHNT den vorbelegten
+Entwurf unverändert ein, entsteht real KEIN neuer Ausführungslauf: der
+Automat hält mit `KLAERUNG_ERFORDERLICH` (Regel 3, ein bereits gelaufener
+Schritt startet nicht zweimal), `bezug.ausfuehrung_lauf_id` der alten
+Entscheidung bleibt gültig, `GET .../abnahme` zeigt weiter `'ok'` — dieselbe
+Sackgasse wie vor der ganzen Nacharbeit, nur unsichtbar, weil Block (g8) den
+Reparaturweg selbst nie durchläuft (schreibt die neue `lauf_id` direkt in
+die Fixture statt über `baueReparaturEntwurf`/einen echten Laufstart).
+Behoben: eine neue Warnung in `ermittleReparaturWarnungen`
+(`public/leitstand/views/workflows.js`, F-384-Kommentar dort) macht das
+Problem beim Öffnen eines Reparaturentwurfs sichtbar, statt es stillschweigend
+offenzulassen — bewusst additiv (keine Änderung an
+`REPARIERBARE_SCHRITT_STATUS` selbst, kein Risiko für F-219/F-223/F-240).
+Block (g8) und die zugehörigen Kommentare wurden zusätzlich entschärft: sie
+behaupten jetzt nur noch, die SERVER-Vergleichslogik über einen echten
+HTTP-Dispatch zu belegen (Muster (g5)/(g7)), nicht den realen
+Reparaturmechanismus selbst — das war vorher eine Überbehauptung
+("echter Reparaturweg"). `npm run check` grün.
+
+Kleiner, unkritischer Zusatzbefund aus demselben QA-Pass (TC-06, außerhalb
+des WS-2a-Scopes): fehlt in einer künftigen, strukturell anderen Vorlage der
+Schritt mit `rolle: 'ausfuehrung'` ganz, meldet `GET .../abnahme` eine
+bestehende Entscheidung als `'veraltet'` (Buttons erscheinen), während
+`POST .../abnahme` mit 409 ablehnt ("kein gelaufener Schritt mit rolle
+'ausfuehrung'") — inkonsistent, aber nur über eine frei editierte
+Reparaturfassung erreichbar und ausdrücklich Nicht-Ziel dieses Auftrags
+(„Änderung an workflow-vorlagen/*.json“). Nicht behoben, siehe F-386.
+
+WS-2b (ANPASSUNG_ANGEFORDERT-Bedienung, ADJUST-Folgeworkflow unter demselben
+Auftrag, AK7-Projektion, F-383) und WS-3 sind noch nicht begonnen.
 
 ### Reviewer-/QA-Pass (frischer Kontext, 14.09.2026)
 
@@ -180,13 +317,79 @@ festgehalten (Auftrag, 14.09.2026):
   selbstreferenzierende `@<schrittId>`-Referenz je als Rot-Fall, AK1/AK4
   zusätzlich über einen echten `POST /api/laeufe`-Dispatch belegt (nicht nur
   über direkte Funktionsaufrufe); `npm run check` grün.
-- **AK9** [WS-1b erfüllt, WS-2/WS-3 außerhalb dieses Auftrags]
+- **AK9** [WS-1b erfüllt, WS-2b/WS-3 außerhalb dieses Auftrags]
   Post-Build-Prüfschritt mit ausgewertetem Urteil im Automaten (löst
   F-351/F-377, WS-1b: `workflow-vorlagen/*.json` umgebaut,
   `ermittleNaechstenSchritt` Regel 1b, real belegt in
-  `scripts/check-f15-automat-real.mjs` Block (h)/(i)); `BLOCKIERT`-Wirkung,
-  ACCEPT/ADJUST/REJECT im Leitstand, ADJUST-Folgeworkflow unter demselben
-  Auftrag, Feature Review mit Stefan bleiben WS-2/WS-3 (Muster F22 AK8).
+  `scripts/check-f15-automat-real.mjs` Block (h)/(i)); ACCEPT/ADJUST/REJECT
+  im Leitstand teilweise erfüllt (ACCEPT/REJECT: WS-2a), ADJUST-Folgeworkflow
+  unter demselben Auftrag und Feature Review mit Stefan bleiben WS-2b/WS-3
+  (Muster F22 AK8).
+- **AK14** [WS-2a] `GET /api/workflows/<id>/abnahme` projiziert in einer
+  Antwort: Workflow-Status/-Version, das Urteil des Post-Build-Review-Laufs
+  (samt `befunde[]`/`empfehlung`, roh aus dessen Rohstrom über
+  `leseUrteilAusLaufakte`), die Änderungsübersicht des Ausführungsschritts
+  und eine etwaige bereits vorhandene Abnahme-Entscheidung. Jeder fehlende
+  Teil kommt als `null` mit benanntem Grund (z. B. `kein_review_schritt`,
+  `noch_nicht_gelaufen`, `nicht_vorhanden`), nie als 500 oder stillschweigend
+  leeres Feld — auch nicht bei einer strukturell ungültigen Fassung
+  (`schritte` fehlt/kein Array), Muster `GET /api/workflows/<id>`: eine
+  ungültige Fassung bleibt ansehbar. Eine vorhandene Entscheidung, deren
+  `bezug.ausfuehrung_lauf_id` NICHT der `lauf_id` des aktuellen
+  Ausführungsschritts entspricht, kommt als `status: 'veraltet'` statt
+  `'ok'` (QA-Pass 15.09.2026, TC-04; korrigierte Nacharbeit 15.09.2026,
+  F-384: der Diskriminator ist das beurteilte BAU-ERGEBNIS, NICHT
+  `workflow_version` — `version` ist ein Plandatum, kein Fassungszähler,
+  der etablierte Reparaturweg reicht bewusst eine Fassung mit
+  UNVERÄNDERTER `version` ein) — sonst bliebe der AK16-Reparaturpfad auf
+  UI-Ebene eine Sackgasse: die alte Entscheidung stünde nach ABGELEHNT →
+  GESTOPPT → Reparaturfassung mit neuem Bau → erneut ABGESCHLOSSEN für
+  immer als erledigt da, ohne dass je wieder ACCEPT/REJECT angeboten würde.
+- **AK15** `POST /api/workflows/<id>/abnahme` mit `ergebnis: 'ANGENOMMEN'`
+  ist nur bei Workflow-Status `ABGESCHLOSSEN` erfolgreich (sonst 409 mit
+  Grund) und ändert den Workflow-Status selbst NICHT.
+- **AK16** `ergebnis: 'ABGELEHNT'` ist bei Workflow-Status `ABGESCHLOSSEN`
+  ODER `KLAERUNG_ERFORDERLICH` erfolgreich und setzt den Workflow auf
+  `GESTOPPT` (Muster: der `ABGELEHNT`-Zweig von
+  `POST /api/workflows/<id>/freigabe`) — `GESTOPPT` bleibt der
+  Reparaturpfad, `GESPERRTE_ERSETZUNGS_STATUS`, `POST /api/workflows` und
+  `verarbeiteRouterErgebnis` bleiben unangetastet (Nacharbeit 15.09.2026,
+  F-384: ein erster Anlauf, den Reparaturpfad über eine erzwungene
+  `version`-Erhöhung abzusichern, wurde verworfen — er brach 25 bestehende
+  F15/F22-Tests, weil `version` seit F15 WS-2c bewusst NICHT bei jeder
+  Ersetzung steigen muss).
+- **AK17** `ergebnis: 'ANPASSUNG_ANGEFORDERT'` wird von diesem Endpunkt mit
+  400 abgelehnt und verweist auf F23 WS-2b — schemagültig laut
+  `EntscheidungAbnahmeV0Daten`, aber vom Server noch nicht bedient.
+- **AK18** Das Entscheidungsartefakt (`art: 'abnahme'`, Pflichtfeld
+  `bezug: {workflow_version, ausfuehrung_lauf_id, review_lauf_id}`) entsteht
+  VOR jeder Zustandsänderung (D2); `begruendung` ist Pflicht (400 ohne sie).
+  Eine zweite Entscheidung zu DEMSELBEN `ausfuehrung_lauf_id` wird mit 409
+  abgelehnt (QA-Pass 15.09.2026, TC-05) — eine Entscheidung zu einem
+  früheren Ausführungslauf blockiert die Abnahme eines neuen, korrigierten
+  Baus dagegen nicht (korrigiert in der Nacharbeit 15.09.2026, F-384: NICHT
+  `workflow_version`, s. AK14).
+- **AK19** Die Workflow-Detailansicht im Leitstand zeigt Änderungsübersicht,
+  Urteil (Schwere/Fundstelle/Beleg je Befund, Empfehlung) und bietet
+  ACCEPT/REJECT mit Pflichtbegründung, jeweils nur aktiviert, wenn der
+  Workflow-Status die Entscheidung überhaupt zulässt (Muster AK15/AK16);
+  ADJUST ist sichtbar, aber deaktiviert (Hinweis auf WS-2b). Liegt bereits
+  eine AKTUELLE Abnahme-Entscheidung vor (`bezug.ausfuehrung_lauf_id` des
+  aktuellen Ausführungsschritts), zeigt die Ansicht sie statt der
+  Schaltflächen; eine Entscheidung zu einem früheren Bau wird als solche
+  gekennzeichnet und blockiert die Schaltflächen nicht (QA-Pass 15.09.2026,
+  TC-04).
+- **AK20** Gate `scripts/check-f23-abnahme.mjs` Block (g) (g1-g8) grün:
+  ANGENOMMEN auf nicht abgeschlossenem Workflow (409), Abnahme ohne
+  Begründung (400), ANPASSUNG_ANGEFORDERT (400), Entscheidungsdaten art
+  'abnahme' ohne bezug (Validator), GET auf strukturell ungültiger Fassung
+  stürzt nicht ab, ANGENOMMEN- und GET-Grünfälle über einen echten Testserver-
+  Dispatch (Muster Block (c)/(d)), und (g8) der volle Reparaturpfad
+  ABGELEHNT → Reparaturfassung mit einem echt NEUEN Ausführungslauf →
+  erneut ABGESCHLOSSEN → GET zeigt die alte Entscheidung als 'veraltet' →
+  ANGENOMMEN gelingt → zweite Entscheidung zu demselben Ausführungslauf
+  abgelehnt → eine Fassung OHNE neuen Ausführungslauf lässt 'ok'
+  unangetastet (F-384); `npm run check` grün.
 
 ## Dependencies
 
@@ -205,9 +408,14 @@ Meilenstein-Gate, `docs/STATUS.md`).
   Pflichtfeld `art` auseinandergezogen).
 - **WS-1b** (gebaut): Vorlagen-Umbau (Post-Build-Prüfschritt in den
   Workflow-Vorlagen) und Urteilsauswertung im Automaten (löst F-351/F-377).
-- **WS-2**: Abnahme-View im Leitstand — ACCEPT/ADJUST/REJECT als
-  Entscheidungsartefakt (`art: abnahme`), `BLOCKIERT`-Wirkung,
-  ADJUST-Folgeworkflow unter demselben Auftrag.
+- **WS-2a** (dieser Auftrag, gebaut): Abnahme-Lesepfad (`GET
+  /api/workflows/<id>/abnahme`), -Schreibstelle (`POST` mit ACCEPT/REJECT
+  als Entscheidungsartefakt `art: abnahme`) und -View im Leitstand
+  (ACCEPT/REJECT bedienbar, ADJUST sichtbar/deaktiviert).
+- **WS-2b**: ANPASSUNG_ANGEFORDERT bedienbar machen, ADJUST-Folgeworkflow
+  unter demselben Auftrag, Projektion der F15-Freigabe (AK7) in die
+  Abnahme-Ansicht, `grenzen.max_replans` durchsetzen oder die Entscheidung
+  dagegen dokumentieren (F-383).
 - **WS-3**: Feature Review mit Stefan (realer Testlauf, Muster F22 AK8).
 
 ## Risiken

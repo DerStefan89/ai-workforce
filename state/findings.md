@@ -6655,3 +6655,148 @@ falls sich in der Praxis zeigt, dass Deploys ohnehin nie mit laufenden
 Workflows zusammenfallen.
 Status: offen.
 Feature/Run: F23 WS-1b, QA-Pass 15.09.2026.
+
+**F-383** · `TECH_DEBT` · P2 · offen
+Titel: `grenzen.max_replans` wird nirgends durchgesetzt.
+Beschreibung: `workflow-vorlagen/standard.json:11` setzt `max_replans: 1`,
+aber `scripts/leitstand-server.mjs` (Z. 290, 3174, 3576) hält das Feld an
+allen drei Stellen nur unangetastet weiter — keine davon zählt oder prüft
+es gegen einen Grenzwert. `grenzen.max_schritte` ist über `haltGrenze` die
+einzige real durchgesetzte Zählgrenze des Automaten (F15 WS-2c, a4);
+`max_replans` ist bislang reines Plandatum ohne Wirkung.
+Fundstelle: `workflow-vorlagen/standard.json:11`,
+`scripts/leitstand-server.mjs` (drei benannte Stellen).
+Auswirkung: der in F23 WS-2b vorgesehene ADJUST-Loop hätte ohne Durchsetzung
+keine Grenze — jeder ADJUST-Durchgang verbraucht reales Kontingent (Zeit,
+Kosten), ohne dass der Automat je anhält.
+Maßnahme: in WS-2b entscheiden, ob/wie `max_replans` durchgesetzt wird, und
+dann auch mit einem kalibrierten Rot-/Grünfall prüfen (ARCHITECTURE.md §8:
+eine neu behauptete Grenze trägt ihren Durchsetzungsgrad).
+Status: offen.
+Feature/Run: F23 WS-2a, Bauauftrag 15.09.2026.
+
+**F-384** · `BUG` · P1 · gelöst
+Titel: Die Abnahme-Entscheidung war nicht an das beurteilte Bau-Ergebnis
+gebunden — der Abnahme-Reparaturpfad (AK16) verhungert dadurch real.
+Beschreibung: `GET .../abnahme` und der Doppelentscheidungs-Riegel in
+`POST .../abnahme` verglichen ursprünglich `bezug.workflow_version` gegen
+`workflowDaten.version`, um eine veraltete von einer aktuellen
+Abnahme-Entscheidung zu unterscheiden. Nichts erzwang aber, dass sich
+`version` zwischen zwei Fassungen unterscheidet — `src/workflow/index.ts:306`
+fordert nur "ganze Zahl >= 1", `workflow-vorlagen/standard.json` trägt
+`version: 1` fest, und `waehleWorkflowVorlage` (`src/router/index.ts`)
+überschreibt `version` nicht. Folge: ABGELEHNT (V1) → GESTOPPT → erneut
+routen (wieder V1) → Lauf durch → ABGESCHLOSSEN — die alte Entscheidung
+galt weiter als `'ok'`, die View bot keine Schaltflächen, `POST` antwortete
+409. Der Workflow war dauerhaft nicht abnehmbar.
+Erster Lösungsversuch (verworfen, real gebaut und real wieder entfernt):
+`version` als erzwungener Fassungszähler — `verarbeiteRouterErgebnis` sollte
+sie auf `bestand.version + 1` setzen, `POST /api/workflows` eine
+eingereichte Fassung mit `version <= bestand.version` mit 409 ablehnen.
+`npm run check` zeigte real: das bricht 25 bestehende Tests in F15/F22 —
+`version` ist ein Plandatum, kein Fassungszähler, und der etablierte
+Reparaturweg (`baueReparaturEntwurf`, `public/leitstand/views/workflows.js`)
+reicht seit F15 WS-2c bewusst eine Fassung mit UNVERÄNDERTER `version` ein
+(F-226/F-227 verlangen das ausdrücklich). Der Diskriminator war falsch
+gewählt, nicht das Produkt.
+Fundstelle (korrigierter Fix): `scripts/leitstand-server.mjs` — GET
+.../abnahme (Projektion `entscheidungProjektion`) vergleicht
+`bezug.ausfuehrung_lauf_id` gegen die `lauf_id` des aktuellen
+Ausführungsschritts (`findeAusfuehrungsSchritt`); `status: 'ok'` bei
+Übereinstimmung, sonst `'veraltet'`. Der Doppelentscheidungs-Riegel in POST
+.../abnahme prüft dieselbe Gleichheit. `bezug` selbst, `POST /api/workflows`,
+`verarbeiteRouterErgebnis` und `src/workflow/index.ts` bleiben unangetastet.
+Auswirkung: ohne den (korrigierten) Fix wäre AK16s Reparaturpfad
+("`GESTOPPT` bleibt der Reparaturpfad") auf UI- UND API-Ebene eine
+Sackgasse geblieben — Fehler 1 aus dem QA-Pass 15.09.2026 (TC-04) blieb
+sonst ohne echten Boden, weil kein Codepfad im Produkt zwei
+unterscheidbare Bau-Ergebnisse für denselben Workflow erzeugte.
+Zwischenstand (QA-Pass 15.09.2026, kritischer Befund): die Server-Vergleichslogik
+allein schloss die Lücke NICHT. `REPARIERBARE_SCHRITT_STATUS`
+(`public/leitstand/views/workflows.js`) lässt einen ERFOLGREICHEN
+Ausführungsschritt bewusst unangetastet (Lineage-Grund) — `baueReparaturEntwurf`,
+der etablierte Reparaturweg, setzt ihn deshalb NIE automatisch zurück. Reicht ein
+Mensch nach `ABGELEHNT` den vorbelegten Entwurf unverändert ein, entsteht real
+KEIN neuer Ausführungslauf: der Automat hält mit `KLAERUNG_ERFORDERLICH` (Regel 3),
+`bezug.ausfuehrung_lauf_id` der alten Entscheidung bleibt gültig, `GET .../abnahme`
+zeigt weiter `'ok'` — dieselbe Sackgasse wie ursprünglich, nur unsichtbar, weil
+`check-f23-abnahme.mjs` Block (g8) den Reparaturweg selbst nie durchlief (schrieb
+die neue `lauf_id` direkt in die Fixture statt über `baueReparaturEntwurf`/einen
+echten Laufstart).
+Status: gelöst. Zusätzlich zur Server-Vergleichslogik: eine neue Warnung in
+`ermittleReparaturWarnungen` (`public/leitstand/views/workflows.js`, F-384-
+Kommentar dort) macht das Problem beim Öffnen eines Reparaturentwurfs sichtbar —
+bewusst additiv, keine Änderung an `REPARIERBARE_SCHRITT_STATUS` selbst (kein
+Risiko für F-219/F-223/F-240 und deren Tests). Real belegt in
+`scripts/check-f23-abnahme.mjs` Block (g8) für die Server-Vergleichslogik (echter
+HTTP-Dispatch, SIMULIERTES Reparaturergebnis — der Block prüft bewusst nicht den
+Reparaturweg selbst, das wäre check-f15-automat-real.mjs' Aufgabe): nach
+`ABGELEHNT` bekommt der Ausführungsschritt einen neuen Lauf, `GET .../abnahme`
+markiert die alte Entscheidung danach als `'veraltet'`, `ANGENOMMEN` für den neuen
+Bau gelingt, eine zweite Entscheidung zu demselben Ausführungslauf wird mit 409
+abgelehnt, und eine Fassung OHNE neuen Ausführungslauf lässt eine bestehende
+`'ok'`-Entscheidung unangetastet. `npm run check` grün (F15/F22 unverändert grün,
+keine Kollateralschäden). Die Warnung selbst ist NICHT gate-geprüft (reine
+Textanzeige, kein Verhaltensunterschied, kein `*.test.*` referenziert
+`ermittleReparaturWarnungen`) — folgt bei Bedarf in WS-2b.
+Vierter QA-Pass (frischer Kontext, 15.09.2026) fand real: die neue F-384-Prüfung
+in `ermittleReparaturWarnungen` las `daten.schritte` (die beim Öffnen des
+Reparaturentwurfs eingefrorene Originalfassung), nicht `entwurf?.schritte` (den
+live eingetippten Entwurf) — Muster der F-226-Prüfung direkt darüber, die das
+korrekt tut. Folge: die Warnung blieb stehen, selbst wenn der Mensch genau das
+tat, was sie verlangt (Schritt im Textfeld manuell auf `status:'OFFEN',
+lauf_id:null` zurückgesetzt) — die eigene Handlungsanweisung ließ sich nie
+"quittieren", was das Vertrauen in die Warnung hätte untergraben können.
+Behoben: `entwurf?.schritte` statt `daten.schritte`, mit `Array.isArray`-Guard.
+`npm run check` grün.
+Feature/Run: F23 WS-2a Nacharbeit, 15.09.2026 (Verifikationsbefund, vier
+Anläufe — Anlauf 1 [`version`] verworfen nach echtem Testlauf, Anlauf 2
+[`ausfuehrung_lauf_id` allein] von einem QA-Pass als unzureichend erkannt,
+Anlauf 3 [zusätzliche Warnung] mit Hinweisen freigegeben, Anlauf 4 [Warnung
+liest den Entwurf statt der eingefrorenen Fassung] von einem weiteren QA-Pass
+korrigiert und freigegeben).
+
+**F-385** · `TECH_DEBT` · P3 · gelöst
+Titel: `bezug`s Innenform stand im abnahme-Zweig von
+`schemas/kontrollzustand-entscheidung-payload.schema.json` nicht explizit
+neben dem Validator.
+Beschreibung: `abgeschwaechte_freigaben` (art `planaenderung`) beschreibt
+seine Item-Form (`schritt_id`, `vorher`, `nachher`, `additionalProperties:
+false`) als eigene Root-Eigenschaft, im if/then-Zweig nur mit `true`
+referenziert — `bezug` sollte laut Bauauftrag 15.09.2026 (Nacharbeit)
+demselben Muster folgen.
+Fundstelle: `schemas/kontrollzustand-entscheidung-payload.schema.json`.
+Status: gelöst — bereits mit der ursprünglichen F23-WS-2a-Umsetzung: die
+Root-Eigenschaft `bezug` trägt dort schon `type: object`,
+`additionalProperties: false`, `required: [workflow_version,
+ausfuehrung_lauf_id, review_lauf_id]` und die drei Feldtypen
+(`workflow_version` integer, `ausfuehrung_lauf_id` string minLength 1,
+`review_lauf_id` string|null), der abnahme-Zweig referenziert sie mit
+`"bezug": true` — byte-gleiches Muster zu `abgeschwaechte_freigaben`. Bei
+der Verifikation 15.09.2026 gegengeprüft, kein Codeänderung nötig. Der
+Validator (`src/entscheidung/index.ts`, `validiereEntscheidungsDaten`)
+prüft dieselbe Form bereits unabhängig vom Schema (D5, handgeschrieben).
+Feature/Run: F23 WS-2a, Bauauftrag 15.09.2026 / Verifikation 15.09.2026.
+
+**F-386** · `TECH_DEBT` · P3 · offen
+Titel: `GET`/`POST /api/workflows/<id>/abnahme` widersprechen sich, wenn
+eine Fassung keinen Schritt mit `rolle: 'ausfuehrung'` mehr trägt.
+Beschreibung: Fehlt `findeAusfuehrungsSchritt`s Treffer, liefert `GET
+.../abnahme` für eine bestehende Entscheidung `status: 'veraltet'`
+(`ausfuehrungSchritt?.lauf_id` ist `undefined`, stimmt nie mit einer
+vorhandenen `bezug.ausfuehrung_lauf_id` überein) — die View zeigt also
+ACCEPT/REJECT-Buttons. `POST .../abnahme` lehnt denselben Zustand dagegen
+strukturell mit 409 ab ("kein gelaufener Schritt mit rolle 'ausfuehrung'").
+Ein Klick auf einen angebotenen Button prallt damit unerwartet ab.
+Fundstelle: `scripts/leitstand-server.mjs` (`entscheidungProjektion` im
+GET-Handler; die `ausfuehrungSchritt === null`-Prüfung im POST-Handler).
+Auswirkung: nur erreichbar über eine frei editierte Reparaturfassung, die
+den `rolle: 'ausfuehrung'`-Schritt entfernt — keine der beiden
+Standard-Vorlagen (`workflow-vorlagen/standard.json`/`hoch.json`) tut das.
+Kein WS-2a-Blocker, außerhalb des Scopes ("Änderung an
+`workflow-vorlagen/*.json`" ist Nicht-Ziel dieses Auftrags).
+Maßnahme: bei Gelegenheit `GET .../abnahme` denselben Zustand ebenfalls als
+eigenen, benannten Grund (statt `'veraltet'`) ausweisen, damit die View
+keine folgenlosen Buttons anbietet.
+Status: offen.
+Feature/Run: F23 WS-2a Nacharbeit, QA-Pass 15.09.2026 (TC-06).

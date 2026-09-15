@@ -3279,16 +3279,17 @@ async function starteTestserver(optionen) {
   const schreiberTreffer = (quelltext.match(schreiberMuster) ?? []).length
   const gelesenMuster = new RegExp(`\\.${'eingefroren'}`, 'g')
   const gelesenTreffer = (quelltext.match(gelesenMuster) ?? []).length
-  // 9 = eine Definition + acht Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
-  // Nachbereitung, Stale-Heilung, Ablehnung, Freigabe, Stopp). 8 = je Aufrufstelle EIN
-  // Lesen des Feldes. Kommen beide Zahlen auseinander, hat ein Aufrufer das Feld
-  // vergessen — oder ein neuer Aufrufer ist dazugekommen, ohne es zu behandeln.
-  if (schreiberTreffer !== 9 || gelesenTreffer !== 8) {
+  // 10 = eine Definition + neun Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
+  // Nachbereitung, Stale-Heilung, Ablehnung, Freigabe, Stopp, seit F23 WS-2a die
+  // Abnahme-Ablehnung). 9 = je Aufrufstelle EIN Lesen des Feldes. Kommen beide Zahlen
+  // auseinander, hat ein Aufrufer das Feld vergessen — oder ein neuer Aufrufer ist
+  // dazugekommen, ohne es zu behandeln.
+  if (schreiberTreffer !== 10 || gelesenTreffer !== 9) {
     befunde.push(
-      `F-228: erwartet 9 Vorkommen des Workflow-Schreibers (1 Definition + 8 Aufrufe) und 8 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
+      `F-228: erwartet 10 Vorkommen des Workflow-Schreibers (1 Definition + 9 Aufrufe) und 9 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
     )
   } else {
-    console.log('✓ F-228: alle acht Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
+    console.log('✓ F-228: alle neun Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
   }
 
   // ─── Im Stopp wird ZUERST geschrieben, DANN abgebrochen (F-216, (b2)) ─────────
