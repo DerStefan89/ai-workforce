@@ -11,7 +11,7 @@ BLOCKIERT-Wirkung, Folge-Workflow)
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
@@ -206,7 +206,8 @@ bewusst UNDURCHGESETZT — F-383 dokumentiert geschlossen (Begründung: siehe
 zwingend freigegeben ist, nicht automatisch wiederholt). `npm run check` grün
 (483/483 Tests, alle Gates).
 
-WS-3 ist noch nicht begonnen.
+WS-3 (dieser Auftrag) ist gebaut: realer Testlauf mit Stefan im Leitstand,
+begleitet im Technical-Challenger-Chat (15.09.2026). Siehe AK27.
 
 ### Reviewer-/QA-Pass (frischer Kontext, 14.09.2026)
 
@@ -492,6 +493,44 @@ festgehalten (Auftrag, 14.09.2026):
   tragen `freigabe: 'ZWINGEND'` am Ausführungsschritt), aber ohne eigene
   Behandlung, falls die ZWINGEND-Pflicht künftig bezeugt zurückgenommen wird
   (F-226). Kein WS-2b-Blocker, siehe `state/findings.md`.
+- **AK27** [WS-3] Feature Review mit Stefan als realer Testlauf im Leitstand
+  (kein Gate-Fixture), begleitet im Technical-Challenger-Chat, 15.09.2026 —
+  Beleg für AK14/AK15/AK18/AK19 (WS-2a) und AK21-AK25 (WS-2b) am echten
+  System:
+  - Finding F-265 im Workboard über "Bearbeiten" geroutet (Click-to-Work).
+  - Erster Router-Lauf scheiterte real mit "Klassifikationstext ist kein
+    gültiges JSON" — Ursache: Server lief mit der Standard-Startvorlage
+    (`startvorlagen/beispielprojekt.json`, kein `worker.codex`-Block), Router
+    fiel auf den claude-code-Rückfall zurück und verließ die Rollenvorgabe
+    vollständig (Freitext-Agentenverhalten statt JSON) — derselbe Mechanismus
+    wie F-373, ausgelöst durch fehlende `LEITSTAND_STARTVORLAGE_PFAD` beim
+    Serverstart. Festgehalten als F-391.
+  - Nach Neustart mit
+    `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json` und
+    "Wiederholen": Router lief erfolgreich, wählte die Fast-Lane-Vorlage
+    (ein Schritt, kein Post-Build-Review) für den neuen Auftrag
+    `d45f7901-58c7-4808-a19b-5cba1d74bf45`. `GET .../abnahme` meldete dabei
+    korrekt "keinen Post-Build-Review-Schritt" statt 500 oder leer (AK14 real
+    belegt).
+  - Bau lief real durch, Ausführungsschritt ERFOLGREICH, änderte real
+    `scripts/leitstand-server.mjs` (behebt dabei F-265 selbst, s. dort).
+  - Abnahme-Block real geprüft: Änderungsübersicht sichtbar, Annehmen/
+    Ablehnen/Anpassung-anfordern aktiv (AK19).
+  - "Anpassung anfordern" mit Begründung → Workflow real auf
+    `WARTET_FREIGABE`, alte Entscheidung als "bezieht sich auf eine frühere
+    Fassung" markiert (AK14), KEIN automatischer Neustart (AK24 real belegt).
+  - Freigabe erteilt → neuer Lauf (andere `lauf_id`) startete real,
+    Ausführungsschritt wurde real zurückgesetzt und neu gebaut (AK22/AK23
+    real belegt), `version` unverändert, Artefaktkette gewachsen (AK22).
+  - Nach erneutem ABGESCHLOSSEN: "Annehmen" mit Begründung → Workflow-Status
+    blieb ABGESCHLOSSEN (AK15 real belegt).
+  - REJECT wurde in diesem Realtest NICHT zusätzlich live getestet
+    (Entscheidung: ausreichend über Gate (g8) mit echtem Dispatch und die
+    F-384-Nacharbeitsrunden abgedeckt).
+  Zusätzlich real gefunden: F-391 (`HARNESS_IMPROVEMENT`, P2, offen —
+  Standard-Startvorlage ohne `codex`) und F-392 (`PROCESS_IMPROVEMENT`, P3,
+  offen — Nav-Link "Runs" nennt den Workflow-/Abnahme-Bereich nicht). Beide
+  kein F23-Blocker, siehe `state/findings.md`.
 
 ## Dependencies
 
@@ -518,7 +557,8 @@ Meilenstein-Gate, `docs/STATUS.md`).
   gemacht, ADJUST-Folgefassung unter demselben `workflow_id`, Projektion
   des F15-Freigabehalts (F15 AK7) in die Abnahme-Ansicht, `grenzen.max_replans`
   bewusst NICHT durchgesetzt (F-383, dokumentiert entschieden).
-- **WS-3**: Feature Review mit Stefan (realer Testlauf, Muster F22 AK8).
+- **WS-3** (gebaut, real getestet): Feature Review mit Stefan (realer
+  Testlauf, Muster F22 AK8).
 
 ## Risiken
 
