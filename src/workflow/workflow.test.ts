@@ -408,6 +408,89 @@ for (const ausgang of ['VERWEIGERT', 'FEHLGESCHLAGEN'] as const) {
   })
 }
 
+// ─── Regel 1b: Post-Build-Review-Urteil (F23 WS-1b, löst F-351/F-377) ───────
+
+test("Ausgang 'fertig': ein Post-Build-Review mit Urteil BEREIT beendet den Workflow normal", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BEREIT' })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test("Ausgang 'starte': BEREIT_NACH_KORREKTUR setzt fort wie BEREIT", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    urteil: 'BEREIT_NACH_KORREKTUR',
+  })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test("Ausgang 'haltKlaerung': ein BLOCKIERT-Urteil setzt NICHT fort, obwohl der Lauf ERFOLGREICH klassifiziert wurde", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BLOCKIERT' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /'BLOCKIERT'/)
+})
+
+test("Ausgang 'haltKlaerung': ein BLOCKIERT-Urteil hält AUCH an, wenn der Review-Schritt nicht der letzte ist (QA-Pass 15.09.2026)", () => {
+  // Regressionsschutz für exakt die Form der jetzt abgelösten Vorlagen (Pre-Build-Review mit
+  // gesetztem nachfolger, F-351/F-377): ohne diesen Fall ließe sich Regel 1b unbemerkt hinter
+  // die nachfolger===null-Prüfung schieben, und ein BLOCKIERT-Urteil an einem NICHT-letzten
+  // Review-Schritt setzte still zum nächsten Schritt fort statt anzuhalten.
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BLOCKIERT' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /'BLOCKIERT'/)
+})
+
+test("Ausgang 'haltKlaerung': ein fehlendes Urteil hält an wie ein unbekanntes (ALLOWLIST, nicht Blacklist)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /fehlend/)
+})
+
+test("Ausgang 'haltKlaerung': ein unbekannter Urteilswert hält an", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'FREIGEGEBEN' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /'FREIGEGEBEN'/)
+})
+
+test('Regel 1b greift NICHT ohne output_schema ergebnis-code-reviewer — ein irrtümlich mitgesendetes urteil bleibt folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BLOCKIERT' })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1 schlägt Regel 1b: ein VERWEIGERTER Post-Build-Review hält über seinen Ausgang an, nicht über das (fehlende) Urteil', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'VERWEIGERT', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'VERWEIGERT', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
   // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
   // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.

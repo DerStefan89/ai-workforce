@@ -98,24 +98,29 @@ test('waehleWorkflowVorlage: fast-lane liefert genau einen ZWINGEND-Schreibschri
   assert.strictEqual(workflow.schritte[0].freigabe, 'ZWINGEND')
 })
 
-test('waehleWorkflowVorlage: standard liefert Review (AUTOMATISCH) gefolgt von Ausführung (ZWINGEND)', () => {
+test('waehleWorkflowVorlage: standard liefert Ausführung (ZWINGEND) gefolgt von Post-Build-Review (AUTOMATISCH) (F23 WS-1b)', () => {
   const workflow = waehleWorkflowVorlage(klassifikation('standard'), 'auftrag-123', 'Testziel', REPO_WURZEL)
   assert.strictEqual(workflow.schritte.length, 2)
-  assert.strictEqual(workflow.schritte[0].rolle, 'code-reviewer')
-  assert.strictEqual(workflow.schritte[0].freigabe, 'AUTOMATISCH')
-  assert.strictEqual(workflow.schritte[1].rolle, 'ausfuehrung')
-  assert.strictEqual(workflow.schritte[1].freigabe, 'ZWINGEND')
+  assert.strictEqual(workflow.schritte[0].rolle, 'ausfuehrung')
+  assert.strictEqual(workflow.schritte[0].freigabe, 'ZWINGEND')
+  assert.strictEqual(workflow.schritte[1].rolle, 'code-reviewer')
+  assert.strictEqual(workflow.schritte[1].output_schema, 'ergebnis-code-reviewer')
+  assert.strictEqual(workflow.schritte[1].freigabe, 'AUTOMATISCH')
+  assert.strictEqual(workflow.schritte[1].nachfolger, null)
   assert.strictEqual(workflow.schritte[0].nachfolger, workflow.schritte[1].schritt_id)
 })
 
-test('waehleWorkflowVorlage: hoch liefert drei ZWINGEND-Schritte (Architektur, Review, Ausführung)', () => {
+test('waehleWorkflowVorlage: hoch liefert Architektur (ZWINGEND) → Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) (F23 WS-1b)', () => {
   const workflow = waehleWorkflowVorlage(klassifikation('hoch'), 'auftrag-123', 'Testziel', REPO_WURZEL)
   assert.strictEqual(workflow.schritte.length, 3)
   assert.deepStrictEqual(
     workflow.schritte.map((s) => s.rolle),
-    ['architecture-advisor', 'code-reviewer', 'ausfuehrung']
+    ['architecture-advisor', 'ausfuehrung', 'code-reviewer']
   )
-  assert.ok(workflow.schritte.every((s) => s.freigabe === 'ZWINGEND'))
+  assert.strictEqual(workflow.schritte[2].output_schema, 'ergebnis-code-reviewer')
+  assert.strictEqual(workflow.schritte[2].freigabe, 'AUTOMATISCH')
+  assert.strictEqual(workflow.schritte[2].nachfolger, null)
+  assert.ok(workflow.schritte.slice(0, 2).every((s) => s.freigabe === 'ZWINGEND'))
 })
 
 test('waehleWorkflowVorlage: workflow_id/auftrag_id/ziel werden aus den Platzhaltern befüllt', () => {

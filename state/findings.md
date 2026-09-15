@@ -5895,7 +5895,7 @@ bleiben lesbar über `leiteArtAusHerkunftAb` (E-M4-6), keine Migration nötig.
 Status: gelöst.
 Feature/Run: M4-Challenge, 12.09.2026 → F23 WS-1a, 14.09.2026.
 
-**F-351** · `TECH_DEBT` · P1 · offen
+**F-351** · `TECH_DEBT` · P1 · gelöst
 Titel: Review→Execution-Handoff transportiert kein Urteil; keine
 Post-Build-Prüfstufe.
 Beschreibung: In `workflow-vorlagen/standard.json` und `hoch.json` läuft
@@ -5909,10 +5909,20 @@ Fundstelle: `workflow-vorlagen/*.json`,
 `src/workflow/index.ts` (`ermittleNaechstenSchritt`).
 Auswirkung: „Ausführung → Review → QA → schließen" (M4 Click-to-Work) ist
 mit den heutigen Vorlagen nicht ausführbar.
-Maßnahme: Post-Build-Schritt in den Vorlagen und Urteilsauswertung im
-Automaten in F23 WS-1 (E-M4-7); F15-Testfixtures unberührt lassen.
-Status: offen.
-Feature/Run: M4-Challenge, 12.09.2026.
+Maßnahme: `workflow-vorlagen/standard.json`/`hoch.json` tragen jetzt einen
+Post-Build-Review-Schritt (`code-reviewer`, `output_schema:
+'ergebnis-code-reviewer'`, `nachfolger: null`) statt eines Pre-Build-Reviews;
+`SchrittErgebnis` (`src/workflow/types.ts`) trägt optional `urteil`;
+`ermittleNaechstenSchritt` (Regel 1b) hält bei `urteil` ∉
+{BEREIT, BEREIT_NACH_KORREKTUR} an (haltKlaerung), statt allein auf
+`ERFOLGREICH` zu schauen. Real verdrahtet über
+`scripts/leitstand-server.mjs`s neue `leseUrteilAusLaufakte` (liest das Urteil
+worker-abhängig aus dem Rohstrom, Muster `verarbeiteRouterErgebnis`) — real
+belegt in `scripts/check-f15-automat-real.mjs` Block (h)/(i): ein Codex-Lauf,
+der selbst ERFOLGREICH klassifiziert wird, hält den Workflow bei `BLOCKIERT`
+trotzdem an.
+Status: gelöst.
+Feature/Run: M4-Challenge, 12.09.2026 → F23 WS-1b, 15.09.2026.
 
 **F-352** · `HARNESS_IMPROVEMENT` · P2 · behoben
 Titel: UI-Gate ist Quelltext-String-Matching; `public/` außerhalb Lint und
@@ -6471,7 +6481,7 @@ Bauort für dasselbe.
 Status: gelöst (14.09.2026).
 Feature/Run: F23 WS-0, 14.09.2026.
 
-**F-377** · `BUG` · P1 · offen
+**F-377** · `BUG` · P1 · gelöst
 Titel: Rolle `code-reviewer` läuft in den Standard-Workflow-Vorlagen VOR
 dem Bau, entgegen ihrem eigenen Rollenvertrag — ihr Urteil wird von
 niemandem ausgewertet.
@@ -6489,12 +6499,13 @@ index.ts` (`ermittleNaechstenSchritt`).
 Auswirkung: der bestehende Vor-Bau-Schritt täuscht eine Code-Review vor,
 die technisch nicht stattfinden kann (es gibt noch keinen Code) und deren
 Ergebnis ohnehin folgenlos bliebe.
-Maßnahme: F23 WS-1/WS-2 — echter Post-Build-Prüfschritt NACH `ausfuehrung`
-mit ausgewertetem Urteil; die bestehenden Vor-Bau-Schritte in den Vorlagen
-bleiben bis dahin unverändert (F15-Testfixtures, Vorlagen sind in F23 WS-0
-ausdrücklich Nicht-Ziel).
-Status: offen.
-Feature/Run: F23 WS-0, 14.09.2026.
+Maßnahme: beide Vorlagen ersetzen den Pre-Build-`code-reviewer`-Schritt durch
+einen echten Post-Build-Schritt NACH `ausfuehrung` (`eingaben` referenziert
+den WS-0-Platzhalter `artefakt:aenderungsuebersicht-@<Ausführungsschritt>`,
+sieht also den echten Diff statt nur des Auftragstexts) — deckungsgleich mit
+F-351, siehe dort für die Automaten-Verdrahtung.
+Status: gelöst.
+Feature/Run: F23 WS-0, 14.09.2026 → F23 WS-1b, 15.09.2026.
 
 **F-378** · `TECH_DEBT` · P2 · offen
 Titel: Kein Werkzeugsatz enthält ein lesendes Git/Bash — eine Rolle kann
@@ -6536,12 +6547,14 @@ ohne Kenntnis der erzeugenden Stelle bestimmen; ein künftiges Schema
 (F-350) muss diese fünf Familien vor der Vereinheitlichung erst sauber
 trennen, sonst wird die Überladung nur in ein Schema gegossen statt
 aufgelöst.
-<<<<<<< HEAD
-Maßnahme: F23 WS-1 — Schema und Validator für das Entscheidungsartefakt,
-dabei die fünf `ergebnis`-Familien explizit auseinanderziehen (löst F-350
-zusammen mit dieser Klärung).
-Status: offen.
-Feature/Run: F23 WS-0, 14.09.2026.
+Maßnahme: F23 WS-1a — neues Pflichtfeld `art` (`freigabe|stopp|
+planaenderung|terminal|kenntnisnahme|abnahme`) trennt die fünf Familien
+explizit auseinander; je `art` eine eigene, exklusive `ergebnis`-
+Wertemenge im Schema (`if`/`then`, `additionalProperties:false` je Zweig)
+und im Validator (löst F-350 zusammen mit dieser Klärung). Alle fünf
+Schreibstellen setzen `art` jetzt explizit.
+Status: gelöst.
+Feature/Run: F23 WS-0, 14.09.2026 → F23 WS-1a, 14.09.2026.
 
 **F-380** · `BUG` · P0 · gelöst
 Titel: `check-f20-leitstand-shell.mjs` hängt bei Chrome-Startfehler statt
@@ -6603,13 +6616,42 @@ feststellbar — für die Blockade-Frage dieses Findings ohne Bedeutung,
 `continue-on-error` fängt beide Fälle ab.
 Feature/Run: CI-Hänger-Fix, 14.09.2026 (eigener Branch
 `fix/ci-f20-chrome-haenger`, getrennt von F23).
-=======
-Maßnahme: F23 WS-1a — neues Pflichtfeld `art` (`freigabe|stopp|
-planaenderung|terminal|kenntnisnahme|abnahme`) trennt die fünf Familien
-explizit auseinander; je `art` eine eigene, exklusive `ergebnis`-
-Wertemenge im Schema (`if`/`then`, `additionalProperties:false` je Zweig)
-und im Validator (löst F-350 zusammen mit dieser Klärung). Alle fünf
-Schreibstellen setzen `art` jetzt explizit.
-Status: gelöst.
-Feature/Run: F23 WS-0, 14.09.2026 → F23 WS-1a, 14.09.2026.
->>>>>>> 689e125 (F23 WS-1a: Entscheidungs-Schema + Validator)
+
+**F-381** · `TECH_DEBT` · P2 · offen
+Titel: Kein Validator erzwingt `rolle: code-reviewer ⇒ output_schema:
+ergebnis-code-reviewer`.
+Beschreibung: Regel 1b in `ermittleNaechstenSchritt` koppelt die
+Urteilsauswertung bewusst an `output_schema === 'ergebnis-code-reviewer'`,
+nicht an `rolle` (Modul bleibt abhängigkeitsarm). Ein künftiger
+`code-reviewer`-Schritt OHNE dieses `output_schema` würde Regel 1b
+strukturell umgehen — sein `urteil` bliebe folgenlos, wie vor WS-1b.
+Aktuell betrifft das keine der beiden Vorlagen.
+Fundstelle: `src/workflow/index.ts` (Regel 1b), `src/rollen/index.ts`
+(`ROLLENVERTRAEGE.code-reviewer`).
+Auswirkung: still wiederkehrender F-377-Effekt bei einer künftigen
+Vorlagen-/Rollenänderung, falls niemand die Kopplung von Hand prüft.
+Maßnahme: bei Gelegenheit (kein WS-2-Blocker) einen Rot-Fall im
+F17-Rollenvertrag-Gate ergänzen, der `rolle === 'code-reviewer' &&
+output_schema !== 'ergebnis-code-reviewer'` ablehnt.
+Status: offen.
+Feature/Run: F23 WS-1b, QA-Pass 15.09.2026.
+
+**F-382** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Deploy-Timing-Lücke bei laufenden Alt-Workflows während eines
+`ermittleNaechstenSchritt`-Regeländerungs-Deploys.
+Beschreibung: Ein Server-Neustart mit neuer Automaten-Regel (hier Regel
+1b) wirkt sofort auf JEDEN gerade in Bearbeitung befindlichen Workflow,
+auch auf einen, der unter der alten Vorlagenform lief. Fail-closed (Halt
+statt Fortsetzung) macht das ungefährlich, aber unangekündigt — ein
+Vorarbeiter sieht einen unerwarteten Klärungsfall ohne Bezug zu seiner
+eigenen Aktion.
+Fundstelle: `scripts/leitstand-server.mjs` (`starteLaufUndVergiss`-
+Callback), genereller Deploy-Prozess.
+Auswirkung: kosmetisch/prozessual, kein Datenverlust, kein Sicherheitsrisiko.
+Maßnahme: [EMPFEHLUNG] vor einem Deploy mit Automaten-Regeländerung kurz
+`GET /api/workflows` prüfen (keine offenen Workflows auf betroffenen
+Schritt-Mustern) — kein Codeaufwand, reine Deploy-Checkliste. Verwerfen,
+falls sich in der Praxis zeigt, dass Deploys ohnehin nie mit laufenden
+Workflows zusammenfallen.
+Status: offen.
+Feature/Run: F23 WS-1b, QA-Pass 15.09.2026.
