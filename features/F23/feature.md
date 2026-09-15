@@ -179,8 +179,34 @@ bestehende Entscheidung als `'veraltet'` (Buttons erscheinen), während
 Reparaturfassung erreichbar und ausdrücklich Nicht-Ziel dieses Auftrags
 („Änderung an workflow-vorlagen/*.json“). Nicht behoben, siehe F-386.
 
-WS-2b (ANPASSUNG_ANGEFORDERT-Bedienung, ADJUST-Folgeworkflow unter demselben
-Auftrag, AK7-Projektion, F-383) und WS-3 sind noch nicht begonnen.
+WS-2b (dieser Auftrag) ist gebaut: `POST /api/workflows/<id>/abnahme` bedient
+`ergebnis: 'ANPASSUNG_ANGEFORDERT'` (AK21) — Statuspaar wie `ABGELEHNT`
+(`ABGESCHLOSSEN`/`KLAERUNG_ERFORDERLICH`, sonst 409), Entscheidungsartefakt
+VOR jeder Zustandsänderung, danach EIN Aufruf von
+`schreibeWorkflowFortschritt` (`schrittId: null`, Muster Workflow-Stopp) setzt
+Ausführungs- und Review-Schritt zurück und hängt die Eingabe-Referenz auf das
+Entscheidungsartefakt an den Ausführungsschritt (idempotent, AK23). Anders als
+der `ABGELEHNT`-Zweig (der `GESTOPPT` hart schreibt) leitet der Callback die
+Workflow-Ebene aus `ermittleNaechstenSchritt`/`workflowStatusZuAusgang` auf der
+zurückgesetzten Fassung ab (Muster der Nachbereitung eines Laufs) — der
+Ausführungsschritt trägt weiterhin `freigabe: 'ZWINGEND'`, der Workflow landet
+deshalb real auf `WARTET_FREIGABE` (AK24): `GESTOPPT` wäre hier die falsche
+Sperre, F15 AK7 verlangt ausdrücklich die erteilte Freigabe als einzige
+Auflösung eines ZWINGEND-Halts, keine neue Fassung, die ihn umgeht. `GET
+.../abnahme` projiziert den Halt additiv als `freigabeHalt` (AK25);
+`public/leitstand/views/workflows.js` zeigt dort einen Hinweis auf den Block
+„Bedienung" statt der Abnahme-Schaltflächen und aktiviert den ADJUST-Button
+(bisher `disabled`, Verweis auf WS-2b). `scripts/check-f15-workflow.mjs`
+F-228-Selbsttest auf die zehnte Aufrufstelle des Workflow-Schreibers
+nachgezogen (Muster WS-2a). Gate `scripts/check-f23-abnahme.mjs`: der frühere
+Rot-Fall (g3) — `ANPASSUNG_ANGEFORDERT` → 400 — ist entfallen (das Ergebnis
+wird jetzt bedient), Block (h) neu (AK26). `grenzen.max_replans` bleibt
+bewusst UNDURCHGESETZT — F-383 dokumentiert geschlossen (Begründung: siehe
+`state/findings.md`, kein Blocker, weil ein ADJUST menschlich ausgelöst und
+zwingend freigegeben ist, nicht automatisch wiederholt). `npm run check` grün
+(483/483 Tests, alle Gates).
+
+WS-3 ist noch nicht begonnen.
 
 ### Reviewer-/QA-Pass (frischer Kontext, 14.09.2026)
 
@@ -317,14 +343,14 @@ festgehalten (Auftrag, 14.09.2026):
   selbstreferenzierende `@<schrittId>`-Referenz je als Rot-Fall, AK1/AK4
   zusätzlich über einen echten `POST /api/laeufe`-Dispatch belegt (nicht nur
   über direkte Funktionsaufrufe); `npm run check` grün.
-- **AK9** [WS-1b erfüllt, WS-2b/WS-3 außerhalb dieses Auftrags]
+- **AK9** [WS-1b/WS-2a/WS-2b erfüllt, WS-3 außerhalb dieses Auftrags]
   Post-Build-Prüfschritt mit ausgewertetem Urteil im Automaten (löst
   F-351/F-377, WS-1b: `workflow-vorlagen/*.json` umgebaut,
   `ermittleNaechstenSchritt` Regel 1b, real belegt in
   `scripts/check-f15-automat-real.mjs` Block (h)/(i)); ACCEPT/ADJUST/REJECT
-  im Leitstand teilweise erfüllt (ACCEPT/REJECT: WS-2a), ADJUST-Folgeworkflow
-  unter demselben Auftrag und Feature Review mit Stefan bleiben WS-2b/WS-3
-  (Muster F22 AK8).
+  im Leitstand vollständig erfüllt (ACCEPT/REJECT: WS-2a; ADJUST-Folgefassung
+  unter demselben `workflow_id`: WS-2b, siehe AK21-AK26). Feature Review mit
+  Stefan bleibt WS-3 (Muster F22 AK8).
 - **AK14** [WS-2a] `GET /api/workflows/<id>/abnahme` projiziert in einer
   Antwort: Workflow-Status/-Version, das Urteil des Post-Build-Review-Laufs
   (samt `befunde[]`/`empfehlung`, roh aus dessen Rohstrom über
@@ -358,9 +384,11 @@ festgehalten (Auftrag, 14.09.2026):
   `version`-Erhöhung abzusichern, wurde verworfen — er brach 25 bestehende
   F15/F22-Tests, weil `version` seit F15 WS-2c bewusst NICHT bei jeder
   Ersetzung steigen muss).
-- **AK17** `ergebnis: 'ANPASSUNG_ANGEFORDERT'` wird von diesem Endpunkt mit
-  400 abgelehnt und verweist auf F23 WS-2b — schemagültig laut
-  `EntscheidungAbnahmeV0Daten`, aber vom Server noch nicht bedient.
+- **AK17** [WS-2a, überholt von AK21 in WS-2b] `ergebnis:
+  'ANPASSUNG_ANGEFORDERT'` wurde von diesem Endpunkt mit 400 abgelehnt und
+  verwies auf F23 WS-2b — schemagültig laut `EntscheidungAbnahmeV0Daten`,
+  aber vom Server noch nicht bedient. Seit WS-2b bedient der Endpunkt das
+  Ergebnis (AK21); die 400-Ablehnung selbst ist entfallen.
 - **AK18** Das Entscheidungsartefakt (`art: 'abnahme'`, Pflichtfeld
   `bezug: {workflow_version, ausfuehrung_lauf_id, review_lauf_id}`) entsteht
   VOR jeder Zustandsänderung (D2); `begruendung` ist Pflicht (400 ohne sie).
@@ -390,6 +418,80 @@ festgehalten (Auftrag, 14.09.2026):
   ANGENOMMEN gelingt → zweite Entscheidung zu demselben Ausführungslauf
   abgelehnt → eine Fassung OHNE neuen Ausführungslauf lässt 'ok'
   unangetastet (F-384); `npm run check` grün.
+- **AK21** [WS-2b] `POST /api/workflows/<id>/abnahme` nimmt `ergebnis:
+  'ANPASSUNG_ANGEFORDERT'` an — nur bei Workflow-Status `ABGESCHLOSSEN` oder
+  `KLAERUNG_ERFORDERLICH` (sonst 409, dasselbe Statuspaar wie `ABGELEHNT`),
+  Pflichtbegründung (Muster AK18), schreibt das Entscheidungsartefakt
+  (`art: 'abnahme'`, `bezug`) nach dem ACCEPT/REJECT-Muster VOR jeder
+  Zustandsänderung (D2).
+- **AK22** [WS-2b] Im selben Vorgang schreibt der Endpunkt über
+  `schreibeWorkflowFortschritt` (Aufruf mit `schrittId: null`, Muster
+  Workflow-Stopp) eine neue Fassung: Ausführungs- UND Review-Schritt auf
+  `status: 'OFFEN'`/`lauf_id: null`, `freigabe_erteilt` entfernt (nicht auf
+  `false` gesetzt — Muster `koerperOhneFreigaben` in `POST /api/workflows`),
+  `version`/`grenzen` unangetastet. `GESPERRTE_ERSETZUNGS_STATUS` und
+  `REPARIERBARE_SCHRITT_STATUS` bleiben unverändert. Die Workflow-Ebene
+  (`status`/`aktiver_schritt_id`/`grund`) wird NICHT hart geschrieben
+  (anders als beim `ABGELEHNT`-Zweig, der `GESTOPPT` fest setzt), sondern aus
+  einem Aufruf von `ermittleNaechstenSchritt` auf der zurückgesetzten
+  Fassung abgeleitet (`workflowStatusZuAusgang`, Muster der Nachbereitung
+  eines Laufs) — siehe AK24, warum `GESTOPPT` hier die falsche Sperre wäre.
+  Die alten `lauf_id`s bleiben in der Vorversion des Workflow-Artefakts
+  lesbar (append-only).
+- **AK23** [WS-2b] Der Ausführungsschritt der ADJUST-Fassung trägt
+  zusätzlich die Eingabe `artefakt:entscheidung-workflow-<id>-abnahme` —
+  über eine `includes`-Prüfung idempotent, ein zweiter ADJUST hängt sie
+  nicht doppelt an (real geprüft in `scripts/check-f23-abnahme.mjs` Block
+  (h4), über AK26 hinaus).
+- **AK24** [WS-2b] Nach einem ADJUST startet der Automat KEINEN
+  schreibenden Lauf von selbst: der Ausführungsschritt trägt weiterhin
+  `freigabe: 'ZWINGEND'` (`workflow-vorlagen/standard.json`), also liefert
+  `ermittleNaechstenSchritt` auf der zurückgesetzten Fassung `haltFreigabe`
+  und der Workflow landet real auf `WARTET_FREIGABE` (F15 AK7 — die erteilte
+  Freigabe bleibt die einzige Auflösung eines ZWINGEND-Halts, eine neue
+  Fassung ist keine Umgehung). Erst `POST /api/workflows/<id>/freigabe` mit
+  `FREIGEGEBEN` startet den Neubau.
+- **AK25** [WS-2b] `GET /api/workflows/<id>/abnahme` projiziert den
+  Freigabe-Halt als zusätzliches, additives Feld `freigabeHalt`
+  (`{schrittId, grund}` bei Workflow-Status `WARTET_FREIGABE`, sonst
+  `null`) — aus der abgelegten Fassung gelesen, kein zweiter Aufruf von
+  `ermittleNaechstenSchritt`. `public/leitstand/views/workflows.js` zeigt
+  dort einen Hinweis auf den Block „Bedienung" statt der
+  ACCEPT/REJECT/ADJUST-Schaltflächen (keine zweite Kopie der
+  Freigeben/Ablehnen-Bedienung, D5); der ADJUST-Button selbst ist jetzt
+  aktiviert (Statuspaar wie ABGELEHNT, nicht mehr `disabled`). Der
+  `'veraltet'`-Fall läuft über den bestehenden
+  `ausfuehrung_lauf_id`-Vergleich (F-384) — ein ADJUST setzt den
+  Ausführungsschritt auf `lauf_id: null`, eine bestehende Entscheidung wird
+  dadurch ohne neuen Code als `'veraltet'` erkannt.
+  QA-Pass 15.09.2026 (TC-05, behoben): `freigabeHalt` meldet JEDES
+  `WARTET_FREIGABE`, nicht nur eines nach einem ADJUST — derselbe Status
+  entsteht ebenso am ganz normalen zweiten ZWINGEND-Schritt vor dem
+  allerersten Bau (`workflow-vorlagen/hoch.json` hat zwei ZWINGEND-Schritte
+  hintereinander). Der ursprüngliche UI-Text unterstellte fälschlich "Neubau
+  nach einer Anpassung"; korrigiert auf einen ursprungsneutralen Hinweis.
+- **AK26** [WS-2b] Gate `scripts/check-f23-abnahme.mjs` Block (h) grün:
+  ADJUST ohne Begründung → 400 (h1), ADJUST bei unzulässigem
+  Workflow-Status → 409 (h2), ein Grünfall über echten HTTP-Dispatch (h3:
+  `ABGESCHLOSSEN` → ADJUST → beide Schritte zurückgesetzt → real
+  `WARTET_FREIGABE` → `GET .../abnahme` meldet `freigabeHalt` und
+  `entscheidung.status: 'veraltet'`, `grenzen` UND `version` vorher/nachher
+  byte-gleich — Nachtrag Verifikation 15.09.2026, F-390: die
+  `version`-Prüfung fehlte ursprünglich, obwohl AK22 sie ausdrücklich
+  verlangt),
+  zusätzlich (h4, über AK26 hinaus) die AK23-Idempotenz und (h5,
+  QA-Pass 15.09.2026, TC-06, über AK26 hinaus) ADJUST aus
+  `KLAERUNG_ERFORDERLICH` mit `aktiver_schritt_id` auf dem Review- statt
+  dem Ausführungsschritt (realer Ursprung: ein `BLOCKIERT`-Urteil, Regel
+  1b) — belegt, dass der ADJUST-Zweig den Cursor korrekt auf den
+  Ausführungsschritt überschreibt; `npm run check` grün (483/483 Tests,
+  alle Gates).
+  Verifikation 15.09.2026 fand zusätzlich F-389 (offen, P2): der ADJUST-Zweig
+  übernimmt `workflowStatusZuAusgang`s vollen Wertebereich, auch 'LAEUFT' für
+  den Ausgang 'starte' — heute strukturell unerreichbar (beide Vorlagen
+  tragen `freigabe: 'ZWINGEND'` am Ausführungsschritt), aber ohne eigene
+  Behandlung, falls die ZWINGEND-Pflicht künftig bezeugt zurückgenommen wird
+  (F-226). Kein WS-2b-Blocker, siehe `state/findings.md`.
 
 ## Dependencies
 
@@ -412,10 +514,10 @@ Meilenstein-Gate, `docs/STATUS.md`).
   /api/workflows/<id>/abnahme`), -Schreibstelle (`POST` mit ACCEPT/REJECT
   als Entscheidungsartefakt `art: abnahme`) und -View im Leitstand
   (ACCEPT/REJECT bedienbar, ADJUST sichtbar/deaktiviert).
-- **WS-2b**: ANPASSUNG_ANGEFORDERT bedienbar machen, ADJUST-Folgeworkflow
-  unter demselben Auftrag, Projektion der F15-Freigabe (AK7) in die
-  Abnahme-Ansicht, `grenzen.max_replans` durchsetzen oder die Entscheidung
-  dagegen dokumentieren (F-383).
+- **WS-2b** (dieser Auftrag, gebaut): ANPASSUNG_ANGEFORDERT bedienbar
+  gemacht, ADJUST-Folgefassung unter demselben `workflow_id`, Projektion
+  des F15-Freigabehalts (F15 AK7) in die Abnahme-Ansicht, `grenzen.max_replans`
+  bewusst NICHT durchgesetzt (F-383, dokumentiert entschieden).
 - **WS-3**: Feature Review mit Stefan (realer Testlauf, Muster F22 AK8).
 
 ## Risiken

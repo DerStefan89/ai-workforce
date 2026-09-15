@@ -3,7 +3,8 @@
  * Datei: scripts/check-f23-abnahme.mjs
  *
  * Zweck: Abnahme-Gate (F23, features/F23/feature.md) — WS-0 (Änderungsübersicht),
- * WS-1a (Entscheidungs-Schema) und WS-2a (Abnahme-Lesepfad/-Schreibstelle/-View):
+ * WS-1a (Entscheidungs-Schema), WS-2a (Abnahme-Lesepfad/-Schreibstelle/-View)
+ * und WS-2b (ADJUST-Loop):
  *
  * (0) Schema-Beispiele gegen validiereAenderungsuebersichtDaten (Muster
  *     check-f22-click-to-work.mjs).
@@ -35,9 +36,12 @@
  *     dahin nur über src/entscheidung/entscheidung.test.ts abgedeckt,
  *     nicht über die Schema-Beispiele) und eine für die neue
  *     abnahme-Sonderregel (Pflichtfeld bezug, F23 WS-2a).
- * (g) [F23 WS-2a] GET/POST /api/workflows/<id>/abnahme: vier Rot-Fälle
+ * (g) [F23 WS-2a] GET/POST /api/workflows/<id>/abnahme: drei Rot-Fälle
  *     (ANGENOMMEN auf nicht abgeschlossenem Workflow, Abnahme ohne
- *     Begründung, ANPASSUNG_ANGEFORDERT, Entscheidungsdaten ohne bezug),
+ *     Begründung, Entscheidungsdaten ohne bezug — der vierte, ursprünglich
+ *     hier stehende Rot-Fall für ANPASSUNG_ANGEFORDERT (400, "folgt in
+ *     WS-2b") ist mit WS-2b entfallen: der Endpunkt bedient das Ergebnis
+ *     jetzt, siehe Block (h)),
  *     ein POST-Grünfall (Entscheidungsartefakt mit korrektem bezug,
  *     Workflow-Status unverändert), ein Absturz-Regressionstest für GET auf
  *     einer strukturell ungültigen Fassung, ein GET-Grünfall (volle
@@ -53,6 +57,20 @@
  *     Lücke, dass ein ERFOLGREICHER Ausführungsschritt ohne manuellen
  *     Eingriff nie neu startet, schließt stattdessen eine neue Warnung in
  *     ermittleReparaturWarnungen (public/leitstand/views/workflows.js).
+ * (h) [F23 WS-2b, AK21-AK26] POST .../abnahme mit ergebnis
+ *     'ANPASSUNG_ANGEFORDERT': zwei Rot-Fälle (ohne Begründung -> 400, bei
+ *     unzulässigem Workflow-Status -> 409) und ein Grünfall über einen
+ *     echten Dispatch (ABGESCHLOSSEN -> ADJUST -> Ausführungs- und
+ *     Review-Schritt zurückgesetzt, Eingabe-Referenz auf das
+ *     Entscheidungsartefakt gesetzt -> Workflow landet real auf
+ *     WARTET_FREIGABE, F15 AK7 hält am weiterhin ZWINGEND-Schritt, kein
+ *     automatischer Lauf, AK24 -> GET .../abnahme meldet den Freigabe-Halt
+ *     UND markiert die alte Entscheidung als 'veraltet' -> grenzen UND
+ *     version bleiben byte-gleich, F-383/F-390), plus zwei Zusatzfälle
+ *     über AK26 hinaus: (h4) für
+ *     AK23 (ein zweiter ADJUST hängt die Eingabe-Referenz nicht doppelt an)
+ *     und (h5, QA-Pass 15.09.2026, TC-06) ADJUST aus KLAERUNG_ERFORDERLICH
+ *     mit dem Cursor auf dem Review- statt dem Ausführungsschritt.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -367,9 +385,10 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
 
 // ─── (g) GET/POST /api/workflows/<id>/abnahme (F23 WS-2a) ───────────────────
 //
-// (g1)-(g4) Rot: ANGENOMMEN auf einem nicht abgeschlossenen Workflow (409), Abnahme ohne
-// Begründung (400), ANPASSUNG_ANGEFORDERT (400, verweist auf F23 WS-2b), Entscheidungsdaten art
-// 'abnahme' ohne bezug (Validator, direkt).
+// (g1)/(g2)/(g4) Rot: ANGENOMMEN auf einem nicht abgeschlossenen Workflow (409), Abnahme ohne
+// Begründung (400), Entscheidungsdaten art 'abnahme' ohne bezug (Validator, direkt). Der frühere
+// (g3) — ANPASSUNG_ANGEFORDERT (400, verweist auf F23 WS-2b) — ist mit WS-2b entfallen: der
+// Endpunkt bedient das Ergebnis jetzt, siehe Block (h).
 // (g5) Grün: ein echter POST .../abnahme-Dispatch über einen Testserver (Muster Block (c)/(d))
 // registriert ein Entscheidungsartefakt mit korrektem bezug und lässt den Workflow-Status
 // unverändert.
@@ -521,29 +540,7 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
   }
 }
 
-// (g3) Rot: ANPASSUNG_ANGEFORDERT -> 400, verweist auf F23 WS-2b
-{
-  const basisVerzeichnis = `kontrollzustand-test-f23-g3-${randomUUID()}`
-  raeumeVerzeichnis(basisVerzeichnis)
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
-  try {
-    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
-    const { workflowId } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
-    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
-      method: 'POST',
-      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Test.' }),
-    })
-    const koerper = await antwort.json().catch(() => ({}))
-    if (antwort.status !== 400 || !String(koerper.grund ?? '').includes('WS-2b')) {
-      befunde.push(`(g3) 'ANPASSUNG_ANGEFORDERT': erwartet 400 mit Verweis auf F23 WS-2b, erhalten ${antwort.status} ${JSON.stringify(koerper)}`)
-    } else {
-      console.log("✓ (g3) 'ANPASSUNG_ANGEFORDERT' wird mit 400 abgelehnt und verweist auf F23 WS-2b.")
-    }
-  } finally {
-    await schliessen()
-    raeumeVerzeichnis(basisVerzeichnis)
-  }
-}
+// (g3) entfallen mit F23 WS-2b (ANPASSUNG_ANGEFORDERT ist jetzt bedienbar) — siehe Block (h).
 
 // (g4) Rot: Entscheidungsdaten art 'abnahme' ohne bezug (Validator) — direkter Aufruf, kein HTTP nötig.
 {
@@ -788,6 +785,281 @@ function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowI
               )
             }
           }
+        }
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (h) POST /api/workflows/<id>/abnahme, ergebnis ANPASSUNG_ANGEFORDERT (F23 WS-2b, AK21-AK26) ──
+//
+// (h1) Rot: ADJUST ohne Begründung -> 400 (Muster (g2)).
+// (h2) Rot: ADJUST bei unzulässigem Workflow-Status (hier OFFEN) -> 409 (Muster (g1)).
+// (h3) Grün, echter HTTP-Dispatch: ABGESCHLOSSEN -> ADJUST -> Ausführungs- UND Review-Schritt
+//      zurück auf 'OFFEN'/lauf_id null, Ausführungsschritt trägt die neue Eingabe-Referenz -> der
+//      Workflow landet real auf WARTET_FREIGABE (F15 AK7 hält am ZWINGEND-Schritt, kein
+//      automatischer Lauf, AK24) -> GET .../abnahme meldet freigabeHalt UND markiert die alte
+//      Entscheidung als 'veraltet' (bezug.ausfuehrung_lauf_id zeigt auf die jetzt zurückgesetzte
+//      lauf_id null) -> grenzen UND version bleiben byte-gleich (AK22, kein Replan-Verbrauch,
+//      F-383/F-390).
+// (h4) Zusatzfall (über AK26 hinaus, direkt für AK23): eine bereits vorhandene Eingabe-Referenz
+//      auf das Entscheidungsartefakt wird bei ADJUST nicht doppelt angehängt (Idempotenz).
+// (h5) Zusatzfall (QA-Pass 15.09.2026, TC-06, über AK26 hinaus): ADJUST aus KLAERUNG_ERFORDERLICH
+//      mit aktiver_schritt_id auf dem REVIEW-Schritt (realer Ursprung: ein BLOCKIERT-Urteil, Regel
+//      1b) — belegt, dass der ADJUST-Zweig aktiver_schritt_id korrekt auf den Ausführungsschritt
+//      überschreibt, statt den alten Review-Cursor zu übernehmen. Eigener Block, s. u.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-h-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const { workflowId } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
+
+    // (h1) Rot: ohne Begründung -> 400.
+    const ohneBegruendung = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT' }),
+    })
+    if (ohneBegruendung.status !== 400) {
+      befunde.push(`(h1) ADJUST ohne Begründung: erwartet 400, erhalten ${ohneBegruendung.status} (${JSON.stringify(await ohneBegruendung.json().catch(() => ({})))})`)
+    } else {
+      console.log('✓ (h1) ADJUST ohne Begründung wird mit 400 abgelehnt (Pflichtfeld).')
+    }
+
+    // (h2) Rot: unzulässiger Workflow-Status (OFFEN) -> 409.
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const profilReferenz = leiteProfilReferenzAb(vorlage)
+    const offenerWorkflowId = `f23-ws2b-gate-h2-${randomUUID()}`
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: offenerWorkflowId,
+        auftrag_id: 'auftrag-f23-ws2b-gate-fixture',
+        version: 1,
+        ziel: 'Gate-Fixture (h2): nicht abgeschlossener Workflow.',
+        status: 'OFFEN',
+        aktiver_schritt_id: 'schritt-1-ausfuehrung',
+        grenzen: { max_schritte: 6, max_replans: 1 },
+        schritte: [
+          {
+            schritt_id: 'schritt-1-ausfuehrung',
+            rolle: 'ausfuehrung',
+            werkzeugsatz: 'schreibend',
+            worker: 'claude-code',
+            modell: 'claude-sonnet-5',
+            eingaben: [],
+            output_schema: null,
+            freigabe: 'ZWINGEND',
+            risiko: 'Gate-Fixture, kein reales Risiko.',
+            zeitgrenze_ms: 600000,
+            nachfolger: null,
+            status: 'OFFEN',
+            lauf_id: null,
+          },
+        ],
+      },
+      profilReferenz,
+      ladeOptionen
+    )
+    const unzulaessig = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(offenerWorkflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Test.' }),
+    })
+    if (unzulaessig.status !== 409) {
+      befunde.push(`(h2) ADJUST auf status OFFEN: erwartet 409, erhalten ${unzulaessig.status} (${JSON.stringify(await unzulaessig.json().catch(() => ({})))})`)
+    } else {
+      console.log("✓ (h2) ADJUST bei unzulässigem Workflow-Status (OFFEN) wird mit 409 abgelehnt.")
+    }
+
+    // (h3) Grün: echter Dispatch über den vollen Weg.
+    const bestandVorher = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+    const grenzenVorher = JSON.stringify(bestandVorher.daten.grenzen)
+    const versionVorher = bestandVorher.daten.version
+
+    const adjust = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Bitte den Logger-Aufruf noch ergänzen.' }),
+    })
+    const adjustKoerper = await adjust.json().catch(() => ({}))
+    if (adjust.status !== 200 || adjustKoerper.status !== 'WARTET_FREIGABE') {
+      befunde.push(`(h3) ADJUST: erwartet 200 mit status 'WARTET_FREIGABE', erhalten ${adjust.status} ${JSON.stringify(adjustKoerper)}`)
+    } else {
+      const bestandNachher = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      const schrittAusfuehrung = bestandNachher.daten.schritte.find((s) => s.schritt_id === 'schritt-1-ausfuehrung')
+      const schrittReview = bestandNachher.daten.schritte.find((s) => s.schritt_id === 'schritt-2-review')
+      const abnahmeArtefaktRef = `artefakt:entscheidung-workflow-${workflowId}-abnahme`
+      const zuruecksetzungKorrekt =
+        bestandNachher.daten.status === 'WARTET_FREIGABE' &&
+        schrittAusfuehrung?.status === 'OFFEN' &&
+        schrittAusfuehrung?.lauf_id === null &&
+        !('freigabe_erteilt' in schrittAusfuehrung) &&
+        schrittAusfuehrung?.eingaben.includes(abnahmeArtefaktRef) &&
+        schrittReview?.status === 'OFFEN' &&
+        schrittReview?.lauf_id === null &&
+        JSON.stringify(bestandNachher.daten.grenzen) === grenzenVorher &&
+        bestandNachher.daten.version === versionVorher
+      if (!zuruecksetzungKorrekt) {
+        befunde.push(`(h3) ADJUST: Fortschreibung stimmt nicht, erhalten ${JSON.stringify(bestandNachher.daten)}`)
+      } else {
+        const getDanach = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+        const koerperDanach = await getDanach.json().catch(() => null)
+        if (
+          koerperDanach?.workflowStatus !== 'WARTET_FREIGABE' ||
+          koerperDanach?.freigabeHalt?.schrittId !== 'schritt-1-ausfuehrung' ||
+          koerperDanach?.entscheidung?.status !== 'veraltet'
+        ) {
+          befunde.push(`(h3) GET .../abnahme nach ADJUST: erwartet freigabeHalt + entscheidung 'veraltet', erhalten ${JSON.stringify(koerperDanach)}`)
+        } else {
+          console.log(
+            "✓ (h3) echter POST .../abnahme-Dispatch (ANPASSUNG_ANGEFORDERT): Ausführungs- und Review-Schritt zurückgesetzt, Eingabe-Referenz gesetzt, Workflow landet auf WARTET_FREIGABE (F15 AK7, kein automatischer Lauf), grenzen UND version unverändert (AK22, F-383/F-390), GET .../abnahme meldet freigabeHalt und 'veraltet'."
+          )
+
+          // (h4) Zusatzfall: ein zweiter ADJUST, dessen Ausführungsschritt die Eingabe-Referenz
+          // aus (h3) bereits trägt, hängt sie nicht doppelt an (AK23) — direkt gegen die
+          // Schreibstelle geprüft, ohne den vollen Freigabe-/Neubau-Umweg: der Workflow wird dafür
+          // auf ABGESCHLOSSEN mit einem NEUEN Ausführungslauf zurückgeschrieben (Muster (g8)s
+          // simuliertes Reparaturergebnis — ein echt neuer Lauf ist nötig, sonst lehnt (5) mangels
+          // lauf_id oder der Doppelentscheidungs-Riegel (5b) mangels neuem Bau-Ergebnis ab), die
+          // Eingaben-Liste selbst bleibt dabei unverändert (die Referenz steht schon drin).
+          const ausfuehrungLaufIdFuerZweitenBau = `f23-ws2b-gate-h4-ausfuehrung-2-${randomUUID()}`
+          registriereWorkflow(
+            {
+              ...bestandNachher.daten,
+              status: 'ABGESCHLOSSEN',
+              aktiver_schritt_id: null,
+              schritte: bestandNachher.daten.schritte.map((schritt) =>
+                schritt.schritt_id === 'schritt-1-ausfuehrung'
+                  ? { ...schritt, status: 'ERFOLGREICH', lauf_id: ausfuehrungLaufIdFuerZweitenBau }
+                  : { ...schritt, status: 'ERFOLGREICH', lauf_id: `f23-ws2b-gate-h4-review-2-${randomUUID()}` }
+              ),
+            },
+            profilReferenz,
+            ladeOptionen
+          )
+          const zweitesAdjust = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+            method: 'POST',
+            body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Zweite Anpassung, prüft Idempotenz der Eingabe-Referenz.' }),
+          })
+          if (zweitesAdjust.status !== 200) {
+            befunde.push(`(h4) zweiter ADJUST: erwartet 200, erhalten ${zweitesAdjust.status} (${JSON.stringify(await zweitesAdjust.json().catch(() => ({})))})`)
+          } else {
+            const bestandNachZweitem = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+            const eingabenNachZweitem = bestandNachZweitem.daten.schritte.find((s) => s.schritt_id === 'schritt-1-ausfuehrung')?.eingaben ?? []
+            const anzahlReferenz = eingabenNachZweitem.filter((e) => e === abnahmeArtefaktRef).length
+            if (anzahlReferenz !== 1) {
+              befunde.push(`(h4) zweiter ADJUST: erwartet die Eingabe-Referenz genau einmal, gefunden ${anzahlReferenz}x in ${JSON.stringify(eingabenNachZweitem)}`)
+            } else {
+              console.log('✓ (h4) ein zweiter ADJUST hängt die Eingabe-Referenz auf das Entscheidungsartefakt nicht doppelt an (AK23).')
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (h5) QA-Pass 15.09.2026 (TC-06): AK21 erlaubt ADJUST ausdrücklich auch bei Status
+// KLAERUNG_ERFORDERLICH, real erreicht über ein BLOCKIERT-Urteil (Regel 1b) — dabei steht
+// aktiver_schritt_id auf dem REVIEW-Schritt, nicht auf dem Ausführungsschritt, den der
+// Ausführungsschritt aber real gelaufen ist (ERFOLGREICH, eigene lauf_id). Belegt, dass der
+// ADJUST-Zweig aktiver_schritt_id korrekt auf den Ausführungsschritt überschreibt, statt den
+// alten (Review-)Cursor stehen zu lassen — genau die Art Zustandslogik, an der dieses Feature laut
+// F-384/TC-04/TC-05 bereits zweimal real brach.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-h5-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const profilReferenz = leiteProfilReferenzAb(vorlage)
+    const workflowId = `f23-ws2b-gate-h5-${randomUUID()}`
+    const ausfuehrungLaufId = `f23-ws2b-gate-h5-ausfuehrung-${randomUUID()}`
+    const reviewLaufId = `f23-ws2b-gate-h5-review-${randomUUID()}`
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: workflowId,
+        auftrag_id: 'auftrag-f23-ws2b-gate-h5-fixture',
+        version: 1,
+        ziel: 'Gate-Fixture (h5): KLAERUNG_ERFORDERLICH über ein BLOCKIERT-Urteil, Cursor auf dem Review-Schritt.',
+        status: 'KLAERUNG_ERFORDERLICH',
+        aktiver_schritt_id: 'schritt-2-review',
+        grund: "Schritt 'schritt-2-review' (ergebnis-code-reviewer) trägt Urteil 'BLOCKIERT' — Gate-Fixture.",
+        grenzen: { max_schritte: 6, max_replans: 1 },
+        schritte: [
+          {
+            schritt_id: 'schritt-1-ausfuehrung',
+            rolle: 'ausfuehrung',
+            werkzeugsatz: 'schreibend',
+            worker: 'claude-code',
+            modell: 'claude-sonnet-5',
+            eingaben: [],
+            output_schema: null,
+            freigabe: 'ZWINGEND',
+            risiko: 'Gate-Fixture, kein reales Risiko.',
+            zeitgrenze_ms: 600000,
+            nachfolger: 'schritt-2-review',
+            status: 'ERFOLGREICH',
+            lauf_id: ausfuehrungLaufId,
+          },
+          {
+            schritt_id: 'schritt-2-review',
+            rolle: 'code-reviewer',
+            werkzeugsatz: 'lesend',
+            worker: 'codex',
+            modell: 'gpt-6-astra',
+            eingaben: [],
+            output_schema: 'ergebnis-code-reviewer',
+            freigabe: 'AUTOMATISCH',
+            risiko: 'Gate-Fixture, kein reales Risiko.',
+            zeitgrenze_ms: 600000,
+            nachfolger: null,
+            status: 'ERFOLGREICH',
+            lauf_id: reviewLaufId,
+          },
+        ],
+      },
+      profilReferenz,
+      ladeOptionen
+    )
+
+    const adjust = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Review-Urteil BLOCKIERT — bitte den Zugriffsfehler beheben.' }),
+    })
+    const adjustKoerper = await adjust.json().catch(() => ({}))
+    if (adjust.status !== 200 || adjustKoerper.status !== 'WARTET_FREIGABE') {
+      befunde.push(`(h5) ADJUST aus KLAERUNG_ERFORDERLICH (Cursor auf Review-Schritt): erwartet 200 mit status 'WARTET_FREIGABE', erhalten ${adjust.status} ${JSON.stringify(adjustKoerper)}`)
+    } else {
+      const bestandNachher = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      const schrittAusfuehrung = bestandNachher.daten.schritte.find((s) => s.schritt_id === 'schritt-1-ausfuehrung')
+      const schrittReview = bestandNachher.daten.schritte.find((s) => s.schritt_id === 'schritt-2-review')
+      const korrekt =
+        bestandNachher.daten.status === 'WARTET_FREIGABE' &&
+        bestandNachher.daten.aktiver_schritt_id === 'schritt-1-ausfuehrung' &&
+        schrittAusfuehrung?.status === 'OFFEN' &&
+        schrittAusfuehrung?.lauf_id === null &&
+        schrittReview?.status === 'OFFEN' &&
+        schrittReview?.lauf_id === null
+      if (!korrekt) {
+        befunde.push(`(h5) ADJUST aus KLAERUNG_ERFORDERLICH: aktiver_schritt_id/Schrittfelder stimmen nicht, erhalten ${JSON.stringify(bestandNachher.daten)}`)
+      } else {
+        const getDanach = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+        const koerperDanach = await getDanach.json().catch(() => null)
+        if (koerperDanach?.freigabeHalt?.schrittId !== 'schritt-1-ausfuehrung') {
+          befunde.push(`(h5) GET .../abnahme nach ADJUST: erwartet freigabeHalt.schrittId 'schritt-1-ausfuehrung' (nicht der alte Review-Cursor), erhalten ${JSON.stringify(koerperDanach?.freigabeHalt)}`)
+        } else {
+          console.log(
+            "✓ (h5) ADJUST aus KLAERUNG_ERFORDERLICH mit Cursor auf dem Review-Schritt (BLOCKIERT-Urteil): aktiver_schritt_id wird korrekt auf den Ausführungsschritt überschrieben, nicht der alte Review-Cursor übernommen — Workflow landet real auf WARTET_FREIGABE für 'schritt-1-ausfuehrung'."
+          )
         }
       }
     }
