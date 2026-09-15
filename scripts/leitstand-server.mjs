@@ -1392,6 +1392,15 @@ function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
 /** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
 const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
 
+/**
+ * F-265: POST .../freigabe und POST .../stoppen liegen im selben Bedienfeld wie D13s
+ * ausdrückliches "Die Entscheidung wurde NICHT festgehalten" (Freigabe-Endpunkt) und die
+ * ausdrücklichen Gegenteil-Meldungen nach bereits erteilter Freigabe. Jede Ablehnung VOR dem
+ * ersten Schreibvorgang dieser beiden Endpunkte bekommt denselben Satz angehängt, statt zu
+ * schweigen — sonst liest sich das Schweigen neben der Nachbarmeldung als "vielleicht doch".
+ */
+const ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ = '. Die Entscheidung wurde NICHT festgehalten.'
+
 /** Spiegelt src/checkpoint-store/index.ts' pruefeLaufId (nicht exportiert) — dieselbe rein strukturelle Zeichenregel, kein zweiter fachlicher Regelsatz (D5). Fängt einen unzulässigen Wert ab, BEVOR laufIdBelegt() ihn ungeprüft in einen existsSync-Pfad einsetzt. */
 const LAUFID_UNZULAESSIGE_ZEICHEN = /[/\\]|\.\.|[\u0000-\u001f]/
 
@@ -4126,7 +4135,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/freigabe'.length)
       const workflowId = dekodiereSegment(rohId)
       if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
-        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4135,7 +4144,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const roh = await leseBody(req)
         body = JSON.parse(roh.length === 0 ? '{}' : roh)
       } catch (fehler) {
-        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4157,13 +4166,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // abgelegte Zustand.
       const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
       if (workflowVersion === null) {
-        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       const workflowDaten = workflowVersion.daten
       const verstoesse = validiereWorkflowDaten(workflowDaten)
       if (verstoesse.length > 0) {
-        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`, verstoesse })
         return
       }
 
@@ -4173,7 +4182,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // neuen Gate-Falls reproduziert; POST /api/workflows fängt dieselbe Klasse über
       // validiereWorkflowDaten ("Wurzel ist kein Objekt") ab.
       if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        sendeJson(res, 400, { grund: `Body muss ein JSON-Objekt sein${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       // schrittId-Form. Vor der SACHprüfung (3), aber nach dem Laden: ein kaputter Body auf
@@ -4181,7 +4190,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // 10.09.2026, V5). Ohne Schreibwirkung, und die Reihenfolge Laden→Validieren bleibt
       // damit wortgleich zum Startendpunkt — das ist der Tausch, der hier bewusst gemacht ist.
       if (typeof body.schrittId !== 'string' || body.schrittId.length === 0) {
-        sendeJson(res, 400, { grund: "'schrittId' muss ein nicht-leerer String sein" })
+        sendeJson(res, 400, { grund: `'schrittId' muss ein nicht-leerer String sein${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       // Tiefenverteidigung, keine Bequemlichkeit: schritt_id ist im Schema nur „nicht-leerer
@@ -4190,7 +4199,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // einem async-Handler, dessen Promise niemand einsammelt — Prozesstod statt 400, dieselbe
       // Klasse wie bei auftrag_id (Reviewer-Pass 10.09.2026).
       if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.schrittId)) {
-        sendeJson(res, 400, { grund: `'schrittId' enthält unzulässige Zeichen: ${JSON.stringify(body.schrittId)}` })
+        sendeJson(res, 400, { grund: `'schrittId' enthält unzulässige Zeichen: ${JSON.stringify(body.schrittId)}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4217,7 +4226,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       const ausgang = ermittleNaechstenSchritt(workflowDaten)
       if (ausgang.art !== 'haltFreigabe') {
         sendeJson(res, 409, {
-          grund: `Workflow '${workflowId}' hat keine offene Freigabefrage (${ausgang.art}): ${beschreibeAutomatAusgang(ausgang)}`,
+          grund: `Workflow '${workflowId}' hat keine offene Freigabefrage (${ausgang.art}): ${beschreibeAutomatAusgang(ausgang)}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`,
           art: ausgang.art,
         })
         return
@@ -4228,7 +4237,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Schritt A darf nie Schritt B starten.
       if (body.schrittId !== ausgang.schrittId) {
         sendeJson(res, 409, {
-          grund: `Freigabe nennt Schritt '${body.schrittId}', die offene Freigabefrage betrifft aber '${ausgang.schrittId}' — die Anzeige ist veraltet`,
+          grund: `Freigabe nennt Schritt '${body.schrittId}', die offene Freigabefrage betrifft aber '${ausgang.schrittId}' — die Anzeige ist veraltet${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`,
         })
         return
       }
@@ -4237,11 +4246,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       // und 'kenntnisnahme' (F-162): eine festgehaltene Menschenentscheidung ohne Begründung
       // ist ein Artefakt, das später niemand mehr einordnen kann.
       if (body.entscheidung !== 'FREIGEGEBEN' && body.entscheidung !== 'ABGELEHNT') {
-        sendeJson(res, 400, { grund: "'entscheidung' muss 'FREIGEGEBEN' oder 'ABGELEHNT' sein" })
+        sendeJson(res, 400, { grund: `'entscheidung' muss 'FREIGEGEBEN' oder 'ABGELEHNT' sein${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       if (typeof body.begruendung !== 'string' || body.begruendung.trim().length === 0) {
-        sendeJson(res, 400, { grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)" })
+        sendeJson(res, 400, { grund: `'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4458,7 +4467,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/stoppen'.length)
       const workflowId = dekodiereSegment(rohId)
       if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
-        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4467,7 +4476,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const roh = await leseBody(req)
         body = JSON.parse(roh.length === 0 ? '{}' : roh)
       } catch (fehler) {
-        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
@@ -4478,13 +4487,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ist, sondern der abgelegte Zustand.
       const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
       if (workflowVersion === null) {
-        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       const workflowDaten = workflowVersion.daten
       const verstoesse = validiereWorkflowDaten(workflowDaten)
       if (verstoesse.length > 0) {
-        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`, verstoesse })
         return
       }
 
@@ -4494,14 +4503,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Defekt, der in (b1) am Freigabe-Endpunkt real reproduziert wurde; er wiederholt sich
       // hier nicht.
       if (body === null || typeof body !== 'object' || Array.isArray(body)) {
-        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        sendeJson(res, 400, { grund: `Body muss ein JSON-Objekt sein${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
 
       // (3) Ist überhaupt etwas zu stoppen? ABGESCHLOSSEN und GESTOPPT sind es nicht.
       if (!STOPPBARE_WORKFLOW_STATUS.has(workflowDaten.status)) {
         sendeJson(res, 409, {
-          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — daran ist nichts zu stoppen (stoppbar: ${[...STOPPBARE_WORKFLOW_STATUS].join(', ')})`,
+          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — daran ist nichts zu stoppen (stoppbar: ${[...STOPPBARE_WORKFLOW_STATUS].join(', ')})${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}`,
           art: 'nichtStoppbar',
         })
         return
@@ -4511,7 +4520,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Stopp ist eine festgehaltene Menschenentscheidung, und er ist der Text, den derselbe
       // Mensch in drei Tagen liest, wenn er wissen will, warum die Kette steht.
       if (typeof body.begruendung !== 'string' || body.begruendung.trim().length === 0) {
-        sendeJson(res, 400, { grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)" })
+        sendeJson(res, 400, { grund: `'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
       const begruendung = body.begruendung
