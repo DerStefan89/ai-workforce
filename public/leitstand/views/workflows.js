@@ -8,7 +8,8 @@
  * `#/workflows/<id>` direkt verlinkbar (AK2) und zeigt dabei die Runs-View.
  * Deckt zwei der sechs Bedienflüsse ab, die laut F20 AK1 real unverändert
  * funktionieren müssen: Freigabe/Stopp und Reparaturfassung. Seit F23 WS-2a
- * zusätzlich die Abnahme (ACCEPT/REJECT, ADJUST sichtbar/deaktiviert).
+ * zusätzlich die Abnahme (ACCEPT/REJECT), seit WS-2b auch ADJUST bedienbar
+ * (Freigabe-Halt danach als Hinweis statt der Abnahme-Schaltflächen).
  *
  * Die Oberfläche entscheidet dabei NICHTS selbst (D5). Was angeboten wird,
  * hängt an zwei Aussagen des Servers: naechster.art (das Verdikt von
@@ -273,41 +274,60 @@ function renderUrteil(projektion) {
 /**
  * Der ACCEPT/REJECT/ADJUST-Teil des Abnahme-Blocks. Angeboten wird ausschließlich, was der
  * Server als möglich ausweist (D5, Muster renderWorkflowBedienung): 'ANGENOMMEN' nur bei
- * workflowStatus 'ABGESCHLOSSEN', 'ABGELEHNT' bei 'ABGESCHLOSSEN' oder 'KLAERUNG_ERFORDERLICH'.
- * ANPASSUNG_ANGEFORDERT bleibt sichtbar, aber deaktiviert (F23 WS-2b, Bauauftrag Punkt 5). Liegt
- * bereits eine AKTUELLE Entscheidung vor (status 'ok'), steht sie hier statt der Schaltflächen.
+ * workflowStatus 'ABGESCHLOSSEN', 'ABGELEHNT'/'ANPASSUNG_ANGEFORDERT' bei 'ABGESCHLOSSEN' oder
+ * 'KLAERUNG_ERFORDERLICH' (F23 WS-2b, AK21, dasselbe Statuspaar wie ABGELEHNT). Liegt bereits
+ * eine AKTUELLE Entscheidung vor (status 'ok'), steht sie hier statt der Schaltflächen. Meldet
+ * die Antwort einen freigabeHalt (AK25 — WARTET_FREIGABE, F15 AK7; NICHT nur nach einem ADJUST,
+ * s. Kommentar an der Herleitung in leitstand-server.mjs), zeigt dieser Block einen
+ * ursprungsneutralen Hinweis statt der Schaltflächen (QA-Pass 15.09.2026, TC-05): die eigentliche
+ * Bedienung (Freigeben/Ablehnen) liegt im Block „Bedienung" oben, nicht hier — eine zweite Kopie
+ * der Freigeben/Ablehnen-Knöpfe wäre eine zweite Fassung derselben Bedienung (D5).
  *
  * QA-Pass 15.09.2026, TC-04 (kritisch), korrigiert in der Nacharbeit (F-384): status 'veraltet'
  * bedeutet, die vorhandene Entscheidung bezeugt ein FRÜHERES BAU-ERGEBNIS
  * (bezug.ausfuehrung_lauf_id stimmt nicht mit dem lauf_id des aktuellen Ausführungsschritts
  * überein) — genau der Fall nach ABGELEHNT -> GESTOPPT -> Reparaturfassung mit einem neuen
- * Ausführungslauf -> erneut ABGESCHLOSSEN. NICHT workflow_version: version ist ein Plandatum,
- * kein Fassungszähler — der etablierte Reparaturweg (baueReparaturEntwurf unten) reicht bewusst
- * eine Fassung mit UNVERÄNDERTER version ein. Ohne die ausfuehrung_lauf_id-Unterscheidung bliebe
- * der in AK16 versprochene Reparaturpfad auf UI-Ebene eine Sackgasse: die alte Entscheidung
- * stünde für immer als "erledigt" da, und es gäbe nie wieder Buttons für den neuen Bau. Die alte
- * Entscheidung bleibt trotzdem sichtbar (Audit-Spur), nur als solche gekennzeichnet — nicht
- * stillschweigend durch neue Buttons ersetzt.
+ * Ausführungslauf -> erneut ABGESCHLOSSEN, UND (seit WS-2b) nach ANPASSUNG_ANGEFORDERT -> ein
+ * neuer Ausführungslauf über den freigegebenen Neubau. NICHT workflow_version: version ist ein
+ * Plandatum, kein Fassungszähler — der etablierte Reparaturweg (baueReparaturEntwurf unten)
+ * reicht bewusst eine Fassung mit UNVERÄNDERTER version ein. Ohne die
+ * ausfuehrung_lauf_id-Unterscheidung bliebe der in AK16 versprochene Reparaturpfad auf UI-Ebene
+ * eine Sackgasse: die alte Entscheidung stünde für immer als "erledigt" da, und es gäbe nie
+ * wieder Buttons für den neuen Bau. Die alte Entscheidung bleibt trotzdem sichtbar (Audit-Spur),
+ * nur als solche gekennzeichnet — nicht stillschweigend durch neue Buttons ersetzt.
  * @param workflowId - Kennung des angezeigten Workflows
  * @param workflowStatus - abnahme.workflowStatus aus GET .../abnahme
  * @param entscheidung - abnahme.entscheidung aus GET .../abnahme
+ * @param freigabeHalt - abnahme.freigabeHalt aus GET .../abnahme ({schrittId, grund} oder null)
  * @returns HTML-Block
  */
-function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung) {
+function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung, freigabeHalt) {
   if (entscheidung.status === 'ok') {
     return `<div class="unterabschnitt">
       <p><strong>Entscheidung:</strong> ${escapeHtml(entscheidung.ergebnis)} — ${escapeHtml(entscheidung.begruendung)}</p>
       <p class="unbekannt">Entschieden am ${escapeHtml(entscheidung.entschiedenAm)}</p>
     </div>`
   }
-  const kennung = escapeHtml(workflowId)
-  const angenommenErlaubt = workflowStatus === 'ABGESCHLOSSEN'
-  const abgelehntErlaubt = workflowStatus === 'ABGESCHLOSSEN' || workflowStatus === 'KLAERUNG_ERFORDERLICH'
-  const hinweis = angenommenErlaubt || abgelehntErlaubt ? '' : `<p class="unbekannt">Workflow-Status '${escapeHtml(workflowStatus)}' erlaubt derzeit keine Abnahme-Entscheidung.</p>`
   const vorherigeEntscheidung =
     entscheidung.status === 'veraltet'
       ? `<p class="unbekannt">Vorherige Entscheidung (bezieht sich auf eine frühere Fassung): ${escapeHtml(entscheidung.ergebnis)} am ${escapeHtml(entscheidung.entschiedenAm)} — ${escapeHtml(entscheidung.begruendung)}</p>`
       : ''
+  if (freigabeHalt !== null) {
+    // QA-Pass 15.09.2026 (TC-05): der Text darf NICHT unterstellen, dass WARTET_FREIGABE aus
+    // einem ADJUST stammt — derselbe Status entsteht ebenso am ganz normalen zweiten
+    // ZWINGEND-Schritt vor dem allerersten Bau (workflow-vorlagen/hoch.json hat zwei davon
+    // hintereinander). freigabeHalt kennt den Grund nicht, nur DASS gewartet wird — der Text
+    // bleibt deshalb bewusst ursprungsneutral.
+    return `<div class="unterabschnitt">
+      ${vorherigeEntscheidung}
+      <p>Der Workflow wartet auf eine menschliche Freigabe für Schritt <code>${escapeHtml(freigabeHalt.schrittId ?? '')}</code> — siehe Block „Bedienung" oben. Eine Abnahme-Entscheidung ist erst nach dieser Freigabe und dem Bau möglich.</p>
+    </div>`
+  }
+  const kennung = escapeHtml(workflowId)
+  const angenommenErlaubt = workflowStatus === 'ABGESCHLOSSEN'
+  const abgelehntErlaubt = workflowStatus === 'ABGESCHLOSSEN' || workflowStatus === 'KLAERUNG_ERFORDERLICH'
+  const anpassungErlaubt = abgelehntErlaubt
+  const hinweis = angenommenErlaubt || abgelehntErlaubt ? '' : `<p class="unbekannt">Workflow-Status '${escapeHtml(workflowStatus)}' erlaubt derzeit keine Abnahme-Entscheidung.</p>`
   return `<div class="unterabschnitt">
     ${vorherigeEntscheidung}
     <label for="wf-abnahme-begruendung">Begründung (Pflicht)</label>
@@ -315,7 +335,7 @@ function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung) {
     <div>
       <button class="wf-abnahme-aktion" data-aktion="ANGENOMMEN" data-workflow-id="${kennung}"${angenommenErlaubt ? '' : ' disabled'}>Annehmen</button>
       <button class="wf-abnahme-aktion" data-aktion="ABGELEHNT" data-workflow-id="${kennung}"${abgelehntErlaubt ? '' : ' disabled'}>Ablehnen</button>
-      <button class="wf-abnahme-aktion" data-aktion="ANPASSUNG_ANGEFORDERT" data-workflow-id="${kennung}" disabled title="Folgt in F23 WS-2b">Anpassung anfordern</button>
+      <button class="wf-abnahme-aktion" data-aktion="ANPASSUNG_ANGEFORDERT" data-workflow-id="${kennung}"${anpassungErlaubt ? '' : ' disabled'}>Anpassung anfordern</button>
     </div>
     ${hinweis}
   </div>`
@@ -333,7 +353,7 @@ function renderAbnahme(workflowId, abnahme) {
     <h4>Urteil (Post-Build-Review)</h4>
     ${renderUrteil(abnahme.urteil)}
     <h4>Entscheidung</h4>
-    ${renderAbnahmeEntscheidung(workflowId, abnahme.workflowStatus, abnahme.entscheidung)}
+    ${renderAbnahmeEntscheidung(workflowId, abnahme.workflowStatus, abnahme.entscheidung, abnahme.freigabeHalt ?? null)}
   </div>`
 }
 
@@ -912,27 +932,29 @@ async function fuehreWorkflowAktionAus(button) {
 }
 
 /**
- * Führt eine angeklickte Abnahme-Bedienung aus (F23 WS-2a). ANPASSUNG_ANGEFORDERT hat keinen
- * bedienbaren Button (disabled in renderAbnahmeEntscheidung) — die Prüfung hier ist nur Schutz
- * gegen ein synthetisches Klick-Event, kein zweiter Weg zum Ergebnis.
+ * Führt eine angeklickte Abnahme-Bedienung aus (F23 WS-2a/WS-2b). Die Prüfung der drei
+ * zulässigen Aktionen ist nur Schutz gegen ein synthetisches Klick-Event (der Button selbst
+ * steht disabled, wenn der Server-Status die Aktion nicht zulässt, s. renderAbnahmeEntscheidung)
+ * — kein zweiter Weg zum Ergebnis.
  * @param button - der geklickte .wf-abnahme-aktion-Knopf
  */
 async function fuehreAbnahmeAktionAus(button) {
   const workflowId = button.dataset.workflowId
   const aktion = button.dataset.aktion
-  if (aktion !== 'ANGENOMMEN' && aktion !== 'ABGELEHNT') return
+  if (aktion !== 'ANGENOMMEN' && aktion !== 'ABGELEHNT' && aktion !== 'ANPASSUNG_ANGEFORDERT') return
   zeigeAbnahmeMeldung(null)
   const begruendung = document.getElementById('wf-abnahme-begruendung').value
   if (begruendung.trim().length === 0) {
     zeigeAbnahmeMeldung('Die Begründung ist Pflicht — ohne sie wird die Abnahme-Entscheidung nicht festgehalten.')
     return
   }
-  await sendeAbnahmeBedienung(
-    workflowId,
-    { ergebnis: aktion, begruendung },
-    button,
-    aktion === 'ANGENOMMEN' ? 'Abnahme festgehalten.' : 'Ablehnung festgehalten — der Workflow ist gestoppt.'
-  )
+  const erfolgstext =
+    aktion === 'ANGENOMMEN'
+      ? 'Abnahme festgehalten.'
+      : aktion === 'ABGELEHNT'
+        ? 'Ablehnung festgehalten — der Workflow ist gestoppt.'
+        : 'Anpassung angefordert — der Neubau wartet auf Freigabe (siehe Block „Bedienung").'
+  await sendeAbnahmeBedienung(workflowId, { ergebnis: aktion, begruendung }, button, erfolgstext)
 }
 
 /** Klick-/Eingabe-Delegation der Workflow-Ansicht — jeder Container wird als Ganzes neu gerendert, die Zuhörer hängen deshalb am Container. */

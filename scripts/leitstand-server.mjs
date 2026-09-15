@@ -3381,6 +3381,19 @@ export function erzeugeRequestHandler(optionen = {}) {
               versionSequenz: abnahmeVersion.versionSequenz,
             }
 
+      // F23 WS-2b (AK25): jedes WARTET_FREIGABE ist ein Freigabe-Halt (F15 AK7,
+      // ZWINGEND-Schritt) — NICHT ausschließlich der nach einem ADJUST (POST .../abnahme,
+      // ANPASSUNG_ANGEFORDERT); derselbe Status entsteht ebenso am ganz normalen zweiten
+      // ZWINGEND-Schritt vor dem allerersten Bau (workflow-vorlagen/hoch.json). freigabeHalt
+      // meldet deshalb bewusst nur DASS gewartet wird, nicht WARUM (QA-Pass 15.09.2026, TC-05:
+      // der ursprüngliche UI-Text unterstellte fälschlich "nach einer Anpassung", jetzt
+      // ursprungsneutral). Nur zusätzlich in DIESE Projektion gespiegelt, damit die
+      // Abnahme-Ansicht ihn zeigen kann, ohne den ganzen Workflow-Bedienblock einzubinden.
+      // aktiver_schritt_id/grund kommen direkt aus der abgelegten Fassung (kein zweiter Aufruf von
+      // ermittleNaechstenSchritt — derselbe Wert, den POST .../abnahme beim Schreiben schon
+      // festgehalten hat).
+      const freigabeHalt = workflowDaten.status === 'WARTET_FREIGABE' ? { schrittId: workflowDaten.aktiver_schritt_id ?? null, grund: workflowDaten.grund ?? null } : null
+
       sendeJson(res, 200, {
         workflowId,
         workflowStatus: workflowDaten.status,
@@ -3388,6 +3401,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         urteil: urteilProjektion,
         aenderungsuebersicht: aenderungsuebersichtProjektion,
         entscheidung: entscheidungProjektion,
+        freigabeHalt,
       })
       return
     }
@@ -4643,7 +4657,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
-    // ─── POST /api/workflows/<id>/abnahme (F23 WS-2a, AK15-AK19) ────────────────────────
+    // ─── POST /api/workflows/<id>/abnahme (F23 WS-2a AK15-AK19, WS-2b AK21-AK24) ─────────
     //
     // Der Ausweg aus ABGESCHLOSSEN: ein Post-Build-Review, der BEREIT/BEREIT_NACH_KORREKTUR
     // meldet, endet in 'fertig' (Regel 1b, F23 WS-1b) — der Workflow ist damit AUTOMATEN-fertig,
@@ -4652,15 +4666,23 @@ export function erzeugeRequestHandler(optionen = {}) {
     // schemas/ergebnis-code-reviewer.schema.json ausdrücklich nicht bindend — BLOCKIERT hält
     // schon über Regel 1b an, F23 WS-1b, nicht hier ein zweites Mal).
     //
-    // ANPASSUNG_ANGEFORDERT ist schemagültig (art 'abnahme' erlaubt es), aber dieser Endpunkt
-    // lehnt es bewusst mit 400 ab — der ADJUST-Folgeworkflow ist F23 WS-2b (Bauauftrag Punkt 4).
-    // Ein schemagültiges, aber vom SERVER noch nicht bedientes Ergebnis ist kein Formfehler des
-    // Bodys, aber 400 (statt z.B. 501) bleibt im selben Codebereich wie die übrigen
-    // Formprüfungen dieses Endpunkts (D5, kein dritter Statuscode für denselben Zweck).
+    // ANPASSUNG_ANGEFORDERT (WS-2b, AK21-AK24) läuft unter DEMSELBEN workflow_id weiter, kein
+    // neuer Workflow: das Entscheidungsartefakt entsteht wie bei ANGENOMMEN/ABGELEHNT, danach
+    // setzt derselbe schreibeWorkflowFortschritt-Aufruf Ausführungs- UND Review-Schritt auf
+    // 'OFFEN'/lauf_id null zurück. Anders als beim ABGELEHNT-Zweig (der GESTOPPT hart schreibt)
+    // läuft der neue Zustand hier durch ermittleNaechstenSchritt/workflowStatusZuAusgang (Muster
+    // der Nachbereitung eines Laufs, WS-2b): der Ausführungsschritt trägt weiterhin
+    // freigabe: 'ZWINGEND' (workflow-vorlagen/standard.json), also hält der Automat sofort wieder
+    // auf WARTET_FREIGABE, statt einen Lauf zu starten (AK24) — GESTOPPT wäre hier die FALSCHE
+    // Sperre: F15 AK7 sagt ausdrücklich, dass die erteilte Freigabe die EINZIGE Auflösung eines
+    // ZWINGEND-Halts ist, nicht eine neue Fassung, die den Halt umgeht.
     //
     // GESPERRTE_ERSETZUNGS_STATUS bleibt UNANGETASTET (Nicht-Ziel): ANGENOMMEN ändert den
-    // Workflow-Status nicht, ABGELEHNT setzt GESTOPPT — GESTOPPT ist ersetzbar und damit der
-    // Reparaturpfad, Muster der ABGELEHNT-Zweig von POST /api/workflows/<id>/freigabe.
+    // Workflow-Status nicht, ABGELEHNT setzt GESTOPPT (ersetzbar, der Reparaturpfad, Muster der
+    // ABGELEHNT-Zweig von POST /api/workflows/<id>/freigabe), ANPASSUNG_ANGEFORDERT landet auf
+    // WARTET_FREIGABE — dort steht der Zustand bereits als GESPERRT, das ist beabsichtigt
+    // (dieselbe Sperre, die eine parallele POST /api/workflows-Umgehung während einer echten
+    // Freigabefrage verhindert).
     if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/abnahme')) {
       const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/abnahme'.length)
       const workflowId = dekodiereSegment(rohId)
@@ -4706,10 +4728,6 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: "'ergebnis' muss 'ANGENOMMEN', 'ABGELEHNT' oder 'ANPASSUNG_ANGEFORDERT' sein" })
         return
       }
-      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
-        sendeJson(res, 400, { grund: "'ANPASSUNG_ANGEFORDERT' ist noch nicht bedienbar — folgt in F23 WS-2b" })
-        return
-      }
 
       // (4) Sachprüfung: welcher Workflow-Status erlaubt welches Ergebnis.
       if (body.ergebnis === 'ANGENOMMEN' && workflowDaten.status !== 'ABGESCHLOSSEN') {
@@ -4721,6 +4739,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (body.ergebnis === 'ABGELEHNT' && workflowDaten.status !== 'ABGESCHLOSSEN' && workflowDaten.status !== 'KLAERUNG_ERFORDERLICH') {
         sendeJson(res, 409, {
           grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — 'ABGELEHNT' ist nur bei Status 'ABGESCHLOSSEN' oder 'KLAERUNG_ERFORDERLICH' möglich`,
+        })
+        return
+      }
+      // AK21: dasselbe Statuspaar wie ABGELEHNT (Muster oben) — ANPASSUNG_ANGEFORDERT ist die
+      // menschliche Korrektur desselben Bau-Ergebnisses, kein zusätzlicher Sonderfall.
+      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT' && workflowDaten.status !== 'ABGESCHLOSSEN' && workflowDaten.status !== 'KLAERUNG_ERFORDERLICH') {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — 'ANPASSUNG_ANGEFORDERT' ist nur bei Status 'ABGESCHLOSSEN' oder 'KLAERUNG_ERFORDERLICH' möglich`,
         })
         return
       }
@@ -4837,6 +4863,83 @@ export function erzeugeRequestHandler(optionen = {}) {
           workflowId,
           ergebnis: 'ABGELEHNT',
           status: 'GESTOPPT',
+          artefaktId: abnahmeArtefaktId,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+
+      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
+        // AK22/AK23: Ausführungs- UND Review-Schritt zurück auf 'OFFEN'/lauf_id null,
+        // freigabe_erteilt entfernt (nicht auf false gesetzt — Muster POST /api/workflows,
+        // koerperOhneFreigaben oben), version/grenzen unangetastet. Der Ausführungsschritt bekommt
+        // zusätzlich die Eingabe auf das gerade geschriebene Entscheidungsartefakt — idempotent
+        // über .includes, ein zweiter ADJUST hängt sie nicht doppelt an.
+        //
+        // AK24: workflow-vorlagen/*.json setzt freigabe: 'ZWINGEND' am Ausführungsschritt, also
+        // liefert ermittleNaechstenSchritt auf der zurückgesetzten Fassung 'haltFreigabe' — der
+        // Callback übernimmt genau dieses Ergebnis (Muster der Nachbereitung eines Laufs weiter
+        // oben, workflowStatusZuAusgang(naechster)), statt einen festen Status zu schreiben. Der
+        // Workflow landet damit real auf 'WARTET_FREIGABE', nicht auf einem nur behaupteten
+        // Zwischenstand — ein Automatenlauf startet dabei nicht, es wird nur geschrieben.
+        // eingabenMitEntscheidung liest ausfuehrungSchritt.eingaben aus der VOR diesem Aufruf
+        // geladenen Fassung (Schritt (5) oben), nicht aus dem im Callback frisch geladenen
+        // datenMitSchritt — beide sind unter D13 (kein Kontrollflusswechsel zwischen dem Laden
+        // hier und dem Schreiben in schreibeWorkflowFortschritt, kein await dazwischen)
+        // garantiert identisch, s. F-227 für dasselbe Argument an anderer Stelle dieser Datei.
+        let naechster = null
+        const eingabenMitEntscheidung = ausfuehrungSchritt.eingaben.includes(`artefakt:${abnahmeArtefaktId}`)
+          ? ausfuehrungSchritt.eingaben
+          : [...ausfuehrungSchritt.eingaben, `artefakt:${abnahmeArtefaktId}`]
+        const angepasst = schreibeWorkflowFortschritt(
+          workflowId,
+          null,
+          {},
+          (datenMitSchritt) => {
+            const neueSchritte = datenMitSchritt.schritte.map((s) => {
+              if (s.schritt_id === ausfuehrungSchritt.schritt_id) {
+                const { freigabe_erteilt: _verworfen, ...rest } = s
+                return { ...rest, status: 'OFFEN', lauf_id: null, eingaben: eingabenMitEntscheidung }
+              }
+              if (reviewSchritt !== null && s.schritt_id === reviewSchritt.schritt_id) {
+                const { freigabe_erteilt: _verworfen, ...rest } = s
+                return { ...rest, status: 'OFFEN', lauf_id: null }
+              }
+              return s
+            })
+            // status:'OFFEN' im Zwischenstand ist notwendig, nicht kosmetisch: Regel 0 in
+            // ermittleNaechstenSchritt verweigert JEDEN Ausgang außer 'fertig' auf einem Datensatz,
+            // der noch ABGESCHLOSSEN/GESTOPPT trägt (FORTSETZBARE_WORKFLOW_STATUS) — ohne diese
+            // Zeile läse die Funktion den alten Workflow-Status und läge sofort in 'fertig'.
+            naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, status: 'OFFEN', schritte: neueSchritte, aktiver_schritt_id: ausfuehrungSchritt.schritt_id })
+            return {
+              schritte: neueSchritte,
+              status: workflowStatusZuAusgang(naechster),
+              aktiver_schritt_id: naechster.aktiverSchrittId,
+              grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+            }
+          },
+          profilReferenz,
+          ladeOptionen
+        )
+        if (!angepasst.ok) {
+          console.error(`[leitstand] Workflow '${workflowId}' konnte nach ANPASSUNG_ANGEFORDERT nicht fortgeschrieben werden:`, angepasst.grund)
+          sendeJson(res, 500, { grund: angepasst.grund })
+          return
+        }
+        // F-228, (b2): unerreichbar — (4) oben verlangt Status 'ABGESCHLOSSEN' oder
+        // 'KLAERUNG_ERFORDERLICH', nie 'GESTOPPT'. Trotzdem gelesen, Muster jeder anderen
+        // Aufrufstelle dieser Funktion — bei eingefroren bleibt naechster null (leiteWorkflowFelderAb
+        // lief nicht), die Antwort behauptet deshalb 'GESTOPPT' statt den nie berechneten Ausgang
+        // zu lesen.
+        const eingefroren = angepasst.eingefroren
+        if (eingefroren) {
+          console.error(`[leitstand] Workflow '${workflowId}' war bei ANPASSUNG_ANGEFORDERT bereits GESTOPPT — es wurde nichts zurückgesetzt.`)
+        }
+        sendeJson(res, 200, {
+          workflowId,
+          ergebnis: 'ANPASSUNG_ANGEFORDERT',
+          status: eingefroren ? 'GESTOPPT' : workflowStatusZuAusgang(naechster),
           artefaktId: abnahmeArtefaktId,
           versionSequenz: entscheidungsArtefakt.versionSequenz,
         })

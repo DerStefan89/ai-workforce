@@ -6656,7 +6656,7 @@ Workflows zusammenfallen.
 Status: offen.
 Feature/Run: F23 WS-1b, QA-Pass 15.09.2026.
 
-**F-383** · `TECH_DEBT` · P2 · offen
+**F-383** · `TECH_DEBT` · P2 · gelöst (bewusst nicht durchgesetzt)
 Titel: `grenzen.max_replans` wird nirgends durchgesetzt.
 Beschreibung: `workflow-vorlagen/standard.json:11` setzt `max_replans: 1`,
 aber `scripts/leitstand-server.mjs` (Z. 290, 3174, 3576) hält das Feld an
@@ -6665,15 +6665,25 @@ es gegen einen Grenzwert. `grenzen.max_schritte` ist über `haltGrenze` die
 einzige real durchgesetzte Zählgrenze des Automaten (F15 WS-2c, a4);
 `max_replans` ist bislang reines Plandatum ohne Wirkung.
 Fundstelle: `workflow-vorlagen/standard.json:11`,
-`scripts/leitstand-server.mjs` (drei benannte Stellen).
-Auswirkung: der in F23 WS-2b vorgesehene ADJUST-Loop hätte ohne Durchsetzung
-keine Grenze — jeder ADJUST-Durchgang verbraucht reales Kontingent (Zeit,
-Kosten), ohne dass der Automat je anhält.
-Maßnahme: in WS-2b entscheiden, ob/wie `max_replans` durchgesetzt wird, und
-dann auch mit einem kalibrierten Rot-/Grünfall prüfen (ARCHITECTURE.md §8:
-eine neu behauptete Grenze trägt ihren Durchsetzungsgrad).
-Status: offen.
-Feature/Run: F23 WS-2a, Bauauftrag 15.09.2026.
+`scripts/leitstand-server.mjs` (drei benannte Stellen; Nachtrag F23 WS-2b:
+Z. 3602 und Z. 3045 sagen es explizit — `max_replans` begrenzt laut
+Kommentar dort ausschließlich die AUTOMATISCHE Wiederholung).
+Auswirkung: keine — die Prämisse, unter der dieses Finding P2 eingestuft
+wurde ("der ADJUST-Loop hätte ohne Durchsetzung keine Grenze"), trifft real
+NICHT zu: ein ADJUST (F23 WS-2b, `POST /api/workflows/<id>/abnahme`,
+`ergebnis: 'ANPASSUNG_ANGEFORDERT'`) ist immer menschlich ausgelöst (ein
+Klick im Leitstand, mit Pflichtbegründung) UND landet auf `WARTET_FREIGABE`
+(AK24) — der Neubau selbst startet erst über eine ZWEITE menschliche
+Entscheidung (`POST .../freigabe`, `FREIGEGEBEN`). Zwei unabhängige
+menschliche Entscheidungen je Durchgang SIND die Grenze; es gibt keinen
+Pfad, auf dem der Automat ADJUST-Durchgänge selbst wiederholt.
+Maßnahme: keine — geschlossen ohne Codeänderung. Wieder zu öffnen, sobald
+ein Pfad entsteht, der ADJUST OHNE menschlichen Klick auslöst (dann zählt
+die oben genannte Begründung nicht mehr).
+Status: gelöst (F23 WS-2b, Bauauftrag 15.09.2026, dokumentierte Entscheidung
+statt Codeänderung).
+Feature/Run: F23 WS-2a (entstanden), F23 WS-2b (gelöst, Bauauftrag
+15.09.2026).
 
 **F-384** · `BUG` · P1 · gelöst
 Titel: Die Abnahme-Entscheidung war nicht an das beurteilte Bau-Ergebnis
@@ -6800,3 +6810,98 @@ eigenen, benannten Grund (statt `'veraltet'`) ausweisen, damit die View
 keine folgenlosen Buttons anbietet.
 Status: offen.
 Feature/Run: F23 WS-2a Nacharbeit, QA-Pass 15.09.2026 (TC-06).
+
+**F-387** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: AK-Verweise auf ein fremdes Feature ohne Feature-Präfix führen zu
+einer falschen Scope-Lesart in Übergaben.
+Beschreibung: Der Bauauftrag für F23 WS-2b verwies mehrfach auf "AK7", wenn
+F15 AK7 (der ZWINGEND-Freigabehalt, `features/F15/feature.md`) gemeint war —
+F23 selbst hat kein eigenes AK7 mehr (WS-2a endet bei AK20, WS-2b beginnt
+bei AK21), aber ein Verweis ohne Feature-Präfix liest sich beim ersten
+Durchgang wie ein AK desselben Features. Real bemerkt beim Selbst-Gegenprüfen
+des Bauauftrags (CLAUDE.md, "Belegter Ausgangsstand … selbst gegenprüfen"),
+bevor daraus eine falsche Projektion entstand — aber genau die Art Fehler,
+die ohne diese Prüfung real geworden wäre.
+Fundstelle: Bauauftrag F23 WS-2b, 15.09.2026 ("F15-AK7-Freigabehalt" im
+Kopftext vs. "(AK7)" im WS-2b-Workstream-Bullet von
+`features/F23/feature.md`, vor dieser Korrektur).
+Auswirkung: kein Codefehler, aber ein reales Risiko einer falschen
+Scope-Lesart bei jeder Übergabe, die AKs mehrerer Features referenziert,
+ohne das Feature konsequent mit zu nennen.
+Maßnahme: [EMPFEHLUNG] Konvention für Handoff-Verträge/Bauaufträge: ein
+AK-Verweis auf ein ANDERES Feature nennt immer das Feature-Kürzel voran
+("F15 AK7", nicht "AK7") — auch dann, wenn aus dem Kontext heraus klar
+scheint, welches Feature gemeint ist. Kandidat für den Skill
+`handoff-vertrag`, falls sich das Muster wiederholt.
+Status: offen.
+Feature/Run: F23 WS-2b, Bauauftrag 15.09.2026.
+
+**F-388** · `TECH_DEBT` · P2 · offen
+Titel: Zwei Stellen schreiben einen Workflow-Plan um — Regeldivergenz-Risiko
+zwischen `baueReparaturEntwurf` und dem ADJUST-Zweig von `POST
+/api/workflows/<id>/abnahme`.
+Beschreibung: Seit F23 WS-2b gibt es zwei unabhängige Codestellen, die aus
+einer bestehenden Workflow-Fassung eine neue, zurückgesetzte Fassung bauen:
+`baueReparaturEntwurf` (`public/leitstand/views/workflows.js`, F-240,
+client-seitig, Mensch bearbeitet den Entwurf vor dem Einreichen über `POST
+/api/workflows`) und der `ANPASSUNG_ANGEFORDERT`-Zweig von `POST
+/api/workflows/<id>/abnahme` (server-seitig, AK22, schreibt direkt über
+`schreibeWorkflowFortschritt`). Beide setzen "einen Schritt zurücksetzen"
+unterschiedlich um (`REPARIERBARE_SCHRITT_STATUS` vs. gezielt
+Ausführungs-/Review-Schritt; `baueReparaturEntwurf` lässt einen ERFOLGREICHEN
+Ausführungsschritt bewusst stehen, F-384, der ADJUST-Zweig setzt ihn IMMER
+zurück) — beabsichtigt unterschiedlich (die beiden Wege lösen verschiedene
+Probleme: freie Reparatur vs. gezielter Neubau nach einer Abnahme-Entscheidung),
+aber eine künftige Änderung an EINER Stelle (z. B. eine dritte Rücksetzregel)
+könnte an der anderen vorbeilaufen, ohne dass ein Test das fängt.
+Fundstelle: `public/leitstand/views/workflows.js` (`baueReparaturEntwurf`),
+`scripts/leitstand-server.mjs` (ADJUST-Zweig von `POST .../abnahme`).
+Auswirkung: aktuell keine — beide Wege sind unabhängig getestet
+(`ermittleReparaturWarnungen`-Warnungen bzw. `check-f23-abnahme.mjs` Block
+(h)) und lösen bewusst verschiedene Fälle. Das Risiko ist zukünftig, nicht
+gegenwärtig.
+Maßnahme: [YAGNI, bewusst nicht jetzt] keine Zusammenführung, solange es bei
+zwei Stellen bleibt — eine gemeinsame Abstraktion für zwei Aufrufer wäre
+vorzeitig. Bei einer DRITTEN Stelle, die ebenfalls einen Workflow-Plan
+zurücksetzt, Zusammenführung erneut bewerten.
+Status: offen.
+Feature/Run: F23 WS-2b, Bauauftrag 15.09.2026.
+
+**F-389** · `TECH_DEBT` · P2 · offen
+Titel: ADJUST kann 'LAEUFT' schreiben, ohne dass ein Lauf läuft.
+Beschreibung: `workflowStatusZuAusgang` bildet den Ausgang 'starte' auf
+'LAEUFT' ab (`scripts/leitstand-server.mjs:2501`). Der
+`ANPASSUNG_ANGEFORDERT`-Zweig von `POST /api/workflows/<id>/abnahme`
+übernimmt diesen Wert über `workflowStatusZuAusgang(naechster)` und rechnet
+mit ihm (`grund: naechster.art === 'starte' ? null : ...`), startet aber
+keinen Lauf — geschrieben wird nur.
+Fundstelle: `scripts/leitstand-server.mjs`, ADJUST-Zweig von `POST
+.../abnahme`; `workflowStatusZuAusgang` Z. 2501.
+Auswirkung: heute unerreichbar — `workflow-vorlagen/standard.json:22`,
+`hoch.json:37` und `fast-lane.json:22` tragen am Ausführungsschritt
+`freigabe: 'ZWINGEND'`, der Ausgang ist deshalb immer `haltFreigabe`.
+Erreichbar, sobald ein Mensch die ZWINGEND-Pflicht über den bezeugten
+Abschwächungsweg (F-226) zurücknimmt: der Workflow zeigt dann "läuft", ist
+gegen eine neue Fassung gesperrt (`LAEUFT` in `GESPERRTE_ERSETZUNGS_STATUS`),
+und es läuft nichts. Keine Sackgasse — `LAEUFT` steht in
+`FORTSETZBARE_WORKFLOW_STATUS` (`src/workflow/index.ts:106`), `POST
+/api/workflows/<id>/starten` führt wieder heraus.
+Maßnahme: im ADJUST-Zweig den Ausgang 'starte' als eigenen, benannten Fall
+behandeln — entweder den Lauf real anstoßen oder mit klarem Grund auf
+`KLAERUNG_ERFORDERLICH` halten, statt 'LAEUFT' zu schreiben.
+Status: offen.
+Feature/Run: F23 WS-2b, Verifikation 15.09.2026.
+
+**F-390** · `TECH_DEBT` · P3 · gelöst
+Titel: Gate (h3) pinnt `grenzen` byte-gleich, aber nicht `version`.
+Beschreibung: AK22 verlangt, dass eine ADJUST-Fassung `version` UND
+`grenzen` unangetastet lässt. `scripts/check-f23-abnahme.mjs` (h3) verglich
+ursprünglich nur `grenzen` (`grenzenVorher`). Strukturell hielt es — der
+ADJUST-Zweig schreibt `version` nicht —, aber der Nachweis fehlte.
+Fundstelle: `scripts/check-f23-abnahme.mjs`, Block (h3).
+Auswirkung: keine aktuelle Fehlfunktion; eine künftige Änderung am
+ADJUST-Zweig hätte `version` verändern können, ohne dass das Gate es fängt.
+Status: gelöst — (h3) prüft jetzt zusätzlich
+`bestandNachher.daten.version === bestandVorher.daten.version` (Muster
+`grenzenVorher`).
+Feature/Run: F23 WS-2b, Verifikation 15.09.2026.
