@@ -4142,10 +4142,10 @@ trennen, und der Heilungsweg ließe sich anbieten.
 Status: offen.
 Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass).
 
-**F-265** · `TECH_DEBT` · P4 · offen
+**F-265** · `TECH_DEBT` · P4 · **gelöst**
 Titel: Die Ablehnungsgründe der Workflow-Endpunkte sagen uneinheitlich, ob
 die Entscheidung festgehalten wurde.
-Beschreibung: Im selben Bedienfeld treffen drei Klassen aufeinander: Zweige,
+Beschreibung: Im selben Bedienfeld trafen drei Klassen aufeinander: Zweige,
 die ausdrücklich "Die Entscheidung wurde NICHT festgehalten" sagen (D13 am
 Freigabe-Endpunkt, zweiter Stopp); Zweige, die ausdrücklich das Gegenteil
 sagen (die beiden 409 nach bereits erteilter Freigabe); und stumme Zweige
@@ -4157,11 +4157,21 @@ Fundstelle: `scripts/leitstand-server.mjs`, POST /api/workflows/<id>/freigabe
 und /stoppen.
 Auswirkung: Rein sprachlich, aber an der empfindlichsten Stelle — der Mensch
 muss wissen, ob er seine Entscheidung wiederholen muss.
-Empfohlene Maßnahme: Eine Regel festlegen (etwa: jede Ablehnung eines
-Endpunkts, der etwas festhalten würde, sagt es) und die Texte einmal
-durchziehen. Sprachliche Sammeländerung, eigene kleine Iteration.
-Status: offen.
-Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass).
+Maßnahme: Neue Konstante `ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ` (`. Die
+Entscheidung wurde NICHT festgehalten.`), an jeden bis dahin stummen Zweig
+VOR dem ersten Schreibvorgang beider Endpunkte angehängt (workflowId-Form,
+Body-JSON, Workflow nicht gefunden/WORKFLOW_V0-Verstoß, Body-Form,
+schrittId-Form/-Zeichen, "keine offene Freigabefrage", Stale-`schrittId`,
+`entscheidung`-/`begruendung`-Form am Freigabe-Endpunkt, Body-Form/
+`begruendung`-Form/Nicht-stoppbar-Status am Stopp-Endpunkt). Die bereits
+sprechenden Zweige (D13, die beiden 409 NACH bereits erteilter Freigabe)
+blieben bewusst unverändert. Real verifiziert als Nebenprodukt des F23-WS-3-
+Realtests, 15.09.2026: die uncommittete Änderung entstand als echter
+Bau-Output des Ausführungsschritts von Auftrag `d45f7901-...` (kein
+Gate-Fixture) — Diff gegengeprüft, `npm run check` grün (483/483 Tests).
+Status: gelöst.
+Feature/Run: F15 WS-3b, 10.09.2026 (QA-Pass, Befund); F23 WS-3, Realtest
+15.09.2026 (behoben, verifiziert).
 
 **F-266** · `TECH_DEBT` · P4 · offen
 Titel: `docs/STATUS.md` kennt weder Meilenstein 3 noch F15.
@@ -6905,3 +6915,42 @@ Status: gelöst — (h3) prüft jetzt zusätzlich
 `bestandNachher.daten.version === bestandVorher.daten.version` (Muster
 `grenzenVorher`).
 Feature/Run: F23 WS-2b, Verifikation 15.09.2026.
+
+**F-391** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `npm run leitstand` startet standardmäßig mit einer Startvorlage ohne
+codex, wodurch der Router reproduzierbar in den kaputten claude-code-
+Rückfall (F-337/F-373) fällt.
+Beschreibung: `STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/
+beispielprojekt.json'` (`scripts/leitstand-server.mjs:452`) hat keinen
+`worker.codex`-Block; `startvorlagen/ai-workforce.json` hat einen. Jeder
+Start ohne die Umgebungsvariable
+`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json` reproduziert
+F-373, ohne dass das beim Start sichtbar wäre. Real erneut aufgetreten beim
+F23-WS-3-Realtest, 15.09.2026 (Router-Lauf
+`router-e9b84e80-...-1789501602332` scheiterte identisch zu F-373).
+Fundstelle: `scripts/leitstand-server.mjs:452`.
+Auswirkung: Realtests scheitern beim ersten Klick, wenn niemand daran
+denkt, die Variable zu setzen.
+Maßnahme: [EMPFEHLUNG] `STANDARD_STARTVORLAGE_PFAD` auf
+`startvorlagen/ai-workforce.json` umstellen, oder beim Fehlen von codex eine
+sichtbare Warnung beim Serverstart ausgeben. Kein F23-Blocker.
+Status: offen.
+Feature/Run: F23 WS-3, Realtest 15.09.2026.
+
+**F-392** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Navigation nennt den Menüpunkt "Runs", obwohl er auch die
+Workflow-/Abnahme-Ansicht enthält.
+Beschreibung: `public/leitstand/index.html` verlinkt `#/runs` als "Runs";
+derselbe View-Container (`view-runs`) enthält aber auch
+`#workflows-abschnitt` und `#workflow-detail` mit dem F23-Abnahme-Block.
+Beim WS-3-Realtest nicht auf Anhieb auffindbar, obwohl real vorhanden —
+Verwechslungsgefahr zusätzlich zwischen "Workflows"-Liste (`workflow_id`)
+und "Läufe"-Liste (`lauf_id`), beide mit ähnlichen IDs.
+Fundstelle: `public/leitstand/index.html:16` (Nav-Link), `:107-131`
+(Inhalt).
+Auswirkung: rein Bedienbarkeit, kein Datenfehler.
+Maßnahme: [EMPFEHLUNG] Nav-Link-Text auf "Runs & Workflows" erweitern,
+oder Workflow-Abschnitt in einen eigenen Menüpunkt ziehen. Größerer
+Schnitt, eher M4/M5 statt jetzt.
+Status: offen.
+Feature/Run: F23 WS-3, Realtest 15.09.2026.
