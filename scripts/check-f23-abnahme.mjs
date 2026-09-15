@@ -2,8 +2,8 @@
 /**
  * Datei: scripts/check-f23-abnahme.mjs
  *
- * Zweck: Abnahme-Gate (F23 WS-0, features/F23/feature.md). Deckt bisher nur
- * den WS-0-Teil ab — die Änderungsübersicht als Kernartefakt:
+ * Zweck: Abnahme-Gate (F23, features/F23/feature.md) — WS-0 (Änderungsübersicht),
+ * WS-1a (Entscheidungs-Schema) und WS-2a (Abnahme-Lesepfad/-Schreibstelle/-View):
  *
  * (0) Schema-Beispiele gegen validiereAenderungsuebersichtDaten (Muster
  *     check-f22-click-to-work.mjs).
@@ -29,11 +29,30 @@
  *     Verdrahtung um F8 herum, nicht F8 selbst.
  * (f) [F23 WS-1a] Schema-Beispiele gegen validiereEntscheidungsDaten
  *     (Muster Block (0) in dieser Datei) — sechs valid-*.json (je 'art'
- *     eine) plus fünf invalid-*.json, darunter zwei gezielt für die
+ *     eine) plus sechs invalid-*.json, darunter zwei gezielt für die
  *     planaenderung-Sonderregel (Pflichtfeld abgeschwaechte_freigaben,
  *     additionalProperties:false je Eintrag — QA-Pass 14.09.2026: bis
  *     dahin nur über src/entscheidung/entscheidung.test.ts abgedeckt,
- *     nicht über die Schema-Beispiele).
+ *     nicht über die Schema-Beispiele) und eine für die neue
+ *     abnahme-Sonderregel (Pflichtfeld bezug, F23 WS-2a).
+ * (g) [F23 WS-2a] GET/POST /api/workflows/<id>/abnahme: vier Rot-Fälle
+ *     (ANGENOMMEN auf nicht abgeschlossenem Workflow, Abnahme ohne
+ *     Begründung, ANPASSUNG_ANGEFORDERT, Entscheidungsdaten ohne bezug),
+ *     ein POST-Grünfall (Entscheidungsartefakt mit korrektem bezug,
+ *     Workflow-Status unverändert), ein Absturz-Regressionstest für GET auf
+ *     einer strukturell ungültigen Fassung, ein GET-Grünfall (volle
+ *     Projektion) und ein Bau-Ergebnis-Bindungs-Test (Nacharbeit 15.09.2026,
+ *     F-384: GET markiert eine Entscheidung zu einem älteren
+ *     Ausführungslauf als 'veraltet' statt 'ok' — bezug.ausfuehrung_lauf_id,
+ *     NICHT workflow_version, ist der Diskriminator, s. Block (g8) — und
+ *     eine zweite Entscheidung zu demselben Ausführungslauf wird abgelehnt)
+ *     — je über einen echten Dispatch (Muster Block (c)/(d)), nicht nur
+ *     über direkte Funktionsaufrufe. Block (g8) simuliert das Reparatur-
+ *     ERGEBNIS (neue lauf_id), nicht den Reparatur-WEG selbst (kein
+ *     baueReparaturEntwurf/ermittleNaechstenSchritt-Durchlauf) — die reale
+ *     Lücke, dass ein ERFOLGREICHER Ausführungsschritt ohne manuellen
+ *     Eingriff nie neu startet, schließt stattdessen eine neue Warnung in
+ *     ermittleReparaturWarnungen (public/leitstand/views/workflows.js).
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -50,13 +69,14 @@ import { join } from 'node:path'
 import { erzeugeAenderungsuebersichtDaten, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
-import { ladeStartvorlage } from '../src/startvorlage/index.ts'
+import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { registriereWorkflow } from '../src/workflow/index.ts'
 import { erzeugeRequestHandler, loeseSchrittEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 
-console.log('\n=== F23-Abnahme-Check (WS-0) ===\n')
+console.log('\n=== F23-Abnahme-Check ===\n')
 
 // ─── (0) Schema-Beispiele gegen validiereAenderungsuebersichtDaten ──────────
 {
@@ -317,6 +337,8 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
     // Gate — beide Fälle jetzt ergänzt.
     { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-planaenderung-ohne-abgeschwaechte-freigaben.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-planaenderung-abgeschwaechte-freigaben-unbekanntes-feld.json', sollGueltigSein: false },
+    // F23 WS-2a: 'bezug' ist seit hier Pflichtfeld bei art 'abnahme' (Bauauftrag Punkt 2).
+    { pfad: 'schemas/examples/kontrollzustand-entscheidung-payload.invalid-abnahme-ohne-bezug.json', sollGueltigSein: false },
   ]
   for (const { pfad, sollGueltigSein } of beispiele) {
     if (!existsSync(pfad)) {
@@ -339,7 +361,439 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
     }
   }
   if (befunde.length === befundeVor) {
-    console.log('✓ (f) Schema-Beispiele Entscheidung: sechs valid-*.json (je art eine) erfüllen validiereEntscheidungsDaten, alle fünf invalid-*.json verletzen je eine benannte Regel (inkl. planaenderung-Sonderregel abgeschwaechte_freigaben).')
+    console.log('✓ (f) Schema-Beispiele Entscheidung: sechs valid-*.json (je art eine) erfüllen validiereEntscheidungsDaten, alle sechs invalid-*.json verletzen je eine benannte Regel (inkl. planaenderung-Sonderregel abgeschwaechte_freigaben, abnahme-Sonderregel bezug).')
+  }
+}
+
+// ─── (g) GET/POST /api/workflows/<id>/abnahme (F23 WS-2a) ───────────────────
+//
+// (g1)-(g4) Rot: ANGENOMMEN auf einem nicht abgeschlossenen Workflow (409), Abnahme ohne
+// Begründung (400), ANPASSUNG_ANGEFORDERT (400, verweist auf F23 WS-2b), Entscheidungsdaten art
+// 'abnahme' ohne bezug (Validator, direkt).
+// (g5) Grün: ein echter POST .../abnahme-Dispatch über einen Testserver (Muster Block (c)/(d))
+// registriert ein Entscheidungsartefakt mit korrektem bezug und lässt den Workflow-Status
+// unverändert.
+// (g6) Reviewer-Pass 15.09.2026, kritischer Befund: GET .../abnahme stürzt auf einer
+// strukturell ungültigen Fassung ('schritte' fehlt) nicht ab.
+// (g7) Grün: echter GET .../abnahme-Dispatch — korrekte Projektion aller drei Zweige
+// (aenderungsuebersicht, urteil, entscheidung) inkl. workflowStatus/-Version.
+// (g8) Nacharbeit 15.09.2026, F-384 (kritisch)/TC-05: der volle Reparaturpfad ABGELEHNT -> ein
+// echt NEUER Ausführungslauf -> erneut ABGESCHLOSSEN -> ANGENOMMEN, samt Schutz gegen eine
+// zweite Entscheidung zu demselben Ausführungslauf und einem Zusatzfall (eine Fassung ohne
+// neuen Ausführungslauf lässt 'ok' unangetastet).
+
+/**
+ * Legt einen bereits ABGESCHLOSSENEN zweistufigen Workflow (Muster workflow-vorlagen/
+ * standard.json) direkt als Artefakt an — kein Automatendurchlauf nötig, GET/POST .../abnahme
+ * lesen nur die abgelegte Fassung. workflowId/version optional übergebbar — version ist reines
+ * Plandatum (Nacharbeit 15.09.2026, F-384: KEIN Diskriminator für den Reparaturpfad, das ist
+ * bezug.ausfuehrung_lauf_id, s. Block (g8)).
+ * @returns { workflowId, ausfuehrungLaufId, reviewLaufId, version }
+ */
+function baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { workflowId = `f23-ws2a-gate-${randomUUID()}`, version = 3 } = {}) {
+  const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const ausfuehrungLaufId = `f23-ws2a-gate-ausfuehrung-${randomUUID()}`
+  const reviewLaufId = `f23-ws2a-gate-review-${randomUUID()}`
+  registriereWorkflow(
+    {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: 'auftrag-f23-ws2a-gate-fixture',
+      version,
+      ziel: 'Gate-Fixture: bereits abgeschlossener Workflow für GET/POST .../abnahme.',
+      status: 'ABGESCHLOSSEN',
+      aktiver_schritt_id: null,
+      grenzen: { max_schritte: 6, max_replans: 1 },
+      schritte: [
+        {
+          schritt_id: 'schritt-1-ausfuehrung',
+          rolle: 'ausfuehrung',
+          werkzeugsatz: 'schreibend',
+          worker: 'claude-code',
+          modell: 'claude-sonnet-5',
+          eingaben: [],
+          output_schema: null,
+          freigabe: 'ZWINGEND',
+          risiko: 'Gate-Fixture, kein reales Risiko.',
+          zeitgrenze_ms: 600000,
+          nachfolger: 'schritt-2-review',
+          status: 'ERFOLGREICH',
+          lauf_id: ausfuehrungLaufId,
+        },
+        {
+          schritt_id: 'schritt-2-review',
+          rolle: 'code-reviewer',
+          werkzeugsatz: 'lesend',
+          worker: 'codex',
+          modell: 'gpt-6-astra',
+          eingaben: [],
+          output_schema: 'ergebnis-code-reviewer',
+          freigabe: 'AUTOMATISCH',
+          risiko: 'Gate-Fixture, kein reales Risiko.',
+          zeitgrenze_ms: 600000,
+          nachfolger: null,
+          status: 'ERFOLGREICH',
+          lauf_id: reviewLaufId,
+        },
+      ],
+    },
+    leiteProfilReferenzAb(vorlage),
+    ladeOptionen
+  )
+  return { workflowId, ausfuehrungLaufId, reviewLaufId, version }
+}
+
+// (g1) Rot: ANGENOMMEN auf einem nicht abgeschlossenen Workflow -> 409
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g1-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const workflowId = `f23-ws2a-gate-g1-${randomUUID()}`
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: workflowId,
+        auftrag_id: 'auftrag-f23-ws2a-gate-fixture',
+        version: 1,
+        ziel: 'Gate-Fixture (g1): nicht abgeschlossener Workflow.',
+        status: 'OFFEN',
+        aktiver_schritt_id: 'schritt-1-ausfuehrung',
+        grenzen: { max_schritte: 6, max_replans: 1 },
+        schritte: [
+          {
+            schritt_id: 'schritt-1-ausfuehrung',
+            rolle: 'ausfuehrung',
+            werkzeugsatz: 'schreibend',
+            worker: 'claude-code',
+            modell: 'claude-sonnet-5',
+            eingaben: [],
+            output_schema: null,
+            freigabe: 'ZWINGEND',
+            risiko: 'Gate-Fixture, kein reales Risiko.',
+            zeitgrenze_ms: 600000,
+            nachfolger: null,
+            status: 'OFFEN',
+            lauf_id: null,
+          },
+        ],
+      },
+      leiteProfilReferenzAb(vorlage),
+      ladeOptionen
+    )
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANGENOMMEN', begruendung: 'Testet den Statuscheck.' }),
+    })
+    if (antwort.status !== 409) {
+      befunde.push(`(g1) ANGENOMMEN auf status OFFEN: erwartet 409, erhalten ${antwort.status} (${JSON.stringify(await antwort.json().catch(() => ({})))})`)
+    } else {
+      console.log("✓ (g1) 'ANGENOMMEN' auf einem nicht abgeschlossenen Workflow wird mit 409 abgelehnt.")
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g2) Rot: Abnahme ohne Begründung -> 400
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g2-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const { workflowId } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANGENOMMEN' }),
+    })
+    if (antwort.status !== 400) {
+      befunde.push(`(g2) Abnahme ohne Begründung: erwartet 400, erhalten ${antwort.status} (${JSON.stringify(await antwort.json().catch(() => ({})))})`)
+    } else {
+      console.log('✓ (g2) Abnahme ohne Begründung wird mit 400 abgelehnt (Pflichtfeld).')
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g3) Rot: ANPASSUNG_ANGEFORDERT -> 400, verweist auf F23 WS-2b
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g3-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const { workflowId } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: 'Test.' }),
+    })
+    const koerper = await antwort.json().catch(() => ({}))
+    if (antwort.status !== 400 || !String(koerper.grund ?? '').includes('WS-2b')) {
+      befunde.push(`(g3) 'ANPASSUNG_ANGEFORDERT': erwartet 400 mit Verweis auf F23 WS-2b, erhalten ${antwort.status} ${JSON.stringify(koerper)}`)
+    } else {
+      console.log("✓ (g3) 'ANPASSUNG_ANGEFORDERT' wird mit 400 abgelehnt und verweist auf F23 WS-2b.")
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g4) Rot: Entscheidungsdaten art 'abnahme' ohne bezug (Validator) — direkter Aufruf, kein HTTP nötig.
+{
+  const ohneBezug = { entscheidung_schema: 'v0', art: 'abnahme', ergebnis: 'ANGENOMMEN', begruendung: 'Test.', entschieden_am: new Date().toISOString() }
+  const verstoesse = validiereEntscheidungsDaten(ohneBezug)
+  if (!verstoesse.some((v) => v.includes("Pflichtfeld 'bezug' fehlt"))) {
+    befunde.push(`(g4) Entscheidungsdaten art 'abnahme' ohne bezug: erwartet einen Verstoß gegen 'bezug', erhalten ${JSON.stringify(verstoesse)}`)
+  } else {
+    console.log("✓ (g4) validiereEntscheidungsDaten lehnt art 'abnahme' ohne 'bezug' ab.")
+  }
+}
+
+// (g5) Grün: echter POST .../abnahme-Dispatch (ANGENOMMEN) über einen Testserver (Muster Block
+// (c)/(d)) — Entscheidungsartefakt mit korrektem bezug registriert, Workflow-Status unverändert.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g5-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const { workflowId } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ANGENOMMEN', begruendung: 'Änderungsübersicht und Urteil geprüft, entspricht dem Auftrag.' }),
+    })
+    const koerper = await antwort.json().catch(() => ({}))
+    if (antwort.status !== 200 || koerper.status !== 'ABGESCHLOSSEN') {
+      befunde.push(`(g5) echter 'ANGENOMMEN'-Dispatch: erwartet 200 mit status 'ABGESCHLOSSEN' (unverändert), erhalten ${antwort.status} ${JSON.stringify(koerper)}`)
+    } else {
+      const artefakt = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, ladeOptionen)
+      const workflowDanach = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (artefakt === null) {
+        befunde.push("(g5) echter 'ANGENOMMEN'-Dispatch: kein Entscheidungsartefakt registriert")
+      } else if (typeof artefakt.daten.bezug?.ausfuehrung_lauf_id !== 'string' || artefakt.daten.bezug?.workflow_version !== 3) {
+        befunde.push(`(g5) echter 'ANGENOMMEN'-Dispatch: bezug fehlerhaft, erhalten ${JSON.stringify(artefakt.daten.bezug)}`)
+      } else if (workflowDanach?.daten.status !== 'ABGESCHLOSSEN') {
+        befunde.push(`(g5) echter 'ANGENOMMEN'-Dispatch: Workflow-Status darf sich nicht ändern, erhalten ${workflowDanach?.daten.status}`)
+      } else {
+        console.log("✓ (g5) echter POST .../abnahme-Dispatch ('ANGENOMMEN'): Entscheidungsartefakt mit korrektem bezug registriert, Workflow-Status bleibt ABGESCHLOSSEN.")
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g6) Reviewer-Pass 15.09.2026, kritischer Befund: GET .../abnahme stürzt NICHT ab, wenn
+// 'schritte' fehlt oder kein Array ist — findeAusfuehrungsSchritt/findeReviewSchritt sind für
+// GET (anders als für POST, das vorher validiereWorkflowDaten aufruft) nicht hinter einer
+// Schemaprüfung geschützt (Muster GET /api/workflows/<id>: eine ungültige Fassung bleibt
+// ansehbar, das ist ihr erster Reparaturschritt). Ohne den Array.isArray-Guard in beiden Helfern
+// würfe ein rohes '.find()' auf undefined einen TypeError aus einem async-Handler, dessen
+// Promise niemand einsammelt — derselbe Absturzpfad, den dekodiereSegment schon einmal real den
+// ganzen Server gekostet hat (siehe dortiger Kopfkommentar in leitstand-server.mjs).
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g6-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const workflowId = `f23-ws2a-gate-g6-${randomUUID()}`
+    // registriereWorkflow validiert nicht (Muster: dieselbe Freiheit, mit der eine ungültige
+    // Fassung überhaupt entstehen kann) — 'schritte' fehlt hier bewusst.
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: workflowId,
+        auftrag_id: 'auftrag-f23-ws2a-gate-fixture',
+        version: 1,
+        ziel: 'Gate-Fixture (g6): strukturell ungültige Fassung, schritte fehlt.',
+        status: 'ABGESCHLOSSEN',
+        aktiver_schritt_id: null,
+        grenzen: { max_schritte: 6, max_replans: 1 },
+      },
+      leiteProfilReferenzAb(vorlage),
+      ladeOptionen
+    )
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+    const koerper = await antwort.json().catch(() => null)
+    if (antwort.status !== 200 || koerper?.aenderungsuebersicht?.status !== 'kein_ausfuehrungs_schritt' || koerper?.urteil?.status !== 'kein_review_schritt') {
+      befunde.push(`(g6) GET .../abnahme auf einer Fassung ohne 'schritte': erwartet 200 mit 'kein_ausfuehrungs_schritt'/'kein_review_schritt', erhalten ${antwort.status} ${JSON.stringify(koerper)}`)
+    } else {
+      // Server-Überlebensprobe (Muster 'der Server lebt danach'): ein weiterer, unabhängiger
+      // Request muss noch bedient werden.
+      const ueberlebt = await fetch(`${basisUrl}/api/startfehler`)
+      if (!ueberlebt.ok) {
+        befunde.push(`(g6) Serverprozess nach GET .../abnahme auf kaputter Fassung nicht mehr erreichbar (${ueberlebt.status})`)
+      } else {
+        console.log("✓ (g6) GET .../abnahme auf einer strukturell ungültigen Fassung ('schritte' fehlt) stürzt nicht ab — 200 mit benannten Gründen, der Server lebt danach.")
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g7) Grün: echter GET .../abnahme-Dispatch auf einem abgeschlossenen, aber noch nicht
+// abgenommenen Workflow — 'nicht_vorhanden'/'laufakte_fehlt' sind hier der ECHTE Zustand: die
+// Gate-Fixture registriert bewusst keine Laufakte/Änderungsübersicht zu ihren erfundenen
+// lauf_id, um diese beiden Zweige real (nicht nur behauptet) zu belegen.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g7-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const { workflowId, ausfuehrungLaufId, reviewLaufId, version } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen)
+    const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+    const koerper = await antwort.json().catch(() => null)
+    const erwartet =
+      antwort.status === 200 &&
+      koerper?.workflowStatus === 'ABGESCHLOSSEN' &&
+      koerper?.workflowVersion === version &&
+      koerper?.aenderungsuebersicht?.status === 'nicht_vorhanden' &&
+      koerper?.aenderungsuebersicht?.laufId === ausfuehrungLaufId &&
+      koerper?.urteil?.status === 'laufakte_fehlt' &&
+      koerper?.urteil?.laufId === reviewLaufId &&
+      koerper?.entscheidung?.status === 'nicht_vorhanden'
+    if (!erwartet) {
+      befunde.push(`(g7) echter GET .../abnahme-Dispatch: Projektion stimmt nicht, erhalten ${antwort.status} ${JSON.stringify(koerper)}`)
+    } else {
+      console.log(
+        "✓ (g7) echter GET .../abnahme-Dispatch: workflowStatus/-Version, aenderungsuebersicht ('nicht_vorhanden' mit korrektem laufId), urteil ('laufakte_fehlt' mit korrektem laufId) und entscheidung ('nicht_vorhanden') korrekt projiziert."
+      )
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// (g8) Nacharbeit 15.09.2026 (F-384, korrigierte Maßnahme): der erste Versuch, den
+// Reparaturpfad über workflow_version zu binden, war der falsche Diskriminator — version ist ein
+// Plandatum, kein Fassungszähler, und der etablierte Reparaturweg (baueReparaturEntwurf,
+// public/leitstand/views/workflows.js) reicht bewusst eine Fassung mit UNVERÄNDERTER version ein
+// (F15 WS-2c/F-226/F-227 verlangen das). Der Bezug einer Abnahme hängt stattdessen am
+// beurteilten BAU-ERGEBNIS: bezug.ausfuehrung_lauf_id. Dieser Fall belegt die SERVER-SEITIGE
+// Vergleichslogik über einen echten HTTP-Dispatch der Abnahme-Endpunkte (Muster (g5)/(g7)) — ein
+// Ausführungsschritt mit NEUER lauf_id simuliert das Ergebnis eines realen Neubaus (kein echter
+// Kindprozess, kein echter Durchlauf von baueReparaturEntwurf/ermittleNaechstenSchritt, Muster
+// (g5)/(g7): das ist bereits Gegenstand von check-f15-automat-real.mjs). GET markiert die alte
+// Entscheidung danach als 'veraltet', ANGENOMMEN für den neuen Bau gelingt, eine zweite
+// Entscheidung zu DEMSELBEN Ausführungslauf wird abgelehnt (TC-05), und eine Fassung OHNE neuen
+// Ausführungslauf lässt eine bestehende Entscheidung korrekt auf 'ok' stehen.
+//
+// QA-Pass 15.09.2026 (kritischer Befund): REPARIERBARE_SCHRITT_STATUS enthält ERFOLGREICH nicht
+// (Lineage-Grund) — der etablierte Reparaturweg (baueReparaturEntwurf) setzt einen ERFOLGREICHEN
+// Ausführungsschritt deshalb NIE automatisch zurück, und ohne manuellen Eingriff im
+// Reparatur-Textfeld entsteht in der Praxis NIE eine neue ausfuehrung_lauf_id — der Automat hält
+// stattdessen mit KLAERUNG_ERFORDERLICH (Regel 3, kein bereits gelaufener Schritt startet
+// zweimal), ohne neu zu bauen. Dieses Gate testet bewusst nur die Serverlogik in Isolation, NICHT
+// das Zusammenspiel mit der Reparatur-UI — die reale Lücke ist stattdessen durch eine neue
+// Warnung in ermittleReparaturWarnungen geschlossen (public/leitstand/views/workflows.js,
+// F-384-Kommentar dort): der Mensch wird beim Öffnen eines Reparaturentwurfs ausdrücklich darauf
+// hingewiesen, dass ein ERFOLGREICHER Ausführungsschritt manuell zurückgesetzt werden muss, sonst
+// bleibt eine vorhandene Abnahme-Entscheidung gültig.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f23-g8-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis })
+  try {
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const profilReferenz = leiteProfilReferenzAb(vorlage)
+    const { workflowId, ausfuehrungLaufId: ausfuehrungLaufId1 } = baueAbgeschlossenenWorkflow(basisVerzeichnis, ladeOptionen, { version: 1 })
+
+    const ablehnung = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+      method: 'POST',
+      body: JSON.stringify({ ergebnis: 'ABGELEHNT', begruendung: 'Entspricht nicht dem Auftrag.' }),
+    })
+    if (ablehnung.status !== 200) {
+      befunde.push(`(g8) ABGELEHNT: erwartet 200, erhalten ${ablehnung.status} (${JSON.stringify(await ablehnung.json().catch(() => ({})))})`)
+    } else {
+      // Simuliertes Reparaturergebnis (NICHT über baueReparaturEntwurf/den realen Laufstart, s.
+      // Blockkommentar oben): status zurück auf ABGESCHLOSSEN, der Ausführungsschritt bekommt
+      // eine NEUE lauf_id (ausfuehrungLaufId2 !== ausfuehrungLaufId1) — das, und NICHT eine
+      // geänderte version, ist das Signal, gegen das die Serverlogik unten geprüft wird.
+      const ausfuehrungLaufId2 = `f23-ws2a-gate-g8-ausfuehrung-2-${randomUUID()}`
+      const reviewLaufId2 = `f23-ws2a-gate-g8-review-2-${randomUUID()}`
+      const bestand1 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      registriereWorkflow(
+        {
+          ...bestand1.daten,
+          status: 'ABGESCHLOSSEN',
+          aktiver_schritt_id: null,
+          schritte: bestand1.daten.schritte.map((schritt, index) => ({
+            ...schritt,
+            status: 'ERFOLGREICH',
+            lauf_id: index === 0 ? ausfuehrungLaufId2 : reviewLaufId2,
+          })),
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+
+      const getVeraltet = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+      const koerperVeraltet = await getVeraltet.json().catch(() => null)
+      if (koerperVeraltet?.entscheidung?.status !== 'veraltet') {
+        befunde.push(`(g8) TC-04: nach neuem Ausführungslauf erwartet GET entscheidung.status 'veraltet', erhalten ${JSON.stringify(koerperVeraltet?.entscheidung)}`)
+      } else {
+        const annahme2 = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+          method: 'POST',
+          body: JSON.stringify({ ergebnis: 'ANGENOMMEN', begruendung: 'Korrigierter Bau entspricht jetzt dem Auftrag.' }),
+        })
+        if (annahme2.status !== 200) {
+          befunde.push(`(g8) TC-04: ANGENOMMEN für den neuen Bau trotz 'veraltet'-Vorentscheidung erwartet 200, erhalten ${annahme2.status} (${JSON.stringify(await annahme2.json().catch(() => ({})))})`)
+        } else {
+          const getOk = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+          const koerperOk = await getOk.json().catch(() => null)
+          const zweiteAnnahme2 = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
+            method: 'POST',
+            body: JSON.stringify({ ergebnis: 'ANGENOMMEN', begruendung: 'Zweiter Versuch, sollte abgelehnt werden.' }),
+          })
+          if (koerperOk?.entscheidung?.status !== 'ok' || koerperOk?.entscheidung?.ergebnis !== 'ANGENOMMEN') {
+            befunde.push(`(g8) TC-04: nach ANGENOMMEN für den neuen Bau erwartet GET entscheidung.status 'ok', erhalten ${JSON.stringify(koerperOk?.entscheidung)}`)
+          } else if (zweiteAnnahme2.status !== 409) {
+            befunde.push(`(g8) TC-05: eine zweite Entscheidung zu demselben Ausführungslauf erwartet 409, erhalten ${zweiteAnnahme2.status} (${JSON.stringify(await zweiteAnnahme2.json().catch(() => ({})))})`)
+          } else {
+            // Bauauftrag Punkt 6, Zusatzfall: eine weitere Fassung OHNE neuen Ausführungslauf
+            // (nur der Review-Schritt bekommt einen neuen Lauf, der Ausführungsschritt behält
+            // ausfuehrungLaufId2 unverändert — Muster REPARIERBARE_SCHRITT_STATUS, das ERFOLGREICH
+            // nicht enthält) lässt die bestehende, aktuelle Entscheidung korrekt auf 'ok' stehen.
+            const bestand2 = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+            registriereWorkflow(
+              {
+                ...bestand2.daten,
+                schritte: bestand2.daten.schritte.map((schritt, index) => (index === 0 ? schritt : { ...schritt, lauf_id: `f23-ws2a-gate-g8-review-3-${randomUUID()}` })),
+              },
+              profilReferenz,
+              ladeOptionen
+            )
+            const getOkOhneNeuenBau = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`)
+            const koerperOkOhneNeuenBau = await getOkOhneNeuenBau.json().catch(() => null)
+            if (koerperOkOhneNeuenBau?.entscheidung?.status !== 'ok') {
+              befunde.push(`(g8) Zusatzfall: eine Fassung ohne neuen Ausführungslauf muss entscheidung.status 'ok' belassen, erhalten ${JSON.stringify(koerperOkOhneNeuenBau?.entscheidung)}`)
+            } else {
+              console.log(
+                "✓ (g8) Serverlogik (echter HTTP-Dispatch, simuliertes Reparaturergebnis): ein neuer Ausführungslauf macht die alte Entscheidung 'veraltet', ANGENOMMEN für den neuen Bau gelingt, eine zweite Entscheidung zu demselben Ausführungslauf wird abgelehnt (F-384/TC-05), und eine Fassung ohne neuen Ausführungslauf lässt 'ok' unangetastet."
+              )
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 

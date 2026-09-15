@@ -3,5 +3,10 @@
   "art": "abnahme",
   "ergebnis": "ANPASSUNG_ANGEFORDERT",
   "begruendung": "Änderungsübersicht zeigt eine Lücke, ADJUST-Runde nötig.",
-  "entschieden_am": "2026-09-14T09:25:00.000Z"
+  "entschieden_am": "2026-09-14T09:25:00.000Z",
+  "bezug": {
+    "workflow_version": 1,
+    "ausfuehrung_lauf_id": "lauf-ausfuehrung-1",
+    "review_lauf_id": "lauf-review-1"
+  }
 }

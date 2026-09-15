@@ -60,10 +60,31 @@ test('art kenntnisnahme: nur VERWEIGERT/FEHLGESCHLAGEN gültig, ERFOLGREICH nich
   assert.ok(validiereEntscheidungsDaten(gueltig({ art: 'kenntnisnahme', ergebnis: 'ERFOLGREICH' })).length > 0)
 })
 
-test('art abnahme: schemagültig, obwohl F23 WS-1a keine Schreibstelle dafür baut', () => {
-  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN' })), [])
-  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ANPASSUNG_ANGEFORDERT' })), [])
-  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ABGELEHNT' })), [])
+const GUELTIGER_ABNAHME_BEZUG = { workflow_version: 1, ausfuehrung_lauf_id: 'lauf-ausfuehrung-1', review_lauf_id: 'lauf-review-1' }
+
+test('art abnahme: ANGENOMMEN/ANPASSUNG_ANGEFORDERT/ABGELEHNT gültig mit bezug', () => {
+  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN', bezug: GUELTIGER_ABNAHME_BEZUG })), [])
+  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ANPASSUNG_ANGEFORDERT', bezug: GUELTIGER_ABNAHME_BEZUG })), [])
+  assert.deepStrictEqual(validiereEntscheidungsDaten(gueltig({ art: 'abnahme', ergebnis: 'ABGELEHNT', bezug: GUELTIGER_ABNAHME_BEZUG })), [])
+})
+
+test('art abnahme: review_lauf_id darf null sein (Vorlage ohne Post-Build-Review-Schritt)', () => {
+  const daten = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN', bezug: { ...GUELTIGER_ABNAHME_BEZUG, review_lauf_id: null } })
+  assert.deepStrictEqual(validiereEntscheidungsDaten(daten), [])
+})
+
+test('art abnahme: bezug ist Pflicht und wird selbst geprüft (F23 WS-2a)', () => {
+  const ohneBezug = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN' })
+  assert.ok(validiereEntscheidungsDaten(ohneBezug).some((v) => v.includes("Pflichtfeld 'bezug' fehlt")))
+
+  const fehlendesUnterfeld = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN', bezug: { workflow_version: 1, ausfuehrung_lauf_id: 'lauf-1' } })
+  assert.ok(validiereEntscheidungsDaten(fehlendesUnterfeld).some((v) => v.includes("'bezug.review_lauf_id' fehlt")))
+
+  const unbekanntesFeld = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN', bezug: { ...GUELTIGER_ABNAHME_BEZUG, extra: true } })
+  assert.ok(validiereEntscheidungsDaten(unbekanntesFeld).some((v) => v.includes("unbekanntes Feld 'bezug.extra'")))
+
+  const falscherTyp = gueltig({ art: 'abnahme', ergebnis: 'ANGENOMMEN', bezug: { ...GUELTIGER_ABNAHME_BEZUG, workflow_version: '1' } })
+  assert.ok(falscherTyp && validiereEntscheidungsDaten(falscherTyp).some((v) => v.includes("'bezug.workflow_version' muss eine ganze Zahl sein")))
 })
 
 test('unbekannte art wird abgelehnt', () => {
@@ -96,11 +117,12 @@ test('Wurzel ist kein Objekt', () => {
   assert.deepStrictEqual(validiereEntscheidungsDaten([]), ['Wurzel ist kein Objekt'])
 })
 
-test('leiteArtAusHerkunftAb: mappt die fünf realen Schreibstellen, unbekannt -> null', () => {
+test('leiteArtAusHerkunftAb: mappt die sechs realen Schreibstellen, unbekannt -> null', () => {
   assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-workflow-planaenderung'), 'planaenderung')
   assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-workflow-freigabe'), 'freigabe')
   assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-workflow-stopp'), 'stopp')
   assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-terminal'), 'terminal')
   assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-kenntnisnahme'), 'kenntnisnahme')
+  assert.strictEqual(leiteArtAusHerkunftAb('entscheidung-workflow-abnahme'), 'abnahme')
   assert.strictEqual(leiteArtAusHerkunftAb('irgendwas-unbekanntes'), null)
 })

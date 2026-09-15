@@ -1307,6 +1307,41 @@ const ERSETZBARE_STATUS_TEXT = ['OFFEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT']
 const STOPPBARE_WORKFLOW_STATUS = new Set(['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH'])
 
 /**
+ * Der Bauschritt einer Fassung (F23 WS-2a, GET/POST .../abnahme) — Kopplung an
+ * rolle 'ausfuehrung' wie in beiden Vorlagen (workflow-vorlagen/standard.json,
+ * hoch.json). Erster Treffer: mehrere Ausführungsschritte in einer Vorlage zu
+ * unterscheiden ist kein WS-2a-Ziel.
+ *
+ * Der POST-Endpunkt ruft dies erst NACH validiereWorkflowDaten auf (409 vorher),
+ * der GET-Endpunkt bewusst NICHT (Muster GET /api/workflows/<id>: eine ungültige
+ * Fassung bleibt ansehbar, das ist ihr erster Reparaturschritt — Reviewer-Pass
+ * 15.09.2026). workflowDaten.schritte ist deshalb HIER, anders als sonst in dieser
+ * Datei, nicht als geprüftes Array vorauszusetzen — ein rohes .find() auf einem
+ * fehlenden/kaputten Feld wäre derselbe Absturzpfad, den dekodiereSegment schon
+ * einmal real den ganzen Server gekostet hat (siehe dortiger Kopfkommentar).
+ * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
+ * @returns der Schritt, oder null
+ */
+function findeAusfuehrungsSchritt(workflowDaten) {
+  if (!Array.isArray(workflowDaten?.schritte)) return null
+  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.rolle === 'ausfuehrung') ?? null
+}
+
+/**
+ * Der Post-Build-Review-Schritt einer Fassung (F23 WS-2a). Kopplung an
+ * output_schema 'ergebnis-code-reviewer', NICHT an rolle — dieselbe Kopplung
+ * wie Regel 1b in ermittleNaechstenSchritt (D5, kein zweiter Regelsatz; siehe
+ * dort und F-381 zur bewussten Entkopplung von rolle). Robustheitsanforderung
+ * an workflowDaten wie bei findeAusfuehrungsSchritt (siehe dort).
+ * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
+ * @returns der Schritt, oder null
+ */
+function findeReviewSchritt(workflowDaten) {
+  if (!Array.isArray(workflowDaten?.schritte)) return null
+  return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-code-reviewer') ?? null
+}
+
+/**
  * Vergleicht zwei Fassungen desselben Workflows und meldet jeden Schritt, der
  * dabei seine Freigabepflicht verliert (F15 WS-2c (b3), löst F-226).
  *
@@ -2244,10 +2279,13 @@ export function normalisiereSchrittAusgang(ergebnis) {
 }
 
 /**
- * Liest das 'urteil'-Feld eines ERFOLGREICH klassifizierten Post-Build-Review-
- * Laufs (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom
- * (F23 WS-1b, löst F-351/F-377). F7s KlassifikationsErgebnis (normalisiereSchrittAusgang
- * oben) kennt nur die drei Terminalausgänge und trägt den geparsten Ergebnisinhalt
+ * Liest das geparste ergebnis-code-reviewer-Ergebnisobjekt (urteil, befunde[],
+ * empfehlung) eines ERFOLGREICH klassifizierten Post-Build-Review-Laufs
+ * (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom (F23
+ * WS-1b, löst F-351/F-377; seit WS-2a das VOLLSTÄNDIGE Objekt statt nur
+ * urteil — Bauauftrag Punkt 1, Abnahme-Projektion braucht befunde/empfehlung
+ * ebenso). F7s KlassifikationsErgebnis (normalisiereSchrittAusgang oben)
+ * kennt nur die drei Terminalausgänge und trägt den geparsten Ergebnisinhalt
  * nicht — das Urteil steht ausschließlich im Rohstrom.
  *
  * Dasselbe Lesemuster wie verarbeiteRouterErgebnis (worker-abhängig: Codex über
@@ -2258,9 +2296,11 @@ export function normalisiereSchrittAusgang(ergebnis) {
  *
  * Liefert bei jedem Lese-/Parsefehler oder fehlendem/nicht-stringigem urteil-Feld
  * null — für Regel 1b in ermittleNaechstenSchritt ist ein fehlendes Urteil
- * dasselbe wie ein unbekanntes: haltKlaerung statt stillem Weiterlaufen.
+ * dasselbe wie ein unbekanntes: haltKlaerung statt stillem Weiterlaufen. Der
+ * Aufrufer in starteLaufUndVergiss greift auf .urteil zu (Regel 1b bleibt
+ * unverändert), die Abnahme-Projektion (GET .../abnahme) auf das ganze Objekt.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Reviews
- * @returns das rohe urteil, oder null
+ * @returns { urteil, befunde, empfehlung } roh aus dem Rohstrom, oder null
  */
 function leseUrteilAusLaufakte(laufakteDaten) {
   let rohInhalt
@@ -2299,7 +2339,12 @@ function leseUrteilAusLaufakte(laufakteDaten) {
       return null
     }
   }
-  return typeof geparst?.urteil === 'string' ? geparst.urteil : null
+  if (typeof geparst?.urteil !== 'string') return null
+  return {
+    urteil: geparst.urteil,
+    befunde: Array.isArray(geparst.befunde) ? geparst.befunde : [],
+    empfehlung: typeof geparst.empfehlung === 'string' ? geparst.empfehlung : null,
+  }
 }
 
 /**
@@ -3058,7 +3103,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       let urteil = null
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
-        if (laufakteVersion !== null) urteil = leseUrteilAusLaufakte(laufakteVersion.daten)
+        // leseUrteilAusLaufakte liefert seit F23 WS-2a das ganze Ergebnisobjekt (urteil,
+        // befunde, empfehlung) — Regel 1b in ermittleNaechstenSchritt kennt weiterhin nur den
+        // rohen urteil-String, deshalb hier extrahiert.
+        if (laufakteVersion !== null) urteil = leseUrteilAusLaufakte(laufakteVersion.daten)?.urteil ?? null
       }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
@@ -3236,6 +3284,111 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     if (req.method === 'GET' && pfad === '/api/auftraege') {
       sendeJson(res, 200, sammleAuftraege(basisVerzeichnis))
+      return
+    }
+
+    // ─── GET /api/workflows/<id>/abnahme (F23 WS-2a, AK14) ──────────────────────────────
+    //
+    // VOR dem generischen Detailendpunkt (Muster F15 WS-2a: längeres, spezielleres Präfix
+    // zuerst) — sonst läse dessen pfad.startsWith('/api/workflows/') diesen Pfad zuerst und
+    // wiese workflowId 'X/abnahme' über LAUFID_UNZULAESSIGE_ZEICHEN mit 400 zurück.
+    //
+    // Projiziert in EINER Antwort, was der Mensch für eine Abnahme-Entscheidung braucht:
+    // Workflow-Status, das Urteil des Post-Build-Reviews (samt Befunden/Empfehlung, roh aus
+    // dessen Rohstrom über leseUrteilAusLaufakte — dasselbe Lesemuster wie in
+    // starteLaufUndVergiss, kein zweiter Regelsatz), die Änderungsübersicht des
+    // Ausführungsschritts und eine etwaige bereits vorhandene Abnahme-Entscheidung. Kein
+    // generischer Artefakt-Leseendpunkt (Nicht-Ziel) — genau diese vier, benannten Teile.
+    //
+    // Fehlende Teile werden NIE stillschweigend leer, sondern als { status: '<Grund>' }
+    // ausgeliefert (Muster baueLaufakteProjektion/baueRohstromProjektion) — kein 500, wenn z.B.
+    // die Vorlage keinen Ausführungs- oder Review-Schritt kennt oder ein Schritt noch nicht
+    // gelaufen ist.
+    if (req.method === 'GET' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/abnahme')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/abnahme'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+
+      const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
+      const reviewSchritt = findeReviewSchritt(workflowDaten)
+
+      let urteilProjektion
+      if (reviewSchritt === null) {
+        urteilProjektion = { status: 'kein_review_schritt' }
+      } else if (reviewSchritt.lauf_id === null) {
+        urteilProjektion = { status: 'noch_nicht_gelaufen', schrittId: reviewSchritt.schritt_id }
+      } else {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${reviewSchritt.lauf_id}`, undefined, ladeOptionen)
+        if (laufakteVersion === null) {
+          urteilProjektion = { status: 'laufakte_fehlt', laufId: reviewSchritt.lauf_id }
+        } else {
+          const geparst = leseUrteilAusLaufakte(laufakteVersion.daten)
+          urteilProjektion =
+            geparst === null
+              ? { status: 'nicht_lesbar', laufId: reviewSchritt.lauf_id }
+              : { status: 'ok', laufId: reviewSchritt.lauf_id, urteil: geparst.urteil, befunde: geparst.befunde, empfehlung: geparst.empfehlung }
+        }
+      }
+
+      let aenderungsuebersichtProjektion
+      if (ausfuehrungSchritt === null) {
+        aenderungsuebersichtProjektion = { status: 'kein_ausfuehrungs_schritt' }
+      } else if (ausfuehrungSchritt.lauf_id === null) {
+        aenderungsuebersichtProjektion = { status: 'noch_nicht_gelaufen', schrittId: ausfuehrungSchritt.schritt_id }
+      } else {
+        const uebersichtVersion = ladeArtefaktVersion(`aenderungsuebersicht-${ausfuehrungSchritt.lauf_id}`, undefined, ladeOptionen)
+        aenderungsuebersichtProjektion =
+          uebersichtVersion === null
+            ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchritt.lauf_id }
+            : { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, daten: uebersichtVersion.daten }
+      }
+
+      // Nacharbeit 15.09.2026 (F-384, korrigierte Maßnahme): die zuletzt geschriebene
+      // Abnahme-Entscheidung ist NICHT automatisch die zu DIESEM BAU-ERGEBNIS gehörige. Der
+      // Bezug einer Abnahme hängt am beurteilten Bau (ausfuehrung_lauf_id), NICHT an der
+      // Planfassung (workflow_version) — version ist ein Plandatum, kein Fassungszähler: der
+      // etablierte Reparaturweg (baueReparaturEntwurf, public/leitstand/views/workflows.js)
+      // reicht bewusst eine Fassung mit UNVERÄNDERTER version ein, und F15 WS-2c/F-226/F-227
+      // verlangen das ausdrücklich (Reviewer-Befund 15.09.2026: ein erster Versuch, version als
+      // Diskriminator zu erzwingen, brach 25 bestehende Tests — der falsche Diskriminator, nicht
+      // das Produkt, war das Problem). Ein erfolgreicher Ausführungsschritt behält im
+      // Reparaturentwurf seine lauf_id (REPARIERBARE_SCHRITT_STATUS enthält ERFOLGREICH nicht,
+      // workflows.js) — "kein neuer Bau" bleibt deshalb korrekt 'ok', nur ein ECHT NEUER
+      // Ausführungslauf (neue lauf_id) macht eine bestehende Entscheidung 'veraltet'. Der Inhalt
+      // bleibt sichtbar (Audit-Spur), nur die Lesart ändert sich; die View bietet bei 'veraltet'
+      // wieder ACCEPT/REJECT an (Muster renderAbnahmeEntscheidung).
+      const abnahmeArtefaktId = `entscheidung-workflow-${workflowId}-abnahme`
+      const abnahmeVersion = ladeArtefaktVersion(abnahmeArtefaktId, undefined, ladeOptionen)
+      const entscheidungProjektion =
+        abnahmeVersion === null
+          ? { status: 'nicht_vorhanden' }
+          : {
+              status: abnahmeVersion.daten.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt?.lauf_id ? 'ok' : 'veraltet',
+              ergebnis: abnahmeVersion.daten.ergebnis,
+              begruendung: abnahmeVersion.daten.begruendung,
+              entschiedenAm: abnahmeVersion.daten.entschieden_am,
+              bezug: abnahmeVersion.daten.bezug ?? null,
+              versionSequenz: abnahmeVersion.versionSequenz,
+            }
+
+      sendeJson(res, 200, {
+        workflowId,
+        workflowStatus: workflowDaten.status,
+        workflowVersion: workflowDaten.version,
+        urteil: urteilProjektion,
+        aenderungsuebersicht: aenderungsuebersichtProjektion,
+        entscheidung: entscheidungProjektion,
+      })
       return
     }
 
@@ -4486,6 +4639,218 @@ export function erzeugeRequestHandler(optionen = {}) {
         ...(stoppArtefakt === null
           ? { grund: 'Der Workflow ist gestoppt, aber die Entscheidung wurde NICHT als Artefakt festgehalten — siehe GET /api/startfehler.' }
           : { artefaktId: stoppArtefaktId, versionSequenz: stoppArtefakt.versionSequenz }),
+      })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/abnahme (F23 WS-2a, AK15-AK19) ────────────────────────
+    //
+    // Der Ausweg aus ABGESCHLOSSEN: ein Post-Build-Review, der BEREIT/BEREIT_NACH_KORREKTUR
+    // meldet, endet in 'fertig' (Regel 1b, F23 WS-1b) — der Workflow ist damit AUTOMATEN-fertig,
+    // aber noch nicht MENSCHLICH abgenommen. Dieser Endpunkt hält genau diese zweite,
+    // eigenständige Entscheidung fest (art 'abnahme', urteil ist laut
+    // schemas/ergebnis-code-reviewer.schema.json ausdrücklich nicht bindend — BLOCKIERT hält
+    // schon über Regel 1b an, F23 WS-1b, nicht hier ein zweites Mal).
+    //
+    // ANPASSUNG_ANGEFORDERT ist schemagültig (art 'abnahme' erlaubt es), aber dieser Endpunkt
+    // lehnt es bewusst mit 400 ab — der ADJUST-Folgeworkflow ist F23 WS-2b (Bauauftrag Punkt 4).
+    // Ein schemagültiges, aber vom SERVER noch nicht bedientes Ergebnis ist kein Formfehler des
+    // Bodys, aber 400 (statt z.B. 501) bleibt im selben Codebereich wie die übrigen
+    // Formprüfungen dieses Endpunkts (D5, kein dritter Statuscode für denselben Zweck).
+    //
+    // GESPERRTE_ERSETZUNGS_STATUS bleibt UNANGETASTET (Nicht-Ziel): ANGENOMMEN ändert den
+    // Workflow-Status nicht, ABGELEHNT setzt GESTOPPT — GESTOPPT ist ersetzbar und damit der
+    // Reparaturpfad, Muster der ABGELEHNT-Zweig von POST /api/workflows/<id>/freigabe.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/abnahme')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/abnahme'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+
+      // (1) Laden und validieren — wortgleich zum Freigabe-/Stopp-Endpunkt: 409 statt 400, weil
+      // bei einem ungültigen Bestand nicht der Body schuld ist, sondern der abgelegte Zustand.
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+      const verstoesse = validiereWorkflowDaten(workflowDaten)
+      if (verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        return
+      }
+
+      // (2) Body-Form, wortgleich zum Freigabe-/Stopp-Endpunkt.
+      if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+
+      // (3) 'ergebnis' — vor der statusabhängigen Sachprüfung (4), die seinen Wert braucht
+      // (Muster Freigabe-Endpunkt: schrittId-Form vor der ausgang-Sachprüfung).
+      if (body.ergebnis !== 'ANGENOMMEN' && body.ergebnis !== 'ABGELEHNT' && body.ergebnis !== 'ANPASSUNG_ANGEFORDERT') {
+        sendeJson(res, 400, { grund: "'ergebnis' muss 'ANGENOMMEN', 'ABGELEHNT' oder 'ANPASSUNG_ANGEFORDERT' sein" })
+        return
+      }
+      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
+        sendeJson(res, 400, { grund: "'ANPASSUNG_ANGEFORDERT' ist noch nicht bedienbar — folgt in F23 WS-2b" })
+        return
+      }
+
+      // (4) Sachprüfung: welcher Workflow-Status erlaubt welches Ergebnis.
+      if (body.ergebnis === 'ANGENOMMEN' && workflowDaten.status !== 'ABGESCHLOSSEN') {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — 'ANGENOMMEN' ist nur bei Status 'ABGESCHLOSSEN' möglich`,
+        })
+        return
+      }
+      if (body.ergebnis === 'ABGELEHNT' && workflowDaten.status !== 'ABGESCHLOSSEN' && workflowDaten.status !== 'KLAERUNG_ERFORDERLICH') {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' steht auf '${workflowDaten.status}' — 'ABGELEHNT' ist nur bei Status 'ABGESCHLOSSEN' oder 'KLAERUNG_ERFORDERLICH' möglich`,
+        })
+        return
+      }
+
+      // (5) bezug — der Ausführungsschritt muss real gelaufen sein, sonst gibt es nichts
+      // Abzunehmendes. Bei validierten Daten und einem der beiden oben geprüften Status
+      // praktisch unerreichbar (beide setzen einen durchgelaufenen Ausführungsschritt voraus),
+      // aber eine künftige, hier nicht vorgesehene Vorlagenform ohne rolle 'ausfuehrung' soll
+      // nicht mit einem ungültigen Entscheidungsartefakt enden. Vorgezogen vor (5b): die dortige
+      // Dedup-Prüfung braucht ausfuehrungSchritt.lauf_id.
+      const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
+      if (ausfuehrungSchritt === null || ausfuehrungSchritt.lauf_id === null) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' hat keinen gelaufenen Schritt mit rolle 'ausfuehrung' — Abnahme nicht möglich` })
+        return
+      }
+      const reviewSchritt = findeReviewSchritt(workflowDaten)
+
+      // (5b) Nacharbeit 15.09.2026 (F-384, korrigierte Maßnahme), QA-Pass TC-05: keine zweite/
+      // widersprüchliche Entscheidung zu DEMSELBEN BAU-ERGEBNIS — Muster
+      // POST /api/workflows/<id>/freigabe, wo eine zweite Freigabe strukturell an
+      // ermittleNaechstenSchritt abprallt ("ein bereits freigegebener Schritt liefert 'starte'
+      // statt 'haltFreigabe'"). Abnahme hat keinen Statuswechsel, an dem eine zweite Entscheidung
+      // von selbst abprallen würde — ANGENOMMEN lässt den Workflow-Status bewusst unverändert
+      // (AK15) —, deshalb eine eigene, explizite Prüfung. Bezug ist ausfuehrung_lauf_id, NICHT
+      // workflow_version (Reviewer-Befund 15.09.2026: version ist ein Plandatum, kein
+      // Fassungszähler — der etablierte Reparaturweg reicht bewusst eine Fassung mit
+      // UNVERÄNDERTER version ein, F15 WS-2c/F-226/F-227). Eine Entscheidung zu einem FRÜHEREN
+      // Ausführungslauf (nach ABGELEHNT -> GESTOPPT -> Reparaturfassung mit neuem Bau, AK16) darf
+      // die Abnahme des neuen Baus nicht blockieren — GET .../abnahme meldete sie dort bereits
+      // als 'veraltet', nicht 'ok'.
+      const bestehendeEntscheidung = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, ladeOptionen)
+      if (bestehendeEntscheidung !== null && bestehendeEntscheidung.daten.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt.lauf_id) {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' ist für den Ausführungslauf '${ausfuehrungSchritt.lauf_id}' bereits abgenommen entschieden ('${bestehendeEntscheidung.daten.ergebnis}') — eine zweite Entscheidung zu demselben Bau-Ergebnis wird nicht festgehalten`,
+        })
+        return
+      }
+
+      // (6) Begründung ist Pflicht, wie bei Freigabe/Stopp/F13s 'terminal' (F-162).
+      if (typeof body.begruendung !== 'string' || body.begruendung.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)" })
+        return
+      }
+
+      // (7) D13, wortgleich zum Freigabe-Endpunkt und aus demselben Grund: die Sperre gilt
+      // unabhängig vom konkreten Request, vor jeder Zustandsänderung, auch für ABGELEHNT (dort
+      // startet zwar nichts, aber eine zweite Wahrheit über den aktiven Arbeitsstrang entstünde
+      // genauso).
+      if (laufAktiv) {
+        sendeJson(res, 409, {
+          grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang. Die Abnahme-Entscheidung wurde NICHT festgehalten; nach dem Ende des Laufs erneut einreichen.`,
+        })
+        return
+      }
+
+      const begruendung = body.begruendung
+      const entschiedenAm = new Date().toISOString()
+      const bezug = { workflow_version: workflowDaten.version, ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id, review_lauf_id: reviewSchritt?.lauf_id ?? null }
+
+      // Das Entscheidungsartefakt entsteht VOR jeder Zustandsänderung (D2, Bauauftrag Punkt 4;
+      // Muster Freigabe-Endpunkt). eingaben-Referenz auf die abgenommene Workflow-VERSION, Form
+      // wortgleich zum Freigabe-/Stopp-Endpunkt (D5): synthetischer 'artefakt:'-Schlüssel,
+      // zitierter_bereich mit versionSequenz, inhalts_hash der geladenen Version.
+      const abgenommeneVersion = [
+        {
+          pfad: `artefakt:workflow-${workflowId}`,
+          zitierter_bereich: `WORKFLOW_V0 versionSequenz ${workflowVersion.versionSequenz}`,
+          inhalts_hash: workflowVersion.inhaltsHash,
+        },
+      ]
+      let entscheidungsArtefakt
+      const abnahmeArtefaktId = `entscheidung-workflow-${workflowId}-abnahme`
+      try {
+        const abnahmeDaten = { entscheidung_schema: 'v0', art: 'abnahme', ergebnis: body.ergebnis, begruendung, entschieden_am: entschiedenAm, bezug }
+        const abnahmeVerstoesse = validiereEntscheidungsDaten(abnahmeDaten)
+        if (abnahmeVerstoesse.length > 0) {
+          throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${abnahmeVerstoesse.join('; ')}`)
+        }
+        entscheidungsArtefakt = registriereKernArtefakt(
+          abnahmeArtefaktId,
+          profilReferenz,
+          { erzeuger: 'mensch', schritt: 'entscheidung-workflow-abnahme' },
+          abnahmeDaten,
+          abgenommeneVersion,
+          ladeOptionen
+        )
+      } catch (fehler) {
+        console.error(`[leitstand] Abnahme-Entscheidung für Workflow '${workflowId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Abnahme-Entscheidung konnte nicht festgehalten werden: ${fehler.message}` })
+        return
+      }
+
+      if (body.ergebnis === 'ABGELEHNT') {
+        // GESTOPPT, nicht KLAERUNG_ERFORDERLICH: die Ablehnung ist eine bewusste
+        // Menschenentscheidung, kein ungeklärter Zustand (Muster Freigabe-Endpunkt
+        // ABGELEHNT-Zweig). Cursor auf null wie bei jedem GESTOPPT.
+        const gestoppt = schreibeWorkflowFortschritt(
+          workflowId,
+          null,
+          {},
+          () => ({ status: 'GESTOPPT', aktiver_schritt_id: null, grund: `Abnahme ABGELEHNT: ${begruendung}` }),
+          profilReferenz,
+          ladeOptionen
+        )
+        if (!gestoppt.ok) {
+          console.error(`[leitstand] Workflow '${workflowId}' konnte nach der Abnahme-Ablehnung nicht fortgeschrieben werden:`, gestoppt.grund)
+          sendeJson(res, 500, { grund: gestoppt.grund })
+          return
+        }
+        if (gestoppt.eingefroren) {
+          console.error(`[leitstand] Workflow '${workflowId}' war bei der Abnahme-Ablehnung bereits GESTOPPT — die Begründung der Ablehnung steht nur im Entscheidungsartefakt.`)
+        }
+        sendeJson(res, 200, {
+          workflowId,
+          ergebnis: 'ABGELEHNT',
+          status: 'GESTOPPT',
+          artefaktId: abnahmeArtefaktId,
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+
+      // ANGENOMMEN: der Workflow-Status ändert sich NICHT (Bauauftrag Punkt 4) — die Abnahme
+      // ist eine reine Bezeugung, kein Übergang.
+      sendeJson(res, 200, {
+        workflowId,
+        ergebnis: 'ANGENOMMEN',
+        status: workflowDaten.status,
+        artefaktId: abnahmeArtefaktId,
+        versionSequenz: entscheidungsArtefakt.versionSequenz,
       })
       return
     }
