@@ -939,6 +939,179 @@ function legeZweistufigenWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs, s
   }
 }
 
+// ─── (h)/(i) F23 WS-1b real: Post-Build-Review-Urteil steuert die Fortsetzung ──
+// (löst F-351/F-377)
+//
+// Der Gap, den AK12 schließt: fuehreAufgabeDurchs Rückgabewert kennt nur die drei
+// F7-Terminalausgänge (ERFOLGREICH/VERWEIGERT/FEHLGESCHLAGEN) — das INHALTLICHE Urteil
+// eines Post-Build-Reviews (output_schema 'ergebnis-code-reviewer') steht ausschließlich
+// im Rohstrom des Codex-Laufs. Beide Blöcke fahren dieselbe reale Kette wie (a): echter
+// Kindprozess für Schritt 1 (claude-code), echter Kindprozess für Schritt 2 (codex,
+// hier durch node.exe ersetzt wie überall in dieser Datei — real, aber kontrolliert),
+// echtes klassifiziereLauf (F7), und danach real gelesen aus scripts/leitstand-server.mjs'
+// leseUrteilAusLaufakte. Ein Mock des Werkzeuglaufs würde nur die REGEL in
+// ermittleNaechstenSchritt belegen (siehe src/workflow/workflow.test.ts) — nicht, dass ein
+// echter Rohstrom bis zur Entscheidung durchgereicht wird.
+//
+// (h) ist der Grünfall: BEREIT setzt fort wie ein gewöhnliches ERFOLGREICH, der
+// zweistufige Workflow läuft nach EINEM Start bis ABGESCHLOSSEN durch.
+// (i) ist der Rotfall, den F-351/F-377 benennen: BLOCKIERT hält an (haltKlaerung),
+// OBWOHL der Codex-Lauf selbst sauber mit Exit-Code 0 durchlief und F7 ihn ERFOLGREICH
+// klassifiziert — der Halt kommt ausschließlich aus dem gelesenen Urteil, nicht aus
+// einem gescheiterten Werkzeuglauf. Schritt 2 trägt deshalb eine eigene, terminale
+// ERFOLGREICH-Kette, während der WORKFLOW auf KLAERUNG_ERFORDERLICH steht.
+
+/** Baut die stdout-Zeilen eines Codex-'--json'-Laufs mit einer letzten agent_message, deren Text das ergebnis-code-reviewer-JSON mit dem gegebenen urteil trägt (Muster result-evaluator.test.ts' CODEX_STDOUT_*-Fixtures). */
+function codexUrteilSkript(urteil) {
+  const agentMessageJson = JSON.stringify({ urteil, befunde: [], empfehlung: 'F23-WS1b-Realcheck-Fixture: automatische Urteilsauswertung.' })
+  const zeilen = [
+    JSON.stringify({ type: 'turn.started' }),
+    JSON.stringify({ type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: agentMessageJson } }),
+    JSON.stringify({ type: 'turn.completed' }),
+  ].join('\n')
+  // Wie ERFOLG_SKRIPT: process.stdout.write und Ende, keine Argv-Auswertung nötig — die
+  // echten Codex-Argv-Tokens (exec --json --sandbox read-only --model ... --output-schema
+  // ... prompt) landen unbesehen HINTER dem '--' im Startziel-Array (schreibeTestKombinierteStartvorlage).
+  return `process.stdout.write(${JSON.stringify(zeilen)})`
+}
+
+/** Wie schreibeTestStartvorlage, aber mit ZWEI Startzielen: dem flachen (claude-code, Schritt 1) und dem genesteten worker.codex (F16 AK5/AK11, Schritt 2) — beide durch node.exe ersetzt. @returns Pfad der geschriebenen Startvorlage */
+function schreibeTestKombinierteStartvorlage(dateiname, claudeSkript, codexSkript) {
+  const basis = JSON.parse(readFileSync('startvorlagen/beispielprojekt.json', 'utf-8'))
+  const vorlage = {
+    ...basis,
+    werkzeugStartziel: [NODE_STARTZIEL_PFAD, '-e', claudeSkript, '--'],
+    werkzeugVersionDeklariert: ISTUEBRIGEFELDER_FIXTURE.werkzeug_version_deklariert,
+    berechtigungskontext: ISTUEBRIGEFELDER_FIXTURE.berechtigungskontext,
+    worker: { codex: { startziel: [NODE_STARTZIEL_PFAD, '-e', codexSkript, '--'], versionDeklariert: 'f23-ws1b-test-codex-1.0.0', sandbox: 'read-only' } },
+  }
+  const pfad = join('startvorlagen', dateiname)
+  writeFileSync(pfad, JSON.stringify(vorlage))
+  return pfad
+}
+
+/** Ausführung (claude-code) gefolgt von Post-Build-Review (codex, output_schema ergebnis-code-reviewer, freigabe AUTOMATISCH) — Muster legeZweistufigenWorkflowAn, andere Rolle/Worker/Schema an Schritt 2. @returns workflowId */
+function legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, zeitgrenzeMs) {
+  const workflowId = `f23-ws1b-workflow-${randomUUID()}`
+  registriereWorkflow(
+    {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: auftragId,
+      version: 1,
+      ziel: 'Realcheck: Ausführung gefolgt von Post-Build-Review.',
+      status: 'OFFEN',
+      aktiver_schritt_id: 'schritt-1',
+      grenzen: { max_schritte: 8, max_replans: 0 },
+      schritte: [
+        schrittFixture('schritt-1', 'schritt-2', zeitgrenzeMs),
+        schrittFixture('schritt-2', null, zeitgrenzeMs, {
+          rolle: 'code-reviewer',
+          worker: 'codex',
+          modell: 'f23-ws1b-test-modell',
+          output_schema: 'ergebnis-code-reviewer',
+        }),
+      ],
+    },
+    leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json')),
+    { basisVerzeichnis, schreiber: STILL }
+  )
+  return workflowId
+}
+
+// ─── (h) BEREIT setzt fort — der Workflow läuft real bis ABGESCHLOSSEN ─────
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f23-ws1b-bereit'
+  const befundeVorBereit = befunde.length
+  raeumeVerzeichnis(basisVerzeichnis)
+  const startvorlagePfad = schreibeTestKombinierteStartvorlage('test-f23-ws1b-bereit.json', ERFOLG_SKRIPT, codexUrteilSkript('BEREIT'))
+  let schliessen = async () => {}
+  try {
+    const auftragId = registriereTestAuftrag(basisVerzeichnis)
+    const workflowId = legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, 30000)
+    const testserver = await starteTestserver({ basisVerzeichnis, startvorlagePfad, ...startfreigabeOptionen() })
+    schliessen = testserver.schliessen
+
+    const start = await fetch(`${testserver.basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) {
+      befunde.push(`(h) F23 WS-1b: der Startaufruf erwartet 202, erhalten ${start.status} (${JSON.stringify(await start.json().catch(() => ({})))})`)
+    } else {
+      const daten = await warteAufWorkflowStatus(workflowId, basisVerzeichnis, ['ABGESCHLOSSEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT'], 60000)
+      const [schritt1, schritt2] = daten?.schritte ?? []
+      if (daten?.status !== 'ABGESCHLOSSEN' || schritt1?.status !== 'ERFOLGREICH' || schritt2?.status !== 'ERFOLGREICH') {
+        befunde.push(
+          `(h) F23 WS-1b: BEREIT muss den Workflow real bis ABGESCHLOSSEN fortsetzen, erhalten ${JSON.stringify({ status: daten?.status, grund: daten?.grund, s1: schritt1?.status, s2: schritt2?.status })}`
+        )
+      } else {
+        const laufStatus2 = stelleLaufstatusFest(schritt2.lauf_id, { basisVerzeichnis, schreiber: STILL })
+        if (laufStatus2.status !== 'ABGESCHLOSSEN' || laufStatus2.ergebnis !== 'ERFOLGREICH') {
+          befunde.push(`(h) F23 WS-1b: der Post-Build-Review muss eine eigene terminale ERFOLGREICH-Kette haben, erhalten ${JSON.stringify(laufStatus2)}`)
+        } else if (befunde.length === befundeVorBereit) {
+          console.log(
+            '✓ (h) F23 WS-1b: ein reales BEREIT-Urteil (aus dem Codex-Rohstrom gelesen, leseUrteilAusLaufakte) setzt den Workflow fort wie ein gewöhnliches ERFOLGREICH — Ausführung → Post-Build-Review, EIN Start, real bis ABGESCHLOSSEN.'
+          )
+        }
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+    rmSync(startvorlagePfad, { force: true })
+  }
+}
+
+// ─── (i) BLOCKIERT hält an — obwohl der Werkzeuglauf selbst ERFOLGREICH war ─
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f23-ws1b-blockiert'
+  const befundeVorBlockiert = befunde.length
+  raeumeVerzeichnis(basisVerzeichnis)
+  const startvorlagePfad = schreibeTestKombinierteStartvorlage('test-f23-ws1b-blockiert.json', ERFOLG_SKRIPT, codexUrteilSkript('BLOCKIERT'))
+  let schliessen = async () => {}
+  try {
+    const auftragId = registriereTestAuftrag(basisVerzeichnis)
+    const workflowId = legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, 30000)
+    const testserver = await starteTestserver({ basisVerzeichnis, startvorlagePfad, ...startfreigabeOptionen() })
+    schliessen = testserver.schliessen
+
+    const start = await fetch(`${testserver.basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) {
+      befunde.push(`(i) F23 WS-1b: der Startaufruf erwartet 202, erhalten ${start.status} (${JSON.stringify(await start.json().catch(() => ({})))})`)
+    } else {
+      const daten = await warteAufWorkflowStatus(workflowId, basisVerzeichnis, ['ABGESCHLOSSEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT'], 60000)
+      const [schritt1, schritt2] = daten?.schritte ?? []
+      if (daten?.status !== 'KLAERUNG_ERFORDERLICH' || daten?.aktiver_schritt_id !== 'schritt-2') {
+        befunde.push(
+          `(i) F23 WS-1b: BLOCKIERT muss auf KLAERUNG_ERFORDERLICH mit Cursor 'schritt-2' anhalten, erhalten ${JSON.stringify({ status: daten?.status, cursor: daten?.aktiver_schritt_id, grund: daten?.grund })}`
+        )
+      } else if (typeof daten?.grund !== 'string' || !daten.grund.includes('BLOCKIERT')) {
+        befunde.push(`(i) F23 WS-1b: der Halt-Grund muss das Urteil BLOCKIERT nennen, erhalten ${JSON.stringify(daten?.grund)}`)
+      } else if (schritt1?.status !== 'ERFOLGREICH') {
+        befunde.push(`(i) F23 WS-1b: Schritt 1 (Ausführung) muss unangetastet ERFOLGREICH bleiben, erhalten ${JSON.stringify(schritt1)}`)
+      } else if (schritt2?.status !== 'ERFOLGREICH' || schritt2?.lauf_id === null) {
+        // Der eigentliche Beleg der realen Verdrahtung (AK12): der Halt kommt NICHT aus einem
+        // gescheiterten Werkzeuglauf (dann stünde hier FEHLGESCHLAGEN/VERWEIGERT über Regel 1) —
+        // der Codex-Lauf lief sauber durch und wurde von F7 ERFOLGREICH klassifiziert. Erst
+        // Regel 1b in ermittleNaechstenSchritt, gespeist aus dem real gelesenen Rohstrom-Urteil,
+        // hält den WORKFLOW an.
+        befunde.push(`(i) F23 WS-1b: Schritt 2 muss real gelaufen und ERFOLGREICH klassifiziert sein — der Halt kommt aus dem URTEIL, nicht aus dem Werkzeuglauf, erhalten ${JSON.stringify(schritt2)}`)
+      } else {
+        const laufStatus2 = stelleLaufstatusFest(schritt2.lauf_id, { basisVerzeichnis, schreiber: STILL })
+        if (laufStatus2.status !== 'ABGESCHLOSSEN' || laufStatus2.ergebnis !== 'ERFOLGREICH') {
+          befunde.push(`(i) F23 WS-1b: der Post-Build-Review-Lauf selbst muss eine terminale ERFOLGREICH-Kette haben, erhalten ${JSON.stringify(laufStatus2)}`)
+        } else if (befunde.length === befundeVorBlockiert) {
+          console.log(
+            '✓ (i) F23 WS-1b: ein reales BLOCKIERT-Urteil hält den Workflow an (KLAERUNG_ERFORDERLICH, Cursor auf dem Review-Schritt, Grund nennt BLOCKIERT) — OBWOHL der Codex-Lauf selbst sauber durchlief und real ERFOLGREICH klassifiziert wurde. Löst F-351/F-377.'
+          )
+        }
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+    rmSync(startvorlagePfad, { force: true })
+  }
+}
+
 // ─── Ergebnis ───────────────────────────────────────────────────────────────
 console.log('')
 if (befunde.length === 0) {

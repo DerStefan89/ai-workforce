@@ -69,6 +69,19 @@ export type Freigabe = 'AUTOMATISCH' | 'EMPFOHLEN' | 'ZWINGEND'
 /** Die drei terminalen Ausgänge eines Werkzeuglaufs (ARCHITECTURE.md §4). */
 export type SchrittAusgang = 'ERFOLGREICH' | 'VERWEIGERT' | 'FEHLGESCHLAGEN'
 
+/**
+ * Gesamturteil eines Post-Build-Reviews (F23 WS-1b, löst F-351/F-377).
+ * Zwilling der urteil-Enum in schemas/ergebnis-code-reviewer.schema.json —
+ * wortgleiche Wertemenge. Reine Dokumentation, wie die übrigen Zwillinge in
+ * diesem Kopfkommentar (WORKFLOW_STATUS/SCHRITT_STATUS/WORKER/FREIGABE):
+ * SchrittErgebnis.urteil bleibt bewusst `string | null` (roh aus dem
+ * Rohstrom gelesen, ungeprüft), und ermittleNaechstenSchritt vergleicht in
+ * Regel 1b gegen die rohen Literale, nicht gegen diesen Typ — ein
+ * Laufzeitwert, den dieser Typ kennt und die Regel nicht, muss anhalten,
+ * nicht durchlaufen (Reviewer-Pass 15.09.2026).
+ */
+export type CodeReviewerUrteil = 'BEREIT' | 'BEREIT_NACH_KORREKTUR' | 'BLOCKIERT'
+
 export interface WorkflowV0Grenzen {
   max_schritte: number
   max_replans: number
@@ -148,6 +161,16 @@ export interface SchrittErgebnis {
   schrittId: string
   ergebnis: SchrittAusgang
   laufId: string
+  /**
+   * OPTIONAL (F23 WS-1b, löst F-351/F-377): das Urteil eines gerade gelaufenen
+   * Post-Build-Reviews (output_schema 'ergebnis-code-reviewer'), roh aus dem
+   * Rohstrom des Laufs gelesen — der Aufrufer normalisiert (Muster `ergebnis`
+   * oben, Kopfkommentar dieser Datei). Rückwärtskompatibel: jeder Aufrufer und
+   * jede bestehende Fixture ohne dieses Feld bleibt unverändert lauffähig, ein
+   * fehlendes Feld heißt für ermittleNaechstenSchritt dasselbe wie ein
+   * unbekannter Wert — anhalten, nicht stillschweigend fortsetzen.
+   */
+  urteil?: string | null
 }
 
 /**

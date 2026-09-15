@@ -575,7 +575,7 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Sieben Prüfungen (0, 1, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * Acht Prüfungen (0, 1, 1b, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
  * die Reihenfolge ist die eigentliche Aussage:
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
@@ -590,6 +590,13 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    einen VERWEIGERT/FEHLGESCHLAGEN-Ausgang hinweg (ARCHITECTURE.md §4:
  *    Blockieren ist ein normaler Ausgang; ein unterbrochener Baulauf wird
  *    nie automatisch neu gestartet).
+ * 1b. Vorschritt trägt output_schema 'ergebnis-code-reviewer' UND
+ *    vorschrittErgebnis.urteil ∉ {BEREIT, BEREIT_NACH_KORREKTUR} →
+ *    haltKlaerung (F23 WS-1b, löst F-351/F-377). ERFOLGREICH (Regel 1) sagt
+ *    nur, dass F7 den Lauf sauber klassifiziert hat — nichts über den
+ *    INHALT eines Post-Build-Reviews. Ohne diese Regel setzte ein
+ *    BLOCKIERT-Urteil den Workflow trotzdem fort, weil das Werkzeug selbst
+ *    anstandslos lief.
  * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den vier
  *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
  *    der nächste Schritt zufällig für einen Zustand, Worker, Freigabebedarf
@@ -641,20 +648,22 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    EMPFOHLEN ist rein anzeigend und gehört nach WS-3 — hier bewusst KEINE
  *    Sonderbehandlung, sonst entstünde eine zweite, stille Freigabestufe.
  *
- * Die Regeln 0, 3, 4, 4b und 5 sind bewusst als ALLOWLIST formuliert („ist es
- * genau das Erlaubte?") und nicht als Blacklist („ist es das eine
+ * Die Regeln 0, 1b, 3, 4, 4b und 5 sind bewusst als ALLOWLIST formuliert
+ * („ist es genau das Erlaubte?") und nicht als Blacklist („ist es das eine
  * Verbotene?"). Der Unterschied wird erst sichtbar, wenn jemand
  * WORKFLOW_STATUS, SCHRITT_STATUS, WORKER oder FREIGABE oben um einen Wert
  * erweitert (bei 4b: wenn ein zweiter Worker ein Ausgabeschema einlösen
- * können soll)
+ * können soll; bei 1b: wenn ergebnis-code-reviewer.schema.json je um einen
+ * vierten urteil-Wert wächst)
  * erweitert: bei einer Blacklist fiele der neue Wert still in „startet
  * automatisch", bei der Allowlist in „hält an". Ein neuer Status, Worker oder
  * eine neue Freigabestufe muss hier eine bewusste Zeile bekommen, statt sich
  * die Automatik lautlos zu nehmen (Reviewer-Pass 10.09.2026, K2/R2).
  *
- * Zwei Ausgänge stehen quer dazu: `fertig` (Vorschritt ERFOLGREICH,
- * nachfolger === null) wird direkt nach Regel 1 entschieden, weil dann gar
- * kein nächster Schritt existiert, auf den die Regeln 2-5 anwendbar wären.
+ * Zwei Ausgänge stehen quer dazu: `fertig` (Vorschritt ERFOLGREICH, Regel 1b
+ * bestanden oder unzutreffend, nachfolger === null) wird direkt nach Regel 1b
+ * entschieden, weil dann gar kein nächster Schritt existiert, auf den die
+ * Regeln 2-5 anwendbar wären.
  * Und ein Verweis ins Leere (unbekannte schritt_id im Ergebnis, im
  * nachfolger oder im Cursor) endet als haltKlaerung mit aktiverSchrittId
  * null: bei validierten Daten unerreichbar (validiereWorkflowDaten prüft
@@ -737,6 +746,47 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         art: 'haltKlaerung',
         grund: `Schritt '${vorschritt.schritt_id}' endete ${vorschrittErgebnis.ergebnis} (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    // Regel 1b (F23 WS-1b, löst F-351/F-377): ein ERFOLGREICH klassifizierter
+    // Lauf ist für einen Post-Build-Review (output_schema
+    // 'ergebnis-code-reviewer') NICHT dasselbe wie ein gebilligtes Ergebnis —
+    // ERFOLGREICH sagt nur, dass das Werkzeug sauber durchlief und ein
+    // schemakonformes Ergebnisobjekt lieferte (F7), nichts über dessen
+    // INHALT. Das Urteil selbst (BEREIT/BEREIT_NACH_KORREKTUR/BLOCKIERT) trägt
+    // ausschließlich vorschrittErgebnis.urteil, roh aus dem Rohstrom gelesen
+    // (der Aufrufer normalisiert, siehe SchrittErgebnis-Kopfkommentar in
+    // types.ts). ALLOWLIST wie Regeln 0/3/4/4b/5: nur BEREIT und
+    // BEREIT_NACH_KORREKTUR setzen fort — BLOCKIERT, ein unbekannter Wert oder
+    // ein fehlendes Feld halten an, statt eine Ablehnung stillschweigend
+    // durchzuwinken.
+    //
+    // Steht HIER, vor der nachfolger===null-Prüfung: der Post-Build-Review ist
+    // in beiden Vorlagen (workflow-vorlagen/standard.json, hoch.json) der
+    // LETZTE Schritt (nachfolger: null) — ohne diese Reihenfolge liefe ein
+    // BLOCKIERT-Urteil unten in 'fertig', und der Workflow gälte als
+    // abgeschlossen, obwohl der Reviewer ihn abgelehnt hat. Die Prüfung greift
+    // aber unabhängig von der Position (auch bei gesetztem nachfolger,
+    // QA-Pass 15.09.2026) — ein BLOCKIERT hält so oder so an, statt bloß zum
+    // nächsten Schritt statt zu 'fertig' zu springen.
+    //
+    // Die Kopplung an output_schema statt an rolle ist bewusst (QA-Pass
+    // 15.09.2026): dieses Modul bleibt abhängigkeitsarm (Kopfkommentar) und
+    // kennt src/rollen/ROLLENVERTRAEGE nicht. Dass ein Schreibschritt (rolle
+    // 'ausfuehrung') dieses output_schema nie trägt, sichert NICHT diese
+    // Funktion, sondern eine andere Schicht — F17s Rollenvertrag lehnt eine
+    // solche Fehlkonfiguration schon vor jedem Start ab
+    // (scripts/leitstand-server.mjs, loeseAusfuehrungsEingabenAuf, Ablehnung
+    // 8/10, da ROLLENVERTRAEGE.ausfuehrung.erlaubtes_output_schema === null).
+    // Wer eine der beiden Seiten ändert, prüft die andere mit.
+    if (vorschritt.output_schema === 'ergebnis-code-reviewer') {
+      const urteil: string | null | undefined = vorschrittErgebnis.urteil
+      if (urteil !== 'BEREIT' && urteil !== 'BEREIT_NACH_KORREKTUR') {
+        return {
+          art: 'haltKlaerung',
+          grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer) trägt Urteil ${urteil === null || urteil === undefined ? 'fehlend' : `'${urteil}'`} — nur 'BEREIT' oder 'BEREIT_NACH_KORREKTUR' setzen den Workflow automatisch fort (Lauf '${vorschrittErgebnis.laufId}')`,
+          aktiverSchrittId: vorschritt.schritt_id,
+        }
       }
     }
     if (vorschritt.nachfolger === null) {

@@ -107,7 +107,7 @@ verwaister Auftrag für dieselbe Sache). Grundlage: `docs/STATUS.md`
 - **F-350** (`TECH_DEBT`, P1, gelöst in WS-1a): das Entscheidungsartefakt
   (`entscheidung_schema: v0`) hat kein JSON-Schema und keinen Validator —
   einziges `*_V0`-Format ohne beides.
-- **F-351** (`TECH_DEBT`, P1, offen — WS-1b): der Review→Execution-Handoff
+- **F-351** (`TECH_DEBT`, P1, gelöst in WS-1b): der Review→Execution-Handoff
   transportiert kein Urteil; es gibt keine Post-Build-Prüfstufe, und ein
   `urteil: BLOCKIERT` hätte selbst dann keine maschinelle Wirkung.
 
@@ -118,7 +118,7 @@ festgehalten (Auftrag, 14.09.2026):
   nach zwei konkurrierenden Bauorten für den Post-Build-Prüfschritt aus —
   geklärt: F23 baut ihn, der M5-Vermerk gilt nur der strategischen
   Vorab-Challenge vor Meilenstein 5, kein Laufzeitmechanismus.
-- **F-377** (offen, Maßnahme F23 WS-1b/WS-2): `code-reviewer` läuft in
+- **F-377** (gelöst in WS-1b): `code-reviewer` läuft in
   `workflow-vorlagen/standard.json`/`hoch.json` heute VOR dem Bau, entgegen
   seinem eigenen Rollenvertrag — sein Urteil wird von niemandem
   ausgewertet.
@@ -149,7 +149,7 @@ festgehalten (Auftrag, 14.09.2026):
 - Abschwächung der ZWINGEND-Freigabe vor einem schreibenden Schritt
   (E-M3-1 bleibt unverändert) — der Post-Build-Prüfschritt ist ein
   zusätzlicher Halt, kein Ersatz für die bestehende Freigabe davor.
-- Änderung an `workflow-vorlagen/*.json` — ausdrücklich WS-2, in diesem
+- Änderung an `workflow-vorlagen/*.json` — ausdrücklich WS-1b, in diesem
   Auftrag (WS-0) nicht angefasst; F15-Testfixtures bleiben unberührt.
 
 ## Akzeptanzkriterien
@@ -180,10 +180,13 @@ festgehalten (Auftrag, 14.09.2026):
   selbstreferenzierende `@<schrittId>`-Referenz je als Rot-Fall, AK1/AK4
   zusätzlich über einen echten `POST /api/laeufe`-Dispatch belegt (nicht nur
   über direkte Funktionsaufrufe); `npm run check` grün.
-- **AK9** [WS-1b–WS-3, außerhalb dieses Auftrags] Post-Build-Prüfschritt mit
-  ausgewertetem Urteil im Automaten (löst F-351/F-377), `BLOCKIERT`-Wirkung,
+- **AK9** [WS-1b erfüllt, WS-2/WS-3 außerhalb dieses Auftrags]
+  Post-Build-Prüfschritt mit ausgewertetem Urteil im Automaten (löst
+  F-351/F-377, WS-1b: `workflow-vorlagen/*.json` umgebaut,
+  `ermittleNaechstenSchritt` Regel 1b, real belegt in
+  `scripts/check-f15-automat-real.mjs` Block (h)/(i)); `BLOCKIERT`-Wirkung,
   ACCEPT/ADJUST/REJECT im Leitstand, ADJUST-Folgeworkflow unter demselben
-  Auftrag, Feature Review mit Stefan (Muster F22 AK8).
+  Auftrag, Feature Review mit Stefan bleiben WS-2/WS-3 (Muster F22 AK8).
 
 ## Dependencies
 
@@ -200,7 +203,7 @@ Meilenstein-Gate, `docs/STATUS.md`).
 - **WS-1a** (dieser Auftrag, gebaut): Entscheidungs-Schema + Validator
   (löst F-350, dabei F-379s fünf `ergebnis`-Familien über das neue
   Pflichtfeld `art` auseinandergezogen).
-- **WS-1b**: Vorlagen-Umbau (Post-Build-Prüfschritt in den
+- **WS-1b** (gebaut): Vorlagen-Umbau (Post-Build-Prüfschritt in den
   Workflow-Vorlagen) und Urteilsauswertung im Automaten (löst F-351/F-377).
 - **WS-2**: Abnahme-View im Leitstand — ACCEPT/ADJUST/REJECT als
   Entscheidungsartefakt (`art: abnahme`), `BLOCKIERT`-Wirkung,

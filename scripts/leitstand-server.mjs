@@ -2244,6 +2244,65 @@ export function normalisiereSchrittAusgang(ergebnis) {
 }
 
 /**
+ * Liest das 'urteil'-Feld eines ERFOLGREICH klassifizierten Post-Build-Review-
+ * Laufs (output_schema 'ergebnis-code-reviewer') direkt aus dessen Rohstrom
+ * (F23 WS-1b, löst F-351/F-377). F7s KlassifikationsErgebnis (normalisiereSchrittAusgang
+ * oben) kennt nur die drei Terminalausgänge und trägt den geparsten Ergebnisinhalt
+ * nicht — das Urteil steht ausschließlich im Rohstrom.
+ *
+ * Dasselbe Lesemuster wie verarbeiteRouterErgebnis (worker-abhängig: Codex über
+ * leseCodexEreignisse().letzteAgentMessage, claude-code über
+ * leseErgebnisobjekt().result mit Codezaun-Fallback über entferneCodezaun) — kein
+ * zweiter Regelsatz (D5), nur ein zweiter LOOKUP desselben bereits geschriebenen
+ * Rohstroms, für ein anderes Feld als die Terminalklassifikation.
+ *
+ * Liefert bei jedem Lese-/Parsefehler oder fehlendem/nicht-stringigem urteil-Feld
+ * null — für Regel 1b in ermittleNaechstenSchritt ist ein fehlendes Urteil
+ * dasselbe wie ein unbekanntes: haltKlaerung statt stillem Weiterlaufen.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Reviews
+ * @returns das rohe urteil, oder null
+ */
+function leseUrteilAusLaufakte(laufakteDaten) {
+  let rohInhalt
+  try {
+    rohInhalt = readFileSync(laufakteDaten.rohstrom_referenz.pfad, 'utf8')
+  } catch {
+    return null
+  }
+  let rohstrom
+  try {
+    rohstrom = JSON.parse(rohInhalt)
+  } catch {
+    return null
+  }
+
+  const worker = laufakteDaten.worker ?? 'claude-code'
+  let text = null
+  if (worker === 'codex') {
+    const ereignisse = typeof rohstrom.stdout === 'string' ? leseCodexEreignisse(rohstrom.stdout) : null
+    text = ereignisse?.letzteAgentMessage ?? null
+  } else {
+    const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
+    text = typeof ergebnisobjekt?.result === 'string' ? ergebnisobjekt.result : null
+  }
+  if (text === null) return null
+
+  let geparst
+  try {
+    geparst = JSON.parse(text)
+  } catch {
+    const entzaunt = worker === 'claude-code' ? entferneCodezaun(text) : null
+    if (entzaunt === null) return null
+    try {
+      geparst = JSON.parse(entzaunt)
+    } catch {
+      return null
+    }
+  }
+  return typeof geparst?.urteil === 'string' ? geparst.urteil : null
+}
+
+/**
  * Schreibt eine neue Workflow-Version, in der genau ein Schritt und die
  * Workflow-Felder status/aktiver_schritt_id/grund fortgeschrieben sind (F15
  * WS-2b, grund seit WS-2c). Kein Überschreiben: registriereWorkflow legt über
@@ -2987,6 +3046,20 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const schrittStatus = fehler !== null ? 'FEHLGESCHLAGEN' : normalisiereSchrittAusgang(ergebnis)
       const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
+      // F23 WS-1b (löst F-351/F-377): fuehreAufgabeDurchs Rückgabewert (ergebnis.klassifikation)
+      // kennt nur die drei Terminalausgänge (F7) — das Urteil eines Post-Build-Reviews steht
+      // ausschließlich im Rohstrom des Laufs und wird deshalb hier, ein zweites Mal und
+      // eigenständig von F7, gelesen (leseUrteilAusLaufakte, Muster verarbeiteRouterErgebnis).
+      // Nur versucht bei ERFOLGREICH und passendem output_schema: ein FEHLGESCHLAGENER/
+      // geheilter Lauf hat keinen auswertbaren Rohstrominhalt, und ein Schritt ohne dieses
+      // Schema kennt kein urteil (Regel 1b in ermittleNaechstenSchritt ignoriert es dann ohnehin).
+      // ladeArtefaktVersion/readFileSync sind synchron — die D13-Übergabe-ohne-Fenster-Zusage
+      // dieses Rückrufs (siehe Kopfkommentar) bleibt gewahrt.
+      let urteil = null
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        if (laufakteVersion !== null) urteil = leseUrteilAusLaufakte(laufakteVersion.daten)
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -3009,7 +3082,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           // dem ein Folgeschritt entstehen dürfte. Der Cursor bleibt auf ihm stehen, der
           // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
           if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id, grund: heilungsGrund }
-          naechster = ermittleNaechstenSchritt(datenMitSchritt, { schrittId: schritt.schritt_id, ergebnis: schrittStatus, laufId })
+          naechster = ermittleNaechstenSchritt(datenMitSchritt, { schrittId: schritt.schritt_id, ergebnis: schrittStatus, laufId, urteil })
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
