@@ -7135,3 +7135,15 @@ Zero-Worker-Fall ab. Real durch QA-Pass gefunden, Fix durch fokussierten
 Re-Review-Pass bestätigt.
 Status: behoben.
 Feature/Run: F24 Bauauftrag, 16.09.2026.
+
+**F-402** · `TECH_DEBT` · P1 · offen
+Titel: Kein projektlokaler Ort für Fähigkeiten.
+Beschreibung: Skills lösen relativ zur Workforce-Repo-Wurzel auf, nicht zum
+Projekt. Aufgedeckt bei der Kandidatenprüfung (Video/Musik/Spiele-Kandidaten
+hatten strukturell keinen Zielort, gehören zu einem Nutzerprojekt statt zur
+Workforce-Basis).
+Fundstelle: docs/harness/werkzeug-katalog.md (Abgrenzungsabsatz aus PR #167).
+Auswirkung: Vor M4-F06 (Projekte v1) muss geklärt sein, wo projektlokale
+Fähigkeiten leben, sonst baut der Projektimport an der Frage vorbei.
+Maßnahme: vor M4-F06-Baubeginn auflösen.
+Feature/Run: Kandidatenrecherche, 16.09.2026.
