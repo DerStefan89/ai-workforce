@@ -1,0 +1,18 @@
+{
+  "gesuchte_capability": "UI_VISUAL_TESTING",
+  "kandidaten": [
+    {
+      "name": "GPT Vision Modell",
+      "typ": "modell",
+      "quelle_url": "https://example.invalid/modell",
+      "capabilities": ["UI_VISUAL_TESTING"],
+      "fit": "mittel",
+      "integrationsaufwand": "hoch",
+      "rechte": "keine",
+      "risiken": [],
+      "empfehlung": "-",
+      "unsicherheiten": []
+    }
+  ],
+  "hinweis_untrusted": true
+}

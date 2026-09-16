@@ -22,9 +22,9 @@
 
 import type { WerkzeugsatzBegrenzung } from '../claude-code-gateway/types.ts'
 
-/** Ein benannter Werkzeugsatz trägt zusätzlich zur Gateway-Form (WerkzeugsatzBegrenzung) seine Art (lesend/schreibend) — AK4 verlangt mindestens je einen. */
+/** Ein benannter Werkzeugsatz trägt zusätzlich zur Gateway-Form (WerkzeugsatzBegrenzung) seine Art (lesend/schreibend/recherchierend) — AK4 verlangt mindestens je einen lesenden und einen schreibenden; 'recherchierend' (F27 WS-1) ist additiv und ohne Mindestanforderung. */
 export interface BenannterWerkzeugsatz extends WerkzeugsatzBegrenzung {
-  art: 'lesend' | 'schreibend'
+  art: 'lesend' | 'schreibend' | 'recherchierend'
 }
 
 export interface StartvorlageV0Daten {

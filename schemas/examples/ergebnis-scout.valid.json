@@ -1,0 +1,19 @@
+{
+  "gesuchte_capability": "UI_VISUAL_TESTING",
+  "kandidaten": [
+    {
+      "name": "Playwright MCP",
+      "typ": "extern",
+      "quelle_url": "https://github.com/microsoft/playwright-mcp",
+      "capabilities": ["UI_VISUAL_TESTING", "BROWSER_AUTOMATION"],
+      "fit": "hoch",
+      "integrationsaufwand": "mittel",
+      "rechte": "Netzwerkzugriff, Browser-Steuerung, keine Schreibrechte im Repo",
+      "risiken": ["Bringt einen eigenen Browser-Prozess mit, den ein Mensch freigeben muss"],
+      "lizenz": "Apache-2.0",
+      "empfehlung": "Zur Freigabe vormerken (Skill werkzeug-auswahl)",
+      "unsicherheiten": []
+    }
+  ],
+  "hinweis_untrusted": true
+}

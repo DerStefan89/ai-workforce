@@ -10,7 +10,8 @@
         "REPO_READ",
         "PLAN_REVIEW",
         "TEST_DESIGN",
-        "TASK_CLASSIFICATION"
+        "TASK_CLASSIFICATION",
+        "WEB_RESEARCH"
       ],
       "freigabe": "FREIGEGEBEN",
       "herkunft": { "art": "startvorlage", "worker": "claude-code" }

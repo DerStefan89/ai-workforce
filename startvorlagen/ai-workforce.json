@@ -24,6 +24,11 @@
       "art": "schreibend",
       "modus": "DEKLARIERT",
       "erlaubte_werkzeuge": ["Read", "Grep", "Glob", "Write", "Edit"]
+    },
+    "recherchierend": {
+      "art": "recherchierend",
+      "modus": "DEKLARIERT",
+      "erlaubte_werkzeuge": ["Read", "Grep", "Glob", "WebSearch", "WebFetch"]
     }
   }
 }

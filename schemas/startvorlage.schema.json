@@ -72,7 +72,7 @@
         "additionalProperties": false,
         "required": ["art", "modus", "erlaubte_werkzeuge"],
         "properties": {
-          "art": { "enum": ["lesend", "schreibend"] },
+          "art": { "enum": ["lesend", "schreibend", "recherchierend"] },
           "modus": { "const": "DEKLARIERT" },
           "erlaubte_werkzeuge": {
             "type": "array",

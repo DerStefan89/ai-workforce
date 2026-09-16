@@ -41,3 +41,15 @@ real erfüllen, wenn der betroffene externe Kandidat freigegeben wird
 Die hier gelisteten Capabilities ohne Rollenbedarf sind keine offenen
 Lücken. Ein Kandidat wird erst aufgenommen, wenn eine Rolle die Capability
 in `benoetigte_capabilities` führt.
+
+## Abschlussnotation: WEB_RESEARCH geschlossen (F27 WS-1)
+
+Mit F27 WS-1 führt die neue Rolle `scout` `WEB_RESEARCH` erstmals in
+`benoetigte_capabilities`. Die Lücke ist damit real geschlossen —
+`claude-code` trägt `WEB_RESEARCH` jetzt direkt in seinen registrierten
+Capabilities (`ressourcen.json`, eigenes `WebSearch`/`WebFetch`-Werkzeug),
+unabhängig von den weiterhin nicht freigegebenen externen Kandidaten
+`firecrawl-mcp`/`perplexity-mcp` in der Tabelle oben (die bleiben stehen —
+sie sind eigene, noch offene Entscheidungen, keine Voraussetzung für die
+Rolle `scout`). Diese Zeile ist ein Abschlussvermerk, kein Löschen der
+historischen Tabelle.

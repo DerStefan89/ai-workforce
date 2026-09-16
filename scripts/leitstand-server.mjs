@@ -444,6 +444,7 @@ import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/work
 import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
+import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 
@@ -2183,6 +2184,64 @@ export function entferneCodezaun(text) {
 }
 
 /**
+ * Liest den geparsten JSON-Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
+ * worker-abhängig (Codex über leseCodexEreignisse().letzteAgentMessage, claude-code
+ * über leseErgebnisobjekt().result), mit Codezaun-Fallback (entferneCodezaun) NUR im
+ * claude-code-Zweig (F-337/F-346). Gemeinsame Low-Level-Lesefunktion für
+ * verarbeiteRouterErgebnis, leseUrteilAusLaufakte und leseScoutErgebnisAusLaufakte
+ * (F27 WS-1 AK5 — vor F27 war dieser Dreisatz zweifach dupliziert, state/findings.md
+ * F-406). Schema-Validierung und Artefaktbau bleiben Sache des jeweiligen Aufrufers
+ * (D5) — diese Funktion liefert nur den geparsten Rohinhalt, keine Formprüfung gegen
+ * ein bestimmtes Rollen-Ergebnisschema.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten
+ * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt' oder null), sonst { ok: false, grund }
+ */
+function leseRollenErgebnisRohstrom(laufakteDaten) {
+  const rohstromPfad = laufakteDaten.rohstrom_referenz.pfad
+  let rohInhalt
+  try {
+    rohInhalt = readFileSync(rohstromPfad, 'utf8')
+  } catch (fehler) {
+    return { ok: false, grund: `Rohstrom '${rohstromPfad}' nicht lesbar: ${fehler.message}` }
+  }
+  let rohstrom
+  try {
+    rohstrom = JSON.parse(rohInhalt)
+  } catch (fehler) {
+    return { ok: false, grund: `Rohstrom ist kein gültiges JSON: ${fehler.message}` }
+  }
+
+  const worker = laufakteDaten.worker ?? 'claude-code'
+  let text = null
+  if (worker === 'codex') {
+    const ereignisse = typeof rohstrom.stdout === 'string' ? leseCodexEreignisse(rohstrom.stdout) : null
+    text = ereignisse?.letzteAgentMessage ?? null
+  } else {
+    const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
+    text = typeof ergebnisobjekt?.result === 'string' ? ergebnisobjekt.result : null
+  }
+  if (text === null) {
+    return { ok: false, grund: `kein Ergebnistext im Rohstrom gefunden (worker '${worker}')` }
+  }
+
+  try {
+    return { ok: true, geparst: JSON.parse(text), beobachtung: null }
+  } catch {
+    // Fence-Stripping NUR im claude-code-Rückfallzweig (F-337/F-346) — codex liefert
+    // strukturierte Ausgabe über --output-schema und braucht keinen Zweitversuch.
+    const entzaunt = worker === 'claude-code' ? entferneCodezaun(text) : null
+    if (entzaunt === null) {
+      return { ok: false, grund: 'Ergebnistext ist kein gültiges JSON' }
+    }
+    try {
+      return { ok: true, geparst: JSON.parse(entzaunt), beobachtung: 'fence_entfernt' }
+    } catch (fehler) {
+      return { ok: false, grund: `Ergebnistext ist auch nach Entfernen eines Codezauns kein gültiges JSON (${fehler.message})` }
+    }
+  }
+}
+
+/**
  * Nachbearbeitung eines ERFOLGREICHEN Router-Laufs (F22 WS-1, Bauauftrag Punkt 2-4):
  * liest den Klassifikationstext worker-abhängig aus dem Rohstrom (leseErgebnisobjekt für
  * 'claude-code', leseCodexEreignisse für 'codex' — Muster scripts/route-auftrag.mjs bzw.
@@ -2215,56 +2274,13 @@ export function entferneCodezaun(text) {
  * @returns bei Erfolg { ok: true, routerArtefaktPfad, workflowId, workflowVersionSequenz }, sonst { ok: false, grund }
  */
 export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, ladeOptionen) {
-  // Pfad VOR dem try heben (Reviewer-Pass 14.09.2026): der catch-Zweig braucht ihn für die
-  // Fehlermeldung erneut — eine zweite Dereferenzierung von laufakte.rohstrom_referenz.pfad dort
-  // würfe bei einer kaputten Laufakte (rohstrom_referenz selbst null/undefined) ein zweites Mal,
-  // unbehandelt aus dieser Funktion heraus.
-  const rohstromPfad = laufakte.rohstrom_referenz.pfad
-  let rohInhalt
-  try {
-    rohInhalt = readFileSync(rohstromPfad, 'utf8')
-  } catch (fehler) {
-    return { ok: false, grund: `Rohstrom '${rohstromPfad}' nicht lesbar: ${fehler.message}` }
+  const gelesen = leseRollenErgebnisRohstrom(laufakte)
+  if (!gelesen.ok) {
+    return { ok: false, grund: `Router-Lauf '${laufId}': ${gelesen.grund}` }
   }
-  let rohstrom
-  try {
-    rohstrom = JSON.parse(rohInhalt)
-  } catch (fehler) {
-    return { ok: false, grund: `Rohstrom ist kein gültiges JSON: ${fehler.message}` }
-  }
-
-  // Worker-Vorgabe: fehlt das Feld, ist es 'claude-code' (Muster loeseAusfuehrungsEingabenAuf).
+  const klassifikation = gelesen.geparst
+  const beobachtung = gelesen.beobachtung
   const worker = laufakte.worker ?? 'claude-code'
-  let klassifikationsText = null
-  if (worker === 'codex') {
-    const ereignisse = typeof rohstrom.stdout === 'string' ? leseCodexEreignisse(rohstrom.stdout) : null
-    klassifikationsText = ereignisse?.letzteAgentMessage ?? null
-  } else {
-    const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
-    klassifikationsText = typeof ergebnisobjekt?.result === 'string' ? ergebnisobjekt.result : null
-  }
-  if (klassifikationsText === null) {
-    return { ok: false, grund: `Router-Lauf '${laufId}' (worker '${worker}'): kein Klassifikationstext im Rohstrom gefunden` }
-  }
-
-  let beobachtung = null
-  let klassifikation
-  try {
-    klassifikation = JSON.parse(klassifikationsText)
-  } catch {
-    // Fence-Stripping NUR im claude-code-Rückfallzweig (F-337/F-346) — codex liefert
-    // strukturierte Ausgabe über --output-schema und braucht keinen Zweitversuch.
-    const entzaunt = worker === 'claude-code' ? entferneCodezaun(klassifikationsText) : null
-    if (entzaunt === null) {
-      return { ok: false, grund: `Router-Lauf '${laufId}': Klassifikationstext ist kein gültiges JSON` }
-    }
-    try {
-      klassifikation = JSON.parse(entzaunt)
-      beobachtung = 'fence_entfernt'
-    } catch (fehler) {
-      return { ok: false, grund: `Router-Lauf '${laufId}': Klassifikationstext ist auch nach Entfernen eines Codezauns kein gültiges JSON (${fehler.message})` }
-    }
-  }
 
   const klassifikationsVerstoesse = validiereErgebnisRouter(klassifikation)
   if (klassifikationsVerstoesse.length > 0) {
@@ -2400,48 +2416,38 @@ export function normalisiereSchrittAusgang(ergebnis) {
  * @returns { urteil, befunde, empfehlung } roh aus dem Rohstrom, oder null
  */
 function leseUrteilAusLaufakte(laufakteDaten) {
-  let rohInhalt
-  try {
-    rohInhalt = readFileSync(laufakteDaten.rohstrom_referenz.pfad, 'utf8')
-  } catch {
-    return null
-  }
-  let rohstrom
-  try {
-    rohstrom = JSON.parse(rohInhalt)
-  } catch {
-    return null
-  }
-
-  const worker = laufakteDaten.worker ?? 'claude-code'
-  let text = null
-  if (worker === 'codex') {
-    const ereignisse = typeof rohstrom.stdout === 'string' ? leseCodexEreignisse(rohstrom.stdout) : null
-    text = ereignisse?.letzteAgentMessage ?? null
-  } else {
-    const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
-    text = typeof ergebnisobjekt?.result === 'string' ? ergebnisobjekt.result : null
-  }
-  if (text === null) return null
-
-  let geparst
-  try {
-    geparst = JSON.parse(text)
-  } catch {
-    const entzaunt = worker === 'claude-code' ? entferneCodezaun(text) : null
-    if (entzaunt === null) return null
-    try {
-      geparst = JSON.parse(entzaunt)
-    } catch {
-      return null
-    }
-  }
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  if (!gelesen.ok) return null
+  const geparst = gelesen.geparst
   if (typeof geparst?.urteil !== 'string') return null
   return {
     urteil: geparst.urteil,
     befunde: Array.isArray(geparst.befunde) ? geparst.befunde : [],
     empfehlung: typeof geparst.empfehlung === 'string' ? geparst.empfehlung : null,
   }
+}
+
+/**
+ * Liest das geparste ergebnis-scout-Ergebnisobjekt eines Scout-Laufs direkt
+ * aus dessen Rohstrom (F27 WS-1) — dasselbe Lesemuster wie
+ * verarbeiteRouterErgebnis/leseUrteilAusLaufakte (AK5, leseRollenErgebnisRohstrom),
+ * hier zusätzlich gegen schemas/ergebnis-scout.schema.json geprüft
+ * (validiereErgebnisScout, src/scout/index.ts) — WS-1 hat noch keinen
+ * '--output-schema'-Mechanismus für claude-code (F-337), die Formprüfung
+ * passiert deshalb erst hier, nach dem Codezaun-Fallback.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Scout-Laufs
+ * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
+ */
+export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  if (!gelesen.ok) {
+    return { ok: false, grund: gelesen.grund }
+  }
+  const verstoesse = validiereErgebnisScout(gelesen.geparst)
+  if (verstoesse.length > 0) {
+    return { ok: false, grund: `Ergebnis verstößt gegen schemas/ergebnis-scout.schema.json: ${verstoesse.join('; ')}` }
+  }
+  return { ok: true, ergebnis: gelesen.geparst }
 }
 
 /**

@@ -17,6 +17,10 @@
  * byte-gleich zu den vor der Migration gültigen Werten der früheren
  * Ausschlussmuster-Konstante. `router` kommt mit F18 WS-1 hinzu (E-M3-2,
  * docs/projekt/zielfassung.md §13.4, erlaubt Codex für die Rolle Router).
+ * `scout` kommt mit F27 WS-1 hinzu — einzige Rolle mit der additiven
+ * Werkzeugsatz-Art 'recherchierend' (src/startvorlage/types.ts), erlaubt
+ * ausschließlich 'claude-code' (kein Codex-Spike in WS-1, F27/feature.md
+ * Nicht-Ziele).
  *
  * F19 WS-1: jeder Vertrag trägt zusätzlich benoetigte_capabilities — Zwilling
  * der capabilities-Werte in ressourcen.json (Repo-Wurzel). Rein deklarativ,
@@ -66,6 +70,15 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubtes_output_schema: 'ergebnis-router',
     ausschlussmuster: ['src/**'],
     benoetigte_capabilities: ['TASK_CLASSIFICATION', 'STRUCTURED_OUTPUT'],
+  },
+  scout: {
+    zweck:
+      'Recherchiert zu einem Capability Gap oder einer expliziten Suche externe Kandidaten (Skills, MCPs), ohne selbst Code zu schreiben oder etwas zu installieren.',
+    erlaubte_werkzeugsatz_arten: ['recherchierend'],
+    erlaubte_worker: ['claude-code'],
+    erlaubtes_output_schema: 'ergebnis-scout',
+    ausschlussmuster: ['src/**'],
+    benoetigte_capabilities: ['WEB_RESEARCH', 'STRUCTURED_OUTPUT', 'REPO_READ'],
   },
 }
 

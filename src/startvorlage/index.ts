@@ -79,7 +79,7 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
         continue
       }
       const w = wert as Record<string, unknown>
-      if (w.art !== 'lesend' && w.art !== 'schreibend') verstoesse.push(`'werkzeugsaetze.${name}.art' muss 'lesend' oder 'schreibend' sein`)
+      if (w.art !== 'lesend' && w.art !== 'schreibend' && w.art !== 'recherchierend') verstoesse.push(`'werkzeugsaetze.${name}.art' muss 'lesend', 'schreibend' oder 'recherchierend' sein`)
       else arten.add(w.art)
       if (w.modus !== 'DEKLARIERT') verstoesse.push(`'werkzeugsaetze.${name}.modus' muss 'DEKLARIERT' sein`)
       if (!Array.isArray(w.erlaubte_werkzeuge) || w.erlaubte_werkzeuge.length === 0 || w.erlaubte_werkzeuge.some((t) => typeof t !== 'string' || t.length === 0)) {
