@@ -16,7 +16,9 @@
  * D5): Regel 1 importiert die reale validiereRessourcenDaten statt einen
  * zweiten Regelsatz zu pflegen.
  *
- * Regel 6 trägt zwei eng benannte Ausnahmen (F346_AUSNAHMEN): 'router' und
+ * Regel 6 trägt zwei eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
+ * src/capabilities-ansicht/index.ts importiert — einzige Quelle, die
+ * F24-Coverage-Ansicht nutzt denselben Import): 'router' und
  * 'code-reviewer' erlauben weiterhin 'claude-code', obwohl 'claude-code'
  * STRUCTURED_OUTPUT nicht bereitstellt (kein --output-schema-Mechanismus,
  * F-337) — beide Verengungen wurden geprüft und real verworfen
@@ -39,6 +41,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
+import { F346_AUSNAHMEN } from '../src/capabilities-ansicht/index.ts'
 
 const REPO_WURZEL = process.cwd()
 /** Zwilling von WORKER in src/workflow/index.ts — dieselbe Zwillings-Bauart wie src/rollen/types.ts. */
@@ -102,12 +105,9 @@ const capabilitiesJeWorker = new Map(rohDaten.ressourcen.filter((r) => r.typ ===
 // Zwei eng benannte Ausnahmen (siehe Kopfkommentar): 'router' und
 // 'code-reviewer' dürfen bei Worker 'claude-code' STRUCTURED_OUTPUT fehlen —
 // jede ANDERE fehlende Capability bei diesen Kombinationen bleibt ein
-// Gate-Fehler.
-const F346_AUSNAHMEN = [
-  { rolle: 'router', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
-  { rolle: 'code-reviewer', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
-]
-
+// Gate-Fehler. Seit F24: F346_AUSNAHMEN ist ein Import aus
+// src/capabilities-ansicht/index.ts (einzige Quelle, Kein-Zweitwahrheit) —
+// Inhalt und Wirkung dieser Regel bleiben unverändert.
 const befundeVor6 = befunde.length
 for (const [rolle, vertrag] of Object.entries(ROLLENVERTRAEGE)) {
   for (const worker of vertrag.erlaubte_worker) {

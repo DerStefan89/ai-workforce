@@ -6916,7 +6916,7 @@ Status: gelöst — (h3) prüft jetzt zusätzlich
 `grenzenVorher`).
 Feature/Run: F23 WS-2b, Verifikation 15.09.2026.
 
-**F-391** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-391** · `HARNESS_IMPROVEMENT` · P2 · gelöst
 Titel: `npm run leitstand` startet standardmäßig mit einer Startvorlage ohne
 codex, wodurch der Router reproduzierbar in den kaputten claude-code-
 Rückfall (F-337/F-373) fällt.
@@ -6931,11 +6931,19 @@ F23-WS-3-Realtest, 15.09.2026 (Router-Lauf
 Fundstelle: `scripts/leitstand-server.mjs:452`.
 Auswirkung: Realtests scheitern beim ersten Klick, wenn niemand daran
 denkt, die Variable zu setzen.
-Maßnahme: [EMPFEHLUNG] `STANDARD_STARTVORLAGE_PFAD` auf
-`startvorlagen/ai-workforce.json` umstellen, oder beim Fehlen von codex eine
-sichtbare Warnung beim Serverstart ausgeben. Kein F23-Blocker.
-Status: offen.
-Feature/Run: F23 WS-3, Realtest 15.09.2026.
+Maßnahme: bewusst klein — kein Verhaltensunterschied am Routing (keine
+Umstellung von `STANDARD_STARTVORLAGE_PFAD`), nur Sichtbarkeit: der
+CLI-Bindeblock in `scripts/leitstand-server.mjs` löst die geladene
+Startvorlage direkt gegen `loeseRessourcenAuf` auf und gibt bei fehlendem/
+nicht verfügbarem `worker.codex`-Block einen `console.warn` mit Pfad der
+geladenen Startvorlage, Rückfall-Hinweis (claude-code-Klassifikationspfad,
+F-337/F-373) und Fix-Hinweis
+(`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`) aus.
+Status: gelöst.
+Fundstellenverweis: `scripts/leitstand-server.mjs`, CLI-Bindeblock
+(F24-Auftrag Schritt 0).
+Feature/Run: F23 WS-3, Realtest 15.09.2026; behoben im F24-Auftrag (Schritt
+0), 16.09.2026.
 
 **F-392** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Die Navigation nennt den Menüpunkt "Runs", obwohl er auch die
@@ -7041,3 +7049,89 @@ Maßnahme: festlegen, ob Kandidatenwissen im Lern-Repo oder im
 ai-workforce-Repo geführt wird.
 Status: offen.
 Feature/Run: F24-Vorbereitung.
+
+**F-399** · `BUG` · P1 · behoben
+Titel: `findeLetzteRealeBesetzung` wählte bei mehreren realen Workflows den
+falschen als "jüngsten" (F24 AK4, Ebene 3+4).
+Beschreibung: Die Funktion sortierte `lineage-workflow-*`-Verzeichnisse nach
+der mtime des Verzeichnisses selbst. Diese mtime friert auf den
+Erstellungszeitpunkt ein — ein neuer Checkpoint legt seine Datei direkt
+unter `<laufId>/checkpoints/` an (`checkpointVerzeichnis()`,
+`schreibeCheckpoint()` in `src/checkpoint-store/index.ts`), das ändert nur
+die mtime des `checkpoints/`-Unterverzeichnisses, nie erneut die des
+Wurzelverzeichnisses. Die Sortierung degenerierte damit still zu "zuerst
+angelegt gewinnt" statt "zuletzt aktualisiert gewinnt" — ein älterer, aber
+noch aktiver Workflow konnte gegen einen neueren, längst inaktiven
+verlieren.
+Fundstelle: `scripts/leitstand-server.mjs`, `findeLetzteRealeBesetzung`.
+Auswirkung: die Rollen-View hätte für eine Rolle mit mehreren realen Läufen
+potenziell die gepinnte/beobachtete Besetzung (Ebene 3+4) eines falschen,
+veralteten Workflows gezeigt — ohne dass das sichtbar gewesen wäre (keine
+Gate-Abdeckung dieses Pfads, F24 AK7 prüft nur AK1/AK5/AK6 mechanisch).
+Maßnahme/Fix: mtime wird jetzt auf `<laufId>/checkpoints/` selbst gemessen
+(mit `existsSync`-Schutz und Fallback `mtimeMs: 0` für ein Verzeichnis ohne
+diesen Unterordner) — jeder reale Checkpoint-Schreibvorgang legt eine neue
+Datei direkt darin an und aktualisiert damit dessen mtime zuverlässig.
+Real durch code-reviewer-Pass gefunden, Fix durch fokussierten
+Re-Review-Pass bestätigt.
+Status: behoben.
+Feature/Run: F24 Bauauftrag, 16.09.2026.
+
+**F-400** · `BUG` · P1 · behoben
+Titel: Ein 500 von `GET /api/ressourcen`/`GET /api/ressourcen/abdeckung`
+ließ die Capabilities-View dauerhaft auf "Lädt…" hängen (F24).
+Beschreibung: `public/leitstand/api.js` rief `holeRessourcen`/
+`holeAbdeckung` bisher als bloßes `fetch(...).then(r => r.json())` ohne
+`r.ok`-Prüfung auf. `fetch()` löst ein Promise ausschließlich über echte
+Netzwerkfehler auf, nie über den HTTP-Status — ein serverseitiger 500 (z. B.
+`ressourcen.json` fehlt/kaputt, real reproduziert) wurde deshalb in
+`ladeCapabilities()` (`public/leitstand/views/capabilities.js`) von
+`Promise.allSettled` fälschlich als `fulfilled` mit dem Fehlerobjekt
+`{grund}` als Wert gemeldet. `renderLibrary` griff darauf mit
+`ansicht.eintraege.length` zu, was einen ungefangenen `TypeError` warf und
+die gesamte Funktion vor dem Erreichen des Coverage-Zweigs abbrach — beide
+Container blieben ohne jede Fehlermeldung auf "Lädt…" stehen, im
+Widerspruch zum eigenen Funktionskommentar ("ein Fehlschlag EINER der
+beiden Quellen zeigt sich nur in ihrem eigenen Container").
+Fundstelle: `public/leitstand/api.js` (`holeRessourcen`, `holeAbdeckung`),
+`public/leitstand/views/capabilities.js` (`ladeCapabilities`).
+Auswirkung: eine defekte `ressourcen.json` hätte die komplette
+Capabilities-View unbrauchbar gemacht, ohne erkennbaren Grund für Stefan.
+Maßnahme/Fix: neuer `holeJsonOderWirf`-Helfer in `public/leitstand/api.js`
+prüft `response.ok` und wirft mit einer aus dem Fehlerkörper gebauten
+Meldung (robust gegen einen nicht-JSON-Fehlerkörper, `.catch(() => ({}))`);
+`holeRessourcen`/`holeAbdeckung` nutzen ihn jetzt, `Promise.allSettled`
+fängt den Fehler korrekt als `rejected` und rendert ihn containerlokal.
+Real end-to-end verifiziert (`ressourcen.json` temporär umbenannt, echter
+Serverlauf, echter 500, bestätigter Wurf im Client). Unabhängig von
+code-reviewer- UND QA-Pass gefunden, Fix durch fokussierten Re-Review-Pass
+bestätigt.
+Status: behoben.
+Feature/Run: F24 Bauauftrag, 16.09.2026.
+
+**F-401** · `BUG` · P2 · behoben
+Titel: Coverage-View zeigte "gedeckt" für eine Rolle ohne jeden
+registrierten erlaubten Worker (F24 AK2, vacuous truth).
+Beschreibung: `projeziereAbdeckung` (`src/capabilities-ansicht/index.ts`)
+berechnete `gedeckt: workerAbdeckung.every(w => w.restFehlend.length ===
+0)`. `Array.prototype.every` liefert auf einem leeren Array laut
+JS-Semantik `true` — trägt eine Rolle in `erlaubte_worker` ausschließlich
+Worker, die nicht in `ressourcen.json` registriert sind (z. B. Tippfehler,
+oder ein inzwischen entfernter Worker), ist `workerAbdeckung` leer
+(`berechneWorkerAbdeckung` filtert nicht registrierte Worker bewusst
+heraus), und die Rolle galt fälschlich als vollständig gedeckt — im selben
+UI-Block (`abdeckungBlock`, `public/leitstand/views/capabilities.js`) stand
+gleichzeitig sichtbar "kein registrierter erlaubter Worker". Mit dem realen
+Bestand (5 Rollen, alle erlaubten Worker registriert) nicht scharf, aber
+ohne Gate-Schutz gegen künftige Config-Drift.
+Fundstelle: `src/capabilities-ansicht/index.ts`, `projeziereAbdeckung`.
+Auswirkung: eine Coverage-View, deren Zweck gerade ist, ungedeckte Rollen
+verlässlich zu zeigen, hätte genau den extremsten Lückenfall (kein einziger
+nutzbarer Worker) als grün/gedeckt gemeldet.
+Maßnahme/Fix: `gedeckt: workerAbdeckung.length > 0 &&
+workerAbdeckung.every(...)`; neuer Regressionstest in
+`src/capabilities-ansicht/capabilities-ansicht.test.ts` deckt den
+Zero-Worker-Fall ab. Real durch QA-Pass gefunden, Fix durch fokussierten
+Re-Review-Pass bestätigt.
+Status: behoben.
+Feature/Run: F24 Bauauftrag, 16.09.2026.

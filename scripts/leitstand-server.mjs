@@ -442,6 +442,7 @@ import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-ga
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
+import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
@@ -1057,6 +1058,93 @@ function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
     eintraege.push(baueWorkflowKopfdaten(workflowId, version))
   }
   return eintraege
+}
+
+/**
+ * Liest ressourcen.json roh und geparst — wirft bei fehlender/kaputter
+ * Datei, der Aufrufer entscheidet über die HTTP-Antwort (Muster
+ * ladeStartvorlage: I/O-Funktionen werfen, kennen kein res). Einzige Stelle,
+ * die den Pfad zusammensetzt (Code-Review-Befund: vorher an zwei Stellen
+ * unabhängig dupliziert — POST /api/auftraege/<id>/routen und die neuen F24
+ * GET /api/ressourcen(/abdeckung)-Endpunkte).
+ * @param repoWurzel - Repo-Wurzel
+ * @returns geparstes ressourcen.json
+ */
+function leseRessourcenRoh(repoWurzel) {
+  return JSON.parse(readFileSync(join(repoWurzel, 'ressourcen.json'), 'utf8'))
+}
+
+/** F24 AK4 (Ebene 2): die drei statischen Workflow-Vorlagen — Zwilling von waehleWorkflowVorlage (src/router/index.ts), das dieselben Dateien für den Router-Pfad lädt, aber Platzhalter füllt statt roh zu lesen. Hier reicht die rohe rolle/worker/modell-Zeile je Schritt. */
+const WORKFLOW_VORLAGEN_DATEINAMEN = ['fast-lane', 'hoch', 'standard']
+
+/** @param repoWurzel - Repo-Wurzel @returns je Vorlage und Schritt eine { vorlage, schritt_id, rolle, worker, modell }-Zeile — eine fehlende/kaputte Vorlagendatei wird übersprungen, nicht geworfen (Muster ladeStartvorlage in src/ressourcen/index.ts). */
+function leseVorlagenSchritte(repoWurzel) {
+  const zeilen = []
+  for (const name of WORKFLOW_VORLAGEN_DATEINAMEN) {
+    const pfad = join(repoWurzel, 'workflow-vorlagen', `${name}.json`)
+    if (!existsSync(pfad)) continue
+    let daten
+    try {
+      daten = JSON.parse(readFileSync(pfad, 'utf8'))
+    } catch {
+      continue
+    }
+    for (const schritt of Array.isArray(daten.schritte) ? daten.schritte : []) {
+      zeilen.push({ vorlage: name, schritt_id: schritt.schritt_id, rolle: schritt.rolle, worker: schritt.worker, modell: schritt.modell })
+    }
+  }
+  return zeilen
+}
+
+/**
+ * F24 AK4 (Ebene 3+4): der jüngste reale Workflow-Schritt dieser Rolle mit
+ * gesetzter lauf_id, plus die zugehörige Laufakte, falls ladbar. WORKFLOW_V0
+ * trägt kein Zeitfeld (Muster sammleAuftraege/sammleWorkflows-Kommentar) —
+ * "jüngster" heißt hier Verzeichnis-mtime, derselbe bereits im Repo
+ * etablierte Fallback. Trägt ein Workflow mehrere Schritte dieser Rolle mit
+ * gesetzter lauf_id, gewinnt der letzte in der Schrittliste (die Kette läuft
+ * linear vorwärts, F15).
+ *
+ * Wichtig (Code-Review-Befund, behoben): mtime muss auf dem
+ * <laufId>/checkpoints/-Verzeichnis gemessen werden, NICHT auf dem
+ * lauf_id-Wurzelverzeichnis selbst — ein neuer Checkpoint legt eine neue
+ * Datei direkt unter checkpoints/ an (src/checkpoint-store/index.ts,
+ * checkpointVerzeichnis), das ändert dessen mtime; das Wurzelverzeichnis
+ * bekommt danach nie wieder einen neuen direkten Eintrag und friert auf den
+ * Erstellungszeitpunkt ein. Mit der falschen Ebene gewinnt strukturell "zuerst
+ * angelegt" statt "zuletzt aktualisiert" — ein älterer, aber noch aktiver
+ * Workflow verliert gegen einen neueren, längst inaktiven.
+ * @param rolle - gesuchte Rolle
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns { treffer: {workflowId,schrittId,laufId,worker,modell} | null, beobachtet: {worker,modellDeklariert} | null }
+ */
+function findeLetzteRealeBesetzung(rolle, basisVerzeichnis) {
+  if (!existsSync(basisVerzeichnis)) return { treffer: null, beobachtet: null }
+  const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+  const verzeichnisse = readdirSync(basisVerzeichnis, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && e.name.startsWith(WORKFLOW_VERZEICHNIS_PRAEFIX))
+    .map((e) => e.name)
+    .map((name) => {
+      const checkpointsPfad = join(basisVerzeichnis, name, 'checkpoints')
+      const mtimeMs = existsSync(checkpointsPfad) ? statSync(checkpointsPfad).mtime.getTime() : 0
+      return { name, mtimeMs }
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+
+  for (const { name } of verzeichnisse) {
+    const workflowId = name.slice(WORKFLOW_VERZEICHNIS_PRAEFIX.length)
+    const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+    if (version === null) continue
+    const schritte = Array.isArray(version.daten?.schritte) ? version.daten.schritte : []
+    const passende = schritte.filter((s) => s.rolle === rolle && s.lauf_id !== null)
+    if (passende.length === 0) continue
+    const schritt = passende[passende.length - 1]
+    const treffer = { workflowId, schrittId: schritt.schritt_id, laufId: schritt.lauf_id, worker: schritt.worker, modell: schritt.modell }
+    const laufakteVersion = ladeArtefaktVersion(`laufakte-${schritt.lauf_id}`, undefined, ladeOptionen)
+    const beobachtet = laufakteVersion === null ? null : { worker: laufakteVersion.daten?.worker ?? 'claude-code', modellDeklariert: laufakteVersion.daten?.modell_deklariert ?? null }
+    return { treffer, beobachtet }
+  }
+  return { treffer: null, beobachtet: null }
 }
 
 /**
@@ -3499,6 +3587,38 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // ─── F24: Capabilities v1 (Library, Coverage, Rollen — read-only) ──────────────────────
+    //
+    // Drei GET-Endpunkte, jeder eine reine Projektion über bereits bestehende Quellen
+    // (ressourcen.json, ROLLENVERTRAEGE, workflow-vorlagen/*.json, Laufakten) über
+    // src/capabilities-ansicht/index.ts — kein neuer Schreibpfad, keine zweite Registry.
+    if (req.method === 'GET' && (pfad === '/api/ressourcen' || pfad === '/api/ressourcen/abdeckung')) {
+      let ressourcenRoh
+      try {
+        ressourcenRoh = leseRessourcenRoh(repoWurzel)
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+        return
+      }
+      const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
+      sendeJson(res, 200, pfad === '/api/ressourcen' ? projeziereLibrary(aufgeloest, startvorlagePfad) : projeziereAbdeckung(ROLLENVERTRAEGE, aufgeloest, startvorlagePfad))
+      return
+    }
+
+    // AK4: alle vier Ebenen (Rollenvertrag, Vorlagen-Besetzung, gepinnte + beobachtete reale
+    // Besetzung des jüngsten Laufs dieser Rolle) für EINE gewählte, bekannte Rolle.
+    if (req.method === 'GET' && pfad.startsWith('/api/ressourcen/rollen/')) {
+      const rolle = dekodiereSegment(pfad.slice('/api/ressourcen/rollen/'.length))
+      if (rolle === null || rolle.length === 0 || !istBekannteRolle(rolle)) {
+        sendeJson(res, 404, { grund: `Rolle ${JSON.stringify(rolle)} ist nicht bekannt (bekannteRollen(): ${bekannteRollen().join(', ')})` })
+        return
+      }
+      const vorlagenBesetzung = findeVorlagenBesetzung(rolle, leseVorlagenSchritte(repoWurzel))
+      const { treffer, beobachtet } = findeLetzteRealeBesetzung(rolle, basisVerzeichnis)
+      sendeJson(res, 200, baueRollenBesetzungsAnsicht(rolle, ROLLENVERTRAEGE[rolle], vorlagenBesetzung, treffer, beobachtet))
+      return
+    }
+
     if (req.method === 'POST' && pfad === '/api/auftraege') {
       let body
       try {
@@ -3914,7 +4034,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // bewusst identisch zum lesenden Schritt in workflow-vorlagen/standard.json ('gpt-6-astra').
       let ressourcenRoh
       try {
-        ressourcenRoh = JSON.parse(readFileSync(join(repoWurzel, 'ressourcen.json'), 'utf8'))
+        ressourcenRoh = leseRessourcenRoh(repoWurzel)
       } catch (fehler) {
         sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
         return
@@ -5280,6 +5400,23 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // startvorlagen/beispielprojekt-kurze-zeitgrenze.json, ohne startvorlagen/beispielprojekt.json
   // anzufassen: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/beispielprojekt-kurze-zeitgrenze.json npm run leitstand`.
   const startvorlagePfad = process.env.LEITSTAND_STARTVORLAGE_PFAD ?? STANDARD_STARTVORLAGE_PFAD
+  // F-391: Sichtbarkeitswarnung, kein Verhaltensunterschied am Routing. Löst NICHT F-391 durch
+  // eine Verhaltensänderung (z. B. STANDARD_STARTVORLAGE_PFAD umstellen) — nur die bisher stille
+  // Konsequenz (Router fällt ohne worker.codex auf den fehleranfälligen claude-code-
+  // Klassifikationspfad zurück, F-337/F-373) wird beim Start sichtbar gemacht. loeseRessourcenAuf
+  // wirft nicht bei fehlender/ungültiger ressourcen.json (Muster wie überall sonst in dieser
+  // Datei) — dann bleibt diese Warnung schlicht aus, GET /api/ressourcen zeigt den echten Fehler.
+  try {
+    const ressourcenRoh = JSON.parse(readFileSync(join(process.cwd(), 'ressourcen.json'), 'utf8'))
+    const codexEintrag = loeseRessourcenAuf(ressourcenRoh.ressourcen, process.cwd(), startvorlagePfad).find((r) => r.id === 'codex')
+    if (codexEintrag !== undefined && codexEintrag.verfuegbar !== true) {
+      console.warn(
+        `[F-391] Startvorlage '${startvorlagePfad}' geladen — Codex ist nicht verfügbar (${codexEintrag.grund}); der Router fällt auf den fehleranfälligen claude-code-Klassifikationspfad zurück (F-337/F-373). Fix: LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`
+      )
+    }
+  } catch {
+    // ressourcen.json fehlt/ungültig — kein Startabbruch für eine reine Sichtbarkeitswarnung.
+  }
   // F-201: prozessübergreifender Instanz-Lock, VOR dem Binden. Dasselbe BASISVERZEICHNIS,
   // das erzeugeRequestHandler hier per Default benutzt — der Lock schützt genau dieses
   // kontrollzustand/, nicht den Port (den schützt EADDRINUSE ohnehin).

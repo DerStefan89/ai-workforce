@@ -63,3 +63,23 @@ export const stoppeWorkflow = (workflowId, koerper) => fetch(`/api/workflows/${e
 // F23 WS-2a: Abnahme-Projektion (Urteil, Änderungsübersicht, etwaige bereits vorhandene Entscheidung) und -Schreibstelle.
 export const holeAbnahme = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`).then((r) => r.json())
 export const sendeAbnahme = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, { method: 'POST', body: JSON.stringify(koerper) })
+
+// F24: Capabilities v1 (Library, Coverage, Rollen) — rein lesend, kein Poll (dieselben Gründe wie
+// holeWorkitems: die Quellen ändern sich nur durch Commits bzw. echte Läufe, kein Live-Zustand).
+//
+// holeRessourcen/holeAbdeckung werfen bei einer Nicht-2xx-Antwort (anders als die übrigen einfachen
+// GET-Wrapper hier) — views/capabilities.js ruft beide über Promise.allSettled auf, damit eine
+// defekte Quelle die andere nicht mitreißt (Muster views/workboard.js); fetch() allein löst ein
+// Promise NIE über den HTTP-Status auf, nur über echte Netzwerkfehler, ohne den r.ok-Check würde
+// ein 500 also fälschlich als 'fulfilled' durchgehen (Code-Review-Befund).
+async function holeJsonOderWirf(pfad) {
+  const antwort = await fetch(pfad)
+  if (!antwort.ok) {
+    const inhalt = await antwort.json().catch(() => ({}))
+    throw new Error(`${antwort.status} ${inhalt.grund ?? ''}`.trim())
+  }
+  return antwort.json()
+}
+export const holeRessourcen = () => holeJsonOderWirf('/api/ressourcen')
+export const holeAbdeckung = () => holeJsonOderWirf('/api/ressourcen/abdeckung')
+export const holeRollenBesetzung = (rolle) => fetch(`/api/ressourcen/rollen/${encodeURIComponent(rolle)}`)
