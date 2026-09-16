@@ -147,7 +147,28 @@
       </section>
     </section>
 
-    <section id="view-capabilities" data-view="capabilities" hidden></section>
+    <section id="view-capabilities" data-view="capabilities" hidden>
+      <p class="hinweis">Reine Projektion über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24) — rein lesend, kein Schreibpfad (Freigeben/Hinzufügen ist F27-Scope).</p>
+      <p id="capabilities-startvorlage" class="hinweis"></p>
+      <button type="button" id="capabilities-neu-laden">Neu laden</button>
+
+      <section class="unterabschnitt">
+        <h2>Library</h2>
+        <div id="capabilities-library"></div>
+      </section>
+
+      <section class="unterabschnitt">
+        <h2>Coverage je Rolle</h2>
+        <div id="capabilities-abdeckung"></div>
+      </section>
+
+      <section class="unterabschnitt">
+        <h2>Rollen-Besetzung</h2>
+        <label for="capabilities-rollen-auswahl">Rolle</label>
+        <select id="capabilities-rollen-auswahl"><option value="">— wählen —</option></select>
+        <div id="capabilities-rollen-detail"></div>
+      </section>
+    </section>
 
     <section id="view-attention" data-view="attention" hidden>
       <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>

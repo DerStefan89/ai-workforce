@@ -18,14 +18,15 @@
  * Poll-Timer) NACH allen initXView()-Aufrufen: jede View registriert ihr
  * abonniere() bei zustand.js, bevor der erste Tick etwas zu melden hätte.
  *
- * Dashboard/Projekt/Capabilities/Attention haben kein eigenes onEnter (reine
- * Anzeige-Views ohne Detail-Unterrouten wie Runs/Workflows) — ihre Routen
+ * Dashboard/Projekt/Attention haben kein eigenes onEnter (reine Anzeige-
+ * Views ohne Detail-Unterrouten wie Runs/Workflows) — ihre Routen
  * registriert deshalb die Shell hier zentral, statt jede View das für sich
- * wiederholen zu lassen. Workboard ist seit F21 WS-2 die Ausnahme: sie hat
- * mit `#/workboard/<id>` eine eigene Detail-Unterroute und registriert
- * beide Routen deshalb selbst (Muster views/runs.js) — KEINE zentrale
- * `#/workboard`-Registrierung mehr hier, sonst träfen zwei Routen denselben
- * Hash mit unterschiedlichem onEnter.
+ * wiederholen zu lassen. Workboard ist seit F21 WS-2 und Capabilities seit
+ * F24 WS-1 die Ausnahme: beide brauchen beim Eintritt einen echten Abruf
+ * (onEnter) und registrieren ihre Route deshalb selbst (Muster
+ * views/runs.js) — KEINE zentrale `#/workboard`- bzw. `#/capabilities`-
+ * Registrierung mehr hier, sonst träfen zwei Routen denselben Hash mit
+ * unterschiedlichem onEnter.
  */
 
 import { registriere, starteRouter } from './router.js'
@@ -48,7 +49,6 @@ initAttentionView()
 
 registriere(/^#\/dashboard$/, 'dashboard')
 registriere(/^#\/projekt$/, 'projekt')
-registriere(/^#\/capabilities$/, 'capabilities')
 
 initZustandPoll()
 starteRouter()
