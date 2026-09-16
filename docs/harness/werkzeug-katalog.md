@@ -1,6 +1,6 @@
 <!--
 Ziel-Pfad im Repo: docs/harness/werkzeug-katalog.md
-Stand dieser Fassung: 18.08.2026
+Stand dieser Fassung: 16.09.2026
 Erstlektüre: nein — Nachschlagewerk, kein Teil des Einstiegs.
 -->
 # Werkzeug-Katalog
@@ -66,12 +66,42 @@ die voneinander abschreiben und teils unglaubwürdige Kennzahlen führen. Für
 den Herkunfts-Check zählt ausschließlich das Quell-Repo, nie ein
 Verzeichnis-Eintrag.
 
+Datierte Rechercheartefakte (docs/harness/kandidaten-*.md) sind Belege mit
+Prüfdatum, keine Katalogeinträge und keine Bestandsliste. Sie werden nicht
+automatisch gelesen und nicht von Skills, Agents oder .claude/-Pfaden
+referenziert. Ein Kandidat wird erst zum Katalogeintrag, wenn er real
+eingesetzt werden soll. Aktueller Beleg: docs/harness/kandidaten-2026-09-15.md
+(176 bewertete Kandidaten, Prüfdatum 15.09.2026, Vetting-Status
+„recherchiert").
+
 ## Bewusst nicht aufgenommen
 
 Geprüfte und verworfene Werkzeuge stehen mit Begründung und Prüfdatum in
 einem eigenen Abschnitt — damit dieselbe Prüfung nicht in einem halben Jahr
 von vorn beginnt. Ein begründeter Ausschluss ist genauso viel wert wie ein
 Eintrag.
+
+Aus der Kandidatenrecherche vom 15.09.2026 ausgeschlossen (Prüfdatum
+16.09.2026): Nutzungsart dieses Projekts ist „Weitergabe der Workforce
+eingeplant". Daraus folgt: Copyleft (GPL/AGPL) ist für eingebaute
+Bestandteile ausgeschlossen, separat laufende Fremdprozesse nicht.
+Zwingend kostenpflichtige APIs oder Datenquellen gelten als kostenpflichtig,
+auch wenn der Code kostenlos ist.
+- figranium (GPL-3.0): würde eingebaut, Copyleft auf das Produkt.
+- iannuttall/seo (Apache-2.0): zwingender externer Datenprovider je Funktion.
+- academic-research-skills (CC BY-NC 4.0): kommerzielle Nutzung ausgeschlossen.
+- Werkzeuge, die Harness oder Leitstand duplizieren (u.a. Archon, Langflow,
+  vibe-kanban, Herdr, gsd-core, gstack, claudex-loop, planning-with-files).
+- Zweite Gedächtnissysteme neben Dateien/Git (u.a. claude-mem, mem-palace,
+  beads).
+- Aktive Security- und Stealth-Werkzeuge (u.a. PentAGI, Strix, Shannon,
+  CloakBrowser, patchright) sowie inoffizielle Plattformzugänge.
+
+Vollständige Begründung je Kandidat: docs/harness/kandidaten-2026-09-15.md.
+Lizenzvolltext geprüft am 16.09.2026 und unbedenklich: thinking-orbs (MIT),
+simplify-codebase (MIT), kibo (MIT, shadcnblocks/kibo), ntfy (Apache-2.0),
+OCRmyPDF (MPL-2.0; Ghostscript bleibt AGPL und darf nicht mitgeliefert
+werden).
 
 ## Einträge
 

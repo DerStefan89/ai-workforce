@@ -6954,3 +6954,90 @@ oder Workflow-Abschnitt in einen eigenen Menüpunkt ziehen. Größerer
 Schnitt, eher M4/M5 statt jetzt.
 Status: offen.
 Feature/Run: F23 WS-3, Realtest 15.09.2026.
+
+**F-393** · `TECH_DEBT` · P2 · offen
+Titel: github-mcp kollidiert mit E-M4-5 (Git bleibt beim Menschen).
+Beschreibung: Ein schreibender GitHub-MCP (Issues/PRs/Merge) schafft eine
+zweite Implementierungsroute am Gateway und an der Bridge-/Git-
+Sicherheitsregel vorbei.
+Fundstelle: Kandidatenrecherche vom 15.09.2026,
+`docs/harness/kandidaten-2026-09-15.md`.
+Auswirkung: würde E-M4-5 unterlaufen, da Git-Schreibzugriffe dann nicht
+mehr ausschließlich beim Menschen lägen.
+Maßnahme: falls je aufgenommen, nur Lesepfad und Repo-Scope auf
+ai-workforce.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
+
+**F-394** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Kein offener Rollenbedarf — Kandidateneinbau ist derzeit YAGNI.
+Beschreibung: `features/F19/bekannte-luecken.md` hält fest, dass keine der
+von ROLLENVERTRAEGE benötigten Capabilities ungedeckt ist. Die neun dort
+gelisteten Capabilities haben externe Kandidaten, aber keinen
+Rollenbedarf.
+Fundstelle: `features/F19/bekannte-luecken.md`.
+Auswirkung: Ein Einbau von Werkzeugen oder Skills aus der
+Kandidatenrecherche schließt aktuell keine Lücke, erzeugt aber dauerhaft
+Kontext- und Pflegekosten. Der Red-Fall 1 in `features/F19/nachweis-ws2.md`
+ist ein konstruiertes Testargument, kein Rollenbedarf, und darf nicht als
+solcher gelesen werden.
+Maßnahme: Aufnahme erst, wenn eine Rolle die Capability in
+`benoetigte_capabilities` führt. Satz dazu in `bekannte-luecken.md`
+ergänzen.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
+
+**F-395** · `TECH_DEBT` · P2 · offen
+Titel: shadcn/ui und Kibo UI sind React, Frontend ist framework-frei.
+Beschreibung: Entscheidung im M4-Plan: Frontend ohne Build-Schritt, native
+ES-Module, kein Framework. Beide UI-Kandidaten sind React-Bibliotheken.
+Fundstelle: Kandidatenrecherche vom 15.09.2026,
+`docs/harness/kandidaten-2026-09-15.md`.
+Auswirkung: eine direkte Übernahme würde die Framework-frei-Entscheidung
+des M4-Plans brechen.
+Maßnahme: vor dem Visual-Productization-Feature entscheiden, ob nur CSS-/
+Token-Anteile übernommen werden oder die Framework-Entscheidung gekippt
+wird.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
+
+**F-396** · `TECH_DEBT` · P1 · offen
+Titel: Kein projektlokaler Ort für Fähigkeiten.
+Beschreibung: `loeseRessourcenAuf(ressourcen, repoWurzel,
+startvorlagePfad)`: Register ist instanzglobal, Startvorlage
+projektspezifisch, Skills lösen über `.claude/skills/<name>` relativ zur
+Workforce-Repo-Wurzel auf.
+Fundstelle: Kandidatenrecherche vom 15.09.2026,
+`docs/harness/kandidaten-2026-09-15.md`.
+Auswirkung: im Mehrprojektbetrieb müssen domänenspezifische Fähigkeiten in
+die Workforce-Installation gelegt werden und liegen dann in jedem Lauf
+jedes Projekts im Kontext. Widerspricht E-M4-2/D3.
+Maßnahme: vor dem Projekte-Feature klären. Nicht in F24 lösen.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
+
+**F-397** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Kandidatenbewertung braucht Nutzungsart als Eingang.
+Beschreibung: Die Recherche filterte implizit gegen Eigennutzung, obwohl
+Weitergabe der Workforce Produktziel ist.
+Fundstelle: Kandidatenrecherche vom 15.09.2026,
+`docs/harness/kandidaten-2026-09-15.md`.
+Auswirkung: zu milde Prüfung verteilungskritischer Lizenzen.
+Maßnahme: Nutzungsart (interne Nutzung / Kundenauftrag / Einbettung /
+SaaS) als Pflichtangabe im Werkzeugkatalog-Eintragsformat ergänzen.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
+
+**F-398** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Ablageort für Kandidatenwissen ungeklärt.
+Beschreibung: `docs/harness/werkzeug-katalog.md` trägt im Abschnitt
+"Einträge" den Vermerk "[FUELLUNG] Die Einträge liegen nicht hier, sondern
+zentral im Lern-Repo", während `ressourcen.json` seine 13 externen
+Kandidaten aus `ClaudePlaybook/WERKZEUG-KATALOG.md` bezogen hat.
+Fundstelle: `docs/harness/werkzeug-katalog.md`, `ressourcen.json`.
+Auswirkung: unklar, wo neue Kandidaten gepflegt werden; Gefahr einer
+vierten Bestandsliste.
+Maßnahme: festlegen, ob Kandidatenwissen im Lern-Repo oder im
+ai-workforce-Repo geführt wird.
+Status: offen.
+Feature/Run: F24-Vorbereitung.
