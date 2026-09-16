@@ -1,0 +1,12 @@
+{
+  "gesuchte_capability": "UI_VISUAL_TESTING",
+  "kandidaten": [
+    { "name": "a", "typ": "extern", "quelle_url": "https://example.invalid/a", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] },
+    { "name": "b", "typ": "extern", "quelle_url": "https://example.invalid/b", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] },
+    { "name": "c", "typ": "extern", "quelle_url": "https://example.invalid/c", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] },
+    { "name": "d", "typ": "extern", "quelle_url": "https://example.invalid/d", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] },
+    { "name": "e", "typ": "extern", "quelle_url": "https://example.invalid/e", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] },
+    { "name": "f", "typ": "extern", "quelle_url": "https://example.invalid/f", "capabilities": ["UI_VISUAL_TESTING"], "fit": "niedrig", "integrationsaufwand": "hoch", "rechte": "keine", "risiken": [], "empfehlung": "-", "unsicherheiten": [] }
+  ],
+  "hinweis_untrusted": true
+}

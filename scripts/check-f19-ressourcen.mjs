@@ -16,21 +16,23 @@
  * D5): Regel 1 importiert die reale validiereRessourcenDaten statt einen
  * zweiten Regelsatz zu pflegen.
  *
- * Regel 6 trägt zwei eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
+ * Regel 6 trägt drei eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
  * src/capabilities-ansicht/index.ts importiert — einzige Quelle, die
- * F24-Coverage-Ansicht nutzt denselben Import): 'router' und
- * 'code-reviewer' erlauben weiterhin 'claude-code', obwohl 'claude-code'
- * STRUCTURED_OUTPUT nicht bereitstellt (kein --output-schema-Mechanismus,
- * F-337) — beide Verengungen wurden geprüft und real verworfen
- * (src/rollen/index.ts, Kopfkommentar, F19 WS-2): ein Router-Lauf über den
- * direkten POST /api/laeufe-Pfad läuft strukturell IMMER als worker:
- * 'claude-code', ein Verengen auf ['codex'] machte den Router-Mechanismus
- * unbenutzbar; ein Verengen von 'code-reviewer' brach ~85 Assertions in
- * scripts/check-f15-workflow.mjs, deren geteilte Testfixtur 'code-reviewer'/
- * 'claude-code' als Default für einen claude-code-spezifischen Rotfall
- * nutzt. Jede Ausnahme deckt AUSSCHLIESSLICH die eine benannte Capability
- * für die eine benannte Rolle/Worker-Kombination ab — jede andere Lücke
- * bleibt ein Gate-Fehler. F-346 bleibt deshalb offen (state/findings.md).
+ * F24-Coverage-Ansicht nutzt denselben Import): 'router', 'code-reviewer'
+ * und seit F27 WS-1 'scout' erlauben weiterhin 'claude-code', obwohl
+ * 'claude-code' STRUCTURED_OUTPUT nicht bereitstellt (kein
+ * --output-schema-Mechanismus, F-337) — alle drei Verengungen wurden
+ * geprüft und real verworfen (src/rollen/index.ts, Kopfkommentar, F19 WS-2;
+ * für scout siehe F27/feature.md Nicht-Ziele, "kein Codex-Spike in WS-1"): ein
+ * Router-/Scout-Lauf über den direkten POST /api/laeufe-Pfad läuft
+ * strukturell IMMER als worker: 'claude-code', ein Verengen auf ['codex']
+ * machte den jeweiligen Mechanismus unbenutzbar; ein Verengen von
+ * 'code-reviewer' brach ~85 Assertions in scripts/check-f15-workflow.mjs,
+ * deren geteilte Testfixtur 'code-reviewer'/'claude-code' als Default für
+ * einen claude-code-spezifischen Rotfall nutzt. Jede Ausnahme deckt
+ * AUSSCHLIESSLICH die eine benannte Capability für die eine benannte
+ * Rolle/Worker-Kombination ab — jede andere Lücke bleibt ein Gate-Fehler.
+ * F-346 bleibt deshalb offen (state/findings.md).
  *
  * Wird aufgerufen von: npm run check.
  *
@@ -125,7 +127,7 @@ for (const [rolle, vertrag] of Object.entries(ROLLENVERTRAEGE)) {
 }
 if (befunde.length === befundeVor6) {
   console.log(
-    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den beiden benannten Ausnahmen ('router'/'claude-code' und 'code-reviewer'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
+    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den drei benannten Ausnahmen ('router'/'claude-code', 'code-reviewer'/'claude-code' und 'scout'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
   )
 }
 

@@ -10,15 +10,16 @@
  *
  * Wichtig: erlaubte_werkzeugsatz_arten ist Zwilling von
  * werkzeugsaetze[].art in schemas/startvorlage.schema.json ('lesend' |
- * 'schreibend'); erlaubte_worker ist Zwilling von WORKER in
- * src/workflow/index.ts ('claude-code' | 'codex'). Wer eine der beiden
- * Quellen ändert, prüft diese Zwillinge mit.
+ * 'schreibend' | 'recherchierend', letzteres additiv seit F27 WS-1);
+ * erlaubte_worker ist Zwilling von WORKER in src/workflow/index.ts
+ * ('claude-code' | 'codex'). Wer eine der beiden Quellen ändert, prüft
+ * diese Zwillinge mit.
  */
 
 export interface Rollenvertrag {
   zweck: string
   /** Zwilling von werkzeugsaetze[].art in schemas/startvorlage.schema.json. */
-  erlaubte_werkzeugsatz_arten: Array<'lesend' | 'schreibend'>
+  erlaubte_werkzeugsatz_arten: Array<'lesend' | 'schreibend' | 'recherchierend'>
   /** Zwilling von WORKER in src/workflow/index.ts. */
   erlaubte_worker: Array<'claude-code' | 'codex'>
   erlaubtes_output_schema: string | null
