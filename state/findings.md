@@ -7158,3 +7158,46 @@ Auswirkung: gering, rein dokumentarisch.
 Maßnahme: mit diesem Commit auf ABGESCHLOSSEN gezogen, nach Stefans realem
 Test und ACCEPT.
 Feature/Run: F24-Realtest-Abschluss, 16.09.2026.
+
+**F-404** · `PROCESS_IMPROVEMENT` · P2 · gelöst
+Titel: F-404 aus einem früheren Claude-Projekt-Handoff wurde nie ins
+Register übernommen.
+Beschreibung: Ein früherer Handoff aus dem Claude-Projekt-Kontext (vor
+diesem Repo-Register) vergab bereits die ID F-404, die aber nie hierher
+übertragen wurde — das reale Register endete vor dieser Runde bei F-403.
+Fundstelle: `state/findings.md`, Lückenprüfung zu Beginn des F27-WS-1-
+Bauauftrags.
+Auswirkung: gering — reine Nummerierungslücke, keine inhaltliche Folge.
+Maßnahme: mit diesem Eintrag nachgetragen, Lücke geschlossen.
+Feature/Run: F27-WS-1-Bauauftrag, Schritt 0, 16.09.2026.
+
+**F-405** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: `git clone --depth 1` verifiziert Repo-Fakten im Cloud-Workspace
+zuverlässiger als WebFetch/GitKraken.
+Beschreibung: Im Cloud-Workspace des Challenger-Chats erwiesen sich
+WebFetch und GitKraken bei großen Dateien bisher wiederholt als
+fehleranfällig, um reale Repo-Fakten zu verifizieren. Ein flacher
+`git clone --depth 1` desselben Repos lieferte dieselben Fakten
+zuverlässig.
+Fundstelle: Challenge-Runde vor dem F27-WS-1-Bauauftrag.
+Auswirkung: mittel — eine unzuverlässige Verifikationsmethode in
+Challenge-Runden kann falsche Repo-Annahmen unentdeckt lassen.
+Maßnahme: `git clone --depth 1` als Methode für künftige Challenge-Runden
+vermerkt, keine Repo-Änderung nötig.
+Feature/Run: Challenge-Runde vor F27-WS-1, 16.09.2026.
+
+**F-406** · `HARNESS_IMPROVEMENT` · P2 · gelöst
+Titel: Rollen-Ergebnis-Lesemechanik (Codezaun-Fallback) war vor F27
+zweifach dupliziert.
+Beschreibung: `verarbeiteRouterErgebnis` und `leseUrteilAusLaufakte`
+(`scripts/leitstand-server.mjs`) trugen bis F27 WS-1 denselben
+Lese-Dreisatz (worker-abhängiger Rohstrom-Zugriff, JSON.parse,
+Codezaun-Fallback über `entferneCodezaun`) als unabhängige Kopien.
+Fundstelle: `scripts/leitstand-server.mjs`, `verarbeiteRouterErgebnis` und
+`leseUrteilAusLaufakte` (vor dem Fix).
+Auswirkung: mittel — zwei unabhängig alternde Kopien derselben Lesemechanik;
+eine dritte Kopie für die neue Rolle 'scout' hätte die Dopplung verdreifacht.
+Maßnahme: mit F27 WS-1 AK5 auf eine gemeinsame Low-Level-Lesefunktion
+zurückgeführt, von allen drei Stellen (Router, Code-Reviewer-Urteil,
+Scout-Ergebnis) genutzt.
+Feature/Run: F27-WS-1-Bauauftrag, 16.09.2026.
