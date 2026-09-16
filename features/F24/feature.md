@@ -7,7 +7,7 @@ F24
 Capabilities v1 (Library, Coverage, Rollen-View — read-only)
 
 ## Status
-Status: READY_FOR_TECH
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH,
 WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,

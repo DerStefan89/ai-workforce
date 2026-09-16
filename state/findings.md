@@ -7147,3 +7147,14 @@ Auswirkung: Vor M4-F06 (Projekte v1) muss geklärt sein, wo projektlokale
 Fähigkeiten leben, sonst baut der Projektimport an der Frage vorbei.
 Maßnahme: vor M4-F06-Baubeginn auflösen.
 Feature/Run: Kandidatenrecherche, 16.09.2026.
+
+**F-403** · `PROCESS_IMPROVEMENT` · P3 · gelöst
+Titel: Feature-Akte-Status wird beim Merge nicht nachgezogen (F24).
+Beschreibung: features/F24/feature.md stand nach Merge von PR #168 weiterhin
+auf READY_FOR_TECH, obwohl Implementierung fertig war. Wiederholung des
+F-088-Musters (F4/F6a/F7 drifteten damals ebenso).
+Fundstelle: features/F24/feature.md Status-Feld, dieser Commit.
+Auswirkung: gering, rein dokumentarisch.
+Maßnahme: mit diesem Commit auf ABGESCHLOSSEN gezogen, nach Stefans realem
+Test und ACCEPT.
+Feature/Run: F24-Realtest-Abschluss, 16.09.2026.
