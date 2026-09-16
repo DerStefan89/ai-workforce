@@ -5280,6 +5280,23 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // startvorlagen/beispielprojekt-kurze-zeitgrenze.json, ohne startvorlagen/beispielprojekt.json
   // anzufassen: `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/beispielprojekt-kurze-zeitgrenze.json npm run leitstand`.
   const startvorlagePfad = process.env.LEITSTAND_STARTVORLAGE_PFAD ?? STANDARD_STARTVORLAGE_PFAD
+  // F-391: Sichtbarkeitswarnung, kein Verhaltensunterschied am Routing. Löst NICHT F-391 durch
+  // eine Verhaltensänderung (z. B. STANDARD_STARTVORLAGE_PFAD umstellen) — nur die bisher stille
+  // Konsequenz (Router fällt ohne worker.codex auf den fehleranfälligen claude-code-
+  // Klassifikationspfad zurück, F-337/F-373) wird beim Start sichtbar gemacht. loeseRessourcenAuf
+  // wirft nicht bei fehlender/ungültiger ressourcen.json (Muster wie überall sonst in dieser
+  // Datei) — dann bleibt diese Warnung schlicht aus, GET /api/ressourcen zeigt den echten Fehler.
+  try {
+    const ressourcenRoh = JSON.parse(readFileSync(join(process.cwd(), 'ressourcen.json'), 'utf8'))
+    const codexEintrag = loeseRessourcenAuf(ressourcenRoh.ressourcen, process.cwd(), startvorlagePfad).find((r) => r.id === 'codex')
+    if (codexEintrag !== undefined && codexEintrag.verfuegbar !== true) {
+      console.warn(
+        `[F-391] Startvorlage '${startvorlagePfad}' geladen — Codex ist nicht verfügbar (${codexEintrag.grund}); der Router fällt auf den fehleranfälligen claude-code-Klassifikationspfad zurück (F-337/F-373). Fix: LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`
+      )
+    }
+  } catch {
+    // ressourcen.json fehlt/ungültig — kein Startabbruch für eine reine Sichtbarkeitswarnung.
+  }
   // F-201: prozessübergreifender Instanz-Lock, VOR dem Binden. Dasselbe BASISVERZEICHNIS,
   // das erzeugeRequestHandler hier per Default benutzt — der Lock schützt genau dieses
   // kontrollzustand/, nicht den Port (den schützt EADDRINUSE ohnehin).

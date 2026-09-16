@@ -6916,7 +6916,7 @@ Status: gelöst — (h3) prüft jetzt zusätzlich
 `grenzenVorher`).
 Feature/Run: F23 WS-2b, Verifikation 15.09.2026.
 
-**F-391** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-391** · `HARNESS_IMPROVEMENT` · P2 · gelöst
 Titel: `npm run leitstand` startet standardmäßig mit einer Startvorlage ohne
 codex, wodurch der Router reproduzierbar in den kaputten claude-code-
 Rückfall (F-337/F-373) fällt.
@@ -6931,11 +6931,19 @@ F23-WS-3-Realtest, 15.09.2026 (Router-Lauf
 Fundstelle: `scripts/leitstand-server.mjs:452`.
 Auswirkung: Realtests scheitern beim ersten Klick, wenn niemand daran
 denkt, die Variable zu setzen.
-Maßnahme: [EMPFEHLUNG] `STANDARD_STARTVORLAGE_PFAD` auf
-`startvorlagen/ai-workforce.json` umstellen, oder beim Fehlen von codex eine
-sichtbare Warnung beim Serverstart ausgeben. Kein F23-Blocker.
-Status: offen.
-Feature/Run: F23 WS-3, Realtest 15.09.2026.
+Maßnahme: bewusst klein — kein Verhaltensunterschied am Routing (keine
+Umstellung von `STANDARD_STARTVORLAGE_PFAD`), nur Sichtbarkeit: der
+CLI-Bindeblock in `scripts/leitstand-server.mjs` löst die geladene
+Startvorlage direkt gegen `loeseRessourcenAuf` auf und gibt bei fehlendem/
+nicht verfügbarem `worker.codex`-Block einen `console.warn` mit Pfad der
+geladenen Startvorlage, Rückfall-Hinweis (claude-code-Klassifikationspfad,
+F-337/F-373) und Fix-Hinweis
+(`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json`) aus.
+Status: gelöst.
+Fundstellenverweis: `scripts/leitstand-server.mjs`, CLI-Bindeblock
+(F24-Auftrag Schritt 0).
+Feature/Run: F23 WS-3, Realtest 15.09.2026; behoben im F24-Auftrag (Schritt
+0), 16.09.2026.
 
 **F-392** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Die Navigation nennt den Menüpunkt "Runs", obwohl er auch die
