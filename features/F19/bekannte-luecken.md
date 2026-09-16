@@ -37,3 +37,7 @@ abgedeckt:
 Eine Rolle, die künftig eine dieser Capabilities benötigt, kann sie erst
 real erfüllen, wenn der betroffene externe Kandidat freigegeben wird
 (Skill `werkzeug-auswahl`) — nicht durch eine Änderung an diesem Modul.
+
+Die hier gelisteten Capabilities ohne Rollenbedarf sind keine offenen
+Lücken. Ein Kandidat wird erst aufgenommen, wenn eine Rolle die Capability
+in `benoetigte_capabilities` führt.

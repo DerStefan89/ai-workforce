@@ -5,6 +5,13 @@ Diese Datei führt die Dev-Werkzeuge des Bauprozesses. Die Capability-Träger
 der Workforce (Worker, Skills, bekannte externe Kandidaten) stehen in
 ressourcen.json.
 
+Datierte Rechercheartefakte (docs/harness/kandidaten-*.md) sind Belege mit
+Prüfdatum, keine Bestandsliste dieser Datei. Sie werden nicht automatisch
+gelesen und nicht von Skills, Agents oder .claude/-Pfaden referenziert. Ein
+Kandidat wird erst zum Eintrag hier, wenn er real eingesetzt werden soll.
+Aktueller Beleg: docs/harness/kandidaten-2026-09-15.md (176 bewertete
+Kandidaten, Prüfdatum 15.09.2026, Vetting-Status „recherchiert").
+
 ## Im Einsatz
 
 | Werkzeug | Zweck | Eingeführt (Datum) | Über Skill `werkzeug-auswahl` geprüft? |
