@@ -26,6 +26,21 @@
  * Instanz B, während Instanz A aktiv ist, und gibt nach deren Ende wieder
  * frei (AK5, D13).
  *
+ * WS-2a (features/F25/feature.md AK16) ergänzt: (5) GET /api/projekte real
+ * gegen HTTP geprüft — Registerfelder plus laufAktiv:false vor einem Lauf,
+ * laufAktiv:true real WÄHREND eines echten (gestubbten, aber mit einer
+ * echten run_prepared-Wirkungsmarke kalibrierten) Laufs gegen dieselbe
+ * Instanz, laufAktiv:false wieder nach dessen Ende; (6)
+ * public/leitstand/api.js' Präfixwechsel (AK10) als isolierter Unit-Test —
+ * kein Server nötig, ein Fetch-Stub genügt: setzeAktivesProjektPraefix()
+ * schaltet jeden bestehenden Endpunkt um, holeProjekte() bleibt bewusst
+ * unpräfigiert (Muster (2a): reine Funktions-/Modul-Prüfung statt HTTP);
+ * (7) derselbe api.js-Präfixwechsel zusätzlich ENDE-ZU-ENDE gegen einen
+ * echten erzeugeMultiProjektDispatcher (schließt eine Lücke, die (6)
+ * allein offen ließ — der ursprüngliche Präfix-Bau-Fehler bestand dort
+ * zunächst fälschlich grün, weil (6) nur gegen die eigene, damals
+ * ebenfalls falsche Erwartung prüfte, siehe features/F25/nachweis-ws2a.md).
+ *
  * Kein generischer JSON-Schema-Validator (Muster check-datenformate.mjs,
  * D5): Regel 1 importiert die reale validiereProjekteDaten statt einen
  * zweiten Regelsatz zu pflegen (Muster check-f19-ressourcen.mjs).
@@ -40,11 +55,13 @@ import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { erzeugeRequestHandler, baueProjektHandlerMap, erzeugeMultiProjektDispatcher, loeseProjektPfade } from './leitstand-server.mjs'
 import { validiereProjekteDaten } from '../src/projekte/index.ts'
 import { starteProzess } from '../src/claude-code-gateway/prozessstart.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -377,6 +394,165 @@ try {
     } finally {
       await testserverA.schliessen()
       await testserverB.schliessen()
+    }
+  }
+  // ─── (5) GET /api/projekte (WS-2a, AK11/AK16): Registerfelder + laufAktiv, real während eines ──
+  // ─── echten (gestubbten) Laufs gegen dieselbe Instanz, real wieder false nach dessen Ende ──────
+  {
+    const projekt = {
+      id: 'projekt-endpunkt-a',
+      name: 'Projekt Endpunkt A',
+      repo_pfad: 'projekt-endpunkt-a',
+      startvorlage_pfad: 'startvorlagen/beispielprojekt.json',
+      profil_pfad: 'profiles/beispiel.json',
+      basisverzeichnis: 'kontrollzustand-test-f25-projekte-endpunkt',
+      status: 'TEST',
+    }
+    // repoWurzel der Instanz ist TEST_WURZEL (nicht pfade.repoWurzel) — GET /api/projekte löst
+    // projekt.repo_pfad intern über loeseProjektPfade(projekt, repoWurzel) auf (Muster
+    // CLI-Bindeblock: repoWurzel/projekteBasis sind dort ebenfalls derselbe Referenzpunkt).
+    const pfade = loeseProjektPfade(projekt, TEST_WURZEL)
+    const auftragId = registriereTestAuftrag(pfade.basisVerzeichnis)
+    const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+
+    // Die Attrappe schreibt VOR dem Hängen real eine run_prepared-Wirkungsmarke (Muster F1B) —
+    // ein echter fuehreAufgabeDurch-Aufruf legt über F6a/starteGateway genau diesen Checkpoint an,
+    // BEVOR das Ergebnis feststeht; ohne diesen Schritt bliebe existsSync(join(basisVerzeichnis,
+    // laufId)) im gestubbten Testlauf fälschlich leer, und laufAktiv wäre unkalibrierbar false
+    // (Rot-Fall real erhalten, bevor dieser Schreibvorgang ergänzt wurde).
+    let freigeben
+    const haengenderFuehreAufgabeDurch = (laufIdDesAufrufs) => {
+      schreibeWirkungsmarke(laufIdDesAufrufs, PROFIL_REFERENZ, 'run_prepared', {}, { basisVerzeichnis: pfade.basisVerzeichnis, schreiber: () => {} })
+      return new Promise((resolvePromise) => {
+        freigeben = () => resolvePromise({ ok: false, stufe: 'gateway', grund: 'attrappe (Gate-Test, AK16)' })
+      })
+    }
+    const handler = erzeugeRequestHandler({
+      fuehreAufgabeDurchFn: haengenderFuehreAufgabeDurch,
+      basisVerzeichnis: pfade.basisVerzeichnis,
+      repoWurzel: TEST_WURZEL,
+      startvorlagePfad: 'startvorlagen/beispielprojekt.json',
+      globalerLaufZustand,
+      projekte: [projekt],
+    })
+    const { basisUrl, schliessen } = await starteTestserver(handler)
+    try {
+      const antwortVorLauf = await fetch(`${basisUrl}/api/projekte`)
+      const datenVorLauf = await antwortVorLauf.json()
+      const eintragVorLauf = datenVorLauf.projekte?.[0]
+      if (antwortVorLauf.status !== 200) {
+        befunde.push(`(5) GET /api/projekte erwartet 200, erhalten ${antwortVorLauf.status}`)
+      } else if (eintragVorLauf?.id !== 'projekt-endpunkt-a' || eintragVorLauf?.name !== 'Projekt Endpunkt A' || eintragVorLauf?.status !== 'TEST') {
+        befunde.push(`(5) GET /api/projekte liefert nicht die Registerfelder des Eintrags: ${JSON.stringify(eintragVorLauf)}`)
+      } else if (eintragVorLauf.laufAktiv !== false) {
+        befunde.push(`(5) laufAktiv vor Laufstart erwartet false, erhalten ${JSON.stringify(eintragVorLauf.laufAktiv)}`)
+      } else {
+        console.log('✓ (5a) GET /api/projekte liefert Registerfelder (id/name/status) + laufAktiv:false vor jedem Lauf.')
+      }
+
+      const laufId = `check-f25-projekte-endpunkt-${randomUUID()}`
+      const startAntwort = await fetch(`${basisUrl}/api/laeufe`, { method: 'POST', body: JSON.stringify(gueltigerStartauftrag(laufId, auftragId)) })
+      if (startAntwort.status !== 202) befunde.push(`(5) Laufstart erwartet 202, erhalten ${startAntwort.status}`)
+      await new Promise((r) => setTimeout(r, 50))
+
+      const antwortWaehrendLauf = await fetch(`${basisUrl}/api/projekte`)
+      const eintragWaehrendLauf = (await antwortWaehrendLauf.json()).projekte?.[0]
+      if (eintragWaehrendLauf?.laufAktiv !== true) {
+        befunde.push(`(5b) laufAktiv während eines real aktiven Laufs erwartet true, erhalten ${JSON.stringify(eintragWaehrendLauf)}`)
+      } else {
+        console.log('✓ (5b) laufAktiv wird real true, während ein Lauf gegen dieselbe Instanz noch läuft.')
+      }
+
+      freigeben()
+      await new Promise((r) => setTimeout(r, 50))
+      const antwortNachLauf = await fetch(`${basisUrl}/api/projekte`)
+      const eintragNachLauf = (await antwortNachLauf.json()).projekte?.[0]
+      if (eintragNachLauf?.laufAktiv !== false) {
+        befunde.push(`(5c) laufAktiv nach Laufende erwartet false, erhalten ${JSON.stringify(eintragNachLauf)}`)
+      } else {
+        console.log('✓ (5c) laufAktiv fällt nach Laufende real wieder auf false zurück.')
+      }
+    } finally {
+      await schliessen()
+    }
+  }
+
+  // ─── (6) api.js: setzeAktivesProjektPraefix schaltet fetch()-Ziele um (WS-2a, AK10/AK16) ────
+  // Isolierter Unit-Test (Muster (2a): reine Modul-/Funktionsprüfung, kein HTTP-Server nötig) —
+  // api.js rührt keine DOM-API an, ein Fetch-Stub genügt, um jeden Aufrufort zu beobachten.
+  {
+    const beobachteteUrls = []
+    const echtesFetch = globalThis.fetch
+    globalThis.fetch = async (url) => {
+      beobachteteUrls.push(String(url))
+      return { ok: true, json: async () => ({}) }
+    }
+    try {
+      const apiModul = await import(pathToFileURL(resolve('public/leitstand/api.js')).href)
+      await apiModul.holeLaeufe()
+      if (beobachteteUrls.at(-1) !== '/api/laeufe') {
+        befunde.push(`(6) holeLaeufe() vor setzeAktivesProjektPraefix erwartet '/api/laeufe', erhalten '${beobachteteUrls.at(-1)}'`)
+      }
+      // Dispatcher-Kontrakt (erzeugeMultiProjektDispatcher, AK2): setzt selbst EIN '/api' vor den
+      // Rest-Pfad nach der Projekt-id — der Aufruf-Pfad darf deshalb KEIN zweites '/api' tragen,
+      // sonst entstünde '/api/api/...' und liefe ins Leere (real im AK15-Browser-Realtest gefunden:
+      // dieser Unit-Test bestand zunächst fälschlich grün gegen die eigene, damals noch fehlerhafte
+      // Erwartung '/api/projekte/projekt-b/api/laeufe' — erst der echte Dispatcher in (3)/(5) bzw.
+      // der Browser-Realtest deckte den Fehler auf; die Erwartung unten ist jetzt gegen den echten
+      // Dispatcher-Kontrakt kalibriert, nicht mehr gegen die eigene Implementierung).
+      apiModul.setzeAktivesProjektPraefix('/api/projekte/projekt-b')
+      await apiModul.holeLaeufe()
+      if (beobachteteUrls.at(-1) !== '/api/projekte/projekt-b/laeufe') {
+        befunde.push(`(6) holeLaeufe() nach setzeAktivesProjektPraefix('/api/projekte/projekt-b') erwartet '/api/projekte/projekt-b/laeufe' (Dispatcher-Kontrakt: KEIN zweites '/api'), erhalten '${beobachteteUrls.at(-1)}'`)
+      }
+      await apiModul.holeProjekte()
+      if (beobachteteUrls.at(-1) !== '/api/projekte') {
+        befunde.push(`(6) holeProjekte() ist NICHT mehr unpräfigiert — erwartet '/api/projekte' (Register ist präfixunabhängig, AK11/AK13), erhalten '${beobachteteUrls.at(-1)}'`)
+      }
+      if (!befunde.some((b) => b.startsWith('(6)'))) {
+        console.log("✓ (6) api.js: setzeAktivesProjektPraefix() schaltet jeden bestehenden Endpunkt um (holeLaeufe geprüft, Muster gilt für alle mitPraefix()-Aufrufer), holeProjekte() bleibt bewusst unpräfigiert.")
+      }
+
+      // ─── (7) api.js + echter Dispatcher: der (6)-Unit-Test allein hätte den (5)/(6)-Kalibrierungs- ──
+      // ─── Bug NICHT gefangen (er prüfte nur api.js gegen die eigene, damals falsche Erwartung, ──────
+      // ─── keinen echten Server) — dieser Abschnitt schließt genau diese Lücke: api.js' reale ────────
+      // ─── fetch()-Aufrufe gegen einen echten erzeugeMultiProjektDispatcher, ECHTES globalThis.fetch. ──
+      globalThis.fetch = echtesFetch
+      const dispatchProjekt = {
+        id: 'projekt-dispatch-unit',
+        name: 'Dispatch Unit',
+        repo_pfad: '.',
+        startvorlage_pfad: 'startvorlagen/beispielprojekt.json',
+        profil_pfad: 'profiles/beispiel.json',
+        basisverzeichnis: 'kontrollzustand-test-f25-dispatch-unit',
+        status: 'TEST',
+      }
+      const dispatchGlobalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+      const dispatchDefaultHandler = erzeugeRequestHandler({ basisVerzeichnis: join(TEST_WURZEL, 'kontrollzustand-test-f25-dispatch-unit-default'), startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand: dispatchGlobalerLaufZustand })
+      const dispatchMap = baueProjektHandlerMap([dispatchProjekt], process.cwd(), dispatchGlobalerLaufZustand)
+      const dispatchServer = await starteTestserver(erzeugeMultiProjektDispatcher(dispatchMap, dispatchDefaultHandler))
+      try {
+        apiModul.setzeAktivesProjektPraefix('/api/projekte/projekt-dispatch-unit')
+        // holeLaufDetail() statt holeLaeufe(): keine Präfixannahme über den Basis-URL hinaus nötig,
+        // dieselbe mitPraefix()-Stelle — globalThis.fetch ist wieder das echte fetch, api.js selbst
+        // weiß nichts von basisUrl, deshalb der Umweg über eine absolute URL im Fetch-Stub-Ersatz:
+        // api.js ruft fetch() mit einem RELATIVEN Pfad auf ('/api/projekte/.../laeufe') — das
+        // funktioniert nur, wenn ein Basis-Dokument existiert (Browser). In Node ohne DOM braucht
+        // fetch() eine absolute URL; ein zweiter, minimaler globalThis.fetch-Wrapper löst genau
+        // das, ohne api.js selbst zu ändern (D5: api.js bleibt browserisch, kein Node-Sonderfall).
+        globalThis.fetch = (pfad, optionen) => echtesFetch(`${dispatchServer.basisUrl}${pfad}`, optionen)
+        const antwort = await apiModul.holeLaeufe()
+        if (!Array.isArray(antwort)) {
+          befunde.push(`(7) api.js holeLaeufe() über den echten Dispatcher (Präfix '/api/projekte/projekt-dispatch-unit') liefert keine Laufliste — erhalten ${JSON.stringify(antwort)} (Rot-Fall-Muster: mit dem alten, doppelten '/api/api/...'-Pfad hätte dies real 404/HTML statt einer leeren Liste ergeben)`)
+        } else {
+          console.log('✓ (7) api.js holeLaeufe() erreicht über den ECHTEN erzeugeMultiProjektDispatcher real 200 (Präfix + Dispatcher-Kontrakt stimmen end-to-end überein, nicht nur gegen die eigene Erwartung wie (6)).')
+        }
+      } finally {
+        await dispatchServer.schliessen()
+        globalThis.fetch = echtesFetch
+      }
+    } finally {
+      globalThis.fetch = echtesFetch
     }
   }
 } finally {

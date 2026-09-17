@@ -83,7 +83,9 @@ for (const id of ['attention-leer', 'attention-abschnitt-workflows', 'attention-
 }
 
 // ─── (b) api.js: GET /api/workitems ─────────────────────────────────────────
-verlangeVorkommen('b', 'api.js führt GET /api/workitems (holeWorkitems)', apiQuelltext, "fetch(`/api/workitems")
+// F25 WS-2a (AK10): mitPraefix() statt wörtlichem '/api/...'-String direkt in fetch() — trägt
+// selbst kein zweites '/api' (Dispatcher-Kontrakt, real im AK15-Browser-Realtest gefunden).
+verlangeVorkommen('b', 'api.js führt GET /api/workitems (holeWorkitems)', apiQuelltext, "fetch(mitPraefix(`/workitems")
 verlangeVorkommen('b', 'views/workboard.js ruft holeWorkitems(...) auf', workboardQuelltext, 'holeWorkitems(filter)')
 verlangeVorkommen('b', 'attention-daten.js ruft holeWorkitems(...) auf', attentionDatenQuelltext, "holeWorkitems({ status: 'OFFEN' })")
 
