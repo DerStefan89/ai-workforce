@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-jarvis.schema.json",
+  "title": "Rollen-Ergebnis: jarvis",
+  "description": "F26 WS-1. Output-Schema für die Rolle 'jarvis' (src/rollen/index.ts). Ein Chat-Lauf referenziert es als output_schema: \"ergebnis-jarvis\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-router.schema.json). 'art' unterscheidet die drei möglichen Ausgänge einer natürlichen Eingabe: eine reine Antwort (z. B. eine Statusfrage), ein Auftragsvorschlag (mündet über den F22-Pfad in Auftrag+Router) oder ein Aktionsvorschlag (Navigation/Routing). 'auftrag' ist bei art 'auftrag_vorschlag' PFLICHT (erzwungen über 'allOf'/'if'/'then', QA-Befund WS-1: ein WS-2-Client, der ungeprüft ergebnis.auftrag.titel liest, darf sich sonst auf ein fehlendes Unterobjekt verlassen), 'aktion' ebenso bei art 'aktion' — beide bleiben optionale Top-Level-Felder statt eigener Varianten (v0-Vereinfachung, Muster ergebnis-scout.schema.json' optionales 'lizenz'), ihre Anwesenheit ist aber an die passende 'art' gekoppelt. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["art", "antwort"],
+  "allOf": [
+    {
+      "if": { "properties": { "art": { "const": "auftrag_vorschlag" } } },
+      "then": { "required": ["auftrag"] }
+    },
+    {
+      "if": { "properties": { "art": { "const": "aktion" } } },
+      "then": { "required": ["aktion"] }
+    }
+  ],
+  "properties": {
+    "art": {
+      "enum": ["antwort", "auftrag_vorschlag", "aktion"],
+      "description": "Geschlossene Wertemenge für den Ausgang dieses Chat-Laufs: 'antwort' (reine Beantwortung, z. B. einer Statusfrage), 'auftrag_vorschlag' (mündet über den F22-Pfad in Auftrag → Router → Freigabe) oder 'aktion' (Navigations-/Routing-Vorschlag im Leitstand selbst)."
+    },
+    "antwort": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Der für den Menschen lesbare Antworttext — bei jeder 'art' Pflicht, auch wenn zusätzlich 'auftrag' oder 'aktion' gesetzt ist (eine Antwort ohne begleitenden Text ist eine Behauptung ohne Erklärung)."
+    },
+    "auftrag": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["titel", "text"],
+      "description": "Nur bei art 'auftrag_vorschlag' befüllt — Rohmaterial für den F22-Pfad (Auftrag anlegen, Routen, Freigabe), kein selbst registriertes Artefakt.",
+      "properties": {
+        "titel": { "type": "string", "minLength": 1 },
+        "text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "aktion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["typ", "ziel"],
+      "description": "Nur bei art 'aktion' befüllt — ein Navigations- oder Routing-Vorschlag im Leitstand.",
+      "properties": {
+        "typ": {
+          "enum": ["routen", "oeffnen"],
+          "description": "Geschlossene Wertemenge: 'routen' (einen bestehenden Auftrag über den F22-Pfad routen) oder 'oeffnen' (zu einer bestehenden Ansicht/einem Artefakt im Leitstand navigieren)."
+        },
+        "ziel": { "type": "string", "minLength": 1, "description": "Bezugskennung des Ziels (z. B. eine Auftrags-ID oder ein Leitstand-Routenname) — kein freier Pfad." }
+      }
+    },
+    "bezug": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optionaler Bezug dieser Nachricht auf einen bestehenden Auftrag oder ein Workitem — genau eines der beiden Felder, nicht beide zugleich (ein Bezug adressiert immer genau ein Ziel).",
+      "oneOf": [
+        { "required": ["auftrag_id"] },
+        { "required": ["workitem"] }
+      ],
+      "properties": {
+        "auftrag_id": { "type": "string", "minLength": 1 },
+        "workitem": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

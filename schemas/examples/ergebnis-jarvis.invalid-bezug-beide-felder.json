@@ -1,0 +1,5 @@
+{
+  "art": "antwort",
+  "antwort": "Ein Bezug darf nicht beide Ziele zugleich benennen.",
+  "bezug": { "auftrag_id": "auftrag-1", "workitem": "F-123" }
+}
