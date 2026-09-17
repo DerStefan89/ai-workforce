@@ -788,6 +788,9 @@ let gewaehlteWorkflowId = null
 /** Fortlaufende Nummer je ladeWorkflowDetail-Aufruf (Überholschutz, siehe Funktionskommentar unten). */
 let workflowRenderZaehler = 0
 
+/** AbortController der zuletzt gestarteten GET /api/workflows/<id>-Anfrage (Perf-Fix fix/zustand-poll-kosten, Punkt 5) — vor jedem neuen Aufruf abgebrochen, damit eine langsame Antwort nicht mit jedem Poll-Tick eine weitere parallele Verbindung öffnet und das Verbindungslimit des Browsers erschöpft. */
+let aktiveWorkflowDetailAnfrage = null
+
 /**
  * Lädt GET /api/workflows/<id> und rendert Kopf und Schrittliste. Anders als
  * ladeLaufDetail hängt diese Funktion am Poll (der Zweck der Ansicht ist zu
@@ -810,6 +813,10 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
   workflowRenderZaehler += 1
   const meineRenderNummer = workflowRenderZaehler
   const istUeberholt = () => gewaehlteWorkflowId !== workflowId || workflowRenderZaehler !== meineRenderNummer
+
+  aktiveWorkflowDetailAnfrage?.abort()
+  const abbruchsteuerung = new AbortController()
+  aktiveWorkflowDetailAnfrage = abbruchsteuerung
   const abschnitt = document.getElementById('workflow-detail')
   const fehleranzeige = document.getElementById('workflow-detail-fehler')
   const inhalt = document.getElementById('workflow-detail-inhalt')
@@ -823,7 +830,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
   }
 
   try {
-    const antwort = await holeWorkflowDetail(workflowId)
+    const antwort = await holeWorkflowDetail(workflowId, abbruchsteuerung.signal)
     if (istUeberholt()) return
     if (!antwort.ok) {
       const koerper = await antwort.json().catch(() => ({}))

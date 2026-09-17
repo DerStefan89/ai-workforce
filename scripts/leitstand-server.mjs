@@ -866,6 +866,57 @@ function sammleZustandsQuelle(quelle, fn, fehlerListe) {
   }
 }
 
+// ─── Perf-Fix (fix/zustand-poll-kosten): Kopfdaten-Cache je Lauf-/Workflow-Verzeichnis ──
+//
+// sammleLaeufe hat vor diesem Fix bei JEDEM Poll-Tick die komplette Lauf-Historie neu von
+// Platte gelesen (ladeGueltigeCheckpoints validiert+hasht jede Checkpoint-Datei, zusätzlich
+// einmal direkt und ein zweites Mal über stelleLaufstatusFest) — gemessen gegen einen
+// gewachsenen kontrollzustand/ (100 Lauf-Verzeichnisse, 541 Dateien): 62,5 s pro Aufruf. Ein
+// TERMINAL beendeter Lauf schreibt in seine eigene Checkpoint-Kette nie wieder — das ist die
+// eigentliche Ersparnis. Der Cache ist ein reiner In-Memory-Speicher der Serverinstanz
+// (Schlüssel = basisVerzeichnis+Id, damit Tests mit eigenem basisVerzeichnis sich nicht
+// gegenseitig verunreinigen), Invalidierung über einen billigen Stempel (Dateianzahl + mtime
+// des jeweiligen checkpoints-Verzeichnisses) statt über Inhalt.
+//
+// Ein Lauf-Kopfdatum hängt NICHT nur an der eigenen Checkpoint-Kette: kenntnisgenommen kommt
+// aus der separaten lineage-entscheidung-<laufId>-Kette, und die wird laut F13 WS-4 ERST
+// geschrieben, wenn der Lauf bereits terminal ist (Zeile "der Lauf ist bereits terminal").
+// Ein Stempel, der nur die eigene Checkpoint-Kette beobachtet, würde eine spätere
+// Kenntnisnahme deshalb nie sehen — der Stempel ist deshalb ein Verbund aus beiden
+// Verzeichnissen. kontextpaket-/auftrag-Ketten bleiben außen vor (F5/F11: einmalig bei
+// Laufstart geschrieben, danach unveränderlich — kein bekannter Schreibpfad danach).
+const laufKopfdatenCache = new Map()
+const workflowKopfdatenCache = new Map()
+
+/** Billiger Änderungsstempel eines Checkpoint-Verzeichnisses (Dateianzahl + Verzeichnis-mtime) — null, wenn es (noch) nicht existiert. @param verzeichnis - Pfad des checkpoints-Verzeichnisses @returns Stempel-String, oder null */
+function leseCheckpointVerzeichnisStempel(verzeichnis) {
+  if (!existsSync(verzeichnis)) return null
+  return `${readdirSync(verzeichnis).length}:${statSync(verzeichnis).mtimeMs}`
+}
+
+/**
+ * Gecachte Variante von sammleLaufKopfdaten (Perf-Fix, siehe Abschnittskopf) — liest die
+ * Checkpoint-Kette(n) eines Laufs nur neu, wenn sich der Verbundstempel aus eigener Kette und
+ * entscheidung-Kette seit dem letzten Poll geändert hat.
+ * @param laufId - Lauf-Kennung
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @param auftragMemo - Request-lokales Memo, unverändert an sammleLaufKopfdaten durchgereicht
+ * @returns wie sammleLaufKopfdaten
+ */
+function sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo) {
+  const stempel = [
+    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, laufId, 'checkpoints')),
+    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `lineage-entscheidung-${laufId}`, 'checkpoints')),
+  ].join('|')
+  const schluessel = `${basisVerzeichnis}::${laufId}`
+  const vorhanden = laufKopfdatenCache.get(schluessel)
+  if (vorhanden !== undefined && vorhanden.stempel === stempel) return vorhanden.kopfdaten
+
+  const kopfdaten = sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo)
+  laufKopfdatenCache.set(schluessel, { stempel, kopfdaten })
+  return kopfdaten
+}
+
 /**
  * Liefert die Kopfdaten aller echten Läufe unter basisVerzeichnis (AK1,
  * AK2) — reine F2-Lineage-Ketten ohne jede Wirkungsmarke werden
@@ -883,7 +934,7 @@ function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
     .sort()
-    .map((laufId) => sammleLaufKopfdaten(laufId, basisVerzeichnis, auftragMemo))
+    .map((laufId) => sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo))
     .filter((kopfdaten) => kopfdaten !== null)
 }
 
@@ -1051,6 +1102,28 @@ function baueWorkflowKopfdaten(workflowId, version) {
 }
 
 /**
+ * Gecachte Variante der Workflow-Kopfdaten (Perf-Fix, siehe Cache-Abschnittskopf bei
+ * sammleLaufKopfdatenGecached) — anders als beim Lauf genügt hier EIN Verzeichnis-Stempel:
+ * baueWorkflowKopfdaten hängt ausschließlich an der eigenen lineage-workflow-<id>-Kette
+ * (status/aktiver_schritt_id/grund landen dort als neue Versionen, keine externe Kette
+ * beteiligt).
+ * @param workflowId - Kennung aus dem Verzeichnisnamen
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns Kopfdaten-Objekt, oder null, wenn die Kette keine gültige Version liefert
+ */
+function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis) {
+  const stempel = leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `${WORKFLOW_VERZEICHNIS_PRAEFIX}${workflowId}`, 'checkpoints'))
+  const schluessel = `${basisVerzeichnis}::${workflowId}`
+  const vorhanden = workflowKopfdatenCache.get(schluessel)
+  if (vorhanden !== undefined && vorhanden.stempel === stempel) return vorhanden.kopfdaten
+
+  const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const kopfdaten = version === null ? null : baueWorkflowKopfdaten(workflowId, version)
+  workflowKopfdatenCache.set(schluessel, { stempel, kopfdaten })
+  return kopfdaten
+}
+
+/**
  * Kopfdaten aller Workflows unter basisVerzeichnis (F15 WS-2a) — derselbe
  * Verzeichnis-Scan wie sammleAuftraege, aus demselben Grund: es gibt keine
  * Lineage-Registry-Funktion, die alle Artefakt-IDs einer Art listet. Ein
@@ -1073,9 +1146,8 @@ function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
     .sort()) {
     if (!verzeichnisName.startsWith(WORKFLOW_VERZEICHNIS_PRAEFIX)) continue
     const workflowId = verzeichnisName.slice(WORKFLOW_VERZEICHNIS_PRAEFIX.length)
-    const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-    if (version === null) continue
-    eintraege.push(baueWorkflowKopfdaten(workflowId, version))
+    const kopfdaten = baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis)
+    if (kopfdaten !== null) eintraege.push(kopfdaten)
   }
   return eintraege
 }
@@ -3472,6 +3544,13 @@ export function erzeugeRequestHandler(optionen = {}) {
   }
 
   return async function requestHandler(req, res) {
+    // Routenkette in try/catch (Perf-Fix fix/zustand-poll-kosten, Punkt 6): requestHandler ist
+    // async ohne umschließendes try/catch gewesen — jeder unerwartete Wurf endete als
+    // unbehandelte Promise-Ablehnung ohne Antwort, die Anfrage hing dann endlos statt 500 zu
+    // liefern. Bewusst NICHT reindentiert (riesiger, risikoarmer aber unnötiger Diff über die
+    // gesamte Routenkette) — try öffnet hier, catch schließt kurz vor der abschließenden
+    // schließenden Klammer der Funktion.
+    try {
     const angefragteUrl = new URL(req.url, `http://${req.headers.host}`)
     const pfad = angefragteUrl.pathname
 
@@ -5637,6 +5716,10 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
     res.end('Nicht gefunden')
+    } catch (fehler) {
+      console.error(`[leitstand] unerwarteter Fehler im Request-Handler (${req.method} ${req.url}):`, fehler)
+      if (!res.headersSent) sendeJson(res, 500, { grund: fehler.message })
+    }
   }
 }
 

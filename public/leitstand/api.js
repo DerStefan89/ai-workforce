@@ -82,7 +82,10 @@ export const holeWerkzeugsaetze = () => fetch(mitPraefix('/startvorlage/werkzeug
 export const sendeEntscheidungAnfrage = (koerper) => fetch(mitPraefix('/entscheidungen'), { method: 'POST', body: JSON.stringify(koerper) })
 
 export const holeWorkflows = () => fetch(mitPraefix('/workflows')).then((r) => r.json())
-export const holeWorkflowDetail = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}`))
+// signal optional (Perf-Fix fix/zustand-poll-kosten, Punkt 5): ladeWorkflowDetail bricht damit
+// die vorherige Anfrage ab, statt bei jedem Poll-Tick eine weitere parallele zu öffnen — sonst
+// erschöpft eine einzige langsame Antwort das Verbindungslimit des Browsers.
+export const holeWorkflowDetail = (workflowId, signal) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}`), { signal })
 export const reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST', body: JSON.stringify(koerper) })
 export const starteWorkflowSchritt = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/starten`), { method: 'POST', body: JSON.stringify({}) })
 export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/freigabe`), { method: 'POST', body: JSON.stringify(koerper) })
