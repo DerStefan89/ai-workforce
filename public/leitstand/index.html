@@ -12,6 +12,7 @@
     <nav id="shell-nav" aria-label="Hauptnavigation">
       <a href="#/dashboard" data-nav-view="dashboard">Dashboard</a>
       <a href="#/projekt" data-nav-view="projekt">Projekt</a>
+      <a href="#/chat" data-nav-view="chat">Chat</a>
       <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">Projekte</a>
       <a href="#/workboard" data-nav-view="workboard">Workboard</a>
       <a href="#/runs" data-nav-view="runs">Runs</a>
@@ -74,6 +75,17 @@
           <p id="start-fehler" class="fehler" hidden></p>
         </div>
       </section>
+    </section>
+
+    <section id="view-chat" data-view="chat" hidden>
+      <p class="hinweis">Statusfragen ("Status", "was braucht mich") werden lokal, ohne Serverkontakt beantwortet (deterministischer Vorfilter, F26 WS-2a). Alles andere löst einen echten, einmaligen Jarvis-Lauf aus (<code>POST /api/chat</code>) — kein Streaming, kein Zwischenschritt am Router/an der Freigabe/am Automaten vorbei (E-M4-3). Der Verlauf echter Jarvis-Antworten ist Lineage und übersteht einen Reload; Vorfilter-Antworten und ein nicht erfolgreich beendeter Lauf gelten nur für diese Sitzung.</p>
+      <p id="chat-fehler" class="fehler" hidden></p>
+      <div id="chat-verlauf"></div>
+      <label for="chat-eingabe">Nachricht</label>
+      <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
+           ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
+      <textarea id="chat-eingabe" rows="3" maxlength="8000"></textarea>
+      <div><button id="chat-senden">Senden</button></div>
     </section>
 
     <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>

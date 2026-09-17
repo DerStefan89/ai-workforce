@@ -12,6 +12,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (renderProjektKontext beim Bootstrap)
  * - public/leitstand/views/projekte-uebersicht.js (setzeAktivesProjekt bei Kartenklick, AK13)
+ * - public/leitstand/views/chat.js (abonniereProjektWechsel, F26 WS-2a — Reset des projektgebundenen Client-Zustands)
  *
  * Wichtig: STANDARD_PROJEKT entspricht dem Starteintrag 'ai-workforce' aus
  * projekte.json (F25 WS-1, AK1) — sein Präfix ist '/api' (api.js' eigener
@@ -69,7 +70,24 @@ export function holeAktivesProjekt() {
   return aktivesProjekt
 }
 
-/** Setzt das aktive Projekt UND den zugehörigen api.js-Präfix in einem Aufruf, merkt es sich für die Sitzung (Reload-Schutz, s.o.) und rendert danach die Kopfzeile neu. @param projekt - { id, name } eines Registereintrags (GET /api/projekte) */
+/**
+ * F26 WS-2a (QA-Befund, real reproduziert): eine View mit eigenem, projektgebundenem
+ * Client-Zustand (bislang nur views/chat.js — ausstehender Lauf, lokale Vorfilter-/
+ * Fehleinträge) wurde bei einem Projektwechsel NICHT zurückgesetzt. Da die
+ * 2-Sekunden-Poll-Detailauffrischer (zustand.js) projektübergreifend unverändert weiterlaufen,
+ * pollte die Chat-View danach den alten Lauf über den NEUEN api.js-Präfix
+ * (/api/projekte/<neu>/laeufe/<alte-laufId>) — 404 bei jedem Tick, für immer, der
+ * Senden-Button blieb dauerhaft gesperrt, und die alte, fremde Nachricht blieb im neuen
+ * Projekt sichtbar. abonniereProjektWechsel gibt solchen Views einen Reset-Haken, OHNE dass
+ * dieses Modul (oder api.js) etwas über deren internen Zustand wissen muss.
+ * @param fn - () => void, aufgerufen bei jedem setzeAktivesProjekt-Aufruf, NACH dem Präfixwechsel
+ */
+const projektWechselAbonnenten = []
+export function abonniereProjektWechsel(fn) {
+  projektWechselAbonnenten.push(fn)
+}
+
+/** Setzt das aktive Projekt UND den zugehörigen api.js-Präfix in einem Aufruf, merkt es sich für die Sitzung (Reload-Schutz, s.o.), benachrichtigt projektgebundene Views (s.o.) und rendert danach die Kopfzeile neu. @param projekt - { id, name } eines Registereintrags (GET /api/projekte) */
 export function setzeAktivesProjekt(projekt) {
   aktivesProjekt = projekt
   setzeAktivesProjektPraefix(praefixFuer(projekt))
@@ -79,6 +97,7 @@ export function setzeAktivesProjekt(projekt) {
     // Privates Fenster/blockierter Zugriff — der Kontext gilt dann nur bis zum nächsten Reload,
     // kein Absturz (Muster oben, leseGespeichertesProjekt).
   }
+  for (const fn of projektWechselAbonnenten) fn()
   renderProjektKontext()
 }
 

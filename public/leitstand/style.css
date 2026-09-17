@@ -400,3 +400,46 @@ button:disabled {
   padding: 0;
   text-align: left;
 }
+
+/* F26 WS-2a: Chat-View. Eingabefeld wie #auftrag-start (width + max-width, Definition of
+   Done); Einträge mit overflow-wrap/white-space, damit eine lange Nachricht oder Antwort das
+   Layout nicht sprengt statt es zu überlaufen. */
+#chat-eingabe {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.4rem;
+}
+
+.chat-eintrag {
+  margin-bottom: 1rem;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 0.4rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.chat-nachricht {
+  margin: 0 0 0.3rem;
+}
+
+.chat-quelle {
+  margin: 0 0 0.3rem;
+  font-size: 0.75rem;
+  color: var(--color-text-subtle);
+}
+
+.chat-antwort {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.chat-ausstehend {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
