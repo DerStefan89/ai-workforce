@@ -678,6 +678,21 @@ function baueLaufakteProjektion(laufakteVersion) {
 }
 
 /**
+ * F27 WS-2 (AK11): parst das ergebnis-scout-Artefakt eines Scout-Laufs direkt aus dessen
+ * Rohstrom (leseScoutErgebnisAusLaufakte, F27 WS-1 AK5) — für die Ergebnisansicht im Leitstand,
+ * kein neuer Endpunkt (GET /api/laeufe/<laufId> bleibt der einzige Lieferant, D5-Muster wie
+ * baueVerweigertDatenProjektion/baueRohstromProjektion). Nicht auf rolle:'scout' beschränkt: bei
+ * jedem anderen Laufinhalt liefert leseScoutErgebnisAusLaufakte ohnehin ok:false statt zu raten.
+ * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
+ * @returns { status: 'nicht_vorhanden' } | { status: 'nicht_lesbar', grund } | { status: 'ok', ergebnis }
+ */
+function baueScoutErgebnisProjektion(laufakteVersion) {
+  if (laufakteVersion === null) return { status: 'nicht_vorhanden' }
+  const gelesen = leseScoutErgebnisAusLaufakte(laufakteVersion.daten)
+  return gelesen.ok ? { status: 'ok', ergebnis: gelesen.ergebnis } : { status: 'nicht_lesbar', grund: gelesen.grund }
+}
+
+/**
  * F13 WS-1 (AK2): bei ABGESCHLOSSEN/VERWEIGERT das daten-Feld der
  * terminalen Wirkungsmarke (bypass_verdacht_anzahl, is_error,
  * non_execution_kind — src/result-evaluator/index.ts, Schritt 0 dieser
@@ -3371,6 +3386,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
         laufakte: baueLaufakteProjektion(laufakteVersion),
         rohstrom: baueRohstromProjektion(laufakteVersion, repoWurzel),
+        scoutErgebnis: baueScoutErgebnisProjektion(laufakteVersion),
       })
       return
     }

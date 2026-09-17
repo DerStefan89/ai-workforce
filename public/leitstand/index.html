@@ -148,7 +148,7 @@
     </section>
 
     <section id="view-capabilities" data-view="capabilities" hidden>
-      <p class="hinweis">Reine Projektion über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24) — rein lesend, kein Schreibpfad (Freigeben/Hinzufügen ist F27-Scope).</p>
+      <p class="hinweis">Library/Coverage/Rollen-Besetzung sind reine Projektionen über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27 WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen, freigabepflichtigen Auftrag an, kein direktes Schreiben nach <code>ressourcen.json</code> von hier aus.</p>
       <p id="capabilities-startvorlage" class="hinweis"></p>
       <button type="button" id="capabilities-neu-laden">Neu laden</button>
 
@@ -160,6 +160,11 @@
       <section class="unterabschnitt">
         <h2>Coverage je Rolle</h2>
         <div id="capabilities-abdeckung"></div>
+        <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
+             "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
+             #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
+             ein Neuladen der Coverage-Tabelle diesen Zustand nicht mitreißt. -->
+        <div id="capabilities-scout"></div>
       </section>
 
       <section class="unterabschnitt">

@@ -35,6 +35,8 @@ import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { validiereStartvorlageDaten } from '../src/startvorlage/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { erzeugeRequestHandler, leseScoutErgebnisAusLaufakte, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
+import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -122,6 +124,7 @@ console.log('\n=== F27-Scout-Check ===\n')
     { pfad: 'schemas/examples/ergebnis-scout.invalid-hinweis-untrusted-false.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-scout.invalid-zu-viele-kandidaten.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-scout.invalid-unbekannter-typ.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-scout.invalid-quelle-url-schema.json', sollGueltigSein: false },
   ]
   for (const { pfad, sollGueltigSein } of beispiele) {
     const obj = JSON.parse(readFileSync(pfad, 'utf-8'))
@@ -134,7 +137,7 @@ console.log('\n=== F27-Scout-Check ===\n')
     }
   }
   if (befunde.length === befundeVor) {
-    console.log('✓ AK3: schemas/ergebnis-scout.schema.json gültiges JSON; valid.json erfüllt validiereErgebnisScout, alle drei invalid-*.json verletzen je eine benannte Regel.')
+    console.log('✓ AK3: schemas/ergebnis-scout.schema.json gültiges JSON; valid.json erfüllt validiereErgebnisScout, alle vier invalid-*.json verletzen je eine benannte Regel.')
   }
 }
 
@@ -277,6 +280,90 @@ console.log('\n=== F27-Scout-Check ===\n')
       console.log('✓ AK5: leseScoutErgebnisAusLaufakte liest ein gültiges, gecodezauntes Ergebnis korrekt, lehnt einen Schemaverstoß und einen unverwertbaren Rohstrom real ab.')
     }
   } finally {
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── AK14 (F27 WS-2): GET /api/laeufe/<laufId> liefert scoutErgebnis ───────
+//
+// baueScoutErgebnisProjektion (scripts/leitstand-server.mjs, neue Modulfunktion aus WS-2 AK11)
+// ist wie ihre Geschwister (baueLaufakteProjektion/baueRohstromProjektion) bewusst NICHT
+// exportiert — geprüft wird real über GET /api/laeufe/<laufId> gegen einen präparierten
+// Laufakte-/Rohstrom-Fixture. Muster derselben Datei (AK2 (c) oben): basisVerzeichnis direkt
+// unter der Repo-Wurzel (kein Temp-repoWurzel wie in check-f12-leitstand-ansicht.mjs Fall (d) —
+// leseRollenErgebnisRohstrom/leseScoutErgebnisAusLaufakte lösen rohstrom_referenz.pfad NICHT
+// über loeseEvidenzPfadAuf/repoWurzel auf, sondern lesen ihn direkt relativ zum Prozess-cwd, wie
+// AK5s eigener Fixture-Aufbau oben es bereits zeigt). schreibeWirkungsmarke für das
+// Laufverzeichnis PLUS registriereKernArtefakt für die Laufakte, keine starteGateway-Attrappe.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f27-ak14-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+
+  const gueltigesErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-scout.valid.json', 'utf-8'))
+
+  function schreibeLaufakteFixture(laufIdSuffix, roherErgebnistext) {
+    const laufId = `check-f27-ak14-${laufIdSuffix}-${randomUUID()}`
+    schreibeWirkungsmarke(laufId, profilReferenz, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+    const rohVerzeichnis = join(basisVerzeichnis, `roh-${laufId}`)
+    mkdirSync(rohVerzeichnis, { recursive: true })
+    const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
+    // ProzessErgebnis-Form (Muster AK5-Fixture oben): rohstrom.json trägt ein stdout-Feld, dessen
+    // Inhalt selbst wieder JSON ist (leseErgebnisobjekt liest EIN "type":"result"-Objekt daraus).
+    const rohInhalt = JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: roherErgebnistext }) })
+    writeFileSync(rohPfad, rohInhalt, 'utf8')
+    registriereKernArtefakt(
+      `laufakte-${laufId}`,
+      profilReferenz,
+      { erzeuger: 'kern', schritt: `check-f27-ak14-fixture-${laufIdSuffix}` },
+      {
+        laufakte_schema: 'v0',
+        lauf_id: laufId,
+        werkzeug_version_deklariert: 'test-version',
+        berechtigungskontext: 'test-kontext',
+        arbeitsverzeichnis_pfad: process.cwd(),
+        modell_beobachtet: null,
+        worker: 'claude-code',
+        beobachtungsbasis_vollstaendig: true,
+        rohstrom_referenz: { pfad: rohPfad, inhalts_hash: sha256Hex(rohInhalt) },
+        erstellt_am: new Date().toISOString(),
+      },
+      [],
+      { basisVerzeichnis, schreiber: () => {} }
+    )
+    return laufId
+  }
+
+  const laufIdGruen = schreibeLaufakteFixture('gruen', JSON.stringify(gueltigesErgebnis))
+  const laufIdRot = schreibeLaufakteFixture('rot', JSON.stringify({ ...gueltigesErgebnis, hinweis_untrusted: false }))
+  const laufIdOhneLaufakte = `check-f27-ak14-ohne-laufakte-${randomUUID()}`
+  schreibeWirkungsmarke(laufIdOhneLaufakte, profilReferenz, 'run_prepared', {}, { basisVerzeichnis, schreiber: () => {} })
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const gruen = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdGruen)}`)).json()
+    if (gruen.scoutErgebnis?.status !== 'ok' || JSON.stringify(gruen.scoutErgebnis.ergebnis) !== JSON.stringify(gueltigesErgebnis)) {
+      befunde.push(`AK14 Grünfall: GET /api/laeufe/<laufId> erwartet scoutErgebnis.status 'ok' mit dem gültigen Ergebnis, erhalten ${JSON.stringify(gruen.scoutErgebnis)}`)
+    }
+
+    const rot = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdRot)}`)).json()
+    if (rot.scoutErgebnis?.status !== 'nicht_lesbar' || !/hinweis_untrusted/.test(rot.scoutErgebnis.grund ?? '')) {
+      befunde.push(`AK14 Rotfall (Schemaverstoß): GET /api/laeufe/<laufId> erwartet scoutErgebnis.status 'nicht_lesbar' mit 'hinweis_untrusted' im Grund, erhalten ${JSON.stringify(rot.scoutErgebnis)}`)
+    }
+
+    const ohneLaufakte = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufIdOhneLaufakte)}`)).json()
+    if (ohneLaufakte.scoutErgebnis?.status !== 'nicht_vorhanden') {
+      befunde.push(`AK14 Rotfall (keine Laufakte): GET /api/laeufe/<laufId> erwartet scoutErgebnis.status 'nicht_vorhanden', erhalten ${JSON.stringify(ohneLaufakte.scoutErgebnis)}`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log("✓ AK14: GET /api/laeufe/<laufId> liefert scoutErgebnis — 'ok' mit dem geparsten Ergebnis bei gültigem Rohstrom, 'nicht_lesbar' bei Schemaverstoß, 'nicht_vorhanden' ohne Laufakte.")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
   }
 }

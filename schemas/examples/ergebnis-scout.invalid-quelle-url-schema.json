@@ -1,0 +1,18 @@
+{
+  "gesuchte_capability": "UI_VISUAL_TESTING",
+  "kandidaten": [
+    {
+      "name": "Präparierter Kandidat",
+      "typ": "extern",
+      "quelle_url": "javascript:alert(1)",
+      "capabilities": ["UI_VISUAL_TESTING"],
+      "fit": "mittel",
+      "integrationsaufwand": "hoch",
+      "rechte": "keine",
+      "risiken": [],
+      "empfehlung": "-",
+      "unsicherheiten": []
+    }
+  ],
+  "hinweis_untrusted": true
+}
