@@ -178,8 +178,14 @@ verlangeVorkommen('a', 'Einleitungssatz nennt die Workflow-Bedienung als schreib
 // in workflows.js, sondern als Abnehmer des einen Zustands-Aggregat-Polls (zustand.js) — die
 // Zusage lautet deshalb auf die Abonnement-Verdrahtung, nicht mehr auf den fetch()-Aufrufort. Der
 // Endpunkt selbst bleibt in api.js geführt (AK1, Zeile darüber unverändert).
-verlangeVorkommen('b', "GET /api/workflows (Liste) — api.js", apiQuelltext, "fetch('/api/workflows')")
-verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)/)
+// F25 WS-2a (AK10): jeder Endpunkt geht seither durch mitPraefix() statt eines wörtlichen
+// '/api/...'-Strings direkt in fetch() — mitPraefix() trägt selbst kein zweites '/api' (der
+// Dispatcher setzt es für ein präfigiertes Projekt bereits vor den Rest-Pfad, ein mitgeführtes
+// '/api' ergäbe dort '/api/api/...', real im AK15-Browser-Realtest gefunden). Die Zusage prüft
+// seither den mitPraefix()-Aufruf mit dem Rest-Pfad-Argument, nicht mehr die alte
+// fetch('/api/...')-Textform.
+verlangeVorkommen('b', "GET /api/workflows (Liste) — api.js", apiQuelltext, "fetch(mitPraefix('/workflows'))")
+verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)\)/)
 verlangeVorkommen('b', 'initWorkflowsView abonniert den Zustands-Aggregat-Poll für die Liste (F20 WS-2)', workflowsQuelltext, 'abonniere((zustand) => {')
 verlangeVorkommen('b', 'die Liste rendert aus dem Aggregat (renderWorkflows(zustand.workflows), F20 WS-2)', workflowsQuelltext, 'renderWorkflows(zustand.workflows)')
 verlangeVorkommen('b', 'ladeWorkflowDetail() ruft holeWorkflowDetail(workflowId) auf', workflowsQuelltext, 'await holeWorkflowDetail(workflowId)')
@@ -232,7 +238,8 @@ if (/antwort\.status === 409/.test(appQuelltext)) {
 // F20 WS-1 (F-352): der fetch()-Aufruf für den aktiven Lauf liegt seither in api.js
 // (holeLaufDetail), die View ruft ihn nur noch mit schritt.lauf_id auf.
 verlangeVorkommen('d', 'F-234: aktiver Lauf über holeLaufDetail(schritt.lauf_id)', workflowsQuelltext, 'holeLaufDetail(schritt.lauf_id)')
-verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(laufId)}`)')
+// F25 WS-2a (AK10): mitPraefix() ohne eigenes '/api', siehe Kommentar bei (b).
+verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`))')
 verlangeVorkommen('d', 'F-234: Quelle ist das aktiv-Feld (D13), nicht der Schrittstatus', appQuelltext, 'detail.aktiv === true')
 verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, 'läuft jetzt')
 
@@ -250,14 +257,18 @@ verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, '
 // fetch-Aufruf erkannt.
 const SCHREIBFENSTER = 200
 
+// F25 WS-2a (AK10): api.js führt jeden Endpunkt seither über mitPraefix('/workflows/...') statt
+// eines wörtlichen '/api/workflows'-Strings — mitPraefix() trägt selbst kein zweites '/api'
+// (Dispatcher-Kontrakt, real im AK15-Browser-Realtest gefunden). Beide Regeln unten suchen deshalb
+// nach '/workflows' statt '/api/workflows'.
 /** @param quelltext - zu durchsuchender api.js-Text @returns Namen der gefundenen Schreibwege über die Pfadregel */
 function findePfadSchreibwege(quelltext) {
-  return ['starten', 'freigabe', 'stoppen'].filter((endpunkt) => new RegExp(`/api/workflows/[^'"\`\\n]*/${endpunkt}`).test(quelltext)).map((endpunkt) => `/api/workflows/<id>/${endpunkt}`)
+  return ['starten', 'freigabe', 'stoppen'].filter((endpunkt) => new RegExp(`/workflows/[^'"\`\\n]*/${endpunkt}`).test(quelltext)).map((endpunkt) => `/api/workflows/<id>/${endpunkt}`)
 }
 
-/** @param quelltext - zu durchsuchender api.js-Text @returns true, wenn hinter einem /api/workflows-Vorkommen im selben Aufruf eine POST-Methode steht */
+/** @param quelltext - zu durchsuchender api.js-Text @returns true, wenn hinter einem /workflows-Vorkommen im selben Aufruf eine POST-Methode steht */
 function hatWorkflowPost(quelltext) {
-  for (let idx = quelltext.indexOf('/api/workflows'); idx !== -1; idx = quelltext.indexOf('/api/workflows', idx + 1)) {
+  for (let idx = quelltext.indexOf('/workflows'); idx !== -1; idx = quelltext.indexOf('/workflows', idx + 1)) {
     if (/method:\s*'POST'/.test(quelltext.slice(idx, idx + SCHREIBFENSTER))) return true
   }
   return false
@@ -304,11 +315,12 @@ verlangeVorkommen('g', 'F-253: die Freigabestufe ist als haltend/nicht haltend a
 // mit demselben Endpunkt-String wie vorher) — je zwei Zusagen statt einer: der Aufrufort nennt
 // die richtige api.js-Funktion MIT workflowId, und diese Funktion führt den richtigen Endpunkt.
 verlangeVorkommen('g', 'Starten ruft sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), ...) auf', workflowsQuelltext, 'sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button')
-verlangeVorkommen('g', 'api.js: starteWorkflowSchritt führt POST .../starten', apiQuelltext, /starteWorkflowSchritt = \(workflowId\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/starten`, \{ method: 'POST'/)
+// F25 WS-2a (AK10): mitPraefix() ohne eigenes '/api', siehe Kommentar bei (b).
+verlangeVorkommen('g', 'api.js: starteWorkflowSchritt führt POST .../starten', apiQuelltext, /starteWorkflowSchritt = \(workflowId\) => fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/starten`\), \{ method: 'POST'/)
 verlangeVorkommen('g', 'Freigeben/Ablehnen rufen sendeWorkflowFreigabe(workflowId, ...) auf', workflowsQuelltext, 'sendeWorkflowFreigabe(workflowId, { schrittId: button.dataset.schrittId')
-verlangeVorkommen('g', 'api.js: sendeWorkflowFreigabe führt POST .../freigabe', apiQuelltext, /sendeWorkflowFreigabe = \(workflowId, koerper\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/freigabe`, \{ method: 'POST'/)
+verlangeVorkommen('g', 'api.js: sendeWorkflowFreigabe führt POST .../freigabe', apiQuelltext, /sendeWorkflowFreigabe = \(workflowId, koerper\) => fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/freigabe`\), \{ method: 'POST'/)
 verlangeVorkommen('g', 'Stoppen ruft sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, ...), ...) auf', workflowsQuelltext, 'sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung })')
-verlangeVorkommen('g', 'api.js: stoppeWorkflow führt POST .../stoppen', apiQuelltext, /stoppeWorkflow = \(workflowId, koerper\) => fetch\(`\/api\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/stoppen`, \{ method: 'POST'/)
+verlangeVorkommen('g', 'api.js: stoppeWorkflow führt POST .../stoppen', apiQuelltext, /stoppeWorkflow = \(workflowId, koerper\) => fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}\/stoppen`\), \{ method: 'POST'/)
 verlangeVorkommen('g', 'Freigeben schickt entscheidung FREIGEGEBEN', appQuelltext, "'FREIGEGEBEN'")
 verlangeVorkommen('g', 'Ablehnen schickt entscheidung ABGELEHNT', appQuelltext, "'ABGELEHNT'")
 verlangeVorkommen('g', 'die Freigabe nennt den Schritt, für den sie gilt', appQuelltext, 'schrittId: button.dataset.schrittId')
@@ -355,7 +367,8 @@ if (/function baueReparaturEntwurf[\s\S]{0,600}?grund:/.test(appQuelltext)) {
 verlangeVorkommen('h', 'der Entwurf ist bearbeitbarer JSON-Text, kein Formular', appQuelltext, 'JSON.stringify(entwurf, null, 2)')
 // F20 WS-1 (F-352): der fetch()-Aufruf liegt seither in api.js (reicheWorkflowFassungEin).
 verlangeVorkommen('h', 'Einreichen ruft reicheWorkflowFassungEin(koerper) auf', workflowsQuelltext, 'reicheWorkflowFassungEin(koerper)')
-verlangeVorkommen('h', 'api.js: reicheWorkflowFassungEin geht an POST /api/workflows', apiQuelltext, "reicheWorkflowFassungEin = (koerper) => fetch('/api/workflows', { method: 'POST'")
+// F25 WS-2a (AK10): mitPraefix() ohne eigenes '/api', siehe Kommentar bei (b).
+verlangeVorkommen('h', 'api.js: reicheWorkflowFassungEin geht an POST /api/workflows', apiQuelltext, "reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST'")
 
 // Die drei Warnungen, jede an ihrer Befundnummer erkennbar — der Text ist die Zusage, nicht
 // bloß Beiwerk: er sagt dem Menschen, WAS er verliert.

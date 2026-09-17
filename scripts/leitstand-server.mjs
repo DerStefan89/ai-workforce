@@ -2752,6 +2752,12 @@ export function erzeugeRequestHandler(optionen = {}) {
     // eine eigene Sperre. Nur der CLI-Bindeblock reicht bewusst DASSELBE Objekt an mehrere
     // Instanzen durch, damit die Sperre projektübergreifend gilt (E-M4-2).
     globalerLaufZustand = { aktiv: false, laufId: null, abortController: null },
+    // F25 WS-2a (AK11): nur der CLI-Bindeblock befüllt dies für den defaultHandler mit dem echten
+    // Projektregister — jeder andere Aufrufer (Gate-Skripte, je Projekt-Instanz in
+    // baueProjektHandlerMap) bekommt bewusst den leeren Default: GET /api/projekte ist laut AK2
+    // ausschließlich im unpräfigierten defaultHandler vorgesehen, eine Projekt-Instanz beantwortet
+    // ihn mit einer leeren Liste statt eines Fehlers (D5, kein Sonderfall nötig).
+    projekte = [],
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -3451,6 +3457,29 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     if (req.method === 'GET' && pfad === '/api/auftraege') {
       sendeJson(res, 200, sammleAuftraege(basisVerzeichnis))
+      return
+    }
+
+    // F25 WS-2a (AK11): reine Projektion des Projektregisters (kein neuer State) — je Eintrag
+    // zusätzlich laufAktiv, abgeleitet aus dem bereits vorhandenen globalerLaufZustand: der global
+    // aktive Lauf gehört zu GENAU dem Eintrag, dessen basisVerzeichnis dessen laufId als
+    // Checkpoint-Verzeichnis kennt (Muster der bereits bestehenden Prüfung oben in
+    // GET /api/laeufe/<laufId>, existsSync(join(basisVerzeichnis, laufId))).
+    //
+    // Bekannte Grenze (Code-Review-Befund, 17.09.2026, features/F25/feature.md): dieser Zweig
+    // steht in derselben requestHandler-Funktion, die auch jede Projekt-Instanz baut — ein Aufruf
+    // GEGEN eine Projekt-Instanz (/api/projekte/<id>/projekte) trifft ihn deshalb ebenfalls und
+    // antwortet 200 mit einer leeren Liste (projekte-Option dort per Default []), statt 404. Das
+    // ist ungefährlich (api.js' holeProjekte() ruft diesen Endpunkt bewusst NIE präfigiert auf,
+    // AK11/AK13), aber ungeprüft — kein Gate-Abschnitt belegt dieses Verhalten.
+    if (req.method === 'GET' && pfad === '/api/projekte') {
+      sendeJson(res, 200, {
+        projekte: projekte.map((projekt) => {
+          const projektBasisVerzeichnis = loeseProjektPfade(projekt, repoWurzel).basisVerzeichnis
+          const laufAktiv = globalerLaufZustand.aktiv && globalerLaufZustand.laufId !== null && existsSync(join(projektBasisVerzeichnis, globalerLaufZustand.laufId))
+          return { ...projekt, laufAktiv }
+        }),
+      })
       return
     }
 
@@ -5595,7 +5624,12 @@ export function erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler)
     const [, id, rest] = treffer
     const handler = projektHandlerMap.get(id)
     if (handler === undefined) {
-      sendeJson(res, 404, { fehler: `Unbekanntes Projekt '${id}'` })
+      // 'grund' statt 'fehler' (QA-Befund WS-2a, 17.09.2026): jede andere Fehlerantwort in dieser
+      // Datei nennt das Feld 'grund' — api.js' schreibende Wrapper lesen konsequent koerper.grund
+      // (Muster views/capabilities.js). Das ursprüngliche 'fehler' hier war die einzige Ausnahme
+      // und ließ eine echte 404 (z. B. ein registriertes, aber handler-seitig fehlgeschlagenes
+      // Projekt) am Client nur als unspezifisches "unbekannter Fehler" ankommen.
+      sendeJson(res, 404, { grund: `Unbekanntes Projekt '${id}'` })
       return
     }
     // Jede erzeugeRequestHandler-Instanz routet intern auf /api/...-Pfaden (Muster /api/laeufe) —
@@ -5677,9 +5711,10 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F25 WS-1 (AK5): EIN gemeinsames Zustandsobjekt für alle Instanzen — D13 gilt dadurch
   // projektübergreifend (E-M4-2), nicht je Instanz.
   const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
-  // defaultHandler ist EXAKT derselbe Aufruf wie vor F25 (nur globalerLaufZustand neu) — der
-  // bestehende, unpräfigierte /api/...-Pfad für ai-workforce ändert sein Verhalten nicht (AK2/AK7).
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand })
+  // defaultHandler ist EXAKT derselbe Aufruf wie vor F25 (nur globalerLaufZustand neu, WS-2a
+  // ergänzt zusätzlich projekte für GET /api/projekte) — der bestehende, unpräfigierte
+  // /api/...-Pfad für ai-workforce ändert sein Verhalten nicht (AK2/AK7).
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte })
   const projektHandlerMap = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,

@@ -190,8 +190,13 @@ function workflowFixture(workflowId) {
   if (!/holeZustand\(\)/.test(zustandQuelltext)) {
     befunde.push(`AK3 (Client): ${zustandPfad} ruft holeZustand() nicht auf — der Poll-Timer zielt damit nicht nachweisbar auf das Aggregat.`)
   }
-  if (!/export const holeZustand = \(\) => fetch\('\/api\/zustand'\)/.test(apiQuelltext)) {
-    befunde.push("AK3 (Client): api.js führt holeZustand nicht als GET /api/zustand — erwartet \"export const holeZustand = () => fetch('/api/zustand')\".")
+  // F25 WS-2a (AK10): api.js führt jeden Endpunkt seither über mitPraefix() statt eines
+  // wörtlichen '/api/...'-Strings direkt in fetch() — mitPraefix() trägt selbst kein zweites
+  // '/api' (Dispatcher-Kontrakt, real im AK15-Browser-Realtest gefunden). Die Zusage prüft
+  // seither das mitPraefix()-Argument (Rest-Pfad ohne '/api'), nicht mehr die alte
+  // fetch('/api/...')-Textform.
+  if (!/export const holeZustand = \(\) => fetch\(mitPraefix\('\/zustand'\)\)/.test(apiQuelltext)) {
+    befunde.push("AK3 (Client): api.js führt holeZustand nicht als GET /api/zustand — erwartet \"export const holeZustand = () => fetch(mitPraefix('/zustand'))\".")
   } else {
     console.log('✓ AK3 (Client): zustand.js ruft holeZustand() auf, api.js führt holeZustand über GET /api/zustand.')
   }

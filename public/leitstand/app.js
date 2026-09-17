@@ -21,26 +21,40 @@
  * Dashboard/Projekt/Attention haben kein eigenes onEnter (reine Anzeige-
  * Views ohne Detail-Unterrouten wie Runs/Workflows) — ihre Routen
  * registriert deshalb die Shell hier zentral, statt jede View das für sich
- * wiederholen zu lassen. Workboard ist seit F21 WS-2 und Capabilities seit
- * F24 WS-1 die Ausnahme: beide brauchen beim Eintritt einen echten Abruf
- * (onEnter) und registrieren ihre Route deshalb selbst (Muster
- * views/runs.js) — KEINE zentrale `#/workboard`- bzw. `#/capabilities`-
+ * wiederholen zu lassen. Workboard ist seit F21 WS-2, Capabilities seit
+ * F24 WS-1 und Projekte-Übersicht seit F25 WS-2a die Ausnahme: alle drei
+ * brauchen beim Eintritt einen echten Abruf (onEnter) und registrieren
+ * ihre Route deshalb selbst (Muster views/runs.js) — KEINE zentrale
+ * `#/workboard`- bzw. `#/capabilities`- bzw. `#/projekte-uebersicht`-
  * Registrierung mehr hier, sonst träfen zwei Routen denselben Hash mit
  * unterschiedlichem onEnter.
+ *
+ * renderProjektKontext() (F25 WS-2a, AK14) läuft einmalig beim Bootstrap,
+ * damit die Kopfzeile von Anfang an das aktive Projekt zeigt — welches das
+ * ist (Standardprojekt oder ein aus der Sitzung wiederhergestelltes, siehe
+ * projekt-kontext.js Kopfkommentar) entscheidet bereits deren eigener
+ * Modul-Top-Level-Code, der vor diesem Aufruf gelaufen ist. Jeder spätere
+ * Projektwechsel rendert die Kopfzeile über setzeAktivesProjekt() selbst
+ * neu, kein zweiter Aufrufpunkt hier nötig.
  */
 
 import { registriere, starteRouter } from './router.js'
+import { renderProjektKontext } from './projekt-kontext.js'
 import { initAttentionView } from './views/attention.js'
 import { initCapabilitiesView } from './views/capabilities.js'
 import { initDashboardView } from './views/dashboard.js'
 import { initProjektView } from './views/projekt.js'
+import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
 import { initRunsView } from './views/runs.js'
 import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
 import { initZustandPoll } from './zustand.js'
 
+renderProjektKontext()
+
 initDashboardView()
 initProjektView()
+initProjekteUebersichtView()
 initWorkboardView()
 initRunsView()
 initWorkflowsView()

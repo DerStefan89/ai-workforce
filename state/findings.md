@@ -7461,3 +7461,134 @@ dass process.execPath dieselbe Konstruktion ist, auf die sich der Rest des
 Repos (claude-code-gateway.test.ts u. a.) bereits stützt, nicht aus einem
 zweiten eigenständigen Nachweis hier.
 Feature/Run: F25 WS-1, Challenge-Verifikation, 17.09.2026.
+
+**F-418** · `BUG` · P1 · **gelöst**
+Titel: api.js' mitPraefix() verkettete den vollen bisherigen
+'/api/...'-Pfad hinter dem Projekt-Präfix — /api/api/... (404), real erst
+im AK15-Browser-Realtest aufgefallen, nicht durch ein Gate.
+Beschreibung: scripts/leitstand-server.mjs' erzeugeMultiProjektDispatcher
+(F25 WS-1) erwartet für ein präfigiertes Projekt
+/api/projekte/<id>/<Rest-Pfad OHNE eigenes '/api'> — er setzt selbst ein
+'/api' vor den Rest nach der id. api.js' erste Fassung von mitPraefix()
+verkettete stattdessen den vollen bisherigen '/api/...'-Literal hinter den
+Projekt-Präfix ('/api/projekte/projekt-b' + '/api/laeufe'), was
+/api/projekte/projekt-b/api/laeufe ergab — der Dispatcher baute daraus
+/api/api/laeufe, eine nicht existierende Route (404, kein JSON-Body,
+r.json() wirft, vom Zustands-Poll als "Aktualisierung fehlgeschlagen"
+gemeldet). Der isolierte api.js-Unit-Test (check-f25-projekte.mjs,
+Abschnitt (6)) hatte das nicht gefangen, weil er nur gegen seine EIGENE,
+damals ebenfalls falsche Erwartung prüfte, nicht gegen den echten
+Dispatcher.
+Fundstelle: public/leitstand/api.js (mitPraefix); erzeugeMultiProjektDispatcher,
+scripts/leitstand-server.mjs (F25 WS-1, unverändert korrekt).
+Auswirkung: hoch für WS-2a — ohne den realen Zwei-Projekte-Browser-Test
+wäre die Projekt-Umschaltung mit grünem check-f25-projekte.mjs (6)
+freigegeben worden, obwohl jeder Endpunkt außer holeProjekte() für ein
+präfigiertes Projekt strukturell 404 geliefert hätte.
+Maßnahme: mitPraefix() trägt seither nur noch Rest-Pfade ohne eigenes
+'/api' (Default-Präfix '/api' statt ''), jeder Aufrufer in api.js
+entsprechend umgestellt. Gate-Abschnitt (7) ergänzt (echter
+erzeugeMultiProjektDispatcher, kein Fetch-Stub) — schließt die Lücke, die
+(6) allein offen ließ. Beleg: features/F25/nachweis-ws2a.md.
+Feature/Run: F25 WS-2a, AK15-Realtest, 17.09.2026.
+
+**F-419** · `BUG` · P1 · **gelöst**
+Titel: Aktiver Projekt-Kontext ging bei jedem Seiten-Reload kommentarlos
+auf ai-workforce zurück — reine In-Memory-Variable, kein Hinweis, kein
+Bestätigungsdialog.
+Beschreibung: public/leitstand/projekt-kontext.js hielt das aktive
+Projekt ursprünglich nur in einer Modul-Variable. Ein Browser-Reload
+initialisiert das Modul neu (Rücksprung auf STANDARD_PROJEKT
+'ai-workforce'), der Hash blieb dabei aber erhalten (z. B. '#/projekt') —
+ein Schreibvorgang (z. B. "Auftrag anlegen") direkt nach einem
+unbeabsichtigten Reload wäre dadurch unbemerkt im falschen Projekt
+gelandet. Einzige Rückmeldung war die leicht zu übersehende Kopfzeile.
+Fundstelle: public/leitstand/projekt-kontext.js.
+Auswirkung: hoch — jeder F5-Druck oder versehentliche Reload während
+einer aktiven Projekt-Umschaltung war betroffen, ohne dass ein Fehler
+sichtbar wurde (aus Systemsicht ein gültiger, nur unerwarteter
+Schreibvorgang).
+Maßnahme: projekt-kontext.js merkt sich das aktive Projekt in
+sessionStorage (überlebt einen Reload, nicht aber ein neues Tab/Fenster)
+und stellt es beim Modul-Laden wieder her, bevor app.js irgendeine View
+initialisiert. Real mit einem echten Page.reload im Browser-Realtest
+nachgewiesen (features/F25/nachweis-ws2a.md).
+Feature/Run: F25 WS-2a, QA-Pass, 17.09.2026.
+
+**F-420** · `TECH_DEBT` · P2 · offen (bewusste Grenze)
+Titel: Die meisten lesenden api.js-GET-Wrapper prüfen antwort.ok nicht —
+ein 404 eines fehlgeschlagenen Projekt-Handlers wird still als gültiges
+Datenaggregat durchgereicht.
+Beschreibung: holeZustand, holeLaeufe, holeStartfehler, holeAuftraege,
+holeWorkflows, holeWorkitems und holeWerkzeugsaetze (public/leitstand/
+api.js) reichen `.then((r) => r.json())` direkt weiter, ohne den
+HTTP-Status zu prüfen (bestehendes Muster aus F10-F24, nicht
+WS-2a-spezifisch eingeführt). Wählt ein Nutzer ein registriertes, aber
+handler-seitig fehlgeschlagenes Projekt (siehe F-421/F-414-Muster:
+baueProjektHandlerMap überspringt kaputte Einträge, Gate-Abschnitt 2d),
+liefert der Dispatcher für jede Folgeanfrage 404 mit einem gültigen
+JSON-Körper — dieser wird von den genannten Funktionen unbemerkt als
+"erfolgreiches" Ergebnis geparst. Der zentrale Zustands-Poll sieht dadurch
+keinen Fetch-Fehler, einzelne Abnehmer werden nur in der Konsole
+geloggt, nicht dem Nutzer angezeigt — stiller UI-Ausfall statt einer
+sichtbaren Fehlermeldung.
+Fundstelle: public/leitstand/api.js (alle genannten Funktionen).
+Auswirkung: mittel — real erreichbar bei jeder fehlerhaften
+Projekt-Registrierung, aber kein Datenverlust und kein Fehlschreiben,
+nur eine irreführend leere/veraltete Anzeige.
+Maßnahme: bewusst NICHT in WS-2a breit behoben — berührt praktisch jeden
+lesenden Endpunkt aus vier vorherigen Features (F10-F24), nicht nur die
+WS-2a-Neuerungen. Eine echte Lösung (einheitliche r.ok-Prüfung über alle
+GET-Wrapper) wäre eine eigene Iteration mit Konsequenzen für jede
+aufrufende View.
+Feature/Run: F25 WS-2a, QA-Pass, 17.09.2026.
+
+**F-421** · `TECH_DEBT` · P3 · offen
+Titel: GET /api/projekte antwortet unter einem Projekt-Präfix
+(/api/projekte/<id>/projekte) mit 200 {projekte:[]} statt 404 —
+ungefährlich, aber ungeprüft.
+Beschreibung: Der GET /api/projekte-Zweig (F25 WS-2a, AK11) steht in
+derselben requestHandler-Funktion, die auch jede Projekt-Instanz baut.
+baueProjektHandlerMap reicht die projekte-Liste nicht an
+Projekt-Instanzen durch (Default [] in erzeugeRequestHandler) — ein
+Aufruf GEGEN eine Projekt-Instanz trifft denselben Routen-Zweig und
+liefert eine leere Liste statt eines 404. api.js' holeProjekte() ruft
+diesen Endpunkt bewusst NIE präfigiert auf (AK11/AK13-Entscheidung),
+weshalb dieser Pfad im Produktivbetrieb nie erreicht wird — aber kein
+Gate-Abschnitt belegt das Verhalten, ein künftiger Regressionsfehler
+(z. B. wenn baueProjektHandlerMap versehentlich projekte durchreicht)
+fiele niemandem auf.
+Fundstelle: scripts/leitstand-server.mjs (GET /api/projekte-Zweig,
+baueProjektHandlerMap).
+Auswirkung: gering — kein realer Aufrufer trifft diesen Pfad.
+Maßnahme: keine in WS-2a. Bei Bedarf: Gate-Assert, dass
+/api/projekte/<id>/projekte stabil 404 oder eine leere, klar als
+"nicht das globale Register" gekennzeichnete Antwort liefert.
+Feature/Run: F25 WS-2a, Code-Review-Pass, 17.09.2026.
+
+**F-422** · `TECH_DEBT` · P2 · offen
+Titel: arbeitsverzeichnis_pfad im F4-Gültigkeitsschlüssel bleibt für
+jedes Projekt am process.cwd() des Serverprozesses hängen — ein sachlich
+korrekt angepasstes Fremdprojekt bekäme eine unerklärliche
+E-188-Drift-Ablehnung.
+Beschreibung: istUebrigeFelder.arbeitsverzeichnis_pfad
+(src/claude-code-gateway/index.ts) wird für JEDE Projekt-Instanz aus
+process.cwd() des Serverprozesses abgeleitet, nicht aus dem
+projektspezifischen cwd/repoWurzel (F25 WS-1 AK7-Entscheidung: kein
+bestehender Vergleichswert für ai-workforce durfte sich ändern). Ein
+Fremdprojekt, dessen state/aktuelle-autorisierung.json NICHT
+byte-identisch aus ai-workforce kopiert, sondern sachlich korrekt an
+seinen eigenen Pfad angepasst wird, bekommt dadurch eine für den
+Betreiber zunächst unerklärliche E-188-"Drift"-Ablehnung
+(arbeitsverzeichnis_pfad weicht ab). Real nur deshalb nicht im
+AK8/AK15-Realtest aufgetreten, weil dort bewusst eine 1:1-Kopie
+verwendet wurde.
+Fundstelle: src/claude-code-gateway/index.ts (Gültigkeitsschlüssel-Bau).
+Auswirkung: mittel — betrifft jedes künftige, sachlich (nicht
+byte-kopiert) eingerichtete Fremdprojekt; die Fehlermeldung nennt die
+tatsächliche Ursache nicht.
+Maßnahme: keine in WS-1/WS-2a. Eine echte Lösung bräuchte eine
+projektspezifische arbeitsverzeichnis_pfad-Auflösung, die zugleich
+ai-workforce's eigenen, bereits autorisierten Wert unverändert lassen
+müsste — bewusst nicht angegangen.
+Feature/Run: F25 WS-1, QA-Pass, 17.09.2026 (nachgetragen mit WS-2a).

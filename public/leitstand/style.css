@@ -132,6 +132,13 @@ th {
   color: var(--color-warning-text);
 }
 
+/* F25 WS-2a: neutraler Zustand (z. B. "kein aktiver Lauf") — bewusst bestehende Tokens
+   wiederverwendet (--color-surface-muted/--color-text-muted), kein neues Farbpaar. */
+.badge.neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
 .grund {
   font-size: 0.75rem;
   color: var(--color-danger-text);

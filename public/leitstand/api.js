@@ -18,51 +18,78 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2)
+ * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
+ * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
  *
  * Wichtig: Kein Fehler-Handling hier (kein try/catch) — das bleibt Sache der
  * aufrufenden View, die weiß, wie sie einen Fehlschlag anzeigt (Muster
  * zeigeStartFehler/zeigePollFehler). Diese Datei baut nur die Anfrage.
+ *
+ * F25 WS-2a (AK10): jeder Endpunkt unten außer holeProjekte geht durch
+ * mitPraefix() statt eines wörtlichen '/api'-Literals — Default-Präfix
+ * '/api' liefert exakt den bisherigen Pfad (Regressionsschutz für
+ * 'ai-workforce', kein Verhaltensunterschied ohne Projektwechsel). Jede
+ * mitPraefix()-Aufrufstelle unten trägt deshalb NUR noch den Rest-Pfad ohne
+ * eigenes '/api' (z. B. '/laeufe' statt '/api/laeufe') — scripts/leitstand-
+ * server.mjs' erzeugeMultiProjektDispatcher setzt selbst ein '/api' vor den
+ * Rest nach der Projekt-id (Muster GET /api/projekte/<id>/laeufe, F25 WS-1
+ * AK2/AK7); ein zweites, mitgeführtes '/api' im Aufruf-Pfad ergäbe dort
+ * '/api/api/...' und liefe ins Leere (real im AK15-Browser-Realtest
+ * gefunden und behoben, siehe features/F25/feature.md WS-2a). Gesetzt von
+ * projekt-kontext.js beim Projektwechsel (Präfix dann '/api/projekte/<id>').
+ * holeProjekte() bleibt bewusst UNPRÄFIGIERT (siehe dort) — das Register
+ * selbst existiert nur unpräfigiert im bestehenden defaultHandler (AK2).
  */
 
-export const holeLaeufe = () => fetch('/api/laeufe').then((r) => r.json())
-export const holeLaufDetail = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(laufId)}`)
-export const starteLauf = (koerper) => fetch('/api/laeufe', { method: 'POST', body: JSON.stringify(koerper) })
-export const abbrichLauf = (laufId) => fetch(`/api/laeufe/${encodeURIComponent(laufId)}/abbrechen`, { method: 'POST' })
+let aktivesProjektPraefix = '/api'
 
-export const holeStartfehler = () => fetch('/api/startfehler').then((r) => r.json())
+export function setzeAktivesProjektPraefix(praefix) {
+  aktivesProjektPraefix = praefix
+}
+
+function mitPraefix(restPfad) {
+  return `${aktivesProjektPraefix}${restPfad}`
+}
+
+export const holeLaeufe = () => fetch(mitPraefix('/laeufe')).then((r) => r.json())
+export const holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`))
+export const starteLauf = (koerper) => fetch(mitPraefix('/laeufe'), { method: 'POST', body: JSON.stringify(koerper) })
+export const abbrichLauf = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}/abbrechen`), { method: 'POST' })
+
+export const holeStartfehler = () => fetch(mitPraefix('/startfehler')).then((r) => r.json())
 
 // F21 WS-2: einmaliger Abruf beim Betreten der View bzw. bei Filterwechsel — kein Poll
 // (Findings/Feature-Akten ändern sich nur durch Commits, siehe views/workboard.js).
 export const holeWorkitems = (filter = {}) => {
   const params = new URLSearchParams(filter)
   const query = params.toString()
-  return fetch(`/api/workitems${query.length > 0 ? `?${query}` : ''}`).then((r) => r.json())
+  return fetch(mitPraefix(`/workitems${query.length > 0 ? `?${query}` : ''}`)).then((r) => r.json())
 }
 
 // F20 WS-2 (AK3): Aggregat aus laeufe/startfehler/workflows, gepollt von zustand.js — einzige
 // Stelle, die noch periodisch fetch() aufruft.
-export const holeZustand = () => fetch('/api/zustand').then((r) => r.json())
+export const holeZustand = () => fetch(mitPraefix('/zustand')).then((r) => r.json())
 
-export const holeAuftraege = () => fetch('/api/auftraege').then((r) => r.json())
-export const legeAuftragAn = (koerper) => fetch('/api/auftraege', { method: 'POST', body: JSON.stringify(koerper) })
+export const holeAuftraege = () => fetch(mitPraefix('/auftraege')).then((r) => r.json())
+export const legeAuftragAn = (koerper) => fetch(mitPraefix('/auftraege'), { method: 'POST', body: JSON.stringify(koerper) })
 
 // F22 WS-2: löst den asynchronen Router-Lauf aus (202 + laufId, 409 bei D13 — scripts/leitstand-server.mjs).
-export const routeAuftrag = (auftragId) => fetch(`/api/auftraege/${encodeURIComponent(auftragId)}/routen`, { method: 'POST' })
+export const routeAuftrag = (auftragId) => fetch(mitPraefix(`/auftraege/${encodeURIComponent(auftragId)}/routen`), { method: 'POST' })
 
-export const holeWerkzeugsaetze = () => fetch('/api/startvorlage/werkzeugsaetze').then((r) => r.json())
+export const holeWerkzeugsaetze = () => fetch(mitPraefix('/startvorlage/werkzeugsaetze')).then((r) => r.json())
 
-export const sendeEntscheidungAnfrage = (koerper) => fetch('/api/entscheidungen', { method: 'POST', body: JSON.stringify(koerper) })
+export const sendeEntscheidungAnfrage = (koerper) => fetch(mitPraefix('/entscheidungen'), { method: 'POST', body: JSON.stringify(koerper) })
 
-export const holeWorkflows = () => fetch('/api/workflows').then((r) => r.json())
-export const holeWorkflowDetail = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}`)
-export const reicheWorkflowFassungEin = (koerper) => fetch('/api/workflows', { method: 'POST', body: JSON.stringify(koerper) })
-export const starteWorkflowSchritt = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST', body: JSON.stringify({}) })
-export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/freigabe`, { method: 'POST', body: JSON.stringify(koerper) })
-export const stoppeWorkflow = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/stoppen`, { method: 'POST', body: JSON.stringify(koerper) })
+export const holeWorkflows = () => fetch(mitPraefix('/workflows')).then((r) => r.json())
+export const holeWorkflowDetail = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}`))
+export const reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST', body: JSON.stringify(koerper) })
+export const starteWorkflowSchritt = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/starten`), { method: 'POST', body: JSON.stringify({}) })
+export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/freigabe`), { method: 'POST', body: JSON.stringify(koerper) })
+export const stoppeWorkflow = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/stoppen`), { method: 'POST', body: JSON.stringify(koerper) })
 
 // F23 WS-2a: Abnahme-Projektion (Urteil, Änderungsübersicht, etwaige bereits vorhandene Entscheidung) und -Schreibstelle.
-export const holeAbnahme = (workflowId) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`).then((r) => r.json())
-export const sendeAbnahme = (workflowId, koerper) => fetch(`/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, { method: 'POST', body: JSON.stringify(koerper) })
+export const holeAbnahme = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/abnahme`)).then((r) => r.json())
+export const sendeAbnahme = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/abnahme`), { method: 'POST', body: JSON.stringify(koerper) })
 
 // F24: Capabilities v1 (Library, Coverage, Rollen) — rein lesend, kein Poll (dieselben Gründe wie
 // holeWorkitems: die Quellen ändern sich nur durch Commits bzw. echte Läufe, kein Live-Zustand).
@@ -80,6 +107,12 @@ async function holeJsonOderWirf(pfad) {
   }
   return antwort.json()
 }
-export const holeRessourcen = () => holeJsonOderWirf('/api/ressourcen')
-export const holeAbdeckung = () => holeJsonOderWirf('/api/ressourcen/abdeckung')
-export const holeRollenBesetzung = (rolle) => fetch(`/api/ressourcen/rollen/${encodeURIComponent(rolle)}`)
+export const holeRessourcen = () => holeJsonOderWirf(mitPraefix('/ressourcen'))
+export const holeAbdeckung = () => holeJsonOderWirf(mitPraefix('/ressourcen/abdeckung'))
+export const holeRollenBesetzung = (rolle) => fetch(mitPraefix(`/ressourcen/rollen/${encodeURIComponent(rolle)}`))
+
+// F25 WS-2a (AK11/AK13): bewusst NICHT über mitPraefix — dieser Endpunkt listet das GESAMTE
+// Projektregister unabhängig vom gerade aktiven Projekt und existiert nur unpräfigiert im
+// bestehenden defaultHandler (scripts/leitstand-server.mjs). Ein Präfix hier würde bei
+// aktivem Nicht-Standard-Projekt fälschlich /api/projekte/<id>/projekte ansprechen.
+export const holeProjekte = () => holeJsonOderWirf('/api/projekte')

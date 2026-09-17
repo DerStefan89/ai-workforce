@@ -12,11 +12,14 @@
     <nav id="shell-nav" aria-label="Hauptnavigation">
       <a href="#/dashboard" data-nav-view="dashboard">Dashboard</a>
       <a href="#/projekt" data-nav-view="projekt">Projekt</a>
+      <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">Projekte</a>
       <a href="#/workboard" data-nav-view="workboard">Workboard</a>
       <a href="#/runs" data-nav-view="runs">Runs</a>
       <a href="#/capabilities" data-nav-view="capabilities">Capabilities</a>
       <a href="#/attention" data-nav-view="attention">Attention</a>
     </nav>
+    <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js. -->
+    <div id="projekt-kontext"></div>
     <!-- F28 (Persona v1) füllt diesen Platzhalter — F20 liefert nur den leeren Container, keine Animation. -->
     <div id="persona-platzhalter" aria-hidden="true"></div>
   </header>
@@ -71,6 +74,12 @@
           <p id="start-fehler" class="fehler" hidden></p>
         </div>
       </section>
+    </section>
+
+    <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
+      <p class="hinweis">Karten je Registereintrag aus <code>GET /api/projekte</code> (F25 WS-2a) — rein lesend, kein Schreibpfad. "Öffnen" setzt das aktive Projekt für alle anderen Ansichten (Kontext-Anzeige in der Kopfzeile) und wechselt zum Dashboard. Keine Health-Spalte (WS-3, nicht dieser Auftrag).</p>
+      <button type="button" id="projekte-uebersicht-neu-laden">Neu laden</button>
+      <div id="projekte-uebersicht-liste"></div>
     </section>
 
     <section id="view-workboard" data-view="workboard" hidden>
