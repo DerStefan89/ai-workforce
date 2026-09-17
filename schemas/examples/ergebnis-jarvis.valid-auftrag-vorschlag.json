@@ -1,0 +1,9 @@
+{
+  "art": "auftrag_vorschlag",
+  "antwort": "Ich schlage vor, F-123 (fehlende Fehlerbehandlung im Import-Pfad) als eigenen Auftrag anzulegen.",
+  "auftrag": {
+    "titel": "F-123 beheben: fehlende Fehlerbehandlung im Import-Pfad",
+    "text": "Der Findings-Eintrag F-123 beschreibt eine fehlende Fehlerbehandlung im Import-Pfad. Bitte beheben und mit einem Test absichern."
+  },
+  "bezug": { "workitem": "F-123" }
+}

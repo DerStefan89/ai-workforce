@@ -51,6 +51,8 @@ const erwarteteRollen = {
   router: ['src/**'],
   // 'scout' kam mit F27 WS-1 hinzu — ebenso neu, kein Migrationswert.
   scout: ['src/**'],
+  // 'jarvis' kam mit F26 WS-1 hinzu — ebenso neu, kein Migrationswert.
+  jarvis: ['src/**'],
 }
 
 const gefundeneRollen = Object.keys(ROLLENVERTRAEGE).sort()

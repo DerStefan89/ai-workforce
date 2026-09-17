@@ -76,11 +76,12 @@ export function projeziereLibrary(aufgeloest: AufgelosteRessource[], startvorlag
   return { startvorlagePfad, eintraege, assessedHinweis: ASSESSED_HINWEIS }
 }
 
-/** F-346: drei eng benannte, geprüfte Ausnahmen (Details: state/findings.md F-346, features/F19/nachweis-ws2.md). Einzige Quelle seit F24 — scripts/check-f19-ressourcen.mjs importiert von hier. Der 'scout'-Eintrag (F27 WS-1) deckt denselben strukturellen Grund wie 'router'/'code-reviewer' ab: 'claude-code' hat keinen '--output-schema'-Mechanismus (F-337), ein Scout-Lauf über den direkten POST /api/laeufe-Pfad läuft strukturell immer als 'claude-code'. */
+/** F-346: vier eng benannte, geprüfte Ausnahmen (Details: state/findings.md F-346, features/F19/nachweis-ws2.md). Einzige Quelle seit F24 — scripts/check-f19-ressourcen.mjs importiert von hier. Der 'scout'-Eintrag (F27 WS-1) deckt denselben strukturellen Grund wie 'router'/'code-reviewer' ab: 'claude-code' hat keinen '--output-schema'-Mechanismus (F-337), ein Scout-Lauf über den direkten POST /api/laeufe-Pfad läuft strukturell immer als 'claude-code'. Der 'jarvis'-Eintrag (F26 WS-1) deckt denselben Grund für einen Chat-Lauf: POST /api/chat fällt bei fehlendem Codex ebenso auf 'claude-code' zurück, dessen Ausgabe über Fence-Stripping (entferneCodezaun) statt --output-schema geprüft wird. */
 export const F346_AUSNAHMEN: ReadonlyArray<{ rolle: string; worker: string; erlaubteLuecke: string[] }> = [
   { rolle: 'router', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
   { rolle: 'code-reviewer', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
   { rolle: 'scout', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
+  { rolle: 'jarvis', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
 ]
 
 /**

@@ -445,6 +445,7 @@ import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
+import { baueJarvisAuftragstext, validiereErgebnisJarvis } from '../src/jarvis/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
@@ -2471,6 +2472,29 @@ export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
 }
 
 /**
+ * Liest das geparste ergebnis-jarvis-Ergebnisobjekt eines Jarvis-Chat-Laufs direkt
+ * aus dessen Rohstrom (F26 WS-1) — dasselbe Lesemuster wie
+ * verarbeiteRouterErgebnis/leseScoutErgebnisAusLaufakte (leseRollenErgebnisRohstrom),
+ * hier zusätzlich gegen schemas/ergebnis-jarvis.schema.json geprüft
+ * (validiereErgebnisJarvis, src/jarvis/index.ts) — WS-1 hat noch keinen
+ * '--output-schema'-Mechanismus für claude-code (F-337), die Formprüfung
+ * passiert deshalb erst hier, nach dem Codezaun-Fallback.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Jarvis-Laufs
+ * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
+ */
+export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  if (!gelesen.ok) {
+    return { ok: false, grund: gelesen.grund }
+  }
+  const verstoesse = validiereErgebnisJarvis(gelesen.geparst)
+  if (verstoesse.length > 0) {
+    return { ok: false, grund: `Ergebnis verstößt gegen schemas/ergebnis-jarvis.schema.json: ${verstoesse.join('; ')}` }
+  }
+  return { ok: true, ergebnis: gelesen.geparst }
+}
+
+/**
  * Schreibt eine neue Workflow-Version, in der genau ein Schritt und die
  * Workflow-Felder status/aktiver_schritt_id/grund fortgeschrieben sind (F15
  * WS-2b, grund seit WS-2c). Kein Überschreiben: registriereWorkflow legt über
@@ -4218,6 +4242,153 @@ export function erzeugeRequestHandler(optionen = {}) {
           console.log(`[leitstand] Router-Lauf '${laufId}': Workflow '${verarbeitung.workflowId}' (Version ${verarbeitung.workflowVersionSequenz}) registriert.`)
         }
       })
+      return
+    }
+
+    // ─── F26 WS-1: POST /api/chat ───────────────────────────────────────────────────────
+    //
+    // Löst einen Ein-Schuss-Lauf der Rolle 'jarvis' für eine natürliche Chat-Nachricht aus —
+    // Muster POST /api/auftraege/<id>/routen: D13 vor jeder Formprüfung, die selbst schon
+    // Ressourcen braucht, dann Worker-/Eingaben-Auflösung (loeseAusfuehrungsEingabenAuf) ERST
+    // NACH erfolgreicher Prüfung wird die Nachricht als Auftrag registriert (registriereAuftrag)
+    // — anders als beim Router-Endpunkt, der einen bereits BESTEHENDEN Auftrag nur lädt, erzeugt
+    // dieser Endpunkt den Auftrag neu; ein Fehlschlag vor dem Schreiben hinterlässt deshalb bewusst
+    // keinen Orphan (Code-Review-Befund WS-1). Danach Dispatch (starteLaufUndVergiss). Strukturell
+    // nur ASYNCHRON möglich (202 + laufId), kein Workflow. Erreichbar sowohl unpräfigiert
+    // ('/api/chat', für ai-workforce) als auch über den F25-Dispatcher ('/api/projekte/<id>/chat').
+    //
+    // WS-1 liefert ausschließlich Rolle/Schema/Dispatch — die Registrierung eines
+    // 'lineage-chat-<projektId>'-Verlaufseintrags (jede Nachricht ein Kernartefakt über
+    // src/lineage-registry, 'Chat hat keine eigene Wahrheit', F26-Plan Punkt 3) ist WS-2: diese
+    // Handler-Instanz kennt ihre eigene Projekt-id nicht (erzeugeRequestHandler bekommt sie nicht
+    // als Option, F25 WS-1) — der reale CLI-Nachweis dieses Auftrags schreibt/validiert den
+    // Lineage-Eintrag deshalb bewusst AUSSERHALB dieses Endpunkts, direkt gegen
+    // src/lineage-registry (features/F26/nachweis-ws1.md).
+    if (req.method === 'POST' && pfad === '/api/chat') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      for (const feld of Object.keys(body)) {
+        if (feld !== 'nachricht') {
+          sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
+          return
+        }
+      }
+      if (typeof body.nachricht !== 'string' || body.nachricht.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'nachricht' muss ein nicht-leerer String sein" })
+        return
+      }
+      // QA-Befund WS-1: ohne Obergrenze geht ein sehr langer Paste 1:1 in Auftragsakte und
+      // Prompt (Kosten-/Log-Bloat-Risiko, real relevant sobald WS-2 ein echtes Texteingabefeld
+      // hat). 8000 Zeichen ist ein großzügiger, aber endlicher Rahmen für eine Chat-Nachricht —
+      // kein Auftragstext-Ersatz (der bleibt ohne Obergrenze, Muster POST /api/auftraege).
+      const MAX_NACHRICHT_LAENGE = 8000
+      if (body.nachricht.length > MAX_NACHRICHT_LAENGE) {
+        sendeJson(res, 400, { grund: `'nachricht' darf höchstens ${MAX_NACHRICHT_LAENGE} Zeichen haben, hat ${body.nachricht.length}` })
+        return
+      }
+      const nachricht = body.nachricht
+
+      // D13 VOR jeder Formprüfung, die selbst schon I/O oder Ressourcenauflösung braucht (Muster
+      // POST /api/auftraege/<id>/routen) — die reine Bodyprüfung oben (JSON/Typ/Länge) bleibt
+      // davor, weil sie ohne jede Ressource entscheidbar ist (Muster POST /api/laeufe).
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      const auftragId = `jarvis-chat-${randomUUID()}`
+      const laufId = `jarvis-${auftragId}`
+      if (laufIdBelegt(laufId)) {
+        sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
+        return
+      }
+
+      // Worker-Auflösung — Muster POST /api/auftraege/<id>/routen Korrektur 4: 'codex' mit
+      // --output-schema, wenn verfügbar, sonst Rückfall auf 'claude-code' mit Fence-Stripping.
+      // VOR registriereAuftrag (Code-Review-Befund WS-1): scheitert einer der folgenden Schritte,
+      // ist noch kein Auftrag-Artefakt geschrieben — ein Fehlversuch hinterlässt keinen Orphan.
+      let ressourcenRoh
+      try {
+        ressourcenRoh = leseRessourcenRoh(repoWurzel)
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+        return
+      }
+      const aufgeloesteRessourcen = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
+      const codexEintrag = aufgeloesteRessourcen.find((r) => r.id === 'codex')
+      const codexVerfuegbar = codexEintrag !== undefined && codexEintrag.verfuegbar === true
+
+      let worker
+      let modell
+      let ausgabeSchemaPfad
+      if (codexVerfuegbar) {
+        const schemaErgebnis = loeseAusgabeSchemaAuf('ergebnis-jarvis', repoWurzel)
+        if (!schemaErgebnis.ok) {
+          sendeJson(res, 500, { grund: schemaErgebnis.grund })
+          return
+        }
+        worker = 'codex'
+        modell = 'gpt-6-astra'
+        ausgabeSchemaPfad = schemaErgebnis.pfad
+      } else {
+        worker = 'claude-code'
+        modell = vorlage.modell
+      }
+
+      const eingabenRoh = {
+        rolle: 'jarvis',
+        anfragen: [],
+        budget: vorlage.standardBudget,
+        aufrufEingaben: { modell },
+        auftragId,
+        worker,
+        ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
+      }
+      // baueJarvisAuftragstext (src/jarvis/index.ts) ist der EINZIGE Eingabekanal (F-269-Muster):
+      // die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz, unten), der
+      // tatsächlich an den Worker gehende Text zusätzlich die Rolleninstruktion.
+      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', baueJarvisAuftragstext(nachricht), vorlage, repoWurzel)
+      if (!eingabenErgebnis.ok) {
+        sendeJson(res, 400, { grund: eingabenErgebnis.grund })
+        return
+      }
+
+      // registriereAuftrag führt echte, synchrone Disk-I/O aus und kann werfen (Muster
+      // POST /api/auftraege) — die Nachricht wird 1:1 zum Auftragstext, der Auftragstitel bleibt
+      // ein gekürzter Ausschnitt (Menschen lesen Titel in Listen, nicht die volle Nachricht).
+      // Kürzung über Codepoints ([...string]), nicht UTF-16-Einheiten (.slice) — sonst zerschneidet
+      // ein mehrteiliges Zeichen (Emoji) an Position 77 ein unpaariges Surrogat (Code-Review-Befund WS-1).
+      const nachrichtCodepoints = [...nachricht]
+      const titel = nachrichtCodepoints.length > 80 ? `${nachrichtCodepoints.slice(0, 77).join('')}...` : nachricht
+      try {
+        registriereAuftrag(auftragId, profilReferenz, `Jarvis-Chat: ${titel}`, nachricht, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      } catch (fehler) {
+        console.error(`[leitstand] Chat-Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
+        return
+      }
+
+      angenommeneLaufIds.add(laufId)
+      laufAktiv = true
+      laufAktivLaufId = laufId
+      laufAktivAbortController = new AbortController()
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = laufId
+      globalerLaufZustand.abortController = laufAktivAbortController
+      sendeJson(res, 202, { laufId, auftragId })
+
+      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben)
       return
     }
 
