@@ -285,6 +285,7 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
     stdinLeer: true,
+    cwd: optionen.cwd,
   })
 
   // beobachtungsbasis_vollstaendig kommt aus den JSONL-Ereignissen, NICHT

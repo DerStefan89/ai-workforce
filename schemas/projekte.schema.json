@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/projekte.schema.json",
+  "title": "Projektregister (PROJEKTE_V0)",
+  "description": "F25 WS-1. Trägt das Register der Projekte (Repos), die der Leitstand über eigene erzeugeRequestHandler-Instanzen bedient. status ist manuell gepflegt (Muster 'freigabe' in schemas/ressourcen.schema.json) — kein automatisch abgeleiteter Zustand. Geprüft von validiereProjekteDaten (src/projekte/index.ts), nicht durch dieses Schema allein (D5, kein ajv im Repo).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["projekte_schema", "projekte"],
+  "properties": {
+    "projekte_schema": {
+      "const": "v0",
+      "description": "Schemaversion des Projektregisters."
+    },
+    "projekte": {
+      "type": "array",
+      "description": "Alle registrierten Projekte. Reihenfolge ist ohne Bedeutung.",
+      "items": { "$ref": "#/$defs/projekt" }
+    }
+  },
+  "$defs": {
+    "projekt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "repo_pfad", "startvorlage_pfad", "profil_pfad", "basisverzeichnis", "status"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Eindeutige Kennung des Projekts, kleinbuchstabig mit Bindestrich. Bestimmt die Route /api/projekte/<id>/..."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Menschenlesbarer Name, für spätere Views (WS-2/WS-3)."
+        },
+        "repo_pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pfad zum Repo-Root dieses Projekts. Für den Starteintrag 'ai-workforce' relativ zu process.cwd() zum Server-Startzeitpunkt aufgelöst ('.'); für jedes weitere Projekt ein vom Register selbst benannter, gegen denselben Referenzpunkt aufgelöster Pfad (F25 WS-1, dokumentierte Ausnahme)."
+        },
+        "startvorlage_pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pfad zur Startvorlage dieses Projekts, relativ zu repo_pfad."
+        },
+        "profil_pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pfad zur Profildatei dieses Projekts, relativ zu repo_pfad. Reines Registerfeld in WS-1 — wird nicht gelesen oder auf Existenz geprüft (spätere Workstreams, features/F25/feature.md 'Bekannte Grenzen')."
+        },
+        "basisverzeichnis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pfad zum Kontrollzustand-Basisverzeichnis dieses Projekts, relativ zu repo_pfad (Muster ARCHITECTURE.md §1 kontrollzustand/)."
+        },
+        "status": {
+          "enum": ["IDEE", "DISCOVERY", "GEPLANT", "IN_ENTWICKLUNG", "TEST", "NUTZBAR", "BETRIEB", "PAUSIERT", "ARCHIVIERT"],
+          "description": "Manuell gepflegter Lebenszyklus-Status des Projekts (Muster 'freigabe' in schemas/ressourcen.schema.json)."
+        }
+      }
+    }
+  }
+}

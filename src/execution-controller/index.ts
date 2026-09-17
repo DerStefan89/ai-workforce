@@ -342,6 +342,7 @@ export async function fuehreAufgabeDurch(
             starter: optionen.starter,
             zeitgrenzeMs: optionen.zeitgrenzeMs,
             abbruchSignal: optionen.abbruchSignal,
+            cwd: optionen.cwd,
           }
         )
       : await starteGateway(
@@ -363,6 +364,7 @@ export async function fuehreAufgabeDurch(
             startfreigabeRepoWurzel: optionen.startfreigabeRepoWurzel,
             zeitgrenzeMs: optionen.zeitgrenzeMs,
             abbruchSignal: optionen.abbruchSignal,
+            cwd: optionen.cwd,
           }
         )
   if (!gatewayErgebnis.ok) {

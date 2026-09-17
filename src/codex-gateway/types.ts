@@ -82,6 +82,8 @@ export interface CodexGatewayOptionen {
   starter?: Starter
   zeitgrenzeMs?: number
   abbruchSignal?: AbortSignal
+  /** Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3) — unverändert an prozessstart.ts' starteProzess durchgereicht, Muster wie GatewayOptionen.cwd im Claude-Code-Gateway. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. */
+  cwd?: string
 }
 
 /** Form des von starteCodexGateway geschriebenen Rohstroms (AK7). tokens ist gegenüber F6as Rohstrom NEU und Pflicht: der Result Evaluator erkennt an ihm, ob der Lauf mit '--output-schema' lief (AK8) — ohne das Feld wäre diese Frage aus dem Artefakt allein nicht beantwortbar. */

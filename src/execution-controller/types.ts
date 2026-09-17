@@ -31,6 +31,12 @@
  * (starteGateway-Aufruf) nachgetragen, UND in
  * scripts/leitstand-server.mjs' VERBOTENE_OPTIONEN_FELDER.
  *
+ * F25 WS-1 (features/F25/feature.md, AK3): cwd folgt demselben Muster —
+ * hier UND in index.ts (BEIDE Aufrufstellen, starteGateway UND
+ * starteCodexGateway) nachgetragen, UND in scripts/leitstand-server.mjs'
+ * VERBOTENE_OPTIONEN_FELDER (nie ein Body-Feld — server-seitig aus dem
+ * Projektregister gesetzt).
+ *
  * Wird aufgerufen von:
  * - src/execution-controller/index.ts
  *
@@ -65,6 +71,8 @@ export interface AusfuehrungsOptionen {
   zeitgrenzeMs?: number
   /** Nur für F6as starteGateway (via prozessstart.ts' starteProzess) — Signal für einen gezielten manuellen Abbruch derselben Invocation (F14 WS-4, AK7). Folgt demselben Durchreichungsmuster wie zeitgrenzeMs. */
   abbruchSignal?: AbortSignal
+  /** Für BEIDE Worker-Zweige (starteGateway UND starteCodexGateway, via prozessstart.ts' starteProzess) — Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3), projektspezifisch aus dem Projektregister gesetzt. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. */
+  cwd?: string
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

@@ -53,6 +53,11 @@
  * F16 WS-2 (F-307): StarterOptionen.stdinLeer schließt den stdin des
  * Kindprozesses unmittelbar nach dem Spawn.
  *
+ * F25 WS-1 (features/F25/feature.md, AK3): StarterOptionen.cwd wird
+ * unverändert an execFiles natives cwd-Feld durchgereicht — kein
+ * process.chdir(), kein Shell. Fehlt der Wert, bleibt execFiles eigener
+ * Default (process.cwd() des Serverprozesses) unangetastet.
+ *
  * Was dazu real gemessen ist und was nicht — die Unterscheidung zählt:
  * GEMESSEN ist, dass Codex ohne angebundenes stdin
  * `Reading additional input from stdin...` auf stderr meldet
@@ -187,6 +192,7 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         maxBuffer: 1024 * 1024 * 64,
         ...(optionen?.zeitgrenzeMs !== undefined ? { timeout: optionen.zeitgrenzeMs } : {}),
         ...(optionen?.abbruchSignal !== undefined ? { signal: optionen.abbruchSignal } : {}),
+        ...(optionen?.cwd !== undefined ? { cwd: optionen.cwd } : {}),
       }
       const kindprozess = execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
         void behandeleErgebnis(fehler, stdout, stderr)
@@ -251,7 +257,7 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     return Promise.resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: null, message: pruefung.grund }, beendigungsart: null })
   }
   const starter = optionen.starter ?? echterStarter
-  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal, stdinLeer: optionen.stdinLeer }
+  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal, stdinLeer: optionen.stdinLeer, cwd: optionen.cwd }
   return starter(startziel, tokens, starterOptionen)
 }
 

@@ -1,0 +1,14 @@
+{
+  "projekte_schema": "v0",
+  "projekte": [
+    {
+      "id": "ai-workforce",
+      "name": "AI Workforce",
+      "repo_pfad": ".",
+      "startvorlage_pfad": "startvorlagen/ai-workforce.json",
+      "profil_pfad": "profiles/ai-workforce.json",
+      "basisverzeichnis": "kontrollzustand",
+      "status": "IN_ENTWICKLUNG"
+    }
+  ]
+}
