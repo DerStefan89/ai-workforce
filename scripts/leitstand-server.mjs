@@ -427,7 +427,7 @@
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, extname, isAbsolute, join } from 'node:path'
+import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
@@ -447,11 +447,14 @@ import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVo
 import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
+import { ladeProjektregister } from '../src/projekte/index.ts'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
 const PUBLIC_VERZEICHNIS = join(import.meta.dirname, '..', 'public', 'leitstand')
 const STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/beispielprojekt.json'
+/** F25 WS-1: Pfad zum Projektregister, per Umgebungsvariable überschreibbar (Muster LEITSTAND_STARTVORLAGE_PFAD) — u.a. für AK8s realen Zwei-Projekte-Test gegen eine eigene Registerkopie, ohne das committete projekte.json anzufassen. */
+const STANDARD_PROJEKTE_PFAD = 'projekte.json'
 const DATEINAME_MUSTER = /^(\d+)-([0-9a-f]{64})\.json$/
 const STILLER_SCHREIBER = () => {}
 
@@ -1355,6 +1358,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'zeitgrenzeMs',
   // F14 WS-4, AK7: ebenso — entsteht serverseitig (ein AbortController je aktivem Lauf), kommt nie über den Body.
   'abbruchSignal',
+  // F25 WS-1, AK3: ebenso — entsteht serverseitig aus dem Projektregister (projekte.json), kommt nie über den Body.
+  'cwd',
 ])
 
 /**
@@ -2738,6 +2743,15 @@ export function erzeugeRequestHandler(optionen = {}) {
     publicVerzeichnis = PUBLIC_VERZEICHNIS,
     startvorlagePfad = STANDARD_STARTVORLAGE_PFAD,
     repoWurzel = process.cwd(),
+    // settingsPfad/aktuelleAutorisierungPfad/cwd (F25 WS-1, AK3/AK4) werden hier bewusst NICHT
+    // destrukturiert: starteLaufUndVergiss reicht das gesamte optionen-Objekt unverändert weiter
+    // (siehe dort) — ein zusätzliches Feld in optionen erreicht fuehreAufgabeDurchFn damit bereits
+    // ohne lokale Zwischenvariable. Eine Destrukturierung ohne Verwendung wäre toter Code.
+    // F25 WS-1 (AK5, D13): frisches, isoliertes Objekt als Default — jeder bestehende Aufrufer
+    // (Gate-Skripte, die eigene, unabhängige Testserver erzeugen) bekommt dadurch UNVERÄNDERT
+    // eine eigene Sperre. Nur der CLI-Bindeblock reicht bewusst DASSELBE Objekt an mehrere
+    // Instanzen durch, damit die Sperre projektübergreifend gilt (E-M4-2).
+    globalerLaufZustand = { aktiv: false, laufId: null, abortController: null },
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -2757,6 +2771,26 @@ export function erzeugeRequestHandler(optionen = {}) {
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
     return angenommeneLaufIds.has(laufId) || existsSync(join(basisVerzeichnis, laufId))
+  }
+
+  /**
+   * F25 WS-1 (AK5, D13): zusätzliche, von der instanzlokalen laufAktiv-Sperre unabhängige
+   * Prüfung gegen den projektübergreifend geteilten globalerLaufZustand — genau ein aktiver
+   * Arbeitsstrang je Workforce-Gesamtinstanz über alle Projekte, nicht je Projekt-Instanz
+   * (E-M4-2). Bewusst NEBEN, nicht ANSTELLE der bestehenden laufAktiv-Prüfung (jede
+   * if (laufAktiv)-Stelle bleibt textlich unverändert stehen) — scripts/check-f11-auftrag.mjs
+   * sucht den D13-Vertrag über den wörtlichen Quelltext-Substring 'if (laufAktiv)' und würde bei
+   * einem Ersatz durch diese Funktion fälschlich melden, der Vertrag sei nicht erfüllt.
+   * Sendet bei Sperre selbst die 409-Antwort.
+   * @param res - Response-Objekt, an das im Sperrfall die 409-Antwort geht
+   * @returns true, wenn projektübergreifend gesperrt (Antwort bereits gesendet, Aufrufer muss sofort return)
+   */
+  function pruefeGlobaleLaufSperre(res) {
+    if (globalerLaufZustand.aktiv) {
+      sendeJson(res, 409, { grund: `ein anderer, projektübergreifend gestarteter Lauf ('${globalerLaufZustand.laufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang je Workforce-Instanz` })
+      return true
+    }
+    return false
   }
 
   /**
@@ -2845,6 +2879,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktiv = false
         laufAktivLaufId = null
         laufAktivAbortController = null
+        // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+        globalerLaufZustand.abortController = null
         if (ergebnis.ok === false) {
           angenommeneLaufIds.delete(laufId)
           const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
@@ -2895,6 +2933,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktiv = false
         laufAktivLaufId = null
         laufAktivAbortController = null
+        // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+        globalerLaufZustand.abortController = null
         angenommeneLaufIds.delete(laufId)
         const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: String(fehler?.message ?? fehler) }
         startfehlerListe.push(eintrag)
@@ -3148,6 +3190,12 @@ export function erzeugeRequestHandler(optionen = {}) {
     laufAktiv = true
     laufAktivLaufId = laufId
     laufAktivAbortController = new AbortController()
+    // F25 WS-1 (AK5, D13): zusätzlich zur instanzlokalen Sperre oben wird derselbe
+    // AbortController auch im projektübergreifend geteilten globalerLaufZustand hinterlegt —
+    // ein Arbeitsstrang je Workforce-Gesamtinstanz, nicht je Projekt (E-M4-2).
+    globalerLaufZustand.aktiv = true
+    globalerLaufZustand.laufId = laufId
+    globalerLaufZustand.abortController = laufAktivAbortController
     // D13-UEBERGABE-OHNE-FENSTER: ENDE
 
     // Nach dem Laufende: der Schritt bekommt seinen Ausgang, der Cursor wandert über
@@ -3954,6 +4002,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
         return
       }
+      if (pruefeGlobaleLaufSperre(res)) return
 
       const { laufId, werkzeugsatzName, eingaben: eingabenRoh } = startauftrag
       if (laufIdBelegt(laufId)) {
@@ -3997,6 +4046,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       // /api/laeufe/<laufId>/abbrechen löst später genau diesen Controller aus (D13: genau ein
       // aktiver Lauf, ein einzelner Controller reicht, kein Multi-Lauf-Registry).
       laufAktivAbortController = new AbortController()
+      // F25 WS-1 (AK5, D13): zusätzlich zur instanzlokalen Sperre oben wird derselbe
+      // AbortController auch im projektübergreifend geteilten globalerLaufZustand hinterlegt —
+      // ein Arbeitsstrang je Workforce-Gesamtinstanz, nicht je Projekt (E-M4-2).
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = laufId
+      globalerLaufZustand.abortController = laufAktivAbortController
       sendeJson(res, 202, { laufId })
 
       // F15 WS-2b: der Fire-and-forget-Block stand bis hier inline; seit WS-2b liegt er in
@@ -4037,6 +4092,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
         return
       }
+      if (pruefeGlobaleLaufSperre(res)) return
 
       const auftragVersion = ladeArtefaktVersion(`auftrag-${auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
       if (auftragVersion === null) {
@@ -4101,6 +4157,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       laufAktiv = true
       laufAktivLaufId = laufId
       laufAktivAbortController = new AbortController()
+      // F25 WS-1 (AK5, D13): zusätzlich zur instanzlokalen Sperre oben wird derselbe
+      // AbortController auch im projektübergreifend geteilten globalerLaufZustand hinterlegt —
+      // ein Arbeitsstrang je Workforce-Gesamtinstanz, nicht je Projekt (E-M4-2).
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = laufId
+      globalerLaufZustand.abortController = laufAktivAbortController
       sendeJson(res, 202, { laufId })
 
       starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, undefined, (ergebnis, fehler) => {
@@ -4225,6 +4287,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
         return
       }
+      if (pruefeGlobaleLaufSperre(res)) return
 
       // (4) Die Entscheidung trifft ausschließlich F15s ermittleNaechstenSchritt (D5) — ohne
       // Vorschrittergebnis, weil dieser Endpunkt den ERSTEN Schritt startet. Jeder Ausgang
@@ -4411,6 +4474,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         })
         return
       }
+      if (pruefeGlobaleLaufSperre(res)) return
       const schrittId = body.schrittId
       const begruendung = body.begruendung
       const entschiedenAm = new Date().toISOString()
@@ -4952,6 +5016,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         })
         return
       }
+      if (pruefeGlobaleLaufSperre(res)) return
 
       const begruendung = body.begruendung
       const entschiedenAm = new Date().toISOString()
@@ -5414,6 +5479,132 @@ export function belegeInstanzLock(basisVerzeichnis, port) {
   return { lockPfad, uebernommen }
 }
 
+/**
+ * F25 WS-1 (AK2, AK3, AK4): baut je Registereintrag eine eigene erzeugeRequestHandler-Instanz.
+ * repo_pfad/basisverzeichnis/startvorlage_pfad werden relativ zum jeweiligen repo_pfad SELBST
+ * aufgelöst — repoWurzelBasis ist nur der Referenzpunkt für ein relatives repo_pfad (für den
+ * Starteintrag 'ai-workforce' mit repo_pfad '.' also process.cwd() zum Aufrufzeitpunkt,
+ * dokumentierte Ausnahme, features/F25/feature.md). settingsPfad/aktuelleAutorisierungPfad/cwd
+ * werden aus derselben repoWurzel abgeleitet (AK4), statt den jeweiligen Modul-Default
+ * (process.cwd() bzw. den hartcodierten ai-workforce-Pfad) zu erben. globalerLaufZustand wird an
+ * JEDE Instanz durchgereicht (D13, AK5) — dieselbe Objektreferenz für alle, damit die Sperre
+ * projektübergreifend gilt.
+ *
+ * QA-Befund (17.09.2026): ein einzelner schema-gültiger, aber praktisch kaputter Registereintrag
+ * (nicht existierendes repo_pfad, falscher startvorlage_pfad) ließ ladeStartvorlage synchron
+ * werfen und riss den gesamten CLI-Bindeblock mit — auch der längst fertige defaultHandler für
+ * ai-workforce wurde dann nie gebunden. Jeder Eintrag wird deshalb einzeln try/catch-gekapselt:
+ * ein kaputter Eintrag fehlt danach nur in der Map (seine id liefert 404, Muster "unbekanntes
+ * Projekt"), alle anderen Einträge und der Default-Pfad bleiben unberührt.
+ *
+ * QA-Befund (17.09.2026): der Starteintrag 'ai-workforce' (repo_pfad '.') und der bestehende,
+ * unpräfigierte Default-Pfad bezeichnen dasselbe reale Projekt, bauten aber bislang zwei
+ * VOLLSTÄNDIG unabhängige erzeugeRequestHandler-Instanzen mit je eigenem laufAktiv/
+ * startfehlerListe/angenommeneLaufIds — ein über die eine "Tür" gestarteter Lauf war über die
+ * andere weder abbrechbar noch als aktiv erkennbar. optionen.selbstRepoWurzel/selbstHandler lösen
+ * das auf: jeder Registereintrag, dessen aufgelöste repoWurzel exakt der des Serverprozesses
+ * entspricht, bekommt keine zweite Instanz — er zeigt auf denselben Handler wie der Default-Pfad.
+ * @param projekte - validierte Registereinträge (src/projekte/index.ts, ladeProjektregister)
+ * @param repoWurzelBasis - Referenzpunkt für ein relatives repo_pfad
+ * @param globalerLaufZustand - projektübergreifend geteiltes D13-Zustandsobjekt
+ * @param optionen - { selbstRepoWurzel, selbstHandler } — optional, Muster oben
+ * @returns Map von Projekt-id auf Request-Handler
+ */
+export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZustand, optionen = {}) {
+  const { selbstRepoWurzel, selbstHandler } = optionen
+  const map = new Map()
+  const gesehenePfade = new Map()
+  for (const projekt of projekte) {
+    const pfade = loeseProjektPfade(projekt, repoWurzelBasis)
+
+    if (selbstRepoWurzel !== undefined && selbstHandler !== undefined && pfade.repoWurzel === selbstRepoWurzel) {
+      map.set(projekt.id, selbstHandler)
+      continue
+    }
+
+    const vorherigeId = gesehenePfade.get(pfade.basisVerzeichnis)
+    if (vorherigeId !== undefined) {
+      console.error(
+        `[leitstand] Projekt '${projekt.id}' teilt sich basisVerzeichnis '${pfade.basisVerzeichnis}' mit Projekt '${vorherigeId}' — beide lesen/schreiben denselben Kontrollzustand. projekte.json prüfen.`
+      )
+    } else {
+      gesehenePfade.set(pfade.basisVerzeichnis, projekt.id)
+    }
+
+    try {
+      map.set(
+        projekt.id,
+        erzeugeRequestHandler({
+          basisVerzeichnis: pfade.basisVerzeichnis,
+          startvorlagePfad: pfade.startvorlagePfad,
+          repoWurzel: pfade.repoWurzel,
+          settingsPfad: pfade.settingsPfad,
+          aktuelleAutorisierungPfad: pfade.aktuelleAutorisierungPfad,
+          cwd: pfade.cwd,
+          globalerLaufZustand,
+        })
+      )
+    } catch (fehler) {
+      console.error(`[leitstand] Projekt '${projekt.id}' konnte nicht initialisiert werden, bleibt unerreichbar (404): ${fehler.message}`)
+    }
+  }
+  return map
+}
+
+/**
+ * F25 WS-1 (AK2, AK3, AK4): reine Funktion, löst aus einem Registereintrag alle Pfade auf, die
+ * baueProjektHandlerMap an erzeugeRequestHandler durchreicht — extrahiert, damit ein Gate-Skript
+ * die Auflösungsarithmetik direkt prüfen kann, ohne dafür einen Server zu starten (D5, Muster
+ * validiereRessourcenDaten als reine, unabhängig testbare Funktion). Keine Seiteneffekte, kein
+ * Datei-I/O.
+ * @param projekt - ein validierter Registereintrag (src/projekte/types.ts)
+ * @param repoWurzelBasis - Referenzpunkt für ein relatives projekt.repo_pfad
+ * @returns die aufgelösten Pfade für genau diesen Registereintrag
+ */
+export function loeseProjektPfade(projekt, repoWurzelBasis) {
+  const repoWurzel = resolve(repoWurzelBasis, projekt.repo_pfad)
+  return {
+    repoWurzel,
+    basisVerzeichnis: join(repoWurzel, projekt.basisverzeichnis),
+    startvorlagePfad: join(repoWurzel, projekt.startvorlage_pfad),
+    settingsPfad: join(repoWurzel, '.claude', 'settings.json'),
+    aktuelleAutorisierungPfad: join(repoWurzel, 'state', 'aktuelle-autorisierung.json'),
+    cwd: repoWurzel,
+  }
+}
+
+/**
+ * F25 WS-1 (AK2): leitet /api/projekte/<id>/... an die zu <id> gehörende Handler-Instanz um —
+ * req.url wird auf den Rest nach der id umgeschrieben, jede Instanz sieht dadurch unverändert
+ * ihre eigenen /api/...-Pfade. Alles andere (inkl. statischer Auslieferung) geht unverändert an
+ * defaultHandler. Kein bestehendes Gate ruft diesen Dispatcher auf — jedes Gate-Skript ruft
+ * erzeugeRequestHandler weiterhin direkt auf und bekommt seine eigene, isolierte Instanz
+ * (AK2/AK7, unverändert).
+ * @param projektHandlerMap - Ergebnis von baueProjektHandlerMap
+ * @param defaultHandler - Handler für den bestehenden, unpräfigierten /api/...-Pfad (ai-workforce)
+ * @returns Node-http-Request-Handler
+ */
+export function erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler) {
+  return (req, res) => {
+    const url = new URL(req.url, 'http://localhost')
+    const treffer = url.pathname.match(/^\/api\/projekte\/([^/]+)(\/.*)?$/)
+    if (treffer === null) {
+      defaultHandler(req, res)
+      return
+    }
+    const [, id, rest] = treffer
+    const handler = projektHandlerMap.get(id)
+    if (handler === undefined) {
+      sendeJson(res, 404, { fehler: `Unbekanntes Projekt '${id}'` })
+      return
+    }
+    // Jede erzeugeRequestHandler-Instanz routet intern auf /api/...-Pfaden (Muster /api/laeufe) —
+    // der Rest nach der id wird deshalb wieder mit /api zusammengesetzt, nicht nackt übergeben.
+    req.url = `/api${rest ?? '/'}` + url.search
+    handler(req, res)
+  }
+}
+
 // Nur beim direkten Aufruf (`npm run leitstand`) tatsächlich binden — ein Import dieser Datei aus
 // scripts/check-f10-leitstand.mjs darf keinen echten Server starten.
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -5442,15 +5633,61 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // F-201: prozessübergreifender Instanz-Lock, VOR dem Binden. Dasselbe BASISVERZEICHNIS,
   // das erzeugeRequestHandler hier per Default benutzt — der Lock schützt genau dieses
   // kontrollzustand/, nicht den Port (den schützt EADDRINUSE ohnehin).
+  // F25 WS-1 (AK5): zusätzlich je weiterem Registereintrag dessen eigenes basisVerzeichnis
+  // sperren — über den aufgelösten absoluten Pfad dedupliziert, damit derselbe Ort (z. B. der
+  // Starteintrag 'ai-workforce' selbst, dessen basisverzeichnis mit BASISVERZEICHNIS
+  // übereinstimmt) nicht zweimal im selben Prozess gesperrt wird (belegeInstanzLock wirft sonst
+  // fälschlich "fremder, lebender Vorbesitzer" gegen die eigene PID).
+  const gesperrteBasisVerzeichnisse = new Set()
   try {
     const { lockPfad, uebernommen } = belegeInstanzLock(BASISVERZEICHNIS, PORT)
     if (uebernommen) console.log(`Verwaiste Lock-Datei ${lockPfad} übernommen (kein lebender Vorbesitzer).`)
+    gesperrteBasisVerzeichnisse.add(resolve(process.cwd(), BASISVERZEICHNIS))
   } catch (fehler) {
     console.error(fehler.message)
     process.exit(1)
   }
-  const server = createServer(erzeugeRequestHandler({ startvorlagePfad }))
+
+  // F25 WS-1 (AK2): Projektregister laden. Fehlt/ungültig: kein Startabbruch (Muster
+  // ressourcen.json oben) — der Leitstand bleibt für ai-workforce über den bestehenden,
+  // unpräfigierten /api/...-Pfad unverändert bedienbar, /api/projekte/<id>/... liefert dann für
+  // jede id 404.
+  const projekteBasis = process.cwd()
+  const projektePfad = process.env.LEITSTAND_PROJEKTE_PFAD ?? STANDARD_PROJEKTE_PFAD
+  let projekte = []
+  try {
+    projekte = ladeProjektregister(projektePfad)
+  } catch (fehler) {
+    console.error(`[leitstand] Projektregister '${projektePfad}' nicht geladen — /api/projekte/<id>/... bleibt ohne Registereinträge: ${fehler.message}`)
+  }
+  for (const projekt of projekte) {
+    const repoWurzel = resolve(projekteBasis, projekt.repo_pfad)
+    const absBasisVerzeichnis = join(repoWurzel, projekt.basisverzeichnis)
+    if (gesperrteBasisVerzeichnisse.has(absBasisVerzeichnis)) continue
+    try {
+      const { lockPfad, uebernommen } = belegeInstanzLock(absBasisVerzeichnis, PORT)
+      if (uebernommen) console.log(`Verwaiste Lock-Datei ${lockPfad} übernommen (kein lebender Vorbesitzer).`)
+      gesperrteBasisVerzeichnisse.add(absBasisVerzeichnis)
+    } catch (fehler) {
+      console.error(fehler.message)
+      process.exit(1)
+    }
+  }
+
+  // F25 WS-1 (AK5): EIN gemeinsames Zustandsobjekt für alle Instanzen — D13 gilt dadurch
+  // projektübergreifend (E-M4-2), nicht je Instanz.
+  const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+  // defaultHandler ist EXAKT derselbe Aufruf wie vor F25 (nur globalerLaufZustand neu) — der
+  // bestehende, unpräfigierte /api/...-Pfad für ai-workforce ändert sein Verhalten nicht (AK2/AK7).
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand })
+  const projektHandlerMap = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
+    selbstRepoWurzel: projekteBasis,
+    selbstHandler: defaultHandler,
+  })
+  const server = createServer(erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler))
   server.listen(PORT, '127.0.0.1', () => {
-    console.log(`Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad})`)
+    console.log(
+      `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
+    )
   })
 }

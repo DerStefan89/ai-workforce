@@ -146,6 +146,8 @@ interface GatewayOptionen {
   zeitgrenzeMs?: number
   /** Manuelles Abbruchsignal für den Prozessstart (F14 WS-4, AK7) — unverändert an prozessstart.ts' starteProzess durchgereicht, nach demselben Muster wie zeitgrenzeMs. Kein Default hier: fehlt der Wert, bleibt execFiles eigener Default (kein Signal) unangetastet. */
   abbruchSignal?: AbortSignal
+  /** Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3) — unverändert an prozessstart.ts' starteProzess durchgereicht, dort natives execFile-cwd. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. Wirkt NUR auf den Kindprozess — F4s Gültigkeitsschlüssel (istUebrigeFelder.arbeitsverzeichnis_pfad unten) und die Laufakte bleiben bewusst bei process.cwd() des Serverprozesses (AK7: kein bestehender Vergleichswert für ai-workforce ändert sich). */
+  cwd?: string
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -306,6 +308,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     starter: optionen.starter,
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
+    cwd: optionen.cwd,
   })
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null

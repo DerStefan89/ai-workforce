@@ -7335,3 +7335,129 @@ Maßnahme: bei der ersten real auftretenden restFehlend-Gap den vollständigen
 Klickpfad (Gap-Zeile -> "Kandidaten suchen" -> Ergebnisansicht -> Vormerken)
 in einem echten Browser real nachholen und diesen Eintrag dabei schließen.
 Feature/Run: F27-Abschluss-Dokumentation, 17.09.2026.
+
+**F-413** · `TECH_DEBT` · P1 · **gelöst**
+Titel: execFile im Claude-Code-Gateway hatte kein cwd-Feld — Kindprozess
+lief immer im process.cwd() des Serverprozesses.
+Beschreibung: echterStarter (src/claude-code-gateway/prozessstart.ts) baute
+execFileOptionen ohne cwd. Ein registriertes Projekt mit eigenem Repo-Pfad
+konnte den Claude-Code-Kindprozess dadurch strukturell nicht in seinem
+eigenen Arbeitsverzeichnis starten — Dateizugriff und
+.claude/skills/-Discovery liefen immer gegen ai-workforce selbst.
+Fundstelle: src/claude-code-gateway/prozessstart.ts (echterStarter).
+Auswirkung: hoch für F25 — ohne Behebung wäre ein Mehrprojektbetrieb
+strukturell unmöglich gewesen (jedes Projekt hätte de facto gegen
+ai-workforce gelesen/geschrieben).
+Maßnahme: StarterOptionen.cwd (additiv, optional) bis execFiles natives
+cwd-Feld durchgereicht (F25 WS-1, AK3) — Kette: StarterOptionen ->
+execFileOptionen (claude-code-gateway), CodexGatewayOptionen ->
+execFileOptionen (codex-gateway, dieselbe Lücke real gefunden und mit
+behoben), GatewayOptionen -> starteProzess, AusfuehrungsOptionen ->
+execution-controller (beide Worker-Zweige), VERBOTENE_OPTIONEN_FELDER
+ergänzt. erzeugeRequestHandler/baueProjektHandlerMap setzen cwd
+projektspezifisch aus dem Registereintrag.
+Feature/Run: F25 WS-1, 17.09.2026.
+
+**F-414** · `TECH_DEBT` · P2 · offen (bewusste Grenze)
+Titel: Ein registriertes Fremd-Repo ohne eigene Autorisierungs-Baseline
+bleibt fail-closed blockiert — kein Bootstrap in F25 v1.
+Beschreibung: starteGateway lehnt einen Lauf gegen eine Repo-Wurzel ohne
+eigene state/aktuelle-autorisierung.json bzw. .claude/settings.json
+unverändert ab (F4/F3, Invocation Policy). F25 WS-1 fügt keinen
+Bootstrap-Automatismus hinzu, der einem neu registrierten Projekt
+automatisch eine gültige Baseline verschafft — das wäre ein
+Freigabeartefakt, das der Kern nie selbst erzeugen darf (ARCHITECTURE.md
+§3). Ein importiertes/registriertes Repo bleibt deshalb blockiert, bis ein
+Mensch von Hand eine eigene Mini-Baseline anlegt (Muster: aus ai-workforce
+kopierte, inhaltlich identische .claude/settings.json + zugehörige
+Hook-Skripte + state/aktuelle-autorisierung.json — der
+Invocation-Policy-Vergleich ist rein inhaltsbasiert, keine Pfadbindung,
+siehe features/F25/nachweis-ws1.md).
+Fundstelle: src/claude-code-gateway/index.ts (starteGateway,
+STANDARD_AKTUELLE_AUTORISIERUNG_PFAD-Lesepfad); features/F25/feature.md
+AK6, "Bekannte Grenzen".
+Auswirkung: mittel — bewusste, dokumentierte Grenze (Option B, Stefan
+17.09.2026), kein Bug. Ein künftiger Import-Wizard (nicht Teil dieses
+Auftrags) muss diese Lücke explizit adressieren oder ebenfalls offen
+dokumentieren.
+Maßnahme: keine in F25 v1. Bei Bedarf: Import-Wizard mit geführtem,
+menschlich bestätigtem Baseline-Schritt (kein automatischer
+Freigabeartefakt-Bau).
+Feature/Run: F25 WS-1, 17.09.2026.
+
+**F-415** · `BUG` · P1 · **gelöst**
+Titel: starteProzess verlor cwd beim Bau von starterOptionen — real erst im
+AK8-Zwei-Projekte-Test aufgefallen, nicht durch gemockte Gates.
+Beschreibung: src/claude-code-gateway/prozessstart.ts' starteProzess baute
+starterOptionen bislang über eine benannte Feldliste (`{ zeitgrenzeMs,
+abbruchSignal, stdinLeer }`) statt eines Spreads — ein neu hinzugefügtes
+Feld wie cwd erreichte den eigentlichen Starter (echterStarter) dadurch
+NIE, obwohl jede vorgelagerte Schicht (erzeugeRequestHandler,
+execution-controller, starteGateway) es korrekt bis in starteProzess'
+eigenes optionen-Objekt durchreichte. Der erste reale AK8-Lauf gegen
+Projekt B las dadurch tatsächlich eine Datei in ai-workforce statt im
+registrierten Projekt — strukturell unbemerkt von allen zuvor grün
+gelaufenen, gemockten Gate-Prüfungen (check-f25-projekte.mjs (2b) prüfte
+nur bis zur fuehreAufgabeDurchFn-Grenze, eine Ebene VOR diesem Bug).
+Fundstelle: src/claude-code-gateway/prozessstart.ts, starteProzess
+(starterOptionen-Konstruktion).
+Auswirkung: hoch — ohne den realen Zwei-Projekte-Test (AK8) wäre F25 WS-1
+mit vollständig grünem `npm run check` freigegeben worden, obwohl das
+Kernversprechen (Kindprozess läuft im richtigen Projekt) strukturell nicht
+funktionierte. Bestätigt den Wert eines echten End-to-End-Realtests
+gegenüber rein gemockten Gate-Läufen.
+Maßnahme: cwd in starterOptionen ergänzt (eine Zeile). Gate
+check-f25-projekte.mjs um Abschnitt (2c) erweitert: ruft starteProzess
+direkt mit einem Attrappen-Starter auf und prüft cwd genau an dieser
+Stelle — Rot-Fall vor der Korrektur real reproduziert und dokumentiert
+(features/F25/nachweis-ws1.md).
+Feature/Run: F25 WS-1, AK8-Realtest, 17.09.2026.
+
+**F-416** · `TECH_DEBT` · P3 · offen
+Titel: rohBasisVerzeichnis ist nicht projektspezifisch — Rohereignisstrom
+eines Fremdprojekt-Laufs landet in ai-workforce's eigenem
+kontrollzustand-roh/.
+Beschreibung: baueProjektHandlerMap/loeseProjektPfade (F25 WS-1) setzen
+basisVerzeichnis/startvorlagePfad/settingsPfad/aktuelleAutorisierungPfad/
+cwd projektspezifisch, aber KEIN rohBasisVerzeichnis — das bleibt beim
+Default STANDARD_ROH_BASISVERZEICHNIS ('kontrollzustand-roh'), relativ zum
+process.cwd() des Serverprozesses (ai-workforce), nicht zur repoWurzel des
+jeweiligen Projekts. Real beobachtet: ein Lauf gegen Projekt B schrieb
+seinen Rohereignisstrom nach ai-workforce/kontrollzustand-roh/<laufId>/,
+nicht nach f25-testprojekt-b/kontrollzustand-roh/<laufId>/.
+Fundstelle: scripts/leitstand-server.mjs, loeseProjektPfade/
+baueProjektHandlerMap (F25 WS-1).
+Auswirkung: gering — kontrollzustand-roh/ ist gitignoriert, rein
+diagnostisch (ARCHITECTURE.md §1), kein Kontrollzustand. Bei häufigem
+Mehrprojektbetrieb sammelt sich Fremdprojekt-Diagnosemüll in
+ai-workforce's eigenem Arbeitsbaum an.
+Maßnahme: kleine Folge-Iteration — loeseProjektPfade um
+rohBasisVerzeichnis (join(repoWurzel, 'kontrollzustand-roh') o. ä.)
+ergänzen, in baueProjektHandlerMap durchreichen.
+Feature/Run: F25 WS-1, AK8-Realtest, 17.09.2026.
+
+**F-417** · `TECH_DEBT` · P2 · gelöst
+Titel: check-f25-projekte.mjs (2c) verwendete ein hartkodiertes
+Windows-Pfad-Literal als Test-startziel — nicht plattformportabel.
+Beschreibung: Der (2c)-Rot-Fall-Test rief starteProzess mit
+['C:\\Program Files\\claude\\claude.exe'] als startziel[0] auf.
+pruefeStartziel prüft zuerst, ob startziel[0] laut node:path resolve()
+bereits absolut ist — ein Windows-Literal besteht diese Prüfung auf einem
+POSIX-Laufzeitsystem nie, der Test scheiterte dort unabhängig vom
+eigentlichen cwd-Verhalten. Das etablierte Repo-Muster für einen
+plattformunabhängig echten, absoluten Pfad in Tests
+(GUELTIGES_STARTZIEL = [process.execPath],
+src/claude-code-gateway/claude-code-gateway.test.ts:47) wurde hier nicht
+verwendet.
+Fundstelle: scripts/check-f25-projekte.mjs, Abschnitt (2c).
+Auswirkung: mittel — AK9s Kalibrierung für genau den kritischen F-415-Fix
+war dadurch nur auf einer bestimmten Plattform aussagekräftig.
+Maßnahme: startziel[0] auf process.execPath umgestellt (Muster
+GUELTIGES_STARTZIEL), real auf diesem Windows-Rechner grün bestätigt
+(node scripts/check-f25-projekte.mjs, npm run check). Kein separater
+realer Lauf auf einem POSIX-System durchgeführt (keine Linux-Umgebung in
+dieser Sitzung verfügbar) — die Plattformunabhängigkeit folgt daraus,
+dass process.execPath dieselbe Konstruktion ist, auf die sich der Rest des
+Repos (claude-code-gateway.test.ts u. a.) bereits stützt, nicht aus einem
+zweiten eigenständigen Nachweis hier.
+Feature/Run: F25 WS-1, Challenge-Verifikation, 17.09.2026.
