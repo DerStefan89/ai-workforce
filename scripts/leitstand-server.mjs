@@ -430,7 +430,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync,
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
-import { ladeArtefaktVersion, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { ladeArtefaktVersion, listeVersionen, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { entscheideStale, importiereAntwort } from '../src/human-transport/index.ts'
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
@@ -2495,6 +2495,43 @@ export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
 }
 
 /**
+ * F26 WS-2a: liest das Jarvis-Ergebnis eines bereits ABGESCHLOSSEN/ERFOLGREICH beendeten
+ * Chat-Laufs aus dessen Laufakte (leseJarvisErgebnisAusLaufakte) und registriert bei Erfolg
+ * den 'chat-<projektId>'-Kernartefakt (Checkpoint-Kette 'lineage-chat-<projektId>') mit der
+ * Nachricht und der Jarvis-Antwort im freien 'daten'-Feld — dasselbe Vorgehen wie das WS-1-
+ * Glue-Skript scripts/jarvis-chat-nachweis.mjs, jetzt IN den Endpunkt verlagert (löst die in
+ * features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke). Reine, synchrone Funktion
+ * (kein await) — direkt aus dem nachLauf-Callback von POST /api/chat aufrufbar, der mitten in
+ * der D13-Übergabe ohne Fenster läuft (Muster verarbeiteRouterErgebnis).
+ * @param laufakteDaten - bereits geladene Laufakte des Jarvis-Laufs
+ * @param projektId - Projekt-id der bedienenden Handler-Instanz (erzeugeRequestHandler-Option)
+ * @param nachricht - die vom Menschen im Chat eingegebene, reine Nachricht (Audit-Transparenz)
+ * @param laufId - laufId des Jarvis-Laufs (geht in 'herkunft')
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - basisVerzeichnis/schreiber (Muster ladeOptionen in erzeugeRequestHandler)
+ * @returns bei Erfolg { ok: true, pfad, versionSequenz, inhaltsHash }, sonst { ok: false, grund }
+ */
+export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen) {
+  const jarvisErgebnis = leseJarvisErgebnisAusLaufakte(laufakteDaten)
+  if (!jarvisErgebnis.ok) {
+    return { ok: false, grund: `Jarvis-Lauf '${laufId}': ${jarvisErgebnis.grund}` }
+  }
+  try {
+    const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
+      `chat-${projektId}`,
+      profilReferenz,
+      { quelle: 'jarvis-chat', lauf_id: laufId },
+      { nachricht, jarvisAntwort: jarvisErgebnis.ergebnis },
+      undefined,
+      ladeOptionen
+    )
+    return { ok: true, pfad, versionSequenz, inhaltsHash }
+  } catch (fehler) {
+    return { ok: false, grund: `Lineage-Chat-Eintrag 'chat-${projektId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
+  }
+}
+
+/**
  * Schreibt eine neue Workflow-Version, in der genau ein Schritt und die
  * Workflow-Felder status/aktiver_schritt_id/grund fortgeschrieben sind (F15
  * WS-2b, grund seit WS-2c). Kein Überschreiben: registriereWorkflow legt über
@@ -2782,6 +2819,15 @@ export function erzeugeRequestHandler(optionen = {}) {
     // ausschließlich im unpräfigierten defaultHandler vorgesehen, eine Projekt-Instanz beantwortet
     // ihn mit einer leeren Liste statt eines Fehlers (D5, kein Sonderfall nötig).
     projekte = [],
+    // F26 WS-2a: löst die in features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke —
+    // diese Handler-Instanz kannte ihre eigene Projekt-id bislang nicht, POST /api/chat konnte
+    // den 'lineage-chat-<projektId>'-Verlauf deshalb nur über ein externes Glue-Skript
+    // (scripts/jarvis-chat-nachweis.mjs, WS-1) schreiben. Default 'ai-workforce': der bestehende,
+    // unpräfigierte defaultHandler bedient exakt das Projekt, unter dem der WS-1-Nachweis den
+    // Kernartefakt-Namen 'chat-ai-workforce' bereits real vergeben hat (Regressionsschutz, keine
+    // zweite Namenskonvention). baueProjektHandlerMap reicht je Registereintrag dessen echte
+    // projekt.id durch.
+    projektId = 'ai-workforce',
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -4245,7 +4291,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
-    // ─── F26 WS-1: POST /api/chat ───────────────────────────────────────────────────────
+    // ─── F26 WS-1/WS-2a: POST /api/chat ─────────────────────────────────────────────────
     //
     // Löst einen Ein-Schuss-Lauf der Rolle 'jarvis' für eine natürliche Chat-Nachricht aus —
     // Muster POST /api/auftraege/<id>/routen: D13 vor jeder Formprüfung, die selbst schon
@@ -4257,13 +4303,14 @@ export function erzeugeRequestHandler(optionen = {}) {
     // nur ASYNCHRON möglich (202 + laufId), kein Workflow. Erreichbar sowohl unpräfigiert
     // ('/api/chat', für ai-workforce) als auch über den F25-Dispatcher ('/api/projekte/<id>/chat').
     //
-    // WS-1 liefert ausschließlich Rolle/Schema/Dispatch — die Registrierung eines
-    // 'lineage-chat-<projektId>'-Verlaufseintrags (jede Nachricht ein Kernartefakt über
-    // src/lineage-registry, 'Chat hat keine eigene Wahrheit', F26-Plan Punkt 3) ist WS-2: diese
-    // Handler-Instanz kennt ihre eigene Projekt-id nicht (erzeugeRequestHandler bekommt sie nicht
-    // als Option, F25 WS-1) — der reale CLI-Nachweis dieses Auftrags schreibt/validiert den
-    // Lineage-Eintrag deshalb bewusst AUSSERHALB dieses Endpunkts, direkt gegen
-    // src/lineage-registry (features/F26/nachweis-ws1.md).
+    // WS-2a: der nachLauf-Callback unten (Muster verarbeiteRouterErgebnis-Aufruf oben) schreibt
+    // NACH einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch den
+    // 'lineage-chat-<projektId>'-Verlaufseintrag (verarbeiteJarvisChatErgebnis) — löst die in
+    // features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke (WS-1 kannte die
+    // Projekt-id der Handler-Instanz nicht; jetzt optionen.projektId, s. erzeugeRequestHandler).
+    // Jede andere Terminallage (FEHLGESCHLAGEN/VERWEIGERT/KLAERUNG_ERFORDERLICH, ok:false)
+    // schreibt bewusst NICHTS — 'Chat hat keine eigene Wahrheit', nur ein real erfolgreicher
+    // Jarvis-Lauf wird Lineage.
     if (req.method === 'POST' && pfad === '/api/chat') {
       let body
       try {
@@ -4388,7 +4435,53 @@ export function erzeugeRequestHandler(optionen = {}) {
       globalerLaufZustand.abortController = laufAktivAbortController
       sendeJson(res, 202, { laufId, auftragId })
 
-      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben)
+      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, undefined, (ergebnis, fehler) => {
+        // Muster starteLaufUndVergiss' Aufrufer beim Router-Endpunkt oben: ein Fehlschlag/Wurf
+        // vor dem Laufende schreibt bereits einen startfehlerListe-Eintrag (starteLaufUndVergiss
+        // selbst), hier nichts Zusätzliches. 'ABGESCHLOSSEN'/'ERFOLGREICH' explizit geprüft (nicht
+        // nur ergebnis.ok) — derselbe Erfolgsbegriff wie die Änderungsübersicht-Registrierung oben.
+        if (fehler !== null || ergebnis?.ok === false) return
+        if (!(ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH')) return
+
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        if (laufakteVersion === null) {
+          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Jarvis-Chat-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
+          return
+        }
+
+        const verarbeitung = verarbeiteJarvisChatErgebnis(laufakteVersion.daten, projektId, nachricht, laufId, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        if (!verarbeitung.ok) {
+          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
+          console.error(`[leitstand] ${verarbeitung.grund}`)
+        } else {
+          console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
+        }
+      })
+      return
+    }
+
+    // ─── F26 WS-2a: GET /api/chat ────────────────────────────────────────────────────────
+    //
+    // Projiziert den 'chat-<projektId>'-Artefakt-Verlauf über listeVersionen (src/lineage-registry,
+    // dieselbe Leseschicht wie ladeArtefaktVersion) in eine Liste für die Chat-View: die View lädt
+    // hierüber beim Öffnen, ein Reload verliert damit nichts (AK4). Reviewer-Befund (WS-2a):
+    // ein roher ladeGueltigeCheckpoints-Aufruf mit selbstgebautem 'lineage-'-Präfix umginge
+    // listeVersionens istArtefaktVersion-Filter — ein (aktuell hypothetischer, aber vom Mechanismus
+    // her nicht ausgeschlossener) 'stale_entscheidung'-Eintrag in DERSELBEN Kette (haltFestStaleEntscheidung
+    // schreibt generisch in 'lineage-<artefaktId>') käme sonst ungefiltert als kaputter
+    // {laufId:null,...}-Verlaufseintrag beim Client an. listeVersionen liefert bereits nur
+    // artefakt_version-Einträge, aufsteigend sortiert. Eine (noch) leere Kette ist kein Fehler
+    // (Erststart, oder bislang ausschließlich Vorfilter-beantwortete Nachrichten, die serverseitig
+    // gar nicht erst ankommen) — listeVersionen liefert dafür bereits [], kein Sonderfall nötig.
+    if (req.method === 'GET' && pfad === '/api/chat') {
+      const versionen = listeVersionen(`chat-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      sendeJson(res, 200, {
+        verlauf: versionen.map((version) => ({
+          laufId: version.herkunft?.lauf_id ?? null,
+          nachricht: version.daten?.nachricht ?? null,
+          jarvisAntwort: version.daten?.jarvisAntwort ?? null,
+        })),
+      })
       return
     }
 
@@ -5742,6 +5835,10 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           aktuelleAutorisierungPfad: pfade.aktuelleAutorisierungPfad,
           cwd: pfade.cwd,
           globalerLaufZustand,
+          // F26 WS-2a: jede Projekt-Instanz kennt ab jetzt ihre eigene Projekt-id (siehe
+          // erzeugeRequestHandler-Option) — POST/GET /api/chat schreiben/lesen dadurch den
+          // richtigen 'lineage-chat-<projekt.id>'-Verlauf statt des Default-Namens.
+          projektId: projekt.id,
         })
       )
     } catch (fehler) {

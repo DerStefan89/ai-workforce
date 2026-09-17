@@ -19,6 +19,7 @@
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2)
  * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
+ * - public/leitstand/views/chat.js (F26 WS-2a)
  * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
  *
  * Wichtig: Kein Fehler-Handling hier (kein try/catch) — das bleibt Sache der
@@ -110,6 +111,13 @@ async function holeJsonOderWirf(pfad) {
 export const holeRessourcen = () => holeJsonOderWirf(mitPraefix('/ressourcen'))
 export const holeAbdeckung = () => holeJsonOderWirf(mitPraefix('/ressourcen/abdeckung'))
 export const holeRollenBesetzung = (rolle) => fetch(mitPraefix(`/ressourcen/rollen/${encodeURIComponent(rolle)}`))
+
+// F26 WS-2a: Chat je aktivem Projekt (mitPraefix, wie jeder andere Endpunkt außer holeProjekte).
+// sendeChatNachricht löst den asynchronen Jarvis-Lauf aus (202 + laufId/auftragId, 409 bei D13,
+// Muster routeAuftrag); holeChatVerlauf projiziert den 'lineage-chat-<projektId>'-Verlauf
+// (leer bis zum ersten real abgeschlossenen Lauf, kein Fehler).
+export const sendeChatNachricht = (koerper) => fetch(mitPraefix('/chat'), { method: 'POST', body: JSON.stringify(koerper) })
+export const holeChatVerlauf = () => fetch(mitPraefix('/chat')).then((r) => r.json())
 
 // F25 WS-2a (AK11/AK13): bewusst NICHT über mitPraefix — dieser Endpunkt listet das GESAMTE
 // Projektregister unabhängig vom gerade aktiven Projekt und existiert nur unpräfigiert im

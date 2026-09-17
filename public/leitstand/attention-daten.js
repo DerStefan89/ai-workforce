@@ -13,6 +13,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/attention.js
  * - public/leitstand/views/dashboard.js
+ * - public/leitstand/jarvis-vorfilter.js (F26 WS-2a, "was braucht mich")
  */
 
 import { holeWorkitems } from './api.js'

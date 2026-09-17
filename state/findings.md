@@ -7592,3 +7592,43 @@ projektspezifische arbeitsverzeichnis_pfad-Auflösung, die zugleich
 ai-workforce's eigenen, bereits autorisierten Wert unverändert lassen
 müsste — bewusst nicht angegangen.
 Feature/Run: F25 WS-1, QA-Pass, 17.09.2026 (nachgetragen mit WS-2a).
+
+**F-423** · `BUG` · P1 · offen
+Titel: Jarvis-Chat mit Codex-Worker scheitert real IMMER —
+schemas/ergebnis-jarvis.schema.json nutzt 'allOf', das Codex'
+'--output-schema' (response_format) nicht akzeptiert.
+Beschreibung: Real gegen den echten Leitstand-Prozess beobachtet
+(F26 WS-2a, echter curl-Nachweis, startvorlagen/ai-workforce.json mit
+konfiguriertem und verfügbarem Codex-Worker): POST /api/chat löst
+worker 'codex' aus (loeseRessourcenAuf meldet ihn verfügbar), der
+Kindprozess bricht mit exitCode 1 und
+`{"type":"error","error":{"code":"invalid_json_schema","message":"Invalid
+schema for response_format 'codex_output_schema': In context=(),
+'allOf' is not permitted."}}` ab — der Lauf endet real
+ABGESCHLOSSEN/FEHLGESCHLAGEN. Ursache: die WS-1-QA-Korrektur an
+schemas/ergebnis-jarvis.schema.json (art/auftrag/aktion-Kopplung über
+allOf/if/then) macht das Schema für Codex' Structured-Output-Endpunkt
+strukturell ungültig — WS-1s realer Nachweis (nachweis-ws1.md) lief
+ausschließlich über den claude-code-Fallback, weil zu dem Zeitpunkt kein
+Codex-Worker konfiguriert/verfügbar war; die Inkompatibilität wurde
+dadurch nie real getroffen.
+Fundstelle: schemas/ergebnis-jarvis.schema.json (allOf/if/then-Block);
+betrifft POST /api/chat (scripts/leitstand-server.mjs) für jeden Aufruf
+mit verfügbarem Codex-Worker.
+Auswirkung: hoch für den Codex-Pfad — Jarvis-Chat ist mit Codex
+praktisch unbenutzbar (jeder Lauf endet FEHLGESCHLAGEN, nie ERFOLGREICH,
+kein Lineage-Eintrag). Kein Datenverlust, kein stiller Fehler (der
+Rotfall wird korrekt als FEHLGESCHLAGEN klassifiziert und schreibt
+bewusst keinen Lineage-Eintrag, siehe POST /api/chat nachLauf-Callback).
+Der claude-code-Fallback bleibt unverändert funktionsfähig (real
+ERFOLGREICH nachgewiesen, F26 WS-2a).
+Maßnahme: keine in WS-2a (Schema-Fix ist F26-WS-1-Terrain, nicht
+WS-2a-Scope, und berührt möglicherweise weitere Rollen mit
+allOf/if/then-Kopplung). Optionen für eine künftige Iteration: das
+Schema auf eine Codex-kompatible Form ohne 'allOf' umbauen (z. B.
+auftrag/aktion optional lassen und die Kopplung ausschließlich in
+validiereErgebnisJarvis erzwingen, nicht im Schema selbst), oder Codex
+für die Rolle 'jarvis' aus der Worker-Auflösung ausschließen, bis das
+Schema kompatibel ist.
+Feature/Run: F26 WS-2a, realer curl-Nachweis gegen den echten
+Leitstand-Prozess, 17.09.2026.

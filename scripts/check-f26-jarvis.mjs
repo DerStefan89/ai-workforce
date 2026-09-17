@@ -1,23 +1,26 @@
 /**
  * Datei: scripts/check-f26-jarvis.mjs
  *
- * Zweck: Jarvis-Chat-Gate (F26 WS-1). Prüft (a) den Rollenvertrag 'jarvis'
+ * Zweck: Jarvis-Chat-Gate (F26 WS-1/WS-2a). Prüft (a) den Rollenvertrag 'jarvis'
  * (ROLLENVERTRAEGE, src/rollen/index.ts), (b) schemas/ergebnis-jarvis.schema.json
  * + Beispiele gegen validiereErgebnisJarvis (src/jarvis/index.ts), (c) reale
  * Rot-Fälle von POST /api/chat (Formprüfung des Bodys, D13), (d)
  * leseJarvisErgebnisAusLaufakte über präparierte Rohstrom-Fixtures (Muster
- * scripts/check-f27-scout.mjs AK5) und (e) den Lineage-Chat-Mechanismus, den
- * der reale CLI-Nachweis dieses Auftrags nutzt (features/F26/nachweis-ws1.md):
+ * scripts/check-f27-scout.mjs AK5), (e) den Lineage-Chat-Mechanismus, den
+ * der reale CLI-Nachweis des WS-1-Auftrags nutzte (features/F26/nachweis-ws1.md):
  * registriereKernArtefakt mit artefaktId 'chat-<projektId>' erzeugt einen
  * lineage-'chat-<projektId>'-Eintrag, der gegen
  * schemas/kontrollzustand-lineage-payload.schema.json gültig ist
  * (validiereLineageEintrag) — mit der Nachricht im freien 'daten'-Feld, NICHT
- * in 'eingaben' (das ist für Datei-Referenzen mit inhalts_hash reserviert).
+ * in 'eingaben' (das ist für Datei-Referenzen mit inhalts_hash reserviert) —
+ * und (f, WS-2a) den automatischen Lineage-Write DURCH POST /api/chat selbst
+ * (kein externes Glue-Skript mehr): ein realer Grün-/Rotfall über eine fake
+ * fuehreAufgabeDurchFn, GET /api/chat als Projektion.
  *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisJarvis/validiereLineageEintrag statt einen zweiten
- * Regelsatz zu pflegen. WS-1 hat bewusst noch KEINEN Gate-Abschnitt für einen
- * echten Claude-Code-Kindprozess-Lauf (teuer, nicht wiederholbar in jedem
+ * Regelsatz zu pflegen. Bewusst noch KEIN Gate-Abschnitt für einen echten
+ * Claude-Code-Kindprozess-Lauf (teuer, nicht wiederholbar in jedem
  * npm-run-check-Durchlauf) — dieser reale Nachweis lebt eigenständig in
  * features/F26/nachweis-ws1.md (Muster F16/F27: realer Nachweis getrennt vom
  * automatisierten Gate).
@@ -294,6 +297,97 @@ console.log('\n=== F26-Jarvis-Check ===\n')
       )
     }
   } finally {
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (f) POST /api/chat: Auto-Lineage-Write nach realem Laufende (WS-2a) ───
+//
+// Belegt die in features/F26/feature.md "Bekannte Grenzen" geschlossene Lücke: der
+// nachLauf-Callback in POST /api/chat (scripts/leitstand-server.mjs) schreibt automatisch einen
+// 'lineage-chat-<projektId>'-Eintrag, sobald fuehreAufgabeDurchFn real ABGESCHLOSSEN/ERFOLGREICH
+// meldet — kein externes Glue-Skript mehr nötig (anders als noch beim WS-1-Nachweis,
+// scripts/jarvis-chat-nachweis.mjs). fuehreAufgabeDurchFn (erzeugeRequestHandler-Option, Muster
+// scripts/check-f22-click-to-work.mjs) ersetzt den echten Kindprozess-Lauf durch eine
+// vorbereitete Laufakte + ein synthetisches AusfuehrungsErgebnis — kein echter
+// Claude-Code-Kindprozess im automatisierten Gate (WS-1-Entscheidung, unverändert). Testet damit
+// zugleich die neue erzeugeRequestHandler-Option 'projektId' UND GET /api/chat (Projektion der
+// Checkpoint-Kette) in einem echten HTTP-Rundlauf.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f26-ak-f-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  const projektId = 'check-f26-ws2a'
+  const gueltigesErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-jarvis.valid.json', 'utf-8'))
+
+  // Steuert je Aufruf, ob die fake fuehreAufgabeDurchFn einen Grün- oder Rotfall simuliert.
+  let ergebnisModus = 'erfolgreich'
+  const fuehreAufgabeDurchFn = async (laufId) => {
+    // Die Laufakte MUSS existieren, bevor der nachLauf-Callback sie lesen kann (Muster des
+    // echten F8/fuehreAufgabeDurch) — hier direkt über registriereKernArtefakt geschrieben, mit
+    // demselben minimalen Feldsatz, den leseJarvisErgebnisAusLaufakte braucht (worker,
+    // rohstrom_referenz.pfad, Muster Abschnitt (d) oben).
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    // Muster Abschnitt (d): der Rohstrom liegt unter 'stdout' als STRING (der reale Rohstrom
+    // eines claude-code-Laufs), leseRollenErgebnisRohstrom parst diesen erst in einem zweiten
+    // Schritt — ein direktes { type, result } ohne 'stdout'-Hülle liefert 'kein Ergebnistext im
+    // Rohstrom gefunden' (real beim ersten Kalibrierlauf dieses Abschnitts so aufgetreten).
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(gueltigesErgebnis) }) }), 'utf8')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f26-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+      basisVerzeichnis,
+      schreiber: STILLER_SCHREIBER,
+    })
+    return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: ergebnisModus === 'erfolgreich' ? 'ERFOLGREICH' : 'FEHLGESCHLAGEN' } }
+  }
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    // Grünfall: real ABGESCHLOSSEN/ERFOLGREICH → automatischer, gültiger Lineage-Eintrag, sichtbar über GET /api/chat.
+    ergebnisModus = 'erfolgreich'
+    const erste = await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Status?' }) })
+    if (erste.status !== 202) {
+      befunde.push(`(f) Grünfall: erwartet 202, erhalten ${erste.status} (${await erste.text()})`)
+    }
+    // nachLauf läuft synchron im .then-Zweig von fuehreAufgabeDurchFn — 30ms lassen den fake,
+    // rein synchronen Promise-Tick sicher durch (Muster check-f22-click-to-work.mjs).
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    const verlaufNachErfolg = await (await fetch(`${basisUrl}/api/chat`)).json()
+    if (verlaufNachErfolg.verlauf.length !== 1 || verlaufNachErfolg.verlauf[0].nachricht !== 'Status?') {
+      befunde.push(`(f) Grünfall: GET /api/chat sollte genau einen Eintrag mit der gesendeten Nachricht zeigen, erhalten ${JSON.stringify(verlaufNachErfolg)}`)
+    } else {
+      const eintraege = ladeGueltigeCheckpoints(`lineage-chat-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const verstoesse = eintraege.length === 1 ? validiereLineageEintrag(eintraege[0]) : ['kein einziger Checkpoint-Eintrag gefunden']
+      if (verstoesse.length > 0) {
+        befunde.push(`(f) Grünfall: der automatisch geschriebene Eintrag sollte gegen validiereLineageEintrag gültig sein, verletzt: ${verstoesse.join('; ')}`)
+      }
+    }
+
+    // Rotfall: real ABGESCHLOSSEN, aber NICHT ERFOLGREICH → kein automatischer Lineage-Eintrag
+    // ('Chat hat keine eigene Wahrheit', nur ein real erfolgreicher Lauf wird Lineage).
+    ergebnisModus = 'fehlgeschlagen'
+    const zweite = await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Noch eine Nachricht' }) })
+    if (zweite.status !== 202) {
+      befunde.push(`(f) Rotfall: erwartet 202, erhalten ${zweite.status} (${await zweite.text()})`)
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    const verlaufNachFehlschlag = await (await fetch(`${basisUrl}/api/chat`)).json()
+    if (verlaufNachFehlschlag.verlauf.length !== 1) {
+      befunde.push(`(f) Rotfall: ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf sollte KEINEN weiteren Lineage-Eintrag erzeugen, GET /api/chat zeigt aber ${verlaufNachFehlschlag.verlauf.length} Einträge`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log(
+        "✓ (f): POST /api/chat schreibt nach einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch einen gültigen 'lineage-chat-<projektId>'-Eintrag (sichtbar über GET /api/chat); ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf schreibt real KEINEN."
+      )
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
   }
 }
