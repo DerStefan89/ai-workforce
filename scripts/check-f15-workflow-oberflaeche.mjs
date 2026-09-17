@@ -184,11 +184,18 @@ verlangeVorkommen('a', 'Einleitungssatz nennt die Workflow-Bedienung als schreib
 // '/api' ergäbe dort '/api/api/...', real im AK15-Browser-Realtest gefunden). Die Zusage prüft
 // seither den mitPraefix()-Aufruf mit dem Rest-Pfad-Argument, nicht mehr die alte
 // fetch('/api/...')-Textform.
+// Perf-Fix fix/zustand-poll-kosten (Punkt 5): holeWorkflowDetail trägt seither ein optionales
+// signal-Argument, durchgereicht als fetch()-Option { signal } — ladeWorkflowDetail bricht damit
+// die vorherige Anfrage ab, statt bei jedem Poll-Tick eine weitere parallele zu öffnen. Die
+// Zusage prüft seither BEIDE Stellen: den fetch()-Aufruf in api.js MIT der signal-Option, und den
+// konkreten Aufrufpunkt in ladeWorkflowDetail MIT der Abbruchsteuerung — nicht mehr nur
+// 'holeWorkflowDetail(workflowId)' als bloße Teilzeichenkette (die träfe sonst zufällig auch auf
+// den unveränderten, unabhängigen Aufruf in der Reparaturentwurf-Vorbereitung).
 verlangeVorkommen('b', "GET /api/workflows (Liste) — api.js", apiQuelltext, "fetch(mitPraefix('/workflows'))")
-verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\)\)/)
+verlangeVorkommen('b', 'GET /api/workflows/<id> (Detail) — api.js', apiQuelltext, /fetch\(mitPraefix\(`\/workflows\/\$\{encodeURIComponent\(workflowId\)\}`\), \{ signal \}\)/)
 verlangeVorkommen('b', 'initWorkflowsView abonniert den Zustands-Aggregat-Poll für die Liste (F20 WS-2)', workflowsQuelltext, 'abonniere((zustand) => {')
 verlangeVorkommen('b', 'die Liste rendert aus dem Aggregat (renderWorkflows(zustand.workflows), F20 WS-2)', workflowsQuelltext, 'renderWorkflows(zustand.workflows)')
-verlangeVorkommen('b', 'ladeWorkflowDetail() ruft holeWorkflowDetail(workflowId) auf', workflowsQuelltext, 'await holeWorkflowDetail(workflowId)')
+verlangeVorkommen('b', 'ladeWorkflowDetail() ruft holeWorkflowDetail(workflowId, ...) mit eigener Abbruchsteuerung auf (Perf-Fix)', workflowsQuelltext, 'await holeWorkflowDetail(workflowId, abbruchsteuerung.signal)')
 
 // ─── (c) Kopfdaten- und Schrittfelder, jedes einzeln ────────────────────────
 // Kopfdaten aus GET /api/workflows (baueWorkflowKopfdaten, scripts/leitstand-server.mjs).
