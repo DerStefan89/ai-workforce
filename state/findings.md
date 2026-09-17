@@ -7231,3 +7231,107 @@ Mechanismus je Rolle eingeführt wird (repoweite Entscheidung, kein
 Scout-Spezialfall) oder ob die Grenze bewusst als WS-1-Limitierung in
 feature.md nachgeschärft wird, statt implizit zu bleiben.
 Feature/Run: F27-WS-1-Bauauftrag, QA-Pass, 16.09.2026.
+
+**F-408** · `TECH_DEBT` · P2 · gelöst
+Titel: Feature-Akte-Status wird beim Merge nicht nachgezogen (F27, dritte
+Wiederholung).
+Beschreibung: features/F27/feature.md stand nach dem Merge von WS-2 (PR #173)
+weiterhin auf READY_FOR_TECH, die WS-2-Zeile trug noch "(dieser Auftrag)"
+statt ABGESCHLOSSEN. Dritte Wiederholung des F-088/F-403-Musters
+(Status-Drift nach Merge).
+Fundstelle: features/F27/feature.md, Status-Feld und Workstreams-Abschnitt,
+vor diesem Commit.
+Auswirkung: gering, rein dokumentarisch.
+Maßnahme: mit diesem Commit auf ABGESCHLOSSEN gezogen.
+Feature/Run: F27-Abschluss-Dokumentation, 17.09.2026.
+
+**F-409** · `PROCESS_IMPROVEMENT` · P2 · gelöst
+Titel: Review-Befunde aus WS-2 landeten nur in der Commit-Message, nicht im
+Register.
+Beschreibung: Die vier Befunde aus den zwei WS-2-Review-Runden (Commit
+8aa049b) wurden — anders als bei WS-1 (F-404 bis F-406) — nicht ins Register
+übernommen, sondern nur in der Commit-Message und im PR-Text (#173)
+beschrieben. Audit-Spur unvollständig.
+Fundstelle: Commit 8aa049b, PR #173.
+Auswirkung: gering — Information war nicht verloren (Commit/PR-Text belegen
+sie), aber nicht an der Stelle, an der künftige Läufe nach Präzedenzfällen
+suchen.
+Maßnahme: als F-410 nachgetragen; Muster "Review-Befunde gehören ins
+Register, nicht nur in die Commit-Message" festgehalten.
+Feature/Run: F27-Abschluss-Dokumentation, 17.09.2026.
+
+**F-410** · `BUG` · P1 · gelöst
+Titel: Vier Befunde aus den zwei WS-2-Review-Runden, nachgetragen.
+Beschreibung: Rekonstruiert aus Commit 8aa049b, PR #173 und den Code-Kommentaren
+in public/leitstand/views/capabilities.js (Marker "Code-Review-Befund").
+(1) Kritisch, Concurrency: Ein Scout-Lauf hat kein Freigabe-Gate vor der
+Ausführung (AK10, rein lesend, direkt gestartet) — ein zweiter Klick auf
+"Kandidaten suchen" während ein Lauf bereits läuft, überschrieb scoutZustand
+und machte den ersten, real laufenden Lauf für die UI unauffindbar (verletzt
+D13/ARCHITECTURE.md §7). Behoben über istScoutSucheAktiv() (Guard im
+Klick-Handler und vor dem eigentlichen Lauf-Start) und
+aktualisiereScoutButtonZustand() (disabled-Attribut aller
+"Kandidaten suchen"-Buttons), aufgerufen nach jedem renderAbdeckung und
+renderScoutPanel.
+(2) XSS-artig: `quelle_url`/href eines Kandidaten wurde ungeprüft als
+anklickbarer Link gerendert — ein `javascript:`-Schema wäre ausführbar
+gewesen. Behoben mit Defense-in-Depth auf drei Ebenen: `^https?://`-Pattern
+in schemas/ergebnis-scout.schema.json, serverseitige Validierung in
+src/scout/index.ts, und clientseitig istSichereQuelleUrl() in
+capabilities.js (rendert einen unsicheren Wert als reinen Text statt href,
+statt der Formprüfung eines fremden, adversariellen Ergebnisses (P5) blind
+zu vertrauen).
+(3) Mittel: renderAbdeckung baute bei jedem Neuladen der Coverage-Tabelle
+neue "Kandidaten suchen"-Buttons, die den bestehenden scoutZustand nicht
+kannten — ein Neuladen während eines laufenden Scout-Laufs hätte so ein
+Schlupfloch für einen zweiten, überlappenden Lauf geöffnet. Behoben: jeder
+renderAbdeckung-Aufruf ruft danach aktualisiereScoutButtonZustand() auf.
+(4) Mittel: "Erneut versuchen" nach einem fehlgeschlagenen Vormerken-Versuch
+legte einen zweiten, verwaisten Auftrag an statt den bereits angelegten
+erneut einzureichen. Behoben in vormerkenKandidat(): die bei einem früheren
+Versuch bereits vergebene auftragId wird gemerkt (vormerkenZustaende) und bei
+"Erneut versuchen" wiederverwendet (Muster views/workboard.js
+wiederholeRouten), statt einen neuen Auftrag anzulegen.
+Fundstelle: public/leitstand/views/capabilities.js Zeilen 106, 130, 202, 270,
+331, 404 (Marker "Code-Review-Befund"/"Code-Review-/QA-Befund"); Commit
+8aa049b; PR #173 Beschreibung.
+Auswirkung: (1) und (2) hoch vor Fix (Sichtbarkeits-/Sicherheitslücke), (3)
+und (4) mittel vor Fix (UI-Inkonsistenz bzw. Auftrags-Datenmüll). Alle vier
+vor dem Merge behoben.
+Maßnahme: keine weitere — bereits mit Commit 8aa049b behoben, hier nur die
+Audit-Spur nachgetragen (siehe F-409).
+Feature/Run: F27-WS-2-Bauauftrag, zwei Review-Runden, 17.09.2026.
+
+**F-411** · `TECH_DEBT` · P2 · offen
+Titel: scoutZustand ohne Rehydration — F5-Reload während laufendem Scout-Lauf
+macht Lauf in der Ansicht unauffindbar.
+Beschreibung: scoutZustand in public/leitstand/views/capabilities.js ist
+reiner In-Memory-Client-Zustand ohne Rehydration. Ein vollständiger
+Browser-Reload (F5) während ein Scout-Lauf läuft entsperrt die
+"Kandidaten suchen"-Buttons wieder und macht den Ausgang des laufenden Laufs
+in dieser Ansicht unauffindbar. Kein Datenverlust und kein zweiter echter
+Lauf (der Server lehnt einen erneuten Start über D13 mit 409 ab), aber eine
+Sichtbarkeitslücke mit technischer Fehlermeldung.
+Fundstelle: features/F27/feature.md, Abschnitt "Bekannte Grenzen" (WS-2,
+QA-Pass zweite Runde, bewusst nicht behoben) — dort dokumentiert, aber nie
+ins Register übernommen.
+Auswirkung: gering — nur ein Sichtbarkeitsproblem im Fehlerfall, kein
+Datenverlust, kein Sicherheitsrisiko.
+Maßnahme: kleine Folge-Iteration — scoutZustand beim View-Eintritt aus einer
+bekannten laufId rehydrieren (z. B. sessionStorage).
+Feature/Run: F27-Abschluss-Dokumentation, 17.09.2026.
+
+**F-412** · `TECH_DEBT` · P2 · offen
+Titel: AK13 verweist auf einen in state/findings.md nie existierenden
+Eintrag (Hängeverweis).
+Beschreibung: AK13 in features/F27/feature.md verweist für den mangels
+realer Coverage-Gap unbelegten Browser-Klickpfad auf "siehe
+state/findings.md" — dort existierte bis zu diesem Commit nie ein
+zugehöriger Eintrag.
+Fundstelle: features/F27/feature.md, AK13 (Satzende "... nachzuholen (siehe
+state/findings.md)").
+Auswirkung: gering — Verweis lief ins Leere, kein inhaltlicher Schaden.
+Maßnahme: bei der ersten real auftretenden restFehlend-Gap den vollständigen
+Klickpfad (Gap-Zeile -> "Kandidaten suchen" -> Ergebnisansicht -> Vormerken)
+in einem echten Browser real nachholen und diesen Eintrag dabei schließen.
+Feature/Run: F27-Abschluss-Dokumentation, 17.09.2026.
