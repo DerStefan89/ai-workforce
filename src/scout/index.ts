@@ -58,7 +58,9 @@ function validiereKandidat(kandidat: unknown, index: number): string[] {
   if ('typ' in kandidat && (typeof kandidat.typ !== 'string' || !KANDIDAT_TYP.includes(kandidat.typ))) {
     verstoesse.push(`'kandidaten[${index}].typ' muss einer von ${KANDIDAT_TYP.join(', ')} sein`)
   }
-  if ('quelle_url' in kandidat && !istNichtLeererString(kandidat.quelle_url)) verstoesse.push(`'kandidaten[${index}].quelle_url' muss ein nicht-leerer String sein`)
+  if ('quelle_url' in kandidat && (!istNichtLeererString(kandidat.quelle_url) || !/^https?:\/\//.test(kandidat.quelle_url))) {
+    verstoesse.push(`'kandidaten[${index}].quelle_url' muss mit 'http://' oder 'https://' beginnen (Zwilling von herkunftExtern.url, schemas/ressourcen.schema.json) — der Scout durchsucht adversariellen Web-Inhalt (P5), ein anderes Schema (z. B. javascript:) würde im Leitstand anklickbar gerendert`)
+  }
   if ('capabilities' in kandidat) {
     if (!Array.isArray(kandidat.capabilities) || kandidat.capabilities.length === 0 || !istArrayNichtLeererStrings(kandidat.capabilities)) {
       verstoesse.push(`'kandidaten[${index}].capabilities' muss ein Array mit mindestens einem nicht-leeren String sein`)

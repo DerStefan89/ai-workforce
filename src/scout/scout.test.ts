@@ -97,6 +97,11 @@ test("validiereErgebnisScout: kandidat.integrationsaufwand muss aus der Enum-Men
   assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ integrationsaufwand: 'extrem' })).some((v) => v.includes("'kandidaten[0].integrationsaufwand' muss einer von")))
 })
 
+test("validiereErgebnisScout: kandidat.quelle_url muss mit 'http://' oder 'https://' beginnen", () => {
+  assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ quelle_url: 'javascript:alert(1)' })).some((v) => v.includes("'kandidaten[0].quelle_url' muss mit 'http://' oder 'https://' beginnen")))
+  assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ quelle_url: '' })).some((v) => v.includes("'kandidaten[0].quelle_url' muss mit 'http://' oder 'https://' beginnen")))
+})
+
 test('validiereErgebnisScout: kandidat.capabilities darf nicht leer sein', () => {
   assert.ok(validiereErgebnisScout(mutiereErstenKandidaten({ capabilities: [] })).some((v) => v.includes("'kandidaten[0].capabilities' muss ein Array mit mindestens einem nicht-leeren String sein")))
 })
