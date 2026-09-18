@@ -36,6 +36,17 @@
  * Chat-Quellen mappen auf die bestehenden .badge-Bedeutungen, "fehler"
  * bleibt Rot.
  *
+ * F29 WS-2b (Projekt/Runs/Capabilities auf .card/.btn gehoben): reine
+ * Stylingumstellung der drei letzten Views ohne eigenen Referenz-Consumer.
+ * .detail-block/.badge/.lauf-kopfdaten-Tabellen waren dort bereits im
+ * Einsatz (F20/F21/F24) — neu ist ausschließlich .card für die bisherigen
+ * ID-basierten Rahmenboxen (#auftrag-start, #startfehler-abschnitt,
+ * #lauf-detail, die drei Capabilities-Unterabschnitte) und .btn/.btn-primary
+ * für deren Schaltflächen. Die 14-spaltige Checkpoint-Tabelle und die
+ * Laufakte-Tabelle (runs.js, an scripts/check-f12-leitstand-ansicht.mjs
+ * gebunden) bleiben bewusst <table> — kein .list-row-Umbau für dichte
+ * Datentabellen, kein Eingriff in das gategeprüfte Laufakte-Markup.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
@@ -804,7 +815,14 @@ a:focus-visible,
   color: var(--color-text-muted);
 }
 
+/* QA-Befund F29 WS-2b: .card liefert Padding var(--space-4xl), gedacht für Einzel-/Detailblöcke
+   (Muster #workboard-detail) — bei einer LISTE wiederholter .card.lauf-Einträge summierte sich
+   das mit dem margin-bottom unten zu deutlich mehr Scroll-Aufwand als vorher. Padding hier gezielt
+   auf den kompakteren, vor WS-2b bereits genutzten Wert reduziert (Muster #auftrag-start-Padding
+   vor diesem Auftrag), statt auf .list-row umzustellen — ein Lauf trägt eine eigene
+   Kopfdaten-Tabelle plus zwei Buttons, kein einzeiliges Zeilenformat wie workboard.js. */
 .lauf {
+  padding: var(--space-2xl);
   margin-bottom: var(--space-4xl);
 }
 
@@ -871,14 +889,12 @@ th {
   margin-top: var(--space-2xs);
 }
 
-#startfehler-abschnitt, #auftrag-start {
+/* F29 WS-2b: Box-Optik kommt jetzt von .card (index.html) — hier nur noch der Abstand zum
+   Abschnitt darunter (#workflows-abschnitt), spezifisch für diese Stelle im Layout (Muster
+   #workboard-detail). #auftrag-start braucht keine solche Regel mehr — es ist der einzige
+   Abschnitt seiner View. */
+#startfehler-abschnitt {
   margin-bottom: var(--space-4xl);
-  padding: var(--space-2xl);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .unterabschnitt {
@@ -891,6 +907,19 @@ th {
 
 .unterabschnitt h3 {
   margin-bottom: var(--space-md);
+}
+
+/* QA-Befund F29 WS-2b: #capabilities-abdeckung ist das letzte .unterabschnitt-Kind der Coverage-
+   Karte (margin-bottom durch .unterabschnitt:last-child oben genullt) — #capabilities-scout
+   direkt danach hatte deshalb keinen eigenen Abstand nach oben und saß beim ersten Scout-Ergebnis
+   ohne Lücke unter der letzten Coverage-Zeile. :empty hält den Leerzustand (keine Gap-Lücke, wenn
+   noch keine Suche lief) unverändert zum Vorzustand. */
+#capabilities-scout {
+  margin-top: var(--space-2xl);
+}
+
+#capabilities-scout:empty {
+  margin-top: 0;
 }
 
 #auftrag-start label {
@@ -932,9 +961,10 @@ th {
   margin-top: var(--space-lg);
 }
 
-.wiederaufnahme-btn {
+/* F29 WS-2b: Farbe/Chrome kommen jetzt von .btn (index.html/runs.js) — hier nur noch die
+   Positionierung neben der Überschrift, spezifisch für diese Stelle im Layout. */
+.wiederaufnahme-btn, .details-btn {
   font-size: var(--font-size-sm);
-  font-family: var(--font-family-base);
   vertical-align: middle;
   margin-left: var(--space-md);
 }
@@ -954,21 +984,10 @@ th {
   margin: var(--space-xs) 0;
 }
 
-.details-btn {
-  font-size: var(--font-size-sm);
-  font-family: var(--font-family-base);
-  vertical-align: middle;
-  margin-left: var(--space-md);
-}
-
+/* F29 WS-2b: Box-Optik kommt jetzt von .card — hier nur noch der Abstand zur Liste darüber
+   (Muster #workboard-detail). */
 #lauf-detail {
-  margin-bottom: var(--space-4xl);
-  padding: var(--space-2xl);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
+  margin-top: var(--space-3xl);
 }
 
 #lauf-detail h2 {
