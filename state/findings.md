@@ -7840,3 +7840,25 @@ Fundstelle: state/findings.md F-396, F-402.
 Auswirkung: Doppelzählung im Workboard.
 Maßnahme: F-396 als „Duplikat von F-402" geschlossen (dieser PR).
 Feature/Run: Challenge F26-Abschluss, 18.09.2026.
+
+**F-437** · `TECH_DEBT` · P3 · gelöst
+Titel: GET /api/zustand konnte einen laufenden Lauf nicht von einem nie gestarteten unterscheiden.
+Beschreibung: stelleLaufstatusFest (src/checkpoint-store/index.ts) kennt nur KLAERUNG_ERFORDERLICH | ABGESCHLOSSEN | NICHT_GESTARTET — ein gerade laufender Lauf ist im Aggregat darüber nicht von einem nie gestarteten unterscheidbar, ein 'thinking'-Persona-Zustand wäre daraus nicht ableitbar gewesen.
+Fundstelle: src/checkpoint-store/index.ts stelleLaufstatusFest; scripts/leitstand-server.mjs GET /api/zustand.
+Auswirkung: F28s Zustandsableitung hätte 'thinking' nicht erkennen können.
+Maßnahme: GET /api/zustand additiv um aktiverLauf: { aktiv, laufId } aus dem bereits vorhandenen globalerLaufZustand ergänzt (F28 WS-1), keine neue Projektion, kein neuer Endpunkt.
+Feature/Run: F28-Challenge, 18.09.2026.
+
+**F-438** · `TECH_DEBT` · P3 · offen
+Titel: Farbliteral-Gate deckt nur public/leitstand/style.css ab, nicht JS-/HTML-Dateien projektweit.
+Beschreibung: scripts/check-f20-design-tokens.mjs prüft ausschließlich eine feste Datei (style.css) auf Farbliterale außerhalb des :root-Blocks. Ein Farbliteral direkt in einer Client-JS-Datei (z. B. ein inline gesetzter Farbwert) oder in index.html würde von keinem bestehenden Gate gefunden, solange es nicht die eine geprüfte Datei ist.
+Fundstelle: scripts/check-f20-design-tokens.mjs (PFAD-Konstante).
+Auswirkung: Design-Token-Disziplin ist nicht projektweit erzwungen, nur für das eine Stylesheet.
+Maßnahme: für Persona-Dateien durch check-f28-persona.mjs mitigiert (persona.js/persona-state.js/index.html zusätzlich geprüft); generelle Gate-Lücke (alle übrigen Client-JS-Dateien im Projekt) besteht weiter.
+Feature/Run: F28-Challenge, 18.09.2026.
+
+**F-439** · `PROCESS_IMPROVEMENT` · P3 · gelöst
+Titel: Keine etablierte Konvention, wann localStorage für UI-Präferenzen zulässig ist.
+Beschreibung: projekt-kontext.js lehnt localStorage für Fachzustand ausdrücklich ab (sessionStorage statt dessen, s. dortiger Kopfkommentar) — es gab aber bislang keine dokumentierte Abgrenzung, wann localStorage für reine Nutzer-/Geräte-Präferenzen (ohne Fachzustandsbezug) trotzdem zulässig ist, was bei jeder neuen Präferenz zu einer Einzelfallentscheidung ohne Referenz gezwungen hätte.
+Maßnahme: F28 WS-1 etabliert und begründet die Unterscheidung (Fachzustand vs. Nutzerpräferenz) im Kopfkommentar von persona.js; das doppelte Gate (prefers-reduced-motion UND sichtbarer Schalter, Präferenz in localStorage) ist als Muster für künftige Animationen/Präferenzen im Leitstand festgehalten.
+Feature/Run: F28-Challenge, 18.09.2026.

@@ -29,6 +29,10 @@
  * `#/projekte-uebersicht`- bzw. `#/chat`-Registrierung mehr hier, sonst
  * träfen zwei Routen denselben Hash mit unterschiedlichem onEnter.
  *
+ * initPersona() (F28 WS-1) läuft vor initZustandPoll(), aus demselben Grund
+ * wie jede View: es registriert sein abonniere() bei zustand.js, bevor der
+ * erste Tick etwas zu melden hätte.
+ *
  * renderProjektKontext() (F25 WS-2a, AK14) läuft einmalig beim Bootstrap,
  * damit die Kopfzeile von Anfang an das aktive Projekt zeigt — welches das
  * ist (Standardprojekt oder ein aus der Sitzung wiederhergestelltes, siehe
@@ -49,6 +53,7 @@ import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
 import { initRunsView } from './views/runs.js'
 import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
+import { initPersona } from './persona.js'
 import { initZustandPoll } from './zustand.js'
 
 renderProjektKontext()
@@ -62,6 +67,7 @@ initRunsView()
 initWorkflowsView()
 initCapabilitiesView()
 initAttentionView()
+initPersona()
 
 registriere(/^#\/dashboard$/, 'dashboard')
 registriere(/^#\/projekt$/, 'projekt')

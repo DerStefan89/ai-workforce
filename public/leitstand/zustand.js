@@ -3,10 +3,11 @@
  *
  * Zweck: GENAU EIN Poll-Timer der Jarvis Shell (F20 WS-2, AK3). Holt alle
  * zwei Sekunden GET /api/zustand und reicht das Aggregat { laeufe,
- * startfehler, workflows, fehler } an registrierte Abnehmer weiter
- * (abonniere(fn)) — ersetzt die drei eigenständigen setInterval-Timer, die
- * vorher in views/runs.js (laden, ladeStartfehler) und views/workflows.js
- * (pollWorkflows) liefen.
+ * startfehler, workflows, fehler, aktiverLauf } an registrierte Abnehmer
+ * weiter (abonniere(fn)) — ersetzt die drei eigenständigen setInterval-Timer,
+ * die vorher in views/runs.js (laden, ladeStartfehler) und views/workflows.js
+ * (pollWorkflows) liefen. aktiverLauf ist F28 WS-1s additive Ergänzung
+ * (globalerLaufZustand-Spiegelung, siehe leitstand-server.mjs).
  *
  * zeigePollFehler ist von render.js hierher umgezogen: ein einziger Poll hat
  * nur noch einen fetch()-Fehlerpfad, nicht mehr je View einen eigenen.
@@ -38,7 +39,7 @@ const abnehmer = []
 /** Registrierte Detail-Auffrischer, je Tick ohne Argument aufgerufen (siehe Dateikommentar). */
 const detailAuffrischer = []
 
-/** Registriert eine Funktion, die bei jedem Poll-Tick mit dem Aggregat aufgerufen wird. @param fn - (zustand) => void, zustand = { laeufe, startfehler, workflows, fehler } */
+/** Registriert eine Funktion, die bei jedem Poll-Tick mit dem Aggregat aufgerufen wird. @param fn - (zustand) => void, zustand = { laeufe, startfehler, workflows, fehler, aktiverLauf } */
 export function abonniere(fn) {
   abnehmer.push(fn)
 }
