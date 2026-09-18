@@ -463,6 +463,10 @@ const CONTENT_TYPES = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
+  // F28 WS-2: persona-gesicht.webp — ohne diesen Eintrag liefert sendeDatei unten
+  // 'application/octet-stream' (Fallback), der Browser zeigt dann nichts an. sendeDatei liest
+  // bereits binärsicher (readFileSync ohne Encoding), hier ist nur der fehlende MIME-Typ das Problem.
+  '.webp': 'image/webp',
 }
 
 /**
@@ -3809,7 +3813,14 @@ export function erzeugeRequestHandler(optionen = {}) {
       const laeufe = sammleZustandsQuelle('laeufe', () => sammleLaeufe(basisVerzeichnis), fehler)
       const startfehlerWert = sammleZustandsQuelle('startfehler', () => startfehlerListe, fehler)
       const workflows = sammleZustandsQuelle('workflows', () => sammleWorkflows(basisVerzeichnis), fehler)
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler })
+      // F28 WS-1: additiv aktiverLauf, direkt aus dem bereits vorhandenen globalerLaufZustand
+      // gespiegelt (Befund der F28-Challenge) — stelleLaufstatusFest (src/checkpoint-store/index.ts)
+      // kennt nur KLAERUNG_ERFORDERLICH | ABGESCHLOSSEN | NICHT_GESTARTET; ein GERADE laufender
+      // Lauf ist darin von einem nie gestarteten nicht unterscheidbar, ein 'thinking'-Persona-
+      // Zustand wäre daraus also nicht ableitbar. Keine neue Projektion, kein I/O — nur die zwei
+      // bereits im Speicher gehaltenen Felder unverändert durchgereicht.
+      const aktiverLauf = { aktiv: globalerLaufZustand.aktiv, laufId: globalerLaufZustand.laufId }
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf })
       return
     }
 
