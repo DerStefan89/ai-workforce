@@ -39,6 +39,18 @@ function istNichtLeererString(wert: unknown): wert is string {
 }
 
 /**
+ * F-423: ein Feld gilt als GESETZT, wenn es im Objekt vorkommt UND nicht
+ * 'null' ist — ein fehlendes Feld (ältere claude-code-Form) und ein
+ * explizit auf 'null' gesetztes Feld (Codex-Form, --output-schema erzwingt
+ * jedes 'properties'-Feld in 'required') sind für den Validator
+ * gleichbedeutend. Zentral statt an jeder der sechs Kopplungsstellen
+ * wiederholt (D5).
+ */
+function istGesetzt(objekt: Record<string, unknown>, feld: string): boolean {
+  return feld in objekt && objekt[feld] !== null
+}
+
+/**
  * Prüft daten.auftrag gegen schemas/ergebnis-jarvis.schema.json' auftrag-Form.
  * @param auftrag - geparstes, sonst unbekanntes Objekt
  * @returns Liste der Regelverletzungen; leer = gültig
@@ -90,8 +102,11 @@ function validiereBezug(bezug: unknown): string[] {
   for (const feld of Object.keys(bezug)) {
     if (!BEZUG_FELDER.has(feld)) verstoesse.push(`'bezug' trägt unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
-  const hatAuftragId = 'auftrag_id' in bezug
-  const hatWorkitem = 'workitem' in bezug
+  // F-423: 'auftrag_id'/'workitem' sind im Codex-kompatiblen Schema
+  // PFLICHTFELDER mit Typ ["string","null"] (kein 'oneOf' mehr) — ein
+  // gesetztes, aber null-wertiges Feld zählt hier wie ein fehlendes.
+  const hatAuftragId = istGesetzt(bezug, 'auftrag_id')
+  const hatWorkitem = istGesetzt(bezug, 'workitem')
   if (hatAuftragId === hatWorkitem) {
     verstoesse.push("'bezug' muss genau eines von 'auftrag_id' oder 'workitem' tragen, nicht beide oder keines")
   }
@@ -126,27 +141,34 @@ export function validiereErgebnisJarvis(daten: unknown): string[] {
   if ('antwort' in daten && !istNichtLeererString(daten.antwort)) {
     verstoesse.push("'antwort' muss ein nicht-leerer String sein")
   }
-  if ('auftrag' in daten) verstoesse.push(...validiereAuftragVorschlag(daten.auftrag))
-  if ('aktion' in daten) verstoesse.push(...validiereAktion(daten.aktion))
-  if ('bezug' in daten) verstoesse.push(...validiereBezug(daten.bezug))
+  // F-423: 'auftrag'/'aktion'/'bezug' sind im Codex-kompatiblen Schema
+  // TOP-LEVEL PFLICHTFELDER mit Typ ["object","null"] (kein 'allOf'/'if'/'then'
+  // mehr) — ein gesetztes, aber null-wertiges Feld zählt hier wie ein
+  // fehlendes; der claude-code-Worker (kein --output-schema-Zwang) darf das
+  // Feld weiterhin ganz weglassen, beides ist gleichbedeutend.
+  const hatAuftrag = istGesetzt(daten, 'auftrag')
+  const hatAktion = istGesetzt(daten, 'aktion')
+  const hatBezug = istGesetzt(daten, 'bezug')
+  if (hatAuftrag) verstoesse.push(...validiereAuftragVorschlag(daten.auftrag))
+  if (hatAktion) verstoesse.push(...validiereAktion(daten.aktion))
+  if (hatBezug) verstoesse.push(...validiereBezug(daten.bezug))
 
   // QA-Befund WS-1: 'art' und ihr passendes Unterobjekt sind gekoppelt — ein
   // 'auftrag_vorschlag' ohne 'auftrag' (oder 'aktion' ohne 'aktion') validierte
-  // sonst grün, obwohl ein WS-2-Client sich auf das Unterobjekt verlassen würde
-  // (schemas/ergebnis-jarvis.schema.json 'allOf'/'if'/'then', dieselbe Regel).
-  if (daten.art === 'auftrag_vorschlag' && !('auftrag' in daten)) {
+  // sonst grün, obwohl ein WS-2-Client sich auf das Unterobjekt verlassen würde.
+  // Nur noch im Validator erzwungen, nicht mehr im Schema (F-423).
+  if (daten.art === 'auftrag_vorschlag' && !hatAuftrag) {
     verstoesse.push("'auftrag' fehlt — bei art 'auftrag_vorschlag' Pflicht")
   }
-  if (daten.art === 'aktion' && !('aktion' in daten)) {
+  if (daten.art === 'aktion' && !hatAktion) {
     verstoesse.push("'aktion' fehlt — bei art 'aktion' Pflicht")
   }
 
   // WS-2b: 'anpassen' fordert eine Anpassung für einen bestehenden Workflow über den
   // F23-ADJUST-Pfad (POST /api/workflows/<id>/abnahme, 'ergebnis: ANPASSUNG_ANGEFORDERT') an —
   // ohne 'bezug.auftrag_id' wüsste der WS-2b-Client nicht, welcher Workflow gemeint ist; ein
-  // Bezug auf ein bloßes Workitem reicht dafür nicht (schemas/ergebnis-jarvis.schema.json
-  // oberstes 'allOf', dieselbe Regel).
-  if (istObjekt(daten.aktion) && daten.aktion.typ === 'anpassen' && !(istObjekt(daten.bezug) && 'auftrag_id' in daten.bezug)) {
+  // Bezug auf ein bloßes Workitem reicht dafür nicht. Nur noch im Validator erzwungen (F-423).
+  if (istObjekt(daten.aktion) && daten.aktion.typ === 'anpassen' && !(hatBezug && istObjekt(daten.bezug) && istGesetzt(daten.bezug, 'auftrag_id'))) {
     verstoesse.push("'bezug.auftrag_id' fehlt — bei aktion.typ 'anpassen' Pflicht (kein Bezug auf ein Workitem)")
   }
 
@@ -175,7 +197,7 @@ export function baueJarvisAuftragstext(nachricht: string): string {
     '  "aktion": { "typ": "routen" | "oeffnen" | "anpassen", "ziel": "<string>" },',
     '  "bezug": { "auftrag_id": "<string>" } ODER { "workitem": "<string>" }',
     '}',
-    "'auftrag' NUR bei art 'auftrag_vorschlag' setzen, 'aktion' NUR bei art 'aktion' setzen, 'bezug' nur wenn diese Nachricht sich erkennbar auf einen bestehenden Auftrag oder ein Workitem bezieht (genau eines der beiden Unterfelder, nicht beide). Bei aktion.typ 'anpassen' MUSS 'bezug.auftrag_id' gesetzt sein (kein Bezug auf ein bloßes Workitem). Kein weiteres Feld außer den vier genannten.",
+    "'auftrag' NUR bei art 'auftrag_vorschlag' setzen, 'aktion' NUR bei art 'aktion' setzen, 'bezug' nur wenn diese Nachricht sich erkennbar auf einen bestehenden Auftrag oder ein Workitem bezieht (genau eines der beiden Unterfelder, nicht beide). Bei aktion.typ 'anpassen' MUSS 'bezug.auftrag_id' gesetzt sein (kein Bezug auf ein bloßes Workitem). Kein weiteres Feld außer den fünf genannten (nicht gesetzte Felder weglassen — ein strukturiert antwortender Worker darf sie stattdessen auf 'null' setzen, beides ist gleichwertig).",
     '',
     'Nachricht des Menschen:',
     nachricht,

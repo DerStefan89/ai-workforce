@@ -2,30 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/ergebnis-jarvis.schema.json",
   "title": "Rollen-Ergebnis: jarvis",
-  "description": "F26 WS-1. Output-Schema für die Rolle 'jarvis' (src/rollen/index.ts). Ein Chat-Lauf referenziert es als output_schema: \"ergebnis-jarvis\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-router.schema.json). 'art' unterscheidet die drei möglichen Ausgänge einer natürlichen Eingabe: eine reine Antwort (z. B. eine Statusfrage), ein Auftragsvorschlag (mündet über den F22-Pfad in Auftrag+Router) oder ein Aktionsvorschlag (Navigation/Routing). 'auftrag' ist bei art 'auftrag_vorschlag' PFLICHT (erzwungen über 'allOf'/'if'/'then', QA-Befund WS-1: ein WS-2-Client, der ungeprüft ergebnis.auftrag.titel liest, darf sich sonst auf ein fehlendes Unterobjekt verlassen), 'aktion' ebenso bei art 'aktion' — beide bleiben optionale Top-Level-Felder statt eigener Varianten (v0-Vereinfachung, Muster ergebnis-scout.schema.json' optionales 'lizenz'), ihre Anwesenheit ist aber an die passende 'art' gekoppelt. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
+  "description": "F26 WS-1, Codex-Kompatibilitätsfix F-423. Output-Schema für die Rolle 'jarvis' (src/rollen/index.ts). Ein Chat-Lauf referenziert es als output_schema: \"ergebnis-jarvis\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-router.schema.json). 'art' unterscheidet die drei möglichen Ausgänge einer natürlichen Eingabe: eine reine Antwort (z. B. eine Statusfrage), ein Auftragsvorschlag (mündet über den F22-Pfad in Auftrag+Router) oder ein Aktionsvorschlag (Navigation/Routing). F-423: Codex' Structured-Output-Endpunkt (response_format) lehnt 'allOf'/'if'/'then' UND 'oneOf' strukturell ab (real gegen Codex-CLI 0.153.4 gespikt, features/F26/nachweis-f423.md) und verlangt zusätzlich, dass JEDE unter 'properties' gelistete Eigenschaft auch in 'required' steht — ein optionales Feld gibt es in diesem Dialekt nicht, nur ein PFLICHTFELD, dessen Typ zusätzlich 'null' erlaubt. 'auftrag', 'aktion' und 'bezug' sind deshalb TOP-LEVEL PFLICHTFELDER mit Typ [\"object\",\"null\"] statt optionaler Felder; 'null' bedeutet 'nicht gesetzt'. Die Kopplung (art 'auftrag_vorschlag' → 'auftrag' darf nicht null sein; art 'aktion' → 'aktion' darf nicht null sein; aktion.typ 'anpassen' → bezug.auftrag_id darf nicht null sein, kein bezug.workitem) ist NICHT mehr im Schema erzwungen, sondern ausschließlich im serverseitigen Validator (validiereErgebnisJarvis, src/jarvis/index.ts) — derselbe Validator akzeptiert außerdem weiterhin die ältere, schlankere Form, in der 'auftrag'/'aktion'/'bezug' beim claude-code-Worker (kein --output-schema-Zwang) ganz weggelassen statt auf null gesetzt werden; ein fehlendes Feld und ein Feld mit Wert 'null' sind für den Validator gleichbedeutend. 'bezug.auftrag_id'/'bezug.workitem' sind aus demselben Grund beide PFLICHTFELDER mit Typ [\"string\",\"null\"] statt eines 'oneOf' — 'genau eines der beiden ist gesetzt' erzwingt ebenfalls nur der Validator. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["art", "antwort"],
-  "allOf": [
-    {
-      "if": { "properties": { "art": { "const": "auftrag_vorschlag" } } },
-      "then": { "required": ["auftrag"] }
-    },
-    {
-      "if": { "properties": { "art": { "const": "aktion" } } },
-      "then": { "required": ["aktion"] }
-    },
-    {
-      "if": {
-        "required": ["aktion"],
-        "properties": { "aktion": { "required": ["typ"], "properties": { "typ": { "const": "anpassen" } } } }
-      },
-      "then": {
-        "required": ["bezug"],
-        "properties": { "bezug": { "required": ["auftrag_id"] } }
-      }
-    }
-  ],
+  "required": ["art", "antwort", "auftrag", "aktion", "bezug"],
   "properties": {
     "art": {
       "enum": ["antwort", "auftrag_vorschlag", "aktion"],
@@ -37,39 +17,36 @@
       "description": "Der für den Menschen lesbare Antworttext — bei jeder 'art' Pflicht, auch wenn zusätzlich 'auftrag' oder 'aktion' gesetzt ist (eine Antwort ohne begleitenden Text ist eine Behauptung ohne Erklärung)."
     },
     "auftrag": {
-      "type": "object",
+      "type": ["object", "null"],
       "additionalProperties": false,
       "required": ["titel", "text"],
-      "description": "Nur bei art 'auftrag_vorschlag' befüllt — Rohmaterial für den F22-Pfad (Auftrag anlegen, Routen, Freigabe), kein selbst registriertes Artefakt.",
+      "description": "Bei art 'auftrag_vorschlag' ein Objekt (Rohmaterial für den F22-Pfad: Auftrag anlegen, Routen, Freigabe, kein selbst registriertes Artefakt), sonst 'null' (Validator-Kopplung, siehe Schema-description).",
       "properties": {
         "titel": { "type": "string", "minLength": 1 },
         "text": { "type": "string", "minLength": 1 }
       }
     },
     "aktion": {
-      "type": "object",
+      "type": ["object", "null"],
       "additionalProperties": false,
       "required": ["typ", "ziel"],
-      "description": "Nur bei art 'aktion' befüllt — ein Navigations- oder Routing-Vorschlag im Leitstand.",
+      "description": "Bei art 'aktion' ein Objekt (Navigations- oder Routing-Vorschlag im Leitstand), sonst 'null' (Validator-Kopplung, siehe Schema-description).",
       "properties": {
         "typ": {
           "enum": ["routen", "oeffnen", "anpassen"],
-          "description": "Geschlossene Wertemenge: 'routen' (einen bestehenden Auftrag über den F22-Pfad routen), 'oeffnen' (zu einer bestehenden Ansicht/einem Artefakt im Leitstand navigieren) oder 'anpassen' (eine Anpassung für einen bestehenden Workflow über den F23-ADJUST-Pfad anfordern — verlangt 'bezug.auftrag_id', kein 'bezug.workitem', siehe oberstes 'allOf')."
+          "description": "Geschlossene Wertemenge: 'routen' (einen bestehenden Auftrag über den F22-Pfad routen), 'oeffnen' (zu einer bestehenden Ansicht/einem Artefakt im Leitstand navigieren) oder 'anpassen' (eine Anpassung für einen bestehenden Workflow über den F23-ADJUST-Pfad anfordern — verlangt 'bezug.auftrag_id' ungleich null, kein 'bezug.workitem', vom Validator erzwungen)."
         },
         "ziel": { "type": "string", "minLength": 1, "description": "Bezugskennung des Ziels (z. B. eine Auftrags-ID oder ein Leitstand-Routenname) — kein freier Pfad." }
       }
     },
     "bezug": {
-      "type": "object",
+      "type": ["object", "null"],
       "additionalProperties": false,
-      "description": "Optionaler Bezug dieser Nachricht auf einen bestehenden Auftrag oder ein Workitem — genau eines der beiden Felder, nicht beide zugleich (ein Bezug adressiert immer genau ein Ziel).",
-      "oneOf": [
-        { "required": ["auftrag_id"] },
-        { "required": ["workitem"] }
-      ],
+      "required": ["auftrag_id", "workitem"],
+      "description": "Bezug dieser Nachricht auf einen bestehenden Auftrag oder ein Workitem, sonst 'null'. Innerhalb des Objekts ist genau eines der beiden Felder ungleich 'null', nicht beide zugleich und nicht keines (ein Bezug adressiert immer genau ein Ziel) — vom Validator erzwungen, nicht vom Schema (kein 'oneOf', F-423).",
       "properties": {
-        "auftrag_id": { "type": "string", "minLength": 1 },
-        "workitem": { "type": "string", "minLength": 1 }
+        "auftrag_id": { "type": ["string", "null"], "minLength": 1 },
+        "workitem": { "type": ["string", "null"], "minLength": 1 }
       }
     }
   }
