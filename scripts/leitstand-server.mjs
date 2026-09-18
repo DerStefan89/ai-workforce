@@ -467,6 +467,10 @@ const CONTENT_TYPES = {
   // 'application/octet-stream' (Fallback), der Browser zeigt dann nichts an. sendeDatei liest
   // bereits binärsicher (readFileSync ohne Encoding), hier ist nur der fehlende MIME-Typ das Problem.
   '.webp': 'image/webp',
+  // F29 WS-1b: Web-App-Manifest (manifest.webmanifest) und seine Icons (icon-192.png,
+  // icon-512.png) — derselbe Fallback-Fall wie oben bei .webp.
+  '.png': 'image/png',
+  '.webmanifest': 'application/manifest+json',
 }
 
 /**

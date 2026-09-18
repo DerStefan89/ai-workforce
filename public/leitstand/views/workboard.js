@@ -13,6 +13,11 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initWorkboardView beim Bootstrap)
  *
+ * F29 WS-1b: reine Stylingumstellung auf das in WS-1a gebaute Klassenvokabular
+ * (Karten, .list-row, .badge, .detail-block, .btn/.btn-primary) — Filter,
+ * Bearbeitung und Freigabe-Workflow verhalten sich unverändert, nur die
+ * Zeilen/Detailblöcke sind keine <table> mehr.
+ *
  * Wichtig: die Filter-Optionen leiten sich AUSSCHLIESSLICH aus der ersten,
  * ungefilterten Antwort ab (nicht bei jedem Filterwechsel neu berechnet) —
  * status ist zwischen Findings (OFFEN/ERLEDIGT/SONSTIGES) und Feature-Akten
@@ -74,25 +79,41 @@ let bearbeitungsZustand = null
 /** Letztes Zustands-Aggregat aus dem Poll (zustand.js) — hier nur für zustand.startfehler gebraucht (AK3-Zustand "routet…" endet auch bei einem Startfehler zu genau diesem Lauf, nicht nur bei 200 vom Workflow-Detail). */
 let letzterZustand = null
 
-function workitemZeile(workitem) {
-  const prioritaet = workitem.quelle === 'finding' ? escapeHtml(workitem.prioritaet) : '—'
-  const status = workitem.quelle === 'finding' ? `${escapeHtml(workitem.status)} (${escapeHtml(workitem.statusRoh)})` : escapeHtml(workitem.status)
-  return `<tr class="workboard-zeile" data-id="${escapeHtml(workitem.id)}">
-    <td><code>${escapeHtml(workitem.id)}</code></td>
-    <td>${escapeHtml(workitem.typ)}</td>
-    <td>${prioritaet}</td>
-    <td>${status}</td>
-    <td>${escapeHtml(workitem.titel)}</td>
-  </tr>`
+/**
+ * Ordnet den Status eines Workitems einer der drei bestehenden .badge-Modifikatorklassen zu
+ * (ok/aktiv/neutral) — für den Statuspunkt in Listenzeile und Detail-Kopf (F29 WS-1b, Referenz-
+ * Vorlage "Statuspunkt+Text"). Kein neues Farbvokabular: fehler/stale bleiben echten
+ * Fehlern/veralteten Ständen vorbehalten (siehe .badge-Nutzung anderswo im Leitstand).
+ * @param workitem - ein Workitem (Finding oder Feature-Akte)
+ * @returns 'ok' | 'aktiv' | 'neutral'
+ */
+function statusKategorie(workitem) {
+  if (workitem.status === 'ERLEDIGT' || workitem.status === 'ABGESCHLOSSEN') return 'ok'
+  if (workitem.status === 'OFFEN' || workitem.status === 'FEATURE_GATE') return 'aktiv'
+  return 'neutral'
 }
 
-const WORKBOARD_TABELLE_KOPF = '<tr><th>ID</th><th>Typ</th><th>Priorität</th><th>Status</th><th>Titel</th></tr>'
+/** Statustext einer Zeile/eines Kopfs — Findings zeigen zusätzlich den Rohwert aus state/findings.md (Dateikopf, unterschiedliches Vokabular je Quelle). @param workitem - ein Workitem @returns Statustext, bereits escaped */
+function statusText(workitem) {
+  return workitem.quelle === 'finding' ? `${escapeHtml(workitem.status)} (${escapeHtml(workitem.statusRoh)})` : escapeHtml(workitem.status)
+}
+
+function workitemZeile(workitem) {
+  const prioritaetBadge = workitem.quelle === 'finding' ? `<span class="badge">${escapeHtml(workitem.prioritaet)}</span>` : ''
+  return `<div class="list-row workboard-zeile" data-id="${escapeHtml(workitem.id)}">
+    <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span>
+    <div class="workboard-zeile-haupt">
+      <p class="workboard-zeile-titel">${escapeHtml(workitem.titel)}</p>
+      <p class="workboard-zeile-meta"><code>${escapeHtml(workitem.id)}</code> · ${statusText(workitem)}</p>
+    </div>
+    <span class="badge">${escapeHtml(workitem.typ)}</span>
+    ${prioritaetBadge}
+  </div>`
+}
 
 function renderListe(workitems) {
   document.getElementById('workboard-liste').innerHTML =
-    workitems.length === 0
-      ? '<p class="leer">Keine Workitems für diese Filter.</p>'
-      : `<table class="lauf-kopfdaten"><thead>${WORKBOARD_TABELLE_KOPF}</thead><tbody>${workitems.map(workitemZeile).join('')}</tbody></table>`
+    workitems.length === 0 ? '<p class="leer">Keine Workitems für diese Filter.</p>' : workitems.map(workitemZeile).join('')
 }
 
 /** Zeigt Parser-Befunde (nicht parsebare Kopfzeile etc.) sichtbar über der Liste, statt sie zu verschlucken (AK1-Geist, CLAUDE.md). @param befunde - antwort.befunde aus GET /api/workitems, oder null bei defekter Quelle */
@@ -185,27 +206,23 @@ function unbekanntFeld(wert) {
 }
 
 function renderFindingDetail(workitem) {
-  return `<table class="lauf-kopfdaten"><tbody>
-    <tr><th>ID</th><td><code>${escapeHtml(workitem.id)}</code></td></tr>
-    <tr><th>Typ</th><td>${escapeHtml(workitem.typ)}</td></tr>
-    <tr><th>Priorität</th><td>${escapeHtml(workitem.prioritaet)}</td></tr>
-    <tr><th>Status</th><td>${escapeHtml(workitem.status)} (${escapeHtml(workitem.statusRoh)})</td></tr>
-    <tr><th>Titel</th><td>${escapeHtml(workitem.titel)}</td></tr>
-    <tr><th>Beschreibung</th><td>${unbekanntFeld(workitem.beschreibung)}</td></tr>
-    <tr><th>Fundstelle</th><td>${unbekanntFeld(workitem.fundstelle)}</td></tr>
-    <tr><th>Auswirkung</th><td>${unbekanntFeld(workitem.auswirkung)}</td></tr>
-    <tr><th>Maßnahme</th><td>${unbekanntFeld(workitem.massnahme)}</td></tr>
-    <tr><th>Feature-Run</th><td>${unbekanntFeld(workitem.featureRun)}</td></tr>
-  </tbody></table>`
+  return `<div class="detail-block">
+    <h3>${escapeHtml(workitem.titel)}</h3>
+    <p><code>${escapeHtml(workitem.id)}</code> · <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${statusText(workitem)} · <span class="badge">${escapeHtml(workitem.typ)}</span> <span class="badge">${escapeHtml(workitem.prioritaet)}</span></p>
+  </div>
+  <div class="detail-block"><h3>Beschreibung</h3><p>${unbekanntFeld(workitem.beschreibung)}</p></div>
+  <div class="detail-block"><h3>Fundstelle</h3><p>${unbekanntFeld(workitem.fundstelle)}</p></div>
+  <div class="detail-block"><h3>Auswirkung</h3><p>${unbekanntFeld(workitem.auswirkung)}</p></div>
+  <div class="detail-block"><h3>Maßnahme</h3><p>${unbekanntFeld(workitem.massnahme)}</p></div>
+  <div class="detail-block"><h3>Feature-Run</h3><p>${unbekanntFeld(workitem.featureRun)}</p></div>`
 }
 
 function renderFeatureDetail(workitem) {
-  return `<table class="lauf-kopfdaten"><tbody>
-    <tr><th>ID</th><td><code>${escapeHtml(workitem.id)}</code></td></tr>
-    <tr><th>Titel</th><td>${escapeHtml(workitem.titel)}</td></tr>
-    <tr><th>Status</th><td>${escapeHtml(workitem.status)}</td></tr>
-    <tr><th>Pfad</th><td><code>${escapeHtml(workitem.pfad)}</code></td></tr>
-  </tbody></table>
+  return `<div class="detail-block">
+    <h3>${escapeHtml(workitem.titel)}</h3>
+    <p><code>${escapeHtml(workitem.id)}</code> · <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${escapeHtml(workitem.status)}</p>
+  </div>
+  <div class="detail-block"><h3>Pfad</h3><p><code>${escapeHtml(workitem.pfad)}</code></p></div>
   <p class="hinweis">Nur lesend — Bearbeitung einer Feature-Akte ist F23-Scope.</p>`
 }
 
@@ -255,13 +272,13 @@ function renderBearbeitungsInhalt(workitem, zustand) {
     return `<p class="hinweis">Routet… (Auftrag <code>${escapeHtml(zustand.auftragId)}</code>, Lauf <code>${escapeHtml(zustand.laufId)}</code>)</p>`
   }
   if (zustand.phase === 'konflikt') {
-    return `<p class="fehler">${escapeHtml(zustand.meldung)}</p><button class="wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>`
+    return `<p class="fehler">${escapeHtml(zustand.meldung)}</p><button class="btn wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>`
   }
   if (zustand.phase === 'fehler') {
     // Wiederholen nur, wenn der Auftrag bereits real angelegt ist (sonst gäbe es nichts, das
     // wiederholeRouten routen könnte) — Reviewer-/QA-Pass 14.09.2026: ohne diesen Knopf war
     // 'fehler' eine Sackgasse, ein erneutes "Bearbeiten" hätte einen zweiten Auftrag angelegt.
-    const wiederholenKnopf = zustand.auftragId !== null ? `<button class="wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>` : ''
+    const wiederholenKnopf = zustand.auftragId !== null ? `<button class="btn wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>` : ''
     return `<p class="fehler">${escapeHtml(zustand.meldung)}</p>${wiederholenKnopf}`
   }
   if (zustand.phase === 'vorschlag') {
@@ -271,8 +288,8 @@ function renderBearbeitungsInhalt(workitem, zustand) {
       <p><strong>Ziel:</strong> ${escapeHtml(daten?.ziel ?? '')} — <strong>Workflow:</strong> <code>${escapeHtml(zustand.workflowId)}</code></p>
       ${renderSchrittkette(daten)}
       <div>
-        <button class="wb-freigeben" data-id="${escapeHtml(workitem.id)}">Freigeben</button>
-        <button class="wb-ablehnen" data-id="${escapeHtml(workitem.id)}">Ablehnen</button>
+        <button class="btn btn-primary wb-freigeben" data-id="${escapeHtml(workitem.id)}">Freigeben</button>
+        <button class="btn wb-ablehnen" data-id="${escapeHtml(workitem.id)}">Ablehnen</button>
       </div>
     </div>`
   }
@@ -295,7 +312,7 @@ function renderBearbeitungsAbschnitt(workitem) {
     return
   }
   if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) {
-    container.innerHTML = `<button id="workboard-bearbeiten" data-id="${escapeHtml(workitem.id)}">Bearbeiten</button>`
+    container.innerHTML = `<button id="workboard-bearbeiten" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bearbeiten</button>`
     return
   }
   container.innerHTML = renderBearbeitungsInhalt(workitem, bearbeitungsZustand)
