@@ -31,7 +31,8 @@
  *
  * initPersona() (F28 WS-1) läuft vor initZustandPoll(), aus demselben Grund
  * wie jede View: es registriert sein abonniere() bei zustand.js, bevor der
- * erste Tick etwas zu melden hätte.
+ * erste Tick etwas zu melden hätte. initStartView() (F29 WS-1a) registriert
+ * aus demselben Grund ebenfalls vor initZustandPoll().
  *
  * renderProjektKontext() (F25 WS-2a, AK14) läuft einmalig beim Bootstrap,
  * damit die Kopfzeile von Anfang an das aktive Projekt zeigt — welches das
@@ -40,6 +41,14 @@
  * Modul-Top-Level-Code, der vor diesem Aufruf gelaufen ist. Jeder spätere
  * Projektwechsel rendert die Kopfzeile über setzeAktivesProjekt() selbst
  * neu, kein zweiter Aufrufpunkt hier nötig.
+ *
+ * leiteBeimStartEin() (F29 WS-1a, views/start.js) läuft NACH allen
+ * initXView()-Aufrufen (die Route '#/start' muss bereits registriert sein)
+ * und VOR starteRouter() — sie setzt den Hash höchstens einmal pro Sitzung
+ * auf '#/start', bevor dessen erster dispatch() ihn liest (Datei-Kommentar
+ * dort). initShell() (Chat-Umschalter, Persona-Kachel-Klick) hat keine
+ * solche Reihenfolge-Abhängigkeit, steht hier nur aus Lesbarkeit neben den
+ * anderen init-Aufrufen.
  */
 
 import { registriere, starteRouter } from './router.js'
@@ -51,9 +60,11 @@ import { initDashboardView } from './views/dashboard.js'
 import { initProjektView } from './views/projekt.js'
 import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
 import { initRunsView } from './views/runs.js'
+import { initStartView, leiteBeimStartEin } from './views/start.js'
 import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
 import { initPersona } from './persona.js'
+import { initShell } from './shell.js'
 import { initZustandPoll } from './zustand.js'
 
 renderProjektKontext()
@@ -67,10 +78,13 @@ initRunsView()
 initWorkflowsView()
 initCapabilitiesView()
 initAttentionView()
+initStartView()
 initPersona()
+initShell()
 
 registriere(/^#\/dashboard$/, 'dashboard')
 registriere(/^#\/projekt$/, 'projekt')
 
 initZustandPoll()
+leiteBeimStartEin()
 starteRouter()

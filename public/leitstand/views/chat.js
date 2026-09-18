@@ -238,9 +238,13 @@ function setzeChatZustandZurueck() {
 export function initChatView() {
   initSendenFormular()
 
+  // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell
+  // (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr; der Dispatch auf
+  // '#/chat' lässt die Hauptansicht deshalb unangetastet (router.js Datei-Kommentar). Rein
+  // strukturelle Registrierungs-Option, keine Änderung an Verlauf/Formular-Logik dieser Datei.
   registriere(/^#\/chat$/, 'chat', () => {
     void ladeVerlauf()
-  })
+  }, { ueberlagert: true })
 
   abonniere((zustand) => {
     letzterZustand = zustand

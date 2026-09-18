@@ -7,31 +7,113 @@
  * Regel ergänzt, referenziert ein bestehendes Token oder legt im :root-Block
  * ein neues an, statt einen Hex-/rgb()-Wert direkt zu schreiben.
  *
+ * F29 WS-1a (Design des Leitstands, Fundament + Shell): der :root-Block
+ * trägt seither zusätzlich zur Farbe Typografie, Abstände, Radien, Schatten
+ * und Motion-Grundwerte — dieselbe Regel gilt jetzt für ALLE dieser Größen,
+ * nicht mehr nur für Farbe (mechanisch aus den vorher verstreuten Literalen
+ * übernommen, siehe die einzelnen Token-Gruppen unten). Die bestehenden
+ * --color-*-Tokens sind dunkel INVERTIERT, nicht ergänzt — derselbe
+ * Tokenname trägt jetzt einen dunklen statt hellen Wert. --color-accent-*
+ * (Cyan) ist echt NEU: der interaktive Akzent (aktive Navigation, Links,
+ * Fokusring, Primärschaltflächen) war vorher an --color-info-* mitgemeint,
+ * bekommt jetzt eine eigene, von Rot (--color-danger-*/--persona-*)
+ * unabhängige Bedeutung (Auftrag: Rot bleibt ausschließlich Fehler und
+ * Persona). Der Persona-Block (F28) bleibt UNVERÄNDERT — eigene, bereits
+ * dunkle --persona-*-Tokens, kein F29-Nicht-Ziel-Eingriff.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
 
 :root {
-  --color-text: #1a1a1a;
-  --color-text-muted: #555;
-  --color-text-subtle: #777;
-  --color-border: #ccc;
-  --color-border-subtle: #ddd;
-  --color-surface-muted: #f0f0f0;
-  --color-success-bg: #d7f5dd;
-  --color-success-text: #116631;
-  --color-danger-bg: #fbdada;
-  --color-danger-text: #8a1f1f;
-  --color-warning-bg: #ffe6b3;
-  --color-warning-text: #7a4b00;
-  --color-info-bg: #d6e8ff;
-  --color-info-text: #1b4b8a;
+  /* ─── Farbe — Shell (F20, F29 WS-1a dunkel invertiert) ─── */
+  --color-bg: #0b0d10;
+  --color-surface: #14171c;
+  --color-text: #e7e9ec;
+  --color-text-muted: #9aa2ad;
+  --color-text-subtle: #767d87;
+  --color-border: #2b3038;
+  --color-border-subtle: #22262d;
+  --color-surface-muted: #1c2027;
+  --color-success-bg: #123322;
+  --color-success-text: #4ade80;
+  --color-danger-bg: #3a1414;
+  --color-danger-text: #ff6b6b;
+  --color-warning-bg: #3a2c0d;
+  --color-warning-text: #ffb84d;
+  --color-info-bg: #142a3a;
+  --color-info-text: #7cc3ff;
+
+  /* ─── Farbe — interaktiver Akzent, Cyan (F29 WS-1a, neu) ───
+     Einzige Stelle im Leitstand, an der aktive Navigation, Links, Fokusring
+     und Primärschaltflächen hängen — Rot bleibt ausschließlich Fehler
+     (--color-danger-*) und Persona (--persona-*, unten unverändert). */
+  --color-accent: #22d3ee;
+  --color-accent-strong: #67e8f9;
+  --color-accent-rgb: 34, 211, 238;
+  --color-accent-text: #06252b;
+
+  /* ─── Typografie (F29 WS-1a, neu) ───
+     Werte 1:1 aus den vorher verstreuten Literalen übernommen (keine
+     optische Änderung), nur benannt statt wiederholt. */
+  --font-family-base: system-ui, sans-serif;
+  --font-family-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.8rem;
+  --font-size-md: 0.85rem;
+  --font-size-base: 0.9rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.1rem;
+  --font-size-2xl: 1.5rem;
+
+  /* ─── Abstände (F29 WS-1a, neu) ───
+     Zehnstufige Skala, ebenfalls 1:1 aus den vorher verstreuten
+     rem-Literalen des Stylesheets übernommen — jeder Schritt entspricht
+     exakt einem bisherigen Wert, keine gerundete Annäherung. */
+  --space-3xs: 0.1rem;
+  --space-2xs: 0.2rem;
+  --space-xs: 0.3rem;
+  --space-sm: 0.4rem;
+  --space-md: 0.5rem;
+  --space-lg: 0.6rem;
+  --space-xl: 0.75rem;
+  --space-2xl: 1rem;
+  --space-3xl: 1.5rem;
+  --space-4xl: 2rem;
+
+  /* ─── Radien (F29 WS-1a, neu) ─── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.4rem;
+  --radius-lg: 0.5rem;
+  --radius-pill: 0.75rem;
+
+  /* ─── Schatten (F29 WS-1a, neu) — nur für die neue dunkle Shell gebraucht, die alte helle Fläche kam ohne aus. ─── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  /* ─── Motion-Grundwerte (F29 WS-1a, neu) ───
+     Gelten für NEU gebaute Shell-Elemente (Nav, Chat-Umschalter). Die
+     Persona-Timings unten (F28) bleiben bewusst unangetastet — eigene,
+     visuell kalibrierte Werte, kein F29-Eingriff. --motion-awakening
+     dokumentiert lediglich denselben Wert, den persona.js/views/start.js
+     bereits als JS-Konstante AWAKENING_DAUER_MS führen (Kommentare dort). */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-slow: 320ms;
+  --motion-awakening: 1200ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ─── Layout-Grundmaße Shell (F29 WS-1a, neu) ─── */
+  --shell-kopf-hoehe: 56px;
+  --shell-nav-breite: 64px;
 
   /* F28 (Persona v1): eigene Tokens statt der Shell-Farben oben — die Persona ist die einzige
      "dunkle Insel" im sonst hellen Leitstand (Stefan, 18.09.2026), ihre Farbwelt ist deshalb
      bewusst getrennt von --color-*. --persona-groesse ist eine Variable, keine feste Zahl: WS-1
      hängt sie klein (2,5rem) in #shell-kopf, WS-2 überschreibt dieselbe Variable lokal, wenn
-     dasselbe Modul groß in #view-chat hängt (kein zweites Modul, keine zweite Größenlogik). */
+     dasselbe Modul groß in #view-chat hängt (kein zweites Modul, keine zweite Größenlogik).
+     F29 WS-1a: die Shell drumherum ist jetzt selbst dunkel — die Persona bleibt unverändert,
+     "dunkle Insel" ist kein Gegensatz mehr, nur die Farbwelt drumherum hat sich angeglichen. */
   --persona-groesse: 2.5rem;
   --persona-grund: #0c0c11;
   --persona-iris-ruhig: #b3261e;
@@ -47,41 +129,373 @@
   --persona-badge-anker-y: 40%;
 }
 
+/* ─────────────────────────── Basis / Reset ─────────────────────────────
+   F29 WS-1a: gilt für ALLE neun Views (nicht nur die Shell) — ohne diesen
+   Reset blieben Formularelemente in den acht noch nicht umgestellten Views
+   bei hellen Browser-Vorgaben (weißer Hintergrund, schwarzer Text) stehen
+   und wären auf der jetzt dunklen Fläche unlesbar. Layout/Klassenvokabular
+   der Views selbst bleibt WS-1b/WS-2 vorbehalten (Auftrag). */
+html {
+  color-scheme: dark;
+}
+
 body {
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-lg);
+  line-height: 1.5;
   margin: 0;
-  padding: 2rem;
+  background: var(--color-bg);
   color: var(--color-text);
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+button {
+  cursor: pointer;
+  padding: var(--space-md) var(--space-xl);
+}
+
+button:hover {
+  border-color: var(--color-accent);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
+}
+
+button:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ───────────────────────── Shell — Grundgerüst (F29 WS-1a) ──────────────
+   Kopfzeile (56px, KEIN Bild-Banner — die Persona-Kachel ist das einzige
+   Gesicht), Icon-Navigation links (64px), Hauptbereich, rechte
+   Chat-Spalte. Ersetzt die vorherige Textnavigation mit border-bottom. */
+#shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 #shell-kopf {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: var(--space-2xl);
+  min-height: var(--shell-kopf-hoehe);
+  padding: 0 var(--space-2xl);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   flex-wrap: wrap;
-  margin-bottom: 1rem;
 }
 
-#shell-kopf h1 {
+.shell-titel {
   margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.persona-oeffner {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.projekt-kontext {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+}
+
+.chat-umschalter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-sm) var(--space-xl);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.chat-umschalter[aria-pressed='true'] {
+  background: rgba(var(--color-accent-rgb), 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.chat-umschalter .nav-icon {
+  width: 16px;
+  height: 16px;
+}
+
+#poll-fehler {
+  margin: 0;
+  padding: var(--space-sm) var(--space-2xl);
+  background: var(--color-danger-bg);
+}
+
+#shell-koerper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 #shell-nav {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
+  width: var(--shell-nav-breite);
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-2xl) 0;
 }
 
-#shell-nav a {
-  color: var(--color-text);
+/* F21-WS-2-Gate prüft den Nav-Link '#/attention' als exakte Teilzeichenkette
+   '<a href="#/attention" data-nav-view="attention">' ohne weitere Attribute
+   (scripts/check-f21-ws2-workboard-oberflaeche.mjs) — die acht Nav-Kacheln
+   tragen deshalb bewusst KEINE class, das Attribut-Selektor unten übernimmt
+   ihre Gestaltung. */
+#shell-nav a[data-nav-view] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3xs);
+  padding: var(--space-lg) 0;
+  color: var(--color-text-muted);
   text-decoration: none;
-  padding: 0.3rem 0.1rem;
-  border-bottom: 2px solid transparent;
+  border-left: 3px solid transparent;
+  transition: background var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
 }
 
-#shell-nav a[aria-current='page'] {
-  border-bottom-color: var(--color-info-text);
+#shell-nav a[data-nav-view]:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+#shell-nav a[data-nav-view][aria-current='page'] {
+  background: rgba(var(--color-accent-rgb), 0.12);
+  border-left-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+#shell-hauptbereich {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-4xl);
+  box-sizing: border-box;
+}
+
+#shell-chat-spalte {
+  width: min(380px, 92vw);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  padding: var(--space-4xl);
+  overflow-y: auto;
+}
+
+@media (max-width: 700px) {
+  #shell-koerper {
+    flex-direction: column;
+  }
+
+  #shell-nav {
+    flex-direction: row;
+    width: 100%;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-xs);
+  }
+
+  #shell-nav a[data-nav-view] {
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+
+  #shell-nav a[data-nav-view][aria-current='page'] {
+    border-left-color: transparent;
+    border-bottom-color: var(--color-accent);
+  }
+
+  #shell-chat-spalte {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+/* ───────────────────── Startfläche #/start (F29 WS-1a) ──────────────────
+   Eigene View, kein Overlay (views/start.js). Persona-Variante 'gross'
+   wiederverwendet (persona.js' exportiertes montierePersona(), keine
+   zweite Lid-/Awakening-Mechanik). */
+#view-start {
+  padding: 0;
+  margin: calc(var(--space-4xl) * -1);
+}
+
+.start-flaeche {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xl);
+  width: 100%;
+  min-height: calc(100vh - var(--shell-kopf-hoehe));
+  padding: var(--space-4xl);
+  box-sizing: border-box;
+  background: var(--color-bg);
+  border: none;
+  border-radius: 0;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.start-flaeche:hover,
+.start-flaeche:focus-visible {
+  background: var(--color-surface);
+}
+
+.start-flaeche:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -4px;
+}
+
+#start-persona-host {
+  --persona-groesse: min(240px, 60vw);
+}
+
+.start-hinweis {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  color: var(--color-text-muted);
+}
+
+.start-betreten-hinweis {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+/* ────────────── Komponenten-Klassenvokabular (F29 WS-1a) ────────────────
+   Wiederverwendbare Bausteine für Karten, Listenzeilen, Kennzahlen und
+   Schaltflächen — WS-1b/WS-2 stellen die acht übrigen Views darauf um. In
+   diesem Auftrag bereits an der Shell selbst verwendet (Start-/Kopfzeilen-
+   Buttons). .badge (weiter unten, unverändert seit F20/F21/F25) IST bereits
+   das Marker/Badge-Vokabular — kein zweiter Name für dieselbe Sache. */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4xl);
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+  padding: var(--space-2xl) var(--space-xl);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.list-row:hover {
+  background: var(--color-surface-muted);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.stat-wert {
+  font-size: var(--font-size-2xl);
   font-weight: 600;
+}
+
+.stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-text);
+}
+
+.btn-primary:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
 }
 
 /*
@@ -90,9 +504,12 @@ body {
  * data-persona-zustand auf jedem Host. Jede Zustandsfarbe/-animation hängt ausschließlich an
  * diesem Attribut und den --persona-*-Tokens oben (Gate scripts/check-f28-persona.mjs: keine
  * Farbliterale in persona.js/persona-state.js/index.html). Beide Hosts (#persona-platzhalter,
- * #persona-gross) sind die einzigen "dunklen Inseln" im sonst hellen Leitstand — kein Dark-Mode
- * der Shell (Entscheidung Stefan, 18.09.2026). Risse/Gesichtsform sind im Bild eingebacken und
- * werden NICHT nachgezeichnet — nur Tint/Filter/Lid/Augenkern kommen aus CSS (Auftrag WS-2).
+ * #persona-gross) sind die einzigen "dunklen Inseln" im sonst hellen Leitstand (Entscheidung
+ * Stefan, 18.09.2026) — F29 WS-1a hat diese Entscheidung NICHT rückgängig gemacht, nur die Shell
+ * drumherum der Persona-Farbwelt angeglichen (Kommentar :root oben). Risse/Gesichtsform sind im
+ * Bild eingebacken und werden NICHT nachgezeichnet — nur Tint/Filter/Lid/Augenkern kommen aus CSS.
+ * F29 WS-1a: dritte Instanz (#start-persona-host, views/start.js) nutzt dieselben Regeln unten
+ * unverändert mit — persona-host-gross ist bereits generisch für JEDE 'gross'-Instanz geschrieben.
  */
 .persona-host {
   width: var(--persona-groesse);
@@ -104,16 +521,12 @@ body {
   flex-shrink: 0;
 }
 
-#persona-platzhalter {
-  margin-left: auto;
-}
-
 /* 'gross': neuer Container am Anfang von #view-chat, über #chat-verlauf, zentriert, max. 240px
    (Auftrag WS-2) — löst WS-1s Kommentar zu --persona-groesse als Variable ein: dasselbe Modul,
    lokal überschriebene Größe, kein zweites Modul. */
 #persona-gross {
   --persona-groesse: min(240px, 60vw);
-  margin: 0 auto 1.5rem;
+  margin: 0 auto var(--space-3xl);
 }
 
 .persona-bild {
@@ -264,7 +677,7 @@ body {
 }
 
 .persona-host.persona-awakening {
-  animation: persona-awakening 1.2s ease-out;
+  animation: persona-awakening var(--motion-awakening) ease-out;
 }
 
 .persona-host.persona-blinzelt .persona-lid-bild {
@@ -345,7 +758,8 @@ body {
 
 /* prefers-reduced-motion UND der sichtbare Schalter (persona.js, localStorage) wirken gleich für
    beide Varianten: Zustand bleibt ausschließlich über die Tint-/Augenkern-Farbe sichtbar, keine
-   Bewegung (Auftrag Punkt 9, unverändert gegenüber WS-1). */
+   Bewegung (Auftrag Punkt 9, unverändert gegenüber WS-1). F29 WS-1a: dieselbe Regel deckt die neue
+   dritte Instanz (#start-persona-host) automatisch mit ab (Selektor ist klassenbasiert). */
 @media (prefers-reduced-motion: reduce) {
   .persona-host, .persona-host * {
     animation: none !important;
@@ -361,14 +775,14 @@ body {
 
 .persona-text-status {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 #persona-bewegung-schalter {
-  font-size: 0.75rem;
-  font-family: system-ui, sans-serif;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-base);
 }
 
 .hinweis {
@@ -376,12 +790,12 @@ body {
 }
 
 .lauf {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-4xl);
 }
 
 .lauf h2 {
-  font-family: monospace;
-  font-size: 1.1rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
 }
 
 table {
@@ -392,9 +806,9 @@ table {
 
 th, td {
   border: 1px solid var(--color-border);
-  padding: 0.4rem 0.6rem;
+  padding: var(--space-sm) var(--space-lg);
   text-align: left;
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
 }
 
 th {
@@ -408,9 +822,9 @@ th {
 
 .badge {
   display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: 0.75rem;
-  font-size: 0.8rem;
+  padding: var(--space-3xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 
@@ -437,23 +851,23 @@ th {
 }
 
 .grund {
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
   color: var(--color-danger-text);
-  margin-top: 0.2rem;
+  margin-top: var(--space-2xs);
 }
 
 #startfehler-abschnitt, #auftrag-start {
-  margin-bottom: 2rem;
-  padding: 1rem;
+  margin-bottom: var(--space-4xl);
+  padding: var(--space-2xl);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
 }
 
 .unterabschnitt {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-3xl);
 }
 
 .unterabschnitt:last-child {
@@ -461,13 +875,13 @@ th {
 }
 
 .unterabschnitt h3 {
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-md);
 }
 
 #auftrag-start label {
   display: block;
-  margin-top: 0.75rem;
-  margin-bottom: 0.2rem;
+  margin-top: var(--space-xl);
+  margin-bottom: var(--space-2xs);
   font-weight: 600;
 }
 
@@ -477,22 +891,22 @@ th {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  font-family: system-ui, sans-serif;
-  font-size: 0.9rem;
-  padding: 0.3rem 0.4rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  padding: var(--space-xs) var(--space-sm);
 }
 
 #start-evidenzdateien {
-  margin-top: 0.75rem;
+  margin-top: var(--space-xl);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 0.4rem;
-  padding: 0.6rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
 }
 
 .evidenzdatei-zeile {
   display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.4rem;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
 }
 
 .evidenzdatei-zeile input[type="text"] {
@@ -500,14 +914,14 @@ th {
 }
 
 #auftrag-start button {
-  margin-top: 0.6rem;
+  margin-top: var(--space-lg);
 }
 
 .wiederaufnahme-btn {
-  font-size: 0.8rem;
-  font-family: system-ui, sans-serif;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
   vertical-align: middle;
-  margin-left: 0.5rem;
+  margin-left: var(--space-md);
 }
 
 .fehler {
@@ -520,40 +934,35 @@ th {
   font-weight: 600;
 }
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 .startfehler-eintrag {
-  font-size: 0.85rem;
-  margin: 0.3rem 0;
+  font-size: var(--font-size-md);
+  margin: var(--space-xs) 0;
 }
 
 .details-btn {
-  font-size: 0.8rem;
-  font-family: system-ui, sans-serif;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
   vertical-align: middle;
-  margin-left: 0.5rem;
+  margin-left: var(--space-md);
 }
 
 #lauf-detail {
-  margin-bottom: 2rem;
-  padding: 1rem;
+  margin-bottom: var(--space-4xl);
+  padding: var(--space-2xl);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
 }
 
 #lauf-detail h2 {
-  font-family: monospace;
-  font-size: 1.1rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
 }
 
 .detail-block {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-3xl);
 }
 
 .detail-block:last-child {
@@ -561,7 +970,7 @@ button:disabled {
 }
 
 .detail-block h3 {
-  margin-bottom: 0.4rem;
+  margin-bottom: var(--space-sm);
 }
 
 .unbekannt {
@@ -570,22 +979,22 @@ button:disabled {
 }
 
 #workflows-abschnitt, #workflow-detail {
-  margin-bottom: 2rem;
-  padding: 1rem;
+  margin-bottom: var(--space-4xl);
+  padding: var(--space-2xl);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
 }
 
 #workflow-detail h2, .workflow h3 {
-  font-family: monospace;
-  font-size: 1.1rem;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
 }
 
 .workflow {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-3xl);
 }
 
 .workflow:last-child {
@@ -593,15 +1002,15 @@ button:disabled {
 }
 
 .workflow-details-btn, .workflow-lauf-verweis {
-  font-size: 0.8rem;
-  font-family: system-ui, sans-serif;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
   vertical-align: middle;
-  margin-left: 0.5rem;
+  margin-left: var(--space-md);
 }
 
 .workflow-lauf-verweis {
   margin-left: 0;
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -622,8 +1031,8 @@ button:disabled {
 #workflow-bedienung label,
 #workflow-reparatur label {
   display: block;
-  margin-top: 0.75rem;
-  margin-bottom: 0.2rem;
+  margin-top: var(--space-xl);
+  margin-bottom: var(--space-2xs);
   font-weight: 600;
 }
 
@@ -633,34 +1042,34 @@ button:disabled {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  font-family: system-ui, sans-serif;
-  font-size: 0.9rem;
-  padding: 0.3rem 0.4rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  padding: var(--space-xs) var(--space-sm);
 }
 
 #workflow-reparatur textarea {
-  font-family: monospace;
+  font-family: var(--font-family-mono);
 }
 
 #workflow-bedienung button,
 #workflow-reparatur button {
-  margin-top: 0.6rem;
-  margin-right: 0.4rem;
+  margin-top: var(--space-lg);
+  margin-right: var(--space-sm);
 }
 
 /* F21 WS-2: Workboard-Filter und -Liste. */
 #workboard-filter {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-2xl);
   flex-wrap: wrap;
   align-items: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-2xl);
 }
 
 #workboard-filter label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.2rem;
+  margin-bottom: var(--space-2xs);
 }
 
 .workboard-zeile {
@@ -672,10 +1081,10 @@ button:disabled {
 }
 
 #workboard-detail {
-  margin-top: 1.5rem;
-  padding: 1rem;
+  margin-top: var(--space-3xl);
+  padding: var(--space-2xl);
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
@@ -684,7 +1093,7 @@ button:disabled {
 /* F21 WS-2: Attention-Einträge — Buttons statt <a href>, damit die Navigation über
    navigiere() läuft (Muster router.js), aber optisch wie ein Link. */
 .attention-eintrag {
-  margin: 0.3rem 0;
+  margin: var(--space-xs) 0;
 }
 
 .attention-link {
@@ -705,27 +1114,27 @@ button:disabled {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  font-family: system-ui, sans-serif;
-  font-size: 0.9rem;
-  padding: 0.3rem 0.4rem;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  padding: var(--space-xs) var(--space-sm);
 }
 
 .chat-eintrag {
-  margin-bottom: 1rem;
-  padding: 0.6rem;
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-lg);
   border: 1px solid var(--color-border-subtle);
-  border-radius: 0.4rem;
+  border-radius: var(--radius-md);
   max-width: 100%;
   overflow-wrap: anywhere;
 }
 
 .chat-nachricht {
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--space-xs);
 }
 
 .chat-quelle {
-  margin: 0 0 0.3rem;
-  font-size: 0.75rem;
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-xs);
   color: var(--color-text-subtle);
 }
 

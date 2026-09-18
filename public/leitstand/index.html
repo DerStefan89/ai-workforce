@@ -7,220 +7,269 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header id="shell-kopf">
-    <h1>Leitstand</h1>
-    <nav id="shell-nav" aria-label="Hauptnavigation">
-      <a href="#/dashboard" data-nav-view="dashboard">Dashboard</a>
-      <a href="#/projekt" data-nav-view="projekt">Projekt</a>
-      <a href="#/chat" data-nav-view="chat">Chat</a>
-      <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">Projekte</a>
-      <a href="#/workboard" data-nav-view="workboard">Workboard</a>
-      <a href="#/runs" data-nav-view="runs">Runs</a>
-      <a href="#/capabilities" data-nav-view="capabilities">Capabilities</a>
-      <a href="#/attention" data-nav-view="attention">Attention</a>
-    </nav>
-    <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js. -->
-    <div id="projekt-kontext"></div>
-    <!-- F28 (Persona v1) füllt diesen Platzhalter — F20 liefert nur den leeren Container, keine Animation. -->
-    <div id="persona-platzhalter" aria-hidden="true"></div>
-  </header>
+  <div id="shell">
+    <header id="shell-kopf">
+      <!-- F29 WS-1a: die Persona-Kachel ist jetzt Auslöser der Startfläche (#/start) statt
+           reiner Anzeige — #persona-platzhalter bleibt UNVERÄNDERT der Mount-Punkt von
+           persona.js (F28), nur um einen <button> ergänzt. shell.js verdrahtet den Klick. -->
+      <button type="button" id="persona-kopf-oeffner" class="persona-oeffner" aria-label="Startfläche öffnen">
+        <div id="persona-platzhalter" aria-hidden="true"></div>
+      </button>
+      <h1 class="shell-titel">Leitstand</h1>
+      <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js. -->
+      <div id="projekt-kontext" class="projekt-kontext"></div>
+      <!-- F29 WS-1a: Umschalter der rechten Chat-Spalte (shell.js), Zustand in localStorage. -->
+      <button type="button" id="chat-umschalter" class="chat-umschalter" aria-pressed="false" aria-controls="shell-chat-spalte">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+        <span>Chat</span>
+      </button>
+    </header>
 
-  <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
+    <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
 
-  <main id="shell-hauptbereich">
-    <section id="view-dashboard" data-view="dashboard" hidden></section>
+    <div id="shell-koerper">
+      <nav id="shell-nav" aria-label="Hauptnavigation">
+        <a href="#/dashboard" data-nav-view="dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="#/projekt" data-nav-view="projekt">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+          <span class="nav-label">Projekt</span>
+        </a>
+        <a href="#/chat" data-nav-view="chat">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+          <span class="nav-label">Chat</span>
+        </a>
+        <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Projekte</span>
+        </a>
+        <a href="#/workboard" data-nav-view="workboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="5.5" height="16" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="9.5" y="4" width="5.5" height="10" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="15.5" y="4" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Workboard</span>
+        </a>
+        <a href="#/runs" data-nav-view="runs">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="M10 8.5l6 3.5-6 3.5v-7Z" fill="currentColor" /></svg>
+          <span class="nav-label">Runs</span>
+        </a>
+        <a href="#/capabilities" data-nav-view="capabilities">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4.5h6v3.2a2.3 2.3 0 0 1 2.3 2.3H20v6h-3.2a2.3 2.3 0 0 1-2.3 2.3V21H9v-3.2a2.3 2.3 0 0 1-2.3-2.3H4v-6h2.7A2.3 2.3 0 0 1 9 7.2V4.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+          <span class="nav-label">Capabilities</span>
+        </a>
+        <a href="#/attention" data-nav-view="attention">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4a5.5 5.5 0 0 0-5.5 5.5v3.2L5 16h14l-1.5-3.3V9.5A5.5 5.5 0 0 0 12 4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /><path d="M10 18.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Attention</span>
+        </a>
+      </nav>
 
-    <section id="view-projekt" data-view="projekt" hidden>
-      <p class="hinweis">Ausnahme vom sonst rein lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real (Auftrag anlegen, Lauf starten).</p>
+      <main id="shell-hauptbereich">
+        <!-- F29 WS-1a: Startfläche, siehe views/start.js — eigene View, kein Overlay. Erscheint
+             einmal pro Sitzung (sessionStorage) oder auf Klick auf die Persona-Kachel oben. -->
+        <section id="view-start" data-view="start" hidden></section>
 
-      <section id="auftrag-start">
-        <h2>Auftrag &amp; Start</h2>
+        <section id="view-dashboard" data-view="dashboard" hidden></section>
 
-        <div class="unterabschnitt">
-          <h3>Auftrag anlegen</h3>
-          <label for="auftrag-titel">Titel</label>
-          <input type="text" id="auftrag-titel" />
-          <label for="auftrag-auftragstext">Auftragstext</label>
-          <textarea id="auftrag-auftragstext" rows="4"></textarea>
-          <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
-          <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
-        </div>
+        <section id="view-projekt" data-view="projekt" hidden>
+          <p class="hinweis">Ausnahme vom sonst rein lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real (Auftrag anlegen, Lauf starten).</p>
 
-        <div class="unterabschnitt">
-          <h3>Starten</h3>
-          <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
-            Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
-            unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
-            <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
-          </p>
-          <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
+          <section id="auftrag-start">
+            <h2>Auftrag &amp; Start</h2>
 
-          <label for="start-auftrag">Auftrag wählen</label>
-          <select id="start-auftrag"></select>
+            <div class="unterabschnitt">
+              <h3>Auftrag anlegen</h3>
+              <label for="auftrag-titel">Titel</label>
+              <input type="text" id="auftrag-titel" />
+              <label for="auftrag-auftragstext">Auftragstext</label>
+              <textarea id="auftrag-auftragstext" rows="4"></textarea>
+              <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
+              <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
+            </div>
 
-          <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
-          <select id="start-werkzeugsatz"></select>
+            <div class="unterabschnitt">
+              <h3>Starten</h3>
+              <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
+                Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
+                unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
+                <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
+              </p>
+              <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
 
-          <fieldset id="start-evidenzdateien">
-            <legend>Evidenzdateien (repo-relative Pfade)</legend>
-            <div id="start-evidenzdateien-liste"></div>
-            <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
-          </fieldset>
+              <label for="start-auftrag">Auftrag wählen</label>
+              <select id="start-auftrag"></select>
 
-          <label for="start-laufid">laufId</label>
-          <input type="text" id="start-laufid" />
+              <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
+              <select id="start-werkzeugsatz"></select>
 
-          <div><button id="start-starten">Starten</button></div>
-          <p id="start-erfolg" class="erfolg" hidden></p>
-          <p id="start-fehler" class="fehler" hidden></p>
-        </div>
-      </section>
-    </section>
+              <fieldset id="start-evidenzdateien">
+                <legend>Evidenzdateien (repo-relative Pfade)</legend>
+                <div id="start-evidenzdateien-liste"></div>
+                <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
+              </fieldset>
 
-    <section id="view-chat" data-view="chat" hidden>
-      <p class="hinweis">Statusfragen ("Status", "was braucht mich") werden lokal, ohne Serverkontakt beantwortet (deterministischer Vorfilter, F26 WS-2a). Alles andere löst einen echten, einmaligen Jarvis-Lauf aus (<code>POST /api/chat</code>) — kein Streaming, kein Zwischenschritt am Router/an der Freigabe/am Automaten vorbei (E-M4-3). Der Verlauf echter Jarvis-Antworten ist Lineage und übersteht einen Reload; Vorfilter-Antworten und ein nicht erfolgreich beendeter Lauf gelten nur für diese Sitzung.</p>
-      <p id="chat-fehler" class="fehler" hidden></p>
-      <div id="chat-verlauf"></div>
-      <label for="chat-eingabe">Nachricht</label>
-      <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
-           ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
-      <textarea id="chat-eingabe" rows="3" maxlength="8000"></textarea>
-      <div><button id="chat-senden">Senden</button></div>
-    </section>
+              <label for="start-laufid">laufId</label>
+              <input type="text" id="start-laufid" />
 
-    <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
-      <p class="hinweis">Karten je Registereintrag aus <code>GET /api/projekte</code> (F25 WS-2a) — rein lesend, kein Schreibpfad. "Öffnen" setzt das aktive Projekt für alle anderen Ansichten (Kontext-Anzeige in der Kopfzeile) und wechselt zum Dashboard. Keine Health-Spalte (WS-3, nicht dieser Auftrag).</p>
-      <button type="button" id="projekte-uebersicht-neu-laden">Neu laden</button>
-      <div id="projekte-uebersicht-liste"></div>
-    </section>
+              <div><button id="start-starten">Starten</button></div>
+              <p id="start-erfolg" class="erfolg" hidden></p>
+              <p id="start-fehler" class="fehler" hidden></p>
+            </div>
+          </section>
+        </section>
 
-    <section id="view-workboard" data-view="workboard" hidden>
-      <p class="hinweis">Reine Projektion über <code>state/findings.md</code> und <code>features/*/feature.md</code> (F21 WS-1) — rein lesend, kein Schreibpfad (Priorität ändern, Workitem schließen ist F23-Scope).</p>
-      <div id="workboard-befunde"></div>
+        <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
+          <p class="hinweis">Karten je Registereintrag aus <code>GET /api/projekte</code> (F25 WS-2a) — rein lesend, kein Schreibpfad. "Öffnen" setzt das aktive Projekt für alle anderen Ansichten (Kontext-Anzeige in der Kopfzeile) und wechselt zum Dashboard. Keine Health-Spalte (WS-3, nicht dieser Auftrag).</p>
+          <button type="button" id="projekte-uebersicht-neu-laden">Neu laden</button>
+          <div id="projekte-uebersicht-liste"></div>
+        </section>
 
-      <div id="workboard-filter">
-        <label for="workboard-filter-typ">Typ</label>
-        <select id="workboard-filter-typ"><option value="">Alle</option></select>
+        <section id="view-workboard" data-view="workboard" hidden>
+          <p class="hinweis">Reine Projektion über <code>state/findings.md</code> und <code>features/*/feature.md</code> (F21 WS-1) — rein lesend, kein Schreibpfad (Priorität ändern, Workitem schließen ist F23-Scope).</p>
+          <div id="workboard-befunde"></div>
 
-        <label for="workboard-filter-status">Status</label>
-        <select id="workboard-filter-status"><option value="">Alle</option></select>
+          <div id="workboard-filter">
+            <label for="workboard-filter-typ">Typ</label>
+            <select id="workboard-filter-typ"><option value="">Alle</option></select>
 
-        <label for="workboard-filter-prioritaet">Priorität</label>
-        <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
+            <label for="workboard-filter-status">Status</label>
+            <select id="workboard-filter-status"><option value="">Alle</option></select>
 
-        <button type="button" id="workboard-neu-laden">Neu laden</button>
-      </div>
+            <label for="workboard-filter-prioritaet">Priorität</label>
+            <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
 
-      <div id="workboard-liste"></div>
+            <button type="button" id="workboard-neu-laden">Neu laden</button>
+          </div>
 
-      <section id="workboard-detail" hidden>
-        <h2>Detail: <span id="workboard-detail-titel"></span> <button id="workboard-detail-schliessen">Schließen</button></h2>
-        <div id="workboard-detail-inhalt"></div>
-        <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
-             #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
-             Vorschlag/Kette) überlebt so ein stilles Nachrendern der Finding-Tabelle. -->
-        <div id="workboard-bearbeitung"></div>
-      </section>
-    </section>
+          <div id="workboard-liste"></div>
 
-    <section id="view-runs" data-view="runs" hidden>
-      <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
+          <section id="workboard-detail" hidden>
+            <h2>Detail: <span id="workboard-detail-titel"></span> <button id="workboard-detail-schliessen">Schließen</button></h2>
+            <div id="workboard-detail-inhalt"></div>
+            <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
+                 #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
+                 Vorschlag/Kette) überlebt so ein stilles Nachrendern der Finding-Tabelle. -->
+            <div id="workboard-bearbeitung"></div>
+          </section>
+        </section>
 
-      <section id="startfehler-abschnitt">
-        <h2>Startfehler</h2>
-        <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
-        <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
-      </section>
+        <section id="view-runs" data-view="runs" hidden>
+          <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
 
-      <section id="workflows-abschnitt">
-        <h2>Workflows</h2>
-        <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
-        <div id="workflows"></div>
-      </section>
+          <section id="startfehler-abschnitt">
+            <h2>Startfehler</h2>
+            <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
+            <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
+          </section>
 
-      <section id="workflow-detail" hidden>
-        <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
-        <p id="workflow-detail-fehler" class="fehler" hidden></p>
-        <!--
-          Drei Container statt einem: #workflow-detail-inhalt wird vom Poll alle zwei
-          Sekunden vollständig ersetzt (F15 WS-3a). #workflow-bedienung wird deshalb nur bei
-          ECHTER Zustandsänderung neu gebaut, und #workflow-reparatur fasst der Poll überhaupt
-          nicht an — der Entwurf gehört dem Menschen, bis er ihn einreicht oder verwirft (F-249).
-        -->
-        <div id="workflow-bedienung"></div>
-        <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
-        <div id="workflow-detail-inhalt"></div>
-        <!-- F23 WS-2a: eigener Container, wie #workflow-bedienung nur bei ECHTER
-             Zustandsänderung neu gebaut (Kennzeichen-Vergleich) — sonst ginge eine angefangene
-             Pflichtbegründung durch den 2-Sekunden-Poll verloren (Muster F-249). -->
-        <div id="workflow-abnahme"></div>
-        <p id="workflow-abnahme-meldung" class="fehler" hidden></p>
-        <div id="workflow-reparatur"></div>
-      </section>
+          <section id="workflows-abschnitt">
+            <h2>Workflows</h2>
+            <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
+            <div id="workflows"></div>
+          </section>
 
-      <div id="laeufe"></div>
+          <section id="workflow-detail" hidden>
+            <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen">Schließen</button></h2>
+            <p id="workflow-detail-fehler" class="fehler" hidden></p>
+            <!--
+              Drei Container statt einem: #workflow-detail-inhalt wird vom Poll alle zwei
+              Sekunden vollständig ersetzt (F15 WS-3a). #workflow-bedienung wird deshalb nur bei
+              ECHTER Zustandsänderung neu gebaut, und #workflow-reparatur fasst der Poll überhaupt
+              nicht an — der Entwurf gehört dem Menschen, bis er ihn einreicht oder verwirft (F-249).
+            -->
+            <div id="workflow-bedienung"></div>
+            <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
+            <div id="workflow-detail-inhalt"></div>
+            <!-- F23 WS-2a: eigener Container, wie #workflow-bedienung nur bei ECHTER
+                 Zustandsänderung neu gebaut (Kennzeichen-Vergleich) — sonst ginge eine angefangene
+                 Pflichtbegründung durch den 2-Sekunden-Poll verloren (Muster F-249). -->
+            <div id="workflow-abnahme"></div>
+            <p id="workflow-abnahme-meldung" class="fehler" hidden></p>
+            <div id="workflow-reparatur"></div>
+          </section>
 
-      <section id="lauf-detail" hidden>
-        <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen">Schließen</button></h2>
-        <p id="lauf-detail-fehler" class="fehler" hidden></p>
-        <div id="lauf-detail-inhalt"></div>
-        <div id="entscheidung-block"></div>
-      </section>
-    </section>
+          <div id="laeufe"></div>
 
-    <section id="view-capabilities" data-view="capabilities" hidden>
-      <p class="hinweis">Library/Coverage/Rollen-Besetzung sind reine Projektionen über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27 WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen, freigabepflichtigen Auftrag an, kein direktes Schreiben nach <code>ressourcen.json</code> von hier aus.</p>
-      <p id="capabilities-startvorlage" class="hinweis"></p>
-      <button type="button" id="capabilities-neu-laden">Neu laden</button>
+          <section id="lauf-detail" hidden>
+            <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen">Schließen</button></h2>
+            <p id="lauf-detail-fehler" class="fehler" hidden></p>
+            <div id="lauf-detail-inhalt"></div>
+            <div id="entscheidung-block"></div>
+          </section>
+        </section>
 
-      <section class="unterabschnitt">
-        <h2>Library</h2>
-        <div id="capabilities-library"></div>
-      </section>
+        <section id="view-capabilities" data-view="capabilities" hidden>
+          <p class="hinweis">Library/Coverage/Rollen-Besetzung sind reine Projektionen über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27 WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen, freigabepflichtigen Auftrag an, kein direktes Schreiben nach <code>ressourcen.json</code> von hier aus.</p>
+          <p id="capabilities-startvorlage" class="hinweis"></p>
+          <button type="button" id="capabilities-neu-laden">Neu laden</button>
 
-      <section class="unterabschnitt">
-        <h2>Coverage je Rolle</h2>
-        <div id="capabilities-abdeckung"></div>
-        <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
-             "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
-             #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
-             ein Neuladen der Coverage-Tabelle diesen Zustand nicht mitreißt. -->
-        <div id="capabilities-scout"></div>
-      </section>
+          <section class="unterabschnitt">
+            <h2>Library</h2>
+            <div id="capabilities-library"></div>
+          </section>
 
-      <section class="unterabschnitt">
-        <h2>Rollen-Besetzung</h2>
-        <label for="capabilities-rollen-auswahl">Rolle</label>
-        <select id="capabilities-rollen-auswahl"><option value="">— wählen —</option></select>
-        <div id="capabilities-rollen-detail"></div>
-      </section>
-    </section>
+          <section class="unterabschnitt">
+            <h2>Coverage je Rolle</h2>
+            <div id="capabilities-abdeckung"></div>
+            <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
+                 "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
+                 #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
+                 ein Neuladen der Coverage-Tabelle diesen Zustand nicht mitreißt. -->
+            <div id="capabilities-scout"></div>
+          </section>
 
-    <section id="view-attention" data-view="attention" hidden>
-      <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>
-      <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
+          <section class="unterabschnitt">
+            <h2>Rollen-Besetzung</h2>
+            <label for="capabilities-rollen-auswahl">Rolle</label>
+            <select id="capabilities-rollen-auswahl"><option value="">— wählen —</option></select>
+            <div id="capabilities-rollen-detail"></div>
+          </section>
+        </section>
 
-      <section id="attention-abschnitt-workflows" class="unterabschnitt" hidden>
-        <h2>Workflows</h2>
-        <div id="attention-workflows"></div>
-      </section>
+        <section id="view-attention" data-view="attention" hidden>
+          <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>
+          <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
 
-      <section id="attention-abschnitt-laeufe" class="unterabschnitt" hidden>
-        <h2>Läufe</h2>
-        <div id="attention-laeufe"></div>
-      </section>
+          <section id="attention-abschnitt-workflows" class="unterabschnitt" hidden>
+            <h2>Workflows</h2>
+            <div id="attention-workflows"></div>
+          </section>
 
-      <section id="attention-abschnitt-startfehler" class="unterabschnitt" hidden>
-        <h2>Startfehler</h2>
-        <div id="attention-startfehler"></div>
-      </section>
+          <section id="attention-abschnitt-laeufe" class="unterabschnitt" hidden>
+            <h2>Läufe</h2>
+            <div id="attention-laeufe"></div>
+          </section>
 
-      <section id="attention-abschnitt-workitems" class="unterabschnitt" hidden>
-        <h2>Offene P0/P1-Workitems</h2>
-        <div id="attention-workitems"></div>
-      </section>
-    </section>
-  </main>
+          <section id="attention-abschnitt-startfehler" class="unterabschnitt" hidden>
+            <h2>Startfehler</h2>
+            <div id="attention-startfehler"></div>
+          </section>
+
+          <section id="attention-abschnitt-workitems" class="unterabschnitt" hidden>
+            <h2>Offene P0/P1-Workitems</h2>
+            <div id="attention-workitems"></div>
+          </section>
+        </section>
+      </main>
+
+      <!-- F29 WS-1a: Chat als umschaltbare rechte Spalte statt eigener Hauptansicht — shell.js
+           steuert das hidden-Attribut hier (localStorage-Präferenz ODER aktive Route '#/chat',
+           siehe Datei-Kommentar dort). #view-chat trägt bewusst KEIN [data-view] mehr — der
+           Router blendet Hauptansichten aus, diese Spalte liegt außerhalb davon (router.js
+           Datei-Kommentar, "ueberlagert"). Inhalt/Verhalten von views/chat.js unverändert. -->
+      <aside id="shell-chat-spalte" aria-label="Chat" hidden>
+        <section id="view-chat">
+          <p class="hinweis">Statusfragen ("Status", "was braucht mich") werden lokal, ohne Serverkontakt beantwortet (deterministischer Vorfilter, F26 WS-2a). Alles andere löst einen echten, einmaligen Jarvis-Lauf aus (<code>POST /api/chat</code>) — kein Streaming, kein Zwischenschritt am Router/an der Freigabe/am Automaten vorbei (E-M4-3). Der Verlauf echter Jarvis-Antworten ist Lineage und übersteht einen Reload; Vorfilter-Antworten und ein nicht erfolgreich beendeter Lauf gelten nur für diese Sitzung.</p>
+          <p id="chat-fehler" class="fehler" hidden></p>
+          <div id="chat-verlauf"></div>
+          <label for="chat-eingabe">Nachricht</label>
+          <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
+               ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
+          <textarea id="chat-eingabe" rows="3" maxlength="8000"></textarea>
+          <div><button id="chat-senden">Senden</button></div>
+        </section>
+      </aside>
+    </div>
+  </div>
 
   <script type="module" src="/app.js"></script>
 </body>
