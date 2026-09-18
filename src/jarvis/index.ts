@@ -23,7 +23,7 @@
 import type { ErgebnisJarvis, JarvisAktion, JarvisAktionTyp, JarvisArt, JarvisAuftragVorschlag, JarvisBezug } from './types.ts'
 
 const ART = ['antwort', 'auftrag_vorschlag', 'aktion']
-const AKTION_TYP = ['routen', 'oeffnen']
+const AKTION_TYP = ['routen', 'oeffnen', 'anpassen']
 
 const ERGEBNIS_JARVIS_FELDER = new Set(['art', 'antwort', 'auftrag', 'aktion', 'bezug'])
 const AUFTRAG_FELDER = new Set(['titel', 'text'])
@@ -141,6 +141,15 @@ export function validiereErgebnisJarvis(daten: unknown): string[] {
     verstoesse.push("'aktion' fehlt — bei art 'aktion' Pflicht")
   }
 
+  // WS-2b: 'anpassen' fordert eine Anpassung für einen bestehenden Workflow über den
+  // F23-ADJUST-Pfad (POST /api/workflows/<id>/abnahme, 'ergebnis: ANPASSUNG_ANGEFORDERT') an —
+  // ohne 'bezug.auftrag_id' wüsste der WS-2b-Client nicht, welcher Workflow gemeint ist; ein
+  // Bezug auf ein bloßes Workitem reicht dafür nicht (schemas/ergebnis-jarvis.schema.json
+  // oberstes 'allOf', dieselbe Regel).
+  if (istObjekt(daten.aktion) && daten.aktion.typ === 'anpassen' && !(istObjekt(daten.bezug) && 'auftrag_id' in daten.bezug)) {
+    verstoesse.push("'bezug.auftrag_id' fehlt — bei aktion.typ 'anpassen' Pflicht (kein Bezug auf ein Workitem)")
+  }
+
   return verstoesse
 }
 
@@ -163,10 +172,10 @@ export function baueJarvisAuftragstext(nachricht: string): string {
     '  "art": "antwort" | "auftrag_vorschlag" | "aktion",',
     '  "antwort": "<für den Menschen lesbarer Antworttext, Pflichtfeld, auch wenn zusätzlich auftrag oder aktion gesetzt ist>",',
     '  "auftrag": { "titel": "<string>", "text": "<string>" },',
-    '  "aktion": { "typ": "routen" | "oeffnen", "ziel": "<string>" },',
+    '  "aktion": { "typ": "routen" | "oeffnen" | "anpassen", "ziel": "<string>" },',
     '  "bezug": { "auftrag_id": "<string>" } ODER { "workitem": "<string>" }',
     '}',
-    "'auftrag' NUR bei art 'auftrag_vorschlag' setzen, 'aktion' NUR bei art 'aktion' setzen, 'bezug' nur wenn diese Nachricht sich erkennbar auf einen bestehenden Auftrag oder ein Workitem bezieht (genau eines der beiden Unterfelder, nicht beide). Kein weiteres Feld außer den vier genannten.",
+    "'auftrag' NUR bei art 'auftrag_vorschlag' setzen, 'aktion' NUR bei art 'aktion' setzen, 'bezug' nur wenn diese Nachricht sich erkennbar auf einen bestehenden Auftrag oder ein Workitem bezieht (genau eines der beiden Unterfelder, nicht beide). Bei aktion.typ 'anpassen' MUSS 'bezug.auftrag_id' gesetzt sein (kein Bezug auf ein bloßes Workitem). Kein weiteres Feld außer den vier genannten.",
     '',
     'Nachricht des Menschen:',
     nachricht,

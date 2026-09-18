@@ -1,0 +1,6 @@
+{
+  "art": "aktion",
+  "antwort": "Ich fordere eine Anpassung für Auftrag 'auftrag-1' an.",
+  "aktion": { "typ": "anpassen", "ziel": "auftrag-1" },
+  "bezug": { "auftrag_id": "auftrag-1" }
+}

@@ -14,6 +14,16 @@
     {
       "if": { "properties": { "art": { "const": "aktion" } } },
       "then": { "required": ["aktion"] }
+    },
+    {
+      "if": {
+        "required": ["aktion"],
+        "properties": { "aktion": { "required": ["typ"], "properties": { "typ": { "const": "anpassen" } } } }
+      },
+      "then": {
+        "required": ["bezug"],
+        "properties": { "bezug": { "required": ["auftrag_id"] } }
+      }
     }
   ],
   "properties": {
@@ -43,8 +53,8 @@
       "description": "Nur bei art 'aktion' befüllt — ein Navigations- oder Routing-Vorschlag im Leitstand.",
       "properties": {
         "typ": {
-          "enum": ["routen", "oeffnen"],
-          "description": "Geschlossene Wertemenge: 'routen' (einen bestehenden Auftrag über den F22-Pfad routen) oder 'oeffnen' (zu einer bestehenden Ansicht/einem Artefakt im Leitstand navigieren)."
+          "enum": ["routen", "oeffnen", "anpassen"],
+          "description": "Geschlossene Wertemenge: 'routen' (einen bestehenden Auftrag über den F22-Pfad routen), 'oeffnen' (zu einer bestehenden Ansicht/einem Artefakt im Leitstand navigieren) oder 'anpassen' (eine Anpassung für einen bestehenden Workflow über den F23-ADJUST-Pfad anfordern — verlangt 'bezug.auftrag_id', kein 'bezug.workitem', siehe oberstes 'allOf')."
         },
         "ziel": { "type": "string", "minLength": 1, "description": "Bezugskennung des Ziels (z. B. eine Auftrags-ID oder ein Leitstand-Routenname) — kein freier Pfad." }
       }

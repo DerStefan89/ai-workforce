@@ -10,7 +10,7 @@
  */
 
 export type JarvisArt = 'antwort' | 'auftrag_vorschlag' | 'aktion'
-export type JarvisAktionTyp = 'routen' | 'oeffnen'
+export type JarvisAktionTyp = 'routen' | 'oeffnen' | 'anpassen'
 
 export interface JarvisAuftragVorschlag {
   titel: string
