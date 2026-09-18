@@ -18,6 +18,11 @@
  * defekte Quelle (null) zählt NICHT als leer, sie zeigt ihren eigenen
  * Unbekannt-Hinweis, damit ein Defekt nie als "nichts zu tun" missverstanden
  * wird.
+ *
+ * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (WS-1b) — die vier Abschnitte sind jetzt .card statt
+ * .unterabschnitt (index.html), Einträge nutzen .list-row statt eigener
+ * <p>-Zeilen. Filterregeln, Quellen und Navigationsziele unverändert.
  */
 
 import { escapeHtml } from '../render.js'
@@ -33,9 +38,9 @@ let workitemsAntwort = null
 
 const ABSCHNITT_IDS = ['attention-abschnitt-workflows', 'attention-abschnitt-laeufe', 'attention-abschnitt-startfehler', 'attention-abschnitt-workitems']
 
-/** Ein klickbarer Eintrag, der per navigiere() zur jeweiligen Detailansicht springt (Klasse statt <a href>, Muster views/runs.js .details-btn). @param text - Anzeigetext (bereits escaped) @param hash - Ziel-Hash, z. B. '#/runs/<laufId>' */
+/** Ein klickbarer Eintrag, der per navigiere() zur jeweiligen Detailansicht springt — als .list-row-Zeile (Komponentenvokabular F29 WS-1a/WS-1b), der Button selbst trägt nur den Klick, die Optik kommt von .list-row/.attention-zeile. .attention-zeile-text schützt vor Layout-Bruch bei langem Freitext (Workflow-grund, Fehlermeldung), Muster .workboard-zeile-titel/.projekte-uebersicht-zeile-titel. @param text - Anzeigetext (bereits escaped) @param hash - Ziel-Hash, z. B. '#/runs/<laufId>' */
 function eintrag(text, hash) {
-  return `<p class="attention-eintrag"><button type="button" class="attention-link" data-hash="${escapeHtml(hash)}">${text}</button></p>`
+  return `<button type="button" class="list-row attention-zeile" data-hash="${escapeHtml(hash)}"><span class="attention-zeile-text">${text}</span></button>`
 }
 
 function renderWorkflowsAbschnitt(workflows) {
@@ -65,7 +70,7 @@ function renderLaeufeAbschnitt(laeufe) {
     : laeufe.map((l) => eintrag(`${escapeHtml(l.laufId)} — fehlgeschlagen, nicht kenntnisgenommen`, `#/runs/${encodeURIComponent(l.laufId)}`)).join('')
 }
 
-/** Kein Link (Muster views/runs.js renderStartfehler) — Startfehler sind eine flüchtige Projektion ohne eigene Detailroute. */
+/** Kein Link (Muster views/runs.js renderStartfehler) — Startfehler sind eine flüchtige Projektion ohne eigene Detailroute. Als .list-row-Zeile ohne Button (Komponentenvokabular, wie eintrag() oben, nur nicht klickbar). */
 function renderStartfehlerAbschnitt(startfehler) {
   const container = document.getElementById('attention-startfehler')
   if (startfehler === null) {
@@ -74,7 +79,7 @@ function renderStartfehlerAbschnitt(startfehler) {
   }
   container.innerHTML = startfehler.length === 0
     ? '<p class="leer">Keine Startfehler.</p>'
-    : startfehler.map((s) => `<p class="startfehler-eintrag"><code>${escapeHtml(s.zeitstempel)}</code> <strong>${escapeHtml(s.laufId)}</strong>: ${escapeHtml(s.fehler)}</p>`).join('')
+    : startfehler.map((s) => `<div class="list-row"><span class="attention-zeile-text"><code>${escapeHtml(s.zeitstempel)}</code> <strong>${escapeHtml(s.laufId)}</strong>: ${escapeHtml(s.fehler)}</span></div>`).join('')
 }
 
 function renderWorkitemsAbschnitt(antwort) {
@@ -135,10 +140,10 @@ async function ladeWorkitems() {
   render()
 }
 
-/** Klick-Delegation für alle .attention-link-Einträge — ein Listener für die gesamte View statt vier je Abschnitt. */
+/** Klick-Delegation für alle .attention-zeile-Einträge — ein Listener für die gesamte View statt vier je Abschnitt. */
 function initNavigation() {
   document.getElementById('view-attention').addEventListener('click', (ereignis) => {
-    const button = ereignis.target.closest('.attention-link')
+    const button = ereignis.target.closest('.attention-zeile')
     if (!button) return
     navigiere(button.dataset.hash)
   })

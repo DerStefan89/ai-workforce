@@ -49,6 +49,13 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initChatView beim Bootstrap)
+ *
+ * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (WS-1b) — jeder Verlaufseintrag ist jetzt eine .card,
+ * die Quelle ein .badge (ok/aktiv/neutral/fehler, kein neues Farbpaar —
+ * "fehler" bleibt Rot, wie in den anderen Views), "Senden" ist
+ * .btn.btn-primary. KEIN neuer Schreib-/Auto-Apply-Button, KEINE Änderung
+ * an Poll-/Timer-/Sende-Verhalten.
  */
 
 import { holeChatVerlauf, holeLaufDetail, sendeChatNachricht } from '../api.js'
@@ -87,15 +94,19 @@ function baueAnzeigeListe() {
 
 const QUELLE_LABEL = { jarvis: 'Jarvis', vorfilter: 'Vorfilter (lokal)', fehler: 'Fehler', ausstehend: 'Lauf gestartet' }
 
+/** Badge-Modifikator je Quelle (bestehende .badge-Bedeutungen, kein neues Farbpaar) — 'fehler' ist die einzige rote, 'ausstehend' nutzt 'aktiv' (Info-Blau, "läuft gerade"), Jarvis/Vorfilter sind 'neutral'. */
+const QUELLE_BADGE_KLASSE = { jarvis: 'neutral', vorfilter: 'neutral', fehler: 'fehler', ausstehend: 'aktiv' }
+
 function renderEintrag(eintrag) {
   const quelleLabel = escapeHtml(QUELLE_LABEL[eintrag.quelle] ?? eintrag.quelle)
+  const badgeKlasse = QUELLE_BADGE_KLASSE[eintrag.quelle] ?? 'neutral'
   const antwortHtml =
     eintrag.quelle === 'ausstehend'
       ? '<p class="chat-ausstehend">Lauf gestartet, wird bearbeitet… (kein Streaming, die Antwort erscheint hier, sobald der Lauf abgeschlossen ist)</p>'
       : `<p class="chat-antwort">${escapeHtml(eintrag.antwortText)}</p>`
-  return `<div class="chat-eintrag">
+  return `<div class="card chat-eintrag">
     <p class="chat-nachricht"><strong>Du:</strong> ${escapeHtml(eintrag.nachricht)}</p>
-    <p class="chat-quelle">${quelleLabel}</p>
+    <p class="chat-quelle"><span class="badge ${badgeKlasse}">${quelleLabel}</span></p>
     ${antwortHtml}
   </div>`
 }

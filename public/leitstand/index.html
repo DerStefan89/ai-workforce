@@ -122,8 +122,11 @@
 
         <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
           <p class="hinweis">Karten je Registereintrag aus <code>GET /api/projekte</code> (F25 WS-2a) — rein lesend, kein Schreibpfad. "Öffnen" setzt das aktive Projekt für alle anderen Ansichten (Kontext-Anzeige in der Kopfzeile) und wechselt zum Dashboard. Keine Health-Spalte (WS-3, nicht dieser Auftrag).</p>
-          <button type="button" id="projekte-uebersicht-neu-laden">Neu laden</button>
-          <div id="projekte-uebersicht-liste"></div>
+          <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b workboard-filter/-liste). -->
+          <div class="card">
+            <button type="button" id="projekte-uebersicht-neu-laden" class="btn">Neu laden</button>
+            <div id="projekte-uebersicht-liste"></div>
+          </div>
         </section>
 
         <section id="view-workboard" data-view="workboard" hidden>
@@ -236,22 +239,23 @@
           <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>
           <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
 
-          <section id="attention-abschnitt-workflows" class="unterabschnitt" hidden>
+          <!-- F29 WS-2a: jeder Abschnitt jetzt eine eigene .card (Muster WS-1b workboard-detail) statt .unterabschnitt. -->
+          <section id="attention-abschnitt-workflows" class="card attention-abschnitt" hidden>
             <h2>Workflows</h2>
             <div id="attention-workflows"></div>
           </section>
 
-          <section id="attention-abschnitt-laeufe" class="unterabschnitt" hidden>
+          <section id="attention-abschnitt-laeufe" class="card attention-abschnitt" hidden>
             <h2>Läufe</h2>
             <div id="attention-laeufe"></div>
           </section>
 
-          <section id="attention-abschnitt-startfehler" class="unterabschnitt" hidden>
+          <section id="attention-abschnitt-startfehler" class="card attention-abschnitt" hidden>
             <h2>Startfehler</h2>
             <div id="attention-startfehler"></div>
           </section>
 
-          <section id="attention-abschnitt-workitems" class="unterabschnitt" hidden>
+          <section id="attention-abschnitt-workitems" class="card attention-abschnitt" hidden>
             <h2>Offene P0/P1-Workitems</h2>
             <div id="attention-workitems"></div>
           </section>
@@ -272,7 +276,7 @@
           <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
                ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
           <textarea id="chat-eingabe" rows="3" maxlength="8000"></textarea>
-          <div><button id="chat-senden">Senden</button></div>
+          <div><button id="chat-senden" class="btn btn-primary">Senden</button></div>
         </section>
       </aside>
     </div>
