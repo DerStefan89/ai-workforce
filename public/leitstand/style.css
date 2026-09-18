@@ -29,6 +29,13 @@
  * denselben drei Bedeutungen wie .badge (ok/aktiv/neutral) statt eines
  * eigenen Farbpaars.
  *
+ * F29 WS-2a (die übrigen vier Views auf dasselbe Vokabular gehoben):
+ * .stat/.stat-wert/.stat-label (Dashboard) und .card als generischer
+ * Container (Projekte-Übersicht, Attention, Chat-Einträge) haben jetzt
+ * ebenfalls echte Verbraucher außerhalb der Shell. Kein neues Farbpaar —
+ * Chat-Quellen mappen auf die bestehenden .badge-Bedeutungen, "fehler"
+ * bleibt Rot.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
@@ -1105,6 +1112,30 @@ th {
   color: var(--color-text-muted);
 }
 
+/* F29 WS-2a: Projekte-Übersicht — dieselbe Titel/Meta-Aufteilung wie .workboard-zeile-* oben,
+   eigener Klassenname statt Wiederverwendung, weil die Zeile hier ein eigenes Element (Projekt)
+   statt eines Workitems zeigt. */
+.projekte-uebersicht-zeile-haupt {
+  flex: 1;
+  min-width: 0;
+}
+
+.projekte-uebersicht-zeile-titel {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.projekte-uebersicht-zeile-meta {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+#projekte-uebersicht-neu-laden {
+  margin-bottom: var(--space-2xl);
+}
+
 /*
  * F29 WS-1b: Statuspunkt+Text (Referenz-Vorlage "Findings"-Ansicht) — ein kleiner farbiger Punkt
  * vor dem Statustext, in Listenzeile UND Detail-Kopf. Nutzt bewusst dieselben drei Bedeutungen,
@@ -1137,21 +1168,54 @@ th {
   margin-top: var(--space-3xl);
 }
 
-/* F21 WS-2: Attention-Einträge — Buttons statt <a href>, damit die Navigation über
-   navigiere() läuft (Muster router.js), aber optisch wie ein Link. */
-.attention-eintrag {
-  margin: var(--space-xs) 0;
+/* F29 WS-2a: Dashboard-Kennzahlen als .stat-Kacheln (siehe .card/.stat oben) statt einer
+   <table> — ein einfaches Flex-Wrap-Raster, jede Kachel bricht bei schmaler Breite auf eine
+   eigene Zeile um (Definition of Done: mobile Darstellung). */
+.dashboard-kennzahlen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xl);
 }
 
-.attention-link {
+.dashboard-kennzahlen .stat {
+  flex: 1 1 12rem;
+}
+
+/* F29 WS-2a: die vier Abschnitte sind jetzt .card (index.html) statt .unterabschnitt — hier nur
+   noch der Abstand zwischen den gestapelten Karten, spezifisch für diese Stelle im Layout
+   (Muster #workboard-detail oben). */
+.attention-abschnitt {
+  margin-bottom: var(--space-3xl);
+}
+
+.attention-abschnitt:last-child {
+  margin-bottom: 0;
+}
+
+/* F21 WS-2, F29 WS-2a: Attention-Einträge als .list-row-Zeile (Komponentenvokabular) — der
+   <button> selbst trägt nur Klick und Layout-Reset (volle Breite, kein Button-Chrome), die
+   Box-Optik (Padding, Trennlinie, Hover) kommt von .list-row. Navigation läuft weiterhin über
+   navigiere() (Muster router.js), nicht über <a href>. */
+.attention-zeile {
+  width: 100%;
   background: none;
   border: none;
+  border-bottom: 1px solid var(--color-border-subtle);
   color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
   font: inherit;
-  padding: 0;
+  cursor: pointer;
   text-align: left;
+}
+
+/* QA-Befund (F29 WS-2a): Freitext aus dem Server (Workflow-grund, Lauf-/Startfehlermeldung)
+   kann lang und leerzeichenarm sein — ohne diesen Schutz würde eine solche Zeile das Layout
+   sprengen statt umzubrechen (Definition of Done), Muster .workboard-zeile-titel/
+   .projekte-uebersicht-zeile-titel. Gilt für BEIDE Zeilenarten (klickbarer .attention-zeile-Button
+   und die nicht-klickbare Startfehler-Zeile), min-width: 0 lässt den Flex-Item auch tatsächlich
+   unter seine ungebrochene Inhaltsbreite schrumpfen. */
+.attention-zeile-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* F26 WS-2a: Chat-View. Eingabefeld wie #auftrag-start (width + max-width, Definition of
@@ -1166,11 +1230,14 @@ th {
   padding: var(--space-xs) var(--space-sm);
 }
 
+/* F29 WS-2a: Hintergrund/Rand/Radius kommen jetzt von .card — padding bleibt hier BEWUSST
+   überschrieben (var(--space-lg) statt .cards var(--space-4xl)): eine Chat-Sprechblase in der
+   schmalen Spalte (#shell-chat-spalte) braucht engeren Innenabstand als eine Detail-/Stat-Karte,
+   sonst verschenkt jede Nachricht dort Breite. Abstand zwischen den Einträgen und
+   Umbruchschutz für lange Nachrichten/Antworten bleiben ebenfalls spezifisch für diese Stelle. */
 .chat-eintrag {
   margin-bottom: var(--space-2xl);
   padding: var(--space-lg);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
   max-width: 100%;
   overflow-wrap: anywhere;
 }
@@ -1179,10 +1246,10 @@ th {
   margin: 0 0 var(--space-xs);
 }
 
+/* F29 WS-2a: Quelle ist jetzt ein .badge (chat.js) — hier nur noch der Abstand zur Nachricht
+   darüber, Schriftgröße/Farbe kommen bereits aus .badge. */
 .chat-quelle {
   margin: 0 0 var(--space-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
 }
 
 .chat-antwort {

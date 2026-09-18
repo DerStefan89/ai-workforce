@@ -18,6 +18,11 @@
  * Wichtig: rein lesend bis auf den Kartenklick, der ausschließlich
  * Client-Zustand ändert (api.js-Präfix) — kein Schreibpfad gegen den
  * Server (Muster views/capabilities.js Library/Coverage-Teil).
+ *
+ * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (WS-1b) — Karten-Divs wurden zu .list-row-Zeilen in
+ * EINER .card (index.html), "Öffnen" ist jetzt .btn.btn-primary statt
+ * eines ungestylten <button>. Klick-Verhalten und Datenbedarf unverändert.
  */
 
 import { holeProjekte } from '../api.js'
@@ -27,11 +32,13 @@ import { navigiere, registriere } from '../router.js'
 
 function projektKarte(projekt) {
   const laufBadge = projekt.laufAktiv ? '<span class="badge ok">aktiver Lauf</span>' : '<span class="badge neutral">kein aktiver Lauf</span>'
-  return `<div class="unterabschnitt projekt-karte">
-    <h3>${escapeHtml(projekt.name)}</h3>
-    <p class="hinweis"><code>${escapeHtml(projekt.id)}</code> — ${escapeHtml(projekt.status)}</p>
-    <p>${laufBadge}</p>
-    <button type="button" class="projekt-waehlen" data-id="${escapeHtml(projekt.id)}" data-name="${escapeHtml(projekt.name)}">Öffnen</button>
+  return `<div class="list-row projekte-uebersicht-zeile">
+    <div class="projekte-uebersicht-zeile-haupt">
+      <p class="projekte-uebersicht-zeile-titel">${escapeHtml(projekt.name)}</p>
+      <p class="projekte-uebersicht-zeile-meta"><code>${escapeHtml(projekt.id)}</code> · ${escapeHtml(projekt.status)}</p>
+    </div>
+    ${laufBadge}
+    <button type="button" class="btn btn-primary projekt-waehlen" data-id="${escapeHtml(projekt.id)}" data-name="${escapeHtml(projekt.name)}">Öffnen</button>
   </div>`
 }
 

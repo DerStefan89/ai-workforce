@@ -18,6 +18,12 @@
  * Workitems-Abruf läuft einmalig beim Bootstrap, nicht bei jedem Poll-Tick
  * (Findings/Feature-Akten ändern sich nur durch Commits) — ein manuelles
  * Nachladen gibt es hier bewusst nicht, dafür ist die Workboard-View da.
+ *
+ * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (WS-1b) — die fünf Zahlen sitzen jetzt als
+ * .card.stat-Kacheln (.stat-wert/.stat-label) statt Zeilen einer
+ * <table class="lauf-kopfdaten">, erster echter Verbraucher von .stat
+ * außerhalb seiner Definition. Datengrundlage und Berechnung unverändert.
  */
 
 import { abonniere } from '../zustand.js'
@@ -40,17 +46,25 @@ function attentionZahl(workflows, laeufe) {
   return String(workflows.length + laeufe.length)
 }
 
+/** Eine Kennzahl-Kachel (Komponentenvokabular F29 WS-1a: .card + .stat/.stat-wert/.stat-label). @param label - Anzeigetext, hier stets ein festes Literal (kein escapeHtml nötig) @param wertHtml - bereits fertiges Anzeige-HTML aus zahl()/attentionZahl() */
+function statKarte(label, wertHtml) {
+  return `<div class="card stat">
+    <span class="stat-wert">${wertHtml}</span>
+    <span class="stat-label">${label}</span>
+  </div>`
+}
+
 function render() {
   if (letzterZustand === null) return
   const workflowsAttention = filtereAttentionWorkflows(letzterZustand.workflows)
   const laeufeAttention = filtereAttentionLaeufe(letzterZustand.laeufe)
-  document.getElementById('view-dashboard').innerHTML = `<table class="lauf-kopfdaten"><tbody>
-    <tr><th>Läufe</th><td>${zahl(letzterZustand.laeufe)}</td></tr>
-    <tr><th>Startfehler</th><td>${zahl(letzterZustand.startfehler)}</td></tr>
-    <tr><th>Workflows</th><td>${zahl(letzterZustand.workflows)}</td></tr>
-    <tr><th>Offene P0/P1-Workitems</th><td>${zahl(workitemsAntwort === null ? null : workitemsAntwort.workitems)}</td></tr>
-    <tr><th>Attention (Workflows/Läufe)</th><td>${attentionZahl(workflowsAttention, laeufeAttention)}</td></tr>
-  </tbody></table>`
+  document.getElementById('view-dashboard').innerHTML = `<div class="dashboard-kennzahlen">
+    ${statKarte('Läufe', zahl(letzterZustand.laeufe))}
+    ${statKarte('Startfehler', zahl(letzterZustand.startfehler))}
+    ${statKarte('Workflows', zahl(letzterZustand.workflows))}
+    ${statKarte('Offene P0/P1-Workitems', zahl(workitemsAntwort === null ? null : workitemsAntwort.workitems))}
+    ${statKarte('Attention (Workflows/Läufe)', attentionZahl(workflowsAttention, laeufeAttention))}
+  </div>`
 }
 
 /** Lädt die offenen P0/P1-Workitems einmalig beim Bootstrap. */
