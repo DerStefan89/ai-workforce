@@ -19,6 +19,14 @@
  *
  * Wichtig: rein lesend (F24-Nicht-Ziel: kein Schreibpfad) — anders als
  * views/workboard.js gibt es hier keinen Bearbeitungszustand.
+ *
+ * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (F29 WS-1b) — die drei Abschnitte (Library/Coverage/
+ * Rollen-Besetzung) sind jetzt je eine .card (index.html), ihre
+ * Schaltflächen tragen .btn/.btn-primary (Kandidaten suchen/Vormerken als
+ * primäre Aktion, Zum Workboard/Erneut versuchen als sekundäre, Muster
+ * views/workboard.js Bearbeiten/Wiederholen). Keine Verhaltensänderung,
+ * kein neues Farbpaar.
  */
 
 import { holeAbdeckung, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
@@ -80,7 +88,7 @@ function workerAbdeckungZeile(rolle, eintrag) {
   // unverändert, keine zweite Herleitung).
   const scoutLink =
     eintrag.restFehlend.length > 0
-      ? `<button type="button" class="capabilities-gap-link" data-rolle="${escapeHtml(rolle)}">Zum Workboard</button> <button type="button" class="capabilities-scout-link" data-rolle="${escapeHtml(rolle)}" data-capabilities="${escapeHtml(JSON.stringify(eintrag.restFehlend))}">Kandidaten suchen</button>`
+      ? `<button type="button" class="btn capabilities-gap-link" data-rolle="${escapeHtml(rolle)}">Zum Workboard</button> <button type="button" class="btn btn-primary capabilities-scout-link" data-rolle="${escapeHtml(rolle)}" data-capabilities="${escapeHtml(JSON.stringify(eintrag.restFehlend))}">Kandidaten suchen</button>`
       : ''
   return `<tr>
     <td><code>${escapeHtml(eintrag.worker)}</code></td>
@@ -228,11 +236,11 @@ function kollisionsHinweis(kandidat) {
 function vormerkenZelle(index, kandidat) {
   const zustandKandidat = vormerkenZustaende.get(index)
   if (zustandKandidat === undefined) {
-    return `${kollisionsHinweis(kandidat)}<button type="button" class="scout-vormerken" data-index="${index}">Vormerken</button>`
+    return `${kollisionsHinweis(kandidat)}<button type="button" class="btn btn-primary scout-vormerken" data-index="${index}">Vormerken</button>`
   }
   if (zustandKandidat.phase === 'unterwegs') return '<p class="hinweis">Wird vorgemerkt…</p>'
   if (zustandKandidat.phase === 'fehler') {
-    return `<p class="fehler">${escapeHtml(zustandKandidat.meldung)}</p><button type="button" class="scout-vormerken" data-index="${index}">Erneut versuchen</button>`
+    return `<p class="fehler">${escapeHtml(zustandKandidat.meldung)}</p><button type="button" class="btn scout-vormerken" data-index="${index}">Erneut versuchen</button>`
   }
   return `<p class="hinweis">Vorgemerkt — Auftrag <code>${escapeHtml(zustandKandidat.auftragId)}</code>. Freigabe wie gewohnt unter <a href="#/workflows/${encodeURIComponent(zustandKandidat.workflowId)}">#/workflows/${escapeHtml(zustandKandidat.workflowId)}</a>.</p>`
 }

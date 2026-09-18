@@ -76,7 +76,7 @@
         <section id="view-projekt" data-view="projekt" hidden>
           <p class="hinweis">Ausnahme vom sonst rein lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real (Auftrag anlegen, Lauf starten).</p>
 
-          <section id="auftrag-start">
+          <section id="auftrag-start" class="card">
             <h2>Auftrag &amp; Start</h2>
 
             <div class="unterabschnitt">
@@ -85,7 +85,7 @@
               <input type="text" id="auftrag-titel" />
               <label for="auftrag-auftragstext">Auftragstext</label>
               <textarea id="auftrag-auftragstext" rows="4"></textarea>
-              <div><button id="auftrag-anlegen">Auftrag anlegen</button></div>
+              <div><button id="auftrag-anlegen" class="btn">Auftrag anlegen</button></div>
               <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
             </div>
 
@@ -94,7 +94,7 @@
               <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
                 Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
                 unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
-                <button type="button" id="start-wiederaufnahme-abbrechen">Wiederaufnahme abbrechen</button>
+                <button type="button" id="start-wiederaufnahme-abbrechen" class="btn">Wiederaufnahme abbrechen</button>
               </p>
               <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
 
@@ -107,13 +107,13 @@
               <fieldset id="start-evidenzdateien">
                 <legend>Evidenzdateien (repo-relative Pfade)</legend>
                 <div id="start-evidenzdateien-liste"></div>
-                <button type="button" id="start-evidenzdatei-hinzufuegen">+ Datei</button>
+                <button type="button" id="start-evidenzdatei-hinzufuegen" class="btn">+ Datei</button>
               </fieldset>
 
               <label for="start-laufid">laufId</label>
               <input type="text" id="start-laufid" />
 
-              <div><button id="start-starten">Starten</button></div>
+              <div><button id="start-starten" class="btn btn-primary">Starten</button></div>
               <p id="start-erfolg" class="erfolg" hidden></p>
               <p id="start-fehler" class="fehler" hidden></p>
             </div>
@@ -165,7 +165,7 @@
         <section id="view-runs" data-view="runs" hidden>
           <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
 
-          <section id="startfehler-abschnitt">
+          <section id="startfehler-abschnitt" class="card">
             <h2>Startfehler</h2>
             <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
             <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
@@ -199,8 +199,8 @@
 
           <div id="laeufe"></div>
 
-          <section id="lauf-detail" hidden>
-            <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen">Schließen</button></h2>
+          <section id="lauf-detail" class="card" hidden>
+            <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen" class="btn">Schließen</button></h2>
             <p id="lauf-detail-fehler" class="fehler" hidden></p>
             <div id="lauf-detail-inhalt"></div>
             <div id="entscheidung-block"></div>
@@ -210,14 +210,14 @@
         <section id="view-capabilities" data-view="capabilities" hidden>
           <p class="hinweis">Library/Coverage/Rollen-Besetzung sind reine Projektionen über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27 WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen, freigabepflichtigen Auftrag an, kein direktes Schreiben nach <code>ressourcen.json</code> von hier aus.</p>
           <p id="capabilities-startvorlage" class="hinweis"></p>
-          <button type="button" id="capabilities-neu-laden">Neu laden</button>
+          <button type="button" id="capabilities-neu-laden" class="btn">Neu laden</button>
 
-          <section class="unterabschnitt">
+          <section class="card unterabschnitt">
             <h2>Library</h2>
             <div id="capabilities-library"></div>
           </section>
 
-          <section class="unterabschnitt">
+          <section class="card unterabschnitt">
             <h2>Coverage je Rolle</h2>
             <div id="capabilities-abdeckung"></div>
             <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
@@ -227,7 +227,7 @@
             <div id="capabilities-scout"></div>
           </section>
 
-          <section class="unterabschnitt">
+          <section class="card unterabschnitt">
             <h2>Rollen-Besetzung</h2>
             <label for="capabilities-rollen-auswahl">Rolle</label>
             <select id="capabilities-rollen-auswahl"><option value="">— wählen —</option></select>

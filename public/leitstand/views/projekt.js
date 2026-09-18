@@ -22,6 +22,12 @@
  * Wichtig: rolle/budget/aufrufEingaben.modell bleiben im Startformular FEST
  * (§13.3-Nicht-Ziel „keine dynamische Rollen-/Modell-/Werkzeugwahl") —
  * unverändert aus dem Vorgänger übernommen, hier nicht neu entschieden.
+ *
+ * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (F29 WS-1b) — #auftrag-start ist jetzt eine .card
+ * (index.html), seine Schaltflächen (inklusive der hier dynamisch erzeugten
+ * Evidenzdatei-Entfernen-Zeile) tragen .btn/.btn-primary. Keine
+ * Verhaltensänderung, kein neues Farbpaar.
  */
 
 import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, starteLauf } from '../api.js'
@@ -62,7 +68,7 @@ function loescheWiederaufnahmeVorbelegung() {
 function fuegeEvidenzdateiZeileHinzu() {
   const zeile = document.createElement('div')
   zeile.className = 'evidenzdatei-zeile'
-  zeile.innerHTML = '<input type="text" class="evidenzdatei-pfad" placeholder="repo-relativer Pfad, z. B. src/beispiel.ts" /><button type="button" class="evidenzdatei-entfernen">–</button>'
+  zeile.innerHTML = '<input type="text" class="evidenzdatei-pfad" placeholder="repo-relativer Pfad, z. B. src/beispiel.ts" /><button type="button" class="btn evidenzdatei-entfernen">–</button>'
   document.getElementById('start-evidenzdateien-liste').appendChild(zeile)
 }
 

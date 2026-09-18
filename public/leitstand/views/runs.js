@@ -22,6 +22,15 @@
  * Container #laeufe, nie an einem einzelnen Zeilen-Button (der wäre nach dem
  * nächsten Tick wieder weg). #lauf-detail liegt in index.html bewusst
  * AUSSERHALB von #laeufe aus demselben Grund.
+ *
+ * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
+ * views/workboard.js (F29 WS-1b) — .card für laufAbschnitt()/#lauf-detail/
+ * #startfehler-abschnitt (index.html), .btn/.btn-primary für die
+ * Schaltflächen. .detail-block/.badge/die Kopfdaten-Tabellen (.lauf-
+ * kopfdaten) waren bereits im Einsatz und bleiben unverändert — insbesondere
+ * renderLaufakte/renderAuftrag, deren Markup wortgleich an
+ * scripts/check-f12-leitstand-ansicht.mjs (Fälle f/g) gebunden ist. Keine
+ * Verhaltensänderung, kein neues Farbpaar.
  */
 
 import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
@@ -79,14 +88,14 @@ function darfWiederaufnehmen(laufStatus) {
   return laufStatus.ergebnis === 'FEHLGESCHLAGEN' || laufStatus.ergebnis === 'VERWEIGERT'
 }
 
-/** Zeigt die Kopfdaten-Zeile aus GET /api/laeufe — die volle Checkpoint-Tabelle liegt in der Detailansicht (GET /api/laeufe/<laufId>). */
+/** Zeigt die Kopfdaten-Zeile aus GET /api/laeufe — die volle Checkpoint-Tabelle liegt in der Detailansicht (GET /api/laeufe/<laufId>). F29 WS-2b: eigene Karte (.card) statt einer bloßen, unumrandeten Section — Muster #workboard-detail. */
 function laufAbschnitt(lauf) {
   const wiederaufnahmeButton = darfWiederaufnehmen(lauf.laufStatus)
-    ? `<button class="wiederaufnahme-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Wiederaufnahme starten</button>`
+    ? `<button class="btn wiederaufnahme-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Wiederaufnahme starten</button>`
     : ''
-  const detailsButton = `<button class="details-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Details</button>`
+  const detailsButton = `<button class="btn details-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Details</button>`
 
-  return `<section class="lauf">
+  return `<section class="card lauf">
     <h2>${escapeHtml(lauf.laufId)} ${detailsButton} ${wiederaufnahmeButton}</h2>
     <table class="lauf-kopfdaten">
       <tbody>
@@ -258,7 +267,7 @@ function renderRohstrom(rohstrom) {
 function renderAbbrechenBlock(aktiv, laufId) {
   if (!aktiv) return ''
   return `<div class="detail-block">
-    <button id="abbrechen-btn" data-lauf-id="${escapeHtml(laufId)}">Abbrechen</button>
+    <button id="abbrechen-btn" class="btn" data-lauf-id="${escapeHtml(laufId)}">Abbrechen</button>
     <p id="abbrechen-fehler" class="fehler" hidden></p>
   </div>`
 }
@@ -291,7 +300,7 @@ function renderEntscheidungBlock(laufStatus, verweigertDaten) {
       </select>
       <label for="entscheidung-terminal-begruendung">Begründung (Pflichtfeld)</label>
       <textarea id="entscheidung-terminal-begruendung" rows="3"></textarea>
-      <div><button id="entscheidung-terminal-speichern">Entscheidung speichern</button></div>
+      <div><button id="entscheidung-terminal-speichern" class="btn btn-primary">Entscheidung speichern</button></div>
       <p id="entscheidung-terminal-erfolg" class="erfolg" hidden></p>
       <p id="entscheidung-terminal-fehler" class="fehler" hidden></p>
     </div>`
@@ -306,7 +315,7 @@ function renderEntscheidungBlock(laufStatus, verweigertDaten) {
         <option value="ERFOLGREICH">ERFOLGREICH</option>
         <option value="VERWEIGERT">VERWEIGERT</option>
       </select>
-      <div><button id="entscheidung-antwort-speichern">Antwort speichern</button></div>
+      <div><button id="entscheidung-antwort-speichern" class="btn btn-primary">Antwort speichern</button></div>
       <p id="entscheidung-antwort-erfolg" class="erfolg" hidden></p>
       <p id="entscheidung-antwort-fehler" class="fehler" hidden></p>
     </div>`
@@ -316,7 +325,7 @@ function renderEntscheidungBlock(laufStatus, verweigertDaten) {
       <h3>Entscheidung: Kenntnisnahme</h3>
       <label for="entscheidung-kenntnisnahme-begruendung">Begründung (Pflichtfeld)</label>
       <textarea id="entscheidung-kenntnisnahme-begruendung" rows="3"></textarea>
-      <div><button id="entscheidung-kenntnisnahme-speichern">Kenntnisnahme speichern</button></div>
+      <div><button id="entscheidung-kenntnisnahme-speichern" class="btn btn-primary">Kenntnisnahme speichern</button></div>
       <p id="entscheidung-kenntnisnahme-erfolg" class="erfolg" hidden></p>
       <p id="entscheidung-kenntnisnahme-fehler" class="fehler" hidden></p>
     </div>`
