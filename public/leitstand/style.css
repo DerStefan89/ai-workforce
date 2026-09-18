@@ -21,6 +21,14 @@
  * Persona). Der Persona-Block (F28) bleibt UNVERÄNDERT — eigene, bereits
  * dunkle --persona-*-Tokens, kein F29-Nicht-Ziel-Eingriff.
  *
+ * F29 WS-1b (Referenz-View public/leitstand/views/workboard.js auf das
+ * WS-1a-Vokabular gehoben): erster echter Verbraucher von .list-row,
+ * .btn/.btn-primary und .badge außerhalb der Shell selbst — bis dahin nur
+ * in der CSS definiert, nirgends benutzt. Neu hinzugekommen ist
+ * .status-punkt (Statuspunkt+Text der Referenz-Vorlage), bewusst auf
+ * denselben drei Bedeutungen wie .badge (ok/aktiv/neutral) statt eines
+ * eigenen Farbpaars.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
@@ -1057,7 +1065,9 @@ th {
   margin-right: var(--space-sm);
 }
 
-/* F21 WS-2: Workboard-Filter und -Liste. */
+/* F21 WS-2: Workboard-Filter und -Liste. F29 WS-1b: Filter und Liste sitzen jetzt gemeinsam in
+   EINER .card (index.html) statt als bloße, unumrandete Divs — die Zeilen selbst nutzen .list-row
+   (Komponenten-Klassenvokabular oben) statt der vormaligen <table>. */
 #workboard-filter {
   display: flex;
   gap: var(--space-2xl);
@@ -1072,22 +1082,59 @@ th {
   margin-bottom: var(--space-2xs);
 }
 
+/* .list-row (oben) liefert bereits Layout und Hover — hier nur der Klick-Cursor, der einzige
+   Teil, der spezifisch für DIESE anklickbare Zeile ist. */
 .workboard-zeile {
   cursor: pointer;
 }
 
-.workboard-zeile:hover {
-  background: var(--color-surface-muted);
+.workboard-zeile-haupt {
+  flex: 1;
+  min-width: 0;
 }
 
+.workboard-zeile-titel {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.workboard-zeile-meta {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/*
+ * F29 WS-1b: Statuspunkt+Text (Referenz-Vorlage "Findings"-Ansicht) — ein kleiner farbiger Punkt
+ * vor dem Statustext, in Listenzeile UND Detail-Kopf. Nutzt bewusst dieselben drei Bedeutungen,
+ * die .badge bereits kennt (ok/aktiv/neutral, siehe statusKategorie() in workboard.js) statt
+ * eines neuen Farbpaars — fehler/stale bleiben echten Fehlern/veralteten Ständen vorbehalten.
+ */
+.status-punkt {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-punkt.ok {
+  background: var(--color-success-text);
+}
+
+.status-punkt.aktiv {
+  background: var(--color-info-text);
+}
+
+.status-punkt.neutral {
+  background: var(--color-text-subtle);
+}
+
+/* Box-Optik kommt jetzt von .card (index.html, F29 WS-1b) — hier nur noch der Abstand zur Liste
+   darüber, spezifisch für diese Stelle im Layout. */
 #workboard-detail {
   margin-top: var(--space-3xl);
-  padding: var(--space-2xl);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 /* F21 WS-2: Attention-Einträge — Buttons statt <a href>, damit die Navigation über

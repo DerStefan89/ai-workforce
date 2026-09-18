@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leitstand</title>
   <link rel="stylesheet" href="/style.css" />
+  <!-- F29 WS-1b: Web-App-Manifest (Installierbarkeit) — KEIN Service Worker in diesem Auftrag,
+       siehe manifest.webmanifest und state/findings.md. -->
+  <link rel="manifest" href="/manifest.webmanifest" />
 </head>
 <body>
   <div id="shell">
@@ -127,23 +130,27 @@
           <p class="hinweis">Reine Projektion über <code>state/findings.md</code> und <code>features/*/feature.md</code> (F21 WS-1) — rein lesend, kein Schreibpfad (Priorität ändern, Workitem schließen ist F23-Scope).</p>
           <div id="workboard-befunde"></div>
 
-          <div id="workboard-filter">
-            <label for="workboard-filter-typ">Typ</label>
-            <select id="workboard-filter-typ"><option value="">Alle</option></select>
+          <!-- F29 WS-1b: Filter und Liste gemeinsam in einer Karte statt zweier unumrandeter
+               Divs — Muster der Referenz-Vorlage ("Findings"-Ansicht). -->
+          <div class="card">
+            <div id="workboard-filter">
+              <label for="workboard-filter-typ">Typ</label>
+              <select id="workboard-filter-typ"><option value="">Alle</option></select>
 
-            <label for="workboard-filter-status">Status</label>
-            <select id="workboard-filter-status"><option value="">Alle</option></select>
+              <label for="workboard-filter-status">Status</label>
+              <select id="workboard-filter-status"><option value="">Alle</option></select>
 
-            <label for="workboard-filter-prioritaet">Priorität</label>
-            <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
+              <label for="workboard-filter-prioritaet">Priorität</label>
+              <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
 
-            <button type="button" id="workboard-neu-laden">Neu laden</button>
+              <button type="button" id="workboard-neu-laden" class="btn">Neu laden</button>
+            </div>
+
+            <div id="workboard-liste"></div>
           </div>
 
-          <div id="workboard-liste"></div>
-
-          <section id="workboard-detail" hidden>
-            <h2>Detail: <span id="workboard-detail-titel"></span> <button id="workboard-detail-schliessen">Schließen</button></h2>
+          <section id="workboard-detail" class="card" hidden>
+            <h2>Detail: <span id="workboard-detail-titel"></span> <button type="button" id="workboard-detail-schliessen" class="btn">Schließen</button></h2>
             <div id="workboard-detail-inhalt"></div>
             <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
                  #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
