@@ -1012,14 +1012,14 @@ th {
   font-style: italic;
 }
 
+/* F29 WS-2c: Box-Optik von #workflow-detail kommt jetzt von .card (index.html) — hier nur noch
+   der Abstand zur Liste darüber bzw. zu #laeufe darunter (Muster #startfehler-abschnitt/
+   #workboard-detail). #workflows-abschnitt bleibt bewusst ohne .card: es trägt nur Überschrift
+   und Hinweistext, die eigentlichen Einträge sind je ein eigenes .card.workflow (siehe unten,
+   Muster .card.lauf in views/runs.js) — eine zweite, äußere Karte darum wäre eine verschachtelte
+   Karte ohne eigenen Inhalt. */
 #workflows-abschnitt, #workflow-detail {
   margin-bottom: var(--space-4xl);
-  padding: var(--space-2xl);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  max-width: 100%;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 #workflow-detail h2, .workflow h3 {
@@ -1027,15 +1027,22 @@ th {
   font-size: var(--font-size-xl);
 }
 
+/* F29 WS-2c: Muster .lauf (views/runs.js) — .card liefert Padding var(--space-4xl), gedacht für
+   Einzel-/Detailblöcke; bei einer LISTE wiederholter .card.workflow-Einträge (je Kopfdaten-Tabelle
+   plus Details-Button, kein einzeiliges .list-row-Format) summierte sich das mit einem eigenen
+   margin-bottom zu unnötigem Scroll-Aufwand — Padding hier auf den kompakteren, vor WS-2c bereits
+   genutzten Wert reduziert. */
 .workflow {
-  margin-bottom: var(--space-3xl);
+  padding: var(--space-2xl);
+  margin-bottom: var(--space-4xl);
 }
 
-.workflow:last-child {
-  margin-bottom: 0;
-}
-
-.workflow-details-btn, .workflow-lauf-verweis {
+/* F29 WS-2c: Chrome der Details-Schaltfläche kommt jetzt von .btn — hier nur noch die
+   Positionierung neben der Überschrift (Muster .wiederaufnahme-btn/.details-btn,
+   views/runs.js). .workflow-lauf-verweis bleibt bewusst OHNE .btn: sie ist ein Werteverweis in
+   einer Tabellenzelle (Sprung zum referenzierten Lauf), keine Aktion an diesem Workflow — die
+   Positionsregel unten gilt nur noch für die eigene Feineinstellung dieses Verweises. */
+.workflow-details-btn {
   font-size: var(--font-size-sm);
   font-family: var(--font-family-base);
   vertical-align: middle;
@@ -1043,6 +1050,8 @@ th {
 }
 
 .workflow-lauf-verweis {
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
   margin-left: 0;
   font-family: var(--font-family-mono);
   max-width: 100%;
@@ -1063,16 +1072,21 @@ th {
  * max-width trägt auch width: 100%).
  */
 #workflow-bedienung label,
-#workflow-reparatur label {
+#workflow-reparatur label,
+#workflow-abnahme label {
   display: block;
   margin-top: var(--space-xl);
   margin-bottom: var(--space-2xs);
   font-weight: 600;
 }
 
+/* F29 WS-2c (QA-Nachzug): #workflow-abnahme fehlte hier seit F23 WS-2a — dieselbe Lücke wie bei
+   den Labeln oben, die Begründungs-Textarea der Abnahme (#wf-abnahme-begruendung) blieb dadurch
+   in Browser-Default-Breite statt volle Breite wie die übrigen Pflichtbegründungsfelder. */
 #workflow-bedienung textarea,
 #workflow-reparatur textarea,
-#workflow-reparatur input[type="text"] {
+#workflow-reparatur input[type="text"],
+#workflow-abnahme textarea {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
@@ -1086,7 +1100,8 @@ th {
 }
 
 #workflow-bedienung button,
-#workflow-reparatur button {
+#workflow-reparatur button,
+#workflow-abnahme button {
   margin-top: var(--space-lg);
   margin-right: var(--space-sm);
 }
