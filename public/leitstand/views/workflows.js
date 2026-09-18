@@ -20,6 +20,18 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initWorkflowsView beim Bootstrap)
  *
+ * F29 WS-2c: reine Stylingumstellung auf das Komponentenvokabular (.card für
+ * Workflow-Listeneintrag/#workflow-detail, Muster .card.lauf aus
+ * views/runs.js — je ein eigenständiges .card.workflow-Element, keine
+ * verschachtelte Karte um #workflows-abschnitt; .btn/.btn-primary für die
+ * Bedien-/Abnahme-/Reparatur-Schaltflächen). Markup-Struktur der an
+ * scripts/check-f23-abnahme.mjs bzw. scripts/check-f15-workflow-oberflaeche.mjs
+ * gebundenen Funktionen (renderAbnahme*, renderUrteil,
+ * renderAenderungsuebersicht, aktualisiereAbnahme*, Bedien-/Reparaturlogik)
+ * bleibt unangetastet, ebenso .workflow-lauf-verweis (bleibt bewusst ohne
+ * .btn — Werteverweis in einer Tabellenzelle, keine Aktion). Keine
+ * Verhaltensänderung, kein neues Farbpaar.
+ *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
  * Anzeige stammt direkt aus dem Server. Die Liste (renderWorkflows) kommt
  * seit F20 WS-2 aus dem Zustands-Aggregat (Abnehmer des einen Poll-Timers in
@@ -76,10 +88,10 @@ function beschreibeLage(status, naechster) {
  * @returns HTML-Block für die Workflow-Liste
  */
 function workflowKopfzeile(workflow) {
-  const detailsButton = `<button class="workflow-details-btn" data-workflow-id="${escapeHtml(workflow.workflowId)}">Details</button>`
+  const detailsButton = `<button class="btn workflow-details-btn" data-workflow-id="${escapeHtml(workflow.workflowId)}">Details</button>`
   const grundZeile = workflow.grund === null || workflow.grund === undefined ? '' : `<tr><th>Grund</th><td>${escapeHtml(workflow.grund)}</td></tr>`
   const faelligZusatz = workflow.naechster?.schrittId ? ` (<code>${escapeHtml(workflow.naechster.schrittId)}</code>)` : ''
-  return `<section class="workflow">
+  return `<section class="card workflow">
     <h3>${escapeHtml(workflow.workflowId)} ${detailsButton}</h3>
     <table class="lauf-kopfdaten">
       <tbody>
@@ -333,9 +345,9 @@ function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung, fre
     <label for="wf-abnahme-begruendung">Begründung (Pflicht)</label>
     <textarea id="wf-abnahme-begruendung" rows="2"></textarea>
     <div>
-      <button class="wf-abnahme-aktion" data-aktion="ANGENOMMEN" data-workflow-id="${kennung}"${angenommenErlaubt ? '' : ' disabled'}>Annehmen</button>
-      <button class="wf-abnahme-aktion" data-aktion="ABGELEHNT" data-workflow-id="${kennung}"${abgelehntErlaubt ? '' : ' disabled'}>Ablehnen</button>
-      <button class="wf-abnahme-aktion" data-aktion="ANPASSUNG_ANGEFORDERT" data-workflow-id="${kennung}"${anpassungErlaubt ? '' : ' disabled'}>Anpassung anfordern</button>
+      <button class="btn btn-primary wf-abnahme-aktion" data-aktion="ANGENOMMEN" data-workflow-id="${kennung}"${angenommenErlaubt ? '' : ' disabled'}>Annehmen</button>
+      <button class="btn wf-abnahme-aktion" data-aktion="ABGELEHNT" data-workflow-id="${kennung}"${abgelehntErlaubt ? '' : ' disabled'}>Ablehnen</button>
+      <button class="btn wf-abnahme-aktion" data-aktion="ANPASSUNG_ANGEFORDERT" data-workflow-id="${kennung}"${anpassungErlaubt ? '' : ' disabled'}>Anpassung anfordern</button>
     </div>
     ${hinweis}
   </div>`
@@ -494,7 +506,7 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
   if (art === 'starte') {
     bloecke.push(`<div class="unterabschnitt">
       <p>Der nächste Schritt <code>${faelligerSchritt}</code> darf ohne Rückfrage starten.</p>
-      <button class="wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">Starten</button>
+      <button class="btn btn-primary wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">Starten</button>
     </div>`)
   }
 
@@ -504,8 +516,8 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
       <label for="wf-freigabe-begruendung">Begründung (Pflicht)</label>
       <textarea id="wf-freigabe-begruendung" rows="2"></textarea>
       <div>
-        <button class="wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Freigeben</button>
-        <button class="wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Ablehnen</button>
+        <button class="btn btn-primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Freigeben</button>
+        <button class="btn wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Ablehnen</button>
       </div>
     </div>`)
   }
@@ -514,14 +526,14 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
     bloecke.push(`<div class="unterabschnitt">
       <label for="wf-stopp-begruendung">Begründung des Stopps (Pflicht)</label>
       <textarea id="wf-stopp-begruendung" rows="2"></textarea>
-      <div><button class="wf-aktion" data-aktion="stoppen" data-workflow-id="${kennung}">Stoppen</button></div>
+      <div><button class="btn wf-aktion" data-aktion="stoppen" data-workflow-id="${kennung}">Stoppen</button></div>
     </div>`)
   }
 
   if (REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig) {
     bloecke.push(`<div class="unterabschnitt">
       <p>${ungueltig ? 'Diese Fassung validiert nicht — aus ihr startet kein Lauf. Der Weg heraus ist eine neue Fassung derselben' : 'Der Workflow steht. Der Weg heraus ist eine neue Fassung derselben'} <code>workflow_id</code>.</p>
-      <button class="wf-aktion" data-aktion="reparatur" data-workflow-id="${kennung}">Reparaturfassung vorbereiten</button>
+      <button class="btn wf-aktion" data-aktion="reparatur" data-workflow-id="${kennung}">Reparaturfassung vorbereiten</button>
     </div>`)
   }
 
@@ -669,8 +681,8 @@ function renderReparatur(workflowId, entwurf, warnungen) {
     <label for="wf-reparatur-entwurf">Neue Fassung (WORKFLOW_V0)</label>
     <textarea id="wf-reparatur-entwurf" rows="24">${escapeHtml(JSON.stringify(entwurf, null, 2))}</textarea>
     <div>
-      <button id="wf-reparatur-einreichen" data-workflow-id="${escapeHtml(workflowId)}">Einreichen</button>
-      <button id="wf-reparatur-verwerfen">Entwurf verwerfen</button>
+      <button id="wf-reparatur-einreichen" class="btn btn-primary" data-workflow-id="${escapeHtml(workflowId)}">Einreichen</button>
+      <button id="wf-reparatur-verwerfen" class="btn">Entwurf verwerfen</button>
     </div>
     <p id="wf-reparatur-meldung" class="fehler" hidden></p>
   </div>`
