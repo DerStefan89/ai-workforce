@@ -251,9 +251,14 @@ function baueGrossContainer() {
  * Montiert eine Persona-Instanz in host und startet Awakening/Blinzeln. Einhängereihenfolge ist
  * bewusst fest: Bild+Tint, dann (nur 'gross') das Augenkern-Overlay, dann IMMER zuletzt die
  * Lid-Schicht — damit das Lid beim Blinzeln über allem liegt, siehe baueLidSchicht().
+ *
+ * Exportiert seit F29 WS-1a: die Startfläche (views/start.js) montiert hiermit eine DRITTE
+ * 'gross'-Instanz, statt Lid-Schicht/Awakening-Mechanik dort ein zweites Mal zu bauen (Auftrag:
+ * "vorhandene Mechanik wiederverwenden, KEINE zweite Mechanik"). Reiner Re-Export einer
+ * bestehenden Funktion — die Mechanik selbst ist unverändert (F29-Nicht-Ziel).
  * @param host - der Ziel-Container @param variante - 'badge' | 'gross'
  */
-function montierePersona(host, variante) {
+export function montierePersona(host, variante) {
   host.innerHTML = ''
   host.classList.add('persona-host', `persona-host-${variante}`)
   host.dataset.personaZustand = 'idle'
