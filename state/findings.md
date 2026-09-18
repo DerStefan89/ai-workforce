@@ -7862,3 +7862,19 @@ Titel: Keine etablierte Konvention, wann localStorage für UI-Präferenzen zulä
 Beschreibung: projekt-kontext.js lehnt localStorage für Fachzustand ausdrücklich ab (sessionStorage statt dessen, s. dortiger Kopfkommentar) — es gab aber bislang keine dokumentierte Abgrenzung, wann localStorage für reine Nutzer-/Geräte-Präferenzen (ohne Fachzustandsbezug) trotzdem zulässig ist, was bei jeder neuen Präferenz zu einer Einzelfallentscheidung ohne Referenz gezwungen hätte.
 Maßnahme: F28 WS-1 etabliert und begründet die Unterscheidung (Fachzustand vs. Nutzerpräferenz) im Kopfkommentar von persona.js; das doppelte Gate (prefers-reduced-motion UND sichtbarer Schalter, Präferenz in localStorage) ist als Muster für künftige Animationen/Präferenzen im Leitstand festgehalten.
 Feature/Run: F28-Challenge, 18.09.2026.
+
+**F-467** · `BUG` · P0 · gelöst
+Titel: Komplette Tokenschicht in style.css seit WS-1a im Browser nie wirksam — Kopfkommentar schließt sich selbst vorzeitig.
+Beschreibung: public/leitstand/style.css Z. 19 (Kopfkommentar) enthielt die Formulierung „(--color-danger-*/--persona-*)". Die Zeichenfolge „-*" gefolgt von „/-" bildet zufällig die CSS-Kommentar-Endsequenz „*/" und schließt den am Dateianfang (Byte 0) geöffneten Kommentar vorzeitig. Der komplette :root-Block (Z. ~54–156: Farbe, Typografie, Abstände, Radien, Schatten, Motion) wurde dadurch von jedem Browser als Teil einer kaputten Regel verworfen — verifiziert per echtem Rendern: document.styleSheets[0].cssRules enthielt keine :root-Regel, obwohl der Quelltext sie enthält. Jede View sah seit WS-1a unformatiert aus, obwohl Markup/Klassen korrekt waren.
+Fundstelle: public/leitstand/style.css Z. 19 (Kopfkommentar).
+Auswirkung: Design-Token-Schicht (Farbe, Typografie, Abstände, Radien, Schatten, Motion) seit F29 WS-1a im Produkt nie wirksam — reiner Quelltext-Befund, der ohne echtes Rendern nicht auffällt (Regex-Gates prüfen Quelltext, nicht die tatsächliche Browser-Kaskade).
+Maßnahme: Zeile umformuliert zu „(--color-danger-* bzw. --persona-*)" — keine „*/"-Sequenz mehr, Kommentar schließt jetzt an seinem echten Ende (Z. 52). Real im Browser verifiziert: getComputedStyle(document.documentElement).getPropertyValue('--color-bg') liefert '#0b0d10'. Siehe [[F-468]] für die Gate-Härtung.
+Feature/Run: F29-Challenge, 18.09.2026.
+
+**F-468** · `HARNESS_IMPROVEMENT` · P1 · gelöst
+Titel: Kein Gate erkennt einen durch Prosa vorzeitig geschlossenen CSS-Kommentar.
+Beschreibung: [[F-467]] blieb unentdeckt, weil scripts/check-f20-design-tokens.mjs den Quelltext nur auf Farbliterale außerhalb des :root-Blocks prüft, nicht auf die Gültigkeit der Kommentarstruktur selbst — ein vorzeitig geschlossener Kommentar am Dateianfang wird von keinem bestehenden Gate erkannt, obwohl er die gesamte nachfolgende Tokenschicht ungültig macht.
+Fundstelle: scripts/check-f20-design-tokens.mjs.
+Auswirkung: Dieselbe Fehlerklasse (ein zufälliges „*/" in CSS-Prosa) hätte jederzeit erneut unbemerkt eine ganze Regelmenge verwerfen können.
+Maßnahme: Gate um eine Zählung von „/*" gegen „*/" in public/leitstand/style.css ergänzt (gleiche Anzahl = Kommentare sauber gepaart). Bewusst NUR für style.css, nicht projektweit für *.js/*.html (YAGNI): CSS kennt ausschließlich Block-Kommentare, jedes „*/" in Prosa ist dort gefährlich; in JS/HTML kommentiert das Projekt layoutnahe Hinweise überwiegend per „//"/„<!-- -->", wo Glob-Prosa (z. B. ein Verzeichnis mit Stern-Platzhalter direkt vor einer Datei- oder Ordnerendung) harmlos ein unausgeglichenes Paar erzeugt — mehrfach real in app.js/index.html/router.js beobachtet, eine blinde projektweite Zählung wäre kein tragfähiges Gate, sondern Dauer-Rauschen. Regressionsgetestet: die F-467-Formulierung reproduziert und vom neuen Check als 1 Befund erkannt.
+Feature/Run: F29-Challenge, 18.09.2026.
