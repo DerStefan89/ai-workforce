@@ -19,7 +19,9 @@ alle drei Sätze der Bestehensbedingung real erfüllt). F19 (Capability
 Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
 4, ist abgeschlossen (12.09.2026). Das Projekt ist in Meilenstein 4
 (Jarvis Workspace, `docs/projekt/zielfassung.md` §13.5), PlanV1 freigegeben
-(12.09.2026), noch kein Feature begonnen.
+(12.09.2026); F20–F27 sind umgesetzt (F24/F26/F27 `ABGESCHLOSSEN`, F22/F23
+`FEATURE_GATE`, F25 `FEATURE_GATE` mit offenem WS-2b/WS-3), F28–F30 noch
+nicht begonnen (Stand 18.09.2026).
 
 ## Erledigt
 
@@ -375,7 +377,7 @@ beide real erfüllt; in `docs/projekt/zielfassung.md` §13.4 nachgetragen
   geprüfte Ausnahmen für `code-reviewer` und `router` statt einer Verengung
   von `erlaubte_worker` (siehe `features/F19/nachweis-ws2.md`).
 
-### Meilenstein 4 — in Planung (`docs/projekt/zielfassung.md` §13.5)
+### Meilenstein 4 — in Umsetzung (`docs/projekt/zielfassung.md` §13.5)
 
 Elf Features, Reihenfolge nach frühestem sichtbaren Closed Loop
 (Challenge `claude/183`, PlanV1 `claude/184`; Feature-Akten entstehen je
@@ -391,22 +393,23 @@ Feature unter `features/F2x/`):
   Feature-Akten, Failed Runs, Capability Gaps). Akte `features/F21/
   feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt. WS-1 (PR #152) und
   WS-2 (PR #153) gemergt. AK8: ACCEPT, 14.09.2026 (Stefan, Realtest).
-- ⏳ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
-  Kernartefakt, Vorschlag → Freigabe → Kette). Nach F21. Zuschnitt gegen
-  den realen Stand gechallenged (14.09.2026, `features/F22/feature.md`):
-  der Router-Endpunkt ist strukturell asynchron (202 + `laufId`, D13-Sperre
-  greift vor jeder Request-Prüfung), und ein erfolgreicher Router-Lauf
-  registriert den Workflow-Vorschlag direkt beim Routen (nicht erst bei
-  „Freigeben") — Details und Worker-Wahl (noch offen) siehe Akte.
-- ⏳ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
-  Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Nach F22.
-- ⏳ **F24** — Capabilities v1 (F19-Projektion, Coverage, Rollen lesend).
-  Nach F20, unabhängig.
-- ⏳ **F25** — Projekte v1 (Register, Handler je Projekt, Health, Import).
-  Nach F20, unabhängig.
-- ⏳ **F26** — Jarvis Chat v1 (Rolle `jarvis`). Nach F22 und F25.
-- ⏳ **F27** — Resource Scout (Werkzeugsatz `recherchierend`, Rolle `scout`).
-  Nach F24.
+- ✅ **F22** — Click-to-Work v1 (Router-Endpunkt, Router-Ergebnis als
+  Kernartefakt, Vorschlag → Freigabe → Kette). Akte `features/F22/
+  feature.md`, Status `FEATURE_GATE`. Nach F21.
+- ✅ **F23** — Abnahme + ADJUST-Loop (Entscheidungs-Schema,
+  Post-Build-Prüfschritt, `BLOCKIERT`-Wirkung, Folge-Workflow). Akte
+  `features/F23/feature.md`, Status `FEATURE_GATE`. Nach F22.
+- ✅ **F24** — Capabilities v1 (F19-Projektion, Coverage, Rollen lesend).
+  Akte `features/F24/feature.md`, Status `ABGESCHLOSSEN`. Nach F20,
+  unabhängig.
+- ✅ **F25** — Projekte v1 (Register, Handler je Projekt, Health, Import).
+  Akte `features/F25/feature.md`, Status `FEATURE_GATE` (WS-1/WS-2a erfüllt;
+  WS-2b/WS-3 — Health, Import — noch offen). Nach F20, unabhängig.
+- ✅ **F26** — Jarvis Chat v1 (Rolle `jarvis`). Akte `features/F26/
+  feature.md`, Status `ABGESCHLOSSEN` (WS-1/WS-2a/WS-2b + F-423-Nachzug
+  Codex-kompatibles Schema). Nach F22 und F25.
+- ✅ **F27** — Resource Scout (Werkzeugsatz `recherchierend`, Rolle `scout`).
+  Akte `features/F27/feature.md`, Status `ABGESCHLOSSEN`. Nach F24.
 - ⏳ **F28** — Persona v1 (SVG, vier abgeleitete Zustände). Nach F20,
   unabhängig.
 - ⏳ **F29** — Design Scout + visuelle Produktisierung. Nach F27 und F28.

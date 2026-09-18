@@ -160,6 +160,108 @@ console.log('\n=== F26-Jarvis-Check ===\n')
   }
 }
 
+// ─── (b2) F-423: Schema enthält kein 'allOf'/'if'/'then'/'oneOf' mehr ──────
+//
+// Codex' '--output-schema' (response_format) lehnt diese vier Schlüsselwörter strukturell ab
+// (real gegen Codex-CLI 0.153.4 gespikt, features/F26/nachweis-f423.md) — ein rekursiver Scan
+// über das geparste Schema statt eines Textmusters, damit ein Vorkommen in einem verschachtelten
+// Unterobjekt (z. B. innerhalb von 'properties.bezug') genauso gefunden wird wie eines auf
+// oberster Ebene.
+{
+  const befundeVor = befunde.length
+  const verboteneSchluessel = ['allOf', 'if', 'then', 'oneOf']
+  const schema = JSON.parse(readFileSync('schemas/ergebnis-jarvis.schema.json', 'utf-8'))
+  // Rekursiver Scan, parametrisiert über das Sammel-Array (D5) — sowohl für den echten Schema-Scan
+  // als auch für die Kalibrierung unten verwendet, statt zwei fast identische Kopien zu pflegen.
+  const scanne = (knoten, pfad, treffer) => {
+    if (Array.isArray(knoten)) {
+      knoten.forEach((eintrag, index) => scanne(eintrag, `${pfad}[${index}]`, treffer))
+    } else if (knoten !== null && typeof knoten === 'object') {
+      for (const [schluessel, wert] of Object.entries(knoten)) {
+        if (verboteneSchluessel.includes(schluessel)) treffer.push(`${pfad}.${schluessel}`)
+        scanne(wert, `${pfad}.${schluessel}`, treffer)
+      }
+    }
+  }
+  const gefundeneTreffer = []
+  scanne(schema, '$', gefundeneTreffer)
+  if (gefundeneTreffer.length > 0) {
+    befunde.push(`(b2): schemas/ergebnis-jarvis.schema.json enthält 'allOf'/'if'/'then'/'oneOf' (Codex-inkompatibel, F-423): ${gefundeneTreffer.join(', ')}`)
+  }
+  // Kalibrierung: derselbe Scan-Mechanismus MUSS einen konstruierten Treffer finden (eigenes
+  // Sammel-Array, damit ein echter Treffer oben nicht mit dem Kalibrierungs-Treffer vermischt wird).
+  const kalibrierungsTreffer = []
+  scanne({ allOf: [{ if: {}, then: {} }], properties: { x: { oneOf: [] } } }, '$kalibrierung', kalibrierungsTreffer)
+  if (kalibrierungsTreffer.length !== 4) {
+    befunde.push(`(b2) Kalibrierung: der Scan sollte in einem konstruierten Testobjekt genau 4 Treffer finden (allOf/if/then/oneOf), fand ${kalibrierungsTreffer.length}`)
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (b2): schemas/ergebnis-jarvis.schema.json enthält kein 'allOf'/'if'/'then'/'oneOf' (rekursiver Scan, F-423).")
+  }
+}
+
+// ─── (b3) F-423: Validator-Kopplungen auch in der Codex-Form (explizites null) ──
+//
+// Vor F-423 wurden art→auftrag/aktion und aktion.typ 'anpassen'→bezug.auftrag_id nur gegen die
+// ALTE Form geprüft (Feld ganz weggelassen). Codex' Structured-Output-Zwang liefert dieselben
+// Verstöße real mit dem Feld explizit auf 'null' gesetzt (schemas/ergebnis-jarvis.schema.json
+// verlangt 'auftrag'/'aktion'/'bezug' als Pflichtfelder vom Typ ["object","null"]) — ein
+// Validator, der nur die alte Form prüft, würde jeden Codex-Lauf fälschlich als gültig
+// durchlassen. Rot-/Grünfall-Paare, Muster Kalibrierung oben im Dateikopf.
+{
+  const befundeVor = befunde.length
+
+  // Rotfall: art 'auftrag_vorschlag', 'auftrag' explizit null (Codex-Form) statt weggelassen.
+  const rotAuftragNull = validiereErgebnisJarvis({ art: 'auftrag_vorschlag', antwort: 'x', auftrag: null, aktion: null, bezug: null })
+  if (!rotAuftragNull.some((v) => v.includes("'auftrag' fehlt — bei art 'auftrag_vorschlag' Pflicht"))) {
+    befunde.push(`(b3) Rotfall (auftrag: null): erwartet Verstoß "'auftrag' fehlt", erhalten ${JSON.stringify(rotAuftragNull)}`)
+  }
+  // Grünfall: dieselbe Form, aber 'auftrag' real gesetzt.
+  const gruenAuftrag = validiereErgebnisJarvis({ art: 'auftrag_vorschlag', antwort: 'x', auftrag: { titel: 't', text: 'x' }, aktion: null, bezug: null })
+  if (gruenAuftrag.length > 0) {
+    befunde.push(`(b3) Grünfall (auftrag gesetzt, Codex-Form): erwartet keine Verstöße, erhalten ${JSON.stringify(gruenAuftrag)}`)
+  }
+
+  // Rotfall: art 'aktion', 'aktion' explizit null.
+  const rotAktionNull = validiereErgebnisJarvis({ art: 'aktion', antwort: 'x', auftrag: null, aktion: null, bezug: null })
+  if (!rotAktionNull.some((v) => v.includes("'aktion' fehlt — bei art 'aktion' Pflicht"))) {
+    befunde.push(`(b3) Rotfall (aktion: null): erwartet Verstoß "'aktion' fehlt", erhalten ${JSON.stringify(rotAktionNull)}`)
+  }
+  // Grünfall: dieselbe Form, aber 'aktion' real gesetzt (Codex-Form, real gegen den echten Leitstand-
+  // Prozess nachgewiesen, features/F26/nachweis-f423.md Teil 2 Abschnitt C).
+  const gruenAktion = validiereErgebnisJarvis({ art: 'aktion', antwort: 'x', auftrag: null, aktion: { typ: 'oeffnen', ziel: '#/workboard' }, bezug: null })
+  if (gruenAktion.length > 0) {
+    befunde.push(`(b3) Grünfall (aktion gesetzt, Codex-Form): erwartet keine Verstöße, erhalten ${JSON.stringify(gruenAktion)}`)
+  }
+
+  // Rotfall: aktion.typ 'anpassen', bezug.auftrag_id explizit null (bezug.workitem gesetzt) — Codex-Form.
+  const rotAnpassenNull = validiereErgebnisJarvis({
+    art: 'aktion',
+    antwort: 'x',
+    auftrag: null,
+    aktion: { typ: 'anpassen', ziel: 'F-1' },
+    bezug: { auftrag_id: null, workitem: 'F-1' },
+  })
+  if (!rotAnpassenNull.some((v) => v.includes("'bezug.auftrag_id' fehlt — bei aktion.typ 'anpassen' Pflicht"))) {
+    befunde.push(`(b3) Rotfall (anpassen, auftrag_id: null): erwartet Verstoß "'bezug.auftrag_id' fehlt", erhalten ${JSON.stringify(rotAnpassenNull)}`)
+  }
+  // Grünfall: dieselbe Form, aber bezug.auftrag_id real gesetzt, bezug.workitem null (Codex-Form).
+  const gruenAnpassen = validiereErgebnisJarvis({
+    art: 'aktion',
+    antwort: 'x',
+    auftrag: null,
+    aktion: { typ: 'anpassen', ziel: 'auftrag-1' },
+    bezug: { auftrag_id: 'auftrag-1', workitem: null },
+  })
+  if (gruenAnpassen.length > 0) {
+    befunde.push(`(b3) Grünfall (anpassen, auftrag_id gesetzt, Codex-Form): erwartet keine Verstöße, erhalten ${JSON.stringify(gruenAnpassen)}`)
+  }
+
+  if (befunde.length === befundeVor) {
+    console.log("✓ (b3): validiereErgebnisJarvis erzwingt art→auftrag/aktion und aktion.typ 'anpassen'→bezug.auftrag_id auch in der Codex-Form (Feld explizit auf null statt weggelassen).")
+  }
+}
+
 // ─── (c) POST /api/chat: reale Rot-Fälle der Bodyprüfung ───────────────────
 {
   const basisVerzeichnis = `kontrollzustand-test-f26-ak-c-${randomUUID()}`

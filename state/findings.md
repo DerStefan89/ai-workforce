@@ -7009,7 +7009,7 @@ wird.
 Status: offen.
 Feature/Run: F24-Vorbereitung.
 
-**F-396** · `TECH_DEBT` · P1 · offen
+**F-396** · `TECH_DEBT` · P1 · gelöst (Duplikat von F-402)
 Titel: Kein projektlokaler Ort für Fähigkeiten.
 Beschreibung: `loeseRessourcenAuf(ressourcen, repoWurzel,
 startvorlagePfad)`: Register ist instanzglobal, Startvorlage
@@ -7593,7 +7593,7 @@ ai-workforce's eigenen, bereits autorisierten Wert unverändert lassen
 müsste — bewusst nicht angegangen.
 Feature/Run: F25 WS-1, QA-Pass, 17.09.2026 (nachgetragen mit WS-2a).
 
-**F-423** · `BUG` · P1 · offen
+**F-423** · `BUG` · P1 · gelöst
 Titel: Jarvis-Chat mit Codex-Worker scheitert real IMMER —
 schemas/ergebnis-jarvis.schema.json nutzt 'allOf', das Codex'
 '--output-schema' (response_format) nicht akzeptiert.
@@ -7622,16 +7622,23 @@ Rotfall wird korrekt als FEHLGESCHLAGEN klassifiziert und schreibt
 bewusst keinen Lineage-Eintrag, siehe POST /api/chat nachLauf-Callback).
 Der claude-code-Fallback bleibt unverändert funktionsfähig (real
 ERFOLGREICH nachgewiesen, F26 WS-2a).
-Maßnahme: keine in WS-2a (Schema-Fix ist F26-WS-1-Terrain, nicht
-WS-2a-Scope, und berührt möglicherweise weitere Rollen mit
-allOf/if/then-Kopplung). Optionen für eine künftige Iteration: das
-Schema auf eine Codex-kompatible Form ohne 'allOf' umbauen (z. B.
-auftrag/aktion optional lassen und die Kopplung ausschließlich in
-validiereErgebnisJarvis erzwingen, nicht im Schema selbst), oder Codex
-für die Rolle 'jarvis' aus der Worker-Auflösung ausschließen, bis das
-Schema kompatibel ist.
+Maßnahme: Schema umgebaut (kein 'allOf'/'if'/'then'/'oneOf' mehr; 'auftrag'/
+'aktion'/'bezug' top-level 'required' mit Typ ["object","null"] statt
+optional — Spike gegen Codex-CLI 0.153.4 vor dem Umbau ergab, dass Codex
+JEDE 'properties'-Eigenschaft in 'required' verlangt und Optionalität nur
+über einen Typ-Union mit 'null' zulässt, 'oneOf' immer ablehnt), die drei
+Kopplungen (art→auftrag/aktion, aktion.typ 'anpassen'→bezug.auftrag_id)
+ausschließlich noch in validiereErgebnisJarvis erzwungen (src/jarvis/
+index.ts) — ein fehlendes Feld und ein Feld mit Wert 'null' sind für den
+Validator gleichbedeutend, die ältere claude-code-Form (Feld weggelassen)
+bleibt dadurch unverändert gültig. Gate scripts/check-f26-jarvis.mjs um
+einen Schema-Struktur-Scan und Rot-/Grünfälle für die Codex-Null-Form
+erweitert. Real nachgewiesen mit beiden Workern (features/F26/
+nachweis-f423.md): Codex-Lauf ABGESCHLOSSEN/ERFOLGREICH statt
+FEHLGESCHLAGEN, claude-code-Lauf weiterhin ABGESCHLOSSEN/ERFOLGREICH.
 Feature/Run: F26 WS-2a, realer curl-Nachweis gegen den echten
-Leitstand-Prozess, 17.09.2026.
+Leitstand-Prozess, 17.09.2026. Gelöst: F26-WS-3-Nachzug, PR
+fix/f26-f423-jarvis-schema-codex, 18.09.2026.
 
 **F-424** · `TECH_DEBT` · P3 · offen
 Titel: `EnterWorktree` scheitert am Windows-Pfadlängenlimit gegen tief
@@ -7793,3 +7800,43 @@ Fundstelle: scripts/leitstand-server.mjs, sammleLaeufe/sammleWorkflows.
 Maßnahme: behoben in fix/zustand-poll-kosten (#179), nativ nachgemessen:
 GET /api/zustand jetzt 0,253s (vorher 64,5s).
 Feature/Run: F26-Begleituntersuchung "Lädt…"-Hänger, 17.09.2026.
+
+**F-432** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Feature-Freigabe trotz offenem P1-BUG auf demselben Feature.
+Beschreibung: F26 wurde als „vollständig abgeschlossen" übergeben (Challenger-Übergabe 18.09.2026), obwohl F-423 (P1, BUG, F26) offen war und die reale Produktkonfiguration betraf. Die Regel „vor Freigabe state/findings.md nach offenen P0/P1 mit Feature-Bezug filtern" existiert nur als Chat-Lehre.
+Fundstelle: state/findings.md F-423; features/F26/feature.md „Bekannte Grenzen".
+Auswirkung: Feature gilt als fertig, ist im Produkt aber nicht nutzbar.
+Maßnahme: Pflichtzeile „Offene P0/P1 mit Bezug: …" im Abschnitt Feature Review jeder Akte; scripts/check-feature.mjs prüft bei Status ABGESCHLOSSEN gegen state/findings.md (Rot: offenes P0/P1, dessen Feature/Run-Zeile die Feature-ID nennt).
+Feature/Run: Challenge F26-Abschluss, 18.09.2026.
+
+**F-433** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Review-Verfahren läuft entgegen PlanV1 §2 seit F23 nicht im Produkt.
+Beschreibung: PlanV1 M4 §2 verlangt ab F23 FEATURE REVIEW → ACCEPT/ADJUST/REJECT im Produkt (Abnahme-View). Real existieren im kontrollzustand/ nur zwei Abnahme-Entscheidungsartefakte, beide aus Feature-Nachweisen (F23, F26 WS-2b). F24–F27 wurden ausschließlich im Chat abgenommen.
+Fundstelle: kontrollzustand/lineage-entscheidung-workflow-router-*-abnahme/ (2 Einträge); docs/projekt/zielfassung.md §13.5.
+Auswirkung: Slice D (Abnahme/ADJUST) ist nie im Ernstfall gelaufen; F30-Bestehensbedingung unbelegt.
+Maßnahme: Ab dem nächsten Feature-Review Abnahme real über POST /api/workflows/<id>/abnahme; Start des F30-Protokolls.
+Feature/Run: Challenge F26-Abschluss, 18.09.2026.
+
+**F-434** · `PROCESS_IMPROVEMENT` · P2 · offen (Nachzug erledigt, Check offen)
+Titel: docs/STATUS.md um sieben Features veraltet, keine Drift-Prüfung.
+Beschreibung: STATUS.md („Einzige Quelle für Phasenstand") sagte bis 18.09.2026 „M4: noch kein Feature begonnen" und listete F22–F27 als offen, obwohl F20–F27 gemergt waren. STATUS.md ist bewusst nicht in check-docs.mjs.
+Fundstelle: docs/STATUS.md Z. 20, 378 ff.; scripts/check-docs.mjs Z. 26.
+Auswirkung: Falsche Phasenauskunft für jede neue Sitzung.
+Maßnahme: Nachzug erledigt (dieser PR, docs/STATUS.md korrigiert); der Drift-Check selbst (kleiner Check, der je F2x-Zeile im M4-Abschnitt das Symbol gegen Status: der Akte prüft) bleibt offen.
+Feature/Run: Challenge F26-Abschluss, 18.09.2026.
+
+**F-435** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Projektbeschreibung des Claude-Projekts „AI Workforce" veraltet.
+Beschreibung: Beschreibung nennt zielfassung v1.16, F0–F19, „M4 in Planung"; real v1.21, F0–F27, M4 in Umsetzung. Führte in der Übergabe vom 18.09.2026 zu einer gegenstandslosen Handlungsoption („M4-Planungsrunde starten").
+Fundstelle: Claude-Projekt „AI Workforce", Projektbeschreibung.
+Auswirkung: Fehlleitung neuer Challenger-Chats.
+Maßnahme: Stefan aktualisiert die Beschreibung (außerhalb des Repos).
+Feature/Run: Challenge F26-Abschluss, 18.09.2026.
+
+**F-436** · `TECH_DEBT` · P3 · gelöst
+Titel: F-396 und F-402 sind Duplikate.
+Beschreibung: Beide tragen den Titel „Kein projektlokaler Ort für Fähigkeiten", beide P1 offen.
+Fundstelle: state/findings.md F-396, F-402.
+Auswirkung: Doppelzählung im Workboard.
+Maßnahme: F-396 als „Duplikat von F-402" geschlossen (dieser PR).
+Feature/Run: Challenge F26-Abschluss, 18.09.2026.

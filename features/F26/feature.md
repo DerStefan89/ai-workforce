@@ -8,7 +8,7 @@ Rolle "jarvis", Schema, Dispatch-Endpunkt, realer CLI-Nachweis (WS-1);
 Chat-View, clientseitiger Vorfilter, automatischer Lineage-Verlauf (WS-2a)
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -40,13 +40,23 @@ Glue-Skript mehr nötig. Der Vorschlag-aus-Chat-Pfad (F22/F23) ist WS-2b.
   gebaut in WS-2a, nicht nur als Absicht dokumentiert).
 
 ## Workstreams
-- WS-1 — Rolle/Schema/Vorfilter-Grundlage/CLI-Nachweis. **FEATURE_GATE**
+- WS-1 — Rolle/Schema/Vorfilter-Grundlage/CLI-Nachweis. **ABGESCHLOSSEN**
   (AK1-AK6, siehe unten).
 - WS-2a — Chat-View, clientseitiger Vorfilter, automatischer
   Lineage-Verlauf. Baudurchgang + Reviewer-/QA-Pass durchlaufen, Befunde
   behoben (AK7-AK11, siehe unten und "Feature Review").
-- WS-2b — Vorschlag-aus-Chat → F22/F23-Anschluss. Offen, eigener
-  Bauauftrag nach diesem Feature Review.
+- WS-2b — Vorschlag-aus-Chat → F22/F23-Anschluss. **ABGESCHLOSSEN** (#180):
+  beide Pfade real bewiesen — der F22-Pfad (Auftrag anlegen, Routen,
+  Freigabe) durch den realen, menschlich freigegebenen Bau, der
+  `features/F26/nachweis-ws2b-testartefakt.md` selbst erzeugt hat; der
+  F23-ADJUST-Pfad (`aktion.typ 'anpassen'` → `POST /api/workflows/<id>/
+  abnahme` mit `ANPASSUNG_ANGEFORDERT`) real nachgewiesen in derselben Datei,
+  Abschnitte D-E.
+- WS-3 (Nachzug) — F-423-Fix: `schemas/ergebnis-jarvis.schema.json`
+  Codex-kompatibel umgebaut (kein `allOf`/`if`/`then`/`oneOf` mehr, alle
+  Felder top-level `required` mit `null`-Option statt optional), die drei
+  Kopplungen ausschließlich noch in `validiereErgebnisJarvis` erzwungen.
+  **ABGESCHLOSSEN**, siehe "Feature Review" und `features/F26/nachweis-f423.md`.
 
 ## Akzeptanzkriterien
 
@@ -308,12 +318,17 @@ Bedienung dafür anbietet.
   weiterhin dreifach nahezu wortgleich (Router-, Chat-Endpunkt,
   unverändert seit WS-1) — kein neuer dritter Aufrufer in WS-2a, weiterhin
   YAGNI.
-- **F-423** (`state/findings.md`, real gefunden in WS-2a): Jarvis-Chat mit
+- ~~**F-423** (`state/findings.md`, real gefunden in WS-2a): Jarvis-Chat mit
   Codex-Worker scheitert real IMMER — `schemas/ergebnis-jarvis.schema.json`s
   `allOf`-Konstrukt (WS-1-QA-Fix) wird von Codex' `--output-schema`
-  abgelehnt (`invalid_json_schema`). Nicht in WS-2a behoben (WS-1-Terrain,
-  Schema-Redesign nötig) — der `claude-code`-Fallback bleibt unverändert
-  funktionsfähig und ist der real nachgewiesene Pfad.
+  abgelehnt (`invalid_json_schema`)~~ — **gelöst** (WS-3-Nachzug): Schema
+  Codex-kompatibel umgebaut (kein `allOf`/`if`/`then`/`oneOf` mehr, `auftrag`/
+  `aktion`/`bezug` top-level `required` mit Typ `["object","null"]` statt
+  optional), die drei Kopplungen ausschließlich im Validator
+  (`validiereErgebnisJarvis`) erzwungen — akzeptiert weiterhin auch die
+  ältere, schlankere `claude-code`-Form (Feld weggelassen statt `null`). Real
+  nachgewiesen mit beiden Workern, siehe "Feature Review" und
+  `features/F26/nachweis-f423.md`.
 - (WS-2a) Kein Browser-/DOM-Test der Chat-View selbst durchgeführt — kein
   projekteigener `run`-Skill für den Leitstand, kein Browser-
   Automatisierungswerkzeug in dieser Umgebung installiert (siehe
@@ -427,6 +442,76 @@ Zeichenzähler außer `maxlength`, roher `409: <grund>`-Fehlertext) als
 "Bekannte Grenzen" bzw. akzeptierter Stil dokumentiert. Alle kritischen und
 mittleren Befunde behoben, `npm run check` danach erneut grün bestätigt
 (554 Tests).
+
+### WS-3 (Nachzug) — F-423-Fix
+
+`npm run check` grün, bestehende WS-1/2a/2b-Tests liefen ohne Anpassung
+durch (28/28 in `src/jarvis/jarvis.test.ts`). Spike (max. 30 Min, vor dem
+Umbau, `features/F26/nachweis-f423.md` Teil 1) klärte real gegen Codex-CLI
+0.153.4, was dessen Structured-Output-Endpunkt akzeptiert: kein optionales
+Feld (jede `properties`-Eigenschaft muss in `required` stehen, Optionalität
+nur über `["typ","null"]`), kein `oneOf` (immer abgelehnt), kein
+`allOf`/`if`/`then`. Schema entsprechend umgebaut, die drei Kopplungen
+(`art`→`auftrag`/`aktion`, `aktion.typ 'anpassen'`→`bezug.auftrag_id`) aus
+dem Schema in `validiereErgebnisJarvis` verschoben — der Validator behandelt
+ein fehlendes Feld und ein explizit auf `null` gesetztes Feld gleichwertig
+(zentraler Helper `istGesetzt`, D5, Reviewer-Befund), damit die ältere
+`claude-code`-Form (Feld weggelassen) und die neue, Codex-erzwungene Form
+(Feld `null`) beide gültig bleiben. `baueJarvisAuftragstext` minimal
+nachgezogen (QA-Befund: veraltete „vier Felder"-Angabe bei tatsächlich fünf
+Top-Level-Feldern, plus ein Satz, dass ein strukturiert antwortender Worker
+ein nicht gesetztes Feld auch auf `null` setzen darf). Gate
+`scripts/check-f26-jarvis.mjs` erweitert: (b2) rekursiver Scan, dass das
+Schema kein `allOf`/`if`/`then`/`oneOf` mehr enthält (mit eigener
+Kalibrierung, Scan-Funktion Reviewer-Befund D5-parametrisiert statt
+dupliziert), (b3) Rot-/Grünfall-Paare für alle drei Kopplungen in der
+Codex-Form (Feld `null` statt weggelassen).
+
+Realer Nachweis (`features/F26/nachweis-f423.md` Teil 2+3): drei echte
+Jarvis-Läufe über `POST /api/chat` gegen den echten Leitstand-Prozess — (A)
+`startvorlagen/ai-workforce.json` (Codex konfiguriert), `art: 'antwort'`,
+Lauf real `ABGESCHLOSSEN`/`ERFOLGREICH` mit worker `codex`, Ergebnis in der
+vorhergesagten Null-Form, Lineage-Eintrag geschrieben (kein
+`invalid_json_schema` mehr); (B) `startvorlagen/beispielprojekt.json`
+(`claude-code`-Fallback), `art: 'antwort'`, Lauf real
+`ABGESCHLOSSEN`/`ERFOLGREICH`, Ergebnis weiterhin in der älteren,
+schlankeren Form (Felder weggelassen), ebenfalls gültig und mit
+Lineage-Eintrag; (C, QA-Nachforderung) Codex-Worker mit `art: 'aktion'`,
+`aktion.typ: 'anpassen'`, `bezug.auftrag_id` gesetzt — der Pfad mit dem
+höchsten strukturellen Risiko des ursprünglichen Bugs (gekoppeltes
+Unterobjekt + `bezug`-Exklusivität in der Null-Form) — ebenfalls real
+`ABGESCHLOSSEN`/`ERFOLGREICH` durch die volle Pipeline.
+
+Reviewer-/QA-Pass (frischer Kontext, F-046): Reviewer freigegeben mit
+Hinweisen — keine funktionalen Bugs in der Null-Handling-Logik; Schema,
+Validator, Typen und Gate-Abschnitte intern konsistent geprüft (Rot-/
+Grünfall-Kombinationen von Hand nachgerechnet, `(b2)`-Kalibrierung verifiziert,
+Beispieldateien-/Testzahlen-Claims gegengeprüft). Vier Hinweise, alle
+übernommen: (1) `'X' in obj && obj.X !== null` mehrfach verstreut →
+zentraler Helper `istGesetzt` (D5); (2) `(b2)`s Scan-/Kalibrierungsfunktion
+fast identisch dupliziert → parametrisiert; (3) `(b3)`s `rotAktionNull` ohne
+unmittelbaren Grünfall-Nachbarn in derselben Codex-Null-Form → `gruenAktion`
+ergänzt; (4) dieser Platzhalter selbst muss vor Commit ersetzt werden (F-046)
+→ dieser Absatz. QA freigegeben mit Hinweisen — ein Befund vor
+Freigabe geschlossen: der reale Nachweis deckte ursprünglich nur
+`art: 'antwort'` mit Codex ab, nicht den strukturell riskanteren
+`aktion.typ: 'anpassen'`-Pfad → dritter realer Lauf nachgeholt (siehe oben,
+Nachweis Abschnitt C). Weitere, niedrigschwellige QA-Beobachtungen ohne
+Freigabe-Blockade: (a) veraltete Feldzahl im Prompt (behoben, siehe oben);
+(b) das Prompt-Beispiel-JSON suggeriert bedingtes Weglassen, was für den
+Codex-Pfad strukturell nicht mehr zutrifft (Codex liefert wegen des
+erzwungenen Schemas immer alle fünf Felder) — funktional folgenlos, da
+Codex' `--output-schema` die Form ohnehin mechanisch erzwingt, unabhängig
+vom Prompt-Wortlaut, minimal klargestellt (siehe oben); (c) der Validator
+erzwingt nur „art X ⇒ Unterobjekt Y gesetzt", nie die Gegenrichtung
+(„Unterobjekt Y gesetzt ⇒ art X" bzw. „art X ⇒ ein nicht zugehöriges
+Unterobjekt ist null") — bestand bereits vor F-423 identisch in der
+`allOf`/`if`/`then`-Fassung, keine Regression durch diesen Fix, aktuell
+folgenlos (weder `chat.js` noch der Server werten `auftrag`/`aktion`
+art-abhängig aus), aber vor einer künftigen WS, die das tut, erneut zu
+prüfen — bewusst nicht in diesem Nachzug behoben (Scope: Codex-Kompatibilität,
+keine neue Vertragsregel). `npm run check` nach allen Reviewer-/QA-Korrekturen
+erneut grün bestätigt.
 
 ## Rollback
 Rolle `jarvis` aus `ROLLENVERTRAEGE`/`rollen.test.ts`/
