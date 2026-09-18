@@ -16,7 +16,7 @@
  * Tokenname trägt jetzt einen dunklen statt hellen Wert. --color-accent-*
  * (Cyan) ist echt NEU: der interaktive Akzent (aktive Navigation, Links,
  * Fokusring, Primärschaltflächen) war vorher an --color-info-* mitgemeint,
- * bekommt jetzt eine eigene, von Rot (--color-danger-*/--persona-*)
+ * bekommt jetzt eine eigene, von Rot (--color-danger-* bzw. --persona-*)
  * unabhängige Bedeutung (Auftrag: Rot bleibt ausschließlich Fehler und
  * Persona). Der Persona-Block (F28) bleibt UNVERÄNDERT — eigene, bereits
  * dunkle --persona-*-Tokens, kein F29-Nicht-Ziel-Eingriff.
