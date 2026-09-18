@@ -141,6 +141,9 @@ console.log('\n=== F26-Jarvis-Check ===\n')
     { pfad: 'schemas/examples/ergebnis-jarvis.invalid-auftrag-ohne-text.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-jarvis.invalid-auftrag-vorschlag-ohne-auftrag.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-jarvis.invalid-aktion-ohne-aktion.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-jarvis.valid-aktion-anpassen.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/ergebnis-jarvis.invalid-aktion-anpassen-mit-workitem.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-jarvis.invalid-aktion-anpassen-ohne-bezug.json', sollGueltigSein: false },
   ]
   for (const { pfad, sollGueltigSein } of beispiele) {
     const obj = JSON.parse(readFileSync(pfad, 'utf-8'))
@@ -153,7 +156,7 @@ console.log('\n=== F26-Jarvis-Check ===\n')
     }
   }
   if (befunde.length === befundeVor) {
-    console.log('✓ (b): schemas/ergebnis-jarvis.schema.json gültiges JSON; beide valid*.json erfüllen validiereErgebnisJarvis, alle fünf invalid-*.json verletzen je eine benannte Regel.')
+    console.log('✓ (b): schemas/ergebnis-jarvis.schema.json gültiges JSON; alle drei valid*.json erfüllen validiereErgebnisJarvis, alle sieben invalid-*.json verletzen je eine benannte Regel.')
   }
 }
 

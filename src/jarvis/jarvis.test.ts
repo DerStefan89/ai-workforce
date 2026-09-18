@@ -136,6 +136,21 @@ test("validiereErgebnisJarvis: art 'aktion' ohne 'aktion' wird gemeldet (QA-Befu
   assert.ok(validiereErgebnisJarvis({ art: 'aktion', antwort: 'Ich öffne das Workboard.' }).some((v) => v.includes("'aktion' fehlt — bei art 'aktion' Pflicht")))
 })
 
+test("validiereErgebnisJarvis: aktion.typ 'anpassen' mit bezug.auftrag_id liefert keine Verstöße", () => {
+  const daten = { art: 'aktion', antwort: 'Ich fordere eine Anpassung an.', aktion: { typ: 'anpassen', ziel: 'auftrag-1' }, bezug: { auftrag_id: 'auftrag-1' } }
+  assert.deepStrictEqual(validiereErgebnisJarvis(daten), [])
+})
+
+test("validiereErgebnisJarvis: aktion.typ 'anpassen' mit bezug.workitem statt auftrag_id wird gemeldet", () => {
+  const daten = { art: 'aktion', antwort: 'Ich fordere eine Anpassung an.', aktion: { typ: 'anpassen', ziel: 'F-123' }, bezug: { workitem: 'F-123' } }
+  assert.ok(validiereErgebnisJarvis(daten).some((v) => v.includes("'bezug.auftrag_id' fehlt — bei aktion.typ 'anpassen' Pflicht")))
+})
+
+test("validiereErgebnisJarvis: aktion.typ 'anpassen' ohne bezug wird gemeldet", () => {
+  const daten = { art: 'aktion', antwort: 'Ich fordere eine Anpassung an.', aktion: { typ: 'anpassen', ziel: 'auftrag-1' } }
+  assert.ok(validiereErgebnisJarvis(daten).some((v) => v.includes("'bezug.auftrag_id' fehlt — bei aktion.typ 'anpassen' Pflicht")))
+})
+
 test('baueJarvisAuftragstext: enthält die Nutzer-Nachricht wörtlich am Ende', () => {
   const text = baueJarvisAuftragstext('Was blockiert mich gerade?')
   assert.ok(text.endsWith('Was blockiert mich gerade?'))

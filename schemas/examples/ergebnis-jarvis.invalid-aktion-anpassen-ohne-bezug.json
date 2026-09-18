@@ -1,0 +1,5 @@
+{
+  "art": "aktion",
+  "antwort": "Ich fordere eine Anpassung an, sage aber nicht wofür.",
+  "aktion": { "typ": "anpassen", "ziel": "auftrag-1" }
+}

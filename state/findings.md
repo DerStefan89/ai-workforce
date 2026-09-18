@@ -7632,3 +7632,164 @@ für die Rolle 'jarvis' aus der Worker-Auflösung ausschließen, bis das
 Schema kompatibel ist.
 Feature/Run: F26 WS-2a, realer curl-Nachweis gegen den echten
 Leitstand-Prozess, 17.09.2026.
+
+**F-424** · `TECH_DEBT` · P3 · offen
+Titel: `EnterWorktree` scheitert am Windows-Pfadlängenlimit gegen tief
+verschachtelte `kontrollzustand/lineage-entscheidung-*-schritt-*-ausfuehrung/checkpoints/*.json`-Pfade.
+Beschreibung: Real reproduziert beim Versuch, für den Perf-Fix
+fix/zustand-poll-kosten einen Worktree von origin/main anzulegen: Git
+brach den Checkout mit mehreren `Filename too long`-Meldungen ab
+(z. B. `kontrollzustand/lineage-entscheidung-workflow-router-<uuid>-schritt-1-ausfuehrung/checkpoints/1-<64-Zeichen-Hash>.json`)
+und endete mit `fatal: Could not reset index file to revision 'HEAD'`
+— kein Teil-Worktree blieb zurück (`git worktree list` zeigte danach
+nur die vorher bestehenden Einträge). Ursache: die Namenskonvention
+`lineage-entscheidung-<artefaktId>` plus verschachtelte
+Workflow-Schritt-IDs plus 64-stelliger Hash im Dateinamen überschreitet
+Windows' klassisches MAX_PATH (260 Zeichen), sobald der Worktree-Pfad
+selbst schon einige Verzeichnisebenen tief liegt (`.claude/worktrees/<name>/...`).
+Fundstelle: keine einzelne Quelldatei — Zusammenspiel aus
+`src/lineage-registry/index.ts` (`laufId()`-Namenskonvention
+`lineage-${artefaktId}`), `src/checkpoint-store/index.ts`
+(Dateinamensmuster `<sequenz>-<64-stelliger-hash>.json`) und dem
+Windows-Dateisystem selbst.
+Auswirkung: mittel — betrifft ausschließlich das Anlegen NEUER
+Worktrees über bereits gewachsene reale `kontrollzustand/`-Bestände
+mit tief verschachtelten Workflow-Entscheidungsketten; ein normaler
+`git checkout`/`git stash` im bestehenden Arbeitsverzeichnis ist nicht
+betroffen (dort greift Windows' Long-Path-Unterstützung, sofern
+aktiviert, oder die Datei liegt bereits vor und wird nicht neu
+angelegt). Umgangen in fix/zustand-poll-kosten durch Verzicht auf
+Worktree (Stash statt Branch-Wechsel im bestehenden Verzeichnis).
+Maßnahme: keine akut. Optionen für eine künftige Iteration: `git config
+core.longpaths true` für dieses Repo dokumentieren (Windows-spezifische
+Falle, Kandidat für den „Bekannte Fallen"-Abschnitt in CLAUDE.md), oder
+die Namenskonvention für WS-2a/F17-artige verschachtelte
+Workflow-Schritt-Entscheidungsketten kürzen.
+Feature/Run: fix/zustand-poll-kosten, Vorbereitung (EnterWorktree-Versuch),
+17.09.2026.
+
+**F-425** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `commit-guard` scheint den Freigabe-Zeitstempel gegen UTC statt
+gegen die lokale Zeitzone zu prüfen — jeder in Ortszeit geschriebene
+Zeitstempel auf einem UTC+X-System kann als „in der Zukunft" verworfen
+werden.
+Beschreibung: Beim Versuch, `state/freigabe-commit.md` für einen
+harmlosen `git stash` zu erneuern, schrieb Stefan `Freigegeben:
+2026-09-17T22:22:20` (Ortszeit, System auf UTC+2, `date` bestätigte
+`Thu Sep 17 22:22:23 2026` lokal vs. `Thu Sep 17 20:22:22 UTC 2026`).
+`git stash` wurde daraufhin mit `commit-guard: Zeitstempel in
+state/freigabe-commit.md liegt in der Zukunft — Uhr oder Zeitzone
+prüfen — verweigert` abgelehnt, obwohl der Zeitstempel zum
+Schreibzeitpunkt in der Vergangenheit lag (nur eben nicht in UTC).
+NICHT selbst am Hook-Quelltext verifiziert (`.claude/settings.json` und
+vermutlich das Hook-Skript selbst sind für das Modell nicht lesbar/
+schreibbar, Team-Policy) — diese Diagnose beruht ausschließlich auf dem
+beobachteten Fehlertext und der lokalen/UTC-Zeitdifferenz, nicht auf
+gelesenem Hook-Code.
+Fundstelle: vermutlich der `commit-guard`-Hook selbst (Pfad unbekannt,
+außerhalb der Lesereichweite des Modells).
+Auswirkung: mittel — auf einem System mit positivem UTC-Offset (wie
+hier UTC+2) kann JEDE frisch in Ortszeit geschriebene Freigabe je nach
+Tageszeit als „in der Zukunft" abgelehnt werden, ohne dass ein echter
+Zeit-/Zonenfehler vorliegt. Ein Zeitstempel mit explizitem `Z`- oder
+Offset-Suffix umging das Problem im selben Auftrag (fix/zustand-poll-kosten,
+zweite Freigabe wurde mit `Z`-Suffix akzeptiert).
+Maßnahme: Hook-Code gegenchecken (Stefan/Team, nicht das Modell) — falls
+der Vergleich tatsächlich einen naiven `new Date(ortszeit-string)` ohne
+Zeitzonen-Normalisierung gegen `Date.now()` (UTC) macht, entweder auf
+explizites Offset-Parsing umstellen oder in der Fehlermeldung/Doku
+explizit ein `Z`- oder Offset-Suffix verlangen.
+Feature/Run: fix/zustand-poll-kosten, während der Bearbeitung, 17.09.2026.
+
+**F-426** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: `git diff` über die Bridge hinterließ ein reales `.git/index.lock`
+trotz Allowlist-Status für den Befehl.
+Beschreibung: Vom Technical Challenger (unabhängige Verifikation via
+Bridge) bei der Prüfung des Diffs zu fix/zustand-poll-kosten beobachtet
+— nicht selbst vom Modell in dieser Sitzung reproduziert. Ursprünglich
+vermutete Ursache (Pager-Hang, Aufruf ohne `--no-pager`) durch den
+Technical Challenger getestet und verworfen — `--no-pager` half NICHT.
+Wahrscheinlichere Ursache: Arbeitsbaum-Scan-Kosten — `kontrollzustand/`
+trägt 399 unversionierte Top-Level-Verzeichnisse, jeder `diff`/`status`
+muss sie über den langsamen Bridge-Mount durchsuchen, was den Befehl über
+ein Zeitfenster hinaus verzögern und so das Anlegen von
+`.git/index.lock` begünstigen kann. Keine weiteren Details (genauer
+Befehl, Fehlermeldung, ob die Lock-Datei manuell entfernt werden musste)
+aus der Verifikationsmeldung ersichtlich.
+Fundstelle: unbekannt — vermutlich die Bridge-seitige Befehlsausführung
+von `git diff`, nicht dieses Repo selbst.
+Auswirkung: potenziell hoch, wenn reproduzierbar — ein liegen
+gebliebenes `.git/index.lock` blockiert JEDEN nachfolgenden
+schreibenden Git-Befehl (`commit`, `add`, `stash`) in demselben
+Arbeitsverzeichnis, bis die Lock-Datei von Hand entfernt wird.
+Maßnahme: durch den Technical Challenger/Stefan zu reproduzieren und
+einzugrenzen (genauer Befehl, Bridge-Konfiguration); naheliegender Fix
+ist, die Zahl der unversionierten `kontrollzustand/`-Top-Level-Verzeichnisse
+zu reduzieren (z. B. Archivierung/Kompaktierung alter Läufe) oder den
+Bridge-Mount-Scan für `git`-Befehle zu beschleunigen. Nicht vom Modell aus
+dieser Sitzung heraus behebbar — die Bridge-Ausführungsschicht liegt
+außerhalb seiner Werkzeuge.
+Feature/Run: fix/zustand-poll-kosten, Verifikationspass (Technical
+Challenger via Bridge), 17.09.2026.
+
+**F-427** · `TECH_DEBT` · P3 · offen
+Titel: Jarvis setzt `bezug.auftrag_id` bei `aktion.typ 'anpassen'` real auf
+die eigene Chat-Nachricht statt auf den referenzierten Ziel-Auftrag.
+Beschreibung: Real gegen den echten Leitstand-Prozess geprüft (F26 WS-2b,
+Nachricht "Ich habe das fertige Ergebnis von Workflow f15-ws4-l1 … Fordere
+für diesen Workflow eine Anpassung an"): Jarvis lieferte schemakonform
+`{"art":"aktion","aktion":{"typ":"anpassen","ziel":"f15-ws4-l1"},"bezug":
+{"auftrag_id":"jarvis-chat-b4bcc443-…"}}` — `aktion.ziel` benennt den
+Workflow korrekt, `bezug.auftrag_id` zeigt aber auf die AUTOMATISCH von
+`POST /api/chat` für die Chat-Nachricht selbst angelegte Auftrags-ID, nicht
+auf `5efe706f-2e88-43c7-a877-c85ef59c9e42` (den tatsächlichen Auftrag hinter
+Workflow `f15-ws4-l1`). Schema/`validiereErgebnisJarvis` können das nicht
+erzwingen (`bezug.auftrag_id` ist ein freier String, keine Referenzprüfung).
+Fundstelle: `src/jarvis/index.ts` (`baueJarvisAuftragstext`, Prompt nennt
+`bezug` nur als "Bezug auf einen bestehenden Auftrag/Workitem", ohne
+Jarvis mitzugeben, woher die tatsächliche Ziel-Auftrags-ID stammt — Jarvis
+kennt sie in diesem Ein-Schuss-Lauf schlicht nicht).
+Auswirkung: gering für den WS-1/WS-2a-Scope (bezug ist dort nur Anzeige),
+aber blockierend für einen künftigen automatisierten WS-2b-Anschluss, der
+`bezug.auftrag_id` ungeprüft zum Aufruf von `POST /api/workflows/<id>/
+abnahme` verwenden wollte — real durchgeführt wurde der Nachweis deshalb
+mit `aktion.ziel` (manuell/durch einen Menschen gelesen), nicht mit
+`bezug.auftrag_id` (Details: `features/F26/nachweis-ws2b-testartefakt.md`).
+Maßnahme: keine akut, WS-2b ist ein eigener, noch offener Bauauftrag
+(`features/F26/feature.md`). Optionen für eine künftige Iteration: Jarvis
+im Kontextpaket die real referenzierbaren Workflow-/Auftrags-IDs mitgeben
+(z. B. über einen `REPO_READ`-Blick auf `GET /api/workflows`), oder
+`aktion.ziel` als die verbindliche Bezugskennung für WS-2b-Aktionen
+festlegen und `bezug` für `aktion`-Ergebnisse als rein informativ
+dokumentieren.
+Feature/Run: F26 WS-2b, realer Chat-Lauf gegen den echten
+Leitstand-Prozess (`jarvis-jarvis-chat-b4bcc443-5441-43ca-9ade-b812de8e9ebb`),
+17.09.2026.
+
+**F-428** · `BUG` · P1 · gelöst
+Titel: requestHandler ohne try/catch — unbehandelter Wurf hing die Anfrage
+endlos statt 500 zu liefern.
+Fundstelle: scripts/leitstand-server.mjs, requestHandler.
+Maßnahme: behoben in fix/zustand-poll-kosten (#179).
+Feature/Run: F26-Begleituntersuchung "Lädt…"-Hänger, 17.09.2026.
+
+**F-429** · `TECH_DEBT` · P2 · gelöst
+Titel: kein AbortController im Workflow-Detail-Poll — eine langsame Anfrage
+konnte den Verbindungspool des Browsers erschöpfen.
+Fundstelle: public/leitstand/api.js, public/leitstand/views/workflows.js.
+Maßnahme: behoben in fix/zustand-poll-kosten (#179).
+Feature/Run: F26-Begleituntersuchung "Lädt…"-Hänger, 17.09.2026.
+
+**F-430** · `PROCESS_IMPROVEMENT` · P3 · gelöst
+Titel: PowerShell curl-Alias (Invoke-WebRequest) löst Sicherheitswarnung statt
+echtem HTTP-Request aus.
+Maßnahme: dokumentiert, künftige TERMINAL-Blöcke nutzen curl.exe.
+Feature/Run: F26-Begleituntersuchung "Lädt…"-Hänger, 17.09.2026.
+
+**F-431** · `BUG` · P1 · gelöst, nativ bestätigt
+Titel: GET /api/zustand las bei jedem Poll die komplette Lauf-Historie neu —
+62,5s gemessen, App-weites Einfrieren.
+Fundstelle: scripts/leitstand-server.mjs, sammleLaeufe/sammleWorkflows.
+Maßnahme: behoben in fix/zustand-poll-kosten (#179), nativ nachgemessen:
+GET /api/zustand jetzt 0,253s (vorher 64,5s).
+Feature/Run: F26-Begleituntersuchung "Lädt…"-Hänger, 17.09.2026.

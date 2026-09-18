@@ -1,0 +1,6 @@
+{
+  "art": "aktion",
+  "antwort": "Ich fordere eine Anpassung an, benenne aber nur ein Workitem statt eines Auftrags.",
+  "aktion": { "typ": "anpassen", "ziel": "F-123" },
+  "bezug": { "workitem": "F-123" }
+}
