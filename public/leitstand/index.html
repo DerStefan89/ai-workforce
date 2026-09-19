@@ -11,30 +11,73 @@
 </head>
 <body>
   <div id="shell">
+    <!-- F29 WS-D2 (Auftrag Punkt B, nach docs/design/referenz/01-workboard.png): Wortmarke+Tagline
+         links, Particle-Drift-Hintergrund (particle-drift.js, shell.js, jetzt in Rot statt
+         Cyan/Rot) hinter allem, in der Mitte die bestehende F28-Persona (unverändert, größer und
+         randlos per mask-image ausgeblendet — style.css), rechts Zitat + Nutzerkarte mit
+         Dropdown (Status-Chip + "Animationen reduzieren", shell.js/persona.js).
+         #persona-platzhalter/#persona-kopf-oeffner bleiben UNVERÄNDERT der Mount-/Klick-Punkt von
+         persona.js/shell.js (F28-Nicht-Ziel: keine zweite Mount-Logik). -->
     <header id="shell-kopf">
-      <!-- F29 WS-1a: die Persona-Kachel ist jetzt Auslöser der Startfläche (#/start) statt
-           reiner Anzeige — #persona-platzhalter bleibt UNVERÄNDERT der Mount-Punkt von
-           persona.js (F28), nur um einen <button> ergänzt. shell.js verdrahtet den Klick. -->
+      <div id="shell-banner-partikel" class="shell-banner-partikel" aria-hidden="true"></div>
+      <div class="shell-banner-marke">
+        <p class="shell-wortmarke">JARVIS</p>
+        <p class="shell-wortmarke-zusatz">AI WORKFORCE</p>
+        <p class="shell-tagline">Intelligenz.<br />Aus Fokus.<br />Echte Ergebnisse.</p>
+      </div>
       <button type="button" id="persona-kopf-oeffner" class="persona-oeffner" aria-label="Startfläche öffnen">
         <div id="persona-platzhalter" aria-hidden="true"></div>
       </button>
-      <h1 class="shell-titel">Leitstand</h1>
-      <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js. -->
-      <div id="projekt-kontext" class="projekt-kontext"></div>
-      <!-- F29 WS-1a: Umschalter der rechten Chat-Spalte (shell.js), Zustand in localStorage. -->
-      <button type="button" id="chat-umschalter" class="chat-umschalter" aria-pressed="false" aria-controls="shell-chat-spalte">
-        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
-        <span>Chat</span>
-      </button>
+      <div class="shell-banner-rechts">
+        <div class="shell-zitat-block">
+          <p class="shell-zitat">„Ich denke mit dir. Heute. Für morgen."</p>
+          <p class="shell-zitat-urheber">— JARVIS</p>
+        </div>
+        <!-- F29 WS-D2: Dropdown der Nutzerkarte — Inhalt (Status-Chip-Host, "Animationen
+             reduzieren"-Schalter) wird von persona.js dorthin gemountet (s. dessen Kommentar),
+             Öffnen/Schließen verdrahtet shell.js (initNutzerkartenDropdown). Kein neuer
+             Schreibpfad — reine Menü-Mechanik. -->
+        <div class="shell-nutzerkarte-wrapper">
+          <button type="button" id="nutzerkarte-oeffner" class="shell-nutzerkarte" aria-haspopup="true" aria-expanded="false" aria-controls="nutzerkarte-dropdown">
+            <span class="shell-nutzer-avatar" aria-hidden="true">S</span>
+            <span class="shell-nutzer-info">
+              <span class="shell-nutzer-name">Stefan</span>
+              <span class="shell-nutzer-unterzeile">Build what's real.</span>
+            </span>
+            <svg class="nutzerkarte-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <span id="nutzerkarte-status-chip-host" class="nutzerkarte-status-chip-host"></span>
+          <div id="nutzerkarte-dropdown" class="nutzerkarte-dropdown" hidden></div>
+        </div>
+      </div>
     </header>
+
+    <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js.
+         F29 WS-D2 (Auftrag Punkt B): die Leiste selbst entfällt aus dem Layout (per CSS
+         ausgeblendet) — das aktive Projekt steht jetzt im Fokus-Panel (views/workboard.js),
+         "Projekt wechseln" in der Sidebar-Schnellzugriff-Box unten. Element bleibt im DOM, sonst
+         wirft projekt-kontext.js' renderProjektKontext() beim nächsten Projektwechsel (Auftrag:
+         keine Änderung an dieser Datei). -->
+    <div id="projekt-kontext" class="projekt-kontext"></div>
 
     <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
 
     <div id="shell-koerper">
+      <!-- F29 WS-D2 (Auftrag Punkt B): Reihenfolge Workboard, Dashboard, Projekte, Projekt, Chat,
+           Runs, Capabilities, Attention (vorher Dashboard zuerst) — Workboard ist seit diesem
+           Auftrag die Startansicht. -->
       <nav id="shell-nav" aria-label="Hauptnavigation">
+        <a href="#/workboard" data-nav-view="workboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="5.5" height="16" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="9.5" y="4" width="5.5" height="10" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="15.5" y="4" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Workboard</span>
+        </a>
         <a href="#/dashboard" data-nav-view="dashboard">
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
           <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+          <span class="nav-label">Projekte</span>
         </a>
         <a href="#/projekt" data-nav-view="projekt">
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
@@ -43,14 +86,6 @@
         <a href="#/chat" data-nav-view="chat">
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
           <span class="nav-label">Chat</span>
-        </a>
-        <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Projekte</span>
-        </a>
-        <a href="#/workboard" data-nav-view="workboard">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="5.5" height="16" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="9.5" y="4" width="5.5" height="10" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="15.5" y="4" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Workboard</span>
         </a>
         <a href="#/runs" data-nav-view="runs">
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="M10 8.5l6 3.5-6 3.5v-7Z" fill="currentColor" /></svg>
@@ -64,6 +99,41 @@
           <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4a5.5 5.5 0 0 0-5.5 5.5v3.2L5 16h14l-1.5-3.3V9.5A5.5 5.5 0 0 0 12 4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /><path d="M10 18.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
           <span class="nav-label">Attention</span>
         </a>
+
+        <!-- F29 WS-D2 (Auftrag Punkt B): roter Orb-Ausschnitt aus persona-gesicht.webp (dasselbe
+             Bild, derselbe Zuschnitt wie die Badge-Persona — --persona-badge-zoom/-anker-y,
+             style.css — kein neues Bild) plus Slogan. Rein dekorativ, keine Persona-Instanz (kein
+             data-persona-zustand, kein montierePersona()-Aufruf — F28-Nicht-Ziel). -->
+        <div class="sidebar-orb-block">
+          <div class="sidebar-orb" aria-hidden="true">
+            <img src="/persona-gesicht.webp" alt="" class="sidebar-orb-bild" />
+            <div class="sidebar-orb-tint"></div>
+          </div>
+          <p class="sidebar-slogan">Bessere Menschen.<br />Größere Möglichkeiten.</p>
+        </div>
+
+        <!-- F29 WS-D1/D2 (Auftrag Punkt 1 bzw. B): Schnellzugriff-Box — "+ Neues Projekt"
+             (deaktiviert, kommt bald), "Projekt wechseln" (bestehende Funktion,
+             projekt-kontext.js) und der Chat-Spalten-Umschalter (bestehende Funktion, shell.js),
+             plus die zuletzt geöffneten Projekte/Workflows (zuletzt-geoeffnet.js, echte, lokal
+             gemerkte Navigationshistorie dieser Sitzung — kein neuer Server-Schreibpfad). -->
+        <div id="shell-schnellzugriff">
+          <p class="schnellzugriff-titel">Schnellzugriff</p>
+          <button type="button" id="schnellzugriff-neues-projekt" class="schnellzugriff-eintrag" disabled title="kommt bald">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+            <span>Neues Projekt</span>
+          </button>
+          <button type="button" id="schnellzugriff-projekt-wechseln" class="schnellzugriff-eintrag">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
+            <span>Projekt wechseln</span>
+          </button>
+          <!-- F29 WS-1a: Umschalter der rechten Chat-Spalte (shell.js), Zustand in localStorage. -->
+          <button type="button" id="chat-umschalter" class="chat-umschalter schnellzugriff-eintrag" aria-pressed="false" aria-controls="shell-chat-spalte">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
+            <span>Chat</span>
+          </button>
+          <div id="schnellzugriff-verlauf" class="schnellzugriff-verlauf"></div>
+        </div>
       </nav>
 
       <main id="shell-hauptbereich">
@@ -73,8 +143,11 @@
 
         <section id="view-dashboard" data-view="dashboard" hidden></section>
 
+        <!-- F29 WS-D2 (Auftrag Punkt E): entfernter Hinweistext — Ausnahme vom sonst rein
+             lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real
+             (Auftrag anlegen, Lauf starten). -->
         <section id="view-projekt" data-view="projekt" hidden>
-          <p class="hinweis">Ausnahme vom sonst rein lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real (Auftrag anlegen, Lauf starten).</p>
+          <p class="hinweis">Auftrag anlegen und einen Lauf starten.</p>
 
           <section id="auftrag-start" class="card">
             <h2>Auftrag &amp; Start</h2>
@@ -120,32 +193,70 @@
           </section>
         </section>
 
+        <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b
+             workboard-filter/-liste). F29 WS-D2 (Auftrag Punkt D): Kopf-Panel mit Icon, Titel,
+             Untertitel, "+ Neues Projekt" (deaktiviert, kommt bald) und "Neu laden" als
+             Icon-Button; je Karte in #projekte-uebersicht-liste jetzt eine Fokus-Panel-artige
+             Karte (views/projekte-uebersicht.js projektKarte) statt einer Listenzeile. Rein
+             lesend bis auf den Kartenklick (setzt nur den Client-Präfix, kein Server-Schreibpfad)
+             — Details siehe Datei-Kommentar dort. -->
         <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
-          <p class="hinweis">Karten je Registereintrag aus <code>GET /api/projekte</code> (F25 WS-2a) — rein lesend, kein Schreibpfad. "Öffnen" setzt das aktive Projekt für alle anderen Ansichten (Kontext-Anzeige in der Kopfzeile) und wechselt zum Dashboard. Keine Health-Spalte (WS-3, nicht dieser Auftrag).</p>
-          <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b workboard-filter/-liste). -->
           <div class="card">
-            <button type="button" id="projekte-uebersicht-neu-laden" class="btn">Neu laden</button>
-            <div id="projekte-uebersicht-liste"></div>
+            <div class="projekte-kopf">
+              <div class="card-kopf">
+                <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
+                <div>
+                  <h2>Projekte</h2>
+                  <p class="projekte-kopf-untertitel">Deine Vorhaben im Überblick.</p>
+                </div>
+              </div>
+              <div class="projekte-kopf-aktionen">
+                <button type="button" class="btn" disabled title="kommt bald">+ Neues Projekt</button>
+                <button type="button" id="projekte-uebersicht-neu-laden" class="btn projekte-neu-laden-btn" aria-label="Neu laden">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 0 1 14-5.2M20 12a8 8 0 0 1-14 5.2M15 5h4V1M9 19H5v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+              </div>
+            </div>
+            <div id="projekte-uebersicht-liste" class="projekte-liste"></div>
           </div>
         </section>
 
+        <!-- F29 WS-D1/D2 (Auftrag Punkt 4 bzw. C): Workboard ist seit WS-D2 die Startansicht.
+             Bento-Übersicht aus dem bestehenden Zustands-Aggregat (Fokus/aktives Projekt,
+             Fortschritt, letzter Stand, Schnellzugriff, AI-Workflow-Pipeline+Aktionen) — NUR echte
+             Daten, befüllt von workboard.js; Leerzustand, wo eine Quelle fehlt. Darunter
+             unverändert die Findings-/Feature-Akten-Projektion aus state/findings.md bzw.
+             features/*/feature.md (F21 WS-1), rein lesend — Auftrag Punkt E: der frühere
+             Erklärtext dazu (Endpunkt, Scope-Hinweis) steht jetzt hier als Kommentar statt in der
+             UI, dort nur noch ein kurzer Untertitel. -->
         <section id="view-workboard" data-view="workboard" hidden>
-          <p class="hinweis">Reine Projektion über <code>state/findings.md</code> und <code>features/*/feature.md</code> (F21 WS-1) — rein lesend, kein Schreibpfad (Priorität ändern, Workitem schließen ist F23-Scope).</p>
+          <div id="workboard-bento"></div>
+
           <div id="workboard-befunde"></div>
 
           <!-- F29 WS-1b: Filter und Liste gemeinsam in einer Karte statt zweier unumrandeter
-               Divs — Muster der Referenz-Vorlage ("Findings"-Ansicht). -->
+               Divs — Muster der Referenz-Vorlage ("Findings"-Ansicht). F29 WS-D2 (Auftrag Punkt
+               C): Panel-Kopf "Workitems" mit Icon, Filter als Chips statt Selects (Muster
+               04-findings.png) — workboard.js befüllt/bedient sie über .filter-chip/aria-pressed
+               statt <select>.value. -->
           <div class="card">
+            <div class="card-kopf">
+              <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
+              <h2>Workitems</h2>
+            </div>
             <div id="workboard-filter">
-              <label for="workboard-filter-typ">Typ</label>
-              <select id="workboard-filter-typ"><option value="">Alle</option></select>
-
-              <label for="workboard-filter-status">Status</label>
-              <select id="workboard-filter-status"><option value="">Alle</option></select>
-
-              <label for="workboard-filter-prioritaet">Priorität</label>
-              <select id="workboard-filter-prioritaet"><option value="">Alle</option></select>
-
+              <div class="filter-chip-gruppe">
+                <span class="filter-chip-gruppe-label">Typ</span>
+                <div id="workboard-filter-typ" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+              </div>
+              <div class="filter-chip-gruppe">
+                <span class="filter-chip-gruppe-label">Status</span>
+                <div id="workboard-filter-status" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+              </div>
+              <div class="filter-chip-gruppe">
+                <span class="filter-chip-gruppe-label">Priorität</span>
+                <div id="workboard-filter-prioritaet" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+              </div>
               <button type="button" id="workboard-neu-laden" class="btn">Neu laden</button>
             </div>
 
@@ -162,18 +273,22 @@
           </section>
         </section>
 
+        <!-- F29 WS-D2 (Auftrag Punkt E): entfernte Hinweistexte — überwiegend lesende Ansicht von
+             kontrollzustand/ (F1-Checkpoints, F2-Lineage); Ausnahmen, die real schreiben: die
+             Entscheidungs-/Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten,
+             Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen). -->
         <section id="view-runs" data-view="runs" hidden>
-          <p class="hinweis">Überwiegend lesende Ansicht von <code>kontrollzustand/</code> — F1-Checkpoints und F2-Lineage. Ausnahmen, die real schreiben: die Entscheidungs- und Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten, Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).</p>
-
+          <!-- Startfehler: flüchtige Projektion (GET /api/startfehler) — geht bei
+               Serverneustart verloren. -->
           <section id="startfehler-abschnitt" class="card">
             <h2>Startfehler</h2>
-            <p class="hinweis">Flüchtige Projektion (<code>GET /api/startfehler</code>) — geht bei Serverneustart verloren.</p>
             <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
           </section>
 
+          <!-- Workflows: Projektion von GET /api/workflows. Die Lage je Workflow ist das
+               Verdikt des Servers (naechster), nicht eine eigene Rechnung der Oberfläche. -->
           <section id="workflows-abschnitt">
             <h2>Workflows</h2>
-            <p class="hinweis">Projektion von <code>GET /api/workflows</code>. Die Lage je Workflow ist das Verdikt des Servers (<code>naechster</code>), nicht eine eigene Rechnung der Oberfläche. Bedienung im Detail unten.</p>
             <div id="workflows"></div>
           </section>
 
@@ -207,8 +322,13 @@
           </section>
         </section>
 
+        <!-- F29 WS-D2 (Auftrag Punkt E): entfernter Hinweistext — Library/Coverage/Rollen-
+             Besetzung sind reine Projektionen über ressourcen.json, ROLLENVERTRAEGE,
+             workflow-vorlagen/*.json und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27
+             WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen,
+             freigabepflichtigen Auftrag an, kein direktes Schreiben nach ressourcen.json. -->
         <section id="view-capabilities" data-view="capabilities" hidden>
-          <p class="hinweis">Library/Coverage/Rollen-Besetzung sind reine Projektionen über <code>ressourcen.json</code>, <code>ROLLENVERTRAEGE</code>, <code>workflow-vorlagen/*.json</code> und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27 WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen, freigabepflichtigen Auftrag an, kein direktes Schreiben nach <code>ressourcen.json</code> von hier aus.</p>
+          <p class="hinweis">Werkzeuge, ihre Abdeckung je Rolle und wer sie zuletzt genutzt hat.</p>
           <p id="capabilities-startvorlage" class="hinweis"></p>
           <button type="button" id="capabilities-neu-laden" class="btn">Neu laden</button>
 
@@ -235,8 +355,12 @@
           </section>
         </section>
 
+        <!-- F29 WS-D2 (Auftrag Punkt E): entfernter Hinweistext — reine Client-Projektion, kein
+             eigener Endpunkt/Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem
+             ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen
+             Abruf beim Betreten dieser Ansicht. -->
         <section id="view-attention" data-view="attention" hidden>
-          <p class="hinweis">Reine Client-Projektion — kein eigener Endpunkt, kein eigener Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen Abruf beim Betreten dieser Ansicht.</p>
+          <p class="hinweis">Alles, was gerade deine Entscheidung braucht.</p>
           <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
 
           <!-- F29 WS-2a: jeder Abschnitt jetzt eine eigene .card (Muster WS-1b workboard-detail) statt .unterabschnitt. -->
@@ -266,17 +390,40 @@
            steuert das hidden-Attribut hier (localStorage-Präferenz ODER aktive Route '#/chat',
            siehe Datei-Kommentar dort). #view-chat trägt bewusst KEIN [data-view] mehr — der
            Router blendet Hauptansichten aus, diese Spalte liegt außerhalb davon (router.js
-           Datei-Kommentar, "ueberlagert"). Inhalt/Verhalten von views/chat.js unverändert. -->
+           Datei-Kommentar, "ueberlagert").
+           F29 WS-D2 (Auftrag Punkt C): kompakte Sprechblasen-Optik (nur die letzten zwei
+           Einträge, "Ganzen Verlauf öffnen" klappt den Rest ein/aus) statt Karten mit
+           Erklärtext — Verhalten (Vorfilter, POST /api/chat, D13, Terminal-Erkennung, Lineage-
+           Persistenz) unverändert, siehe views/chat.js Datei-Kommentar. Statusfragen ("Status",
+           "was braucht mich") werden lokal ohne Serverkontakt beantwortet; alles andere löst
+           einen echten, einmaligen Jarvis-Lauf aus (kein Streaming). -->
       <aside id="shell-chat-spalte" aria-label="Chat" hidden>
         <section id="view-chat">
-          <p class="hinweis">Statusfragen ("Status", "was braucht mich") werden lokal, ohne Serverkontakt beantwortet (deterministischer Vorfilter, F26 WS-2a). Alles andere löst einen echten, einmaligen Jarvis-Lauf aus (<code>POST /api/chat</code>) — kein Streaming, kein Zwischenschritt am Router/an der Freigabe/am Automaten vorbei (E-M4-3). Der Verlauf echter Jarvis-Antworten ist Lineage und übersteht einen Reload; Vorfilter-Antworten und ein nicht erfolgreich beendeter Lauf gelten nur für diese Sitzung.</p>
+          <div class="card-kopf">
+            <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg></span>
+            <h2>Chat mit Jarvis</h2>
+            <span class="chat-online-punkt" aria-hidden="true"></span>
+            <span>Online</span>
+          </div>
           <p id="chat-fehler" class="fehler" hidden></p>
           <div id="chat-verlauf"></div>
-          <label for="chat-eingabe">Nachricht</label>
-          <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
-               ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
-          <textarea id="chat-eingabe" rows="3" maxlength="8000"></textarea>
-          <div><button id="chat-senden" class="btn btn-primary">Senden</button></div>
+          <button type="button" id="chat-ganzen-verlauf-link" class="chat-ganzen-verlauf-link" hidden>Ganzen Verlauf öffnen</button>
+          <div class="chat-eingabe-zeile">
+            <button type="button" class="chat-eingabe-icon-btn" disabled title="Anhänge (kommt bald)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 12.5l6.5-6.5a3 3 0 0 1 4.2 4.2L10.5 18.4a5 5 0 0 1-7-7L12 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+            <label for="chat-eingabe" class="sr-only">Nachricht</label>
+            <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
+                 ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
+            <textarea id="chat-eingabe" rows="1" maxlength="8000" placeholder="Nachricht an Jarvis …"></textarea>
+            <button type="button" class="chat-eingabe-icon-btn" disabled title="Einstellungen (kommt bald)">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18 6l-1.7 1.7M7.7 16.3L6 18M18 18l-1.7-1.7M7.7 7.7L6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
+            </button>
+            <button id="chat-senden" class="chat-senden-btn" aria-label="Senden">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12l16-8-6 8 6 8-16-8Z" fill="currentColor" /></svg>
+            </button>
+          </div>
+          <p class="chat-eingabe-hinweis">Shift + Enter für neue Zeile</p>
         </section>
       </aside>
     </div>

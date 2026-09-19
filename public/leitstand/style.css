@@ -47,20 +47,39 @@
  * gebunden) bleiben bewusst <table> — kein .list-row-Umbau für dichte
  * Datentabellen, kein Eingriff in das gategeprüfte Laufakte-Markup.
  *
+ * F29 WS-D1 (Redesign nach Bildvorlage docs/design/referenz/01-workboard.png):
+ * Rot (--color-brand-*) wird der dominante Rahmen- und Glow-Akzent (Panel-
+ * rahmen, Donuts, Pipeline, Aktivzustände inkl. .btn-primary) — revidiert die
+ * frühere Regel "Rot nur Fehler" (F-442). --color-danger-* bleibt UNVERÄNDERT
+ * eigenständig: eine Fehleranzeige bleibt über Icon/Text unterscheidbar, teilt
+ * sich aber jetzt farblich die Rot-Familie mit dem Marken-Akzent (Auftrag,
+ * bewusste Abweichung von F-442). --color-accent-* (Cyan) bleibt sekundär für
+ * Status/Links (unverändert seit F29 WS-1a). --persona-* (F28) bleibt
+ * unverändert eigenständig, kein Eingriff. Neu: --color-*-rgb-Tripel für
+ * --color-bg/--color-surface (Glasflächen-Gradient, .card) zusätzlich zu den
+ * bereits bestehenden --color-accent-rgb/--persona-*. .card trägt seither
+ * einen Verlaufs-/Glasgrund plus weichen Rot-Glow-Rahmen (.card-kopf für den
+ * neuen Icon-Kopf, nur von den WS-D1-Bento-Karten und der Shell selbst
+ * genutzt — die acht übrigen Views behalten ihren Inhalt unverändert, Auftrag
+ * Punkt 4: "kein Umbau ihres Inhalts", nur die CSS-Fläche wandert automatisch
+ * mit, weil sie an .card selbst hängt).
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
 
 :root {
-  /* ─── Farbe — Shell (F20, F29 WS-1a dunkel invertiert) ─── */
-  --color-bg: #0b0d10;
-  --color-surface: #14171c;
-  --color-text: #e7e9ec;
-  --color-text-muted: #9aa2ad;
-  --color-text-subtle: #767d87;
-  --color-border: #2b3038;
-  --color-border-subtle: #22262d;
-  --color-surface-muted: #1c2027;
+  /* ─── Farbe — Shell (F20, F29 WS-1a dunkel invertiert; F29 WS-D2 auf Navyblau-Schwarz
+     umgefärbt statt Grauschwarz, Auftrag Punkt B — dieselben Tokennamen, nur die Werte drehen
+     leicht ins Blaue statt ins neutrale Grau; keine neue Bedeutung, kein neues Token nötig). ─── */
+  --color-bg: #060811;
+  --color-surface: #0d1324;
+  --color-text: #e8ecf8;
+  --color-text-muted: #98a2c4;
+  --color-text-subtle: #6d769a;
+  --color-border: #232d4d;
+  --color-border-subtle: #182036;
+  --color-surface-muted: #131b32;
   --color-success-bg: #123322;
   --color-success-text: #4ade80;
   --color-danger-bg: #3a1414;
@@ -69,15 +88,36 @@
   --color-warning-text: #ffb84d;
   --color-info-bg: #142a3a;
   --color-info-text: #7cc3ff;
+  --color-bg-rgb: 6, 8, 17;
+  --color-surface-rgb: 13, 19, 36;
 
   /* ─── Farbe — interaktiver Akzent, Cyan (F29 WS-1a, neu) ───
-     Einzige Stelle im Leitstand, an der aktive Navigation, Links, Fokusring
-     und Primärschaltflächen hängen — Rot bleibt ausschließlich Fehler
-     (--color-danger-*) und Persona (--persona-*, unten unverändert). */
+     Seit F29 WS-D1 SEKUNDÄR: Status/Links/Fokusring. Aktive Navigation und
+     Primärschaltflächen sind seither --color-brand-* (unten) — Rot ist jetzt
+     der dominante Akzent, Cyan bleibt für alles, was ausdrücklich NICHT der
+     Hauptakzent sein soll (Auftrag: Fehler bleiben über Icon/Text
+     unterscheidbar, nicht mehr allein über eine für Rot reservierte Farbe). */
   --color-accent: #22d3ee;
   --color-accent-strong: #67e8f9;
   --color-accent-rgb: 34, 211, 238;
   --color-accent-text: #06252b;
+
+  /* ─── Farbe — Marken-Akzent, Rot (F29 WS-D1, neu) ───
+     Dominanter Rahmen-/Glow-/Aktivzustand-Akzent (Panelrahmen, Donuts,
+     Pipeline, aktive Navigation, .btn-primary) — löst dieselbe Rolle ab, die
+     vorher --color-accent (Cyan) trug. Bewusst eine eigene, hellere Rot-
+     Nuance statt --color-danger-* bzw. --persona-* wiederzuverwenden: beide
+     bleiben für ihre eigene, unveränderte Bedeutung reserviert (Fehler bzw.
+     Persona-Zustand), ein gemeinsames Token für drei Bedeutungen würde sie
+     wieder vermischen — genau das, was F29 WS-1a für Cyan/Danger bereits
+     einmal getrennt hat. */
+  --color-brand: #ff3b4a;
+  --color-brand-strong: #ff6b6b;
+  --color-brand-rgb: 255, 59, 74;
+  --color-brand-strong-rgb: 255, 107, 107;
+  --color-brand-text: #2a0508;
+  --color-brand-glow: rgba(var(--color-brand-rgb), 0.45);
+  --color-brand-glow-soft: rgba(var(--color-brand-rgb), 0.18);
 
   /* ─── Typografie (F29 WS-1a, neu) ───
      Werte 1:1 aus den vorher verstreuten Literalen übernommen (keine
@@ -129,9 +169,11 @@
   --motion-awakening: 1200ms;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* ─── Layout-Grundmaße Shell (F29 WS-1a, neu) ─── */
+  /* ─── Layout-Grundmaße Shell (F29 WS-1a: Kopf/Nav; F29 WS-D1: Banner-Höhe für
+     die neue dreispaltige Bild-Vorlage, docs/design/referenz/01-workboard.png) ─── */
   --shell-kopf-hoehe: 56px;
-  --shell-nav-breite: 64px;
+  --shell-banner-hoehe: 112px;
+  --shell-nav-breite: 200px;
 
   /* F28 (Persona v1): eigene Tokens statt der Shell-Farben oben — die Persona ist die einzige
      "dunkle Insel" im sonst hellen Leitstand (Stefan, 18.09.2026), ihre Farbwelt ist deshalb
@@ -223,10 +265,10 @@ a:focus-visible,
   border: 0;
 }
 
-/* ───────────────────────── Shell — Grundgerüst (F29 WS-1a) ──────────────
-   Kopfzeile (56px, KEIN Bild-Banner — die Persona-Kachel ist das einzige
-   Gesicht), Icon-Navigation links (64px), Hauptbereich, rechte
-   Chat-Spalte. Ersetzt die vorherige Textnavigation mit border-bottom. */
+/* ───────────────────────── Shell — Grundgerüst (F29 WS-1a, Banner F29 WS-D1) ──
+   Bild-Banner (--shell-banner-hoehe, Wortmarke/Persona/Zitat+Nutzerkarte,
+   Particle-Drift-Hintergrund), beschriftete Navigation links, Hauptbereich,
+   rechte Chat-Spalte (ab 1280px dauerhaft sichtbar, s.u.). */
 #shell {
   display: flex;
   flex-direction: column;
@@ -234,39 +276,265 @@ a:focus-visible,
 }
 
 #shell-kopf {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2xl);
-  min-height: var(--shell-kopf-hoehe);
+  min-height: var(--shell-banner-hoehe);
   padding: 0 var(--space-2xl);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  flex-wrap: wrap;
+  overflow: hidden;
+  isolation: isolate;
 }
 
-.shell-titel {
+/* Particle-Drift-Hintergrund (F29 WS-D1, particle-drift.js) — hinter und um
+   die Persona, unter der gesamten Bannerzeile. isolation: isolate oben
+   verhindert, dass der negative z-index hier aus dem Banner "ausbricht". */
+.shell-banner-partikel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.shell-banner-marke,
+.shell-banner-rechts,
+.persona-oeffner {
+  position: relative;
+  z-index: 1;
+}
+
+.shell-banner-marke {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+
+/* F29 WS-D2 (Auftrag Punkt B): "JARVIS" groß und gesperrt, "AI WORKFORCE" darunter in Rot,
+   danach die dreizeilige Tagline in Cyan/kursiv/gesperrt — drei eigenständige Zeilen statt der
+   WS-D1-Fassung (Wortmarke + kleiner Zusatz in einer Zeile, einzeilige Tagline). */
+.shell-wortmarke {
   margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: 600;
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.shell-wortmarke-zusatz {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-brand-strong);
+}
+
+.shell-tagline {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--color-accent);
 }
 
 .persona-oeffner {
   background: none;
   border: none;
   padding: 0;
-  margin: 0;
+  margin: 0 auto;
   line-height: 0;
-  border-radius: 50%;
   cursor: pointer;
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
 }
 
-.projekt-kontext {
+/* F29 WS-D2 (Auftrag Punkt B): "GROSS und mittig, randlos, ohne Kreis... läuft per mask-image
+   (radialer Verlauf) in den Banner aus" — löst die WS-D1-Kreis-Kachel ab. border-radius/overflow
+   der .persona-host-Basisregel (weiter unten) werden hier gezielt für DIESE Instanz
+   überschrieben; die radiale Maske ersetzt den harten Kreisrand durch einen weichen Verlauf ins
+   Banner. Derselbe Zuschnitt (--persona-badge-zoom/-anker-y) bleibt aktiv — Auge/Gesichtsausschnitt
+   unverändert, nur größer und ohne harte Kante. */
+#shell-kopf #persona-platzhalter {
+  --persona-groesse: min(150px, 60vw);
+  border-radius: 0;
+  overflow: visible;
+  mask-image: radial-gradient(circle at 50% 50%, black 45%, transparent 78%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, black 45%, transparent 78%);
+}
+
+.shell-banner-rechts {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  font-size: var(--font-size-md);
+  gap: var(--space-xl);
+  min-width: 0;
+}
+
+.shell-zitat-block {
+  text-align: right;
+  max-width: 22rem;
+  min-width: 0;
+}
+
+.shell-zitat {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-style: italic;
   color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.shell-zitat-urheber {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-brand-strong);
+}
+
+.shell-nutzerkarte-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.shell-nutzerkarte {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.shell-nutzerkarte[aria-expanded='true'] {
+  border-color: var(--color-accent);
+}
+
+.shell-nutzer-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-brand-glow-soft);
+  color: var(--color-brand-strong);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.shell-nutzer-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.shell-nutzer-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.shell-nutzer-unterzeile {
+  font-size: var(--font-size-xs);
+  font-style: italic;
+  color: var(--color-text-subtle);
+}
+
+.nutzerkarte-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+
+.shell-nutzerkarte[aria-expanded='true'] .nutzerkarte-chevron {
+  transform: rotate(180deg);
+}
+
+/* F29 WS-D2 (Auftrag Punkt B): "nur ein kleiner Status-Chip am Nutzerkarten-Chevron-Menü" — ersetzt
+   den vorherigen vollen Fließtext (#persona-text-status, persona.js) im Banner. Die Farbe je
+   Zustand hängt an :has() auf den DATA-Attribut der ohnehin vorhandenen Banner-Persona
+   (#persona-platzhalter, von persona.js gepflegt) — kein zweites, eigenes Zustandsattribut, kein
+   Eingriff in persona.js' Ableitungslogik (F28-Nicht-Ziel). */
+.nutzerkarte-status-chip-host {
+  position: absolute;
+  top: calc(-1 * var(--space-sm));
+  right: calc(-1 * var(--space-sm));
+  z-index: 2;
+}
+
+.nutzerkarte-status-chip-host .persona-text-status {
+  margin: 0;
+  display: inline-block;
+  max-width: 8rem;
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#shell-kopf:has(#persona-platzhalter[data-persona-zustand='thinking']) .nutzerkarte-status-chip-host .persona-text-status {
+  background: var(--color-info-bg);
+  border-color: var(--color-info-text);
+  color: var(--color-info-text);
+}
+
+#shell-kopf:has(#persona-platzhalter[data-persona-zustand='waiting_for_human']) .nutzerkarte-status-chip-host .persona-text-status {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-text);
+  color: var(--color-warning-text);
+}
+
+#shell-kopf:has(#persona-platzhalter[data-persona-zustand='error']) .nutzerkarte-status-chip-host .persona-text-status {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-text);
+  color: var(--color-danger-text);
+}
+
+/* Dropdown der Nutzerkarte (Auftrag Punkt B) — Öffnen/Schließen: shell.js
+   initNutzerkartenDropdown(). Inhalt (persona.js' "Animationen reduzieren"-Schalter) wird per
+   JS dort hineingemountet, s. persona.js Kommentar. */
+.nutzerkarte-dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-sm));
+  right: 0;
+  z-index: 3;
+  min-width: 14rem;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.nutzerkarte-dropdown #persona-bewegung-schalter {
+  width: 100%;
+  text-align: left;
+}
+
+/* F29 WS-D2 (Auftrag Punkt B): die Leiste selbst entfällt aus dem sichtbaren Layout — Element
+   bleibt im DOM (Datei-Kommentar index.html). */
+.projekt-kontext {
+  display: none;
 }
 
 .chat-umschalter {
@@ -282,9 +550,9 @@ a:focus-visible,
 }
 
 .chat-umschalter[aria-pressed='true'] {
-  background: rgba(var(--color-accent-rgb), 0.15);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  background: var(--color-brand-glow-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand-strong);
 }
 
 .chat-umschalter .nav-icon {
@@ -304,32 +572,49 @@ a:focus-visible,
   min-height: 0;
 }
 
+/* Dreispaltiges Raster ab 1280px (Auftrag Punkt 1): die Chat-Spalte bleibt
+   dauerhaft sichtbar — [hidden] wird hier bewusst per Autor-CSS überschrieben
+   (Autor-Herkunft schlägt UA-Regel [hidden]{display:none} unabhängig von der
+   Spezifität), shell.js' Umschalter-Zustand bleibt darunter unverändert die
+   einzige Quelle für Sichtbarkeit < 1280px. */
+@media (min-width: 1280px) {
+  #shell-chat-spalte[hidden] {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 #shell-nav {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  gap: var(--space-3xs);
   width: var(--shell-nav-breite);
   flex-shrink: 0;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
-  padding: var(--space-2xl) 0;
+  padding: var(--space-2xl) var(--space-lg);
+  box-sizing: border-box;
 }
 
 /* F21-WS-2-Gate prüft den Nav-Link '#/attention' als exakte Teilzeichenkette
    '<a href="#/attention" data-nav-view="attention">' ohne weitere Attribute
    (scripts/check-f21-ws2-workboard-oberflaeche.mjs) — die acht Nav-Kacheln
    tragen deshalb bewusst KEINE class, das Attribut-Selektor unten übernimmt
-   ihre Gestaltung. */
+   ihre Gestaltung. F29 WS-D1: Zeilenlayout (Icon + sichtbare Beschriftung)
+   statt Icon-über-Label — .nav-label war bis WS-1a visuell versteckt
+   (sr-only-Muster), Auftrag verlangt jetzt eine "beschriftete Sidebar". */
 #shell-nav a[data-nav-view] {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: var(--space-3xs);
-  padding: var(--space-lg) 0;
+  gap: var(--space-xl);
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--radius-pill);
   color: var(--color-text-muted);
   text-decoration: none;
-  border-left: 3px solid transparent;
-  transition: background var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+  border-left: none;
+  transition: background var(--motion-base) var(--ease-standard), color var(--motion-base) var(--ease-standard), box-shadow var(--motion-base) var(--ease-standard);
 }
 
 #shell-nav a[data-nav-view]:hover {
@@ -337,28 +622,162 @@ a:focus-visible,
   color: var(--color-text);
 }
 
+/* F29 WS-D2 (Auftrag Punkt B): leuchtende Pille in Cyan/Blau ("wie in der Vorlage") — revidiert
+   WS-D1s Entscheidung, den Aktivzustand der Navigation auf Rot zu legen. Rot bleibt seit WS-D1
+   dominant für Panelrahmen/Donuts/Pipeline/Primärschaltflächen (Dateikopf style.css); die
+   Navigation ist die einzige bewusste Ausnahme, weil die Bildvorlage sie explizit cyan zeigt. */
 #shell-nav a[data-nav-view][aria-current='page'] {
-  background: rgba(var(--color-accent-rgb), 0.12);
-  border-left-color: var(--color-accent);
-  color: var(--color-accent);
+  background: rgba(var(--color-accent-rgb), 0.16);
+  color: var(--color-accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(var(--color-accent-rgb), 0.4), 0 0 var(--space-2xl) 0 rgba(var(--color-accent-rgb), 0.25);
+}
+
+#shell-nav a[data-nav-view][aria-current='page'] .nav-icon {
+  filter: drop-shadow(0 0 4px var(--color-accent));
 }
 
 .nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
 .nav-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  font-size: var(--font-size-md);
+  font-weight: 600;
   white-space: nowrap;
-  border: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Schnellzugriff-Box (Auftrag: "Projekt wechseln") — unterhalb der Nav-Liste,
+   ohne eigenen Kartenrahmen (die Sidebar selbst ist bereits die Fläche), nur
+   optisch per Trennlinie abgesetzt. */
+#shell-schnellzugriff {
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-2xl);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.schnellzugriff-titel {
+  margin: 0 0 var(--space-md);
+  padding: 0 var(--space-xl);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.schnellzugriff-eintrag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  width: 100%;
+  padding: var(--space-lg) var(--space-xl);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schnellzugriff-eintrag:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.schnellzugriff-eintrag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.schnellzugriff-eintrag:disabled:hover {
+  background: none;
+  color: var(--color-text-muted);
+}
+
+/* F29 WS-D2 (Auftrag Punkt B): zuletzt geöffnete Projekte/Workflows (zuletzt-geoeffnet.js) —
+   leer, solange diese Sitzung noch nichts geöffnet hat (Auftrag: "sofern Daten vorhanden"). */
+.schnellzugriff-verlauf-eintrag {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm) var(--space-xl);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.schnellzugriff-verlauf-eintrag:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+}
+
+.schnellzugriff-verlauf-eintrag-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* F29 WS-D2 (Auftrag Punkt B): roter Orb-Ausschnitt aus persona-gesicht.webp — derselbe Zuschnitt
+   wie die Badge-Persona (--persona-badge-zoom/-anker-y, F28), statisch rot getönt statt über die
+   dynamische .persona-tint-Mechanik (kein data-persona-zustand hier, rein dekorativ). */
+.sidebar-orb-block {
+  margin: var(--space-3xl) 0;
+  padding: var(--space-lg) 0;
+  text-align: center;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sidebar-orb {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 var(--space-3xl) 0 var(--color-brand-glow);
+}
+
+.sidebar-orb-bild {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% var(--persona-badge-anker-y);
+  transform-origin: 50% var(--persona-badge-anker-y);
+  transform: scale(var(--persona-badge-zoom));
+  display: block;
+}
+
+.sidebar-orb-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--color-brand);
+  mix-blend-mode: color;
+  opacity: 0.6;
+}
+
+.sidebar-slogan {
+  margin: var(--space-md) 0 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.4;
+  color: var(--color-brand-strong);
 }
 
 #shell-hauptbereich {
@@ -376,6 +795,25 @@ a:focus-visible,
   border-left: 1px solid var(--color-border);
   padding: var(--space-4xl);
   overflow-y: auto;
+}
+
+/* F29 WS-D1/D2: Banner bei schmaler Breite — Zitat/Tagline/Nutzer-Unterzeile sind reines Beiwerk
+   und verschwinden zuerst (Definition of Done: mobile Darstellung), die Wortmarke, die Persona und
+   die Nutzerkarte selbst bleiben stehen. */
+@media (max-width: 700px) {
+  .shell-tagline,
+  .shell-zitat-block,
+  .shell-nutzer-unterzeile {
+    display: none;
+  }
+
+  .shell-banner-rechts {
+    gap: var(--space-sm);
+  }
+
+  #shell-kopf #persona-platzhalter {
+    --persona-groesse: 60px;
+  }
 }
 
 @media (max-width: 700px) {
@@ -398,8 +836,22 @@ a:focus-visible,
   }
 
   #shell-nav a[data-nav-view][aria-current='page'] {
-    border-left-color: transparent;
     border-bottom-color: var(--color-accent);
+  }
+
+  /* Schnellzugriff-Box bleibt am Ende der horizontal scrollenden Nav-Leiste
+     als eigener, nicht schrumpfender Block stehen, statt in der Zeile zu
+     verschwinden. */
+  #shell-schnellzugriff {
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 0 0 0 var(--space-lg);
+    border-top: none;
+    border-left: 1px solid var(--color-border-subtle);
+  }
+
+  .nav-label {
+    display: none;
   }
 
   #shell-chat-spalte {
@@ -409,23 +861,33 @@ a:focus-visible,
   }
 }
 
-/* ───────────────────── Startfläche #/start (F29 WS-1a) ──────────────────
+/* ───────────────────── Startfläche #/start (F29 WS-1a, Vollbild-Board WS-D1) ──
    Eigene View, kein Overlay (views/start.js). Persona-Variante 'gross'
    wiederverwendet (persona.js' exportiertes montierePersona(), keine
-   zweite Lid-/Awakening-Mechanik). */
+   zweite Lid-/Awakening-Mechanik). F29 WS-D1: eigenes Vollbild-Board mit
+   Particle-Drift-Vollflächenhintergrund (particle-drift.js) und Rot-Glow um
+   die erwachende Persona — bei prefers-reduced-motion liefert particle-
+   drift.js selbst ein ruhiges Standbild (Auftrag Punkt 2/5), hier nur die
+   Fläche/Platzierung. */
+/* F29 WS-D2 (Auftrag Punkt A): #view-start trägt jetzt keine eigene Fläche mehr — die Kachel
+   darin ist selbst position: fixed und deckt den gesamten Viewport ab, unabhängig davon, wo
+   #view-start im Dokument sitzt (Banner/Sidebar/Chat bleiben unangetastet im DOM, nur optisch
+   dahinter). Der negative-Margin-Ausgleich aus WS-1a entfällt damit ersatzlos. */
 #view-start {
   padding: 0;
-  margin: calc(var(--space-4xl) * -1);
 }
 
 .start-flaeche {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-2xl);
   width: 100%;
-  min-height: calc(100vh - var(--shell-kopf-hoehe));
+  height: 100%;
   padding: var(--space-4xl);
   box-sizing: border-box;
   background: var(--color-bg);
@@ -433,11 +895,27 @@ a:focus-visible,
   border-radius: 0;
   color: var(--color-text);
   text-align: center;
+  overflow: hidden;
+  isolation: isolate;
+  opacity: 1;
+  transition: opacity var(--motion-slow) var(--ease-standard);
 }
 
-.start-flaeche:hover,
-.start-flaeche:focus-visible {
-  background: var(--color-surface);
+/* Auftrag Punkt A: "blendet aus und navigiert" — betreteLeitstand() (views/start.js) setzt diese
+   Klasse vor der (verzögerten) Navigation. */
+.start-flaeche.start-verlaesst {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start-flaeche {
+    transition: none;
+  }
+}
+
+:root[data-reduzierte-bewegung='true'] .start-flaeche {
+  transition: none;
 }
 
 .start-flaeche:focus-visible {
@@ -445,8 +923,34 @@ a:focus-visible,
   outline-offset: -4px;
 }
 
+.start-partikel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.start-wortmarke,
+#start-persona-host,
+.start-hinweis,
+.start-betreten-hinweis {
+  position: relative;
+  z-index: 1;
+}
+
+.start-wortmarke {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
+  text-shadow: 0 0 32px var(--color-brand-glow);
+}
+
 #start-persona-host {
   --persona-groesse: min(240px, 60vw);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 48px var(--color-brand-glow));
 }
 
 .start-hinweis {
@@ -467,14 +971,50 @@ a:focus-visible,
    diesem Auftrag bereits an der Shell selbst verwendet (Start-/Kopfzeilen-
    Buttons). .badge (weiter unten, unverändert seit F20/F21/F25) IST bereits
    das Marker/Badge-Vokabular — kein zweiter Name für dieselbe Sache. */
+/* F29 WS-D1: Glas-/Verlaufsfläche plus weicher Rot-Glow-Rahmen (Auftrag Punkt
+   3) — gilt automatisch für ALLE Verbraucher von .card in allen acht Views
+   (reine CSS-Änderung an der bestehenden Klasse, kein Umbau ihres Inhalts).
+   .card-kopf (Icon-Kopf) ist ein separates, NEUES Element, das nur die
+   WS-D1-Bento-Karten (views/workboard.js) und die Startfläche einhängen —
+   die sieben übrigen Views behalten ihre bestehende Überschrift. */
 .card {
-  background: var(--color-surface);
+  background: linear-gradient(160deg, rgba(var(--color-surface-rgb), 0.92), rgba(var(--color-bg-rgb), 0.86));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: var(--space-4xl);
   box-sizing: border-box;
   max-width: 100%;
   width: 100%;
+  box-shadow: 0 0 0 1px var(--color-brand-glow-soft) inset, var(--shadow-md);
+}
+
+.card-kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  margin: 0 0 var(--space-2xl);
+}
+
+.card-kopf-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-brand-glow-soft);
+  color: var(--color-brand-strong);
+}
+
+.card-kopf-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.card-kopf h2, .card-kopf h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
 }
 
 .list-row {
@@ -513,15 +1053,18 @@ a:focus-visible,
   font-weight: 600;
 }
 
+/* F29 WS-D1: Rot statt Cyan (Dateikopf-Kommentar — Rot ist jetzt der
+   dominante Aktivzustands-Akzent, Primärschaltflächen eingeschlossen). */
 .btn-primary {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-accent-text);
+  background: var(--color-brand);
+  border-color: var(--color-brand);
+  color: var(--color-brand-text);
+  box-shadow: 0 0 var(--space-lg) 0 var(--color-brand-glow-soft);
 }
 
 .btn-primary:hover {
-  background: var(--color-accent-strong);
-  border-color: var(--color-accent-strong);
+  background: var(--color-brand-strong);
+  border-color: var(--color-brand-strong);
 }
 
 /*
@@ -1108,7 +1651,9 @@ th {
 
 /* F21 WS-2: Workboard-Filter und -Liste. F29 WS-1b: Filter und Liste sitzen jetzt gemeinsam in
    EINER .card (index.html) statt als bloße, unumrandete Divs — die Zeilen selbst nutzen .list-row
-   (Komponenten-Klassenvokabular oben) statt der vormaligen <table>. */
+   (Komponenten-Klassenvokabular oben) statt der vormaligen <table>. F29 WS-D2 (Auftrag Punkt C):
+   Filter-Chips statt <select> (Muster 04-findings.png) — .filter-chip-gruppe/-liste/-chip lösen
+   die vorherigen label+select-Paare ab. */
 #workboard-filter {
   display: flex;
   gap: var(--space-2xl);
@@ -1117,10 +1662,37 @@ th {
   margin-bottom: var(--space-2xl);
 }
 
-#workboard-filter label {
-  display: block;
+.filter-chip-gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.filter-chip-gruppe-label {
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  margin-bottom: var(--space-2xs);
+  color: var(--color-text-subtle);
+}
+
+.filter-chip-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.filter-chip {
+  padding: var(--space-3xs) var(--space-lg);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.filter-chip[aria-pressed='true'] {
+  background: rgba(var(--color-accent-rgb), 0.16);
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 /* .list-row (oben) liefert bereits Layout und Hover — hier nur der Klick-Cursor, der einzige
@@ -1146,28 +1718,81 @@ th {
   color: var(--color-text-muted);
 }
 
-/* F29 WS-2a: Projekte-Übersicht — dieselbe Titel/Meta-Aufteilung wie .workboard-zeile-* oben,
-   eigener Klassenname statt Wiederverwendung, weil die Zeile hier ein eigenes Element (Projekt)
-   statt eines Workitems zeigt. */
-.projekte-uebersicht-zeile-haupt {
+/* F29 WS-D2 (Auftrag Punkt D): Projekte-Übersicht als Kopf-Panel + Fokus-Panel-artige Karten
+   (views/projekte-uebersicht.js) — löst die vorherige .list-row-Zeilenoptik (.projekte-uebersicht-
+   zeile-*) vollständig ab. Wiederverwendet .bento-fokus-icon/-zeile1/.bento-id-chip/.bento-meta-*
+   aus dem Workboard-Bento (dieselbe Optik, kein zweites Kartenvokabular). */
+.projekte-kopf {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2xl);
+}
+
+.projekte-kopf .card-kopf {
+  margin: 0;
+  align-items: flex-start;
+}
+
+.projekte-kopf-untertitel {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.projekte-kopf-aktionen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.projekte-neu-laden-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  padding: 0;
+}
+
+.projekte-neu-laden-btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.projekte-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.projekte-karte-kopf {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+}
+
+.projekte-karte-kopf-text {
   flex: 1;
   min-width: 0;
 }
 
-.projekte-uebersicht-zeile-titel {
+.projekte-karte-kopf .bento-fokus-titel {
   margin: 0;
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
-.projekte-uebersicht-zeile-meta {
-  margin: var(--space-3xs) 0 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+.projekte-karte-aktion {
+  flex-shrink: 0;
 }
 
-#projekte-uebersicht-neu-laden {
-  margin-bottom: var(--space-2xl);
+/* Aktives Projekt (Auftrag: "Kennzeichnung 'Aktiv', wenn das Projekt bereits aktiv ist
+   (Glow-Rahmen)") — derselbe rote Glow wie .card bereits trägt, hier verstärkt. */
+.projekte-karte-aktiv {
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 1px var(--color-brand-glow) inset, 0 0 var(--space-3xl) 0 var(--color-brand-glow-soft);
 }
 
 /*
@@ -1252,48 +1877,720 @@ th {
   overflow-wrap: anywhere;
 }
 
-/* F26 WS-2a: Chat-View. Eingabefeld wie #auftrag-start (width + max-width, Definition of
-   Done); Einträge mit overflow-wrap/white-space, damit eine lange Nachricht oder Antwort das
-   Layout nicht sprengt statt es zu überlaufen. */
+/* F29 WS-D2 (Auftrag Punkt C): "Chat mit Jarvis" — Kopf mit Online-Punkt, Sprechblasen statt
+   Karten, kompakte Eingabezeile mit Icon-Buttons. Löst die WS-2a-Kartenoptik (.chat-eintrag/
+   .chat-nachricht/.chat-quelle/.chat-antwort/.chat-ausstehend) vollständig ab — views/chat.js
+   erzeugt seither .chat-bubble-* statt .chat-eintrag. */
+#view-chat .card-kopf {
+  align-items: center;
+}
+
+.chat-online-punkt {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-success-text);
+  margin-left: auto;
+}
+
+#chat-verlauf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.chat-bubble-reihe {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  max-width: 100%;
+}
+
+.chat-bubble-reihe-nutzer {
+  flex-direction: row;
+  justify-content: flex-end;
+  margin-left: var(--space-3xl);
+}
+
+.chat-bubble-reihe-jarvis {
+  margin-right: var(--space-3xl);
+}
+
+.chat-avatar {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.chat-avatar-stefan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-brand-glow-soft);
+  color: var(--color-brand-strong);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.chat-avatar-jarvis img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% var(--persona-badge-anker-y);
+  transform: scale(var(--persona-badge-zoom));
+}
+
+.chat-bubble {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-lg);
+  overflow-wrap: anywhere;
+}
+
+.chat-bubble-jarvis {
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+.chat-bubble-nutzer {
+  background: rgba(var(--color-accent-rgb), 0.14);
+  border: 1px solid var(--color-accent);
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.chat-bubble-kopf {
+  margin: 0 0 var(--space-3xs);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.chat-bubble-zeit {
+  font-weight: 400;
+  color: var(--color-text-subtle);
+}
+
+.chat-bubble-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.chat-tippindikator {
+  display: flex;
+  gap: var(--space-3xs);
+  margin: var(--space-3xs) 0;
+}
+
+.chat-tippindikator span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--color-text-subtle);
+  animation: chat-tippindikator-puls 1.2s ease-in-out infinite;
+}
+
+.chat-tippindikator span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-tippindikator span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes chat-tippindikator-puls {
+  0%, 100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-tippindikator span {
+    animation: none;
+  }
+}
+
+:root[data-reduzierte-bewegung='true'] .chat-tippindikator span {
+  animation: none;
+}
+
+.chat-ganzen-verlauf-link {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-lg);
+  padding: var(--space-sm);
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.chat-ganzen-verlauf-link:hover {
+  color: var(--color-accent-strong);
+}
+
+.chat-eingabe-zeile {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.chat-eingabe-icon-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-text-subtle);
+}
+
+.chat-eingabe-icon-btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* F26 WS-2a Grundmaße (width/max-width, Definition of Done) bleiben — F29 WS-D2: Chrome
+   (Hintergrund/Rand) kommt jetzt von .chat-eingabe-zeile, das Feld selbst ist randlos und wächst
+   nicht mehr über eine feste Zeilenzahl hinaus als der Nutzer tippt (rows 1, CSS-resize aus). */
 #chat-eingabe {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
+  background: none;
+  border: none;
+  resize: none;
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
   padding: var(--space-xs) var(--space-sm);
 }
 
-/* F29 WS-2a: Hintergrund/Rand/Radius kommen jetzt von .card — padding bleibt hier BEWUSST
-   überschrieben (var(--space-lg) statt .cards var(--space-4xl)): eine Chat-Sprechblase in der
-   schmalen Spalte (#shell-chat-spalte) braucht engeren Innenabstand als eine Detail-/Stat-Karte,
-   sonst verschenkt jede Nachricht dort Breite. Abstand zwischen den Einträgen und
-   Umbruchschutz für lange Nachrichten/Antworten bleiben ebenfalls spezifisch für diese Stelle. */
-.chat-eintrag {
-  margin-bottom: var(--space-2xl);
-  padding: var(--space-lg);
-  max-width: 100%;
+.chat-senden-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: none;
+  color: var(--color-accent-text);
+}
+
+.chat-senden-btn:hover {
+  background: var(--color-accent-strong);
+}
+
+.chat-senden-btn svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.chat-eingabe-hinweis {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  text-align: right;
+}
+
+/* ─────────────────── Workboard-Bento (F29 WS-D1, Raster F29 WS-D2) ────────
+   Übersichtsraster über der bestehenden Findings-Liste (views/workboard.js,
+   #workboard-bento), ausschließlich aus echten Daten (Auftrag Punkt 4/C).
+   Fünf Karten: Fokus (breit oben), Letzter Stand + Schnellzugriff (Reihe
+   darunter), AI Workflow (breit), Fortschritt (eigene, schmalere Spalte
+   rechts, die "Chat mit Jarvis" — #shell-chat-spalte, ein eigenständiges
+   Geschwister-Element außerhalb von <main> — bei ≥1280px optisch fortsetzt).
+   Kollabiert unter 900px auf eine Spalte (Definition of Done: mobile
+   Darstellung). */
+#workboard-bento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(14rem, 0.7fr);
+  grid-template-areas:
+    'fokus fokus fortschritt'
+    'letzter schnell fortschritt'
+    'workflow workflow workflow';
+  gap: var(--space-2xl);
+  margin-bottom: var(--space-3xl);
+}
+
+@media (max-width: 900px) {
+  #workboard-bento {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'fokus' 'fortschritt' 'letzter' 'schnell' 'workflow';
+  }
+}
+
+.bento-fokus {
+  grid-area: fokus;
+}
+
+.bento-letzter-stand {
+  grid-area: letzter;
+}
+
+.bento-schnellzugriff {
+  grid-area: schnell;
+}
+
+.bento-ai-workflow {
+  grid-area: workflow;
+}
+
+.bento-fortschritt-karte {
+  grid-area: fortschritt;
+}
+
+.bento-leer {
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+.bento-fokus-titel {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.chat-nachricht {
+/* Innenkarte des Fokus-Panels (Auftrag Punkt C): rundes Icon, roter ID-Chip, Titel, Status-Pille
+   cyan, 1-2 Zeilen Beschreibung mit Ellipsis statt eines rohen Grund-/AK-Blocks. */
+.bento-fokus-innenkarte {
+  display: flex;
+  gap: var(--space-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.bento-fokus-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-brand-glow-soft);
+  color: var(--color-brand-strong);
+}
+
+.bento-fokus-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.bento-fokus-innenkarte-text {
+  min-width: 0;
+}
+
+.bento-fokus-zeile1 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.bento-id-chip {
+  background: var(--color-brand-glow-soft);
+  color: var(--color-brand-strong);
+}
+
+.bento-fokus-innenkarte .bento-fokus-titel {
   margin: 0 0 var(--space-xs);
 }
 
-/* F29 WS-2a: Quelle ist jetzt ein .badge (chat.js) — hier nur noch der Abstand zur Nachricht
-   darüber, Schriftgröße/Farbe kommen bereits aus .badge. */
-.chat-quelle {
-  margin: 0 0 var(--space-xs);
-}
-
-.chat-antwort {
+.bento-fokus-beschreibung {
   margin: 0;
-  white-space: pre-wrap;
-}
-
-.chat-ausstehend {
-  margin: 0;
-  white-space: pre-wrap;
   color: var(--color-text-muted);
-  font-style: italic;
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Meta-Kachel-Zeile (Auftrag Punkt C: "5 Meta-Kacheln mit Icon, Label und Wert"). */
+.bento-meta-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.bento-meta-kachel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.bento-meta-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.bento-meta-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.bento-meta-label {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+.bento-meta-wert {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Karte "Letzter Projektstand" (Auftrag Punkt C). */
+.bento-letzter-stand-zeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.bento-letzter-stand-text {
+  min-width: 0;
+}
+
+.bento-letzter-stand-id {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+.bento-letzter-stand-zeit {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.bento-letzter-stand-oeffnen {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: none;
+}
+
+.bento-letzter-stand-oeffnen:hover {
+  background: rgba(var(--color-accent-rgb), 0.12);
+}
+
+/* Karte "Schnellzugriff" (Auftrag Punkt C, "im Stil von Projektübersicht"). */
+.bento-schnellzugriff-zeile {
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.bento-schnellzugriff-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.bento-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--color-text-subtle);
+}
+
+/* Karte "AI Workflow". */
+.bento-ai-workflow-kopfzeile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2xl);
+}
+
+.bento-ai-workflow-kopfzeile .card-kopf {
+  margin: 0;
+}
+
+.bento-ai-workflow-badge {
+  margin-left: auto;
+}
+
+/* Workflow-Pipeline (Auftrag Punkt 4/C: "reale Rollen/Schritte des aktiven
+   Workflows") — horizontale Schrittkette, Muster renderSchrittkette
+   (views/workboard.js), hier als Icon-Kreise mit Verbindungslinie statt
+   einer <ol>. Der fällige Schritt (Server-Verdikt naechster.schrittId, D5 —
+   die Oberfläche entscheidet nichts selbst) leuchtet rot mit Glow und ist
+   größer, erledigte Schritte bleiben grün markiert, der Rest neutral/grau. */
+.pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  overflow-x: auto;
+  padding: var(--space-md) 0;
+}
+
+.pipeline-schritt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 6.5rem;
+  max-width: 8rem;
+  text-align: center;
+}
+
+.pipeline-schritt:not(:last-child) {
+  position: relative;
+}
+
+.pipeline-schritt:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 1.3rem;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+  z-index: -1;
+}
+
+.pipeline-schritt-kreis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-surface-muted);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.pipeline-schritt-kreis svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.pipeline-schritt.faellig .pipeline-schritt-kreis {
+  width: 3.1rem;
+  height: 3.1rem;
+  background: var(--color-brand-glow-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand-strong);
+  box-shadow: 0 0 var(--space-lg) 0 var(--color-brand-glow);
+}
+
+.pipeline-schritt.erledigt .pipeline-schritt-kreis {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-text);
+  color: var(--color-success-text);
+}
+
+.pipeline-schritt-label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.pipeline-schritt-kurz {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* F29 WS-D2-Korrektur: Modell-Chip je Pipeline-Knoten — bewusst bestehende Tokens
+   wiederverwendet (--color-surface-muted/--color-text-muted, wie .badge.neutral), kein neues
+   Farbpaar. */
+.pipeline-schritt-modell {
+  display: inline-block;
+  padding: var(--space-3xs) var(--space-xs);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.bento-ai-workflow-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin: var(--space-lg) 0;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.bento-ai-workflow-leiste span {
+  overflow-wrap: anywhere;
+}
+
+/* Aktionsleiste (Auftrag Punkt C) — Farben nur als Rahmen/Text (dezenter als eine volle
+   Füllfläche, passt zum sonstigen Glas-Look), Unterzeile klein und gedämpft. KEINE neue
+   Schreiblogik hier — die Buttons navigieren nur zur bestehenden Workflow-Bedienung
+   (workboard.js initBentoBedienung/beobachteAbnahmeVorschlag). */
+.bento-ai-workflow-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.bento-workflow-aktion {
+  flex: 1 1 10rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3xs);
+  padding: var(--space-md);
+  background: var(--color-surface-muted);
+}
+
+.bento-workflow-aktion small {
+  font-weight: 400;
+  color: var(--color-text-subtle);
+}
+
+.bento-aktion-ausgeben {
+  border-color: var(--color-success-text);
+  color: var(--color-success-text);
+}
+
+.bento-aktion-anpassung {
+  border-color: var(--color-info-text);
+  color: var(--color-info-text);
+}
+
+.bento-aktion-ablehnen {
+  border-color: var(--color-danger-text);
+  color: var(--color-danger-text);
+}
+
+.bento-workflow-aktion:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-subtle);
+}
+
+/* Kurzzeitige Hervorhebung des vorgewählten Abnahme-Buttons in views/workflows.js nach
+   Navigation aus der Bento-Aktionsleiste (workboard.js beobachteAbnahmeVorschlag) — reine
+   Optik, kein Auto-Klick. */
+.abnahme-vorgewaehlt {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Fortschritt-Donut — reines CSS (conic-gradient), keine Chart-Bibliothek.
+   --donut-anteil (0-100, von workboard.js gesetzt) steuert den Rot-Bogen; der
+   Rest der Kreisbahn bleibt gedimmt. Der innere Kreis (::before) legt die
+   Prozentzahl frei, statt einer vollen Torte. */
+.bento-fortschritt-stand {
+  margin: calc(-1 * var(--space-lg)) 0 var(--space-2xl);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}
+
+.donut {
+  --donut-anteil: 0;
+  position: relative;
+  width: 6rem;
+  height: 6rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--color-brand) calc(var(--donut-anteil) * 1%), var(--color-surface-muted) 0);
+  filter: drop-shadow(0 0 10px var(--color-brand-glow-soft));
+}
+
+.donut::before {
+  content: '';
+  position: absolute;
+  inset: 0.55rem;
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+
+.donut-wert {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.bento-fortschritt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+  flex-wrap: wrap;
+}
+
+.bento-fortschritt-legende {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--font-size-sm);
+  min-width: 0;
+}
+
+.bento-fortschritt-legende li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  list-style: none;
 }

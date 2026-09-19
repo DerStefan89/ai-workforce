@@ -59,6 +59,13 @@
  * neu erzeugte #persona-gross-Container ebenso. Das Bild ist dekorativ
  * (alt=""). #persona-text-status ist die EINZIGE aria-live-Quelle für beide
  * Varianten — kein zweiter Live-Bereich für 'gross' (Auftrag WS-2).
+ *
+ * F29 WS-D2 (Auftrag Punkt B, "kein Fließtext im Banner mehr"): einzige
+ * Änderung dieser Datei sind die MOUNT-ZIELE von baueBewegungsSchalter() und
+ * bauePersonaTextStatus() (jetzt index.html #nutzerkarte-dropdown bzw.
+ * #nutzerkarte-status-chip-host statt #shell-kopf direkt) — Text-/
+ * Zustandslogik, Beschriftung und aria-live-Verhalten bleiben unverändert
+ * (F28-Nicht-Ziel, Auftrag WS-D2).
  */
 
 import { leitePersonaZustandAb } from './persona-state.js'
@@ -140,7 +147,10 @@ function baueBewegungsSchalter() {
     aktualisiereBeschriftung()
   })
   aktualisiereBeschriftung()
-  document.getElementById('shell-kopf').appendChild(schalter)
+  // F29 WS-D2 (Auftrag Punkt B): Mount-Ziel geändert — der Schalter wandert optisch ins Dropdown
+  // der Nutzerkarte (index.html #nutzerkarte-dropdown, shell.js öffnet/schließt es). Reiner
+  // Anhängepunkt, keine Änderung an Verhalten/Beschriftungslogik oben (F28-Nicht-Ziel).
+  document.getElementById('nutzerkarte-dropdown').appendChild(schalter)
 }
 
 /** Baut das dekorative Bild plus Tint-Schicht — gemeinsame Struktur beider Varianten (Punkt 3 des Auftrags). @returns DocumentFragment */
@@ -234,17 +244,11 @@ function bauePersonaTextStatus() {
   status.className = 'persona-text-status'
   status.setAttribute('aria-live', 'polite')
   status.textContent = ZUSTAND_TEXT.idle
-  document.getElementById('shell-kopf').appendChild(status)
-}
-
-/** Erzeugt den Container der 'gross'-Variante am Anfang von #view-chat (Auftrag WS-2, Punkt 2) — dekorativ, aria-hidden. @returns der neue Host */
-function baueGrossContainer() {
-  const chatView = document.getElementById('view-chat')
-  const host = document.createElement('div')
-  host.id = 'persona-gross'
-  host.setAttribute('aria-hidden', 'true')
-  chatView.insertBefore(host, chatView.firstChild)
-  return host
+  // F29 WS-D2 (Auftrag Punkt B): Mount-Ziel geändert — kein Fließtext mehr im Banner, sondern ein
+  // kleiner Chip am Nutzerkarten-Chevron-Menü (index.html #nutzerkarte-status-chip-host, dortiges
+  // CSS macht daraus die Chip-Optik). Reiner Anhängepunkt, textContent/aria-live-Logik oben
+  // unverändert (F28-Nicht-Ziel) — bleibt die einzige aria-live-Quelle im Dokument.
+  document.getElementById('nutzerkarte-status-chip-host').appendChild(status)
 }
 
 /**
@@ -285,14 +289,20 @@ function aktualisierePersona(zustand) {
   document.getElementById('persona-text-status').textContent = ZUSTAND_TEXT[persona]
 }
 
-/** Montiert beide Persona-Varianten (badge in #persona-platzhalter, gross in #view-chat) und abonniert den zentralen Zustands-Poll EINMAL für beide (F28 WS-1/WS-2). */
+/**
+ * Montiert die Persona (badge in #persona-platzhalter) und abonniert den zentralen Zustands-Poll
+ * (F28 WS-1/WS-2). F29 WS-D2 (Auftrag Punkt C, "ENTFERNEN: großes Persona-Bild... aus der
+ * Chat-Spalte"): die vormals hier zusätzlich gemountete 'gross'-Instanz in #view-chat entfällt —
+ * views/start.js montiert weiterhin eine eigene 'gross'-Instanz für die Startfläche (unverändert,
+ * eigener Aufrufer). montierePersona() selbst (Mechanik/Varianten) bleibt unverändert exportiert
+ * (F28-Nicht-Ziel).
+ */
 export function initPersona() {
   bauePersonaTextStatus()
   baueBewegungsSchalter()
   wendeReduzierteBewegungAn()
 
   montierePersona(document.getElementById('persona-platzhalter'), 'badge')
-  montierePersona(baueGrossContainer(), 'gross')
 
   abonniere(aktualisierePersona)
 }
