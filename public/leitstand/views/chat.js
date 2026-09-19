@@ -10,7 +10,10 @@
  * Chat umgeht Router, Freigabe und Automat nicht").
  *
  * Der persistierte Verlauf (GET /api/chat, Checkpoint-Kette
- * 'lineage-chat-<projektId>') wird beim Betreten der View geladen — ein
+ * 'lineage-chat-<projektId>') wird beim ersten Mount der Chat-Spalte
+ * (initChatView, Shell-Bootstrap) UND zusätzlich bei jedem Betreten der
+ * View '#/chat' geladen (F29 WS-D2-Korrektur: die Chat-Spalte ist ab
+ * ≥1280px in jeder View sichtbar, nicht nur unter '#/chat') — ein
  * Reload verliert dadurch nichts (AK4), ABER nur für bereits real
  * ABGESCHLOSSENE/ERFOLGREICHE Jarvis-Antworten. QA-Befund (WS-2a, real
  * nachvollzogen): ein Reload MITTEN in einem ausstehenden Lauf verliert die
@@ -56,14 +59,36 @@
  * "fehler" bleibt Rot, wie in den anderen Views), "Senden" ist
  * .btn.btn-primary. KEIN neuer Schreib-/Auto-Apply-Button, KEINE Änderung
  * an Poll-/Timer-/Sende-Verhalten.
+ *
+ * F29 WS-D2 (Auftrag Punkt C, "Chat mit Jarvis" in der rechten Spalte —
+ * #shell-chat-spalte IST diese rechte Spalte, keine zweite Chat-Ansicht):
+ * reine Darstellungsänderung. ladeVerlauf()/pruefeAusstehendenLauf()/der
+ * Sende-Ablauf in initSendenFormular() (Vorfilter → POST /api/chat, D13,
+ * Terminal-Erkennung) sind UNVERÄNDERT (Nicht-Ziel: Poll-/Sende-Logik). Neu:
+ * (a) renderEintrag zerlegt einen Verlaufseintrag jetzt in zwei
+ * Sprechblasen (Nutzer rechts, Jarvis links, Mini-Avatare) statt einer
+ * Karte; (b) renderVerlauf zeigt standardmäßig nur die LETZTEN ZWEI
+ * Einträge, "Ganzen Verlauf öffnen/schließen" (zeigeAlleUmschalten) ist ein
+ * rein lokaler Anzeige-Umschalter, kein zweiter Fetch/keine zweite Route;
+ * (c) ein Tippindikator ersetzt die Antwort-Sprechblase, solange
+ * ausstehenderLauf gesetzt ist; (d) lokale Einträge (vorfilter/fehler) UND
+ * ausstehenderLauf tragen jetzt zusätzlich einen client-seitig erfassten
+ * zeitstempel (Auftrag: Uhrzeit je Sprechblase) — persistierte, historische
+ * Einträge aus GET /api/chat haben serverseitig KEIN Zeitfeld (Datenlage,
+ * keine erfundene Zeit), ihre Sprechblase zeigt deshalb keine Uhrzeit; (e)
+ * Enter sendet (Shift+Enter bleibt Zeilenumbruch, Auftrag-Hinweistext) —
+ * ruft denselben, unveränderten Sende-Pfad wie der Button.
  */
 
 import { holeChatVerlauf, holeLaufDetail, sendeChatNachricht } from '../api.js'
-import { escapeHtml } from '../render.js'
+import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer } from '../zustand.js'
 import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
+
+/** F29 WS-D2 (Auftrag Punkt C): true zeigt den vollständigen Verlauf, false nur die letzten zwei Einträge — reiner Anzeige-Umschalter ("Ganzen Verlauf öffnen"/"schließen"), kein zweiter Fetch. */
+let zeigeAlle = false
 
 /** Letztes Zustands-Aggregat aus dem Poll (für den Vorfilter), oder null vor dem ersten Tick. */
 let letzterZustand = null
@@ -83,38 +108,52 @@ function antwortText(antwort) {
   return antwort.antwort
 }
 
-/** Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert) gefolgt von lokalen Einträgen (Push-Reihenfolge) und einem etwaigen ausstehenden Lauf zuletzt — beide Quellen entstehen immer chronologisch NACH dem zuletzt geladenen persistierten Stand, eine erneute Sortierung ist deshalb nicht nötig. */
+/** Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert) gefolgt von lokalen Einträgen (Push-Reihenfolge) und einem etwaigen ausstehenden Lauf zuletzt — beide Quellen entstehen immer chronologisch NACH dem zuletzt geladenen persistierten Stand, eine erneute Sortierung ist deshalb nicht nötig. F29 WS-D2: zeitstempel ist bei persistierten Einträgen IMMER null (der Server führt keines, Auftrag Punkt E: keine erfundene Zeit), bei lokalen der beim Push erfasste Wert (s. initSendenFormular/pruefeAusstehendenLauf). */
 function baueAnzeigeListe() {
-  const liste = [...persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis' })), ...lokaleEintraege]
+  const liste = [...persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis', zeitstempel: null })), ...lokaleEintraege]
   if (ausstehenderLauf !== null) {
-    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend' })
+    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel })
   }
   return liste
 }
 
-const QUELLE_LABEL = { jarvis: 'Jarvis', vorfilter: 'Vorfilter (lokal)', fehler: 'Fehler', ausstehend: 'Lauf gestartet' }
-
-/** Badge-Modifikator je Quelle (bestehende .badge-Bedeutungen, kein neues Farbpaar) — 'fehler' ist die einzige rote, 'ausstehend' nutzt 'aktiv' (Info-Blau, "läuft gerade"), Jarvis/Vorfilter sind 'neutral'. */
-const QUELLE_BADGE_KLASSE = { jarvis: 'neutral', vorfilter: 'neutral', fehler: 'fehler', ausstehend: 'aktiv' }
-
-function renderEintrag(eintrag) {
-  const quelleLabel = escapeHtml(QUELLE_LABEL[eintrag.quelle] ?? eintrag.quelle)
-  const badgeKlasse = QUELLE_BADGE_KLASSE[eintrag.quelle] ?? 'neutral'
-  const antwortHtml =
-    eintrag.quelle === 'ausstehend'
-      ? '<p class="chat-ausstehend">Lauf gestartet, wird bearbeitet… (kein Streaming, die Antwort erscheint hier, sobald der Lauf abgeschlossen ist)</p>'
-      : `<p class="chat-antwort">${escapeHtml(eintrag.antwortText)}</p>`
-  return `<div class="card chat-eintrag">
-    <p class="chat-nachricht"><strong>Du:</strong> ${escapeHtml(eintrag.nachricht)}</p>
-    <p class="chat-quelle"><span class="badge ${badgeKlasse}">${quelleLabel}</span></p>
-    ${antwortHtml}
+/** F29 WS-D2 (Auftrag Punkt C): eine Sprechblasen-Zeile — Nutzer rechts eingerückt mit Initialen-Kreis, Jarvis links mit Mini-Avatar (statischer Ausschnitt aus persona-gesicht.webp, dasselbe Bild wie die Persona — kein neues Bild, aber KEINE eigene montierePersona()-Instanz: eine animierte Instanz pro Sprechblase wäre reiner Overhead für ein 1,5rem-Icon, F28-Nicht-Ziel bleibt unberührt). @param label - sichtbarer Name ('Jarvis' oder 'Stefan') @param zeitHtml - bereits fertiges Uhrzeit-HTML (leer, wenn keine Zeit bekannt) @param textHtml - bereits fertiges Inhalts-HTML @param ausrichtung - 'nutzer' | 'jarvis' */
+function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung) {
+  const avatar =
+    ausrichtung === 'nutzer'
+      ? '<span class="chat-avatar chat-avatar-stefan" aria-hidden="true">S</span>'
+      : '<span class="chat-avatar chat-avatar-jarvis" aria-hidden="true"><img src="/persona-gesicht.webp" alt="" /></span>'
+  const bubble = `<div class="chat-bubble chat-bubble-${ausrichtung}">
+    <p class="chat-bubble-kopf">${escapeHtml(label)}${zeitHtml}</p>
+    ${textHtml}
   </div>`
+  return `<div class="chat-bubble-reihe chat-bubble-reihe-${ausrichtung}">${ausrichtung === 'nutzer' ? bubble + avatar : avatar + bubble}</div>`
 }
 
+const QUELLE_ANTWORT_LABEL = { vorfilter: 'Jarvis (lokal beantwortet)', fehler: 'Jarvis — Lauf nicht erfolgreich' }
+
+/** Ein Verlaufseintrag als zwei Sprechblasen-Zeilen (Nutzerfrage + Jarvis-Antwort bzw. Tippindikator, solange sie aussteht). @param eintrag - aus baueAnzeigeListe() @returns HTML-Block */
+function renderEintrag(eintrag) {
+  const zeitHtml = eintrag.zeitstempel ? ` <span class="chat-bubble-zeit">${escapeHtml(formatiereUhrzeit(eintrag.zeitstempel) ?? '')}</span>` : ''
+  const nutzerZeile = chatBubbleReihe('Stefan', zeitHtml, `<p class="chat-bubble-text">${escapeHtml(eintrag.nachricht)}</p>`, 'nutzer')
+  if (eintrag.quelle === 'ausstehend') {
+    const tippindikator = '<p class="chat-tippindikator" aria-hidden="true"><span></span><span></span><span></span></p>'
+    return nutzerZeile + chatBubbleReihe('Jarvis', '', tippindikator, 'jarvis')
+  }
+  const label = QUELLE_ANTWORT_LABEL[eintrag.quelle] ?? 'Jarvis'
+  const jarvisZeile = chatBubbleReihe(label, zeitHtml, `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`, 'jarvis')
+  return nutzerZeile + jarvisZeile
+}
+
+/** F29 WS-D2 (Auftrag Punkt C): zeigt standardmäßig nur die letzten zwei Einträge — "Ganzen Verlauf öffnen" (initGanzenVerlaufLink) schaltet zeigeAlle um und rendert neu, kein zweiter Fetch. */
 function renderVerlauf() {
   const container = document.getElementById('chat-verlauf')
   const liste = baueAnzeigeListe()
-  container.innerHTML = liste.length === 0 ? '<p class="leer">Noch keine Nachrichten.</p>' : liste.map(renderEintrag).join('')
+  const sichtbar = zeigeAlle ? liste : liste.slice(-2)
+  container.innerHTML = sichtbar.length === 0 ? '<p class="leer">Noch keine Nachrichten.</p>' : sichtbar.map(renderEintrag).join('')
+  const link = document.getElementById('chat-ganzen-verlauf-link')
+  link.hidden = liste.length <= 2
+  link.textContent = zeigeAlle ? 'Verlauf einklappen' : 'Ganzen Verlauf öffnen'
 }
 
 function zeigeChatFehler(text) {
@@ -181,31 +220,30 @@ async function pruefeAusstehendenLauf() {
     const geladen = await ladeVerlauf()
     if (!geladen) return
   } else {
-    lokaleEintraege.push({ nachricht, antwortText: beschreibeNichtErfolgreichesEnde(laufStatus), quelle: 'fehler' })
+    lokaleEintraege.push({ nachricht, antwortText: beschreibeNichtErfolgreichesEnde(laufStatus), quelle: 'fehler', zeitstempel: new Date().toISOString() })
     renderVerlauf()
   }
   ausstehenderLauf = null
   setzeSendenSperre(false)
 }
 
-/** Formular „Senden": Vorfilter zuerst (lokal, kein Serverkontakt bei Treffer), sonst POST /api/chat. */
-function initSendenFormular() {
+/** Formular „Senden": Vorfilter zuerst (lokal, kein Serverkontakt bei Treffer), sonst POST /api/chat. F29 WS-D2: als benannte Funktion statt eines Inline-Klick-Handlers, damit sowohl der Senden-Button als auch Enter im Eingabefeld (initEingabeTastatur) denselben, unveränderten Ablauf auslösen. */
+async function sendeAktuelleEingabe() {
   const button = document.getElementById('chat-senden')
-  button.addEventListener('click', async () => {
-    if (button.disabled) return
-    const feld = document.getElementById('chat-eingabe')
-    const nachricht = feld.value.trim()
-    zeigeChatFehler('')
-    if (nachricht === '') {
-      zeigeChatFehler('Bitte eine Nachricht eingeben.')
-      return
-    }
+  if (button.disabled) return
+  const feld = document.getElementById('chat-eingabe')
+  const nachricht = feld.value.trim()
+  zeigeChatFehler('')
+  if (nachricht === '') {
+    zeigeChatFehler('Bitte eine Nachricht eingeben.')
+    return
+  }
 
-    setzeSendenSperre(true)
-    try {
+  setzeSendenSperre(true)
+  try {
       const vorfilterErgebnis = await loeseVorfilterAuf(nachricht, letzterZustand)
       if (vorfilterErgebnis !== null) {
-        lokaleEintraege.push({ nachricht, antwortText: antwortText(vorfilterErgebnis), quelle: 'vorfilter' })
+        lokaleEintraege.push({ nachricht, antwortText: antwortText(vorfilterErgebnis), quelle: 'vorfilter', zeitstempel: new Date().toISOString() })
         renderVerlauf()
         feld.value = ''
         return
@@ -224,7 +262,7 @@ function initSendenFormular() {
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
-      ausstehenderLauf = { nachricht, laufId: angenommen.laufId }
+      ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString() }
       renderVerlauf()
       feld.value = ''
     } finally {
@@ -232,6 +270,27 @@ function initSendenFormular() {
       // erst bei Terminallage auf; eine Vorfilter-Antwort oder ein Fehlschlag heben sofort auf.
       if (ausstehenderLauf === null) setzeSendenSperre(false)
     }
+}
+
+function initSendenFormular() {
+  document.getElementById('chat-senden').addEventListener('click', () => void sendeAktuelleEingabe())
+}
+
+/** F29 WS-D2 (Auftrag Punkt C, Hinweistext "Shift + Enter für neue Zeile"): Enter sendet, Shift+Enter bleibt normaler Zeilenumbruch (Browser-Default) — ruft denselben, unveränderten Sende-Pfad wie der Button. */
+function initEingabeTastatur() {
+  document.getElementById('chat-eingabe').addEventListener('keydown', (ereignis) => {
+    if (ereignis.key === 'Enter' && !ereignis.shiftKey) {
+      ereignis.preventDefault()
+      void sendeAktuelleEingabe()
+    }
+  })
+}
+
+/** F29 WS-D2 (Auftrag Punkt C): "Ganzen Verlauf öffnen"/"schließen" — reiner Anzeige-Umschalter (renderVerlauf), kein zweiter Fetch. */
+function initGanzenVerlaufLink() {
+  document.getElementById('chat-ganzen-verlauf-link').addEventListener('click', () => {
+    zeigeAlle = !zeigeAlle
+    renderVerlauf()
   })
 }
 
@@ -248,6 +307,8 @@ function setzeChatZustandZurueck() {
 /** Initialisiert die Chat-View einmalig beim Bootstrap. */
 export function initChatView() {
   initSendenFormular()
+  initEingabeTastatur()
+  initGanzenVerlaufLink()
 
   // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell
   // (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr; der Dispatch auf
@@ -256,6 +317,13 @@ export function initChatView() {
   registriere(/^#\/chat$/, 'chat', () => {
     void ladeVerlauf()
   }, { ueberlagert: true })
+
+  // F29 WS-D2-Korrektur: #shell-chat-spalte ist ab ≥1280px in JEDER View sichtbar (shell.js),
+  // nicht nur unter '#/chat' — das obige onEnter allein lädt den Verlauf deshalb nicht mehr
+  // zuverlässig (z. B. Start → Workboard, ohne '#/chat' je betreten zu haben, blieb die Spalte
+  // leer). Einmaliger Ladeversuch hier beim Shell-Bootstrap, unabhängig von der aktiven Route —
+  // renderProjektKontext() (app.js) läuft davor, das aktive Projekt steht also bereits fest.
+  void ladeVerlauf()
 
   abonniere((zustand) => {
     letzterZustand = zustand
