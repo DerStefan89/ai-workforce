@@ -445,7 +445,7 @@ import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
-import { baueJarvisAuftragstext, validiereErgebnisJarvis } from '../src/jarvis/index.ts'
+import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
@@ -2589,19 +2589,26 @@ export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
  * @param laufId - laufId des Jarvis-Laufs (geht in 'herkunft')
  * @param profilReferenz - Profilreferenz dieser Serverinstanz
  * @param ladeOptionen - basisVerzeichnis/schreiber (Muster ladeOptionen in erzeugeRequestHandler)
+ * @param optionen - F31 WS-2: optional { istZusammenfassung } — nur wenn true, trägt der
+ *   geschriebene Eintrag zusätzlich istZusammenfassung: true und die persistierte 'nachricht' ist
+ *   fest "[Zusammenfassung angefordert]" statt des übergebenen nachricht-Parameters (der bei
+ *   POST /api/chat/zusammenfassen die lange, feste Instruktion an den Worker ist — die soll nicht
+ *   in der Chat-Anzeige erscheinen)
  * @returns bei Erfolg { ok: true, pfad, versionSequenz, inhaltsHash }, sonst { ok: false, grund }
  */
-export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen) {
+export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen, optionen = {}) {
+  const { istZusammenfassung = false } = optionen
   const jarvisErgebnis = leseJarvisErgebnisAusLaufakte(laufakteDaten)
   if (!jarvisErgebnis.ok) {
     return { ok: false, grund: `Jarvis-Lauf '${laufId}': ${jarvisErgebnis.grund}` }
   }
+  const nachrichtZuSpeichern = istZusammenfassung ? '[Zusammenfassung angefordert]' : nachricht
   try {
     const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
       `chat-${projektId}`,
       profilReferenz,
       { quelle: 'jarvis-chat', lauf_id: laufId },
-      { nachricht, jarvisAntwort: jarvisErgebnis.ergebnis },
+      { nachricht: nachrichtZuSpeichern, jarvisAntwort: jarvisErgebnis.ergebnis, ...(istZusammenfassung ? { istZusammenfassung: true } : {}) },
       undefined,
       ladeOptionen
     )
@@ -4385,69 +4392,17 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
-    // ─── F26 WS-1/WS-2a: POST /api/chat ─────────────────────────────────────────────────
+    // ─── F31 WS-2: gemeinsamer Lauf-Start für POST /api/chat und POST /api/chat/zusammenfassen ──
     //
-    // Löst einen Ein-Schuss-Lauf der Rolle 'jarvis' für eine natürliche Chat-Nachricht aus —
-    // Muster POST /api/auftraege/<id>/routen: D13 vor jeder Formprüfung, die selbst schon
-    // Ressourcen braucht, dann Worker-/Eingaben-Auflösung (loeseAusfuehrungsEingabenAuf) ERST
-    // NACH erfolgreicher Prüfung wird die Nachricht als Auftrag registriert (registriereAuftrag)
-    // — anders als beim Router-Endpunkt, der einen bereits BESTEHENDEN Auftrag nur lädt, erzeugt
-    // dieser Endpunkt den Auftrag neu; ein Fehlschlag vor dem Schreiben hinterlässt deshalb bewusst
-    // keinen Orphan (Code-Review-Befund WS-1). Danach Dispatch (starteLaufUndVergiss). Strukturell
-    // nur ASYNCHRON möglich (202 + laufId), kein Workflow. Erreichbar sowohl unpräfigiert
-    // ('/api/chat', für ai-workforce) als auch über den F25-Dispatcher ('/api/projekte/<id>/chat').
-    //
-    // WS-2a: der nachLauf-Callback unten (Muster verarbeiteRouterErgebnis-Aufruf oben) schreibt
-    // NACH einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch den
-    // 'lineage-chat-<projektId>'-Verlaufseintrag (verarbeiteJarvisChatErgebnis) — löst die in
-    // features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke (WS-1 kannte die
-    // Projekt-id der Handler-Instanz nicht; jetzt optionen.projektId, s. erzeugeRequestHandler).
-    // Jede andere Terminallage (FEHLGESCHLAGEN/VERWEIGERT/KLAERUNG_ERFORDERLICH, ok:false)
-    // schreibt bewusst NICHTS — 'Chat hat keine eigene Wahrheit', nur ein real erfolgreicher
-    // Jarvis-Lauf wird Lineage.
-    if (req.method === 'POST' && pfad === '/api/chat') {
-      let body
-      try {
-        const roh = await leseBody(req)
-        body = JSON.parse(roh.length === 0 ? '{}' : roh)
-      } catch (fehler) {
-        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
-        return
-      }
-      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
-        return
-      }
-      for (const feld of Object.keys(body)) {
-        if (feld !== 'nachricht') {
-          sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
-          return
-        }
-      }
-      if (typeof body.nachricht !== 'string' || body.nachricht.trim().length === 0) {
-        sendeJson(res, 400, { grund: "'nachricht' muss ein nicht-leerer String sein" })
-        return
-      }
-      // QA-Befund WS-1: ohne Obergrenze geht ein sehr langer Paste 1:1 in Auftragsakte und
-      // Prompt (Kosten-/Log-Bloat-Risiko, real relevant sobald WS-2 ein echtes Texteingabefeld
-      // hat). 8000 Zeichen ist ein großzügiger, aber endlicher Rahmen für eine Chat-Nachricht —
-      // kein Auftragstext-Ersatz (der bleibt ohne Obergrenze, Muster POST /api/auftraege).
-      const MAX_NACHRICHT_LAENGE = 8000
-      if (body.nachricht.length > MAX_NACHRICHT_LAENGE) {
-        sendeJson(res, 400, { grund: `'nachricht' darf höchstens ${MAX_NACHRICHT_LAENGE} Zeichen haben, hat ${body.nachricht.length}` })
-        return
-      }
-      const nachricht = body.nachricht
-
-      // D13 VOR jeder Formprüfung, die selbst schon I/O oder Ressourcenauflösung braucht (Muster
-      // POST /api/auftraege/<id>/routen) — die reine Bodyprüfung oben (JSON/Typ/Länge) bleibt
-      // davor, weil sie ohne jede Ressource entscheidbar ist (Muster POST /api/laeufe).
-      if (laufAktiv) {
-        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
-        return
-      }
-      if (pruefeGlobaleLaufSperre(res)) return
-
+    // Worker-Auflösung, Auftrag-Registrierung, D13-Übergabe (laufAktiv=true, 202-Antwort) und
+    // Dispatch (starteLaufUndVergiss) waren bis WS-2 1:1 in POST /api/chat kopiert vorbereitet für
+    // den neuen Endpunkt unten — beide Routen unterscheiden sich nur in 'nachricht' (Auftragsakte/
+    // Lineage-Anzeige) und 'auftragstext' (tatsächlicher Worker-Eingabekanal, inkl. Verlaufsfenster).
+    // Die D13-Prüfung selbst (if (laufAktiv)/pruefeGlobaleLaufSperre) bleibt bewusst in JEDEM
+    // Aufrufer VOR diesem Aufruf stehen, wörtlich wie bisher (scripts/check-f11-auftrag.mjs sucht
+    // das ERSTE Vorkommen von 'if (laufAktiv)'/'if (laufIdBelegt(' im gesamten Quelltext — das
+    // bleibt unverändert bei POST /api/laeufe stehen, weit oberhalb dieser Funktion).
+    function starteJarvisChatLauf(res, nachricht, auftragstext, istZusammenfassung) {
       const auftragId = `jarvis-chat-${randomUUID()}`
       const laufId = `jarvis-${auftragId}`
       if (laufIdBelegt(laufId)) {
@@ -4496,10 +4451,11 @@ export function erzeugeRequestHandler(optionen = {}) {
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
       }
-      // baueJarvisAuftragstext (src/jarvis/index.ts) ist der EINZIGE Eingabekanal (F-269-Muster):
-      // die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz, unten), der
-      // tatsächlich an den Worker gehende Text zusätzlich die Rolleninstruktion.
-      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', baueJarvisAuftragstext(nachricht), vorlage, repoWurzel)
+      // auftragstext (src/jarvis/index.ts' baueJarvisAuftragstext) ist der EINZIGE Eingabekanal
+      // (F-269-Muster): die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz,
+      // unten), der tatsächlich an den Worker gehende Text zusätzlich die Rolleninstruktion und das
+      // Verlaufsfenster (F31 WS-2).
+      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', auftragstext, vorlage, repoWurzel)
       if (!eingabenErgebnis.ok) {
         sendeJson(res, 400, { grund: eingabenErgebnis.grund })
         return
@@ -4543,7 +4499,15 @@ export function erzeugeRequestHandler(optionen = {}) {
           return
         }
 
-        const verarbeitung = verarbeiteJarvisChatErgebnis(laufakteVersion.daten, projektId, nachricht, laufId, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        const verarbeitung = verarbeiteJarvisChatErgebnis(
+          laufakteVersion.daten,
+          projektId,
+          nachricht,
+          laufId,
+          profilReferenz,
+          { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+          istZusammenfassung ? { istZusammenfassung: true } : undefined
+        )
         if (!verarbeitung.ok) {
           startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
           console.error(`[leitstand] ${verarbeitung.grund}`)
@@ -4551,6 +4515,143 @@ export function erzeugeRequestHandler(optionen = {}) {
           console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
         }
       })
+    }
+
+    /**
+     * F31 WS-2: lädt den 'chat-<projektId>'-Verlauf (Muster GET /api/chat unten) und mappt ihn auf
+     * die von waehleVerlaufsfenster/baueJarvisAuftragstext erwartete Form (src/jarvis/index.ts) —
+     * 'antwort' ist dabei jarvisAntwort.antwort (der für Menschen lesbare Text, nicht das volle
+     * ErgebnisJarvis-Objekt), 'istZusammenfassung' das gleichnamige daten-Feld
+     * (verarbeiteJarvisChatErgebnis setzt es nur bei einem über POST /api/chat/zusammenfassen
+     * erzeugten Turn).
+     */
+    function ladeJarvisVerlaufsfenster(maxTurns, maxZeichen) {
+      const eintraege = listeVersionen(`chat-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }).map((version) => ({
+        nachricht: version.daten?.nachricht ?? '',
+        antwort: version.daten?.jarvisAntwort?.antwort ?? '',
+        istZusammenfassung: version.daten?.istZusammenfassung === true,
+      }))
+      return waehleVerlaufsfenster(eintraege, { maxTurns, maxZeichen })
+    }
+
+    // ─── F26 WS-1/WS-2a: POST /api/chat ─────────────────────────────────────────────────
+    //
+    // Löst einen Ein-Schuss-Lauf der Rolle 'jarvis' für eine natürliche Chat-Nachricht aus —
+    // Muster POST /api/auftraege/<id>/routen: D13 vor jeder Formprüfung, die selbst schon
+    // Ressourcen braucht, dann Worker-/Eingaben-Auflösung (loeseAusfuehrungsEingabenAuf) ERST
+    // NACH erfolgreicher Prüfung wird die Nachricht als Auftrag registriert (registriereAuftrag)
+    // — anders als beim Router-Endpunkt, der einen bereits BESTEHENDEN Auftrag nur lädt, erzeugt
+    // dieser Endpunkt den Auftrag neu; ein Fehlschlag vor dem Schreiben hinterlässt deshalb bewusst
+    // keinen Orphan (Code-Review-Befund WS-1). Danach Dispatch (starteJarvisChatLauf, F31 WS-2:
+    // vorher inline, jetzt gemeinsame Hilfsfunktion oben). Strukturell nur ASYNCHRON möglich
+    // (202 + laufId), kein Workflow. Erreichbar sowohl unpräfigiert ('/api/chat', für
+    // ai-workforce) als auch über den F25-Dispatcher ('/api/projekte/<id>/chat').
+    //
+    // WS-2a: der nachLauf-Callback in starteJarvisChatLauf (Muster verarbeiteRouterErgebnis-Aufruf
+    // oben) schreibt NACH einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch
+    // den 'lineage-chat-<projektId>'-Verlaufseintrag (verarbeiteJarvisChatErgebnis) — löst die in
+    // features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke (WS-1 kannte die
+    // Projekt-id der Handler-Instanz nicht; jetzt optionen.projektId, s. erzeugeRequestHandler).
+    // Jede andere Terminallage (FEHLGESCHLAGEN/VERWEIGERT/KLAERUNG_ERFORDERLICH, ok:false)
+    // schreibt bewusst NICHTS — 'Chat hat keine eigene Wahrheit', nur ein real erfolgreicher
+    // Jarvis-Lauf wird Lineage.
+    //
+    // F31 WS-2: der Auftragstext bekommt zusätzlich ein begrenztes Verlaufsfenster (8 Turns/12000
+    // Zeichen, ab der letzten Zusammenfassung) aus genau derselben Kette — Jarvis kennt damit den
+    // bisherigen Gesprächsverlauf dieses Projekts, ohne dass sich am EINZIGEN Eingabekanal
+    // (baueJarvisAuftragstext) etwas ändert.
+    if (req.method === 'POST' && pfad === '/api/chat') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      for (const feld of Object.keys(body)) {
+        if (feld !== 'nachricht') {
+          sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
+          return
+        }
+      }
+      if (typeof body.nachricht !== 'string' || body.nachricht.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'nachricht' muss ein nicht-leerer String sein" })
+        return
+      }
+      // QA-Befund WS-1: ohne Obergrenze geht ein sehr langer Paste 1:1 in Auftragsakte und
+      // Prompt (Kosten-/Log-Bloat-Risiko, real relevant sobald WS-2 ein echtes Texteingabefeld
+      // hat). 8000 Zeichen ist ein großzügiger, aber endlicher Rahmen für eine Chat-Nachricht —
+      // kein Auftragstext-Ersatz (der bleibt ohne Obergrenze, Muster POST /api/auftraege).
+      const MAX_NACHRICHT_LAENGE = 8000
+      if (body.nachricht.length > MAX_NACHRICHT_LAENGE) {
+        sendeJson(res, 400, { grund: `'nachricht' darf höchstens ${MAX_NACHRICHT_LAENGE} Zeichen haben, hat ${body.nachricht.length}` })
+        return
+      }
+      const nachricht = body.nachricht
+
+      // D13 VOR jeder Formprüfung, die selbst schon I/O oder Ressourcenauflösung braucht (Muster
+      // POST /api/auftraege/<id>/routen) — die reine Bodyprüfung oben (JSON/Typ/Länge) bleibt
+      // davor, weil sie ohne jede Ressource entscheidbar ist (Muster POST /api/laeufe).
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      const verlaufsfenster = ladeJarvisVerlaufsfenster(8, 12000)
+      starteJarvisChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false)
+      return
+    }
+
+    // ─── F31 WS-2: POST /api/chat/zusammenfassen ────────────────────────────────────────
+    //
+    // Löst wie POST /api/chat einen Ein-Schuss-Jarvis-Lauf aus (D13, dieselbe
+    // starteJarvisChatLauf-Hilfsfunktion oben), aber mit einer festen Zusammenfassungs-Instruktion
+    // statt einer Nutzer-Nachricht und einem größeren Verlaufsfenster (30 Turns/40000 Zeichen —
+    // hier soll die GESAMTE bisherige Kette komprimiert werden, nicht nur der letzte Kontext eines
+    // einzelnen Chat-Turns). Der Body bleibt bewusst leer (kein Eingabefeld nötig): jedes Feld
+    // darin ist ein 400, Muster der übrigen unbekanntes-Feld-Ablehnungen in dieser Datei. Der
+    // resultierende Turn trägt istZusammenfassung: true (verarbeiteJarvisChatErgebnis) und wird
+    // dadurch neuer Startpunkt für sowohl das nächste Verlaufsfenster als auch die
+    // Chat-View-Standardansicht (views/chat.js).
+    if (req.method === 'POST' && pfad === '/api/chat/zusammenfassen') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      for (const feld of Object.keys(body)) {
+        sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
+        return
+      }
+
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      const verlaufsfenster = ladeJarvisVerlaufsfenster(30, 40000)
+      if (verlaufsfenster.length === 0) {
+        sendeJson(res, 409, { grund: 'kein Verlauf zum Zusammenfassen' })
+        return
+      }
+
+      const zusammenfassungsNachricht =
+        "Fasse den bisherigen Gesprächsverlauf kompakt zusammen (Ziele, getroffene Entscheidungen, offene Punkte, zuletzt Besprochenes), damit das Gespräch allein auf Basis dieser Zusammenfassung sinnvoll fortgesetzt werden kann. Antworte mit art 'antwort'."
+      starteJarvisChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true)
       return
     }
 
@@ -4567,6 +4668,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // artefakt_version-Einträge, aufsteigend sortiert. Eine (noch) leere Kette ist kein Fehler
     // (Erststart, oder bislang ausschließlich Vorfilter-beantwortete Nachrichten, die serverseitig
     // gar nicht erst ankommen) — listeVersionen liefert dafür bereits [], kein Sonderfall nötig.
+    // F31 WS-2: istZusammenfassung ergänzt — ohne dieses Feld sähe der Client einen über
+    // POST /api/chat/zusammenfassen erzeugten Turn nie als solchen (Standardansicht/Trenner in
+    // views/chat.js brauchen es).
     if (req.method === 'GET' && pfad === '/api/chat') {
       const versionen = listeVersionen(`chat-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
       sendeJson(res, 200, {
@@ -4574,6 +4678,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           laufId: version.herkunft?.lauf_id ?? null,
           nachricht: version.daten?.nachricht ?? null,
           jarvisAntwort: version.daten?.jarvisAntwort ?? null,
+          istZusammenfassung: version.daten?.istZusammenfassung === true,
         })),
       })
       return

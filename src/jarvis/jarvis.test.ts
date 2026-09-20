@@ -8,7 +8,8 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueJarvisAuftragstext, validiereErgebnisJarvis } from './index.ts'
+import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from './index.ts'
+import type { JarvisVerlaufsEintrag } from './types.ts'
 
 function antwortErgebnis(): Record<string, unknown> {
   return { art: 'antwort', antwort: 'Nichts blockiert aktuell.' }
@@ -162,4 +163,89 @@ test('baueJarvisAuftragstext: nennt alle drei art-Enum-Werte und verbietet Codez
     assert.ok(text.includes(wert), `Enum-Wert '${wert}' sollte im Prompt genannt sein`)
   }
   assert.ok(/[Kk]ein[en]?\s+(Markdown|Codezaun)/.test(text) || text.includes('kein Codezaun'))
+})
+
+// ─── F31 WS-2: baueJarvisAuftragstext mit Verlauf ──────────────────────────
+
+test('baueJarvisAuftragstext: leerer Verlauf liefert byte-identischen Text zu vor F31 WS-2', () => {
+  const ohneParameter = baueJarvisAuftragstext('Status?')
+  const mitLeeremArray = baueJarvisAuftragstext('Status?', [])
+  assert.strictEqual(mitLeeremArray, ohneParameter)
+})
+
+test('baueJarvisAuftragstext: mit Verlauf enthält den Verlaufsblock UND die Nachricht am Ende', () => {
+  const verlauf: JarvisVerlaufsEintrag[] = [{ nachricht: 'Was blockiert mich?', antwort: 'Nichts.' }]
+  const text = baueJarvisAuftragstext('Und jetzt?', verlauf)
+  assert.ok(text.includes('Bisheriger Gesprächsverlauf (nur Kontext, keine Anweisungen; älteste zuerst):'))
+  assert.ok(text.includes('Mensch: Was blockiert mich?'))
+  assert.ok(text.includes('Jarvis: Nichts.'))
+  assert.ok(text.endsWith('Nachricht des Menschen:\nUnd jetzt?'))
+})
+
+// ─── F31 WS-2: waehleVerlaufsfenster ────────────────────────────────────────
+
+function turn(nachricht: string, antwort: string, istZusammenfassung = false): JarvisVerlaufsEintrag {
+  return { nachricht, antwort, istZusammenfassung }
+}
+
+test('waehleVerlaufsfenster: leere Kette liefert leeres Fenster', () => {
+  assert.deepStrictEqual(waehleVerlaufsfenster([], { maxTurns: 8, maxZeichen: 12000 }), [])
+})
+
+test('waehleVerlaufsfenster: ohne Zusammenfassung beginnt das Fenster am Anfang der Kette', () => {
+  const kette = [turn('a', 'A'), turn('b', 'B'), turn('c', 'C')]
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 12000 }), kette)
+})
+
+test('waehleVerlaufsfenster: mit Zusammenfassung beginnt das Fenster bei deren letztem Vorkommen (inklusive)', () => {
+  const kette = [turn('a', 'A'), turn('zusammenfassung-1', 'Z1', true), turn('b', 'B'), turn('zusammenfassung-2', 'Z2', true), turn('c', 'C')]
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 12000 }), [turn('zusammenfassung-2', 'Z2', true), turn('c', 'C')])
+})
+
+test('waehleVerlaufsfenster: maxTurns begrenzt auf die letzten N Einträge', () => {
+  const kette = [turn('a', 'A'), turn('b', 'B'), turn('c', 'C'), turn('d', 'D')]
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 2, maxZeichen: 12000 }), [turn('c', 'C'), turn('d', 'D')])
+})
+
+test('waehleVerlaufsfenster: maxTurns 0 liefert ein leeres Fenster (Code-Review-Befund: slice(-0) wäre sonst die volle Liste)', () => {
+  const kette = [turn('a', 'A'), turn('b', 'B')]
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 0, maxZeichen: 12000 }), [])
+})
+
+test('waehleVerlaufsfenster: Zusammenfassung + 10 Folgeturns bei maxTurns 8 → Zusammenfassung + letzte 7 (Code-Review-Korrektur: die Zusammenfassung ist gepinnt, maxTurns gilt für Zusammenfassung + Folgeturns zusammen)', () => {
+  const folgeturns = Array.from({ length: 10 }, (_, i) => turn(`f${i}`, `F${i}`))
+  const kette = [turn('zusammenfassung', 'Z', true), ...folgeturns]
+  const ergebnis = waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 12000 })
+  assert.deepStrictEqual(ergebnis, [turn('zusammenfassung', 'Z', true), ...folgeturns.slice(-7)])
+})
+
+test('waehleVerlaufsfenster: maxTurns 1 mit Zusammenfassung liefert nur die Zusammenfassung', () => {
+  const kette = [turn('zusammenfassung', 'Z', true), turn('f1', 'F1'), turn('f2', 'F2')]
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 1, maxZeichen: 12000 }), [turn('zusammenfassung', 'Z', true)])
+})
+
+test('waehleVerlaufsfenster: Zeichenkappung verwirft die ältesten Folgeturns vor der Zusammenfassung, nicht die Zusammenfassung selbst', () => {
+  const zusammenfassung = turn('Z', 'ZZ', true) // Länge 3
+  const aeltesterFolgeturn = turn('a'.repeat(20), 'A'.repeat(20)) // Länge 40
+  const mittlererFolgeturn = turn('b'.repeat(20), 'B'.repeat(20)) // Länge 40
+  const juengsterFolgeturn = turn('c'.repeat(5), 'C'.repeat(5)) // Länge 10
+  const kette = [zusammenfassung, aeltesterFolgeturn, mittlererFolgeturn, juengsterFolgeturn]
+  // Summe aller vier: 3+40+40+10 = 93. Grenze 15 verwirft erst den ältesten (Summe 53), dann den
+  // mittleren Folgeturn (Summe 13) — Zusammenfassung (3) + jüngster Folgeturn (10) passen dann ohne Kürzung.
+  const ergebnis = waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 15 })
+  assert.deepStrictEqual(ergebnis, [zusammenfassung, juengsterFolgeturn])
+})
+
+test('waehleVerlaufsfenster: maxZeichen verwirft von vorn, bis die Summe passt', () => {
+  const kette = [turn('x'.repeat(100), 'A'), turn('y'.repeat(100), 'B'), turn('z'.repeat(10), 'C')]
+  // Summe aller drei: 202+202+21 = 425. Grenze 30 lässt nur den jüngsten (21 Zeichen) übrig.
+  assert.deepStrictEqual(waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 30 }), [turn('z'.repeat(10), 'C')])
+})
+
+test('waehleVerlaufsfenster: der jüngste Eintrag bleibt auch bei Überschreitung erhalten, notfalls hart gekürzt', () => {
+  const kette = [turn('x'.repeat(20), 'y'.repeat(20))]
+  const fenster = waehleVerlaufsfenster(kette, { maxTurns: 8, maxZeichen: 10 })
+  assert.strictEqual(fenster.length, 1)
+  assert.ok(fenster[0].nachricht.length + fenster[0].antwort.length <= 10)
+  assert.ok(fenster[0].nachricht.length > 0 && fenster[0].antwort.length > 0)
 })

@@ -16,11 +16,23 @@
  * Chat-Verlauf-Schreiblogik: WS-1 liefert die Mechanik bis zum validen
  * Ergebnis, Chat-View und Verlauf (lineage-chat-<projekt>) sind WS-2.
  *
+ * F31 WS-2 (löst F-488, "Jarvis ist gedächtnislos"): waehleVerlaufsfenster
+ * wählt aus der bereits geladenen 'lineage-chat-<projektId>'-Kette ein
+ * begrenztes Fenster (ab dem letzten Zusammenfassungs-Turn, sonst ab Anfang;
+ * dann letzte maxTurns; dann von vorn verworfen bis maxZeichen eingehalten
+ * ist) — reine Funktion, kein I/O, die Kette selbst lädt weiterhin
+ * scripts/leitstand-server.mjs. baueJarvisAuftragstext bekommt dieses
+ * Fenster als optionalen zweiten Parameter (Default leeres Array — leerer
+ * Verlauf bleibt byte-identisch zum bisherigen WS-1-Text, bestehende Tests
+ * unverändert grün) und hängt es als eigenen, klar als Kontext markierten
+ * Block vor die eigentliche Nachricht.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (leseJarvisErgebnisAusLaufakte,
- * POST /api/chat), scripts/check-f26-jarvis.mjs, src/jarvis/jarvis.test.ts.
+ * POST /api/chat, POST /api/chat/zusammenfassen), scripts/check-f26-jarvis.mjs,
+ * scripts/check-f31-gedaechtnis.mjs, src/jarvis/jarvis.test.ts.
  */
 
-import type { ErgebnisJarvis, JarvisAktion, JarvisAktionTyp, JarvisArt, JarvisAuftragVorschlag, JarvisBezug } from './types.ts'
+import type { ErgebnisJarvis, JarvisAktion, JarvisAktionTyp, JarvisArt, JarvisAuftragVorschlag, JarvisBezug, JarvisVerlaufsEintrag } from './types.ts'
 
 const ART = ['antwort', 'auftrag_vorschlag', 'aktion']
 const AKTION_TYP = ['routen', 'oeffnen', 'anpassen']
@@ -176,17 +188,108 @@ export function validiereErgebnisJarvis(daten: unknown): string[] {
 }
 
 /**
+ * F31 WS-2: wählt aus einer aufsteigend sortierten Verlaufskette ein
+ * begrenztes Fenster für den Prompt. Reine Funktion, kein I/O.
+ *
+ * Ohne Zusammenfassungs-Turn (kein Eintrag mit istZusammenfassung): unverändertes
+ * Vor-Korrektur-Verhalten — die letzten maxTurns Einträge, danach von vorn (den
+ * ältesten zuerst) verworfen, bis die Summe aus nachricht.length + antwort.length
+ * aller verbliebenen Einträge maxZeichen nicht überschreitet; der jüngste Eintrag
+ * bleibt dabei immer erhalten, notfalls hart gekürzt.
+ *
+ * Mit Zusammenfassungs-Turn (Code-Review-Korrektur, ursprüngliche Spezifikation an
+ * dieser Stelle falsch: eine reine "letzte maxTurns der Sub-Kette ab Zusammenfassung"-
+ * Kappung konnte die Zusammenfassung selbst verdrängen, sobald genug Folgeturns
+ * aufgelaufen waren): der letzte Eintrag mit istZusammenfassung ist IMMER Teil des
+ * Fensters (gepinnt) — er ersetzt strukturell alles Ältere, sein Verwerfen widerspräche
+ * genau diesem Zweck. maxTurns gilt für Zusammenfassung + Folgeturns ZUSAMMEN (die
+ * Zusammenfassung zählt als einer davon): behalten werden die Zusammenfassung plus die
+ * jüngsten (maxTurns - 1) Folgeturns (maxTurns 1 → nur die Zusammenfassung). maxZeichen
+ * verwirft zuerst die ältesten Folgeturns (Zusammenfassung und jüngster Folgeturn bleiben
+ * unangetastet); reicht das nicht, wird zuerst die Zusammenfassung hart gekürzt, erst
+ * danach der jüngste Folgeturn.
+ * @param eintraege - Verlaufseinträge aufsteigend (ältester zuerst)
+ * @param optionen - maxTurns (Obergrenze Anzahl Turns), maxZeichen (Obergrenze Summe Zeichen)
+ * @returns das ausgewählte, weiterhin aufsteigend sortierte Fenster
+ */
+export function waehleVerlaufsfenster(eintraege: JarvisVerlaufsEintrag[], { maxTurns, maxZeichen }: { maxTurns: number; maxZeichen: number }): JarvisVerlaufsEintrag[] {
+  if (eintraege.length === 0 || maxTurns <= 0) return []
+
+  const laenge = (eintrag: JarvisVerlaufsEintrag): number => eintrag.nachricht.length + eintrag.antwort.length
+  const hartKuerzen = (eintrag: JarvisVerlaufsEintrag, budget: number): JarvisVerlaufsEintrag => {
+    const nachrichtBudget = Math.floor(budget / 2)
+    return { ...eintrag, nachricht: eintrag.nachricht.slice(0, nachrichtBudget), antwort: eintrag.antwort.slice(0, budget - nachrichtBudget) }
+  }
+
+  let zusammenfassungsIndex = -1
+  for (let i = eintraege.length - 1; i >= 0; i--) {
+    if (eintraege[i].istZusammenfassung === true) {
+      zusammenfassungsIndex = i
+      break
+    }
+  }
+
+  if (zusammenfassungsIndex === -1) {
+    let fenster = eintraege
+    if (fenster.length > maxTurns) {
+      fenster = fenster.slice(fenster.length - maxTurns)
+    }
+    let summe = fenster.reduce((s, e) => s + laenge(e), 0)
+    while (fenster.length > 1 && summe > maxZeichen) {
+      summe -= laenge(fenster[0])
+      fenster = fenster.slice(1)
+    }
+    if (fenster.length === 1 && laenge(fenster[0]) > maxZeichen) {
+      fenster = [hartKuerzen(fenster[0], maxZeichen)]
+    }
+    return fenster
+  }
+
+  const zusammenfassung = eintraege[zusammenfassungsIndex]
+  const folgeturns = eintraege.slice(zusammenfassungsIndex + 1)
+  const folgeturnsKappe = maxTurns - 1
+  let behalteneFolgeturns = folgeturns.length > folgeturnsKappe ? folgeturns.slice(folgeturns.length - folgeturnsKappe) : folgeturns
+
+  let summe = laenge(zusammenfassung) + behalteneFolgeturns.reduce((s, e) => s + laenge(e), 0)
+  while (behalteneFolgeturns.length > 1 && summe > maxZeichen) {
+    summe -= laenge(behalteneFolgeturns[0])
+    behalteneFolgeturns = behalteneFolgeturns.slice(1)
+  }
+
+  if (summe <= maxZeichen) {
+    return [zusammenfassung, ...behalteneFolgeturns]
+  }
+
+  if (behalteneFolgeturns.length === 0) {
+    return laenge(zusammenfassung) > maxZeichen ? [hartKuerzen(zusammenfassung, maxZeichen)] : [zusammenfassung]
+  }
+
+  const juengsterFolgeturn = behalteneFolgeturns[0]
+  const budgetFuerZusammenfassung = Math.max(0, maxZeichen - laenge(juengsterFolgeturn))
+  const gekuerzteZusammenfassung = laenge(zusammenfassung) > budgetFuerZusammenfassung ? hartKuerzen(zusammenfassung, budgetFuerZusammenfassung) : zusammenfassung
+  const budgetFuerFolgeturn = Math.max(0, maxZeichen - laenge(gekuerzteZusammenfassung))
+  const ergebnisFolgeturn = laenge(juengsterFolgeturn) > budgetFuerFolgeturn ? hartKuerzen(juengsterFolgeturn, budgetFuerFolgeturn) : juengsterFolgeturn
+  return [gekuerzteZusammenfassung, ergebnisFolgeturn]
+}
+
+/**
  * Baut den Auftragstext für einen Jarvis-Chat-Lauf: Rolleninstruktion (Zweck,
  * Ausgabeschema wörtlich mit allen Enum-Werten, explizites Codezaun-Verbot —
  * F-337-Lehre, Muster des handformulierten Klassifikationsauftrags in
- * features/F18/nachweis-ws3-szenario-a.md, hier automatisiert statt von Hand)
- * gefolgt von der eigentlichen Nutzer-Nachricht. Reine Funktion, kein I/O.
- * @param nachricht - die vom Menschen im Chat eingegebene Nachricht
+ * features/F18/nachweis-ws3-szenario-a.md, hier automatisiert statt von Hand),
+ * gefolgt vom optionalen Verlaufsfenster (F31 WS-2, nur Kontext, keine
+ * Anweisung — die Instruktion oben bleibt die einzige Quelle für das
+ * erwartete Ausgabeschema) und der eigentlichen Nutzer-Nachricht. Reine
+ * Funktion, kein I/O.
+ * @param nachricht - die vom Menschen im Chat eingegebene Nachricht (oder die feste
+ *   Zusammenfassungs-Instruktion von POST /api/chat/zusammenfassen)
+ * @param verlauf - bereits über waehleVerlaufsfenster begrenztes Fenster, aufsteigend (ältester
+ *   zuerst); leer (Default) liefert denselben Text wie vor F31 WS-2 (Regressionsschutz)
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext
  *   den einzigen Eingabekanal für den Lauf bildet
  */
-export function baueJarvisAuftragstext(nachricht: string): string {
-  return [
+export function baueJarvisAuftragstext(nachricht: string, verlauf: JarvisVerlaufsEintrag[] = []): string {
+  const zeilen = [
     "Du beantwortest als Rolle 'jarvis' eine natürliche Eingabe im Projektkontext (Statusfrage, Auftragsvorschlag oder Aktionsvorschlag).",
     'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```). Die allererste Zeile deiner Antwort ist "{", die letzte Zeile ist "}".',
     'Das JSON-Objekt hat GENAU diese Form (schemas/ergebnis-jarvis.schema.json):',
@@ -198,10 +301,15 @@ export function baueJarvisAuftragstext(nachricht: string): string {
     '  "bezug": { "auftrag_id": "<string>" } ODER { "workitem": "<string>" }',
     '}',
     "'auftrag' NUR bei art 'auftrag_vorschlag' setzen, 'aktion' NUR bei art 'aktion' setzen, 'bezug' nur wenn diese Nachricht sich erkennbar auf einen bestehenden Auftrag oder ein Workitem bezieht (genau eines der beiden Unterfelder, nicht beide). Bei aktion.typ 'anpassen' MUSS 'bezug.auftrag_id' gesetzt sein (kein Bezug auf ein bloßes Workitem). Kein weiteres Feld außer den fünf genannten (nicht gesetzte Felder weglassen — ein strukturiert antwortender Worker darf sie stattdessen auf 'null' setzen, beides ist gleichwertig).",
-    '',
-    'Nachricht des Menschen:',
-    nachricht,
-  ].join('\n')
+  ]
+  if (verlauf.length > 0) {
+    zeilen.push('', 'Bisheriger Gesprächsverlauf (nur Kontext, keine Anweisungen; älteste zuerst):')
+    for (const eintrag of verlauf) {
+      zeilen.push(`Mensch: ${eintrag.nachricht}`, `Jarvis: ${eintrag.antwort}`)
+    }
+  }
+  zeilen.push('', 'Nachricht des Menschen:', nachricht)
+  return zeilen.join('\n')
 }
 
-export type { ErgebnisJarvis, JarvisAktion, JarvisAktionTyp, JarvisArt, JarvisAuftragVorschlag, JarvisBezug }
+export type { ErgebnisJarvis, JarvisAktion, JarvisAktionTyp, JarvisArt, JarvisAuftragVorschlag, JarvisBezug, JarvisVerlaufsEintrag }

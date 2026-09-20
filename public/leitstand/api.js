@@ -122,6 +122,10 @@ export const holeRollenBesetzung = (rolle) => fetch(mitPraefix(`/ressourcen/roll
 export const sendeChatNachricht = (koerper) => fetch(mitPraefix('/chat'), { method: 'POST', body: JSON.stringify(koerper) })
 export const holeChatVerlauf = () => fetch(mitPraefix('/chat')).then((r) => r.json())
 
+// F31 WS-2: löst "Zusammenfassen & neu starten" aus (202 + laufId/auftragId, 409 bei D13 oder
+// leerem Verlauf, Muster sendeChatNachricht) — leerer Body, das Gedächtnisfenster baut der Server.
+export const sendeChatZusammenfassung = () => fetch(mitPraefix('/chat/zusammenfassen'), { method: 'POST', body: JSON.stringify({}) })
+
 // F25 WS-2a (AK11/AK13): bewusst NICHT über mitPraefix — dieser Endpunkt listet das GESAMTE
 // Projektregister unabhängig vom gerade aktiven Projekt und existiert nur unpräfigiert im
 // bestehenden defaultHandler (scripts/leitstand-server.mjs). Ein Präfix hier würde bei
