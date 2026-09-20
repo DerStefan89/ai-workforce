@@ -7,7 +7,7 @@ F31
 Jarvis-Chat-Erfahrung
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -37,10 +37,24 @@ E-M4-3 (kein echtes Token-Streaming) zu verlassen.
   gepinnt (fällt nicht mehr aus dem Fenster, sobald spätere Turns es
   überschreiten) und wird neuer Startpunkt für Prompt und Standardansicht.
   Löst [[F-488]] (Jarvis ist bislang gedächtnislos). **Gemergt (#194).**
-- **WS-3 — Chat-Latenz: messen, dann gezielt beschleunigen.** Erst eine
-  reine Messung (reale Läufe + kontrollierte CLI-Vergleichsläufe) der
-  12-23s-Antwortzeit, danach gezielte Umsetzung der belastbarsten Hebel.
-  **IN_ARBEIT.**
+- **WS-3 — Chat-Latenz: messen, dann gezielt beschleunigen.** Reale Läufe +
+  kontrollierte CLI-Vergleichsläufe der 12-23s-Antwortzeit
+  (`features/F31/latenzmessung.md`); umgesetzt: Jarvis ohne Projekt-Settings
+  (`--setting-sources ''`), Chat-Poll auf 500ms verkürzt, Server-Zeitmessung
+  eingezogen. Befund: Server-Anteil 266-386ms (durchgehend <0,4s), der Rest
+  ist reine Eigenzeit des `claude`-CLI-Prozessstarts ([[F-501]]).
+  **Gemergt (#196).**
+- **WS-3b — MCP-Begrenzung für `jarvis`.** Real gemessen: trotz
+  `--setting-sources ''`/`--tools` laden zwei Account-MCP-Server mit acht
+  zusätzlichen `mcp__*`-Werkzeugen (E-187-Lücke, `docs/projekt/
+  zielfassung.md` §9.4, real belegt statt nur dokumentiert). Für `jarvis`
+  über `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`
+  (`AufrufEingaben.mcpConfig`) geschlossen. **Gemergt (#197).**
+- **WS-3c — MCP-Begrenzung als Default für alle Rollen.** Dieselbe Lücke
+  real für eine schreibende Rolle bestätigt; `baueAufruf` hängt die
+  MCP-Begrenzung jetzt standardmäßig an JEDEN Aufruf (löst [[F-502]]).
+  §9.1-Zeile „MCP-Werkzeuge im Ausführungslauf" auf `ERZWUNGEN` hochgestuft.
+  Nachweis: `features/F31/nachweis-mcp-begrenzung.md`. **Gemergt (#198).**
 
 ## Akzeptanzkriterien
 - AK1 (WS-1, erfüllt): Ein laufender Jarvis-Lauf lässt sich im Chat über
@@ -51,9 +65,17 @@ E-M4-3 (kein echtes Token-Streaming) zu verlassen.
   Zeichen) statt nur der aktuellen Nachricht. „Zusammenfassen & neu
   starten" erzeugt einen Turn mit `istZusammenfassung: true`, der Prompt
   und Standardansicht auf sich zurücksetzt.
-- AK3 (WS-3, offen): `features/F31/latenzmessung.md` liegt vor (reale
-  Läufe + kontrollierte CLI-Vergleichsläufe, mind. 3-5 bewertete Hebel);
-  eine Umsetzungsentscheidung auf dieser Basis steht noch aus.
+- AK3 (WS-3, erfüllt): `features/F31/latenzmessung.md` liegt vor (reale
+  Läufe + kontrollierte CLI-Vergleichsläufe); Umsetzungsentscheidung
+  getroffen und umgesetzt (settingSources '', Chat-Poll 500ms,
+  Server-Zeitmessung). Der große verbleibende Hebel („Jarvis Live",
+  langlebiger Prozess) ist bewusst auf F30 verschoben, kein offener Rest
+  in F31 selbst.
+- AK4 (WS-3b, erfüllt): E-187-Lücke (MCP-Server umgehen `--tools`) real
+  gemessen und für `jarvis` über `AufrufEingaben.mcpConfig` geschlossen.
+- AK5 (WS-3c, erfüllt): dieselbe Begrenzung als Default für jeden Aufruf
+  umgesetzt, real für eine schreibende Rolle nachgewiesen, §9.1 auf
+  `ERZWUNGEN` hochgestuft.
 
 ## Dependencies
 - F26 — Jarvis Chat v1, dessen Rolle `jarvis` und Chat-Mechanik F31
@@ -87,10 +109,29 @@ E-M4-3 (kein echtes Token-Streaming) zu verlassen.
   bewusst zurückgestellt in die Dogfooding-Phase F30 (Entscheidung Stefan,
   20.09.2026) — ein Architekturwechsel dieser Größe gehört nicht in eine
   reine Messungs-/Härtungs-Iteration wie WS-3/WS-3b.
+- **UX-Lücken um Verlaufsfenster/Zusammenfassen offen für das Dogfooding
+  (20.09.2026):** kein UI-Hinweis, wenn das Chat-Verlaufsfenster oder
+  Zusammenfassen älteren Kontext kappt ([[F-498]]); Standardansicht nach
+  einer Zusammenfassung bleibt unbegrenzt lang, Zusammenfassen-Button bei
+  leerem Verlauf liefert unbehandelten 409-Rohtext statt Meldung, und
+  zweimaliges Zusammenfassen hintereinander ist ohne Warnung möglich
+  ([[F-499]]). Bewusst nicht in F31 behoben — im Dogfooding (F30) bewerten,
+  welche Lücken echten Reibungsverlust verursachen.
 
 ## Feature Review
-WS-1 real gebaut und gemergt (#192): Abbruch-Button im Jarvis-Chat, große
-Chat-Ansicht auf `#/chat`. WS-2 real gebaut und gemergt (#194):
-Gesprächsgedächtnis + „Zusammenfassen & neu starten". WS-3 (Chat-Latenz)
-läuft, bislang nur als Messung (`features/F31/latenzmessung.md`), noch
-keine Umsetzung. Kein Feature-Gate fällig.
+Alle fünf Workstreams real gebaut und gemergt:
+- **WS-1** (#192): Abbruch-Button im Jarvis-Chat, große Chat-Ansicht auf
+  `#/chat`.
+- **WS-2** (#194, Korrektur [[F-496]]): Gesprächsgedächtnis + „Zusammenfassen
+  & neu starten", Zusammenfassung bleibt im Verlaufsfenster gepinnt.
+- **WS-3** (#196): Jarvis ohne Projekt-Settings, Chat-Poll 500ms,
+  Server-Zeitmessung — Befund: Server-Anteil <0,4s, Rest ist
+  CLI-Prozessstart.
+- **WS-3b** (#197): MCP-Begrenzung für `jarvis`, E-187-Lücke real belegt.
+- **WS-3c** (#198): MCP-Begrenzung als Default für alle Rollen, §9.1 auf
+  `ERZWUNGEN` (`features/F31/nachweis-mcp-begrenzung.md`).
+
+Ergebnis: Chat-Turn ~10s statt 12-16s; Gedächtnis real belegt. Weitere
+Beschleunigung („Jarvis Live", langlebiger Prozess mit `stream-json`)
+bewusst auf die Dogfooding-Phase F30 verschoben (Entscheidung Stefan,
+20.09.2026, [[F-501]]). Kein Feature-Gate fällig.
