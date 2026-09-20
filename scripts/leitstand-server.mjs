@@ -450,6 +450,7 @@ import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster 
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
+import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -3652,6 +3653,16 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     if (req.method === 'GET' && pfad === '/api/auftraege') {
       sendeJson(res, 200, sammleAuftraege(basisVerzeichnis))
+      return
+    }
+
+    // F32 WS-1: reine Projektion, keine weitere Logik hier (D5) — siehe
+    // scripts/leitstand/routen-verbrauch.mjs. ?von=/?bis= (ISO-8601) filtern
+    // über erstellt_am, beide optional.
+    if (req.method === 'GET' && pfad === '/api/verbrauch') {
+      const von = angefragteUrl.searchParams.get('von') ?? undefined
+      const bis = angefragteUrl.searchParams.get('bis') ?? undefined
+      sendeJson(res, 200, baueVerbrauchsProjektion(basisVerzeichnis, { von, bis }))
       return
     }
 

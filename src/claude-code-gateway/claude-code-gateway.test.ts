@@ -36,7 +36,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
-import { baueAufruf, leseModellBeobachtet, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
+import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -583,6 +583,78 @@ test('leseModellBeobachtet liefert null ohne modelUsage-Feld', () => {
 
 test('leseModellBeobachtet liefert null bei null-Ergebnisobjekt', () => {
   assert.strictEqual(leseModellBeobachtet(null), null)
+})
+
+// ─── F32 WS-1: leseVerbrauch — real gemessene Form aus einem echten Jarvis-Chat-Rohstrom ──
+
+/** Wörtlich reduziert auf die für leseVerbrauch tragenden Felder — echte Form, real gemessen (kontrollzustand-roh/jarvis-jarvis-chat-*, F32 WS-1). */
+function realesErgebnisobjektMitVerbrauch(): Record<string, unknown> {
+  return {
+    type: 'result',
+    duration_api_ms: 3257,
+    usage: { input_tokens: 2, cache_creation_input_tokens: 4760, cache_read_input_tokens: 11395, output_tokens: 55 },
+    duration_ms: 2444,
+    num_turns: 1,
+  }
+}
+
+test('leseVerbrauch liefert die vollständige Form bei einem realen Ergebnisobjekt', () => {
+  const verbrauch = leseVerbrauch(realesErgebnisobjektMitVerbrauch())
+  assert.deepStrictEqual(verbrauch, {
+    input_tokens: 2,
+    output_tokens: 55,
+    cache_read_tokens: 11395,
+    cache_write_tokens: 4760,
+    dauer_ms: 2444,
+    dauer_api_ms: 3257,
+    turns: 1,
+    quelle: 'claude-code',
+  })
+})
+
+test('leseVerbrauch liefert dauer_api_ms/turns null, wenn das Ergebnisobjekt sie nicht trägt', () => {
+  const ergebnisObjekt = realesErgebnisobjektMitVerbrauch()
+  delete ergebnisObjekt.duration_api_ms
+  delete ergebnisObjekt.num_turns
+  const verbrauch = leseVerbrauch(ergebnisObjekt)
+  assert.strictEqual(verbrauch?.dauer_api_ms, null)
+  assert.strictEqual(verbrauch?.turns, null)
+})
+
+test('leseVerbrauch liefert null ohne usage-Feld — nie geschätzt', () => {
+  assert.strictEqual(leseVerbrauch({ type: 'result', duration_ms: 100 }), null)
+})
+
+test('leseVerbrauch liefert null, wenn usage ein Pflichtfeld nicht als Zahl trägt', () => {
+  const ergebnisObjekt = realesErgebnisobjektMitVerbrauch()
+  ;(ergebnisObjekt.usage as Record<string, unknown>).input_tokens = '2'
+  assert.strictEqual(leseVerbrauch(ergebnisObjekt), null)
+})
+
+// F32 WS-1, Code-Review-/QA-Befund: ein Zahlenfeld außerhalb der Schema-Grenze
+// (integer, minimum 0) darf nicht anstandslos in die Laufakte geschrieben werden —
+// leseVerbrauch ist der reale Schreibpfad (starteGateway ruft validiereLaufakteDaten
+// nicht auf), die Grenzprüfung muss deshalb HIER sitzen, nicht nur im Validator.
+test('leseVerbrauch liefert null bei einem negativen Zahlenfeld — nie schreibend übernommen', () => {
+  const ergebnisObjekt = realesErgebnisobjektMitVerbrauch()
+  ;(ergebnisObjekt.usage as Record<string, unknown>).input_tokens = -5
+  assert.strictEqual(leseVerbrauch(ergebnisObjekt), null)
+})
+
+test('leseVerbrauch liefert null bei einem nicht-ganzzahligen Zahlenfeld', () => {
+  const ergebnisObjekt = realesErgebnisobjektMitVerbrauch()
+  ;(ergebnisObjekt.usage as Record<string, unknown>).output_tokens = 2.7
+  assert.strictEqual(leseVerbrauch(ergebnisObjekt), null)
+})
+
+test('leseVerbrauch liefert null ohne duration_ms — nie geschätzt', () => {
+  const ergebnisObjekt = realesErgebnisobjektMitVerbrauch()
+  delete ergebnisObjekt.duration_ms
+  assert.strictEqual(leseVerbrauch(ergebnisObjekt), null)
+})
+
+test('leseVerbrauch liefert null bei null-Ergebnisobjekt', () => {
+  assert.strictEqual(leseVerbrauch(null), null)
 })
 
 // ─── WS4: pruefeStartziel (AK15-Guard) ───────────────────────────────────────

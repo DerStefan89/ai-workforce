@@ -1,0 +1,25 @@
+{
+  "laufakte_schema": "v0",
+  "lauf_id": "beispiel-lauf-verbrauch",
+  "werkzeug_version_deklariert": "2.1.241",
+  "berechtigungskontext": "profil-standard",
+  "arbeitsverzeichnis_pfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+  "modell_beobachtet": "claude-sonnet-5",
+  "beobachtungsbasis_vollstaendig": true,
+  "rohstrom_referenz": {
+    "pfad": "kontrollzustand-roh/beispiel-lauf-verbrauch/rohstrom.json",
+    "inhalts_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "erstellt_am": "2026-09-20T09:00:00.000Z",
+  "worker": "claude-code",
+  "verbrauch": {
+    "input_tokens": 2,
+    "output_tokens": 55,
+    "cache_read_tokens": 11395,
+    "cache_write_tokens": 4760,
+    "dauer_ms": 2444,
+    "dauer_api_ms": 3257,
+    "turns": 1,
+    "quelle": "claude-code"
+  }
+}

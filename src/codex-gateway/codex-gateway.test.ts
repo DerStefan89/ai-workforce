@@ -67,7 +67,7 @@ import { starteProzess } from '../claude-code-gateway/prozessstart.ts'
 import type { Starter, StarterOptionen } from '../claude-code-gateway/types.ts'
 import { ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
-import { baueCodexAufruf, leseCodexEreignisse, starteCodexGateway } from './index.ts'
+import { baueCodexAufruf, leseCodexEreignisse, leseVerbrauchCodex, starteCodexGateway } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const ABSOLUTER_SCHEMAPFAD = resolve(process.cwd(), 'schemas', 'ergebnis-code-reviewer.schema.json')
@@ -422,6 +422,52 @@ test('AK4: ein leeres modell_deklariert ist ein Verstoß', () => {
   assert.ok(verstoesse.some((v) => v.includes("'modell_deklariert'")))
 })
 
+// ─── F32 WS-1: leseVerbrauchCodex — real gemessene Form (kontrollzustand-roh/router-*) ──
+
+/** Wörtlich aus einem echten Router-Rohstrom (kontrollzustand-roh/router-4d225f56-*), F32 WS-1. */
+const TURN_COMPLETED_MIT_USAGE = '{"type":"turn.completed","usage":{"input_tokens":16454,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":175,"reasoning_output_tokens":58}}'
+
+test('leseVerbrauchCodex liefert die vollständige Form bei einem realen turn.completed-Ereignis', () => {
+  const ereignisse = leseCodexEreignisse(`{"type":"turn.started"}\n${TURN_COMPLETED_MIT_USAGE}\n`)
+  const verbrauch = leseVerbrauchCodex(ereignisse, 4200)
+  assert.deepStrictEqual(verbrauch, {
+    input_tokens: 16454,
+    output_tokens: 175,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    dauer_ms: 4200,
+    dauer_api_ms: null,
+    turns: null,
+    quelle: 'codex',
+  })
+})
+
+test('leseVerbrauchCodex liefert null ohne turn.completed-Ereignis — nie geschätzt', () => {
+  const ereignisse = leseCodexEreignisse('{"type":"turn.started"}\n')
+  assert.strictEqual(leseVerbrauchCodex(ereignisse, 1000), null)
+})
+
+test('leseVerbrauchCodex liefert null, wenn turn.completed kein usage-Feld trägt', () => {
+  const ereignisse = leseCodexEreignisse('{"type":"turn.completed"}\n')
+  assert.strictEqual(leseVerbrauchCodex(ereignisse, 1000), null)
+})
+
+test('leseVerbrauchCodex liefert null, wenn usage ein Pflichtfeld nicht als Zahl trägt', () => {
+  const ereignisse = leseCodexEreignisse('{"type":"turn.completed","usage":{"input_tokens":"16454","cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":175}}\n')
+  assert.strictEqual(leseVerbrauchCodex(ereignisse, 1000), null)
+})
+
+// F32 WS-1, Code-Review-/QA-Befund: dieselbe Integer/≥0-Grenze wie leseVerbrauch (D5).
+test('leseVerbrauchCodex liefert null bei einem negativen Zahlenfeld', () => {
+  const ereignisse = leseCodexEreignisse('{"type":"turn.completed","usage":{"input_tokens":-1,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":175}}\n')
+  assert.strictEqual(leseVerbrauchCodex(ereignisse, 1000), null)
+})
+
+test('leseVerbrauchCodex liefert null bei einem nicht-ganzzahligen Zahlenfeld', () => {
+  const ereignisse = leseCodexEreignisse('{"type":"turn.completed","usage":{"input_tokens":16454,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":175.5}}\n')
+  assert.strictEqual(leseVerbrauchCodex(ereignisse, 1000), null)
+})
+
 // ─── AK3, Nachtrag: Zweige, die der Spike nicht belegen kann ────────────────
 // Die einzige turn.failed-Zeile des Spikes ist im Protokoll abgekürzt und
 // damit unparsbar (siehe LAUF_3_FEHLVERSUCH_ZEILEN). Der
@@ -497,6 +543,14 @@ const STDOUT_LAUF_A = [
   '{"type":"turn.started"}',
   '{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Im aktuellen Verzeichnis liegen 2 Dateien."}}',
   '{"type":"turn.completed","usage":{"input_tokens":31560,"output_tokens":175}}',
+].join('\n')
+
+/** Wie STDOUT_LAUF_A, aber mit vollständigem usage-Objekt (F32 WS-1, reale Form aus kontrollzustand-roh/router-*). */
+const STDOUT_LAUF_A_MIT_VERBRAUCH = [
+  '{"type":"thread.started","thread_id":"01a08f5d-1ab2-7ac2-9b41-6bdb224047af"}',
+  '{"type":"turn.started"}',
+  '{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"Im aktuellen Verzeichnis liegen 2 Dateien."}}',
+  '{"type":"turn.completed","usage":{"input_tokens":31560,"cached_input_tokens":100,"cache_write_input_tokens":0,"output_tokens":175,"reasoning_output_tokens":10}}',
 ].join('\n')
 
 function neueGatewayLaufId(praefix: string): string {
@@ -806,6 +860,32 @@ test('AK7 rot: ein ungültiges Startziel verhindert den Prozessstart, bevor der 
     // Der Startziel-Guard ist ein Hygiene-Guard, keine F4-Verweigerung —
     // er schreibt bewusst KEINE Wirkungsmarke (Muster starteGateway).
     assert.equal(existsSync(join(KONTROLLZUSTAND_BASIS, laufId)), false)
+  } finally {
+    raeumeGatewayLauf(laufId)
+  }
+})
+
+test('F32 WS-1: starteCodexGateway befüllt laufakte.verbrauch bei vollständigem usage-Objekt, dauer_ms real gemessen', async () => {
+  const laufId = neueGatewayLaufId('codex-gw-verbrauch')
+  try {
+    const { starter } = protokollierenderStarter({ stdout: STDOUT_LAUF_A_MIT_VERBRAUCH, stderr: '', exitCode: 0 })
+    const ergebnis = await starteCodexGateway(gatewayEingaben(laufId), {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: ROH_BASIS,
+      starter,
+    })
+    assert.equal(ergebnis.ok, true)
+    if (!ergebnis.ok) return
+    assert.ok(ergebnis.laufakte.verbrauch)
+    assert.equal(ergebnis.laufakte.verbrauch?.input_tokens, 31560)
+    assert.equal(ergebnis.laufakte.verbrauch?.output_tokens, 175)
+    assert.equal(ergebnis.laufakte.verbrauch?.cache_read_tokens, 100)
+    assert.equal(ergebnis.laufakte.verbrauch?.cache_write_tokens, 0)
+    assert.equal(ergebnis.laufakte.verbrauch?.dauer_api_ms, null)
+    assert.equal(ergebnis.laufakte.verbrauch?.turns, null)
+    assert.equal(ergebnis.laufakte.verbrauch?.quelle, 'codex')
+    assert.ok(typeof ergebnis.laufakte.verbrauch?.dauer_ms === 'number' && ergebnis.laufakte.verbrauch.dauer_ms >= 0)
+    assert.equal(validiereLaufakteDaten(ergebnis.laufakte).length, 0)
   } finally {
     raeumeGatewayLauf(laufId)
   }

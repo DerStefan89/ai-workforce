@@ -79,7 +79,7 @@ import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter } from './types.ts'
+import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0 } from './types.ts'
 
 /**
  * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
@@ -199,6 +199,68 @@ export function leseModellBeobachtet(ergebnisObjekt: Record<string, unknown> | n
   if (typeof modelUsage !== 'object' || modelUsage === null || Array.isArray(modelUsage)) return null
   const schluessel = Object.keys(modelUsage)
   return schluessel.length === 1 ? schluessel[0] : null
+}
+
+/**
+ * Grenzprüfung für ein einzelnes verbrauch-Zahlenfeld (F32 WS-1) — dieselbe
+ * Regel wie das Schema (`integer`, `minimum: 0`), hier auf dem Lesepfad
+ * angewendet: validiereLaufakteDaten prüft nur, was bereits geschrieben
+ * wurde, ruft aber weder starteGateway noch starteCodexGateway selbst auf
+ * (kein Schreib-Gate). Ohne diese Prüfung hier würde ein negativer oder
+ * nicht-ganzzahliger Wert aus der Laufausgabe anstandslos in die Laufakte
+ * geschrieben. Exportiert, damit src/codex-gateway/index.ts dieselbe Regel
+ * verwendet statt sie nachzubauen (D5).
+ */
+export function istGueltigeVerbrauchsZahl(wert: unknown): wert is number {
+  return typeof wert === 'number' && Number.isInteger(wert) && wert >= 0
+}
+
+/**
+ * Liefert Verbrauchsdaten aus dem "type":"result"-Objekt (F32 WS-1) —
+ * real gemessene Form, siehe die Feldliste unten. Die vier erwarteten
+ * usage-Schlüssel (input_tokens, output_tokens, cache_read_input_tokens,
+ * cache_creation_input_tokens) waren in ALLEN 87 real geprüften
+ * claude-code-Läufen im Hauptrepo vorhanden (vier verschiedene Rollen:
+ * jarvis, router, scout, ausfuehrung — F32-WS-1-Nachweis,
+ * features/F32/nachweis-verbrauch.md Abschnitt 1), kein Alles-oder-nichts-
+ * Fall dieser Prüfung ist dort real beobachtet. Nur bei GENAU den
+ * erwarteten numerischen Feldern (nicht-negative Ganzzahlen) gültig; fehlt
+ * eines, trägt einen anderen Typ oder verletzt die Grenze, wird nicht
+ * teilweise befüllt oder geschätzt, sondern null zurückgegeben (Muster
+ * leseModellBeobachtet, F-059/F-061).
+ * total_cost_usd wird bewusst nie gelesen (Abo, Entscheidung 30).
+ */
+export function leseVerbrauch(ergebnisObjekt: Record<string, unknown> | null): VerbrauchV0 | null {
+  if (ergebnisObjekt === null) return null
+  const usage = ergebnisObjekt.usage
+  if (typeof usage !== 'object' || usage === null || Array.isArray(usage)) return null
+  const u = usage as Record<string, unknown>
+  const inputTokens = u.input_tokens
+  const outputTokens = u.output_tokens
+  const cacheReadTokens = u.cache_read_input_tokens
+  const cacheWriteTokens = u.cache_creation_input_tokens
+  const dauerMs = ergebnisObjekt.duration_ms
+  if (
+    !istGueltigeVerbrauchsZahl(inputTokens) ||
+    !istGueltigeVerbrauchsZahl(outputTokens) ||
+    !istGueltigeVerbrauchsZahl(cacheReadTokens) ||
+    !istGueltigeVerbrauchsZahl(cacheWriteTokens) ||
+    !istGueltigeVerbrauchsZahl(dauerMs)
+  ) {
+    return null
+  }
+  const dauerApiMs = istGueltigeVerbrauchsZahl(ergebnisObjekt.duration_api_ms) ? ergebnisObjekt.duration_api_ms : null
+  const turns = istGueltigeVerbrauchsZahl(ergebnisObjekt.num_turns) ? ergebnisObjekt.num_turns : null
+  return {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_read_tokens: cacheReadTokens,
+    cache_write_tokens: cacheWriteTokens,
+    dauer_ms: dauerMs,
+    dauer_api_ms: dauerApiMs,
+    turns,
+    quelle: 'claude-code',
+  }
 }
 
 /**
@@ -337,6 +399,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
+  const verbrauch = leseVerbrauch(ergebnisObjekt)
 
   const rohBasisVerzeichnis = optionen.rohBasisVerzeichnis ?? STANDARD_ROH_BASISVERZEICHNIS
   const rohVerzeichnis = join(rohBasisVerzeichnis, eingaben.laufId)
@@ -363,6 +426,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     beobachtungsbasis_vollstaendig: beobachtungsbasisVollstaendig,
     rohstrom_referenz: { pfad: rohPfad, inhalts_hash: sha256Hex(rohInhalt) },
     erstellt_am: jetzt(),
+    ...(verbrauch !== null ? { verbrauch } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(
@@ -400,6 +464,8 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     // Typkommentar in types.ts und die Schema-description.
     'worker',
     'modell_deklariert',
+    // F32 WS-1: additiv erlaubt, bewusst nicht Pflicht (Muster worker/modell_deklariert).
+    'verbrauch',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -449,6 +515,35 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
   }
   if ('modell_deklariert' in obj && (typeof obj.modell_deklariert !== 'string' || obj.modell_deklariert.length === 0)) {
     verstoesse.push("'modell_deklariert' muss, wenn angegeben, ein nicht-leerer String sein")
+  }
+  // F32 WS-1: additiv erlaubt, bewusst nicht Pflicht (Muster worker/modell_deklariert oben).
+  if ('verbrauch' in obj) {
+    const verbrauch = obj.verbrauch
+    if (typeof verbrauch !== 'object' || verbrauch === null || Array.isArray(verbrauch)) {
+      verstoesse.push("'verbrauch' muss, wenn angegeben, ein Objekt sein")
+    } else {
+      const v = verbrauch as Record<string, unknown>
+      const vErlaubt = new Set(['input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens', 'dauer_ms', 'dauer_api_ms', 'turns', 'quelle'])
+      for (const feld of Object.keys(v)) {
+        if (!vErlaubt.has(feld)) verstoesse.push(`unbekanntes Feld 'verbrauch.${feld}' (additionalProperties: false)`)
+      }
+      for (const feld of vErlaubt) {
+        if (!(feld in v)) verstoesse.push(`Pflichtfeld 'verbrauch.${feld}' fehlt`)
+      }
+      for (const feld of ['input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens', 'dauer_ms']) {
+        if (feld in v && (typeof v[feld] !== 'number' || !Number.isInteger(v[feld]) || (v[feld] as number) < 0)) {
+          verstoesse.push(`'verbrauch.${feld}' muss ein Integer >= 0 sein`)
+        }
+      }
+      for (const feld of ['dauer_api_ms', 'turns']) {
+        if (feld in v && v[feld] !== null && (typeof v[feld] !== 'number' || !Number.isInteger(v[feld]) || (v[feld] as number) < 0)) {
+          verstoesse.push(`'verbrauch.${feld}' muss null oder ein Integer >= 0 sein`)
+        }
+      }
+      if ('quelle' in v && v.quelle !== 'claude-code' && v.quelle !== 'codex') {
+        verstoesse.push("'verbrauch.quelle' muss 'claude-code' oder 'codex' sein")
+      }
+    }
   }
   return verstoesse
 }

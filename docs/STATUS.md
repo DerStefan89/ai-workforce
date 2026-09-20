@@ -22,7 +22,9 @@ Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
 (12.09.2026); F20–F27 sind umgesetzt (F24/F26/F27 `ABGESCHLOSSEN`, F22/F23
 `FEATURE_GATE`, F25 `FEATURE_GATE` mit offenem WS-2b/WS-3), F28/F29
 `ABGESCHLOSSEN`, F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192,
-WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198) (Stand 20.09.2026).
+WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198), F32 (Verbrauch & Kontingent)
+`IN_ARBEIT` (WS-1 Laufakte-Feld + Projektion, `features/F32/feature.md`)
+(Stand 20.09.2026).
 
 ## Erledigt
 
@@ -420,6 +422,9 @@ Feature unter `features/F2x/`):
   Gesprächsgedächtnis + Zusammenfassen, MCP-Begrenzung). Akte
   `features/F31/feature.md`, Status `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194,
   WS-3 #196, WS-3b #197, WS-3c #198). Nach F26, F29.
+- ⏳ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
+  `GET /api/verbrauch`). Akte `features/F32/feature.md`, Status
+  `IN_ARBEIT` (WS-1 erledigt, WS-2 UI-Ansicht offen). Nach F6a, F16.
 
 Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 
