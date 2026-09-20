@@ -27,11 +27,16 @@
  * übergangen (CLAUDE.md-Entscheidungsregel 5), eine "läuft gerade etwas"-
  * Projektion über einen Reload hinweg wäre eine eigene Server-Erweiterung.
  *
- * Ein laufender Jarvis-Lauf wird über den ohnehin vorhandenen
- * 2-Sekunden-Poll (zustand.js, abonniereDetailAuffrischer, Muster
- * views/workflows.js Workflow-Detail) verfolgt, kein eigener Timer. Erst
- * wenn der Lauf real ABGESCHLOSSEN ist, wird der Verlauf neu geladen (der
- * Server hat den Lineage-Eintrag dann bereits geschrieben, siehe
+ * Ein laufender Jarvis-Lauf wurde bis F31 WS-3 über den gemeinsamen
+ * 2-Sekunden-Poll (zustand.js, abonniereDetailAuffrischer) verfolgt. F31
+ * WS-3 (Latenzmessung, features/F31/latenzmessung.md Abschnitt 4, Hebel 4)
+ * ersetzt das durch einen EIGENEN, schnelleren Timer (500ms,
+ * ausstehendenLaufTimer unten), der NUR läuft, solange ausstehenderLauf
+ * gesetzt ist — der gemeinsame zustand.js-Timer und damit jeder andere Poll
+ * (Zustand-Aggregat, Workflow-Detail, F26-Perf-Fix) bleibt unverändert bei
+ * 2000ms, diese View liest daraus weiterhin nur letzterZustand (Vorfilter).
+ * Erst wenn der Lauf real ABGESCHLOSSEN ist, wird der Verlauf neu geladen
+ * (der Server hat den Lineage-Eintrag dann bereits geschrieben, siehe
  * scripts/leitstand-server.mjs POST /api/chat nachLauf-Callback — synchron
  * im selben Tick wie der Terminalstatus, kein Wettlauf). Schlägt dieses
  * Neuladen selbst transient fehl, bleibt der Lauf als ausstehend markiert
@@ -102,13 +107,26 @@
  * angefordert]"); renderVerlauf setzt bei NICHT zeigeAlle den Standard-Ausschnitt auf "ab dem
  * letzten Zusammenfassungs-Turn (inklusive) plus alles danach" statt der bisherigen letzten
  * zwei Einträge — ohne einen solchen Turn bleibt das Verhalten unverändert (letzte zwei).
+ *
+ * F31 WS-3 (Latenzmessung, features/F31/latenzmessung.md Abschnitt 4, Hebel 4): der
+ * ausstehenderLauf-Poll läuft seither über eine eigene, verkettete setTimeout-Schleife (500ms,
+ * starteAusstehendenLaufPoll/stoppeAusstehendenLaufPoll — bewusst setTimeout statt setInterval,
+ * siehe Kommentar dort), NICHT mehr über den gemeinsamen 2-Sekunden-Timer aus zustand.js — der
+ * bleibt für jeden anderen Poll (Zustand-Aggregat, Workflow-Detail) unverändert bei 2000ms. Der
+ * Poll startet, sobald sendeAktuelleEingabe/sendeZusammenfassungAnfrage ausstehenderLauf setzen,
+ * und stoppt, sobald pruefeAusstehendenLauf ihn terminal auflöst oder setzeChatZustandZurueck
+ * (Projektwechsel) ihn zurücksetzt — läuft er bereits, ist ein erneutes Starten ein No-op (kein
+ * zweiter Poll parallel). Ein Reload MITTEN in einem ausstehenden Lauf startet weiterhin keinen
+ * Poll (ausstehenderLauf lebt nur im Modulspeicher, unverändert zur bereits oben dokumentierten
+ * Grenze) — dasselbe galt schon für den vorherigen, gemeinsamen Timer, weil pruefeAusstehendenLauf
+ * ohne ausstehenderLauf sofort zurückkehrte.
  */
 
 import { abbrichLauf, holeChatVerlauf, holeLaufDetail, sendeChatNachricht, sendeChatZusammenfassung } from '../api.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
-import { abonniere, abonniereDetailAuffrischer } from '../zustand.js'
+import { abonniere } from '../zustand.js'
 import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 
 /** F29 WS-D2 (Auftrag Punkt C): true zeigt den vollständigen Verlauf, false nur die letzten zwei Einträge — reiner Anzeige-Umschalter ("Ganzen Verlauf öffnen"/"schließen"), kein zweiter Fetch. */
@@ -125,6 +143,48 @@ let lokaleEintraege = []
 
 /** Der gerade laufende, noch nicht terminierte Jarvis-Chat-Lauf dieser View, oder null. @type {{ nachricht: string, laufId: string } | null} */
 let ausstehenderLauf = null
+
+/** F31 WS-3: Handle des eigenen 500ms-Polls (siehe Datei-Kopf), oder null, solange keiner läuft. */
+let ausstehenderLaufTimeout = null
+
+const AUSSTEHENDER_LAUF_POLL_MS = 500
+
+/**
+ * Plant den nächsten Tick per setTimeout, NICHT setInterval (scripts/check-f20-zustand-poll.mjs
+ * AK3 erzwingt mechanisch genau einen 'setInterval('-Aufruf in public/leitstand/**, in zustand.js
+ * — Regressionsschutz gegen die vor F20 WS-2 bestehenden Mehrfach-Timer. Dieser Poll ist bewusst
+ * KEIN zweiter Aggregat-Timer dieser Art: er zielt auf eine einzelne Lauf-Detailressource
+ * (GET /api/laeufe/<laufId>), läuft nur befristet, solange ausstehenderLauf gesetzt ist, und
+ * plant erst nach Abschluss des vorherigen Ticks neu — ein langsamer Fetch häuft dadurch keine
+ * überlappenden Requests an, wie es bei setInterval möglich wäre).
+ */
+function planeNaechstenAusstehendenLaufPoll() {
+  ausstehenderLaufTimeout = setTimeout(async () => {
+    // QA-Befund F31 WS-3: try/finally, NICHT nur await — ein Wurf aus pruefeAusstehendenLauf (z. B.
+    // ein unerwartet geformtes GET /api/laeufe/<laufId>-Ergebnis) darf die Kette nicht dauerhaft
+    // abbrechen. Ohne das bliebe ausstehenderLaufTimeout auf der bereits verbrauchten Timeout-ID
+    // stehen, starteAusstehendenLaufPoll hielte den Poll fälschlich für "läuft schon" und der
+    // Tippindikator/die Senden-Sperre blieben für den Rest der Sitzung hängen.
+    try {
+      await pruefeAusstehendenLauf()
+    } finally {
+      if (ausstehenderLaufTimeout !== null) planeNaechstenAusstehendenLaufPoll()
+    }
+  }, AUSSTEHENDER_LAUF_POLL_MS)
+}
+
+/** Startet den 500ms-Poll, falls noch keiner läuft (No-op sonst) — aufgerufen, sobald ausstehenderLauf gesetzt wird. */
+function starteAusstehendenLaufPoll() {
+  if (ausstehenderLaufTimeout !== null) return
+  planeNaechstenAusstehendenLaufPoll()
+}
+
+/** Stoppt den 500ms-Poll, falls einer läuft (No-op sonst) — aufgerufen, sobald ausstehenderLauf terminal aufgelöst oder zurückgesetzt wird. */
+function stoppeAusstehendenLaufPoll() {
+  if (ausstehenderLaufTimeout === null) return
+  clearTimeout(ausstehenderLaufTimeout)
+  ausstehenderLaufTimeout = null
+}
 
 /** @param antwort - JarvisErgebnis-artiges Objekt ({ art, antwort, auftrag?, aktion?, bezug? }) oder null @returns Anzeigetext */
 function antwortText(antwort) {
@@ -246,7 +306,7 @@ function beschreibeNichtErfolgreichesEnde(laufStatus) {
   return `Lauf endete unerwartet (Status: ${laufStatus?.status ?? 'unbekannt'}).`
 }
 
-/** Bei jedem Poll-Tick geprüft (abonniereDetailAuffrischer): solange ein Jarvis-Chat-Lauf aussteht, GET /api/laeufe/<laufId> abrufen und bei Terminallage auflösen. */
+/** Bei jedem Tick des eigenen 500ms-Polls geprüft (siehe Datei-Kopf): solange ein Jarvis-Chat-Lauf aussteht, GET /api/laeufe/<laufId> abrufen und bei Terminallage auflösen. */
 async function pruefeAusstehendenLauf() {
   if (ausstehenderLauf === null) return
   const { laufId, nachricht } = ausstehenderLauf
@@ -269,6 +329,14 @@ async function pruefeAusstehendenLauf() {
   const laufStatus = detail.laufStatus
   if (laufStatus?.status !== 'ABGESCHLOSSEN' && laufStatus?.status !== 'KLAERUNG_ERFORDERLICH') return // noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
 
+  // Code-Review-Befund F31 WS-3: die obigen Awaits geben den Tick frei — ein Projektwechsel
+  // (setzeChatZustandZurueck) kann währenddessen ausstehenderLauf bereits auf null gesetzt und
+  // den Poll gestoppt haben. Ohne diese erneute Prüfung würde der jetzt fertige, aber schon
+  // fremde laufId/nachricht in die lokaleEintraege des NEUEN Projekts geschrieben (falsch
+  // zugeordnete Fehlanzeige) bzw. ausstehenderLauf/die Senden-Sperre eines inzwischen anders
+  // aufgelösten Zustands überschreiben — Muster initAbbrechenBedienung.
+  if (ausstehenderLauf?.laufId !== laufId) return
+
   if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'ERFOLGREICH') {
     // ausstehenderLauf bleibt gesetzt, bis ladeVerlauf() wirklich erfolgreich war (QA-Befund):
     // ein transienter Fehlschlag genau in diesem Moment ließe sonst weder die Pending-Anzeige
@@ -276,11 +344,14 @@ async function pruefeAusstehendenLauf() {
     // Lauf erneut und versucht das Neuladen einfach noch einmal.
     const geladen = await ladeVerlauf()
     if (!geladen) return
+    // ladeVerlauf() ist selbst ein weiterer Await-Punkt — dieselbe Prüfung wie oben, jetzt danach.
+    if (ausstehenderLauf?.laufId !== laufId) return
   } else {
     lokaleEintraege.push({ nachricht, antwortText: beschreibeNichtErfolgreichesEnde(laufStatus), quelle: 'fehler', zeitstempel: new Date().toISOString() })
     renderVerlauf()
   }
   ausstehenderLauf = null
+  stoppeAusstehendenLaufPoll()
   setzeSendenSperre(false)
 }
 
@@ -320,6 +391,7 @@ async function sendeAktuelleEingabe() {
       }
       const angenommen = await antwort.json().catch(() => ({}))
       ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString() }
+      starteAusstehendenLaufPoll()
       setzeAbbrechenZustand('Lauf abbrechen', false)
       renderVerlauf()
       feld.value = ''
@@ -337,7 +409,7 @@ function setzeAbbrechenZustand(text, gesperrt) {
   button.disabled = gesperrt
 }
 
-/** F30 WS-1 (Aufgabe 1): Klick auf #chat-abbrechen-btn — POST /api/laeufe/<laufId>/abbrechen (F14), 202 sofort ohne auf das Laufende zu warten (Datei-Kommentar leitstand-server.mjs). Löst selbst KEINE terminale Auflösung aus: der bestehende 2-Sekunden-Poll (pruefeAusstehendenLauf) behandelt den jetzt FEHLGESCHLAGENEN Lauf anschließend genau wie jeden anderen nicht erfolgreichen Lauf — derselbe Codepfad, keine zweite Auflösungsregel. Nur ein Fehlschlag DIESER Anfrage selbst (Netzwerk, 404 bei einem inzwischen bereits beendeten Lauf) wird hier direkt gemeldet, Muster views/runs.js meldeAbbrechenFehler. */
+/** F30 WS-1 (Aufgabe 1): Klick auf #chat-abbrechen-btn — POST /api/laeufe/<laufId>/abbrechen (F14), 202 sofort ohne auf das Laufende zu warten (Datei-Kommentar leitstand-server.mjs). Löst selbst KEINE terminale Auflösung aus: der eigene 500ms-Poll (pruefeAusstehendenLauf) behandelt den jetzt FEHLGESCHLAGENEN Lauf anschließend genau wie jeden anderen nicht erfolgreichen Lauf — derselbe Codepfad, keine zweite Auflösungsregel. Nur ein Fehlschlag DIESER Anfrage selbst (Netzwerk, 404 bei einem inzwischen bereits beendeten Lauf) wird hier direkt gemeldet, Muster views/runs.js meldeAbbrechenFehler. */
 function initAbbrechenBedienung() {
   document.getElementById('chat-abbrechen-btn').addEventListener('click', async () => {
     if (ausstehenderLauf === null) return
@@ -374,6 +446,7 @@ async function sendeZusammenfassungAnfrage() {
     }
     const angenommen = await antwort.json().catch(() => ({}))
     ausstehenderLauf = { nachricht: '[Zusammenfassung angefordert]', laufId: angenommen.laufId, zeitstempel: new Date().toISOString(), istZusammenfassung: true }
+    starteAusstehendenLaufPoll()
     setzeAbbrechenZustand('Lauf abbrechen', false)
     renderVerlauf()
   } catch (fehler) {
@@ -411,6 +484,7 @@ function initGanzenVerlaufLink() {
 /** QA-Befund WS-2a (real reproduziert): setzt den kompletten lokalen Chat-Zustand zurück — aufgerufen bei jedem Projektwechsel (abonniereProjektWechsel), damit weder eine ausstehende Nachricht noch ein lokaler Eintrag aus dem VORHERIGEN Projekt im neuen sichtbar bleibt oder gegen dessen api.js-Präfix weiterpollt. */
 function setzeChatZustandZurueck() {
   ausstehenderLauf = null
+  stoppeAusstehendenLaufPoll()
   lokaleEintraege = []
   persistierterVerlauf = []
   zeigeChatFehler('')
@@ -444,9 +518,6 @@ export function initChatView() {
 
   abonniere((zustand) => {
     letzterZustand = zustand
-  })
-  abonniereDetailAuffrischer(() => {
-    void pruefeAusstehendenLauf()
   })
   abonniereProjektWechsel(setzeChatZustandZurueck)
 }

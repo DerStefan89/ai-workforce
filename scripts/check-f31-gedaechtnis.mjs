@@ -97,8 +97,13 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       befunde.push(`(a): der Auftragstext sollte den vorherigen Turn enthalten, erhalten: ${letzteEingaben.auftragstext}`)
     } else if (!letzteEingaben.auftragstext.endsWith('Und jetzt?')) {
       befunde.push(`(a): der Auftragstext sollte mit der neuen Nachricht enden, erhalten: ${letzteEingaben.auftragstext}`)
+    } else if (letzteEingaben.aufrufEingaben?.settingSources !== '') {
+      // F31 WS-3 (Option A): Jarvis läuft ohne Projekt-Settings — settingSources '' muss über
+      // starteJarvisChatLauf bis in die tatsächlich an fuehreAufgabeDurch gereichten Eingaben
+      // ankommen (real belegt über denselben Capture-Punkt wie der Auftragstext oben).
+      befunde.push(`(a) F31 WS-3: erwartet aufrufEingaben.settingSources '', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else {
-      console.log('✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker.')
+      console.log("✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '' (F31 WS-3, Option A).")
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

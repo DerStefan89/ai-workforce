@@ -73,6 +73,8 @@ export interface AusfuehrungsOptionen {
   abbruchSignal?: AbortSignal
   /** Für BEIDE Worker-Zweige (starteGateway UND starteCodexGateway, via prozessstart.ts' starteProzess) — Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3), projektspezifisch aus dem Projektregister gesetzt. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. */
   cwd?: string
+  /** F31 WS-3 (Latenzmessung): nur für F6as starteGateway — optionaler Zeitmarken-Rückruf, reine Durchreichung (Muster zeitgrenzeMs), vom Controller selbst nicht gelesen oder ausgewertet. */
+  zeitmessung?: (marke: string) => void
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

@@ -211,8 +211,20 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
     befunde.push("AK5-Rotfall: Body mit freier 'aufrufEingaben.werkzeugsatz'-Liste sollte abgelehnt werden, wurde durchgelassen")
   }
 
-  if (gruenFall.ok === true && rotFallProfilReferenz.ok === false && rotFallFreieListe.ok === false) {
-    console.log("✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz' sowie eine freie 'aufrufEingaben.werkzeugsatz'-Liste ab.")
+  // F31 WS-3 (Option A): 'aufrufEingaben.settingSources' ist ausschließlich serverseitig für die
+  // Rolle 'jarvis' gesetzt (scripts/leitstand-server.mjs, starteJarvisChatLauf) — ein Body-Feld mit
+  // diesem Namen muss für JEDE Rolle über POST /api/laeufe abgelehnt werden, sonst könnte ein
+  // beliebiger Startauftrag dieselbe Schutzschicht wie Jarvis abwählen (Muster des werkzeugsatz-Rotfalls oben).
+  const rotFallSettingSources = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    aufrufEingaben: { modell: 'test-modell', settingSources: '' },
+  })
+  if (rotFallSettingSources.ok !== false) {
+    befunde.push("AK5-Rotfall (F31 WS-3): Body mit 'aufrufEingaben.settingSources' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
+  }
+
+  if (gruenFall.ok === true && rotFallProfilReferenz.ok === false && rotFallFreieListe.ok === false && rotFallSettingSources.ok === false) {
+    console.log("✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste und 'aufrufEingaben.settingSources' ab.")
   }
 }
 

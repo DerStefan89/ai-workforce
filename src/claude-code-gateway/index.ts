@@ -148,6 +148,8 @@ interface GatewayOptionen {
   abbruchSignal?: AbortSignal
   /** Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3) — unverändert an prozessstart.ts' starteProzess durchgereicht, dort natives execFile-cwd. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. Wirkt NUR auf den Kindprozess — F4s Gültigkeitsschlüssel (istUebrigeFelder.arbeitsverzeichnis_pfad unten) und die Laufakte bleiben bewusst bei process.cwd() des Serverprozesses (AK7: kein bestehender Vergleichswert für ai-workforce ändert sich). */
   cwd?: string
+  /** F31 WS-3 (Latenzmessung): optionaler Rückruf, mit dem der Aufrufer benannte Zeitmarken innerhalb dieses Aufrufs sammeln kann — reiner Diagnose-Haken ohne Wirkung auf den Ablauf, fehlt er, ändert sich nichts (Muster schreiber). starteGateway ruft ihn an vier Stellen: 'kontextpaket_startfreigabe' (F4-Startfreigabe geprüft, unmittelbar vor der RUN_PREPARED-Wirkungsmarke), 'prozess_gestartet'/'prozess_beendet' (um den Prozessstart-Await) und 'laufakte_rohstrom_geschrieben' (nach dem Registrieren der Laufakte). */
+  zeitmessung?: (marke: string) => void
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -212,7 +214,7 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--output-format',
     'json',
     '--setting-sources',
-    'project',
+    eingaben.settingSources ?? 'project',
     '--tools',
     werkzeugListe,
     '--allowedTools',
@@ -302,7 +304,11 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     return { ok: false, grund: starturteil.grund }
   }
 
+  optionen.zeitmessung?.('kontextpaket_startfreigabe')
+
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)
+
+  optionen.zeitmessung?.('prozess_gestartet')
 
   const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, {
     starter: optionen.starter,
@@ -310,6 +316,9 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     abbruchSignal: optionen.abbruchSignal,
     cwd: optionen.cwd,
   })
+
+  optionen.zeitmessung?.('prozess_beendet')
+
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
@@ -349,6 +358,8 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     [],
     optionen
   )
+
+  optionen.zeitmessung?.('laufakte_rohstrom_geschrieben')
 
   return { ok: true, laufakte, pfad, versionSequenz }
 }

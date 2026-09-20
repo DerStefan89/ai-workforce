@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.21 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.22 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -40,6 +40,8 @@ v1.18 → v1.19: **Feature F16 abgeschlossen; erster Satz der §13.4-Bestehensbe
 v1.19 → v1.20: **Meilenstein 3 real abgeschlossen; F19 als Bridge-Feature verortet** (Stefan, 11./12.09.2026, Challenge-Runde F19 im Claude-Projekt „AI Workforce"): Satz 2 (Szenario A/B) und Satz 3 (Router-Eval-Gate) der §13.4-Bestehensbedingung sind mit F18 WS-3 real erfüllt (`features/F18/nachweis-ws3-szenario-a.md`, `features/F18/nachweis-ws3-szenario-b.md`, `features/F18/eval-bericht-ws3.md`); damit ist Meilenstein 3 mit allen drei Sätzen bestanden. F19 (Capability Foundation, PR #145/#146) ist weder Teil von Meilenstein 3 noch von Meilenstein 4, sondern ein eigenständiges Bridge-Feature dazwischen. **Kein neuer Entscheid** zu E-M3-1…E-M3-4 — Fortschreibung des Belegstands plus Verortung. Löst `state/findings.md` F-340.
 
 v1.20 → v1.21: **§13.5 Meilenstein 4 ergänzt** (Stefan, 12.09.2026, Challenge und PlanV1 im Claude-Projekt „AI Workforce", claude/183–184): Zielsatz, Bestehensbedingung, Nicht-Ziele und sieben Entscheidungen E-M4-1…E-M4-7. E-M4-2 hebt das M2-Nicht-Ziel „Mehrprojektverwaltung" für M4 auf; alle übrigen Entscheidungen von Fassung 1, M2 und M3 bleiben unverändert, insbesondere Entscheidung 30, E-M2-6, E-M3-1 bis E-M3-4, D3, D13. Löst `state/findings.md` F-349 (Verweis) mit; F-350/F-351 werden erst durch F23 gelöst.
+
+v1.21 → v1.22: **§9.1 Nachtrag zu Rolle `jarvis`** (Stefan, 20.09.2026, F31 WS-3 Chat-Latenz, Option A): Rolle `jarvis` läuft mit `--setting-sources ''` statt `'project'` — nur Read/Grep/Glob, Projekt-Guards betreffen Bash/Edit/Write und sind für diese Rolle wirkungslos; `--tools`-Begrenzung bleibt ERZWUNGEN. Benannte, ausschließlich vom Jarvis-Chat-Pfad gesetzte Ausnahme, kein neuer Durchsetzungsgrad in der Tabelle. **Kein Entscheid zu einer anderen Rolle** — jede andere Rolle bekommt unverändert `'project'`.
 
 ---
 
@@ -204,6 +206,8 @@ Was `DEKLARIERT` ist, wird nicht „gesperrt" genannt.
 `[Fakt]` **Nachtrag 24.08.2026 (`40_...`, B1/Advisor B-02):** Die vormals einzeilige Aussage „Merge auf `main` ohne grünen Status-Check | offen | tarifabhängig" deckte den `gh`-CLI-Merge-Pfad nicht sichtbar ab. Aufgeteilt in direkten `git push` (weiterhin tarifabhängig offen) und `gh pr merge` (eigenständig offen und ungegatet, bis Vertrag 1 „Aufgabe 4" fertiggestellt und gemergt ist).
 
 `[Fakt]` **Nachtrag 28.08.2026:** Vertrag 5 (`harness-freigabedatei-wiederherstellung`) abgeschlossen — PR #12, Merge-Commit `19a5d07`, unabhängig gegen den realen Repo-Stand verifiziert (Diff-Inhalt, Commit-Objekte im Objekt-Store, GitHub-Actions-API für den CI-Lauf). Zeile 1 damit auf `ERZWUNGEN` zurückgestuft, wie in der Nachtrag-Bedingung vom 24.08.2026 verlangt: gemessener Rot-/Grün-Fall inklusive Lade-/Smoke-Test auf der realen Zielmaschine liegt vor. Zusätzlich zur ursprünglichen Mindestauflage: Advisor-Pass (`.claude/skills/advisor-pass/SKILL.md`) vor Ausführung durchlaufen, Urteil „Freigegeben mit Hinweisen"; ein während der Planung gefundener Seitenkanal (Freigabedatei war nur gegen Bash geschützt, nicht gegen das Edit/Write-Werkzeug) wurde als Erweiterung mit umgesetzt (siehe neue Zeile oben). Geerbte, bewusst nicht behobene Grenzen (Pfadbildung über `cwd`, TOCTOU-Fenster) bleiben offen — dokumentiert, nicht Teil dieses Vertrags.
+
+`[Fakt]` **Nachtrag 20.09.2026, Stefan (F31 WS-3, Option A):** Rolle `jarvis` läuft mit `--setting-sources ''` — nur Read/Grep/Glob, Projekt-Guards betreffen Bash/Edit/Write und sind für diese Rolle wirkungslos; `--tools`-Begrenzung bleibt ERZWUNGEN. Umgesetzt als benannte, ausschließlich vom Jarvis-Chat-Pfad gesetzte Ausnahme (`scripts/leitstand-server.mjs` `starteJarvisChatLauf`, `AufrufEingaben.settingSources`, `src/claude-code-gateway/index.ts` `baueAufruf`) — jede andere Rolle bekommt unverändert `'project'`. Die Zeile „Werkzeugsatz und Berechtigungsquellen je Aufruf" oben bleibt unverändert stehen (gilt weiterhin für jeden Aufruf, der `--setting-sources` überhaupt nicht überschreibt).
 
 ### 9.2 Freigabekette
 
