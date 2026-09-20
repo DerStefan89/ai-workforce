@@ -426,6 +426,7 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { performance } from 'node:perf_hooks'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -1441,6 +1442,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'abbruchSignal',
   // F25 WS-1, AK3: ebenso — entsteht serverseitig aus dem Projektregister (projekte.json), kommt nie über den Body.
   'cwd',
+  // F31 WS-3, Latenzmessung: ebenso — entsteht serverseitig je Lauf (Diagnose-Rückruf), kommt nie über den Body.
+  'zeitmessung',
 ])
 
 /**
@@ -1651,6 +1654,17 @@ export function pruefeStartauftrag(body) {
     return {
       ok: false,
       grund: "'aufrufEingaben.werkzeugsatz' ist eine freie erlaubte_werkzeuge-Liste und nicht mehr erlaubt (F11 WS-2 AK5) — wähle stattdessen einen benannten Werkzeugsatz über das Top-Level-Feld 'werkzeugsatz'",
+    }
+  }
+  // F31 WS-3 (Stefan 20.09.2026, Option A): 'settingSources' wählt --setting-sources '' statt 'project'
+  // (CLAUDE.md/Hooks aus dem Kontext) — ausschließlich vom Jarvis-Chat-Pfad (starteJarvisChatLauf)
+  // serverseitig gesetzt, kein Eingabekanal für einen Body-getriebenen Lauf über POST /api/laeufe
+  // (Muster des werkzeugsatz-Rotfalls oben: sonst könnte ein beliebiger Startauftrag dieselbe
+  // Schutzschicht wie Jarvis abwählen).
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'settingSources' in body.aufrufEingaben) {
+    return {
+      ok: false,
+      grund: "'aufrufEingaben.settingSources' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt (F31 WS-3) und ist im Body nicht erlaubt",
     }
   }
   if (!Array.isArray(body.anfragen)) {
@@ -2985,16 +2999,19 @@ export function erzeugeRequestHandler(optionen = {}) {
    *   NICHT Teil von AusfuehrungsEingaben (loeseAusfuehrungsEingabenAuf reicht nur modus/erlaubte_werkzeuge durch),
    *   deshalb hier als eigener, rein serverlokaler Parameter: entscheidet, ob nach einem real erfolgreichen Lauf
    *   eine Änderungsübersicht registriert wird. undefined (Router-Lauf, immer 'lesend') registriert nie eine.
+   * @param zeitmessungMarke - F31 WS-3: optionaler (marke) => void-Rückruf, unverändert an AusfuehrungsOptionen.zeitmessung
+   *   durchgereicht (Muster abbruchSignal) — undefined bei LEITSTAND_ZEITMESSUNG!=1 oder für jeden Aufrufer ohne Zeitmessung.
    */
-  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined) {
+  function starteLaufUndVergiss(laufId, eingaben, zeitgrenzeMsUeberschreibung = undefined, nachLauf = undefined, werkzeugsatzArt = undefined, zeitmessungMarke = undefined) {
     // F-145: dieselben Optionen, mit denen erzeugeRequestHandler selbst aufgerufen wurde,
     // strukturell durchgereicht (nicht basisVerzeichnis einzeln herauskopiert) — sonst
     // respektieren die synchronen Prüfungen im Handler (D13, laufIdBelegt, auftragId-Existenz)
     // ein Nicht-Default-basisVerzeichnis, der eigentliche Lauf aber nicht (stille Divergenz).
     // Extra Felder von optionen (fuehreAufgabeDurchFn/publicVerzeichnis/startvorlagePfad/
     // repoWurzel), die AusfuehrungsOptionen nicht kennt: fuehreAufgabeDurch kopiert für
-    // starteGateway nur die neun bekannten Felder einzeln heraus (src/execution-controller/
-    // index.ts, F-107; F14 WS-4 ergänzt abbruchSignal als neuntes), das rohe Objekt selbst
+    // starteGateway nur die bekannten Felder einzeln heraus (aktuell elf, siehe die Feldliste in
+    // src/execution-controller/types.ts' AusfuehrungsOptionen — F-107; keine feste Zahl hier, sie
+    // ist bereits mehrfach durch neue Felder veraltet), das rohe Objekt selbst
     // reicht es nur an die F9-Eskalationshelfer (erfasseBedarf/erzeugeTransportpaket/
     // haendigeAus) unverändert weiter — auch die lesen nur bekannte Felder per
     // Property-Zugriff, Extrafelder bleiben überall ungelesen (D5).
@@ -3012,6 +3029,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       ...(vorlage.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: vorlage.zeitgrenzeMs } : {}),
       ...(zeitgrenzeMsUeberschreibung !== undefined ? { zeitgrenzeMs: zeitgrenzeMsUeberschreibung } : {}),
       abbruchSignal: laufAktivAbortController.signal,
+      ...(zeitmessungMarke !== undefined ? { zeitmessung: zeitmessungMarke } : {}),
     }
 
     /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
@@ -4392,6 +4410,34 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // ─── F31 WS-3: Zeitmessung (nur bei LEITSTAND_ZEITMESSUNG=1) ────────────────────────────
+    //
+    // Reine Diagnose, kein Verhaltensunterschied: ohne die Umgebungsvariable liefert
+    // neueZeitmessung() null, markiereZeit/protokolliereZeitmessung werden dann zu No-ops
+    // (kein performance.now()-Aufruf, kein console.log). Marken sammeln sich in EINEM Objekt,
+    // das request_eingang/verlauf_geladen (dieser Handler) über starteJarvisChatLauf bis in den
+    // starteLaufUndVergiss-Rückruf für ressourcen_worker_aufgeloest/auftrag_registriert trägt;
+    // kontextpaket_startfreigabe/prozess_gestartet/prozess_beendet/laufakte_rohstrom_geschrieben
+    // kommen aus src/claude-code-gateway/index.ts' starteGateway (GatewayOptionen.zeitmessung,
+    // durchgereicht über AusfuehrungsOptionen.zeitmessung, F-107-Muster). Die EINE Ausgabezeile
+    // je Lauf entsteht am Ende des nachLauf-Rückrufs in starteJarvisChatLauf.
+    /** @returns { marken: {} } bei aktiver Zeitmessung (LEITSTAND_ZEITMESSUNG=1), sonst null. */
+    function neueZeitmessung() {
+      return process.env.LEITSTAND_ZEITMESSUNG === '1' ? { marken: {} } : null
+    }
+
+    /** No-op, wenn zeitmessung null ist (Zeitmessung aus oder kein Jarvis-Chat-Lauf). @param zeitmessung - von neueZeitmessung() @param marke - Name der Zeitmarke */
+    function markiereZeit(zeitmessung, marke) {
+      if (zeitmessung === null || zeitmessung === undefined) return
+      zeitmessung.marken[marke] = performance.now()
+    }
+
+    /** Gibt die gesammelten Marken als EINE console.log-Zeile aus — No-op, wenn zeitmessung null ist. */
+    function protokolliereZeitmessung(zeitmessung, laufId) {
+      if (zeitmessung === null || zeitmessung === undefined) return
+      console.log(`[leitstand] Zeitmessung '${laufId}': ${JSON.stringify(zeitmessung.marken)}`)
+    }
+
     // ─── F31 WS-2: gemeinsamer Lauf-Start für POST /api/chat und POST /api/chat/zusammenfassen ──
     //
     // Worker-Auflösung, Auftrag-Registrierung, D13-Übergabe (laufAktiv=true, 202-Antwort) und
@@ -4402,7 +4448,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Aufrufer VOR diesem Aufruf stehen, wörtlich wie bisher (scripts/check-f11-auftrag.mjs sucht
     // das ERSTE Vorkommen von 'if (laufAktiv)'/'if (laufIdBelegt(' im gesamten Quelltext — das
     // bleibt unverändert bei POST /api/laeufe stehen, weit oberhalb dieser Funktion).
-    function starteJarvisChatLauf(res, nachricht, auftragstext, istZusammenfassung) {
+    function starteJarvisChatLauf(res, nachricht, auftragstext, istZusammenfassung, zeitmessung = null) {
       const auftragId = `jarvis-chat-${randomUUID()}`
       const laufId = `jarvis-${auftragId}`
       if (laufIdBelegt(laufId)) {
@@ -4441,12 +4487,16 @@ export function erzeugeRequestHandler(optionen = {}) {
         worker = 'claude-code'
         modell = vorlage.modell
       }
+      markiereZeit(zeitmessung, 'ressourcen_worker_aufgeloest')
 
       const eingabenRoh = {
         rolle: 'jarvis',
         anfragen: [],
         budget: vorlage.standardBudget,
-        aufrufEingaben: { modell },
+        // F31 WS-3 (Stefan 20.09.2026, Option A): Jarvis läuft ohne Projekt-Settings — settingSources
+        // '' überschreibt baueAufrufs Standardwert 'project' NUR für diesen Pfad (jede andere Rolle
+        // bekommt weiterhin 'project', siehe src/claude-code-gateway/index.ts baueAufruf).
+        aufrufEingaben: { modell, settingSources: '' },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
@@ -4475,6 +4525,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
         return
       }
+      markiereZeit(zeitmessung, 'auftrag_registriert')
 
       angenommeneLaufIds.add(laufId)
       laufAktiv = true
@@ -4485,36 +4536,53 @@ export function erzeugeRequestHandler(optionen = {}) {
       globalerLaufZustand.abortController = laufAktivAbortController
       sendeJson(res, 202, { laufId, auftragId })
 
-      starteLaufUndVergiss(laufId, eingabenErgebnis.eingaben, undefined, (ergebnis, fehler) => {
-        // Muster starteLaufUndVergiss' Aufrufer beim Router-Endpunkt oben: ein Fehlschlag/Wurf
-        // vor dem Laufende schreibt bereits einen startfehlerListe-Eintrag (starteLaufUndVergiss
-        // selbst), hier nichts Zusätzliches. 'ABGESCHLOSSEN'/'ERFOLGREICH' explizit geprüft (nicht
-        // nur ergebnis.ok) — derselbe Erfolgsbegriff wie die Änderungsübersicht-Registrierung oben.
-        if (fehler !== null || ergebnis?.ok === false) return
-        if (!(ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH')) return
+      starteLaufUndVergiss(
+        laufId,
+        eingabenErgebnis.eingaben,
+        undefined,
+        (ergebnis, fehler) => {
+          // Code-Review-Befund F31 WS-3: try/finally, damit protokolliereZeitmessung IMMER
+          // feuert, auch auf jedem der drei frühen Ausstiege unten — gerade ein langsamer,
+          // fehlgeschlagener oder abgebrochener Lauf ist diagnostisch interessant, und die bis
+          // dahin gesammelten Marken (mindestens request_eingang…auftrag_registriert, oft auch
+          // die Gateway-Marken) sollen nicht kommentarlos verloren gehen.
+          try {
+            // Muster starteLaufUndVergiss' Aufrufer beim Router-Endpunkt oben: ein Fehlschlag/Wurf
+            // vor dem Laufende schreibt bereits einen startfehlerListe-Eintrag (starteLaufUndVergiss
+            // selbst), hier nichts Zusätzliches. 'ABGESCHLOSSEN'/'ERFOLGREICH' explizit geprüft (nicht
+            // nur ergebnis.ok) — derselbe Erfolgsbegriff wie die Änderungsübersicht-Registrierung oben.
+            if (fehler !== null || ergebnis?.ok === false) return
+            if (!(ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH')) return
 
-        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-        if (laufakteVersion === null) {
-          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Jarvis-Chat-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
-          return
-        }
+            const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+            if (laufakteVersion === null) {
+              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Jarvis-Chat-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
+              return
+            }
 
-        const verarbeitung = verarbeiteJarvisChatErgebnis(
-          laufakteVersion.daten,
-          projektId,
-          nachricht,
-          laufId,
-          profilReferenz,
-          { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
-          istZusammenfassung ? { istZusammenfassung: true } : undefined
-        )
-        if (!verarbeitung.ok) {
-          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
-          console.error(`[leitstand] ${verarbeitung.grund}`)
-        } else {
-          console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
-        }
-      })
+            const verarbeitung = verarbeiteJarvisChatErgebnis(
+              laufakteVersion.daten,
+              projektId,
+              nachricht,
+              laufId,
+              profilReferenz,
+              { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+              istZusammenfassung ? { istZusammenfassung: true } : undefined
+            )
+            markiereZeit(zeitmessung, 'lineage_chat_eintrag_geschrieben')
+            if (!verarbeitung.ok) {
+              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
+              console.error(`[leitstand] ${verarbeitung.grund}`)
+            } else {
+              console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
+            }
+          } finally {
+            protokolliereZeitmessung(zeitmessung, laufId)
+          }
+        },
+        undefined,
+        zeitmessung !== null ? (marke) => markiereZeit(zeitmessung, marke) : undefined
+      )
     }
 
     /**
@@ -4561,6 +4629,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // bisherigen Gesprächsverlauf dieses Projekts, ohne dass sich am EINZIGEN Eingabekanal
     // (baueJarvisAuftragstext) etwas ändert.
     if (req.method === 'POST' && pfad === '/api/chat') {
+      const zeitmessung = neueZeitmessung()
+      markiereZeit(zeitmessung, 'request_eingang')
       let body
       try {
         const roh = await leseBody(req)
@@ -4604,7 +4674,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (pruefeGlobaleLaufSperre(res)) return
 
       const verlaufsfenster = ladeJarvisVerlaufsfenster(8, 12000)
-      starteJarvisChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false)
+      markiereZeit(zeitmessung, 'verlauf_geladen')
+      starteJarvisChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false, zeitmessung)
       return
     }
 
@@ -4620,6 +4691,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // dadurch neuer Startpunkt für sowohl das nächste Verlaufsfenster als auch die
     // Chat-View-Standardansicht (views/chat.js).
     if (req.method === 'POST' && pfad === '/api/chat/zusammenfassen') {
+      const zeitmessung = neueZeitmessung()
+      markiereZeit(zeitmessung, 'request_eingang')
       let body
       try {
         const roh = await leseBody(req)
@@ -4644,6 +4717,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (pruefeGlobaleLaufSperre(res)) return
 
       const verlaufsfenster = ladeJarvisVerlaufsfenster(30, 40000)
+      markiereZeit(zeitmessung, 'verlauf_geladen')
       if (verlaufsfenster.length === 0) {
         sendeJson(res, 409, { grund: 'kein Verlauf zum Zusammenfassen' })
         return
@@ -4651,7 +4725,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const zusammenfassungsNachricht =
         "Fasse den bisherigen Gesprächsverlauf kompakt zusammen (Ziele, getroffene Entscheidungen, offene Punkte, zuletzt Besprochenes), damit das Gespräch allein auf Basis dieser Zusammenfassung sinnvoll fortgesetzt werden kann. Antworte mit art 'antwort'."
-      starteJarvisChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true)
+      starteJarvisChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true, zeitmessung)
       return
     }
 

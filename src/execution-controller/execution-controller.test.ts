@@ -374,6 +374,61 @@ test('F12 WS-2 (AK5): anfragen leer → Evidenzabschnitt enthält ausschließlic
   }
 })
 
+// ─── F31 WS-3 (Option A): aufrufEingaben.settingSources steuert baueAufrufs '--setting-sources' ──
+
+test("F31 WS-3: aufrufEingaben.settingSources '' überschreibt den Standardwert 'project' in den tatsächlich gestarteten Tokens (Jarvis-Chat-Pfad)", async () => {
+  const laufId = neueLaufId('f31a')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, settingSources: '' }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    const settingSourcesIndex = erfassteTokens.indexOf('--setting-sources')
+    assert.notStrictEqual(settingSourcesIndex, -1, "'--setting-sources' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[settingSourcesIndex + 1], '')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test("F31 WS-3: ohne aufrufEingaben.settingSources bleibt der Standardwert 'project' erhalten (jede Rolle außer Jarvis)", async () => {
+  const laufId = neueLaufId('f31b')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    // gueltigeEingaben() setzt KEIN settingSources — Muster jedes Aufrufers außer starteJarvisChatLauf.
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    const settingSourcesIndex = erfassteTokens.indexOf('--setting-sources')
+    assert.notStrictEqual(settingSourcesIndex, -1, "'--setting-sources' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[settingSourcesIndex + 1], 'project')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // ─── F11 AK3(b): Auftragstext wird nie zu einem Kontextpaket-Element ───────────
 
 test('F11 AK3(b): Auftragstext-Marke fehlt im registrierten Kontextpaket, Elementanzahl unverändert bei anderem Auftragstext', async () => {

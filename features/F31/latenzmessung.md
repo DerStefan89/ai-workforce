@@ -219,6 +219,237 @@ Modell/anderer Provider-Pipeline nicht direkt mit Variante a) vergleichbar.
    der Laufakte prüfen. Kein Umsetzungsaufwand jetzt, nur eine
    Prüf-Erinnerung für später.
 
+## Nach WS-3-Hebeln, 20.09.2026
+
+Umgesetzt (Branch `feat/f31-ws3-chat-schneller`, Stefans Entscheidung
+20.09.2026, Option A): (1) Server-Zeitaufschlüsselung je Lauf hinter
+`LEITSTAND_ZEITMESSUNG=1` (`performance.now()`-Marken, eine
+`console.log`-Zeile je Lauf, kein Verhalten geändert, wenn die
+Variable fehlt); (2) Rolle `jarvis` läuft mit `--setting-sources ''`
+statt `'project'` (`AufrufEingaben.settingSources`, ausschließlich vom
+Jarvis-Chat-Pfad gesetzt, Body-Feld dafür bei POST /api/laeufe
+ausdrücklich abgelehnt); (3) der ausstehende-Lauf-Poll in
+`views/chat.js` läuft jetzt über einen eigenen, verketteten
+`setTimeout` (500ms statt der bisherigen 2000ms des gemeinsamen
+Zustands-Timers), NUR solange ein Lauf aussteht — `zustand.js` und
+jeder andere Poll bleiben unverändert bei 2000ms (mechanisch geprüft,
+`scripts/check-f20-zustand-poll.mjs` AK3: weiterhin genau ein
+`setInterval(` im Client). `npm run check` und `npm run check:template`
+grün, siehe Diff-Zusammenfassung unten.
+
+### Diff-Zusammenfassung
+
+- `src/claude-code-gateway/types.ts`, `index.ts`: `AufrufEingaben`
+  bekommt ein optionales `settingSources`; `baueAufruf` nutzt
+  `eingaben.settingSources ?? 'project'` statt des bisher festen
+  Literals. `GatewayOptionen` bekommt einen optionalen
+  `zeitmessung`-Rückruf; `starteGateway` ruft ihn an vier Stellen
+  (`kontextpaket_startfreigabe`, `prozess_gestartet`,
+  `prozess_beendet`, `laufakte_rohstrom_geschrieben`).
+- `src/execution-controller/types.ts`, `index.ts`: `AusfuehrungsOptionen`
+  bekommt dasselbe optionale `zeitmessung`-Feld, reine Durchreichung
+  an `starteGateway` (Muster `zeitgrenzeMs`).
+- `scripts/leitstand-server.mjs`: `starteJarvisChatLauf` setzt
+  `aufrufEingaben.settingSources: ''` (nur hier); `neueZeitmessung`/
+  `markiereZeit`/`protokolliereZeitmessung` sammeln fünf weitere Marken
+  (`request_eingang`, `verlauf_geladen`, `ressourcen_worker_aufgeloest`,
+  `auftrag_registriert`, `lineage_chat_eintrag_geschrieben`) in
+  POST /api/chat, POST /api/chat/zusammenfassen und
+  `starteJarvisChatLauf`; `starteLaufUndVergiss` reicht den
+  Zeitmarken-Rückruf als sechsten, optionalen Parameter durch.
+  `VERBOTENE_OPTIONEN_FELDER` und `pruefeStartauftrag` lehnen
+  `aufrufEingaben.settingSources` und `zeitmessung` im Body ab (Muster
+  des bestehenden `aufrufEingaben.werkzeugsatz`-Rotfalls).
+- `public/leitstand/views/chat.js`: eigener 500ms-`setTimeout`-Poll
+  (nicht `setInterval`, siehe Kommentar dort — AK3-Gate bleibt grün),
+  startet/stoppt mit `ausstehenderLauf`.
+- `docs/projekt/zielfassung.md`: §9.1-Nachtrag (Rolle `jarvis` ohne
+  Projekt-Settings, Tabellenzeile unverändert), Changelog-Eintrag
+  v1.21 → v1.22.
+- Tests: zwei neue `fuehreAufgabeDurch`-Fälle in
+  `execution-controller.test.ts` (`settingSources: ''` → Tokens tragen
+  `''`; ohne das Feld → unverändert `'project'`); ein neuer Rotfall in
+  `check-f11-auftrag.mjs` (`aufrufEingaben.settingSources` im Body →
+  400); `check-f31-gedaechtnis.mjs` Fall (a) prüft zusätzlich, dass die
+  tatsächlich an den Worker gereichten `aufrufEingaben` `settingSources:
+  ''` tragen.
+- **Reviewer-/QA-Pass (drei frische Subagenten, siehe unten) fand vier
+  reale Befunde, alle vor diesem Stand behoben:** (1) `ARCHITECTURE.md`
+  §7 „Aufrufparameter, die eine Schutzschicht abwählen" trug weiterhin
+  „Ausnahme: keine", obwohl der Code jetzt genau das für Rolle `jarvis`
+  tut — Zeile um eine benannte, eng gefasste Ausnahme ergänzt (Verweis
+  auf den `zielfassung.md`-Nachtrag); (2) `protokolliereZeitmessung`
+  lief nur auf dem Erfolgspfad, nicht bei Fehlschlag/Abbruch — jetzt
+  über `try/finally` im `nachLauf`-Rückruf abgesichert, feuert jetzt
+  immer; (3) `planeNaechstenAusstehendenLaufPoll` in `chat.js` plante
+  den nächsten Tick ohne `try/finally` — ein Wurf aus
+  `pruefeAusstehendenLauf` hätte die Poll-Kette dauerhaft angehalten und
+  die Senden-Sperre für den Rest der Sitzung hängen lassen, jetzt mit
+  `try/finally` abgesichert; (4) `pruefeAusstehendenLauf` prüfte nach
+  seinen `await`s nicht erneut, ob `ausstehenderLauf` inzwischen (z. B.
+  durch einen Projektwechsel mitten im Tick) zurückgesetzt wurde — ein
+  Re-Check `ausstehenderLauf?.laufId !== laufId` an zwei Stellen
+  ergänzt. Außerdem ein bereits vor diesem Diff veralteter Kommentar
+  (`scripts/leitstand-server.mjs`, „neun bekannte Felder") korrigiert,
+  da er beim Ergänzen von `zeitmessung` ohnehin berührt wurde.
+
+### Vorher/Nachher-Messung (real, `claude-code`, kein Stub)
+
+Vier reale Chat-Turns je Stand über `POST /api/projekte/ai-workforce/chat`
+(`kontrollzustand`-Kette dieses Repos, echter `claude-sonnet-5`-Lauf,
+Modell/Worker wie in Abschnitt 1): „Sag nur: OK“, „Was ist 2+2?“, „Nenne
+eine Farbe.“, dann eine Rückfrage „Welche Farbe hast du gerade
+genannt?“ (Gesprächsgedächtnis-Beleg). Beide Stände liefen im selben
+Arbeitsverzeichnis nacheinander (nicht als Git-Worktree — ein
+Worktree-Versuch scheiterte real an E-188: `arbeitsverzeichnis_pfad`
+ist Teil von F4s Gültigkeitsschlüssel und an dieses Repo-Verzeichnis
+gepinnt, `starteGateway` lehnte den Lauf aus dem Worktree korrekt mit
+„Drift im Gültigkeitsschlüssel“ ab — die Startfreigabe funktioniert wie
+vorgesehen). „Vorher" ist deshalb derselbe instrumentierte Branch-Stand
+mit Hebel 2 per Hand temporär deaktiviert (`aufrufEingaben:{modell}`
+ohne `settingSources`, direkt vor der Messung editiert und danach
+wieder auf den echten Branch-Stand zurückgesetzt — `git diff` zeigt
+dieselbe Änderung wie vor der Messung) — deckt damit den in der
+Aufgabenstellung vorgesehenen zweiten Weg ab und macht Hebel 2 isoliert
+messbar (Hebel 1 bleibt in beiden Ständen aktiv, Hebel 3 ist rein
+client-seitig und wird unten separat, rechnerisch bewertet, siehe
+Methodik-Hinweis). „Klick→Antwort sichtbar" wurde nicht über einen
+echten Browser gemessen (keiner in dieser Umgebung verfügbar), sondern
+als Server gesamt + halbes Poll-Intervall gerechnet (2000ms vorher,
+500ms nachher — Erwartungswert bei gleichverteiltem Tick-Versatz) und
+als solches gekennzeichnet.
+
+| Turn | Stand | Klick→Antwort sichtbar (gerechnet) | Server gesamt | CLI Wall-Clock (Server-gemessen) | `duration_ms` | `duration_api_ms` | Thinking-Tokens |
+|---|---|---:|---:|---:|---:|---:|---:|
+| „Sag nur: OK" | vorher | 19,18s | 18,18s | 17,85s | 9,55s | 9,18s | 435 |
+| „Was ist 2+2?" | vorher | 11,01s | 10,01s | 9,73s | 2,16s | 1,83s | 0 |
+| „Nenne eine Farbe." | vorher | 11,12s | 10,12s | 9,78s | 2,03s | 1,72s | 0 |
+| „Welche Farbe …?" (Rückfrage) | vorher | 11,98s | 10,98s | 10,71s | 2,78s | 2,50s | 0 |
+| „Sag nur: OK" | nachher | 11,36s | 11,11s | 10,73s | 1,52s | 3,22s | 0 |
+| „Was ist 2+2?" | nachher | 10,04s | 9,79s | 9,52s | 2,15s | 3,39s | 0 |
+| „Nenne eine Farbe." (Ausreißer) | nachher | 101,40s | 101,15s | 100,85s | 90,89s | 179,57s | 0 |
+| „Nenne eine Farbe." (Wiederholung) | nachher | 13,69s | 13,44s | 13,14s | 5,93s | 6,94s | 482 |
+| „Welche Farbe …?" (Rückfrage) | nachher | 10,46s | 10,21s | 9,94s | 2,11s | 3,15s | 39 |
+
+Rückfrage-Turn in beiden Ständen real belegt: Jarvis nennt in der
+Rückfrage exakt die zuvor genannte Farbe (vorher: „Blau." → „Blau.";
+nachher: „Grün." → „Grün.") — das Gesprächsgedächtnis aus WS-2
+funktioniert unverändert ohne Projekt-Settings.
+
+**Ausreißer „Nenne eine Farbe." (nachher):** `duration_api_ms`
+(179,57s) liegt über `duration_ms` (90,89s) — ungewöhnlich (normal ist
+`duration_ms ≥ duration_api_ms`, vgl. Abschnitt 2), deutet auf einen
+providerseitigen Retry oder eine Netzwerkstörung während dieses einen
+Aufrufs hin. Die gesamte Zusatzzeit liegt laut Zeitmarken vollständig
+zwischen `prozess_gestartet` und `prozess_beendet` (100,85s), also
+innerhalb des CLI-Prozesses selbst — kein Server-Codepfad dieses
+Auftrags ist beteiligt. Nicht repariert (kein Befund dieses Auftrags),
+zur Kontrolle wiederholt (Zeile „Wiederholung" oben, real unauffällig).
+
+### Kernbefund 1 — der 8,7–10,3s-„Server-Overhead" aus Abschnitt 1 ist fast vollständig CLI-Prozess-Eigenzeit, nicht Server-Wrapper-Code
+
+Die neue Zeitaufschlüsselung trennt zum ersten Mal, was in Abschnitt 1
+als eine einzige unaufgeschlüsselte Zahl stand. Ergebnis (Spannen über
+alle gemessenen Turns je Stand):
+
+- **Prozessstart bis Prozessende** (`prozess_gestartet` →
+  `prozess_beendet`, umschließt `starteProzess` in
+  `src/claude-code-gateway/index.ts:307-312`): 9,73–10,71s vorher (alle
+  vier Turns), 9,52–100,85s nachher (Spanne inkl. Ausreißer — ohne ihn
+  9,52–10,73s). Davon ist `duration_ms` (die vom CLI selbst gemeldete
+  Zeit) nur ein Teil — 9,73s Wall-Clock gegen 2,16s `duration_ms` beim
+  Turn „Was ist 2+2?" (vorher) ist eine Differenz von 7,57s
+  **innerhalb des Prozessfensters, aber außerhalb dessen, was der CLI
+  selbst als Arbeitszeit meldet**. Das deckt sich mit der in der
+  Auftragstellung bereits benannten „~5s CLI-Startzeit pro Lauf
+  (Wall-Clock minus duration_ms)" — hier zum ersten Mal mit echten
+  Zahlen aus Produktionsverkehr belegt, und mit 7,4–8,3s bei allen acht
+  sauberen (nicht vom Ausreißer betroffenen) Turns eher größer als der
+  Arbeitsschätzwert. **Ausdrücklich nicht Teil dieses Auftrags**
+  (Auftragstext), hier nur gemessen, nicht angefasst.
+- **Alles außerhalb des Prozessfensters** (Server gesamt minus
+  CLI-Wall-Clock, rechnerisch identisch mit `request_eingang` bis
+  `prozess_gestartet` plus `prozess_beendet` bis
+  `lineage_chat_eintrag_geschrieben`): 268–347ms vorher (alle vier
+  Turns), 266–386ms nachher (alle fünf Turns, Ausreißer eingeschlossen
+  — er betrifft ausschließlich das Prozessfenster oben, nicht diesen
+  Anteil) — also durchgehend unter einer halben Sekunde, nicht die
+  8,7–10,3s aus Abschnitt 1. Die Abschnitt-1-Zahl maß „Gesamt minus
+  `duration_ms`" und rechnete damit die CLI-Eigenzeit (siehe oben)
+  versehentlich dem Server zu — kein Fehler in Abschnitt 1 (dort war
+  keine Zwischenmessung möglich), aber eine Korrektur, die jetzt mit
+  echten Marken belegt ist.
+
+### Top-2-Serverphasen außerhalb des CLI-Prozesses (mit Datei:Zeile)
+
+1. **Auftrag- und Kontextpaket-Registrierung** (`request_eingang` →
+   `kontextpaket_startfreigabe`, ~230–320ms, der größere der beiden
+   Anteile): zwei synchrone Checkpoint-Store-Schreibvorgänge —
+   `registriereAuftrag(...)` (`scripts/leitstand-server.mjs:4521`) und
+   `baueKontextpaket(...)` (`src/execution-controller/index.ts:269`),
+   das intern `registriereKernArtefakt(...)`
+   (`src/context-builder/index.ts:201`) aufruft. Beide schreiben in
+   voneinander getrennte, eigene Hash-Ketten (`auftrag-<id>` bzw.
+   `kontextpaket-<laufId>`, ARCHITECTURE.md §2) — ein Zusammenlegen
+   wäre ein Bruch der append-only Ein-Ketten-pro-Artefakt-Regel.
+   **Einschätzung:** ohne Eingriff in die Checkpoint-Store-Invarianten
+   kaum verkürzbar — die Zeit steckt in echten, synchronen fs-Writes
+   plus Hash-Berechnung je Kette, nicht in vermeidbarer Doppelarbeit.
+   Bei ~300ms von ~10s Gesamtzeit (≈3%) ist der Hebel ohnehin klein;
+   nicht empfohlen.
+2. **Lineage-Chat-Eintrag schreiben**
+   (`laufakte_rohstrom_geschrieben` → `lineage_chat_eintrag_geschrieben`,
+   ~12–103ms): ein weiterer synchroner Checkpoint-Store-Schreibvorgang
+   — `registriereKernArtefakt(...)` für `chat-<projektId>`
+   (`scripts/leitstand-server.mjs:2636`, aufgerufen aus
+   `verarbeiteJarvisChatErgebnis`). **Einschätzung:** derselbe Befund
+   wie oben, noch kleiner (unter 1% der Gesamtzeit) — dies IST der
+   audit-relevante Schreibvorgang, der den Chat-Verlauf persistiert
+   (ARCHITECTURE.md §4: kanonische Laufakte/Lineage); ihn zu
+   verzögern oder zu batchen würde die Sichtbarkeit „ein realer Lauf
+   → sofort im Verlauf" aufgeben. Nicht empfohlen.
+
+### Kernbefund 2 — Hebel 2s realer Effekt ist in echtem Jarvis-Verkehr kleiner und weniger verlässlich als die isolierte CLI-Messung aus Abschnitt 2 nahelegte
+
+Median „Server gesamt" der drei sauberen (nicht vom Thinking-Reflex
+betroffenen) Turns je Stand: 10,12s vorher (`--setting-sources
+project`) gegen 10,21s nachher (`--setting-sources ''`) — **kein
+messbarer Unterschied** bei n=3 je Stand. `duration_ms` derselben
+sauberen Turns: Median 2,16s vorher gegen 2,11s nachher — ein realer,
+aber kleiner Unterschied (~50-200ms), weit entfernt von der in
+Abschnitt 2 gemessenen CLI-only-Differenz (9,10s → 3,25s, Variante
+a→b). Wichtiger noch: der reflexive Thinking-Effekt aus Abschnitt 2
+(dort: nur bei Projekt-Settings UND Tools gemeinsam aktiv) trat in
+dieser Messung **in beiden Ständen** real auf — einmal vorher (Turn
+„Sag nur: OK", 435 Thinking-Tokens, `--setting-sources project`) und
+einmal nachher (Wiederholungs-Turn „Nenne eine Farbe.", 482
+Thinking-Tokens, `--setting-sources ''`). Das widerspricht der in
+Abschnitt 2 aufgestellten Vorbedingung (Settings UND Tools nötig) —
+Jarvis' Werkzeugsatz `lesend` ist in beiden Ständen unverändert aktiv,
+nur die Settings-Quelle unterscheidet sich, und der Reflex trat trotzdem
+ohne Settings auf. **Einschätzung, nicht Befund:** n=4 je Stand ist zu
+klein für eine belastbare Aussage zur Reflex-Rate; die Grundannahme aus
+Abschnitt 2 (Settings sind eine notwendige Bedingung) ist mit diesen
+Daten nicht mehr haltbar, nur noch „Settings erhöhen vermutlich die
+Wahrscheinlichkeit". Hebel 2 bleibt trotzdem sinnvoll (löst reale
+CLAUDE.md/Hook-Ausführung für einen Lauftyp, der ohnehin einen eigenen
+Rollentext hat, Stefans Entscheidung 20.09.2026), aber die ursprünglich
+in Abschnitt 2 genannte Erwartung „≈5,9s pro Antwort" hält sich in
+echtem Jarvis-Verkehr nicht.
+
+### Hebel 3 (Poll-Intervall) — rechnerisch, nicht live im Browser gemessen
+
+500ms statt 2000ms Poll-Intervall senkt den Erwartungswert der
+zusätzlichen Wartezeit nach Laufende von 1000ms auf 250ms (Hälfte des
+Intervalls bei gleichverteiltem Tick-Versatz) — ein realer, aber
+kleiner und in dieser Messung nicht live-im-Browser nachgewiesener
+Effekt (kein Browser in dieser Umgebung verfügbar; die Tabelle oben
+rechnet ihn deshalb nur in die „Klick→Antwort sichtbar"-Spalte ein,
+klar gekennzeichnet). Verglichen mit dem CLI-Prozessfenster (9,5–18s)
+ist das der kleinste der drei Hebel, aber der einzige, dessen Wirkung
+in dieser Messung nicht durch reale Modell-Varianz (Thinking-Reflex,
+der Ausreißer) verrauscht ist.
+
 ## Status
 - [ ] Freigegeben
 - [ ] Freigegeben mit Hinweisen
@@ -226,9 +457,19 @@ Modell/anderer Provider-Pipeline nicht direkt mit Variante a) vergleichbar.
 - [ ] Blockiert
 
 ## Nächster sinnvoller Schritt
-Mit Stefan die Hebel-Liste durchsprechen und entscheiden, ob/welcher
-Hebel in einem eigenen WS-3-Workstream umgesetzt wird — insbesondere ob
-`--setting-sources ""` für Jarvis-Chat vertretbar ist, da das die
-CLAUDE.md-Disziplin für diesen Lauftyp aufgibt (Frage 3 der
-Entscheidungsregel: Scope/Wartbarkeit gegen Frage 4: Komplexität
-reduzieren).
+Mit Stefan die Messung durchsprechen: Kernbefund 1 (CLI-Eigenzeit
+dominiert, außerhalb dieses Auftrags) legt nahe, dass ein künftiger
+Latenz-Workstream dort ansetzen müsste, um einen großen Sprung zu
+erzielen — beide hier verbliebenen Server-Phasen sind zusammen unter
+einer halben Sekunde und architektonisch an die Checkpoint-Store-
+Invarianten gebunden. Kernbefund 2 relativiert Hebel 2s erwarteten
+Gewinn gegenüber Abschnitt 2, ohne ihn falsch zu machen (Stefans
+CLAUDE.md/Hook-Entscheidung bleibt unabhängig von der Zeitersparnis
+gültig). Reviewer-/QA-Pass (drei frische Subagenten) ist durchgelaufen,
+vier reale Befunde behoben (siehe Diff-Zusammenfassung), `npm run
+check`/`check:template` grün. Freigabe/Commit/Push liegt bei Stefan —
+dieser Auftrag committet nichts selbst. Reale
+`kontrollzustand/jarvis-jarvis-chat-*`-Läufe aus der Messung liegen
+unversioniert im Arbeitsbaum (git-sichtbar, `kontrollzustand/` ist
+nicht gitignored) — Stefans Entscheidung, ob sie mit committet oder
+vor dem Commit entfernt werden.

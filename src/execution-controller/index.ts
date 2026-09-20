@@ -365,6 +365,7 @@ export async function fuehreAufgabeDurch(
             zeitgrenzeMs: optionen.zeitgrenzeMs,
             abbruchSignal: optionen.abbruchSignal,
             cwd: optionen.cwd,
+            zeitmessung: optionen.zeitmessung,
           }
         )
   if (!gatewayErgebnis.ok) {

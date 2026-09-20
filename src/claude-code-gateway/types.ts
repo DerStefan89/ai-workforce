@@ -35,6 +35,8 @@ export interface AufrufEingaben {
   werkzeugsatz: WerkzeugsatzBegrenzung
   /** Von F5s Kontextpaket abgeleiteter Prompttext, unverändert als `-p`-Argument durchgereicht (F-124) — baueAufruf baut den Text nicht selbst, das leistet F8s fuehreAufgabeDurch. */
   prompt: string
+  /** F31 WS-3 (Stefan 20.09.2026, Option A): überschreibt baueAufrufs Standardwert 'project' für `--setting-sources`. Ausschließlich vom Jarvis-Chat-Pfad gesetzt (leerer String — CLAUDE.md/Hooks bleiben für den Ein-Schuss-Lauf aus dem Kontext); jeder andere Aufrufer lässt das Feld unbesetzt und bekommt unverändert 'project'. scripts/leitstand-server.mjs' pruefeStartauftrag lehnt das Feld im Body von POST /api/laeufe ab (Muster aufrufEingaben.werkzeugsatz) — es ist kein Eingabekanal für einen Body-getriebenen Lauf. */
+  settingSources?: string
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */
