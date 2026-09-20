@@ -408,6 +408,9 @@
           <p id="chat-fehler" class="fehler" hidden></p>
           <div id="chat-verlauf"></div>
           <button type="button" id="chat-ganzen-verlauf-link" class="chat-ganzen-verlauf-link" hidden>Ganzen Verlauf öffnen</button>
+          <!-- F30 WS-1 (Aufgabe 1): sichtbar, solange chat.js' ausstehenderLauf gesetzt ist (F14 POST
+               /api/laeufe/<laufId>/abbrechen) — Sichtbarkeit/Bedienung siehe views/chat.js. -->
+          <button type="button" id="chat-abbrechen-btn" class="btn chat-abbrechen-btn" hidden>Lauf abbrechen</button>
           <div class="chat-eingabe-zeile">
             <button type="button" class="chat-eingabe-icon-btn" disabled title="Anhänge (kommt bald)">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 12.5l6.5-6.5a3 3 0 0 1 4.2 4.2L10.5 18.4a5 5 0 0 1-7-7L12 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
