@@ -211,6 +211,10 @@ test('baueAufruf liefert das erwartete Tokens-Array — Grünfall', () => {
     'Read,Grep',
     '--allowedTools',
     'Read,Grep',
+    // F31 WS-3c (löst F-502): Standard für jeden Aufruf ohne mcpConfig.
+    '--strict-mcp-config',
+    '--mcp-config',
+    '{"mcpServers":{}}',
     '-p',
     'Testprompt',
   ])

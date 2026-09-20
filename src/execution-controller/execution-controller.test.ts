@@ -429,37 +429,9 @@ test("F31 WS-3: ohne aufrufEingaben.settingSources bleibt der Standardwert 'proj
   }
 })
 
-// ─── F31 WS-3b (MCP-Start): aufrufEingaben.mcpConfig steuert baueAufrufs '--strict-mcp-config'/'--mcp-config' ──
+// ─── F31 WS-3c (löst F-502): baueAufrufs '--strict-mcp-config'/'--mcp-config' ist jetzt Standard für JEDE Rolle ──
 
-test("F31 WS-3b: aufrufEingaben.mcpConfig '{\"mcpServers\":{}}' hängt '--strict-mcp-config'/'--mcp-config' an die tatsächlich gestarteten Tokens an (Jarvis-Chat-Pfad)", async () => {
-  const laufId = neueLaufId('f31c')
-  let erfassteTokens: string[] | undefined
-  const spyStarter: Starter = async (startziel, tokens) => {
-    erfassteTokens = tokens
-    return attrappeMitValidemErgebnis(startziel, tokens)
-  }
-  try {
-    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
-    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, mcpConfig: '{"mcpServers":{}}' }
-    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
-      ...startfreigabeOptionen(),
-      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
-      rohBasisVerzeichnis: 'kontrollzustand-roh',
-      starter: spyStarter,
-      schreiber: () => {},
-    })
-    assert.strictEqual(ergebnis.ok, true)
-    assert.ok(erfassteTokens)
-    assert.ok(erfassteTokens.includes('--strict-mcp-config'), "'--strict-mcp-config' fehlt in den Tokens")
-    const mcpConfigIndex = erfassteTokens.indexOf('--mcp-config')
-    assert.notStrictEqual(mcpConfigIndex, -1, "'--mcp-config' fehlt in den Tokens")
-    assert.strictEqual(erfassteTokens[mcpConfigIndex + 1], '{"mcpServers":{}}')
-  } finally {
-    raeumeKette(laufId)
-  }
-})
-
-test("F31 WS-3b: ohne aufrufEingaben.mcpConfig bleiben '--strict-mcp-config'/'--mcp-config' aus den Tokens (jede Rolle außer Jarvis)", async () => {
+test("F31 WS-3c: ohne aufrufEingaben.mcpConfig trägt jeder Lauf trotzdem '--strict-mcp-config'/'--mcp-config' mit dem Default '{\"mcpServers\":{}}' (E-187, vormals nur jarvis über F31 WS-3b)", async () => {
   const laufId = neueLaufId('f31d')
   let erfassteTokens: string[] | undefined
   const spyStarter: Starter = async (startziel, tokens) => {
@@ -477,8 +449,38 @@ test("F31 WS-3b: ohne aufrufEingaben.mcpConfig bleiben '--strict-mcp-config'/'--
     })
     assert.strictEqual(ergebnis.ok, true)
     assert.ok(erfassteTokens)
-    assert.strictEqual(erfassteTokens.includes('--strict-mcp-config'), false, "'--strict-mcp-config' sollte ohne mcpConfig nicht in den Tokens stehen")
-    assert.strictEqual(erfassteTokens.includes('--mcp-config'), false, "'--mcp-config' sollte ohne mcpConfig nicht in den Tokens stehen")
+    assert.ok(erfassteTokens.includes('--strict-mcp-config'), "'--strict-mcp-config' fehlt in den Tokens (sollte jetzt Standard sein)")
+    const mcpConfigIndex = erfassteTokens.indexOf('--mcp-config')
+    assert.notStrictEqual(mcpConfigIndex, -1, "'--mcp-config' fehlt in den Tokens (sollte jetzt Standard sein)")
+    assert.strictEqual(erfassteTokens[mcpConfigIndex + 1], '{"mcpServers":{}}')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test("F31 WS-3c: aufrufEingaben.mcpConfig überschreibt weiterhin den Default-Wert (Muster wie settingSources)", async () => {
+  const laufId = neueLaufId('f31c')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, mcpConfig: '{"mcpServers":{"beispiel":{"command":"x"}}}' }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    assert.ok(erfassteTokens.includes('--strict-mcp-config'), "'--strict-mcp-config' fehlt in den Tokens")
+    const mcpConfigIndex = erfassteTokens.indexOf('--mcp-config')
+    assert.notStrictEqual(mcpConfigIndex, -1, "'--mcp-config' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[mcpConfigIndex + 1], '{"mcpServers":{"beispiel":{"command":"x"}}}', 'überschriebener Wert muss den Default ersetzen, nicht ergänzen')
   } finally {
     raeumeKette(laufId)
   }

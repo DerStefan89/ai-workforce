@@ -65,6 +65,10 @@ const erwartet = [
   'Read,Grep',
   '--allowedTools',
   'Read,Grep',
+  // F31 WS-3c (löst F-502): Standard für jeden Aufruf, siehe baueAufruf.
+  '--strict-mcp-config',
+  '--mcp-config',
+  '{"mcpServers":{}}',
   '-p',
   'Testprompt',
 ]

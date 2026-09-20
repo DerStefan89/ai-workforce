@@ -22,6 +22,16 @@
  * analog zu baueAufrufs eigenen festen Flags, aber mit `--allowedTools`
  * statt `--tools`.
  *
+ * Bewusste, benannte Ausnahme von F31 WS-3c (löst F-502, QA-Pass
+ * 20.09.2026): weil dieses Skript baueAufruf() nicht aufruft, bekommt dieser
+ * Lauf NICHT den seit WS-3c für jeden baueAufruf-Aufrufer geltenden
+ * `--strict-mcp-config`-Default — Account-MCP-Server könnten hier weiterhin
+ * ungeprüft laden. Für den engen, hier verfolgten Zweck (einmaliger,
+ * manueller Rot-Fall-Nachweis über eine Wegwerf-Kopie außerhalb des Repos,
+ * kein Produktionspfad, kein von Nutzern ausgelöster Lauf, nicht in
+ * `npm run check` eingehängt) unkritisch — bewusst nicht nachgezogen, um
+ * Messfall 2 nicht durch ein drittes Flag-Paar zu verändern.
+ *
  * E6 (Wegwerf-Kopie außerhalb des Repos): starteGateway (WS2/WS4) setzt
  * `arbeitsverzeichnis_pfad` über `process.cwd()` zum Aufrufzeitpunkt und
  * F1B/F2 schreiben ihre Artefakte (kontrollzustand/, kontrollzustand-roh/)
