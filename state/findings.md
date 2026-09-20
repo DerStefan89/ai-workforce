@@ -7933,7 +7933,7 @@ Maßnahme: GitKraken während Terminal-Git-Arbeit pausieren. Kein
 Code-/Doku-Fix in diesem PR — Arbeitsablauf-Hinweis für Stefan.
 Feature/Run: F29/F30-Challenge, 20.09.2026.
 
-**F-488** · `BUG` · P1 · offen
+**F-488** · `BUG` · P1 · erledigt (#194)
 Titel: Jarvis-Chat ist gedächtnislos.
 Beschreibung: `baueJarvisAuftragstext` (src/jarvis/index.ts) baut den
 Auftragstext ausschließlich aus der aktuellen Nachricht (Parameter
@@ -7948,10 +7948,9 @@ Fundstelle: src/jarvis/index.ts baueJarvisAuftragstext (Z. 188–205);
 scripts/leitstand-server.mjs Z. 4502 (Aufrufstelle in POST /api/chat).
 Auswirkung: Mehrschrittige Gespräche im Jarvis-Chat sind faktisch nicht
 möglich; jede Nachricht steht isoliert.
-Maßnahme: F31 WS-2 (neu geschnitten) — begrenztes Verlaufsfenster aus
-`lineage chat-<projektId>` (ab letzter Zusammenfassung, max. 8 Turns /
-12000 Zeichen) in den Auftragstext aufnehmen. Nicht in diesem PR behoben
-(Docs-only).
+Maßnahme: F31 WS-2 — begrenztes Verlaufsfenster aus `lineage
+chat-<projektId>` (ab letzter Zusammenfassung, max. 8 Turns / 12000
+Zeichen) in den Auftragstext aufgenommen. Behoben (#194).
 Feature/Run: F29/F31-Challenge, 20.09.2026.
 
 **F-489** · `PROCESS_IMPROVEMENT` · P2 · erledigt (dieser PR)
@@ -7973,7 +7972,7 @@ Titel: Findings F-469 bis F-481 fehlen in state/findings.md.
 Beschreibung: Diese Findings existieren bislang nur in
 Challenger-Verifikationsdokumenten, nicht in `state/findings.md` — die
 laufende Nummerierung springt in dieser Datei direkt von F-439/F-467–F-468
-auf F-482.
+auf F-482. Die Lücke betrifft F-440–F-466 UND F-469–F-481.
 Fundstelle: state/findings.md (Nummernlücke F-469–F-481); die
 zugehörigen Challenger-Verifikationsdokumente von F29/F30 (nicht in
 diesem Repo-Pfad).
@@ -8025,3 +8024,113 @@ der einzelnen Akten liest.
 Maßnahme: F28/F29 auf ✅ `ABGESCHLOSSEN` nachgezogen, F31-Zeile ergänzt,
 Kopfsatz (Zeile 23) nachgezogen (dieser PR).
 Feature/Run: F29/F31-Challenge, 20.09.2026.
+
+**F-494** · `PROCESS_IMPROVEMENT` · P2 · erledigt
+Titel: Challenger gab zwei Claude-Code-Sitzungen im selben Arbeitsverzeichnis frei.
+Beschreibung: Für die WS-2-Arbeit (Gesprächsgedächtnis) liefen zeitweise
+zwei Claude-Code-Sitzungen im selben Arbeitsverzeichnis parallel — ein
+Verstoß gegen CLAUDE.md Z. 58-59 (\"Ein Schreiber pro
+Arbeitsverzeichnis... parallele Arbeit nur in getrennten
+git-Worktrees\"). Von der WS-2-Sitzung selbst erkannt, kein Schaden
+entstanden.
+Fundstelle: CLAUDE.md Z. 58-59 (Arbeitsweise-Abschnitt); WS-2-Sitzung
+(F31), 20.09.2026.
+Auswirkung: Kein realer Schaden in diesem Fall, aber strukturelles Risiko
+für Race Conditions auf gemeinsamen Dateien (Checkpoint-Store, Lock-Dateien)
+bei echter Kollision zweier Schreiber.
+Maßnahme: Parallele Läufe künftig nur noch mit `git worktree` statt
+mehrerer Sitzungen im selben Ordner.
+Feature/Run: F31, 20.09.2026.
+
+**F-495** · `TECH_DEBT` · P3 · erledigt (dieser PR)
+Titel: Doku-Nachzug nach WS-2-Merge fehlte.
+Beschreibung: WS-2 (Gesprächsgedächtnis + „Zusammenfassen & neu starten")
+wurde als #194 gemergt, ohne dass `features/F31/feature.md` und
+`state/findings.md` im selben Zug auf den neuen Stand gebracht wurden.
+Fundstelle: features/F31/feature.md (WS-2-Zeile vor diesem PR); F-488 vor
+diesem PR.
+Auswirkung: Akte und Findings liefen dem tatsächlichen Baustand hinterher.
+Maßnahme: features/F31/feature.md (WS-2 gemergt, WS-3 umbenannt,
+Typewriter zurückgestellt) und F-488 (erledigt) in diesem PR nachgezogen.
+Feature/Run: F31, 20.09.2026.
+
+**F-496** · `BUG` · P1 · erledigt (#194)
+Titel: Zusammenfassung fiel nach maxTurns Folgeturns aus dem Verlaufsfenster.
+Beschreibung: Der Zusammenfassungs-Turn (`istZusammenfassung: true`) war
+im Verlaufsfenster nicht gesondert behandelt — nach genügend weiteren
+Turns rutschte er wie jeder andere Turn aus dem 8-Turns/12000-Zeichen-
+Fenster heraus. Jarvis verlor damit genau den Kontext, den die
+Zusammenfassung eigentlich dauerhaft verfügbar halten sollte.
+Fundstelle: src/jarvis/index.ts waehleVerlaufsfenster (WS-2, vor der
+Korrektur in #194).
+Auswirkung: „Zusammenfassen & neu starten" verlor nach einigen weiteren
+Nachrichten stillschweigend genau die Information, die es sichern sollte.
+Maßnahme: Zusammenfassungs-Turn im Verlaufsfenster gepinnt — fällt nicht
+mehr aus dem Fenster, unabhängig davon, wie viele Turns danach folgen.
+Behoben (#194).
+Feature/Run: F31, 20.09.2026.
+
+**F-497** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: check-f11-auftrag.mjs prüft D13 nur am ersten Treffer im Quelltext.
+Beschreibung: Das Gate sucht die D13-Prüfung (`if (laufAktiv)`) über die
+erste Fundstelle im Quelltext von `scripts/leitstand-server.mjs`. Eine
+künftige Umsortierung der Routen kann die tatsächlich geprüfte Stelle
+verschieben, ohne dass das Gate das bemerkt — es prüft dann möglicherweise
+eine andere Route als die beabsichtigte.
+Fundstelle: scripts/check-f11-auftrag.mjs (D13-Abschnitt, erster
+`if (laufAktiv)`-Treffer im Quelltext).
+Auswirkung: Das Gate kann nach einer Routen-Umsortierung stillschweigend
+die falsche Stelle prüfen und trotzdem grün bleiben.
+Maßnahme: Prüfung robuster verankern (z. B. an einen Routen-Kommentar oder
+Funktionsnamen statt an Fundstellen-Reihenfolge binden). Nicht in diesem
+PR behoben (Docs-only).
+Feature/Run: F31, 20.09.2026.
+
+**F-498** · `TECH_DEBT` · P3 · offen
+Titel: Kein UI-Hinweis, wenn das Verlaufsfenster oder Zusammenfassen älteren Kontext kappt.
+Beschreibung: Sowohl das Chat-Verlaufsfenster (8 Turns / 12000 Zeichen) als
+auch das größere Zusammenfassen-Fenster (30 Turns / 40000 Zeichen) können
+älteren Gesprächsverlauf stillschweigend kappen — der Chat zeigt dem
+Menschen nicht an, dass Jarvis einen Teil der Historie nicht mehr sieht.
+Fundstelle: src/jarvis/index.ts waehleVerlaufsfenster; public/leitstand/
+views/chat.js (keine entsprechende Anzeige).
+Auswirkung: Ein Mensch kann sich auf eine frühere Nachricht beziehen, ohne
+zu merken, dass Jarvis sie wegen der Fensterkappung nicht mehr kennt.
+Maßnahme: Im Dogfooding bewerten, ob ein UI-Hinweis nötig ist. Nicht in
+diesem PR behoben (Docs-only).
+Feature/Run: F31, 20.09.2026.
+
+**F-499** · `TECH_DEBT` · P3 · offen
+Titel: Mehrere kleinere UX-Lücken um „Zusammenfassen & neu starten".
+Beschreibung: Drei zusammenhängende Lücken: (1) die Standardansicht nach
+einer Zusammenfassung ist unbegrenzt lang, obwohl die Zusammenfassung genau
+dafür da ist, den sichtbaren Verlauf zu verkürzen; (2) der
+Zusammenfassen-Button bleibt bei leerem Verlauf aktiv, ein Klick liefert
+dann 409 als unbehandelten Rohtext statt einer verständlichen Meldung; (3)
+zweimaliges Zusammenfassen hintereinander ist möglich, ohne dass das
+UI davor warnt oder es verhindert.
+Fundstelle: public/leitstand/views/chat.js (Standardansicht-Rendering,
+Zusammenfassen-Button-Zustand); scripts/leitstand-server.mjs POST
+/api/chat/zusammenfassen (409-Antwort).
+Auswirkung: Kleinere UX-Reibung, kein Datenverlust — der 409-Rohtext wirkt
+wie ein Fehler statt einer normalen Rückmeldung.
+Maßnahme: Im Dogfooding bewerten, welche der drei Lücken echten Reibungs-
+verlust verursachen, bevor gezielt behoben wird. Nicht in diesem PR
+behoben (Docs-only).
+Feature/Run: F31, 20.09.2026.
+
+**F-500** · `TECH_DEBT` · P2 · offen
+Titel: Flaky Test F14 WS-2 AK4 (Windows-Prozessbaum bei TIMEOUT).
+Beschreibung: `src/claude-code-gateway/claude-code-gateway.test.ts`
+("killt bei TIMEOUT unter Windows den kompletten Prozessbaum") schlug
+einmalig mit ENOENT auf einer Datei
+`f14-ws2-enkel-pid-<uuid>.txt` fehl; bei isolierter Wiederholung liefen
+alle 42/42 Tests der Datei grün.
+Fundstelle: src/claude-code-gateway/claude-code-gateway.test.ts (F14-WS-2-
+AK4-Abschnitt, Enkel-PID-Datei).
+Auswirkung: Ein Testlauf kann ohne Codeänderung einmalig rot werden, ohne
+dass die Ursache dokumentiert oder der Test deterministisch ist.
+Maßnahme: Zusammen mit [[F-491]] in einem gemeinsamen Flaky-Test-Durchgang
+analysieren (beide betreffen Windows-Prozess-/Timing-Races). Nicht in
+diesem PR behoben (Docs-only).
+Feature/Run: F31, 20.09.2026.
