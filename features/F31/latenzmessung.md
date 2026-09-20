@@ -450,26 +450,235 @@ ist das der kleinste der drei Hebel, aber der einzige, dessen Wirkung
 in dieser Messung nicht durch reale Modell-Varianz (Thinking-Reflex,
 der Ausreißer) verrauscht ist.
 
+## WS-3b — MCP-Start, 20.09.2026
+
+Auftrag: prüfen, ob der in `docs/projekt/zielfassung.md` §9.4 E-187
+benannte Verdacht real zutrifft — dass jeder Lauf die MCP-Server aus der
+Nutzer-/Projektkonfiguration startet, weil `--tools`/`--allowedTools` sie
+nicht begrenzen — und, falls ja, das für die Rolle `jarvis` beheben (Muster
+WS-3s `settingSources`).
+
+### 1. Flags/Version (real geprüft)
+
+`claude --version`: `2.1.258 (Claude Code)`. `claude --help` nennt beide
+gesuchten Flags: `--strict-mcp-config` („Only use MCP servers from
+`--mcp-config`, ignoring all other MCP configurations") und `--mcp-config
+<configs...>` („Load MCP servers from JSON files or strings"). Akzeptierte
+Form für eine leere Serverliste, real verifiziert:
+`--strict-mcp-config --mcp-config '{"mcpServers":{}}'`.
+
+### 2. Aktive MCP-Server im Repo-Ordner (real geprüft)
+
+`claude mcp list` im Repo-Ordner: zwei Server, beide account-/nutzergebunden
+(kein `.mcp.json` im Repo, kein projektspezifischer Eintrag in
+`~/.claude.json` für dieses Verzeichnis — `mcpServers: {}` dort für jedes
+Projekt):
+
+```
+claude.ai Claude Docs: https://api.anthropic.com/v1/pages/mcp - ✔ Connected
+claude.ai Google Drive: https://drivemcp.googleapis.com/mcp/v1 - ✔ Connected
+```
+
+Real belegt über die `stream-json`-Init-Nachricht eines Laufs mit exakt den
+heutigen Jarvis-Argumenten (`--setting-sources '' --tools Read,Grep,Glob
+--allowedTools Read,Grep,Glob`, kein `--strict-mcp-config`):
+
+```
+"tools":["Glob","Grep","Read","mcp__claude_ai_Claude_Docs__batch","mcp__claude_ai_Claude_Docs__create",
+"mcp__claude_ai_Claude_Docs__delete","mcp__claude_ai_Claude_Docs__export","mcp__claude_ai_Claude_Docs__guide",
+"mcp__claude_ai_Claude_Docs__query","mcp__claude_ai_Claude_Docs__read","mcp__claude_ai_Claude_Docs__update"],
+"mcp_servers":[{"name":"claude.ai Claude Docs","status":"connected"},{"name":"claude.ai Google Drive","status":"needs-auth"}]
+```
+
+Der Verdacht trifft zu: trotz `--setting-sources ''` (WS-3, CLAUDE.md/Hooks
+aus dem Kontext) laden beide Account-MCP-Server, acht zusätzliche
+`mcp__*`-Werkzeuge erscheinen im Werkzeugsatz, den das Modell angeboten
+bekommt — obwohl `--tools`/`--allowedTools` nur `Read,Grep,Glob` erlauben.
+`--tools` begrenzt MCP tatsächlich nicht (E-187 real bestätigt, nicht nur
+dokumentiert).
+
+Derselbe Aufruf zusätzlich mit `--strict-mcp-config --mcp-config
+'{"mcpServers":{}}'`:
+
+```
+"tools":["Glob","Grep","Read"],"mcp_servers":[]
+```
+
+Rot-/Grün-Fall damit real gemessen: `mcp_servers` geht von zwei Einträgen
+auf `[]`, die Werkzeugliste von elf auf drei Einträge zurück.
+
+### 3. Kontrollierte CLI-Messung (5 Läufe je Variante, Median)
+
+Identischer Prompt wie WS-3 Abschnitt 2: `Antworte ausschließlich mit dem
+JSON {"art":"antwort","antwort":"OK"}`. Alle Läufe im Repo-Ordner, stdin
+explizit geschlossen (`< /dev/null`, Muster WS-3), `--model claude-sonnet-5
+--output-format json --setting-sources "" --tools Read,Grep,Glob
+--allowedTools Read,Grep,Glob -p "<prompt>"` plus die Variantenflags unten
+— exakt die heutigen Jarvis-Argumente (WS-3-Stand) als Basis.
+
+| Variante | Zusätzliche Flags | Wall-Clock (Median) | `duration_ms` (Median) | `duration_api_ms` (Median) |
+|---|---|---:|---:|---:|
+| a) wie heute | keine | 6,87s | 1,37s | 2,22s |
+| b) `--strict-mcp-config` + leere `--mcp-config` | `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` | 5,41s | 1,52s | 2,39s |
+
+Einzelwerte je Variante (wall_ms / `duration_ms` / `duration_api_ms`):
+- a): 6695/1337/2223 · 6873/1367/2219 · 7764/2365/3190 · 6924/1710/2561 · 6711/1292/2213
+- b): 5195/1351/2263 · 5409/1524/2386 · 5079/1203/2121 · 6647/2495/3463 · 6311/2289/2978
+
+Wall-Clock-Differenz a→b: 1,46s Median (6,87s → 5,41s), ≈21%. Kein
+Thinking-Reflex in dieser Messung (0 Thinking-Tokens in allen 10 Läufen,
+anders als WS-3s Variante a — vermutlich weil hier `--setting-sources ''`
+bereits in BEIDEN Varianten aktiv ist, WS-3s Reflex trat gerade beim
+Zusammenspiel von Projekt-Settings UND Tools auf). `duration_ms`/
+`duration_api_ms` zeigen KEINEN klaren Gewinn (b sogar leicht höher im
+Median) — der gemessene Gewinn liegt ausschließlich im Wall-Clock-Anteil
+außerhalb der vom CLI selbst gemeldeten Arbeitszeit (Programmstart/
+MCP-Verbindungsaufbau), nicht in der Modellarbeit selbst.
+
+### 4. Untergrenze: reiner Programmstart
+
+`claude --version`, 3 Läufe: 891ms · 966ms · 997ms → Median 966ms. Das ist
+die Wall-Clock-Untergrenze für jeden `claude`-Prozessstart unabhängig von
+Prompt/Werkzeugen/MCP.
+
+### 5. Entscheidung: umgesetzt
+
+Beide in der Aufgabenstellung genannten Bedingungen sind erfüllt: (1) in
+a) sind MCP-Server/-Werkzeuge real aktiv (Abschnitt 2) UND (2) b) ist im
+Wall-Clock-Median ≥1s schneller (1,46s, Abschnitt 3) — die Schwelle wäre
+schon über Bedingung 1 allein erreicht gewesen. Für die Rolle `jarvis`
+umgesetzt, exakt im Muster von WS-3s `settingSources`.
+
+### 6. Diff-Zusammenfassung
+
+- `src/claude-code-gateway/types.ts`: `AufrufEingaben` bekommt ein
+  optionales `mcpConfig?: string`.
+- `src/claude-code-gateway/index.ts`: `baueAufruf` hängt `--strict-mcp-config
+  --mcp-config <eingaben.mcpConfig>` an die Tokens an, nur wenn das Feld
+  gesetzt ist — ohne das Feld bleiben die Tokens byte-identisch zum Stand
+  vor WS-3b (jede Rolle außer `jarvis`).
+- `scripts/leitstand-server.mjs`: `starteJarvisChatLauf` setzt
+  `aufrufEingaben.mcpConfig: '{"mcpServers":{}}'` (nur hier, zusätzlich zum
+  bestehenden `settingSources: ''`); `pruefeStartauftrag` lehnt
+  `aufrufEingaben.mcpConfig` im Body von `POST /api/laeufe` für jede Rolle
+  ab (Muster des bestehenden `settingSources`-Rotfalls).
+- `docs/projekt/zielfassung.md`: §9.1-Nachtrag (Rolle `jarvis`, MCP-
+  Begrenzung, Tabellenzeile „MCP-Werkzeuge im Ausführungslauf" bleibt für
+  jede andere Rolle `DEKLARIERT`), Changelog-Eintrag v1.22 → v1.23.
+- Tests: zwei neue `fuehreAufgabeDurch`-Fälle in
+  `execution-controller.test.ts` (`mcpConfig` gesetzt → Tokens tragen
+  `--strict-mcp-config`/`--mcp-config <Wert>`; ohne das Feld → beide Flags
+  fehlen unverändert); ein neuer Rotfall in `check-f11-auftrag.mjs`
+  (`aufrufEingaben.mcpConfig` im Body → 400); `check-f31-gedaechtnis.mjs`
+  Fall (a) prüft zusätzlich, dass die tatsächlich an den Worker gereichten
+  `aufrufEingaben` `mcpConfig: '{"mcpServers":{}}'` tragen.
+- Reviewer-/QA-Pass (zwei frische Subagenten, siehe unten) ergänzt: ein
+  dritter `execution-controller.test.ts`-Fall (worker `codex` MIT gesetztem
+  `settingSources`/`mcpConfig`) pinnt, dass der Execution-Controller-
+  Codex-Zweig beide Felder ungenutzt lässt (vorher nur durch Codelesen
+  belegt, jetzt automatisiert abgesichert — QA-Befund TC-06, niedriger
+  Schweregrad, umgesetzt statt nur dokumentiert).
+- `state/findings.md`: F-485 korrigiert (zurückgenommen), F-501/F-502/F-503
+  neu (siehe unten).
+
+### 7. Reale Chat-Turns über den Leitstand (`LEITSTAND_ZEITMESSUNG=1`)
+
+Server lokal gestartet (`LEITSTAND_ZEITMESSUNG=1 node
+scripts/leitstand-server.mjs`, Standard-Startvorlage
+`startvorlagen/beispielprojekt.json` — Codex dort strukturell nicht
+verfügbar, Fallback auf `claude-code` wie in WS-3s vier echten Läufen,
+real im Serverlog bestätigt: „Codex ist nicht verfügbar"). Drei reale
+`POST /api/chat`-Turns gegen das reale `ai-workforce`-Projekt, `worker`
+in jeder Laufakte real `claude-code`:
+
+| Nachricht | Server gesamt (`request_eingang`→`lineage_chat_eintrag_geschrieben`) | Prozessfenster (`prozess_gestartet`→`prozess_beendet`) | `duration_ms` | `duration_api_ms` | `cache_read_input_tokens` | Thinking-Tokens |
+|---|---:|---:|---:|---:|---:|---:|
+| „Sag nur: OK" | 14,47s | 13,12s | 2,90s | 3,47s | 11.395 | 0 |
+| „Was ist 2+2?" | 11,85s | 10,77s | 2,31s | 3,24s | 11.395 | 0 |
+| „Nenne eine Farbe." | 12,50s | 11,63s | 2,44s | 3,26s | 11.395 | 0 |
+
+`cache_read_input_tokens` 11.395 in allen drei Turns deckt sich exakt mit
+Variante b) aus Abschnitt 3 (mit MCP-Begrenzung) und WS-3 Abschnitt 2s
+Variante b) (ohne Projekt-Settings) — real belegt, dass der Produktionspfad
+tatsächlich mit begrenztem Kontext läuft. 0 Thinking-Tokens in allen drei
+Turns bestätigt zusätzlich, dass der in WS-3 beschriebene Reflex hier nicht
+auftrat.
+
+**Ehrlicher Befund, kein Beschönigen:** Die drei „Server gesamt"-Werte
+(11,85–14,47s) liegen NICHT sichtbar unter WS-3s eigenen „nachher"-Werten
+aus der Vorher/Nachher-Tabelle (settingSources '' allein, ohne mcpConfig:
+9,79–13,44s für die vier sauberen Turns dort, Median ≈10,21s). n=3 hier ist
+zu klein für eine belastbare Aussage, und anders als WS-3s eigener
+Vorher/Nachher-Vergleich wurde hier NICHT im selben Lauf mit/ohne
+`mcpConfig` gegengemessen (das hätte einen zweiten manuellen Toggle-Durchgang
+gebraucht, den die Aufgabenstellung nicht verlangte). Das deckt sich mit
+WS-3s eigenem „Kernbefund 2": der in der isolierten CLI-Messung (Abschnitt 3
+hier, ≈1,46s Wall-Clock-Gewinn) gemessene Effekt ist klein gegenüber der
+Streuung realer Jarvis-Chat-Turns (voller Rollentext, Verlaufsfenster,
+reale Netzwerk-/API-Varianz) und lässt sich mit dieser Stichprobengröße in
+Produktionsverkehr nicht sauber isolieren. Die MCP-Begrenzung bleibt
+trotzdem sinnvoll — sie schließt eine real bestätigte E-187-Lücke
+(Abschnitt 2) unabhängig von ihrem Zeitgewinn.
+
+### 8. Reviewer-/QA-Pass
+
+Zwei frische Subagenten (`code-reviewer`, `qa`), kein gemeinsamer Kontext.
+
+**code-reviewer — Freigegeben, keine kritischen Befunde.** Bestätigt real
+geprüft: das Scoping auf Rolle `jarvis` (`mcpConfig` nur an einer Stelle im
+Repo gesetzt, `starteJarvisChatLauf`), die Body-Ablehnung in
+`pruefeStartauftrag` (exaktes Muster des bestehenden `settingSources`-
+Rotfalls), Rückwärtskompatibilität von `baueAufruf` (Tokens byte-identisch
+ohne `mcpConfig`), kein Injection-Risiko (Argv-Array über `execFile`, nie
+ein Shell-String; Wert ohnehin serverseitig hartkodiert, nie
+nutzergesteuert), bewusster Verzicht auf eine ARCHITECTURE.md-§7-Ergänzung
+(die neue Ausnahme wählt keine Schutzschicht ab, sie engt zusätzlich ein),
+sowie Zahlenkonsistenz zwischen `latenzmessung.md`, dem
+`zielfassung.md`-Nachtrag und den neuen Findings. Eine reine
+Beobachtung ohne Handlungsbedarf: `mcpConfig` (kein Default) und
+`settingSources` (`?? 'project'`) folgen bewusst unterschiedlicher
+Präsenz-Semantik — bereits im Code kommentiert, kein Fix nötig.
+
+**qa — Freigegeben mit Hinweisen.** Acht Testfälle (TC-01 bis TC-08)
+definiert und geprüft: Flags werden korrekt angehängt (TC-01), jede
+Nicht-Jarvis-Rolle bleibt unverändert (TC-02), Body-Injektion über
+`POST /api/laeufe` wird abgelehnt (TC-03), kein Injektionskanal über
+`POST /api/chat`/`/api/chat/zusammenfassen` (TC-04) oder
+Workflow-Schritt-Dispatch (TC-05), E-182-Prüfung blockiert die neuen Flags
+nicht (TC-08) — alle bestanden. Zwei Hinweise, beide niedriger
+Schweregrad, kein Blocker: (1) TC-06 (Codex-Zweig liest `mcpConfig`/
+`settingSources` nicht) war nur durch Codelesen belegt, kein automatisierter
+Test kombinierte `worker: 'codex'` mit gesetztem `mcpConfig`; (2) `mcpConfig`
+validiert sein JSON-Format nicht (identisches, akzeptiertes Risikoprofil
+wie das bestehende `settingSources`).
+
+**Umgesetzt (dieser PR, nach dem QA-Pass):** Hinweis 1 behoben — ein
+dritter Testfall in `execution-controller.test.ts` (F31 WS-3b, Codex +
+gesetztes `settingSources`/`mcpConfig`) pinnt jetzt automatisiert, dass
+die Codex-Tokens weder `--setting-sources` noch `--strict-mcp-config`/
+`--mcp-config` enthalten. Hinweis 2 bewusst nicht behoben — identisches,
+bereits akzeptiertes Muster wie `settingSources`, kein neuer Rückschritt.
+
 ## Status
 - [ ] Freigegeben
-- [ ] Freigegeben mit Hinweisen
+- [x] Freigegeben mit Hinweisen
 - [ ] Nicht freigegeben
 - [ ] Blockiert
 
 ## Nächster sinnvoller Schritt
-Mit Stefan die Messung durchsprechen: Kernbefund 1 (CLI-Eigenzeit
-dominiert, außerhalb dieses Auftrags) legt nahe, dass ein künftiger
-Latenz-Workstream dort ansetzen müsste, um einen großen Sprung zu
-erzielen — beide hier verbliebenen Server-Phasen sind zusammen unter
-einer halben Sekunde und architektonisch an die Checkpoint-Store-
-Invarianten gebunden. Kernbefund 2 relativiert Hebel 2s erwarteten
-Gewinn gegenüber Abschnitt 2, ohne ihn falsch zu machen (Stefans
-CLAUDE.md/Hook-Entscheidung bleibt unabhängig von der Zeitersparnis
-gültig). Reviewer-/QA-Pass (drei frische Subagenten) ist durchgelaufen,
-vier reale Befunde behoben (siehe Diff-Zusammenfassung), `npm run
-check`/`check:template` grün. Freigabe/Commit/Push liegt bei Stefan —
-dieser Auftrag committet nichts selbst. Reale
-`kontrollzustand/jarvis-jarvis-chat-*`-Läufe aus der Messung liegen
-unversioniert im Arbeitsbaum (git-sichtbar, `kontrollzustand/` ist
-nicht gitignored) — Stefans Entscheidung, ob sie mit committet oder
-vor dem Commit entfernt werden.
+Mit Stefan WS-3b durchsprechen: die MCP-Begrenzung für `jarvis` ist
+umgesetzt und schließt eine real bestätigte E-187-Lücke, aber ihr
+Zeitgewinn ist in echtem Chat-Verkehr (Abschnitt 7) nicht so klar wie in
+der isolierten CLI-Messung (Abschnitt 3) — dasselbe Muster wie WS-3s
+Kernbefund 2. [[F-502]] hält die verbleibende E-187-Lücke für jede andere
+Rolle offen; [[F-501]] hält „Jarvis Live" (langlebiger Prozess statt
+Prozessstart je Nachricht) als den eigentlich großen Hebel fest, bewusst
+erst in der Dogfooding-Phase F30 angegangen. Reviewer-/QA-Pass (zwei
+frische Subagenten) ist durchgelaufen, der einzige umsetzbare Hinweis
+(TC-06-Regressionstest) ist eingearbeitet, `npm run check`/`check:template`
+grün. Freigabe/Commit/Push liegt bei Stefan — dieser Auftrag committet
+nichts selbst. Reale `kontrollzustand/jarvis-jarvis-chat-*`- und
+`kontrollzustand-roh/jarvis-jarvis-chat-*`-Läufe aus WS-3 UND WS-3b liegen
+unversioniert im Arbeitsbaum (git-sichtbar, `kontrollzustand/` ist nicht
+gitignored) — Stefans Entscheidung, ob sie mit committet oder vor dem
+Commit entfernt werden.

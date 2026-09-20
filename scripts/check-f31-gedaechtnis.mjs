@@ -102,8 +102,14 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       // starteJarvisChatLauf bis in die tatsächlich an fuehreAufgabeDurch gereichten Eingaben
       // ankommen (real belegt über denselben Capture-Punkt wie der Auftragstext oben).
       befunde.push(`(a) F31 WS-3: erwartet aufrufEingaben.settingSources '', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
+    } else if (letzteEingaben.aufrufEingaben?.mcpConfig !== '{"mcpServers":{}}') {
+      // F31 WS-3b (MCP-Start): dieselbe Erwartung für mcpConfig — real gemessen, dass die
+      // Account-MCP-Server trotz settingSources '' laden (E-187-Lücke, features/F31/latenzmessung.md).
+      befunde.push(`(a) F31 WS-3b: erwartet aufrufEingaben.mcpConfig '{"mcpServers":{}}', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else {
-      console.log("✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '' (F31 WS-3, Option A).")
+      console.log(
+        "✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '' und aufrufEingaben.mcpConfig ist '{\"mcpServers\":{}}' (F31 WS-3/WS-3b)."
+      )
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

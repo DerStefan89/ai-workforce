@@ -219,6 +219,9 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     werkzeugListe,
     '--allowedTools',
     werkzeugListe,
+    // F31 WS-3b: nur gesetzt, wenn der Aufrufer eine MCP-Begrenzung anfordert (eingaben.mcpConfig) —
+    // fehlt das Feld, bleiben die Tokens byte-identisch zum Stand vor WS-3b (jede Rolle außer jarvis).
+    ...(eingaben.mcpConfig !== undefined ? ['--strict-mcp-config', '--mcp-config', eingaben.mcpConfig] : []),
     '-p',
     eingaben.prompt,
   ]

@@ -429,6 +429,92 @@ test("F31 WS-3: ohne aufrufEingaben.settingSources bleibt der Standardwert 'proj
   }
 })
 
+// ─── F31 WS-3b (MCP-Start): aufrufEingaben.mcpConfig steuert baueAufrufs '--strict-mcp-config'/'--mcp-config' ──
+
+test("F31 WS-3b: aufrufEingaben.mcpConfig '{\"mcpServers\":{}}' hängt '--strict-mcp-config'/'--mcp-config' an die tatsächlich gestarteten Tokens an (Jarvis-Chat-Pfad)", async () => {
+  const laufId = neueLaufId('f31c')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, mcpConfig: '{"mcpServers":{}}' }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    assert.ok(erfassteTokens.includes('--strict-mcp-config'), "'--strict-mcp-config' fehlt in den Tokens")
+    const mcpConfigIndex = erfassteTokens.indexOf('--mcp-config')
+    assert.notStrictEqual(mcpConfigIndex, -1, "'--mcp-config' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[mcpConfigIndex + 1], '{"mcpServers":{}}')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test("F31 WS-3b: ohne aufrufEingaben.mcpConfig bleiben '--strict-mcp-config'/'--mcp-config' aus den Tokens (jede Rolle außer Jarvis)", async () => {
+  const laufId = neueLaufId('f31d')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    // gueltigeEingaben() setzt KEIN mcpConfig — Muster jedes Aufrufers außer starteJarvisChatLauf.
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    assert.strictEqual(erfassteTokens.includes('--strict-mcp-config'), false, "'--strict-mcp-config' sollte ohne mcpConfig nicht in den Tokens stehen")
+    assert.strictEqual(erfassteTokens.includes('--mcp-config'), false, "'--mcp-config' sollte ohne mcpConfig nicht in den Tokens stehen")
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test("F31 WS-3b (QA-Pass 20.09.2026, TC-06): worker 'codex' mit gesetztem aufrufEingaben.settingSources/mcpConfig trägt beide Felder NICHT ins Codex-Argv — der Execution-Controller-Codex-Zweig liest aus aufrufEingaben laut eigenem Kommentar (F-323) nur .modell", async () => {
+  const laufId = neueLaufId('f31e')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben: AusfuehrungsEingaben = {
+      ...gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE),
+      worker: 'codex',
+      ausgabeSchemaPfad: null,
+      werkzeugVersionDeklariert: '0.153.4 (Codex CLI)',
+    }
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, settingSources: '', mcpConfig: '{"mcpServers":{}}' }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    assert.strictEqual(erfassteTokens.indexOf('--setting-sources'), -1, "'--setting-sources' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
+    assert.strictEqual(erfassteTokens.indexOf('--strict-mcp-config'), -1, "'--strict-mcp-config' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
+    assert.strictEqual(erfassteTokens.indexOf('--mcp-config'), -1, "'--mcp-config' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // ─── F11 AK3(b): Auftragstext wird nie zu einem Kontextpaket-Element ───────────
 
 test('F11 AK3(b): Auftragstext-Marke fehlt im registrierten Kontextpaket, Elementanzahl unverändert bei anderem Auftragstext', async () => {

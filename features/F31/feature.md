@@ -78,6 +78,15 @@ E-M4-3 (kein echtes Token-Streaming) zu verlassen.
   feat/f30-*). Die Nummer F30 ist laut zielfassung.md für Dogfooding +
   Team reserviert; f30-Branch-/Commitnamen dieses Features sind Alias für
   F31.
+- **CLI-Prozessstart dominiert die Chat-Latenz (WS-3b, 20.09.2026):** die
+  Zeitaufschlüsselung aus `features/F31/latenzmessung.md` zeigt, dass ein
+  Chat-Turn zu 7-10s reine Eigenzeit des `claude`-CLI-Prozessstarts ist —
+  serverseitig ist damit kein großer Hebel mehr erreichbar
+  ([[F-501]]). Die eigentliche Maßnahme („Jarvis Live", ein langlebiger
+  Prozess mit `stream-json` statt eines Prozessstarts je Nachricht) ist
+  bewusst zurückgestellt in die Dogfooding-Phase F30 (Entscheidung Stefan,
+  20.09.2026) — ein Architekturwechsel dieser Größe gehört nicht in eine
+  reine Messungs-/Härtungs-Iteration wie WS-3/WS-3b.
 
 ## Feature Review
 WS-1 real gebaut und gemergt (#192): Abbruch-Button im Jarvis-Chat, große
