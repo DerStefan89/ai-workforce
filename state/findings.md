@@ -8231,3 +8231,19 @@ Maßnahme: Künftige Challenger-Prompts nennen ausschließlich explizite
 Pfade statt `git add -A`/`git add .`. Für diesen PR beachtet (kein
 pauschales Stagen verwendet).
 Feature/Run: F31 WS-3b, 20.09.2026.
+
+**F-504** · `TECH_DEBT` · P2 · offen
+Titel: Künftige MCP-Capability-Freigabe muss ihre Server explizit über
+mcpConfig durchreichen, sonst fehlt das Werkzeug still.
+Beschreibung: MCP-Begrenzung ist seit F31 WS-3c Default für jeden Lauf.
+Wird eine Capability freigegeben, die selbst ein MCP-Werkzeug ist (z. B.
+`playwright-mcp`, F19/F29 WS-0), muss der betroffene Lauf seine Server
+ausdrücklich über `AufrufEingaben.mcpConfig` bekommen, sonst fehlt das
+Werkzeug still.
+Fundstelle: `src/claude-code-gateway/index.ts` `baueAufruf` (Default
+`--strict-mcp-config --mcp-config '{"mcpServers":{}}'`, F31 WS-3c).
+Auswirkung: Eine freigegebene MCP-Capability könnte im Ausführungslauf
+stillschweigend nicht verfügbar sein, ohne dass ein Fehler sichtbar wird.
+Maßnahme: Bei der ersten MCP-Capability-Freigabe mitplanen und in der
+Capability-Akte vermerken.
+Feature/Run: F31 WS-3c, 20.09.2026.
