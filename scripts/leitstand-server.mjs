@@ -1667,6 +1667,16 @@ export function pruefeStartauftrag(body) {
       grund: "'aufrufEingaben.settingSources' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt (F31 WS-3) und ist im Body nicht erlaubt",
     }
   }
+  // F31 WS-3b (Stefan 20.09.2026, MCP-Start): 'mcpConfig' wählt --strict-mcp-config --mcp-config
+  // '{"mcpServers":{}}' statt keiner MCP-Begrenzung — ausschließlich vom Jarvis-Chat-Pfad
+  // (starteJarvisChatLauf) serverseitig gesetzt, kein Eingabekanal für einen Body-getriebenen Lauf
+  // über POST /api/laeufe (Muster des settingSources-Rotfalls oben).
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'mcpConfig' in body.aufrufEingaben) {
+    return {
+      ok: false,
+      grund: "'aufrufEingaben.mcpConfig' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt (F31 WS-3b) und ist im Body nicht erlaubt",
+    }
+  }
   if (!Array.isArray(body.anfragen)) {
     return { ok: false, grund: "'anfragen' muss ein Array sein" }
   }
@@ -4496,7 +4506,11 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F31 WS-3 (Stefan 20.09.2026, Option A): Jarvis läuft ohne Projekt-Settings — settingSources
         // '' überschreibt baueAufrufs Standardwert 'project' NUR für diesen Pfad (jede andere Rolle
         // bekommt weiterhin 'project', siehe src/claude-code-gateway/index.ts baueAufruf).
-        aufrufEingaben: { modell, settingSources: '' },
+        // F31 WS-3b (Stefan 20.09.2026, MCP-Start): zusätzlich mcpConfig '{"mcpServers":{}}' — real
+        // gemessen (features/F31/latenzmessung.md), dass die zwei Account-MCP-Server trotz
+        // settingSources '' laden (E-187-Lücke: --tools/--allowedTools decken MCP nicht ab). NUR für
+        // diesen Pfad, jede andere Rolle bekommt weiterhin keine MCP-Begrenzung.
+        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}' },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),

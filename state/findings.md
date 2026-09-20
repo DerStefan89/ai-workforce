@@ -7894,7 +7894,7 @@ WS-2c, dem P0-Fund [[F-467]]/[[F-468]] und der Korrekturrunde WS-D1/D2
 nachgetragen (dieser PR).
 Feature/Run: F29/F30-Challenge, 20.09.2026.
 
-**F-485** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-485** · `PROCESS_IMPROVEMENT` · P2 · zurückgenommen (F31 WS-3b)
 Titel: Unbelegtes Zitat in einem Claude-Code-Bericht.
 Beschreibung: Ein Claude-Code-Bericht zitierte „CLAUDE.md dokumentierter
 Timing-Flake", ohne dass diese Formulierung im Repo belegbar ist. Am
@@ -7907,6 +7907,21 @@ missverstanden werden.
 Maßnahme: Berichte künftig nur mit real geprüften Quellen belegen. Nicht in
 diesem PR behoben (kein konkretes Artefakt zum Korrigieren).
 Feature/Run: F29/F30-Challenge, 20.09.2026.
+Korrektur (F31 WS-3b, 20.09.2026): Der Befund war überzogen — CLAUDE.md
+Abschnitt „Bekannte Fallen" beschreibt das Muster tatsächlich, nur mit
+anderem Wortlaut als zitiert: „Symptom: Ein Test-/Gate-Lauf scheitert
+einmalig ohne erkennbaren Grund (kein Code, keine Config geändert) und
+läuft beim nächsten Versuch grün. Was tun: Erst wiederholen, bevor man
+etwas repariert." Der ursprüngliche Challenger suchte offenbar nur nach den
+Stichworten „flake"/„timing" statt nach dem inhaltlichen Muster.
+Real bestätigt in diesem PR: `npm run check:template` schlug einmalig mit
+zwei F14-WS-4-AK7-Befunden fehl (Abbruch-Endpunkt, „erwartet 202, erhalten
+404"), ohne dass der Diff dieses PRs (`claude-code-gateway`,
+`execution-controller`, `leitstand-server.mjs` pruefeStartauftrag/
+starteJarvisChatLauf) den Abbruch-Pfad berührt; isolierter Wiederholungslauf
+von `scripts/check-f10-leitstand.mjs` lief unmittelbar danach grün, ebenso
+der volle `check:template`-Lauf danach. Exakt das im CLAUDE.md-Abschnitt
+beschriebene Muster.
 
 **F-486** · `TECH_DEBT` · P3 · offen
 Titel: Verwaistes Testverzeichnis aus einer Verifikation.
@@ -8134,3 +8149,71 @@ Maßnahme: Zusammen mit [[F-491]] in einem gemeinsamen Flaky-Test-Durchgang
 analysieren (beide betreffen Windows-Prozess-/Timing-Races). Nicht in
 diesem PR behoben (Docs-only).
 Feature/Run: F31, 20.09.2026.
+
+**F-501** · `TECH_DEBT` · P1 · offen
+Titel: Jarvis-Chat-Turn kostet ~7-10s CLI-Prozessstart je Nachricht.
+Beschreibung: Die WS-3-Latenzmessung (`features/F31/latenzmessung.md`,
+„Kernbefund 1") zeigt real aus Produktionsverkehr, dass der dominante
+Anteil eines Chat-Turns (9,5-18s Prozessfenster, davon 7,4-8,3s außerhalb
+dessen, was der CLI selbst als `duration_ms` meldet) reine Eigenzeit des
+`claude`-CLI-Prozessstarts ist — nicht Server-Wrapper-Code (dort liegen nur
+noch 266-386ms). Serverseitig ist damit kein großer Hebel mehr erreichbar,
+ohne den CLI-Prozess selbst durch einen langlebigen Prozess zu ersetzen.
+Fundstelle: features/F31/latenzmessung.md, Abschnitt „Kernbefund 1"
+(Zeitaufschlüsselung `prozess_gestartet`/`prozess_beendet` vs. `duration_ms`).
+Auswirkung: Jeder Jarvis-Chat-Turn bleibt bei 7-10s Wartezeit, unabhängig
+von weiteren serverseitigen Optimierungen.
+Maßnahme: „Jarvis Live" (ein langlebiger Prozess mit `stream-json`-
+Ein-/Ausgabe statt eines Prozessstarts je Nachricht) ist als Maßnahme
+vorgesehen, aber bewusst erst in der Dogfooding-Phase F30 angegangen
+(Entscheidung Stefan, 20.09.2026) — ein Architekturwechsel dieser Größe
+gehört nicht in eine reine Messungs-/Härtungs-Iteration. F31 WS-3b (dieser
+PR) prüft nur den kleineren MCP-Start-Hebel (siehe [[F-502]]), nicht diesen.
+Feature/Run: F31 WS-3b, 20.09.2026.
+
+**F-502** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: E-187 (MCP-Begrenzung im Ausführungslauf) für alle Rollen außer
+Jarvis weiterhin nicht umgesetzt.
+Beschreibung: `docs/projekt/zielfassung.md` §9.1 führt die Zeile
+„MCP-Werkzeuge im Ausführungslauf" unverändert als `DEKLARIERT` (E-187):
+`--tools`/`--allowedTools` begrenzen den Werkzeugsatz des Modells, aber
+nicht, welche MCP-Server für den Lauf geladen werden. F31 WS-3b hat das
+real bestätigt (`claude --output-format stream-json`-Init-Nachricht im
+Repo-Ordner: zwei Account-MCP-Server `claude.ai Claude Docs`/
+`claude.ai Google Drive` laden und acht `mcp__claude_ai_Claude_Docs__*`-
+Werkzeuge erscheinen im Werkzeugsatz, obwohl Jarvis nur Read/Grep/Glob
+über `--tools`/`--allowedTools` erlaubt bekommt) und für die Rolle `jarvis`
+über `--strict-mcp-config --mcp-config '{"mcpServers":{}}'`
+(`AufrufEingaben.mcpConfig`) geschlossen.
+Fundstelle: `docs/projekt/zielfassung.md` §9.1 (Tabellenzeile „MCP-Werkzeuge
+im Ausführungslauf"), §9.4 E-187; `src/claude-code-gateway/index.ts`
+`baueAufruf` (vor F31 WS-3b: keine MCP-Begrenzung, für keine Rolle).
+Auswirkung: Jede Rolle außer `jarvis` startet weiterhin mit ungeprüft
+geladenen Account-MCP-Servern und deren vollem Werkzeugsatz im
+Modellkontext — ein realer, wenn auch bislang nicht als Rot-Fall
+demonstrierter Seitenkanal an E-187 vorbei (Capability-Modell nach Wirkung,
+Zeile „Capability-Modell nach Wirkung" im selben §9.1, ebenfalls
+`DEKLARIERT`).
+Maßnahme: MCP-Begrenzung (`--strict-mcp-config` + leere `--mcp-config`,
+Muster `jarvis`) für jede Rolle einführen, danach E-188-Schutzschicht-
+Neunachweis (Gültigkeitsschlüssel-Bestandteile bleiben unverändert, aber
+der Rot-/Grün-Fall für die neue Grenze fehlt noch). Für `jarvis` durch F31
+WS-3b bereits erledigt (siehe `AufrufEingaben.mcpConfig`,
+`starteJarvisChatLauf`) — dieser Befund bleibt offen für die verbleibenden
+Rollen (architecture-advisor, code-reviewer, qa, ausfuehrung).
+Feature/Run: F31 WS-3b, 20.09.2026.
+
+**F-503** · `PROCESS_IMPROVEMENT` · P3 · erledigt (F31 WS-3b)
+Titel: Challenger-Prompts widersprachen ARCHITECTURE.md §7 („Pauschales
+Stagen des Arbeitsbaums").
+Beschreibung: Frühere Challenger-Prompts enthielten `git add -A` als
+Beispiel-/Anleitungstext, obwohl ARCHITECTURE.md §7 pauschales Stagen des
+Arbeitsbaums ausnahmslos verbietet (ein Commit stagt ausschließlich explizit
+benannte Pfade).
+Fundstelle: frühere Challenger-Prompt-Vorlagen (kein konkreter Dateipfad in
+diesem Repo — Prompt-Text externer Sitzungen).
+Auswirkung: Ein befolgter Challenger-Prompt hätte §7 real verletzt.
+Maßnahme: Künftige Challenger-Prompts nennen ausschließlich explizite
+Pfade statt `git add -A`/`git add .`. Für diesen PR beachtet (kein
+pauschales Stagen verwendet).
+Feature/Run: F31 WS-3b, 20.09.2026.

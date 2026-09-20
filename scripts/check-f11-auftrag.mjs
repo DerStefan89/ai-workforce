@@ -223,8 +223,27 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
     befunde.push("AK5-Rotfall (F31 WS-3): Body mit 'aufrufEingaben.settingSources' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
   }
 
-  if (gruenFall.ok === true && rotFallProfilReferenz.ok === false && rotFallFreieListe.ok === false && rotFallSettingSources.ok === false) {
-    console.log("✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste und 'aufrufEingaben.settingSources' ab.")
+  // F31 WS-3b (MCP-Start): 'aufrufEingaben.mcpConfig' ist ausschließlich serverseitig für die
+  // Rolle 'jarvis' gesetzt (scripts/leitstand-server.mjs, starteJarvisChatLauf) — Muster des
+  // settingSources-Rotfalls oben.
+  const rotFallMcpConfig = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    aufrufEingaben: { modell: 'test-modell', mcpConfig: '{"mcpServers":{}}' },
+  })
+  if (rotFallMcpConfig.ok !== false) {
+    befunde.push("AK5-Rotfall (F31 WS-3b): Body mit 'aufrufEingaben.mcpConfig' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
+  }
+
+  if (
+    gruenFall.ok === true &&
+    rotFallProfilReferenz.ok === false &&
+    rotFallFreieListe.ok === false &&
+    rotFallSettingSources.ok === false &&
+    rotFallMcpConfig.ok === false
+  ) {
+    console.log(
+      "✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste, 'aufrufEingaben.settingSources' und 'aufrufEingaben.mcpConfig' ab."
+    )
   }
 }
 
