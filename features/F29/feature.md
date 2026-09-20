@@ -7,7 +7,7 @@ F29
 Design des Leitstands (dunkle Farbwelt, Tokenschicht, Komponenten-Klassenvokabular, neue Shell, Startfläche, alle neun Views)
 
 ## Status
-Status: WORKSTREAM_SCHNITT_GENEHMIGT
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -138,4 +138,26 @@ die Code-Beispiele (`.tsx`, Framer-Motion-API) sind es nicht.
   Framer Motion.
 
 ## Feature Review
-Noch nicht fällig — kein Workstream ist `IN_ARBEIT`.
+WS-1a (#185), WS-1b (#186), WS-2a (#187), WS-2b (#188), WS-2c (#190) real
+gebaut und gemergt — Tokenschicht, dunkle Shell, Startfläche und alle neun
+Views auf das Komponenten-Klassenvokabular umgestellt. Dazwischen ein
+P0-Fund real behoben (#189, [[F-467]]/[[F-468]]): ein vorzeitig
+geschlossener CSS-Kommentar hatte die Tokenschicht seit WS-1a im Browser
+unwirksam gemacht, Gate danach entsprechend gehärtet. Eine Korrekturrunde
+nach Referenzbild-Abgleich (WS-D1/D2, #191): Chat-Spalte lud
+routenabhängig statt routenunabhängig, Pipeline-Zeile zeigte keinen
+Modell-/Worker-Chip ([[F-478]]/[[F-479]]).
+
+WS-0 (Capability-Freigabe `playwright-mcp`/`frontend-design`/
+`animate-skill`) bleibt formal `OFFEN` — für F29 nicht mehr erforderlich,
+weil der Referenzbild-Abgleich real über manuelle Browser-Verifikation
+gelöst wurde statt über automatisierte visuelle Prüfung. Keine
+Regeländerung an R2 (`schemas/ressourcen.schema.json`); die offene Frage
+aus „Bekannte Grenzen" (Weg von `OFFEN` zu nutzbar) bleibt unentschieden,
+ist aber kein Blocker für den Abschluss dieser Akte.
+
+WS-3 (Hover-/Fokus-/Motion-Zustände) ist bewusst zurückgestellt in die
+Phase „Design fertigstellen" nach M5 — kein offener Blocker dieser Akte.
+
+Freigabe: Stefan, real im Browser gegen die vier Referenzbilder
+(`docs/design/referenz/`) geprüft.
