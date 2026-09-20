@@ -7878,3 +7878,150 @@ Fundstelle: scripts/check-f20-design-tokens.mjs.
 Auswirkung: Dieselbe Fehlerklasse (ein zufälliges „*/" in CSS-Prosa) hätte jederzeit erneut unbemerkt eine ganze Regelmenge verwerfen können.
 Maßnahme: Gate um eine Zählung von „/*" gegen „*/" in public/leitstand/style.css ergänzt (gleiche Anzahl = Kommentare sauber gepaart). Bewusst NUR für style.css, nicht projektweit für *.js/*.html (YAGNI): CSS kennt ausschließlich Block-Kommentare, jedes „*/" in Prosa ist dort gefährlich; in JS/HTML kommentiert das Projekt layoutnahe Hinweise überwiegend per „//"/„<!-- -->", wo Glob-Prosa (z. B. ein Verzeichnis mit Stern-Platzhalter direkt vor einer Datei- oder Ordnerendung) harmlos ein unausgeglichenes Paar erzeugt — mehrfach real in app.js/index.html/router.js beobachtet, eine blinde projektweite Zählung wäre kein tragfähiges Gate, sondern Dauer-Rauschen. Regressionsgetestet: die F-467-Formulierung reproduziert und vom neuen Check als 1 Befund erkannt.
 Feature/Run: F29-Challenge, 18.09.2026.
+
+**F-482** · `PROCESS_IMPROVEMENT` · P2 · erledigt (dieser PR)
+Titel: F29-Akte Status veraltet.
+Beschreibung: `features/F29/feature.md` stand nach dem Merge von #184–#191
+(WS-0 bis WS-D1, alle real gebaut) noch auf `Status:
+WORKSTREAM_SCHNITT_GENEHMIGT` statt `ABGESCHLOSSEN` — die Akte hinkte dem
+realen Baustand hinterher. F-484 ist ein Duplikat dieses Befunds, ebenfalls
+erledigt.
+Fundstelle: features/F29/feature.md (Status-Feld, vor diesem PR).
+Auswirkung: Falsche Phasenauskunft für jede Sitzung, die die Akte statt
+`docs/STATUS.md` liest.
+Maßnahme: Status auf `ABGESCHLOSSEN` gesetzt, Feature Review mit WS-1a–
+WS-2c, dem P0-Fund [[F-467]]/[[F-468]] und der Korrekturrunde WS-D1/D2
+nachgetragen (dieser PR).
+Feature/Run: F29/F30-Challenge, 20.09.2026.
+
+**F-485** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Unbelegtes Zitat in einem Claude-Code-Bericht.
+Beschreibung: Ein Claude-Code-Bericht zitierte „CLAUDE.md dokumentierter
+Timing-Flake", ohne dass diese Formulierung im Repo belegbar ist. Am
+20.09.2026 im selben PR wiederholt („in CLAUDE.md dokumentiertes
+Timing-Flake-Muster") — CLAUDE.md enthält keinen solchen Eintrag.
+Fundstelle: kein Repo-Artefakt — Zitat aus Berichten früherer
+Claude-Code-Sitzungen, nicht aus einer Datei im Repo.
+Auswirkung: Ein nicht real geprüftes Zitat kann als belegte Tatsache
+missverstanden werden.
+Maßnahme: Berichte künftig nur mit real geprüften Quellen belegen. Nicht in
+diesem PR behoben (kein konkretes Artefakt zum Korrigieren).
+Feature/Run: F29/F30-Challenge, 20.09.2026.
+
+**F-486** · `TECH_DEBT` · P3 · offen
+Titel: Verwaistes Testverzeichnis aus einer Verifikation.
+Beschreibung: `kontrollzustand-test-f10-ak5a/check-f10-ak5a-<uuid>/`
+existiert lokal aus einer früheren F10-AK5a-Verifikation und wurde nicht
+aufgeräumt.
+Fundstelle: kontrollzustand-test-f10-ak5a/ (Repo-Wurzel, real vorhanden,
+über `.gitignore` Zeile 38 von git ausgenommen).
+Auswirkung: Kein Git-/Gate-Risiko (ignoriert), aber lokaler Datenmüll.
+Maßnahme: Manuell löschen — nicht in diesem PR (Docs-only-Auftrag, kein
+Dateisystem-Aufräumen im Scope).
+Feature/Run: F29/F30-Challenge, 20.09.2026.
+
+**F-487** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Wiederholte `.git/index.lock`-Vorfälle, vermutlich GitKraken.
+Beschreibung: Sechster beobachteter Vorfall eines verwaisten
+`.git/index.lock`, vermutlich durch einen GitKraken-Hintergrundprozess,
+der parallel zu terminalbasiertem `git` auf demselben Repo läuft.
+Fundstelle: .git/index.lock (wiederholt auftretend, kein einzelner
+Commit-Fund).
+Auswirkung: Terminal-`git`-Befehle können blockieren oder fehlschlagen,
+solange das Lock von einem anderen Prozess gehalten wird.
+Maßnahme: GitKraken während Terminal-Git-Arbeit pausieren. Kein
+Code-/Doku-Fix in diesem PR — Arbeitsablauf-Hinweis für Stefan.
+Feature/Run: F29/F30-Challenge, 20.09.2026.
+
+**F-488** · `BUG` · P1 · offen
+Titel: Jarvis-Chat ist gedächtnislos.
+Beschreibung: `baueJarvisAuftragstext` (src/jarvis/index.ts) baut den
+Auftragstext ausschließlich aus der aktuellen Nachricht (Parameter
+`nachricht: string`) — kein Verlaufsparameter. `POST /api/chat`
+(scripts/leitstand-server.mjs) ruft es als
+`baueJarvisAuftragstext(nachricht)` auf und liest den Lineage-Verlauf
+(`chat-<projektId>`) an dieser Stelle nicht. Rückfragen im Chat, die sich
+auf eine frühere Nachricht beziehen, funktionieren dadurch nicht — Jarvis
+sieht bei jeder Nachricht nur diese eine Nachricht. Ein künftiger
+„Zusammenfassen"-Lauf hätte ebenfalls keinen Verlaufs-Input.
+Fundstelle: src/jarvis/index.ts baueJarvisAuftragstext (Z. 188–205);
+scripts/leitstand-server.mjs Z. 4502 (Aufrufstelle in POST /api/chat).
+Auswirkung: Mehrschrittige Gespräche im Jarvis-Chat sind faktisch nicht
+möglich; jede Nachricht steht isoliert.
+Maßnahme: F31 WS-2 (neu geschnitten) — begrenztes Verlaufsfenster aus
+`lineage chat-<projektId>` (ab letzter Zusammenfassung, max. 8 Turns /
+12000 Zeichen) in den Auftragstext aufnehmen. Nicht in diesem PR behoben
+(Docs-only).
+Feature/Run: F29/F31-Challenge, 20.09.2026.
+
+**F-489** · `PROCESS_IMPROVEMENT` · P2 · erledigt (dieser PR)
+Titel: WS-1 wurde unter Arbeitsnamen F30 ohne Akte gemergt.
+Beschreibung: WS-1 der Jarvis-Chat-Erfahrung (F31, Abbruch-Button, große
+Chat-Ansicht) wurde als #192 unter dem Arbeitsnamen F30 gemergt, obwohl
+`features/F31/feature.md` zu diesem Zeitpunkt nicht existierte.
+Fundstelle: features/F31/ (fehlte bis zu diesem PR); Commit #192
+('feat(f30-ws1)').
+Auswirkung: Eine gemergte Änderung ohne zugehörige Akte ist über
+`scripts/check-feature.mjs` nicht prüfbar und im Workboard nicht sichtbar.
+Maßnahme: `features/F31/feature.md` nachgezogen (dieser PR), Status
+`IN_ARBEIT`, WS-1 im Feature Review nachdokumentiert. Künftig vor dem
+ersten Workstream-Merge eines neuen Features die Akte anlegen.
+Feature/Run: F29/F31-Challenge, 20.09.2026.
+
+**F-490** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Findings F-469 bis F-481 fehlen in state/findings.md.
+Beschreibung: Diese Findings existieren bislang nur in
+Challenger-Verifikationsdokumenten, nicht in `state/findings.md` — die
+laufende Nummerierung springt in dieser Datei direkt von F-439/F-467–F-468
+auf F-482.
+Fundstelle: state/findings.md (Nummernlücke F-469–F-481); die
+zugehörigen Challenger-Verifikationsdokumente von F29/F30 (nicht in
+diesem Repo-Pfad).
+Auswirkung: Ein Teil der protokollierten Befunde ist über die einzige
+Findings-Quelle nicht auffindbar.
+Maßnahme: Nachtrag aus den Verifikationsdokumenten erforderlich — nicht in
+diesem PR (Docs-only-Auftrag mit explizit benanntem Umfang, dieser
+Nachtrag war nicht Teil des Auftrags).
+Feature/Run: F29/F30-Challenge, 20.09.2026.
+
+**F-491** · `TECH_DEBT` · P2 · offen
+Titel: Flaky Gate F14 WS-4 AK7.
+Beschreibung: `npm run check:template` meldete einmalig „erwartet 202,
+erhalten 404" bei F14 WS-4 AK7 (Abbruch eines aktiven Laufs), bei
+Wiederholung desselben Checks unmittelbar danach grün. Vermutlich Race
+zwischen Laufende und Abbruch-Request.
+Fundstelle: scripts/check-f10-leitstand.mjs (F14-WS-4-AK7-Abschnitt).
+Auswirkung: Ein Gate-Lauf kann ohne Codeänderung einmalig rot werden,
+ohne dass die Ursache dokumentiert oder der Test deterministisch ist.
+Maßnahme: Ursache analysieren, Test deterministisch machen. Nicht in
+diesem PR behoben (Docs-only).
+Feature/Run: F29/F31-Challenge, 20.09.2026.
+
+**F-492** · `PROCESS_IMPROVEMENT` · P2 · erledigt (dieser PR)
+Titel: Feature-Nummer F30 kollidierte mit dem reservierten M4-Feature F30.
+Beschreibung: Die Feature-Nummer F30 wurde für die Jarvis-Chat-Erfahrung
+vergeben (Branches feat/f30-*, Commit 'feat(f30-ws1)', PR #192), ohne
+Abgleich mit `docs/projekt/zielfassung.md` und `docs/STATUS.md` — beide
+führen F30 bereits für „Self- und Team-Dogfooding (Meilenstein-Gate)".
+Fundstelle: docs/projekt/zielfassung.md Z. 516; docs/STATUS.md Z. 416;
+features/F23/feature.md Z. 538 (Dependency-Verweis auf F30
+Dogfooding).
+Auswirkung: Zwei unterschiedliche Vorhaben trugen zeitweise dieselbe
+Feature-Nummer — Verwechslungsgefahr in Akte, Findings und Roadmap.
+Maßnahme: Jarvis-Chat-Erfahrung auf F31 umbenannt (`features/F31/
+feature.md`, dieser PR); f30-Branch-/Commitnamen als historischer
+Arbeitsname dokumentiert ([[F-489]]). Künftig neue Feature-IDs nur nach
+Suche in zielfassung.md, STATUS.md und features/ vergeben.
+Feature/Run: F29/F31-Challenge, 20.09.2026.
+
+**F-493** · `PROCESS_IMPROVEMENT` · P3 · erledigt (dieser PR)
+Titel: docs/STATUS.md M4-Liste war veraltet.
+Beschreibung: Die M4-Feature-Liste führte F28 und F29 noch mit ⏳, obwohl
+beide Akten (`features/F28/feature.md`, `features/F29/feature.md`) längst
+`Status: ABGESCHLOSSEN` trugen.
+Fundstelle: docs/STATUS.md M4-Abschnitt (F28-/F29-Zeilen), vor diesem PR.
+Auswirkung: Falsche Phasenauskunft für jede Sitzung, die die M4-Liste statt
+der einzelnen Akten liest.
+Maßnahme: F28/F29 auf ✅ `ABGESCHLOSSEN` nachgezogen, F31-Zeile ergänzt,
+Kopfsatz (Zeile 23) nachgezogen (dieser PR).
+Feature/Run: F29/F31-Challenge, 20.09.2026.
