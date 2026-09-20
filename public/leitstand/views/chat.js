@@ -90,9 +90,21 @@
  * nicht mehr aktiv ist — ein sofortiges lokales Auflösen könnte die
  * Senden-Sperre freigeben, während der Server den vorherigen Lauf noch als
  * aktiv führt).
+ *
+ * F31 WS-2 (Gesprächsgedächtnis + "Zusammenfassen & neu starten"): #chat-zusammenfassen-btn
+ * löst POST /api/chat/zusammenfassen aus — denselben D13/202/Poll-Pfad wie eine normale
+ * Nachricht (sendeZusammenfassungAnfrage), nur ohne Vorfilter (eine Zusammenfassung hat keine
+ * lokal beantwortbare Kurzform). setzeSendenSperre deaktiviert seither BEIDE Buttons (Muster
+ * Sende-Sperre) — ein zweiter Lauf während eines ausstehenden ist ohnehin per D13 unmöglich.
+ * Ein serverseitig erzeugter Zusammenfassungs-Turn trägt istZusammenfassung: true (GET
+ * /api/chat, verarbeiteJarvisChatErgebnis) und wird hier zweifach ausgewertet: renderEintrag
+ * zeigt ihn mit einem Trenner-Label und einer dezenten Nutzerzeile ("[Zusammenfassung
+ * angefordert]"); renderVerlauf setzt bei NICHT zeigeAlle den Standard-Ausschnitt auf "ab dem
+ * letzten Zusammenfassungs-Turn (inklusive) plus alles danach" statt der bisherigen letzten
+ * zwei Einträge — ohne einen solchen Turn bleibt das Verhalten unverändert (letzte zwei).
  */
 
-import { abbrichLauf, holeChatVerlauf, holeLaufDetail, sendeChatNachricht } from '../api.js'
+import { abbrichLauf, holeChatVerlauf, holeLaufDetail, sendeChatNachricht, sendeChatZusammenfassung } from '../api.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
@@ -122,9 +134,12 @@ function antwortText(antwort) {
 
 /** Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert) gefolgt von lokalen Einträgen (Push-Reihenfolge) und einem etwaigen ausstehenden Lauf zuletzt — beide Quellen entstehen immer chronologisch NACH dem zuletzt geladenen persistierten Stand, eine erneute Sortierung ist deshalb nicht nötig. F29 WS-D2: zeitstempel ist bei persistierten Einträgen IMMER null (der Server führt keines, Auftrag Punkt E: keine erfundene Zeit), bei lokalen der beim Push erfasste Wert (s. initSendenFormular/pruefeAusstehendenLauf). */
 function baueAnzeigeListe() {
-  const liste = [...persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis', zeitstempel: null })), ...lokaleEintraege]
+  const liste = [
+    ...persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis', zeitstempel: null, istZusammenfassung: e.istZusammenfassung === true })),
+    ...lokaleEintraege,
+  ]
   if (ausstehenderLauf !== null) {
-    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel })
+    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel, istZusammenfassung: ausstehenderLauf.istZusammenfassung === true })
   }
   return liste
 }
@@ -144,27 +159,55 @@ function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung) {
 
 const QUELLE_ANTWORT_LABEL = { vorfilter: 'Jarvis (lokal beantwortet)', fehler: 'Jarvis — Lauf nicht erfolgreich' }
 
-/** Ein Verlaufseintrag als zwei Sprechblasen-Zeilen (Nutzerfrage + Jarvis-Antwort bzw. Tippindikator, solange sie aussteht). @param eintrag - aus baueAnzeigeListe() @returns HTML-Block */
+/** Ein Verlaufseintrag als zwei Sprechblasen-Zeilen (Nutzerfrage + Jarvis-Antwort bzw. Tippindikator, solange sie aussteht). F31 WS-2: ein Zusammenfassungs-Turn (istZusammenfassung) bekommt zusätzlich einen zentrierten Trenner davor, die Nutzerzeile ("[Zusammenfassung angefordert]") tritt dezent zurück. @param eintrag - aus baueAnzeigeListe() @returns HTML-Block */
 function renderEintrag(eintrag) {
   const zeitHtml = eintrag.zeitstempel ? ` <span class="chat-bubble-zeit">${escapeHtml(formatiereUhrzeit(eintrag.zeitstempel) ?? '')}</span>` : ''
-  const nutzerZeile = chatBubbleReihe('Stefan', zeitHtml, `<p class="chat-bubble-text">${escapeHtml(eintrag.nachricht)}</p>`, 'nutzer')
+  const trennerHtml = eintrag.istZusammenfassung === true ? '<p class="chat-zusammenfassung-trenner">Zusammenfassung</p>' : ''
+  const nutzerTextKlasse = eintrag.istZusammenfassung === true ? 'chat-bubble-text chat-bubble-text-dezent' : 'chat-bubble-text'
+  const nutzerZeile = chatBubbleReihe('Stefan', zeitHtml, `<p class="${nutzerTextKlasse}">${escapeHtml(eintrag.nachricht)}</p>`, 'nutzer')
   if (eintrag.quelle === 'ausstehend') {
     const tippindikator = '<p class="chat-tippindikator" aria-hidden="true"><span></span><span></span><span></span></p>'
-    return nutzerZeile + chatBubbleReihe('Jarvis', '', tippindikator, 'jarvis')
+    return trennerHtml + nutzerZeile + chatBubbleReihe('Jarvis', '', tippindikator, 'jarvis')
   }
   const label = QUELLE_ANTWORT_LABEL[eintrag.quelle] ?? 'Jarvis'
   const jarvisZeile = chatBubbleReihe(label, zeitHtml, `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`, 'jarvis')
-  return nutzerZeile + jarvisZeile
+  return trennerHtml + nutzerZeile + jarvisZeile
 }
 
-/** F29 WS-D2 (Auftrag Punkt C): zeigt standardmäßig nur die letzten zwei Einträge — "Ganzen Verlauf öffnen" (initGanzenVerlaufLink) schaltet zeigeAlle um und rendert neu, kein zweiter Fetch. */
+/**
+ * F31 WS-2: der Standard-Ausschnitt (nicht zeigeAlle) beginnt ab dem letzten Eintrag mit
+ * istZusammenfassung (inklusive) plus allem danach — ein Zusammenfassungs-Turn ist der neue
+ * "Gesprächsanfang"; ohne einen solchen Turn bleibt es bei den letzten zwei Einträgen
+ * (unverändertes WS-D2-Verhalten). @param liste - aus baueAnzeigeListe() @returns der Ausschnitt
+ */
+function berechneStandardAusschnitt(liste) {
+  let letzterZusammenfassungsIndex = -1
+  for (let i = liste.length - 1; i >= 0; i--) {
+    if (liste[i].istZusammenfassung === true) {
+      letzterZusammenfassungsIndex = i
+      break
+    }
+  }
+  return letzterZusammenfassungsIndex === -1 ? liste.slice(-2) : liste.slice(letzterZusammenfassungsIndex)
+}
+
+/**
+ * F29 WS-D2 (Auftrag Punkt C): zeigt standardmäßig nur einen Ausschnitt — "Ganzen Verlauf öffnen"
+ * (initGanzenVerlaufLink) schaltet zeigeAlle um und rendert neu, kein zweiter Fetch. QA-Befund
+ * F31 WS-2: der Link muss sichtbar bleiben, sobald der Standard-Ausschnitt WENIGER zeigt als die
+ * volle Liste — unabhängig vom aktuellen zeigeAlle-Zustand. Die alte Schwelle (liste.length <= 2)
+ * blieb aus der Vor-WS-2-Zeit stehen, in der der Ausschnitt IMMER genau "letzte zwei" war; mit
+ * einem frühen Zusammenfassungs-Turn (z. B. 1 Nachricht + sofort zusammengefasst, 2 Einträge
+ * gesamt) verbarg sie den ersten echten Turn UND den Link, der ihn wieder sichtbar gemacht hätte.
+ */
 function renderVerlauf() {
   const container = document.getElementById('chat-verlauf')
   const liste = baueAnzeigeListe()
-  const sichtbar = zeigeAlle ? liste : liste.slice(-2)
+  const standardAusschnitt = berechneStandardAusschnitt(liste)
+  const sichtbar = zeigeAlle ? liste : standardAusschnitt
   container.innerHTML = sichtbar.length === 0 ? '<p class="leer">Noch keine Nachrichten.</p>' : sichtbar.map(renderEintrag).join('')
   const link = document.getElementById('chat-ganzen-verlauf-link')
-  link.hidden = liste.length <= 2
+  link.hidden = standardAusschnitt.length === liste.length
   link.textContent = zeigeAlle ? 'Verlauf einklappen' : 'Ganzen Verlauf öffnen'
   document.getElementById('chat-abbrechen-btn').hidden = ausstehenderLauf === null
 }
@@ -175,9 +218,10 @@ function zeigeChatFehler(text) {
   anzeige.hidden = text === ''
 }
 
-/** Setzt Eingabefeld/Sende-Button in den Wartezustand — solange ein Vorfilter-Abruf läuft ODER ein Jarvis-Lauf aussteht (D13 lässt ohnehin nur einen Lauf zu). */
+/** Setzt Eingabefeld/Sende-Button UND (F31 WS-2) den Zusammenfassen-Button in den Wartezustand — solange ein Vorfilter-Abruf läuft ODER ein Jarvis-Lauf aussteht (D13 lässt ohnehin nur einen Lauf zu). */
 function setzeSendenSperre(gesperrt) {
   document.getElementById('chat-senden').disabled = gesperrt
+  document.getElementById('chat-zusammenfassen-btn').disabled = gesperrt
 }
 
 /** Lädt GET /api/chat neu — beim Betreten der View und nach jedem real terminierten Jarvis-Lauf. @returns true bei Erfolg, false bei einem (transienten) Fehlschlag — der Aufrufer entscheidet dann, ob erneut versucht wird. */
@@ -314,6 +358,34 @@ function initAbbrechenBedienung() {
   })
 }
 
+/** F31 WS-2: Klick auf #chat-zusammenfassen-btn — POST /api/chat/zusammenfassen, danach derselbe ausstehenderLauf/Tippindikator/Poll-Pfad wie eine normale Nachricht (pruefeAusstehendenLauf löst terminal auf, kein zweiter Codepfad). Kein Vorfilter (eine Zusammenfassung hat keine lokal beantwortbare Kurzform). Ein 409 (D13 oder "kein Verlauf zum Zusammenfassen") erscheint wie bei sendeAktuelleEingabe als Fehleranzeige. */
+async function sendeZusammenfassungAnfrage() {
+  const button = document.getElementById('chat-zusammenfassen-btn')
+  if (button.disabled) return
+  zeigeChatFehler('')
+  setzeSendenSperre(true)
+  try {
+    const antwort = await sendeChatZusammenfassung()
+    if (antwort.status !== 202) {
+      const koerper = await antwort.json().catch(() => ({}))
+      zeigeChatFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+      setzeSendenSperre(false)
+      return
+    }
+    const angenommen = await antwort.json().catch(() => ({}))
+    ausstehenderLauf = { nachricht: '[Zusammenfassung angefordert]', laufId: angenommen.laufId, zeitstempel: new Date().toISOString(), istZusammenfassung: true }
+    setzeAbbrechenZustand('Lauf abbrechen', false)
+    renderVerlauf()
+  } catch (fehler) {
+    zeigeChatFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+    setzeSendenSperre(false)
+  }
+}
+
+function initZusammenfassenBedienung() {
+  document.getElementById('chat-zusammenfassen-btn').addEventListener('click', () => void sendeZusammenfassungAnfrage())
+}
+
 function initSendenFormular() {
   document.getElementById('chat-senden').addEventListener('click', () => void sendeAktuelleEingabe())
 }
@@ -353,6 +425,7 @@ export function initChatView() {
   initEingabeTastatur()
   initGanzenVerlaufLink()
   initAbbrechenBedienung()
+  initZusammenfassenBedienung()
 
   // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell
   // (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr; der Dispatch auf

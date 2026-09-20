@@ -2041,6 +2041,31 @@ th {
   color: var(--color-accent-strong);
 }
 
+/* F31 WS-2: eigene Zeile über dem Sendeformular, wie .chat-abbrechen-btn (Muster). */
+.chat-zusammenfassen-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-sm);
+}
+
+/* F31 WS-2: zentrierter Trenner vor einem Zusammenfassungs-Turn (renderEintrag, views/chat.js). */
+.chat-zusammenfassung-trenner {
+  margin: var(--space-lg) 0 var(--space-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+/* F31 WS-2: die Nutzerzeile eines Zusammenfassungs-Turns ("[Zusammenfassung angefordert]") tritt
+   optisch zurück — der eigentliche Inhalt ist die Jarvis-Antwort danach. */
+.chat-bubble-text-dezent {
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
 .chat-eingabe-zeile {
   display: flex;
   align-items: flex-end;

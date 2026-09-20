@@ -41,3 +41,18 @@ export interface ErgebnisJarvis {
   aktion?: JarvisAktion | null
   bezug?: JarvisBezug | null
 }
+
+/**
+ * F31 WS-2: ein Turn aus der 'lineage-chat-<projektId>'-Kette, wie ihn
+ * waehleVerlaufsfenster/baueJarvisAuftragstext sehen — bereits auf Nachricht +
+ * Antworttext reduziert (kein volles ErgebnisJarvis, siehe
+ * scripts/leitstand-server.mjs' Mapping vor dem Aufruf). istZusammenfassung
+ * markiert einen über POST /api/chat/zusammenfassen erzeugten Turn — der
+ * jüngste davon ist Startpunkt des Fensters (waehleVerlaufsfenster) und der
+ * Standardansicht (Chat-View).
+ */
+export interface JarvisVerlaufsEintrag {
+  nachricht: string
+  antwort: string
+  istZusammenfassung?: boolean
+}
