@@ -78,9 +78,21 @@
  * keine erfundene Zeit), ihre Sprechblase zeigt deshalb keine Uhrzeit; (e)
  * Enter sendet (Shift+Enter bleibt Zeilenumbruch, Auftrag-Hinweistext) —
  * ruft denselben, unveränderten Sende-Pfad wie der Button.
+ *
+ * F30 WS-1 (Aufgabe 1, additiv, keine Architekturänderung): #chat-abbrechen-btn
+ * ist sichtbar, solange ausstehenderLauf gesetzt ist (initAbbrechenBedienung),
+ * und löst POST /api/laeufe/<laufId>/abbrechen (F14, bereits von views/runs.js
+ * genutzt) aus. Der Klick selbst schreibt KEINEN Verlaufseintrag und setzt
+ * ausstehenderLauf NICHT zurück — das bleibt allein Sache des bestehenden
+ * pruefeAusstehendenLauf-Polls, der einen jetzt FEHLGESCHLAGENEN Lauf bereits
+ * unverändert wie jeden anderen nicht erfolgreichen Lauf terminal auflöst
+ * (D13: der Server, nicht der Client, entscheidet, wann der Lauf wirklich
+ * nicht mehr aktiv ist — ein sofortiges lokales Auflösen könnte die
+ * Senden-Sperre freigeben, während der Server den vorherigen Lauf noch als
+ * aktiv führt).
  */
 
-import { holeChatVerlauf, holeLaufDetail, sendeChatNachricht } from '../api.js'
+import { abbrichLauf, holeChatVerlauf, holeLaufDetail, sendeChatNachricht } from '../api.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
@@ -154,6 +166,7 @@ function renderVerlauf() {
   const link = document.getElementById('chat-ganzen-verlauf-link')
   link.hidden = liste.length <= 2
   link.textContent = zeigeAlle ? 'Verlauf einklappen' : 'Ganzen Verlauf öffnen'
+  document.getElementById('chat-abbrechen-btn').hidden = ausstehenderLauf === null
 }
 
 function zeigeChatFehler(text) {
@@ -263,6 +276,7 @@ async function sendeAktuelleEingabe() {
       }
       const angenommen = await antwort.json().catch(() => ({}))
       ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString() }
+      setzeAbbrechenZustand('Lauf abbrechen', false)
       renderVerlauf()
       feld.value = ''
     } finally {
@@ -270,6 +284,34 @@ async function sendeAktuelleEingabe() {
       // erst bei Terminallage auf; eine Vorfilter-Antwort oder ein Fehlschlag heben sofort auf.
       if (ausstehenderLauf === null) setzeSendenSperre(false)
     }
+}
+
+/** Bedienzustand des Abbrechen-Buttons (Text + Sperre) — unabhängig von renderVerlauf(), das nur dessen Sichtbarkeit (hidden) synchron zu ausstehenderLauf hält (s. dort). */
+function setzeAbbrechenZustand(text, gesperrt) {
+  const button = document.getElementById('chat-abbrechen-btn')
+  button.textContent = text
+  button.disabled = gesperrt
+}
+
+/** F30 WS-1 (Aufgabe 1): Klick auf #chat-abbrechen-btn — POST /api/laeufe/<laufId>/abbrechen (F14), 202 sofort ohne auf das Laufende zu warten (Datei-Kommentar leitstand-server.mjs). Löst selbst KEINE terminale Auflösung aus: der bestehende 2-Sekunden-Poll (pruefeAusstehendenLauf) behandelt den jetzt FEHLGESCHLAGENEN Lauf anschließend genau wie jeden anderen nicht erfolgreichen Lauf — derselbe Codepfad, keine zweite Auflösungsregel. Nur ein Fehlschlag DIESER Anfrage selbst (Netzwerk, 404 bei einem inzwischen bereits beendeten Lauf) wird hier direkt gemeldet, Muster views/runs.js meldeAbbrechenFehler. */
+function initAbbrechenBedienung() {
+  document.getElementById('chat-abbrechen-btn').addEventListener('click', async () => {
+    if (ausstehenderLauf === null) return
+    const { laufId } = ausstehenderLauf
+    setzeAbbrechenZustand('Abbruch angefordert', true)
+    try {
+      const antwort = await abbrichLauf(laufId)
+      if (antwort.ok) return
+      if (ausstehenderLauf?.laufId !== laufId) return // inzwischen anders aufgelöst (Poll/Projektwechsel) — keine Meldung mehr für den falschen Lauf
+      const koerper = await antwort.json().catch(() => ({}))
+      zeigeChatFehler(`Abbruch fehlgeschlagen: ${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+      setzeAbbrechenZustand('Lauf abbrechen', false)
+    } catch (fehler) {
+      if (ausstehenderLauf?.laufId !== laufId) return
+      zeigeChatFehler(`Abbruch-Anfrage fehlgeschlagen: ${fehler.message}`)
+      setzeAbbrechenZustand('Lauf abbrechen', false)
+    }
+  })
 }
 
 function initSendenFormular() {
@@ -301,6 +343,7 @@ function setzeChatZustandZurueck() {
   persistierterVerlauf = []
   zeigeChatFehler('')
   setzeSendenSperre(false)
+  setzeAbbrechenZustand('Lauf abbrechen', false)
   renderVerlauf()
 }
 
@@ -309,6 +352,7 @@ export function initChatView() {
   initSendenFormular()
   initEingabeTastatur()
   initGanzenVerlaufLink()
+  initAbbrechenBedienung()
 
   // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell
   // (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr; der Dispatch auf

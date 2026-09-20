@@ -2116,6 +2116,46 @@ th {
   text-align: right;
 }
 
+/* F30 WS-1 (Aufgabe 2): #shell-chat-spalte.chat-grossansicht — shell.js setzt die Klasse, solange
+   die Route '#/chat' ist (wendeChatSichtbarkeitAn). Reine Darstellungsänderung für mehr Platz bei
+   langen Nachrichten/Codeblöcken, analog zu Claude/ChatGPT-Chatoberflächen — die kompakte Spalte
+   (380px, jede andere Route, Regel oben) bleibt unverändert. Sprechblasen bekommen dabei bewusst
+   eine max-width (70ch) statt über die volle, jetzt breite Spalte zu laufen — sonst würde eine
+   kurze Nachricht in einer sehr breiten Blase genauso unleserlich wie eine zu schmale, langer Text
+   bricht dafür in deutlich mehr Zeilen als in der kompakten Spalte um. Nur bestehende Tokens
+   (--space-*, --font-size-*), keine neuen Farb-/Radius-Werte. */
+#shell-chat-spalte.chat-grossansicht {
+  width: min(880px, 94vw);
+  padding: var(--space-4xl) var(--space-4xl) var(--space-3xl);
+}
+
+#shell-chat-spalte.chat-grossansicht .chat-bubble-reihe-nutzer {
+  margin-left: var(--space-4xl);
+}
+
+#shell-chat-spalte.chat-grossansicht .chat-bubble-reihe-jarvis {
+  margin-right: var(--space-4xl);
+}
+
+#shell-chat-spalte.chat-grossansicht .chat-bubble {
+  max-width: 70ch;
+}
+
+#shell-chat-spalte.chat-grossansicht .chat-bubble-text {
+  font-size: var(--font-size-lg);
+}
+
+/* Definition of Done ("jeder Container mit max-width hat auch width: 100%"): die kompakte
+   700px-Regel oben (id-Selektor, gleiche Spezifität wie hier) gilt bereits für ALLE Zustände von
+   #shell-chat-spalte einschließlich .chat-grossansicht — die Klasse fügt hier nur zusätzliche
+   Spezifität hinzu (id.class > id), ohne explizite Wiederholung würde min(880px, 94vw) auf einem
+   schmalen Bildschirm die 100%-Regel deshalb überstimmen. */
+@media (max-width: 700px) {
+  #shell-chat-spalte.chat-grossansicht {
+    width: 100%;
+  }
+}
+
 /* ─────────────────── Workboard-Bento (F29 WS-D1, Raster F29 WS-D2) ────────
    Übersichtsraster über der bestehenden Findings-Liste (views/workboard.js,
    #workboard-bento), ausschließlich aus echten Daten (Auftrag Punkt 4/C).

@@ -72,9 +72,11 @@ function speichereChatPraeferenz(offen) {
   }
 }
 
-/** Spiegelt chatSpalteSichtbar auf Spalte und Umschalter-Button. */
+/** Spiegelt chatSpalteSichtbar auf Spalte und Umschalter-Button. F30 WS-1 (Aufgabe 2): setzt zusätzlich .chat-grossansicht auf #shell-chat-spalte, solange die Route '#/chat' ist — reine Layout-Markierung für style.css (breitere, großzügigere Darstellung), keine zweite Sichtbarkeits- oder Datenquelle; die kompakte Spalte auf jeder anderen Route bleibt unverändert. */
 function wendeChatSichtbarkeitAn() {
-  document.getElementById('shell-chat-spalte').hidden = !chatSpalteSichtbar
+  const spalte = document.getElementById('shell-chat-spalte')
+  spalte.hidden = !chatSpalteSichtbar
+  spalte.classList.toggle('chat-grossansicht', location.hash === '#/chat')
   document.getElementById('chat-umschalter').setAttribute('aria-pressed', String(chatSpalteSichtbar))
 }
 
