@@ -1668,13 +1668,16 @@ export function pruefeStartauftrag(body) {
     }
   }
   // F31 WS-3b (Stefan 20.09.2026, MCP-Start): 'mcpConfig' wählt --strict-mcp-config --mcp-config
-  // '{"mcpServers":{}}' statt keiner MCP-Begrenzung — ausschließlich vom Jarvis-Chat-Pfad
-  // (starteJarvisChatLauf) serverseitig gesetzt, kein Eingabekanal für einen Body-getriebenen Lauf
-  // über POST /api/laeufe (Muster des settingSources-Rotfalls oben).
+  // '{"mcpServers":{}}' statt keiner MCP-Begrenzung. Seit F31 WS-3c (löst F-502) ist dieser Wert
+  // baueAufrufs Default für JEDE Rolle — ein Body-getriebener eigener mcpConfig-Wert würde diesen
+  // jetzt für JEDE Rolle erzwungenen Default AUFHEBEN (z. B. echte MCP-Server referenzieren), nicht
+  // nur ein Jarvis-Feature abwählen. Die Ablehnung bleibt deshalb bestehen (Muster des
+  // settingSources-Rotfalls oben) — kein Eingabekanal für einen Body-getriebenen Lauf über
+  // POST /api/laeufe, für keine Rolle.
   if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'mcpConfig' in body.aufrufEingaben) {
     return {
       ok: false,
-      grund: "'aufrufEingaben.mcpConfig' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt (F31 WS-3b) und ist im Body nicht erlaubt",
+      grund: "'aufrufEingaben.mcpConfig' wird serverseitig gesetzt (Default für jede Rolle seit F31 WS-3c, davor nur für 'jarvis' seit F31 WS-3b) und ist im Body nicht erlaubt",
     }
   }
   if (!Array.isArray(body.anfragen)) {
@@ -4508,8 +4511,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         // bekommt weiterhin 'project', siehe src/claude-code-gateway/index.ts baueAufruf).
         // F31 WS-3b (Stefan 20.09.2026, MCP-Start): zusätzlich mcpConfig '{"mcpServers":{}}' — real
         // gemessen (features/F31/latenzmessung.md), dass die zwei Account-MCP-Server trotz
-        // settingSources '' laden (E-187-Lücke: --tools/--allowedTools decken MCP nicht ab). NUR für
-        // diesen Pfad, jede andere Rolle bekommt weiterhin keine MCP-Begrenzung.
+        // settingSources '' laden (E-187-Lücke: --tools/--allowedTools decken MCP nicht ab). Seit F31
+        // WS-3c (löst F-502) ist dieser Wert baueAufrufs Default für JEDE Rolle — das explizite Setzen
+        // hier ist seither redundant (überschreibt den Default mit demselben Wert), aber unschädlich
+        // und bleibt aus D5-Gründen unangetastet (keine Verhaltensänderung an diesem Pfad nötig).
         aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}' },
         auftragId,
         worker,

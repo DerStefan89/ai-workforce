@@ -10,7 +10,11 @@
  * gebaut (kein Handbau) — `baueAufruf` emittiert seit E7 sowohl `--tools`
  * als auch `--allowedTools` mit derselben `erlaubte_werkzeuge`-Liste, kein
  * Konflikt wie F-078 Messfall 3, weil hier beide Flags dieselbe (Write
- * einschließende) Liste tragen sollen.
+ * einschließende) Liste tragen sollen. Seit F31 WS-3c (löst F-502) hängt
+ * `baueAufruf` zusätzlich standardmäßig `--strict-mcp-config --mcp-config
+ * '{"mcpServers":{}}'` an — dieser Lauf startet also real zusätzlich
+ * MCP-begrenzt, gewollt und unschädlich für den hier geprüften Write-
+ * Grün-Fall (keine MCP-Werkzeuge nötig).
  *
  * KEIN chdir (Option A, Stefan 03.09.2026 — bewusster Bruch mit dem
  * E6-Muster aus WS-F): `starteGateway` misst `istUebrigeFelder.

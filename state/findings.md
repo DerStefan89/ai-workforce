@@ -8171,11 +8171,11 @@ gehört nicht in eine reine Messungs-/Härtungs-Iteration. F31 WS-3b (dieser
 PR) prüft nur den kleineren MCP-Start-Hebel (siehe [[F-502]]), nicht diesen.
 Feature/Run: F31 WS-3b, 20.09.2026.
 
-**F-502** · `HARNESS_IMPROVEMENT` · P1 · offen
+**F-502** · `HARNESS_IMPROVEMENT` · P1 · erledigt (F31 WS-3c)
 Titel: E-187 (MCP-Begrenzung im Ausführungslauf) für alle Rollen außer
 Jarvis weiterhin nicht umgesetzt.
-Beschreibung: `docs/projekt/zielfassung.md` §9.1 führt die Zeile
-„MCP-Werkzeuge im Ausführungslauf" unverändert als `DEKLARIERT` (E-187):
+Beschreibung: `docs/projekt/zielfassung.md` §9.1 führte die Zeile
+„MCP-Werkzeuge im Ausführungslauf" als `DEKLARIERT` (E-187):
 `--tools`/`--allowedTools` begrenzen den Werkzeugsatz des Modells, aber
 nicht, welche MCP-Server für den Lauf geladen werden. F31 WS-3b hat das
 real bestätigt (`claude --output-format stream-json`-Init-Nachricht im
@@ -8188,20 +8188,34 @@ Werkzeuge erscheinen im Werkzeugsatz, obwohl Jarvis nur Read/Grep/Glob
 Fundstelle: `docs/projekt/zielfassung.md` §9.1 (Tabellenzeile „MCP-Werkzeuge
 im Ausführungslauf"), §9.4 E-187; `src/claude-code-gateway/index.ts`
 `baueAufruf` (vor F31 WS-3b: keine MCP-Begrenzung, für keine Rolle).
-Auswirkung: Jede Rolle außer `jarvis` startet weiterhin mit ungeprüft
+Auswirkung: Jede Rolle außer `jarvis` startete weiterhin mit ungeprüft
 geladenen Account-MCP-Servern und deren vollem Werkzeugsatz im
 Modellkontext — ein realer, wenn auch bislang nicht als Rot-Fall
 demonstrierter Seitenkanal an E-187 vorbei (Capability-Modell nach Wirkung,
 Zeile „Capability-Modell nach Wirkung" im selben §9.1, ebenfalls
 `DEKLARIERT`).
 Maßnahme: MCP-Begrenzung (`--strict-mcp-config` + leere `--mcp-config`,
-Muster `jarvis`) für jede Rolle einführen, danach E-188-Schutzschicht-
-Neunachweis (Gültigkeitsschlüssel-Bestandteile bleiben unverändert, aber
-der Rot-/Grün-Fall für die neue Grenze fehlt noch). Für `jarvis` durch F31
-WS-3b bereits erledigt (siehe `AufrufEingaben.mcpConfig`,
-`starteJarvisChatLauf`) — dieser Befund bleibt offen für die verbleibenden
-Rollen (architecture-advisor, code-reviewer, qa, ausfuehrung).
-Feature/Run: F31 WS-3b, 20.09.2026.
+Muster `jarvis`) für jede Rolle eingeführt — `baueAufruf` hängt die Flags
+jetzt standardmäßig an jeden Aufruf an, `AufrufEingaben.mcpConfig`
+überschreibt nur noch den Wert statt Vorhandensein/Fehlen zu steuern. Für
+eine schreibende Rolle (`ausfuehrung`, `Read,Grep,Glob,Write,Edit`) real im
+Rot-/Grün-Fall nachgewiesen (`features/F31/nachweis-mcp-begrenzung.md`):
+`mcp_servers` von zwei Einträgen auf `[]`, Wall-Clock-Median ≈2,49s
+schneller (≈31%), ≈3.074 Tokens Median je Lauf gespart (≈14,9%).
+`docs/projekt/zielfassung.md` §9.1 auf `ERZWUNGEN` hochgestuft. Klarstellung
+(Reviewer-Befund): der Schutz kommt hier NICHT aus einer Erweiterung von
+E-188s Gültigkeitsschlüssel (`src/invocation-policy/index.ts` prüft
+weiterhin nur `werkzeug_konfiguration_hash`, `schutzskript_hashes`,
+`werkzeug_version_deklariert`, `berechtigungskontext`,
+`arbeitsverzeichnis_pfad`, `startziel_pfad` — die CLI-Flags von `baueAufruf`
+sind darin nicht enthalten und werden vom Laufzeit-Drift-Vergleich nicht
+erfasst), sondern ausschließlich aus `baueAufruf`s Quellcode selbst (fester,
+unbedingter Default) plus dem Regressionsschutz durch Unit-Tests und das
+Gate-Skript. Kein neuer Gültigkeitsschlüssel-Bestandteil nötig, aber auch
+keine E-188-Laufzeitgarantie — nur ein Codeänderung an `baueAufruf` selbst
+könnte die Begrenzung wieder entfernen, ein E-188-Drift-Check würde das
+nicht auffangen.
+Feature/Run: F31 WS-3b (jarvis), F31 WS-3c (alle Rollen), 20.09.2026.
 
 **F-503** · `PROCESS_IMPROVEMENT` · P3 · erledigt (F31 WS-3b)
 Titel: Challenger-Prompts widersprachen ARCHITECTURE.md §7 („Pauschales

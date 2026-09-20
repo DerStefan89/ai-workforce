@@ -59,6 +59,16 @@
  * F14 WS-4 (AK7): GatewayOptionen.abbruchSignal folgt demselben Muster wie
  * zeitgrenzeMs — reine Durchreichung an starteProzess, starteGateway liest
  * den Wert selbst nicht.
+ *
+ * F31 WS-3c (Stefan 20.09.2026, löst F-502): baueAufruf hängt
+ * `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` jetzt an JEDEN
+ * Aufruf an, nicht mehr nur an den Jarvis-Chat-Pfad (F31 WS-3b) —
+ * AufrufEingaben.mcpConfig ist damit keine An-/Abwesenheits-Fahne mehr,
+ * sondern eine reine Wertüberschreibung des Defaults. Real gemessen für
+ * eine schreibende Rolle (`features/F31/nachweis-mcp-begrenzung.md`):
+ * dieselbe Lücke wie bei jarvis (Account-MCP-Server laden trotz
+ * `--tools`-Begrenzung) besteht für jede Rolle gleichermaßen, E-187 gilt
+ * jetzt für alle als ERZWUNGEN (docs/projekt/zielfassung.md §9.1).
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -219,9 +229,11 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     werkzeugListe,
     '--allowedTools',
     werkzeugListe,
-    // F31 WS-3b: nur gesetzt, wenn der Aufrufer eine MCP-Begrenzung anfordert (eingaben.mcpConfig) —
-    // fehlt das Feld, bleiben die Tokens byte-identisch zum Stand vor WS-3b (jede Rolle außer jarvis).
-    ...(eingaben.mcpConfig !== undefined ? ['--strict-mcp-config', '--mcp-config', eingaben.mcpConfig] : []),
+    // F31 WS-3c (löst F-502): Standard für JEDEN Aufruf, nicht mehr nur für jarvis (F31 WS-3b) —
+    // eingaben.mcpConfig überschreibt nur noch den Wert, keine An-/Abwesenheit mehr (E-187).
+    '--strict-mcp-config',
+    '--mcp-config',
+    eingaben.mcpConfig ?? '{"mcpServers":{}}',
     '-p',
     eingaben.prompt,
   ]
