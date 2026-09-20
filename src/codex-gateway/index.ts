@@ -49,8 +49,9 @@ import { verweigereStart } from '../invocation-policy/index.ts'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
+import { istGueltigeVerbrauchsZahl } from '../claude-code-gateway/index.ts'
 import { pruefeStartziel, starteProzess } from '../claude-code-gateway/prozessstart.ts'
-import type { LaufakteV0Daten } from '../claude-code-gateway/types.ts'
+import type { LaufakteV0Daten, VerbrauchV0 } from '../claude-code-gateway/types.ts'
 import { pruefeCodexAufruf } from './codex-argv-allowlist.ts'
 import type {
   AufrufTokens,
@@ -219,6 +220,65 @@ export function leseCodexEreignisse(stdout: string): CodexEreignisse {
 }
 
 /**
+ * Liefert Verbrauchsdaten aus dem turn.completed-Ereignis des
+ * JSONL-Ereignisstroms (F32 WS-1) — real gemessene Form
+ * (`{"type":"turn.completed","usage":{"input_tokens":...,
+ * "cached_input_tokens":...,"cache_write_input_tokens":...,
+ * "output_tokens":...,"reasoning_output_tokens":...}}`, siehe
+ * kontrollzustand-roh/router-*). reasoning_output_tokens wird bewusst NICHT
+ * zusätzlich zu output_tokens aufsummiert: real gegen ALLE 12 im
+ * Hauptrepo vorhandenen turn.completed-Ereignisse mit usage-Objekt geprüft
+ * (F32-WS-1-Nachweis, features/F32/nachweis-verbrauch.md Abschnitt 3) —
+ * reasoning_output_tokens ist in JEDEM der 12 Ereignisse vorhanden (kein
+ * Fehlen) und in jedem Fall kleiner als output_tokens (Bereich 0–77 vs.
+ * 45–750), also durchgehend eine Teilmengen-Aufschlüsselung, kein
+ * zusätzlicher Verbrauch — dasselbe Muster wie claude-codes eigenes
+ * usage.output_tokens_details.thinking_tokens (ebenfalls eine Teilmenge von
+ * usage.output_tokens, siehe leseVerbrauch). Eine Addition würde den
+ * Verbrauch doppelt zählen, keine Lücke schließen.
+ * dauerMs kommt NICHT aus dem Ereignisstrom
+ * — kein JSONL-Ereignis trägt eine Laufzeit —, sondern vom Aufrufer als
+ * real um den Prozessstart gemessene Wanduhr-Differenz (starteCodexGateway
+ * unten). Fehlt turn.completed oder trägt sein usage-Objekt nicht alle vier
+ * erwarteten numerischen Felder, wird nicht teilweise befüllt oder
+ * geschätzt, sondern null zurückgegeben (Muster leseVerbrauch,
+ * F-059/F-061). Dieselbe Integer/≥0-Grenze wie das Schema, geprüft über
+ * die aus src/claude-code-gateway/index.ts wiederverwendete
+ * istGueltigeVerbrauchsZahl (D5, kein zweiter Regelsatz).
+ */
+export function leseVerbrauchCodex(ereignisse: CodexEreignisse, dauerMs: number): VerbrauchV0 | null {
+  const turnCompleted = ereignisse.ereignisse.find((ereignis) => ereignis.type === 'turn.completed')
+  if (turnCompleted === undefined) return null
+  const usage = turnCompleted.usage
+  if (typeof usage !== 'object' || usage === null || Array.isArray(usage)) return null
+  const u = usage as Record<string, unknown>
+  const inputTokens = u.input_tokens
+  const outputTokens = u.output_tokens
+  const cacheReadTokens = u.cached_input_tokens
+  const cacheWriteTokens = u.cache_write_input_tokens
+  if (
+    !istGueltigeVerbrauchsZahl(inputTokens) ||
+    !istGueltigeVerbrauchsZahl(outputTokens) ||
+    !istGueltigeVerbrauchsZahl(cacheReadTokens) ||
+    !istGueltigeVerbrauchsZahl(cacheWriteTokens)
+  ) {
+    return null
+  }
+  return {
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    cache_read_tokens: cacheReadTokens,
+    cache_write_tokens: cacheWriteTokens,
+    dauer_ms: dauerMs,
+    // Kein JSONL-Ereignis trägt eine API-Zeit oder eine Turn-Zahl (anders
+    // als das claude-code-result-Objekt) — nicht geraten, bewusst null.
+    dauer_api_ms: null,
+    turns: null,
+    quelle: 'codex',
+  }
+}
+
+/**
  * WS-2 (AK7): startet einen Codex-Prozess aus einem bereits über
  * baueCodexAufruf konstruierten Tokens-Array. Ablauf:
  * pruefeUndVerweigereCodexBeiTreffer → pruefeStartziel →
@@ -280,6 +340,11 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
   // mehr nicht: derselbe gemessene Lauf endete mit Exit-Code 0 — ein
   // hängender Codex-Lauf ist NICHT beobachtet, gemessen ist nur der
   // Mechanismus als solcher (F-318, Details am prozessstart.ts-Kopf).
+  // F32 WS-1: kein JSONL-Ereignis trägt eine Laufzeit (anders als
+  // claude-codes result-Objekt, das duration_ms selbst liefert) — dauerMs
+  // ist deshalb eine vom Gateway selbst genommene, reale Wanduhr-Differenz
+  // um genau den Prozessstart, keine Schätzung.
+  const prozessStartZeit = Date.now()
   const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, {
     starter: optionen.starter,
     zeitgrenzeMs: optionen.zeitgrenzeMs,
@@ -287,6 +352,7 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
     stdinLeer: true,
     cwd: optionen.cwd,
   })
+  const dauerMs = Date.now() - prozessStartZeit
 
   // beobachtungsbasis_vollstaendig kommt aus den JSONL-Ereignissen, NICHT
   // aus leseErgebnisobjekt: dessen JSON.parse läuft über das GESAMTE stdout
@@ -296,6 +362,7 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
   // der Strom abgeschnitten und die Beobachtungsbasis ist unvollständig.
   const ereignisse = leseCodexEreignisse(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ereignisse.turnCompleted || ereignisse.turnFailed
+  const verbrauch = leseVerbrauchCodex(ereignisse, dauerMs)
 
   const rohBasisVerzeichnis = optionen.rohBasisVerzeichnis ?? STANDARD_ROH_BASISVERZEICHNIS
   const rohVerzeichnis = join(rohBasisVerzeichnis, eingaben.laufId)
@@ -329,6 +396,7 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
     erstellt_am: new Date().toISOString(),
     worker: 'codex',
     modell_deklariert: eingaben.modellDeklariert,
+    ...(verbrauch !== null ? { verbrauch } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(

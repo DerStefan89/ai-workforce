@@ -127,6 +127,9 @@ const laufakteFixtures = [
   { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-falscher-schema-wert.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-fehlender-berechtigungskontext.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-modell-beobachtet-falscher-typ.json', sollGueltigSein: false },
+  // F32 WS-1: LAUFAKTE_V0.verbrauch (additiv, optional).
+  { pfad: 'schemas/examples/kontrollzustand-laufakte-mit-verbrauch.valid.json', sollGueltigSein: true },
+  { pfad: 'schemas/examples/kontrollzustand-laufakte.invalid-verbrauch-falscher-typ.json', sollGueltigSein: false },
 ]
 for (const { pfad, sollGueltigSein } of laufakteFixtures) {
   if (!existsSync(pfad)) {

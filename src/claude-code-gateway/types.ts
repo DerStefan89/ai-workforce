@@ -86,8 +86,22 @@ export interface LaufakteV0Daten {
   worker?: 'claude-code' | 'codex'
   /** Der dem Werkzeug im Argv übergebene Modellname, Rang DEKLARIERT (E-185) — nicht zu verwechseln mit modell_beobachtet (Rang OBSERVED). Für Codex bleibt modell_beobachtet null, weil der JSONL-Strom keine Modellkennung trägt (state/tp-m3-01-codex.md, „Modellidentität": kein Feld gefunden); erst dieses Feld macht den Lauf überhaupt einem Modell zuordenbar. Optional aus demselben Append-only-Grund wie worker. */
   modell_deklariert?: string
+  /** F32 WS-1: Verbrauchsdaten des Laufs, Rang OBSERVED. Additiv und optional wie worker/modell_deklariert — fehlt die Beobachtungsbasis, bleibt das Feld weg statt geschätzt zu werden. */
+  verbrauch?: VerbrauchV0
 }
 
 export type GatewayErgebnis =
   | { ok: false; grund: string }
   | { ok: true; laufakte: LaufakteV0Daten; pfad: string; versionSequenz: number }
+
+/** Verbrauchsdaten eines Laufs (F32 WS-1, Rang OBSERVED). dauer_api_ms/turns bleiben null, wenn die Quelle sie nicht liefert (Codex-JSONL trägt keins von beidem) — dauer_ms ist dagegen für beide Worker immer eine echte Messung: bei claude-code das result-Objekt-Feld duration_ms, bei Codex eine vom Gateway selbst genommene Wanduhr-Differenz um den Prozessstart (kein CLI-Feld dafür vorhanden, aber ebenso eine reale Beobachtung, keine Schätzung). total_cost_usd wird bewusst NIE übernommen (Abo-Modell, keine Scheingenauigkeit, Entscheidung 30). */
+export interface VerbrauchV0 {
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  dauer_ms: number
+  dauer_api_ms: number | null
+  turns: number | null
+  quelle: 'claude-code' | 'codex'
+}

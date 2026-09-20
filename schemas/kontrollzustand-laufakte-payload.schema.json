@@ -51,6 +51,22 @@
       "type": "string",
       "minLength": 1,
       "description": "F16 WS-1 (AK4). Der dem Werkzeug im Argv übergebene Modellname, Rang DEKLARIERT (E-185) — nicht zu verwechseln mit modell_beobachtet (Rang OBSERVED, oben). Für einen Codex-Lauf bleibt modell_beobachtet null, weil der JSONL-Strom keine Modellkennung trägt (state/tp-m3-01-codex.md, Abschnitt 'Modellidentität': kein Feld gefunden) — erst dieses Feld macht den Lauf einem Modell zuordenbar. Optional aus demselben Append-only-Grund wie worker."
+    },
+    "verbrauch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "dauer_ms", "dauer_api_ms", "turns", "quelle"],
+      "description": "F32 WS-1 (§12 Kontingent-Nachbarschaft, §9.4 E-190). Rang OBSERVED, additiv und optional wie worker/modell_deklariert (append-only, Muster E-M2-5): fehlt die Beobachtungsbasis (kein 'type':'result'-Objekt bei claude-code, kein turn.completed-Ereignis mit usage bei codex), bleibt das gesamte Feld weg — nie geschätzt, nie teilweise befüllt.",
+      "properties": {
+        "input_tokens": { "type": "integer", "minimum": 0 },
+        "output_tokens": { "type": "integer", "minimum": 0 },
+        "cache_read_tokens": { "type": "integer", "minimum": 0 },
+        "cache_write_tokens": { "type": "integer", "minimum": 0 },
+        "dauer_ms": { "type": "integer", "minimum": 0 },
+        "dauer_api_ms": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+        "turns": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+        "quelle": { "enum": ["claude-code", "codex"] }
+      }
     }
   }
 }
