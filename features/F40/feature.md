@@ -7,7 +7,7 @@ F40
 Jarvis-Latenz: Streaming + Lagebild
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -64,7 +64,7 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
   `scripts/check-f40-lagebild.mjs` (Drift-Erkennung, real kalibriert) in
   `npm run check`.
 - **WS-3 — Auto-Memory-Zugriff für `jarvis`/`router` unterbunden (löst
-  F-567, dieser Auftrag).** Ursache: "Auto Memory" ist kein
+  F-567, #207).** Ursache: "Auto Memory" ist kein
   `--setting-sources`-Wert, sondern ein eigener CLI-Systemprompt-Baustein
   (real belegt: `claude --help`, `code.claude.com/docs/en/headless`
   §"bare mode"). Einziger offizieller Abschaltweg ist `--bare`, das dieses
@@ -219,5 +219,34 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
 - **UI/Projektion für F32/F33 WS-2 bleiben unabhängig offen** — F40 WS-2
   ändert daran nichts, nur die STATUS.md-Textdarstellung wurde korrigiert.
 
+## Offene Reste (Abschluss-Auftrag, Doku-only)
+- **F-581 — Lagebild wird nur durch das Gate erzwungen, nicht automatisch
+  erzeugt:** `scripts/check-f40-lagebild.mjs` erkennt Drift zwischen
+  `docs/projekt/kontext/lagebild.md` und seinen Quellen erst beim nächsten
+  `npm run check`-Lauf (bereits als "Bekannte Grenze" oben benannt, WS-2,
+  bewusstes Nicht-Ziel) — F-581 ist der Findings-Registereintrag dafür,
+  noch nicht in `state/findings.md` nachgetragen (Nachtrag ist eigene
+  Aufräumarbeit, F-534-Muster, kein Bestandteil dieses Abschluss-Auftrags).
+- **F-583 — zu prüfen: lädt Auto-Memory den `MEMORY.md`-Inhalt ohne
+  Read-Werkzeugaufruf direkt in den Systemprompt?** WS-3s Nachweis
+  (`state/nachweis-jarvis-latenz.md` Abschnitt "F40 WS-3") belegt, dass
+  `--disallowedTools 'Read(~/.claude/**)'` einen expliziten `Read`-Aufruf
+  auf `MEMORY.md` zuverlässig blockiert. Ungeklärt: ob Auto-Memory den
+  Dateiinhalt in manchen CLI-Versionen zusätzlich OHNE Werkzeugaufruf
+  (direkt in den System-Prompt eingebettet, analog zu `CLAUDE.md`) lädt —
+  in diesem Fall würde die `Read`-Deny-Regel nichts bewirken, weil kein
+  Werkzeugaufruf stattfindet, den sie abfangen könnte. In den realen WS-3-
+  Nachweisläufen nicht beobachtet (0/5 Jarvis-Turns und der Router-Lauf
+  zeigten keinerlei MEMORY.md-Inhalt in den Antworten), aber nicht
+  systematisch anhand der CLI-Doku/des Quellcodes ausgeschlossen — noch
+  nicht in `state/findings.md` nachgetragen.
+
 ## Feature Review
-Noch nicht fällig — Reviewer-/QA-Pass steht laut `CLAUDE.md` noch aus.
+Fällig (alle vier Workstreams gebaut, gemergt und real nachgewiesen:
+WS-0 #203, WS-1 #204, WS-2 #206, WS-3 #207), aber noch nicht als eigener
+Feature-Review-Pass durchgeführt (Unterschied zu den bereits gelaufenen
+Reviewer-/QA-Pässen je Workstream, CLAUDE.md-DoD) — steht vor einem
+Übergang von `FEATURE_GATE` zu `ABGESCHLOSSEN` aus, ebenso wie Stefans
+Abnahme (`docs/projekt/zielfassung.md` §Workstream: `… → ABNAHME →
+ABGESCHLOSSEN`, `ABNAHME` ist Aktivität, nicht Sache der KI). Status bleibt
+deshalb bewusst bei `FEATURE_GATE` stehen, nicht `ABGESCHLOSSEN`.
