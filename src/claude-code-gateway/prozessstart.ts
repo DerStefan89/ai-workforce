@@ -72,14 +72,55 @@
  * belegten Mechanismus, nicht die Behebung eines beobachteten
  * Codex-Hangs (F-318).
  *
- * Bewusst OPT-IN und nicht als neuer Vorgabewert:
- * der Claude-Code-Pfad setzt das Feld nicht und verhält sich unverändert
- * (kein bestehender Test musste dafür angepasst werden — hätte einer
- * angepasst werden müssen, wäre die Änderung falsch geschnitten gewesen).
+ * StarterOptionen.stdinLeer selbst blieb bei Einführung bewusst OPT-IN
+ * (kein neuer Vorgabewert in starteProzess/prozessstart.ts) — der
+ * Claude-Code-Pfad setzte das Feld zunächst nicht.
+ *
+ * Task "Jarvis-Chat-Latenz senken" (state/nachweis-jarvis-latenz.md),
+ * Schritt 2: der Claude-Code-Pfad setzt stdinLeer jetzt ebenfalls, fest in
+ * src/claude-code-gateway/index.ts' starteGateway (nicht optional, gilt für
+ * jede Rolle) — real beobachtet (state/, Lauf jarvis-jarvis-chat-
+ * ac9204a1-…): ohne geschlossenes stdin meldet der Prozess auf stderr
+ * „Warning: no stdin data received in 3s, proceeding without it" und wartet
+ * die vollen 3s, bevor er ohne stdin weiterläuft — derselbe belegte
+ * Mechanismus wie bei Codex (F-307), hier erstmals auch für claude-code
+ * real im Produktionsverkehr beobachtet, nicht nur vermutet. `-p` liest nie
+ * von stdin (das Prompt kommt als Argument), ein offenes stdin hat für
+ * diesen Pfad keinen Nutzen.
+ *
+ * Task "Jarvis-Chat-Latenz senken", Schritt 4 (zweiter Anlauf): Schritt 2s
+ * nachträgliches `kindprozess.stdin?.end()` schließt die stdin-Pipe erst,
+ * NACHDEM sie bereits geöffnet wurde — ein claude-code-Prozess, der stdin
+ * VOR diesem Callback-Tick prüft, sieht sie kurzzeitig offen. echterStarter
+ * nutzt deshalb ab hier child_process.spawn statt execFile: empirisch
+ * geprüft (node -e-Probe gegen diese Node-Version), dass execFile eine
+ * `stdio`-Option in seinen Aufrufoptionen NICHT an den zugrunde liegenden
+ * spawn-Aufruf durchreicht (child.stdin bleibt ein offener Pipe-Stream,
+ * unabhängig vom übergebenen Wert) — `stdio[0]` lässt sich über execFile
+ * schlicht nicht setzen. spawn selbst unterstützt denselben `timeout`-/
+ * `signal`-Vertrag wie execFile (ebenso empirisch geprüft: `timeout` liefert
+ * bei Ablauf `close(null, 'SIGTERM')` mit `child.killed === true`,
+ * `signal`/AbortSignal liefert zusätzlich ein `error`-Ereignis mit
+ * `code === 'ABORT_ERR'`, ein NUL-Byte im Argv wirft synchron wie bei
+ * execFile) — nur `encoding` und `maxBuffer` sind execFile-/exec-exklusive
+ * Komfortfunktionen ohne spawn-Äquivalent und werden unten von Hand
+ * nachgebaut (StringDecoder-freies `setEncoding('utf8')` auf den
+ * Stream-Objekten, eine eigene Bytegrenze). optionen?.stdinLeer bleibt
+ * OPT-IN wie zuvor (F-307-Vertrag, codex-gateway.test.ts' Rot-Fall "OHNE
+ * stdinLeer läuft ein stdin-lesender Prozess in die Zeitgrenze" verlangt
+ * ausdrücklich ein weiterhin offenes, nie EOF meldendes stdin ohne dieses
+ * Feld) — nur bei stdinLeer === true steht `stdio[0]` von Anfang an auf
+ * 'ignore': kein Pipe-Objekt entsteht mehr, das Kind sieht sofort EOF/keinen
+ * stdin-Deskriptor, nie ein kurzzeitig offenes stdin. Der bisherige
+ * `kindprozess.stdin?.on('error', () => {})`-Schutz (F-307, EPIPE bei
+ * einem sofort endenden Kind) entfällt ersatzlos: ohne Pipe-Stream-Objekt
+ * gibt es kein `stdin` mehr, an dem ein solches Ereignis auftreten könnte
+ * (empirisch geprüft, node -e-Probe: `child.stdin` ist bei `stdio[0]:
+ * 'ignore'` `null`, ein sofort endendes Kind reißt den Node-Prozess nicht
+ * ab).
  */
 
-import { execFile } from 'node:child_process'
-import type { ExecFileException } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { statSync } from 'node:fs'
 import { extname, resolve as aufgeloesterPfad } from 'node:path'
 import type { AufrufTokens, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
@@ -158,93 +199,152 @@ function killeProzessbaumFallsWindows(pid: number | undefined): Promise<void> {
   })
 }
 
+/** Harte Bytegrenze für stdout/stderr zusammen mit je einem Stream (Schritt 4: execFiles gleichnamiger Default, hier von Hand nachgebaut — spawn kennt kein eigenes maxBuffer). */
+const MAX_BUFFER_BYTES = 1024 * 1024 * 64
+
 /**
- * F14 WS-1 (AK1-AK3): nutzt execFiles eingebaute timeout-/signal-Optionen
- * statt eines eigenen Timers — Node killt den Kindprozess selbst und meldet
- * das Ergebnis über den bestehenden Callback-Fehlerpfad. Unterscheidung im
- * Callback: ein Abbruch über abbruchSignal liefert fehler.code ===
- * 'ABORT_ERR' (Node-Konvention für AbortSignal-Integrationen); ein
- * Timeout-Kill über zeitgrenzeMs liefert fehler.killed === true ohne
- * diesen Code. Ein maxBuffer-Überlauf (bestehende Grenze, unverändert seit
- * vor F14) liefert dagegen empirisch geprüft killed: undefined — verwechselt
- * sich nicht mit TIMEOUT (Regressionstest in claude-code-gateway.test.ts).
- * Beide Timeout/Abbruch-Fälle haben keinen numerischen exitCode (der Prozess
- * wurde per Signal beendet, nicht regulär), deshalb exitCode: null wie
- * beim bestehenden Startfehler-Zweig — beendigungsart ist das einzige neue
- * Unterscheidungsmerkmal (additiv, F-176).
+ * F14 WS-1 (AK1-AK3), seit Schritt 4 über spawn statt execFile (siehe
+ * Kopfkommentar): nutzt spawns eingebaute timeout-/signal-Optionen statt
+ * eines eigenen Timers — Node killt den Kindprozess selbst, das Ergebnis
+ * entsteht aus dem 'close'-Ereignis plus dem parallel mitgeschnittenen
+ * 'error'-Ereignis. Unterscheidung wie zuvor bei execFile, nur an den
+ * spawn-Ereignissen gemessen (empirisch geprüft, node -e-Proben gegen diese
+ * Node-Version): ein Abbruch über abbruchSignal liefert ein 'error'-Ereignis
+ * mit code === 'ABORT_ERR' VOR dem 'close'; ein Timeout-Kill über
+ * zeitgrenzeMs liefert kein 'error', aber child.killed === true beim
+ * 'close'. Ein maxBuffer-Überlauf (eigene Zählung, unten) wird VOR beiden
+ * geprüft — er kann child.killed ebenfalls auf true setzen (der eigene
+ * kill()-Aufruf unten), das darf ihn nicht nachträglich zu TIMEOUT machen
+ * (Regressionstest in claude-code-gateway.test.ts, unverändert seit vor
+ * Schritt 4). Alle drei Fälle haben keinen numerischen exitCode (der Prozess
+ * wurde per Signal beendet, nicht regulär), deshalb exitCode: null wie beim
+ * bestehenden Startfehler-Zweig — beendigungsart bleibt das einzige
+ * Unterscheidungsmerkmal (F-176).
  *
- * Ohne zeitgrenzeMs/abbruchSignal wird timeout/signal in den execFile-
- * Optionen gar nicht gesetzt — execFiles eigener Default (timeout: 0 =
- * kein Timeout) greift unverändert. Kein fachlich fest codierter Default
- * (Vorgabe AK2): dies ist die einzige Stelle, die überhaupt einen
- * Timeout-Wert an den Prozessstart weiterreicht.
+ * Ohne zeitgrenzeMs/abbruchSignal wird timeout/signal in den spawn-Optionen
+ * gar nicht gesetzt — spawns eigener Default (kein Timeout) greift
+ * unverändert. Kein fachlich fest codierter Default (Vorgabe AK2): dies ist
+ * die einzige Stelle, die überhaupt einen Timeout-Wert an den Prozessstart
+ * weiterreicht.
  *
  * WS-2 (AK4): bei TIMEOUT/ABBRUCH läuft killeProzessbaumFallsWindows vor
  * dem resolve — real trägt dabei Node 24s eigener Windows-Job-Object-
  * Mechanismus die Wirkung für nicht detachte Unterprozesse (siehe
  * killeProzessbaumFallsWindows-Kommentar, F-181), nicht taskkill selbst.
+ *
+ * Schritt 4: stdio[0] ist NUR bei optionen?.stdinLeer === true 'ignore' —
+ * sonst 'pipe' wie zuvor bei execFile (F-307-Vertrag bleibt opt-in,
+ * codex-gateway.test.ts' Rot-Fall braucht ein weiterhin offenes stdin ohne
+ * dieses Feld). stdout/stderr werden per 'data'-Ereignis akkumuliert
+ * (setEncoding('utf8') übernimmt die mehrbyte-sichere Dekodierung über
+ * Chunk-Grenzen hinweg, wie zuvor execFiles eingebaute Dekodierung) und bei
+ * MAX_BUFFER_BYTES abgeschnitten.
  */
 const echterStarter: Starter = (startziel, tokens, optionen) =>
   new Promise((resolve) => {
+    let bereitsAufgeloest = false
+    const aufloesen = (ergebnis: ProzessErgebnis): void => {
+      if (bereitsAufgeloest) return
+      bereitsAufgeloest = true
+      resolve(ergebnis)
+    }
+
+    let kindprozess: ReturnType<typeof spawn>
     try {
-      const execFileOptionen = {
-        encoding: 'utf8' as const,
-        maxBuffer: 1024 * 1024 * 64,
+      kindprozess = spawn(startziel[0], [...startziel.slice(1), ...tokens], {
+        stdio: [optionen?.stdinLeer === true ? 'ignore' : 'pipe', 'pipe', 'pipe'],
         ...(optionen?.zeitgrenzeMs !== undefined ? { timeout: optionen.zeitgrenzeMs } : {}),
         ...(optionen?.abbruchSignal !== undefined ? { signal: optionen.abbruchSignal } : {}),
         ...(optionen?.cwd !== undefined ? { cwd: optionen.cwd } : {}),
-      }
-      const kindprozess = execFile(startziel[0], [...startziel.slice(1), ...tokens], execFileOptionen, (fehler, stdout, stderr) => {
-        void behandeleErgebnis(fehler, stdout, stderr)
+        // Task "Jarvis-Chat-Latenz senken", Schritt 3: spawns env-Option ERSETZT process.env
+        // vollständig, statt es zu ergänzen — ohne den Spread bekäme der Kindprozess NUR
+        // umgebungsvariablen und verlöre PATH & Co. Fehlt das Feld, bleibt spawns eigener
+        // Default (unverändertes process.env) unangetastet.
+        ...(optionen?.umgebungsvariablen !== undefined ? { env: { ...process.env, ...optionen.umgebungsvariablen } } : {}),
       })
-      // F16 WS-2 (F-307): unmittelbar nach dem Spawn, nicht später — ein
-      // Kind, das stdin liest, bekommt so sofort EOF. Optional chaining,
-      // weil stdin je nach stdio-Konfiguration null sein kann. Der
-      // error-Listener ist kein Schmuck: stirbt das Kind im selben Tick,
-      // meldet der Stream EPIPE/ERR_STREAM_DESTROYED, und ein unbehandeltes
-      // error-Ereignis auf einem Stream beendet den gesamten Node-Prozess,
-      // nicht nur diesen Lauf. Bewusst geschluckt — für den Prozessausgang
-      // ist ein gescheitertes stdin-Schließen bedeutungslos (Regressionsfall
-      // in codex-gateway.test.ts: Kind mit sofortigem process.exit(0)).
-      if (optionen?.stdinLeer === true) {
-        kindprozess.stdin?.on('error', () => {})
-        kindprozess.stdin?.end()
-      }
-
-      async function behandeleErgebnis(fehler: ExecFileException | null, stdout: string, stderr: string): Promise<void> {
-        if (fehler === null) {
-          resolve({ stdout, stderr, exitCode: 0, startfehler: null, beendigungsart: null })
-          return
-        }
-        if (fehler.code === 'ABORT_ERR') {
-          await killeProzessbaumFallsWindows(kindprozess.pid)
-          resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' })
-          return
-        }
-        if (fehler.killed === true) {
-          await killeProzessbaumFallsWindows(kindprozess.pid)
-          resolve({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'TIMEOUT' })
-          return
-        }
-        if (typeof fehler.code === 'number') {
-          resolve({ stdout, stderr, exitCode: fehler.code, startfehler: null, beendigungsart: null })
-          return
-        }
-        resolve({
-          stdout,
-          stderr,
-          exitCode: null,
-          startfehler: { code: typeof fehler.code === 'string' ? fehler.code : null, message: fehler.message },
-          beendigungsart: null,
-        })
-      }
     } catch (fehler) {
       const f = fehler as NodeJS.ErrnoException
-      resolve({
+      aufloesen({
         stdout: '',
         stderr: '',
         exitCode: null,
         startfehler: { code: typeof f.code === 'string' ? f.code : null, message: f.message },
+        beendigungsart: null,
+      })
+      return
+    }
+
+    let stdout = ''
+    let stderr = ''
+    let bytesGesamt = 0
+    let maxBufferUeberschritten = false
+    let abbruchErkannt = false
+    let fruehesFehlerobjekt: { code: string | null; message: string } | null = null
+
+    /** Zählt Bytes über beide Streams zusammen (Muster execFiles gemeinsame maxBuffer-Grenze) und killt den Kindprozess einmalig bei Überschreiten. */
+    function pruefeMaxBuffer(zusatzBytes: number): void {
+      if (maxBufferUeberschritten) return
+      bytesGesamt += zusatzBytes
+      if (bytesGesamt > MAX_BUFFER_BYTES) {
+        maxBufferUeberschritten = true
+        kindprozess.kill()
+      }
+    }
+
+    kindprozess.stdout?.setEncoding('utf8')
+    kindprozess.stdout?.on('data', (chunk: string) => {
+      pruefeMaxBuffer(Buffer.byteLength(chunk, 'utf8'))
+      if (!maxBufferUeberschritten) stdout += chunk
+    })
+    kindprozess.stderr?.setEncoding('utf8')
+    kindprozess.stderr?.on('data', (chunk: string) => {
+      pruefeMaxBuffer(Buffer.byteLength(chunk, 'utf8'))
+      if (!maxBufferUeberschritten) stderr += chunk
+    })
+
+    // Fängt sowohl den Abbruch (ABORT_ERR) als auch einen echten Startfehler (z.B. ENOENT/EACCES,
+    // string-wertiger code) ab — 'close' feuert in beiden Fällen zusätzlich (empirisch geprüft),
+    // die Klassifikation unten priorisiert deshalb dieses Ereignis vor 'close's eigenem code/signal.
+    kindprozess.on('error', (fehler: NodeJS.ErrnoException) => {
+      if (fehler.code === 'ABORT_ERR') {
+        abbruchErkannt = true
+        return
+      }
+      fruehesFehlerobjekt = { code: typeof fehler.code === 'string' ? fehler.code : null, message: fehler.message }
+    })
+
+    kindprozess.on('close', (code, signal) => {
+      void behandeleErgebnis(code, signal)
+    })
+
+    async function behandeleErgebnis(code: number | null, signal: NodeJS.Signals | null): Promise<void> {
+      if (maxBufferUeberschritten) {
+        aufloesen({ stdout, stderr, exitCode: null, startfehler: { code: null, message: `maxBuffer (${MAX_BUFFER_BYTES} Bytes) überschritten` }, beendigungsart: null })
+        return
+      }
+      if (abbruchErkannt) {
+        await killeProzessbaumFallsWindows(kindprozess.pid)
+        aufloesen({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' })
+        return
+      }
+      if (kindprozess.killed === true && optionen?.zeitgrenzeMs !== undefined) {
+        await killeProzessbaumFallsWindows(kindprozess.pid)
+        aufloesen({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: 'TIMEOUT' })
+        return
+      }
+      if (fruehesFehlerobjekt !== null) {
+        aufloesen({ stdout, stderr, exitCode: null, startfehler: fruehesFehlerobjekt, beendigungsart: null })
+        return
+      }
+      if (typeof code === 'number') {
+        aufloesen({ stdout, stderr, exitCode: code, startfehler: null, beendigungsart: null })
+        return
+      }
+      aufloesen({
+        stdout,
+        stderr,
+        exitCode: null,
+        startfehler: { code: null, message: `Kindprozess ohne Exitcode beendet${signal !== null ? ` (Signal ${signal})` : ''}` },
         beendigungsart: null,
       })
     }
@@ -257,7 +357,13 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     return Promise.resolve({ stdout: '', stderr: '', exitCode: null, startfehler: { code: null, message: pruefung.grund }, beendigungsart: null })
   }
   const starter = optionen.starter ?? echterStarter
-  const starterOptionen: StarterOptionen = { zeitgrenzeMs: optionen.zeitgrenzeMs, abbruchSignal: optionen.abbruchSignal, stdinLeer: optionen.stdinLeer, cwd: optionen.cwd }
+  const starterOptionen: StarterOptionen = {
+    zeitgrenzeMs: optionen.zeitgrenzeMs,
+    abbruchSignal: optionen.abbruchSignal,
+    stdinLeer: optionen.stdinLeer,
+    cwd: optionen.cwd,
+    umgebungsvariablen: optionen.umgebungsvariablen,
+  }
   return starter(startziel, tokens, starterOptionen)
 }
 

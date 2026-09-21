@@ -52,8 +52,27 @@ function mitPraefix(restPfad) {
   return `${aktivesProjektPraefix}${restPfad}`
 }
 
+/**
+ * Zeitlimit für die beiden periodisch gepollten Abrufe (F-561).
+ *
+ * Real beobachtet (Stefans Browser, 21.09.2026 12:44 UTC): eine GET-Detailanfrage und ein
+ * GET /zustand blieben in der Netzwerk-Konsole OHNE Status hängen, während derselbe Server
+ * dieselben Routen per curl in 6-54 ms bzw. 52-122 ms beantwortete — der Abruf hing also im
+ * Browser, nicht am Server (Initiator laut Konsole 'main.js', ein von Kaspersky injiziertes
+ * Skript, das sich um window.fetch legt und XHRs an ff.kis.v2.scr.kaspersky-labs.com schickt).
+ * Ein fetch, das niemals settelt, ließ den Chat-Poll dauerhaft stehen: der ausstehende Lauf
+ * wurde nie terminal aufgelöst, obwohl der Server längst ABBRUCH geschrieben hatte.
+ *
+ * Das Zeitlimit repariert die Ursache nicht (die liegt außerhalb dieser Anwendung), sondern
+ * nimmt ihr die Wirkung: ein hängender Abruf bricht nach dieser Frist ab, der Tick zählt als
+ * fehlgeschlagen, und die bestehende Poll-Schleife versucht es beim nächsten Tick erneut.
+ * 5 s ist großzügig gegenüber den real gemessenen Antwortzeiten (< 0,2 s) und kurz genug,
+ * dass eine Auflösung nicht spürbar hängt.
+ */
+const POLL_ZEITLIMIT_MS = 5000
+
 export const holeLaeufe = () => fetch(mitPraefix('/laeufe')).then((r) => r.json())
-export const holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`))
+export const holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 export const starteLauf = (koerper) => fetch(mitPraefix('/laeufe'), { method: 'POST', body: JSON.stringify(koerper) })
 export const abbrichLauf = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}/abbrechen`), { method: 'POST' })
 
@@ -69,7 +88,7 @@ export const holeWorkitems = (filter = {}) => {
 
 // F20 WS-2 (AK3): Aggregat aus laeufe/startfehler/workflows, gepollt von zustand.js — einzige
 // Stelle, die noch periodisch fetch() aufruft.
-export const holeZustand = () => fetch(mitPraefix('/zustand')).then((r) => r.json())
+export const holeZustand = () => fetch(mitPraefix('/zustand'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())
 
 export const holeAuftraege = () => fetch(mitPraefix('/auftraege')).then((r) => r.json())
 export const legeAuftragAn = (koerper) => fetch(mitPraefix('/auftraege'), { method: 'POST', body: JSON.stringify(koerper) })

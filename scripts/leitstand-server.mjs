@@ -898,10 +898,24 @@ function sammleZustandsQuelle(quelle, fn, fehlerListe) {
 const laufKopfdatenCache = new Map()
 const workflowKopfdatenCache = new Map()
 
-/** Billiger Änderungsstempel eines Checkpoint-Verzeichnisses (Dateianzahl + Verzeichnis-mtime) — null, wenn es (noch) nicht existiert. @param verzeichnis - Pfad des checkpoints-Verzeichnisses @returns Stempel-String, oder null */
+/**
+ * Billiger Änderungsstempel eines Checkpoint-Verzeichnisses (Dateianzahl + Verzeichnis-mtime) —
+ * null, wenn es (noch) nicht existiert.
+ *
+ * statSync mit throwIfNoEntry:false ersetzt das frühere existsSync+statSync-Paar: der
+ * Nichtexistenz-Fall ist derselbe Systemaufruf wie das Lesen der mtime, nicht ein zusätzlicher.
+ * Real gemessen gegen den kontrollzustand/-Bestand dieses Repos (654 Verzeichnisse): die
+ * Stempelbildung allein kostete 79 ms je Zustandsabfrage, danach 52 ms — sie war damit praktisch
+ * die gesamten ~75 ms von sammleLaeufe, auch wenn JEDER Lauf im Cache lag. Die Dateianzahl
+ * (readdirSync) bleibt Teil des Stempels: ohne sie hinge die Invalidierung allein an der
+ * Verzeichnis-mtime, und eine Änderung innerhalb derselben mtime-Auflösung bliebe unsichtbar.
+ * @param verzeichnis - Pfad des checkpoints-Verzeichnisses
+ * @returns Stempel-String, oder null
+ */
 function leseCheckpointVerzeichnisStempel(verzeichnis) {
-  if (!existsSync(verzeichnis)) return null
-  return `${readdirSync(verzeichnis).length}:${statSync(verzeichnis).mtimeMs}`
+  const stat = statSync(verzeichnis, { throwIfNoEntry: false })
+  if (stat === undefined) return null
+  return `${readdirSync(verzeichnis).length}:${stat.mtimeMs}`
 }
 
 /**
@@ -1681,6 +1695,17 @@ export function pruefeStartauftrag(body) {
       grund: "'aufrufEingaben.mcpConfig' wird serverseitig gesetzt (Default für jede Rolle seit F31 WS-3c, davor nur für 'jarvis' seit F31 WS-3b) und ist im Body nicht erlaubt",
     }
   }
+  // Task "Jarvis-Chat-Latenz senken", Schritt 3: 'umgebungsvariablen' setzt Umgebungsvariablen des
+  // Kindprozesses (aktuell MAX_THINKING_TOKENS für 'jarvis') — ausschließlich serverseitig
+  // gesetzt, kein Eingabekanal für einen Body-getriebenen Lauf über POST /api/laeufe (Muster
+  // settingSources/mcpConfig oben: sonst könnte ein beliebiger Startauftrag beliebige
+  // Umgebungsvariablen in den Kindprozess einschleusen).
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'umgebungsvariablen' in body.aufrufEingaben) {
+    return {
+      ok: false,
+      grund: "'aufrufEingaben.umgebungsvariablen' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt und ist im Body nicht erlaubt",
+    }
+  }
   if (!Array.isArray(body.anfragen)) {
     return { ok: false, grund: "'anfragen' muss ein Array sein" }
   }
@@ -2367,22 +2392,69 @@ function ladeWorkflowBestandUndPruefeSperre(workflowId, ladeOptionen) {
 }
 
 /**
- * Entfernt einen umschließenden Markdown-Codezaun (```lang\n...\n```), falls vorhanden,
+ * Entfernt einen Markdown-Codezaun (```lang\n...\n```), falls einer im Text vorkommt,
  * sonst null. Reine Funktion, kein Wurf (F22 WS-1). NUR im worker 'claude-code'-
  * Rückfallzweig von verarbeiteRouterErgebnis gebraucht (F-337/F-346, state/findings.md):
  * 'codex' liefert strukturierte Ausgabe über '--output-schema' und braucht keinen
  * Zweitversuch. Muster: scripts/eval-router.mjs' versucheForensischeEntzaunung — dort
  * rein forensisch/berichtend, hier PRODUKTIV im Nachbearbeitungspfad.
+ *
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): der Zaun muss NICHT
+ * mehr den GESAMTEN (getrimmten) Text umschließen — ein realer Jarvis-Lauf lieferte Prosa
+ * VOR dem Zaun ("Kein neuer Sachstand … — ich antworte konsistent damit." gefolgt von
+ * ```json\n{…}\n```), die bisherige startsWith('```')-Prüfung verwarf das gesamt als
+ * "kein Codezaun" und lieferte null, obwohl ein gültiges JSON-Objekt im Zaun stand. Die
+ * Regex sucht den ersten Zaun IRGENDWO im Text und verwirft Prosa davor/danach — ein Text
+ * ganz ohne Zaun liefert weiterhin null (Regressionsschutz, scripts/check-f22-click-to-
+ * work.mjs Abschnitt (0): entferneCodezaun('{"a":1}') !== null muss falsch bleiben).
  * @param text - roher Klassifikationstext
- * @returns entzäunter Text, oder null, wenn kein Codezaun vorlag
+ * @returns der Zaun-Inhalt (Prosa davor/danach verworfen), oder null, wenn kein Codezaun vorlag
  */
 export function entferneCodezaun(text) {
-  const getrimmt = text.trim()
-  if (!getrimmt.startsWith('```')) return null
-  return getrimmt
-    .replace(/^```[a-zA-Z]*\s*/, '')
-    .replace(/```\s*$/, '')
-    .trim()
+  const treffer = text.match(/```[a-zA-Z]*[ \t]*\r?\n?([\s\S]*?)```/)
+  return treffer === null ? null : treffer[1].trim()
+}
+
+/**
+ * Löst das erste vollständige, balancierte {…}-JSON-Objekt aus einem Text, Prosa
+ * davor/danach verworfen — Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst
+ * F-506), zweite Fallback-Stufe NACH entferneCodezaun (die deckt nur den Fall mit
+ * Codezaun ab; hier: Prosa + rohes JSON-Objekt ganz ohne Zaun). Reine Funktion, kein
+ * Wurf. Klammerzählung überspringt Anführungszeichen-Inhalte (Escape-bewusst, sonst
+ * zählte eine geschweifte Klammer INNERHALB eines String-Werts mit) — reicht für dieses
+ * Anwendungsfeld (Jarvis-Ergebnistext), kein vollständiger JSON-Tokenizer.
+ * @param text - roher Ergebnistext
+ * @returns der Objekt-Ausschnitt vom ersten '{' bis zur passenden '}', oder null, wenn
+ *   kein '{' vorkommt oder keine Klammer je wieder auf 0 zurückfällt (unvollständiges Objekt)
+ */
+export function extrahiereErstesJsonObjekt(text) {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+  let tiefe = 0
+  let inString = false
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const zeichen = text[i]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (zeichen === '\\') {
+        escaped = true
+      } else if (zeichen === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (zeichen === '"') {
+      inString = true
+    } else if (zeichen === '{') {
+      tiefe++
+    } else if (zeichen === '}') {
+      tiefe--
+      if (tiefe === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
 }
 
 /**
@@ -2395,10 +2467,22 @@ export function entferneCodezaun(text) {
  * F-406). Schema-Validierung und Artefaktbau bleiben Sache des jeweiligen Aufrufers
  * (D5) — diese Funktion liefert nur den geparsten Rohinhalt, keine Formprüfung gegen
  * ein bestimmtes Rollen-Ergebnisschema.
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): optionen.jsonObjektFallback
+ * (Default false) schaltet eine DRITTE Fallback-Stufe frei (extrahiereErstesJsonObjekt), NUR
+ * für den worker 'claude-code'-Zweig, NUR wenn die zweite Stufe (Codezaun) scheitert — bislang
+ * ausschließlich von leseJarvisErgebnisAusLaufakte gesetzt. Bewusst NICHT für router/scout/
+ * code-reviewer aktiviert (D2, kein stillschweigender Vertragsbruch): deren Beobachtung landet
+ * in schemas/kontrollzustand-router-ergebnis-payload.schema.json' ENUM [null, 'fence_entfernt']
+ * (src/router/index.ts ROUTER_ERGEBNIS_BEOBACHTUNG) — ein dritter Beobachtungswert bräche diese
+ * Schemaprüfung bei jedem Router-Lauf, der die neue Stufe tatsächlich zieht. leseJarvisErgebnis-
+ * AusLaufakte verwirft 'beobachtung' ohnehin ungenutzt (kein Persistenzpfad dafür), die neue
+ * Stufe bleibt für sie deshalb risikofrei.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten
- * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt' oder null), sonst { ok: false, grund }
+ * @param optionen - { jsonObjektFallback } (Default false)
+ * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt', 'json_objekt_extrahiert' oder null), sonst { ok: false, grund }
  */
-function leseRollenErgebnisRohstrom(laufakteDaten) {
+function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
+  const { jsonObjektFallback = false } = optionen
   const rohstromPfad = laufakteDaten.rohstrom_referenz.pfad
   let rohInhalt
   try {
@@ -2426,21 +2510,41 @@ function leseRollenErgebnisRohstrom(laufakteDaten) {
     return { ok: false, grund: `kein Ergebnistext im Rohstrom gefunden (worker '${worker}')` }
   }
 
-  try {
-    return { ok: true, geparst: JSON.parse(text), beobachtung: null }
-  } catch {
-    // Fence-Stripping NUR im claude-code-Rückfallzweig (F-337/F-346) — codex liefert
-    // strukturierte Ausgabe über --output-schema und braucht keinen Zweitversuch.
-    const entzaunt = worker === 'claude-code' ? entferneCodezaun(text) : null
-    if (entzaunt === null) {
-      return { ok: false, grund: 'Ergebnistext ist kein gültiges JSON' }
-    }
+  const versucheJsonParse = (kandidat) => {
     try {
-      return { ok: true, geparst: JSON.parse(entzaunt), beobachtung: 'fence_entfernt' }
+      return { ok: true, geparst: JSON.parse(kandidat) }
     } catch (fehler) {
-      return { ok: false, grund: `Ergebnistext ist auch nach Entfernen eines Codezauns kein gültiges JSON (${fehler.message})` }
+      return { ok: false, grund: fehler.message }
     }
   }
+
+  const direkt = versucheJsonParse(text)
+  if (direkt.ok) return { ok: true, geparst: direkt.geparst, beobachtung: null }
+
+  // Fence-Stripping NUR im claude-code-Rückfallzweig (F-337/F-346) — codex liefert
+  // strukturierte Ausgabe über --output-schema und braucht keinen Zweitversuch.
+  const entzaunt = worker === 'claude-code' ? entferneCodezaun(text) : null
+  if (entzaunt !== null) {
+    const entzauntGeparst = versucheJsonParse(entzaunt)
+    if (entzauntGeparst.ok) return { ok: true, geparst: entzauntGeparst.geparst, beobachtung: 'fence_entfernt' }
+  }
+
+  // Dritte Stufe (nur wenn freigeschaltet): Klammerzählung über den entzäunten Text, falls
+  // vorhanden (Prosa NEBEN dem eigentlichen Objekt innerhalb des Zauns), sonst über den
+  // Originaltext (Prosa + rohes JSON-Objekt ganz ohne Zaun).
+  if (worker === 'claude-code' && jsonObjektFallback) {
+    const extrahiert = extrahiereErstesJsonObjekt(entzaunt ?? text)
+    if (extrahiert !== null) {
+      const extrahiertGeparst = versucheJsonParse(extrahiert)
+      if (extrahiertGeparst.ok) return { ok: true, geparst: extrahiertGeparst.geparst, beobachtung: 'json_objekt_extrahiert' }
+      return { ok: false, grund: `Ergebnistext ist auch nach Extraktion des ersten JSON-Objekts kein gültiges JSON (${extrahiertGeparst.grund})` }
+    }
+  }
+
+  if (entzaunt === null) {
+    return { ok: false, grund: 'Ergebnistext ist kein gültiges JSON' }
+  }
+  return { ok: false, grund: `Ergebnistext ist auch nach Entfernen eines Codezauns kein gültiges JSON (${versucheJsonParse(entzaunt).grund})` }
 }
 
 /**
@@ -2660,11 +2764,18 @@ export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
  * (validiereErgebnisJarvis, src/jarvis/index.ts) — WS-1 hat noch keinen
  * '--output-schema'-Mechanismus für claude-code (F-337), die Formprüfung
  * passiert deshalb erst hier, nach dem Codezaun-Fallback.
+ *
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): einziger Aufrufer, der
+ * leseRollenErgebnisRohstroms dritte Fallback-Stufe (jsonObjektFallback) freischaltet — ein
+ * Chat-Turn ohne Menschen, der eine schlechte Antwort nachfragt, braucht die robustere
+ * Extraktion am dringendsten (real beobachtet: Prosa vor einem ```json-Zaun). router/scout/
+ * code-reviewer bleiben unverändert bei den ursprünglichen zwei Stufen (siehe Kommentar an
+ * leseRollenErgebnisRohstrom, Schema-ENUM-Grund).
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Jarvis-Laufs
  * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
  */
 export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
-  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten, { jsonObjektFallback: true })
   if (!gelesen.ok) {
     return { ok: false, grund: gelesen.grund }
   }
@@ -2716,6 +2827,45 @@ export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht
     return { ok: true, pfad, versionSequenz, inhaltsHash }
   } catch (fehler) {
     return { ok: false, grund: `Lineage-Chat-Eintrag 'chat-${projektId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
+  }
+}
+
+/**
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 2 (löst F-506, "Nie wieder stilles
+ * Verlieren"): Gegenstück zu verarbeiteJarvisChatErgebnis für den Fall, dass ein real
+ * ABGESCHLOSSEN/ERFOLGREICH beendeter Jarvis-Lauf TROTZDEM kein lesbares Ergebnis liefert
+ * (Vertragsverstoß — Prosa/kein JSON auch nach der robusteren Extraktion, oder Schemaverstoß).
+ * Vor dieser Änderung schrieb starteJarvisChatLaufs nachLauf-Callback in diesem Fall NUR einen
+ * startfehlerListe-Eintrag (flüchtig, GET /api/startfehler — kein UI-Pfad zeigt das im Chat an)
+ * und GAR KEINEN lineage-chat-Eintrag: der Chat-Verlauf verlor die Nachricht vollständig, die
+ * Chat-UI wartete auf einen Eintrag, der nie kam (real beobachtet, state/nachweis-jarvis-
+ * latenz.md "Runde 2"). Schreibt denselben Artefakttyp wie der Erfolgspfad (`chat-<projektId>`,
+ * Muster verarbeiteJarvisChatErgebnis) mit jarvisAntwort.art 'antwort' (bewusst KEIN neuer
+ * art-Wert — chat.js' antwortText/renderEintrag zeigen eine 'antwort' ohne jede Anpassung an,
+ * kein UI-Umbau nötig) und einem für den Menschen erkennbaren Fehlertext statt einer
+ * erfundenen Antwort.
+ * @param projektId - Projekt-id der bedienenden Handler-Instanz
+ * @param nachricht - die vom Menschen eingegebene Nachricht (Muster verarbeiteJarvisChatErgebnis)
+ * @param laufId - lauf_id des Jarvis-Laufs (geht in 'herkunft')
+ * @param grund - Ablehnungsgrund von verarbeiteJarvisChatErgebnis (bereits inkl. 'Jarvis-Lauf …:'-Präfix)
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund } (ein Fehlschlag HIER
+ *   landet unverändert in startfehlerListe, Muster des bisherigen alleinigen Fehlerpfads)
+ */
+function schreibeJarvisChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen) {
+  try {
+    const { pfad, versionSequenz } = registriereKernArtefakt(
+      `chat-${projektId}`,
+      profilReferenz,
+      { quelle: 'jarvis-chat', lauf_id: laufId },
+      { nachricht, jarvisAntwort: { art: 'antwort', antwort: `Jarvis-Antwort konnte nicht gelesen werden: ${grund}` } },
+      undefined,
+      ladeOptionen
+    )
+    return { ok: true, pfad, versionSequenz }
+  } catch (fehler) {
+    return { ok: false, grund: `Fehler-Lineage-Chat-Eintrag 'chat-${projektId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
   }
 }
 
@@ -4527,10 +4677,17 @@ export function erzeugeRequestHandler(optionen = {}) {
     // (kein performance.now()-Aufruf, kein console.log). Marken sammeln sich in EINEM Objekt,
     // das request_eingang/verlauf_geladen (dieser Handler) über starteJarvisChatLauf bis in den
     // starteLaufUndVergiss-Rückruf für ressourcen_worker_aufgeloest/auftrag_registriert trägt;
-    // kontextpaket_startfreigabe/prozess_gestartet/prozess_beendet/laufakte_rohstrom_geschrieben
-    // kommen aus src/claude-code-gateway/index.ts' starteGateway (GatewayOptionen.zeitmessung,
-    // durchgereicht über AusfuehrungsOptionen.zeitmessung, F-107-Muster). Die EINE Ausgabezeile
-    // je Lauf entsteht am Ende des nachLauf-Rückrufs in starteJarvisChatLauf.
+    // kontextpaket_startfreigabe/prozess_gestartet/prozess_beendet/rohstrom_geschrieben/
+    // laufakte_rohstrom_geschrieben kommen aus src/claude-code-gateway/index.ts' starteGateway
+    // (GatewayOptionen.zeitmessung, durchgereicht über AusfuehrungsOptionen.zeitmessung,
+    // F-107-Muster), klassifikation_begonnen/terminal_checkpoint_geschrieben aus
+    // src/execution-controller/index.ts. Die EINE Ausgabezeile je Lauf entsteht am Ende des
+    // nachLauf-Rückrufs in starteJarvisChatLauf.
+    //
+    // Die Marken ab prozess_beendet trennen die Nachbereitung in ihre echten Posten
+    // (Rohstrom, Laufakte, Klassifikation/Terminalmarke, Chat-Eintrag). Vorher war ihre Dauer
+    // nur als (run_prepared→terminal) minus duration_ms ableitbar — eine Rechnung, die
+    // CLI-Start/-Ende des Werkzeugprozesses fälschlich der Nachbereitung zuschlägt.
     /** @returns { marken: {} } bei aktiver Zeitmessung (LEITSTAND_ZEITMESSUNG=1), sonst null. */
     function neueZeitmessung() {
       return process.env.LEITSTAND_ZEITMESSUNG === '1' ? { marken: {} } : null
@@ -4618,7 +4775,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         // WS-3c (löst F-502) ist dieser Wert baueAufrufs Default für JEDE Rolle — das explizite Setzen
         // hier ist seither redundant (überschreibt den Default mit demselben Wert), aber unschädlich
         // und bleibt aus D5-Gründen unangetastet (keine Verhaltensänderung an diesem Pfad nötig).
-        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}' },
+        // Task "Jarvis-Chat-Latenz senken" (state/nachweis-jarvis-latenz.md), Schritt 3: real unter
+        // code.claude.com/docs/en/model-config dokumentiert — MAX_THINKING_TOKENS=0 schaltet
+        // Extended Thinking auf der Anthropic-API ab (Ausnahme: Fable-Modelle, hier nicht
+        // einschlägig, dieses Repo läuft firstParty/claude-sonnet-5). Nur für 'jarvis' gesetzt
+        // (Muster settingSources/mcpConfig) — jede andere Rolle bekommt kein umgebungsvariablen.
+        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
@@ -4676,7 +4838,11 @@ export function erzeugeRequestHandler(optionen = {}) {
             if (fehler !== null || ergebnis?.ok === false) return
             if (!(ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH')) return
 
+            // Beginn der Chat-eigenen Nachbereitung — alles davor (Klassifikation, Laufakte,
+            // terminale Wirkungsmarke) liegt in fuehreAufgabeDurch und trägt eigene Marken.
+            markiereZeit(zeitmessung, 'chat_nachbereitung_begonnen')
             const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+            markiereZeit(zeitmessung, 'laufakte_geladen')
             if (laufakteVersion === null) {
               startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Jarvis-Chat-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
               return
@@ -4691,10 +4857,22 @@ export function erzeugeRequestHandler(optionen = {}) {
               { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
               istZusammenfassung ? { istZusammenfassung: true } : undefined
             )
-            markiereZeit(zeitmessung, 'lineage_chat_eintrag_geschrieben')
+            markiereZeit(zeitmessung, verarbeitung.ok ? 'chat_eintrag_geschrieben' : 'chat_eintrag_versuch_beendet')
             if (!verarbeitung.ok) {
               startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
               console.error(`[leitstand] ${verarbeitung.grund}`)
+              // Runde 2, Schritt 2 (löst F-506, "Nie wieder stilles Verlieren"): ein real
+              // ABGESCHLOSSEN/ERFOLGREICH beendeter Lauf ohne lesbares Ergebnis verliert die
+              // Nachricht NICHT mehr kommentarlos — ein sichtbarer Fehler-Turn ersetzt die fehlende
+              // Antwort im selben 'chat-<projektId>'-Verlauf, den die Chat-UI ohnehin pollt/neu lädt.
+              const fehlerEintrag = schreibeJarvisChatFehlerEintrag(projektId, nachricht, laufId, verarbeitung.grund, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+              if (!fehlerEintrag.ok) {
+                startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: fehlerEintrag.grund })
+                console.error(`[leitstand] ${fehlerEintrag.grund}`)
+              } else {
+                console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Fehler-Lineage-Eintrag 'chat-${projektId}' (Version ${fehlerEintrag.versionSequenz}) geschrieben.`)
+              }
+              markiereZeit(zeitmessung, 'chat_fehlereintrag_geschrieben')
             } else {
               console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
             }

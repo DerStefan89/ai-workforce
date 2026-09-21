@@ -39,6 +39,8 @@ export interface AufrufEingaben {
   settingSources?: string
   /** F31 WS-3b (Stefan 20.09.2026, MCP-Start), Standard für ALLE Rollen seit F31 WS-3c (Stefan 20.09.2026, löst F-502): überschreibt baueAufrufs Standardwert `'{"mcpServers":{}}'` für `--mcp-config` — begrenzt die in E-187 (`docs/projekt/zielfassung.md` §9.4) benannte Lücke, dass `--tools`/`--allowedTools` MCP-Werkzeuge nicht abdecken (real gemessen, F31 WS-3b für `jarvis`, F31 WS-3c für eine schreibende Rolle: Account-MCP-Server laden trotz `--tools`-Begrenzung, sichtbar an `mcp_servers`/zusätzlichen `mcp__*`-Werkzeugen im `stream-json`-Init, siehe `features/F31/nachweis-mcp-begrenzung.md`). Fehlt das Feld, hängt baueAufruf trotzdem `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` an (kein Aufrufer bekommt mehr ungeprüfte MCP-Server) — nur ein davon abweichender Wert (bislang ausschließlich `starteJarvisChatLauf`, unverändert derselbe leere Wert) überschreibt den Default. scripts/leitstand-server.mjs' pruefeStartauftrag lehnt das Feld im Body von POST /api/laeufe weiterhin ab (Muster settingSources). */
   mcpConfig?: string
+  /** Task "Jarvis-Chat-Latenz senken" (state/nachweis-jarvis-latenz.md), Schritt 3: reine Durchreichung zusätzlicher Umgebungsvariablen an den Kindprozess (prozessstart.ts' echterStarter, execFiles env-Option), NICHT Teil des Argv — baueAufruf liest dieses Feld nicht. Ausschließlich vom Jarvis-Chat-Pfad gesetzt (MAX_THINKING_TOKENS: '0', real dokumentiert unter code.claude.com/docs/en/model-config: schaltet Extended Thinking auf der Anthropic-API ab, außer bei Fable-Modellen — dieses Repo nutzt firstParty/Anthropic, kein Fable). Muster settingSources/mcpConfig: scripts/leitstand-server.mjs' pruefeStartauftrag lehnt das Feld im Body von POST /api/laeufe ab. */
+  umgebungsvariablen?: Record<string, string>
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */
@@ -56,6 +58,8 @@ export interface StarterOptionen {
   abbruchSignal?: AbortSignal
   stdinLeer?: boolean
   cwd?: string
+  /** Task "Jarvis-Chat-Latenz senken", Schritt 3: zusätzliche Umgebungsvariablen für den Kindprozess, ergänzt process.env (nicht ersetzt) — s. AufrufEingaben.umgebungsvariablen. Fehlt der Wert, bleibt execFiles eigener Default (process.env unverändert) unangetastet, exakt wie cwd oben. */
+  umgebungsvariablen?: Record<string, string>
 }
 
 /** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. Der dritte, optionale Parameter (F14 WS-1, AK1) ist additiv: eine bestehende, zweiparametrige Starter-Implementierung (z.B. attrappeMitValidemErgebnis) bleibt ohne Anpassung zuweisungskompatibel. */

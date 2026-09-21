@@ -367,6 +367,76 @@ test('starteGateway übergibt kein abbruchSignal an starteProzess, wenn optionen
   }
 })
 
+test('starteGateway reicht stdinLeer: true an starteProzess durch — fest für jede Rolle, kein Options-Feld (Task "Jarvis-Chat-Latenz senken", Schritt 2)', async () => {
+  const laufId = neueLaufId('gateway-stdinleer')
+  let empfangeneOptionen: { stdinLeer?: boolean } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.stdinLeer, true, 'der Claude-Code-Pfad muss stdin für JEDEN Aufruf schließen, `-p` liest ohnehin nie davon')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway reicht optionen.umgebungsvariablen unverändert an starteProzess durch (Task "Jarvis-Chat-Latenz senken", Schritt 3)', async () => {
+  const laufId = neueLaufId('gateway-umgebungsvariablen')
+  let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      umgebungsvariablen: { MAX_THINKING_TOKENS: '0' },
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0' })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway übergibt kein umgebungsvariablen an starteProzess, wenn optionen.umgebungsvariablen fehlt — Regression (jede Rolle außer jarvis)', async () => {
+  const laufId = neueLaufId('gateway-ohne-umgebungsvariablen')
+  let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen, undefined)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 test('starteGateway verweigert bei verbotenem Aufrufparameter — WS1-Check greift, kein Prozessstart', async () => {
   const laufId = neueLaufId('gateway-rot')
   let starterAufgerufen = false
@@ -768,6 +838,22 @@ test('starteProzess markiert einen maxBuffer-Überlauf nicht als TIMEOUT — Reg
   const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.stdout.write("x".repeat(1024 * 1024 * 65))'])
   assert.strictEqual(ergebnis.beendigungsart, null)
   assert.ok(ergebnis.startfehler, 'ein maxBuffer-Überlauf muss weiterhin als startfehler klassifiziert werden, nicht als TIMEOUT')
+})
+
+test('starteProzess reicht optionen.umgebungsvariablen an den echten Kindprozess durch, ohne process.env zu verlieren — Grünfall, kein Spy (Task "Jarvis-Chat-Latenz senken", Schritt 3)', async () => {
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.stdout.write(JSON.stringify({ neu: process.env.F31_TEST_ENV_MARKE ?? null, pathVorhanden: typeof process.env.PATH === "string" || typeof process.env.Path === "string" }))'], {
+    umgebungsvariablen: { F31_TEST_ENV_MARKE: 'gesetzt' },
+  })
+  assert.strictEqual(ergebnis.exitCode, 0)
+  const geparst = JSON.parse(ergebnis.stdout)
+  assert.strictEqual(geparst.neu, 'gesetzt', 'eine über umgebungsvariablen gesetzte Variable muss im Kindprozess ankommen')
+  assert.strictEqual(geparst.pathVorhanden, true, 'umgebungsvariablen darf process.env nur ERGÄNZEN, nicht ersetzen — sonst verlöre der Kindprozess PATH')
+})
+
+test('starteProzess ohne optionen.umgebungsvariablen startet mit unverändertem process.env — Regression (jede Rolle außer jarvis)', async () => {
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.stdout.write(String(process.env.F31_TEST_ENV_MARKE ?? "FEHLT"))'])
+  assert.strictEqual(ergebnis.exitCode, 0)
+  assert.strictEqual(ergebnis.stdout, 'FEHLT')
 })
 
 // ─── F14 WS-2 (AK4): Windows-Prozessbaum-Kill bei TIMEOUT ──────────────────

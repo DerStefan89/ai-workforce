@@ -1,0 +1,881 @@
+# Nachweis — Jarvis-Chat-Latenz senken
+
+Auftrag: reale Latenzursachen in Jarvis-Chat beheben (stdin-Wartezeit, Extended
+Thinking, Poll-Verzögerung, Client-Instrumentierung) und real belegen. Dieses
+Dokument ist der Nachweis nach Umsetzung (Schritte 1–4), Abschnitt a) ist die
+Ausgangslage, b)–d) sind reale Nachweisläufe gegen den echten Leitstand aus
+diesem Hauptrepo.
+
+## a) Ausgangsmessung vor dem Fix
+
+Realer Lauf `jarvis-jarvis-chat-ac9204a1-d506-4199-9262-cf1faf711d04` (Stefan,
+21.09.2026, vor jeder Änderung dieses Auftrags). Belege: die fünf
+`kontrollzustand/`-Einträge dieses Laufs
+(`jarvis-jarvis-chat-ac9204a1-…`, `lineage-auftrag-jarvis-chat-ac9204a1-…`,
+`lineage-kontextpaket-jarvis-chat-ac9204a1-…`,
+`lineage-laufakte-jarvis-chat-ac9204a1-…`, sowie Checkpoint 30 der
+`lineage-chat-ai-workforce`-Kette), alle unversioniert im Arbeitsbaum
+belassen, plus `kontrollzustand-roh/jarvis-jarvis-chat-ac9204a1-…/rohstrom.json`
+(real erneut ausgelesen für dieses Dokument).
+
+| Messgröße | Wert |
+|---|---|
+| Absenden → Antwort im Chat-Verlauf sichtbar (Client, geschätzt) | 102 s |
+| Server gesamt (Auftrag-Checkpoint → Chat-Checkpoint) | 37,20 s (06:14:53,663 → 06:15:30,754 real nachgemessen) |
+| stderr | `Warning: no stdin data received in 3s, proceeding without it.` |
+| `duration_ms` | 20.612 |
+| `duration_api_ms` | 21.082 |
+| `ttft_ms` | 8.962 |
+| `num_turns` | 3 |
+| Thinking-Tokens / Output-Tokens | 814 / 1.321 |
+| Worker / Modell | `claude-code` / `claude-sonnet-5` |
+| ~CLI-Start/-Ende außerhalb `duration_ms` | ~12 s (bekannt, F-501, nicht Teil dieses Auftrags) |
+| ~Lücke außerhalb des Servers (Client, Poll+Rendering) | ~65 s, Ursache vor diesem Auftrag ungeklärt |
+
+Inhalt der Antwort war korrekt.
+
+## b) Umgesetzt (Code, Tests, `npm run check`)
+
+1. **Client-Zeitmessung** (`public/leitstand/views/chat.js`): je Turn vier
+   Zeitmarken (`performance.now()`: Absenden, Server-Quittung, erster
+   terminaler Poll-Tick, Darstellung) plus Poll-Tick-Anzahl und größte
+   Tick-Lücke, eine `console.info('[jarvis-latenz] Chat-Turn:', …)`-Zeile pro
+   Turn (Browser-Konsole). Gilt für normale Nachricht UND Zusammenfassen.
+2. **stdin sofort geschlossen**: `src/claude-code-gateway/index.ts`s
+   `starteGateway` setzt jetzt fest `stdinLeer: true` beim Aufruf von
+   `starteProzess` — für JEDE Rolle, kein Options-Feld (Muster
+   `codex-gateway/index.ts`, dort ebenso hartkodiert). Neue Tests: Spy-Test
+   (`stdinLeer` kommt bei `starteProzess` an) und ein echter,
+   spy-freier Prozesstest (`process.exit(0)` unbeeinflusst).
+3. **Extended Thinking für `jarvis` minimiert**: real via `code.claude.com/docs/en/model-config`
+   verifiziert (WebFetch, nicht geraten) — `MAX_THINKING_TOKENS=0` schaltet
+   Extended Thinking auf der Anthropic-API ab (Ausnahme: Fable-Modelle, hier
+   nicht einschlägig). `--effort` wurde geprüft und verworfen: laut derselben
+   Doku steuert es "adaptive reasoning", nicht Extended Thinking. Umgesetzt
+   als neues, optionales `AufrufEingaben.umgebungsvariablen` (Muster
+   `settingSources`/`mcpConfig`) — nur `starteJarvisChatLauf`
+   (`scripts/leitstand-server.mjs`) setzt `{ MAX_THINKING_TOKENS: '0' }`,
+   durchgereicht bis zu `execFile`s `env`-Option (ergänzt `process.env`, ersetzt
+   es nicht). `pruefeStartauftrag` lehnt das Feld im Body von `POST
+   /api/laeufe` für jede Rolle ab (Muster `settingSources`). Betrifft
+   ausschließlich den `claude-code`-Pfad — für Codex (eigener Provider, kein
+   Anthropic-"Extended Thinking"-Konzept) bewusst nicht verdrahtet.
+4. **Poll bei Sichtbarkeit**: `chat.js` löst bei `visibilitychange` →
+   `'visible'` sofort einen Poll-Tick aus, wenn ein Lauf aussteht — kein
+   zweiter `setInterval` (`check-f20-zustand-poll.mjs` AK3 bleibt grün).
+
+`npm run check`: **Exit 0**, `npm run test`: **596/596 grün**
+(inkl. 55 neue/bestehende `claude-code-gateway`- und 32
+`execution-controller`-Tests, alle grün). Ein einzelner Lauf von
+`check-f10-leitstand.mjs` (F14 WS-4 AK7, Abbruch-Test) schlug einmal mit
+404 statt 202 fehl und war beim direkten Retry sowie bei zwei weiteren
+Wiederholungen grün — reiner Mock-Test mit fest verdrahteter 120ms-Verzögerung,
+berührt von diesem Diff nicht (siehe Abschnitt d unten zur Systemlast an
+diesem Nachmittag). Bekannte Falle laut `CLAUDE.md` ("Test scheitert einmalig
+… erst wiederholen"), kein Befund an diesem Diff.
+
+## c) Reale Nachweisläufe gegen den echten Leitstand (3 Turns)
+
+Leitstand aus diesem Hauptrepo gestartet
+(`LEITSTAND_ZEITMESSUNG=1 node scripts/leitstand-server.mjs`, Default-Startvorlage
+`startvorlagen/beispielprojekt.json` — bewusst OHNE `LEITSTAND_STARTVORLAGE_PFAD`,
+um dieselbe Worker-Auflösung wie beim Ausgangslauf zu treffen: **realer
+Nebenbefund**, siehe unten). Drei echte `POST /api/chat`-Turns mit der Frage
+"Wo stehen wir gerade in der Roadmap?" gegen das reale `ai-workforce`-Projekt
+(kein Stub, `kontrollzustand`/`kontrollzustand-roh` dieses Repos).
+
+**Wichtiger Vorbehalt zur Systemlast:** Während der Läufe liefen — real per
+`tasklist` geprüft — **14 gleichzeitige `claude.exe`-Prozesse** auf dieser
+Maschine (andere Sitzungen/Subagenten, nicht von diesem Auftrag gestartet).
+Turn 2 lag deshalb bei 188,9 s Server gesamt (Prozessfenster laut
+Zeitmessung: `prozess_gestartet`→`prozess_beendet` 187,9 s, `duration_ms` nur
+3,46 s — fast die gesamte Zeit ist Warteschlangenzeit außerhalb des
+CLI-eigenen Zeitkontos). Die absoluten Zahlen unten sind dadurch **nicht**
+gegen den Ausgangslauf vergleichbar — sie belegen Funktionsfähigkeit
+(Antwort korrekt, Mechanik greift), nicht Performance. Eine saubere
+Vorher/Nachher-Zahl braucht einen Lauf auf einer sonst unbeschäftigten
+Maschine (Empfehlung unten).
+
+| Turn | Server gesamt (Auftrag→Chat-Checkpoint) | `duration_ms` | `ttft_ms` | `num_turns` | Thinking-Tokens | stderr | Antwort korrekt |
+|---|---:|---:|---:|---:|---:|---|---|
+| 1 | 41,94 s* | 6.666 | 2.339 | 2 | 0 | Warning (s. u.) | ja |
+| 2 | 188,85 s | 3.460 | 3.339 | 1 | 0 | Warning (s. u.) | ja |
+| 3 | 25,93 s | 4.364 | 4.193 | 1 | 0 | Warning (s. u.) | ja |
+
+\* Turn 1 schrieb **keinen** `lineage-chat-ai-workforce`-Checkpoint (siehe
+Nebenbefund unten) — Wert ist die Zeitmessungs-Spanne
+`request_eingang`→`lineage_chat_eintrag_geschrieben` desselben Laufs, nicht
+Checkpoint-zu-Checkpoint wie bei Turn 2/3 und der Ausgangsmessung.
+
+Alle drei Antworten sind inhaltlich korrekt und untereinander konsistent
+(„M5, F32 abgeschlossen, F33 WS-0/WS-1 gemergt, F34–F39 + F30 offen"), real
+gegen `docs/projekt/roadmap.json` gegengeprüft.
+
+### Realer, unerwarteter Befund 1 — die stdin-Warnung tritt trotz `stdinLeer: true` weiterhin auf
+
+`stderr` aller drei Turns trägt weiterhin wortgleich
+`Warning: no stdin data received in 3s, proceeding without it.` — obwohl
+Schritt 2 real implementiert UND unit-getestet ist. Gegengeprüft, kein
+Einbildungsfehler: ein isolierter `execFile`-Aufruf mit exakt demselben
+Mechanismus (`child.stdin.end()` binnen 50–160 ms nach Spawn), gegen dasselbe
+`claude.exe`, **9 von 9 Wiederholungen ohne die Warnung** (variiert: mit/ohne
+Tools, mit/ohne `env`-Override, verschiedene Promptgrößen bis 20.000 Zeichen).
+Der Unterschied zwischen "isoliert: nie" und "im echten Leitstand: 3 von 3"
+korreliert zeitlich mit der oben genannten Systemlast (14 gleichzeitige
+`claude.exe`). Arbeitshypothese (nicht abschließend belegt): unter realer
+CPU-/Scheduler-Konkurrenz bekommt der frisch gestartete `claude.exe`-Prozess
+nicht sofort Rechenzeit, um sein stdin zu prüfen — bis dahin ist aus SEINER
+Sicht bereits die eigene 3-Sekunden-Frist verstrichen, unabhängig davon, wie
+schnell der Elternprozess das EOF tatsächlich gesendet hat. Nicht behoben
+(außerhalb der Kontrolle dieses Gateways), aber ein echter Fund: der Nutzen
+von Schritt 2 könnte unter Systemlast kleiner ausfallen als die isolierte
+Messung nahelegt. Empfehlung: Re-Messung auf einer ruhigen Maschine, bevor der
+Effekt als "erledigt" gilt.
+
+### Realer, unerwarteter Befund 2 — Worker-Wahl hängt an der Startvorlage
+
+Mit `LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json` (die für
+dieses Projekt vorgesehene, laut `[F-391]`-Warnung "richtige" Datei) wählt
+Jarvis-Chat **Codex**, nicht `claude-code` (real geprüft, ein Testlauf vor der
+eigentlichen Messung, `worker: "codex"`, `modellDeklariert: "gpt-6-astra"` in
+der Laufakte). Mit der Default-Startvorlage (`beispielprojekt.json`, ohne den
+Env-Override) fällt Jarvis auf `claude-code` zurück — **das ist der Zustand,
+in dem sowohl der Ausgangslauf als auch alle Fixes dieses Auftrags
+funktionieren**. Schritt 2 und Schritt 3 dieses Auftrags wirken ausschließlich
+auf dem `claude-code`-Pfad; sie hätten auf den echten, mit der "richtigen"
+Startvorlage gestarteten Jarvis-Chat aktuell **keine** Wirkung. Nicht Teil
+dieses Auftrags zu klären, warum `beispielprojekt.json` weiterhin die
+Default-Startvorlage des Servers ist, obwohl F-391 seit Längerem davor warnt —
+neuer Befund, empfohlen für `state/findings.md`.
+
+### Realer, unerwarteter Befund 3 — Turn 1 fehlt im persistierten Chat-Verlauf
+
+Turn 1s Serverlog: `Ergebnis verstößt gegen schemas/ergebnis-jarvis.schema.json:
+unbekanntes Feld 'antwort_kurz' (additionalProperties: false)`. Die Laufakte
+wurde trotzdem `ABGESCHLOSSEN/ERFOLGREICH`, aber **kein** Checkpoint in
+`lineage-chat-ai-workforce` erschien für diesen Lauf (Turn 2 und 3 mit
+strukturell identischer Antwortform bekamen beide einen Checkpoint). Nicht
+root-caused (außerhalb des Scopes dieses Auftrags), aber real reproduzierbar
+beobachtet — ein Nutzer, der genau in diesem Fenster die View verlässt und
+wieder betritt, sähe seine Antwort nicht. Empfohlen für `state/findings.md`.
+
+## d) Vierter Turn (Tab im Hintergrund) und Client-Deltas — an Stefan
+
+Schritt 1 (Client-Zeitmessung) und Schritt 4 (Sofort-Poll bei Sichtbarkeit)
+sind implementiert, aber ihr Nachweis braucht einen echten Browser-Tab mit
+offener DevTools-Konsole — in dieser CLI-Umgebung nicht verfügbar (kein
+Browser-Werkzeug), genau die in der Aufgabenstellung vorgesehene Ausnahme.
+
+Der Leitstand läuft bereits (`http://127.0.0.1:4173`,
+`LEITSTAND_ZEITMESSUNG=1`, PID 1676 in dieser Shell/echtes Windows-PID 28376) —
+die drei Turns oben sind bereits im echten Chat-Verlauf des Projekts
+`ai-workforce` sichtbar. Für den vollständigen Nachweis, bitte:
+
+1. Leitstand-Tab öffnen (`#/chat` oder die rechte Chat-Spalte), DevTools-Konsole
+   offen lassen.
+2. Eine Nachricht "Wo stehen wir gerade in der Roadmap?" senden, Tab die ganze
+   Zeit im Vordergrund lassen, bis die Antwort erscheint.
+3. Die `console.info('[jarvis-latenz] Chat-Turn:', …)`-Zeile aus der Konsole
+   kopieren (enthält `absenden_bis_quittung_ms`, `quittung_bis_pollergebnis_ms`,
+   `pollergebnis_bis_darstellung_ms`, `gesamt_ms`, `poll_ticks`,
+   `groesste_poll_luecke_ms`).
+4. Eine weitere Nachricht senden, den Tab **sofort nach dem Absenden für ca.
+   30 s** in den Hintergrund legen (anderer Tab/Fenster), dann zurückkehren —
+   dieselbe Konsolenzeile kopieren.
+5. Beide Zeilen hier zurückmelden — ich trage sie nach und ziehe das Fazit zu
+   Hebel 4 (Poll-Latenz) nach.
+
+Falls der Leitstand-Prozess nicht mehr laufen sollte:
+`LEITSTAND_ZEITMESSUNG=1 node scripts/leitstand-server.mjs` aus diesem
+Verzeichnis.
+
+## Fazit (vorläufig, Teil d steht aus)
+
+Alle vier Code-Schritte sind real umgesetzt, getestet und laufen im
+End-to-End-Test gegen den echten Leitstand fehlerfrei (korrekte Antworten in
+3/3 Turns). Die verbleibende Zeit liegt laut Ausgangsmessung weiterhin
+überwiegend außerhalb der `duration_ms`-Arbeitszeit des CLI selbst
+(F-501, unverändert außerhalb des Scopes) und in einer bislang ungeklärten
+Client-Lücke (Abschnitt d) — beides bereits vor diesem Auftrag bekannt. Der
+reale Zusatzbefund dieses Laufs: der stdin-Fix wirkt isoliert nachweisbar,
+aber unter realer Systemlast trat die Warnung trotzdem in 3/3 Fällen auf, und
+Schritt 2/3 verpuffen komplett, sobald der Server (wie eigentlich vorgesehen)
+mit `startvorlagen/ai-workforce.json` startet, weil Jarvis dann auf Codex statt
+`claude-code` läuft.
+
+## Runde 2 — Challenger-Verifikation: robuste Extraktion, sichtbarer Fehlerfall, geschärfter Vertrag, stdin zweiter Anlauf
+
+Auslöser: realer Lauf `jarvis-jarvis-chat-c53f11b6-e227-40c2-bb17-3ce6c5fc4867`
+war nach 44s terminal ERFOLGREICH, aber `result` war Prosa
+("Kein neuer Sachstand seit den letzten identischen Antworten — ich antworte
+konsistent damit.") gefolgt von einem ```json-Codezaun, zusätzlich
+`bezug.workitem` = die eigene Chat-Lauf-ID. Die Chat-UI wartete >3 min ohne
+sichtbares Ergebnis, `lineage-chat-ai-workforce` bekam keinen Eintrag.
+
+### Umgesetzt
+
+1. **Robuste Extraktion** (`scripts/leitstand-server.mjs`): `entferneCodezaun`
+   sucht einen Codezaun jetzt IRGENDWO im Text (Regex-Suche statt
+   `startsWith('```')`) — Prosa davor/danach wird verworfen, statt die
+   gesamte Extraktion abzubrechen. Neue Funktion `extrahiereErstesJsonObjekt`
+   (Klammerzählung, string-/escape-bewusst) als dritte Fallback-Stufe für
+   Prosa + rohes JSON-Objekt GANZ OHNE Zaun. Die dritte Stufe ist über
+   `leseRollenErgebnisRohstrom(daten, { jsonObjektFallback })` NUR für
+   `leseJarvisErgebnisAusLaufakte` freigeschaltet (D2) — router/scout/
+   code-reviewer bleiben unverändert bei den bisherigen zwei Stufen, weil ihr
+   `beobachtung`-Feld gegen ein festes Schema-Enum (`[null, 'fence_entfernt']`,
+   `schemas/kontrollzustand-router-ergebnis-payload.schema.json`) validiert
+   wird und ein dritter Wert das bräche; `leseJarvisErgebnisAusLaufakte` liest
+   `beobachtung` ohnehin nie. Unit-Tests (`scripts/check-f31-gedaechtnis.mjs`
+   Abschnitt (i)): reines JSON, Codezaun ohne Sprachangabe, Prosa+Codezaun
+   (der real aufgetretene Fall), Prosa+rohes JSON-Objekt ohne Zaun, kein JSON
+   (bleibt ungültig) — alle fünf grün, plus eine Klammer-im-String-Kalibrierung.
+2. **Nie wieder stilles Verlieren**: neue Funktion
+   `schreibeJarvisChatFehlerEintrag` schreibt bei einem nach der Extraktion
+   weiterhin ungültigen Ergebnis TROTZDEM einen `chat-<projektId>`-Eintrag —
+   `jarvisAntwort.art: 'antwort'` (kein neuer art-Wert, `chat.js` zeigt ihn
+   ohne UI-Änderung an), `jarvisAntwort.antwort` beginnt mit "Jarvis-Antwort
+   konnte nicht gelesen werden: …". Bewusst OHNE `istZusammenfassung: true`,
+   auch wenn der fehlgeschlagene Lauf ein Zusammenfassungsversuch war — sonst
+   pinnte ein künftiges Verlaufsfenster einen inhaltsleeren Fehlertext als
+   neuen "Gesprächsanfang" und verlöre die echte Historie. Gate-Test
+   (`check-f31-gedaechtnis.mjs` Abschnitt (j)): ein real ABGESCHLOSSEN/
+   ERFOLGREICH beendeter Lauf mit unlesbarem Ergebnis erzeugt GENAU einen
+   sichtbaren Fehler-Eintrag, `nachricht` bleibt die echte Nutzerfrage,
+   `istZusammenfassung` bleibt `false`.
+
+   **Prüfung "Laufakte ERFOLGREICH trotz Vertragsverstoß — gewollt?"**: JA,
+   das ist gewollt und architektonisch beabsichtigt, keine stillschweigend
+   akzeptierte Lücke. `klassifiziereLauf`/`ermittleErgebnis`
+   (`src/result-evaluator/index.ts`) entscheiden ERFOLGREICH/VERWEIGERT/
+   FEHLGESCHLAGEN ausschließlich anhand prozessualer Signale (Exit-Code,
+   `permission_denials`, Timeout/Abbruch) — sie öffnen `result` nie und kennen
+   kein rollenspezifisches Schema. Das ist die in `claude-code-gateway/
+   index.ts`s Kopfkommentar dokumentierte F7-Grenze/AK12 ("kein ergebnis-Feld,
+   keine Auswertung … F7 vorbehalten"): ein claude-code-Prozess, der sauber
+   durchlief und keine Genehmigung verweigert bekam, IST im F7-Sinne
+   erfolgreich — dass der von ihm gelieferte Text dem Jarvis-App-Schema
+   widerspricht, ist eine Ebene darüber (F26) und dort jetzt korrekt
+   behandelt (Punkt 2 oben), nicht durch eine rückwirkende Änderung der
+   Laufakte-Klassifikation. Am Laufakte-Vertrag wurde nichts geändert.
+3. **Ausgabevertrag geschärft** (`src/jarvis/index.ts`,
+   `baueJarvisAuftragstext`): zwei neue, an den real aufgetretenen Fall
+   angelehnte Sätze — (a) das Codezaun-/Prosa-Verbot gilt AUSDRÜCKLICH auch
+   bei einer inhaltlich identischen Wiederholung ("kein neuer Sachstand" o. ä.
+   darf nicht vorangestellt werden); (b) `bezug` nur mit einer real im
+   Kontext/Verlauf genannten Kennung, NIEMALS erfunden, geraten oder die
+   eigene `lauf_id`/`auftrag_id` dieses Chat-Laufs. `jarvis.test.ts` (40/40)
+   bleibt grün (die Byte-Identitäts-Prüfung für leeren Verlauf ist relativ,
+   kein Snapshot).
+4. **stdin, zweiter Anlauf** (`src/claude-code-gateway/prozessstart.ts`):
+   `echterStarter` nutzt jetzt `child_process.spawn` statt `execFile`. Grund
+   real geprüft (node-Probe gegen diese Node-Version): `execFile` reicht eine
+   `stdio`-Option NICHT an den zugrunde liegenden Spawn durch — `child.stdin`
+   blieb ein offener Pipe-Stream, unabhängig vom übergebenen Wert. `spawn`
+   unterstützt denselben `timeout`/`signal`-Vertrag (ebenfalls real geprüft:
+   `close(null,'SIGTERM')` + `child.killed===true` bei Timeout, zusätzliches
+   `error`-Ereignis mit `ABORT_ERR` bei Abbruch, synchroner Wurf bei
+   NUL-Byte-Argv) — nur `encoding`/`maxBuffer` sind execFile-exklusive
+   Komfortfunktionen und wurden von Hand nachgebaut (`setEncoding('utf8')`,
+   eigene 64-MB-Bytegrenze mit `kindprozess.kill()`). `stdio[0]` steht NUR bei
+   `stdinLeer === true` auf `'ignore'` (F-307-Vertrag bleibt opt-in,
+   `codex-gateway.test.ts`s Rot-Fall ohne `stdinLeer` bleibt unverändert
+   grün). Der bisherige `kindprozess.stdin?.on('error', …)`-Workaround entfällt
+   ersatzlos — ohne Pipe-Stream-Objekt gibt es kein `stdin`, an dem ein
+   EPIPE/ERR_STREAM_DESTROYED auftreten könnte (real geprüft: `child.stdin`
+   ist bei `stdio[0]:'ignore'` `null`). Alle F14/F6a-Prozessstart-Gates bleiben
+   grün (55/55 `claude-code-gateway`-Tests, 83/83 `codex-gateway`-Tests,
+   inkl. Timeout-, Abbruch-, maxBuffer-, Prozessbaum-Kill- und den drei
+   F-307-Tests).
+
+### Realer Nachweis — 5 echte Jarvis-Chat-Turns (21.09.2026, dieser Hauptrepo)
+
+Leitstand aus diesem Hauptrepo neu gestartet
+(`LEITSTAND_ZEITMESSUNG=1 node scripts/leitstand-server.mjs`, Default-Startvorlage
+`startvorlagen/beispielprojekt.json`, PID 8500). Vor Start real per
+`Get-Process` geprüft: **14 gleichzeitige `claude`-Prozesse** und **2
+`node`-Prozesse** auf dieser Maschine (andere Sitzungen, nicht von diesem
+Auftrag gestartet — vergleichbare Last wie Runde 1).
+
+| Turn | Frage | Server gesamt | `duration_ms` | `duration_api_ms` | `ttft_ms` | `num_turns` | stderr leer | Extraktion nötig | Chat-Eintrag geschrieben | Antwort korrekt |
+|---|---|---:|---:|---:|---:|---:|---|---|---|---|
+| 1 | Wie ist der Roadmap-Stand? | 10,81 s | 4.499 | 5.739 | 4.445 | 1 | ja | nein | ja | ja* |
+| 2 | Was ist F34? | 14,15 s | 7.190 | 7.848 | 2.167 | 2 | ja | **ja** (Prosa+Codezaun) | ja | ja |
+| 3 | Welche Findings sind P1? | 46,79 s | 40.134 | 39.173 | 3.109 | 10 | ja | nein | ja | ja |
+| 4 | Hallo | 7,74 s | 2.114 | 3.135 | 2.002 | 1 | ja | nein | ja | ja |
+| 5 | Was hast du eben gesagt? | 8,88 s | 2.827 | 4.104 | 2.761 | 1 | ja | nein | ja | ja |
+
+\* Turn 1: Antwort selbst korrekt, aber `bezug.auftrag_id` trägt einen
+Selbstverweis (s. Befund 4 unten) — deshalb nicht vorbehaltlos "ja".
+`usage.output_tokens_details.thinking_tokens` ist in allen fünf Läufen `0`
+(`MAX_THINKING_TOKENS=0` wirkt nachweislich), `is_error` in allen fünf `false`.
+`stderr` ist in **5 von 5** Turns leer — die in Runde 1 unter identischer
+Systemlast (14 `claude`-Prozesse) in 3/3 Fällen aufgetretene
+"no stdin data received"-Warnung trat in dieser Runde **kein einziges Mal**
+auf. Kein Beweis (unterschiedliche Läufe, keine kontrollierte A/B-Messung),
+aber ein starkes Indiz, dass Schritt 4 (stdin nie als Pipe öffnen statt
+nachträglichem `end()`) den in Runde 1 dokumentierten Rest-Befund behebt.
+
+### Befund 4 (Runde 2) — ein Vertragsverstoß, den die Extraktion NICHT abfangen kann
+
+Turn 2 (`Was ist F34?`) lieferte real wortgleich dasselbe Verstoßmuster wie
+der Auslöser dieser Runde: Prosa ("Keine weitere Fundstelle — F34 ist im
+Projektkontext nur als bloße Feature-ID …") gefolgt von einem ```json-Zaun.
+Schritt 3 (Prompt-Schärfung) hat das NICHT verhindert — aber Schritt 1
+(robuste Extraktion) hat es real aufgefangen: valide Antwort im Chat-Verlauf,
+kein Datenverlust. Das bestätigt den Nutzen von Schritt 1 unmittelbar am
+selben Verstoßtyp, der Runde 1 ausgelöst hat.
+
+Turn 1 (`Wie ist der Roadmap-Stand?`) zeigt dagegen einen NEUEN, von der
+Extraktion strukturell nicht erkennbaren Verstoß: die Antwort ist syntaktisch
+und schemakonform gültiges JSON, aber `bezug.auftrag_id` trägt exakt
+`jarvis-chat-71e7d6c5-496b-4dde-972e-8a8861dca92a` — die eigene, von
+`starteJarvisChatLauf` erst beim Start dieses Laufs per `randomUUID()`
+erzeugte `auftragId` dieses selben Chat-Laufs. Diese ID steht an KEINER
+Stelle im Prompt (`baueJarvisAuftragstext` kennt sie nicht); sie kann nur
+über das dem Modell zur Verfügung stehende `lesend`-Werkzeugset
+(Read/Grep/Glob, kein `ausschlussmuster`-Ausschluss für `kontrollzustand/`)
+gefunden worden sein — `registriereAuftrag` schreibt die eigene Auftragsakte
+BEVOR der Lauf startet, ist also für das Modell bereits auf der Platte
+lesbar. Nicht abschließend mit einem Tool-Aufruf-Log belegt, aber die einzige
+Erklärung, die ohne Raten auskommt. Da `validiereErgebnisJarvis` nur die
+FORM von `bezug` prüft (genau eines von `auftrag_id`/`workitem`, nicht-leerer
+String), nicht ob die referenzierte ID real und verschieden vom eigenen Lauf
+ist, kann weder Schritt 1 (Extraktion) noch die bestehende Schemaprüfung
+diesen Fall erkennen — schemakonformes JSON ist für beide "gültig". Dasselbe
+Verstoßmuster (Selbstverweis) trat auch im historischen Chat-Verlauf bereits
+mehrfach auf (siehe die Turns `jarvis-chat-cecf0ccd-…`,
+`jarvis-chat-5daa4287-…`, `jarvis-chat-c2634172-…` in
+`kontrollzustand/lineage-chat-ai-workforce`), ist also kein Einzelfall dieses
+einen Laufs.
+
+**Das ist der in Punkt 5 des Auftrags benannte Fall** ("Vertragsverstöße, die
+die Extraktion NICHT abfängt"). Ob deshalb `MAX_THINKING_TOKENS=0`
+zurückgenommen wird, liegt bei Stefan — dieser Auftrag entscheidet das nicht
+selbst (kein Commit, keine stillschweigende Vertragsänderung). Zu bedenken:
+der Selbstverweis-Verstoß betrifft ausschließlich `bezug` (ein optionales,
+beschreibendes Feld ohne Downstream-Wirkung außer einer potenziell falschen
+Verknüpfung in einer künftigen Auswertung) und trat laut den historischen
+Chat-Einträgen bereits VOR Runde 1/2 auf — ein ursächlicher Zusammenhang mit
+`MAX_THINKING_TOKENS=0` ist damit nicht belegt, im Gegensatz zum
+Prosa+Codezaun-Muster (Turn 2), das Runde 1 bereits als mögliche Folge
+reduzierter interner Deliberation vermutet hatte.
+
+`npm run check`: **Exit 0**, `npm run test`: **596/596 grün** (2 einmalige,
+beim Retry grüne Fehlschläge während der vollen Kette — `EPERM` beim
+Aufräumen eines Testverzeichnisses und ein `ENOENT` im F14-WS-2-Prozessbaum-
+Kill-Test, beide isoliert und im Retry reproduzierbar grün, bekannte Fallen
+laut `CLAUDE.md`, kein Befund an diesem Diff).
+
+## Abbruch — manueller Abbruch-Test bleibt in der UI hängen (F-Nachfolgeauftrag)
+
+Auslöser: Stefans manueller Test (Nachricht gesendet, nach ~3s "Abbrechen"
+geklickt) — die UI blieb dauerhaft auf "Abbruch angefordert" stehen, löste
+nie auf. Server-seitig war der reale Lauf
+(`jarvis-jarvis-chat-170ed078-120a-44ae-9226-3218d540b2aa`) korrekt terminal
+(Checkpoint 2: `beendigungsart: ABBRUCH`, `grund: abgebrochen_manuell`).
+
+### 1) Diagnose
+
+`GET /api/laeufe/jarvis-jarvis-chat-170ed078-…` (real abgerufen, Leitstand
+Port 4173): `aktiv:false`, `laufStatus:{"status":"ABGESCHLOSSEN","ergebnis":"FEHLGESCHLAGEN",…}`.
+Beide Bedingungen aus `pruefeAusstehendenLauf` (`chat.js:378-380`:
+`detail.aktiv !== true` UND `laufStatus.status` in
+`{ABGESCHLOSSEN, KLAERUNG_ERFORDERLICH}`) sind für DIESEN Lauf bereits wahr —
+der Server-Vertrag war zu keinem Zeitpunkt das Problem.
+
+Ursache liegt rein im Client, `pruefeAusstehendenLauf` (`chat.js`, vor dem
+Fix): im nicht-erfolgreichen Zweig stand `renderVerlauf()`
+(Zeile 402) VOR `ausstehenderLauf = null` (Zeile 405). `renderVerlauf()`
+blendet den Abbrechen-Button nur aus, wenn `ausstehenderLauf === null`
+(Zeile 321: `chat-abbrechen-btn.hidden = ausstehenderLauf === null`) — zum
+Zeitpunkt dieses Renders war er das noch nicht. Nach dem Nullen folgte KEIN
+weiterer Render und `setzeAbbrechenZustand` (Text "Abbruch
+angefordert"/`disabled:true`, von `initAbbrechenBedienung` beim Klick
+gesetzt) wurde nie zurückgesetzt — der Button blieb sichtbar, disabled und
+mit dem alten Text stehen, obwohl `ausstehenderLauf` intern längst `null`
+war und das Senden-Feld selbst wieder entsperrt wurde
+(`setzeSendenSperre(false)` lief korrekt). Derselbe Reihenfolge-Fehler galt
+auch im ERFOLGREICH-Zweig (`ladeVerlauf()` rendert ebenfalls vor dem Nullen).
+
+### 2) Regression oder Altfehler
+
+Altfehler. `git diff HEAD -- public/leitstand/views/chat.js` zeigt: die
+betroffenen Zeilen (`renderVerlauf()`/`ausstehenderLauf = null`-Reihenfolge)
+sind unveränderter Kontext, nicht Teil des Diffs dieses Auftrags — die
+eigenen Änderungen (Latenzmessung, `visibilitychange`-Poll) fügen nur neue
+Zeitmarken hinzu, greifen in diese Reihenfolge nicht ein.
+`git diff HEAD -- scripts/leitstand-server.mjs` enthält keinen Treffer für
+`aktiv`/`laufStatus`-Bestimmung — der D13-Aktiv-Flag-Pfad ist unverändert.
+`prozessstart.ts` (spawn-Umbau) betrifft nur den Prozessstart, nicht die
+Terminal-/Aktiv-Ermittlung nach ABBRUCH.
+
+### 3) Fix
+
+Geändert: `public/leitstand/views/chat.js`, `pruefeAusstehendenLauf` — beide
+Zweige (ERFOLGREICH/nicht-erfolgreich) laufen jetzt in einen gemeinsamen
+Abschluss: `ausstehenderLauf = null` UND `setzeAbbrechenZustand('Lauf
+abbrechen', false)` VOR dem abschließenden `renderVerlauf()`. Der separate
+`renderVerlauf()`-Aufruf im nicht-erfolgreichen Zweig entfiel (jetzt Teil des
+gemeinsamen Abschlusses). Ergebnis: der Abbrechen-Button wird bei JEDER
+terminalen Auflösung zuverlässig ausgeblendet und sein Zustand
+(Text/Sperre) zurückgesetzt — unabhängig davon, ob der Lauf abgebrochen
+wurde oder nicht. Kein serverseitiger Eingriff nötig (Punkt 1 bestätigt: der
+Server lieferte bereits die richtige Auflösungsbedingung).
+
+Eine automatisierte Rot/Grün-Probe für den DOM-Zustand des Buttons selbst
+(`hidden`/`disabled`/`textContent`) ist mit dem bestehenden Test-Stack
+(`node:test`, kein DOM/kein `jsdom` im Projekt) ohne neue Testinfrastruktur
+nicht sinnvoll abbildbar — bewusste Zuschnitt-Entscheidung (CLAUDE.md-Regel
+5), nicht stillschweigend übergangen. Der Server-Vertrag, auf dem
+`pruefeAusstehendenLauf` seine Entscheidung aufbaut, ist bereits über
+`scripts/check-f14-abbruch.mjs` (Teil von `npm run check`) gegen echte
+Abbruch-/Timeout-Läufe abgesichert; der reale Nachweis unten (Punkt 4/5)
+prüft denselben Vertrag zusätzlich über die echte HTTP-Route, die `chat.js`
+tatsächlich abfragt.
+
+### 4/5) Realer Nachweis — 2 echte Chat-Abbrüche über die echte API
+
+Leitstand aus diesem Hauptrepo lief bereits (`http://127.0.0.1:4173`,
+PID aus vorherigem Abschnitt) — für diesen Nachweis NICHT neu gestartet
+(unverändertes Serververhalten, nur der Client wurde gefixt). Beide Abbrüche
+über dieselben Routen wie `chat.js` (`abbrichLauf`/`holeLaufDetail`):
+`POST /api/laeufe/<laufId>/abbrechen`, danach `GET /api/laeufe/<laufId>`
+real per `curl` abgefragt, bis `aktiv:false`. **Vorbehalt Systemlast**
+(gleiche Maschine wie Abschnitt c/Runde 2): 14 gleichzeitige `claude.exe`
+während beider Läufe (`tasklist`, real geprüft) — absolute Zeiten sind
+dadurch nicht mit einer unbelasteten Maschine vergleichbar; die Poll-Schleife
+selbst startete zusätzlich zwei `node`-Subprozesse pro Tick (eigene
+Mess-Overhead, kein `chat.js`-Verhalten), die im Feld "Poll-Overhead" unten
+ausgewiesenen Zahlen sind entsprechend höher als das reale 500ms-Poll-Delta
+von `chat.js`.
+
+| Test | Nachricht → Abbruch nach | `POST …/abbrechen` | `run_prepared` → Terminal-Checkpoint (Server, real) | Terminal-Ergebnis | `GET` zeigt `aktiv:false` (erster erfolgreicher Poll-Tick dieses Nachweis-Skripts) |
+|---|---|---|---|---|---|
+| A | ~2 s | `202 {"grund":"Abbruch angefordert"}` | 17,94 s (10:01:16,106Z → 10:01:34,043Z) | `ABGESCHLOSSEN/FEHLGESCHLAGEN`, `beendigungsart: ABBRUCH` (Checkpoint, s. u.) | 2. Tick dieses Skripts, `aktiv:false`/`status:ABGESCHLOSSEN` |
+| B2 | ~8 s | `202 {"grund":"Abbruch angefordert"}` | 41,77 s (10:02:46,231Z → 10:03:28,000Z) | `ABGESCHLOSSEN/ERFOLGREICH` (Prozess lief trotz Abbruchsignal bis zur eigenen Fertigstellung durch — reale Race, kein Bug dieses Auftrags) | 2. Tick dieses Skripts, `aktiv:false`/`status:ABGESCHLOSSEN` |
+
+Test A endete real als `ABBRUCH` (Checkpoint 2:
+`{"art":"terminal","daten":{"art":"MANUELL","beendigungsart":"ABBRUCH","grund":"abgebrochen_manuell"},"ergebnis":"FEHLGESCHLAGEN"}`).
+Test B2 (Nachricht bewusst umfangreicher gewählt, um den Lauf über die
+8s-Marke hinaus laufen zu lassen) endete trotz akzeptiertem Abbruch
+(`202`) als `ERFOLGREICH` — der zugrunde liegende Prozess hatte sein
+Ergebnis offenbar bereits geschrieben, bevor das Abbruchsignal griff; auch
+das ist für den hier geprüften Vertrag ausreichend, weil `chat.js`
+`ABGESCHLOSSEN` so oder so terminal auflöst (Zeile 380). In BEIDEN Fällen
+lieferte `GET /api/laeufe/<laufId>` innerhalb der von diesem Skript
+beobachteten Zeitgrenze (< 1 Minute, real gemessen, s. o. Vorbehalt) ein
+`aktiv:false` mit einem `laufStatus.status`, den `pruefeAusstehendenLauf`
+auflöst — der Server-Vertrag hält in beiden real getesteten Timing-Fällen.
+Der eigentliche, jetzt gefixte Client-Bug (Button bleibt hängen) ist über
+diese API-Nachweise NICHT sichtbar (reiner DOM-Zustand) — der Browser-Klicktest
+macht Stefan wie vereinbart selbst.
+
+### `npm run check` nach dem Fix
+
+Erster Lauf: **Exit 1** — `scripts/check-f10-leitstand.mjs` (F14 WS-4 AK7,
+unverändert seit HEAD, NICHT Teil dieses Fixes) schlug mit 404 statt 202 fehl
+(Abbruch-Endpunkt eines Mock-Laufs mit fest verdrahteten 20ms/120ms-Zeitgrenzen
+— unter der bekannten Systemlast dieser Maschine, 14 gleichzeitige `claude.exe`
+während des gesamten Auftrags, real per `tasklist` geprüft). In Isolation
+**5-mal in Folge reproduziert** (nicht nur einmalig) — per Diff-Review
+(`git diff HEAD -- scripts/leitstand-server.mjs`) bestätigt: keine der
+Änderungen dieses Auftrags berührt den generischen `/api/laeufe`-Start- oder
+Abbruch-Pfad, nur `starteJarvisChatLauf`s Jarvis-Chat-spezifischen
+`nachLauf`-Callback (Runde 2) und `pruefeStartauftrag`s Validierung — beides
+für diesen Testfall nicht auf dem Codepfad. `npm run test` separat zeigte
+zusätzlich einen zweiten, für sich isoliert grünen Fehlschlag
+(`claude-code-gateway.test.ts`, F14 WS-2 Prozessbaum-Kill-Test) — derselbe
+bereits in Runde 2 dieses Dokuments dokumentierte Flaky-Fall. Beide Fallen
+laut `CLAUDE.md` ("Test scheitert einmalig … erst wiederholen"), auch wenn
+der erste diesmal 5 statt 1 Wiederholung brauchte, um wieder grün zu laufen.
+
+Zweiter voller Lauf (ohne Codeänderung dazwischen): **Exit 0**, `npm run test`:
+**596/596 grün**. Kein Befund an `chat.js` oder an einer der übrigen
+Änderungen dieses Auftrags.
+
+## Abbruch Runde 2 — warum ein Abbruch wirkungslos durchkam
+
+Auslöser: Stefans Browser-Test nach dem chat.js-Fix aus Runde 1 — "Lauf abbrechen"
+geklickt, der Lauf lief trotzdem zu Ende, die Antwort kam. Dazu
+`check-f10-leitstand.mjs` F14 WS-4 AK7 mit 404 statt 202, 5/5 in Isolation.
+
+### 1) Diagnose
+
+**Nicht** die Signalkette. Real geprüft, Schritt für Schritt: der Abbruch-Endpunkt
+(`scripts/leitstand-server.mjs:6021-6037`) löst `laufAktivAbortController.abort()` aus;
+`starteLaufUndVergiss` (Zeile 3262) reicht `abbruchSignal` an `fuehreAufgabeDurch`, der
+Execution-Controller (Zeile 344/366) an `starteGateway`, das an `starteProzess`
+(`src/claude-code-gateway/index.ts:395`), das es als `signal` an `spawn` gibt
+(`prozessstart.ts:257`). Jede Stufe real belegt: eine Sonde direkt auf `starteProzess`
+mit echtem `claude.exe` und Abbruch nach 8 s lieferte `beendigungsart: 'ABBRUCH'`,
+`exitCode: null`, aufgelöst 1,1 s nach dem Abbruch. Eine zweite Sonde auf `spawn`
+selbst zeigte, dass Node 24 auf Windows das Signal in **jeder** Phase umsetzt (Abbruch
+vor dem Spawn, nach 500 ms, nach 1500 ms — jedes Mal `ABORT_ERR` + `close(SIGTERM)`).
+
+**Die Ursache ist ein Zeitfenster, kein kaputter Draht.** `laufAktiv` bleibt vom
+Laufstart bis zum Ende der **Nachbereitung** true (Klassifikation, Laufakte,
+Lineage-Eintrag — `starteLaufUndVergiss`s `.then()`, Zeile 3291). Der
+Werkzeugprozess ist zu diesem Zeitpunkt aber längst beendet. Ein Abbruch, der in
+dieses Fenster fällt, findet `laufAktiv === true` und `laufId === laufAktivLaufId` vor,
+antwortet deshalb mit **202 "Abbruch angefordert"** — und läuft danach ins Leere: es
+gibt keinen Prozess mehr zu töten, der Lauf endet regulär `ERFOLGREICH`, die Antwort
+erscheint. Für den Menschen sieht das exakt so aus, wie Stefan es beschrieben hat.
+
+Real reproduziert (Lauf `jarvis-jarvis-chat-cef15143-…`, 21.09.2026): Abbruch nach
+12,19 s → **202**, terminal **0,495 s später** `ABGESCHLOSSEN/ERFOLGREICH`,
+`exitCode 0`, `stdoutLaenge 3362`. Der Abbruch traf die Nachbereitung, nicht den Prozess.
+
+Dasselbe Muster in Stefans drei Läufen: `duration_ms` der Modellarbeit 10.703 / 4.547 /
+5.602 ms, Gesamtdauer `run_prepared`→Terminal aber 28,5 / 17,8 / 20,3 s. Zwischen
+Prozessende und Terminal-Checkpoint liegen also zweistellige Sekundenbeträge — ein
+weites Fenster, in dem ein Abbruch quittiert wird, ohne zu wirken.
+
+### 2) Regression? Nein.
+
+`git worktree add ../ai-workforce-main-check main` + `npm ci`, dort
+`node scripts/check-f10-leitstand.mjs` 5×: **Exit 0, 0, 0, 0, 0**. Derselbe Test auf
+diesem Branch, unmittelbar danach unter denselben Bedingungen ebenfalls 5×:
+**Exit 0, 0, 0, 0, 0**. Die vorher beobachteten 5/5 Fehlschläge waren **nicht**
+codebedingt, sondern ein Wettlauf im Test selbst: der Block gibt dem Mock eine feste
+Frist von 120 ms und braucht für seine eigene Vorbereitung (zwei Wirkungsmarken auf
+Platte, vier HTTP-Anfragen) idle real ~66 ms — unter CPU-Last (zeitweise 14-16
+gleichzeitige `claude.exe` auf dieser Maschine) überschreitet das die 120 ms, der Lauf
+ist beim Abbruch bereits beendet, der Endpunkt antwortet **korrekt** mit 404, und der
+Test meldet einen Befund. Das ist derselbe Rennentyp wie der Produktionsfehler — was
+die Fehldeutung "derselbe Fehler" erklärt, aber keine Regression dieses Branches ist.
+
+**Korrektur zu Runde 1 dieses Dokuments:** dort wurde derselbe Fehlschlag als
+"bekannte Falle, im Retry grün" abgehakt. Das war zu schnell — er war reproduzierbar
+und hatte eine benennbare Ursache.
+
+### 3) Fix
+
+- `scripts/check-f10-leitstand.mjs` (AK7): der Mock endet nicht mehr nach fester Frist,
+  sondern erst, wenn der Test ihn freigibt (`gibLaufFrei()`). Damit prüft der Block
+  deterministisch den Abbruch eines **laufenden** Laufs, statt gegen die eigene
+  Vorbereitung zu rennen.
+- `scripts/check-f14-abbruch.mjs`: neuer Block **(d)** — Abbruch über genau den Pfad der
+  Chat-UI (`POST /api/chat` → `POST /api/laeufe/<laufId>/abbrechen` im laufenden
+  Prozess) → 202 und terminal `ABBRUCH`/`abgebrochen_manuell`. Der bisherige Block (b)
+  deckte nur den Start über `POST /api/laeufe` ab, also einen anderen
+  Registrierungspfad derselben D13-Belegung.
+- `public/leitstand/views/chat.js`: ein 202 heißt "angenommen", nicht "hat gewirkt".
+  Endet ein Lauf, für den ein Abbruch angefordert wurde, trotzdem `ERFOLGREICH`, zeigt
+  die View jetzt sichtbar **"Abbruch kam zu spät: die Antwort war bereits fertig, der
+  Lauf wurde nicht abgebrochen."** statt den wirkungslosen Abbruch zu verschlucken.
+
+Bewusst **nicht** geändert: der Abbruch tötet keinen bereits beendeten Prozess
+rückwirkend, und eine fertige, real erzeugte Antwort wird nicht nachträglich
+weggeworfen. Das Fenster selbst schrumpft nur, wenn die Nachbereitung schneller wird —
+das ist Messgegenstand (Abschnitt 4), kein Umbau in diesem Auftrag.
+
+### 4) Absende-Latenz (nur gemessen)
+
+Gegen den laufenden Leitstand (Port 4173), je 3 Messungen: `POST /api/chat` bis zur
+**202-Antwort: 19 / 20 / 57 ms** (`GET /api/chat`, Verlauf laden: 35 / 19 / 14 ms).
+Server-Zeitmarken (`LEITSTAND_ZEITMESSUNG=1`, eigene Instanz) für dieselbe Strecke
+`request_eingang` → 202, drei Läufe:
+
+| Posten | Lauf 1 | Lauf 2 | Lauf 3 |
+|---|---:|---:|---:|
+| `request_eingang` → `verlauf_geladen` | 2,6 ms | 0,3 ms | 0,6 ms |
+| → `ressourcen_worker_aufgeloest` | 3,1 ms | 2,3 ms | 2,8 ms |
+| → `auftrag_registriert` (dann 202) | 5,7 ms | 4,2 ms | 4,9 ms |
+| **Summe Eingang → 202** | **11,4 ms** | **6,8 ms** | **8,3 ms** |
+
+Das Absenden selbst ist also **nicht** die wahrgenommene Wartezeit — größter Posten
+darin ist `auftrag_registriert` (Disk-I/O, ~4-6 ms). Die Sekunden liegen dahinter:
+`auftrag_registriert` → `kontextpaket_startfreigabe` 254 / 407 / 244 ms, danach der
+eigentliche Werkzeugprozess (real `claude.exe`: `duration_ms` 4,5-10,7 s plus
+CLI-Start/-Ende, F-501). Der Client-Vorfilter kommt als Erklärung nicht in Frage: er
+kehrt ohne Musterfall sofort und ohne Serverkontakt zurück (`jarvis-vorfilter.js:93-95`).
+
+### 5) Realer Nachweis — 3 echte Chat-Abbrüche über den UI-Pfad
+
+Gegen den laufenden Leitstand (Port 4173), je `POST /api/chat` → warten →
+`POST /api/laeufe/<laufId>/abbrechen` → `GET /api/laeufe/<laufId>` bis terminal:
+
+| Abbruch nach | HTTP | Terminal | `exitCode` | Zeit Abbruch → terminal |
+|---:|---|---|---:|---:|
+| 2,16 s | 202 | `ABGESCHLOSSEN/FEHLGESCHLAGEN` (ABBRUCH) | null | **1,37 s** |
+| 6,22 s | 202 | `ABGESCHLOSSEN/FEHLGESCHLAGEN` (ABBRUCH) | null | **1,18 s** |
+| 12,10 s | 202 | `ABGESCHLOSSEN/FEHLGESCHLAGEN` (ABBRUCH) | null | **0,81 s** |
+
+Alle drei trafen den laufenden Prozess und wirkten. Zum Vergleich der davor
+reproduzierte Fehlfall (Abbruch fiel in die Nachbereitung): 202, aber
+`ABGESCHLOSSEN/ERFOLGREICH`, `exitCode 0`, 0,50 s bis terminal — dieser Fall ist es,
+den die UI seit diesem Fix sichtbar meldet. Der Browser-Klicktest bleibt bei Stefan.
+
+## Aufschlüsselung — wohin die Zeit eines Chat-Turns wirklich geht
+
+Anlass: die Aussage aus "Abbruch Runde 2" ("zwischen Prozessende und
+Terminal-Checkpoint liegen zweistellige Sekundenbeträge") war **abgeleitet**, nicht
+gemessen — aus (`run_prepared`→Terminal) minus `duration_ms`. Diese Rechnung schlägt
+CLI-Start und -Ende, die INNERHALB des Werkzeugprozesses liegen, fälschlich der
+Nachbereitung zu. Jetzt direkt gemessen.
+
+**Ergänzte Zeitmarken** (nur bei `LEITSTAND_ZEITMESSUNG=1`, sonst No-op wie bisher;
+eine Ausgabezeile je Lauf unverändert): `rohstrom_geschrieben` (trennt den
+Rohstrom-Schreibvorgang vom Laufakte-Lineage-Schreibvorgang,
+`src/claude-code-gateway/index.ts`), `klassifikation_begonnen` und
+`terminal_checkpoint_geschrieben` (`src/execution-controller/index.ts` — die
+Klassifikation schreibt die terminale Wirkungsmarke über F1B),
+`chat_nachbereitung_begonnen`, `laufakte_geladen`, `chat_eintrag_geschrieben` bzw.
+`chat_fehlereintrag_geschrieben` (`scripts/leitstand-server.mjs`). Die bisherige Marke
+`lineage_chat_eintrag_geschrieben` heißt jetzt `chat_eintrag_geschrieben`.
+
+**Aufbau:** Leitstand aus diesem Hauptrepo mit `LEITSTAND_ZEITMESSUNG=1` neu gestartet
+(Startvorlage `startvorlagen/beispielprojekt.json`, Worker `claude-code`), 5 echte
+Jarvis-Turns mit kurzen, verschiedenen Fragen, **keine Abbrüche**, alle 5 terminal
+`ERFOLGREICH`/`exitCode 0`. Zu Beginn liefen **16 `claude.exe`** auf dieser Maschine
+(`tasklist`, real geprüft) — dieselbe Last-Situation wie in den Runden davor.
+
+| Turn | a) Eingang→Prozessstart | b) Prozess-Wandzeit | c) `duration_ms` (CLI-intern) | b−c (CLI-Start/-Ende) | d) Prozessende→Terminalmarke | e) Terminalmarke→Chat-Eintrag | f) gesamt |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 282 ms | 26.698 ms | 23.006 ms | **3.692 ms** | **21 ms** | 25 ms | 27.026 ms |
+| 2 | 207 ms | 8.317 ms | 5.230 ms | **3.087 ms** | **14 ms** | 22 ms | 8.561 ms |
+| 3 | 363 ms | 18.927 ms | 15.718 ms | **3.209 ms** | **10 ms** | 8 ms | 19.308 ms |
+| 4 | 226 ms | 12.714 ms | 9.652 ms | **3.062 ms** | **17 ms** | 9 ms | 12.966 ms |
+| 5 | 374 ms | 5.951 ms | 2.727 ms | **3.224 ms** | **13 ms** | 6 ms | 6.344 ms |
+
+Größte Einzelposten in **d)** (Nachbereitung bis Terminalmarke): Klassifikation →
+Terminalmarke 5–12 ms, Rohstrom → Laufakte-Lineage 3–7 ms, Prozessende → Rohstrom
+1–4 ms, Laufakte → Klassifikationsbeginn 0 ms. In **e)**: Chat-Eintrag schreiben
+3–8 ms, Terminalmarke → Nachbereitungsbeginn 2–12 ms, Laufakte laden 1–4 ms.
+
+### Fazit
+
+**b−c dominiert, d ist vernachlässigbar:** die Nachbereitung nach dem Prozessende
+kostet 10–21 ms (plus 6–25 ms bis zum Chat-Eintrag), während allein CLI-Start und
+-Ende innerhalb des Werkzeugprozesses bei bemerkenswert konstanten **3,0–3,7 s** je
+Turn liegen — bei Turn 5 mehr als die gesamte Modellarbeit (2,7 s).
+
+### Korrektur an "Abbruch Runde 2"
+
+Die dortige Aussage "zwischen Prozessende und Terminal-Checkpoint liegen
+zweistellige Sekundenbeträge" ist damit **widerlegt** — real sind es Millisekunden.
+Das Fenster, in dem ein Abbruch mit 202 quittiert wird, ohne wirken zu können, ist
+entsprechend nur einige Dutzend Millisekunden breit, nicht Sekunden. Der dort
+dokumentierte reale Fehlfall (Abbruch nach 12,19 s → 202 → `ERFOLGREICH` 0,495 s
+später) bleibt als Beobachtung bestehen, seine Erklärung über ein weites
+Nachbereitungsfenster trägt aber nicht: plausibler ist ein Wettlauf unmittelbar am
+Prozessende (Prozess hatte seine Ausgabe bereits vollständig geschrieben und beendete
+sich, bevor das Signal wirkte). **Nicht abschließend geklärt** — dafür fehlt eine
+Messung, die den Abbruchzeitpunkt gegen `prozess_beendet` desselben Laufs stellt.
+Der UI-Fix (sichtbarer Hinweis "Abbruch kam zu spät") bleibt davon unberührt richtig,
+weil er den beobachtbaren Ausgang meldet, nicht die Ursache.
+
+**Für Jarvis Live (persistente Sitzung) heißt das:** die ~3,1 s CLI-Start/-Ende je
+Turn sind der Posten, den eine persistente Sitzung einspart; an der Nachbereitung
+(~30 ms) und der Modellarbeit selbst ändert sie nichts.
+
+## Zustand-Poll — warum der Leitstand "ewig lädt" und der Abbruch nicht wirkt
+
+Auslöser: Stefans Netzwerk-Konsole (21.09.2026, ~11:58) — `GET .../zustand` → 200,
+88,57 kB, Wartezeit **109.001 ms und 110.314 ms, also 109 s und 110 s** (nicht 109/110 ms —
+der Punkt ist der Tausendertrenner), **weitere zustand-Anfragen ohne Status in der
+Warteschlange**. Dazu: Leitstand lädt ewig, Senden ≥10 s, "Lauf abbrechen" wirkt nicht —
+während dieselben Aufrufe per API in 19–57 ms durchgingen.
+
+### 1a) Route und Messung im Leerlauf
+
+Pfad: **`GET /api/zustand`** (`scripts/leitstand-server.mjs:4081`, Client
+`public/leitstand/api.js:72` über `mitPraefix('/zustand')`).
+
+Erste Messung gegen den damals laufenden Leitstand (10× hintereinander, 88.389 B je
+Antwort): **13,98 / 35,80 / 45,22 / 13,05 / 21,37 / 2,13 / 2,20 / 2,07 / 1,98 / 2,25 s**.
+Das fallende Muster ist die Signatur einer sich leerenden **Warteschlange**: die curl-
+Aufrufe standen hinter dem Stapel, den der offene Browser-Tab erzeugt hatte. Gegen einen
+frisch gestarteten Server ohne Stapel kostete dieselbe Route **0,08–0,22 s**.
+
+### 1b) Während eines aktiven Jarvis-Chat-Laufs
+
+10 Messungen mit laufendem Chat-Lauf: **0,12–0,31 s** (88.874–89.978 B). Ein aktiver
+Lauf verteuert die Route also kaum — er war nie die Ursache.
+
+### 1c) Serverseitige Aufschlüsselung
+
+Bestand dieses Repos: **654 Verzeichnisse** unter `kontrollzustand/`, 912 Dateien, alle
+654 mit `checkpoints/`-Unterverzeichnis; davon 164 echte Lauf-Verzeichnisse, 486
+`lineage-*`, 16 Workflows.
+
+Alles **synchron** auf dem Event-Loop: `sammleLaeufe` **70–81 ms**, `sammleWorkflows`
+**2 ms** (per Instrumentierung gemessen). `sammleLaeufe` iteriert ALLE 654 Verzeichnisse
+und bildet je Verzeichnis **zwei** Änderungsstempel (eigene Kette +
+`lineage-entscheidung-<laufId>`), jeder bisher aus `existsSync` + `readdirSync().length`
++ `statSync().mtimeMs` — rund 3.900 synchrone Dateisystemaufrufe pro Abfrage, **auch
+wenn jeder Lauf im Cache lag**. Isoliert nachgemessen über den echten Bestand: die
+Stempelbildung allein kostet **79,1 ms** — praktisch die gesamten ~75 ms von
+`sammleLaeufe`.
+
+### 1e) Poll-Frequenz und Überlappung — die eigentliche Ursache
+
+`public/leitstand/zustand.js:89`: `setInterval(pollZustand, 2000)` feuerte **unbedingt**.
+Ein Überlappungsschutz existierte nicht: dauerte eine Abfrage länger als 2 s, startete
+der nächste Tick trotzdem. Die Anfragen stapeln sich dann unbegrenzt (HTTP/1.1, 6
+Verbindungen je Host, Rest in der Browser-Warteschlange — genau das "ohne Status" in
+Stefans Konsole). Und weil der Server das Aggregat **synchron** baut, blockiert jede
+wartende Zustandsabfrage `POST /api/chat` und `POST /api/laeufe/<id>/abbrechen`
+dahinter.
+
+**Ehrliche Lücke in dieser Kette:** ein Stapel wächst nur, wenn eine EINZELNE Abfrage
+≥ 2 s braucht. Frisch gestartet braucht sie 0,08–0,3 s — der Überlappungsschutz allein
+erklärt den Einstieg in den Stapel also NICHT. Die letzten fünf curl-Werte gegen den
+alten Prozess (1,98–2,25 s, nach Leerung der Warteschlange) liegen genau an der
+2-Sekunden-Schwelle und sind 10–20× langsamer als frisch. Warum ein länger laufender
+Leitstand-Prozess so viel langsamer antwortet, ist **offen** und als **F-556** notiert —
+der Überlappungsschutz verhindert die Eskalation, beseitigt aber nicht ihre Ursache.
+
+### 1d) Regression? Nein.
+
+Worktree von `main` (`git worktree add`, `npm ci`), **denselben** `kontrollzustand/`-
+Bestand hineinkopiert (654 Verzeichnisse, verifiziert), Leitstand dort auf Port 4180,
+10× dieselbe Messung: **0,080–0,283 s** (Median ~0,118 s) — praktisch identisch mit dem
+Branch vor dem Fix. Die Kosten der Route und der fehlende Überlappungsschutz sind
+**Bestand von main**, keine Regression dieses Branches. (`zustand.js` war auf diesem
+Branch bis zu diesem Fix unverändert.) Abweichung vom Auftrag: der Worktree-Pfad
+`..\claude-worktrees\...` scheiterte reproduzierbar mit `fatal: Could not reset index
+file to revision 'HEAD'`; genutzt wurde `..\ai-workforce-main-check` (dort erfolgreich).
+
+### 2) Fix
+
+- **`public/leitstand/zustand.js`** (Ursache): ein laufender Poll-Tick wird in
+  `laufenderPoll` gehalten; ein weiterer Anstoß **läuft am selben Tick mit**, statt einen
+  zweiten Abruf zu starten. Bewusst Mitbenutzen statt Überspringen, damit `pollJetzt()`
+  seine Zusage behält, erst zurückzukehren, wenn wirklich ein Zustand geholt wurde.
+  Kein neuer `setInterval` (AK3 unberührt, weiterhin genau einer).
+- **`scripts/leitstand-server.mjs`** (Kosten): `leseCheckpointVerzeichnisStempel` nutzt
+  `statSync(..., { throwIfNoEntry: false })` statt `existsSync` + `statSync` — der
+  Nichtexistenz-Fall ist derselbe Systemaufruf statt ein zusätzlicher. Die Dateianzahl
+  bleibt Teil des Stempels (ohne sie hinge die Invalidierung allein an der
+  Verzeichnis-mtime). Stempelbildung **79,1 ms → 52,0 ms** über den echten Bestand.
+
+### 3) Gate
+
+`scripts/check-f20-zustand-poll.mjs`, zwei neue Blöcke:
+- **(d)** `GET /api/zustand` gegen den **realen** `kontrollzustand/`-Bestand dieses Repos,
+  **Median aus 7 Abrufen < 300 ms** (Median statt Maximum: ein einzelner Ausreißer durch
+  fremde CPU-Last ist kein Befund an dieser Route — diese Falle steht in `CLAUDE.md` und
+  hat in diesem Repo real schon zu einer Fehldeutung geführt).
+- **(e)** Verhaltensprüfung des Überlappungsschutzes: `zustand.js` wird mit gestubbtem
+  `fetch`/`document` real importiert, drei gleichzeitige Anstöße müssen **genau einen**
+  Abruf auslösen, und nach Abschluss muss der nächste Tick wieder abrufen (Sperre bleibt
+  nicht hängen).
+
+**Rot-Fall real nachgewiesen:** mit ausgebautem Überlappungsschutz meldet (e)
+`drei gleichzeitige Poll-Anstöße lösten 3 Abrufe aus, erwartet genau 1`; mit Schutz grün.
+Ehrliche Einordnung von (d): der ursprüngliche Ausfall (bis 45 s) entstand durch den
+Stapel, nicht durch die Einzelabfrage — (d) wäre davor **nicht** rot gewesen (Median
+~118 ms). (d) sichert die Einzelkosten gegen künftiges Wachstum, (e) sichert die
+tatsächliche Ursache.
+
+### 4) Vorher/Nachher (identischer Bestand, 654 Verzeichnisse)
+
+| Messung | Vorher (main, Port 4180) | Nachher (Branch mit Fix) |
+|---|---|---|
+| `GET /api/zustand`, 10× | 0,080–0,283 s, Median ~0,118 s | **0,050–0,171 s, Median ~0,057 s** |
+| Stempelbildung isoliert | 79,1 ms | **52,0 ms** |
+| Überlappende Polls | unbegrenzt (Stapel bis 45 s je Abfrage) | **keine** (3 Anstöße → 1 Abruf) |
+| Gate-Median (7 Abrufe) | — | **57 ms < 300 ms** |
+
+### 5) Langlauf-Messung zu F-556 (real, 21.09.2026)
+
+Gemessen gegen den seit dem Fix laufenden Leitstand (PID 3028, `LEITSTAND_ZEITMESSUNG=1`),
+**Prozessalter 11,5 min**, RSS **95,3 MB** (Private 76,7 MB), CPU-Zeit gesamt **284,7 s**
+(= ~41 % eines Kerns im Dauerbetrieb), **16 `claude.exe`** auf der Maschine.
+
+10× `GET /api/zustand`: **2,44 / 4,58 / 3,32 / 4,16 / 4,28 / 5,18 / 4,57 / 4,73 / 2,98 /
+3,13 s** — also **deutlich > 1 s**, gegenüber 0,050–0,171 s desselben Codes unmittelbar
+nach dem Start.
+
+**Eingrenzung.** Entscheidend ist ein Gegentest: ein FRISCHER node-Prozess, der zeitgleich
+und auf demselben Bestand exakt dieselbe Dateisystemarbeit macht, brauchte **78,1 ms**
+(gegenüber 52,0 ms bei ruhiger Maschine) — die Systemlast verteuert die FS-Arbeit also nur
+um Faktor ~1,5, nicht um Faktor 30–60. Gleichzeitig zeigte `Get-NetTCPConnection` auf Port
+4173 **11 bzw. 26 gleichzeitig offene Verbindungen**: Stefans Browser-Tab läuft noch mit dem
+**ungepatchten** Client und stapelt weiter Polls. Die beobachteten 2,4–5,2 s passen
+quantitativ zu (Warteschlangentiefe × Servicezeit) — ~26 × ~0,15 s ≈ 3,9 s.
+
+**Daraus folgt:** die Einzel-Servicezeit des alten Prozesses ist mit dieser Messung **nicht**
+bestimmt, weil die Warteschlange nie leer war. Der gemessene Wert > 1 s ist Wartezeit, nicht
+belegte Rechenzeit je Abfrage. Ob es ZUSÄTZLICH einen Alterungsanteil gibt (Cache-Wachstum,
+GC), bleibt **offen** — dafür bräuchte es eine Messung ohne jeden anderen verbundenen
+Client. F-556 bleibt damit offen; die naheliegendste Erklärung ist derzeit der
+Warteschlangenstau durch den noch nicht neu geladenen Browser-Tab, nicht Prozessalterung.
+RSS 95 MB nach 11,5 min zeigt kein Leck-Muster.
+
+## Hängender Abruf im Browser (F-561) — Abbruch löst in der UI nicht auf
+
+Befund aus Stefans Browser-Test (21.09.2026, 12:44–12:45 UTC, mit dem **gefixten** Client):
+Laden und Senden schnell, aber "Lauf abbrechen" löste die UI nicht auf. In der
+Netzwerk-Konsole hingen `GET .../jarvis-jarvis-chat-f16a63dc-…` (holeLaufDetail) und ein
+`GET .../zustand` **ohne Status**; andere zustand-Abrufe: 1.769 / 1.669 ms (89 kB).
+Initiator der Fetches laut Konsole **`main.js:5747`**, nicht `api.js` — dasselbe `main.js`
+schickt XHRs an `ff.kis.v2.scr.kaspersky-labs.com`.
+
+### a) Server-Log 12:44:45–12:45:30 UTC
+
+Der Lauf `jarvis-jarvis-chat-f16a63dc-…` ist serverseitig sauber und vollständig
+abgebrochen worden: `run_prepared` 12:44:47.952Z, Laufakte 12:44:57.783Z, terminale
+Wirkungsmarke 12:44:57.813Z, `laufstatus_festgestellt` ABGESCHLOSSEN 12:44:57.822Z. Die
+Zeitmessungszeile endet erwartungsgemäß bei `terminal_checkpoint_geschrieben` (kein
+Chat-Eintrag, weil der Lauf ABBRUCH und nicht ERFOLGREICH war). `POST …/abbrechen` ist
+also angekommen und hat gewirkt — **rund 10 s vor** dem Zeitpunkt, an dem die UI noch
+immer wartete. Einschränkung: der Leitstand führt kein Zugriffs-Log, der genaue
+Antwortzeitpunkt der GET-Detailanfrage ist daraus **nicht** ablesbar.
+
+### b) Dieselben Routen jetzt per curl (10×)
+
+| Route | Messwerte | Größe |
+|---|---|---|
+| `GET /api/zustand` | 0,053–0,123 s | 89.843 B |
+| `GET /api/laeufe/<laufId>` (Detailroute) | **0,0065–0,0537 s** | 1.917 B |
+
+Zum Vergleich der Browser: 1,669–1,769 s für dieselbe zustand-Route, und die Detailroute
+ohne Status hängend.
+
+### c) Einordnung: es hing im Browser, nicht am Server
+
+Der Server beantwortet die Detailroute in **unter 54 ms** und liefert 1,9 kB. Ein Hänger
+"ohne Status" bei gleichzeitig 6–54 ms Serverantwort ist serverseitig nicht erklärbar;
+zusammen mit dem Initiator `main.js` (statt `api.js`) und den Kaspersky-XHRs ist die
+naheliegende Erklärung ein injiziertes Skript, das sich um `window.fetch` legt. Das liegt
+**außerhalb dieser Anwendung** — sie kann es nicht reparieren, aber sie darf nicht daran
+stehen bleiben.
+
+### Fix (F-561 + F-560)
+
+- **`public/leitstand/api.js`**: `holeLaufDetail` und `holeZustand` laufen mit
+  `AbortSignal.timeout(5000)`. Ein hängender Abruf endet damit nach 5 s als Fehlschlag;
+  der Chat-Poll zählt den Tick als gescheitert und versucht es 500 ms später erneut, der
+  Zustands-Poll gibt `laufenderPoll` wieder frei. 5 s ist großzügig gegenüber den real
+  gemessenen < 0,2 s und kurz genug, dass eine Auflösung nicht spürbar hängt.
+- **`public/leitstand/zustand.js`** (F-560): jeder Detail-Auffrischer einzeln gefangen
+  (Muster der `abnehmer`-Schleife). Ein Wurf beendete `fuehrePollTickAus` sonst mit einer
+  Ablehnung — die an `laufenderPoll` gehängte Nachlauf-Kette läuft aber nur im
+  Erfüllungsfall an, ein einziger werfender Auffrischer hätte den angeforderten Nachlauf
+  dauerhaft ausfallen lassen.
+
+**Gates** in `scripts/check-f20-zustand-poll.mjs`, beide Rot-Fälle real nachgewiesen:
+- **(g)** nie antwortender fetch-Stub → Tick endet am Zeitlimit, Schleife läuft weiter und
+  löst mit der nächsten echten Antwort auf. Ohne Zeitlimit: *"ließ den Poll-Tick auch nach
+  8 s noch hängen"*.
+- **(f)** werfender Detail-Auffrischer → Tick und Nachlauf überleben (2 Abrufe, keine
+  Ablehnung). Ohne `try/catch`: *"ließ pollJetzt() mit einer Ablehnung enden"*.
+
+## Status
+- [ ] Freigegeben
+- [x] Freigegeben mit Hinweisen
+- [ ] Nicht freigegeben
+- [ ] Blockiert
+
+## Nächster sinnvoller Schritt
+Stefan: 1) Browser-Klicktest für den Abbruch-Fix (Nachricht senden, nach
+~3s abbrechen — Button muss jetzt ausgeblendet werden statt hängen zu
+bleiben). 2) Befund 4 entscheiden (MAX_THINKING_TOKENS=0 behalten oder
+zurücknehmen — der belegte Zusammenhang ist Prosa+Codezaun, nicht der
+bezug-Selbstverweis). Danach aus Runde 1 weiterhin offen: Schritt d)
+(Browser-Turns) nachliefern, drei Findings aus Runde 1 anlegen, plus ein
+neues Finding für den bezug-Selbstverweis (Befund 4). Freigabe/Commit liegt
+bei Stefan — dieser Auftrag committet nichts selbst.
