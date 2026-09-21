@@ -28,9 +28,12 @@ WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198), F32 (Verbrauch & Kontingent)
 Leitstand noch nicht begonnen, siehe `features/F32/feature.md`), F33
 (Projektkontext & Roadmap) `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien +
 Context-Builder-Einspeisung, `features/F33/feature.md`), F40 (Jarvis-
-Latenz: Streaming + Lagebild) `IN_ARBEIT` (WS-0 Spike #203, WS-1 Streaming-
-Reaktion auf die result-Zeile #204, WS-2 Lagebild-Einspeisung,
-`features/F40/feature.md`) (Stand 21.09.2026).
+Latenz: Streaming + Lagebild) `FEATURE_GATE` (alle vier Workstreams
+gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
+result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
+Auto-Memory-Sperre für jarvis/router #207 — eigener Feature-Review-Pass
+und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
+21.09.2026).
 
 ## Offene P1-Findings
 

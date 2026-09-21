@@ -27,9 +27,12 @@ WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198), F32 (Verbrauch & Kontingent)
 Leitstand noch nicht begonnen, siehe `features/F32/feature.md`), F33
 (Projektkontext & Roadmap) `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien +
 Context-Builder-Einspeisung, `features/F33/feature.md`), F40 (Jarvis-
-Latenz: Streaming + Lagebild) `IN_ARBEIT` (WS-0 Spike #203, WS-1 Streaming-
-Reaktion auf die result-Zeile #204, WS-2 Lagebild-Einspeisung,
-`features/F40/feature.md`) (Stand 21.09.2026).
+Latenz: Streaming + Lagebild) `FEATURE_GATE` (alle vier Workstreams
+gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
+result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
+Auto-Memory-Sperre für jarvis/router #207 — eigener Feature-Review-Pass
+und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
+21.09.2026).
 
 ## Erledigt
 
@@ -436,11 +439,14 @@ Feature unter `features/F2x/`):
   Akte `features/F33/feature.md`, Status `IN_ARBEIT` (WS-0 Spike + WS-1
   erledigt, WS-2 Projektion/UI offen). Nach F17 (Rollenvertrag), F25
   (Projekte v1).
-- ⏳ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
+- ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
-  `features/F40/feature.md`, Status `IN_ARBEIT` (WS-0 Spike #203, WS-1
+  `features/F40/feature.md`, Status `FEATURE_GATE` (WS-0 Spike #203, WS-1
   Streaming-Reaktion auf die `result`-Zeile + Werkzeug-Fortschritt #204,
-  WS-2 vorberechnetes Lagebild als vierte Context-Builder-Einspeisung).
+  WS-2 vorberechnetes Lagebild als vierte Context-Builder-Einspeisung #206,
+  WS-3 Auto-Memory-Zugriff für `jarvis`/`router` gesperrt, löst F-567,
+  #207). Alle Hebel der Spike-Empfehlung umgesetzt, Token-Streaming
+  bewusst Nicht-Ziel; Feature-Review-Pass und Abnahme stehen noch aus.
   Nach F26 (Jarvis Chat v1), F33 WS-1 (Context-Builder-Einspeisung).
 
 Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).

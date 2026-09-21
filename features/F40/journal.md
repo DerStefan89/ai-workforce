@@ -163,3 +163,50 @@ Auftrag — `ausfuehrung` braucht Zugriff auf ihre eigene Arbeitsumgebung
 unverändert), ein automatisierter Vorher/Nachher-A/B-Vergleich (die 5
 Statusfragen sind derselbe Fragensatz wie WS-2, aber kein kontrollierter
 Doppellauf gegen denselben Zustand).
+
+## 2026-09-21 — F40 formal abgeschlossen (Doku-only), Status bleibt FEATURE_GATE
+
+Alle vier Workstreams gebaut und gemergt: WS-0 Spike #203, WS-1
+Streaming-Reaktion #204, WS-2 Lagebild-Einspeisung #206, WS-3
+Auto-Memory-Sperre #207. Alle Hebel der Spike-Empfehlung
+(`state/spike-f40-streaming.md` §5) sind damit umgesetzt; Token-Streaming
+bleibt bewusst Nicht-Ziel (Spike-Befund: Gewinn < 0,1 s bei typischen
+kurzen Antworten, Aufwand/Risiko unverhältnismäßig).
+
+Status-Übergang geprüft gegen `docs/projekt/zielfassung.md` §Workstream
+(`TECH_PLAN → ADVISOR → HANDOFF → PRE_BUILD_HALT → BAU → PRÜFUNG → ABNAHME
+→ ABGESCHLOSSEN`, `ABNAHME` ist Aktivität, `ABGESCHLOSSEN` terminal) und
+gegen den realen Präzedenzfall in diesem Repo: F19/F21/F22/F23/F25 bleiben
+trotz vollständig erfüllter Akzeptanzkriterien alle bei `FEATURE_GATE`
+stehen — F21 sogar mit dokumentiertem `AK8: ACCEPT, 14.09.2026 (Stefan,
+Realtest)` für WS-1, aber weiterhin `FEATURE_GATE`, weil WS-2 noch offen
+ist. Für F40 liegt weder eine solche dokumentierte Abnahme noch ein
+eigener Feature-Review-Pass vor — Status bleibt deshalb bewusst bei
+`FEATURE_GATE`, NICHT `ABGESCHLOSSEN`, wie in der Aufgabenstellung als
+Fallback vorgesehen.
+
+`features/F40/feature.md`: Status `IN_ARBEIT` → `FEATURE_GATE`; WS-3 mit
+PR #207 nachgetragen; neuer Abschnitt "Offene Reste" mit F-581 (Lagebild
+nur durch Gate erzwungen, nicht automatisch erzeugt — bereits als
+"Bekannte Grenze" benannt, F-581 ist der noch nicht nachgetragene
+Findings-Registereintrag dafür) und F-583 (ungeklärt: lädt Auto-Memory
+`MEMORY.md` in manchen CLI-Versionen ohne Read-Werkzeugaufruf direkt in
+den Systemprompt — in den WS-3-Nachweisläufen nicht beobachtet, aber nicht
+systematisch ausgeschlossen); "Feature Review"-Abschnitt aktualisiert (nicht
+mehr "noch nicht fällig" — alle Workstreams sind fertig, ein eigener
+Feature-Review-Pass und Stefans Abnahme stehen aber noch aus).
+
+`docs/STATUS.md`: F40 in "Aktuelle Phase" und in der M4-Liste auf
+`FEATURE_GATE` mit allen vier PR-Nummern aktualisiert; Icon in der
+M4-Liste auf ✅ gesetzt (Muster F19/F22/F23/F25: ✅ markiert dort
+"Build vollständig", nicht "Status ABGESCHLOSSEN" — ⏳ ist ausschließlich
+Features mit noch offenen Workstreams vorbehalten, z. B. F32/F33; F40 hat
+keine offenen Workstreams mehr).
+
+`node scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert),
+`npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+
+Nicht Teil dieses Abschluss-Auftrags: der eigentliche Feature-Review-Pass,
+Stefans Abnahme, der Nachtrag von F-581/F-583 in `state/findings.md` selbst
+(nur referenziert, nicht neu registriert — das bleibt eigene
+Aufräumarbeit, F-534-Muster).
