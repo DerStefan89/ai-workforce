@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/roadmap.schema.json",
+  "title": "Projekt-Roadmap (ROADMAP_V0)",
+  "description": "F33 WS-1 (E-M4-2, 'Kontrollzustand im eigenen Repo'). Trägt Vision und Meilensteine eines Projekts als Datei im eigenen Repo, statt in einem zweiten Speicher — Git führt. Geprüft von validiereRoadmapDaten (src/projektkontext/index.ts), nicht durch dieses Schema allein (D5, kein ajv im Repo, Muster schemas/projekte.schema.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["roadmap_schema", "vision", "meilensteine"],
+  "properties": {
+    "roadmap_schema": {
+      "const": "v0",
+      "description": "Schemaversion der Roadmap."
+    },
+    "vision": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Zielbild des Projekts in wenigen Sätzen."
+    },
+    "meilensteine": {
+      "type": "array",
+      "description": "Meilensteine des Projekts. Reihenfolge im Array ist die zeitliche Reihenfolge.",
+      "items": { "$ref": "#/$defs/meilenstein" }
+    }
+  },
+  "$defs": {
+    "meilenstein": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "titel", "status", "features"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Eindeutige Kennung des Meilensteins innerhalb dieser Roadmap."
+        },
+        "titel": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Menschenlesbarer Titel des Meilensteins."
+        },
+        "status": {
+          "enum": ["GEPLANT", "LAEUFT", "ABGESCHLOSSEN"],
+          "description": "Manuell gepflegter Stand des Meilensteins — kein automatisch abgeleiteter Zustand (Muster 'status' in schemas/projekte.schema.json)."
+        },
+        "features": {
+          "type": "array",
+          "description": "Feature-IDs (z. B. 'F20'), die zu diesem Meilenstein gehören. Reine Zuordnung — keine Prüfung gegen features/<id>/feature.md in WS-1.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

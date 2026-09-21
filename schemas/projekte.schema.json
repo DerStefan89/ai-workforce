@@ -57,6 +57,16 @@
         "status": {
           "enum": ["IDEE", "DISCOVERY", "GEPLANT", "IN_ENTWICKLUNG", "TEST", "NUTZBAR", "BETRIEB", "PAUSIERT", "ARCHIVIERT"],
           "description": "Manuell gepflegter Lebenszyklus-Status des Projekts (Muster 'freigabe' in schemas/ressourcen.schema.json)."
+        },
+        "kontext_pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "F33 WS-1 (E-M4-2). Pfad zum Ordner mit beschreibung.md/anweisungen.md dieses Projekts, relativ zu repo_pfad. OPTIONAL — fehlt das Feld, gilt der Standardpfad 'docs/projekt/kontext'."
+        },
+        "roadmap_pfad": {
+          "type": "string",
+          "minLength": 1,
+          "description": "F33 WS-1 (E-M4-2). Pfad zur roadmap.json dieses Projekts, relativ zu repo_pfad. OPTIONAL — fehlt das Feld, gilt der Standardpfad 'docs/projekt/roadmap.json'."
         }
       }
     }

@@ -24,4 +24,8 @@ export interface ProjektEintrag {
   profil_pfad: string
   basisverzeichnis: string
   status: ProjektStatus
+  /** F33 WS-1 (E-M4-2). Optional — fehlt das Feld, gilt 'docs/projekt/kontext'. */
+  kontext_pfad?: string
+  /** F33 WS-1 (E-M4-2). Optional — fehlt das Feld, gilt 'docs/projekt/roadmap.json'. */
+  roadmap_pfad?: string
 }
