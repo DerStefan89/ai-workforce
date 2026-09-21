@@ -120,6 +120,21 @@
  * Poll (ausstehenderLauf lebt nur im Modulspeicher, unverändert zur bereits oben dokumentierten
  * Grenze) — dasselbe galt schon für den vorherigen, gemeinsamen Timer, weil pruefeAusstehendenLauf
  * ohne ausstehenderLauf sofort zurückkehrte.
+ *
+ * fix/chat-fehler-anzeige (F-564, F-576), reine Client-Änderung, kein Server-/Persistenz-Umbau:
+ * (F-564) ein manueller Abbruch (#chat-abbrechen-btn) endete serverseitig ununterscheidbar von einem
+ * echten Fehlschlag als ABGESCHLOSSEN/FEHLGESCHLAGEN und wurde entsprechend als "nicht erfolgreich
+ * (FEHLGESCHLAGEN)" gemeldet, obwohl der Nutzer selbst abgebrochen hatte —
+ * beschreibeNichtErfolgreichesEnde meldet diesen Fall jetzt anhand des bereits vorhandenen,
+ * sitzungslokalen abbruchAngefordert-Flags als "Lauf abgebrochen.". (F-576) lokaleEintraege wurde
+ * bislang IMMER ans Ende der Anzeigeliste gehängt (baueAnzeigeListe), unter der Annahme, ein lokaler
+ * Eintrag (Vorfilter-Antwort oder Fehlanzeige) liege chronologisch immer nach dem zuletzt geladenen
+ * persistierterVerlauf-Stand — das gilt nur im Push-Moment, nicht mehr sobald danach weitere
+ * Nachrichten erfolgreich persistiert werden (ladeVerlauf() lädt nach jedem erfolgreichen Lauf neu).
+ * Jeder lokale Eintrag trägt seither persistierterVerlaufLaengeBeiPush (die Länge von
+ * persistierterVerlauf zum Push-Zeitpunkt); baueAnzeigeListe() setzt ihn beim Rendern an genau dieser
+ * Position zwischen die zu diesem Zeitpunkt bereits persistierten und die seither neu hinzugekommenen
+ * persistierten Einträge ein, statt ihn pauschal ans Ende zu hängen.
  */
 
 import { abbrichLauf, holeChatVerlauf, holeLaufDetail, sendeChatNachricht, sendeChatZusammenfassung } from '../api.js'
@@ -138,7 +153,16 @@ let letzterZustand = null
 /** Persistierter Verlauf aus GET /api/chat, gemappt auf Anzeige-Einträge — neu geladen beim Betreten der View und nach jedem real erfolgreichen Jarvis-Lauf. Bereits in Server-Reihenfolge (aufsteigend), Anzeigereihenfolge unten daher reine Verkettung statt eines erneuten Sortierens. */
 let persistierterVerlauf = []
 
-/** Lokale, NICHT persistierte Einträge dieser Sitzung — Vorfilter-Antworten und die Fehlanzeige eines nicht erfolgreichen Jarvis-Laufs (siehe Datei-Kopf). In Entstehungsreihenfolge (push), die immer NACH dem zuletzt geladenen persistierterVerlauf-Stand liegt. */
+/**
+ * Lokale, NICHT persistierte Einträge dieser Sitzung — Vorfilter-Antworten und die Fehlanzeige eines nicht
+ * erfolgreichen Jarvis-Laufs (siehe Datei-Kopf). In Entstehungsreihenfolge (push). F-576 (real reproduziert):
+ * die frühere Annahme, ein lokaler Eintrag liege immer chronologisch NACH dem zuletzt geladenen
+ * persistierterVerlauf-Stand, gilt nur im Push-Moment selbst — sobald DANACH weitere Nachrichten erfolgreich
+ * persistiert werden (ladeVerlauf() läuft nach jedem real erfolgreichen Lauf neu), wächst persistierterVerlauf
+ * über den lokalen Eintrag hinweg, der dann fälschlich weiterhin ganz unten gerendert würde. Jeder Eintrag
+ * trägt deshalb zusätzlich persistierterVerlaufLaengeBeiPush (persistierterVerlauf.length zum Push-Zeitpunkt) —
+ * baueAnzeigeListe() setzt ihn beim Rendern an genau dieser Position wieder ein, statt ihn ans Ende zu hängen.
+ */
 let lokaleEintraege = []
 
 /** Der gerade laufende, noch nicht terminierte Jarvis-Chat-Lauf dieser View, oder null. @type {{ nachricht: string, laufId: string, messung?: Messung } | null} */
@@ -241,12 +265,38 @@ function antwortText(antwort) {
   return antwort.antwort
 }
 
-/** Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert) gefolgt von lokalen Einträgen (Push-Reihenfolge) und einem etwaigen ausstehenden Lauf zuletzt — beide Quellen entstehen immer chronologisch NACH dem zuletzt geladenen persistierten Stand, eine erneute Sortierung ist deshalb nicht nötig. F29 WS-D2: zeitstempel ist bei persistierten Einträgen IMMER null (der Server führt keines, Auftrag Punkt E: keine erfundene Zeit), bei lokalen der beim Push erfasste Wert (s. initSendenFormular/pruefeAusstehendenLauf). */
+/**
+ * Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert), lokale Einträge
+ * jeweils an der Position einsortiert, die ihr persistierterVerlaufLaengeBeiPush entspricht (F-576, s.
+ * lokaleEintraege), und ein etwaiger ausstehender Lauf zuletzt. lokaleEintraege ist nach
+ * persistierterVerlaufLaengeBeiPush bereits aufsteigend sortiert (Push-Reihenfolge, persistierterVerlauf
+ * wächst zwischen zwei Pushes nie rückwärts — einzige Ausnahme ist setzeChatZustandZurueck, das
+ * lokaleEintraege im selben Zug leert), ein sequenzieller Durchlauf beider Listen reicht deshalb. F29 WS-D2:
+ * zeitstempel ist bei persistierten Einträgen IMMER null (der Server führt keines, Auftrag Punkt E: keine
+ * erfundene Zeit), bei lokalen der beim Push erfasste Wert (s. initSendenFormular/pruefeAusstehendenLauf).
+ */
 function baueAnzeigeListe() {
-  const liste = [
-    ...persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis', zeitstempel: null, istZusammenfassung: e.istZusammenfassung === true })),
-    ...lokaleEintraege,
-  ]
+  const persistiert = persistierterVerlauf.map((e) => ({ nachricht: e.nachricht, antwortText: antwortText(e.jarvisAntwort), quelle: 'jarvis', zeitstempel: null, istZusammenfassung: e.istZusammenfassung === true }))
+  const liste = []
+  let naechsterLokalerIndex = 0
+  for (let i = 0; i <= persistiert.length; i++) {
+    while (naechsterLokalerIndex < lokaleEintraege.length && lokaleEintraege[naechsterLokalerIndex].persistierterVerlaufLaengeBeiPush === i) {
+      liste.push(lokaleEintraege[naechsterLokalerIndex])
+      naechsterLokalerIndex++
+    }
+    if (i < persistiert.length) liste.push(persistiert[i])
+  }
+  // Reviewer-Befund (fix/chat-fehler-anzeige): persistierterVerlauf wächst normalerweise nie
+  // rückwärts, ABER initChatView löst ladeVerlauf() zweifach beim Bootstrap aus (Registrierung +
+  // direkter Aufruf) — träfen deren Antworten aus dem Netzwerk außer der Reihe ein, könnte
+  // persistierterVerlauf kurzzeitig kürzer sein als beim Push eines lokalen Eintrags. Ohne dieses
+  // Sicherheitsnetz würde ein solcher Eintrag in keiner Schleifen-Iteration matchen und
+  // kommentarlos aus der Anzeige verschwinden — angehängt bleibt er wenigstens sichtbar (Verhalten
+  // vor diesem Fix), statt lautlos verloren zu gehen.
+  while (naechsterLokalerIndex < lokaleEintraege.length) {
+    liste.push(lokaleEintraege[naechsterLokalerIndex])
+    naechsterLokalerIndex++
+  }
   if (ausstehenderLauf !== null) {
     liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel, istZusammenfassung: ausstehenderLauf.istZusammenfassung === true, fortschrittText: ausstehenderLauf.fortschrittText ?? null })
   }
@@ -349,8 +399,26 @@ async function ladeVerlauf() {
   return erfolgreich
 }
 
-/** Terminallage eines Jarvis-Chat-Laufs, der NICHT real ABGESCHLOSSEN/ERFOLGREICH endete — Text für die lokale Fehlanzeige (kein Lineage-Eintrag, siehe Datei-Kopf). @param laufStatus - detail.laufStatus aus GET /api/laeufe/<laufId> */
-function beschreibeNichtErfolgreichesEnde(laufStatus) {
+/**
+ * Terminallage eines Jarvis-Chat-Laufs, der NICHT real ABGESCHLOSSEN/ERFOLGREICH endete — Text für die
+ * lokale Fehlanzeige (kein Lineage-Eintrag, siehe Datei-Kopf). F-564: ein Lauf, den DIESE Sitzung selbst
+ * per #chat-abbrechen-btn abgebrochen hat (abbruchAngefordert, s. initAbbrechenBedienung), endet serverseitig
+ * ebenfalls als ABGESCHLOSSEN/FEHLGESCHLAGEN (scripts/check-f14-abbruch.mjs AK7: beendigungsart 'ABBRUCH' —
+ * dieses Feld erreicht den Client nicht extra, ist hier aber auch nicht nötig: nur ein Abbruch DIESER
+ * Sitzung kann abbruchAngefordert gesetzt haben) und wurde bislang ununterscheidbar von einem echten
+ * Fehlschlag als "FEHLGESCHLAGEN" gemeldet, obwohl der Nutzer selbst abgebrochen hat.
+ * Bekannte, dokumentiert akzeptierte Restunschärfe (CLAUDE.md-Entscheidungsregel 5): abbruchAngefordert
+ * belegt nur, dass DIESE Sitzung einen Abbruch ANGEFORDERT hat, nicht zwingend, dass der Lauf DESWEGEN
+ * fehlschlug — träfe der Abbruch-Request serverseitig erst ein, nachdem der Lauf bereits aus einem
+ * unabhängigen Grund gescheitert ist, zeigt diese Funktion trotzdem "Lauf abgebrochen." statt der
+ * echten Fehlerursache. Ohne ein eigenes Server-Feld (beendigungsart, s. o.) bis zum Client ist eine
+ * hundertprozentige Unterscheidung hier nicht möglich; das enge Zeitfenster wird als akzeptables
+ * Restrisiko in Kauf genommen statt eines Server-/Persistenz-Umbaus für diesen kleinen Fix.
+ * @param laufStatus - detail.laufStatus aus GET /api/laeufe/<laufId>
+ * @param abbruchAngefordert - true, wenn diese Sitzung für DIESEN Lauf zuvor #chat-abbrechen-btn ausgelöst hat
+ */
+function beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert) {
+  if (abbruchAngefordert === true && laufStatus?.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'FEHLGESCHLAGEN') return 'Lauf abgebrochen.'
   if (laufStatus?.status === 'KLAERUNG_ERFORDERLICH') return `Lauf hält — Klärung erforderlich: ${laufStatus.grund}`
   if (laufStatus?.status === 'ABGESCHLOSSEN') return `Lauf abgeschlossen, aber nicht erfolgreich (${laufStatus.ergebnis}).`
   return `Lauf endete unerwartet (Status: ${laufStatus?.status ?? 'unbekannt'}).`
@@ -438,7 +506,13 @@ async function pruefeAusstehendenLauf() {
       zeigeChatFehler('Abbruch kam zu spät: die Antwort war bereits fertig, der Lauf wurde nicht abgebrochen.')
     }
   } else {
-    lokaleEintraege.push({ nachricht, antwortText: beschreibeNichtErfolgreichesEnde(laufStatus), quelle: 'fehler', zeitstempel: new Date().toISOString() })
+    lokaleEintraege.push({
+      nachricht,
+      antwortText: beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert),
+      quelle: 'fehler',
+      zeitstempel: new Date().toISOString(),
+      persistierterVerlaufLaengeBeiPush: persistierterVerlauf.length,
+    })
   }
   if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
   // Bug (real reproduziert, state/nachweis-jarvis-latenz.md Abschnitt "Abbruch"): ausstehenderLauf
@@ -471,7 +545,13 @@ async function sendeAktuelleEingabe() {
   try {
       const vorfilterErgebnis = await loeseVorfilterAuf(nachricht, letzterZustand)
       if (vorfilterErgebnis !== null) {
-        lokaleEintraege.push({ nachricht, antwortText: antwortText(vorfilterErgebnis), quelle: 'vorfilter', zeitstempel: new Date().toISOString() })
+        lokaleEintraege.push({
+          nachricht,
+          antwortText: antwortText(vorfilterErgebnis),
+          quelle: 'vorfilter',
+          zeitstempel: new Date().toISOString(),
+          persistierterVerlaufLaengeBeiPush: persistierterVerlauf.length,
+        })
         renderVerlauf()
         feld.value = ''
         return
