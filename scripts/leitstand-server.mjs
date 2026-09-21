@@ -456,6 +456,8 @@ const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
 const PUBLIC_VERZEICHNIS = join(import.meta.dirname, '..', 'public', 'leitstand')
 const STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/beispielprojekt.json'
+/** F40 WS-3 (löst F-567): Wert für AufrufEingaben.disallowedTools, ausschließlich für 'jarvis'/'router' gesetzt (starteJarvisChatLauf, Router-Lauf-Handler) — eine Konstante statt zweier Literale, damit beide Stellen nicht auseinanderlaufen können. */
+const AUTO_MEMORY_DENY_REGEL = 'Read(~/.claude/**)'
 /** F25 WS-1: Pfad zum Projektregister, per Umgebungsvariable überschreibbar (Muster LEITSTAND_STARTVORLAGE_PFAD) — u.a. für AK8s realen Zwei-Projekte-Test gegen eine eigene Registerkopie, ohne das committete projekte.json anzufassen. */
 const STANDARD_PROJEKTE_PFAD = 'projekte.json'
 const DATEINAME_MUSTER = /^(\d+)-([0-9a-f]{64})\.json$/
@@ -1708,6 +1710,15 @@ export function pruefeStartauftrag(body) {
     return {
       ok: false,
       grund: "'aufrufEingaben.umgebungsvariablen' wird ausschließlich serverseitig für die Rolle 'jarvis' gesetzt und ist im Body nicht erlaubt",
+    }
+  }
+  // F40 WS-3 (löst F-567): 'disallowedTools' sperrt den Auto-Memory-Zugriff (Read(~/.claude/**)) —
+  // ausschließlich serverseitig für 'jarvis' und 'router' gesetzt (Muster settingSources/mcpConfig/
+  // umgebungsvariablen oben), kein Eingabekanal für einen Body-getriebenen Lauf über POST /api/laeufe.
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'disallowedTools' in body.aufrufEingaben) {
+    return {
+      ok: false,
+      grund: "'aufrufEingaben.disallowedTools' wird ausschließlich serverseitig für die Rollen 'jarvis'/'router' gesetzt (F40 WS-3) und ist im Body nicht erlaubt",
     }
   }
   if (!Array.isArray(body.anfragen)) {
@@ -4643,7 +4654,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         // jeden Router-Versuch mit 400 zu blockieren (QA-Pass-Befund).
         anfragen: filtereExistierendeAnfragen(baueProjektkontextAnfragen(kontextPfad, roadmapPfad), repoWurzel),
         budget: vorlage.standardBudget,
-        aufrufEingaben: { modell },
+        // F40 WS-3 (löst F-567): 'Read(~/.claude/**)' sperrt den real belegten Auto-Memory-Zugriff
+        // (state/nachweis-jarvis-latenz.md Abschnitt "F40 WS-2") — Muster settingSources/mcpConfig
+        // (src/claude-code-gateway/index.ts' baueAufruf), nur für 'router' und 'jarvis' gesetzt.
+        aufrufEingaben: { modell, disallowedTools: AUTO_MEMORY_DENY_REGEL },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
@@ -4815,7 +4829,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         // Extended Thinking auf der Anthropic-API ab (Ausnahme: Fable-Modelle, hier nicht
         // einschlägig, dieses Repo läuft firstParty/claude-sonnet-5). Nur für 'jarvis' gesetzt
         // (Muster settingSources/mcpConfig) — jede andere Rolle bekommt kein umgebungsvariablen.
-        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } },
+        // F40 WS-3 (löst F-567): disallowedTools 'Read(~/.claude/**)' sperrt den real belegten
+        // Auto-Memory-Zugriff (state/nachweis-jarvis-latenz.md Abschnitt "F40 WS-2", Turn 4) — trotz
+        // settingSources '' liest der Prozess ~/.claude/projects/…/memory/MEMORY.md, weil Auto-Memory
+        // kein Settings-Wert, sondern ein eigener CLI-Systemprompt-Baustein ist (--setting-sources
+        // steuert nur Settings-Dateien). Gesetzt für 'jarvis' UND 'router' (Muster settingSources).
+        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', umgebungsvariablen: { MAX_THINKING_TOKENS: '0' }, disallowedTools: AUTO_MEMORY_DENY_REGEL },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),

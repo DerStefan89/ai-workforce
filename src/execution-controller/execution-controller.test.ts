@@ -486,6 +486,59 @@ test("F31 WS-3c: aufrufEingaben.mcpConfig überschreibt weiterhin den Default-We
   }
 })
 
+// ─── F40 WS-3 (löst F-567): aufrufEingaben.disallowedTools steuert baueAufrufs '--disallowedTools' ──
+
+test('F40 WS-3: ohne aufrufEingaben.disallowedTools trägt der Aufruf kein \'--disallowedTools\' (Muster settingSources — jede Rolle außer jarvis/router)', async () => {
+  const laufId = neueLaufId('f40a')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    // gueltigeEingaben() setzt KEIN disallowedTools — Muster jedes Aufrufers außer jarvis/router.
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    assert.ok(!erfassteTokens.includes('--disallowedTools'), "'--disallowedTools' sollte ohne eingaben.disallowedTools fehlen")
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test("F40 WS-3: aufrufEingaben.disallowedTools 'Read(~/.claude/**)' landet unverändert in den tatsächlich gestarteten Tokens (jarvis/router-Pfad)", async () => {
+  const laufId = neueLaufId('f40b')
+  let erfassteTokens: string[] | undefined
+  const spyStarter: Starter = async (startziel, tokens) => {
+    erfassteTokens = tokens
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, disallowedTools: 'Read(~/.claude/**)' }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok(erfassteTokens)
+    const disallowedToolsIndex = erfassteTokens.indexOf('--disallowedTools')
+    assert.notStrictEqual(disallowedToolsIndex, -1, "'--disallowedTools' fehlt in den Tokens")
+    assert.strictEqual(erfassteTokens[disallowedToolsIndex + 1], 'Read(~/.claude/**)')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 // ─── Task "Jarvis-Chat-Latenz senken", Schritt 3: aufrufEingaben.umgebungsvariablen erreicht starteProzess (Muster settingSources, aber kein Argv-Feld — es landet in den Starter-Optionen, nicht in den Tokens) ──
 
 test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreicht starteProzess unverändert (Jarvis-Chat-Pfad)', async () => {
@@ -549,7 +602,10 @@ test("F31 WS-3b (QA-Pass 20.09.2026, TC-06): worker 'codex' mit gesetztem aufruf
       ausgabeSchemaPfad: null,
       werkzeugVersionDeklariert: '0.153.4 (Codex CLI)',
     }
-    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, settingSources: '', mcpConfig: '{"mcpServers":{}}' }
+    // F40 WS-3 (löst F-567): disallowedTools ins selbe Fixture aufgenommen — derselbe Codex-Zweig
+    // (.modell-only, F-323) muss es ebenso wenig ins Argv tragen wie settingSources/mcpConfig (Router
+    // kann mit codexVerfuegbar auf worker:'codex' auflösen und trägt trotzdem disallowedTools).
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, settingSources: '', mcpConfig: '{"mcpServers":{}}', disallowedTools: 'Read(~/.claude/**)' }
     const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
@@ -561,6 +617,7 @@ test("F31 WS-3b (QA-Pass 20.09.2026, TC-06): worker 'codex' mit gesetztem aufruf
     assert.strictEqual(erfassteTokens.indexOf('--setting-sources'), -1, "'--setting-sources' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
     assert.strictEqual(erfassteTokens.indexOf('--strict-mcp-config'), -1, "'--strict-mcp-config' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
     assert.strictEqual(erfassteTokens.indexOf('--mcp-config'), -1, "'--mcp-config' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
+    assert.strictEqual(erfassteTokens.indexOf('--disallowedTools'), -1, "'--disallowedTools' gehört zum Claude-Code-Aufruf und darf im Codex-Argv nicht vorkommen")
   } finally {
     raeumeKette(laufId)
   }
