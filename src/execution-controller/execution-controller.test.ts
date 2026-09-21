@@ -486,6 +486,55 @@ test("F31 WS-3c: aufrufEingaben.mcpConfig überschreibt weiterhin den Default-We
   }
 })
 
+// ─── Task "Jarvis-Chat-Latenz senken", Schritt 3: aufrufEingaben.umgebungsvariablen erreicht starteProzess (Muster settingSources, aber kein Argv-Feld — es landet in den Starter-Optionen, nicht in den Tokens) ──
+
+test('Task "Jarvis-Chat-Latenz senken": aufrufEingaben.umgebungsvariablen erreicht starteProzess unverändert (Jarvis-Chat-Pfad)', async () => {
+  const laufId = neueLaufId('f31-umgebungsvariablen-a')
+  let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const eingaben = gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE)
+    eingaben.aufrufEingaben = { ...eingaben.aufrufEingaben, umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } }
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.deepStrictEqual(empfangeneOptionen?.umgebungsvariablen, { MAX_THINKING_TOKENS: '0' })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('Task "Jarvis-Chat-Latenz senken": ohne aufrufEingaben.umgebungsvariablen bleibt der Wert unbesetzt — Regression (jede Rolle außer jarvis)', async () => {
+  const laufId = neueLaufId('f31-umgebungsvariablen-b')
+  let empfangeneOptionen: { umgebungsvariablen?: Record<string, string> } | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    // gueltigeEingaben() setzt KEIN umgebungsvariablen — Muster jedes Aufrufers außer starteJarvisChatLauf.
+    const ergebnis = await fuehreAufgabeDurch(laufId, PROFIL_REFERENZ, gueltigeEingaben(ISTUEBRIGEFELDER_FIXTURE), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.umgebungsvariablen, undefined)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
 test("F31 WS-3b (QA-Pass 20.09.2026, TC-06): worker 'codex' mit gesetztem aufrufEingaben.settingSources/mcpConfig trägt beide Felder NICHT ins Codex-Argv — der Execution-Controller-Codex-Zweig liest aus aufrufEingaben laut eigenem Kommentar (F-323) nur .modell", async () => {
   const laufId = neueLaufId('f31e')
   let erfassteTokens: string[] | undefined

@@ -31,7 +31,7 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { schreibeWirkungsmarke } from '../src/checkpoint-store/index.ts'
@@ -195,10 +195,186 @@ function workflowFixture(workflowId) {
   // '/api' (Dispatcher-Kontrakt, real im AK15-Browser-Realtest gefunden). Die Zusage prüft
   // seither das mitPraefix()-Argument (Rest-Pfad ohne '/api'), nicht mehr die alte
   // fetch('/api/...')-Textform.
-  if (!/export const holeZustand = \(\) => fetch\(mitPraefix\('\/zustand'\)\)/.test(apiQuelltext)) {
-    befunde.push("AK3 (Client): api.js führt holeZustand nicht als GET /api/zustand — erwartet \"export const holeZustand = () => fetch(mitPraefix('/zustand'))\".")
+  // F-561: seit dem Zeitlimit trägt der Aufruf ein zweites fetch-Argument ({ signal }) — die
+  // Zusage bleibt "holeZustand geht über GET /zustand", der Optionen-Teil ist offen.
+  if (!/export const holeZustand = \(\) => fetch\(mitPraefix\('\/zustand'\)/.test(apiQuelltext)) {
+    befunde.push("AK3 (Client): api.js führt holeZustand nicht als GET /api/zustand — erwartet \"export const holeZustand = () => fetch(mitPraefix('/zustand')...\".")
   } else {
     console.log('✓ AK3 (Client): zustand.js ruft holeZustand() auf, api.js führt holeZustand über GET /api/zustand.')
+  }
+}
+
+// ─── (d) Antwortzeit von GET /api/zustand gegen den REALEN kontrollzustand/-Bestand ─────────
+//
+// Warum gegen den echten Bestand und nicht gegen eine Fixture: die Kosten dieser Route wachsen
+// mit der Zahl der Lauf-Verzeichnisse, und genau daran ist sie real entgleist (Stefans
+// Netzwerk-Konsole 21.09.2026: 109.001 ms und 110.314 ms Wartezeit je Antwort — also 109 s und
+// 110 s, nicht Millisekunden —, weitere Anfragen ohne Status in der Warteschlange; per curl
+// gegen den laufenden Leitstand bis 45 s für EINE Abfrage, weil sich überlappende Polls
+// stapelten). Eine Fixture mit fünf Läufen hätte das nie gezeigt.
+//
+// Gemessen wird der Median mehrerer Abrufe gegen eine feste Obergrenze — nicht das Maximum:
+// ein einzelner Ausreißer durch fremde CPU-Last auf derselben Maschine ist kein Befund an
+// dieser Route (diese Falle steht in CLAUDE.md und hat in diesem Repo real schon einmal zu
+// einer Fehldeutung geführt). Ein echter Rückfall verschiebt den Median, nicht nur die Spitze.
+{
+  const OBERGRENZE_MS = 300
+  const ABRUFE = 7
+  const echterBestand = 'kontrollzustand'
+  if (!existsSync(echterBestand)) {
+    console.log(`✓ (d) übersprungen: ${echterBestand}/ existiert in diesem Arbeitsbaum nicht.`)
+  } else {
+    const anzahlVerzeichnisse = readdirSync(echterBestand, { withFileTypes: true }).filter((e) => e.isDirectory()).length
+    const server = createServer(erzeugeRequestHandler({ basisVerzeichnis: echterBestand }))
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const basisUrl = `http://127.0.0.1:${server.address().port}`
+    try {
+      await fetch(`${basisUrl}/api/zustand`) // Aufwärmlauf: füllt den Kopfdaten-Cache, wie im Dauerbetrieb
+      const zeiten = []
+      for (let i = 0; i < ABRUFE; i++) {
+        const t0 = performance.now()
+        const antwort = await fetch(`${basisUrl}/api/zustand`)
+        await antwort.arrayBuffer()
+        zeiten.push(performance.now() - t0)
+      }
+      const median = [...zeiten].sort((a, b) => a - b)[Math.floor(ABRUFE / 2)]
+      if (median > OBERGRENZE_MS) {
+        befunde.push(
+          `(d) GET /api/zustand: Median ${Math.round(median)} ms über der Obergrenze ${OBERGRENZE_MS} ms (${anzahlVerzeichnisse} Verzeichnisse unter ${echterBestand}/, Einzelwerte ${zeiten.map((z) => Math.round(z)).join('/')} ms)`
+        )
+      } else {
+        console.log(`✓ (d) GET /api/zustand gegen den realen Bestand (${anzahlVerzeichnisse} Verzeichnisse): Median ${Math.round(median)} ms < ${OBERGRENZE_MS} ms.`)
+      }
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+    }
+  }
+}
+
+// ─── (e) Der Client startet keinen zweiten Poll, solange einer noch läuft ────────────────────
+//
+// Verhaltensprüfung, kein Textabgleich: zustand.js wird mit gestubbtem fetch/document real
+// importiert und zweimal nebenläufig angestoßen. Vor dem Fix führte das zu ZWEI Abrufen — genau
+// der Stapel, der im Browser die sechs HTTP/1.1-Verbindungen belegte und POST /api/chat sowie
+// POST /api/laeufe/<id>/abbrechen dahinter anstehen ließ.
+{
+  let abrufe = 0
+  let gleichzeitig = 0
+  let maxGleichzeitig = 0
+  globalThis.document = {
+    getElementById: () => ({ set hidden(_) {}, get hidden() { return false } }),
+  }
+  globalThis.fetch = async () => {
+    abrufe++
+    gleichzeitig++
+    maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig)
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    gleichzeitig--
+    return { json: async () => ({ laeufe: [], startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }) }
+  }
+
+  const { pollJetzt } = await import('../public/leitstand/zustand.js')
+
+  // Ein Tick läuft bereits (nicht abgewartet), währenddessen drei pollJetzt(). Erwartet:
+  // der laufende Abruf plus GENAU EIN gemeinsamer Nachlauf = 2 Abrufe, nacheinander.
+  // Der Nachlauf ist nötig, weil der laufende Tick seine Antwort schon VOR der auslösenden
+  // Aktion geholt haben kann (F-558) — ein blosses Anhängen gäbe der Aktion einen Zustand
+  // von vorher.
+  const laufender = pollJetzt()
+  await Promise.all([pollJetzt(), pollJetzt(), pollJetzt(), laufender])
+
+  if (abrufe !== 2) {
+    befunde.push(`(e) Nachlauf: ein laufender Tick + drei gleichzeitige pollJetzt() lösten ${abrufe} Abrufe aus, erwartet genau 2 (laufender Abruf + EIN gemeinsamer Nachlauf).`)
+  } else {
+    console.log('✓ (e) Nachlauf: ein laufender Tick + drei gleichzeitige pollJetzt() ergeben genau 2 Abrufe (ein gemeinsamer Nachlauf).')
+  }
+  if (maxGleichzeitig !== 1) {
+    befunde.push(`(e) Überlappungsschutz: bis zu ${maxGleichzeitig} Abrufe liefen GLEICHZEITIG, erwartet höchstens 1 — überlappende Polls stapeln sich wieder.`)
+  } else {
+    console.log('✓ (e) Überlappungsschutz: nie mehr als ein Abruf gleichzeitig (die 2 Abrufe liefen nacheinander).')
+  }
+
+  // Nach Abschluss muss der nächste Tick wieder wirklich abrufen — sonst wäre der Poll tot.
+  await pollJetzt()
+  if (abrufe !== 3) {
+    befunde.push(`(e) Überlappungsschutz: nach Abschluss löste der nächste Anstoß keinen neuen Abruf aus (Abrufe gesamt ${abrufe}, erwartet 3) — die Sperre bleibt hängen.`)
+  } else {
+    console.log('✓ (e) Überlappungsschutz: nach Abschluss läuft der nächste Poll-Tick wieder normal (Sperre bleibt nicht hängen).')
+  }
+}
+
+// ─── (f) F-560: ein werfender Detail-Auffrischer darf den Nachlauf nicht ausfallen lassen ───
+{
+  let abrufe = 0
+  globalThis.document = { getElementById: () => ({ set hidden(_) {}, get hidden() { return false } }) }
+  globalThis.fetch = async () => {
+    abrufe++
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    return { json: async () => ({ laeufe: [], startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }) }
+  }
+
+  const { pollJetzt, abonniereDetailAuffrischer } = await import(`../public/leitstand/zustand.js?f560=${randomUUID()}`)
+  abonniereDetailAuffrischer(() => {
+    throw new Error('F-560-Fixture: Detail-Auffrischer wirft')
+  })
+
+  const laufender = pollJetzt()
+  let nachlaufFehler = null
+  await Promise.all([pollJetzt().catch((f) => { nachlaufFehler = f }), laufender.catch((f) => { nachlaufFehler = f })])
+
+  if (nachlaufFehler !== null) {
+    befunde.push(`(f) F-560: ein werfender Detail-Auffrischer ließ pollJetzt() mit einer Ablehnung enden (${nachlaufFehler.message}) — der Wurf muss gefangen werden.`)
+  } else if (abrufe !== 2) {
+    befunde.push(`(f) F-560: ein werfender Detail-Auffrischer verhinderte den Nachlauf — ${abrufe} Abrufe statt 2.`)
+  } else {
+    console.log('✓ (f) F-560: ein werfender Detail-Auffrischer bricht weder den Tick noch den angeforderten Nachlauf ab (2 Abrufe, keine Ablehnung).')
+  }
+}
+
+// ─── (g) F-561: ein NIE antwortender Abruf darf die Poll-Schleife nicht stehen lassen ────────
+//
+// Real beobachtet (Stefans Browser, 21.09.2026 12:44 UTC): eine Detailanfrage und ein
+// GET /zustand hingen OHNE Status, während der Server dieselben Routen per curl in 6-54 ms
+// beantwortete — der Abruf hing im Browser (injiziertes 'main.js', das sich um window.fetch
+// legt). Ohne Zeitlimit stand der Chat-Poll damit dauerhaft und löste den längst
+// abgebrochenen Lauf nie auf.
+{
+  let abrufe = 0
+  let haengt = true
+  globalThis.document = { getElementById: () => ({ set hidden(_) {}, get hidden() { return false } }) }
+  globalThis.fetch = (_url, optionen) => {
+    abrufe++
+    // Erster Abruf: antwortet NIE von selbst — nur das Zeitlimit (AbortSignal) beendet ihn.
+    if (haengt) {
+      return new Promise((_resolve, reject) => {
+        optionen?.signal?.addEventListener('abort', () => reject(new Error('AbortError: Zeitlimit')))
+      })
+    }
+    return Promise.resolve({ json: async () => ({ laeufe: [], startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }) })
+  }
+
+  const { pollJetzt } = await import(`../public/leitstand/zustand.js?f561=${randomUUID()}`)
+
+  if (typeof AbortSignal.timeout !== 'function') {
+    befunde.push('(g) F-561: AbortSignal.timeout steht in dieser Laufzeit nicht zur Verfügung — das Zeitlimit ist nicht prüfbar.')
+  } else {
+    const ersterTick = pollJetzt()
+    const rechtzeitig = await Promise.race([
+      ersterTick.then(() => 'fertig', () => 'fertig'),
+      new Promise((resolve) => setTimeout(() => resolve('haengt'), 8000)),
+    ])
+    if (rechtzeitig !== 'fertig') {
+      befunde.push('(g) F-561: ein nie antwortender Abruf ließ den Poll-Tick auch nach 8 s noch hängen — das Zeitlimit greift nicht.')
+    } else {
+      // Nach dem Zeitlimit muss die Schleife weiterlaufen und mit einer echten Antwort auflösen.
+      haengt = false
+      await pollJetzt()
+      if (abrufe < 2) {
+        befunde.push(`(g) F-561: nach dem Zeitlimit kam kein weiterer Abruf zustande (${abrufe}) — die Schleife steht.`)
+      } else {
+        console.log(`✓ (g) F-561: ein nie antwortender Abruf endet am Zeitlimit, die Schleife läuft weiter und löst mit der nächsten Antwort auf (${abrufe} Abrufe).`)
+      }
+    }
   }
 }
 

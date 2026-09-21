@@ -234,15 +234,27 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
     befunde.push("AK5-Rotfall (F31 WS-3b): Body mit 'aufrufEingaben.mcpConfig' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
   }
 
+  // Task "Jarvis-Chat-Latenz senken", Schritt 3: 'aufrufEingaben.umgebungsvariablen' ist ebenso
+  // ausschließlich serverseitig für die Rolle 'jarvis' gesetzt — Muster des settingSources-Rotfalls
+  // oben (sonst könnte ein beliebiger Startauftrag beliebige Umgebungsvariablen einschleusen).
+  const rotFallUmgebungsvariablen = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    aufrufEingaben: { modell: 'test-modell', umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } },
+  })
+  if (rotFallUmgebungsvariablen.ok !== false) {
+    befunde.push("AK5-Rotfall (Jarvis-Chat-Latenz senken): Body mit 'aufrufEingaben.umgebungsvariablen' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
+  }
+
   if (
     gruenFall.ok === true &&
     rotFallProfilReferenz.ok === false &&
     rotFallFreieListe.ok === false &&
     rotFallSettingSources.ok === false &&
-    rotFallMcpConfig.ok === false
+    rotFallMcpConfig.ok === false &&
+    rotFallUmgebungsvariablen.ok === false
   ) {
     console.log(
-      "✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste, 'aufrufEingaben.settingSources' und 'aufrufEingaben.mcpConfig' ab."
+      "✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste, 'aufrufEingaben.settingSources', 'aufrufEingaben.mcpConfig' und 'aufrufEingaben.umgebungsvariablen' ab."
     )
   }
 }

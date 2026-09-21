@@ -141,8 +141,33 @@ let persistierterVerlauf = []
 /** Lokale, NICHT persistierte Einträge dieser Sitzung — Vorfilter-Antworten und die Fehlanzeige eines nicht erfolgreichen Jarvis-Laufs (siehe Datei-Kopf). In Entstehungsreihenfolge (push), die immer NACH dem zuletzt geladenen persistierterVerlauf-Stand liegt. */
 let lokaleEintraege = []
 
-/** Der gerade laufende, noch nicht terminierte Jarvis-Chat-Lauf dieser View, oder null. @type {{ nachricht: string, laufId: string } | null} */
+/** Der gerade laufende, noch nicht terminierte Jarvis-Chat-Lauf dieser View, oder null. @type {{ nachricht: string, laufId: string, messung?: Messung } | null} */
 let ausstehenderLauf = null
+
+/**
+ * Task "Jarvis-Chat-Latenz senken" (state/), Schritt 1: reine Diagnose, kein
+ * Servereingriff. Vier Zeitmarken je Turn (performance.now(), monoton,
+ * unbeeinflusst von Systemuhr-Sprüngen): tSenden (Absenden-Klick),
+ * tServerQuittung (202 von POST /api/chat[/zusammenfassen] erhalten),
+ * tPollErgebnis (erster Poll-Tick mit terminalem Ergebnis für DIESEN
+ * laufId), tDarstellung (Verlauf/Fehleranzeige gerendert). tickZeiten
+ * sammelt performance.now() bei jedem Poll-Tick dieses Laufs (auch den
+ * nicht-terminalen) — daraus Tick-Anzahl und größte Tick-Lücke.
+ * @typedef {{ tSenden: number, tServerQuittung: number, tickZeiten: number[] }} Messung
+ */
+
+/** @param messung - Messung eines Laufs @param tPollErgebnis - performance.now() beim terminalen Poll-Tick @param tDarstellung - performance.now() nach dem Rendern Meldet eine console.info-Zeile mit den vier Deltas plus Tick-Anzahl/größter Tick-Lücke (F-Nachweis, kein Server-Call, keine Persistenz). */
+function protokolliereClientLatenz(messung, tPollErgebnis, tDarstellung) {
+  const tickLuecken = messung.tickZeiten.slice(1).map((t, i) => t - messung.tickZeiten[i])
+  console.info('[jarvis-latenz] Chat-Turn:', {
+    absenden_bis_quittung_ms: Math.round(messung.tServerQuittung - messung.tSenden),
+    quittung_bis_pollergebnis_ms: Math.round(tPollErgebnis - messung.tServerQuittung),
+    pollergebnis_bis_darstellung_ms: Math.round(tDarstellung - tPollErgebnis),
+    gesamt_ms: Math.round(tDarstellung - messung.tSenden),
+    poll_ticks: messung.tickZeiten.length,
+    groesste_poll_luecke_ms: tickLuecken.length === 0 ? null : Math.round(Math.max(...tickLuecken)),
+  })
+}
 
 /** F31 WS-3: Handle des eigenen 500ms-Polls (siehe Datei-Kopf), oder null, solange keiner läuft. */
 let ausstehenderLaufTimeout = null
@@ -184,6 +209,30 @@ function stoppeAusstehendenLaufPoll() {
   if (ausstehenderLaufTimeout === null) return
   clearTimeout(ausstehenderLaufTimeout)
   ausstehenderLaufTimeout = null
+}
+
+/**
+ * Task "Jarvis-Chat-Latenz senken", Schritt 4: wird der Tab wieder sichtbar
+ * (visibilitychange → 'visible'), während ein Lauf aussteht, löst das
+ * SOFORT einen Poll-Tick aus, statt bis zu 500ms auf den nächsten
+ * geplanten Tick zu warten — der typische Fall ist ein Nutzer, der den Tab
+ * während des Wartens verlassen hat und beim Zurückkehren die Antwort
+ * ohne die volle Poll-Verzögerung sehen soll. Kein zweiter setInterval
+ * (scripts/check-f20-zustand-poll.mjs AK3 bleibt unberührt, reiner
+ * Event-Listener). No-op ohne ausstehenden Lauf oder ohne laufenden Poll
+ * (z. B. exakt zwischen Terminallage und stoppeAusstehendenLaufPoll).
+ * try/finally wie planeNaechstenAusstehendenLaufPoll (QA-Muster F31 WS-3):
+ * ein Wurf aus pruefeAusstehendenLauf darf die Kette nicht abbrechen.
+ */
+async function polleSofortBeiSichtbarkeit() {
+  if (document.visibilityState !== 'visible' || ausstehenderLauf === null || ausstehenderLaufTimeout === null) return
+  clearTimeout(ausstehenderLaufTimeout)
+  ausstehenderLaufTimeout = null
+  try {
+    await pruefeAusstehendenLauf()
+  } finally {
+    if (ausstehenderLauf !== null) planeNaechstenAusstehendenLaufPoll()
+  }
 }
 
 /** @param antwort - JarvisErgebnis-artiges Objekt ({ art, antwort, auftrag?, aktion?, bezug? }) oder null @returns Anzeigetext */
@@ -309,7 +358,8 @@ function beschreibeNichtErfolgreichesEnde(laufStatus) {
 /** Bei jedem Tick des eigenen 500ms-Polls geprüft (siehe Datei-Kopf): solange ein Jarvis-Chat-Lauf aussteht, GET /api/laeufe/<laufId> abrufen und bei Terminallage auflösen. */
 async function pruefeAusstehendenLauf() {
   if (ausstehenderLauf === null) return
-  const { laufId, nachricht } = ausstehenderLauf
+  const { laufId, nachricht, messung } = ausstehenderLauf
+  messung?.tickZeiten.push(performance.now())
   let detail
   try {
     const antwort = await holeLaufDetail(laufId)
@@ -328,6 +378,7 @@ async function pruefeAusstehendenLauf() {
   if (detail.aktiv === true) return
   const laufStatus = detail.laufStatus
   if (laufStatus?.status !== 'ABGESCHLOSSEN' && laufStatus?.status !== 'KLAERUNG_ERFORDERLICH') return // noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
+  const tPollErgebnis = performance.now()
 
   // Code-Review-Befund F31 WS-3: die obigen Awaits geben den Tick frei — ein Projektwechsel
   // (setzeChatZustandZurueck) kann währenddessen ausstehenderLauf bereits auf null gesetzt und
@@ -336,6 +387,8 @@ async function pruefeAusstehendenLauf() {
   // zugeordnete Fehlanzeige) bzw. ausstehenderLauf/die Senden-Sperre eines inzwischen anders
   // aufgelösten Zustands überschreiben — Muster initAbbrechenBedienung.
   if (ausstehenderLauf?.laufId !== laufId) return
+
+  const abbruchAngefordert = ausstehenderLauf.abbruchAngefordert === true
 
   if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'ERFOLGREICH') {
     // ausstehenderLauf bleibt gesetzt, bis ladeVerlauf() wirklich erfolgreich war (QA-Befund):
@@ -346,11 +399,28 @@ async function pruefeAusstehendenLauf() {
     if (!geladen) return
     // ladeVerlauf() ist selbst ein weiterer Await-Punkt — dieselbe Prüfung wie oben, jetzt danach.
     if (ausstehenderLauf?.laufId !== laufId) return
+    // Real reproduziert (state/nachweis-jarvis-latenz.md, "Abbruch Runde 2"): ein Abbruch, der
+    // erst NACH dem Ende des Werkzeugprozesses eintrifft, wird vom Server mit 202 quittiert
+    // (der Lauf gilt bis zum Ende der Nachbereitung als aktiv), kann den bereits fertigen
+    // Prozess aber nicht mehr beenden — der Lauf endet ERFOLGREICH und die Antwort erscheint.
+    // Ohne diesen Hinweis sähe der Mensch nur seine Antwort und nie, dass sein Abbruch wirkungslos
+    // blieb (genau die Beobachtung, die diesen Auftrag ausgelöst hat).
+    if (abbruchAngefordert) {
+      zeigeChatFehler('Abbruch kam zu spät: die Antwort war bereits fertig, der Lauf wurde nicht abgebrochen.')
+    }
   } else {
     lokaleEintraege.push({ nachricht, antwortText: beschreibeNichtErfolgreichesEnde(laufStatus), quelle: 'fehler', zeitstempel: new Date().toISOString() })
-    renderVerlauf()
   }
+  if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
+  // Bug (real reproduziert, state/nachweis-jarvis-latenz.md Abschnitt "Abbruch"): ausstehenderLauf
+  // MUSS vor diesem abschließenden renderVerlauf() auf null stehen — renderVerlauf() blendet den
+  // Abbrechen-Button nur aus, wenn ausstehenderLauf === null (s. dort), und setzt dessen Text/Sperre
+  // nicht zurück. Ein Render VOR dem Nullen (wie bisher im Fehlerzweig oben) ließ den Button nach
+  // einem manuellen Abbruch dauerhaft auf "Abbruch angefordert"/gesperrt stehen, obwohl der Lauf
+  // längst terminal aufgelöst war.
   ausstehenderLauf = null
+  setzeAbbrechenZustand('Lauf abbrechen', false)
+  renderVerlauf()
   stoppeAusstehendenLaufPoll()
   setzeSendenSperre(false)
 }
@@ -367,6 +437,7 @@ async function sendeAktuelleEingabe() {
     return
   }
 
+  const tSenden = performance.now()
   setzeSendenSperre(true)
   try {
       const vorfilterErgebnis = await loeseVorfilterAuf(nachricht, letzterZustand)
@@ -384,13 +455,14 @@ async function sendeAktuelleEingabe() {
         zeigeChatFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
         return
       }
+      const tServerQuittung = performance.now()
       if (antwort.status !== 202) {
         const koerper = await antwort.json().catch(() => ({}))
         zeigeChatFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
-      ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString() }
+      ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString(), messung: { tSenden, tServerQuittung, tickZeiten: [] } }
       starteAusstehendenLaufPoll()
       setzeAbbrechenZustand('Lauf abbrechen', false)
       renderVerlauf()
@@ -417,7 +489,12 @@ function initAbbrechenBedienung() {
     setzeAbbrechenZustand('Abbruch angefordert', true)
     try {
       const antwort = await abbrichLauf(laufId)
-      if (antwort.ok) return
+      if (antwort.ok) {
+        // Für die Auswertung in pruefeAusstehendenLauf: ein 202 heißt nur "angenommen", nicht
+        // "hat gewirkt" (s. dort) — der Lauf kann trotzdem regulär mit einer Antwort enden.
+        if (ausstehenderLauf?.laufId === laufId) ausstehenderLauf.abbruchAngefordert = true
+        return
+      }
       if (ausstehenderLauf?.laufId !== laufId) return // inzwischen anders aufgelöst (Poll/Projektwechsel) — keine Meldung mehr für den falschen Lauf
       const koerper = await antwort.json().catch(() => ({}))
       zeigeChatFehler(`Abbruch fehlgeschlagen: ${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
@@ -435,9 +512,11 @@ async function sendeZusammenfassungAnfrage() {
   const button = document.getElementById('chat-zusammenfassen-btn')
   if (button.disabled) return
   zeigeChatFehler('')
+  const tSenden = performance.now()
   setzeSendenSperre(true)
   try {
     const antwort = await sendeChatZusammenfassung()
+    const tServerQuittung = performance.now()
     if (antwort.status !== 202) {
       const koerper = await antwort.json().catch(() => ({}))
       zeigeChatFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
@@ -445,7 +524,13 @@ async function sendeZusammenfassungAnfrage() {
       return
     }
     const angenommen = await antwort.json().catch(() => ({}))
-    ausstehenderLauf = { nachricht: '[Zusammenfassung angefordert]', laufId: angenommen.laufId, zeitstempel: new Date().toISOString(), istZusammenfassung: true }
+    ausstehenderLauf = {
+      nachricht: '[Zusammenfassung angefordert]',
+      laufId: angenommen.laufId,
+      zeitstempel: new Date().toISOString(),
+      istZusammenfassung: true,
+      messung: { tSenden, tServerQuittung, tickZeiten: [] },
+    }
     starteAusstehendenLaufPoll()
     setzeAbbrechenZustand('Lauf abbrechen', false)
     renderVerlauf()
@@ -520,4 +605,7 @@ export function initChatView() {
     letzterZustand = zustand
   })
   abonniereProjektWechsel(setzeChatZustandZurueck)
+
+  // Task "Jarvis-Chat-Latenz senken", Schritt 4: siehe Kommentar an polleSofortBeiSichtbarkeit.
+  document.addEventListener('visibilitychange', () => void polleSofortBeiSichtbarkeit())
 }

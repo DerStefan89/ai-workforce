@@ -246,7 +246,9 @@ if (/antwort\.status === 409/.test(appQuelltext)) {
 // (holeLaufDetail), die View ruft ihn nur noch mit schritt.lauf_id auf.
 verlangeVorkommen('d', 'F-234: aktiver Lauf über holeLaufDetail(schritt.lauf_id)', workflowsQuelltext, 'holeLaufDetail(schritt.lauf_id)')
 // F25 WS-2a (AK10): mitPraefix() ohne eigenes '/api', siehe Kommentar bei (b).
-verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`))')
+// F-561: der Aufruf trägt seit dem Poll-Zeitlimit ein zweites fetch-Argument ({ signal }) — die
+// Zusage bleibt "holeLaufDetail geht über GET /laeufe/<laufId>", der Optionen-Teil ist offen.
+verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`)')
 verlangeVorkommen('d', 'F-234: Quelle ist das aktiv-Feld (D13), nicht der Schrittstatus', appQuelltext, 'detail.aktiv === true')
 verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, 'läuft jetzt')
 

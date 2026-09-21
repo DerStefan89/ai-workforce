@@ -20,6 +20,13 @@
  *     '/api/projekte/<id>/chat/zusammenfassen' erreicht denselben Endpunkt.
  * (h) Code-Review-Korrektur: die Zusammenfassung bleibt im Auftragstext gepinnt,
  *     auch wenn danach mehr als (maxTurns - 1) Folgeturns aufgelaufen sind.
+ * (i) Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): robuste Extraktion
+ *     eines Jarvis-Ergebnisses aus Prosa — entferneCodezaun/extrahiereErstesJsonObjekt/
+ *     leseJarvisErgebnisAusLaufakte gegen reines JSON, Prosa+Codezaun, Codezaun ohne
+ *     Sprachangabe, Prosa+rohes JSON-Objekt ohne Zaun, und "kein JSON" (bleibt ungültig).
+ * (j) Runde 2, Schritt 2 (löst F-506, "Nie wieder stilles Verlieren"): ein real
+ *     ABGESCHLOSSEN/ERFOLGREICH beendeter Jarvis-Lauf mit unlesbarem Ergebnis schreibt
+ *     TROTZDEM genau einen sichtbaren Fehler-Eintrag in 'chat-<projektId>' statt gar keinen.
  *
  * Unit-Ebene (waehleVerlaufsfenster/baueJarvisAuftragstext-Randfälle) liegt in
  * src/jarvis/jarvis.test.ts — dieses Gate prüft nur die Server-Verdrahtung
@@ -34,7 +41,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
-import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler } from './leitstand-server.mjs'
+import { entferneCodezaun, erzeugeMultiProjektDispatcher, erzeugeRequestHandler, extrahiereErstesJsonObjekt, leseJarvisErgebnisAusLaufakte } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -106,9 +113,14 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       // F31 WS-3b (MCP-Start): dieselbe Erwartung für mcpConfig — real gemessen, dass die
       // Account-MCP-Server trotz settingSources '' laden (E-187-Lücke, features/F31/latenzmessung.md).
       befunde.push(`(a) F31 WS-3b: erwartet aufrufEingaben.mcpConfig '{"mcpServers":{}}', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
+    } else if (letzteEingaben.aufrufEingaben?.umgebungsvariablen?.MAX_THINKING_TOKENS !== '0') {
+      // Task "Jarvis-Chat-Latenz senken", Schritt 3: dieselbe Erwartung für umgebungsvariablen —
+      // real dokumentiert (code.claude.com/docs/en/model-config), dass MAX_THINKING_TOKENS=0
+      // Extended Thinking auf der Anthropic-API abschaltet.
+      befunde.push(`(a) Jarvis-Chat-Latenz senken: erwartet aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS '0', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else {
       console.log(
-        "✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '' und aufrufEingaben.mcpConfig ist '{\"mcpServers\":{}}' (F31 WS-3/WS-3b)."
+        "✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '', aufrufEingaben.mcpConfig ist '{\"mcpServers\":{}}' und aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS ist '0' (F31 WS-3/WS-3b, Jarvis-Chat-Latenz senken)."
       )
     }
   } finally {
@@ -363,6 +375,131 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       befunde.push(`(g): POST /api/projekte/<id>/chat/zusammenfassen sollte über den Dispatcher den echten Endpunkt erreichen (409 'kein Verlauf zum Zusammenfassen'), erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
     } else {
       console.log("✓ (g): POST /api/chat/zusammenfassen ist über den F25-Dispatcher unter '/api/projekte/<id>/chat/zusammenfassen' real erreichbar.")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (i) Robuste Extraktion (Runde 2, Schritt 1, löst F-506) ───────────────
+{
+  const befundeVor = befunde.length
+  const gueltigesErgebnis = { art: 'antwort', antwort: 'Alles im grünen Bereich.' }
+
+  // entferneCodezaun: Codezaun IRGENDWO im Text, nicht nur wenn er den gesamten Text umschließt.
+  const prosaVorZaun = `Kein neuer Sachstand seit den letzten identischen Antworten — ich antworte konsistent damit.\n\`\`\`json\n${JSON.stringify(gueltigesErgebnis)}\n\`\`\``
+  if (entferneCodezaun(prosaVorZaun) !== JSON.stringify(gueltigesErgebnis)) {
+    befunde.push(`(i) entferneCodezaun (Prosa+Codezaun): erwartet den reinen Zauninhalt, erhalten ${JSON.stringify(entferneCodezaun(prosaVorZaun))}`)
+  }
+  // Regressionsschutz (Muster check-f22-click-to-work.mjs Abschnitt (0)): ein Text ganz ohne Zaun bleibt null.
+  if (entferneCodezaun(JSON.stringify(gueltigesErgebnis)) !== null) {
+    befunde.push('(i) entferneCodezaun (kein Zaun): erwartet null, Text ohne Codezaun wurde trotzdem "entzäunt"')
+  }
+
+  // extrahiereErstesJsonObjekt: Prosa + rohes JSON-Objekt GANZ OHNE Zaun.
+  const prosaOhneZaun = `Kein neuer Sachstand — ich antworte konsistent damit. ${JSON.stringify(gueltigesErgebnis)} Ende der Antwort.`
+  if (extrahiereErstesJsonObjekt(prosaOhneZaun) !== JSON.stringify(gueltigesErgebnis)) {
+    befunde.push(`(i) extrahiereErstesJsonObjekt (Prosa ohne Zaun): erwartet das reine JSON-Objekt, erhalten ${JSON.stringify(extrahiereErstesJsonObjekt(prosaOhneZaun))}`)
+  }
+  // Ein Objekt mit einer geschweiften Klammer INNERHALB eines String-Werts darf die Klammerzählung nicht stören.
+  const mitKlammerImString = { art: 'antwort', antwort: 'Ein Wert mit { Klammer } im Text.' }
+  if (extrahiereErstesJsonObjekt(`vorher ${JSON.stringify(mitKlammerImString)} nachher`) !== JSON.stringify(mitKlammerImString)) {
+    befunde.push('(i) extrahiereErstesJsonObjekt: eine geschweifte Klammer innerhalb eines String-Werts wurde fälschlich mitgezählt')
+  }
+  // Kein '{' im Text überhaupt.
+  if (extrahiereErstesJsonObjekt('nur Prosa, kein JSON') !== null) {
+    befunde.push('(i) extrahiereErstesJsonObjekt (kein JSON): erwartet null')
+  }
+
+  // leseJarvisErgebnisAusLaufakte end-to-end über alle vier vom Auftrag genannten Fälle plus den
+  // Prosa-ohne-Zaun-Fall — Muster scripts/check-f26-jarvis.mjs Abschnitt (d).
+  const basisVerzeichnis = `kontrollzustand-test-f31-ak-i-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  try {
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const schreibeRohstromFixture = (dateiname, resultText) => {
+      const pfad = join(basisVerzeichnis, dateiname)
+      writeFileSync(pfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: resultText }) }), 'utf8')
+      return { worker: 'claude-code', rohstrom_referenz: { pfad } }
+    }
+
+    const faelle = [
+      { name: 'reines JSON', resultText: JSON.stringify(gueltigesErgebnis), sollGueltigSein: true },
+      { name: 'Codezaun ohne Sprachangabe', resultText: `\`\`\`\n${JSON.stringify(gueltigesErgebnis)}\n\`\`\``, sollGueltigSein: true },
+      { name: 'Prosa + Codezaun (real beobachtet, F-506)', resultText: prosaVorZaun, sollGueltigSein: true },
+      { name: 'Prosa + rohes JSON-Objekt ohne Zaun', resultText: prosaOhneZaun, sollGueltigSein: true },
+      { name: 'kein JSON', resultText: 'Kein neuer Sachstand seit den letzten identischen Antworten — ich antworte konsistent damit.', sollGueltigSein: false },
+    ]
+    for (const [index, fall] of faelle.entries()) {
+      const laufakte = schreibeRohstromFixture(`i-fall-${index}.json`, fall.resultText)
+      const ergebnis = leseJarvisErgebnisAusLaufakte(laufakte)
+      if (fall.sollGueltigSein && (!ergebnis.ok || JSON.stringify(ergebnis.ergebnis) !== JSON.stringify(gueltigesErgebnis))) {
+        befunde.push(`(i) '${fall.name}': erwartet ok:true mit dem gültigen Ergebnis, erhalten ${JSON.stringify(ergebnis)}`)
+      }
+      if (!fall.sollGueltigSein && ergebnis.ok !== false) {
+        befunde.push(`(i) '${fall.name}': erwartet ok:false, erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    if (befunde.length === befundeVor) {
+      console.log('✓ (i): entferneCodezaun/extrahiereErstesJsonObjekt/leseJarvisErgebnisAusLaufakte lösen ein Jarvis-Ergebnis real aus reinem JSON, Codezaun ohne Sprachangabe, Prosa+Codezaun und Prosa+rohem JSON-Objekt; "kein JSON" bleibt ungültig.')
+    }
+  } finally {
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (j) Ungültiges Ergebnis nach ERFOLGREICH: genau ein Fehler-Chat-Eintrag (Runde 2, Schritt 2) ──
+{
+  const basisVerzeichnis = `kontrollzustand-test-f31-ak-j-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const projektId = 'check-f31-ak-j'
+
+  /** Wie baueFuehreAufgabeDurchFn oben, aber mit einem vom Aufrufer vorgegebenen, potenziell unlesbaren Ergebnistext statt eines immer gültigen. */
+  function baueFuehreAufgabeDurchFnMitRohemErgebnistext(ergebnisText) {
+    return async (laufId) => {
+      mkdirSync(basisVerzeichnis, { recursive: true })
+      const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+      writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: ergebnisText }) }), 'utf8')
+      registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f31-fake-ungueltig' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+        basisVerzeichnis,
+        schreiber: STILLER_SCHREIBER,
+      })
+      return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+    }
+  }
+
+  // Real beobachteter Fall (state/nachweis-jarvis-latenz.md "Runde 2"): reine Prosa, kein JSON,
+  // auch nach der robusteren Extraktion (i) nicht rettbar — bleibt absichtlich ungültig.
+  const fuehreAufgabeDurchFn = baueFuehreAufgabeDurchFnMitRohemErgebnistext(
+    'Kein neuer Sachstand seit den letzten identischen Antworten — ich antworte konsistent damit.'
+  )
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const antwort = await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Was ist der Stand?' }) })
+    if (antwort.status !== 202) {
+      befunde.push(`(j): erwartet 202, erhalten ${antwort.status} (${await antwort.text()})`)
+    } else {
+      // nachLauf läuft synchron im .then-Zweig von fuehreAufgabeDurchFn — Muster check-f26-jarvis.mjs (f).
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      const verlauf = (await (await fetch(`${basisUrl}/api/chat`)).json()).verlauf
+      if (verlauf.length !== 1) {
+        befunde.push(`(j): erwartet GENAU einen Chat-Eintrag (den sichtbaren Fehler-Turn), erhalten ${verlauf.length}`)
+      } else {
+        const eintrag = verlauf[0]
+        if (typeof eintrag.jarvisAntwort?.antwort !== 'string' || !eintrag.jarvisAntwort.antwort.startsWith('Jarvis-Antwort konnte nicht gelesen werden:')) {
+          befunde.push(`(j): erwartet einen erkennbaren Fehlertext in jarvisAntwort.antwort, erhalten ${JSON.stringify(eintrag)}`)
+        } else if (eintrag.nachricht !== 'Was ist der Stand?') {
+          befunde.push(`(j): die persistierte 'nachricht' sollte die echte Nutzerfrage bleiben, erhalten ${JSON.stringify(eintrag.nachricht)}`)
+        } else if (eintrag.istZusammenfassung !== false) {
+          befunde.push(`(j): ein Fehler-Turn darf NICHT als istZusammenfassung markiert werden (sonst pinnt ein künftiges Verlaufsfenster einen inhaltsleeren Eintrag), erhalten ${JSON.stringify(eintrag)}`)
+        } else {
+          console.log("✓ (j): ein real ABGESCHLOSSEN/ERFOLGREICH beendeter Jarvis-Lauf mit unlesbarem Ergebnis schreibt GENAU einen sichtbaren Fehler-Eintrag in 'chat-<projektId>' statt gar keinen — 'nachricht' bleibt die echte Nutzerfrage, istZusammenfassung bleibt false.")
+        }
+      }
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

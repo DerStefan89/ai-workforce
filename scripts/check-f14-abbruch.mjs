@@ -344,6 +344,60 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
   }
 }
 
+// ─── (d) Jarvis-Chat: Abbruch über GENAU den Pfad, den die Chat-UI nutzt ──────
+//
+// Warum eigener Block, obwohl (b) den Abbruch-Endpunkt bereits prüft: (b) startet den Lauf über
+// POST /api/laeufe, die Chat-UI über POST /api/chat (starteJarvisChatLauf) — ein anderer
+// Registrierungspfad für dieselbe D13-Belegung (laufAktiv/laufAktivLaufId/laufAktivAbortController,
+// eigene Codestelle). Real beobachtet (state/nachweis-jarvis-latenz.md, Abschnitt "Abbruch Runde
+// 2"): ein Abbruch über diesen Pfad kam mehrfach wirkungslos durch, während (b) grün blieb. Der
+// hängende Kindprozess (HAENGE_SKRIPT) endet ausschließlich durch den Abbruch — dadurch liegt der
+// Abbruch garantiert IM laufenden Prozess, ohne Wettlauf gegen ein natürliches Laufende.
+{
+  const basisVerzeichnis = 'kontrollzustand-test-f14-chat-abbruch'
+  const startvorlagePfad = schreibeTestStartvorlage('test-f14-chat-abbruch.json', {})
+  let schliessen = async () => {}
+  try {
+    const testserver = await starteTestserver({ basisVerzeichnis, startvorlagePfad, ...startfreigabeOptionen() })
+    schliessen = testserver.schliessen
+
+    const start = await fetch(`${testserver.basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'F14-Gate: Abbruch eines laufenden Chat-Laufs' }) })
+    const startKoerper = await start.json().catch(() => ({}))
+    if (start.status !== 202 || typeof startKoerper.laufId !== 'string') {
+      befunde.push(`(d) Chat-ABBRUCH: POST /api/chat erwartet 202 mit laufId, erhalten ${start.status} (${JSON.stringify(startKoerper)})`)
+    } else {
+      const laufId = startKoerper.laufId
+      // Wie in (b): warten, bis der Kindprozess real läuft — der Abbruch soll einen LAUFENDEN
+      // Prozess treffen, nicht die Vorbereitungsphase davor.
+      await verzoegerung(600)
+      const abbrechen = await fetch(`${testserver.basisUrl}/api/laeufe/${encodeURIComponent(laufId)}/abbrechen`, { method: 'POST' })
+      if (abbrechen.status !== 202) {
+        befunde.push(`(d) Chat-ABBRUCH: POST .../abbrechen erwartet 202, erhalten ${abbrechen.status} (${JSON.stringify(await abbrechen.json().catch(() => ({})))})`)
+      }
+
+      const laufStatus = await warteAufTerminal(laufId, basisVerzeichnis, 20000)
+      const terminalDaten = leseTerminalDaten(laufId, basisVerzeichnis, laufStatus)
+      if (
+        laufStatus.status !== 'ABGESCHLOSSEN' ||
+        laufStatus.ergebnis !== 'FEHLGESCHLAGEN' ||
+        terminalDaten?.grund !== 'abgebrochen_manuell' ||
+        terminalDaten?.art !== 'MANUELL' ||
+        terminalDaten?.beendigungsart !== 'ABBRUCH'
+      ) {
+        befunde.push(
+          `(d) Chat-ABBRUCH: erwartet ABGESCHLOSSEN/FEHLGESCHLAGEN mit Terminal-Wirkungsmarke daten.grund='abgebrochen_manuell'/art='MANUELL'/beendigungsart='ABBRUCH', erhalten laufStatus=${JSON.stringify(laufStatus)}, daten=${JSON.stringify(terminalDaten)}`
+        )
+      } else {
+        console.log('✓ (d) Jarvis-Chat: POST /api/chat → POST /api/laeufe/<laufId>/abbrechen im laufenden Prozess → 202 und terminal ABBRUCH (abgebrochen_manuell).')
+      }
+    }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+    rmSync(startvorlagePfad, { force: true })
+  }
+}
+
 // Aufräumen von STARTFREIGABE_REPO/PROJEKT_VERZEICHNIS läuft über den process.on('exit', ...)-Hook
 // oben (Reviewer-Befund) — kein expliziter Aufruf hier nötig, deckt auch einen unbehandelten Wurf ab.
 

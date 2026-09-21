@@ -366,18 +366,31 @@ export async function fuehreAufgabeDurch(
             abbruchSignal: optionen.abbruchSignal,
             cwd: optionen.cwd,
             zeitmessung: optionen.zeitmessung,
+            // Task "Jarvis-Chat-Latenz senken", Schritt 3: aus eingaben.aufrufEingaben gelesen
+            // (Muster settingSources/mcpConfig oben in baueAufruf), NICHT aus optionen — bewusst
+            // NICHT in AusfuehrungsOptionen (Muster-Kommentar dort), weil dieses Feld wie
+            // settingSources/mcpConfig zum Aufrufbau-Parametersatz EINES Laufs gehört, nicht zur
+            // Controller-weiten Durchreichung.
+            umgebungsvariablen: eingaben.aufrufEingaben.umgebungsvariablen,
           }
         )
   if (!gatewayErgebnis.ok) {
     return { ok: false, stufe: 'gateway', grund: gatewayErgebnis.grund }
   }
 
+  // F31 WS-3-Zeitmessung (nur bei LEITSTAND_ZEITMESSUNG=1 gesetzt, sonst undefined — No-op):
+  // klassifiziereLauf schreibt die terminale Wirkungsmarke über F1B, ist also die Grenze
+  // zwischen "Werkzeugprozess fertig" und "Lauf terminal". Ohne diese beiden Marken war die
+  // Nachbereitungsdauer nur aus (run_prepared→terminal) minus duration_ms ableitbar — eine
+  // Rechnung, die CLI-Start/-Ende fälschlich der Nachbereitung zuschlägt.
+  optionen.zeitmessung?.('klassifikation_begonnen')
   const klassifikation = klassifiziereLauf(
     laufId,
     profilReferenz,
     { laufakte: gatewayErgebnis.laufakte },
     { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: optionen.schreiber }
   )
+  optionen.zeitmessung?.('terminal_checkpoint_geschrieben')
 
   let eskalation: { laufId: string; bedarfVersionSequenz: number; transportVersionSequenz: number } | undefined
   if (klassifikation.ergebnis === 'VERWEIGERT' && klassifikation.bypass_verdacht_anzahl > 0) {

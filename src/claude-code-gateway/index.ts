@@ -160,6 +160,8 @@ interface GatewayOptionen {
   cwd?: string
   /** F31 WS-3 (Latenzmessung): optionaler Rückruf, mit dem der Aufrufer benannte Zeitmarken innerhalb dieses Aufrufs sammeln kann — reiner Diagnose-Haken ohne Wirkung auf den Ablauf, fehlt er, ändert sich nichts (Muster schreiber). starteGateway ruft ihn an vier Stellen: 'kontextpaket_startfreigabe' (F4-Startfreigabe geprüft, unmittelbar vor der RUN_PREPARED-Wirkungsmarke), 'prozess_gestartet'/'prozess_beendet' (um den Prozessstart-Await) und 'laufakte_rohstrom_geschrieben' (nach dem Registrieren der Laufakte). */
   zeitmessung?: (marke: string) => void
+  /** Task "Jarvis-Chat-Latenz senken", Schritt 3: reine Durchreichung an prozessstart.ts' starteProzess (Muster cwd) — s. AufrufEingaben.umgebungsvariablen für den einzigen bestehenden Aufrufer (starteJarvisChatLauf). */
+  umgebungsvariablen?: Record<string, string>
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -392,6 +394,12 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
     cwd: optionen.cwd,
+    // Task "Jarvis-Chat-Latenz senken", Schritt 2: `-p` liest nie von stdin (Prompt kommt als
+    // Argument) — offenes stdin bringt hier nie einen Nutzen, aber real beobachtet 3s
+    // Wartezeit ("no stdin data received in 3s"). Fest für JEDE Rolle, kein Options-Feld
+    // (Muster codex-gateway/index.ts, dort ebenso hartkodiert statt optional).
+    stdinLeer: true,
+    umgebungsvariablen: optionen.umgebungsvariablen,
   })
 
   optionen.zeitmessung?.('prozess_beendet')
@@ -415,6 +423,11 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   })
   const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
   writeFileSync(rohPfad, rohInhalt, 'utf8')
+
+  // Trennt den Rohstrom-Schreibvorgang (oben, potenziell mehrere MB stdout) vom
+  // Lineage-Schreibvorgang der Laufakte (unten) — beide lagen bisher gemeinsam hinter
+  // 'laufakte_rohstrom_geschrieben' und waren als Einzelposten nicht unterscheidbar.
+  optionen.zeitmessung?.('rohstrom_geschrieben')
 
   const laufakte: LaufakteV0Daten = {
     laufakte_schema: 'v0',

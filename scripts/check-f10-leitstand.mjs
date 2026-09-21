@@ -716,9 +716,20 @@ function verzoegerung(ms) {
 // ─── (q) F14 WS-4 (AK7, Teil 2): POST /api/laeufe/<laufId>/abbrechen löst den aktiven Lauf aus ──
 {
   let empfangenesAbbruchSignal
+  // Der Lauf bleibt aktiv, BIS der Test ihn selbst freigibt (gibLaufFrei) — nicht bis eine feste
+  // Frist abläuft. Eine feste Verzögerung (vorher 120ms) war ein Rennen gegen die eigene
+  // Vorbereitung dieses Blocks (zwei Wirkungsmarken auf Platte, vier HTTP-Anfragen): idle real
+  // ~66ms, unter CPU-Last (mehrere gleichzeitige Werkzeugprozesse) real über 120ms — dann war der
+  // Lauf beim Abbruch längst beendet und der Endpunkt antwortete korrekterweise 404, der Test
+  // meldete aber einen Befund. Genau derselbe Rennentyp wie der Produktionsfehler, den dieser
+  // Block prüft (Abbruch nach Prozessende) — hier gehört er ausgeschaltet, nicht nachgestellt.
+  let gibLaufFrei
+  const laufFreigegeben = new Promise((resolve) => {
+    gibLaufFrei = resolve
+  })
   const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, _eingaben, optionen) => {
     empfangenesAbbruchSignal = optionen?.abbruchSignal
-    await verzoegerung(120)
+    await laufFreigegeben
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
   const basisVerzeichnis = 'kontrollzustand-test-f14-ws4-abbrechen'
@@ -785,8 +796,9 @@ function verzoegerung(ms) {
       console.log('✓ F14 WS-4 AK7: unbekannte/andere laufId → 404, Abbruch der aktiven laufId → 202 mit real ausgelöstem AbortController, Doppelklick bleibt idempotent (202, kein Absturz).')
     }
 
-    // Nach Laufende (mock-Verzögerung 120ms, längst abgelaufen): laufAktiv wurde im .then zurückgesetzt —
-    // dieselbe laufId zeigt jetzt 'aktiv:false' (QA-Befund, F-172 vollständig belegt, nicht nur der true-Fall).
+    // Jetzt erst das Laufende auslösen: laufAktiv wird im .then zurückgesetzt — dieselbe laufId
+    // zeigt danach 'aktiv:false' (QA-Befund, F-172 vollständig belegt, nicht nur der true-Fall).
+    gibLaufFrei()
     await verzoegerung(150)
     const detailNachEnde = await (await fetch(`${basisUrl}/api/laeufe/${laufId}`)).json()
     if (detailNachEnde.aktiv !== false) {
