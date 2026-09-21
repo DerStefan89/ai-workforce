@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs'
 import type { ProjektEintrag } from './types.ts'
 
 const PROJEKTE_WURZEL_FELDER = new Set(['projekte_schema', 'projekte'])
-const PROJEKT_FELDER = new Set(['id', 'name', 'repo_pfad', 'startvorlage_pfad', 'profil_pfad', 'basisverzeichnis', 'status'])
+const PROJEKT_FELDER = new Set(['id', 'name', 'repo_pfad', 'startvorlage_pfad', 'profil_pfad', 'basisverzeichnis', 'status', 'kontext_pfad', 'roadmap_pfad'])
 const PROJEKT_STATUS = ['IDEE', 'DISCOVERY', 'GEPLANT', 'IN_ENTWICKLUNG', 'TEST', 'NUTZBAR', 'BETRIEB', 'PAUSIERT', 'ARCHIVIERT']
 const ID_MUSTER = /^[a-z0-9][a-z0-9-]*$/
 
@@ -71,6 +71,16 @@ function pruefeProjektForm(projekt: unknown, index: number, verstoesse: string[]
 
   if (typeof projekt.status !== 'string' || !PROJEKT_STATUS.includes(projekt.status)) {
     verstoesse.push(`'${praefix}status' muss einer von ${PROJEKT_STATUS.join(', ')} sein`)
+  }
+
+  // F33 WS-1 (E-M4-2): additiv, OPTIONAL — bestehende projekte.json muss ohne Migration
+  // gültig bleiben. Nur geprüft, wenn gesetzt (Muster profil_pfad-Nachbarfelder, aber ohne
+  // Pflicht-Prüfung, da 'in'-Check statt direktem istNichtLeererString-Aufruf).
+  if ('kontext_pfad' in projekt && !istNichtLeererString(projekt.kontext_pfad)) {
+    verstoesse.push(`'${praefix}kontext_pfad' muss, wenn gesetzt, ein nicht-leerer String sein`)
+  }
+  if ('roadmap_pfad' in projekt && !istNichtLeererString(projekt.roadmap_pfad)) {
+    verstoesse.push(`'${praefix}roadmap_pfad' muss, wenn gesetzt, ein nicht-leerer String sein`)
   }
 }
 

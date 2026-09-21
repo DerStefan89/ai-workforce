@@ -1765,6 +1765,79 @@ export function loeseEvidenzPfadAuf(pfad, repoWurzel) {
 }
 
 /**
+ * Baut die drei F33-WS-1-Anfragen (Projektbeschreibung, Arbeitsweise,
+ * Roadmap) für die Anfragenliste der Rollen `router`/`jarvis` — reine
+ * Funktion, keine Seiteneffekte, kein Datei-I/O (der eigentliche Lesevorgang
+ * bleibt loeseAusfuehrungsEingabenAuf, D5: kein zweiter Lesepfad). Beide
+ * Pfade sind repo-relativ (Anfrage.pfad-Vertrag) — kontextPfad/roadmapPfad
+ * kommen aus erzeugeRequestHandlers eigenen, projektbezogenen Defaults.
+ * `notwendig: true`, weil beide Rollen ohne Projektkontext keine sinnvolle
+ * Status-/Klassifikationsantwort geben können (Evidenz vor Budget,
+ * Entscheidung 115) — anders als CLAUDE.md (Rolle `ausfuehrung`) ist dieser
+ * Kontext bei keiner Einstellungsquelle automatisch geladen
+ * (`features/F33/spike-setting-sources.md`).
+ * @param kontextPfad - repo-relativer Ordner mit beschreibung.md/anweisungen.md
+ * @param roadmapPfad - repo-relativer Pfad zur roadmap.json
+ * @returns drei Anfrage-Objekte (ohne 'inhalt' — wird von loeseAusfuehrungsEingabenAuf ergänzt)
+ */
+export function baueProjektkontextAnfragen(kontextPfad, roadmapPfad) {
+  return [
+    {
+      pfad: `${kontextPfad}/beschreibung.md`,
+      frage: 'Was ist dieses Projekt, für wen, welches Zielbild?',
+      begruendung: 'Projektkontext (F33 WS-1, E-M4-2)',
+      notwendig: true,
+    },
+    {
+      pfad: `${kontextPfad}/anweisungen.md`,
+      frage: 'Wie wird in diesem Projekt gearbeitet?',
+      begruendung: 'Projektkontext (F33 WS-1, E-M4-2)',
+      notwendig: true,
+    },
+    {
+      pfad: roadmapPfad,
+      frage: 'Welche Vision und Meilensteine verfolgt dieses Projekt?',
+      begruendung: 'Projektkontext (F33 WS-1, E-M4-2)',
+      notwendig: true,
+    },
+  ]
+}
+
+/**
+ * Filtert eine Anfragenliste auf real existierende Dateien (repo-relativ,
+ * gegen repoWurzel aufgelöst über loeseEvidenzPfadAuf) — F33 WS-1
+ * (QA-Pass-Befund: `loeseAusfuehrungsEingabenAuf` lehnt weiter unten die
+ * GESAMTE Eingaben-Auflösung ab, wenn AUCH NUR EINE Anfrage-Datei fehlt,
+ * unabhängig von `notwendig` — das ist bestehendes, allgemeines Verhalten
+ * für vom Aufrufer benannte Evidenzdateien (F11 WS-2 AK6), aber
+ * `baueProjektkontextAnfragen` ist der erste Aufrufer, der server-seitig
+ * IMMER dieselben drei Pfade nennt, statt einer vom Menschen bewusst
+ * gewählten Anfrage. Ein neu über F25/E-M4-2 registriertes Projekt OHNE
+ * vorbereitete `docs/projekt/kontext/`/`roadmap.json` (F33 nennt Auto-
+ * Erzeugung dafür ausdrücklich als Nicht-Ziel) hätte sonst Jarvis-Chat UND
+ * Router bei JEDEM Versuch mit 400 "Datei nicht gefunden" blockiert, ohne
+ * Fallback und ohne Warnung vor dem ersten Nutzungsversuch. Eine fehlende
+ * Datei wird deshalb hier mit Warnung übersprungen (console.warn, kein
+ * Ablehnungsgrund, kein neues Ereignis, keine Schemaänderung) statt den
+ * gesamten Lauf zu blockieren — Projektkontext ist wertvoll, wenn
+ * vorhanden, aber anders als die Auftragsreferenz keine Voraussetzung
+ * dafür, dass jarvis/router überhaupt laufen.
+ * @param anfragen - Anfragen mit repo-relativem `pfad`
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel dieser Instanz
+ * @returns nur die Anfragen, deren Datei real existiert
+ */
+export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
+  return anfragen.filter((anfrage) => {
+    const pfadErgebnis = loeseEvidenzPfadAuf(anfrage.pfad, repoWurzel)
+    const existiert = pfadErgebnis.ok && existsSync(join(repoWurzel, pfadErgebnis.relativerPfad)) && statSync(join(repoWurzel, pfadErgebnis.relativerPfad)).isFile()
+    if (!existiert) {
+      console.warn(`[leitstand] ${anfrage.pfad}: Projektkontext fehlt, wird übersprungen`)
+    }
+    return existiert
+  })
+}
+
+/**
  * Löst einen geprüften Startauftrag zu fertigen AusfuehrungsEingaben auf
  * (F15 WS-2a) — verhaltensgleich aus dem POST /api/laeufe-Handler
  * extrahiert, wo dieser Block seit F11 WS-2 inline stand. Zwei Schritte,
@@ -2943,6 +3016,14 @@ export function erzeugeRequestHandler(optionen = {}) {
     // zweite Namenskonvention). baueProjektHandlerMap reicht je Registereintrag dessen echte
     // projekt.id durch.
     projektId = 'ai-workforce',
+    // F33 WS-1 (E-M4-2): repo-relative Standardpfade des Projektkontexts dieser Instanz —
+    // baueProjektHandlerMap reicht projekt.kontext_pfad/projekt.roadmap_pfad durch (undefined,
+    // wenn der Registereintrag sie nicht setzt), dann greift der Default hier (Muster
+    // startvorlagePfad oben). REPO-relativ, nicht mit repoWurzel verbunden: loeseEvidenzPfadAuf
+    // (unten, Router-/Jarvis-Routen) löst anfrage.pfad selbst gegen repoWurzel auf und lehnt einen
+    // bereits absoluten Pfad ab (AK6-Pfadsicherheit) — ein join(repoWurzel, …) hier wäre falsch.
+    kontextPfad = 'docs/projekt/kontext',
+    roadmapPfad = 'docs/projekt/roadmap.json',
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -4382,7 +4463,12 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const eingabenRoh = {
         rolle: 'router',
-        anfragen: [],
+        // F33 WS-1 (E-M4-2): Projektbeschreibung, Arbeitsweise, Roadmap — router lädt 'project'
+        // (CLAUDE.md), aber die drei neuen Kontextdateien sind nicht Teil von CLAUDE.md und
+        // werden von keiner Einstellungsquelle automatisch geladen. filtereExistierendeAnfragen
+        // lässt ein Projekt ohne vorbereitete Kontextdateien (F25/E-M4-2-Import) laufen, statt
+        // jeden Router-Versuch mit 400 zu blockieren (QA-Pass-Befund).
+        anfragen: filtereExistierendeAnfragen(baueProjektkontextAnfragen(kontextPfad, roadmapPfad), repoWurzel),
         budget: vorlage.standardBudget,
         aufrufEingaben: { modell },
         auftragId,
@@ -4515,7 +4601,13 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const eingabenRoh = {
         rolle: 'jarvis',
-        anfragen: [],
+        // F33 WS-1 (E-M4-2): jarvis läuft mit settingSources '' (F31 WS-3) und lädt CLAUDE.md
+        // NICHT (real gemessen, features/F33/spike-setting-sources.md) — Projektbeschreibung,
+        // Arbeitsweise und Roadmap kommen deshalb ausschließlich über diese Einspeisung.
+        // filtereExistierendeAnfragen lässt ein Projekt ohne vorbereitete Kontextdateien
+        // (F25/E-M4-2-Import) laufen, statt jeden Chat-Versuch mit 400 zu blockieren
+        // (QA-Pass-Befund).
+        anfragen: filtereExistierendeAnfragen(baueProjektkontextAnfragen(kontextPfad, roadmapPfad), repoWurzel),
         budget: vorlage.standardBudget,
         // F31 WS-3 (Stefan 20.09.2026, Option A): Jarvis läuft ohne Projekt-Settings — settingSources
         // '' überschreibt baueAufrufs Standardwert 'project' NUR für diesen Pfad (jede andere Rolle
@@ -6146,6 +6238,11 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           // erzeugeRequestHandler-Option) — POST/GET /api/chat schreiben/lesen dadurch den
           // richtigen 'lineage-chat-<projekt.id>'-Verlauf statt des Default-Namens.
           projektId: projekt.id,
+          // F33 WS-1 (E-M4-2): roher Durchreich, kein zweiter Default (D5) — fehlt das Feld im
+          // Registereintrag, ist es hier undefined, und erzeugeRequestHandlers eigener Default
+          // ('docs/projekt/kontext'/'docs/projekt/roadmap.json') greift.
+          kontextPfad: projekt.kontext_pfad,
+          roadmapPfad: projekt.roadmap_pfad,
         })
       )
     } catch (fehler) {

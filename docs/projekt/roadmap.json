@@ -1,0 +1,42 @@
+{
+  "roadmap_schema": "v0",
+  "vision": "AI Workforce führt ein Vorhaben von der Idee bis zum abgenommenen Ergebnis durch klar getrennte KI-Positionen — für einen einzigen Nutzer, der zugleich Vorarbeiter und einzige Entscheidungsinstanz ist. Dateien und Git sind der führende Zustand; der Kontrollzustand jedes Projekts liegt in dessen eigenem Repository.",
+  "meilensteine": [
+    {
+      "id": "M1",
+      "titel": "Fassung 1 — Referenzdurchlauf (Harness-Grundstock)",
+      "status": "ABGESCHLOSSEN",
+      "features": ["F0", "F1", "F1B", "F2", "F3", "F4", "F5", "F6a", "F7", "F8", "F9", "F10"]
+    },
+    {
+      "id": "M2",
+      "titel": "Bedienbarer Leitstand",
+      "status": "ABGESCHLOSSEN",
+      "features": ["F11", "F12", "F13", "F14"]
+    },
+    {
+      "id": "M3",
+      "titel": "Intelligente Orchestrierung (v1)",
+      "status": "ABGESCHLOSSEN",
+      "features": ["F15", "F16", "F17", "F18"]
+    },
+    {
+      "id": "F19-bridge",
+      "titel": "Capability Foundation (Bridge-Feature zwischen M3 und M4)",
+      "status": "ABGESCHLOSSEN",
+      "features": ["F19"]
+    },
+    {
+      "id": "M4",
+      "titel": "Jarvis Workspace",
+      "status": "ABGESCHLOSSEN",
+      "features": ["F20", "F21", "F22", "F23", "F24", "F25", "F26", "F27", "F28", "F29", "F31"]
+    },
+    {
+      "id": "M5",
+      "titel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+      "status": "LAEUFT",
+      "features": ["F32", "F33", "F34", "F35", "F36", "F37", "F38", "F39", "F30"]
+    }
+  ]
+}

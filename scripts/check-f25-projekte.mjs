@@ -120,6 +120,10 @@ try {
       { titel: 'doppelte id', daten: { projekte_schema: 'v0', projekte: [GUELTIGER_EINTRAG, GUELTIGER_EINTRAG] } },
       { titel: 'fehlendes Pflichtfeld profil_pfad', daten: { projekte_schema: 'v0', projekte: [{ ...GUELTIGER_EINTRAG, profil_pfad: undefined }] } },
       { titel: 'projekte_schema falsch', daten: { projekte_schema: 'v1', projekte: [GUELTIGER_EINTRAG] } },
+      // F33 WS-1: kontext_pfad/roadmap_pfad sind additiv optional — gesetzt, müssen sie
+      // trotzdem nicht-leere Strings sein (Code-Review-Befund: bislang unkalibriert).
+      { titel: 'kontext_pfad leerer String', daten: { projekte_schema: 'v0', projekte: [{ ...GUELTIGER_EINTRAG, kontext_pfad: '' }] } },
+      { titel: 'roadmap_pfad leerer String', daten: { projekte_schema: 'v0', projekte: [{ ...GUELTIGER_EINTRAG, roadmap_pfad: '' }] } },
     ]
     const befundeVorRot = befunde.length
     for (const { titel, daten } of rotFaelle) {
@@ -130,6 +134,11 @@ try {
     }
     if (validiereProjekteDaten({ projekte_schema: 'v0', projekte: [GUELTIGER_EINTRAG] }).length !== 0) {
       befunde.push('(1) Grün-Fall (synthetischer gültiger Eintrag) wurde fälschlich abgelehnt')
+    }
+    // F33 WS-1: ein gesetztes, gültiges kontext_pfad/roadmap_pfad-Paar bleibt gültig
+    // (additiv, kein Rückfall auf den Standardpfad wird durch das Schema erzwungen).
+    if (validiereProjekteDaten({ projekte_schema: 'v0', projekte: [{ ...GUELTIGER_EINTRAG, kontext_pfad: 'custom/kontext', roadmap_pfad: 'custom/roadmap.json' }] }).length !== 0) {
+      befunde.push('(1) Grün-Fall (gesetztes kontext_pfad/roadmap_pfad) wurde fälschlich abgelehnt')
     }
     if (befunde.length === befundeVorRot) {
       console.log(`✓ (1) ${rotFaelle.length} Rot-Fall/-Fälle erkannt, synthetischer Grün-Fall akzeptiert.`)
