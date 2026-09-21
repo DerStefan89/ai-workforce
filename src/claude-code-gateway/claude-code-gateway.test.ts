@@ -38,7 +38,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
 import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter } from './types.ts'
+import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 const KONTROLLZUSTAND_BASIS = 'kontrollzustand-test'
@@ -204,7 +204,8 @@ test('baueAufruf liefert das erwartete Tokens-Array — Grünfall', () => {
     '--model',
     'sonnet',
     '--output-format',
-    'json',
+    'stream-json',
+    '--verbose',
     '--setting-sources',
     'project',
     '--tools',
@@ -385,6 +386,63 @@ test('starteGateway reicht stdinLeer: true an starteProzess durch — fest für 
 
     assert.strictEqual(ergebnis.ok, true)
     assert.strictEqual(empfangeneOptionen?.stdinLeer, true, 'der Claude-Code-Pfad muss stdin für JEDEN Aufruf schließen, `-p` liest ohnehin nie davon')
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway setzt ergebnisZeileBeendet, leitet tool_use-Zeilen an beiWerkzeugaufruf weiter und schreibt ergebnisZeileVorProzessende in den Rohstrom (F40 WS-1)', async () => {
+  const laufId = neueLaufId('gateway-f40')
+  let empfangeneOptionen: StarterOptionen | undefined
+  const gemeldet: unknown[] = []
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    optionen?.beiStreamZeile?.({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'docs/STATUS.md' } }] } })
+    optionen?.beiStreamZeile?.({ type: 'system', subtype: 'init' })
+    const basis = await attrappeMitValidemErgebnis(startziel, tokens)
+    return { ...basis, exitCode: null, ergebnisZeileVorProzessende: true }
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+      beiWerkzeugaufruf: (aufruf) => gemeldet.push(aufruf),
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.ergebnisZeileBeendet, true, 'jeder Claude-Code-Lauf löst bei der result-Zeile auf')
+    assert.deepStrictEqual(gemeldet, [{ werkzeug: 'Read', ziel: 'docs/STATUS.md' }])
+    if (!ergebnis.ok) return
+    assert.strictEqual(ergebnis.laufakte.beobachtungsbasis_vollstaendig, true)
+    const roh = JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8'))
+    assert.strictEqual(roh.ergebnisZeileVorProzessende, true)
+    assert.strictEqual(roh.exitCode, null)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('starteGateway ohne beiWerkzeugaufruf übergibt kein beiStreamZeile — Regression (kein Zeilen-Parse ohne Abnehmer außer dem result-Signal)', async () => {
+  const laufId = neueLaufId('gateway-f40-ohne-fortschritt')
+  let empfangeneOptionen: StarterOptionen | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangeneOptionen = optionen
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.strictEqual(empfangeneOptionen?.beiStreamZeile, undefined)
+    if (!ergebnis.ok) return
+    assert.strictEqual(JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8')).ergebnisZeileVorProzessende, undefined)
   } finally {
     raeumeKette(laufId)
   }

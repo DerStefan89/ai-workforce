@@ -864,6 +864,95 @@ stehen bleiben.
 - **(f)** werfender Detail-Auffrischer → Tick und Nachlauf überleben (2 Abrufe, keine
   Ablehnung). Ohne `try/catch`: *"ließ pollJetzt() mit einer Ablehnung enden"*.
 
+## F40 WS-1 — auf die result-Zeile reagieren statt auf das Prozessende
+
+Grundlage: `state/spike-f40-streaming.md` (dort: result-Zeile → Prozessende 590–730 ms,
+7 Spike-Läufe). Branch `feat/f40-ws1-streaming`.
+
+**Umgesetzt:**
+- `baueAufruf`: `--output-format stream-json --verbose` statt `json`.
+- `prozessstart.ts`: stdout wird weiter als String gepuffert, bei
+  `StarterOptionen.ergebnisZeileBeendet` zusätzlich zeilenweise gelesen. Die erste
+  vollständige `type:"result"`-Zeile löst den Starter sofort auf (`exitCode: null`, weil
+  real noch keiner existiert, `ergebnisZeileVorProzessende: true` im Rohstrom). Kam keine
+  result-Zeile, entscheidet unverändert die close-Klassifikation (maxBuffer, ABBRUCH,
+  TIMEOUT, startfehler, exitCode) — F-570. Ein Zeilenrest ohne `\n` wird nie geparst.
+- `leseErgebnisobjekt`: nimmt die letzte result-Zeile aus NDJSON, ein gepuffertes
+  json-Objekt (jeder alte Rohstrom) bleibt lesbar. Alle Leser (`leseRollenErgebnisRohstrom`,
+  Result Evaluator, Router, Leitstand-Projektion) laufen darüber, ohne eigene Änderung.
+  `entferneCodezaun`/`extrahiereErstesJsonObjekt` sind unverändert.
+- Werkzeug-Fortschritt: `tool_use`-Zeilen → `GatewayOptionen.beiWerkzeugaufruf` →
+  In-Memory `laufAktivFortschritt` (kein Checkpoint, D4) → `GET /api/laeufe/<laufId>`
+  Feld `fortschritt` → der bestehende 500ms-Poll in `chat.js` zeigt „liest
+  ai-workforce/docs/STATUS.md …“ unter dem Tippindikator. Kein neuer Transport.
+- Zeitmessung: neue Gateway-Marke `prozess_close`. Weil der Prozess jetzt NACH der
+  Chat-Nachbereitung endet, gibt der Leitstand für diese späte Marke eine zweite
+  Zeitmessungs-Zeile aus.
+
+**Gates:** (a) Abbruch und Timeout mitten im Stream (keine result-Zeile, Fragment ohne
+Zeilenende) → ABBRUCH/TIMEOUT, kein Hänger, kein Parse-Wurf. (b) echter Kindprozess:
+Auflösung vor `close`, Differenz > 0. (c) die fünf Extraktionsfälle aus
+`check-f31-gedaechtnis.mjs` (i) laufen jetzt zusätzlich gegen ein NDJSON-stdout mit
+result-Zeile (inkl. Köder: result-förmiger Text in einer `tool_result`-Zeile).
+Rot-Fälle real: früher Erfolgspfad abgeschaltet → 3 Tests rot, darunter (b);
+Zeilen-Parse ohne try → 2 Tests rot, darunter (a); alter `leseErgebnisobjekt` → 4
+stream-json-Fälle in (i) rot.
+
+**Realer Nachweis — 5 echte Jarvis-Chat-Turns** (21.09.2026, Leitstand aus diesem Branch,
+`LEITSTAND_ZEITMESSUNG=1`, Startvorlage `beispielprojekt.json`, Worker `claude-code`,
+18 fremde `claude.exe` auf der Maschine). Poll wie `chat.js` (500 ms). Alle 5
+`ABGESCHLOSSEN`/`ERFOLGREICH`, stderr leer, `ergebnisZeileVorProzessende: true`.
+
+| Turn | Frage | `num_turns` | Start→result (neu fertig) | Start→Prozessende (früher fertig) | **Gewinn** | result→Chat-Eintrag | Client gesamt | Fortschritts-Anzeigen |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | Hallo | 1 | 4.802 ms | 5.379 ms | **577 ms** | 24 ms | 5.203 ms | 0 |
+| 2 | Wie ist der Roadmap-Stand? | 1 | 5.667 ms | 6.258 ms | **591 ms** | 27 ms | 6.179 ms | 0 |
+| 3 | Was steht in docs/STATUS.md …? Lies die Datei. | 2 | 8.614 ms | 9.205 ms | **591 ms** | 27 ms | 9.278 ms | 1 (Read STATUS.md) |
+| 4 | Welche Findings sind P1 und offen? … | 6 | 30.111 ms | 30.672 ms | **561 ms** | 40 ms | 30.899 ms | 5 (1 Read, 4 Grep) |
+| 5 | Was hast du eben gesagt? | 1 | 6.692 ms | 7.301 ms | **610 ms** | 20 ms | 7.204 ms | 0 |
+
+„Früher fertig“ ist das Prozessende im SELBEN Lauf. Dort hat der alte Code aufgelöst, der
+Vergleich ist also Vorher/Nachher ohne Streuung zwischen zwei Modellläufen. Ein A/B-Lauf
+gegen `main` wurde bewusst nicht als Beleg genommen: die Laufzeiten streuen zwischen
+5 und 30 s, 0,6 s gingen darin unter.
+
+**Ergebnis:** 561–610 ms Gewinn je Turn, 5 von 5, im Spike-Band (590–730 ms). Der
+Chat-Eintrag steht jetzt 20–40 ms nach der result-Zeile, also rund 0,55 s vor dem
+Prozessende. Werkzeug-Fortschritt kam live im Poll an (Turn 4: 5 Zwischenstände).
+Die Darstellung im Browser wurde nicht angesehen, nur die API-Antwort des Polls.
+
+**Korrekturrunde nach Code-Review/QA-Pass** (beide mit frischem Kontext):
+- F-570-Sperre als reine Funktion `darfFruehAufloesen` mit Rot-Fall. Vorher hätte man die
+  Bedingung löschen können, ohne dass ein Test rot wurde. Rot real: Sperre entfernt → Test rot.
+- **Nachlauffrist** (`NACHLAUF_FRIST_MS` = 5 s): lebt der Prozess 5 s nach der result-Zeile
+  noch, wird er gekillt (plus Windows-Baum-Kill) und das geloggt. Ohne diese Frist würde ein
+  hängender, fachlich fertiger Prozess unbeaufsichtigt weiterlaufen, weil der Leitstand D13
+  direkt nach der Auflösung freigibt. Rot real: Frist abgeschaltet → Test rot (Prozess lief 20 s).
+- **D13-Abwägung (Entscheidung offen, Stefan):** Zwischen result-Zeile und Prozessende
+  (real ≈0,6 s, höchstens 5 s) kann ein Folgelauf starten. Dann laufen kurz zwei
+  Werkzeugprozesse, obwohl der erste fachlich fertig ist. `ARCHITECTURE.md` §7 verbietet
+  „zwei gleichzeitig aktive Arbeitsstränge“. Umgesetzt ist: ein fachlich fertiger Prozess
+  zählt nicht als aktiver Strang, die Nachlauffrist begrenzt das Fenster. Die Alternative
+  wäre, D13 erst beim Prozessende freizugeben. Das kostet nichts an der Anzeige, verzögert
+  aber den nächsten Start um ≈0,6 s.
+- Laufansicht: Exit-Code zeigt „— (bei der Ergebniszeile vor Prozessende aufgelöst)“ statt
+  „unbekannt“ (Projektion `ergebnisZeileVorProzessende`). Ein Exitcode ≠ 0 oder ein
+  Signal-Kill nach der result-Zeile wird geloggt (nicht mehr nur Exitcodes ≠ 0/≠ null).
+- Tests ergänzt: Abbruch NACH der result-Zeile (Ergebnis bleibt Erfolg, der Prozess wird
+  trotzdem beendet), Nachlauffrist greift und greift nicht, `starteGateway` reicht
+  `ergebnisZeileBeendet`/`beiWerkzeugaufruf` durch und schreibt das Flag in den Rohstrom.
+- Fortschrittstext: Ziele auf 60 Zeichen gekürzt (lange Grep-Muster), Feld `anzahl` entfernt
+  (wurde nicht angezeigt), Typ `Werkzeugaufruf` nach `types.ts`.
+
+**Bekannte Grenzen (nicht behoben):**
+- **Rohstrom-Größe:** Die 5 Turns erzeugten 7/7/67/17/7 KB, alte json-Jarvis-Rohströme im
+  Median 3 KB (n = 94, max 65 KB). Grund: `tool_result`-Zeilen enthalten ganze Dateien. Für
+  den Chat liegt das weit unter der 64-MB-maxBuffer-Grenze. Für lange schreibende Läufe mit
+  vielen großen Reads ist es nicht gemessen.
+- stderr, das erst nach der result-Zeile kommt, fehlt im Rohstrom.
+- Ungetestet: Server-Projektion `fortschritt` und `beschreibeFortschritt` (chat.js hat keinen
+  Testeinstieg), Browser-Klicktest (Fortschritt, Abbruch während und nach der result-Zeile).
+
 ## Status
 - [ ] Freigegeben
 - [x] Freigegeben mit Hinweisen

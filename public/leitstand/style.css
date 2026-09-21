@@ -1986,6 +1986,14 @@ th {
   margin: var(--space-3xs) 0;
 }
 
+/* F40 WS-1: Werkzeug-Fortschritt unter dem Tippindikator — lange Pfade/Muster brechen um statt zu überlaufen. */
+.chat-fortschritt {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
 .chat-tippindikator span {
   width: 0.4rem;
   height: 0.4rem;

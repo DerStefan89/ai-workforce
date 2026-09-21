@@ -48,7 +48,7 @@
  * ohne dass der Controller eine gemeinsame Form erzwingen müsste.
  */
 
-import type { AufrufEingaben, Starter } from '../claude-code-gateway/types.ts'
+import type { AufrufEingaben, Starter, Werkzeugaufruf } from '../claude-code-gateway/types.ts'
 import type { Anfrage, Budget, KontextpaketErgebnis } from '../context-builder/types.ts'
 import type { LaufStatus } from '../checkpoint-store/types.ts'
 import type { KlassifikationsErgebnis } from '../result-evaluator/types.ts'
@@ -75,6 +75,8 @@ export interface AusfuehrungsOptionen {
   cwd?: string
   /** F31 WS-3 (Latenzmessung): nur für F6as starteGateway — optionaler Zeitmarken-Rückruf, reine Durchreichung (Muster zeitgrenzeMs), vom Controller selbst nicht gelesen oder ausgewertet. */
   zeitmessung?: (marke: string) => void
+  /** F40 WS-1: nur für F6as starteGateway — Rückruf je live erkanntem Werkzeugaufruf (Fortschrittsanzeige), reine Durchreichung (Muster zeitmessung), vom Controller selbst nicht gelesen. */
+  beiWerkzeugaufruf?: (aufruf: Werkzeugaufruf) => void
 }
 
 /** Eingaben für einen vollständigen Durchlauf (plan-v1 Abschnitt 2.1, Entwurf — Namen/Feinschnitt beim Bau angepasst, Verhalten unverändert). */

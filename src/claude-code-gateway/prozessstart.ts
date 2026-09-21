@@ -118,6 +118,17 @@
  * (empirisch geprüft, node -e-Probe: `child.stdin` ist bei `stdio[0]:
  * 'ignore'` `null`, ein sofort endendes Kind reißt den Node-Prozess nicht
  * ab).
+ *
+ * F40 WS-1 (state/spike-f40-streaming.md): stdout wird weiterhin als String
+ * gepuffert (D5), bei StarterOptionen.ergebnisZeileBeendet/beiStreamZeile
+ * aber zusätzlich zeilenweise als NDJSON gelesen. Die erste vollständige
+ * Zeile mit type "result" löst den Starter sofort auf (exitCode null,
+ * ergebnisZeileVorProzessende: true) — real 590-730ms vor 'close'. Das ist
+ * nur ein früherer Erfolgspfad (F-570): solange kein result kam, entscheidet
+ * ausschließlich die bestehende close-Klassifikation (maxBuffer, ABBRUCH,
+ * TIMEOUT, startfehler, exitCode). Ein Abbruch nach der result-Zeile trifft
+ * einen fachlich bereits fertigen Lauf und ändert das Ergebnis nicht mehr.
+ * Ein unvollständiger Zeilenrest am Ende wird nie geparst.
  */
 
 import { execFile, spawn } from 'node:child_process'
@@ -201,6 +212,26 @@ function killeProzessbaumFallsWindows(pid: number | undefined): Promise<void> {
 
 /** Harte Bytegrenze für stdout/stderr zusammen mit je einem Stream (Schritt 4: execFiles gleichnamiger Default, hier von Hand nachgebaut — spawn kennt kein eigenes maxBuffer). */
 const MAX_BUFFER_BYTES = 1024 * 1024 * 64
+
+/**
+ * F40 WS-1 (Code-Review-/QA-Befund): Nachlauffrist nach der frühen Auflösung. Real endet der
+ * Prozess 590-730ms nach der result-Zeile (state/spike-f40-streaming.md); endet er bis hierhin
+ * nicht, wird er gekillt und das geloggt. Sonst liefe ein hängender, fachlich fertiger Prozess
+ * unbeaufsichtigt weiter — der Leitstand gibt D13 (laufAktiv, AbortController) direkt nach der
+ * Auflösung frei, niemand könnte ihn mehr abbrechen.
+ */
+export const NACHLAUF_FRIST_MS = 5000
+
+/**
+ * F40 WS-1, F-570: darf eine gelesene stream-json-Zeile den Starter früh als Erfolg auflösen?
+ * Nur eine result-Zeile, nur mit ergebnisZeileBeendet, und nur solange weder ein Abbruch
+ * (ABORT_ERR), ein maxBuffer-Kill noch ein Timeout-Kill (kindprozess.killed) im Gang ist — liegt
+ * die result-Zeile beim Kill noch in der Pipe, bleibt die bestehende close-Klassifikation
+ * (ABBRUCH/TIMEOUT/startfehler) führend. Reine Funktion, damit genau diese Sperre testbar ist.
+ */
+export function darfFruehAufloesen(lage: { ergebnisZeileBeendet: boolean; zeilentyp: unknown; abbruchErkannt: boolean; maxBufferUeberschritten: boolean; gekillt: boolean }): boolean {
+  return lage.ergebnisZeileBeendet && lage.zeilentyp === 'result' && !lage.abbruchErkannt && !lage.maxBufferUeberschritten && !lage.gekillt
+}
 
 /**
  * F14 WS-1 (AK1-AK3), seit Schritt 4 über spawn statt execFile (siehe
@@ -291,10 +322,64 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
       }
     }
 
+    // F40 WS-1: zeilenweises Mitlesen nur, wenn ein Aufrufer es verlangt — sonst exakt der alte Pfad.
+    const zeilenLesen = optionen?.ergebnisZeileBeendet === true || optionen?.beiStreamZeile !== undefined
+    let zeilenRest = ''
+
+    /** F40 WS-1: verarbeitet EINE vollständige NDJSON-Zeile — Fortschritts-Rückruf, dann ggf. früher Erfolgspfad. Eine unparsbare Zeile wird übersprungen (Abbruchfragment, Spike Punkt 4), nie geworfen. */
+    function verarbeiteZeile(zeile: string): void {
+      if (zeile.trim() === '') return
+      let geparst: unknown
+      try {
+        geparst = JSON.parse(zeile)
+      } catch {
+        return
+      }
+      if (typeof geparst !== 'object' || geparst === null || Array.isArray(geparst)) return
+      const obj = geparst as Record<string, unknown>
+      if (optionen?.beiStreamZeile !== undefined) {
+        try {
+          optionen.beiStreamZeile(obj)
+        } catch (fehler) {
+          console.error('[prozessstart] beiStreamZeile fehlgeschlagen:', fehler)
+        }
+      }
+      const frueh = darfFruehAufloesen({
+        ergebnisZeileBeendet: optionen?.ergebnisZeileBeendet === true,
+        zeilentyp: obj.type,
+        abbruchErkannt,
+        maxBufferUeberschritten,
+        gekillt: kindprozess.killed === true,
+      })
+      if (frueh) {
+        aufloesen({ stdout, stderr, exitCode: null, startfehler: null, beendigungsart: null, ergebnisZeileVorProzessende: true })
+        starteNachlaufFrist()
+      }
+    }
+
+    let nachlaufTimer: ReturnType<typeof setTimeout> | null = null
+    let prozessBeendet = false
+
+    /** F40 WS-1: killt den fachlich fertigen Prozess, falls er NACHLAUF_FRIST_MS nach der result-Zeile noch lebt (s. NACHLAUF_FRIST_MS). */
+    function starteNachlaufFrist(): void {
+      const fristMs = optionen?.nachlaufFristMs ?? NACHLAUF_FRIST_MS
+      nachlaufTimer = setTimeout(() => {
+        if (prozessBeendet) return
+        console.error(`[prozessstart] Prozess ${kindprozess.pid ?? '?'} lebte ${fristMs}ms nach der result-Zeile noch — wird beendet (Nachlauffrist, F40 WS-1)`)
+        kindprozess.kill()
+        void killeProzessbaumFallsWindows(kindprozess.pid)
+      }, fristMs)
+    }
+
     kindprozess.stdout?.setEncoding('utf8')
     kindprozess.stdout?.on('data', (chunk: string) => {
       pruefeMaxBuffer(Buffer.byteLength(chunk, 'utf8'))
-      if (!maxBufferUeberschritten) stdout += chunk
+      if (maxBufferUeberschritten) return
+      stdout += chunk
+      if (!zeilenLesen || bereitsAufgeloest) return
+      const teile = (zeilenRest + chunk).split('\n')
+      zeilenRest = teile.pop() ?? ''
+      for (const zeile of teile) verarbeiteZeile(zeile)
     })
     kindprozess.stderr?.setEncoding('utf8')
     kindprozess.stderr?.on('data', (chunk: string) => {
@@ -314,6 +399,15 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
     })
 
     kindprozess.on('close', (code, signal) => {
+      prozessBeendet = true
+      if (nachlaufTimer !== null) clearTimeout(nachlaufTimer)
+      if (optionen?.beiProzessende !== undefined) {
+        try {
+          optionen.beiProzessende({ exitCode: code, signal })
+        } catch (fehler) {
+          console.error('[prozessstart] beiProzessende fehlgeschlagen:', fehler)
+        }
+      }
       void behandeleErgebnis(code, signal)
     })
 
@@ -363,6 +457,10 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     stdinLeer: optionen.stdinLeer,
     cwd: optionen.cwd,
     umgebungsvariablen: optionen.umgebungsvariablen,
+    ergebnisZeileBeendet: optionen.ergebnisZeileBeendet,
+    beiStreamZeile: optionen.beiStreamZeile,
+    beiProzessende: optionen.beiProzessende,
+    nachlaufFristMs: optionen.nachlaufFristMs,
   }
   return starter(startziel, tokens, starterOptionen)
 }
