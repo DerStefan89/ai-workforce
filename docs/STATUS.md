@@ -23,9 +23,13 @@ Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
 `FEATURE_GATE`, F25 `FEATURE_GATE` mit offenem WS-2b/WS-3), F28/F29
 `ABGESCHLOSSEN`, F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192,
 WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198), F32 (Verbrauch & Kontingent)
-`ABGESCHLOSSEN` (PR #200, `fc68d2d`), F33 (Projektkontext & Roadmap)
-`IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien + Context-Builder-Einspeisung,
-`features/F33/feature.md`) (Stand 21.09.2026).
+`IN_ARBEIT` (WS-1 Verbrauch-Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im
+Leitstand noch nicht begonnen, siehe `features/F32/feature.md`), F33
+(Projektkontext & Roadmap) `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien +
+Context-Builder-Einspeisung, `features/F33/feature.md`), F40 (Jarvis-
+Latenz: Streaming + Lagebild) `IN_ARBEIT` (WS-0 Spike #203, WS-1 Streaming-
+Reaktion auf die result-Zeile #204, WS-2 Lagebild-Einspeisung,
+`features/F40/feature.md`) (Stand 21.09.2026).
 
 ## Erledigt
 
@@ -423,14 +427,21 @@ Feature unter `features/F2x/`):
   Gesprächsgedächtnis + Zusammenfassen, MCP-Begrenzung). Akte
   `features/F31/feature.md`, Status `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194,
   WS-3 #196, WS-3b #197, WS-3c #198). Nach F26, F29.
-- ✅ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
+- ⏳ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
   `GET /api/verbrauch`). Akte `features/F32/feature.md`, Status
-  `ABGESCHLOSSEN` (PR #200, `fc68d2d`). Nach F6a, F16.
+  `IN_ARBEIT` (WS-1 erledigt, PR #200, `fc68d2d`; WS-2 UI-Ansicht im
+  Leitstand noch nicht begonnen). Nach F6a, F16.
 - ⏳ **F33** — Projektkontext & Roadmap (Beschreibung/Anweisungen/Roadmap als
   Repo-Dateien, Einspeisung über den Context Builder für `jarvis`/`router`).
   Akte `features/F33/feature.md`, Status `IN_ARBEIT` (WS-0 Spike + WS-1
   erledigt, WS-2 Projektion/UI offen). Nach F17 (Rollenvertrag), F25
   (Projekte v1).
+- ⏳ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
+  bei Statusfragen, `state/spike-f40-streaming.md`). Akte
+  `features/F40/feature.md`, Status `IN_ARBEIT` (WS-0 Spike #203, WS-1
+  Streaming-Reaktion auf die `result`-Zeile + Werkzeug-Fortschritt #204,
+  WS-2 vorberechnetes Lagebild als vierte Context-Builder-Einspeisung).
+  Nach F26 (Jarvis Chat v1), F33 WS-1 (Context-Builder-Einspeisung).
 
 Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 

@@ -1829,6 +1829,12 @@ export function baueProjektkontextAnfragen(kontextPfad, roadmapPfad) {
       begruendung: 'Projektkontext (F33 WS-1, E-M4-2)',
       notwendig: true,
     },
+    {
+      pfad: `${kontextPfad}/lagebild.md`,
+      frage: 'Wo steht das Projekt gerade, welche P1-Findings sind offen?',
+      begruendung: 'Lagebild (F40 WS-2)',
+      notwendig: true,
+    },
   ]
 }
 
@@ -1840,8 +1846,9 @@ export function baueProjektkontextAnfragen(kontextPfad, roadmapPfad) {
  * unabhängig von `notwendig` — das ist bestehendes, allgemeines Verhalten
  * für vom Aufrufer benannte Evidenzdateien (F11 WS-2 AK6), aber
  * `baueProjektkontextAnfragen` ist der erste Aufrufer, der server-seitig
- * IMMER dieselben drei Pfade nennt, statt einer vom Menschen bewusst
- * gewählten Anfrage. Ein neu über F25/E-M4-2 registriertes Projekt OHNE
+ * IMMER dieselben vier Pfade nennt (F40 WS-2: Lagebild als vierte
+ * Einspeisung dazugekommen), statt einer vom Menschen bewusst gewählten
+ * Anfrage. Ein neu über F25/E-M4-2 registriertes Projekt OHNE
  * vorbereitete `docs/projekt/kontext/`/`roadmap.json` (F33 nennt Auto-
  * Erzeugung dafür ausdrücklich als Nicht-Ziel) hätte sonst Jarvis-Chat UND
  * Router bei JEDEM Versuch mit 400 "Datei nicht gefunden" blockiert, ohne

@@ -968,3 +968,83 @@ bezug-Selbstverweis). Danach aus Runde 1 weiterhin offen: Schritt d)
 (Browser-Turns) nachliefern, drei Findings aus Runde 1 anlegen, plus ein
 neues Finding für den bezug-Selbstverweis (Befund 4). Freigabe/Commit liegt
 bei Stefan — dieser Auftrag committet nichts selbst.
+
+## F40 WS-2 — Lagebild statt Werkzeug-Runden
+
+Grundlage: `state/spike-f40-streaming.md` §3/§5 (`docs/STATUS.md` ist in 11 von 15
+Mehrrunden-Läufen der erste Zugriff; `state/findings.md`, 592 KB, wird mehrfach
+gegrept statt einmal vorab mitgegeben). Branch `feat/f40-ws2-lagebild`.
+
+**Umgesetzt:** `scripts/erzeuge-lagebild.mjs` baut `docs/projekt/kontext/lagebild.md`
+deterministisch (kein Zeitstempel) aus `docs/STATUS.md` (Abschnitt "Aktuelle Phase",
+wörtlich) und `state/findings.md` (alle offenen P1-Köpfe `**F-NNN** · \`TYP\` · P1 ·
+offen` + deren `Titel:`-Zeile, sortiert). `baueProjektkontextAnfragen`
+(`scripts/leitstand-server.mjs`) bekommt eine vierte, `notwendig: true`-Anfrage
+`${kontextPfad}/lagebild.md` — für `jarvis` UND `router`, gefiltert über die
+bestehende `filtereExistierendeAnfragen` (fehlt die Datei, läuft der Lauf trotzdem,
+kein neuer Blocker). `scripts/check-f40-lagebild.mjs` (neu in `npm run check`)
+prüft Drift zwischen Quelle und committeter Datei real (Grün- und Rot-Fall, Rot real
+gegen die tatsächlich committete Datei reproduziert, siehe unten) sowie die
+Parser-Grenze zwischen P1/offen und anderen Prioritäten/Status.
+
+**`docs/STATUS.md` vor der Erzeugung korrigiert** (Schritt 3 dieses Auftrags, siehe
+Bericht): F32 stand dort als `ABGESCHLOSSEN`, `features/F32/feature.md` sagt
+`IN_ARBEIT` (WS-2 UI-Ansicht offen) — STATUS.md war falsch, korrigiert. F40 fehlte
+komplett, ergänzt. F30 ("noch nicht begonnen") war bereits korrekt.
+
+**Realer Drift-Nachweis (Red-Case) gegen die tatsächliche Datei:** eine Zeile an
+`docs/projekt/kontext/lagebild.md` angehängt, `node scripts/check-f40-lagebild.mjs`
+lief real auf Exit 1 (Befund (a): Datei weicht vom erzeugten Inhalt ab), Datei danach
+wiederhergestellt, Gate erneut Exit 0. `npm run check` bricht bei Drift also real ab,
+nicht nur in einem isolierten Testverzeichnis.
+
+**Realer Nachweis — 5 echte Jarvis-Chat-Turns** (21.09.2026, `LEITSTAND_ZEITMESSUNG=1
+LEITSTAND_PORT=4180 node scripts/leitstand-server.mjs`, Startvorlage
+`beispielprojekt.json`, Worker `claude-code`, gegen dieses Repo als Projekt
+`ai-workforce`). **Vorbehalt Systemlast** (gleiche Maschine wie die übrigen
+Nachweise dieses Dokuments): 16 fremde `claude.exe` liefen parallel — absolute
+Zeiten sind dadurch nicht mit einer unbelasteten Maschine vergleichbar, das
+gemessene Verhalten (Werkzeugaufrufe ja/nein) ist davon unabhängig.
+
+| Frage | `num_turns` | `dauer_ms` | `STATUS.md` als Werkzeugaufruf | `findings.md` als Werkzeugaufruf | Andere Werkzeugaufrufe | Antwort inhaltlich korrekt |
+|---|---:|---:|---:|---:|---|---|
+| Wo stehen wir gerade in der Roadmap? | 1 | 4.028 | 0 | 0 | keine | ja |
+| Welche P1-Findings sind offen? | 2 | 5.834 | 0 | 0 | keine | ja (37 IDs korrekt genannt, Modell zählte sie selbst als "36" — Zähl-Off-by-one des Modells, keine fehlende ID) |
+| Was ist der aktuelle Phasen-Stand des Projekts? | 1 | 7.541 | 0 | 0 | keine | ja, inkl. korrekt referenziertem F32-Fix |
+| Ist F32 schon abgeschlossen? | 3 | 6.958 | 0 | 0 | `Read features/F32/feature.md`, `Read ~/.claude/…/memory/MEMORY.md` | ja |
+| Gibt es offene P1-Findings zu Codex? | 1 | 6.658 | 0 | 0 | keine | ja (alle 10 Codex-P1-TECH_DEBT korrekt genannt) |
+
+Geprüft direkt am echten Rohstrom (`kontrollzustand-roh/<laufId>/rohstrom.json`,
+`tool_use`-Blöcke nach `STATUS.md`/`findings.md` im `input` durchsucht) und an der
+echten Laufakte (`verbrauch.turns`/`verbrauch.dauer_ms`, F32), nicht nur an der
+Chat-Antwort. **0 von 5 Läufen riefen `docs/STATUS.md` oder `state/findings.md` als
+Werkzeug auf** — beide Quellen kamen ausschließlich über die vierte
+Context-Builder-Einspeisung (Lagebild) an. Zum Vergleich der Spike-Befund
+(`state/spike-f40-streaming.md` §3): `docs/STATUS.md` war dort in 11 von 15
+Mehrrunden-Läufen ein Werkzeugaufruf, `state/findings.md` in 4 von 15 (bis zu 5×
+gegrept in einem einzelnen Lauf) — in dieser Stichprobe (n=5, danach) kein einziger
+mehr.
+
+Turn 4 (`Ist F32 schon abgeschlossen?`) griff stattdessen gezielt auf
+`features/F32/feature.md` zu — erwartet und richtig: das Lagebild trägt nur die
+STATUS-Kurzfassung, nicht den Feature-Akte-Detailtext. Derselbe Lauf griff zusätzlich
+auf `~/.claude/projects/…/memory/MEMORY.md` zu — real reproduziert derselbe
+Nebenbefund wie im WS-0-Spike (§3: "Jarvis liest das Claude-Code-Gedächtnis des
+Entwicklers, nicht Projektkontext, trotz `--setting-sources ''`"). Nicht behoben
+(F-567, ausdrücklich außerhalb des Scopes dieses Auftrags).
+
+`num_turns` bleibt bei 5/5 Läufen unter dem, was Mehrrunden-Statusfragen laut Spike
+sonst brauchten (die Findings-Frage allein hätte vorher potenziell mehrere Greps
+gekostet, hier 0). Kein A/B-Vergleich gegen denselben Fragensatz ohne Lagebild
+durchgeführt (hätte einen zweiten Branch-Checkout gebraucht) — der Befund stützt
+sich auf die direkte Beobachtung "kein einziger Werkzeugaufruf gegen die beiden
+Zieldateien", nicht auf eine Zeitersparnis-Hochrechnung.
+
+Freigabe/Commit liegt bei Stefan (F40 WS-2 committet nichts selbst). Bei Freigabe:
+F30 (Dogfooding-Gate) bleibt der einzige noch unbehandelte STATUS-Punkt aus diesem
+Auftrag (real geprüft, keine Akte, keine Commits — "noch nicht begonnen" ist
+korrekt, keine Korrektur nötig). Empfehlung für eine künftige Iteration: einen
+Pre-Commit-Hook oder CI-Schritt erwägen, der `node scripts/erzeuge-lagebild.mjs`
+automatisch vor jedem Commit auf `docs/STATUS.md`/`state/findings.md` laufen lässt
+— aktuell erkennt `npm run check` Drift erst beim nächsten vollen Lauf, nicht sofort
+beim Ändern der Quelle.

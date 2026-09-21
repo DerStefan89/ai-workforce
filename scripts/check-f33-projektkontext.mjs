@@ -16,11 +16,12 @@
  * (d) die reale projekte.json bleibt trotz der additiven, optionalen Felder
  *     kontext_pfad/roadmap_pfad ohne Migration gültig (Regressionsschutz);
  * (e) das über baueProjektkontextAnfragen gebaute Kontextpaket enthält für
- *     BEIDE Rollen (jarvis, router) alle drei Elemente, zusammen mit einer
- *     realistisch vorangestellten Auftragsreferenz (Muster
- *     execution-controller/index.ts) gegen das reale standardBudget — real
- *     über F5s baueKontextpaket gegen ein Wegwerf-basisVerzeichnis (Muster
- *     check-f32-verbrauch.mjs);
+ *     BEIDE Rollen (jarvis, router) alle vier Elemente (Beschreibung,
+ *     Anweisungen, Roadmap, seit F40 WS-2 zusätzlich das Lagebild),
+ *     zusammen mit einer realistisch vorangestellten Auftragsreferenz
+ *     (Muster execution-controller/index.ts) gegen das reale
+ *     standardBudget — real über F5s baueKontextpaket gegen ein
+ *     Wegwerf-basisVerzeichnis (Muster check-f32-verbrauch.mjs);
  * (f) QA-Pass-Befund (kritisch): ein Projekt OHNE vorbereitete Kontextdateien
  *     (kontext_pfad/roadmap_pfad zeigt ins Leere) blockiert jarvis/router
  *     NICHT mehr komplett — real über POST /api/chat gegen einen frischen
@@ -150,12 +151,17 @@ console.log('\n=== F33-WS1-Projektkontext-Check ===\n')
         befunde.push(`(e) baueKontextpaket('${rolle}', …) wurde mit Auftragsreferenz + Projektkontext abgelehnt: ${JSON.stringify(ergebnis)}`)
       } else {
         const pfade = new Set(ergebnis.paket.elemente.map((e) => e.pfad))
-        const erwartet = ['docs/projekt/kontext/beschreibung.md', 'docs/projekt/kontext/anweisungen.md', 'docs/projekt/roadmap.json']
+        const erwartet = [
+          'docs/projekt/kontext/beschreibung.md',
+          'docs/projekt/kontext/anweisungen.md',
+          'docs/projekt/roadmap.json',
+          'docs/projekt/kontext/lagebild.md',
+        ]
         const fehlend = erwartet.filter((p) => !pfade.has(p))
         if (fehlend.length > 0) {
           befunde.push(`(e) Kontextpaket für '${rolle}' fehlen Elemente: ${fehlend.join(', ')} (vorhanden: ${[...pfade].join(', ')})`)
         } else {
-          console.log(`✓ (e) Kontextpaket für Rolle '${rolle}' enthält alle drei Projektkontext-Elemente, zusammen mit einer Auftragsreferenz, innerhalb des realen standardBudget.`)
+          console.log(`✓ (e) Kontextpaket für Rolle '${rolle}' enthält alle vier Projektkontext-Elemente, zusammen mit einer Auftragsreferenz, innerhalb des realen standardBudget.`)
         }
       }
     } finally {
