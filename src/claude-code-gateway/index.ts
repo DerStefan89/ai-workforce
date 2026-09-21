@@ -82,6 +82,16 @@
  * (StarterOptionen.ergebnisZeileBeendet) und meldet tool_use-Zeilen über
  * GatewayOptionen.beiWerkzeugaufruf als Fortschritt. Kein Token-Streaming
  * der Antwort (Spike Punkt 5).
+ *
+ * F40 WS-3 (löst F-567): baueAufruf hängt `--disallowedTools <wert>` an, wenn
+ * AufrufEingaben.disallowedTools gesetzt ist (additiv, kein Default) — real
+ * belegt (state/nachweis-jarvis-latenz.md Abschnitt "F40 WS-2"), dass ein
+ * claude-code-Prozess trotz `--setting-sources ''` per Read-Werkzeug
+ * `~/.claude/projects/…/memory/MEMORY.md` liest (Entwickler-Kontext statt
+ * Projektkontext, plus eine zusätzliche Werkzeug-Runde). `--bare` bleibt für
+ * jeden Aufruf per E-182 verboten (VERBOTENE_AUFRUFPARAMETER) und schaltet
+ * ohnehin mehr ab als nur Auto-Memory — kein gezielter Abschaltweg. Siehe
+ * types.ts' AufrufEingaben.disallowedTools für die Details.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -368,6 +378,9 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--strict-mcp-config',
     '--mcp-config',
     eingaben.mcpConfig ?? '{"mcpServers":{}}',
+    // F40 WS-3 (löst F-567): additiv, kein Default — nur gesetzt, wenn eingaben.disallowedTools
+    // einen Wert trägt (aktuell ausschließlich jarvis/router, 'Read(~/.claude/**)').
+    ...(eingaben.disallowedTools !== undefined ? ['--disallowedTools', eingaben.disallowedTools] : []),
     '-p',
     eingaben.prompt,
   ]

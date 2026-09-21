@@ -245,16 +245,27 @@ const gueltigerKoerperOhneStartvorlagenFelder = {
     befunde.push("AK5-Rotfall (Jarvis-Chat-Latenz senken): Body mit 'aufrufEingaben.umgebungsvariablen' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
   }
 
+  // F40 WS-3 (löst F-567): 'aufrufEingaben.disallowedTools' ist ausschließlich serverseitig für die
+  // Rollen 'jarvis'/'router' gesetzt — Muster des settingSources-Rotfalls oben.
+  const rotFallDisallowedTools = pruefeStartauftrag({
+    ...gueltigerKoerperOhneStartvorlagenFelder,
+    aufrufEingaben: { modell: 'test-modell', disallowedTools: 'Read(~/.claude/**)' },
+  })
+  if (rotFallDisallowedTools.ok !== false) {
+    befunde.push("AK5-Rotfall (F40 WS-3): Body mit 'aufrufEingaben.disallowedTools' sollte für JEDE Rolle abgelehnt werden, wurde durchgelassen")
+  }
+
   if (
     gruenFall.ok === true &&
     rotFallProfilReferenz.ok === false &&
     rotFallFreieListe.ok === false &&
     rotFallSettingSources.ok === false &&
     rotFallMcpConfig.ok === false &&
-    rotFallUmgebungsvariablen.ok === false
+    rotFallUmgebungsvariablen.ok === false &&
+    rotFallDisallowedTools.ok === false
   ) {
     console.log(
-      "✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste, 'aufrufEingaben.settingSources', 'aufrufEingaben.mcpConfig' und 'aufrufEingaben.umgebungsvariablen' ab."
+      "✓ AK5: pruefeStartauftrag lässt den Grünfall durch und lehnt 'profilReferenz', eine freie 'aufrufEingaben.werkzeugsatz'-Liste, 'aufrufEingaben.settingSources', 'aufrufEingaben.mcpConfig', 'aufrufEingaben.umgebungsvariablen' und 'aufrufEingaben.disallowedTools' ab."
     )
   }
 }

@@ -23,9 +23,11 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
 - Token-für-Token-Streaming der Antwort (Spike-Empfehlung §5: Gewinn bei
   typischen kurzen Antworten < 0,1 s, erzwingt Teil-JSON-Parsing — Aufwand
   und Risiko stehen in keinem Verhältnis).
-- `~/.claude/projects/…/memory/MEMORY.md`-Zugriff durch Jarvis unterbinden
-  (F-567, eigenständiger, im Spike gefundener Nebenbefund — kein
-  Bestandteil dieses Features).
+- ~~`~/.claude/projects/…/memory/MEMORY.md`-Zugriff durch Jarvis
+  unterbinden~~ — war bis WS-2 Nicht-Ziel dieses Features (eigenständiger,
+  im Spike gefundener Nebenbefund, F-567), ist seit WS-3 umgesetzt (siehe
+  Workstream unten) — bewusste Aufnahme in den Scope, kein stillschweigend
+  überschriebenes Nicht-Ziel.
 - Nachtrag der Findings-IDs F-505–F-578 in `state/findings.md` (F-534) —
   unabhängige Aufräumarbeit am Register selbst.
 - Automatische Neu-Erzeugung des Lagebilds bei jedem Commit (kein
@@ -61,6 +63,20 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
   bestehende `filtereExistierendeAnfragen` gefiltert (F33-Muster). Gate
   `scripts/check-f40-lagebild.mjs` (Drift-Erkennung, real kalibriert) in
   `npm run check`.
+- **WS-3 — Auto-Memory-Zugriff für `jarvis`/`router` unterbunden (löst
+  F-567, dieser Auftrag).** Ursache: "Auto Memory" ist kein
+  `--setting-sources`-Wert, sondern ein eigener CLI-Systemprompt-Baustein
+  (real belegt: `claude --help`, `code.claude.com/docs/en/headless`
+  §"bare mode"). Einziger offizieller Abschaltweg ist `--bare`, das dieses
+  Repo per E-182 für jeden Aufruf verbietet
+  (`VERBOTENE_AUFRUFPARAMETER`) und ohnehin mehr abschaltet als nur
+  Auto-Memory (Hooks, CLAUDE.md, Attribution). Fallback:
+  `AufrufEingaben.disallowedTools` (neu, Muster settingSources/mcpConfig)
+  — `baueAufruf` hängt `--disallowedTools <wert>` additiv an;
+  `scripts/leitstand-server.mjs` setzt `'Read(~/.claude/**)'`
+  ausschließlich für `jarvis` und `router` (Rolle `ausfuehrung`
+  unverändert). `pruefeStartauftrag` lehnt das Feld im Body von
+  `POST /api/laeufe` für jede Rolle ab.
 
 ## Akzeptanzkriterien
 - AK1 (WS-0): reale Spike-Messung mit `stream-json --verbose`,
@@ -108,6 +124,26 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
   wurde behoben (STATUS.md ist Kurzfassung, Feature-Akte ist Sollquelle je
   Feature). F30 („noch nicht begonnen") war bereits korrekt — keine Akte,
   keine Commits.
+- AK10 (WS-3, löst F-567): `baueAufruf` hängt `--disallowedTools <wert>`
+  additiv an, wenn `AufrufEingaben.disallowedTools` gesetzt ist — real
+  getestet (mit/ohne Feld, plus der bestehende Codex-Test um
+  `disallowedTools` ergänzt, das Feld erreicht den Codex-Zweig nicht).
+  `scripts/leitstand-server.mjs` setzt `'Read(~/.claude/**)'`
+  ausschließlich für `jarvis`/`router`; `pruefeStartauftrag` lehnt das Feld
+  im Body von `POST /api/laeufe` ab. Real belegt in zwei Schritten: (1)
+  eine isolierte Kausalprobe direkt gegen `claude.exe` (dieselben Tokens
+  wie `baueAufruf`) zeigt, dass derselbe Aufruf OHNE `--disallowedTools`
+  real `~/.claude/projects/…/memory/MEMORY.md` liest und dessen Inhalt
+  zurückgibt, MIT `--disallowedTools 'Read(~/.claude/**)'` dagegen `DENIED`
+  antwortet; (2) dieselben 5 Statusfragen wie im WS-2-Nachweis erneut
+  gegen den echten Leitstand gestellt: 0 von 5 Läufen griffen auf
+  `~/.claude/**` zu (WS-2: 1 von 5), ein realer `router`-Lauf griff
+  weiterhin korrekt auf Projektdateien zu (Deny-Regel nicht zu breit).
+  `state/nachweis-jarvis-latenz.md` Abschnitt "F40 WS-3".
+- AK11 (WS-3): Red-Case real gezeigt — die drei erweiterten Prüfungen
+  (`check-f11-auftrag.mjs`, `check-f31-gedaechtnis.mjs`,
+  `execution-controller.test.ts`) schlagen gegen `main` (974757c, vor
+  diesem Fix, per `git worktree`) real fehl; auf diesem Branch alle grün.
 
 ## Dependencies
 - F5 (Context Builder) — `baueKontextpaket`, dessen Budget-/Ausschlusslogik
@@ -154,11 +190,28 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
   AK8):** der Nachweis zeigt „0 von 5 Werkzeugaufrufe gegen die beiden
   Zieldateien", keine direkte Zeitersparnis-Zahl gegen einen identischen
   Lauf ohne Lagebild (hätte einen zweiten Branch-Checkout gebraucht).
-- **`~/.claude/projects/…/memory/MEMORY.md`-Zugriff besteht weiter (WS-2,
-  real reproduziert in AK8 Turn 4, außerhalb des Scopes, F-567):** trotz
-  `--setting-sources ''` liest `jarvis` weiterhin das Claude-Code-Gedächtnis
-  des Entwicklers bei mindestens manchen Läufen — derselbe Befund wie im
-  WS-0-Spike, hier real ein zweites Mal beobachtet, nicht behoben.
+- **`--bare` bleibt weiterhin für jeden Aufruf verboten (WS-3, bewusst,
+  E-182):** WS-3 löst F-567 gezielt über `--disallowedTools`, nicht über
+  den offiziell empfohlenen, aber bereits vor diesem Feature per Policy
+  verbotenen `--bare`-Weg — eine künftige Änderung an der E-182-Liste
+  bleibt außerhalb des Scopes dieses Features.
+- **Kein automatisierter A/B-Vergleich für WS-3 (Muster WS-2 AK8):** die 5
+  Statusfragen sind derselbe Fragensatz wie im WS-2-Nachweis, aber kein
+  kontrollierter Doppellauf gegen denselben Zustand — der Rückgang von 1/5
+  auf 0/5 `~/.claude`-Zugriffen ist ein starkes Indiz, kein statistischer
+  Beweis (kleine Stichprobe, Modellverhalten variiert von Lauf zu Lauf).
+  Die isolierte Kausalprobe (AK10) belegt den Mechanismus dagegen
+  deterministisch, unabhängig von Modell-Variation.
+- **Zwei ungetestete Randfälle der `Read(~/.claude/**)`-Regel (WS-3,
+  QA-Pass-Befund, für dieses Repo aktuell irrelevant):** (1) läge ein
+  Projekt-Arbeitsverzeichnis selbst unterhalb von `~/.claude/…` (in diesem
+  Repo nicht der Fall, `C:\Users\stefa\Projekte\ai-workforce` liegt
+  außerhalb `~/.claude`), würde die Regel auch legitime Projekt-Reads
+  blockieren; (2) ein Symlink innerhalb des Repos, der real auf eine Datei
+  unter `~/.claude/` zeigt, würde je nach Symlink-Auflösung der
+  CLI-Permission-Engine ebenfalls blockiert (laut Doku gilt eine
+  Deny-Regel für Symlink-Ziel UND -Pfad) — kein Symlink dieser Art existiert
+  aktuell in diesem Repo, nicht real getestet.
 - **Findings-Register-Nachtrag F-505–F-578 bleibt offen (F-534, bewusst
   Nicht-Ziel):** das Lagebild liest `state/findings.md` unverändert so, wie
   es vorliegt — ein Nachtrag-Rückstand dort wirkt unverändert auf das

@@ -27,6 +27,9 @@
  * (j) Runde 2, Schritt 2 (löst F-506, "Nie wieder stilles Verlieren"): ein real
  *     ABGESCHLOSSEN/ERFOLGREICH beendeter Jarvis-Lauf mit unlesbarem Ergebnis schreibt
  *     TROTZDEM genau einen sichtbaren Fehler-Eintrag in 'chat-<projektId>' statt gar keinen.
+ * (k) F40 WS-3 (löst F-567): POST /api/auftraege/<id>/routen übergibt
+ *     aufrufEingaben.disallowedTools 'Read(~/.claude/**)' an den Worker — Äquivalent zu (a),
+ *     aber für den Router-Pfad statt Jarvis-Chat.
  *
  * Unit-Ebene (waehleVerlaufsfenster/baueJarvisAuftragstext-Randfälle) liegt in
  * src/jarvis/jarvis.test.ts — dieses Gate prüft nur die Server-Verdrahtung
@@ -118,9 +121,14 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       // real dokumentiert (code.claude.com/docs/en/model-config), dass MAX_THINKING_TOKENS=0
       // Extended Thinking auf der Anthropic-API abschaltet.
       befunde.push(`(a) Jarvis-Chat-Latenz senken: erwartet aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS '0', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
+    } else if (letzteEingaben.aufrufEingaben?.disallowedTools !== 'Read(~/.claude/**)') {
+      // F40 WS-3 (löst F-567): dieselbe Erwartung für disallowedTools — real belegt
+      // (state/nachweis-jarvis-latenz.md Abschnitt "F40 WS-2", Turn 4), dass ein claude-code-Prozess
+      // trotz settingSources '' ~/.claude/projects/…/memory/MEMORY.md liest.
+      befunde.push(`(a) F40 WS-3: erwartet aufrufEingaben.disallowedTools 'Read(~/.claude/**)', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else {
       console.log(
-        "✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '', aufrufEingaben.mcpConfig ist '{\"mcpServers\":{}}' und aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS ist '0' (F31 WS-3/WS-3b, Jarvis-Chat-Latenz senken)."
+        "✓ (a): POST /api/chat übergibt das vorherige Verlaufsfenster UND die neue Nachricht im Auftragstext an den Worker; aufrufEingaben.settingSources ist '', aufrufEingaben.mcpConfig ist '{\"mcpServers\":{}}', aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS ist '0' und aufrufEingaben.disallowedTools ist 'Read(~/.claude/**)' (F31 WS-3/WS-3b, Jarvis-Chat-Latenz senken, F40 WS-3)."
       )
     }
   } finally {
@@ -516,6 +524,49 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
           console.log("✓ (j): ein real ABGESCHLOSSEN/ERFOLGREICH beendeter Jarvis-Lauf mit unlesbarem Ergebnis schreibt GENAU einen sichtbaren Fehler-Eintrag in 'chat-<projektId>' statt gar keinen — 'nachricht' bleibt die echte Nutzerfrage, istZusammenfassung bleibt false.")
         }
       }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (k) F40 WS-3 (löst F-567): POST /api/auftraege/<id>/routen übergibt aufrufEingaben.disallowedTools ──
+//
+// QA-Pass-Befund (F40 WS-3): (a) oben deckt nur den Jarvis-Chat-Pfad ab — ein Äquivalent für den
+// Router-Endpunkt fehlte, eine künftige versehentliche Entfernung der Zeile in
+// scripts/leitstand-server.mjs (Router-Lauf-Handler) wäre von npm run check unentdeckt geblieben.
+// Muster von check-f22-click-to-work.mjs Abschnitt (b): echter Auftrag über POST /api/auftraege
+// registriert, dann real geroutet — fuehreAufgabeDurchFn meldet minimal ok:true (D13-Testmuster),
+// die nachfolgende Verarbeitung (verarbeiteRouterErgebnis) ist für DIESE Prüfung irrelevant, weil
+// capture(eingaben) bereits VOR jeder Nachbereitung greift (Muster (a) oben).
+{
+  const basisVerzeichnis = `kontrollzustand-test-f31-ak-k-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+
+  let letzteEingaben = null
+  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+    letzteEingaben = eingaben
+    return { ok: true }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+      method: 'POST',
+      body: JSON.stringify({ titel: 'F40-WS3-Gate', auftragstext: 'Auftragstext des Gate-Laufs.' }),
+    })
+    const auftragId = (await auftragAntwort.json()).auftragId
+
+    const routenAntwort = await fetch(`${basisUrl}/api/auftraege/${encodeURIComponent(auftragId)}/routen`, { method: 'POST' })
+    if (routenAntwort.status !== 202) {
+      befunde.push(`(k): erwartet 202, erhalten ${routenAntwort.status} (${await routenAntwort.text()})`)
+    } else if (letzteEingaben?.aufrufEingaben?.disallowedTools !== 'Read(~/.claude/**)') {
+      befunde.push(`(k) F40 WS-3: erwartet aufrufEingaben.disallowedTools 'Read(~/.claude/**)' am echten POST /api/auftraege/<id>/routen-Pfad, erhalten ${JSON.stringify(letzteEingaben?.aufrufEingaben)}`)
+    } else {
+      console.log("✓ (k): POST /api/auftraege/<id>/routen übergibt aufrufEingaben.disallowedTools 'Read(~/.claude/**)' an den Worker (F40 WS-3, Muster (a) für den Router-Pfad).")
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

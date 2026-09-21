@@ -76,3 +76,90 @@ vollen Kette.
 Bewusst nicht in WS-2: Token-Streaming (bereits in WS-0 verworfen),
 `MEMORY.md`-Zugriff unterbinden (F-567), Findings-Nachtrag F-505–F-578
 (F-534), automatische Lagebild-Erzeugung per Pre-Commit-Hook.
+
+## 2026-09-21 — WS-3 gebaut, Auto-Memory-Zugriff für jarvis/router gesperrt (F-567)
+
+Ursache geklärt (`claude --help`, WebFetch gegen `code.claude.com/docs/en/
+headless` §"Start faster with bare mode"): "auto memory" ist kein
+Settings-Wert, sondern ein eigener CLI-Systemprompt-Baustein — `--setting-
+sources` steuert ausschließlich, welche Settings-DATEIEN geladen werden,
+nicht diesen Baustein. Einziger offizieller Abschaltweg ist `--bare`
+("skips auto-discovery of hooks, skills, custom commands, subagents,
+plugins, MCP servers, auto memory, and CLAUDE.md" — von Anthropic sogar als
+künftiger Default für `-p` angekündigt). `--bare` ist in diesem Repo aber
+für JEDEN Aufruf per E-182 verboten
+(`src/invocation-policy/verbotene-aufrufparameter.ts`,
+`VERBOTENE_AUFRUFPARAMETER`) — eine bestehende, bewusste Policy-Entscheidung,
+nicht Teil dieses Auftrags. `--bare` schaltet außerdem mehr ab als nur
+Auto-Memory (Hooks, CLAUDE.md, Attribution) und hätte für `router`
+(`--setting-sources` default `project`) real die projektweiten Hooks aus
+`.claude/settings.json` deaktiviert — kein gezielter Fix. Deshalb der in
+der Aufgabenstellung vorgesehene Fallback: `--disallowedTools
+'Read(~/.claude/**)'` (Permission-Rule-Syntax, `code.claude.com/docs/en/
+permissions#read-and-edit`: Deny-Regeln für `Read` gelten laut Doku auch
+für Grep/Glob).
+
+Umgesetzt: `AufrufEingaben.disallowedTools` (neu, Muster settingSources/
+mcpConfig/umgebungsvariablen) — `baueAufruf` hängt `--disallowedTools
+<wert>` additiv an, wenn gesetzt. Gesetzt auf `'Read(~/.claude/**)'`
+ausschließlich für `jarvis` (`starteJarvisChatLauf`) und `router` (POST
+`/api/auftraege/<id>/routen`) in `scripts/leitstand-server.mjs` — Rolle
+`ausfuehrung` unverändert. `pruefeStartauftrag` lehnt
+`aufrufEingaben.disallowedTools` im Body von `POST /api/laeufe` für jede
+Rolle ab (Muster der drei bestehenden Rotfälle).
+
+Tests/Gates: `execution-controller.test.ts` (zwei neue Fälle: ohne Feld
+kein `--disallowedTools`, mit Feld landet der Wert unverändert in den
+Tokens; bestehender Codex-Test um `disallowedTools` ergänzt — Codex-Zweig
+trägt es nicht ins Argv, Muster settingSources/mcpConfig).
+`check-f11-auftrag.mjs` AK5 um den Rotfall ergänzt. `check-f31-gedaechtnis.mjs`
+(a) um dieselbe Erwartung am echten `POST /api/chat`-Pfad ergänzt. Red-Case
+real gezeigt: alle drei erweiterten Prüfungen kopiert in einen `git
+worktree` auf `main` (974757c) — schlagen dort real fehl (`check-f11-
+auftrag.mjs`/`check-f31-gedaechtnis.mjs` Exit 1, der neue `node:test`-Fall
+`AssertionError`), auf diesem Branch alle grün.
+
+Realer Nachweis: (1) isolierte Kausalprobe direkt gegen `claude.exe`
+(dieselben Tokens wie `baueAufruf`, `-p` mit derselben Aufforderung, den
+echten `MEMORY.md`-Pfad zu lesen) — OHNE `--disallowedTools` liest der
+Prozess real `~/.claude/projects/…/memory/MEMORY.md` und gibt dessen
+Inhalt zurück; MIT `--disallowedTools 'Read(~/.claude/**)'` antwortet
+derselbe Aufruf `DENIED`. (2) Dieselben 5 Statusfragen wie im WS-2-Nachweis
+erneut gegen den echten Leitstand gestellt (`LEITSTAND_PORT=4181`): 0 von 5
+Läufen griffen auf `~/.claude/**` zu (WS-2: 1 von 5, Turn "Ist F32 schon
+abgeschlossen?" hatte real `MEMORY.md` gelesen) — derselbe Turn liest jetzt
+in 1 Turn ohne jeden Werkzeugaufruf. (3) Ein realer `router`-Lauf (echter
+Testauftrag geroutet) griff auf ein Projektdateiziel zu (Read
+`check-f31-gedaechtnis.mjs`, weiterhin funktionsfähig — die Deny-Regel ist
+korrekt auf `~/.claude/**` begrenzt), 0 Zugriffe auf `~/.claude/**`.
+`state/nachweis-jarvis-latenz.md` Abschnitt "F40 WS-3".
+
+`npm run check`: Exit 0, 620/620 Tests grün, keine neuen Befunde.
+
+Reviewer-/QA-Pass (frischer Kontext, Muster CLAUDE.md): code-reviewer
+"Freigegeben mit Hinweisen" (ein Verbesserungsvorschlag: den doppelt
+literalen Wert `'Read(~/.claude/**)'` in `scripts/leitstand-server.mjs`
+in eine gemeinsame Konstante ziehen — umgesetzt, `AUTO_MEMORY_DENY_REGEL`).
+QA "Freigegeben mit Hinweisen", ein echter Befund (mittel): `check-f31-
+gedaechtnis.mjs` (a) deckte nur den Jarvis-Chat-Pfad ab, kein Äquivalent
+für den Router-Pfad — eine künftige versehentliche Entfernung von
+`disallowedTools` am Router-Lauf-Handler wäre von `npm run check`
+unentdeckt geblieben. Korrigiert: neuer Abschnitt (k) prüft dieselbe
+Erwartung real am echten `POST /api/auftraege/<id>/routen`-Pfad (Muster
+`check-f22-click-to-work.mjs` (b): echter Auftrag registriert, echt
+geroutet, `fuehreAufgabeDurchFn`-Stub erfasst die tatsächlich übergebenen
+`aufrufEingaben`). Red-Case dafür ebenfalls real gegen `main` gezeigt
+(zweiter `git worktree`, Exit 1 vor dem Fix). Zwei niedrigwertige
+Dokumentationsbefunde (Randfälle der Deny-Regel, unvollständige
+Token-Auflistung in der Kausalprobe) in `features/F40/feature.md`
+"Bekannte Grenzen" bzw. `state/nachweis-jarvis-latenz.md` nachgetragen.
+`npm run check` nach der Korrekturrunde erneut Exit 0, 620/620 (ein
+einmaliger `EPERM`-Fehlschlag beim Verzeichnis-Aufräumen eines
+Test-Verzeichnisses — bekannte Falle laut `CLAUDE.md`, im Retry grün).
+
+Bewusst nicht in WS-3: `--bare` (siehe oben, E-182-Policy), eine
+allgemeine Sperre für jede Rolle (nur jarvis/router betroffen laut
+Auftrag — `ausfuehrung` braucht Zugriff auf ihre eigene Arbeitsumgebung
+unverändert), ein automatisierter Vorher/Nachher-A/B-Vergleich (die 5
+Statusfragen sind derselbe Fragensatz wie WS-2, aber kein kontrollierter
+Doppellauf gegen denselben Zustand).
