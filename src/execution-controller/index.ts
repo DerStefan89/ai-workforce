@@ -366,6 +366,7 @@ export async function fuehreAufgabeDurch(
             abbruchSignal: optionen.abbruchSignal,
             cwd: optionen.cwd,
             zeitmessung: optionen.zeitmessung,
+            beiWerkzeugaufruf: optionen.beiWerkzeugaufruf,
             // Task "Jarvis-Chat-Latenz senken", Schritt 3: aus eingaben.aufrufEingaben gelesen
             // (Muster settingSources/mcpConfig oben in baueAufruf), NICHT aus optionen — bewusst
             // NICHT in AusfuehrungsOptionen (Muster-Kommentar dort), weil dieses Feld wie

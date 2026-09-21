@@ -423,6 +423,20 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       writeFileSync(pfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: resultText }) }), 'utf8')
       return { worker: 'claude-code', rohstrom_referenz: { pfad } }
     }
+    // F40 WS-1 (Gate c): dieselben Fälle, gespeist aus einem stream-json-NDJSON-stdout (init, assistant mit
+    // tool_use, user mit tool_result, result als LETZTE Zeile) statt aus einem gepufferten json-Objekt.
+    const schreibeStreamRohstromFixture = (dateiname, resultText) => {
+      const pfad = join(basisVerzeichnis, dateiname)
+      const zeilen = [
+        { type: 'system', subtype: 'init', session_id: 's' },
+        { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'docs/STATUS.md' } }] } },
+        { type: 'user', message: { content: [{ type: 'tool_result', content: '{"type":"result","result":"KÖDER"}' }] } },
+        { type: 'assistant', message: { content: [{ type: 'text', text: resultText }] } },
+        { type: 'result', subtype: 'success', result: resultText },
+      ]
+      writeFileSync(pfad, JSON.stringify({ stdout: `${zeilen.map((z) => JSON.stringify(z)).join('\n')}\n` }), 'utf8')
+      return { worker: 'claude-code', rohstrom_referenz: { pfad } }
+    }
 
     const faelle = [
       { name: 'reines JSON', resultText: JSON.stringify(gueltigesErgebnis), sollGueltigSein: true },
@@ -432,17 +446,19 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
       { name: 'kein JSON', resultText: 'Kein neuer Sachstand seit den letzten identischen Antworten — ich antworte konsistent damit.', sollGueltigSein: false },
     ]
     for (const [index, fall] of faelle.entries()) {
-      const laufakte = schreibeRohstromFixture(`i-fall-${index}.json`, fall.resultText)
-      const ergebnis = leseJarvisErgebnisAusLaufakte(laufakte)
-      if (fall.sollGueltigSein && (!ergebnis.ok || JSON.stringify(ergebnis.ergebnis) !== JSON.stringify(gueltigesErgebnis))) {
-        befunde.push(`(i) '${fall.name}': erwartet ok:true mit dem gültigen Ergebnis, erhalten ${JSON.stringify(ergebnis)}`)
-      }
-      if (!fall.sollGueltigSein && ergebnis.ok !== false) {
-        befunde.push(`(i) '${fall.name}': erwartet ok:false, erhalten ${JSON.stringify(ergebnis)}`)
+      for (const [form, schreibe] of [['json', schreibeRohstromFixture], ['stream-json', schreibeStreamRohstromFixture]]) {
+        const laufakte = schreibe(`i-fall-${index}-${form}.json`, fall.resultText)
+        const ergebnis = leseJarvisErgebnisAusLaufakte(laufakte)
+        if (fall.sollGueltigSein && (!ergebnis.ok || JSON.stringify(ergebnis.ergebnis) !== JSON.stringify(gueltigesErgebnis))) {
+          befunde.push(`(i) '${fall.name}' [${form}]: erwartet ok:true mit dem gültigen Ergebnis, erhalten ${JSON.stringify(ergebnis)}`)
+        }
+        if (!fall.sollGueltigSein && ergebnis.ok !== false) {
+          befunde.push(`(i) '${fall.name}' [${form}]: erwartet ok:false, erhalten ${JSON.stringify(ergebnis)}`)
+        }
       }
     }
     if (befunde.length === befundeVor) {
-      console.log('✓ (i): entferneCodezaun/extrahiereErstesJsonObjekt/leseJarvisErgebnisAusLaufakte lösen ein Jarvis-Ergebnis real aus reinem JSON, Codezaun ohne Sprachangabe, Prosa+Codezaun und Prosa+rohem JSON-Objekt; "kein JSON" bleibt ungültig.')
+      console.log('✓ (i): entferneCodezaun/extrahiereErstesJsonObjekt/leseJarvisErgebnisAusLaufakte lösen ein Jarvis-Ergebnis real aus reinem JSON, Codezaun ohne Sprachangabe, Prosa+Codezaun und Prosa+rohem JSON-Objekt, je aus gepuffertem json UND stream-json-NDJSON (F40 WS-1); "kein JSON" bleibt ungültig.')
     }
   } finally {
     raeumeVerzeichnis(basisVerzeichnis)

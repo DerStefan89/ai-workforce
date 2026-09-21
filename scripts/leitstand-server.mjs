@@ -795,6 +795,8 @@ function baueRohstromProjektion(laufakteVersion, repoWurzel) {
     startfehler: wurzel.startfehler ?? null,
     stdoutLaenge: typeof wurzel.stdout === 'string' ? wurzel.stdout.length : null,
     stderrLaenge: typeof wurzel.stderr === 'string' ? wurzel.stderr.length : null,
+    // F40 WS-1: erklärt ein exitCode null bei einem normal beendeten Lauf (Auflösung bei der result-Zeile).
+    ergebnisZeileVorProzessende: wurzel.ergebnisZeileVorProzessende === true,
     ergebnisobjekt:
       ergebnisobjekt === null
         ? { status: 'kein_ergebnisobjekt' }
@@ -1459,6 +1461,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
   'cwd',
   // F31 WS-3, Latenzmessung: ebenso — entsteht serverseitig je Lauf (Diagnose-Rückruf), kommt nie über den Body.
   'zeitmessung',
+  // F40 WS-1: ebenso — serverseitiger Fortschritts-Rückruf je Lauf, kommt nie über den Body.
+  'beiWerkzeugaufruf',
 ])
 
 /**
@@ -3189,6 +3193,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let laufAktivLaufId = null
   /** F14 WS-4 (AK7, D13): AbortController des gerade aktiven Laufs — genau einer, weil D13 genau einen aktiven Arbeitsstrang je Serverinstanz garantiert. Lebt nur so lange wie laufAktiv true ist, wird in JEDEM Fall (ok:false, ok:true, Wurf) zusammen mit laufAktiv/laufAktivLaufId zurückgesetzt (kein Leak, keine Wiederverwendung über Läufe hinweg). */
   let laufAktivAbortController = null
+  /** F40 WS-1: letzter live gemeldeter Werkzeugaufruf des aktiven Laufs ({ werkzeug, ziel }) oder null — rein In-Memory (kein Checkpoint pro stream-json-Zeile, D4), genau einer wegen D13, zusammen mit laufAktiv zurückgesetzt. Ausgeliefert über GET /api/laeufe/<laufId> (Feld fortschritt), gelesen vom 500ms-Chat-Poll. */
+  let laufAktivFortschritt = null
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
@@ -3275,6 +3281,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       ...(zeitgrenzeMsUeberschreibung !== undefined ? { zeitgrenzeMs: zeitgrenzeMsUeberschreibung } : {}),
       abbruchSignal: laufAktivAbortController.signal,
       ...(zeitmessungMarke !== undefined ? { zeitmessung: zeitmessungMarke } : {}),
+      // F40 WS-1: Live-Fortschritt (tool_use-Zeilen) für JEDEN Lauf, nur In-Memory. Die laufId-Prüfung
+      // verhindert, dass ein spät eintreffender Rückruf eines alten Laufs den Folgelauf überschreibt.
+      beiWerkzeugaufruf: (aufruf) => {
+        if (laufAktivLaufId !== laufId) return
+        laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: aufruf.ziel }
+      },
     }
 
     /** Ruft nachLauf auf, ohne dass ein Wurf daraus zur unhandled rejection wird. @param ergebnis - AusfuehrungsErgebnis oder null @param fehler - Wurf oder null */
@@ -3305,6 +3317,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktiv = false
         laufAktivLaufId = null
         laufAktivAbortController = null
+        laufAktivFortschritt = null
         // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
         globalerLaufZustand.aktiv = false
         globalerLaufZustand.laufId = null
@@ -3359,6 +3372,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktiv = false
         laufAktivLaufId = null
         laufAktivAbortController = null
+        laufAktivFortschritt = null
         // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
         globalerLaufZustand.aktiv = false
         globalerLaufZustand.laufId = null
@@ -3862,6 +3876,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // Serverinstanz ist (D13) — kein Ersatz für eine vollständige F-172-Lösung (auch andere
         // Leitstand-Ansichten), nur dieses eine, bereits vorhandene In-Memory-Feld mitgeliefert.
         aktiv: laufAktiv && laufId === laufAktivLaufId,
+        // F40 WS-1: letzter live gemeldeter Werkzeugaufruf, nur solange DIESER Lauf aktiv ist — sonst null.
+        fortschritt: laufAktiv && laufId === laufAktivLaufId ? laufAktivFortschritt : null,
         verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
@@ -4702,7 +4718,19 @@ export function erzeugeRequestHandler(optionen = {}) {
     /** Gibt die gesammelten Marken als EINE console.log-Zeile aus — No-op, wenn zeitmessung null ist. */
     function protokolliereZeitmessung(zeitmessung, laufId) {
       if (zeitmessung === null || zeitmessung === undefined) return
+      zeitmessung.protokolliert = true
       console.log(`[leitstand] Zeitmessung '${laufId}': ${JSON.stringify(zeitmessung.marken)}`)
+    }
+
+    /**
+     * F40 WS-1: Marken-Rückruf für den Gateway. Seit der Auflösung bei der stream-json-result-Zeile
+     * endet der Werkzeugprozess real NACH der Chat-Nachbereitung — seine Marke 'prozess_close' kommt
+     * erst, wenn die Zeile oben schon ausgegeben ist. Eine solche Nachzügler-Marke erzeugt deshalb
+     * eine zweite, vollständige Zeile (nur bei LEITSTAND_ZEITMESSUNG=1), statt still verloren zu gehen.
+     */
+    function markiereZeitMitNachzuegler(zeitmessung, laufId, marke) {
+      markiereZeit(zeitmessung, marke)
+      if (zeitmessung?.protokolliert === true) protokolliereZeitmessung(zeitmessung, laufId)
     }
 
     // ─── F31 WS-2: gemeinsamer Lauf-Start für POST /api/chat und POST /api/chat/zusammenfassen ──
@@ -4881,7 +4909,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           }
         },
         undefined,
-        zeitmessung !== null ? (marke) => markiereZeit(zeitmessung, marke) : undefined
+        zeitmessung !== null ? (marke) => markiereZeitMitNachzuegler(zeitmessung, laufId, marke) : undefined
       )
     }
 

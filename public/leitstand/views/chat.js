@@ -248,7 +248,7 @@ function baueAnzeigeListe() {
     ...lokaleEintraege,
   ]
   if (ausstehenderLauf !== null) {
-    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel, istZusammenfassung: ausstehenderLauf.istZusammenfassung === true })
+    liste.push({ nachricht: ausstehenderLauf.nachricht, antwortText: null, quelle: 'ausstehend', zeitstempel: ausstehenderLauf.zeitstempel, istZusammenfassung: ausstehenderLauf.istZusammenfassung === true, fortschrittText: ausstehenderLauf.fortschrittText ?? null })
   }
   return liste
 }
@@ -276,7 +276,8 @@ function renderEintrag(eintrag) {
   const nutzerZeile = chatBubbleReihe('Stefan', zeitHtml, `<p class="${nutzerTextKlasse}">${escapeHtml(eintrag.nachricht)}</p>`, 'nutzer')
   if (eintrag.quelle === 'ausstehend') {
     const tippindikator = '<p class="chat-tippindikator" aria-hidden="true"><span></span><span></span><span></span></p>'
-    return trennerHtml + nutzerZeile + chatBubbleReihe('Jarvis', '', tippindikator, 'jarvis')
+    const fortschrittHtml = eintrag.fortschrittText ? `<p class="chat-fortschritt">${escapeHtml(eintrag.fortschrittText)} …</p>` : ''
+    return trennerHtml + nutzerZeile + chatBubbleReihe('Jarvis', '', tippindikator + fortschrittHtml, 'jarvis')
   }
   const label = QUELLE_ANTWORT_LABEL[eintrag.quelle] ?? 'Jarvis'
   const jarvisZeile = chatBubbleReihe(label, zeitHtml, `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`, 'jarvis')
@@ -355,6 +356,25 @@ function beschreibeNichtErfolgreichesEnde(laufStatus) {
   return `Lauf endete unerwartet (Status: ${laufStatus?.status ?? 'unbekannt'}).`
 }
 
+/**
+ * F40 WS-1: kurzer Anzeigetext zum letzten live gemeldeten Werkzeugaufruf (GET /api/laeufe/<laufId>, Feld
+ * fortschritt) — z. B. "liest docs/STATUS.md". Ein Pfad wird auf seine letzten zwei Segmente gekürzt (absolute
+ * Windows-Pfade sind sonst länger als die Sprechblase), jedes Ziel zusätzlich auf 60 Zeichen (Grep-/Glob-Muster
+ * können beliebig lang sein, QA-Befund F40 WS-1). @param fortschritt - { werkzeug, ziel } oder null
+ * @returns Anzeigetext oder null ohne verwertbaren Fortschritt
+ */
+function beschreibeFortschritt(fortschritt) {
+  if (fortschritt === null || typeof fortschritt !== 'object' || typeof fortschritt.werkzeug !== 'string') return null
+  const zielRoh = typeof fortschritt.ziel === 'string' && fortschritt.ziel !== '' ? fortschritt.ziel : null
+  const kuerze = (text) => ([...text].length > 60 ? `${[...text].slice(0, 59).join('')}…` : text)
+  const ziel = zielRoh === null ? null : kuerze(zielRoh)
+  const kurzPfad = zielRoh === null ? null : kuerze(zielRoh.split(/[\\/]/).filter(Boolean).slice(-2).join('/') || zielRoh)
+  if (fortschritt.werkzeug === 'Read') return kurzPfad ? `liest ${kurzPfad}` : 'liest eine Datei'
+  if (fortschritt.werkzeug === 'Grep') return ziel ? `durchsucht nach „${ziel}“` : 'durchsucht Dateien'
+  if (fortschritt.werkzeug === 'Glob') return ziel ? `sucht ${ziel}` : 'sucht Dateien'
+  return kurzPfad ? `nutzt ${fortschritt.werkzeug} (${kurzPfad})` : `nutzt ${fortschritt.werkzeug}`
+}
+
 /** Bei jedem Tick des eigenen 500ms-Polls geprüft (siehe Datei-Kopf): solange ein Jarvis-Chat-Lauf aussteht, GET /api/laeufe/<laufId> abrufen und bei Terminallage auflösen. */
 async function pruefeAusstehendenLauf() {
   if (ausstehenderLauf === null) return
@@ -375,7 +395,16 @@ async function pruefeAusstehendenLauf() {
   // beides zuverlässig: erst wenn die Serverinstanz den Lauf selbst nicht mehr als aktiv führt,
   // ist laufStatus verlässlich terminal. Ein Poll-Tick, der das ignoriert hätte, hätte hier real
   // einen laufenden Lauf fälschlich als "hält — Klärung erforderlich" gemeldet.
-  if (detail.aktiv === true) return
+  if (detail.aktiv === true) {
+    // F40 WS-1: laufender Lauf — Werkzeug-Fortschritt anzeigen, nur bei geänderter Anzeige neu rendern.
+    // Erneute laufId-Prüfung nach dem Await (Muster unten): ein Projektwechsel darf nicht überschrieben werden.
+    const fortschrittText = beschreibeFortschritt(detail.fortschritt ?? null)
+    if (ausstehenderLauf?.laufId === laufId && fortschrittText !== (ausstehenderLauf.fortschrittText ?? null)) {
+      ausstehenderLauf.fortschrittText = fortschrittText
+      renderVerlauf()
+    }
+    return
+  }
   const laufStatus = detail.laufStatus
   if (laufStatus?.status !== 'ABGESCHLOSSEN' && laufStatus?.status !== 'KLAERUNG_ERFORDERLICH') return // noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
   const tPollErgebnis = performance.now()

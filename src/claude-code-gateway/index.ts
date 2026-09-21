@@ -69,6 +69,19 @@
  * dieselbe Lücke wie bei jarvis (Account-MCP-Server laden trotz
  * `--tools`-Begrenzung) besteht für jede Rolle gleichermaßen, E-187 gilt
  * jetzt für alle als ERZWUNGEN (docs/projekt/zielfassung.md §9.1).
+ *
+ * F40 WS-1 (Grundlage state/spike-f40-streaming.md): baueAufruf setzt
+ * `--output-format stream-json --verbose` statt `json` (ohne `--verbose`
+ * lehnt die CLI stream-json im `-p`-Modus mit Exit 1 ab). Das stdout ist
+ * damit NDJSON; die letzte Zeile `type:"result"` trägt real denselben
+ * Feldsatz wie das frühere gepufferte `json`-Objekt (Spike Punkt 2) —
+ * leseErgebnisobjekt liest deshalb weiterhin EIN result-Objekt, jetzt aus
+ * der letzten result-Zeile. Ein vor F40 geschriebener Rohstrom (ein
+ * einziges JSON-Objekt) bleibt unverändert lesbar. starteGateway lässt den
+ * Starter bei der result-Zeile auflösen statt beim Prozessende
+ * (StarterOptionen.ergebnisZeileBeendet) und meldet tool_use-Zeilen über
+ * GatewayOptionen.beiWerkzeugaufruf als Fortschritt. Kein Token-Streaming
+ * der Antwort (Spike Punkt 5).
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -79,7 +92,7 @@ import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0 } from './types.ts'
+import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
 
 /**
  * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
@@ -158,10 +171,12 @@ interface GatewayOptionen {
   abbruchSignal?: AbortSignal
   /** Arbeitsverzeichnis des Kindprozesses (F25 WS-1, AK3) — unverändert an prozessstart.ts' starteProzess durchgereicht, dort natives execFile-cwd. Kein Default hier: fehlt der Wert, startet der Kindprozess wie bisher im process.cwd() des Serverprozesses. Wirkt NUR auf den Kindprozess — F4s Gültigkeitsschlüssel (istUebrigeFelder.arbeitsverzeichnis_pfad unten) und die Laufakte bleiben bewusst bei process.cwd() des Serverprozesses (AK7: kein bestehender Vergleichswert für ai-workforce ändert sich). */
   cwd?: string
-  /** F31 WS-3 (Latenzmessung): optionaler Rückruf, mit dem der Aufrufer benannte Zeitmarken innerhalb dieses Aufrufs sammeln kann — reiner Diagnose-Haken ohne Wirkung auf den Ablauf, fehlt er, ändert sich nichts (Muster schreiber). starteGateway ruft ihn an vier Stellen: 'kontextpaket_startfreigabe' (F4-Startfreigabe geprüft, unmittelbar vor der RUN_PREPARED-Wirkungsmarke), 'prozess_gestartet'/'prozess_beendet' (um den Prozessstart-Await) und 'laufakte_rohstrom_geschrieben' (nach dem Registrieren der Laufakte). */
+  /** F31 WS-3 (Latenzmessung): optionaler Rückruf, mit dem der Aufrufer benannte Zeitmarken innerhalb dieses Aufrufs sammeln kann — reiner Diagnose-Haken ohne Wirkung auf den Ablauf, fehlt er, ändert sich nichts (Muster schreiber). starteGateway ruft ihn an diesen Stellen: 'kontextpaket_startfreigabe' (F4-Startfreigabe geprüft, unmittelbar vor der RUN_PREPARED-Wirkungsmarke), 'prozess_gestartet'/'prozess_beendet' (um den Prozessstart-Await — seit F40 WS-1 markiert 'prozess_beendet' die Auflösung bei der result-Zeile, nicht das Prozessende), 'prozess_close' (F40 WS-1: tatsächliches Prozessende, real NACH allen übrigen Marken), 'rohstrom_geschrieben' und 'laufakte_rohstrom_geschrieben' (nach dem Registrieren der Laufakte). */
   zeitmessung?: (marke: string) => void
   /** Task "Jarvis-Chat-Latenz senken", Schritt 3: reine Durchreichung an prozessstart.ts' starteProzess (Muster cwd) — s. AufrufEingaben.umgebungsvariablen für den einzigen bestehenden Aufrufer (starteJarvisChatLauf). */
   umgebungsvariablen?: Record<string, string>
+  /** F40 WS-1: optionaler Rückruf je live erkanntem Werkzeugaufruf (tool_use-Zeile im stream-json) — reine Fortschrittsanzeige, kein Checkpoint (D4), ohne Wirkung auf den Ablauf. Ein Wurf daraus wird gefangen und geloggt. */
+  beiWerkzeugaufruf?: (aufruf: Werkzeugaufruf) => void
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -174,17 +189,70 @@ function laufakteArtefaktId(laufId: string): string {
   return `laufakte-${laufId}`
 }
 
-/** Liefert das geparste Ergebnisobjekt nur bei validem "type":"result"-JSON, sonst null — nur zur Unterscheidung Erfolg/Fehllauf, keine inhaltliche Auswertung des Ergebnisses (F7-Grenze, AK12). Exportiert (F-062), damit F7 dieselbe Parsing-Logik wiederverwendet statt sie nachzubauen (D5). */
-export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | null {
+/** Parst genau ein JSON-Objekt (kein Array, kein Primitiv) oder liefert null — wirft nie. */
+function parseObjekt(text: string): Record<string, unknown> | null {
   let geparst: unknown
   try {
-    geparst = JSON.parse(stdout)
+    geparst = JSON.parse(text)
   } catch {
     return null
   }
-  if (typeof geparst !== 'object' || geparst === null || Array.isArray(geparst)) return null
-  const obj = geparst as Record<string, unknown>
-  return obj.type === 'result' ? obj : null
+  return typeof geparst === 'object' && geparst !== null && !Array.isArray(geparst) ? (geparst as Record<string, unknown>) : null
+}
+
+/**
+ * Liefert das geparste Ergebnisobjekt nur bei validem "type":"result"-JSON, sonst null — nur zur Unterscheidung Erfolg/Fehllauf, keine inhaltliche Auswertung des Ergebnisses (F7-Grenze, AK12). Exportiert (F-062), damit F7 dieselbe Parsing-Logik wiederverwendet statt sie nachzubauen (D5).
+ *
+ * F40 WS-1: akzeptiert zwei Formen. (1) Das gesamte stdout ist EIN Objekt (gepuffertes `json`, jeder vor F40 geschriebene Rohstrom). (2) NDJSON aus `stream-json`: die LETZTE Zeile mit type "result" zählt. Eine unvollständige oder unparsbare Zeile (Abbruch mitten im Stream, Spike Punkt 4) wird übersprungen, nie geworfen — fehlt die result-Zeile, bleibt es bei null wie bisher.
+ */
+export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | null {
+  const ganz = parseObjekt(stdout)
+  if (ganz !== null) return ganz.type === 'result' ? ganz : null
+  const zeilen = stdout.split('\n')
+  for (let i = zeilen.length - 1; i >= 0; i--) {
+    const zeile = zeilen[i].trim()
+    if (zeile === '') continue
+    const obj = parseObjekt(zeile)
+    if (obj !== null && obj.type === 'result') return obj
+  }
+  return null
+}
+
+/** Parameter, die ein Werkzeugziel benennen, in Prioritätsreihenfolge (Read: file_path, Grep/Glob: pattern vor path). */
+const ZIEL_PARAMETER = ['file_path', 'pattern', 'path', 'notebook_path', 'url']
+
+/**
+ * F40 WS-1: zieht die tool_use-Blöcke aus EINER stream-json-Zeile (type "assistant", message.content[]). Jede andere Zeile liefert []. Reine Funktion, wirft nie — die CLI-Zeilenform ist extern, ein unerwartetes Feld darf den Lauf nicht stören.
+ */
+export function leseWerkzeugaufrufe(zeile: Record<string, unknown>): Werkzeugaufruf[] {
+  if (zeile.type !== 'assistant') return []
+  const message = zeile.message
+  if (typeof message !== 'object' || message === null) return []
+  const inhalt = (message as Record<string, unknown>).content
+  if (!Array.isArray(inhalt)) return []
+  const aufrufe: Werkzeugaufruf[] = []
+  for (const block of inhalt) {
+    if (typeof block !== 'object' || block === null) continue
+    const b = block as Record<string, unknown>
+    if (b.type !== 'tool_use' || typeof b.name !== 'string') continue
+    const eingabe = typeof b.input === 'object' && b.input !== null ? (b.input as Record<string, unknown>) : {}
+    const zielFeld = ZIEL_PARAMETER.find((f) => typeof eingabe[f] === 'string' && (eingabe[f] as string).length > 0)
+    aufrufe.push({ werkzeug: b.name, ziel: zielFeld !== undefined ? (eingabe[zielFeld] as string) : null })
+  }
+  return aufrufe
+}
+
+/** F40 WS-1: übersetzt eine stream-json-Zeile in beiWerkzeugaufruf-Rückrufe. Ein Wurf des Rückrufs darf den Prozess-Ablauf nie stören (reine Anzeige) — gefangen und geloggt. */
+function meldeWerkzeugaufrufe(beiWerkzeugaufruf: (aufruf: Werkzeugaufruf) => void, laufId: string): (zeile: Record<string, unknown>) => void {
+  return (zeile) => {
+    for (const aufruf of leseWerkzeugaufrufe(zeile)) {
+      try {
+        beiWerkzeugaufruf(aufruf)
+      } catch (fehler) {
+        console.error(`[claude-code-gateway] beiWerkzeugaufruf für Lauf '${laufId}' fehlgeschlagen:`, fehler)
+      }
+    }
+  }
 }
 
 /**
@@ -286,7 +354,9 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--model',
     eingaben.modell,
     '--output-format',
-    'json',
+    'stream-json',
+    // F40 WS-1: Pflicht für stream-json im -p-Modus (real gemessen, state/spike-f40-streaming.md).
+    '--verbose',
     '--setting-sources',
     eingaben.settingSources ?? 'project',
     '--tools',
@@ -400,6 +470,20 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     // (Muster codex-gateway/index.ts, dort ebenso hartkodiert statt optional).
     stdinLeer: true,
     umgebungsvariablen: optionen.umgebungsvariablen,
+    // F40 WS-1: baueAufruf erzeugt immer stream-json — der Starter löst bei der result-Zeile auf
+    // statt beim Prozessende (real 590-730ms früher, state/spike-f40-streaming.md Punkt 1).
+    // Abbruch/Timeout vor der result-Zeile bleiben unverändert ABBRUCH/TIMEOUT.
+    ergebnisZeileBeendet: true,
+    beiProzessende: (ende) => {
+      optionen.zeitmessung?.('prozess_close')
+      // Nach einer bereits gelesenen result-Zeile ist der Exitcode nicht mehr im Rohstrom —
+      // ein Wert ungleich 0 wird deshalb wenigstens geloggt, nicht still verloren.
+      // Ein Signal-Kill (Nachlauffrist, Timeout, Abbruch) ebenso.
+      if (ende.exitCode !== 0) {
+        console.error(`[claude-code-gateway] Lauf '${eingaben.laufId}': Prozess endete mit Exitcode ${ende.exitCode ?? '—'}${ende.signal !== null ? `, Signal ${ende.signal}` : ''}`)
+      }
+    },
+    ...(optionen.beiWerkzeugaufruf !== undefined ? { beiStreamZeile: meldeWerkzeugaufrufe(optionen.beiWerkzeugaufruf, eingaben.laufId) } : {}),
   })
 
   optionen.zeitmessung?.('prozess_beendet')
@@ -420,6 +504,8 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     startfehler: prozessErgebnis.startfehler,
     // F14 WS-1: gleiches Audit-Motiv wie F-071 (werkzeugStartziel/startfehler oben) — TIMEOUT/ABBRUCH landen im Rohstrom, nicht nur im Rückgabewert.
     beendigungsart: prozessErgebnis.beendigungsart,
+    // F40 WS-1: macht im Audit sichtbar, warum exitCode null ist (Auflösung vor Prozessende).
+    ...(prozessErgebnis.ergebnisZeileVorProzessende === true ? { ergebnisZeileVorProzessende: true } : {}),
   })
   const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
   writeFileSync(rohPfad, rohInhalt, 'utf8')

@@ -50,6 +50,8 @@ export interface ProzessErgebnis {
   exitCode: number | null
   startfehler: { code: string | null; message: string } | null
   beendigungsart: 'TIMEOUT' | 'ABBRUCH' | null
+  /** F40 WS-1: true, wenn der Starter bei der stream-json-result-Zeile aufgelöst hat (StarterOptionen.ergebnisZeileBeendet), BEVOR der Prozess endete — exitCode ist dann null, weil zu diesem Zeitpunkt real noch keiner existiert (nicht geraten). Fehlt bei jedem anderen Ende; bestehende Felder ändern ihre Bedeutung nicht. */
+  ergebnisZeileVorProzessende?: true
 }
 
 /** Zusätzliche, additive Abbruchfähigkeit für einen Starter-Aufruf (F14 WS-1, AK1): zeitgrenzeMs setzt eine harte Wanduhr-Grenze, abbruchSignal erlaubt einen gezielten manuellen Abbruch derselben Invocation. Beide optional — ein Starter, der sie ignoriert, bleibt gültig. stdinLeer (F16 WS-2, F-307) schließt den stdin des Kindprozesses unmittelbar nach dem Spawn: Codex meldet ohne angebundenes stdin real `Reading additional input from stdin...` und wartet auf Eingabe, statt zu beenden (state/tp-m3-01b-codex-sandbox.md, stdin-Nebenbefund zu Lauf (a)). Default false — der Claude-Code-Pfad setzt das Feld nicht und bleibt damit unverändert. cwd (F25 WS-1, AK3) wird unverändert an execFiles natives cwd-Feld durchgereicht — kein process.chdir(), kein Shell. Fehlt der Wert, bleibt execFiles eigener Default (process.cwd() des Serverprozesses) unangetastet. */
@@ -60,6 +62,20 @@ export interface StarterOptionen {
   cwd?: string
   /** Task "Jarvis-Chat-Latenz senken", Schritt 3: zusätzliche Umgebungsvariablen für den Kindprozess, ergänzt process.env (nicht ersetzt) — s. AufrufEingaben.umgebungsvariablen. Fehlt der Wert, bleibt execFiles eigener Default (process.env unverändert) unangetastet, exakt wie cwd oben. */
   umgebungsvariablen?: Record<string, string>
+  /** F40 WS-1: OPT-IN (Muster stdinLeer) — stdout wird zusätzlich zeilenweise als NDJSON gelesen; sobald eine vollständige Zeile type "result" trägt, löst der Starter mit dem bis dahin gepufferten stdout auf, statt auf das Prozessende zu warten (real 590-730ms früher, state/spike-f40-streaming.md). Nur ein FRÜHERER Erfolgspfad: ein Abbruch/Timeout/maxBuffer-Kill, der vor der result-Zeile greift, bleibt unverändert ABBRUCH/TIMEOUT/startfehler. Nur der Claude-Code-Pfad setzt das Feld (Codex-JSONL kennt keine result-Zeile). */
+  ergebnisZeileBeendet?: boolean
+  /** F40 WS-1: Rückruf je vollständig empfangener, als JSON-Objekt parsbarer stdout-Zeile (NDJSON) — für Live-Fortschritt. Eine unparsbare Zeile wird still übersprungen; ein Wurf des Rückrufs wird gefangen und geloggt, der Prozess-Ablauf bleibt unberührt. */
+  beiStreamZeile?: (zeile: Record<string, unknown>) => void
+  /** F40 WS-1: Rückruf beim tatsächlichen Prozessende ('close'), auch wenn der Starter wegen ergebnisZeileBeendet schon vorher aufgelöst hat — reine Diagnose (Zeitmessung, Log eines Exitcodes ungleich 0 nach der result-Zeile). */
+  beiProzessende?: (ende: { exitCode: number | null; signal: string | null }) => void
+  /** F40 WS-1: überschreibt prozessstart.ts' NACHLAUF_FRIST_MS (Kill eines nach der result-Zeile weiterlebenden Prozesses). Nur für Tests; kein Aufrufer im Produktpfad setzt das Feld. */
+  nachlaufFristMs?: number
+}
+
+/** Ein live gemeldeter Werkzeugaufruf (F40 WS-1): Werkzeugname plus, falls vorhanden, sein Pfad-/Muster-Parameter. */
+export interface Werkzeugaufruf {
+  werkzeug: string
+  ziel: string | null
 }
 
 /** Austauschbares Prozessstart-Primitiv (Muster wie F1Bs optionen.schreiber) — echte Implementierung in prozessstart.ts, Attrappen für Tests/Gate. startziel ist das Argv-Präfix (F6a WS4, E1/E2): [0] ist das Programm, weitere Elemente stehen vor tokens. Der dritte, optionale Parameter (F14 WS-1, AK1) ist additiv: eine bestehende, zweiparametrige Starter-Implementierung (z.B. attrappeMitValidemErgebnis) bleibt ohne Anpassung zuweisungskompatibel. */
