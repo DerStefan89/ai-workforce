@@ -45,7 +45,7 @@
  * offen ist (gewaehlteId-Gate, Muster ladeWorkflowDetail).
  */
 
-import { holeAbnahme, holeLaufDetail, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { holeAktivesProjekt } from '../projekt-kontext.js'
 import { filtereAttentionWorkflows } from '../attention-daten.js'
@@ -91,6 +91,16 @@ let letzterZustand = null
  * genau dann, wenn kein Filter aktiv ist (Muster befuelleFilterOptionen).
  */
 let alleWorkitemsUngefiltert = []
+
+/**
+ * F33 WS-2: zuletzt geladene Roadmap-Projektion (GET /api/roadmap), oder null vor dem ersten
+ * Abruf. Getrennt von letzteWorkitems/alleWorkitemsUngefiltert, weil sie über einen eigenen
+ * Endpunkt kommt — Muster: nur beim Öffnen/Aktualisieren des Workboards geladen (ladeRoadmap()),
+ * NICHT im 2s-Poll (renderBento() liest hier nur, ruft nie holeRoadmap() auf). roadmap.json
+ * ändert sich nur durch Commits, wie state/findings.md/features/<id>/feature.md (siehe
+ * alleWorkitemsUngefiltert-Kommentar oben).
+ */
+let letzteRoadmap = null
 
 /**
  * F29 WS-D2 (Auftrag Punkt C): Cache der Zusatzdaten des Fokus-Workflows — Schritte
@@ -245,6 +255,32 @@ async function ladeWorkitems() {
     renderBefunde(null)
     letzteWorkitems = []
   }
+}
+
+/** Überholschutz für ladeRoadmap (Muster anfrageZaehler/ladeWorkitems oben) — ein schneller zweiter "Neu laden"-Klick, während der erste Abruf noch unterwegs ist, darf dessen später eintreffende, aber veraltete Antwort nicht mehr übernehmen. */
+let roadmapAnfrageZaehler = 0
+
+/**
+ * Lädt GET /api/roadmap (F33 WS-2) — aufgerufen beim Öffnen des Workboards und bei "Neu laden",
+ * NIE aus dem Poll (Dateikopf letzteRoadmap). Ein Netzwerkfehler VOR dem ersten Erfolg zeigt einen
+ * sichtbaren Fehlerhinweis (bentoRoadmapKarte, status 'fehler' — ein reiner Client-Sentinel, kein
+ * Server-Status) statt dauerhaft "Lädt…" stehen zu bleiben (QA-Pass-Befund: ein hängender/
+ * fehlschlagender fetch, F-561, wäre sonst unsichtbar); ein Fehler NACH einem bereits erfolgreich
+ * geladenen Stand bleibt bewusst beim alten Stand (kein Zurücksetzen auf einen Fehlerzustand wegen
+ * eines einzelnen Ausreißers), aber immerhin geloggt.
+ */
+async function ladeRoadmap() {
+  const meineAnfrageNummer = ++roadmapAnfrageZaehler
+  try {
+    const antwort = await holeRoadmap()
+    if (meineAnfrageNummer !== roadmapAnfrageZaehler) return
+    letzteRoadmap = antwort
+  } catch (fehler) {
+    if (meineAnfrageNummer !== roadmapAnfrageZaehler) return
+    console.error('GET /api/roadmap fehlgeschlagen:', fehler)
+    if (letzteRoadmap === null) letzteRoadmap = { status: 'fehler' }
+  }
+  renderBento()
 }
 
 function findeWorkitem(id) {
@@ -601,6 +637,7 @@ function initFilterBedienung() {
   })
   document.getElementById('workboard-neu-laden').addEventListener('click', () => {
     void ladeWorkitems()
+    void ladeRoadmap()
   })
 }
 
@@ -970,9 +1007,79 @@ function bentoFortschrittKarte(workitems) {
   </div>`
 }
 
+// ─── Karte "Roadmap" (F33 WS-2) ──────────────────────────────────────────────
+// Zeigt die SICHTBARE Roadmap (GET /api/roadmap) — keine "Wo stehen wir?"-Antwort (die liefert
+// bereits F40 über die Context-Builder-Einspeisung, features/F33/feature.md WS-2). Neutrale
+// Hinweise statt Entwicklerprosa für nicht_vorhanden/ungueltig (F-476).
+
+/** Ordnet einen Meilenstein-/Feature-Statuswert einer der vier bestehenden .badge-/.status-punkt-Modifikatorklassen zu — eigene, schmale Kopie (Muster LAGE_PILL_TEXT-Kommentar oben: reine Anzeige, keine zweite Entscheidungsregel). @param status - roher Status-String aus der Roadmap-Projektion @returns 'ok' | 'aktiv' | 'fehler' | 'neutral' */
+function roadmapStatusKategorie(status) {
+  if (status === 'ABGESCHLOSSEN') return 'ok'
+  if (status === 'LAEUFT' || status === 'FEATURE_GATE' || status === 'IN_ARBEIT' || status === 'WORKSTREAM_SCHNITT_GENEHMIGT') return 'aktiv'
+  if (status === 'BLOCKIERT' || status === 'ABGEBROCHEN') return 'fehler'
+  return 'neutral'
+}
+
+/** Eine Feature-Zeile im hervorgehobenen aktuellen Meilenstein — Titel fehlt, wenn feature.md ihn nicht einfach lesbar trug (routen-roadmap.mjs). @param feature - { id, titel?, status } */
+function roadmapFeatureZeile(feature) {
+  const titel = feature.titel ? ` · ${escapeHtml(feature.titel)}` : ''
+  return `<li><span class="status-punkt ${roadmapStatusKategorie(feature.status)}" aria-hidden="true"></span> <code>${escapeHtml(feature.id)}</code>${titel} <span class="badge">${escapeHtml(feature.status)}</span></li>`
+}
+
+/** Eine kollabierte Meilenstein-Zeile (alle außer dem aktuellen, hervorgehobenen) — eine Zeile je Meilenstein, ohne dessen Features. @param meilenstein - ein Eintrag aus roadmap.meilensteine */
+function roadmapMeilensteinZeileKollabiert(meilenstein) {
+  return `<li><span class="status-punkt ${roadmapStatusKategorie(meilenstein.status)}" aria-hidden="true"></span> <code>${escapeHtml(meilenstein.id)}</code> ${escapeHtml(meilenstein.titel)} <span class="badge">${escapeHtml(meilenstein.status)}</span></li>`
+}
+
+/**
+ * Karte "Roadmap": der Meilenstein mit status LAEUFT hervorgehoben (Titel + Features mit
+ * Status-Chips, Muster .bento-fokus-innenkarte), alle übrigen Meilensteine je eine kollabierte
+ * Zeile. Kein LAEUFT-Meilenstein vorhanden (z. B. alles abgeschlossen) → nur die kollabierte
+ * Liste, kein hervorgehobener Block. Mehrere LAEUFT-Meilensteine (vom Schema nicht ausgeschlossen,
+ * F-592) → nur der erste wird hervorgehoben, der Rest erscheint in der kollabierten Liste, ohne
+ * Warnhinweis (bekannte, dokumentierte Grenze). @param roadmap - letzteRoadmap (null vor dem
+ * ersten Abruf, oder { status: 'fehler' } — Client-Sentinel eines fehlgeschlagenen Erstabrufs)
+ */
+function bentoRoadmapKarte(roadmap) {
+  const kopf = `<div class="card-kopf"><span class="card-kopf-icon" aria-hidden="true">${ICON_UEBERSICHT}</span><h3>Roadmap</h3></div>`
+  if (roadmap === null) {
+    return `<div class="card bento-roadmap-karte">${kopf}<p class="bento-leer">Lädt…</p></div>`
+  }
+  if (roadmap.status === 'nicht_vorhanden') {
+    return `<div class="card bento-roadmap-karte">${kopf}<p class="bento-leer">Keine Roadmap hinterlegt.</p></div>`
+  }
+  if (roadmap.status === 'ungueltig') {
+    return `<div class="card bento-roadmap-karte">${kopf}<p class="fehler">Roadmap-Datei ungültig (${roadmap.fehler.length} Regelverstoß/-verstöße).</p></div>`
+  }
+  if (roadmap.status === 'fehler') {
+    // Client-Sentinel (ladeRoadmap), kein Server-Status — GET /api/roadmap ist NICHT Teil des
+    // gepollten /api/zustand-Aggregats, ein isolierter Fehlschlag dieses einen Endpunkts bliebe
+    // ohne diesen Zweig unsichtbar (QA-Pass-Befund).
+    return `<div class="card bento-roadmap-karte">${kopf}<p class="fehler">Roadmap konnte nicht geladen werden.</p></div>`
+  }
+  const aktueller = roadmap.meilensteine.find((m) => m.status === 'LAEUFT') ?? null
+  const uebrige = roadmap.meilensteine.filter((m) => m !== aktueller)
+  const featuresListe =
+    aktueller !== null && aktueller.features.length === 0
+      ? '<p class="bento-leer">Keine Features zugeordnet.</p>'
+      : `<ul class="bento-roadmap-liste">${aktueller?.features.map(roadmapFeatureZeile).join('') ?? ''}</ul>`
+  const aktuellerBlock =
+    aktueller === null
+      ? ''
+      : `<div class="bento-fokus-innenkarte bento-roadmap-aktuell">
+      <div class="bento-fokus-innenkarte-text">
+        <div class="bento-fokus-zeile1"><span class="badge bento-id-chip">${escapeHtml(aktueller.id)}</span><span class="status-punkt ${roadmapStatusKategorie(aktueller.status)}" aria-hidden="true"></span></div>
+        <p class="bento-fokus-titel">${escapeHtml(aktueller.titel)}</p>
+        ${featuresListe}
+      </div>
+    </div>`
+  const uebrigeBlock = uebrige.length === 0 ? '' : `<ul class="bento-roadmap-liste bento-roadmap-uebrige">${uebrige.map(roadmapMeilensteinZeileKollabiert).join('')}</ul>`
+  return `<div class="card bento-roadmap-karte">${kopf}${aktuellerBlock}${uebrigeBlock}</div>`
+}
+
 // ─── Zusammenbau, Nachlade-Logik, Bedienung ─────────────────────────────────
 
-/** Rendert die fünf Bento-Karten aus dem aktuellen Zustand (letzterZustand/alleWorkitemsUngefiltert/fokusCache) — synchron, ruft am Ende ggf. den (asynchronen) Nachtrag an, wenn der Fokus-Workflow gewechselt hat. */
+/** Rendert die sechs Bento-Karten aus dem aktuellen Zustand (letzterZustand/alleWorkitemsUngefiltert/fokusCache/letzteRoadmap) — synchron, ruft am Ende ggf. den (asynchronen) Nachtrag an, wenn der Fokus-Workflow gewechselt hat. F33 WS-2: liest letzteRoadmap nur (kein holeRoadmap()-Aufruf hier) — die Karte "Roadmap" wird NICHT bei jedem Poll-Tick neu geladen, siehe ladeRoadmap(). */
 function renderBento() {
   const container = document.getElementById('workboard-bento')
   const workflow = waehleFokusWorkflow(letzterZustand?.workflows ?? null)
@@ -981,7 +1088,8 @@ function renderBento() {
     bentoLetzterStandKarte(waehleLetztenLauf(letzterZustand?.laeufe ?? null), workflow) +
     bentoSchnellzugriffKarte() +
     bentoAiWorkflowKarte(workflow) +
-    bentoFortschrittKarte(alleWorkitemsUngefiltert)
+    bentoFortschrittKarte(alleWorkitemsUngefiltert) +
+    bentoRoadmapKarte(letzteRoadmap)
   void aktualisiereFokusCache(workflow)
 }
 
@@ -1105,7 +1213,7 @@ function initBentoBedienung() {
   })
 }
 
-/** Initialisiert die Workboard-View einmalig beim Bootstrap: Bedienung, eigene Routen (Muster views/runs.js — app.js registriert #/workboard NICHT mehr zentral), erster ungefilterter Abruf. F22 WS-2: zusätzlich Bearbeitungs-Bedienung, letzterZustand-Cache (abonniere) und Detail-Auffrischer (abonniereDetailAuffrischer) — beide VOR initZustandPoll() in app.js registriert. F29 WS-D1/D2: dieselbe Abonnierung speist zusätzlich renderBento(). */
+/** Initialisiert die Workboard-View einmalig beim Bootstrap: Bedienung, eigene Routen (Muster views/runs.js — app.js registriert #/workboard NICHT mehr zentral), erster ungefilterter Abruf. F22 WS-2: zusätzlich Bearbeitungs-Bedienung, letzterZustand-Cache (abonniere) und Detail-Auffrischer (abonniereDetailAuffrischer) — beide VOR initZustandPoll() in app.js registriert. F29 WS-D1/D2: dieselbe Abonnierung speist zusätzlich renderBento(). F33 WS-2: ladeRoadmap() läuft nur hier und bei "Neu laden" (initFilterBedienung) — NIE aus dem Poll. */
 export function initWorkboardView() {
   initFilterBedienung()
   initListenBedienung()
@@ -1129,4 +1237,5 @@ export function initWorkboardView() {
 
   renderBento()
   void ladeWorkitems()
+  void ladeRoadmap()
 }

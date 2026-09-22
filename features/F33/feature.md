@@ -18,8 +18,14 @@ ein (`docs/projekt/zielfassung.md` E-M4-2, "Kontrollzustand im eigenen
 Repo" — Git führt, kein zweiter Speicher).
 
 ## Nicht-Ziele
-- "Wo stehen wir?"-Antwort, Roadmap-Projektion im Workboard, HTTP-Routen,
-  UI (kommt mit F33 WS-2).
+- "Wo stehen wir?"-ANTWORT (Chat-Logik, Prompt-Umbau) — die liefert bereits
+  F40 (Lagebild als Context-Builder-Einspeisung, `docs/STATUS.md`); WS-2
+  baut ausschließlich die SICHTBARE Roadmap (`GET /api/roadmap` + eine
+  Workboard-Karte), kein zweiter Weg zu derselben Antwort.
+- Ein eigener View/eine eigene Route für die Roadmap (WS-2) — nur eine
+  Karte im bestehenden Workboard.
+- Ein Schreibpfad für die Roadmap (WS-2) — `GET /api/roadmap` ist rein
+  lesend, wie `GET /api/verbrauch` (F32 WS-1).
 - Neue Rollen.
 - Ein Abhängigkeitsgraph zwischen Meilensteinen/Features.
 - Prüfung, ob eine in `roadmap.json.meilensteine[].features` genannte
@@ -51,6 +57,24 @@ Repo" — Git führt, kein zweiter Speicher).
   `filtereExistierendeAnfragen` (QA-Pass-Nachtrag — eine fehlende
   Kontextdatei lässt den Lauf laufen statt ihn komplett zu blockieren), Gate
   `scripts/check-f33-projektkontext.mjs`.
+- **WS-2 — Roadmap-Projektion im Leitstand.** `GET /api/roadmap`
+  (`scripts/leitstand/routen-roadmap.mjs`, `baueRoadmapProjektion` —
+  registriert in `scripts/leitstand-server.mjs`, auch unter dem
+  Projekt-Präfix `/api/projekte/<id>/...` über dasselbe
+  `repoWurzel`/`roadmapPfad`, das WS-1 bereits an `erzeugeRequestHandler`
+  durchreicht). Wirft nie 500: fehlende Datei → `{ status: 'nicht_vorhanden'
+  }`, Schemaverstoß (`validiereRoadmapDaten`, dieselbe Funktion wie WS-1,
+  kein zweiter Regelsatz) → `{ status: 'ungueltig', fehler }`, sonst `{
+  status: 'ok', vision, meilensteine: [{ id, titel, status, features: [{
+  id, titel?, status }] }] }` — Feature-Status aus `features/<id>/
+  feature.md` (Zeile `Status: X`, Muster `scripts/check-feature.mjs`),
+  fehlende Akte → `status: 'keine_akte'`. `public/leitstand/api.js`
+  (`holeRoadmap`) + Workboard-Karte "Roadmap" (`views/workboard.js`,
+  `bentoRoadmapKarte`): der Meilenstein mit `status LAEUFT` hervorgehoben
+  mit seinen Features, alle übrigen kollabiert als eine Zeile je
+  Meilenstein — geladen NUR beim Öffnen/Aktualisieren des Workboards
+  (`ladeRoadmap()`), nicht im 2s-Poll (Muster `alleWorkitemsUngefiltert`,
+  F29 WS-D1). Gate `scripts/check-f33-roadmap-projektion.mjs`.
 
 ## Akzeptanzkriterien
 - AK1 (WS-0): zwei reale `claude -p`-Läufe (identisches Argv bis auf
@@ -100,6 +124,19 @@ Repo" — Git führt, kein zweiter Speicher).
   prüft symmetrisch, dass ein real existierender, abweichender
   `kontext_pfad`/`roadmap_pfad` tatsächlich eingespeist wird (kein stiller
   Rückfall auf den Standardpfad).
+- AK8 (WS-2): `scripts/check-f33-roadmap-projektion.mjs` prüft:
+  die echte `docs/projekt/roadmap.json` ergibt `status: 'ok'`, Meilenstein
+  M5 enthält Feature F40 mit Status `ABGESCHLOSSEN`; synthetisch: fehlende
+  Datei → `nicht_vorhanden`, ungültige Datei (Schemaverstoß) →
+  `ungueltig` mit `fehler`, ein Feature ohne eigene Akte → `keine_akte`;
+  ein echter HTTP-Aufruf `GET /api/roadmap` gegen einen über
+  `erzeugeRequestHandler` erzeugten Testserver antwortet 200. In
+  `npm run check` eingehängt.
+- AK9 (WS-2): die Workboard-Karte "Roadmap" zeigt bei `status:
+  'nicht_vorhanden'`/`'ungueltig'` einen neutralen Hinweis statt
+  Entwicklerprosa (F-476) und ruft `GET /api/roadmap` ausschließlich beim
+  Öffnen der View und bei "Neu laden" ab — der bestehende 2-Sekunden-Poll
+  (`zustand.js`) löst KEINEN zusätzlichen Abruf aus.
 
 ## Dependencies
 - F5 (Context Builder) — `baueKontextpaket`, dessen Rollenfilter/Budget-Logik
@@ -135,8 +172,32 @@ Repo" — Git führt, kein zweiter Speicher).
   (WS-1, bewusst):** diese Rolle läuft mit `--setting-sources 'project'`
   und liest `CLAUDE.md` selbst — eine zusätzliche Einspeisung wäre eine
   Dublette derselben Information über zwei Kanäle.
-- **UI/Projektion offen (WS-2, noch nicht begonnen):** kein
-  "Wo stehen wir?"-Endpunkt, keine Roadmap-Ansicht im Workboard.
+- **Keine Querverweisprüfung Roadmap ↔ Feature-Akte, auch in WS-2:**
+  eine in `roadmap.json` genannte Feature-ID ohne `features/<id>/
+  feature.md` fällt in der Karte lediglich unter `status: 'keine_akte'`
+  auf (kein Gate-Befund, kein Abbruch) — dieselbe bewusste Nicht-Prüfung
+  wie WS-1, nur jetzt sichtbar statt nur zur Gate-Zeit relevant.
+- **Kein bzw. mehrere LAEUFT-Meilensteine → keine oder nur EINE
+  hervorgehobene Karte (F-592):** sind alle Meilensteine
+  `ABGESCHLOSSEN`/`GEPLANT` (kein `LAEUFT`), zeigt die Karte nur die
+  kollabierte Liste ohne hervorgehobenen Block. Das Schema schließt
+  umgekehrt auch MEHRERE `LAEUFT`-Meilensteine nicht aus (Reviewer-Befund)
+  — dann wird nur der erste hervorgehoben, der Rest fällt ohne Warnhinweis
+  in die kollabierte Liste. Beide Fälle sind beabsichtigtes Verhalten,
+  aber ungeprüft (kein synthetischer Fall im Gate, nur der reale
+  Datenstand mit genau einem `LAEUFT`-Meilenstein — M5 — deckt den
+  hervorgehobenen Pfad ab).
+- **Kein Neuladen bei Projektwechsel/Wiederbetreten (F-593, QA-Pass-Befund,
+  view-weit, nicht neu durch WS-2):** die Karte "Roadmap" erbt dieselbe
+  bereits vorbestehende Lücke wie `letzteWorkitems`/`alleWorkitemsUngefiltert`
+  — kein `abonniereProjektWechsel` in `workboard.js` (anders als
+  `views/chat.js`, F26 WS-2a). Nach einem Projektwechsel zeigt das gesamte
+  Bento-Board weiter den Stand des vorherigen Projekts, bis "Neu laden"
+  geklickt wird. Bewusst NICHT in WS-2 behoben (view-weiter Fix, über den
+  WS-2-Auftragswortlaut hinaus) — siehe F-593.
+- **`vision` aus `GET /api/roadmap` wird in der Karte nicht angezeigt
+  (F-594):** bewusste Scope-Entscheidung (nur Meilensteine/Features
+  gefordert), jetzt dokumentiert statt stillschweigend.
 - **`roadmap.json` wird zur Laufzeit nicht gegen ihr Schema geprüft
   (bewusst, D5):** die Einspeisung über den Context Builder liest die Datei
   nur als roher Text (`loeseAusfuehrungsEingabenAuf`), `validiereRoadmapDaten`
@@ -151,4 +212,5 @@ Repo" — Git führt, kein zweiter Speicher).
   Werkzeugkonsistenz-Frage, kein Produktfehler; nicht in WS-1 nachgezogen.
 
 ## Feature Review
-Noch nicht fällig — WS-2 (Projektion/UI) steht aus.
+Noch nicht fällig — Stefans Verifikation von WS-2 (Freigabe/Screenshot)
+steht aus, Status bleibt bis dahin `IN_ARBEIT`.

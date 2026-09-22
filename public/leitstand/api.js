@@ -150,3 +150,11 @@ export const sendeChatZusammenfassung = () => fetch(mitPraefix('/chat/zusammenfa
 // bestehenden defaultHandler (scripts/leitstand-server.mjs). Ein Präfix hier würde bei
 // aktivem Nicht-Standard-Projekt fälschlich /api/projekte/<id>/projekte ansprechen.
 export const holeProjekte = () => holeJsonOderWirf('/api/projekte')
+
+// F33 WS-2: Roadmap-Projektion fürs Workboard (Karte "Roadmap", views/workboard.js) — nur beim
+// Öffnen/Aktualisieren des Workboards abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur
+// durch Commits, Muster holeWorkitems). Liefert immer 200 (nicht_vorhanden/ungueltig sind
+// Fachergebnisse im Körper, kein Fehlerstatus, scripts/leitstand/routen-roadmap.mjs). Zeitlimit
+// wie holeZustand/holeLaufDetail (QA-Pass-Befund: ein hängender fetch, F-561, würde die Karte
+// sonst ohne jede Fehlermeldung dauerhaft auf "Lädt…" stehen lassen).
+export const holeRoadmap = () => fetch(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())

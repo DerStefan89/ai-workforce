@@ -1821,6 +1821,14 @@ th {
   background: var(--color-text-subtle);
 }
 
+/* F33 WS-2 (Code-Review-Befund): bislang trugen nur .badge, nicht .status-punkt, eine
+   fehler-Variante — die Roadmap-Karte kann sie über Feature-Status BLOCKIERT/ABGEBROCHEN
+   erreichen (roadmapStatusKategorie, views/workboard.js). Bestehendes Farbpaar wiederverwendet
+   (--color-danger-text, Muster .badge.fehler), keine neue Farbe. */
+.status-punkt.fehler {
+  background: var(--color-danger-text);
+}
+
 /* Box-Optik kommt jetzt von .card (index.html, F29 WS-1b) — hier nur noch der Abstand zur Liste
    darüber, spezifisch für diese Stelle im Layout. */
 #workboard-detail {
@@ -2189,21 +2197,21 @@ th {
   }
 }
 
-/* ─────────────────── Workboard-Bento (F29 WS-D1, Raster F29 WS-D2) ────────
+/* ─────────────────── Workboard-Bento (F29 WS-D1, Raster F29 WS-D2, Roadmap F33 WS-2) ──────
    Übersichtsraster über der bestehenden Findings-Liste (views/workboard.js,
    #workboard-bento), ausschließlich aus echten Daten (Auftrag Punkt 4/C).
-   Fünf Karten: Fokus (breit oben), Letzter Stand + Schnellzugriff (Reihe
-   darunter), AI Workflow (breit), Fortschritt (eigene, schmalere Spalte
-   rechts, die "Chat mit Jarvis" — #shell-chat-spalte, ein eigenständiges
-   Geschwister-Element außerhalb von <main> — bei ≥1280px optisch fortsetzt).
-   Kollabiert unter 900px auf eine Spalte (Definition of Done: mobile
-   Darstellung). */
+   Sechs Karten: Fokus (breit oben), Letzter Stand + Schnellzugriff (Reihe
+   darunter), AI Workflow (breit), Fortschritt + Roadmap (dieselbe, schmalere
+   Spalte rechts, übereinander — die "Chat mit Jarvis" — #shell-chat-spalte,
+   ein eigenständiges Geschwister-Element außerhalb von <main> — bei ≥1280px
+   optisch fortsetzt). Kollabiert unter 900px auf eine Spalte (Definition of
+   Done: mobile Darstellung). */
 #workboard-bento {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(14rem, 0.7fr);
   grid-template-areas:
     'fokus fokus fortschritt'
-    'letzter schnell fortschritt'
+    'letzter schnell roadmap'
     'workflow workflow workflow';
   gap: var(--space-2xl);
   margin-bottom: var(--space-3xl);
@@ -2212,7 +2220,7 @@ th {
 @media (max-width: 900px) {
   #workboard-bento {
     grid-template-columns: 1fr;
-    grid-template-areas: 'fokus' 'fortschritt' 'letzter' 'schnell' 'workflow';
+    grid-template-areas: 'fokus' 'fortschritt' 'roadmap' 'letzter' 'schnell' 'workflow';
   }
 }
 
@@ -2234,6 +2242,10 @@ th {
 
 .bento-fortschritt-karte {
   grid-area: fortschritt;
+}
+
+.bento-roadmap-karte {
+  grid-area: roadmap;
 }
 
 .bento-leer {
@@ -2666,4 +2678,30 @@ th {
   align-items: center;
   gap: var(--space-sm);
   list-style: none;
+}
+
+/* F33 WS-2: Karte "Roadmap" — Feature-Zeilen im hervorgehobenen aktuellen Meilenstein (Muster
+   .bento-fortschritt-legende) und kollabierte Meilenstein-Zeilen (bento-roadmap-uebrige) teilen
+   sich dasselbe Zeilen-Layout, kein zweites Klassenpaar. */
+.bento-roadmap-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-size-sm);
+}
+
+.bento-roadmap-liste li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  list-style: none;
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+
+.bento-roadmap-uebrige {
+  margin-top: var(--space-lg);
+  color: var(--color-text-muted);
 }
