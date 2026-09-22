@@ -122,8 +122,8 @@ export const sendeAbnahme = (workflowId, koerper) => fetch(mitPraefix(`/workflow
 // defekte Quelle die andere nicht mitreißt (Muster views/workboard.js); fetch() allein löst ein
 // Promise NIE über den HTTP-Status auf, nur über echte Netzwerkfehler, ohne den r.ok-Check würde
 // ein 500 also fälschlich als 'fulfilled' durchgehen (Code-Review-Befund).
-async function holeJsonOderWirf(pfad) {
-  const antwort = await fetch(pfad)
+async function holeJsonOderWirf(pfad, optionen) {
+  const antwort = await fetch(pfad, optionen)
   if (!antwort.ok) {
     const inhalt = await antwort.json().catch(() => ({}))
     throw new Error(`${antwort.status} ${inhalt.grund ?? ''}`.trim())
@@ -165,7 +165,12 @@ export const holeRoadmap = () => fetch(mitPraefix('/roadmap'), { signal: AbortSi
 // abgeschlossene Läufe). `von` ist ein bereits client-seitig als gültiges ISO-8601-Datum gebauter
 // Wert (views/dashboard.js `zeitraumVon`) — kein freies Nutzereingabefeld, deshalb keine eigene
 // Formatprüfung hier nötig (F32-Bekannte-Grenze zu `?von=`/`?bis=`). Zeitlimit wie holeRoadmap.
+// F-603-Fix: über holeJsonOderWirf statt eines rohen fetch().then(r => r.json()) — ein 500 (Muster
+// holeRessourcen/holeAbdeckung) wird jetzt als Wurf erkannt statt fälschlich als Erfolg
+// durchzugehen. Die Route selbst liefert bei einem eigenen Fehler ohnehin 200 mit
+// { status: 'fehler', grund } (Fachergebnis, Muster baueRoadmapProjektion) — dieser Zweig deckt
+// nur einen echten, sonst nicht abgefangenen Serverfehler (z. B. ein toter Prozess) ab.
 export const holeVerbrauch = (von) => {
   const query = von === undefined ? '' : `?von=${encodeURIComponent(von)}`
-  return fetch(mitPraefix(`/verbrauch${query}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())
+  return holeJsonOderWirf(mitPraefix(`/verbrauch${query}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 }

@@ -76,14 +76,16 @@ function statKarte(label, wertHtml) {
  * Fasst die Gruppen aus GET /api/verbrauch (je { rolle, worker, modell, auftragId, ... }) über
  * genau ein Merkmal zusammen (Rolle ODER Modell) — die API-Projektion selbst gruppiert feiner
  * (zusätzlich nach worker/auftragId), diese Funktion summiert darüber hinweg. null bleibt eine
- * eigene Gruppe (unbekannt), keine Ausgrenzung.
+ * eigene Gruppe (unbekannt), keine Ausgrenzung. `gruppen` wird defensiv auf ein Array geprüft
+ * (F-603-Fix, zweite Sicherung zusätzlich zum Fehler-Check in verbrauchKarte) — wirft nie, auch
+ * nicht bei einem unerwartet fehlerhaften Antwortkörper.
  * @param gruppen - antwort.gruppen aus GET /api/verbrauch
  * @param schluesselFn - liest das Gruppierungsmerkmal aus einer Gruppe (g.rolle oder g.modell)
  * @returns Zeilen, absteigend nach Läufen sortiert
  */
 function aggregiereVerbrauch(gruppen, schluesselFn) {
   const nachSchluessel = new Map()
-  for (const gruppe of gruppen) {
+  for (const gruppe of Array.isArray(gruppen) ? gruppen : []) {
     const schluessel = schluesselFn(gruppe)
     let zeile = nachSchluessel.get(schluessel)
     if (zeile === undefined) {
@@ -122,7 +124,12 @@ function verbrauchKarte() {
   if (verbrauchAntwort === null) {
     return `<div class="card verbrauch-karte">${kopf}${auswahl}<p class="leer">Lädt…</p></div>`
   }
-  if (verbrauchAntwort.fehler === true) {
+  // F-603-Fix: fehler === true ist der Client-Sentinel für einen Netzwerk-/Wurf-Fehlschlag
+  // (ladeVerbrauch-catch), !Array.isArray(...gruppen) fängt zusätzlich jeden unerwarteten
+  // Antwortkörper ab (z. B. ein server-seitiges Fachergebnis, das trotz Normalisierung in
+  // ladeVerbrauch ohne gruppen hier ankäme) — beide Fälle zeigen denselben Fehlerhinweis,
+  // NIE wird aggregiereVerbrauch mit einem Nicht-Array aufgerufen.
+  if (verbrauchAntwort.fehler === true || !Array.isArray(verbrauchAntwort.gruppen)) {
     return `<div class="card verbrauch-karte">${kopf}${auswahl}<p class="fehler">Verbrauch konnte nicht geladen werden.</p></div>`
   }
 
@@ -167,13 +174,18 @@ async function ladeWorkitems() {
 /** Überholschutz (Muster views/workboard.js roadmapAnfrageZaehler) — ein schneller zweiter Zeitraumwechsel, während der erste Abruf noch unterwegs ist, darf dessen später eintreffende, aber veraltete Antwort nicht mehr übernehmen. */
 let verbrauchAnfrageZaehler = 0
 
-/** Lädt GET /api/verbrauch für den aktuell gewählten Zeitraum — beim Bootstrap und bei jedem Zeitraumwechsel, NIE aus dem Poll (siehe Dateikopf). */
+/** Lädt GET /api/verbrauch für den aktuell gewählten Zeitraum — beim Bootstrap und bei jedem Zeitraumwechsel, NIE aus dem Poll (siehe Dateikopf). F-603-Fix: ein server-seitiges Fachergebnis `{ status: 'fehler', grund }` (baueVerbrauchsProjektion wirft nie mehr) wird hier auf denselben Client-Sentinel `{ fehler: true }` normalisiert wie ein echter Netzwerk-/HTTP-Fehler — verbrauchKarte() und die Retry-Klick-Bedienung kennen dadurch weiterhin nur EINE Fehlerform. */
 async function ladeVerbrauch() {
   const meineAnfrageNummer = ++verbrauchAnfrageZaehler
   try {
     const antwort = await holeVerbrauch(berechneVerbrauchsVon(verbrauchZeitraum, new Date()))
     if (meineAnfrageNummer !== verbrauchAnfrageZaehler) return
-    verbrauchAntwort = antwort
+    if (antwort?.status === 'fehler') {
+      console.error('GET /api/verbrauch lieferte ein Fehler-Fachergebnis:', antwort.grund)
+      verbrauchAntwort = { fehler: true }
+    } else {
+      verbrauchAntwort = antwort
+    }
   } catch (fehler) {
     if (meineAnfrageNummer !== verbrauchAnfrageZaehler) return
     console.error('GET /api/verbrauch fehlgeschlagen:', fehler)

@@ -32,6 +32,11 @@
  *     — real über POST /api/chat gegen einen erzeugeRequestHandler mit
  *     überschriebenen kontextPfad/roadmapPfad-Optionen geprüft, kein
  *     stillschweigender Rückfall auf den Standardpfad.
+ * (h) F-598-Fix: filtereExistierendeAnfragen schließt eine existierende,
+ *     aber leere (0 Byte) oder nur aus Whitespace bestehende Datei genauso
+ *     aus wie eine fehlende — real gegen drei geschriebene Dateien (leer,
+ *     nur Whitespace, echter Inhalt) plus einen komplett fehlenden Pfad
+ *     geprüft.
  *
  * Aufruf: node scripts/check-f33-projektkontext.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -264,6 +269,33 @@ async function starteTestserver(handler) {
   } finally {
     raeumeVerzeichnis(kontextOrdner)
     raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (h) F-598-Fix: leere/nur-Whitespace-Dateien werden wie fehlende behandelt ──
+{
+  const kontextOrdner = `kontrollzustand-test-f33-leer-${randomUUID()}`
+  mkdirSync(kontextOrdner, { recursive: true })
+  try {
+    writeFileSync(join(kontextOrdner, 'leer.md'), '')
+    writeFileSync(join(kontextOrdner, 'nur-whitespace.md'), '   \n\t  \n')
+    writeFileSync(join(kontextOrdner, 'echter-inhalt.md'), '# Echter Inhalt\n')
+
+    const anfragen = [
+      { pfad: join(kontextOrdner, 'leer.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: join(kontextOrdner, 'nur-whitespace.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: join(kontextOrdner, 'echter-inhalt.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
+      { pfad: join(kontextOrdner, 'fehlt-komplett.md'), frage: 'Test', begruendung: 'Test', notwendig: true },
+    ]
+    const gefiltert = filtereExistierendeAnfragen(anfragen, process.cwd())
+    const uebrigePfade = gefiltert.map((a) => a.pfad)
+    if (uebrigePfade.length !== 1 || !uebrigePfade[0].endsWith('echter-inhalt.md')) {
+      befunde.push(`(h) filtereExistierendeAnfragen: erwartet nur 'echter-inhalt.md' übrig (leer/Whitespace/fehlend ausgeschlossen), erhalten ${JSON.stringify(uebrigePfade)}`)
+    } else {
+      console.log('✓ (h) filtereExistierendeAnfragen schließt eine leere und eine nur-Whitespace-Datei aus, genau wie eine fehlende (F-598-Fix).')
+    }
+  } finally {
+    raeumeVerzeichnis(kontextOrdner)
   }
 }
 

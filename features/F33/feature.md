@@ -10,7 +10,10 @@ Projektkontext & Roadmap
 Status: ABGESCHLOSSEN
 
 Abgenommen durch Stefan am 22.09.2026. Offene Restfindings: F-592…F-600
-(P2–P4).
+(P2–P4). Nachtrag 22.09.2026 (Fixpaket fix/f603-f598-f595): F-595 und
+F-598 sind behoben; zwei neue Befunde aus dem Review dieses Fixpakets
+(F-604, F-605) registriert. Offen bleiben F-592, F-593, F-594, F-596,
+F-597, F-599, F-600, F-604, F-605.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -217,19 +220,22 @@ Repo" — Git führt, kein zweiter Speicher).
   Router-Kalibrierung misst dadurch eine leicht andere Eingabezusammensetzung
   als ein echter Produktionslauf über `POST /api/auftraege/<id>/routen`.
   Werkzeugkonsistenz-Frage, kein Produktfehler; nicht in WS-1 nachgezogen.
-- **Feature-IDs aus `roadmap.json` sind formal nicht auf ein Muster
-  beschränkt (Feature-Review-Pass-Befund, F-595):** `baueFeatureEintrag`
-  löst eine Feature-ID unverändert zu `features/<id>/feature.md` auf; ein
-  `../`-Segment würde außerhalb von `features/` lesen. Geringes Risiko, da
-  `roadmap.json` eine vertrauenswürdige, von Hand gepflegte Repo-Datei ist
-  und nur Status-Zeile/Titel extrahiert werden — dokumentiert statt
-  behoben.
-- **Leere, aber existierende Projektkontext-Datei wird wie gültiger Inhalt
-  behandelt (Feature-Review-Pass-Befund, F-598):** `filtereExistierendeAnfragen`
-  prüft nur Existenz, keine Mindestlänge — anders als der bereits über AK7
-  behandelte Fall "Datei fehlt komplett" bleibt ein versehentlich geleerter
-  `beschreibung.md`/`anweisungen.md`/`roadmap.json` unbemerkt und belegt
-  einen Kontext-Slot ohne Informationswert.
+- **Feature-IDs aus `roadmap.json` waren formal nicht auf ein Muster
+  beschränkt (Feature-Review-Pass-Befund, F-595, behoben Fixpaket
+  fix/f603-f598-f595, 22.09.2026):** `schemas/roadmap.schema.json`
+  `features.items` trägt jetzt `pattern: "^F[0-9]+[A-Za-z]?$"`,
+  `validiereRoadmapDaten` prüft dasselbe Muster (D5); zusätzlich prüft
+  `baueFeatureEintrag` (`scripts/leitstand/routen-roadmap.mjs`) den
+  aufgelösten Pfad per `path.resolve` + Präfixvergleich gegen
+  `<repoWurzel>/features/` (Defense-in-Depth), liest nie außerhalb. Details:
+  `state/findings.md` F-595.
+- **Leere, aber existierende Projektkontext-Datei wurde wie gültiger
+  Inhalt behandelt (Feature-Review-Pass-Befund, F-598, behoben Fixpaket
+  fix/f603-f598-f595, 22.09.2026):** `filtereExistierendeAnfragen`
+  (`scripts/leitstand-server.mjs`) liest den Dateiinhalt jetzt zusätzlich
+  zur Existenzprüfung und schließt eine leere oder nur aus Whitespace
+  bestehende Datei genauso aus wie eine fehlende (`.trim().length === 0`,
+  dieselbe Warnung). Details: `state/findings.md` F-598.
 - **Feature-IDs innerhalb eines Meilensteins nicht auf Eindeutigkeit
   geprüft (Feature-Review-Pass-Befund, F-599):** nur `meilensteine[].id`
   ist eindeutigkeitsgeprüft; ein Copy-&-Paste-Duplikat unter `features[]`
@@ -287,3 +293,17 @@ Stefan hat F33 am 22.09.2026 abgenommen. Status `FEATURE_GATE` →
 `ABGESCHLOSSEN`, mit Satz "Abgenommen durch Stefan am 22.09.2026. Offene
 Restfindings: F-592…F-600 (P2–P4)." (siehe oben unter "Status"). Alle neun
 Restfindings aus dem Feature-Review-Pass bleiben offen, kein Blocker.
+
+### Nachtrag 22.09.2026 — F-595/F-598 behoben (Fixpaket fix/f603-f598-f595)
+
+F-595 (Feature-ID-Formatschutz + Pfadsicherheit in `baueFeatureEintrag`)
+und F-598 (leere Kontextdatei wird wie fehlende behandelt) sind behoben —
+siehe "Bekannte Grenzen" oben und `state/findings.md` für die volle
+Beschreibung. Reales Fixpaket zusammen mit F-603 (F32). Reviewer-/QA-Pass
+mit frischem Kontext über das gesamte Fixpaket: `code-reviewer`
+„Freigegeben mit Hinweisen" (kein Blocker; zwei neue Befunde F-604/F-605 zum
+F-598-Fix registriert — fehlendes eigenes try/catch beim neuen
+Leerprüfungs-`readFileSync` in `filtereExistierendeAnfragen`, und ein
+zweiter, unproblematischer Lesevorgang derselben Kontextdateien), `qa`
+„Freigegeben" (kein Befund). Verbleibende offene Restfindings: F-592,
+F-593, F-594, F-596, F-597, F-599, F-600, F-604, F-605.

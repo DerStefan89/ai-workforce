@@ -21,16 +21,31 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { validiereRoadmapDaten } from '../../src/projektkontext/index.ts'
 
 const STATUS_ZEILE_MUSTER = /^Status:\s*(\S+)/m
 const TITEL_ABSCHNITT_MUSTER = /^##\s*Titel\s*\r?\n+([^\r\n]+)/m
 
-/** Liest Status + (falls einfach lesbar) Titel aus features/<id>/feature.md — Muster scripts/check-feature.mjs (identisches Status-Regex, kein zweiter Regelsatz). @param featureId - Feature-id aus roadmap.json meilensteine[].features @param repoWurzel - Repo-Wurzel, gegen die 'features/<id>/feature.md' aufgelöst wird @returns { id, titel?, status } */
+/**
+ * Liest Status + (falls einfach lesbar) Titel aus features/<id>/feature.md — Muster
+ * scripts/check-feature.mjs (identisches Status-Regex, kein zweiter Regelsatz).
+ *
+ * F-595-Fix (Defense-in-Depth): `validiereRoadmapDaten` lehnt eine Feature-id, die nicht
+ * `^F[0-9]+[A-Za-z]?$` entspricht, bereits VOR diesem Aufruf ab (baueRoadmapProjektion ruft sie
+ * zuerst auf) — ein `../x` erreicht diese Funktion über den regulären Pfad also nie. Diese Funktion
+ * prüft den aufgelösten Pfad trotzdem zusätzlich gegen `<repoWurzel>/features/` (path.resolve +
+ * Präfixvergleich, nicht nur das Regex-Muster), falls sie je mit einer ungeprüften Feature-id
+ * aufgerufen wird — liest nie außerhalb von `features/`.
+ * @param featureId - Feature-id aus roadmap.json meilensteine[].features
+ * @param repoWurzel - Repo-Wurzel, gegen die 'features/<id>/feature.md' aufgelöst wird
+ * @returns { id, titel?, status }
+ */
 function baueFeatureEintrag(featureId, repoWurzel) {
-  const pfad = join(repoWurzel, 'features', featureId, 'feature.md')
-  if (!existsSync(pfad)) {
+  const featuresWurzel = resolve(repoWurzel, 'features')
+  const pfad = resolve(featuresWurzel, featureId, 'feature.md')
+  const liegtUnterFeaturesWurzel = pfad === featuresWurzel || pfad.startsWith(featuresWurzel + sep)
+  if (!liegtUnterFeaturesWurzel || !existsSync(pfad)) {
     return { id: featureId, status: 'keine_akte' }
   }
   const inhalt = readFileSync(pfad, 'utf8')

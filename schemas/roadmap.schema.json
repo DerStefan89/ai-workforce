@@ -44,8 +44,8 @@
         },
         "features": {
           "type": "array",
-          "description": "Feature-IDs (z. B. 'F20'), die zu diesem Meilenstein gehören. Reine Zuordnung — keine Prüfung gegen features/<id>/feature.md in WS-1.",
-          "items": { "type": "string", "minLength": 1 }
+          "description": "Feature-IDs (z. B. 'F20', 'F1B', 'F6a'), die zu diesem Meilenstein gehören. Reine Zuordnung — keine Prüfung gegen features/<id>/feature.md in WS-1. Pattern (F-595-Fix) schließt Pfad-Segmente wie '../x' aus — der Wert wird in WS-2 zu einem Dateipfad unter features/<id>/ aufgelöst (routen-roadmap.mjs).",
+          "items": { "type": "string", "pattern": "^F[0-9]+[A-Za-z]?$" }
         }
       }
     }

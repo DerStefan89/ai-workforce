@@ -98,3 +98,47 @@ scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert).
 
 Nicht Teil dieses Auftrags (Doku-Auftrag, kein Bau): Behebung von F-603
 selbst; Stefans Abnahme.
+
+## 2026-09-22 — Fixpaket F-603 (Branch fix/f603-f598-f595)
+
+F-603 behoben, dreischichtig gehärtet: `holeVerbrauch`
+(`public/leitstand/api.js`) nutzt jetzt `holeJsonOderWirf` (dafür um ein
+optionales `optionen`-Argument erweitert, Timeout bleibt erhalten);
+`baueVerbrauchsProjektion` (`scripts/leitstand/routen-verbrauch.mjs`)
+wirft nie mehr (komplette Funktion in try/catch, Muster
+`baueRoadmapProjektion`, F33) und liefert `{ status: 'ok', gruppen,
+laeufeGesamt, ohneBeobachtungGesamt }` bzw. `{ status: 'fehler', grund }`,
+serverseitig über `console.error` geloggt; `ladeVerbrauch`
+(`public/leitstand/views/dashboard.js`) normalisiert ein
+Fehler-Fachergebnis auf denselben Client-Sentinel `{ fehler: true }` wie
+einen Netzwerkfehler, `verbrauchKarte`/`aggregiereVerbrauch` prüfen
+zusätzlich defensiv `Array.isArray(gruppen)` — kein `TypeError` mehr
+möglich, egal welche Schicht versagt. Überholschutz und Retry-per-Klick
+bleiben für beide Fehlerarten einheitlich funktionsfähig.
+
+Gate `scripts/check-f32-verbrauch-ansicht.mjs` um Abschnitte (c)/(d)
+ergänzt (Rot-Fall: simulierter IO-Fehler über eine Datei statt eines
+Verzeichnisses als `basisVerzeichnis`, direkt UND über echten
+HTTP-Aufruf → 200 statt 500). Dabei real einen reproduzierbaren
+Windows/Node-Absturz gefunden und behoben: zwei nacheinander geöffnete
+und geschlossene HTTP-Server im selben Prozess kollidierten mit einem
+`process.exit()` direkt danach ("Assertion failed: !(handle->flags &
+UV_HANDLE_CLOSING)", exit 127) — dasselbe Problem, das
+`scripts/check-f33-projektkontext.mjs` bereits dokumentiert und mit
+`process.exitCode` statt `process.exit()` löst; dasselbe Muster hier
+übernommen (kein neuer Workaround).
+
+`features/F32/feature.md`: "Bekannte Grenzen"-Eintrag zu F-603 aktualisiert
+(behoben statt offen), Nachtrag-Abschnitt mit Reviewer-/QA-Ergebnis
+ergänzt. `state/findings.md`: F-603 auf `erledigt` mit Fundstelle; zwei
+neue, nicht blockierende Befunde aus dem Review dieses Fixpakets als
+F-604/F-605 registriert (gehören inhaltlich zum F-598-Fix, siehe
+`features/F33/journal.md`).
+
+Reviewer-/QA-Pass (frischer Kontext, über das gesamte Fixpaket F-603 +
+F-598 + F-595 zusammen): `code-reviewer` „Freigegeben mit Hinweisen" (kein
+Blocker), `qa` „Freigegeben" (kein Befund). `npm run check`: siehe Bericht
+dieses Auftrags für das Gesamtergebnis.
+
+Nicht Teil dieses Auftrags: F-601/F-602 (unverändert offen); Stefans
+Abnahme.

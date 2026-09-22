@@ -24,6 +24,12 @@ import type { RoadmapDaten } from './types.ts'
 const ROADMAP_WURZEL_FELDER = new Set(['roadmap_schema', 'vision', 'meilensteine'])
 const MEILENSTEIN_FELDER = new Set(['id', 'titel', 'status', 'features'])
 const MEILENSTEIN_STATUS = ['GEPLANT', 'LAEUFT', 'ABGESCHLOSSEN']
+// F-595-Fix: Feature-IDs sind formal auf dieses Muster beschränkt (reale Beispiele: 'F0', 'F1B',
+// 'F6a', 'F19') — schemas/roadmap.schema.json trägt dasselbe Pattern (D5, kein zweiter Regelsatz).
+// Meilenstein-IDs (z. B. 'F19-bridge') sind NICHT betroffen, nur meilenstein.features[]: ein
+// '../'-Segment würde in scripts/leitstand/routen-roadmap.mjs sonst außerhalb von features/
+// aufgelöst.
+const FEATURE_ID_MUSTER = /^F[0-9]+[A-Za-z]?$/
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -73,6 +79,8 @@ function pruefeMeilensteinForm(meilenstein: unknown, index: number, verstoesse: 
     meilenstein.features.forEach((feature, featureIndex) => {
       if (!istNichtLeererString(feature)) {
         verstoesse.push(`'${praefix}features[${featureIndex}]' muss ein nicht-leerer String sein`)
+      } else if (!FEATURE_ID_MUSTER.test(feature)) {
+        verstoesse.push(`'${praefix}features[${featureIndex}]' ('${feature}') muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen`)
       }
     })
   }
