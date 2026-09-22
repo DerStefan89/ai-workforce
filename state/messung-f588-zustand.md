@@ -133,3 +133,54 @@ Keiner. Hinweis für die nächste Bearbeitung von F-556: bei einem erneuten
 Ausreißer Systemzustand (Uhrzeit, laufende Hintergrundprozesse) festhalten
 statt sofort am Code zu suchen — die Messung hier zeigt, dass die
 Verzeichnisanzahl allein den beobachteten Wert nicht erklärt.
+
+## Nachtrag 22.09.2026 — Fix umgesetzt (branch fix/f588-sammle-laeufe)
+
+Fix (Option 1 aus dem Fix-Optionen-Abschnitt oben): `sammleLaeufe`
+(`scripts/leitstand-server.mjs:958-970`) überspringt Verzeichnisse mit
+Präfix `lineage-` per Denylist, BEVOR `sammleLaufKopfdatenGecached`
+(Stempelbildung) aufgerufen wird. Bewusst keine Allowlist (Auftrag F-588):
+eine echte `laufId` trägt kein festes Präfix (`jarvis-…`, `router-…`,
+`test5…`, `f12-…`), `istLaufkette` (Z. 613) bleibt inhaltsbasiert und
+unverändert — die Denylist ergänzt nur einen billigen Vorab-Ausschluss für
+Verzeichnisse, die schon namentlich nie Laufketten sein können.
+
+### Äquivalenznachweis (echter Bestand, nur lesend)
+
+Alte Version über einen temporären `git worktree` auf `main` (vor dem Fix,
+4f2d2ef), neue Version aus dem Arbeitsverzeichnis — beide direkt gegen
+`GET /api/laeufe` (Mock-`req`/`res`, kein Socket), gleicher echter
+`kontrollzustand/`-Bestand (794 Verzeichnisse):
+
+- Anzahl Läufe: alt 200, neu 200 — identisch.
+- Lauf-Ids (sortiert): identisch.
+- Kopfdaten (nach Lauf-Id sortiert): deep-equal.
+- Läufe mit Präfix `lineage-` in der ALTEN, ungefilterten Liste: **0** — das
+  ist der reale Beleg, dass `istLaufkette` heute keine `lineage-`-Kette je
+  als Laufkette akzeptiert; die neue Denylist verliert dadurch nachweislich
+  keinen echten Lauf gegen den heutigen Bestand.
+
+Zusätzlich dauerhaft abgesichert: `scripts/check-fix-f588-sammle-laeufe.mjs`
+(neu, in `npm run check`) — 40 synthetische `lineage-*`-Scheinverzeichnisse
+neben einem echten Lauf verändern `GET /api/laeufe` nicht (Äquivalenz), und
+ein Nicht-Lauf-Verzeichnis OHNE `lineage-`-Präfix bleibt weiterhin über
+`istLaufkette` ausgefiltert (Regressionsschutz gegen eine versehentliche
+Allowlist-artige Verengung).
+
+### Messung vorher/nachher (in-process, interleaved, echter Bestand, 15 Wdh.)
+
+| | kalt Median | warm Median |
+|---|---:|---:|
+| vorher (alt, main 4f2d2ef) | 68,1 ms | 69,3 ms |
+| nachher (neu, Fix) | 19,9 ms | 19,5 ms |
+
+Faktor ~3,4–3,5× schneller. Kein 4×-Sprung trotz ~294 von 794
+`lineage-*`-Verzeichnissen (grob 37 %), weil außerhalb der Denylist noch
+weitere Nicht-Lauf-Verzeichnisse ohne `lineage-`-Präfix bestehen (z. B.
+einmalige `test*`-/`verify-*`-/`ws3-szenario-*`-Wegwerfverzeichnisse aus
+früheren Nachweisläufen) — die bleiben bewusst über `istLaufkette` gefiltert
+statt per Denylist, siehe Auftrag (keine Allowlist).
+
+Hochrechnung 300-ms-Grenze (Gate (d)) verschiebt sich von ~3.300 auf grob
+~11.000 Verzeichnisse bei gleichem Mix — deutlich mehr Marge, F-559s
+grundsätzliches O(n)-über-echte-Läufe besteht aber unverändert fort.

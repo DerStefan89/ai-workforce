@@ -55,7 +55,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
-import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -536,7 +536,7 @@ async function haupt() {
     if (httpServer !== null) await new Promise((resolve) => httpServer.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
     try {
-      rmSync(chromeProfilVerzeichnis, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+      raeumeVerzeichnis(chromeProfilVerzeichnis)
     } catch (fehler) {
       // Aufräumen des Chrome-Profils ist Hygiene, kein Testergebnis — ein hier noch
       // gesperrtes Temp-Verzeichnis (Virenscanner, Windows-Indexer) darf das Gate-Ergebnis

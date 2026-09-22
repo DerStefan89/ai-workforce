@@ -8685,7 +8685,7 @@ Titel: GET /api/zustand bleibt O(N) synchron über kontrollzustand/.
 Beschreibung: Rund 3 900 Dateisystem-Aufrufe je Abfrage alle 2 s; wächst mit dem Bestand.
 Fundstelle: Zustandsroute in `scripts/leitstand-server.mjs`.
 Auswirkung: Wird bei Wachstum wieder langsam.
-Maßnahme: Gate (d) sichert Median unter 300 ms; bei Überschreitung Index/Cache einführen.
+Maßnahme: Gate (d) sichert Median unter 300 ms; bei Überschreitung Index/Cache einführen. F-588 (fix/f588-sammle-laeufe, 22.09.2026) hat den ungefilterten Anteil (Kosten über ALLE Verzeichnisse statt nur echte Läufe) behoben — Faktor ~3,4x auf dem realen Bestand, siehe `state/messung-f588-zustand.md`. Das grundsätzliche O(n) über die Zahl echter Läufe bleibt bestehen, F-559 bleibt deshalb offen.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293.
 
 **F-560** · `TECH_DEBT` · P3 · erledigt (#202)
@@ -8912,13 +8912,13 @@ Auswirkung: Unvollständige Restfindingliste in der Feature-Akte.
 Maßnahme: F-386 ergänzt (docs/m5-nachzug).
 Feature/Run: F-534 Teil 2, 22.09.2026. Quelle: claude/313.
 
-**F-588** · `BUG` · P2 · offen
+**F-588** · `BUG` · P2 · erledigt (fix/f588-sammle-laeufe)
 Titel: GET /api/zustand skaliert mit kontrollzustand/-Bestand, Gate (d) flackert.
 Beschreibung: `sammleLaeufe` (`scripts/leitstand-server.mjs:958-967`) listet ALLE Top-Level-Verzeichnisse unter `basisVerzeichnis` und bildet für jedes einen Cache-Änderungsstempel (bis zu 4 Dateisystem-Aufrufe je Eintrag, `leseCheckpointVerzeichnisStempel`), bevor über `istLaufkette` auf echte Läufe gefiltert wird — anders als `sammleAuftraege`/`sammleWorkflows`, die vorher per Präfix filtern. Kosten wachsen linear mit der GESAMTEN Verzeichniszahl (auch `lineage-*`-Ketten), nicht mit der Zahl echter Läufe; der Kopfdaten-Cache aus `fix/zustand-poll-kosten` spart die teure Kettenlesung, aber nicht diese Stempelbildung (kalt ≈ warm in der Messung). Bei der heutigen Bestandsgröße (~800) macht das ~70-80 ms aus, deutlich unter der 300-ms-Grenze — der 1266-ms-Ausreißer vom 22.09.2026 (F-556) ist damit NICHT durch die Verzeichnisanzahl allein erklärt, vermutlich Systemlast.
 Fundstelle: `scripts/leitstand-server.mjs:958-967` (`sammleLaeufe`), `:919-946` (`leseCheckpointVerzeichnisStempel`/`sammleLaufKopfdatenGecached`); `state/messung-f588-zustand.md`.
 Auswirkung: Gate (d) (`scripts/check-f20-zustand-poll.mjs`) wird bei weiterem, unbegrenztem Wachstum von `kontrollzustand/` irgendwann strukturell knapp (hochgerechnet ~3.300 Verzeichnisse bei ruhigem System) und ist schon heute anfällig für Lastspitzen, weil die Marge unter der Grenze bei wachsendem Bestand kleiner wird.
-Maßnahme: Siehe `state/messung-f588-zustand.md` Fix-Optionen — (1) `sammleLaeufe` vor der Stempelbildung nach Präfix filtern (Muster `sammleAuftraege`/`sammleWorkflows`), oder (2) Top-Level-Verzeichnisliste selbst cachen (Advisor-Pass nötig, Cache-Invariante). Verwandt: F-559 (bereits offen, gleiche Grundursache, gröber beschrieben).
-Feature/Run: Messung F-556/F-588, 22.09.2026. Quelle: claude/314.
+Maßnahme: Umgesetzt (fix/f588-sammle-laeufe, 22.09.2026) — `sammleLaeufe` überspringt Verzeichnisse mit Präfix `lineage-` per Denylist VOR der Stempelbildung (keine Allowlist, `istLaufkette` bleibt inhaltsbasiert unverändert). Äquivalenz gegen den echten Bestand belegt (200/200 Läufe, Lauf-Ids und Kopfdaten deep-equal; kein echter Lauf beginnt mit `lineage-`), zusätzlich dauerhaft über `scripts/check-fix-f588-sammle-laeufe.mjs` (neu, `npm run check`) abgesichert. Messung: kalt/warm Median 68-69 ms → 20 ms auf dem echten Bestand (Faktor ~3,4x), Details in `state/messung-f588-zustand.md`. Verwandt: F-559 (bleibt offen — das grundsätzliche O(n) über echte Läufe besteht fort, nur der ungefilterte Anteil über ALLE Verzeichnisse ist behoben).
+Feature/Run: Messung F-556/F-588, 22.09.2026; Fix fix/f588-sammle-laeufe, 22.09.2026. Quelle: claude/314, claude/316.
 
 **F-589** · `HARNESS_IMPROVEMENT` · P1 · offen
 Titel: Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
@@ -8927,3 +8927,19 @@ Fundstelle: Challenger-Bridge (Cowork-VM auf gemountetem Windows-Repo).
 Auswirkung: Blockiert Stefans Git-Operationen bis zum manuellen Löschen.
 Maßnahme: Challenger nutzt über die Bridge kein git mehr (auch nicht lesend); Verifikation per Dateiinhalt + git diff --cached --name-only aus Stefans Terminal. Projektinstruktion entsprechend anpassen (Stefan).
 Feature/Run: Verifikation Messung F-588, 22.09.2026. Quelle: claude/315.
+
+**F-590** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: EPERM beim Aufräumen von kontrollzustand-test-* in Check-Skripten.
+Beschreibung: Heute 2x in `npm run check` aufgetreten (Testverzeichnis unter `kontrollzustand-test/` ließ sich in `raeumeVerzeichnis` nicht entfernen, Retry lief grün) — hinterlässt Reste, einheitlich 17 alte `kontrollzustand-test-*`-Verzeichnisse im Arbeitsbaum (gezählt 22.09.2026). Tritt TROTZ `maxRetries: 10` (dem F-257-Helfer `raeumeVerzeichnis`, bereits die gleiche Wiederholungslogik) auf — die Wiederholung allein löst es nicht.
+Fundstelle: `scripts/_aufraeumen.ts` (`raeumeVerzeichnis`); `scripts/check-f20-leitstand-shell.mjs` (nutzte vorher einen eigenen direkten `rmSync`-Aufruf statt des gemeinsamen Helfers, jetzt auf `raeumeVerzeichnis` umgestellt).
+Auswirkung: Sporadisch scheiternde `npm run check`-Läufe ohne Codeänderung (Retry meist grün) — Verwechslungsgefahr mit einem echten Befund, Muster CLAUDE.md „Bekannte Fallen".
+Maßnahme: Beim nächsten Auftreten Uhrzeit, Pfad und laufenden Echtzeitscan (Kaspersky) festhalten; dann retryDelay erhöhen oder Virenscanner-Ausnahme auf kontrollzustand-test-* erweitern. maxRetries nicht unter 10 senken.
+Feature/Run: Fix f588-sammle-laeufe, 22.09.2026. Quelle: claude/316, claude/317.
+
+**F-591** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bauauftrag senkte einen bewusst gewählten Harness-Wert (maxRetries 10→5), weil der Auftrag bestehende Helfer/Regeln nicht geprüft hatte.
+Beschreibung: Der F-590-Auftrag gab `maxRetries: 5` als Zielwert vor, ohne zu prüfen, dass `scripts/_aufraeumen.ts` diesen Wert bereits bewusst auf 10 gesetzt hatte (F-257, neun frühere Vorfälle, dokumentierte Historie im JSDoc). Die Umsetzung senkte den Wert wie angeordnet, wies aber im Bericht auf den Widerspruch hin — Stefan bestätigte danach, dass die Absenkung ein Fehler im Auftrag war, und der Wert wurde in der Korrekturrunde zurückgesetzt.
+Fundstelle: `scripts/_aufraeumen.ts`; F-257; F-590.
+Auswirkung: Ein bereits gelöstes Problem (F-257) wäre ohne den Hinweis erneut aufgetreten, nur unter neuem Namen (F-590).
+Maßnahme: Challenger greppt vor Harness-Aufträgen nach bestehenden Helfern/Regeln; Claude Code stoppt und fragt nach, bevor es einen dokumentierten Schutzwert absenkt, statt umzusetzen.
+Feature/Run: fix/f588-sammle-laeufe, 22.09.2026. Quelle: claude/317.
