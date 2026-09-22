@@ -8887,3 +8887,27 @@ Fundstelle: `state/nachweis-runde2-*`.
 Auswirkung: Stören den Staging-Blick, Risiko versehentlichen Mitcommits.
 Maßnahme: Aufräumen (löschen oder in `.gitignore`).
 Feature/Run: F40 WS-3, 21.09.2026. Quelle: claude/308.
+
+**F-585** · `BUG` · P2 · erledigt (docs/m5-nachzug)
+Titel: roadmap.json M5-features ohne F40, obwohl zielfassung.md §13.6 F40 zu M5 zählt.
+Beschreibung: `docs/projekt/roadmap.json`s M5-`features`-Array führte F32, F33, F34–F39 und F30, aber nicht F40 — obwohl `docs/projekt/zielfassung.md` §13.6 F40 (E-M5-10) ausdrücklich zum M5-Feature-Schnitt zählt. Lagebild/Jarvis-Kontext bekamen dadurch eine unvollständige M5-Liste.
+Fundstelle: `docs/projekt/roadmap.json`; `docs/projekt/zielfassung.md` §13.6.
+Auswirkung: Unvollständiger Projektkontext für `jarvis`/`router` über das Lagebild.
+Maßnahme: F40 im M5-`features`-Array ergänzt (docs/m5-nachzug).
+Feature/Run: F-534 Teil 2, 22.09.2026. Quelle: claude/313.
+
+**F-586** · `TECH_DEBT` · P3 · erledigt (docs/m5-nachzug)
+Titel: STATUS.md „Meilenstein 4"-Liste führte M5-Features F32/F33/F40, F34–F39 fehlten.
+Beschreibung: `docs/STATUS.md`s Abschnitt „### Meilenstein 4" listete F32, F33 und F40 (laut §13.6 M5-Features), während F34–F39 dort gar nicht auftauchten.
+Fundstelle: `docs/STATUS.md`.
+Auswirkung: Irreführende Meilenstein-Zuordnung im zentralen Statusdokument.
+Maßnahme: F32/F33/F40 in eine neue Überschrift „### Meilenstein 5 — läuft" verschoben, F34–F39 und F30 dort mit Titel aus §13.6 als „noch nicht begonnen" ergänzt (docs/m5-nachzug).
+Feature/Run: F-534 Teil 2, 22.09.2026. Quelle: claude/313.
+
+**F-587** · `PROCESS_IMPROVEMENT` · P3 · erledigt (docs/m5-nachzug)
+Titel: F23-Restfindingliste nach E-M5-1 ließ F-386 aus.
+Beschreibung: Der E-M5-1-Statuswechsel von F23 auf `ABGESCHLOSSEN` nannte die Restfindings F-378, F-389, F-392, aber nicht das bereits vorher in derselben Akte dokumentierte F-386.
+Fundstelle: `features/F23/feature.md`.
+Auswirkung: Unvollständige Restfindingliste in der Feature-Akte.
+Maßnahme: F-386 ergänzt (docs/m5-nachzug).
+Feature/Run: F-534 Teil 2, 22.09.2026. Quelle: claude/313.

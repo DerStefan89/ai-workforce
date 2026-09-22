@@ -21,3 +21,11 @@ Doku-Auftrags "F-534 Teil 2 — M5-Entscheidungen ins Repo nachziehen":
 `docs/projekt/zielfassung.md` §13.5 (Fakt-Nachtrag) und neuer §13.6
 (E-M5-1 im vollen Wortlaut), `docs/STATUS.md` ("Aktuelle Phase" und
 Meilenstein-4-Liste), dieser Statuswechsel.
+
+## 2026-09-22 — Restfindingliste um F-386 ergänzt (F-534-Nachzug, Doku-only)
+
+Der obige Eintrag ließ F-386 aus (`GET`/`POST /api/workflows/<id>/abnahme`
+widersprechen sich bei fehlendem `ausfuehrung`-Schritt, TC-06,
+`P3`/`offen`, war bereits vor der E-M5-1-Umsetzung in diesem Dokument als
+"Nicht behoben, siehe F-386" festgehalten) — nachgetragen, kein neuer
+Fund. `state/findings.md` F-587 registriert die Auslassung selbst.
