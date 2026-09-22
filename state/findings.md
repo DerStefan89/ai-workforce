@@ -8661,7 +8661,7 @@ Titel: Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch 
 Beschreibung: Messung war durch alte Browser-Tab-Verbindungen verfälscht; im Browser 1,7 s, Hypothese Kaspersky-fetch-Hook. Ursache ungeklärt.
 Fundstelle: `GET /api/zustand`.
 Auswirkung: Event-Loop zeitweise blockiert.
-Maßnahme: Saubere Langlauf-Nachmessung ohne Störfaktor (Kaspersky-Ausnahme gesetzt, E-M5-11).
+Maßnahme: Saubere Langlauf-Nachmessung ohne Störfaktor (Kaspersky-Ausnahme gesetzt, E-M5-11). Siehe auch F-588: die Verzeichnisanzahl allein erklärt den 1266-ms-Ausreißer vom 22.09.2026 nicht (Messung liefert bei 794 Verzeichnissen nur ~70-80 ms) — Ursache bleibt vermutlich Systemlast, F-556 bleibt offen.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293, claude/295, claude/303.
 
 **F-557** · `PROCESS_IMPROVEMENT` · P3 · erledigt (#202)
@@ -8911,3 +8911,19 @@ Fundstelle: `features/F23/feature.md`.
 Auswirkung: Unvollständige Restfindingliste in der Feature-Akte.
 Maßnahme: F-386 ergänzt (docs/m5-nachzug).
 Feature/Run: F-534 Teil 2, 22.09.2026. Quelle: claude/313.
+
+**F-588** · `BUG` · P2 · offen
+Titel: GET /api/zustand skaliert mit kontrollzustand/-Bestand, Gate (d) flackert.
+Beschreibung: `sammleLaeufe` (`scripts/leitstand-server.mjs:958-967`) listet ALLE Top-Level-Verzeichnisse unter `basisVerzeichnis` und bildet für jedes einen Cache-Änderungsstempel (bis zu 4 Dateisystem-Aufrufe je Eintrag, `leseCheckpointVerzeichnisStempel`), bevor über `istLaufkette` auf echte Läufe gefiltert wird — anders als `sammleAuftraege`/`sammleWorkflows`, die vorher per Präfix filtern. Kosten wachsen linear mit der GESAMTEN Verzeichniszahl (auch `lineage-*`-Ketten), nicht mit der Zahl echter Läufe; der Kopfdaten-Cache aus `fix/zustand-poll-kosten` spart die teure Kettenlesung, aber nicht diese Stempelbildung (kalt ≈ warm in der Messung). Bei der heutigen Bestandsgröße (~800) macht das ~70-80 ms aus, deutlich unter der 300-ms-Grenze — der 1266-ms-Ausreißer vom 22.09.2026 (F-556) ist damit NICHT durch die Verzeichnisanzahl allein erklärt, vermutlich Systemlast.
+Fundstelle: `scripts/leitstand-server.mjs:958-967` (`sammleLaeufe`), `:919-946` (`leseCheckpointVerzeichnisStempel`/`sammleLaufKopfdatenGecached`); `state/messung-f588-zustand.md`.
+Auswirkung: Gate (d) (`scripts/check-f20-zustand-poll.mjs`) wird bei weiterem, unbegrenztem Wachstum von `kontrollzustand/` irgendwann strukturell knapp (hochgerechnet ~3.300 Verzeichnisse bei ruhigem System) und ist schon heute anfällig für Lastspitzen, weil die Marge unter der Grenze bei wachsendem Bestand kleiner wird.
+Maßnahme: Siehe `state/messung-f588-zustand.md` Fix-Optionen — (1) `sammleLaeufe` vor der Stempelbildung nach Präfix filtern (Muster `sammleAuftraege`/`sammleWorkflows`), oder (2) Top-Level-Verzeichnisliste selbst cachen (Advisor-Pass nötig, Cache-Invariante). Verwandt: F-559 (bereits offen, gleiche Grundursache, gröber beschrieben).
+Feature/Run: Messung F-556/F-588, 22.09.2026. Quelle: claude/314.
+
+**F-589** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
+Beschreibung: Challenger-Verifikation 22.09.2026: git rev-parse/log/diff --cached/diff --stat (Einzeldateien, --no-optional-locks) über die Bridge lief in einen 120-s-Timeout; danach existierte .git/index.lock (0 Byte, 06:10:03 UTC). Sechster Vorfall nach F-100, F-118, F-122, F-123, F-126.
+Fundstelle: Challenger-Bridge (Cowork-VM auf gemountetem Windows-Repo).
+Auswirkung: Blockiert Stefans Git-Operationen bis zum manuellen Löschen.
+Maßnahme: Challenger nutzt über die Bridge kein git mehr (auch nicht lesend); Verifikation per Dateiinhalt + git diff --cached --name-only aus Stefans Terminal. Projektinstruktion entsprechend anpassen (Stefan).
+Feature/Run: Verifikation Messung F-588, 22.09.2026. Quelle: claude/315.
