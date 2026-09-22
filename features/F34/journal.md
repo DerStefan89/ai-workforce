@@ -77,3 +77,107 @@ dieser Iteration behoben.
 scripts/erzeuge-lagebild.mjs` erneut gelaufen (state/findings.md geändert).
 
 Status bleibt `IN_ARBEIT` (WS-2 offen).
+
+## 2026-09-22 — WS-2 gebaut (Latenz-A/B, Sparring-UI, Chat→Auftrag-Brücke), Status weiterhin IN_ARBEIT
+
+Finding `state/findings.md` F-609 registriert (Sparring-Latenz 60–89 s
+gegen Jarvis' ~12 s), dann als erste Handlung dieses Workstreams real
+A/B-gemessen — VOR jeder UI-Arbeit, wie im Auftrag verlangt.
+
+**Latenzmessung** (`features/F34/nachweis-ws2-latenz.md`): vier Varianten,
+dieselben drei Nachrichten wie `nachweis-ws1.md`, je Variante eine frische,
+isolierte Sparring-Kette (eigener `basisVerzeichnis`, Muster
+`kontrollzustand-test-*`). V0 (Referenz) 67,1 s Median, V1
+(`MAX_THINKING_TOKENS '0'`) 8,2 s, V2 (Lese-Obergrenze in der
+Rolleninstruktion) 46,1 s, V3 (beides kombiniert) 30,7 s. V1 übernommen —
+schnellste Variante, erfüllt die im Auftrag definierte Qualitätsschwelle
+(reale Fundstellen + Abgrenzung vorhanden). Nebenbefund: V1/V2/V3 finden —
+anders als V0 — `state/findings.md` F-596 nicht (P3-Finding, nicht in
+`lagebild.md`, das nur P1 einspeist) — als F-610 (P3) registriert, kein
+Blocker.
+
+**Sparring-UI** (`public/leitstand/views/chat.js`, vollständig auf
+`MODI`/`zustandJeModus` parametrisiert statt einer zweiten Kopie, D5):
+"Jarvis"/"Sparring"-Umschalter (`localStorage`-Präferenz, try/catch), jeder
+Modus pollt unabhängig weiter, auch wenn der andere gerade angezeigt wird.
+Rendering nach `art`: `alternativen` als Liste, `scope_entwurf`
+strukturiert (sieben Abschnitte) — beide über `escapeHtml`.
+
+**Chat→Auftrag-Brücke** (löst `state/findings.md` F-606): "Als Auftrag
+anlegen" bei Sparring `art: 'scope_entwurf'` (`baueAuftragAusScope`) und
+Jarvis `art: 'auftrag_vorschlag'` (`auftrag.titel`/`auftrag.text`
+direkt) — `public/leitstand/auftrag-aus-scope.js` ist eine reine JS-Kopie
+von `src/product-coach/index.ts`s `baueAuftragAusScope` (kein Build-Schritt
+im Leitstand, ein Browser kann `.ts` nicht laden); Gleichheit real geprüft
+(`scripts/check-f34-product-coach.mjs` (i), drei Fixtures). Klick öffnet
+eine editierbare Bestätigung, erst "Anlegen" ruft `POST /api/auftraege`
+(`legeAuftragAn`, bestehender F12-Pfad) — kein automatisches Anlegen, kein
+Routen/Starten. Erfolg verlinkt auf `#/projekt` (reale Aufträge-Übersicht —
+ein frischer Auftrag ist kein Workboard-Workitem im F21-Sinn, Entscheidung
+in "Bekannte Grenzen" dokumentiert statt stillschweigend getroffen).
+
+Gate `scripts/check-f34-product-coach.mjs` um Abschnitte (i)
+(`baueAuftragAusScope`-Gleichheit) und (j) (statische Quelltextprüfung der
+Brücke — kein DOM-Test für `chat.js` selbst, Muster F-601: kein
+View-Renderer im Repo hat eigene Tests) erweitert. `state/findings.md`
+F-606 auf `erledigt`.
+
+Kein eigener Browser-Sichttest durch die KI (Auftrag-Vorgabe: "Browser-
+Sichtprüfung macht Stefan danach") — stattdessen `node --check` auf beiden
+neuen JS-Dateien und ein Node-Smoke-Test (`index.html`/`views/chat.js`/
+`auftrag-aus-scope.js`/`style.css` werden fehlerfrei ausgeliefert).
+
+`npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+`node scripts/erzeuge-lagebild.mjs` erneut gelaufen (F-609 erledigt,
+F-610 neu, F-606 erledigt).
+
+Status bleibt `IN_ARBEIT` bis Stefans Browser-Sichtprüfung.
+
+## 2026-09-22 — Reviewer-/QA-Pass, zwei kritische Befunde behoben, Verifikations-Pass grün
+
+`code-reviewer` (frischer Kontext): **„Nicht freigegeben"** — zwei
+kritische Bugs. (1) `#chat-senden`/`#chat-zusammenfassen-btn` sind ein
+geteiltes DOM-Element für beide Modi; löste ein im Hintergrund-Modus
+laufender Lauf terminal auf, während der ANDERE Modus angezeigt wurde,
+übersprang das an `modus === aktiverModus` gegatterte
+`setzeSendenSperre(false)` die Freigabe — die Buttons blieben für den Rest
+der Sitzung gesperrt, nur ein Reload half. (2) der "Als Auftrag
+anlegen"-Dialog rendert Titel/Text aus dem Modulzustand; ein Re-Render
+während der Bearbeitung (z. B. Poll-Tick eines parallelen Laufs) überschrieb
+laufende Edits kommentarlos.
+
+Beide behoben: (1) die Sende-/Zusammenfassen-Sperre wird seither bei jedem
+`renderVerlauf()` aus `zustand.ausstehenderLauf` abgeleitet statt über
+einen gegatterten Seiteneffekt gesetzt; `pruefeAusstehendenLauf` ruft
+`renderVerlauf()` seither unconditional (rendert immer `aktiverModus` mit
+dessen eigenem, korrektem Zustand — harmlos für einen Hintergrund-Modus).
+(2) ein `input`-Listener spiegelt jeden Tastendruck in
+`#chat-auftrag-titel`/`#chat-auftrag-text` sofort nach
+`offenerAuftragDialog`, ohne `renderVerlauf()` auszulösen. Zusätzlich:
+"Schließen"-Button für den Dialog-Erfolgszustand ergänzt (`qa`-Befund).
+Neue Findings F-607/F-608 aus dem WS-1-Pass waren bereits registriert;
+zwei neue, niedrigpriorisierte `qa`-Befunde (Moduswechsel verwirft
+offenen Dialog ohne Warnung; Dialog kann aus dem Standard-Ausschnitt
+fallen) als bewusste Grenzen in `feature.md` dokumentiert statt behoben
+(CLAUDE.md-Entscheidungsregel 5).
+
+**Verifikations-Pass** (frischer Kontext, nur die beiden Fixes geprüft):
+`code-reviewer` bestätigte beide Bugs für ihr konkretes
+Reproduktionsszenario als behoben, fand aber zwei angrenzende Lücken in
+derselben Mechanik: mehrere andere `setzeSendenSperre`/
+`setzeAbbrechenZustand`-Aufrufstellen waren nicht `aktiverModus`-sicher
+(transiente Fehlableitung möglich); der Anlegen-Handler der Auftrag-Brücke
+konnte ein Ergebnis auf einen inzwischen fremden, neu geöffneten Dialog
+schreiben (Objekt-Spread nach dem `await`, keine erneute
+Zugehörigkeitsprüfung). Beide behoben: `setzeSendenSperre`/
+`setzeAbbrechenZustand` vollständig entfernt — jeder Button-Zustand
+(Sende-/Zusammenfassen-Sperre, Abbrechen-Text/-Sperre) hat jetzt genau
+EINE Ableitungsstelle in `renderVerlauf()` (neues `zustand.sendenLaeuft`-
+Flag für das schmale Zeitfenster vor `ausstehenderLauf`); der
+Anlegen-Handler friert `modus`/`schluessel` vor dem `await` ein und
+verwirft eine fremd gewordene Fortsetzung (`gehoertNochZuDiesemDialog`).
+Gate-Abschnitt (k) verschärft, (l) neu ergänzt — beide grün.
+
+`npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+
+Status bleibt `IN_ARBEIT` bis Stefans Browser-Sichtprüfung.

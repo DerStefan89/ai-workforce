@@ -17,6 +17,24 @@
  * Parametrisierung weiterhin bitgenau dieselben aufrufEingaben (Muster
  * scripts/check-f31-gedaechtnis.mjs Abschnitt (a)).
  *
+ * F34 WS-2 (Sparring-UI + Chat→Auftrag-Brücke, löst state/findings.md F-606) ergänzt: (h) die
+ * F-506-Fehlerpfad-Regression für 'product-coach' (Muster check-f31-gedaechtnis.mjs (j)), (i)
+ * baueAuftragAusScope-Gleichheit zwischen dem Server-Original (src/product-coach/index.ts) und
+ * seiner reinen JS-Kopie für den Browser (public/leitstand/auftrag-aus-scope.js — ein Browser
+ * ohne Build-Schritt kann .ts nicht laden), (j) eine statische Quelltextprüfung von
+ * public/leitstand/views/chat.js: die Auftrag-Brücke ruft legeAuftragAn ausschließlich mit
+ * { titel, auftragstext } (POST /api/auftraege, F12-Pfad) und art 'auftrag_vorschlag' löst
+ * dieselbe Brücke aus wie 'scope_entwurf' (löst F-606: Jarvis' Auftragsvorschlag wird nicht mehr
+ * NUR als Text gerendert). Kein DOM-Test für chat.js selbst — dieser Leitstand testet KEINEN
+ * View-Renderer direkt (state/findings.md F-601, view-weite, akzeptierte Grenze: nur reine
+ * State-Ableitungsmodule wie persona-state.js/verbrauch-zeitraum.js sind gate-geprüft); die
+ * statische Prüfung (j) ist der etablierte Ersatz für diesen einen, sonst ungeprüften Pfad. (k)
+ * ist eine gezielte Regressionswache gegen einen real im Reviewer-Pass gefundenen Bug: die
+ * geteilten #chat-senden/#chat-zusammenfassen-btn-Elemente blieben nach einem Moduswechsel
+ * während eines im Hintergrund laufenden Laufs dauerhaft gesperrt, weil die Freigabe an
+ * 'modus === aktiverModus' gegattert war — der Fix leitet den Sperrzustand seither bei jedem
+ * renderVerlauf() aus dem Zustand ab.
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisProductCoach/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -31,6 +49,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueAuftragAusScope, validiereErgebnisProductCoach } from '../src/product-coach/index.ts'
+import { baueAuftragAusScope as baueAuftragAusScopeBrowser } from '../public/leitstand/auftrag-aus-scope.js'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -328,12 +347,13 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
       befunde.push(`(f): erwartet aufrufEingaben.mcpConfig '{"mcpServers":{}}', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else if (letzteEingaben.aufrufEingaben?.disallowedTools !== 'Read(~/.claude/**)') {
       befunde.push(`(f): erwartet aufrufEingaben.disallowedTools 'Read(~/.claude/**)', erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
-    } else if (letzteEingaben.aufrufEingaben?.umgebungsvariablen !== undefined) {
-      // Auftrag Punkt 4: 'product-coach' bekommt settingSources/mcpConfig/disallowedTools wie
-      // 'jarvis', aber OHNE MAX_THINKING_TOKENS=0 — das Denkbudget bleibt für ein Sparring-Gespräch an.
-      befunde.push(`(f): 'product-coach' sollte KEIN umgebungsvariablen (MAX_THINKING_TOKENS) tragen — anders als 'jarvis' braucht der Coach das Denkbudget, erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
+    } else if (letzteEingaben.aufrufEingaben?.umgebungsvariablen?.MAX_THINKING_TOKENS !== '0') {
+      // F34 WS-2 (F-609, features/F34/nachweis-ws2-latenz.md): real A/B-gemessen — MAX_THINKING_TOKENS=0
+      // senkt die Sparring-Median-Latenz von 67,1 s auf 8,2 s ohne Qualitätsverlust, product-coach
+      // trägt seither denselben Wert wie jarvis (anders als der ursprüngliche WS-1-Stand).
+      befunde.push(`(f): erwartet aufrufEingaben.umgebungsvariablen.MAX_THINKING_TOKENS '0' (F34 WS-2, F-609), erhalten ${JSON.stringify(letzteEingaben.aufrufEingaben)}`)
     } else {
-      console.log("✓ (f): POST /api/sparring übergibt rolle 'product-coach' und aufrufEingaben.settingSources/mcpConfig/disallowedTools wie 'jarvis', aber OHNE umgebungsvariablen.MAX_THINKING_TOKENS.")
+      console.log("✓ (f): POST /api/sparring übergibt rolle 'product-coach' und aufrufEingaben.settingSources/mcpConfig/disallowedTools/umgebungsvariablen.MAX_THINKING_TOKENS wie 'jarvis' (F34 WS-2, F-609).")
     }
 
     const verlauf = await (await fetch(`${basisUrl}/api/sparring`)).json()
@@ -458,6 +478,140 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   } finally {
     await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (i) F34 WS-2: baueAuftragAusScope-Gleichheit (Server-TS vs. Browser-JS-Kopie) ─
+//
+// public/leitstand/auftrag-aus-scope.js ist eine reine JS-Kopie von src/product-coach/index.ts'
+// baueAuftragAusScope — ein Browser ohne Build-Schritt kann die .ts-Quelle nicht laden (CLAUDE.md).
+// Verhaltensgleichheit wird hier mechanisch geprüft (D5-Geist: kein Vertrauen, ein Test), nicht nur
+// behauptet: dieselben Scope-Fixtures gegen BEIDE Funktionen, byte-identisches Ergebnis erwartet.
+{
+  const befundeVor = befunde.length
+  const fixtures = [
+    JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-scope-entwurf.json', 'utf-8')).scope,
+    {
+      titel: 'Minimal-Scope',
+      problem: 'x',
+      ziel: 'y',
+      in_scope: [],
+      out_of_scope: [],
+      annahmen: [],
+      offene_fragen: [],
+      erfolgskriterium: 'z',
+    },
+    {
+      titel: 'Scope mit mehreren Listeneinträgen',
+      problem: 'Problem mit "Anführungszeichen" & Sonderzeichen',
+      ziel: 'Ziel',
+      in_scope: ['a', 'b', 'c'],
+      out_of_scope: ['d'],
+      annahmen: ['e', 'f'],
+      offene_fragen: [],
+      erfolgskriterium: 'Kriterium',
+    },
+  ]
+  for (const [index, scope] of fixtures.entries()) {
+    const serverErgebnis = baueAuftragAusScope(scope)
+    const browserErgebnis = baueAuftragAusScopeBrowser(scope)
+    if (JSON.stringify(serverErgebnis) !== JSON.stringify(browserErgebnis)) {
+      befunde.push(`(i) Fixture ${index}: baueAuftragAusScope (Server) und die Browser-Kopie liefern unterschiedliche Ergebnisse — Server: ${JSON.stringify(serverErgebnis)}, Browser: ${JSON.stringify(browserErgebnis)}`)
+    }
+  }
+  if (befunde.length === befundeVor) {
+    console.log('✓ (i): baueAuftragAusScope (src/product-coach/index.ts) und ihre Browser-JS-Kopie (public/leitstand/auftrag-aus-scope.js) liefern für drei verschiedene Scope-Fixtures byte-identische Ergebnisse.')
+  }
+}
+
+// ─── (j) F34 WS-2 (löst F-606): statische Prüfung der Auftrag-Brücke in views/chat.js ──
+//
+// Kein DOM-Test (F-601-Muster, s. Dateikopf) — mechanischer Quelltext-Scan statt eines
+// Vertrauensvorschusses: (1) legeAuftragAn wird aus '../api.js' importiert UND mit einem Objekt
+// aufgerufen, das wörtlich 'titel' und 'auftragstext' als Schlüssel trägt (POST /api/auftraege
+// erwartet exakt diese Form, s. pruefeAuftragsformular); (2) art 'auftrag_vorschlag' UND
+// 'scope_entwurf' lösen beide denselben Kandidaten-Pfad aus (leseAuftragKandidat) — der frühere
+// Zustand (F-606: nur .antwort wird je gerendert) ist damit real behoben, nicht nur behauptet.
+{
+  const befundeVor = befunde.length
+  const quelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
+
+  if (!/import\s*\{[^}]*\blegeAuftragAn\b[^}]*\}\s*from\s*['"]\.\.\/api\.js['"]/.test(quelltext)) {
+    befunde.push("(j): public/leitstand/views/chat.js importiert 'legeAuftragAn' nicht (mehr) aus '../api.js' — Auftrag-Brücke fehlt oder wurde umgebaut")
+  }
+  if (!/legeAuftragAn\(\{\s*titel,\s*auftragstext\s*\}\)/.test(quelltext)) {
+    befunde.push("(j): kein Aufruf 'legeAuftragAn({ titel, auftragstext })' in views/chat.js gefunden — POST /api/auftraege erwartet exakt diese Form (pruefeAuftragsformular)")
+  }
+  if (!/art\s*===\s*'scope_entwurf'/.test(quelltext) || !/art\s*===\s*'auftrag_vorschlag'/.test(quelltext)) {
+    befunde.push("(j): leseAuftragKandidat sollte sowohl 'scope_entwurf' (Sparring) als auch 'auftrag_vorschlag' (Jarvis) als Auftrag-Kandidaten erkennen — mindestens eine der beiden Prüfungen fehlt im Quelltext")
+  }
+  if (!/antwort\.auftrag\.titel/.test(quelltext) || !/antwort\.auftrag\.text/.test(quelltext)) {
+    befunde.push("(j): Jarvis' 'auftrag_vorschlag' sollte auftrag.titel/auftrag.text direkt in den Auftrag-Kandidaten übernehmen (kein zweiter Builder, s. Auftragstext Punkt 3) — Zugriff im Quelltext nicht gefunden")
+  }
+  if (!/leseAuftragKandidat/.test(quelltext) || !/renderAuftragBruecke/.test(quelltext)) {
+    befunde.push("(j): die Auftrag-Brücke (leseAuftragKandidat/renderAuftragBruecke) scheint nicht mehr vorhanden — art 'auftrag_vorschlag'/'scope_entwurf' würden dann wieder nur als Text gerendert (F-606-Regression)")
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (j): views/chat.js ruft legeAuftragAn ausschließlich mit { titel, auftragstext } auf; sowohl Jarvis' 'auftrag_vorschlag' als auch Sparrings 'scope_entwurf' lösen dieselbe Auftrag-Brücke aus (F-606 behoben, nicht mehr nur als Text gerendert).")
+  }
+}
+
+// ─── (k) F34 WS-2: statische Regression gegen den real gefundenen Cross-Modus-Sperr-Bug ──
+//
+// Code-Review-Befund (real gefunden, kein DOM-Test möglich, F-601-Muster), in einem zweiten,
+// unabhängigen Verifikations-Pass verschärft: #chat-senden/#chat-zusammenfassen-btn/
+// #chat-abbrechen-btn sind EIN geteiltes DOM-Element für beide Modi (index.html), keine Pro-Modus-
+// Kopie. Der ERSTE Fix leitete #chat-senden/#chat-zusammenfassen-btn zwar in renderVerlauf() ab,
+// beließ aber mehrere andere imperative setzeSendenSperre(...)/setzeAbbrechenZustand(...)-Aufrufe
+// (sendeAktuelleEingabe, sendeZusammenfassungAnfrage, initAbbrechenBedienung, pruefeAusstehendenLauf,
+// setzeChatZustandZurueck) unangetastet — genau dieselbe Bug-Klasse in abgeschwächter Form (transiente
+// Fehlableitung statt Dauerhänger) blieb dadurch erreichbar. Der zweite Fix entfernt BEIDE Funktionen
+// vollständig: jeder Button-Zustand (Sende-/Zusammenfassen-Sperre, Abbrechen-Text/-Sperre) wird
+// AUSSCHLIESSLICH in renderVerlauf() aus zustand (sendenLaeuft/ausstehenderLauf/abbruchAngefordert)
+// abgeleitet — kein zweiter, potenziell veralteter Schreibpfad auf dieselben DOM-Elemente mehr.
+{
+  const befundeVor = befunde.length
+  const quelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
+
+  if (!/zustand\.sendenLaeuft\s*===\s*true\s*\|\|\s*zustand\.ausstehenderLauf\s*!==\s*null/.test(quelltext) || !/document\.getElementById\('chat-senden'\)\.disabled\s*=\s*gesperrt/.test(quelltext)) {
+    befunde.push("(k): renderVerlauf() sollte #chat-senden.disabled bei JEDEM Aufruf aus zustand.sendenLaeuft/ausstehenderLauf ableiten — die Ableitung fehlt im Quelltext (Regression des Cross-Modus-Sperr-Bugs möglich)")
+  }
+  if (!/abbrechenBtn\.textContent\s*=\s*abbruchAngefordert/.test(quelltext) || !/abbrechenBtn\.disabled\s*=\s*abbruchAngefordert/.test(quelltext)) {
+    befunde.push('(k): renderVerlauf() sollte #chat-abbrechen-btn.textContent/.disabled bei JEDEM Aufruf aus zustand.ausstehenderLauf?.abbruchAngefordert ableiten — die Ableitung fehlt im Quelltext')
+  }
+  // Die vollständige Entfernung der beiden imperativen Mutator-Funktionen ist die eigentliche Wache:
+  // solange KEINE der beiden mehr als Funktion DEFINIERT ist, kann kein Aufrufer mehr (versehentlich
+  // wieder eingeführt) an 'modus === aktiverModus' vorbei- oder mitgegattert werden — jeder Button-
+  // Zustand hat dann strukturell nur noch die eine Ableitungsstelle in renderVerlauf().
+  if (/function setzeSendenSperre\(/.test(quelltext) || /function setzeAbbrechenZustand\(/.test(quelltext)) {
+    befunde.push('(k): setzeSendenSperre/setzeAbbrechenZustand existieren wieder als eigene Funktionen — genau der zweite Schreibpfad neben renderVerlauf()s Ableitung, der die abgeschwächte Form des Cross-Modus-Sperr-Bugs ermöglichte (Regression)')
+  }
+  if (befunde.length === befundeVor) {
+    console.log('✓ (k): Sende-/Zusammenfassen-Sperre und Abbrechen-Text/-Sperre werden ausschließlich in renderVerlauf() aus dem Zustand des angezeigten Modus abgeleitet — keine imperativen setzeSendenSperre/setzeAbbrechenZustand-Mutatoren mehr, die an einer der Aufrufstellen falsch gegattert sein könnten.')
+  }
+}
+
+// ─── (l) F34 WS-2: statische Prüfung gegen die Auftrag-Dialog-Ergebnis-Fehlzuordnung ──
+//
+// Verifikations-Pass-Befund: 'Anlegen' las offenerAuftragDialog per Objekt-Spread ERST NACH dem
+// await legeAuftragAn(...) — öffnete der Mensch währenddessen den Dialog eines ANDEREN Eintrags
+// (dessen eigene "Als Auftrag anlegen"-Trigger bleiben bedienbar, nur der SUBMITTING-Dialog selbst
+// ist gesperrt), schrieb die Fortsetzung das Ergebnis DIESER Anfrage auf den inzwischen fremden,
+// neuen Dialog (falsche auftragId/falscher Fehlertext am falschen Eintrag). Der Fix friert
+// modus/schluessel VOR dem await ein und prüft nach JEDEM await, ob offenerAuftragDialog noch auf
+// denselben Eintrag zeigt, bevor er ihn überschreibt.
+{
+  const befundeVor = befunde.length
+  const quelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
+
+  if (!/const\s*\{\s*modus,\s*schluessel\s*\}\s*=\s*offenerAuftragDialog/.test(quelltext)) {
+    befunde.push('(l): der Anlegen-Handler sollte modus/schluessel aus offenerAuftragDialog VOR dem await einfrieren — fehlt im Quelltext (mögliche Ergebnis-Fehlzuordnung bei einem währenddessen geöffneten anderen Dialog)')
+  }
+  if (!/gehoertNochZuDiesemDialog/.test(quelltext)) {
+    befunde.push('(l): keine erneute Zugehörigkeitsprüfung (gehoertNochZuDiesemDialog o. ä.) nach dem await legeAuftragAn gefunden — das Ergebnis könnte auf einen inzwischen fremden, neuen Dialog geschrieben werden')
+  }
+  if (befunde.length === befundeVor) {
+    console.log('✓ (l): der Anlegen-Handler friert modus/schluessel vor dem await ein und prüft danach erneut, ob offenerAuftragDialog noch demselben Eintrag gehört, bevor er dessen Ergebnis schreibt.')
   }
 }
 
