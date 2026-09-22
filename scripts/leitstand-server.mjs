@@ -467,9 +467,12 @@ import { baueSparringVerlaufsProjektion } from './leitstand/routen-sparring.mjs'
  * daten-Objekt (Rückwärtskompatibilität: 'jarvisAntwort' bleibt byte-gleich zum bestehenden
  * 'chat-<projektId>'-Artefakt, ein neuer Feldname hätte GET /api/chat gebrochen), 'aufrufEingabenZusatz'
  * rollenspezifische AusfuehrungsEingaben.aufrufEingaben-Felder ÜBER dem gemeinsamen
- * settingSources/mcpConfig/disallowedTools-Block (nur 'jarvis' bekommt zusätzlich
- * MAX_THINKING_TOKENS=0, F31 WS-3/F40 WS-3 — 'product-coach' braucht das Denkbudget für ein
- * Sparring-Gespräch, deshalb hier bewusst leer). 'auftragPraefix'/'auftragTitelPraefix'/'fehlerArt'
+ * settingSources/mcpConfig/disallowedTools-Block (beide Rollen tragen MAX_THINKING_TOKENS=0 —
+ * F31 WS-3/F40 WS-3 für 'jarvis'; für 'product-coach' seit F34 WS-2, siehe
+ * features/F34/nachweis-ws2-latenz.md: V1 (MAX_THINKING_TOKENS=0) senkte die Sparring-Median-
+ * Latenz von 67,1 s auf 8,2 s bei gleichwertiger Scope-Entwurf-Qualität — deutlich vor V2
+ * (Lese-Obergrenze in der Rolleninstruktion, 46,1 s) und V3 (beides kombiniert, 30,7 s), F-609).
+ * 'auftragPraefix'/'auftragTitelPraefix'/'fehlerArt'
  * sind reine Namens-/Anzeigedetails (auftragId-Präfix, Auftragstitel-Präfix, 'art'-Wert des
  * synthetischen Fehler-Turns bei einem Vertragsverstoß — F-506-Muster, 'frage' ist für 'product-coach'
  * der zu 'antwort' analoge neutrale Wert für einen reinen Anzeigetext ohne Unterobjekt).
@@ -502,7 +505,7 @@ const KONFIGURATION_PRODUCT_COACH = {
   validiere: validiereErgebnisProductCoach,
   lineagePraefix: 'sparring',
   antwortFeld: 'coachAntwort',
-  aufrufEingabenZusatz: {},
+  aufrufEingabenZusatz: { umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } },
   auftragPraefix: 'product-coach-sparring',
   auftragTitelPraefix: 'Product-Coach-Sparring',
   fehlerArt: 'frage',
@@ -4979,11 +4982,13 @@ export function erzeugeRequestHandler(optionen = {}) {
         // settingSources '' liest der Prozess ~/.claude/projects/…/memory/MEMORY.md, weil Auto-Memory
         // kein Settings-Wert, sondern ein eigener CLI-Systemprompt-Baustein ist (--setting-sources
         // steuert nur Settings-Dateien). Gesetzt für 'jarvis'/'router'/'product-coach' (Muster
-        // settingSources). konfiguration.aufrufEingabenZusatz (F34 WS-1): nur 'jarvis' trägt
-        // zusätzlich umgebungsvariablen.MAX_THINKING_TOKENS='0' (Task "Jarvis-Chat-Latenz senken",
+        // settingSources). konfiguration.aufrufEingabenZusatz (F34 WS-1/WS-2): beide Chat-Rollen
+        // tragen umgebungsvariablen.MAX_THINKING_TOKENS='0' (Task "Jarvis-Chat-Latenz senken",
         // Schritt 3, code.claude.com/docs/en/model-config — schaltet Extended Thinking auf der
-        // Anthropic-API ab) — 'product-coach' braucht das Denkbudget für ein Sparring-Gespräch,
-        // deshalb dort bewusst leer.
+        // Anthropic-API ab) — für 'product-coach' seit F34 WS-2 real A/B-gemessen (F-609,
+        // features/F34/nachweis-ws2-latenz.md): senkt die Sparring-Median-Latenz von 67,1 s auf
+        // 8,2 s ohne Verlust an Scope-Entwurf-Qualität (reale Fundstellen + Abgrenzung weiterhin
+        // vorhanden).
         aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', disallowedTools: AUTO_MEMORY_DENY_REGEL, ...konfiguration.aufrufEingabenZusatz },
         auftragId,
         worker,

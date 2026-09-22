@@ -9059,12 +9059,13 @@ Auswirkung: Gering — kein Performance- oder Korrektheitsproblem bei realen Dat
 Maßnahme: Bei Gelegenheit einen Satz im `baueProjektkontextAnfragen`-Kommentar ergänzen, dass die Leerprüfung einen zweiten, schmalen Lesevorgang derselben Datei in Kauf nimmt.
 Feature/Run: Fixpaket fix/f603-f598-f595 Code-Review-Pass, 22.09.2026. Quelle: claude/fix-f603-f598-f595.
 
-**F-606** · `BUG` · P2 · offen
+**F-606** · `BUG` · P2 · **erledigt**
 Titel: Jarvis-Ergebnis `auftrag_vorschlag` wird nirgends verarbeitet — kein Weg vom Chat zu einem F22-Auftrag.
 Beschreibung: `public/leitstand/views/chat.js` (`antwortText`) zeigt bei jeder `art` ausschließlich das Feld `antwort` als Text an — ein Jarvis-Ergebnis mit `art: 'auftrag_vorschlag'` (samt `auftrag.titel`/`auftrag.text`, `schemas/ergebnis-jarvis.schema.json`) wird im Chat wie eine reine Antwort dargestellt, das mitgelieferte `auftrag`-Objekt bleibt vollständig ungenutzt. Es existiert kein Bedienelement, das aus diesem Vorschlag einen echten Auftrag anlegt (`POST /api/auftraege`, F22-Pfad) — der einzige Weg zu einem Auftrag ist weiterhin die manuelle Eingabe im Auftragsformular.
 Fundstelle: `public/leitstand/views/chat.js` (`antwortText`); `schemas/ergebnis-jarvis.schema.json` (`auftrag`).
 Auswirkung: Mittel — der Jarvis-Auftragsvorschlag ist ein dokumentiertes Kernszenario der Rolle (F26), landet aber praktisch nie in einem Auftrag; Stefan muss den Vorschlag von Hand abtippen.
 Maßnahme: F34 WS-2 — "Als Auftrag anlegen"-Button im Chat bei `art: 'auftrag_vorschlag'`, der `auftrag.titel`/`auftrag.text` über `POST /api/auftraege` registriert.
+Status: erledigt (F34 WS-2, 22.09.2026) — "Als Auftrag anlegen"-Brücke in `views/chat.js` (`leseAuftragKandidat`/`renderAuftragBruecke`/`initAuftragBruecke`), sowohl für Jarvis' `art: 'auftrag_vorschlag'` (direkt `auftrag.titel`/`auftrag.text`) als auch für Sparrings `art: 'scope_entwurf'` (`baueAuftragAusScope`, Browser-JS-Kopie `public/leitstand/auftrag-aus-scope.js`, Gleichheit zum Server-Original mechanisch geprüft). Öffnet eine vorbefüllte, editierbare Bestätigung; erst "Anlegen" ruft `POST /api/auftraege` (kein automatisches Anlegen/Routen). Real geprüft in `scripts/check-f34-product-coach.mjs` Abschnitte (i)/(j).
 Feature/Run: Challenge F34, 22.09.2026. Quelle: claude/f34-ws1.
 
 **F-607** · `TECH_DEBT` · P4 · offen
@@ -9082,3 +9083,20 @@ Fundstelle: `src/product-coach/index.ts` (`istNichtLeererString`, `istStringList
 Auswirkung: Gering — ein realer Worker liefert praktisch nie Whitespace-only-Text; theoretischer Rand.
 Maßnahme: Bei Gelegenheit `.trim().length > 0` statt `.length > 0` in beiden Modulen (D5: dieselbe Änderung an beiden Stellen, oder in eine gemeinsame Hilfsfunktion ziehen).
 Feature/Run: F34 WS-1 QA-Pass, 22.09.2026. Quelle: claude/f34-ws1.
+
+**F-609** · `TECH_DEBT` · P1 · **erledigt**
+Titel: Sparring-Latenz 60–89 s je Turn (8–16 interne Runden) gegen Jarvis' ~12 s.
+Beschreibung: Verifikation F34 WS-1, 22.09.2026: der reale 3-Turn-Nachweis (`features/F34/nachweis-ws1.md`) zeigt `dauer_ms` von 60279–88734 ms (8–16 interne Werkzeug-/Denkrunden je Turn) für `product-coach` — gegenüber der für `jarvis` dokumentierten Latenz von ~12 s (`state/nachweis-jarvis-latenz.md`, nach F31/F40-Optimierung). Ursache ungetrennt: `KONFIGURATION_PRODUCT_COACH` setzt (anders als `KONFIGURATION_JARVIS`) bewusst kein `umgebungsvariablen.MAX_THINKING_TOKENS: '0'` (Sparring soll das Denkbudget behalten), das allein könnte den Unterschied erklären — ebenso möglich sind mehr Werkzeugrunden (Lesen von Projektkontextdateien), da die Rolleninstruktion (`baueCoachAuftragstext`) keine Lese-Obergrenze nennt.
+Fundstelle: `features/F34/nachweis-ws1.md`; `scripts/leitstand-server.mjs` (`KONFIGURATION_PRODUCT_COACH`); `src/product-coach/index.ts` (`baueCoachAuftragstext`).
+Auswirkung: Mittel bis hoch — bei einer künftigen Sparring-UI (F34 WS-2) wartet ein Mensch pro Turn 1–1,5 Minuten, spürbar langsamer als der Jarvis-Chat.
+Maßnahme: A/B-Messung in F34 WS-2 (MAX_THINKING_TOKENS vs. Lese-Obergrenze in der Rolleninstruktion, einzeln und kombiniert), Ziel Median ≤ 30 s bei gleichbleibender Scope-Entwurf-Qualität.
+Status: erledigt (F34 WS-2, 22.09.2026) — reale A/B-Messung mit vier Varianten (`features/F34/nachweis-ws2-latenz.md`): `MAX_THINKING_TOKENS: '0'` (V1) senkt die Median-Latenz von 67,1 s auf 8,2 s bei weiterhin gegebener Qualitätsschwelle (reale Fundstellen + Abgrenzung) — deutlich vor einer Lese-Obergrenze in der Rolleninstruktion (V2, 46,1 s) und der Kombination (V3, 30,7 s). V1 übernommen, `KONFIGURATION_PRODUCT_COACH` trägt seither denselben Wert wie `KONFIGURATION_JARVIS`. Nebenbefund F-610 (keine der drei schnelleren Varianten fand `state/findings.md` F-596, anders als die V0-Referenz) neu registriert.
+Feature/Run: Verifikation F34 WS-1, 22.09.2026. Quelle: claude/f34-ws1-verifikation.
+
+**F-610** · `TECH_DEBT` · P3 · offen
+Titel: Latenzoptimierte Sparring-Varianten (MAX_THINKING_TOKENS=0 und/oder Lese-Obergrenze) finden niedrigpriorisierte Findings seltener als die unoptimierte Referenz.
+Beschreibung: F34 WS-2 A/B-Messung (`features/F34/nachweis-ws2-latenz.md`): die V0-Referenz (WS-1, unverändert) fand in ihrem Scope-Entwurf sowohl `features/F29/feature.md` (WS-3) als auch `state/findings.md` F-596 — über 16 interne Werkzeugrunden in Turn 1, inklusive eigenständiger Recherche über Feature-Akten und das Findings-Register. Keine der drei schnelleren Varianten (V1 `MAX_THINKING_TOKENS=0`, V2 Lese-Obergrenze in der Rolleninstruktion, V3 beides) fand F-596 — plausible Ursache: `docs/projekt/kontext/lagebild.md` (die vorberechnete Context-Builder-Einspeisung, F40 WS-2) fasst nur OFFENE P1-Findings zusammen, F-596 ist P3 und fehlt dort; die eigenständige, mehrstufige Recherche, die F-596 in V0 fand, wird von beiden Latenzhebeln unabhängig voneinander reduziert. Alle drei schnelleren Varianten erfüllen die im Auftrag definierte Qualitätsschwelle trotzdem (jeweils andere reale Fundstellen + Abgrenzung vorhanden) — kein Korrektheitsfehler, aber eine reale, dokumentierte Grenze der jetzt aktiven Konfiguration (V1).
+Fundstelle: `features/F34/nachweis-ws2-latenz.md`; `docs/projekt/kontext/lagebild.md` (nur P1-Findings); `scripts/leitstand-server.mjs` (`KONFIGURATION_PRODUCT_COACH`).
+Auswirkung: Gering bis mittel — ein Sparring-Gespräch mit der jetzt aktiven, schnellen Konfiguration kann niedrigpriorisierte, aber real relevante Findings/Restarbeiten übersehen, die eine gründlichere (aber ~8× langsamere) Recherche gefunden hätte.
+Maßnahme: Bei Gelegenheit prüfen, ob `lagebild.md` um P2/P3-Findings mit thematischem Bezug erweitert werden sollte, oder ob ein gezielter Hinweis in der Rolleninstruktion ("prüfe bei Scope-Fragen auch state/findings.md") das Verhalten ohne Latenzverlust nachholt.
+Feature/Run: F34 WS-2, 22.09.2026. Quelle: claude/f34-ws2.

@@ -401,9 +401,16 @@
         <section id="view-chat">
           <div class="card-kopf">
             <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg></span>
-            <h2>Chat mit Jarvis</h2>
+            <h2 id="chat-titel">Chat mit Jarvis</h2>
             <span class="chat-online-punkt" aria-hidden="true"></span>
             <span>Online</span>
+          </div>
+          <!-- F34 WS-2: reine Anzeige-/Zielwahl (views/chat.js initModusUmschalter) — lädt/sendet je
+               nach Modus gegen GET/POST /api/chat oder GET/POST /api/sparring. Muster
+               .verbrauch-zeitraum-auswahl (btn/btn-primary, aria-pressed spiegelt views/chat.js). -->
+          <div class="chat-modus-auswahl" role="group" aria-label="Gesprächspartner">
+            <button type="button" id="chat-modus-jarvis-btn" class="btn btn-primary" aria-pressed="true">Jarvis</button>
+            <button type="button" id="chat-modus-sparring-btn" class="btn" aria-pressed="false">Sparring</button>
           </div>
           <p id="chat-fehler" class="fehler" hidden></p>
           <div id="chat-verlauf"></div>

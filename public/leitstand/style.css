@@ -2112,6 +2112,121 @@ th {
   font-style: italic;
 }
 
+/* F34 WS-2: "Jarvis"/"Sparring"-Umschalter — Muster .verbrauch-zeitraum-auswahl (btn/btn-primary). */
+.chat-modus-auswahl {
+  display: flex;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-lg);
+}
+
+/* F34 WS-2 (löst F-606): Alternativen-Liste (art 'alternativen') und strukturierter Scope-Entwurf
+   (art 'scope_entwurf') innerhalb einer Coach-Sprechblase — eigene, gedeckte Karten statt Fließtext,
+   damit Titel/Abwägung bzw. die sieben Scope-Abschnitte klar getrennt bleiben. */
+.chat-alternativen-liste,
+.chat-scope-block {
+  list-style: none;
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.chat-alternative,
+.chat-scope-abschnitt {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chat-alternative-titel,
+.chat-scope-abschnitt-titel {
+  margin: 0 0 var(--space-3xs);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.chat-alternative-beschreibung,
+.chat-alternative-abwaegung,
+.chat-scope-abschnitt p {
+  margin: 0;
+}
+
+.chat-alternative-abwaegung {
+  margin-top: var(--space-3xs);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.chat-scope-liste {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.chat-scope-leer {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+/* F34 WS-2 (löst F-606): "Als Auftrag anlegen" — Trigger-Button und der daraus geöffnete,
+   editierbare Bestätigungsdialog (Muster views/projekt.js Auftragsformular: Titel + Auftragstext,
+   erst "Anlegen" schreibt). Kein automatisches Anlegen/Routen — der Mensch bestätigt bewusst. */
+.chat-auftrag-oeffnen-btn {
+  margin-top: var(--space-sm);
+}
+
+.chat-auftrag-dialog {
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.chat-auftrag-dialog-label {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.chat-auftrag-titel-feld,
+.chat-auftrag-text-feld {
+  width: 100%;
+  font: inherit;
+  padding: var(--space-3xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  color: inherit;
+}
+
+.chat-auftrag-text-feld {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.chat-auftrag-dialog-fehler {
+  margin: 0;
+}
+
+.chat-auftrag-dialog-aktionen {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-3xs);
+}
+
+.chat-auftrag-dialog-erfolg p {
+  margin: 0;
+}
+
 .chat-eingabe-zeile {
   display: flex;
   align-items: flex-end;
