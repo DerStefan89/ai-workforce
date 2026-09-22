@@ -30,9 +30,11 @@ Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
 F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 #196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
 (`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
-offen, RC): F32 Verbrauch & Kontingent `IN_ARBEIT` (WS-1 Verbrauch-
-Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
-begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
+offen, RC): F32 Verbrauch & Kontingent `FEATURE_GATE` (WS-1 Verbrauch-
+Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Dashboard PR #216 —
+Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Restfinding
+F-603 (P2, sollte vor Stefans Abnahme behoben werden) bleibt offen, siehe
+`features/F32/feature.md`), F33 Projektkontext & Roadmap
 `ABGESCHLOSSEN` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
@@ -448,10 +450,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 
 ### Meilenstein 5 — läuft (`docs/projekt/zielfassung.md` §13.6)
 
-- ⏳ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
-  `GET /api/verbrauch`). Akte `features/F32/feature.md`, Status
-  `IN_ARBEIT` (WS-1 erledigt, PR #200, `fc68d2d`; WS-2 UI-Ansicht im
-  Leitstand noch nicht begonnen). Nach F6a, F16.
+- ✅ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
+  `GET /api/verbrauch`, Verbrauchsansicht im Dashboard). Akte
+  `features/F32/feature.md`, Status `FEATURE_GATE` (WS-1 PR #200,
+  `fc68d2d`; WS-2 PR #216; Feature-Review-Pass 22.09.2026 „Freigegeben mit
+  Hinweisen", Restfinding F-603 (P2) sollte vor Stefans Abnahme behoben
+  werden). Nach F6a, F16.
 - ✅ **F33** — Projektkontext & Roadmap (Beschreibung/Anweisungen/Roadmap als
   Repo-Dateien, Einspeisung über den Context Builder für `jarvis`/`router`,
   sichtbare Roadmap-Karte im Workboard). Akte `features/F33/feature.md`,

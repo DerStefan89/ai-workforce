@@ -60,3 +60,41 @@ die dashboard.js-internen WS-2-Bausteine) und F-602 (kein Browser-Realtest
 bei ~400px, sitebreites Muster) in `state/findings.md` registriert.
 
 `npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+
+## 2026-09-22 — Feature-Review-Pass gesamt, Status IN_ARBEIT → FEATURE_GATE
+
+Feature-Review-Pass (`code-reviewer` + `qa`, je frischer Kontext, Muster
+F33/F40) über das GESAMTE Feature F32 (WS-1 #200 + WS-2 #216 zusammen, nicht
+nur den zuletzt gebauten Workstream). Beide Urteile: „Freigegeben mit
+Hinweisen", kein Blocker.
+
+`code-reviewer`: Vertragskonsistenz zwischen WS-1-Projektion und
+WS-2-Konsum durchgehend deckungsgleich, Zwei-Worker-Konsistenz
+(claude-code/Codex) bestätigt, keine Logik-Duplikation. `qa`:
+Zeitraumgrenzen korrekt inklusiv, beide Worker gleich behandelt,
+Erstnutzung zeigt verständlichen Leerzustand, keine Verwechslungsgefahr
+mit Kontingent (F-508) oder der Roadmap-Karte (F33).
+
+Beide Agenten fanden unabhängig voneinander denselben neuen Fehler (nicht
+doppelt registriert): `GET /api/verbrauch` hat keinen "wirft nie"-Vertrag
+(anders als `baueRoadmapProjektion`, F33) und `holeVerbrauch` prüft
+`response.ok` nicht (anders als `holeRessourcen`/`holeAbdeckung` im
+selben Modul) — ein 500 wird stillschweigend als Erfolg übernommen,
+`aggregiereVerbrauch` wirft daraufhin einen `TypeError` mitten in der
+`render()`-Konstruktion, und das GESAMTE Dashboard (nicht nur die
+Verbrauchskarte) friert ohne sichtbaren Fehler und ohne Selbstheilung ein.
+Als **F-603** (`BUG`, P2, offen) in `state/findings.md` registriert und in
+`features/F32/feature.md` unter "Bekannte Grenzen" referenziert — kein
+Blocker (seltener Trigger, kein Datenverlust), aber vor `ABGESCHLOSSEN` zu
+beheben. Bereits bekannte Befunde F-601/F-602 wurden von beiden Agenten
+erneut bestätigt, nicht doppelt registriert.
+
+`features/F32/feature.md`: Status `IN_ARBEIT` → `FEATURE_GATE` (Muster
+F33: Feature-Review-Pass ist Voraussetzung für `FEATURE_GATE`,
+`ABGESCHLOSSEN` bleibt an Stefans Abnahme gebunden, F-603 sollte davor
+behoben werden). `docs/STATUS.md` entsprechend aktualisiert. `node
+scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert).
+`npm run check`: siehe Bericht dieses Auftrags.
+
+Nicht Teil dieses Auftrags (Doku-Auftrag, kein Bau): Behebung von F-603
+selbst; Stefans Abnahme.
