@@ -1876,18 +1876,29 @@ export function baueProjektkontextAnfragen(kontextPfad, roadmapPfad) {
  * gesamten Lauf zu blockieren — Projektkontext ist wertvoll, wenn
  * vorhanden, aber anders als die Auftragsreferenz keine Voraussetzung
  * dafür, dass jarvis/router überhaupt laufen.
+ *
+ * F-598-Fix: eine existierende, aber leere Datei (0 Byte oder nur
+ * Whitespace — z. B. durch einen fehlgeschlagenen Merge oder einen
+ * Vertipper versehentlich geleert) besteht den reinen Existenz-Filter,
+ * trägt aber keinen Informationswert und würde sonst stillschweigend einen
+ * Kontext-Slot belegen (QA-Pass-Befund, unterlief die AK7-Absicht). Wird
+ * jetzt wie eine fehlende Datei behandelt — dieselbe Warnung, derselbe
+ * Ausschluss.
  * @param anfragen - Anfragen mit repo-relativem `pfad`
  * @param repoWurzel - absoluter Pfad der Repo-Wurzel dieser Instanz
- * @returns nur die Anfragen, deren Datei real existiert
+ * @returns nur die Anfragen, deren Datei real existiert und nicht leer ist
  */
 export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
   return anfragen.filter((anfrage) => {
     const pfadErgebnis = loeseEvidenzPfadAuf(anfrage.pfad, repoWurzel)
-    const existiert = pfadErgebnis.ok && existsSync(join(repoWurzel, pfadErgebnis.relativerPfad)) && statSync(join(repoWurzel, pfadErgebnis.relativerPfad)).isFile()
-    if (!existiert) {
-      console.warn(`[leitstand] ${anfrage.pfad}: Projektkontext fehlt, wird übersprungen`)
+    const absoluterPfad = pfadErgebnis.ok ? join(repoWurzel, pfadErgebnis.relativerPfad) : null
+    const existiertAlsDatei = absoluterPfad !== null && existsSync(absoluterPfad) && statSync(absoluterPfad).isFile()
+    const nichtLeer = existiertAlsDatei && readFileSync(absoluterPfad, 'utf8').trim().length > 0
+    if (!nichtLeer) {
+      const grund = existiertAlsDatei ? 'ist leer' : 'fehlt'
+      console.warn(`[leitstand] ${anfrage.pfad}: Projektkontext ${grund}, wird übersprungen`)
     }
-    return existiert
+    return nichtLeer
   })
 }
 
@@ -3930,7 +3941,9 @@ export function erzeugeRequestHandler(optionen = {}) {
 
     // F32 WS-1: reine Projektion, keine weitere Logik hier (D5) — siehe
     // scripts/leitstand/routen-verbrauch.mjs. ?von=/?bis= (ISO-8601) filtern
-    // über erstellt_am, beide optional.
+    // über erstellt_am, beide optional. F-603-Fix: baueVerbrauchsProjektion
+    // wirft nie mehr (Muster baueRoadmapProjektion) — liefert immer 200,
+    // Fehlerfall ist ein Fachergebnis im Körper ({ status: 'fehler', grund }).
     if (req.method === 'GET' && pfad === '/api/verbrauch') {
       const von = angefragteUrl.searchParams.get('von') ?? undefined
       const bis = angefragteUrl.searchParams.get('bis') ?? undefined

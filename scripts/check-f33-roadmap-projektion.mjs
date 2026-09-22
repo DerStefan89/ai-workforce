@@ -14,6 +14,9 @@
  *     fehlt) → dessen Eintrag trägt status 'keine_akte'.
  * (e) echter HTTP-Aufruf GET /api/roadmap gegen einen über
  *     erzeugeRequestHandler erzeugten Testserver → 200.
+ * (f) F-595-Fix, Rot-Fall: eine Feature-id mit einem '../'-Segment
+ *     ('../x') wird von validiereRoadmapDaten abgelehnt (Pattern
+ *     ^F[0-9]+[A-Za-z]?$) → status 'ungueltig', nie als Pfad aufgelöst.
  *
  * Aufruf: node scripts/check-f33-roadmap-projektion.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -78,7 +81,8 @@ console.log('\n=== F33-WS2-Roadmap-Projektion-Check ===\n')
       }
     }
 
-    // (d) Feature ohne eigene Akte
+    // (d) Feature ohne eigene Akte — 'F999' erfüllt das F-595-Pattern (^F[0-9]+[A-Za-z]?$), es
+    // existiert nur real keine features/F999/feature.md.
     {
       const pfad = join(testWurzel, 'docs', 'projekt', 'roadmap.json')
       writeFileSync(
@@ -86,7 +90,7 @@ console.log('\n=== F33-WS2-Roadmap-Projektion-Check ===\n')
         JSON.stringify({
           roadmap_schema: 'v0',
           vision: 'Test',
-          meilensteine: [{ id: 'M1', titel: 'Meilenstein 1', status: 'LAEUFT', features: ['F-ohne-akte'] }],
+          meilensteine: [{ id: 'M1', titel: 'Meilenstein 1', status: 'LAEUFT', features: ['F999'] }],
         }),
         'utf8'
       )
@@ -96,6 +100,26 @@ console.log('\n=== F33-WS2-Roadmap-Projektion-Check ===\n')
         befunde.push(`(d) Feature ohne Akte: erwartet status 'keine_akte', erhalten ${JSON.stringify(projektion)}`)
       } else {
         console.log("✓ (d) Feature ohne features/<id>/feature.md → status 'keine_akte'.")
+      }
+    }
+
+    // (f) F-595-Fix, Rot-Fall: '../x' als Feature-id wird von validiereRoadmapDaten abgelehnt
+    {
+      const pfad = join(testWurzel, 'docs', 'projekt', 'roadmap.json')
+      writeFileSync(
+        pfad,
+        JSON.stringify({
+          roadmap_schema: 'v0',
+          vision: 'Test',
+          meilensteine: [{ id: 'M1', titel: 'Meilenstein 1', status: 'LAEUFT', features: ['../x'] }],
+        }),
+        'utf8'
+      )
+      const projektion = baueRoadmapProjektion({ repoWurzel: testWurzel, roadmapPfad: 'docs/projekt/roadmap.json' })
+      if (projektion.status !== 'ungueltig' || !Array.isArray(projektion.fehler) || projektion.fehler.length === 0) {
+        befunde.push(`(f) Rot-Fall '../x' als Feature-id: erwartet status 'ungueltig', erhalten ${JSON.stringify(projektion)}`)
+      } else {
+        console.log(`✓ (f) Rot-Fall '../x' als Feature-id → status 'ungueltig' (${projektion.fehler[0]}), nie als Pfad aufgelöst.`)
       }
     }
   } finally {

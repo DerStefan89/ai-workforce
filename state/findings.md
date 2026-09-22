@@ -8968,12 +8968,13 @@ Auswirkung: Keine — reine Dokumentationslücke, kein Fehlverhalten.
 Maßnahme: Keine (dokumentiert); bei Bedarf könnte `vision` künftig z. B. als Tooltip/Untertitel der Karte ergänzt werden.
 Feature/Run: F33 WS-2 Code-Review, 22.09.2026. Quelle: claude/318.
 
-**F-595** · `TECH_DEBT` · P3 · offen
+**F-595** · `TECH_DEBT` · P3 · erledigt
 Titel: Feature-IDs aus roadmap.json nicht auf Muster beschränkt, "../" wird im feature.md-Pfad aufgelöst.
 Beschreibung: `schemas/roadmap.schema.json` prüft `features[]` nur als String mit `minLength: 1`, ohne Formatbeschränkung. `baueFeatureEintrag` (`scripts/leitstand/routen-roadmap.mjs`) bildet daraus unverändert `join(repoWurzel, 'features', featureId, 'feature.md')` und liest die Datei. Eine `roadmap.json` mit z. B. `"../../irgendwas"` als Feature-ID würde außerhalb von `features/` lesen. Feature-Review-Pass (code-reviewer, frischer Kontext, 22.09.2026) bestätigte den Befund unabhängig vom Auftragshinweis.
 Fundstelle: `schemas/roadmap.schema.json` (`features.items`); `scripts/leitstand/routen-roadmap.mjs` (`baueFeatureEintrag`).
 Auswirkung: Gering — `roadmap.json` ist eine vertrauenswürdige, von Hand gepflegte Repo-Datei, kein externer Eingabepfad; nur Status-Zeile und Titel-Überschrift werden extrahiert, kein Rohdump.
 Maßnahme: Schema-Pattern `^F[0-9]+[a-z]?$` ergänzen, oder Prüfung, dass der aufgelöste Pfad unter `features/` liegt.
+Status: erledigt (Fixpaket fix/f603-f598-f595, 22.09.2026) — `schemas/roadmap.schema.json` `features.items` trägt jetzt `pattern: "^F[0-9]+[A-Za-z]?$"`, `validiereRoadmapDaten` (`src/projektkontext/index.ts`) prüft dasselbe Muster (D5, kein zweiter Regelsatz; reale IDs `F1B`/`F6a` geprüft gültig). Zusätzlich Defense-in-Depth in `baueFeatureEintrag` (`scripts/leitstand/routen-roadmap.mjs`): der aufgelöste Pfad wird über `path.resolve` + Präfixvergleich gegen `<repoWurzel>/features/` geprüft, liest nie außerhalb. Rot-Fall `'../x'` und Regressionsschutz (reale `roadmap.json` bleibt gültig) in `scripts/check-f33-roadmap-projektion.mjs` Abschnitt (f).
 Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/320.
 
 **F-596** · `TECH_DEBT` · P3 · offen
@@ -8992,12 +8993,13 @@ Auswirkung: Gering — nur Diagnosequalität betroffen, kein Fehlverhalten.
 Maßnahme: Fehlerquellen trennen oder Meldung generischer fassen ("Datei nicht lesbar oder ungültiges JSON: ...").
 Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/320.
 
-**F-598** · `BUG` · P3 · offen
+**F-598** · `BUG` · P3 · erledigt
 Titel: Leere, aber existierende Projektkontext-Datei wird wie gültiger Inhalt behandelt, nicht wie eine fehlende Datei.
 Beschreibung: Feature-Review-Pass (qa, frischer Kontext): `filtereExistierendeAnfragen` (`scripts/leitstand-server.mjs`) prüft nur `existsSync`/`isFile`, keine Mindestlänge. Wird z. B. `beschreibung.md` versehentlich auf 0 Byte gekürzt (fehlgeschlagener Merge, Vertipper), besteht die Datei den Existenz-Filter und wird mit leerem Inhalt in die Anfragenliste aufgenommen — belegt einen Budget-/Prompt-Slot ohne Informationswert, ohne Warnung. Unterläuft die AK7-Absicht, nie stillschweigend wertlos einzuspeisen (AK7 deckt bisher nur den Fall "Datei fehlt komplett" ab).
 Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`, `loeseAusfuehrungsEingabenAuf`).
 Auswirkung: Mittel — plausibler Fehlerfall (versehentliches Leeren/fehlerhafter Merge), führt zu stillem Informationsverlust für `jarvis`/`router` ohne sichtbaren Hinweis.
 Maßnahme: Mindestlängen-Check in `filtereExistierendeAnfragen` ergänzen (Muster der bestehenden "nicht leer"-Prüfung in `check-f33-projektkontext.mjs` Abschnitt a), oder bewusst als weitere "Bekannte Grenze" dokumentieren.
+Status: erledigt (Fixpaket fix/f603-f598-f595, 22.09.2026) — `filtereExistierendeAnfragen` liest den Dateiinhalt jetzt zusätzlich zur Existenzprüfung und schließt eine leere oder nur aus Whitespace bestehende Datei (`.trim().length === 0`) genauso aus wie eine fehlende (dieselbe `console.warn`-Warnung, nur mit unterschiedlichem Grund im Log). Gate-Fall in `scripts/check-f33-projektkontext.mjs` Abschnitt (h).
 Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/321.
 
 **F-599** · `TECH_DEBT` · P4 · offen
@@ -9032,10 +9034,27 @@ Auswirkung: Gering — sitebreites, vorbestehendes Muster, keine neue Regression
 Maßnahme: Bei Gelegenheit projektweit (nicht nur F32) prüfen, ob dichte Tabellen einen `overflow-x:auto`-Wrapper brauchen; bis dahin nur dokumentiert.
 Feature/Run: F32 WS-2 QA-Pass, 22.09.2026. Quelle: claude/f32-ws2.
 
-**F-603** · `BUG` · P2 · offen
+**F-603** · `BUG` · P2 · erledigt
 Titel: Ein 500 von GET /api/verbrauch friert das gesamte Dashboard ohne sichtbaren Fehler ein (F32 Feature-Review-Pass).
 Beschreibung: Feature-Review-Pass (code-reviewer UND qa, unabhängig voneinander, identischer Befund): `baueVerbrauchsProjektion` (`scripts/leitstand/routen-verbrauch.mjs`) hat — anders als `baueRoadmapProjektion` (F33, dokumentierter "wirft nie"-Vertrag) — kein eigenes try/catch; ein Wurf (seltener IO-/Berechtigungsfehler auf `kontrollzustand/`, nicht gewöhnliche Datenkorruption, da der Checkpoint-Store selbst bereits defensiv ist) fällt in den generischen 500-Catch-all des Servers (`scripts/leitstand-server.mjs`). `holeVerbrauch` (`public/leitstand/api.js`) prüft `response.ok` nicht (anders als `holeRessourcen`/`holeAbdeckung` im selben Modul, die exakt diesen Fehlerfall bereits einmal per Code-Review behoben bekamen) und übernimmt einen 500-Körper `{ grund }` stillschweigend als Erfolg. `aggregiereVerbrauch` (`public/leitstand/views/dashboard.js`) iteriert danach über `gruppen === undefined` und wirft einen `TypeError`, MITTEN in der `render()`-Template-Konstruktion, bevor `innerHTML` gesetzt wird — nicht nur die Verbrauchskarte, das gesamte Dashboard (alle sechs Kacheln) bleibt ohne Fehlermeldung auf dem letzten Stand hängen, ohne Selbstheilung (jeder folgende 2-Sekunden-Poll-Tick wirft erneut). Der Retry-Fix aus dem WS-2-QA-Pass (Klick auf den aktiven Zeitraum-Button bei Fehler) greift hier nicht, weil er nur den Client-Sentinel `{ fehler: true }` erkennt, keinen `{ grund }`-Serverfehlerkörper.
 Fundstelle: `scripts/leitstand/routen-verbrauch.mjs` (`baueVerbrauchsProjektion`); `public/leitstand/api.js` (`holeVerbrauch`); `public/leitstand/views/dashboard.js` (`ladeVerbrauch`, `aggregiereVerbrauch`, `render`).
 Auswirkung: Mittel — seltener Trigger (kein Alltagsfall), aber bei Eintritt eine vollständige, für Stefan unsichtbare Einfrierung der gesamten Dashboard-Ansicht ohne Selbstheilung bis zum manuellen Reload.
 Maßnahme: `holeVerbrauch` auf das `holeJsonOderWirf`-Muster umstellen (analog `holeRessourcen`/`holeAbdeckung`), und/oder `baueVerbrauchsProjektion`/ihre Route nach dem `baueRoadmapProjektion`-Vorbild robust gegen Würfe machen. Vor `ABGESCHLOSSEN` zu beheben.
+Status: erledigt (Fixpaket fix/f603-f598-f595, 22.09.2026) — alle drei Schichten gehärtet: `holeVerbrauch` nutzt jetzt `holeJsonOderWirf` (Timeout beibehalten); `baueVerbrauchsProjektion` wirft nie mehr (Muster `baueRoadmapProjektion`, `try/catch` um die gesamte Funktion, `{ status: 'ok', ... } | { status: 'fehler', grund }`, serverseitig geloggt über `console.error`); `ladeVerbrauch` (`dashboard.js`) normalisiert ein Fehler-Fachergebnis auf denselben Client-Sentinel `{ fehler: true }` wie ein Netzwerkfehler, `verbrauchKarte`/`aggregiereVerbrauch` prüfen zusätzlich defensiv `Array.isArray(gruppen)`, sodass ein unerwarteter Antwortkörper nie einen `TypeError` auslöst. Rot-Fall (simulierter IO-Fehler, direkt UND über echten HTTP-Aufruf → 200 statt 500) in `scripts/check-f32-verbrauch-ansicht.mjs` Abschnitte (c)/(d).
 Feature/Run: F32 Feature-Review-Pass, 22.09.2026. Quelle: claude/f32-feature-gate.
+
+**F-604** · `TECH_DEBT` · P3 · offen
+Titel: filtereExistierendeAnfragen liest jetzt eine Datei ohne eigenes try/catch (F-598-Fix, TOCTOU).
+Beschreibung: Code-Review-Befund (frischer Kontext, Fixpaket fix/f603-f598-f595): der F-598-Fix ergänzt in `filtereExistierendeAnfragen` (`scripts/leitstand-server.mjs`) ein `readFileSync(absoluterPfad, 'utf8')` zur Leerprüfung, aber anders als das strukturell gleiche `readFileSync` in `loeseAusfuehrungsEingabenAuf` steht es in keinem eigenen try/catch. Bei einem TOCTOU-Fall (Datei verschwindet zwischen `statSync` und `readFileSync`) wirft der Filter-Callback unbehandelt. Praktisch ungefährlich — der äußere Request-Handler-try/catch fängt den Wurf, loggt ihn und beantwortet mit 500 (kein stiller Fehler, kein Hänger) — aber inkonsistent zum unmittelbar benachbarten Muster in derselben Datei.
+Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`, `loeseAusfuehrungsEingabenAuf`).
+Auswirkung: Gering — sehr seltenes Zeitfenster, bereits durch den äußeren Handler abgefangen, kein stiller Fehler.
+Maßnahme: Bei Gelegenheit denselben try/catch-Stil wie `loeseAusfuehrungsEingabenAuf` übernehmen, oder den Fall bewusst als akzeptierte Grenze kommentieren.
+Feature/Run: Fixpaket fix/f603-f598-f595 Code-Review-Pass, 22.09.2026. Quelle: claude/fix-f603-f598-f595.
+
+**F-605** · `TECH_DEBT` · P3 · offen
+Titel: Projektkontext-Dateien werden bei jedem Chat-/Router-Aufruf zweimal gelesen (F-598-Fix, zweiter I/O-Zugriff).
+Beschreibung: Code-Review-Befund (frischer Kontext, Fixpaket fix/f603-f598-f595): jede der vier `baueProjektkontextAnfragen`-Dateien (`beschreibung.md`, `anweisungen.md`, `roadmap.json`, `lagebild.md`) wird jetzt einmal in `filtereExistierendeAnfragen` (Leerprüfung, F-598-Fix) und ein zweites Mal in `loeseAusfuehrungsEingabenAuf` (Inhalt für den Kontextpaket-Eintrag) gelesen. Kein D5-Verstoß (keine zweite Logikkopie, nur ein zweiter I/O-Zugriff derselben Datei) und bei den real vorkommenden kleinen Datei-/Markdown-Größen unproblematisch, aber der Dateikopf-Kommentar von `baueProjektkontextAnfragen` ("kein zweiter Lesepfad") bezieht sich nur auf die Anfragen-Konstruktion selbst, nicht auf diesen neuen, zusätzlichen Lesevorgang — für Nachvollziehbarkeit unvollständig dokumentiert.
+Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`, `loeseAusfuehrungsEingabenAuf`, `baueProjektkontextAnfragen`-Dateikopfkommentar).
+Auswirkung: Gering — kein Performance- oder Korrektheitsproblem bei realen Dateigrößen, nur ein Dokumentationsdefizit.
+Maßnahme: Bei Gelegenheit einen Satz im `baueProjektkontextAnfragen`-Kommentar ergänzen, dass die Leerprüfung einen zweiten, schmalen Lesevorgang derselben Datei in Kauf nimmt.
+Feature/Run: Fixpaket fix/f603-f598-f595 Code-Review-Pass, 22.09.2026. Quelle: claude/fix-f603-f598-f595.

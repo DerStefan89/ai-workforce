@@ -10,7 +10,13 @@
  *     gebauten `von`-Wert (Muster check-f33-roadmap-projektion.mjs
  *     Abschnitt (e): erzeugeRequestHandler + echter Testserver) → 200 und
  *     die von scripts/leitstand/routen-verbrauch.mjs dokumentierte
- *     Struktur { gruppen, laeufeGesamt, ohneBeobachtungGesamt }.
+ *     Struktur { status: 'ok', gruppen, laeufeGesamt, ohneBeobachtungGesamt }.
+ * (c) Rot-Fall (F-603-Fix): baueVerbrauchsProjektion wirft nie, auch nicht
+ *     bei einem realen IO-Fehler — ein `basisVerzeichnis`, das auf eine
+ *     Datei statt ein Verzeichnis zeigt, lässt `readdirSync` intern werfen;
+ *     die Funktion fängt das ab und liefert { status: 'fehler', grund }.
+ * (d) Derselbe Rot-Fall über einen echten HTTP-Aufruf: die Route liefert
+ *     weiterhin 200 (kein 500) mit demselben Fachergebnis im Körper.
  *
  * Aufruf: node scripts/check-f32-verbrauch-ansicht.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -18,7 +24,9 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { writeFileSync } from 'node:fs'
 import { berechneVerbrauchsVon } from '../public/leitstand/verbrauch-zeitraum.js'
+import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -67,9 +75,12 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
     } else {
       const koerper = await antwort.json()
       const hatErwarteteStruktur =
-        Array.isArray(koerper.gruppen) && typeof koerper.laeufeGesamt === 'number' && typeof koerper.ohneBeobachtungGesamt === 'number'
+        koerper.status === 'ok' &&
+        Array.isArray(koerper.gruppen) &&
+        typeof koerper.laeufeGesamt === 'number' &&
+        typeof koerper.ohneBeobachtungGesamt === 'number'
       if (!hatErwarteteStruktur) {
-        befunde.push(`(b) GET /api/verbrauch?von=...: erwartete Struktur { gruppen, laeufeGesamt, ohneBeobachtungGesamt } nicht erfüllt, erhalten ${JSON.stringify(koerper)}`)
+        befunde.push(`(b) GET /api/verbrauch?von=...: erwartete Struktur { status: 'ok', gruppen, laeufeGesamt, ohneBeobachtungGesamt } nicht erfüllt, erhalten ${JSON.stringify(koerper)}`)
       } else {
         console.log('✓ (b) echter HTTP-Aufruf GET /api/verbrauch mit client-seitig gebautem von-Wert → 200, erwartete Struktur.')
       }
@@ -80,14 +91,63 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
   }
 }
 
+// ─── (c) Rot-Fall: baueVerbrauchsProjektion wirft nie (F-603-Fix) ───────────
+{
+  const dateiAlsBasisVerzeichnis = `kontrollzustand-test-f32-ansicht-rotfall-${randomUUID()}.txt`
+  writeFileSync(dateiAlsBasisVerzeichnis, 'ich bin ein Verzeichnis, keine Datei', 'utf8')
+  try {
+    const projektion = baueVerbrauchsProjektion(dateiAlsBasisVerzeichnis)
+    if (projektion.status !== 'fehler' || typeof projektion.grund !== 'string' || projektion.grund.length === 0) {
+      befunde.push(`(c) Rot-Fall (Datei statt Verzeichnis): erwartet { status: 'fehler', grund }, erhalten ${JSON.stringify(projektion)}`)
+    } else {
+      console.log(`✓ (c) baueVerbrauchsProjektion wirft nicht bei IO-Fehler → { status: 'fehler', grund: '${projektion.grund}' }.`)
+    }
+  } finally {
+    raeumeVerzeichnis(dateiAlsBasisVerzeichnis)
+  }
+}
+
+// ─── (d) Derselbe Rot-Fall über einen echten HTTP-Aufruf: kein 500 ─────────
+{
+  const dateiAlsBasisVerzeichnis = `kontrollzustand-test-f32-ansicht-rotfall-http-${randomUUID()}.txt`
+  writeFileSync(dateiAlsBasisVerzeichnis, 'ich bin ein Verzeichnis, keine Datei', 'utf8')
+  const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+  const handler = erzeugeRequestHandler({ basisVerzeichnis: dateiAlsBasisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
+  const server = createServer(handler)
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const { port } = server.address()
+    const antwort = await fetch(`http://127.0.0.1:${port}/api/verbrauch`)
+    if (antwort.status !== 200) {
+      befunde.push(`(d) GET /api/verbrauch (Rot-Fall): erwartet 200 (kein 500), erhalten ${antwort.status}`)
+    } else {
+      const koerper = await antwort.json()
+      if (koerper.status !== 'fehler' || typeof koerper.grund !== 'string') {
+        befunde.push(`(d) GET /api/verbrauch (Rot-Fall): erwartet { status: 'fehler', grund }, erhalten ${JSON.stringify(koerper)}`)
+      } else {
+        console.log("✓ (d) echter HTTP-Aufruf bei IO-Fehler → 200 (kein 500), Fachergebnis { status: 'fehler', grund }.")
+      }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(dateiAlsBasisVerzeichnis)
+  }
+}
+
 // ─── Ergebnis ───────────────────────────────────────────────────────────────
+// process.exitCode statt process.exit() (Muster check-f33-projektkontext.mjs): (b) und (d) öffnen
+// und schließen nacheinander zwei reale HTTP-Server im selben Prozess — ein hartes process.exit()
+// direkt danach kollidierte real (reproduzierbar, nicht einmalig) mit einem noch schließenden
+// libuv-Handle des zweiten Servers ("Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)",
+// exit 127, src/win/async.c). process.exitCode setzt nur den Exit-Code und lässt den Prozess über
+// die normale Event-Loop-Räumung beenden, statt ihn hart abzuwürgen.
 console.log('')
 if (befunde.length === 0) {
   console.log('✓ Keine Befunde.\n')
-  process.exit(0)
+  process.exitCode = 0
+} else {
+  console.log(`✗ ${befunde.length} Befund(e):\n`)
+  for (const b of befunde) console.log(`  - ${b}`)
+  console.log('')
+  process.exitCode = 1
 }
-
-console.log(`✗ ${befunde.length} Befund(e):\n`)
-for (const b of befunde) console.log(`  - ${b}`)
-console.log('')
-process.exit(1)

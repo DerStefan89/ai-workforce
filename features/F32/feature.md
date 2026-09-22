@@ -195,28 +195,22 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
   (QA-Pass, 22.09.2026, F-602):** sitebreites, vorbestehendes Muster (kein
   Repo-Table hat einen `overflow-x:auto`-Wrapper), kein F32-spezifischer
   Regressionsbefund, aber auch nicht real widerlegt.
-- **`GET /api/verbrauch` hat keinen "wirft nie"-Vertrag, `holeVerbrauch`
-  prüft `response.ok` nicht — ein 500 friert das gesamte Dashboard ohne
-  sichtbaren Fehler ein (Feature-Review-Pass, 22.09.2026, F-603):**
-  `baueVerbrauchsProjektion` (anders als `baueRoadmapProjektion`, F33) hat
-  kein eigenes try/catch; ein Wurf (seltener IO-/Berechtigungsfehler auf
-  `kontrollzustand/`, nicht gewöhnliche Datenkorruption — der
-  Checkpoint-Store selbst ist bereits defensiv) fällt in den generischen
-  500-Catch-all des Servers. `holeVerbrauch` (`public/leitstand/api.js`)
-  nutzt — anders als `holeRessourcen`/`holeAbdeckung` im selben Modul —
-  nicht `holeJsonOderWirf` und prüft `response.ok` nicht, übernimmt einen
-  500-Körper also stillschweigend als Erfolg. `aggregiereVerbrauch`
-  (`dashboard.js`) wirft daraufhin einen `TypeError` (`gruppen` nicht
-  iterierbar) MITTEN in der `render()`-Template-Konstruktion, bevor
-  `innerHTML` gesetzt wird — nicht nur die Verbrauchskarte, das GESAMTE
-  Dashboard bleibt ohne sichtbare Fehlermeldung auf dem letzten Stand
-  hängen, ohne Selbstheilung (jeder folgende Poll-Tick wirft erneut). Ein
-  Klick auf den bereits aktiven Zeitraum-Button (der Retry-Fix aus dem
-  WS-2-QA-Pass) greift hier nicht, weil er nur den Client-Sentinel
-  `{ fehler: true }` erkennt, keinen `{ grund }`-Serverfehlerkörper.
-  Unabhängig von zwei frischen Kontexten (code-reviewer und qa) mit
-  identischem Befund. Kein Blocker (seltener Trigger, kein Datenverlust),
-  aber vor `ABGESCHLOSSEN` zu beheben.
+- **`GET /api/verbrauch` hatte keinen "wirft nie"-Vertrag, `holeVerbrauch`
+  prüfte `response.ok` nicht — ein 500 fror das gesamte Dashboard ohne
+  sichtbaren Fehler ein (Feature-Review-Pass, 22.09.2026, F-603, behoben
+  Fixpaket fix/f603-f598-f595, 22.09.2026):** `baueVerbrauchsProjektion`
+  wirft jetzt nie mehr (Muster `baueRoadmapProjektion`, F33 —
+  `{ status: 'ok', ... } | { status: 'fehler', grund }`, serverseitig
+  geloggt); `holeVerbrauch` nutzt jetzt `holeJsonOderWirf`
+  (`public/leitstand/api.js`, Muster `holeRessourcen`/`holeAbdeckung`);
+  `ladeVerbrauch` normalisiert ein Fehler-Fachergebnis auf denselben
+  Client-Sentinel `{ fehler: true }` wie einen Netzwerkfehler, und
+  `verbrauchKarte`/`aggregiereVerbrauch` prüfen zusätzlich defensiv
+  `Array.isArray(gruppen)` — nie mehr ein `TypeError`, egal welche der
+  drei Schichten versagt. Rot-Fall (simulierter IO-Fehler, direkter Aufruf
+  UND echter HTTP-Request → 200 statt 500) in
+  `scripts/check-f32-verbrauch-ansicht.mjs` Abschnitte (c)/(d). Details:
+  `state/findings.md` F-603.
 
 ## Feature Review
 Feature-Review-Pass am 22.09.2026 (frischer Kontext, Muster
@@ -250,4 +244,19 @@ Agenten erneut bestätigt (keine Abweichung Doku↔Verhalten), nicht doppelt
 registriert.
 
 Status damit `IN_ARBEIT` → `FEATURE_GATE`. `ABGESCHLOSSEN` erst nach
-Stefans Abnahme (Muster F33/F40); F-603 sollte davor behoben werden.
+Stefans Abnahme (Muster F33/F40).
+
+### Nachtrag 22.09.2026 — F-603 behoben (Fixpaket fix/f603-f598-f595)
+
+F-603 (empfohlen vor `ABGESCHLOSSEN`) ist behoben — siehe "Bekannte
+Grenzen" oben und `state/findings.md` F-603 für die volle Beschreibung der
+dreischichtigen Härtung (Route, `holeVerbrauch`, `dashboard.js`). Reales
+Fixpaket zusammen mit F-598 (F33) und F-595 (F33). Reviewer-/QA-Pass mit
+frischem Kontext über das gesamte Fixpaket: `code-reviewer` „Freigegeben
+mit Hinweisen" (kein Blocker; zwei neue, nicht blockierende Befunde
+F-604/F-605 registriert — fehlendes eigenes try/catch beim neuen
+Leerprüfungs-`readFileSync`, und ein zweiter, unproblematischer Lesevorgang
+derselben Kontextdateien), `qa` **„Freigegeben"** (kein einziger Befund,
+alle drei Fixe end-to-end nachvollzogen, keine Regression bei realen
+Feature-IDs oder bestehenden Verbrauchs-Konsumenten). F-601/F-602 bleiben
+unverändert offen, kein Teil dieses Fixpakets.

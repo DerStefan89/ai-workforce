@@ -167,3 +167,50 @@ scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert).
 
 Nicht Teil dieses Auftrags: Behebung der neun Restfindings (bleiben offen,
 Muster F40 F-581/F-583).
+
+## 2026-09-22 — Fixpaket F-595/F-598 (Branch fix/f603-f598-f595)
+
+F-595 behoben: `schemas/roadmap.schema.json` `meilensteine[].features.items`
+trägt jetzt `pattern: "^F[0-9]+[A-Za-z]?$"`; `validiereRoadmapDaten`
+(`src/projektkontext/index.ts`) prüft dasselbe Muster (D5, Pattern an
+beiden Stellen dupliziert, aber mit Kommentarverweis — Schema kann nicht
+auf TS-Code verweisen). Zusätzlich Defense-in-Depth in `baueFeatureEintrag`
+(`scripts/leitstand/routen-roadmap.mjs`): der aufgelöste Pfad wird über
+`path.resolve` + Präfixvergleich gegen `<repoWurzel>/features/` geprüft,
+liest nie außerhalb — greift auch, falls die Funktion je mit einer
+ungeprüften Feature-id aufgerufen würde. Reale IDs (`F0`, `F1B`, `F6a`,
+`F19`, `F40`, `F30` …) alle gegen das Muster geprüft, keine Regression.
+
+F-598 behoben: `filtereExistierendeAnfragen` (`scripts/leitstand-server.mjs`)
+liest den Dateiinhalt jetzt zusätzlich zur Existenzprüfung und schließt
+eine leere oder nur aus Whitespace bestehende Datei (`.trim().length ===
+0`) genauso aus wie eine fehlende — dieselbe `console.warn`-Warnung, mit
+unterschiedlichem, weiterhin diagnostisch unterscheidbarem Grund im Log
+("fehlt" vs. "ist leer").
+
+Gates ergänzt: `scripts/check-f33-roadmap-projektion.mjs` Abschnitt (f)
+(Rot-Fall `'../x'` als Feature-id → `status: 'ungueltig'`; Abschnitt (d)s
+bisherige Test-Feature-id `'F-ohne-akte'` widersprach dem neuen Muster und
+wurde auf `'F999'` korrigiert). `scripts/check-f33-projektkontext.mjs`
+Abschnitt (h) (leere/Whitespace-Datei wird real gegen drei geschriebene
+Dateien plus einen fehlenden Pfad geprüft).
+
+`features/F33/feature.md`: "Bekannte Grenzen"-Einträge zu F-595/F-598
+aktualisiert (behoben statt offen), Status-Zeile und Nachtrag-Abschnitt
+ergänzt. `state/findings.md`: F-595/F-598 auf `erledigt` mit Fundstelle.
+
+Reviewer-/QA-Pass (frischer Kontext, über das gesamte Fixpaket F-595 +
+F-598 + F-603 (F32) zusammen): `code-reviewer` „Freigegeben mit Hinweisen"
+— zwei neue, nicht blockierende Befunde zum F-598-Fix registriert: F-604
+(`filtereExistierendeAnfragen`s neues `readFileSync` steht anders als das
+strukturell gleiche in `loeseAusfuehrungsEingabenAuf` in keinem eigenen
+try/catch — TOCTOU-Fall wird vom äußeren Handler abgefangen, kein stiller
+Fehler, aber inkonsistentes Muster) und F-605 (dieselbe Kontextdatei wird
+dadurch pro Aufruf zweimal gelesen — kein D5-Verstoß, nur ein
+unproblematischer zweiter I/O-Zugriff, aber im Dateikopfkommentar von
+`baueProjektkontextAnfragen` bislang nicht erwähnt). `qa` „Freigegeben"
+(kein Befund). `npm run check`: siehe Bericht dieses Auftrags für das
+Gesamtergebnis.
+
+Nicht Teil dieses Auftrags: F-592/F-593/F-594/F-596/F-597/F-599/F-600
+(unverändert offen); Behebung von F-604/F-605 selbst.
