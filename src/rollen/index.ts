@@ -23,7 +23,10 @@
  * Nicht-Ziele). `jarvis` kommt mit F26 WS-1 hinzu — beantwortet eine
  * natürliche Eingabe im Projektkontext (Statusfrage, Auftrags- oder
  * Aktionsvorschlag), Muster `router`: rein lesend, beide Worker erlaubt,
- * eigenes Ausgabeschema `ergebnis-jarvis`.
+ * eigenes Ausgabeschema `ergebnis-jarvis`. `product-coach` kommt mit F34
+ * WS-1 hinzu — Sparring-Partner für Ideenfindung/Scope-Klärung vor dem Bau
+ * (Fragen, Alternativen, Scope-Entwurf), Muster `jarvis`: rein lesend, beide
+ * Worker erlaubt, eigenes Ausgabeschema `ergebnis-product-coach`.
  *
  * F19 WS-1: jeder Vertrag trägt zusätzlich benoetigte_capabilities — Zwilling
  * der capabilities-Werte in ressourcen.json (Repo-Wurzel). Rein deklarativ,
@@ -91,6 +94,15 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubtes_output_schema: 'ergebnis-jarvis',
     ausschlussmuster: ['src/**'],
     benoetigte_capabilities: ['TASK_CLASSIFICATION', 'STRUCTURED_OUTPUT', 'REPO_READ'],
+  },
+  'product-coach': {
+    zweck:
+      'Sparring-Partner für Ideenfindung und Scope-Klärung vor dem Bau — hinterfragt Annahmen, stellt Alternativen mit Abwägung vor und entwirft erst bei ausreichender Klarheit einen Scope, ohne selbst Code zu lesen.',
+    erlaubte_werkzeugsatz_arten: ['lesend'],
+    erlaubte_worker: ['claude-code', 'codex'],
+    erlaubtes_output_schema: 'ergebnis-product-coach',
+    ausschlussmuster: ['src/**'],
+    benoetigte_capabilities: ['STRUCTURED_OUTPUT', 'REPO_READ'],
   },
 }
 

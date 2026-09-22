@@ -447,11 +447,67 @@ import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckun
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
+import { baueCoachAuftragstext, validiereErgebnisProductCoach } from '../src/product-coach/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
+import { baueSparringVerlaufsProjektion } from './leitstand/routen-sparring.mjs'
+
+/**
+ * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
+ * die einzige Stelle, an der sich ein Ein-Schuss-Chat-Lauf einer lesenden, chat-artigen Rolle
+ * (bisher nur 'jarvis', jetzt zusätzlich 'product-coach') vom jeweils anderen unterscheidet.
+ * D5, löst die vorher wörtliche Kopie in starteJarvisChatLauf: 'rolle' geht in AusfuehrungsEingaben
+ * und ROLLENVERTRAEGE-Prüfung, 'schemaName' in loeseAusgabeSchemaAuf (codex-Pfad),
+ * 'baueAuftragstext'/'validiere' sind die rollen-eigenen reinen Funktionen (src/jarvis|product-coach/
+ * index.ts), 'lineagePraefix' bestimmt den Artefaktnamen ('<praefix>-<projektId>', Checkpoint-Kette
+ * 'lineage-<praefix>-<projektId>'), 'antwortFeld' den Feldnamen des Rollen-Ergebnisses im geschriebenen
+ * daten-Objekt (Rückwärtskompatibilität: 'jarvisAntwort' bleibt byte-gleich zum bestehenden
+ * 'chat-<projektId>'-Artefakt, ein neuer Feldname hätte GET /api/chat gebrochen), 'aufrufEingabenZusatz'
+ * rollenspezifische AusfuehrungsEingaben.aufrufEingaben-Felder ÜBER dem gemeinsamen
+ * settingSources/mcpConfig/disallowedTools-Block (nur 'jarvis' bekommt zusätzlich
+ * MAX_THINKING_TOKENS=0, F31 WS-3/F40 WS-3 — 'product-coach' braucht das Denkbudget für ein
+ * Sparring-Gespräch, deshalb hier bewusst leer). 'auftragPraefix'/'auftragTitelPraefix'/'fehlerArt'
+ * sind reine Namens-/Anzeigedetails (auftragId-Präfix, Auftragstitel-Präfix, 'art'-Wert des
+ * synthetischen Fehler-Turns bei einem Vertragsverstoß — F-506-Muster, 'frage' ist für 'product-coach'
+ * der zu 'antwort' analoge neutrale Wert für einen reinen Anzeigetext ohne Unterobjekt).
+ * 'fehlerAntwortPraefix' ist der Textpräfix desselben Fehler-Turns ('Jarvis-Antwort'/'Coach-Antwort'
+ * konnte nicht gelesen werden: …) — byte-gleich zum bisherigen Jarvis-Text gehalten, weil
+ * scripts/check-f31-gedaechtnis.mjs exakt darauf prüft (Regressionsschutz).
+ */
+// Zwei benannte Konstanten statt eines Objekts, das über die Rollennamen selbst indiziert wäre —
+// scripts/check-f17-rollenvertrag.mjs AK1 scannt src/+scripts/ auf genau dieses Muster (ein
+// bekannter Rollenname als Objektschlüssel außerhalb von src/rollen/, "zweite Rollenliste"); das
+// Feld 'rolle' weiter unten bleibt ein gewöhnlicher Objektwert (kein Objektschlüssel, kein Treffer,
+// Muster des bisherigen eingabenRoh.rolle-Literals).
+const KONFIGURATION_JARVIS = {
+  rolle: 'jarvis',
+  schemaName: 'ergebnis-jarvis',
+  baueAuftragstext: baueJarvisAuftragstext,
+  validiere: validiereErgebnisJarvis,
+  lineagePraefix: 'chat',
+  antwortFeld: 'jarvisAntwort',
+  aufrufEingabenZusatz: { umgebungsvariablen: { MAX_THINKING_TOKENS: '0' } },
+  auftragPraefix: 'jarvis-chat',
+  auftragTitelPraefix: 'Jarvis-Chat',
+  fehlerArt: 'antwort',
+  fehlerAntwortPraefix: 'Jarvis-Antwort',
+}
+const KONFIGURATION_PRODUCT_COACH = {
+  rolle: 'product-coach',
+  schemaName: 'ergebnis-product-coach',
+  baueAuftragstext: baueCoachAuftragstext,
+  validiere: validiereErgebnisProductCoach,
+  lineagePraefix: 'sparring',
+  antwortFeld: 'coachAntwort',
+  aufrufEingabenZusatz: {},
+  auftragPraefix: 'product-coach-sparring',
+  auftragTitelPraefix: 'Product-Coach-Sparring',
+  fehlerArt: 'frage',
+  fehlerAntwortPraefix: 'Coach-Antwort',
+}
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -2815,13 +2871,32 @@ export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
  * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
  */
 export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
+  return leseRollenChatErgebnisAusLaufakte(laufakteDaten, KONFIGURATION_JARVIS)
+}
+
+/**
+ * F34 WS-1: gemeinsame Extraktion für leseJarvisErgebnisAusLaufakte (und intern für
+ * 'product-coach', über KONFIGURATION_PRODUCT_COACH — kein eigener öffentlicher
+ * leseCoachErgebnisAusLaufakte-Export: anders als bei Jarvis hat noch kein bestehendes Gate
+ * einen Namen dafür, den Rückwärtskompatibilität erzwingen würde; Code-Review-Befund, YAGNI)
+ * (D5, löst die vorherige wörtliche Kopie) — Fence-Stripping + robusterer JSON-Objekt-Fallback
+ * (jsonObjektFallback:true, Task "Jarvis-Chat-Latenz senken" Runde 2 Schritt 1, F-506): beide
+ * Rollen sind Ein-Schuss-Chat-Läufe ohne Menschen, der eine schlechte Antwort nachfragen könnte,
+ * und profitieren deshalb gleichermaßen von der robusteren Extraktion (anders als router/scout/
+ * code-reviewer, die bei den ursprünglichen zwei Stufen bleiben, siehe Kommentar an
+ * leseRollenErgebnisRohstrom).
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Laufs
+ * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH ('schemaName'/'validiere')
+ * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
+ */
+function leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration) {
   const gelesen = leseRollenErgebnisRohstrom(laufakteDaten, { jsonObjektFallback: true })
   if (!gelesen.ok) {
     return { ok: false, grund: gelesen.grund }
   }
-  const verstoesse = validiereErgebnisJarvis(gelesen.geparst)
+  const verstoesse = konfiguration.validiere(gelesen.geparst)
   if (verstoesse.length > 0) {
-    return { ok: false, grund: `Ergebnis verstößt gegen schemas/ergebnis-jarvis.schema.json: ${verstoesse.join('; ')}` }
+    return { ok: false, grund: `Ergebnis verstößt gegen schemas/${konfiguration.schemaName}.schema.json: ${verstoesse.join('; ')}` }
   }
   return { ok: true, ergebnis: gelesen.geparst }
 }
@@ -2849,24 +2924,50 @@ export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
  * @returns bei Erfolg { ok: true, pfad, versionSequenz, inhaltsHash }, sonst { ok: false, grund }
  */
 export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen, optionen = {}) {
+  return verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen, KONFIGURATION_JARVIS, optionen)
+}
+
+/**
+ * F34 WS-1: gemeinsame Nachbereitung für verarbeiteJarvisChatErgebnis (und intern für
+ * 'product-coach', über KONFIGURATION_PRODUCT_COACH — kein eigener öffentlicher
+ * verarbeiteCoachSparringErgebnis-Export, aus demselben YAGNI-Grund wie
+ * leseRollenChatErgebnisAusLaufakte oben; Code-Review-Befund) — liest das Rollen-Ergebnis eines bereits ABGESCHLOSSEN/
+ * ERFOLGREICH beendeten Laufs aus dessen Laufakte und registriert bei Erfolg den
+ * '<lineagePraefix>-<projektId>'-Kernartefakt (Checkpoint-Kette 'lineage-<lineagePraefix>-<projektId>')
+ * mit der Nachricht und dem Rollen-Ergebnis im freien 'daten'-Feld, unter dem konfigurierten
+ * 'antwortFeld' (Muster verarbeiteJarvisChatErgebnis). Reine, synchrone Funktion (kein await) — direkt
+ * aus dem nachLauf-Callback von starteRollenChatLauf aufrufbar, der mitten in der D13-Übergabe ohne
+ * Fenster läuft.
+ * @param laufakteDaten - bereits geladene Laufakte des Laufs
+ * @param projektId - Projekt-id der bedienenden Handler-Instanz
+ * @param nachricht - die vom Menschen eingegebene, reine Nachricht (Audit-Transparenz)
+ * @param laufId - laufId des Laufs (geht in 'herkunft')
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH ('lineagePraefix'/'antwortFeld')
+ * @param optionen - F31 WS-2 (nur 'jarvis' nutzt dies bisher): optional { istZusammenfassung }
+ * @returns bei Erfolg { ok: true, pfad, versionSequenz, inhaltsHash }, sonst { ok: false, grund }
+ */
+function verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen, konfiguration, optionen = {}) {
   const { istZusammenfassung = false } = optionen
-  const jarvisErgebnis = leseJarvisErgebnisAusLaufakte(laufakteDaten)
-  if (!jarvisErgebnis.ok) {
-    return { ok: false, grund: `Jarvis-Lauf '${laufId}': ${jarvisErgebnis.grund}` }
+  const artefaktId = `${konfiguration.lineagePraefix}-${projektId}`
+  const rollenErgebnis = leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration)
+  if (!rollenErgebnis.ok) {
+    return { ok: false, grund: `${konfiguration.rolle}-Lauf '${laufId}': ${rollenErgebnis.grund}` }
   }
   const nachrichtZuSpeichern = istZusammenfassung ? '[Zusammenfassung angefordert]' : nachricht
   try {
     const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
-      `chat-${projektId}`,
+      artefaktId,
       profilReferenz,
-      { quelle: 'jarvis-chat', lauf_id: laufId },
-      { nachricht: nachrichtZuSpeichern, jarvisAntwort: jarvisErgebnis.ergebnis, ...(istZusammenfassung ? { istZusammenfassung: true } : {}) },
+      { quelle: `${konfiguration.rolle}-${konfiguration.lineagePraefix}`, lauf_id: laufId },
+      { nachricht: nachrichtZuSpeichern, [konfiguration.antwortFeld]: rollenErgebnis.ergebnis, ...(istZusammenfassung ? { istZusammenfassung: true } : {}) },
       undefined,
       ladeOptionen
     )
     return { ok: true, pfad, versionSequenz, inhaltsHash }
   } catch (fehler) {
-    return { ok: false, grund: `Lineage-Chat-Eintrag 'chat-${projektId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
+    return { ok: false, grund: `Lineage-${konfiguration.lineagePraefix}-Eintrag '${artefaktId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
   }
 }
 
@@ -2893,19 +2994,35 @@ export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht
  * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund } (ein Fehlschlag HIER
  *   landet unverändert in startfehlerListe, Muster des bisherigen alleinigen Fehlerpfads)
  */
-function schreibeJarvisChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen) {
+/**
+ * F34 WS-1: parametrisiert über konfiguration (rolle/lineagePraefix/antwortFeld/fehlerArt) statt
+ * fest auf 'jarvis' — D5, löst die vorherige wörtliche Kopie. Gegenstück zu
+ * verarbeiteRollenChatErgebnis für den Fall, dass ein real ABGESCHLOSSEN/ERFOLGREICH beendeter
+ * Lauf TROTZDEM kein lesbares Ergebnis liefert (Muster/Begründung siehe die ursprüngliche
+ * Jarvis-Fassung, Task "Jarvis-Chat-Latenz senken" Runde 2 Schritt 2, F-506).
+ * @param projektId - Projekt-id der bedienenden Handler-Instanz
+ * @param nachricht - die vom Menschen eingegebene Nachricht
+ * @param laufId - lauf_id des Laufs (geht in 'herkunft')
+ * @param grund - Ablehnungsgrund von leseRollenChatErgebnisAusLaufakte
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH
+ * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund }
+ */
+function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen, konfiguration) {
+  const artefaktId = `${konfiguration.lineagePraefix}-${projektId}`
   try {
     const { pfad, versionSequenz } = registriereKernArtefakt(
-      `chat-${projektId}`,
+      artefaktId,
       profilReferenz,
-      { quelle: 'jarvis-chat', lauf_id: laufId },
-      { nachricht, jarvisAntwort: { art: 'antwort', antwort: `Jarvis-Antwort konnte nicht gelesen werden: ${grund}` } },
+      { quelle: `${konfiguration.rolle}-${konfiguration.lineagePraefix}`, lauf_id: laufId },
+      { nachricht, [konfiguration.antwortFeld]: { art: konfiguration.fehlerArt, antwort: `${konfiguration.fehlerAntwortPraefix} konnte nicht gelesen werden: ${grund}` } },
       undefined,
       ladeOptionen
     )
     return { ok: true, pfad, versionSequenz }
   } catch (fehler) {
-    return { ok: false, grund: `Fehler-Lineage-Chat-Eintrag 'chat-${projektId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
+    return { ok: false, grund: `Fehler-Lineage-${konfiguration.lineagePraefix}-Eintrag '${artefaktId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
   }
 }
 
@@ -4785,6 +4902,10 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     // ─── F31 WS-2: gemeinsamer Lauf-Start für POST /api/chat und POST /api/chat/zusammenfassen ──
+    // F34 WS-1: auf eine Rollenkonfiguration parametrisiert (KONFIGURATION_JARVIS/KONFIGURATION_PRODUCT_COACH als konfiguration-Argument, D5) statt
+    // wörtlich für 'product-coach' (POST /api/sparring) kopiert — 'konfiguration' trägt jede Stelle,
+    // an der sich die beiden Rollen unterscheiden (rolle/schemaName/lineagePraefix/antwortFeld/
+    // aufrufEingabenZusatz/Präfixe, siehe Kopfkommentar der Konstante).
     //
     // Worker-Auflösung, Auftrag-Registrierung, D13-Übergabe (laufAktiv=true, 202-Antwort) und
     // Dispatch (starteLaufUndVergiss) waren bis WS-2 1:1 in POST /api/chat kopiert vorbereitet für
@@ -4794,9 +4915,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Aufrufer VOR diesem Aufruf stehen, wörtlich wie bisher (scripts/check-f11-auftrag.mjs sucht
     // das ERSTE Vorkommen von 'if (laufAktiv)'/'if (laufIdBelegt(' im gesamten Quelltext — das
     // bleibt unverändert bei POST /api/laeufe stehen, weit oberhalb dieser Funktion).
-    function starteJarvisChatLauf(res, nachricht, auftragstext, istZusammenfassung, zeitmessung = null) {
-      const auftragId = `jarvis-chat-${randomUUID()}`
-      const laufId = `jarvis-${auftragId}`
+    function starteRollenChatLauf(res, nachricht, auftragstext, istZusammenfassung, konfiguration, zeitmessung = null) {
+      const auftragId = `${konfiguration.auftragPraefix}-${randomUUID()}`
+      const laufId = `${konfiguration.rolle}-${auftragId}`
       if (laufIdBelegt(laufId)) {
         sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
         return
@@ -4821,7 +4942,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       let modell
       let ausgabeSchemaPfad
       if (codexVerfuegbar) {
-        const schemaErgebnis = loeseAusgabeSchemaAuf('ergebnis-jarvis', repoWurzel)
+        const schemaErgebnis = loeseAusgabeSchemaAuf(konfiguration.schemaName, repoWurzel)
         if (!schemaErgebnis.ok) {
           sendeJson(res, 500, { grund: schemaErgebnis.grund })
           return
@@ -4836,42 +4957,41 @@ export function erzeugeRequestHandler(optionen = {}) {
       markiereZeit(zeitmessung, 'ressourcen_worker_aufgeloest')
 
       const eingabenRoh = {
-        rolle: 'jarvis',
-        // F33 WS-1 (E-M4-2): jarvis läuft mit settingSources '' (F31 WS-3) und lädt CLAUDE.md
-        // NICHT (real gemessen, features/F33/spike-setting-sources.md) — Projektbeschreibung,
+        rolle: konfiguration.rolle,
+        // F33 WS-1 (E-M4-2): jarvis/product-coach laufen mit settingSources '' (F31 WS-3) und laden
+        // CLAUDE.md NICHT (real gemessen, features/F33/spike-setting-sources.md) — Projektbeschreibung,
         // Arbeitsweise und Roadmap kommen deshalb ausschließlich über diese Einspeisung.
         // filtereExistierendeAnfragen lässt ein Projekt ohne vorbereitete Kontextdateien
-        // (F25/E-M4-2-Import) laufen, statt jeden Chat-Versuch mit 400 zu blockieren
-        // (QA-Pass-Befund).
+        // (F25/E-M4-2-Import) laufen, statt jeden Versuch mit 400 zu blockieren (QA-Pass-Befund).
         anfragen: filtereExistierendeAnfragen(baueProjektkontextAnfragen(kontextPfad, roadmapPfad), repoWurzel),
         budget: vorlage.standardBudget,
-        // F31 WS-3 (Stefan 20.09.2026, Option A): Jarvis läuft ohne Projekt-Settings — settingSources
-        // '' überschreibt baueAufrufs Standardwert 'project' NUR für diesen Pfad (jede andere Rolle
-        // bekommt weiterhin 'project', siehe src/claude-code-gateway/index.ts baueAufruf).
+        // F31 WS-3 (Stefan 20.09.2026, Option A): Jarvis/Product-Coach laufen ohne Projekt-Settings —
+        // settingSources '' überschreibt baueAufrufs Standardwert 'project' NUR für diesen Pfad (jede
+        // andere Rolle bekommt weiterhin 'project', siehe src/claude-code-gateway/index.ts baueAufruf).
         // F31 WS-3b (Stefan 20.09.2026, MCP-Start): zusätzlich mcpConfig '{"mcpServers":{}}' — real
         // gemessen (features/F31/latenzmessung.md), dass die zwei Account-MCP-Server trotz
         // settingSources '' laden (E-187-Lücke: --tools/--allowedTools decken MCP nicht ab). Seit F31
         // WS-3c (löst F-502) ist dieser Wert baueAufrufs Default für JEDE Rolle — das explizite Setzen
         // hier ist seither redundant (überschreibt den Default mit demselben Wert), aber unschädlich
         // und bleibt aus D5-Gründen unangetastet (keine Verhaltensänderung an diesem Pfad nötig).
-        // Task "Jarvis-Chat-Latenz senken" (state/nachweis-jarvis-latenz.md), Schritt 3: real unter
-        // code.claude.com/docs/en/model-config dokumentiert — MAX_THINKING_TOKENS=0 schaltet
-        // Extended Thinking auf der Anthropic-API ab (Ausnahme: Fable-Modelle, hier nicht
-        // einschlägig, dieses Repo läuft firstParty/claude-sonnet-5). Nur für 'jarvis' gesetzt
-        // (Muster settingSources/mcpConfig) — jede andere Rolle bekommt kein umgebungsvariablen.
         // F40 WS-3 (löst F-567): disallowedTools 'Read(~/.claude/**)' sperrt den real belegten
         // Auto-Memory-Zugriff (state/nachweis-jarvis-latenz.md Abschnitt "F40 WS-2", Turn 4) — trotz
         // settingSources '' liest der Prozess ~/.claude/projects/…/memory/MEMORY.md, weil Auto-Memory
         // kein Settings-Wert, sondern ein eigener CLI-Systemprompt-Baustein ist (--setting-sources
-        // steuert nur Settings-Dateien). Gesetzt für 'jarvis' UND 'router' (Muster settingSources).
-        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', umgebungsvariablen: { MAX_THINKING_TOKENS: '0' }, disallowedTools: AUTO_MEMORY_DENY_REGEL },
+        // steuert nur Settings-Dateien). Gesetzt für 'jarvis'/'router'/'product-coach' (Muster
+        // settingSources). konfiguration.aufrufEingabenZusatz (F34 WS-1): nur 'jarvis' trägt
+        // zusätzlich umgebungsvariablen.MAX_THINKING_TOKENS='0' (Task "Jarvis-Chat-Latenz senken",
+        // Schritt 3, code.claude.com/docs/en/model-config — schaltet Extended Thinking auf der
+        // Anthropic-API ab) — 'product-coach' braucht das Denkbudget für ein Sparring-Gespräch,
+        // deshalb dort bewusst leer.
+        aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', disallowedTools: AUTO_MEMORY_DENY_REGEL, ...konfiguration.aufrufEingabenZusatz },
         auftragId,
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
       }
-      // auftragstext (src/jarvis/index.ts' baueJarvisAuftragstext) ist der EINZIGE Eingabekanal
-      // (F-269-Muster): die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz,
-      // unten), der tatsächlich an den Worker gehende Text zusätzlich die Rolleninstruktion und das
+      // auftragstext (konfiguration.baueAuftragstext) ist der EINZIGE Eingabekanal (F-269-Muster):
+      // die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz, unten), der
+      // tatsächlich an den Worker gehende Text zusätzlich die Rolleninstruktion und das
       // Verlaufsfenster (F31 WS-2).
       const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', auftragstext, vorlage, repoWurzel)
       if (!eingabenErgebnis.ok) {
@@ -4887,7 +5007,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       const nachrichtCodepoints = [...nachricht]
       const titel = nachrichtCodepoints.length > 80 ? `${nachrichtCodepoints.slice(0, 77).join('')}...` : nachricht
       try {
-        registriereAuftrag(auftragId, profilReferenz, `Jarvis-Chat: ${titel}`, nachricht, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        registriereAuftrag(auftragId, profilReferenz, `${konfiguration.auftragTitelPraefix}: ${titel}`, nachricht, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
       } catch (fehler) {
         console.error(`[leitstand] Chat-Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
         sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
@@ -4928,17 +5048,18 @@ export function erzeugeRequestHandler(optionen = {}) {
             const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
             markiereZeit(zeitmessung, 'laufakte_geladen')
             if (laufakteVersion === null) {
-              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `Jarvis-Chat-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
+              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `${konfiguration.auftragTitelPraefix}-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
               return
             }
 
-            const verarbeitung = verarbeiteJarvisChatErgebnis(
+            const verarbeitung = verarbeiteRollenChatErgebnis(
               laufakteVersion.daten,
               projektId,
               nachricht,
               laufId,
               profilReferenz,
               { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+              konfiguration,
               istZusammenfassung ? { istZusammenfassung: true } : undefined
             )
             markiereZeit(zeitmessung, verarbeitung.ok ? 'chat_eintrag_geschrieben' : 'chat_eintrag_versuch_beendet')
@@ -4948,17 +5069,18 @@ export function erzeugeRequestHandler(optionen = {}) {
               // Runde 2, Schritt 2 (löst F-506, "Nie wieder stilles Verlieren"): ein real
               // ABGESCHLOSSEN/ERFOLGREICH beendeter Lauf ohne lesbares Ergebnis verliert die
               // Nachricht NICHT mehr kommentarlos — ein sichtbarer Fehler-Turn ersetzt die fehlende
-              // Antwort im selben 'chat-<projektId>'-Verlauf, den die Chat-UI ohnehin pollt/neu lädt.
-              const fehlerEintrag = schreibeJarvisChatFehlerEintrag(projektId, nachricht, laufId, verarbeitung.grund, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+              // Antwort im selben '<lineagePraefix>-<projektId>'-Verlauf, den die jeweilige UI
+              // ohnehin pollt/neu lädt.
+              const fehlerEintrag = schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, verarbeitung.grund, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, konfiguration)
               if (!fehlerEintrag.ok) {
                 startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: fehlerEintrag.grund })
                 console.error(`[leitstand] ${fehlerEintrag.grund}`)
               } else {
-                console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Fehler-Lineage-Eintrag 'chat-${projektId}' (Version ${fehlerEintrag.versionSequenz}) geschrieben.`)
+                console.log(`[leitstand] ${konfiguration.auftragTitelPraefix}-Lauf '${laufId}': Fehler-Lineage-Eintrag '${konfiguration.lineagePraefix}-${projektId}' (Version ${fehlerEintrag.versionSequenz}) geschrieben.`)
               }
               markiereZeit(zeitmessung, 'chat_fehlereintrag_geschrieben')
             } else {
-              console.log(`[leitstand] Jarvis-Chat-Lauf '${laufId}': Lineage-Eintrag 'chat-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
+              console.log(`[leitstand] ${konfiguration.auftragTitelPraefix}-Lauf '${laufId}': Lineage-Eintrag '${konfiguration.lineagePraefix}-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
             }
           } finally {
             protokolliereZeitmessung(zeitmessung, laufId)
@@ -4970,17 +5092,18 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     /**
-     * F31 WS-2: lädt den 'chat-<projektId>'-Verlauf (Muster GET /api/chat unten) und mappt ihn auf
-     * die von waehleVerlaufsfenster/baueJarvisAuftragstext erwartete Form (src/jarvis/index.ts) —
-     * 'antwort' ist dabei jarvisAntwort.antwort (der für Menschen lesbare Text, nicht das volle
-     * ErgebnisJarvis-Objekt), 'istZusammenfassung' das gleichnamige daten-Feld
-     * (verarbeiteJarvisChatErgebnis setzt es nur bei einem über POST /api/chat/zusammenfassen
-     * erzeugten Turn).
+     * F31 WS-2, F34 WS-1 (auf konfiguration parametrisiert, D5): lädt den
+     * '<lineagePraefix>-<projektId>'-Verlauf (Muster GET /api/chat unten) und mappt ihn auf die von
+     * waehleVerlaufsfenster/konfiguration.baueAuftragstext erwartete Form — 'antwort' ist dabei
+     * daten[konfiguration.antwortFeld].antwort (der für Menschen lesbare Text, nicht das volle
+     * Rollen-Ergebnisobjekt), 'istZusammenfassung' das gleichnamige daten-Feld
+     * (verarbeiteRollenChatErgebnis setzt es nur bei einem über POST /api/chat/zusammenfassen
+     * erzeugten Turn — bislang ausschließlich 'jarvis').
      */
-    function ladeJarvisVerlaufsfenster(maxTurns, maxZeichen) {
-      const eintraege = listeVersionen(`chat-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }).map((version) => ({
+    function ladeRollenVerlaufsfenster(konfiguration, maxTurns, maxZeichen) {
+      const eintraege = listeVersionen(`${konfiguration.lineagePraefix}-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }).map((version) => ({
         nachricht: version.daten?.nachricht ?? '',
-        antwort: version.daten?.jarvisAntwort?.antwort ?? '',
+        antwort: version.daten?.[konfiguration.antwortFeld]?.antwort ?? '',
         istZusammenfassung: version.daten?.istZusammenfassung === true,
       }))
       return waehleVerlaufsfenster(eintraege, { maxTurns, maxZeichen })
@@ -5057,9 +5180,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       if (pruefeGlobaleLaufSperre(res)) return
 
-      const verlaufsfenster = ladeJarvisVerlaufsfenster(8, 12000)
+      const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_JARVIS, 8, 12000)
       markiereZeit(zeitmessung, 'verlauf_geladen')
-      starteJarvisChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false, zeitmessung)
+      starteRollenChatLauf(res, nachricht, baueJarvisAuftragstext(nachricht, verlaufsfenster), false, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 
@@ -5100,7 +5223,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       if (pruefeGlobaleLaufSperre(res)) return
 
-      const verlaufsfenster = ladeJarvisVerlaufsfenster(30, 40000)
+      const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_JARVIS, 30, 40000)
       markiereZeit(zeitmessung, 'verlauf_geladen')
       if (verlaufsfenster.length === 0) {
         sendeJson(res, 409, { grund: 'kein Verlauf zum Zusammenfassen' })
@@ -5109,7 +5232,7 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const zusammenfassungsNachricht =
         "Fasse den bisherigen Gesprächsverlauf kompakt zusammen (Ziele, getroffene Entscheidungen, offene Punkte, zuletzt Besprochenes), damit das Gespräch allein auf Basis dieser Zusammenfassung sinnvoll fortgesetzt werden kann. Antworte mit art 'antwort'."
-      starteJarvisChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true, zeitmessung)
+      starteRollenChatLauf(res, zusammenfassungsNachricht, baueJarvisAuftragstext(zusammenfassungsNachricht, verlaufsfenster), true, KONFIGURATION_JARVIS, zeitmessung)
       return
     }
 
@@ -5139,6 +5262,73 @@ export function erzeugeRequestHandler(optionen = {}) {
           istZusammenfassung: version.daten?.istZusammenfassung === true,
         })),
       })
+      return
+    }
+
+    // ─── F34 WS-1: POST /api/sparring ───────────────────────────────────────────────────
+    //
+    // Löst einen Ein-Schuss-Lauf der Rolle 'product-coach' für eine natürliche Sparring-Nachricht
+    // aus — Muster POST /api/chat (F26 WS-1/WS-2a), auf starteRollenChatLauf mit
+    // KONFIGURATION_PRODUCT_COACH statt einer zweiten, wörtlichen Kopie (D5).
+    // Body nur { nachricht }, dieselbe Obergrenze (8000 Zeichen) und dieselben Formprüfungen wie
+    // POST /api/chat. Kein POST /api/sparring/zusammenfassen (kein Teil dieses Auftrags — nur
+    // 'jarvis' hat ein Gesprächsgedächtnis-Zusammenfassen, F31 WS-2). Erreichbar sowohl
+    // unpräfigiert ('/api/sparring', für ai-workforce) als auch über den F25-Dispatcher
+    // ('/api/projekte/<id>/sparring').
+    if (req.method === 'POST' && pfad === '/api/sparring') {
+      const zeitmessung = neueZeitmessung()
+      markiereZeit(zeitmessung, 'request_eingang')
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      for (const feld of Object.keys(body)) {
+        if (feld !== 'nachricht') {
+          sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
+          return
+        }
+      }
+      if (typeof body.nachricht !== 'string' || body.nachricht.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'nachricht' muss ein nicht-leerer String sein" })
+        return
+      }
+      // Muster POST /api/chat (QA-Befund WS-1): dieselbe endliche Obergrenze für eine Sparring-Nachricht.
+      const MAX_NACHRICHT_LAENGE = 8000
+      if (body.nachricht.length > MAX_NACHRICHT_LAENGE) {
+        sendeJson(res, 400, { grund: `'nachricht' darf höchstens ${MAX_NACHRICHT_LAENGE} Zeichen haben, hat ${body.nachricht.length}` })
+        return
+      }
+      const nachricht = body.nachricht
+
+      // D13 VOR jeder Formprüfung, die selbst schon I/O oder Ressourcenauflösung braucht (Muster
+      // POST /api/chat/POST /api/auftraege/<id>/routen).
+      if (laufAktiv) {
+        sendeJson(res, 409, { grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang` })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_PRODUCT_COACH, 8, 12000)
+      markiereZeit(zeitmessung, 'verlauf_geladen')
+      starteRollenChatLauf(res, nachricht, baueCoachAuftragstext(nachricht, verlaufsfenster), false, KONFIGURATION_PRODUCT_COACH, zeitmessung)
+      return
+    }
+
+    // ─── F34 WS-1: GET /api/sparring ─────────────────────────────────────────────────────
+    //
+    // Reine Projektion, keine weitere Logik hier (D5) — siehe scripts/leitstand/routen-sparring.mjs
+    // (Muster routen-roadmap.mjs/routen-verbrauch.mjs). Der POST-Dispatch bleibt oben im Server
+    // (braucht die Closure-Sperre laufAktiv), diese GET-Projektion nicht.
+    if (req.method === 'GET' && pfad === '/api/sparring') {
+      sendeJson(res, 200, baueSparringVerlaufsProjektion(basisVerzeichnis, projektId))
       return
     }
 

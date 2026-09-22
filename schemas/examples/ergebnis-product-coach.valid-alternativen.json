@@ -1,0 +1,17 @@
+{
+  "art": "alternativen",
+  "antwort": "Zwei sinnvolle Zuschnitte für die Design-Phase, mit unterschiedlicher Reihenfolge:",
+  "alternativen": [
+    {
+      "titel": "Design-Phase vor F30 komplett separat",
+      "beschreibung": "Ein eigener Workstream ohne Bezug zu laufenden Features, deckt alle offenen Optik-Findings (F-596 u.a.) in einem Durchgang ab.",
+      "abwaegung": "Klar abgegrenzt und leicht planbar, aber F30 bleibt bis dahin blockiert, wenn die Design-Phase länger dauert als geschätzt."
+    },
+    {
+      "titel": "Design-Phase parallel zu F34/F35",
+      "beschreibung": "Optik-Findings werden feature-begleitend behoben, sobald ein Feature ohnehin angefasst wird.",
+      "abwaegung": "Kein separater Blocker vor F30, aber Optik-Konsistenz zwischen Features driftet, bis alle nachgezogen sind."
+    }
+  ],
+  "scope": null
+}

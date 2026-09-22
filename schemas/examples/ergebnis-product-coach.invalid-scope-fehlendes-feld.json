@@ -1,0 +1,14 @@
+{
+  "art": "scope_entwurf",
+  "antwort": "x",
+  "alternativen": null,
+  "scope": {
+    "titel": "x",
+    "problem": "x",
+    "ziel": "x",
+    "in_scope": [],
+    "out_of_scope": [],
+    "annahmen": [],
+    "offene_fragen": []
+  }
+}

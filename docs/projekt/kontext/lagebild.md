@@ -31,10 +31,11 @@ Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
 F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 #196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
 (`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
-offen, RC): F32 Verbrauch & Kontingent `FEATURE_GATE` (WS-1 Verbrauch-
+offen, RC): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Dashboard PR #216 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Restfinding
-F-603 (P2, sollte vor Stefans Abnahme behoben werden) bleibt offen, siehe
+F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
+22.09.2026 nach #218, Restfindings F-601/F-602 (P4) bleiben offen, siehe
 `features/F32/feature.md`), F33 Projektkontext & Roadmap
 `ABGESCHLOSSEN` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
