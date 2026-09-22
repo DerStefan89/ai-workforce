@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.24 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.25 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -46,6 +46,8 @@ v1.21 → v1.22: **§9.1 Nachtrag zu Rolle `jarvis`** (Stefan, 20.09.2026, F31 W
 v1.22 → v1.23: **§9.1 Nachtrag zu Rolle `jarvis` — MCP-Begrenzung** (Stefan, 20.09.2026, F31 WS-3b MCP-Start): real gemessen, dass für Rolle `jarvis` trotz `--setting-sources ''` zwei Account-MCP-Server laden (`claude.ai Claude Docs`, `claude.ai Google Drive`, acht zusätzliche `mcp__*`-Werkzeuge im Modellkontext) — die in Zeile „MCP-Werkzeuge im Ausführungslauf" (`DEKLARIERT`, E-187) benannte Lücke bestand real. Rolle `jarvis` läuft jetzt zusätzlich mit `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` (`AufrufEingaben.mcpConfig`), gemessener Gewinn Wall-Clock-Median ≈1,46s (6,87s → 5,41s, n=5). Benannte, ausschließlich vom Jarvis-Chat-Pfad gesetzte Ergänzung, kein neuer Durchsetzungsgrad in der Tabelle. **Kein Entscheid zu einer anderen Rolle** — E-187 bleibt für jede andere Rolle unverändert `DEKLARIERT` (`state/findings.md` F-502). **Überholt durch v1.23 → v1.24 unten** — `jarvis` ist seit F31 WS-3c kein Sonderfall mehr.
 
 v1.23 → v1.24: **§9.1 Zeile „MCP-Werkzeuge im Ausführungslauf" DEKLARIERT → ERZWUNGEN** (Stefan, 20.09.2026, F31 WS-3c, löst F-502): `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` ist jetzt Default in `baueAufruf` für JEDEN Aufruf, nicht mehr nur für `jarvis` (F31 WS-3b) — `AufrufEingaben.mcpConfig` überschreibt nur noch den Wert, wählt die Begrenzung nicht mehr an/ab. Real gemessen für eine schreibende Rolle (`ausfuehrung`, `Read,Grep,Glob,Write,Edit`): dieselbe E-187-Lücke wie bei `jarvis` (Account-MCP-Server laden trotz `--tools`-Begrenzung), Wall-Clock-Median ≈2,49s schneller (8,11s → 5,62s, n=5, ≈31%), Tokenersparnis ≈3.074 Tokens Median je Lauf (≈14,9%), siehe `features/F31/nachweis-mcp-begrenzung.md`. Der WS-3b-Nachtrag oben gilt als überholt: `jarvis` ist kein Sonderfall mehr, jede Rolle bekommt dieselbe Begrenzung als Standardwert.
+
+v1.24 → v1.25: **§13.5 Meilenstein-4-Abschluss nachgetragen, §13.6 Meilenstein 5 neu** (Stefan, 20./21.09.2026, Challenger-Chat, löst F-534 Teil 2): §13.5 erhält den Fakt-Nachtrag, dass Meilenstein 4 mit benannten Übertragungen nach F30 geschlossen ist (E-M5-1) — F19/F23 laufen dadurch auf `ABGESCHLOSSEN`, ihre Restfindings bleiben offen. Neuer Abschnitt §13.6 zieht die bislang nur im Challenger-Chat dokumentierten Entscheidungen E-M5-1…5, 3′, 10, 11 (E-M5-6…9 nicht vergeben) sowie den verbindlichen M5-Feature-Schnitt und die Arbeitsregeln ins Repo nach. Zielsatz und Bestehensbedingung für Meilenstein 5 selbst sind **nicht** Teil dieses Nachtrags — sie stehen laut Feature-Schnitt noch aus (RC).
 
 ---
 
@@ -586,6 +588,103 @@ Provider-Adapter · parallele Läufe · automatische Modellwahl ·
 schreibende Rollen-/Modell-Overrides im Leitstand · Persona-Mund, Avatar,
 Voice · Roadmap-/Workitem-Erzeugung für neue Projekte · Vorratssuche der
 Scouts · Mehrbenutzerbetrieb in einer Instanz.
+
+`[Fakt, Nachtrag 21.09.2026]` Meilenstein 4 gilt als geschlossen (Stefan,
+20.09.2026, **E-M5-1**, Option A) — mit ausdrücklich benannten
+Übertragungen nach Meilenstein 5, keiner stillschweigenden Streichung:
+Import-Wizard (F25 WS-2b) und Health-Projektion (F25 WS-3) gehen in F30
+auf; der Kollege-Durchlauf in eigener Instanz und die mindestens drei Tage
+protokolliertes Dogfooding aus der obigen Bestehensbedingung gehen
+ebenfalls in F30 auf. F19 und F23 (beide zuvor `FEATURE_GATE`) sind mit
+ihren dokumentierten Restfindings auf `ABGESCHLOSSEN` gesetzt — die
+Restfindings bleiben offen (M5-Backlog), siehe `features/F19/feature.md`
+und `features/F23/feature.md`. Löst `state/findings.md` F-505.
+
+---
+
+### 13.6 Meilenstein 5
+
+`[Fakt, Nachtrag 21.09.2026]` Stefan hat nach dem Abschluss von
+Meilenstein 4 (§13.5, E-M5-1) im Challenger-Chat eine Reihe von
+Entscheidungen für Meilenstein 5 getroffen (20./21.09.2026), bislang nur
+dort dokumentiert (`state/findings.md` F-534). Dieser Abschnitt zieht sie
+ins Repo nach. **Zielsatz und Bestehensbedingung für Meilenstein 5 stehen
+noch aus** — der Feature-Schnitt benennt sie unten ausdrücklich als
+eigenen, noch offenen Punkt („RC: Zielsatz/Bestehensbedingung M5 und V1").
+
+**Features:** F32 Verbrauch & Kontingent · F33 Projektkontext & Roadmap ·
+F34 Product Coach / Ideation + Discovery (nach F33) · F35 Challenge-Flow
+(Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4,
+Befund-Projektion) · F36 Capability Library Expansion (nach E-M5-5,
+parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32, F35) ·
+F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F39 Architektur-Rolle
+„architekt" (E-M5-3′, claude-Challenge 20.09.2026) · F40 Jarvis-Latenz
+(E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3; Abschluss) · RC:
+Zielsatz/Bestehensbedingung M5 und V1.
+
+**Reihenfolge:** F32 ∥ F33 → F34 (F36 parallel) → F35 → F37 → F38 →
+Design → F30 → RC. F39/F40 sind außerhalb dieser Kette eingeschoben.
+
+**E-M5-1** *(Stefan, 20.09.2026)* — M4-Abschluss, Option A: Meilenstein 4
+gilt als geschlossen, offene Posten werden ausdrücklich nach M5
+übertragen (siehe §13.5-Nachtrag oben) statt stillschweigend zu
+verschwinden: Import-Wizard (F25 WS-2b) und Health-Projektion (F25 WS-3) →
+F30; Kollege-Durchlauf in eigener Instanz und mindestens drei Tage
+protokolliertes Dogfooding → F30. F19 und F23 (beide `FEATURE_GATE`)
+werden mit ihren dokumentierten Restfindings auf `ABGESCHLOSSEN` gesetzt;
+die Restfindings bleiben offen (M5-Backlog). Löst F-505.
+
+**E-M5-2** *(Stefan, 20.09.2026)* — Dogfooding-Ordnung, Option A: M5-Bau
+→ Design fertigstellen → Dogfooding (F30) als Abschluss. Das V1-Backlog
+entsteht erst in F30 und ist keine Vorbedingung für F32–F38. Bewusst
+akzeptiert: UX-Hardening, Reliability-Matrix und Performance bleiben bis
+F30 Backlog-Erzeuger ohne eigenen Bauauftrag.
+
+**E-M5-3** *(Stefan, 20.09.2026)* — PlanV1-Ebene, Option A: PlanV1 =
+`WORKFLOW_V0` je Auftrag (≤ 8 Schritte). Ein Feature mit mehreren
+Workstreams wird als `workstream_vorschlag[]` geliefert; der Mensch legt
+je Workstream über die F22-Mechanik einen eigenen Auftrag an. Kein neues
+Zustandsmodell auf Feature-Ebene — E-192 und F-090 bleiben in Kraft. Neu
+zu bewerten, wenn das Klicken je Workstream im Dogfooding real stört.
+
+**E-M5-3′** *(Stefan, 20.09.2026, löst F-521)* — Präzisierung zu E-M5-3:
+`features/<id>/feature.md` ist der Feature-Level-PlanV1. Die Akte wird um
+optionale technische Abschnitte erweitert; Architekturentscheidungen
+entstehen als ADR unter `docs/adr/`. Kein eigenes persistiertes
+Plan-Artefakt auf Feature-Ebene, kein neuer Zustand.
+
+**E-M5-4** *(Stefan, 20.09.2026)* — Korrektur-Loop, Option A: Reviewer und
+QA laufen als Workflow-Schritte (F35 ergänzt den `qa`-Schritt). Bei
+Urteil `BLOCKIERT` erzeugt Jarvis automatisch einen ADJUST-Folgeauftrag
+aus den strukturierten Befunden (F23-Mechanik, derselbe Auftrag); der
+Start des schreibenden Schritts bleibt `ZWINGEND` (ein Klick des
+Menschen). E-M3-1 bleibt unverändert. Ein automatischer Neustart
+innerhalb `max_replans` ist ausdrücklich NICHT entschieden.
+
+**E-M5-5** *(Stefan, 20.09.2026)* — Freigabepfad externer Ressourcen,
+Option A: Schema-Regel R2 wird gelockert — `FREIGEGEBEN` ist für `typ:
+extern` zulässig, sobald der Eintrag ein lokal prüfbares Feld
+`installation` (Pfad/Befehl/Version) trägt. `ressourcen.json` bleibt vom
+Menschen gepflegt; `verfuegbar` bleibt abgeleitet (F19-Nicht-Ziel bleibt).
+Löst die Blockade von F29 WS-0.
+
+E-M5-6 bis E-M5-9 sind nicht dokumentiert vergeben.
+
+**E-M5-10** *(Stefan, 21.09.2026)* — F40 „Jarvis schneller":
+Streaming-Reaktion (`stream-json`) + weniger Werkzeug-Runden über den
+Context Builder. Eine persistente Sitzung („Jarvis Live") wird nicht
+gebaut, weil sie nur ~3 s spart; neu zu bewerten, falls diese 3 s später
+stören. Ersetzt eine frühere Entscheidung, die auf einer ungemessenen
+Schätzung beruhte (F-553).
+
+**E-M5-11** *(Stefan, 21.09.2026)* — Virenscanner-Ausnahme (Kaspersky) für
+`127.0.0.1` (lokaler Leitstand); die 1,7-s-Browserlatenz liegt außerhalb
+der Anwendung (F-556, F-562).
+
+**Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
+`scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur
+(F-371 bleibt offen); parallele Worktrees nur bei disjunkten Dateien;
+Verifikation durch den Challenger vor jedem Merge.
 
 ---
 

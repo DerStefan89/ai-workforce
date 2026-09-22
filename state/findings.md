@@ -8248,12 +8248,12 @@ Maßnahme: Bei der ersten MCP-Capability-Freigabe mitplanen und in der
 Capability-Akte vermerken.
 Feature/Run: F31 WS-3c, 20.09.2026.
 
-**F-505** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-505** · `PROCESS_IMPROVEMENT` · P1 · erledigt (docs/m5-entscheidungen)
 Titel: M5-Plan setzt „M4 eingefroren" voraus, das M4-Gate ist real aber nicht erfüllt.
 Beschreibung: F30 ist nicht begonnen, F25 WS-2b/WS-3 sind offen, F23 steht auf `FEATURE_GATE`; F19-Akte (`FEATURE_GATE`) widerspricht `docs/STATUS.md` („abgeschlossen").
 Fundstelle: M5-Plan v8 §0.1; `docs/projekt/zielfassung.md` §13.5; `features/F19/feature.md` gegen `docs/STATUS.md`.
 Auswirkung: „M4 eingefroren" ist eine Setzung, kein Befund.
-Maßnahme: E1 (M4 mit benannten Übertragungen schließen); F19-Statusdrift in einem Doku-PR beheben.
+Maßnahme: E-M5-1 umgesetzt (M4 mit benannten Übertragungen nach F30 geschlossen, `docs/projekt/zielfassung.md` §13.5-Nachtrag); F19-Statusdrift behoben (F19/F23 Status → `ABGESCHLOSSEN`, `docs/STATUS.md`/`features/F19/feature.md`/`features/F23/feature.md` konsistent).
 Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: Challenger-Übergabe claude/277.
 
 **F-506** · `TECH_DEBT` · P2 · offen
@@ -8480,12 +8480,12 @@ Auswirkung: Jarvis hätte einen falschen Projektstand behauptet.
 Maßnahme: roadmap.json korrigiert.
 Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283, claude/284.
 
-**F-534** · `PROCESS_IMPROVEMENT` · P1 · offen
+**F-534** · `PROCESS_IMPROVEMENT` · P1 · erledigt (docs/m5-entscheidungen)
 Titel: Entscheidungen und Findings, die nur im Claude-Projekt stehen, erzeugen falsche Repo-Artefakte.
 Beschreibung: Claude Code leitet korrekt aus der veralteten Sollquelle ab. Findings F-505 bis F-584 waren nur in Challenger-Übergaben dokumentiert, `state/findings.md` endete bei F-504; Entscheidungen E1–E5 (M5) fehlen in `zielfassung.md` §13.6.
 Fundstelle: `docs/projekt/zielfassung.md` §13.6 (fehlt); `state/findings.md`.
 Auswirkung: Falscher Projektkontext (z. B. roadmap.json, Lagebild ohne neuere P1-Findings).
-Maßnahme: Findings-Nachtrag F-505 bis F-584 (dieser PR, Teil 1); zielfassung.md §13.6 mit E1–E5 als eigener Doku-PR (Teil 2, offen). Künftig jedes Finding sofort im Umsetzungs-PR eintragen.
+Maßnahme: Findings-Nachtrag F-505 bis F-584 (PR #209, Teil 1); `zielfassung.md` §13.6 mit E-M5-1…5, 3′, 10, 11 ergänzt, §13.5-Fakt-Nachtrag zum M4-Abschluss, `docs/STATUS.md`/`features/F19/feature.md`/`features/F23/feature.md` nachgezogen (docs/m5-entscheidungen, Teil 2, erledigt). Künftig jedes Finding sofort im Umsetzungs-PR eintragen.
 Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283.
 
 **F-535** · `TECH_DEBT` · P2 · erledigt (#201)
