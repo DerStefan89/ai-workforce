@@ -7,7 +7,7 @@ F32
 Verbrauch & Kontingent
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -195,24 +195,59 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
   (QA-Pass, 22.09.2026, F-602):** sitebreites, vorbestehendes Muster (kein
   Repo-Table hat einen `overflow-x:auto`-Wrapper), kein F32-spezifischer
   Regressionsbefund, aber auch nicht real widerlegt.
+- **`GET /api/verbrauch` hat keinen "wirft nie"-Vertrag, `holeVerbrauch`
+  prüft `response.ok` nicht — ein 500 friert das gesamte Dashboard ohne
+  sichtbaren Fehler ein (Feature-Review-Pass, 22.09.2026, F-603):**
+  `baueVerbrauchsProjektion` (anders als `baueRoadmapProjektion`, F33) hat
+  kein eigenes try/catch; ein Wurf (seltener IO-/Berechtigungsfehler auf
+  `kontrollzustand/`, nicht gewöhnliche Datenkorruption — der
+  Checkpoint-Store selbst ist bereits defensiv) fällt in den generischen
+  500-Catch-all des Servers. `holeVerbrauch` (`public/leitstand/api.js`)
+  nutzt — anders als `holeRessourcen`/`holeAbdeckung` im selben Modul —
+  nicht `holeJsonOderWirf` und prüft `response.ok` nicht, übernimmt einen
+  500-Körper also stillschweigend als Erfolg. `aggregiereVerbrauch`
+  (`dashboard.js`) wirft daraufhin einen `TypeError` (`gruppen` nicht
+  iterierbar) MITTEN in der `render()`-Template-Konstruktion, bevor
+  `innerHTML` gesetzt wird — nicht nur die Verbrauchskarte, das GESAMTE
+  Dashboard bleibt ohne sichtbare Fehlermeldung auf dem letzten Stand
+  hängen, ohne Selbstheilung (jeder folgende Poll-Tick wirft erneut). Ein
+  Klick auf den bereits aktiven Zeitraum-Button (der Retry-Fix aus dem
+  WS-2-QA-Pass) greift hier nicht, weil er nur den Client-Sentinel
+  `{ fehler: true }` erkennt, keinen `{ grund }`-Serverfehlerkörper.
+  Unabhängig von zwei frischen Kontexten (code-reviewer und qa) mit
+  identischem Befund. Kein Blocker (seltener Trigger, kein Datenverlust),
+  aber vor `ABGESCHLOSSEN` zu beheben.
 
 ## Feature Review
-Noch nicht fällig — WS-2 ist gebaut, Stefans Verifikation und der formale
-Feature-Review-Pass (Muster F33/F40) stehen aus. Status bleibt `IN_ARBEIT`.
+Feature-Review-Pass am 22.09.2026 (frischer Kontext, Muster
+CLAUDE.md/F33/F40): `code-reviewer` und `qa` haben das gesamte Feature
+(WS-1 Laufakte-Feld + Projektion #200, WS-2 Verbrauchsansicht im Dashboard
+#216) als Ganzes geprüft, nicht nur den zuletzt gebauten Workstream.
+Beide Urteile: **„Freigegeben mit Hinweisen"**, kein Blocker.
 
-Reviewer-/QA-Pass (frischer Kontext, 22.09.2026) vor Commit-Freigabe:
-**code-reviewer** „Freigegeben mit Hinweisen" (keine Blocker; ein Punkt vor
-Commit behoben: `catch` in `ladeVerbrauch` protokolliert den Fehler jetzt
-über `console.error`, Muster `views/workboard.js` `ladeRoadmap`). **qa**
-zunächst „Nicht freigegeben" wegen eines echten Bedienbarkeits-Mangels:
-ein fehlgeschlagener Abruf des bereits aktiven Zeitraums (insbesondere des
-Standardzeitraums `30t` beim Bootstrap) ließ sich nicht erneut versuchen,
-da ein Klick auf den aktiven Zeitraum-Button ein No-Op war — behoben
-(`initVerbrauchBedienung` löst jetzt auch bei Klick auf den aktiven
-Zeitraum neu, wenn dessen letzter Abruf fehlgeschlagen ist). Zusätzlich
-behoben: der Rolle-Tooltip nannte mit "Kontextpaket" internes
-Artefaktvokabular (F-476-Geruch) — auf "Rolle zu diesem Lauf nicht
-ermittelbar" vereinfacht, "Bekannte Grenzen" oben entsprechend an den
-tatsächlichen (zwei unterschiedlichen) Tooltip-Wortlaut angepasst. Zwei
-verbleibende, nicht blockierende Befunde als F-601/F-602 registriert
-(siehe oben).
+- **code-reviewer:** Vertragskonsistenz zwischen WS-1-Projektion und
+  WS-2-Konsum durchgehend deckungsgleich (camelCase-Feldnamen, reale
+  AK6-Bestätigung), Zwei-Worker-Konsistenz (claude-code/Codex liefern
+  strukturell identisches `VerbrauchV0`, `istGueltigeVerbrauchsZahl` wird
+  importiert statt dupliziert, D5), Zeitraumfilter-Format und
+  null-Gruppierung wie dokumentiert, keine Logik-Duplikation gefunden. Ein
+  neuer Befund: fehlender "wirft nie"-Vertrag bei `GET /api/verbrauch` +
+  fehlende `r.ok`-Prüfung in `holeVerbrauch` (F-603, siehe "Bekannte
+  Grenzen" oben).
+- **qa:** Zeitraumgrenzen inklusiv und ohne Off-by-one-Verwirrung, beide
+  Worker gleich behandelt, Erstnutzung (leeres Projekt) zeigt einen
+  verständlichen Leerzustand, keine Verwechslungsgefahr mit Kontingent
+  (F-508) oder Überschneidung mit der Roadmap-Karte (F33). Unabhängig
+  denselben Befund wie code-reviewer gefunden, hier mit konkretem
+  Reproduktionspfad nachgewiesen (TypeError in `aggregiereVerbrauch`,
+  gesamtes Dashboard friert ein) — derselbe Fund, nicht doppelt
+  registriert.
+
+Ein neuer Befund (F-603) aus diesem Pass, in `state/findings.md`
+registriert und oben unter "Bekannte Grenzen" referenziert. Bereits
+bekannte Befunde aus dem WS-2-Pass (F-601, F-602) wurden von beiden
+Agenten erneut bestätigt (keine Abweichung Doku↔Verhalten), nicht doppelt
+registriert.
+
+Status damit `IN_ARBEIT` → `FEATURE_GATE`. `ABGESCHLOSSEN` erst nach
+Stefans Abnahme (Muster F33/F40); F-603 sollte davor behoben werden.
