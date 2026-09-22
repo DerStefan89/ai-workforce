@@ -8943,3 +8943,27 @@ Fundstelle: `scripts/_aufraeumen.ts`; F-257; F-590.
 Auswirkung: Ein bereits gelöstes Problem (F-257) wäre ohne den Hinweis erneut aufgetreten, nur unter neuem Namen (F-590).
 Maßnahme: Challenger greppt vor Harness-Aufträgen nach bestehenden Helfern/Regeln; Claude Code stoppt und fragt nach, bevor es einen dokumentierten Schutzwert absenkt, statt umzusetzen.
 Feature/Run: fix/f588-sammle-laeufe, 22.09.2026. Quelle: claude/317.
+
+**F-592** · `TECH_DEBT` · P3 · offen
+Titel: Workboard-Karte "Roadmap" — kein/mehrere LAEUFT-Meilensteine nur über realen Datenstand geprüft, kein synthetischer Testfall.
+Beschreibung: `bentoRoadmapKarte` (`public/leitstand/views/workboard.js`, F33 WS-2) hebt den Meilenstein mit `status: 'LAEUFT'` hervor. (a) Gibt es keinen (z. B. alle Meilensteine `ABGESCHLOSSEN`/`GEPLANT`), zeigt die Karte nur die kollabierte Liste ohne hervorgehobenen Block. (b) Spiegelfall (Code-Review-Befund): das Schema (`validiereRoadmapDaten`) schließt MEHRERE Meilensteine mit `status: 'LAEUFT'` nicht aus — `bentoRoadmapKarte` hebt dann nur den ersten Treffer hervor, der Rest fällt kommentarlos in die kollabierte Liste, ohne Warnhinweis auf die Inkonsistenz. Beide Fälle sind beabsichtigtes, dokumentiertes Verhalten (`features/F33/feature.md`), aber weder `scripts/check-f33-roadmap-projektion.mjs` noch ein UI-Test deckt sie synthetisch ab; sie laufen nur zufällig über den echten Datenstand (M5 trägt aktuell genau ein `LAEUFT`) mit.
+Fundstelle: `public/leitstand/views/workboard.js` (`bentoRoadmapKarte`); `scripts/check-f33-roadmap-projektion.mjs`.
+Auswirkung: Gering — ein künftiger Meilenstein-Abschluss ohne neuen LAEUFT-Nachfolger, oder ein versehentlich doppelt auf LAEUFT gesetzter Meilenstein, könnte die Karte unbemerkt in einen ungeprüften bzw. irreführenden Zustand versetzen.
+Maßnahme: Bei Gelegenheit zwei synthetische `roadmap.json`-Fixture-Fälle (kein LAEUFT; zwei LAEUFT) im Gate oder einem UI-Test ergänzen.
+Feature/Run: F33 WS-2, 22.09.2026. Quelle: claude/318, Reviewer-/QA-Pass 22.09.2026.
+
+**F-593** · `TECH_DEBT` · P2 · offen
+Titel: Workboard-View lädt Workitems/Roadmap nicht neu bei Projektwechsel oder Wiederbetreten.
+Beschreibung: QA-Pass-Befund (F33 WS-2): `public/leitstand/views/workboard.js` abonniert `abonniereProjektWechsel` nicht (anders als `views/chat.js`, F26 WS-2a, wo genau diese Bugklasse bereits real reproduziert und gezielt behoben wurde). Die Modul-Singletons `letzteWorkitems`/`alleWorkitemsUngefiltert`/`fokusCache` UND das neue `letzteRoadmap` (F33 WS-2) überleben einen Projektwechsel unverändert — nach einem Wechsel zeigt das gesamte Bento-Board (inkl. der neuen Roadmap-Karte) kommentarlos weiter den Stand des VORHERIGEN Projekts, bis Stefan manuell "Neu laden" klickt. Zusätzlich lädt auch ein reines Wiederbetreten von `#/workboard` (`registriere(/^#\/workboard$/, …)`, ohne Projektwechsel) weder Workitems noch Roadmap neu — nur der initiale Bootstrap-Aufruf und der "Neu laden"-Knopf tun das.
+Fundstelle: `public/leitstand/views/workboard.js` (fehlendes `abonniereProjektWechsel`, `initWorkboardView`s `#/workboard`-Routen-Handler ruft nur `schliesseDetail()`); Gegenbeispiel `public/leitstand/views/chat.js` (F26 WS-2a).
+Auswirkung: Nach einem Projektwechsel können veraltete Daten eines anderen Projekts als aktuell missverstanden werden — kein Absturz, aber falsches Vertrauen in den angezeigten Stand.
+Maßnahme: `abonniereProjektWechsel`-Callback in `workboard.js` ergänzen, der `ladeWorkitems()`/`ladeRoadmap()` erneut auslöst (Muster `views/chat.js`); ggf. zusätzlich beim Wiederbetreten der Route.
+Feature/Run: F33 WS-2 QA-Pass, 22.09.2026. Quelle: claude/318.
+
+**F-594** · `TECH_DEBT` · P4 · offen
+Titel: GET /api/roadmap liefert `vision`, die Workboard-Karte zeigt sie nirgends.
+Beschreibung: Code-Review-Befund (F33 WS-2): `baueRoadmapProjektion` gibt bei `status: 'ok'` zusätzlich `vision` zurück (`roadmap.json`s Projektvisions-Text), `bentoRoadmapKarte` konsumiert aber nur `meilensteine`. Bewusste Scope-Entscheidung des WS-2-Auftrags (nur Meilensteine/Features gefordert), bisher aber nicht ausdrücklich als "vision bleibt in der Karte unsichtbar" dokumentiert gewesen.
+Fundstelle: `scripts/leitstand/routen-roadmap.mjs`; `public/leitstand/views/workboard.js` (`bentoRoadmapKarte`).
+Auswirkung: Keine — reine Dokumentationslücke, kein Fehlverhalten.
+Maßnahme: Keine (dokumentiert); bei Bedarf könnte `vision` künftig z. B. als Tooltip/Untertitel der Karte ergänzt werden.
+Feature/Run: F33 WS-2 Code-Review, 22.09.2026. Quelle: claude/318.

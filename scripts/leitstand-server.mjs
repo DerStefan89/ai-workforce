@@ -451,6 +451,7 @@ import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderun
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
+import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
@@ -3934,6 +3935,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       const von = angefragteUrl.searchParams.get('von') ?? undefined
       const bis = angefragteUrl.searchParams.get('bis') ?? undefined
       sendeJson(res, 200, baueVerbrauchsProjektion(basisVerzeichnis, { von, bis }))
+      return
+    }
+
+    // F33 WS-2: reine Projektion, keine weitere Logik hier (D5) — siehe
+    // scripts/leitstand/routen-roadmap.mjs. Die "Wo stehen wir?"-ANTWORT liefert bereits F40
+    // (Lagebild als Context-Builder-Einspeisung) — diese Route liefert nur die sichtbare Roadmap
+    // fürs Workboard, kein Chat, kein Prompt-Umbau. Wirft nie 500 (fehlende/ungültige Datei sind
+    // Fachergebnisse im Antwortkörper).
+    if (req.method === 'GET' && pfad === '/api/roadmap') {
+      sendeJson(res, 200, baueRoadmapProjektion({ repoWurzel, roadmapPfad }))
       return
     }
 
