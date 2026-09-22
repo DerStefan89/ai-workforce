@@ -35,12 +35,12 @@ Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
 begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
 `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien + Context-Builder-Einspeisung,
 `features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
-Latenz: Streaming + Lagebild) `FEATURE_GATE` (alle vier Workstreams
+Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
-Auto-Memory-Sperre für jarvis/router #207 — eigener Feature-Review-Pass
-und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
-22.09.2026).
+Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
+22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
+feature.md`) (Stand 22.09.2026).
 
 ## Erledigt
 
@@ -468,13 +468,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   20.09.2026). Noch nicht begonnen.
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
-  `features/F40/feature.md`, Status `FEATURE_GATE` (WS-0 Spike #203, WS-1
+  `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1
   Streaming-Reaktion auf die `result`-Zeile + Werkzeug-Fortschritt #204,
   WS-2 vorberechnetes Lagebild als vierte Context-Builder-Einspeisung #206,
   WS-3 Auto-Memory-Zugriff für `jarvis`/`router` gesperrt, löst F-567,
   #207). Alle Hebel der Spike-Empfehlung umgesetzt, Token-Streaming
-  bewusst Nicht-Ziel; Feature-Review-Pass und Abnahme stehen noch aus.
-  Nach F26 (Jarvis Chat v1), F33 WS-1 (Context-Builder-Einspeisung).
+  bewusst Nicht-Ziel; abgenommen durch Stefan am 22.09.2026, Restfindings
+  F-581/F-583 bleiben offen. Nach F26 (Jarvis Chat v1), F33 WS-1
+  (Context-Builder-Einspeisung).
 - ⏳ **F30** — Dogfooding + Team (inkl. F25 WS-2b/WS-3; Abschluss). Noch
   nicht begonnen.
 

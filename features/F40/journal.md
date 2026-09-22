@@ -210,3 +210,20 @@ Nicht Teil dieses Abschluss-Auftrags: der eigentliche Feature-Review-Pass,
 Stefans Abnahme, der Nachtrag von F-581/F-583 in `state/findings.md` selbst
 (nur referenziert, nicht neu registriert — das bleibt eigene
 Aufräumarbeit, F-534-Muster).
+
+## 2026-09-22 — Stefans Abnahme, Status FEATURE_GATE → ABGESCHLOSSEN
+
+Stefan hat F40 am 22.09.2026 abgenommen. `features/F40/feature.md`: Status
+`FEATURE_GATE` → `ABGESCHLOSSEN`, mit Satz "Abgenommen durch Stefan am
+22.09.2026." und Verweis auf die weiterhin offenen Restfindings F-581
+(Lagebild nur durch das Gate erzwungen, nicht automatisch erzeugt) und
+F-583 (ungeklärt, ob Auto-Memory `MEMORY.md` ohne Read-Werkzeugaufruf
+direkt in den Systemprompt lädt); "Feature Review"-Abschnitt entsprechend
+aktualisiert. `docs/STATUS.md`: F40 in "Aktuelle Phase" und in der
+Meilenstein-5-Liste ebenfalls auf `ABGESCHLOSSEN`, Hinweis "Feature-Review-
+Pass und Abnahme stehen noch aus" entfernt, dieselben Restfindings genannt.
+`node scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert).
+`npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+
+Nicht Teil dieses Auftrags: Nachtrag von F-581/F-583 in `state/findings.md`
+selbst (weiterhin nur referenziert, F-534-Muster).

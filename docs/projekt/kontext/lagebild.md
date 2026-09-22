@@ -36,12 +36,12 @@ Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
 begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
 `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien + Context-Builder-Einspeisung,
 `features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
-Latenz: Streaming + Lagebild) `FEATURE_GATE` (alle vier Workstreams
+Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
-Auto-Memory-Sperre für jarvis/router #207 — eigener Feature-Review-Pass
-und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
-22.09.2026).
+Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
+22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
+feature.md`) (Stand 22.09.2026).
 
 ## Offene P1-Findings
 
@@ -85,3 +85,4 @@ und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
 - F-523 · TECH_DEBT · Greenfield-Projekt über Jarvis ist strukturell blockiert.
 - F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
 - F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
+- F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.

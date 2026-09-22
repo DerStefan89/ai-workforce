@@ -7,7 +7,13 @@ F40
 Jarvis-Latenz: Streaming + Lagebild
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+
+Abgenommen durch Stefan am 22.09.2026. Offene Restfindings: F-581 (Lagebild
+wird nur durch das Gate erzwungen, nicht automatisch erzeugt), F-583
+(ungeklärt, ob Auto-Memory `MEMORY.md` in manchen CLI-Versionen ohne
+Read-Werkzeugaufruf direkt in den Systemprompt lädt) — siehe "Offene Reste"
+unten.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -242,11 +248,8 @@ Werkzeug-Runden (ein vorberechnetes Lagebild statt wiederholter
   nicht in `state/findings.md` nachgetragen.
 
 ## Feature Review
-Fällig (alle vier Workstreams gebaut, gemergt und real nachgewiesen:
-WS-0 #203, WS-1 #204, WS-2 #206, WS-3 #207), aber noch nicht als eigener
-Feature-Review-Pass durchgeführt (Unterschied zu den bereits gelaufenen
-Reviewer-/QA-Pässen je Workstream, CLAUDE.md-DoD) — steht vor einem
-Übergang von `FEATURE_GATE` zu `ABGESCHLOSSEN` aus, ebenso wie Stefans
-Abnahme (`docs/projekt/zielfassung.md` §Workstream: `… → ABNAHME →
-ABGESCHLOSSEN`, `ABNAHME` ist Aktivität, nicht Sache der KI). Status bleibt
-deshalb bewusst bei `FEATURE_GATE` stehen, nicht `ABGESCHLOSSEN`.
+Alle vier Workstreams gebaut, gemergt und real nachgewiesen: WS-0 #203,
+WS-1 #204, WS-2 #206, WS-3 #207. Stefans Abnahme (`docs/projekt/
+zielfassung.md` §Workstream: `… → ABNAHME → ABGESCHLOSSEN`) liegt am
+22.09.2026 vor — Status entsprechend auf `ABGESCHLOSSEN` gesetzt. Offene
+Restfindings F-581/F-583 bleiben bestehen, siehe "Offene Reste".
