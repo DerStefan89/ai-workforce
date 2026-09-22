@@ -19,7 +19,7 @@ WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,
 BLOCKIERT, ABGEBROCHEN`.
 
 Abgeschlossen per E-M5-1 (Stefan, 20.09.2026), Restfindings bleiben
-offen: F-378, F-389, F-392.
+offen: F-378, F-389, F-392, F-386.
 
 WS-0 (dieser Auftrag) ist gebaut: `src/aenderungsuebersicht/` (Kernartefakt
 + Validator + reale Ermittlung über einen lesenden `git`-Kindprozess),

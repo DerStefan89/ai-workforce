@@ -440,6 +440,11 @@ Feature unter `features/F2x/`):
   Gesprächsgedächtnis + Zusammenfassen, MCP-Begrenzung). Akte
   `features/F31/feature.md`, Status `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194,
   WS-3 #196, WS-3b #197, WS-3c #198). Nach F26, F29.
+
+Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
+
+### Meilenstein 5 — läuft (`docs/projekt/zielfassung.md` §13.6)
+
 - ⏳ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
   `GET /api/verbrauch`). Akte `features/F32/feature.md`, Status
   `IN_ARBEIT` (WS-1 erledigt, PR #200, `fc68d2d`; WS-2 UI-Ansicht im
@@ -449,6 +454,18 @@ Feature unter `features/F2x/`):
   Akte `features/F33/feature.md`, Status `IN_ARBEIT` (WS-0 Spike + WS-1
   erledigt, WS-2 Projektion/UI offen). Nach F17 (Rollenvertrag), F25
   (Projekte v1).
+- ⏳ **F34** — Product Coach / Ideation + Discovery. Noch nicht begonnen.
+  Nach F33.
+- ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
+  ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
+- ⏳ **F36** — Capability Library Expansion. Noch nicht begonnen. Nach
+  E-M5-5, parallel ab F34.
+- ⏳ **F37** — Besetzungs-Erklärung & Override. Noch nicht begonnen. Nach
+  F32, F35.
+- ⏳ **F38** — Projektwissen-Index, wegwerfbar. Noch nicht begonnen. Nach
+  F33, F35.
+- ⏳ **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
+  20.09.2026). Noch nicht begonnen.
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `FEATURE_GATE` (WS-0 Spike #203, WS-1
@@ -458,8 +475,8 @@ Feature unter `features/F2x/`):
   #207). Alle Hebel der Spike-Empfehlung umgesetzt, Token-Streaming
   bewusst Nicht-Ziel; Feature-Review-Pass und Abnahme stehen noch aus.
   Nach F26 (Jarvis Chat v1), F33 WS-1 (Context-Builder-Einspeisung).
-
-Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
+- ⏳ **F30** — Dogfooding + Team (inkl. F25 WS-2b/WS-3; Abschluss). Noch
+  nicht begonnen.
 
 **Nicht Fassung 1:** Mehrbenutzerbetrieb, Hosting, Abrechnung,
 Provider-Adapter, parallele Workstreams, autonome externe oder
