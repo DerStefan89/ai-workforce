@@ -8967,3 +8967,51 @@ Fundstelle: `scripts/leitstand/routen-roadmap.mjs`; `public/leitstand/views/work
 Auswirkung: Keine — reine Dokumentationslücke, kein Fehlverhalten.
 Maßnahme: Keine (dokumentiert); bei Bedarf könnte `vision` künftig z. B. als Tooltip/Untertitel der Karte ergänzt werden.
 Feature/Run: F33 WS-2 Code-Review, 22.09.2026. Quelle: claude/318.
+
+**F-595** · `TECH_DEBT` · P3 · offen
+Titel: Feature-IDs aus roadmap.json nicht auf Muster beschränkt, "../" wird im feature.md-Pfad aufgelöst.
+Beschreibung: `schemas/roadmap.schema.json` prüft `features[]` nur als String mit `minLength: 1`, ohne Formatbeschränkung. `baueFeatureEintrag` (`scripts/leitstand/routen-roadmap.mjs`) bildet daraus unverändert `join(repoWurzel, 'features', featureId, 'feature.md')` und liest die Datei. Eine `roadmap.json` mit z. B. `"../../irgendwas"` als Feature-ID würde außerhalb von `features/` lesen. Feature-Review-Pass (code-reviewer, frischer Kontext, 22.09.2026) bestätigte den Befund unabhängig vom Auftragshinweis.
+Fundstelle: `schemas/roadmap.schema.json` (`features.items`); `scripts/leitstand/routen-roadmap.mjs` (`baueFeatureEintrag`).
+Auswirkung: Gering — `roadmap.json` ist eine vertrauenswürdige, von Hand gepflegte Repo-Datei, kein externer Eingabepfad; nur Status-Zeile und Titel-Überschrift werden extrahiert, kein Rohdump.
+Maßnahme: Schema-Pattern `^F[0-9]+[a-z]?$` ergänzen, oder Prüfung, dass der aufgelöste Pfad unter `features/` liegt.
+Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/320.
+
+**F-596** · `TECH_DEBT` · P3 · offen
+Titel: Workboard-Karte Roadmap optisch unfertig.
+Beschreibung: Stefan (22.09.2026): die Karte "Roadmap" im Workboard sieht optisch noch nicht ausgereift aus; Design-Nacharbeit ist bewusst auf die geplante Design-Phase vor F30 verschoben (E-M5-2).
+Fundstelle: `public/leitstand/views/workboard.js` (`bentoRoadmapKarte`); `public/leitstand/style.css`.
+Auswirkung: Keine funktionale Einschränkung, rein optisch.
+Maßnahme: Zurückgestellt bis zur Design-Phase vor F30 (E-M5-2).
+Feature/Run: F33 WS-2, 22.09.2026. Quelle: claude/321.
+
+**F-597** · `TECH_DEBT` · P4 · offen
+Titel: baueRoadmapProjektion beschriftet jeden Lesefehler pauschal als JSON-Parsefehler.
+Beschreibung: Feature-Review-Pass (code-reviewer, frischer Kontext): der `try/catch` um `readFileSync`+`JSON.parse` in `baueRoadmapProjektion` (`scripts/leitstand/routen-roadmap.mjs`) fasst Lesefehler (z. B. Berechtigungsfehler, TOCTOU zwischen `existsSync` und `readFileSync`) und echte JSON-Parsefehler in derselben Meldung "JSON-Parsefehler: ..." zusammen. Funktional harmlos (weiterhin `status: 'ungueltig'`, kein 500), aber irreführend bei der Diagnose.
+Fundstelle: `scripts/leitstand/routen-roadmap.mjs` (`baueRoadmapProjektion`, catch-Block).
+Auswirkung: Gering — nur Diagnosequalität betroffen, kein Fehlverhalten.
+Maßnahme: Fehlerquellen trennen oder Meldung generischer fassen ("Datei nicht lesbar oder ungültiges JSON: ...").
+Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/320.
+
+**F-598** · `BUG` · P3 · offen
+Titel: Leere, aber existierende Projektkontext-Datei wird wie gültiger Inhalt behandelt, nicht wie eine fehlende Datei.
+Beschreibung: Feature-Review-Pass (qa, frischer Kontext): `filtereExistierendeAnfragen` (`scripts/leitstand-server.mjs`) prüft nur `existsSync`/`isFile`, keine Mindestlänge. Wird z. B. `beschreibung.md` versehentlich auf 0 Byte gekürzt (fehlgeschlagener Merge, Vertipper), besteht die Datei den Existenz-Filter und wird mit leerem Inhalt in die Anfragenliste aufgenommen — belegt einen Budget-/Prompt-Slot ohne Informationswert, ohne Warnung. Unterläuft die AK7-Absicht, nie stillschweigend wertlos einzuspeisen (AK7 deckt bisher nur den Fall "Datei fehlt komplett" ab).
+Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`, `loeseAusfuehrungsEingabenAuf`).
+Auswirkung: Mittel — plausibler Fehlerfall (versehentliches Leeren/fehlerhafter Merge), führt zu stillem Informationsverlust für `jarvis`/`router` ohne sichtbaren Hinweis.
+Maßnahme: Mindestlängen-Check in `filtereExistierendeAnfragen` ergänzen (Muster der bestehenden "nicht leer"-Prüfung in `check-f33-projektkontext.mjs` Abschnitt a), oder bewusst als weitere "Bekannte Grenze" dokumentieren.
+Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/321.
+
+**F-599** · `TECH_DEBT` · P4 · offen
+Titel: Feature-IDs innerhalb eines Meilensteins nicht auf Eindeutigkeit geprüft.
+Beschreibung: Feature-Review-Pass (qa, frischer Kontext): `pruefeMeilensteinForm` (`src/projektkontext/index.ts`) erzwingt Eindeutigkeit nur für `meilensteine[].id`, nicht für `features[]` innerhalb eines einzelnen Meilensteins. Ein Copy-&-Paste-Fehler in `roadmap.json` (dieselbe Feature-ID zweimal im selben Meilenstein) würde weder von Schema noch Gate abgefangen und in der Workboard-Karte als zwei identische Zeilen erscheinen.
+Fundstelle: `src/projektkontext/index.ts` (`pruefeMeilensteinForm`); `scripts/check-f33-projektkontext.mjs` Abschnitt (c).
+Auswirkung: Sehr gering — redaktioneller Fehler in einer von Hand gepflegten Datei, keine Fehlfunktion, nur eine doppelte Anzeige.
+Maßnahme: Bei Gelegenheit Eindeutigkeitsprüfung für `features[]` je Meilenstein ergänzen.
+Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/321.
+
+**F-600** · `TECH_DEBT` · P4 · offen
+Titel: Rohe interne Feature-Statuswerte (keine_akte/UNBEKANNT) erscheinen unübersetzt als Badge-Text, aktuell die Mehrheit der M5-Zeilen.
+Beschreibung: Feature-Review-Pass (qa, frischer Kontext): `roadmapFeatureZeile` (`public/leitstand/views/workboard.js`) zeigt den rohen Statuswert unverändert als Badge-Text, inkonsistent zum F-476-Prinzip ("keine Entwicklerprosa"), das für die Kartenebene bereits gilt. Praktisch relevant gerade jetzt: 7 von 10 Features des aktuell hervorgehobenen Meilensteins M5 (F30, F34–F39) haben noch keine `features/<id>/feature.md` und zeigen daher `keine_akte` — der erste reale Blick auf die Karte zeigt somit überwiegend dieses Badge statt eines aussagekräftigen Fortschrittsbilds, was bei Stefans anstehender Verifikation fälschlich als Defekt wahrgenommen werden könnte.
+Fundstelle: `public/leitstand/views/workboard.js` (`roadmapFeatureZeile`); `docs/projekt/roadmap.json` vs. `features/`-Verzeichnis (realer Datenstand 22.09.2026).
+Auswirkung: Gering — kein Fehlverhalten, nur Lesbarkeit/Erstinterpretation der Karte.
+Maßnahme: Bei Gelegenheit Statuswerte für die Anzeige aufbereiten (z. B. "Noch keine Akte" statt `keine_akte`); bis dahin nur dokumentiert.
+Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/321.

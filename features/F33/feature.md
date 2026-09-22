@@ -7,7 +7,7 @@ F33
 Projektkontext & Roadmap
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -99,7 +99,11 @@ Repo" — Git führt, kein zweiter Speicher).
   Registereintrags aufgelöst, mit Standardpfaden aus Punkt AK2, wenn die
   Felder fehlen. `ausfuehrung` bleibt unverändert (CLAUDE.md ist dort die
   Anweisung, keine Dublette); `baueKontextpaket`s Budget-/Ausschlusslogik
-  bleibt unangetastet.
+  bleibt unangetastet. (Feature-Review-Pass-Nachtrag, 22.09.2026: die
+  Funktion liefert inzwischen VIER Anfragen — F40 WS-2 hat additiv
+  `lagebild.md` ergänzt, `check-f33-projektkontext.mjs` Abschnitt (e) prüft
+  entsprechend vier Elemente; dieser AK5-Text beschreibt weiterhin den
+  WS-1-Umfang zum Zeitpunkt seiner Umsetzung.)
 - AK6 (WS-1): `scripts/check-f33-projektkontext.mjs` prüft: die drei Dateien
   existieren und sind nicht leer; die reale `roadmap.json` ist über
   `ladeRoadmap` gültig; mindestens ein Rot-Fall (unbekanntes Feld, falscher
@@ -210,7 +214,68 @@ Repo" — Git führt, kein zweiter Speicher).
   Router-Kalibrierung misst dadurch eine leicht andere Eingabezusammensetzung
   als ein echter Produktionslauf über `POST /api/auftraege/<id>/routen`.
   Werkzeugkonsistenz-Frage, kein Produktfehler; nicht in WS-1 nachgezogen.
+- **Feature-IDs aus `roadmap.json` sind formal nicht auf ein Muster
+  beschränkt (Feature-Review-Pass-Befund, F-595):** `baueFeatureEintrag`
+  löst eine Feature-ID unverändert zu `features/<id>/feature.md` auf; ein
+  `../`-Segment würde außerhalb von `features/` lesen. Geringes Risiko, da
+  `roadmap.json` eine vertrauenswürdige, von Hand gepflegte Repo-Datei ist
+  und nur Status-Zeile/Titel extrahiert werden — dokumentiert statt
+  behoben.
+- **Leere, aber existierende Projektkontext-Datei wird wie gültiger Inhalt
+  behandelt (Feature-Review-Pass-Befund, F-598):** `filtereExistierendeAnfragen`
+  prüft nur Existenz, keine Mindestlänge — anders als der bereits über AK7
+  behandelte Fall "Datei fehlt komplett" bleibt ein versehentlich geleerter
+  `beschreibung.md`/`anweisungen.md`/`roadmap.json` unbemerkt und belegt
+  einen Kontext-Slot ohne Informationswert.
+- **Feature-IDs innerhalb eines Meilensteins nicht auf Eindeutigkeit
+  geprüft (Feature-Review-Pass-Befund, F-599):** nur `meilensteine[].id`
+  ist eindeutigkeitsgeprüft; ein Copy-&-Paste-Duplikat unter `features[]`
+  eines Meilensteins fiele weder Schema noch Gate auf.
+- **Rohe interne Statuswerte (`keine_akte`/`UNBEKANNT`) erscheinen
+  unübersetzt als Badge-Text (Feature-Review-Pass-Befund, F-600):**
+  inkonsistent zum F-476-Prinzip auf Kartenebene; aktuell praktisch
+  relevant, weil 7 von 10 M5-Features (F30, F34–F39) noch keine Akte haben
+  und die Karte deshalb überwiegend `keine_akte` zeigt.
+- **Workboard-Karte "Roadmap" optisch unfertig (F-596):** bewusst auf die
+  Design-Phase vor F30 verschoben (E-M5-2), Stefan 22.09.2026.
 
 ## Feature Review
-Noch nicht fällig — Stefans Verifikation von WS-2 (Freigabe/Screenshot)
-steht aus, Status bleibt bis dahin `IN_ARBEIT`.
+Feature-Review-Pass am 22.09.2026 (frischer Kontext, Muster CLAUDE.md/F40):
+`code-reviewer` und `qa` haben das gesamte Feature (WS-0 Spike, WS-1
+Projektkontext als Repo-Dateien, WS-2 Roadmap-Projektion, WS-2 gemergt als
+#214) als Ganzes geprüft, nicht nur einzelne Workstreams. Beide Urteile:
+**„Freigegeben mit Hinweisen"**, kein Blocker.
+
+- **code-reviewer:** Zusammenspiel der drei Workstreams konsistent —
+  `validiereRoadmapDaten` ist die eine Regelquelle für WS-1 und WS-2, keine
+  zweite Kopie; Pfadauflösung (`kontextPfad`/`roadmapPfad`) fließt aus
+  denselben Optionen in Context-Builder-Einspeisung und `GET /api/roadmap`;
+  unterschiedliches Fehlerverhalten (wirft vs. wirft nie) ist bewusst und
+  zum jeweiligen Aufrufkontext passend. Zwei neue Befunde: fehlender
+  Formatschutz für Feature-IDs aus `roadmap.json` (F-595, unabhängig vom
+  Stefan-Auftrag mit identischem Ergebnis gefunden) und eine pauschale
+  „JSON-Parsefehler"-Meldung im `catch`-Block von `baueRoadmapProjektion`,
+  die auch echte Lesefehler mit einschließt (F-597, Diagnosequalität, kein
+  Fehlverhalten).
+- **qa:** Kernablauf (AK1–AK9) bestätigt funktionsfähig, alle Gates grün.
+  Vier neue Befunde: eine leere, aber existierende Kontextdatei wird nicht
+  wie eine fehlende behandelt (F-598, mittleres Risiko — unterläuft die
+  AK7-Absicht); Feature-IDs innerhalb eines Meilensteins nicht auf
+  Eindeutigkeit geprüft (F-599, sehr geringes Risiko); rohe interne
+  Statuswerte als unübersetzter Badge-Text, aktuell praktisch relevant, da
+  7 von 10 M5-Features noch keine Akte haben (F-600); AK5-Text in dieser
+  Akte war gegenüber dem tatsächlichen Verhalten veraltet (drei statt vier
+  Anfragen seit F40 WS-2) — direkt oben bei AK5 korrigiert, kein eigenes
+  Finding. Ein sehr geringfügiger Testlückenbefund (kein Rot-Fall für
+  kaputtes JSON in `check-f33-roadmap-projektion.mjs`) wurde als nicht
+  eigenständig registrierungswürdig eingestuft.
+
+Keiner der sechs neuen Befunde (F-595, F-597, F-598, F-599, F-600, plus
+Stefans eigener Befund F-596 zur Kartenoptik) ist ein Merge-/Gate-Blocker
+— alle in `state/findings.md` registriert und oben unter "Bekannte
+Grenzen" referenziert. Bereits bekannte Befunde aus dem WS-2-Reviewer-/
+QA-Pass (F-592, F-593, F-594) wurden von beiden Agenten erneut bestätigt,
+nicht doppelt registriert.
+
+Status damit `IN_ARBEIT` → `FEATURE_GATE`. `ABGESCHLOSSEN` erst nach
+Stefans Abnahme (Muster F40).
