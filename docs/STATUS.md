@@ -30,10 +30,11 @@ Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
 F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 #196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
 (`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
-offen, RC): F32 Verbrauch & Kontingent `FEATURE_GATE` (WS-1 Verbrauch-
+offen, RC): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Dashboard PR #216 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Restfinding
-F-603 (P2, sollte vor Stefans Abnahme behoben werden) bleibt offen, siehe
+F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
+22.09.2026 nach #218, Restfindings F-601/F-602 (P4) bleiben offen, siehe
 `features/F32/feature.md`), F33 Projektkontext & Roadmap
 `ABGESCHLOSSEN` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
@@ -452,10 +453,11 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 
 - ✅ **F32** — Verbrauch & Kontingent (Laufakte-Feld `verbrauch`, Projektion
   `GET /api/verbrauch`, Verbrauchsansicht im Dashboard). Akte
-  `features/F32/feature.md`, Status `FEATURE_GATE` (WS-1 PR #200,
+  `features/F32/feature.md`, Status `ABGESCHLOSSEN` (WS-1 PR #200,
   `fc68d2d`; WS-2 PR #216; Feature-Review-Pass 22.09.2026 „Freigegeben mit
-  Hinweisen", Restfinding F-603 (P2) sollte vor Stefans Abnahme behoben
-  werden). Nach F6a, F16.
+  Hinweisen", Restfinding F-603 im Fixpaket fix/f603-f598-f595 behoben,
+  abgenommen durch Stefan am 22.09.2026 nach #218, Restfindings F-601/F-602
+  (P4) bleiben offen). Nach F6a, F16.
 - ✅ **F33** — Projektkontext & Roadmap (Beschreibung/Anweisungen/Roadmap als
   Repo-Dateien, Einspeisung über den Context Builder für `jarvis`/`router`,
   sichtbare Roadmap-Karte im Workboard). Akte `features/F33/feature.md`,
@@ -464,8 +466,11 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Feature-Review-Pass 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
   durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben
   offen). Nach F17 (Rollenvertrag), F25 (Projekte v1).
-- ⏳ **F34** — Product Coach / Ideation + Discovery. Noch nicht begonnen.
-  Nach F33.
+- ⏳ **F34** — Product Coach / Ideation + Discovery. Akte
+  `features/F34/feature.md`, Status `IN_ARBEIT` (WS-1 Sparring-Backend —
+  Rolle `product-coach`, `POST`/`GET /api/sparring` — gebaut, realer
+  3-Turn-Nachweis `features/F34/nachweis-ws1.md`; WS-2 Sparring-UI + "Als
+  Auftrag anlegen" noch offen). Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
   ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
 - ⏳ **F36** — Capability Library Expansion. Noch nicht begonnen. Nach

@@ -1,0 +1,15 @@
+{
+  "art": "scope_entwurf",
+  "antwort": "Auf Basis des Gesprächs schlage ich diesen Scope für die Design-Phase vor F30 vor.",
+  "alternativen": null,
+  "scope": {
+    "titel": "Design-Phase vor F30",
+    "problem": "Mehrere Workboard-/Dashboard-Karten (u. a. Roadmap, F-596) sind optisch unfertig, jede einzeln als Restfinding dokumentiert statt gebündelt behoben.",
+    "ziel": "Alle dokumentierten Optik-Findings vor F30 in einem gebündelten Durchgang schließen, ohne neue Funktionalität zu bauen.",
+    "in_scope": ["Bestehende Optik-Findings der Karten Roadmap/Verbrauch", "Konsistente Design-Tokens über alle Bento-Karten"],
+    "out_of_scope": ["Neue Views oder Routen", "Funktionale Änderungen an bestehenden Endpunkten"],
+    "annahmen": ["Design-Tokens aus style.css bleiben unverändert, nur ihre Anwendung wird konsistent gemacht"],
+    "offene_fragen": ["Soll die Design-Phase vor oder nach F34 WS-2 laufen?"],
+    "erfolgskriterium": "Kein offenes Optik-Finding mehr in state/findings.md mit Bezug auf Workboard-/Dashboard-Karten."
+  }
+}

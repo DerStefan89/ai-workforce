@@ -16,14 +16,17 @@
  * D5): Regel 1 importiert die reale validiereRessourcenDaten statt einen
  * zweiten Regelsatz zu pflegen.
  *
- * Regel 6 trägt drei eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
+ * Regel 6 trägt fünf eng benannte Ausnahmen (F346_AUSNAHMEN, seit F24 aus
  * src/capabilities-ansicht/index.ts importiert — einzige Quelle, die
- * F24-Coverage-Ansicht nutzt denselben Import): 'router', 'code-reviewer'
- * und seit F27 WS-1 'scout' erlauben weiterhin 'claude-code', obwohl
- * 'claude-code' STRUCTURED_OUTPUT nicht bereitstellt (kein
- * --output-schema-Mechanismus, F-337) — alle drei Verengungen wurden
- * geprüft und real verworfen (src/rollen/index.ts, Kopfkommentar, F19 WS-2;
- * für scout siehe F27/feature.md Nicht-Ziele, "kein Codex-Spike in WS-1"): ein
+ * F24-Coverage-Ansicht nutzt denselben Import): 'router', 'code-reviewer',
+ * seit F27 WS-1 'scout', seit F26 WS-1 'jarvis' und seit F34 WS-1
+ * 'product-coach' erlauben weiterhin 'claude-code', obwohl 'claude-code'
+ * STRUCTURED_OUTPUT nicht bereitstellt (kein --output-schema-Mechanismus,
+ * F-337) — alle fünf Verengungen wurden geprüft und real verworfen
+ * (src/rollen/index.ts, Kopfkommentar, F19 WS-2; für scout siehe
+ * F27/feature.md Nicht-Ziele, "kein Codex-Spike in WS-1"; für jarvis und
+ * product-coach läuft ein Chat- bzw. Sparring-Lauf über den direkten
+ * POST-Pfad strukturell IMMER als worker 'claude-code' bei fehlendem Codex): ein
  * Router-/Scout-Lauf über den direkten POST /api/laeufe-Pfad läuft
  * strukturell IMMER als worker: 'claude-code', ein Verengen auf ['codex']
  * machte den jeweiligen Mechanismus unbenutzbar; ein Verengen von
@@ -127,7 +130,7 @@ for (const [rolle, vertrag] of Object.entries(ROLLENVERTRAEGE)) {
 }
 if (befunde.length === befundeVor6) {
   console.log(
-    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den drei benannten Ausnahmen ('router'/'claude-code', 'code-reviewer'/'claude-code' und 'scout'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
+    "✓ (6) Jeder in erlaubte_worker genannte, registrierte Worker deckt die benoetigte_capabilities seiner Rolle vollständig (F-346) — außer den fünf benannten Ausnahmen ('router'/'claude-code', 'code-reviewer'/'claude-code', 'scout'/'claude-code', 'jarvis'/'claude-code' und 'product-coach'/'claude-code', je Capability 'STRUCTURED_OUTPUT')."
   )
 }
 

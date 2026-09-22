@@ -7,7 +7,10 @@ F32
 Verbrauch & Kontingent
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+
+Abgenommen durch Stefan am 22.09.2026 (nach #218, F-603 behoben). Offene
+Restfindings: F-601, F-602 (P4, kein Blocker).
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -260,3 +263,12 @@ derselben Kontextdateien), `qa` **„Freigegeben"** (kein einziger Befund,
 alle drei Fixe end-to-end nachvollzogen, keine Regression bei realen
 Feature-IDs oder bestehenden Verbrauchs-Konsumenten). F-601/F-602 bleiben
 unverändert offen, kein Teil dieses Fixpakets.
+
+### Nachtrag 22.09.2026 — Stefans Abnahme, Status FEATURE_GATE → ABGESCHLOSSEN
+
+Stefan hat F32 am 22.09.2026 abgenommen (nach #218, F-603 bereits vorher
+behoben). Status `FEATURE_GATE` → `ABGESCHLOSSEN`, mit Satz "Abgenommen
+durch Stefan am 22.09.2026 (nach #218, F-603 behoben). Offene Restfindings:
+F-601, F-602 (P4, kein Blocker)." (siehe oben unter "Status"). `docs/
+STATUS.md` entsprechend nachgezogen. Nicht Teil dieses Auftrags: Behebung
+der beiden Restfindings (bleiben offen, Muster F33 F-592…F-600).

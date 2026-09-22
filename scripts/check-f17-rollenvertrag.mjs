@@ -53,6 +53,8 @@ const erwarteteRollen = {
   scout: ['src/**'],
   // 'jarvis' kam mit F26 WS-1 hinzu — ebenso neu, kein Migrationswert.
   jarvis: ['src/**'],
+  // 'product-coach' kam mit F34 WS-1 hinzu — ebenso neu, kein Migrationswert.
+  'product-coach': ['src/**'],
 }
 
 const gefundeneRollen = Object.keys(ROLLENVERTRAEGE).sort()

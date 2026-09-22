@@ -1,0 +1,6 @@
+{
+  "art": "alternativen",
+  "antwort": "Nur eine Option, das ist keine echte Wahl.",
+  "alternativen": [{ "titel": "Einzige Option", "beschreibung": "x", "abwaegung": "x" }],
+  "scope": null
+}

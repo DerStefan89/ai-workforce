@@ -174,3 +174,11 @@ export const holeVerbrauch = (von) => {
   const query = von === undefined ? '' : `?von=${encodeURIComponent(von)}`
   return holeJsonOderWirf(mitPraefix(`/verbrauch${query}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 }
+
+// F34 WS-1: Sparring je aktivem Projekt (mitPraefix, wie jeder andere Endpunkt außer holeProjekte).
+// sendeSparringNachricht löst den asynchronen Product-Coach-Lauf aus (202 + laufId/auftragId, 409 bei
+// D13, Muster sendeChatNachricht); holeSparringVerlauf projiziert den 'lineage-sparring-<projektId>'-
+// Verlauf (leer bis zum ersten real abgeschlossenen Lauf, kein Fehler) — über holeJsonOderWirf mit
+// Zeitlimit (Muster holeRoadmap/holeVerbrauch, F-561), da noch kein Poll diesen Endpunkt abruft.
+export const sendeSparringNachricht = (koerper) => fetch(mitPraefix('/sparring'), { method: 'POST', body: JSON.stringify(koerper) })
+export const holeSparringVerlauf = () => holeJsonOderWirf(mitPraefix('/sparring'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })

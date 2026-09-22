@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-product-coach.schema.json",
+  "title": "Rollen-Ergebnis: product-coach",
+  "description": "F34 WS-1. Output-Schema für die Rolle 'product-coach' (src/rollen/index.ts). Ein Sparring-Lauf referenziert es als output_schema: \"ergebnis-product-coach\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-jarvis.schema.json). 'art' unterscheidet die drei möglichen Ausgänge eines Sparring-Turns: eine Rückfrage ('frage', höchstens eine pro Turn), ein Satz Alternativen mit Abwägung ('alternativen') oder ein fertiger Scope-Entwurf ('scope_entwurf', erst bei ausreichender Klarheit). Codex-kompatibler Dialekt (F-423-Muster, ergebnis-jarvis.schema.json): kein 'allOf'/'if'/'then'/'oneOf', JEDE unter 'properties' gelistete Eigenschaft steht auch in 'required' — ein optionales Feld gibt es in diesem Dialekt nicht, nur ein PFLICHTFELD, dessen Typ zusätzlich 'null' erlaubt. 'alternativen' und 'scope' sind deshalb TOP-LEVEL PFLICHTFELDER vom Typ [\"array\",\"null\"] bzw. [\"object\",\"null\"]; 'null' bedeutet 'nicht gesetzt'. Die Kopplung (art 'alternativen' → 'alternativen' darf nicht null sein und muss mindestens zwei Einträge tragen; art 'scope_entwurf' → 'scope' darf nicht null sein; sonst müssen beide null sein) ist NICHT im Schema erzwungen, sondern ausschließlich im serverseitigen Validator (validiereErgebnisProductCoach, src/product-coach/index.ts) — derselbe Validator akzeptiert außerdem die schlankere Form, in der 'alternativen'/'scope' beim claude-code-Worker (kein --output-schema-Zwang) ganz weggelassen statt auf null gesetzt werden; ein fehlendes Feld und ein Feld mit Wert 'null' sind für den Validator gleichbedeutend. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["art", "antwort", "alternativen", "scope"],
+  "properties": {
+    "art": {
+      "enum": ["frage", "alternativen", "scope_entwurf"],
+      "description": "Geschlossene Wertemenge für den Ausgang dieses Sparring-Turns: 'frage' (eine Rückfrage, höchstens eine je Turn), 'alternativen' (mindestens zwei Optionen mit Abwägung) oder 'scope_entwurf' (ein fertiger Scope-Entwurf, erst bei ausreichender Klarheit)."
+    },
+    "antwort": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Der für den Menschen lesbare Antworttext — bei jeder 'art' Pflicht, auch wenn zusätzlich 'alternativen' oder 'scope' gesetzt ist (eine Antwort ohne begleitenden Text ist eine Behauptung ohne Erklärung)."
+    },
+    "alternativen": {
+      "type": ["array", "null"],
+      "description": "Bei art 'alternativen' ein Array mit mindestens zwei Einträgen (Validator-Kopplung, siehe Schema-description), sonst 'null'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["titel", "beschreibung", "abwaegung"],
+        "properties": {
+          "titel": { "type": "string", "minLength": 1 },
+          "beschreibung": { "type": "string", "minLength": 1 },
+          "abwaegung": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "scope": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["titel", "problem", "ziel", "in_scope", "out_of_scope", "annahmen", "offene_fragen", "erfolgskriterium"],
+      "description": "Bei art 'scope_entwurf' ein Objekt (Rohmaterial für baueAuftragAusScope, src/product-coach/index.ts), sonst 'null' (Validator-Kopplung, siehe Schema-description).",
+      "properties": {
+        "titel": { "type": "string", "minLength": 1 },
+        "problem": { "type": "string", "minLength": 1 },
+        "ziel": { "type": "string", "minLength": 1 },
+        "in_scope": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "out_of_scope": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "annahmen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "offene_fragen": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "erfolgskriterium": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

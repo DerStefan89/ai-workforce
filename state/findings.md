@@ -9058,3 +9058,27 @@ Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`, `loes
 Auswirkung: Gering — kein Performance- oder Korrektheitsproblem bei realen Dateigrößen, nur ein Dokumentationsdefizit.
 Maßnahme: Bei Gelegenheit einen Satz im `baueProjektkontextAnfragen`-Kommentar ergänzen, dass die Leerprüfung einen zweiten, schmalen Lesevorgang derselben Datei in Kauf nimmt.
 Feature/Run: Fixpaket fix/f603-f598-f595 Code-Review-Pass, 22.09.2026. Quelle: claude/fix-f603-f598-f595.
+
+**F-606** · `BUG` · P2 · offen
+Titel: Jarvis-Ergebnis `auftrag_vorschlag` wird nirgends verarbeitet — kein Weg vom Chat zu einem F22-Auftrag.
+Beschreibung: `public/leitstand/views/chat.js` (`antwortText`) zeigt bei jeder `art` ausschließlich das Feld `antwort` als Text an — ein Jarvis-Ergebnis mit `art: 'auftrag_vorschlag'` (samt `auftrag.titel`/`auftrag.text`, `schemas/ergebnis-jarvis.schema.json`) wird im Chat wie eine reine Antwort dargestellt, das mitgelieferte `auftrag`-Objekt bleibt vollständig ungenutzt. Es existiert kein Bedienelement, das aus diesem Vorschlag einen echten Auftrag anlegt (`POST /api/auftraege`, F22-Pfad) — der einzige Weg zu einem Auftrag ist weiterhin die manuelle Eingabe im Auftragsformular.
+Fundstelle: `public/leitstand/views/chat.js` (`antwortText`); `schemas/ergebnis-jarvis.schema.json` (`auftrag`).
+Auswirkung: Mittel — der Jarvis-Auftragsvorschlag ist ein dokumentiertes Kernszenario der Rolle (F26), landet aber praktisch nie in einem Auftrag; Stefan muss den Vorschlag von Hand abtippen.
+Maßnahme: F34 WS-2 — "Als Auftrag anlegen"-Button im Chat bei `art: 'auftrag_vorschlag'`, der `auftrag.titel`/`auftrag.text` über `POST /api/auftraege` registriert.
+Feature/Run: Challenge F34, 22.09.2026. Quelle: claude/f34-ws1.
+
+**F-607** · `TECH_DEBT` · P4 · offen
+Titel: Kein Test deckt die D13-Sperre unter echter Nebenläufigkeit ab (zwei tatsächlich überlappende Requests).
+Beschreibung: QA-Pass F34 WS-1 (frischer Kontext): weder `scripts/check-f26-jarvis.mjs` noch `scripts/check-f34-product-coach.mjs` (noch ein anderes Gate) feuert zwei echte, gleichzeitig überlappende `POST /api/chat`/`POST /api/sparring`/`POST /api/laeufe`-Requests gegeneinander. Bei Code-Lektüre sieht die Sperre (`if (laufAktiv)` … `laufAktiv = true`) race-frei aus — zwischen Prüfung und Setzen läuft ausschließlich synchroner Code (keine `await`-Lücke), was in Node.js' Single-Thread-Event-Loop eine Race Condition strukturell ausschließt — aber das ist eine aus dem Code abgeleitete Erwartung, kein per Test verifiziertes Verhalten. Kein F34-spezifisches Risiko: dieselbe Lücke gilt für JEDEN D13-geschützten Endpunkt im Repo, nicht nur `product-coach`/`jarvis`.
+Fundstelle: `scripts/leitstand-server.mjs` (jede `if (laufAktiv)`-Stelle); kein Gate mit einem Zwei-parallele-Requests-Testfall gefunden.
+Auswirkung: Gering — die synchrone Code-Struktur macht eine echte Race praktisch ausgeschlossen, aber unbewiesen bleibt unbewiesen.
+Maßnahme: Bei Gelegenheit einen Gate-Fall mit zwei parallel (`Promise.all`) abgefeuerten Requests gegen denselben D13-geschützten Endpunkt ergänzen (ein Endpunkt genügt als Repräsentant, kein Bedarf für einen je Endpunkt).
+Feature/Run: F34 WS-1 QA-Pass, 22.09.2026. Quelle: claude/f34-ws1.
+
+**F-608** · `TECH_DEBT` · P4 · offen
+Titel: `istNichtLeererString`/`istStringListe` akzeptieren Whitespace-only-Strings als "nicht-leer" (Jarvis + Product-Coach).
+Beschreibung: QA-Pass F34 WS-1 (frischer Kontext): `istNichtLeererString` (`src/product-coach/index.ts`, identisches Muster in `src/jarvis/index.ts`) prüft nur `typeof wert === 'string' && wert.length > 0`, ohne `.trim()`. Ein Feld wie `alternativen[].titel` oder `scope.problem` mit reinem Leerzeichen-Inhalt (`" "`) besteht die Validierung, obwohl es keinen Informationswert trägt. Kein durch F34 neu eingeführter Fehler — dasselbe Verhalten existiert unverändert seit `src/jarvis/index.ts` (F26).
+Fundstelle: `src/product-coach/index.ts` (`istNichtLeererString`, `istStringListe`); `src/jarvis/index.ts` (`istNichtLeererString`).
+Auswirkung: Gering — ein realer Worker liefert praktisch nie Whitespace-only-Text; theoretischer Rand.
+Maßnahme: Bei Gelegenheit `.trim().length > 0` statt `.length > 0` in beiden Modulen (D5: dieselbe Änderung an beiden Stellen, oder in eine gemeinsame Hilfsfunktion ziehen).
+Feature/Run: F34 WS-1 QA-Pass, 22.09.2026. Quelle: claude/f34-ws1.
