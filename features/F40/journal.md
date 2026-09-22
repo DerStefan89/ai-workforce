@@ -227,3 +227,9 @@ Pass und Abnahme stehen noch aus" entfernt, dieselben Restfindings genannt.
 
 Nicht Teil dieses Auftrags: Nachtrag von F-581/F-583 in `state/findings.md`
 selbst (weiterhin nur referenziert, F-534-Muster).
+
+## 2026-09-22 — Korrektur zum Eintrag Abnahme 22.09.2026
+
+Korrektur zum Eintrag Abnahme 22.09.2026: F-581 und F-583 stehen bereits in
+`state/findings.md` (P3, offen); die Aussage, sie seien nur referenziert,
+war falsch.

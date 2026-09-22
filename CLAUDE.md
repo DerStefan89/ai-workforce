@@ -184,3 +184,15 @@ Alle drei wurden mehrfach real beobachtet.
 
 - [FÜLLUNG] Projektspezifische Fallen hier ergänzen, sobald sie zweimal
   aufgetreten sind. Eine einmalige Beobachtung ist noch kein Muster.
+
+- Symptom: `npm run check` scheitert an einem `EPERM` beim Aufräumen eines
+  `kontrollzustand-test-*`-Verzeichnisses (`raeumeVerzeichnis`), obwohl
+  weder Code noch Config geändert wurden — tritt TROTZ des bereits auf 10
+  gesetzten `maxRetries` (F-257) auf, Retry läuft meist grün, hinterlässt
+  aber ein verwaistes Testverzeichnis (F-590, zweimal beobachtet 22.09.2026).
+- Was tun: Wiederholen statt reparieren (Spezialfall der Falle oben).
+  `maxRetries` NICHT unter 10 senken (löst es nicht, siehe F-590/F-591).
+  Beim nächsten Auftreten Uhrzeit, Pfad und laufenden Echtzeitscan
+  (Kaspersky) festhalten. Verwaiste `kontrollzustand-test-*`-Reste NICHT
+  eigenmächtig löschen — Stefan entscheidet, sie sind gitignored und stören
+  `npm run check` nicht.

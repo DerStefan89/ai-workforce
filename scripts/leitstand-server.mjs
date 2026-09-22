@@ -961,6 +961,12 @@ function sammleLaeufe(basisVerzeichnis = BASISVERZEICHNIS) {
   return readdirSync(basisVerzeichnis, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
+    // F-588: Denylist statt Allowlist — "lineage-"-Verzeichnisse (Auftrag/Kontextpaket/
+    // Entscheidung/Workflow) sind nie Laufketten (istLaufkette ist inhaltsbasiert, F-137 AK1;
+    // eine echte laufId trägt kein festes Präfix), werden aber vor diesem Überspringen für JEDEN
+    // Eintrag per sammleLaufKopfdatenGecached gestempelt — Kosten wuchsen dadurch mit der
+    // GESAMTEN Verzeichniszahl statt mit der Zahl echter Läufe. Siehe state/messung-f588-zustand.md.
+    .filter((name) => !name.startsWith('lineage-'))
     .sort()
     .map((laufId) => sammleLaufKopfdatenGecached(laufId, basisVerzeichnis, auftragMemo))
     .filter((kopfdaten) => kopfdaten !== null)
