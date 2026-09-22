@@ -34,8 +34,11 @@ F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 offen, RC): F32 Verbrauch & Kontingent `IN_ARBEIT` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
 begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
-`IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien + Context-Builder-Einspeisung,
-`features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
+`FEATURE_GATE` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
+Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
+Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Stefans
+Abnahme steht noch aus, `features/F33/feature.md`), F34–F39 noch nicht
+begonnen, F40 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3

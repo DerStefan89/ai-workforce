@@ -100,3 +100,54 @@ Hinweisen", kein Blocker:**
 Vier neue/erweiterte Findings: F-592 (erweitert um den LAEUFT-Spiegelfall),
 F-593 (Projektwechsel, P2), F-594 (vision unsichtbar, P4) — alle in
 `state/findings.md`.
+
+## 2026-09-22 — Feature-Review-Pass (Gate-Ebene), Status IN_ARBEIT → FEATURE_GATE
+
+Auftrag: Feature-Review-Pass für das gesamte Feature F33 (WS-0 Spike, WS-1
+Projektkontext als Repo-Dateien, WS-2 Roadmap-Projektion, gemergt als
+#214), nicht nur für WS-2 isoliert — der bereits weiter oben dokumentierte
+Reviewer-/QA-Pass unmittelbar nach dem WS-2-Bau deckte nur WS-2 ab. Muster
+CLAUDE.md / F40: `code-reviewer` und `qa` mit frischem Kontext, keine
+Schreibrechte.
+
+Beide Urteile: „Freigegeben mit Hinweisen", kein Blocker. Details und
+sämtliche Befunde stehen in `features/F33/feature.md` Abschnitt "Feature
+Review" und "Bekannte Grenzen". Sechs Findings neu in `state/findings.md`
+eingetragen:
+
+- **F-595** (`TECH_DEBT`, P3) — Feature-IDs aus `roadmap.json` nicht auf
+  Muster beschränkt, `../` würde im `feature.md`-Pfad aufgelöst
+  (code-reviewer-Befund, deckt sich mit Stefans eigenem Auftragshinweis).
+- **F-596** (`TECH_DEBT`, P3) — Workboard-Karte "Roadmap" optisch
+  unfertig, Design-Nacharbeit bewusst auf die Design-Phase vor F30
+  verschoben (Stefans eigener Befund, E-M5-2).
+- **F-597** (`TECH_DEBT`, P4) — `baueRoadmapProjektion` beschriftet jeden
+  Lesefehler pauschal als JSON-Parsefehler (code-reviewer-Befund,
+  Diagnosequalität, kein Fehlverhalten).
+- **F-598** (`BUG`, P3) — eine leere, aber existierende Projektkontext-
+  Datei wird wie gültiger Inhalt behandelt statt wie eine fehlende
+  (qa-Befund, mittleres Risiko, unterläuft die AK7-Absicht).
+- **F-599** (`TECH_DEBT`, P4) — Feature-IDs innerhalb eines Meilensteins
+  nicht auf Eindeutigkeit geprüft (qa-Befund, sehr geringes Risiko).
+- **F-600** (`TECH_DEBT`, P4) — rohe interne Statuswerte (`keine_akte`/
+  `UNBEKANNT`) erscheinen unübersetzt als Badge-Text, aktuell praktisch
+  relevant, da 7 von 10 M5-Features noch keine Akte haben (qa-Befund).
+
+Zusätzlich direkt korrigiert, kein eigenes Finding: AK5-Text in
+`feature.md` sprach noch von drei Context-Builder-Anfragen, tatsächlich
+sind es seit F40 WS-2 vier (`lagebild.md` additiv ergänzt) — Klarstellung
+ergänzt statt AK5 umgeschrieben, damit der ursprüngliche WS-1-Umfang
+nachvollziehbar bleibt.
+
+Bereits bekannte Befunde aus dem WS-2-Pass (F-592, F-593, F-594) wurden
+von beiden Agenten unabhängig erneut bestätigt, nicht doppelt registriert.
+
+`features/F33/feature.md`: Status `IN_ARBEIT` → `FEATURE_GATE` (Muster
+F40: Feature-Review-Pass ist Voraussetzung für `FEATURE_GATE`, `ABGESCHLOSSEN`
+bleibt an Stefans Abnahme gebunden). `docs/STATUS.md` entsprechend
+aktualisiert. `node scripts/erzeuge-lagebild.mjs` erneut gelaufen
+(STATUS.md geändert). `npm run check`: siehe Bericht dieses Auftrags.
+
+Nicht Teil dieses Auftrags: Stefans Abnahme selbst; Behebung der neuen
+Findings F-595/F-597/F-598/F-599/F-600 (bleiben offen, P3/P4, kein
+Blocker); F-596 bewusst auf die Design-Phase vor F30 verschoben.
