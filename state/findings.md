@@ -8273,12 +8273,12 @@ Maßnahme: F36 überführt beide Kataloge als Daten.
 Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
 
 **F-508** · `TECH_DEBT` · P2 · offen
-Titel: Kontingent-Anzeige fehlt weiterhin (Verbrauchserfassung mit F32 WS-1 erledigt).
-Beschreibung: Ursprünglich standen Usage-Werte nur im gitignorierten Rohstrom. F32 WS-1 (#200) erfasst `verbrauch` in der Laufakte und liefert `GET /api/verbrauch`; die Anzeige im Leitstand (F32 WS-2) ist offen.
-Fundstelle: `leseErgebnisobjekt`; `kontrollzustand-laufakte-payload.schema.json`; zielfassung §12 / Entscheidung 12.
-Auswirkung: Keine sichtbare Verbrauchs-/Kontingent-Anzeige für Stefan.
-Maßnahme: F32 WS-2.
-Feature/Run: M5-Plan-v8-Challenge, 20.09.2026; Teilerledigung F32 WS-1 (#200). Quelle: claude/277, claude/280.
+Titel: Kontingent-Anzeige fehlt weiterhin (Verbrauch mit F32 WS-1/WS-2 sichtbar).
+Beschreibung: Ursprünglich standen Usage-Werte nur im gitignorierten Rohstrom. F32 WS-1 (#200) erfasst `verbrauch` in der Laufakte und liefert `GET /api/verbrauch`; F32 WS-2 (22.09.2026) zeigt diesen Verbrauch jetzt als Karte "Verbrauch" im Dashboard (Summen je Rolle/Modell, drei feste Zeiträume). Eine Kontingent-Anzeige (Rate-Limit-/Fensterstatus, §12) bleibt weiterhin offen — real geprüft (siehe `features/F32/feature.md` "Bekannte Grenzen"), die CLI-Laufausgabe liefert keine entsprechenden Felder, kein unbelegter Bau möglich.
+Fundstelle: `leseErgebnisobjekt`; `kontrollzustand-laufakte-payload.schema.json`; `public/leitstand/views/dashboard.js` (Karte "Verbrauch"); zielfassung §12 / Entscheidung 12.
+Auswirkung: Verbrauch ist jetzt sichtbar; Kontingent (wie viel Budget bis zum nächsten Reset noch verfügbar ist) bleibt für Stefan unsichtbar.
+Maßnahme: Offen, bis eine künftige CLI-Version Rate-Limit-/Fensterfelder liefert — kein Workaround geplant (keine Scheingenauigkeit).
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026; Teilerledigung F32 WS-1 (#200); weitere Teilerledigung F32 WS-2, 22.09.2026. Quelle: claude/277, claude/280.
 
 **F-509** · `TECH_DEBT` · P2 · offen
 Titel: Frist für F-371 („vor F25") ohne Entscheidung verstrichen, leitstand-server.mjs wächst weiter.
@@ -9015,3 +9015,19 @@ Fundstelle: `public/leitstand/views/workboard.js` (`roadmapFeatureZeile`); `docs
 Auswirkung: Gering — kein Fehlverhalten, nur Lesbarkeit/Erstinterpretation der Karte.
 Maßnahme: Bei Gelegenheit Statuswerte für die Anzeige aufbereiten (z. B. "Noch keine Akte" statt `keine_akte`); bis dahin nur dokumentiert.
 Feature/Run: F33 Feature-Review-Pass, 22.09.2026. Quelle: claude/321.
+
+**F-601** · `TECH_DEBT` · P4 · offen
+Titel: Kein Gate/Test deckt die dashboard.js-internen Bausteine der Verbrauchs-Karte ab (F32 WS-2).
+Beschreibung: QA-Pass (frischer Kontext): `scripts/check-f32-verbrauch-ansicht.mjs` prüft AK9-konform `berechneVerbrauchsVon` und den rohen HTTP-Endpunkt `GET /api/verbrauch`, aber keinen der UI-internen Bausteine in `public/leitstand/views/dashboard.js` — `aggregiereVerbrauch` (Rollen-/Modell-Gruppierung inkl. null-Behandlung), `verbrauchZeile`/`verbrauchTabelle` (Feldnamen-Mapping, Leer-/Tooltip-Texte), Lade-/Fehlerzustand und Überholschutz `verbrauchAnfrageZaehler`. Kein Sonderfall von F32: kein View-Renderer im Repo (`public/leitstand/views/*.js`) hat eigene Unit-Tests — nur reine State-Ableitungsmodule wie `persona-state.js`/`verbrauch-zeitraum.js` werden gate-geprüft.
+Fundstelle: `scripts/check-f32-verbrauch-ansicht.mjs`; `public/leitstand/views/dashboard.js` (`aggregiereVerbrauch`, `verbrauchZeile`, `verbrauchTabelle`, `ladeVerbrauch`).
+Auswirkung: Gering bis mittel — ein Regressionsfehler in der Aggregation oder Fehlerdarstellung würde von `npm run check` nicht erkannt, nur durch manuelle/Browser-Prüfung.
+Maßnahme: Bei Gelegenheit ein DOM-loses Unit-Test-Muster für View-Renderer etablieren (projektweite Entscheidung, kein F32-Einzelfall); bis dahin nur dokumentiert.
+Feature/Run: F32 WS-2 QA-Pass, 22.09.2026. Quelle: claude/f32-ws2.
+
+**F-602** · `TECH_DEBT` · P4 · offen
+Titel: Kein Browser-Realtest bei ~400px für die 6-spaltige Verbrauchstabelle (F32 WS-2).
+Beschreibung: QA-Pass (frischer Kontext): die Karte "Verbrauch" zeigt zwei Tabellen mit sechs Spalten (Rolle/Modell, Läufe, ohne Beobachtung, drei Token-Spalten) ohne eigenen `overflow-x:auto`-Wrapper — nur die generische Regel `table { width:100%; max-width:100% }` (`style.css`) gilt. Kein F32-spezifischer Regressionsbefund: dasselbe ungeschützte Muster gilt sitebreit für jede Tabelle im Projekt (z. B. `views/capabilities.js` mit 9 Spalten), kein Repo-Table hat einen Scroll-Container. Risiko bei F32 lediglich ungeprüft, nicht real widerlegt — anders als z. B. F-561, das auf einer echten Browserbeobachtung beruht.
+Fundstelle: `public/leitstand/views/dashboard.js` (`verbrauchTabelle`); `public/leitstand/style.css` (`table`-Regel).
+Auswirkung: Gering — sitebreites, vorbestehendes Muster, keine neue Regression.
+Maßnahme: Bei Gelegenheit projektweit (nicht nur F32) prüfen, ob dichte Tabellen einen `overflow-x:auto`-Wrapper brauchen; bis dahin nur dokumentiert.
+Feature/Run: F32 WS-2 QA-Pass, 22.09.2026. Quelle: claude/f32-ws2.

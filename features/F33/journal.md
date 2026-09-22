@@ -151,3 +151,19 @@ aktualisiert. `node scripts/erzeuge-lagebild.mjs` erneut gelaufen
 Nicht Teil dieses Auftrags: Stefans Abnahme selbst; Behebung der neuen
 Findings F-595/F-597/F-598/F-599/F-600 (bleiben offen, P3/P4, kein
 Blocker); F-596 bewusst auf die Design-Phase vor F30 verschoben.
+
+## 2026-09-22 — Stefans Abnahme, Status FEATURE_GATE → ABGESCHLOSSEN
+
+Stefan hat F33 am 22.09.2026 abgenommen. `features/F33/feature.md`: Status
+`FEATURE_GATE` → `ABGESCHLOSSEN`, mit Satz "Abgenommen durch Stefan am
+22.09.2026. Offene Restfindings: F-592…F-600 (P2–P4)." — alle neun
+Findings aus dem Feature-Review-Pass (F-592–F-594 aus dem WS-2-Pass,
+F-595/F-597–F-600 aus dem Feature-Review-Pass) sind real weiterhin offen,
+keins davon ein Blocker. `docs/STATUS.md`: F33 in "Aktuelle Phase" und in
+der Meilenstein-5-Liste ebenfalls auf `ABGESCHLOSSEN`, Hinweis "Stefans
+Abnahme steht noch aus" entfernt, dieselben Restfindings genannt. `node
+scripts/erzeuge-lagebild.mjs` erneut gelaufen (STATUS.md geändert).
+`npm run check`: siehe Bericht dieses Auftrags für das Gesamtergebnis.
+
+Nicht Teil dieses Auftrags: Behebung der neun Restfindings (bleiben offen,
+Muster F40 F-581/F-583).

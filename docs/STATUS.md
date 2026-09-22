@@ -33,11 +33,11 @@ F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 offen, RC): F32 Verbrauch & Kontingent `IN_ARBEIT` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
 begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
-`FEATURE_GATE` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
+`ABGESCHLOSSEN` (alle drei Workstreams gebaut und gemergt: WS-0 Spike, WS-1
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
-Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Stefans
-Abnahme steht noch aus, `features/F33/feature.md`), F34–F39 noch nicht
-begonnen, F40 (Jarvis-
+Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
+durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben offen,
+`features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
@@ -455,10 +455,11 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 - ✅ **F33** — Projektkontext & Roadmap (Beschreibung/Anweisungen/Roadmap als
   Repo-Dateien, Einspeisung über den Context Builder für `jarvis`/`router`,
   sichtbare Roadmap-Karte im Workboard). Akte `features/F33/feature.md`,
-  Status `FEATURE_GATE` (WS-0 Spike, WS-1 Repo-Dateien + Einspeisung, WS-2
+  Status `ABGESCHLOSSEN` (WS-0 Spike, WS-1 Repo-Dateien + Einspeisung, WS-2
   Roadmap-Projektion #214 — alle drei Workstreams gebaut und gemergt,
-  Feature-Review-Pass 22.09.2026 „Freigegeben mit Hinweisen", Stefans
-  Abnahme steht noch aus). Nach F17 (Rollenvertrag), F25 (Projekte v1).
+  Feature-Review-Pass 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
+  durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben
+  offen). Nach F17 (Rollenvertrag), F25 (Projekte v1).
 - ⏳ **F34** — Product Coach / Ideation + Discovery. Noch nicht begonnen.
   Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,

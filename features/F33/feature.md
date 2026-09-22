@@ -7,7 +7,10 @@ F33
 Projektkontext & Roadmap
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+
+Abgenommen durch Stefan am 22.09.2026. Offene Restfindings: F-592…F-600
+(P2–P4).
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -279,3 +282,8 @@ nicht doppelt registriert.
 
 Status damit `IN_ARBEIT` → `FEATURE_GATE`. `ABGESCHLOSSEN` erst nach
 Stefans Abnahme (Muster F40).
+
+Stefan hat F33 am 22.09.2026 abgenommen. Status `FEATURE_GATE` →
+`ABGESCHLOSSEN`, mit Satz "Abgenommen durch Stefan am 22.09.2026. Offene
+Restfindings: F-592…F-600 (P2–P4)." (siehe oben unter "Status"). Alle neun
+Restfindings aus dem Feature-Review-Pass bleiben offen, kein Blocker.

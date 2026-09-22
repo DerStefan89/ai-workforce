@@ -158,3 +158,14 @@ export const holeProjekte = () => holeJsonOderWirf('/api/projekte')
 // wie holeZustand/holeLaufDetail (QA-Pass-Befund: ein hängender fetch, F-561, würde die Karte
 // sonst ohne jede Fehlermeldung dauerhaft auf "Lädt…" stehen lassen).
 export const holeRoadmap = () => fetch(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())
+
+// F32 WS-2: Verbrauchsprojektion fürs Dashboard (Karte "Verbrauch", views/dashboard.js) — nur
+// beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:
+// die Laufakten ändern sich nicht durch einen laufenden Poll-Tick, sondern nur durch neue,
+// abgeschlossene Läufe). `von` ist ein bereits client-seitig als gültiges ISO-8601-Datum gebauter
+// Wert (views/dashboard.js `zeitraumVon`) — kein freies Nutzereingabefeld, deshalb keine eigene
+// Formatprüfung hier nötig (F32-Bekannte-Grenze zu `?von=`/`?bis=`). Zeitlimit wie holeRoadmap.
+export const holeVerbrauch = (von) => {
+  const query = von === undefined ? '' : `?von=${encodeURIComponent(von)}`
+  return fetch(mitPraefix(`/verbrauch${query}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())
+}

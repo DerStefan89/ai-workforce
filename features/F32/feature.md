@@ -20,17 +20,21 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
 (`docs/projekt/zielfassung.md` §9.4 E-190, §12 Kontingent).
 
 ## Nicht-Ziele
-- UI-Ansicht der Verbrauchsprojektion im Leitstand (kommt mit F32 WS-2).
 - Kosten in Euro/USD — `total_cost_usd` wird bewusst nie übernommen
   (Abo-Modell, Entscheidung 30, keine Scheingenauigkeit).
+- Kontingent-Anzeige (`kontingent_beobachtet`, §12) — WS-1 hat real belegt,
+  dass die Laufausgabe keine Rate-Limit-/Fenster-Felder trägt (siehe
+  "Bekannte Grenzen" unten); WS-2 zeigt deshalb ausschließlich Verbrauch,
+  kein Kontingent. `state/findings.md` F-508 bleibt damit nur teilweise
+  erledigt.
+- Freie Datumsauswahl (WS-2) — drei feste, client-seitig berechnete
+  Zeiträume (7 Tage/30 Tage/gesamt) statt eines Eingabefelds, das einen
+  syntaktisch ungültigen `?von=`/`?bis=`-Wert erzeugen könnte (siehe
+  WS-1-Bekannte-Grenze zum Zeitraumfilter).
 - Aggregation nach Feature/Meilenstein (kommt mit F33, sobald `roadmap.json`
   existiert).
 - Änderung des Rohstrom-Formats — `verbrauch` liest ausschließlich aus dem
   bereits vorhandenen, unveränderten Ergebnisobjekt/Ereignisstrom.
-- `kontingent_beobachtet` (Fenstertyp/`resetsAt`/`utilization`/`status`,
-  §12) — siehe WS-1-Befund unten: die real geprüfte Laufausgabe trägt diese
-  Felder nicht, das Feld wird deshalb in WS-1 nicht gebaut, nicht nur nicht
-  befüllt.
 
 ## Workstreams
 - **WS-0 — Akte.** Diese Datei.
@@ -40,6 +44,18 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
   (codex); Projektion `GET /api/verbrauch`
   (`scripts/leitstand/routen-verbrauch.mjs`); Gate
   `scripts/check-f32-verbrauch.mjs`.
+- **WS-2 — Verbrauchsansicht im Leitstand.** `holeVerbrauch`
+  (`public/leitstand/api.js`, Muster `holeRoadmap`); reine
+  Zeitraum-Berechnung `berechneVerbrauchsVon`
+  (`public/leitstand/verbrauch-zeitraum.js`, drei feste Zeiträume 7 Tage/
+  30 Tage/gesamt, kein freies Datumsfeld); Karte "Verbrauch" im Dashboard
+  (`public/leitstand/views/dashboard.js`, NICHT `views/workboard.js`) mit
+  Zeitraum-Umschalter, Gesamtzahlen (Läufe, ohne Beobachtung) und je einer
+  Tabelle nach Rolle und nach Modell (Tokens ein/aus/Cache); null-Gruppen
+  als "unbekannt" mit erklärendem Tooltip. Geladen beim Öffnen der View
+  (Bootstrap) und bei Zeitraumwechsel, NICHT im 2-Sekunden-Poll (Muster
+  `views/workboard.js` `ladeRoadmap`). Gate
+  `scripts/check-f32-verbrauch-ansicht.mjs`.
 
 ## Akzeptanzkriterien
 - AK1 (WS-1): `schemas/kontrollzustand-laufakte-payload.schema.json` und
@@ -80,6 +96,23 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
   erwarteten `usage`-Schlüssel durchgehend vorhanden, keine negativen/
   nicht-ganzzahligen Werte, `reasoning_output_tokens` durchgehend eine
   Teilmenge von `output_tokens` (nachweis-verbrauch.md Abschnitte 1–3).
+- AK7 (WS-2): `berechneVerbrauchsVon` liefert für `'7t'`/`'30t'` ein
+  ISO-8601-`von` genau 7 bzw. 30 Tage vor dem übergebenen Bezugszeitpunkt,
+  für `'gesamt'` `undefined` (kein Zeitraumfilter) — reine Funktion, kein
+  Datei-/Netzwerkzugriff.
+- AK8 (WS-2): die Karte "Verbrauch" zeigt Summen je Rolle und je Modell
+  (Tokens ein/aus/Cache), Anzahl Läufe und Anzahl "ohne Beobachtung";
+  `rolle`/`modell` gleich `null` erscheinen als "unbekannt" mit Tooltip,
+  keine Ausgrenzung aus der Anzeige. Keine Kosten in Euro/USD.
+- AK9 (WS-2): `scripts/check-f32-verbrauch-ansicht.mjs` prüft
+  `berechneVerbrauchsVon` gegen einen festen Bezugszeitpunkt (AK7) und
+  einen echten HTTP-Aufruf `GET /api/verbrauch` mit einem client-seitig
+  gebauten `von`-Wert gegen einen über `erzeugeRequestHandler` erzeugten
+  Testserver → 200, erwartete Struktur `{ gruppen, laeufeGesamt,
+  ohneBeobachtungGesamt }`. In `npm run check` eingehängt.
+- AK10 (WS-2): die Karte lädt `GET /api/verbrauch` ausschließlich beim
+  Öffnen des Dashboards und bei Zeitraumwechsel — der bestehende
+  2-Sekunden-Poll (`zustand.js`) löst keinen zusätzlichen Abruf aus.
 
 ## Dependencies
 - F6a (Claude-Code-Gateway) — `starteGateway`/`leseErgebnisobjekt`, die
@@ -123,30 +156,63 @@ Rohstrom oder die bestehende Laufakte-Hülle zu verändern
   (WS-1):** jede vor F32 geschriebene Laufakte bleibt ohne das Feld
   gültig — dieselbe append-only-Logik wie `worker`/`modell_deklariert`
   (F16) und `erstellt_am` (E-M2-5).
-- **UI-Ansicht offen (WS-2, noch nicht begonnen):** `GET /api/verbrauch`
-  ist bislang nur über die API erreichbar, keine Leitstand-Darstellung.
-- **`?von=`/`?bis=` ohne eigene Formatprüfung (Reviewer-/QA-Pass,
-  20.09.2026):** der Filter vergleicht die Query-Werte unverändert
-  lexikographisch gegen `erstellt_am` (ISO-8601, immer mit `Z`-Suffix, da
-  `jetzt()`/`new Date().toISOString()` schreibt). Ein syntaktisch
+- **`?von=`/`?bis=` ohne eigene Formatprüfung, durch feste Zeiträume
+  entschärft (WS-1: Reviewer-/QA-Pass 20.09.2026; WS-2: 22.09.2026):** der
+  Filter vergleicht die Query-Werte unverändert lexikographisch gegen
+  `erstellt_am` (ISO-8601, immer mit `Z`-Suffix). Ein syntaktisch
   fehlerhafter oder vertauschter `von`/`bis`-Wert liefert dadurch still ein
-  leeres statt eines fehlerhaften Ergebnisses — sieht wie „keine Läufe" aus
-  statt wie ein ungültiger Parameter. Bewusst nicht in WS-1 behoben (kein
-  UI-Konsument existiert noch, der einen falschen Query-Wert erzeugen
-  könnte); bei WS-2 (UI-Datumsauswahl) zu bewerten, ob eine Format-/
-  Reihenfolgeprüfung mit eigener Fehlermeldung nötig wird.
-- **Überladene `null`-Gruppierung (Reviewer-/QA-Pass, 20.09.2026):**
-  `rolle`/`modell`/`auftragId` werden `null`, wenn kein Kontextpaket
-  existiert, wenn es existiert aber das Feld leer ist, oder (bei `modell`)
-  wenn `leseModellBeobachtet` mehrdeutig war (mehrere `modelUsage`-
-  Schlüssel). Alle drei Fälle fallen in dieselbe Gruppe und sind aus der
-  Projektion allein nicht unterscheidbar. Kein Fehlverhalten (korrekt
-  gruppiert nach dem, was bekannt ist), aber für WS-2 als UX-Frage
-  vorzumerken. Real beobachtet im AK6-Nachweislauf: `modelUsage` trug zwei
-  Schlüssel (Haiku-Subagent + Sonnet-Antwort), `leseModellBeobachtet`
-  liefert dort korrekt `null` (mehrdeutig, F-059/F-061) — die Gruppe zeigt
-  `modell: null`, obwohl real ein bekanntes Modell geantwortet hat
-  (`features/F32/nachweis-verbrauch.md` Abschnitt 4).
+  leeres statt eines fehlerhaften Ergebnisses. WS-2 umgeht das Risiko, statt
+  es zu beheben: `berechneVerbrauchsVon` (`public/leitstand/verbrauch-
+  zeitraum.js`) ist die einzige Quelle, die `von` an die Karte "Verbrauch"
+  übergibt, und liefert für alle drei festen Zeiträume immer ein gültiges
+  ISO-8601-Datum — kein Eingabefeld, das einen fehlerhaften Wert erzeugen
+  könnte. Der Endpunkt selbst bleibt ungeprüft; ein künftiger zweiter
+  UI-Konsument mit freier Datumsauswahl bräuchte die Formatprüfung dann
+  real.
+- **Überladene `null`-Gruppierung, jetzt sichtbar (WS-1: Reviewer-/QA-Pass
+  20.09.2026; WS-2: 22.09.2026):** `rolle`/`modell`/`auftragId` werden
+  `null`, wenn kein Kontextpaket existiert, wenn es existiert aber das Feld
+  leer ist, oder (bei `modell`) wenn `leseModellBeobachtet` mehrdeutig war
+  (mehrere `modelUsage`-Schlüssel, F-059/F-061). Alle Fälle fallen in
+  dieselbe Gruppe und sind aus der Projektion allein nicht unterscheidbar.
+  WS-2 zeigt eine solche Gruppe als "unbekannt" mit je einem eigenen
+  Tooltip für Rolle ("Rolle zu diesem Lauf nicht ermittelbar") und Modell
+  ("Modell mehrdeutig oder nicht beobachtet") statt eines gemeinsamen,
+  gleich allgemeinen Textes — kein Fehlverhalten, unterscheidet aber
+  weiterhin nicht zwischen den drei Ursachen (fehlendes Kontextpaket,
+  leeres Feld, Mehrdeutigkeit).
+- **Kontingent bleibt offen (WS-2):** die Karte "Verbrauch" zeigt
+  ausschließlich Verbrauch (Tokens, Läufe) — die von `state/findings.md`
+  F-508 ursprünglich verlangte Kontingent-Anzeige bleibt unerreichbar, weil
+  die reale CLI-Laufausgabe keine Rate-Limit-/Fenster-Felder liefert
+  (siehe WS-1-Befund oben). F-508 damit weiterhin nur teilweise erledigt.
+- **Kein Gate/Test für die dashboard.js-internen Bausteine (QA-Pass,
+  22.09.2026, F-601):** `scripts/check-f32-verbrauch-ansicht.mjs` prüft
+  AK9-konform nur `berechneVerbrauchsVon` und den rohen Endpunkt, nicht
+  Aggregation/Anzeige/Überholschutz in `dashboard.js` — kein F32-Einzelfall,
+  kein View-Renderer im Repo hat eigene Unit-Tests.
+- **Kein Browser-Realtest bei ~400px für die sechsspaltige Tabelle
+  (QA-Pass, 22.09.2026, F-602):** sitebreites, vorbestehendes Muster (kein
+  Repo-Table hat einen `overflow-x:auto`-Wrapper), kein F32-spezifischer
+  Regressionsbefund, aber auch nicht real widerlegt.
 
 ## Feature Review
-Noch nicht fällig — WS-2 (UI-Ansicht) steht aus.
+Noch nicht fällig — WS-2 ist gebaut, Stefans Verifikation und der formale
+Feature-Review-Pass (Muster F33/F40) stehen aus. Status bleibt `IN_ARBEIT`.
+
+Reviewer-/QA-Pass (frischer Kontext, 22.09.2026) vor Commit-Freigabe:
+**code-reviewer** „Freigegeben mit Hinweisen" (keine Blocker; ein Punkt vor
+Commit behoben: `catch` in `ladeVerbrauch` protokolliert den Fehler jetzt
+über `console.error`, Muster `views/workboard.js` `ladeRoadmap`). **qa**
+zunächst „Nicht freigegeben" wegen eines echten Bedienbarkeits-Mangels:
+ein fehlgeschlagener Abruf des bereits aktiven Zeitraums (insbesondere des
+Standardzeitraums `30t` beim Bootstrap) ließ sich nicht erneut versuchen,
+da ein Klick auf den aktiven Zeitraum-Button ein No-Op war — behoben
+(`initVerbrauchBedienung` löst jetzt auch bei Klick auf den aktiven
+Zeitraum neu, wenn dessen letzter Abruf fehlgeschlagen ist). Zusätzlich
+behoben: der Rolle-Tooltip nannte mit "Kontextpaket" internes
+Artefaktvokabular (F-476-Geruch) — auf "Rolle zu diesem Lauf nicht
+ermittelbar" vereinfacht, "Bekannte Grenzen" oben entsprechend an den
+tatsächlichen (zwei unterschiedlichen) Tooltip-Wortlaut angepasst. Zwei
+verbleibende, nicht blockierende Befunde als F-601/F-602 registriert
+(siehe oben).

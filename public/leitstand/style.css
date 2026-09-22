@@ -1848,6 +1848,36 @@ th {
   flex: 1 1 12rem;
 }
 
+/* F32 WS-2: Karte "Verbrauch" — schlicht mit bestehenden Tokens (.card/.btn/.stat/table sind alle
+   bereits definiert), kein neuer Farb-/Schattenwert. Nur Abstand zur Kennzahlen-Reihe darüber und
+   Layout des Zeitraum-Umschalters/der Gesamt-Kacheln sind hier neu. Design-Nachzug folgt vor F30
+   (Muster F-596). */
+.dashboard-verbrauch {
+  margin-top: var(--space-2xl);
+}
+
+.verbrauch-karte h4 {
+  margin: var(--space-xl) 0 var(--space-sm);
+}
+
+.verbrauch-zeitraum-auswahl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.verbrauch-gesamt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+.verbrauch-gesamt .stat {
+  flex: 1 1 10rem;
+}
+
 /* F29 WS-2a: die vier Abschnitte sind jetzt .card (index.html) statt .unterabschnitt — hier nur
    noch der Abstand zwischen den gestapelten Karten, spezifisch für diese Stelle im Layout
    (Muster #workboard-detail oben). */
