@@ -8247,3 +8247,643 @@ stillschweigend nicht verfügbar sein, ohne dass ein Fehler sichtbar wird.
 Maßnahme: Bei der ersten MCP-Capability-Freigabe mitplanen und in der
 Capability-Akte vermerken.
 Feature/Run: F31 WS-3c, 20.09.2026.
+
+**F-505** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: M5-Plan setzt „M4 eingefroren" voraus, das M4-Gate ist real aber nicht erfüllt.
+Beschreibung: F30 ist nicht begonnen, F25 WS-2b/WS-3 sind offen, F23 steht auf `FEATURE_GATE`; F19-Akte (`FEATURE_GATE`) widerspricht `docs/STATUS.md` („abgeschlossen").
+Fundstelle: M5-Plan v8 §0.1; `docs/projekt/zielfassung.md` §13.5; `features/F19/feature.md` gegen `docs/STATUS.md`.
+Auswirkung: „M4 eingefroren" ist eine Setzung, kein Befund.
+Maßnahme: E1 (M4 mit benannten Übertragungen schließen); F19-Statusdrift in einem Doku-PR beheben.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: Challenger-Übergabe claude/277.
+
+**F-506** · `TECH_DEBT` · P2 · offen
+Titel: F24-Phase `ASSESSED` ist strukturell leer und wird per Test als leer erzwungen.
+Beschreibung: Ein Test erzwingt die Leere, obwohl die F27-Akte behauptet, die Phase zu füllen.
+Fundstelle: `capabilities-ansicht.test.ts:68-72`; `features/F27/feature.md:15`.
+Auswirkung: Die Phase ASSESSED bleibt entgegen der F27-Aussage leer.
+Maßnahme: In F36 füllen (Scout-Artefakt am Eintrag), Test umdrehen.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-507** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Kandidatenkatalog existiert doppelt (Prosa und ressourcen.json).
+Beschreibung: `docs/harness/kandidaten-2026-09-15.md` und `ressourcen.json` führen dieselben Kandidaten; ein Seed Catalog (M5-Plan §0.4) wäre der dritte Ort.
+Fundstelle: `docs/harness/kandidaten-2026-09-15.md`, `ressourcen.json`.
+Auswirkung: Mehrere Wahrheiten für dieselben Kandidaten.
+Maßnahme: F36 überführt beide Kataloge als Daten.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-508** · `TECH_DEBT` · P2 · offen
+Titel: Kontingent-Anzeige fehlt weiterhin (Verbrauchserfassung mit F32 WS-1 erledigt).
+Beschreibung: Ursprünglich standen Usage-Werte nur im gitignorierten Rohstrom. F32 WS-1 (#200) erfasst `verbrauch` in der Laufakte und liefert `GET /api/verbrauch`; die Anzeige im Leitstand (F32 WS-2) ist offen.
+Fundstelle: `leseErgebnisobjekt`; `kontrollzustand-laufakte-payload.schema.json`; zielfassung §12 / Entscheidung 12.
+Auswirkung: Keine sichtbare Verbrauchs-/Kontingent-Anzeige für Stefan.
+Maßnahme: F32 WS-2.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026; Teilerledigung F32 WS-1 (#200). Quelle: claude/277, claude/280.
+
+**F-509** · `TECH_DEBT` · P2 · offen
+Titel: Frist für F-371 („vor F25") ohne Entscheidung verstrichen, leitstand-server.mjs wächst weiter.
+Beschreibung: F-371 betrifft die Aufteilung von `scripts/leitstand-server.mjs` (über 6 000 Zeilen); jedes Feature ergänzt dort Routen.
+Fundstelle: `scripts/leitstand-server.mjs`.
+Auswirkung: Die zentrale Serverdatei wächst unkontrolliert.
+Maßnahme: Neue Routen ab F32 in `scripts/leitstand/routen-<feature>.mjs`; F-371 bleibt offen.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-510** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Findings-Lücke F-440 bis F-466 ist im Register nicht erfasst.
+Beschreibung: F-490 deckt nur F-469 bis F-481 ab; Verweise in der F29-Akte laufen ins Leere.
+Fundstelle: `state/findings.md`; `features/F29/`.
+Auswirkung: Tote Finding-Verweise.
+Maßnahme: Lücke aus den F29-Übergaben nachtragen oder IDs als „nicht vergeben" markieren.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-511** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Rolle `qa` steht im Register, ist aber in keiner Workflow-Vorlage besetzt.
+Beschreibung: Kein Ergebnis-Schema (`output_schema: null`).
+Fundstelle: `src/rollen/index.ts`; `workflow-vorlagen/*`.
+Auswirkung: Im Workflow findet kein QA-Schritt statt.
+Maßnahme: F35 (qa-Schritt plus Schema `ergebnis-qa`).
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-512** · `TECH_DEBT` · P3 · offen
+Titel: starteJarvisChatLauf wählt den Worker hart codiert und unerklärt.
+Beschreibung: Codex, wenn verfügbar, sonst Claude; die UI erklärt die Wahl nicht.
+Fundstelle: `scripts/leitstand-server.mjs` (`starteJarvisChatLauf`).
+Auswirkung: Faktische Worker-Wahl ohne Sichtbarkeit.
+Maßnahme: F37.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+
+**F-513** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Arbeitsregel, 20.09.2026)
+Titel: Übergaben nannten wiederholt einen falschen Repo-Pfad.
+Beschreibung: Genannt war `C:\Users\stefa\ai-workforce`, richtig ist `C:\Users\stefa\Projekte\ai-workforce`.
+Fundstelle: Terminal- und Claude-Code-Blöcke älterer Übergaben.
+Auswirkung: Befehle liefen gegen einen falschen Pfad.
+Maßnahme: Vollständigen korrekten Pfad in jeden Block schreiben (Arbeitsregel).
+Feature/Run: M5-Übergabe, 20.09.2026. Quelle: claude/278, claude/280.
+
+**F-514** · `TECH_DEBT` · P3 · erledigt (F32 #200, Corpus-Nachweis)
+Titel: leseVerbrauch fällt bei fehlendem usage-Unterfeld still auf „kein Verbrauch".
+Beschreibung: Alles-oder-nichts ohne Gate; der Corpus-Nachweis ergab 87 Läufe mit 100 % Feldpräsenz.
+Fundstelle: `leseVerbrauch` (claude-code-gateway, F32).
+Auswirkung: F32 hätte sonst still nie Daten geschrieben.
+Maßnahme: Corpus-Nachweis (erbracht).
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280, claude/281.
+
+**F-515** · `TECH_DEBT` · P2 · offen
+Titel: dauer_ms wird je Worker unterschiedlich gemessen.
+Beschreibung: claude: CLI-`duration_ms`; codex: Gateway-Wanduhr inklusive ≈7,5 s Prozessstart.
+Fundstelle: Laufakte, Feld `verbrauch` (F32).
+Auswirkung: Worker-Vergleich (F37/M5.12) ist verzerrt.
+Maßnahme: Messbasis angleichen oder in der Anzeige getrennt ausweisen (bei F37).
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280.
+
+**F-516** · `BUG` · P2 · offen
+Titel: validiereLaufakteDaten liegt nicht auf dem Schreibpfad.
+Beschreibung: Das Feld `verbrauch` wird auf dem echten Schreibpfad nicht geprüft.
+Fundstelle: `validiereLaufakteDaten`.
+Auswirkung: Validator mit Prüfanspruch, der nie wirkt.
+Maßnahme: Validator in den Schreibpfad einhängen oder als reine Testhilfe kennzeichnen.
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280, claude/281.
+
+**F-517** · `TECH_DEBT` · P2 · offen
+Titel: baueVerbrauchsProjektion lädt je Lauf und Anfrage zwei Artefakte ohne Index.
+Beschreibung: Bei 124 Läufen 248 Ladevorgänge je Anfrage; Präzedenz ist der F26-Perf-Fix.
+Fundstelle: `baueVerbrauchsProjektion` (`GET /api/verbrauch`).
+Auswirkung: Aufwand je Anfrage wächst linear mit der Zahl der Läufe.
+Maßnahme: Cache/Index nach F26-Muster, sobald die Anzeige (F32 WS-2) es nutzt.
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280.
+
+**F-518** · `TECH_DEBT` · P3 · offen
+Titel: ?von= und ?bis= in GET /api/verbrauch haben keine Formatprüfung.
+Beschreibung: Vertauschte oder ungültige Grenzen liefern still ein leeres Ergebnis.
+Fundstelle: `GET /api/verbrauch`.
+Auswirkung: Leeres Ergebnis ohne Fehlerhinweis.
+Maßnahme: Formatprüfung mit 400 bei ungültigen Werten.
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280.
+
+**F-519** · `TECH_DEBT` · P3 · offen
+Titel: rolle, modell und auftragId fallen bei drei Ursachen in dieselbe null-Gruppe.
+Beschreibung: Die Verbrauchsgruppierung unterscheidet die Ursachen fehlender Werte nicht.
+Fundstelle: Verbrauchsprojektion (F32).
+Auswirkung: Ursachen sind in der Auswertung nicht unterscheidbar.
+Maßnahme: Ursache als eigenes Merkmal führen, wenn die Anzeige es braucht.
+Feature/Run: F32 WS-0/WS-1, 20.09.2026. Quelle: claude/280.
+
+**F-520** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Zusage §12 zur Kontingent-Anzeige ist real nicht lieferbar.
+Beschreibung: `five_hour`/`seven_day`, `resetsAt` und `utilization` fehlen nachweislich in 5 269 realen Rohströmen; die Einschränkung steht nur in der F32-Akte.
+Fundstelle: `docs/projekt/zielfassung.md` §12; `features/F32/feature.md`.
+Auswirkung: Die Sollquelle verspricht eine nicht lieferbare Funktion.
+Maßnahme: §12-Nachtrag in zielfassung.md (Doku-PR).
+Feature/Run: F32, 20.09.2026. Quelle: claude/280.
+
+**F-521** · `PROCESS_IMPROVEMENT` · P1 · erledigt (E3′, 20.09.2026)
+Titel: M5-Ergänzung §8 behauptete eine E3-Entscheidung entgegen der gegebenen Antwort.
+Beschreibung: Aufgelöst als E3′ = A′: `features/<id>/feature.md` ist der PlanV1 auf Feature-Ebene.
+Fundstelle: M5-Ergänzung „Architecture & Technical Design" §8.
+Auswirkung: Drohte als falsch dokumentierte Entscheidung.
+Maßnahme: E3′ (Entscheidung Stefan).
+Feature/Run: Challenge Architecture & Technical Design, 20.09.2026. Quelle: claude/279.
+
+**F-522** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Zwei verschiedene Mechaniken heißen architecture-advisor.
+Beschreibung: Claude-Code-Subagent (Harness) und Workforce-Rolle (in `hoch.json` mit Codex); eine Änderung am einen wirkt nicht auf den anderen.
+Fundstelle: `.claude/agents/architecture-advisor.md`; `src/rollen/index.ts`.
+Auswirkung: Verwechslungsgefahr bei Änderungen.
+Maßnahme: Begriffsklärung in `docs/harness/HARNESS-GLOSSARY.md` mit F39 WS-1.
+Feature/Run: Challenge Architecture & Technical Design, 20.09.2026. Quelle: claude/279.
+
+**F-523** · `TECH_DEBT` · P1 · offen
+Titel: Greenfield-Projekt über Jarvis ist strukturell blockiert.
+Beschreibung: Ein neues Projekt braucht eine Autorisierungs-Baseline; Bootstrap-Automatik ist bewusst ausgeschlossen (F-414), der Import (F25 WS-2b) ist offen.
+Fundstelle: F-414; F25 WS-2b.
+Auswirkung: Zielbild „Build-with-Jarvis" nicht erreichbar.
+Maßnahme: Als benannter V1-Blocker in F30 führen.
+Feature/Run: Challenge Architecture & Technical Design, 20.09.2026. Quelle: claude/279.
+
+**F-524** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Harness trägt einen vollständigen Design-Prozess, den keine Workforce-Rolle abbildet.
+Beschreibung: `advisor-pass`, `handoff-vertrag`, `spec-schreiben`, ADR-Template und rund 40 `state/plan-v*.md`.
+Fundstelle: `.claude/skills/*`, `docs/adr/TEMPLATE.md`, `state/plan-v*.md`.
+Auswirkung: Keine Workforce-Rolle erzeugt einen technischen Entwurf.
+Maßnahme: F39 leitet Rolle, Schema und Akte-Abschnitte daraus ab.
+Feature/Run: Challenge Architecture & Technical Design, 20.09.2026. Quelle: claude/279.
+
+**F-525** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Challenger meldete Projektdokumente als geschrieben, ohne dass ein Schreibvorgang stattfand.
+Beschreibung: In zwei aufeinanderfolgenden Antworten; dieselbe Klasse wie F-082/F-092.
+Fundstelle: Challenger-Antworten zu claude/279 und claude/280.
+Auswirkung: Übergaben verweisen auf nicht existierende Dokumente.
+Maßnahme: Dokument gilt erst nach bestätigtem Schreibvorgang als existent; Übergaben mit Existenznachweis.
+Feature/Run: Challenge Architecture & Technical Design, 20.09.2026. Quelle: claude/279, claude/281.
+
+**F-526** · `TECH_DEBT` · P2 · offen
+Titel: dauer_api_ms kann größer sein als dauer_ms.
+Beschreibung: Die Felder stehen nicht im Verhältnis Teil zu Ganzem.
+Fundstelle: Laufakte `verbrauch` (F32).
+Auswirkung: Eine Differenzbildung in der Anzeige wäre falsch.
+Maßnahme: In F37/F32 WS-2 beide Felder getrennt zeigen, keine Differenz bilden.
+Feature/Run: F32-Verifikation, 20.09.2026. Quelle: claude/281.
+
+**F-527** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: E-188 blockiert reale Läufe aus Worktrees.
+Beschreibung: Der Wirksamkeitsnachweis bindet `arbeitsverzeichnis_pfad` an den Pfad des Hauptrepos; `process.chdir()` als Workaround hilft nicht.
+Fundstelle: `src/invocation-policy/index.ts:481-483`.
+Auswirkung: Reale Nachweise aus Worktrees sind nicht möglich.
+Maßnahme: Echte Nachweise nach dem Merge aus dem Hauptrepo führen oder bewusst einen worktree-gebundenen Nachweis ausstellen; Worktrees nur für echte Parallelarbeit.
+Feature/Run: F32/F33, 20./21.09.2026. Quelle: claude/281, claude/284, claude/285.
+
+**F-528** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Terminal-Blöcke für Worktree-Operationen prüfen cd und Branch nicht hart vorab.
+Beschreibung: Wird inzwischen als Regel in Terminal-Blöcken befolgt, ist aber nicht mechanisch abgesichert.
+Fundstelle: Terminal-Blöcke der Challenger-Übergaben (Worktree-Operationen).
+Auswirkung: Befehle können im falschen Verzeichnis oder Branch laufen.
+Maßnahme: Harte Prüfung von cd und Branch am Blockanfang.
+Feature/Run: F32, 20.09.2026. Quelle: claude/281.
+
+**F-529** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Worktree aufgeräumt)
+Titel: Unbekannter Worktree ai-workforce-b6, im M5-Schnitt nicht dokumentiert.
+Beschreibung: `f8d11f6` ist Vorfahr von `origin/main` mit 0 eigenen Commits; Altlast vom 23.08.2026.
+Fundstelle: `C:\Users\stefa\claude-worktrees\ai-workforce-b6`.
+Auswirkung: Keine Kollisionsgefahr.
+Maßnahme: Entfernt.
+Feature/Run: Repo-Stand-Verifikation, 20.09.2026. Quelle: claude/281, claude/282, claude/292.
+
+**F-530** · `TECH_DEBT` · P2 · erledigt (F33 neu aufgesetzt, #201)
+Titel: Fortschritt im F33-Worktree war nicht verifiziert.
+Beschreibung: Null Commits, null geänderte Dateien, Basis vor dem F32-Merge.
+Fundstelle: Worktree `ai-workforce-f33`, Branch `feat/f33-ws1-projektkontext`.
+Auswirkung: F33 war faktisch nicht begonnen.
+Maßnahme: F33 neu von `fc68d2d` aufgesetzt.
+Feature/Run: Repo-Stand-Verifikation, 20.09.2026. Quelle: claude/281, claude/282.
+
+**F-531** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Worktrees sind aus der Bridge nicht direkt mit git bedienbar.
+Beschreibung: Die `.git`-Datei enthält einen Windows-Pfad, der im Linux-VM nicht auflöst; `diff` über die Mount-Grenze läuft über 120 s ins Timeout.
+Fundstelle: `.git`-Datei im Worktree.
+Auswirkung: git-Befehle aus der Bridge scheitern oder hängen.
+Maßnahme: `git --git-dir=<repo>/.git/worktrees/<name>` verwenden, Änderungsspuren per `find -newermt`.
+Feature/Run: Repo-Stand-Verifikation, 20.09.2026. Quelle: claude/282.
+
+**F-532** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Status „beauftragt" wurde ohne Beleg als Fortschritt fortgeschrieben.
+Beschreibung: Zu F33 existierte real nie ein Commit, Übergaben meldeten dennoch Fortschritt.
+Fundstelle: Challenger-Übergaben claude/278, claude/280.
+Auswirkung: Übergaben meldeten nicht existierenden Fortschritt.
+Maßnahme: Auftragsstatus nur mit Beleg (Commit, Diff, Zeitstempel), sonst „unbelegt".
+Feature/Run: Repo-Stand-Verifikation, 20.09.2026. Quelle: claude/282.
+
+**F-533** · `BUG` · P1 · erledigt (#201)
+Titel: docs/projekt/roadmap.json widersprach Entscheidung E1.
+Beschreibung: M4 stand auf `LAEUFT`, M5 fehlte, bei M1 fehlten F6a/F6b/F7.
+Fundstelle: `docs/projekt/roadmap.json`.
+Auswirkung: Jarvis hätte einen falschen Projektstand behauptet.
+Maßnahme: roadmap.json korrigiert.
+Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283, claude/284.
+
+**F-534** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Entscheidungen und Findings, die nur im Claude-Projekt stehen, erzeugen falsche Repo-Artefakte.
+Beschreibung: Claude Code leitet korrekt aus der veralteten Sollquelle ab. Findings F-505 bis F-584 waren nur in Challenger-Übergaben dokumentiert, `state/findings.md` endete bei F-504; Entscheidungen E1–E5 (M5) fehlen in `zielfassung.md` §13.6.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 (fehlt); `state/findings.md`.
+Auswirkung: Falscher Projektkontext (z. B. roadmap.json, Lagebild ohne neuere P1-Findings).
+Maßnahme: Findings-Nachtrag F-505 bis F-584 (dieser PR, Teil 1); zielfassung.md §13.6 mit E1–E5 als eigener Doku-PR (Teil 2, offen). Künftig jedes Finding sofort im Umsetzungs-PR eintragen.
+Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283.
+
+**F-535** · `TECH_DEBT` · P2 · erledigt (#201)
+Titel: filtereExistierendeAnfragen übersprang fehlende Kontextdateien ohne Signal.
+Beschreibung: Kein Ereignis, kein Log; jetzt `console.warn` je fehlender Datei.
+Fundstelle: `scripts/leitstand-server.mjs` (`filtereExistierendeAnfragen`).
+Auswirkung: Jarvis hätte still ohne Kontext geantwortet.
+Maßnahme: Warnung je fehlender Datei.
+Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283, claude/284.
+
+**F-536** · `TECH_DEBT` · P3 · offen
+Titel: F33-Helfer liegen im Server statt in src/projektkontext.
+Beschreibung: `baueProjektkontextAnfragen` und `filtereExistierendeAnfragen` (rund 70 Zeilen); weiterer Zuwachs zu F-371.
+Fundstelle: `scripts/leitstand-server.mjs`.
+Auswirkung: Serverdatei wächst weiter.
+Maßnahme: Akzeptiert; mit F-371 verschieben.
+Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283.
+
+**F-537** · `TECH_DEBT` · P3 · offen
+Titel: src/projektkontext hat keine Unit-Tests, nur das Gate.
+Beschreibung: Abdeckung ausschließlich über die Gate-Abschnitte (a) bis (g) von `check-f33-projektkontext.mjs`.
+Fundstelle: `src/projektkontext`.
+Auswirkung: Für den Prototyp ausreichend.
+Maßnahme: Akzeptiert; Unit-Tests bei der nächsten fachlichen Änderung.
+Feature/Run: F33 WS-0/WS-1, 21.09.2026. Quelle: claude/283.
+
+**F-538** · `TECH_DEBT` · P2 · erledigt (Qualität belegt; Latenz → F-540)
+Titel: Antwortqualität und Latenz von Jarvis mit Projektkontext waren nicht belegt.
+Beschreibung: Qualität nach dem Merge aus dem Hauptrepo belegt; Latenz betrug 102 s und wurde als F-540 weitergeführt.
+Fundstelle: Lauf `jarvis-jarvis-chat-ac9204a1-…`.
+Auswirkung: Latenz war nicht nutzbar.
+Maßnahme: Echter Jarvis-Turn nach dem Merge (erbracht).
+Feature/Run: F33, 21.09.2026. Quelle: claude/284, claude/285.
+
+**F-539** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Prüfung und Push standen im selben Terminal-Block.
+Beschreibung: Wird als Regel befolgt, ist aber nicht mechanisch abgesichert.
+Fundstelle: Commit-Ablauf `fix/jarvis-latenz`.
+Auswirkung: Push konnte ohne vorherige Sichtprüfung laufen.
+Maßnahme: Reihenfolge Freigabedatei → Commit → Prüf-Block → eigener Push-Block.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/292.
+
+**F-540** · `BUG` · P1 · erledigt (#202, #204, #206, #207)
+Titel: Jarvis-Chat brauchte 102 s bis zur sichtbaren Antwort.
+Beschreibung: Server ≈37 s plus ≈65 s Lücke im Client. Nach fix/jarvis-latenz und F40 WS-1 bis WS-3 real 3–7 s je Statusfrage (1 Turn, `state/nachweis-jarvis-latenz.md` Abschnitt „F40 WS-3").
+Fundstelle: Lauf `ac9204a1`; `public/leitstand/views/chat.js`.
+Auswirkung: Chat war nicht nutzbar.
+Maßnahme: fix/jarvis-latenz (#202), F40 WS-1 bis WS-3.
+Feature/Run: F33-Nachweis, 21.09.2026. Quelle: claude/285, claude/308.
+
+**F-541** · `BUG` · P1 · erledigt (#202)
+Titel: Gateway schloss stdin des claude-Prozesses nicht (3 s Wartezeit je Lauf).
+Beschreibung: Feste Wartezeit von 3 s bei jedem Lauf jeder Rolle; Fix `stdio[0]='ignore'`, danach stderr in 5/5 Läufen leer.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts`.
+Auswirkung: 3 s Latenz je Lauf.
+Maßnahme: stdin nicht als Pipe öffnen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/285.
+
+**F-542** · `TECH_DEBT` · P2 · erledigt (#202)
+Titel: jarvis lief für Chat-Antworten mit Extended Thinking.
+Beschreibung: 814 Thinking-Tokens, Time-to-first-token 9 s; mit `MAX_THINKING_TOKENS=0` 2–4 s.
+Fundstelle: Jarvis-Pfad, `aufrufEingaben.umgebungsvariablen`.
+Auswirkung: Hohe Latenz bis zum ersten Token.
+Maßnahme: Thinking für jarvis abgeschaltet.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/285, claude/286.
+
+**F-543** · `BUG` · P0 · erledigt (#202)
+Titel: Jarvis-Ergebnis mit Vertragsverstoß endete als ERFOLGREICH, aber ohne Chat-Eintrag.
+Beschreibung: UI wartete endlos, 2 von 5 Läufen betroffen (Prosa plus Codezaun). Behoben durch robuste Extraktion und sichtbaren Fehler-Eintrag.
+Fundstelle: Jarvis-Ergebnisverarbeitung; Gate `check-f31-gedaechtnis.mjs` (i)/(j).
+Auswirkung: Antworten gingen verloren, Chat faktisch unbenutzbar.
+Maßnahme: Robuste JSON-Extraktion, Fehler-Chat-Eintrag, schärferer Ausgabevertrag.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/286, claude/287.
+
+**F-544** · `TECH_DEBT` · P2 · offen
+Titel: Latenz-Hebel wirken nur auf dem claude-code-Pfad, nicht auf Codex.
+Beschreibung: Mit `startvorlagen/ai-workforce.json` läuft Jarvis auf Codex; hängt an F-391.
+Fundstelle: `startvorlagen/ai-workforce.json`.
+Auswirkung: Auf dem Codex-Pfad wirken die Fixes nicht.
+Maßnahme: Bei F37 (Worker-Wahl) gleichziehen oder Jarvis fest auf claude-code setzen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/286.
+
+**F-545** · `BUG` · P1 · erledigt (#202)
+Titel: UI hatte keinen Endzustand für „terminal, aber kein Chat-Eintrag".
+Beschreibung: Jeder Vertragsverstoß führte zu endlosem Warten; mit F-543 behoben.
+Fundstelle: `public/leitstand/views/chat.js`.
+Auswirkung: Endloses Warten im Chat.
+Maßnahme: Warten in jedem terminalen Fall beenden.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/287.
+
+**F-546** · `TECH_DEBT` · P2 · offen
+Titel: Seit abgeschaltetem Thinking möglicherweise mehr Vertragsverstöße.
+Beschreibung: Annahme, zeitlich korreliert bei 2 von 5 Läufen.
+Fundstelle: Jarvis-Läufe nach `MAX_THINKING_TOKENS=0`.
+Auswirkung: Häufigere Fehler-Chat-Einträge.
+Maßnahme: Beobachten; bei mehr als etwa 1 von 10 Fehler-Einträgen die Thinking-Abschaltung verwerfen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/287.
+
+**F-547** · `TECH_DEBT` · P3 · offen
+Titel: Ein bezug mit Verweis auf die eigene ID wird nicht erkannt.
+Beschreibung: Schemakonform, kein Prüfpfad fängt ihn.
+Fundstelle: Jarvis-Ergebnis, Feld `bezug`.
+Auswirkung: Für den Nutzer folgenlos.
+Maßnahme: Serverseitig prüfen, dass die ID existiert und nicht die eigene ist.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/288.
+
+**F-548** · `BUG` · P1 · erledigt (#202)
+Titel: Chat-UI hing nach einem Abbruch auf „Abbruch angefordert".
+Beschreibung: Server hatte korrekt beendet; `pruefeAusstehendenLauf` löste nur bei zwei Statuswerten auf.
+Fundstelle: `public/leitstand/views/chat.js`, `pruefeAusstehendenLauf`.
+Auswirkung: UI blieb blockiert.
+Maßnahme: Root-Cause-Fix, Gate bis zur UI-Auflösung, Sicherung im Client.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/289.
+
+**F-549** · `BUG` · P1 · erledigt (#202)
+Titel: Abbruch-Test AK7 in check-f10 lieferte 404 (Test-Wettlauf).
+Beschreibung: Keine Regression, sondern eine feste 120-ms-Frist im Mock.
+Fundstelle: `scripts/check-f10-leitstand.mjs` AK7.
+Auswirkung: Scheinbar roter Test.
+Maßnahme: Mock deterministisch gemacht.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/290.
+
+**F-550** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Ein reproduzierbar roter Test wurde als Flake abgetan.
+Beschreibung: Claude Code hat den Fehler eingeräumt; Regel steht seither im Prompt.
+Fundstelle: Bericht zu check-f10 AK7.
+Auswirkung: Echte Befunde können wegerklärt werden.
+Maßnahme: Jeden Fehlschlag nennen, keinen per Retry wegerklären (Regel in CLAUDE.md verankern).
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/290.
+
+**F-551** · `BUG` · P1 · erledigt (#202, Browsertest 2/2)
+Titel: Abbruch aus dem Browser war wirkungslos (UI-Auflösung hing).
+Beschreibung: Der Server brach korrekt ab, die UI-Auflösung hing (siehe F-555, F-561).
+Fundstelle: Chat-Abbruchpfad; `public/leitstand/api.js`, `chat.js`.
+Auswirkung: Nutzer sah keine Abbruchwirkung.
+Maßnahme: Poll-Fix (F-555) und Zeitlimit (F-561).
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/290, claude/291, claude/297.
+
+**F-552** · `TECH_DEBT` · P1 · erledigt (#202)
+Titel: Zeitmessung hatte keine Marken für Terminal-Checkpoint und Chat-Eintrag.
+Beschreibung: Mit den ergänzten Marken lag die Nachbereitung bei 18–46 ms.
+Fundstelle: Zeitmessung im Server (`LEITSTAND_ZEITMESSUNG`).
+Auswirkung: Nachbereitungsdauer war nicht messbar.
+Maßnahme: Marken `terminal_checkpoint_geschrieben` und `chat_eintrag_geschrieben`.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/290, claude/291.
+
+**F-553** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
+Beschreibung: „Jarvis Live" geschätzt 10–20 s Gewinn, gemessen ~3 s; eine Entscheidung Stefans beruhte auf der Schätzung (neu gefasst als E-M5-10).
+Fundstelle: Challenger-Übergabe claude/288.
+Auswirkung: Entscheidung auf falscher Zahl.
+Maßnahme: Nutzenzahlen für Entscheidungen nur aus direkter Messung.
+Feature/Run: Messung CLI-Overhead, 21.09.2026. Quelle: claude/291.
+
+**F-554** · `TECH_DEBT` · P1 · erledigt (#206, #207)
+Titel: Jarvis machte bis zu 10 Werkzeug-Runden pro Frage.
+Beschreibung: Modellarbeit bis 23 s. Nach Lagebild (#206) und Auto-Memory-Sperre (#207) 5/5 Statusfragen mit 1 Turn ohne Werkzeugaufruf.
+Fundstelle: Rohströme der Jarvis-Läufe (`num_turns`); `state/nachweis-jarvis-latenz.md`.
+Auswirkung: Latenz-Ausreißer.
+Maßnahme: F40 WS-2/WS-3.
+Feature/Run: Messung CLI-Overhead, 21.09.2026. Quelle: claude/291, claude/308.
+
+**F-555** · `BUG` · P0 · erledigt (#202)
+Titel: GET /api/zustand brauchte im Browser ~110 s und blockierte Laden, Senden und Abbruch.
+Beschreibung: Poll-Abfragen überlappten ohne Schutz. Fix: ein Tick zur Zeit plus Nachlauf; zusätzlich `statSync(throwIfNoEntry:false)`.
+Fundstelle: `public/leitstand/zustand.js`; `leseCheckpointVerzeichnisStempel`.
+Auswirkung: Leitstand faktisch blockiert.
+Maßnahme: Überlappungsschutz plus Gate (d)/(e).
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/292.
+
+**F-556** · `BUG` · P1 · offen
+Titel: Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
+Beschreibung: Messung war durch alte Browser-Tab-Verbindungen verfälscht; im Browser 1,7 s, Hypothese Kaspersky-fetch-Hook. Ursache ungeklärt.
+Fundstelle: `GET /api/zustand`.
+Auswirkung: Event-Loop zeitweise blockiert.
+Maßnahme: Saubere Langlauf-Nachmessung ohne Störfaktor (Kaspersky-Ausnahme gesetzt, E-M5-11).
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293, claude/295, claude/303.
+
+**F-557** · `PROCESS_IMPROVEMENT` · P3 · erledigt (#202)
+Titel: Einheit ms statt s aus dem Befund übernommen.
+Beschreibung: „109 ms / 110 ms" statt 109 s / 110 s.
+Fundstelle: `state/nachweis-jarvis-latenz.md`; Kommentar zu Gate (d).
+Auswirkung: Falsche Messwerte in der Doku.
+Maßnahme: Korrigiert.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293, claude/294.
+
+**F-558** · `TECH_DEBT` · P3 · erledigt (#202)
+Titel: pollJetzt() nach einer Aktion konnte einen Vorher-Zustand liefern.
+Beschreibung: Hing sich an einen vorher gestarteten Tick; behoben mit Nachlauf-Flag, Gate (e) mit Rot-Fall.
+Fundstelle: `public/leitstand/zustand.js`; genutzt in `views/runs.js`, `workboard.js`, `workflows.js`.
+Auswirkung: Veraltete Anzeige für bis zu 2 s.
+Maßnahme: Nachlauf-Flag.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293.
+
+**F-559** · `TECH_DEBT` · P2 · offen
+Titel: GET /api/zustand bleibt O(N) synchron über kontrollzustand/.
+Beschreibung: Rund 3 900 Dateisystem-Aufrufe je Abfrage alle 2 s; wächst mit dem Bestand.
+Fundstelle: Zustandsroute in `scripts/leitstand-server.mjs`.
+Auswirkung: Wird bei Wachstum wieder langsam.
+Maßnahme: Gate (d) sichert Median unter 300 ms; bei Überschreitung Index/Cache einführen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/293.
+
+**F-560** · `TECH_DEBT` · P3 · erledigt (#202)
+Titel: Ein werfender Detail-Auffrischer blockierte den Nachlauf dauerhaft.
+Beschreibung: Die Auffrischer-Schleife in `fuehrePollTickAus` war nicht gefangen.
+Fundstelle: `public/leitstand/zustand.js`.
+Auswirkung: Spätere `pollJetzt()` bekamen keinen Nachlauf mehr.
+Maßnahme: Jeden Auffrischer einzeln fangen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/294.
+
+**F-561** · `BUG` · P1 · erledigt (#202)
+Titel: Hängende holeLaufDetail-Anfrage legte die Chat-Auflösungsschleife still.
+Beschreibung: `fetch` lief ohne Timeout.
+Fundstelle: `public/leitstand/api.js`; `chat.js` `pruefeAusstehendenLauf`.
+Auswirkung: „Abbruch wirkt nicht" als Anzeige-Hänger.
+Maßnahme: `AbortSignal.timeout(5000)` für `holeLaufDetail` und `holeZustand`, Gate (g) mit Rot-Fall.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/295, claude/296.
+
+**F-562** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Virenscanner-Hook im Browser verfälscht Latenzmessungen.
+Beschreibung: Kaspersky umhüllt `window.fetch` (Initiator `main.js`).
+Fundstelle: Browser-Netzwerk-Log (`main.js:5747`).
+Auswirkung: Browser-Messungen sind unzuverlässig.
+Maßnahme: Messungen immer mit curl und Browser gegenüberstellen.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/295.
+
+**F-563** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Textgenaue Quelltext-Zusagen in Gates brechen bei harmlosen Signaturänderungen.
+Beschreibung: Erster `npm run check`-Lauf endete mit Exit 1 in check-f15 (d) nach einer harmlosen Änderung.
+Fundstelle: `scripts/check-f15-workflow-oberflaeche.mjs` (d).
+Auswirkung: Falsch-rote Gates.
+Maßnahme: Verhaltensprüfung statt Textvergleich, wenn das Gate wieder angefasst wird.
+Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/296.
+
+**F-564** · `TECH_DEBT` · P3 · erledigt (#205)
+Titel: Chat meldete einen manuellen Abbruch als „nicht erfolgreich (FEHLGESCHLAGEN)".
+Beschreibung: Der Meldungstext unterschied Abbruch nicht von Fehler.
+Fundstelle: `public/leitstand/views/chat.js`, `beschreibeNichtErfolgreichesEnde`.
+Auswirkung: Irreführende Meldung.
+Maßnahme: Eigener Text „Lauf abgebrochen.".
+Feature/Run: Browsertest fix/jarvis-latenz, 21.09.2026. Quelle: claude/297, claude/304.
+
+**F-565** · `TECH_DEBT` · P3 · offen
+Titel: Abbruch-Wirkzeit im Browser ist nicht gemessen.
+Beschreibung: Lauf dauerte insgesamt ~8–11 s; Stefan akzeptiert die Dauer.
+Fundstelle: Laufakten `cf330bca…`, `d89a76f0…`.
+Auswirkung: Unklar, wie schnell ein Abbruch wirkt.
+Maßnahme: Beobachten; Zeitmarke `abbruch_angefordert` bei Bedarf ergänzen.
+Feature/Run: Browsertest, 21.09.2026. Quelle: claude/297, claude/298.
+
+**F-566** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Freigabedatei wird ohne Zeitstempel-Hilfe angelegt und ist leicht abgelaufen.
+Beschreibung: commit-guard verweigerte, weil die Datei 429 min alt war (Fenster 10 min).
+Fundstelle: `state/freigabe-commit.md`.
+Auswirkung: Commits werden blockiert.
+Maßnahme: PowerShell-Einzeiler als Standard (`Set-Content … (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")`).
+Feature/Run: Commit fix/jarvis-latenz, 21.09.2026. Quelle: claude/298.
+
+**F-567** · `BUG` · P2 · erledigt (#207)
+Titel: Jarvis-Prozess las ~/.claude/projects/…/memory/MEMORY.md trotz --setting-sources ''.
+Beschreibung: In 4/15 Läufen (WS-0) und 1/5 (WS-2). Fix: `--disallowedTools 'Read(~/.claude/**)'` (`AUTO_MEMORY_DENY_REGEL`) für jarvis und router.
+Fundstelle: `baueAufruf` (claude-code-gateway); Jarvis-Chat-Lauf, Router-Handler.
+Auswirkung: Zusätzliche Werkzeug-Runde und Entwickler-Gedächtnis in einer Produktrolle.
+Maßnahme: Lesesperre per Permission-Deny.
+Feature/Run: F40 WS-0 bis WS-3, 21.09.2026. Quelle: claude/301, claude/308.
+
+**F-568** · `TECH_DEBT` · P2 · erledigt (#206)
+Titel: docs/STATUS.md war in 11/15 Mehrrunden-Läufen der erste Werkzeugzugriff.
+Beschreibung: Jetzt als Abschnitt „Aktuelle Phase" im Lagebild (`docs/projekt/kontext/lagebild.md`) vorab eingespeist.
+Fundstelle: `docs/STATUS.md`; `baueProjektkontextAnfragen`.
+Auswirkung: Zusätzliche Werkzeug-Runden.
+Maßnahme: F40 WS-2 (Lagebild).
+Feature/Run: F40 WS-0 Spike, 21.09.2026. Quelle: claude/301, claude/306.
+
+**F-569** · `TECH_DEBT` · P2 · erledigt (#206)
+Titel: state/findings.md wurde bis zu 5× je Jarvis-Lauf gegrept.
+Beschreibung: Jetzt als vorberechnete Liste offener P1-Findings im Lagebild eingespeist.
+Fundstelle: `state/findings.md`; `scripts/erzeuge-lagebild.mjs`.
+Auswirkung: Zusätzliche Werkzeug-Runden.
+Maßnahme: F40 WS-2 (Lagebild).
+Feature/Run: F40 WS-0 Spike, 21.09.2026. Quelle: claude/301, claude/306.
+
+**F-570** · `TECH_DEBT` · P2 · erledigt (#204)
+Titel: Beim Abbruch mitten im stream-json-Strom fehlt die result-Zeile.
+Beschreibung: Jeder Leser muss eine fehlende oder unparsbare letzte Zeile vertragen; abgedeckt durch `darfFruehAufloesen()`.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts`.
+Auswirkung: Leser würden sonst fehlerhaft abbrechen.
+Maßnahme: Muss-Kriterium im WS-1-Gate.
+Feature/Run: F40 WS-0 Spike, 21.09.2026. Quelle: claude/301.
+
+**F-571** · `PROCESS_IMPROVEMENT` · P3 · erledigt (ID nicht vergeben)
+Titel: ID F-571 wurde nicht vergeben.
+Beschreibung: In keiner Challenger-Übergabe dokumentiert; Platzhalter, damit die Nummernfolge lückenlos prüfbar bleibt.
+Fundstelle: —
+Auswirkung: Keine.
+Maßnahme: Keine.
+Feature/Run: Findings-Nachtrag F-534, 21.09.2026.
+
+**F-572** · `TECH_DEBT` · P3 · offen
+Titel: D13-Freigabe erfolgt beim frühen Resolve, nicht beim tatsächlichen Prozessende.
+Beschreibung: Fenster (≤5 s, real <1 s) mit zwei parallelen Werkzeugprozessen; per Empfehlung akzeptiert.
+Fundstelle: `scripts/leitstand-server.mjs` (Reset von `laufAktiv`).
+Auswirkung: Geringes Risiko, weil jarvis nur lesend arbeitet.
+Maßnahme: Beibehalten; auf Freigabe bei Prozessende wechseln, sobald eine schreibende Rolle früh aufgelöst wird.
+Feature/Run: F40 WS-1, 21.09.2026. Quelle: claude/302.
+
+**F-573** · `TECH_DEBT` · P3 · offen
+Titel: Rohströme wachsen durch volle Dateiinhalte in tool_result-Zeilen.
+Beschreibung: 7–67 KB statt ~3 KB im Median.
+Fundstelle: `kontrollzustand-roh/…/rohstrom.json`.
+Auswirkung: Weit unter der 64-MB-Grenze.
+Maßnahme: Beobachten.
+Feature/Run: F40 WS-1, 21.09.2026. Quelle: claude/302.
+
+**F-574** · `TECH_DEBT` · P2 · offen
+Titel: Kein Browser-Klicktest für Werkzeug-Fortschrittsanzeige und Abbruch um die result-Zeile.
+Beschreibung: Kein Test für das `fortschritt`-Feld und dessen Textaufbereitung in chat.js.
+Fundstelle: `public/leitstand/views/chat.js`.
+Auswirkung: UI-Pfade sind ungetestet.
+Maßnahme: Browser-Klicktest bei der nächsten Chat-UI-Änderung nachholen.
+Feature/Run: F40 WS-1, 21.09.2026. Quelle: claude/302.
+
+**F-575** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Tree-weiter git diff/status über die Bridge läuft bei großem kontrollzustand/ ins Timeout.
+Beschreibung: `diff`, `diff --stat` und `status` über die Bridge liefen >60–90 s (650+ Unterordner).
+Fundstelle: Bridge; `kontrollzustand/`.
+Auswirkung: Verifikation blockiert.
+Maßnahme: Immer Einzeldatei-Diffs verwenden.
+Feature/Run: F40 WS-1, 21.09.2026. Quelle: claude/302.
+
+**F-576** · `BUG` · P2 · erledigt (#205)
+Titel: Fehler-/Abbruch-Eintrag renderte dauerhaft unterhalb späterer Nachrichten.
+Beschreibung: `baueAnzeigeListe()` hängte `lokaleEintraege` pauschal ans Ende.
+Fundstelle: `public/leitstand/views/chat.js` (`baueAnzeigeListe`).
+Auswirkung: Falsche Chronologie im Chat.
+Maßnahme: Einfügeposition beim Push merken und dort einsortieren.
+Feature/Run: nach F40 WS-1, 21.09.2026. Quelle: claude/303, claude/304.
+
+**F-577** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Verwaistes .git/index.lock tritt wiederholt auf.
+Beschreibung: Bekanntes Muster (F-100, F-118, F-122, F-123, F-126); zuletzt am 21.09.2026 beobachtet.
+Fundstelle: `.git/index.lock`.
+Auswirkung: Blockiert lokale Git-Operationen, bis es entfernt wird.
+Maßnahme: Lokal entfernen, nachdem geprüft ist, dass kein Git-Prozess läuft; Ursache weiter beobachten.
+Feature/Run: F40 WS-1, 21.09.2026. Quelle: claude/303, claude/304.
+
+**F-578** · `BUG` · P2 · offen
+Titel: Fehler-/Abbruch-Eintrag ist im eingeklappten Chat-Standardausschnitt nicht sichtbar.
+Beschreibung: QA-Fund aus fix/chat-fehler-anzeige (F-564/F-576).
+Fundstelle: `public/leitstand/views/chat.js` (eingeklappter Ausschnitt).
+Auswirkung: Nutzer übersieht einen Fehler oder Abbruch, solange der Verlauf eingeklappt ist.
+Maßnahme: Separates Folge-Ticket.
+Feature/Run: fix/chat-fehler-anzeige, 21.09.2026. Quelle: claude/304.
+
+**F-579** · `BUG` · P1 · erledigt (#206)
+Titel: STATUS.md „Aktuelle Phase" widersprach den Feature-Akten.
+Beschreibung: F32 stand als ABGESCHLOSSEN gegen IN_ARBEIT in der Akte; F40 fehlte.
+Fundstelle: `docs/STATUS.md`; `features/F32/feature.md`.
+Auswirkung: Jarvis hätte mit eingespeistem Status falsch geantwortet.
+Maßnahme: Im Zuge von F40 WS-2 korrigiert.
+Feature/Run: F40 WS-2, 21.09.2026. Quelle: claude/305.
+
+**F-580** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Features laufen mit gemergten Workstreams ohne Feature-Akte.
+Beschreibung: Beispiel F40 (WS-0/WS-1 gemergt ohne Akte); `check-feature.mjs` erkennt das nicht.
+Fundstelle: `scripts/check-feature.mjs`.
+Auswirkung: Features ohne Akte bleiben unbemerkt.
+Maßnahme: Check „jede in STATUS/Commit-Titeln genannte F-ID hat eine Akte".
+Feature/Run: F40 WS-2, 21.09.2026. Quelle: claude/305.
+
+**F-581** · `TECH_DEBT` · P3 · offen
+Titel: Lagebild wird nur durch das Gate erzwungen, nicht automatisch erzeugt.
+Beschreibung: Jeder PR, der STATUS.md oder findings.md ändert, muss `node scripts/erzeuge-lagebild.mjs` ausführen.
+Fundstelle: `scripts/erzeuge-lagebild.mjs`, `scripts/check-f40-lagebild.mjs`.
+Auswirkung: Kann PRs aufhalten.
+Maßnahme: Beobachten; notfalls serverseitig beim Start erzeugen.
+Feature/Run: F40 WS-2, 21.09.2026. Quelle: claude/306.
+
+**F-582** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Freigabedatei wird beim Commit verbraucht, der Push braucht eine zweite Freigabe.
+Beschreibung: commit-guard verbraucht `state/freigabe-commit.md` beim Commit; der anschließende Push desselben Commits wird verweigert (F40 WS-2, zuvor fix/jarvis-latenz).
+Fundstelle: `state/freigabe-commit.md`; commit-guard-Hook.
+Auswirkung: Eine zusätzliche Mensch-Runde pro PR.
+Maßnahme: Freigabe an den Commit-Hash binden und erst nach dem Push verbrauchen.
+Feature/Run: F40 WS-2 Commit, 21.09.2026. Quelle: claude/298, claude/307.
+
+**F-583** · `TECH_DEBT` · P3 · offen
+Titel: Ungeklärt, ob Auto-Memory den MEMORY.md-Inhalt ohne Read-Werkzeug in den Systemprompt lädt.
+Beschreibung: Die Kausalprobe (`DENIED`) spricht dagegen, ist aber kein Beweis.
+Fundstelle: F40 WS-3, `AUTO_MEMORY_DENY_REGEL`.
+Auswirkung: Die Isolation wäre möglicherweise unvollständig.
+Maßnahme: Mit einer Frage testen, die nur aus MEMORY.md beantwortbar ist; falls ja, Entscheidung Stefan über eine E-182-Ausnahme für `--bare` nur für jarvis.
+Feature/Run: F40 WS-3, 21.09.2026. Quelle: claude/308.
+
+**F-584** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Verwaiste, ungetrackte Dateien state/nachweis-runde2-* (json und .sh).
+Beschreibung: Tauchen in jedem Staging-Blick auf, gehören zu keinem Auftrag.
+Fundstelle: `state/nachweis-runde2-*`.
+Auswirkung: Stören den Staging-Blick, Risiko versehentlichen Mitcommits.
+Maßnahme: Aufräumen (löschen oder in `.gitignore`).
+Feature/Run: F40 WS-3, 21.09.2026. Quelle: claude/308.

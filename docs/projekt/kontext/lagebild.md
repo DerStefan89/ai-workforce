@@ -74,3 +74,8 @@ und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
 - F-432 · PROCESS_IMPROVEMENT · Feature-Freigabe trotz offenem P1-BUG auf demselben Feature.
 - F-433 · PROCESS_IMPROVEMENT · Review-Verfahren läuft entgegen PlanV1 §2 seit F23 nicht im Produkt.
 - F-501 · TECH_DEBT · Jarvis-Chat-Turn kostet ~7-10s CLI-Prozessstart je Nachricht.
+- F-505 · PROCESS_IMPROVEMENT · M5-Plan setzt „M4 eingefroren" voraus, das M4-Gate ist real aber nicht erfüllt.
+- F-523 · TECH_DEBT · Greenfield-Projekt über Jarvis ist strukturell blockiert.
+- F-534 · PROCESS_IMPROVEMENT · Entscheidungen und Findings, die nur im Claude-Projekt stehen, erzeugen falsche Repo-Artefakte.
+- F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
+- F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
