@@ -18,22 +18,30 @@ abgeschlossen. Meilenstein 1 und Meilenstein 2 (Bedienbarer Leitstand,
 `docs/projekt/zielfassung.md` §13.4) ist abgeschlossen (Stand 11.09.2026,
 alle drei Sätze der Bestehensbedingung real erfüllt). F19 (Capability
 Foundation), ein eigenständiges Bridge-Feature zwischen Meilenstein 3 und
-4, ist abgeschlossen (12.09.2026). Das Projekt ist in Meilenstein 4
-(Jarvis Workspace, `docs/projekt/zielfassung.md` §13.5), PlanV1 freigegeben
-(12.09.2026); F20–F27 sind umgesetzt (F24/F26/F27 `ABGESCHLOSSEN`, F22/F23
-`FEATURE_GATE`, F25 `FEATURE_GATE` mit offenem WS-2b/WS-3), F28/F29
-`ABGESCHLOSSEN`, F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192,
-WS-2 #194, WS-3 #196, WS-3b #197, WS-3c #198), F32 (Verbrauch & Kontingent)
-`IN_ARBEIT` (WS-1 Verbrauch-Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im
-Leitstand noch nicht begonnen, siehe `features/F32/feature.md`), F33
-(Projektkontext & Roadmap) `IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien +
-Context-Builder-Einspeisung, `features/F33/feature.md`), F40 (Jarvis-
+4, ist `ABGESCHLOSSEN` (12.09.2026 real gebaut, 20.09.2026 formal per
+E-M5-1 auf `ABGESCHLOSSEN` gesetzt — Restfinding F-346 bleibt offen,
+M5-Backlog). Meilenstein 4 (Jarvis Workspace,
+`docs/projekt/zielfassung.md` §13.5) gilt als geschlossen (20.09.2026,
+E-M5-1, mit ausdrücklich benannten Übertragungen nach F30: Import-Wizard
+F25 WS-2b, Health-Projektion F25 WS-3, Kollege-Durchlauf und ≥3 Tage
+protokolliertes Dogfooding); F20–F27 sind umgesetzt (F24/F26/F27
+`ABGESCHLOSSEN`, F22 `FEATURE_GATE`, F23 `ABGESCHLOSSEN` seit E-M5-1 —
+Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
+`FEATURE_GATE` mit offenem WS-2b/WS-3 → F30), F28/F29 `ABGESCHLOSSEN`,
+F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
+#196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
+(`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
+offen, RC): F32 Verbrauch & Kontingent `IN_ARBEIT` (WS-1 Verbrauch-
+Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Leitstand noch nicht
+begonnen, siehe `features/F32/feature.md`), F33 Projektkontext & Roadmap
+`IN_ARBEIT` (WS-0 Spike + WS-1 Repo-Dateien + Context-Builder-Einspeisung,
+`features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
 Latenz: Streaming + Lagebild) `FEATURE_GATE` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
 Auto-Memory-Sperre für jarvis/router #207 — eigener Feature-Review-Pass
 und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
-21.09.2026).
+22.09.2026).
 
 ## Offene P1-Findings
 
@@ -74,8 +82,6 @@ und Stefans Abnahme stehen noch aus, `features/F40/feature.md`) (Stand
 - F-432 · PROCESS_IMPROVEMENT · Feature-Freigabe trotz offenem P1-BUG auf demselben Feature.
 - F-433 · PROCESS_IMPROVEMENT · Review-Verfahren läuft entgegen PlanV1 §2 seit F23 nicht im Produkt.
 - F-501 · TECH_DEBT · Jarvis-Chat-Turn kostet ~7-10s CLI-Prozessstart je Nachricht.
-- F-505 · PROCESS_IMPROVEMENT · M5-Plan setzt „M4 eingefroren" voraus, das M4-Gate ist real aber nicht erfüllt.
 - F-523 · TECH_DEBT · Greenfield-Projekt über Jarvis ist strukturell blockiert.
-- F-534 · PROCESS_IMPROVEMENT · Entscheidungen und Findings, die nur im Claude-Projekt stehen, erzeugen falsche Repo-Artefakte.
 - F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
 - F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
