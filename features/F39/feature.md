@@ -6,7 +6,7 @@ F39
 
 ## Titel
 
-Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate; Projektmodus „Architektur-Grundlage" folgt in WS-3)
+Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate, WS-1; hoch-Kette + Herkunftsfeld + Ergebnis-Weitergabe, WS-2a; Fortsetzungsweg für Entscheidungen, WS-2b; Projektmodus „Architektur-Grundlage", WS-3)
 
 ## Status
 
@@ -40,11 +40,13 @@ und E-M5-13 (22.09.2026 — F39 vor F35 gezogen, zusätzlicher Projektmodus
   einer ADR-Datei bleibt einem Folgeauftrag/WS-3 vorbehalten (Muster
   `product-coach`: `baueAuftragAusProjektentwurf` schreibt auch erst nach
   einem separaten "Als Auftrag anlegen"-Schritt).
-- **Kein `hoch.json`-Eintrag, kein Router, kein Leitstand-Endpunkt.**
-  Explizite WS-1-Grenze der Auftrags-Vorgabe — diese drei sind WS-2-Scope
-  (Advisor-Ergebnis muss den Workflow-Schritt erreichen, deterministische
-  Kontrolltiefe-Untergrenze, siehe „Entschieden").
-- **Kein Projektmodus „Architektur-Grundlage" in WS-1** — das Ausgabeschema
+- **Kein Fortsetzungsweg für `entscheidungen_mensch` (Regel 1c/haltKlaerung)
+  in WS-2a.** `entscheidungen_mensch[]` wird von `architekt` geliefert und
+  über `ergebnis-@<schritt>` an Folgeschritte weitergereicht, aber NICHT
+  ausgewertet — kein neuer Automaten-Ausgang, kein UI-Weg, eine offene
+  Entscheidung bleibt bloßer Text im Kontext des nächsten Schritts. Das ist
+  WS-2b-Scope (F-632 Teil b bleibt dafür offen, siehe „Findings").
+- **Kein Projektmodus „Architektur-Grundlage" in WS-1/WS-2a** — das Ausgabeschema
   trägt `modus: 'feature'|'projekt'` bereits jetzt (E-M5-13 verlangt beide
   Werte in der Wertemenge), aber eine eigene, ausgearbeitete
   Projekt-Rolleninstruktion mit realem Nachweis ist WS-3-Scope (Muster
@@ -70,16 +72,38 @@ und E-M5-13 (22.09.2026 — F39 vor F35 gezogen, zusätzlicher Projektmodus
   `baueArchitektAuftragstext`, `baueCapabilityAuszug` aus `src/product-coach/`
   reexportiert). Gate `scripts/check-f39-architekt.mjs`, in `npm run check`
   eingehängt.
-- **WS-2 — Einhängung (nicht in diesem Auftrag).** `hoch.json` bekommt
-  `architekt` als neuen Schritt 1 VOR der bestehenden Workforce-Rolle
-  `architecture-advisor` (deren Schritt rückt zu Schritt 2 — Autor zuerst,
-  dann Prüfer); Eingabe-Platzhalter
-  von `aenderungsuebersicht-@` auf `ergebnis-@<schritt>` verallgemeinert
-  (`scripts/leitstand-server.mjs` ~Z. 2381); Regel 1c
-  `entscheidungen_mensch` → `haltKlaerung` + Fortsetzungsweg; Router-
-  Auslöserliste + deterministische Untergrenze `hoch` für Projektaufträge
-  aus F34 über ein strukturiertes Herkunftsfeld (nicht über das
-  Titel-Präfix).
+- **WS-2a — hoch-Kette, Herkunftsfeld, Ergebnis-Weitergabe (dieser
+  Auftrag).** `workflow-vorlagen/hoch.json` bekommt `architekt` als neuen
+  Schritt 1 (`schritt-1-architekt`, lesend, Worker `codex`, Modell
+  `gpt-6-astra`, `output_schema: 'ergebnis-architektur'`,
+  `freigabe: ZWINGEND`) VOR der bestehenden Workforce-Rolle
+  `architecture-advisor` (rückt zu Schritt 2, `schritt-2-architektur`, Worker
+  `claude-code`, Modell `claude-sonnet-5`, `output_schema: null` — Autor
+  zuerst, dann Prüfer, auf verschiedenen Modellen, siehe „Entschieden");
+  `ausfuehrung`/`code-reviewer` rücken zu Schritt 3/4. Neuer Eingabe-Platzhalter `ergebnis-@<schrittId>`
+  (`loeseSchrittEingabenAuf`, `scripts/leitstand-server.mjs`) — liefert das
+  Laufergebnis (strukturiertes Output-Artefakt bzw. roher Ergebnistext,
+  `leseErgebnistextAusRohstrom`) des referenzierten, abgeschlossenen
+  Schritts, dieselben drei Schutzregeln wie beim bestehenden
+  `aenderungsuebersicht-@` (Selbstverweis, unbekannte `schritt_id`, nicht
+  gestartet); `architecture-advisor` bekommt `ergebnis-@schritt-1-architekt`,
+  `ausfuehrung` bekommt beide Vorschritt-Ergebnisse. Optionales
+  Herkunftsfeld `AuftragV0Daten.herkunft: { art }` (additiv,
+  `src/auftrag/types.ts`), gesetzt über die Chat→Auftrag-Brücke
+  (`leseAuftragKandidat`, `views/chat.js`: `projekt_entwurf` →
+  `'projekt_interview'`, `scope_entwurf` → `'sparring'`, Jarvis'
+  `auftrag_vorschlag` → `'jarvis'`) und optional in `POST /api/auftraege`
+  (`pruefeAuftragsformular`). Deterministische Kontrolltiefe-Untergrenze
+  (`bestimmeEffektiveKontrolltiefe`, `src/router/index.ts`): `herkunft.art
+  === 'projekt_interview'` hebt die vom Router vorgeschlagene Kontrolltiefe
+  auf mindestens `hoch` an (nie senken), sichtbar vermerkt in
+  `workflow.ziel`. Neue Router-Rolleninstruktion (`baueRouterAuftragstext`)
+  mit der Auslöserliste für `hoch` aus der Auftrags-Vorgabe.
+- **WS-2b — Fortsetzungsweg für `entscheidungen_mensch` (nicht in diesem
+  Auftrag).** Regel 1c (`entscheidungen_mensch` → `haltKlaerung`) plus ein
+  Weg, eine dort eingetragene menschliche Entscheidung strukturiert in den
+  NÄCHSTEN Schritt derselben Kette einzuspeisen, statt eines vollständigen
+  Replans (F-632 Teil b, siehe „Findings").
 - **WS-3 — Projektmodus „Architektur-Grundlage" (nicht in diesem Auftrag).**
   Optionale technische Akte-Abschnitte in `check-feature.mjs`, reale
   ADR-Erzeugung, realer `hoch`-Durchlauf mit einem Erweiterungs-
@@ -140,9 +164,110 @@ Projektmodus ist ein Workflow-Schritt, kein eigener Chat (anders als
   null`) — das ist der reale Prüfer im `hoch`-Workflow, Schritt 1 in
   `workflow-vorlagen/hoch.json` mit Worker `codex` — und (3) der neuen
   Workforce-Rolle `architekt` (Autor, `src/rollen/index.ts`), die in F39
-  WS-2 als Schritt VOR (2) eingehängt wird.
+  WS-2a als Schritt VOR (2) eingehängt wird.
+- **AK7** *(WS-2a)* — `workflow-vorlagen/hoch.json` trägt vier Schritte in
+  der Reihenfolge `architekt` → `architecture-advisor` → `ausfuehrung` →
+  `code-reviewer`; `aktiver_schritt_id` zeigt auf den `architekt`-Schritt;
+  `grenzen.max_schritte` (weiterhin 8) deckt alle vier Schritte mit
+  Marge; `architecture-advisor` referenziert
+  `ergebnis-@schritt-1-architekt`, `ausfuehrung` referenziert BEIDE
+  Vorschritt-Ergebnisse; `workflow-vorlagen/fast-lane.json` bleibt
+  unverändert ohne `architekt`-Schritt. Geprüft in
+  `scripts/check-f39-architekt.mjs` (f)/(h).
+- **AK8** *(WS-2a)* — der Eingabe-Platzhalter `ergebnis-@<schrittId>`
+  (`loeseSchrittEingabenAuf`) lehnt dieselben drei Rot-Fälle ab wie das
+  bestehende `aenderungsuebersicht-@` (Selbstverweis, unbekannte
+  `schritt_id`, `lauf_id: null`/nicht gestartet) und löst im Grünfall real
+  gegen eine registrierte Laufakte auf — strukturiertes JSON wird
+  formatiert übernommen, ein reiner Prosa-Ergebnistext (z. B.
+  `architecture-advisor`, `output_schema: null`) unverändert. Geprüft in
+  `scripts/check-f39-architekt.mjs` (g1)–(g4), direkt gegen die reine
+  Funktion (kein HTTP-Server nötig, Muster `check-f23-abnahme.mjs` (b)).
+- **AK9** *(WS-2a)* — `bestimmeEffektiveKontrolltiefe`/`waehleWorkflowVorlage`
+  (`src/router/index.ts`) heben die Kontrolltiefe NUR bei `herkunft.art ===
+  'projekt_interview'` auf mindestens `hoch` an, senken nie, und lassen
+  jeden Auftrag ohne (oder mit einer anderen) Herkunft bitgenau unverändert
+  — real geprüft inkl. des Ladens der tatsächlichen `hoch.json`-Datei bei
+  einer Anhebung. Die Anhebung wird sichtbar in `workflow.ziel` vermerkt
+  (`[Untergrenze hoch wegen herkunft projekt_interview]`).
+  `AuftragV0Daten.herkunft` ist additiv/optional
+  (`validiereAuftragHerkunft`, `src/auftrag/index.ts`, dieselbe Prüfung für
+  `AuftragV0Daten` UND `POST /api/auftraege`); ein Alt-Auftrag ohne das
+  Feld bleibt gültig. Geprüft in `scripts/check-f39-architekt.mjs`
+  (d)/(e1)/(e2) und `scripts/check-f11-auftrag.mjs` (a, zwei neue
+  Payload-Fixturen).
 
 ## Entschieden
+
+Stefan, 23.09.2026 (WS-2a-Korrektur), Auftrags-Vorgabe für F39 WS-2a:
+
+- **`schritt-1-architekt` (Rolle `architekt`) trägt `worker: 'codex'` +
+  `output_schema: 'ergebnis-architektur'`; `schritt-2-architektur` (Rolle
+  `architecture-advisor`) trägt `worker: 'claude-code'` +
+  `output_schema: null`** — Korrektur der vorherigen Fassung dieses
+  Eintrags (die stattdessen `architekt` auf `claude-code` beließ und
+  `output_schema` auf `null` abweichen ließ). Weiterhin real geprüft gegen
+  `src/workflow/index.ts` Regel 4b: sie hält jeden Workflow-Schritt mit
+  `worker: 'claude-code'` UND gesetztem `output_schema` strukturell an
+  (`haltKlaerung`, VOR jedem Workerstart), weil `claude-code` keinen
+  `--output-schema`-Mechanismus kennt — `codex` dagegen löst ein
+  Ausgabeschema real über `--output-schema` ein (F16 WS-3a). Der Tausch
+  erfüllt damit sowohl die ursprüngliche Vorgabe
+  (`architekt` liefert strukturiertes `ergebnis-architektur`-JSON, gegen
+  `validiereErgebnisArchitektur` prüfbar) als auch Regel 4b, ohne
+  `output_schema` auf `null` absenken zu müssen. Autor (`architekt`,
+  `codex`/`gpt-6-astra`, wie der vorherige `schritt-2-architektur`) und
+  Prüfer (`architecture-advisor`, `claude-code`/`claude-sonnet-5`, wie
+  `ausfuehrung`) bleiben dabei auf verschiedenen Modellen — kein
+  Selbst-Review. `ergebnis-@schritt-1-architekt` liest den Ergebnistext
+  ohnehin worker-/schema-unabhängig (`leseErgebnistextAusRohstrom`, AK8):
+  ein reiner Prosa-Ergebnistext (`architecture-advisor`) wird genauso
+  weitergereicht wie strukturiertes JSON (`architekt`). Dokumentiert statt
+  stillschweigend abgewichen (CLAUDE.md-Entscheidungsregel 5).
+- **Keine neue Automaten-Regel, die `architekt`s Codex-Ergebnis gegen
+  `validiereErgebnisArchitektur` prüft und bei Verstoß `haltKlaerung`
+  auslöst** (Muster Regel 1b/`ergebnis-code-reviewer`,
+  `src/workflow/index.ts`) — real geprüft: eine solche Regel existiert für
+  `architekt` nicht und wurde in WS-2a nicht gebaut. Regel 1b selbst prüft
+  ausdrücklich nur EIN semantisches Feld (`urteil` gegen eine
+  Wertemenge), keine vollständige Schema-Konformität; eine Analogie für
+  `architekt` bräuchte ein gleichwertig einzelnes, automaten-relevantes
+  Feld — das ist `entscheidungen_mensch[]`, dessen Auswertung (Regel 1c)
+  bereits als „Nicht-Ziel" dieser Fassung benannt und nach WS-2b verschoben
+  ist (F-632 Teil b). Eine volle Strukturprüfung (Pflichtfelder, `evidenz`
+  nicht leer, `empfehlung` nennt eine echte Option) HIER einzuhängen wäre
+  eine neue, in keiner AK dieser Fassung vorgesehene Automaten-Regel und
+  würde WS-2a stillschweigend um WS-2b-Scope erweitern. Basisschutz besteht
+  bereits ohne neue Regel: `codex` mit gesetztem `output_schema` erhält
+  `--output-schema` am Argv; liefert das Modell dazu kein valides
+  JSON-Objekt, klassifiziert `src/result-evaluator/index.ts`
+  (`ermittleErgebnisCodex`) den Lauf als `FEHLGESCHLAGEN`
+  (`ergebnis_nicht_schemakonform`), und die bereits bestehende Regel 1 in
+  `ermittleNaechstenSchritt` hält bei jedem nicht-`ERFOLGREICH`-Ausgang mit
+  `haltKlaerung` an — geprüft nur auf „ist es ein JSON-Objekt", nicht auf
+  volle Schema-Konformität (`istJsonObjekt`-Kommentar,
+  `src/result-evaluator/index.ts`, bewusst). Offene Frage für einen
+  künftigen Auftrag statt stillschweigend entschieden.
+- **`ergebnis-@<schrittId>` liest den extrahierten Ergebnistext (roh oder
+  als formatiertes JSON), nicht die vollständige Laufakte** — die
+  Laufakte trägt Metadaten (Worker, `modell_beobachtet`,
+  `permission_denials`, Rohstrom-Referenz), die für den Folgeschritt kein
+  nützlicher Kontext sind; nur die tatsächliche Modellantwort ist es
+  (Muster: `leseRollenErgebnisRohstrom` extrahiert für Router/Scout/
+  Code-Reviewer ebenso nur den Ergebnistext, nicht die Laufakte).
+- **Kein neues, separat registriertes `ergebnis-<laufId>`-Kernartefakt** —
+  `ergebnis-@<schrittId>` löst zur Startzeit direkt gegen die bereits
+  IMMER vorhandene `laufakte-<lauf_id>` auf (jeder abgeschlossene Lauf
+  registriert sie) und extrahiert daraus, statt (wie
+  `aenderungsuebersicht-@`) einen zusätzlichen, nur bedingt registrierten
+  Artefakttyp zu verlangen — funktioniert dadurch für JEDEN Schritt, auch
+  einen lesenden ohne `output_schema`.
+- **`herkunft` lebt in `Optionen` (`registriereAuftrag`s letzter
+  Parameter), nicht als eigenes Positionsargument** — jeder bestehende
+  Aufrufer übergibt an dieser Stelle bereits ein Objektliteral;
+  ein neues Positionsargument VOR `optionen` hätte jeden bestehenden
+  Aufruf (`{ basisVerzeichnis }` als `herkunft` gelesen) stillschweigend
+  gebrochen.
 
 Stefan, 23.09.2026, Auftrags-Vorgabe für F39 WS-1:
 
@@ -222,15 +347,18 @@ unten.
 
 `state/findings.md`:
 
-- **F-632** (`PROCESS_IMPROVEMENT`, P2, offen) — Advisor-/Architekt-Ergebnis
-  in einem künftigen `hoch`-Workflow erreicht die Ausführung strukturell
-  nicht, weil die einzige Schritt-Eingabe der Auftrag ist (kein
-  Entscheidungskanal zwischen zwei Schritten derselben Kette). Siehe
-  Bestandsaufnahme Frage 1 oben.
-- **F-633** (`TECH_DEBT`, P2, offen) — keine deterministische
-  Kontrolltiefe-Untergrenze: Pflichtpfade (z. B. `hoch` für
-  Projektaufträge aus F34) hängen ausschließlich am LLM-Urteil des
-  Routers, weil `AuftragV0Daten` kein strukturiertes Herkunftsfeld trägt.
+- **F-632** (`PROCESS_IMPROVEMENT`, P2) — **Teil a erledigt** (WS-2a):
+  Advisor-/Architekt-Ergebnisse erreichen jetzt real den nächsten Schritt
+  derselben Kette (`ergebnis-@<schrittId>`, AK8) — `architecture-advisor`
+  sieht `architekt`s Entwurf, `ausfuehrung` sieht beide. **Teil b bleibt
+  offen** (WS-2b): `entscheidungen_mensch[]` wird weitergereicht, aber
+  nicht ausgewertet — keine `haltKlaerung`-Regel 1c, kein
+  Fortsetzungsweg für eine dort eingetragene menschliche Entscheidung.
+  Siehe Bestandsaufnahme Frage 1 oben (unverändert gültig für Teil b).
+- **F-633** (`TECH_DEBT`, P2) — **erledigt** (WS-2a): `AuftragV0Daten.herkunft`
+  (additiv/optional) plus `bestimmeEffektiveKontrolltiefe` heben die
+  Kontrolltiefe für `herkunft.art === 'projekt_interview'` deterministisch
+  auf mindestens `hoch` an (AK9) — kein Titel-Präfix-Raten mehr nötig.
   Siehe Bestandsaufnahme Frage 2 oben.
 
 ## Dependencies
@@ -238,9 +366,16 @@ unten.
 - F17 — Rollenvertrag-Mechanik (`ROLLENVERTRAEGE`,
   `loeseAusfuehrungsEingabenAuf`).
 - F34 — Muster `product-coach` (Modul-Zuschnitt, Codex-Dialekt-Schema,
-  `baueCapabilityAuszug` wiederverwendet statt kopiert).
+  `baueCapabilityAuszug` wiederverwendet statt kopiert); Chat→Auftrag-
+  Brücke (`views/chat.js`) setzt `herkunft` (WS-2a).
 - F19 — `benoetigte_capabilities`, Capability Library (F36, gemeinsam mit
   `product-coach`, E-M5-13).
+- F18/F22 — Router-Mechanik (`waehleWorkflowVorlage`,
+  `verarbeiteRouterErgebnis`), jetzt um die deterministische
+  Kontrolltiefe-Untergrenze erweitert (WS-2a).
+- F15 — Schritt-Automat (`loeseSchrittEingabenAuf`, Regel 4b), Eingabe-
+  Platzhalter-Muster (`aenderungsuebersicht-@`, Vorbild für
+  `ergebnis-@`, WS-2a).
 - docs/adr/TEMPLATE.md — Vorbild für `adr_entwuerfe[]`
   (Kontext/Entscheidung/Alternativen/Konsequenzen).
-- Findings: F-632 (neu), F-633 (neu).
+- Findings: F-632 Teil a erledigt/Teil b offen, F-633 erledigt.

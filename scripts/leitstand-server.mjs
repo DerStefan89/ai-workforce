@@ -436,7 +436,7 @@ import { entscheideStale, importiereAntwort } from '../src/human-transport/index
 import { fuehreAufgabeDurch } from '../src/execution-controller/index.ts'
 import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
-import { registriereAuftrag } from '../src/auftrag/index.ts'
+import { registriereAuftrag, validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
 import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
@@ -444,7 +444,7 @@ import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
-import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
+import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
 import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
@@ -1365,7 +1365,7 @@ function sammleWorkitems(repoWurzel, filter = {}) {
   }
 }
 
-/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Felder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext, sonst grund der Ablehnung */
+/** Reine Formprüfung eines POST /api/auftraege-Bodys (AK4) — beide Pflichtfelder nicht-leere Strings, keine Zweitvalidierung des Auftragsinhalts über registriereAuftrags Feldregeln hinaus (D5, Q2). F39 WS-2a: optionales 'herkunft' (validiereAuftragHerkunft, src/auftrag/index.ts — eine Quelle, kein zweiter Regelsatz), unbekannte 'herkunft.art' → 400. @param body - geparster JSON-Body @returns bei Erfolg titel/auftragstext/herkunft (herkunft undefined ohne Feld), sonst grund der Ablehnung */
 export function pruefeAuftragsformular(body) {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) {
     return { ok: false, grund: 'Body muss ein JSON-Objekt sein' }
@@ -1380,6 +1380,13 @@ export function pruefeAuftragsformular(body) {
   }
   if (typeof body.auftragstext !== 'string' || body.auftragstext.length === 0) {
     return { ok: false, grund: "'auftragstext' muss ein nicht-leerer String sein" }
+  }
+  if ('herkunft' in body) {
+    const herkunftVerstoesse = validiereAuftragHerkunft(body.herkunft)
+    if (herkunftVerstoesse.length > 0) {
+      return { ok: false, grund: herkunftVerstoesse.join('; ') }
+    }
+    return { ok: true, titel: body.titel, auftragstext: body.auftragstext, herkunft: body.herkunft }
   }
   return { ok: true, titel: body.titel, auftragstext: body.auftragstext }
 }
@@ -1669,8 +1676,8 @@ function ermittleFreigabeAbschwaechungen(vorherigeSchritte, neueSchritte) {
   return treffer
 }
 
-/** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). */
-const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext'])
+/** Erlaubte Top-Level-Felder eines POST /api/auftraege-Bodys (AK4). F39 WS-2a: 'herkunft' additiv/optional. */
+const ERLAUBTE_AUFTRAG_FELDER = new Set(['titel', 'auftragstext', 'herkunft'])
 
 /**
  * F-265: POST .../freigabe und POST .../stoppen liegen im selben Bedienfeld wie D13s
@@ -2418,6 +2425,71 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
       artefaktId = `aenderungsuebersicht-${zielSchritt.lauf_id}`
     }
 
+    // F39 WS-2a (löst state/findings.md F-632 Teil a): 'ergebnis-@<schrittId>' referenziert wie
+    // 'aenderungsuebersicht-@' oben die noch nicht bekannte lauf_id eines anderen Schritts —
+    // liefert aber das LAUFERGEBNIS selbst (strukturiertes Output-Artefakt bzw. roher
+    // Ergebnistext, leseErgebnistextAusRohstrom), nicht eine gesondert registrierte
+    // Änderungsübersicht. Funktioniert deshalb für JEDEN Schritt, auch einen lesenden ohne
+    // output_schema (z. B. 'architecture-advisor', dessen Rollenvertrag erlaubtes_output_schema:
+    // null trägt) — anders als 'aenderungsuebersicht-@', das nur für schreibende, real
+    // erfolgreiche Schritte eine Übersicht findet. Dieselben drei Schutzregeln wie oben
+    // (Selbstverweis, unbekannte schritt_id, nicht gestartet), danach ein eigener,
+    // nicht-gemeinsamer Abschluss (continue) statt des Artefakt-Anfragen-Baus unten: die
+    // Laufakte selbst ist NICHT der Inhalt — nur ihr extrahierter Ergebnistext ist es.
+    const ergebnisPlatzhalterTreffer = /^ergebnis-@(.+)$/.exec(artefaktId)
+    if (ergebnisPlatzhalterTreffer !== null) {
+      const zielSchrittId = ergebnisPlatzhalterTreffer[1]
+      if (zielSchrittId === schritt.schritt_id) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:ergebnis-@${zielSchrittId}' verweist auf sich selbst — ein Schritt kann seine eigene, noch laufende Ausführung nicht referenzieren`,
+        }
+      }
+      const zielSchritt = workflowDaten.schritte.find((s) => s.schritt_id === zielSchrittId)
+      if (zielSchritt === undefined) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:ergebnis-@${zielSchrittId}' verweist auf keine bekannte schritt_id in Workflow '${workflowDaten.workflow_id}' — der Schritt wird nicht gestartet`,
+        }
+      }
+      if (zielSchritt.lauf_id === null) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:ergebnis-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', der noch keine lauf_id hat (nicht gestartet) — der Schritt wird nicht gestartet`,
+        }
+      }
+      const zielLaufakteVersion = ladeArtefaktVersion(`laufakte-${zielSchritt.lauf_id}`, undefined, ladeOptionen)
+      if (zielLaufakteVersion === null) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:ergebnis-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}' (lauf_id '${zielSchritt.lauf_id}'), dessen Laufakte nicht gefunden wurde — der Schritt wird nicht gestartet`,
+        }
+      }
+      const ergebnistextErgebnis = leseErgebnistextAusRohstrom(zielLaufakteVersion.daten)
+      if (!ergebnistextErgebnis.ok) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:ergebnis-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', dessen Ergebnistext nicht gelesen werden konnte: ${ergebnistextErgebnis.grund} — der Schritt wird nicht gestartet`,
+        }
+      }
+      // Strukturiertes Output-Artefakt bevorzugt (lesbar formatiertes JSON), sonst der rohe
+      // Ergebnistext unverändert (z. B. architecture-advisors Prosa-Urteil, output_schema: null).
+      let formatierterInhalt = ergebnistextErgebnis.text
+      try {
+        formatierterInhalt = JSON.stringify(JSON.parse(ergebnistextErgebnis.text), null, 2)
+      } catch {
+        // Kein gültiges JSON — der rohe Ergebnistext bleibt unverändert (Ergebnistext-Fall).
+      }
+      artefaktAnfragen.push({
+        pfad: `artefakt:ergebnis-${zielSchritt.lauf_id}`,
+        frage: `Laufergebnis des Workflow-Schritts '${zielSchrittId}' (referenziert von '${schritt.schritt_id}')`,
+        begruendung: `In schritte[].eingaben des Workflows '${workflowDaten.workflow_id}' als 'ergebnis-@${zielSchrittId}' festgelegt (F39 WS-2a)`,
+        inhalt: formatierterInhalt,
+        notwendig: true,
+      })
+      continue
+    }
+
     // Dieselbe Zeichenregel wie für laufId/workflow_id (D5, kein zweiter Regelsatz): die
     // artefaktId geht über 'lineage-<id>' in einen Dateisystempfad ein, und ihr Wert stammt
     // aus einer Workflow-Payload, nicht aus dem Server. validiereWorkflowDaten verlangt an
@@ -2580,8 +2652,23 @@ export function extrahiereErstesJsonObjekt(text) {
  * @param optionen - { jsonObjektFallback } (Default false)
  * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt', 'json_objekt_extrahiert' oder null), sonst { ok: false, grund }
  */
-function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
-  const { jsonObjektFallback = false } = optionen
+/**
+ * Liest NUR den rohen Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
+ * worker-abhängig (Codex: leseCodexEreignisse().letzteAgentMessage,
+ * claude-code: leseErgebnisobjekt().result) —, OHNE eine JSON-Form zu
+ * verlangen (Unterschied zu leseRollenErgebnisRohstrom direkt darunter, das
+ * denselben Text anschließend JSON.parse-t und bei Fehlschlag ablehnt).
+ * Gemeinsame Low-Level-Lesefunktion für leseRollenErgebnisRohstrom UND den
+ * 'ergebnis-@<schrittId>'-Eingabe-Platzhalter (F39 WS-2a, D5 — EIN
+ * Extraktionsschritt statt zweier unabhängig alternder Kopien): der
+ * Platzhalter liefert bewusst „strukturiertes Output-Artefakt bzw.
+ * Ergebnistext" — ein Schritt ohne output_schema (z. B. `architecture-advisor`)
+ * hat keinen JSON-Ergebnistext, sein Prosa-Ergebnis soll trotzdem
+ * weiterreichbar sein.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten
+ * @returns bei Erfolg { ok: true, text, worker }, sonst { ok: false, grund }
+ */
+function leseErgebnistextAusRohstrom(laufakteDaten) {
   const rohstromPfad = laufakteDaten.rohstrom_referenz.pfad
   let rohInhalt
   try {
@@ -2608,6 +2695,14 @@ function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
   if (text === null) {
     return { ok: false, grund: `kein Ergebnistext im Rohstrom gefunden (worker '${worker}')` }
   }
+  return { ok: true, text, worker }
+}
+
+function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
+  const { jsonObjektFallback = false } = optionen
+  const textErgebnis = leseErgebnistextAusRohstrom(laufakteDaten)
+  if (!textErgebnis.ok) return textErgebnis
+  const { text, worker } = textErgebnis
 
   const versucheJsonParse = (kandidat) => {
     try {
@@ -2731,7 +2826,11 @@ export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVer
   // 14.09.2026).
   let workflow
   try {
-    workflow = waehleWorkflowVorlage(klassifikation, auftragId, auftragVersion.daten?.titel ?? auftragId, repoWurzel)
+    // F39 WS-2a (löst state/findings.md F-633 Teil a): herkunft.art === 'projekt_interview' hebt
+    // die vom Router vorgeschlagene Kontrolltiefe deterministisch auf mindestens 'hoch' an — nur
+    // anheben, nie senken (bestimmeEffektiveKontrolltiefe, src/router/index.ts). Jeder Auftrag
+    // ohne dieses Feld (undefined) verhält sich bitgenau wie vor diesem Nachtrag.
+    workflow = waehleWorkflowVorlage(klassifikation, auftragId, auftragVersion.daten?.titel ?? auftragId, repoWurzel, auftragVersion.daten?.herkunft?.art)
   } catch (fehler) {
     return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow-Vorlage konnte nicht aufgelöst werden: ${fehler.message}` }
   }
@@ -4456,7 +4555,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ist eine async function, deren Promise niemand awaitet — ein ungefangener Wurf würde zur
       // unhandled promise rejection und (Node 24) zum Prozessabsturz führen, Reviewer-Pass F12 WS-2.
       try {
-        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis })
+        registriereAuftrag(auftragId, profilReferenz, pruefung.titel, pruefung.auftragstext, { basisVerzeichnis, herkunft: pruefung.herkunft })
       } catch (fehler) {
         console.error(`[leitstand] Auftrag '${auftragId}' konnte nicht registriert werden:`, fehler)
         sendeJson(res, 500, { grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` })
@@ -4899,7 +4998,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         worker,
         ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
       }
-      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', auftragVersion.daten.auftragstext, vorlage, repoWurzel)
+      // F39 WS-2a: die Rolleninstruktion (baueRouterAuftragstext, Auslöserliste für 'hoch')
+      // umschließt den rohen Auftragstext — Muster starteRollenChatLauf/baueCoachAuftragstext,
+      // F-269: der EINZIGE Eingabekanal.
+      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, 'lesend', baueRouterAuftragstext(auftragVersion.daten.auftragstext), vorlage, repoWurzel)
       if (!eingabenErgebnis.ok) {
         sendeJson(res, 400, { grund: eingabenErgebnis.grund })
         return

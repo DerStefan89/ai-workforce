@@ -47,8 +47,11 @@ Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
 (P3) bleiben offen, `npm run render-nachweis` erneut grün
 (F-622-Regel), siehe `features/F34/feature.md`; **Abnahme durch Stefan am
 23.09.2026** im F39-WS-1-Auftrag), F39 `IN_ARBEIT` (WS-1 — Rolle
-`architekt`, Schema, Validator, Gate — gebaut 23.09.2026, WS-2/WS-3 noch
-offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
+`architekt`, Schema, Validator, Gate — gebaut 23.09.2026; WS-2a —
+`hoch.json`-Kette (`architekt` vor `architecture-advisor`), Herkunftsfeld,
+`ergebnis-@`-Eingabe-Platzhalter, deterministische Kontrolltiefe-
+Untergrenze — gebaut 23.09.2026, löst F-633 und F-632 Teil a (Teil b bleibt
+WS-2b); WS-2b/WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams

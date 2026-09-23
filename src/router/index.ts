@@ -57,6 +57,22 @@ const KONTROLLTIEFE = ['fast-lane', 'standard', 'hoch']
 const RISIKOKLASSE = ['niedrig', 'mittel', 'hoch']
 const TASK_TYPEN = ['text-aenderung', 'neues-feature', 'bugfix', 'refactoring', 'dokumentation', 'unklar']
 
+/** Rang je Kontrolltiefe, für den Untergrenzen-Vergleich unten — Zwilling der KONTROLLTIEFE-Reihenfolge oben. */
+const KONTROLLTIEFE_RANG: Record<string, number> = { 'fast-lane': 0, standard: 1, hoch: 2 }
+
+/** Herkunftsarten, die eine deterministische Kontrolltiefe-Untergrenze auslösen — Zwilling der Enum-Werte in schemas/kontrollzustand-auftrag-payload.schema.json' herkunft.art (F39 WS-2a, löst state/findings.md F-633 Teil a). */
+const KONTROLLTIEFE_UNTERGRENZE_HERKUNFT: Record<string, Kontrolltiefe> = { projekt_interview: 'hoch' }
+
+/**
+ * Zusatz-Satz, der ans Workflow-Ziel angehängt wird, wenn die Untergrenze
+ * gegriffen hat (F39 WS-2a, Auftrags-Vorgabe: „die Anhebung sichtbar
+ * machen") — GENAU dieser Wortlaut, damit ein Mensch oder ein späterer
+ * Gate-Test ihn wörtlich wiederfinden kann.
+ */
+function baueUntergrenzeHinweis(herkunftArt: string, kontrolltiefe: Kontrolltiefe): string {
+  return ` [Untergrenze ${kontrolltiefe} wegen herkunft ${herkunftArt}]`
+}
+
 const ERGEBNIS_ROUTER_FELDER = new Set(['kontrolltiefe', 'risikoklasse', 'task_typen', 'rueckfragen', 'begruendung'])
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
@@ -205,32 +221,119 @@ function leiteWorkflowIdAb(auftragId: string): string {
 }
 
 /**
+ * Reine Funktion: hebt eine vorgeschlagene Kontrolltiefe auf eine
+ * deterministische Untergrenze an, wenn die Herkunft-Art des Auftrags das
+ * verlangt — NUR anheben, nie senken (F39 WS-2a, löst state/findings.md
+ * F-633 Teil a). `herkunftArt` ohne bekannte Untergrenze (undefined, null,
+ * 'sparring', 'jarvis', 'manuell', ein unbekannter Wert) lässt
+ * `kontrolltiefe` unverändert — jeder Auftrag ohne strukturiertes
+ * Herkunftsfeld verhält sich bitgenau wie vor diesem Nachtrag.
+ * @param kontrolltiefe - die vom Router vorgeschlagene Kontrolltiefe
+ * @param herkunftArt - `AuftragV0Daten.herkunft.art`, oder undefined/null ohne Herkunftsfeld
+ * @returns die tatsächlich zu verwendende Kontrolltiefe plus ob eine Anhebung stattfand
+ */
+export function bestimmeEffektiveKontrolltiefe(kontrolltiefe: Kontrolltiefe, herkunftArt?: string | null): { kontrolltiefe: Kontrolltiefe; angehoben: boolean } {
+  if (herkunftArt === undefined || herkunftArt === null) return { kontrolltiefe, angehoben: false }
+  const untergrenze = KONTROLLTIEFE_UNTERGRENZE_HERKUNFT[herkunftArt]
+  if (untergrenze === undefined || KONTROLLTIEFE_RANG[untergrenze] <= KONTROLLTIEFE_RANG[kontrolltiefe]) {
+    return { kontrolltiefe, angehoben: false }
+  }
+  return { kontrolltiefe: untergrenze, angehoben: true }
+}
+
+/**
  * Bildet eine bereits validierte Router-Klassifikation auf ein vollständiges
  * WORKFLOW_V0-Gerüst ab (F18 WS-2). Lädt workflow-vorlagen/<kontrolltiefe>.json
  * und füllt workflow_id/auftrag_id/ziel — KEINE eigene Klassifikationslogik,
  * reiner Lookup + Befüllung. Wirft, wenn die Vorlagendatei fehlt oder kein
  * gültiges JSON trägt (Konfigurationsfehler, kein Laufzeitfall).
+ *
+ * F39 WS-2a: `herkunftArt` (Default undefined) hebt die vom Router
+ * vorgeschlagene Kontrolltiefe deterministisch an (bestimmeEffektiveKontrolltiefe,
+ * nur anheben, nie senken) — ein Aufrufer ohne dieses Argument (jeder
+ * bestehende Aufrufer außer dem einen in scripts/leitstand-server.mjs,
+ * s. dort) verhält sich bitgenau wie vor diesem Nachtrag. Eine tatsächliche
+ * Anhebung hängt einen sichtbaren Hinweis an 'ziel' an (Auftrags-Vorgabe:
+ * „die Anhebung sichtbar machen"), VOR der Platzhalter-Ersetzung — der
+ * Hinweis erscheint dadurch überall dort, wo `__ZIEL__` in der Vorlage
+ * vorkommt (aktuell nur im 'ziel'-Feld selbst, keiner der drei Vorlagen
+ * nutzt __ZIEL__ in `schritte[].eingaben`).
  * @param klassifikation - bereits gegen validiereErgebnisRouter geprüftes Ergebnis der Rolle 'router'
  * @param auftragId - auftrag_id des gerouteten Auftrags
  * @param ziel - Zieltext des gerouteten Auftrags
  * @param repoWurzel - absoluter Pfad der Repo-Wurzel (Default: process.cwd(), Muster scripts/leitstand-server.mjs' repoWurzel-Parameter)
+ * @param herkunftArt - `AuftragV0Daten.herkunft.art` des gerouteten Auftrags, oder undefined/null (Default) ohne Herkunftsfeld
  * @returns vollständiger, noch nicht validierter WORKFLOW_V0-Datensatz (status 'OFFEN', siehe Kopfkommentar)
  */
-export function waehleWorkflowVorlage(klassifikation: ErgebnisRouter, auftragId: string, ziel: string, repoWurzel: string = process.cwd()): WorkflowV0Daten {
-  const vorlagenPfad = join(repoWurzel, 'workflow-vorlagen', `${klassifikation.kontrolltiefe}.json`)
+export function waehleWorkflowVorlage(
+  klassifikation: ErgebnisRouter,
+  auftragId: string,
+  ziel: string,
+  repoWurzel: string = process.cwd(),
+  herkunftArt?: string | null
+): WorkflowV0Daten {
+  const effektiv = bestimmeEffektiveKontrolltiefe(klassifikation.kontrolltiefe, herkunftArt)
+  const vorlagenPfad = join(repoWurzel, 'workflow-vorlagen', `${effektiv.kontrolltiefe}.json`)
   const vorlage = JSON.parse(readFileSync(vorlagenPfad, 'utf8')) as WorkflowV0Daten
   const workflowId = leiteWorkflowIdAb(auftragId)
+  // Nur bei tatsächlicher Anhebung ist herkunftArt hier auch tatsächlich ein nicht-leerer String
+  // (bestimmeEffektiveKontrolltiefe liefert angehoben:true nur dann) — der Zusatz trägt trotzdem
+  // eine explizite Prüfung, keine Annahme über den Aufrufer.
+  const zielMitHinweis = effektiv.angehoben && typeof herkunftArt === 'string' ? `${ziel}${baueUntergrenzeHinweis(herkunftArt, effektiv.kontrolltiefe)}` : ziel
 
   return {
     ...vorlage,
-    workflow_id: ersetzePlatzhalter(vorlage.workflow_id, workflowId, auftragId, ziel),
-    auftrag_id: ersetzePlatzhalter(vorlage.auftrag_id, workflowId, auftragId, ziel),
-    ziel: ersetzePlatzhalter(vorlage.ziel, workflowId, auftragId, ziel),
+    workflow_id: ersetzePlatzhalter(vorlage.workflow_id, workflowId, auftragId, zielMitHinweis),
+    auftrag_id: ersetzePlatzhalter(vorlage.auftrag_id, workflowId, auftragId, zielMitHinweis),
+    ziel: ersetzePlatzhalter(vorlage.ziel, workflowId, auftragId, zielMitHinweis),
     schritte: vorlage.schritte.map((schritt) => ({
       ...schritt,
-      eingaben: schritt.eingaben.map((eingabe) => ersetzePlatzhalter(eingabe, workflowId, auftragId, ziel)),
+      eingaben: schritt.eingaben.map((eingabe) => ersetzePlatzhalter(eingabe, workflowId, auftragId, zielMitHinweis)),
     })),
   }
+}
+
+/**
+ * Auslöser, bei denen der Router 'hoch' wählen soll (F39 WS-2a, Auftrags-Vorgabe Punkt 2) —
+ * ergänzt die Rolleninstruktion des Routers um eine konkrete, prüfbare Liste statt reinem
+ * Modell-Ermessen. Unabhängig von der deterministischen Untergrenze oben (die greift
+ * NACHTRÄGLICH, code-seitig, nur für herkunft 'projekt_interview') — diese Liste soll das
+ * Router-URTEIL selbst für JEDEN Auftrag verbessern, unabhängig von seiner Herkunft.
+ */
+const ROUTER_HOCH_AUSLOESER = [
+  'eine dokumentierte Architekturentscheidung wird geändert',
+  'eine neue State-/Persistenzsemantik entsteht',
+  'eine Authorization-/Security-Grenze ist betroffen',
+  'ein neues externes System mit Rechten wird angebunden',
+  'mehrere Kernmodule sind strukturell betroffen',
+  'ein neues zentrales Datenmodell entsteht',
+  'ein neues blockierendes Gate entsteht',
+  'eine Schema-/Migrationsänderung ist nötig',
+]
+
+/**
+ * Baut die Rolleninstruktion für einen Router-Lauf — Muster baueCoachAuftragstext/
+ * baueArchitektAuftragstext (F34/F39 WS-1): der EINZIGE Eingabekanal (F-269-Muster), JSON-only-
+ * Vertrag (F-337-Lehre), gefolgt vom Auftragstext. Ergänzt gegenüber dem bisherigen, direkt
+ * übergebenen Auftragstext (F18) die Auslöserliste für 'hoch' (ROUTER_HOCH_AUSLOESER) — vorher
+ * bekam der Router NUR schemas/ergebnis-router.schema.json (über --output-schema bzw. dessen
+ * Beschreibung) und den rohen Auftragstext, keine konkreten Kriterien für die höchste
+ * Kontrolltiefe.
+ * @param auftragstext - der rohe Auftragstext des zu klassifizierenden Auftrags
+ * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext den einzigen Eingabekanal für den Router-Lauf bildet
+ */
+export function baueRouterAuftragstext(auftragstext: string): string {
+  const zeilen = [
+    "Du bist als Rolle 'router' verantwortlich, einen Auftrag VOR dem Bau zu klassifizieren: Kontrolltiefe (fast-lane/standard/hoch), Risikoklasse, Aufgabentyp(en), offene Rückfragen und eine Begründung — ohne selbst Code zu lesen.",
+    "Wähle 'hoch', wenn mindestens EINER der folgenden Auslöser zutrifft:",
+    ...ROUTER_HOCH_AUSLOESER.map((satz) => `- ${satz}`),
+    "Trifft keiner der Auslöser zu, wähle 'standard' oder 'fast-lane' nach deinem sonstigen Urteil.",
+    'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt gemäß schemas/ergebnis-router.schema.json und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```).',
+    '',
+    'Auftrag:',
+    auftragstext,
+  ]
+  return zeilen.join('\n')
 }
 
 export type { ErgebnisRouter, Kontrolltiefe, Risikoklasse, TaskTyp }

@@ -73,6 +73,9 @@ const fixtures = [
   { pfad: 'schemas/examples/kontrollzustand-auftrag.valid.json', sollGueltigSein: true },
   { pfad: 'schemas/examples/kontrollzustand-auftrag.invalid-falscher-schema-wert.json', sollGueltigSein: false },
   { pfad: 'schemas/examples/kontrollzustand-auftrag.invalid-leerer-auftragstext.json', sollGueltigSein: false },
+  // F39 WS-2a (löst state/findings.md F-633 Teil a): optionales Herkunftsfeld.
+  { pfad: 'schemas/examples/kontrollzustand-auftrag.valid-mit-herkunft.json', sollGueltigSein: true },
+  { pfad: 'schemas/examples/kontrollzustand-auftrag.invalid-unbekannte-herkunft-art.json', sollGueltigSein: false },
 ]
 
 for (const { pfad, sollGueltigSein } of fixtures) {
