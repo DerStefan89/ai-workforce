@@ -282,6 +282,9 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
 
     let kindprozess: ReturnType<typeof spawn>
     try {
+      // F-642: stdinDaten braucht ein offenes Pipe-stdin wie der Default —
+      // nur stdinLeer erzwingt 'ignore'. Beide Felder adressieren stdio[0]
+      // und schließen sich gegenseitig aus (Vertrag am Typ, StarterOptionen).
       kindprozess = spawn(startziel[0], [...startziel.slice(1), ...tokens], {
         stdio: [optionen?.stdinLeer === true ? 'ignore' : 'pipe', 'pipe', 'pipe'],
         ...(optionen?.zeitgrenzeMs !== undefined ? { timeout: optionen.zeitgrenzeMs } : {}),
@@ -303,6 +306,14 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         beendigungsart: null,
       })
       return
+    }
+
+    // F-642: Prompt-Übergabe per stdin statt Argv (ENAMETOOLONG-Vermeidung). Der
+    // 'error'-Listener schützt wie zuvor beim entfallenen stdinLeer-Schutz (Kopfkommentar,
+    // Schritt 4) gegen EPIPE, falls das Kind endet, bevor end() den Schreibvorgang abschließt.
+    if (optionen?.stdinDaten !== undefined) {
+      kindprozess.stdin?.on('error', () => {})
+      kindprozess.stdin?.end(optionen.stdinDaten, 'utf8')
     }
 
     let stdout = ''
@@ -455,6 +466,7 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
     stdinLeer: optionen.stdinLeer,
+    stdinDaten: optionen.stdinDaten,
     cwd: optionen.cwd,
     umgebungsvariablen: optionen.umgebungsvariablen,
     ergebnisZeileBeendet: optionen.ergebnisZeileBeendet,

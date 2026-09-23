@@ -61,6 +61,8 @@ export interface StarterOptionen {
   zeitgrenzeMs?: number
   abbruchSignal?: AbortSignal
   stdinLeer?: boolean
+  /** F-642 (löst spawn ENAMETOOLONG unter Windows bei langem Argv, real gemessen Lauf bd7e2ba4-4f71-4545-85f5-606711e6f17a): schreibt diese Daten auf den stdin des Kindprozesses und schließt ihn danach (EOF) — Alternative zu einem Argv-Element für Werkzeuge, die (wie Codex' PROMPT-Argument) wahlweise ein Argument ODER stdin lesen. Schließt sich mit stdinLeer gegenseitig aus (beide adressieren stdio[0]); ein Aufrufer setzt nur eines von beiden. Default undefined — kein bestehender Aufrufer ist betroffen, stdio[0] bleibt wie zuvor (stdinLeer oder offenes Pipe). */
+  stdinDaten?: string
   cwd?: string
   /** Task "Jarvis-Chat-Latenz senken", Schritt 3: zusätzliche Umgebungsvariablen für den Kindprozess, ergänzt process.env (nicht ersetzt) — s. AufrufEingaben.umgebungsvariablen. Fehlt der Wert, bleibt execFiles eigener Default (process.env unverändert) unangetastet, exakt wie cwd oben. */
   umgebungsvariablen?: Record<string, string>

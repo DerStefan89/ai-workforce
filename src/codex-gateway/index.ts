@@ -333,23 +333,33 @@ export async function starteCodexGateway(eingaben: CodexGatewayEingaben, optione
 
   schreibeWirkungsmarke(eingaben.laufId, eingaben.profilReferenz, 'run_prepared', {}, optionen)
 
-  // eingaben.tokens geht UNVERÄNDERT weiter — keine Konkatenation, kein
-  // zweiter Aufrufbau (D5). stdinLeer: true ist für Codex gesetzt, weil
-  // Codex real auf stdin zugreift (F-307: stderr meldet `Reading additional
-  // input from stdin...`). Präzise gehalten, weil der Beleg es hergibt und
-  // mehr nicht: derselbe gemessene Lauf endete mit Exit-Code 0 — ein
-  // hängender Codex-Lauf ist NICHT beobachtet, gemessen ist nur der
-  // Mechanismus als solcher (F-318, Details am prozessstart.ts-Kopf).
+  // F-642 (löst spawn ENAMETOOLONG unter Windows bei langem Prompt, real gemessen Lauf
+  // bd7e2ba4-4f71-4545-85f5-606711e6f17a — ein Codex-Schritt reicht den vollen Auftragstext
+  // plus 'aenderungsuebersicht-@' als PROMPT-Argv-Element durch, das kann Windows'
+  // Kommandozeilenlänge überschreiten, bevor der Prozess überhaupt startet): der Prompt (per
+  // baueCodexAufrufs eigenem Vertrag immer das LETZTE Element von eingaben.tokens) geht nicht
+  // mehr als Argv-Element an den Kindprozess, sondern über stdin — `codex exec --help`: "If not
+  // provided as an argument (or if `-` is used), instructions are read from stdin." Kein
+  // '<stdin>'-Anhängsel (das träte nur ein, wenn ZUSÄTZLICH ein Argv-Prompt vorläge): das
+  // Argv-Prompt-Element entfällt hier vollständig. eingaben.tokens selbst bleibt UNVERÄNDERT
+  // die vollständige, von baueCodexAufruf gebaute Form — für die Allowlist-Prüfung oben (D5,
+  // kein zweiter Regelsatz) UND für rohstrom.tokens unten (AK8 prüft nur auf '--output-schema',
+  // keine Argv-Bytegleichheit mit dem tatsächlichen Spawn) —, nur der tatsächlich gespawnte Argv
+  // lässt das letzte Element weg. stdinLeer entfällt für Codex ersatzlos: stdinDaten deckt
+  // denselben Zweck (Codex bekommt nie ein leeres, unbeantwortetes stdin) UND liefert den Prompt.
+  const spawnTokens = eingaben.tokens.slice(0, -1)
+  const promptFuerStdin = eingaben.tokens[eingaben.tokens.length - 1]
+
   // F32 WS-1: kein JSONL-Ereignis trägt eine Laufzeit (anders als
   // claude-codes result-Objekt, das duration_ms selbst liefert) — dauerMs
   // ist deshalb eine vom Gateway selbst genommene, reale Wanduhr-Differenz
   // um genau den Prozessstart, keine Schätzung.
   const prozessStartZeit = Date.now()
-  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, {
+  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, spawnTokens, {
     starter: optionen.starter,
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
-    stdinLeer: true,
+    stdinDaten: promptFuerStdin,
     cwd: optionen.cwd,
   })
   const dauerMs = Date.now() - prozessStartZeit
