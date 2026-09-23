@@ -54,9 +54,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
@@ -1125,7 +1127,14 @@ const GATE_FRAGE = {
     gesehenerAuftragstext = eingaben.auftragstext
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
-  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn }))
+  // E-F39-1=B (löst F-643): der 'ausfuehrung'-Schritt hier braucht ein sauberes, NICHT
+  // main/master Wegwerf-Git-Repo als repoWurzel — sonst liefe die neue Ausführungs-Vorbedingung
+  // (loeseAusfuehrungsEingabenAuf) gegen DIESES Repos echten, unvorhersagbaren Git-Zustand
+  // (process.cwd(), Default) statt gegen eine feste Fixture.
+  const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f39-o-repo-'))
+  execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf }))
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address()
   const basisUrl = `http://127.0.0.1:${port}`
@@ -1250,6 +1259,7 @@ const GATE_FRAGE = {
   } finally {
     await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
+    raeumeVerzeichnis(repoWurzelWegwerf)
   }
 }
 

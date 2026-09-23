@@ -21,9 +21,11 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { readdirSync, readFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { baueKontextpaket } from '../src/context-builder/index.ts'
 import { bekannteRollen, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
@@ -295,8 +297,13 @@ try {
   }
 
   // Grünfall: die zweite Besetzung aus kontrollzustand-workflow.valid.json
-  // (ausfuehrung/claude-code/schreibend, kein Schema).
-  const gruenAusfuehrung = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, 'unbenutzt')
+  // (ausfuehrung/claude-code/schreibend, kein Schema). E-F39-1=B (löst F-643): der
+  // Vorbedingungs-Check darf hier nicht real gegen 'unbenutzt' (kein echtes Repo) laufen — dieser
+  // Fall bleibt bewusst bei der Rollenvertrag-/Werkzeugsatz-Komposition, das Git-Vorbedingung
+  // ist eigenständig unten (AK6b) real geprüft.
+  const gruenAusfuehrung = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, 'unbenutzt', {
+    leseAusfuehrungsVorbedingung: () => ({ ok: true }),
+  })
   if (!gruenAusfuehrung.ok) {
     befunde.push(`AK6: Grünfall 'ausfuehrung/claude-code/schreibend' erwartet ok:true, erhalten ${JSON.stringify(gruenAusfuehrung)}`)
   }
@@ -313,6 +320,133 @@ try {
     console.log(
       '✓ AK6: fünf Rotfälle (unbekannte Rolle, Werkzeugsatz-Art, Worker, output_schema x2) und drei Grünfälle (Besetzung aus valid.json x2, Allowlist ohne output_schema) gegen loeseAusfuehrungsEingabenAuf geprüft.'
     )
+  }
+}
+
+// ─── AK6b: E-F39-1=B (Stefans Entscheidung, löst F-643) — Ausführungs-Vorbedingung ─────────
+// Zwei Ebenen: (1) gegen loeseAusfuehrungsEingabenAuf direkt, mit injiziertem
+// leseAusfuehrungsVorbedingung (Muster starter/schreiber dieses Repos) — beweist, dass die
+// Prüfung NUR für Werkzeugsatz-Art 'schreibend' läuft, für 'lesend' (architekt/
+// architecture-advisor) nie aufgerufen wird. (2) real gegen ein echtes Wegwerf-Git-Repo (Muster
+// src/authorization-boundary/authorization-boundary.test.ts) — beweist, dass die WIRING-Funktion
+// (leseAusfuehrungsVorbedingungRealGit, scripts/leitstand-server.mjs) .git/HEAD und
+// `git --no-optional-locks status --porcelain` echt liest und korrekt auswertet, nicht nur die
+// reine Prüfung (src/ausfuehrung-vorbedingung/index.ts, eigenständig unit-getestet).
+
+/** Legt ein Wegwerf-Git-Repo an, committet initial auf 'main' (Muster src/authorization-boundary/authorization-boundary.test.ts). */
+function neuesWegwerfGitRepo() {
+  const repoWurzel = join(tmpdir(), `f17-ak6b-vorbedingung-${randomUUID()}`)
+  mkdirSync(repoWurzel, { recursive: true })
+  execFileSync('git', ['init', '--quiet', '-b', 'main'], { cwd: repoWurzel })
+  execFileSync('git', ['config', 'user.email', 'test@example.invalid'], { cwd: repoWurzel })
+  execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoWurzel })
+  writeFileSync(join(repoWurzel, 'datei.txt'), 'init\n')
+  execFileSync('git', ['add', 'datei.txt'], { cwd: repoWurzel })
+  execFileSync('git', ['commit', '--quiet', '-m', 'init'], { cwd: repoWurzel })
+  return repoWurzel
+}
+
+{
+  // Eigene Kopie von testVorlage/eingaben (Muster AK6 oben) — dort block-scoped, hier nicht
+  // sichtbar; D5 gilt für die geprüfte Funktion, nicht für block-lokale Test-Bausteine.
+  const testVorlage = {
+    startvorlage_schema: 'v0',
+    profilPfad: 'profiles/beispiel.json',
+    werkzeugStartziel: ['check-f17-startziel'],
+    werkzeugVersionDeklariert: 'check-f17-1',
+    berechtigungskontext: 'profil-standard',
+    modell: 'check-f17-modell',
+    standardBudget: { maxElemente: 5, maxBytes: 5000 },
+    werkzeugsaetze: {
+      lesend: { art: 'lesend', modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read'] },
+      schreibend: { art: 'schreibend', modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Write'] },
+    },
+    worker: { codex: { startziel: ['check-f17-codex'], versionDeklariert: 'check-f17-1', sandbox: 'read-only' } },
+  }
+  const eingaben = (felder) => ({
+    rolle: 'code-reviewer',
+    anfragen: [],
+    budget: { maxElemente: 1 },
+    aufrufEingaben: { modell: 'check-f17-modell' },
+    auftragId: 'check-f17-auftrag',
+    ausgabeSchemaPfad: null,
+    ...felder,
+  })
+
+  const befundeVorAK6b = befunde.length
+
+  // (1a) Rot: schreibend + injizierte Vorbedingung schlägt fehl → ok:false mit demselben Grund.
+  const rotInjiziert = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, 'unbenutzt', {
+    leseAusfuehrungsVorbedingung: () => ({ ok: false, grund: 'Ausführung gesperrt: du bist auf main. Lege zuerst einen Branch an: git switch -c <name>' }),
+  })
+  if (rotInjiziert.ok !== false || !/du bist auf main/.test(rotInjiziert.grund)) {
+    befunde.push(`AK6b (1a): erwartet ok:false mit "du bist auf main", erhalten ${JSON.stringify(rotInjiziert)}`)
+  }
+
+  // (1b) Grün: schreibend + injizierte Vorbedingung erfolgreich → ok:true.
+  const gruenInjiziert = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, 'unbenutzt', {
+    leseAusfuehrungsVorbedingung: () => ({ ok: true }),
+  })
+  if (!gruenInjiziert.ok) {
+    befunde.push(`AK6b (1b): erwartet ok:true, erhalten ${JSON.stringify(gruenInjiziert)}`)
+  }
+
+  // (1c) 'lesend' (architekt) bleibt UNBETROFFEN — eine Vorbedingung, die IMMER ablehnt, darf
+  // hier trotzdem nicht greifen: die Prüfung läuft nur für 'schreibend'.
+  let vorbedingungAufgerufen = false
+  const lesendUnbetroffen = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'architekt', worker: 'codex' }), 'lesend', 'text', testVorlage, 'unbenutzt', {
+    leseAusfuehrungsVorbedingung: () => {
+      vorbedingungAufgerufen = true
+      return { ok: false, grund: 'sollte nie aufgerufen werden' }
+    },
+  })
+  if (!lesendUnbetroffen.ok || vorbedingungAufgerufen) {
+    befunde.push(`AK6b (1c): 'architekt'/'lesend' sollte die Vorbedingung nie aufrufen und ok:true bleiben, erhalten ${JSON.stringify(lesendUnbetroffen)} (aufgerufen: ${vorbedingungAufgerufen})`)
+  }
+
+  if (befunde.length === befundeVorAK6b) {
+    console.log("✓ AK6b (1): die Vorbedingung läuft nur für Werkzeugsatz-Art 'schreibend' (Rot/Grün mit Injektion), 'lesend' (architekt) ruft sie nie auf.")
+  }
+
+  const befundeVorAK6bReal = befunde.length
+  const repoWurzel = neuesWegwerfGitRepo()
+  try {
+    // (2a) Rot, real: auf 'main' wird ein schreibender Schritt abgelehnt — KEIN injiziertes
+    // leseAusfuehrungsVorbedingung, die echte Wiring-Funktion liest das Wegwerf-Repo real.
+    const rotMain = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, repoWurzel)
+    if (rotMain.ok !== false || !/du bist auf main/.test(rotMain.grund)) {
+      befunde.push(`AK6b (2a): erwartet ok:false mit "du bist auf main" (reales Wegwerf-Repo), erhalten ${JSON.stringify(rotMain)}`)
+    }
+
+    // (2b) Grün, real: ein sauberer Feature-Branch startet.
+    execFileSync('git', ['switch', '--quiet', '-c', 'feature/ak6b'], { cwd: repoWurzel })
+    const gruenBranch = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, repoWurzel)
+    if (!gruenBranch.ok) {
+      befunde.push(`AK6b (2b): erwartet ok:true auf sauberem Feature-Branch (reales Wegwerf-Repo), erhalten ${JSON.stringify(gruenBranch)}`)
+    }
+
+    // (2c) Rot, real: eine echte, unsaubere Änderung außerhalb der Ausnahmen wird abgelehnt.
+    writeFileSync(join(repoWurzel, 'datei.txt'), 'geändert\n')
+    const rotUnsauber = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, repoWurzel)
+    if (rotUnsauber.ok !== false || !/Arbeitsbaum ist nicht sauber/.test(rotUnsauber.grund)) {
+      befunde.push(`AK6b (2c): erwartet ok:false mit "Arbeitsbaum ist nicht sauber" (reales Wegwerf-Repo), erhalten ${JSON.stringify(rotUnsauber)}`)
+    }
+    execFileSync('git', ['checkout', '--quiet', '--', 'datei.txt'], { cwd: repoWurzel })
+
+    // (2d) Grün, real: eine unsaubere Änderung AUSSCHLIESSLICH unter einer bekannten Ausnahme
+    // (hier: kontrollzustand/) stört nicht.
+    mkdirSync(join(repoWurzel, 'kontrollzustand'), { recursive: true })
+    writeFileSync(join(repoWurzel, 'kontrollzustand', 'lauf-abc.json'), '{}\n')
+    const gruenAusnahme = loeseAusfuehrungsEingabenAuf(eingaben({ rolle: 'ausfuehrung' }), 'schreibend', 'text', testVorlage, repoWurzel)
+    if (!gruenAusnahme.ok) {
+      befunde.push(`AK6b (2d): erwartet ok:true bei einer Ausnahme-Pfad-Änderung (reales Wegwerf-Repo), erhalten ${JSON.stringify(gruenAusnahme)}`)
+    }
+
+    if (befunde.length === befundeVorAK6bReal) {
+      console.log('✓ AK6b (2, real, kein Spy): main → abgelehnt, sauberer Feature-Branch → startet, echte Änderung → abgelehnt, Ausnahme-Pfad-Änderung → startet.')
+    }
+  } finally {
+    raeumeVerzeichnis(repoWurzel)
   }
 }
 

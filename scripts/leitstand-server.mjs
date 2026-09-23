@@ -427,6 +427,7 @@
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -452,6 +453,7 @@ import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderun
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
+import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -2002,9 +2004,39 @@ export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
  * @param auftragstext - Text aus dem bereits geladenen Auftragsartefakt
  * @param vorlage - die geladene Startvorlage
  * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Pfadsicherheit)
+ * @param optionen - { leseAusfuehrungsVorbedingung } — Testeinspritzung (Muster starter/schreiber
+ *   in diesem Repo); ohne den Wert liest leseAusfuehrungsVorbedingungRealGit echt gegen repoWurzel
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
-export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel) {
+/**
+ * Impure Wiring-Funktion für E-F39-1=B (löst F-643): liest .git/HEAD und führt
+ * `git --no-optional-locks status --porcelain` real gegen repoWurzel aus, reicht beide Rohtexte
+ * an die reine Prüfung (pruefeAusfuehrungsVorbedingung, src/ausfuehrung-vorbedingung/index.ts)
+ * durch. `--no-optional-locks` ist Pflicht (Stefans Vorgabe): rein lesend, nie gegen ein
+ * bestehendes index.lock eines anderen, echten Git-Vorgangs laufend. Ein Lese-/Ausführungsfehler
+ * selbst (kein Git-Repo, git nicht im PATH) gilt als Verstoß — ohne diese Prüfung wäre die
+ * Vorbedingung nicht feststellbar, und ein nicht feststellbarer Schutz darf nicht als „erfüllt"
+ * durchgehen (D2).
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel
+ * @returns { ok: true } | { ok: false, grund }
+ */
+function leseAusfuehrungsVorbedingungRealGit(repoWurzel) {
+  let headInhalt
+  try {
+    headInhalt = readFileSync(join(repoWurzel, '.git', 'HEAD'), 'utf8')
+  } catch (fehler) {
+    return { ok: false, grund: `Ausführung gesperrt: .git/HEAD nicht lesbar (${fehler.message})` }
+  }
+  let statusRoh
+  try {
+    statusRoh = execFileSync('git', ['--no-optional-locks', 'status', '--porcelain'], { cwd: repoWurzel, encoding: 'utf8' })
+  } catch (fehler) {
+    return { ok: false, grund: `Ausführung gesperrt: 'git status' nicht ausführbar (${fehler.message})` }
+  }
+  return pruefeAusfuehrungsVorbedingung(headInhalt, statusRoh)
+}
+
+export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
   // Worker-Vorgabe (F16 WS-3a, AK11): fehlt das Feld, ist es 'claude-code'.
   // Dieselbe Lesart wie in der Laufakte (AK4) und im Result Evaluator (AK8) —
   // eine dritte, abweichende Vorgabe an dieser Stelle wäre der Anfang zweier
@@ -2145,6 +2177,27 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     werkzeugStartziel = codexBlock.startziel
     werkzeugVersionDeklariert = codexBlock.versionDeklariert
     berechtigungskontext = CODEX_BERECHTIGUNGSKONTEXT
+  }
+
+  // E-F39-1=B (Stefans Entscheidung, löst F-643): ein schreibender Schritt (Werkzeugsatz-Art
+  // 'schreibend') darf main/master oder einen unsauberen Arbeitsbaum nie treffen. ZULETZT unter
+  // den Ablehnungen — NACH allen zehn Rollenvertrag-/Worker-/Schema-Prüfungen oben: eine
+  // Besetzung, die aus einem ANDEREN Grund schon ungültig ist (z. B. 'architekt' mit
+  // 'schreibend', oder 'ausfuehrung' mit Worker 'codex'), muss GENAU DAFÜR abgelehnt werden —
+  // nicht für einen Git-Zustand, den ein Testfall mit einem Platzhalter-repoWurzel (kein echtes
+  // Repo) gar nicht sinnvoll prüfen kann (Regression, scripts/check-f39-architekt.mjs
+  // AK2-Rotfall UND scripts/check-f17-rollenvertrag.mjs AK6-Rotfall 2). Erst wenn eine Besetzung
+  // in JEDER anderen Hinsicht gültig ist, entscheidet diese Prüfung noch mit. Deckt sowohl den
+  // Workflow-Pfad als auch POST /api/laeufe ab (dieselbe Funktion bedient beide). VOR jeder
+  // laufId-Reservierung (Muster der übrigen Ablehnungen hier): der Schritt bleibt startbar, es
+  // wird kein Lauf angelegt, kein FEHLGESCHLAGEN — nur ein Startfehler wie jede andere
+  // Vertragsverletzung.
+  if (werkzeugsatz.art === 'schreibend') {
+    const leseVorbedingung = optionen.leseAusfuehrungsVorbedingung ?? leseAusfuehrungsVorbedingungRealGit
+    const vorbedingung = leseVorbedingung(repoWurzel)
+    if (!vorbedingung.ok) {
+      return { ok: false, grund: vorbedingung.grund }
+    }
   }
 
   const anfragenMitInhalt = []

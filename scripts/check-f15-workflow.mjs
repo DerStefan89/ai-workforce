@@ -73,6 +73,7 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
@@ -840,6 +841,15 @@ async function starteTestserver(optionen) {
     )
     writeFileSync(vorlageOhneCodexPfad, JSON.stringify(vorlageBasis), 'utf8')
 
+    // E-F39-1=B (löst F-643): TC-N1b startet real einen 'schreibend'-Schritt über den
+    // Automatenpfad — ohne ein eigenes, sauberes Wegwerf-Git-Repo als repoWurzel liefe die neue
+    // Ausführungs-Vorbedingung (loeseAusfuehrungsEingabenAuf) gegen DIESES Repos echten,
+    // unvorhersagbaren Git-Zustand (Branch/Arbeitsbaum je nach Entwicklungsstand) statt gegen
+    // eine feste Testfixture. Kein Commit nötig: 'git init -b <name>' setzt .git/HEAD sofort auf
+    // den Branch, ein frisches Repo ohne Dateien ist bereits sauber.
+    const wegwerfRepoWurzel = mkdtempSync(join(tmpdir(), 'f15-ws3a-repo-'))
+    execFileSync('git', ['init', '--quiet', '-b', 'test'], { cwd: wegwerfRepoWurzel })
+
     // Das Wegwerf-Verzeichnis wird im finally geräumt, nicht am Blockende:
     // wirft einer der fetch-Aufrufe darin, bliebe es sonst liegen (Muster
     // check-f16-codex-gateway.mjs, Reviewer-Pass 11.09.2026, V6).
@@ -849,9 +859,14 @@ async function starteTestserver(optionen) {
        * Startet einen einzelnen codex-Schritt über POST /api/workflows/<id>/starten.
        * @param schrittFelder - Abweichungen am Schritt (output_schema, werkzeugsatz, …)
        * @param startvorlagePfad - Pfad der zu ladenden Startvorlage
+       * @param repoWurzel - Repo-Wurzel für Schema-/Ausführungs-Vorbedingung-Auflösung (Default:
+       *   das echte Repo, für die codex-Fälle nötig, weil sie reale schemas/*.schema.json auflösen
+       *   — E-F39-1=B, F-643: TC-N1b (worker 'claude-code', werkzeugsatz 'schreibend') übergibt
+       *   stattdessen ein sauberes Wegwerf-Git-Repo, sonst liefe die neue Ausführungs-Vorbedingung
+       *   gegen DIESES Repos echten, unvorhersagbaren Git-Zustand statt gegen eine feste Fixture.
        * @returns { status, koerper, gesehen, starts, workflowId }
        */
-      async function starteCodexSchritt(schrittFelder, startvorlagePfad = vorlageMitCodexPfad) {
+      async function starteCodexSchritt(schrittFelder, startvorlagePfad = vorlageMitCodexPfad, repoWurzel = undefined) {
         const workflowId = `ws3a-codex-${randomUUID()}`
         let gesehen = null
         let starts = 0
@@ -860,7 +875,7 @@ async function starteTestserver(optionen) {
           gesehen = { laufId, eingaben, laufOptionen }
           return erfolgreichesErgebnis()
         }
-        const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad })
+        const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad, ...(repoWurzel !== undefined ? { repoWurzel } : {}) })
         try {
           await legeWorkflowAn(basisUrl, workflowId, [
             gateSchritt('schritt-1', null, { eingaben: [`artefakt:auftrag-${auftragId}`], worker: 'codex', modell: 'gpt-5-codex', ...schrittFelder }),
@@ -918,7 +933,7 @@ async function starteTestserver(optionen) {
       //     rolle 'ausfuehrung' (F17 WS-2): gateSchritt's Vorgabe 'code-reviewer' erlaubt
       //     keinen schreibenden Werkzeugsatz — dieser Fall braucht real einen schreibenden.
       {
-        const ccLauf = await starteCodexSchritt({ worker: 'claude-code', werkzeugsatz: 'schreibend', output_schema: null, rolle: 'ausfuehrung' })
+        const ccLauf = await starteCodexSchritt({ worker: 'claude-code', werkzeugsatz: 'schreibend', output_schema: null, rolle: 'ausfuehrung' }, vorlageMitCodexPfad, wegwerfRepoWurzel)
         if (ccLauf.status !== 202 || ccLauf.gesehen === null) {
           befunde.push(`WS-3a TC-N1b: ein claude-code-Schritt muss unverändert starten, erhalten ${ccLauf.status} (${JSON.stringify(ccLauf.koerper)})`)
         } else {
@@ -1021,6 +1036,7 @@ async function starteTestserver(optionen) {
       }
     } finally {
       raeumeVerzeichnis(wegwerfVerzeichnis)
+      raeumeVerzeichnis(wegwerfRepoWurzel)
     }
   }
 

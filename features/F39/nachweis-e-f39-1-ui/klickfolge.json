@@ -1,0 +1,28 @@
+{
+  "url": "http://127.0.0.1:4176/#/workflows/e-f39-1-nachweis",
+  "viewport": { "breite": 1000, "hoehe": 2400 },
+  "localStorageEntfernen": [],
+  "screenshotAusschnitt": { "selector": "#workflow-detail", "hoehe": 1500 },
+  "beobachtete": {
+    "gruppen": [],
+    "sichtbarkeit": [],
+    "titel": { "name": "Workflow", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Starten-Knopf sichtbar (Freigabe bereits erteilt)", "selector": "button[data-aktion=\"starten\"]" },
+      { "name": "Fehlermeldung sichtbar (nicht [hidden])", "selector": "#workflow-bedienung-meldung.fehler" }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Workflow-Detail geöffnet: Schritt 'schritt-1-ausfuehrung' startbereit (Freigabe bereits erteilt)",
+      "warteAufSelector": { "selector": "button[data-aktion=\"starten\"]", "timeoutMs": 15000 },
+      "screenshot": "01-startbereit.png"
+    },
+    {
+      "label": "„Starten“ geklickt — echter POST /api/workflows/<id>/starten gegen das main-Wegwerf-Repo",
+      "klick": "button[data-aktion=\"starten\"]",
+      "warteAufSelector": { "selector": "#workflow-bedienung-meldung.fehler", "timeoutMs": 5000 },
+      "screenshot": "02-ausfuehrung-gesperrt-fehlermeldung-sichtbar.png"
+    }
+  ]
+}
