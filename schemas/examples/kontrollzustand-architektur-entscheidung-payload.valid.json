@@ -1,0 +1,7 @@
+{
+  "schritt_id": "schritt-1-architekt",
+  "antworten": [
+    { "frage": "Welches Speicherformat für den Verlauf?", "gewaehlt": "JSONL je Turn", "begruendung": "Passt zum bestehenden Checkpoint-Muster." }
+  ],
+  "entschieden_am": "2026-09-23T09:00:00.000Z"
+}

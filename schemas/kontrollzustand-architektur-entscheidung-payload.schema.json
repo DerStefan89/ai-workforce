@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-architektur-entscheidung-payload.schema.json",
+  "title": "Architektur-Entscheidung-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' — der Kernartefakt-Kette 'workflow-entscheidung-<workflowId>' (F39 WS-2b, löst state/findings.md F-632 Teil b). Geschrieben von POST /api/workflows/<id>/entscheidung (scripts/leitstand-server.mjs, reine Logik in scripts/leitstand/routen-f39.mjs), NACHDEM Regel 1c (src/workflow/index.ts) einen Workflow wegen offener 'entscheidungen_mensch[]' (schemas/ergebnis-architektur.schema.json) auf KLAERUNG_ERFORDERLICH gehalten hat. Bewusst KEIN siebter 'art'-Wert auf schemas/kontrollzustand-entscheidung-payload.schema.json: jene Kette trägt je 'art' genau EIN 'ergebnis' aus einer geschlossenen Wertemenge, diese Payload dagegen N frei gewählte Antworten auf N Fragen — siehe src/workflow-entscheidung/types.ts Kopfkommentar für die vollständige Begründung. src/workflow-entscheidung/index.ts' validiereWorkflowEntscheidungDaten prüft nur DIESE Form; pruefeAntwortenGegenFragen (selbe Datei) prüft zusätzlich gegen die 'entscheidungen_mensch[]' des zugehörigen Architektur-Laufs (Vollständigkeit, keine erfundene Option) — eine reine Formprüfung kennt jenen Lauf nicht.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schritt_id", "antworten", "entschieden_am"],
+  "properties": {
+    "schritt_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Die schritt_id des Architektur-Schritts (output_schema 'ergebnis-architektur'), dessen 'entscheidungen_mensch[]' hier beantwortet werden."
+    },
+    "antworten": {
+      "type": "array",
+      "description": "Eine Antwort je Frage aus 'entscheidungen_mensch[]' des referenzierten Laufs — Vollständigkeit und Optionsgültigkeit sind KEIN Teil dieses Schemas (es kennt den Lauf nicht), sondern von pruefeAntwortenGegenFragen geprüft.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["frage", "gewaehlt"],
+        "properties": {
+          "frage": { "type": "string", "minLength": 1, "description": "Muss wortgleich eine 'entscheidungen_mensch[].frage' des referenzierten Laufs sein." },
+          "gewaehlt": { "type": "string", "minLength": 1, "description": "Muss den Titel einer der 'optionen' dieser Frage nennen — keine Option erfinden." },
+          "begruendung": { "type": "string", "description": "Optional — die menschliche Begründung der Wahl." }
+        }
+      }
+    },
+    "entschieden_am": { "type": "string", "minLength": 1 }
+  }
+}

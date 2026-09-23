@@ -450,10 +450,19 @@ import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster 
 import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
+import { validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung } from './leitstand/routen-sparring.mjs'
+import {
+  findeWorkflowEntscheidungFuerSchritt,
+  formatiereWorkflowEntscheidungAlsText,
+  pruefeWorkflowEntscheidungsformular,
+  registriereWorkflowEntscheidung,
+  workflowEntscheidungArtefaktId,
+} from './leitstand/routen-f39.mjs'
 
 /**
  * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
@@ -2490,6 +2499,48 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
       continue
     }
 
+    // F39 WS-2b (löst state/findings.md F-632 Teil b): 'entscheidung-@<schrittId>' liefert die
+    // menschliche Antwort auf die 'entscheidungen_mensch[]' des referenzierten Architektur-
+    // Schritts als lesbaren Text — dieselben drei Schutzregeln wie 'ergebnis-@' oben
+    // (Selbstverweis, unbekannte schritt_id, nicht gestartet), aber ein eigener, NICHT
+    // startsperrender Fall danach: fehlt die Entscheidung, weil 'entscheidungen_mensch[]' leer
+    // war (nichts zu entscheiden — Regel 1c hat dann nie angehalten), liefert diese Funktion
+    // einen leeren Hinweistext statt den Schritt-Start abzulehnen (Auftrags-Vorgabe Punkt 4).
+    // War dagegen eine Entscheidung ERFORDERLICH, kann dieser referenzierende Schritt gar nicht
+    // erst gestartet worden sein — Regel 1c hätte die ganze Kette vorher angehalten.
+    const entscheidungPlatzhalterTreffer = /^entscheidung-@(.+)$/.exec(artefaktId)
+    if (entscheidungPlatzhalterTreffer !== null) {
+      const zielSchrittId = entscheidungPlatzhalterTreffer[1]
+      if (zielSchrittId === schritt.schritt_id) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:entscheidung-@${zielSchrittId}' verweist auf sich selbst — ein Schritt kann seine eigene, noch laufende Ausführung nicht referenzieren`,
+        }
+      }
+      const zielSchritt = workflowDaten.schritte.find((s) => s.schritt_id === zielSchrittId)
+      if (zielSchritt === undefined) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:entscheidung-@${zielSchrittId}' verweist auf keine bekannte schritt_id in Workflow '${workflowDaten.workflow_id}' — der Schritt wird nicht gestartet`,
+        }
+      }
+      if (zielSchritt.lauf_id === null) {
+        return {
+          ok: false,
+          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:entscheidung-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', der noch keine lauf_id hat (nicht gestartet) — der Schritt wird nicht gestartet`,
+        }
+      }
+      const entscheidung = findeWorkflowEntscheidungFuerSchritt(ladeOptionen.basisVerzeichnis, workflowDaten.workflow_id, zielSchrittId)
+      artefaktAnfragen.push({
+        pfad: `artefakt:entscheidung-${zielSchritt.lauf_id}`,
+        frage: `Menschliche Architektur-Entscheidung zu Schritt '${zielSchrittId}' (referenziert von '${schritt.schritt_id}')`,
+        begruendung: `In schritte[].eingaben des Workflows '${workflowDaten.workflow_id}' als 'entscheidung-@${zielSchrittId}' festgelegt (F39 WS-2b)`,
+        inhalt: formatiereWorkflowEntscheidungAlsText(entscheidung),
+        notwendig: true,
+      })
+      continue
+    }
+
     // Dieselbe Zeichenregel wie für laufId/workflow_id (D5, kein zweiter Regelsatz): die
     // artefaktId geht über 'lineage-<id>' in einen Dateisystempfad ein, und ihr Wert stammt
     // aus einer Workflow-Payload, nicht aus dem Server. validiereWorkflowDaten verlangt an
@@ -2929,6 +2980,32 @@ function leseUrteilAusLaufakte(laufakteDaten) {
     befunde: Array.isArray(geparst.befunde) ? geparst.befunde : [],
     empfehlung: typeof geparst.empfehlung === 'string' ? geparst.empfehlung : null,
   }
+}
+
+/**
+ * Liest das geparste ergebnis-architektur-Ergebnisobjekt eines ERFOLGREICH
+ * klassifizierten Architektur-Laufs (output_schema 'ergebnis-architektur')
+ * direkt aus dessen Rohstrom (F39 WS-2b, löst state/findings.md F-632 Teil
+ * b) — dasselbe Lesemuster wie leseUrteilAusLaufakte darüber, für Regel 1c
+ * statt Regel 1b. Anders als leseScoutErgebnisAusLaufakte/
+ * leseUrteilAusLaufakte liefert diese Funktion NIE ok:false: ein Lese-/
+ * Parse-/Schemafehler wird stattdessen als Regelverletzung in 'verstoesse'
+ * verpackt — Regel 1c in ermittleNaechstenSchritt kennt ohnehin nur „leer =
+ * gültig, sonst anhalten" und soll aus genau EINEM Feld entscheiden, nicht
+ * zusätzlich zwischen einem Lese- und einem Schemafehler unterscheiden
+ * müssen.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten des Architektur-Laufs
+ * @returns { verstoesse, entscheidungenMensch } — 'entscheidungenMensch' bleibt
+ *   [] bei jedem Lese-/Parsefehler (dann trägt 'verstoesse' bereits den Grund)
+ */
+function leseArchitekturErgebnisAusLaufakte(laufakteDaten) {
+  const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
+  if (!gelesen.ok) {
+    return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], entscheidungenMensch: [] }
+  }
+  const verstoesse = validiereErgebnisArchitektur(gelesen.geparst)
+  const entscheidungenMensch = verstoesse.length === 0 && Array.isArray(gelesen.geparst?.entscheidungen_mensch) ? gelesen.geparst.entscheidungen_mensch : []
+  return { verstoesse, entscheidungenMensch }
 }
 
 /**
@@ -4056,6 +4133,24 @@ export function erzeugeRequestHandler(optionen = {}) {
         // rohen urteil-String, deshalb hier extrahiert.
         if (laufakteVersion !== null) urteil = leseUrteilAusLaufakte(laufakteVersion.daten)?.urteil ?? null
       }
+      // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
+      // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
+      // fragt die Kernartefakt-Kette 'workflow-entscheidung-<workflowId>' NUR ab, wenn das Ergebnis
+      // selbst gültig ist UND mindestens eine offene Frage trägt — ein bereits ungültiges Ergebnis
+      // braucht keine Entscheidungssuche, und eine leere entscheidungen_mensch[] genauso wenig.
+      let architekturVerstoesse
+      let architekturEntscheidungAusstehend
+      let architekturAnzahlFragen
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-architektur') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const architekturErgebnis = laufakteVersion !== null ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten) : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], entscheidungenMensch: [] }
+        architekturVerstoesse = architekturErgebnis.verstoesse
+        architekturAnzahlFragen = architekturErgebnis.entscheidungenMensch.length
+        architekturEntscheidungAusstehend =
+          architekturVerstoesse.length === 0 &&
+          architekturAnzahlFragen > 0 &&
+          findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, schritt.schritt_id) === null
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -4078,7 +4173,15 @@ export function erzeugeRequestHandler(optionen = {}) {
           // dem ein Folgeschritt entstehen dürfte. Der Cursor bleibt auf ihm stehen, der
           // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
           if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id, grund: heilungsGrund }
-          naechster = ermittleNaechstenSchritt(datenMitSchritt, { schrittId: schritt.schritt_id, ergebnis: schrittStatus, laufId, urteil })
+          naechster = ermittleNaechstenSchritt(datenMitSchritt, {
+            schrittId: schritt.schritt_id,
+            ergebnis: schrittStatus,
+            laufId,
+            urteil,
+            architekturVerstoesse,
+            architekturEntscheidungAusstehend,
+            architekturAnzahlFragen,
+          })
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,
@@ -4439,6 +4542,30 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Bestand ausdrücklich ersetzbar lässt (bestandUngueltig). Die Ansicht zeigt die
       // Verstöße und lässt den Menschen daran arbeiten, statt ihn auszusperren.
       const verstoesse = validiereWorkflowDaten(version.daten)
+
+      // F39 WS-2b (löst state/findings.md F-632 Teil b), additiv wie freigabeHalt oben
+      // (GET .../abnahme): NUR gefüllt, wenn der Workflow real wegen Regel 1c auf einem
+      // Architektur-Schritt steht — null in jedem anderen Fall, auch sobald die Entscheidung
+      // bereits erfasst ist (Regel 1c hält dann nicht mehr, der Cursor zeigt längst auf den
+      // nächsten Schritt). Die View braucht dafür keinen zweiten Endpunkt (Muster naechster
+      // oben: additiv im selben Request statt eines dedizierten Blocks wie bei .../abnahme,
+      // weil hier keine eigene, wiederkehrend abgefragte Unteransicht entsteht).
+      let architekturEntscheidung = null
+      if (version.daten.status === 'KLAERUNG_ERFORDERLICH' && version.daten.aktiver_schritt_id !== null) {
+        const architektSchritt = version.daten.schritte?.find((s) => s.schritt_id === version.daten.aktiver_schritt_id)
+        if (architektSchritt !== undefined && architektSchritt.output_schema === 'ergebnis-architektur' && architektSchritt.status === 'ERFOLGREICH' && architektSchritt.lauf_id !== null) {
+          const architektLaufakteVersion = ladeArtefaktVersion(`laufakte-${architektSchritt.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+          const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten)
+          const bereitsEntschieden =
+            architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0
+              ? findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchritt.schritt_id)
+              : null
+          if (architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0 && bereitsEntschieden === null) {
+            architekturEntscheidung = { schrittId: architektSchritt.schritt_id, fragen: architekturErgebnis.entscheidungenMensch }
+          }
+        }
+      }
+
       sendeJson(res, 200, {
         workflowId,
         versionSequenz: version.versionSequenz,
@@ -4449,6 +4576,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         naechster: baueNaechsterProjektion(version.daten, verstoesse),
         // F17 WS-2 (AK7): additiv, reine Anzeige — siehe baueWerkzeugsatzDurchsetzungProjektion.
         werkzeugsatzDurchsetzung: baueWerkzeugsatzDurchsetzungProjektion(version.daten),
+        architekturEntscheidung,
       })
       return
     }
@@ -5757,6 +5885,222 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Rückruf des Laufs kann frühestens im nächsten Microtask feuern, die Antwort ist da
       // längst geschrieben.
       sendeJson(res, 202, { workflowId, schrittId: gestartet.schrittId, laufId: gestartet.laufId })
+      return
+    }
+
+    // ─── POST /api/workflows/<id>/entscheidung (F39 WS-2b, löst F-632 Teil b) ────────────
+    //
+    // Der Fortsetzungsweg für Regel 1c (src/workflow/index.ts): ein Architektur-Schritt
+    // (output_schema 'ergebnis-architektur') lief ERFOLGREICH, trägt aber offene
+    // 'entscheidungen_mensch[]' — der Workflow steht auf KLAERUNG_ERFORDERLICH mit
+    // aktiver_schritt_id auf GENAU DIESEM Schritt (nicht dem nächsten). Diese Route nimmt die
+    // Antworten entgegen, prüft sie gegen die tatsächlichen Fragen des Laufs, hält die
+    // Entscheidung fest (registriereWorkflowEntscheidung, routen-f39.mjs) und setzt danach über
+    // denselben Automatenpfad fort wie jede andere Nachbereitung (ermittleNaechstenSchritt,
+    // Muster POST .../freigabe unten) — kein Replan, keine zweite Fassung des Automaten.
+    //
+    // Anders als bei .../freigabe ist die Vorbedingung HIER nicht über ermittleNaechstenSchritt
+    // zurückzurechnen: ohne ein gemeldetes vorschrittErgebnis prüft die Erststart-Verzweigung nur,
+    // ob der CURSOR-Schritt selbst startbar ist (Regel 3 hielte über 'status ERFOLGREICH' an, mit
+    // dem falschen Text) — Regel 1c hängt an einem GEMELDETEN Ergebnis. Die Vorbedingung
+    // (Status, aktiver_schritt_id, Schritt selbst) wird deshalb direkt geprüft, bevor der
+    // Automat erneut aufgerufen wird — mit demselben, real gelaufenen Ergebnis wie beim ersten
+    // Mal, jetzt mit aufgelöster Entscheidung.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/entscheidung')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/entscheidung'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      const formular = pruefeWorkflowEntscheidungsformular(body)
+      if (!formular.ok) {
+        sendeJson(res, 400, { grund: formular.grund })
+        return
+      }
+      // Tiefenverteidigung wie bei body.schrittId in .../freigabe: schrittId geht über
+      // 'workflow-entscheidung-<workflowId>' in keinen eigenen Pfad ein, aber workflowId oben
+      // bereits — dieselbe Zeichenregel schützt hier zusätzlich gegen eine schrittId, die später
+      // in einer Fehlermeldung/einem Vergleich unerwartet auftaucht.
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(formular.schrittId)) {
+        sendeJson(res, 400, { grund: `'schrittId' enthält unzulässige Zeichen: ${JSON.stringify(formular.schrittId)}` })
+        return
+      }
+
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+      const workflowVerstoesse = validiereWorkflowDaten(workflowDaten)
+      if (workflowVerstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${workflowVerstoesse.join('; ')}`, verstoesse: workflowVerstoesse })
+        return
+      }
+
+      if (workflowDaten.status !== 'KLAERUNG_ERFORDERLICH' || workflowDaten.aktiver_schritt_id !== formular.schrittId) {
+        sendeJson(res, 409, {
+          grund: `Workflow '${workflowId}' hat keine offene Architektur-Entscheidung für Schritt '${formular.schrittId}' (status ${workflowDaten.status}, aktiver_schritt_id ${JSON.stringify(workflowDaten.aktiver_schritt_id)})`,
+        })
+        return
+      }
+      const architektSchritt = workflowDaten.schritte.find((s) => s.schritt_id === formular.schrittId)
+      if (architektSchritt === undefined || architektSchritt.output_schema !== 'ergebnis-architektur' || architektSchritt.status !== 'ERFOLGREICH' || architektSchritt.lauf_id === null) {
+        sendeJson(res, 409, { grund: `Schritt '${formular.schrittId}' ist kein ERFOLGREICH gelaufener Architektur-Schritt (output_schema 'ergebnis-architektur') — keine Architektur-Entscheidung möglich` })
+        return
+      }
+
+      const architektLaufakteVersion = ladeArtefaktVersion(`laufakte-${architektSchritt.lauf_id}`, undefined, ladeOptionen)
+      if (architektLaufakteVersion === null) {
+        sendeJson(res, 409, { grund: `Laufakte 'laufakte-${architektSchritt.lauf_id}' des Architektur-Schritts '${formular.schrittId}' nicht gefunden` })
+        return
+      }
+      const architekturErgebnis = leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten)
+      if (architekturErgebnis.verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Der Architektur-Lauf von Schritt '${formular.schrittId}' ist selbst ungültig, keine Entscheidung möglich: ${architekturErgebnis.verstoesse.join('; ')}` })
+        return
+      }
+      if (architekturErgebnis.entscheidungenMensch.length === 0) {
+        sendeJson(res, 409, { grund: `Schritt '${formular.schrittId}' trägt keine offene Frage in 'entscheidungen_mensch[]' — keine Entscheidung zu treffen` })
+        return
+      }
+
+      // Kreuzprüfung gegen die tatsächlichen Fragen — jede genau einmal beantwortet, 'gewaehlt'
+      // nennt eine gelistete Option (src/workflow-entscheidung/index.ts, D5, kein zweiter Regelsatz).
+      const antwortVerstoesse = pruefeAntwortenGegenFragen(formular.antworten, architekturErgebnis.entscheidungenMensch)
+      if (antwortVerstoesse.length > 0) {
+        sendeJson(res, 400, { grund: `Antworten verletzen die Fragen aus Schritt '${formular.schrittId}': ${antwortVerstoesse.join('; ')}` })
+        return
+      }
+
+      // D13-UEBERGABE-OHNE-FENSTER: START — derselbe synchrone Block wie bei .../freigabe, hier
+      // beginnend an der Sperre selbst (Muster dort): laufAktiv-Prüfung,
+      // registriereWorkflowEntscheidung, ladeArtefaktVersion, ermittleNaechstenSchritt,
+      // schreibeWorkflowFortschritt, starteWorkflowSchritt — alles synchron, kein Kontrollflusswechsel
+      // zwischen der Sperrprüfung und der erneuten Belegung in starteWorkflowSchritt.
+      //
+      // D13, wortgleich zu POST .../freigabe und aus demselben Grund an derselben Stelle: die
+      // Sperre gilt unabhängig vom konkreten Request und läuft deshalb VOR jeder
+      // Zustandsänderung — auch dieser Endpunkt verbindet zwei Akte (entscheiden und ggf.
+      // starten); ohne diese Prüfung könnte ein zweiter, gleichzeitiger Aufruf denselben Halt
+      // beide auflösen oder starteWorkflowSchritt unten einen zweiten aktiven Arbeitsstrang
+      // eröffnen, während bereits einer läuft.
+      if (laufAktiv) {
+        sendeJson(res, 409, {
+          grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang. Die Architektur-Entscheidung wurde NICHT festgehalten; nach dem Ende des Laufs erneut einreichen.`,
+        })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      // Speichern VOR jeder Zustandsänderung (D2, Muster POST .../freigabe): die Entscheidung
+      // referenziert den Architektur-Lauf, auf dessen 'entscheidungen_mensch[]' sie antwortet.
+      const entschiedenAm = new Date().toISOString()
+      let entscheidungsArtefakt
+      try {
+        entscheidungsArtefakt = registriereWorkflowEntscheidung(basisVerzeichnis, workflowId, profilReferenz, formular.schrittId, formular.antworten, entschiedenAm, [
+          {
+            pfad: `artefakt:laufakte-${architektSchritt.lauf_id}`,
+            zitierter_bereich: `entscheidungen_mensch[] (${architekturErgebnis.entscheidungenMensch.length} Frage(n))`,
+            inhalts_hash: architektLaufakteVersion.inhaltsHash,
+          },
+        ])
+      } catch (fehler) {
+        console.error(`[leitstand] Architektur-Entscheidung für Workflow '${workflowId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Architektur-Entscheidung konnte nicht festgehalten werden: ${fehler.message}` })
+        return
+      }
+
+      let naechster = null
+      const fortschritt = schreibeWorkflowFortschritt(
+        workflowId,
+        formular.schrittId,
+        {},
+        (datenMitSchritt) => {
+          naechster = ermittleNaechstenSchritt(datenMitSchritt, {
+            schrittId: formular.schrittId,
+            ergebnis: 'ERFOLGREICH',
+            laufId: architektSchritt.lauf_id,
+            architekturVerstoesse: [],
+            architekturEntscheidungAusstehend: false,
+            architekturAnzahlFragen: architekturErgebnis.entscheidungenMensch.length,
+          })
+          return {
+            status: workflowStatusZuAusgang(naechster),
+            aktiver_schritt_id: naechster.aktiverSchrittId,
+            grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+          }
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+      if (!fortschritt.ok) {
+        console.error(`[leitstand] Workflow '${workflowId}' konnte nach der Architektur-Entscheidung nicht fortgeschrieben werden:`, fortschritt.grund)
+        sendeJson(res, 500, { grund: fortschritt.grund })
+        return
+      }
+      if (fortschritt.eingefroren) {
+        const anlassGestoppt = `Architektur-Entscheidung für Schritt '${formular.schrittId}' von Workflow '${workflowId}' ist festgehalten, aber der Workflow ist GESTOPPT — es wurde nichts gestartet`
+        console.error(`[leitstand] ${anlassGestoppt}`)
+        sendeJson(res, 409, {
+          grund: anlassGestoppt,
+          art: 'haltGestoppt',
+          status: 'GESTOPPT',
+          artefaktId: workflowEntscheidungArtefaktId(workflowId),
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+
+      // Schritt 2 (o. ä.) ist ZWINGEND → kein Auto-Start, nur der erreichte Zustand
+      // (WARTET_FREIGABE) wird gemeldet — dieselbe Regel-5-Prüfung wie überall sonst, kein
+      // eigener Sonderfall hier (Auftrags-Vorgabe Punkt 3).
+      if (naechster.art !== 'starte') {
+        sendeJson(res, 202, {
+          workflowId,
+          schrittId: formular.schrittId,
+          entscheidungArtefaktId: workflowEntscheidungArtefaktId(workflowId),
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+          status: workflowStatusZuAusgang(naechster),
+          aktiverSchrittId: naechster.aktiverSchrittId,
+        })
+        return
+      }
+
+      const gestartet = starteWorkflowSchritt(workflowId, naechster)
+      // D13-UEBERGABE-OHNE-FENSTER: ENDE
+      if (!gestartet.ok) {
+        const anlass = `Start nach Architektur-Entscheidung für Schritt '${formular.schrittId}' von Workflow '${workflowId}' fehlgeschlagen (${gestartet.art}): ${gestartet.grund}. Die Entscheidung ist festgehalten; der Workflow steht auf KLAERUNG_ERFORDERLICH.`
+        schreibeStartfehlerHalt(workflowId, naechster.aktiverSchrittId, naechster.aktiverSchrittId, null, anlass, ladeOptionen)
+        sendeJson(res, 409, {
+          grund: anlass,
+          art: gestartet.art,
+          status: 'KLAERUNG_ERFORDERLICH',
+          entscheidungArtefaktId: workflowEntscheidungArtefaktId(workflowId),
+          versionSequenz: entscheidungsArtefakt.versionSequenz,
+        })
+        return
+      }
+      sendeJson(res, 202, {
+        workflowId,
+        schrittId: gestartet.schrittId,
+        entscheidungArtefaktId: workflowEntscheidungArtefaktId(workflowId),
+        versionSequenz: entscheidungsArtefakt.versionSequenz,
+        status: 'LAEUFT',
+        laufId: gestartet.laufId,
+      })
       return
     }
 

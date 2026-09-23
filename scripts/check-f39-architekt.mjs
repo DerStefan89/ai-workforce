@@ -43,6 +43,7 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -51,8 +52,11 @@ import { baueArchitektAuftragstext, validiereErgebnisArchitektur } from '../src/
 import { validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { bestimmeEffektiveKontrolltiefe, waehleWorkflowVorlage } from '../src/router/index.ts'
-import { ladeStartvorlage } from '../src/startvorlage/index.ts'
-import { loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf, pruefeAuftragsformular } from './leitstand-server.mjs'
+import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { ermittleNaechstenSchritt, registriereWorkflow } from '../src/workflow/index.ts'
+import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
+import { findeWorkflowEntscheidungFuerSchritt, pruefeWorkflowEntscheidungsformular, registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
+import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf, pruefeAuftragsformular } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -540,6 +544,425 @@ console.log('\n=== F39-Architekt-Check ===\n')
   }
   if (befunde.length === befundeVor) {
     console.log("✓ (h): workflow-vorlagen/fast-lane.json bleibt unverändert ohne 'architekt'-Schritt.")
+  }
+}
+
+// ─── (i) Regel 1c direkt (src/workflow/index.ts): rot (Verstoß) / rot (Entscheidung ausstehend) / grün (idempotent) ──
+{
+  const befundeVor = befunde.length
+
+  function schritt1c(overrides) {
+    return {
+      schritt_id: 's1',
+      rolle: 'architekt',
+      werkzeugsatz: 'lesend',
+      worker: 'codex',
+      modell: 'gpt-6-astra',
+      eingaben: [],
+      output_schema: 'ergebnis-architektur',
+      freigabe: 'ZWINGEND',
+      risiko: 'Gate-Fixture.',
+      zeitgrenze_ms: 600000,
+      nachfolger: 's2',
+      status: 'ERFOLGREICH',
+      lauf_id: 'lauf-1',
+      ...overrides,
+    }
+  }
+  const schritt2 = {
+    schritt_id: 's2',
+    rolle: 'architecture-advisor',
+    werkzeugsatz: 'lesend',
+    worker: 'claude-code',
+    modell: 'claude-sonnet-5',
+    eingaben: [],
+    output_schema: null,
+    freigabe: 'ZWINGEND',
+    risiko: 'Gate-Fixture.',
+    zeitgrenze_ms: 600000,
+    nachfolger: null,
+    status: 'OFFEN',
+    lauf_id: null,
+  }
+  const workflow = { workflow_id: 'gate-f39-i', auftrag_id: 'a', version: 1, ziel: 'x', status: 'LAEUFT', aktiver_schritt_id: 's1', grund: null, grenzen: { max_schritte: 5, max_replans: 1 }, schritte: [schritt1c({}), schritt2] }
+
+  const rotVerstoss = ermittleNaechstenSchritt(workflow, { schrittId: 's1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', architekturVerstoesse: ["Pflichtfeld 'evidenz' fehlt"] })
+  if (rotVerstoss.art !== 'haltKlaerung' || rotVerstoss.aktiverSchrittId !== 's1' || !/validiereErgebnisArchitektur ablehnt/.test(rotVerstoss.grund)) {
+    befunde.push(`(i) Rotfall (Verstoß): erwartet haltKlaerung auf 's1' mit 'validiereErgebnisArchitektur ablehnt', erhalten ${JSON.stringify(rotVerstoss)}`)
+  }
+
+  const rotAusstehend = ermittleNaechstenSchritt(workflow, {
+    schrittId: 's1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: [],
+    architekturEntscheidungAusstehend: true,
+    architekturAnzahlFragen: 1,
+  })
+  if (rotAusstehend.art !== 'haltKlaerung' || rotAusstehend.aktiverSchrittId !== 's1' || !/Architektur-Entscheidung erforderlich/.test(rotAusstehend.grund)) {
+    befunde.push(`(i) Rotfall (Entscheidung ausstehend): erwartet haltKlaerung auf 's1' mit 'Architektur-Entscheidung erforderlich', erhalten ${JSON.stringify(rotAusstehend)}`)
+  }
+
+  const gruenLeer = ermittleNaechstenSchritt(workflow, { schrittId: 's1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', architekturVerstoesse: [] })
+  const gruenErfasst = ermittleNaechstenSchritt(workflow, {
+    schrittId: 's1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: [],
+    architekturEntscheidungAusstehend: false,
+  })
+  if (gruenLeer.art !== 'haltFreigabe' || gruenErfasst.art !== 'haltFreigabe') {
+    befunde.push(`(i) Grünfall (leer / erfasst): beide sollten regulär bis Regel 5 (ZWINGEND, 's2') durchlaufen, erhalten leer=${JSON.stringify(gruenLeer)}, erfasst=${JSON.stringify(gruenErfasst)}`)
+  }
+
+  if (befunde.length === befundeVor) {
+    console.log("✓ (i) Regel 1c: ein Verstoß und eine ausstehende Entscheidung halten real auf dem Architektur-Schritt an; eine leere Liste oder eine bereits erfasste Entscheidung setzen unverändert bis Regel 5 fort (Idempotenz).")
+  }
+}
+
+/**
+ * Legt einen ERFOLGREICH gelaufenen Architektur-Schritt (echte Laufakte + Rohstrom, Muster (g4))
+ * plus einen ZWINGEND freizugebenden Folgeschritt an — der Workflow steht auf KLAERUNG_ERFORDERLICH
+ * mit aktiver_schritt_id auf dem Architektur-Schritt (Regel 1c). 'entscheidungenMensch' bestimmt den
+ * Fragenkatalog des Laufs; leer heißt: nichts zu entscheiden.
+ * @returns { workflowId, architektSchrittId, architektLaufId, folgeSchrittId, entscheidungenMensch }
+ */
+function baueArchitekturKlaerungsWorkflow(basisVerzeichnis, ladeOptionen, profilReferenz, entscheidungenMensch) {
+  const workflowId = `gate-f39-${randomUUID()}`
+  const architektSchrittId = 'schritt-1-architekt'
+  const folgeSchrittId = 'schritt-2-architektur'
+  const architektLaufId = `${workflowId}-architekt-lauf`
+
+  const ergebnisArchitektur = {
+    modus: 'feature',
+    zusammenfassung: 'Gate-Fixture-Entwurf.',
+    module: [],
+    adr_entwuerfe: [],
+    schema_entwuerfe: [],
+    entscheidungen_mensch: entscheidungenMensch,
+    capabilities_bedarf: [],
+    evidenz: [{ marker: '[Fakt]', aussage: 'Gate-Fixture.' }],
+  }
+  mkdirSync(basisVerzeichnis, { recursive: true })
+  const rohstromPfad = join(basisVerzeichnis, `${architektLaufId}-rohstrom.json`)
+  writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(ergebnisArchitektur) }) }))
+  registriereKernArtefakt(
+    `laufakte-${architektLaufId}`,
+    profilReferenz,
+    { erzeuger: 'kern', schritt: 'gate-fixture' },
+    { laufakte_schema: 'v0', lauf_id: architektLaufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+    [],
+    ladeOptionen
+  )
+
+  registriereWorkflow(
+    {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: 'auftrag-f39-gate-fixture',
+      version: 1,
+      ziel: 'Gate-Fixture: Architektur-Entscheidung (F39 WS-2b).',
+      status: 'KLAERUNG_ERFORDERLICH',
+      aktiver_schritt_id: architektSchrittId,
+      grund: "Architektur-Entscheidung erforderlich — Gate-Fixture.",
+      grenzen: { max_schritte: 6, max_replans: 1 },
+      schritte: [
+        {
+          schritt_id: architektSchrittId,
+          rolle: 'architekt',
+          werkzeugsatz: 'lesend',
+          worker: 'codex',
+          modell: 'gpt-6-astra',
+          eingaben: [],
+          output_schema: 'ergebnis-architektur',
+          freigabe: 'ZWINGEND',
+          risiko: 'Gate-Fixture.',
+          zeitgrenze_ms: 600000,
+          nachfolger: folgeSchrittId,
+          status: 'ERFOLGREICH',
+          lauf_id: architektLaufId,
+        },
+        {
+          schritt_id: folgeSchrittId,
+          rolle: 'architecture-advisor',
+          werkzeugsatz: 'lesend',
+          worker: 'claude-code',
+          modell: 'claude-sonnet-5',
+          eingaben: [`artefakt:ergebnis-@${architektSchrittId}`, `artefakt:entscheidung-@${architektSchrittId}`],
+          output_schema: null,
+          freigabe: 'ZWINGEND',
+          risiko: 'Gate-Fixture.',
+          zeitgrenze_ms: 600000,
+          nachfolger: null,
+          status: 'OFFEN',
+          lauf_id: null,
+        },
+      ],
+    },
+    profilReferenz,
+    ladeOptionen
+  )
+  return { workflowId, architektSchrittId, architektLaufId, folgeSchrittId }
+}
+
+const GATE_FRAGE = {
+  frage: 'Welches Speicherformat?',
+  optionen: [
+    { titel: 'JSONL je Turn', vorteile: ['Passt zum bestehenden Muster'], nachteile: [] },
+    { titel: 'Ein Objekt je Lauf', vorteile: [], nachteile: ['Bricht mit dem Muster'] },
+  ],
+  auswirkung_bestand: 'keine',
+  empfehlung: 'JSONL je Turn',
+  begruendung: 'Gate-Fixture.',
+}
+
+// ─── (j0) Reine Logik direkt: pruefeWorkflowEntscheidungsformular + pruefeAntwortenGegenFragen ──
+{
+  const befundeVor = befunde.length
+  const formRot = pruefeWorkflowEntscheidungsformular({ schrittId: '', antworten: [] })
+  if (formRot.ok !== false) befunde.push(`(j0) pruefeWorkflowEntscheidungsformular: leere schrittId sollte ok:false liefern, erhalten ${JSON.stringify(formRot)}`)
+  const formGruen = pruefeWorkflowEntscheidungsformular({ schrittId: 's1', antworten: [{ frage: 'f', gewaehlt: 'g' }] })
+  if (formGruen.ok !== true) befunde.push(`(j0) pruefeWorkflowEntscheidungsformular: gültiger Body sollte ok:true liefern, erhalten ${JSON.stringify(formGruen)}`)
+  const kreuzRot = pruefeAntwortenGegenFragen([], [GATE_FRAGE])
+  if (!kreuzRot.some((v) => v.includes('ist unbeantwortet'))) befunde.push(`(j0) pruefeAntwortenGegenFragen: erwartet 'ist unbeantwortet' bei leeren antworten, erhalten ${JSON.stringify(kreuzRot)}`)
+  const kreuzGruen = pruefeAntwortenGegenFragen([{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn' }], [GATE_FRAGE])
+  if (kreuzGruen.length > 0) befunde.push(`(j0) pruefeAntwortenGegenFragen: eine gültige Antwort sollte [] liefern, erhalten ${JSON.stringify(kreuzGruen)}`)
+  if (befunde.length === befundeVor) {
+    console.log('✓ (j0): pruefeWorkflowEntscheidungsformular und pruefeAntwortenGegenFragen direkt geprüft (Form bzw. Kreuzprüfung gegen die Fragen).')
+  }
+}
+
+// ─── (j) POST /api/workflows/<id>/entscheidung: rot (Status/Antworten) und grün (echter Dispatch) ──
+{
+  const befundeVor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-f39-j-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const profilReferenz = leiteProfilReferenzAb(vorlage)
+  const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const { workflowId, architektSchrittId } = baueArchitekturKlaerungsWorkflow(basisVerzeichnis, ladeOptionen, profilReferenz, [GATE_FRAGE])
+
+    // (j1) Rot: falscher Status/aktiver_schritt_id — eine erfundene schrittId trifft dieselbe Prüfung.
+    const rotStatus = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: 'schritt-existiert-nicht', antworten: [{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn' }] }),
+    })
+    if (rotStatus.status !== 409) befunde.push(`(j1) unbekannte/falsche schrittId: erwartet 409, erhalten ${rotStatus.status}`)
+
+    // (j2) Rot: fehlende Antwort (leeres antworten-Array).
+    const rotFehlend = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: architektSchrittId, antworten: [] }),
+    })
+    const rotFehlendKoerper = await rotFehlend.json()
+    if (rotFehlend.status !== 400 || !/unbeantwortet/.test(rotFehlendKoerper.grund)) {
+      befunde.push(`(j2) fehlende Antwort: erwartet 400 mit 'unbeantwortet', erhalten ${rotFehlend.status} ${JSON.stringify(rotFehlendKoerper)}`)
+    }
+
+    // (j3) Rot: 'gewaehlt' nennt keine gelistete Option.
+    const rotOption = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: architektSchrittId, antworten: [{ frage: GATE_FRAGE.frage, gewaehlt: 'Erfundene Option' }] }),
+    })
+    const rotOptionKoerper = await rotOption.json()
+    if (rotOption.status !== 400 || !/keine Option erfinden/.test(rotOptionKoerper.grund)) {
+      befunde.push(`(j3) erfundene Option: erwartet 400 mit 'keine Option erfinden', erhalten ${rotOption.status} ${JSON.stringify(rotOptionKoerper)}`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log('✓ (j1)-(j3): falsche/unbekannte schrittId (409), unbeantwortete Frage (400) und eine erfundene Option (400) werden real abgelehnt, ohne etwas festzuhalten.')
+    }
+
+    // (j4) Grün: echter Dispatch — schreibt die Entscheidung UND setzt über ermittleNaechstenSchritt
+    // fort. Der Folgeschritt ist ZWINGEND -> WARTET_FREIGABE, kein Auto-Start (Auftrags-Vorgabe Punkt 3).
+    const befundeVorGruen = befunde.length
+    const gruen = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: architektSchrittId, antworten: [{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn', begruendung: 'Gate-Test.' }] }),
+    })
+    const gruenKoerper = await gruen.json()
+    if (gruen.status !== 202 || gruenKoerper.status !== 'WARTET_FREIGABE') {
+      befunde.push(`(j4) Grünfall: erwartet 202 mit status 'WARTET_FREIGABE', erhalten ${gruen.status} ${JSON.stringify(gruenKoerper)}`)
+    }
+    const entscheidung = findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittId)
+    if (entscheidung === null || entscheidung.antworten[0]?.gewaehlt !== 'JSONL je Turn') {
+      befunde.push(`(j4) Grünfall: die Entscheidung sollte real unter 'workflow-entscheidung-${workflowId}' auffindbar sein, erhalten ${JSON.stringify(entscheidung)}`)
+    }
+
+    // (j5) Idempotenz/Regression: ein zweiter Versuch trifft keine offene Klärung mehr (der
+    // Workflow steht jetzt auf WARTET_FREIGABE, nicht mehr KLAERUNG_ERFORDERLICH auf s1).
+    const zweiterVersuch = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: architektSchrittId, antworten: [{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn' }] }),
+    })
+    if (zweiterVersuch.status !== 409) befunde.push(`(j5) zweiter Versuch nach bereits erfasster Entscheidung: erwartet 409, erhalten ${zweiterVersuch.status}`)
+
+    if (befunde.length === befundeVorGruen) {
+      console.log("✓ (j4)/(j5): eine gültige Entscheidung wird real registriert und setzt den Workflow über ermittleNaechstenSchritt auf 'WARTET_FREIGABE' fort (ZWINGEND, kein Auto-Start); ein zweiter Versuch findet danach keine offene Klärung mehr (Idempotenz).")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (k) Eingabe-Platzhalter 'entscheidung-@<schrittId>' (loeseSchrittEingabenAuf) ─────────
+{
+  const befundeVor = befunde.length
+  const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const profilReferenz = leiteProfilReferenzAb(vorlage)
+  const repoWurzel = process.cwd()
+  const testBasis = `kontrollzustand-test-f39-k-${randomUUID()}`
+  const ladeOptionen = { basisVerzeichnis: testBasis, schreiber: () => {} }
+
+  function baueSchritt(eingaben, felder = {}) {
+    return {
+      schritt_id: 'schritt-referenzierend',
+      rolle: 'code-reviewer',
+      werkzeugsatz: 'lesend',
+      worker: 'claude-code',
+      modell: 'claude-sonnet-5',
+      eingaben,
+      output_schema: null,
+      freigabe: 'AUTOMATISCH',
+      risiko: 'Gate-Fixture, kein reales Risiko.',
+      zeitgrenze_ms: 600000,
+      nachfolger: null,
+      status: 'OFFEN',
+      lauf_id: null,
+      ...felder,
+    }
+  }
+
+  try {
+    // (k1) unbekannte schritt_id.
+    {
+      const schritt = baueSchritt(['artefakt:entscheidung-@schritt-existiert-nicht'])
+      const workflowDaten = { workflow_id: 'gate-f39-k1', schritte: [schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('keine bekannte schritt_id')) {
+        befunde.push(`(k1) unbekannte schritt_id: erwartet ok:false mit 'keine bekannte schritt_id', erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    // (k2) bekannte schritt_id, lauf_id noch null.
+    {
+      const referenzierterSchritt = { ...baueSchritt([]), schritt_id: 'schritt-1', lauf_id: null }
+      const schritt = baueSchritt(['artefakt:entscheidung-@schritt-1'])
+      const workflowDaten = { workflow_id: 'gate-f39-k2', schritte: [referenzierterSchritt, schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('noch keine lauf_id')) {
+        befunde.push(`(k2) schritt_id ohne lauf_id: erwartet ok:false mit 'noch keine lauf_id', erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    // (k3) Selbstreferenz.
+    {
+      const schritt = { ...baueSchritt(['artefakt:entscheidung-@schritt-referenzierend']), lauf_id: 'vorheriger-versuch-lauf-1' }
+      const workflowDaten = { workflow_id: 'gate-f39-k3', schritte: [schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('verweist auf sich selbst')) {
+        befunde.push(`(k3) Selbstreferenz: erwartet ok:false mit 'verweist auf sich selbst', erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    // (k4) Grünfall ohne Entscheidung (nichts registriert) — leerer Hinweistext statt Startsperre.
+    {
+      const referenzierterSchritt = { ...baueSchritt([]), schritt_id: 'schritt-1', lauf_id: 'lauf-ohne-entscheidung' }
+      const schritt = baueSchritt(['artefakt:entscheidung-@schritt-1'])
+      const workflowDaten = { workflow_id: 'gate-f39-k4', schritte: [referenzierterSchritt, schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      const anfrage = ergebnis.ok ? ergebnis.eingaben.anfragen.find((a) => a.pfad === 'artefakt:entscheidung-lauf-ohne-entscheidung') : undefined
+      if (!ergebnis.ok || anfrage === undefined || anfrage.inhalt !== '') {
+        befunde.push(`(k4) Grünfall ohne Entscheidung: erwartet ok:true mit leerem 'inhalt' (kein Startsperre), erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    // (k5) Grünfall MIT real registrierter Entscheidung — formatierter Text erscheint im 'inhalt'.
+    {
+      const architektLaufId = `gate-f39-k5-lauf-${randomUUID()}`
+      registriereWorkflowEntscheidung(testBasis, 'gate-f39-k5', profilReferenz, 'schritt-1', [{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn', begruendung: 'Gate.' }], new Date().toISOString())
+      const referenzierterSchritt = { ...baueSchritt([]), schritt_id: 'schritt-1', lauf_id: architektLaufId }
+      const schritt = baueSchritt(['artefakt:entscheidung-@schritt-1'])
+      const workflowDaten = { workflow_id: 'gate-f39-k5', schritte: [referenzierterSchritt, schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      const anfrage = ergebnis.ok ? ergebnis.eingaben.anfragen.find((a) => a.pfad === `artefakt:entscheidung-${architektLaufId}`) : undefined
+      if (!ergebnis.ok || anfrage === undefined || !anfrage.inhalt.includes('JSONL je Turn')) {
+        befunde.push(`(k5) Grünfall mit Entscheidung: erwartet 'inhalt' mit 'JSONL je Turn', erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    if (befunde.length === befundeVor) {
+      console.log("✓ (k) 'entscheidung-@': dieselben drei Schutzregeln wie 'ergebnis-@' (Selbstverweis, unbekannte schritt_id, nicht gestartet); ohne Entscheidung ein leerer Hinweistext statt Startsperre, mit einer real registrierten Entscheidung der formatierte Text.")
+    }
+  } finally {
+    raeumeVerzeichnis(testBasis)
+  }
+}
+
+// ─── (l) Regression: ein Workflow ohne 'architekt'-Schritt verhält sich bitgenau wie vorher ──
+{
+  const befundeVor = befunde.length
+  const standard = JSON.parse(readFileSync('workflow-vorlagen/standard.json', 'utf-8'))
+  if (standard.schritte.some((s) => s.rolle === 'architekt' || s.output_schema === 'ergebnis-architektur')) {
+    befunde.push("(l): workflow-vorlagen/standard.json sollte KEINEN 'architekt'-Schritt/kein 'ergebnis-architektur' tragen (unverändert)")
+  }
+  // Regel 1c greift NUR über output_schema — ein Schritt ohne 'ergebnis-architektur' verhält sich
+  // bitgenau wie vor F39 WS-2b, auch wenn (irrtümlich oder durch einen alten Aufrufer) Architektur-
+  // Felder mitgesendet werden (bereits als eigener Fall in src/workflow/workflow.test.ts gepinnt;
+  // hier zusätzlich am echten Feature-Schnitt bestätigt: 'ausfuehrung' aus workflow-vorlagen/standard.json).
+  const ausfuehrungSchritt = { ...standard.schritte.find((s) => s.rolle === 'ausfuehrung'), status: 'ERFOLGREICH', lauf_id: 'lauf-1', nachfolger: null }
+  const workflow = { workflow_id: 'gate-f39-l', auftrag_id: 'a', version: 1, ziel: 'x', status: 'LAEUFT', aktiver_schritt_id: ausfuehrungSchritt.schritt_id, grund: null, grenzen: { max_schritte: 5, max_replans: 1 }, schritte: [ausfuehrungSchritt] }
+  const mitFeldern = ermittleNaechstenSchritt(workflow, { schrittId: ausfuehrungSchritt.schritt_id, ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', architekturVerstoesse: ['sollte ignoriert werden'], architekturEntscheidungAusstehend: true })
+  const ohneFelder = ermittleNaechstenSchritt(workflow, { schrittId: ausfuehrungSchritt.schritt_id, ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  if (JSON.stringify(mitFeldern) !== JSON.stringify(ohneFelder) || mitFeldern.art !== 'fertig') {
+    befunde.push(`(l): ein Schritt ohne output_schema 'ergebnis-architektur' sollte bitgenau unverändert bleiben, egal ob Architektur-Felder mitgesendet werden, erhalten mitFeldern=${JSON.stringify(mitFeldern)}, ohneFelder=${JSON.stringify(ohneFelder)}`)
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (l) Regression: workflow-vorlagen/standard.json trägt unverändert keinen 'architekt'-Schritt; ein Schritt ohne 'ergebnis-architektur' verhält sich bitgenau wie vor F39 WS-2b, auch mit mitgesendeten Architektur-Feldern.")
+  }
+}
+
+// ─── (m) GET /api/workflows/<id>: additives Feld 'architekturEntscheidung' ─────────────────
+{
+  const befundeVor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-f39-m-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage('startvorlagen/beispielprojekt.json'))
+  const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const { workflowId, architektSchrittId } = baueArchitekturKlaerungsWorkflow(basisVerzeichnis, ladeOptionen, profilReferenz, [GATE_FRAGE])
+
+    const vorEntscheidung = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}`)).json()
+    if (vorEntscheidung.architekturEntscheidung === null || vorEntscheidung.architekturEntscheidung.schrittId !== architektSchrittId || vorEntscheidung.architekturEntscheidung.fragen.length !== 1) {
+      befunde.push(`(m) vor der Entscheidung: erwartet architekturEntscheidung mit schrittId '${architektSchrittId}' und einer Frage, erhalten ${JSON.stringify(vorEntscheidung.architekturEntscheidung)}`)
+    }
+
+    await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/entscheidung`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ schrittId: architektSchrittId, antworten: [{ frage: GATE_FRAGE.frage, gewaehlt: 'JSONL je Turn' }] }),
+    })
+    const nachEntscheidung = await (await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}`)).json()
+    if (nachEntscheidung.architekturEntscheidung !== null) {
+      befunde.push(`(m) nach der Entscheidung: erwartet architekturEntscheidung: null (Idempotenz, Cursor steht nicht mehr auf dem Architektur-Schritt), erhalten ${JSON.stringify(nachEntscheidung.architekturEntscheidung)}`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log("✓ (m): GET /api/workflows/<id> liefert 'architekturEntscheidung' (schrittId + fragen) genau während Regel 1c hält, danach wieder null.")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 

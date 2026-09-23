@@ -46,7 +46,17 @@
  * demselben Signatur-Vergleich wie #workflow-bedienung (F23 WS-2a).
  */
 
-import { holeAbnahme, holeLaufDetail, holeWorkflowDetail, reicheWorkflowFassungEin, sendeAbnahme, sendeWorkflowFreigabe, starteWorkflowSchritt, stoppeWorkflow } from '../api.js'
+import {
+  holeAbnahme,
+  holeLaufDetail,
+  holeWorkflowDetail,
+  reicheWorkflowFassungEin,
+  sendeAbnahme,
+  sendeWorkflowArchitekturEntscheidung,
+  sendeWorkflowFreigabe,
+  starteWorkflowSchritt,
+  stoppeWorkflow,
+} from '../api.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -488,20 +498,79 @@ async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext) {
 }
 
 /**
+ * Der Architektur-Entscheidungsblock (F39 WS-2b, löst state/findings.md
+ * F-632 Teil b) — gerendert, solange der Workflow wegen Regel 1c
+ * (src/workflow/index.ts) auf einem Architektur-Schritt (output_schema
+ * 'ergebnis-architektur') hält: mindestens eine offene Frage in
+ * 'entscheidungen_mensch[]', noch keine erfasste menschliche Entscheidung.
+ * Jede Frage zeigt ihre Optionen (Vor-/Nachteile, die Empfehlung des
+ * Architekten hervorgehoben) als Radio-Auswahl, dazu eine optionale eigene
+ * Begründung je Frage. 'Entscheidung speichern' sammelt GENAU EINE Auswahl
+ * je Frage ein — der Server (pruefeAntwortenGegenFragen,
+ * src/workflow-entscheidung/index.ts) prüft dieselbe Vollständigkeit
+ * ohnehin nochmals, diese Vorprüfung ist reine Bedienfreundlichkeit.
+ * @param workflowId - Kennung des angezeigten Workflows
+ * @param architekturEntscheidung - { schrittId, fragen } aus GET /api/workflows/<id>, oder null
+ * @returns HTML-Block, oder '' wenn architekturEntscheidung null ist
+ */
+function renderArchitekturEntscheidung(workflowId, architekturEntscheidung) {
+  if (architekturEntscheidung === null) return ''
+  const kennung = escapeHtml(workflowId)
+  const schrittId = escapeHtml(architekturEntscheidung.schrittId)
+  const fragenHtml = architekturEntscheidung.fragen
+    .map((frage, index) => {
+      const optionenHtml = frage.optionen
+        .map((option) => {
+          const empfohlen = option.titel === frage.empfehlung
+          const vorteile = option.vorteile.length > 0 ? `<ul class="vorteile">${option.vorteile.map((v) => `<li>+ ${escapeHtml(v)}</li>`).join('')}</ul>` : ''
+          const nachteile = option.nachteile.length > 0 ? `<ul class="nachteile">${option.nachteile.map((n) => `<li>− ${escapeHtml(n)}</li>`).join('')}</ul>` : ''
+          return `<label class="wf-architektur-option">
+            <input type="radio" name="wf-architektur-frage-${index}" value="${escapeHtml(option.titel)}"${empfohlen ? ' checked' : ''}>
+            <strong>${escapeHtml(option.titel)}</strong>${empfohlen ? ' <span class="badge empfehlung">Empfehlung des Architekten</span>' : ''}
+            ${vorteile}${nachteile}
+          </label>`
+        })
+        .join('')
+      return `<fieldset class="wf-architektur-frage" data-frage="${escapeHtml(frage.frage)}">
+        <legend>${escapeHtml(frage.frage)}</legend>
+        <p class="unbekannt">Auswirkung auf den Bestand: ${escapeHtml(frage.auswirkung_bestand)}</p>
+        ${optionenHtml}
+        <p class="unbekannt">Begründung des Architekten für die Empfehlung: ${escapeHtml(frage.begruendung)}</p>
+        <label for="wf-architektur-begruendung-${index}">Eigene Begründung (optional)</label>
+        <textarea id="wf-architektur-begruendung-${index}" rows="2"></textarea>
+      </fieldset>`
+    })
+    .join('')
+  return `<div class="unterabschnitt wf-architektur-entscheidung">
+    <p>Der Architekt hat ${architekturEntscheidung.fragen.length} offene Frage(n) zu Schritt <code>${schrittId}</code> gestellt — ohne eine Entscheidung setzt die Kette hier nicht fort.</p>
+    ${fragenHtml}
+    <button class="btn btn-primary wf-aktion" data-aktion="architektur-entscheidung" data-workflow-id="${kennung}" data-schritt-id="${schrittId}">Entscheidung speichern</button>
+  </div>`
+}
+
+/**
  * Der Bedienblock zu EINEM Workflow. Angeboten wird ausschließlich, was der
  * Server als möglich ausweist: naechster.art für Starten und
- * Freigeben/Ablehnen, status für Stoppen und den Reparaturzug.
+ * Freigeben/Ablehnen, status für Stoppen und den Reparaturzug,
+ * architekturEntscheidung für die Architektur-Entscheidung (Regel 1c, F39
+ * WS-2b) — sie steht bewusst ZUERST, wenn sie greift (dann ist naechster.art
+ * 'haltKlaerung', kein 'starte'/'haltFreigabe').
  * @param workflowId - Kennung des angezeigten Workflows
  * @param status - daten.status
  * @param naechster - Automaten-Verdikt aus dem Server, oder null
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
+ * @param architekturEntscheidung - { schrittId, fragen } aus GET /api/workflows/<id>, oder null
  * @returns HTML-Block
  */
-function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false) {
+function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null) {
   const art = naechster === null || naechster === undefined ? null : naechster.art
   const kennung = escapeHtml(workflowId)
   const faelligerSchritt = escapeHtml(naechster?.schrittId ?? '')
   const bloecke = []
+
+  if (architekturEntscheidung !== null) {
+    bloecke.push(renderArchitekturEntscheidung(workflowId, architekturEntscheidung))
+  }
 
   if (art === 'starte') {
     bloecke.push(`<div class="unterabschnitt">
@@ -546,12 +615,12 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
 /** Kennzeichen des zuletzt gerenderten Bedienblocks — verhindert, dass eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren geht (F-249). Nur bei ECHTER Lageänderung wird neu gebaut. */
 let bedienungsKennzeichen = null
 
-/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false) {
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}`
+/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) */
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null) {
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}`
   if (kennzeichen === bedienungsKennzeichen) return
   bedienungsKennzeichen = kennzeichen
-  document.getElementById('workflow-bedienung').innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig)
+  document.getElementById('workflow-bedienung').innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung)
 }
 
 // ─── Reparaturzug (löst F-240, F-218; zeigt F-219, F-223, F-226) ────────────
@@ -857,7 +926,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const daten = detail.daten ?? {}
     const verstoesse = Array.isArray(detail.verstoesse) ? detail.verstoesse : []
     const naechster = detail.naechster ?? null
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0)
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null)
     // Eigener Endpunkt, eigener Überholschutz (istUeberholt), fire-and-forget — blockiert das
     // übrige Rendern nicht.
     void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
@@ -918,6 +987,26 @@ async function fuehreWorkflowAktionAus(button) {
 
   if (aktion === 'starten') {
     await sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button, 'Schritt gestartet.')
+    return
+  }
+
+  if (aktion === 'architektur-entscheidung') {
+    const fragenKnoten = [...document.querySelectorAll('.wf-architektur-frage')]
+    const antworten = []
+    for (const [index, knoten] of fragenKnoten.entries()) {
+      const gewaehlt = knoten.querySelector(`input[name="wf-architektur-frage-${index}"]:checked`)?.value
+      if (gewaehlt === undefined) {
+        zeigeBedienungsMeldung('Jede Frage braucht eine gewählte Option, bevor die Entscheidung gespeichert werden kann.')
+        return
+      }
+      const begruendung = document.getElementById(`wf-architektur-begruendung-${index}`)?.value?.trim() ?? ''
+      antworten.push({ frage: knoten.dataset.frage, gewaehlt, ...(begruendung.length > 0 ? { begruendung } : {}) })
+    }
+    await sendeWorkflowBedienung(
+      () => sendeWorkflowArchitekturEntscheidung(workflowId, { schrittId: button.dataset.schrittId, antworten }),
+      button,
+      'Architektur-Entscheidung gespeichert.'
+    )
     return
   }
 

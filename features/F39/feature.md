@@ -99,11 +99,61 @@ und E-M5-13 (22.09.2026 — F39 vor F35 gezogen, zusätzlicher Projektmodus
   auf mindestens `hoch` an (nie senken), sichtbar vermerkt in
   `workflow.ziel`. Neue Router-Rolleninstruktion (`baueRouterAuftragstext`)
   mit der Auslöserliste für `hoch` aus der Auftrags-Vorgabe.
-- **WS-2b — Fortsetzungsweg für `entscheidungen_mensch` (nicht in diesem
-  Auftrag).** Regel 1c (`entscheidungen_mensch` → `haltKlaerung`) plus ein
-  Weg, eine dort eingetragene menschliche Entscheidung strukturiert in den
-  NÄCHSTEN Schritt derselben Kette einzuspeisen, statt eines vollständigen
-  Replans (F-632 Teil b, siehe „Findings").
+- **WS-2b — Fortsetzungsweg für `entscheidungen_mensch` (dieser Auftrag,
+  löst F-632 Teil b).** Regel 1c in `ermittleNaechstenSchritt`
+  (`src/workflow/index.ts`, nach Regel 1b, gekoppelt an output_schema
+  `ergebnis-architektur` wie Regel 1b an `ergebnis-code-reviewer`): a)
+  `validiereErgebnisArchitektur` lehnt das Ergebnis ab → `haltKlaerung`
+  mit den benannten Verstößen; b) sonst mindestens eine offene Frage in
+  `entscheidungen_mensch[]` UND noch keine erfasste Entscheidung →
+  `haltKlaerung` („Architektur-Entscheidung erforderlich"); c) sonst (Liste
+  leer, oder Entscheidung bereits erfasst) fortsetzen wie ohne dieses
+  output_schema — idempotent, kein erneuter Halt nach einer eingetragenen
+  Entscheidung. Reine Funktion: der Aufrufer (`scripts/leitstand-server.mjs`)
+  validiert das Ergebnis und fragt die neue Kernartefakt-Kette ab, reicht
+  drei normalisierte, optionale Felder auf `SchrittErgebnis` durch
+  (`architekturVerstoesse`, `architekturEntscheidungAusstehend`,
+  `architekturAnzahlFragen`) — `src/workflow` bleibt abhängigkeitsarm.
+  Eigene Kernartefakt-Kette `workflow-entscheidung-<workflowId>`
+  (`scripts/leitstand/routen-f39.mjs`, Payload-Form
+  `schemas/kontrollzustand-architektur-entscheidung-payload.schema.json`,
+  Validator `src/workflow-entscheidung/index.ts`) — bewusst NICHT als
+  siebter `art`-Wert auf der bestehenden `schemas/kontrollzustand-
+  entscheidung-payload.schema.json`-Kette angelehnt (strukturell
+  inkompatibel: jene trägt je `art` genau EIN `ergebnis` aus einer
+  geschlossenen Wertemenge, hier antwortet eine Payload auf N Fragen mit N
+  frei gewählten Optionen — siehe Begründung im Kopfkommentar von
+  `src/workflow-entscheidung/types.ts`). Fortsetzungsweg `POST
+  /api/workflows/<id>/entscheidung` (reine Formprüfung in
+  `scripts/leitstand/routen-f39.mjs`, Server registriert nur — D13-
+  Sperre/Automatenpfad wie bei `.../freigabe`): prüft Status +
+  `aktiver_schritt_id`, dass der referenzierte Architektur-Lauf selbst
+  gültig ist und offene Fragen trägt, und über `pruefeAntwortenGegenFragen`
+  (`src/workflow-entscheidung/index.ts`) jede Frage genau einmal beantwortet
+  mit einer gelisteten Option; speichert die Entscheidung und setzt danach
+  über denselben Automatenpfad fort (`ermittleNaechstenSchritt` erneut, mit
+  `architekturEntscheidungAusstehend: false`) — ein ZWINGEND-Folgeschritt
+  landet auf `WARTET_FREIGABE`, kein Auto-Start. Neuer Eingabe-Platzhalter
+  `entscheidung-@<schrittId>` (`loeseSchrittEingabenAuf`, dieselben drei
+  Schutzregeln wie `ergebnis-@`): liefert die erfasste Entscheidung als
+  Text; war `entscheidungen_mensch[]` leer, liefert er einen leeren
+  Hinweistext statt einer Startsperre. `workflow-vorlagen/hoch.json`
+  versorgt `architecture-advisor` UND `ausfuehrung` zusätzlich mit
+  `entscheidung-@schritt-1-architekt`. Leitstand-UI
+  (`public/leitstand/views/workflows.js`): additives Feld
+  `architekturEntscheidung` an `GET /api/workflows/<id>` (nur gefüllt,
+  solange Regel 1c real hält), Fragen mit Optionen (Vor-/Nachteile, die
+  Empfehlung des Architekten hervorgehoben) als Radio-Auswahl, optionale
+  eigene Begründung je Frage, „Entscheidung speichern". Render-Nachweis
+  (Fixture-Workflow, kein LLM) unter `features/F39/nachweis-ws2b-ui/` belegt
+  den echten Übergang KLAERUNG_ERFORDERLICH → WARTET_FREIGABE inkl. Reload.
+  D13: vierter geschützter Automaten-Startpfad neben Startendpunkt/Auto-
+  Fortsetzung/Freigabe-Endpunkt — die AK6b/AK7-Kalibrierzählungen in
+  `scripts/check-f15-workflow.mjs` (Aufrufstellen von
+  `starteWorkflowSchritt`/`schreibeWorkflowFortschritt`, `.eingefroren`-
+  Lesestellen, `D13-UEBERGABE-OHNE-FENSTER`-Bereiche) sind entsprechend
+  angehoben, nicht aufgeweicht. Geprüft in `scripts/check-f39-architekt.mjs`
+  (i)–(m).
 - **WS-3 — Projektmodus „Architektur-Grundlage" (nicht in diesem Auftrag).**
   Optionale technische Akte-Abschnitte in `check-feature.mjs`, reale
   ADR-Erzeugung, realer `hoch`-Durchlauf mit einem Erweiterungs-
@@ -197,7 +247,80 @@ Projektmodus ist ein Workflow-Schritt, kein eigener Chat (anders als
   (d)/(e1)/(e2) und `scripts/check-f11-auftrag.mjs` (a, zwei neue
   Payload-Fixturen).
 
+- **AK10** *(WS-2b)* — Regel 1c in `ermittleNaechstenSchritt`
+  (`src/workflow/index.ts`), gekoppelt an output_schema `ergebnis-
+  architektur`: ein Verstoß gegen `validiereErgebnisArchitektur` hält mit den
+  benannten Verstößen an; eine offene, unbeantwortete Frage in
+  `entscheidungen_mensch[]` hält mit „Architektur-Entscheidung erforderlich"
+  an; eine leere Liste oder eine bereits erfasste Entscheidung setzt
+  unverändert bis Regel 5 fort (Idempotenz) — ein Schritt ohne dieses
+  output_schema bleibt bitgenau unverändert (Regression). Rot-/Grünfälle in
+  `src/workflow/workflow.test.ts` und `scripts/check-f39-architekt.mjs` (i).
+- **AK11** *(WS-2b)* — `POST /api/workflows/<id>/entscheidung` (reine
+  Formprüfung `pruefeWorkflowEntscheidungsformular` in `scripts/leitstand/
+  routen-f39.mjs`, Kreuzprüfung `pruefeAntwortenGegenFragen` in
+  `src/workflow-entscheidung/index.ts`) lehnt einen falschen
+  Status/`aktiver_schritt_id` (409), eine unbeantwortete Frage (400) und
+  eine erfundene Option (400) ab; ein gültiger Aufruf registriert die
+  Entscheidung auf `workflow-entscheidung-<workflowId>` und setzt den
+  Workflow über `ermittleNaechstenSchritt` real auf `WARTET_FREIGABE` fort
+  (ZWINGEND-Folgeschritt, kein Auto-Start); ein zweiter Versuch nach
+  bereits erfasster Entscheidung findet keine offene Klärung mehr
+  (Idempotenz). D13-geschützt wie `.../freigabe`. Geprüft real gegen einen
+  Testserver in `scripts/check-f39-architekt.mjs` (j)/(j0).
+- **AK12** *(WS-2b)* — der Eingabe-Platzhalter `entscheidung-@<schrittId>`
+  lehnt dieselben drei Rot-Fälle ab wie `ergebnis-@` (Selbstverweis,
+  unbekannte `schritt_id`, nicht gestartet); im Grünfall liefert er die
+  real registrierte Entscheidung formatiert, ohne registrierte Entscheidung
+  einen leeren Hinweistext statt einer Startsperre. `workflow-vorlagen/
+  hoch.json` versorgt `architecture-advisor` und `ausfuehrung` damit.
+  Geprüft in `scripts/check-f39-architekt.mjs` (k).
+- **AK13** *(WS-2b)* — Leitstand-UI (`public/leitstand/views/workflows.js`):
+  additives Feld `architekturEntscheidung` an `GET /api/workflows/<id>`
+  (geprüft in `scripts/check-f39-architekt.mjs` (m)), Fragen mit Optionen
+  (Vor-/Nachteile, Empfehlung hervorgehoben) als Radio-Auswahl, optionale
+  eigene Begründung, „Entscheidung speichern"; HTML-Escaping aller
+  Architekt-Texte (`escapeHtml`, Muster der übrigen Bedienblöcke).
+  Render-Nachweis (Fixture-Workflow, kein LLM,
+  `features/F39/nachweis-ws2b-ui/`) belegt den echten Übergang
+  KLAERUNG_ERFORDERLICH → WARTET_FREIGABE inkl. Reload.
+
 ## Entschieden
+
+Claude, 23.09.2026, F39 WS-2b (löst F-632 Teil b):
+
+- **Kein siebter `art`-Wert auf `schemas/kontrollzustand-entscheidung-
+  payload.schema.json`** für die Architektur-Entscheidung — vor dem Bau
+  gegrept (CLAUDE.md „vorher nach bestehenden Helfern/Regeln greppen"):
+  `src/entscheidung/index.ts`/`-types.ts` decken sechs Workflow-
+  Lebenszyklus-Entscheidungen ab (`freigabe`/`stopp`/`planaenderung`/
+  `terminal`/`kenntnisnahme`/`abnahme`), jede mit GENAU EINEM `ergebnis`
+  aus einer geschlossenen, art-eigenen Wertemenge, gekoppelt an
+  `herkunft.schritt`. Eine Architektur-Entscheidung beantwortet dagegen N
+  Fragen aus `entscheidungen_mensch[]` auf einmal, mit je einer frei
+  gewählten Option statt eines der sechs fixen `ergebnis`-Werte — eine
+  Erweiterung hätte `ergebnis` auf ein Array umgebaut und damit die
+  bestehenden sechs `additionalProperties: false`-Zweige gebrochen. Eigene,
+  kleine Kette (`workflow-entscheidung-<workflowId>`,
+  `src/workflow-entscheidung/`) statt eine etablierte Form zu verbiegen
+  (CLAUDE.md-Entscheidungsregel 5, dokumentiert statt stillschweigend
+  abgewichen).
+- **Regel 1c prüft `validiereErgebnisArchitektur` (volle Schemakonformität),
+  nicht nur EIN semantisches Feld wie Regel 1b** — anders als bei
+  `ergebnis-code-reviewer` (Regel 1b prüft ausschließlich `urteil` gegen
+  eine Wertemenge) gibt es für `ergebnis-architektur` kein gleichwertig
+  einzelnes, automaten-relevantes Feld außer `entscheidungen_mensch[]`
+  selbst — und dessen Auswertung IST der Zweck von WS-2b. Die volle
+  Validierung war in WS-2a ausdrücklich als „keine neue Automaten-Regel"
+  zurückgestellt (siehe WS-2a-Eintrag unten) — WS-2b liefert genau das
+  nach, weil es jetzt der eigene Auftrag ist, nicht eine stillschweigende
+  Erweiterung eines fremden.
+- **`architekturVerstoesse`/`architekturEntscheidungAusstehend`/
+  `architekturAnzahlFragen` als drei zusätzliche optionale
+  `SchrittErgebnis`-Felder statt eines verschachtelten Objekts** — Muster
+  `urteil` (Regel 1b): `src/workflow` bleibt abhängigkeitsarm und
+  importiert weder `validiereErgebnisArchitektur` noch die neue
+  Entscheidungs-Kette; der Aufrufer normalisiert vollständig vorab.
 
 Stefan, 23.09.2026 (WS-2a-Korrektur), Auftrags-Vorgabe für F39 WS-2a:
 
@@ -347,14 +470,20 @@ unten.
 
 `state/findings.md`:
 
-- **F-632** (`PROCESS_IMPROVEMENT`, P2) — **Teil a erledigt** (WS-2a):
-  Advisor-/Architekt-Ergebnisse erreichen jetzt real den nächsten Schritt
-  derselben Kette (`ergebnis-@<schrittId>`, AK8) — `architecture-advisor`
-  sieht `architekt`s Entwurf, `ausfuehrung` sieht beide. **Teil b bleibt
-  offen** (WS-2b): `entscheidungen_mensch[]` wird weitergereicht, aber
-  nicht ausgewertet — keine `haltKlaerung`-Regel 1c, kein
-  Fortsetzungsweg für eine dort eingetragene menschliche Entscheidung.
-  Siehe Bestandsaufnahme Frage 1 oben (unverändert gültig für Teil b).
+- **F-632** (`PROCESS_IMPROVEMENT`, P2) — **erledigt** (WS-2a + WS-2b):
+  Advisor-/Architekt-Ergebnisse erreichen den nächsten Schritt derselben
+  Kette (`ergebnis-@<schrittId>`, AK8, WS-2a) — `architecture-advisor`
+  sieht `architekt`s Entwurf, `ausfuehrung` sieht beide. Seit WS-2b (AK10–
+  AK13) wertet Regel 1c `entscheidungen_mensch[]` real aus (`haltKlaerung`
+  bei Verstoß oder offener Frage) und `POST /api/workflows/<id>/
+  entscheidung` ist der reale Fortsetzungsweg für eine dort eingetragene
+  menschliche Entscheidung — kein Replan mehr nötig. Bestandsaufnahme
+  Frage 1 oben ist damit für BEIDE Teile eingelöst.
+- **F-634** (`PROCESS_IMPROVEMENT`, P3) — **kein Fix nötig, dokumentiert**:
+  Herkunft des ungetrackten `kontrollzustand/`-Bestands im Repo-Root vor
+  dem WS-2b-Bau geklärt (Auftrags-Vorgabe Punkt 0) — legitime, nie
+  committete reale Läufe (Jarvis-Chats, F18-Eval-Läufe, Feature-Nachweise),
+  keine Testisolationslücke.
 - **F-633** (`TECH_DEBT`, P2) — **erledigt** (WS-2a): `AuftragV0Daten.herkunft`
   (additiv/optional) plus `bestimmeEffektiveKontrolltiefe` heben die
   Kontrolltiefe für `herkunft.art === 'projekt_interview'` deterministisch
@@ -378,4 +507,5 @@ unten.
   `ergebnis-@`, WS-2a).
 - docs/adr/TEMPLATE.md — Vorbild für `adr_entwuerfe[]`
   (Kontext/Entscheidung/Alternativen/Konsequenzen).
-- Findings: F-632 Teil a erledigt/Teil b offen, F-633 erledigt.
+- Findings: F-632 erledigt (Teil a WS-2a, Teil b WS-2b), F-633 erledigt,
+  F-634 dokumentiert (kein Fix nötig).

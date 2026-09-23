@@ -1,0 +1,37 @@
+[
+  {
+    "label": "Workflow-Detail geöffnet: Architektur-Entscheidung erforderlich, Empfehlung vorausgewählt",
+    "Workflow": "f39-ws2b-nachweis",
+    "Architektur-Entscheidungsblock sichtbar": true,
+    "Empfehlung im Text markiert": true,
+    "Freigabe-Halt sichtbar (WARTET_FREIGABE)": false
+  },
+  {
+    "label": "Alternative Option gewählt (nicht die Empfehlung) — belegt echte Radio-Interaktivität",
+    "Workflow": "f39-ws2b-nachweis",
+    "Architektur-Entscheidungsblock sichtbar": true,
+    "Empfehlung im Text markiert": true,
+    "Freigabe-Halt sichtbar (WARTET_FREIGABE)": false
+  },
+  {
+    "label": "Eigene Begründung eingetippt",
+    "Workflow": "f39-ws2b-nachweis",
+    "Architektur-Entscheidungsblock sichtbar": true,
+    "Empfehlung im Text markiert": true,
+    "Freigabe-Halt sichtbar (WARTET_FREIGABE)": false
+  },
+  {
+    "label": "„Entscheidung speichern“ geklickt",
+    "Workflow": "f39-ws2b-nachweis",
+    "Architektur-Entscheidungsblock sichtbar": false,
+    "Empfehlung im Text markiert": false,
+    "Freigabe-Halt sichtbar (WARTET_FREIGABE)": true
+  },
+  {
+    "label": "Reload — Zustand (WARTET_FREIGABE, keine Architektur-Entscheidung mehr offen) bleibt bestehen",
+    "Workflow": "f39-ws2b-nachweis",
+    "Architektur-Entscheidungsblock sichtbar": false,
+    "Empfehlung im Text markiert": false,
+    "Freigabe-Halt sichtbar (WARTET_FREIGABE)": true
+  }
+]

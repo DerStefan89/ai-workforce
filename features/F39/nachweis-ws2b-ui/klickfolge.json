@@ -1,0 +1,39 @@
+{
+  "url": "http://127.0.0.1:4175/#/workflows/f39-ws2b-nachweis",
+  "viewport": { "breite": 1000, "hoehe": 1400 },
+  "localStorageEntfernen": [],
+  "screenshotAusschnitt": { "selector": "#workflow-detail", "hoehe": 1300 },
+  "beobachtete": {
+    "gruppen": [],
+    "sichtbarkeit": [],
+    "titel": { "name": "Workflow", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Architektur-Entscheidungsblock sichtbar", "selector": ".wf-architektur-entscheidung" },
+      { "name": "Empfehlung im Text markiert", "selector": ".wf-architektur-option .badge.empfehlung" },
+      { "name": "Freigabe-Halt sichtbar (WARTET_FREIGABE)", "selector": "#wf-freigabe-begruendung" }
+    ]
+  },
+  "schritte": [
+    { "label": "Workflow-Detail geöffnet: Architektur-Entscheidung erforderlich, Empfehlung vorausgewählt", "screenshot": "01-architektur-entscheidung-offen.png" },
+    {
+      "label": "Alternative Option gewählt (nicht die Empfehlung) — belegt echte Radio-Interaktivität",
+      "klick": "input[name=\"wf-architektur-frage-0\"][value=\"Ein Objekt je Lauf\"]",
+      "screenshot": "02-alternative-option-gewaehlt.png"
+    },
+    {
+      "label": "Eigene Begründung eingetippt",
+      "tippen": { "selector": "#wf-architektur-begruendung-0", "text": "Weniger Dateien wiegt hier schwerer als das Muster." }
+    },
+    {
+      "label": "„Entscheidung speichern“ geklickt",
+      "klick": "button[data-aktion=\"architektur-entscheidung\"]",
+      "warteAufSelector": { "selector": "#wf-freigabe-begruendung", "timeoutMs": 5000 },
+      "screenshot": "03-entscheidung-gespeichert-wartet-freigabe.png"
+    },
+    {
+      "label": "Reload — Zustand (WARTET_FREIGABE, keine Architektur-Entscheidung mehr offen) bleibt bestehen",
+      "reload": true,
+      "screenshot": "04-reload-zustand-bleibt.png"
+    }
+  ]
+}
