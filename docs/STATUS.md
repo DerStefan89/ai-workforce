@@ -40,7 +40,10 @@ F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
 durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben offen,
-`features/F33/feature.md`), F34–F39 noch nicht begonnen, F40 (Jarvis-
+`features/F33/feature.md`), F34 `IN_ARBEIT` (WS-1/WS-2 abgeschlossen,
+WS-3 Projekt-Interview gebaut, noch nicht abgenommen), F35–F39 noch nicht
+begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
+(Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
@@ -470,9 +473,15 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   `features/F34/feature.md`, Status `IN_ARBEIT` (WS-1 Sparring-Backend —
   Rolle `product-coach`, `POST`/`GET /api/sparring` — gebaut, realer
   3-Turn-Nachweis `features/F34/nachweis-ws1.md`; WS-2 Sparring-UI + "Als
-  Auftrag anlegen" noch offen). Nach F33.
+  Auftrag anlegen" gebaut; WS-3 Projekt-Interview — E-M5-12, Coach-Modus
+  `projekt` erzeugt `projekt_entwurf`, `vergebeFeatureIds`/
+  `baueCapabilityAuszug`/`baueAuftragAusProjektentwurf`, Unterumschalter
+  „Feature | Projekt" in `views/chat.js` — gebaut, `npm run check` grün,
+  realer Nachweis `features/F34/nachweis-ws3.md`, noch nicht durch Stefan
+  abgenommen). Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
   ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
+  Nach F41 (E-M5-13/E-M5-14, neue Reihenfolge F34 → F39 → F41 → F35).
 - ⏳ **F36** — Capability Library Expansion. Noch nicht begonnen. Nach
   E-M5-5, parallel ab F34.
 - ⏳ **F37** — Besetzungs-Erklärung & Override. Noch nicht begonnen. Nach
@@ -480,7 +489,11 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 - ⏳ **F38** — Projektwissen-Index, wegwerfbar. Noch nicht begonnen. Nach
   F33, F35.
 - ⏳ **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
-  20.09.2026). Noch nicht begonnen.
+  20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage" — Stack-ADR,
+  Modulschnitt, Datenmodell als Schemas, E-M5-13). Noch nicht begonnen; vor
+  F35 gezogen (E-M5-13), direkt nach F34.
+- ⏳ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Noch nicht begonnen;
+  direkt nach F39 gezogen (statt erst in F30).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1

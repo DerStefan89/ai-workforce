@@ -27,7 +27,7 @@ function STILLER_SCHREIBER() {}
  * ist kein Fehler (Erststart) — listeVersionen liefert dafür bereits [].
  * @param basisVerzeichnis - Kontrollzustand-Wurzel des Projekts
  * @param projektId - Projekt-id der bedienenden Handler-Instanz (erzeugeRequestHandler-Option)
- * @returns { verlauf: [{ laufId, nachricht, coachAntwort }] }
+ * @returns { verlauf: [{ laufId, nachricht, coachAntwort, modus }] }
  */
 export function baueSparringVerlaufsProjektion(basisVerzeichnis, projektId) {
   const versionen = listeVersionen(`sparring-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
@@ -36,6 +36,9 @@ export function baueSparringVerlaufsProjektion(basisVerzeichnis, projektId) {
       laufId: version.herkunft?.lauf_id ?? null,
       nachricht: version.daten?.nachricht ?? null,
       coachAntwort: version.daten?.coachAntwort ?? null,
+      // F34 WS-3: Alt-Einträge (vor WS-3, kein 'modus'-Feld geschrieben) projizieren als
+      // 'feature' — das war ihr einziges Verhalten, bevor der Modus existierte.
+      modus: version.daten?.modus ?? 'feature',
     })),
   }
 }

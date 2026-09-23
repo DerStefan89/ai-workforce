@@ -98,6 +98,11 @@ leeren Template grün.
 - [ ] Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer
       Kontext) vor Freigabe/Commit durchlaufen — nicht optional, nicht
       retroactiv nachgeholt (F-046)
+- [ ] [FÜLLUNG, nur UI] UI-Workstreams liefern vor Übergabe an Stefan einen
+      Render-Nachweis per `npm run render-nachweis` (Screenshots +
+      Klicktabelle) — ein Reviewer-/QA-Pass allein findet keine real nur im
+      Browser sichtbaren Fehler wie eine überschriebene `[hidden]`-Regel
+      oder eine fehlende `classList`-Mutation (F-622)
 - [ ] KEINE Commits ohne explizite Freigabe
 
 ---

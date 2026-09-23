@@ -1,0 +1,31 @@
+{
+  "art": "projekt_entwurf",
+  "antwort": "Auf Basis des Interviews schlage ich diesen Projekt-Entwurf für die Design-Phase vor F30 vor.",
+  "alternativen": null,
+  "scope": null,
+  "projekt": {
+    "vision": "Alle dokumentierten Optik-Findings vor F30 in einem gebündelten Durchgang schließen, ohne neue Funktionalität zu bauen.",
+    "zielgruppe": "Stefan als einziger Nutzer der AI Workforce, der die Bento-Karten im Leitstand täglich sieht.",
+    "ziele": ["Kein offenes Optik-Finding mehr in state/findings.md mit Bezug auf Workboard-/Dashboard-Karten", "Konsistente Design-Tokens über alle Bento-Karten"],
+    "scope_in": ["Bestehende Optik-Findings der Karten Roadmap/Verbrauch", "Konsistente Anwendung von style.css-Tokens"],
+    "scope_out": ["Neue Views oder Routen", "Funktionale Änderungen an bestehenden Endpunkten"],
+    "meilensteine": [
+      {
+        "titel": "Design-Phase vor F30",
+        "ziel": "Alle dokumentierten Optik-Findings in einem Durchgang beheben.",
+        "features": [
+          {
+            "titel": "Bento-Karten Design-Angleichung",
+            "ziel": "Roadmap- und Verbrauchs-Karte nutzen dieselben Design-Tokens wie der Rest des Dashboards.",
+            "nicht_ziele": ["Neue Kartentypen", "Neue Datenquellen"],
+            "akzeptanzkriterien": ["F-596 gelöst", "design-guardian-Pass ohne neue Befunde"],
+            "abhaengig_von_titel": []
+          }
+        ]
+      }
+    ],
+    "capabilities_bedarf": [{ "bedarf": "Code-Review der Design-Angleichung vor Freigabe", "ressource_id": "claude-code", "status": "vorhanden" }],
+    "architektur_hinweise": ["Keine neuen Farben/Schatten ohne Freigabe — bestehende Design-Tokens genügen."],
+    "offene_fragen": ["Soll die Design-Phase vor oder nach F34 WS-2 laufen?"]
+  }
+}

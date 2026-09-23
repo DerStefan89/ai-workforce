@@ -412,6 +412,14 @@
             <button type="button" id="chat-modus-jarvis-btn" class="btn btn-primary" aria-pressed="true">Jarvis</button>
             <button type="button" id="chat-modus-sparring-btn" class="btn" aria-pressed="false">Sparring</button>
           </div>
+          <!-- F34 WS-3: Unterumschalter NUR im Modus 'sparring' sichtbar (views/chat.js
+               initUntermodusUmschalter) — 'Feature' (unverändertes WS-1/WS-2-Sparring, Standard) vs.
+               'Projekt' (Projekt-Interview, POST /api/sparring { modus: 'projekt' }). Muster
+               .chat-modus-auswahl. -->
+          <div class="chat-modus-auswahl" id="chat-untermodus-auswahl" role="group" aria-label="Sparring-Modus" hidden>
+            <button type="button" id="chat-untermodus-feature-btn" class="btn btn-primary" aria-pressed="true">Feature</button>
+            <button type="button" id="chat-untermodus-projekt-btn" class="btn" aria-pressed="false">Projekt</button>
+          </div>
           <p id="chat-fehler" class="fehler" hidden></p>
           <div id="chat-verlauf"></div>
           <button type="button" id="chat-ganzen-verlauf-link" class="chat-ganzen-verlauf-link" hidden>Ganzen Verlauf öffnen</button>

@@ -1,0 +1,26 @@
+{
+  "url": "http://127.0.0.1:4173/#/chat",
+  "viewport": { "breite": 900, "hoehe": 500 },
+  "localStorageEntfernen": ["leitstand-chat-modus", "leitstand-chat-sparring-untermodus"],
+  "screenshotAusschnitt": { "selector": "#view-chat", "hoehe": 260 },
+  "beobachtete": {
+    "gruppen": [
+      { "name": "Aktiver Hauptmodus-Button", "ids": ["chat-modus-jarvis-btn", "chat-modus-sparring-btn"], "aktivKlasse": "btn-primary" },
+      { "name": "Aktiver Untermodus-Button", "ids": ["chat-untermodus-feature-btn", "chat-untermodus-projekt-btn"], "aktivKlasse": "btn-primary" }
+    ],
+    "sichtbarkeit": [
+      { "name": "Untermodus sichtbar", "id": "chat-untermodus-auswahl" }
+    ],
+    "titel": { "name": "Chat-Titel", "selector": "#chat-titel" }
+  },
+  "schritte": [
+    { "label": "Start (kein gespeicherter Modus)", "screenshot": "01-initial-jarvis.png" },
+    { "label": "Klick „Sparring\"", "klick": "#chat-modus-sparring-btn", "screenshot": "02-sparring-feature.png" },
+    { "label": "Klick „Projekt\"", "klick": "#chat-untermodus-projekt-btn", "screenshot": "03-sparring-projekt.png" },
+    { "label": "Klick „Feature\"", "klick": "#chat-untermodus-feature-btn" },
+    { "label": "Klick „Jarvis\"", "klick": "#chat-modus-jarvis-btn", "screenshot": "04-zurueck-jarvis.png" },
+    { "label": "Klick „Sparring\" (für Reload-Test)", "klick": "#chat-modus-sparring-btn" },
+    { "label": "Klick „Projekt\" (für Reload-Test)", "klick": "#chat-untermodus-projekt-btn" },
+    { "label": "Reload mit gespeichertem Modus sparring/projekt", "reload": true, "screenshot": "05-reload-sparring-projekt.png" }
+  ]
+}

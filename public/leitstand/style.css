@@ -2119,6 +2119,14 @@ th {
   margin: 0 0 var(--space-lg);
 }
 
+/* F34 WS-3 Korrekturrunde (löst F-621): .chat-modus-auswahl { display: flex } überschreibt sonst die
+   UA-Regel [hidden] { display: none } (Autor-Herkunft schlägt UA-Regel unabhängig von der Spezifität,
+   Muster #shell-chat-spalte[hidden] weiter oben) — #chat-untermodus-auswahl trägt beide Klassen und
+   blieb dadurch auch im Modus 'jarvis' sichtbar. */
+.chat-modus-auswahl[hidden] {
+  display: none;
+}
+
 /* F34 WS-2 (löst F-606): Alternativen-Liste (art 'alternativen') und strukturierter Scope-Entwurf
    (art 'scope_entwurf') innerhalb einer Coach-Sprechblase — eigene, gedeckte Karten statt Fließtext,
    damit Titel/Abwägung bzw. die sieben Scope-Abschnitte klar getrennt bleiben. */
@@ -2170,6 +2178,79 @@ th {
 .chat-scope-leer {
   margin: 0;
   color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+/* F34 WS-3 (E-M5-12): Meilensteine/Features eines Projekt-Entwurfs (art 'projekt_entwurf') und
+   der Capability-Bedarf — dieselben Tokens wie .chat-scope-abschnitt (verschachtelt: ein
+   Meilenstein ist selbst eine Karte innerhalb des Meilensteine-Abschnitts, ein Feature eine
+   dritte, flachere Ebene darin). Kein neues Farb-/Schattenpaar. */
+.chat-projekt-meilenstein {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.chat-projekt-meilenstein + .chat-projekt-meilenstein {
+  margin-top: var(--space-sm);
+}
+
+.chat-projekt-meilenstein-titel {
+  margin: 0 0 var(--space-3xs);
+  font-weight: 700;
+}
+
+.chat-projekt-meilenstein-ziel {
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.chat-projekt-feature-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.chat-projekt-feature {
+  padding: var(--space-2xs) var(--space-sm);
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.chat-projekt-feature-titel {
+  margin: 0;
+  font-weight: 600;
+}
+
+.chat-projekt-feature-ziel {
+  margin: var(--space-3xs) 0 0;
+  font-size: var(--font-size-sm);
+}
+
+.chat-projekt-feature-abhaengig {
+  margin: var(--space-3xs) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.chat-capability-bedarf-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.chat-capability-bedarf-eintrag {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
   font-size: var(--font-size-sm);
 }
 

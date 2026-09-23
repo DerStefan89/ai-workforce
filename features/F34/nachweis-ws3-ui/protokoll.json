@@ -1,0 +1,58 @@
+[
+  {
+    "label": "Start (kein gespeicherter Modus)",
+    "Aktiver Hauptmodus-Button": "chat-modus-jarvis-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-feature-btn",
+    "Untermodus sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis"
+  },
+  {
+    "label": "Klick „Sparring\"",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-feature-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  },
+  {
+    "label": "Klick „Projekt\"",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-projekt-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  },
+  {
+    "label": "Klick „Feature\"",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-feature-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  },
+  {
+    "label": "Klick „Jarvis\"",
+    "Aktiver Hauptmodus-Button": "chat-modus-jarvis-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-feature-btn",
+    "Untermodus sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis"
+  },
+  {
+    "label": "Klick „Sparring\" (für Reload-Test)",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-feature-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  },
+  {
+    "label": "Klick „Projekt\" (für Reload-Test)",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-projekt-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  },
+  {
+    "label": "Reload mit gespeichertem Modus sparring/projekt",
+    "Aktiver Hauptmodus-Button": "chat-modus-sparring-btn",
+    "Aktiver Untermodus-Button": "chat-untermodus-projekt-btn",
+    "Untermodus sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach"
+  }
+]
