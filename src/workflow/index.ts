@@ -829,6 +829,24 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         }
       }
     }
+    // Regel 1d (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH" — real
+    // beobachtet, F39-WS-3b-Reallauf, Lauf 4b3ebc42-91df-422b-9dd4-b2fc02dc4151, 23.09.2026):
+    // architecture-advisor trägt bewusst output_schema:null (ROLLENVERTRAEGE — Prosa-Urteil statt
+    // JSON-Vertrag). Anders als Regel 1b/1c gibt es deshalb KEIN output_schema, an das sich diese
+    // Prüfung koppeln könnte ('ausfuehrung' trägt ebenfalls null — output_schema unterscheidet die
+    // beiden Rollen nicht). vorschritt.rolle ist hier die einzige verlässliche Unterscheidung —
+    // bewusste Abweichung von der sonstigen "Kopplung an output_schema statt an rolle"-Konvention
+    // dieses Moduls (Regel 4b-Kommentar): kein Import von src/rollen/ROLLENVERTRAEGE, nur ein
+    // String-Vergleich auf dem ohnehin vorhandenen Feld. Der Aufrufer (leitstand-server.mjs)
+    // berechnet advisorUrteilFehlt NUR für rolle 'architecture-advisor' (liest den Prosa-Text auf
+    // eine eigene 'Urteil: ...'-Zeile) — für jede andere Rolle bleibt das Feld undefined.
+    if (vorschritt.rolle === 'architecture-advisor' && vorschrittErgebnis.advisorUrteilFehlt === true) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (architecture-advisor) trägt kein erkennbares Urteil (Zeile 'Urteil: ...' fehlt) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
     if (vorschritt.nachfolger === null) {
       return { art: 'fertig', aktiverSchrittId: null }
     }

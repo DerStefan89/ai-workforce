@@ -588,6 +588,49 @@ test("Ausgang 'haltKlaerung': ein Architektur-Verstoß hält AUCH an, wenn der S
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
 })
 
+// ─── Regel 1d: Advisor-Urteil (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH") ──
+
+test("Ausgang 'haltKlaerung': ein fehlendes Advisor-Urteil hält an, statt fortzusetzen (real beobachtet, Lauf 4b3ebc42)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-3', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /architecture-advisor.*kein erkennbares Urteil/)
+})
+
+test("Ausgang 'starte': ein vorhandenes Advisor-Urteil (advisorUrteilFehlt false) setzt fort", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-2', 'schritt-3', { rolle: 'architecture-advisor', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-3', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: false })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-3')
+})
+
+test('Regel 1d greift NICHT bei einer anderen Rolle — ein irrtümlich mitgesendetes advisorUrteilFehlt bleibt folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1 schlägt Regel 1d: ein VERWEIGERTER Advisor-Lauf hält über seinen Ausgang an, nicht über das (fehlende) Urteil', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-2', null, { rolle: 'architecture-advisor', status: 'VERWEIGERT', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'VERWEIGERT', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
+test("Ausgang 'haltKlaerung': ein fehlendes Advisor-Urteil hält AUCH an, wenn der Schritt der letzte ist", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-2', null, { rolle: 'architecture-advisor', status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-2', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', advisorUrteilFehlt: true })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
   // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
   // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.

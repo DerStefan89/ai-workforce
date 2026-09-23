@@ -31,7 +31,8 @@
  * der Praxis nicht vor.
  *
  * AK7 (WS-2) — starteCodexGateway: Grün-Fall mit protokollierendem Starter
- * (das Argv geht UNVERÄNDERT durch, stdinLeer ist gesetzt), Laufakte mit
+ * (das Argv geht MINUS des letzten, per stdin übergebenen Prompt-Tokens
+ * durch — F-642 —, stdinDaten trägt den Prompt), Laufakte mit
  * worker/modell_deklariert/berechtigungskontext, Rohstrom mit ALLEN sieben
  * von AK7 geforderten Feldern (ein Feld, das kein Test liest, ließe sich
  * ersatzlos löschen), die beiden beobachtungsbasis-Fälle, ein
@@ -628,12 +629,15 @@ test('AK7 grün: starteCodexGateway registriert eine Laufakte mit worker/modell_
     assert.equal(ergebnis.laufakte.beobachtungsbasis_vollstaendig, true)
     assert.equal(validiereLaufakteDaten(ergebnis.laufakte).length, 0)
 
-    // D5: exakt das Argv von baueCodexAufruf, kein zusätzliches Token.
+    // D5: exakt das Argv von baueCodexAufruf, MINUS das letzte (Prompt-)Element (F-642: der
+    // Prompt geht über stdin, kein zusätzliches/fehlendes Token sonst).
     assert.equal(aufrufe.length, 1)
-    assert.deepStrictEqual(aufrufe[0].tokens, TOKENS_GUELTIG)
+    assert.deepStrictEqual(aufrufe[0].tokens, TOKENS_GUELTIG.slice(0, -1))
     assert.deepStrictEqual(aufrufe[0].startziel, STARTZIEL)
-    // F-307: stdinLeer ist für Codex Pflicht, nicht optional.
-    assert.equal(aufrufe[0].optionen?.stdinLeer, true)
+    // F-642: stdinDaten trägt für Codex den Prompt — Pflicht, nicht optional (löst F-307s
+    // stdinLeer-Pflicht ab, die denselben Zweck jetzt über echte Daten statt Leere erfüllt).
+    assert.equal(aufrufe[0].optionen?.stdinDaten, TOKENS_GUELTIG[TOKENS_GUELTIG.length - 1])
+    assert.equal(aufrufe[0].optionen?.stdinLeer, undefined)
   } finally {
     raeumeGatewayLauf(laufId)
   }
@@ -737,7 +741,7 @@ test('AK7: zeitgrenzeMs und abbruchSignal werden unverändert an den Starter dur
     // für Codex dann wirkungslos.
     assert.equal(aufrufe[0].optionen?.zeitgrenzeMs, 12345)
     assert.equal(aufrufe[0].optionen?.abbruchSignal, abbruchSignal)
-    assert.equal(aufrufe[0].optionen?.stdinLeer, true)
+    assert.equal(aufrufe[0].optionen?.stdinDaten, TOKENS_GUELTIG[TOKENS_GUELTIG.length - 1])
   } finally {
     raeumeGatewayLauf(laufId)
   }
@@ -966,4 +970,34 @@ test('F-307: stdinLeer gegen ein Kind, das sofort endet — der stdin-Fehlerkana
   const ergebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)'], { zeitgrenzeMs: STDIN_ZEITGRENZE_GRUEN_MS, stdinLeer: true })
   assert.equal(ergebnis.exitCode, 0)
   assert.equal(ergebnis.startfehler, null)
+})
+
+// ─── F-642: stdinDaten, real und kalibriert (kein Spy) ──────────────────────
+// Real gemessen (Lauf bd7e2ba4-4f71-4545-85f5-606711e6f17a, F39-WS-3b-Reallauf,
+// 23.09.2026): ein 69.289 Zeichen langes Prompt-Argv-Element ließ spawn() unter
+// Windows synchron mit ENAMETOOLONG werfen — der Prozess kam nie zum Start,
+// kein Modell-, kein Schema-Fehler. Der Rot-Fall unten reproduziert exakt
+// diesen Mechanismus (kein erfundener Grenzwert: 40.000 Zeichen liegen sicher
+// über Stefans genannter 32.000er-Schwelle UND über keiner bekannten
+// Windows-Argv-Grenze, empirisch auf dieser Maschine bestätigt), der
+// Grün-Fall belegt, dass dieselbe Datenmenge über stdinDaten den Kindprozess
+// unversehrt erreicht (Byte-für-Byte-Vergleich im Prüfskript, kein bloßes
+// "der Prozess endete").
+const STDIN_DATEN_GROESSE = 40000
+
+test('F-642 rot (real gemessen, kein Spy): ein Argv-Element dieser Größe wirft spawn ENAMETOOLONG unter Windows', { skip: process.platform !== 'win32' ? 'ENAMETOOLONG ist ein Windows-spezifischer Fehlercode — auf anderen Plattformen kein belegter Rotfall (YAGNI)' : false }, async () => {
+  const riesigesArgv = 'X'.repeat(STDIN_DATEN_GROESSE)
+  const ergebnis = await starteProzess([process.execPath], ['-e', 'process.exit(0)', riesigesArgv])
+  assert.equal(ergebnis.startfehler?.code, 'ENAMETOOLONG')
+  assert.equal(ergebnis.exitCode, null)
+})
+
+test('F-642 grün (real gemessen, kein Spy): dieselbe Datenmenge kommt über stdinDaten unversehrt am Kindprozess an', async () => {
+  // Liest stdin vollständig, vergleicht die Byte-Länge und beendet sich mit 0 nur bei exakter
+  // Übereinstimmung — ein bloßes "endete regulär" bewiese nicht, dass die Daten ankamen.
+  const pruefskript = `let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.exit(d.length===${STDIN_DATEN_GROESSE}?0:1))`
+  const stdinDaten = 'X'.repeat(STDIN_DATEN_GROESSE)
+  const ergebnis = await starteProzess([process.execPath], ['-e', pruefskript], { zeitgrenzeMs: STDIN_ZEITGRENZE_GRUEN_MS, stdinDaten })
+  assert.equal(ergebnis.startfehler, null)
+  assert.equal(ergebnis.exitCode, 0)
 })

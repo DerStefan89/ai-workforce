@@ -195,6 +195,15 @@ export interface SchrittErgebnis {
   architekturEntscheidungAusstehend?: boolean
   /** OPTIONAL (F39 WS-2b): Anzahl der Fragen in 'entscheidungen_mensch[]' — nur für den Halt-Grund-Text, keine eigene Prüfung. */
   architekturAnzahlFragen?: number
+  /**
+   * OPTIONAL (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH"): true,
+   * wenn ein gerade gelaufener 'architecture-advisor'-Schritt keine erkennbare 'Urteil: ...'-Zeile
+   * trägt. Der Aufrufer (scripts/leitstand-server.mjs) berechnet das Feld NUR für diese Rolle
+   * (liest den Prosa-Text des Laufs) — dieses Modul bleibt abhängigkeitsarm (Kopfkommentar) und
+   * prüft den Text selbst nicht. Ein fehlendes Feld (jeder andere Schritt) bleibt für Regel 1d
+   * folgenlos, wie ein fehlendes 'urteil' für Regel 1b.
+   */
+  advisorUrteilFehlt?: boolean
 }
 
 /**

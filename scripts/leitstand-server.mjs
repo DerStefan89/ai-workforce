@@ -451,6 +451,7 @@ import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCo
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -3960,6 +3961,13 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
       auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug)
+    } else if (schritt.rolle === 'architecture-advisor') {
+      // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
+      // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
+      // an die SPÄTERE 'ausfuehrung'-Rolle gerichtet, nicht an ihn. Real beobachtet (Lauf
+      // 4b3ebc42-91df-422b-9dd4-b2fc02dc4151): ohne Rolleninstruktion plante der Advisor selbst
+      // die Dokumentations-Schreibschritte und bat um Schreibzugriff, statt zu bewerten.
+      auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext)
     }
 
     // F39 WS-3a, Punkt 2 (Ergebnis-Umsetzung): ein 'ausfuehrung'-Schritt, der ein
@@ -4195,6 +4203,18 @@ export function erzeugeRequestHandler(optionen = {}) {
           architekturAnzahlFragen > 0 &&
           findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, schritt.schritt_id) === null
       }
+      // Regel 1d (F-641, löst "Advisor liefert kein Urteil, gilt trotzdem als ERFOLGREICH" —
+      // real beobachtet Lauf 4b3ebc42-91df-422b-9dd4-b2fc02dc4151, 23.09.2026). Gekoppelt an
+      // schritt.rolle statt output_schema, weil architecture-advisor bewusst output_schema:null
+      // trägt (ROLLENVERTRAEGE) — anders als bei Regel 1c gibt es hier kein Schema-Feld, an das
+      // sich die Berechnung koppeln könnte (Begründung: src/workflow/index.ts, Regel-1d-Kommentar).
+      let advisorUrteilFehlt
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'architecture-advisor') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const textErgebnis = laufakteVersion !== null ? leseErgebnistextAusRohstrom(laufakteVersion.daten) : { ok: false }
+        const urteil = textErgebnis.ok ? leseUrteilAusAdvisorText(textErgebnis.text) : null
+        advisorUrteilFehlt = urteil === null
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -4225,6 +4245,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             architekturVerstoesse,
             architekturEntscheidungAusstehend,
             architekturAnzahlFragen,
+            advisorUrteilFehlt,
           })
           return {
             status: workflowStatusZuAusgang(naechster),
