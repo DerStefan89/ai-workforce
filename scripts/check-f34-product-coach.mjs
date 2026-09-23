@@ -623,8 +623,12 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   if (!/import\s*\{[^}]*\blegeAuftragAn\b[^}]*\}\s*from\s*['"]\.\.\/api\.js['"]/.test(quelltext)) {
     befunde.push("(j): public/leitstand/views/chat.js importiert 'legeAuftragAn' nicht (mehr) aus '../api.js' — Auftrag-Brücke fehlt oder wurde umgebaut")
   }
-  if (!/legeAuftragAn\(\{\s*titel,\s*auftragstext\s*\}\)/.test(quelltext)) {
-    befunde.push("(j): kein Aufruf 'legeAuftragAn({ titel, auftragstext })' in views/chat.js gefunden — POST /api/auftraege erwartet exakt diese Form (pruefeAuftragsformular)")
+  // F39 WS-2a: der Aufruf trägt seither optional ein verschachteltes '...(herkunft !== null ? { herkunft } : {})'
+  // NACH 'titel, auftragstext' (leseAuftragKandidat/pruefeAuftragsformular) — die Regex prüft nur noch das
+  // Präfix (verschachtelte '{'/'}' im Spread-Ausdruck lassen sich mit '[^}]*' nicht sauber überspringen),
+  // verlangt aber weiterhin GENAU diese beiden Felder in GENAU dieser Reihenfolge zuerst.
+  if (!/legeAuftragAn\(\{\s*titel,\s*auftragstext\b/.test(quelltext)) {
+    befunde.push("(j): kein Aufruf 'legeAuftragAn({ titel, auftragstext, ... })' in views/chat.js gefunden — POST /api/auftraege erwartet titel/auftragstext zuerst (pruefeAuftragsformular)")
   }
   if (!/art\s*===\s*'scope_entwurf'/.test(quelltext) || !/art\s*===\s*'auftrag_vorschlag'/.test(quelltext)) {
     befunde.push("(j): leseAuftragKandidat sollte sowohl 'scope_entwurf' (Sparring) als auch 'auftrag_vorschlag' (Jarvis) als Auftrag-Kandidaten erkennen — mindestens eine der beiden Prüfungen fehlt im Quelltext")
@@ -635,8 +639,22 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   if (!/leseAuftragKandidat/.test(quelltext) || !/renderAuftragBruecke/.test(quelltext)) {
     befunde.push("(j): die Auftrag-Brücke (leseAuftragKandidat/renderAuftragBruecke) scheint nicht mehr vorhanden — art 'auftrag_vorschlag'/'scope_entwurf' würden dann wieder nur als Text gerendert (F-606-Regression)")
   }
+  // F39 WS-2a (löst state/findings.md F-633 Teil a): leseAuftragKandidat setzt 'herkunft' je Ergebnistyp —
+  // ohne dieses Feld hätte ein Projekt-Interview-Auftrag keinen Weg zur deterministischen Kontrolltiefe-
+  // Untergrenze (src/router/index.ts' bestimmeEffektiveKontrolltiefe).
+  if (!/herkunft:\s*\{\s*art:\s*'projekt_interview'\s*\}/.test(quelltext)) {
+    befunde.push("(j): leseAuftragKandidat sollte für 'projekt_entwurf' herkunft: { art: 'projekt_interview' } setzen — fehlt im Quelltext (F39 WS-2a)")
+  }
+  if (!/herkunft:\s*\{\s*art:\s*'sparring'\s*\}/.test(quelltext)) {
+    befunde.push("(j): leseAuftragKandidat sollte für 'scope_entwurf' herkunft: { art: 'sparring' } setzen — fehlt im Quelltext (F39 WS-2a)")
+  }
+  if (!/herkunft:\s*\{\s*art:\s*'jarvis'\s*\}/.test(quelltext)) {
+    befunde.push("(j): leseAuftragKandidat sollte für Jarvis' 'auftrag_vorschlag' herkunft: { art: 'jarvis' } setzen — fehlt im Quelltext (F39 WS-2a)")
+  }
   if (befunde.length === befundeVor) {
-    console.log("✓ (j): views/chat.js ruft legeAuftragAn ausschließlich mit { titel, auftragstext } auf; sowohl Jarvis' 'auftrag_vorschlag' als auch Sparrings 'scope_entwurf' lösen dieselbe Auftrag-Brücke aus (F-606 behoben, nicht mehr nur als Text gerendert).")
+    console.log(
+      "✓ (j): views/chat.js ruft legeAuftragAn mit { titel, auftragstext, ... } auf; sowohl Jarvis' 'auftrag_vorschlag' als auch Sparrings 'scope_entwurf' lösen dieselbe Auftrag-Brücke aus (F-606 behoben, nicht mehr nur als Text gerendert); leseAuftragKandidat setzt 'herkunft' je Ergebnistyp (F39 WS-2a)."
+    )
   }
 }
 
@@ -688,7 +706,9 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   const befundeVor = befunde.length
   const quelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
 
-  if (!/const\s*\{\s*modus,\s*schluessel\s*\}\s*=\s*offenerAuftragDialog/.test(quelltext)) {
+  // F39 WS-2a: die Destrukturierung trägt seither zusätzlich 'herkunft' (für den legeAuftragAn-
+  // Aufruf) — die Regex verlangt weiterhin, dass modus/schluessel VOR jedem weiteren Feld stehen.
+  if (!/const\s*\{\s*modus,\s*schluessel\s*(?:,[^}]*)?\}\s*=\s*offenerAuftragDialog/.test(quelltext)) {
     befunde.push('(l): der Anlegen-Handler sollte modus/schluessel aus offenerAuftragDialog VOR dem await einfrieren — fehlt im Quelltext (mögliche Ergebnis-Fehlzuordnung bei einem währenddessen geöffneten anderen Dialog)')
   }
   if (!/gehoertNochZuDiesemDialog/.test(quelltext)) {

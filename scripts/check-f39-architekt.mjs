@@ -17,6 +17,24 @@
  * (c) baueArchitektAuftragstext (Modus 'feature'/'projekt', Capability-
  * Auszug nur im Modus 'projekt' und nur wenn gesetzt).
  *
+ * F39 WS-2a (löst state/findings.md F-632 Teil a und F-633) ergänzt: (d) das
+ * optionale Herkunftsfeld eines Auftrags (validiereAuftragHerkunft,
+ * src/auftrag/index.ts) — Rot-/Grünfall, importiert statt zweiter
+ * Regelsatz —, (e) die deterministische Kontrolltiefe-Untergrenze
+ * (bestimmeEffektiveKontrolltiefe/waehleWorkflowVorlage, src/router/
+ * index.ts): 'projekt_interview' hebt 'standard' auf 'hoch' an, jede andere
+ * Herkunft (inkl. keiner) bleibt unverändert, (f) die Struktur von
+ * workflow-vorlagen/hoch.json (Rolle 'architekt' vor der Rolle
+ * 'architecture-advisor', Eingaben/Platzhalter korrekt gesetzt), (g) den
+ * neuen Eingabe-Platzhalter 'ergebnis-@<schrittId>'
+ * (loeseSchrittEingabenAuf, scripts/leitstand-server.mjs) — dieselben drei
+ * Schutzregeln wie beim bestehenden 'aenderungsuebersicht-@' (Selbstverweis,
+ * unbekannte schritt_id, nicht gestartet), direkt gegen die reine Funktion
+ * geprüft (Muster scripts/check-f23-abnahme.mjs (b), kein HTTP-Server
+ * nötig), plus ein realer Grünfall mit einer manuell registrierten
+ * Laufakte/Rohstrom-Fixture, und (h) dass workflow-vorlagen/fast-lane.json
+ * unverändert keinen 'architekt'-Schritt trägt.
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisArchitektur/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -25,10 +43,17 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
-import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueArchitektAuftragstext, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
-import { loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { validiereAuftragHerkunft } from '../src/auftrag/index.ts'
+import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { bestimmeEffektiveKontrolltiefe, waehleWorkflowVorlage } from '../src/router/index.ts'
+import { ladeStartvorlage } from '../src/startvorlage/index.ts'
+import { loeseAusfuehrungsEingabenAuf, loeseSchrittEingabenAuf, pruefeAuftragsformular } from './leitstand-server.mjs'
+import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
 
@@ -263,6 +288,258 @@ console.log('\n=== F39-Architekt-Check ===\n')
 
   if (befunde.length === befundeVor) {
     console.log("✓ (c): baueArchitektAuftragstext trägt den Modus korrekt, den Capability-Auszug nur im Modus 'projekt' und nur wenn gesetzt, Default-Modus 'feature'.")
+  }
+}
+
+// ─── (d) F39 WS-2a: validiereAuftragHerkunft (Rot-/Grünfall) + pruefeAuftragsformular ──────
+{
+  const befundeVor = befunde.length
+
+  const gruen = validiereAuftragHerkunft({ art: 'projekt_interview' })
+  if (gruen.length > 0) {
+    befunde.push(`(d) Grünfall validiereAuftragHerkunft: erwartet [], erhalten ${JSON.stringify(gruen)}`)
+  }
+  const rotArt = validiereAuftragHerkunft({ art: 'erfunden' })
+  if (!rotArt.some((v) => v.includes("'herkunft.art' muss einer von"))) {
+    befunde.push(`(d) Rotfall validiereAuftragHerkunft (unbekannte art): erwartet Verstoß "'herkunft.art' muss einer von", erhalten ${JSON.stringify(rotArt)}`)
+  }
+  const rotFremdfeld = validiereAuftragHerkunft({ art: 'sparring', quelle: 'sollte verboten sein' })
+  if (!rotFremdfeld.some((v) => v.includes("unbekanntes Feld 'herkunft.quelle'"))) {
+    befunde.push(`(d) Rotfall validiereAuftragHerkunft (Fremdfeld): erwartet Verstoß "unbekanntes Feld 'herkunft.quelle'", erhalten ${JSON.stringify(rotFremdfeld)}`)
+  }
+
+  // pruefeAuftragsformular (scripts/leitstand-server.mjs): 'herkunft' optional, unbekannte
+  // 'art' → 400 (ok:false), reicht eine gültige Herkunft unverändert durch.
+  const formGruenMitHerkunft = pruefeAuftragsformular({ titel: 'T', auftragstext: 'X', herkunft: { art: 'jarvis' } })
+  if (formGruenMitHerkunft.ok !== true || JSON.stringify(formGruenMitHerkunft.herkunft) !== JSON.stringify({ art: 'jarvis' })) {
+    befunde.push(`(d) pruefeAuftragsformular Grünfall (mit herkunft): erwartet ok:true mit herkunft durchgereicht, erhalten ${JSON.stringify(formGruenMitHerkunft)}`)
+  }
+  const formGruenOhneHerkunft = pruefeAuftragsformular({ titel: 'T', auftragstext: 'X' })
+  if (formGruenOhneHerkunft.ok !== true || 'herkunft' in formGruenOhneHerkunft) {
+    befunde.push(`(d) pruefeAuftragsformular Grünfall (ohne herkunft): erwartet ok:true ohne 'herkunft'-Feld (Alt-Verhalten unverändert), erhalten ${JSON.stringify(formGruenOhneHerkunft)}`)
+  }
+  const formRot = pruefeAuftragsformular({ titel: 'T', auftragstext: 'X', herkunft: { art: 'erfunden' } })
+  if (formRot.ok !== false) {
+    befunde.push(`(d) pruefeAuftragsformular Rotfall (unbekannte herkunft.art): erwartet ok:false, erhalten ${JSON.stringify(formRot)}`)
+  }
+
+  if (befunde.length === befundeVor) {
+    console.log("✓ (d): validiereAuftragHerkunft akzeptiert eine gültige Herkunft, lehnt eine unbekannte 'art' und ein Fremdfeld ab; pruefeAuftragsformular reicht 'herkunft' optional durch und lehnt eine unbekannte 'art' mit ok:false ab.")
+  }
+}
+
+// ─── (e) F39 WS-2a: deterministische Kontrolltiefe-Untergrenze ────────────────────────────
+{
+  const befundeVor = befunde.length
+
+  // (e1) bestimmeEffektiveKontrolltiefe: nur anheben, nie senken.
+  const faelle = [
+    { kontrolltiefe: 'standard', herkunftArt: 'projekt_interview', erwartet: { kontrolltiefe: 'hoch', angehoben: true } },
+    { kontrolltiefe: 'fast-lane', herkunftArt: 'projekt_interview', erwartet: { kontrolltiefe: 'hoch', angehoben: true } },
+    { kontrolltiefe: 'hoch', herkunftArt: 'projekt_interview', erwartet: { kontrolltiefe: 'hoch', angehoben: false } },
+    { kontrolltiefe: 'standard', herkunftArt: 'sparring', erwartet: { kontrolltiefe: 'standard', angehoben: false } },
+    { kontrolltiefe: 'standard', herkunftArt: 'jarvis', erwartet: { kontrolltiefe: 'standard', angehoben: false } },
+    { kontrolltiefe: 'standard', herkunftArt: 'manuell', erwartet: { kontrolltiefe: 'standard', angehoben: false } },
+    { kontrolltiefe: 'fast-lane', herkunftArt: undefined, erwartet: { kontrolltiefe: 'fast-lane', angehoben: false } },
+    { kontrolltiefe: 'fast-lane', herkunftArt: null, erwartet: { kontrolltiefe: 'fast-lane', angehoben: false } },
+  ]
+  for (const fall of faelle) {
+    const ergebnis = bestimmeEffektiveKontrolltiefe(fall.kontrolltiefe, fall.herkunftArt)
+    if (JSON.stringify(ergebnis) !== JSON.stringify(fall.erwartet)) {
+      befunde.push(`(e1) bestimmeEffektiveKontrolltiefe(${fall.kontrolltiefe}, ${JSON.stringify(fall.herkunftArt)}): erwartet ${JSON.stringify(fall.erwartet)}, erhalten ${JSON.stringify(ergebnis)}`)
+    }
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (e1): bestimmeEffektiveKontrolltiefe hebt NUR bei herkunft 'projekt_interview' auf mindestens 'hoch' an, senkt nie, lässt jede andere Herkunft (inkl. keiner) unverändert.")
+  }
+
+  // (e2) waehleWorkflowVorlage: die Anhebung wählt real workflow-vorlagen/hoch.json (Schritt
+  // 'architekt' vorhanden) statt standard.json, und hängt den Hinweis an 'ziel' an.
+  const befundeVorE2 = befunde.length
+  const klassifikationStandard = { kontrolltiefe: 'standard', risikoklasse: 'mittel', task_typen: ['neues-feature'], rueckfragen: [], begruendung: 'Testfixture.' }
+  const angehoben = waehleWorkflowVorlage(klassifikationStandard, 'gate-f39-e2', 'Testziel', process.cwd(), 'projekt_interview')
+  if (!angehoben.schritte.some((s) => s.rolle === 'architekt')) {
+    befunde.push(`(e2) waehleWorkflowVorlage mit herkunft 'projekt_interview' + kontrolltiefe 'standard' sollte hoch.json (mit 'architekt'-Schritt) laden, erhalten Schritte: ${JSON.stringify(angehoben.schritte.map((s) => s.rolle))}`)
+  }
+  if (!angehoben.ziel.includes('Untergrenze hoch wegen herkunft projekt_interview')) {
+    befunde.push(`(e2) waehleWorkflowVorlage sollte die Anhebung sichtbar im 'ziel' vermerken, erhalten: ${JSON.stringify(angehoben.ziel)}`)
+  }
+  const unveraendert = waehleWorkflowVorlage(klassifikationStandard, 'gate-f39-e2b', 'Testziel', process.cwd(), 'sparring')
+  if (unveraendert.schritte.some((s) => s.rolle === 'architekt') || unveraendert.ziel !== 'Testziel') {
+    befunde.push(`(e2) waehleWorkflowVorlage mit herkunft 'sparring' sollte UNVERÄNDERT 'standard' wählen (kein 'architekt'-Schritt, ziel unverändert), erhalten: ${JSON.stringify({ rollen: unveraendert.schritte.map((s) => s.rolle), ziel: unveraendert.ziel })}`)
+  }
+  const ohneHerkunft = waehleWorkflowVorlage(klassifikationStandard, 'gate-f39-e2c', 'Testziel', process.cwd())
+  if (JSON.stringify(ohneHerkunft) !== JSON.stringify(unveraendert).replace(/gate-f39-e2b/g, 'gate-f39-e2c')) {
+    befunde.push('(e2) waehleWorkflowVorlage ohne herkunftArt-Argument sollte bitgenau dasselbe Ergebnis liefern wie mit einer unbekannten/nicht-anhebenden Herkunft (Alt-Aufrufer unverändert)')
+  }
+  if (befunde.length === befundeVorE2) {
+    console.log("✓ (e2): waehleWorkflowVorlage wählt bei herkunft 'projekt_interview' real workflow-vorlagen/hoch.json (statt 'standard') und vermerkt die Anhebung sichtbar in 'ziel'; jede andere Herkunft bleibt unverändert.")
+  }
+}
+
+// ─── (f) workflow-vorlagen/hoch.json: 'architekt' vor 'architecture-advisor', Eingaben korrekt ──
+{
+  const befundeVor = befunde.length
+  const hoch = JSON.parse(readFileSync('workflow-vorlagen/hoch.json', 'utf-8'))
+  const rollenReihenfolge = hoch.schritte.map((s) => s.rolle)
+  const architektIndex = rollenReihenfolge.indexOf('architekt')
+  const advisorIndex = rollenReihenfolge.indexOf('architecture-advisor')
+  if (architektIndex === -1 || advisorIndex === -1 || architektIndex >= advisorIndex) {
+    befunde.push(`(f): 'architekt' sollte VOR 'architecture-advisor' stehen, Rollenreihenfolge: ${JSON.stringify(rollenReihenfolge)}`)
+  }
+  const architektSchritt = hoch.schritte[architektIndex]
+  if (architektSchritt) {
+    if (architektSchritt.worker !== 'codex') befunde.push(`(f): architekt-Schritt sollte worker 'codex' tragen, erhalten '${architektSchritt.worker}'`)
+    if (architektSchritt.werkzeugsatz !== 'lesend') befunde.push(`(f): architekt-Schritt sollte werkzeugsatz 'lesend' tragen, erhalten '${architektSchritt.werkzeugsatz}'`)
+    if (architektSchritt.freigabe !== 'ZWINGEND') befunde.push(`(f): architekt-Schritt sollte freigabe 'ZWINGEND' tragen, erhalten '${architektSchritt.freigabe}'`)
+    // F39-WS-2a-Korrektur (23.09.2026): worker 'codex' löst das Ausgabeschema real über
+    // '--output-schema' ein — Regel 4b (src/workflow/index.ts) hält nur 'claude-code' + gesetztes
+    // output_schema an, nicht 'codex'. Autor (architekt/codex) und Prüfer
+    // (architecture-advisor/claude-code) bleiben damit auf verschiedenen Modellen.
+    if (architektSchritt.output_schema !== 'ergebnis-architektur') {
+      befunde.push(`(f): architekt-Schritt sollte output_schema:'ergebnis-architektur' tragen (worker 'codex' löst es real ein), erhalten ${JSON.stringify(architektSchritt.output_schema)}`)
+    }
+    if (!architektSchritt.eingaben.includes('artefakt:auftrag-__AUFTRAG_ID__')) {
+      befunde.push(`(f): architekt-Schritt sollte den Auftrag als Eingabe tragen, erhalten ${JSON.stringify(architektSchritt.eingaben)}`)
+    }
+  }
+  const advisorSchritt = hoch.schritte[advisorIndex]
+  const architektSchrittId = architektSchritt?.schritt_id
+  if (advisorSchritt) {
+    if (advisorSchritt.worker !== 'claude-code') befunde.push(`(f): architecture-advisor-Schritt sollte worker 'claude-code' tragen, erhalten '${advisorSchritt.worker}'`)
+    if (advisorSchritt.output_schema !== null) {
+      befunde.push(`(f): architecture-advisor-Schritt sollte output_schema:null tragen (Rollenvertrag architecture-advisor.erlaubtes_output_schema: null), erhalten ${JSON.stringify(advisorSchritt.output_schema)}`)
+    }
+  }
+  if (advisorSchritt && architektSchrittId && !advisorSchritt.eingaben.includes(`artefakt:ergebnis-@${architektSchrittId}`)) {
+    befunde.push(`(f): architecture-advisor-Schritt sollte 'ergebnis-@${architektSchrittId}' als Eingabe tragen, erhalten ${JSON.stringify(advisorSchritt.eingaben)}`)
+  }
+  const ausfuehrungSchritt = hoch.schritte.find((s) => s.rolle === 'ausfuehrung')
+  const advisorSchrittId = advisorSchritt?.schritt_id
+  if (ausfuehrungSchritt && architektSchrittId && advisorSchrittId) {
+    const fehlend = [`artefakt:ergebnis-@${architektSchrittId}`, `artefakt:ergebnis-@${advisorSchrittId}`].filter((e) => !ausfuehrungSchritt.eingaben.includes(e))
+    if (fehlend.length > 0) {
+      befunde.push(`(f): ausfuehrung-Schritt sollte die Ergebnisse BEIDER Vorschritte als Eingabe tragen, es fehlen: ${JSON.stringify(fehlend)} (vorhanden: ${JSON.stringify(ausfuehrungSchritt.eingaben)})`)
+    }
+  }
+  if (hoch.aktiver_schritt_id !== architektSchrittId) {
+    befunde.push(`(f): aktiver_schritt_id sollte auf den architekt-Schritt zeigen, erhalten '${hoch.aktiver_schritt_id}'`)
+  }
+  if (!Number.isInteger(hoch.grenzen?.max_schritte) || hoch.grenzen.max_schritte < hoch.schritte.length) {
+    befunde.push(`(f): grenzen.max_schritte (${hoch.grenzen?.max_schritte}) sollte mindestens die reale Schrittzahl (${hoch.schritte.length}) decken`)
+  }
+  if (befunde.length === befundeVor) {
+    console.log(`✓ (f): workflow-vorlagen/hoch.json — 'architekt' (Schritt '${architektSchrittId}') steht vor 'architecture-advisor', beide Folgeschritte referenzieren die vorherigen Ergebnisse korrekt, max_schritte deckt alle ${hoch.schritte.length} Schritte.`)
+  }
+}
+
+// ─── (g) Eingabe-Platzhalter 'ergebnis-@<schrittId>' (loeseSchrittEingabenAuf) ────────────
+{
+  const befundeVor = befunde.length
+  const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const repoWurzel = process.cwd()
+  const testBasis = `kontrollzustand-test-f39-g-${randomUUID()}`
+  const ladeOptionen = { basisVerzeichnis: testBasis, schreiber: () => {} }
+
+  function baueSchritt(eingaben, felder = {}) {
+    return {
+      schritt_id: 'schritt-referenzierend',
+      rolle: 'code-reviewer',
+      werkzeugsatz: 'lesend',
+      worker: 'claude-code',
+      modell: 'claude-sonnet-5',
+      eingaben,
+      output_schema: null,
+      freigabe: 'AUTOMATISCH',
+      risiko: 'Gate-Fixture, kein reales Risiko.',
+      zeitgrenze_ms: 600000,
+      nachfolger: null,
+      status: 'OFFEN',
+      lauf_id: null,
+      ...felder,
+    }
+  }
+
+  try {
+    // (g1) unbekannte schritt_id.
+    {
+      const schritt = baueSchritt(['artefakt:ergebnis-@schritt-existiert-nicht'])
+      const workflowDaten = { workflow_id: 'gate-f39-g1', schritte: [schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('keine bekannte schritt_id')) {
+        befunde.push(`(g1) unbekannte schritt_id: erwartet ok:false mit Ablehnungsgrund 'keine bekannte schritt_id', erhalten ${JSON.stringify(ergebnis)}`)
+      } else {
+        console.log("✓ (g1) 'ergebnis-@' mit unbekannter schritt_id: Schritt-Start wird abgelehnt.")
+      }
+    }
+
+    // (g2) bekannte schritt_id, aber lauf_id noch null (Zielschritt noch nicht gestartet).
+    {
+      const referenzierterSchritt = { ...baueSchritt([]), schritt_id: 'schritt-1', lauf_id: null }
+      const schritt = baueSchritt(['artefakt:ergebnis-@schritt-1'])
+      const workflowDaten = { workflow_id: 'gate-f39-g2', schritte: [referenzierterSchritt, schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('noch keine lauf_id')) {
+        befunde.push(`(g2) schritt_id ohne lauf_id: erwartet ok:false mit Ablehnungsgrund 'noch keine lauf_id', erhalten ${JSON.stringify(ergebnis)}`)
+      } else {
+        console.log("✓ (g2) 'ergebnis-@' auf einen noch nicht gestarteten Schritt (lauf_id: null): Schritt-Start wird abgelehnt.")
+      }
+    }
+
+    // (g3) Selbstreferenz.
+    {
+      const schritt = { ...baueSchritt(['artefakt:ergebnis-@schritt-referenzierend']), lauf_id: 'vorheriger-versuch-lauf-1' }
+      const workflowDaten = { workflow_id: 'gate-f39-g3', schritte: [schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      if (ergebnis.ok !== false || !ergebnis.grund.includes('verweist auf sich selbst')) {
+        befunde.push(`(g3) Selbstreferenz: erwartet ok:false mit Ablehnungsgrund 'verweist auf sich selbst', erhalten ${JSON.stringify(ergebnis)}`)
+      } else {
+        console.log("✓ (g3) 'ergebnis-@'-Selbstreferenz eines Schritts auf sich selbst wird abgelehnt.")
+      }
+    }
+
+    // (g4) Grünfall: eine real registrierte Laufakte mit einem Rohstrom, dessen Ergebnistext
+    // strukturiertes JSON trägt (Muster architekt/ergebnis-architektur), wird korrekt extrahiert
+    // und formatiert als 'inhalt' in die Anfragenliste aufgenommen.
+    {
+      const zielLaufId = `gate-f39-g4-ziellauf-${randomUUID()}`
+      mkdirSync(testBasis, { recursive: true })
+      const rohstromPfad = join(testBasis, `${zielLaufId}-rohstrom.json`)
+      writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify({ zusammenfassung: 'Testentwurf' }) }) }))
+      const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+      registriereKernArtefakt(
+        `laufakte-${zielLaufId}`,
+        profilReferenz,
+        { erzeuger: 'kern', schritt: 'gate-fixture' },
+        { laufakte_schema: 'v0', lauf_id: zielLaufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+        [],
+        ladeOptionen
+      )
+      const referenzierterSchritt = { ...baueSchritt([]), schritt_id: 'schritt-1', lauf_id: zielLaufId }
+      const schritt = baueSchritt(['artefakt:ergebnis-@schritt-1'])
+      const workflowDaten = { workflow_id: 'gate-f39-g4', schritte: [referenzierterSchritt, schritt] }
+      const ergebnis = loeseSchrittEingabenAuf(schritt, workflowDaten, undefined, 'Gate-Auftragstext.', vorlage, repoWurzel, ladeOptionen)
+      const anfrage = ergebnis.ok ? ergebnis.eingaben.anfragen.find((a) => a.pfad === `artefakt:ergebnis-${zielLaufId}`) : undefined
+      if (!ergebnis.ok || anfrage === undefined || JSON.parse(anfrage.inhalt).zusammenfassung !== 'Testentwurf') {
+        befunde.push(`(g4) Grünfall: erwartet ok:true mit einer Anfrage, deren 'inhalt' das extrahierte, formatierte JSON trägt, erhalten ${JSON.stringify(ergebnis)}`)
+      } else {
+        console.log("✓ (g4) 'ergebnis-@' löst real auf eine registrierte Laufakte auf und extrahiert deren strukturiertes Ergebnis formatiert in die Anfragenliste.")
+      }
+    }
+  } finally {
+    raeumeVerzeichnis(testBasis)
+  }
+}
+
+// ─── (h) workflow-vorlagen/fast-lane.json trägt unverändert keinen 'architekt'-Schritt ────
+{
+  const befundeVor = befunde.length
+  const fastLane = JSON.parse(readFileSync('workflow-vorlagen/fast-lane.json', 'utf-8'))
+  if (fastLane.schritte.some((s) => s.rolle === 'architekt')) {
+    befunde.push("(h): workflow-vorlagen/fast-lane.json sollte KEINEN 'architekt'-Schritt tragen (unverändert, nur 'hoch' bekommt ihn)")
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (h): workflow-vorlagen/fast-lane.json bleibt unverändert ohne 'architekt'-Schritt.")
   }
 }
 

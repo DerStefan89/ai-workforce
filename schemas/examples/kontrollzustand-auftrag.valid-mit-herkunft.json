@@ -1,0 +1,8 @@
+{
+  "auftrag_schema": "v0",
+  "auftrag_id": "beispiel-auftrag-projekt-interview",
+  "titel": "Erweiterung: Beispiel-Meilenstein",
+  "auftragstext": "Dokumentations-Auftrag aus einem Projekt-Interview.",
+  "erstellt_am": "2026-09-24T09:00:00.000Z",
+  "herkunft": { "art": "projekt_interview" }
+}

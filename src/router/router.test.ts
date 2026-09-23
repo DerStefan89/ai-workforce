@@ -110,17 +110,25 @@ test('waehleWorkflowVorlage: standard liefert Ausführung (ZWINGEND) gefolgt von
   assert.strictEqual(workflow.schritte[0].nachfolger, workflow.schritte[1].schritt_id)
 })
 
-test('waehleWorkflowVorlage: hoch liefert Architektur (ZWINGEND) → Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) (F23 WS-1b)', () => {
+test('waehleWorkflowVorlage: hoch liefert Architekt (ZWINGEND) → Architektur-Prüfung (ZWINGEND) → Ausführung (ZWINGEND) → Post-Build-Review (AUTOMATISCH) (F23 WS-1b, F39 WS-2a)', () => {
   const workflow = waehleWorkflowVorlage(klassifikation('hoch'), 'auftrag-123', 'Testziel', REPO_WURZEL)
-  assert.strictEqual(workflow.schritte.length, 3)
+  assert.strictEqual(workflow.schritte.length, 4)
   assert.deepStrictEqual(
     workflow.schritte.map((s) => s.rolle),
-    ['architecture-advisor', 'ausfuehrung', 'code-reviewer']
+    ['architekt', 'architecture-advisor', 'ausfuehrung', 'code-reviewer']
   )
-  assert.strictEqual(workflow.schritte[2].output_schema, 'ergebnis-code-reviewer')
-  assert.strictEqual(workflow.schritte[2].freigabe, 'AUTOMATISCH')
-  assert.strictEqual(workflow.schritte[2].nachfolger, null)
-  assert.ok(workflow.schritte.slice(0, 2).every((s) => s.freigabe === 'ZWINGEND'))
+  // F39 WS-2a-Korrektur: 'architekt' läuft auf worker 'codex' mit output_schema
+  // 'ergebnis-architektur' (löst das Schema real über '--output-schema' ein) — Regel 4b
+  // (src/workflow/index.ts) hält nur 'claude-code' + gesetztes output_schema an, nicht 'codex'.
+  // 'architecture-advisor' rückt auf 'claude-code' mit output_schema:null (Rollenvertrag).
+  assert.strictEqual(workflow.schritte[0].worker, 'codex')
+  assert.strictEqual(workflow.schritte[0].output_schema, 'ergebnis-architektur')
+  assert.strictEqual(workflow.schritte[1].worker, 'claude-code')
+  assert.strictEqual(workflow.schritte[1].output_schema, null)
+  assert.strictEqual(workflow.schritte[3].output_schema, 'ergebnis-code-reviewer')
+  assert.strictEqual(workflow.schritte[3].freigabe, 'AUTOMATISCH')
+  assert.strictEqual(workflow.schritte[3].nachfolger, null)
+  assert.ok(workflow.schritte.slice(0, 3).every((s) => s.freigabe === 'ZWINGEND'))
 })
 
 test('waehleWorkflowVorlage: workflow_id/auftrag_id/ziel werden aus den Platzhaltern befüllt', () => {

@@ -618,19 +618,27 @@ function renderProjekt(projekt) {
  * offenen Dialog wiederfindet, auch über einen Re-Render (Poll-Tick) hinweg.
  * @param modus - 'jarvis' | 'sparring' @param schluessel - eintrag.schluessel @returns Rohmaterial für den Dialog, oder null ohne Kandidat
  */
+/**
+ * F39 WS-2a (löst state/findings.md F-633 Teil a): jeder Kandidat trägt zusätzlich 'herkunft' —
+ * gesetzt VOM CLIENT anhand des Sparring-/Jarvis-Ergebnistyps, nicht vom Server erraten. 'projekt_entwurf'
+ * → 'projekt_interview' (löst über src/router/index.ts' bestimmeEffektiveKontrolltiefe eine
+ * deterministische Kontrolltiefe-Untergrenze 'hoch' aus, sobald der Auftrag geroutet wird),
+ * 'scope_entwurf' → 'sparring', Jarvis' 'auftrag_vorschlag' → 'jarvis'. POST /api/auftraege
+ * nimmt das Feld optional an (pruefeAuftragsformular, scripts/leitstand-server.mjs).
+ */
 function leseAuftragKandidat(modus, antwort) {
   if (antwort === null || typeof antwort !== 'object') return null
   if (modus === 'sparring' && antwort.art === 'scope_entwurf' && antwort.scope) {
-    return baueAuftragAusScope(antwort.scope)
+    return { ...baueAuftragAusScope(antwort.scope), herkunft: { art: 'sparring' } }
   }
   // F34 WS-3: 'auftragModus' ('neu'/'erweiterung') trägt der Server bereits im persistierten
   // projekt-Objekt (verarbeiteRollenChatErgebnis, leitstand-server.mjs) — das Modell selbst
   // entscheidet das nicht (dieselbe F-595-Begründung wie die Feature-/Meilenstein-IDs).
   if (modus === 'sparring' && antwort.art === 'projekt_entwurf' && antwort.projekt) {
-    return baueAuftragAusProjektentwurf(antwort.projekt, antwort.projekt.auftragModus ?? 'neu')
+    return { ...baueAuftragAusProjektentwurf(antwort.projekt, antwort.projekt.auftragModus ?? 'neu'), herkunft: { art: 'projekt_interview' } }
   }
   if (modus === 'jarvis' && antwort.art === 'auftrag_vorschlag' && antwort.auftrag) {
-    return { titel: antwort.auftrag.titel ?? '', auftragstext: antwort.auftrag.text ?? '' }
+    return { titel: antwort.auftrag.titel ?? '', auftragstext: antwort.auftrag.text ?? '', herkunft: { art: 'jarvis' } }
   }
   return null
 }
@@ -1172,7 +1180,7 @@ function initAuftragBruecke() {
       const eintrag = baueAnzeigeListe(modus).find((e) => e.schluessel === schluessel)
       const kandidat = eintrag ? leseAuftragKandidat(modus, eintrag.antwort) : null
       if (kandidat === null) return
-      offenerAuftragDialog = { modus, schluessel, titel: kandidat.titel, auftragstext: kandidat.auftragstext, gesperrt: false, fehler: '', erfolgAuftragId: null }
+      offenerAuftragDialog = { modus, schluessel, titel: kandidat.titel, auftragstext: kandidat.auftragstext, herkunft: kandidat.herkunft ?? null, gesperrt: false, fehler: '', erfolgAuftragId: null }
       renderVerlauf()
       return
     }
@@ -1196,7 +1204,7 @@ function initAuftragBruecke() {
       // etwas anderes, bleibt das FREMDE Dialogfeld unangetastet (der Auftrag wurde serverseitig trotzdem
       // real angelegt, nur die UI-Rückmeldung dafür entfällt dann kommentarlos — kein Datenverlust, nur ein
       // fehlender Hinweis in diesem Rand fall).
-      const { modus, schluessel } = offenerAuftragDialog
+      const { modus, schluessel, herkunft } = offenerAuftragDialog
       const gehoertNochZuDiesemDialog = () => offenerAuftragDialog !== null && offenerAuftragDialog.modus === modus && offenerAuftragDialog.schluessel === schluessel
       const titelFeld = document.getElementById('chat-auftrag-titel')
       const textFeld = document.getElementById('chat-auftrag-text')
@@ -1205,7 +1213,9 @@ function initAuftragBruecke() {
       offenerAuftragDialog = { ...offenerAuftragDialog, titel, auftragstext, gesperrt: true, fehler: '' }
       renderVerlauf()
       try {
-        const antwort = await legeAuftragAn({ titel, auftragstext })
+        // F39 WS-2a: 'herkunft' nur mitgesendet, wenn der Kandidat eine trägt (leseAuftragKandidat) —
+        // ein manuell (außerhalb der Chat-Brücke) angelegter Auftrag bleibt ohne das Feld.
+        const antwort = await legeAuftragAn({ titel, auftragstext, ...(herkunft !== null ? { herkunft } : {}) })
         const koerper = await antwort.json().catch(() => ({}))
         if (!gehoertNochZuDiesemDialog()) return
         if (antwort.status !== 201) {

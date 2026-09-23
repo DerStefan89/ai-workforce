@@ -46,8 +46,11 @@ Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
 (P3) bleiben offen, `npm run render-nachweis` erneut grün
 (F-622-Regel), siehe `features/F34/feature.md`; **Abnahme durch Stefan am
 23.09.2026** im F39-WS-1-Auftrag), F39 `IN_ARBEIT` (WS-1 — Rolle
-`architekt`, Schema, Validator, Gate — gebaut 23.09.2026, WS-2/WS-3 noch
-offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
+`architekt`, Schema, Validator, Gate — gebaut 23.09.2026; WS-2a —
+`hoch.json`-Kette (`architekt` vor `architecture-advisor`), Herkunftsfeld,
+`ergebnis-@`-Eingabe-Platzhalter, deterministische Kontrolltiefe-
+Untergrenze — gebaut 23.09.2026, löst F-633 und F-632 Teil a (Teil b bleibt
+WS-2b); WS-2b/WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
@@ -504,9 +507,16 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   `src/rollen/index.ts`, `schemas/ergebnis-architektur.schema.json` +
   Beispiele, Validator `src/architekt/`, Gate
   `scripts/check-f39-architekt.mjs`, in `npm run check` eingehängt) gebaut
-  (23.09.2026). WS-2 (Einhängung in `hoch.json`/Router/Leitstand) und WS-3
-  (Projektmodus „Architektur-Grundlage", ADR-Erzeugung, realer Durchlauf)
-  noch offen. Vor F35 gezogen (E-M5-13), direkt nach F34.
+  (23.09.2026). WS-2a (`workflow-vorlagen/hoch.json` bekommt `architekt`
+  als neuen Schritt 1 vor `architecture-advisor`; neuer Eingabe-Platzhalter
+  `ergebnis-@<schrittId>`, löst F-632 Teil a; optionales, additives
+  `AuftragV0Daten.herkunft`, gesetzt über die Chat→Auftrag-Brücke; `herkunft.art
+  === 'projekt_interview'` hebt die Router-Kontrolltiefe deterministisch auf
+  mindestens `hoch` an, löst F-633; Router-Auslöserliste für `hoch`) gebaut
+  (23.09.2026). WS-2b (Regel 1c `entscheidungen_mensch` → `haltKlaerung` +
+  Fortsetzungsweg, F-632 Teil b) und WS-3 (Projektmodus
+  „Architektur-Grundlage", ADR-Erzeugung, realer Durchlauf) noch offen. Vor
+  F35 gezogen (E-M5-13), direkt nach F34.
 - ⏳ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Noch nicht begonnen;
   direkt nach F39 gezogen (statt erst in F30).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
