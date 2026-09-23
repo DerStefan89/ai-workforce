@@ -116,8 +116,13 @@ function validiereAdrEntwurf(eintrag: unknown, index: number): string[] {
 
 /**
  * Prüft ein einzelnes Element von daten.schema_entwuerfe gegen die
- * schemas/ergebnis-architektur.schema.json'-Form. 'json_schema' bleibt
- * bewusst ungeprüft (opakes Objekt, siehe Schema-description).
+ * schemas/ergebnis-architektur.schema.json'-Form. 'json_schema' ist seit
+ * F-638 ein String (JSON-Text, kein verschachteltes Objekt — ein echtes,
+ * beliebig strukturiertes Objekt kann das rekursive additionalProperties:false
+ * des Codex-Strict-Modus nicht erfüllen, ohne seinen Zweck als opakes Fragment
+ * zu verlieren). Regel 1c (src/workflow/index.ts) hält den Workflow an, wenn
+ * der String kein gültiges JSON ist — ein unlesbarer String wäre für den
+ * nachfolgenden 'ausfuehrung'-Schritt (baueUmsetzungsInstruktion) unbrauchbar.
  * @param eintrag - geparstes, sonst unbekanntes Objekt
  * @param index - Position im Array, für die Fehlermeldung
  * @returns Liste der Regelverletzungen; leer = gültig
@@ -135,8 +140,16 @@ function validiereSchemaEntwurf(eintrag: unknown, index: number): string[] {
   for (const feld of ['name', 'zweck']) {
     if (feld in eintrag && !istNichtLeererString(eintrag[feld])) verstoesse.push(`'${pfad}.${feld}' muss ein nicht-leerer String sein`)
   }
-  if ('json_schema' in eintrag && !istObjekt(eintrag.json_schema)) {
-    verstoesse.push(`'${pfad}.json_schema' muss ein Objekt sein`)
+  if ('json_schema' in eintrag) {
+    if (!istNichtLeererString(eintrag.json_schema)) {
+      verstoesse.push(`'${pfad}.json_schema' muss ein nicht-leerer String sein (JSON-Text, F-638)`)
+    } else {
+      try {
+        JSON.parse(eintrag.json_schema)
+      } catch (fehler) {
+        verstoesse.push(`'${pfad}.json_schema' ist kein gültiges JSON (${(fehler as Error).message})`)
+      }
+    }
   }
   return verstoesse
 }
@@ -345,12 +358,12 @@ function baueFeatureRolleninstruktion(): string[] {
     '  "zusammenfassung": "<für den Menschen lesbare Zusammenfassung, Pflichtfeld>",',
     '  "module": [ { "name": "<string>", "zweck": "<string>", "abhaengigkeiten": ["<Name eines anderen Moduls aus diesem Entwurf>", ...] }, ... ] (leer, wenn kein neuer Modulschnitt),',
     '  "adr_entwuerfe": [ { "titel": "<string>", "kontext": "<string>", "entscheidung": "<string>", "alternativen": ["<erwogene, nicht gewählte Option>", ...], "konsequenzen": ["<Folge der Entscheidung>", ...] }, ... ] (leer, wenn keine ADR-würdige Entscheidung),',
-    '  "schema_entwuerfe": [ { "name": "<string>", "zweck": "<string>", "json_schema": { <ein JSON-Schema-Fragment> } }, ... ] (leer, wenn kein Datenmodell),',
+    '  "schema_entwuerfe": [ { "name": "<string>", "zweck": "<string>", "json_schema": "<JSON-Text eines JSON-Schema-Fragments, als STRING, kein verschachteltes Objekt>" }, ... ] (leer, wenn kein Datenmodell),',
     '  "entscheidungen_mensch": [ { "frage": "<string>", "optionen": [ { "titel": "<string>", "vorteile": ["<string>", ...], "nachteile": ["<string>", ...] }, ... ] (mindestens ein Eintrag), "auswirkung_bestand": "<string, auch \'keine\'>", "empfehlung": "<Titel einer der Optionen oben>", "begruendung": "<string>" }, ... ] (leer, wenn keine offene Entscheidung),',
     '  "capabilities_bedarf": [ { "bedarf": "<string>", "ressource_id": "<id aus dem Capability-Auszug>" | null, "status": "vorhanden" | "offen" | "fehlt" }, ... ] (leer, wenn kein Capability-Bedarf),',
     '  "evidenz": [ { "marker": "[Fakt]" | "[Schlussfolgerung]" | "[Annahme]" | "[offene Unsicherheit]", "aussage": "<string>" }, ... ] (mindestens ein Eintrag)',
     '}',
-    "In 'entscheidungen_mensch[].empfehlung' NUR einen Titel nennen, der auch in 'optionen' steht — keine Option erfinden. In 'capabilities_bedarf[].ressource_id' NUR eine ID aus dem eingespeisten Capability-Auszug nennen, sonst 'null' und 'status': 'fehlt' — keine Ressource erfinden. Kein weiteres Feld außer den genannten.",
+    "In 'entscheidungen_mensch[].empfehlung' NUR einen Titel nennen, der auch in 'optionen' steht — keine Option erfinden. In 'capabilities_bedarf[].ressource_id' NUR eine ID aus dem eingespeisten Capability-Auszug nennen, sonst 'null' und 'status': 'fehlt' — keine Ressource erfinden. 'schema_entwuerfe[].json_schema' ist ein STRING mit dem JSON-Text des Schema-Fragments (z. B. \"{\\\"type\\\":\\\"object\\\",\\\"additionalProperties\\\":false,...}\"), KEIN verschachteltes JSON-Objekt. Kein weiteres Feld außer den genannten.",
   ]
 }
 
@@ -403,7 +416,7 @@ export function baueUmsetzungsInstruktion(): string[] {
   return [
     "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor. Setze ihn wie folgt um:",
     "- Für jeden Eintrag in 'adr_entwuerfe': lege 'docs/adr/<slug-aus-titel>.md' nach dem Muster 'docs/adr/TEMPLATE.md' an — fortlaufende ADR-Nummer nach den bestehenden Dateien unter 'docs/adr/' (TEMPLATE.md nicht mitgezählt).",
-    "- Für jeden Eintrag in 'schema_entwuerfe': lege 'schemas/<name>.schema.json' UND ein Beispiel 'schemas/examples/<name>.json' an und hänge die Prüfung in das für diesen Auftrag zuständige Gate ein.",
+    "- Für jeden Eintrag in 'schema_entwuerfe': 'json_schema' liegt als String (JSON-Text, F-638) vor — mit JSON.parse in ein Objekt umwandeln, dieses nach 'schemas/<name>.schema.json' schreiben, dazu ein Beispiel 'schemas/examples/<name>.json' anlegen und die Prüfung in das für diesen Auftrag zuständige Gate einhängen.",
     "- Für 'module' bzw. ein neues Datenmodell: ergänze NUR die optionalen technischen Abschnitte, die der Entwurf tatsächlich liefert (z. B. Komponenten/Module, Datenmodell, Interfaces/Contracts, State/Persistenz, Security/Permissions, Datenflüsse, Migration, Red-/Green-Cases), in der betroffenen 'features/<id>/feature.md'.",
     "- Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als eigenen Abschnitt 'Entscheidung (Mensch)' im betroffenen ADR.",
     'Keine Umsetzung, die dem Architekturentwurf widerspricht, ohne das ausdrücklich zu vermerken (CLAUDE.md, Entscheidungsregel 5).',

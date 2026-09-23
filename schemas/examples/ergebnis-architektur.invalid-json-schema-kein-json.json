@@ -1,0 +1,14 @@
+{
+  "modus": "feature",
+  "zusammenfassung": "Rotfall F-638/Regel 1c: 'json_schema' ist ein String, aber kein gültiges JSON.",
+  "module": [],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [
+    { "name": "kaputt", "zweck": "Rotfall für validiereErgebnisArchitektur.", "json_schema": "{ das ist kein JSON" }
+  ],
+  "entscheidungen_mensch": [],
+  "capabilities_bedarf": [],
+  "evidenz": [
+    { "marker": "[Fakt]", "aussage": "Dieses Beispiel dient ausschließlich als Rotfall für scripts/check-f39-architekt.mjs (b)." }
+  ]
+}
