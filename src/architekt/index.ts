@@ -390,6 +390,26 @@ export function baueArchitektAuftragstext(planungstext: string, modus: Architekt
   return zeilen.join('\n')
 }
 
+/**
+ * F39 WS-3a: Zusatzblock für die 'ausfuehrung'-Instruktion eines hoch-Workflow-Schritts, der
+ * einen Architekturentwurf (Rolle architekt, ergebnis-architektur) als 'ergebnis-@'-Eingabe
+ * bekommt — der Entwurf selbst steht bereits unverändert als eigene Eingabe-Anfrage im Kontext
+ * (loeseSchrittEingabenAuf), dieser Block übersetzt seine vier Ergebnis-Kategorien nur in
+ * konkrete Schreibpfade, statt ihn als bloßen Zusatzkontext ungenutzt zu lassen. Reine Funktion,
+ * kein I/O, kennt das tatsächliche Ergebnis nicht (das liest der Worker selbst aus dem Kontext).
+ * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
+ */
+export function baueUmsetzungsInstruktion(): string[] {
+  return [
+    "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor. Setze ihn wie folgt um:",
+    "- Für jeden Eintrag in 'adr_entwuerfe': lege 'docs/adr/<slug-aus-titel>.md' nach dem Muster 'docs/adr/TEMPLATE.md' an — fortlaufende ADR-Nummer nach den bestehenden Dateien unter 'docs/adr/' (TEMPLATE.md nicht mitgezählt).",
+    "- Für jeden Eintrag in 'schema_entwuerfe': lege 'schemas/<name>.schema.json' UND ein Beispiel 'schemas/examples/<name>.json' an und hänge die Prüfung in das für diesen Auftrag zuständige Gate ein.",
+    "- Für 'module' bzw. ein neues Datenmodell: ergänze NUR die optionalen technischen Abschnitte, die der Entwurf tatsächlich liefert (z. B. Komponenten/Module, Datenmodell, Interfaces/Contracts, State/Persistenz, Security/Permissions, Datenflüsse, Migration, Red-/Green-Cases), in der betroffenen 'features/<id>/feature.md'.",
+    "- Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als eigenen Abschnitt 'Entscheidung (Mensch)' im betroffenen ADR.",
+    'Keine Umsetzung, die dem Architekturentwurf widerspricht, ohne das ausdrücklich zu vermerken (CLAUDE.md, Entscheidungsregel 5).',
+  ]
+}
+
 export { baueCapabilityAuszug }
 
 export type {

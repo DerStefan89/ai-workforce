@@ -55,7 +55,14 @@ Regel 1c (`entscheidungen_mensch` → `haltKlaerung`), Fortsetzungsweg
 Platzhalter, Leitstand-UI + Render-Nachweis — gebaut 23.09.2026, löst
 F-632 Teil b vollständig (F-632 gesamt jetzt erledigt), F-634 dokumentiert
 (kein Fix nötig, Herkunft des ungetrackten `kontrollzustand/`-Bestands
-geklärt); WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
+geklärt); WS-3a — `architekt` real am Workflow-Schrittstart verdrahtet
+(löst F-635, `baueArchitektAuftragstext` wurde zuvor nie am echten
+Schrittstart aufgerufen), `ausfuehrung`-Ergebnis-Umsetzung
+(`baueUmsetzungsInstruktion`), neun optionale technische Abschnitte in
+`scripts/check-feature.mjs`, Ablaufanleitung
+`features/F39/nachweis-ws3-reallauf.md` für WS-3b — gebaut 23.09.2026;
+WS-3b (realer Durchlauf) noch offen, siehe `features/F39/feature.md`),
+F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
@@ -522,9 +529,15 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Fortsetzungsweg `POST /api/workflows/<id>/entscheidung`, neue Kernartefakt-
   Kette `workflow-entscheidung-<workflowId>`, Eingabe-Platzhalter
   `entscheidung-@<schrittId>`, Leitstand-UI + Render-Nachweis, löst F-632
-  Teil b vollständig) gebaut (23.09.2026). WS-3 (Projektmodus
-  „Architektur-Grundlage", ADR-Erzeugung, realer Durchlauf) noch offen. Vor
-  F35 gezogen (E-M5-13), direkt nach F34.
+  Teil b vollständig) gebaut (23.09.2026). WS-3a (`architekt` real am
+  Workflow-Schrittstart verdrahtet über `baueArchitektAuftragstext`, löst
+  F-635; `ausfuehrung`-Schritte mit einer `ergebnis-@<architekt>`-Eingabe
+  bekommen zusätzlich `baueUmsetzungsInstruktion`s Übersetzungsregeln
+  angehängt; `scripts/check-feature.mjs` prüft neun optionale technische
+  Akte-Abschnitte; Ablaufanleitung `features/F39/nachweis-ws3-reallauf.md`
+  für WS-3b) gebaut (23.09.2026). WS-3b (realer Durchlauf gegen den
+  Leitstand, reale ADR-/Schema-Erzeugung) noch offen. Vor F35 gezogen
+  (E-M5-13), direkt nach F34.
 - ⏳ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Noch nicht begonnen;
   direkt nach F39 gezogen (statt erst in F30).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
