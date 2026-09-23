@@ -459,7 +459,7 @@ import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.t
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
-import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung } from './leitstand/routen-sparring.mjs'
+import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
   formatiereWorkflowEntscheidungAlsText,
@@ -5875,6 +5875,12 @@ export function erzeugeRequestHandler(optionen = {}) {
     // existiert zu diesem Zeitpunkt bereits real). Kein D13-Bezug (kein Lauf), deshalb keine
     // laufAktiv-Prüfung wie bei POST /api/sparring oben — reine additive Metadaten zu einem bereits
     // abgeschlossenen Turn. Schreibfunktion selbst in routen-sparring.mjs (D5, Muster oben).
+    //
+    // F34 Fixpaket-Nachtrag (löst F-631): NACH der Formprüfung, VOR registriereSparringAuftragZuordnung
+    // wird laufId gegen die reale 'sparring-<projektId>'-Kette (sparringLaufExistiert) und auftragId
+    // gegen den realen Auftrags-Bestand (ladeArtefaktVersion('auftrag-<id>'), Muster POST
+    // /api/auftraege/<id>/routen) geprüft — eine unbekannte ID wird mit 404 abgelehnt statt einen
+    // ins Leere zeigenden Rückverweis zu speichern.
     if (req.method === 'POST' && pfad.startsWith('/api/sparring/') && pfad.endsWith('/auftrag')) {
       const laufId = decodeURIComponent(pfad.slice('/api/sparring/'.length, pfad.length - '/auftrag'.length))
       if (laufId.length === 0) {
@@ -5905,6 +5911,25 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       if (typeof body.auftragId !== 'string' || body.auftragId.trim().length === 0) {
         sendeJson(res, 400, { grund: "'auftragId' muss ein nicht-leerer String sein" })
+        return
+      }
+      // Korrekturschleife (Abnahme 23.09.2026): auftragId mit unzulässigen Zeichen (z. B. '/') würde
+      // sonst als lauf_id in ladeArtefaktVersion→pruefeLaufId werfen (checkpoint-store/index.ts) und
+      // über den generischen Handler-Catch als 500 statt als abgelehnte Eingabe (400) enden — Muster
+      // POST /api/auftraege/<id>/routen oben (LAUFID_UNZULAESSIGE_ZEICHEN).
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.auftragId)) {
+        sendeJson(res, 400, { grund: `'auftragId' enthält unzulässige Zeichen: ${JSON.stringify(body.auftragId)}` })
+        return
+      }
+      // F-631: laufId muss real ein bestehender Sparring-Turn sein — erst DANACH auftragId
+      // gegen den realen Auftrags-Bestand prüfen (Muster POST /api/auftraege/<id>/routen), sonst
+      // würde der Rückverweis auf einen Turn oder einen Auftrag zeigen, den es nicht gibt.
+      if (!sparringLaufExistiert(basisVerzeichnis, projektId, laufId)) {
+        sendeJson(res, 404, { grund: `Sparring-Lauf '${laufId}' nicht gefunden` })
+        return
+      }
+      if (ladeArtefaktVersion(`auftrag-${body.auftragId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }) === null) {
+        sendeJson(res, 404, { grund: `Auftrag '${body.auftragId}' nicht gefunden` })
         return
       }
       try {
