@@ -68,3 +68,9 @@ programm/
 # Kernartefakt (keine Lineage, keine Hash-Kette). kontrollzustand/ selbst
 # ist getrackt, deshalb hier gezielt nur diese eine Datei.
 kontrollzustand/.leitstand.lock
+
+# Sammelstelle für Wegwerf-Verzeichnisse, die raeumeVerzeichnis nach allen
+# Wiederholungen mit EPERM/EBUSY/ENOTEMPTY toleriert hat (F-590, eine Datei
+# je Prozess-PID) — flüchtiger Zustand für scripts/aufraeumen-nachlauf.mjs,
+# kein Kernartefakt.
+scripts/.aufraeumen-reste/
