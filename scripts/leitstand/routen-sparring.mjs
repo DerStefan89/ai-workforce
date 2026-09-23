@@ -28,6 +28,12 @@
  * /api/sparring/<laufId>/auftrag) bleibt im Server (Muster POST /api/sparring oben) — kein D13-Bezug
  * (registriert keinen Lauf), aber derselbe Grund, warum dieses Modul selbst keinen Schreibpfad hat:
  * hier nur die reine Schreibfunktion, der Server bindet Body-/Formprüfung.
+ *
+ * F34 Fixpaket-Nachtrag (löst state/findings.md F-631): sparringLaufExistiert prüft laufId gegen die
+ * reale 'sparring-<projektId>'-Kette (dieselbe Lesequelle wie baueSparringVerlaufsProjektion) — der
+ * Server prüft damit VOR registriereSparringAuftragZuordnung, dass laufId real ein bestehender Turn
+ * ist; die auftragId-Existenz prüft der Server direkt über ladeArtefaktVersion('auftrag-<id>')
+ * (Muster POST /api/auftraege/<id>/routen), keine zweite Prüffunktion dafür nötig.
  */
 
 import { listeVersionen, registriereKernArtefakt } from '../../src/lineage-registry/index.ts'
@@ -36,6 +42,19 @@ function STILLER_SCHREIBER() {}
 
 function zuordnungsArtefaktId(projektId) {
   return `sparring-auftrag-${projektId}`
+}
+
+/**
+ * Prüft, ob laufId real ein bestehender Turn der 'sparring-<projektId>'-Kette ist (F-631) — dieselbe
+ * Lesequelle wie baueSparringVerlaufsProjektion (Herkunft je Version), keine zweite Leseroutine (D5).
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel des Projekts
+ * @param projektId - Projekt-id der bedienenden Handler-Instanz
+ * @param laufId - zu prüfende laufId
+ * @returns true, wenn ein Turn mit dieser laufId in der Kette existiert
+ */
+export function sparringLaufExistiert(basisVerzeichnis, projektId, laufId) {
+  const versionen = listeVersionen(`sparring-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  return versionen.some((version) => version.herkunft?.lauf_id === laufId)
 }
 
 /**

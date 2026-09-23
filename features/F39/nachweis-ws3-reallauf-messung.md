@@ -166,3 +166,53 @@ Erweiterung: POST /api/sparring/<laufId>/auftrag (verknuepfeSparringAuftrag) sol
 - Gesamtkosten laut Verbrauch-Ansicht:
 - `npm run check` nach Schritt 8 grün? ja/nein:
 - Gesamteinschätzung Architekt-Qualität — trägt der Entwurf zu einem besseren Baudurchgang bei, oder ist er nur Ballast? Grundlage für die WS-3b-Abnahmeentscheidung (bleibt der Worker-Tausch codex→claude-code für `architecture-advisor`/`ausfuehrung`)?
+
+## Versuch 3 — 23.09.2026, Feature-Modus, echte Code-Kette (Router wählt eigenständig `standard`, nicht `hoch`)
+
+**Abweichung vom Ablauf oben:** dieser Versuch prüft NICHT die deterministische
+`hoch`-Untergrenze (die ist Projekt-Modus-exklusiv, `herkunft.art:
+'projekt_interview'`, s. Versuch 1/2) — er prüft, ob ein Feature-Modus-Auftrag
+(`herkunft: { art: 'sparring' }`, kein Untergrenze-Träger) über das EIGENE
+Urteil der Router-Rolle nach `hoch` gelangen kann (8-Auslöser-Liste in
+`baueRouterAuftragstext`, `src/router/index.ts`). Vorab geklärt (nur lesend,
+kein Router-Umgehen): es gibt keinen Weg, `kontrolltiefe` bei der
+Auftragsanlage direkt zu setzen — weder Schema noch UI kennen ein solches
+Feld.
+
+- Auftrag: `a0d04470-d4eb-4204-aec4-ad3ee21e2b91` ("Sparring-Auftrag-Verknuepfung: Existenz von laufId/auftragId pruefen"), angelegt direkt über `POST /api/auftraege` mit `herkunft: { art: 'sparring' }` (deckungsgleich mit dem, was die Feature-Modus-Chat-Brücke sendet, `public/leitstand/views/chat.js:632`) — derselbe Auftragstext wie im Coach-Eingabetext oben (F-631).
+- Router-Lauf: `router-a0d04470-d4eb-4204-aec4-ad3ee21e2b91-1790181886881`, Dauer 13.606 s, `input_tokens 20511`/`output_tokens 205`, Worker `codex`/`gpt-6-astra`.
+- **Router-Ergebnis: `standard` (2 Schritte: `ausfuehrung` → `code-reviewer`), NICHT `hoch`.** Kein `[Untergrenze …]`-Vermerk im `ziel` — der Router hat das aus eigenem Urteil so entschieden. Deckt sich mit der Vorab-Analyse: der Auftragstext (Existenzprüfung vor einem Rückverweis-Speichern) trifft keinen der 8 `ROUTER_HOCH_AUSLOESER` eindeutig (keine Architekturentscheidung, keine neue zentrale Persistenzsemantik, keine Security-Grenze, kein neues externes System, nicht mehrere Kernmodule, kein neues Datenmodell, kein neues blockierendes Gate, keine Schema-/Migrationsänderung).
+- Mit dem Menschen abgestimmt: Ergebnis als echtes Versuch-3-Ergebnis übernommen (keine Umgehung, kein künstlich zugespitzter Auftragstext nur um `hoch` zu erzwingen).
+- Workflow: `router-a0d04470-d4eb-4204-aec4-ad3ee21e2b91`, Status nach Freigabe `ABGESCHLOSSEN`, beide Schritte `ERFOLGREICH`.
+
+**Schritt A — `ausfuehrung`**
+- Lauf-ID: `725f9a1b-d3c0-42ac-8376-2bf8c205927d`
+- Start- / Endzeit: 2026-09-23T16:50:36.590Z → 16:53:44.281Z
+- Dauer: 182.163 s (`verbrauch.dauer_ms`)
+- Verbrauch (Rolle `ausfuehrung` / Modell `claude-sonnet-5`, Worker `claude-code`): `input_tokens 76`, `output_tokens 18166`, `cache_read_tokens 2102720`, `cache_write_tokens 86897`
+- Ergebnis: `ERFOLGREICH`, `permissionDenials.anzahl: 0`
+- Echter Code entstanden (kein Dokumentations-Ersatz, F-644-Muster geprüft — Feature-Modus umgeht das): `git diff --stat` zeigt `scripts/check-f34-product-coach.mjs` (+32/-3, neue Rot-/Grünfall-Tests), `scripts/leitstand-server.mjs` (+18/-1, zwei neue 404-Prüfungen VOR `registriereSparringAuftragZuordnung`), `scripts/leitstand/routen-sparring.mjs` (+19/-0, neue `sparringLaufExistiert`-Funktion), `state/findings.md` (+3/-3, F-631 auf erledigt).
+- Umsetzung entspricht dem Auftrag 1:1: `sparringLaufExistiert` prüft `laufId` gegen die reale `sparring-<projektId>`-Kette, `auftragId` wird gegen `ladeArtefaktVersion('auftrag-<id>')` geprüft — beide unbekannten IDs werden mit `404` abgelehnt, bevor `registriereSparringAuftragZuordnung` einen Rückverweis speichert. Tests decken beide Rotfälle (`lauf-nicht-vorhanden`, `auftrag-nicht-vorhanden`) und einen Grünfall mit real über `POST /api/auftraege` angelegter `auftragId`.
+
+**Schritt B — `code-reviewer` (automatisch)**
+- Lauf-ID: `6319443a-8309-4bd1-aff4-91ec60756224`
+- Start- / Endzeit: 2026-09-23T16:53:45.857Z → 16:55:03.156Z
+- Dauer: 77.251 s
+- Verbrauch (Rolle `code-reviewer` / Modell `gpt-6-astra`, Worker `codex`): `input_tokens 426745`, `output_tokens 1435`, `cache_read_tokens 366208`
+- `urteil`: **`BEREIT_NACH_KORREKTUR`**
+- `befunde`: 1 Eintrag, Schwere `MITTEL`, Fundstelle `scripts/leitstand-server.mjs:5885` — der Reviewer hat den neuen Existenzcheck real gegen den laufenden Handler getestet (eigener PowerShell-Request) und dabei reproduziert: eine `auftragId` mit unzulässigen Zeichen (z. B. `unbekannt/auftrag`) lässt `ladeArtefaktVersion` über `pruefeLaufId` werfen → `HTTP 500` statt eines klaren Eingabefehlers, weil `auftragId` vorher nur auf nicht-leeren String geprüft wird, nicht auf zulässige Zeichen. Die beiden regulären unbekannten IDs lieferten korrekt `404`.
+- `empfehlung`: `auftragId` vor dem Laden auf unzulässige Zeichen prüfen, mit `HTTP 400` ablehnen, Regressionstest ergänzen. Hinweis des Reviewers: volle Testsuite wegen schreibgeschütztem Arbeitsbereich nicht selbst ausgeführt.
+- Eigene Verifikation (nicht Teil des automatischen Laufs): Befund am Diff nachvollzogen — `scripts/leitstand-server.mjs:5878` ruft `ladeArtefaktVersion(\`auftrag-${body.auftragId}\`, …)` ungeprüft auf `body.auftragId` auf; ein `/` darin bricht `pruefeLaufId` (`src/checkpoint-store/index.ts:82`). Befund ist real, kein Fehlalarm — bislang nicht als eigenes Finding in `state/findings.md` erfasst (Entscheidung darüber bei Stefan, außerhalb dieses Auftrags).
+
+**Abschluss**
+- Workflow-Endstatus: `ABGESCHLOSSEN` (beide Schritte `ERFOLGREICH`; das Review-`urteil BEREIT_NACH_KORREKTUR` hält den Automaten NICHT an — nur `BLOCKIERT` oder ein fehlendes/unbekanntes Urteil würde auf `KLAERUNG_ERFORDERLICH` halten, `workflow-entscheidungsregeln`).
+- Tabelle:
+
+  | Schritt | Rolle | Worker | Modell | Dauer | Verbrauch (in/out/cache-read Tokens) |
+  |---|---|---|---|---|---|
+  | Router | router | codex | gpt-6-astra | 13,6 s | 20511 / 205 / 0 |
+  | 1 | ausfuehrung | claude-code | claude-sonnet-5 | 182,2 s | 76 / 18166 / 2102720 |
+  | 2 | code-reviewer | codex | gpt-6-astra | 77,3 s | 426745 / 1435 / 366208 |
+
+- `npm run check` auf dem Branch (`test/f39-versuch3`) nach Schritt B: **728/729 grün**, 1 Fehlschlag (`src/claude-code-gateway/claude-code-gateway.test.ts:941`, Prozessbaum-Timeout-Test) — Wiederholung in Isolation lief grün durch; unrelated zum Diff (kein Bezug zu `leitstand-server.mjs`/`routen-sparring.mjs`/`check-f34-product-coach.mjs`), passt zum bekannten Flaky-Muster in `CLAUDE.md` ("Test-/Gate-Lauf scheitert einmalig ohne erkennbaren Grund"). Kein Regressionsbeleg gegen diese Änderung gefunden.
+- Gesamteinschätzung: Feature-Modus + Router-Eigenurteil funktioniert wie im Code beschrieben — kein Zwang zu `hoch` nötig oder vorhanden für einen Auftrag, der keinen der 8 Auslöser trifft. Die `ausfuehrung`-Rolle hat echten, funktionsfähigen Code samt Tests geliefert (kein F-644-Dokumentations-Ersatz, weil Feature- statt Projekt-Modus). Der automatische Review-Schritt hat einen echten, eigenständig reproduzierten Randfall-Befund geliefert (Sonderzeichen in `auftragId` → 500 statt 400) — funktioniert als Qualitätsnetz wie vorgesehen.

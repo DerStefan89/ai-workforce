@@ -78,6 +78,11 @@
  * Regel überschrieben '.btn'/'.chat-zusammenfassen-btn' die UA-[hidden]-Regel, #chat-abbrechen-btn/
  * #chat-zusammenfassen-btn blieben dadurch immer sichtbar (dieselbe Fehlerklasse wie F-620/F-621).
  *
+ * F34 Fixpaket-Nachtrag (löst F-631) ergänzt in (x): POST /api/sparring/<laufId>/auftrag lehnt eine
+ * formal gültige, aber real nicht existierende laufId bzw. auftragId mit 404 ab (kein Rückverweis
+ * gespeichert) — der Grünfall verwendet seither eine über POST /api/auftraege real angelegte
+ * auftragId statt einer erfundenen Zeichenkette.
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisProductCoach/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -1268,13 +1273,37 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
         console.log('✓ (x): POST /api/sparring/<laufId>/auftrag lehnt eine fehlende/leere auftragId, ein Fremdfeld und eine leere laufId im Pfad real mit 400 ab.')
       }
 
-      const grueneAntwort = await fetch(`${basisUrl}/api/sparring/${encodeURIComponent(laufId)}/auftrag`, { method: 'POST', body: JSON.stringify({ auftragId: 'auftrag-check-f34-x' }) })
+      // F34 Fixpaket-Nachtrag (löst F-631): eine formal gültige, aber real nicht existierende
+      // laufId/auftragId wird mit 404 abgelehnt — kein Rückverweis wird gespeichert.
+      const befundeVorExistenz = befunde.length
+      const unbekannteLaufIdAntwort = await fetch(`${basisUrl}/api/sparring/lauf-nicht-vorhanden/auftrag`, { method: 'POST', body: JSON.stringify({ auftragId: 'irgendein-auftrag' }) })
+      const unbekannteLaufIdKoerper = await unbekannteLaufIdAntwort.json()
+      if (unbekannteLaufIdAntwort.status !== 404 || !/Sparring-Lauf 'lauf-nicht-vorhanden' nicht gefunden/.test(unbekannteLaufIdKoerper.grund ?? '')) {
+        befunde.push(`(x) Rotfall 'unbekannte laufId': erwartet 404 mit "Sparring-Lauf 'lauf-nicht-vorhanden' nicht gefunden", erhalten ${unbekannteLaufIdAntwort.status} (${JSON.stringify(unbekannteLaufIdKoerper)})`)
+      }
+      const unbekannteAuftragIdAntwort = await fetch(`${basisUrl}/api/sparring/${encodeURIComponent(laufId)}/auftrag`, { method: 'POST', body: JSON.stringify({ auftragId: 'auftrag-nicht-vorhanden' }) })
+      const unbekannteAuftragIdKoerper = await unbekannteAuftragIdAntwort.json()
+      if (unbekannteAuftragIdAntwort.status !== 404 || !/Auftrag 'auftrag-nicht-vorhanden' nicht gefunden/.test(unbekannteAuftragIdKoerper.grund ?? '')) {
+        befunde.push(`(x) Rotfall 'unbekannte auftragId': erwartet 404 mit "Auftrag 'auftrag-nicht-vorhanden' nicht gefunden", erhalten ${unbekannteAuftragIdAntwort.status} (${JSON.stringify(unbekannteAuftragIdKoerper)})`)
+      }
+      const zwischenstand = await (await fetch(`${basisUrl}/api/sparring`)).json()
+      if (zwischenstand.verlauf[0]?.auftragErstelltId !== null) {
+        befunde.push(`(x): eine abgelehnte Zuordnung (unbekannte laufId/auftragId) darf keinen Rückverweis speichern, erhalten ${JSON.stringify(zwischenstand.verlauf[0])}`)
+      }
+      if (befunde.length === befundeVorExistenz) {
+        console.log("✓ (x): POST /api/sparring/<laufId>/auftrag lehnt eine real nicht existierende laufId und eine real nicht existierende auftragId mit 404 ab, ohne einen Rückverweis zu speichern (löst F-631).")
+      }
+
+      // Grünfall: auftragId muss real über POST /api/auftraege angelegt sein (F-631 prüft Existenz).
+      const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, { method: 'POST', body: JSON.stringify({ titel: 'F-631-Test-Auftrag', auftragstext: 'x' }) })
+      const { auftragId: realeAuftragId } = await auftragAntwort.json()
+      const grueneAntwort = await fetch(`${basisUrl}/api/sparring/${encodeURIComponent(laufId)}/auftrag`, { method: 'POST', body: JSON.stringify({ auftragId: realeAuftragId }) })
       if (grueneAntwort.status !== 200) {
         befunde.push(`(x): erwartet 200 bei gültiger Zuordnung, erhalten ${grueneAntwort.status} (${await grueneAntwort.text()})`)
       }
       const nachher = await (await fetch(`${basisUrl}/api/sparring`)).json()
-      if (nachher.verlauf[0]?.auftragErstelltId !== 'auftrag-check-f34-x') {
-        befunde.push(`(x): GET /api/sparring sollte 'auftragErstelltId': 'auftrag-check-f34-x' projizieren, erhalten ${JSON.stringify(nachher.verlauf[0])}`)
+      if (nachher.verlauf[0]?.auftragErstelltId !== realeAuftragId) {
+        befunde.push(`(x): GET /api/sparring sollte 'auftragErstelltId': '${realeAuftragId}' projizieren, erhalten ${JSON.stringify(nachher.verlauf[0])}`)
       } else {
         console.log("✓ (x): POST /api/sparring/<laufId>/auftrag registriert die Zuordnung real, GET /api/sparring projiziert sie danach als 'auftragErstelltId' (löst F-625).")
       }
