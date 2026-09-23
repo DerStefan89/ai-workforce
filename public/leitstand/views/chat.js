@@ -175,9 +175,23 @@
  * persistierterVerlauf zum Push-Zeitpunkt); baueAnzeigeListe() setzt ihn beim Rendern an genau dieser
  * Position zwischen die zu diesem Zeitpunkt bereits persistierten und die seither neu hinzugekommenen
  * persistierten Einträge ein, statt ihn pauschal ans Ende zu hängen.
+ *
+ * F34 Fixpaket (löst state/findings.md F-624/F-625, Feature-Review-Pass Gesamt 23.09.2026):
+ * (F-624) baueAnzeigeListe('sparring') zeigte bislang IMMER den kompletten 'sparring-<projektId>'-
+ * Verlauf — 'feature'- und 'projekt'-Turns chronologisch gemischt, ohne jede Kennzeichnung, obwohl das
+ * Modell-Kontextfenster (ladeRollenVerlaufsfenster, F-614) längst nach modus filtert. Jeder Eintrag
+ * trägt jetzt eintragModus (persistiert: das Server-Feld 'modus'; lokal/ausstehend: der bei Sende-/
+ * Push-Zeitpunkt aktive sparringUntermodus), baueAnzeigeListe filtert am Ende NUR für 'sparring' danach
+ * — 'jarvis' bleibt bitgenau unverändert. (F-625) "Als Auftrag anlegen" konnte nach einem Moduswechsel
+ * oder Reload beliebig oft ein inhaltsgleiches Duplikat anlegen, weil der einzige Erfolgs-Indikator
+ * (offenerAuftragDialog.erfolgAuftragId) rein transienter Modulzustand war. Ein erfolgreiches Anlegen
+ * schreibt seither zusätzlich einen minimalen Rückverweis (verknuepfeSparringAuftrag, POST
+ * /api/sparring/<laufId>/auftrag, best-effort) — GET /api/sparring projiziert ihn als
+ * 'auftragErstelltId' je Turn, renderAuftragBruecke zeigt dafür einen statischen "bereits angelegt"-
+ * Hinweis statt des Triggers.
  */
 
-import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht } from '../api.js'
+import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
@@ -425,6 +439,14 @@ function antwortText(antwort) {
  * lokaleEintraege im selben Zug leert), ein sequenzieller Durchlauf beider Listen reicht deshalb. F29 WS-D2:
  * zeitstempel ist bei persistierten Einträgen IMMER null (der Server führt keines, Auftrag Punkt E: keine
  * erfundene Zeit), bei lokalen der beim Push erfasste Wert (s. initSendenFormular/pruefeAusstehendenLauf).
+ * F34 Fixpaket (löst F-624): 'feature' und 'projekt' teilen sich denselben persistierten
+ * 'sparring-<projektId>'-Verlauf (Muster ladeRollenVerlaufsfenster, das serverseitige Pendant für den
+ * Modell-Kontext, F-614) — jeder Eintrag trägt jetzt 'eintragModus' (persistiert: das vom Server
+ * gelieferte 'modus'-Feld, Alt-Eintrag ohne Feld gilt als 'feature'; lokal: der bei Sende-/Push-
+ * Zeitpunkt aktive sparringUntermodus, s. sendeAktuelleEingabe/pruefeAusstehendenLauf — NICHT der
+ * ggf. inzwischen gewechselte aktuelle) und wird am Ende dieser Funktion für 'sparring' danach
+ * gefiltert, ob er zum GERADE angezeigten sparringUntermodus gehört — 'jarvis' bleibt unangetastet
+ * (kein 'eintragModus'-Konzept dort, die Filterung ist strikt auf modus === 'sparring' gegattert).
  * @param modus - 'jarvis' | 'sparring'
  */
 function baueAnzeigeListe(modus) {
@@ -440,6 +462,10 @@ function baueAnzeigeListe(modus) {
       zeitstempel: null,
       istZusammenfassung: e.istZusammenfassung === true,
       schluessel: e.laufId ?? `persistiert-${index}`,
+      eintragModus: e.modus ?? 'feature',
+      // F34 Fixpaket (löst F-625): vom Server projizierter Rückverweis — null ohne Zuordnung
+      // (Alt-Eintrag oder noch nie über die Brücke angelegt, unverändertes Verhalten).
+      auftragErstelltId: e.auftragErstelltId ?? null,
     }
   })
   const liste = []
@@ -472,9 +498,15 @@ function baueAnzeigeListe(modus) {
       istZusammenfassung: zustand.ausstehenderLauf.istZusammenfassung === true,
       fortschrittText: zustand.ausstehenderLauf.fortschrittText ?? null,
       schluessel: `ausstehend-${zustand.ausstehenderLauf.laufId}`,
+      eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
+      auftragErstelltId: null,
     })
   }
-  return liste
+  // F34 Fixpaket (löst F-624): NUR 'sparring' filtert nach dem gerade angezeigten sparringUntermodus
+  // ('jarvis' kennt kein eintragModus-Konzept, liste bleibt dort bitgenau unverändert) — greift auf
+  // ALLE drei Quellen oben gleichermaßen (persistiert/lokal/ausstehend tragen alle ein eintragModus),
+  // kein lokaler Eintrag kann den Filter dadurch umgehen.
+  return modus === 'sparring' ? liste.filter((eintrag) => eintrag.eintragModus === sparringUntermodus) : liste
 }
 
 /** F29 WS-D2 (Auftrag Punkt C): eine Sprechblasen-Zeile — Nutzer rechts eingerückt mit Initialen-Kreis, Jarvis/Coach links mit Mini-Avatar (statischer Ausschnitt aus persona-gesicht.webp, dasselbe Bild wie die Persona — kein neues Bild, aber KEINE eigene montierePersona()-Instanz: eine animierte Instanz pro Sprechblase wäre reiner Overhead für ein 1,5rem-Icon, F28-Nicht-Ziel bleibt unberührt). @param label - sichtbarer Name ('Jarvis'/'Coach' oder 'Stefan') @param zeitHtml - bereits fertiges Uhrzeit-HTML (leer, wenn keine Zeit bekannt) @param textHtml - bereits fertiges Inhalts-HTML @param ausrichtung - 'nutzer' | 'jarvis' */
@@ -603,10 +635,15 @@ function leseAuftragKandidat(modus, antwort) {
   return null
 }
 
-/** F34 WS-2: der "Als Auftrag anlegen"-Button (Trigger) ODER — falls für DIESEN Eintrag bereits offen — der Bestätigungsdialog. @param modus - 'jarvis' | 'sparring' @param schluessel - eintrag.schluessel @param kandidat - Ergebnis von leseAuftragKandidat */
-function renderAuftragBruecke(modus, schluessel, kandidat) {
+/** F34 WS-2: der "Als Auftrag anlegen"-Button (Trigger) ODER — falls für DIESEN Eintrag bereits offen — der Bestätigungsdialog. F34 Fixpaket (löst F-625): ohne offenen Dialog UND mit bereits registriertem Rückverweis (auftragErstelltId) zeigt sie statt des Triggers einen statischen Hinweis — kein Klick kann dann versehentlich ein inhaltsgleiches Duplikat anlegen. @param modus - 'jarvis' | 'sparring' @param schluessel - eintrag.schluessel @param kandidat - Ergebnis von leseAuftragKandidat @param auftragErstelltId - bereits über die Brücke angelegter Auftrag (F-625), oder null */
+function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
   if (kandidat === null) return ''
   if (offenerAuftragDialog === null || offenerAuftragDialog.modus !== modus || offenerAuftragDialog.schluessel !== schluessel) {
+    if (auftragErstelltId !== null) {
+      return `<div class="chat-auftrag-dialog chat-auftrag-dialog-erfolg">
+        <p>Auftrag bereits angelegt (<code>${escapeHtml(auftragErstelltId)}</code>). <a href="#/projekt">Im Auftrag-Bereich ansehen</a></p>
+      </div>`
+    }
     return `<button type="button" class="btn chat-auftrag-oeffnen-btn" data-auftrag-oeffnen="${escapeHtml(schluessel)}">Als Auftrag anlegen</button>`
   }
   const dialog = offenerAuftragDialog
@@ -652,7 +689,7 @@ function renderEintrag(modus, eintrag) {
   if (art === 'alternativen') inhaltHtml += renderAlternativen(eintrag.antwort?.alternativen)
   if (art === 'scope_entwurf') inhaltHtml += renderScope(eintrag.antwort?.scope)
   if (art === 'projekt_entwurf') inhaltHtml += renderProjekt(eintrag.antwort?.projekt)
-  inhaltHtml += renderAuftragBruecke(modus, eintrag.schluessel, leseAuftragKandidat(modus, eintrag.antwort))
+  inhaltHtml += renderAuftragBruecke(modus, eintrag.schluessel, leseAuftragKandidat(modus, eintrag.antwort), eintrag.auftragErstelltId ?? null)
   const jarvisZeile = chatBubbleReihe(label, zeitHtml, inhaltHtml, 'jarvis')
   return trennerHtml + nutzerZeile + jarvisZeile
 }
@@ -879,6 +916,11 @@ async function pruefeAusstehendenLauf(modus) {
       zeitstempel: new Date().toISOString(),
       persistierterVerlaufLaengeBeiPush: zustand.persistierterVerlauf.length,
       schluessel: `fehler-${laufId}`,
+      // F34 Fixpaket (löst F-624): der bei SENDE-Zeitpunkt aktive Untermodus (s. sendeAktuelleEingabe)
+      // — NICHT der eventuell inzwischen gewechselte aktuelle sparringUntermodus, sonst könnte diese
+      // Fehlanzeige den Filter unten umgehen/im falschen Untermodus erscheinen.
+      eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
+      auftragErstelltId: null,
     })
   }
   if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
@@ -954,7 +996,15 @@ async function sendeAktuelleEingabe() {
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
-      zustand.ausstehenderLauf = { nachricht, laufId: angenommen.laufId, zeitstempel: new Date().toISOString(), messung: { tSenden, tServerQuittung, tickZeiten: [] } }
+      zustand.ausstehenderLauf = {
+        nachricht,
+        laufId: angenommen.laufId,
+        zeitstempel: new Date().toISOString(),
+        messung: { tSenden, tServerQuittung, tickZeiten: [] },
+        // F34 Fixpaket (löst F-624): der bei SENDE-Zeitpunkt gewählte Untermodus, für baueAnzeigeListes
+        // Filter — bleibt für 'jarvis' undefined (kein eintragModus-Konzept dort, s. dort).
+        sparringUntermodus: modus === 'sparring' ? sparringUntermodus : undefined,
+      }
       starteAusstehendenLaufPoll(modus)
       feld.value = ''
     } finally {
@@ -1165,6 +1215,15 @@ function initAuftragBruecke() {
         }
         offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, erfolgAuftragId: koerper.auftragId }
         renderVerlauf()
+        // F34 Fixpaket (löst F-625): Rückverweis Turn→Auftrag — NUR 'sparring' (F-625-Scope) und NUR
+        // für einen echten Turn (schluessel === laufId, nicht 'persistiert-<index>' eines Alt-Eintrags
+        // ohne laufId). Best-effort/fire-and-forget: der Auftrag existiert zu diesem Zeitpunkt bereits
+        // real (POST /api/auftraege ist längst erfolgreich zurück) — schlägt NUR diese zusätzliche,
+        // rein informative Zuordnung fehl, geht kein Auftrag verloren, nur der spätere
+        // "bereits angelegt"-Hinweis (renderAuftragBruecke) bleibt dann für diesen Turn aus.
+        if (modus === 'sparring' && !schluessel.startsWith('persistiert-')) {
+          void verknuepfeSparringAuftrag(schluessel, koerper.auftragId).catch(() => {})
+        }
       } catch (fehler) {
         if (!gehoertNochZuDiesemDialog()) return
         offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, fehler: `Anfrage fehlgeschlagen: ${fehler.message}` }

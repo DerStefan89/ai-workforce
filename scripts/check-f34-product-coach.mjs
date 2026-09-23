@@ -65,6 +65,19 @@
  * trägt, damit die UA-[hidden]-Regel nicht durch 'display: flex' überschrieben wird (F-621). Realer
  * Render-Nachweis (Playwright) ergänzend in features/F34/nachweis-ws3.md.
  *
+ * F34 Fixpaket (Feature-Review-Pass Gesamt, löst F-624/F-625) ergänzt: (w) statischer Quelltext-Scan
+ * gegen die Regression von F-624 — baueAnzeigeListe taggt alle drei Eintragsquellen (persistiert/
+ * lokal/ausstehend) mit 'eintragModus' und filtert NUR für 'sparring' danach (kein DOM-Test möglich,
+ * F-601-Muster — der reale Beweis ist der Render-Nachweis in features/F34/nachweis-fixpaket-ui/).
+ * (x) ein realer HTTP-Rundlauf für F-625: POST /api/sparring/<laufId>/auftrag schreibt einen
+ * Rückverweis, GET /api/sparring projiziert ihn als 'auftragErstelltId' — ein Turn ohne Zuordnung
+ * bleibt weiterhin null (Alt-Einträge-Verhalten unverändert), reale Rot-Fälle der Formprüfung.
+ *
+ * F34 Fixpaket-Nachtrag (löst F-629, real beim Erzeugen des Fixpaket-Render-Nachweises entdeckt)
+ * ergänzt: (y) statischer Scan, dass style.css '.btn[hidden] { display: none; }' trägt — ohne diese
+ * Regel überschrieben '.btn'/'.chat-zusammenfassen-btn' die UA-[hidden]-Regel, #chat-abbrechen-btn/
+ * #chat-zusammenfassen-btn blieben dadurch immer sichtbar (dieselbe Fehlerklasse wie F-620/F-621).
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisProductCoach/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -1151,6 +1164,123 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   }
   if (befunde.length === befundeVor) {
     console.log("✓ (v): renderVerlauf leitet 'btn-primary' für alle vier Umschalter-Buttons gleichlaufend mit aria-pressed ab, style.css trägt '.chat-modus-auswahl[hidden] { display: none; }' — F-620/F-621 real behoben.")
+  }
+}
+
+// ─── (w) F34 Fixpaket (löst F-624): statischer Scan gegen die Cross-Untermodus-Vermischung ──
+{
+  const befundeVor = befunde.length
+  const quelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
+
+  if (!/eintragModus:\s*e\.modus\s*\?\?\s*'feature'/.test(quelltext)) {
+    befunde.push("(w): baueAnzeigeListe sollte persistierte Einträge mit 'eintragModus: e.modus ?? 'feature'' taggen — fehlt im Quelltext (Regression von F-624 möglich)")
+  }
+  if (!/eintragModus:\s*zustand\.ausstehenderLauf\.sparringUntermodus\s*\?\?\s*'feature'/.test(quelltext) && !/eintragModus:\s*zustand\.ausstehenderLauf\?\.sparringUntermodus\s*\?\?\s*'feature'/.test(quelltext)) {
+    befunde.push("(w): der 'ausstehend'-Eintrag sollte eintragModus aus zustand.ausstehenderLauf.sparringUntermodus ableiten — fehlt im Quelltext")
+  }
+  if (!/sparringUntermodus:\s*modus\s*===\s*'sparring'\s*\?\s*sparringUntermodus\s*:\s*undefined/.test(quelltext)) {
+    befunde.push("(w): sendeAktuelleEingabe sollte den bei Sende-Zeitpunkt aktiven sparringUntermodus auf zustand.ausstehenderLauf ablegen — fehlt im Quelltext (ohne das trägt der spätere Fehler-/Ausstehend-Eintrag den FALSCHEN, ggf. inzwischen gewechselten Untermodus)")
+  }
+  if (!/modus\s*===\s*'sparring'\s*\?\s*liste\.filter\(\s*\(eintrag\)\s*=>\s*eintrag\.eintragModus\s*===\s*sparringUntermodus\s*\)\s*:\s*liste/.test(quelltext)) {
+    befunde.push("(w): baueAnzeigeListe sollte am Ende NUR für 'sparring' nach sparringUntermodus filtern (liste.filter(…) : liste) — Filter-Endzeile fehlt oder wurde verändert (Regression von F-624: 'feature'/'projekt' würden wieder gemischt angezeigt)")
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (w): baueAnzeigeListe taggt persistierte/lokale/ausstehende Einträge einheitlich mit eintragModus und filtert NUR im Modus 'sparring' danach — 'jarvis' bleibt strukturell unangetastet (löst F-624).")
+  }
+}
+
+// ─── (x) F34 Fixpaket (löst F-625): POST /api/sparring/<laufId>/auftrag — realer Rundlauf ──
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-x-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  const projektId = 'check-f34-ak-x'
+  const scopeErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-scope-entwurf.json', 'utf-8'))
+
+  const fuehreAufgabeDurchFn = async (laufId) => {
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(scopeErgebnis) }) }), 'utf8')
+    const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+    const { registriereKernArtefakt } = await import('../src/lineage-registry/index.ts')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f34-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+      basisVerzeichnis,
+      schreiber: STILLER_SCHREIBER,
+    })
+    return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const gesendet = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: JSON.stringify({ nachricht: 'Scope für F-625-Test' }) })
+    if (gesendet.status !== 202) befunde.push(`(x): Vorbereitung — erwartet 202 beim Senden, erhalten ${gesendet.status}`)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    const vorher = await (await fetch(`${basisUrl}/api/sparring`)).json()
+    const laufId = vorher.verlauf[0]?.laufId
+    if (typeof laufId !== 'string' || laufId.length === 0) {
+      befunde.push(`(x): Vorbereitung — konnte keine laufId aus GET /api/sparring lesen, erhalten ${JSON.stringify(vorher)}`)
+    } else if (vorher.verlauf[0].auftragErstelltId !== null) {
+      befunde.push(`(x): ein frischer Turn ohne Zuordnung sollte auftragErstelltId null projizieren (Alt-Einträge-Verhalten), erhalten ${JSON.stringify(vorher.verlauf[0])}`)
+    } else {
+      console.log('✓ (x): ein Turn ohne Zuordnung projiziert weiterhin auftragErstelltId null (unverändertes Alt-Einträge-Verhalten).')
+    }
+
+    if (typeof laufId === 'string' && laufId.length > 0) {
+      const rotFaelle = [
+        { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({}), erwartet: /'auftragId' muss ein nicht-leerer String sein/, name: 'auftragId fehlt' },
+        { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({ auftragId: '' }), erwartet: /'auftragId' muss ein nicht-leerer String sein/, name: 'auftragId leer' },
+        { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({ auftragId: 'x', fremdfeld: 1 }), erwartet: /unbekanntes Feld 'fremdfeld'/, name: 'Fremdfeld' },
+        { pfad: '/api/sparring//auftrag', body: JSON.stringify({ auftragId: 'x' }), erwartet: /laufId darf nicht leer sein/, name: 'leere laufId im Pfad' },
+      ]
+      const befundeVorRotfaelle = befunde.length
+      for (const fall of rotFaelle) {
+        const antwort = await fetch(`${basisUrl}${fall.pfad}`, { method: 'POST', body: fall.body })
+        const koerper = await antwort.json()
+        if (antwort.status !== 400 || !fall.erwartet.test(koerper.grund ?? '')) {
+          befunde.push(`(x) Rotfall '${fall.name}': erwartet 400 mit ${fall.erwartet}, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+        }
+      }
+      if (befunde.length === befundeVorRotfaelle) {
+        console.log('✓ (x): POST /api/sparring/<laufId>/auftrag lehnt eine fehlende/leere auftragId, ein Fremdfeld und eine leere laufId im Pfad real mit 400 ab.')
+      }
+
+      const grueneAntwort = await fetch(`${basisUrl}/api/sparring/${encodeURIComponent(laufId)}/auftrag`, { method: 'POST', body: JSON.stringify({ auftragId: 'auftrag-check-f34-x' }) })
+      if (grueneAntwort.status !== 200) {
+        befunde.push(`(x): erwartet 200 bei gültiger Zuordnung, erhalten ${grueneAntwort.status} (${await grueneAntwort.text()})`)
+      }
+      const nachher = await (await fetch(`${basisUrl}/api/sparring`)).json()
+      if (nachher.verlauf[0]?.auftragErstelltId !== 'auftrag-check-f34-x') {
+        befunde.push(`(x): GET /api/sparring sollte 'auftragErstelltId': 'auftrag-check-f34-x' projizieren, erhalten ${JSON.stringify(nachher.verlauf[0])}`)
+      } else {
+        console.log("✓ (x): POST /api/sparring/<laufId>/auftrag registriert die Zuordnung real, GET /api/sparring projiziert sie danach als 'auftragErstelltId' (löst F-625).")
+      }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (y) F34 Fixpaket-Nachtrag (löst F-629): '.btn[hidden]' schlägt konkurrierende display-Regeln ──
+//
+// '.btn { display: inline-flex }' und '.chat-zusammenfassen-btn { display: block }' überschrieben die
+// UA-Regel '[hidden] { display: none }' — #chat-abbrechen-btn/#chat-zusammenfassen-btn blieben dadurch
+// IMMER sichtbar, unabhängig vom hidden-Attribut (dieselbe Fehlerklasse wie F-620/F-621, Muster (v)).
+// Kein DOM-Test möglich (F-601-Muster) — statischer Scan, realer Beweis im Render-Nachweis
+// (features/F34/nachweis-fixpaket-ui/).
+{
+  const befundeVor = befunde.length
+  const styleQuelltext = readFileSync('public/leitstand/style.css', 'utf-8')
+
+  if (!/\.btn\[hidden\]\s*\{\s*display:\s*none/.test(styleQuelltext)) {
+    befunde.push("(y): style.css sollte eine Regel '.btn[hidden] { display: none; }' tragen — ohne sie überschreiben '.btn'/'.chat-zusammenfassen-btn' die UA-[hidden]-Regel (Regression von F-629, #chat-abbrechen-btn/#chat-zusammenfassen-btn blieben dann wieder immer sichtbar)")
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (y): style.css trägt '.btn[hidden] { display: none; }' — #chat-abbrechen-btn/#chat-zusammenfassen-btn (und jedes andere .btn-Element) respektieren das hidden-Attribut wieder real (löst F-629).")
   }
 }
 

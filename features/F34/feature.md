@@ -551,6 +551,138 @@ Status wechselt `IN_ARBEIT` → `FEATURE_GATE` (kein Blocker in diesem
 Gesamt-Pass). Abnahme durch Stefan (Auftrag-Vorgabe: Auftrag nur anlegen,
 nicht routen/starten) steht weiterhin aus.
 
+### Fixpaket (fix/f34-sparring-verlauf, 23.09.2026)
+Behebt die drei Restfindings des Gesamt-Feature-Review-Passes (F-624/F-625/
+F-626), keiner davon war ein Blocker; Status bleibt `FEATURE_GATE`.
+
+- **F-624** (löst die Cross-Untermodus-Vermischung): `baueAnzeigeListe`
+  (`public/leitstand/views/chat.js`) taggt jeden Eintrag — persistiert,
+  lokal (Fehleranzeige) und ausstehend — mit `eintragModus` (persistiert
+  aus dem Server-Feld `modus`, Alt-Eintrag ohne Feld gilt als `feature`;
+  lokal/ausstehend aus dem bei Sende-/Push-Zeitpunkt aktiven
+  `sparringUntermodus`, NICHT dem ggf. inzwischen gewechselten aktuellen —
+  sonst könnte ein Fehler- oder Ausstehend-Eintrag den Filter selbst
+  umgehen) und filtert am Ende NUR für `modus === 'sparring'` danach;
+  `jarvis` bleibt strukturell bitgenau unverändert (kein
+  `eintragModus`-Konzept dort). Gate-Abschnitt (w) (statischer
+  Regressionsscan — kein DOM-Test möglich, F-601-Muster).
+- **F-625** (löst das Duplikat-Risiko): minimaler Rückverweis Turn→Auftrag
+  als EIGENE Kernartefakt-Kette (`sparring-auftrag-<projektId>`,
+  `registriereSparringAuftragZuordnung`, `scripts/leitstand/
+  routen-sparring.mjs`) statt eines nachträglichen Schreibzugriffs auf den
+  bereits geschriebenen Turn selbst (der hätte wie ein neuer, fremder Turn
+  in der Anzeige erschienen). Neuer Endpunkt `POST
+  /api/sparring/<laufId>/auftrag` (kein D13-Bezug — kein Lauf, kein
+  Routen/Starten), vom Client best-effort NACH einem bereits erfolgreichen
+  `POST /api/auftraege` aufgerufen (`verknuepfeSparringAuftrag`,
+  `public/leitstand/api.js`). `GET /api/sparring` projiziert den
+  Rückverweis als `auftragErstelltId` je Turn (Alt-Einträge ohne Zuordnung
+  bleiben `null`, unverändertes Verhalten); `renderAuftragBruecke` zeigt
+  dann "Auftrag bereits angelegt (→ #/projekt)" statt des Triggers — kein
+  neuer Klickpfad, der etwas anlegt/routet/startet. Gate-Abschnitt (x)
+  (realer HTTP-Rundlauf: Zuordnung schreiben, Projektion prüfen, vier
+  Rot-Fälle der Formprüfung).
+- **F-626** (löst die Nachweis-Lücke): neuer, eigenständiger Render-Nachweis
+  `features/F34/nachweis-fixpaket-ui/` — `scripts/render-nachweis.mjs`
+  generisch (kein F34-Spezifikum) um die Schritt-Art `tippen` (Text in ein
+  Eingabefeld), `warteAufSelector` und eine `vorhanden`-Beobachtung
+  (Element-Existenz statt fester ID, für dynamisch erzeugte Klassen wie
+  die Auftrag-Brücke) erweitert. `erzeuge-nachweis.mjs` startet einen
+  isolierten Fixture-Leitstand (Port 4174, kollidiert nie mit einer
+  echten laufenden Instanz) mit gestubbtem `fuehreAufgabeDurchFn` — liefert
+  die realen Schema-Beispiele `valid-scope-entwurf`/`valid-projekt-entwurf`
+  statt eines nicht-deterministischen LLM-Laufs (ein echter Coach-Lauf
+  liefert nicht zuverlässig `art: scope_entwurf`/`projekt_entwurf` in
+  GENAU einem Turn — HTTP-/Render-/Auftrag-Pipeline bleiben dabei real,
+  nur die Coach-Antwort ist gestubbt, Fixture-Eskalation laut
+  Auftragstext ausdrücklich erlaubt) und fährt eine Klickfolge, die real
+  eine Nachricht tippt/sendet, auf die `art`-Antwort wartet, den
+  Unterumschalter wechselt (F-624 sichtbar: der jeweils andere Turn
+  verschwindet), einen Auftrag über die Brücke anlegt und nach einem
+  Reload den "bereits angelegt"-Hinweis (F-625) prüft — Screenshots +
+  Klicktabelle in `features/F34/nachweis-fixpaket-ui/protokoll.md`,
+  Zusammenfassung in `features/F34/nachweis-fixpaket.md`.
+
+Beim Erzeugen dieses Nachweises real gefunden und zwei neue Findings
+registriert (außerhalb des ursprünglichen Auftrags-Scopes F-624/F-625/
+F-626 — F-629 im Nachtrag unten behoben, s. dort):
+- **F-628** (`HARNESS_IMPROVEMENT`, erledigt): `scripts/render-nachweis.mjs`s
+  `reload`-Schritt war ein No-op (Chromium navigiert nicht neu bei
+  byte-identischer Ziel-URL) — betraf strukturell jeden bisherigen
+  Render-Nachweis dieses Repos, blieb dort folgenlos nur durch einen
+  leeren Playwright-Kontext. Generisch im Werkzeug selbst behoben
+  (`about:blank`-Zwischensprung erzwingt eine echte Navigation), damit
+  DIESER Nachweis den F-625-Reload überhaupt echt prüfen konnte.
+- **F-629** (`BUG`, im Nachtrag unten behoben): `.btn`/`.chat-zusammenfassen-btn`
+  trugen keine `[hidden]`-Ausnahme — `#chat-abbrechen-btn`/
+  `#chat-zusammenfassen-btn` waren dadurch app-weit IMMER sichtbar,
+  unabhängig vom `hidden`-Attribut (dieselbe Fehlerklasse wie F-620/F-621,
+  hier nie behoben, betraf potenziell jedes `.btn`-Element app-weit).
+  Sichtbar auf praktisch jedem Screenshot dieses Nachweises — real
+  entdeckt, weil dies der erste Render-Nachweis ist, der diesen Teil der
+  Seite je im Bild hatte (`nachweis-ws3-ui`s engerer Bildausschnitt hatte
+  ihn abgeschnitten).
+
+`npm run check` grün (neue Gate-Abschnitte (w)/(x) in
+`scripts/check-f34-product-coach.mjs`). Der Nachweis-Auftrag
+`1b3412a8-88be-45e0-b97d-46e6cc5ba396` (F-618/F-627) wurde in diesem
+Fixpaket NICHT angefasst — bleibt unverändert stehen, nie routen/starten.
+
+### Nachtrag (fix/f34-sparring-verlauf, 23.09.2026)
+Vier Punkte, alle im selben Branch, kein Blocker; Status bleibt
+`FEATURE_GATE`.
+
+1. **F-629 behoben:** `public/leitstand/style.css` trägt jetzt
+   `.btn[hidden] { display: none; }` (Muster
+   `.chat-modus-auswahl[hidden]`, F-621) — Spezifität Klasse+Attribut
+   (0,2,0) schlägt automatisch auch `.chat-zusammenfassen-btn { display:
+   block }` (0,1,0), keine zweite, klassenspezifische Regel nötig. Neuer
+   Gate-Abschnitt (y) in `scripts/check-f34-product-coach.mjs` (statischer
+   Scan). Render-Nachweis nachgezogen: `features/F34/nachweis-fixpaket-ui/
+   klickfolge.json` beobachtet jetzt zusätzlich die Sichtbarkeit von
+   `#chat-abbrechen-btn`/`#chat-zusammenfassen-btn` (Spalten
+   "Abbrechen-Button sichtbar"/"Zusammenfassen-Button sichtbar") — real
+   `false` in jedem Schritt ohne ausstehenden Lauf bzw. im Modus
+   `sparring`, `state/findings.md` F-629 auf `erledigt`.
+2. **F-628-Nachlauf:** `npm run render-nachweis` mit
+   `features/F34/nachweis-ws3-ui/klickfolge.json` erneut ausgeführt (jetzt
+   mit dem F-628-Fix — die Reload-Zeile ist ein ECHTER Reload, kein No-op
+   mehr). Ergebnis: `protokoll.md`/`protokoll.json` byte-identisch mit dem
+   bisherigen Stand — die alte Aufzeichnung war zufällig richtig (der
+   In-Memory-Zustand vor dem nie stattgefundenen Reload stimmte bereits
+   mit dem localStorage-Stand überein), keine Abweichung. Ein erster Lauf
+   zeigte einen einmaligen `AbortSignal.timeout`-Fehlschlag beim Nachladen
+   des echten Sparring-Verlaufs (Einmal-Flake, CLAUDE.md-Muster); ein
+   sofortiger zweiter Lauf reproduzierte das nicht und lieferte wieder den
+   erwarteten Verlauf — `nachweis-ws3-ui/` mit den Screenshots/Protokoll
+   dieses zweiten, sauberen Laufs aktualisiert. **Reload-Zeilen mit
+   echtem Reload bestätigt.**
+3. **Neues Finding F-630 (`HARNESS_IMPROVEMENT`, P3, erledigt):**
+   `parseFindings` akzeptierte strukturell jeden Typ/jede Priorität ohne
+   eigene Prüfung — genau die Lücke, durch die F-626 kurzzeitig mit
+   `PROCESS_GAP` (kein erlaubter Typ) durchrutschte. Neuer Gate-Abschnitt
+   (5) in `scripts/check-f21-workboard.mjs` (bestehender Findings-Check,
+   importiert bereits `parseFindings`) prüft die REALE `state/findings.md`
+   gegen die erlaubten Typen (`BUG`/`HARNESS_IMPROVEMENT`/`TECH_DEBT`/
+   `PROCESS_IMPROVEMENT`) und Prioritäten (P0–P3), inkl. Rot-/Grünfall.
+   Alt-Bestand vorher real gescannt: 0 Typ-Verstöße, 23 P4-Einträge (kein
+   Tippfehler — `Prioritaet` ist strukturell `P0`–`P4`, P4 ein
+   etabliertes, aktiv genutztes fünftes Niveau) — per `P4_ALT_ALLOWLIST`
+   (feste ID-Liste) grandfathered statt massenhaft umgeschrieben, wie im
+   Auftrag vorgegeben. **Offene Entscheidung für Stefan:** die
+   Auftrags-Vorgabe "P0–P3" widerspricht dem real etablierten P4-Niveau —
+   diese Prüfung setzt sie trotzdem wörtlich um (Allowlist statt
+   Bereichserweiterung); falls P4 bewusst weiter vergeben werden soll,
+   müsste die Prüfung stattdessen `P0`–`P4` erlauben.
+4. **Neues Finding F-631 (`TECH_DEBT`, P3, offen, nur erfasst):** `POST
+   /api/sparring/<laufId>/auftrag` (`scripts/leitstand-server.mjs`,
+   Abschnitt um Z. 5492) prüft nur die Form (`auftragId` nicht-leerer
+   String) — nicht, ob `laufId` real ein bestehender Sparring-Turn und
+   `auftragId` real ein bestehender Auftrag ist. Lokal geringes Risiko
+   (der Endpunkt wird ausschließlich vom eigenen Client NACH einem
+   erfolgreichen `POST /api/auftraege` aufgerufen, kein öffentlicher
+   Schreibpfad mit Fremdeingaben) — nicht behoben, nur dokumentiert.
+
 ## Dependencies
 - F17 (Rollenvertrag) — `ROLLENVERTRAEGE`, `loeseAusfuehrungsEingabenAuf`
   (Startzeit-Durchsetzung, WS-2), gemeinsam mit `jarvis` geprüft.
@@ -649,26 +781,6 @@ nicht routen/starten) steht weiterhin aus.
   manuellen Sichtprüfung (WS-3 Korrekturrunde, 23.09.2026) unentdeckt —
   keine Quelltext-Prüfung kann eine CSS-Kaskadeninteraktion oder eine
   fehlende `classList`-Mutation bei korrekt gesetztem Attribut finden.
-- **Der Sparring-Chat-Verlauf filtert nicht nach Unterumschalter
-  (Feature-Review-Pass Gesamt, F-624, offen):** ein Wechsel zwischen
-  "Feature"/"Projekt" zeigt im Verlauf weiterhin alle früheren Turns
-  BEIDER Unterumschalter, chronologisch gemischt und ohne Kennzeichnung —
-  derselbe Bug, den F-614 bereits fürs LLM-Kontextfenster behob, wurde
-  nicht auf die Darstellung übertragen. Kein Datenverlust, keine
-  Sicherheitslücke, aber ein spürbarer UX-Bruch; Fix vs. dauerhaft
-  akzeptierte Grenze noch nicht entschieden.
-- **Kein Schutz gegen doppelte Auftragsanlage aus demselben Turn
-  (Feature-Review-Pass Gesamt, F-625, offen):** nach einem Moduswechsel
-  oder Reload verliert sich der einzige Hinweis, dass für einen Turn
-  bereits ein Auftrag angelegt wurde (`erfolgAuftragId` lebt nur im
-  transienten Browser-Zustand) — ein erneuter Klick kann anstandslos ein
-  inhaltsgleiches Duplikat anlegen.
-- **Render-Nachweis deckt keinen Nachricht-/Content-/Auftrag-Brücke-
-  Durchlauf ab (Feature-Review-Pass Gesamt, F-626, offen):**
-  `nachweis-ws3-ui/klickfolge.json` prüft nur das Umschalten der Modus-
-  Buttons, nicht die inhaltlich komplexeren Renderer oder den
-  Auftrag-Dialog — der F-622-Anspruch ist für diese Bereiche noch nicht
-  eingelöst.
 - **Nachweis-Auftrag `1b3412a8…` ohne Code-Markierung gegen Routen
   (Feature-Review-Pass Gesamt, F-627, offen):** nur Prosa-Dokumentation
   verhindert ein versehentliches Routen/Starten, keine technische Sperre —

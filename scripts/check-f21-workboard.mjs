@@ -14,6 +14,13 @@
  * P0→P4) gegen eine isolierte Fixture unter os.tmpdir() (AK3). (4) ein
  * echter HTTP-Server-Test für das kenntnisgenommen-Kopfdatum (AK4, F-370).
  *
+ * F34-Fixpaket-Nachtrag (löst F-630) ergänzt: (5) erlaubte Typ-/Prioritätswerte in state/findings.md
+ * — parseFindings akzeptiert strukturell jeden Typ/jede P0-P4-Priorität, ohne eigene Prüfung rutscht
+ * ein Tippfehler wie 'PROCESS_GAP' (real passiert, F-626) unbemerkt durch. Erlaubt: BUG/
+ * HARNESS_IMPROVEMENT/TECH_DEBT/PROCESS_IMPROVEMENT, Priorität P0-P3 — ein realer Alt-Bestand von 23
+ * P4-Einträgen (Scan 23.09.2026) ist per Allowlist grandfathered statt massenhaft umgeschrieben, jede
+ * NEUE P4-Vergabe ist ab jetzt ein Befund.
+ *
  * Wird aufgerufen von: npm run check.
  *
  * Aufruf: node scripts/check-f21-workboard.mjs
@@ -187,6 +194,51 @@ async function starteTestserver(optionen) {
 
   if (befunde.length === befundeVor4) {
     console.log("✓ (4) sammleLaufKopfdaten: kenntnisgenommen ist false ohne Entscheidung, true nach einer 'entscheidung-kenntnisnahme'-Artefaktversion (AK4).")
+  }
+}
+
+// ─── (5) F34 Fixpaket-Nachtrag (löst F-630): erlaubte Typ-/Prioritätswerte in state/findings.md ──
+//
+// Rot-/Grünfall direkt gegen parseFindings (Muster Abschnitt 1) belegt zuerst: ein unbekannter Typ
+// wie 'PROCESS_GAP' parst strukturell UNGEHINDERT durch (kein eigener Regelsatz in parseFindings, D5
+// — die Prüfung gehört hier, nicht in den Parser). Danach die REALE state/findings.md gegen die
+// erlaubten Werte geprüft.
+{
+  const befundeVor5 = befunde.length
+  const ERLAUBTE_TYPEN = new Set(['BUG', 'HARNESS_IMPROVEMENT', 'TECH_DEBT', 'PROCESS_IMPROVEMENT'])
+  const ERLAUBTE_PRIORITAETEN = new Set(['P0', 'P1', 'P2', 'P3'])
+  // Realer Scan 23.09.2026 (VOR dieser Prüfung, F34-Fixpaket): ausschließlich P4-Verstöße gefunden,
+  // keine Typ-Verstöße — alle 23 hier gelistet und bewusst grandfathered (Auftrags-Vorgabe: nicht
+  // massenhaft umschreiben). Eine NICHT gelistete ID mit P4 (neu vergeben oder hier vergessen) bleibt
+  // ein Befund — kein Freifahrtschein für zukünftige P4-Vergabe.
+  const P4_ALT_ALLOWLIST = new Set([
+    'F-010', 'F-011', 'F-015', 'F-017', 'F-018', 'F-019', 'F-221', 'F-237', 'F-242', 'F-250',
+    'F-256', 'F-265', 'F-266', 'F-267', 'F-594', 'F-597', 'F-599', 'F-600', 'F-601', 'F-602',
+    'F-607', 'F-608', 'F-616',
+  ])
+
+  const { workitems: rotTypWorkitems } = parseFindings('**F-905** · `PROCESS_GAP` · P2 · offen\nTitel: Unbekannter Typ.\n')
+  if (rotTypWorkitems[0]?.typ !== 'PROCESS_GAP') {
+    befunde.push(`(5) Vorbedingung: parseFindings sollte 'PROCESS_GAP' strukturell noch parsen (sonst könnte DIESE Prüfung ihn nie sehen) — erhalten ${JSON.stringify(rotTypWorkitems)}`)
+  }
+  const { workitems: gruenTypWorkitems } = parseFindings('**F-906** · `BUG` · P1 · offen\nTitel: Erlaubter Typ.\n')
+  if (!ERLAUBTE_TYPEN.has(gruenTypWorkitems[0]?.typ)) {
+    befunde.push(`(5) Vorbedingung: 'BUG' sollte als erlaubter Typ gelten — erhalten ${JSON.stringify(gruenTypWorkitems)}`)
+  }
+
+  const findingsInhaltFuerTypPruefung = readFileSync('state/findings.md', 'utf-8')
+  const { workitems: realeWorkitems } = parseFindings(findingsInhaltFuerTypPruefung)
+  for (const w of realeWorkitems) {
+    if (!ERLAUBTE_TYPEN.has(w.typ)) {
+      befunde.push(`(5) ${w.id} (Zeile ${w.zeile}): Typ '${w.typ}' ist keiner der erlaubten Typen (${[...ERLAUBTE_TYPEN].join(', ')})`)
+    }
+    if (!ERLAUBTE_PRIORITAETEN.has(w.prioritaet) && !P4_ALT_ALLOWLIST.has(w.id)) {
+      befunde.push(`(5) ${w.id} (Zeile ${w.zeile}): Priorität '${w.prioritaet}' ist weder P0-P3 noch ein grandfathered Alt-Bestand-Eintrag (P4_ALT_ALLOWLIST) — neue P4-Vergabe ist nicht mehr erlaubt`)
+    }
+  }
+
+  if (befunde.length === befundeVor5) {
+    console.log(`✓ (5) state/findings.md: alle ${realeWorkitems.length} Einträge tragen einen erlaubten Typ (BUG/HARNESS_IMPROVEMENT/TECH_DEBT/PROCESS_IMPROVEMENT); Priorität P0-P3 oder ein grandfathered Alt-Bestand-P4-Eintrag (${P4_ALT_ALLOWLIST.size} Einträge, Scan 23.09.2026) — löst F-630.`)
   }
 }
 

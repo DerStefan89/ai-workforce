@@ -182,3 +182,7 @@ export const holeVerbrauch = (von) => {
 // Zeitlimit (Muster holeRoadmap/holeVerbrauch, F-561), da noch kein Poll diesen Endpunkt abruft.
 export const sendeSparringNachricht = (koerper) => fetch(mitPraefix('/sparring'), { method: 'POST', body: JSON.stringify(koerper) })
 export const holeSparringVerlauf = () => holeJsonOderWirf(mitPraefix('/sparring'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+// F34 Fixpaket (löst F-625): Rückverweis Turn→Auftrag NACH einem bereits erfolgreichen
+// legeAuftragAn — best-effort, kein Routen/Starten (der Auftrag existiert bereits real).
+export const verknuepfeSparringAuftrag = (laufId, auftragId) => fetch(mitPraefix(`/sparring/${encodeURIComponent(laufId)}/auftrag`), { method: 'POST', body: JSON.stringify({ auftragId }) })
