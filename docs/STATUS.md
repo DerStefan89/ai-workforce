@@ -40,8 +40,12 @@ F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
 durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben offen,
-`features/F33/feature.md`), F34 `IN_ARBEIT` (WS-1/WS-2 abgeschlossen,
-WS-3 Projekt-Interview gebaut, noch nicht abgenommen), F35–F39 noch nicht
+`features/F33/feature.md`), F34 `FEATURE_GATE` (WS-1/WS-2/WS-3 vollständig gebaut und gemergt —
+Feature-Review-Pass über das Gesamtfeature am 23.09.2026 „Freigegeben mit
+Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings
+F-624…F-627 (P2–P3) bleiben offen, `npm run render-nachweis` erneut grün
+(F-622-Regel), siehe `features/F34/feature.md`; Abnahme durch Stefan steht
+noch aus), F35–F39 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
@@ -469,16 +473,18 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Feature-Review-Pass 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
   durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben
   offen). Nach F17 (Rollenvertrag), F25 (Projekte v1).
-- ⏳ **F34** — Product Coach / Ideation + Discovery. Akte
-  `features/F34/feature.md`, Status `IN_ARBEIT` (WS-1 Sparring-Backend —
+- ✅ **F34** — Product Coach / Ideation + Discovery. Akte
+  `features/F34/feature.md`, Status `FEATURE_GATE` (WS-1 Sparring-Backend —
   Rolle `product-coach`, `POST`/`GET /api/sparring` — gebaut, realer
   3-Turn-Nachweis `features/F34/nachweis-ws1.md`; WS-2 Sparring-UI + "Als
   Auftrag anlegen" gebaut; WS-3 Projekt-Interview — E-M5-12, Coach-Modus
   `projekt` erzeugt `projekt_entwurf`, `vergebeFeatureIds`/
   `baueCapabilityAuszug`/`baueAuftragAusProjektentwurf`, Unterumschalter
   „Feature | Projekt" in `views/chat.js` — gebaut, `npm run check` grün,
-  realer Nachweis `features/F34/nachweis-ws3.md`, noch nicht durch Stefan
-  abgenommen). Nach F33.
+  realer Nachweis `features/F34/nachweis-ws3.md`; Feature-Review-Pass über
+  das Gesamtfeature am 23.09.2026 „Freigegeben mit Hinweisen", Restfindings
+  F-624…F-627 (P2–P3) bleiben offen, noch nicht durch Stefan abgenommen).
+  Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
   ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
   Nach F41 (E-M5-13/E-M5-14, neue Reihenfolge F34 → F39 → F41 → F35).

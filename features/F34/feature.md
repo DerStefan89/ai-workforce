@@ -7,7 +7,7 @@ F34
 Product Coach / Ideation + Discovery
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -499,8 +499,57 @@ real gegen den Gate-Lauf geprüft (Abschnitt (q) erweitert, (u) neu, alle
 `product-coach.test.ts` grün); kein erneuter Interview-Lauf nötig
 (`features/F34/nachweis-ws3.md` Nachtrag 2).
 
-Status bleibt `IN_ARBEIT` bis Stefans Abnahme (Auftrag-Vorgabe: Auftrag nur
-anlegen, nicht routen/starten).
+### Feature-Review-Pass (Gesamt, 23.09.2026)
+Reviewer-/QA-Pass mit je frischem Kontext über das GESAMTE gemergte
+Feature (WS-1 + WS-2 + WS-3 zusammen, nicht mehr je Workstream einzeln) —
+Schwerpunkt Interaktionen ZWISCHEN den Workstreams, die ein isolierter
+Pass je WS übersehen haben könnte.
+
+- **code-reviewer:** „Freigegeben mit Hinweisen", kein Blocker. Bestätigt
+  bitgenau: Jarvis-Regression (`starteRollenChatLauf` trägt für `jarvis`
+  unverändert `settingSources`/`mcpConfig`/`disallowedTools`/
+  `MAX_THINKING_TOKENS '0'`, identische `auftragId`/`laufId`-Form,
+  identischer Fehlertext-Präfix), D13 für `POST /api/sparring` (409 vor
+  jeder Ressourcenauflösung, Muster `/api/chat`), Auftrag-Brücke legt real
+  nur an (kein Codepfad routet/startet nach `POST /api/auftraege`),
+  `sammleBestehendeIds` liest `features/<id>/` UND alle
+  `roadmap.json`-Meilensteine (F-618-Fix hält, nächste freie ID wäre real
+  `F42`), Codex-Dialekt rekursiv sauber, HTML-Escaping lückenlos auch in
+  allen WS-3-Renderfunktionen, F-620/F-621-Fixes real vorhanden. Ein neuer
+  Fund (F-624, P2, BUG): die Chat-Ansicht filtert den Sparring-Verlauf
+  nicht nach `sparringUntermodus` — derselbe Bug, den F-614 bereits fürs
+  LLM-Kontextfenster fand und behob, wurde nicht auf die Darstellung
+  übertragen.
+- **qa:** wurde ohne Bash-Werkzeug aufgerufen (Muster WS-1/WS-2/WS-3) —
+  Befunde aus Code-Lektüre, Schwerpunkt End-to-End-Pfade über die
+  Workstreams hinweg. „Freigegeben mit Hinweisen", kein Blocker. Bestätigt
+  alle 19 Akzeptanzkriterien gegen den realen Code, den F-613-Fehler-Turn-
+  Pfad als korrekt, alle "Bekannten Grenzen" als weiterhin zutreffend. Fand
+  unabhängig denselben Kern-Befund wie der code-reviewer (F-624). Drei
+  weitere Funde: F-625 (P2, kein Schutz gegen doppelte Auftragsanlage aus
+  demselben Turn nach Moduswechsel/Reload — der einzige Indikator lebt nur
+  im transienten Browser-Zustand), F-626 (P3, der Render-Nachweis
+  `nachweis-ws3-ui/klickfolge.json` deckt nur Button-Umschalten ab, keine
+  echte Nachricht/Antwortdarstellung/Auftrag-Brücke), F-627 (P3, der
+  bewusst kollidierende Nachweis-Auftrag `1b3412a8…` hat keine
+  Code-Markierung gegen versehentliches Routen, nur Prosa-Dokumentation).
+
+Vier neue Findings (F-624…F-627, alle P2/P3, kein P0/P1) — siehe
+`state/findings.md`. Keiner ist ein Blocker (kein Datenverlust, keine
+Sicherheitslücke); alle bleiben bewusst offen statt in diesem reinen
+Prüf-Pass (ohne Schreibrechte der Prüfrollen) sofort behoben zu werden —
+Entscheidung über Fix vs. dokumentierte Grenze steht für die nächste
+Iteration aus (CLAUDE.md-Entscheidungsregel 5: hier dokumentiert, nicht
+stillschweigend liegen gelassen). `npm run render-nachweis` gegen
+`features/F34/nachweis-ws3-ui/klickfolge.json` erneut gelaufen (F-622-Regel)
+— Ergebnis byte-identisch mit dem bestehenden `protokoll.md` (ein erster
+Lauf zeigte einmalig eine abweichende Zeile, ein sofortiger zweiter Lauf
+reproduzierte das nicht — Muster der in `CLAUDE.md` dokumentierten
+Einmal-Flakes, kein Fix nötig).
+
+Status wechselt `IN_ARBEIT` → `FEATURE_GATE` (kein Blocker in diesem
+Gesamt-Pass). Abnahme durch Stefan (Auftrag-Vorgabe: Auftrag nur anlegen,
+nicht routen/starten) steht weiterhin aus.
 
 ## Dependencies
 - F17 (Rollenvertrag) — `ROLLENVERTRAEGE`, `loeseAusfuehrungsEingabenAuf`
@@ -600,6 +649,31 @@ anlegen, nicht routen/starten).
   manuellen Sichtprüfung (WS-3 Korrekturrunde, 23.09.2026) unentdeckt —
   keine Quelltext-Prüfung kann eine CSS-Kaskadeninteraktion oder eine
   fehlende `classList`-Mutation bei korrekt gesetztem Attribut finden.
+- **Der Sparring-Chat-Verlauf filtert nicht nach Unterumschalter
+  (Feature-Review-Pass Gesamt, F-624, offen):** ein Wechsel zwischen
+  "Feature"/"Projekt" zeigt im Verlauf weiterhin alle früheren Turns
+  BEIDER Unterumschalter, chronologisch gemischt und ohne Kennzeichnung —
+  derselbe Bug, den F-614 bereits fürs LLM-Kontextfenster behob, wurde
+  nicht auf die Darstellung übertragen. Kein Datenverlust, keine
+  Sicherheitslücke, aber ein spürbarer UX-Bruch; Fix vs. dauerhaft
+  akzeptierte Grenze noch nicht entschieden.
+- **Kein Schutz gegen doppelte Auftragsanlage aus demselben Turn
+  (Feature-Review-Pass Gesamt, F-625, offen):** nach einem Moduswechsel
+  oder Reload verliert sich der einzige Hinweis, dass für einen Turn
+  bereits ein Auftrag angelegt wurde (`erfolgAuftragId` lebt nur im
+  transienten Browser-Zustand) — ein erneuter Klick kann anstandslos ein
+  inhaltsgleiches Duplikat anlegen.
+- **Render-Nachweis deckt keinen Nachricht-/Content-/Auftrag-Brücke-
+  Durchlauf ab (Feature-Review-Pass Gesamt, F-626, offen):**
+  `nachweis-ws3-ui/klickfolge.json` prüft nur das Umschalten der Modus-
+  Buttons, nicht die inhaltlich komplexeren Renderer oder den
+  Auftrag-Dialog — der F-622-Anspruch ist für diese Bereiche noch nicht
+  eingelöst.
+- **Nachweis-Auftrag `1b3412a8…` ohne Code-Markierung gegen Routen
+  (Feature-Review-Pass Gesamt, F-627, offen):** nur Prosa-Dokumentation
+  verhindert ein versehentliches Routen/Starten, keine technische Sperre —
+  geringes Risiko, da Routen ohnehin ein bewusster, separater
+  menschlicher Schritt bleibt.
 - **UI-Workstreams ohne Render-Nachweis vor Übergabe (WS-2/WS-3, F-622,
   PROCESS_IMPROVEMENT, ERLEDIGT — keine offene Grenze mehr):** WS-2 und WS-3
   wurden an Stefan übergeben, ohne die Seite je gerendert zu haben — mehrere

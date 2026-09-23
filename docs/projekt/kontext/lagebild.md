@@ -41,8 +41,12 @@ F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
 durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben offen,
-`features/F33/feature.md`), F34 `IN_ARBEIT` (WS-1/WS-2 abgeschlossen,
-WS-3 Projekt-Interview gebaut, noch nicht abgenommen), F35–F39 noch nicht
+`features/F33/feature.md`), F34 `FEATURE_GATE` (WS-1/WS-2/WS-3 vollständig gebaut und gemergt —
+Feature-Review-Pass über das Gesamtfeature am 23.09.2026 „Freigegeben mit
+Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings
+F-624…F-627 (P2–P3) bleiben offen, `npm run render-nachweis` erneut grün
+(F-622-Regel), siehe `features/F34/feature.md`; Abnahme durch Stefan steht
+noch aus), F35–F39 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
