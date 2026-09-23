@@ -1,0 +1,10 @@
+{
+  "modus": "feature",
+  "zusammenfassung": "Modul-Eintrag ohne abhaengigkeiten.",
+  "module": [{ "name": "beispiel", "zweck": "Testfixture." }],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [],
+  "capabilities_bedarf": [],
+  "evidenz": [{ "marker": "[Fakt]", "aussage": "Testfixture." }]
+}

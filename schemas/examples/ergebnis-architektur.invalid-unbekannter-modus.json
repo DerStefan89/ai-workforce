@@ -1,0 +1,10 @@
+{
+  "modus": "sonstwas",
+  "zusammenfassung": "Ungültiger Modus.",
+  "module": [],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [],
+  "capabilities_bedarf": [],
+  "evidenz": [{ "marker": "[Fakt]", "aussage": "Testfixture." }]
+}

@@ -7,7 +7,12 @@ F34
 Product Coach / Ideation + Discovery
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+
+Abnahme durch Stefan am 23.09.2026 (F39-WS-1-Auftrag, Punkt 0): Feature
+insgesamt abgenommen, Restfindings aus dem Feature-Review-Pass und den
+Korrekturrunden bleiben als M5-Backlog offen (F-627, F-630 offene
+Entscheidung, F-631).
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 

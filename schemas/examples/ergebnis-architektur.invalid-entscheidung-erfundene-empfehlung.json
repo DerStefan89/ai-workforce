@@ -1,0 +1,18 @@
+{
+  "modus": "feature",
+  "zusammenfassung": "Empfehlung nennt eine Option, die in optionen nicht existiert — schemakonform, aber vom Validator abgelehnt.",
+  "module": [],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [
+    {
+      "frage": "Testfrage?",
+      "optionen": [{ "titel": "Option A", "vorteile": ["x"], "nachteile": ["y"] }],
+      "auswirkung_bestand": "keine",
+      "empfehlung": "Eine nicht gelistete Option",
+      "begruendung": "Testfixture."
+    }
+  ],
+  "capabilities_bedarf": [],
+  "evidenz": [{ "marker": "[Fakt]", "aussage": "Testfixture." }]
+}

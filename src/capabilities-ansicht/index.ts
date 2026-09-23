@@ -16,6 +16,9 @@
  * waehleWorkflowVorlage: I/O bleibt beim Aufrufer, scripts/leitstand-
  * server.mjs).
  *
+ * F346_AUSNAHMEN trägt seit F39 WS-1 zusätzlich 'architekt'/'claude-code'
+ * (dieselbe strukturelle Lücke wie 'product-coach').
+ *
  * F346_AUSNAHMEN war bisher NUR lokal in scripts/check-f19-ressourcen.mjs
  * definiert — seit F24 liegt sie hier als einzige Quelle (Kein-
  * Zweitwahrheit-Prinzip dieses Repos), das F19-Gate importiert sie jetzt von
@@ -83,6 +86,10 @@ export const F346_AUSNAHMEN: ReadonlyArray<{ rolle: string; worker: string; erla
   { rolle: 'scout', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
   { rolle: 'jarvis', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
   { rolle: 'product-coach', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
+  // 'architekt' kam mit F39 WS-1 hinzu — dieselbe strukturelle Lücke wie 'product-coach'
+  // (ein Architekt-Lauf über den direkten POST-Pfad läuft strukturell IMMER als
+  // worker 'claude-code' bei fehlendem Codex, kein Verengen auf ['codex'] ohne Codex-Spike).
+  { rolle: 'architekt', worker: 'claude-code', erlaubteLuecke: ['STRUCTURED_OUTPUT'] },
 ]
 
 /**
