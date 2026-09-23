@@ -18,16 +18,7 @@
     {
       "name": "kernzustand.schema.json",
       "zweck": "Beschreibt die Form eines persistierten Kernzustand-Eintrags.",
-      "json_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["schema_version", "id", "daten"],
-        "properties": {
-          "schema_version": { "type": "integer", "minimum": 1 },
-          "id": { "type": "string", "minLength": 1 },
-          "daten": { "type": "object" }
-        }
-      }
+      "json_schema": "{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"schema_version\",\"id\",\"daten\"],\"properties\":{\"schema_version\":{\"type\":\"integer\",\"minimum\":1},\"id\":{\"type\":\"string\",\"minLength\":1},\"daten\":{\"type\":\"object\"}}}"
     }
   ],
   "entscheidungen_mensch": [

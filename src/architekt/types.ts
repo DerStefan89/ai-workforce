@@ -32,8 +32,8 @@ export interface AdrEntwurf {
 export interface SchemaEntwurf {
   name: string
   zweck: string
-  /** Ein vom Architekten entworfenes JSON-Schema-Fragment — beliebig strukturiert, nicht selbst geprüft. */
-  json_schema: Record<string, unknown>
+  /** Ein vom Architekten entworfenes JSON-Schema-Fragment, als JSON-Text (String, F-638) — nicht als verschachteltes Objekt, siehe schemas/ergebnis-architektur.schema.json. */
+  json_schema: string
 }
 
 export interface EntscheidungOption {

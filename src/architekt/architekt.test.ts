@@ -54,6 +54,11 @@ test('validiereErgebnisArchitektur: invalid-entscheidung-erfundene-empfehlung.js
   assert.ok(verstoesse.some((v) => v.includes("nennt keinen Titel aus")))
 })
 
+test('validiereErgebnisArchitektur: invalid-json-schema-kein-json.json wird abgelehnt (F-638/Regel 1c)', () => {
+  const verstoesse = validiereErgebnisArchitektur(ladeBeispiel('invalid-json-schema-kein-json'))
+  assert.ok(verstoesse.some((v) => v.includes("'schema_entwuerfe[0].json_schema' ist kein gültiges JSON")))
+})
+
 test('validiereErgebnisArchitektur: eine erfundene ressource_id ist nur mit übergebenen bekannteRessourcenIds ein Verstoß', () => {
   const daten = ladeBeispiel('projekt-ressource-erfunden')
   assert.deepStrictEqual(validiereErgebnisArchitektur(daten), [], 'ohne bekannteRessourcenIds bleibt die Prüfung aus')

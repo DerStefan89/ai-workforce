@@ -8,12 +8,13 @@
  * Workerstart abgehalten; eine vertragskonforme Besetzung wird angenommen),
  * (b) schemas/ergebnis-architektur.schema.json + Beispiele gegen
  * validiereErgebnisArchitektur (src/architekt/index.ts) — ein ungültiges
- * Ergebnis wird abgelehnt, ein gültiges angenommen, (b2) den
- * Codex-kompatiblen Schema-Dialekt (kein 'allOf'/'if'/'then'/'oneOf', jede
- * Top-Level- UND jede verschachtelte 'properties'-Eigenschaft steht in
+ * Ergebnis wird abgelehnt, ein gültiges angenommen (inkl. F-638/Regel 1c:
+ * 'schema_entwuerfe[].json_schema' als String, der kein gültiges JSON ist),
+ * (b2) den Codex-kompatiblen Schema-Dialekt (kein 'allOf'/'if'/'then'/'oneOf',
+ * jede Top-Level- UND jede verschachtelte 'properties'-Eigenschaft steht in
  * ihrem eigenen 'required' — Muster scripts/check-f34-product-coach.mjs
- * (b2); 'schema_entwuerfe[].json_schema' ist ein bewusst opakes Objekt ohne
- * eigenes 'properties' und wird vom Scan deshalb korrekt übersprungen), und
+ * (b2); 'schema_entwuerfe[].json_schema' ist seit F-638 ein String, kein
+ * Objekt, und wird vom 'properties'-Scan deshalb korrekt übersprungen), und
  * (c) baueArchitektAuftragstext (Modus 'feature'/'projekt', Capability-
  * Auszug nur im Modus 'projekt' und nur wenn gesetzt).
  *
@@ -158,6 +159,7 @@ console.log('\n=== F39-Architekt-Check ===\n')
     { pfad: 'schemas/examples/ergebnis-architektur.invalid-modul-fehlendes-feld.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-architektur.invalid-leere-evidenz.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-architektur.invalid-entscheidung-erfundene-empfehlung.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-architektur.invalid-json-schema-kein-json.json', sollGueltigSein: false },
   ]
   for (const { pfad, sollGueltigSein } of beispiele) {
     const obj = JSON.parse(readFileSync(pfad, 'utf-8'))
@@ -203,9 +205,10 @@ console.log('\n=== F39-Architekt-Check ===\n')
   }
 
   // Jede 'properties'-Eigenschaft — auf JEDER Verschachtelungsebene — steht auch in ihrem eigenen
-  // 'required' (F-423-Dialekt-Regel 2). 'json_schema' (schema_entwuerfe[].json_schema) trägt
-  // selbst kein 'properties' und wird vom Scan deshalb korrekt übersprungen — es ist ein opakes,
-  // vom Architekten entworfenes Fragment, kein Teil DIESES Schema-Dialekts.
+  // 'required' (F-423-Dialekt-Regel 2). 'json_schema' (schema_entwuerfe[].json_schema) ist seit
+  // F-638 ein String, trägt also kein eigenes 'properties' und wird vom Scan deshalb korrekt
+  // übersprungen — der JSON-Text darin ist ein vom Architekten entworfenes Fragment, kein Teil
+  // DIESES Schema-Dialekts.
   const pruefeVerschachteltesRequired = (knoten, pfad, treffer) => {
     if (knoten === null || typeof knoten !== 'object') return
     if (knoten.properties && typeof knoten.properties === 'object') {
@@ -224,16 +227,17 @@ console.log('\n=== F39-Architekt-Check ===\n')
     befunde.push(`(b2): folgende verschachtelten properties-Objekte haben nicht jede eigene Eigenschaft in ihrem eigenen 'required' (Codex-Dialekt-Zwang): ${verschachtelteTreffer.join('; ')}`)
   }
 
-  // Gegenprobe: 'schema_entwuerfe[].json_schema' selbst trägt bewusst KEIN 'properties' im
-  // Schema — belegt, dass der Scan es nicht stillschweigend übersieht, weil es leer ist.
+  // Gegenprobe: 'schema_entwuerfe[].json_schema' ist seit F-638 ein STRING (JSON-Text), kein
+  // verschachteltes Objekt mehr — belegt, dass der Scan es nicht stillschweigend übersieht, weil
+  // es (fälschlich) wieder ein Objekt ohne 'properties' wäre.
   const jsonSchemaKnoten = schema?.properties?.schema_entwuerfe?.items?.properties?.json_schema
-  if (!jsonSchemaKnoten || jsonSchemaKnoten.type !== 'object' || 'properties' in jsonSchemaKnoten) {
-    befunde.push("(b2) Kalibrierung: 'schema_entwuerfe[].json_schema' sollte ein opakes 'type: object' ohne eigenes 'properties' sein")
+  if (!jsonSchemaKnoten || jsonSchemaKnoten.type !== 'string') {
+    befunde.push("(b2) Kalibrierung: 'schema_entwuerfe[].json_schema' sollte seit F-638 'type: string' sein, kein verschachteltes Objekt")
   }
 
   if (befunde.length === befundeVor) {
     console.log(
-      "✓ (b2): schemas/ergebnis-architektur.schema.json enthält kein 'allOf'/'if'/'then'/'oneOf', jede Top-Level- UND jede verschachtelte property steht in ihrem eigenen 'required', 'json_schema' bleibt bewusst opak."
+      "✓ (b2): schemas/ergebnis-architektur.schema.json enthält kein 'allOf'/'if'/'then'/'oneOf', jede Top-Level- UND jede verschachtelte property steht in ihrem eigenen 'required', 'json_schema' ist seit F-638 ein String."
     )
   }
 }
