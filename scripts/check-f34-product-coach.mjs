@@ -83,6 +83,11 @@
  * gespeichert) — der Grünfall verwendet seither eine über POST /api/auftraege real angelegte
  * auftragId statt einer erfundenen Zeichenkette.
  *
+ * Korrekturschleife (Abnahme 23.09.2026, Reviewer-Befund) ergänzt in (x): eine auftragId mit
+ * unzulässigen Zeichen (z. B. '/') wird jetzt real mit 400 abgelehnt statt als lauf_id in
+ * ladeArtefaktVersion→pruefeLaufId (checkpoint-store/index.ts) zu werfen und über den generischen
+ * Handler-Catch als 500 zu enden — Muster POST /api/auftraege/<id>/routen (LAUFID_UNZULAESSIGE_ZEICHEN).
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisProductCoach/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -1260,6 +1265,10 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
         { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({ auftragId: '' }), erwartet: /'auftragId' muss ein nicht-leerer String sein/, name: 'auftragId leer' },
         { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({ auftragId: 'x', fremdfeld: 1 }), erwartet: /unbekanntes Feld 'fremdfeld'/, name: 'Fremdfeld' },
         { pfad: '/api/sparring//auftrag', body: JSON.stringify({ auftragId: 'x' }), erwartet: /laufId darf nicht leer sein/, name: 'leere laufId im Pfad' },
+        // Korrekturschleife (Abnahme 23.09.2026): auftragId mit '/' würde ohne die
+        // LAUFID_UNZULAESSIGE_ZEICHEN-Prüfung als lauf_id in ladeArtefaktVersion→pruefeLaufId
+        // werfen und über den generischen Handler-Catch 500 statt 400 liefern.
+        { pfad: `/api/sparring/${encodeURIComponent(laufId)}/auftrag`, body: JSON.stringify({ auftragId: 'a/b' }), erwartet: /'auftragId' enthält unzulässige Zeichen/, name: 'auftragId mit Schrägstrich' },
       ]
       const befundeVorRotfaelle = befunde.length
       for (const fall of rotFaelle) {
@@ -1270,7 +1279,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
         }
       }
       if (befunde.length === befundeVorRotfaelle) {
-        console.log('✓ (x): POST /api/sparring/<laufId>/auftrag lehnt eine fehlende/leere auftragId, ein Fremdfeld und eine leere laufId im Pfad real mit 400 ab.')
+        console.log('✓ (x): POST /api/sparring/<laufId>/auftrag lehnt eine fehlende/leere auftragId, ein Fremdfeld, eine leere laufId im Pfad und eine auftragId mit unzulässigen Zeichen (z. B. \'/\') real mit 400 ab (kein 500).')
       }
 
       // F34 Fixpaket-Nachtrag (löst F-631): eine formal gültige, aber real nicht existierende

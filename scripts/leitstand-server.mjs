@@ -5913,6 +5913,14 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: "'auftragId' muss ein nicht-leerer String sein" })
         return
       }
+      // Korrekturschleife (Abnahme 23.09.2026): auftragId mit unzulässigen Zeichen (z. B. '/') würde
+      // sonst als lauf_id in ladeArtefaktVersion→pruefeLaufId werfen (checkpoint-store/index.ts) und
+      // über den generischen Handler-Catch als 500 statt als abgelehnte Eingabe (400) enden — Muster
+      // POST /api/auftraege/<id>/routen oben (LAUFID_UNZULAESSIGE_ZEICHEN).
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(body.auftragId)) {
+        sendeJson(res, 400, { grund: `'auftragId' enthält unzulässige Zeichen: ${JSON.stringify(body.auftragId)}` })
+        return
+      }
       // F-631: laufId muss real ein bestehender Sparring-Turn sein — erst DANACH auftragId
       // gegen den realen Auftrags-Bestand prüfen (Muster POST /api/auftraege/<id>/routen), sonst
       // würde der Rückverweis auf einen Turn oder einen Auftrag zeigen, den es nicht gibt.
