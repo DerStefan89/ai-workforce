@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/ergebnis-architektur.schema.json",
+  "title": "Rollen-Ergebnis: architekt",
+  "description": "F39 WS-1 (E-M5-3′/E-M5-13, docs/projekt/zielfassung.md §13.6). Output-Schema für die Rolle 'architekt' (src/rollen/index.ts). Ein Architektur-Lauf referenziert es als output_schema: \"ergebnis-architektur\" — der Name wird zu schemas/<name>.schema.json aufgelöst, nie als freier Pfad übergeben (Muster: ergebnis-product-coach.schema.json). Anders als 'product-coach' hat 'architekt' kein 'art'-Feld mit sich ausschließenden Ausgängen — jeder Lauf liefert dieselbe feste Form; 'modus' unterscheidet nur die Rolleninstruktion ('feature': Architekturentwurf für ein einzelnes Feature/eine ADR-würdige Einzelentscheidung; 'projekt': Projektmodus 'Architektur-Grundlage' — Stack-ADR, Modulschnitt, Datenmodell als Schemas, E-M5-13), nicht die Antwortform. Ein Array ist leer, wenn seine Kategorie für diesen Lauf nichts beiträgt — kein 'null', keine Kopplung an 'modus' im Schema (einfacher als ergebnis-product-coach.schema.json, weil es hier keinen Ausgangs-Diskriminator gibt). Codex-kompatibler Dialekt (F-423-Muster, ergebnis-product-coach.schema.json): kein 'allOf'/'if'/'then'/'oneOf', JEDE unter 'properties' gelistete Eigenschaft steht auch in 'required' — auch in jedem verschachtelten Objekt. 'schema_entwuerfe[].json_schema' ist bewusst ein opakes 'object' ohne eigene 'properties'/'required' (ein eingebettetes, vom Architekten entworfenes JSON-Schema-Fragment ist beliebig strukturiert — der Codex-Dialekt-Zwang gilt nur für Objekte, die DIESES Schema selbst mit 'properties' beschreibt). 'evidenz[].marker' ist die geschlossene Wertemenge aus .claude/skills/advisor-pass (Evidenz-Marker [Fakt]/[Schlussfolgerung]/[Annahme]/[offene Unsicherheit]) — dieselbe Konvention wie ein Advisor-Pass-Finding, hier auf einen Architektur-Entwurf angewendet. Dies ist KEIN Rollenvertrag: das Schema beschreibt allein die Form der Antwort, nicht die Pflichten oder Befugnisse der Rolle (die stehen in src/rollen/index.ts).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["modus", "zusammenfassung", "module", "adr_entwuerfe", "schema_entwuerfe", "entscheidungen_mensch", "capabilities_bedarf", "evidenz"],
+  "properties": {
+    "modus": {
+      "enum": ["feature", "projekt"],
+      "description": "Geschlossene Wertemenge, wie 'modus' bei der Rolle 'product-coach' (E-M5-13: Coach und Architekt teilen sich dieselbe Capability Library, F36). 'feature': Architekturentwurf für ein einzelnes Feature. 'projekt': Projektmodus 'Architektur-Grundlage' (Stack-ADR, Modulschnitt, Datenmodell als Schemas)."
+    },
+    "zusammenfassung": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Für den Menschen lesbare Zusammenfassung des Architekturentwurfs — immer Pflicht, unabhängig davon, welche der übrigen Arrays für diesen Lauf gefüllt sind (Muster 'antwort' in ergebnis-product-coach.schema.json)."
+    },
+    "module": {
+      "type": "array",
+      "description": "Vorgeschlagener Modulschnitt. Leer, wenn dieser Lauf keinen neuen Modulschnitt vorschlägt.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "zweck", "abhaengigkeiten"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "zweck": { "type": "string", "minLength": 1 },
+          "abhaengigkeiten": {
+            "type": "array",
+            "description": "Namen anderer Module aus DIESEM Entwurf, von denen dieses Modul abhängt — reiner Freitext, keine ID-Auflösung (anders als ergebnis-product-coach.schema.json's abhaengig_von_titel, kein vergebeFeatureIds-Äquivalent in F39 WS-1).",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "adr_entwuerfe": {
+      "type": "array",
+      "description": "ADR-Entwürfe, angelehnt an docs/adr/TEMPLATE.md (Kontext/Optionen/Entscheidung/Begründung) — hier als Kontext/Entscheidung/Alternativen/Konsequenzen. Leer, wenn dieser Lauf keine ADR-würdige Entscheidung vorschlägt. Der Architekt schreibt KEINE Datei unter docs/adr/ (F39 WS-1 hat keinen Schreibpfad) — das bleibt einem Folgeauftrag vorbehalten.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["titel", "kontext", "entscheidung", "alternativen", "konsequenzen"],
+        "properties": {
+          "titel": { "type": "string", "minLength": 1 },
+          "kontext": { "type": "string", "minLength": 1 },
+          "entscheidung": { "type": "string", "minLength": 1 },
+          "alternativen": {
+            "type": "array",
+            "description": "Erwogene, nicht gewählte Optionen — je Eintrag ein knapper Text inkl. der wesentlichen Abwägung.",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "konsequenzen": {
+            "type": "array",
+            "description": "Folgen der gewählten Entscheidung — technisch oder organisatorisch.",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "schema_entwuerfe": {
+      "type": "array",
+      "description": "Vorgeschlagene Datenmodell-Schemas (JSON Schema). Leer, wenn dieser Lauf kein Datenmodell entwirft.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "zweck", "json_schema"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "zweck": { "type": "string", "minLength": 1 },
+          "json_schema": {
+            "type": "object",
+            "description": "Ein vom Architekten entworfenes JSON-Schema-Fragment — bewusst opak (kein 'properties'/'required' auf DIESER Ebene), weil sein Inhalt beliebig strukturiert ist und nicht dem Codex-Dialekt-Zwang dieses äußeren Schemas unterliegt."
+          }
+        }
+      }
+    },
+    "entscheidungen_mensch": {
+      "type": "array",
+      "description": "Offene Grundsatzentscheidungen, die ein Mensch treffen muss, bevor der Entwurf umgesetzt werden kann — Muster des Klärzyklus (F13, KLAERUNG_ERFORDERLICH), hier als strukturierter Vorschlag statt Freitext. Leer, wenn dieser Lauf keine offene Entscheidung sieht.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["frage", "optionen", "auswirkung_bestand", "empfehlung", "begruendung"],
+        "properties": {
+          "frage": { "type": "string", "minLength": 1 },
+          "optionen": {
+            "type": "array",
+            "description": "Mindestens eine Option; jede mit ihren Vor- und Nachteilen (Muster docs/adr/TEMPLATE.md 'Optionen').",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["titel", "vorteile", "nachteile"],
+              "properties": {
+                "titel": { "type": "string", "minLength": 1 },
+                "vorteile": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "nachteile": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+              }
+            }
+          },
+          "auswirkung_bestand": { "type": "string", "minLength": 1, "description": "Was diese Entscheidung am bestehenden Code/Datenmodell ändert — leer als Text 'keine', nie weggelassen." },
+          "empfehlung": { "type": "string", "minLength": 1, "description": "Der Titel der vom Architekten empfohlenen Option aus 'optionen'." },
+          "begruendung": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "capabilities_bedarf": {
+      "type": "array",
+      "description": "Bedarf gegen den eingespeisten Capability-Auszug abgebildet — Muster ergebnis-product-coach.schema.json (F34 WS-3): 'ressource_id' nur gesetzt, wenn eine echte Ressource aus dem Auszug passt, sonst 'status': 'fehlt'. Leer, wenn dieser Lauf keinen Capability-Bedarf sieht.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bedarf", "ressource_id", "status"],
+        "properties": {
+          "bedarf": { "type": "string", "minLength": 1 },
+          "ressource_id": { "type": ["string", "null"], "minLength": 1 },
+          "status": { "enum": ["vorhanden", "offen", "fehlt"] }
+        }
+      }
+    },
+    "evidenz": {
+      "type": "array",
+      "description": "Belegte Aussagen dieses Entwurfs, je mit Evidenz-Marker (.claude/skills/advisor-pass). Die Mindestlänge 'mindestens ein Eintrag' ist NICHT hier erzwungen (kein 'minItems' im Schema, F-423-Muster wie ergebnis-product-coach.schema.json's Alternativen-Mindestlänge), sondern ausschließlich im Validator (validiereErgebnisArchitektur, src/architekt/index.ts) — ein Architekturentwurf ohne jede belegte Aussage ist eine Behauptung ohne Grundlage.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["marker", "aussage"],
+        "properties": {
+          "marker": { "enum": ["[Fakt]", "[Schlussfolgerung]", "[Annahme]", "[offene Unsicherheit]"] },
+          "aussage": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

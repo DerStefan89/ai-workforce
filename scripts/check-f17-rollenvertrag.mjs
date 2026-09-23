@@ -55,6 +55,8 @@ const erwarteteRollen = {
   jarvis: ['src/**'],
   // 'product-coach' kam mit F34 WS-1 hinzu — ebenso neu, kein Migrationswert.
   'product-coach': ['src/**'],
+  // 'architekt' kam mit F39 WS-1 hinzu — ebenso neu, kein Migrationswert.
+  architekt: ['src/**'],
 }
 
 const gefundeneRollen = Object.keys(ROLLENVERTRAEGE).sort()

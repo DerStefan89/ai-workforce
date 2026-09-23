@@ -1,0 +1,34 @@
+{
+  "modus": "feature",
+  "zusammenfassung": "Vorschlag: eigenes Modul src/beispiel-feature/ mit Validator + Gate, Muster src/product-coach/ — kein neuer Zustand, keine Schemaänderung an bestehenden Verträgen.",
+  "module": [
+    { "name": "beispiel-feature", "zweck": "Validiert ein Rollen-Ergebnis gegen sein Schema und baut den zugehörigen Auftragstext.", "abhaengigkeiten": [] }
+  ],
+  "adr_entwuerfe": [
+    {
+      "titel": "Validierung handgeschrieben statt über eine generische JSON-Schema-Bibliothek",
+      "kontext": "Jedes bestehende Rollen-Modul (jarvis, product-coach) validiert sein Ergebnis mit einer handgeschriebenen Funktion statt ajv (D5).",
+      "entscheidung": "Denselben Weg für src/beispiel-feature/ übernehmen.",
+      "alternativen": ["ajv als generischer Validator — mehr Abdeckung, aber eine neue Abhängigkeit ohne belegten Bedarf und eine Abweichung vom Repo-Muster."],
+      "konsequenzen": ["Jede Schemaänderung verlangt eine synchrone Änderung der Validierungsfunktion, wie bei jedem bestehenden Rollen-Modul."]
+    }
+  ],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [
+    {
+      "frage": "Soll beispiel-feature einen eigenen Werkzeugsatz oder den bestehenden 'lesend' nutzen?",
+      "optionen": [
+        { "titel": "Bestehenden 'lesend' nutzen", "vorteile": ["Kein neuer Werkzeugsatz-Typ, kein Gate-Nachtrag."], "nachteile": ["Weniger granular, falls später ein Zwischenschritt nötig wird."] },
+        { "titel": "Neuen Werkzeugsatz 'analysierend' einführen", "vorteile": ["Granularer für künftige Rollen."], "nachteile": ["Neuer Typ ohne heutigen zweiten Verbraucher — Spekulation."] }
+      ],
+      "auswirkung_bestand": "keine",
+      "empfehlung": "Bestehenden 'lesend' nutzen",
+      "begruendung": "Kein zweiter Verbraucher für einen neuen Werkzeugsatz-Typ belegt — YAGNI."
+    }
+  ],
+  "capabilities_bedarf": [],
+  "evidenz": [
+    { "marker": "[Fakt]", "aussage": "src/product-coach/index.ts validiert sein Ergebnis handgeschrieben (validiereErgebnisProductCoach), keine ajv-Abhängigkeit im Repo." },
+    { "marker": "[Schlussfolgerung]", "aussage": "Dasselbe Muster ist für ein neues Rollen-Modul konsistent fortsetzbar." }
+  ]
+}

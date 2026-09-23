@@ -40,12 +40,14 @@ F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
 Repo-Dateien + Context-Builder-Einspeisung, WS-2 Roadmap-Projektion #214 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", abgenommen
 durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben offen,
-`features/F33/feature.md`), F34 `FEATURE_GATE` (WS-1/WS-2/WS-3 vollständig gebaut und gemergt —
+`features/F33/feature.md`), F34 `ABGESCHLOSSEN` (WS-1/WS-2/WS-3 vollständig gebaut und gemergt —
 Feature-Review-Pass über das Gesamtfeature am 23.09.2026 „Freigegeben mit
-Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings
-F-624…F-627 (P2–P3) bleiben offen, `npm run render-nachweis` erneut grün
-(F-622-Regel), siehe `features/F34/feature.md`; Abnahme durch Stefan steht
-noch aus), F35–F39 noch nicht
+Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
+(P3) bleiben offen, `npm run render-nachweis` erneut grün
+(F-622-Regel), siehe `features/F34/feature.md`; **Abnahme durch Stefan am
+23.09.2026** im F39-WS-1-Auftrag), F39 `IN_ARBEIT` (WS-1 — Rolle
+`architekt`, Schema, Validator, Gate — gebaut 23.09.2026, WS-2/WS-3 noch
+offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
@@ -474,7 +476,7 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   durch Stefan am 22.09.2026, Restfindings F-592…F-600 (P2–P4) bleiben
   offen). Nach F17 (Rollenvertrag), F25 (Projekte v1).
 - ✅ **F34** — Product Coach / Ideation + Discovery. Akte
-  `features/F34/feature.md`, Status `FEATURE_GATE` (WS-1 Sparring-Backend —
+  `features/F34/feature.md`, Status `ABGESCHLOSSEN` (WS-1 Sparring-Backend —
   Rolle `product-coach`, `POST`/`GET /api/sparring` — gebaut, realer
   3-Turn-Nachweis `features/F34/nachweis-ws1.md`; WS-2 Sparring-UI + "Als
   Auftrag anlegen" gebaut; WS-3 Projekt-Interview — E-M5-12, Coach-Modus
@@ -482,9 +484,10 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   `baueCapabilityAuszug`/`baueAuftragAusProjektentwurf`, Unterumschalter
   „Feature | Projekt" in `views/chat.js` — gebaut, `npm run check` grün,
   realer Nachweis `features/F34/nachweis-ws3.md`; Feature-Review-Pass über
-  das Gesamtfeature am 23.09.2026 „Freigegeben mit Hinweisen", Restfindings
-  F-624…F-627 (P2–P3) bleiben offen, noch nicht durch Stefan abgenommen).
-  Nach F33.
+  das Gesamtfeature am 23.09.2026 „Freigegeben mit Hinweisen", **Abnahme
+  durch Stefan am 23.09.2026** (F39-WS-1-Auftrag, Punkt 0). Restfindings
+  F-627 (P3) und F-631 (P3) bleiben offen, ebenso die in F-630 dokumentierte
+  offene Entscheidung zum P4-Prioritätsniveau). Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
   ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
   Nach F41 (E-M5-13/E-M5-14, neue Reihenfolge F34 → F39 → F41 → F35).
@@ -494,10 +497,16 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   F32, F35.
 - ⏳ **F38** — Projektwissen-Index, wegwerfbar. Noch nicht begonnen. Nach
   F33, F35.
-- ⏳ **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
+- 🚧 **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
   20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage" — Stack-ADR,
-  Modulschnitt, Datenmodell als Schemas, E-M5-13). Noch nicht begonnen; vor
-  F35 gezogen (E-M5-13), direkt nach F34.
+  Modulschnitt, Datenmodell als Schemas, E-M5-13). Akte
+  `features/F39/feature.md`, Status `IN_ARBEIT`. WS-1 (Rolle `architekt` in
+  `src/rollen/index.ts`, `schemas/ergebnis-architektur.schema.json` +
+  Beispiele, Validator `src/architekt/`, Gate
+  `scripts/check-f39-architekt.mjs`, in `npm run check` eingehängt) gebaut
+  (23.09.2026). WS-2 (Einhängung in `hoch.json`/Router/Leitstand) und WS-3
+  (Projektmodus „Architektur-Grundlage", ADR-Erzeugung, realer Durchlauf)
+  noch offen. Vor F35 gezogen (E-M5-13), direkt nach F34.
 - ⏳ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Noch nicht begonnen;
   direkt nach F39 gezogen (statt erst in F30).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden

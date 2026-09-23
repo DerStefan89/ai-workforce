@@ -1,0 +1,52 @@
+{
+  "modus": "projekt",
+  "zusammenfassung": "Architektur-Grundlage für das neue Vorhaben: TypeScript/Node ohne Build-Schritt (Repo-Konvention), zwei Kernmodule, ein Datenmodell-Schema für den Kernzustand.",
+  "module": [
+    { "name": "kernzustand", "zweck": "Schreibt und lädt den versionierten Kernzustand des Vorhabens.", "abhaengigkeiten": [] },
+    { "name": "api", "zweck": "HTTP-Schicht über dem Kernzustand.", "abhaengigkeiten": ["kernzustand"] }
+  ],
+  "adr_entwuerfe": [
+    {
+      "titel": "Stack: TypeScript auf Node, strip-only",
+      "kontext": "Das Vorhaben braucht einen Stack, der ohne Build-Schritt lauffähig ist (Repo-Konvention dieses Harness, ARCHITECTURE.md).",
+      "entscheidung": "TypeScript auf Node, strip-only, Biome für Lint, tsc für Typprüfung, node:test für Tests.",
+      "alternativen": ["Ein Build-Schritt (z. B. esbuild) — schnellere Ausführung, aber ein zusätzlicher Werkzeugschritt ohne belegten Bedarf in Fassung 1."],
+      "konsequenzen": ["Jede Datei muss gültiges, direkt ausführbares TypeScript sein — keine Bundling-spezifischen Sprachfeatures."]
+    }
+  ],
+  "schema_entwuerfe": [
+    {
+      "name": "kernzustand.schema.json",
+      "zweck": "Beschreibt die Form eines persistierten Kernzustand-Eintrags.",
+      "json_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["schema_version", "id", "daten"],
+        "properties": {
+          "schema_version": { "type": "integer", "minimum": 1 },
+          "id": { "type": "string", "minLength": 1 },
+          "daten": { "type": "object" }
+        }
+      }
+    }
+  ],
+  "entscheidungen_mensch": [
+    {
+      "frage": "Soll der Kernzustand in einer Datei je Eintrag oder in einer einzigen Datei mit allen Einträgen liegen?",
+      "optionen": [
+        { "titel": "Eine Datei je Eintrag", "vorteile": ["Git-Diff bleibt lesbar, kein Merge-Konflikt zwischen unabhängigen Einträgen."], "nachteile": ["Mehr Dateien im Verzeichnis."] },
+        { "titel": "Eine Sammel-Datei", "vorteile": ["Weniger Dateien."], "nachteile": ["Jede Änderung diffft die gesamte Datei, Merge-Konflikte bei paralleler Arbeit wahrscheinlicher."] }
+      ],
+      "auswirkung_bestand": "keine",
+      "empfehlung": "Eine Datei je Eintrag",
+      "begruendung": "Muster kontrollzustand/ in diesem Harness selbst — ein Eintrag je Datei hat sich dort bewährt (ARCHITECTURE.md §1)."
+    }
+  ],
+  "capabilities_bedarf": [
+    { "bedarf": "Lokale HTTP-Bedienung ohne externen Dienst", "ressource_id": null, "status": "offen" }
+  ],
+  "evidenz": [
+    { "marker": "[Fakt]", "aussage": "ARCHITECTURE.md §1 beschreibt kontrollzustand/ als eine Datei je Eintrag, append-only Hash-Kette." },
+    { "marker": "[Annahme]", "aussage": "Das neue Vorhaben braucht keine Mehrbenutzerfähigkeit — nicht explizit im Planungsauftrag belegt, aus dem Harness-Grundsatz 'Ein einziger Nutzer' übernommen." }
+  ]
+}

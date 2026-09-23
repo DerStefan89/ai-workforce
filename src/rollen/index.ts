@@ -26,7 +26,15 @@
  * eigenes Ausgabeschema `ergebnis-jarvis`. `product-coach` kommt mit F34
  * WS-1 hinzu — Sparring-Partner für Ideenfindung/Scope-Klärung vor dem Bau
  * (Fragen, Alternativen, Scope-Entwurf), Muster `jarvis`: rein lesend, beide
- * Worker erlaubt, eigenes Ausgabeschema `ergebnis-product-coach`.
+ * Worker erlaubt, eigenes Ausgabeschema `ergebnis-product-coach`. `architekt`
+ * kommt mit F39 WS-1 hinzu (E-M5-3′/E-M5-13) — entwirft Modulschnitt,
+ * ADR-Entwürfe, Schema-Entwürfe und offene Grundsatzentscheidungen vor dem
+ * Bau, Muster `product-coach`: rein lesend, beide Worker erlaubt, eigenes
+ * Ausgabeschema `ergebnis-architektur`. Prüfer bleibt die Rolle
+ * `architecture-advisor` (dieselbe Konstante, oben) — NICHT zu verwechseln mit dem
+ * gleichnamigen Harness-Subagenten `.claude/agents/architecture-advisor.md` (Claude-Code-
+ * Subagent dieser Sitzung, außerhalb jeder WORKFLOW_V0-Kette); drei verschiedene Dinge
+ * trotz teils identischem Namen, siehe `docs/harness/HARNESS-GLOSSARY.md`.
  *
  * F19 WS-1: jeder Vertrag trägt zusätzlich benoetigte_capabilities — Zwilling
  * der capabilities-Werte in ressourcen.json (Repo-Wurzel). Rein deklarativ,
@@ -101,6 +109,15 @@ export const ROLLENVERTRAEGE: Record<string, Rollenvertrag> = {
     erlaubte_werkzeugsatz_arten: ['lesend'],
     erlaubte_worker: ['claude-code', 'codex'],
     erlaubtes_output_schema: 'ergebnis-product-coach',
+    ausschlussmuster: ['src/**'],
+    benoetigte_capabilities: ['STRUCTURED_OUTPUT', 'REPO_READ'],
+  },
+  architekt: {
+    zweck:
+      'Entwirft Architektur vor dem Bau — Modulschnitt, ADR-Entwürfe, Schema-Entwürfe und offene Grundsatzentscheidungen mit Abwägung —, ohne selbst Code zu schreiben. Autor-Rolle; Prüfer bleibt der Subagent architecture-advisor.',
+    erlaubte_werkzeugsatz_arten: ['lesend'],
+    erlaubte_worker: ['claude-code', 'codex'],
+    erlaubtes_output_schema: 'ergebnis-architektur',
     ausschlussmuster: ['src/**'],
     benoetigte_capabilities: ['STRUCTURED_OUTPUT', 'REPO_READ'],
   },

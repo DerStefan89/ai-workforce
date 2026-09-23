@@ -1,0 +1,10 @@
+{
+  "modus": "projekt",
+  "zusammenfassung": "capabilities_bedarf nennt eine ressource_id, die im eingespeisten Capability-Auszug nicht existiert — schemakonform, nur bei übergebenen bekannteRessourcenIds vom Validator abgelehnt.",
+  "module": [],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [],
+  "capabilities_bedarf": [{ "bedarf": "Testbedarf", "ressource_id": "nicht-vorhandene-ressource", "status": "vorhanden" }],
+  "evidenz": [{ "marker": "[Fakt]", "aussage": "Testfixture." }]
+}

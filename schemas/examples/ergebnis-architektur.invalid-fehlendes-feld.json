@@ -1,0 +1,9 @@
+{
+  "modus": "feature",
+  "zusammenfassung": "Fehlendes Pflichtfeld capabilities_bedarf.",
+  "module": [],
+  "adr_entwuerfe": [],
+  "schema_entwuerfe": [],
+  "entscheidungen_mensch": [],
+  "evidenz": [{ "marker": "[Fakt]", "aussage": "Testfixture." }]
+}
