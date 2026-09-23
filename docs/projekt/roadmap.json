@@ -36,7 +36,7 @@
       "id": "M5",
       "titel": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
       "status": "LAEUFT",
-      "features": ["F32", "F33", "F34", "F35", "F36", "F37", "F38", "F39", "F40", "F30"]
+      "features": ["F32", "F33", "F34", "F39", "F41", "F35", "F36", "F37", "F38", "F40", "F30"]
     }
   ]
 }

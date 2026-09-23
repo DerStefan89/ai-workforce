@@ -1,0 +1,17 @@
+{
+  "art": "projekt_entwurf",
+  "antwort": "x",
+  "alternativen": null,
+  "scope": null,
+  "projekt": {
+    "vision": "x",
+    "zielgruppe": "x",
+    "ziele": [],
+    "scope_in": [],
+    "scope_out": [],
+    "meilensteine": [],
+    "capabilities_bedarf": [{ "bedarf": "x", "ressource_id": "nicht-existente-ressource", "status": "vorhanden" }],
+    "architektur_hinweise": [],
+    "offene_fragen": []
+  }
+}

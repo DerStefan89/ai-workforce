@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.25 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.26 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -48,6 +48,8 @@ v1.22 → v1.23: **§9.1 Nachtrag zu Rolle `jarvis` — MCP-Begrenzung** (Stefan
 v1.23 → v1.24: **§9.1 Zeile „MCP-Werkzeuge im Ausführungslauf" DEKLARIERT → ERZWUNGEN** (Stefan, 20.09.2026, F31 WS-3c, löst F-502): `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` ist jetzt Default in `baueAufruf` für JEDEN Aufruf, nicht mehr nur für `jarvis` (F31 WS-3b) — `AufrufEingaben.mcpConfig` überschreibt nur noch den Wert, wählt die Begrenzung nicht mehr an/ab. Real gemessen für eine schreibende Rolle (`ausfuehrung`, `Read,Grep,Glob,Write,Edit`): dieselbe E-187-Lücke wie bei `jarvis` (Account-MCP-Server laden trotz `--tools`-Begrenzung), Wall-Clock-Median ≈2,49s schneller (8,11s → 5,62s, n=5, ≈31%), Tokenersparnis ≈3.074 Tokens Median je Lauf (≈14,9%), siehe `features/F31/nachweis-mcp-begrenzung.md`. Der WS-3b-Nachtrag oben gilt als überholt: `jarvis` ist kein Sonderfall mehr, jede Rolle bekommt dieselbe Begrenzung als Standardwert.
 
 v1.24 → v1.25: **§13.5 Meilenstein-4-Abschluss nachgetragen, §13.6 Meilenstein 5 neu** (Stefan, 20./21.09.2026, Challenger-Chat, löst F-534 Teil 2): §13.5 erhält den Fakt-Nachtrag, dass Meilenstein 4 mit benannten Übertragungen nach F30 geschlossen ist (E-M5-1) — F19/F23 laufen dadurch auf `ABGESCHLOSSEN`, ihre Restfindings bleiben offen. Neuer Abschnitt §13.6 zieht die bislang nur im Challenger-Chat dokumentierten Entscheidungen E-M5-1…5, 3′, 10, 11 (E-M5-6…9 nicht vergeben) sowie den verbindlichen M5-Feature-Schnitt und die Arbeitsregeln ins Repo nach. Zielsatz und Bestehensbedingung für Meilenstein 5 selbst sind **nicht** Teil dieses Nachtrags — sie stehen laut Feature-Schnitt noch aus (RC).
+
+v1.25 → v1.26: **§13.6 um E-M5-12/13/14 ergänzt, Feature-Schnitt/Reihenfolge aktualisiert** (Stefan, 22.09.2026, F34-WS-3-Vorbereitung): E-M5-12 (F34 WS-3 Projekt-Interview — Coach-Modus `projekt` erzeugt einen `projekt_entwurf`, ein schreibender Folgeauftrag legt `docs/projekt/kontext/beschreibung.md`, `docs/projekt/roadmap.json` und `features/<id>/feature.md`-Skelette an bzw. erweitert sie; hebt das `no_onboarding`-Nicht-Ziel aus Plan v8 für genau diesen Teil auf) · E-M5-13 (F39 wird vor F35 gezogen und bekommt zusätzlich einen Projektmodus „Architektur-Grundlage") · E-M5-14 (F41 „Neues Projekt anlegen", F-523, wird als eigenes Feature direkt nach F39 gezogen statt erst in F30). Reihenfolge jetzt F34 → F39 → F41 → F35 → F37 → F38 → Design → F30 → RC, F36 parallel ab sofort.
 
 ---
 
@@ -613,17 +615,20 @@ noch aus** — der Feature-Schnitt benennt sie unten ausdrücklich als
 eigenen, noch offenen Punkt („RC: Zielsatz/Bestehensbedingung M5 und V1").
 
 **Features:** F32 Verbrauch & Kontingent · F33 Projektkontext & Roadmap ·
-F34 Product Coach / Ideation + Discovery (nach F33) · F35 Challenge-Flow
-(Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4,
-Befund-Projektion) · F36 Capability Library Expansion (nach E-M5-5,
-parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32, F35) ·
-F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F39 Architektur-Rolle
-„architekt" (E-M5-3′, claude-Challenge 20.09.2026) · F40 Jarvis-Latenz
-(E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3; Abschluss) · RC:
-Zielsatz/Bestehensbedingung M5 und V1.
+F34 Product Coach / Ideation + Discovery (nach F33; WS-3 Projekt-Interview,
+E-M5-12) · F39 Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
+20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage", E-M5-13,
+vor F35 gezogen) · F41 Neues Projekt anlegen (F-523, E-M5-14, direkt nach
+F39) · F35 Challenge-Flow (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik
+nach E-M5-4, Befund-Projektion) · F36 Capability Library Expansion (nach
+E-M5-5, parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32,
+F35) · F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F40
+Jarvis-Latenz (E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3;
+Abschluss) · RC: Zielsatz/Bestehensbedingung M5 und V1.
 
-**Reihenfolge:** F32 ∥ F33 → F34 (F36 parallel) → F35 → F37 → F38 →
-Design → F30 → RC. F39/F40 sind außerhalb dieser Kette eingeschoben.
+**Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F35 → F37 → F38 → Design →
+F30 → RC (E-M5-13/E-M5-14). F36 läuft parallel ab F34 (E-M5-5). F40 ist
+außerhalb dieser Kette eingeschoben.
 
 **E-M5-1** *(Stefan, 20.09.2026)* — M4-Abschluss, Option A: Meilenstein 4
 gilt als geschlossen, offene Posten werden ausdrücklich nach M5
@@ -680,6 +685,33 @@ Schätzung beruhte (F-553).
 **E-M5-11** *(Stefan, 21.09.2026)* — Virenscanner-Ausnahme (Kaspersky) für
 `127.0.0.1` (lokaler Leitstand); die 1,7-s-Browserlatenz liegt außerhalb
 der Anwendung (F-556, F-562).
+
+**E-M5-12** *(Stefan, 22.09.2026)* — F34 WS-3 Projekt-Interview: der
+Coach-Modus `projekt` (zusätzlich zum bisherigen `feature`) führt ein
+strukturiertes Interview (Vision/Problem, Zielgruppe, Ziele/
+Erfolgskriterien, Scope In/Out, Meilensteine, Feature-Schnitt je
+Meilenstein) und erzeugt bei ausreichender Klarheit einen
+`projekt_entwurf` statt eines Feature-`scope_entwurf`. Ein Klick auf „Als
+Auftrag anlegen" löst einen rein schreibenden Folgeauftrag aus, der
+`docs/projekt/kontext/beschreibung.md`, `docs/projekt/roadmap.json` und je
+Feature ein `features/<id>/feature.md`-Skelett anlegt bzw. — erkennt der
+Coach am eingespeisten Kontext bereits eine bestehende Roadmap —
+erweitert, nie umschreibt. Feature-/Meilenstein-IDs vergibt der Server
+deterministisch (`vergebeFeatureIds`), nie das Modell. Hebt das
+`no_onboarding`-Nicht-Ziel aus Plan v8 ausdrücklich nur für diesen Teil
+auf (Projekt-Interview und die Erweiterung eines bestehenden Projekts sind
+damit Fassung-1-Scope; ein eigener „Neues Projekt anlegen"-Bildschirm
+bleibt bei F41, E-M5-14).
+
+**E-M5-13** *(Stefan, 22.09.2026)* — F39 (Rolle `architekt`) wird vor F35
+gezogen (statt in der ursprünglichen §13.6-Reihenfolge nach F38/Design)
+und bekommt zusätzlich einen Projektmodus „Architektur-Grundlage" (Stack-
+ADR, Modulschnitt, Datenmodell als Schemas) — Coach (F34) und Architekt
+(F39) teilen sich damit dieselbe Capability Library (F36).
+
+**E-M5-14** *(Stefan, 22.09.2026)* — „Neues Projekt anlegen" (F-523) wird
+als eigenes Feature F41 direkt nach F39 gezogen, statt wie ursprünglich
+vorgesehen erst in F30 zu entstehen.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

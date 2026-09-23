@@ -35,6 +35,36 @@
  * 'modus === aktiverModus' gegattert war — der Fix leitet den Sperrzustand seither bei jedem
  * renderVerlauf() aus dem Zustand ab.
  *
+ * F34 WS-3 (Projekt-Interview, E-M5-12) ergänzt: (m) reale Rot-/Grünfälle der optionalen
+ * 'modus'-Body-Prüfung in POST /api/sparring ('feature'/'projekt', Standard 'feature'), (n)
+ * vergebeFeatureIds (Determinismus, keine Kollision mit real bestehenden IDs inkl. der
+ * irregulären F1B/F6a/F19-bridge, Auflösung einer bekannten Abhängigkeit zu einer ID, ein
+ * unbekannter Titel erzeugt eine offene Frage statt zu raten), (o) baueCapabilityAuszug
+ * (Determinismus/Sortierung, leere Liste), (p) eine erfundene 'projekt.capabilities_bedarf[].
+ * ressource_id' ist ein Validator-Verstoß (nur wenn bekannteRessourcenIds übergeben wird — ohne
+ * bleibt die Prüfung bewusst aus), (q) baueAuftragAusProjektentwurf-Gleichheit zwischen dem
+ * Server-Original und seiner Browser-JS-Kopie (public/leitstand/auftrag-aus-projektentwurf.js,
+ * Muster (i)), (r) ein realer POST/GET-/api/sparring-Rundlauf im Modus 'projekt': der
+ * Auftragstext trägt einen Capability-Auszug UND die Interview-Reihenfolge-Instruktion, GET
+ * /api/sparring projiziert 'modus: projekt', und der persistierte Projekt-Entwurf trägt real
+ * vergebene Meilenstein-/Feature-IDs plus 'auftragModus'. Reviewer-/QA-Pass (frischer Kontext)
+ * ergänzt: (s) ein art:'projekt_entwurf'-Ergebnis bei angefragtem modus 'feature' (Rolleninstruktion
+ * missachtet) wird real als Vertragsverstoß abgelehnt statt stillschweigend IDs zu vergeben und die
+ * Ressourcen-Erfindungsprüfung zu umgehen (löst F-613), (t) das Verlaufsfenster ist nach 'modus'
+ * gefiltert — 'feature'/'projekt' sehen im Kontext nur Turns ihres eigenen Untermodus (löst F-614).
+ *
+ * F34 WS-3 Korrekturrunde (Verifikation Challenger, löst F-618) ergänzt: (u) vergebeFeatureIds
+ * vergibt gegen die REALE docs/projekt/roadmap.json (sammleBestehendeIds, jetzt exportiert) nie
+ * eine dort bereits reservierte ID (F41, M5/E-M5-14) erneut — die höchste real bestehende Nummer
+ * wird aus features/<id>/ UND roadmap.json gemeinsam ermittelt, nicht nur aus einer der beiden
+ * Quellen.
+ *
+ * F34 WS-3 Korrekturrunde (Sichtprüfung Stefan + Challenger, löst F-620/F-621) ergänzt: (v)
+ * statische Prüfung, dass renderVerlauf 'btn-primary' für alle vier Umschalter-Buttons gleichlaufend
+ * mit aria-pressed toggelt (F-620) und dass style.css '.chat-modus-auswahl[hidden] { display: none; }'
+ * trägt, damit die UA-[hidden]-Regel nicht durch 'display: flex' überschrieben wird (F-621). Realer
+ * Render-Nachweis (Playwright) ergänzend in features/F34/nachweis-ws3.md.
+ *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisProductCoach/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
@@ -48,9 +78,10 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
-import { baueAuftragAusScope, validiereErgebnisProductCoach } from '../src/product-coach/index.ts'
+import { baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCapabilityAuszug, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
 import { baueAuftragAusScope as baueAuftragAusScopeBrowser } from '../public/leitstand/auftrag-aus-scope.js'
-import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { baueAuftragAusProjektentwurf as baueAuftragAusProjektentwurfBrowser } from '../public/leitstand/auftrag-aus-projektentwurf.js'
+import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, sammleBestehendeIds } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -139,11 +170,14 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
     { pfad: 'schemas/examples/ergebnis-product-coach.valid-frage.json', sollGueltigSein: true },
     { pfad: 'schemas/examples/ergebnis-product-coach.valid-alternativen.json', sollGueltigSein: true },
     { pfad: 'schemas/examples/ergebnis-product-coach.valid-scope-entwurf.json', sollGueltigSein: true },
+    { pfad: 'schemas/examples/ergebnis-product-coach.valid-projekt-entwurf.json', sollGueltigSein: true },
     { pfad: 'schemas/examples/ergebnis-product-coach.invalid-unbekannte-art.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-product-coach.invalid-alternativen-zu-wenige.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-product-coach.invalid-art-alternativen-ohne-alternativen.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-product-coach.invalid-art-scope-entwurf-ohne-scope.json', sollGueltigSein: false },
     { pfad: 'schemas/examples/ergebnis-product-coach.invalid-scope-fehlendes-feld.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-product-coach.invalid-art-projekt-entwurf-ohne-projekt.json', sollGueltigSein: false },
+    { pfad: 'schemas/examples/ergebnis-product-coach.invalid-projekt-fehlendes-feld.json', sollGueltigSein: false },
   ]
   for (const { pfad, sollGueltigSein } of beispiele) {
     const obj = JSON.parse(readFileSync(pfad, 'utf-8'))
@@ -156,7 +190,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
     }
   }
   if (befunde.length === befundeVor) {
-    console.log('✓ (b): schemas/ergebnis-product-coach.schema.json gültiges JSON; alle drei valid*.json erfüllen validiereErgebnisProductCoach, alle fünf invalid-*.json verletzen je eine benannte Regel.')
+    console.log('✓ (b): schemas/ergebnis-product-coach.schema.json gültiges JSON; alle vier valid*.json erfüllen validiereErgebnisProductCoach, alle sieben invalid-*.json verletzen je eine benannte Regel.')
   }
 }
 
@@ -191,8 +225,30 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   if (fehlendInRequired.length > 0) {
     befunde.push(`(b2): folgende Top-Level-properties stehen nicht in 'required' (Codex-Dialekt-Zwang): ${fehlendInRequired.join(', ')}`)
   }
+
+  // F34 WS-3: dieselbe Regel 2 gilt auch für jedes VERSCHACHTELTE Objekt unter 'projekt'
+  // (meilensteine[].*, meilensteine[].features[].*, capabilities_bedarf[].*) — ein rekursiver
+  // Scan über jedes 'properties'-tragende Schemaobjekt statt einer Handvoll fest verdrahteter Pfade.
+  const pruefeVerschachteltesRequired = (knoten, pfad, treffer) => {
+    if (knoten === null || typeof knoten !== 'object') return
+    if (knoten.properties && typeof knoten.properties === 'object') {
+      const eigenschaften = Object.keys(knoten.properties)
+      const fehlend = eigenschaften.filter((feld) => !Array.isArray(knoten.required) || !knoten.required.includes(feld))
+      if (fehlend.length > 0) treffer.push(`${pfad} (fehlend: ${fehlend.join(', ')})`)
+      for (const [feld, unterschema] of Object.entries(knoten.properties)) {
+        pruefeVerschachteltesRequired(unterschema, `${pfad}.properties.${feld}`, treffer)
+        if (unterschema?.items) pruefeVerschachteltesRequired(unterschema.items, `${pfad}.properties.${feld}.items`, treffer)
+      }
+    }
+  }
+  const verschachtelteTreffer = []
+  pruefeVerschachteltesRequired(schema, '$', verschachtelteTreffer)
+  if (verschachtelteTreffer.length > 0) {
+    befunde.push(`(b2): folgende verschachtelte properties-Objekte haben nicht jede eigene Eigenschaft in ihrem eigenen 'required' (Codex-Dialekt-Zwang): ${verschachtelteTreffer.join('; ')}`)
+  }
+
   if (befunde.length === befundeVor) {
-    console.log("✓ (b2): schemas/ergebnis-product-coach.schema.json enthält kein 'allOf'/'if'/'then'/'oneOf', jede Top-Level-property steht in 'required'.")
+    console.log("✓ (b2): schemas/ergebnis-product-coach.schema.json enthält kein 'allOf'/'if'/'then'/'oneOf', jede Top-Level- UND jede verschachtelte property (projekt.meilensteine[]/.features[]/.capabilities_bedarf[]) steht in ihrem eigenen 'required'.")
   }
 }
 
@@ -222,8 +278,23 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
     befunde.push(`(b3) Rotfall (scope: null): erwartet Verstoß "'scope' fehlt", erhalten ${JSON.stringify(rotScopeNull)}`)
   }
 
+  // F34 WS-3: dieselbe Kopplung jetzt auch für 'projekt' (art 'projekt_entwurf').
+  const rotProjektNull = validiereErgebnisProductCoach({ art: 'projekt_entwurf', antwort: 'x', alternativen: null, scope: null, projekt: null })
+  if (!rotProjektNull.some((v) => v.includes("'projekt' fehlt — bei art 'projekt_entwurf' Pflicht"))) {
+    befunde.push(`(b3) Rotfall (projekt: null): erwartet Verstoß "'projekt' fehlt", erhalten ${JSON.stringify(rotProjektNull)}`)
+  }
+  const projektGueltig = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-projekt-entwurf.json', 'utf-8'))
+  const gruenProjekt = validiereErgebnisProductCoach(projektGueltig, ['claude-code'])
+  if (gruenProjekt.length > 0) {
+    befunde.push(`(b3) Grünfall (projekt gesetzt, Codex-Form): erwartet keine Verstöße, erhalten ${JSON.stringify(gruenProjekt)}`)
+  }
+  const rotProjektMitScope = validiereErgebnisProductCoach({ ...projektGueltig, art: 'scope_entwurf', scope: JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-scope-entwurf.json', 'utf-8')).scope })
+  if (!rotProjektMitScope.some((v) => v.includes("'projekt' gesetzt, aber art ist nicht 'projekt_entwurf'"))) {
+    befunde.push(`(b3) Rotfall (projekt gesetzt, art 'scope_entwurf'): erwartet Verstoß "'projekt' gesetzt, aber art ist nicht 'projekt_entwurf'", erhalten ${JSON.stringify(rotProjektMitScope)}`)
+  }
+
   if (befunde.length === befundeVor) {
-    console.log("✓ (b3): validiereErgebnisProductCoach erzwingt art→alternativen/scope auch in der Codex-Form (Feld explizit auf null statt weggelassen).")
+    console.log("✓ (b3): validiereErgebnisProductCoach erzwingt art→alternativen/scope/projekt auch in der Codex-Form (Feld explizit auf null statt weggelassen).")
   }
 }
 
@@ -612,6 +683,474 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   }
   if (befunde.length === befundeVor) {
     console.log('✓ (l): der Anlegen-Handler friert modus/schluessel vor dem await ein und prüft danach erneut, ob offenerAuftragDialog noch demselben Eintrag gehört, bevor er dessen Ergebnis schreibt.')
+  }
+}
+
+// ─── (m) F34 WS-3: POST /api/sparring — reale Rot-/Grünfälle der 'modus'-Prüfung ──────
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-m-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const rotFaelle = [
+      { body: JSON.stringify({ nachricht: 'x', modus: 'unbekannt' }), erwartet: /'modus' muss einer von feature, projekt sein/, name: "modus 'unbekannt'" },
+      { body: JSON.stringify({ nachricht: 'x', modus: 42 }), erwartet: /'modus' muss einer von feature, projekt sein/, name: 'modus falscher Typ' },
+      { body: JSON.stringify({ nachricht: 'x', fremdfeld: 'x' }), erwartet: /unbekanntes Feld 'fremdfeld'/, name: 'unbekanntes Feld bleibt weiterhin abgelehnt' },
+    ]
+    for (const fall of rotFaelle) {
+      const antwort = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: fall.body })
+      const koerper = await antwort.json()
+      if (antwort.status !== 400 || !fall.erwartet.test(koerper.grund ?? '')) {
+        befunde.push(`(m) Rotfall '${fall.name}': erwartet 400 mit ${fall.erwartet}, erhalten ${antwort.status} (${JSON.stringify(koerper)})`)
+      }
+    }
+    if (befunde.length === befundeVor) {
+      console.log("✓ (m): POST /api/sparring lehnt einen unbekannten/typfalschen 'modus'-Wert weiterhin real mit 400 ab, das bisherige Fremdfeld-Verhalten bleibt unverändert.")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (n) F34 WS-3: vergebeFeatureIds — Determinismus, keine Kollision, ungelöste Abhängigkeit ──
+{
+  const befundeVor = befunde.length
+  // F1B/F6a sind real existierende, irreguläre Alt-IDs (Groß-/Kleinschreibung des Suffix) — sie
+  // dürfen den numerischen Scan weder verwirren noch eine Kollision auslösen. 'F19-bridge' ist eine
+  // reale, irreguläre MEILENSTEIN-Id (matcht kein M<n>) und muss beim Meilenstein-Scan übersprungen,
+  // nicht fälschlich als Zahl gelesen werden.
+  const bestehendeIds = { features: ['F1', 'F1B', 'F6a', 'F40'], meilensteine: ['M1', 'M2', 'F19-bridge'] }
+  const projekt = {
+    meilensteine: [
+      {
+        titel: 'Meilenstein A',
+        ziel: 'Ziel A',
+        features: [
+          { titel: 'Feature A1', ziel: 'x', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: [] },
+          { titel: 'Feature A2', ziel: 'x', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: ['Feature A1', 'Ein völlig unbekannter Titel'] },
+        ],
+      },
+      {
+        titel: 'Meilenstein B',
+        ziel: 'Ziel B',
+        features: [{ titel: 'Feature B1', ziel: 'x', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: [] }],
+      },
+    ],
+    offene_fragen: ['Bereits vorhandene offene Frage'],
+  }
+
+  const einmal = vergebeFeatureIds(projekt, bestehendeIds)
+  const zweimal = vergebeFeatureIds(projekt, bestehendeIds)
+  if (JSON.stringify(einmal) !== JSON.stringify(zweimal)) {
+    befunde.push(`(n): vergebeFeatureIds sollte für denselben Entwurf ein byte-identisches Ergebnis liefern, erhalten ${JSON.stringify(einmal)} vs. ${JSON.stringify(zweimal)}`)
+  }
+
+  const alleVergebenenIds = [einmal.meilensteine[0].id, einmal.meilensteine[1].id, ...einmal.meilensteine.flatMap((m) => m.features.map((f) => f.id))]
+  const kollision = alleVergebenenIds.filter((id) => bestehendeIds.features.includes(id) || bestehendeIds.meilensteine.includes(id))
+  if (kollision.length > 0) {
+    befunde.push(`(n): vergebeFeatureIds hat mit real bestehenden IDs kollidiert: ${kollision.join(', ')}`)
+  }
+  if (einmal.meilensteine[0].id !== 'M3' || einmal.meilensteine[1].id !== 'M4') {
+    befunde.push(`(n): erwartet Meilenstein-IDs M3/M4 (höchste bestehende numerische ist M2, 'F19-bridge' übersprungen), erhalten ${einmal.meilensteine.map((m) => m.id).join(', ')}`)
+  }
+  const featureIds = einmal.meilensteine.flatMap((m) => m.features.map((f) => f.id))
+  if (JSON.stringify(featureIds) !== JSON.stringify(['F41', 'F42', 'F43'])) {
+    befunde.push(`(n): erwartet Feature-IDs F41/F42/F43 in Entwurfsreihenfolge (höchste bestehende numerische ist F40, F1B/F6a übersprungen), erhalten ${featureIds.join(', ')}`)
+  }
+
+  const featureA2 = einmal.meilensteine[0].features[1]
+  if (JSON.stringify(featureA2.abhaengig_von_ids) !== JSON.stringify([einmal.meilensteine[0].features[0].id])) {
+    befunde.push(`(n): 'Feature A2' sollte NUR die aufgelöste ID von 'Feature A1' in abhaengig_von_ids tragen (der unbekannte Titel wird NICHT geraten), erhalten ${JSON.stringify(featureA2.abhaengig_von_ids)}`)
+  }
+  if (!einmal.offene_fragen.some((f) => f.includes('Ein völlig unbekannter Titel') && f.includes('Feature A2'))) {
+    befunde.push(`(n): ein unbekannter Abhängigkeits-Titel sollte einen offene_fragen-Eintrag erzeugen (kein Raten), erhalten ${JSON.stringify(einmal.offene_fragen)}`)
+  }
+  if (!einmal.offene_fragen.includes('Bereits vorhandene offene Frage')) {
+    befunde.push(`(n): bereits vorhandene offene_fragen-Einträge sollten erhalten bleiben, erhalten ${JSON.stringify(einmal.offene_fragen)}`)
+  }
+
+  if (befunde.length === befundeVor) {
+    console.log('✓ (n): vergebeFeatureIds ist deterministisch, kollidiert nicht mit real bestehenden IDs (inkl. der irregulären F1B/F6a/F19-bridge), löst eine bekannte Abhängigkeit zu einer ID auf und erzeugt für einen unbekannten Titel eine offene Frage statt zu raten.')
+  }
+}
+
+// ─── (o) F34 WS-3: baueCapabilityAuszug — Determinismus, Sortierung, leere Liste ──────
+{
+  const befundeVor = befunde.length
+  const ressourcen = [
+    { id: 'werkzeug-auswahl', typ: 'skill', capabilities: ['TOOL_SELECTION'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'skill', pfad: 'x' }, name: 'x', beschreibung: 'x', verfuegbar: true, grund: 'x' },
+    { id: 'claude-code', typ: 'worker', capabilities: ['CODE_WRITE', 'CODE_REVIEW'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'startvorlage', worker: 'claude-code' }, name: 'x', beschreibung: 'x', verfuegbar: true, grund: 'x' },
+    { id: 'playwright-mcp', typ: 'extern', capabilities: ['BROWSER_AUTOMATION'], freigabe: 'OFFEN', herkunft: { art: 'extern', url: 'https://x' }, name: 'x', beschreibung: 'x', verfuegbar: false, grund: 'extern, nicht auflösbar' },
+  ]
+  const einmal = baueCapabilityAuszug(ressourcen)
+  const zweimal = baueCapabilityAuszug([...ressourcen].reverse())
+  if (einmal !== zweimal) {
+    befunde.push(`(o): baueCapabilityAuszug sollte unabhängig von der Eingabereihenfolge dasselbe (nach 'id' sortierte) Ergebnis liefern, erhalten:\n${einmal}\nvs.\n${zweimal}`)
+  }
+  const zeilen = einmal.split('\n')
+  if (zeilen.length !== 3 || !zeilen[0].startsWith('- claude-code') || !zeilen[1].startsWith('- playwright-mcp') || !zeilen[2].startsWith('- werkzeug-auswahl')) {
+    befunde.push(`(o): erwartet drei nach 'id' sortierte Zeilen (claude-code, playwright-mcp, werkzeug-auswahl), erhalten:\n${einmal}`)
+  }
+  if (!einmal.includes('verfuegbar=false') || !einmal.includes('freigabe=OFFEN')) {
+    befunde.push(`(o): erwartet sichtbare freigabe/verfuegbar-Angaben je Ressource, erhalten:\n${einmal}`)
+  }
+  if (baueCapabilityAuszug([]) !== '(keine Ressourcen vorhanden)') {
+    befunde.push(`(o): erwartet '(keine Ressourcen vorhanden)' bei leerer Liste, erhalten '${baueCapabilityAuszug([])}'`)
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (o): baueCapabilityAuszug ist deterministisch (Eingabereihenfolge-unabhängig, nach 'id' sortiert), zeigt freigabe/verfuegbar je Ressource, '(keine Ressourcen vorhanden)' bei leerer Liste.")
+  }
+}
+
+// ─── (p) F34 WS-3: erfundene ressource_id → Validator-Rot ─────────────────────────────
+{
+  const befundeVor = befunde.length
+  const daten = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.projekt-ressource-erfunden.json', 'utf-8'))
+  const bekannteRessourcenIds = ['claude-code', 'werkzeug-auswahl']
+
+  const rot = validiereErgebnisProductCoach(daten, bekannteRessourcenIds)
+  if (!rot.some((v) => v.includes("ressource_id' ('nicht-existente-ressource') ist im Capability-Auszug nicht vorhanden"))) {
+    befunde.push(`(p) Rotfall: erwartet Verstoß gegen eine erfundene ressource_id, erhalten ${JSON.stringify(rot)}`)
+  }
+  const gruen = validiereErgebnisProductCoach(daten, [...bekannteRessourcenIds, 'nicht-existente-ressource'])
+  if (gruen.length > 0) {
+    befunde.push(`(p) Grünfall: dieselbe ressource_id in der bekannten Liste sollte keinen Verstoß erzeugen, erhalten ${JSON.stringify(gruen)}`)
+  }
+  const permissiv = validiereErgebnisProductCoach(daten)
+  if (permissiv.length > 0) {
+    befunde.push(`(p) ohne bekannteRessourcenIds (undefined): die Existenzprüfung sollte aussetzen statt zu blockieren, erhalten ${JSON.stringify(permissiv)}`)
+  }
+  if (befunde.length === befundeVor) {
+    console.log('✓ (p): eine ressource_id außerhalb der bekannten Capability-Auszug-IDs ist ein Validator-Verstoß; dieselbe ID in der bekannten Liste ist gültig; ohne übergebene Liste (undefined) bleibt die Prüfung aus.')
+  }
+}
+
+// ─── (q) F34 WS-3: baueAuftragAusProjektentwurf-Gleichheit (Server-TS vs. Browser-JS-Kopie) ──
+//
+// Korrekturrunde (Code-Review-Befund): die ursprüngliche Fixture (valid-projekt-entwurf.json)
+// hat keinen Meilenstein-/Feature-Titel mit ID-artigem Präfix — der F-612-Strip-Zweig von
+// entferneIdPraefix blieb dadurch ungeprüft, und ein reiner Gleichheitsvergleich allein kann
+// ohnehin nicht unterscheiden "beide richtig" von "beide gleich falsch". Die zweite Fixture unten
+// reproduziert den realen Fall aus features/F34/nachweis-ws3.md UND prüft zusätzlich explizite
+// Korrektheit (keine Dopplung, Titel aus Meilenstein statt vision), nicht nur Gleichheit.
+{
+  const befundeVor = befunde.length
+  const projektGueltig = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-projekt-entwurf.json', 'utf-8')).projekt
+  const zugewiesen = vergebeFeatureIds(projektGueltig, { features: [], meilensteine: [] })
+  const projektMitIds = { ...projektGueltig, meilensteine: zugewiesen.meilensteine, offene_fragen: zugewiesen.offene_fragen }
+
+  const projektMitIdPraefixRoh = {
+    vision: 'AI Workforce führt ein Vorhaben von der Idee bis zum abgenommenen Ergebnis.',
+    zielgruppe: 'Stefan',
+    ziele: ['x'],
+    scope_in: ['x'],
+    scope_out: ['x'],
+    capabilities_bedarf: [],
+    architektur_hinweise: [],
+    offene_fragen: [],
+    meilensteine: [{ titel: 'M6 — Aufräum-Werkzeug für Testrückstände', ziel: 'z', features: [{ titel: 'F41 - On-Demand-Skript', ziel: 'z', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: [] }] }],
+  }
+  const zugewiesenPraefix = vergebeFeatureIds(projektMitIdPraefixRoh, { features: [], meilensteine: [] })
+  const projektMitIdPraefix = { ...projektMitIdPraefixRoh, meilensteine: zugewiesenPraefix.meilensteine, offene_fragen: zugewiesenPraefix.offene_fragen }
+
+  for (const auftragModus of ['neu', 'erweiterung']) {
+    for (const [fixtureName, projekt] of [
+      ['valid-projekt-entwurf', projektMitIds],
+      ['id-praefix-im-titel', projektMitIdPraefix],
+    ]) {
+      const serverErgebnis = baueAuftragAusProjektentwurf(projekt, auftragModus)
+      const browserErgebnis = baueAuftragAusProjektentwurfBrowser(projekt, auftragModus)
+      if (JSON.stringify(serverErgebnis) !== JSON.stringify(browserErgebnis)) {
+        befunde.push(`(q) Fixture '${fixtureName}', Modus '${auftragModus}': baueAuftragAusProjektentwurf (Server) und die Browser-Kopie liefern unterschiedliche Ergebnisse — Server: ${JSON.stringify(serverErgebnis)}, Browser: ${JSON.stringify(browserErgebnis)}`)
+      }
+    }
+  }
+
+  // Explizite Korrektheit (nicht nur Server/Browser-Gleichheit) am ID-Präfix-Fixture, Modus 'erweiterung'.
+  const ergebnisPraefixErweiterung = baueAuftragAusProjektentwurf(projektMitIdPraefix, 'erweiterung')
+  const meilensteinId = projektMitIdPraefix.meilensteine[0].id
+  const featureId = projektMitIdPraefix.meilensteine[0].features[0].id
+  if (ergebnisPraefixErweiterung.auftragstext.includes(`${meilensteinId} — ${meilensteinId}`)) {
+    befunde.push(`(q): Dopplung im Meilenstein-Header gefunden (Regression von F-612): ${ergebnisPraefixErweiterung.auftragstext}`)
+  } else if (ergebnisPraefixErweiterung.auftragstext.includes(`${featureId} — ${featureId}`)) {
+    befunde.push(`(q): Dopplung in der Feature-Zeile gefunden (Regression von F-612): ${ergebnisPraefixErweiterung.auftragstext}`)
+  } else if (ergebnisPraefixErweiterung.titel !== 'Erweiterung: Aufräum-Werkzeug für Testrückstände') {
+    befunde.push(`(q): Titel im Modus 'erweiterung' sollte aus dem bereinigten Meilenstein-Titel kommen (Regression von F-611), erhalten '${ergebnisPraefixErweiterung.titel}'`)
+  } else if (ergebnisPraefixErweiterung.titel.includes('AI Workforce führt ein Vorhaben')) {
+    befunde.push(`(q): Titel im Modus 'erweiterung' sollte NICHT aus vision kommen (Regression von F-611), erhalten '${ergebnisPraefixErweiterung.titel}'`)
+  }
+
+  if (befunde.length === befundeVor) {
+    console.log("✓ (q): baueAuftragAusProjektentwurf (src/product-coach/index.ts) und ihre Browser-JS-Kopie (public/leitstand/auftrag-aus-projektentwurf.js) liefern für 'neu'/'erweiterung' × zwei Fixtures (inkl. ID-artigem Titel-Präfix) byte-identische UND korrekte Ergebnisse (keine Dopplung, Titel aus Meilenstein statt vision) — löst F-611/F-612.")
+  }
+}
+
+// ─── (r) F34 WS-3: realer POST/GET-/api/sparring-Rundlauf im Modus 'projekt' ──────────
+//
+// Modus 'projekt' speist einen Capability-Auszug in den Auftragstext ein UND vergibt nach einem
+// erfolgreichen Lauf real Feature-/Meilenstein-IDs (vergebeFeatureIds, verarbeiteRollenChatErgebnis)
+// — beides nur end-to-end über den echten Endpunkt nachweisbar, nicht durch einen Unit-Test allein.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-r-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  const projektId = 'check-f34-ak-r'
+  const gueltigesErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-projekt-entwurf.json', 'utf-8'))
+
+  let letzteEingaben = null
+  const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
+    letzteEingaben = eingaben
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(gueltigesErgebnis) }) }), 'utf8')
+    const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+    const { registriereKernArtefakt } = await import('../src/lineage-registry/index.ts')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f34-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+      basisVerzeichnis,
+      schreiber: STILLER_SCHREIBER,
+    })
+    return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+
+  // repoWurzel bleibt der echte Repo-Pfad (Default von erzeugeRequestHandler) — sammleBestehendeIds
+  // liest damit die REALEN features/*/ und docs/projekt/roadmap.json dieses Repos; die Prüfungen
+  // unten verlangen deshalb bewusst nur FORM (Muster ^F[0-9]+$/^M[0-9]+$), keinen festen Zahlenwert
+  // (der würde mit jedem neuen, real angelegten Feature altern).
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const antwort = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: JSON.stringify({ nachricht: 'Lass uns ein neues Projekt planen.', modus: 'projekt' }) })
+    if (antwort.status !== 202) {
+      befunde.push(`(r): erwartet 202, erhalten ${antwort.status} (${await antwort.text()})`)
+    }
+    await new Promise((resolve) => setTimeout(resolve, 30))
+
+    if (letzteEingaben === null || !letzteEingaben.auftragstext.includes('Capability-Auszug') || !/- claude-code \(worker\)/.test(letzteEingaben.auftragstext)) {
+      befunde.push(`(r): der Auftragstext im Modus 'projekt' sollte einen Capability-Auszug (u. a. 'claude-code (worker)') enthalten, erhalten: ${letzteEingaben?.auftragstext}`)
+    } else if (!letzteEingaben.auftragstext.includes('Vision/Problem')) {
+      befunde.push(`(r): der Auftragstext im Modus 'projekt' sollte die Interview-Reihenfolge (u. a. 'Vision/Problem') benennen, erhalten: ${letzteEingaben.auftragstext}`)
+    } else {
+      console.log("✓ (r): POST /api/sparring baut im Modus 'projekt' einen Auftragstext mit Capability-Auszug UND Interview-Reihenfolge-Instruktion.")
+    }
+
+    const verlauf = await (await fetch(`${basisUrl}/api/sparring`)).json()
+    const eintrag = verlauf.verlauf[0]
+    if (verlauf.verlauf.length !== 1 || eintrag?.modus !== 'projekt') {
+      befunde.push(`(r): GET /api/sparring sollte genau einen Eintrag mit modus 'projekt' zeigen, erhalten ${JSON.stringify(verlauf)}`)
+    } else {
+      console.log("✓ (r): GET /api/sparring projiziert 'modus: projekt' für den geschriebenen Turn.")
+    }
+
+    const projekt = eintrag?.coachAntwort?.projekt
+    const meilenstein = projekt?.meilensteine?.[0]
+    const feature = meilenstein?.features?.[0]
+    if (!/^M[0-9]+$/.test(meilenstein?.id ?? '') || !/^F[0-9]+$/.test(feature?.id ?? '')) {
+      befunde.push(`(r): der persistierte Projekt-Entwurf sollte real vergebene Meilenstein-/Feature-IDs tragen (Form M<n>/F<n>), erhalten ${JSON.stringify(projekt?.meilensteine)}`)
+    } else if (projekt?.auftragModus !== 'neu' && projekt?.auftragModus !== 'erweiterung') {
+      befunde.push(`(r): der persistierte Projekt-Entwurf sollte 'auftragModus' ('neu' oder 'erweiterung') tragen, erhalten ${JSON.stringify(projekt?.auftragModus)}`)
+    } else {
+      console.log(`✓ (r): vergebeFeatureIds vergibt real Meilenstein-/Feature-IDs (${meilenstein.id}/${feature.id}) und der Entwurf trägt 'auftragModus' ('${projekt.auftragModus}').`)
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (s) F34 WS-3 (Code-Review-Befund, löst F-613): modus/art-Kopplung real erzwungen ──────
+//
+// Ohne diese Prüfung könnte ein Modell, das seine Rolleninstruktion missachtet, im angefragten
+// modus 'feature' trotzdem art 'projekt_entwurf' liefern — die Ressourcen-Erfindungsprüfung liefe
+// leer (bekannteRessourcenIds wird NUR im Modus 'projekt' aufgelöst) UND vergebeFeatureIds vergäbe
+// trotzdem reale IDs für ein Ergebnis, dessen Herkunft der Server gar nicht als Projekt-Interview
+// angefragt hatte. verarbeiteRollenChatErgebnis lehnt diesen Widerspruch jetzt wie jeden anderen
+// Vertragsverstoß ab (sichtbarer Fehler-Turn, F-506-Muster) statt ihm zu vertrauen.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-s-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  const projektId = 'check-f34-ak-s'
+  const projektEntwurfErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-projekt-entwurf.json', 'utf-8'))
+
+  const fuehreAufgabeDurchFn = async (laufId) => {
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    // Simuliert ein Modell, das trotz angefragtem modus 'feature' (unten, kein 'modus' im Body)
+    // art 'projekt_entwurf' liefert — Instruktionsverstoß, den der Server nicht verhindern kann,
+    // aber erkennen und ablehnen muss.
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(projektEntwurfErgebnis) }) }), 'utf8')
+    const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+    const { registriereKernArtefakt } = await import('../src/lineage-registry/index.ts')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f34-fake-modus-verstoss' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+      basisVerzeichnis,
+      schreiber: STILLER_SCHREIBER,
+    })
+    return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  try {
+    const antwort = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: JSON.stringify({ nachricht: 'Was schlägst du vor?' }) })
+    if (antwort.status !== 202) {
+      befunde.push(`(s): erwartet 202, erhalten ${antwort.status} (${await antwort.text()})`)
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      const verlauf = (await (await fetch(`${basisUrl}/api/sparring`)).json()).verlauf
+      if (verlauf.length !== 1) {
+        befunde.push(`(s): erwartet GENAU einen Sparring-Eintrag (den sichtbaren Fehler-Turn), erhalten ${verlauf.length}`)
+      } else {
+        const eintrag = verlauf[0]
+        if (eintrag.coachAntwort?.art !== 'frage') {
+          befunde.push(`(s): ein art:'projekt_entwurf'-Ergebnis bei angefragtem modus 'feature' sollte einen sichtbaren Fehler-Turn erzeugen (konfiguration.fehlerArt 'frage'), erhalten ${JSON.stringify(eintrag.coachAntwort)}`)
+        } else if (typeof eintrag.coachAntwort.antwort !== 'string' || !eintrag.coachAntwort.antwort.includes('Rolleninstruktion missachtet')) {
+          befunde.push(`(s): erwartet einen erkennbaren Vertragsverstoß-Text ('Rolleninstruktion missachtet') in coachAntwort.antwort, erhalten ${JSON.stringify(eintrag.coachAntwort)}`)
+        } else if (eintrag.coachAntwort.projekt !== undefined) {
+          befunde.push(`(s): ein abgelehntes Ergebnis darf KEIN 'projekt'-Feld mit real vergebenen IDs tragen, erhalten ${JSON.stringify(eintrag.coachAntwort)}`)
+        } else {
+          console.log("✓ (s): ein art:'projekt_entwurf'-Ergebnis bei angefragtem modus 'feature' wird real als Vertragsverstoß abgelehnt (sichtbarer Fehler-Turn, KEINE ID-Vergabe) — löst F-613.")
+        }
+      }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (t) F34 WS-3 (QA-/Code-Review-Befund, löst F-614): Verlaufsfenster nach modus gefiltert ──
+//
+// 'feature' und 'projekt' teilen sich denselben 'sparring-<projektId>'-Verlauf — ohne Filter sah
+// der Coach frühere Turns des JEWEILS ANDEREN Untermodus als ungekennzeichneten Kontext (real
+// beobachtet, features/F34/nachweis-ws3.md). ladeRollenVerlaufsfenster filtert jetzt nach modus.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-t-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const projektId = 'check-f34-ak-t'
+  const frageErgebnis = JSON.parse(readFileSync('schemas/examples/ergebnis-product-coach.valid-frage.json', 'utf-8'))
+
+  let letzteEingaben = null
+  const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
+    letzteEingaben = eingaben
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(frageErgebnis) }) }), 'utf8')
+    const profilReferenz = { pfad: 'profiles/beispiel.json', hash: 'a'.repeat(64), version: 1 }
+    const { registriereKernArtefakt } = await import('../src/lineage-registry/index.ts')
+    registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f34-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
+      basisVerzeichnis,
+      schreiber: STILLER_SCHREIBER,
+    })
+    return { ok: true, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+  const sende = async (nachricht, modus) => {
+    const antwort = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: JSON.stringify({ nachricht, modus }) })
+    if (antwort.status !== 202) throw new Error(`(t) sende('${nachricht}'): erwartet 202, erhalten ${antwort.status}`)
+    await new Promise((resolve) => setTimeout(resolve, 30))
+  }
+  try {
+    await sende('Feature-Nachricht eins', 'feature')
+    await sende('Projekt-Nachricht eins', 'projekt')
+    await sende('Feature-Nachricht zwei', 'feature')
+    const auftragstextFeature = letzteEingaben.auftragstext
+    if (!auftragstextFeature.includes('Feature-Nachricht eins') || auftragstextFeature.includes('Projekt-Nachricht eins')) {
+      befunde.push(`(t): das Verlaufsfenster für modus 'feature' sollte nur frühere 'feature'-Turns zeigen, erhalten: ${auftragstextFeature}`)
+    } else {
+      console.log("✓ (t): das Verlaufsfenster im Modus 'feature' zeigt nur frühere 'feature'-Turns, keine 'projekt'-Turns (löst F-614).")
+    }
+    await sende('Projekt-Nachricht zwei', 'projekt')
+    const auftragstextProjekt = letzteEingaben.auftragstext
+    if (!auftragstextProjekt.includes('Projekt-Nachricht eins') || auftragstextProjekt.includes('Feature-Nachricht eins') || auftragstextProjekt.includes('Feature-Nachricht zwei')) {
+      befunde.push(`(t): das Verlaufsfenster für modus 'projekt' sollte nur frühere 'projekt'-Turns zeigen, erhalten: ${auftragstextProjekt}`)
+    } else {
+      console.log("✓ (t): das Verlaufsfenster im Modus 'projekt' zeigt nur frühere 'projekt'-Turns, keine 'feature'-Turns (löst F-614).")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (u) F34 WS-3 Korrekturrunde (löst F-618): vergebeFeatureIds gegen die REALE roadmap.json ──
+//
+// docs/projekt/roadmap.json reserviert seit dem F-618-Fix bereits 'F41' (M5, E-M5-14 — "Neues
+// Projekt anlegen"), auch ohne eigene features/F41/-Akte. vergebeFeatureIds darf diese ID nie
+// erneut vergeben, unabhängig davon, ob sie aus einem features/<id>/-Verzeichnis oder
+// ausschließlich aus roadmap.json stammt (sammleBestehendeIds sammelt aus BEIDEN Quellen in eine
+// gemeinsame Menge) — genau der Fehler, der im realen WS-3-Nachweis F41 kollidieren ließ.
+{
+  const befundeVor = befunde.length
+  const bestehendeIds = sammleBestehendeIds(process.cwd(), 'docs/projekt/roadmap.json')
+  if (!bestehendeIds.features.includes('F41')) {
+    befunde.push("(u): 'F41' sollte über docs/projekt/roadmap.json (M5, E-M5-14) reserviert sein, sammleBestehendeIds fand sie nicht — Regression von F-618")
+  }
+  const hoechsteNummer = bestehendeIds.features.reduce((max, id) => {
+    const treffer = /^F([0-9]+)[A-Za-z]?$/.exec(id)
+    return treffer === null ? max : Math.max(max, Number.parseInt(treffer[1], 10))
+  }, 0)
+  const projekt = {
+    meilensteine: [{ titel: 'x', ziel: 'x', features: [{ titel: 'Einziges Feature', ziel: 'x', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: [] }] }],
+    offene_fragen: [],
+  }
+  const zugewiesen = vergebeFeatureIds(projekt, bestehendeIds)
+  const vergebeneId = zugewiesen.meilensteine[0].features[0].id
+  if (vergebeneId === 'F41') {
+    befunde.push("(u): vergebeFeatureIds hat gegen den realen Bestand erneut 'F41' vergeben, obwohl roadmap.json sie bereits reserviert — Regression von F-618")
+  } else {
+    const vergebeneNummer = Number.parseInt(/^F([0-9]+)/.exec(vergebeneId)?.[1] ?? '0', 10)
+    if (!(vergebeneNummer > hoechsteNummer)) {
+      befunde.push(`(u): erwartet eine Feature-ID > F${hoechsteNummer} (höchste real bestehende, inkl. roadmap.json-Reservierungen), erhalten '${vergebeneId}'`)
+    } else if (bestehendeIds.features.includes(vergebeneId)) {
+      befunde.push(`(u): vergebeFeatureIds hat eine bereits real bestehende ID erneut vergeben: '${vergebeneId}'`)
+    } else {
+      console.log(`✓ (u): vergebeFeatureIds vergibt gegen die reale docs/projekt/roadmap.json (F41 reserviert, E-M5-14) korrekt die nächste freie ID ('${vergebeneId}'), nicht 'F41' — löst F-618.`)
+    }
+  }
+}
+
+// ─── (v) F34 WS-3 Korrekturrunde (löst F-620/F-621): Umschalter-Hervorhebung + [hidden]-Kaskade ──
+//
+// Sichtprüfung (Stefan) + Challenger, 23.09.2026: renderVerlauf aktualisierte bislang nur
+// aria-pressed, nie classList('btn-primary') — die optische Hervorhebung wechselte beim Klicken
+// nie (F-620). Zusätzlich überschrieb .chat-modus-auswahl { display: flex } die UA-Regel
+// [hidden] { display: none } (Muster #shell-chat-spalte[hidden]) — #chat-untermodus-auswahl trägt
+// beide Klassen und blieb dadurch auch im Modus 'jarvis' sichtbar (F-621). Kein DOM-Test (F-601-
+// Muster, s. Dateikopf) — statischer Quelltext-/Stylesheet-Scan als Regressionswache, ergänzt um
+// den realen Playwright-Render-Nachweis in features/F34/nachweis-ws3.md.
+{
+  const befundeVor = befunde.length
+  const chatQuelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
+  const styleQuelltext = readFileSync('public/leitstand/style.css', 'utf-8')
+
+  const gedruecktIds = ['chat-modus-jarvis-btn', 'chat-modus-sparring-btn', 'chat-untermodus-feature-btn', 'chat-untermodus-projekt-btn']
+  if (!/classList\.toggle\(\s*'btn-primary'/.test(chatQuelltext)) {
+    befunde.push("(v): renderVerlauf sollte 'btn-primary' per classList.toggle setzen — kein Aufruf im Quelltext gefunden (Regression von F-620: aria-pressed allein wechselt die optische Hervorhebung nicht)")
+  }
+  for (const id of gedruecktIds) {
+    if (!new RegExp(`setzeGedruecktenZustand\\(\\s*'${id}'`).test(chatQuelltext)) {
+      befunde.push(`(v): renderVerlauf sollte den gedrückten Zustand von '${id}' über setzeGedruecktenZustand (aria-pressed + btn-primary gleichlaufend) ableiten — kein Aufruf dafür gefunden`)
+    }
+  }
+  if (!/\.chat-modus-auswahl\[hidden\]\s*\{\s*display:\s*none/.test(styleQuelltext)) {
+    befunde.push("(v): style.css sollte eine Regel '.chat-modus-auswahl[hidden] { display: none; }' tragen — ohne sie überschreibt 'display: flex' die UA-[hidden]-Regel (Regression von F-621, #chat-untermodus-auswahl bliebe auch im Modus 'jarvis' sichtbar)")
+  }
+  if (befunde.length === befundeVor) {
+    console.log("✓ (v): renderVerlauf leitet 'btn-primary' für alle vier Umschalter-Buttons gleichlaufend mit aria-pressed ab, style.css trägt '.chat-modus-auswahl[hidden] { display: none; }' — F-620/F-621 real behoben.")
   }
 }
 

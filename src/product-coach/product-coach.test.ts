@@ -1,17 +1,20 @@
 /**
  * Datei: src/product-coach/product-coach.test.ts
  *
- * Zweck: node:test-Fälle für das Product-Coach-Modul (F34 WS-1). Muster
+ * Zweck: node:test-Fälle für das Product-Coach-Modul (F34 WS-1, erweitert WS-3). Muster
  * src/jarvis/jarvis.test.ts — prüft validiereErgebnisProductCoach direkt
- * (Rot-/Grünfälle je Regel), baueCoachAuftragstext (Textbausteine) und
- * baueAuftragAusScope (Determinismus). scripts/check-f34-product-coach.mjs
- * prüft zusätzlich die Schema-Beispiele und reale HTTP-Rot-/Grünfälle
- * (D5-Muster: kein zweiter, von Hand nachgebauter Regelsatz).
+ * (Rot-/Grünfälle je Regel), baueCoachAuftragstext (Textbausteine),
+ * baueAuftragAusScope (Determinismus), entferneIdPraefix und
+ * baueAuftragAusProjektentwurf (F34 WS-3 Korrekturrunde, löst F-611/F-612 — Code-Review-
+ * Befund derselben Runde: die ursprünglichen Fixes hatten keine ausführende Prüfung des
+ * konkreten Präfix-Strip-Falls, nur eine Herleitung am Schreibtisch; hier real getestet).
+ * scripts/check-f34-product-coach.mjs prüft zusätzlich die Schema-Beispiele und reale
+ * HTTP-Rot-/Grünfälle (D5-Muster: kein zweiter, von Hand nachgebauter Regelsatz).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAuftragAusScope, baueCoachAuftragstext, validiereErgebnisProductCoach } from './index.ts'
+import { baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCoachAuftragstext, entferneIdPraefix, validiereErgebnisProductCoach, vergebeFeatureIds } from './index.ts'
 
 const GUELTIGER_SCOPE = {
   titel: 'Design-Phase vor F30',
@@ -174,4 +177,104 @@ test('baueAuftragAusScope: auftragstext enthält alle Scope-Felder', () => {
 test('baueAuftragAusScope: leere Listenfelder werden als "(keine)" statt einer leeren Sektion dargestellt', () => {
   const { auftragstext } = baueAuftragAusScope({ ...GUELTIGER_SCOPE, out_of_scope: [] })
   assert.ok(auftragstext.includes('## Out of Scope\n- (keine)'))
+})
+
+// ─── entferneIdPraefix (F34 WS-3 Korrekturrunde, löst F-612) ───────────────
+
+test('entferneIdPraefix: entfernt "M6 — " (Em-Dash) vor einem Meilenstein-Titel', () => {
+  assert.strictEqual(entferneIdPraefix('M6 — Aufräum-Werkzeug für Testrückstände'), 'Aufräum-Werkzeug für Testrückstände')
+})
+
+test('entferneIdPraefix: entfernt "F3 - " (ASCII-Bindestrich) vor einem Feature-Titel', () => {
+  assert.strictEqual(entferneIdPraefix('F3 - On-Demand-Skript'), 'On-Demand-Skript')
+})
+
+test('entferneIdPraefix: entfernt "F1B: " (Buchstaben-Suffix, Doppelpunkt-Trenner)', () => {
+  assert.strictEqual(entferneIdPraefix('F1B: Titel mit Suffix'), 'Titel mit Suffix')
+})
+
+test('entferneIdPraefix: lässt einen Titel OHNE führenden ID-Präfix unverändert (reales Fixture "Design-Phase vor F30" — F30 steht mitten im String, kein Treffer)', () => {
+  assert.strictEqual(entferneIdPraefix('Design-Phase vor F30'), 'Design-Phase vor F30')
+})
+
+test('entferneIdPraefix: lässt gewöhnlichen Fließtext ohne jeden ID-Bezug unverändert', () => {
+  assert.strictEqual(entferneIdPraefix('Ein ganz normaler Titel'), 'Ein ganz normaler Titel')
+})
+
+test('entferneIdPraefix: bekannte Grenze (F-619) — ein Titel, der EXAKT der ID ohne Trenner entspricht, wird NICHT bereinigt', () => {
+  assert.strictEqual(entferneIdPraefix('M6'), 'M6')
+})
+
+// ─── baueAuftragAusProjektentwurf (F34 WS-3 Korrekturrunde, löst F-611/F-612) ──
+//
+// Reproduziert den realen Fall aus features/F34/nachweis-ws3.md: ein Meilenstein-Titel, den der
+// Coach selbst mit einem ID-artigen Präfix begonnen hat, PLUS die reale, vom Server über
+// vergebeFeatureIds vergebene ID — vorher entstand hier "### M6 — M6 — …" (F-612) und der
+// Auftragstitel kam im Modus 'erweiterung' aus der unveränderten Gesamt-vision (F-611).
+
+const PROJEKT_MIT_ID_PRAEFIX_IM_TITEL = {
+  vision: 'AI Workforce führt ein Vorhaben von der Idee bis zum abgenommenen Ergebnis durch klar getrennte KI-Positionen.',
+  zielgruppe: 'Stefan',
+  ziele: ['x'],
+  scope_in: ['x'],
+  scope_out: ['x'],
+  capabilities_bedarf: [],
+  architektur_hinweise: [],
+  offene_fragen: [],
+  meilensteine: [
+    {
+      titel: 'M6 — Aufräum-Werkzeug für Testrückstände',
+      ziel: 'z',
+      features: [{ titel: 'F41 - On-Demand-Skript', ziel: 'z', nicht_ziele: [], akzeptanzkriterien: [], abhaengig_von_titel: [] }],
+    },
+  ],
+}
+
+function baueProjektMitEchtenIds() {
+  const zugewiesen = vergebeFeatureIds(PROJEKT_MIT_ID_PRAEFIX_IM_TITEL, { features: [], meilensteine: [] })
+  // auftragModus wird von baueAuftragAusProjektentwurf nicht gelesen (kommt als eigener
+  // Parameter), muss aber laut ProjektEntwurfMitIds-Typ trotzdem vorhanden sein (spiegelt die
+  // real persistierte Form, s. verarbeiteRollenChatErgebnis) — Wert hier beliebig, ungenutzt.
+  return { ...PROJEKT_MIT_ID_PRAEFIX_IM_TITEL, meilensteine: zugewiesen.meilensteine, offene_fragen: zugewiesen.offene_fragen, auftragModus: 'erweiterung' as const }
+}
+
+test('baueAuftragAusProjektentwurf: ein vom Coach selbst mit ID-artigem Präfix begonnener Meilenstein-Titel wird NICHT doppelt vorangestellt (löst F-612)', () => {
+  const { auftragstext } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'erweiterung')
+  assert.ok(auftragstext.includes('### M1 — Aufräum-Werkzeug für Testrückstände'), `erwartet einfaches "### M1 — …", erhalten: ${auftragstext}`)
+  assert.ok(!auftragstext.includes('M1 — M1'), `Dopplung gefunden: ${auftragstext}`)
+})
+
+test('baueAuftragAusProjektentwurf: dasselbe gilt für einen Feature-Titel mit ID-artigem Präfix (löst F-612)', () => {
+  const { auftragstext } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'erweiterung')
+  assert.ok(auftragstext.includes('- F1 — On-Demand-Skript'), `erwartet einfaches "- F1 — …", erhalten: ${auftragstext}`)
+  assert.ok(!auftragstext.includes('F1 — F1'), `Dopplung gefunden: ${auftragstext}`)
+})
+
+test("baueAuftragAusProjektentwurf: Titel im Modus 'erweiterung' kommt aus dem (bereinigten) Meilenstein-Titel, NICHT aus vision (löst F-611)", () => {
+  const { titel } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'erweiterung')
+  assert.strictEqual(titel, 'Erweiterung: Aufräum-Werkzeug für Testrückstände')
+  assert.ok(!titel.includes('AI Workforce führt ein Vorhaben'), `Titel sollte NICHT aus vision gebildet sein, erhalten: ${titel}`)
+})
+
+test("baueAuftragAusProjektentwurf: Titel im Modus 'neu' bleibt unverändert aus vision gebildet", () => {
+  const { titel } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'neu')
+  assert.ok(titel.startsWith('Projekt-Anlage: AI Workforce führt ein Vorhaben'), `erwartet vision-basierten Titel, erhalten: ${titel}`)
+})
+
+test("baueAuftragAusProjektentwurf: mehrere neue Meilensteine werden im Modus 'erweiterung' mit '; ' verbunden", () => {
+  const projekt = {
+    ...baueProjektMitEchtenIds(),
+    meilensteine: [
+      { id: 'M1', titel: 'Erster Meilenstein', ziel: 'z', features: [] },
+      { id: 'M2', titel: 'Zweiter Meilenstein', ziel: 'z', features: [] },
+    ],
+  }
+  const { titel } = baueAuftragAusProjektentwurf(projekt, 'erweiterung')
+  assert.strictEqual(titel, 'Erweiterung: Erster Meilenstein; Zweiter Meilenstein')
+})
+
+test("baueAuftragAusProjektentwurf: keine neuen Meilensteine liefert im Modus 'erweiterung' einen erkennbaren Platzhaltertitel statt eines leeren/kaputten Strings", () => {
+  const projekt = { ...baueProjektMitEchtenIds(), meilensteine: [] }
+  const { titel } = baueAuftragAusProjektentwurf(projekt, 'erweiterung')
+  assert.strictEqual(titel, 'Erweiterung: (kein neuer Meilenstein)')
 })

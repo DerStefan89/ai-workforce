@@ -184,6 +184,7 @@ import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
 import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
+import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
 
 /**
  * F34 WS-2: die einzige Stelle, an der sich 'jarvis' und 'sparring' unterscheiden — jede Funktion
@@ -243,6 +244,37 @@ function speichereModus(modus) {
 
 /** F34 WS-2: der gerade angezeigte Modus. */
 let aktiverModus = gespeicherterModus()
+
+const UNTERMODUS_SCHLUESSEL = 'leitstand-chat-sparring-untermodus'
+const SPARRING_UNTERMODI = ['feature', 'projekt']
+
+/** F34 WS-3: gemerkter Sparring-Unterumschalter ('feature'/'projekt', Muster gespeicherterModus). */
+function gespeicherterUntermodus() {
+  try {
+    const wert = localStorage.getItem(UNTERMODUS_SCHLUESSEL)
+    return wert !== null && SPARRING_UNTERMODI.includes(wert) ? wert : 'feature'
+  } catch {
+    return 'feature'
+  }
+}
+
+function speichereUntermodus(untermodus) {
+  try {
+    localStorage.setItem(UNTERMODUS_SCHLUESSEL, untermodus)
+  } catch {
+    // Privates Fenster/blockierter Zugriff — die Präferenz gilt dann nur für die laufende Ansicht.
+  }
+}
+
+/**
+ * F34 WS-3 (E-M5-12): Sparring-Unterumschalter "Feature | Projekt" — nur im Modus 'sparring'
+ * wirksam. 'feature' ist das unveränderte WS-1/WS-2-Sparring (POST /api/sparring ohne 'modus',
+ * Server-Standard); 'projekt' löst das Projekt-Interview aus (POST /api/sparring { modus:
+ * 'projekt' }, art 'projekt_entwurf' statt 'scope_entwurf'). Beeinflusst NICHT, welcher Verlauf
+ * geladen wird — beide Unterumschalter-Stellungen teilen sich denselben 'sparring-<projektId>'-
+ * Verlauf (ein Turn trägt serverseitig sein eigenes 'modus'-Feld, GET /api/sparring).
+ */
+let sparringUntermodus = gespeicherterUntermodus()
 
 /** @returns ein frischer, leerer Zustandsblock für einen Modus (Muster der bisherigen Modulvariablen). */
 function neuerModusZustand() {
@@ -496,6 +528,58 @@ function renderScope(scope) {
   </div>`
 }
 
+const CAPABILITY_STATUS_LABEL = { vorhanden: 'vorhanden', offen: 'offen', fehlt: 'fehlt' }
+
+/** F34 WS-3: rendert projekt.capabilities_bedarf mit Status-Markierung (.badge, Muster views/workboard.js). @param bedarf - CapabilityBedarf[] */
+function renderCapabilityBedarf(bedarf) {
+  if (!Array.isArray(bedarf) || bedarf.length === 0) return '<p class="chat-scope-leer">(keine)</p>'
+  const eintraege = bedarf
+    .map((b) => {
+      const status = CAPABILITY_STATUS_LABEL[b?.status] ?? String(b?.status ?? '')
+      const ressourceHtml = b?.ressource_id ? ` — <code>${escapeHtml(b.ressource_id)}</code>` : ''
+      const badgeKlasse = b?.status === 'fehlt' ? 'fehler' : b?.status === 'offen' ? 'neutral' : 'ok'
+      return `<li class="chat-capability-bedarf-eintrag"><span class="badge ${badgeKlasse}">${escapeHtml(status)}</span> ${escapeHtml(b?.bedarf ?? '')}${ressourceHtml}</li>`
+    })
+    .join('')
+  return `<ul class="chat-capability-bedarf-liste">${eintraege}</ul>`
+}
+
+/** F34 WS-3 Korrekturrunde (löst F-612): rendert einen Meilenstein mit seinen Features + zugewiesenen IDs (bereits vom Server über vergebeFeatureIds vergeben) — entferneIdPraefix entfernt einen vom Coach ggf. selbst mitgelieferten ID-artigen Titel-Präfix, sonst entstünde dieselbe sichtbare Dopplung wie im Auftragstext (baueAuftragAusProjektentwurf). @param meilenstein - ZugewiesenerMeilenstein */
+function renderProjektMeilenstein(meilenstein) {
+  const features = Array.isArray(meilenstein?.features) ? meilenstein.features : []
+  const featureEintraege = features
+    .map(
+      (f) => `<li class="chat-projekt-feature">
+        <p class="chat-projekt-feature-titel"><code>${escapeHtml(f?.id ?? '')}</code> — ${escapeHtml(entferneIdPraefix(f?.titel ?? ''))}</p>
+        <p class="chat-projekt-feature-ziel">${escapeHtml(f?.ziel ?? '')}</p>
+        ${Array.isArray(f?.abhaengig_von_ids) && f.abhaengig_von_ids.length > 0 ? `<p class="chat-projekt-feature-abhaengig">Abhängig von: ${f.abhaengig_von_ids.map((id) => escapeHtml(id)).join(', ')}</p>` : ''}
+      </li>`
+    )
+    .join('')
+  return `<div class="chat-projekt-meilenstein">
+    <p class="chat-projekt-meilenstein-titel"><code>${escapeHtml(meilenstein?.id ?? '')}</code> — ${escapeHtml(entferneIdPraefix(meilenstein?.titel ?? ''))}</p>
+    <p class="chat-projekt-meilenstein-ziel">${escapeHtml(meilenstein?.ziel ?? '')}</p>
+    <ul class="chat-projekt-feature-liste">${featureEintraege}</ul>
+  </div>`
+}
+
+/** F34 WS-3 (E-M5-12): rendert daten.projekt (art 'projekt_entwurf') strukturiert — Vision, Zielgruppe, Ziele, Scope In/Out, Meilensteine mit Features + zugewiesenen IDs, Capability-Bedarf mit Status, offene Fragen. @param projekt - ProjektEntwurf mit bereits vergebenen IDs */
+function renderProjekt(projekt) {
+  if (projekt === null || typeof projekt !== 'object') return ''
+  const abschnitt = (titel, inhaltHtml) => `<div class="chat-scope-abschnitt"><p class="chat-scope-abschnitt-titel">${escapeHtml(titel)}</p>${inhaltHtml}</div>`
+  const meilensteine = Array.isArray(projekt.meilensteine) ? projekt.meilensteine : []
+  return `<div class="chat-scope-block chat-projekt-block">
+    ${abschnitt('Vision', `<p>${escapeHtml(projekt.vision ?? '')}</p>`)}
+    ${abschnitt('Zielgruppe', `<p>${escapeHtml(projekt.zielgruppe ?? '')}</p>`)}
+    ${abschnitt('Ziele', renderStringListe(projekt.ziele))}
+    ${abschnitt('Scope In', renderStringListe(projekt.scope_in))}
+    ${abschnitt('Scope Out', renderStringListe(projekt.scope_out))}
+    ${abschnitt('Meilensteine', meilensteine.length > 0 ? meilensteine.map(renderProjektMeilenstein).join('') : '<p class="chat-scope-leer">(keine)</p>')}
+    ${abschnitt('Capability-Bedarf', renderCapabilityBedarf(projekt.capabilities_bedarf))}
+    ${abschnitt('Offene Fragen', renderStringListe(projekt.offene_fragen))}
+  </div>`
+}
+
 /**
  * F34 WS-2 (löst F-606): eindeutiger Schlüssel für den Auftrag-Brücken-Dialog eines Eintrags —
  * dieselbe Form wie eintrag.schluessel (baueAnzeigeListe), damit ein Klick den richtigen,
@@ -506,6 +590,12 @@ function leseAuftragKandidat(modus, antwort) {
   if (antwort === null || typeof antwort !== 'object') return null
   if (modus === 'sparring' && antwort.art === 'scope_entwurf' && antwort.scope) {
     return baueAuftragAusScope(antwort.scope)
+  }
+  // F34 WS-3: 'auftragModus' ('neu'/'erweiterung') trägt der Server bereits im persistierten
+  // projekt-Objekt (verarbeiteRollenChatErgebnis, leitstand-server.mjs) — das Modell selbst
+  // entscheidet das nicht (dieselbe F-595-Begründung wie die Feature-/Meilenstein-IDs).
+  if (modus === 'sparring' && antwort.art === 'projekt_entwurf' && antwort.projekt) {
+    return baueAuftragAusProjektentwurf(antwort.projekt, antwort.projekt.auftragModus ?? 'neu')
   }
   if (modus === 'jarvis' && antwort.art === 'auftrag_vorschlag' && antwort.auftrag) {
     return { titel: antwort.auftrag.titel ?? '', auftragstext: antwort.auftrag.text ?? '' }
@@ -561,6 +651,7 @@ function renderEintrag(modus, eintrag) {
   let inhaltHtml = `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`
   if (art === 'alternativen') inhaltHtml += renderAlternativen(eintrag.antwort?.alternativen)
   if (art === 'scope_entwurf') inhaltHtml += renderScope(eintrag.antwort?.scope)
+  if (art === 'projekt_entwurf') inhaltHtml += renderProjekt(eintrag.antwort?.projekt)
   inhaltHtml += renderAuftragBruecke(modus, eintrag.schluessel, leseAuftragKandidat(modus, eintrag.antwort))
   const jarvisZeile = chatBubbleReihe(label, zeitHtml, inhaltHtml, 'jarvis')
   return trennerHtml + nutzerZeile + jarvisZeile
@@ -602,8 +693,20 @@ function renderVerlauf() {
   document.getElementById('chat-titel').textContent = konfiguration.titelText
   document.getElementById('chat-eingabe').placeholder = konfiguration.platzhalter
   document.getElementById('chat-zusammenfassen-btn').hidden = !konfiguration.hatZusammenfassen
-  document.getElementById('chat-modus-jarvis-btn').setAttribute('aria-pressed', String(modus === 'jarvis'))
-  document.getElementById('chat-modus-sparring-btn').setAttribute('aria-pressed', String(modus === 'sparring'))
+  // F34 WS-3 Korrekturrunde (löst F-620): 'btn-primary' muss bei JEDEM Render gleichlaufend mit
+  // aria-pressed gesetzt werden — vorher aktualisierte dieser Block nur aria-pressed, die optische
+  // Hervorhebung blieb dauerhaft auf dem Erstzustand stehen (Sichtprüfung, seit WS-2).
+  const setzeGedruecktenZustand = (id, gedrueckt) => {
+    const element = document.getElementById(id)
+    element.setAttribute('aria-pressed', String(gedrueckt))
+    element.classList.toggle('btn-primary', gedrueckt)
+  }
+  setzeGedruecktenZustand('chat-modus-jarvis-btn', modus === 'jarvis')
+  setzeGedruecktenZustand('chat-modus-sparring-btn', modus === 'sparring')
+  // F34 WS-3: Unterumschalter nur im Modus 'sparring' sichtbar.
+  document.getElementById('chat-untermodus-auswahl').hidden = modus !== 'sparring'
+  setzeGedruecktenZustand('chat-untermodus-feature-btn', sparringUntermodus === 'feature')
+  setzeGedruecktenZustand('chat-untermodus-projekt-btn', sparringUntermodus === 'projekt')
 
   const container = document.getElementById('chat-verlauf')
   const liste = baueAnzeigeListe(modus)
@@ -835,7 +938,11 @@ async function sendeAktuelleEingabe() {
 
       let antwort
       try {
-        antwort = await MODI[modus].sendeNachricht({ nachricht })
+        // F34 WS-3: 'modus' im Body geht NUR im Modus 'sparring' mit (POST /api/chat kennt das
+        // Feld nicht und lehnt ein unbekanntes Feld mit 400 ab) — sparringUntermodus bleibt für
+        // 'jarvis' unbeachtet.
+        const koerper = modus === 'sparring' ? { nachricht, modus: sparringUntermodus } : { nachricht }
+        antwort = await MODI[modus].sendeNachricht(koerper)
       } catch (fehler) {
         zeigeChatFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
         return
@@ -967,6 +1074,24 @@ function initModusUmschalter() {
 }
 
 /**
+ * F34 WS-3 (E-M5-12): "Feature"/"Projekt"-Unterumschalter innerhalb des Modus 'sparring' — reine
+ * Anzeige-/Zielwahl wie initModusUmschalter, aber OHNE eigenen Verlaufs-Fetch: beide Stellungen
+ * teilen sich denselben 'sparring-<projektId>'-Verlauf (ein Turn trägt sein eigenes 'modus'-Feld
+ * server-seitig), nur die NÄCHSTE gesendete Nachricht trägt den gewählten Unterumschalter-Wert.
+ */
+function initUntermodusUmschalter() {
+  const waehleUntermodus = (untermodus) => {
+    if (untermodus === sparringUntermodus) return
+    sparringUntermodus = untermodus
+    speichereUntermodus(untermodus)
+    offenerAuftragDialog = null
+    renderVerlauf()
+  }
+  document.getElementById('chat-untermodus-feature-btn').addEventListener('click', () => waehleUntermodus('feature'))
+  document.getElementById('chat-untermodus-projekt-btn').addEventListener('click', () => waehleUntermodus('projekt'))
+}
+
+/**
  * F34 WS-2 (löst F-606): Klick-Delegation für die Auftrag-Brücke (Muster views/workboard.js
  * Listen-Delegation — die Buttons entstehen bei jedem renderVerlauf() neu, ein einziger Listener
  * auf dem Container bleibt gültig). 'Öffnen' baut den Dialog aus leseAuftragKandidat neu (frische
@@ -1070,6 +1195,7 @@ export function initChatView() {
   initAbbrechenBedienung()
   initZusammenfassenBedienung()
   initModusUmschalter()
+  initUntermodusUmschalter()
   initAuftragBruecke()
 
   // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell

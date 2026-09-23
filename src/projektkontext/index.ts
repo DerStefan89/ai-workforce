@@ -29,7 +29,7 @@ const MEILENSTEIN_STATUS = ['GEPLANT', 'LAEUFT', 'ABGESCHLOSSEN']
 // Meilenstein-IDs (z. B. 'F19-bridge') sind NICHT betroffen, nur meilenstein.features[]: ein
 // '../'-Segment würde in scripts/leitstand/routen-roadmap.mjs sonst außerhalb von features/
 // aufgelöst.
-const FEATURE_ID_MUSTER = /^F[0-9]+[A-Za-z]?$/
+export const FEATURE_ID_MUSTER = /^F[0-9]+[A-Za-z]?$/
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)

@@ -82,6 +82,61 @@ Auftrag zu münden, ohne dass die Fragen dazwischen je gestellt wurden
   `scripts/check-f34-product-coach.mjs` Abschnitte (i) (Gleichheit
   Server-TS/Browser-JS) und (j) (statische Prüfung der Brücke, F-601-Muster
   — kein DOM-Test für `chat.js` selbst).
+- **WS-3 — Projekt-Interview (dieser Auftrag, E-M5-12).** Zweiter
+  Sparring-Modus `projekt` (Standard bleibt `feature`, unverändertes WS-1/
+  WS-2-Verhalten): `POST /api/sparring` nimmt optional `{ modus:
+  'feature'|'projekt' }` an, unbekannter Wert/Fremdfeld → 400; der Modus
+  wird im Lineage-Eintrag (`sparring-<projektId>`) mitgespeichert und in
+  `GET /api/sparring` projiziert (Alt-Einträge ohne das Feld projizieren
+  als `feature`). `baueCoachAuftragstext(nachricht, verlauf, modus,
+  capabilityAuszug)` bekommt im Modus `projekt` eine eigene
+  Rolleninstruktion — Interview in fester Reihenfolge (Vision/Problem,
+  Zielgruppe, Ziele/Erfolgskriterien, Scope In/Out, Meilensteine,
+  Feature-Schnitt je Meilenstein), weiterhin höchstens eine Rückfrage je
+  Turn, `projekt_entwurf` erst bei ausreichender Klarheit; erkennt der
+  Coach am eingespeisten Projektkontext (F33) eine bestehende Roadmap,
+  plant er eine ERWEITERUNG statt eines Neuanfangs. Schema
+  `ergebnis-product-coach.schema.json` erweitert um `art: 'projekt_entwurf'`
+  und das Pflichtfeld `projekt: object|null` (Vision, Zielgruppe, Ziele,
+  Scope In/Out, Meilensteine mit Features — je Feature Titel/Ziel/
+  Nicht-Ziele/Akzeptanzkriterien/`abhaengig_von_titel` —,
+  `capabilities_bedarf`, `architektur_hinweise`, offene Fragen); die
+  Kopplungen (`art projekt_entwurf` ⇔ `projekt` ≠ null; eine
+  `ressource_id` ≠ null muss im eingespeisten Capability-Auszug existieren)
+  bleiben Codex-Dialekt-konform ausschließlich im Validator
+  (`validiereErgebnisProductCoach(daten, bekannteRessourcenIds?)`), keine
+  Feature-IDs im Modell-Output. `baueCapabilityAuszug(aufgeloesteRessourcen)`
+  rendert `loeseRessourcenAuf`s Ergebnis als kompakten, nach `id`
+  sortierten Text — nur im Modus `projekt` in den Auftragstext eingefügt,
+  keine zweite Leselogik. `vergebeFeatureIds(projekt, bestehendeIds)`
+  vergibt Feature-/Meilenstein-IDs deterministisch im Server (nie das
+  Modell, F-595-Muster) — nächste freie `F<n>`/`M<n>` aus `features/<id>/`
+  und `roadmap.json` (irreguläre Alt-IDs wie `F1B`/`F6a`/`F19-bridge`
+  werden übersprungen, nicht geraten), löst `abhaengig_von_titel` zu IDs
+  auf, ein unbekannter Titel wird zu einer offenen Frage statt geraten zu
+  werden; wird serverseitig direkt nach einem erfolgreichen
+  `projekt_entwurf`-Lauf angewendet (`verarbeiteRollenChatErgebnis`, VOR
+  dem Schreiben in die Lineage) — der persistierte Entwurf trägt bereits
+  zugewiesene IDs plus `auftragModus` (`'neu'`/`'erweiterung'`, aus
+  denselben `bestehendeIds` abgeleitet). `baueAuftragAusProjektentwurf
+  (projektMitIds, auftragModus)` ist eine reine Funktion (Muster
+  `baueAuftragAusScope`), die AUSSCHLIESSLICH einen Dokumentations-Auftrag
+  baut (`docs/projekt/kontext/beschreibung.md` neu/ergänzt,
+  `docs/projekt/roadmap.json` neu/ergänzt mit Status `GEPLANT`, je Feature
+  ein `features/<id>/feature.md`-Skelett mit Status `ENTWURF`,
+  `capabilities_bedarf` mit Status `fehlt` als Abschnitt
+  "Scout-Kandidaten", `architektur_hinweise` als Abschnitt "Für den
+  Architekten (F39)") — kein Produktcode, kein Dateizugriff selbst; Browser-
+  Kopie `public/leitstand/auftrag-aus-projektentwurf.js` (Muster
+  `auftrag-aus-scope.js`), Gleichheit mechanisch geprüft. `views/chat.js`:
+  Unterumschalter "Feature"/"Projekt" (`#chat-untermodus-feature-btn`/
+  `#chat-untermodus-projekt-btn`, nur im Modus `sparring` sichtbar,
+  `sparringUntermodus` in `localStorage`), strukturierte Anzeige eines
+  `projekt_entwurf` (`renderProjekt`: Vision, Zielgruppe, Ziele, Scope In/
+  Out, Meilensteine mit Features + zugewiesenen IDs, Capability-Bedarf mit
+  Status-Badge, offene Fragen), dieselbe "Als Auftrag anlegen"-Brücke wie
+  WS-2 (`leseAuftragKandidat` um `art === 'projekt_entwurf'` erweitert).
+  Gate `scripts/check-f34-product-coach.mjs` Abschnitte (m)–(r).
 
 ## Akzeptanzkriterien
 - AK1 (WS-1): `ROLLENVERTRAEGE['product-coach']` trägt alle fünf
@@ -182,6 +237,63 @@ Auftrag zu münden, ohne dass die Fragen dazwischen je gestellt wurden
   (`legeAuftragAn` ausschließlich mit `{ titel, auftragstext }`, beide
   `art`-Werte lösen dieselbe Brücke aus). `state/findings.md` F-606 auf
   `erledigt`.
+- AK12 (WS-3): `POST /api/sparring` akzeptiert optional `modus` ∈
+  `{'feature','projekt'}`, Standard `feature`; ein unbekannter Wert oder
+  ein sonstiges Fremdfeld bleibt real 400 (`scripts/check-f34-
+  product-coach.mjs` Abschnitt (m), inkl. Regressionsfall für das
+  bisherige Fremdfeld-Verhalten).
+- AK13 (WS-3): `schemas/ergebnis-product-coach.schema.json` erweitert um
+  `art: 'projekt_entwurf'` und das Codex-Dialekt-konforme Pflichtfeld
+  `projekt: object|null` (jede verschachtelte Eigenschaft — Meilenstein,
+  Feature, Capability-Bedarf — steht in ihrem eigenen `required`, geprüft
+  durch einen rekursiven Scan, Abschnitt (b2)). `validiereErgebnisProductCoach`
+  erzwingt die Kopplung `art 'projekt_entwurf'` ⇔ `projekt` ≠ null
+  (Abschnitt (b3)) und — nur wenn `bekannteRessourcenIds` übergeben wird —
+  dass jede gesetzte `capabilities_bedarf[].ressource_id` darin vorkommt;
+  eine erfundene ID ist ein Verstoß, ohne übergebene Liste bleibt die
+  Prüfung bewusst aus (Abschnitt (p)). Vier neue Beispiele unter
+  `schemas/examples/` (ein valider `projekt_entwurf`, zwei ungültige, ein
+  ressourcenabhängiger Rot-Fall).
+- AK14 (WS-3): `vergebeFeatureIds` ist deterministisch (zweimal derselbe
+  Entwurf → byte-identisches Ergebnis), kollidiert nicht mit real
+  bestehenden Feature-/Meilenstein-IDs (inkl. der irregulären
+  `F1B`/`F6a`/`F19-bridge`), löst eine bekannte `abhaengig_von_titel`-
+  Abhängigkeit zu der zugewiesenen ID auf und erzeugt für einen
+  unbekannten Titel einen `offene_fragen`-Eintrag statt zu raten
+  (`scripts/check-f34-product-coach.mjs` Abschnitt (n)). `baueCapabilityAuszug`
+  ist deterministisch, Eingabereihenfolge-unabhängig, nach `id` sortiert,
+  zeigt `freigabe`/`verfuegbar` je Ressource (Abschnitt (o)).
+- AK15 (WS-3): `baueAuftragAusProjektentwurf` (Server-TS,
+  `src/product-coach/index.ts`) und ihre Browser-JS-Kopie
+  (`public/leitstand/auftrag-aus-projektentwurf.js`) liefern für `'neu'`
+  und `'erweiterung'` byte-identische Ergebnisse (Abschnitt (q), Muster
+  Abschnitt (i)); der Auftragstext trägt ausschließlich eine
+  Dokumentations-Anweisung, keinen Produktcode-Auftrag.
+- AK16 (WS-3): ein realer POST/GET-`/api/sparring`-Rundlauf im Modus
+  `projekt` gegen dieses Repo zeigt: der Auftragstext trägt einen
+  Capability-Auszug UND die Interview-Reihenfolge-Instruktion, `GET
+  /api/sparring` projiziert `modus: 'projekt'` für den geschriebenen Turn,
+  und der persistierte Entwurf trägt real (gegen die tatsächlichen
+  `features/<id>/`- und `roadmap.json`-Bestände dieses Repos) vergebene
+  Meilenstein-/Feature-IDs plus `auftragModus` (Abschnitt (r)).
+- AK17 (WS-3): `views/chat.js` zeigt im Modus `sparring` einen
+  Unterumschalter "Feature"/"Projekt"; ein `projekt_entwurf`-Turn wird
+  strukturiert gerendert (Vision, Zielgruppe, Ziele, Scope In/Out,
+  Meilensteine mit Features + zugewiesenen IDs, Capability-Bedarf mit
+  Status-Markierung, offene Fragen), jeder Textbaustein über `escapeHtml`.
+  "Als Auftrag anlegen" löst für `art: 'projekt_entwurf'` dieselbe Brücke
+  wie für `'scope_entwurf'`/`'auftrag_vorschlag'` aus (`POST
+  /api/auftraege`, kein automatisches Anlegen/Routen/Starten).
+- AK18 (WS-3): `docs/projekt/zielfassung.md` (§13.6, E-M5-12/13/14),
+  `docs/STATUS.md` und diese Akte spiegeln die Entscheidungen vom
+  22.09.2026 (Coach-Modus `projekt`, F39 vor F35 mit Architektur-
+  Grundlage-Modus, F41 direkt nach F39) wider — kein stillschweigender
+  Plan-Drift.
+- AK19 (WS-3): realer Nachweis — ein Projekt-Interview mit 4–6 Turns gegen
+  dieses Repo bis `projekt_entwurf` (ein kleiner neuer Meilenstein, Latenz
+  je Turn, zugewiesene IDs, Capability-Bedarf dokumentiert), der daraus
+  erzeugte Auftrag wird angelegt (nicht geroutet/gestartet) und sein
+  Auftragstext in `features/F34/nachweis-ws3.md` festgehalten.
 
 ## Feature Review
 
@@ -288,6 +400,108 @@ real grün.
 
 Status bleibt `IN_ARBEIT` bis Stefans Browser-Sichtprüfung (Auftrag-Vorgabe).
 
+### WS-3
+Reviewer-/QA-Pass am 22.09.2026 (frischer Kontext) für WS-3.
+
+- **code-reviewer:** „Freigegeben mit Hinweisen", kein Blocker. Kernbefund
+  (löst F-613, P2, direkt behoben): die Ressourcen-Erfindungsprüfung und
+  die Feature-/Meilenstein-ID-Vergabe hingen am ANGEFRAGTEN `modus`, nicht
+  an der tatsächlich vom Modell gelieferten `art` — ein Modell, das seine
+  Rolleninstruktion missachtet und im Modus `feature` trotzdem
+  `art: 'projekt_entwurf'` liefert, hätte die Existenzprüfung für
+  `ressource_id` unbeachtet gelassen UND trotzdem reale IDs bekommen.
+  `verarbeiteRollenChatErgebnis` lehnt einen solchen Widerspruch jetzt als
+  Vertragsverstoß ab (sichtbarer Fehler-Turn, F-506-Muster), real geprüft
+  in Gate-Abschnitt (s). Bestätigte F-611/F-612 als akkurat beschrieben.
+  Vier weitere P3/P4-Befunde registriert (F-615…F-617, plus die
+  chat.js-Ergänzung zu F-612), keine Blocker.
+- **qa:** wurde ohne Bash-Werkzeug aufgerufen (Muster WS-1/WS-2) — Befunde
+  aus Code-Lektüre. Fand unabhängig vom code-reviewer denselben
+  Kern-Befund wie F-614 (löst F-614, P3, direkt behoben): das
+  Verlaufsfenster, das dem Coach als Kontext vorgelegt wird, filterte
+  nicht nach Sparring-Unterumschalter — ein Wechsel zwischen `feature`/
+  `projekt` mitten im Gespräch ließ frühere Turns des jeweils anderen
+  Untermodus ungekennzeichnet in den Kontext einfließen (real beobachtet
+  im eigenen Nachweislauf, `features/F34/nachweis-ws3.md`: der
+  Projekt-Interview-Coach sah fünf ältere `feature`-Turns aus
+  vorangegangenem Dogfooding). `ladeRollenVerlaufsfenster` filtert jetzt
+  nach `modus`, real geprüft in Gate-Abschnitt (t). Bestätigte AK12–AK19
+  als mit dem Code übereinstimmend, F-611/F-612 als akkurat. Ein weiterer
+  Befund (F-617, P3, dokumentiert statt behoben — s. "Bekannte Grenzen"):
+  zwei registrierte, aber noch nicht gebaute Projekt-Entwürfe können vor
+  dem Bau des ersten dieselbe Feature-/Meilenstein-Nummer erhalten.
+
+Beide kritischen Funde (F-613, F-614) in derselben Iteration behoben und
+real gegen den Gate-Lauf geprüft (Abschnitte (s)/(t) neu, alle übrigen
+Abschnitte unverändert grün). Die verbleibenden P3/P4-Befunde
+(F-615/F-616/F-617, F-612-Ergänzung) sind bewusst als Findings statt als
+Sofort-Fixes behandelt — keiner ändert das Kernverhalten, alle sind
+kosmetisch oder seltene Randfälle (CLAUDE.md-Entscheidungsregel 5:
+Entscheidung dokumentiert, nicht stillschweigend liegen gelassen).
+
+### Korrekturrunde (Verifikation Challenger, 22.09.2026)
+
+Eine unabhängige Verifikation fand einen weiteren realen Fehler und ließ
+F-611/F-612 (bis dahin nur dokumentiert) nachträglich beheben:
+
+- **F-618** (neu, `BUG`, P2, **erledigt**): der Schritt-0-Doku-Nachzug
+  hatte `docs/projekt/roadmap.json`s `M5.features` nicht nachgezogen —
+  weder die neue Reihenfolge (E-M5-13) noch `F41` selbst waren dort
+  gelistet. `vergebeFeatureIds` konnte `F41` dadurch im realen
+  WS-3-Nachweis nicht als belegt erkennen und vergab sie an ein anderes
+  Vorhaben — real kollidierend mit dem für "Neues Projekt anlegen"
+  (E-M5-14) geplanten Feature F41 (Mechanismus selbst korrekt, Lücke lag
+  im Doku-Nachzug). `roadmap.json` korrigiert (`M5.features` trägt F41
+  jetzt explizit, Reihenfolge E-M5-13/14); der Nachweis-Auftrag `1b3412a8…`
+  bleibt als reales, dokumentiertes Negativbeispiel stehen und darf
+  NIEMALS geroutet/gestartet werden. Neuer Gate-Abschnitt (u): gegen die
+  reale `roadmap.json` vergibt `vergebeFeatureIds` für denselben Entwurf
+  jetzt real `F42`, nie `F41`.
+- **F-611** (`erledigt`): Auftragstitel im Modus `erweiterung` kommt jetzt
+  aus den Titeln der neuen Meilensteine (`"Erweiterung: <Titel>"`), nicht
+  mehr aus der unveränderten Gesamt-`vision`.
+- **F-612** (`erledigt`): ein vom Coach selbst mitgelieferter, ID-artiger
+  Titel-Präfix (`^\s*[MF][0-9]+[A-Za-z]?\s*[—–:-]\s*`) wird jetzt vor dem
+  Voranstellen der echten ID entfernt — in `baueAuftragAusProjektentwurf`
+  (Server + Browser-Kopie, weiterhin byte-identisch geprüft) UND in
+  `views/chat.js` (`renderProjektMeilenstein`, per QA-Ergänzung als zweite
+  Fundstelle mitbehoben, `entferneIdPraefix` aus der Browser-Kopie
+  importiert statt dupliziert).
+
+**Verifikations-Pass (frischer Kontext) auf diese Korrekturrunde selbst:**
+„Nicht freigegeben" im ersten Durchgang — der Kernbefund traf zu: F-611/
+F-612 standen in `state/findings.md` weiterhin auf `offen` (Widerspruch zu
+den hier oben behaupteten Fixes), und die einzige damalige Prüfung war
+Abschnitt (q)s reiner Server/Browser-Gleichheitsvergleich gegen die
+UNVERÄNDERTE alte Fixture (`"Design-Phase vor F30"`, kein ID-artiger
+Präfix) — der eigentliche F-611/F-612-Fall (ein Titel MIT ID-Präfix,
+Titel aus Meilenstein statt `vision`) lief nie durch eine ausführende
+Prüfung, nur durch eine Herleitung am Schreibtisch. Beides behoben: (1)
+`state/findings.md` F-611/F-612 auf `**erledigt**` inkl. `Status:`-Zeile
+korrigiert; (2) `entferneIdPraefix` exportiert und in `src/product-coach/
+product-coach.test.ts` direkt getestet (6 Tests: Präfix-Varianten,
+Negativfälle, bekannte Grenze F-619), zusätzlich 6 neue Tests für
+`baueAuftragAusProjektentwurf` gegen ein Fixture MIT ID-Präfix (Muster
+`vergebeFeatureIds` → reale ID → Rendering, wie im echten Pfad); (3)
+Gate-Abschnitt (q) um eine zweite Fixture (ID-Präfix im Meilenstein- UND
+Feature-Titel) sowie explizite Korrektheitsprüfungen (keine Dopplung,
+Titel-Quelle) erweitert — ein Gleichheitsvergleich allein hätte "beide
+Kopien gleich falsch" nicht gefangen. Dabei ein weiterer, kleiner Befund
+registriert: **F-619** (`TECH_DEBT`, P3, offen, bewusst nicht behoben) —
+`entferneIdPraefix` bereinigt einen Titel nur mit Trenner nach der ID
+(`"M6 — …"`), ein Titel, der EXAKT der ID ohne Trenner ist (`"M6"`), bleibt
+unbereinigt; als bekannte, kommentierte Grenze akzeptiert statt das Muster
+ohne echten Bedarf zu verkomplizieren.
+
+Alle vier Fixes (F-611, F-612, F-618, plus die Testabdeckungs-Korrektur)
+real gegen den Gate-Lauf geprüft (Abschnitt (q) erweitert, (u) neu, alle
+übrigen Abschnitte unverändert grün, 12 neue + bestehende Unit-Tests in
+`product-coach.test.ts` grün); kein erneuter Interview-Lauf nötig
+(`features/F34/nachweis-ws3.md` Nachtrag 2).
+
+Status bleibt `IN_ARBEIT` bis Stefans Abnahme (Auftrag-Vorgabe: Auftrag nur
+anlegen, nicht routen/starten).
+
 ## Dependencies
 - F17 (Rollenvertrag) — `ROLLENVERTRAEGE`, `loeseAusfuehrungsEingabenAuf`
   (Startzeit-Durchsetzung, WS-2), gemeinsam mit `jarvis` geprüft.
@@ -305,6 +519,27 @@ Status bleibt `IN_ARBEIT` bis Stefans Browser-Sichtprüfung (Auftrag-Vorgabe).
   (`POST /api/auftraege`), tatsächlich verdrahtet erst in WS-2.
 
 ## Bekannte Grenzen
+- **`entferneIdPraefix` bereinigt einen Titel nur mit Trenner nach der ID
+  (WS-3 Korrekturrunde, Code-Review-Befund, F-619):** das Muster
+  `^\s*[MF][0-9]+[A-Za-z]?\s*[—–:-]\s*` verlangt zwingend einen der
+  Trenner —/–/:/- — ein Titel, der EXAKT der ID ohne jeden Trenner ist
+  (z. B. `titel: "M6"`), bleibt unbereinigt und erzeugt weiterhin
+  `"M6 — M6"`. Seltener als der ursprünglich beobachtete Fall (ein Trenner
+  ist der Normalfall für einen plausibel geratenen ID-Präfix); bewusst
+  nicht behoben, um das Muster ohne echten Bedarf nicht zu verkomplizieren.
+- **Zwei registrierte, aber noch nicht gebaute Projekt-Entwürfe können
+  dieselbe Feature-/Meilenstein-Nummer erhalten (WS-3, QA-Pass-Befund,
+  F-617):** `vergebeFeatureIds` liest `features/<id>/` und `roadmap.json`
+  nur zur Laufzeit des jeweiligen Sparring-Turns — es reserviert keine
+  Nummer im Voraus. "Als Auftrag anlegen" registriert nur (kein
+  automatisches Routen/Bauen), daher können zwei nacheinander erzeugte
+  Projekt-Entwürfe vor dem Bau des ersten real dieselbe `F<n>`/`M<n>`
+  zugewiesen bekommen (real im eigenen Nachweis, `features/F34/
+  nachweis-ws3.md`, beobachtet: die zufällig geratene "F41" des Demo-Laufs
+  überschneidet sich nummerisch mit dem für F41 "Neues Projekt anlegen"
+  geplanten, aber noch nicht gebauten Feature). Akzeptiert statt eines
+  Reservierungsmechanismus — ein echter Konflikt würde beim Bauen des
+  zweiten Entwurfs ohnehin sichtbar (`features/<id>/` existiert bereits).
 - **Ein Moduswechsel verwirft einen offenen "Als Auftrag anlegen"-Dialog
   ohne Warnung (WS-2, Reviewer-/QA-Pass-Befund):** `initModusUmschalter`
   setzt `offenerAuftragDialog` beim Wechsel bedingungslos auf `null` —
@@ -356,9 +591,23 @@ Status bleibt `IN_ARBEIT` bis Stefans Browser-Sichtprüfung (Auftrag-Vorgabe).
   ist die reale Aufträge-Übersicht (`views/projekt.js`, `ladeAuftraege()`),
   in der der neue Auftrag tatsächlich erscheint. Entscheidung dokumentiert
   statt stillschweigend (CLAUDE.md-Entscheidungsregel 5).
-- **Kein eigener Browser-Sichttest durch die KI (WS-2, Auftrag-Vorgabe):**
-  `npm run check` (inkl. Gate) ist grün, ein Node-Smoke-Test bestätigt, dass
-  `index.html`/`views/chat.js`/`auftrag-aus-scope.js`/`style.css` fehlerfrei
-  ausgeliefert werden — die eigentliche visuelle/interaktive Prüfung im
-  Browser (`npm run leitstand`, Port 4173) macht Stefan selbst, wie im
-  Auftrag vorgegeben.
+- **Kein eigener Browser-Sichttest durch die KI (WS-2, Auftrag-Vorgabe) —
+  ÜBERHOLT, s. F-622:** `npm run check` (inkl. Gate) war grün, ein
+  Node-Smoke-Test bestätigte fehlerfreie Auslieferung — die eigentliche
+  visuelle/interaktive Prüfung machte Stefan selbst. Genau diese Grenze
+  ließ zwei real sichtbare Bugs (F-620, F-621: Umschalter-Hervorhebung
+  wechselt nie; Unterumschalter bleibt im falschen Modus sichtbar) bis zur
+  manuellen Sichtprüfung (WS-3 Korrekturrunde, 23.09.2026) unentdeckt —
+  keine Quelltext-Prüfung kann eine CSS-Kaskadeninteraktion oder eine
+  fehlende `classList`-Mutation bei korrekt gesetztem Attribut finden.
+- **UI-Workstreams ohne Render-Nachweis vor Übergabe (WS-2/WS-3, F-622,
+  PROCESS_IMPROVEMENT, ERLEDIGT — keine offene Grenze mehr):** WS-2 und WS-3
+  wurden an Stefan übergeben, ohne die Seite je gerendert zu haben — mehrere
+  Reviewer-/QA-Pässe und grüne `npm run check`-Läufe liefen dazwischen, ohne
+  F-620/F-621 zu finden. Ab der WS-3-Korrekturrunde liegt für diesen
+  Feature-Pfad ein echter Headless-Render-Nachweis vor (Playwright,
+  `features/F34/nachweis-ws3.md` Teil (c)). Entscheidung Stefan
+  (23.09.2026): verbindliche Harness-Regel — `npm run render-nachweis`
+  (`scripts/render-nachweis.mjs`, generisch: URL + Klickfolge-JSON) ist jetzt
+  Teil der `CLAUDE.md`-Definition of Done für UI-Workstreams, s.
+  `state/findings.md` F-622.

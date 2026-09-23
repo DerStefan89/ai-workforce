@@ -447,7 +447,7 @@ import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckun
 import { validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
-import { baueCoachAuftragstext, validiereErgebnisProductCoach } from '../src/product-coach/index.ts'
+import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
@@ -2890,14 +2890,17 @@ export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
  * leseRollenErgebnisRohstrom).
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Laufs
  * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH ('schemaName'/'validiere')
+ * @param bekannteRessourcenIds - F34 WS-3: nur für 'product-coach' im Modus 'projekt' relevant, an
+ *   konfiguration.validiere durchgereicht (validiereErgebnisJarvis hat dieselbe Arity nicht — ein
+ *   zusätzliches Argument wird von JavaScript stillschweigend ignoriert, keine Fallunterscheidung nötig)
  * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
  */
-function leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration) {
+function leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration, bekannteRessourcenIds) {
   const gelesen = leseRollenErgebnisRohstrom(laufakteDaten, { jsonObjektFallback: true })
   if (!gelesen.ok) {
     return { ok: false, grund: gelesen.grund }
   }
-  const verstoesse = konfiguration.validiere(gelesen.geparst)
+  const verstoesse = konfiguration.validiere(gelesen.geparst, bekannteRessourcenIds)
   if (verstoesse.length > 0) {
     return { ok: false, grund: `Ergebnis verstößt gegen schemas/${konfiguration.schemaName}.schema.json: ${verstoesse.join('; ')}` }
   }
@@ -2948,15 +2951,53 @@ export function verarbeiteJarvisChatErgebnis(laufakteDaten, projektId, nachricht
  * @param profilReferenz - Profilreferenz dieser Serverinstanz
  * @param ladeOptionen - basisVerzeichnis/schreiber
  * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH ('lineagePraefix'/'antwortFeld')
- * @param optionen - F31 WS-2 (nur 'jarvis' nutzt dies bisher): optional { istZusammenfassung }
+ * @param optionen - F31 WS-2 (nur 'jarvis' nutzt dies bisher): optional { istZusammenfassung }.
+ *   F34 WS-3 (nur 'product-coach'): zusätzlich optional { modus, bekannteRessourcenIds,
+ *   repoWurzel, roadmapPfad } — 'modus' wird 1:1 ins geschriebene 'daten'-Feld übernommen (GET
+ *   /api/sparring projiziert es) UND gegen die zurückgelieferte 'art' geprüft (Code-Review-Befund
+ *   F34 WS-3, löst F-613: ohne diese Prüfung könnte ein Modell, das seine Rolleninstruktion
+ *   missachtet, im Modus 'feature' trotzdem 'art: projekt_entwurf' liefern — dann liefe die
+ *   Ressourcen-Erfindungsprüfung leer (bekannteRessourcenIds wird NUR im Modus 'projekt'
+ *   aufgelöst, s. POST /api/sparring) und vergebeFeatureIds vergäbe trotzdem reale IDs für ein
+ *   Ergebnis, dessen Herkunft der Server gar nicht als Projekt-Interview angefragt hatte). Ein
+ *   Widerspruch wird wie jeder andere Vertragsverstoß behandelt (ok:false, derselbe sichtbare
+ *   Fehler-Turn-Pfad, F-506-Muster) statt der Sache stillschweigend zu vertrauen. Trägt das
+ *   gelesene Ergebnis art 'projekt_entwurf', vergibt vergebeFeatureIds (src/product-coach/
+ *   index.ts) VOR dem Schreiben deterministische Feature-/Meilenstein-IDs (sammleBestehendeIds
+ *   liest dafür features/<id>/-Verzeichnisse und roadmapPfad unter repoWurzel) — das Modell
+ *   selbst liefert nie eine ID (F-595-Muster).
  * @returns bei Erfolg { ok: true, pfad, versionSequenz, inhaltsHash }, sonst { ok: false, grund }
  */
 function verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufId, profilReferenz, ladeOptionen, konfiguration, optionen = {}) {
-  const { istZusammenfassung = false } = optionen
+  const { istZusammenfassung = false, modus, bekannteRessourcenIds, repoWurzel, roadmapPfad } = optionen
   const artefaktId = `${konfiguration.lineagePraefix}-${projektId}`
-  const rollenErgebnis = leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration)
+  const rollenErgebnis = leseRollenChatErgebnisAusLaufakte(laufakteDaten, konfiguration, bekannteRessourcenIds)
   if (!rollenErgebnis.ok) {
     return { ok: false, grund: `${konfiguration.rolle}-Lauf '${laufId}': ${rollenErgebnis.grund}` }
+  }
+  // F34 WS-3 (löst F-613): 'art' muss zum angefragten 'modus' passen — nur relevant, wenn der
+  // Aufrufer überhaupt einen 'modus' angefragt hat (product-coach; jarvis lässt optionen.modus
+  // weg, bleibt hier unverändert unbeachtet).
+  if (modus === 'feature' && rollenErgebnis.ergebnis.art === 'projekt_entwurf') {
+    return { ok: false, grund: `${konfiguration.rolle}-Lauf '${laufId}': Ergebnis liefert art 'projekt_entwurf', aber angefragt war modus 'feature' — Rolleninstruktion missachtet` }
+  }
+  if (modus === 'projekt' && rollenErgebnis.ergebnis.art === 'scope_entwurf') {
+    return { ok: false, grund: `${konfiguration.rolle}-Lauf '${laufId}': Ergebnis liefert art 'scope_entwurf', aber angefragt war modus 'projekt' — Rolleninstruktion missachtet` }
+  }
+  let ergebnisZuSpeichern = rollenErgebnis.ergebnis
+  if (ergebnisZuSpeichern.art === 'projekt_entwurf' && ergebnisZuSpeichern.projekt) {
+    const bestehendeIds = sammleBestehendeIds(repoWurzel, roadmapPfad)
+    const zugewiesen = vergebeFeatureIds(ergebnisZuSpeichern.projekt, bestehendeIds)
+    // E-M5-12: erkennt der Server bereits reale Feature-/Meilenstein-IDs (bestehendes Projekt mit
+    // Roadmap), ist der aus diesem Entwurf entstehende Auftrag eine ERWEITERUNG, sonst eine
+    // Neuanlage — dieselbe Unterscheidung, die baueAuftragAusProjektentwurf (src/product-coach/
+    // index.ts bzw. die Browser-Kopie) als 'modus'-Parameter braucht; das Modell trifft sie nicht
+    // selbst (F-595-Muster: deterministisch im Code, nicht im Modell-Output).
+    const auftragModus = bestehendeIds.features.length > 0 || bestehendeIds.meilensteine.length > 0 ? 'erweiterung' : 'neu'
+    ergebnisZuSpeichern = {
+      ...ergebnisZuSpeichern,
+      projekt: { ...ergebnisZuSpeichern.projekt, meilensteine: zugewiesen.meilensteine, offene_fragen: zugewiesen.offene_fragen, auftragModus },
+    }
   }
   const nachrichtZuSpeichern = istZusammenfassung ? '[Zusammenfassung angefordert]' : nachricht
   try {
@@ -2964,7 +3005,12 @@ function verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufI
       artefaktId,
       profilReferenz,
       { quelle: `${konfiguration.rolle}-${konfiguration.lineagePraefix}`, lauf_id: laufId },
-      { nachricht: nachrichtZuSpeichern, [konfiguration.antwortFeld]: rollenErgebnis.ergebnis, ...(istZusammenfassung ? { istZusammenfassung: true } : {}) },
+      {
+        nachricht: nachrichtZuSpeichern,
+        [konfiguration.antwortFeld]: ergebnisZuSpeichern,
+        ...(istZusammenfassung ? { istZusammenfassung: true } : {}),
+        ...(modus !== undefined ? { modus } : {}),
+      },
       undefined,
       ladeOptionen
     )
@@ -2972,6 +3018,45 @@ function verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufI
   } catch (fehler) {
     return { ok: false, grund: `Lineage-${konfiguration.lineagePraefix}-Eintrag '${artefaktId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
   }
+}
+
+/**
+ * F34 WS-3: sammelt real vergebene Feature-/Meilenstein-IDs für vergebeFeatureIds
+ * (src/product-coach/index.ts, reine Funktion, kein I/O) — aus features/<id>/-
+ * Verzeichnisnamen UND roadmap.json (meilensteine[].id/meilensteine[].features[]),
+ * damit ein neu vergebenes F<n>/M<n> nie mit einer real bestehenden ID kollidiert
+ * (auch nicht mit irregulären Alt-IDs wie F1B/F6a/AF-F001 — die matchen
+ * FEATURE_ID_MUSTER teilweise nicht und werden von vergebeFeatureIds selbst
+ * übersprungen statt einen Crash auszulösen). Ein fehlendes features/-Verzeichnis
+ * oder eine fehlende/kaputte roadmap.json liefert eine leere Menge statt zu werfen
+ * (Muster filtereExistierendeAnfragen: ein Projekt ohne vorbereitete Kontextdateien
+ * blockiert das Projekt-Interview nicht).
+ * @param repoWurzel - Repo-Wurzel dieser Serverinstanz
+ * @param roadmapPfad - repo-relativer Pfad zur roadmap.json
+ * @returns { features: string[], meilensteine: string[] }
+ */
+export function sammleBestehendeIds(repoWurzel, roadmapPfad) {
+  const features = new Set()
+  try {
+    for (const eintrag of readdirSync(join(repoWurzel, 'features'), { withFileTypes: true })) {
+      if (eintrag.isDirectory()) features.add(eintrag.name)
+    }
+  } catch {
+    // features/ fehlt (z. B. isoliertes Testverzeichnis) — leere Menge, kein Crash.
+  }
+  const meilensteine = new Set()
+  try {
+    const roadmap = JSON.parse(readFileSync(join(repoWurzel, roadmapPfad), 'utf-8'))
+    for (const meilenstein of roadmap.meilensteine ?? []) {
+      if (typeof meilenstein?.id === 'string') meilensteine.add(meilenstein.id)
+      for (const featureId of meilenstein?.features ?? []) {
+        if (typeof featureId === 'string') features.add(featureId)
+      }
+    }
+  } catch {
+    // roadmap.json fehlt/kaputt (F33 E-M4-2: nicht jedes Projekt hat eine) — leere Menge, kein Crash.
+  }
+  return { features: [...features], meilensteine: [...meilensteine] }
 }
 
 /**
@@ -3010,16 +3095,18 @@ function verarbeiteRollenChatErgebnis(laufakteDaten, projektId, nachricht, laufI
  * @param profilReferenz - Profilreferenz dieser Serverinstanz
  * @param ladeOptionen - basisVerzeichnis/schreiber
  * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH
+ * @param modus - F34 WS-3 (nur 'product-coach'): optional, 1:1 ins geschriebene 'daten'-Feld
+ *   übernommen, damit auch ein Fehler-Turn seinen Sparring-Modus trägt (GET /api/sparring)
  * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund }
  */
-function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen, konfiguration) {
+function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen, konfiguration, modus) {
   const artefaktId = `${konfiguration.lineagePraefix}-${projektId}`
   try {
     const { pfad, versionSequenz } = registriereKernArtefakt(
       artefaktId,
       profilReferenz,
       { quelle: `${konfiguration.rolle}-${konfiguration.lineagePraefix}`, lauf_id: laufId },
-      { nachricht, [konfiguration.antwortFeld]: { art: konfiguration.fehlerArt, antwort: `${konfiguration.fehlerAntwortPraefix} konnte nicht gelesen werden: ${grund}` } },
+      { nachricht, [konfiguration.antwortFeld]: { art: konfiguration.fehlerArt, antwort: `${konfiguration.fehlerAntwortPraefix} konnte nicht gelesen werden: ${grund}` }, ...(modus !== undefined ? { modus } : {}) },
       undefined,
       ladeOptionen
     )
@@ -4918,7 +5005,10 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Aufrufer VOR diesem Aufruf stehen, wörtlich wie bisher (scripts/check-f11-auftrag.mjs sucht
     // das ERSTE Vorkommen von 'if (laufAktiv)'/'if (laufIdBelegt(' im gesamten Quelltext — das
     // bleibt unverändert bei POST /api/laeufe stehen, weit oberhalb dieser Funktion).
-    function starteRollenChatLauf(res, nachricht, auftragstext, istZusammenfassung, konfiguration, zeitmessung = null) {
+    // F34 WS-3: 'rollenOptionen' ({ modus, bekannteRessourcenIds }) ist ausschließlich für
+    // 'product-coach' im Modus 'projekt' gesetzt — jarvis-Aufrufer lassen den Parameter weg
+    // (Default {}), unverändertes Verhalten (Object.keys(rollenOptionen).length === 0).
+    function starteRollenChatLauf(res, nachricht, auftragstext, istZusammenfassung, konfiguration, zeitmessung = null, rollenOptionen = {}) {
       const auftragId = `${konfiguration.auftragPraefix}-${randomUUID()}`
       const laufId = `${konfiguration.rolle}-${auftragId}`
       if (laufIdBelegt(laufId)) {
@@ -5057,6 +5147,13 @@ export function erzeugeRequestHandler(optionen = {}) {
               return
             }
 
+            const nachbereitungOptionen = {
+              ...(istZusammenfassung ? { istZusammenfassung: true } : {}),
+              ...(rollenOptionen.modus !== undefined ? { modus: rollenOptionen.modus } : {}),
+              ...(rollenOptionen.bekannteRessourcenIds !== undefined ? { bekannteRessourcenIds: rollenOptionen.bekannteRessourcenIds } : {}),
+              repoWurzel,
+              roadmapPfad,
+            }
             const verarbeitung = verarbeiteRollenChatErgebnis(
               laufakteVersion.daten,
               projektId,
@@ -5065,7 +5162,7 @@ export function erzeugeRequestHandler(optionen = {}) {
               profilReferenz,
               { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
               konfiguration,
-              istZusammenfassung ? { istZusammenfassung: true } : undefined
+              nachbereitungOptionen
             )
             markiereZeit(zeitmessung, verarbeitung.ok ? 'chat_eintrag_geschrieben' : 'chat_eintrag_versuch_beendet')
             if (!verarbeitung.ok) {
@@ -5076,7 +5173,16 @@ export function erzeugeRequestHandler(optionen = {}) {
               // Nachricht NICHT mehr kommentarlos — ein sichtbarer Fehler-Turn ersetzt die fehlende
               // Antwort im selben '<lineagePraefix>-<projektId>'-Verlauf, den die jeweilige UI
               // ohnehin pollt/neu lädt.
-              const fehlerEintrag = schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, verarbeitung.grund, profilReferenz, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, konfiguration)
+              const fehlerEintrag = schreibeRollenChatFehlerEintrag(
+                projektId,
+                nachricht,
+                laufId,
+                verarbeitung.grund,
+                profilReferenz,
+                { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+                konfiguration,
+                rollenOptionen.modus
+              )
               if (!fehlerEintrag.ok) {
                 startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: fehlerEintrag.grund })
                 console.error(`[leitstand] ${fehlerEintrag.grund}`)
@@ -5104,9 +5210,17 @@ export function erzeugeRequestHandler(optionen = {}) {
      * Rollen-Ergebnisobjekt), 'istZusammenfassung' das gleichnamige daten-Feld
      * (verarbeiteRollenChatErgebnis setzt es nur bei einem über POST /api/chat/zusammenfassen
      * erzeugten Turn — bislang ausschließlich 'jarvis').
+     * @param modusFilter - F34 WS-3 (löst F-614): nur für 'product-coach' gesetzt — 'feature' und
+     *   'projekt' teilen sich denselben 'sparring-<projektId>'-Verlauf (ein Turn trägt sein eigenes
+     *   'modus'-Feld), ohne Filter sah der Coach frühere Turns des JEWEILS ANDEREN Untermodus als
+     *   ungekennzeichneten Kontext (real beobachtet, features/F34/nachweis-ws3.md) — ein
+     *   Alt-Eintrag ohne 'modus'-Feld gilt dabei als 'feature' (Muster routen-sparring.mjs). Ohne
+     *   Filter (undefined, jarvis-Aufrufe) bleibt das Verhalten unverändert.
      */
-    function ladeRollenVerlaufsfenster(konfiguration, maxTurns, maxZeichen) {
-      const eintraege = listeVersionen(`${konfiguration.lineagePraefix}-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }).map((version) => ({
+    function ladeRollenVerlaufsfenster(konfiguration, maxTurns, maxZeichen, modusFilter) {
+      const versionen = listeVersionen(`${konfiguration.lineagePraefix}-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      const gefiltert = modusFilter === undefined ? versionen : versionen.filter((version) => (version.daten?.modus ?? 'feature') === modusFilter)
+      const eintraege = gefiltert.map((version) => ({
         nachricht: version.daten?.nachricht ?? '',
         antwort: version.daten?.[konfiguration.antwortFeld]?.antwort ?? '',
         istZusammenfassung: version.daten?.istZusammenfassung === true,
@@ -5295,8 +5409,11 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
         return
       }
+      // F34 WS-3 (E-M5-12): optionales 'modus' ∈ {'feature','projekt'} — Standard 'feature'
+      // (unverändertes WS-1/WS-2-Verhalten), ein unbekannter Wert/Fremdfeld bleibt 400.
+      const MODI_SPARRING = ['feature', 'projekt']
       for (const feld of Object.keys(body)) {
-        if (feld !== 'nachricht') {
+        if (feld !== 'nachricht' && feld !== 'modus') {
           sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
           return
         }
@@ -5312,6 +5429,14 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       const nachricht = body.nachricht
+      let modus = 'feature'
+      if ('modus' in body) {
+        if (typeof body.modus !== 'string' || !MODI_SPARRING.includes(body.modus)) {
+          sendeJson(res, 400, { grund: `'modus' muss einer von ${MODI_SPARRING.join(', ')} sein` })
+          return
+        }
+        modus = body.modus
+      }
 
       // D13 VOR jeder Formprüfung, die selbst schon I/O oder Ressourcenauflösung braucht (Muster
       // POST /api/chat/POST /api/auftraege/<id>/routen).
@@ -5321,9 +5446,28 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       if (pruefeGlobaleLaufSperre(res)) return
 
-      const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_PRODUCT_COACH, 8, 12000)
+      const verlaufsfenster = ladeRollenVerlaufsfenster(KONFIGURATION_PRODUCT_COACH, 8, 12000, modus)
       markiereZeit(zeitmessung, 'verlauf_geladen')
-      starteRollenChatLauf(res, nachricht, baueCoachAuftragstext(nachricht, verlaufsfenster), false, KONFIGURATION_PRODUCT_COACH, zeitmessung)
+
+      // F34 WS-3: nur im Modus 'projekt' — derselbe loeseRessourcenAuf-Aufruf wie die
+      // Worker-Auflösung in starteRollenChatLauf unten (keine zweite Leselogik, D5), hier
+      // zusätzlich für den Capability-Auszug in der Rolleninstruktion UND als bekannte
+      // Ressourcen-IDs für die spätere Validierung (verhindert eine erfundene ressource_id).
+      let capabilityAuszug = null
+      let bekannteRessourcenIds
+      if (modus === 'projekt') {
+        try {
+          const ressourcenRoh = leseRessourcenRoh(repoWurzel)
+          const aufgeloesteRessourcen = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
+          capabilityAuszug = baueCapabilityAuszug(aufgeloesteRessourcen)
+          bekannteRessourcenIds = aufgeloesteRessourcen.map((ressource) => ressource.id)
+        } catch (fehler) {
+          sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
+          return
+        }
+      }
+
+      starteRollenChatLauf(res, nachricht, baueCoachAuftragstext(nachricht, verlaufsfenster, modus, capabilityAuszug), false, KONFIGURATION_PRODUCT_COACH, zeitmessung, { modus, bekannteRessourcenIds })
       return
     }
 
