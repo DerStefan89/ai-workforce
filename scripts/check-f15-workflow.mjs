@@ -3233,22 +3233,24 @@ async function starteTestserver(optionen) {
   // Reviewer-Pass 10.09.2026). starteWorkflowSchritt prüft die D13-Sperre NICHT selbst — es
   // verlässt sich darauf, dass genau zwei Stellen es aufrufen: der HTTP-Endpunkt, der laufAktiv
   // unmittelbar davor prüft, und die Auto-Fortsetzung, in der laufAktiv gerade zurückgesetzt
-  // wurde. Ein DRITTER Aufrufer wäre ein Startpfad ohne D13-Prüfung, und weder der D13-Vertrag
+  // wurde. Ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung, und weder der D13-Vertrag
   // in check-f11-auftrag.mjs (der nur das erste Vorkommen im Quelltext betrachtet, F-215) noch
   // die Invariante unten fingen ihn. Gezählt werden die Aufrufe, nicht die Definition — deshalb
   // das Muster mit öffnender Klammer und einem vorangehenden Nicht-Wortzeichen außer 'n' aus
   // 'function'.
   const startpfadMuster = new RegExp(`${'starteWorkflow'}${'Schritt'}\\(`, 'g')
   const startpfadTreffer = (quelltext.match(startpfadMuster) ?? []).length
-  // 4 = eine Definition + drei Aufrufe. Die Definition trägt dieselbe Zeichenfolge. Seit
-  // WS-2c (b1) ist der Freigabe-Endpunkt der dritte Aufrufer — er prüft laufAktiv unmittelbar
-  // davor, wie die beiden anderen. Die ZAHL wird mitgezogen, die Prüfung nicht aufgeweicht.
-  if (startpfadTreffer !== 4) {
+  // 5 = eine Definition + vier Aufrufe. Die Definition trägt dieselbe Zeichenfolge. Seit
+  // WS-2c (b1) ist der Freigabe-Endpunkt der dritte Aufrufer, seit F39 WS-2b (löst F-632 Teil
+  // b) der Entscheidungs-Endpunkt (POST /api/workflows/<id>/entscheidung) der vierte — beide
+  // prüfen laufAktiv unmittelbar davor, wie die beiden ursprünglichen. Die ZAHL wird
+  // mitgezogen, die Prüfung nicht aufgeweicht.
+  if (startpfadTreffer !== 5) {
     befunde.push(
-      `AK6b/AK7: erwartet GENAU DREI Aufrufstellen des Automaten-Startpfads in scripts/leitstand-server.mjs (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt) plus die Definition, gefunden ${startpfadTreffer} Vorkommen — ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung`
+      `AK6b/AK7: erwartet GENAU VIER Aufrufstellen des Automaten-Startpfads in scripts/leitstand-server.mjs (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt) plus die Definition, gefunden ${startpfadTreffer} Vorkommen — ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung`
     )
   } else {
-    console.log('✓ AK6b/AK7: genau drei Aufrufstellen des Automaten-Startpfads (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt) — kein vierter, ungeschützter Startpfad.')
+    console.log('✓ AK6b/AK7: genau vier Aufrufstellen des Automaten-Startpfads (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt) — kein fünfter, ungeschützter Startpfad.')
   }
 
   // ─── Jede Schreibstelle liest den GESTOPPT-Schutz (F15 WS-2c (b2), F-228) ──────
@@ -3279,17 +3281,18 @@ async function starteTestserver(optionen) {
   const schreiberTreffer = (quelltext.match(schreiberMuster) ?? []).length
   const gelesenMuster = new RegExp(`\\.${'eingefroren'}`, 'g')
   const gelesenTreffer = (quelltext.match(gelesenMuster) ?? []).length
-  // 11 = eine Definition + zehn Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
+  // 12 = eine Definition + elf Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
   // Nachbereitung, Stale-Heilung, Ablehnung, Freigabe, Stopp, seit F23 WS-2a die
-  // Abnahme-Ablehnung, seit F23 WS-2b der Abnahme-ADJUST-Zweig). 10 = je Aufrufstelle EIN
-  // Lesen des Feldes. Kommen beide Zahlen auseinander, hat ein Aufrufer das Feld vergessen —
-  // oder ein neuer Aufrufer ist dazugekommen, ohne es zu behandeln.
-  if (schreiberTreffer !== 11 || gelesenTreffer !== 10) {
+  // Abnahme-Ablehnung, seit F23 WS-2b der Abnahme-ADJUST-Zweig, seit F39 WS-2b — löst F-632
+  // Teil b — der Entscheidungs-Endpunkt). 11 = je Aufrufstelle EIN Lesen des Feldes. Kommen
+  // beide Zahlen auseinander, hat ein Aufrufer das Feld vergessen — oder ein neuer Aufrufer ist
+  // dazugekommen, ohne es zu behandeln.
+  if (schreiberTreffer !== 12 || gelesenTreffer !== 11) {
     befunde.push(
-      `F-228: erwartet 11 Vorkommen des Workflow-Schreibers (1 Definition + 10 Aufrufe) und 10 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
+      `F-228: erwartet 12 Vorkommen des Workflow-Schreibers (1 Definition + 11 Aufrufe) und 11 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
     )
   } else {
-    console.log('✓ F-228: alle zehn Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
+    console.log('✓ F-228: alle elf Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
   }
 
   // ─── Im Stopp wird ZUERST geschrieben, DANN abgebrochen (F-216, (b2)) ─────────
@@ -3363,15 +3366,16 @@ async function starteTestserver(optionen) {
     rest = rest.slice(ende + 1)
   }
 
-  // Vier Bereiche, hier in QUELLTEXT-Reihenfolge gezählt — die Meldung unten nennt
+  // Fünf Bereiche, hier in QUELLTEXT-Reihenfolge gezählt — die Meldung unten nennt
   // „Bereich i+1", und die Nummer muss auf denselben Block zeigen wie die Aufzählung
   // (Reviewer-Pass 10.09.2026, V5): (1) der .then-Zweig, in dem laufAktiv zurückgesetzt
   // und der Rückruf gemeldet wird, (2) starteWorkflowSchritt vom Eintritt bis zur
   // D13-Belegung, (3) der Rückruf selbst bis zur Fortsetzung, (4) seit WS-2c (b1) der
-  // Freigabe-Endpunkt vom Body bis zum Start. Fehlt einer, ist die Kette nicht mehr
-  // lückenlos abgedeckt und die Zusage nicht mehr geprüft.
-  if (bereiche.length !== 4) {
-    befunde.push(`AK6b-Invariante: erwartet GENAU VIER mit ${marke} markierte Bereiche in scripts/leitstand-server.mjs, gefunden ${bereiche.length}`)
+  // Freigabe-Endpunkt vom Body bis zum Start, (5) seit F39 WS-2b (löst F-632 Teil b) der
+  // Entscheidungs-Endpunkt vom Schreiben der Entscheidung bis zum Start. Fehlt einer, ist die
+  // Kette nicht mehr lückenlos abgedeckt und die Zusage nicht mehr geprüft.
+  if (bereiche.length !== 5) {
+    befunde.push(`AK6b-Invariante: erwartet GENAU FÜNF mit ${marke} markierte Bereiche in scripts/leitstand-server.mjs, gefunden ${bereiche.length}`)
   }
 
   // Jede dieser Zeichenketten gibt die Kontrolle an den Event-Loop zurück und
@@ -3402,8 +3406,8 @@ async function starteTestserver(optionen) {
     befunde.push('AK6b-Invariante-Selbsttest: ein eingefügtes await im markierten Bereich wird NICHT erkannt — die Prüfung ist wirkungslos')
   }
 
-  if (bereiche.length === 4) {
-    console.log(`✓ AK6b: die vier ${marke}-Bereiche in scripts/leitstand-server.mjs enthalten keinen Kontrollflusswechsel (Selbsttest erkennt ein eingefügtes await).`)
+  if (bereiche.length === 5) {
+    console.log(`✓ AK6b: die fünf ${marke}-Bereiche in scripts/leitstand-server.mjs enthalten keinen Kontrollflusswechsel (Selbsttest erkennt ein eingefügtes await).`)
   }
 }
 

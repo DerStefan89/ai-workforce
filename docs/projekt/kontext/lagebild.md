@@ -50,8 +50,13 @@ Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
 `architekt`, Schema, Validator, Gate — gebaut 23.09.2026; WS-2a —
 `hoch.json`-Kette (`architekt` vor `architecture-advisor`), Herkunftsfeld,
 `ergebnis-@`-Eingabe-Platzhalter, deterministische Kontrolltiefe-
-Untergrenze — gebaut 23.09.2026, löst F-633 und F-632 Teil a (Teil b bleibt
-WS-2b); WS-2b/WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
+Untergrenze — gebaut 23.09.2026, löst F-633 und F-632 Teil a; WS-2b —
+Regel 1c (`entscheidungen_mensch` → `haltKlaerung`), Fortsetzungsweg
+`POST /api/workflows/<id>/entscheidung`, `entscheidung-@`-Eingabe-
+Platzhalter, Leitstand-UI + Render-Nachweis — gebaut 23.09.2026, löst
+F-632 Teil b vollständig (F-632 gesamt jetzt erledigt), F-634 dokumentiert
+(kein Fix nötig, Herkunft des ungetrackten `kontrollzustand/`-Bestands
+geklärt); WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams

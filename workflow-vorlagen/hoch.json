@@ -32,7 +32,7 @@
       "werkzeugsatz": "lesend",
       "worker": "claude-code",
       "modell": "claude-sonnet-5",
-      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:ergebnis-@schritt-1-architekt"],
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:ergebnis-@schritt-1-architekt", "artefakt:entscheidung-@schritt-1-architekt"],
       "output_schema": null,
       "freigabe": "ZWINGEND",
       "risiko": "Kein Schreibzugriff — Plan wird vor dem Bau geprüft. Hohe Kontrolltiefe: Freigabe zwingend vor jedem Schritt, nicht nur vor dem Schreiben. F39 WS-2a-Korrektur (23.09.2026): worker 'claude-code' (wie 'ausfuehrung') statt 'codex' — output_schema bleibt null (Rollenvertrag architecture-advisor.erlaubtes_output_schema: null), Regel 4b greift hier nicht.",
@@ -47,7 +47,12 @@
       "werkzeugsatz": "schreibend",
       "worker": "claude-code",
       "modell": "claude-sonnet-5",
-      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:ergebnis-@schritt-1-architekt", "artefakt:ergebnis-@schritt-2-architektur"],
+      "eingaben": [
+        "artefakt:auftrag-__AUFTRAG_ID__",
+        "artefakt:ergebnis-@schritt-1-architekt",
+        "artefakt:entscheidung-@schritt-1-architekt",
+        "artefakt:ergebnis-@schritt-2-architektur"
+      ],
       "output_schema": null,
       "freigabe": "ZWINGEND",
       "risiko": "Schreibender Werkzeugsatz im freigegebenen Baupfad — Freigabe ist zwingend.",

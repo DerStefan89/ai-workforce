@@ -491,6 +491,103 @@ test('Regel 1 schlägt Regel 1b: ein VERWEIGERTER Post-Build-Review hält über 
   assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
 })
 
+// ─── Regel 1c: Architektur-Entscheidung (F39 WS-2b, löst F-632 Teil b) ──────
+
+test("Ausgang 'haltKlaerung': ein Ergebnis-architektur-Verstoß hält an, statt fortzusetzen", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: ["Pflichtfeld 'zusammenfassung' fehlt"],
+  })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /validiereErgebnisArchitektur ablehnt.*zusammenfassung/)
+})
+
+test("Ausgang 'haltKlaerung': eine ausstehende Architektur-Entscheidung hält an, auch wenn das Ergebnis selbst gültig ist", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: [],
+    architekturEntscheidungAusstehend: true,
+    architekturAnzahlFragen: 2,
+  })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /Architektur-Entscheidung erforderlich.*2 offene Frage/)
+})
+
+test("Ausgang 'starte': eine erfasste Architektur-Entscheidung (architekturEntscheidungAusstehend false) setzt fort — Idempotenz", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: [],
+    architekturEntscheidungAusstehend: false,
+  })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test("Ausgang 'starte': eine leere entscheidungen_mensch[] (architekturEntscheidungAusstehend weggelassen) setzt fort", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', architekturVerstoesse: [] })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test('Regel 1c greift NICHT ohne output_schema ergebnis-architektur — irrtümlich mitgesendete Felder bleiben folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: ['sollte ignoriert werden'],
+    architekturEntscheidungAusstehend: true,
+  })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1 schlägt Regel 1c: ein VERWEIGERTER Architektur-Lauf hält über seinen Ausgang an, nicht über die (fehlenden) Architektur-Felder', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'VERWEIGERT', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'VERWEIGERT', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
+test("Ausgang 'haltKlaerung': ein Architektur-Verstoß hält AUCH an, wenn der Schritt der letzte ist (kein 'fertig' über einen ungültigen Lauf)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-architektur', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    architekturVerstoesse: ["Pflichtfeld 'evidenz' fehlt"],
+  })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+})
+
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
   // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
   // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.

@@ -109,6 +109,9 @@ export const reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflow
 export const starteWorkflowSchritt = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/starten`), { method: 'POST', body: JSON.stringify({}) })
 export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/freigabe`), { method: 'POST', body: JSON.stringify(koerper) })
 export const stoppeWorkflow = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/stoppen`), { method: 'POST', body: JSON.stringify(koerper) })
+/** F39 WS-2b (löst state/findings.md F-632 Teil b): Fortsetzungsweg für eine Architektur-Entscheidung (Regel 1c). koerper: { schrittId, antworten: [{ frage, gewaehlt, begruendung? }] }. */
+export const sendeWorkflowArchitekturEntscheidung = (workflowId, koerper) =>
+  fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/entscheidung`), { method: 'POST', body: JSON.stringify(koerper) })
 
 // F23 WS-2a: Abnahme-Projektion (Urteil, Änderungsübersicht, etwaige bereits vorhandene Entscheidung) und -Schreibstelle.
 export const holeAbnahme = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/abnahme`)).then((r) => r.json())

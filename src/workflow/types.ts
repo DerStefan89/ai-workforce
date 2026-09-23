@@ -171,6 +171,30 @@ export interface SchrittErgebnis {
    * unbekannter Wert — anhalten, nicht stillschweigend fortsetzen.
    */
   urteil?: string | null
+  /**
+   * OPTIONAL (F39 WS-2b, löst state/findings.md F-632 Teil b): die
+   * Regelverletzungen von validiereErgebnisArchitektur (src/architekt/index.ts)
+   * gegen das geparste Ergebnis eines gerade gelaufenen Architektur-Schritts
+   * (output_schema 'ergebnis-architektur') — der Aufrufer validiert, dieses
+   * Modul bleibt abhängigkeitsarm (Kopfkommentar) und importiert
+   * validiereErgebnisArchitektur nicht. Ein leeres Array heißt gültig; ein
+   * fehlendes Feld heißt „nicht geprüft" (jeder Schritt ohne dieses
+   * output_schema) und wird von Regel 1c ignoriert wie ein fehlendes 'urteil'
+   * von Regel 1b.
+   */
+  architekturVerstoesse?: string[]
+  /**
+   * OPTIONAL (F39 WS-2b): true, wenn das Ergebnis eines Architektur-Schritts
+   * mindestens eine offene Frage in 'entscheidungen_mensch[]' trägt UND der
+   * Aufrufer (scripts/leitstand-server.mjs, gegen die Kernartefakt-Kette
+   * 'workflow-entscheidung-<workflowId>') noch KEINE dafür erfasste
+   * menschliche Entscheidung findet. Sobald eine Entscheidung erfasst ist,
+   * setzt der Aufrufer dieses Feld auf false/weglässt es — Regel 1c hält dann
+   * nicht erneut an (Idempotenz).
+   */
+  architekturEntscheidungAusstehend?: boolean
+  /** OPTIONAL (F39 WS-2b): Anzahl der Fragen in 'entscheidungen_mensch[]' — nur für den Halt-Grund-Text, keine eigene Prüfung. */
+  architekturAnzahlFragen?: number
 }
 
 /**

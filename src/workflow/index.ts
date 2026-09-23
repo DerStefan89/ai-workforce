@@ -575,8 +575,8 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Acht Prüfungen (0, 1, 1b, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
- * die Reihenfolge ist die eigentliche Aussage:
+ * Neun Prüfungen (0, 1, 1b, 1c, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge,
+ * und die Reihenfolge ist die eigentliche Aussage:
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
  *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
@@ -597,6 +597,23 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  *    INHALT eines Post-Build-Reviews. Ohne diese Regel setzte ein
  *    BLOCKIERT-Urteil den Workflow trotzdem fort, weil das Werkzeug selbst
  *    anstandslos lief.
+ * 1c. Vorschritt trägt output_schema 'ergebnis-architektur' (F39 WS-2b, löst
+ *    state/findings.md F-632 Teil b): a) vorschrittErgebnis.architekturVerstoesse
+ *    nicht leer (validiereErgebnisArchitektur lehnt das Ergebnis ab) →
+ *    haltKlaerung mit den benannten Verstößen; b) sonst
+ *    architekturEntscheidungAusstehend === true (mindestens eine offene
+ *    Frage in 'entscheidungen_mensch[]', noch keine erfasste menschliche
+ *    Entscheidung) → haltKlaerung mit der Fragenzahl; c) sonst (Liste war
+ *    leer, oder eine Entscheidung ist bereits erfasst) fortsetzen wie ohne
+ *    dieses output_schema. Wie Regel 1b an output_schema gekoppelt, nicht an
+ *    rolle (dasselbe Argument: dieses Modul bleibt abhängigkeitsarm und
+ *    kennt weder validiereErgebnisArchitektur noch die Kernartefakt-Kette
+ *    'workflow-entscheidung-<workflowId>' — der Aufrufer wertet beides vorab
+ *    aus und normalisiert in die drei Felder auf SchrittErgebnis). Idempotent:
+ *    ist einmal eine Entscheidung erfasst, setzt der Aufrufer
+ *    architekturEntscheidungAusstehend auf false — derselbe Lauf hält beim
+ *    erneuten Durchlauf (z. B. nach POST /api/workflows/<id>/entscheidung)
+ *    nicht kein zweites Mal an.
  * 2. grenzen.max_schritte erreicht → haltGrenze. VOR den vier
  *    Schritt-Eigenschaften unten, weil die Grenze unabhängig davon gilt, was
  *    der nächste Schritt zufällig für einen Zustand, Worker, Freigabebedarf
@@ -660,10 +677,10 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * eine neue Freigabestufe muss hier eine bewusste Zeile bekommen, statt sich
  * die Automatik lautlos zu nehmen (Reviewer-Pass 10.09.2026, K2/R2).
  *
- * Zwei Ausgänge stehen quer dazu: `fertig` (Vorschritt ERFOLGREICH, Regel 1b
- * bestanden oder unzutreffend, nachfolger === null) wird direkt nach Regel 1b
- * entschieden, weil dann gar kein nächster Schritt existiert, auf den die
- * Regeln 2-5 anwendbar wären.
+ * Zwei Ausgänge stehen quer dazu: `fertig` (Vorschritt ERFOLGREICH, Regeln 1b
+ * und 1c bestanden oder unzutreffend, nachfolger === null) wird direkt nach
+ * Regel 1c entschieden, weil dann gar kein nächster Schritt existiert, auf den
+ * die Regeln 2-5 anwendbar wären.
  * Und ein Verweis ins Leere (unbekannte schritt_id im Ergebnis, im
  * nachfolger oder im Cursor) endet als haltKlaerung mit aktiverSchrittId
  * null: bei validierten Daten unerreichbar (validiereWorkflowDaten prüft
@@ -785,6 +802,29 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         return {
           art: 'haltKlaerung',
           grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer) trägt Urteil ${urteil === null || urteil === undefined ? 'fehlend' : `'${urteil}'`} — nur 'BEREIT' oder 'BEREIT_NACH_KORREKTUR' setzen den Workflow automatisch fort (Lauf '${vorschrittErgebnis.laufId}')`,
+          aktiverSchrittId: vorschritt.schritt_id,
+        }
+      }
+    }
+    // Regel 1c (F39 WS-2b, löst F-632 Teil b) — Kopplung an output_schema aus
+    // demselben Grund wie Regel 1b direkt darüber (Kommentar dort). a) und b)
+    // sind bewusst getrennte Prüfungen mit je eigenem Halt-Grund, nicht eine
+    // zusammengefasste Bedingung: a) meldet einen Schemaverstoß des Laufs
+    // selbst, b) eine noch offene MENSCHLICHE Entscheidung über einen sonst
+    // gültigen Lauf — zwei verschiedene Ursachen, zwei verschiedene Texte.
+    if (vorschritt.output_schema === 'ergebnis-architektur') {
+      const verstoesse = vorschrittErgebnis.architekturVerstoesse
+      if (verstoesse !== undefined && verstoesse.length > 0) {
+        return {
+          art: 'haltKlaerung',
+          grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-architektur) liefert ein Ergebnis, das validiereErgebnisArchitektur ablehnt: ${verstoesse.join('; ')} (Lauf '${vorschrittErgebnis.laufId}')`,
+          aktiverSchrittId: vorschritt.schritt_id,
+        }
+      }
+      if (vorschrittErgebnis.architekturEntscheidungAusstehend === true) {
+        return {
+          art: 'haltKlaerung',
+          grund: `Architektur-Entscheidung erforderlich — Schritt '${vorschritt.schritt_id}' trägt ${vorschrittErgebnis.architekturAnzahlFragen ?? 0} offene Frage(n) in 'entscheidungen_mensch[]', noch keine menschliche Entscheidung erfasst (Lauf '${vorschrittErgebnis.laufId}')`,
           aktiverSchrittId: vorschritt.schritt_id,
         }
       }
