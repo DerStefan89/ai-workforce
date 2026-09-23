@@ -35,6 +35,37 @@ Pro Schritt: was Stefan klickt, was real erwartet wird, was zu
 protokollieren ist. Ein `## <Beobachtung>`-Unterabschnitt wird in WS-3b
 unter jedem Schritt ergänzt.
 
+### 0. Vor jedem Reallauf (löst F-636/F-644, Lehren aus Versuch 1/2)
+
+**Warum:** Versuch 2 (23.09.2026) zeigte real zwei vermeidbare Lücken — (1)
+unklar, gegen welche Startvorlage/welchen Code-Stand die laufende
+Leitstand-Instanz tatsächlich läuft (F-636), (2) ein Testauftrag im
+Projektmodus deckt den `ausfuehrung`-Schritt mit echtem Produktcode nie ab,
+weil `baueAuftragAusProjektentwurf` (`src/product-coach/index.ts:700`)
+Projekt-Erweiterungen strukturell auf „nur Dokumentation" festlegt (F-644).
+Seit E-F39-1=B (F-643) gilt zusätzlich: ein schreibender Schritt startet nur
+auf einem Branch ≠ `main`/`master` mit sauberem Arbeitsbaum.
+
+1. **Laufende Leitstand-Instanz beenden.** `kontrollzustand/.leitstand.lock`
+   prüfen (PID/Port), den Prozess beenden — eine alte Instanz könnte gegen
+   eine veraltete Startvorlage oder einen alten Code-Stand laufen.
+2. **`LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json` setzen**,
+   dann `npm run leitstand` neu starten — stellt sicher, dass Codex
+   (`worker.codex`-Block) real verfügbar ist, statt sich auf den
+   `projekte.json`-Default zu verlassen.
+3. **Einen Arbeits-Branch anlegen** (`git switch -c <name>` gegen `main`,
+   NICHT auf `main` bleiben) — Vorbedingung für jeden schreibenden Schritt
+   seit E-F39-1=B (F-643); ohne Branch lehnt `schritt-3-ausfuehrung` mit
+   „Ausführung gesperrt: du bist auf main" ab.
+4. **Einen Auftrag für einen Code-Test im FEATUREmodus anlegen — NICHT im
+   Projektmodus** (Coach-Hauptmodus **Sparring**, Untermodus **Feature**,
+   nicht **Projekt**), wenn geprüft werden soll, ob `ausfuehrung` echten
+   Produktcode schreibt: der Projektmodus-Auftragstext verbietet das
+   strukturell (F-644). Der Projektmodus bleibt weiterhin der richtige Weg,
+   um die `hoch`-Kontrolltiefe-Untergrenze selbst zu testen (Schritt 1-4
+   unten) — für den `ausfuehrung`-Prüfpunkt (Schritt 8) braucht es einen
+   ZWEITEN, featuremodus-basierten Testauftrag.
+
 ### 1. Sparring-Interview bis `projekt_entwurf`
 
 **Klick:** `#/chat` öffnen, Hauptmodus **Sparring**, Untermodus **Projekt**

@@ -276,7 +276,16 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
     klassifikation: { ergebnis: 'ERFOLGREICH' },
     laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' },
   })
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn })
+  // E-F39-1=B (löst F-643): der 'schreibend'-Fall braucht ein sauberes, NICHT main/master
+  // Wegwerf-Git-Repo als repoWurzel — sonst liefe die neue Ausführungs-Vorbedingung
+  // (loeseAusfuehrungsEingabenAuf) gegen DIESES Repos echten, unvorhersagbaren Git-Zustand
+  // (process.cwd(), Default) statt gegen eine feste Fixture. Der 'lesend'-Fall bleibt
+  // unbetroffen (die Vorbedingung greift nur für 'schreibend'), repoWurzel schadet ihm nicht.
+  const repoWurzel = neuesRepo()
+  // neuesRepo() lässt 'git init' den lokal konfigurierten Default-Branch wählen (auf dieser
+  // Maschine real 'master', nicht 'main') — E-F39-1=B lehnt BEIDE ab, deshalb explizit umbenannt.
+  git(repoWurzel, ['branch', '-m', 'wegwerf-branch'])
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel })
   try {
     const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
       method: 'POST',
@@ -322,6 +331,7 @@ for (const { werkzeugsatz, rolle, sollUebersichtHaben } of [
   } finally {
     await schliessen()
     raeumeVerzeichnis(basisVerzeichnis)
+    raeumeVerzeichnis(repoWurzel)
   }
 }
 

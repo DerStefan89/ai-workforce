@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Workflow-Detail geöffnet: Schritt 'schritt-1-ausfuehrung' startbereit (Freigabe bereits erteilt)",
+    "Workflow": "e-f39-1-nachweis",
+    "Starten-Knopf sichtbar (Freigabe bereits erteilt)": true,
+    "Fehlermeldung sichtbar (nicht [hidden])": true
+  },
+  {
+    "label": "„Starten“ geklickt — echter POST /api/workflows/<id>/starten gegen das main-Wegwerf-Repo",
+    "Workflow": "e-f39-1-nachweis",
+    "Starten-Knopf sichtbar (Freigabe bereits erteilt)": true,
+    "Fehlermeldung sichtbar (nicht [hidden])": true
+  }
+]

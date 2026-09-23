@@ -687,8 +687,13 @@ if (pruefeZweigAufStderr(gGruenKoerper, CODEX_FUNKTION).verstoesse.length > 0) {
     befunde.push(`(h) codex + schreibender Werkzeugsatz (jetzt über den Rollenvertrag abgefangen, nicht mehr über AK10): erwartet ok:false, erhalten ${JSON.stringify(schreibend)}`)
   }
   // Grün-Gegenprobe: derselbe schreibende Werkzeugsatz bleibt für claude-code
-  // erlaubt — die Ablehnung hängt am Worker, nicht am Werkzeugsatz.
-  if (loeseAusfuehrungsEingabenAuf(basisSchreibend, 'schreibend', 'text', vorlageMitCodex, process.cwd()).ok !== true) {
+  // erlaubt — die Ablehnung hängt am Worker, nicht am Werkzeugsatz. E-F39-1=B (löst F-643):
+  // leseAusfuehrungsVorbedingung injiziert, sonst liefe die neue Ausführungs-Vorbedingung real
+  // gegen DIESES Repos Git-Zustand (process.cwd()) statt eine feste Rollenvertrag-Frage zu prüfen.
+  if (
+    loeseAusfuehrungsEingabenAuf(basisSchreibend, 'schreibend', 'text', vorlageMitCodex, process.cwd(), { leseAusfuehrungsVorbedingung: () => ({ ok: true }) }).ok !==
+    true
+  ) {
     befunde.push('(h) claude-code + schreibender Werkzeugsatz muss unverändert erlaubt bleiben')
   }
 
