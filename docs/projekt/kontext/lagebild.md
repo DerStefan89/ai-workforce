@@ -116,3 +116,4 @@ feature.md`) (Stand 22.09.2026).
 - F-553 · PROCESS_IMPROVEMENT · Challenger bezifferte den Nutzen einer Option ohne direkte Messung.
 - F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
 - F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
+- F-648 · BUG · Die Korrekturschleife nach „Anpassung anfordern" trägt weder die Abnahme-Begründung noch die vorherigen Review-Befunde erkennbar in die Instruktion der neuen Iteration — Ausführung und Review wiederholen sich dadurch blind.

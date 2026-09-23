@@ -631,6 +631,49 @@ test("Ausgang 'haltKlaerung': ein fehlendes Advisor-Urteil hält AUCH an, wenn d
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
 })
 
+// ─── Regel 1e: ausfuehrung-Selbstblockade (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem als ERFOLGREICH", real beobachtet Lauf e1c59219) ──
+
+test("Ausgang 'haltKlaerung': eine erkannte ausfuehrung-Selbstblockade hält an, statt fortzusetzen (real beobachtet, Lauf e1c59219)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungSelbstblockiert: true })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /ausfuehrung.*Status-Block.*Blockiert/)
+})
+
+test("Ausgang 'starte': keine ausfuehrung-Selbstblockade (ausfuehrungSelbstblockiert false) setzt fort", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungSelbstblockiert: false })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test('Regel 1e greift NICHT bei einer anderen Rolle — ein irrtümlich mitgesendetes ausfuehrungSelbstblockiert bleibt folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'code-reviewer', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungSelbstblockiert: true })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1 schlägt Regel 1e: ein VERWEIGERTER ausfuehrung-Lauf hält über seinen Ausgang an, nicht über die (fälschlich gemeldete) Selbstblockade', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', status: 'VERWEIGERT', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'VERWEIGERT', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
+test("Ausgang 'haltKlaerung': eine ausfuehrung-Selbstblockade hält AUCH an, wenn der Schritt der letzte ist", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungSelbstblockiert: true })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+})
+
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
   // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
   // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.

@@ -847,6 +847,19 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
+    // Regel 1e (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem als
+    // ERFOLGREICH" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Lauf
+    // e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026): dieselbe Kopplung an schritt.rolle statt
+    // output_schema wie Regel 1d, aus demselben Grund — 'ausfuehrung' trägt wie
+    // 'architecture-advisor' bewusst output_schema:null. KEINE Aussage über die inhaltliche
+    // Richtigkeit der Selbstblockade, nur darüber, dass sie nicht stillschweigend übergangen wird.
+    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.ausfuehrungSelbstblockiert === true) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung) markiert sich selbst über den Status-Block als 'Blockiert' — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
     if (vorschritt.nachfolger === null) {
       return { art: 'fertig', aktiverSchrittId: null }
     }

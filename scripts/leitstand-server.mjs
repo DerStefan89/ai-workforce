@@ -454,6 +454,7 @@ import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
+import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -4041,6 +4042,31 @@ export function erzeugeRequestHandler(optionen = {}) {
       auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion().join('\n')}`
     }
 
+    // F-648 (löst "Korrekturschleife trägt Abnahme-Begründung/vorherige Review-Befunde nicht in
+    // die neue Iteration" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Läufe
+    // e1c59219-615f-4f20-8737-8b9a99b4ff5c/ba7bd1c5-2242-43ef-939f-0660ed0eef4e, 23.09.2026): lädt
+    // die JEWEILS LETZTE Abnahme-Entscheidung dieses Workflows über dieselbe deterministische
+    // Artefakt-ID wie GET/POST .../abnahme (D5, kein zweiter Lesepfad) — unabhängig davon, ob
+    // 'schritt.eingaben' die Referenz (wie bei 'schritt-1-ausfuehrung' nach ANPASSUNG_ANGEFORDERT,
+    // s. weiter unten 'eingabenMitEntscheidung') tatsächlich trägt, und deshalb gültig für JEDE
+    // Iteration n+1, nicht nur die erste, und für 'code-reviewer' genauso wie für 'ausfuehrung'
+    // (der bislang GAR KEINE Sonderbehandlung bekam). Kein Treffer (kein Abnahme-Artefakt, oder
+    // letztes Ergebnis nicht ANPASSUNG_ANGEFORDERT) lässt auftragstext bitgenau unverändert —
+    // jede erste Iteration jedes Workflows bleibt bitgenau wie vor diesem Nachtrag.
+    if (schritt.rolle === 'ausfuehrung' || schritt.rolle === 'code-reviewer') {
+      const abnahmeVersion = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, ladeOptionen)
+      if (abnahmeVersion !== null && abnahmeVersion.daten.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
+        const reviewLaufId = abnahmeVersion.daten.bezug?.review_lauf_id
+        const reviewLaufakteVersion = typeof reviewLaufId === 'string' ? ladeArtefaktVersion(`laufakte-${reviewLaufId}`, undefined, ladeOptionen) : null
+        const vorherigeBefunde = reviewLaufakteVersion !== null ? (leseUrteilAusLaufakte(reviewLaufakteVersion.daten)?.befunde ?? []) : []
+        if (schritt.rolle === 'ausfuehrung') {
+          auftragstext = `${auftragstext}\n\n${baueAusfuehrungKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
+        } else if (vorherigeBefunde.length > 0) {
+          auftragstext = `${auftragstext}\n\n${baueReviewKorrekturInstruktion(vorherigeBefunde)}`
+        }
+      }
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -4268,6 +4294,17 @@ export function erzeugeRequestHandler(optionen = {}) {
         const urteil = textErgebnis.ok ? leseUrteilAusAdvisorText(textErgebnis.text) : null
         advisorUrteilFehlt = urteil === null
       }
+      // Regel 1e (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem
+      // als ERFOLGREICH" — real beobachtet Lauf e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026).
+      // Dasselbe Lesemuster wie advisorUrteilFehlt direkt darüber, hier auf dem CLAUDE.md-Status-
+      // Block statt einer 'Urteil: ...'-Zeile (Begründung: src/korrekturschleife/index.ts,
+      // Kopfkommentar von leseSelbstblockadeAusAusfuehrungstext).
+      let ausfuehrungSelbstblockiert
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const textErgebnis = laufakteVersion !== null ? leseErgebnistextAusRohstrom(laufakteVersion.daten) : { ok: false }
+        ausfuehrungSelbstblockiert = leseSelbstblockadeAusAusfuehrungstext(textErgebnis.ok ? textErgebnis.text : null)
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -4299,6 +4336,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             architekturEntscheidungAusstehend,
             architekturAnzahlFragen,
             advisorUrteilFehlt,
+            ausfuehrungSelbstblockiert,
           })
           return {
             status: workflowStatusZuAusgang(naechster),

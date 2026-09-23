@@ -204,6 +204,17 @@ export interface SchrittErgebnis {
    * folgenlos, wie ein fehlendes 'urteil' für Regel 1b.
    */
   advisorUrteilFehlt?: boolean
+  /**
+   * OPTIONAL (F-649, löst "ausfuehrung liefert eine erkennbare Selbstblockade, gilt trotzdem als
+   * ERFOLGREICH" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Lauf
+   * e1c59219-615f-4f20-8737-8b9a99b4ff5c, 23.09.2026): true, wenn ein gerade gelaufener
+   * 'ausfuehrung'-Schritt sich selbst über den CLAUDE.md-Status-Block als 'Blockiert' markiert.
+   * Der Aufrufer (scripts/leitstand-server.mjs) berechnet das Feld NUR für diese Rolle (liest den
+   * Ergebnistext, Muster advisorUrteilFehlt oben) — dieses Modul bleibt abhängigkeitsarm
+   * (Kopfkommentar) und prüft den Text selbst nicht. Ein fehlendes Feld (jeder andere Schritt)
+   * bleibt für Regel 1e folgenlos, wie ein fehlendes 'advisorUrteilFehlt' für Regel 1d.
+   */
+  ausfuehrungSelbstblockiert?: boolean
 }
 
 /**
