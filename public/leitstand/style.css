@@ -1053,6 +1053,17 @@ a:focus-visible,
   font-weight: 600;
 }
 
+/* F34 Fixpaket (löst F-629, Muster F-621/.chat-modus-auswahl[hidden]): '.btn { display: inline-flex }'
+   überschreibt sonst die UA-Regel '[hidden] { display: none }' (Autor-Herkunft schlägt UA-Regel
+   unabhängig von der Spezifität) — JEDES .btn-Element mit programmatisch gesetztem hidden-Attribut
+   blieb dadurch sichtbar (real beobachtet: #chat-abbrechen-btn/#chat-zusammenfassen-btn, aber
+   strukturell jedes .btn app-weit betroffen). '.btn[hidden]' (Klasse + Attribut, Spezifität 0,2,0)
+   schlägt automatisch auch '.chat-zusammenfassen-btn { display: block }' (Spezifität 0,1,0) — keine
+   zweite, klassenspezifische Regel nötig. */
+.btn[hidden] {
+  display: none;
+}
+
 /* F29 WS-D1: Rot statt Cyan (Dateikopf-Kommentar — Rot ist jetzt der
    dominante Aktivzustands-Akzent, Primärschaltflächen eingeschlossen). */
 .btn-primary {

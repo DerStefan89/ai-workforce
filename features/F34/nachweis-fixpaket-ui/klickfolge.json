@@ -1,0 +1,37 @@
+{
+  "url": "http://127.0.0.1:4174/#/chat",
+  "viewport": { "breite": 900, "hoehe": 1400 },
+  "localStorageEntfernen": ["leitstand-chat-modus", "leitstand-chat-sparring-untermodus"],
+  "screenshotAusschnitt": { "selector": "#view-chat", "hoehe": 1300 },
+  "beobachtete": {
+    "gruppen": [
+      { "name": "Aktiver Hauptmodus-Button", "ids": ["chat-modus-jarvis-btn", "chat-modus-sparring-btn"], "aktivKlasse": "btn-primary" },
+      { "name": "Aktiver Untermodus-Button", "ids": ["chat-untermodus-feature-btn", "chat-untermodus-projekt-btn"], "aktivKlasse": "btn-primary" }
+    ],
+    "sichtbarkeit": [
+      { "name": "Untermodus sichtbar", "id": "chat-untermodus-auswahl" },
+      { "name": "Abbrechen-Button sichtbar (F-629)", "id": "chat-abbrechen-btn" },
+      { "name": "Zusammenfassen-Button sichtbar (F-629)", "id": "chat-zusammenfassen-btn" }
+    ],
+    "titel": { "name": "Chat-Titel", "selector": "#chat-titel" },
+    "vorhanden": [
+      { "name": "Scope-Turn sichtbar (F-624)", "selector": ".chat-scope-block:not(.chat-projekt-block)" },
+      { "name": "Projekt-Turn sichtbar (F-624)", "selector": ".chat-projekt-block" },
+      { "name": "Auftrag-Trigger sichtbar", "selector": ".chat-auftrag-oeffnen-btn" },
+      { "name": "Auftrag-bereits-angelegt-Hinweis sichtbar (F-625)", "selector": ".chat-auftrag-dialog-erfolg" }
+    ]
+  },
+  "schritte": [
+    { "label": "Start (Jarvis, kein gespeicherter Modus)", "screenshot": "01-initial-jarvis.png" },
+    { "label": "Klick „Sparring“ (Untermodus Feature, noch leer)", "klick": "#chat-modus-sparring-btn", "screenshot": "02-sparring-feature-leer.png" },
+    { "label": "Feature-Nachricht senden", "tippen": { "selector": "#chat-eingabe", "text": "Wir brauchen ein neues Feature: Exportfunktion für Berichte." }, "klick": "#chat-senden" },
+    { "label": "Feature-Antwort abgewartet (scope_entwurf)", "warteAufSelector": { "selector": ".chat-auftrag-oeffnen-btn", "timeoutMs": 5000 }, "screenshot": "03-feature-scope-entwurf.png" },
+    { "label": "Klick „Projekt“ (F-624: Feature-Turn muss verschwinden)", "klick": "#chat-untermodus-projekt-btn", "screenshot": "04-projekt-untermodus-leer.png" },
+    { "label": "Projekt-Nachricht senden", "tippen": { "selector": "#chat-eingabe", "text": "Wir planen ein neues Projekt: Aufräum-Assistent." }, "klick": "#chat-senden" },
+    { "label": "Projekt-Antwort abgewartet (projekt_entwurf)", "warteAufSelector": { "selector": ".chat-projekt-block", "timeoutMs": 5000 }, "screenshot": "05-projekt-projekt-entwurf.png" },
+    { "label": "Klick „Feature“ zurück (F-624: nur Feature-Turn sichtbar, kein Projekt-Turn)", "klick": "#chat-untermodus-feature-btn", "screenshot": "06-zurueck-feature.png" },
+    { "label": "Klick „Als Auftrag anlegen“", "klick": ".chat-auftrag-oeffnen-btn", "screenshot": "07-auftrag-dialog-offen.png" },
+    { "label": "Klick „Anlegen“", "klick": "[data-auftrag-anlegen]", "warteAufSelector": { "selector": ".chat-auftrag-dialog-erfolg", "timeoutMs": 5000 }, "screenshot": "08-auftrag-angelegt.png" },
+    { "label": "Reload (F-625: Hinweis „bereits angelegt“ bleibt nach Reload bestehen)", "reload": true, "screenshot": "09-reload-bereits-angelegt.png" }
+  ]
+}

@@ -453,7 +453,7 @@ import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
-import { baueSparringVerlaufsProjektion } from './leitstand/routen-sparring.mjs'
+import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung } from './leitstand/routen-sparring.mjs'
 
 /**
  * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
@@ -5478,6 +5478,56 @@ export function erzeugeRequestHandler(optionen = {}) {
     // (braucht die Closure-Sperre laufAktiv), diese GET-Projektion nicht.
     if (req.method === 'GET' && pfad === '/api/sparring') {
       sendeJson(res, 200, baueSparringVerlaufsProjektion(basisVerzeichnis, projektId))
+      return
+    }
+
+    // ─── F34 Fixpaket (löst F-625): POST /api/sparring/<laufId>/auftrag ─────────────────
+    //
+    // Minimaler Rückverweis Turn→Auftrag: vom Client NUR NACH einem bereits erfolgreichen
+    // POST /api/auftraege über die Chat→Auftrag-Brücke aufgerufen (views/chat.js, initAuftragBruecke),
+    // ausschließlich im Modus 'sparring' — legt selbst NICHTS an, routet/startet nichts (der Auftrag
+    // existiert zu diesem Zeitpunkt bereits real). Kein D13-Bezug (kein Lauf), deshalb keine
+    // laufAktiv-Prüfung wie bei POST /api/sparring oben — reine additive Metadaten zu einem bereits
+    // abgeschlossenen Turn. Schreibfunktion selbst in routen-sparring.mjs (D5, Muster oben).
+    if (req.method === 'POST' && pfad.startsWith('/api/sparring/') && pfad.endsWith('/auftrag')) {
+      const laufId = decodeURIComponent(pfad.slice('/api/sparring/'.length, pfad.length - '/auftrag'.length))
+      if (laufId.length === 0) {
+        sendeJson(res, 400, { grund: "laufId darf nicht leer sein (Pfadform '/api/sparring/<laufId>/auftrag')" })
+        return
+      }
+      if (LAUFID_UNZULAESSIGE_ZEICHEN.test(laufId)) {
+        sendeJson(res, 400, { grund: `laufId enthält unzulässige Zeichen: ${JSON.stringify(laufId)}` })
+        return
+      }
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        sendeJson(res, 400, { grund: 'Body muss ein JSON-Objekt sein' })
+        return
+      }
+      for (const feld of Object.keys(body)) {
+        if (feld !== 'auftragId') {
+          sendeJson(res, 400, { grund: `unbekanntes Feld '${feld}'` })
+          return
+        }
+      }
+      if (typeof body.auftragId !== 'string' || body.auftragId.trim().length === 0) {
+        sendeJson(res, 400, { grund: "'auftragId' muss ein nicht-leerer String sein" })
+        return
+      }
+      try {
+        registriereSparringAuftragZuordnung(basisVerzeichnis, projektId, profilReferenz, laufId, body.auftragId)
+      } catch (fehler) {
+        sendeJson(res, 500, { grund: `Zuordnung konnte nicht registriert werden: ${fehler.message}` })
+        return
+      }
+      sendeJson(res, 200, { ok: true })
       return
     }
 
