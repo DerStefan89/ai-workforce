@@ -6,7 +6,7 @@ F39
 
 ## Titel
 
-Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate, WS-1; hoch-Kette + Herkunftsfeld + Ergebnis-Weitergabe, WS-2a; Fortsetzungsweg für Entscheidungen, WS-2b; Projektmodus „Architektur-Grundlage", WS-3)
+Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate, WS-1; hoch-Kette + Herkunftsfeld + Ergebnis-Weitergabe, WS-2a; Fortsetzungsweg für Entscheidungen, WS-2b; Projektmodus „Architektur-Grundlage" — real verdrahtet + Ergebnis-Umsetzung + Akte-Abschnitte, WS-3a; realer Durchlauf, WS-3b)
 
 ## Status
 
@@ -154,10 +154,51 @@ und E-M5-13 (22.09.2026 — F39 vor F35 gezogen, zusätzlicher Projektmodus
   Lesestellen, `D13-UEBERGABE-OHNE-FENSTER`-Bereiche) sind entsprechend
   angehoben, nicht aufgeweicht. Geprüft in `scripts/check-f39-architekt.mjs`
   (i)–(m).
-- **WS-3 — Projektmodus „Architektur-Grundlage" (nicht in diesem Auftrag).**
-  Optionale technische Akte-Abschnitte in `check-feature.mjs`, reale
-  ADR-Erzeugung, realer `hoch`-Durchlauf mit einem Erweiterungs-
-  Projektauftrag (Muster F34 WS-3 Projekt-Interview).
+- **WS-3a — Architekt real verdrahten + Ergebnis-Umsetzung + Akte-Abschnitte
+  (dieser Auftrag, löst F-635).** (0/1) `baueArchitektAuftragstext` wurde
+  seit WS-1 nur vom Gate aufgerufen, nie am echten Workflow-Schrittstart
+  (neues Finding F-635, `BUG`, P1) — `starteWorkflowSchritt`
+  (`scripts/leitstand-server.mjs`) umhüllt den Auftragstext jetzt für
+  `schritt.rolle === 'architekt'` VOR `loeseSchrittEingabenAuf` (Muster
+  `baueRouterAuftragstext`/`baueCoachAuftragstext`): `modus: 'projekt'` nur
+  bei `herkunft.art === 'projekt_interview'`, sonst `'feature'`; der
+  Capability-Auszug (nur Modus `'projekt'`) wird wie in F34 WS-3 über
+  `leseRessourcenRoh`/`loeseRessourcenAuf` gebaut. Real geprüft über den
+  echten Schrittstart-Pfad (`POST /api/workflows/<id>/starten`, stubbierte
+  `fuehreAufgabeDurchFn`, Muster `check-f15-workflow.mjs`), nicht nur gegen
+  `baueArchitektAuftragstext` selbst — `scripts/check-f39-architekt.mjs`
+  (n). (2) Neue Funktion `baueUmsetzungsInstruktion`
+  (`src/architekt/index.ts`): ein `ausfuehrung`-Schritt mit einer
+  `ergebnis-@<architekt-Schritt>`-Eingabe (real der Fall in
+  `workflow-vorlagen/hoch.json`, `schritt-3-ausfuehrung`) bekommt zusätzlich
+  die vier Übersetzungsregeln angehängt (`adr_entwuerfe` →
+  `docs/adr/<slug>.md` nach `docs/adr/TEMPLATE.md`; `schema_entwuerfe` →
+  `schemas/<name>.schema.json` + `schemas/examples/<name>.json` + Gate-
+  Einhängung; `module`/Datenmodell → optionale Abschnitte in
+  `features/<id>/feature.md`; eine erfasste `entscheidung-@`-Antwort →
+  Abschnitt „Entscheidung (Mensch)" im ADR; keine widersprechende Umsetzung
+  ohne Vermerk) — ein `ausfuehrung`-Schritt OHNE eine solche Eingabe bleibt
+  bitgenau unverändert (Regression, `scripts/check-f39-architekt.mjs` (o)).
+  (3) `scripts/check-feature.mjs` prüft zusätzlich, unabhängig vom Status,
+  die neun optionalen technischen Abschnitte (Architekturentscheidung,
+  Komponenten/Module, Datenmodell, Interfaces/Contracts, State/Persistenz,
+  Security/Permissions, Datenflüsse, Migration, Red-/Green-Cases) — reine
+  Funktion `pruefeOptionaleAbschnitte`
+  (`src/workboard/feature-abschnitte.ts`, Rot-/Grünfälle in
+  `src/workboard/feature-abschnitte.test.ts`): fehlt ein Abschnitt, ist das
+  gültig (Rückwärtskompatibilität), nur ein vorhandener, aber leerer
+  Abschnitt ist ein Befund. (4) Vorbereitung für WS-3b:
+  `features/F39/nachweis-ws3-reallauf.md` — eine Ablaufanleitung (kein
+  Nachweis, kein realer Lauf in diesem Auftrag), die den vollständigen
+  `hoch`-Durchlauf ab dem Coach-Projektmodus beschreibt (inkl. einer
+  Erweiterung um F-631 am „Als Auftrag anlegen"-Schritt) und ausdrücklich
+  festhält, dass der bestehende Nachweis-Auftrag
+  `1b3412a8-88be-45e0-b97d-46e6cc5ba396` (F34 WS-3, F-618-Kollision mit F41)
+  niemals geroutet/gestartet werden darf.
+- **WS-3b — Realer Durchlauf (nicht in diesem Auftrag).** Führt
+  `features/F39/nachweis-ws3-reallauf.md` real gegen den Leitstand aus,
+  reale ADR-/Schema-/Akte-Erzeugung, echter `hoch`-Durchlauf mit einem
+  neuen Projekt-Interview-Auftrag.
 
 Projektmodus ist ein Workflow-Schritt, kein eigener Chat (anders als
 `product-coach`s Sparring — `architekt` läuft als Schritt einer
@@ -284,6 +325,42 @@ Projektmodus ist ein Workflow-Schritt, kein eigener Chat (anders als
   Render-Nachweis (Fixture-Workflow, kein LLM,
   `features/F39/nachweis-ws2b-ui/`) belegt den echten Übergang
   KLAERUNG_ERFORDERLICH → WARTET_FREIGABE inkl. Reload.
+
+- **AK14** *(WS-3a)* — `starteWorkflowSchritt` (`scripts/leitstand-server.mjs`)
+  umhüllt den Auftragstext eines `architekt`-Schritts real über
+  `baueArchitektAuftragstext`, VOR `loeseSchrittEingabenAuf`: `modus:
+  'projekt'` genau bei `herkunft.art === 'projekt_interview'`, sonst
+  `'feature'`; der Capability-Auszug (nur Modus `'projekt'`) wird über
+  `leseRessourcenRoh`/`loeseRessourcenAuf` gebaut (Muster F34 WS-3). Real
+  geprüft über den echten Schrittstart-Pfad (`POST /api/workflows/<id>/
+  starten`, stubbierte `fuehreAufgabeDurchFn`), für beide Modi —
+  `scripts/check-f39-architekt.mjs` (n).
+- **AK15** *(WS-3a)* — `baueUmsetzungsInstruktion` (`src/architekt/
+  index.ts`) liefert die vier Übersetzungsregeln (ADR-Entwürfe →
+  `docs/adr/<slug>.md`, Schema-Entwürfe → `schemas/<name>.schema.json` +
+  Beispiel + Gate-Einhängung, Module/Datenmodell → optionale
+  `feature.md`-Abschnitte, eine erfasste `entscheidung-@`-Antwort →
+  Abschnitt „Entscheidung (Mensch)" im ADR). `starteWorkflowSchritt` hängt
+  den Block real an, wenn ein `ausfuehrung`-Schritt eine
+  `ergebnis-@<schrittId>`-Eingabe trägt, deren Zielschritt `rolle:
+  'architekt'` ist; ein `ausfuehrung`-Schritt ohne eine solche Eingabe
+  bleibt bitgenau unverändert (Regression) — real geprüft über den echten
+  Schrittstart-Pfad, `scripts/check-f39-architekt.mjs` (o).
+- **AK16** *(WS-3a)* — `pruefeOptionaleAbschnitte`
+  (`src/workboard/feature-abschnitte.ts`) prüft die neun optionalen
+  technischen Abschnitte einer Feature-Akte, unabhängig vom Status: fehlt
+  ein Abschnitt, bleibt die Akte gültig (Rückwärtskompatibilität); ein
+  vorhandener, aber leerer Abschnitt (kein Mindestinhalt) ist ein Befund.
+  In `scripts/check-feature.mjs` eingehängt. Rot-/Grünfälle in
+  `src/workboard/feature-abschnitte.test.ts`.
+- **AK17** *(WS-3a)* — `features/F39/nachweis-ws3-reallauf.md` beschreibt
+  den vollständigen realen `hoch`-Durchlauf (Coach-Projektmodus →
+  „Als Auftrag anlegen" (inkl. F-631-Beobachtungspunkt) → Routen → vier
+  Workflow-Schritte) als Ablaufanleitung für Stefan (WS-3b), mit je Schritt
+  Klick/Erwartung/Protokollierpflicht (Lauf-IDs, Dauer, Kosten,
+  Architektur-Qualität). Hält ausdrücklich fest, dass der Nachweis-Auftrag
+  `1b3412a8-88be-45e0-b97d-46e6cc5ba396` (F34 WS-3, F-618) niemals
+  geroutet/gestartet werden darf.
 
 ## Entschieden
 
@@ -484,6 +561,11 @@ unten.
   dem WS-2b-Bau geklärt (Auftrags-Vorgabe Punkt 0) — legitime, nie
   committete reale Läufe (Jarvis-Chats, F18-Eval-Läufe, Feature-Nachweise),
   keine Testisolationslücke.
+- **F-635** (`BUG`, P1) — **erledigt** (WS-3a, Auftrags-Vorgabe Punkt 0):
+  `baueArchitektAuftragstext` wurde seit WS-1 nur vom Gate aufgerufen, nie
+  am echten Workflow-Schrittstart — ein realer `architekt`-Schritt liefe im
+  Reallauf mit nacktem Auftragstext. Behoben: `starteWorkflowSchritt` baut
+  den Auftragstext jetzt real über `baueArchitektAuftragstext` (AK14).
 - **F-633** (`TECH_DEBT`, P2) — **erledigt** (WS-2a): `AuftragV0Daten.herkunft`
   (additiv/optional) plus `bestimmeEffektiveKontrolltiefe` heben die
   Kontrolltiefe für `herkunft.art === 'projekt_interview'` deterministisch
@@ -508,4 +590,4 @@ unten.
 - docs/adr/TEMPLATE.md — Vorbild für `adr_entwuerfe[]`
   (Kontext/Entscheidung/Alternativen/Konsequenzen).
 - Findings: F-632 erledigt (Teil a WS-2a, Teil b WS-2b), F-633 erledigt,
-  F-634 dokumentiert (kein Fix nötig).
+  F-634 dokumentiert (kein Fix nötig), F-635 erledigt (WS-3a).

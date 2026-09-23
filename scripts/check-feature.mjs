@@ -12,6 +12,15 @@
  * src/workboard/features.ts, Abhängigkeitsrichtung bleibt scripts/ → src/
  * (D5, kein zweiter Regelsatz, kein umgekehrter Import aus src/).
  *
+ * F39 WS-3a (Auftrags-Vorgabe Punkt 3): zusätzlich, unabhängig vom Status, die neun
+ * optionalen technischen Abschnitte (Architekturentscheidung, Komponenten/Module,
+ * Datenmodell, Interfaces/Contracts, State/Persistenz, Security/Permissions,
+ * Datenflüsse, Migration, Red-/Green-Cases) — pruefeOptionaleAbschnitte,
+ * src/workboard/feature-abschnitte.ts. Nur wenn ein Abschnitt vorhanden ist, wird
+ * geprüft, dass er nicht leer ist; eine Akte ohne diese Abschnitte bleibt gültig
+ * (Rückwärtskompatibilität). Rot-/Grünfälle in
+ * src/workboard/feature-abschnitte.test.ts.
+ *
  * Aufruf: node scripts/check-feature.mjs   (Teil von npm run check:template)
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
@@ -19,6 +28,7 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { gueltigeStatusWerte } from '../src/workboard/feature-status.ts'
+import { pruefeOptionaleAbschnitte } from '../src/workboard/feature-abschnitte.ts'
 
 const befunde = []
 
@@ -75,6 +85,14 @@ for (const ordner of featureOrdner) {
         befunde.push(`${pfad}: Abschnitt "${abschnitt.name}" fehlt (Status: READY_FOR_TECH verlangt ihn)`)
       }
     }
+  }
+
+  // F39 WS-3a (Auftrags-Vorgabe Punkt 3): die neun optionalen technischen Abschnitte —
+  // unabhängig vom Status geprüft (sie sind additiv, kein neuer Pflichtabschnitt einer
+  // bestimmten Statusstufe). Fehlt ein Abschnitt, ist das gültig (Rückwärtskompatibilität,
+  // src/workboard/feature-abschnitte.ts); nur ein vorhandener, aber leerer Abschnitt ist ein Befund.
+  for (const abschnittsBefund of pruefeOptionaleAbschnitte(inhalt)) {
+    befunde.push(`${pfad}: ${abschnittsBefund}`)
   }
 }
 

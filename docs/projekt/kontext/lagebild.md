@@ -56,7 +56,14 @@ Regel 1c (`entscheidungen_mensch` → `haltKlaerung`), Fortsetzungsweg
 Platzhalter, Leitstand-UI + Render-Nachweis — gebaut 23.09.2026, löst
 F-632 Teil b vollständig (F-632 gesamt jetzt erledigt), F-634 dokumentiert
 (kein Fix nötig, Herkunft des ungetrackten `kontrollzustand/`-Bestands
-geklärt); WS-3 noch offen, siehe `features/F39/feature.md`), F35–F38 noch nicht
+geklärt); WS-3a — `architekt` real am Workflow-Schrittstart verdrahtet
+(löst F-635, `baueArchitektAuftragstext` wurde zuvor nie am echten
+Schrittstart aufgerufen), `ausfuehrung`-Ergebnis-Umsetzung
+(`baueUmsetzungsInstruktion`), neun optionale technische Abschnitte in
+`scripts/check-feature.mjs`, Ablaufanleitung
+`features/F39/nachweis-ws3-reallauf.md` für WS-3b — gebaut 23.09.2026;
+WS-3b (realer Durchlauf) noch offen, siehe `features/F39/feature.md`),
+F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams

@@ -450,7 +450,7 @@ import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster 
 import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
-import { validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregister } from '../src/projekte/index.ts'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -3936,6 +3936,50 @@ export function erzeugeRequestHandler(optionen = {}) {
       return { ok: false, art: 'ungueltig', grund: `Auftrag '${workflowDaten.auftrag_id}' nicht gefunden` }
     }
 
+    // F39 WS-3a (löst state/findings.md, neues P1-Finding "baueArchitektAuftragstext nie am
+    // echten Schrittstart aufgerufen"): der rohe Auftragstext ist F-269s EINZIGER Eingabekanal —
+    // ohne diese Umhüllung liefe ein 'architekt'-Schritt real mit nacktem Auftragstext, ohne
+    // Rolleninstruktion, JSON-Vertrag oder (Modus 'projekt') Capability-Auszug. Muster
+    // baueRouterAuftragstext (Zeile ~5132)/baueCoachAuftragstext (Zeile ~5700): der Aufrufer
+    // umhüllt den Auftragstext VOR der Eingaben-Auflösung, loeseAusfuehrungsEingabenAuf kennt
+    // keine Rolleninstruktionen. modus 'projekt' NUR bei herkunft.art === 'projekt_interview'
+    // (E-M5-13/AK9-Muster), sonst 'feature' — jeder andere/fehlende Wert bleibt 'feature', keine
+    // dritte Fallunterscheidung. Der Capability-Auszug wird nur für 'projekt' gebraucht (F34 WS-3-
+    // Muster, derselbe loeseRessourcenAuf-Aufruf, hier mit dem startvorlagePfad/repoWurzel dieser
+    // Serverinstanz statt einer zweiten Konfigurationsquelle).
+    let auftragstext = auftragVersion.daten.auftragstext
+    if (schritt.rolle === 'architekt') {
+      const modus = auftragVersion.daten.herkunft?.art === 'projekt_interview' ? 'projekt' : 'feature'
+      let capabilityAuszug = null
+      if (modus === 'projekt') {
+        try {
+          const ressourcenRoh = leseRessourcenRoh(repoWurzel)
+          capabilityAuszug = baueCapabilityAuszug(loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad))
+        } catch (fehler) {
+          return { ok: false, art: 'nichtLadbar', grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
+        }
+      }
+      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug)
+    }
+
+    // F39 WS-3a, Punkt 2 (Ergebnis-Umsetzung): ein 'ausfuehrung'-Schritt, der ein
+    // Architektur-Ergebnis als 'ergebnis-@<architekt-Schritt>'-Eingabe bekommt, bekommt
+    // zusätzlich die Übersetzungsregel aus baueUmsetzungsInstruktion angehängt — der Entwurf
+    // selbst steht bereits unverändert als eigene Eingabe-Anfrage im Kontext
+    // (loeseSchrittEingabenAuf, artefakt:ergebnis-<lauf_id>), ohne diesen Block bliebe er
+    // bloßer Zusatzkontext ohne konkrete Schreibanweisung. Erkannt über dieselbe
+    // 'ergebnis-@<schrittId>'-Referenz wie loeseSchrittEingabenAuf selbst (kein zweiter
+    // Regelsatz), aufgelöst gegen die NOCH UNVERÄNDERTE workflowDaten.schritte — die Prüfung
+    // braucht nur die Rolle des referenzierten Schritts, keine reale Laufauflösung. Ein
+    // Workflow ohne 'architekt'-Schritt (standard.json/fast-lane.json) bleibt bitgenau
+    // unverändert: kein Treffer, kein Zusatzblock.
+    if (schritt.rolle === 'ausfuehrung' && schritt.eingaben.some((eingabe) => {
+      const treffer = /^artefakt:ergebnis-@(.+)$/.exec(eingabe)
+      return treffer !== null && workflowDaten.schritte.find((s) => s.schritt_id === treffer[1])?.rolle === 'architekt'
+    })) {
+      auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion().join('\n')}`
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -3965,7 +4009,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       schritt,
       workflowDaten,
       vorgaengerLaufId,
-      auftragVersion.daten.auftragstext,
+      auftragstext,
       vorlage,
       repoWurzel,
       ladeOptionen

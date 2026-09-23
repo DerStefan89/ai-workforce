@@ -39,6 +39,16 @@
  * validiereErgebnisArchitektur/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
  *
+ * F39 WS-3a (löst state/findings.md F-635, P1): (n) prüft, dass der REALE
+ * Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt,
+ * scripts/leitstand-server.mjs) — nicht nur baueArchitektAuftragstext selbst
+ * (bereits (c)) — den Auftragstext eines 'architekt'-Schritts real umhüllt,
+ * für beide Modi ('feature' ohne Herkunft, 'projekt' bei herkunft.art
+ * 'projekt_interview'). Muster check-f15-workflow.mjs (WS-2b-Block):
+ * fuehreAufgabeDurchFn ist eine Attrappe, die den tatsächlich an den Worker
+ * gereichten AusfuehrungsEingaben.auftragstext abfängt — kein echter
+ * Claude-Code-/Codex-Prozessstart nötig, das Gate prüft den Automatenpfad.
+ *
  * Aufruf: node scripts/check-f39-architekt.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
@@ -48,7 +58,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
-import { baueArchitektAuftragstext, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { bestimmeEffektiveKontrolltiefe, waehleWorkflowVorlage } from '../src/router/index.ts'
@@ -959,6 +969,279 @@ const GATE_FRAGE = {
 
     if (befunde.length === befundeVor) {
       console.log("✓ (m): GET /api/workflows/<id> liefert 'architekturEntscheidung' (schrittId + fragen) genau während Regel 1c hält, danach wieder null.")
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (n) F39 WS-3a (löst F-635): realer Schrittstart-Pfad umhüllt den Auftragstext ─────────
+{
+  const befundeVor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-f39-n-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+
+  // Der architekt-Schritt läuft laut workflow-vorlagen/hoch.json auf worker 'codex' — die
+  // reale Standard-Startvorlage (startvorlagen/beispielprojekt.json) trägt keinen
+  // worker.codex-Block. Muster check-f15-workflow.mjs (WS-3a-Block): eine Wegwerfkopie MIT
+  // Block, injiziert über die Server-Option startvorlagePfad — REPO-RELATIV (nicht im OS-
+  // Temp-Verzeichnis wie beim F15-Vorbild), weil loeseRessourcenAuf (Modus 'projekt', unten)
+  // startvorlagePfad intern gegen repoWurzel auflöst (join(repoWurzel, startvorlagePfad)) —
+  // ein absoluter Pfad würde dort falsch verkettet. kontrollzustand-test-*-Verzeichnisse sind
+  // gitignored (CLAUDE.md „Bekannte Fallen").
+  mkdirSync(basisVerzeichnis, { recursive: true })
+  const startvorlagePfadMitCodex = join(basisVerzeichnis, 'startvorlage-mit-codex.json')
+  const vorlageBasis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  writeFileSync(
+    startvorlagePfadMitCodex,
+    JSON.stringify({ ...vorlageBasis, worker: { codex: { startziel: [process.execPath], versionDeklariert: '0.153.4 (Codex CLI, Gate-Fixture)', sandbox: 'read-only' } } }),
+    'utf8'
+  )
+
+  let gesehenerAuftragstext = null
+  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+    gesehenerAuftragstext = eingaben.auftragstext
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad: startvorlagePfadMitCodex }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+
+  /**
+   * Legt real einen Auftrag (optional mit herkunft) und einen Ein-Schritt-Workflow mit Rolle
+   * 'architekt' an und startet ihn über den echten Automatenpfad. Gibt den Auftragstext zurück,
+   * den fuehreAufgabeDurchFn tatsächlich gesehen hat.
+   * @param herkunft - optionales { art } für POST /api/auftraege, oder undefined
+   * @returns der real an den Worker gereichte AusfuehrungsEingaben.auftragstext
+   */
+  async function starteArchitektSchrittUndLiesAuftragstext(herkunft) {
+    gesehenerAuftragstext = null
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+      method: 'POST',
+      body: JSON.stringify({ titel: 'F39-WS-3a-Gate', auftragstext: 'GATE-PLANUNGSTEXT-EINDEUTIG-F39-N', ...(herkunft !== undefined ? { herkunft } : {}) }),
+    })
+    const { auftragId } = await auftragAntwort.json()
+    if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+      throw new Error(`(n)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+    }
+    const workflowId = `gate-f39-n-${randomUUID()}`
+    const workflowPayload = {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: auftragId,
+      version: 1,
+      ziel: 'Gate-Fixture (F39 WS-3a).',
+      status: 'OFFEN',
+      aktiver_schritt_id: 'schritt-1',
+      grund: null,
+      grenzen: { max_schritte: 3, max_replans: 1 },
+      schritte: [
+        {
+          schritt_id: 'schritt-1',
+          rolle: 'architekt',
+          werkzeugsatz: 'lesend',
+          worker: 'codex',
+          modell: 'gpt-6-astra',
+          eingaben: [],
+          output_schema: 'ergebnis-architektur',
+          freigabe: 'AUTOMATISCH',
+          risiko: 'Gate-Fixture, kein realer Lauf.',
+          zeitgrenze_ms: 600000,
+          nachfolger: null,
+          status: 'OFFEN',
+          lauf_id: null,
+        },
+      ],
+    }
+    const anlage = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(workflowPayload) })
+    if (anlage.status !== 201) {
+      throw new Error(`(n)-Vorbereitung: POST /api/workflows erwartet 201, erhalten ${anlage.status} (${await anlage.text()})`)
+    }
+    const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) {
+      throw new Error(`(n)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+    }
+    return gesehenerAuftragstext
+  }
+
+  try {
+    // (n1) Ohne Herkunft (Alt-Auftrag/manuell): Modus 'feature', keine Capability-Auszug-Zeile.
+    const featureText = await starteArchitektSchrittUndLiesAuftragstext(undefined)
+    if (typeof featureText !== 'string' || !/"modus":\s*"feature"/.test(featureText) || !featureText.includes('GATE-PLANUNGSTEXT-EINDEUTIG-F39-N')) {
+      befunde.push(`(n1) realer Schrittstart ohne Herkunft: erwartet umhüllten Auftragstext mit "modus": "feature" und dem Planungstext, erhalten: ${JSON.stringify(featureText)?.slice(0, 300)}…`)
+    } else if (featureText.includes('Verfügbare Ressourcen (Capability-Auszug):')) {
+      befunde.push("(n1) realer Schrittstart ohne Herkunft: Modus 'feature' sollte KEINEN Capability-Auszug tragen")
+    }
+
+    // (n2) herkunft.art 'projekt_interview': Modus 'projekt', inkl. real gebautem Capability-Auszug.
+    const projektText = await starteArchitektSchrittUndLiesAuftragstext({ art: 'projekt_interview' })
+    if (typeof projektText !== 'string' || !/"modus":\s*"projekt"/.test(projektText) || !projektText.includes('GATE-PLANUNGSTEXT-EINDEUTIG-F39-N')) {
+      befunde.push(`(n2) realer Schrittstart mit herkunft 'projekt_interview': erwartet umhüllten Auftragstext mit "modus": "projekt" und dem Planungstext, erhalten: ${JSON.stringify(projektText)?.slice(0, 300)}…`)
+    } else if (!projektText.includes('Verfügbare Ressourcen (Capability-Auszug):')) {
+      befunde.push("(n2) realer Schrittstart mit herkunft 'projekt_interview': erwartet einen real gebauten Capability-Auszug-Abschnitt")
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log(
+        "✓ (n): der REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt) umhüllt den Auftragstext eines 'architekt'-Schritts über baueArchitektAuftragstext — Modus 'feature' ohne Herkunft (kein Capability-Auszug), Modus 'projekt' bei herkunft.art 'projekt_interview' (inkl. real gebautem Capability-Auszug)."
+      )
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (o) F39 WS-3a, Punkt 2: baueUmsetzungsInstruktion + realer Schrittstart 'ausfuehrung' ──
+{
+  const befundeVor = befunde.length
+
+  // (o0) Pure Funktion: die vier Übersetzungsregeln stehen im Zusatzblock.
+  const instruktion = baueUmsetzungsInstruktion().join('\n')
+  const erwarteteFragmente = ['docs/adr/TEMPLATE.md', 'schemas/examples/', 'feature.md', 'Entscheidung (Mensch)']
+  const fehlendeFragmente = erwarteteFragmente.filter((fragment) => !instruktion.includes(fragment))
+  if (fehlendeFragmente.length > 0) {
+    befunde.push(`(o0) baueUmsetzungsInstruktion: erwartet Fragmente ${JSON.stringify(erwarteteFragmente)}, es fehlen ${JSON.stringify(fehlendeFragmente)}`)
+  } else {
+    console.log('✓ (o0): baueUmsetzungsInstruktion trägt alle vier Übersetzungsregeln (ADR/Schema/feature.md-Abschnitte/Entscheidung (Mensch)).')
+  }
+
+  // (o1)/(o2) realer Schrittstart-Pfad: ein 'ausfuehrung'-Schritt MIT 'ergebnis-@<architekt>'-
+  // Eingabe bekommt den Zusatzblock angehängt; einer OHNE eine solche Eingabe bleibt unverändert.
+  const basisVerzeichnis = `kontrollzustand-test-f39-o-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+  const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const profilReferenz = leiteProfilReferenzAb(vorlage)
+
+  let gesehenerAuftragstext = null
+  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+    gesehenerAuftragstext = eingaben.auftragstext
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+
+  /**
+   * Legt real einen Auftrag, einen bereits ERFOLGREICH gelaufenen 'architekt'-Schritt (echte
+   * Laufakte + Rohstrom, Muster (g4)) und einen zum Start fälligen 'ausfuehrung'-Folgeschritt an
+   * — der Cursor (aktiver_schritt_id) zeigt bereits auf den Folgeschritt (Erststart-Auslegung von
+   * ermittleNaechstenSchritt: ohne vorschrittErgebnis startet der Schritt, auf den der Cursor
+   * zeigt). 'ausfuehrungEingaben' bestimmt, ob der Folgeschritt eine 'ergebnis-@'-Eingabe auf den
+   * architekt-Schritt trägt.
+   * @returns der Auftragstext, den fuehreAufgabeDurchFn für den 'ausfuehrung'-Schritt real sah
+   */
+  async function starteAusfuehrungSchrittUndLiesAuftragstext(ausfuehrungEingaben) {
+    gesehenerAuftragstext = null
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+      method: 'POST',
+      body: JSON.stringify({ titel: 'F39-WS-3a-Gate-o', auftragstext: 'GATE-PLANUNGSTEXT-EINDEUTIG-F39-O' }),
+    })
+    const { auftragId } = await auftragAntwort.json()
+    if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+      throw new Error(`(o)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+    }
+
+    const workflowId = `gate-f39-o-${randomUUID()}`
+    const architektLaufId = `${workflowId}-architekt-lauf`
+    const ergebnisArchitektur = {
+      modus: 'feature',
+      zusammenfassung: 'Gate-Fixture-Entwurf (F39 WS-3a).',
+      module: [{ name: 'GateModul', zweck: 'Testzweck.', abhaengigkeiten: [] }],
+      adr_entwuerfe: [{ titel: 'Gate-ADR', kontext: 'x', entscheidung: 'x', alternativen: [], konsequenzen: [] }],
+      schema_entwuerfe: [],
+      entscheidungen_mensch: [],
+      capabilities_bedarf: [],
+      evidenz: [{ marker: '[Fakt]', aussage: 'Gate-Fixture.' }],
+    }
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const rohstromPfad = join(basisVerzeichnis, `${architektLaufId}-rohstrom.json`)
+    writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(ergebnisArchitektur) }) }))
+    registriereKernArtefakt(
+      `laufakte-${architektLaufId}`,
+      profilReferenz,
+      { erzeuger: 'kern', schritt: 'gate-fixture' },
+      { laufakte_schema: 'v0', lauf_id: architektLaufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+      [],
+      ladeOptionen
+    )
+
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: workflowId,
+        auftrag_id: auftragId,
+        version: 1,
+        ziel: 'Gate-Fixture (F39 WS-3a, Punkt 2).',
+        status: 'LAEUFT',
+        aktiver_schritt_id: 'schritt-2-ausfuehrung',
+        grund: null,
+        grenzen: { max_schritte: 4, max_replans: 1 },
+        schritte: [
+          {
+            schritt_id: 'schritt-1-architekt',
+            rolle: 'architekt',
+            werkzeugsatz: 'lesend',
+            worker: 'codex',
+            modell: 'gpt-6-astra',
+            eingaben: [],
+            output_schema: 'ergebnis-architektur',
+            freigabe: 'ZWINGEND',
+            risiko: 'Gate-Fixture.',
+            zeitgrenze_ms: 600000,
+            nachfolger: 'schritt-2-ausfuehrung',
+            status: 'ERFOLGREICH',
+            lauf_id: architektLaufId,
+          },
+          {
+            schritt_id: 'schritt-2-ausfuehrung',
+            rolle: 'ausfuehrung',
+            werkzeugsatz: 'schreibend',
+            worker: 'claude-code',
+            modell: 'claude-sonnet-5',
+            eingaben: ausfuehrungEingaben,
+            output_schema: null,
+            freigabe: 'AUTOMATISCH',
+            risiko: 'Gate-Fixture.',
+            zeitgrenze_ms: 600000,
+            nachfolger: null,
+            status: 'OFFEN',
+            lauf_id: null,
+          },
+        ],
+      },
+      profilReferenz,
+      ladeOptionen
+    )
+
+    const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) {
+      throw new Error(`(o)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+    }
+    return gesehenerAuftragstext
+  }
+
+  try {
+    // (o1) MIT 'ergebnis-@<architekt>'-Eingabe: der Zusatzblock wird real angehängt.
+    const mitArchitekt = await starteAusfuehrungSchrittUndLiesAuftragstext(['artefakt:ergebnis-@schritt-1-architekt'])
+    if (typeof mitArchitekt !== 'string' || !mitArchitekt.includes('GATE-PLANUNGSTEXT-EINDEUTIG-F39-O') || !mitArchitekt.includes('docs/adr/TEMPLATE.md')) {
+      befunde.push(`(o1) 'ausfuehrung' MIT ergebnis-@<architekt>: erwartet den ursprünglichen Auftragstext PLUS den Umsetzungs-Zusatzblock, erhalten: ${JSON.stringify(mitArchitekt)?.slice(0, 300)}…`)
+    }
+
+    // (o2) OHNE eine solche Eingabe (nur der Auftrag selbst): bitgenau unverändert, kein Zusatzblock.
+    const ohneArchitekt = await starteAusfuehrungSchrittUndLiesAuftragstext([])
+    if (ohneArchitekt !== 'GATE-PLANUNGSTEXT-EINDEUTIG-F39-O') {
+      befunde.push(`(o2) 'ausfuehrung' OHNE ergebnis-@<architekt>-Eingabe: erwartet bitgenau den ursprünglichen Auftragstext ohne Zusatzblock, erhalten: ${JSON.stringify(ohneArchitekt)?.slice(0, 300)}…`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log(
+        "✓ (o1)/(o2): der REALE Schrittstart-Pfad hängt den Umsetzungs-Zusatzblock NUR an, wenn der 'ausfuehrung'-Schritt eine 'ergebnis-@<architekt-Schritt>'-Eingabe trägt — sonst bleibt der Auftragstext bitgenau unverändert (Regression)."
+      )
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))
