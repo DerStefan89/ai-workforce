@@ -65,18 +65,31 @@ export function baueAusfuehrungKorrekturInstruktion(begruendung: string, vorheri
  * Baut den Zusatzblock, der an den Auftragstext eines 'code-reviewer'-Schritts angehängt wird,
  * wenn die aktuelle Iteration auf eine Abnahme-Entscheidung 'ANPASSUNG_ANGEFORDERT' folgt und das
  * referenzierte vorherige Review strukturierte Befunde trug. Reine Funktion, kein I/O.
+ *
+ * F-659 (löst "Review meldet eine vom Menschen bereits bewusst entschiedene Frage fälschlich als
+ * offen" — real beobachtet, F39-Versuch-4-Bau von F-518, 24.09.2026, Belege
+ * kontrollzustand/lineage-entscheidung-workflow-router-9d5fedcb-dead-417f-a61f-c374a167ba73-abnahme/
+ * Version 1/2): bekam bislang nur `vorherigeBefunde`, nicht die Abnahme-Begründung selbst — anders
+ * als `baueAusfuehrungKorrekturInstruktion` direkt oberhalb, die `begruendung` bereits erhält.
+ * @param begruendung - `entscheidung-workflow-<id>-abnahme`.daten.begruendung, real vom Menschen erfasst — dieselbe Quelle wie bei `baueAusfuehrungKorrekturInstruktion`, kein zweiter Lesepfad
  * @param vorherigeBefunde - `befunde[]` des Review-Laufs, auf den die Abnahme sich bezieht — der Aufrufer ruft diese Funktion nur bei einem nicht-leeren Array auf (kein Zusatzblock ohne Befunde)
  * @returns der Zusatzblock als Text, an `auftragstext` anzuhängen
  */
-export function baueReviewKorrekturInstruktion(vorherigeBefunde: KorrekturBefund[]): string {
-  const zeilen = ['Diese Iteration folgt auf "Anpassung anfordern". Das vorherige Review meldete die folgenden Befunde:']
+export function baueReviewKorrekturInstruktion(begruendung: string, vorherigeBefunde: KorrekturBefund[]): string {
+  const zeilen = [
+    'Diese Iteration folgt auf "Anpassung anfordern".',
+    'Verbindliche Klarstellung des Auftrags durch den Menschen (Abnahme-Begründung). Sie hat Vorrang vor dem ursprünglichen Auftragstext. Bewusste Entscheidungen darin sind KEIN offener Befund:',
+    begruendung,
+    '',
+    'Das vorherige Review meldete zusätzlich die folgenden Befunde:',
+  ]
   vorherigeBefunde.forEach((befund, index) => {
     zeilen.push(`${index + 1}. [${befund.schwere ?? '?'}] ${befund.fundstelle ?? '?'} — ${befund.zusammenfassung ?? ''}`)
   })
   zeilen.push(
     '',
-    'Bewerte JEDEN dieser Punkte einzeln und explizit als "behoben" oder "offen" (mit Begründung) — nicht nur den neuen Diff allgemein.',
-    'Ist auch nur EINER dieser Punkte noch offen, darf dein urteil NICHT "BEREIT" sein ("BEREIT_NACH_KORREKTUR" oder "BLOCKIERT", je nach Schwere).'
+    'Bewerte JEDEN dieser Punkte einzeln und explizit als "behoben" oder "offen" (mit Begründung) — nicht nur den neuen Diff allgemein. Ein Punkt, den die Abnahme-Begründung oben ausdrücklich als bewusste Entscheidung festhält, ist "behoben", nicht "offen".',
+    'Ist auch nur EINER der verbleibenden Punkte noch offen, darf dein urteil NICHT "BEREIT" sein ("BEREIT_NACH_KORREKTUR" oder "BLOCKIERT", je nach Schwere).'
   )
   return zeilen.join('\n')
 }

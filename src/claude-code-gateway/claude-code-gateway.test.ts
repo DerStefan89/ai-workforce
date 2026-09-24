@@ -938,6 +938,23 @@ function existiertProzess(pid: number): boolean {
   }
 }
 
+function verzoegerung(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Pollt bis die Datei existiert und lesbar ist, statt einmalig blind zu lesen — Muster warteBis (scripts/check-f652-pruefschritt.mjs). Liefert null, wenn die eigene Obergrenze ohne Erfolg abläuft. */
+async function warteAufLesbareDatei(pfad: string, maxWartezeitMs: number): Promise<string | null> {
+  const start = Date.now()
+  for (;;) {
+    try {
+      return readFileSync(pfad, 'utf8')
+    } catch {
+      if (Date.now() - start >= maxWartezeitMs) return null
+      await verzoegerung(50)
+    }
+  }
+}
+
 test('starteProzess killt bei TIMEOUT unter Windows den kompletten Prozessbaum, kein Waisenprozess übrig (F14 WS-2, AK4)', { skip: process.platform !== 'win32' ? 'nur unter Windows real geprüft (WS-2-Scope)' : false }, async () => {
   const enkelPidDatei = join(tmpdir(), `f14-ws2-enkel-pid-${randomUUID()}.txt`)
   const grosskindSkript = [
@@ -948,10 +965,20 @@ test('starteProzess killt bei TIMEOUT unter Windows den kompletten Prozessbaum, 
   ].join('\n')
 
   try {
-    const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', grosskindSkript, enkelPidDatei], { zeitgrenzeMs: 500 })
+    // F-658: 500ms reichte unter Systemlast (paralleler npm run check, viele
+    // gleichzeitige Kindprozesse, s. a. F-590/CLAUDE.md „Bekannte Fallen")
+    // real manchmal nicht, damit der Enkelprozess vom OS-Scheduler überhaupt
+    // Rechenzeit bekommt, um selbst zu spawnen UND seine PID-Datei zu
+    // schreiben, bevor der Timeout-Kill zuschlägt — Fehlbild war ein rohes
+    // ENOENT statt einer echten Aussage. 5000ms (weiterhin klar unter dem
+    // 15s-Hang des Enkels) geben dem Scheduler großzügigen Vorlauf; die
+    // Aussage bleibt unverändert hart: kein Waisenprozess nach dem Kill.
+    const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', grosskindSkript, enkelPidDatei], { zeitgrenzeMs: 5000 })
     assert.strictEqual(ergebnis.beendigungsart, 'TIMEOUT')
 
-    const enkelPid = Number(readFileSync(enkelPidDatei, 'utf8'))
+    const enkelPidRoh = await warteAufLesbareDatei(enkelPidDatei, 3000)
+    assert.ok(enkelPidRoh !== null, 'Enkelprozess muss seine PID real geschrieben haben, bevor der Baum gekillt wurde')
+    const enkelPid = Number(enkelPidRoh)
     assert.ok(Number.isInteger(enkelPid) && enkelPid > 0, 'Enkelprozess muss seine PID real geschrieben haben, bevor der Baum gekillt wurde')
     assert.strictEqual(existiertProzess(enkelPid), false, 'Enkelprozess darf nach dem WS-2-Kill nicht mehr laufen — sonst Waise')
   } finally {
