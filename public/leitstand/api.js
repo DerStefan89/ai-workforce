@@ -156,6 +156,12 @@ export const sendeChatZusammenfassung = () => fetch(mitPraefix('/chat/zusammenfa
 // aktivem Nicht-Standard-Projekt fälschlich /api/projekte/<id>/projekte ansprechen.
 export const holeProjekte = () => holeJsonOderWirf('/api/projekte')
 
+// F41 WS-2: legt ein neues, leeres Projekt an (Byte-Kopie der Harness-Baseline, F41 WS-1) — wie
+// holeProjekte bewusst NICHT über mitPraefix, derselbe unpräfigierte Registerendpunkt. Liefert die
+// rohe Response (Muster legeAuftragAn) — 201 mit { projekt, naechste_schritte }, 400/409/422 mit
+// { grund }, die aufrufende View wertet den Status selbst aus.
+export const legeProjektAn = (koerper) => fetch('/api/projekte', { method: 'POST', body: JSON.stringify(koerper) })
+
 // F33 WS-2: Roadmap-Projektion fürs Workboard (Karte "Roadmap", views/workboard.js) — nur beim
 // Öffnen/Aktualisieren des Workboards abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur
 // durch Commits, Muster holeWorkitems). Liefert immer 200 (nicht_vorhanden/ungueltig sind

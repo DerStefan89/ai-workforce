@@ -195,11 +195,17 @@
 
         <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b
              workboard-filter/-liste). F29 WS-D2 (Auftrag Punkt D): Kopf-Panel mit Icon, Titel,
-             Untertitel, "+ Neues Projekt" (deaktiviert, kommt bald) und "Neu laden" als
-             Icon-Button; je Karte in #projekte-uebersicht-liste jetzt eine Fokus-Panel-artige
-             Karte (views/projekte-uebersicht.js projektKarte) statt einer Listenzeile. Rein
-             lesend bis auf den Kartenklick (setzt nur den Client-Präfix, kein Server-Schreibpfad)
-             — Details siehe Datei-Kommentar dort. -->
+             Untertitel, "+ Neues Projekt" und "Neu laden" als Icon-Button; je Karte in
+             #projekte-uebersicht-liste jetzt eine Fokus-Panel-artige Karte
+             (views/projekte-uebersicht.js projektKarte) statt einer Listenzeile. Rein lesend bis
+             auf den Kartenklick (setzt nur den Client-Präfix, kein Server-Schreibpfad) — Details
+             siehe Datei-Kommentar dort.
+
+             F41 WS-2: "+ Neues Projekt" öffnet #projekte-anlegen-formular (POST /api/projekte,
+             WS-1-Backend) statt weiterhin deaktiviert zu sein. Erfolg zeigt
+             #projekte-anlegen-erfolg mit den Git-Befehlen aus naechste_schritte (reiner Text-Block
+             zum Kopieren, Muster views/workboard.js renderTerminalBlock — kein Git durch den Kern,
+             AK4f) und einem Sprung ins Coach-Interview (views/chat.js wechsleZuSparringProjekt). -->
         <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
           <div class="card">
             <div class="projekte-kopf">
@@ -211,12 +217,45 @@
                 </div>
               </div>
               <div class="projekte-kopf-aktionen">
-                <button type="button" class="btn" disabled title="kommt bald">+ Neues Projekt</button>
+                <button type="button" id="projekte-anlegen-oeffnen" class="btn">+ Neues Projekt</button>
                 <button type="button" id="projekte-uebersicht-neu-laden" class="btn projekte-neu-laden-btn" aria-label="Neu laden">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 0 1 14-5.2M20 12a8 8 0 0 1-14 5.2M15 5h4V1M9 19H5v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
               </div>
             </div>
+
+            <div id="projekte-anlegen-formular" class="unterabschnitt" hidden>
+              <h3>Neues Projekt anlegen</h3>
+              <label for="projekte-anlegen-id">id</label>
+              <input type="text" id="projekte-anlegen-id" placeholder="z. B. mein-projekt" />
+              <p class="hinweis">Kleinbuchstaben, Ziffern, Bindestrich — beginnt mit Buchstabe oder Ziffer (Muster <code>^[a-z0-9][a-z0-9-]{1,40}$</code>).</p>
+
+              <label for="projekte-anlegen-name">Name</label>
+              <input type="text" id="projekte-anlegen-name" />
+
+              <details id="projekte-anlegen-zielordner-details">
+                <summary>Zielordner (optional)</summary>
+                <label for="projekte-anlegen-zielordner">Zielordner</label>
+                <input type="text" id="projekte-anlegen-zielordner" placeholder="Standard: Geschwisterverzeichnis von ai-workforce, benannt nach der id" />
+              </details>
+
+              <div>
+                <button type="button" id="projekte-anlegen-absenden" class="btn btn-primary">Anlegen</button>
+                <button type="button" id="projekte-anlegen-abbrechen" class="btn">Abbrechen</button>
+              </div>
+              <p id="projekte-anlegen-fehler" class="fehler" hidden></p>
+            </div>
+
+            <div id="projekte-anlegen-erfolg" class="unterabschnitt" hidden>
+              <h3>Nächste Schritte</h3>
+              <p class="hinweis" id="projekte-anlegen-erfolg-hinweis"></p>
+              <pre id="projekte-anlegen-git-befehle"></pre>
+              <div>
+                <button type="button" id="projekte-anlegen-coach" class="btn btn-primary">Zum Coach-Interview</button>
+                <button type="button" id="projekte-anlegen-erfolg-schliessen" class="btn">Schließen</button>
+              </div>
+            </div>
+
             <div id="projekte-uebersicht-liste" class="projekte-liste"></div>
           </div>
         </section>

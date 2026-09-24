@@ -1,0 +1,62 @@
+{
+  "url": "http://127.0.0.1:4173/#/projekte-uebersicht",
+  "viewport": { "breite": 1360, "hoehe": 900 },
+  "localStorageEntfernen": ["leitstand-chat-modus", "leitstand-chat-sparring-untermodus"],
+  "beobachtete": {
+    "gruppen": [
+      { "name": "Aktiver Chat-Hauptmodus", "ids": ["chat-modus-jarvis-btn", "chat-modus-sparring-btn"], "aktivKlasse": "btn-primary" },
+      { "name": "Aktiver Chat-Untermodus", "ids": ["chat-untermodus-feature-btn", "chat-untermodus-projekt-btn"], "aktivKlasse": "btn-primary" }
+    ],
+    "sichtbarkeit": [
+      { "name": "Formular sichtbar", "id": "projekte-anlegen-formular" },
+      { "name": "Fehler sichtbar", "id": "projekte-anlegen-fehler" },
+      { "name": "Erfolg-Box sichtbar", "id": "projekte-anlegen-erfolg" }
+    ],
+    "titel": { "name": "Chat-Titel", "selector": "#chat-titel" },
+    "vorhanden": [
+      { "name": "Neue Karte in Übersicht (ohne Neuladen)", "selector": "[data-id=\"f41-ws2-nachweis\"]" }
+    ]
+  },
+  "schritte": [
+    { "label": "Start: Projekte-Übersicht", "screenshot": "01-start.png" },
+    { "label": "Klick „+ Neues Projekt\" — leeres Formular", "klick": "#projekte-anlegen-oeffnen", "screenshot": "02-leeres-formular.png" },
+    { "label": "Ungültige id eingetragen", "tippen": { "selector": "#projekte-anlegen-id", "text": "UNGÜLTIG!" } },
+    { "label": "Name eingetragen", "tippen": { "selector": "#projekte-anlegen-name", "text": "F41 WS2 Nachweis" } },
+    {
+      "label": "Absenden — Validierungsfehler (400, ungültige id)",
+      "klick": "#projekte-anlegen-absenden",
+      "warteAufSelector": { "selector": "#projekte-anlegen-fehler:not([hidden])", "timeoutMs": 5000 },
+      "screenshot": "03-validierungsfehler.png"
+    },
+    { "label": "id korrigiert", "tippen": { "selector": "#projekte-anlegen-id", "text": "f41-ws2-nachweis" } },
+    {
+      "label": "Absenden — Erfolg mit „Nächste Schritte\"-Box (201)",
+      "klick": "#projekte-anlegen-absenden",
+      "warteAufSelector": { "selector": "#projekte-anlegen-erfolg:not([hidden])", "timeoutMs": 8000 },
+      "screenshot": "04-erfolg-mit-box.png"
+    },
+    {
+      "label": "Klick „Zum Coach-Interview\" — Sparring/Modus projekt",
+      "klick": "#projekte-anlegen-coach",
+      "warteAufSelector": { "selector": "#chat-untermodus-projekt-btn.btn-primary", "timeoutMs": 5000 },
+      "screenshot": "05-coach-interview.png"
+    },
+    { "label": "Zurück zur Projekte-Übersicht (Hauptnavigation)", "klick": "a[href=\"#/projekte-uebersicht\"]" },
+    { "label": "Klick „+ Neues Projekt\" (zweiter Versuch)", "klick": "#projekte-anlegen-oeffnen" },
+    { "label": "Gleiche id erneut eingetragen", "tippen": { "selector": "#projekte-anlegen-id", "text": "f41-ws2-nachweis" } },
+    { "label": "Name eingetragen (Duplikat-Versuch)", "tippen": { "selector": "#projekte-anlegen-name", "text": "F41 WS2 Nachweis Duplikat" } },
+    {
+      "label": "Absenden — 409 (id bereits registriert)",
+      "klick": "#projekte-anlegen-absenden",
+      "warteAufSelector": { "selector": "#projekte-anlegen-fehler:not([hidden])", "timeoutMs": 5000 },
+      "screenshot": "06-409-id-vergeben.png"
+    },
+    { "label": "Formular schließen (Abbrechen)", "klick": "#projekte-anlegen-abbrechen" },
+    { "label": "Weg von der Projekte-Übersicht", "klick": "a[href=\"#/chat\"]" },
+    {
+      "label": "Zurück zur Projekte-Übersicht — Reset-Prüfung (QA-Befund, kein alter Zustand mehr sichtbar)",
+      "klick": "a[href=\"#/projekte-uebersicht\"]",
+      "screenshot": "07-routen-wiedereintritt-reset.png"
+    }
+  ]
+}

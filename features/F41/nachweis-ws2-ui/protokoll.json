@@ -1,0 +1,162 @@
+[
+  {
+    "label": "Start: Projekte-Übersicht",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Klick „+ Neues Projekt\" — leeres Formular",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Ungültige id eingetragen",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Name eingetragen",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Absenden — Validierungsfehler (400, ungültige id)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "id korrigiert",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Absenden — Erfolg mit „Nächste Schritte\"-Box (201)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-jarvis-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-feature-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": true,
+    "Chat-Titel": "Chat mit Jarvis",
+    "Neue Karte in Übersicht (ohne Neuladen)": true
+  },
+  {
+    "label": "Klick „Zum Coach-Interview\" — Sparring/Modus projekt",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": true,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": true
+  },
+  {
+    "label": "Zurück zur Projekte-Übersicht (Hauptnavigation)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Klick „+ Neues Projekt\" (zweiter Versuch)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Gleiche id erneut eingetragen",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Name eingetragen (Duplikat-Versuch)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": false,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Absenden — 409 (id bereits registriert)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": true,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Formular schließen (Abbrechen)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Weg von der Projekte-Übersicht",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  },
+  {
+    "label": "Zurück zur Projekte-Übersicht — Reset-Prüfung (QA-Befund, kein alter Zustand mehr sichtbar)",
+    "Aktiver Chat-Hauptmodus": "chat-modus-sparring-btn",
+    "Aktiver Chat-Untermodus": "chat-untermodus-projekt-btn",
+    "Formular sichtbar": false,
+    "Fehler sichtbar": true,
+    "Erfolg-Box sichtbar": false,
+    "Chat-Titel": "Sparring mit dem Product Coach",
+    "Neue Karte in Übersicht (ohne Neuladen)": false
+  }
+]

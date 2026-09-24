@@ -94,6 +94,8 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initChatView beim Bootstrap)
+ * - public/leitstand/views/projekte-uebersicht.js (wechsleZuSparringProjekt, F41 WS-2 — "Zum
+ *   Coach-Interview" nach dem Anlegen eines neuen Projekts)
  *
  * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
  * views/workboard.js (WS-1b) — jeder Verlaufseintrag ist jetzt eine .card,
@@ -1129,6 +1131,32 @@ function initModusUmschalter() {
   }
   document.getElementById('chat-modus-jarvis-btn').addEventListener('click', () => waehleModus('jarvis'))
   document.getElementById('chat-modus-sparring-btn').addEventListener('click', () => waehleModus('sparring'))
+}
+
+/**
+ * F41 WS-2: von außen aufrufbarer Sprung nach Sparring/Modus "projekt" — Aufruf aus
+ * views/projekte-uebersicht.js nach erfolgreichem POST /api/projekte ("Zum Coach-Interview").
+ * Dieselbe Umschalt-Logik wie initModusUmschalter/initUntermodusUmschalter (Modus + Unterumschalter
+ * setzen, merken, bei Bedarf nachladen, neu rendern), nur ohne einen Button-Klick als Auslöser —
+ * Muster der bewussten Funktionsexport-Kopplung aus views/projekt.js (dessen Datei-Kopf,
+ * wendeWiederaufnahmeAn) statt eines Event-Bus.
+ */
+export function wechsleZuSparringProjekt() {
+  offenerAuftragDialog = null
+  zeigeChatFehler('')
+  if (aktiverModus !== 'sparring') {
+    aktiverModus = 'sparring'
+    speichereModus('sparring')
+  }
+  if (sparringUntermodus !== 'projekt') {
+    sparringUntermodus = 'projekt'
+    speichereUntermodus('projekt')
+  }
+  if (!zustandJeModus.sparring.geladen) {
+    void ladeVerlauf('sparring')
+  } else {
+    renderVerlauf()
+  }
 }
 
 /**
