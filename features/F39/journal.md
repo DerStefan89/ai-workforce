@@ -261,3 +261,12 @@ Pflicht-AK F41) neu angelegt. F-664 zugleich final erledigt (Status
 
 `node scripts/erzeuge-lagebild.mjs` erneut gelaufen, `npm run check` grün.
 Explizit gestaged, nicht committet — Freigabe steht weiterhin aus.
+
+## 2026-09-24 — Abnahme durch Stefan
+
+Stefan hat F39 am 24.09.2026 abgenommen. `features/F39/feature.md` Status
+`FEATURE_GATE` → `ABGESCHLOSSEN`. Restfindings F-660–F-663, F-665 und
+F-666 (`state/findings.md`) bleiben offen — F-666 (vollständiger realer
+`hoch`-Lauf) ist Pflicht-AK der F41-Abnahme (E-F39-2 = A); F-664 ist
+bereits behoben. `docs/STATUS.md` nachgezogen. F41 (Neues Projekt anlegen,
+E-M5-14) ist das nächste Feature, Challenge dafür läuft.
