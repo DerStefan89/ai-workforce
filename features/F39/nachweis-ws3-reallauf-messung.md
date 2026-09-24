@@ -290,3 +290,79 @@ Stefan übersteuerte die Selbstblockade nach manuell grünem `npm run check` (74
 - **Review-Lauf:** `885d5358-ade7-4c18-a662-5f3ad2a628e7` — `urteil: BEREIT`, `befunde: []`. Empfehlung nennt allgemein die 404-Fehlerfälle und bestandene Syntax-/`git diff --check`-Prüfungen, **bestätigt den F-648-Vorbefund (500→400 bei Sonderzeichen in `auftragId`) aber nicht ausdrücklich/einzeln** — anders als der aktive Handler-Test in Versuch 3 (Lauf `6319443a-…`) las dieser Reviewer nur den Diff/die Syntax, ohne den ursprünglich gemeldeten Fall namentlich zu re-verifizieren (Beleg F-650-Ergänzung).
 - **Workflow-Status:** `ABGESCHLOSSEN`, `aktiver_schritt_id: null`.
 - **Abnahme:** `ANGENOMMEN` (Stefan).
+
+## Versuch 4 — 24.09.2026, F-518 (Formatprüfung `von`/`bis`), selbst gebaut — mit realem Flake, Selbstheilung über F-655/F-656 und einer real übersehenen Menschenentscheidung (F-659)
+
+**Auftrag:** `9d5fedcb-dead-417f-a61f-c374a167ba73` ("F-518: Formatpruefung fuer von/bis in GET /api/verbrauch"), Feature-Modus. Auftragstext (Kern): `?von=`/`?bis=` in `GET /api/verbrauch` sollen `YYYY-MM-DD` verlangen, ein ungültiges Format oder `von > bis` liefert ein Fachergebnis `{ status: 'fehler', grund }` statt eines leeren Ergebnisses, der Route-Handler bildet das auf HTTP 400 ab — Tests mit echtem Rot-/Grünfall. Router-Lauf `router-9d5fedcb-dead-417f-a61f-c374a167ba73-1790230603399`: 13,3 s, `input_tokens 21568`/`output_tokens 169`, Worker `codex`/`gpt-6-astra`. **Workflow:** `router-9d5fedcb-dead-417f-a61f-c374a167ba73`, 2 Schritte (`ausfuehrung` → `code-reviewer`, Muster Versuch 3).
+
+Dieser Versuch ist der erste reale Durchlauf NACH dem Merge von F-655/F-656 (PR #237, `bfa021c`) — und liefert dafür gleich den ersten echten Anwendungsfall: der erste Prüflauf dieses Versuchs (Lauf `9397a9dd`) war genau der ROT-Fall, dessen unlesbares `ausgabe_ende` F-655 überhaupt erst auslöste (siehe vorheriger Bericht, „F39 Versuch 4 diagnostiziert"). Nach dem Fix konnte derselbe Workflow über den neuen Endpunkt `POST /api/workflows/<id>/pruefung-wiederholen` (F-656) real weitergeführt werden, statt eine neue Fassung einzureichen.
+
+### Iteration 1
+
+**Schritt `ausfuehrung`** — Lauf `9397a9dd-ea70-4b05-8f52-bf3eec899514`
+- Freigabe (ZWINGEND): `FREIGEGEBEN`, 06:22:21 Uhr, Begründung „Test".
+- Gestartet 06:27:35 Uhr, Worker `claude-code`/`claude-sonnet-5`, 42 Turns, Dauer 303,4 s (API-Anteil 288,0 s).
+- Verbrauch: `input_tokens 84`, `output_tokens 30370`, `cache_read_tokens 2580354`, `cache_write_tokens 94510`.
+- Ergebnis: `ERFOLGREICH`.
+
+**Deterministische Prüfung (F-652/F-655/F-656), 1. Durchgang** — `pruefergebnis-9397a9dd` Version 1
+- Gestartet 06:27:37 Uhr, Dauer 256,1 s, **ROT**, Exit 1.
+- Workflow hält auf `KLAERUNG_ERFORDERLICH` (Regel 1f). Zu diesem Zeitpunkt war F-655 noch NICHT gebaut — `ausgabe_ende` bestand komplett aus stderr-Rauschen, die echte Fehlerzeile war nicht auffindbar (Stefan musste `npm run check` von Hand zweimal wiederholen, siehe vorheriger Bericht). Das war der auslösende Befund für F-655/F-656.
+- Nach dem Merge real wiederholt: `pruefergebnis-9397a9dd` Version 2, gestartet 11:22:52 Uhr, Dauer 261,3 s, **GRUEN**, Exit 0, `herkunft.schritt: 'pruefung-wiederholen'` — der Endpunkt wurde für diesen Lauf ECHT ausgelöst, nicht nur getestet. Workflow setzte automatisch zum Review fort.
+
+**Schritt `code-reviewer`** — Lauf `7952d73b-c8df-4236-8abf-f04c526a6a22`
+- Gestartet 11:27:59 Uhr, Worker `codex`/`gpt-6-astra`, Dauer 45,6 s.
+- Verbrauch: `input_tokens 231816`, `output_tokens 945`, `cache_read_tokens 168192`.
+- `urteil`: **`BLOCKIERT`**, 3 Befunde (alle Schwere `MITTEL`):
+  1. `scripts/leitstand/routen-verbrauch.mjs:142`/`leitstand-server.mjs:4655` — Fehlerstatus weicht vom Vertrag ab (`zeitraum_ungueltig` statt `fehler`).
+  2. `scripts/leitstand/routen-verbrauch.mjs:100` — zusätzlich akzeptierte volle Zeitstempel verletzen die `YYYY-MM-DD`-Formatvorgabe UND lassen ungültige Kalenderdaten durch (`Date.parse` normalisiert `2026-02-30` still).
+  3. `scripts/leitstand/routen-verbrauch.mjs:114` — lexikographischer statt zeitwertbasierter Vergleich liefert bei unterschiedlich langen Zeitstempeln falsche Reihenfolgefehler.
+- Workflow hält auf `KLAERUNG_ERFORDERLICH` (Regel 1b, BLOCKIERT-Urteil).
+
+**Abnahme-Entscheidung 1 (Stefan):** `ANPASSUNG_ANGEFORDERT`, 11:33:00 Uhr — „Alle 3 Review-Befunde beheben. Zum Zielkonflikt: Die Oberfläche sendet volle Zeitstempel, deshalb weiterhin BEIDE Formate annehmen (YYYY-MM-DD und ISO-8601), aber streng prüfen: Das Kalenderdatum muss real existieren […]. Die Reihenfolge von/bis als Zeitwert vergleichen, nicht als Zeichenkette. […] Für jeden der 3 Befunde einen Regressionstest." — eine echte Erweiterung des ursprünglichen Auftrags (der nur `YYYY-MM-DD` verlangte), begründet mit einem realen UI-Konflikt.
+
+### Iteration 2 — Korrekturrunde
+
+**Schritt `ausfuehrung` (Iteration 2)** — Lauf `39b9288c-b7e2-4f64-942e-c13ed54ff0d2`
+- Freigabe (ZWINGEND, erneut nötig): `FREIGEGEBEN`, 11:34:04 Uhr, Begründung „Korrekturrunde nach Review BLOCKIERT: die 3 Befunde gemäß Abnahme-Begründung beheben."
+- Gestartet 11:38:10 Uhr, Worker `claude-code`/`claude-sonnet-5`, 29 Turns, Dauer 238,4 s (API-Anteil 218,8 s).
+- Verbrauch: `input_tokens 58`, `output_tokens 24702`, `cache_read_tokens 1652999`, `cache_write_tokens 81372`.
+- Bekam Stefans Abnahme-Begründung real über `baueAusfuehrungKorrekturInstruktion` (`src/korrekturschleife/index.ts`) und setzte den Dual-Format-Kompromiss korrekt um — Ergebnis: `ERFOLGREICH`.
+
+**Deterministische Prüfung, 2. Durchgang** — `pruefergebnis-39b9288c` Version 1
+- Gestartet 11:38:12 Uhr, Dauer 288,6 s, **ROT**, Exit 1 — **zweiter Flake in Folge, derselbe Test** (F-658, neu angelegt): `src/claude-code-gateway/claude-code-gateway.test.ts:941` (F14 WS-2 AK4, Prozessbaum-Timeout-Test) — `ENOENT` auf die Enkel-PID-Marker-Datei, 770/771 sonst grün. Diesmal war `ausgabe_ende` dank F-655 vollständig lesbar: die echte Fehlerzeile (Testname + `ENOENT`-Stacktrace) steht am Artefaktende, nicht im stderr-Rauschen ertrunken — F-655 hat sich hier real bewährt.
+- Workflow hält erneut auf `KLAERUNG_ERFORDERLICH` (Regel 1f, zweites Mal in diesem Versuch).
+- Real wiederholt: `pruefergebnis-39b9288c` Version 2, gestartet 11:55:05 Uhr, Dauer 291,5 s, **GRUEN**, Exit 0, `herkunft.schritt: 'pruefung-wiederholen'`. Workflow setzte automatisch fort — zweite echte Selbstheilung über F-656 in diesem Versuch.
+
+**Schritt `code-reviewer` (Iteration 2)** — Lauf `2d67e04e-d8a4-4943-8333-ed60d033105c`
+- Gestartet 12:01:01 Uhr, Worker `codex`/`gpt-6-astra`, Dauer 63,8 s.
+- Verbrauch: `input_tokens 301811`, `output_tokens 1242`, `cache_read_tokens 237440`.
+- `urteil`: **`BEREIT_NACH_KORREKTUR`**, 3 Befunde:
+  1. „Punkt 1: behoben." — Fehlerstatus jetzt vertragskonform (`status: 'fehler'` + `code: 'zeitraum_ungueltig'` → HTTP 400).
+  2. „Punkt 2: **offen**. Ungültige Kalenderdaten werden inzwischen abgelehnt, volle Zeitstempel bleiben jedoch entgegen der ausdrücklichen YYYY-MM-DD-Vorgabe erlaubt." — **fälschlich als offen gemeldet** (F-659, neu angelegt): der Reviewer bekam Stefans Abnahme-Begründung („weiterhin BEIDE Formate annehmen") nie zugereicht, nur die `befunde` aus Review 1, und hielt die bewusste Design-Entscheidung deshalb für einen übersehenen Punkt.
+  3. „Punkt 3: behoben." — Reihenfolgeprüfung vergleicht jetzt nach Zeitwert.
+- Workflow: Regel 1b hält NICHT an (`BEREIT_NACH_KORREKTUR` zählt wie `BEREIT`) — Übergang zu `fertig`.
+
+**Abnahme-Entscheidung 2 (Stefan):** `ANGENOMMEN`, 12:03:24 Uhr — „Befunde 1 und 3 behoben. Punkt 2 (Zeitstempel weiterhin erlaubt) ist bewusste Entscheidung aus der Anpassung vom 24.09.: Die UI sendet ISO-Zeitstempel, deshalb beide Formate, streng geprüft. Prüfung grün." — Stefan musste die vom Reviewer fälschlich als offen gemeldete Entscheidung hier von Hand richtigstellen (F-659).
+
+**Abschluss**
+- Workflow-Endstatus: `ABGESCHLOSSEN` (`schritt-1-ausfuehrung` und `schritt-2-review` beide `ERFOLGREICH`, `grund`: „der Workflow hat keinen zu startenden Schritt mehr — er ist durchgelaufen").
+- Wall-Clock-Spanne 06:16:56 Uhr (Auftrag angelegt) → 12:03:24 Uhr (Abnahme) — enthält lange Menschenwartezeiten (Freigaben, Abnahmen, eine dazwischenliegende F-655/F-656-Diagnose- und Fix-Session) und ist NICHT die reine Ausführungszeit.
+- Zwei Flakes, ein Muster: beide ROT-Ergebnisse dieses Versuchs waren derselbe last-abhängige Test (F-658), kein Bezug zum F-518-Diff — beide über F-656 real und erfolgreich wiederholt, ohne dass ein Mensch eine neue Workflow-Fassung einreichen musste.
+- Selbstheilung real bewährt: F-655 machte beide ROT-Ergebnisse für den Menschen lesbar (insbesondere den zweiten, wo die echte Fehlerzeile sonst wieder im Rauschen verschwunden wäre), F-656 erlaubte beide Male eine echte Wiederholung ohne Fassungswechsel — genau der Ablauf, für den beide gebaut wurden, hier zum ersten Mal im echten Betrieb.
+- Neuer, real beobachteter Befund: F-659 (Abnahme-Begründung erreicht den zweiten Review nicht) — ein Mensch musste eine Maschinen-Verwechslung von Hand auflösen, die mit einer kleinen Erweiterung der Korrekturschleife vermeidbar wäre.
+- Tabelle:
+
+  | Schritt | Rolle | Worker | Modell | Dauer | Verbrauch (in/out/cache-read Tokens) |
+  |---|---|---|---|---|---|
+  | Router | router | codex | gpt-6-astra | 13,3 s | 21568 / 169 / 0 |
+  | 1 (Iter. 1) | ausfuehrung | claude-code | claude-sonnet-5 | 303,4 s | 84 / 30370 / 2580354 |
+  | Prüfung 1 (1. Durchgang, ROT) | — | — | — | 256,1 s | — |
+  | Prüfung 1 (Wiederholung, GRUEN) | — | — | — | 261,3 s | — |
+  | 2 (Iter. 1) | code-reviewer | codex | gpt-6-astra | 45,6 s | 231816 / 945 / 168192 |
+  | 1 (Iter. 2) | ausfuehrung | claude-code | claude-sonnet-5 | 238,4 s | 58 / 24702 / 1652999 |
+  | Prüfung 2 (1. Durchgang, ROT) | — | — | — | 288,6 s | — |
+  | Prüfung 2 (Wiederholung, GRUEN) | — | — | — | 291,5 s | — |
+  | 2 (Iter. 2) | code-reviewer | codex | gpt-6-astra | 63,8 s | 301811 / 1242 / 237440 |
+
+- Gesamteinschätzung: Die Kette hat sich selbst durch zwei reale Flakes UND einen echten inhaltlichen BLOCKIERT-Befund durchgearbeitet, ohne dass ein Mensch manuell in den Code eingreifen musste — die Korrekturschleife (F-648/F-649) und die neue Prüf-Wiederholung (F-655/F-656) haben in Kombination genau das geleistet, was F39 als Ziel hat. Die einzige verbliebene Reibung war menschlich lösbar, aber vermeidbar: eine Design-Entscheidung musste zweimal (in der Abnahme-Begründung UND mündlich/schriftlich beim zweiten Review) festgehalten werden, weil die Maschine sie nicht automatisch weiterreicht (F-659).
