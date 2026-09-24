@@ -28,6 +28,19 @@
  * baueVerbrauchsProjektion wirft NIE (F-603-Fix, Muster baueRoadmapProjektion,
  * scripts/leitstand/routen-roadmap.mjs) — ein Fehlerfall ist ein Fachergebnis
  * im Rückgabewert (`{ status: 'fehler', grund }`), kein 500.
+ *
+ * F-518-Fix: `von`/`bis` (falls gesetzt) müssen ein gültiges Datum sein —
+ * entweder ein Tagesdatum YYYY-MM-DD (reicht aus, da von/bis nur Tagesgrenzen
+ * filtern) oder ein voller ISO-8601-Zeitstempel wie `erstellt_am`
+ * (public/leitstand/verbrauch-zeitraum.js, der einzige heutige Aufrufer,
+ * übergibt exakt dieses Format — UI-Änderung ist laut Auftrag F-518 nicht im
+ * Scope, der Server muss also beide Formen akzeptieren). `von` darf zeitlich
+ * nicht nach `bis` liegen. Jeder Verstoß liefert `{ status: 'zeitraum_ungueltig',
+ * grund }` (eigener Status, Muster baueRoadmapProjektion: unterschiedliche
+ * Fachfehler bekommen unterschiedliche Status-Literale statt eines generischen
+ * 'fehler'). leitstand-server.mjs bildet genau diesen Status schmal auf HTTP
+ * 400 ab — ein IO-Fehler bleibt weiterhin `{ status: 'fehler', grund }` → HTTP
+ * 200 (F-603-Fix unverändert).
  */
 
 import { existsSync, readdirSync } from 'node:fs'
@@ -72,6 +85,37 @@ function imZeitraum(erstelltAm, von, bis) {
   return true
 }
 
+const TAGESDATUM_MUSTER = /^\d{4}-\d{2}-\d{2}$/
+const ZEITSTEMPEL_MUSTER = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/
+
+/** true, wenn wert ein Tagesdatum YYYY-MM-DD oder ein voller ISO-8601-Zeitstempel ist und ein tatsächlich existierendes Kalenderdatum bezeichnet (F-518) — Date.parse rollt z. B. '2026-02-30' stillschweigend auf März um, der ISO-Rückvergleich beim Tagesdatum fängt das ab. @param wert - zu prüfender Rohwert @returns true, wenn wert ein gültiges Datum ist */
+function istGueltigesDatum(wert) {
+  if (typeof wert !== 'string') return false
+  if (TAGESDATUM_MUSTER.test(wert)) {
+    const zeitstempel = Date.parse(`${wert}T00:00:00.000Z`)
+    if (Number.isNaN(zeitstempel)) return false
+    return new Date(zeitstempel).toISOString().slice(0, 10) === wert
+  }
+  if (ZEITSTEMPEL_MUSTER.test(wert)) {
+    return !Number.isNaN(Date.parse(wert))
+  }
+  return false
+}
+
+/** Prüft den optionalen Zeitraumfilter { von, bis } (F-518): beide, falls gesetzt, müssen ein gültiges Datum sein (YYYY-MM-DD oder voller ISO-8601-Zeitstempel, siehe Dateikopf), und von darf nicht nach bis liegen. @param von - untere Grenze, oder undefined @param bis - obere Grenze, oder undefined @returns { ok: true } | { ok: false, grund } */
+function pruefeZeitraum(von, bis) {
+  if (von !== undefined && !istGueltigesDatum(von)) {
+    return { ok: false, grund: `'von' ist kein gültiges Datum (YYYY-MM-DD oder ISO-8601-Zeitstempel): ${JSON.stringify(von)}` }
+  }
+  if (bis !== undefined && !istGueltigesDatum(bis)) {
+    return { ok: false, grund: `'bis' ist kein gültiges Datum (YYYY-MM-DD oder ISO-8601-Zeitstempel): ${JSON.stringify(bis)}` }
+  }
+  if (von !== undefined && bis !== undefined && von > bis) {
+    return { ok: false, grund: `'von' (${von}) liegt nach 'bis' (${bis})` }
+  }
+  return { ok: true }
+}
+
 const LEERE_SUMME = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, dauerMs: 0 }
 
 /**
@@ -88,12 +132,17 @@ const LEERE_SUMME = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cache
  * Dashboard-Ansicht einfrieren lässt. Der Fehler wird serverseitig geloggt
  * (nicht verschluckt).
  * @param basisVerzeichnis - Kontrollzustand-Wurzel des Projekts
- * @param zeitraum - optionaler Zeitraumfilter { von, bis } über erstellt_am (ISO-8601, je inklusiv)
- * @returns { status: 'ok', gruppen, laeufeGesamt, ohneBeobachtungGesamt } | { status: 'fehler', grund }
+ * @param zeitraum - optionaler Zeitraumfilter { von, bis } über erstellt_am (je YYYY-MM-DD oder ISO-8601-Zeitstempel, inklusiv)
+ * @returns { status: 'ok', gruppen, laeufeGesamt, ohneBeobachtungGesamt } | { status: 'zeitraum_ungueltig', grund } | { status: 'fehler', grund }
  */
 export function baueVerbrauchsProjektion(basisVerzeichnis, zeitraum = {}) {
+  const { von, bis } = zeitraum
+  const zeitraumPruefung = pruefeZeitraum(von, bis)
+  if (!zeitraumPruefung.ok) {
+    return { status: 'zeitraum_ungueltig', grund: zeitraumPruefung.grund }
+  }
+
   try {
-    const { von, bis } = zeitraum
     const gruppenNachSchluessel = new Map()
     let laeufeGesamt = 0
     let ohneBeobachtungGesamt = 0

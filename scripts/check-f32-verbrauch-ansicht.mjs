@@ -17,6 +17,15 @@
  *     die Funktion fängt das ab und liefert { status: 'fehler', grund }.
  * (d) Derselbe Rot-Fall über einen echten HTTP-Aufruf: die Route liefert
  *     weiterhin 200 (kein 500) mit demselben Fachergebnis im Körper.
+ * (e) F-518, grün: gültiges von/bis (YYYY-MM-DD, von <= bis) sowie gar kein
+ *     von/bis liefern weiterhin { status: 'ok', ... }.
+ * (f) F-518, Rot-Fall Format: ein von ODER bis, das kein gültiges Datum ist
+ *     (falsches Muster, nicht-existierendes Kalenderdatum), liefert
+ *     { status: 'zeitraum_ungueltig', grund } statt eines leeren Ergebnisses.
+ * (g) F-518, Rot-Fall Reihenfolge: von > bis liefert ebenfalls
+ *     { status: 'zeitraum_ungueltig', grund }.
+ * (h) F-518, echter HTTP-Aufruf: dieselben Rot-Fälle (f)/(g) liefern über
+ *     GET /api/verbrauch HTTP 400 (Grund im Körper) statt 200.
  *
  * Aufruf: node scripts/check-f32-verbrauch-ansicht.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -131,6 +140,92 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
   } finally {
     await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(dateiAlsBasisVerzeichnis)
+  }
+}
+
+// ─── (e) F-518, grün: gültiges von/bis und gar kein von/bis bleiben gültig ──
+{
+  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-gruen-${randomUUID()}`
+  const gueltig = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-01-01', bis: '2026-12-31' })
+  if (gueltig.status !== 'ok') {
+    befunde.push(`(e) gültiges von/bis (YYYY-MM-DD): erwartet { status: 'ok' }, erhalten ${JSON.stringify(gueltig)}`)
+  } else {
+    console.log("✓ (e) gültiges von/bis (YYYY-MM-DD, von <= bis) → { status: 'ok' }.")
+  }
+
+  const ohneZeitraum = baueVerbrauchsProjektion(basisVerzeichnis)
+  if (ohneZeitraum.status !== 'ok') {
+    befunde.push(`(e) kein von/bis: erwartet { status: 'ok' }, erhalten ${JSON.stringify(ohneZeitraum)}`)
+  } else {
+    console.log("✓ (e) kein von/bis (beide optional) → weiterhin { status: 'ok' }.")
+  }
+}
+
+// ─── (f) F-518, Rot-Fall Format: ungültiges von/bis ─────────────────────────
+{
+  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-format-${randomUUID()}`
+  const ungueltigesVon = baueVerbrauchsProjektion(basisVerzeichnis, { von: 'nicht-datum', bis: '2026-12-31' })
+  if (ungueltigesVon.status !== 'zeitraum_ungueltig' || typeof ungueltigesVon.grund !== 'string' || ungueltigesVon.grund.length === 0) {
+    befunde.push(`(f) ungültiges 'von' ('nicht-datum'): erwartet { status: 'zeitraum_ungueltig', grund }, erhalten ${JSON.stringify(ungueltigesVon)}`)
+  } else {
+    console.log(`✓ (f) ungültiges 'von' ('nicht-datum') → { status: 'zeitraum_ungueltig', grund: '${ungueltigesVon.grund}' }.`)
+  }
+
+  const nichtExistierendesDatum = baueVerbrauchsProjektion(basisVerzeichnis, { bis: '2026-02-30' })
+  if (nichtExistierendesDatum.status !== 'zeitraum_ungueltig') {
+    befunde.push(`(f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis): erwartet { status: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(nichtExistierendesDatum)}`)
+  } else {
+    console.log("✓ (f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis) → { status: 'zeitraum_ungueltig' }.")
+  }
+}
+
+// ─── (g) F-518, Rot-Fall Reihenfolge: von > bis ─────────────────────────────
+{
+  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-reihenfolge-${randomUUID()}`
+  const vertauscht = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-12-31', bis: '2026-01-01' })
+  if (vertauscht.status !== 'zeitraum_ungueltig' || typeof vertauscht.grund !== 'string' || vertauscht.grund.length === 0) {
+    befunde.push(`(g) von > bis: erwartet { status: 'zeitraum_ungueltig', grund }, erhalten ${JSON.stringify(vertauscht)}`)
+  } else {
+    console.log(`✓ (g) von (2026-12-31) > bis (2026-01-01) → { status: 'zeitraum_ungueltig', grund: '${vertauscht.grund}' }.`)
+  }
+}
+
+// ─── (h) F-518, echter HTTP-Aufruf: Rot-Fälle liefern 400 ──────────────────
+{
+  const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-http-${randomUUID()}`
+  const globalerLaufZustand = { aktiv: false, laufId: null, abortController: null }
+  const handler = erzeugeRequestHandler({ basisVerzeichnis, startvorlagePfad: 'startvorlagen/beispielprojekt.json', globalerLaufZustand })
+  const server = createServer(handler)
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const { port } = server.address()
+
+    const formatAntwort = await fetch(`http://127.0.0.1:${port}/api/verbrauch?von=nicht-datum`)
+    if (formatAntwort.status !== 400) {
+      befunde.push(`(h) GET /api/verbrauch?von=nicht-datum: erwartet 400, erhalten ${formatAntwort.status}`)
+    } else {
+      const koerper = await formatAntwort.json()
+      if (typeof koerper.grund !== 'string' || koerper.grund.length === 0) {
+        befunde.push(`(h) GET /api/verbrauch?von=nicht-datum: erwartet Grund im Körper, erhalten ${JSON.stringify(koerper)}`)
+      } else {
+        console.log(`✓ (h) GET /api/verbrauch?von=nicht-datum → 400, Grund: '${koerper.grund}'.`)
+      }
+    }
+
+    const reihenfolgeAntwort = await fetch(`http://127.0.0.1:${port}/api/verbrauch?von=2026-12-31&bis=2026-01-01`)
+    if (reihenfolgeAntwort.status !== 400) {
+      befunde.push(`(h) GET /api/verbrauch?von=2026-12-31&bis=2026-01-01: erwartet 400, erhalten ${reihenfolgeAntwort.status}`)
+    } else {
+      const koerper = await reihenfolgeAntwort.json()
+      if (typeof koerper.grund !== 'string' || koerper.grund.length === 0) {
+        befunde.push(`(h) GET /api/verbrauch?von=2026-12-31&bis=2026-01-01: erwartet Grund im Körper, erhalten ${JSON.stringify(koerper)}`)
+      } else {
+        console.log(`✓ (h) GET /api/verbrauch?von=2026-12-31&bis=2026-01-01 (vertauscht) → 400, Grund: '${koerper.grund}'.`)
+      }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
   }
 }
 
