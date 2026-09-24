@@ -20,7 +20,7 @@ export interface PruefergebnisV0Daten {
   exit_code: number | null
   ergebnis: PruefergebnisWert
   dauer_ms: number
-  /** Letzte Bytes aus stdout+stderr (kuerzeAusgabeEnde, AUSGABE_ENDE_MAX_BYTES), nie der volle Text. */
+  /** Stdout- und stderr-Ende, GETRENNT gekürzt und zusammengesetzt (baueAusgabeEnde, F-655) — stdout am Stringende (primär, STDOUT_ENDE_MAX_BYTES), stderr gefiltert davor (STDERR_ENDE_MAX_BYTES), nie der volle Text. */
   ausgabe_ende: string
   gestartet_am: string
 }

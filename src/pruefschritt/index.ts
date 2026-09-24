@@ -41,6 +41,11 @@
  * Wird aufgerufen von: scripts/leitstand-server.mjs (nach einem real
  * ERFOLGREICH/ABGESCHLOSSEN beendeten Lauf mit schreibendem Werkzeugsatz,
  * nur wenn die geladene Startvorlage einen pruefbefehl trägt).
+ *
+ * ausgabe_ende (F-655, real beobachtet in Lauf 9397a9dd, F39 Versuch 4): stdout und stderr werden
+ * über baueAusgabeEnde GETRENNT gekürzt (STDOUT_ENDE_MAX_BYTES/STDERR_ENDE_MAX_BYTES) statt wie
+ * zuvor gemeinsam auf 16 KB — sonst kann stderr-Rauschen (z. B. erwartete Fehlerpfad-Logs aus
+ * Testfixtures) die stdout-Fehlerzeile vollständig aus dem gespeicherten Ende verdrängen.
  */
 
 import { starteProzess } from '../claude-code-gateway/prozessstart.ts'
@@ -111,11 +116,57 @@ export function validierePruefergebnisDaten(daten: unknown): string[] {
 /** Kappungsgrenze für 'ausgabe_ende' — 16 KB reichen für die typische Fehlerausgabe eines gescheiterten `npm run check` (Lint-/Typecheck-/Testfehler stehen meist am ENDE der Ausgabe) und bleiben klein genug, um den Kontext eines nachfolgenden Review-Schritts nicht zu sprengen (Muster AENDERUNGSUEBERSICHT STANDARD_MAX_BYTES, hier ein fester Wert statt eines Startvorlagen-Felds — F-652-Bauauftrag Punkt 2 nennt ausdrücklich "16 KB, N begründet"). */
 export const AUSGABE_ENDE_MAX_BYTES = 16_000
 
+/** Kappungsgrenze für den stdout-Anteil von 'ausgabe_ende' (F-655) — der größere der beiden Teile, weil die gesuchte Fehlerzeile bei den hier verwendeten Werkzeugen (Biome, tsc, node:test) auf stdout steht, nie auf stderr. */
+export const STDOUT_ENDE_MAX_BYTES = 12_000
+
+/** Kappungsgrenze für den stderr-Anteil von 'ausgabe_ende' (F-655) — klein gehalten, weil stderr bei `npm run check` überwiegend bekanntes Rauschen ist (erwartete Fehlerpfad-Logs aus Testfixtures wie F32-(d)/F-654-(i), Git-CRLF-Warnungen), kein Diagnosetext. STDOUT_ENDE_MAX_BYTES + STDERR_ENDE_MAX_BYTES bleibt in Summe bei AUSGABE_ENDE_MAX_BYTES. */
+export const STDERR_ENDE_MAX_BYTES = 4_000
+
+/**
+ * Bekannte, harmlose stderr-Zeilen, VOR dem Kürzen entfernt (F-655) — bewusst eng gehalten auf
+ * ein einziges, eindeutiges Muster: Git-Zeilenenden-Warnungen sind reines Windows-Rauschen
+ * (core.autocrlf, siehe CLAUDE.md "Bekannte Fallen"), stehen bei einem stderr-lastigen
+ * `npm run check` oft dutzendfach hintereinander und verdrängen dadurch das kleine
+ * STDERR_ENDE_MAX_BYTES-Fenster vollständig, ohne selbst je Teil einer echten Fehlermeldung zu
+ * sein. Weitere Muster erst nach zweifacher realer Beobachtung ergänzen (Muster CLAUDE.md
+ * "Bekannte Fallen").
+ */
+const STDERR_RAUSCH_MUSTER: readonly RegExp[] = [/^warning: in the working copy of '.*', LF will be replaced by CRLF the next time Git touches it\r?$/]
+
+/** Entfernt aus 'text' jede Zeile, die auf STDERR_RAUSCH_MUSTER passt (F-655) — leerer Text bleibt leer. */
+export function filtereStderrRauschen(text: string): string {
+  if (text.length === 0) return text
+  return text
+    .split('\n')
+    .filter((zeile) => !STDERR_RAUSCH_MUSTER.some((muster) => muster.test(zeile)))
+    .join('\n')
+}
+
 /** Schneidet 'text' auf die letzten 'maxBytes' Bytes (UTF-8-sicher über Buffer, Muster erzeugeAenderungsuebersichtDaten' Patch-Kürzung) — leer/kürzer bleibt unverändert. */
 export function kuerzeAusgabeEnde(text: string, maxBytes: number = AUSGABE_ENDE_MAX_BYTES): string {
   const puffer = Buffer.from(text, 'utf8')
   if (puffer.length <= maxBytes) return text
   return puffer.subarray(puffer.length - maxBytes).toString('utf8')
+}
+
+/**
+ * Baut 'ausgabe_ende' aus stdout und stderr GETRENNT gekürzt zusammen (F-655, löst den in Lauf
+ * 9397a9dd real beobachteten Verlust der stdout-Fehlerzeile). Der bisherige gemeinsame Text
+ * (stdout+stderr) wurde als GANZES auf 16 KB gekürzt — bei viel stderr-Rauschen (erwartete
+ * Fehlerpfad-Logs aus Testfixtures) blieb von stdout nichts mehr übrig. Jetzt wird stderr zuerst
+ * gefiltert (filtereStderrRauschen) und eigenständig auf STDERR_ENDE_MAX_BYTES gekürzt, stdout
+ * eigenständig auf STDOUT_ENDE_MAX_BYTES — stdout kann stderr dadurch nie mehr verdrängen.
+ * Reihenfolge im Text bewusst stderr-dann-stdout (stdout am STRING-ENDE): 'ausgabe_ende' bleibt
+ * dadurch ein einzelner String (kein Schema-Bruch, alle bestehenden Leser — Regel 1f/
+ * leitstand-server.mjs letzteZeilen(daten.ausgabe_ende, 40), erzeuge-nachweis.mjs — funktionieren
+ * unverändert weiter), und letzteZeilen(ausgabe_ende, n) liefert automatisch primär das
+ * stdout-Ende, stderr nur als knapper, vorangestellter Abschnitt davor.
+ */
+export function baueAusgabeEnde(stdout: string, stderr: string): string {
+  const stdoutGekuerzt = kuerzeAusgabeEnde(stdout, STDOUT_ENDE_MAX_BYTES)
+  const stderrGekuerzt = kuerzeAusgabeEnde(filtereStderrRauschen(stderr), STDERR_ENDE_MAX_BYTES)
+  if (stderrGekuerzt.length === 0) return stdoutGekuerzt
+  return `--- stderr (gekürzt, gefiltert) ---\n${stderrGekuerzt}\n--- stdout (gekürzt) ---\n${stdoutGekuerzt}`
 }
 
 /** Liefert die letzten 'n' Zeilen von 'text' — für den kurzen Halt-Grund-Text in ermittleNaechstenSchritt Regel 1f (Bauauftrag Punkt 5: "die letzten ~40 Zeilen der Ausgabe"), unabhängig von der separat gekappten 'ausgabe_ende' des Artefakts selbst. */
@@ -177,7 +228,6 @@ export async function fuehrePruefungDurch(laufId: string, befehl: string[], cwd:
       zeitgrenzeMs,
       umgebungsvariablenVollstaendig: entferneLeitstandUmgebungsvariablen(),
     })
-    const ausgabeRoh = ergebnis.stderr.length > 0 ? `${ergebnis.stdout}\n--- stderr ---\n${ergebnis.stderr}` : ergebnis.stdout
     return {
       pruefergebnis_schema: 'v0',
       lauf_id: laufId,
@@ -185,7 +235,7 @@ export async function fuehrePruefungDurch(laufId: string, befehl: string[], cwd:
       exit_code: ergebnis.exitCode,
       ergebnis: klassifizierePruefergebnis(ergebnis),
       dauer_ms: Date.now() - start,
-      ausgabe_ende: kuerzeAusgabeEnde(ausgabeRoh),
+      ausgabe_ende: baueAusgabeEnde(ergebnis.stdout, ergebnis.stderr),
       gestartet_am: gestartetAm,
     }
   } catch (fehler) {

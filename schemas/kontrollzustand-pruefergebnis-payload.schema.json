@@ -25,7 +25,7 @@
       "description": "GRUEN (exit_code 0) ist der einzige Wert, der den Workflow nach dem Ausführungsschritt automatisch zum Review-Schritt fortsetzt (src/workflow/index.ts Regel 1f)."
     },
     "dauer_ms": { "type": "integer", "minimum": 0 },
-    "ausgabe_ende": { "type": "string", "description": "Letzte Bytes aus stdout+stderr (kuerzeAusgabeEnde, AUSGABE_ENDE_MAX_BYTES), nie der volle Text." },
+    "ausgabe_ende": { "type": "string", "description": "Stdout- und stderr-Ende, getrennt gekürzt und zusammengesetzt (baueAusgabeEnde, F-655) — stdout am Stringende (primär), stderr gefiltert davor, nie der volle Text." },
     "gestartet_am": { "type": "string", "minLength": 1 }
   }
 }
