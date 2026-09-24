@@ -10,12 +10,50 @@ Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate, WS-1; hoch-Kette
 
 ## Status
 
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
 WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,
 BLOCKIERT, ABGEBROCHEN`.
+
+Feature-Review-Pass über das Gesamtfeature (WS-1 bis WS-3a plus die
+Fixpakete F-652/F-654/F-655/F-656/F-658/F-659, main bis `17a41d6`/#239) am
+24.09.2026 — code-reviewer + qa, frischer Kontext, gesamter
+Commit-Umfang über `git log`/`git diff` selbst ermittelt. **Beide Urteile:
+FREIGEGEBEN MIT HINWEISEN, keine P0/P1-Blocker.** qa: alle 17 AKs
+(AK1–AK17) mit konkretem Beleg (Test/Gate-Abschnitt/Render-Nachweis)
+unterlegt, keine echte Lücke. code-reviewer: Rollenvertrag, Schema-Dialekt,
+hoch-Kette, Router-Untergrenze, Regel 1c/1f, Prüfschritt-Fail-closed,
+Prüfung-wiederholen-Erkennung, selbstgebauter Code (F-631/F-518) real
+geprüft, keine Nachsicht — solide. Restfindings F-660 (P3,
+PROCESS_IMPROVEMENT, Lagebild-Prozesspunkt), F-661 (P2, TECH_DEBT,
+Prompt-Injection-Fläche der Abnahme-Begründung in
+`baueReviewKorrekturInstruktion`), F-662 (P2, TECH_DEBT, Regel 1f in der
+`hoch`-Kette nur konfiguriert, nicht real getestet), F-663 (P3,
+PROCESS_IMPROVEMENT, veraltete Glossar-Fundstelle), F-665 (P2,
+PROCESS_IMPROVEMENT, dieser Feature-Review-Pass hatte die `hoch`-Lücke
+selbst als Nicht-Blocker vorgegeben statt unabhängig bewerten zu lassen)
+und F-666 (P1, TECH_DEBT, vollständiger realer `hoch`-Lauf fehlt, jetzt
+Pflicht-AK der F41-Abnahme, E-F39-2 = A) bleiben
+offen (`state/findings.md`). Bekannt und ausdrücklich kein Blocker: F-641
+real nicht gelaufen. WS-3b ist **teilweise real erbracht** (Korrektur nach
+Stefans Entscheidung E-F39-2 = A, 24.09.2026 — die vorherige Fassung dieses
+Absatzes hatte das als „kein Blocker, eigener künftiger Auftrag"
+unterzeichnet, siehe F-665): die `standard`-Kette (ohne `architekt`) ist
+über die Versuche 3/3b/3c/4 vollständig real belegt, inklusive
+Korrekturschleife und Selbstheilung (Versuch 4, F-518, ANGENOMMEN). Die
+`hoch`-Kette (mit `architekt`) ist real nur bis einschließlich `ausfuehrung`
+belegt (Versuch 2, 23.09.2026, Projektmodus) — `architecture-advisor` lief
+ERFOLGREICH, aber OHNE Urteil (F-641), `code-reviewer` schlug technisch fehl
+(F-642, `ENAMETOOLONG`), Regel 1c wurde in keinem Versuch real ausgelöst
+(kein Lauf lieferte eine offene Frage in `entscheidungen_mensch[]`). Ein
+vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, Review, Regel 1c) ist
+offen und wird **Pflicht-AK der F41-Abnahme** (F-666, E-F39-2 = A) —
+NICHT mehr „eigener, künftiger Auftrag ohne Zeitpunkt". Details:
+`features/F39/nachweis-ws3-reallauf-messung.md` Abschnitt „Versuch 2".
+Render-Nachweis (F-622) für `nachweis-e-f39-1-ui/`, `nachweis-f652-ui/`,
+`nachweis-ws2b-ui/` erneut grün gelaufen (24.09.2026).
 
 ## Ziel
 
@@ -195,10 +233,18 @@ und E-M5-13 (22.09.2026 — F39 vor F35 gezogen, zusätzlicher Projektmodus
   festhält, dass der bestehende Nachweis-Auftrag
   `1b3412a8-88be-45e0-b97d-46e6cc5ba396` (F34 WS-3, F-618-Kollision mit F41)
   niemals geroutet/gestartet werden darf.
-- **WS-3b — Realer Durchlauf (nicht in diesem Auftrag).** Führt
-  `features/F39/nachweis-ws3-reallauf.md` real gegen den Leitstand aus,
-  reale ADR-/Schema-/Akte-Erzeugung, echter `hoch`-Durchlauf mit einem
-  neuen Projekt-Interview-Auftrag.
+- **WS-3b — Realer Durchlauf (teilweise real erbracht, Korrektur
+  24.09.2026, E-F39-2 = A — siehe „Status" oben und F-665/F-666).** Die
+  `standard`-Kette (ohne `architekt`) ist über die Versuche 3/3b/3c/4
+  vollständig real belegt (inkl. Korrekturschleife/Selbstheilung, Versuch
+  4, F-518, ANGENOMMEN). Die `hoch`-Kette ist real nur bis `ausfuehrung`
+  belegt (Versuch 2, 23.09.2026, Projektmodus — `architekt`
+  ERFOLGREICH, `architecture-advisor` ERFOLGREICH ohne Urteil/F-641,
+  `code-reviewer` FEHLGESCHLAGEN/F-642, Regel 1c nie ausgelöst). Ein
+  vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, Review, Regel 1c)
+  fehlt weiterhin und ist jetzt **Pflicht-AK der F41-Abnahme** (F-666)
+  statt eines unbestimmt vertagten eigenen Auftrags. Details:
+  `features/F39/nachweis-ws3-reallauf-messung.md`, Abschnitt „Versuch 2".
 
 Projektmodus ist ein Workflow-Schritt, kein eigener Chat (anders als
 `product-coach`s Sparring — `architekt` läuft als Schritt einer
@@ -571,6 +617,35 @@ unten.
   Kontrolltiefe für `herkunft.art === 'projekt_interview'` deterministisch
   auf mindestens `hoch` an (AK9) — kein Titel-Präfix-Raten mehr nötig.
   Siehe Bestandsaufnahme Frage 2 oben.
+- **F-660** (`PROCESS_IMPROVEMENT`, P3) — **offen**, aus dem
+  Feature-Review-Pass 24.09.2026: Lagebild-Neuerzeugung nach einer
+  findings.md-Änderung ist nicht automatisiert/erzwungen.
+- **F-661** (`TECH_DEBT`, P2) — **offen**, aus dem Feature-Review-Pass
+  24.09.2026: Prompt-Injection-Fläche der Abnahme-Begründung in
+  `baueReviewKorrekturInstruktion` (F-659) — im Ein-Nutzer-Modell
+  hingenommen, vor einer Mehrnutzer-Erweiterung zu härten.
+- **F-662** (`TECH_DEBT`, P2) — **offen**, aus dem Feature-Review-Pass
+  24.09.2026: Regel 1f in der `hoch`-Kette (Schritt nach
+  architekt/architecture-advisor) nur durch Konfiguration belegt, kein
+  echter Test/Reallauf-Nachweis für genau diese Position.
+- **F-663** (`PROCESS_IMPROVEMENT`, P3) — **offen**: veraltete Fundstelle
+  in `docs/harness/HARNESS-GLOSSARY.md` (`schritt-1-architektur` statt
+  `schritt-2-architektur`).
+- **F-664** (`PROCESS_IMPROVEMENT`, P3) — **behoben**: `journal.md` letzter
+  Eintrag war veraltet ggü. Repo-Realität (`nachweis-f656-ui/`-Render-
+  Nachweis war bereits vorhanden) — Nachtrag in `journal.md` ergänzt
+  (24.09.2026).
+- **F-665** (`PROCESS_IMPROVEMENT`, P2) — **offen**, Korrektur 24.09.2026
+  (E-F39-2 = A): der Feature-Review-Pass hatte die `hoch`-Lücke bereits im
+  Review-Auftrag als „kein Blocker" vorgegeben, statt code-reviewer/qa
+  unabhängig bewerten zu lassen — `feature.md`/`STATUS.md` überzeichneten
+  WS-3b dadurch als erledigt. Siehe „Status" oben.
+- **F-666** (`TECH_DEBT`, P1) — **offen**: ein vollständiger realer
+  `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c
+  real ausgelöst) wurde nie belegt — Versuch 2 deckt nur
+  architekt→architecture-advisor→ausfuehrung ab. **Pflicht-AK der
+  F41-Abnahme** (E-F39-2 = A). Siehe
+  `features/F39/nachweis-ws3-reallauf-messung.md`, Abschnitt „Versuch 2".
 
 ## Dependencies
 

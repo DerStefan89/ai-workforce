@@ -1,9 +1,16 @@
 # F39 WS-3b — Messvorlage für den realen Reallauf
 
-**Dies ist eine leere Vorlage** für den vollständigen Durchlauf (Schritte
-1-9). Versuch 1 unten ist bereits real gelaufen und dokumentiert einen
-Abbruch bei Schritt 5 (Architekt) durch F-638 — Versuch 2 (nach dem F-638-
-Fix) füllt die Felder darunter.
+**Korrektur 24.09.2026 (E-F39-2 = A):** Versuch 2 unten (nach dem F-638-Fix)
+lief real bis einschließlich `ausfuehrung` — die `hoch`-Kette ist damit
+NICHT vollständig real belegt (Advisor ohne Urteil/F-641, Review
+fehlgeschlagen/F-642, Regel 1c nie ausgelöst). Die leere Vorlage in den
+Abschnitten „Schritt 1" bis „Schritt 9" unten wurde deshalb NICHT
+rückwirkend mit Versuch-2-Werten befüllt, sondern bleibt bewusst leer
+stehen — als Vorlage für den noch ausstehenden **vollständigen** realen
+`hoch`-Lauf, der jetzt Pflicht-AK der F41-Abnahme ist (F-666). Versuch 1
+unten dokumentiert einen Abbruch bei Schritt 5 (Architekt) durch F-638;
+Versuch 2 (eigener Abschnitt unten, vor „Schritt 1") dokumentiert den
+tatsächlichen Verlauf nach dem Fix.
 
 ## Versuch 1 — 23.09.2026, gescheitert bei Schritt 5 (Architekt, F-638)
 
@@ -80,6 +87,52 @@ Der bestehende Nachweis-Auftrag darf niemals geroutet/gestartet werden:
 ```
 Erweiterung: POST /api/sparring/<laufId>/auftrag (verknuepfeSparringAuftrag) soll vor dem Speichern des Rückverweises prüfen, dass laufId ein existierender Sparring-Lauf und auftragId ein existierender Auftrag ist. Unbekannte IDs werden mit einem klaren Fehler abgelehnt, statt den Verweis zu speichern. Heute wird nur die Form von auftragId geprüft (F-631). Mit Tests für beide Fehlerfälle.
 ```
+
+## Versuch 2 — 23.09.2026, hoch/Projektmodus (real gelaufen bis `ausfuehrung`, `hoch`-Kette NICHT vollständig belegt)
+
+**Korrektur 24.09.2026 (E-F39-2 = A):** Dieser Versuch wurde bei der
+Feature-Review-Abnahme des Gesamtfeatures zunächst so dargestellt, als sei
+er lediglich „bekannt und kein Blocker" — tatsächlich ist er der EINZIGE
+reale Beleg für die `hoch`-Kette überhaupt, und er deckt nur die ersten
+drei von vier Schritten ab. Die Schritte 1-9 der Vorlage unten sind bewusst
+NICHT mit diesen Werten befüllt (siehe Hinweis am Dateianfang) — dieser
+Abschnitt hält stattdessen die real bekannten Eckdaten fest, als Grundlage
+für die F41-Pflicht-AK (F-666).
+
+- **Schritt `architekt`** — Worker `codex`/Modell `gpt-6-astra`. Ergebnis:
+  **ERFOLGREICH**, Schema valide (`validiereErgebnisArchitektur` ohne
+  Verstoß). `adr_entwuerfe[]`: 1 Eintrag. `entscheidungen_mensch[]`: 0
+  Einträge (leer). Dauer: 63,9 s.
+- **Schritt `architecture-advisor`** — Worker `claude-code`/Modell
+  `claude-sonnet-5`. Ergebnis: **ERFOLGREICH, aber OHNE Urteil** (F-641,
+  weiterhin offen — der Advisor lieferte kein für Regel 1d auswertbares
+  Urteilsfeld).
+- **Regel 1c** (Architektur-Entscheidung, `entscheidungen_mensch[]` →
+  `haltKlaerung`): **real NICHT ausgelöst** — `entscheidungen_mensch[]` war
+  leer (0 Einträge), es gab in diesem Versuch strukturell nichts zu
+  entscheiden. Der Fortsetzungsweg `POST /api/workflows/<id>/entscheidung`
+  (AK10-AK13) wurde dadurch bislang in KEINEM Versuch real durchlaufen.
+- **Schritt `ausfuehrung`** — Worker `claude-code`/Modell `claude-sonnet-5`.
+  Ergebnis: **ERFOLGREICH**, aber nur Dokumentation (ADR real angelegt,
+  Feature-Akte `F42`, Roadmap-Eintrag) — kein produktiver Quellcode in
+  diesem Versuch. Dauer: 105,7 s, Kosten: $0,74. **Schrieb dabei
+  ungeschützt direkt auf `main`** (kein sauberer Arbeitsbaum/Branch-Schutz
+  vor dem Schreibvorgang) — real beobachteter Befund, löste F-643 aus
+  (behoben über die Ausführungs-Vorbedingung E-F39-1 = B, #233).
+- **Schritt `code-reviewer`** — Worker `codex`/Modell `gpt-6-astra`.
+  Ergebnis: **FEHLGESCHLAGEN** — Prozessstart scheiterte technisch
+  (`spawn ENAMETOOLONG`, Argv-Längengrenze überschritten), kein
+  `urteil` erreicht. Löste F-642 aus (behoben: Codex-Prompt per stdin statt
+  Argv, #232 — nach diesem Versuch gefixt, in Versuch 2 selbst noch nicht
+  wirksam).
+
+**Fazit Versuch 2:** Die `hoch`-Kette ist damit real nur bis einschließlich
+`ausfuehrung` belegt — Advisor MIT auswertbarem Urteil, ein vollständiger
+`code-reviewer`-Durchlauf und ein real ausgelöster Regel-1c-Halt
+(Architektur-Entscheidung) fehlen weiterhin. Kein weiterer `hoch`-Versuch
+seit dem 23.09.2026 — die Versuche 3/3b/3c/4 liefen alle über die
+`standard`-Kette (Feature-Modus, ohne `architekt`). Siehe F-665 (Korrektur
+der vorherigen Überzeichnung) und F-666 (Pflicht-AK F41).
 
 ## Schritt 1 — Sparring-Interview
 
