@@ -129,3 +129,4 @@ feature.md`) (Stand 22.09.2026).
 - F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
 - F-648 · BUG · Die Korrekturschleife nach „Anpassung anfordern" trägt weder die Abnahme-Begründung noch die vorherigen Review-Befunde erkennbar in die Instruktion der neuen Iteration — Ausführung und Review wiederholen sich dadurch blind.
 - F-666 · TECH_DEBT · Ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c real ausgelöst) wurde nie belegt — Pflicht-AK der F41-Abnahme (E-F39-2 = A).
+- F-675 · TECH_DEBT · Die Coach-Struktur geht im Auftrag in Freitext über — Ausführung und Review arbeiten nicht verpflichtend gegen die Akzeptanzkriterien.
