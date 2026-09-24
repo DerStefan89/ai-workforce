@@ -45,7 +45,7 @@ Feature-Review-Pass über das Gesamtfeature am 23.09.2026 „Freigegeben mit
 Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
 (P3) bleiben offen, `npm run render-nachweis` erneut grün
 (F-622-Regel), siehe `features/F34/feature.md`; **Abnahme durch Stefan am
-23.09.2026** im F39-WS-1-Auftrag), F39 `FEATURE_GATE` (WS-1 — Rolle
+23.09.2026** im F39-WS-1-Auftrag), F39 `ABGESCHLOSSEN` (WS-1 — Rolle
 `architekt`, Schema, Validator, Gate — gebaut 23.09.2026; WS-2a —
 `hoch.json`-Kette (`architekt` vor `architecture-advisor`), Herkunftsfeld,
 `ergebnis-@`-Eingabe-Platzhalter, deterministische Kontrolltiefe-
@@ -72,8 +72,9 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 über Versuche 3/3b/3c/4 vollständig belegt, `hoch`-Kette nur bis
 `ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
-Auftrag mehr, siehe `features/F39/feature.md`), F35–F38 noch nicht
-begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
+Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
+`features/F39/feature.md`), F35–F38 noch nicht
+begonnen, F41 direkt nach F39 gezogen (E-M5-14, Challenge läuft), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
@@ -525,7 +526,7 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 - ✅ **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
   20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage" — Stack-ADR,
   Modulschnitt, Datenmodell als Schemas, E-M5-13). Akte
-  `features/F39/feature.md`, Status `FEATURE_GATE`. WS-1 (Rolle `architekt` in
+  `features/F39/feature.md`, Status `ABGESCHLOSSEN`. WS-1 (Rolle `architekt` in
   `src/rollen/index.ts`, `schemas/ergebnis-architektur.schema.json` +
   Beispiele, Validator `src/architekt/`, Gate
   `scripts/check-f39-architekt.mjs`, in `npm run check` eingehängt) gebaut
@@ -563,9 +564,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Regel 1c nie ausgelöst). Ein vollständiger realer `hoch`-Lauf (Advisor MIT
   Urteil, Review, Regel 1c) ist jetzt **Pflicht-AK der F41-Abnahme** (F-666,
   P1). Details `features/F39/nachweis-ws3-reallauf-messung.md`, Abschnitt
-  „Versuch 2". Vor F35 gezogen (E-M5-13), direkt nach F34.
-- ⏳ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Noch nicht begonnen;
-  direkt nach F39 gezogen (statt erst in F30).
+  „Versuch 2". **Abnahme durch Stefan am 24.09.2026** — Restfindings
+  F-660–F-663, F-665, F-666 bleiben offen (F-666 Pflicht-AK F41, F-664
+  bereits behoben). Vor F35 gezogen (E-M5-13), direkt nach F34.
+- 🚧 **F41** — Neues Projekt anlegen (F-523, E-M5-14). Nächstes Feature
+  nach F39 (`ABGESCHLOSSEN`, 24.09.2026) — Challenge läuft; direkt nach
+  F39 gezogen (statt erst in F30). F-666 (vollständiger realer `hoch`-Lauf)
+  ist Pflicht-AK der F41-Abnahme (E-F39-2 = A).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1

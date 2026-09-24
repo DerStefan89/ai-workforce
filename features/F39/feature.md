@@ -10,12 +10,16 @@ Architektur-Rolle „architekt" (Rollenvertrag + Schema + Gate, WS-1; hoch-Kette
 
 ## Status
 
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
 
 Gültige Status-Werte (geprüft vom Gate, siehe A3a–e in
 `features/AF-F001/feature.md`): `ENTWURF, READY_FOR_TECH,
 WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN,
 BLOCKIERT, ABGEBROCHEN`.
+
+**Abnahme durch Stefan am 24.09.2026.** Restfindings F-660–F-663, F-665
+und F-666 bleiben offen (`state/findings.md`) — F-666 ist Pflicht-AK der
+F41-Abnahme (E-F39-2 = A). F-664 ist bereits behoben.
 
 Feature-Review-Pass über das Gesamtfeature (WS-1 bis WS-3a plus die
 Fixpakete F-652/F-654/F-655/F-656/F-658/F-659, main bis `17a41d6`/#239) am
