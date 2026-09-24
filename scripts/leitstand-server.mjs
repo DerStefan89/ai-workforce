@@ -4640,14 +4640,25 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
 
     // F32 WS-1: reine Projektion, keine weitere Logik hier (D5) — siehe
-    // scripts/leitstand/routen-verbrauch.mjs. ?von=/?bis= (ISO-8601) filtern
-    // über erstellt_am, beide optional. F-603-Fix: baueVerbrauchsProjektion
-    // wirft nie mehr (Muster baueRoadmapProjektion) — liefert immer 200,
-    // Fehlerfall ist ein Fachergebnis im Körper ({ status: 'fehler', grund }).
+    // scripts/leitstand/routen-verbrauch.mjs. ?von=/?bis= (YYYY-MM-DD oder
+    // voller ISO-8601-Zeitstempel) filtern über erstellt_am, beide optional.
+    // F-603-Fix: baueVerbrauchsProjektion
+    // wirft nie mehr (Muster baueRoadmapProjektion) — ein IO-Fehler bleibt ein
+    // Fachergebnis im Körper ({ status: 'fehler', grund }) → weiterhin 200.
+    // F-518-Fix: ein ungültiges/vertauschtes von/bis ist dagegen ein
+    // Eingabefehler ({ status: 'fehler', grund, code: 'zeitraum_ungueltig' })
+    // → 400, schmale if-Abfrage, keine zweite Formatprüfung hier (D5). Das
+    // `code`-Feld unterscheidet diesen Fall vom generischen IO-Fehler
+    // ({ status: 'fehler', grund }, F-603-Fix), der weiterhin 200 bleibt.
     if (req.method === 'GET' && pfad === '/api/verbrauch') {
       const von = angefragteUrl.searchParams.get('von') ?? undefined
       const bis = angefragteUrl.searchParams.get('bis') ?? undefined
-      sendeJson(res, 200, baueVerbrauchsProjektion(basisVerzeichnis, { von, bis }))
+      const projektion = baueVerbrauchsProjektion(basisVerzeichnis, { von, bis })
+      if (projektion.status === 'fehler' && projektion.code === 'zeitraum_ungueltig') {
+        sendeJson(res, 400, { grund: projektion.grund })
+        return
+      }
+      sendeJson(res, 200, projektion)
       return
     }
 
