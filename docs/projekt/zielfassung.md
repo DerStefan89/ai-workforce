@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.26 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.27 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -50,6 +50,8 @@ v1.23 → v1.24: **§9.1 Zeile „MCP-Werkzeuge im Ausführungslauf" DEKLARIERT 
 v1.24 → v1.25: **§13.5 Meilenstein-4-Abschluss nachgetragen, §13.6 Meilenstein 5 neu** (Stefan, 20./21.09.2026, Challenger-Chat, löst F-534 Teil 2): §13.5 erhält den Fakt-Nachtrag, dass Meilenstein 4 mit benannten Übertragungen nach F30 geschlossen ist (E-M5-1) — F19/F23 laufen dadurch auf `ABGESCHLOSSEN`, ihre Restfindings bleiben offen. Neuer Abschnitt §13.6 zieht die bislang nur im Challenger-Chat dokumentierten Entscheidungen E-M5-1…5, 3′, 10, 11 (E-M5-6…9 nicht vergeben) sowie den verbindlichen M5-Feature-Schnitt und die Arbeitsregeln ins Repo nach. Zielsatz und Bestehensbedingung für Meilenstein 5 selbst sind **nicht** Teil dieses Nachtrags — sie stehen laut Feature-Schnitt noch aus (RC).
 
 v1.25 → v1.26: **§13.6 um E-M5-12/13/14 ergänzt, Feature-Schnitt/Reihenfolge aktualisiert** (Stefan, 22.09.2026, F34-WS-3-Vorbereitung): E-M5-12 (F34 WS-3 Projekt-Interview — Coach-Modus `projekt` erzeugt einen `projekt_entwurf`, ein schreibender Folgeauftrag legt `docs/projekt/kontext/beschreibung.md`, `docs/projekt/roadmap.json` und `features/<id>/feature.md`-Skelette an bzw. erweitert sie; hebt das `no_onboarding`-Nicht-Ziel aus Plan v8 für genau diesen Teil auf) · E-M5-13 (F39 wird vor F35 gezogen und bekommt zusätzlich einen Projektmodus „Architektur-Grundlage") · E-M5-14 (F41 „Neues Projekt anlegen", F-523, wird als eigenes Feature direkt nach F39 gezogen statt erst in F30). Reihenfolge jetzt F34 → F39 → F41 → F35 → F37 → F38 → Design → F30 → RC, F36 parallel ab sofort.
+
+v1.26 → v1.27: **§13.6 um E-F41-1 ergänzt** (Stefan, 24.09.2026, F41 WS-1 Korrektur, löst F-414 Option B teilweise auf): der Kern kopiert die Harness-Baseline (`.claude/settings.json`, referenzierte Hooks, `state/aktuelle-autorisierung.json`) beim Anlegen eines neuen Projekts byte-identisch in ein Geschwisterverzeichnis — mit Hash-Prüfung (Startbedingung 1, E-183) und voller Startfreigabe-Prüfung (Startbedingung 1 UND 2) sowohl an der Quelle vorher als auch am neu angelegten Ziel danach. Es entsteht dabei KEIN neues Freigabeartefakt (ARCHITECTURE.md §3 bleibt unverändert in Kraft). Real belegt über einen echten, lesenden Lauf gegen ein neu angelegtes Projekt (`features/F41/nachweis-ws1.md`) — widerlegt eine zwischenzeitlich falsche Annahme derselben Akte, Startbedingung 2 lehne ein neues Projektverzeichnis strukturell immer ab (`state/findings.md` F-670/F-671).
 
 ---
 

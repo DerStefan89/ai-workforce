@@ -16,13 +16,14 @@
  * node:test-Pendant in diesem Modul).
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import type { ProjektEintrag } from './types.ts'
 
 const PROJEKTE_WURZEL_FELDER = new Set(['projekte_schema', 'projekte'])
 const PROJEKT_FELDER = new Set(['id', 'name', 'repo_pfad', 'startvorlage_pfad', 'profil_pfad', 'basisverzeichnis', 'status', 'kontext_pfad', 'roadmap_pfad'])
 const PROJEKT_STATUS = ['IDEE', 'DISCOVERY', 'GEPLANT', 'IN_ENTWICKLUNG', 'TEST', 'NUTZBAR', 'BETRIEB', 'PAUSIERT', 'ARCHIVIERT']
-const ID_MUSTER = /^[a-z0-9][a-z0-9-]*$/
+/** F41 WS-1: exportiert (Muster D5) — dieselbe Form prüft src/projekt-anlegen/index.ts für eine NEUE id, bevor sie überhaupt einen Registereintrag bildet. */
+export const ID_MUSTER = /^[a-z0-9][a-z0-9-]*$/
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -132,4 +133,59 @@ export function ladeProjektregister(pfad: string): ProjektEintrag[] {
     throw new Error(`Projektregister '${pfad}' ungültig: ${verstoesse.join('; ')}`)
   }
   return (roh as { projekte: ProjektEintrag[] }).projekte
+}
+
+/**
+ * F41 WS-1: lädt das committete Projektregister (unverändertes Verhalten
+ * von ladeProjektregister, wirft weiterhin bei dessen eigenem Fehlschlag —
+ * projekte.json bleibt die maßgebliche, fail-closed geprüfte Quelle) und
+ * führt es additiv mit einem lokalen, gitignorierten Register zusammen
+ * (F41 WS-1 AK2: POST /api/projekte schreibt neue Einträge NIE nach
+ * projekte.json — ein Schreiben dorthin macht den Arbeitsbaum unsauber und
+ * blockiert jede Ausführung, src/ausfuehrung-vorbedingung/index.ts). Das
+ * lokale Register ist fail-closed NUR für sich selbst: fehlt die Datei,
+ * gilt unverändert nur das committete Register (Normalfall). Ist sie
+ * vorhanden, aber kein gültiges JSON, verletzt sie
+ * validiereProjekteDaten für sich genommen, oder kollidiert eine ihrer
+ * id's mit dem committeten Register (gemeinsam gegen validiereProjekteDaten
+ * geprüft — dieselbe Funktion erkennt eine registerübergreifende doppelte
+ * id genauso wie eine innerhalb einer Datei, Muster pruefeProjektForm), wird
+ * NUR die lokale Datei verworfen (eine klare Meldung auf stderr, kein Wurf)
+ * — das committete Register bleibt unberührt nutzbar.
+ * @param pfad - Pfad zur committeten projekte.json
+ * @param lokalPfad - Pfad zur gitignorierten projekte.lokal.json
+ * @returns committete Einträge, additiv um gültige lokale Einträge ergänzt
+ */
+export function ladeProjektregisterMitLokal(pfad: string, lokalPfad: string): ProjektEintrag[] {
+  const committet = ladeProjektregister(pfad)
+  if (!existsSync(lokalPfad)) {
+    return committet
+  }
+
+  let lokalRoh: unknown
+  try {
+    lokalRoh = JSON.parse(readFileSync(lokalPfad, 'utf8'))
+  } catch (fehler) {
+    console.error(`[projektregister] '${lokalPfad}' ist kein gültiges JSON, wird verworfen (nur diese Datei, projekte.json bleibt unberührt): ${(fehler as Error).message}`)
+    return committet
+  }
+
+  // Code-Review-Befund (F41 WS-1): valides JSON, aber falsche Form (kein Objekt, oder 'projekte'
+  // kein Array) fiel bisher stillschweigend auf den "kein Verstoß"-Zweig zurück — zusammengefuehrt
+  // enthielt dann nur committet selbst, validiereProjekteDaten fand nichts zu beanstanden, und die
+  // Funktion gab committet zurück OHNE die für die beiden Schwesterfälle übliche stderr-Meldung.
+  // Eigener, expliziter Zweig statt implizitem Durchfallen.
+  if (!istObjekt(lokalRoh) || !Array.isArray(lokalRoh.projekte)) {
+    console.error(`[projektregister] '${lokalPfad}' wird verworfen (nur diese Datei, projekte.json bleibt unberührt) — Wurzel ist kein Objekt oder 'projekte' ist kein Array`)
+    return committet
+  }
+
+  const zusammengefuehrt = { projekte_schema: 'v0', projekte: [...committet, ...lokalRoh.projekte] }
+  const verstoesse = validiereProjekteDaten(zusammengefuehrt)
+  if (verstoesse.length > 0) {
+    console.error(`[projektregister] '${lokalPfad}' wird verworfen (nur diese Datei, projekte.json bleibt unberührt) — gegen das Gesamtregister ungültig: ${verstoesse.join('; ')}`)
+    return committet
+  }
+
+  return zusammengefuehrt.projekte as ProjektEintrag[]
 }

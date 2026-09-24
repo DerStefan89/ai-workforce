@@ -13,6 +13,14 @@ coverage/
 .env.local
 .env.*.local
 
+# Lokales Projektregister (F41 WS-1, features/F41/feature.md AK2) — POST
+# /api/projekte schreibt NIE nach projekte.json (macht den Arbeitsbaum
+# unsauber, blockiert jede Ausführung, src/ausfuehrung-vorbedingung/
+# index.ts). Neue, über den Leitstand angelegte Projekte landen additiv
+# hier; src/projekte/index.ts' ladeProjektregisterMitLokal führt beide
+# Register zusammen.
+projekte.lokal.json
+
 # Persönliche Freigaben — trägt Freigaben, die nie reviewt werden.
 # MUSS ignoriert bleiben (siehe SETUP.md Punkt 7 / Befund G10).
 .claude/settings.local.json

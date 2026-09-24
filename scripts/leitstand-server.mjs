@@ -429,7 +429,7 @@ import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, extname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, listeVersionen, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
@@ -457,7 +457,9 @@ import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '.
 import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
-import { ladeProjektregister } from '../src/projekte/index.ts'
+import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
+import { baueNeuenProjektEintrag, kopiereBaseline, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
+import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -534,6 +536,8 @@ const STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/beispielprojekt.json'
 const AUTO_MEMORY_DENY_REGEL = 'Read(~/.claude/**)'
 /** F25 WS-1: Pfad zum Projektregister, per Umgebungsvariable überschreibbar (Muster LEITSTAND_STARTVORLAGE_PFAD) — u.a. für AK8s realen Zwei-Projekte-Test gegen eine eigene Registerkopie, ohne das committete projekte.json anzufassen. */
 const STANDARD_PROJEKTE_PFAD = 'projekte.json'
+/** F41 WS-1: Dateiname des gitignorierten, additiven Registers (repoWurzel-relativ, Muster STANDARD_PROJEKTE_PFAD) — POST /api/projekte schreibt neue Einträge ausschließlich hierhin, nie nach projekte.json (src/projekte/index.ts' ladeProjektregisterMitLokal führt beide zusammen). */
+const PROJEKTE_LOKAL_DATEINAME = 'projekte.lokal.json'
 const DATEINAME_MUSTER = /^(\d+)-([0-9a-f]{64})\.json$/
 const STILLER_SCHREIBER = () => {}
 
@@ -3674,6 +3678,29 @@ export function erzeugeRequestHandler(optionen = {}) {
     // ausschließlich im unpräfigierten defaultHandler vorgesehen, eine Projekt-Instanz beantwortet
     // ihn mit einer leeren Liste statt eines Fehlers (D5, kein Sonderfall nötig).
     projekte = [],
+    // F41 WS-1 (AK5, "live ohne Neustart"): NUR der CLI-Bindeblock reicht hier dieselbe Map durch,
+    // die er später an erzeugeMultiProjektDispatcher übergibt (baut sie VOR defaultHandler auf,
+    // befüllt sie danach in place, Muster des bereits bestehenden globalerLaufZustand-Durchreichens
+    // oben) — POST /api/projekte kann dadurch einen neuen Handler direkt in dieselbe, vom
+    // Dispatcher gelesene Map eintragen, ohne den Serverprozess neu zu starten. Jeder andere
+    // Aufrufer (Gate-Skripte, jede Projekt-Instanz) bekommt bewusst den leeren Default: POST
+    // /api/projekte ist laut Auftrag AUSSCHLIESSLICH im unpräfigierten defaultHandler vorgesehen.
+    projektHandlerMap = new Map(),
+    // F41 WS-1: überschreibt src/invocation-policy/index.ts' STANDARD_REPO_WURZEL für POST
+    // /api/projekte (Muster GatewayOptionen.startfreigabeRepoWurzel) — nur für
+    // scripts/check-f41-projekt-anlegen.mjs, das gegen ein Wegwerf-Git-Repo statt des echten
+    // externen Autorisierungs-Repos prüft. undefined lässt src/projekt-anlegen/index.ts' eigenen
+    // Default (STANDARD_REPO_WURZEL) greifen.
+    startfreigabeRepoWurzel = undefined,
+    // QA-Befund (F41 WS-1): POST /api/projekte schrieb bislang IMMER nach join(repoWurzel,
+    // PROJEKTE_LOKAL_DATEINAME) — eine feste Konstante, unabhängig vom Pfad, den der CLI-Bindeblock
+    // tatsächlich beim Laden benutzt (dort überschreibbar über LEITSTAND_PROJEKTE_LOKAL_PFAD, Muster
+    // LEITSTAND_PROJEKTE_PFAD). Bei einer künftigen Env-Override-Nutzung wäre ein neu registriertes
+    // Projekt nach einem Neustart an der falschen Stelle gelandet — unauffindbar, aber nicht
+    // verloren (die Datei existiert, nur am alten Ort). undefined lässt den bisherigen Default
+    // greifen (join(repoWurzel, PROJEKTE_LOKAL_DATEINAME)) — nur der CLI-Bindeblock überschreibt dies
+    // mit dem real beim Laden benutzten Pfad.
+    projekteLokalPfad = undefined,
     // F26 WS-2a: löst die in features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke —
     // diese Handler-Instanz kannte ihre eigene Projekt-id bislang nicht, POST /api/chat konnte
     // den 'lineage-chat-<projektId>'-Verlauf deshalb nur über ein externes Glue-Skript
@@ -4692,6 +4719,120 @@ export function erzeugeRequestHandler(optionen = {}) {
           return { ...projekt, laufAktiv }
         }),
       })
+      return
+    }
+
+    // ─── POST /api/projekte (F41 WS-1, features/F41/feature.md) ─────────────────────────
+    //
+    // Registriert ein neues Projekt, indem der Kern die Harness-Baseline byte-identisch in ein
+    // Geschwisterverzeichnis von ai-workforce kopiert (E-F41-1 = A, Stefan 24.09.2026): die
+    // Startbedingung (E-183) ist rein inhaltsbasiert, eine identische Kopie validiert gegen
+    // dieselbe, bereits bestehende externe Autorisierung — der Kern erzeugt dabei NIE ein neues
+    // Freigabeartefakt (ARCHITECTURE.md §3). Git (init/commit/branch) macht der Kern NICHT
+    // (Linie E-F39-1) — die Antwort nennt Stefan die nötigen Befehle.
+    //
+    // Ausschließlich im unpräfigierten defaultHandler sinnvoll (repoWurzel ist hier die des
+    // Serverprozesses selbst, die Quelle jeder Kopie) — eine Projekt-Instanz (baueProjektHandlerMap)
+    // bekommt diesen Zweig nie zu sehen, weil sie ihn nie erreicht (Dispatcher reicht
+    // /api/projekte/<id>/... an die Instanz durch, nicht /api/projekte selbst).
+    if (req.method === 'POST' && pfad === '/api/projekte') {
+      let body
+      try {
+        const roh = await leseBody(req)
+        body = JSON.parse(roh.length === 0 ? '{}' : roh)
+      } catch (fehler) {
+        sendeJson(res, 400, { grund: `Body ist kein gültiges JSON (${fehler.message})` })
+        return
+      }
+      const formular = pruefeNeuesProjektFormular(body)
+      if (!formular.ok) {
+        sendeJson(res, 400, { grund: formular.grund })
+        return
+      }
+      if (projekte.some((eintrag) => eintrag.id === formular.id)) {
+        sendeJson(res, 409, { grund: `Projekt-id '${formular.id}' ist bereits registriert` })
+        return
+      }
+
+      // (a) Quelle muss die Startbedingung GRÜN erfüllen (dieselbe Prüfung wie starteGateway,
+      // src/projekt-anlegen/index.ts' pruefeStartbedingung1FuerRepo) — sonst wird nichts angelegt.
+      const quellPruefung = pruefeStartbedingung1FuerRepo(repoWurzel, { startfreigabeRepoWurzel })
+      if (!quellPruefung.ok) {
+        sendeJson(res, 409, { grund: `Quelle (ai-workforce) erfüllt die Startbedingung nicht, es wurde nichts angelegt: ${quellPruefung.grund}` })
+        return
+      }
+
+      const zielordnerErgebnis = loeseZielordner(dirname(repoWurzel), formular.id, formular.zielordner)
+      if (!zielordnerErgebnis.ok) {
+        sendeJson(res, 400, { grund: zielordnerErgebnis.grund })
+        return
+      }
+      const ziel = zielordnerErgebnis.ziel
+
+      // D13 (Auftrag Punkt 3, "wie bei anderen schreibenden Routen"): ab hier reale
+      // Schreibwirkung (Ordner anlegen, Dateien kopieren, projekte.lokal.json schreiben) — dieselbe
+      // Sperre wie jede andere schreibende Route, VOR jeder Zustandsänderung reserviert (kein
+      // await zwischen der Prüfung und dem Setzen, D13-ÜBERGABE-OHNE-FENSTER-Muster), in JEDEM
+      // Rückkehrzweig zurückgesetzt (finally). laufId bleibt null — dieser Vorgang startet keinen
+      // Lauf, blockiert aber (wie jeder aktive Lauf auch) jeden anderen aktiven Arbeitsstrang.
+      if (pruefeGlobaleLaufSperre(res)) return
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = null
+      try {
+        mkdirSync(ziel, { recursive: true })
+        kopiereBaseline(repoWurzel, ziel)
+        const neueStartvorlage = schreibeStartvorlageUndProfil(formular.id, repoWurzel, ziel)
+
+        // (d) Echte Startprüfung gegen das NEUE Repo — VOLLE Startfreigabe (Bedingung 1 UND 2,
+        // Korrektur 24.09.2026: Bedingung 2 lehnt ein neues Verzeichnis NICHT strukturell ab,
+        // siehe src/projekt-anlegen/index.ts Kopfkommentar + features/F41/nachweis-ws1.md). Rot →
+        // den von DIESEM Request angelegten Ordner zurückbauen, nichts registrieren.
+        const zielPruefung = pruefeVolleStartfreigabeFuerRepo(ziel, neueStartvorlage, { startfreigabeRepoWurzel })
+        if (!zielPruefung.ok) {
+          const rueckbau = raeumeAngelegtenOrdnerZurueck(ziel)
+          const rueckbauHinweis = rueckbau.ok ? 'der angelegte Ordner wurde zurückgebaut' : `der angelegte Ordner konnte NICHT zurückgebaut werden (${rueckbau.grund})`
+          sendeJson(res, 422, { grund: `Kopiertes Projekt erfüllt die Startfreigabe nicht, ${rueckbauHinweis}: ${zielPruefung.grund}` })
+          return
+        }
+
+        // (e) Eintrag in projekte.lokal.json (durables Register, additiv, Read-Merge-Write) VOR
+        // der Live-Registrierung (Muster D2: Speichern vor jeder In-Memory-Zustandsänderung) —
+        // ein Serverneustart findet den Eintrag danach unverändert wieder.
+        const neuerEintrag = baueNeuenProjektEintrag(formular.id, formular.name, ziel, repoWurzel)
+        const projekteLokalAbsolutPfad = projekteLokalPfad ?? join(repoWurzel, PROJEKTE_LOKAL_DATEINAME)
+        let lokalDaten = { projekte_schema: 'v0', projekte: [] }
+        if (existsSync(projekteLokalAbsolutPfad)) {
+          lokalDaten = JSON.parse(readFileSync(projekteLokalAbsolutPfad, 'utf8'))
+        }
+        lokalDaten.projekte.push(neuerEintrag)
+        writeFileSync(projekteLokalAbsolutPfad, `${JSON.stringify(lokalDaten, null, 2)}\n`)
+
+        // Live in die Handler-Map registrieren, ohne Neustart (AK5) — projekte/projektHandlerMap
+        // sind dieselben, per Referenz geteilten Objekte, die GET /api/projekte bzw. der Dispatcher
+        // lesen (kein zweiter, divergierender Zustand).
+        projekte.push(neuerEintrag)
+        const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand)
+        for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
+
+        sendeJson(res, 201, {
+          projekt: neuerEintrag,
+          naechste_schritte: {
+            git: ['git init -b main', 'git add -A', 'git commit -m "Initiale Kopie der Harness-Baseline (F41 WS-1)"', 'git checkout -b arbeit/start'],
+            hinweis: `Git-Befehle im neuen Ordner ('${ziel}') ausführen — der Kern legt kein Git-Repo an (Linie E-F39-1). Danach im Coach-Interview-Modus 'projekt' fortfahren (WS-2).`,
+          },
+        })
+      } catch (fehler) {
+        // raeumeAngelegtenOrdnerZurueck wirft nie (QA-Befund) — sonst könnte ein Rückbaufehler
+        // HIER, im catch-Zweig selbst, ungefangen bleiben: kein sendeJson mehr, die async-Funktion
+        // liefe als unhandled rejection und risse den gesamten Serverprozess mit, nicht nur diesen
+        // Request.
+        const rueckbau = raeumeAngelegtenOrdnerZurueck(ziel)
+        const rueckbauHinweis = rueckbau.ok ? 'der angelegte Ordner wurde zurückgebaut' : `der angelegte Ordner konnte NICHT zurückgebaut werden (${rueckbau.grund})`
+        sendeJson(res, 500, { grund: `Unerwarteter Fehler beim Anlegen, ${rueckbauHinweis}: ${fehler.message}` })
+      } finally {
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+      }
       return
     }
 
@@ -8024,9 +8165,12 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // jede id 404.
   const projekteBasis = process.cwd()
   const projektePfad = process.env.LEITSTAND_PROJEKTE_PFAD ?? STANDARD_PROJEKTE_PFAD
+  // F41 WS-1 (AK2): additiv zum committeten Register, gitignoriert — überschreibbar für Tests
+  // (Muster LEITSTAND_PROJEKTE_PFAD), Standard ist eine Datei neben projekte.json.
+  const projekteLokalPfad = process.env.LEITSTAND_PROJEKTE_LOKAL_PFAD ?? join(projekteBasis, PROJEKTE_LOKAL_DATEINAME)
   let projekte = []
   try {
-    projekte = ladeProjektregister(projektePfad)
+    projekte = ladeProjektregisterMitLokal(projektePfad, projekteLokalPfad)
   } catch (fehler) {
     console.error(`[leitstand] Projektregister '${projektePfad}' nicht geladen — /api/projekte/<id>/... bleibt ohne Registereinträge: ${fehler.message}`)
   }
@@ -8050,11 +8194,16 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // defaultHandler ist EXAKT derselbe Aufruf wie vor F25 (nur globalerLaufZustand neu, WS-2a
   // ergänzt zusätzlich projekte für GET /api/projekte) — der bestehende, unpräfigierte
   // /api/...-Pfad für ai-workforce ändert sein Verhalten nicht (AK2/AK7).
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte })
-  const projektHandlerMap = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
+  // F41 WS-1 (AK5, "live ohne Neustart"): projektHandlerMap wird VOR defaultHandler angelegt (leer)
+  // und ihm als Option gereicht — POST /api/projekte kann dadurch spätere Einträge direkt in
+  // dieselbe Map schreiben, die der Dispatcher unten liest (per Referenz geteilt, keine Kopie).
+  const projektHandlerMap = new Map()
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad })
+  const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,
   })
+  for (const [id, handler] of anfangsHandlerKarte) projektHandlerMap.set(id, handler)
   const server = createServer(erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler))
   server.listen(PORT, '127.0.0.1', () => {
     console.log(
