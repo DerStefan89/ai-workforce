@@ -36,17 +36,53 @@ Endpunkt für einen einzelnen Schritt existiert (`scripts/leitstand-server.mjs`
 geprüft). Dieser Workflow ist damit terminal und bleibt unverändert als
 Beleg für F-638 stehen — kein Aufräumen nötig oder gewünscht.
 
-**Weg:** derselbe Auftrag `8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f` wird über
+**Weg (korrigiert nach realer Beobachtung):** derselbe Auftrag
+`8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f` wird über
 `POST /api/auftraege/8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f/routen` ERNEUT
-geroutet — das Repo kennt dieses Muster bereits real (mehrere historische
-Workflows teilen denselben `auftragId`, z. B. `f16-ws3b-ak12`/`f17-ws3-ak8`
-für `89c10996-…`). Das erzeugt einen NEUEN Workflow (neue `workflow_id`) mit
-frischem `schritt-1-architekt` (`status: OFFEN`), diesmal gegen das
-korrigierte Schema. Ablauf ab dort identisch zur Ablaufanleitung (Schritt 4
-„Workflow öffnen" ff.) — noch mit Stefan zu klären: ob dieser Neu-Routen-
-Schritt jetzt ausgeführt wird oder erst nach Merge von `fix/f638-…` in
-main (damit der Reallauf gegen den freigegebenen Stand läuft, nicht gegen
-einen offenen Branch).
+geroutet. `workflow_id` ist deterministisch `router-<auftragId>`
+(`scripts/leitstand-server.mjs:2862`) — re-routen erzeugt KEINEN neuen
+Workflow, sondern hängt eine neue Version an denselben Workflow an
+(`versionSequenz` 1→5 real beobachtet), `schritt-1-architekt` wird dabei auf
+`OFFEN`/`lauf_id: null` zurückgesetzt. Nichts geht verloren — alle
+bisherigen Versionen bleiben als eigene Checkpoint-Dateien unter
+`kontrollzustand/lineage-workflow-router-8780892f-…/checkpoints/` erhalten
+(append-only), nur `GET /api/workflows/<id>` zeigt standardmäßig die
+neueste. Real ausgeführt am 23.09.2026, nach Merge von PR #230 in main.
+
+## Versuch 2 — 23.09.2026, nach dem F-638-Fix (PR #230, main `fc4a0ed`)
+
+- Leitstand neu gestartet gegen `main`@`fc4a0ed` (PID 19132, `startvorlagen/ai-workforce.json`), CI auf PR #230 und auf `main` grün.
+- Re-Routen: `router-8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f-1790172443587`, `202`, `ERFOLGREICH`. Workflow `router-8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f` (`versionSequenz: 5`) — Stufe `hoch` (`[Untergrenze hoch wegen herkunft projekt_interview]`), vier Schritte, `verstoesse: []`, `schritt-1-architekt` zurückgesetzt auf `OFFEN`.
+- **Schritt 5 (Architekt), Lauf `5869ddcd-966f-41e3-9042-f2d90c2c05db`: ERFOLGREICH.**
+  - Start: 2026-09-23T14:11:09.377Z / Ende: 2026-09-23T14:12:13.301Z — Dauer 63,9 s (`verbrauch.dauer_ms: 63886`).
+  - Kosten (Verbrauch-Ansicht, Rolle `architekt`/Modell `gpt-6-astra`): 20.246 Input-Tokens, 1.943 Output-Tokens, 0 Cache.
+  - Schema valide: **ja** — `validiereErgebnisArchitektur` liefert `[]` (0 Verstöße), inkl. des neuen `json_schema`-String-Checks.
+  - Anzahl `entscheidungen_mensch`: 0. `adr_entwuerfe`: 1. `schema_entwuerfe`: 0. `module`: 0. `capabilities_bedarf`: 3 (alle `status: vorhanden`). `evidenz`: 10 Einträge, jeder mit Marker.
+  - `zusammenfassung`: Bestehenden Stack/Modulschnitt beibehalten, Existenzprüfung in `verknuepfeSparringAuftrag` verankern, keine neue Infrastruktur/Migration.
+  - Volles Ergebnis-JSON: siehe `kontrollzustand-roh\5869ddcd-966f-41e3-9042-f2d90c2c05db\rohstrom.json` (`item.completed`/`agent_message`).
+  - `entscheidungen_mensch` leer → Schritt 6 (Architektur-Entscheidung) entfällt, Workflow steht jetzt direkt auf `WARTET_FREIGABE` für `schritt-2-architektur` (Advisor) — **nicht freigegeben**, wie beauftragt.
+- **F-638 damit im echten Reallauf bestätigt behoben**, nicht nur im Rauchtest.
+
+### Fortsetzung Versuch 2 (Stefan hat Advisor/Ausführung selbst freigegeben)
+
+Workflow `router-8780892f-b6d6-4eb3-bf96-2ca0cab5dd0f`, `versionSequenz: 16`,
+Status `KLAERUNG_ERFORDERLICH` (`schritt-4-review` `FEHLGESCHLAGEN`).
+
+- **Schritt 7 (`architecture-advisor`), Lauf `4b3ebc42-91df-422b-9dd4-b2fc02dc4151`: ERFOLGREICH.**
+  Dauer 68,4 s (`dauer_ms`, API-Anteil 63,1 s). Kosten: **$0.5311376** (`total_cost_usd`, real aus dem claude-code-Rohstrom), 26 Input-/4.097 Output-Tokens, 797.238 Cache-Read/82.667 Cache-Write.
+  **Kein echtes Prüf-Urteil geliefert** — die Antwort erklärt, nur lesende Werkzeuge (Glob/Grep/Read) zu haben, plant selbst die drei Dokumentations-Schreibschritte und bittet um Write/Edit/Bash-Zugriff, statt den Architekturentwurf zu bewerten (BEREIT/BEREIT_NACH_KORREKTUR/BLOCKIERT). `output_schema: null` bei dieser Rolle lässt jede Prosa-Antwort als `ERFOLGREICH` durch (Regel 1b prüft nur `ergebnis-code-reviewer`) — der Workflow lief trotz inhaltlich nutzlosem Advisor-Ergebnis automatisch weiter.
+- **Schritt 8 (`ausfuehrung`), Lauf `ad0025e4-5796-41a8-b2cd-6d527f40e2b4`: ERFOLGREICH.**
+  Dauer 105,7 s (API-Anteil 100,6 s). Kosten: **$0.7444364**, 26 Input-/10.975 Output-Tokens, 1.101.892 Cache-Read/103.564 Cache-Write.
+  Arbeitsverzeichnis: `C:\Users\stefa\Projekte\ai-workforce` — direkt der Haupt-Checkout, kein Worktree, kein eigener Branch. Branch zum Zeitpunkt des Laufs: `main` (HEAD `fc4a0ed`, PR #230). Kein Git-Werkzeug im `schreibend`-Werkzeugsatz (`Read/Grep/Glob/Write/Edit`, `startvorlagen/ai-workforce.json`) — strukturell keine Commits/Pushes möglich, `git log` bestätigt `main` unverändert bei `fc4a0ed`.
+  Real geschrieben (`git status`, ungestaged): `docs/projekt/kontext/beschreibung.md` (geändert), `docs/projekt/roadmap.json` (geändert), `docs/adr/bestehenden-stack-beibehalten-und-referenzpruefung-in-der-verknuepfungsfunktion-verankern.md` (neu), `features/F42/feature.md` (neu). **Kein einziger Treffer unter `src/`** — ausschließlich Dokumentation, keine Existenzprüfung/keine Tests in `verknuepfeSparringAuftrag` real implementiert.
+  Ursache der Einengung: NICHT der Architekt, NICHT `baueUmsetzungsInstruktion` — sondern der ORIGINALE Auftragstext selbst. `baueAuftragAusProjektentwurf` (`src/product-coach/index.ts:700`) schreibt jedem aus einem Projekt-Interview erzeugten Auftrag hart den Abschnitt "Auftrag an den Baudurchgang: Schreibe AUSSCHLIESSLICH Dokumentation, KEIN Produktcode" vor — das stand schon im Auftragstext, bevor der Architekt je lief (Auftrag `8780892f…`, angelegt in Schritt 2 der Ablaufanleitung). Der Architekt zitiert diese Vorgabe in seiner `zusammenfassung` nur ("Produktimplementierung und deren Tests folgen separat"), er hat sie nicht erfunden.
+- **Schritt 9 (`code-reviewer`), Lauf `bd7e2ba4-4f71-4545-85f5-606711e6f17a`: FEHLGESCHLAGEN — Prozess nie gestartet.**
+  Dauer/Kosten: 0 (kein Modell-Aufruf zustande gekommen). `exitCode: null`, `stdout`/`stderr` leer.
+  **Ursache (real aus `kontrollzustand-roh\bd7e2ba4-…\rohstrom.json`, Feld `startfehler`):**
+  ```json
+  "startfehler": { "code": "ENAMETOOLONG", "message": "spawn ENAMETOOLONG" }
+  ```
+  Der Codex-Prozess ließ sich gar nicht starten — die Kommandozeile (Auftragstext + `aenderungsuebersicht-@schritt-3-ausfuehrung`, die vermutlich die vollen Inhalte der vier neuen/geänderten Dokumentationsdateien aus Schritt 8 als Diff enthält) überschritt eine Windows-Kommandozeilenlängengrenze beim `spawn`-Aufruf — kein Schema-/API-Fehler, kein Timeout, sondern ein Betriebssystem-Limit beim Prozessstart selbst.
 
 ## Rauchtest F-638-Fix (echter minimaler Codex-Aufruf)
 

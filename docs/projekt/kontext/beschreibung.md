@@ -55,3 +55,18 @@ Evidenzmodell: `docs/projekt/zielfassung.md`. Aktueller Phasen- und
 Feature-Stand: `docs/STATUS.md`. Diese Datei ist eine Kurzfassung für den
 Kontextpaket-Bau, keine eigene Sollquelle — bei Widerspruch gilt
 `docs/projekt/zielfassung.md`.
+
+## Scout-Kandidaten
+
+(keine)
+
+## Für den Architekten (F39)
+
+- Dateien und Git bleiben der führende Zustand; Existenzprüfungen nutzen die
+  bestehenden projektbezogenen Lade- beziehungsweise Zugriffsfunktionen.
+- Die Absicherung in verknuepfeSparringAuftrag verankern und Fehler über den
+  bestehenden API-Fehlermechanismus verständlich ausgeben.
+- Konkrete Fehlercodes und HTTP-Statuscodes bei der Umsetzung an den
+  vorhandenen API-Konventionen ausrichten.
+- Der Entwurf ergänzt ausschließlich einen neuen Meilenstein nach
+  Meilenstein 5; Feature- und Meilenstein-IDs vergibt der Server.
