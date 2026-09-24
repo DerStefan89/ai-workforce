@@ -215,6 +215,20 @@ export interface SchrittErgebnis {
    * bleibt für Regel 1e folgenlos, wie ein fehlendes 'advisorUrteilFehlt' für Regel 1d.
    */
   ausfuehrungSelbstblockiert?: boolean
+  /**
+   * OPTIONAL (F-652, state/findings.md F-652, BUG P1): das Ergebnis der deterministischen
+   * Post-Build-Prüfung (Startvorlagenfeld pruefbefehl) eines gerade gelaufenen
+   * 'ausfuehrung'-Schritts, roh aus dem registrierten 'pruefergebnis-<laufId>'-Artefakt gelesen
+   * (src/pruefschritt/index.ts) — der Aufrufer liest, dieses Modul bleibt abhängigkeitsarm
+   * (Kopfkommentar) und importiert src/pruefschritt/ nicht. Fehlt das Feld (keine Startvorlage
+   * mit pruefbefehl, oder der Schritt ist kein 'ausfuehrung'), bleibt Regel 1f folgenlos, wie ein
+   * fehlendes 'ausfuehrungSelbstblockiert' für Regel 1e.
+   */
+  pruefergebnis?: 'GRUEN' | 'ROT' | 'ZEITGRENZE' | 'FEHLER'
+  /** OPTIONAL (F-652): Exit-Code der Prüfung — nur für den Halt-Grund-Text, keine eigene Prüfung. */
+  pruefergebnisExitCode?: number | null
+  /** OPTIONAL (F-652): letzte ~40 Zeilen aus stdout+stderr der Prüfung — nur für den Halt-Grund-Text. */
+  pruefergebnisAusgabeEnde?: string
 }
 
 /**

@@ -45,6 +45,8 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'werkzeugsaetze',
     'zeitgrenzeMs',
     'worker',
+    'pruefbefehl',
+    'pruefZeitgrenzeMs',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -96,6 +98,24 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   }
 
   verstoesse.push(...pruefeWorkerBlock(obj.worker))
+
+  // F-652: 'pruefbefehl' ist optional (jede Startvorlage ohne das Feld bleibt bitgenau
+  // unverändert) — ist es gesetzt, gilt derselbe Hygiene-Guard wie für jedes andere Startziel
+  // (F-057/F-280): [0] darf nicht auf eine Shell-interpretierte Endung enden.
+  if ('pruefbefehl' in obj) {
+    if (!Array.isArray(obj.pruefbefehl) || obj.pruefbefehl.length === 0 || obj.pruefbefehl.some((t) => typeof t !== 'string' || t.length === 0)) {
+      verstoesse.push("'pruefbefehl' muss, wenn angegeben, ein nicht-leeres Array nicht-leerer Strings sein")
+    } else {
+      const programm = (obj.pruefbefehl[0] as string).toLowerCase()
+      const gesperrt = GESPERRTE_STARTZIEL_ENDUNGEN.find((endung) => programm.endsWith(endung))
+      if (gesperrt !== undefined) {
+        verstoesse.push(`'pruefbefehl[0]' darf nicht auf '${gesperrt}' enden (F-280) — ein Skript-Startziel hebt die Argv-Zusicherung auf`)
+      }
+    }
+  }
+  if ('pruefZeitgrenzeMs' in obj && (typeof obj.pruefZeitgrenzeMs !== 'number' || !Number.isInteger(obj.pruefZeitgrenzeMs) || obj.pruefZeitgrenzeMs <= 0)) {
+    verstoesse.push("'pruefZeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
+  }
 
   return verstoesse
 }

@@ -1,0 +1,21 @@
+{
+  "url": "http://127.0.0.1:4176/#/workflows/f652-nachweis",
+  "viewport": { "breite": 1000, "hoehe": 4200 },
+  "localStorageEntfernen": [],
+  "screenshotAusschnitt": { "selector": "#workflow-abnahme", "hoehe": 500 },
+  "beobachtete": {
+    "gruppen": [],
+    "sichtbarkeit": [],
+    "titel": { "name": "Workflow", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Prüfergebnis-Zeile sichtbar", "selector": "#workflow-abnahme .badge.fehler" }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Workflow-Detail geöffnet: Ausführung ERFOLGREICH, Prüfung ROT — Abnahme-Block zeigt 'Prüfung: ROT (Exit 1)' direkt neben der Änderungsübersicht, Review-Schritt nie gestartet",
+      "warteAufSelector": { "selector": "#workflow-abnahme .badge.fehler", "timeoutMs": 5000 },
+      "screenshot": "01-pruefung-rot.png"
+    }
+  ]
+}

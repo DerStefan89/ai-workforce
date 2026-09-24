@@ -7,6 +7,8 @@
   "modell": "claude-sonnet-5",
   "standardBudget": { "maxElemente": 20, "maxBytes": 200000 },
   "zeitgrenzeMs": 1800000,
+  "pruefbefehl": ["C:\\Program Files\\nodejs\\node.exe", "C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js", "run", "check"],
+  "pruefZeitgrenzeMs": 900000,
   "worker": {
     "codex": {
       "startziel": ["C:\\Users\\stefa\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\node_modules\\@openai\\codex-win32-x64\\vendor\\x86_64-pc-windows-msvc\\bin\\codex.exe"],

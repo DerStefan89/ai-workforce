@@ -450,6 +450,7 @@ import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
 import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
+import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
@@ -2419,6 +2420,58 @@ export function loeseAusgabeSchemaAuf(name, repoWurzel) {
  * @param ladeOptionen - basisVerzeichnis/schreiber für ladeArtefaktVersion
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
+/**
+ * Löst einen '<praefix>-@<schrittId>'-Eingabe-Platzhalter auf — EIN Regelsatz für
+ * 'aenderungsuebersicht-@' (F23 WS-0) UND 'pruefergebnis-@' (F-652, state/findings.md F-652
+ * Bauauftrag Punkt 4: "keinen zweiten Regelsatz anlegen, die bestehende Auflösung
+ * verallgemeinern"), weil beide dieselbe Form haben: ein reines Kernartefakt unter
+ * '<praefix>-<lauf_id>', dessen lauf_id erst beim Start des referenzierten Schritts entsteht.
+ * Drei Schutzregeln (unverändert seit F23 WS-0): Selbstverweis, unbekannte schritt_id,
+ * Zielschritt noch nicht gestartet (lauf_id === null) — alle drei gelten für BEIDE Präfixe
+ * gleich, weil sie die Referenz selbst prüfen, nicht das Artefakt dahinter. Ob ein fehlendes
+ * Artefakt danach den Schritt-Start blockiert, entscheidet der Aufrufer je Präfix (siehe
+ * loeseSchrittEingabenAuf: 'pruefergebnis' bleibt bei fehlendem Artefakt bewusst folgenlos, F-652
+ * Bauauftrag Punkt 4).
+ * @param artefaktId - die (noch) rohe Artefakt-ID aus der 'artefakt:<...>'-Referenz
+ * @param praefix - 'aenderungsuebersicht' oder 'pruefergebnis'
+ * @param schritt - der zu startende Schritt (für Selbstverweis/Fehlertexte)
+ * @param workflowDaten - der Workflow, zu dem der Schritt gehört
+ * @returns null (kein Treffer für diesen Präfix), { ok: false, grund } (Schutzregel verletzt)
+ *   oder { ok: true, artefaktId } (aufgelöst auf '<praefix>-<lauf_id>')
+ */
+function loesePraefixPlatzhalterAuf(artefaktId, praefix, schritt, workflowDaten) {
+  const treffer = new RegExp(`^${praefix}-@(.+)$`).exec(artefaktId)
+  if (treffer === null) return null
+  const zielSchrittId = treffer[1]
+  // Reviewer-Pass 14.09.2026 (ursprünglich für 'aenderungsuebersicht-@'): eine Selbstreferenz
+  // löst bei einem Retry/Replan (dieselbe schritt_id läuft ein zweites Mal, die alte lauf_id des
+  // VORHERIGEN Versuchs steht noch im Datensatz) sonst still auf das Artefakt des vorherigen,
+  // unabhängigen Versuchs auf — kein Wurf, aber ein falsches "das hat sich geändert" für den
+  // gerade erst startenden Lauf. Ein Schritt kann seine eigene, noch gar nicht abgeschlossene
+  // Ausführung nicht sinnvoll referenzieren, deshalb ein eigener, klar benannter Rot-Fall statt
+  // eines stillen Fehlwerts.
+  if (zielSchrittId === schritt.schritt_id) {
+    return {
+      ok: false,
+      grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:${praefix}-@${zielSchrittId}' verweist auf sich selbst — ein Schritt kann seine eigene, noch laufende Ausführung nicht referenzieren`,
+    }
+  }
+  const zielSchritt = workflowDaten.schritte.find((s) => s.schritt_id === zielSchrittId)
+  if (zielSchritt === undefined) {
+    return {
+      ok: false,
+      grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:${praefix}-@${zielSchrittId}' verweist auf keine bekannte schritt_id in Workflow '${workflowDaten.workflow_id}' — der Schritt wird nicht gestartet`,
+    }
+  }
+  if (zielSchritt.lauf_id === null) {
+    return {
+      ok: false,
+      grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:${praefix}-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', der noch keine lauf_id hat (nicht gestartet) — der Schritt wird nicht gestartet`,
+    }
+  }
+  return { ok: true, artefaktId: `${praefix}-${zielSchritt.lauf_id}` }
+}
+
 export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen) {
   // AK10, ZUERST: der Schemaname wird aufgelöst und geprüft, bevor diese
   // Funktion irgendetwas lädt oder zusammenstellt. Die Reihenfolge ist die
@@ -2449,44 +2502,23 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     }
     let artefaktId = referenz.slice('artefakt:'.length)
 
-    // F23 WS-0: 'aenderungsuebersicht-@<schrittId>' referenziert zur Planzeit die noch nicht
-    // bekannte lauf_id EINES ANDEREN Schritts desselben Workflows — die reale lauf_id
-    // entsteht erst, wenn jener Schritt startet. Aufgelöst GENAU HIER, beim Start DIESES
-    // Schritts, gegen die aktuelle Fassung von workflowDaten.schritte (nicht früher, sonst
-    // wäre die lauf_id des Zielschritts noch gar nicht bekannt). Rot-Fall (Bauauftrag Punkt
-    // 5): unbekannte schritt_id oder lauf_id === null (Zielschritt noch nicht gestartet) ->
-    // dieser Schritt startet NICHT, statt mit einer stillschweigend leeren Eingabe zu laufen.
-    const platzhalterTreffer = /^aenderungsuebersicht-@(.+)$/.exec(artefaktId)
-    let warPlatzhalter = false
-    if (platzhalterTreffer !== null) {
-      warPlatzhalter = true
-      const zielSchrittId = platzhalterTreffer[1]
-      // Reviewer-Pass 14.09.2026: eine Selbstreferenz löst bei einem Retry/Replan (dieselbe
-      // schritt_id läuft ein zweites Mal, die alte lauf_id des VORHERIGEN Versuchs steht noch im
-      // Datensatz) sonst still auf die Übersicht des vorherigen, unabhängigen Versuchs auf — kein
-      // Wurf, aber ein falsches "das hat sich geändert" für den gerade erst startenden Lauf. Ein
-      // Schritt kann seine eigene, noch gar nicht abgeschlossene Ausführung nicht sinnvoll
-      // referenzieren, deshalb ein eigener, klar benannter Rot-Fall statt eines stillen Fehlwerts.
-      if (zielSchrittId === schritt.schritt_id) {
-        return {
-          ok: false,
-          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf sich selbst — ein Schritt kann seine eigene, noch laufende Ausführung nicht referenzieren`,
-        }
-      }
-      const zielSchritt = workflowDaten.schritte.find((s) => s.schritt_id === zielSchrittId)
-      if (zielSchritt === undefined) {
-        return {
-          ok: false,
-          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf keine bekannte schritt_id in Workflow '${workflowDaten.workflow_id}' — der Schritt wird nicht gestartet`,
-        }
-      }
-      if (zielSchritt.lauf_id === null) {
-        return {
-          ok: false,
-          grund: `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter 'artefakt:aenderungsuebersicht-@${zielSchrittId}' verweist auf Schritt '${zielSchrittId}', der noch keine lauf_id hat (nicht gestartet) — der Schritt wird nicht gestartet`,
-        }
-      }
-      artefaktId = `aenderungsuebersicht-${zielSchritt.lauf_id}`
+    // F23 WS-0 / F-652: 'aenderungsuebersicht-@<schrittId>' und 'pruefergebnis-@<schrittId>'
+    // referenzieren zur Planzeit beide die noch nicht bekannte lauf_id EINES ANDEREN Schritts
+    // desselben Workflows — die reale lauf_id entsteht erst, wenn jener Schritt startet.
+    // Aufgelöst GENAU HIER, beim Start DIESES Schritts, gegen die aktuelle Fassung von
+    // workflowDaten.schritte (nicht früher, sonst wäre die lauf_id des Zielschritts noch gar
+    // nicht bekannt) — über loesePraefixPlatzhalterAuf (D5, EIN Regelsatz für beide Präfixe).
+    // platzhalterPraefix (statt eines bloßen Booleans) hält fest, WELCHER Präfix traf: die
+    // beiden unterscheiden sich darin, was ein danach fehlendes Artefakt bedeutet (siehe unten,
+    // beim ladeArtefaktVersion-Aufruf).
+    let platzhalterPraefix = null
+    for (const praefix of ['aenderungsuebersicht', 'pruefergebnis']) {
+      const aufgeloest = loesePraefixPlatzhalterAuf(artefaktId, praefix, schritt, workflowDaten)
+      if (aufgeloest === null) continue
+      if (!aufgeloest.ok) return aufgeloest
+      artefaktId = aufgeloest.artefaktId
+      platzhalterPraefix = praefix
+      break
     }
 
     // F39 WS-2a (löst state/findings.md F-632 Teil a): 'ergebnis-@<schrittId>' referenziert wie
@@ -2605,12 +2637,19 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     }
     const version = ladeArtefaktVersion(artefaktId, undefined, ladeOptionen)
     if (version === null) {
+      // F-652 (Bauauftrag Punkt 4): 'pruefergebnis-@' bleibt bewusst FOLGENLOS, wenn das
+      // Artefakt fehlt — anders als 'aenderungsuebersicht-@' blockiert eine fehlende Prüfung den
+      // referenzierenden Schritt NICHT. Eine Startvorlage ohne pruefbefehl registriert nie ein
+      // 'pruefergebnis-<lauf_id>', und das ist ein weiterhin gültiger, unterstützter
+      // Betriebsmodus (bitgenaue Rückwärtskompatibilität), kein Fehlerfall — der Platzhalter
+      // entfällt hier still, statt den Schritt-Start abzulehnen.
+      if (platzhalterPraefix === 'pruefergebnis') continue
       // QA-Pass 14.09.2026: aus einem Platzhalter aufgelöst heißt "nicht gefunden" konkret, dass
       // der referenzierte Zielschritt zwar eine lauf_id hat, aber (noch) keine Änderungsübersicht
       // dazu registriert wurde — z. B. weil sein Werkzeugsatz lesend war oder er nicht real
       // erfolgreich endete. Eigener Text statt der generischen Meldung, damit das nicht wie eine
       // falsch geschriebene Artefakt-ID aussieht.
-      const grund = warPlatzhalter
+      const grund = platzhalterPraefix === 'aenderungsuebersicht'
         ? `Schritt '${schritt.schritt_id}': Eingabe-Platzhalter '${referenz}' löst auf '${artefaktId}' auf, aber dazu liegt keine Änderungsübersicht vor (Zielschritt war nicht schreibend/nicht real erfolgreich) — der Schritt wird nicht gestartet`
         : `Schritt '${schritt.schritt_id}': Eingabe-Artefakt '${artefaktId}' nicht gefunden — der Schritt wird nicht gestartet`
       return { ok: false, grund }
@@ -3786,22 +3825,32 @@ export function erzeugeRequestHandler(optionen = {}) {
     // ok:false zurückgibt — die laufId bleibt danach absichtlich belegt (F1s Hash-Kette ist
     // append-only, kein Überschreiben eines persistierten Artefakts, ARCHITECTURE.md §7).
     fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
-      .then((ergebnis) => {
-        // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
-        laufAktiv = false
-        laufAktivLaufId = null
-        laufAktivAbortController = null
-        laufAktivFortschritt = null
-        // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
-        globalerLaufZustand.aktiv = false
-        globalerLaufZustand.laufId = null
-        globalerLaufZustand.abortController = null
+      .then(async (ergebnis) => {
+        // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b). F-652 (löst state/findings.md
+        // F-652, D13-Bauauftrag Punkt 3): der Reset von laufAktiv/globalerLaufZustand steht jetzt
+        // HINTER einem etwaigen Prüfschritt weiter unten statt an dieser Stelle — vorher setzte
+        // dieser Block laufAktiv bereits VOR der (potenziell minutenlangen) deterministischen
+        // Prüfung zurück, ein zweiter Lauf hätte während der laufenden Prüfung starten können.
+        // Der ok:false-Zweig hier oben führt nie eine Prüfung aus (kein realer Lauf, keine
+        // Änderungsübersicht) und resettet deshalb bitgenau wie zuvor, ohne jeden await.
         if (ergebnis.ok === false) {
+          laufAktiv = false
+          laufAktivLaufId = null
+          laufAktivAbortController = null
+          laufAktivFortschritt = null
+          // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
+          globalerLaufZustand.aktiv = false
+          globalerLaufZustand.laufId = null
+          globalerLaufZustand.abortController = null
           angenommeneLaufIds.delete(laufId)
           const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: beschreibeAblehnung(ergebnis) }
           startfehlerListe.push(eintrag)
           console.error(`[leitstand] Lauf '${laufId}' abgelehnt:`, eintrag.fehler)
-        } else if (werkzeugsatzArt === 'schreibend' && ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH') {
+          meldeLaufende(ergebnis, null)
+          // D13-UEBERGABE-OHNE-FENSTER: ENDE
+          return
+        }
+        if (werkzeugsatzArt === 'schreibend' && ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH') {
           // F23 WS-0 (state/findings.md F-378): Änderungsübersicht NACH einem real erfolgreichen
           // Lauf mit schreibendem Werkzeugsatz — dieselbe Erfolgsbedingung wie
           // normalisiereSchrittAusgang (D5, kein zweiter Erfolgsbegriff). Bewusst SYNCHRON und VOR
@@ -3838,7 +3887,47 @@ export function erzeugeRequestHandler(optionen = {}) {
             startfehlerListe.push(eintrag)
             console.error(`[leitstand] Änderungsübersicht für Lauf '${laufId}' fehlgeschlagen:`, uebersichtFehler)
           }
+
+          // F-652 (state/findings.md F-652, BUG P1): NACH der Änderungsübersicht, VOR
+          // meldeLaufende (Bauauftrag Punkt 2) — nur wenn die Startvorlage einen pruefbefehl
+          // trägt, sonst bleibt der Ablauf bitgenau unverändert (kein await, kein Artefakt). Der
+          // await hier ist der einzige Grund, warum laufAktiv jetzt erst weiter unten
+          // zurückgesetzt wird (D13, Kommentar oben) — während der Prüfung bleibt der Server
+          // aus Sicht von D13 weiter "in einem aktiven Lauf".
+          if (vorlage.pruefbefehl !== undefined) {
+            try {
+              const pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, repoWurzel, vorlage.pruefZeitgrenzeMs)
+              const pruefVerstoesse = validierePruefergebnisDaten(pruefDaten)
+              if (pruefVerstoesse.length > 0) {
+                throw new Error(`verstößt gegen schemas/kontrollzustand-pruefergebnis-payload.schema.json: ${pruefVerstoesse.join('; ')}`)
+              }
+              registriereKernArtefakt(
+                `pruefergebnis-${laufId}`,
+                profilReferenz,
+                { erzeuger: 'kern', schritt: 'nach-lauf-pruefschritt' },
+                pruefDaten,
+                [],
+                { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+              )
+            } catch (pruefFehler) {
+              const eintrag = {
+                zeitstempel: new Date().toISOString(),
+                laufId,
+                fehler: `Prüfschritt konnte nicht registriert werden: ${String(pruefFehler?.message ?? pruefFehler)}`,
+              }
+              startfehlerListe.push(eintrag)
+              console.error(`[leitstand] Prüfschritt für Lauf '${laufId}' fehlgeschlagen:`, pruefFehler)
+            }
+          }
         }
+        laufAktiv = false
+        laufAktivLaufId = null
+        laufAktivAbortController = null
+        laufAktivFortschritt = null
+        // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+        globalerLaufZustand.abortController = null
         meldeLaufende(ergebnis, null)
         // D13-UEBERGABE-OHNE-FENSTER: ENDE
       })
@@ -4040,6 +4129,18 @@ export function erzeugeRequestHandler(optionen = {}) {
       return treffer !== null && workflowDaten.schritte.find((s) => s.schritt_id === treffer[1])?.rolle === 'architekt'
     })) {
       auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion().join('\n')}`
+    }
+
+    // F-652 (state/findings.md F-652, BUG P1, löst "keine Rolle kann `npm run check` selbst
+    // ausführen — jede Code-Ausführung blockiert oder meldet fälschlich 'fertig', ohne dass
+    // etwas verifiziert ist", real beobachtet im F39-WS-3b-Reallauf Versuch 3c): ist ein
+    // pruefbefehl konfiguriert, führt der KERN Tests/Checks NACH diesem Lauf selbst
+    // deterministisch aus (starteLaufUndVergiss, src/pruefschritt/index.ts) — die Rolle soll das
+    // Fehlen einer Bash-/npm-Berechtigung deshalb nicht als Blockade melden. Nur EIN Satz, nur
+    // für 'ausfuehrung', nur wenn die Startvorlage tatsächlich einen pruefbefehl trägt (sonst
+    // bliebe die Instruktion eine Zusage ohne Deckung).
+    if (schritt.rolle === 'ausfuehrung' && vorlage.pruefbefehl !== undefined) {
+      auftragstext = `${auftragstext}\n\nHinweis: Tests und Checks führt das System nach deinem Lauf deterministisch selbst aus. Melde nicht "Blockiert", nur weil du sie nicht selbst ausführen kannst. Echte Blockaden meldest du weiterhin.`
     }
 
     // F-648 (löst "Korrekturschleife trägt Abnahme-Begründung/vorherige Review-Befunde nicht in
@@ -4305,6 +4406,37 @@ export function erzeugeRequestHandler(optionen = {}) {
         const textErgebnis = laufakteVersion !== null ? leseErgebnistextAusRohstrom(laufakteVersion.daten) : { ok: false }
         ausfuehrungSelbstblockiert = leseSelbstblockadeAusAusfuehrungstext(textErgebnis.ok ? textErgebnis.text : null)
       }
+      // Regel 1f (F-652, state/findings.md F-652, BUG P1). Dasselbe Lesemuster wie
+      // ausfuehrungSelbstblockiert direkt darüber: das registrierte 'pruefergebnis-<laufId>'-
+      // Artefakt (starteLaufUndVergiss, NUR wenn vorlage.pruefbefehl gesetzt ist) trägt das
+      // deterministische Ergebnis. Fehlt das Artefakt UND ist kein pruefbefehl konfiguriert,
+      // bleiben alle drei Felder undefined, Regel 1f bleibt folgenlos — unverändert wie zuvor.
+      //
+      // F-654 (state/findings.md F-654, BUG P1, löst ein Fail-open-Loch in F-652): ist
+      // vorlage.pruefbefehl GESETZT, aber das Artefakt fehlt trotzdem — die Registrierung in
+      // starteLaufUndVergiss ist an einem Schemaverstoß oder einem Wurf aus
+      // fuehrePruefungDurch/registriereKernArtefakt gescheitert (dort abgefangen und nur in die
+      // flüchtige Startfehlerliste geschrieben, s. dortiger Kommentar) —, darf das NICHT
+      // stillschweigend als "keine Prüfung konfiguriert" durchgehen: ohne diesen Zweig bliebe
+      // pruefergebnis undefined, Regel 1f griffe nicht, und ein ungeprüfter Bau liefe zum Review
+      // durch. Ein fehlendes Prüfergebnis bei konfiguriertem pruefbefehl ist deshalb selbst ein
+      // FEHLER-Ergebnis (fail closed, ARCHITECTURE.md §4: kein allgemeines Erfolgsflag überstimmt
+      // eine konkrete Verweigerung) — dieselbe Härte wie ein real gescheiterter Prüflauf.
+      let pruefergebnis
+      let pruefergebnisExitCode
+      let pruefergebnisAusgabeEnde
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung') {
+        const pruefergebnisVersion = ladeArtefaktVersion(`pruefergebnis-${laufId}`, undefined, ladeOptionen)
+        if (pruefergebnisVersion !== null) {
+          pruefergebnis = pruefergebnisVersion.daten.ergebnis
+          pruefergebnisExitCode = pruefergebnisVersion.daten.exit_code
+          pruefergebnisAusgabeEnde = letzteZeilen(pruefergebnisVersion.daten.ausgabe_ende, 40)
+        } else if (vorlage.pruefbefehl !== undefined) {
+          pruefergebnis = 'FEHLER'
+          pruefergebnisExitCode = null
+          pruefergebnisAusgabeEnde = 'Prüfergebnis fehlt (Registrierung gescheitert, siehe Startfehlerliste).'
+        }
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -4337,6 +4469,9 @@ export function erzeugeRequestHandler(optionen = {}) {
             architekturAnzahlFragen,
             advisorUrteilFehlt,
             ausfuehrungSelbstblockiert,
+            pruefergebnis,
+            pruefergebnisExitCode,
+            pruefergebnisAusgabeEnde,
           })
           return {
             status: workflowStatusZuAusgang(naechster),
@@ -4656,12 +4791,31 @@ export function erzeugeRequestHandler(optionen = {}) {
       // festgehalten hat).
       const freigabeHalt = workflowDaten.status === 'WARTET_FREIGABE' ? { schrittId: workflowDaten.aktiver_schritt_id ?? null, grund: workflowDaten.grund ?? null } : null
 
+      // F-652 (state/findings.md F-652, Bauauftrag Punkt 7): schlanke Projektion des
+      // deterministischen Prüfergebnisses, GENAU NEBEN aenderungsuebersichtProjektion oben (Muster
+      // 1:1, gleicher Ausführungsschritt, gleiche drei status-Werte) — der Leitstand rendert die
+      // eine Zeile "Prüfung: GRÜN/ROT (Exit n)" an derselben Stelle wie die Änderungsübersicht
+      // (renderAenderungsuebersicht, public/leitstand/views/workflows.js).
+      let pruefergebnisProjektion
+      if (ausfuehrungSchritt === null) {
+        pruefergebnisProjektion = { status: 'kein_ausfuehrungs_schritt' }
+      } else if (ausfuehrungSchritt.lauf_id === null) {
+        pruefergebnisProjektion = { status: 'noch_nicht_gelaufen', schrittId: ausfuehrungSchritt.schritt_id }
+      } else {
+        const pruefergebnisVersion = ladeArtefaktVersion(`pruefergebnis-${ausfuehrungSchritt.lauf_id}`, undefined, ladeOptionen)
+        pruefergebnisProjektion =
+          pruefergebnisVersion === null
+            ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchritt.lauf_id }
+            : { status: 'ok', laufId: ausfuehrungSchritt.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code }
+      }
+
       sendeJson(res, 200, {
         workflowId,
         workflowStatus: workflowDaten.status,
         workflowVersion: workflowDaten.version,
         urteil: urteilProjektion,
         aenderungsuebersicht: aenderungsuebersichtProjektion,
+        pruefergebnis: pruefergebnisProjektion,
         entscheidung: entscheidungProjektion,
         freigabeHalt,
       })
@@ -4722,6 +4876,24 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
 
+      // F-652 (state/findings.md F-652, Bauauftrag Punkt 7): schlanke Projektion des
+      // deterministischen Prüfergebnisses, additiv wie architekturEntscheidung oben — Muster
+      // aenderungsuebersichtProjektion in GET .../abnahme, hier bewusst NICHT die vollen Daten
+      // (Ausgabetext), nur Status/Ergebnis/Exit-Code für die eine Anzeigezeile im Leitstand.
+      const ausfuehrungSchrittFuerPruefung = findeAusfuehrungsSchritt(version.daten)
+      let pruefergebnisProjektion
+      if (ausfuehrungSchrittFuerPruefung === null) {
+        pruefergebnisProjektion = { status: 'kein_ausfuehrungs_schritt' }
+      } else if (ausfuehrungSchrittFuerPruefung.lauf_id === null) {
+        pruefergebnisProjektion = { status: 'noch_nicht_gelaufen', schrittId: ausfuehrungSchrittFuerPruefung.schritt_id }
+      } else {
+        const pruefergebnisVersion = ladeArtefaktVersion(`pruefergebnis-${ausfuehrungSchrittFuerPruefung.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        pruefergebnisProjektion =
+          pruefergebnisVersion === null
+            ? { status: 'nicht_vorhanden', laufId: ausfuehrungSchrittFuerPruefung.lauf_id }
+            : { status: 'ok', laufId: ausfuehrungSchrittFuerPruefung.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code }
+      }
+
       sendeJson(res, 200, {
         workflowId,
         versionSequenz: version.versionSequenz,
@@ -4733,6 +4905,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F17 WS-2 (AK7): additiv, reine Anzeige — siehe baueWerkzeugsatzDurchsetzungProjektion.
         werkzeugsatzDurchsetzung: baueWerkzeugsatzDurchsetzungProjektion(version.daten),
         architekturEntscheidung,
+        pruefergebnis: pruefergebnisProjektion,
       })
       return
     }

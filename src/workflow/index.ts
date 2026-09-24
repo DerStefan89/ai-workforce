@@ -860,6 +860,25 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
+    // Regel 1f (F-652, state/findings.md F-652, BUG P1, löst "keine Rolle kann `npm run check`
+    // selbst ausführen — jede Code-Ausführung blockiert oder meldet fälschlich 'fertig'", real
+    // beobachtet im F39-WS-3b-Reallauf Versuch 3c): dieselbe Kopplung an schritt.rolle wie Regel
+    // 1e, aus demselben Grund ('ausfuehrung' trägt output_schema:null). Der Kern führt den in der
+    // Startvorlage konfigurierten pruefbefehl NACH dem Lauf selbst deterministisch aus
+    // (scripts/leitstand-server.mjs starteLaufUndVergiss, src/pruefschritt/index.ts) — ein
+    // Ergebnis ungleich 'GRUEN' (ROT/ZEITGRENZE/FEHLER) hält den Workflow an, BEVOR der
+    // nachfolgende Review-Schritt startet: ein Post-Build-Review über ungeprüften oder rot
+    // getesteten Code prüfte auf falscher Grundlage. Fehlt das Feld (keine Startvorlage mit
+    // pruefbefehl, oder der Schritt ist kein 'ausfuehrung'), bleibt diese Regel folgenlos — wie
+    // ein fehlendes 'ausfuehrungSelbstblockiert' für Regel 1e.
+    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.pruefergebnis !== undefined && vorschrittErgebnis.pruefergebnis !== 'GRUEN') {
+      const exitCodeText = vorschrittErgebnis.pruefergebnisExitCode === null || vorschrittErgebnis.pruefergebnisExitCode === undefined ? 'unbekannt' : String(vorschrittErgebnis.pruefergebnisExitCode)
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung): deterministische Prüfung meldet ${vorschrittErgebnis.pruefergebnis} (Exit-Code ${exitCodeText}) — kein automatischer Fortschritt zum Review (Lauf '${vorschrittErgebnis.laufId}').${vorschrittErgebnis.pruefergebnisAusgabeEnde ? `\nAusgabeende:\n${vorschrittErgebnis.pruefergebnisAusgabeEnde}` : ''}`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
     if (vorschritt.nachfolger === null) {
       return { art: 'fertig', aktiverSchrittId: null }
     }
