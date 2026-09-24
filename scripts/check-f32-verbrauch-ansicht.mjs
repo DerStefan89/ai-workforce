@@ -20,10 +20,20 @@
  * (e) F-518, grün: gültiges von/bis (YYYY-MM-DD, von <= bis) sowie gar kein
  *     von/bis liefern weiterhin { status: 'ok', ... }.
  * (f) F-518, Rot-Fall Format: ein von ODER bis, das kein gültiges Datum ist
- *     (falsches Muster, nicht-existierendes Kalenderdatum), liefert
- *     { status: 'zeitraum_ungueltig', grund } statt eines leeren Ergebnisses.
+ *     (falsches Muster, nicht-existierendes Kalenderdatum als Tagesdatum ODER
+ *     als voller ISO-8601-Zeitstempel — Korrektur nach Review, F-518 Befund
+ *     2: Date.parse allein rollt '2026-02-30T00:00:00Z' sonst still auf März
+ *     um), liefert { status: 'fehler', grund, code: 'zeitraum_ungueltig' }
+ *     statt eines leeren Ergebnisses (Korrektur nach Review, F-518 Befund 1:
+ *     status 'fehler' wie im ursprünglichen Auftrag, nicht das eigene Status-
+ *     Literal 'zeitraum_ungueltig' der Voriteration).
  * (g) F-518, Rot-Fall Reihenfolge: von > bis liefert ebenfalls
- *     { status: 'zeitraum_ungueltig', grund }.
+ *     { status: 'fehler', grund, code: 'zeitraum_ungueltig' }. Zusätzlich ein
+ *     Grün-Regressionsfall (Korrektur nach Review, F-518 Befund 3): zwei
+ *     gültige ISO-Zeitstempel unterschiedlicher Länge, bei denen von
+ *     zeitlich vor bis liegt, aber lexikographisch NACH bis stünde, dürfen
+ *     NICHT als vertauscht abgelehnt werden — die Reihenfolge muss als
+ *     Zeitwert verglichen werden, nicht als Zeichenkette.
  * (h) F-518, echter HTTP-Aufruf: dieselben Rot-Fälle (f)/(g) liefern über
  *     GET /api/verbrauch HTTP 400 (Grund im Körper) statt 200.
  *
@@ -165,17 +175,26 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 {
   const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-format-${randomUUID()}`
   const ungueltigesVon = baueVerbrauchsProjektion(basisVerzeichnis, { von: 'nicht-datum', bis: '2026-12-31' })
-  if (ungueltigesVon.status !== 'zeitraum_ungueltig' || typeof ungueltigesVon.grund !== 'string' || ungueltigesVon.grund.length === 0) {
-    befunde.push(`(f) ungültiges 'von' ('nicht-datum'): erwartet { status: 'zeitraum_ungueltig', grund }, erhalten ${JSON.stringify(ungueltigesVon)}`)
+  if (ungueltigesVon.status !== 'fehler' || ungueltigesVon.code !== 'zeitraum_ungueltig' || typeof ungueltigesVon.grund !== 'string' || ungueltigesVon.grund.length === 0) {
+    befunde.push(`(f) ungültiges 'von' ('nicht-datum'): erwartet { status: 'fehler', grund, code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(ungueltigesVon)}`)
   } else {
-    console.log(`✓ (f) ungültiges 'von' ('nicht-datum') → { status: 'zeitraum_ungueltig', grund: '${ungueltigesVon.grund}' }.`)
+    console.log(`✓ (f) ungültiges 'von' ('nicht-datum') → { status: 'fehler', code: 'zeitraum_ungueltig', grund: '${ungueltigesVon.grund}' }.`)
   }
 
   const nichtExistierendesDatum = baueVerbrauchsProjektion(basisVerzeichnis, { bis: '2026-02-30' })
-  if (nichtExistierendesDatum.status !== 'zeitraum_ungueltig') {
-    befunde.push(`(f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis): erwartet { status: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(nichtExistierendesDatum)}`)
+  if (nichtExistierendesDatum.status !== 'fehler' || nichtExistierendesDatum.code !== 'zeitraum_ungueltig') {
+    befunde.push(`(f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis, Tagesdatum): erwartet { status: 'fehler', code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(nichtExistierendesDatum)}`)
   } else {
-    console.log("✓ (f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis) → { status: 'zeitraum_ungueltig' }.")
+    console.log("✓ (f) nicht-existierendes Kalenderdatum ('2026-02-30' als bis, Tagesdatum) → { status: 'fehler', code: 'zeitraum_ungueltig' }.")
+  }
+
+  // Regression F-518 Befund 2: derselbe nicht-existierende Tag als voller ISO-8601-Zeitstempel —
+  // Date.parse('2026-02-30T00:00:00Z') rollte in der Voriteration still auf März um.
+  const nichtExistierenderZeitstempel = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-02-30T00:00:00Z' })
+  if (nichtExistierenderZeitstempel.status !== 'fehler' || nichtExistierenderZeitstempel.code !== 'zeitraum_ungueltig') {
+    befunde.push(`(f) nicht-existierendes Kalenderdatum ('2026-02-30T00:00:00Z' als von, voller Zeitstempel): erwartet { status: 'fehler', code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(nichtExistierenderZeitstempel)}`)
+  } else {
+    console.log("✓ (f) Regression F-518 Befund 2: nicht-existierendes Kalenderdatum als voller ISO-8601-Zeitstempel ('2026-02-30T00:00:00Z') → { status: 'fehler', code: 'zeitraum_ungueltig' } (kein stilles Umrollen auf März).")
   }
 }
 
@@ -183,10 +202,20 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
 {
   const basisVerzeichnis = `kontrollzustand-test-f32-ansicht-zeitraum-reihenfolge-${randomUUID()}`
   const vertauscht = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-12-31', bis: '2026-01-01' })
-  if (vertauscht.status !== 'zeitraum_ungueltig' || typeof vertauscht.grund !== 'string' || vertauscht.grund.length === 0) {
-    befunde.push(`(g) von > bis: erwartet { status: 'zeitraum_ungueltig', grund }, erhalten ${JSON.stringify(vertauscht)}`)
+  if (vertauscht.status !== 'fehler' || vertauscht.code !== 'zeitraum_ungueltig' || typeof vertauscht.grund !== 'string' || vertauscht.grund.length === 0) {
+    befunde.push(`(g) von > bis: erwartet { status: 'fehler', grund, code: 'zeitraum_ungueltig' }, erhalten ${JSON.stringify(vertauscht)}`)
   } else {
-    console.log(`✓ (g) von (2026-12-31) > bis (2026-01-01) → { status: 'zeitraum_ungueltig', grund: '${vertauscht.grund}' }.`)
+    console.log(`✓ (g) von (2026-12-31) > bis (2026-01-01) → { status: 'fehler', code: 'zeitraum_ungueltig', grund: '${vertauscht.grund}' }.`)
+  }
+
+  // Regression F-518 Befund 3: von liegt als Zeitwert VOR bis, aber die Zeichenkette '.001Z'
+  // steht lexikographisch NACH 'Z' allein — ein String-Vergleich lehnte das in der Voriteration
+  // fälschlich als vertauscht ab.
+  const zeitwertNichtString = baueVerbrauchsProjektion(basisVerzeichnis, { von: '2026-01-01T00:00:00Z', bis: '2026-01-01T00:00:00.001Z' })
+  if (zeitwertNichtString.status !== 'ok') {
+    befunde.push(`(g) Regression F-518 Befund 3: von (2026-01-01T00:00:00Z) liegt zeitlich VOR bis (2026-01-01T00:00:00.001Z), erwartet { status: 'ok' }, erhalten ${JSON.stringify(zeitwertNichtString)}`)
+  } else {
+    console.log("✓ (g) Regression F-518 Befund 3: von (...00Z) vor bis (...00.001Z) → { status: 'ok' } (Reihenfolge als Zeitwert verglichen, nicht als Zeichenkette).")
   }
 }
 
@@ -222,6 +251,15 @@ console.log('\n=== F32-WS2-Verbrauchsansicht-Check ===\n')
       } else {
         console.log(`✓ (h) GET /api/verbrauch?von=2026-12-31&bis=2026-01-01 (vertauscht) → 400, Grund: '${koerper.grund}'.`)
       }
+    }
+
+    // Regression F-518 Befund 3 über echten HTTP-Aufruf: von vor bis (als Zeitwert), trotz
+    // lexikographisch "größerer" Zeichenkette → darf NICHT 400 liefern.
+    const zeitwertAntwort = await fetch(`http://127.0.0.1:${port}/api/verbrauch?von=${encodeURIComponent('2026-01-01T00:00:00Z')}&bis=${encodeURIComponent('2026-01-01T00:00:00.001Z')}`)
+    if (zeitwertAntwort.status !== 200) {
+      befunde.push(`(h) Regression F-518 Befund 3: GET /api/verbrauch (von vor bis als Zeitwert): erwartet 200, erhalten ${zeitwertAntwort.status}`)
+    } else {
+      console.log('✓ (h) Regression F-518 Befund 3: GET /api/verbrauch mit von (...00Z) vor bis (...00.001Z) → 200 (nicht fälschlich 400).')
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

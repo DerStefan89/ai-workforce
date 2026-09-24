@@ -4646,13 +4646,15 @@ export function erzeugeRequestHandler(optionen = {}) {
     // wirft nie mehr (Muster baueRoadmapProjektion) — ein IO-Fehler bleibt ein
     // Fachergebnis im Körper ({ status: 'fehler', grund }) → weiterhin 200.
     // F-518-Fix: ein ungültiges/vertauschtes von/bis ist dagegen ein
-    // Eingabefehler ({ status: 'zeitraum_ungueltig', grund }) → 400, schmale
-    // if-Abfrage, keine zweite Formatprüfung hier (D5).
+    // Eingabefehler ({ status: 'fehler', grund, code: 'zeitraum_ungueltig' })
+    // → 400, schmale if-Abfrage, keine zweite Formatprüfung hier (D5). Das
+    // `code`-Feld unterscheidet diesen Fall vom generischen IO-Fehler
+    // ({ status: 'fehler', grund }, F-603-Fix), der weiterhin 200 bleibt.
     if (req.method === 'GET' && pfad === '/api/verbrauch') {
       const von = angefragteUrl.searchParams.get('von') ?? undefined
       const bis = angefragteUrl.searchParams.get('bis') ?? undefined
       const projektion = baueVerbrauchsProjektion(basisVerzeichnis, { von, bis })
-      if (projektion.status === 'zeitraum_ungueltig') {
+      if (projektion.status === 'fehler' && projektion.code === 'zeitraum_ungueltig') {
         sendeJson(res, 400, { grund: projektion.grund })
         return
       }
