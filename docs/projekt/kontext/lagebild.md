@@ -46,7 +46,7 @@ Feature-Review-Pass über das Gesamtfeature am 23.09.2026 „Freigegeben mit
 Hinweisen" (code-reviewer + qa, frischer Kontext), Restfindings F-627/F-631
 (P3) bleiben offen, `npm run render-nachweis` erneut grün
 (F-622-Regel), siehe `features/F34/feature.md`; **Abnahme durch Stefan am
-23.09.2026** im F39-WS-1-Auftrag), F39 `IN_ARBEIT` (WS-1 — Rolle
+23.09.2026** im F39-WS-1-Auftrag), F39 `FEATURE_GATE` (WS-1 — Rolle
 `architekt`, Schema, Validator, Gate — gebaut 23.09.2026; WS-2a —
 `hoch.json`-Kette (`architekt` vor `architecture-advisor`), Herkunftsfeld,
 `ergebnis-@`-Eingabe-Platzhalter, deterministische Kontrolltiefe-
@@ -62,8 +62,18 @@ Schrittstart aufgerufen), `ausfuehrung`-Ergebnis-Umsetzung
 (`baueUmsetzungsInstruktion`), neun optionale technische Abschnitte in
 `scripts/check-feature.mjs`, Ablaufanleitung
 `features/F39/nachweis-ws3-reallauf.md` für WS-3b — gebaut 23.09.2026;
-WS-3b (realer Durchlauf) noch offen, siehe `features/F39/feature.md`),
-F35–F38 noch nicht
+Fixpakete F-652/F-654/F-655/F-656/F-658/F-659 (Prüfschritt fail-closed,
+lesbare Prüfausgabe, Prüfung wiederholen, Prozessbaum-Kill-Stabilität,
+Abnahme-Begründung an Review) gebaut/gemergt bis PR #239. Feature-Review-
+Pass über das Gesamtfeature am 24.09.2026 „Freigegeben mit Hinweisen"
+(code-reviewer + qa, frischer Kontext) — alle 17 AKs belegt, keine
+P0/P1-Blocker, Restfindings F-660…F-666 (P1–P3) bleiben offen,
+`npm run render-nachweis` erneut grün (F-622-Regel). WS-3b ist **teilweise
+real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
+über Versuche 3/3b/3c/4 vollständig belegt, `hoch`-Kette nur bis
+`ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
+**Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
+Auftrag mehr, siehe `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 direkt nach F39 gezogen (E-M5-14, noch nicht begonnen), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
@@ -117,3 +127,4 @@ feature.md`) (Stand 22.09.2026).
 - F-556 · BUG · Langlaufender Leitstand-Prozess braucht ~2 s je GET /api/zustand (frisch ~0,1 s).
 - F-589 · HARNESS_IMPROVEMENT · Lesendes git über die Remote-Bridge hinterlässt trotz --no-optional-locks ein .git/index.lock.
 - F-648 · BUG · Die Korrekturschleife nach „Anpassung anfordern" trägt weder die Abnahme-Begründung noch die vorherigen Review-Befunde erkennbar in die Instruktion der neuen Iteration — Ausführung und Review wiederholen sich dadurch blind.
+- F-666 · TECH_DEBT · Ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c real ausgelöst) wurde nie belegt — Pflicht-AK der F41-Abnahme (E-F39-2 = A).

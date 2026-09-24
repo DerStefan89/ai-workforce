@@ -172,3 +172,92 @@ D13-Fenster).
 (F-622) für den neuen Knopf steht noch aus — kein Commit, Stefan setzt die
 Freigabe. `state/findings.md` F-655 und F-656 neu angelegt, Status „behoben
 auf Branch".
+
+## 2026-09-24 — Feature-Review-Pass über das Gesamtfeature, Branch `docs/f39-feature-gate`
+
+Grundlage: main (`17a41d6`, #239, F-658/F-659) — Commit-Umfang WS-1 bis
+WS-3a plus alle Fixpakete (`eb42da1`..`17a41d6`, #224–#239) über
+`features/F39/feature.md` (AK1–AK17) und dieses Journal ermittelt. Frischer
+Kontext (code-reviewer + qa, jeweils eigener Subagent). **Beide Urteile:
+FREIGEGEBEN MIT HINWEISEN, keine P0/P1-Blocker.**
+
+qa: alle 17 Akzeptanzkriterien mit konkretem Beleg (Testdatei+Testname,
+Gate-Abschnitt oder Render-Nachweis) unterlegt, keine echte Lücke. Vertieft
+geprüft: AK3 (alle fünf Kopplungsverletzungen einzeln benannt), AK11 (alle
+drei Ablehnungsfälle + Idempotenz gegen einen echten HTTP-Testserver),
+AK16 (Rot-/Grünfall „fehlt" vs. „leer" beide vorhanden). Zwei
+Dokupflege-Funde: `docs/harness/HARNESS-GLOSSARY.md` nennt für
+`architecture-advisor` noch die veraltete Fundstelle `schritt-1-architektur`
+(real seit der WS-2a-Korrektur `schritt-2-architektur`, F-663); dieses
+Journal behauptete zuvor, der Render-Nachweis für `nachweis-f656-ui/` stehe
+noch aus — real bereits vollständig vorhanden (F-664).
+
+code-reviewer: Rollenvertrag (inkl. echtem Rot-Fall-Test für eine
+vertragswidrige Besetzung), Codex-Dialekt-Schema (F-638-Rückfall
+ausgeschlossen), hoch-Kette, deterministische Router-Untergrenze, Regel
+1c/1f, Prüfschritt-Fail-closed (F-654), Prüfung-wiederholen-Erkennung
+(F-656, strukturell über Rolle/Status/Prüfergebnis, nicht über den
+`grund`-Text), selbstgebauter Code (F-631/F-518) mit gleicher Strenge wie
+jeder andere Code geprüft — bereits sauber (frühere Korrekturrunde). Zwei
+P2-Funde: F-661 (Prompt-Injection-Fläche der Abnahme-Begründung in
+`baueReviewKorrekturInstruktion`, F-659 — im Ein-Nutzer-Modell geringes
+unmittelbares Risiko, vor einer Mehrnutzer-Erweiterung zu härten) und F-662
+(Regel 1f ist für die tatsächliche `hoch`-Kette, Schritt nach
+architekt/architecture-advisor, nur durch Konfiguration belegt, kein
+eigener Test/Reallauf-Nachweis für genau diese Position — ergänzt den
+bereits bekannten Nicht-Blocker „hoch-Pfad nur durch Versuch 2 belegt").
+Plus F-660 (Prozesshinweis: Lagebild-Neuerzeugung nach einer
+findings.md-Änderung nicht automatisiert).
+
+Render-Nachweis (F-622) für `nachweis-e-f39-1-ui/`, `nachweis-f652-ui/`
+und `nachweis-ws2b-ui/` (alle drei `klickfolge.json`-Verzeichnisse unter
+`features/F39/nachweis-*-ui/`) erneut gelaufen — alle drei grün, Ergebnis
+deckt sich mit den bestehenden `protokoll.md`-Dateien.
+
+Ergebnis: keine Blocker → `features/F39/feature.md` Status `IN_ARBEIT` →
+`FEATURE_GATE` gesetzt, `docs/STATUS.md` nachgezogen. `state/findings.md`
+F-660–F-664 neu angelegt (alle offen, P2/P3, kein Blocker). WS-3b (realer
+Durchlauf) bleibt eigener, künftiger Auftrag — unverändert.
+
+**Korrektur 24.09.2026 (siehe Eintrag unten, E-F39-2 = A):** diese letzte
+Aussage war falsch überzeichnet — Versuch 2 (23.09.2026, hoch/Projektmodus)
+deckt die `hoch`-Kette nur bis `ausfuehrung` ab, kein vollständiger realer
+`hoch`-Lauf existiert. Siehe F-665/F-666.
+
+## 2026-09-24 — Korrektur nach Stefans Einwand: WS-3b teilweise real erbracht, nicht „kein Blocker" (E-F39-2 = A)
+
+Stefan wies den vorherigen Feature-Review-Pass-Eintrag zurück: `feature.md`
+und `docs/STATUS.md` hatten WS-3b als „kompletter `hoch`-Pfad nur durch
+Versuch 2 belegt, WS-3b bleibt eigener, künftiger Auftrag" beschrieben —
+das verharmlost den tatsächlichen Stand. Versuch 2 (23.09.2026,
+hoch/Projektmodus) ist der EINZIGE reale `hoch`-Beleg und deckt nur drei
+der vier Schritte ab: `architekt` ERFOLGREICH (Schema valide, 1 ADR-Entwurf,
+0 Entscheidungen, 63,9 s); `architecture-advisor` ERFOLGREICH aber OHNE
+Urteil (F-641); `ausfuehrung` ERFOLGREICH (nur Dokumentation — ADR, Akte
+F42, Roadmap —, 105,7 s, $0,74, schrieb dabei ungeschützt auf main, löste
+F-643/E-F39-1 aus); `code-reviewer` FEHLGESCHLAGEN (`spawn ENAMETOOLONG`,
+F-642). Regel 1c (Architektur-Entscheidung) wurde real nie ausgelöst
+(`entscheidungen_mensch[]` war leer). Die Versuche 3/3b/3c/4 liefen
+ausschließlich über die `standard`-Kette (ohne `architekt`).
+
+Stefan entschied **E-F39-2 = A**: WS-3b gilt als teilweise real erbracht
+(`standard`-Kette vollständig belegt, `hoch`-Kette nur bis `ausfuehrung`);
+ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, Review, Regel 1c)
+wird **Pflicht-AK der F41-Abnahme**, statt unbestimmt als „eigener
+künftiger Auftrag" offenzustehen.
+
+Umsetzung: `features/F39/feature.md` (Status-Absatz + WS-3b-Workstream-
+Beschreibung) und `docs/STATUS.md` (beide Stellen) korrigiert. Neuer
+Abschnitt „Versuch 2 — 23.09.2026, hoch/Projektmodus" in
+`features/F39/nachweis-ws3-reallauf-messung.md` mit den obigen Fakten
+ergänzt (Vorlage „Schritt 1"–„Schritt 9" bleibt bewusst leer stehen, als
+Vorlage für den ausstehenden vollständigen F41-`hoch`-Lauf). `state/
+findings.md`: F-665 (`PROCESS_IMPROVEMENT`, P2, offen — die
+Überzeichnung selbst als Prozessbefund, der Review-Auftrag hatte die
+Einordnung vorgegeben statt sie den Prüfrollen zu überlassen) und F-666
+(`TECH_DEBT`, P1, offen — der fehlende vollständige `hoch`-Beleg,
+Pflicht-AK F41) neu angelegt. F-664 zugleich final erledigt (Status
+„behoben" statt „offen").
+
+`node scripts/erzeuge-lagebild.mjs` erneut gelaufen, `npm run check` grün.
+Explizit gestaged, nicht committet — Freigabe steht weiterhin aus.
