@@ -110,3 +110,65 @@ Test `scripts/check-f652-pruefschritt.mjs` Block (i): vor dem Fix am
 selben Branch real rot geprüft (Review startete trotz gescheiterter
 Registrierung), nach dem Fix grün. `npm run check` real grün.
 `state/findings.md` F-654 neu angelegt, Status „behoben".
+
+## 2026-09-24 — F39 Versuch 4 diagnostiziert; F-655 (BUG P1) und F-656 (FEATURE P1) auf Branch `fix/f655-pruefausgabe` behoben
+
+Versuch 4 stand auf `KLAERUNG_ERFORDERLICH` (Regel 1f, Workflow
+`router-9d5fedcb-dead-417f-a61f-c374a167ba73`, Ausführungslauf
+`9397a9dd-ea70-4b05-8f52-bf3eec899514`, Prüfung ROT, Exit 1, 256 s).
+Diagnose auf `test/f39-versuch4` mit den uncommitteten
+Ausführungs-Änderungen: `npm run check` lief von Hand zweimal grün
+(767/767, exit 0) — kein Beleg für eine Regression durch die F-518-Änderung
+(`scripts/leitstand-server.mjs`, `scripts/leitstand/routen-verbrauch.mjs`,
+`scripts/check-f32-verbrauch-ansicht.mjs`). Die erste echte Fehlerzeile war
+aus dem gespeicherten Artefakt NICHT rekonstruierbar — das war selbst der
+Beleg für F-655. Diese fünf Dateien auf `test/f39-versuch4` committet
+(`674268b`, kein Push): Ergebnis der Ausführung, Beleg für die
+Flake-Einordnung.
+
+**F-655** (BUG P1): `fuehrePruefungDurch` (`src/pruefschritt/index.ts`)
+hängte stderr hinter stdout und kürzte GEMEINSAM auf 16 KB — bei viel
+stderr-Rauschen (erwartete Fehlerpfad-Logs aus F32-(d)/F-654-(i)-Fixtures,
+Git-CRLF-Warnungen) verdrängte das die stdout-Fehlerzeile vollständig,
+genau im real beobachteten `9397a9dd`-Artefakt (15933 Zeichen, komplett
+Rauschen). Fix: `baueAusgabeEnde` kürzt stdout (12 KB) und stderr (4 KB)
+GETRENNT, `filtereStderrRauschen` entfernt vorher die Git-CRLF-Warnzeile.
+`ausgabe_ende` bleibt ein einzelner String (Reihenfolge stderr-dann-stdout,
+stdout am Stringende) — kein Schema-Bruch, `letzteZeilen(ausgabe_ende, n)`
+in `scripts/leitstand-server.mjs` liefert dadurch automatisch primär das
+stdout-Ende, ohne selbst geändert zu werden. Rotfall real belegt
+(`src/pruefschritt/pruefschritt.test.ts`): eine stdout-Fehlerzeile bleibt
+trotz ~52 KB unfilterbaren stderr-Rauschens im Artefakt UND im Halt-Grund
+erhalten; der Test schlug vor dem Fix real fehl (musste zusätzlich von
+einem argv-Literal auf eine In-Prozess-Schleife umgestellt werden, weil
+600 wiederholte Zeilen als ein einzelnes Kommandozeilenargument reale
+Windows-Längengrenzen sprengten und den Prozessstart selbst scheitern
+ließen).
+
+**F-656** (FEATURE P1, neu angelegt): neuer Endpunkt `POST
+/api/workflows/<id>/pruefung-wiederholen` — nur zulässig, wenn der Halt
+strukturell (nicht über den `grund`-Text) als Regel-1f-Halt erkennbar ist.
+Führt denselben `pruefbefehl` für dieselbe `lauf_id` erneut aus, SYNCHRON
+(kein Fire-and-forget — bewusste Abweichung vom sonstigen Lauf-Startmuster,
+siehe Kommentar am Endpunkt), unter derselben D13-Sperre. Ergebnis wird als
+NEUE Version von `pruefergebnis-<laufId>` angehängt (Append). GRUEN setzt
+über den bestehenden Automaten fort (`ermittleNaechstenSchritt` +
+`starteWorkflowSchritt`, kein zweiter Mechanismus), ungleich GRUEN hält
+erneut. UI: Knopf „Prüfung wiederholen" neben „Prüfung: ROT" in
+`public/leitstand/views/workflows.js`, nur in genau diesem Zustand
+sichtbar.
+
+Test `scripts/check-f656-pruefung-wiederholen.mjs` (neu, echter
+HTTP-Dispatch, Muster `check-f652-pruefschritt.mjs`): (a) falscher Zustand
+→ 409, (b) `KLAERUNG_ERFORDERLICH` ohne Regel-1f-Halt → 409, (c) zweiter
+Versuch liefert GRUEN → Review startet automatisch, (d) rot bleibt rot →
+erneuter Halt, Review startet nicht, (e) Artefakt-Historie trägt genau 2
+Versionen, (f) D13 lehnt einen parallelen Start während der Wiederholung
+ab. Alle sechs Rotfälle real belegt (Attrappen ok:false statt Mock-Urteil,
+Markerdatei-Trick für den Grünfall-Wechsel, echte 600ms-Verzögerung fürs
+D13-Fenster).
+
+`npm run check` real grün (siehe Bericht an Stefan). Render-Nachweis
+(F-622) für den neuen Knopf steht noch aus — kein Commit, Stefan setzt die
+Freigabe. `state/findings.md` F-655 und F-656 neu angelegt, Status „behoben
+auf Branch".

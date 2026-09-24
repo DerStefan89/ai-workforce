@@ -56,6 +56,7 @@ import {
   sendeWorkflowFreigabe,
   starteWorkflowSchritt,
   stoppeWorkflow,
+  wiederholeWorkflowPruefung,
 } from '../api.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
@@ -285,16 +286,29 @@ const PRUEFERGEBNIS_WERT_TEXT = { GRUEN: 'GRÜN', ROT: 'ROT', ZEITGRENZE: 'ZEITG
  * index.ts Regel 1f); ROT/ZEITGRENZE/FEHLER halten den Workflow auf KLAERUNG_ERFORDERLICH, dessen
  * grund (workflow-bedienung-Block) bereits das Ausgabeende trägt — diese Zeile bleibt bewusst
  * knapp (Ergebnis + Exit-Code), kein zweiter Ausgabetext.
+ *
+ * F-656: direkt daneben der Knopf „Prüfung wiederholen" — NUR sichtbar, solange der Workflow
+ * genau wegen dieses Ergebnisses hält (workflowStatus 'KLAERUNG_ERFORDERLICH' UND ergebnis
+ * ungleich GRUEN), Muster renderAbnahmeEntscheidung (Server entscheidet über die Bedienbarkeit,
+ * die Anzeige spiegelt nur). Server-seitig prüft POST .../pruefung-wiederholen dieselbe
+ * Vorbedingung strukturell nochmal (D2) — der Knopf ist Bedienfreundlichkeit, keine zweite
+ * Rechtsquelle.
  * @param projektion - abnahme.pruefergebnis aus GET .../abnahme
+ * @param workflowId - Kennung des angezeigten Workflows
+ * @param workflowStatus - abnahme.workflowStatus aus GET .../abnahme
  * @returns HTML-Block
  */
-function renderPruefergebnis(projektion) {
+function renderPruefergebnis(projektion, workflowId, workflowStatus) {
   if (projektion.status !== 'ok') {
     return `<p class="unbekannt">${escapeHtml(PRUEFERGEBNIS_STATUS_TEXT[projektion.status] ?? projektion.status)}</p>`
   }
   const badgeKlasse = projektion.ergebnis === 'GRUEN' ? 'badge ok' : 'badge fehler'
   const exitText = projektion.exitCode === null ? 'unbekannt' : String(projektion.exitCode)
-  return `<p>Prüfung: <span class="${badgeKlasse}">${escapeHtml(PRUEFERGEBNIS_WERT_TEXT[projektion.ergebnis] ?? projektion.ergebnis)}</span> (Exit ${escapeHtml(exitText)}) <span class="unbekannt">Lauf <code>${escapeHtml(projektion.laufId)}</code></span></p>`
+  const wiederholenKnopf =
+    workflowStatus === 'KLAERUNG_ERFORDERLICH' && projektion.ergebnis !== 'GRUEN'
+      ? ` <button class="btn wf-pruefung-wiederholen" data-workflow-id="${escapeHtml(workflowId)}">Prüfung wiederholen</button>`
+      : ''
+  return `<p>Prüfung: <span class="${badgeKlasse}">${escapeHtml(PRUEFERGEBNIS_WERT_TEXT[projektion.ergebnis] ?? projektion.ergebnis)}</span> (Exit ${escapeHtml(exitText)}) <span class="unbekannt">Lauf <code>${escapeHtml(projektion.laufId)}</code></span>${wiederholenKnopf}</p>`
 }
 
 /** Anzeigetexte je Nicht-'ok'-Status der urteil-Projektion aus GET .../abnahme. */
@@ -400,7 +414,7 @@ function renderAbnahme(workflowId, abnahme) {
   return `<div class="detail-block"><h3>Abnahme</h3>
     <h4>Änderungsübersicht</h4>
     ${renderAenderungsuebersicht(abnahme.aenderungsuebersicht)}
-    ${renderPruefergebnis(abnahme.pruefergebnis)}
+    ${renderPruefergebnis(abnahme.pruefergebnis, workflowId, abnahme.workflowStatus)}
     <h4>Urteil (Post-Build-Review)</h4>
     ${renderUrteil(abnahme.urteil)}
     <h4>Entscheidung</h4>
@@ -1094,6 +1108,36 @@ async function fuehreAbnahmeAktionAus(button) {
   await sendeAbnahmeBedienung(workflowId, { ergebnis: aktion, begruendung }, button, erfolgstext)
 }
 
+/**
+ * Führt den Knopf „Prüfung wiederholen" aus (F-656). Kein Body, keine Begründungspflicht — anders
+ * als fuehreAbnahmeAktionAus daneben. Die Antwort ist bewusst synchron (der Server wartet den
+ * ganzen Prüflauf ab, siehe Kommentar am Endpunkt in scripts/leitstand-server.mjs) — der Knopf
+ * bleibt deshalb disabled, bis die Antwort da ist, statt sofort wieder bedienbar zu sein.
+ * @param button - der geklickte .wf-pruefung-wiederholen-Knopf
+ */
+async function fuehrePruefungWiederholenAus(button) {
+  const workflowId = button.dataset.workflowId
+  zeigeAbnahmeMeldung(null)
+  button.disabled = true
+  try {
+    const antwort = await wiederholeWorkflowPruefung(workflowId)
+    const inhalt = await antwort.json().catch(() => ({}))
+    if (antwort.ok) {
+      const erfolgstext = inhalt.pruefergebnis === 'GRUEN' ? 'Prüfung wiederholt: GRÜN — der Review-Schritt wurde gestartet.' : `Prüfung wiederholt: ${PRUEFERGEBNIS_WERT_TEXT[inhalt.pruefergebnis] ?? inhalt.pruefergebnis ?? 'unbekannt'} — der Workflow hält weiter.`
+      zeigeAbnahmeMeldung(erfolgstext, 'erfolg')
+      abnahmeKennzeichen = null
+      const abnahme = await holeAbnahme(workflowId).catch(() => null)
+      if (abnahme !== null) aktualisiereAbnahme(workflowId, abnahme)
+    } else {
+      zeigeAbnahmeMeldung(`${antwort.status}: ${inhalt.grund ?? 'unbekannter Fehler'}`)
+    }
+  } catch (fehler) {
+    zeigeAbnahmeMeldung(`Anfrage fehlgeschlagen: ${fehler.message}`)
+  }
+  button.disabled = false
+  void pollJetzt()
+}
+
 /** Klick-/Eingabe-Delegation der Workflow-Ansicht — jeder Container wird als Ganzes neu gerendert, die Zuhörer hängen deshalb am Container. */
 function initWorkflowBedienung() {
   document.getElementById('workflows').addEventListener('click', (ereignis) => {
@@ -1112,9 +1156,14 @@ function initWorkflowBedienung() {
     void fuehreWorkflowAktionAus(button)
   })
   document.getElementById('workflow-abnahme').addEventListener('click', (ereignis) => {
-    const button = ereignis.target.closest('.wf-abnahme-aktion')
-    if (!button) return
-    void fuehreAbnahmeAktionAus(button)
+    const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
+    if (abnahmeButton) {
+      void fuehreAbnahmeAktionAus(abnahmeButton)
+      return
+    }
+    const pruefungButton = ereignis.target.closest('.wf-pruefung-wiederholen')
+    if (!pruefungButton) return
+    void fuehrePruefungWiederholenAus(pruefungButton)
   })
   document.getElementById('workflow-reparatur').addEventListener('input', (ereignis) => {
     if (ereignis.target.id !== 'wf-reparatur-entwurf') return

@@ -1,0 +1,25 @@
+{
+  "url": "http://127.0.0.1:4177/#/workflows/f656-nachweis-b",
+  "viewport": { "breite": 1000, "hoehe": 4200 },
+  "localStorageEntfernen": [],
+  "screenshotAusschnitt": { "selector": "#workflow-abnahme", "hoehe": 550 },
+  "beobachtete": {
+    "gruppen": [],
+    "sichtbarkeit": [],
+    "titel": { "name": "Workflow-Status", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Prüfung ROT (Badge)", "selector": "#workflow-abnahme .badge.fehler" },
+      { "name": "Prüfung GRUEN (Badge)", "selector": "#workflow-abnahme .badge.ok" },
+      { "name": "Knopf 'Prüfung wiederholen' sichtbar", "selector": "#workflow-abnahme .wf-pruefung-wiederholen" },
+      { "name": "Knopf disabled (läuft)", "selector": "#workflow-abnahme .wf-pruefung-wiederholen:disabled" },
+      { "name": "Erfolgsmeldung sichtbar", "selector": "#workflow-abnahme-meldung.erfolg" }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Prüfung GRUEN, Review-Schritt bereits gestartet (LAEUFT) — Knopf 'Prüfung wiederholen' ist NICHT sichtbar",
+      "warteAufSelector": { "selector": "#workflow-abnahme .badge.ok", "timeoutMs": 5000 },
+      "screenshot": "04-gruen-kein-knopf.png"
+    }
+  ]
+}

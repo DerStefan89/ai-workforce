@@ -3256,17 +3256,18 @@ async function starteTestserver(optionen) {
   // 'function'.
   const startpfadMuster = new RegExp(`${'starteWorkflow'}${'Schritt'}\\(`, 'g')
   const startpfadTreffer = (quelltext.match(startpfadMuster) ?? []).length
-  // 5 = eine Definition + vier Aufrufe. Die Definition trägt dieselbe Zeichenfolge. Seit
+  // 6 = eine Definition + fünf Aufrufe. Die Definition trägt dieselbe Zeichenfolge. Seit
   // WS-2c (b1) ist der Freigabe-Endpunkt der dritte Aufrufer, seit F39 WS-2b (löst F-632 Teil
-  // b) der Entscheidungs-Endpunkt (POST /api/workflows/<id>/entscheidung) der vierte — beide
-  // prüfen laufAktiv unmittelbar davor, wie die beiden ursprünglichen. Die ZAHL wird
-  // mitgezogen, die Prüfung nicht aufgeweicht.
-  if (startpfadTreffer !== 5) {
+  // b) der Entscheidungs-Endpunkt (POST /api/workflows/<id>/entscheidung) der vierte, seit F-656
+  // der Endpunkt POST /api/workflows/<id>/pruefung-wiederholen der fünfte — alle prüfen laufAktiv
+  // unmittelbar davor, wie die beiden ursprünglichen. Die ZAHL wird mitgezogen, die Prüfung
+  // nicht aufgeweicht.
+  if (startpfadTreffer !== 6) {
     befunde.push(
-      `AK6b/AK7: erwartet GENAU VIER Aufrufstellen des Automaten-Startpfads in scripts/leitstand-server.mjs (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt) plus die Definition, gefunden ${startpfadTreffer} Vorkommen — ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung`
+      `AK6b/AK7: erwartet GENAU FÜNF Aufrufstellen des Automaten-Startpfads in scripts/leitstand-server.mjs (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt, Pruefung-Wiederholen-Endpunkt) plus die Definition, gefunden ${startpfadTreffer} Vorkommen — ein weiterer Aufrufer wäre ein Startpfad ohne D13-Prüfung`
     )
   } else {
-    console.log('✓ AK6b/AK7: genau vier Aufrufstellen des Automaten-Startpfads (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt) — kein fünfter, ungeschützter Startpfad.')
+    console.log('✓ AK6b/AK7: genau fünf Aufrufstellen des Automaten-Startpfads (Startendpunkt, Auto-Fortsetzung, Freigabe-Endpunkt, Entscheidungs-Endpunkt, Pruefung-Wiederholen-Endpunkt) — kein sechster, ungeschützter Startpfad.')
   }
 
   // ─── Jede Schreibstelle liest den GESTOPPT-Schutz (F15 WS-2c (b2), F-228) ──────
@@ -3297,18 +3298,19 @@ async function starteTestserver(optionen) {
   const schreiberTreffer = (quelltext.match(schreiberMuster) ?? []).length
   const gelesenMuster = new RegExp(`\\.${'eingefroren'}`, 'g')
   const gelesenTreffer = (quelltext.match(gelesenMuster) ?? []).length
-  // 12 = eine Definition + elf Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
+  // 13 = eine Definition + zwölf Aufrufe (Startfehlerhalt, Startpfad, dessen Rücksetzer,
   // Nachbereitung, Stale-Heilung, Ablehnung, Freigabe, Stopp, seit F23 WS-2a die
   // Abnahme-Ablehnung, seit F23 WS-2b der Abnahme-ADJUST-Zweig, seit F39 WS-2b — löst F-632
-  // Teil b — der Entscheidungs-Endpunkt). 11 = je Aufrufstelle EIN Lesen des Feldes. Kommen
-  // beide Zahlen auseinander, hat ein Aufrufer das Feld vergessen — oder ein neuer Aufrufer ist
-  // dazugekommen, ohne es zu behandeln.
-  if (schreiberTreffer !== 12 || gelesenTreffer !== 11) {
+  // Teil b — der Entscheidungs-Endpunkt, seit F-656 der Halt-Zweig von
+  // POST /api/workflows/<id>/pruefung-wiederholen). 12 = je Aufrufstelle EIN Lesen des Feldes.
+  // Kommen beide Zahlen auseinander, hat ein Aufrufer das Feld vergessen — oder ein neuer
+  // Aufrufer ist dazugekommen, ohne es zu behandeln.
+  if (schreiberTreffer !== 13 || gelesenTreffer !== 12) {
     befunde.push(
-      `F-228: erwartet 12 Vorkommen des Workflow-Schreibers (1 Definition + 11 Aufrufe) und 11 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
+      `F-228: erwartet 13 Vorkommen des Workflow-Schreibers (1 Definition + 12 Aufrufe) und 12 Lesestellen des eingefroren-Feldes in scripts/leitstand-server.mjs, gefunden ${schreiberTreffer} / ${gelesenTreffer} — eine Aufrufstelle liest den GESTOPPT-Schutz nicht und hielte einen eingefrorenen Schreibvorgang für einen erfolgreichen`
     )
   } else {
-    console.log('✓ F-228: alle elf Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
+    console.log('✓ F-228: alle zwölf Aufrufstellen des Workflow-Schreibers lesen den GESTOPPT-Schutz — keine liest einen eingefrorenen Schreibvorgang als Erfolg.')
   }
 
   // ─── Im Stopp wird ZUERST geschrieben, DANN abgebrochen (F-216, (b2)) ─────────

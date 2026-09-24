@@ -6791,6 +6791,208 @@ export function erzeugeRequestHandler(optionen = {}) {
       return
     }
 
+    // ─── POST /api/workflows/<id>/pruefung-wiederholen (F-656, state/findings.md F-656, löst
+    // "ein ROT/ZEITGRENZE/FEHLER-Prüfergebnis hält den Workflow endgültig an, obwohl die
+    // eigentliche Ursache oft ein Flake ist — der einzige Ausweg bis hierher war eine neue
+    // Workflow-Fassung mit demselben Bau" — real beobachtet, F39 Versuch 4, Lauf 9397a9dd) ──────
+    //
+    // Nur zulässig, wenn der Halt GENAU aus Regel 1f kommt (src/workflow/index.ts): Workflow auf
+    // KLAERUNG_ERFORDERLICH, Cursor-Schritt eine 'ausfuehrung' mit status ERFOLGREICH und einem
+    // registrierten Prüfergebnis ungleich GRUEN. Strukturell geprüft (dieselben Felder, die Regel
+    // 1f selbst liest), NICHT über den grund-Text — ein Textvergleich wäre bei jeder
+    // Formulierungsänderung in workflow/index.ts lautlos falsch (D5).
+    //
+    // Führt denselben pruefbefehl für DIESELBE lauf_id erneut aus, auf dem aktuellen
+    // Arbeitsbaum — bewusst SYNCHRON (await direkt im Handler, keine eigene D13-Übergabe-ohne-
+    // Fenster-Zusage wie starteLaufUndVergiss): dieser Prüflauf hat keinen Rohstrom, den ein
+    // Client live mitverfolgen müsste, und sein Ergebnis ist erst nach Prozessende überhaupt
+    // aussagekräftig. Die D13-Sperre gilt trotzdem für die gesamte Wartezeit (laufAktiv bleibt
+    // bis zum finally gesetzt) — ein zweiter Start während der Wiederholung wird exakt wie bei
+    // jedem anderen Lauf mit 409 abgelehnt.
+    //
+    // Das Ergebnis wird über registriereKernArtefakt als NEUE Version derselben Kette
+    // 'pruefergebnis-<laufId>' angehängt (F2, append-only, ARCHITECTURE.md §7) — nie überschrieben,
+    // die ROTE erste Fassung bleibt Teil der Lineage. GRUEN setzt danach über denselben
+    // Automaten wie ein frischer Lauf fort (ermittleNaechstenSchritt + starteWorkflowSchritt,
+    // Muster POST .../freigabe) — kein zweiter Fortsetzungsmechanismus.
+    if (req.method === 'POST' && pfad.startsWith('/api/workflows/') && pfad.endsWith('/pruefung-wiederholen')) {
+      const rohId = pfad.slice('/api/workflows/'.length, pfad.length - '/pruefung-wiederholen'.length)
+      const workflowId = dekodiereSegment(rohId)
+      if (workflowId === null || workflowId.length === 0 || LAUFID_UNZULAESSIGE_ZEICHEN.test(workflowId)) {
+        sendeJson(res, 400, { grund: `workflowId fehlt, ist nicht dekodierbar oder enthält unzulässige Zeichen: ${JSON.stringify(rohId)}` })
+        return
+      }
+
+      const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowVersion === null) {
+        sendeJson(res, 404, { grund: `Workflow '${workflowId}' nicht gefunden` })
+        return
+      }
+      const workflowDaten = workflowVersion.daten
+      const verstoesse = validiereWorkflowDaten(workflowDaten)
+      if (verstoesse.length > 0) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' verletzt WORKFLOW_V0: ${verstoesse.join('; ')}`, verstoesse })
+        return
+      }
+
+      // Vorbedingung, strukturell (Kopfkommentar): KLAERUNG_ERFORDERLICH, Cursor-Schritt
+      // 'ausfuehrung' mit status ERFOLGREICH, registriertes Prüfergebnis ungleich GRUEN.
+      if (workflowDaten.status !== 'KLAERUNG_ERFORDERLICH') {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}' steht nicht auf KLAERUNG_ERFORDERLICH (${workflowDaten.status}) — 'Prüfung wiederholen' ist nur nach einem gescheiterten Prüfergebnis zulässig` })
+        return
+      }
+      const schritt = workflowDaten.schritte.find((s) => s.schritt_id === workflowDaten.aktiver_schritt_id)
+      if (schritt === undefined || schritt.rolle !== 'ausfuehrung' || schritt.status !== 'ERFOLGREICH' || schritt.lauf_id === null) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}': der Halt am Cursor-Schritt kommt nicht aus der deterministischen Prüfung (Regel 1f) — 'Prüfung wiederholen' greift nur dort` })
+        return
+      }
+      const laufId = schritt.lauf_id
+      const bisherigesPruefergebnis = ladeArtefaktVersion(`pruefergebnis-${laufId}`, undefined, ladeOptionen)
+      if (bisherigesPruefergebnis === null || bisherigesPruefergebnis.daten.ergebnis === 'GRUEN') {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}': Lauf '${laufId}' trägt kein Prüfergebnis ungleich GRUEN — 'Prüfung wiederholen' ist hier nicht anwendbar` })
+        return
+      }
+      if (vorlage.pruefbefehl === undefined) {
+        sendeJson(res, 409, { grund: `Workflow '${workflowId}': die aktive Startvorlage trägt keinen pruefbefehl — 'Prüfung wiederholen' kann nichts ausführen` })
+        return
+      }
+
+      // D13, wortgleich zu jedem anderen Startpfad und aus demselben Grund: genau ein aktiver
+      // Arbeitsstrang. Vor jeder Zustandsänderung (D2) und vor dem eigentlichen Prüflauf.
+      if (laufAktiv) {
+        sendeJson(res, 409, {
+          grund: `ein anderer, über diese Serverinstanz gestarteter Lauf ('${laufAktivLaufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang. Die Prüfung wurde NICHT wiederholt; nach dem Ende des Laufs erneut einreichen.`,
+        })
+        return
+      }
+      if (pruefeGlobaleLaufSperre(res)) return
+
+      laufAktiv = true
+      laufAktivLaufId = laufId
+      laufAktivAbortController = new AbortController()
+      globalerLaufZustand.aktiv = true
+      globalerLaufZustand.laufId = laufId
+      globalerLaufZustand.abortController = laufAktivAbortController
+
+      let pruefDaten
+      try {
+        pruefDaten = await fuehrePruefungDurch(laufId, vorlage.pruefbefehl, repoWurzel, vorlage.pruefZeitgrenzeMs)
+      } finally {
+        laufAktiv = false
+        laufAktivLaufId = null
+        laufAktivAbortController = null
+        globalerLaufZustand.aktiv = false
+        globalerLaufZustand.laufId = null
+        globalerLaufZustand.abortController = null
+      }
+
+      const pruefVerstoesse = validierePruefergebnisDaten(pruefDaten)
+      if (pruefVerstoesse.length > 0) {
+        console.error(`[leitstand] wiederholte Prüfung für Lauf '${laufId}' verstößt gegen das Schema:`, pruefVerstoesse)
+        sendeJson(res, 500, { grund: `Prüfergebnis verstößt gegen schemas/kontrollzustand-pruefergebnis-payload.schema.json: ${pruefVerstoesse.join('; ')}` })
+        return
+      }
+
+      let neueVersion
+      try {
+        neueVersion = registriereKernArtefakt(
+          `pruefergebnis-${laufId}`,
+          profilReferenz,
+          { erzeuger: 'kern', schritt: 'pruefung-wiederholen' },
+          pruefDaten,
+          [],
+          ladeOptionen
+        )
+      } catch (fehler) {
+        console.error(`[leitstand] wiederholte Prüfung für Lauf '${laufId}' konnte nicht registriert werden:`, fehler)
+        sendeJson(res, 500, { grund: `Prüfergebnis konnte nicht registriert werden: ${fehler.message}` })
+        return
+      }
+
+      // Frisch geladen (Muster starteWorkflowSchritt/POST .../freigabe): die Fassung von oben
+      // trägt noch den alten Stand, ermittleNaechstenSchritt braucht die aktuelle.
+      const workflowNachPruefung = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      if (workflowNachPruefung === null) {
+        sendeJson(res, 500, { grund: `Workflow '${workflowId}' ist nach der wiederholten Prüfung nicht mehr ladbar` })
+        return
+      }
+      const naechster = ermittleNaechstenSchritt(workflowNachPruefung.daten, {
+        schrittId: schritt.schritt_id,
+        ergebnis: 'ERFOLGREICH',
+        laufId,
+        pruefergebnis: pruefDaten.ergebnis,
+        pruefergebnisExitCode: pruefDaten.exit_code,
+        pruefergebnisAusgabeEnde: letzteZeilen(pruefDaten.ausgabe_ende, 40),
+      })
+
+      if (naechster.art !== 'starte') {
+        const halt = schreibeWorkflowFortschritt(
+          workflowId,
+          schritt.schritt_id,
+          {},
+          () => ({ status: workflowStatusZuAusgang(naechster), aktiver_schritt_id: naechster.aktiverSchrittId, grund: beschreibeAutomatAusgang(naechster) }),
+          profilReferenz,
+          ladeOptionen
+        )
+        if (!halt.ok) {
+          console.error(`[leitstand] Workflow '${workflowId}' konnte nach wiederholter Prüfung nicht fortgeschrieben werden:`, halt.grund)
+          sendeJson(res, 500, { grund: halt.grund })
+          return
+        }
+        // F-228: der GESTOPPT-Schutz kann zwischen dem Laden oben und diesem Schreibvorgang
+        // gegriffen haben (ein Mensch stoppt, während die Prüfung noch läuft) — die
+        // Workflow-Ebene bleibt dann eingefroren, ok bleibt trotzdem true. Der neue
+        // Prüfergebnis-Halt wäre in diesem Fall NICHT geschrieben, die Antwort darf das nicht
+        // verschweigen (Muster POST .../freigabe, FREIGEGEBEN-Zweig).
+        if (halt.eingefroren) {
+          const anlassGestoppt = `Wiederholte Prüfung für Lauf '${laufId}' ist abgeschlossen (${pruefDaten.ergebnis}), aber der Workflow ist GESTOPPT — der neue Halt wurde NICHT geschrieben, das Prüfergebnis-Artefakt bleibt registriert`
+          console.error(`[leitstand] ${anlassGestoppt}`)
+          sendeJson(res, 409, {
+            grund: anlassGestoppt,
+            art: 'haltGestoppt',
+            status: 'GESTOPPT',
+            pruefergebnis: pruefDaten.ergebnis,
+            versionSequenz: neueVersion.versionSequenz,
+          })
+          return
+        }
+        sendeJson(res, 200, {
+          workflowId,
+          schrittId: schritt.schritt_id,
+          laufId,
+          pruefergebnis: pruefDaten.ergebnis,
+          exitCode: pruefDaten.exit_code,
+          status: workflowStatusZuAusgang(naechster),
+          versionSequenz: neueVersion.versionSequenz,
+        })
+        return
+      }
+
+      const gestartet = starteWorkflowSchritt(workflowId, naechster)
+      if (!gestartet.ok) {
+        const anlass = `Wiederholte Prüfung für Lauf '${laufId}' ist GRUEN, aber der Start des Folgeschritts ist gescheitert (${gestartet.art}): ${gestartet.grund}`
+        schreibeStartfehlerHalt(workflowId, schritt.schritt_id, schritt.schritt_id, laufId, anlass, ladeOptionen)
+        sendeJson(res, 409, {
+          grund: anlass,
+          art: gestartet.art,
+          status: 'KLAERUNG_ERFORDERLICH',
+          pruefergebnis: pruefDaten.ergebnis,
+          versionSequenz: neueVersion.versionSequenz,
+        })
+        return
+      }
+      sendeJson(res, 202, {
+        workflowId,
+        schrittId: gestartet.schrittId,
+        laufId: gestartet.laufId,
+        pruefergebnis: pruefDaten.ergebnis,
+        status: 'LAEUFT',
+        versionSequenz: neueVersion.versionSequenz,
+      })
+      return
+    }
+
     // ─── POST /api/workflows/<id>/stoppen (F15 WS-2c (b2), löst F-216) ──────────────────
     //
     // Die Bremse für eine laufende automatische Kette. Bis hierher war der einzige Eingriff

@@ -1,0 +1,47 @@
+[
+  {
+    "label": "Regel-1f-Halt: Ausführung ERFOLGREICH, Prüfung ROT — Knopf 'Prüfung wiederholen' ist sichtbar",
+    "Workflow-Status": "f656-nachweis-a",
+    "Prüfung ROT (Badge)": true,
+    "Prüfung GRUEN (Badge)": false,
+    "Knopf 'Prüfung wiederholen' sichtbar": true,
+    "Knopf disabled (läuft)": false,
+    "Erfolgsmeldung sichtbar": false
+  },
+  {
+    "label": "Klick auf 'Prüfung wiederholen' — Zustand 'läuft' (Knopf disabled, Prüflauf dauert real 800ms)",
+    "Workflow-Status": "f656-nachweis-a",
+    "Prüfung ROT (Badge)": true,
+    "Prüfung GRUEN (Badge)": false,
+    "Knopf 'Prüfung wiederholen' sichtbar": true,
+    "Knopf disabled (läuft)": true,
+    "Erfolgsmeldung sichtbar": false
+  },
+  {
+    "label": "Nach der Prüfung: neuer Status GRUEN, Review automatisch gestartet, Knopf verschwunden",
+    "Workflow-Status": "f656-nachweis-a",
+    "Prüfung ROT (Badge)": false,
+    "Prüfung GRUEN (Badge)": true,
+    "Knopf 'Prüfung wiederholen' sichtbar": false,
+    "Knopf disabled (läuft)": false,
+    "Erfolgsmeldung sichtbar": true
+  },
+  {
+    "label": "Prüfung GRUEN, Review-Schritt bereits gestartet (LAEUFT) — Knopf 'Prüfung wiederholen' ist NICHT sichtbar",
+    "Workflow-Status": "f656-nachweis-b",
+    "Prüfung ROT (Badge)": false,
+    "Prüfung GRUEN (Badge)": true,
+    "Knopf 'Prüfung wiederholen' sichtbar": false,
+    "Knopf disabled (läuft)": false,
+    "Erfolgsmeldung sichtbar": false
+  },
+  {
+    "label": "KLAERUNG_ERFORDERLICH aus einem ANDEREN Grund (Schritt 'schritt-1-architekt' endete VERWEIGERT, Regel 1a — der Ausführungsschritt ist noch nie gelaufen) — Knopf 'Prüfung wiederholen' ist NICHT sichtbar",
+    "Workflow-Status": "f656-nachweis-c",
+    "Prüfung ROT (Badge)": false,
+    "Prüfung GRUEN (Badge)": false,
+    "Knopf 'Prüfung wiederholen' sichtbar": false,
+    "Knopf disabled (läuft)": false,
+    "Erfolgsmeldung sichtbar": false
+  }
+]

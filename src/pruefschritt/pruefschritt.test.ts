@@ -13,7 +13,18 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { entferneLeitstandUmgebungsvariablen, fuehrePruefungDurch, klassifizierePruefergebnis, kuerzeAusgabeEnde, letzteZeilen, validierePruefergebnisDaten } from './index.ts'
+import {
+  baueAusgabeEnde,
+  entferneLeitstandUmgebungsvariablen,
+  filtereStderrRauschen,
+  fuehrePruefungDurch,
+  klassifizierePruefergebnis,
+  kuerzeAusgabeEnde,
+  letzteZeilen,
+  STDERR_ENDE_MAX_BYTES,
+  STDOUT_ENDE_MAX_BYTES,
+  validierePruefergebnisDaten,
+} from './index.ts'
 
 /** argv-Präfix für einen node-Einzeiler ohne Shell (Muster startvorlagen/ai-workforce.json' pruefbefehl). */
 function knotenBefehl(...ausdruecke: string[]): string[] {
@@ -103,6 +114,51 @@ test('letzteZeilen liefert genau die letzten n Zeilen', () => {
   const text = ['1', '2', '3', '4', '5'].join('\n')
   assert.strictEqual(letzteZeilen(text, 2), '4\n5')
   assert.strictEqual(letzteZeilen(text, 100), text)
+})
+
+test('filtereStderrRauschen entfernt nur die Git-CRLF-Warnzeile, sonst nichts', () => {
+  const text = [
+    "warning: in the working copy of 'a.txt', LF will be replaced by CRLF the next time Git touches it",
+    'FEHLER: echt kaputt',
+    "warning: in the working copy of 'schemas/x.schema.json', LF will be replaced by CRLF the next time Git touches it",
+  ].join('\n')
+  assert.strictEqual(filtereStderrRauschen(text), 'FEHLER: echt kaputt')
+  assert.strictEqual(filtereStderrRauschen(''), '')
+  assert.strictEqual(filtereStderrRauschen('FEHLER: echt kaputt'), 'FEHLER: echt kaputt')
+})
+
+test('baueAusgabeEnde: leeres stderr liefert nur stdout, sonst steht stdout am Stringende', () => {
+  assert.strictEqual(baueAusgabeEnde('nur stdout', ''), 'nur stdout')
+  // stderr besteht NUR aus der gefilterten Rauschzeile — nach dem Filtern bleibt nichts übrig,
+  // das Ergebnis ist also bitgenau wie ganz ohne stderr.
+  assert.strictEqual(baueAusgabeEnde('nur stdout', "warning: in the working copy of 'a.txt', LF will be replaced by CRLF the next time Git touches it"), 'nur stdout')
+  const kombiniert = baueAusgabeEnde('STDOUT-ENDE', 'STDERR-RAUSCHEN')
+  assert.match(kombiniert, /STDERR-RAUSCHEN[\s\S]*STDOUT-ENDE$/)
+})
+
+test('baueAusgabeEnde: stdout und stderr werden UNABHÄNGIG gekürzt — großes stderr verdrängt eine kurze stdout-Zeile nicht (F-655)', () => {
+  const riesigesStderr = 'x'.repeat(STDERR_ENDE_MAX_BYTES * 3)
+  const ergebnis = baueAusgabeEnde('KURZE-STDOUT-ZEILE', riesigesStderr)
+  assert.match(ergebnis, /KURZE-STDOUT-ZEILE$/)
+  assert.ok(Buffer.byteLength(ergebnis, 'utf8') <= STDOUT_ENDE_MAX_BYTES + STDERR_ENDE_MAX_BYTES + 100)
+})
+
+test('F-655 Rotfall: eine Fehlerzeile auf stdout bleibt trotz viel stderr-Rauschen im Artefakt UND im Halt-Grund erhalten (real beobachtet, Lauf 9397a9dd, F39 Versuch 4)', async () => {
+  // ~52 KB stderr-Rauschen (weit über dem alten gemeinsamen 16-KB-Schnitt UND über
+  // STDERR_ENDE_MAX_BYTES), im Kindprozess selbst per Schleife erzeugt statt als Literal in argv
+  // eingebettet — eine 600-fach wiederholte Zeile als argv-String sprengt sonst reale
+  // Windows-Kommandozeilenlängengrenzen (real beobachtet: der Prozessstart selbst scheiterte,
+  // ergebnis 'FEHLER' statt 'ROT'). Die Zeile wird NICHT gefiltert — anders als der CRLF-Rotfall
+  // oben belegt dieser Test die UNABHÄNGIGE Kürzung, nicht den Filter.
+  const skript = `for (let i = 0; i < 600; i++) console.error("[leitstand] Lauf 'x' fehlgeschlagen: Error: synthetischer Wurf aus der Attrappe (AK6)"); console.log("FEHLERZEILE-F655: echter Testfehler"); process.exit(1)`
+  const daten = await fuehrePruefungDurch('test-lauf-f655-rot', knotenBefehl(skript), process.cwd(), 5000)
+  assert.strictEqual(daten.ergebnis, 'ROT')
+  // Artefakt: die stdout-Fehlerzeile ist trotz des stderr-Rauschens enthalten (vorher durch den
+  // gemeinsamen 16-KB-Tail-Schnitt verdrängt).
+  assert.match(daten.ausgabe_ende, /FEHLERZEILE-F655: echter Testfehler/)
+  // Halt-Grund (Regel 1f, scripts/leitstand-server.mjs letzteZeilen(daten.ausgabe_ende, 40)):
+  // stdout steht am Stringende, die Fehlerzeile bleibt also auch im gekürzten Grund sichtbar.
+  assert.match(letzteZeilen(daten.ausgabe_ende, 40), /FEHLERZEILE-F655: echter Testfehler/)
 })
 
 test('klassifizierePruefergebnis: TIMEOUT vor Startfehler vor Exitcode (Reihenfolge egal, Ergebnis eindeutig)', () => {
