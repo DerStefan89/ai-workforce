@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.27 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.28 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -52,6 +52,8 @@ v1.24 → v1.25: **§13.5 Meilenstein-4-Abschluss nachgetragen, §13.6 Meilenste
 v1.25 → v1.26: **§13.6 um E-M5-12/13/14 ergänzt, Feature-Schnitt/Reihenfolge aktualisiert** (Stefan, 22.09.2026, F34-WS-3-Vorbereitung): E-M5-12 (F34 WS-3 Projekt-Interview — Coach-Modus `projekt` erzeugt einen `projekt_entwurf`, ein schreibender Folgeauftrag legt `docs/projekt/kontext/beschreibung.md`, `docs/projekt/roadmap.json` und `features/<id>/feature.md`-Skelette an bzw. erweitert sie; hebt das `no_onboarding`-Nicht-Ziel aus Plan v8 für genau diesen Teil auf) · E-M5-13 (F39 wird vor F35 gezogen und bekommt zusätzlich einen Projektmodus „Architektur-Grundlage") · E-M5-14 (F41 „Neues Projekt anlegen", F-523, wird als eigenes Feature direkt nach F39 gezogen statt erst in F30). Reihenfolge jetzt F34 → F39 → F41 → F35 → F37 → F38 → Design → F30 → RC, F36 parallel ab sofort.
 
 v1.26 → v1.27: **§13.6 um E-F41-1 ergänzt** (Stefan, 24.09.2026, F41 WS-1 Korrektur, löst F-414 Option B teilweise auf): der Kern kopiert die Harness-Baseline (`.claude/settings.json`, referenzierte Hooks, `state/aktuelle-autorisierung.json`) beim Anlegen eines neuen Projekts byte-identisch in ein Geschwisterverzeichnis — mit Hash-Prüfung (Startbedingung 1, E-183) und voller Startfreigabe-Prüfung (Startbedingung 1 UND 2) sowohl an der Quelle vorher als auch am neu angelegten Ziel danach. Es entsteht dabei KEIN neues Freigabeartefakt (ARCHITECTURE.md §3 bleibt unverändert in Kraft). Real belegt über einen echten, lesenden Lauf gegen ein neu angelegtes Projekt (`features/F41/nachweis-ws1.md`) — widerlegt eine zwischenzeitlich falsche Annahme derselben Akte, Startbedingung 2 lehne ein neues Projektverzeichnis strukturell immer ab (`state/findings.md` F-670/F-671).
+
+v1.27 → v1.28: **§13.6 um E-F41-2 ergänzt** (Stefan, 24.09.2026, F41-WS-3-Reallauf, löst `state/findings.md` F-676): Workforce-eigene Assets (`ressourcen.json`, `schemas/`, `workflow-vorlagen/`, Rolleninstruktionen, Output-Schema-Pfade für `codex --output-schema`) werden vom Kern jetzt über eine eigene `installWurzel` (Default `process.cwd()` des Serverprozesses) statt über die Projekt-`repoWurzel` aufgelöst — real gebrochen im ersten F41-WS-3-Reallauf gegen das neue Projekt `haushaltsbuch` (Coach-Turn `500 ENOENT ressourcen.json`, Router-Klassifikation schemawidrig, weil das Modell im Projekt-cwd kein `schemas/` fand). `baueRouterAuftragstext` nennt die geforderte JSON-Form seither zusätzlich inline. Gate `scripts/check-fix-f676-installwurzel.mjs`.
 
 ---
 
@@ -714,6 +716,28 @@ ADR, Modulschnitt, Datenmodell als Schemas) — Coach (F34) und Architekt
 **E-M5-14** *(Stefan, 22.09.2026)* — „Neues Projekt anlegen" (F-523) wird
 als eigenes Feature F41 direkt nach F39 gezogen, statt wie ursprünglich
 vorgesehen erst in F30 zu entstehen.
+
+**E-F41-2** *(Stefan, 24.09.2026, F41-WS-3-Reallauf, löst `state/
+findings.md` F-676)* — Workforce-EIGENE Assets (`ressourcen.json`,
+`schemas/`, `workflow-vorlagen/`, Rolleninstruktionen, Output-Schema-Pfade
+für `codex --output-schema`) werden vom Kern IMMER gegen die
+Installationswurzel (`process.cwd()` des Leitstand-Serverprozesses,
+identisch für jede Projekt-Instanz) aufgelöst — nie gegen die
+`repoWurzel` des jeweils bearbeiteten Projekts. Ein über F41 neu
+angelegtes Projekt hat diese Dateien strukturell nie (nur die
+Harness-Baseline wird kopiert, AK4b von F41 WS-1) — eine Auflösung gegen
+`repoWurzel` scheiterte deshalb real im ersten F41-WS-3-Reallauf (Projekt
+`haushaltsbuch`): ein Coach-Turn im Modus `projekt` mit `500 ENOENT
+ressourcen.json`, ein Router-Lauf mit einer gegen `schemas/ergebnis-router.
+schema.json` schemawidrigen Klassifikation (das Modell erriet Feldnamen,
+weil es im Projekt-cwd kein `schemas/` fand). Umgesetzt über einen
+separaten `installWurzel`-Parameter (Default `process.cwd()`, getrennt von
+`repoWurzel`) in `scripts/leitstand-server.mjs` und `src/router/index.ts`;
+die Router-Rolleninstruktion (`baueRouterAuftragstext`) nennt die
+geforderte JSON-Form seither zusätzlich INLINE, statt sich allein auf einen
+Dateipfad im Worker-cwd zu verlassen (Muster `baueArchitektAuftragstext`).
+Gate `scripts/check-fix-f676-installwurzel.mjs`, in `npm run check`
+eingehängt.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

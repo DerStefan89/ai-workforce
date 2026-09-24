@@ -261,7 +261,9 @@ export function bestimmeEffektiveKontrolltiefe(kontrolltiefe: Kontrolltiefe, her
  * @param klassifikation - bereits gegen validiereErgebnisRouter geprüftes Ergebnis der Rolle 'router'
  * @param auftragId - auftrag_id des gerouteten Auftrags
  * @param ziel - Zieltext des gerouteten Auftrags
- * @param repoWurzel - absoluter Pfad der Repo-Wurzel (Default: process.cwd(), Muster scripts/leitstand-server.mjs' repoWurzel-Parameter)
+ * @param installWurzel - absoluter Pfad der Installationswurzel (E-F41-2, löst state/findings.md
+ *   F-676: workflow-vorlagen/ ist ein Workforce-EIGENES Asset, NIE die Projekt-repoWurzel —
+ *   Default process.cwd(), Muster scripts/leitstand-server.mjs' installWurzel-Parameter)
  * @param herkunftArt - `AuftragV0Daten.herkunft.art` des gerouteten Auftrags, oder undefined/null (Default) ohne Herkunftsfeld
  * @returns vollständiger, noch nicht validierter WORKFLOW_V0-Datensatz (status 'OFFEN', siehe Kopfkommentar)
  */
@@ -269,11 +271,11 @@ export function waehleWorkflowVorlage(
   klassifikation: ErgebnisRouter,
   auftragId: string,
   ziel: string,
-  repoWurzel: string = process.cwd(),
+  installWurzel: string = process.cwd(),
   herkunftArt?: string | null
 ): WorkflowV0Daten {
   const effektiv = bestimmeEffektiveKontrolltiefe(klassifikation.kontrolltiefe, herkunftArt)
-  const vorlagenPfad = join(repoWurzel, 'workflow-vorlagen', `${effektiv.kontrolltiefe}.json`)
+  const vorlagenPfad = join(installWurzel, 'workflow-vorlagen', `${effektiv.kontrolltiefe}.json`)
   const vorlage = JSON.parse(readFileSync(vorlagenPfad, 'utf8')) as WorkflowV0Daten
   const workflowId = leiteWorkflowIdAb(auftragId)
   // Nur bei tatsächlicher Anhebung ist herkunftArt hier auch tatsächlich ein nicht-leerer String
@@ -319,6 +321,17 @@ const ROUTER_HOCH_AUSLOESER = [
  * bekam der Router NUR schemas/ergebnis-router.schema.json (über --output-schema bzw. dessen
  * Beschreibung) und den rohen Auftragstext, keine konkreten Kriterien für die höchste
  * Kontrolltiefe.
+ *
+ * E-F41-2 (löst state/findings.md F-676): die Form wird seit hier INLINE genannt (Muster
+ * baueArchitektAuftragstext/baueFeatureRolleninstruktion, baueJarvisAuftragstext), statt nur
+ * "gemäß schemas/ergebnis-router.schema.json" zu sagen. Real beobachtet im F41-WS-3-Reallauf
+ * (Auftrag 1c82e21f...): ein 'claude-code'-Lauf gegen ein NEUES Projekt (kein --output-schema-
+ * Mechanismus für diesen Worker, F-337) hatte keinen Zugriff auf schemas/ (Workforce-eigenes
+ * Asset, existiert nur in der Installationswurzel, nicht im Projekt-Repo) — das Modell erriet
+ * die Feldnamen und lieferte 'aufgabentypen' statt 'task_typen'. Ein Codex-Lauf (--output-schema)
+ * erzwingt die Form ohnehin serverseitig (loeseAusgabeSchemaAuf löst seit E-F41-2 gegen die
+ * Installationswurzel auf, nicht mehr gegen die Projekt-repoWurzel) — die Inline-Form hier ist
+ * die zusätzliche, vom Dateisystem UNABHÄNGIGE Absicherung für den claude-code-Rückfall.
  * @param auftragstext - der rohe Auftragstext des zu klassifizierenden Auftrags
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext den einzigen Eingabekanal für den Router-Lauf bildet
  */
@@ -328,7 +341,16 @@ export function baueRouterAuftragstext(auftragstext: string): string {
     "Wähle 'hoch', wenn mindestens EINER der folgenden Auslöser zutrifft:",
     ...ROUTER_HOCH_AUSLOESER.map((satz) => `- ${satz}`),
     "Trifft keiner der Auslöser zu, wähle 'standard' oder 'fast-lane' nach deinem sonstigen Urteil.",
-    'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt gemäß schemas/ergebnis-router.schema.json und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```).',
+    'Deine GESAMTE Antwort besteht aus GENAU EINEM JSON-Objekt und sonst NICHTS: kein einleitender Satz, keine Erklärung davor oder danach, kein Markdown, kein Codezaun (```). Die allererste Zeile deiner Antwort ist "{", die letzte Zeile ist "}".',
+    'Das JSON-Objekt hat GENAU diese Form:',
+    '{',
+    `  "kontrolltiefe": ${KONTROLLTIEFE.map((w) => `"${w}"`).join(' | ')},`,
+    `  "risikoklasse": ${RISIKOKLASSE.map((w) => `"${w}"`).join(' | ')},`,
+    `  "task_typen": [ ${TASK_TYPEN.map((w) => `"${w}"`).join(' | ')}, ... ] (mindestens ein Eintrag, mehrere möglich),`,
+    '  "rueckfragen": ["<offene Rückfrage an den Menschen>", ...] (leeres Array, wenn keine Rückfrage nötig),',
+    '  "begruendung": "<Begründung für Kontrolltiefe, Risikoklasse und Task-Typen, als string>"',
+    '}',
+    "Kein weiteres Feld außer den genannten fünf. 'task_typen' NUR Werte aus der genannten Liste, kein eigener Wortlaut.",
     '',
     'Auftrag:',
     auftragstext,
