@@ -113,7 +113,8 @@ import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, La
  */
 const STANDARD_AKTUELLE_AUTORISIERUNG_PFAD = 'C:\\Users\\stefa\\Projekte\\ai-workforce\\state\\aktuelle-autorisierung.json'
 
-interface AktuelleAutorisierung {
+/** F41 WS-1: exportiert für src/projekt-anlegen/index.ts (Muster D5) — dieselbe Form wird dort gebraucht, um die kopierte state/aktuelle-autorisierung.json eines neu angelegten Projekts zu lesen. */
+export interface AktuelleAutorisierung {
   baselineReferenz: BaselineReferenz
   wirksamkeitsnachweisReferenz: WirksamkeitsnachweisReferenz
 }
@@ -135,7 +136,7 @@ function istGueltigeCommitGepinnteReferenz(wert: unknown): wert is { pfad: strin
  * (übliches Artefakt von Windows-Editoren) wird toleriert, JSON.parse
  * selbst tut das nicht.
  */
-function leseAktuelleAutorisierung(pfad: string): AktuelleAutorisierung | null {
+export function leseAktuelleAutorisierung(pfad: string): AktuelleAutorisierung | null {
   let geparst: unknown
   try {
     let inhalt = readFileSync(pfad, 'utf8')
