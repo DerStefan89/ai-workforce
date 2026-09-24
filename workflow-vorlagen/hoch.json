@@ -67,7 +67,7 @@
       "werkzeugsatz": "lesend",
       "worker": "codex",
       "modell": "gpt-6-astra",
-      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:aenderungsuebersicht-@schritt-3-ausfuehrung"],
+      "eingaben": ["artefakt:auftrag-__AUFTRAG_ID__", "artefakt:aenderungsuebersicht-@schritt-3-ausfuehrung", "artefakt:pruefergebnis-@schritt-3-ausfuehrung"],
       "output_schema": "ergebnis-code-reviewer",
       "freigabe": "AUTOMATISCH",
       "risiko": "Kein Schreibzugriff — Post-Build-Pruefung des tatsaechlichen Diffs.",

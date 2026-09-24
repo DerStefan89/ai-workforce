@@ -674,6 +674,70 @@ test("Ausgang 'haltKlaerung': eine ausfuehrung-Selbstblockade hält AUCH an, wen
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
 })
 
+// ─── Regel 1f: deterministische Post-Build-Prüfung (F-652, state/findings.md F-652, BUG P1) ──
+
+for (const wert of ['ROT', 'ZEITGRENZE', 'FEHLER'] as const) {
+  test(`Ausgang 'haltKlaerung': pruefergebnis '${wert}' hält an, statt zum Review fortzusetzen (F-652)`, () => {
+    const workflow = typisierterWorkflow([
+      typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+      typisierterSchritt('schritt-2', null),
+    ])
+    const ergebnis = ermittleNaechstenSchritt(workflow, {
+      schrittId: 'schritt-1',
+      ergebnis: 'ERFOLGREICH',
+      laufId: 'lauf-1',
+      pruefergebnis: wert,
+      pruefergebnisExitCode: wert === 'ROT' ? 1 : null,
+      pruefergebnisAusgabeEnde: 'FEHLER: irgendwas ist kaputt',
+    })
+    assert.equal(ergebnis.art, 'haltKlaerung')
+    assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+    const grund = ergebnis.art === 'haltKlaerung' ? ergebnis.grund : ''
+    assert.match(grund, new RegExp(wert))
+    assert.match(grund, /irgendwas ist kaputt/)
+  })
+}
+
+test("Ausgang 'starte': pruefergebnis 'GRUEN' setzt zum Review fort (F-652)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefergebnis: 'GRUEN', pruefergebnisExitCode: 0 })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test("Ausgang 'starte': fehlendes pruefergebnis (keine Startvorlage mit pruefbefehl) bleibt bitgenau unverändert (F-652)", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1' })
+  assert.equal(ergebnis.art, 'starte')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
+})
+
+test('Regel 1f greift NICHT bei einer anderen Rolle — ein irrtümlich mitgesendetes pruefergebnis bleibt folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'code-reviewer', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefergebnis: 'ROT' })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1 schlägt Regel 1f: ein VERWEIGERTER ausfuehrung-Lauf hält über seinen Ausgang an, nicht über ein (fälschlich gemeldetes) pruefergebnis', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', status: 'VERWEIGERT', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'VERWEIGERT', laufId: 'lauf-1', pruefergebnis: 'ROT' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
+test("Ausgang 'haltKlaerung': pruefergebnis 'ROT' hält AUCH an, wenn der Schritt der letzte ist", () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'ausfuehrung', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefergebnis: 'ROT', pruefergebnisExitCode: 1 })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+})
+
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {
   // Gegenstück zum bis F16 WS-2 hier stehenden Codex-Halt: die WS-2a-
   // [EMPFEHLUNG] ist eingelöst, 'codex' steht in WORKER und startet.

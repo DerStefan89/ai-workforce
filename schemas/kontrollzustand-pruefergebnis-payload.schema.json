@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-workforce.local/schemas/kontrollzustand-pruefergebnis-payload.schema.json",
+  "title": "Prüfergebnis-Payload",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' —, wenn pruefergebnis_schema === \"v0\" (F-652, state/findings.md F-652). Der Kern registriert dieses Artefakt unter 'pruefergebnis-<laufId>', wenn ein Lauf mit schreibendem Werkzeugsatz real ERFOLGREICH/ABGESCHLOSSEN endet UND die geladene Startvorlage einen 'pruefbefehl' trägt — keine Rolle kann `npm run check` selbst ausführen (kein Werkzeugsatz enthält Bash/npm), der Kern führt die deterministische Prüfung deshalb selbst aus, rein ausführend, kein Modellaufruf.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pruefergebnis_schema", "lauf_id", "befehl", "exit_code", "ergebnis", "dauer_ms", "ausgabe_ende", "gestartet_am"],
+  "properties": {
+    "pruefergebnis_schema": { "const": "v0" },
+    "lauf_id": { "type": "string", "minLength": 1 },
+    "befehl": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "vorlage.pruefbefehl, unverändert übernommen — reine Dokumentation im Artefakt, kein zweiter Aufrufort."
+    },
+    "exit_code": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "null bei ZEITGRENZE/FEHLER (kein regulärer Prozessabschluss mit numerischem Exitcode)."
+    },
+    "ergebnis": {
+      "enum": ["GRUEN", "ROT", "ZEITGRENZE", "FEHLER"],
+      "description": "GRUEN (exit_code 0) ist der einzige Wert, der den Workflow nach dem Ausführungsschritt automatisch zum Review-Schritt fortsetzt (src/workflow/index.ts Regel 1f)."
+    },
+    "dauer_ms": { "type": "integer", "minimum": 0 },
+    "ausgabe_ende": { "type": "string", "description": "Letzte Bytes aus stdout+stderr (kuerzeAusgabeEnde, AUSGABE_ENDE_MAX_BYTES), nie der volle Text." },
+    "gestartet_am": { "type": "string", "minLength": 1 }
+  }
+}

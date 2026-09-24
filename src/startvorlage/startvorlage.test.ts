@@ -169,3 +169,45 @@ test('ladeStartvorlage: startvorlagen/ai-workforce.json ist mit worker.codex-Blo
     assert.ok(!startziel[0].toLowerCase().endsWith(endung), `startziel[0] darf nicht auf '${endung}' enden (F-280)`)
   }
 })
+
+// ─── F-652 (state/findings.md F-652): optionaler pruefbefehl/pruefZeitgrenzeMs-Block ───────────
+
+test('validiereStartvorlageDaten: Vorlage OHNE pruefbefehl bleibt gültig (F-652, additiv)', () => {
+  assert.deepStrictEqual(validiereStartvorlageDaten(GUELTIGE_VORLAGE), [])
+})
+
+test('validiereStartvorlageDaten: Vorlage MIT gültigem pruefbefehl/pruefZeitgrenzeMs ist gültig (F-652)', () => {
+  const mitPruefbefehl = { ...GUELTIGE_VORLAGE, pruefbefehl: [process.execPath, 'npm-cli.js', 'run', 'check'], pruefZeitgrenzeMs: 600000 }
+  assert.deepStrictEqual(validiereStartvorlageDaten(mitPruefbefehl), [])
+})
+
+test('validiereStartvorlageDaten: leeres pruefbefehl ist ein Verstoß (F-652)', () => {
+  const verstoesse = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefbefehl: [] })
+  assert.ok(verstoesse.some((v) => v.includes('pruefbefehl')))
+})
+
+test('validiereStartvorlageDaten: pruefbefehl[0] mit .cmd-Endung ist ein Verstoß (F-280)', () => {
+  const verstoesse = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefbefehl: [String.raw`C:\Program Files\nodejs\npm.cmd`, 'run', 'check'] })
+  assert.ok(verstoesse.some((v) => v.includes('pruefbefehl[0]')))
+})
+
+test('validiereStartvorlageDaten: pruefZeitgrenzeMs <= 0 oder nicht-ganzzahlig ist ein Verstoß (F-652)', () => {
+  const negativ = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefZeitgrenzeMs: -1 })
+  const null_ = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefZeitgrenzeMs: 0 })
+  const nichtGanzzahlig = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefZeitgrenzeMs: 1.5 })
+  assert.ok(negativ.some((v) => v.includes('pruefZeitgrenzeMs')))
+  assert.ok(null_.some((v) => v.includes('pruefZeitgrenzeMs')))
+  assert.ok(nichtGanzzahlig.some((v) => v.includes('pruefZeitgrenzeMs')))
+})
+
+test('ladeStartvorlage: startvorlagen/ai-workforce.json trägt einen gültigen pruefbefehl, der npm run check ausführt (F-652)', () => {
+  const vorlage = ladeStartvorlage('startvorlagen/ai-workforce.json')
+  assert.ok(Array.isArray(vorlage.pruefbefehl) && vorlage.pruefbefehl.length >= 3)
+  const [programm, ...argumente] = vorlage.pruefbefehl ?? []
+  for (const endung of ['.cmd', '.bat', '.ps1']) {
+    assert.ok(!programm.toLowerCase().endsWith(endung), `pruefbefehl[0] darf nicht auf '${endung}' enden (F-280)`)
+  }
+  assert.ok(argumente.some((a) => a.toLowerCase().includes('npm-cli.js')), 'pruefbefehl muss über npm-cli.js laufen (Windows: npm selbst ist eine .cmd-Datei)')
+  assert.deepStrictEqual(argumente.slice(-2), ['run', 'check'])
+  assert.ok(typeof vorlage.pruefZeitgrenzeMs === 'number' && vorlage.pruefZeitgrenzeMs > 0)
+})

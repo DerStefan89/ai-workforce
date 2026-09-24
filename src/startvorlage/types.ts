@@ -39,6 +39,22 @@ export interface StartvorlageV0Daten {
   /** Harte Wanduhr-Grenze in Millisekunden für jeden über diese Startvorlage gestarteten Lauf (F14 WS-4, F-177). Optional — fehlt sie, bleibt der Prozessstart ohne Timeout. */
   zeitgrenzeMs?: number
   /**
+   * F-652 (state/findings.md F-652, BUG P1): argv eines deterministischen Prüfbefehls (z. B.
+   * `npm run check`), den der KERN nach jedem real erfolgreich beendeten Lauf mit schreibendem
+   * Werkzeugsatz selbst ausführt (src/pruefschritt/index.ts) — kein Werkzeugsatz trägt Bash/npm,
+   * eine Rolle kann den Befehl also nicht selbst starten. [0] ist ein absoluter Programmpfad, kein
+   * Shell-String (F-057, geprüft von pruefeStartziel wie jedes andere Startziel). Optional und
+   * additiv: eine Startvorlage ohne dieses Feld bleibt bitgenau unverändert (kein Prüfschritt, kein
+   * 'pruefergebnis-<laufId>'-Artefakt).
+   */
+  pruefbefehl?: string[]
+  /**
+   * F-652: harte Wanduhr-Grenze für den Prüfbefehl, unabhängig von zeitgrenzeMs oben (das ist die
+   * Grenze des Werkzeuglaufs selbst, nicht der Nachbereitung). Nur wirksam zusammen mit
+   * pruefbefehl; ohne pruefbefehl bleibt das Feld folgenlos.
+   */
+  pruefZeitgrenzeMs?: number
+  /**
    * Startfelder je zusätzlichem Worker (F16 WS-1, AK5). Optional: eine
    * Startvorlage ohne diesen Block bleibt unverändert gültig, und
    * startvorlage_schema bleibt 'v0' (Präzedenz zeitgrenzeMs, F14 WS-4 —

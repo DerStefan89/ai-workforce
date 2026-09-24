@@ -294,7 +294,16 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         // vollständig, statt es zu ergänzen — ohne den Spread bekäme der Kindprozess NUR
         // umgebungsvariablen und verlöre PATH & Co. Fehlt das Feld, bleibt spawns eigener
         // Default (unverändertes process.env) unangetastet.
-        ...(optionen?.umgebungsvariablen !== undefined ? { env: { ...process.env, ...optionen.umgebungsvariablen } } : {}),
+        //
+        // F-652: umgebungsvariablenVollstaendig geht davor und ERSETZT process.env ohne Merge —
+        // das ist der einzige Weg, eine vorhandene process.env-Variable dem Kind vorzuenthalten
+        // (ein Merge kann sie nur überschreiben, nie entfernen). Beide Felder schließen sich am
+        // Typ gegenseitig aus; kein Aufrufer setzt bislang beide.
+        ...(optionen?.umgebungsvariablenVollstaendig !== undefined
+          ? { env: optionen.umgebungsvariablenVollstaendig }
+          : optionen?.umgebungsvariablen !== undefined
+            ? { env: { ...process.env, ...optionen.umgebungsvariablen } }
+            : {}),
       })
     } catch (fehler) {
       const f = fehler as NodeJS.ErrnoException
@@ -469,6 +478,7 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     stdinDaten: optionen.stdinDaten,
     cwd: optionen.cwd,
     umgebungsvariablen: optionen.umgebungsvariablen,
+    umgebungsvariablenVollstaendig: optionen.umgebungsvariablenVollstaendig,
     ergebnisZeileBeendet: optionen.ergebnisZeileBeendet,
     beiStreamZeile: optionen.beiStreamZeile,
     beiProzessende: optionen.beiProzessende,

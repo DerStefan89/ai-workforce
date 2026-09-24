@@ -269,6 +269,34 @@ function renderAenderungsuebersicht(projektion) {
     ${daten.dateien.length === 0 ? '<p class="leer">Keine Dateien geändert.</p>' : `<table class="lauf-kopfdaten"><thead><tr><th>Status</th><th>Datei</th><th>+</th><th>-</th></tr></thead><tbody>${zeilen}</tbody></table>`}`
 }
 
+/** Anzeigetexte je Nicht-'ok'-Status der pruefergebnis-Projektion aus GET .../abnahme (F-652, state/findings.md F-652). */
+const PRUEFERGEBNIS_STATUS_TEXT = {
+  kein_ausfuehrungs_schritt: 'Diese Vorlage hat keinen Schritt mit rolle \'ausfuehrung\'.',
+  noch_nicht_gelaufen: 'Der Ausführungsschritt ist noch nicht gelaufen.',
+  nicht_vorhanden: 'Zu diesem Lauf liegt kein Prüfergebnis vor (die Startvorlage trägt keinen pruefbefehl).',
+}
+
+/** Deutsche Anzeigewerte je PruefergebnisWert (src/pruefschritt/types.ts) — nur GRUEN heißt 'GRÜN', der Rest bleibt wörtlich. */
+const PRUEFERGEBNIS_WERT_TEXT = { GRUEN: 'GRÜN', ROT: 'ROT', ZEITGRENZE: 'ZEITGRENZE', FEHLER: 'FEHLER' }
+
+/**
+ * F-652: dieselbe eine Zeile, direkt neben der Änderungsübersicht (renderAbnahme unten) — GRÜN
+ * ist der einzige Wert, der den Workflow automatisch zum Review-Schritt fortsetzt (src/workflow/
+ * index.ts Regel 1f); ROT/ZEITGRENZE/FEHLER halten den Workflow auf KLAERUNG_ERFORDERLICH, dessen
+ * grund (workflow-bedienung-Block) bereits das Ausgabeende trägt — diese Zeile bleibt bewusst
+ * knapp (Ergebnis + Exit-Code), kein zweiter Ausgabetext.
+ * @param projektion - abnahme.pruefergebnis aus GET .../abnahme
+ * @returns HTML-Block
+ */
+function renderPruefergebnis(projektion) {
+  if (projektion.status !== 'ok') {
+    return `<p class="unbekannt">${escapeHtml(PRUEFERGEBNIS_STATUS_TEXT[projektion.status] ?? projektion.status)}</p>`
+  }
+  const badgeKlasse = projektion.ergebnis === 'GRUEN' ? 'badge ok' : 'badge fehler'
+  const exitText = projektion.exitCode === null ? 'unbekannt' : String(projektion.exitCode)
+  return `<p>Prüfung: <span class="${badgeKlasse}">${escapeHtml(PRUEFERGEBNIS_WERT_TEXT[projektion.ergebnis] ?? projektion.ergebnis)}</span> (Exit ${escapeHtml(exitText)}) <span class="unbekannt">Lauf <code>${escapeHtml(projektion.laufId)}</code></span></p>`
+}
+
 /** Anzeigetexte je Nicht-'ok'-Status der urteil-Projektion aus GET .../abnahme. */
 const URTEIL_STATUS_TEXT = {
   kein_review_schritt: 'Diese Vorlage hat keinen Post-Build-Review-Schritt (output_schema \'ergebnis-code-reviewer\').',
@@ -372,6 +400,7 @@ function renderAbnahme(workflowId, abnahme) {
   return `<div class="detail-block"><h3>Abnahme</h3>
     <h4>Änderungsübersicht</h4>
     ${renderAenderungsuebersicht(abnahme.aenderungsuebersicht)}
+    ${renderPruefergebnis(abnahme.pruefergebnis)}
     <h4>Urteil (Post-Build-Review)</h4>
     ${renderUrteil(abnahme.urteil)}
     <h4>Entscheidung</h4>
@@ -384,7 +413,7 @@ let abnahmeKennzeichen = null
 
 /** @param workflowId - angezeigter Workflow @param abnahme - Antwort von GET .../abnahme */
 function aktualisiereAbnahme(workflowId, abnahme) {
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.entscheidung.status}|${abnahme.urteil.status}|${abnahme.aenderungsuebersicht.status}`
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.entscheidung.status}|${abnahme.urteil.status}|${abnahme.aenderungsuebersicht.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}`
   if (kennzeichen === abnahmeKennzeichen) return
   abnahmeKennzeichen = kennzeichen
   document.getElementById('workflow-abnahme').innerHTML = renderAbnahme(workflowId, abnahme)
