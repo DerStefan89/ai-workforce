@@ -57,11 +57,18 @@ test('baueAusfuehrungKorrekturInstruktion: ohne Befunde bleibt die Begründung a
 })
 
 test('baueReviewKorrekturInstruktion: listet jeden Befund und verlangt eine Einzelbewertung behoben/offen sowie ein eingeschränktes Urteil', () => {
-  const text = baueReviewKorrekturInstruktion([REALER_BEFUND])
+  const text = baueReviewKorrekturInstruktion(REALE_BEGRUENDUNG, [REALER_BEFUND])
   assert.ok(text.includes('1. [MITTEL] scripts/leitstand-server.mjs:5885'))
   assert.ok(text.includes(REALER_BEFUND.zusammenfassung))
   assert.ok(/behoben.*offen/i.test(text), 'Pflicht zur Einzelbewertung fehlt')
   assert.ok(/nicht.*"BEREIT"/i.test(text) || /NICHT "BEREIT"/.test(text), 'Urteilseinschränkung fehlt')
+})
+
+test('baueReviewKorrekturInstruktion: F-659 — enthält die Abnahme-Begründung wörtlich mit Vorrang-Hinweis, nicht nur die Befunde', () => {
+  const text = baueReviewKorrekturInstruktion(REALE_BEGRUENDUNG, [REALER_BEFUND])
+  assert.ok(text.includes(REALE_BEGRUENDUNG), 'Begründung fehlt wörtlich')
+  assert.ok(/Vorrang/i.test(text), 'kein Vorrang-Hinweis gegenüber dem ursprünglichen Auftragstext')
+  assert.ok(/KEIN offener Befund/i.test(text), 'fehlender Hinweis, dass eine bewusste Entscheidung kein offener Befund ist')
 })
 
 test('leseSelbstblockadeAusAusfuehrungstext: Rot-Fixture (real, Lauf e1c59219) erkennt die angekreuzte Blockiert-Zeile', () => {

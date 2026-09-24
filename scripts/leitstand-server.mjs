@@ -4163,7 +4163,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         if (schritt.rolle === 'ausfuehrung') {
           auftragstext = `${auftragstext}\n\n${baueAusfuehrungKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
         } else if (vorherigeBefunde.length > 0) {
-          auftragstext = `${auftragstext}\n\n${baueReviewKorrekturInstruktion(vorherigeBefunde)}`
+          auftragstext = `${auftragstext}\n\n${baueReviewKorrekturInstruktion(abnahmeVersion.daten.begruendung, vorherigeBefunde)}`
         }
       }
     }
