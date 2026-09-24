@@ -1533,6 +1533,50 @@ th {
   font-weight: 600;
 }
 
+/* F41 WS-2: Formularfeld-Stil des Anlegen-Formulars, analog #auftrag-start oben (eigener Selektor,
+   weil beide Formulare unabhängig gepflegt werden) — ohne das würden label/input hier auf
+   ungestylte Browser-Standards zurückfallen (kein width: 100%, keine Konsistenz zum übrigen
+   Leitstand-Formular-Look). */
+#projekte-anlegen-formular label {
+  display: block;
+  margin-top: var(--space-xl);
+  margin-bottom: var(--space-2xs);
+  font-weight: 600;
+}
+
+#projekte-anlegen-formular input[type="text"] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+#projekte-anlegen-formular details {
+  margin-top: var(--space-xl);
+}
+
+#projekte-anlegen-formular summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#projekte-anlegen-formular button,
+#projekte-anlegen-erfolg button {
+  margin-top: var(--space-lg);
+}
+
+/* Git-Befehle als reiner Textblock (Muster views/workboard.js renderTerminalBlock) — pre-wrap statt
+   des <pre>-Standards (kein Zeilenumbruch), sonst reißt ein langer Zielordner-Pfad in "git init"
+   o. Ä. das Kartenlayout auf schmalen Bildschirmen auf (DoD "lange Texte zerstören das Layout
+   nicht"/"Mobile Darstellung berücksichtigt"). */
+#projekte-anlegen-git-befehle {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
 .startfehler-eintrag {
   font-size: var(--font-size-md);
   margin: var(--space-xs) 0;

@@ -9609,3 +9609,27 @@ Auswirkung: Mittel — eine falsche architektonische Behauptung in einer Feature
 Maßnahme: Behoben (24.09.2026) — Akte und Modul-Kopf korrigiert, zweiter Realnachweis erbracht (`features/F41/nachweis-ws1.md`), `pruefeVolleStartfreigabeFuerRepo` prüft jetzt real beide Bedingungen. Prozess-Lehre: eine architektonische "lehnt strukturell ab"-Behauptung vor dem Schreiben gegen vorhandene Realnachweise in verwandten Features prüfen, nicht nur gegen den Quelltext der geprüften Funktion selbst.
 Status: behoben (24.09.2026, F41-WS-1-Korrektur).
 Feature/Run: F41 WS-1 Korrektur, 24.09.2026, Challenger-Befund. Quelle: claude/f41-ws1-korrektur.
+
+**F-672** · `TECH_DEBT` · P2 · offen
+Titel: Workforce-Rollen können keine Skills ausführen — die Worker-Läufe starten ohne "Skill" in `--allowedTools`, die 7 Skills in `ressourcen.json` sind reiner Katalog.
+Beschreibung: `erzeugeClaudeCodeArgumente` (`src/claude-code-gateway/index.ts:373-376`) baut `--tools`/`--allowedTools` ausschließlich aus `werkzeugListe`, das aus dem `erlaubte_werkzeuge`-Array des jeweiligen Werkzeugsatzes kommt (`startvorlagen/*.json`, Muster `startvorlagen/ai-workforce.json` — "lesend"/"schreibend"/"recherchierend", jeweils nur `Read`/`Grep`/`Glob`/`Write`/`Edit`/`WebSearch`/`WebFetch`). Keiner dieser Werkzeugsätze führt `"Skill"` in seiner Liste. `ressourcen.json` listet dagegen 7 Einträge mit `"typ": "skill"` (Zeilen 35/42/49/56/63/70/194) — sie existieren als Katalog (F24 Capabilities, F27 Scout-Kandidaten), sind aber für keine reale Workforce-Rolle tatsächlich aufrufbar, weil `--allowedTools` das Werkzeug `Skill` nie enthält.
+Fundstelle: `src/claude-code-gateway/index.ts:373-376` (`erzeugeClaudeCodeArgumente`); `startvorlagen/ai-workforce.json` (`werkzeugsaetze.*.erlaubte_werkzeuge`, kein `Skill`); `ressourcen.json` (7 `"typ": "skill"`-Einträge).
+Auswirkung: Mittel — die 7 vorhandenen Skills sind für jede reale Rolle (jarvis, product-coach, ausfuehrung, architektur, code-reviewer, qa, router) faktisch totes Kapital; ein Skill-Katalogeintrag suggeriert Nutzbarkeit, die real nicht besteht.
+Maßnahme: In F36 entscheiden, welche Rolle welche Skills bekommt (`capabilities_bedarf` des Architekten als Grundlage), dann `erlaubte_werkzeuge` der betroffenen Werkzeugsätze um `Skill` ergänzen. Kein Umbau in F41 (WS-2-Nicht-Ziel).
+Feature/Run: F41 WS-2, 24.09.2026. Quelle: claude/f41-ws2.
+
+**F-673** · `TECH_DEBT` · P2 · offen
+Titel: F41 kopiert `.claude/skills/` nicht — ein über den Leitstand neu angelegtes Projekt hat keine Skills, selbst wenn F-672 künftig behoben wird.
+Beschreibung: `kopiereBaseline` (`src/projekt-anlegen/index.ts:165ff`, F41 WS-1 AK4b) kopiert byte-identisch nur `.claude/settings.json`, jede darin über `ermittleHookPfade` referenzierte Hook-Datei und `state/aktuelle-autorisierung.json` — bewusst minimal, damit die Startfreigabe (E-183/E-188) am Ziel identisch grün ausfällt. `.claude/skills/` ist von keiner dieser drei Quellen referenziert und wird deshalb nie mitkopiert. Selbst wenn F-672 behoben wird (Skill zu `erlaubte_werkzeuge` ergänzt), liefe ein Skill-Aufruf in einem neu angelegten Projekt ins Leere, weil der Skill-Ordner dort schlicht fehlt.
+Fundstelle: `src/projekt-anlegen/index.ts` (`kopiereBaseline`, kopiert nur settings.json/Hooks/aktuelle-autorisierung.json); `.claude/skills/` (Quelle, nicht referenziert).
+Auswirkung: Niedrig bis Behoben-F-672-abhängig — aktuell folgenlos (F-672 ist ebenfalls offen, keine Rolle kann ohnehin Skills ausführen); wird erst relevant, sobald F-672 behoben ist.
+Maßnahme: Mit F36 klären, ob/wie `.claude/skills/` (ggf. gefiltert nach `capabilities_bedarf`) Teil der Baseline-Kopie wird. Kein Umbau in F41.
+Feature/Run: F41 WS-2, 24.09.2026. Quelle: claude/f41-ws2.
+
+**F-674** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Die Zwischenstand-Hooks (`zwischenstand-laden`/`-pruefen.cjs`) sind aktiv, aber `state/zwischenstand/` enthält seit dem 03.09.2026 nur `VORLAGE.md` — ungenutzte Infrastruktur.
+Beschreibung: Die beiden Hooks sind über `.claude/settings.json` verdrahtet (Team-Policy, nur vom Menschen im eigenen Editor änderbar) und laufen bei jeder Sitzung mit. `state/zwischenstand/` selbst enthält laut Verzeichnislisting nur die eine Vorlagendatei (`VORLAGE.md`, Stand 03.09.2026) — kein einziger real geschriebener Zwischenstand seither. Entweder wird der Mechanismus nicht genutzt (Prozesslücke) oder er ist überflüssig geworden (z. B. durch das freigabe-commit.md-Muster).
+Fundstelle: `state/zwischenstand/` (nur `VORLAGE.md`); `.claude/hooks/zwischenstand-laden.cjs`, `.claude/hooks/zwischenstand-pruefen.cjs`; `.claude/settings.json` (Verdrahtung, Team-Policy).
+Auswirkung: Niedrig — kein Fehlverhalten, aber ungenutzte, wartungspflichtige Harness-Infrastruktur (jeder Sitzungsstart zahlt die Hook-Kosten für einen Mechanismus, der seit über drei Wochen keinen einzigen realen Eintrag mehr bekommen hat).
+Maßnahme: Nutzen oder entfernen — eine Entscheidung darüber braucht Stefan (eine Änderung an `.claude/settings.json` ändert den Baseline-Hash und damit seine Freigabe). Kein Umbau in F41.
+Feature/Run: F41 WS-2, 24.09.2026. Quelle: claude/f41-ws2.
