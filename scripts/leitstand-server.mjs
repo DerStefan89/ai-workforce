@@ -1271,21 +1271,23 @@ function sammleWorkflows(basisVerzeichnis = BASISVERZEICHNIS) {
  * die den Pfad zusammensetzt (Code-Review-Befund: vorher an zwei Stellen
  * unabhängig dupliziert — POST /api/auftraege/<id>/routen und die neuen F24
  * GET /api/ressourcen(/abdeckung)-Endpunkte).
- * @param repoWurzel - Repo-Wurzel
+ * E-F41-2 (löst F-676): ressourcen.json ist ein Workforce-EIGENES Asset — gehört zur
+ * Installation (ai-workforce), nicht zum jeweils bearbeiteten Projekt.
+ * @param installWurzel - Installationswurzel (Default process.cwd(), NIE die Projekt-repoWurzel)
  * @returns geparstes ressourcen.json
  */
-function leseRessourcenRoh(repoWurzel) {
-  return JSON.parse(readFileSync(join(repoWurzel, 'ressourcen.json'), 'utf8'))
+function leseRessourcenRoh(installWurzel) {
+  return JSON.parse(readFileSync(join(installWurzel, 'ressourcen.json'), 'utf8'))
 }
 
 /** F24 AK4 (Ebene 2): die drei statischen Workflow-Vorlagen — Zwilling von waehleWorkflowVorlage (src/router/index.ts), das dieselben Dateien für den Router-Pfad lädt, aber Platzhalter füllt statt roh zu lesen. Hier reicht die rohe rolle/worker/modell-Zeile je Schritt. */
 const WORKFLOW_VORLAGEN_DATEINAMEN = ['fast-lane', 'hoch', 'standard']
 
-/** @param repoWurzel - Repo-Wurzel @returns je Vorlage und Schritt eine { vorlage, schritt_id, rolle, worker, modell }-Zeile — eine fehlende/kaputte Vorlagendatei wird übersprungen, nicht geworfen (Muster ladeStartvorlage in src/ressourcen/index.ts). */
-function leseVorlagenSchritte(repoWurzel) {
+/** E-F41-2 (löst F-676): workflow-vorlagen/ ist Workforce-EIGEN — gehört zur Installation, nicht zum Projekt. @param installWurzel - Installationswurzel (Default process.cwd(), NIE die Projekt-repoWurzel) @returns je Vorlage und Schritt eine { vorlage, schritt_id, rolle, worker, modell }-Zeile — eine fehlende/kaputte Vorlagendatei wird übersprungen, nicht geworfen (Muster ladeStartvorlage in src/ressourcen/index.ts). */
+function leseVorlagenSchritte(installWurzel) {
   const zeilen = []
   for (const name of WORKFLOW_VORLAGEN_DATEINAMEN) {
-    const pfad = join(repoWurzel, 'workflow-vorlagen', `${name}.json`)
+    const pfad = join(installWurzel, 'workflow-vorlagen', `${name}.json`)
     if (!existsSync(pfad)) continue
     let daten
     try {
@@ -2327,10 +2329,12 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
  * Schreibzugriff auf schemas/ — wer den hat, kann die Schemadatei ohnehin
  * ersetzen, und die Auflösung ist nicht die Stelle, die das abwehren könnte.
  * @param name - der Wert von schritt.output_schema (nie null, das prüft der Aufrufer)
- * @param repoWurzel - absoluter Pfad der Repo-Wurzel
+ * @param installWurzel - absoluter Pfad der Installationswurzel (E-F41-2, löst F-676:
+ *   schemas/ ist Workforce-EIGEN, NIE die Projekt-repoWurzel — Default process.cwd() über die
+ *   Aufrufer, jede Projekt-Instanz läuft im selben Serverprozess)
  * @returns bei Erfolg { ok: true, pfad } mit absolutem Pfad, sonst { ok: false, grund }
  */
-export function loeseAusgabeSchemaAuf(name, repoWurzel) {
+export function loeseAusgabeSchemaAuf(name, installWurzel) {
   if (typeof name !== 'string' || !SCHEMANAME_MUSTER.test(name)) {
     return {
       ok: false,
@@ -2338,7 +2342,7 @@ export function loeseAusgabeSchemaAuf(name, repoWurzel) {
     }
   }
 
-  const pfad = join(repoWurzel, 'schemas', `${name}.schema.json`)
+  const pfad = join(installWurzel, 'schemas', `${name}.schema.json`)
   if (!existsSync(pfad) || !statSync(pfad).isFile()) {
     return { ok: false, grund: `output_schema '${name}': schemas/${name}.schema.json nicht gefunden (fehlt oder ist keine reguläre Datei)` }
   }
@@ -2476,7 +2480,7 @@ function loesePraefixPlatzhalterAuf(artefaktId, praefix, schritt, workflowDaten)
   return { ok: true, artefaktId: `${praefix}-${zielSchritt.lauf_id}` }
 }
 
-export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen) {
+export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen, installWurzel = repoWurzel) {
   // AK10, ZUERST: der Schemaname wird aufgelöst und geprüft, bevor diese
   // Funktion irgendetwas lädt oder zusammenstellt. Die Reihenfolge ist die
   // Aussage (QA-Pass 11.09.2026, Befund 4): ein Schritt mit kaputtem
@@ -2492,7 +2496,8 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
   // falls diese Funktion je aus einem anderen Pfad gerufen wird.
   let ausgabeSchemaPfad = null
   if (schritt.output_schema !== null) {
-    const schemaErgebnis = loeseAusgabeSchemaAuf(schritt.output_schema, repoWurzel)
+    // E-F41-2 (löst F-676): schemas/ ist Workforce-EIGEN, installWurzel statt der Projekt-repoWurzel.
+    const schemaErgebnis = loeseAusgabeSchemaAuf(schritt.output_schema, installWurzel)
     if (!schemaErgebnis.ok) {
       return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${schemaErgebnis.grund}` }
     }
@@ -2922,7 +2927,7 @@ function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
  * @param ladeOptionen - basisVerzeichnis/schreiber (Muster ladeOptionen in erzeugeRequestHandler)
  * @returns bei Erfolg { ok: true, routerArtefaktPfad, workflowId, workflowVersionSequenz }, sonst { ok: false, grund }
  */
-export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, ladeOptionen) {
+export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, ladeOptionen, installWurzel = repoWurzel) {
   const gelesen = leseRollenErgebnisRohstrom(laufakte)
   if (!gelesen.ok) {
     return { ok: false, grund: `Router-Lauf '${laufId}': ${gelesen.grund}` }
@@ -2979,7 +2984,8 @@ export function verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVer
     // die vom Router vorgeschlagene Kontrolltiefe deterministisch auf mindestens 'hoch' an — nur
     // anheben, nie senken (bestimmeEffektiveKontrolltiefe, src/router/index.ts). Jeder Auftrag
     // ohne dieses Feld (undefined) verhält sich bitgenau wie vor diesem Nachtrag.
-    workflow = waehleWorkflowVorlage(klassifikation, auftragId, auftragVersion.daten?.titel ?? auftragId, repoWurzel, auftragVersion.daten?.herkunft?.art)
+    // E-F41-2 (löst F-676): workflow-vorlagen/ ist Workforce-EIGEN, installWurzel statt der Projekt-repoWurzel.
+    workflow = waehleWorkflowVorlage(klassifikation, auftragId, auftragVersion.daten?.titel ?? auftragId, installWurzel, auftragVersion.daten?.herkunft?.art)
   } catch (fehler) {
     return { ok: false, grund: `Router-Ergebnis registriert (${routerArtefakt.pfad}), Workflow-Vorlage konnte nicht aufgelöst werden: ${fehler.message}` }
   }
@@ -3663,6 +3669,17 @@ export function erzeugeRequestHandler(optionen = {}) {
     publicVerzeichnis = PUBLIC_VERZEICHNIS,
     startvorlagePfad = STANDARD_STARTVORLAGE_PFAD,
     repoWurzel = process.cwd(),
+    // E-F41-2 (Stefan, 24.09.2026, löst state/findings.md F-676): Workforce-EIGENE Assets
+    // (ressourcen.json, schemas/, workflow-vorlagen/, Output-Schema-Pfade) gehören zur
+    // INSTALLATION, nicht zum jeweils bearbeiteten PROJEKT — 'repoWurzel' ist seit F25 pro
+    // Projekt-Instanz verschieden (baueProjektHandlerMap), 'installWurzel' ist es NIE: jede
+    // Instanz läuft im selben Serverprozess, ihr process.cwd() ist deshalb für JEDE
+    // Projekt-Instanz identisch die ai-workforce-Installationswurzel — kein Durchreichen in
+    // baueProjektHandlerMap nötig, der Default trägt sich selbst. Reale Belege aus dem F41-WS-3-
+    // Reallauf gegen ein neues Projekt (haushaltsbuch, Auftrag 1c82e21f...): ressourcen.json fehlte
+    // (500 ENOENT, Coach-Kontext), der Router-Lauf scheiterte, weil sein Output-Schema-Pfad relativ
+    // zu repoWurzel (dem PROJEKT) aufgelöst wurde, wo schemas/ nicht existiert.
+    installWurzel = process.cwd(),
     // settingsPfad/aktuelleAutorisierungPfad/cwd (F25 WS-1, AK3/AK4) werden hier bewusst NICHT
     // destrukturiert: starteLaufUndVergiss reicht das gesamte optionen-Objekt unverändert weiter
     // (siehe dort) — ein zusätzliches Feld in optionen erreicht fuehreAufgabeDurchFn damit bereits
@@ -4124,7 +4141,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       let capabilityAuszug = null
       if (modus === 'projekt') {
         try {
-          const ressourcenRoh = leseRessourcenRoh(repoWurzel)
+          const ressourcenRoh = leseRessourcenRoh(installWurzel)
           capabilityAuszug = baueCapabilityAuszug(loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad))
         } catch (fehler) {
           return { ok: false, art: 'nichtLadbar', grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
@@ -4227,7 +4244,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       auftragstext,
       vorlage,
       repoWurzel,
-      ladeOptionen
+      ladeOptionen,
+      installWurzel
     )
     if (!eingabenErgebnis.ok) {
       return { ok: false, art: 'ungueltig', grund: eingabenErgebnis.grund }
@@ -5117,7 +5135,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (req.method === 'GET' && (pfad === '/api/ressourcen' || pfad === '/api/ressourcen/abdeckung')) {
       let ressourcenRoh
       try {
-        ressourcenRoh = leseRessourcenRoh(repoWurzel)
+        ressourcenRoh = leseRessourcenRoh(installWurzel)
       } catch (fehler) {
         sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
         return
@@ -5135,7 +5153,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 404, { grund: `Rolle ${JSON.stringify(rolle)} ist nicht bekannt (bekannteRollen(): ${bekannteRollen().join(', ')})` })
         return
       }
-      const vorlagenBesetzung = findeVorlagenBesetzung(rolle, leseVorlagenSchritte(repoWurzel))
+      const vorlagenBesetzung = findeVorlagenBesetzung(rolle, leseVorlagenSchritte(installWurzel))
       const { treffer, beobachtet } = findeLetzteRealeBesetzung(rolle, basisVerzeichnis)
       sendeJson(res, 200, baueRollenBesetzungsAnsicht(rolle, ROLLENVERTRAEGE[rolle], vorlagenBesetzung, treffer, beobachtet))
       return
@@ -5564,7 +5582,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // bewusst identisch zum lesenden Schritt in workflow-vorlagen/standard.json ('gpt-6-astra').
       let ressourcenRoh
       try {
-        ressourcenRoh = leseRessourcenRoh(repoWurzel)
+        ressourcenRoh = leseRessourcenRoh(installWurzel)
       } catch (fehler) {
         sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
         return
@@ -5577,7 +5595,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       let modell
       let ausgabeSchemaPfad
       if (codexVerfuegbar) {
-        const schemaErgebnis = loeseAusgabeSchemaAuf('ergebnis-router', repoWurzel)
+        const schemaErgebnis = loeseAusgabeSchemaAuf('ergebnis-router', installWurzel)
         if (!schemaErgebnis.ok) {
           sendeJson(res, 500, { grund: schemaErgebnis.grund })
           return
@@ -5641,10 +5659,17 @@ export function erzeugeRequestHandler(optionen = {}) {
           return
         }
 
-        const verarbeitung = verarbeiteRouterErgebnis(laufakteVersion.daten, auftragId, laufId, auftragVersion, repoWurzel, profilReferenz, {
-          basisVerzeichnis,
-          schreiber: STILLER_SCHREIBER,
-        })
+        const verarbeitung = verarbeiteRouterErgebnis(
+          laufakteVersion.daten,
+          auftragId,
+          laufId,
+          auftragVersion,
+          repoWurzel,
+          profilReferenz,
+          { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+          // E-F41-2 (löst F-676): workflow-vorlagen/ ist Workforce-EIGEN, installWurzel statt der Projekt-repoWurzel.
+          installWurzel
+        )
         if (!verarbeitung.ok) {
           startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: verarbeitung.grund })
           console.error(`[leitstand] ${verarbeitung.grund}`)
@@ -5733,7 +5758,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ist noch kein Auftrag-Artefakt geschrieben — ein Fehlversuch hinterlässt keinen Orphan.
       let ressourcenRoh
       try {
-        ressourcenRoh = leseRessourcenRoh(repoWurzel)
+        ressourcenRoh = leseRessourcenRoh(installWurzel)
       } catch (fehler) {
         sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
         return
@@ -5746,7 +5771,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       let modell
       let ausgabeSchemaPfad
       if (codexVerfuegbar) {
-        const schemaErgebnis = loeseAusgabeSchemaAuf(konfiguration.schemaName, repoWurzel)
+        const schemaErgebnis = loeseAusgabeSchemaAuf(konfiguration.schemaName, installWurzel)
         if (!schemaErgebnis.ok) {
           sendeJson(res, 500, { grund: schemaErgebnis.grund })
           return
@@ -6168,7 +6193,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       let bekannteRessourcenIds
       if (modus === 'projekt') {
         try {
-          const ressourcenRoh = leseRessourcenRoh(repoWurzel)
+          const ressourcenRoh = leseRessourcenRoh(installWurzel)
           const aufgeloesteRessourcen = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
           capabilityAuszug = baueCapabilityAuszug(aufgeloesteRessourcen)
           bekannteRessourcenIds = aufgeloesteRessourcen.map((ressource) => ressource.id)
