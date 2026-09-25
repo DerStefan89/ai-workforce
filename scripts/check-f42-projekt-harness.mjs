@@ -289,11 +289,22 @@ try {
     if (ergebnisFehlendeDatei.status !== 'fehlend') befunde.push(`(e) Fehlende Datei: erwartet status 'fehlend', erhalten '${ergebnisFehlendeDatei.status}'`)
 
     // Rot-Fall Groß-/Kleinschreibung (F-702, bewusste Grenze, siehe pruefeWorkspaceTrust-Kopfkommentar):
-    // ein Schlüssel mit abweichender Laufwerksbuchstabe-Schreibweise wird NICHT als 'true' erkannt.
-    const fixtureAndereSchreibweise = join(TEST_WURZEL, `claude-json-andere-schreibweise-${randomUUID()}.json`)
-    writeFileSync(fixtureAndereSchreibweise, JSON.stringify({ projects: { [normalisierterSchluessel.replace(/^[A-Z]:/, (m) => m.toLowerCase())]: { hasTrustDialogAccepted: true } } }))
-    const ergebnisAndereSchreibweise = pruefeWorkspaceTrust(cwdPfad, { claudeJsonPfad: fixtureAndereSchreibweise })
-    if (ergebnisAndereSchreibweise.status !== 'fehlend') befunde.push(`(e) bewusste Grenze verletzt: eine andere Laufwerksbuchstabe-Schreibweise wurde fälschlich als '${ergebnisAndereSchreibweise.status}' statt 'fehlend' erkannt`)
+    // ein Schlüssel mit abweichender Schreibweise wird NICHT als 'true' erkannt (exakter
+    // String-Vergleich, kein Case-Folding). F-705-Nachbarfund (PR-CI, dritte Runde): eine feste
+    // Windows-Laufwerksbuchstabe-Regel (/^[A-Z]:/) traf auf dem Linux-CI-Runner nie zu (TEST_WURZEL
+    // liegt dort unter /tmp/…, kein Laufwerksbuchstabe) — die Fixture war dadurch identisch zum
+    // echten Schlüssel, kein echter Rot-Fall. Jetzt plattformunabhängig: irgendein Buchstabe im
+    // Schlüssel wird invertiert (Groß↔Klein) — funktioniert für jeden Pfad mit mindestens einem
+    // kasussensitiven Zeichen (Windows-Laufwerksbuchstabe, UUID-Hexziffern, 'ein-projekt').
+    const schluesselAndereSchreibweise = normalisierterSchluessel === normalisierterSchluessel.toUpperCase() ? normalisierterSchluessel.toLowerCase() : normalisierterSchluessel.toUpperCase()
+    if (schluesselAndereSchreibweise === normalisierterSchluessel) {
+      befunde.push('(e) Testfixture: normalisierterSchluessel enthält kein kasussensitives Zeichen — die Groß-/Kleinschreibungs-Grenze kann mit diesem cwdPfad nicht real geprüft werden')
+    } else {
+      const fixtureAndereSchreibweise = join(TEST_WURZEL, `claude-json-andere-schreibweise-${randomUUID()}.json`)
+      writeFileSync(fixtureAndereSchreibweise, JSON.stringify({ projects: { [schluesselAndereSchreibweise]: { hasTrustDialogAccepted: true } } }))
+      const ergebnisAndereSchreibweise = pruefeWorkspaceTrust(cwdPfad, { claudeJsonPfad: fixtureAndereSchreibweise })
+      if (ergebnisAndereSchreibweise.status !== 'fehlend') befunde.push(`(e) bewusste Grenze verletzt: eine andere Schreibweise ('${schluesselAndereSchreibweise}' statt '${normalisierterSchluessel}') wurde fälschlich als '${ergebnisAndereSchreibweise.status}' statt 'fehlend' erkannt`)
+    }
 
     if (befunde.length === vor) console.log("✓ (e) Trust-Erkennung: true/false/fehlender Schlüssel/fehlende Datei korrekt, read-only (keine Schreibfunktion importiert), bewusste Groß-/Kleinschreibungs-Grenze (F-702) bestätigt.")
   }
