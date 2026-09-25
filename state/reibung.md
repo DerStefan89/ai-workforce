@@ -18,8 +18,14 @@ diese Entscheidung: `state/gates.md`, Kalibrierungs-Log.
 Ein Eintrag ist eine Zeile, kein Aufsatz.
 -->
 
-# Reibungs-Log — [PROJEKTNAME]
+# Reibungs-Log — AI Workforce
 
 | Datum | Was hat aufgehalten | Wo (Datei/Schritt) | Kosten (grob) | Erledigt? |
 |---|---|---|---|---|
-| [FÜLLUNG] | | | | |
+| 2026-09-25 | checkout main vor Merge der Zustandssicherung | Terminal-Block des Challengers | ~15 min, kein Verlust | ja (F-737) |
+| 2026-09-25 | F-735-Nachtrag (Doku-Nachzug) nicht angekommen | Prompt-Übergabe | Nachzug verschoben | ja (dieser PR, F-739) |
+| 2026-09-25 | Freigabedatei für manuelle Commits verlangt | Skriptausgabe zustand:sichern | Rückfrage | ja (F-736) |
+| 2026-09-23 | EPERM beim Aufräumen kontrollzustand-test-* (`raeumeVerzeichnis` warnt jetzt statt zu werfen, Reste meldet `scripts/aufraeumen-nachlauf.mjs` nur als Hinweis, kein Befund; `maxRetries` bleibt 10, F-591) | npm run check | wiederholte Läufe | ja (F-590, #228) |
+| offen | Perf-Gate zustand-poll-kosten sporadisch rot | npm run check | Wiederholung nötig | nein (eigenes Finding bei nächstem Auftreten) |
+| 2026-09-26 | npm run check rot (0xC000012D, kein virtueller Speicher), weil der Reviewer-Agent parallel lief | npm run check während Subagent-Lauf | ein Wiederholungslauf | ja (Wiederholung ohne Parallellast grün; erste Beobachtung) |
+| laufend | PowerShell 5: ConvertFrom-Json scheitert an ~/.claude.json | manuelle Diagnose | Umweg über `node -e` | Workaround |

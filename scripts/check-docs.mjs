@@ -241,12 +241,12 @@ for (const datei of geprüfteMarkdownDateien) {
 // ─── Prüfung 4: Zieht ein Dokument-Paar den Marker der Zieldatei nach? ──────
 //
 // Erkennt Auslassung ZWISCHEN zwei Dateien — Prüfung 3 vergleicht nur
-// INNERHALB einer Datei. [FÜLLUNG] Leer im Template. Sobald
-// docs/harness/HARNESS-CHANGELOG.md und docs/harness/HARNESS-LEARNING-STATE.md
-// beide echten Inhalt haben, das Paar eintragen (siehe SETUP.md Punkt 5).
+// INNERHALB einer Datei. Paar docs/harness/HARNESS-CHANGELOG.md →
+// docs/harness/HARNESS-LEARNING-STATE.md aktiviert 2026-09-26, F-740
+// (siehe SETUP.md Punkt 5).
 
 const dokumentPaare = [
-  // { quelle: 'docs/harness/HARNESS-CHANGELOG.md', ziel: 'docs/harness/HARNESS-LEARNING-STATE.md' },
+  { quelle: 'docs/harness/HARNESS-CHANGELOG.md', ziel: 'docs/harness/HARNESS-LEARNING-STATE.md' },
 ]
 
 for (const { quelle, ziel } of dokumentPaare) {

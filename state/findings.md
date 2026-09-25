@@ -10166,13 +10166,13 @@ Maßnahme: `BULLET_EINLEITUNG_MUSTER` erkennt `-`, `*`, `<n>.` und `<n>)`; eine 
 Status: behoben.
 Feature/Run: F35 WS-2, 25.09.2026.
 
-**F-733** · `TECH_DEBT` · P2 · offen
+**F-733** · `TECH_DEBT` · P2 · **behoben** (#260, #261)
 Titel: Der Kontrollzustand wird nie committet, obwohl `kontrollzustand/` laut `.gitignore` getrackt ist.
 Beschreibung: `.gitignore` (Z. 76–77) trackt `kontrollzustand/`, aber der Ordner wird in der Praxis nie committet. Über 300 ungetrackte Laufartefakte liegen auf `main` (Jarvis-, Coach- und Router-Läufe, Workflows, Entscheidungen, Checkpoints 31–79 von `lineage-chat-ai-workforce`).
 Fundstelle: `git status` auf `feat/f35-ws1-feature-auftrag`, 25.09.2026; `.gitignore` Z. 76–77.
 Auswirkung: Mittel — Git führt für diesen Ordner real nicht: bei einem Neu-Klon oder Reset geht der Zustand verloren; `git status` ist unlesbar und verleitet zu `git add -A`.
 Maßnahme: Commit-Politik für den Kontrollzustand festlegen, oder ihn ausdrücklich lokal halten und `.gitignore` entsprechend anpassen (Entscheidung Mensch, eigenes Fixpaket). Entscheidung Stefan: Option A (sichern). Umgesetzt mit `npm run zustand:sichern` (`scripts/zustand-sichern.mjs`, Gate `scripts/check-zustand-sichern.mjs`): Das Skript legt den Branch `zustand/<datum>` an und stagt nur `kontrollzustand/`, es committet nie.
-Status: Maßnahme umgesetzt (npm run zustand:sichern); erste Sicherung durch Stefan ausstehend.
+Status: behoben (#260 zustand:sichern, erste Sicherung #261, 25.09.2026).
 Feature/Run: F35 WS-2, 25.09.2026.
 
 **F-734** · `TECH_DEBT` · P3 · **behoben** (Fixpaket)
@@ -10201,3 +10201,66 @@ Auswirkung: Ein gültiger Schlüssel liegt 10 Minuten offen, eine parallele Clau
 Maßnahme: Regel getrennt nach Weg (manuell: keine Freigabedatei; Claude: je Commit/Push eine), Skriptausgabe und Guide korrigiert — `scripts/zustand-sichern.mjs` gibt keine Set-Content-Zeilen mehr aus, nur einen Hinweis (`FREIGABE_HINWEIS`); `docs/guide/04-DEEPDIVE-gedaechtnis.md` beschreibt die seit Vertrag 5 (PR #12, 28.08.2026) wiederhergestellte Pflicht und ihre Grenze.
 Status: behoben (feat/zustand-sichern, 25.09.2026). Belegt: scripts/zustand-sichern.test.mjs (naechsteBefehle, F-736), scripts/check-zustand-sichern.mjs (5).
 Feature/Run: Verifikation zustand:sichern, 25.09.2026.
+
+**F-737** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `zustand:sichern` lässt HEAD auf dem Zustandsbranch mit gestagtem Index stehen, ohne vor parallelen Sitzungen und vor `checkout main` vor dem Merge zu warnen.
+Beschreibung: Nach `npm run zustand:sichern` steht HEAD auf `zustand/<datum>`, `kontrollzustand/` ist gestagt. Bis Merge und Pull darf niemand den Arbeitsbaum wechseln. Die Skriptausgabe sagt das nicht, und der Terminal-Block des Challengers führte `git checkout main` im selben Einfüge-Block vor dem Web-Merge aus.
+Fundstelle: `scripts/zustand-sichern.mjs` (Ausgabe der nächsten Befehle); Terminal-Block des Challengers zur ersten Sicherung.
+Auswirkung: Mittel — am 25.09.2026 lief `git checkout main` vor dem Merge von #261 und setzte `kontrollzustand/` lokal zurück; nach dem Merge und Pull war der Stand wieder da, kein Verlust.
+Maßnahme: Skriptausgabe mit Warnhinweis, Merge und Pull als eigener Schritt (offen). Verhaltensregeln zu Wartepunkten und zur Ruhe zwischen `zustand:sichern` und Merge+Pull in `docs/harness/HARNESS-LEARNING-STATE.md` sind erledigt (docs/harness-gedaechtnis).
+Status: offen (Regeln erledigt, Skriptausgabe offen).
+Feature/Run: erste Sicherung, 25.09.2026.
+
+**F-738** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: E-F36-1 verweist für die Bestätigung auf „bestehende planaenderung“; die kann aber nur Freigaben abschwächen, keine Schritte hinzufügen. Zusätzlich hat die Rolle qa kein Output-Schema.
+Beschreibung: Die Entscheidungsart planaenderung ist nur für das Abschwächen einer Freigabepflicht vorgesehen (`FREIGABEPFLICHT_ABGESCHWAECHT`), nicht für das Einfügen eines Schritts. Die Rolle qa trägt kein Output-Schema, gegen das ihr Ergebnis validiert werden könnte.
+Fundstelle: `src/entscheidung/types.ts` (FREIGABEPFLICHT_ABGESCHWAECHT); `src/rollen/index.ts` (Rolle qa).
+Auswirkung: Mittel — E-F36-1 ist in dieser Form nicht umsetzbar, ohne dass F36 stillschweigend eine neue Entscheidungsart oder ein neues Schema erfindet.
+Maßnahme: in der F36-Akte und der zielfassung präzisieren (E-F36-2).
+Status: offen.
+Feature/Run: F36-Challenge-Vorbereitung, 25.09.2026.
+
+**F-739** · `PROCESS_IMPROVEMENT` · P2 · **behoben** (docs/harness-gedaechtnis)
+Titel: Bauaufträge nannten die Harness-Pflichten (Prüfpass, Advisor-Entscheidung, Doku-Heimaten) nicht durchgängig.
+Beschreibung: Der Auftrag zu F-735 enthielt keinen Doku-Nachzug; ARCHITECTURE.md §1 und `state/gates.md` blieben ohne pruefketten_pfade bzw. Regel 1j/1h.
+Fundstelle: Prompt-Übergabe F-735 (#262).
+Auswirkung: Mittel — Doku-Heimaten laufen dem Code hinterher, ohne dass ein Gate es bemerkt.
+Maßnahme: Verhaltensregel „Harness-Einordnung in jedem Bauauftrag“ in `docs/harness/HARNESS-LEARNING-STATE.md` und Trigger „Bauauftrag verfassen“ in `state/triggers.md`.
+Status: behoben (docs/harness-gedaechtnis, 26.09.2026).
+Feature/Run: harness-gedaechtnis, 26.09.2026.
+
+**F-740** · `HARNESS_IMPROVEMENT` · P1 · **behoben** (docs/harness-gedaechtnis)
+Titel: Die Lern-Dateien des Harness waren seit dem Setup unbefüllt.
+Beschreibung: `docs/harness/HARNESS-LEARNING-STATE.md`, `docs/harness/HARNESS-CHANGELOG.md`, `state/reibung.md` und `state/triggers.md` standen auf dem Template-Stand; check-docs Prüfung 4 war auskommentiert und konnte die Auslassung deshalb nicht melden.
+Fundstelle: `scripts/check-docs.mjs` Prüfung 4 (`dokumentPaare`).
+Auswirkung: Hoch — gelernte Regeln lebten nur in Findings und Chats; ein vergessener Nachtrag fiel keinem Gate auf.
+Maßnahme: befüllt, check-docs Prüfung 4 (CHANGELOG → LEARNING-STATE) aktiviert und kalibriert (`state/gates.md`, Kalibrierungs-Log 2026-09-26).
+Status: behoben (docs/harness-gedaechtnis, 26.09.2026).
+Feature/Run: harness-gedaechtnis, 26.09.2026.
+
+**F-741** · `PROCESS_IMPROVEMENT` · P2 · **behoben** (docs/harness-gedaechtnis)
+Titel: Bauaufträge wurden seit F11 nicht mehr als Handoff-Vertrag unter state/tasks/ abgelegt.
+Beschreibung: Aufträge an Claude Code kamen nur als Chat-Text; das Vertrags-Gate (`scripts/check-contract.mjs`) hatte seit F11 keinen neuen Vertrag zu prüfen.
+Fundstelle: `state/tasks/`.
+Auswirkung: Mittel — der Auftrag ist im Repo nicht nachvollziehbar, das Vertrags-Gate läuft leer.
+Maßnahme: `state/tasks/harness-gedaechtnis.md` als erster Vertrag seit F11, Trigger „Bauauftrag verfassen“.
+Status: behoben (docs/harness-gedaechtnis, 26.09.2026).
+Feature/Run: harness-gedaechtnis, 26.09.2026.
+
+**F-742** · `TECH_DEBT` · P2 · offen
+Titel: state/findings.md mit über 10.000 Zeilen.
+Beschreibung: Die Datei ist schwer lesbar und für Werkzeuge teuer zu laden; der Großteil der Findings ist erledigt.
+Fundstelle: `state/findings.md`; Parser `src/workboard/findings.ts`.
+Auswirkung: Gering bis mittel — Lesekosten je Sitzung, Gefahr übersehener offener Findings.
+Maßnahme: erledigte Findings archivieren, den Parser `src/workboard/findings.ts` anpassen, die IDs stabil halten. Nach F36.
+Status: offen.
+Feature/Run: harness-gedaechtnis, 26.09.2026.
+
+**F-743** · `HARNESS_IMPROVEMENT` · P3 · **behoben** (docs/harness-gedaechtnis)
+Titel: CLAUDE.md über der 200-Zeilen-Grenze (Zähne-Taxonomie S19).
+Beschreibung: CLAUDE.md hatte 204 Zeilen; der behobene F-590-Block in „Bekannte Fallen“ war Protokoll, keine offene Falle.
+Fundstelle: CLAUDE.md, Abschnitt „Bekannte Fallen“.
+Auswirkung: Gering — jede Zeile über der Grenze verdrängt Kontext in jeder Sitzung.
+Maßnahme: F-590-Block nach `state/reibung.md` verschoben; CLAUDE.md jetzt 191 Zeilen.
+Status: behoben (docs/harness-gedaechtnis, 26.09.2026).
+Feature/Run: harness-gedaechtnis, 26.09.2026.
