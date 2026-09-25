@@ -131,3 +131,4 @@ feature.md`) (Stand 22.09.2026).
 - F-666 · TECH_DEBT · Ein vollständiger realer `hoch`-Lauf (Advisor MIT Urteil, `code-reviewer` erfolgreich, Regel 1c real ausgelöst) wurde nie belegt — Pflicht-AK der F41-Abnahme (E-F39-2 = A).
 - F-675 · TECH_DEBT · Die Coach-Struktur geht im Auftrag in Freitext über — Ausführung und Review arbeiten nicht verpflichtend gegen die Akzeptanzkriterien.
 - F-678 · TECH_DEBT · Neue Projekte haben keinen Projekt-Harness — Rolleninstruktionen verweisen auf Dateien, die dort nicht existieren.
+- F-684 · BUG · Product-Coach-Vorlage "Auftrag an den Baudurchgang" schreibt ai-workforce-spezifische Prüfungen in JEDEN Auftrag — auch in Fremdprojekte, wo diese Dateien nicht existieren.

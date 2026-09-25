@@ -368,15 +368,18 @@ test('starteGateway übergibt kein abbruchSignal an starteProzess, wenn optionen
   }
 })
 
-test('starteGateway reicht stdinLeer: true an starteProzess durch — fest für jede Rolle, kein Options-Feld (Task "Jarvis-Chat-Latenz senken", Schritt 2)', async () => {
-  const laufId = neueLaufId('gateway-stdinleer')
-  let empfangeneOptionen: { stdinLeer?: boolean } | undefined
+test('starteGateway reicht den Prompt über stdinDaten an starteProzess durch, NICHT mehr über stdinLeer (F-642, löst spawn ENAMETOOLONG bei langem Prompt) — Grünfall', async () => {
+  const laufId = neueLaufId('gateway-stdindaten')
+  let empfangeneOptionen: { stdinLeer?: boolean; stdinDaten?: string } | undefined
+  let empfangeneTokens: string[] | undefined
   const spyStarter: Starter = async (startziel, tokens, optionen) => {
     empfangeneOptionen = optionen
+    empfangeneTokens = tokens
     return attrappeMitValidemErgebnis(startziel, tokens)
   }
+  const eingaben = gueltigeGatewayEingaben(laufId)
   try {
-    const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+    const ergebnis = await starteGateway(eingaben, {
       ...startfreigabeOptionen(),
       basisVerzeichnis: KONTROLLZUSTAND_BASIS,
       rohBasisVerzeichnis: 'kontrollzustand-roh',
@@ -385,7 +388,11 @@ test('starteGateway reicht stdinLeer: true an starteProzess durch — fest für 
     })
 
     assert.strictEqual(ergebnis.ok, true)
-    assert.strictEqual(empfangeneOptionen?.stdinLeer, true, 'der Claude-Code-Pfad muss stdin für JEDEN Aufruf schließen, `-p` liest ohnehin nie davon')
+    assert.strictEqual(empfangeneOptionen?.stdinLeer, undefined, 'stdinLeer entfällt ersatzlos (Muster codex-gateway/index.ts) — stdinDaten deckt denselben Zweck ab')
+    assert.strictEqual(empfangeneOptionen?.stdinDaten, eingaben.tokens[eingaben.tokens.length - 1], 'das letzte Tokens-Element (der Prompt, baueAufrufs Vertrag) muss über stdinDaten gehen')
+    // D5: der tatsächlich gespawnte Argv trägt den Prompt NICHT mehr — exakt eingaben.tokens
+    // MINUS das letzte (Prompt-)Element, keine zweite Konkatenation.
+    assert.deepStrictEqual(empfangeneTokens, eingaben.tokens.slice(0, -1))
   } finally {
     raeumeKette(laufId)
   }
@@ -1090,6 +1097,65 @@ test('starteGateway trägt werkzeugStartziel und startfehler im Rohstrom (F-071)
     const rohInhalt = JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8'))
     assert.deepStrictEqual(rohInhalt.werkzeugStartziel, GUELTIGES_STARTZIEL)
     assert.strictEqual(rohInhalt.startfehler, null)
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+// ─── F-642: stdinDaten, real und kalibriert (kein Spy) ──────────────────────
+// Real gemessen (Lauf 3943c565-dd33-4df4-895f-56daf1e1fb4a, F41-WS-3-Reallauf,
+// 24.09.2026): ein ~17.500 Zeichen langes Prompt-Argv-Element (Auftrag +
+// Architekt-JSON + Entscheidung) ließ spawn() unter Windows synchron mit
+// ENAMETOOLONG werfen, 36ms nach Laufbeginn, kein Modell-, kein Schema-Fehler
+// — derselbe Mechanismus, den F-642 bereits für Codex behoben hat (dort
+// codex-gateway.test.ts, dieselbe Konstante). Der Rot-Fall unten reproduziert
+// exakt diesen Mechanismus (40.000 Zeichen liegen sicher über Windows'
+// 32.767er-Grenze für die GESAMTE Kommandozeile), der Grün-Fall belegt, dass
+// dieselbe Datenmenge über stdinDaten den Kindprozess unversehrt erreicht
+// (Byte-für-Byte-Vergleich im Prüfskript, kein bloßes "der Prozess endete").
+const STDIN_DATEN_GROESSE = 40000
+const STDIN_ZEITGRENZE_GRUEN_MS = 30000
+
+test('F-642 rot (real gemessen, kein Spy): ein Argv-Element dieser Größe wirft spawn ENAMETOOLONG unter Windows', { skip: process.platform !== 'win32' ? 'ENAMETOOLONG ist ein Windows-spezifischer Fehlercode — auf anderen Plattformen kein belegter Rotfall (YAGNI)' : false }, async () => {
+  const riesigesArgv = 'X'.repeat(STDIN_DATEN_GROESSE)
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', 'process.exit(0)', riesigesArgv])
+  assert.equal(ergebnis.startfehler?.code, 'ENAMETOOLONG')
+  assert.equal(ergebnis.exitCode, null)
+})
+
+test('F-642 grün (real gemessen, kein Spy): dieselbe Datenmenge kommt über stdinDaten unversehrt am Kindprozess an', async () => {
+  // Liest stdin vollständig, vergleicht die Byte-Länge und beendet sich mit 0 nur bei exakter
+  // Übereinstimmung — ein bloßes "endete regulär" bewiese nicht, dass die Daten ankamen.
+  const pruefskript = `let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>process.exit(d.length===${STDIN_DATEN_GROESSE}?0:1))`
+  const stdinDaten = 'X'.repeat(STDIN_DATEN_GROESSE)
+  const ergebnis = await starteProzess(GUELTIGES_STARTZIEL, ['-e', pruefskript], { zeitgrenzeMs: STDIN_ZEITGRENZE_GRUEN_MS, stdinDaten })
+  assert.equal(ergebnis.startfehler, null)
+  assert.equal(ergebnis.exitCode, 0)
+})
+
+test('F-642 grün (real gemessen, kein Spy): starteGateway spawnt mit einem Argv unter der Windows-Grenze, obwohl der Prompt allein sie überschreitet', async () => {
+  const laufId = neueLaufId('gateway-f642-langer-prompt')
+  const langerPrompt = 'X'.repeat(STDIN_DATEN_GROESSE)
+  const eingaben: GatewayEingaben = {
+    ...gueltigeGatewayEingaben(laufId),
+    tokens: baueAufruf({ ...gueltigeEingaben(), prompt: langerPrompt }),
+  }
+  let empfangenerArgvGesamtlaenge: number | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
+    empfangenerArgvGesamtlaenge = tokens.join(' ').length
+    assert.strictEqual(optionen?.stdinDaten, langerPrompt)
+    return attrappeMitValidemErgebnis(startziel, tokens)
+  }
+  try {
+    const ergebnis = await starteGateway(eingaben, {
+      ...startfreigabeOptionen(),
+      basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+      rohBasisVerzeichnis: 'kontrollzustand-roh',
+      starter: spyStarter,
+      schreiber: () => {},
+    })
+    assert.strictEqual(ergebnis.ok, true)
+    assert.ok((empfangenerArgvGesamtlaenge ?? 0) < 32767, 'der tatsächlich gespawnte Argv muss den Prompt NICHT mehr enthalten und damit unter der Windows-Grenze bleiben')
   } finally {
     raeumeKette(laufId)
   }

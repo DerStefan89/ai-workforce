@@ -143,10 +143,25 @@ try {
         if (typeof auszug !== 'string' || auszug.length === 0) {
           befunde.push(`(1) baueCapabilityAuszug(...) sollte einen nicht-leeren Text liefern, erhalten ${JSON.stringify(auszug)}`)
         }
+        // F-676/F-677: ein nicht-leerer Auszug allein beweist NICHT, dass die Worker aufgelöst
+        // wurden — "alle Worker nicht verfügbar" ist ebenfalls ein nicht-leerer Text (genau der
+        // reale F41-WS-3-Befund, den dieser Fall vor der Verschärfung nicht zeigte). FREMD_
+        // STARTVORLAGE_PFAD ist absichtlich schon absolut (Form aus loeseProjektPfade,
+        // scripts/leitstand-server.mjs:8100) — der Rot-Fall vor E-F41-2 war join(repoWurzel,
+        // <bereits absoluter Pfad>), was unter Windows zu einem verdoppelten, nicht existenten
+        // Pfad führte und beide Worker als verfuegbar:false auflöste.
+        for (const workerId of ['codex', 'claude-code']) {
+          const eintrag = aufgeloest.find((r) => r.id === workerId)
+          if (eintrag === undefined) {
+            befunde.push(`(1) aufgeloest sollte einen Eintrag '${workerId}' enthalten, erhalten ids ${JSON.stringify(aufgeloest.map((r) => r.id))}`)
+          } else if (eintrag.verfuegbar !== true) {
+            befunde.push(`(1) loeseRessourcenAuf(..., <Fremdprojekt>, <absoluter Fremdprojekt-Startvorlagenpfad>) sollte '${workerId}' als verfuegbar:true auflösen, erhalten verfuegbar:${eintrag.verfuegbar} (${eintrag.grund})`)
+          }
+        }
       }
     }
     if (befunde.length === befundeVor) {
-      console.log("✓ (1) Coach-Kontext/Capability-Auszug: leseRessourcenRoh(installWurzel) → loeseRessourcenAuf → baueCapabilityAuszug laufen gegen das Fremdprojekt durch, ohne dass ressourcen.json dort existiert (löst den real beobachteten 500 ENOENT).")
+      console.log("✓ (1) Coach-Kontext/Capability-Auszug: leseRessourcenRoh(installWurzel) → loeseRessourcenAuf → baueCapabilityAuszug laufen gegen das Fremdprojekt durch, ohne dass ressourcen.json dort existiert (löst den real beobachteten 500 ENOENT) — codex UND claude-code verfuegbar:true trotz absolutem Fremdprojekt-Startvorlagenpfad (F-676/F-677).")
     }
   }
 

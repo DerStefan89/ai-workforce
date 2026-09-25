@@ -34,7 +34,7 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { AufgelosteRessource, CapabilityGap, Ressource } from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
@@ -305,7 +305,10 @@ function loeseSkillAuf(ressource: Ressource, repoWurzel: string): Pick<Aufgelost
  * @returns je Eintrag eine AufgelosteRessource mit aufgelösten name/beschreibung/verfuegbar/grund
  */
 export function loeseRessourcenAuf(ressourcen: Ressource[], repoWurzel: string, startvorlagePfad: string): AufgelosteRessource[] {
-  const vollerStartvorlagePfad = join(repoWurzel, startvorlagePfad)
+  // resolve statt join (F-676/F-677): für Projekt-Instanzen liefert loeseProjektPfade
+  // startvorlagePfad bereits absolut — join würde repoWurzel + absoluten Pfad verketten statt
+  // ihn zu ersetzen (Windows: 'C:\a\b\C:\x\y'), resolve verhält sich hier korrekt wie dokumentiert.
+  const vollerStartvorlagePfad = resolve(repoWurzel, startvorlagePfad)
   let startvorlage: { daten: Record<string, unknown> | null; fehler: string | null } | null = null
 
   return ressourcen.map((ressource) => {
