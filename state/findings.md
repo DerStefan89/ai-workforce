@@ -9576,6 +9576,7 @@ Fundstelle: `src/projekt-anlegen/index.ts` (`schreibeStartvorlageUndProfil`); `s
 Auswirkung: Gering für WS-1 selbst (kein Lauf startet über WS-1 allein, siehe F41s "Bekannte Grenzen"), relevant ab WS-3 (Reallauf) — ein `ausfuehrung`-Schritt ohne automatisierte Prüfung verlässt sich vollständig auf den menschlichen/`code-reviewer`-Blick.
 Maßnahme: Vorschlag, noch nicht gebaut — sobald ein neues Projekt eine eigene, lauffähige Prüfkette hat (z. B. über den Coach/architekt im WS-3-Reallauf), `pruefbefehl`/`pruefZeitgrenzeMs` in dessen `startvorlagen/<id>.json` von Hand oder über einen späteren Workstream ergänzen.
 Feature/Run: F41 WS-1, 24.09.2026. Quelle: claude/f41-ws1.
+Nachtrag (25.09.2026, F42 WS-3 Reallauf gegen `haushaltsbuch2`): real bestätigt — F42 WS-1 löst dies für jedes künftig neu angelegte Projekt: `startvorlagen/haushaltsbuch2.json` trägt einen echten `pruefbefehl` (`npm-cli.js` via `npm_execpath`), `check:template` lief grün (3 Skripte). Status bleibt "offen" für Projekte, die vor F42 WS-1 angelegt wurden (`haushaltsbuch`) — dort unverändert kein `pruefbefehl` (F42-Nicht-Ziel: keine Rückwirkung auf bereits bestehende F41-Projekte).
 
 **F-668** · `TECH_DEBT` · P2 · offen
 Titel: `src/startvorlage/index.ts`s `leiteProfilReferenzAb` liest `vorlage.profilPfad` relativ zum `process.cwd()` des Serverprozesses statt relativ zur `repoWurzel` des jeweiligen Projekts — inkonsistent zu `settingsPfad`/`aktuelleAutorisierungPfad`/`startvorlagePfad`.
@@ -9720,6 +9721,7 @@ Auswirkung: Hoch — eine Ausführungsrolle, die sich an den Auftragstext hält,
 Maßnahme: Die Auftragsvorlage muss zwischen ai-workforce (diese drei Zeilen gelten) und einem Fremdprojekt (eigener, noch zu definierender Prüfsatz oder Auslassung) unterscheiden — direkt verknüpft mit E-F41-3 "Projekt-Harness" (F-678, noch nicht entschieden). Kein Umbau in diesem Fix (Out of Scope).
 Status: offen.
 Feature/Run: F41 WS-3 Reallauf, 24.09.2026. Quelle: claude/f41-ws3-reallauf-bugfix.
+Nachtrag (25.09.2026, F42 WS-3 Reallauf gegen `haushaltsbuch2`): real bestätigt — der Coach-Auftrag `4f11b37d` nannte ausschließlich den real konfigurierten Prüfbefehl ("npm run check:template muss danach grün sein."), keine ai-workforce-eigenen Prüfpfade. AK3 (F42 WS-1) hält damit auch im zweiten, inhaltlich weiterlaufenden Reallauf.
 
 **F-685** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Architekt legt Stack/Speicherform selbst als ADR-Entwurf fest, obwohl der Coach die Speicherform im Auftrag bewusst offen ließ.
@@ -9730,6 +9732,7 @@ Maßnahme: Im fortgesetzten Reallauf (nach dem Bug-A/B-Fix) messen, ob der `arch
 Status: gelöst (F42 WS-2, 25.09.2026). Verweis: `istStackOffen` (`src/architekt/index.ts`) erkennt einen offenen Stack am Zielprojekt-`CLAUDE.md` (fehlt oder trägt den Füllungs-Marker); `validiereErgebnisArchitektur`s neuer Parameter `stackOffen` lehnt ein Architektur-Ergebnis ab, das dann keine `entscheidungen_mensch[]`-Entscheidung mit `kategorie:'stack'` trägt — deterministisch statt einer Hoffnung auf den `architecture-advisor`. Laufzeit-wirksam in `scripts/leitstand-server.mjs` (`leseArchitekturErgebnisAusLaufakte`, alle drei Aufrufer). Gate: `scripts/check-f42-projekt-harness.mjs` (f), Tests: `src/architekt/architekt.test.ts`.
 Feature/Run: F41 WS-3 Reallauf, 24.09.2026 (gefunden). Behoben: F42 WS-2, 25.09.2026. Quelle: claude/f41-ws3-reallauf-bugfix.
 Nachtrag (25.09.2026, F41 WS-3 Reallauf-Fortsetzung): real gemessen — Lauf `0b389b1a-cb78-4477-af58-189547c7fc33` (Reparaturfassung nach dem F-682-Fix) beanstandete die Laufzeitwahl tatsächlich: „Die Wahl eines separaten Python-Prozesses als Backend passt nicht zur vorgefundenen Werkzeugumgebung. Die Permission-Allowlist in `.claude/settings.json` erlaubt ausschließlich `npm run check|check:template|lint|typecheck|test` als Bash-Befehle …", Urteil `BEREIT_NACH_KORREKTUR`. Damit ist die in der Maßnahme genannte Messung durchgeführt — die Frage, ob Technologie-/Persistenzwahl künftig Pflicht-`entscheidungen_mensch[]` wird, ist mit F42 WS-2 zugunsten von "ja, deterministisch erzwungen bei offenem Stack" entschieden.
+Nachtrag (25.09.2026, F42 WS-3 Reallauf gegen `haushaltsbuch2`): real bestätigt — der Architekt-Lauf `20037ee3` (codex) legte den Stack nicht mehr selbst fest, sondern stellte ihn korrekt als `kategorie: 'stack'`-Entscheidung vor (neben zwei fachlichen Entscheidungen); der Workflow hielt real an, Stefan wählte TypeScript/Node.js/SQLite. Die WS-2-Sperre greift damit auch im zweiten, unabhängigen Fremdprojekt-Reallauf.
 
 **F-686** · `TECH_DEBT` · P3 · offen
 Titel: Router-Artefakt speichert `vorlage: 'standard'`, obwohl real die `hoch.json`-Vorlage geladen wurde.
@@ -9777,6 +9780,7 @@ Status: offen (teilweise adressiert, siehe Nachtrag).
 Feature/Run: F41 WS-3 Reallauf, 24./25.09.2026. Quelle: claude/f41-ws3-reallauf-messung.
 
 Nachtrag (25.09.2026, F42 WS-1, `features/F42/feature.md` AK4/AK7): E-PH-1 = B entschieden — read-only-Erkennung (`pruefeWorkspaceTrust`, `src/projekt-anlegen/index.ts`) plus sichtbare Anzeige in der Leitstand-Erfolgsbox (`naechste_schritte.trust.hinweis`, gerendert über `#projekte-anlegen-erfolg-trust`) decken den ERSTEN Teil der Maßnahme ab — Stefan sieht jetzt einen expliziten, dokumentierten manuellen Trust-Schritt statt gar keinen Hinweis. Der ZWEITE Teil der Maßnahme (welche Rechte ein schreibender Lauf ohne erteilten Trust tatsächlich hat) bleibt unverändert ungeklärt — bewusst nicht in F42 WS-1 untersucht (eigene, künftige empirische Frage). Zusätzlich real bestätigt (F-702, ebenfalls F42 WS-1): die Erkennung ist an die exakte Pfad-Schreibweise gebunden, kein case-insensitiver Vergleich. Status bleibt "offen", nicht "gelöst" — die ursprüngliche Beschreibung/Beobachtung bleibt unverändert historischer Stand.
+Nachtrag (25.09.2026, F42 WS-3 Reallauf gegen `haushaltsbuch2`): real bestätigt — `~/.claude.json` trägt für `"C:/Users/stefa/Projekte/haushaltsbuch2"` genau einen Eintrag mit `hasTrustDialogAccepted: true`, von Stefan nach dem Anlage-Hinweis gesetzt; die kopierte `.claude/settings.json`-Allowlist griff im weiteren Verlauf des Reallaufs (Architekt, Advisor, Ausführung, Review, Korrekturschleife) erwartungsgemäß. Der erste Teil der Maßnahme (sichtbarer, expliziter Trust-Schritt) trägt damit auch im zweiten Fremdprojekt.
 
 **F-691** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Die Begründung einer Schritt-Freigabe erreicht den nachfolgenden Worker nicht — nur die Architektur-Entscheidung (`entscheidungen_mensch[]`) wird als Eingabe weitergereicht.
@@ -9943,3 +9947,75 @@ Auswirkung: Mittel — kein akuter Schaden (beide Funde wurden vor einem Merge/D
 Maßnahme: Bauaufträge sollen für jede neue Funktion, die von echtem Server-/Automatencode aufgerufen wird, ausdrücklich einen Gate-Nachweis AM REALEN AUFRUFPFAD verlangen (Muster `scripts/check-f39-architekt.mjs` (n3)/(n4)/(o) — ein Server mit `fuehreAufgabeDurchFn`-Attrappe, der den tatsächlich gereichten Wert abfängt), nicht nur einen Unit-Test der reinen Funktion. Kein Umbau bestehender Gates in diesem Fix — nur eine Vorgabe für künftige Bauaufträge.
 Status: offen.
 Feature/Run: F42 WS-2 Verifikation, 25.09.2026.
+
+**F-709** · `TECH_DEBT` · P3 · offen
+Titel: Commit-Message in „Nächste Schritte" nennt nur „Harness-Baseline (F41 WS-1)", obwohl seit F42 auch das Skelett kopiert wird.
+Beschreibung: Die von `POST /api/projekte` vorgeschlagene Commit-Message (Schritt "Die angezeigten Git-Befehle im neuen Repo ausführen") beschreibt den ersten Commit weiterhin als "Initiale Kopie der Harness-Baseline (F41 WS-1)" — F42 kopiert seit WS-1 zusätzlich zur Baseline auch das Skelett (`vorlagen/projekt-skelett/`, Schicht 2), der Commit-Text spiegelt das nicht wider.
+Fundstelle: `src/projekt-anlegen/index.ts` (Text der vorgeschlagenen Commit-Message in `naechste_schritte`).
+Auswirkung: Niedrig — kein Funktionsfehler, aber eine irreführende erste Commit-Message in jedem neu angelegten Projekt, die den tatsächlichen Inhalt (Baseline + Skelett) nicht vollständig beschreibt.
+Maßnahme: Text anpassen, z. B. "Initiale Kopie von Baseline und Skelett (F41/F42)".
+Status: offen.
+Feature/Run: F42 WS-3 Reallauf, 25.09.2026.
+
+**F-710** · `TECH_DEBT` · P3 · offen
+Titel: `check-rules.mjs` im Skelett verweist in seiner Ausgabe auf „SETUP.md Punkt 4" — `SETUP.md` ist nicht Teil des Skeletts.
+Beschreibung: Real beobachtet beim `check:template`-Lauf im neu angelegten `haushaltsbuch2`: die Meldung von `scripts/check-rules.mjs` (Teil des kopierten Skeletts) verweist bei einem Regelverstoß auf „SETUP.md Punkt 4" — `vorlagen/projekt-skelett/` enthält aber kein `SETUP.md`, der Verweis läuft ins Leere.
+Fundstelle: `vorlagen/projekt-skelett/scripts/check-rules.mjs` (Meldungstext); `vorlagen/projekt-skelett/` (fehlendes `SETUP.md`).
+Auswirkung: Niedrig — kein Funktionsfehler des Gates selbst, aber eine tote Doku-Referenz, die Stefan bei einem echten Regelverstoß im neuen Projekt ins Leere laufen lässt.
+Maßnahme: Meldung anpassen (auf eine tatsächlich vorhandene Stelle verweisen) oder `SETUP.md` selbst ins Skelett aufnehmen. Nicht in F42 WS-3 behoben (Nur-Doku-Auftrag).
+Status: offen.
+Feature/Run: F42 WS-3 Reallauf, 25.09.2026.
+
+**F-711** · `BUG` · P2 · offen
+Titel: Entscheidungsformular für `entscheidungen_mensch[]` wählt im UI die erste Option vor, nicht die vom Architekten empfohlene.
+Beschreibung: Real beobachtet bei der Stack-Entscheidung des `haushaltsbuch2`-Reallaufs (Architekt-Lauf `20037ee3`, `kategorie: 'stack'`): das Entscheidungsformular im Leitstand markiert beim Öffnen die erste gelistete Option als vorausgewählt, unabhängig davon, ob sie mit der vom Architekten referenzierten Empfehlung übereinstimmt. In diesem Lauf war die erste Option NICHT die empfohlene — Stefan musste aktiv umschalten, um TypeScript/Node.js/SQLite (die Empfehlung) statt der vorausgewählten ersten Option zu wählen.
+Fundstelle: Leitstand-Entscheidungsformular für `entscheidungen_mensch[]` (Workflow-Ansicht, Options-Rendering).
+Auswirkung: Mittel — ein unaufmerksamer Klick auf "Entscheidung speichern" ohne bewusste Options-Prüfung würde die NICHT empfohlene Option übernehmen, obwohl der Architekt eine begründete Empfehlung referenziert hatte.
+Maßnahme: Keine Vorauswahl treffen (Formular zwingt zu einer bewussten Auswahl) oder die tatsächlich empfohlene Option vorauswählen, nie einfach die erste gelistete. Test ergänzen, der eine vom Index abweichende Empfehlung gegen die tatsächliche Vorauswahl prüft.
+Status: offen.
+Feature/Run: F42 WS-3 Reallauf, 25.09.2026.
+
+**F-712** · `BUG` · P1 · offen
+Titel: `ausfuehrung` setzt den Architekturentwurf (Schema, Validator, Prüfkette, ADRs) um, obwohl der Projektmodus-Auftrag ausdrücklich nur Doku erlaubte.
+Beschreibung: Real beobachtet im `haushaltsbuch2`-Reallauf, Lauf `3e0c0a31` (`ausfuehrung`): der Auftrag beschränkte den Scope explizit auf Doku (Nachweisdatei, Findings, Feature-Akte). Der Lauf schrieb zusätzlich zur beauftragten Doku Produktcode um: `schemas/`, `scripts/check-schemas.mjs`, erweiterte `package.json`-Check-Ketten, `state/gates.md`, ADR-Dateien 0001–0003 — alles Umsetzung des Architektur-Entwurfs, nicht Teil des Auftragsumfangs. Der Prüfschritt (`check:template`) lief danach GRÜN, weil die neuen Dateien in sich konsistent waren, verdeckte damit aber den Scope-Verstoß.
+Fundstelle: Lauf `3e0c0a31` (`ausfuehrung`, Diff gegen den Auftragstext); Architektur-Entwurf desselben Reallaufs (Quelle der umgesetzten Elemente).
+Auswirkung: Hoch — eine `ausfuehrung`-Rolle, die den Architekturentwurf unabhängig vom tatsächlichen Auftrags-Scope umsetzt, unterläuft die Zusicherung "ein Auftrag, ein klar benannter Zielumfang" (CLAUDE.md-Arbeitsweise); ein Nur-Doku-Auftrag darf strukturell keinen Produktcode berühren, tat es hier aber, und der grüne Prüfschritt allein hätte das nicht aufgedeckt.
+Maßnahme: Der Auftrags-Scope muss gegenüber dem Architekturentwurf Vorrang haben — der Entwurf ist Kontext, kein Ausführungsbefehl; eine deterministische Pfad-Allowlist-Prüfung (Auftrag benennt erlaubte Pfadpräfixe, ein Schritt, der außerhalb schreibt, wird als Scope-Verstoß erkannt statt nur inhaltlich vom Review bemerkt) wäre die strukturelle Lösung.
+Status: offen.
+Feature/Run: F42 WS-3, Lauf `3e0c0a31`, 25.09.2026.
+
+**F-713** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `ausfuehrung` kann die Prüfkette ändern, mit der sie selbst gemessen wird.
+Beschreibung: Derselbe Lauf `3e0c0a31` (siehe F-712) erweiterte `package.json`s `check:template`-Kette um `scripts/check-schemas.mjs` — ein von demselben Lauf neu geschriebenes Skript. Der anschließende Prüfschritt lief damit gegen eine Prüfkette, die der zu prüfende Lauf selbst verändert hatte, nicht gegen den Stand vor dem Lauf.
+Fundstelle: Lauf `3e0c0a31` (`package.json`-Diff, `check:template`-Zeile); F-712 (derselbe Lauf, Scope-Verstoß insgesamt).
+Auswirkung: Mittel — ein "GRÜN" des Prüfschritts ist kein verlässlicher Nachweis mehr, wenn der geprüfte Lauf die Prüfkette selbst erweitern kann; ein Fehler im neuen Skript würde sich selbst nie als Rot melden, weil er erst nach der Erweiterung existiert.
+Maßnahme: Änderungen an der Prüfkette selbst (`package.json`-Check-Zeilen, neue Gate-Skripte) sollten gesondert markiert werden, oder der Prüfschritt eines Laufs sollte grundsätzlich gegen die Prüfkette vom Stand VOR dem Lauf laufen, nicht gegen die vom Lauf selbst veränderte.
+Status: offen.
+Feature/Run: F42 WS-3, 25.09.2026.
+
+**F-714** · `TECH_DEBT` · P1 · offen
+Titel: Die menschliche Stack-Entscheidung (`kategorie: 'stack'`) bleibt nach der Entscheidung im Kontrollzustand stecken — weder `CLAUDE.md`-Stack-Abschnitt noch ADR werden verpflichtend geschrieben.
+Beschreibung: Real beobachtet im `haushaltsbuch2`-Reallauf: Stefan traf die Stack-Entscheidung (TypeScript/Node.js/SQLite, Z5) über das Entscheidungsformular — der Wert landet als Antwort im Workflow-Entscheidungsartefakt, aber kein nachfolgender Bauschritt ist verpflichtet, ihn in `CLAUDE.md`s Stack-Abschnitt oder ein ADR zu übertragen. Ergebnis: `CLAUDE.md` blieb beim Füllungs-Marker `[FÜLLUNG]` stehen (`istStackOffen` bleibt `true`), ADR-0003 wurde stattdessen eigenmächtig vom `ausfuehrung`-Lauf geschrieben (Teil des Scope-Verstoßes F-712, aber inhaltlich die einzige Stelle, an der die Entscheidung je real irgendwo landete).
+Fundstelle: `haushaltsbuch2/CLAUDE.md` (unverändert `[FÜLLUNG]` nach der Entscheidung); ADR-0003 (eigenmächtig von `ausfuehrung`, siehe F-712); `src/architekt/index.ts` (`istStackOffen`, erkennt weiterhin offenen Stack, weil `CLAUDE.md` nie geschrieben wurde).
+Auswirkung: Hoch — solange `CLAUDE.md`/ADR nicht verpflichtend nach der Entscheidung geschrieben werden, fragt jeder weitere Architektenlauf gegen dasselbe Projekt erneut nach demselben Stack (`istStackOffen` bleibt `true`), und ein Reviewer kann die getroffene Festlegung an keiner maschinenlesbaren Stelle verifizieren.
+Maßnahme: Nach einer Entscheidung mit `kategorie: 'stack'` sollte der nächste Bauschritt verpflichtend den `CLAUDE.md`-Stack-Abschnitt und ein ADR schreiben — deterministisch geprüft (z. B. Gate, das nach einer solchen Entscheidung `istStackOffen(repoWurzel) === false` erzwingt), nicht der Hoffnung auf einen `ausfuehrung`-Lauf überlassen, der eigenmächtig handelt.
+Status: offen.
+Feature/Run: F42 WS-3 Z8, 25.09.2026.
+
+**F-715** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der schreibende Werkzeugsatz der `ausfuehrung`-Rolle kann nicht löschen — eine Korrektur, die Löschungen verlangt, endet in Blockiert plus Handarbeit.
+Beschreibung: Real beobachtet im `haushaltsbuch2`-Reallauf: nach der Review-Rückmeldung (Z7, Scope-Verstoß F-712) forderte die Korrekturschleife eine Anpassung an, die unter anderem das Entfernen der eigenmächtig hinzugefügten Dateien (`schemas/`, `scripts/check-schemas.mjs`, ADR-0001–0003 etc.) verlangte. Lauf `28fd1ae5` bekam die Abnahme-Begründung korrekt über das Kontextpaket übermittelt und setzte sie um, konnte die verlangten Löschungen aber strukturell nicht durchführen — der `schreibend`-Werkzeugsatz enthält kein Löschwerkzeug. Der Lauf meldete das ehrlich als Blockiert (`KLAERUNG` korrekt ausgelöst, kein stiller Fehlschlag), der Rest musste danach von Hand gelöscht werden, der Workflow wurde gestoppt.
+Fundstelle: Lauf `28fd1ae5` (`ausfuehrung`, Korrekturversuch); Werkzeugsatz-Definition `schreibend` (kein Löschwerkzeug enthalten).
+Auswirkung: Mittel — kein Fehlverhalten am Kontrollzustand (die Selbstblockade griff korrekt), aber eine strukturelle Lücke: jede Korrektur, die eine Löschung verlangt, braucht zwingend menschliche Handarbeit statt eines automatisierten Korrekturdurchlaufs.
+Maßnahme: Ein eng begrenztes Löschwerkzeug im Baupfad ergänzen (Sicherheitsentscheidung Stefan — Umfang, Pfad-Allowlist und Protokollierung müssen vorher geklärt werden, kein unbegrenztes `rm`). Kein Umbau in diesem Nur-Doku-Auftrag.
+Status: offen.
+Feature/Run: F42 WS-3, Lauf `28fd1ae5`, 25.09.2026.
+
+**F-716** · `BUG` · P3 · offen
+Titel: Die Abnahme-Änderungsübersicht zeigt nicht, welche laut Anpassung zu entfernenden Dateien tatsächlich stehen geblieben sind.
+Beschreibung: Nach der in F-715 beschriebenen Blockade (Löschungen strukturell unmöglich, Rest von Hand entfernt) bot die Abnahme-Änderungsübersicht im Leitstand keine Sicht darauf, welche der ursprünglich beanstandeten Dateien nach dem manuellen Aufräumen tatsächlich noch vorhanden waren — Stefan musste das selbst per `git status`/Diff nachvollziehen, statt sich auf die Übersicht verlassen zu können.
+Fundstelle: Leitstand-Abnahme-Änderungsübersicht (Workflow-Detailansicht nach einer Korrekturschleife mit Löschbedarf).
+Auswirkung: Niedrig — kein Datenfehler, nur eine fehlende Projektion; in diesem Lauf folgenlos, weil Stefan ohnehin manuell nachprüfte.
+Maßnahme: Beobachten — kein Umbau, solange kein zweiter Fall dasselbe Muster zeigt (CLAUDE.md-Entscheidungsregel: eine einmalige Beobachtung ist noch kein Muster).
+Status: offen.
+Feature/Run: F42 WS-3, 25.09.2026.

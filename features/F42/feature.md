@@ -6,7 +6,8 @@ F42
 ## Titel
 Projekt-Harness (E-F41-3 = B, direkt nach F41, vor F35) — WS-1: Skelett,
 echter Prüfbefehl, Trust-Hinweis; WS-2: Architekt darf einen offenen Stack
-nicht mehr selbst festlegen (löst F-685)
+nicht mehr selbst festlegen (löst F-685); WS-3: Realer Messnachweis gegen
+ein zweites Fremdprojekt (`haushaltsbuch2`)
 
 ## Status
 Status: IN_ARBEIT
@@ -51,6 +52,26 @@ real durchgesetzt in `scripts/leitstand-server.mjs`s
 `leseArchitekturErgebnisAusLaufakte` (der Stelle, an der ein
 Architektur-Lauf-Ergebnis nach Laufende tatsächlich validiert wird — nicht
 nur im Gate).
+
+## Ziel (WS-3, abgeschlossen 25.09.2026)
+Realer Messnachweis von F42 WS-1/WS-2 gegen ein zweites, unabhängig neu
+angelegtes Fremdprojekt (`haushaltsbuch2`) — erstmals mit inhaltlichem
+Ergebnis in einem Fremdprojekt, nicht nur mechanisch bestanden wie im
+ersten Reallauf gegen `haushaltsbuch` (F-666). Belegt: `features/F42/
+nachweis-ws3-reallauf.md` (Ergebnistabelle Z1–Z8, Advisor,
+Korrekturschleife). Bestätigt real: F-667, F-684, F-685, F-690 (siehe
+jeweiliger Nachtrag in `state/findings.md`). Neu gefunden: F-709 bis F-716
+— davon P1: F-712 (Ausführung überschreitet Auftrags-Scope, setzt den
+Architekturentwurf statt des beauftragten Doku-Umfangs um), F-714
+(menschliche Stack-Entscheidung bleibt ohne verpflichtenden Bauschritt im
+Kontrollzustand stecken, kein `CLAUDE.md`/ADR-Nachzug).
+
+**Geplant (WS-4, noch nicht begonnen):** F-712 (Auftrags-Scope muss
+gegenüber dem Architekturentwurf Vorrang haben, deterministische
+Pfad-Allowlist-Prüfung), F-714 (Bauschritt nach `kategorie: 'stack'`-
+Entscheidung schreibt verpflichtend `CLAUDE.md`-Stack-Abschnitt + ADR),
+F-711 (Entscheidungsformular darf nicht die erste Option vorauswählen,
+sondern keine oder die referenzierte Empfehlung).
 
 ## Nicht-Ziele
 - Füllung des Skeletts (Coach-Interview/Architekt/Ausführung für das
