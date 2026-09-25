@@ -198,6 +198,9 @@ test('baueStackEntscheidungsInstruktion: verlangt CLAUDE.md-Füllung und ein ADR
   assert.match(text, /\[FÜLLUNG\]/)
   assert.match(text, /docs\/adr\//)
   assert.match(text, /workflow-entscheidung-gate-123/)
+  // F-735: die Instruktion nennt das Startvorlagenfeld mit einem Nicht-Node-Beispiel.
+  assert.match(text, /pruefketten_pfade/)
+  assert.match(text, /pyproject\.toml/)
 })
 
 test('pruefeProjektmodusScope: docs/**, features/** und CLAUDE.md sind erlaubt', () => {

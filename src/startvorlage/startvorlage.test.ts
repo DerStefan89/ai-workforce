@@ -211,3 +211,21 @@ test('ladeStartvorlage: startvorlagen/ai-workforce.json trägt einen gültigen p
   assert.deepStrictEqual(argumente.slice(-2), ['run', 'check'])
   assert.ok(typeof vorlage.pruefZeitgrenzeMs === 'number' && vorlage.pruefZeitgrenzeMs > 0)
 })
+
+// ─── F-735: optionales pruefketten_pfade (Regel 1j, stack-unabhängig) ─────────────────────────
+
+test('validiereStartvorlageDaten: Vorlage ohne pruefketten_pfade bleibt gültig; gültige Glob-Muster (auch leeres Array) sind gültig (F-735)', () => {
+  assert.deepStrictEqual(validiereStartvorlageDaten(GUELTIGE_VORLAGE), [])
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: ['pyproject.toml', 'tests/**/conftest.py', '.github/workflows/*', 'tools/'] }), [])
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: [] }), [])
+})
+
+test("validiereStartvorlageDaten: pruefketten_pfade lehnt '..', absolute Pfade, Backslashes, ?/[]/{}, Leerstrings und Nicht-Arrays ab (F-735)", () => {
+  for (const muster of ['../x.toml', 'a/../b', '..', '/etc/passwd', 'C:/x.toml', 'c:x', String.raw`scripts\check-x.mjs`, '', 'tsconfig.?.json', 'test_[ab].py', '*.{js,ts}']) {
+    const verstoesse = validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: [muster] })
+    assert.ok(verstoesse.some((v) => v.includes('pruefketten_pfade[0]')), `'${muster}' sollte abgelehnt werden, erhalten ${JSON.stringify(verstoesse)}`)
+  }
+  assert.ok(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: 'pyproject.toml' }).some((v) => v.includes('pruefketten_pfade')))
+  // '..' nur als Segment unzulässig — ein Punktpaar im Dateinamen ist kein Ausbruch aus dem Repo.
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: ['a..b.toml'] }), [])
+})

@@ -55,6 +55,14 @@ export interface StartvorlageV0Daten {
    */
   pruefZeitgrenzeMs?: number
   /**
+   * F-735: projektspezifische Glob-Muster der Prüfkette (relativ zur Repo-Wurzel; '*', '**',
+   * Präfix mit '/'), die Regel 1j ZUSÄTZLICH zur immer aktiven Default-Liste
+   * (STANDARD_PRUEFKETTEN_MUSTER, src/aenderungsuebersicht/index.ts) überwacht — z. B. für Python
+   * 'pyproject.toml', 'pytest.ini'. Optional: fehlt es, gilt nur die Default-Liste. Regel 1h
+   * verlangt das Feld, sobald eine Stack-Entscheidung erfasst ist.
+   */
+  pruefketten_pfade?: string[]
+  /**
    * Startfelder je zusätzlichem Worker (F16 WS-1, AK5). Optional: eine
    * Startvorlage ohne diesen Block bleibt unverändert gültig, und
    * startvorlage_schema bleibt 'v0' (Präzedenz zeitgrenzeMs, F14 WS-4 —

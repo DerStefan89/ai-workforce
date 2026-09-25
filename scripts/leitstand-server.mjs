@@ -429,7 +429,7 @@ import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
-import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { kanonischesJson, ladeGueltigeCheckpoints, schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, listeVersionen, pruefeStale, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
@@ -455,6 +455,7 @@ import {
   istAenderungsuebersichtDegradiert,
   lesePackageScriptsStaende,
   STANDARD_MAX_BYTES,
+  wirksamePruefkettenMuster,
   validiereAenderungsuebersichtDaten,
 } from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
@@ -3808,6 +3809,21 @@ function findeArchitektEingabeTreffer(schritt, workflowDaten) {
 }
 
 /**
+ * F-735: liest 'pruefketten_pfade' frisch aus der Startvorlage auf der Platte (nicht aus dem beim
+ * Handler-Aufbau geladenen Stand). Wirft nie.
+ * @param startvorlagePfad - Pfad der Startvorlage dieser Projekt-Instanz
+ * @returns die Muster, oder null, wenn das Feld fehlt oder die Datei nicht lesbar/ungültig ist (fail closed für Regel 1h)
+ */
+function lesePruefkettenPfadeFrisch(startvorlagePfad) {
+  try {
+    return ladeStartvorlage(startvorlagePfad).pruefketten_pfade ?? null
+  } catch (fehler) {
+    console.error(`[leitstand] F-735: Startvorlage '${startvorlagePfad}' nicht frisch lesbar — pruefketten_pfade gilt als fehlend: ${fehler.message}`)
+    return null
+  }
+}
+
+/**
  * Baut den Request-Handler des Leitstands. Eigener, in sich
  * abgeschlossener In-Memory-Zustand je Aufruf (angenommene laufIds,
  * Startfehlerliste, F11 WS-2 zusätzlich laufAktiv/D13) — erlaubt
@@ -4703,9 +4719,18 @@ export function erzeugeRequestHandler(optionen = {}) {
           ausfuehrungRueckfrage = findeRueckfrageZeile(textFuerRueckfrage.ok ? textFuerRueckfrage.text : null, geaenderteDateienAnzahl) ?? undefined
         }
         const { head, arbeitskopie } = lesePackageScriptsStaende(repoWurzel)
-        pruefketteVeraendert = ermittlePruefkettenAenderungen(head, arbeitskopie, uebersichtVersionFuerNachlauf?.daten.dateien ?? [])
+        // F-735: Muster = Default-Liste + pruefketten_pfade der beim Aufbau geladenen Startvorlage
+        // (Stand vor dem Lauf — ein Lauf kann sie nicht nachträglich entschärfen) + die eines frisch
+        // gelesenen Stands (ein vom Menschen nachgetragenes Feld wirkt ohne Serverneustart). Beides
+        // kann die Default-Liste nur ergänzen.
+        // QA-Befund F-735: liegt die Startvorlage im Projekt-Repo, gehört sie selbst zur Prüfkette —
+        // sonst könnte ein Lauf pruefketten_pfade (und damit Regel 1h) unbemerkt selbst setzen.
+        const startvorlageImRepo = relative(repoWurzel, resolve(startvorlagePfad)).replaceAll('\\', '/')
+        const vorlageMuster = startvorlageImRepo.length > 0 && !startvorlageImRepo.startsWith('../') && !isAbsolute(startvorlageImRepo) ? [startvorlageImRepo] : []
+        const muster = wirksamePruefkettenMuster([...(vorlage.pruefketten_pfade ?? []), ...(lesePruefkettenPfadeFrisch(startvorlagePfad) ?? []), ...vorlageMuster])
+        pruefketteVeraendert = ermittlePruefkettenAenderungen(head, arbeitskopie, uebersichtVersionFuerNachlauf?.daten.dateien ?? [], muster)
         // Fail closed: ohne (oder mit degradierter) Änderungsübersicht ist der Dateiteil von 1j
-        // (scripts/check-*, .github/workflows/*) nicht prüfbar — das ist selbst ein Halt-Grund,
+        // (wirksame Prüfketten-Muster, F-735) nicht prüfbar — das ist selbst ein Halt-Grund,
         // kein stilles "unverändert".
         if (!uebersichtBekannt) pruefketteVeraendert.push('Änderungsübersicht fehlt oder ist degradiert — Prüfkette nicht ermittelbar')
       }
@@ -4762,6 +4787,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Hälfte, ein Lauf ohne jedes ADR (oder mit einem ADR ohne Bezug zur Entscheidung) hätte die
       // Prüfung unbemerkt bestanden. traegtAdrVerweisAufEntscheidung schließt die zweite Hälfte.
       let stackNichtGefuellt
+      let stackPruefkettenPfadeFehlen
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung') {
         const architektEingabeTrefferFuerStack = findeArchitektEingabeTreffer(schritt, workflowDaten)
         if (architektEingabeTrefferFuerStack !== undefined) {
@@ -4774,6 +4800,10 @@ export function erzeugeRequestHandler(optionen = {}) {
             architekturErgebnisFuerStackNachlauf !== null && architekturErgebnisFuerStackNachlauf.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
           if (traegtStackEntscheidungNachlauf && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittIdFuerStack) !== null) {
             stackNichtGefuellt = istStackOffen(repoWurzel) || !traegtAdrVerweisAufEntscheidung(repoWurzel, workflowEntscheidungArtefaktId(workflowId))
+            // F-735: dritte Pflicht neben CLAUDE.md/ADR — frisch gelesen, weil der Mensch das Feld
+            // typischerweise erst nach der Entscheidung in die Startvorlage einträgt.
+            // QA-Befund F-735: eine leere Liste erfüllt die Pflicht nicht — 1j sähe sonst wieder nur die Node-Default-Liste.
+            stackPruefkettenPfadeFehlen = (lesePruefkettenPfadeFrisch(startvorlagePfad) ?? []).length === 0
           }
         }
       }
@@ -4816,6 +4846,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             pruefergebnisAusgabeEnde,
             scopeVerletzung,
             stackNichtGefuellt,
+            stackPruefkettenPfadeFehlen,
             pruefketteVeraendert,
           })
           return {

@@ -50,6 +50,11 @@
       "minimum": 1,
       "description": "F-652. Harte Wanduhr-Grenze für pruefbefehl, unabhängig von zeitgrenzeMs oben. Nur wirksam zusammen mit pruefbefehl."
     },
+    "pruefketten_pfade": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "F-735. Projektspezifische Glob-Muster der Prüfkette relativ zur Repo-Wurzel ('*', '**', Präfix mit abschließendem '/'), die Regel 1j ZUSÄTZLICH zur immer aktiven Default-Liste überwacht (STANDARD_PRUEFKETTEN_MUSTER, src/aenderungsuebersicht/index.ts) — ergänzt, ersetzt nie. Kein '..'-Segment, kein absoluter Pfad, kein Backslash — semantisch geprüft von validiereStartvorlageDaten (src/startvorlage/index.ts). Optional; Regel 1h verlangt das Feld, sobald eine Stack-Entscheidung erfasst ist."
+    },
     "worker": {
       "type": "object",
       "additionalProperties": false,

@@ -66,6 +66,8 @@ const AENDERUNGSUEBERSICHT_FELDER = new Set([
 ])
 
 const DATEI_FELDER = new Set(['pfad', 'status', 'plus', 'minus'])
+/** F-735: additive, optionale Datei-Felder — erlaubt, aber nicht Pflicht (Alt-Artefakte bleiben gültig). */
+const DATEI_FELDER_OPTIONAL = new Set(['alter_pfad'])
 const DATEI_STATUS_WERTE: AenderungsuebersichtDateiStatus[] = ['GEAENDERT', 'NEU', 'GELOESCHT', 'UMBENANNT']
 
 function istGanzzahlOderNull(wert: unknown): wert is number | null {
@@ -129,7 +131,7 @@ export function validiereAenderungsuebersichtDaten(daten: unknown): string[] {
           return
         }
         for (const feld of Object.keys(eintrag)) {
-          if (!DATEI_FELDER.has(feld)) verstoesse.push(`unbekanntes Feld '${praefix}.${feld}' (additionalProperties: false)`)
+          if (!DATEI_FELDER.has(feld) && !DATEI_FELDER_OPTIONAL.has(feld)) verstoesse.push(`unbekanntes Feld '${praefix}.${feld}' (additionalProperties: false)`)
         }
         for (const feld of DATEI_FELDER) {
           if (!(feld in eintrag)) verstoesse.push(`Pflichtfeld '${praefix}.${feld}' fehlt`)
@@ -145,6 +147,9 @@ export function validiereAenderungsuebersichtDaten(daten: unknown): string[] {
         }
         if ('minus' in eintrag && !istGanzzahlOderNull(eintrag.minus)) {
           verstoesse.push(`'${praefix}.minus' muss eine ganze Zahl >= 0 oder null sein`)
+        }
+        if ('alter_pfad' in eintrag && !istNichtLeererString(eintrag.alter_pfad)) {
+          verstoesse.push(`'${praefix}.alter_pfad' muss, wenn angegeben, ein nicht-leerer String sein`)
         }
       })
     }
@@ -215,7 +220,13 @@ function parseTrackedDateien(nameStatusRoh: string, numstatRoh: string): Aenderu
     if (pfad === undefined || pfad.length === 0) return []
 
     const numstatFelder = numstatZeilen[index]?.split('\t') ?? []
-    return [{ pfad, status, plus: ganzzahlOderNull(numstatFelder[0]), minus: ganzzahlOderNull(numstatFelder[1]) }]
+    const eintrag: AenderungsuebersichtDatei = { pfad, status, plus: ganzzahlOderNull(numstatFelder[0]), minus: ganzzahlOderNull(numstatFelder[1]) }
+    // F-735: bei einer Umbenennung zusätzlich den ALTEN Pfad festhalten — sonst bleibt eine
+    // Umbenennung AUS einem Prüfkettenpfad heraus für Regel 1j unsichtbar. Eine Kopie (C) lässt
+    // die Quelle unverändert und bekommt das Feld deshalb nicht.
+    const alterPfad = felder[1]
+    if (status === 'UMBENANNT' && felder.length >= 3 && alterPfad !== undefined && alterPfad.length > 0) eintrag.alter_pfad = alterPfad
+    return [eintrag]
   })
 }
 
@@ -342,8 +353,63 @@ export function erzeugeAenderungsuebersichtDaten(laufId: string, repoWurzel: str
  */
 export type PackageScriptsStand = { art: 'fehlt' } | { art: 'vorhanden'; scriptsJson: string }
 
-/** Pfadmuster der Prüfkette, deren BESTEHENDE Dateien ein 'ausfuehrung'-Lauf nicht unbemerkt ändern darf (F-713). */
-const PRUEFKETTEN_PFADE = [/^scripts\/check-[^/]*$/, /^\.github\/workflows\//]
+/**
+ * Default-Muster der Prüfkette (F-713, erweitert F-735), deren BESTEHENDE Dateien ein
+ * 'ausfuehrung'-Lauf nicht unbemerkt ändern darf. Immer aktiv — das Startvorlagenfeld
+ * 'pruefketten_pfade' ERGÄNZT diese Liste, ersetzt sie nie. '.github/workflows/**' statt '/*':
+ * deckt wie die frühere Regex (Präfix) auch Unterordner ab.
+ */
+export const STANDARD_PRUEFKETTEN_MUSTER: readonly string[] = [
+  'scripts/check-*',
+  '.github/workflows/**',
+  'biome.json',
+  'tsconfig*.json',
+  'scripts/_*',
+  '.eslintrc*',
+  'eslint.config.*',
+  'vitest.config.*',
+  'jest.config.*',
+]
+
+/**
+ * Reine Funktion (F-735): übersetzt ein einfaches Glob-Muster (relativ zur Repo-Wurzel) in eine
+ * verankerte RegExp. '**' überspannt beliebig viele Ordner ('**' + '/' auch null Ordner), '*'
+ * genau ein Pfadsegment-Stück ohne '/', ein Muster mit abschließendem '/' ist ein Präfix (alles
+ * darunter). Jedes andere Zeichen gilt wörtlich. Die Zulässigkeit ('..', absolute Pfade) prüft
+ * validiereStartvorlageDaten beim Laden, nicht diese Funktion.
+ * @param muster - Glob-Muster, z. B. 'scripts/check-*', 'tests/**' + '/conftest.py', 'docs/'
+ * @returns verankerte RegExp für einen '/'-getrennten, repo-relativen Pfad
+ */
+export function globZuRegExp(muster: string): RegExp {
+  let quelle = ''
+  for (let i = 0; i < muster.length; i++) {
+    const zeichen = muster[i]
+    if (zeichen === '*' && muster[i + 1] === '*') {
+      if (muster[i + 2] === '/') {
+        quelle += '(?:.*/)?'
+        i += 2
+      } else {
+        quelle += '.*'
+        i += 1
+      }
+    } else if (zeichen === '*') {
+      quelle += '[^/]*'
+    } else {
+      quelle += (zeichen ?? '').replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    }
+  }
+  if (muster.endsWith('/')) quelle += '.*'
+  return new RegExp(`^${quelle}$`)
+}
+
+/**
+ * Reine Funktion (F-735): Default-Liste plus projektspezifische Ergänzung, ohne Dubletten.
+ * @param zusatz - pruefketten_pfade einer (oder mehrerer) Startvorlage(n); fehlend = nur Default
+ * @returns die wirksame Musterliste für ermittlePruefkettenAenderungen
+ */
+export function wirksamePruefkettenMuster(zusatz: readonly string[] = []): string[] {
+  return [...new Set([...STANDARD_PRUEFKETTEN_MUSTER, ...zusatz])]
+}
 
 /** Status, die eine BESTEHENDE Datei betreffen — 'NEU' (A/untracked) löst bewusst nichts aus (F-713: neue Gates allein sind keine Veränderung der bestehenden Prüfkette). */
 const PRUEFKETTEN_STATUS: AenderungsuebersichtDateiStatus[] = ['GEAENDERT', 'GELOESCHT', 'UMBENANNT']
@@ -373,26 +439,34 @@ export function leseScriptsStand(rohInhalt: string | null): PackageScriptsStand 
  * selbst gemessen wird.
  * (a) Das 'scripts'-Objekt der package.json weicht zwischen HEAD und Arbeitskopie ab — fehlt die
  *     Datei auf beiden Seiten, ist das keine Abweichung; fehlt sie auf genau einer, schon.
- * (b) Eine Datei unter scripts/check-* oder .github/workflows/* trägt Status GEAENDERT, GELOESCHT
- *     oder UMBENANNT. Neue Dateien allein lösen nichts aus.
- * Bekannte Grenzen: bei UMBENANNT trägt die Änderungsübersicht nur den NEUEN Pfad — eine
- * Umbenennung AUS scripts/check-* heraus an einen anderen Ort bleibt unerkannt (eine nicht
- * gestagte Umbenennung erscheint ohnehin als GELOESCHT + NEU und wird erkannt). Hilfsdateien der
- * Prüfkette (scripts/_*.ts, scripts/aufraeumen-nachlauf.mjs, biome.json, tsconfig.json, *.test.ts)
- * und Unterordner scripts/check-* /… sind bewusst nicht erfasst (Auftragsumfang F-713).
+ * (b) Eine Datei, deren Pfad auf eines der 'muster' passt (wirksamePruefkettenMuster: Default-Liste
+ *     plus pruefketten_pfade der Startvorlage, F-735), trägt Status GEAENDERT, GELOESCHT oder
+ *     UMBENANNT. Bei UMBENANNT zählen der neue UND der alte Pfad (alter_pfad, F-735) — eine
+ *     Umbenennung AUS der Prüfkette heraus hält also ebenfalls. Neue Dateien allein lösen nichts aus.
+ * Bekannte Grenze: *.test.ts und frei benannte Hilfsskripte (z. B. scripts/aufraeumen-nachlauf.mjs)
+ * erfasst nur, wer sie in pruefketten_pfade listet.
  * @param head - Stand des 'scripts'-Objekts in HEAD
  * @param arbeitskopie - Stand des 'scripts'-Objekts in der Arbeitskopie
  * @param dateien - 'dateien' der Änderungsübersicht des Laufs
+ * @param muster - wirksame Glob-Muster der Prüfkette (wirksamePruefkettenMuster)
  * @returns Liste lesbarer Befunde; leeres Array = Prüfkette unverändert
  */
-export function ermittlePruefkettenAenderungen(head: PackageScriptsStand, arbeitskopie: PackageScriptsStand, dateien: AenderungsuebersichtDatei[]): string[] {
+export function ermittlePruefkettenAenderungen(
+  head: PackageScriptsStand,
+  arbeitskopie: PackageScriptsStand,
+  dateien: AenderungsuebersichtDatei[],
+  muster: readonly string[]
+): string[] {
   const befunde: string[] = []
   const scriptsAbweichend =
     head.art !== arbeitskopie.art || (head.art === 'vorhanden' && arbeitskopie.art === 'vorhanden' && head.scriptsJson !== arbeitskopie.scriptsJson)
   if (scriptsAbweichend) befunde.push('package.json (scripts)')
+  const regexe = muster.map(globZuRegExp)
+  const passt = (pfad: string): boolean => regexe.some((regex) => regex.test(pfad))
   for (const datei of dateien) {
-    if (PRUEFKETTEN_STATUS.includes(datei.status) && PRUEFKETTEN_PFADE.some((muster) => muster.test(datei.pfad))) {
-      befunde.push(`${datei.pfad} (${datei.status})`)
+    if (!PRUEFKETTEN_STATUS.includes(datei.status)) continue
+    if (passt(datei.pfad) || (datei.alter_pfad !== undefined && passt(datei.alter_pfad))) {
+      befunde.push(datei.alter_pfad !== undefined ? `${datei.alter_pfad} → ${datei.pfad} (${datei.status})` : `${datei.pfad} (${datei.status})`)
     }
   }
   return befunde

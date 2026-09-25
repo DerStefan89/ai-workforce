@@ -15,7 +15,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ermittlePruefkettenAenderungen, erzeugeAenderungsuebersichtDaten, istAenderungsuebersichtDegradiert, leseScriptsStand, validiereAenderungsuebersichtDaten } from './index.ts'
+import {
+  ermittlePruefkettenAenderungen,
+  erzeugeAenderungsuebersichtDaten,
+  globZuRegExp,
+  istAenderungsuebersichtDegradiert,
+  leseScriptsStand,
+  validiereAenderungsuebersichtDaten,
+  wirksamePruefkettenMuster,
+} from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 function git(repoWurzel: string, argumente: string[]): string {
@@ -139,6 +147,8 @@ test('Umbenennung (git add -M) erscheint als UMBENANNT mit dem neuen Pfad — Re
     const eintrag = daten.dateien.find((d) => d.pfad === 'umbenannt.txt')
     assert.strictEqual(eintrag?.status, 'UMBENANNT')
     assert.strictEqual(daten.dateien.some((d) => d.pfad === 'bestehend.txt'), false)
+    // F-735: der alte Pfad steht zusätzlich im additiven Feld alter_pfad.
+    assert.strictEqual(eintrag?.alter_pfad, 'bestehend.txt')
   } finally {
     raeumeVerzeichnis(repoWurzel)
   }
@@ -160,29 +170,32 @@ test('ein Dateiname mit Umlaut wird nicht durch git-Quoting verstümmelt — Rev
 
 // ─── F-713: Prüfketten-Veränderung (Regel 1j) ─────────────────────────────
 
+/** Default-Liste ohne projektspezifische Ergänzung (F-735). */
+const M = wirksamePruefkettenMuster()
+
 const PAKET = (scripts: Record<string, string>): string => JSON.stringify({ name: 'x', scripts })
 
 test('ermittlePruefkettenAenderungen: abweichendes scripts-Objekt wird gemeldet, ein unverändertes (auch bei anderem Rest der Datei) nicht', () => {
   const head = leseScriptsStand(PAKET({ check: 'node a.mjs' }))
-  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ check: 'node a.mjs && node b.mjs' })), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(JSON.stringify({ name: 'anders', version: '2', scripts: { check: 'node a.mjs' } })), []), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ check: 'node a.mjs && node b.mjs' })), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(JSON.stringify({ name: 'anders', version: '2', scripts: { check: 'node a.mjs' } })), [], M), [])
 })
 
 test('ermittlePruefkettenAenderungen: package.json fehlt auf beiden Seiten → keine Abweichung; auf genau einer Seite → Abweichung; unparsebar → Abweichung', () => {
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(null), []), [])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(PAKET({})), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand(null), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand('{kaputt'), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt-a'), leseScriptsStand('{kaputt-b'), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt'), leseScriptsStand('{kaputt'), []), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(null), [], M), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(PAKET({})), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand(null), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand('{kaputt'), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt-a'), leseScriptsStand('{kaputt-b'), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt'), leseScriptsStand('{kaputt'), [], M), [])
 })
 
 test('ermittlePruefkettenAenderungen: reine Umsortierung der scripts-Schlüssel ist keine Änderung; eine UTF-8-BOM verhindert das Erkennen nicht', () => {
   const head = leseScriptsStand(PAKET({ a: 'node a.mjs', b: 'node b.mjs' }))
-  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ b: 'node b.mjs', a: 'node a.mjs' })), []), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ b: 'node b.mjs', a: 'node a.mjs' })), [], M), [])
   const bom = String.fromCharCode(0xfeff)
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(bom + PAKET({ a: 'y' })), []), ['package.json (scripts)'])
-  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(PAKET({ a: 'x' })), []), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(bom + PAKET({ a: 'y' })), [], M), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(PAKET({ a: 'x' })), [], M), [])
 })
 
 test('ermittlePruefkettenAenderungen: bestehende scripts/check-* und .github/workflows/* mit GEAENDERT/GELOESCHT/UMBENANNT melden, NEU und andere Pfade nicht', () => {
@@ -195,7 +208,88 @@ test('ermittlePruefkettenAenderungen: bestehende scripts/check-* und .github/wor
     { pfad: 'scripts/anderes.mjs', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
     { pfad: 'scripts/unter/check-tief.mjs', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
   ]
-  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, dateien), ['scripts/check-x.mjs (GEAENDERT)', '.github/workflows/ci.yml (GELOESCHT)', 'scripts/check-umbenannt.mjs (UMBENANNT)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, dateien, M), ['scripts/check-x.mjs (GEAENDERT)', '.github/workflows/ci.yml (GELOESCHT)', 'scripts/check-umbenannt.mjs (UMBENANNT)'])
+})
+
+// ─── F-735: konfigurierbare Prüfketten-Muster, Hilfsdateien, Umbenennungen ──────────────
+
+test('globZuRegExp: * bleibt im Segment, ** überspannt Ordner, abschließendes / ist ein Präfix, andere Zeichen gelten wörtlich', () => {
+  assert.ok(globZuRegExp('scripts/check-*').test('scripts/check-x.mjs'))
+  assert.ok(!globZuRegExp('scripts/check-*').test('scripts/check-x/tief.mjs'))
+  assert.ok(globZuRegExp('.github/workflows/**').test('.github/workflows/ci.yml'))
+  assert.ok(globZuRegExp('.github/workflows/**').test('.github/workflows/unter/ci.yml'))
+  assert.ok(globZuRegExp('tests/**/conftest.py').test('tests/conftest.py'))
+  assert.ok(globZuRegExp('tests/**/conftest.py').test('tests/a/b/conftest.py'))
+  assert.ok(globZuRegExp('tools/').test('tools/x/y.sh'))
+  assert.ok(!globZuRegExp('tools/').test('toolsx/y.sh'))
+  assert.ok(globZuRegExp('pyproject.toml').test('pyproject.toml'))
+  assert.ok(!globZuRegExp('pyproject.toml').test('pyprojectxtoml'))
+  assert.ok(!globZuRegExp('pyproject.toml').test('sub/pyproject.toml'))
+  assert.ok(globZuRegExp('tsconfig*.json').test('tsconfig.build.json'))
+})
+
+test('wirksamePruefkettenMuster: Default-Liste immer aktiv, pruefketten_pfade ergänzen sie ohne Dubletten', () => {
+  const nurDefault = wirksamePruefkettenMuster()
+  for (const erwartet of ['scripts/check-*', 'biome.json', 'tsconfig*.json', 'scripts/_*', '.eslintrc*', 'eslint.config.*', 'vitest.config.*', 'jest.config.*']) {
+    assert.ok(nurDefault.includes(erwartet), erwartet)
+  }
+  const ergaenzt = wirksamePruefkettenMuster(['pyproject.toml', 'biome.json'])
+  assert.equal(ergaenzt.length, nurDefault.length + 1)
+  assert.ok(ergaenzt.includes('pyproject.toml') && ergaenzt.includes('scripts/check-*'))
+})
+
+test('ermittlePruefkettenAenderungen (F-735): Default-Liste erkennt biome.json, tsconfig und scripts/_*; ergänzte Muster greifen; NEU bleibt folgenlos', () => {
+  const gleich = leseScriptsStand(PAKET({}))
+  const dateien = [
+    { pfad: 'biome.json', status: 'GEAENDERT' as const, plus: 1, minus: 1 },
+    { pfad: 'tsconfig.json', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
+    { pfad: 'scripts/_aufraeumen.ts', status: 'GELOESCHT' as const, plus: 0, minus: 9 },
+    { pfad: 'pyproject.toml', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
+    { pfad: 'tests/test_neu.py', status: 'NEU' as const, plus: null, minus: null },
+  ]
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, dateien, M), ['biome.json (GEAENDERT)', 'tsconfig.json (GEAENDERT)', 'scripts/_aufraeumen.ts (GELOESCHT)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, dateien, wirksamePruefkettenMuster(['pyproject.toml', 'tests/**'])), [
+    'biome.json (GEAENDERT)',
+    'tsconfig.json (GEAENDERT)',
+    'scripts/_aufraeumen.ts (GELOESCHT)',
+    'pyproject.toml (GEAENDERT)',
+  ])
+})
+
+test('ermittlePruefkettenAenderungen (F-735): Umbenennung AUS scripts/check-* heraus hält über alter_pfad; ohne alter_pfad (Alt-Artefakt) zählt nur der neue Pfad', () => {
+  const gleich = leseScriptsStand(PAKET({}))
+  const heraus = [{ pfad: 'tools/x.mjs', status: 'UMBENANNT' as const, plus: 0, minus: 0, alter_pfad: 'scripts/check-x.mjs' }]
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, heraus, M), ['scripts/check-x.mjs → tools/x.mjs (UMBENANNT)'])
+  const altArtefakt = [{ pfad: 'tools/x.mjs', status: 'UMBENANNT' as const, plus: 0, minus: 0 }]
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, altArtefakt, M), [])
+})
+
+test('Umbenennung aus scripts/check-* heraus: reale Änderungsübersicht trägt alter_pfad, Regel 1j meldet sie (F-735)', () => {
+  const repoWurzel = neuesRepo()
+  try {
+    mkdirSync(join(repoWurzel, 'scripts'), { recursive: true })
+    writeFileSync(join(repoWurzel, 'scripts', 'check-x.mjs'), "console.log('x')\n")
+    git(repoWurzel, ['add', '-A'])
+    git(repoWurzel, ['commit', '--quiet', '-m', 'gate'])
+    mkdirSync(join(repoWurzel, 'tools'), { recursive: true })
+    git(repoWurzel, ['mv', 'scripts/check-x.mjs', 'tools/x.mjs'])
+    const daten = erzeugeAenderungsuebersichtDaten('test-lauf', repoWurzel, 1_000_000)
+    assert.deepStrictEqual(validiereAenderungsuebersichtDaten(daten), [])
+    const gleich = leseScriptsStand(PAKET({}))
+    assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, daten.dateien, M), ['scripts/check-x.mjs → tools/x.mjs (UMBENANNT)'])
+  } finally {
+    raeumeVerzeichnis(repoWurzel)
+  }
+})
+
+test('validiereAenderungsuebersichtDaten (F-735): alter_pfad ist optional; ein leerer alter_pfad ist ungültig', () => {
+  const basis = erzeugeAenderungsuebersichtDaten('lauf-x', join(tmpdir(), `kein-repo-${randomUUID()}`), 1000)
+  const ohne = { ...basis, dateien: [{ pfad: 'a.txt', status: 'UMBENANNT', plus: 0, minus: 0 }] }
+  const mit = { ...basis, dateien: [{ pfad: 'a.txt', status: 'UMBENANNT', plus: 0, minus: 0, alter_pfad: 'b.txt' }] }
+  const leer = { ...basis, dateien: [{ pfad: 'a.txt', status: 'UMBENANNT', plus: 0, minus: 0, alter_pfad: '' }] }
+  assert.deepStrictEqual(validiereAenderungsuebersichtDaten(ohne), [])
+  assert.deepStrictEqual(validiereAenderungsuebersichtDaten(mit), [])
+  assert.ok(validiereAenderungsuebersichtDaten(leer).length > 0)
 })
 
 test('istAenderungsuebersichtDegradiert: ein Artefakt ohne Git-Repo ist degradiert, ein leeres, erfolgreich ermitteltes nicht', () => {

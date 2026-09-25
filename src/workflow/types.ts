@@ -272,6 +272,14 @@ export interface SchrittErgebnis {
    */
   stackNichtGefuellt?: boolean
   /**
+   * OPTIONAL (F-735, Regel 1h): true, wenn unter derselben Voraussetzung wie 'stackNichtGefuellt'
+   * (Stack-Entscheidung erfasst) die Startvorlage des Projekts KEIN oder ein LEERES 'pruefketten_pfade' setzt —
+   * Regel 1j sähe für den gewählten Stack nur die Node-Default-Liste. Der Aufrufer liest die
+   * Startvorlage dafür frisch von der Platte (ein nicht lesbarer/ungültiger Stand zählt als
+   * fehlend). Fehlendes Feld: folgenlos, wie 'stackNichtGefuellt'.
+   */
+  stackPruefkettenPfadeFehlen?: boolean
+  /**
    * OPTIONAL (F35 WS-2, löst M5-Bestehensbedingung 2 "jedes AK trägt am Ende ein Urteil im
    * Review"): die Verstöße von pruefeAkUrteile (src/ak-pruefung/index.ts) gegen das ak_urteile-
    * Feld eines gerade gelaufenen 'code-reviewer'-Laufs (output_schema 'ergebnis-code-reviewer') —

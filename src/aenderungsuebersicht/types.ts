@@ -17,6 +17,8 @@ export interface AenderungsuebersichtDatei {
   /** null bei Binärdateien oder untracked Dateien (Zeilenzahl nicht über git diff ermittelbar). */
   plus: number | null
   minus: number | null
+  /** F-735: nur bei status 'UMBENANNT' — der Pfad VOR der Umbenennung. Optional und additiv: Alt-Artefakte ohne das Feld bleiben gültig. */
+  alter_pfad?: string
 }
 
 export interface AenderungsuebersichtV0Daten {

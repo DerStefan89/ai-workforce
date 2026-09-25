@@ -966,6 +966,13 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
           `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
         )
       }
+      // Regel 1h, zweite Pflicht (F-735): neben CLAUDE.md/ADR muss die Startvorlage des Projekts
+      // 'pruefketten_pfade' setzen — sonst prüft Regel 1j für einen Nicht-Node-Stack faktisch nichts.
+      if (vorschrittErgebnis.stackPruefkettenPfadeFehlen === true) {
+        nachlaufVerstoesse.push(
+          `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt (F-735) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
+        )
+      }
       // Regel 1j (F-713, Fixpaket vor F30): in BEIDEN Modi, im Projektmodus zusätzlich zu 1g. Der
       // Aufrufer berechnet 'pruefketteVeraendert' (ermittlePruefkettenAenderungen,
       // src/aenderungsuebersicht/index.ts) — ein Lauf, der die Prüfkette verändert, mit der er
