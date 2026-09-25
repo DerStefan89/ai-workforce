@@ -7,11 +7,19 @@
  */
 
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { baueArchitektAuftragstext, istStackOffen, validiereErgebnisArchitektur } from './index.ts'
+import {
+  baueArchitektAuftragstext,
+  baueStackEntscheidungsInstruktion,
+  baueUmsetzungsInstruktion,
+  istStackOffen,
+  pruefeProjektmodusScope,
+  traegtAdrVerweisAufEntscheidung,
+  validiereErgebnisArchitektur,
+} from './index.ts'
 
 function ladeBeispiel(name: string): unknown {
   return JSON.parse(readFileSync(`schemas/examples/ergebnis-architektur.${name}.json`, 'utf-8'))
@@ -160,4 +168,83 @@ test('baueArchitektAuftragstext: stackOffen:true hängt den Stack-Hinweis an, De
   assert.match(mitStackOffen, /NICHT selbst fest/)
   assert.doesNotMatch(ohneStackOffen, /NICHT selbst fest/)
   assert.doesNotMatch(baueArchitektAuftragstext('x'), /NICHT selbst fest/)
+})
+
+// ─── F42 WS-4 (löst F-712/F-714) ─────────────────────────────────────────────
+
+test('baueUmsetzungsInstruktion: Default (kein Argument, Feature-Modus) bleibt bitgenau die bisherige Instruktion', () => {
+  const zeilen = baueUmsetzungsInstruktion()
+  assert.ok(zeilen.some((z) => z.includes('docs/adr/TEMPLATE.md')))
+  assert.ok(zeilen.some((z) => z.includes('schemas/examples/')))
+  assert.ok(!zeilen.some((z) => z.includes('Scope des ursprünglichen Auftrags')))
+})
+
+test("baueUmsetzungsInstruktion: modus 'feature' explizit ist bitgenau dasselbe wie das Default", () => {
+  assert.deepStrictEqual(baueUmsetzungsInstruktion('feature'), baueUmsetzungsInstruktion())
+})
+
+test("baueUmsetzungsInstruktion: modus 'projekt' verlangt Scope-Vorrang statt Schema-/ADR-Bauauftrag (F-712)", () => {
+  const zeilen = baueUmsetzungsInstruktion('projekt')
+  const text = zeilen.join('\n')
+  assert.match(text, /Scope des ursprünglichen Auftrags.*Vorrang/)
+  assert.match(text, /kein Produktcode, keine Schemas.*keine Skripte/)
+  assert.ok(!text.includes('docs/adr/TEMPLATE.md'))
+})
+
+test('baueStackEntscheidungsInstruktion: verlangt CLAUDE.md-Füllung und ein ADR mit Verweis auf das Entscheidungsartefakt (F-714)', () => {
+  const zeilen = baueStackEntscheidungsInstruktion('workflow-entscheidung-gate-123')
+  const text = zeilen.join('\n')
+  assert.match(text, /CLAUDE\.md/)
+  assert.match(text, /\[FÜLLUNG\]/)
+  assert.match(text, /docs\/adr\//)
+  assert.match(text, /workflow-entscheidung-gate-123/)
+})
+
+test('pruefeProjektmodusScope: docs/**, features/** und CLAUDE.md sind erlaubt', () => {
+  assert.deepStrictEqual(pruefeProjektmodusScope(['docs/x.md', 'docs/adr/0001-x.md', 'features/F1/feature.md', 'CLAUDE.md']), [])
+})
+
+test('pruefeProjektmodusScope: alles außerhalb der Allowlist wird gemeldet', () => {
+  const pfade = ['schemas/x.schema.json', 'scripts/check-x.mjs', 'package.json', 'src/foo.ts']
+  assert.deepStrictEqual(pruefeProjektmodusScope(pfade), pfade)
+})
+
+test('pruefeProjektmodusScope: eine gemischte Liste meldet nur die Verstöße', () => {
+  assert.deepStrictEqual(pruefeProjektmodusScope(['docs/x.md', 'schemas/y.json']), ['schemas/y.json'])
+})
+
+test('pruefeProjektmodusScope: ein leeres Array bleibt ein leeres Array', () => {
+  assert.deepStrictEqual(pruefeProjektmodusScope([]), [])
+})
+
+test('traegtAdrVerweisAufEntscheidung: fehlender docs/adr/-Ordner liefert false', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-adr-fehlend-'))
+  assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), false)
+})
+
+test('traegtAdrVerweisAufEntscheidung: leerer docs/adr/-Ordner liefert false', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-adr-leer-'))
+  mkdirSync(join(verzeichnis, 'docs', 'adr'), { recursive: true })
+  assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), false)
+})
+
+test('traegtAdrVerweisAufEntscheidung: TEMPLATE.md wird nicht als Treffer gezählt, selbst wenn sie die Id enthält', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-adr-template-'))
+  mkdirSync(join(verzeichnis, 'docs', 'adr'), { recursive: true })
+  writeFileSync(join(verzeichnis, 'docs', 'adr', 'TEMPLATE.md'), 'workflow-entscheidung-x')
+  assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), false)
+})
+
+test('traegtAdrVerweisAufEntscheidung: ein ADR ohne Verweis auf die Entscheidung liefert false', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-adr-ohneverweis-'))
+  mkdirSync(join(verzeichnis, 'docs', 'adr'), { recursive: true })
+  writeFileSync(join(verzeichnis, 'docs', 'adr', '0001-stack.md'), '# ADR 0001\n\nirgendein anderer Text.\n')
+  assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), false)
+})
+
+test('traegtAdrVerweisAufEntscheidung: ein ADR mit Verweis auf die Entscheidung liefert true', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-adr-mitverweis-'))
+  mkdirSync(join(verzeichnis, 'docs', 'adr'), { recursive: true })
+  writeFileSync(join(verzeichnis, 'docs', 'adr', '0001-stack.md'), '# ADR 0001\n\nEntscheidung: workflow-entscheidung-x\n')
+  assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), true)
 })

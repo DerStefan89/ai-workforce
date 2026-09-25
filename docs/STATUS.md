@@ -594,8 +594,21 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   bestanden, `features/F42/nachweis-ws3-reallauf.md`, F-667/F-684/F-685/
   F-690 real bestätigt, F-709…F-716 neu gefunden (P1: F-712 Scope-
   Überschreitung der Ausführung, F-714 Stack-Entscheidung ohne
-  verpflichtenden `CLAUDE.md`/ADR-Nachzug). WS-4 (F-712, F-714, F-711)
-  geplant, noch nicht begonnen.
+  verpflichtenden `CLAUDE.md`/ADR-Nachzug). WS-4 (gebaut 25.09.2026, löst
+  F-712/F-714/F-711): `baueUmsetzungsInstruktion` verlangt im Projektmodus
+  ausdrücklich Scope-Vorrang vor dem Architekturentwurf statt eines
+  Schema-/ADR-Bauauftrags, `pruefeProjektmodusScope` + neue Regel 1g
+  (`src/workflow/index.ts`) erzwingen die Allowlist (`docs/**`/
+  `features/**`/`CLAUDE.md`) real nach dem Lauf, Feature-Modus bleibt
+  unberührt (F-712 gelöst); `baueStackEntscheidungsInstruktion` + neue
+  Regel 1h erzwingen CLAUDE.md UND ein referenzierendes ADR nach einer
+  `kategorie:'stack'`-Entscheidung (`istStackOffen` + `traegtAdrVerweisAuf
+  Entscheidung`, QA-Befund im Reviewer-/QA-Pass: eine erste Fassung prüfte
+  nur CLAUDE.md — F-714 gelöst); die Vorauswahl im Entscheidungsformular
+  hing bereits korrekt an `option.titel === frage.empfehlung`, jetzt per
+  statischem Quelltext-Gate geprüft (F-711 gelöst). Real belegt am
+  Aufrufpfad: `scripts/check-f42-projekt-harness.mjs` Blöcke (g)/(h)/(i),
+  `state/gates.md`; `npm run check` grün.
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1

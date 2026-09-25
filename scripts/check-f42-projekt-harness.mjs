@@ -39,6 +39,26 @@
  * einem solchen Eintrag an (Grün-Fall); stackOffen:false (Default) bleibt
  * für bestehende Ausgaben ohne 'kategorie' unverändert rückwärtskompatibel;
  * baueArchitektAuftragstext hängt den Zusatz-Hinweis nur bei stackOffen:true an.
+ * (g) F42 WS-4 (löst F-712, real beobachtet im F42-WS-3-Reallauf gegen
+ * haushaltsbuch2): pruefeProjektmodusScope (reine Funktion) UND der REALE
+ * Aufrufpfad (POST /api/auftraege mit herkunft.art 'projekt_interview' →
+ * echter Workflow-Schrittstart über POST /api/workflows/<id>/starten, echtes
+ * Wegwerf-Git-Repo) — ein Projektmodus-'ausfuehrung'-Lauf, der außerhalb der
+ * Allowlist (docs/**, features/**, CLAUDE.md) schreibt, hält auf
+ * KLAERUNG_ERFORDERLICH mit dem Dateinamen im Grund; innerhalb der Allowlist
+ * läuft er durch; derselbe Verstoß OHNE herkunft.art (Featuremodus) bleibt
+ * FOLGENLOS (AK3-Regression).
+ * (h) F42 WS-4 (löst F-714, real beobachtet im selben Reallauf): eine bereits
+ * erfasste 'kategorie: stack'-Entscheidung hängt baueStackEntscheidungsInstruktion
+ * an den Auftragstext des 'ausfuehrung'-Schritts an; bleibt CLAUDE.md danach
+ * ungefüllt (istStackOffen weiterhin true), hält der Workflow auf
+ * KLAERUNG_ERFORDERLICH ("Stack entschieden, aber CLAUDE.md nicht gefüllt
+ * (F-714)"); füllt der Lauf CLAUDE.md real, läuft der Workflow durch.
+ * (i) F42 WS-4 (löst F-711, state/findings.md F-711): statisches
+ * Quelltext-Gate gegen public/leitstand/views/workflows.js (Muster
+ * scripts/check-f15-workflow-oberflaeche.mjs — kein Import/keine
+ * Browser-Ausführung, D5) — die Vorauswahl hängt an 'option.titel ===
+ * frage.empfehlung', nicht an der Options-Position.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -46,15 +66,29 @@
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
 
+import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, join, win32 } from 'node:path'
 import { findeNpmCli, kopiereSkelett, pruefeWorkspaceTrust, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { fuehrePruefungDurch } from '../src/pruefschritt/index.ts'
 import { baueAuftragAusProjektentwurf } from '../src/product-coach/index.ts'
 import { vergebeFeatureIds } from '../src/product-coach/index.ts'
-import { baueArchitektAuftragstext, istStackOffen, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import {
+  baueArchitektAuftragstext,
+  baueStackEntscheidungsInstruktion,
+  baueUmsetzungsInstruktion,
+  istStackOffen,
+  pruefeProjektmodusScope,
+  validiereErgebnisArchitektur,
+} from '../src/architekt/index.ts'
+import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
+import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
+import { registriereWorkflow } from '../src/workflow/index.ts'
+import { registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
+import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -412,6 +446,509 @@ try {
     if (defaultText.includes(HINWEIS_MARKER)) befunde.push('(f3) baueArchitektAuftragstext ohne stackOffen-Argument (Default) sollte den Zusatz-Hinweis NICHT enthalten')
 
     if (befunde.length === vor) console.log('✓ (f3) baueArchitektAuftragstext hängt den Stack-Hinweis nur bei stackOffen:true an, Default (weggelassen) bleibt unverändert ohne Hinweis.')
+  }
+
+  // ─── (g) F42 WS-4 (löst F-712) ────────────────────────────────────────────────────────────
+  {
+    const vor = befunde.length
+
+    // (g1) Reine Funktion: pruefeProjektmodusScope.
+    const erlaubtePfade = ['docs/x.md', 'features/F1/feature.md', 'CLAUDE.md']
+    const gruenErgebnis = pruefeProjektmodusScope(erlaubtePfade)
+    if (gruenErgebnis.length > 0) befunde.push(`(g1) pruefeProjektmodusScope: erlaubte Pfade sollten [] liefern, erhalten ${JSON.stringify(gruenErgebnis)}`)
+
+    const verbotenePfade = ['schemas/x.schema.json', 'scripts/check-x.mjs', 'package.json', 'src/foo.ts']
+    const rotErgebnis = pruefeProjektmodusScope(verbotenePfade)
+    if (rotErgebnis.length !== verbotenePfade.length) befunde.push(`(g1) pruefeProjektmodusScope: alle vier Pfade außerhalb der Allowlist sollten gemeldet werden, erhalten ${JSON.stringify(rotErgebnis)}`)
+
+    if (befunde.length === vor) {
+      console.log("✓ (g1) pruefeProjektmodusScope: docs/**, features/**, CLAUDE.md erlaubt; schemas/, scripts/, package.json, src/ sind ein Verstoß.")
+    }
+  }
+
+  {
+    const vor = befunde.length
+
+    // (g2)-(g4) realer Aufrufpfad: POST /api/auftraege (optional herkunft.art
+    // 'projekt_interview') → Fixture-'architekt'-Schritt (bereits ERFOLGREICH) → echter Start von
+    // 'schritt-2-ausfuehrung' über POST /api/workflows/<id>/starten gegen ein echtes,
+    // wegwerfbares Git-Repo. Der Stub schreibt real eine Datei in dieses Repo, BEVOR er ok:true
+    // liefert — dieselbe git-basierte Änderungsübersicht-Ermittlung wie im echten Betrieb.
+    const basisVerzeichnis = `kontrollzustand-test-f42-g-${randomUUID()}`
+    raeumeVerzeichnis(basisVerzeichnis)
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const profilReferenz = leiteProfilReferenzAb(vorlage)
+
+    const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f42-g-repo-'))
+    execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['config', 'user.email', 'gate@example.com'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['config', 'user.name', 'Gate'], { cwd: repoWurzelWegwerf })
+    writeFileSync(join(repoWurzelWegwerf, 'README.md'), '# Wegwerf-Projekt\n')
+    execFileSync('git', ['add', '-A'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['commit', '--quiet', '-m', 'init'], { cwd: repoWurzelWegwerf })
+
+    let zuSchreibenderPfad = null
+    const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, _eingaben) => {
+      if (zuSchreibenderPfad !== null) {
+        const zielPfad = join(repoWurzelWegwerf, zuSchreibenderPfad)
+        mkdirSync(dirname(zielPfad), { recursive: true })
+        writeFileSync(zielPfad, '{}')
+      }
+      return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+    }
+
+    const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf }))
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const { port } = server.address()
+    const basisUrl = `http://127.0.0.1:${port}`
+
+    /**
+     * Baut real einen Auftrag, einen bereits ERFOLGREICH gelaufenen 'architekt'-Schritt
+     * (Fixture-Laufakte) und einen zum Start fälligen 'ausfuehrung'-Folgeschritt, startet ihn real
+     * und liefert die resultierenden Workflow-Felder (status, grund) aus der echten Laufakte.
+     * @param herkunftGesetzt - true = Projektmodus (herkunft.art 'projekt_interview'), false = Featuremodus
+     * @returns { status, grund } von 'workflow-<id>' NACH dem Lauf
+     */
+    async function starteAusfuehrungUndLiesWorkflow(herkunftGesetzt) {
+      const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+        method: 'POST',
+        body: JSON.stringify({ titel: 'F42-WS-4-Gate-g', auftragstext: 'GATE-PLANUNGSTEXT-F42-G', ...(herkunftGesetzt ? { herkunft: { art: 'projekt_interview' } } : {}) }),
+      })
+      const { auftragId } = await auftragAntwort.json()
+      if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+        throw new Error(`(g)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+      }
+
+      const workflowId = `gate-f42-g-${randomUUID()}`
+      const architektLaufId = `${workflowId}-architekt-lauf`
+      const ergebnisArchitektur = {
+        modus: 'projekt',
+        zusammenfassung: 'Gate-Fixture (F42 WS-4).',
+        module: [],
+        adr_entwuerfe: [],
+        schema_entwuerfe: [],
+        entscheidungen_mensch: [],
+        capabilities_bedarf: [],
+        evidenz: [{ marker: '[Fakt]', aussage: 'Gate-Fixture.' }],
+      }
+      mkdirSync(basisVerzeichnis, { recursive: true })
+      const rohstromPfad = join(basisVerzeichnis, `${architektLaufId}-rohstrom.json`)
+      writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(ergebnisArchitektur) }) }))
+      registriereKernArtefakt(
+        `laufakte-${architektLaufId}`,
+        profilReferenz,
+        { erzeuger: 'kern', schritt: 'gate-fixture' },
+        { laufakte_schema: 'v0', lauf_id: architektLaufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+        [],
+        ladeOptionen
+      )
+
+      registriereWorkflow(
+        {
+          workflow_schema: 'v0',
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          version: 1,
+          ziel: 'Gate-Fixture (F42 WS-4, löst F-712).',
+          status: 'LAEUFT',
+          aktiver_schritt_id: 'schritt-2-ausfuehrung',
+          grund: null,
+          grenzen: { max_schritte: 4, max_replans: 1 },
+          schritte: [
+            {
+              schritt_id: 'schritt-1-architekt',
+              rolle: 'architekt',
+              werkzeugsatz: 'lesend',
+              worker: 'codex',
+              modell: 'gpt-6-astra',
+              eingaben: [],
+              output_schema: 'ergebnis-architektur',
+              freigabe: 'ZWINGEND',
+              risiko: 'Gate-Fixture.',
+              zeitgrenze_ms: 600000,
+              nachfolger: 'schritt-2-ausfuehrung',
+              status: 'ERFOLGREICH',
+              lauf_id: architektLaufId,
+            },
+            {
+              schritt_id: 'schritt-2-ausfuehrung',
+              rolle: 'ausfuehrung',
+              werkzeugsatz: 'schreibend',
+              worker: 'claude-code',
+              modell: 'claude-sonnet-5',
+              eingaben: ['artefakt:ergebnis-@schritt-1-architekt'],
+              output_schema: null,
+              freigabe: 'AUTOMATISCH',
+              risiko: 'Gate-Fixture.',
+              zeitgrenze_ms: 600000,
+              nachfolger: null,
+              status: 'OFFEN',
+              lauf_id: null,
+            },
+          ],
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+
+      const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (start.status !== 202) {
+        throw new Error(`(g)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+      }
+
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      return { status: workflowVersion.daten.status, grund: workflowVersion.daten.grund }
+    }
+
+    /**
+     * QA-Befund (F42 WS-4, TC-03): F-712s Allowlist-Prüfung ist an 'herkunft.art' und
+     * 'schritt.rolle', NICHT an einen 'architekt'-Vorgänger gekoppelt (scripts/leitstand-
+     * server.mjs, Regel-1g-Berechnung) — ein Projektmodus-Workflow OHNE 'architekt'-Schritt
+     * (Muster workflow-vorlagen/fast-lane.json: ein einzelner 'ausfuehrung'-Schritt) ist ein real
+     * erreichbarer Pfad (POST /api/workflows ohne den Router), bislang aber nicht getestet.
+     * @returns { status, grund } von 'workflow-<id>' NACH dem Lauf
+     */
+    async function starteEinzelschrittAusfuehrungOhneArchitektUndLiesWorkflow() {
+      const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+        method: 'POST',
+        body: JSON.stringify({ titel: 'F42-WS-4-Gate-g5', auftragstext: 'GATE-PLANUNGSTEXT-F42-G5', herkunft: { art: 'projekt_interview' } }),
+      })
+      const { auftragId } = await auftragAntwort.json()
+      if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+        throw new Error(`(g5)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+      }
+
+      const workflowId = `gate-f42-g5-${randomUUID()}`
+      registriereWorkflow(
+        {
+          workflow_schema: 'v0',
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          version: 1,
+          ziel: 'Gate-Fixture (F42 WS-4, löst F-712, TC-03: kein architekt-Vorgänger).',
+          status: 'LAEUFT',
+          aktiver_schritt_id: 'schritt-1-ausfuehrung',
+          grund: null,
+          grenzen: { max_schritte: 4, max_replans: 1 },
+          schritte: [
+            {
+              schritt_id: 'schritt-1-ausfuehrung',
+              rolle: 'ausfuehrung',
+              werkzeugsatz: 'schreibend',
+              worker: 'claude-code',
+              modell: 'claude-sonnet-5',
+              eingaben: ['artefakt:auftrag-' + auftragId],
+              output_schema: null,
+              freigabe: 'AUTOMATISCH',
+              risiko: 'Gate-Fixture.',
+              zeitgrenze_ms: 600000,
+              nachfolger: null,
+              status: 'OFFEN',
+              lauf_id: null,
+            },
+          ],
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+
+      const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (start.status !== 202) {
+        throw new Error(`(g5)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+      }
+
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      return { status: workflowVersion.daten.status, grund: workflowVersion.daten.grund }
+    }
+
+    /** Committet den aktuellen Arbeitsbaum, damit der NÄCHSTE Sub-Fall wieder von einem sauberen `git diff HEAD` startet — sonst bliebe die vorherige Schreibung im Diff sichtbar. '--allow-empty', weil der Grün-Fall des jeweiligen Sub-Falls nichts geschrieben haben kann. */
+    function commitAlles() {
+      execFileSync('git', ['add', '-A'], { cwd: repoWurzelWegwerf })
+      execFileSync('git', ['commit', '--quiet', '--allow-empty', '-m', 'gate-zwischenstand'], { cwd: repoWurzelWegwerf })
+    }
+
+    try {
+      // (g2) Rot-Fall: Projektmodus, ausfuehrung schreibt außerhalb der Allowlist.
+      zuSchreibenderPfad = 'schemas/gate-f42.schema.json'
+      const rot = await starteAusfuehrungUndLiesWorkflow(true)
+      // 'git status --porcelain' meldet ein GANZ neues, bislang untrackedes Verzeichnis
+      // zusammengefasst als '?? schemas/' statt jede Datei einzeln aufzulisten — bestehendes
+      // Verhalten von parseUntrackedDateien (src/aenderungsuebersicht/index.ts), hier NICHT
+      // angetastet. Die Prüfung greift trotzdem: 'schemas/' erfüllt keine Allowlist-Regel.
+      if (rot.status !== 'KLAERUNG_ERFORDERLICH' || !String(rot.grund ?? '').includes('schemas/')) {
+        befunde.push(`(g2) Projektmodus + Scope-Verstoß sollte KLAERUNG_ERFORDERLICH mit dem Dateinamen liefern, erhalten status=${rot.status} grund=${JSON.stringify(rot.grund)}`)
+      }
+      commitAlles()
+
+      // (g3) Grün-Fall: Projektmodus, ausfuehrung schreibt nur innerhalb der Allowlist.
+      zuSchreibenderPfad = 'docs/gate-f42.md'
+      const gruen = await starteAusfuehrungUndLiesWorkflow(true)
+      if (gruen.status !== 'ABGESCHLOSSEN') {
+        befunde.push(`(g3) Projektmodus + Doku-Änderung sollte ABGESCHLOSSEN liefern, erhalten status=${gruen.status} grund=${JSON.stringify(gruen.grund)}`)
+      }
+      commitAlles()
+
+      // (g4) Featuremodus-Regression (AK3, Nicht-Ziel "Feature-Modus unverändert"): dieselbe
+      // Scope-Überschreitung OHNE herkunft.art bleibt FOLGENLOS.
+      zuSchreibenderPfad = 'schemas/gate-f42-feature.schema.json'
+      const feature = await starteAusfuehrungUndLiesWorkflow(false)
+      if (feature.status !== 'ABGESCHLOSSEN') {
+        befunde.push(`(g4) Featuremodus mit derselben Scope-Überschreitung sollte NICHT blockieren (ABGESCHLOSSEN erwartet), erhalten status=${feature.status} grund=${JSON.stringify(feature.grund)}`)
+      }
+      commitAlles()
+
+      // (g5) QA-Befund (TC-03): dieselbe Scope-Überschreitung in einem Projektmodus-Workflow OHNE
+      // 'architekt'-Vorgänger (ein einzelner 'ausfuehrung'-Schritt, Muster fast-lane.json) hält
+      // ebenfalls an — die Prüfung hängt an 'herkunft.art', nicht an einem Architekturentwurf.
+      zuSchreibenderPfad = 'schemas/gate-f42-g5.schema.json'
+      const ohneArchitekt = await starteEinzelschrittAusfuehrungOhneArchitektUndLiesWorkflow()
+      if (ohneArchitekt.status !== 'KLAERUNG_ERFORDERLICH' || !String(ohneArchitekt.grund ?? '').includes('schemas/')) {
+        befunde.push(
+          `(g5) Projektmodus-Einzelschritt OHNE architekt-Vorgänger mit Scope-Verstoß sollte KLAERUNG_ERFORDERLICH liefern, erhalten status=${ohneArchitekt.status} grund=${JSON.stringify(ohneArchitekt.grund)}`
+        )
+      }
+
+      if (befunde.length === vor) {
+        console.log(
+          '✓ (g2)-(g5) F-712 real über den Aufrufpfad: Projektmodus mit Scope-Verstoß hält (KLAERUNG_ERFORDERLICH mit Dateiname), Projektmodus innerhalb der Allowlist läuft durch, Featuremodus bleibt von derselben Prüfung unberührt (Regression), und die Prüfung greift auch OHNE architekt-Vorgänger (TC-03).'
+        )
+      }
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+      raeumeVerzeichnis(basisVerzeichnis)
+    }
+  }
+
+  // ─── (h) F42 WS-4 (löst F-714) ────────────────────────────────────────────────────────────
+  {
+    const vor = befunde.length
+
+    const basisVerzeichnis = `kontrollzustand-test-f42-h-${randomUUID()}`
+    raeumeVerzeichnis(basisVerzeichnis)
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const vorlage = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+    const profilReferenz = leiteProfilReferenzAb(vorlage)
+
+    const repoWurzelWegwerf = mkdtempSync(join(tmpdir(), 'f42-h-repo-'))
+    execFileSync('git', ['init', '--quiet', '-b', 'wegwerf-branch'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['config', 'user.email', 'gate@example.com'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['config', 'user.name', 'Gate'], { cwd: repoWurzelWegwerf })
+    const claudeMdPfad = join(repoWurzelWegwerf, 'CLAUDE.md')
+    writeFileSync(claudeMdPfad, '# Projekt\n\n## 🏗️ Technischer Stack [FÜLLUNG]\n\nNoch nicht entschieden.\n')
+    execFileSync('git', ['add', '-A'], { cwd: repoWurzelWegwerf })
+    execFileSync('git', ['commit', '--quiet', '-m', 'init'], { cwd: repoWurzelWegwerf })
+
+    const STACK_ENTSCHEIDUNG = {
+      frage: 'Welcher Stack?',
+      optionen: [
+        { titel: 'TypeScript auf Node', vorteile: ['x'], nachteile: [] },
+        { titel: 'Python', vorteile: [], nachteile: ['x'] },
+      ],
+      auswirkung_bestand: 'keine',
+      empfehlung: 'TypeScript auf Node',
+      begruendung: 'Gate-Fixture.',
+      kategorie: 'stack',
+    }
+
+    /** true = der Lauf füllt CLAUDE.md real (Marker entfernt); false = der Lauf lässt CLAUDE.md unverändert. */
+    let claudeMdFuellen = false
+    /** true = der Lauf legt real ein ADR unter docs/adr/ an, das auf die Entscheidung verweist; false = kein ADR. */
+    let adrSchreiben = false
+    /** Der real gesehene Auftragstext des zuletzt gestarteten 'ausfuehrung'-Laufs (Muster (o)-Block, check-f39-architekt.mjs). */
+    let gesehenerAuftragstext = null
+    /** Die Entscheidungsartefakt-Id des zuletzt gestarteten Workflows (workflowEntscheidungArtefaktId-Format), für den ADR-Verweis im Stub. */
+    let aktuelleEntscheidungArtefaktId = null
+    const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+      gesehenerAuftragstext = eingaben.auftragstext
+      if (claudeMdFuellen) {
+        writeFileSync(claudeMdPfad, '# Projekt\n\n## 🏗️ Technischer Stack\n\nTypeScript auf Node (F42-WS-4-Gate).\n')
+      }
+      if (adrSchreiben) {
+        const adrOrdner = join(repoWurzelWegwerf, 'docs', 'adr')
+        mkdirSync(adrOrdner, { recursive: true })
+        writeFileSync(join(adrOrdner, '0001-stack.md'), `# ADR 0001: Stack\n\nEntscheidung: ${aktuelleEntscheidungArtefaktId}\n`)
+      }
+      return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+    }
+
+    const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf }))
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const { port } = server.address()
+    const basisUrl = `http://127.0.0.1:${port}`
+
+    async function starteAusfuehrungMitStackEntscheidungUndLiesWorkflow() {
+      const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+        method: 'POST',
+        body: JSON.stringify({ titel: 'F42-WS-4-Gate-h', auftragstext: 'GATE-PLANUNGSTEXT-F42-H', herkunft: { art: 'projekt_interview' } }),
+      })
+      const { auftragId } = await auftragAntwort.json()
+      if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+        throw new Error(`(h)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+      }
+
+      const workflowId = `gate-f42-h-${randomUUID()}`
+      aktuelleEntscheidungArtefaktId = `workflow-entscheidung-${workflowId}`
+      const architektLaufId = `${workflowId}-architekt-lauf`
+      const ergebnisArchitektur = {
+        modus: 'projekt',
+        zusammenfassung: 'Gate-Fixture (F42 WS-4, löst F-714).',
+        module: [],
+        adr_entwuerfe: [],
+        schema_entwuerfe: [],
+        entscheidungen_mensch: [STACK_ENTSCHEIDUNG],
+        capabilities_bedarf: [],
+        evidenz: [{ marker: '[Fakt]', aussage: 'Gate-Fixture.' }],
+      }
+      mkdirSync(basisVerzeichnis, { recursive: true })
+      const rohstromPfad = join(basisVerzeichnis, `${architektLaufId}-rohstrom.json`)
+      writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(ergebnisArchitektur) }) }))
+      registriereKernArtefakt(
+        `laufakte-${architektLaufId}`,
+        profilReferenz,
+        { erzeuger: 'kern', schritt: 'gate-fixture' },
+        { laufakte_schema: 'v0', lauf_id: architektLaufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+        [],
+        ladeOptionen
+      )
+
+      // Bereits erfasste menschliche Entscheidung (Voraussetzung für baueStackEntscheidungsInstruktion
+      // UND Regel 1h, Muster Regel 1c/findeWorkflowEntscheidungFuerSchritt).
+      registriereWorkflowEntscheidung(
+        basisVerzeichnis,
+        workflowId,
+        profilReferenz,
+        'schritt-1-architekt',
+        [{ frage: STACK_ENTSCHEIDUNG.frage, gewaehlt: STACK_ENTSCHEIDUNG.empfehlung }],
+        new Date().toISOString(),
+        []
+      )
+
+      registriereWorkflow(
+        {
+          workflow_schema: 'v0',
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          version: 1,
+          ziel: 'Gate-Fixture (F42 WS-4, löst F-714).',
+          status: 'LAEUFT',
+          aktiver_schritt_id: 'schritt-2-ausfuehrung',
+          grund: null,
+          grenzen: { max_schritte: 4, max_replans: 1 },
+          schritte: [
+            {
+              schritt_id: 'schritt-1-architekt',
+              rolle: 'architekt',
+              werkzeugsatz: 'lesend',
+              worker: 'codex',
+              modell: 'gpt-6-astra',
+              eingaben: [],
+              output_schema: 'ergebnis-architektur',
+              freigabe: 'ZWINGEND',
+              risiko: 'Gate-Fixture.',
+              zeitgrenze_ms: 600000,
+              nachfolger: 'schritt-2-ausfuehrung',
+              status: 'ERFOLGREICH',
+              lauf_id: architektLaufId,
+            },
+            {
+              schritt_id: 'schritt-2-ausfuehrung',
+              rolle: 'ausfuehrung',
+              werkzeugsatz: 'schreibend',
+              worker: 'claude-code',
+              modell: 'claude-sonnet-5',
+              eingaben: ['artefakt:ergebnis-@schritt-1-architekt', 'artefakt:entscheidung-@schritt-1-architekt'],
+              output_schema: null,
+              freigabe: 'AUTOMATISCH',
+              risiko: 'Gate-Fixture.',
+              zeitgrenze_ms: 600000,
+              nachfolger: null,
+              status: 'OFFEN',
+              lauf_id: null,
+            },
+          ],
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+
+      gesehenerAuftragstext = null
+      const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (start.status !== 202) {
+        throw new Error(`(h)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+      }
+
+      const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+      return { status: workflowVersion.daten.status, grund: workflowVersion.daten.grund, auftragstext: gesehenerAuftragstext }
+    }
+
+    function commitAlles() {
+      execFileSync('git', ['add', '-A'], { cwd: repoWurzelWegwerf })
+      execFileSync('git', ['commit', '--quiet', '--allow-empty', '-m', 'gate-zwischenstand'], { cwd: repoWurzelWegwerf })
+    }
+
+    try {
+      // (h1) Rot-Fall: Stack entschieden, weder CLAUDE.md noch ADR gepflegt.
+      claudeMdFuellen = false
+      adrSchreiben = false
+      const rot = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
+      if (rot.status !== 'KLAERUNG_ERFORDERLICH' || !String(rot.grund ?? '').includes('Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714)')) {
+        befunde.push(`(h1) Stack entschieden + nichts gepflegt sollte KLAERUNG_ERFORDERLICH mit dem F-714-Text liefern, erhalten status=${rot.status} grund=${JSON.stringify(rot.grund)}`)
+      }
+      if (!rot.auftragstext.includes('CLAUDE.md') || !rot.auftragstext.includes('docs/adr/')) {
+        befunde.push(`(h1) Der Auftragstext des 'ausfuehrung'-Schritts sollte baueStackEntscheidungsInstruktion (CLAUDE.md + docs/adr/) enthalten, erhalten: ${rot.auftragstext?.slice(-400)}`)
+      }
+      commitAlles()
+
+      // (h2) Rot-Fall (QA-Befund, F-714 nur zur Hälfte erzwungen): CLAUDE.md wird real gefüllt,
+      // aber KEIN ADR geschrieben — baueStackEntscheidungsInstruktion verlangt BEIDE Schreibziele
+      // als Pflicht, ein Lauf, der nur die Hälfte erfüllt, darf die Prüfung nicht bestehen.
+      claudeMdFuellen = true
+      adrSchreiben = false
+      const halbGefuellt = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
+      if (halbGefuellt.status !== 'KLAERUNG_ERFORDERLICH' || !String(halbGefuellt.grund ?? '').includes('F-714')) {
+        befunde.push(`(h2) CLAUDE.md gefüllt, aber KEIN ADR sollte weiterhin KLAERUNG_ERFORDERLICH (F-714) liefern, erhalten status=${halbGefuellt.status} grund=${JSON.stringify(halbGefuellt.grund)}`)
+      }
+      commitAlles()
+
+      // (h3) Grün-Fall: Stack entschieden, CLAUDE.md UND ein referenzierendes ADR werden real geschrieben.
+      claudeMdFuellen = true
+      adrSchreiben = true
+      const gruen = await starteAusfuehrungMitStackEntscheidungUndLiesWorkflow()
+      if (gruen.status !== 'ABGESCHLOSSEN') {
+        befunde.push(`(h3) Stack entschieden + CLAUDE.md UND ADR real gepflegt sollte ABGESCHLOSSEN liefern, erhalten status=${gruen.status} grund=${JSON.stringify(gruen.grund)}`)
+      }
+
+      if (befunde.length === vor) {
+        console.log(
+          "✓ (h1)-(h3) F-714 real über den Aufrufpfad: baueStackEntscheidungsInstruktion hängt CLAUDE.md/ADR-Anweisung an; fehlt CLAUDE.md ODER das referenzierende ADR, hält der Workflow (KLAERUNG_ERFORDERLICH); erst wenn beide real gepflegt sind, läuft der Workflow durch."
+        )
+      }
+    } finally {
+      await new Promise((resolve) => server.close(resolve))
+      raeumeVerzeichnis(basisVerzeichnis)
+    }
+  }
+
+  // ─── (i) F42 WS-4 (löst F-711) ────────────────────────────────────────────────────────────
+  {
+    const vor = befunde.length
+    const workflowsQuelltext = readFileSync(join(ECHTE_INSTALL_WURZEL, 'public', 'leitstand', 'views', 'workflows.js'), 'utf8')
+
+    if (!workflowsQuelltext.includes('option.titel === frage.empfehlung')) {
+      befunde.push("(i) public/leitstand/views/workflows.js: erwartet die Vorauswahl-Bedingung 'option.titel === frage.empfehlung' (F-711) — nicht gefunden")
+    }
+    if (!/\$\{empfohlen \? ' checked' : ''\}/.test(workflowsQuelltext)) {
+      befunde.push("(i) public/leitstand/views/workflows.js: erwartet, dass das 'checked'-Attribut an die Variable 'empfohlen' gekoppelt ist — nicht gefunden")
+    }
+    // Regressionsschutz: eine index-basierte Vorauswahl (z. B. 'index === 0') darf nicht wieder auftauchen.
+    if (/index\s*===\s*0\s*\?\s*' checked'/.test(workflowsQuelltext)) {
+      befunde.push('(i) public/leitstand/views/workflows.js: eine index-basierte Vorauswahl (erste Option) wäre der F-711-Rückfall')
+    }
+
+    if (befunde.length === vor) {
+      console.log("✓ (i) F-711: das Entscheidungsformular wählt die Option vor, deren titel der empfehlung entspricht (statisches Quelltext-Gate, Muster check-f15-workflow-oberflaeche.mjs).")
+    }
   }
 } finally {
   raeumeVerzeichnis(TEST_WURZEL)

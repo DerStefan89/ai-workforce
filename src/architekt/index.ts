@@ -28,13 +28,25 @@
  * Entscheidung mit 'kategorie': 'stack' trägt — der Architekt darf den Stack
  * sonst nicht mehr stillschweigend selbst festlegen.
  *
+ * F42 WS-4 (löst F-712/F-714, state/findings.md, real beobachtet im F42-WS-3-
+ * Reallauf gegen haushaltsbuch2): baueUmsetzungsInstruktion bekommt einen
+ * 'modus'-Parameter — im Projektmodus ('projekt') ist der Architekturentwurf
+ * AUSSCHLIESSLICH Kontext, kein Bauauftrag; der Auftrags-Scope hat Vorrang
+ * (F-712). pruefeProjektmodusScope prüft die real geänderten Dateien eines
+ * Projektmodus-'ausfuehrung'-Laufs deterministisch gegen die Allowlist
+ * (docs/**, features/**, CLAUDE.md) — die zweite, technische Hälfte von
+ * F-712, neben der Instruktion. baueStackEntscheidungsInstruktion verlangt
+ * nach einer 'kategorie: stack'-Entscheidung verpflichtend den
+ * CLAUDE.md-Stack-Abschnitt und ein ADR (F-714) — beide Schreibziele liegen
+ * innerhalb der F-712-Allowlist.
+ *
  * Wird aufgerufen von: scripts/check-f39-architekt.mjs,
  * scripts/check-f42-projekt-harness.mjs, scripts/leitstand-server.mjs
  * (istStackOffen, real gegen die repoWurzel des Zielprojekts),
  * src/architekt/architekt.test.ts.
  */
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { baueCapabilityAuszug } from '../product-coach/index.ts'
 import type {
@@ -401,6 +413,26 @@ export function istStackOffen(repoWurzel: string): boolean {
   return stackZeile !== undefined && stackZeile.includes('[FÜLLUNG]')
 }
 
+/**
+ * Reine Funktion (liest nur, kein Schreibzugriff): true, wenn mindestens eine Datei unter
+ * 'docs/adr/' (außer 'TEMPLATE.md') im Projekt unter 'repoWurzel' den String
+ * 'entscheidungArtefaktId' enthält. F42 WS-4 (löst F-714, QA-Befund): istStackOffen prüft nur die
+ * CLAUDE.md-Hälfte von baueStackEntscheidungsInstruktions Pflicht ("beide Schreibziele sind
+ * Pflicht") — ohne diese zweite Prüfung bestünde ein Lauf, der CLAUDE.md füllt, aber nie ein ADR
+ * anlegt (oder eines ohne Bezug zur tatsächlichen Entscheidung), die F-714-Grenze unbemerkt.
+ * Fehlt der Ordner, liefert die Funktion false (kein Wurf) — Muster istStackOffen.
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel des Zielprojekts
+ * @param entscheidungArtefaktId - Kernartefakt-Id der Entscheidung (workflowEntscheidungArtefaktId), nach der in jeder ADR-Datei gesucht wird
+ * @returns true, wenn mindestens ein referenzierendes ADR gefunden wurde
+ */
+export function traegtAdrVerweisAufEntscheidung(repoWurzel: string, entscheidungArtefaktId: string): boolean {
+  const adrOrdner = join(repoWurzel, 'docs', 'adr')
+  if (!existsSync(adrOrdner)) return false
+  return readdirSync(adrOrdner)
+    .filter((datei) => datei.endsWith('.md') && datei !== 'TEMPLATE.md')
+    .some((datei) => readFileSync(join(adrOrdner, datei), 'utf-8').includes(entscheidungArtefaktId))
+}
+
 /** F42 WS-2 (löst F-685): angehängt an die Rolleninstruktion, wenn istStackOffen(repoWurzel) true liefert — hält den Architekten an, den Stack als Entscheidung statt als eigene Festlegung vorzulegen. */
 const STACK_OFFEN_HINWEIS =
   "Der Stack (Laufzeit, Sprache, Speicherform) dieses Projekts ist NOCH OFFEN (CLAUDE.md trägt den Füllungs-Marker oder existiert noch nicht) — lege ihn NICHT selbst fest, auch nicht als ADR-Entwurf. Trage stattdessen einen Eintrag in 'entscheidungen_mensch' mit 'kategorie': 'stack' ein, mit mindestens zwei 'optionen' inkl. je eigener Vor-/Nachteile; 'empfehlung' nennt den Titel einer dieser Optionen."
@@ -474,9 +506,26 @@ export function baueArchitektAuftragstext(planungstext: string, modus: Architekt
  * (loeseSchrittEingabenAuf), dieser Block übersetzt seine vier Ergebnis-Kategorien nur in
  * konkrete Schreibpfade, statt ihn als bloßen Zusatzkontext ungenutzt zu lassen. Reine Funktion,
  * kein I/O, kennt das tatsächliche Ergebnis nicht (das liest der Worker selbst aus dem Kontext).
+ *
+ * F42 WS-4 (löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2: ein
+ * Projektmodus-Auftrag "AUSSCHLIESSLICH Dokumentation" wurde trotzdem als Bauauftrag für
+ * Schemas/Skripte/ADRs gelesen): im Modus 'projekt' ist der Entwurf AUSSCHLIESSLICH Kontext,
+ * kein Bauauftrag — der Auftrags-Scope (der ursprüngliche Auftragstext, bereits vor diesem
+ * Zusatzblock im Prompt) hat Vorrang. Modus 'feature' bleibt bitgenau die bisherige, seit F39
+ * WS-3a bestehende Instruktion (Rückwärtskompatibilität, Default-Parameter).
+ * @param modus - 'feature' (Default, unverändert) oder 'projekt' (F42 WS-4, löst F-712)
  * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
  */
-export function baueUmsetzungsInstruktion(): string[] {
+export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): string[] {
+  if (modus === 'projekt') {
+    return [
+      "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor — im Projektmodus ist er AUSSCHLIESSLICH Kontext für deine Entscheidungen, KEIN Bauauftrag.",
+      'Der Scope des ursprünglichen Auftrags (oben im Auftragstext) hat Vorrang vor dem Architekturentwurf: setze NUR um, was der Auftrag tatsächlich verlangt — auch wenn der Entwurf weitere Module, ADRs oder Schemas beschreibt, die über diesen Scope hinausgehen.',
+      'Solange der Auftrag nicht ausdrücklich mehr verlangt: kein Produktcode, keine Schemas (schemas/**), keine Skripte (scripts/**), keine Änderung an package.json oder scripts/check-*. Erlaubt sind Dokumentationsänderungen (docs/**, features/**, CLAUDE.md), soweit der Auftrag sie verlangt.',
+      "Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als Dokumentation (z. B. ADR unter docs/adr/), nicht als Freibrief für weitergehende Umsetzung.",
+      'Widerspricht dein Umsetzungsvorschlag diesem Scope, dokumentiere die Abweichung ausdrücklich statt sie stillschweigend umzusetzen (CLAUDE.md, Entscheidungsregel 5).',
+    ]
+  }
   return [
     "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor. Setze ihn wie folgt um:",
     "- Für jeden Eintrag in 'adr_entwuerfe': lege 'docs/adr/<slug-aus-titel>.md' nach dem Muster 'docs/adr/TEMPLATE.md' an — fortlaufende ADR-Nummer nach den bestehenden Dateien unter 'docs/adr/' (TEMPLATE.md nicht mitgezählt).",
@@ -485,6 +534,55 @@ export function baueUmsetzungsInstruktion(): string[] {
     "- Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als eigenen Abschnitt 'Entscheidung (Mensch)' im betroffenen ADR.",
     'Keine Umsetzung, die dem Architekturentwurf widerspricht, ohne das ausdrücklich zu vermerken (CLAUDE.md, Entscheidungsregel 5).',
   ]
+}
+
+/**
+ * F42 WS-4 (löst F-714, state/findings.md F-714, real beobachtet im F42-WS-3-Reallauf gegen
+ * haushaltsbuch2: die Stack-Entscheidung blieb im Kontrollzustand stecken, weder CLAUDE.md noch
+ * ein ADR wurden geschrieben, istStackOffen blieb dauerhaft true): Zusatzblock für die
+ * 'ausfuehrung'-Instruktion eines Projektmodus-Schritts, dessen referenzierter Architektur-Lauf
+ * eine Entscheidung mit 'kategorie': 'stack' trägt UND für die bereits eine menschliche Antwort
+ * erfasst ist (der Aufrufer prüft beides, diese Funktion nimmt nur noch die Artefakt-Referenz
+ * entgegen). Beide verlangten Schreibziele (CLAUDE.md, docs/adr/) liegen innerhalb der
+ * F-712-Allowlist — kein Widerspruch zu baueUmsetzungsInstruktion(modus: 'projekt').
+ * @param entscheidungArtefaktId - Kernartefakt-Id der erfassten Entscheidung (workflowEntscheidungArtefaktId), für die Referenz im ADR
+ * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
+ */
+export function baueStackEntscheidungsInstruktion(entscheidungArtefaktId: string): string[] {
+  return [
+    "Eine menschliche Entscheidung mit 'kategorie': 'stack' liegt vor (siehe Eingabe 'entscheidung-@' oben) — setze sie VERPFLICHTEND um, nicht nur als Kontext:",
+    "- Fülle in CLAUDE.md den Abschnitt 'Technischer Stack' mit der gewählten Option (Framework/Sprache/Datenbank/Hosting) — entferne dabei den Füllungs-Marker '[FÜLLUNG]' aus der Überschriftzeile.",
+    `- Lege ein ADR unter 'docs/adr/' an (fortlaufende Nummer, Muster 'docs/adr/TEMPLATE.md'), das die Entscheidung dokumentiert und ausdrücklich auf das Entscheidungsartefakt '${entscheidungArtefaktId}' verweist.`,
+    'Beide Schreibziele sind Pflicht, nicht optional: ohne sie bleibt der Stack für jeden künftigen Architektur-Lauf gegen dieses Projekt offen (F-714) — der Bau darf sich nicht darauf verlassen, dass ein späterer Lauf das nachholt.',
+  ]
+}
+
+/**
+ * F42 WS-4 (löst F-712, state/findings.md F-712): Allowlist der Pfad-Präfixe, in denen ein
+ * Projektmodus-'ausfuehrung'-Schritt (herkunft.art === 'projekt_interview') schreiben darf — der
+ * Auftrags-Scope hat Vorrang vor dem Architekturentwurf, der Kern erzwingt das zusätzlich zur
+ * Instruktion (baueUmsetzungsInstruktion) deterministisch gegen die real geänderten Dateien
+ * (Aufrufer: pruefeProjektmodusScope, gefüttert aus der bestehenden Änderungsübersicht, F23 WS-0).
+ * Feature-Modus bleibt davon unberührt — die Allowlist gilt ausschließlich im Projektmodus.
+ */
+const PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE = ['docs/', 'features/']
+
+/** F42 WS-4 (löst F-712): einzelne, nicht präfixartig erlaubte Pfade der Allowlist (siehe PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE). */
+const PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN = new Set(['CLAUDE.md'])
+
+/**
+ * Reine Funktion (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen
+ * haushaltsbuch2: ein Nur-Doku-Auftrag im Projektmodus baute trotzdem schemas/,
+ * scripts/check-schemas.mjs und erweiterte package.json): prüft die real geänderten Dateipfade
+ * eines Projektmodus-'ausfuehrung'-Laufs gegen PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE/_DATEIEN.
+ * Kein I/O — der Aufrufer liest die Pfade aus der bereits registrierten Änderungsübersicht
+ * ('aenderungsuebersicht-<laufId>', src/aenderungsuebersicht/index.ts) und übergibt nur die
+ * Pfad-Liste, kein neuer Lesepfad.
+ * @param pfade - real geänderte/neue/gelöschte Dateipfade eines Laufs (AenderungsuebersichtDatei[].pfad)
+ * @returns Pfade außerhalb der Allowlist; leeres Array = kein Scope-Verstoß
+ */
+export function pruefeProjektmodusScope(pfade: string[]): string[] {
+  return pfade.filter((pfad) => !PROJEKTMODUS_SCOPE_ALLOWLIST_DATEIEN.has(pfad) && !PROJEKTMODUS_SCOPE_ALLOWLIST_PRAEFIXE.some((praefix) => pfad.startsWith(praefix)))
 }
 
 export { baueCapabilityAuszug }
