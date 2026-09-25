@@ -583,6 +583,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   `IN_ARBEIT` — WS-1 (Skelett `vorlagen/projekt-skelett/`, echter
   `pruefbefehl`, Trust-Hinweis über `POST /api/projekte`) gebaut,
   `npm run check` grün, AK2-Probe real belegt (`GRUEN`, Exit 0, 1480 ms).
+  WS-2 (löst F-685) gebaut: `istStackOffen`/`stackOffen`-Kopplung in
+  `validiereErgebnisArchitektur` (`src/architekt/index.ts`) — solange der
+  Stack eines Projekts offen ist, muss der Architekt ihn als
+  `entscheidungen_mensch[]`-Entscheidung mit `kategorie: 'stack'` vorlegen,
+  real durchgesetzt in `scripts/leitstand-server.mjs`; `npm run check`
+  grün (784 Tests).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1

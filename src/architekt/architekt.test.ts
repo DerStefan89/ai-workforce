@@ -7,9 +7,11 @@
  */
 
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { test } from 'node:test'
-import { baueArchitektAuftragstext, validiereErgebnisArchitektur } from './index.ts'
+import { baueArchitektAuftragstext, istStackOffen, validiereErgebnisArchitektur } from './index.ts'
 
 function ladeBeispiel(name: string): unknown {
   return JSON.parse(readFileSync(`schemas/examples/ergebnis-architektur.${name}.json`, 'utf-8'))
@@ -97,4 +99,65 @@ test('baueArchitektAuftragstext: Default-Modus ist feature', () => {
   const mitDefault = baueArchitektAuftragstext('x')
   const explizit = baueArchitektAuftragstext('x', 'feature')
   assert.strictEqual(mitDefault, explizit)
+})
+
+// F42 WS-2 (löst F-685): istStackOffen + stackOffen-Kopplung in validiereErgebnisArchitektur.
+
+test('istStackOffen: fehlende CLAUDE.md liefert true', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-stackoffen-fehlend-'))
+  assert.strictEqual(istStackOffen(verzeichnis), true)
+})
+
+test('istStackOffen: Füllungs-Marker liefert true', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-stackoffen-marker-'))
+  writeFileSync(join(verzeichnis, 'CLAUDE.md'), '## 🏗️ Technischer Stack [FÜLLUNG]\n')
+  assert.strictEqual(istStackOffen(verzeichnis), true)
+})
+
+test('istStackOffen: gefüllte Stack-Zeile (ohne Marker) liefert false', () => {
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'f42-stackoffen-gefuellt-'))
+  writeFileSync(join(verzeichnis, 'CLAUDE.md'), '## 🏗️ Technischer Stack\n\nTypeScript auf Node.\n')
+  assert.strictEqual(istStackOffen(verzeichnis), false)
+})
+
+test('istStackOffen: dieses Repo (ai-workforce, Stack bereits gefüllt) liefert false', () => {
+  assert.strictEqual(istStackOffen(process.cwd()), false)
+})
+
+test('validiereErgebnisArchitektur: stackOffen:true ohne kategorie:"stack" wird abgelehnt (F-685)', () => {
+  const daten = {
+    ...(ladeBeispiel('valid-projekt') as Record<string, unknown>),
+    entscheidungen_mensch: [{ frage: 'f', optionen: [{ titel: 'A', vorteile: [], nachteile: [] }], auswirkung_bestand: 'keine', empfehlung: 'A', begruendung: 'x', kategorie: 'fachlich' }],
+  }
+  const verstoesse = validiereErgebnisArchitektur(daten, undefined, true)
+  assert.ok(verstoesse.some((v) => v.includes('Stack offen, aber keine Entscheidung mit kategorie stack vorgelegt (F-685)')))
+})
+
+test('validiereErgebnisArchitektur: stackOffen:true MIT kategorie:"stack" ist gültig', () => {
+  const daten = {
+    ...(ladeBeispiel('valid-projekt') as Record<string, unknown>),
+    entscheidungen_mensch: [{ frage: 'f', optionen: [{ titel: 'A', vorteile: [], nachteile: [] }], auswirkung_bestand: 'keine', empfehlung: 'A', begruendung: 'x', kategorie: 'stack' }],
+  }
+  assert.deepStrictEqual(validiereErgebnisArchitektur(daten, undefined, true), [])
+})
+
+test('validiereErgebnisArchitektur: eine bestehende Entscheidung ganz ohne "kategorie"-Feld bleibt gültig (Rückwärtskompatibilität)', () => {
+  assert.deepStrictEqual(validiereErgebnisArchitektur(ladeBeispiel('valid-feature')), [])
+})
+
+test('validiereErgebnisArchitektur: ein unbekannter "kategorie"-Wert wird abgelehnt', () => {
+  const daten = {
+    ...(ladeBeispiel('valid-projekt') as Record<string, unknown>),
+    entscheidungen_mensch: [{ frage: 'f', optionen: [{ titel: 'A', vorteile: [], nachteile: [] }], auswirkung_bestand: 'keine', empfehlung: 'A', begruendung: 'x', kategorie: 'erfunden' }],
+  }
+  const verstoesse = validiereErgebnisArchitektur(daten)
+  assert.ok(verstoesse.some((v) => v.includes("'entscheidungen_mensch[0].kategorie' muss 'null' oder einer von")))
+})
+
+test('baueArchitektAuftragstext: stackOffen:true hängt den Stack-Hinweis an, Default (false) nicht', () => {
+  const mitStackOffen = baueArchitektAuftragstext('x', 'feature', null, true)
+  const ohneStackOffen = baueArchitektAuftragstext('x', 'feature', null, false)
+  assert.match(mitStackOffen, /NICHT selbst fest/)
+  assert.doesNotMatch(ohneStackOffen, /NICHT selbst fest/)
+  assert.doesNotMatch(baueArchitektAuftragstext('x'), /NICHT selbst fest/)
 })
