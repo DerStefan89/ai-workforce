@@ -1,5 +1,5 @@
 <!-- Ziel-Pfad im Repo: state/triggers.md -->
-# Trigger-Inventar — [PROJEKTNAME]
+# Trigger-Inventar — AI Workforce
 
 ## Abgrenzung zu state/gates.md
 
@@ -17,6 +17,7 @@ ist (z. B. "diese Architekturentscheidung hat Nebenwirkungen").
 | Architekturentscheidung mit Nebenwirkungen | Änderung betrifft mehr als eine Komponente/Datei-Grenze | `architecture-advisor` per `advisor-pass`-Skill gegenprüfen, bevor gebaut wird | Mensch + Agent |
 | UI-Aufgabe abgeschlossen | UI-Code wurde gebaut/geändert | `code-reviewer` und (falls vorhanden) `design-guardian` | Agent |
 | Vor "fertig" | Aufgabe wirkt abgeschlossen | `qa`-Agent für Randfälle/Akzeptanztests | Agent |
-| Zyklus-Ende | Ein Lern-/Arbeitszyklus ist abgeschlossen | `HARNESS-LEARNING-STATE.md` + `HARNESS-CHANGELOG.md` nachtragen, noch vor dem nächsten Zyklus | Mensch |
+| Zyklus-Ende | Feature abgenommen oder harness-relevanter PR gemergt | `HARNESS-LEARNING-STATE.md` + `HARNESS-CHANGELOG.md` nachtragen, noch vor dem nächsten Zyklus | Mensch |
 | Sitzungsunterbrechung mitten in einer Aufgabe | Kontext geht zu Ende oder Aufgabe wird pausiert | Zwischenstand in `state/zwischenstand/<branch>.md` schreiben | Mensch/Agent |
-| [FÜLLUNG] | | | |
+| Reallauf beendet | ein Reallauf in einem Projekt ist abgeschlossen | `npm run zustand:sichern` bei gestopptem Leitstand; Commit/PR, Merge, Pull als getrennte Schritte | Mensch |
+| Bauauftrag verfassen | ein Auftrag an Claude Code wird geschrieben | Harness-Einordnung aufnehmen, Auftrag als state/tasks/<id>.md im selben PR | Challenger |

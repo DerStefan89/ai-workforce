@@ -189,16 +189,3 @@ Alle drei wurden mehrfach real beobachtet.
 
 - [FÜLLUNG] Projektspezifische Fallen hier ergänzen, sobald sie zweimal
   aufgetreten sind. Eine einmalige Beobachtung ist noch kein Muster.
-
-- Symptom (behoben, F-590, 23.09.2026): `npm run check` scheiterte an einem
-  `EPERM` beim Aufräumen eines `kontrollzustand-test-*`-Verzeichnisses
-  (`raeumeVerzeichnis`), obwohl weder Code noch Config geändert wurden —
-  trat TROTZ des bereits auf 10 gesetzten `maxRetries` (F-257) auf.
-- Was jetzt gilt: `raeumeVerzeichnis` (`scripts/_aufraeumen.ts`) wirft nach
-  ausgeschöpften Wiederholungen bei EPERM/EBUSY/ENOTEMPTY nicht mehr,
-  sondern warnt auf stderr und sammelt den Pfad. `scripts/aufraeumen-
-  nachlauf.mjs` versucht diese Pfade am Ende von `npm run check` einmal
-  erneut und meldet verbleibende Reste nur als Hinweis (Exit 0) — ein
-  solcher Hinweis ist kein Befund. `maxRetries` bleibt bei 10 (F-591: NICHT
-  ohne Begründung senken). Andere Fehlercodes beim Aufräumen werfen
-  weiterhin wie zuvor.
