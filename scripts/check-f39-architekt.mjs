@@ -40,15 +40,29 @@
  * validiereErgebnisArchitektur/ROLLENVERTRAEGE statt einen zweiten
  * Regelsatz zu pflegen.
  *
- * F39 WS-3a (löst state/findings.md F-635, P1): (n) prüft, dass der REALE
- * Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt,
- * scripts/leitstand-server.mjs) — nicht nur baueArchitektAuftragstext selbst
- * (bereits (c)) — den Auftragstext eines 'architekt'-Schritts real umhüllt,
- * für beide Modi ('feature' ohne Herkunft, 'projekt' bei herkunft.art
- * 'projekt_interview'). Muster check-f15-workflow.mjs (WS-2b-Block):
- * fuehreAufgabeDurchFn ist eine Attrappe, die den tatsächlich an den Worker
- * gereichten AusfuehrungsEingaben.auftragstext abfängt — kein echter
+ * F39 WS-3a (löst state/findings.md F-635, P1): (n1)/(n2) prüfen, dass der
+ * REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten ->
+ * starteWorkflowSchritt, scripts/leitstand-server.mjs) — nicht nur
+ * baueArchitektAuftragstext selbst (bereits (c)) — den Auftragstext eines
+ * 'architekt'-Schritts real umhüllt, für beide Modi ('feature' ohne
+ * Herkunft, 'projekt' bei herkunft.art 'projekt_interview'). Muster
+ * check-f15-workflow.mjs (WS-2b-Block): fuehreAufgabeDurchFn ist eine
+ * Attrappe, die den tatsächlich an den Worker gereichten
+ * AusfuehrungsEingaben.auftragstext abfängt — kein echter
  * Claude-Code-/Codex-Prozessstart nötig, das Gate prüft den Automatenpfad.
+ * (n3)/(n4) (F42 WS-2 Verifikation, löst F-707, BUG P1): derselbe reale
+ * Schrittstart-Pfad gab 'istStackOffen(repoWurzel)' bislang NICHT an
+ * baueArchitektAuftragstext weiter (Zeile ~4156) — stackOffen blieb beim
+ * Default 'false', STACK_OFFEN_HINWEIS erreichte den Architekten also NIE,
+ * obwohl der Validator (leseArchitekturErgebnisAusLaufakte) bei offenem
+ * Stack bereits eine 'kategorie: stack'-Entscheidung verlangte. (n3) belegt
+ * das Nicht-Vorkommen des Hinweises gegen DIESES Repo (Stack gefüllt,
+ * derselbe Server wie (n1)/(n2)); (n4) startet einen ZWEITEN, eigenen
+ * Server mit einer Wegwerf-repoWurzel OHNE CLAUDE.md (istStackOffen dafür
+ * true) und belegt, dass der Hinweis dort real im an den Worker gereichten
+ * Auftragstext ankommt (repoWurzel lässt sich nur bei der Server-Erzeugung
+ * setzen, nicht mehr pro Request — deshalb ein separater Server statt
+ * eines dritten Aufrufs über denselben).
  *
  * Aufruf: node scripts/check-f39-architekt.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -1089,9 +1103,127 @@ const GATE_FRAGE = {
       befunde.push("(n2) realer Schrittstart mit herkunft 'projekt_interview': erwartet einen real gebauten Capability-Auszug-Abschnitt")
     }
 
+    // (n3) F-707 (BUG P1, löst "STACK_OFFEN_HINWEIS erreicht den Architekten zur Laufzeit nie"):
+    // dieser Server läuft mit repoWurzel = process.cwd() (DIESES Repo, Stack bereits gefüllt,
+    // istStackOffen(process.cwd()) === false, siehe check-f42-projekt-harness.mjs (f1)) — beide
+    // real umhüllten Auftragstexte oben dürfen den Stack-Hinweis deshalb NICHT tragen. Ohne die
+    // Korrektur (istStackOffen(repoWurzel) als viertes Argument an baueArchitektAuftragstext,
+    // scripts/leitstand-server.mjs ~4156) wäre dieses Nicht-Vorkommen unbeweisbar, weil es dann
+    // NIE vorkäme, unabhängig vom realen Stack-Zustand — der eigentliche Rot-Fall (Hinweis fehlt
+    // bei offenem Stack) folgt gleich danach mit einem ZWEITEN Server gegen eine echte
+    // Wegwerf-repoWurzel ohne CLAUDE.md.
+    const STACK_HINWEIS_MARKER = 'NICHT selbst fest'
+    if (featureText.includes(STACK_HINWEIS_MARKER) || projektText.includes(STACK_HINWEIS_MARKER)) {
+      befunde.push('(n3) realer Schrittstart gegen DIESES Repo (Stack gefüllt): der Auftragstext sollte den Stack-Hinweis NICHT tragen')
+    }
+
     if (befunde.length === befundeVor) {
       console.log(
-        "✓ (n): der REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt) umhüllt den Auftragstext eines 'architekt'-Schritts über baueArchitektAuftragstext — Modus 'feature' ohne Herkunft (kein Capability-Auszug), Modus 'projekt' bei herkunft.art 'projekt_interview' (inkl. real gebautem Capability-Auszug)."
+        "✓ (n1)/(n2)/(n3): der REALE Schrittstart-Pfad (POST /api/workflows/<id>/starten -> starteWorkflowSchritt) umhüllt den Auftragstext eines 'architekt'-Schritts über baueArchitektAuftragstext — Modus 'feature' ohne Herkunft (kein Capability-Auszug), Modus 'projekt' bei herkunft.art 'projekt_interview' (inkl. real gebautem Capability-Auszug), UND gegen DIESES Repo (Stack gefüllt) ohne den Stack-Hinweis."
+      )
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (n4) F-707: derselbe reale Schrittstart-Pfad gegen eine repoWurzel MIT offenem Stack ───
+//
+// Eigener Server (repoWurzel lässt sich nur bei der Server-Erzeugung setzen, nicht pro Request)
+// — Rot-Fall-Beleg für F-707: OHNE 'istStackOffen(repoWurzel)' als viertes Argument an
+// baueArchitektAuftragstext (scripts/leitstand-server.mjs ~4156) bliebe stackOffen beim Default
+// 'false', der Hinweis erschiene NIE, unabhängig vom echten Stack-Zustand — dieser Block hätte
+// den Fund vor der Korrektur real als Befund gemeldet (manuell verifiziert: Entfernen des vierten
+// Arguments lässt (n4) unten real fehlschlagen).
+{
+  const befundeVor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-f39-n4-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  mkdirSync(basisVerzeichnis, { recursive: true })
+
+  const startvorlagePfadMitCodex = join(basisVerzeichnis, 'startvorlage-mit-codex.json')
+  const vorlageBasis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  writeFileSync(
+    startvorlagePfadMitCodex,
+    JSON.stringify({ ...vorlageBasis, worker: { codex: { startziel: [process.execPath], versionDeklariert: '0.153.4 (Codex CLI, Gate-Fixture)', sandbox: 'read-only' } } }),
+    'utf8'
+  )
+
+  // repoWurzel eines Wegwerf-Projekts OHNE CLAUDE.md — istStackOffen liefert dafür true (Muster
+  // src/architekt/architekt.test.ts, check-f42-projekt-harness.mjs (f1)). Kein echtes Git-Repo
+  // nötig: der architekt-Schritt läuft mit Werkzeugsatz 'lesend', die reale Git-Vorbedingung
+  // (leseAusfuehrungsVorbedingungRealGit) greift laut scripts/leitstand-server.mjs (~Zeile 2203)
+  // nur bei 'schreibend'.
+  const repoWurzelOffenerStack = mkdtempSync(join(tmpdir(), 'f39-n4-repo-offen-'))
+
+  let gesehenerAuftragstext = null
+  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben) => {
+    gesehenerAuftragstext = eingaben.auftragstext
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad: startvorlagePfadMitCodex, repoWurzel: repoWurzelOffenerStack }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+  const basisUrl = `http://127.0.0.1:${port}`
+
+  try {
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, {
+      method: 'POST',
+      body: JSON.stringify({ titel: 'F39-WS-3a-Gate-n4', auftragstext: 'GATE-PLANUNGSTEXT-EINDEUTIG-F39-N4' }),
+    })
+    const { auftragId } = await auftragAntwort.json()
+    if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+      throw new Error(`(n4)-Vorbereitung: POST /api/auftraege erwartet 201 mit auftragId, erhalten ${auftragAntwort.status}`)
+    }
+    const workflowId = `gate-f39-n4-${randomUUID()}`
+    const workflowPayload = {
+      workflow_schema: 'v0',
+      workflow_id: workflowId,
+      auftrag_id: auftragId,
+      version: 1,
+      ziel: 'Gate-Fixture (F-707).',
+      status: 'OFFEN',
+      aktiver_schritt_id: 'schritt-1',
+      grund: null,
+      grenzen: { max_schritte: 3, max_replans: 1 },
+      schritte: [
+        {
+          schritt_id: 'schritt-1',
+          rolle: 'architekt',
+          werkzeugsatz: 'lesend',
+          worker: 'codex',
+          modell: 'gpt-6-astra',
+          eingaben: [],
+          output_schema: 'ergebnis-architektur',
+          freigabe: 'AUTOMATISCH',
+          risiko: 'Gate-Fixture, kein realer Lauf.',
+          zeitgrenze_ms: 600000,
+          nachfolger: null,
+          status: 'OFFEN',
+          lauf_id: null,
+        },
+      ],
+    }
+    const anlage = await fetch(`${basisUrl}/api/workflows`, { method: 'POST', body: JSON.stringify(workflowPayload) })
+    if (anlage.status !== 201) {
+      throw new Error(`(n4)-Vorbereitung: POST /api/workflows erwartet 201, erhalten ${anlage.status} (${await anlage.text()})`)
+    }
+    const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) {
+      throw new Error(`(n4)-Vorbereitung: POST /api/workflows/<id>/starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+    }
+
+    const STACK_HINWEIS_MARKER = 'NICHT selbst fest'
+    if (typeof gesehenerAuftragstext !== 'string' || !gesehenerAuftragstext.includes('GATE-PLANUNGSTEXT-EINDEUTIG-F39-N4')) {
+      befunde.push(`(n4) realer Schrittstart gegen eine repoWurzel ohne CLAUDE.md: erwartet den umhüllten Planungstext, erhalten: ${JSON.stringify(gesehenerAuftragstext)?.slice(0, 300)}…`)
+    } else if (!gesehenerAuftragstext.includes(STACK_HINWEIS_MARKER)) {
+      befunde.push(`(n4) F-707: realer Schrittstart gegen eine repoWurzel OHNE CLAUDE.md (offener Stack) sollte den Stack-Hinweis tragen, tat es aber nicht — STACK_OFFEN_HINWEIS erreicht den Architekten zur Laufzeit nicht: ${JSON.stringify(gesehenerAuftragstext)?.slice(0, 300)}…`)
+    }
+
+    if (befunde.length === befundeVor) {
+      console.log(
+        "✓ (n4) F-707: der REALE Schrittstart-Pfad gegen eine repoWurzel OHNE CLAUDE.md (offener Stack) hängt den Stack-Hinweis real an — istStackOffen(repoWurzel) erreicht baueArchitektAuftragstext über scripts/leitstand-server.mjs tatsächlich, nicht nur den reinen Builder."
       )
     }
   } finally {

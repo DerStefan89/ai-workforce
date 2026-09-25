@@ -452,7 +452,7 @@ import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCo
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
-import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, istStackOffen, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
@@ -3102,12 +3102,18 @@ function leseUrteilAusLaufakte(laufakteDaten) {
  * @returns { verstoesse, entscheidungenMensch } — 'entscheidungenMensch' bleibt
  *   [] bei jedem Lese-/Parsefehler (dann trägt 'verstoesse' bereits den Grund)
  */
-function leseArchitekturErgebnisAusLaufakte(laufakteDaten) {
+/**
+ * F42 WS-2 (löst F-685): 'stackOffen' zusätzlich zum bisherigen Parameter — istStackOffen(repoWurzel)
+ * des Zielprojekts, von jedem Aufrufer übergeben. Default false hält bestehende Aufrufer (Tests,
+ * das Gate) unverändert.
+ * @param stackOffen - true, wenn der Stack des Zielprojekts noch offen ist (istStackOffen)
+ */
+function leseArchitekturErgebnisAusLaufakte(laufakteDaten, stackOffen = false) {
   const gelesen = leseRollenErgebnisRohstrom(laufakteDaten)
   if (!gelesen.ok) {
     return { verstoesse: [`Ergebnistext nicht lesbar: ${gelesen.grund}`], entscheidungenMensch: [] }
   }
-  const verstoesse = validiereErgebnisArchitektur(gelesen.geparst)
+  const verstoesse = validiereErgebnisArchitektur(gelesen.geparst, undefined, stackOffen)
   const entscheidungenMensch = verstoesse.length === 0 && Array.isArray(gelesen.geparst?.entscheidungen_mensch) ? gelesen.geparst.entscheidungen_mensch : []
   return { verstoesse, entscheidungenMensch }
 }
@@ -4147,7 +4153,11 @@ export function erzeugeRequestHandler(optionen = {}) {
           return { ok: false, art: 'nichtLadbar', grund: `ressourcen.json nicht lesbar: ${fehler.message}` }
         }
       }
-      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug)
+      // F-707 (BUG P1, F42-WS-2-Verifikation): OHNE das vierte Argument bleibt stackOffen beim
+      // Default 'false' — STACK_OFFEN_HINWEIS erreichte den Architekten dann nie, obwohl
+      // leseArchitekturErgebnisAusLaufakte (oben) bei offenem Stack bereits eine
+      // 'kategorie: stack'-Entscheidung verlangt. repoWurzel (das PROJEKT), nicht installWurzel.
+      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, istStackOffen(repoWurzel))
     } else if (schritt.rolle === 'architecture-advisor') {
       // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
       // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
@@ -4420,7 +4430,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       let architekturAnzahlFragen
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-architektur') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
-        const architekturErgebnis = laufakteVersion !== null ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten) : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], entscheidungenMensch: [] }
+        const architekturErgebnis =
+          laufakteVersion !== null
+            ? leseArchitekturErgebnisAusLaufakte(laufakteVersion.daten, istStackOffen(repoWurzel))
+            : { verstoesse: [`Laufakte 'laufakte-${laufId}' nicht gefunden`], entscheidungenMensch: [] }
         architekturVerstoesse = architekturErgebnis.verstoesse
         architekturAnzahlFragen = architekturErgebnis.entscheidungenMensch.length
         architekturEntscheidungAusstehend =
@@ -5052,7 +5065,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         const architektSchritt = version.daten.schritte?.find((s) => s.schritt_id === version.daten.aktiver_schritt_id)
         if (architektSchritt !== undefined && architektSchritt.output_schema === 'ergebnis-architektur' && architektSchritt.status === 'ERFOLGREICH' && architektSchritt.lauf_id !== null) {
           const architektLaufakteVersion = ladeArtefaktVersion(`laufakte-${architektSchritt.lauf_id}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-          const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten)
+          const architekturErgebnis = architektLaufakteVersion === null ? null : leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(repoWurzel))
           const bereitsEntschieden =
             architekturErgebnis !== null && architekturErgebnis.verstoesse.length === 0 && architekturErgebnis.entscheidungenMensch.length > 0
               ? findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchritt.schritt_id)
@@ -6523,7 +6536,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 409, { grund: `Laufakte 'laufakte-${architektSchritt.lauf_id}' des Architektur-Schritts '${formular.schrittId}' nicht gefunden` })
         return
       }
-      const architekturErgebnis = leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten)
+      const architekturErgebnis = leseArchitekturErgebnisAusLaufakte(architektLaufakteVersion.daten, istStackOffen(repoWurzel))
       if (architekturErgebnis.verstoesse.length > 0) {
         sendeJson(res, 409, { grund: `Der Architektur-Lauf von Schritt '${formular.schrittId}' ist selbst ungültig, keine Entscheidung möglich: ${architekturErgebnis.verstoesse.join('; ')}` })
         return

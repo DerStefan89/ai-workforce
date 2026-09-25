@@ -15,6 +15,9 @@ export type CapabilityStatus = 'vorhanden' | 'offen' | 'fehlt'
 
 export type EvidenzMarker = '[Fakt]' | '[Schlussfolgerung]' | '[Annahme]' | '[offene Unsicherheit]'
 
+/** F42 WS-2 (löst F-685): Kategorie einer Entscheidung — 'stack' markiert eine Laufzeit-/Sprach-/Speicherform-Entscheidung, die bei offenem Stack (istStackOffen) zwingend vorgelegt werden muss. */
+export type EntscheidungKategorie = 'stack' | 'fachlich' | 'sonstig'
+
 export interface ModulEntwurf {
   name: string
   zweck: string
@@ -48,6 +51,8 @@ export interface EntscheidungMensch {
   auswirkung_bestand: string
   empfehlung: string
   begruendung: string
+  /** F42 WS-2: optional, fehlt bei bestehenden Ausgaben (rückwärtskompatibel) oder wenn null. Nur bei istStackOffen faktisch erzwungen (validiereErgebnisArchitektur, stackOffen-Parameter). */
+  kategorie?: EntscheidungKategorie | null
 }
 
 export interface CapabilityBedarf {

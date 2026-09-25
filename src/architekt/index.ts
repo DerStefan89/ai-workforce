@@ -21,15 +21,27 @@
  * docs/adr/*.md — dieses Modul liefert nur den geprüften Entwurf, das
  * Schreiben eines ADR bleibt einem Folgeauftrag/WS-3 vorbehalten).
  *
+ * F42 WS-2 (löst F-685): istStackOffen liest, ob der Stack des Zielprojekts
+ * noch offen ist (CLAUDE.md fehlt oder trägt den Füllungs-Marker);
+ * validiereErgebnisArchitektur erzwingt dann über den optionalen
+ * 'stackOffen'-Parameter, dass 'entscheidungen_mensch' mindestens eine
+ * Entscheidung mit 'kategorie': 'stack' trägt — der Architekt darf den Stack
+ * sonst nicht mehr stillschweigend selbst festlegen.
+ *
  * Wird aufgerufen von: scripts/check-f39-architekt.mjs,
+ * scripts/check-f42-projekt-harness.mjs, scripts/leitstand-server.mjs
+ * (istStackOffen, real gegen die repoWurzel des Zielprojekts),
  * src/architekt/architekt.test.ts.
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { baueCapabilityAuszug } from '../product-coach/index.ts'
 import type {
   AdrEntwurf,
   ArchitektModus,
   CapabilityBedarf,
+  EntscheidungKategorie,
   EntscheidungMensch,
   EntscheidungOption,
   ErgebnisArchitektur,
@@ -43,7 +55,14 @@ const MODUS_WERTE = ['feature', 'projekt']
 const MODUL_FELDER = new Set(['name', 'zweck', 'abhaengigkeiten'])
 const ADR_FELDER = new Set(['titel', 'kontext', 'entscheidung', 'alternativen', 'konsequenzen'])
 const SCHEMA_ENTWURF_FELDER = new Set(['name', 'zweck', 'json_schema'])
-const ENTSCHEIDUNG_FELDER = new Set(['frage', 'optionen', 'auswirkung_bestand', 'empfehlung', 'begruendung'])
+// F42 WS-2 (löst F-685): 'kategorie' ist ein erlaubtes Feld (additionalProperties-Whitelist), aber
+// bewusst NICHT in ENTSCHEIDUNG_PFLICHTFELDER — bestehende Ausgaben ohne dieses Feld bleiben
+// gültig (Rückwärtskompatibilität), der Schema-Datei-Zwang "jede Eigenschaft steht in required"
+// gilt nur für schemas/ergebnis-architektur.schema.json (Codex-Structured-Output), nicht für
+// diesen handgeschriebenen Validator.
+const ENTSCHEIDUNG_FELDER = new Set(['frage', 'optionen', 'auswirkung_bestand', 'empfehlung', 'begruendung', 'kategorie'])
+const ENTSCHEIDUNG_PFLICHTFELDER = new Set(['frage', 'optionen', 'auswirkung_bestand', 'empfehlung', 'begruendung'])
+const KATEGORIE_WERTE = ['stack', 'fachlich', 'sonstig']
 const OPTION_FELDER = new Set(['titel', 'vorteile', 'nachteile'])
 const CAPABILITY_BEDARF_FELDER = new Set(['bedarf', 'ressource_id', 'status'])
 const CAPABILITY_STATUS = ['vorhanden', 'offen', 'fehlt']
@@ -196,11 +215,14 @@ function validiereEntscheidungMensch(eintrag: unknown, index: number): string[] 
   for (const feld of Object.keys(eintrag)) {
     if (!ENTSCHEIDUNG_FELDER.has(feld)) verstoesse.push(`'${pfad}' trägt unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
-  for (const feld of ENTSCHEIDUNG_FELDER) {
+  for (const feld of ENTSCHEIDUNG_PFLICHTFELDER) {
     if (!(feld in eintrag)) verstoesse.push(`'${pfad}.${feld}' fehlt`)
   }
   for (const feld of ['frage', 'auswirkung_bestand', 'empfehlung', 'begruendung']) {
     if (feld in eintrag && !istNichtLeererString(eintrag[feld])) verstoesse.push(`'${pfad}.${feld}' muss ein nicht-leerer String sein`)
+  }
+  if ('kategorie' in eintrag && eintrag.kategorie !== null && !KATEGORIE_WERTE.includes(eintrag.kategorie as string)) {
+    verstoesse.push(`'${pfad}.kategorie' muss 'null' oder einer von ${KATEGORIE_WERTE.join(', ')} sein`)
   }
   if ('optionen' in eintrag) {
     if (!Array.isArray(eintrag.optionen)) {
@@ -292,9 +314,13 @@ function validiereEvidenzEintrag(eintrag: unknown, index: number): string[] {
  *   eingespeisten Capability-Auszug (baueCapabilityAuszug) — prüft, dass keine
  *   'capabilities_bedarf[].ressource_id' erfunden ist. Weggelassen/undefined
  *   lässt diese eine Prüfung aus (z. B. reine Formtests ohne Ressourcenkontext).
+ * @param stackOffen - F42 WS-2 (löst F-685): true, wenn der Stack des Zielprojekts noch offen ist
+ *   (istStackOffen). Erzwingt dann mindestens einen Eintrag in 'entscheidungen_mensch' mit
+ *   'kategorie': 'stack' — der Architekt darf den Stack sonst stillschweigend selbst festlegen.
+ *   Default false, rückwärtskompatibel (bestehende Aufrufer unverändert).
  * @returns Liste der Regelverletzungen; leeres Array = gültig
  */
-export function validiereErgebnisArchitektur(daten: unknown, bekannteRessourcenIds?: string[]): string[] {
+export function validiereErgebnisArchitektur(daten: unknown, bekannteRessourcenIds?: string[], stackOffen = false): string[] {
   if (!istObjekt(daten)) {
     return ['Wurzel ist kein Objekt']
   }
@@ -343,11 +369,44 @@ export function validiereErgebnisArchitektur(daten: unknown, bekannteRessourcenI
     }
   }
 
+  // F42 WS-2 (löst F-685): bei offenem Stack darf der Architekt ihn nicht selbst festlegen,
+  // sondern muss ihn als Entscheidung mit kategorie 'stack' vorlegen. Nur geprüft, wenn
+  // 'entscheidungen_mensch' überhaupt ein Array ist — ein bereits strukturell ungültiges Array
+  // hat schon oben seine eigenen Verstöße gesammelt.
+  if (stackOffen && Array.isArray(daten.entscheidungen_mensch)) {
+    const traegtStackEntscheidung = daten.entscheidungen_mensch.some((eintrag) => istObjekt(eintrag) && eintrag.kategorie === 'stack')
+    if (!traegtStackEntscheidung) {
+      verstoesse.push("Stack offen, aber keine Entscheidung mit kategorie stack vorgelegt (F-685)")
+    }
+  }
+
   return verstoesse
 }
 
-function baueFeatureRolleninstruktion(): string[] {
-  return [
+/**
+ * Reine Funktion (liest nur, kein Schreibzugriff): true, wenn der Stack des Projekts unter
+ * 'repoWurzel' noch offen ist — CLAUDE.md fehlt, oder dessen Zeile mit "Technischer Stack" trägt
+ * noch den Füllungs-Marker '[FÜLLUNG]' (Muster vorlagen/projekt-skelett/CLAUDE.md, F42 WS-1).
+ * Ein bereits gefülltes CLAUDE.md (Muster dieses Repos: "## 🏗️ Technischer Stack" ohne Marker,
+ * gefolgt vom echten Stacktext) liefert false. F42 WS-2, löst F-685.
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel des Zielprojekts
+ * @returns true, wenn der Stack noch offen ist
+ */
+export function istStackOffen(repoWurzel: string): boolean {
+  const claudeMdPfad = join(repoWurzel, 'CLAUDE.md')
+  if (!existsSync(claudeMdPfad)) return true
+  const stackZeile = readFileSync(claudeMdPfad, 'utf-8')
+    .split('\n')
+    .find((zeile) => zeile.includes('Technischer Stack'))
+  return stackZeile !== undefined && stackZeile.includes('[FÜLLUNG]')
+}
+
+/** F42 WS-2 (löst F-685): angehängt an die Rolleninstruktion, wenn istStackOffen(repoWurzel) true liefert — hält den Architekten an, den Stack als Entscheidung statt als eigene Festlegung vorzulegen. */
+const STACK_OFFEN_HINWEIS =
+  "Der Stack (Laufzeit, Sprache, Speicherform) dieses Projekts ist NOCH OFFEN (CLAUDE.md trägt den Füllungs-Marker oder existiert noch nicht) — lege ihn NICHT selbst fest, auch nicht als ADR-Entwurf. Trage stattdessen einen Eintrag in 'entscheidungen_mensch' mit 'kategorie': 'stack' ein, mit mindestens zwei 'optionen' inkl. je eigener Vor-/Nachteile; 'empfehlung' nennt den Titel einer dieser Optionen."
+
+function baueFeatureRolleninstruktion(stackOffen: boolean): string[] {
+  const zeilen = [
     "Du bist als Rolle 'architekt' verantwortlich für einen Architekturentwurf VOR dem Bau eines einzelnen Features — Modulschnitt, ADR-würdige Entscheidungen, Datenmodell als Schema, ohne selbst Code zu schreiben.",
     'Prüfrolle bleibt der Subagent architecture-advisor — dein Entwurf ist ein Vorschlag, keine Freigabe.',
     'Schlage nur, was der Auftrag tatsächlich verlangt — keine Vorratsarchitektur für hypothetische künftige Anforderungen. Jede Aussage trägt einen Evidenz-Marker ([Fakt]/[Schlussfolgerung]/[Annahme]/[offene Unsicherheit], .claude/skills/advisor-pass) im evidenz-Array.',
@@ -359,12 +418,14 @@ function baueFeatureRolleninstruktion(): string[] {
     '  "module": [ { "name": "<string>", "zweck": "<string>", "abhaengigkeiten": ["<Name eines anderen Moduls aus diesem Entwurf>", ...] }, ... ] (leer, wenn kein neuer Modulschnitt),',
     '  "adr_entwuerfe": [ { "titel": "<string>", "kontext": "<string>", "entscheidung": "<string>", "alternativen": ["<erwogene, nicht gewählte Option>", ...], "konsequenzen": ["<Folge der Entscheidung>", ...] }, ... ] (leer, wenn keine ADR-würdige Entscheidung),',
     '  "schema_entwuerfe": [ { "name": "<string>", "zweck": "<string>", "json_schema": "<JSON-Text eines JSON-Schema-Fragments, als STRING, kein verschachteltes Objekt>" }, ... ] (leer, wenn kein Datenmodell),',
-    '  "entscheidungen_mensch": [ { "frage": "<string>", "optionen": [ { "titel": "<string>", "vorteile": ["<string>", ...], "nachteile": ["<string>", ...] }, ... ] (mindestens ein Eintrag), "auswirkung_bestand": "<string, auch \'keine\'>", "empfehlung": "<Titel einer der Optionen oben>", "begruendung": "<string>" }, ... ] (leer, wenn keine offene Entscheidung),',
+    '  "entscheidungen_mensch": [ { "frage": "<string>", "optionen": [ { "titel": "<string>", "vorteile": ["<string>", ...], "nachteile": ["<string>", ...] }, ... ] (mindestens ein Eintrag), "auswirkung_bestand": "<string, auch \'keine\'>", "empfehlung": "<Titel einer der Optionen oben>", "begruendung": "<string>", "kategorie": "stack" | "fachlich" | "sonstig" | null (optional, F42 WS-2) }, ... ] (leer, wenn keine offene Entscheidung),',
     '  "capabilities_bedarf": [ { "bedarf": "<string>", "ressource_id": "<id aus dem Capability-Auszug>" | null, "status": "vorhanden" | "offen" | "fehlt" }, ... ] (leer, wenn kein Capability-Bedarf),',
     '  "evidenz": [ { "marker": "[Fakt]" | "[Schlussfolgerung]" | "[Annahme]" | "[offene Unsicherheit]", "aussage": "<string>" }, ... ] (mindestens ein Eintrag)',
     '}',
     "In 'entscheidungen_mensch[].empfehlung' NUR einen Titel nennen, der auch in 'optionen' steht — keine Option erfinden. In 'capabilities_bedarf[].ressource_id' NUR eine ID aus dem eingespeisten Capability-Auszug nennen, sonst 'null' und 'status': 'fehlt' — keine Ressource erfinden. 'schema_entwuerfe[].json_schema' ist ein STRING mit dem JSON-Text des Schema-Fragments (z. B. \"{\\\"type\\\":\\\"object\\\",\\\"additionalProperties\\\":false,...}\"), KEIN verschachteltes JSON-Objekt. Kein weiteres Feld außer den genannten.",
   ]
+  if (stackOffen) zeilen.push(STACK_OFFEN_HINWEIS)
+  return zeilen
 }
 
 /**
@@ -372,8 +433,8 @@ function baueFeatureRolleninstruktion(): string[] {
  * 'Architektur-Grundlage' (E-M5-13): Stack-ADR, Modulschnitt, Datenmodell als
  * Schemas für das GESAMTE Vorhaben statt eines einzelnen Features.
  */
-function baueProjektRolleninstruktion(): string[] {
-  const zeilen = baueFeatureRolleninstruktion()
+function baueProjektRolleninstruktion(stackOffen: boolean): string[] {
+  const zeilen = baueFeatureRolleninstruktion(stackOffen)
   zeilen[0] =
     "Du bist als Rolle 'architekt' im Modus 'projekt' verantwortlich für die Architektur-Grundlage eines GESAMTEN Vorhabens VOR dem Bau — Stack-ADR, Modulschnitt, Datenmodell als Schema, ohne selbst Code zu schreiben."
   const formIndex = zeilen.findIndex((zeile) => zeile === '  "modus": "feature",')
@@ -391,11 +452,14 @@ function baueProjektRolleninstruktion(): string[] {
  * @param modus - 'feature' (Default) oder 'projekt' (Architektur-Grundlage, E-M5-13)
  * @param capabilityAuszug - vorab gebauter Text (baueCapabilityAuszug, aus src/product-coach
  *   importiert) — nur bei modus 'projekt' und nicht-null eingefügt; im Modus 'feature' ignoriert
+ * @param stackOffen - F42 WS-2 (löst F-685): true, wenn istStackOffen(repoWurzel) für das
+ *   Zielprojekt true liefert — hängt STACK_OFFEN_HINWEIS an die Rolleninstruktion an. Default
+ *   false, rückwärtskompatibel.
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext
  *   den einzigen Eingabekanal für den Lauf bildet
  */
-export function baueArchitektAuftragstext(planungstext: string, modus: ArchitektModus = 'feature', capabilityAuszug: string | null = null): string {
-  const zeilen = modus === 'projekt' ? baueProjektRolleninstruktion() : baueFeatureRolleninstruktion()
+export function baueArchitektAuftragstext(planungstext: string, modus: ArchitektModus = 'feature', capabilityAuszug: string | null = null, stackOffen = false): string {
+  const zeilen = modus === 'projekt' ? baueProjektRolleninstruktion(stackOffen) : baueFeatureRolleninstruktion(stackOffen)
   if (modus === 'projekt' && capabilityAuszug !== null) {
     zeilen.push('', 'Verfügbare Ressourcen (Capability-Auszug):', capabilityAuszug)
   }
@@ -429,6 +493,7 @@ export type {
   AdrEntwurf,
   ArchitektModus,
   CapabilityBedarf,
+  EntscheidungKategorie,
   EntscheidungMensch,
   EntscheidungOption,
   ErgebnisArchitektur,

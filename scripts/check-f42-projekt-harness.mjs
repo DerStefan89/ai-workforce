@@ -31,6 +31,14 @@
  * Leerzeichen; mit true weiterhin beide ai-workforce-Prüfpfade.
  * (e) Trust-Erkennung — pruefeWorkspaceTrust gegen drei Fixture-Varianten
  * einer ~/.claude.json (true/false/fehlend) statt der echten Datei.
+ * (f) F42 WS-2 (löst F-685): istStackOffen — fehlende CLAUDE.md → true,
+ * Füllungs-Marker → true, gefüllte Zeile → false, DIESES Repo (ai-workforce,
+ * Stack bereits gefüllt) → false, real belegt; validiereErgebnisArchitektur
+ * mit stackOffen:true lehnt eine Entscheidungsliste ohne kategorie:'stack'
+ * ab (Rot-Fall, F-685-Muster: nur eine fachliche Frage) und nimmt sie mit
+ * einem solchen Eintrag an (Grün-Fall); stackOffen:false (Default) bleibt
+ * für bestehende Ausgaben ohne 'kategorie' unverändert rückwärtskompatibel;
+ * baueArchitektAuftragstext hängt den Zusatz-Hinweis nur bei stackOffen:true an.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -46,6 +54,7 @@ import { findeNpmCli, kopiereSkelett, pruefeWorkspaceTrust, schreibeStartvorlage
 import { fuehrePruefungDurch } from '../src/pruefschritt/index.ts'
 import { baueAuftragAusProjektentwurf } from '../src/product-coach/index.ts'
 import { vergebeFeatureIds } from '../src/product-coach/index.ts'
+import { baueArchitektAuftragstext, istStackOffen, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -307,6 +316,102 @@ try {
     }
 
     if (befunde.length === vor) console.log("✓ (e) Trust-Erkennung: true/false/fehlender Schlüssel/fehlende Datei korrekt, read-only (keine Schreibfunktion importiert), bewusste Groß-/Kleinschreibungs-Grenze (F-702) bestätigt.")
+  }
+
+  // ─── (f) F42 WS-2 (löst F-685): istStackOffen + stackOffen-Kopplung in validiereErgebnisArchitektur ──
+  {
+    const vor = befunde.length
+
+    // (f1) istStackOffen: fehlende CLAUDE.md → true.
+    const projektOhneClaudeMd = join(TEST_WURZEL, `f-ohne-claude-md-${randomUUID()}`)
+    mkdirSync(projektOhneClaudeMd, { recursive: true })
+    if (istStackOffen(projektOhneClaudeMd) !== true) befunde.push('(f1) istStackOffen: fehlende CLAUDE.md sollte true liefern')
+
+    // (f1) istStackOffen: Füllungs-Marker (Muster vorlagen/projekt-skelett/CLAUDE.md) → true.
+    const projektMitMarker = join(TEST_WURZEL, `f-mit-marker-${randomUUID()}`)
+    mkdirSync(projektMitMarker, { recursive: true })
+    writeFileSync(join(projektMitMarker, 'CLAUDE.md'), '# Projekt\n\n## 🏗️ Technischer Stack [FÜLLUNG]\n\nNoch nicht entschieden.\n')
+    if (istStackOffen(projektMitMarker) !== true) befunde.push('(f1) istStackOffen: CLAUDE.md mit Füllungs-Marker sollte true liefern')
+
+    // (f1) istStackOffen: gefüllte Zeile (kein Marker) → false.
+    const projektGefuellt = join(TEST_WURZEL, `f-gefuellt-${randomUUID()}`)
+    mkdirSync(projektGefuellt, { recursive: true })
+    writeFileSync(join(projektGefuellt, 'CLAUDE.md'), '# Projekt\n\n## 🏗️ Technischer Stack\n\nTypeScript auf Node.\n')
+    if (istStackOffen(projektGefuellt) !== false) befunde.push('(f1) istStackOffen: CLAUDE.md mit gefüllter Stack-Zeile sollte false liefern')
+
+    // (f1) Real gegen DIESES Repo (ai-workforce, Stack bereits gefüllt) — F-685-Beleg aus dem
+    // Auftrag: "für ai-workforce muss sie false liefern".
+    if (istStackOffen(ECHTE_INSTALL_WURZEL) !== false) befunde.push('(f1) istStackOffen: dieses Repo (ai-workforce, Stack bereits gefüllt) sollte false liefern')
+
+    if (befunde.length === vor) console.log('✓ (f1) istStackOffen: fehlende CLAUDE.md und Füllungs-Marker liefern true, eine gefüllte Zeile liefert false — real gegen dieses Repo belegt (false).')
+  }
+
+  {
+    const vor = befunde.length
+
+    const NUR_FACHLICH = [{ frage: 'f', optionen: [{ titel: 'A', vorteile: [], nachteile: [] }], auswirkung_bestand: 'keine', empfehlung: 'A', begruendung: 'x', kategorie: 'fachlich' }]
+    const MIT_STACK = [
+      ...NUR_FACHLICH,
+      {
+        frage: 'Welcher Stack?',
+        optionen: [
+          { titel: 'Option A', vorteile: ['x'], nachteile: [] },
+          { titel: 'Option B', vorteile: [], nachteile: ['x'] },
+        ],
+        auswirkung_bestand: 'keine',
+        empfehlung: 'Option A',
+        begruendung: 'x',
+        kategorie: 'stack',
+      },
+    ]
+    const basis = (entscheidungenMensch) => ({
+      modus: 'projekt',
+      zusammenfassung: 'x',
+      module: [],
+      adr_entwuerfe: [],
+      schema_entwuerfe: [],
+      entscheidungen_mensch: entscheidungenMensch,
+      capabilities_bedarf: [],
+      evidenz: [{ marker: '[Fakt]', aussage: 'x' }],
+    })
+
+    // (f2) Rot-Fall (F-685-Muster): Stack offen, nur eine fachliche Entscheidung vorgelegt.
+    const rot = validiereErgebnisArchitektur(basis(NUR_FACHLICH), undefined, true)
+    if (!rot.some((v) => v.includes('Stack offen, aber keine Entscheidung mit kategorie stack vorgelegt (F-685)'))) {
+      befunde.push(`(f2) Rot-Fall: stackOffen:true ohne kategorie:'stack' sollte den F-685-Verstoß liefern, erhalten ${JSON.stringify(rot)}`)
+    }
+
+    // (f2) Grün-Fall: Stack offen, eine Entscheidung mit kategorie 'stack' vorgelegt.
+    const gruen = validiereErgebnisArchitektur(basis(MIT_STACK), undefined, true)
+    if (gruen.length > 0) befunde.push(`(f2) Grün-Fall: stackOffen:true MIT kategorie:'stack' sollte [] liefern, erhalten ${JSON.stringify(gruen)}`)
+
+    // (f2) Rückwärtskompatibel: stackOffen Default (false) — dieselbe nur-fachliche Liste bleibt
+    // gültig, UND eine bestehende Ausgabe ganz OHNE 'kategorie'-Feld bleibt ebenfalls gültig.
+    const ohneStackOffen = validiereErgebnisArchitektur(basis(NUR_FACHLICH))
+    if (ohneStackOffen.length > 0) befunde.push(`(f2) Rückwärtskompatibel (stackOffen Default false): erwartet [], erhalten ${JSON.stringify(ohneStackOffen)}`)
+    const OHNE_KATEGORIE_FELD = [{ frage: 'f', optionen: [{ titel: 'A', vorteile: [], nachteile: [] }], auswirkung_bestand: 'keine', empfehlung: 'A', begruendung: 'x' }]
+    const bestehendeAusgabe = validiereErgebnisArchitektur(basis(OHNE_KATEGORIE_FELD))
+    if (bestehendeAusgabe.length > 0) befunde.push(`(f2) Rückwärtskompatibel: eine Entscheidung ganz ohne 'kategorie'-Feld sollte weiterhin gültig sein, erhalten ${JSON.stringify(bestehendeAusgabe)}`)
+
+    if (befunde.length === vor) {
+      console.log("✓ (f2) validiereErgebnisArchitektur: stackOffen:true lehnt eine rein fachliche Entscheidungsliste ab (F-685) und nimmt eine mit kategorie:'stack' an; stackOffen:false (Default) bleibt für bestehende Ausgaben — mit und ohne 'kategorie'-Feld — unverändert gültig.")
+    }
+  }
+
+  {
+    const vor = befunde.length
+    const HINWEIS_MARKER = 'NICHT selbst fest'
+
+    const mitStackOffen = baueArchitektAuftragstext('Architektur-Grundlage für ein neues Projekt.', 'projekt', null, true)
+    if (!mitStackOffen.includes(HINWEIS_MARKER)) befunde.push(`(f3) baueArchitektAuftragstext mit stackOffen:true sollte den Zusatz-Hinweis enthalten, erhalten: ${mitStackOffen.slice(0, 200)}…`)
+
+    const ohneStackOffenText = baueArchitektAuftragstext('Architektur-Grundlage für ein neues Projekt.', 'projekt', null, false)
+    if (ohneStackOffenText.includes(HINWEIS_MARKER)) befunde.push('(f3) baueArchitektAuftragstext mit stackOffen:false sollte den Zusatz-Hinweis NICHT enthalten')
+
+    const defaultText = baueArchitektAuftragstext('x')
+    if (defaultText.includes(HINWEIS_MARKER)) befunde.push('(f3) baueArchitektAuftragstext ohne stackOffen-Argument (Default) sollte den Zusatz-Hinweis NICHT enthalten')
+
+    if (befunde.length === vor) console.log('✓ (f3) baueArchitektAuftragstext hängt den Stack-Hinweis nur bei stackOffen:true an, Default (weggelassen) bleibt unverändert ohne Hinweis.')
   }
 } finally {
   raeumeVerzeichnis(TEST_WURZEL)
