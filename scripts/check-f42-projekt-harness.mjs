@@ -776,7 +776,14 @@ try {
       return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
     }
 
-    const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf }))
+    // F-735: Regel 1h verlangt neben CLAUDE.md/ADR auch 'pruefketten_pfade' in der Startvorlage —
+    // ohne das Feld bliebe (h3) rot. Die Wegwerf-Startvorlage liegt AUSSERHALB des Wegwerf-Repos,
+    // sonst erschiene sie in der Änderungsübersicht (Projektmodus-Scope, Regel 1g). Der Rot-Fall
+    // ohne das Feld steht in scripts/check-fixpaket-f30-vorbedingungen.mjs (l).
+    const startvorlageVerzeichnisH = mkdtempSync(join(tmpdir(), 'f42-h-vorlage-'))
+    const startvorlagePfadH = join(startvorlageVerzeichnisH, 'startvorlage.json')
+    writeFileSync(startvorlagePfadH, JSON.stringify({ ...vorlage, pruefketten_pfade: ['package.json'] }, null, 2))
+    const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel: repoWurzelWegwerf, startvorlagePfad: startvorlagePfadH }))
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     const { port } = server.address()
     const basisUrl = `http://127.0.0.1:${port}`
@@ -933,6 +940,7 @@ try {
     } finally {
       await new Promise((resolve) => server.close(resolve))
       raeumeVerzeichnis(basisVerzeichnis)
+      raeumeVerzeichnis(startvorlageVerzeichnisH)
     }
   }
 

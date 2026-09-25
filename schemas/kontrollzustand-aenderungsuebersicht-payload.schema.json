@@ -27,7 +27,8 @@
             "description": "NEU deckt sowohl von git als 'A' erkannte als auch über 'git status --porcelain' gefundene untracked Dateien ab (AK2) — beide sind aus Sicht der Übersicht neu."
           },
           "plus": { "type": ["integer", "null"], "minimum": 0, "description": "null bei Binärdateien oder untracked Dateien (Zeilenzahl nicht über git diff ermittelbar)." },
-          "minus": { "type": ["integer", "null"], "minimum": 0, "description": "null bei Binärdateien oder untracked Dateien." }
+          "minus": { "type": ["integer", "null"], "minimum": 0, "description": "null bei Binärdateien oder untracked Dateien." },
+          "alter_pfad": { "type": "string", "minLength": 1, "description": "F-735: nur bei status UMBENANNT — der Pfad vor der Umbenennung (git diff --name-status -M, R-Zeile). Optional und additiv: Alt-Artefakte ohne das Feld bleiben gültig." }
         }
       }
     },

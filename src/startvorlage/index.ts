@@ -47,6 +47,7 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'worker',
     'pruefbefehl',
     'pruefZeitgrenzeMs',
+    'pruefketten_pfade',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -116,7 +117,38 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   if ('pruefZeitgrenzeMs' in obj && (typeof obj.pruefZeitgrenzeMs !== 'number' || !Number.isInteger(obj.pruefZeitgrenzeMs) || obj.pruefZeitgrenzeMs <= 0)) {
     verstoesse.push("'pruefZeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
   }
+  if ('pruefketten_pfade' in obj) verstoesse.push(...pruefePruefkettenPfade(obj.pruefketten_pfade))
 
+  return verstoesse
+}
+
+/**
+ * Prüft das optionale Feld 'pruefketten_pfade' (F-735): ein Array nicht-leerer, einfacher
+ * Glob-Muster relativ zur Repo-Wurzel ('*', '**', Präfix mit abschließendem '/'). Unzulässig
+ * sind ein Segment '..', absolute Pfade ('/…', Laufwerksbuchstabe 'C:…') und Backslashes — ein
+ * Muster darf nie aus dem Repo herauszeigen. Ein leeres Array ist erlaubt (dann gilt nur die
+ * Default-Liste, src/aenderungsuebersicht/index.ts STANDARD_PRUEFKETTEN_MUSTER).
+ * @param wert - der rohe Wert von obj.pruefketten_pfade
+ * @returns Liste der Verstöße (leer = gültig)
+ */
+export function pruefePruefkettenPfade(wert: unknown): string[] {
+  if (!Array.isArray(wert)) return ["'pruefketten_pfade' muss, wenn angegeben, ein Array von Strings sein"]
+  const verstoesse: string[] = []
+  wert.forEach((muster, index) => {
+    const praefix = `'pruefketten_pfade[${index}]'`
+    if (typeof muster !== 'string' || muster.length === 0) {
+      verstoesse.push(`${praefix} muss ein nicht-leerer String sein`)
+    } else if (muster.includes('\\')) {
+      verstoesse.push(`${praefix} darf keinen Backslash enthalten — Muster sind '/'-getrennt und relativ zur Repo-Wurzel`)
+    } else if (muster.startsWith('/') || /^[A-Za-z]:/.test(muster)) {
+      verstoesse.push(`${praefix} darf kein absoluter Pfad sein ('${muster}')`)
+    } else if (muster.split('/').includes('..')) {
+      verstoesse.push(`${praefix} darf kein '..'-Segment enthalten ('${muster}')`)
+    } else if (/[?[\]{}]/.test(muster)) {
+      // Review-Befund F-735: globZuRegExp nähme '?'/'[]'/'{}' wörtlich — ein so geschriebenes Muster träfe still nie.
+      verstoesse.push(`${praefix} darf nur '*' und '**' als Platzhalter nutzen — '?', '[]' und '{}' werden nicht unterstützt ('${muster}')`)
+    }
+  })
   return verstoesse
 }
 

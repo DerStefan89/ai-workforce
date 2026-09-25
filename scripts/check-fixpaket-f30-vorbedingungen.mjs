@@ -27,6 +27,16 @@
  * (g) validiereWorkflowDaten lehnt einen schreibenden AUTOMATISCH-Schritt ab (F-734); jede Vorlage
  *     unter workflow-vorlagen/ bleibt gültig.
  *
+ * (h)–(l) F-735 (Regel 1j stack-unabhängig), ebenfalls als echter HTTP-Rundlauf:
+ * (h) Umbenennung scripts/check-x.mjs → tools/x.mjs (git mv) → Halt 1j über alter_pfad.
+ * (i) Änderung an einer bestehenden biome.json → Halt 1j (Default-Liste).
+ * (j) Fremdprojekt mit pruefketten_pfade ["pyproject.toml", "tests/**"], Änderung an pyproject.toml → Halt 1j.
+ * (k) Dasselbe Fremdprojekt, nur eine neue tests/test_neu.py → kein Halt, Review startet.
+ * (l) Stack-Entscheidung erfasst, CLAUDE.md+ADR gepflegt, Startvorlage ohne pruefketten_pfade →
+ *     Halt 1h mit eigenem Grund (Grün-Gegenfall: check-f42-projekt-harness.mjs (h3)).
+ * (l2) Wie (l), aber pruefketten_pfade: [] → ebenfalls Halt 1h (eine leere Liste erfüllt die Pflicht nicht).
+ * (m) Startvorlage liegt committet im Repo, der Lauf trägt selbst pruefketten_pfade ein → Halt 1j.
+ *
  * Wichtig: Jeder HTTP-Fall bekommt ein EIGENES Wegwerf-Repo und einen eigenen Server — die
  * Änderungsübersicht vergleicht gegen HEAD, ein geteiltes Repo trüge Änderungen eines Falls in den
  * nächsten. Der schreibende Schritt trägt 'ZWINGEND' mit bereits erteilter Freigabe (F-734).
@@ -42,11 +52,12 @@ import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
+import { registriereWorkflowEntscheidung } from './leitstand/routen-f39.mjs'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -61,8 +72,12 @@ function git(repoWurzel, argumente) {
   return execFileSync('git', argumente, { cwd: repoWurzel, encoding: 'utf8' })
 }
 
-/** Wegwerf-"Fremdprojekt" mit package.json-scripts und einem bestehenden Gate, NICHT auf main (E-F39-1=B). @returns absoluter Pfad */
-function baueFremdprojekt() {
+/**
+ * Wegwerf-"Fremdprojekt" mit package.json-scripts und einem bestehenden Gate, NICHT auf main (E-F39-1=B).
+ * @param zusatzDateien - weitere, mit committete Dateien { relativerPfad: inhalt } (F-735: biome.json, pyproject.toml)
+ * @returns absoluter Pfad
+ */
+function baueFremdprojekt(zusatzDateien = {}) {
   const repoWurzel = mkdtempSync(join(tmpdir(), 'fixpaket-f30-repo-'))
   git(repoWurzel, ['init', '--quiet', '-b', 'wegwerf-branch'])
   git(repoWurzel, ['config', 'user.email', 'gate@example.invalid'])
@@ -72,6 +87,10 @@ function baueFremdprojekt() {
   mkdirSync(join(repoWurzel, 'scripts'), { recursive: true })
   writeFileSync(join(repoWurzel, 'scripts', 'check-x.mjs'), "console.log('x')\n")
   writeFileSync(join(repoWurzel, 'bestehend.txt'), 'Zeile 1\n')
+  for (const [pfad, inhalt] of Object.entries(zusatzDateien)) {
+    mkdirSync(dirname(join(repoWurzel, pfad)), { recursive: true })
+    writeFileSync(join(repoWurzel, pfad), inhalt)
+  }
   git(repoWurzel, ['add', '-A'])
   git(repoWurzel, ['commit', '--quiet', '-m', 'init'])
   return repoWurzel
@@ -80,11 +99,15 @@ function baueFremdprojekt() {
 // Codex braucht einen resolvierbaren (nicht notwendig existierenden) Startziel-Pfad (Muster check-f35-ws3).
 const CODEX_BLOCK = { codex: { startziel: [String.raw`C:\fixpaket-f30-gate-dummy\codex.exe`], versionDeklariert: 'codex-cli-gate-fixture', sandbox: 'read-only' } }
 
-/** Schreibt eine Wegwerf-Startvorlage (beispielprojekt + Codex-Block). @returns Pfad der Startvorlage */
-function schreibeStartvorlage(verzeichnis) {
+/**
+ * Schreibt eine Wegwerf-Startvorlage (beispielprojekt + Codex-Block).
+ * @param zusatz - weitere Startvorlagenfelder (F-735: pruefketten_pfade)
+ * @returns Pfad der Startvorlage
+ */
+function schreibeStartvorlage(verzeichnis, zusatz = {}) {
   const basis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
   const pfad = join(verzeichnis, `startvorlage-${randomUUID()}.json`)
-  writeFileSync(pfad, JSON.stringify({ ...basis, worker: CODEX_BLOCK }, null, 2))
+  writeFileSync(pfad, JSON.stringify({ ...basis, worker: CODEX_BLOCK, ...zusatz }, null, 2))
   return pfad
 }
 
@@ -164,14 +187,22 @@ const REVIEW_BEREIT = JSON.stringify({ urteil: 'BEREIT', befunde: [], empfehlung
  * @param bezeichnung - Fallkennung für Befundtexte
  * @param veraendereRepo - Wirkung des ausfuehrung-Stubs auf das Fremdprojekt (repoWurzel) => void
  * @param ergebnistext - Ergebnistext, den der ausfuehrung-Lauf meldet
+ * @param optionen - F-735: { zusatzDateien } für baueFremdprojekt, { startvorlageZusatz } für schreibeStartvorlage, { startvorlageImRepo } legt die Startvorlage committet unter startvorlagen/ im Repo ab
  * @returns { status, grund, reviewGestartet } oder null bei Vorbedingungsfehler (dann bereits in befunde)
  */
-async function fuehreFallDurch(bezeichnung, veraendereRepo, ergebnistext) {
+async function fuehreFallDurch(bezeichnung, veraendereRepo, ergebnistext, optionen = {}) {
   const basisVerzeichnis = `kontrollzustand-test-fixpaket-f30-${randomUUID()}`
   raeumeVerzeichnis(basisVerzeichnis)
-  const repoWurzel = baueFremdprojekt()
+  const repoWurzel = baueFremdprojekt(optionen.zusatzDateien)
   const verzeichnis = mkdtempSync(join(tmpdir(), 'fixpaket-f30-vorlage-'))
-  const startvorlagePfad = schreibeStartvorlage(verzeichnis)
+  // F-735 (m): optional liegt die Startvorlage wie bei einem echten Projekt IM Repo (committet).
+  const vorlagenOrt = optionen.startvorlageImRepo ? join(repoWurzel, 'startvorlagen') : verzeichnis
+  mkdirSync(vorlagenOrt, { recursive: true })
+  const startvorlagePfad = schreibeStartvorlage(vorlagenOrt, optionen.startvorlageZusatz)
+  if (optionen.startvorlageImRepo) {
+    git(repoWurzel, ['add', '-A'])
+    git(repoWurzel, ['commit', '--quiet', '-m', 'startvorlage'])
+  }
   const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad))
   let reviewGestartet = false
 
@@ -377,6 +408,201 @@ async function fuehreFallDurch(bezeichnung, veraendereRepo, ergebnistext) {
     if (verstoesse.length !== 0) befunde.push(`(g) workflow-vorlagen/${datei} ist nicht mehr gültig: ${JSON.stringify(verstoesse)}`)
   }
   if (befunde.length === vor) console.log('✓ (g) Der Validator lehnt einen schreibenden AUTOMATISCH-Schritt ab (F-734); jede Vorlage unter workflow-vorlagen/ bleibt gültig.')
+}
+
+// ─── (h) Umbenennung AUS scripts/check-* heraus → Halt 1j (F-735, alter_pfad) ─────────────────
+{
+  const benenneUm = (repo) => {
+    mkdirSync(join(repo, 'tools'), { recursive: true })
+    git(repo, ['mv', 'scripts/check-x.mjs', 'tools/x.mjs'])
+  }
+  const ergebnis = await fuehreFallDurch('(h)', benenneUm, 'Gate verschoben.')
+  if (ergebnis !== null) {
+    if (ergebnis.status !== 'KLAERUNG_ERFORDERLICH' || ergebnis.reviewGestartet || !(ergebnis.grund ?? '').includes('scripts/check-x.mjs → tools/x.mjs (UMBENANNT)')) {
+      befunde.push(`(h) Umbenennung scripts/check-x.mjs → tools/x.mjs: erwartet Halt durch Regel 1j mit altem und neuem Pfad — erhalten ${JSON.stringify(ergebnis)}`)
+    } else {
+      console.log('✓ (h) Eine Umbenennung aus scripts/check-* heraus (tools/x.mjs) hält an — Regel 1j wertet den alten Pfad aus (F-735).')
+    }
+  }
+}
+
+// ─── (i) Änderung an biome.json → Halt 1j über die Default-Liste (F-735) ──────────────────────
+{
+  const ergebnis = await fuehreFallDurch('(i)', (repo) => writeFileSync(join(repo, 'biome.json'), '{ "linter": { "enabled": false } }\n'), 'Lint entschärft.', {
+    zusatzDateien: { 'biome.json': '{ "linter": { "enabled": true } }\n' },
+  })
+  if (ergebnis !== null) {
+    if (ergebnis.status !== 'KLAERUNG_ERFORDERLICH' || ergebnis.reviewGestartet || !(ergebnis.grund ?? '').includes('biome.json (GEAENDERT)')) {
+      befunde.push(`(i) Änderung an biome.json: erwartet Halt durch Regel 1j (Default-Liste) — erhalten ${JSON.stringify(ergebnis)}`)
+    } else {
+      console.log('✓ (i) Eine Änderung an biome.json hält an (Regel 1j, Default-Liste, F-735).')
+    }
+  }
+}
+
+// ─── (j)/(k) Fremdprojekt mit eigenen pruefketten_pfade (F-735) ──────────────────────────────
+const PYTHON_OPTIONEN = {
+  zusatzDateien: { 'pyproject.toml': '[tool.pytest.ini_options]\naddopts = "-q"\n', 'tests/test_alt.py': 'def test_alt():\n    assert True\n' },
+  // 'tests/**' (QA-Befund): (k) legt eine NEUE Datei unter einem gelisteten Muster an — so belegt
+  // (k) die NEU-Ausnahme, nicht nur einen Pfad außerhalb aller Muster.
+  startvorlageZusatz: { pruefketten_pfade: ['pyproject.toml', 'tests/**'] },
+}
+{
+  const ergebnis = await fuehreFallDurch('(j)', (repo) => writeFileSync(join(repo, 'pyproject.toml'), '[tool.pytest.ini_options]\naddopts = "-q --deselect tests"\n'), 'pytest-Konfiguration angepasst.', PYTHON_OPTIONEN)
+  if (ergebnis !== null) {
+    if (ergebnis.status !== 'KLAERUNG_ERFORDERLICH' || ergebnis.reviewGestartet || !(ergebnis.grund ?? '').includes('pyproject.toml (GEAENDERT)')) {
+      befunde.push(`(j) Fremdprojekt, pruefketten_pfade ["pyproject.toml", "tests/**"], Änderung an pyproject.toml: erwartet Halt durch Regel 1j — erhalten ${JSON.stringify(ergebnis)}`)
+    } else {
+      console.log('✓ (j) Fremdprojekt mit pruefketten_pfade ["pyproject.toml", "tests/**"]: eine Änderung an pyproject.toml hält an (Regel 1j, F-735).')
+    }
+  }
+}
+{
+  const ergebnis = await fuehreFallDurch('(k)', (repo) => writeFileSync(join(repo, 'tests', 'test_neu.py'), 'def test_neu():\n    assert True\n'), 'Neuer Test angelegt.', PYTHON_OPTIONEN)
+  if (ergebnis !== null) {
+    if (!ergebnis.reviewGestartet || /Prüfkette/.test(ergebnis.grund ?? '')) {
+      befunde.push(`(k) Fremdprojekt, nur neue Datei tests/test_neu.py: erwartet kein Halt durch Regel 1j, Review startet — erhalten ${JSON.stringify(ergebnis)}`)
+    } else {
+      console.log(`✓ (k) Dasselbe Fremdprojekt: eine nur neu angelegte tests/test_neu.py löst Regel 1j nicht aus, der Review startet (Endstatus ${ergebnis.status}).`)
+    }
+  }
+}
+
+// ─── (m) Startvorlage im Repo, der Lauf trägt selbst pruefketten_pfade ein → Halt 1j (F-735) ────
+// QA-/Review-Befund: sonst könnte ein Lauf Regel 1h selbst erfüllen oder Muster unbemerkt ändern.
+{
+  const setzeFeldSelbst = (repo) => {
+    const ordner = join(repo, 'startvorlagen')
+    const datei = join(ordner, readdirSync(ordner)[0])
+    writeFileSync(datei, JSON.stringify({ ...JSON.parse(readFileSync(datei, 'utf8')), pruefketten_pfade: ['nichts'] }, null, 2))
+  }
+  const ergebnis = await fuehreFallDurch('(m)', setzeFeldSelbst, 'Startvorlage ergänzt.', { startvorlageImRepo: true })
+  if (ergebnis !== null) {
+    if (ergebnis.status !== 'KLAERUNG_ERFORDERLICH' || ergebnis.reviewGestartet || !/Prüfkette durch den Lauf verändert: startvorlagen\/startvorlage-[^ ]+\.json \(GEAENDERT\)/.test(ergebnis.grund ?? '')) {
+      befunde.push(`(m) Lauf ändert die im Repo liegende Startvorlage: erwartet Halt durch Regel 1j — erhalten ${JSON.stringify(ergebnis)}`)
+    } else {
+      console.log('✓ (m) Ändert ein Lauf die im Projekt-Repo liegende Startvorlage (z. B. pruefketten_pfade), hält Regel 1j an (F-735).')
+    }
+  }
+}
+
+// ─── (l) Stack-Entscheidung ohne pruefketten_pfade in der Startvorlage → Halt 1h (F-735) ────────
+// Muster scripts/check-f42-projekt-harness.mjs (h): Architekt-Schritt mit 'kategorie: stack' und
+// erfasster menschlicher Entscheidung, danach der ausfuehrung-Schritt. Der Stub pflegt CLAUDE.md UND
+// ein referenzierendes ADR (F-714 erfüllt) — der einzige offene Punkt ist das fehlende
+// pruefketten_pfade. Der Grün-Gegenfall (Feld gesetzt → durch) steht dort als (h3). (l2): eine LEERE
+// Liste erfüllt die Pflicht ebenfalls nicht (QA-Befund) — 1j sähe sonst wieder nur die Node-Default-Liste.
+for (const [kennung, startvorlageZusatz] of [
+  ['(l)', {}],
+  ['(l2)', { pruefketten_pfade: [] }],
+]) {
+  const vor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f30-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const repoWurzel = baueFremdprojekt({ 'CLAUDE.md': '# Projekt\n\n## 🏗️ Technischer Stack [FÜLLUNG]\n\nNoch nicht entschieden.\n' })
+  const verzeichnis = mkdtempSync(join(tmpdir(), 'fixpaket-f30-vorlage-'))
+  const startvorlagePfad = schreibeStartvorlage(verzeichnis, startvorlageZusatz)
+  const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad))
+  const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
+  const workflowId = `fixpaket-f30-gate-l-${randomUUID()}`
+  const entscheidungArtefaktId = `workflow-entscheidung-${workflowId}`
+  const STACK_ENTSCHEIDUNG = {
+    frage: 'Welcher Stack?',
+    optionen: [
+      { titel: 'Python', vorteile: ['x'], nachteile: [] },
+      { titel: 'TypeScript auf Node', vorteile: [], nachteile: ['x'] },
+    ],
+    auswirkung_bestand: 'keine',
+    empfehlung: 'Python',
+    begruendung: 'Gate-Fixture.',
+    kategorie: 'stack',
+  }
+  const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
+    if (eingaben.rolle === 'ausfuehrung') {
+      writeFileSync(join(repoWurzel, 'CLAUDE.md'), '# Projekt\n\n## 🏗️ Technischer Stack\n\nPython (Gate (l)).\n')
+      mkdirSync(join(repoWurzel, 'docs', 'adr'), { recursive: true })
+      writeFileSync(join(repoWurzel, 'docs', 'adr', '0001-stack.md'), `# ADR 0001: Stack\n\nEntscheidung: ${entscheidungArtefaktId}\n`)
+      registriereLaufakteMitErgebnis(basisVerzeichnis, profilReferenz, laufId, 'Stack gepflegt.')
+    }
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel, installWurzel: INSTALL_WURZEL, startvorlagePfad }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const basisUrl = `http://127.0.0.1:${server.address().port}`
+  try {
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, { method: 'POST', body: JSON.stringify({ titel: 'Fixpaket-F30-Gate (l)', auftragstext: 'GATE-AUFTRAG-FIXPAKET-F30-L' }) })
+    const { auftragId } = await auftragAntwort.json().catch(() => ({}))
+    if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') throw new Error(`POST /api/auftraege erwartet 201, erhalten ${auftragAntwort.status}`)
+
+    const architektLaufId = `${workflowId}-architekt-lauf`
+    const ergebnisArchitektur = {
+      modus: 'feature',
+      zusammenfassung: 'Gate-Fixture (F-735).',
+      module: [],
+      adr_entwuerfe: [],
+      schema_entwuerfe: [],
+      entscheidungen_mensch: [STACK_ENTSCHEIDUNG],
+      capabilities_bedarf: [],
+      evidenz: [{ marker: '[Fakt]', aussage: 'Gate-Fixture.' }],
+    }
+    registriereLaufakteMitErgebnis(basisVerzeichnis, profilReferenz, architektLaufId, JSON.stringify(ergebnisArchitektur))
+    registriereWorkflowEntscheidung(basisVerzeichnis, workflowId, profilReferenz, 'schritt-1-architekt', [{ frage: STACK_ENTSCHEIDUNG.frage, gewaehlt: STACK_ENTSCHEIDUNG.empfehlung }], new Date().toISOString(), [])
+    const gemeinsam = { risiko: 'Gate-Fixture.', zeitgrenze_ms: 600000 }
+    registriereWorkflow(
+      {
+        workflow_schema: 'v0',
+        workflow_id: workflowId,
+        auftrag_id: auftragId,
+        version: 1,
+        ziel: 'Gate-Fixture (F-735, Regel 1h).',
+        status: 'LAEUFT',
+        aktiver_schritt_id: 'schritt-2-ausfuehrung',
+        grund: null,
+        grenzen: { max_schritte: 4, max_replans: 1 },
+        schritte: [
+          { schritt_id: 'schritt-1-architekt', rolle: 'architekt', werkzeugsatz: 'lesend', worker: 'codex', modell: 'gpt-6-astra', eingaben: [], output_schema: 'ergebnis-architektur', freigabe: 'ZWINGEND', ...gemeinsam, nachfolger: 'schritt-2-ausfuehrung', status: 'ERFOLGREICH', lauf_id: architektLaufId },
+          {
+            schritt_id: 'schritt-2-ausfuehrung',
+            rolle: 'ausfuehrung',
+            werkzeugsatz: 'schreibend',
+            worker: 'claude-code',
+            modell: 'claude-sonnet-5',
+            eingaben: ['artefakt:ergebnis-@schritt-1-architekt', 'artefakt:entscheidung-@schritt-1-architekt'],
+            output_schema: null,
+            freigabe: 'ZWINGEND',
+            freigabe_erteilt: true,
+            ...gemeinsam,
+            nachfolger: null,
+            status: 'OFFEN',
+            lauf_id: null,
+          },
+        ],
+      },
+      profilReferenz,
+      ladeOptionen
+    )
+    const start = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+    if (start.status !== 202) throw new Error(`POST .../starten erwartet 202, erhalten ${start.status} (${await start.text()})`)
+    const startzeit = Date.now()
+    let daten = null
+    while (Date.now() - startzeit < 5000) {
+      daten = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten ?? null
+      if (daten !== null && daten.status !== 'LAEUFT' && daten.status !== 'OFFEN') break
+      await verzoegerung(50)
+    }
+    const grund = String(daten?.grund ?? '')
+    if (daten?.status !== 'KLAERUNG_ERFORDERLICH' || !grund.includes('Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt') || grund.includes('F-714')) {
+      befunde.push(`${kennung} Stack-Entscheidung, CLAUDE.md+ADR gepflegt, Startvorlage mit ${JSON.stringify(startvorlageZusatz)}: erwartet KLAERUNG_ERFORDERLICH allein mit dem F-735-Grund — erhalten status=${daten?.status} grund=${JSON.stringify(daten?.grund)}`)
+    }
+  } catch (fehler) {
+    befunde.push(`${kennung} Vorbedingung gescheitert: ${fehler.message}`)
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+    raeumeVerzeichnis(repoWurzel)
+    raeumeVerzeichnis(verzeichnis)
+  }
+  if (befunde.length === vor) console.log(`✓ ${kennung} Stack entschieden, CLAUDE.md und ADR gepflegt, aber pruefketten_pfade ${kennung === '(l)' ? 'fehlt' : 'ist leer'} in der Startvorlage → Halt durch Regel 1h mit eigenem Grund (F-735).`)
 }
 
 // process.exitCode statt process.exit() (Muster check-f17-rollenvertrag.mjs): HTTP-Testserver

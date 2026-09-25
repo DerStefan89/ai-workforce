@@ -866,6 +866,18 @@ test("Ausgang 'starte': stackNichtGefuellt false (CLAUDE.md real gefüllt) setzt
   assert.equal(ergebnis.aktiverSchrittId, 'schritt-2')
 })
 
+test("F-735 Regel 1h: stackPruefkettenPfadeFehlen true hält mit eigenem Grund; false setzt fort", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+  const halt = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', stackNichtGefuellt: false, stackPruefkettenPfadeFehlen: true })
+  assert.equal(halt.art, 'haltKlaerung')
+  assert.match(halt.art === 'haltKlaerung' ? halt.grund : '', /Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt/)
+  assert.doesNotMatch(halt.art === 'haltKlaerung' ? halt.grund : '', /F-714/)
+  assert.equal(ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', stackNichtGefuellt: false, stackPruefkettenPfadeFehlen: false }).art, 'starte')
+})
+
 test('Regel 1h greift NICHT bei einer anderen Rolle — ein irrtümlich mitgesendetes stackNichtGefuellt bleibt folgenlos', () => {
   const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'code-reviewer', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', stackNichtGefuellt: true })

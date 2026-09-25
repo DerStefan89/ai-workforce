@@ -553,6 +553,7 @@ export function baueStackEntscheidungsInstruktion(entscheidungArtefaktId: string
     "Eine menschliche Entscheidung mit 'kategorie': 'stack' liegt vor (siehe Eingabe 'entscheidung-@' oben) — setze sie VERPFLICHTEND um, nicht nur als Kontext:",
     "- Fülle in CLAUDE.md den Abschnitt 'Technischer Stack' mit der gewählten Option (Framework/Sprache/Datenbank/Hosting) — entferne dabei den Füllungs-Marker '[FÜLLUNG]' aus der Überschriftzeile.",
     `- Lege ein ADR unter 'docs/adr/' an (fortlaufende Nummer, Muster 'docs/adr/TEMPLATE.md'), das die Entscheidung dokumentiert und ausdrücklich auf das Entscheidungsartefakt '${entscheidungArtefaktId}' verweist.`,
+    "- Nenne im ADR unter der Überschrift 'Prüfkette' die Glob-Muster für das Startvorlagenfeld 'pruefketten_pfade' (Dateien, die die Prüfkette des gewählten Stacks steuern; relativ zur Repo-Wurzel, '*'/'**' erlaubt, kein '..'). Beispiel Python: [\"pyproject.toml\", \"pytest.ini\", \"setup.cfg\", \"tests/conftest.py\", \".github/workflows/*\"]. Die Startvorlage selbst trägt der Mensch nach — solange das Feld dort fehlt oder leer ist, hält der Workflow (F-735).",
     'Beide Schreibziele sind Pflicht, nicht optional: ohne sie bleibt der Stack für jeden künftigen Architektur-Lauf gegen dieses Projekt offen (F-714) — der Bau darf sich nicht darauf verlassen, dass ein späterer Lauf das nachholt.',
   ]
 }
