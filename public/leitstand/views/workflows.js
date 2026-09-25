@@ -319,6 +319,26 @@ const URTEIL_STATUS_TEXT = {
   nicht_lesbar: 'Das Urteil konnte nicht aus dem Rohstrom des Review-Laufs gelesen werden.',
 }
 
+/**
+ * F35 WS-2 (features/F35/feature.md): kompakte Tabelle AK · Urteil · Beleg unter dem
+ * bestehenden Urteil-Block — kein eigener Detailabschnitt (Auftrag Punkt 5, "bestehende
+ * Ansicht erweitern, keine neue Ansicht"). Leer/fehlend (Auftrag ohne Akzeptanzkriterien, oder
+ * eine Fassung vor F35 WS-2) zeigt nichts an — kein leeres Tabellengerüst ohne Inhalt.
+ * @param akUrteile - projektion.ak_urteile aus GET .../abnahme, oder undefined
+ * @returns HTML-Block, oder '' wenn nichts anzuzeigen ist
+ */
+function renderAkUrteile(akUrteile) {
+  if (!Array.isArray(akUrteile) || akUrteile.length === 0) return ''
+  const zeilen = akUrteile
+    .map(
+      (eintrag) =>
+        `<tr><td>${escapeHtml(eintrag.ak_id ?? '')}</td><td>${escapeHtml(eintrag.urteil ?? '')}</td><td>${escapeHtml(eintrag.beleg ?? '')}</td></tr>`
+    )
+    .join('')
+  return `<h4>Urteil je Akzeptanzkriterium</h4>
+    <table class="lauf-kopfdaten"><thead><tr><th>AK</th><th>Urteil</th><th>Beleg</th></tr></thead><tbody>${zeilen}</tbody></table>`
+}
+
 /** @param projektion - abnahme.urteil aus GET .../abnahme @returns HTML-Block */
 function renderUrteil(projektion) {
   if (projektion.status !== 'ok') {
@@ -332,7 +352,8 @@ function renderUrteil(projektion) {
     .join('')
   return `<p><strong>Urteil:</strong> ${escapeHtml(projektion.urteil)} <span class="unbekannt">(Lauf <code>${escapeHtml(projektion.laufId)}</code> — nicht bindend, siehe schemas/ergebnis-code-reviewer.schema.json)</span></p>
     ${projektion.befunde.length === 0 ? '<p class="leer">Keine Befunde.</p>' : `<table class="lauf-kopfdaten"><thead><tr><th>Schwere</th><th>Fundstelle</th><th>Zusammenfassung</th><th>Beleg</th></tr></thead><tbody>${befundeZeilen}</tbody></table>`}
-    <p><strong>Empfehlung:</strong> ${projektion.empfehlung ? escapeHtml(projektion.empfehlung) : '<span class="unbekannt">keine</span>'}</p>`
+    <p><strong>Empfehlung:</strong> ${projektion.empfehlung ? escapeHtml(projektion.empfehlung) : '<span class="unbekannt">keine</span>'}</p>
+    ${renderAkUrteile(projektion.ak_urteile)}`
 }
 
 /**

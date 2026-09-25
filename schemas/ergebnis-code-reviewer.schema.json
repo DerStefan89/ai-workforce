@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/ergebnis-code-reviewer.schema.json",
   "title": "Rollen-Ergebnis: code-reviewer",
-  "description": "F16 WS-1 (AK6). Erstes Rollen-Ergebnisschema für --output-schema. Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-code-reviewer\" — der Name wird zu schemas/<name>.schema.json aufgelöst (kein Pfadtrennzeichen erlaubt, AK10), nie als freier Pfad übergeben. additionalProperties:false auf JEDER Objektebene ist hier keine Stilfrage, sondern Pflicht der Modell-API im Strict-Modus: fehlt das Feld, antwortet sie mit HTTP 400 invalid_json_schema ('additionalProperties' is required to be supplied and to be false) und es kommt gar kein Ergebnis zustande — real gemessen im Spike, state/tp-m3-01-codex.md, Lauf 3. Dies ist ausdrücklich KEIN Rollenvertrag (F-184): das Schema beschreibt allein die Form der Antwort, nicht die Pflichten, Befugnisse oder Abnahmekriterien der Rolle; der Rollenvertrag kommt mit F17.",
+  "description": "F16 WS-1 (AK6). Erstes Rollen-Ergebnisschema für --output-schema. Ein WORKFLOW_V0-Schritt referenziert es als output_schema: \"ergebnis-code-reviewer\" — der Name wird zu schemas/<name>.schema.json aufgelöst (kein Pfadtrennzeichen erlaubt, AK10), nie als freier Pfad übergeben. additionalProperties:false auf JEDER Objektebene ist hier keine Stilfrage, sondern Pflicht der Modell-API im Strict-Modus: fehlt das Feld, antwortet sie mit HTTP 400 invalid_json_schema ('additionalProperties' is required to be supplied and to be false) und es kommt gar kein Ergebnis zustande — real gemessen im Spike, state/tp-m3-01-codex.md, Lauf 3. Dies ist ausdrücklich KEIN Rollenvertrag (F-184): das Schema beschreibt allein die Form der Antwort, nicht die Pflichten, Befugnisse oder Abnahmekriterien der Rolle; der Rollenvertrag kommt mit F17. F35 WS-2 (features/F35/feature.md, löst state/findings.md F-732-Umfeld/M5-Bestehensbedingung 2): 'ak_urteile' ist zusätzlich PFLICHT (Strict-Modus verlangt jedes Feld in 'required', s.o.) — trägt der Auftrag keine strukturierten Akzeptanzkriterien (src/auftrag/types.ts' 'akzeptanzkriterien'), liefert der Reviewer ein leeres Array; src/ak-pruefung/index.ts' pruefeAkUrteile prüft das Ergebnis gegen den Auftrag.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["urteil", "befunde", "empfehlung"],
+  "required": ["urteil", "befunde", "empfehlung", "ak_urteile"],
   "properties": {
     "urteil": {
       "enum": ["BEREIT", "BEREIT_NACH_KORREKTUR", "BLOCKIERT"],
@@ -38,6 +38,31 @@
       "type": "string",
       "minLength": 1,
       "description": "Die empfohlene nächste Handlung. Nicht bindend: die Entscheidung trifft der Mensch."
+    },
+    "ak_urteile": {
+      "type": "array",
+      "description": "F35 WS-2. Je Akzeptanzkriterium des Auftrags (src/auftrag/types.ts' 'akzeptanzkriterien') genau ein Urteil mit Beleg. Trägt der Auftrag keine Akzeptanzkriterien, ist dieses Array leer — sonst prüft src/ak-pruefung/index.ts' pruefeAkUrteile gegen die Auftrags-AKs (fehlende/unbekannte/doppelte ak_id, Urteil ungleich ERFUELLT, leerer Beleg).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ak_id", "urteil", "beleg"],
+        "properties": {
+          "ak_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Muss einer 'akzeptanzkriterien[].id' des Auftrags entsprechen (Muster 'AK<n>')."
+          },
+          "urteil": {
+            "enum": ["ERFUELLT", "NICHT_ERFUELLT", "NICHT_PRUEFBAR"],
+            "description": "Geschlossene Wertemenge, wie 'urteil' oben — nur 'ERFUELLT' gilt als bestanden. 'NICHT_PRUEFBAR' nur mit einer Begründung im Beleg."
+          },
+          "beleg": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Konkreter Beleg — Datei:Zeile, Testname oder beobachtetes Verhalten. Ein AK ohne Beleg gilt als nicht geprüft."
+          }
+        }
+      }
     }
   }
 }

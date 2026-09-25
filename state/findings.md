@@ -10138,3 +10138,39 @@ Auswirkung: Mittel — ein Feature-Bau könnte unbemerkt ohne Review-Urteil je A
 Maßnahme: Kontrolltiefe-Untergrenze `standard` für `herkunft.art: 'feature_akte'` (Muster `projekt_interview` → `hoch`, F39 WS-2a) — fast-lane damit für diese Herkunft ausgeschlossen, `hoch` bleibt möglich.
 Status: in Arbeit (F35 WS-1).
 Feature/Run: F35 WS-1, 25.09.2026.
+
+**F-730** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Ein `ausfuehrung`-Lauf kann Harness-Subagenten und Skills selbst aufrufen, unsichtbar in der Laufakte.
+Beschreibung: Ein `ausfuehrung`-Lauf (`claude-code`, `--setting-sources project`, `src/claude-code-gateway/index.ts` ~Z. 371) kann Harness-Subagenten (`.claude/agents`) und Skills (`.claude/skills`) selbst aufrufen — das wird weder gemessen noch in der Laufakte sichtbar. Reine Beobachtung, kein Verbot.
+Fundstelle: `src/claude-code-gateway/index.ts` ~Z. 371.
+Auswirkung: Niedrig — kein bekannter Missbrauchsfall, aber ein Sichtbarkeitsloch im Wirksamkeitsnachweis eines Laufs.
+Maßnahme: In F36 Subagent- und Skill-Aufrufe aus dem Rohstrom in die Laufakte projizieren.
+Status: offen.
+Feature/Run: F35 WS-2, 25.09.2026.
+
+**F-731** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `qa`/`code-reviewer`/`architecture-advisor` existieren gleichnamig als Harness-Subagent UND als Workforce-Rolle, ohne dass das Glossar beide erklärt.
+Beschreibung: `qa`, `code-reviewer` und `architecture-advisor` existieren gleichnamig als Harness-Subagent (`.claude/agents`) und als Workforce-Rolle (`src/rollen`) mit getrennten Instruktionen; `docs/harness/HARNESS-GLOSSARY.md` erklärt nur `architecture-advisor`.
+Fundstelle: `.claude/agents/*.md`; `src/rollen/index.ts` (ROLLENVERTRAEGE); `docs/harness/HARNESS-GLOSSARY.md`.
+Auswirkung: Niedrig — Verwechslungsgefahr für einen Menschen, der die beiden Ebenen nicht kennt; kein Laufzeitrisiko (getrennte Instruktionen bleiben tatsächlich getrennt).
+Maßnahme: Glossar ergänzen; mittelfristig eine gemeinsame Instruktionsquelle.
+Status: offen.
+Feature/Run: F35 WS-2, 25.09.2026.
+
+**F-732** · `TECH_DEBT` · P2 · **behoben** (F35 WS-2)
+Titel: `leseTopLevelBullets` erkannte ausschließlich `- `-Bullets — andere Listenformen lieferten 0 AK statt eines Ergebnisses.
+Beschreibung: `src/feature-auftrag/index.ts`' `leseTopLevelBullets` (WS-1) erkannte am Zeilenanfang ausschließlich `- `. Eine Feature-Akte mit `*`- oder nummerierten Listen (`1.`/`1)`) unter `## Akzeptanzkriterien` lieferte dadurch 0 AK-Bullets — `baueAuftragAusFeatureAkte` lehnte den Auftrag mit `ok:false` ab, obwohl die Akte inhaltlich vollständige AKs trug. Eine Markdown-Checkbox (`- [ ]`/`- [x]`) blieb zusätzlich Teil des AK-Texts.
+Fundstelle: `src/feature-auftrag/index.ts`, `leseTopLevelBullets`.
+Auswirkung: Mittel — eine plausible, verbreitete Markdown-Schreibweise für Listen scheiterte an der Ableitung, ohne dass der Fehlertext den wahren Grund (Bullet-Form) nannte.
+Maßnahme: `BULLET_EINLEITUNG_MUSTER` erkennt `-`, `*`, `<n>.` und `<n>)`; eine führende Checkbox wird vom AK-Text entfernt. `src/product-coach/index.ts` (Auftrag aus dem Projekt-Interview) gibt zusätzlich das AK-Format `- AK<n>: <prüfbarer Satz>` verbindlich vor, damit neu erzeugte Akten die unterstützte Form treffen.
+Status: behoben.
+Feature/Run: F35 WS-2, 25.09.2026.
+
+**F-733** · `TECH_DEBT` · P2 · offen
+Titel: Der Kontrollzustand wird nie committet, obwohl `kontrollzustand/` laut `.gitignore` getrackt ist.
+Beschreibung: `.gitignore` (Z. 76–77) trackt `kontrollzustand/`, aber der Ordner wird in der Praxis nie committet. Über 300 ungetrackte Laufartefakte liegen auf `main` (Jarvis-, Coach- und Router-Läufe, Workflows, Entscheidungen, Checkpoints 31–79 von `lineage-chat-ai-workforce`).
+Fundstelle: `git status` auf `feat/f35-ws1-feature-auftrag`, 25.09.2026; `.gitignore` Z. 76–77.
+Auswirkung: Mittel — Git führt für diesen Ordner real nicht: bei einem Neu-Klon oder Reset geht der Zustand verloren; `git status` ist unlesbar und verleitet zu `git add -A`.
+Maßnahme: Commit-Politik für den Kontrollzustand festlegen, oder ihn ausdrücklich lokal halten und `.gitignore` entsprechend anpassen (Entscheidung Mensch, eigenes Fixpaket).
+Status: offen.
+Feature/Run: F35 WS-2, 25.09.2026.

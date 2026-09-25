@@ -61,13 +61,25 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
   `ABGESCHLOSSEN`/`ABGEBROCHEN` ist), der denselben Routen-/
   Fortschrittsbereich wie das bestehende Finding-Click-to-Work (F22 WS-2)
   nutzt.
-- **WS-2 — Urteil je AK im Review.** Das Reviewer-Ausgabeschema trägt
-  zusätzlich `ak_urteile` (je AK aus `akzeptanzkriterien` ein Urteil
-  `ERFUELLT`/`NICHT_ERFUELLT`/`OHNE_BELEG`, mit Beleg). Neue Workflow-Regel:
-  ein fehlendes oder nicht erfülltes AK, oder ein AK ohne Beleg, blockiert
-  den Workflow (`BLOCKIERT`); eine erkannte Nicht-Ziel-Verletzung wird als
-  Befund erfasst. Voraussetzung: WS-1s `akzeptanzkriterien`-Feld am
-  Auftrag.
+- **WS-2 — Urteil je AK im Review (umgesetzt).** Das Reviewer-Ausgabeschema
+  (`schemas/ergebnis-code-reviewer.schema.json`) trägt zusätzlich das
+  Pflichtfeld `ak_urteile` (je AK aus `akzeptanzkriterien` ein Urteil
+  `ERFUELLT`/`NICHT_ERFUELLT`/`NICHT_PRUEFBAR`, mit Beleg; ohne AKs am
+  Auftrag ein leeres Array). Die reine Funktion `pruefeAkUrteile`
+  (`src/ak-pruefung/index.ts`) vergleicht `ak_urteile` gegen die
+  Auftrags-AKs (fehlende/unbekannte/doppelte `ak_id`, Urteil ≠ `ERFUELLT`,
+  leerer Beleg). Neue Workflow-Regel 1i (`src/workflow/index.ts`) hält den
+  Workflow bei jedem Verstoß an (`KLAERUNG_ERFORDERLICH`), AUCH wenn das
+  Gesamturteil `BEREIT`/`BEREIT_NACH_KORREKTUR` lautet — die Prüfung ist der
+  Regel 1b nachgelagert, nicht ersetzend. Trägt der Auftrag Akzeptanz-
+  kriterien, hängt `starteWorkflowSchritt`
+  (`scripts/leitstand-server.mjs`) dem `code-reviewer`-Auftragstext die
+  AK-Liste, die Nicht-Ziele und die Belegpflicht an
+  (`baueAkPruefInstruktion`); eine Nicht-Ziel-Verletzung ist laut dieser
+  Instruktion ein eigener Befund mit `schwere HOCH`. Die Workflow-
+  Detailansicht (`public/leitstand/views/workflows.js`) zeigt eine
+  kompakte Tabelle AK · Urteil · Beleg unter dem bestehenden Urteil-Block.
+  Voraussetzung: WS-1s `akzeptanzkriterien`-Feld am Auftrag.
 - **WS-3 — ADJUST-Automatik.** Löst nach E-M5-4 automatisch
   `ANPASSUNG_ANGEFORDERT` aus offenen Befunden aus (statt eines manuellen
   Korrekturauftrags) — der erste Schritt jeder Vorlage bleibt weiterhin
@@ -91,6 +103,22 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
 - AK7 Das Gate belegt die Grün- und Rot-Fälle am realen Handler gegen ein
   Fremdprojekt.
 - AK8 `npm run check` ist grün.
+- AK9 (WS-2) Das Reviewer-Schema trägt `ak_urteile` Strict-Modus-konform
+  (`schemas/ergebnis-code-reviewer.schema.json`, F-639-Gate bleibt grün).
+- AK10 (WS-2) `pruefeAkUrteile` erkennt fehlende, unbekannte und doppelte
+  `ak_id`, ein Urteil ≠ `ERFUELLT` und einen leeren Beleg; ohne AKs am
+  Auftrag gibt es keine Verstöße.
+- AK11 (WS-2) Der Reviewer-Auftragstext enthält bei AKs die AK-Liste und
+  die Nicht-Ziele; ohne AKs ist er bitgenau unverändert.
+- AK12 (WS-2) Regel 1i hält bei AK-Verstößen an, auch wenn das
+  Gesamturteil `BEREIT` ist; der Grund nennt die Verstöße.
+- AK13 (WS-2) Die Workflow-Detailansicht zeigt das Urteil je AK.
+- AK14 (WS-2) `leseTopLevelBullets` erkennt `-`, `*`, `1.` und `1)` und
+  entfernt eine führende Checkbox (F-732); das Projekt-Interview gibt
+  `- AK<n>: …` als Format vor.
+- AK15 (WS-2) Das Gate `check-f35-ws2-urteil-je-ak.mjs` belegt die Fälle
+  (a)–(e) am realen Aufrufpfad (echter HTTP-Rundlauf, gestubbter Worker).
+- AK16 (WS-2) `npm run check` ist grün.
 
 ## Dependencies
 - F11 (Auftrag-Modul) — `registriereAuftrag`/`validiereAuftragDaten`, die

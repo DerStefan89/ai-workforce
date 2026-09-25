@@ -491,6 +491,61 @@ test('Regel 1 schlägt Regel 1b: ein VERWEIGERTER Post-Build-Review hält über 
   assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
 })
 
+// ─── Regel 1i: AK-Verstöße (F35 WS-2, löst M5-Bestehensbedingung 2) ─────────
+
+test("Ausgang 'haltKlaerung': akVerstoesse hält an, OBWOHL das Gesamturteil BEREIT ist", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    urteil: 'BEREIT',
+    akVerstoesse: ["AK 'AK2' hat kein Urteil in 'ak_urteile'"],
+  })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /AK2/)
+})
+
+test("Ausgang 'fertig': alle AK vollständig und ERFUELLT (leere akVerstoesse) setzt normal fort", () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    urteil: 'BEREIT',
+    akVerstoesse: [],
+  })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1i bleibt folgenlos ohne akVerstoesse-Feld (Auftrag ohne Akzeptanzkriterien, Alt-Verhalten)', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BEREIT' })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1i greift NICHT ohne output_schema ergebnis-code-reviewer — ein irrtümlich mitgesendetes akVerstoesse bleibt folgenlos', () => {
+  const workflow = typisierterWorkflow([typisierterSchritt('schritt-1', null, { status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', akVerstoesse: ['irgendein Verstoß'] })
+  assert.deepStrictEqual(ergebnis, { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('Regel 1b schlägt Regel 1i: ein BLOCKIERT-Urteil hält bereits über Regel 1b an, unabhängig von akVerstoesse', () => {
+  const workflow = typisierterWorkflow([
+    typisierterSchritt('schritt-1', null, { worker: 'codex', output_schema: 'ergebnis-code-reviewer', status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+  ])
+  const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', urteil: 'BLOCKIERT', akVerstoesse: [] })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /'BLOCKIERT'/)
+})
+
 // ─── Regel 1c: Architektur-Entscheidung (F39 WS-2b, löst F-632 Teil b) ──────
 
 test("Ausgang 'haltKlaerung': ein Ergebnis-architektur-Verstoß hält an, statt fortzusetzen", () => {

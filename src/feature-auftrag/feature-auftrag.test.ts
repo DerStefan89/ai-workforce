@@ -107,3 +107,73 @@ test('AK3: fehlender Abschnitt Nicht-Ziele liefert ein leeres nicht_ziele-Array,
   assert.deepStrictEqual(ergebnis.nicht_ziele, [])
   assert.ok(!ergebnis.auftragstext.includes('Nicht-Ziele'))
 })
+
+// ─── F-732 (state/findings.md, behoben F35 WS-2): leseTopLevelBullets erkannte vor der Behebung
+// ausschließlich '- '-Bullets — '*'- und nummerierte Listen lieferten 0 AK statt der erwarteten
+// Einträge. Jede Form einzeln, plus eine führende Checkbox.
+
+test("F-732: '*'-Bullets werden wie '-'-Bullets als Top-Level-AK erkannt", () => {
+  const akte = `## Ziel
+Ziel-Text.
+
+## Akzeptanzkriterien
+* Erstes AK mit Sternchen.
+* AK5: Zweites AK mit Sternchen und expliziter ID.
+`
+  const ergebnis = baueAuftragAusFeatureAkte(akte, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.deepStrictEqual(ergebnis.akzeptanzkriterien, [
+    { id: 'AK1', text: 'Erstes AK mit Sternchen.' },
+    { id: 'AK5', text: 'Zweites AK mit Sternchen und expliziter ID.' },
+  ])
+})
+
+test("F-732: nummerierte Listen ('1. ') werden als Top-Level-AK erkannt", () => {
+  const akte = `## Ziel
+Ziel-Text.
+
+## Akzeptanzkriterien
+1. Erstes nummeriertes AK.
+2. AK7: Zweites nummeriertes AK mit expliziter ID.
+`
+  const ergebnis = baueAuftragAusFeatureAkte(akte, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.deepStrictEqual(ergebnis.akzeptanzkriterien, [
+    { id: 'AK1', text: 'Erstes nummeriertes AK.' },
+    { id: 'AK7', text: 'Zweites nummeriertes AK mit expliziter ID.' },
+  ])
+})
+
+test("F-732: nummerierte Listen mit ')' ('1) ') werden als Top-Level-AK erkannt", () => {
+  const akte = `## Ziel
+Ziel-Text.
+
+## Akzeptanzkriterien
+1) Erstes AK mit Klammer.
+2) Zweites AK mit Klammer.
+`
+  const ergebnis = baueAuftragAusFeatureAkte(akte, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.deepStrictEqual(ergebnis.akzeptanzkriterien, [
+    { id: 'AK1', text: 'Erstes AK mit Klammer.' },
+    { id: 'AK2', text: 'Zweites AK mit Klammer.' },
+  ])
+})
+
+test('F-732: eine führende Checkbox ([ ]/[x]/[X]) wird vom AK-Text entfernt', () => {
+  const akte = `## Ziel
+Ziel-Text.
+
+## Akzeptanzkriterien
+- [ ] Offenes AK ohne Häkchen.
+- [x] AK9: Abgehaktes AK klein.
+- [X] Abgehaktes AK groß.
+`
+  const ergebnis = baueAuftragAusFeatureAkte(akte, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.deepStrictEqual(ergebnis.akzeptanzkriterien, [
+    { id: 'AK1', text: 'Offenes AK ohne Häkchen.' },
+    { id: 'AK9', text: 'Abgehaktes AK klein.' },
+    { id: 'AK3', text: 'Abgehaktes AK groß.' },
+  ])
+})

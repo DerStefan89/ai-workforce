@@ -464,6 +464,7 @@ import {
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
+import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
@@ -3092,6 +3093,12 @@ function leseUrteilAusLaufakte(laufakteDaten) {
     urteil: geparst.urteil,
     befunde: Array.isArray(geparst.befunde) ? geparst.befunde : [],
     empfehlung: typeof geparst.empfehlung === 'string' ? geparst.empfehlung : null,
+    // F35 WS-2: roh mitgereicht (kein eigenes Parsen/Validieren hier — Regel 1i in
+    // src/workflow/index.ts liest den Wert ausschließlich über akVerstoesse, das der
+    // Aufrufer über pruefeAkUrteile berechnet, nicht über dieses Feld direkt). Ein fehlendes
+    // oder nicht-array-förmiges ak_urteile wird hier zu [] normalisiert — dieselbe Lesart wie
+    // 'befunde' zwei Zeilen darüber.
+    ak_urteile: Array.isArray(geparst.ak_urteile) ? geparst.ak_urteile : [],
   }
 }
 
@@ -4266,6 +4273,19 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
     }
 
+    // F35 WS-2 (features/F35/feature.md, löst M5-Bestehensbedingung 2 "jedes AK trägt am Ende
+    // ein Urteil im Review"): ein 'code-reviewer'-Schritt bekommt zusätzlich die AK-Liste und
+    // die Nicht-Ziele des Auftrags angehängt, WENN der Auftrag strukturierte Akzeptanzkriterien
+    // trägt (WS-1, auftragVersion.daten.akzeptanzkriterien) — reine Funktion baueAkPruefInstruktion
+    // (src/ak-pruefung/index.ts, Muster baueReviewKorrekturInstruktion). Trägt der Auftrag KEINE
+    // Akzeptanzkriterien, bleibt auftragstext an dieser Stelle bitgenau unverändert (AK3). Nach
+    // dem F-648-Block oben (Reihenfolge unerheblich für dessen eigene Vorbedingung, aber ein
+    // Korrektur-Zusatzblock VOR dem AK-Block hält die Auftrags-Grundlage — Ziel/AK/Nicht-Ziele —
+    // näher an ihrer Ursprungsquelle als eine Klarstellung, die sich erst DARAUF bezieht).
+    if (schritt.rolle === 'code-reviewer' && Array.isArray(auftragVersion.daten.akzeptanzkriterien) && auftragVersion.daten.akzeptanzkriterien.length > 0) {
+      auftragstext = `${auftragstext}\n\n${baueAkPruefInstruktion(auftragVersion.daten.akzeptanzkriterien, auftragVersion.daten.nicht_ziele ?? [])}`
+    }
+
     // Lineage-Verweis auf den Vorschritt: die lauf_id des Schritts, dessen nachfolger auf
     // diesen zeigt und der real gelaufen ist. Beim ERSTEN Schritt gibt es keinen — dann bleibt
     // vorgaengerLaufId weg. Kein neuer Mechanismus, nur die bestehende Verweisbildung aus
@@ -4464,6 +4484,18 @@ export function erzeugeRequestHandler(optionen = {}) {
         // rohen urteil-String, deshalb hier extrahiert.
         if (laufakteVersion !== null) urteil = leseUrteilAusLaufakte(laufakteVersion.daten)?.urteil ?? null
       }
+      // Regel 1i (F35 WS-2, löst M5-Bestehensbedingung 2): dasselbe zweite, eigenständige Lesen
+      // wie beim urteil-Block direkt darüber, für denselben Lauf — pruefeAkUrteile
+      // (src/ak-pruefung/index.ts) vergleicht die am Auftrag hinterlegten akzeptanzkriterien
+      // (WS-1) mit dem geparsten ak_urteile-Feld des Reviewer-Ergebnisses. Trägt der Auftrag
+      // keine Akzeptanzkriterien, liefert pruefeAkUrteile IMMER [] (Alt-Verhalten, AK3) — das
+      // Feld bleibt dann folgenlos für Regel 1i, unabhängig vom gelesenen urteil.
+      let akVerstoesse
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
+        const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const geparstFuerAk = laufakteVersion !== null ? leseUrteilAusLaufakte(laufakteVersion.daten) : null
+        akVerstoesse = pruefeAkUrteile(auftragVersion.daten.akzeptanzkriterien, geparstFuerAk?.ak_urteile ?? [])
+      }
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
       // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
       // fragt die Kernartefakt-Kette 'workflow-entscheidung-<workflowId>' NUR ab, wenn das Ergebnis
@@ -4603,6 +4635,7 @@ export function erzeugeRequestHandler(optionen = {}) {
             ergebnis: schrittStatus,
             laufId,
             urteil,
+            akVerstoesse,
             architekturVerstoesse,
             architekturEntscheidungAusstehend,
             architekturAnzahlFragen,
@@ -5016,7 +5049,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           urteilProjektion =
             geparst === null
               ? { status: 'nicht_lesbar', laufId: reviewSchritt.lauf_id }
-              : { status: 'ok', laufId: reviewSchritt.lauf_id, urteil: geparst.urteil, befunde: geparst.befunde, empfehlung: geparst.empfehlung }
+              : { status: 'ok', laufId: reviewSchritt.lauf_id, urteil: geparst.urteil, befunde: geparst.befunde, empfehlung: geparst.empfehlung, ak_urteile: geparst.ak_urteile }
         }
       }
 

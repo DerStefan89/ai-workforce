@@ -253,6 +253,18 @@ export interface SchrittErgebnis {
    * folgenlos, wie ein fehlendes 'scopeVerletzung' für Regel 1g.
    */
   stackNichtGefuellt?: boolean
+  /**
+   * OPTIONAL (F35 WS-2, löst M5-Bestehensbedingung 2 "jedes AK trägt am Ende ein Urteil im
+   * Review"): die Verstöße von pruefeAkUrteile (src/ak-pruefung/index.ts) gegen das ak_urteile-
+   * Feld eines gerade gelaufenen 'code-reviewer'-Laufs (output_schema 'ergebnis-code-reviewer') —
+   * dasselbe Berechnungsmuster wie 'architekturVerstoesse' oben: der Aufrufer
+   * (scripts/leitstand-server.mjs) lädt den Auftrag und ruft pruefeAkUrteile auf, dieses Modul
+   * bleibt abhängigkeitsarm und importiert src/ak-pruefung/ nicht. Ein leeres Array heißt: keine
+   * WS-1-Kopplung ODER alle AK vollständig und ERFUELLT. Ein fehlendes Feld heißt „nicht geprüft"
+   * (jeder Schritt ohne dieses output_schema) und bleibt für Regel 1i folgenlos, wie ein
+   * fehlendes 'urteil' für Regel 1b.
+   */
+  akVerstoesse?: string[]
 }
 
 /**
