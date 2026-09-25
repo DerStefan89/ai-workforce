@@ -9984,13 +9984,13 @@ Maßnahme: Der Auftrags-Scope muss gegenüber dem Architekturentwurf Vorrang hab
 Status: gelöst. Zwei Hälften, beide additiv: (1) `baueUmsetzungsInstruktion` (`src/architekt/index.ts`) bekommt einen `modus`-Parameter — im Projektmodus verlangt sie ausdrücklich Scope-Vorrang und verbietet Produktcode/Schemas/Skripte/`package.json`/`scripts/check-*`, statt wie im Feature-Modus zur Umsetzung von ADRs/Schemas anzuleiten; Default (`'feature'`) bleibt bitgenau die bisherige Instruktion. (2) `pruefeProjektmodusScope` prüft NACH dem Lauf deterministisch die real geänderten Dateien (aus der bestehenden Änderungsübersicht, F23 WS-0) eines Projektmodus-`ausfuehrung`-Schritts gegen die Allowlist `docs/**`/`features/**`/`CLAUDE.md`; neue Regel 1g (`src/workflow/index.ts`) hält den Workflow bei einem Verstoß an (`KLAERUNG_ERFORDERLICH`, Grund nennt die Datei(en)), real verdrahtet in `scripts/leitstand-server.mjs`. Feature-Modus bleibt strukturell unberührt (Feld nur im Projektmodus berechnet). Real belegt am Aufrufpfad (Rot-/Grün-/Featuremodus-Regressionsfall): `scripts/check-f42-projekt-harness.mjs` Block (g), `state/gates.md` (2026-09-25).
 Feature/Run: F42 WS-3, Lauf `3e0c0a31`, 25.09.2026; gelöst F42 WS-4, 25.09.2026.
 
-**F-713** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-713** · `HARNESS_IMPROVEMENT` · P1 · offen
 Titel: `ausfuehrung` kann die Prüfkette ändern, mit der sie selbst gemessen wird.
 Beschreibung: Derselbe Lauf `3e0c0a31` (siehe F-712) erweiterte `package.json`s `check:template`-Kette um `scripts/check-schemas.mjs` — ein von demselben Lauf neu geschriebenes Skript. Der anschließende Prüfschritt lief damit gegen eine Prüfkette, die der zu prüfende Lauf selbst verändert hatte, nicht gegen den Stand vor dem Lauf.
 Fundstelle: Lauf `3e0c0a31` (`package.json`-Diff, `check:template`-Zeile); F-712 (derselbe Lauf, Scope-Verstoß insgesamt).
 Auswirkung: Mittel — ein "GRÜN" des Prüfschritts ist kein verlässlicher Nachweis mehr, wenn der geprüfte Lauf die Prüfkette selbst erweitern kann; ein Fehler im neuen Skript würde sich selbst nie als Rot melden, weil er erst nach der Erweiterung existiert.
 Maßnahme: Änderungen an der Prüfkette selbst (`package.json`-Check-Zeilen, neue Gate-Skripte) sollten gesondert markiert werden, oder der Prüfschritt eines Laufs sollte grundsätzlich gegen die Prüfkette vom Stand VOR dem Lauf laufen, nicht gegen die vom Lauf selbst veränderte.
-Status: offen. Nachtrag F42 WS-4 (25.09.2026): im PROJEKTMODUS ist dieses konkrete Szenario jetzt durch F-712s Allowlist abgedeckt — `pruefeProjektmodusScope` lehnt eine Änderung an `package.json`/`scripts/check-*.mjs` durch einen `ausfuehrung`-Lauf strukturell ab (Regel 1g), unabhängig davon, ob die neue Prüfkette danach konsistent gewesen wäre. Damit kann sich im Projektmodus keine Prüfkette mehr selbst erweitern. Der FEATUREMODUS-Fall (ein `ausfuehrung`-Lauf innerhalb von ai-workforce selbst erweitert `package.json`/eigene Gates, wofür Schreibzugriff darauf legitim sein kann) bleibt ausdrücklich offen — dort greift die Allowlist bewusst nicht (AK3, Nicht-Ziel "Feature-Modus unverändert").
+Status: offen. Nachtrag F42 WS-4 (25.09.2026): im PROJEKTMODUS ist dieses konkrete Szenario jetzt durch F-712s Allowlist abgedeckt — `pruefeProjektmodusScope` lehnt eine Änderung an `package.json`/`scripts/check-*.mjs` durch einen `ausfuehrung`-Lauf strukturell ab (Regel 1g), unabhängig davon, ob die neue Prüfkette danach konsistent gewesen wäre. Damit kann sich im Projektmodus keine Prüfkette mehr selbst erweitern. Der FEATUREMODUS-Fall (ein `ausfuehrung`-Lauf innerhalb von ai-workforce selbst erweitert `package.json`/eigene Gates, wofür Schreibzugriff darauf legitim sein kann) bleibt ausdrücklich offen — dort greift die Allowlist bewusst nicht (AK3, Nicht-Ziel "Feature-Modus unverändert"). Nachtrag M5-Schnitt (25.09.2026, `docs/projekt/zielfassung.md` §13.6, E-M5-16): Priorität P2 → P1 — blockiert F30 (Gültigkeit der Messung, Bestehensbedingung M5/V1 Punkt 5).
 Feature/Run: F42 WS-3, 25.09.2026.
 
 **F-714** · `TECH_DEBT` · P1 · gelöst
@@ -10073,3 +10073,39 @@ Auswirkung: Niedrig — kein aktueller Schaden, aber eine wiederkehrende stille 
 Maßnahme: Herkunft klären (welcher Lauf/Feature hat sie erzeugt), dann je nach Ergebnis: committen (falls Nachweis-relevant), an einen geeigneten Ablageort verschieben, oder in `.gitignore` aufnehmen (falls Wegwerf-Artefakt).
 Status: offen.
 Feature/Run: F42 WS-3 Doku-PR, 25.09.2026.
+
+**F-723** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Der F35-Schnitt vom 20.09. ist teilweise durch F39, F42, F652 (`src/pruefschritt`) und F-648 (`src/korrekturschleife`) überholt.
+Beschreibung: F35 (Challenge-Flow: Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4, Befund-Projektion) wurde am 20.09.2026 geschnitten, bevor F39 (Rolle `architekt`, `hoch`-Kette, Regel 1c/`haltKlaerung`), F42 (Projekt-Harness), der Prüfschritt-Fixpaket F652 (`src/pruefschritt`) und die Korrekturschleife F-648 (`src/korrekturschleife`) real gebaut waren. Der ursprüngliche F35-Zuschnitt trifft diesen inzwischen gewachsenen Ist-Stand nicht mehr — ein Teil dessen, was F35 liefern sollte (ADJUST-Automatik, Korrekturschleife), existiert im Repo bereits in anderer Form.
+Fundstelle: `features/F39/feature.md`, `features/F42/feature.md`, `src/pruefschritt/`, `src/korrekturschleife/`.
+Auswirkung: Mittel — ein F35-Auftrag auf Basis des alten Schnitts würde entweder bereits Vorhandenes duplizieren oder an einer falschen Schnittstelle ansetzen.
+Maßnahme: Die F35-Challenge (vor dem Bau, laut E-M5-16) muss den Feature-Schnitt neu gegen den realen Repo-Stand (F39, F42, F652, F-648) führen, nicht gegen den Stand vom 20.09.2026.
+Status: offen.
+Feature/Run: M5-Schnitt, 25.09.2026.
+
+**F-724** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: E-M5-5 (Feld `installation`, R2-Lockerung) ist entschieden, aber `schemas/ressourcen.schema.json` kennt kein `installation`, obwohl F29 `ABGESCHLOSSEN` ist.
+Beschreibung: `docs/projekt/zielfassung.md` §13.6 E-M5-5 lockert Schema-Regel R2 — `FREIGEGEBEN` ist für `typ: extern` zulässig, sobald der Eintrag ein lokal prüfbares Feld `installation` (Pfad/Befehl/Version) trägt; das sollte die Blockade von F29 WS-0 lösen. F29 (Design Scout + visuelle Produktisierung) steht laut `docs/STATUS.md` auf `ABGESCHLOSSEN`, aber `schemas/ressourcen.schema.json` trägt kein `installation`-Feld — unklar, ob F29 WS-0 die Blockade auf einem anderen Weg gelöst hat oder ob hier eine Lücke zwischen Entscheidung und Schema besteht.
+Fundstelle: `schemas/ressourcen.schema.json`; `docs/projekt/zielfassung.md` §13.6 E-M5-5; `docs/STATUS.md` (F29 `ABGESCHLOSSEN`).
+Auswirkung: Niedrig — kein aktueller Schaden, aber eine ungeklärte Diskrepanz zwischen einer dokumentierten Entscheidung und dem Schema-Ist-Stand.
+Maßnahme: Klären, wie F29 WS-0 tatsächlich aufgelöst wurde (Schema-Ergänzung an anderer Stelle, andere Lösung, oder Entscheidung nie umgesetzt); Ergebnis in F36 nachziehen.
+Status: offen.
+Feature/Run: M5-Schnitt, 25.09.2026.
+
+**F-725** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: „Design" steht in der M5-Reihenfolge ohne eigenen Scope, Akte und Bestehensbedingung.
+Beschreibung: `docs/projekt/zielfassung.md` §13.6 nennt „Design" als eigenen Schritt in der M5-Reihenfolge (zwischen dem V1-Backlog-Vorlauf und F30), ohne dass dafür eine Feature-Akte, ein Scope oder eine eigene Bestehensbedingung existiert — anders als jeder andere Schritt der Kette.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6, Reihenfolge-Zeile.
+Auswirkung: Mittel — ohne eigenen Scope droht „Design" entweder übersprungen oder unkontrolliert groß zu werden, wenn die Kette ihn erreicht.
+Maßnahme: Vor Erreichen dieses Punkts einen eigenen Schnitt (Scope, Akte, Bestehensbedingung) für „Design" anlegen, analog zu den übrigen Kettengliedern.
+Status: offen.
+Feature/Run: M5-Schnitt, 25.09.2026.
+
+**F-726** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Zurückgestellte Features hatten bislang keinen Mechanismus, ihren eigenen Bedarf zu erkennen.
+Beschreibung: F37 und F38 (und die in E-M5-1 nach F30 übertragenen Posten) wurden ins Backlog verschoben, ohne dass die Workforce selbst erkennen konnte, wann ihr Bau wieder nötig wird — der Rückstellung fehlte ein Rückkehr-Mechanismus. Gelöst über E-M5-16: ein Abschnitt „Auslöser" in der Feature-Akte (messbare Bedingung), ein strukturiertes Eingriffsprotokoll in F30, und eine Meldung des erfüllten Auslösers durch Jarvis als Empfehlung.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 E-M5-16; `features/F37/feature.md`, `features/F38/feature.md` (Abschnitt „Auslöser").
+Auswirkung: Niedrig — die Lücke ist mit E-M5-16 bereits konzeptionell geschlossen; dieses Finding hält den Zustand vor der Entscheidung fest und verweist auf F30 als Umsetzungsort des Eingriffsprotokolls.
+Maßnahme: F30 muss das strukturierte Eingriffsprotokoll (Klasse, `bezug_backlog`) real umsetzen; Jarvis muss einen erfüllten Auslöser als Empfehlung melden können.
+Status: offen.
+Feature/Run: M5-Schnitt, 25.09.2026.

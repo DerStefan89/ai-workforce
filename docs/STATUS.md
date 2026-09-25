@@ -29,8 +29,9 @@ Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
 `FEATURE_GATE` mit offenem WS-2b/WS-3 → F30), F28/F29 `ABGESCHLOSSEN`,
 F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 #196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
-(`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
-offen, RC): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
+(`docs/projekt/zielfassung.md` §13.6; Zielsatz und sechspunktige
+Bestehensbedingung für M5/V1 seit 25.09.2026 festgehalten, RC steht noch
+aus): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Dashboard PR #216 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Restfinding
 F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
@@ -73,8 +74,9 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 `ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
-`features/F39/feature.md`), F35–F38 noch nicht
-begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
+`features/F39/feature.md`), F35/F36 noch nicht begonnen (F37/F38 als
+V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
+`docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
 ist `ABGESCHLOSSEN` (Review-Pass 25.09.2026 „Freigegeben mit Hinweisen",
 Abnahme durch Stefan am 25.09.2026, Entscheidung A, mit bekannten Grenzen
@@ -520,14 +522,19 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   F-627 (P3) und F-631 (P3) bleiben offen, ebenso die in F-630 dokumentierte
   offene Entscheidung zum P4-Prioritätsniveau). Nach F33.
 - ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
-  ADJUST-Automatik nach E-M5-4, Befund-Projektion). Noch nicht begonnen.
-  Nach F41 (E-M5-13/E-M5-14, neue Reihenfolge F34 → F39 → F41 → F35).
-- ⏳ **F36** — Capability Library Expansion. Noch nicht begonnen. Nach
-  E-M5-5, parallel ab F34.
-- ⏳ **F37** — Besetzungs-Erklärung & Override. Noch nicht begonnen. Nach
-  F32, F35.
-- ⏳ **F38** — Projektwissen-Index, wegwerfbar. Noch nicht begonnen. Nach
-  F33, F35.
+  ADJUST-Automatik nach E-M5-4, Befund-Projektion), schlank, vor dem
+  Design. Noch nicht begonnen. Nach F42, parallel zu F36
+  (`docs/projekt/zielfassung.md` §13.6, E-M5-16 — Reihenfolge jetzt
+  F34 → F39 → F41 → F42 → F35 schlank ∥ F36 → Fixpaket → Kern-Feature
+  „Projekt aufrufen/anzeigen" → Design → F30 → RC).
+- ⏳ **F36** — Capability Library Expansion, vor dem Design. Noch nicht
+  begonnen. Nach E-M5-5, parallel zu F35 ab F34 (disjunkte Dateien).
+- ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
+  gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
+  feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).
+- ⏳ **F38** — Projektwissen-Index, wegwerfbar. V1-Backlog nach F30,
+  gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F38/
+  feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).
 - ✅ **F39** — Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
   20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage" — Stack-ADR,
   Modulschnitt, Datenmodell als Schemas, E-M5-13). Akte

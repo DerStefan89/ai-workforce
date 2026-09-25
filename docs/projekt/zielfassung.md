@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.31 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.32 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -60,6 +60,8 @@ v1.28 → v1.29: **F41 abgeschlossen** (Stefan, 25.09.2026, Entscheidung "A" —
 v1.29 → v1.30: **§13.6 um E-F41-3 = B und E-PH-1 = B ergänzt** (Stefan, 25.09.2026, F42 WS-1, `features/F42/feature.md`): Projekt-Harness ist jetzt als eigenes Feature F42 (direkt nach F41, vor F35) entschieden — Drei-Schichten-Modell Baseline (unverändert, E-F41-1)/Skelett (`vorlagen/projekt-skelett/`, Snapshot `claude-projekt-template` @ `template-baseline`, Commit `9189959`)/Füllung (künftiger Workflow-Durchlauf, nicht WS-1). E-PH-1 = B: der Kern schreibt nie in `~/.claude.json`, nur read-only-Erkennung von Workspace-Trust. Löst F-667 (echter `pruefbefehl`, jetzt mit absolutem Programmpfad statt `npm`, Advisor-Finding F1) und einen Teilaspekt von F-702 (Trust-Erkennung). Feature-Liste/Reihenfolge in §13.6 um F42 ergänzt.
 
 v1.30 → v1.31: **F42 abgeschlossen, E-F42-WS4 = A und E-M5-15 ergänzt** (Stefan, 25.09.2026, Entscheidung "A" — Abnahme mit bekannten Grenzen, nach unabhängigem Review-Pass `features/F42/review-pass.md`, FREIGEGEBEN MIT HINWEISEN): Projekt-Harness ist mit allen vier Workstreams abgenommen, bekannte Grenzen F-721/F-718 und offene Folge-Findings F-715/F-713/F-709/F-710/F-716/F-717/F-719/F-720 dokumentiert. E-F42-WS4 = A: der in WS-4 bereits gebaute Weg (Auftrags-Scope-Vorrang vor dem Architekturentwurf über eine deterministische Pfad-Allowlist, Regel 1g; verpflichtender CLAUDE.md-/ADR-Nachzug nach einer Stack-Entscheidung, Regel 1h) ist die formal entschiedene Option, keine inhaltliche Änderung. E-M5-15: nach F42 lautet die M5-Reihenfolge — die verbleibenden wichtigen M5-Features (F35, F37, F38, F36 parallel) → Design → F30 Dogfooding → RC. F30 Dogfooding baut „Opportunity Scanner" — ein eigenständiges Produkt, vollständig in der Workforce geplant und gebaut, das anschließend von der Workforce selbst aufgerufen/angezeigt wird.
+
+v1.31 → v1.32: **§13.6 Zielsatz und Bestehensbedingung M5/V1 nachgetragen, E-M5-16 und E-M5-17 ergänzt, M5-Reihenfolge aktualisiert** (Stefan, 25.09.2026): der bislang offene Punkt „RC: Zielsatz/Bestehensbedingung M5 und V1" ist mit einem Fakt-Nachtrag aufgelöst — Zielsatz M5 (= V1-RC) und eine sechspunktige Bestehensbedingung liegen jetzt vor. E-M5-16 (löst F-534 Teil 2 für den verbleibenden Feature-Schnitt): vor dem Design werden F35 schlank, F36 (parallel), ein Fixpaket (F-689, F-713, F-718, F-683) und das Kern-Feature „Projekt aufrufen/anzeigen" (E-F30-3) gebaut; F37 und F38 gehen in ein V1-Backlog nach F30, gebaut bei erfülltem, in der Akte als messbare Bedingung geführtem Auslöser — die Workforce meldet einen erfüllten Auslöser über Jarvis als Empfehlung, der Bau bleibt eine Entscheidung des Menschen. E-M5-17: die in E-M5-1 nach F30 übertragenen Posten (Kollege-Durchlauf, Import-Wizard F25 WS-2b, Health-Projektion F25 WS-3) gehen ebenfalls mit Auslöser ins V1-Backlog, nicht still gestrichen, kein Teil der V1-Bestehensbedingung. `state/findings.md` F-713 auf P1 hochgestuft (blockiert F30, siehe Bestehensbedingung Punkt 5).
 
 ---
 
@@ -620,9 +622,41 @@ und `features/F23/feature.md`. Löst `state/findings.md` F-505.
 Meilenstein 4 (§13.5, E-M5-1) im Challenger-Chat eine Reihe von
 Entscheidungen für Meilenstein 5 getroffen (20./21.09.2026), bislang nur
 dort dokumentiert (`state/findings.md` F-534). Dieser Abschnitt zieht sie
-ins Repo nach. **Zielsatz und Bestehensbedingung für Meilenstein 5 stehen
-noch aus** — der Feature-Schnitt benennt sie unten ausdrücklich als
-eigenen, noch offenen Punkt („RC: Zielsatz/Bestehensbedingung M5 und V1").
+ins Repo nach.
+
+`[Fakt, Nachtrag 25.09.2026, Stefan]` Zielsatz und Bestehensbedingung für
+Meilenstein 5, vormals als offener Punkt benannt („RC: Zielsatz/
+Bestehensbedingung M5 und V1"), liegen jetzt vor:
+
+**Zielsatz M5 (= V1-RC):** Die Workforce führt ein neues, eigenständiges
+Produkt von der Idee bis zum abgenommenen ersten Meilenstein. Coach,
+Architekt, Bau, Prüfung und Korrektur laufen als Workflows. Stefan
+entscheidet, gibt frei und nimmt ab, ohne Inhalte zwischen Rollen zu
+kopieren.
+
+**Bestehensbedingung M5/V1:**
+1. Der Opportunity Scanner M1 liegt in einem eigenen Repo, ist über
+   F41/F42 angelegt, über Coach und Architekt geplant und über Workflows
+   gebaut und abgenommen.
+2. Jedes AK von Scanner-M1 hat im Reviewer-Ergebnis ein Urteil je AK mit
+   Beleg; ein AK ohne Beleg blockiert.
+3. Kein manueller Kopierschritt zwischen Rollen. Jeder Eingriff Stefans
+   wird strukturiert protokolliert (Klasse Entscheidung/Freigabe/Abnahme/
+   Reparatur, optional `bezug_backlog`), jede Reparatur wird ein Finding,
+   mindestens drei Tage Protokoll.
+4. Die Workforce startet den Scanner und zeigt sein Ergebnis read-only an.
+5. Die Invarianten halten nachweislich: Codex nur lesend, schreibende
+   Schritte ZWINGEND, die Prüfkette des Scanners bleibt durch die
+   Ausführung unverändert (F-713).
+6. Die Punkte C1–C6 der F30-Messcheckliste (Datenquellen/
+   Nutzungsbedingungen, Personendaten lokal als Entscheidung des Menschen,
+   Stack-Frage mit `kategorie: "stack"`, lose Kopplung Befehl +
+   Ergebnisdatei, Netzwerk/Kosten pro Lauf, nachvollziehbare
+   Passungsbewertung) werden gemessen und dokumentiert. Das ist eine
+   Messung, kein Bestehenskriterium.
+
+Siehe E-M5-16/E-M5-17 unten für den zugehörigen Feature-Schnitt und die
+V1-Backlog-Regel.
 
 **Features:** F32 Verbrauch & Kontingent · F33 Projektkontext & Roadmap ·
 F34 Product Coach / Ideation + Discovery (nach F33; WS-3 Projekt-Interview,
@@ -633,16 +667,21 @@ F39) · F42 Projekt-Harness (E-F41-3, direkt nach F41, vor F35 —
 **abgeschlossen**, 25.09.2026, E-F42-WS4 = A) · F35 Challenge-Flow
 (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4,
 Befund-Projektion) · F36 Capability Library Expansion (nach E-M5-5,
-parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32, F35) ·
-F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F40 Jarvis-Latenz
+parallel ab F34) · F37 Besetzungs-Erklärung & Override (V1-Backlog nach F30, gebaut bei
+erfülltem Auslöser, E-M5-16) · F38 Projektwissen-Index, wegwerfbar
+(V1-Backlog nach F30, gebaut bei erfülltem Auslöser, E-M5-16) · F40 Jarvis-Latenz
 (E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3; baut
 „Opportunity Scanner", E-M5-15) · RC: Zielsatz/Bestehensbedingung M5 und
 V1.
 
 **Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F42 (abgeschlossen) →
-F35 → F37 → F38 (F36 parallel ab F34, E-M5-5) → Design → F30 → RC
-(E-M5-13/E-M5-14, E-F41-3, E-M5-15). F40 ist außerhalb dieser Kette
-eingeschoben.
+F35 schlank ∥ F36 (parallel, disjunkte Dateien) → Fixpaket (F-689,
+F-713, F-718, F-683) → Kern-Feature „Projekt aufrufen/anzeigen"
+(E-F30-3) → Design → F30 → RC (E-M5-13/E-M5-14, E-F41-3, E-M5-15,
+E-M5-16). F40 ist außerhalb dieser Kette eingeschoben. V1-Backlog nach
+F30 (E-M5-16/E-M5-17): F37, F38, Kollege-Durchlauf (F25-Übertragung,
+§13.5), Import-Wizard (F25 WS-2b), Health-Projektion (F25 WS-3) — je mit
+Auslöser.
 
 **E-M5-1** *(Stefan, 20.09.2026)* — M4-Abschluss, Option A: Meilenstein 4
 gilt als geschlossen, offene Posten werden ausdrücklich nach M5
@@ -792,6 +831,28 @@ geplant und gebaut, das anschließend von der Workforce selbst
 aufgerufen/angezeigt wird (Referenzfall für Self-Dogfooding, löst §13.5
 E-M5-1s Dogfooding-Übertragung nach F30 nicht auf, ergänzt sie um den
 konkreten Bauinhalt).
+
+**E-M5-16** *(Stefan, 25.09.2026)* — Vor dem Design werden gebaut: F35 in
+schlanker Form (strukturierter Auftrag nach F-675, Urteil je
+Akzeptanzkriterium im Review, ein AK ohne Beleg = BLOCKIERT,
+ADJUST-Folgeauftrag aus Reviewer-BLOCKIERT nach E-M5-4; `qa`-Schritt und
+Advisor-Schema werden in der F35-Challenge geklärt), F36 Capability
+Library Expansion (parallel zu F35, disjunkte Dateien), ein Fixpaket
+(F-689, F-713, F-718, F-683) und das Kern-Feature „Projekt aufrufen/
+anzeigen" (Startbefehl plus read-only angezeigte Ergebnisdatei,
+E-F30-3). F37 und F38 gehen in ein V1-Backlog nach F30. Ein
+Backlog-Feature wird gebaut, sobald sein Auslöser erfüllt ist. Die
+Workforce erkennt das selbst: Der Auslöser steht als messbare Bedingung
+in der Akte, F30 führt ein strukturiertes Eingriffsprotokoll, und Jarvis
+meldet einen erfüllten Auslöser als Empfehlung. Der Bau bleibt eine
+Entscheidung des Menschen (schreibende Schritte ZWINGEND). Präzisiert
+E-M5-15.
+
+**E-M5-17** *(Stefan, 25.09.2026)* — Die Übertragungen aus E-M5-1
+(Kollege-Durchlauf in eigener Instanz, Import-Wizard F25 WS-2b,
+Health-Projektion F25 WS-3) gehen ausdrücklich nach V1 ins Backlog,
+jeweils mit Auslöser. Sie sind nicht still gestrichen und kein Teil der
+V1-Bestehensbedingung.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur
