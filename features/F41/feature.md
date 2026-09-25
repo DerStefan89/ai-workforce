@@ -7,9 +7,16 @@ F41
 Neues Projekt anlegen (E-M5-14: direkt nach F39 gezogen, löst F-523 Greenfield-Blockade) — WS-1: Backend
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
-WS-3 Reallauf durchgeführt, Auswertung siehe `nachweis-ws3-reallauf-messung.md`.
+**Abnahme durch Stefan am 25.09.2026 (Entscheidung "A"): Abnahme mit
+bekannten Grenzen.** Unabhängiger Review-Pass (frischer Kontext, kein
+vorgegebenes Ergebnis) lieferte FREIGEGEBEN MIT HINWEISEN — siehe
+`features/F41/review-pass.md` für die AK-für-AK-Bewertung, das getrennte
+Mechanik-/Inhalt-Urteil zu F-666 und die Einordnung der offenen Findings.
+WS-3-Reallauf durchgeführt, Auswertung siehe `nachweis-ws3-reallauf-
+messung.md`. Siehe "Abnahme-Einordnung WS-2/WS-3" unten für den Beleg der
+beiden Workstreams ohne eigene AKs in dieser Akte.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -233,6 +240,24 @@ Ziel-Prüfung selbst fangen (siehe Gate (7)).
   `leiteProfilReferenzAb` selbst ist NICHT behoben (außerhalb des WS-1-
   Scopes) — siehe `state/findings.md` für den TECH_DEBT-Befund.
 
+**Einordnung bei Abnahme (25.09.2026):** die durch WS-3 real aufgedeckten
+offenen Punkte (siehe `review-pass.md`) laufen NICHT alle in dieselbe
+Schublade — zwei getrennte, bewusst nicht in F41 selbst gelöste Wege:
+(a) Folgefeature Projekt-Harness (E-F41-3, noch nicht entschieden) bündelt
+alles, was ein neu angelegtes Projekt STRUKTURELL noch fehlt, bevor ein
+Baudurchgang dort inhaltlich gelingen kann — F-684 (Coach-Vorlage
+injiziert ai-workforce-Prüfpfade), F-667 (kein `pruefbefehl`), F-673
+(keine `.claude/skills/`), F-690 (Workspace-Trust nicht hergestellt),
+F-685 (Architekt legt Stack implizit fest, keine eigene Rückfrage). (b)
+Ein reines Fixpaket (kleinere, unabhängige Bugs ohne Architekturfrage) für
+F-689 (Selbstblockade-Erkennung übersieht eine echte Rückfrage), F-683
+(Rohstrom-Pfad in der Detailansicht für Fremdprojekte falsch aufgelöst),
+F-692 (Phantom-Workflow-Eintrag durch Präfix-Kollision), F-693 (irreführende
+"nicht vorbereitbar: 200"-Meldung, Folge von F-692), F-691 (Freigabe-
+Begründung erreicht den Worker nicht). Keiner dieser Punkte widerlegt eine
+WS-1-AK (siehe `review-pass.md`) — beide Wege bleiben bewusst offen statt
+stillschweigend in F41 mitgelöst (CLAUDE.md-Entscheidungsregel 5).
+
 ## Feature Review
 WS-1 durchlief einen Reviewer-/QA-Pass (frischer Kontext, Subagenten
 `code-reviewer` + `qa`, 24.09.2026) vor dem Stagen. Ergebnis beider Pässe:
@@ -291,6 +316,32 @@ findings.md`) neu.
 
 `npm run check` nach beiden Korrekturrunden erneut grün (alle Gates inkl.
 `check-f41-projekt-anlegen.mjs`).
+
+## Abnahme-Einordnung WS-2/WS-3
+
+Diese Akte trägt Akzeptanzkriterien (AK1-AK6) ausschließlich für WS-1
+(Backend). WS-2 (UI) und WS-3 (Reallauf) sind im Abschnitt „Workstreams"
+oben nur als Ziele benannt, nicht als eigene, einzeln geprüfte AKs — siehe
+F-698 (`state/findings.md`) für den daraus gezogenen Prozess-Befund. Die
+Abnahme stützt sich für diese beiden Workstreams deshalb auf folgende,
+eigenständig geprüfte Belege statt auf AK-Text dieser Akte:
+
+- **WS-2 (UI):** Render-Nachweis `features/F41/nachweis-ws2-ui/`
+  (Screenshots 01-07, `klickfolge.json`, `protokoll.json`/`.md` — Muster
+  `npm run render-nachweis`, F-622) belegt Formular, Fehlerzustände
+  (400/409), Erfolg-Box mit den Git-Befehlen, Absprung ins Coach-Interview
+  und einen QA-Reset-Befund (kein alter Formularzustand nach Wiedereintritt
+  sichtbar). Zusätzlich real genutzt: der WS-3-Reallauf legte das Projekt
+  `haushaltsbuch` tatsächlich über genau dieses Formular an (nicht über
+  einen direkten API-Aufruf) — die UI trug damit real den ersten Schritt
+  des einzigen vollständigen End-zu-Ende-Belegs dieses Features.
+- **WS-3 (Reallauf, Pflicht-AK F-666 aus F39):** mechanisch erfüllt,
+  inhaltlich KEIN vollständiger Baudurchgang — siehe
+  `nachweis-ws3-reallauf-messung.md` (Ziel-Tabelle, Pro-Ziel-Urteil) und
+  `review-pass.md` (eigenständig gegengeprüftes Urteil, identischer
+  Befund). Der Inhalts-Gap liegt außerhalb `src/projekt-anlegen/` (Root
+  Cause F-684, Product-Coach) — siehe "Bekannte Grenzen" oben für die
+  Einordnung in Folgefeature vs. Fixpaket.
 
 ## Rollback
 `POST /api/projekte`-Route, `src/projekt-anlegen/`, `scripts/leitstand/
