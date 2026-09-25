@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.30 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.31 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -58,6 +58,8 @@ v1.27 → v1.28: **§13.6 um E-F41-2 ergänzt** (Stefan, 24.09.2026, F41-WS-3-Re
 v1.28 → v1.29: **F41 abgeschlossen** (Stefan, 25.09.2026, Entscheidung "A" — Abnahme mit bekannten Grenzen, nach unabhängigem Review-Pass `features/F41/review-pass.md`, FREIGEGEBEN MIT HINWEISEN): Pflicht-AK F-666 (aus F39) ist mechanisch erfüllt — ein vollständiger realer `hoch`-Durchlauf (Regel 1c real ausgelöst und fortgesetzt, `architecture-advisor` mit auswertbarem Urteil, `code-reviewer` erfolgreich) lief real durch; inhaltlich entstand dabei kein Baudurchgang (`features/F41/nachweis-ws3-reallauf-messung.md`), Root Cause außerhalb von F41 selbst (`state/findings.md` F-684). Folgefeature **Projekt-Harness (E-F41-3, noch nicht im Detail entschieden)** bündelt die dadurch offen gebliebenen strukturellen Lücken eines neu angelegten Projekts (F-667/F-673/F-684/F-685/F-690) und wird als nächstes vor F35 eingeplant. **Kein neuer inhaltlicher Entscheid** zu E-M5-14 selbst — reine Abschluss-/Fortschreibungsnotiz.
 
 v1.29 → v1.30: **§13.6 um E-F41-3 = B und E-PH-1 = B ergänzt** (Stefan, 25.09.2026, F42 WS-1, `features/F42/feature.md`): Projekt-Harness ist jetzt als eigenes Feature F42 (direkt nach F41, vor F35) entschieden — Drei-Schichten-Modell Baseline (unverändert, E-F41-1)/Skelett (`vorlagen/projekt-skelett/`, Snapshot `claude-projekt-template` @ `template-baseline`, Commit `9189959`)/Füllung (künftiger Workflow-Durchlauf, nicht WS-1). E-PH-1 = B: der Kern schreibt nie in `~/.claude.json`, nur read-only-Erkennung von Workspace-Trust. Löst F-667 (echter `pruefbefehl`, jetzt mit absolutem Programmpfad statt `npm`, Advisor-Finding F1) und einen Teilaspekt von F-702 (Trust-Erkennung). Feature-Liste/Reihenfolge in §13.6 um F42 ergänzt.
+
+v1.30 → v1.31: **F42 abgeschlossen, E-F42-WS4 = A und E-M5-15 ergänzt** (Stefan, 25.09.2026, Entscheidung "A" — Abnahme mit bekannten Grenzen, nach unabhängigem Review-Pass `features/F42/review-pass.md`, FREIGEGEBEN MIT HINWEISEN): Projekt-Harness ist mit allen vier Workstreams abgenommen, bekannte Grenzen F-721/F-718 und offene Folge-Findings F-715/F-713/F-709/F-710/F-716/F-717/F-719/F-720 dokumentiert. E-F42-WS4 = A: der in WS-4 bereits gebaute Weg (Auftrags-Scope-Vorrang vor dem Architekturentwurf über eine deterministische Pfad-Allowlist, Regel 1g; verpflichtender CLAUDE.md-/ADR-Nachzug nach einer Stack-Entscheidung, Regel 1h) ist die formal entschiedene Option, keine inhaltliche Änderung. E-M5-15: nach F42 lautet die M5-Reihenfolge — die verbleibenden wichtigen M5-Features (F35, F37, F38, F36 parallel) → Design → F30 Dogfooding → RC. F30 Dogfooding baut „Opportunity Scanner" — ein eigenständiges Produkt, vollständig in der Workforce geplant und gebaut, das anschließend von der Workforce selbst aufgerufen/angezeigt wird.
 
 ---
 
@@ -627,17 +629,20 @@ F34 Product Coach / Ideation + Discovery (nach F33; WS-3 Projekt-Interview,
 E-M5-12) · F39 Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
 20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage", E-M5-13,
 vor F35 gezogen) · F41 Neues Projekt anlegen (F-523, E-M5-14, direkt nach
-F39) · F42 Projekt-Harness (E-F41-3, direkt nach F41, vor F35) · F35
-Challenge-Flow (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach
-E-M5-4, Befund-Projektion) · F36 Capability Library Expansion (nach
-E-M5-5, parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32,
-F35) · F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F40
-Jarvis-Latenz (E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3;
-Abschluss) · RC: Zielsatz/Bestehensbedingung M5 und V1.
+F39) · F42 Projekt-Harness (E-F41-3, direkt nach F41, vor F35 —
+**abgeschlossen**, 25.09.2026, E-F42-WS4 = A) · F35 Challenge-Flow
+(Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4,
+Befund-Projektion) · F36 Capability Library Expansion (nach E-M5-5,
+parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32, F35) ·
+F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F40 Jarvis-Latenz
+(E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3; baut
+„Opportunity Scanner", E-M5-15) · RC: Zielsatz/Bestehensbedingung M5 und
+V1.
 
-**Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F42 → F35 → F37 → F38 →
-Design → F30 → RC (E-M5-13/E-M5-14, E-F41-3). F36 läuft parallel ab F34
-(E-M5-5). F40 ist außerhalb dieser Kette eingeschoben.
+**Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F42 (abgeschlossen) →
+F35 → F37 → F38 (F36 parallel ab F34, E-M5-5) → Design → F30 → RC
+(E-M5-13/E-M5-14, E-F41-3, E-M5-15). F40 ist außerhalb dieser Kette
+eingeschoben.
 
 **E-M5-1** *(Stefan, 20.09.2026)* — M4-Abschluss, Option A: Meilenstein 4
 gilt als geschlossen, offene Posten werden ausdrücklich nach M5
@@ -768,6 +773,25 @@ Workspace-Trust (Claude-Code-CLI-Mechanismus,
 gemeldet (`POST /api/projekte`s `naechste_schritte.trust`) — Stefan
 bestätigt den Trust-Dialog selbst, keine programmatische Umgehung eines
 Sicherheitsmechanismus.
+
+**E-F42-WS4 = A** *(Stefan, 25.09.2026, F42-Abnahme, formalisiert den in
+WS-4 bereits gebauten Weg, löst `state/findings.md` F-712/F-714)* — der
+Auftrags-Scope hat Vorrang vor dem Architekturentwurf: eine
+deterministische Pfad-Allowlist (`docs/**`/`features/**`/`CLAUDE.md`,
+Regel 1g) hält einen Projektmodus-`ausfuehrung`-Lauf an, der außerhalb
+davon schreibt, statt sich auf den Auftragstext allein zu verlassen; eine
+erfasste Stack-Entscheidung erzwingt verpflichtend CLAUDE.md UND ein
+referenzierendes ADR (Regel 1h). Kein neuer inhaltlicher Entscheid — reine
+Formalisierung des bereits gemergten WS-4-Stands.
+
+**E-M5-15** *(Stefan, 25.09.2026, F42-Abnahme)* — M5-Reihenfolge nach
+F42-Abschluss: die verbleibenden wichtigen M5-Features (F35, F37, F38, F36
+parallel) → Design → F30 Dogfooding → RC. F30 Dogfooding baut „Opportunity
+Scanner" — ein eigenständiges Produkt, vollständig in der Workforce
+geplant und gebaut, das anschließend von der Workforce selbst
+aufgerufen/angezeigt wird (Referenzfall für Self-Dogfooding, löst §13.5
+E-M5-1s Dogfooding-Übertragung nach F30 nicht auf, ergänzt sie um den
+konkreten Bauinhalt).
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

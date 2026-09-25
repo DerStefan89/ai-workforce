@@ -10064,3 +10064,12 @@ Auswirkung: Niedrig bis Mittel — kein Beleg dafür, dass etwas falsch ist, son
 Maßnahme: Bei nächster Gelegenheit (z. B. einem dritten Fremdprojekt oder einem erneuten Durchlauf gegen `haushaltsbuch2`) gezielt den ursprünglichen F-712/F-714-Auslösefall wiederholen und belegen, dass WS-4 ihn tatsächlich verhindert.
 Status: offen.
 Feature/Run: F42-Review-Pass (qa), 25.09.2026.
+
+**F-722** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Sechs untracked Dateien `state/nachweis-runde2-*` unbekannter Herkunft im Repo — Risiko versehentlichen Stagens.
+Beschreibung: Entdeckt beim F42-WS-3-Doku-PR: `state/nachweis-runde2-chat-verlauf.json`, `state/nachweis-runde2-turn1-detail.json` bis `-turn5-detail.json` sowie `state/nachweis-runde2-turns.sh` liegen untracked im Arbeitsverzeichnis, ohne dass ihre Herkunft (welcher Lauf, welches Feature) dokumentiert ist. Solange sie untracked bleiben, besteht das Risiko, dass ein künftiges `git add` (insbesondere ein unbedachtes `-A`/`.`) sie versehentlich mit committet, ohne dass ihr Inhalt geprüft wurde.
+Fundstelle: `state/nachweis-runde2-chat-verlauf.json`, `state/nachweis-runde2-turn1-detail.json` … `-turn5-detail.json`, `state/nachweis-runde2-turns.sh` (Repo-Wurzel, `git status --short`).
+Auswirkung: Niedrig — kein aktueller Schaden, aber eine wiederkehrende stille Gefahr bei jedem breiten `git add`, solange die Dateien weder committet noch ignoriert sind.
+Maßnahme: Herkunft klären (welcher Lauf/Feature hat sie erzeugt), dann je nach Ergebnis: committen (falls Nachweis-relevant), an einen geeigneten Ablageort verschieben, oder in `.gitignore` aufnehmen (falls Wegwerf-Artefakt).
+Status: offen.
+Feature/Run: F42 WS-3 Doku-PR, 25.09.2026.

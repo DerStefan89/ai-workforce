@@ -76,9 +76,11 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
-gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, `IN_ARBEIT`, direkt nach
-F41 vor F35) ist `FEATURE_GATE` (Review-Pass 25.09.2026 „Freigegeben mit
-Hinweisen"), F40
+gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
+ist `ABGESCHLOSSEN` (Review-Pass 25.09.2026 „Freigegeben mit Hinweisen",
+Abnahme durch Stefan am 25.09.2026, Entscheidung A, mit bekannten Grenzen
+F-721/F-718, offene Folge-Findings F-715/F-713/F-709/F-710/F-716/F-717/
+F-719/F-720), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die

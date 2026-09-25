@@ -75,9 +75,11 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
-gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, `IN_ARBEIT`, direkt nach
-F41 vor F35) ist `FEATURE_GATE` (Review-Pass 25.09.2026 „Freigegeben mit
-Hinweisen"), F40
+gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
+ist `ABGESCHLOSSEN` (Review-Pass 25.09.2026 „Freigegeben mit Hinweisen",
+Abnahme durch Stefan am 25.09.2026, Entscheidung A, mit bekannten Grenzen
+F-721/F-718, offene Folge-Findings F-715/F-713/F-709/F-710/F-716/F-717/
+F-719/F-720), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
@@ -578,14 +580,18 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   25.09.2026.** Direkt nach F39 gezogen (statt erst in F30). Folgefeature
   Projekt-Harness (E-F41-3) bündelt die dabei offen gebliebenen
   strukturellen Lücken (F-667/F-673/F-684/F-685/F-690) als F42.
-- 🚧 **F42** — Projekt-Harness (E-F41-3 = B, `state/findings.md`
+- ✅ **F42** — Projekt-Harness (E-F41-3 = B, `state/findings.md`
   F-667/F-673/F-684/F-685/F-690). Direkt nach F41, vor F35 (Reihenfolge
   jetzt F41 → F42 → F35). Akte `features/F42/feature.md`, Status
-  `FEATURE_GATE` (unabhängiger Review-Pass 25.09.2026, `features/F42/
+  `ABGESCHLOSSEN` (unabhängiger Review-Pass 25.09.2026, `features/F42/
   review-pass.md`, „Freigegeben mit Hinweisen" — code-reviewer + qa,
   frischer Kontext, alle 15 AKs belegt, kein P1-Befund, fünf neue
-  Findings F-717…F-721 (P2/P3, Härtungs-/Nachweislücken); Abnahme
-  `ABGESCHLOSSEN` folgt Stefans separater Entscheidung) — WS-1 (Skelett
+  Findings F-717…F-721 (P2/P3, Härtungs-/Nachweislücken); **Abgenommen
+  durch Stefan am 25.09.2026 (Entscheidung A) mit bekannten Grenzen**:
+  F-721 (Regel 1g/1h nur über Gates belegt, realer Nachweis beim
+  nächsten Projektmodus-Auftrag, spätestens F30), F-718 (Kombination
+  1g+1h ungetestet); offene Folge-Findings F-715/F-713/F-709/F-710/
+  F-716/F-717/F-719/F-720) — WS-1 (Skelett
   `vorlagen/projekt-skelett/`, echter
   `pruefbefehl`, Trust-Hinweis über `POST /api/projekte`) gebaut,
   `npm run check` grün, AK2-Probe real belegt (`GRUEN`, Exit 0, 1480 ms).
