@@ -9,6 +9,8 @@ Neues Projekt anlegen (E-M5-14: direkt nach F39 gezogen, löst F-523 Greenfield-
 ## Status
 Status: IN_ARBEIT
 
+WS-3 Reallauf durchgeführt, Auswertung siehe `nachweis-ws3-reallauf-messung.md`.
+
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
 ## Ziel
