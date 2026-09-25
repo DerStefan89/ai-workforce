@@ -74,6 +74,73 @@ nicht die Tabelle oben stillschweigend überschreiben.
   Default des (n1)/(n2)-Servers) trägt den Hinweis real NICHT. `npm run
   check` nach der Korrektur vollständig grün.
 
+- 2026-09-25, F42-Projekt-Harness-Gate (WS-4, F-712/F-714/F-711): drei neue
+  Blöcke in `scripts/check-f42-projekt-harness.mjs`, alle über den REALEN
+  Aufrufpfad (`POST /api/auftraege` → `POST /api/workflows/<id>/starten`
+  gegen ein echtes Wegwerf-Git-Repo), nicht nur an Einzelfunktionen (F-708).
+  **(g) F-712** (Auftrags-Scope vs. Architekturentwurf): `pruefeProjektmodusScope`
+  (`src/architekt/index.ts`) prüft die real geänderten Dateien eines
+  Projektmodus-`ausfuehrung`-Laufs (`herkunft.art === 'projekt_interview'`)
+  gegen die Allowlist `docs/**`/`features/**`/`CLAUDE.md`; Regel 1g
+  (`src/workflow/index.ts`) hält den Workflow bei einem Verstoß an.
+  Rot-Fall (g2): Stub schreibt `schemas/gate-f42.schema.json` im
+  Projektmodus → `KLAERUNG_ERFORDERLICH`, Grund nennt `schemas/` (git
+  fasst ein komplett neues, untrackedes Verzeichnis in `git status
+  --porcelain` als `?? schemas/` zusammen, bestehendes Verhalten von
+  `parseUntrackedDateien`, hier nicht angetastet). Grün-Fall (g3): Stub
+  schreibt nur `docs/gate-f42.md` → `ABGESCHLOSSEN`. Regressions-Fall (g4,
+  AK3/Nicht-Ziel "Feature-Modus unverändert"): derselbe Scope-Verstoß OHNE
+  `herkunft.art` → `ABGESCHLOSSEN`, keine Sperre. QA-Befund (TC-03,
+  während der Reviewer-/QA-Pässe gefunden): die Prüfung war bislang nur
+  gegen einen Workflow MIT `architekt`-Schritt real belegt, obwohl sie im
+  Code nicht daran gekoppelt ist — ein Projektmodus-Workflow ohne
+  `architekt`-Vorgänger (`POST /api/workflows` direkt, ohne Router) ist ein
+  real erreichbarer Pfad. Neuer Fall (g5): ein Einzelschritt-Workflow
+  (Muster `fast-lane.json`, nur `ausfuehrung`) mit demselben Scope-Verstoß
+  → ebenfalls `KLAERUNG_ERFORDERLICH` — bestätigt, dass Regel 1g an
+  `herkunft.art`, nicht an einem Architekturentwurf hängt. **(h) F-714**
+  (Stack-Entscheidung bleibt ohne CLAUDE.md/ADR stecken):
+  `baueStackEntscheidungsInstruktion` hängt eine Pflicht-Instruktion an,
+  wenn der referenzierte Architektur-Lauf eine `kategorie:'stack'`-
+  Entscheidung trägt UND dafür bereits eine menschliche Antwort erfasst ist
+  (`findeWorkflowEntscheidungFuerSchritt`); Regel 1h hält an, wenn
+  `istStackOffen(repoWurzel)` ODER (Code-Review-Befund, s. u.)
+  `!traegtAdrVerweisAufEntscheidung(repoWurzel, entscheidungArtefaktId)`
+  danach noch zutrifft. Rot-Fall (h1): Stub lässt CLAUDE.md UND ADR
+  unverändert → `KLAERUNG_ERFORDERLICH`, Grund `"Stack entschieden, aber
+  CLAUDE.md/ADR nicht vollständig gepflegt (F-714)"`; der gesehene
+  Auftragstext trägt real `CLAUDE.md` UND `docs/adr/`. Rot-Fall (h2,
+  QA-Befund: die erste Fassung prüfte nur `istStackOffen` — ein Lauf, der
+  CLAUDE.md füllt, aber KEIN ADR schreibt, hätte bestanden): Stub füllt NUR
+  CLAUDE.md, schreibt kein ADR → weiterhin `KLAERUNG_ERFORDERLICH`.
+  Grün-Fall (h3): Stub füllt CLAUDE.md UND legt ein ADR mit Verweis auf die
+  Entscheidungsartefakt-Id an → `ABGESCHLOSSEN`. **(i) F-711**
+  (Entscheidungsformular wählt die falsche Option vor): statisches
+  Quelltext-Gate gegen `public/leitstand/views/workflows.js` (Muster
+  `check-f15-workflow-oberflaeche.mjs` — kein Import, keine Browser-
+  Ausführung, D5) — bestätigt real, dass die Vorauswahl bereits an
+  `option.titel === frage.empfehlung` hängt (seit `caa860e`, F39 WS-2b),
+  nicht an der Options-Position; Regressions-Grep gegen eine index-basierte
+  Vorauswahl. Zusätzlich reine-Funktions-Kalibrierung (g1) für
+  `pruefeProjektmodusScope`, reine-Funktions-Kalibrierung für
+  `traegtAdrVerweisAufEntscheidung` (`src/architekt/architekt.test.ts`:
+  fehlender Ordner, leerer Ordner, TEMPLATE.md zählt nicht, ADR ohne
+  Verweis, ADR mit Verweis) und Unit-Tests (`src/workflow/workflow.test.ts`,
+  Regel 1g/1h je mit Rot-/Grün-/Fremdrollen-/VERWEIGERT-Fall).
+
+  Reviewer-/QA-Pass (frischer Kontext, vor Freigabe, CLAUDE.md-Pflicht):
+  code-reviewer fand einen Findings-Kopfzeilen-Fehler (F-711/F-712/F-714
+  standen im Fließtext auf "Status: gelöst", die maschinell gelesene
+  Kopfzeile `**F-NNN** · \`TYP\` · PN · <status>` aber weiterhin auf
+  "offen" — korrigiert) und eine duplizierte Modus-/Eingabe-Ableitung in
+  `scripts/leitstand-server.mjs` (kein Bug, aber Divergenzrisiko — auf
+  `findeArchitektEingabeTreffer(schritt, workflowDaten)` zurückgeführt). qa
+  fand die oben genannte F-714-Halbdeckung (kritisch — genau die
+  Fehlerklasse, die F-712 beheben sollte: eine Instruktion allein ohne
+  deterministischen Rückhalt) und die fehlende TC-03-Abdeckung; beide
+  behoben, siehe (h2)/(g5) oben. `npm run check` vollständig grün (806
+  Tests) nach allen Korrekturen.
+
 - 2026-08-17, Zwischenstand-Loop: Rot- und Grün-Fall von Hand durchgespielt
   (Aufruf der Hooks direkt über stdin, kein echter Compaction-/Clear-Lauf).
   Rot: `state/zwischenstand/harness-fix-1-hooks-und-zwischenstand.md` mit

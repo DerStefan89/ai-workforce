@@ -229,6 +229,30 @@ export interface SchrittErgebnis {
   pruefergebnisExitCode?: number | null
   /** OPTIONAL (F-652): letzte ~40 Zeilen aus stdout+stderr der Prüfung — nur für den Halt-Grund-Text. */
   pruefergebnisAusgabeEnde?: string
+  /**
+   * OPTIONAL (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+   * Pfade außerhalb der Projektmodus-Allowlist (docs/**, features/**, CLAUDE.md), die ein gerade
+   * gelaufener 'ausfuehrung'-Schritt real geändert hat — der Aufrufer (scripts/leitstand-
+   * server.mjs) berechnet das Feld NUR im Projektmodus (herkunft.art === 'projekt_interview') und
+   * NUR für diese Rolle (pruefeProjektmodusScope, src/architekt/index.ts, gegen die bereits
+   * registrierte Änderungsübersicht) — dieses Modul bleibt abhängigkeitsarm (Kopfkommentar) und
+   * prüft die Dateiliste selbst nicht. Ein leeres Array heißt kein Verstoß; ein fehlendes Feld
+   * heißt „nicht geprüft" (Feature-Modus, oder jede andere Rolle) und bleibt für Regel 1g
+   * folgenlos, wie ein fehlendes 'ausfuehrungSelbstblockiert' für Regel 1e.
+   */
+  scopeVerletzung?: string[]
+  /**
+   * OPTIONAL (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+   * true, wenn für den referenzierten Architektur-Schritt eine Entscheidung mit 'kategorie':
+   * 'stack' erfasst war UND nach diesem 'ausfuehrung'-Lauf entweder istStackOffen(repoWurzel)
+   * IMMER NOCH true liefert ODER kein ADR unter 'docs/adr/' auf das Entscheidungsartefakt verweist
+   * (traegtAdrVerweisAufEntscheidung) — CLAUDE.md und/oder ADR wurden trotz Instruktion
+   * (baueStackEntscheidungsInstruktion, die BEIDE Schreibziele verlangt) nicht vollständig
+   * geschrieben. Der Aufrufer berechnet das Feld NUR unter dieser Voraussetzung; ein fehlendes
+   * Feld (keine Stack-Entscheidung im Spiel, oder eine andere Rolle) bleibt für Regel 1h
+   * folgenlos, wie ein fehlendes 'scopeVerletzung' für Regel 1g.
+   */
+  stackNichtGefuellt?: boolean
 }
 
 /**

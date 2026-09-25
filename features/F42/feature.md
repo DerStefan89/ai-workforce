@@ -7,7 +7,10 @@ F42
 Projekt-Harness (E-F41-3 = B, direkt nach F41, vor F35) — WS-1: Skelett,
 echter Prüfbefehl, Trust-Hinweis; WS-2: Architekt darf einen offenen Stack
 nicht mehr selbst festlegen (löst F-685); WS-3: Realer Messnachweis gegen
-ein zweites Fremdprojekt (`haushaltsbuch2`)
+ein zweites Fremdprojekt (`haushaltsbuch2`); WS-4: Auftrags-Scope hat
+Vorrang vor dem Architekturentwurf (löst F-712), Stack-Entscheidung
+erzwingt CLAUDE.md/ADR (löst F-714), Entscheidungsformular-Vorauswahl
+verifiziert (löst F-711)
 
 ## Status
 Status: IN_ARBEIT
@@ -66,12 +69,50 @@ Architekturentwurf statt des beauftragten Doku-Umfangs um), F-714
 (menschliche Stack-Entscheidung bleibt ohne verpflichtenden Bauschritt im
 Kontrollzustand stecken, kein `CLAUDE.md`/ADR-Nachzug).
 
-**Geplant (WS-4, noch nicht begonnen):** F-712 (Auftrags-Scope muss
-gegenüber dem Architekturentwurf Vorrang haben, deterministische
-Pfad-Allowlist-Prüfung), F-714 (Bauschritt nach `kategorie: 'stack'`-
-Entscheidung schreibt verpflichtend `CLAUDE.md`-Stack-Abschnitt + ADR),
-F-711 (Entscheidungsformular darf nicht die erste Option vorauswählen,
-sondern keine oder die referenzierte Empfehlung).
+## Ziel (WS-4, löst F-712/F-714/F-711)
+**F-712** (Auftrags-Scope hat Vorrang vor dem Architekturentwurf):
+`baueUmsetzungsInstruktion` (`src/architekt/index.ts`) bekommt einen
+`modus`-Parameter — im Projektmodus verlangt sie ausdrücklich Scope-
+Vorrang und verbietet Produktcode/Schemas/Skripte/`package.json`/
+`scripts/check-*`, der Feature-Modus-Default bleibt bitgenau die
+bisherige (F39 WS-3a) Instruktion. Zusätzlich deterministisch erzwungen:
+`pruefeProjektmodusScope` prüft NACH einem Projektmodus-`ausfuehrung`-
+Lauf die real geänderten Dateien (aus der bestehenden Änderungsübersicht,
+F23 WS-0) gegen die Allowlist `docs/**`/`features/**`/`CLAUDE.md`; neue
+Regel 1g (`src/workflow/index.ts`) hält den Workflow bei einem Verstoß an
+(`KLAERUNG_ERFORDERLICH`, Grund nennt die Datei(en)). Feature-Modus bleibt
+strukturell unberührt (Feld nur im Projektmodus berechnet, AK3).
+
+**F-714** (Stack-Entscheidung erzwingt CLAUDE.md/ADR): trägt der
+referenzierte Architektur-Lauf eine `kategorie:'stack'`-Entscheidung UND
+ist dafür bereits eine menschliche Antwort erfasst
+(`findeWorkflowEntscheidungFuerSchritt`), hängt
+`baueStackEntscheidungsInstruktion` eine Pflicht-Instruktion an den
+`ausfuehrung`-Auftragstext (CLAUDE.md füllen, ADR mit Verweis auf das
+Entscheidungsartefakt anlegen). Neue Regel 1h hält danach an, wenn
+`istStackOffen(repoWurzel)` weiterhin `true` liefert ODER kein ADR unter
+`docs/adr/` auf das Entscheidungsartefakt verweist
+(`traegtAdrVerweisAufEntscheidung`, QA-Befund: eine erste Fassung prüfte
+nur CLAUDE.md, ein Lauf ohne jedes ADR hätte bestanden) — Grund: "Stack
+entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714)" — die
+Grenze ist damit ERZWUNGEN, nicht nur DEKLARIERT (kalibrierter Rot-
+(inkl. Halb-erfüllt)-/Grün-Fall).
+
+**F-711** (Entscheidungsformular-Vorauswahl verifiziert): die Vorauswahl
+in `renderArchitekturEntscheidung` (`public/leitstand/views/
+workflows.js`) hing bereits seit F39 WS-2b (Commit `caa860e`) korrekt an
+`option.titel === frage.empfehlung`, nicht an der Options-Position — der
+Reallauf-Befund war eine Verwechslung, kein Code-Fehler. Neu: ein
+deterministisches statisches Quelltext-Gate (kein Import, keine Browser-
+Ausführung, D5-Muster `check-f15-workflow-oberflaeche.mjs`) inkl.
+Regressions-Grep gegen eine index-basierte Vorauswahl, damit die Zusage
+künftig geprüft statt nur behauptet ist.
+
+Alle drei real belegt am Aufrufpfad (`POST /api/auftraege` → `POST
+/api/workflows/<id>/starten` gegen ein echtes Wegwerf-Git-Repo, F-708):
+`scripts/check-f42-projekt-harness.mjs` Blöcke (g)/(h)/(i),
+`state/gates.md` (2026-09-25). Unit-Tests: `src/architekt/
+architekt.test.ts`, `src/workflow/workflow.test.ts` (Regel 1g/1h).
 
 ## Nicht-Ziele
 - Füllung des Skeletts (Coach-Interview/Architekt/Ausführung für das
@@ -156,6 +197,35 @@ sondern keine oder die referenzierte Empfehlung).
   den Zusatz "Stack nicht selbst festlegen" NUR, wenn `stackOffen` gesetzt
   ist. Belegt: `scripts/check-f42-projekt-harness.mjs` (f3),
   `src/architekt/architekt.test.ts`.
+- **AK12** (WS-4, löst F-712) Ausführung hält im Projektmodus den
+  Auftrags-Scope ein: ein `ausfuehrung`-Lauf, der außerhalb der Allowlist
+  (`docs/**`/`features/**`/`CLAUDE.md`) schreibt, hält den Workflow an
+  (`KLAERUNG_ERFORDERLICH`, Grund nennt die Datei(en)); dieselbe
+  Überschreitung im Featuremodus bleibt FOLGENLOS (Regression). Belegt:
+  `scripts/check-f42-projekt-harness.mjs` (g, Rot-/Grün-/Featuremodus-
+  Fall, realer Aufrufpfad), `src/architekt/architekt.test.ts`
+  (`pruefeProjektmodusScope`), `src/workflow/workflow.test.ts` (Regel 1g).
+- **AK13** (WS-4, löst F-714) Eine erfasste `kategorie:'stack'`-
+  Entscheidung schreibt den nächsten `ausfuehrung`-Lauf verpflichtend
+  Richtung CLAUDE.md UND ADR; erfüllt der Lauf nur eines der beiden (oder
+  keines), hält der Workflow mit dem F-714-Grundtext an; erst wenn CLAUDE.md
+  gefüllt UND ein referenzierendes ADR real geschrieben sind, läuft der
+  Workflow durch. Belegt: `scripts/check-f42-projekt-harness.mjs` (h1–h3,
+  inkl. Halb-erfüllt-Rot-Fall, realer Aufrufpfad), `src/architekt/
+  architekt.test.ts` (`baueStackEntscheidungsInstruktion`,
+  `traegtAdrVerweisAufEntscheidung`), `src/workflow/workflow.test.ts`
+  (Regel 1h).
+- **AK14** (WS-4, löst F-711) Das Entscheidungsformular wählt die Option
+  vor, deren `titel` der `empfehlung` entspricht (nicht die Options-
+  Position); ein Regressions-Grep gegen eine index-basierte Vorauswahl
+  bleibt leer. Belegt: `scripts/check-f42-projekt-harness.mjs` (i,
+  statisches Quelltext-Gate).
+- **AK15** (WS-4) Feature-Modus und jeder bestehende Aufruf ohne die
+  neuen Parameter bleiben unverändert: `baueUmsetzungsInstruktion()` ohne
+  Argument ist bitgenau die bisherige Instruktion (F39 WS-3a),
+  `pruefeProjektmodusScope`/Regel 1g/1h greifen nur, wenn der Aufrufer sie
+  ausdrücklich berechnet. Belegt: `npm run check` vollständig grün (806
+  Tests), `scripts/check-f39-architekt.mjs` (o) unverändert grün.
 
 ## Dependencies
 - F41 — Neues Projekt anlegen (`src/projekt-anlegen/index.ts`,
@@ -179,6 +249,13 @@ sondern keine oder die referenzierte Empfehlung).
   Datei additiv (neuer `istStackOffen`, neuer optionaler `stackOffen`-
   Parameter, neues optionales `kategorie`-Feld in `entscheidungen_mensch[]`),
   ruft F39s bestehende Funktionen unverändert weiter auf.
+- (WS-4) F-652 — Änderungsübersicht (`src/aenderungsuebersicht/index.ts`,
+  `AenderungsuebersichtDatei.pfad`) — `pruefeProjektmodusScope` liest nur
+  die bereits registrierte Dateiliste, kein neuer Lesepfad. F39 WS-2b —
+  Workflow-Entscheidung (`findeWorkflowEntscheidungFuerSchritt`,
+  `scripts/leitstand/routen-f39.mjs`) — Vorbedingung für
+  `baueStackEntscheidungsInstruktion`/Regel 1h, unverändert weiter
+  aufgerufen.
 
 ## Betroffene Primitive
 - `src/projekt-anlegen/index.ts` — `kopiereSkelett` (neu),
@@ -212,6 +289,29 @@ sondern keine oder die referenzierte Empfehlung).
 - (WS-2) `scripts/leitstand-server.mjs` — `leseArchitekturErgebnisAusLaufakte`
   (neuer optionaler `stackOffen`-Parameter), alle drei Aufrufer geben
   `istStackOffen(repoWurzel)` mit.
+- (WS-4) `src/architekt/index.ts` — `baueUmsetzungsInstruktion` (neuer
+  optionaler `modus`-Parameter, Default `'feature'`), neu:
+  `baueStackEntscheidungsInstruktion`, `pruefeProjektmodusScope`,
+  `traegtAdrVerweisAufEntscheidung` (QA-Befund, prüft die ADR-Hälfte von
+  F-714, `istStackOffen` allein prüfte nur CLAUDE.md).
+- (WS-4) `src/workflow/types.ts` — `SchrittErgebnis` bekommt zwei neue
+  optionale Felder: `scopeVerletzung`, `stackNichtGefuellt`.
+- (WS-4) `src/workflow/index.ts` — `ermittleNaechstenSchritt` bekommt Regel
+  1g (F-712) und Regel 1h (F-714), beide gekoppelt an `schritt.rolle ===
+  'ausfuehrung'` (Muster Regel 1e/1f).
+- (WS-4) `scripts/leitstand-server.mjs` — `modus`-Berechnung aus dem
+  `architekt`-Zweig herausgehoben (unverändert dieselbe Berechnung, jetzt
+  auch für `ausfuehrung` sichtbar); neuer Helfer
+  `findeArchitektEingabeTreffer(schritt, workflowDaten)` (Code-Review-
+  Befund, führt die zuvor doppelte Regex-Ableitung auf eine Quelle zurück);
+  der `ausfuehrung`+`ergebnis-@architekt`-Zweig übergibt `modus` an
+  `baueUmsetzungsInstruktion`, hängt bei vorliegender Stack-Entscheidung
+  `baueStackEntscheidungsInstruktion` an; die Nachbereitung
+  (`starteWorkflowSchritt`s `nachLauf`) berechnet
+  `scopeVerletzung`/`stackNichtGefuellt` (Letzteres über
+  `istStackOffen` UND `traegtAdrVerweisAufEntscheidung`) und reicht sie an
+  `ermittleNaechstenSchritt` durch.
+- (WS-4) `scripts/check-f42-projekt-harness.mjs` — neue Blöcke (g)/(h)/(i).
 
 ## Risiken
 - Skelett-Snapshot kann von der Template-Quelle driften (F-700, TECH_DEBT,
@@ -284,3 +384,19 @@ drei `istStackOffen(repoWurzel)`-Aufrufstellen entfernen; Block (f) aus
 `scripts/check-f42-projekt-harness.mjs` sowie die WS-2-Testfälle aus
 `src/architekt/architekt.test.ts` entfernen — jeder Schritt additiv
 rückbaubar, ohne WS-1 zu berühren.
+
+**WS-4 (löst F-712/F-714/F-711):** `baueUmsetzungsInstruktion` auf ihre
+WS-3a-Signatur (ohne `modus`-Parameter, nur die Feature-Modus-Zeilen)
+zurücksetzen; `baueStackEntscheidungsInstruktion`/`pruefeProjektmodusScope`/
+`traegtAdrVerweisAufEntscheidung`
+aus `src/architekt/index.ts` entfernen; `scopeVerletzung`/
+`stackNichtGefuellt` aus `SchrittErgebnis` (`src/workflow/types.ts`) und
+Regel 1g/1h aus `ermittleNaechstenSchritt` (`src/workflow/index.ts`)
+entfernen; in `scripts/leitstand-server.mjs` die `modus`-Hoisting-Änderung
+zurücknehmen (Berechnung zurück in den `architekt`-Zweig), den
+Stack-Instruktions-Anhang und die `scopeVerletzung`/`stackNichtGefuellt`-
+Berechnung in `starteWorkflowSchritt` entfernen; Blöcke (g)/(h)/(i) aus
+`scripts/check-f42-projekt-harness.mjs` sowie die WS-4-Testfälle aus
+`src/architekt/architekt.test.ts`/`src/workflow/workflow.test.ts`
+entfernen — jeder Schritt additiv rückbaubar, ohne WS-1/WS-2/WS-3 zu
+berühren.

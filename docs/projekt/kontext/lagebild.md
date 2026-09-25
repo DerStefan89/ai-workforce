@@ -137,5 +137,3 @@ feature.md`) (Stand 22.09.2026).
 - F-689 · BUG · `leseSelbstblockadeAusAusfuehrungstext` erkennt nur die feste Zeile `- [x] Blockiert` — eine echte Rückfrage der `ausfuehrung`-Rolle an den Menschen bleibt strukturell unerkannt, der Workflow läuft automatisch weiter.
 - F-690 · BUG · Ein über F41 neu angelegtes Projekt ist für Claude Code nicht "trusted" — die kopierte `.claude/settings.json`-Permission-Allowlist greift real nicht.
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
-- F-712 · BUG · `ausfuehrung` setzt den Architekturentwurf (Schema, Validator, Prüfkette, ADRs) um, obwohl der Projektmodus-Auftrag ausdrücklich nur Doku erlaubte.
-- F-714 · TECH_DEBT · Die menschliche Stack-Entscheidung (`kategorie: 'stack'`) bleibt nach der Entscheidung im Kontrollzustand stecken — weder `CLAUDE.md`-Stack-Abschnitt noch ADR werden verpflichtend geschrieben.

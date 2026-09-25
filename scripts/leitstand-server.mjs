@@ -452,7 +452,15 @@ import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCo
 import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
-import { baueArchitektAuftragstext, baueUmsetzungsInstruktion, istStackOffen, validiereErgebnisArchitektur } from '../src/architekt/index.ts'
+import {
+  baueArchitektAuftragstext,
+  baueStackEntscheidungsInstruktion,
+  baueUmsetzungsInstruktion,
+  istStackOffen,
+  pruefeProjektmodusScope,
+  traegtAdrVerweisAufEntscheidung,
+  validiereErgebnisArchitektur,
+} from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
 import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
@@ -3654,6 +3662,23 @@ function leseBody(req) {
 }
 
 /**
+ * F42 WS-4 (löst F-712/F-714, Code-Review-Befund: dieselbe Ableitung stand vorher zweimal, einmal
+ * im Vorlauf-Block von starteWorkflowSchritt und einmal in dessen Nachlauf-Callback): findet für
+ * einen 'ausfuehrung'-Schritt die 'ergebnis-@<schrittId>'-Eingabe, die auf einen 'architekt'-
+ * Schritt zeigt — dieselbe Erkennung wie loeseSchrittEingabenAuf selbst (kein zweiter Regelsatz),
+ * aufgelöst gegen die übergebene workflowDaten.schritte. Reine Funktion, kein I/O.
+ * @param schritt - der zu prüfende Workflow-Schritt
+ * @param workflowDaten - vollständiger WORKFLOW_V0-Datensatz (für die Rollen-Auflösung der Eingabe)
+ * @returns das RegExp-Match (Gruppe 1 = referenzierte schritt_id) oder undefined, wenn keine solche Eingabe vorliegt
+ */
+function findeArchitektEingabeTreffer(schritt, workflowDaten) {
+  if (schritt.rolle !== 'ausfuehrung') return undefined
+  return schritt.eingaben
+    .map((eingabe) => /^artefakt:ergebnis-@(.+)$/.exec(eingabe))
+    .find((treffer) => treffer !== null && workflowDaten.schritte.find((s) => s.schritt_id === treffer[1])?.rolle === 'architekt')
+}
+
+/**
  * Baut den Request-Handler des Leitstands. Eigener, in sich
  * abgeschlossener In-Memory-Zustand je Aufruf (angenommene laufIds,
  * Startfehlerliste, F11 WS-2 zusätzlich laufAktiv/D13) — erlaubt
@@ -4142,8 +4167,12 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Muster, derselbe loeseRessourcenAuf-Aufruf, hier mit dem startvorlagePfad/repoWurzel dieser
     // Serverinstanz statt einer zweiten Konfigurationsquelle).
     let auftragstext = auftragVersion.daten.auftragstext
+    // F42 WS-4 (löst F-712/F-714): aus dem 'architekt'-Zweig herausgehoben (unverändert dieselbe
+    // Berechnung) — der 'ausfuehrung'-Zweig weiter unten braucht denselben Modus jetzt ebenfalls,
+    // um baueUmsetzungsInstruktion/baueStackEntscheidungsInstruktion projektmodus-bewusst
+    // aufzurufen.
+    const modus = auftragVersion.daten.herkunft?.art === 'projekt_interview' ? 'projekt' : 'feature'
     if (schritt.rolle === 'architekt') {
-      const modus = auftragVersion.daten.herkunft?.art === 'projekt_interview' ? 'projekt' : 'feature'
       let capabilityAuszug = null
       if (modus === 'projekt') {
         try {
@@ -4178,11 +4207,25 @@ export function erzeugeRequestHandler(optionen = {}) {
     // braucht nur die Rolle des referenzierten Schritts, keine reale Laufauflösung. Ein
     // Workflow ohne 'architekt'-Schritt (standard.json/fast-lane.json) bleibt bitgenau
     // unverändert: kein Treffer, kein Zusatzblock.
-    if (schritt.rolle === 'ausfuehrung' && schritt.eingaben.some((eingabe) => {
-      const treffer = /^artefakt:ergebnis-@(.+)$/.exec(eingabe)
-      return treffer !== null && workflowDaten.schritte.find((s) => s.schritt_id === treffer[1])?.rolle === 'architekt'
-    })) {
-      auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion().join('\n')}`
+    const architektEingabeTreffer = findeArchitektEingabeTreffer(schritt, workflowDaten)
+    if (architektEingabeTreffer !== undefined) {
+      auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion(modus).join('\n')}`
+
+      // F42 WS-4 (löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2): NUR im
+      // Projektmodus und NUR, wenn der referenzierte Architektur-Lauf tatsächlich eine
+      // 'kategorie: stack'-Entscheidung trägt UND dafür bereits eine menschliche Antwort erfasst
+      // ist (findeWorkflowEntscheidungFuerSchritt, Muster Regel 1c oben) — sonst bliebe die
+      // Instruktion eine Zusage ohne Deckung (kein Entscheidungsartefakt zum Verweisen).
+      if (modus === 'projekt') {
+        const architektSchrittId = architektEingabeTreffer[1]
+        const architektSchrittFuerStack = workflowDaten.schritte.find((s) => s.schritt_id === architektSchrittId)
+        const architektLaufakteFuerStack = architektSchrittFuerStack?.lauf_id != null ? ladeArtefaktVersion(`laufakte-${architektSchrittFuerStack.lauf_id}`, undefined, ladeOptionen) : null
+        const architekturErgebnisFuerStack = architektLaufakteFuerStack !== null ? leseArchitekturErgebnisAusLaufakte(architektLaufakteFuerStack.daten, false) : null
+        const traegtStackEntscheidung = architekturErgebnisFuerStack !== null && architekturErgebnisFuerStack.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
+        if (traegtStackEntscheidung && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittId) !== null) {
+          auftragstext = `${auftragstext}\n\n${baueStackEntscheidungsInstruktion(workflowEntscheidungArtefaktId(workflowId)).join('\n')}`
+        }
+      }
     }
 
     // F-652 (state/findings.md F-652, BUG P1, löst "keine Rolle kann `npm run check` selbst
@@ -4495,6 +4538,43 @@ export function erzeugeRequestHandler(optionen = {}) {
           pruefergebnisAusgabeEnde = 'Prüfergebnis fehlt (Registrierung gescheitert, siehe Startfehlerliste).'
         }
       }
+      // Regel 1g (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen
+      // haushaltsbuch2): dasselbe Lesemuster wie pruefergebnis direkt darüber, hier gegen die
+      // bereits registrierte Änderungsübersicht ('aenderungsuebersicht-<laufId>', starteLaufUndVergiss)
+      // — NUR im Projektmodus (herkunft.art === 'projekt_interview'), sonst bleibt das Feld
+      // undefined und Regel 1g folgenlos (Feature-Modus unverändert, AK3).
+      let scopeVerletzung
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung' && auftragVersion.daten.herkunft?.art === 'projekt_interview') {
+        const uebersichtVersionFuerScope = ladeArtefaktVersion(`aenderungsuebersicht-${laufId}`, undefined, ladeOptionen)
+        scopeVerletzung = uebersichtVersionFuerScope !== null ? pruefeProjektmodusScope(uebersichtVersionFuerScope.daten.dateien.map((datei) => datei.pfad)) : []
+      }
+      // Regel 1h (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen
+      // haushaltsbuch2): NUR berechnet, wenn der referenzierte Architektur-Schritt tatsächlich
+      // eine 'kategorie: stack'-Entscheidung trägt UND dafür eine menschliche Antwort erfasst ist
+      // (dasselbe Vorbedingungspaar wie beim Anhängen von baueStackEntscheidungsInstruktion oben,
+      // Muster Regel 1c: der Aufrufer wertet aus, dieses Modul bleibt abhängigkeitsarm) — sonst
+      // bleibt das Feld undefined und Regel 1h folgenlos.
+      //
+      // QA-Befund (F42 WS-4): baueStackEntscheidungsInstruktion verlangt ZWEI Schreibziele
+      // (CLAUDE.md UND ein referenzierendes ADR) — istStackOffen allein prüfte nur die erste
+      // Hälfte, ein Lauf ohne jedes ADR (oder mit einem ADR ohne Bezug zur Entscheidung) hätte die
+      // Prüfung unbemerkt bestanden. traegtAdrVerweisAufEntscheidung schließt die zweite Hälfte.
+      let stackNichtGefuellt
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung') {
+        const architektEingabeTrefferFuerStack = findeArchitektEingabeTreffer(schritt, workflowDaten)
+        if (architektEingabeTrefferFuerStack !== undefined) {
+          const architektSchrittIdFuerStack = architektEingabeTrefferFuerStack[1]
+          const architektSchrittFuerStackNachlauf = workflowDaten.schritte.find((s) => s.schritt_id === architektSchrittIdFuerStack)
+          const architektLaufakteFuerStackNachlauf =
+            architektSchrittFuerStackNachlauf?.lauf_id != null ? ladeArtefaktVersion(`laufakte-${architektSchrittFuerStackNachlauf.lauf_id}`, undefined, ladeOptionen) : null
+          const architekturErgebnisFuerStackNachlauf = architektLaufakteFuerStackNachlauf !== null ? leseArchitekturErgebnisAusLaufakte(architektLaufakteFuerStackNachlauf.daten, false) : null
+          const traegtStackEntscheidungNachlauf =
+            architekturErgebnisFuerStackNachlauf !== null && architekturErgebnisFuerStackNachlauf.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
+          if (traegtStackEntscheidungNachlauf && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittIdFuerStack) !== null) {
+            stackNichtGefuellt = istStackOffen(repoWurzel) || !traegtAdrVerweisAufEntscheidung(repoWurzel, workflowEntscheidungArtefaktId(workflowId))
+          }
+        }
+      }
       // Vorgezogen aus dem Heilungszweig unten, weil der Text seit WS-2c zusätzlich als
       // dauerhafter grund in die neue Workflow-Version geht (a5) und nicht nur in die
       // flüchtige Startfehlerliste.
@@ -4530,6 +4610,8 @@ export function erzeugeRequestHandler(optionen = {}) {
             pruefergebnis,
             pruefergebnisExitCode,
             pruefergebnisAusgabeEnde,
+            scopeVerletzung,
+            stackNichtGefuellt,
           })
           return {
             status: workflowStatusZuAusgang(naechster),

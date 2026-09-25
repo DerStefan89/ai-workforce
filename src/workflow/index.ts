@@ -575,8 +575,8 @@ function zaehleGelaufeneSchritte(schritte: WorkflowV0Schritt[], vorschrittErgebn
  * handelt nicht. Der Automat, der ein 'starte' in einen echten Lauf
  * übersetzt, ist WS-2b.
  *
- * Neun Prüfungen (0, 1, 1b, 1c, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge,
- * und die Reihenfolge ist die eigentliche Aussage:
+ * Prüfungen (0, 1, 1b, 1c, 1d, 1e, 1f, 1g, 1h, 2, 3, 4, 4b, 5), in genau dieser Reihenfolge, und
+ * die Reihenfolge ist die eigentliche Aussage:
  *
  * 0. Workflow-status ∉ FORTSETZBARE_WORKFLOW_STATUS → haltKlaerung (bzw.
  *    fertig, wenn ein ABGESCHLOSSENER Workflow ohne Ergebnis angeschaut
@@ -876,6 +876,34 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
       return {
         art: 'haltKlaerung',
         grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung): deterministische Prüfung meldet ${vorschrittErgebnis.pruefergebnis} (Exit-Code ${exitCodeText}) — kein automatischer Fortschritt zum Review (Lauf '${vorschrittErgebnis.laufId}').${vorschrittErgebnis.pruefergebnisAusgabeEnde ? `\nAusgabeende:\n${vorschrittErgebnis.pruefergebnisAusgabeEnde}` : ''}`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    // Regel 1g (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+    // dieselbe Kopplung an schritt.rolle wie Regel 1e/1f, aus demselben Grund ('ausfuehrung' trägt
+    // output_schema:null). Der Aufrufer berechnet 'scopeVerletzung' NUR im Projektmodus
+    // (herkunft.art === 'projekt_interview', pruefeProjektmodusScope gegen die bereits
+    // registrierte Änderungsübersicht) — ein nicht-leeres Array heißt: der Lauf hat außerhalb der
+    // Allowlist (docs/**, features/**, CLAUDE.md) geschrieben, der Auftrags-Scope hat aber
+    // Vorrang vor dem Architekturentwurf. Feature-Modus bleibt unberührt (Feld bleibt dort
+    // undefined).
+    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.scopeVerletzung !== undefined && vorschrittErgebnis.scopeVerletzung.length > 0) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${vorschrittErgebnis.scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712), kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    // Regel 1h (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+    // dieselbe Kopplung an schritt.rolle wie Regel 1g direkt darüber. Der Aufrufer berechnet
+    // 'stackNichtGefuellt' NUR, wenn für den referenzierten Architektur-Schritt eine Entscheidung
+    // mit 'kategorie': 'stack' erfasst war (istStackOffen(repoWurzel) sonst irrelevant) — true
+    // heißt: CLAUDE.md/ADR wurden trotz Instruktion (baueStackEntscheidungsInstruktion) nicht
+    // geschrieben, der Stack bliebe für jeden künftigen Architektur-Lauf offen.
+    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.stackNichtGefuellt === true) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
