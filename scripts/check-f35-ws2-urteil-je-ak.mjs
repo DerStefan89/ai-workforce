@@ -232,31 +232,48 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
       befunde.push(`${bezeichnung}: Vorbedingung POST .../starten erwartet 200/202, erhalten ${startAntwort.status} (${await startAntwort.text()})`)
       return null
     }
+    // F35 WS-3 (features/F35/feature.md): ein ak_urteile-Verstoß löst inzwischen (wie ein
+    // BLOCKIERT-Urteil) automatisch eine Anpassung aus (Fälle (b)/(c) unten) — beide
+    // Fixtur-Schritte tragen 'AUTOMATISCH', der zurückgesetzte Workflow bleibt dann dauerhaft auf
+    // 'LAEUFT' stehen (niemand dispatcht ihn erneut, AK4), OHNE je 'nicht mehr LAEUFT/OFFEN' zu
+    // erreichen. Die Wartebedingung stoppt deshalb ZUSÄTZLICH, sobald eine Abnahme-Entscheidung
+    // entstanden ist — für (a)/(d)/(e) (keine automatische Anpassung) bleibt das Verhalten
+    // bitgenau wie zuvor, weil dort nie eine entsteht.
     const daten = await warteBis(() => {
       const aktuell = ladeWorkflow(workflowId, basisVerzeichnis)
-      return aktuell !== null && aktuell.status !== 'LAEUFT' && aktuell.status !== 'OFFEN' ? aktuell : null
+      if (aktuell === null) return null
+      if (aktuell.status !== 'LAEUFT' && aktuell.status !== 'OFFEN') return aktuell
+      const abnahme = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, { basisVerzeichnis, schreiber: () => {} })
+      return abnahme !== null ? aktuell : null
     }, 3000)
     if (daten === null) {
       befunde.push(`${bezeichnung}: Workflow '${workflowId}' hat innerhalb der Wartezeit keinen Endzustand erreicht`)
       return null
     }
     const reviewLaufId = daten.schritte?.[1]?.lauf_id ?? null
-    return { workflowId, daten, reviewLaufId }
+    const abnahme = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, { basisVerzeichnis, schreiber: () => {} })
+    return { workflowId, daten, reviewLaufId, abnahme }
   }
 
   try {
     // ── (b) Rot: ak_urteile trägt nur EIN Eintrag (AK2 fehlt) ────────────────────────────────
+    // F35 WS-3 (features/F35/feature.md): Regel 1i hält den Automaten intern weiterhin an (davon
+    // unverändert), ABER der neue Automaten-Hook löst danach zusätzlich eine automatische
+    // Anpassung aus (der AK-Verstoß zählt wie BLOCKIERT als Auslöser) — beobachtbar wird das jetzt
+    // am Abnahme-Artefakt (erzeuger 'kern', Begründung nennt 'AK2'), nicht mehr an
+    // status/grund des Workflow-Datensatzes selbst (der bleibt hier 'LAEUFT', weil die
+    // Fixtur-Schritte 'AUTOMATISCH' tragen, s. fuehreDurch-Kommentar oben).
     {
       const ergebnis = await fuehreDurch(
         '(b)',
         JSON.stringify({ urteil: 'BEREIT', befunde: [], empfehlung: 'Alles gut.', ak_urteile: [{ ak_id: 'AK1', urteil: 'ERFUELLT', beleg: 'src/beispiel.ts:1' }] })
       )
       if (ergebnis !== null) {
-        const { daten } = ergebnis
-        if (daten.status !== 'KLAERUNG_ERFORDERLICH' || !daten.grund?.includes('AK2')) {
-          befunde.push(`(b) fehlendes AK-Urteil: erwartet status 'KLAERUNG_ERFORDERLICH' mit 'AK2' im Grund, erhalten status ${JSON.stringify(daten.status)}, grund ${JSON.stringify(daten.grund)}`)
+        const { daten, abnahme } = ergebnis
+        if (abnahme === null || abnahme.herkunft?.erzeuger !== 'kern' || !abnahme.daten.begruendung?.includes('AK2') || daten.schritte?.[0]?.status !== 'OFFEN' || daten.schritte?.[0]?.lauf_id !== null) {
+          befunde.push(`(b) fehlendes AK-Urteil: erwartet eine automatische Anpassung (erzeuger 'kern', Begründung nennt 'AK2') mit zurückgesetztem schritt-1-ausfuehrung — erhalten abnahme ${JSON.stringify(abnahme)}, schritt1 ${JSON.stringify(daten.schritte?.[0])}`)
         } else {
-          console.log("✓ (b) Reviewer liefert urteil BEREIT, aber nur EIN ak_urteil — der Workflow hält (KLAERUNG_ERFORDERLICH), der Grund nennt das fehlende AK2.")
+          console.log("✓ (b) Reviewer liefert urteil BEREIT, aber nur EIN ak_urteil — F35 WS-3 legt automatisch eine Anpassung an (erzeuger 'kern'), die Begründung nennt das fehlende AK2.")
         }
       }
     }
@@ -276,11 +293,11 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErg
         })
       )
       if (ergebnis !== null) {
-        const { daten } = ergebnis
-        if (daten.status !== 'KLAERUNG_ERFORDERLICH' || !daten.grund?.includes('AK2')) {
-          befunde.push(`(c) NICHT_ERFUELLT trotz Gesamturteil BEREIT: erwartet status 'KLAERUNG_ERFORDERLICH' mit 'AK2' im Grund, erhalten status ${JSON.stringify(daten.status)}, grund ${JSON.stringify(daten.grund)}`)
+        const { daten, abnahme } = ergebnis
+        if (abnahme === null || abnahme.herkunft?.erzeuger !== 'kern' || !abnahme.daten.begruendung?.includes('AK2') || daten.schritte?.[0]?.status !== 'OFFEN' || daten.schritte?.[0]?.lauf_id !== null) {
+          befunde.push(`(c) NICHT_ERFUELLT trotz Gesamturteil BEREIT: erwartet eine automatische Anpassung (erzeuger 'kern', Begründung nennt 'AK2') mit zurückgesetztem schritt-1-ausfuehrung — erhalten abnahme ${JSON.stringify(abnahme)}, schritt1 ${JSON.stringify(daten.schritte?.[0])}`)
         } else {
-          console.log("✓ (c) Ein ak_urteil NICHT_ERFUELLT bei Gesamturteil BEREIT hält an, obwohl das Gesamturteil BEREIT ist.")
+          console.log("✓ (c) Ein ak_urteil NICHT_ERFUELLT bei Gesamturteil BEREIT: F35 WS-3 legt automatisch eine Anpassung an, obwohl das Gesamturteil BEREIT ist.")
         }
       }
     }

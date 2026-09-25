@@ -71,7 +71,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { sha256Hex, stelleLaufstatusFest } from '../src/checkpoint-store/index.ts'
-import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
+import { ladeArtefaktVersion, listeVersionen } from '../src/lineage-registry/index.ts'
 import { ermittleIstZustand } from '../src/invocation-policy/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
@@ -307,6 +307,39 @@ async function warteAufWorkflowStatus(workflowId, basisVerzeichnis, erwartete, m
     daten = ladeWorkflow(workflowId, basisVerzeichnis)
   }
   return daten
+}
+
+function ladeAbnahme(workflowId, basisVerzeichnis) {
+  return ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, { basisVerzeichnis, schreiber: STILL })
+}
+
+/**
+ * F35 WS-3 (features/F35/feature.md): ein BLOCKIERT-Urteil löst inzwischen automatisch eine
+ * Anpassung aus (erzeuger 'kern') — bei AUTOMATISCH-Schritten (Muster schrittFixture) bleibt der
+ * zurückgesetzte Workflow dann dauerhaft auf 'LAEUFT' stehen (niemand dispatcht ihn erneut, AK4)
+ * und erreicht NIE 'KLAERUNG_ERFORDERLICH'. Pollt deshalb ZUSÄTZLICH auf das Entstehen der
+ * Abnahme-Entscheidung (Muster warteAufWorkflowStatus). @returns { daten, abnahme }
+ */
+async function warteAufWorkflowStatusOderAbnahme(workflowId, basisVerzeichnis, erwartete, maxWartezeitMs) {
+  const start = Date.now()
+  let daten = ladeWorkflow(workflowId, basisVerzeichnis)
+  let abnahme = ladeAbnahme(workflowId, basisVerzeichnis)
+  while (!erwartete.includes(daten?.status) && abnahme === null && Date.now() - start < maxWartezeitMs) {
+    await verzoegerung(200)
+    daten = ladeWorkflow(workflowId, basisVerzeichnis)
+    abnahme = ladeAbnahme(workflowId, basisVerzeichnis)
+  }
+  return { daten, abnahme }
+}
+
+/** Findet die zuletzt am Review-Schritt (schritte[1]) gesetzte lauf_id über die GESAMTE Versionsgeschichte des Workflows — F35 WS-3 setzt sie nach einem BLOCKIERT-Urteil sofort wieder auf null zurück, bevor ein einfaches Lesen der aktuellen Fassung sie noch sähe. */
+function findeLetzteReviewLaufId(workflowId, basisVerzeichnis) {
+  const versionen = listeVersionen(`workflow-${workflowId}`, { basisVerzeichnis, schreiber: STILL })
+  for (let i = versionen.length - 1; i >= 0; i--) {
+    const laufId = versionen[i].daten?.schritte?.[1]?.lauf_id
+    if (laufId) return laufId
+  }
+  return null
 }
 
 function schrittFixture(schrittId, nachfolger, zeitgrenzeMs, felder = {}) {
@@ -1077,30 +1110,37 @@ function legeAusfuehrungMitReviewWorkflowAn(basisVerzeichnis, auftragId, zeitgre
     if (start.status !== 202) {
       befunde.push(`(i) F23 WS-1b: der Startaufruf erwartet 202, erhalten ${start.status} (${JSON.stringify(await start.json().catch(() => ({})))})`)
     } else {
-      const daten = await warteAufWorkflowStatus(workflowId, basisVerzeichnis, ['ABGESCHLOSSEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT'], 60000)
-      const [schritt1, schritt2] = daten?.schritte ?? []
-      if (daten?.status !== 'KLAERUNG_ERFORDERLICH' || daten?.aktiver_schritt_id !== 'schritt-2') {
-        befunde.push(
-          `(i) F23 WS-1b: BLOCKIERT muss auf KLAERUNG_ERFORDERLICH mit Cursor 'schritt-2' anhalten, erhalten ${JSON.stringify({ status: daten?.status, cursor: daten?.aktiver_schritt_id, grund: daten?.grund })}`
-        )
-      } else if (typeof daten?.grund !== 'string' || !daten.grund.includes('BLOCKIERT')) {
-        befunde.push(`(i) F23 WS-1b: der Halt-Grund muss das Urteil BLOCKIERT nennen, erhalten ${JSON.stringify(daten?.grund)}`)
-      } else if (schritt1?.status !== 'ERFOLGREICH') {
-        befunde.push(`(i) F23 WS-1b: Schritt 1 (Ausführung) muss unangetastet ERFOLGREICH bleiben, erhalten ${JSON.stringify(schritt1)}`)
-      } else if (schritt2?.status !== 'ERFOLGREICH' || schritt2?.lauf_id === null) {
+      // F35 WS-3 (features/F35/feature.md): ein reales BLOCKIERT-Urteil hält den Workflow intern
+      // weiterhin über Regel 1b an (davon unverändert) — löst danach aber zusätzlich automatisch
+      // eine Anpassung aus (Fixtur-Schritte tragen 'AUTOMATISCH', s. schrittFixture, deshalb bleibt
+      // der zurückgesetzte Workflow-Status 'LAEUFT' statt 'KLAERUNG_ERFORDERLICH' — Muster
+      // check-f35-ws2-urteil-je-ak.mjs/check-f659, dieselbe Anpassung). Gewartet wird deshalb auf
+      // das Abnahme-Artefakt; der Beleg, dass der Review-Lauf real gelaufen und ERFOLGREICH
+      // klassifiziert war, kommt aus der Versionsgeschichte (findeLetzteReviewLaufId), weil die
+      // Automatik schritte[1].lauf_id im selben Zug schon wieder auf null gesetzt hat.
+      const { daten, abnahme } = await warteAufWorkflowStatusOderAbnahme(workflowId, basisVerzeichnis, ['ABGESCHLOSSEN', 'KLAERUNG_ERFORDERLICH', 'GESTOPPT'], 60000)
+      const [schritt1] = daten?.schritte ?? []
+      const letzteReviewLaufId = findeLetzteReviewLaufId(workflowId, basisVerzeichnis)
+      if (abnahme === null || abnahme.herkunft?.erzeuger !== 'kern' || abnahme.daten?.ergebnis !== 'ANPASSUNG_ANGEFORDERT') {
+        befunde.push(`(i) F23 WS-1b: BLOCKIERT muss automatisch eine Anpassung anlegen (erzeuger 'kern'), erhalten abnahme ${JSON.stringify(abnahme)}, workflow ${JSON.stringify({ status: daten?.status, cursor: daten?.aktiver_schritt_id })}`)
+      } else if (typeof abnahme.daten?.begruendung !== 'string' || !abnahme.daten.begruendung.includes('BLOCKIERT')) {
+        befunde.push(`(i) F23 WS-1b: die automatische Begründung muss das Urteil BLOCKIERT nennen, erhalten ${JSON.stringify(abnahme.daten?.begruendung)}`)
+      } else if (schritt1?.status !== 'OFFEN' || schritt1?.lauf_id !== null) {
+        befunde.push(`(i) F23 WS-1b: Schritt 1 (Ausführung) muss nach der automatischen Anpassung zurückgesetzt sein (OFFEN/lauf_id null), erhalten ${JSON.stringify(schritt1)}`)
+      } else if (letzteReviewLaufId === null) {
         // Der eigentliche Beleg der realen Verdrahtung (AK12): der Halt kommt NICHT aus einem
         // gescheiterten Werkzeuglauf (dann stünde hier FEHLGESCHLAGEN/VERWEIGERT über Regel 1) —
         // der Codex-Lauf lief sauber durch und wurde von F7 ERFOLGREICH klassifiziert. Erst
         // Regel 1b in ermittleNaechstenSchritt, gespeist aus dem real gelesenen Rohstrom-Urteil,
-        // hält den WORKFLOW an.
-        befunde.push(`(i) F23 WS-1b: Schritt 2 muss real gelaufen und ERFOLGREICH klassifiziert sein — der Halt kommt aus dem URTEIL, nicht aus dem Werkzeuglauf, erhalten ${JSON.stringify(schritt2)}`)
+        // hält den WORKFLOW an, BEVOR F35 WS-3 automatisch weiterschreibt.
+        befunde.push('(i) F23 WS-1b: Schritt 2 muss real gelaufen sein (eine lauf_id in der Versionsgeschichte) — der Halt kommt aus dem URTEIL, nicht aus dem Werkzeuglauf')
       } else {
-        const laufStatus2 = stelleLaufstatusFest(schritt2.lauf_id, { basisVerzeichnis, schreiber: STILL })
+        const laufStatus2 = stelleLaufstatusFest(letzteReviewLaufId, { basisVerzeichnis, schreiber: STILL })
         if (laufStatus2.status !== 'ABGESCHLOSSEN' || laufStatus2.ergebnis !== 'ERFOLGREICH') {
           befunde.push(`(i) F23 WS-1b: der Post-Build-Review-Lauf selbst muss eine terminale ERFOLGREICH-Kette haben, erhalten ${JSON.stringify(laufStatus2)}`)
         } else if (befunde.length === befundeVorBlockiert) {
           console.log(
-            '✓ (i) F23 WS-1b: ein reales BLOCKIERT-Urteil hält den Workflow an (KLAERUNG_ERFORDERLICH, Cursor auf dem Review-Schritt, Grund nennt BLOCKIERT) — OBWOHL der Codex-Lauf selbst sauber durchlief und real ERFOLGREICH klassifiziert wurde. Löst F-351/F-377.'
+            "✓ (i) F23 WS-1b: ein reales BLOCKIERT-Urteil hält den Workflow intern an (Regel 1b) — OBWOHL der Codex-Lauf selbst sauber durchlief und real ERFOLGREICH klassifiziert wurde — und löst danach automatisch eine Anpassung aus (F35 WS-3, erzeuger 'kern', Begründung nennt BLOCKIERT). Löst F-351/F-377."
           )
         }
       }

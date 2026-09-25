@@ -13,10 +13,13 @@
  *
  * (a) Iteration 1 (kein Abnahme-Artefakt vorhanden): der Review-Auftragstext
  *     bleibt bitgenau unverändert — keine Begründung, kein Korrektur-Block.
- * (b) Iteration 2, nach echtem POST .../abnahme mit ergebnis
- *     'ANPASSUNG_ANGEFORDERT' auf ein reales BLOCKIERT-Urteil aus Iteration
- *     1 (samt Befund): der Auftragstext des ZWEITEN Review-Laufs enthält die
- *     Abnahme-Begründung wörtlich UND den vorherigen Befund.
+ * (b) Iteration 2, NACH einer automatischen Anpassung (F35 WS-3,
+ *     features/F35/feature.md — löst inzwischen automatisch aus, was vor
+ *     WS-3 einen manuellen POST .../abnahme brauchte) auf ein reales
+ *     BLOCKIERT-Urteil aus Iteration 1 (samt Befund): der Auftragstext des
+ *     ZWEITEN Review-Laufs enthält die automatische Begründung UND den
+ *     vorherigen Befund — derselbe F-648-Lesepfad, unabhängig davon, ob die
+ *     Anpassung mit Lineage-erzeuger 'mensch' oder 'kern' entstand.
  *
  * Aufruf: node scripts/check-f659-review-korrektur-begruendung.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
@@ -166,13 +169,14 @@ const REALER_BEFUND = {
  * KLAERUNG_ERFORDERLICH, mit genau dieser Laufakte als Quelle für 'vorherigeBefunde'
  * (scripts/leitstand-server.mjs, F-648-Block).
  */
-function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte) {
+function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewLaufIds) {
   return async (laufId, _profilReferenz, eingaben) => {
     auftragstexte.set(laufId, eingaben.auftragstext ?? null)
     if (eingaben.rolle === 'code-reviewer') {
+      reviewLaufIds.push(laufId)
       mkdirSync(basisVerzeichnis, { recursive: true })
       const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
-      const ergebnisobjekt = { urteil: 'BLOCKIERT', befunde: [REALER_BEFUND], empfehlung: 'Bitte den oben benannten Punkt beheben.' }
+      const ergebnisobjekt = { urteil: 'BLOCKIERT', befunde: [REALER_BEFUND], empfehlung: 'Bitte den oben benannten Punkt beheben.', ak_urteile: [] }
       writeFileSync(rohstromPfad, JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: JSON.stringify(ergebnisobjekt) }) }), 'utf8')
       registriereKernArtefakt(`laufakte-${laufId}`, profilReferenz, { erzeuger: 'check-f659-fake' }, { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }, undefined, {
         basisVerzeichnis,
@@ -192,9 +196,10 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte) {
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
   const auftragstexte = new Map()
+  const reviewLaufIds = []
   const { basisUrl, schliessen } = await starteTestserver({
     basisVerzeichnis,
-    fuehreAufgabeDurchFn: baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte),
+    fuehreAufgabeDurchFn: baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewLaufIds),
     repoWurzel,
     startvorlagePfad,
   })
@@ -210,13 +215,23 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte) {
     if (startAntwort.status !== 202) {
       befunde.push(`Vorbedingung: POST .../starten erwartet 202, erhalten ${startAntwort.status} (${await startAntwort.text()})`)
     } else {
-      const nachIter1Review = await warteBis(() => {
-        const daten = ladeWorkflow(workflowId, basisVerzeichnis)
-        return daten?.status === 'KLAERUNG_ERFORDERLICH' ? daten : null
-      }, 3000)
-      const iter1ReviewLaufId = nachIter1Review?.schritte?.[1]?.lauf_id ?? null
-      if (nachIter1Review === null || iter1ReviewLaufId === null) {
-        befunde.push(`Vorbedingung: Iteration 1 sollte nach dem BLOCKIERT-Urteil auf KLAERUNG_ERFORDERLICH mit gesetzter Review-lauf_id landen, erhalten ${JSON.stringify(nachIter1Review)}`)
+      // F35 WS-3 (features/F35/feature.md): ein BLOCKIERT-Urteil löst inzwischen AUTOMATISCH eine
+      // Anpassung aus (erzeuger 'kern') — der Workflow bleibt NICHT mehr bei KLAERUNG_ERFORDERLICH
+      // mit gesetzter Review-lauf_id stehen (die Erwartung vor WS-3), sondern die Automatik setzt
+      // schritt-1-ausfuehrung/schritt-2-review sofort auf OFFEN zurück. Gewartet wird deshalb auf
+      // das Abnahme-Artefakt selbst (deterministisches Signal, dass die Automatik gelaufen ist),
+      // nicht mehr auf einen bestimmten Workflow-Status. Die Review-lauf_id von Iteration 1 kommt
+      // aus reviewLaufIds (Attrappe), weil die Automatik sie im Workflow-Datensatz bereits wieder
+      // auf null gesetzt hat, bevor dieser Test sie lesen könnte.
+      const automatischeAnpassung = await warteBis(
+        () => ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-abnahme`, undefined, { basisVerzeichnis, schreiber: () => {} }),
+        3000
+      )
+      const iter1ReviewLaufId = reviewLaufIds[0] ?? null
+      if (automatischeAnpassung === null || automatischeAnpassung.herkunft?.erzeuger !== 'kern' || iter1ReviewLaufId === null) {
+        befunde.push(
+          `Vorbedingung: nach dem BLOCKIERT-Urteil aus Iteration 1 sollte F35 WS-3 automatisch eine Anpassung anlegen (erzeuger 'kern'), erhalten ${JSON.stringify(automatischeAnpassung)}, reviewLaufIds ${JSON.stringify(reviewLaufIds)}`
+        )
       } else {
         const iter1ReviewAuftragstext = auftragstexte.get(iter1ReviewLaufId) ?? ''
 
@@ -227,49 +242,42 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte) {
           console.log('✓ (a) Iteration 1 (kein Abnahme-Artefakt): der Review-Auftragstext bleibt bitgenau unverändert, kein Korrektur-Block.')
         }
 
-        // ── Echter ADJUST auf das reale BLOCKIERT-Urteil aus Iteration 1 ─────────────────────
-        const BEGRUENDUNG = 'F-659-Gate: Punkt 1 ist eine bewusste Entscheidung, KEIN offener Befund — bitte im zweiten Review als behoben werten.'
-        const adjust = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/abnahme`, {
-          method: 'POST',
-          body: JSON.stringify({ ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung: BEGRUENDUNG }),
-        })
-        const adjustKoerper = await adjust.json().catch(() => ({}))
-        // ADJUST selbst schreibt nur den zurückgesetzten Zustand (status 'LAEUFT', weil beide
-        // Schritte 'AUTOMATISCH' tragen) — es startet NICHTS ("es wird nur geschrieben",
-        // scripts/leitstand-server.mjs, ANPASSUNG_ANGEFORDERT-Block). POST .../freigabe akzeptiert
-        // nur einen 'haltFreigabe'-Ausgang (ZWINGEND-Schritte) und würde hier mit 409 ablehnen —
-        // der tatsächliche Dispatch eines bereits 'starte'-bereiten (AUTOMATISCH) Schritts läuft
-        // über einen erneuten POST .../starten (dessen einzige Vorbedingung ausgang.art === 'starte'
-        // ist, unabhängig vom bereits geschriebenen Status-Feld).
-        if (adjust.status !== 200 || adjustKoerper.status !== 'LAEUFT') {
-          befunde.push(`Vorbedingung: POST .../abnahme (ANPASSUNG_ANGEFORDERT) erwartet 200 mit status 'LAEUFT', erhalten ${adjust.status} ${JSON.stringify(adjustKoerper)}`)
-        } else {
+        // ── Iteration 2 dispatcht über POST .../starten — der bereits automatisch zurückgesetzte
+        // schritt-1-ausfuehrung ist 'starte'-bereit, aber die Automatik startet ihn NIE selbst
+        // (AK4, F35 WS-3) — derselbe zweite POST .../starten wie schon vor WS-3, nur ohne den
+        // vorangehenden manuellen POST .../abnahme-Aufruf, den die Automatik jetzt übernimmt.
+        {
           const zweitesStarten = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
           if (zweitesStarten.status !== 200 && zweitesStarten.status !== 202) {
             befunde.push(`Vorbedingung: zweiter POST .../starten (Iteration 2) erwartet 200/202, erhalten ${zweitesStarten.status} (${await zweitesStarten.text()})`)
           }
-          const nachIter2Review = await warteBis(() => {
-            const daten = ladeWorkflow(workflowId, basisVerzeichnis)
-            const reviewLaufId = daten?.schritte?.[1]?.lauf_id ?? null
-            return reviewLaufId !== null && reviewLaufId !== iter1ReviewLaufId ? daten : null
-          }, 3000)
-          const iter2ReviewLaufId = nachIter2Review?.schritte?.[1]?.lauf_id ?? null
+          // Iteration 2 liefert ERNEUT BLOCKIERT (dieselbe Attrappe wie Iteration 1) — F35 WS-3
+          // löst deshalb SOFORT eine ZWEITE automatische Anpassung aus, die schritt-2-review im
+          // selben synchronen Rückruf gleich wieder auf lauf_id null zurücksetzt. Ein Poll auf
+          // daten.schritte[1].lauf_id sähe dieses Zurücksetzen oft VOR dem transienten
+          // Nicht-null-Wert (race) — reviewLaufIds (Attrappe, gefüllt beim START jedes
+          // Review-Laufs, nicht bei dessen Reset) ist deshalb die einzige verlässliche Quelle.
+          const nachIter2Review = await warteBis(() => (reviewLaufIds.length >= 2 ? reviewLaufIds : null), 3000)
+          const iter2ReviewLaufId = nachIter2Review?.[1] ?? null
           if (iter2ReviewLaufId === null) {
             befunde.push('Vorbedingung: Iteration 2 sollte den Review-Schritt mit einer NEUEN lauf_id erneut dispatchen, tat es aber nicht (oder rechtzeitig)')
           } else {
             const iter2ReviewAuftragstext = auftragstexte.get(iter2ReviewLaufId) ?? ''
 
-            // ── (b) Iteration 2: Begründung UND vorheriger Befund im Review-Auftragstext ────────
-            const traegtBegruendung = iter2ReviewAuftragstext.includes(BEGRUENDUNG)
+            // ── (b) Iteration 2: automatische Begründung UND vorheriger Befund im Review-Auftragstext ──
+            // Die Begründung kommt jetzt aus baueAutomatischeAnpassungsBegruendung (F35 WS-3), nicht
+            // mehr aus einem frei gewählten Testtext — geprüft wird deshalb der feste Kopf statt
+            // eines wörtlichen Zitats.
+            const traegtBegruendung = iter2ReviewAuftragstext.includes('Automatische Anpassung (Iteration 1 von max. 3) nach Review-Urteil BLOCKIERT')
             const traegtVorrang = iter2ReviewAuftragstext.includes('Verbindliche Klarstellung des Auftrags durch den Menschen')
             const traegtBefund = iter2ReviewAuftragstext.includes(REALER_BEFUND.zusammenfassung)
             if (!traegtBegruendung || !traegtVorrang || !traegtBefund) {
               befunde.push(
-                `(b) Iteration 2 (nach ANPASSUNG_ANGEFORDERT): der Review-Auftragstext sollte die Abnahme-Begründung wörtlich, den Vorrang-Hinweis UND den vorherigen Befund tragen — Begründung: ${traegtBegruendung}, Vorrang-Hinweis: ${traegtVorrang}, Befund: ${traegtBefund}. Auftragstext: ${JSON.stringify(iter2ReviewAuftragstext)}`
+                `(b) Iteration 2 (nach automatischer Anpassung, F35 WS-3): der Review-Auftragstext sollte die automatische Begründung, den Vorrang-Hinweis UND den vorherigen Befund tragen — Begründung: ${traegtBegruendung}, Vorrang-Hinweis: ${traegtVorrang}, Befund: ${traegtBefund}. Auftragstext: ${JSON.stringify(iter2ReviewAuftragstext)}`
               )
             } else {
               console.log(
-                '✓ (b) Iteration 2 (nach echtem ANPASSUNG_ANGEFORDERT auf ein reales BLOCKIERT-Urteil): der Review-Auftragstext trägt die Abnahme-Begründung wörtlich, den Vorrang-Hinweis und den vorherigen Befund.'
+                '✓ (b) Iteration 2 (nach automatischer Anpassung auf ein reales BLOCKIERT-Urteil, F35 WS-3): der Review-Auftragstext trägt die automatische Begründung, den Vorrang-Hinweis und den vorherigen Befund.'
               )
             }
           }
