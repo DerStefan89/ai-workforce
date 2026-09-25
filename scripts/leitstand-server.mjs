@@ -470,6 +470,7 @@ import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordn
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
+import { baueUndRegistriereAuftragAusFeatureAkte } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
@@ -5309,6 +5310,27 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       sendeJson(res, 201, { auftragId })
+      return
+    }
+
+    // F35 WS-1: POST /api/features/<featureId>/auftrag — aufgerufen über
+    // /api/projekte/<projektId>/features/<featureId>/auftrag (erzeugeMultiProjektDispatcher).
+    // Die gesamte Fachlogik (featureId-Prüfung, Akte lesen, Auftrag ableiten und registrieren)
+    // liegt in baueUndRegistriereAuftragAusFeatureAkte (scripts/leitstand/routen-f35.mjs) — dieser
+    // Block registriert nur (CLAUDE.md: "der Server registriert nur").
+    const featureAuftragTreffer = /^\/api\/features\/([^/]+)\/auftrag$/.exec(pfad)
+    if (req.method === 'POST' && featureAuftragTreffer !== null) {
+      const featureId = dekodiereSegment(featureAuftragTreffer[1])
+      if (featureId === null) {
+        sendeJson(res, 400, { grund: 'featureId ist keine gültige URL-Kodierung' })
+        return
+      }
+      const ergebnis = baueUndRegistriereAuftragAusFeatureAkte(featureId, repoWurzel, profilReferenz, { basisVerzeichnis })
+      if (!ergebnis.ok) {
+        sendeJson(res, ergebnis.status, { grund: ergebnis.grund })
+        return
+      }
+      sendeJson(res, 201, { auftragId: ergebnis.auftragId })
       return
     }
 

@@ -96,6 +96,10 @@ export const legeAuftragAn = (koerper) => fetch(mitPraefix('/auftraege'), { meth
 // F22 WS-2: löst den asynchronen Router-Lauf aus (202 + laufId, 409 bei D13 — scripts/leitstand-server.mjs).
 export const routeAuftrag = (auftragId) => fetch(mitPraefix(`/auftraege/${encodeURIComponent(auftragId)}/routen`), { method: 'POST' })
 
+// F35 WS-1: leitet einen Auftrag deterministisch aus features/<featureId>/feature.md ab und
+// registriert ihn (201 + auftragId, 400/404/422 — scripts/leitstand/routen-f35.mjs).
+export const baueAuftragAusFeature = (featureId) => fetch(mitPraefix(`/features/${encodeURIComponent(featureId)}/auftrag`), { method: 'POST' })
+
 export const holeWerkzeugsaetze = () => fetch(mitPraefix('/startvorlage/werkzeugsaetze')).then((r) => r.json())
 
 export const sendeEntscheidungAnfrage = (koerper) => fetch(mitPraefix('/entscheidungen'), { method: 'POST', body: JSON.stringify(koerper) })

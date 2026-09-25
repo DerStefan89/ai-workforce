@@ -60,8 +60,8 @@ const TASK_TYPEN = ['text-aenderung', 'neues-feature', 'bugfix', 'refactoring', 
 /** Rang je Kontrolltiefe, für den Untergrenzen-Vergleich unten — Zwilling der KONTROLLTIEFE-Reihenfolge oben. */
 const KONTROLLTIEFE_RANG: Record<string, number> = { 'fast-lane': 0, standard: 1, hoch: 2 }
 
-/** Herkunftsarten, die eine deterministische Kontrolltiefe-Untergrenze auslösen — Zwilling der Enum-Werte in schemas/kontrollzustand-auftrag-payload.schema.json' herkunft.art (F39 WS-2a, löst state/findings.md F-633 Teil a). */
-const KONTROLLTIEFE_UNTERGRENZE_HERKUNFT: Record<string, Kontrolltiefe> = { projekt_interview: 'hoch' }
+/** Herkunftsarten, die eine deterministische Kontrolltiefe-Untergrenze auslösen — Zwilling der Enum-Werte in schemas/kontrollzustand-auftrag-payload.schema.json' herkunft.art (F39 WS-2a, löst state/findings.md F-633 Teil a; 'feature_akte' F35 WS-1 — fast-lane ausgeschlossen, 'hoch' bleibt möglich, da bestimmeEffektiveKontrolltiefe nur anhebt, nie senkt). */
+const KONTROLLTIEFE_UNTERGRENZE_HERKUNFT: Record<string, Kontrolltiefe> = { projekt_interview: 'hoch', feature_akte: 'standard' }
 
 /**
  * Zusatz-Satz, der ans Workflow-Ziel angehängt wird, wenn die Untergrenze

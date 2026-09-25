@@ -18,7 +18,10 @@ import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import type { AuftragV0Daten, Ereignis, Optionen } from './types.ts'
 
 /** Zwilling des 'herkunft.art'-Enums in schemas/kontrollzustand-auftrag-payload.schema.json und src/auftrag/types.ts' AuftragHerkunftArt. */
-const HERKUNFT_ARTEN = new Set(['projekt_interview', 'sparring', 'jarvis', 'manuell'])
+const HERKUNFT_ARTEN = new Set(['projekt_interview', 'sparring', 'jarvis', 'manuell', 'feature_akte'])
+
+/** Zwilling von schemas/kontrollzustand-auftrag-payload.schema.json' akzeptanzkriterien[].id-Pattern (F35 WS-1) — Muster der von baueAuftragAusFeatureAkte (src/feature-auftrag/index.ts) vergebenen IDs. */
+const AK_ID_MUSTER = /^AK[0-9]+$/
 
 function jetzt(): string {
   return new Date().toISOString()
@@ -67,6 +70,10 @@ export function registriereAuftrag(
     // F39 WS-2a: nur gesetzt, wenn der Aufrufer eine Herkunft übergibt — ein Alt-Auftrag ohne
     // dieses Feld bleibt strukturell unverändert (kein 'herkunft: undefined' im geschriebenen JSON).
     ...(optionen.herkunft !== undefined ? { herkunft: optionen.herkunft } : {}),
+    // F35 WS-1: dasselbe additive Muster — nur gesetzt, wenn der Aufrufer (routen-f35.mjs) sie
+    // mitgibt, ein Alt-Auftrag bzw. ein Auftrag ohne Feature-Akte-Herkunft bleibt unverändert.
+    ...(optionen.akzeptanzkriterien !== undefined ? { akzeptanzkriterien: optionen.akzeptanzkriterien } : {}),
+    ...(optionen.nicht_ziele !== undefined ? { nicht_ziele: optionen.nicht_ziele } : {}),
   }
 
   const { pfad, versionSequenz, inhaltsHash } = registriereKernArtefakt(
@@ -107,6 +114,66 @@ export function validiereAuftragHerkunft(wert: unknown): string[] {
   return verstoesse
 }
 
+/**
+ * Reine Funktion: prüft ein optionales akzeptanzkriterien-Array (F35 WS-1) —
+ * Muster validiereAuftragHerkunft. Wenn vorhanden, mindestens ein Eintrag,
+ * jede id dem Muster ^AK[0-9]+$ entsprechend und eindeutig (Zwilling
+ * schemas/kontrollzustand-auftrag-payload.schema.json).
+ * @param wert - der zu prüfende Wert (nicht das umschließende Objekt)
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragAkzeptanzkriterien(wert: unknown): string[] {
+  if (!Array.isArray(wert)) {
+    return ["'akzeptanzkriterien' muss ein Array sein"]
+  }
+  if (wert.length === 0) {
+    return ["'akzeptanzkriterien' darf, wenn vorhanden, nicht leer sein (minItems: 1)"]
+  }
+  const verstoesse: string[] = []
+  const geseheneIds = new Set<string>()
+  wert.forEach((eintrag, index) => {
+    if (typeof eintrag !== 'object' || eintrag === null || Array.isArray(eintrag)) {
+      verstoesse.push(`'akzeptanzkriterien[${index}]' muss ein Objekt sein`)
+      return
+    }
+    const obj = eintrag as Record<string, unknown>
+    for (const feld of Object.keys(obj)) {
+      if (feld !== 'id' && feld !== 'text') verstoesse.push(`unbekanntes Feld 'akzeptanzkriterien[${index}].${feld}' (additionalProperties: false)`)
+    }
+    if (typeof obj.id !== 'string' || !AK_ID_MUSTER.test(obj.id)) {
+      verstoesse.push(`'akzeptanzkriterien[${index}].id' muss dem Muster ^AK[0-9]+$ entsprechen`)
+    } else if (geseheneIds.has(obj.id)) {
+      verstoesse.push(`'akzeptanzkriterien[${index}].id' ('${obj.id}') ist nicht eindeutig`)
+    } else {
+      geseheneIds.add(obj.id)
+    }
+    if (typeof obj.text !== 'string' || obj.text.length === 0) {
+      verstoesse.push(`'akzeptanzkriterien[${index}].text' muss ein nicht-leerer String sein`)
+    }
+  })
+  return verstoesse
+}
+
+/**
+ * Reine Funktion: prüft ein optionales nicht_ziele-Array (F35 WS-1) — jeder
+ * Eintrag ein nicht-leerer String, ein leeres Array ist gültig (Zwilling
+ * schemas/kontrollzustand-auftrag-payload.schema.json).
+ * @param wert - der zu prüfende Wert (nicht das umschließende Objekt)
+ * @returns Liste der Regelverletzungen; leer = gültig
+ */
+export function validiereAuftragNichtZiele(wert: unknown): string[] {
+  if (!Array.isArray(wert)) {
+    return ["'nicht_ziele' muss ein Array sein"]
+  }
+  const verstoesse: string[] = []
+  wert.forEach((eintrag, index) => {
+    if (typeof eintrag !== 'string' || eintrag.length === 0) {
+      verstoesse.push(`'nicht_ziele[${index}]' muss ein nicht-leerer String sein`)
+    }
+  })
+  return verstoesse
+}
+
 /** Reine Funktion: prüft ein geparstes Objekt gegen schemas/kontrollzustand-auftrag-payload.schema.json. */
 export function validiereAuftragDaten(daten: unknown): string[] {
   if (typeof daten !== 'object' || daten === null || Array.isArray(daten)) {
@@ -114,7 +181,7 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   }
   const obj = daten as Record<string, unknown>
   const verstoesse: string[] = []
-  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft'])
+  const erlaubt = new Set(['auftrag_schema', 'auftrag_id', 'titel', 'auftragstext', 'erstellt_am', 'herkunft', 'akzeptanzkriterien', 'nicht_ziele'])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
   }
@@ -123,7 +190,10 @@ export function validiereAuftragDaten(daten: unknown): string[] {
   if (typeof obj.titel !== 'string' || obj.titel.length === 0) verstoesse.push("'titel' muss ein nicht-leerer String sein")
   if (typeof obj.auftragstext !== 'string' || obj.auftragstext.length === 0) verstoesse.push("'auftragstext' muss ein nicht-leerer String sein")
   if (typeof obj.erstellt_am !== 'string' || obj.erstellt_am.length === 0) verstoesse.push("'erstellt_am' muss ein nicht-leerer String sein")
-  // 'herkunft' bleibt additiv/optional (F39 WS-2a) — ein Alt-Auftrag ohne das Feld bleibt gültig.
+  // 'herkunft'/'akzeptanzkriterien'/'nicht_ziele' bleiben additiv/optional (F39 WS-2a, F35 WS-1) —
+  // ein Alt-Auftrag ohne diese Felder bleibt gültig.
   if ('herkunft' in obj) verstoesse.push(...validiereAuftragHerkunft(obj.herkunft))
+  if ('akzeptanzkriterien' in obj) verstoesse.push(...validiereAuftragAkzeptanzkriterien(obj.akzeptanzkriterien))
+  if ('nicht_ziele' in obj) verstoesse.push(...validiereAuftragNichtZiele(obj.nicht_ziele))
   return verstoesse
 }

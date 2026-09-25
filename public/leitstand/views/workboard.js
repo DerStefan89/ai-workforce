@@ -45,7 +45,7 @@
  * offen ist (gewaehlteId-Gate, Muster ladeWorkflowDetail).
  */
 
-import { holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { holeAktivesProjekt } from '../projekt-kontext.js'
 import { filtereAttentionWorkflows } from '../attention-daten.js'
@@ -303,13 +303,24 @@ function renderFindingDetail(workitem) {
   <div class="detail-block"><h3>Feature-Run</h3><p>${unbekanntFeld(workitem.featureRun)}</p></div>`
 }
 
+/** Feature-Status, unter denen kein Bau-Auftrag mehr angelegt werden kann (F35 WS-1 AK6). */
+const FEATURE_STATUS_NICHT_BAUBAR = new Set(['ABGESCHLOSSEN', 'ABGEBROCHEN'])
+
+/** true, wenn aus workitem (Feature-Akte) noch ein Bau-Auftrag angelegt werden darf (F35 WS-1 AK6). @param workitem - ein Feature-Workitem */
+function istFeatureBaubar(workitem) {
+  return !FEATURE_STATUS_NICHT_BAUBAR.has(workitem.status)
+}
+
 function renderFeatureDetail(workitem) {
+  const hinweis = istFeatureBaubar(workitem)
+    ? 'Die Akte selbst bleibt nur lesbar (F23-Scope) — der Bau-Auftrag entsteht deterministisch aus Ziel/Nicht-Zielen/Akzeptanzkriterien (F35).'
+    : 'Nur lesend — der Status lässt keinen Bau-Auftrag mehr zu (ABGESCHLOSSEN/ABGEBROCHEN).'
   return `<div class="detail-block">
     <h3>${escapeHtml(workitem.titel)}</h3>
     <p><code>${escapeHtml(workitem.id)}</code> · <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${escapeHtml(workitem.status)}</p>
   </div>
   <div class="detail-block"><h3>Pfad</h3><p><code>${escapeHtml(workitem.pfad)}</code></p></div>
-  <p class="hinweis">Nur lesend — Bearbeitung einer Feature-Akte ist F23-Scope.</p>`
+  <p class="hinweis">${hinweis}</p>`
 }
 
 // ─── F22 WS-2: Bearbeiten (Click-to-Work) ───────────────────────────────────
@@ -390,15 +401,21 @@ function renderBearbeitungsInhalt(workitem, zustand) {
   return ''
 }
 
-/** Rendert #workboard-bearbeitung für workitem — Bearbeiten-Knopf (nur Findings, ohne offenen Bearbeitungszustand), den laufenden Zustand, oder nichts (Feature-Akten, F23-Scope). @param workitem - das aktuell im Detail-Panel gezeigte Workitem */
+/** Rendert #workboard-bearbeitung für workitem — Einstiegsknopf (Findings: "Bearbeiten"; baubare Feature-Akten, F35 WS-1: "Bauen") ohne offenen Bearbeitungszustand, den laufenden Zustand (beide Quellen teilen sich renderBearbeitungsInhalt), oder nichts (nicht mehr baubare Feature-Akten). @param workitem - das aktuell im Detail-Panel gezeigte Workitem */
 function renderBearbeitungsAbschnitt(workitem) {
   const container = document.getElementById('workboard-bearbeitung')
-  if (workitem.quelle !== 'finding') {
+  const einstiegsKnopf =
+    workitem.quelle === 'finding'
+      ? `<button id="workboard-bearbeiten" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bearbeiten</button>`
+      : workitem.quelle === 'feature' && istFeatureBaubar(workitem)
+        ? `<button id="workboard-bauen" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bauen</button>`
+        : null
+  if (einstiegsKnopf === null) {
     container.innerHTML = ''
     return
   }
   if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) {
-    container.innerHTML = `<button id="workboard-bearbeiten" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bearbeiten</button>`
+    container.innerHTML = einstiegsKnopf
     return
   }
   container.innerHTML = renderBearbeitungsInhalt(workitem, bearbeitungsZustand)
@@ -462,13 +479,20 @@ async function verarbeiteRoutenAntwort(routeAntwort, workitem, zustand) {
   if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
 }
 
-/** Klick auf "Bearbeiten": legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. Arbeitet auf einem lokal eingefangenen zustand-Objekt (siehe pruefeUndUebernimmZustand) — ein Workitem-Wechsel während der Requests darf weder auf ein inzwischen anderes bearbeitungsZustand schreiben noch werfen. @param workitem - das geklickte Finding */
-async function starteBearbeitung(workitem) {
-  const zustand = { workitemId: workitem.id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
-  bearbeitungsZustand = zustand
-  renderBearbeitungsAbschnitt(workitem)
+/**
+ * Gemeinsamer Ablauf für "Bearbeiten" (Finding) UND "Bauen" (Feature-Akte,
+ * F35 WS-1): Auftrag über erzeugeAuftrag anlegen, dann sofort routen.
+ * Arbeitet auf einem lokal eingefangenen zustand-Objekt (siehe
+ * pruefeUndUebernimmZustand) — ein Workitem-Wechsel während der Requests
+ * darf weder auf ein inzwischen anderes bearbeitungsZustand schreiben noch
+ * werfen.
+ * @param workitem - das geklickte Workitem
+ * @param zustand - lokal eingefangenes, bereits als bearbeitungsZustand gesetztes Zustandsobjekt
+ * @param erzeugeAuftrag - liefert die rohe Response von legeAuftragAn/baueAuftragAusFeature (201/400/404/422 mit { auftragId } bzw. { grund })
+ */
+async function fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, erzeugeAuftrag) {
   try {
-    const auftragAntwort = await legeAuftragAn({ titel: workitem.titel, auftragstext: baueAuftragstext(workitem) })
+    const auftragAntwort = await erzeugeAuftrag()
     const auftragInhalt = await auftragAntwort.json().catch(() => ({}))
     if (!auftragAntwort.ok) {
       zustand.phase = 'fehler'
@@ -486,6 +510,27 @@ async function starteBearbeitung(workitem) {
     zustand.meldung = `Anfrage fehlgeschlagen: ${fehler.message}`
     if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
   }
+}
+
+/** Neues, leeres Bearbeitungszustand-Objekt für workitem (Muster beider Einstiegsknöpfe). @param workitem - das geklickte Workitem */
+function baueLeerenBearbeitungsZustand(workitem) {
+  return { workitemId: workitem.id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
+}
+
+/** Klick auf "Bearbeiten": legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. @param workitem - das geklickte Finding */
+async function starteBearbeitung(workitem) {
+  const zustand = baueLeerenBearbeitungsZustand(workitem)
+  bearbeitungsZustand = zustand
+  renderBearbeitungsAbschnitt(workitem)
+  await fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, () => legeAuftragAn({ titel: workitem.titel, auftragstext: baueAuftragstext(workitem) }))
+}
+
+/** Klick auf "Bauen" (F35 WS-1): leitet den Auftrag deterministisch aus der Feature-Akte ab (baueAuftragAusFeature) und routet ihn sofort. @param workitem - die geklickte Feature-Akte */
+async function starteBauenFeature(workitem) {
+  const zustand = baueLeerenBearbeitungsZustand(workitem)
+  bearbeitungsZustand = zustand
+  renderBearbeitungsAbschnitt(workitem)
+  await fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, () => baueAuftragAusFeature(workitem.id))
 }
 
 /** Klick auf "Wiederholen" (409/D13 ODER ein generischer Fehler NACH bereits angelegtem Auftrag) — der Auftrag existiert bereits, es wird nur erneut geroutet, kein zweiter Auftrag angelegt. @param workitem - das Finding, dessen Bearbeitungszustand einen Konflikt/Fehler zeigt */
@@ -660,6 +705,12 @@ function initBearbeitungBedienung() {
     if (bearbeitenKnopf) {
       const workitem = findeWorkitem(bearbeitenKnopf.dataset.id)
       if (workitem !== null) void starteBearbeitung(workitem)
+      return
+    }
+    const bauenKnopf = ereignis.target.closest('#workboard-bauen')
+    if (bauenKnopf) {
+      const workitem = findeWorkitem(bauenKnopf.dataset.id)
+      if (workitem !== null) void starteBauenFeature(workitem)
       return
     }
     const wiederholenKnopf = ereignis.target.closest('.wb-wiederholen')
