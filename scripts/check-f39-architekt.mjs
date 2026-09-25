@@ -376,6 +376,12 @@ console.log('\n=== F39-Architekt-Check ===\n')
     { kontrolltiefe: 'standard', herkunftArt: 'manuell', erwartet: { kontrolltiefe: 'standard', angehoben: false } },
     { kontrolltiefe: 'fast-lane', herkunftArt: undefined, erwartet: { kontrolltiefe: 'fast-lane', angehoben: false } },
     { kontrolltiefe: 'fast-lane', herkunftArt: null, erwartet: { kontrolltiefe: 'fast-lane', angehoben: false } },
+    // F35 WS-1: 'feature_akte' hebt auf mindestens 'standard' an (fast-lane ausgeschlossen),
+    // lässt 'hoch' unverändert (bestimmeEffektiveKontrolltiefe hebt nie über die vorgeschlagene
+    // Kontrolltiefe hinaus an, wenn diese bereits ranghöher ist als die Untergrenze).
+    { kontrolltiefe: 'fast-lane', herkunftArt: 'feature_akte', erwartet: { kontrolltiefe: 'standard', angehoben: true } },
+    { kontrolltiefe: 'standard', herkunftArt: 'feature_akte', erwartet: { kontrolltiefe: 'standard', angehoben: false } },
+    { kontrolltiefe: 'hoch', herkunftArt: 'feature_akte', erwartet: { kontrolltiefe: 'hoch', angehoben: false } },
   ]
   for (const fall of faelle) {
     const ergebnis = bestimmeEffektiveKontrolltiefe(fall.kontrolltiefe, fall.herkunftArt)
@@ -384,7 +390,7 @@ console.log('\n=== F39-Architekt-Check ===\n')
     }
   }
   if (befunde.length === befundeVor) {
-    console.log("✓ (e1): bestimmeEffektiveKontrolltiefe hebt NUR bei herkunft 'projekt_interview' auf mindestens 'hoch' an, senkt nie, lässt jede andere Herkunft (inkl. keiner) unverändert.")
+    console.log("✓ (e1): bestimmeEffektiveKontrolltiefe hebt bei herkunft 'projekt_interview' auf mindestens 'hoch' an und bei 'feature_akte' (F35 WS-1) auf mindestens 'standard', senkt nie, lässt jede andere Herkunft (inkl. keiner) unverändert.")
   }
 
   // (e2) waehleWorkflowVorlage: die Anhebung wählt real workflow-vorlagen/hoch.json (Schritt

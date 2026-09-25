@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/kontrollzustand-auftrag-payload.schema.json",
   "title": "Auftrag-Payload (AUFTRAG_V0)",
-  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn auftrag_schema === \"v0\" (F11 WS-1). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). 'herkunft' ist additiv und optional (F39 WS-2a, löst state/findings.md F-633 Teil a) — ein Alt-Auftrag ohne das Feld bleibt gültig, kein Migrationsschritt. 'herkunft.art: \"projekt_interview\"' löst über src/router/index.ts' bestimmeEffektiveKontrolltiefe eine deterministische Kontrolltiefe-Untergrenze 'hoch' aus; die übrigen drei Werte sind heute rein dokumentarisch.",
+  "description": "Beschreibt ausschließlich die Form von daten.daten — F2s registriereKernArtefakt-Parameter 'daten' (checkpoint.payload.daten.daten) —, wenn auftrag_schema === \"v0\" (F11 WS-1). Die äußere Lineage-/Checkpoint-Hülle validiert weiterhin ausschließlich validiereLineageEintrag/validiereCheckpointEintrag aus F2/F1 (kein zweiter Regelsatz dafür). 'herkunft' ist additiv und optional (F39 WS-2a, löst state/findings.md F-633 Teil a) — ein Alt-Auftrag ohne das Feld bleibt gültig, kein Migrationsschritt. 'herkunft.art: \"projekt_interview\"' löst über src/router/index.ts' bestimmeEffektiveKontrolltiefe eine deterministische Kontrolltiefe-Untergrenze 'hoch' aus, 'herkunft.art: \"feature_akte\"' (F35 WS-1) eine Untergrenze 'standard'; die übrigen Werte sind rein dokumentarisch. 'akzeptanzkriterien'/'nicht_ziele' sind additiv und optional (F35 WS-1) — von scripts/leitstand/routen-f35.mjs gesetzt, wenn der Auftrag deterministisch aus einer Feature-Akte abgeleitet wurde; ein Alt-Auftrag ohne diese Felder bleibt gültig.",
   "type": "object",
   "additionalProperties": false,
   "required": ["auftrag_schema", "auftrag_id", "titel", "auftragstext", "erstellt_am"],
@@ -17,8 +17,25 @@
       "additionalProperties": false,
       "required": ["art"],
       "properties": {
-        "art": { "enum": ["projekt_interview", "sparring", "jarvis", "manuell"] }
+        "art": { "enum": ["projekt_interview", "sparring", "jarvis", "manuell", "feature_akte"] }
       }
+    },
+    "akzeptanzkriterien": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^AK[0-9]+$" },
+          "text": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "nicht_ziele": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
     }
   }
 }

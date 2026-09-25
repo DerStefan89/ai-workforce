@@ -8296,13 +8296,15 @@ Auswirkung: Tote Finding-Verweise.
 Maßnahme: Lücke aus den F29-Übergaben nachtragen oder IDs als „nicht vergeben" markieren.
 Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
 
-**F-511** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-511** · `HARNESS_IMPROVEMENT` · P2 · Backlog mit Auslöser (F35-Akte, Nicht-Ziele)
 Titel: Rolle `qa` steht im Register, ist aber in keiner Workflow-Vorlage besetzt.
 Beschreibung: Kein Ergebnis-Schema (`output_schema: null`).
 Fundstelle: `src/rollen/index.ts`; `workflow-vorlagen/*`.
 Auswirkung: Im Workflow findet kein QA-Schritt statt.
-Maßnahme: F35 (qa-Schritt plus Schema `ergebnis-qa`).
-Feature/Run: M5-Plan-v8-Challenge, 20.09.2026. Quelle: claude/277.
+Maßnahme: F35 WS-1 (feature.md, Abschnitt „Nicht-Ziele") stellt den qa-Schritt explizit ins
+V1-Backlog, mit Auslöser: der Reviewer urteilt in F30 ≥ 2× `ERFUELLT`, obwohl das Verhalten real
+falsch ist. Vorher war „F35" ohne Auslöser als pauschale Maßnahme genannt.
+Feature/Run: M5-Plan-v8-Challenge, 20.09.2026; Auslöser nachgetragen F35 WS-1, 25.09.2026. Quelle: claude/277.
 
 **F-512** · `TECH_DEBT` · P3 · offen
 Titel: starteJarvisChatLauf wählt den Worker hart codiert und unerklärt.
@@ -10080,8 +10082,8 @@ Beschreibung: F35 (Challenge-Flow: Challenge-Schema, `qa`-Schritt, ADJUST-Automa
 Fundstelle: `features/F39/feature.md`, `features/F42/feature.md`, `src/pruefschritt/`, `src/korrekturschleife/`.
 Auswirkung: Mittel — ein F35-Auftrag auf Basis des alten Schnitts würde entweder bereits Vorhandenes duplizieren oder an einer falschen Schnittstelle ansetzen.
 Maßnahme: Die F35-Challenge (vor dem Bau, laut E-M5-16) muss den Feature-Schnitt neu gegen den realen Repo-Stand (F39, F42, F652, F-648) führen, nicht gegen den Stand vom 20.09.2026.
-Status: offen.
-Feature/Run: M5-Schnitt, 25.09.2026.
+Status: erledigt (F35-Akte) — `features/F35/feature.md` wurde am 25.09.2026 gegen den realen Repo-Stand geschnitten (WS-1 „Feature bauen aus Akte" statt des alten Challenge-Flow-Schnitts; qa-Schritt/Advisor-Schema/Befund-Projektion als V1-Backlog mit Auslöser statt als Teil des Scopes).
+Feature/Run: M5-Schnitt, 25.09.2026; F35-Akte F35 WS-1, 25.09.2026.
 
 **F-724** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: E-M5-5 (Feld `installation`, R2-Lockerung) ist entschieden, aber `schemas/ressourcen.schema.json` kennt kein `installation`, obwohl F29 `ABGESCHLOSSEN` ist.
@@ -10109,3 +10111,30 @@ Auswirkung: Niedrig — die Lücke ist mit E-M5-16 bereits konzeptionell geschlo
 Maßnahme: F30 muss das strukturierte Eingriffsprotokoll (Klasse, `bezug_backlog`) real umsetzen; Jarvis muss einen erfüllten Auslöser als Empfehlung melden können.
 Status: offen.
 Feature/Run: M5-Schnitt, 25.09.2026.
+
+**F-727** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Den drei Backlog-Posten aus E-M5-17 (Kollege-Durchlauf, Import-Wizard, Health-Projektion) fehlt der Auslöser.
+Beschreibung: E-M5-17 verschiebt drei Posten (Kollege-Durchlauf, Import-Wizard, Health-Projektion) ins V1-Backlog, ohne für sie — anders als beim übrigen V1-Backlog (Muster F-511, F37/F38 über E-M5-16) — eine messbare Auslöser-Bedingung festzuhalten.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 E-M5-17.
+Auswirkung: Niedrig — die Posten sind bereits zurückgestellt, ohne Auslöser aber nicht erkennbar, wann ihr Bau wieder ansteht.
+Maßnahme: Beim Anlegen der F30-Akte je Posten eine Auslöser-Zeile nachtragen (Muster F-511/F-726).
+Status: offen.
+Feature/Run: F35 WS-1, 25.09.2026.
+
+**F-728** · `BUG` · P1 · in Arbeit (F35 WS-1)
+Titel: Die AKs einer Feature-Akte erreichen den Bau-Auftrag nicht.
+Beschreibung: Feature-Akten haben kein Click-to-Work (nur Findings, `public/leitstand/views/workboard.js` `baueAuftragstext`/`renderBearbeitungsAbschnitt`), und `FeatureWorkitem` (`src/workboard/types.ts`) trägt keine Akzeptanzkriterien. Ohne diese Kopplung ist die M5-Bestehensbedingung 2 (jedes AK trägt am Ende ein Urteil im Review) strukturell unerfüllbar — ein Auftrag, der aus einer Feature-Akte entsteht, trägt heute weder Ziel/Nicht-Ziele noch AK strukturiert.
+Fundstelle: `public/leitstand/views/workboard.js`; `src/workboard/types.ts`; `docs/projekt/zielfassung.md` (M5-Bestehensbedingung 2).
+Auswirkung: Hoch — M5 kann ohne diese Kopplung nicht bestehen.
+Maßnahme: F35 WS-1 (`baueAuftragAusFeatureAkte`, `POST /api/projekte/<id>/features/<id>/auftrag`, Workboard-Button „Bauen").
+Status: in Arbeit (F35 WS-1).
+Feature/Run: F35 WS-1, 25.09.2026.
+
+**F-729** · `BUG` · P2 · in Arbeit (F35 WS-1)
+Titel: fast-lane hat keinen `code-reviewer`-Schritt — ein Feature-Bau könnte ohne Urteil je AK durchlaufen.
+Beschreibung: `workflow-vorlagen/fast-lane.json` trägt keinen `code-reviewer`-Schritt. Sobald ein aus einer Feature-Akte abgeleiteter Auftrag (F-728) über den Router auf `fast-lane` klassifiziert würde, liefe der Bau ohne jedes Urteil über die mitgegebenen Akzeptanzkriterien durch.
+Fundstelle: `workflow-vorlagen/fast-lane.json`; `src/router/index.ts` (`bestimmeEffektiveKontrolltiefe`).
+Auswirkung: Mittel — ein Feature-Bau könnte unbemerkt ohne Review-Urteil je AK abgeschlossen werden.
+Maßnahme: Kontrolltiefe-Untergrenze `standard` für `herkunft.art: 'feature_akte'` (Muster `projekt_interview` → `hoch`, F39 WS-2a) — fast-lane damit für diese Herkunft ausgeschlossen, `hoch` bleibt möglich.
+Status: in Arbeit (F35 WS-1).
+Feature/Run: F35 WS-1, 25.09.2026.
