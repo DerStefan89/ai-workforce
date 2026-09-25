@@ -806,6 +806,26 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         }
       }
     }
+    // Regel 1i (F35 WS-2, features/F35/feature.md, löst M5-Bestehensbedingung 2 "jedes AK trägt
+    // am Ende ein Urteil im Review"): dieselbe Kopplung an output_schema wie Regel 1b direkt
+    // darüber, aus demselben Grund (dieses Modul kennt src/rollen/ROLLENVERTRAEGE nicht). Der
+    // Aufrufer berechnet 'akVerstoesse' NUR für 'ergebnis-code-reviewer'-Schritte
+    // (pruefeAkUrteile, src/ak-pruefung/index.ts, gegen die am Auftrag hinterlegten
+    // akzeptanzkriterien) — ein nicht-leeres Array hält an, UNABHÄNGIG vom Gesamturteil: ein
+    // fehlendes, unbekanntes/doppeltes, nicht erfülltes oder unbelegtes AK darf den Workflow
+    // NICHT automatisch fortsetzen, auch wenn Regel 1b direkt darüber bereits 'BEREIT' oder
+    // 'BEREIT_NACH_KORREKTUR' durchgelassen hat — genau deshalb steht diese Regel NACH 1b, nicht
+    // davor (ein BLOCKIERT-Gesamturteil hält ohnehin schon dort an, ohne dass diese Regel
+    // überhaupt erreicht wird). Trägt der Auftrag keine Akzeptanzkriterien, bleibt
+    // pruefeAkUrteile IMMER [] (Alt-Verhalten) — 'akVerstoesse' bleibt dann leer und diese Regel
+    // folgenlos, wie ein fehlendes 'scopeVerletzung' für Regel 1g.
+    if (vorschritt.output_schema === 'ergebnis-code-reviewer' && vorschrittErgebnis.akVerstoesse !== undefined && vorschrittErgebnis.akVerstoesse.length > 0) {
+      return {
+        art: 'haltKlaerung',
+        grund: `Schritt '${vorschritt.schritt_id}' (ergebnis-code-reviewer) verletzt die Akzeptanzkriterien-Prüfung (F35 WS-2), auch wenn das Gesamturteil ggf. 'BEREIT' ist: ${vorschrittErgebnis.akVerstoesse.join('; ')} — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
     // Regel 1c (F39 WS-2b, löst F-632 Teil b) — Kopplung an output_schema aus
     // demselben Grund wie Regel 1b direkt darüber (Kommentar dort). a) und b)
     // sind bewusst getrennte Prüfungen mit je eigenem Halt-Grund, nicht eine

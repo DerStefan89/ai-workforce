@@ -278,3 +278,17 @@ test("baueAuftragAusProjektentwurf: keine neuen Meilensteine liefert im Modus 'e
   const { titel } = baueAuftragAusProjektentwurf(projekt, 'erweiterung')
   assert.strictEqual(titel, 'Erweiterung: (kein neuer Meilenstein)')
 })
+
+// ─── F35 WS-2 (löst F-732): das AK-Format für '## Akzeptanzkriterien' ist verbindlich ─────────
+// vorgegeben, damit baueAuftragAusFeatureAkte (src/feature-auftrag/index.ts) die AKs später
+// deterministisch als strukturierte 'AK<n>' zurückgewinnen kann.
+
+test('baueAuftragAusProjektentwurf: der Auftrag an den Baudurchgang gibt das AK-Format "- AK<n>: <Satz>" verbindlich vor (istAiWorkforce true)', () => {
+  const { auftragstext } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'neu', { istAiWorkforce: true })
+  assert.ok(auftragstext.includes('- AK<n>: <prüfbarer Satz>'), `AK-Format-Vorgabe fehlt: ${auftragstext}`)
+})
+
+test('baueAuftragAusProjektentwurf: dieselbe AK-Format-Vorgabe gilt auch außerhalb von ai-workforce (istAiWorkforce false/undefined)', () => {
+  const { auftragstext } = baueAuftragAusProjektentwurf(baueProjektMitEchtenIds(), 'neu', {})
+  assert.ok(auftragstext.includes('- AK<n>: <prüfbarer Satz>'), `AK-Format-Vorgabe fehlt: ${auftragstext}`)
+})

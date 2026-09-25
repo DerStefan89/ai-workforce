@@ -144,8 +144,8 @@ export function baueAuftragAusProjektentwurf(projekt, modus, kontext = {}) {
       ? `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT; muss validiereRoadmapDaten (src/projektkontext/index.ts) bestehen.`
       : `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT.`,
     kontext.istAiWorkforce === true
-      ? '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF.'
-      : '3. Je Feature eine eigene features/<id>/feature.md mit den Abschnitten ## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies und Status: ENTWURF.',
+      ? '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF. Unter ## Akzeptanzkriterien je AK eine Zeile "- AK<n>: <prüfbarer Satz>" (F35 WS-1, baueAuftragAusFeatureAkte).'
+      : '3. Je Feature eine eigene features/<id>/feature.md mit den Abschnitten ## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies und Status: ENTWURF. Unter ## Akzeptanzkriterien je AK eine Zeile "- AK<n>: <prüfbarer Satz>".',
     kontext.pruefbefehl !== undefined && kontext.pruefbefehl.length > 0
       ? `${anzeigePruefbefehl(kontext.pruefbefehl)} muss danach grün sein.`
       : 'Kein Prüfbefehl konfiguriert — die Änderungen werden nicht automatisch geprüft.',

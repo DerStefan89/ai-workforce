@@ -61,19 +61,33 @@ function ersteNichtLeereZeile(abschnitt: string): string | null {
 }
 
 /**
- * Top-Level-Bullets eines Abschnitts: eine Zeile, die mit '- ' beginnt,
- * startet einen neuen Bullet; jede nicht-leere Folgezeile bis zum nächsten
- * Top-Level-Bullet gehört als Fortsetzungszeile dazu (getrimmt angehängt).
+ * Erkennt eine Top-Level-Bullet-Einleitung am Zeilenanfang: '- ', '* ', '1. ' oder '1) '
+ * (F-732, state/findings.md — vor der Behebung erkannte leseTopLevelBullets ausschließlich
+ * '- ', jede Feature-Akte mit '*'- oder nummerierten Listen unter '## Akzeptanzkriterien'
+ * lieferte dadurch 0 AK statt eines Ablehnungsgrunds ODER (bei zufällig vorhandenen
+ * '- '-Bullets an anderer Stelle) ein irreführend leeres Ergebnis).
+ */
+const BULLET_EINLEITUNG_MUSTER = /^(?:[-*]|\d+[.)])\s+(.*)$/
+
+/** Entfernt eine führende Markdown-Checkbox ('[ ] '/'[x] '/'[X] ') vom Bullet-Text (F-732) — der reine AK-Text soll die Checkbox nicht tragen. */
+const CHECKBOX_PRAEFIX_MUSTER = /^\[[ xX]\]\s+/
+
+/**
+ * Top-Level-Bullets eines Abschnitts: eine Zeile, die mit '- ', '* ', '1. ' oder '1) ' beginnt
+ * (optional gefolgt von einer Checkbox '[ ]'/'[x]'/'[X]', die entfernt wird), startet einen
+ * neuen Bullet; jede nicht-leere Folgezeile bis zum nächsten Top-Level-Bullet gehört als
+ * Fortsetzungszeile dazu (getrimmt angehängt).
  * @returns getrimmte Bullet-Texte in Dokumentreihenfolge; leere Bullets ausgeschlossen
  */
 function leseTopLevelBullets(abschnitt: string): string[] {
   const bullets: string[] = []
   let laufend: string[] | null = null
   for (const zeile of abschnitt.split(/\r?\n/)) {
-    const bulletTreffer = /^-\s+(.*)$/.exec(zeile)
+    const bulletTreffer = BULLET_EINLEITUNG_MUSTER.exec(zeile)
     if (bulletTreffer !== null) {
       if (laufend !== null) bullets.push(laufend.join('\n').trim())
-      laufend = [bulletTreffer[1]]
+      const ohneCheckbox = bulletTreffer[1].replace(CHECKBOX_PRAEFIX_MUSTER, '')
+      laufend = [ohneCheckbox]
       continue
     }
     if (laufend !== null && zeile.trim() !== '') laufend.push(zeile.trim())
