@@ -41,7 +41,7 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, win32 } from 'node:path'
 import { findeNpmCli, kopiereSkelett, pruefeWorkspaceTrust, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { fuehrePruefungDurch } from '../src/pruefschritt/index.ts'
 import { baueAuftragAusProjektentwurf } from '../src/product-coach/index.ts'
@@ -165,14 +165,21 @@ try {
   // Injizierte execPath/npmExecpath/existsSync — kein echtes Dateisystem-Layout nötig.
   {
     const vor = befunde.length
+    // npmExecpath: '' statt undefined — ?? fällt bei explizitem undefined auf process.env.
+    // npm_execpath zurück (echte GitHub-Actions-Runner setzen diese Variable selbst, wenn der
+    // Job über 'npm run check' gestartet wird) — ein LEERER String ist nicht nullish, deaktiviert
+    // den Kandidaten also wirklich deterministisch, unabhängig von der echten CI-Umgebung.
     const windowsExecPath = 'C:\\Program Files\\nodejs\\node.exe'
-    const windowsKandidat = join('C:\\Program Files\\nodejs', 'node_modules', 'npm', 'bin', 'npm-cli.js')
-    const gefundenWindows = findeNpmCli({ execPath: windowsExecPath, npmExecpath: undefined, existsSync: (pfad) => pfad === windowsKandidat })
+    // win32 EXPLIZIT statt des Default-dirname/join (F-705, zweiter Fund): unter POSIX (Linux-CI)
+    // zerlegt das plattformabhängige dirname/join einen mit Backslash geschriebenen Pfad nicht
+    // korrekt — derselbe Grund, aus dem findeNpmCli selbst jetzt win32 für diesen Kandidaten nutzt.
+    const windowsKandidat = win32.join(win32.dirname(windowsExecPath), 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    const gefundenWindows = findeNpmCli({ execPath: windowsExecPath, npmExecpath: '', existsSync: (pfad) => pfad === windowsKandidat })
     if (gefundenWindows !== windowsKandidat) befunde.push(`(c2) Windows-Layout: erwartet '${windowsKandidat}', erhalten '${gefundenWindows}'`)
 
     const linuxExecPath = '/opt/hostedtoolcache/node/24.21.0/x64/bin/node'
     const linuxKandidat = join(dirname(linuxExecPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
-    const gefundenLinux = findeNpmCli({ execPath: linuxExecPath, npmExecpath: undefined, existsSync: (pfad) => pfad === linuxKandidat })
+    const gefundenLinux = findeNpmCli({ execPath: linuxExecPath, npmExecpath: '', existsSync: (pfad) => pfad === linuxKandidat })
     if (gefundenLinux !== linuxKandidat) befunde.push(`(c2) Linux-Layout: erwartet '${linuxKandidat}', erhalten '${gefundenLinux}'`)
 
     // npm_execpath hat Vorrang vor beiden Layout-Kandidaten, wenn er existiert.
@@ -183,7 +190,7 @@ try {
     // Rot-Fall: kein Kandidat existiert → Wurf, Meldung nennt alle geprüften Pfade.
     let hatGeworfenOhneTreffer = false
     try {
-      findeNpmCli({ execPath: linuxExecPath, npmExecpath: undefined, existsSync: () => false })
+      findeNpmCli({ execPath: linuxExecPath, npmExecpath: '', existsSync: () => false })
     } catch (fehler) {
       hatGeworfenOhneTreffer = true
       if (!fehler.message.includes(linuxKandidat)) befunde.push(`(c2) Rot-Fall-Meldung nennt nicht den geprüften Linux-Pfad: ${fehler.message}`)

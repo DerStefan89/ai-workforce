@@ -65,7 +65,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, relative, resolve, sep } from 'node:path'
+import { dirname, join, relative, resolve, sep, win32 } from 'node:path'
 import { leseAktuelleAutorisierung } from '../claude-code-gateway/index.ts'
 import { ermittleHookPfade, ermittleIstZustand, pruefeStartbedingung1, pruefeStartbedingung2 } from '../invocation-policy/index.ts'
 import type { BedingungErgebnis, IstUebrigeFelder } from '../invocation-policy/types.ts'
@@ -291,6 +291,15 @@ export interface FindeNpmCliOptionen {
  * das Windows-Layout relativ zu `execPath`; (c) das Linux/macOS-Layout relativ zu `execPath`
  * (`<prefix>/bin/node` → `<prefix>/lib/node_modules/npm/bin/npm-cli.js`). Kein Treffer → Wurf, der
  * Meldungstext nennt alle geprüften Pfade (kein stilles Raten).
+ *
+ * F-705-Nachtrag (PR-CI-Fund, zweite Runde): Kandidat (b) wird bewusst über `path.win32`
+ * berechnet, NICHT über das plattformabhängige `dirname`/`join` von oben — sonst hängt das
+ * Ergebnis davon ab, auf welchem Host-Betriebssystem DIESE Funktion gerade läuft (unter POSIX
+ * zerlegt `dirname` einen mit Backslash geschriebenen Windows-Pfad nicht korrekt, ein Rot-Fall-
+ * Gate-Test für das Windows-Layout auf einem Linux-CI-Runner wäre sonst nicht deterministisch
+ * nachstellbar). In echter Produktion ändert das nichts: `execPath` trägt dort ohnehin immer das
+ * Trennerformat des tatsächlichen Host-Systems, `path.win32` parst Vorwärtsschrägstrich-Pfade
+ * ebenfalls korrekt.
  * @param optionen - execPath/npmExecpath/existsSync injizierbar (Muster optionen.startfreigabeRepoWurzel) — für scripts/check-f42-projekt-harness.mjs, das gegen synthetische Layouts statt des echten Dateisystems prüft
  * @returns der gefundene, absolute Pfad zu npm-cli.js
  */
@@ -303,7 +312,7 @@ export function findeNpmCli(optionen: FindeNpmCliOptionen = {}): string {
   if (npmExecpath !== undefined && npmExecpath.toLowerCase().endsWith('npm-cli.js')) {
     kandidaten.push(npmExecpath)
   }
-  kandidaten.push(join(dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'))
+  kandidaten.push(win32.join(win32.dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'))
   kandidaten.push(join(dirname(execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'))
 
   for (const kandidat of kandidaten) {
