@@ -480,6 +480,7 @@ import {
   registriereWorkflowEntscheidung,
   workflowEntscheidungArtefaktId,
 } from './leitstand/routen-f39.mjs'
+import { baueAutomatischeAnpassungsBegruendung, ermittleAutomatischeAnpassung, zaehleKernVersionen } from './leitstand/f35-ws3-adjust-automatik.mjs'
 
 /**
  * F34 WS-1: Rollenkonfiguration für starteRollenChatLauf/leseRollenChatErgebnisAusLaufakte —
@@ -3638,6 +3639,111 @@ function beschreibeAutomatAusgang(ausgang) {
 }
 
 /**
+ * F35 WS-3 (features/F35/feature.md, löst zielfassung.md §13.6 E-M5-4): schreibt EINE
+ * Abnahme-Entscheidung 'ANPASSUNG_ANGEFORDERT' und setzt Ausführungs- UND Review-Schritt auf
+ * 'OFFEN'/lauf_id null zurück — Muster (bitgenau) des bisherigen, bis WS-3 inline im POST
+ * .../abnahme-Handler stehenden ANPASSUNG_ANGEFORDERT-Zweigs, nur mit parametrisiertem `erzeuger`
+ * statt fest 'mensch'. AK1 ("eine Funktion, zwei Aufrufer"): der POST-Handler ruft sie mit
+ * erzeuger 'mensch' auf, der starteWorkflowSchritt-Rückruf (Automaten-Hook) mit 'kern'.
+ *
+ * BLEIBT bewusst hier und nicht in scripts/leitstand/f35-ws3-adjust-automatik.mjs (wo die übrige
+ * WS-3-Fachlogik liegt): sie ruft schreibeWorkflowFortschritt auf, und scripts/check-f15-workflow.mjs
+ * (F-228) zählt dessen Aufrufstellen UND deren Lesungen des eingefroren-Felds ausschließlich als Text
+ * INNERHALB dieser Datei — ein Aufrufort in einem anderen Modul unterliefe diese Prüfung, ohne
+ * dass sie es bemerkte (Muster scripts/leitstand/routen-f39.mjs, Kopfkommentar: der D13-Dispatch
+ * bleibt aus demselben Grund im Server).
+ *
+ * Lädt den Workflow SELBST frisch (D2, Muster des menschlichen Aufrufers: nie auf einer
+ * möglicherweise veralteten Closure-Variable aufbauen) — der Aufrufer übergibt nur `workflowId`,
+ * kein bereits geladenes Objekt.
+ *
+ * Startet NICHTS: schreibt nur den zurückgesetzten Zustand (wie der menschliche Pfad, Kommentar
+ * dort "es wird nur geschrieben"). Ob daraus WARTET_FREIGABE oder ein bereits wieder
+ * LAEUFT-Status entsteht, hängt an freigabe: 'ZWINGEND' des Ausführungsschritts der Vorlage
+ * (workflow-vorlagen/standard.json/hoch.json) — dieselbe externe Abhängigkeit wie beim
+ * menschlichen Pfad, von WS-3 nicht neu eingeführt.
+ * @param workflowId - id des betroffenen Workflows
+ * @param begruendung - die Begründung der Anpassung (menschlicher Text ODER
+ *   baueAutomatischeAnpassungsBegruendung-Ergebnis)
+ * @param erzeuger - 'mensch' (POST .../abnahme) oder 'kern' (Automaten-Hook)
+ * @param profilReferenz - Profilreferenz dieser Serverinstanz
+ * @param ladeOptionen - { basisVerzeichnis, schreiber }
+ * @returns { ok: true, artefaktId, versionSequenz, status } oder { ok: false, grund } — wirft nie
+ */
+function wendeAutomatischeAnpassungAn(workflowId, begruendung, erzeuger, profilReferenz, ladeOptionen) {
+  const workflowVersion = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+  if (workflowVersion === null) {
+    return { ok: false, grund: `Workflow '${workflowId}' ist nicht mehr ladbar` }
+  }
+  const workflowDaten = workflowVersion.daten
+  const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
+  if (ausfuehrungSchritt === null || ausfuehrungSchritt.lauf_id === null) {
+    // HEUTE UNERREICHBAR über beide Aufrufer (der POST-Handler validiert dieselbe Bedingung
+    // bereits VOR diesem Aufruf auf derselben, synchron unveränderten Fassung; der Automaten-Hook
+    // feuert nur nach einem gerade erfolgreich gelaufenen Review, dessen Vorschritt zwangsläufig
+    // gelaufen ist) — Tiefenverteidigung, kein eigener Rot-Fall im Gate (ARCHITECTURE.md §8).
+    return { ok: false, grund: `Workflow '${workflowId}' hat keinen gelaufenen Schritt mit rolle 'ausfuehrung' — Anpassung nicht möglich` }
+  }
+  const reviewSchritt = findeReviewSchritt(workflowDaten)
+
+  const bezug = { workflow_version: workflowDaten.version, ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id, review_lauf_id: reviewSchritt?.lauf_id ?? null }
+  const abgenommeneVersion = [
+    { pfad: `artefakt:workflow-${workflowId}`, zitierter_bereich: `WORKFLOW_V0 versionSequenz ${workflowVersion.versionSequenz}`, inhalts_hash: workflowVersion.inhaltsHash },
+  ]
+  const artefaktId = `entscheidung-workflow-${workflowId}-abnahme`
+  let entscheidungsArtefakt
+  try {
+    const abnahmeDaten = { entscheidung_schema: 'v0', art: 'abnahme', ergebnis: 'ANPASSUNG_ANGEFORDERT', begruendung, entschieden_am: new Date().toISOString(), bezug }
+    const abnahmeVerstoesse = validiereEntscheidungsDaten(abnahmeDaten)
+    if (abnahmeVerstoesse.length > 0) {
+      throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${abnahmeVerstoesse.join('; ')}`)
+    }
+    entscheidungsArtefakt = registriereKernArtefakt(artefaktId, profilReferenz, { erzeuger, schritt: 'entscheidung-workflow-abnahme' }, abnahmeDaten, abgenommeneVersion, ladeOptionen)
+  } catch (fehler) {
+    return { ok: false, grund: `Abnahme-Entscheidung konnte nicht festgehalten werden: ${fehler.message}` }
+  }
+
+  let naechster = null
+  const eingabenMitEntscheidung = ausfuehrungSchritt.eingaben.includes(`artefakt:${artefaktId}`) ? ausfuehrungSchritt.eingaben : [...ausfuehrungSchritt.eingaben, `artefakt:${artefaktId}`]
+  const angepasst = schreibeWorkflowFortschritt(
+    workflowId,
+    null,
+    {},
+    (datenMitSchritt) => {
+      const neueSchritte = datenMitSchritt.schritte.map((s) => {
+        if (s.schritt_id === ausfuehrungSchritt.schritt_id) {
+          const { freigabe_erteilt: _verworfen, ...rest } = s
+          return { ...rest, status: 'OFFEN', lauf_id: null, eingaben: eingabenMitEntscheidung }
+        }
+        if (reviewSchritt !== null && s.schritt_id === reviewSchritt.schritt_id) {
+          const { freigabe_erteilt: _verworfen, ...rest } = s
+          return { ...rest, status: 'OFFEN', lauf_id: null }
+        }
+        return s
+      })
+      naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, status: 'OFFEN', schritte: neueSchritte, aktiver_schritt_id: ausfuehrungSchritt.schritt_id })
+      return {
+        schritte: neueSchritte,
+        status: workflowStatusZuAusgang(naechster),
+        aktiver_schritt_id: naechster.aktiverSchrittId,
+        grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
+      }
+    },
+    profilReferenz,
+    ladeOptionen
+  )
+  if (!angepasst.ok) {
+    return { ok: false, grund: angepasst.grund }
+  }
+  return {
+    ok: true,
+    artefaktId,
+    versionSequenz: entscheidungsArtefakt.versionSequenz,
+    status: angepasst.eingefroren ? 'GESTOPPT' : workflowStatusZuAusgang(naechster),
+  }
+}
+
+/**
  * HTTP-Status je Fehlerart von starteWorkflowSchritt (F15 WS-2c (a1)). Die
  * Funktion kennt kein res; diese Tabelle ist die einzige Stelle, an der ihre
  * Rückgabe in einen Statuscode übersetzt wird — die automatische Fortsetzung
@@ -4490,11 +4596,19 @@ export function erzeugeRequestHandler(optionen = {}) {
       // (WS-1) mit dem geparsten ak_urteile-Feld des Reviewer-Ergebnisses. Trägt der Auftrag
       // keine Akzeptanzkriterien, liefert pruefeAkUrteile IMMER [] (Alt-Verhalten, AK3) — das
       // Feld bleibt dann folgenlos für Regel 1i, unabhängig vom gelesenen urteil.
+      //
+      // F35 WS-3 (features/F35/feature.md): 'befunde' wird HIER zusätzlich aus demselben, ohnehin
+      // schon geladenen geparstFuerAk mitgenommen (statt eines dritten eigenen Lesevorgangs weiter
+      // unten) — der Automaten-Hook nach der Auto-Fortsetzung braucht sie für
+      // baueAutomatischeAnpassungsBegruendung, unter GENAU denselben Vorbedingungen, unter denen
+      // dieser Block ohnehin schon läuft.
       let akVerstoesse
+      let befunde = []
       if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer') {
         const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
         const geparstFuerAk = laufakteVersion !== null ? leseUrteilAusLaufakte(laufakteVersion.daten) : null
         akVerstoesse = pruefeAkUrteile(auftragVersion.daten.akzeptanzkriterien, geparstFuerAk?.ak_urteile ?? [])
+        befunde = geparstFuerAk?.befunde ?? []
       }
       // Regel 1c (F39 WS-2b, löst F-632 Teil b) — dasselbe zweite, eigenständige Lesen wie beim
       // urteil-Block direkt darüber, hier für 'ergebnis-architektur'. architekturEntscheidungAusstehend
@@ -4721,6 +4835,40 @@ export function erzeugeRequestHandler(optionen = {}) {
         startfehlerListe.push(eintrag)
         console.error(`[leitstand] ${eintrag.fehler}`)
         return
+      }
+      // F35 WS-3 (features/F35/feature.md, zielfassung.md §13.6 E-M5-4): endet DIESER
+      // Review-Schritt mit BLOCKIERT-Urteil oder mit AK-Verstößen, legt der Kern automatisch
+      // dieselbe Abnahme-Entscheidung an, die bislang nur ein Mensch über POST .../abnahme
+      // anlegen konnte (erzeuger 'kern' statt 'mensch', wendeAutomatischeAnpassungAn — Muster
+      // 1:1 des bisherigen ANPASSUNG_ANGEFORDERT-Zweigs dort). Regel 1b/1i
+      // (src/workflow/index.ts) haben den ÄUSSEREN `naechster` oben in genau diesem Fall bereits
+      // zwingend auf 'haltKlaerung' gesetzt, NIE auf 'starte': die Zeile direkt darunter bricht
+      // deshalb so oder so ab, BEVOR sie den von wendeAutomatischeAnpassungAn intern erzeugten,
+      // ANDEREN `naechster` je sehen könnte — der Automat startet `schritt-1-ausfuehrung` NIE
+      // selbst (AK4), strukturell erzwungen, nicht nur behauptet. Ob daraus real WARTET_FREIGABE
+      // statt eines unbemerkt bei LAEUFT steckenbleibenden Workflows entsteht, hängt an
+      // freigabe: 'ZWINGEND' des Ausführungsschritts der Vorlage
+      // (workflow-vorlagen/standard.json/hoch.json) — dieselbe externe Abhängigkeit wie beim
+      // menschlichen ANPASSUNG_ANGEFORDERT-Pfad (AK24-Kommentar, POST .../abnahme), von WS-3
+      // nicht neu eingeführt.
+      //
+      // laufAktiv/globalerLaufZustand.aktiv sind an dieser Stelle synchron bereits auf false
+      // zurückgesetzt (Kopfkommentar dieses Rückrufs — derselbe Tick wie starteLaufUndVergiss'
+      // eigener Reset, kein Kontrollflusswechsel dazwischen) — die Prüfung ist HEUTE UNERREICHBAR
+      // (immer wahr), bleibt aber als Tiefenverteidigung stehen (kein eigener Rot-Fall im Gate,
+      // ARCHITECTURE.md §8), falls sich die Aufrufreihenfolge einmal ändert.
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.output_schema === 'ergebnis-code-reviewer' && !laufAktiv && !globalerLaufZustand.aktiv) {
+        const anzahlBisherigerKernVersionen = zaehleKernVersionen(workflowId, ladeOptionen)
+        const entscheid = ermittleAutomatischeAnpassung({ outputSchema: schritt.output_schema, schrittStatus, heilbar, urteil, akVerstoesse, anzahlBisherigerKernVersionen })
+        if (entscheid.ausloesen) {
+          const begruendung = baueAutomatischeAnpassungsBegruendung(urteil, befunde, akVerstoesse ?? [], anzahlBisherigerKernVersionen + 1)
+          const angewendet = wendeAutomatischeAnpassungAn(workflowId, begruendung, 'kern', profilReferenz, ladeOptionen)
+          if (!angewendet.ok) {
+            const eintrag = { zeitstempel: new Date().toISOString(), laufId, fehler: `Automatische Anpassung (F35 WS-3) für Workflow '${workflowId}' fehlgeschlagen: ${angewendet.grund}` }
+            startfehlerListe.push(eintrag)
+            console.error(`[leitstand] ${eintrag.fehler}`)
+          }
+        }
       }
       if (naechster === null || naechster.art !== 'starte') return
 
@@ -5082,6 +5230,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       // wieder ACCEPT/REJECT an (Muster renderAbnahmeEntscheidung).
       const abnahmeArtefaktId = `entscheidung-workflow-${workflowId}-abnahme`
       const abnahmeVersion = ladeArtefaktVersion(abnahmeArtefaktId, undefined, ladeOptionen)
+      // F35 WS-3 (features/F35/feature.md): erzeuger/automatische_iteration additiv, aus der
+      // Lineage-herkunft der bereits geladenen abnahmeVersion — kein zweiter Regelsatz.
+      // automatische_iteration zählt über dieselbe Funktion wie der Auslöser im Automaten-Hook
+      // (zaehleKernVersionen, scripts/leitstand/f35-ws3-adjust-automatik.mjs), NUR bei
+      // erzeuger 'kern' (bei 'mensch' fachlich bedeutungslos, bleibt dann null).
       const entscheidungProjektion =
         abnahmeVersion === null
           ? { status: 'nicht_vorhanden' }
@@ -5092,6 +5245,8 @@ export function erzeugeRequestHandler(optionen = {}) {
               entschiedenAm: abnahmeVersion.daten.entschieden_am,
               bezug: abnahmeVersion.daten.bezug ?? null,
               versionSequenz: abnahmeVersion.versionSequenz,
+              erzeuger: abnahmeVersion.herkunft?.erzeuger ?? null,
+              automatische_iteration: abnahmeVersion.herkunft?.erzeuger === 'kern' ? zaehleKernVersionen(workflowId, ladeOptionen) : null,
             }
 
       // F23 WS-2b (AK25): jedes WARTET_FREIGABE ist ein Freigabe-Halt (F15 AK7,
@@ -7712,6 +7867,34 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (pruefeGlobaleLaufSperre(res)) return
 
       const begruendung = body.begruendung
+
+      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
+        // AK21-AK24 (F23 WS-2b) UND F35 WS-3 AK1 ("eine Funktion, zwei Aufrufer"):
+        // wendeAutomatischeAnpassungAn (scripts/leitstand/f35-ws3-adjust-automatik.mjs) trägt die
+        // GESAMTE Logik dieses Zweigs — Entscheidungsartefakt schreiben UND Ausführungs-/
+        // Review-Schritt auf 'OFFEN'/lauf_id null zurücksetzen —, hier mit erzeuger 'mensch'
+        // aufgerufen. Der automatische Zwilling (starteWorkflowSchritt-Rückruf nach einem
+        // BLOCKIERT/AK-verletzenden Review) ruft dieselbe Funktion mit erzeuger 'kern' auf. Lädt
+        // den Workflow INTERN selbst frisch (D2) statt die oben (Schritt (1)) bereits geladene
+        // workflowVersion zu übernehmen — ein zweiter, synchroner Lesevorgang ohne jeden
+        // Kontrollflusswechsel dazwischen, liest bitgenau dieselben Bytes (kein Verhaltensunterschied
+        // gegenüber der vorherigen, inline hier stehenden Fassung).
+        const angewendet = wendeAutomatischeAnpassungAn(workflowId, begruendung, 'mensch', profilReferenz, ladeOptionen)
+        if (!angewendet.ok) {
+          console.error(`[leitstand] Workflow '${workflowId}' konnte nach ANPASSUNG_ANGEFORDERT nicht fortgeschrieben werden:`, angewendet.grund)
+          sendeJson(res, 500, { grund: angewendet.grund })
+          return
+        }
+        sendeJson(res, 200, {
+          workflowId,
+          ergebnis: 'ANPASSUNG_ANGEFORDERT',
+          status: angewendet.status,
+          artefaktId: angewendet.artefaktId,
+          versionSequenz: angewendet.versionSequenz,
+        })
+        return
+      }
+
       const entschiedenAm = new Date().toISOString()
       const bezug = { workflow_version: workflowDaten.version, ausfuehrung_lauf_id: ausfuehrungSchritt.lauf_id, review_lauf_id: reviewSchritt?.lauf_id ?? null }
 
@@ -7772,83 +7955,6 @@ export function erzeugeRequestHandler(optionen = {}) {
           workflowId,
           ergebnis: 'ABGELEHNT',
           status: 'GESTOPPT',
-          artefaktId: abnahmeArtefaktId,
-          versionSequenz: entscheidungsArtefakt.versionSequenz,
-        })
-        return
-      }
-
-      if (body.ergebnis === 'ANPASSUNG_ANGEFORDERT') {
-        // AK22/AK23: Ausführungs- UND Review-Schritt zurück auf 'OFFEN'/lauf_id null,
-        // freigabe_erteilt entfernt (nicht auf false gesetzt — Muster POST /api/workflows,
-        // koerperOhneFreigaben oben), version/grenzen unangetastet. Der Ausführungsschritt bekommt
-        // zusätzlich die Eingabe auf das gerade geschriebene Entscheidungsartefakt — idempotent
-        // über .includes, ein zweiter ADJUST hängt sie nicht doppelt an.
-        //
-        // AK24: workflow-vorlagen/*.json setzt freigabe: 'ZWINGEND' am Ausführungsschritt, also
-        // liefert ermittleNaechstenSchritt auf der zurückgesetzten Fassung 'haltFreigabe' — der
-        // Callback übernimmt genau dieses Ergebnis (Muster der Nachbereitung eines Laufs weiter
-        // oben, workflowStatusZuAusgang(naechster)), statt einen festen Status zu schreiben. Der
-        // Workflow landet damit real auf 'WARTET_FREIGABE', nicht auf einem nur behaupteten
-        // Zwischenstand — ein Automatenlauf startet dabei nicht, es wird nur geschrieben.
-        // eingabenMitEntscheidung liest ausfuehrungSchritt.eingaben aus der VOR diesem Aufruf
-        // geladenen Fassung (Schritt (5) oben), nicht aus dem im Callback frisch geladenen
-        // datenMitSchritt — beide sind unter D13 (kein Kontrollflusswechsel zwischen dem Laden
-        // hier und dem Schreiben in schreibeWorkflowFortschritt, kein await dazwischen)
-        // garantiert identisch, s. F-227 für dasselbe Argument an anderer Stelle dieser Datei.
-        let naechster = null
-        const eingabenMitEntscheidung = ausfuehrungSchritt.eingaben.includes(`artefakt:${abnahmeArtefaktId}`)
-          ? ausfuehrungSchritt.eingaben
-          : [...ausfuehrungSchritt.eingaben, `artefakt:${abnahmeArtefaktId}`]
-        const angepasst = schreibeWorkflowFortschritt(
-          workflowId,
-          null,
-          {},
-          (datenMitSchritt) => {
-            const neueSchritte = datenMitSchritt.schritte.map((s) => {
-              if (s.schritt_id === ausfuehrungSchritt.schritt_id) {
-                const { freigabe_erteilt: _verworfen, ...rest } = s
-                return { ...rest, status: 'OFFEN', lauf_id: null, eingaben: eingabenMitEntscheidung }
-              }
-              if (reviewSchritt !== null && s.schritt_id === reviewSchritt.schritt_id) {
-                const { freigabe_erteilt: _verworfen, ...rest } = s
-                return { ...rest, status: 'OFFEN', lauf_id: null }
-              }
-              return s
-            })
-            // status:'OFFEN' im Zwischenstand ist notwendig, nicht kosmetisch: Regel 0 in
-            // ermittleNaechstenSchritt verweigert JEDEN Ausgang außer 'fertig' auf einem Datensatz,
-            // der noch ABGESCHLOSSEN/GESTOPPT trägt (FORTSETZBARE_WORKFLOW_STATUS) — ohne diese
-            // Zeile läse die Funktion den alten Workflow-Status und läge sofort in 'fertig'.
-            naechster = ermittleNaechstenSchritt({ ...datenMitSchritt, status: 'OFFEN', schritte: neueSchritte, aktiver_schritt_id: ausfuehrungSchritt.schritt_id })
-            return {
-              schritte: neueSchritte,
-              status: workflowStatusZuAusgang(naechster),
-              aktiver_schritt_id: naechster.aktiverSchrittId,
-              grund: naechster.art === 'starte' ? null : beschreibeAutomatAusgang(naechster),
-            }
-          },
-          profilReferenz,
-          ladeOptionen
-        )
-        if (!angepasst.ok) {
-          console.error(`[leitstand] Workflow '${workflowId}' konnte nach ANPASSUNG_ANGEFORDERT nicht fortgeschrieben werden:`, angepasst.grund)
-          sendeJson(res, 500, { grund: angepasst.grund })
-          return
-        }
-        // F-228, (b2): unerreichbar — (4) oben verlangt Status 'ABGESCHLOSSEN' oder
-        // 'KLAERUNG_ERFORDERLICH', nie 'GESTOPPT'. Trotzdem gelesen, Muster jeder anderen
-        // Aufrufstelle dieser Funktion — bei eingefroren bleibt naechster null (leiteWorkflowFelderAb
-        // lief nicht), die Antwort behauptet deshalb 'GESTOPPT' statt den nie berechneten Ausgang
-        // zu lesen.
-        const eingefroren = angepasst.eingefroren
-        if (eingefroren) {
-          console.error(`[leitstand] Workflow '${workflowId}' war bei ANPASSUNG_ANGEFORDERT bereits GESTOPPT — es wurde nichts zurückgesetzt.`)
-        }
-        sendeJson(res, 200, {
-          workflowId,
-          ergebnis: 'ANPASSUNG_ANGEFORDERT',
-          status: eingefroren ? 'GESTOPPT' : workflowStatusZuAusgang(naechster),
           artefaktId: abnahmeArtefaktId,
           versionSequenz: entscheidungsArtefakt.versionSequenz,
         })

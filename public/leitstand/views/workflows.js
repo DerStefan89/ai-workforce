@@ -386,16 +386,25 @@ function renderUrteil(projektion) {
  * @param freigabeHalt - abnahme.freigabeHalt aus GET .../abnahme ({schrittId, grund} oder null)
  * @returns HTML-Block
  */
+// F35 WS-3 (features/F35/feature.md): additiver Hinweis, NUR bei erzeuger 'kern' (die
+// automatische ADJUST-Automatik) — bei 'mensch'/null bleibt der Rückgabewert ''.
+function formatiereAutomatischeAnpassungHinweis(entscheidung) {
+  if (entscheidung.erzeuger !== 'kern') return ''
+  return `<p class="unbekannt">Automatisch angelegt – Iteration ${escapeHtml(String(entscheidung.automatische_iteration ?? '?'))}/3 – Start erfordert deine Freigabe.</p>`
+}
+
 function renderAbnahmeEntscheidung(workflowId, workflowStatus, entscheidung, freigabeHalt) {
   if (entscheidung.status === 'ok') {
     return `<div class="unterabschnitt">
       <p><strong>Entscheidung:</strong> ${escapeHtml(entscheidung.ergebnis)} — ${escapeHtml(entscheidung.begruendung)}</p>
       <p class="unbekannt">Entschieden am ${escapeHtml(entscheidung.entschiedenAm)}</p>
+      ${formatiereAutomatischeAnpassungHinweis(entscheidung)}
     </div>`
   }
   const vorherigeEntscheidung =
     entscheidung.status === 'veraltet'
-      ? `<p class="unbekannt">Vorherige Entscheidung (bezieht sich auf eine frühere Fassung): ${escapeHtml(entscheidung.ergebnis)} am ${escapeHtml(entscheidung.entschiedenAm)} — ${escapeHtml(entscheidung.begruendung)}</p>`
+      ? `<p class="unbekannt">Vorherige Entscheidung (bezieht sich auf eine frühere Fassung): ${escapeHtml(entscheidung.ergebnis)} am ${escapeHtml(entscheidung.entschiedenAm)} — ${escapeHtml(entscheidung.begruendung)}</p>
+         ${formatiereAutomatischeAnpassungHinweis(entscheidung)}`
       : ''
   if (freigabeHalt !== null) {
     // QA-Pass 15.09.2026 (TC-05): der Text darf NICHT unterstellen, dass WARTET_FREIGABE aus

@@ -80,11 +80,33 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
   Detailansicht (`public/leitstand/views/workflows.js`) zeigt eine
   kompakte Tabelle AK · Urteil · Beleg unter dem bestehenden Urteil-Block.
   Voraussetzung: WS-1s `akzeptanzkriterien`-Feld am Auftrag.
-- **WS-3 — ADJUST-Automatik.** Löst nach E-M5-4 automatisch
-  `ANPASSUNG_ANGEFORDERT` aus offenen Befunden aus (statt eines manuellen
-  Korrekturauftrags) — der erste Schritt jeder Vorlage bleibt weiterhin
-  `ZWINGEND` (Start ist kein Automatismus, nur die Korrekturschleife
-  danach).
+- **WS-3 — ADJUST-Automatik (umgesetzt).** Endet ein `code-reviewer`-Schritt
+  ERFOLGREICH mit Urteil `BLOCKIERT` oder mit AK-Verstößen (Regel 1i, WS-2),
+  legt der Kern automatisch dieselbe Abnahme-Entscheidung
+  `ANPASSUNG_ANGEFORDERT` an, die bislang nur ein Mensch über `POST
+  /api/workflows/<id>/abnahme` anlegen konnte — mit Lineage-`herkunft.
+  erzeuger: 'kern'` statt `'mensch'`, sonst bitgenau derselben Form
+  (`wendeAutomatischeAnpassungAn`, `scripts/leitstand-server.mjs` — bleibt
+  dort, nicht in `scripts/leitstand/f35-ws3-adjust-automatik.mjs`, weil sie
+  `schreibeWorkflowFortschritt` aufruft und genau dessen Aufrufstellen
+  `scripts/check-f15-workflow.mjs`/F-228 textuell nur innerhalb dieser einen
+  Datei zählt — aufgerufen sowohl vom `starteWorkflowSchritt`-Rückruf als
+  auch — mit `erzeuger: 'mensch'` — vom bestehenden `POST
+  .../abnahme`-Handler selbst, "eine Funktion, zwei Aufrufer"). Begründung
+  deterministisch über `baueAutomatischeAnpassungsBegruendung`
+  (`scripts/leitstand/f35-ws3-adjust-automatik.mjs`, Befunde + verletzte AK,
+  letztere bereits mit AK-ID aus `pruefeAkUrteile`). Grenze 3 automatische
+  Anpassungen je Workflow (`ermittleAutomatischeAnpassung`, gezählt über
+  `zaehleKernVersionen`, beide ebenfalls dort); danach hält ein weiteres
+  `BLOCKIERT` regulär auf `KLAERUNG_ERFORDERLICH`, ohne neue Anpassung. Der erste Schritt jeder
+  Vorlage bleibt `ZWINGEND` — der Automat schreibt nur einen
+  zurückgesetzten Zustand (`schritt-1-ausfuehrung` auf `OFFEN`), ruft
+  `starteWorkflowSchritt` nie selbst auf (AK4 strukturell erzwungen: Regel
+  1b/1i haben den Automaten-Ausgang an dieser Stelle bereits zwingend auf
+  `haltKlaerung` gesetzt). `GET .../abnahme` liefert additiv `erzeuger`/
+  `automatische_iteration`; die Workflow-Detailansicht zeigt bei `erzeuger
+  'kern'` den Hinweis "Automatisch angelegt – Iteration n/3 – Start
+  erfordert deine Freigabe".
 
 ## Akzeptanzkriterien
 - AK1 Die Akte F35 besteht `check-feature` und hält den Schnitt WS-1..3,
@@ -119,6 +141,32 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
 - AK15 (WS-2) Das Gate `check-f35-ws2-urteil-je-ak.mjs` belegt die Fälle
   (a)–(e) am realen Aufrufpfad (echter HTTP-Rundlauf, gestubbter Worker).
 - AK16 (WS-2) `npm run check` ist grün.
+- AK17 (WS-3) `wendeAutomatischeAnpassungAn` ist eine Funktion mit zwei
+  Aufrufern (`erzeuger` parametrisiert); der menschliche `POST
+  .../abnahme`-Pfad verhält sich bitgenau unverändert (bestehendes
+  `check-f23-abnahme`-Gate bleibt grün).
+- AK18 (WS-3) Die automatische Anpassung entsteht ausschließlich, wenn ein
+  `code-reviewer`-Schritt ERFOLGREICH mit Urteil `BLOCKIERT` oder mit
+  AK-Verstößen endet, die Grenze von 3 automatischen Anpassungen je
+  Workflow nicht erreicht ist und kein anderer Lauf aktiv ist (D13); jeder
+  andere Fall (fehlendes/unbekanntes Urteil, `FEHLGESCHLAGEN`, Regel 1c,
+  Grenze erreicht) bleibt beim Menschen.
+- AK19 (WS-3) Das automatisch erzeugte Artefakt hat dieselbe Form wie das
+  menschliche, mit Lineage-`herkunft.erzeuger: 'kern'`; die bestehende
+  Korrekturschleife (F-648) greift unverändert (liest nur `.ergebnis`, nie
+  `herkunft.erzeuger`).
+- AK20 (WS-3) Der Automat startet `ausfuehrung` nie selbst — er schreibt
+  nur den zurückgesetzten Zustand, identisch zum menschlichen
+  `ANPASSUNG_ANGEFORDERT`-Pfad.
+- AK21 (WS-3) Die Grenze von 3 automatischen Anpassungen je Workflow wird
+  durchgesetzt (`zaehleKernVersionen`); eine 4. automatische Anpassung
+  entsteht nicht.
+- AK22 (WS-3) `GET .../abnahme` liefert additiv `erzeuger` und
+  `automatische_iteration`; die Workflow-Detailansicht zeigt bei `erzeuger
+  'kern'` den Hinweis samt Iteration und Begründung.
+- AK23 (WS-3) Das Gate `check-f35-ws3-adjust-automatik.mjs` belegt die
+  Fälle (a)–(f) am realen Aufrufpfad (echter HTTP-Rundlauf, gestubbter
+  Worker); `npm run check` ist grün.
 
 ## Dependencies
 - F11 (Auftrag-Modul) — `registriereAuftrag`/`validiereAuftragDaten`, die
