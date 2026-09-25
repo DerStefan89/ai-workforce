@@ -13,10 +13,20 @@
  * Startbedingungen, siehe (3b)), das gegen beide Attrappen-Referenzen grün
  * validiert.
  *
+ * F42 WS-1 (Projekt-Harness): schreibeStartvorlageUndProfil SETZT pruefbefehl
+ * jetzt (statt es zu entfernen, löst F-667) — dieses Gate wurde entsprechend
+ * angepasst (2)/(6). baueQuellRepo bekommt zusätzlich ein Wegwerf-
+ * vorlagen/projekt-skelett/, weil POST /api/projekte jetzt zusätzlich
+ * kopiereSkelett aufruft (sonst würfe die Route hier ENOENT gegen die
+ * Fixture) — die vollständige 37-Datei-Whitelist prüft
+ * scripts/check-f42-projekt-harness.mjs gegen das ECHTE
+ * vorlagen/projekt-skelett/ dieses Repos, nicht dieses Gate.
+ *
  * Prüft: (1) loeseZielordner — Containment/Traversal/Symlink/nicht-leer,
  * Grün-Fall Standard + custom zielordner; (2) kopiereBaseline +
- * schreibeStartvorlageUndProfil — byte-identische Kopie, pruefbefehl/
- * pruefZeitgrenzeMs entfernt, profilPfad absolut auf das NEUE profiles/<id>.
+ * schreibeStartvorlageUndProfil — byte-identische Kopie, pruefbefehl jetzt
+ * [process.execPath, npm-cli.js, 'run', 'check:template'] (F42 WS-1),
+ * profilPfad absolut auf das NEUE profiles/<id>.
  * json (realer Fund, Smoketest: ohne diese Korrektur bindet sich ein neues
  * Projekt beim echten Serverlauf still an ai-workforce's eigenes Profil,
  * weil src/startvorlage/index.ts' leiteProfilReferenzAb profilPfad relativ
@@ -129,8 +139,10 @@ const FIXTURE_STARTZIEL = ['C:\\Program Files\\test\\test.exe']
  * state/aktuelle-autorisierung.json (zeigt auf externesRepo — inkl. einem
  * ECHTEN, zum Fixture-Ist-Zustand passenden Wirksamkeitsnachweis, Korrektur
  * 24.09.2026: die POST-Route prüft jetzt Bedingung 1 UND 2), startvorlagen/
- * ai-workforce.json (mit pruefbefehl/pruefZeitgrenzeMs, damit AK2 real
- * belegt, dass sie entfernt werden) und profiles/ai-workforce.json.
+ * ai-workforce.json, profiles/ai-workforce.json und ein minimales
+ * vorlagen/projekt-skelett/ (F42 WS-1: POST /api/projekte ruft jetzt
+ * zusätzlich kopiereSkelett gegen repoWurzel/vorlagen/projekt-skelett/ auf —
+ * ohne diesen Ordner würfe die reale Route ENOENT).
  * hookInhalt überschreibbar, um gezielt einen Bedingung-1-Rot-Fall
  * (manipulierter Hash) zu bauen; wirksamkeitsnachweisUeberschreibung, um
  * gezielt einen Bedingung-2-Rot-Fall (abweichender Gültigkeitsschlüssel) zu
@@ -144,6 +156,11 @@ function baueQuellRepo(externesRepo, hookInhalt = 'echter-hook-inhalt', wirksamk
   mkdirSync(join(repoWurzel, 'state'), { recursive: true })
   mkdirSync(join(repoWurzel, 'startvorlagen'), { recursive: true })
   mkdirSync(join(repoWurzel, 'profiles'), { recursive: true })
+  // F42 WS-1: minimales Wegwerf-Skelett — kopiereSkelett (von POST /api/projekte aufgerufen)
+  // braucht nur irgendeinen existierenden Ordner, die vollständige Whitelist prüft
+  // scripts/check-f42-projekt-harness.mjs gegen das echte vorlagen/projekt-skelett/.
+  mkdirSync(join(repoWurzel, 'vorlagen', 'projekt-skelett'), { recursive: true })
+  writeFileSync(join(repoWurzel, 'vorlagen', 'projekt-skelett', 'CLAUDE.md'), '# Fixture-Skelett\n')
 
   const settingsInhalt = `${JSON.stringify(
     { hooks: { PreToolUse: [{ matcher: 'Edit|Write', hooks: [{ type: 'command', command: 'node .claude/hooks/dummy-hook.js' }] }] } },
@@ -305,8 +322,17 @@ try {
 
     schreibeStartvorlageUndProfil('mein-projekt', quellRepo, ziel)
     const geschriebeneStartvorlage = JSON.parse(readFileSync(join(ziel, 'startvorlagen', 'mein-projekt.json'), 'utf8'))
-    if ('pruefbefehl' in geschriebeneStartvorlage) befunde.push("(2) 'pruefbefehl' wurde NICHT aus der neuen Startvorlage entfernt")
-    if ('pruefZeitgrenzeMs' in geschriebeneStartvorlage) befunde.push("(2) 'pruefZeitgrenzeMs' wurde NICHT aus der neuen Startvorlage entfernt")
+    // F42 WS-1 (löst F-667): pruefbefehl wird jetzt GESETZT, mit absolutem Programmpfad (kein
+    // bloßes 'npm' — siehe Kopfkommentar von src/projekt-anlegen/index.ts, Advisor-Finding F1).
+    const geschriebenerPruefbefehl = geschriebeneStartvorlage.pruefbefehl
+    if (!Array.isArray(geschriebenerPruefbefehl) || geschriebenerPruefbefehl.length !== 4) {
+      befunde.push(`(2) 'pruefbefehl' hat nicht die erwartete Form [node.exe, npm-cli.js, 'run', 'check:template']: ${JSON.stringify(geschriebenerPruefbefehl)}`)
+    } else {
+      if (geschriebenerPruefbefehl[0] !== process.execPath) befunde.push(`(2) 'pruefbefehl[0]' ist nicht process.execPath: ${geschriebenerPruefbefehl[0]}`)
+      if (!existsSync(geschriebenerPruefbefehl[1])) befunde.push(`(2) 'pruefbefehl[1]' (npm-cli.js) existiert nicht: ${geschriebenerPruefbefehl[1]}`)
+      if (geschriebenerPruefbefehl[2] !== 'run' || geschriebenerPruefbefehl[3] !== 'check:template') befunde.push(`(2) 'pruefbefehl' ruft nicht 'run check:template' auf: ${JSON.stringify(geschriebenerPruefbefehl)}`)
+    }
+    if (geschriebeneStartvorlage.pruefZeitgrenzeMs !== 120000) befunde.push(`(2) 'pruefZeitgrenzeMs' ist nicht 120000: ${geschriebeneStartvorlage.pruefZeitgrenzeMs}`)
     if (geschriebeneStartvorlage.profilPfad !== join(ziel, 'profiles', 'mein-projekt.json')) {
       befunde.push(`(2) profilPfad zeigt nicht absolut auf das neue Profil: erhalten '${geschriebeneStartvorlage.profilPfad}' (realer Fund, Smoketest: sonst still ai-workforce's eigenes Profil gebunden)`)
     }
@@ -316,7 +342,7 @@ try {
       befunde.push("(2) .gitignore fehlt oder trägt nicht genau 'kontrollzustand/\\n'")
     }
 
-    if (befunde.length === vor) console.log('✓ (2) kopiereBaseline byte-identisch (3 Dateien), schreibeStartvorlageUndProfil entfernt pruefbefehl/pruefZeitgrenzeMs, setzt profilPfad absolut auf das neue Profil, profil.projekt korrekt, .gitignore korrekt.')
+    if (befunde.length === vor) console.log('✓ (2) kopiereBaseline byte-identisch (3 Dateien), schreibeStartvorlageUndProfil setzt pruefbefehl (F42 WS-1) + pruefZeitgrenzeMs, profilPfad absolut auf das neue Profil, profil.projekt korrekt, .gitignore korrekt.')
   }
 
   // ─── (3) pruefeStartbedingung1FuerRepo: Grün + Rot (manipulierter Hook, fehlende Autorisierung) ─
@@ -509,7 +535,12 @@ try {
           befunde.push('(6) Grün-Fall: settings.json im angelegten Projekt ist NICHT byte-identisch')
         }
         const geschriebeneVorlage = JSON.parse(readFileSync(join(gruenerZielordner, 'startvorlagen', 'gruenes-projekt.json'), 'utf8'))
-        if ('pruefbefehl' in geschriebeneVorlage) befunde.push('(6) Grün-Fall: die im Route-Pfad geschriebene Startvorlage trägt noch pruefbefehl')
+        // F42 WS-1 (löst F-667): pruefbefehl wird über den Route-Pfad jetzt real gesetzt.
+        if (!Array.isArray(geschriebeneVorlage.pruefbefehl) || geschriebeneVorlage.pruefbefehl.length !== 4) {
+          befunde.push(`(6) Grün-Fall: die im Route-Pfad geschriebene Startvorlage trägt keinen gültigen pruefbefehl: ${JSON.stringify(geschriebeneVorlage.pruefbefehl)}`)
+        }
+        // F42 WS-1: das Skelett wurde ebenfalls kopiert (kopiereSkelett, NACH kopiereBaseline).
+        if (!existsSync(join(gruenerZielordner, 'CLAUDE.md'))) befunde.push('(6) Grün-Fall: das Skelett (vorlagen/projekt-skelett/) wurde NICHT ins neue Projekt kopiert')
 
         const listeAntwort = await fetch(`${basisUrl}/api/projekte`)
         const liste = await listeAntwort.json()
@@ -519,7 +550,7 @@ try {
         if (liveAntwort.status !== 200) befunde.push(`(6) Grün-Fall: /api/projekte/gruenes-projekt/laeufe (live, ohne Neustart) erwartet 200, erhalten ${liveAntwort.status}`)
 
         if (befunde.length === vor + 0 && !befunde.some((b) => b.startsWith('(6)'))) {
-          console.log('✓ (6) POST /api/projekte: Grün-Fall live registriert (GET /api/projekte + Dispatcher ohne Neustart, Dateien byte-identisch, keine pruefbefehl), Rot-Fälle (id/Kollision/Traversal/nicht-leer/Quelle-nicht-grün/D13) korrekt abgelehnt.')
+          console.log('✓ (6) POST /api/projekte: Grün-Fall live registriert (GET /api/projekte + Dispatcher ohne Neustart, Dateien byte-identisch, gültiger pruefbefehl, Skelett kopiert), Rot-Fälle (id/Kollision/Traversal/nicht-leer/Quelle-nicht-grün/D13) korrekt abgelehnt.')
         }
       }
     } finally {

@@ -40,11 +40,26 @@
  * beim Aufrufer (scripts/leitstand-server.mjs), dieses Modul stellt nur die
  * einzelnen, unabhängig testbaren Schritte.
  *
+ * F42 WS-1 (Projekt-Harness, E-F41-3 = B, features/F42/feature.md, Plan
+ * state/plan-v2-f42-projekt-harness-ws1.md): ergänzt `kopiereSkelett`
+ * (Schicht 2, Skelett, `vorlagen/projekt-skelett/`, additiv nach
+ * `kopiereBaseline` — Schicht 1, Baseline, bleibt unverändert) und
+ * `pruefeWorkspaceTrust` (E-PH-1 = B: read-only-Erkennung des Claude-Code-
+ * Workspace-Trust, der Kern schreibt NIE in `~/.claude.json`). `pruefbefehl`
+ * wird in `schreibeStartvorlageUndProfil` jetzt GESETZT statt gelöscht
+ * (löst F-667) — mit einem absoluten Programmpfad (`process.execPath` +
+ * `npm-cli.js`), weil `starteProzess` (../claude-code-gateway/
+ * prozessstart.ts) `execFile` ohne Shell verwendet und ein bloßes `'npm'`
+ * unter Windows nur auf `npm.cmd` auflöst (real gemessener Befund dort,
+ * Advisor-Finding F1, state/advisor-findings-f42-projekt-harness-ws1.md).
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
- * scripts/check-f41-projekt-anlegen.mjs.
+ * scripts/check-f41-projekt-anlegen.mjs, scripts/check-f42-projekt-
+ * harness.mjs.
  */
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
 import { leseAktuelleAutorisierung } from '../claude-code-gateway/index.ts'
 import { ermittleHookPfade, ermittleIstZustand, pruefeStartbedingung1, pruefeStartbedingung2 } from '../invocation-policy/index.ts'
@@ -185,11 +200,61 @@ export function kopiereBaseline(quellRepoWurzel: string, zielRepoWurzel: string)
   return kopiert
 }
 
+/** repo-relativer Ordner des Skelett-Snapshots (Herkunft: vorlagen/projekt-skelett/HERKUNFT.md). Eigener Root-Ordner statt unter docs/ oder scripts/, damit kein Scan-Wurzel eines ai-workforce-eigenen Gates (check-docs.mjs, check-rules.mjs, check-contract.mjs) ihn je erfasst (geprüft 25.09.2026, siehe HERKUNFT.md). */
+const SKELETT_ORDNER_RELATIV = join('vorlagen', 'projekt-skelett')
+
+/** Wird beim Kopieren übersprungen — Herkunftsdokumentation des Snapshots selbst, kein Teil des Skeletts. */
+const SKELETT_HERKUNFTSDATEI = 'HERKUNFT.md'
+
+function sammleDateienRekursiv(basis: string, aktuell: string, sammlung: string[]): void {
+  for (const eintrag of readdirSync(aktuell, { withFileTypes: true })) {
+    const pfad = join(aktuell, eintrag.name)
+    if (eintrag.isDirectory()) {
+      sammleDateienRekursiv(basis, pfad, sammlung)
+    } else {
+      sammlung.push(relative(basis, pfad))
+    }
+  }
+}
+
+/**
+ * Kopiert Schicht 2 (Skelett, F42 WS-1, E-F41-3 = B) aus dem unter
+ * `installWurzel` liegenden Snapshot `vorlagen/projekt-skelett/` in das
+ * neue Projekt — NACH kopiereBaseline (Schicht 1 gewinnt jeden Konflikt,
+ * es gibt aber keinen realen: Whitelist schließt .claude/settings.json/
+ * .claude/hooks/* bewusst aus, siehe HERKUNFT.md). Kopiert nur Dateien, die
+ * im Ziel noch NICHT existieren (Auftrag Punkt 3) — copyFileSync wie
+ * kopiereBaseline, bytegenau, keine Interpretation. Kein Try/Catch: ein
+ * Wurf (fehlendes Quellverzeichnis) propagiert unverändert in den
+ * bestehenden try-Block von POST /api/projekte, dessen catch bereits den
+ * Rückbau übernimmt (kein zweiter Mechanismus, D5).
+ * @param installWurzel - Repo-Wurzel des Serverprozesses (Quelle des Snapshots; POST /api/projekte läuft ausschließlich im unpräfigierten defaultHandler, dort ist installWurzel === repoWurzel)
+ * @param zielRepoWurzel - Repo-Wurzel des neuen Projekts
+ * @returns die Liste der repo-relativen Pfade, die tatsächlich kopiert wurden (übersprungene bereits existierende Dateien fehlen)
+ */
+export function kopiereSkelett(installWurzel: string, zielRepoWurzel: string): string[] {
+  const skelettWurzel = join(installWurzel, SKELETT_ORDNER_RELATIV)
+  const alleSkelettDateien: string[] = []
+  sammleDateienRekursiv(skelettWurzel, skelettWurzel, alleSkelettDateien)
+
+  const kopiert: string[] = []
+  for (const relativerPfad of alleSkelettDateien) {
+    if (relativerPfad === SKELETT_HERKUNFTSDATEI) continue
+    const zielDatei = join(zielRepoWurzel, relativerPfad)
+    if (existsSync(zielDatei)) continue
+    mkdirSync(dirname(zielDatei), { recursive: true })
+    copyFileSync(join(skelettWurzel, relativerPfad), zielDatei)
+    kopiert.push(relativerPfad)
+  }
+  return kopiert
+}
+
 /**
  * Schreibt startvorlagen/<id>.json (aus startvorlagen/ai-workforce.json der
- * Quelle, OHNE pruefbefehl/pruefZeitgrenzeMs — ein neues Projekt hat noch
- * keinen deterministischen Prüfschritt, siehe features/F41/feature.md
- * "Bekannte Grenzen"), profiles/<id>.json (aus profiles/ai-workforce.json
+ * Quelle, MIT pruefbefehl = [node.exe, npm-cli.js, 'run', 'check:template']
+ * — F42 WS-1, löst F-667/F41 "Bekannte Grenzen": das kopierte Skelett
+ * (kopiereSkelett) trägt genau dieses Script, siehe vorlagen/projekt-
+ * skelett/package.json), profiles/<id>.json (aus profiles/ai-workforce.json
  * der Quelle, mit projekt: id) und .gitignore (kontrollzustand/) im neuen
  * Repo. JSON.stringify(…, null, 2) + '\n', ausschließlich LF
  * (ARCHITECTURE.md §7 — der Kern schreibt nie CRLF).
@@ -200,8 +265,23 @@ export function kopiereBaseline(quellRepoWurzel: string, zielRepoWurzel: string)
  */
 export function schreibeStartvorlageUndProfil(id: string, quellRepoWurzel: string, zielRepoWurzel: string): NeueStartvorlageEckdaten {
   const startvorlage = JSON.parse(readFileSync(join(quellRepoWurzel, 'startvorlagen', 'ai-workforce.json'), 'utf8'))
-  delete startvorlage.pruefbefehl
-  delete startvorlage.pruefZeitgrenzeMs
+  // F42 WS-1 (löst F-667): pruefbefehl bekommt einen ABSOLUTEN Programmpfad, kein bloßes 'npm' —
+  // starteProzess (../claude-code-gateway/prozessstart.ts) ruft execFile OHNE Shell auf; unter
+  // Windows löst 'npm' dabei nur auf npm.cmd auf, das execFile ohne Shell nicht direkt ausführen
+  // kann (derselbe real gemessene Befund, der dort bereits für 'claude' dokumentiert ist). Herleitung
+  // über process.execPath statt Übernahme aus quellStartvorlage.pruefbefehl: der Server läuft
+  // bereits unter genau dem node.exe, das die Prüfung später wieder ausführt (ARCHITECTURE.md §3,
+  // ein einziger Nutzer/Rechner) — bleibt korrekt, auch wenn die Quell-Startvorlage veraltete, von
+  // Hand eingetragene Pfade trägt. Wirft statt still zu raten (kein Prüfbefehl ist besser als ein
+  // falscher) — der bestehende try/catch in POST /api/projekte fängt den Wurf bereits ab (D5, kein
+  // zweiter Rückbau-Mechanismus).
+  const nodeExePfad = process.execPath
+  const npmCliPfad = join(dirname(nodeExePfad), 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  if (!existsSync(npmCliPfad)) {
+    throw new Error(`npm-cli.js nicht am erwarteten Pfad gefunden ('${npmCliPfad}', abgeleitet aus process.execPath='${nodeExePfad}') — pruefbefehl kann nicht gebaut werden`)
+  }
+  startvorlage.pruefbefehl = [nodeExePfad, npmCliPfad, 'run', 'check:template']
+  startvorlage.pruefZeitgrenzeMs = 120000
   // Realer Fund (Smoketest, Muster F-415/F25 WS-1): src/startvorlage/index.ts' leiteProfilReferenzAb
   // liest vorlage.profilPfad über einen rohen readFileSync — relativ zum process.cwd() des
   // SERVERPROZESSES, nicht zu zielRepoWurzel (anders als settingsPfad/aktuelleAutorisierungPfad/
@@ -374,4 +454,58 @@ export function raeumeAngelegtenOrdnerZurueck(ziel: string): { ok: true } | { ok
     console.error(`[projekt-anlegen] raeumeAngelegtenOrdnerZurueck: ${grund}`)
     return { ok: false, grund }
   }
+}
+
+export interface WorkspaceTrustStatus {
+  status: 'true' | 'false' | 'fehlend'
+  cwdPfad: string
+  claudeJsonPfad: string
+}
+
+/**
+ * F42 WS-1 (E-PH-1 = B, Stefan: der Kern schreibt NIE in ~/.claude.json —
+ * löst einen Teilaspekt von state/findings.md F-702, neu angelegt in
+ * diesem Auftrag). Read-only-Erkennung, ob Claude Code den Workspace-Trust
+ * für GENAU den cwd-String akzeptiert hat, mit dem der Worker gestartet
+ * wird (cwdPfad — für ein frisch über POST /api/projekte angelegtes
+ * Projekt ist das `ziel`, deterministisch eindeutig: ein Registereintrag,
+ * ein repo_pfad). Schreibt nichts, wirft nie (Muster
+ * leseAktuelleAutorisierung: Rot-Fall als Wert, nicht als Exception).
+ *
+ * Lookup-Schlüssel: cwdPfad.split(sep).join('/') — derselbe
+ * Normalisierungs-Idiom wie baueNeuenProjektEintrags repo_pfad-Bau oben,
+ * kein neu erfundenes Muster. EXAKTER String-Vergleich, kein Raten über
+ * Groß-/Kleinschreibung des Laufwerksbuchstabens oder Trennerform — real
+ * beobachtete Inkonsistenz in ~/.claude.json (F-702): ein unter einer
+ * anderen Schreibweise gesetzter Trust wird hier als 'fehlend' gemeldet,
+ * bewusst in Kauf genommen statt eines Ratens, das in die andere Richtung
+ * falsch läge (ein fälschlich als 'true' gemeldeter Trust wäre die
+ * schlechtere Fehlrichtung).
+ * @param cwdPfad - der exakte cwd-String, mit dem der Worker für dieses Projekt gestartet wird (i.d.R. die neu angelegte Repo-Wurzel)
+ * @param optionen - claudeJsonPfad überschreibt den Default (Muster optionen.startfreigabeRepoWurzel) — für scripts/check-f42-projekt-harness.mjs, das gegen Fixtures statt der echten ~/.claude.json prüft
+ * @returns TrustStatus — 'true' nur wenn der exakte Schlüssel existiert UND hasTrustDialogAccepted === true; sonst 'false' (Schlüssel da, Wert nicht true) oder 'fehlend' (Datei/Schlüssel fehlt, kein gültiges JSON)
+ */
+export function pruefeWorkspaceTrust(cwdPfad: string, optionen: { claudeJsonPfad?: string } = {}): WorkspaceTrustStatus {
+  const claudeJsonPfad = optionen.claudeJsonPfad ?? join(homedir(), '.claude.json')
+  const normalisierterSchluessel = cwdPfad.split(sep).join('/')
+
+  if (!existsSync(claudeJsonPfad)) {
+    return { status: 'fehlend', cwdPfad, claudeJsonPfad }
+  }
+
+  let daten: unknown
+  try {
+    daten = JSON.parse(readFileSync(claudeJsonPfad, 'utf8'))
+  } catch {
+    return { status: 'fehlend', cwdPfad, claudeJsonPfad }
+  }
+
+  const projekte = typeof daten === 'object' && daten !== null ? (daten as { projects?: unknown }).projects : undefined
+  const eintrag = typeof projekte === 'object' && projekte !== null ? (projekte as Record<string, unknown>)[normalisierterSchluessel] : undefined
+  const hatTrustAkzeptiert = typeof eintrag === 'object' && eintrag !== null ? (eintrag as { hasTrustDialogAccepted?: unknown }).hasTrustDialogAccepted : undefined
+
+  if (eintrag === undefined) {
+    return { status: 'fehlend', cwdPfad, claudeJsonPfad }
+  }
+  return { status: hatTrustAkzeptiert === true ? 'true' : 'false', cwdPfad, claudeJsonPfad }
 }

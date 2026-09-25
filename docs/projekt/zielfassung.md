@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.29 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.30 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -56,6 +56,8 @@ v1.26 → v1.27: **§13.6 um E-F41-1 ergänzt** (Stefan, 24.09.2026, F41 WS-1 Ko
 v1.27 → v1.28: **§13.6 um E-F41-2 ergänzt** (Stefan, 24.09.2026, F41-WS-3-Reallauf, löst `state/findings.md` F-676): Workforce-eigene Assets (`ressourcen.json`, `schemas/`, `workflow-vorlagen/`, Rolleninstruktionen, Output-Schema-Pfade für `codex --output-schema`) werden vom Kern jetzt über eine eigene `installWurzel` (Default `process.cwd()` des Serverprozesses) statt über die Projekt-`repoWurzel` aufgelöst — real gebrochen im ersten F41-WS-3-Reallauf gegen das neue Projekt `haushaltsbuch` (Coach-Turn `500 ENOENT ressourcen.json`, Router-Klassifikation schemawidrig, weil das Modell im Projekt-cwd kein `schemas/` fand). `baueRouterAuftragstext` nennt die geforderte JSON-Form seither zusätzlich inline. Gate `scripts/check-fix-f676-installwurzel.mjs`.
 
 v1.28 → v1.29: **F41 abgeschlossen** (Stefan, 25.09.2026, Entscheidung "A" — Abnahme mit bekannten Grenzen, nach unabhängigem Review-Pass `features/F41/review-pass.md`, FREIGEGEBEN MIT HINWEISEN): Pflicht-AK F-666 (aus F39) ist mechanisch erfüllt — ein vollständiger realer `hoch`-Durchlauf (Regel 1c real ausgelöst und fortgesetzt, `architecture-advisor` mit auswertbarem Urteil, `code-reviewer` erfolgreich) lief real durch; inhaltlich entstand dabei kein Baudurchgang (`features/F41/nachweis-ws3-reallauf-messung.md`), Root Cause außerhalb von F41 selbst (`state/findings.md` F-684). Folgefeature **Projekt-Harness (E-F41-3, noch nicht im Detail entschieden)** bündelt die dadurch offen gebliebenen strukturellen Lücken eines neu angelegten Projekts (F-667/F-673/F-684/F-685/F-690) und wird als nächstes vor F35 eingeplant. **Kein neuer inhaltlicher Entscheid** zu E-M5-14 selbst — reine Abschluss-/Fortschreibungsnotiz.
+
+v1.29 → v1.30: **§13.6 um E-F41-3 = B und E-PH-1 = B ergänzt** (Stefan, 25.09.2026, F42 WS-1, `features/F42/feature.md`): Projekt-Harness ist jetzt als eigenes Feature F42 (direkt nach F41, vor F35) entschieden — Drei-Schichten-Modell Baseline (unverändert, E-F41-1)/Skelett (`vorlagen/projekt-skelett/`, Snapshot `claude-projekt-template` @ `template-baseline`, Commit `9189959`)/Füllung (künftiger Workflow-Durchlauf, nicht WS-1). E-PH-1 = B: der Kern schreibt nie in `~/.claude.json`, nur read-only-Erkennung von Workspace-Trust. Löst F-667 (echter `pruefbefehl`, jetzt mit absolutem Programmpfad statt `npm`, Advisor-Finding F1) und einen Teilaspekt von F-702 (Trust-Erkennung). Feature-Liste/Reihenfolge in §13.6 um F42 ergänzt.
 
 ---
 
@@ -625,16 +627,17 @@ F34 Product Coach / Ideation + Discovery (nach F33; WS-3 Projekt-Interview,
 E-M5-12) · F39 Architektur-Rolle „architekt" (E-M5-3′, claude-Challenge
 20.09.2026; zusätzlich Projektmodus „Architektur-Grundlage", E-M5-13,
 vor F35 gezogen) · F41 Neues Projekt anlegen (F-523, E-M5-14, direkt nach
-F39) · F35 Challenge-Flow (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik
-nach E-M5-4, Befund-Projektion) · F36 Capability Library Expansion (nach
+F39) · F42 Projekt-Harness (E-F41-3, direkt nach F41, vor F35) · F35
+Challenge-Flow (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach
+E-M5-4, Befund-Projektion) · F36 Capability Library Expansion (nach
 E-M5-5, parallel ab F34) · F37 Besetzungs-Erklärung & Override (nach F32,
 F35) · F38 Projektwissen-Index, wegwerfbar (nach F33, F35) · F40
 Jarvis-Latenz (E-M5-10) · F30 Dogfooding + Team (inkl. F25 WS-2b/WS-3;
 Abschluss) · RC: Zielsatz/Bestehensbedingung M5 und V1.
 
-**Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F35 → F37 → F38 → Design →
-F30 → RC (E-M5-13/E-M5-14). F36 läuft parallel ab F34 (E-M5-5). F40 ist
-außerhalb dieser Kette eingeschoben.
+**Reihenfolge:** F32 ∥ F33 → F34 → F39 → F41 → F42 → F35 → F37 → F38 →
+Design → F30 → RC (E-M5-13/E-M5-14, E-F41-3). F36 läuft parallel ab F34
+(E-M5-5). F40 ist außerhalb dieser Kette eingeschoben.
 
 **E-M5-1** *(Stefan, 20.09.2026)* — M4-Abschluss, Option A: Meilenstein 4
 gilt als geschlossen, offene Posten werden ausdrücklich nach M5
@@ -740,6 +743,31 @@ geforderte JSON-Form seither zusätzlich INLINE, statt sich allein auf einen
 Dateipfad im Worker-cwd zu verlassen (Muster `baueArchitektAuftragstext`).
 Gate `scripts/check-fix-f676-installwurzel.mjs`, in `npm run check`
 eingehängt.
+
+**E-F41-3 = B** *(Stefan, 25.09.2026, löst `state/findings.md` F-667/F-673/
+F-684/F-685, Projekt-Harness als eigenes Feature F42)* — ein neu angelegtes
+Projekt bekommt zusätzlich zur Baseline ein Drei-Schichten-Modell:
+**Schicht 1 Baseline** (`.claude/settings.json`, Hooks,
+`state/aktuelle-autorisierung.json`) bleibt byte-identisch aus
+ai-workforce, hash-geprüft, UNVERÄNDERT (E-F41-1) — Schicht 2 gewinnt bei
+Konflikt nie gegen sie. **Schicht 2 Skelett** — ein Snapshot von
+`claude-projekt-template` @ `template-baseline` (Commit `9189959`) unter
+`vorlagen/projekt-skelett/`, per Whitelist ausgewählt (u. a. `CLAUDE.md`,
+`ARCHITECTURE.md`, `.claude/agents/`, `.claude/skills/`, `docs/guide/`,
+die drei stackunabhängigen Doku-/Regel-/Vertrags-Gates, `package.json` mit
+einem sauberen `check:template`), nicht gehasht (kann von der Quelle
+driften, `state/findings.md` F-700, TECH_DEBT). **Schicht 3 Füllung** —
+Coach-Interview → Architekt → Ausführung für das konkrete neue Projekt,
+ein eigener, künftiger Workflow-Durchlauf, NICHT Teil von F42 WS-1.
+Realisiert in `features/F42/feature.md`.
+
+**E-PH-1 = B** *(Stefan, 25.09.2026, F42 WS-1, löst einen Teilaspekt von
+`state/findings.md` F-702)* — der Kern schreibt NIE in `~/.claude.json`.
+Workspace-Trust (Claude-Code-CLI-Mechanismus,
+`projects[<pfad>].hasTrustDialogAccepted`) bleibt read-only erkannt und
+gemeldet (`POST /api/projekte`s `naechste_schritte.trust`) — Stefan
+bestätigt den Trust-Dialog selbst, keine programmatische Umgehung eines
+Sicherheitsmechanismus.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

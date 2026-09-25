@@ -74,7 +74,9 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35–F38 noch nicht
-begonnen, F41 direkt nach F39 gezogen (E-M5-14, Challenge läuft), F40
+begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
+gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, `IN_ARBEIT`, direkt nach
+F41 vor F35) läuft, F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
@@ -567,10 +569,20 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   „Versuch 2". **Abnahme durch Stefan am 24.09.2026** — Restfindings
   F-660–F-663, F-665, F-666 bleiben offen (F-666 Pflicht-AK F41, F-664
   bereits behoben). Vor F35 gezogen (E-M5-13), direkt nach F34.
-- 🚧 **F41** — Neues Projekt anlegen (F-523, E-M5-14). Nächstes Feature
-  nach F39 (`ABGESCHLOSSEN`, 24.09.2026) — Challenge läuft; direkt nach
-  F39 gezogen (statt erst in F30). F-666 (vollständiger realer `hoch`-Lauf)
-  ist Pflicht-AK der F41-Abnahme (E-F39-2 = A).
+- ✅ **F41** — Neues Projekt anlegen (F-523, E-M5-14). Akte
+  `features/F41/feature.md`, Status `ABGESCHLOSSEN` (Entscheidung "A" —
+  Abnahme mit bekannten Grenzen, unabhängiger Review-Pass
+  `features/F41/review-pass.md` FREIGEGEBEN MIT HINWEISEN, Pflicht-AK
+  F-666 aus F39 mechanisch erfüllt). **Abnahme durch Stefan am
+  25.09.2026.** Direkt nach F39 gezogen (statt erst in F30). Folgefeature
+  Projekt-Harness (E-F41-3) bündelt die dabei offen gebliebenen
+  strukturellen Lücken (F-667/F-673/F-684/F-685/F-690) als F42.
+- 🚧 **F42** — Projekt-Harness (E-F41-3 = B, `state/findings.md`
+  F-667/F-673/F-684/F-685/F-690). Direkt nach F41, vor F35 (Reihenfolge
+  jetzt F41 → F42 → F35). Akte `features/F42/feature.md`, Status
+  `IN_ARBEIT` — WS-1 (Skelett `vorlagen/projekt-skelett/`, echter
+  `pruefbefehl`, Trust-Hinweis über `POST /api/projekte`) gebaut,
+  `npm run check` grün, AK2-Probe real belegt (`GRUEN`, Exit 0, 1480 ms).
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1
