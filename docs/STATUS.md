@@ -588,7 +588,14 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Stack eines Projekts offen ist, muss der Architekt ihn als
   `entscheidungen_mensch[]`-Entscheidung mit `kategorie: 'stack'` vorlegen,
   real durchgesetzt in `scripts/leitstand-server.mjs`; `npm run check`
-  grün (784 Tests).
+  grün (784 Tests). WS-3 (Messnachweis, abgeschlossen 25.09.2026): realer
+  Reallauf gegen ein zweites Fremdprojekt (`haushaltsbuch2`) — erstmals
+  inhaltliches Ergebnis in einem Fremdprojekt statt nur mechanisch
+  bestanden, `features/F42/nachweis-ws3-reallauf.md`, F-667/F-684/F-685/
+  F-690 real bestätigt, F-709…F-716 neu gefunden (P1: F-712 Scope-
+  Überschreitung der Ausführung, F-714 Stack-Entscheidung ohne
+  verpflichtenden `CLAUDE.md`/ADR-Nachzug). WS-4 (F-712, F-714, F-711)
+  geplant, noch nicht begonnen.
 - ✅ **F40** — Jarvis-Latenz: Streaming + Lagebild (weniger Werkzeug-Runden
   bei Statusfragen, `state/spike-f40-streaming.md`). Akte
   `features/F40/feature.md`, Status `ABGESCHLOSSEN` (WS-0 Spike #203, WS-1
