@@ -30,8 +30,9 @@ Restfindings F-378/F-389/F-392 bleiben offen, M5-Backlog, F25
 `FEATURE_GATE` mit offenem WS-2b/WS-3 → F30), F28/F29 `ABGESCHLOSSEN`,
 F30 noch nicht begonnen, F31 `ABGESCHLOSSEN` (WS-1 #192, WS-2 #194, WS-3
 #196, WS-3b #197, WS-3c #198). Das Projekt ist in Meilenstein 5
-(`docs/projekt/zielfassung.md` §13.6; Zielsatz/Bestehensbedingung noch
-offen, RC): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
+(`docs/projekt/zielfassung.md` §13.6; Zielsatz und sechspunktige
+Bestehensbedingung für M5/V1 seit 25.09.2026 festgehalten, RC steht noch
+aus): F32 Verbrauch & Kontingent `ABGESCHLOSSEN` (WS-1 Verbrauch-
 Erfassung PR #200, `fc68d2d`; WS-2 UI-Ansicht im Dashboard PR #216 —
 Feature-Review-Pass am 22.09.2026 „Freigegeben mit Hinweisen", Restfinding
 F-603 im Fixpaket fix/f603-f598-f595 behoben, abgenommen durch Stefan am
@@ -74,8 +75,9 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 `ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
-`features/F39/feature.md`), F35–F38 noch nicht
-begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
+`features/F39/feature.md`), F35/F36 noch nicht begonnen (F37/F38 als
+V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
+`docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
 ist `ABGESCHLOSSEN` (Review-Pass 25.09.2026 „Freigegeben mit Hinweisen",
 Abnahme durch Stefan am 25.09.2026, Entscheidung A, mit bekannten Grenzen
@@ -140,3 +142,4 @@ feature.md`) (Stand 22.09.2026).
 - F-689 · BUG · `leseSelbstblockadeAusAusfuehrungstext` erkennt nur die feste Zeile `- [x] Blockiert` — eine echte Rückfrage der `ausfuehrung`-Rolle an den Menschen bleibt strukturell unerkannt, der Workflow läuft automatisch weiter.
 - F-690 · BUG · Ein über F41 neu angelegtes Projekt ist für Claude Code nicht "trusted" — die kopierte `.claude/settings.json`-Permission-Allowlist greift real nicht.
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
+- F-713 · HARNESS_IMPROVEMENT · `ausfuehrung` kann die Prüfkette ändern, mit der sie selbst gemessen wird.
