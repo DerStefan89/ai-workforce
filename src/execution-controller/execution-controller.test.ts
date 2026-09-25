@@ -119,7 +119,7 @@ import { baueAufruf, starteGateway } from '../claude-code-gateway/index.ts'
 // Konstante. Ein abgetipptes 'codex-sandbox-read-only' im Test hätte eine
 // Drift der Konstante NICHT bemerkt.
 import { CODEX_BERECHTIGUNGSKONTEXT } from '../codex-gateway/index.ts'
-import type { Starter } from '../claude-code-gateway/types.ts'
+import type { Starter, StarterOptionen } from '../claude-code-gateway/types.ts'
 import { baueKontextpaket } from '../context-builder/index.ts'
 import { istWirkungsmarkePayload, kanonischesJson, ladeGueltigeCheckpoints, sha256Hex, stelleLaufstatusFest } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
@@ -321,8 +321,10 @@ test('AK1/AK5/AK8: Grün-Durchlauf ruft F5/F6a/F7/F1B je genau einmal und liefer
 test('F11 AK2: promptText besteht aus Auftragsabschnitt und Evidenzabschnitt, getrennt durch "==="', async () => {
   const laufId = neueLaufId('f11a')
   let erfassteTokens: string[] | undefined
-  const spyStarter: Starter = async (startziel, tokens) => {
+  let erfassteOptionen: StarterOptionen | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
     erfassteTokens = tokens
+    erfassteOptionen = optionen
     return attrappeMitValidemErgebnis(startziel, tokens)
   }
   try {
@@ -334,12 +336,13 @@ test('F11 AK2: promptText besteht aus Auftragsabschnitt und Evidenzabschnitt, ge
     )
     assert.strictEqual(ergebnis.ok, true)
     assert.ok(erfassteTokens)
-    const pIndex = erfassteTokens.indexOf('-p')
-    assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
+    // F-642: '-p' bleibt das letzte Tokens-Element, der Prompt selbst geht seither über
+    // optionen.stdinDaten, nicht mehr als Argv-Element danach (löst spawn ENAMETOOLONG).
+    assert.strictEqual(erfassteTokens[erfassteTokens.length - 1], '-p', "'-p' muss das letzte Argv-Element bleiben")
     // F12 WS-2 (AK5): der Evidenzabschnitt trägt seither immer zuerst den unbedingt vorangestellten
     // auftragRef-Eintrag, getrennt per "---" vom ursprünglichen Evidenzelement (bauePromptAusKontextpaket).
     assert.strictEqual(
-      erfassteTokens[pIndex + 1],
+      erfassteOptionen?.stdinDaten,
       `Auftrag:\nTestauftragstext\n\n===\n\n${AUFTRAG_REF_SEGMENT}\n\n---\n\nPfad: test/anfrage.md\nFrage: Testfrage\nBegründung: Testbegruendung\nInhalt:\nTestinhalt`
     )
   } finally {
@@ -353,8 +356,10 @@ test('F12 WS-2 (AK5): anfragen leer → Evidenzabschnitt enthält ausschließlic
   // ein "leeres" Kontextpaket im ursprünglichen Sinn ist über einen normalen Aufrufer nicht mehr erreichbar.
   const laufId = neueLaufId('f11b')
   let erfassteTokens: string[] | undefined
-  const spyStarter: Starter = async (startziel, tokens) => {
+  let erfassteOptionen: StarterOptionen | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
     erfassteTokens = tokens
+    erfassteOptionen = optionen
     return attrappeMitValidemErgebnis(startziel, tokens)
   }
   try {
@@ -366,9 +371,8 @@ test('F12 WS-2 (AK5): anfragen leer → Evidenzabschnitt enthält ausschließlic
     )
     assert.strictEqual(ergebnis.ok, true)
     assert.ok(erfassteTokens)
-    const pIndex = erfassteTokens.indexOf('-p')
-    assert.notStrictEqual(pIndex, -1, "'-p' fehlt in den Tokens")
-    assert.strictEqual(erfassteTokens[pIndex + 1], `Auftrag:\nTestauftragstext\n\n===\n\n${AUFTRAG_REF_SEGMENT}`)
+    assert.strictEqual(erfassteTokens[erfassteTokens.length - 1], '-p', "'-p' muss das letzte Argv-Element bleiben")
+    assert.strictEqual(erfassteOptionen?.stdinDaten, `Auftrag:\nTestauftragstext\n\n===\n\n${AUFTRAG_REF_SEGMENT}`)
   } finally {
     raeumeKette(laufId)
   }
@@ -773,8 +777,10 @@ test('F5-Abbruchzweig: kontextpaket-Rot-Fall bricht sofort ab, Grund unveränder
 test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzeptierte Anfrage, nicht die budgetbedingt ausgeschlossene', async () => {
   const laufId = neueLaufId('f124')
   let empfangeneTokens: string[] | undefined
-  const spyStarter: Starter = async (startziel, tokens) => {
+  let empfangeneOptionen: StarterOptionen | undefined
+  const spyStarter: Starter = async (startziel, tokens, optionen) => {
     empfangeneTokens = tokens
+    empfangeneOptionen = optionen
     return attrappeMitValidemErgebnis(startziel, tokens)
   }
   try {
@@ -799,8 +805,10 @@ test('F-124: der an den Starter übergebene Prompt enthält nur die von F5 akzep
     assert.ok(ergebnis.ok)
 
     assert.ok(empfangeneTokens !== undefined, 'Starter muss real aufgerufen worden sein')
-    assert.strictEqual(empfangeneTokens.at(-2), '-p', 'Prompt muss als letztes Token-Paar (-p, <Text>) übergeben werden')
-    const promptText = empfangeneTokens.at(-1) as string
+    // F-642: '-p' bleibt das letzte Tokens-Element, der Prompt selbst geht seither über
+    // optionen.stdinDaten, nicht mehr als Argv-Element danach (löst spawn ENAMETOOLONG).
+    assert.strictEqual(empfangeneTokens.at(-1), '-p', "'-p' muss das letzte Argv-Element bleiben")
+    const promptText = empfangeneOptionen?.stdinDaten as string
     assert.match(promptText, /AKZEPTIERTER-INHALT-MARKER/)
     assert.doesNotMatch(promptText, /AUSGESCHLOSSENER-INHALT-MARKER/, 'die budgetbedingt ausgeschlossene Anfrage darf nicht im Prompt landen (F-124)')
   } finally {

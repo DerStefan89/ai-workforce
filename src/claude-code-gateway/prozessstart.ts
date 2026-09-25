@@ -129,6 +129,22 @@
  * TIMEOUT, startfehler, exitCode). Ein Abbruch nach der result-Zeile trifft
  * einen fachlich bereits fertigen Lauf und ändert das Ergebnis nicht mehr.
  * Ein unvollständiger Zeilenrest am Ende wird nie geparst.
+ *
+ * F-642, jetzt auch claude-code (F41-WS-3-Reallauf, 24.09.2026, Lauf
+ * 3943c565-dd33-4df4-895f-56daf1e1fb4a): src/claude-code-gateway/index.ts'
+ * starteGateway setzt stdinLeer NICHT mehr fest (Jarvis-Latenz-Fix oben,
+ * Schritt 2/4) — ein langes Prompt-Argv-Element kann Windows'
+ * Kommandozeilenlänge überschreiten (spawn ENAMETOOLONG, synchron, vor
+ * jedem Prozessstart), genau der bereits für Codex behobene Mechanismus.
+ * starteGateway reicht den Prompt seither über stdinDaten statt Argv durch
+ * (Muster codex-gateway/index.ts' starteCodexGateway) — stdinDaten deckt
+ * denselben "nie ein leeres, unbeantwortetes stdin"-Zweck ab wie stdinLeer
+ * zuvor, ein Kindprozess sieht stdin also weiterhin nie unbeantwortet
+ * offen. Der Jarvis-Latenz-Befund selbst (offenes stdin kostet 3s, wenn es
+ * NIE gelesen wird) bleibt dadurch behoben: `claude -p` ohne
+ * Positionsargument liest den Prompt vollständig aus stdin (real
+ * verifiziert) und beendet die Wartezeit dadurch sofort, statt auf ein
+ * EOF ohne Daten zu warten.
  */
 
 import { execFile, spawn } from 'node:child_process'

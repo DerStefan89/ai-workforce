@@ -473,16 +473,27 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
 
   optionen.zeitmessung?.('prozess_gestartet')
 
-  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, eingaben.tokens, {
+  // F-642 (löst spawn ENAMETOOLONG unter Windows bei langem Prompt, real gemessen Lauf
+  // 3943c565-dd33-4df4-895f-56daf1e1fb4a, F41-WS-3-Reallauf, 24.09.2026: Auftrag +
+  // Architekt-JSON + Entscheidung > Windows' Kommandozeilenlänge, Prozess kam nie zum Start —
+  // dasselbe Bild wie F-642 bei Codex, bisher nur dort behoben): der Prompt (per baueAufrufs
+  // eigenem Vertrag immer das LETZTE Element von eingaben.tokens, direkt nach '-p') geht nicht
+  // mehr als Argv-Element an den Kindprozess, sondern über stdin — `claude -p` ohne
+  // Positionsargument liest den Prompt vollständig aus stdin (real verifiziert, kein
+  // dokumentiertes CLI-Verhalten). eingaben.tokens selbst bleibt UNVERÄNDERT die vollständige,
+  // von baueAufruf gebaute Form — für die Allowlist-Prüfung oben (D5, kein zweiter Regelsatz),
+  // nur der tatsächlich gespawnte Argv lässt das letzte Element weg (Muster
+  // codex-gateway/index.ts' starteCodexGateway). stdinLeer entfällt ersatzlos: stdinDaten
+  // deckt denselben Zweck (nie ein leeres, unbeantwortetes stdin) UND liefert den Prompt.
+  const spawnTokens = eingaben.tokens.slice(0, -1)
+  const promptFuerStdin = eingaben.tokens[eingaben.tokens.length - 1]
+
+  const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, spawnTokens, {
     starter: optionen.starter,
     zeitgrenzeMs: optionen.zeitgrenzeMs,
     abbruchSignal: optionen.abbruchSignal,
     cwd: optionen.cwd,
-    // Task "Jarvis-Chat-Latenz senken", Schritt 2: `-p` liest nie von stdin (Prompt kommt als
-    // Argument) — offenes stdin bringt hier nie einen Nutzen, aber real beobachtet 3s
-    // Wartezeit ("no stdin data received in 3s"). Fest für JEDE Rolle, kein Options-Feld
-    // (Muster codex-gateway/index.ts, dort ebenso hartkodiert statt optional).
-    stdinLeer: true,
+    stdinDaten: promptFuerStdin,
     umgebungsvariablen: optionen.umgebungsvariablen,
     // F40 WS-1: baueAufruf erzeugt immer stream-json — der Starter löst bei der result-Zeile auf
     // statt beim Prozessende (real 590-730ms früher, state/spike-f40-streaming.md Punkt 1).
