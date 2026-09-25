@@ -139,7 +139,5 @@ feature.md`) (Stand 22.09.2026).
 - F-675 · TECH_DEBT · Die Coach-Struktur geht im Auftrag in Freitext über — Ausführung und Review arbeiten nicht verpflichtend gegen die Akzeptanzkriterien.
 - F-678 · TECH_DEBT · Neue Projekte haben keinen Projekt-Harness — Rolleninstruktionen verweisen auf Dateien, die dort nicht existieren.
 - F-684 · BUG · Product-Coach-Vorlage "Auftrag an den Baudurchgang" schreibt ai-workforce-spezifische Prüfungen in JEDEN Auftrag — auch in Fremdprojekte, wo diese Dateien nicht existieren.
-- F-689 · BUG · `leseSelbstblockadeAusAusfuehrungstext` erkennt nur die feste Zeile `- [x] Blockiert` — eine echte Rückfrage der `ausfuehrung`-Rolle an den Menschen bleibt strukturell unerkannt, der Workflow läuft automatisch weiter.
 - F-690 · BUG · Ein über F41 neu angelegtes Projekt ist für Claude Code nicht "trusted" — die kopierte `.claude/settings.json`-Permission-Allowlist greift real nicht.
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
-- F-713 · HARNESS_IMPROVEMENT · `ausfuehrung` kann die Prüfkette ändern, mit der sie selbst gemessen wird.

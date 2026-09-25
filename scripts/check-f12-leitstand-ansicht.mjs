@@ -224,7 +224,8 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
     { basisVerzeichnis, schreiber: () => {} }
   )
 
-  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, repoWurzel })
+  // F-683: der Rohstrom wird gegen installWurzel aufgelöst — hier dieselbe Temp-Wurzel wie repoWurzel (Fall ai-workforce selbst).
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, repoWurzel, installWurzel: repoWurzel })
   try {
     const gruen = await (await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufId)}`)).json()
     if (gruen.rohstrom?.status !== 'ok' || gruen.rohstrom.exitCode !== 0 || gruen.rohstrom.ergebnisobjekt?.status !== 'kein_ergebnisobjekt') {

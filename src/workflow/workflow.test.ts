@@ -170,6 +170,8 @@ const schrittRotfaelle: [string, (s: Record<string, unknown>) => void][] = [
   ['schritt_id leer', (s) => { s.schritt_id = '' }],
   ['rolle leer', (s) => { s.rolle = '' }],
   ['werkzeugsatz fehlt', (s) => { delete s.werkzeugsatz }],
+  ['werkzeugsatz schreibend mit freigabe AUTOMATISCH (F-734)', (s) => { s.werkzeugsatz = 'schreibend'; s.freigabe = 'AUTOMATISCH' }],
+  ['werkzeugsatz schreibend mit freigabe EMPFOHLEN (F-734)', (s) => { s.werkzeugsatz = 'schreibend'; s.freigabe = 'EMPFOHLEN' }],
   ['worker außerhalb des Enums', (s) => { s.worker = 'gemini' }],
   ['modell leer', (s) => { s.modell = '' }],
   ['eingaben kein Array', (s) => { s.eingaben = 'artefakt:x' }],
@@ -875,6 +877,89 @@ test('Regel 1 schlägt Regel 1h: ein VERWEIGERTER ausfuehrung-Lauf hält über s
   const ergebnis = ermittleNaechstenSchritt(workflow, { schrittId: 'schritt-1', ergebnis: 'VERWEIGERT', laufId: 'lauf-1', stackNichtGefuellt: true })
   assert.equal(ergebnis.art, 'haltKlaerung')
   assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /endete VERWEIGERT/)
+})
+
+// ─── Fixpaket vor F30: F-718 (1g + 1h kombiniert), F-713 (Regel 1j), F-689 (Rückfrage), F-734 (Validator) ──
+
+/** Zweistufiger Workflow mit einem gerade ERFOLGREICH gelaufenen 'ausfuehrung'-Schritt (Muster der 1g/1h-Tests oben). */
+function ausfuehrungGelaufen(): WorkflowV0Daten {
+  return typisierterWorkflow([
+    typisierterSchritt('schritt-1', 'schritt-2', { rolle: 'ausfuehrung', worker: 'claude-code', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' }),
+    typisierterSchritt('schritt-2', null),
+  ])
+}
+
+test('F-718: Regel 1g UND 1h im selben Lauf — EIN Halt, dessen Grund beide Verstöße nennt (1g vor 1h)', () => {
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', scopeVerletzung: ['schemas/x.schema.json'], stackNichtGefuellt: true })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  const grund = ergebnis.art === 'haltKlaerung' ? ergebnis.grund : ''
+  assert.match(grund, /schemas\/x\.schema\.json.*\(F-712\)/)
+  assert.match(grund, /Stack entschieden, aber CLAUDE\.md\/ADR nicht vollständig gepflegt \(F-714\)/)
+  assert.ok(grund.indexOf('F-712') < grund.indexOf('F-714'), 'Reihenfolge 1g → 1h')
+})
+
+test('F-718: trifft nur eine der Regeln 1g/1h/1j zu, bleibt der Grund wortgleich der Einzeltext (kein Trenner)', () => {
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', stackNichtGefuellt: true })
+  assert.equal(ergebnis.art === 'haltKlaerung' ? ergebnis.grund.includes(' | ') : true, false)
+})
+
+test('F-713 Regel 1j: eine veränderte Prüfkette hält an und nennt die Liste — auch ohne Projektmodus (scopeVerletzung fehlt)', () => {
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefketteVeraendert: ['package.json (scripts)', 'scripts/check-x.mjs (GEAENDERT)'] })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /^Prüfkette durch den Lauf verändert: package\.json \(scripts\), scripts\/check-x\.mjs \(GEAENDERT\) — menschliche Sichtung vor Fortsetzung/)
+})
+
+test('F-713 Regel 1j: leeres pruefketteVeraendert setzt fort; bei einer anderen Rolle bleibt es folgenlos', () => {
+  assert.equal(ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefketteVeraendert: [] }).art, 'starte')
+  const reviewer = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'code-reviewer', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  assert.deepStrictEqual(ermittleNaechstenSchritt(reviewer, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', pruefketteVeraendert: ['package.json (scripts)'] }), { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('F-713/F-718: 1g, 1h und 1j gleichzeitig — alle drei im Grund, Reihenfolge 1g → 1h → 1j', () => {
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), {
+    schrittId: 'schritt-1',
+    ergebnis: 'ERFOLGREICH',
+    laufId: 'lauf-1',
+    scopeVerletzung: ['package.json'],
+    stackNichtGefuellt: true,
+    pruefketteVeraendert: ['package.json (scripts)'],
+  })
+  const grund = ergebnis.art === 'haltKlaerung' ? ergebnis.grund : ''
+  const teile = grund.split(' | ')
+  assert.equal(teile.length, 3)
+  assert.match(teile[0] ?? '', /F-712/)
+  assert.match(teile[1] ?? '', /F-714/)
+  assert.match(teile[2] ?? '', /^Prüfkette durch den Lauf verändert/)
+})
+
+test('F-689 Regel 1e: eine erkannte Rückfrage hält an und nennt die Fragezeile im Grund', () => {
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungRueckfrage: 'Frage an dich: Wie soll ich vorgehen?' })
+  assert.equal(ergebnis.art, 'haltKlaerung')
+  assert.equal(ergebnis.aktiverSchrittId, 'schritt-1')
+  assert.match(ergebnis.art === 'haltKlaerung' ? ergebnis.grund : '', /"Frage an dich: Wie soll ich vorgehen\?"/)
+})
+
+test('F-689 Regel 1e: eine überlange Fragezeile wird im Grund auf 300 Zeichen gekürzt und mit … markiert', () => {
+  const lang = 'x'.repeat(400) + '?'
+  const ergebnis = ermittleNaechstenSchritt(ausfuehrungGelaufen(), { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungRueckfrage: lang })
+  const grund = ergebnis.art === 'haltKlaerung' ? ergebnis.grund : ''
+  assert.ok(grund.includes(`"${'x'.repeat(300)}…"`))
+  assert.ok(!grund.includes('x'.repeat(301)))
+})
+
+test('F-689 Regel 1e: ausfuehrungRueckfrage bei einer anderen Rolle bleibt folgenlos', () => {
+  const reviewer = typisierterWorkflow([typisierterSchritt('schritt-1', null, { rolle: 'code-reviewer', output_schema: null, status: 'ERFOLGREICH', lauf_id: 'lauf-1' })])
+  assert.deepStrictEqual(ermittleNaechstenSchritt(reviewer, { schrittId: 'schritt-1', ergebnis: 'ERFOLGREICH', laufId: 'lauf-1', ausfuehrungRueckfrage: 'Wie soll ich?' }), { art: 'fertig', aktiverSchrittId: null })
+})
+
+test('F-734: ein schreibender Schritt mit freigabe ZWINGEND ist gültig (Grünfall der Invariante)', () => {
+  assert.deepStrictEqual(
+    pruefeMutiert((w) => {
+      Object.assign(ersterSchritt(w), { werkzeugsatz: 'schreibend', freigabe: 'ZWINGEND' })
+    }),
+    []
+  )
 })
 
 test("Ausgang 'starte': worker 'codex' ist dispatchbar (F16 WS-3a, AK10)", () => {

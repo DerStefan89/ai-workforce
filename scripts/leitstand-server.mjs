@@ -449,7 +449,14 @@ import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebni
 import { validiereErgebnisScout } from '../src/scout/index.ts'
 import { baueJarvisAuftragstext, validiereErgebnisJarvis, waehleVerlaufsfenster } from '../src/jarvis/index.ts'
 import { baueCapabilityAuszug, baueCoachAuftragstext, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
-import { erzeugeAenderungsuebersichtDaten, STANDARD_MAX_BYTES, validiereAenderungsuebersichtDaten } from '../src/aenderungsuebersicht/index.ts'
+import {
+  ermittlePruefkettenAenderungen,
+  erzeugeAenderungsuebersichtDaten,
+  istAenderungsuebersichtDegradiert,
+  lesePackageScriptsStaende,
+  STANDARD_MAX_BYTES,
+  validiereAenderungsuebersichtDaten,
+} from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import {
@@ -462,8 +469,8 @@ import {
   validiereErgebnisArchitektur,
 } from '../src/architekt/index.ts'
 import { baueArchitectureAdvisorAuftragstext, leseUrteilAusAdvisorText } from '../src/architecture-advisor/index.ts'
-import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
-import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
+import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/index.ts'
+import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
@@ -844,18 +851,26 @@ function baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis) {
  * referenzfeature-2026-09-06). tool_input wird nie ausgeliefert (D3), nur
  * der dedupliziert String-Wert tool_name (toolNamen); anzahl zählt roh
  * (Q7) — toolNamen darf leer sein, während anzahl > 0.
+ *
+ * F-683 (behoben, Fixpaket vor F30): aufgelöst wird gegen die INSTALLATIONSWURZEL, nicht gegen die
+ * Projekt-repoWurzel — die Gateways schreiben rohstrom.json relativ zu
+ * STANDARD_ROH_BASISVERZEICHNIS ('kontrollzustand-roh') unter process.cwd() des Serverprozesses
+ * (= installWurzel, E-F41-2). Für ai-workforce selbst sind beide Wurzeln gleich; für ein
+ * Fremdprojekt fand die Projektion die Datei vorher nie ("nicht_verfuegbar"). Voraussetzung: die
+ * injizierte installWurzel ist der process.cwd() des Serverprozesses (Default von
+ * erzeugeRequestHandler) — nur Tests weichen davon ab.
  * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
- * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Muster)
+ * @param installWurzel - absoluter Pfad der Installationswurzel (Schreibwurzel des Rohstroms)
  * @returns siehe state/plan-v1-f12-ws3.md Abschnitt 2.1/2.2 (K1-Korrektur)
  */
-function baueRohstromProjektion(laufakteVersion, repoWurzel) {
+export function baueRohstromProjektion(laufakteVersion, installWurzel) {
   if (laufakteVersion === null) return { status: 'laufakte_fehlt' }
   const referenz = laufakteVersion.daten?.rohstrom_referenz
   if (typeof referenz?.pfad !== 'string' || typeof referenz?.inhalts_hash !== 'string') return { status: 'nicht_verfuegbar' }
 
-  const pfadErgebnis = loeseEvidenzPfadAuf(referenz.pfad, repoWurzel)
+  const pfadErgebnis = loeseEvidenzPfadAuf(referenz.pfad, installWurzel)
   if (!pfadErgebnis.ok) return { status: 'nicht_verfuegbar' }
-  const zielPfad = join(repoWurzel, pfadErgebnis.relativerPfad)
+  const zielPfad = join(installWurzel, pfadErgebnis.relativerPfad)
   if (!existsSync(zielPfad) || !statSync(zielPfad).isFile()) return { status: 'nicht_verfuegbar' }
 
   let rohInhalt
@@ -4353,6 +4368,14 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (schritt.rolle === 'ausfuehrung' && vorlage.pruefbefehl !== undefined) {
       auftragstext = `${auftragstext}\n\nHinweis: Tests und Checks führt das System nach deinem Lauf deterministisch selbst aus. Melde nicht "Blockiert", nur weil du sie nicht selbst ausführen kannst. Echte Blockaden meldest du weiterhin.`
     }
+    // F-689 (BUG P1, real beobachtet: Lauf 40045f94-6692-44a8-9514-766c5c5f295e endete mit einer
+    // Rückfrage, aber ohne '- [x] Blockiert', und der Review startete automatisch): IMMER für
+    // 'ausfuehrung', unabhängig vom pruefbefehl — das feste Signal, das Regel 1e
+    // (leseSelbstblockadeAusAusfuehrungstext) zuverlässig liest. Die Rückfrage-Heuristik
+    // (findeRueckfrageZeile) bleibt nur das Netz darunter.
+    if (schritt.rolle === 'ausfuehrung') {
+      auftragstext = `${auftragstext}\n\nHinweis: Wenn du eine Rückfrage an den Menschen hast oder nicht weiterarbeiten kannst, beende mit der Zeile '- [x] Blockiert' und schreibe die Frage darunter.`
+    }
 
     // F-648 (löst "Korrekturschleife trägt Abnahme-Begründung/vorherige Review-Befunde nicht in
     // die neue Iteration" — real beobachtet, F39-WS-3b-Reallauf Versuch 3b, Läufe
@@ -4654,6 +4677,38 @@ export function erzeugeRequestHandler(optionen = {}) {
         const textErgebnis = laufakteVersion !== null ? leseErgebnistextAusRohstrom(laufakteVersion.daten) : { ok: false }
         ausfuehrungSelbstblockiert = leseSelbstblockadeAusAusfuehrungstext(textErgebnis.ok ? textErgebnis.text : null)
       }
+      // F-689 (Regel 1e, Heuristik) und F-713 (Regel 1j): beide lesen die bereits registrierte
+      // Änderungsübersicht dieses Laufs ('aenderungsuebersicht-<laufId>', starteLaufUndVergiss).
+      // Fehlt sie oder ist sie degradiert, wird die Rückfrage-Heuristik NICHT angewandt (kein Halt
+      // aus Unwissen — das feste Signal '- [x] Blockiert' greift weiterhin). Regel 1j läuft in
+      // BEIDEN Modi (anders als 1g), aber — wie der ganze Block, also auch die Rückfrage-Heuristik —
+      // NUR für einen schreibenden Lauf (ein lesender hat ohnehin keine Änderungsübersicht): ein lesender kann die
+      // Prüfkette nicht verändern, und ein Vergleich gegen HEAD mäße dort nur den Arbeitsbaum VOR
+      // dem Lauf (real beobachtet: scripts/check-f15-automat-real.mjs, lesende 'ausfuehrung'-
+      // Schritte gegen dieses Repo mit uncommitteter package.json). Schreibende Läufe starten
+      // dagegen nur auf sauberem Arbeitsbaum (E-F39-1=B, leseAusfuehrungsVorbedingungRealGit) —
+      // dort ist HEAD der Stand vor dem Lauf. Der package.json-Vergleich läuft auch ohne Übersicht.
+      let ausfuehrungRueckfrage
+      let pruefketteVeraendert
+      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung' && loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art === 'schreibend') {
+        const uebersichtVersionFuerNachlauf = ladeArtefaktVersion(`aenderungsuebersicht-${laufId}`, undefined, ladeOptionen)
+        const uebersichtBekannt = uebersichtVersionFuerNachlauf !== null && !istAenderungsuebersichtDegradiert(uebersichtVersionFuerNachlauf.daten)
+        if (uebersichtBekannt && ausfuehrungSelbstblockiert !== true) {
+          const laufakteFuerRueckfrage = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+          const textFuerRueckfrage = laufakteFuerRueckfrage !== null ? leseErgebnistextAusRohstrom(laufakteFuerRueckfrage.daten) : { ok: false }
+          // Gezählt wird ohne die Ausnahme-Pfade der Startprüfung (kontrollzustand/ u. a.,
+          // istAusnahmePfad): arbeitet ai-workforce an sich selbst, legt JEDER Lauf dort neue,
+          // untracked Einträge an — die Anzahl wäre sonst nie 0 und die Heuristik griffe nie.
+          const geaenderteDateienAnzahl = uebersichtVersionFuerNachlauf.daten.dateien.filter((datei) => !istAusnahmePfad(datei.pfad)).length
+          ausfuehrungRueckfrage = findeRueckfrageZeile(textFuerRueckfrage.ok ? textFuerRueckfrage.text : null, geaenderteDateienAnzahl) ?? undefined
+        }
+        const { head, arbeitskopie } = lesePackageScriptsStaende(repoWurzel)
+        pruefketteVeraendert = ermittlePruefkettenAenderungen(head, arbeitskopie, uebersichtVersionFuerNachlauf?.daten.dateien ?? [])
+        // Fail closed: ohne (oder mit degradierter) Änderungsübersicht ist der Dateiteil von 1j
+        // (scripts/check-*, .github/workflows/*) nicht prüfbar — das ist selbst ein Halt-Grund,
+        // kein stilles "unverändert".
+        if (!uebersichtBekannt) pruefketteVeraendert.push('Änderungsübersicht fehlt oder ist degradiert — Prüfkette nicht ermittelbar')
+      }
       // Regel 1f (F-652, state/findings.md F-652, BUG P1). Dasselbe Lesemuster wie
       // ausfuehrungSelbstblockiert direkt darüber: das registrierte 'pruefergebnis-<laufId>'-
       // Artefakt (starteLaufUndVergiss, NUR wenn vorlage.pruefbefehl gesetzt ist) trägt das
@@ -4755,11 +4810,13 @@ export function erzeugeRequestHandler(optionen = {}) {
             architekturAnzahlFragen,
             advisorUrteilFehlt,
             ausfuehrungSelbstblockiert,
+            ausfuehrungRueckfrage,
             pruefergebnis,
             pruefergebnisExitCode,
             pruefergebnisAusgabeEnde,
             scopeVerletzung,
             stackNichtGefuellt,
+            pruefketteVeraendert,
           })
           return {
             status: workflowStatusZuAusgang(naechster),
@@ -4940,7 +4997,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
         laufakte: baueLaufakteProjektion(laufakteVersion),
-        rohstrom: baueRohstromProjektion(laufakteVersion, repoWurzel),
+        // F-683: gegen installWurzel — dieselbe Wurzel, unter der die Gateways schreiben.
+        rohstrom: baueRohstromProjektion(laufakteVersion, installWurzel),
         scoutErgebnis: baueScoutErgebnisProjektion(laufakteVersion),
       })
       return

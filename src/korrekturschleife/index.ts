@@ -22,6 +22,11 @@
  * den Workflow dann an, statt automatisch fortzusetzen (Muster Regel 1d/leseUrteilAusAdvisorText,
  * src/architecture-advisor/index.ts).
  *
+ * findeRueckfrageZeile/erkenneRueckfrage (F-689) ergänzen das feste Signal um eine Heuristik: ein
+ * Lauf OHNE jede Dateiänderung, der am Textende eine Frage an den Menschen stellt, hält ebenfalls
+ * über Regel 1e an — real beobachtet in Lauf 40045f94-6692-44a8-9514-766c5c5f295e, der ohne
+ * '- [x] Blockiert' mit "Frage an dich: Wie soll ich vorgehen?" endete.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs, src/korrekturschleife/korrekturschleife.test.ts.
  */
 
@@ -110,4 +115,49 @@ const SELBSTBLOCKADE_ZEILE = /^-\s*\[[xX]\]\s*Blockiert\b/m
 export function leseSelbstblockadeAusAusfuehrungstext(text: string | null): boolean {
   if (text === null) return false
   return SELBSTBLOCKADE_ZEILE.test(text)
+}
+
+/** Wie viele nicht-leere Zeilen vom Textende her die Rückfrage-Heuristik (F-689) betrachtet — eine Rückfrage steht am Ende einer Antwort, nicht in einem zitierten Auftragsteil davor. */
+const RUECKFRAGE_FENSTER_ZEILEN = 20
+
+/** Muster einer erkennbaren Frage an den Menschen (F-689), Groß-/Kleinschreibung egal. Real beobachtet: "Frage an dich: Wie soll ich vorgehen?" (Lauf 40045f94-6692-44a8-9514-766c5c5f295e). */
+// '\bfrage an' statt 'frage an': "Anfrage an die API" ist keine Frage an den Menschen. Bekannte
+// Grenze: "keine Rückfrage" oder ein Echo des Rückfrage-Hinweises treffen trotzdem — bei einem Lauf
+// OHNE Dateiänderung ist das ein unnötiger Halt, also die sichere Richtung.
+const RUECKFRAGE_MUSTER = [/\bfrage an/i, /rückfrage/i, /wie soll ich/i]
+
+/** Markdown-Hervorhebungen am Zeilenende ("**Wie soll ich vorgehen?**"), die das Fragezeichen sonst verdecken. */
+const MARKDOWN_ENDE = /[*_`\s]+$/
+
+/**
+ * Sucht die LETZTE erkennbare Rückfrage an den Menschen in den letzten RUECKFRAGE_FENSTER_ZEILEN
+ * nicht-leeren Zeilen eines 'ausfuehrung'-Ergebnistexts (F-689). Greift NUR, wenn der Lauf keine
+ * einzige Datei geändert hat: ein Lauf mit Änderungen und einem beiläufigen "?" im Text hat
+ * gearbeitet und hält nicht an (AK1). Reine Funktion, kein I/O — der Aufrufer liefert die
+ * Dateianzahl aus der Änderungsübersicht des Laufs (ohne die Ausnahme-Pfade der Startprüfung, z. B.
+ * kontrollzustand/) und ruft die Funktion NICHT auf, wenn diese fehlt (kein Halt aus Unwissen).
+ * Die letzte statt der ersten Trefferzeile: die Schlussfrage ist die, auf die der Mensch antworten soll.
+ * @param ergebnistext - der geparste Ergebnistext des Laufs, oder null
+ * @param geaenderteDateienAnzahl - Anzahl der Dateien in der Änderungsübersicht des Laufs
+ * @returns die erkannte Fragezeile (getrimmt), oder null, wenn keine Rückfrage erkannt wurde
+ */
+export function findeRueckfrageZeile(ergebnistext: string | null, geaenderteDateienAnzahl: number): string | null {
+  if (ergebnistext === null || geaenderteDateienAnzahl !== 0) return null
+  const zeilen = ergebnistext
+    .split(/\r?\n/)
+    .map((zeile) => zeile.trim())
+    .filter((zeile) => zeile.length > 0)
+    .slice(-RUECKFRAGE_FENSTER_ZEILEN)
+  return zeilen.findLast((zeile) => zeile.replace(MARKDOWN_ENDE, '').endsWith('?') || RUECKFRAGE_MUSTER.some((muster) => muster.test(zeile))) ?? null
+}
+
+/**
+ * Liefert, ob ein 'ausfuehrung'-Ergebnis eine Rückfrage an den Menschen ist (F-689) — dieselbe
+ * Heuristik wie findeRueckfrageZeile, nur als Wahrheitswert.
+ * @param ergebnistext - der geparste Ergebnistext des Laufs, oder null
+ * @param geaenderteDateienAnzahl - Anzahl der Dateien in der Änderungsübersicht des Laufs
+ * @returns true, wenn ohne Dateiänderung eine erkennbare Frage am Textende steht
+ */
+export function erkenneRueckfrage(ergebnistext: string | null, geaenderteDateienAnzahl: number): boolean {
+  return findeRueckfrageZeile(ergebnistext, geaenderteDateienAnzahl) !== null
 }

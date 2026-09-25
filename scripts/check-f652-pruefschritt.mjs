@@ -269,7 +269,9 @@ function baueWorkflowFixture(basisVerzeichnis, vorlage, auftragId) {
           modell: 'claude-sonnet-5',
           eingaben: [],
           output_schema: null,
-          freigabe: 'AUTOMATISCH',
+          // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+          freigabe: 'ZWINGEND',
+          freigabe_erteilt: true,
           risiko: 'Gate-Fixture, kein reales Risiko.',
           zeitgrenze_ms: 600000,
           nachfolger: 'schritt-2-review',

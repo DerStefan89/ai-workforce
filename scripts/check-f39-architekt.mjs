@@ -1356,7 +1356,9 @@ const GATE_FRAGE = {
             modell: 'claude-sonnet-5',
             eingaben: ausfuehrungEingaben,
             output_schema: null,
-            freigabe: 'AUTOMATISCH',
+            // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+            freigabe: 'ZWINGEND',
+            freigabe_erteilt: true,
             risiko: 'Gate-Fixture.',
             zeitgrenze_ms: 600000,
             nachfolger: null,
@@ -1383,9 +1385,12 @@ const GATE_FRAGE = {
       befunde.push(`(o1) 'ausfuehrung' MIT ergebnis-@<architekt>: erwartet den ursprünglichen Auftragstext PLUS den Umsetzungs-Zusatzblock, erhalten: ${JSON.stringify(mitArchitekt)?.slice(0, 300)}…`)
     }
 
-    // (o2) OHNE eine solche Eingabe (nur der Auftrag selbst): bitgenau unverändert, kein Zusatzblock.
+    // (o2) OHNE eine solche Eingabe (nur der Auftrag selbst): kein Umsetzungs-Zusatzblock. Seit F-689
+    // trägt JEDER 'ausfuehrung'-Auftragstext den festen Rückfrage-Hinweis — er ist kein Architekt-
+    // Zusatzblock; bitgenau verglichen wird deshalb Auftragstext + genau dieser Hinweis.
     const ohneArchitekt = await starteAusfuehrungSchrittUndLiesAuftragstext([])
-    if (ohneArchitekt !== 'GATE-PLANUNGSTEXT-EINDEUTIG-F39-O') {
+    const f689Hinweis = "\n\nHinweis: Wenn du eine Rückfrage an den Menschen hast oder nicht weiterarbeiten kannst, beende mit der Zeile '- [x] Blockiert' und schreibe die Frage darunter."
+    if (ohneArchitekt !== `GATE-PLANUNGSTEXT-EINDEUTIG-F39-O${f689Hinweis}`) {
       befunde.push(`(o2) 'ausfuehrung' OHNE ergebnis-@<architekt>-Eingabe: erwartet bitgenau den ursprünglichen Auftragstext ohne Zusatzblock, erhalten: ${JSON.stringify(ohneArchitekt)?.slice(0, 300)}…`)
     }
 

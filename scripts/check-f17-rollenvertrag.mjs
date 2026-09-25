@@ -512,7 +512,7 @@ function neuesWegwerfGitRepo() {
       modell: 'check-f17-modell',
       eingaben: [],
       output_schema: null,
-      freigabe: 'AUTOMATISCH',
+      freigabe: worker === 'codex' ? 'AUTOMATISCH' : 'ZWINGEND', // F-734: schreibend ⇒ ZWINGEND
       risiko: 'AK7-Gate-Fixture, kein realer Lauf.',
       zeitgrenze_ms: 600000,
       nachfolger,

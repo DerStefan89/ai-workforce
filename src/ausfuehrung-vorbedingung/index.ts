@@ -28,7 +28,7 @@ const AUSNAHME_EXAKT = new Set(['stdin-check.js'])
  * Prüft, ob ein Pfad aus `git status --porcelain` unter eine bekannte Ausnahme fällt.
  * @param pfad - der Pfad-Teil einer Porcelain-Zeile (ohne den zweistelligen Statuscode)
  */
-function istAusnahmePfad(pfad: string): boolean {
+export function istAusnahmePfad(pfad: string): boolean {
   if (AUSNAHME_EXAKT.has(pfad)) return true
   return AUSNAHME_PRAEFIXE.some((praefix) => pfad.startsWith(praefix))
 }
