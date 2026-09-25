@@ -98,7 +98,7 @@ function schreibeStartvorlage(verzeichnis) {
   return pfad
 }
 
-/** Zweistufiger Workflow (ausfuehrung -> review), beide AUTOMATISCH, Muster check-f652-pruefschritt.mjs. */
+/** Zweistufiger Workflow (ausfuehrung ZWINGEND mit erteilter Freigabe -> review AUTOMATISCH), Muster check-f652-pruefschritt.mjs. */
 function baueWorkflowFixture(basisVerzeichnis, vorlage, auftragId) {
   const workflowId = `f659-gate-${randomUUID()}`
   registriereWorkflow(
@@ -120,7 +120,9 @@ function baueWorkflowFixture(basisVerzeichnis, vorlage, auftragId) {
           modell: 'claude-sonnet-5',
           eingaben: [],
           output_schema: null,
-          freigabe: 'AUTOMATISCH',
+          // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+          freigabe: 'ZWINGEND',
+          freigabe_erteilt: true,
           risiko: 'Gate-Fixture, kein reales Risiko.',
           zeitgrenze_ms: 600000,
           nachfolger: 'schritt-2-review',
@@ -246,10 +248,18 @@ function baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewLau
         // schritt-1-ausfuehrung ist 'starte'-bereit, aber die Automatik startet ihn NIE selbst
         // (AK4, F35 WS-3) — derselbe zweite POST .../starten wie schon vor WS-3, nur ohne den
         // vorangehenden manuellen POST .../abnahme-Aufruf, den die Automatik jetzt übernimmt.
+        //
+        // F-734: schritt-1-ausfuehrung ist schreibend und damit ZWINGEND; die automatische Anpassung
+        // räumt freigabe_erteilt ab. Iteration 2 startet deshalb über eine echte POST .../freigabe
+        // (Muster check-f35-ws3-adjust-automatik.mjs) statt über POST .../starten — derselbe
+        // Schrittstart (starteWorkflowSchritt), derselbe Prüfgegenstand (Review-Auftragstext).
         {
-          const zweitesStarten = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+          const zweitesStarten = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/freigabe`, {
+            method: 'POST',
+            body: JSON.stringify({ schrittId: 'schritt-1-ausfuehrung', entscheidung: 'FREIGEGEBEN', begruendung: 'F-659-Gate: Freigabe Iteration 2.' }),
+          })
           if (zweitesStarten.status !== 200 && zweitesStarten.status !== 202) {
-            befunde.push(`Vorbedingung: zweiter POST .../starten (Iteration 2) erwartet 200/202, erhalten ${zweitesStarten.status} (${await zweitesStarten.text()})`)
+            befunde.push(`Vorbedingung: POST .../freigabe (Iteration 2) erwartet 200/202, erhalten ${zweitesStarten.status} (${await zweitesStarten.text()})`)
           }
           // Iteration 2 liefert ERNEUT BLOCKIERT (dieselbe Attrappe wie Iteration 1) — F35 WS-3
           // löst deshalb SOFORT eine ZWEITE automatische Anpassung aus, die schritt-2-review im

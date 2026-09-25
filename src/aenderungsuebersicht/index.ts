@@ -32,11 +32,17 @@
  * `--numstat`s eigenes `{alt => neu}`-Pfadformat zu parsen — git liefert
  * beide Listen für dieselbe Diff-Anfrage in derselben Dateireihenfolge.
  *
+ * ermittlePruefkettenAenderungen/lesePackageScriptsStaende (F-713, Regel 1j) werten dieselbe
+ * Übersicht zusätzlich darauf aus, ob ein Lauf die eigene Prüfkette verändert hat.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs (nach einem real
- * ERFOLGREICH/ABGESCHLOSSEN beendeten Lauf mit schreibendem Werkzeugsatz).
+ * ERFOLGREICH/ABGESCHLOSSEN beendeten Lauf mit schreibendem Werkzeugsatz; die F-713-Funktionen im
+ * Workflow-Nachlauf eines schreibenden 'ausfuehrung'-Schritts).
  */
 
 import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { AenderungsuebersichtDatei, AenderungsuebersichtDateiStatus, AenderungsuebersichtV0Daten } from './types.ts'
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
@@ -222,6 +228,20 @@ function parseUntrackedDateien(porcelainRoh: string): AenderungsuebersichtDatei[
     .filter((eintrag) => eintrag.pfad.length > 0)
 }
 
+const GRUND_NICHT_MOEGLICH = 'Ermittlung nicht möglich: kein Git-Repository oder kein Commit unter HEAD an der Repo-Wurzel.'
+const GRUND_UNVOLLSTAENDIG = 'Ermittlung unvollständig: mindestens einer der git-Befehle (diff/status) ist fehlgeschlagen.'
+
+/**
+ * Liefert, ob eine Änderungsübersicht degradiert ist (Ermittlung gescheitert, 'dateien' leer aus
+ * Unwissen statt "nichts geändert"). F-689: die Rückfrage-Heuristik darf ein degradiertes Artefakt
+ * NICHT als "0 Dateien geändert" lesen — sonst hielte ein Lauf aus Unwissen an.
+ * @param daten - eine gültige Änderungsübersicht
+ * @returns true, wenn das Artefakt von degradiertesArtefakt stammt
+ */
+export function istAenderungsuebersichtDegradiert(daten: AenderungsuebersichtV0Daten): boolean {
+  return daten.dateien.length === 0 && (daten.stat_text === GRUND_NICHT_MOEGLICH || daten.stat_text === GRUND_UNVOLLSTAENDIG)
+}
+
 function degradiertesArtefakt(laufId: string, erzeugtAm: string, basisRef: string | null, grund: string, budgetBytes: number): AenderungsuebersichtV0Daten {
   return {
     aenderungsuebersicht_schema: 'v0',
@@ -255,7 +275,7 @@ export function erzeugeAenderungsuebersichtDaten(laufId: string, repoWurzel: str
   const erzeugtAm = new Date().toISOString()
   const basisRefRoh = leseGitOderNull(repoWurzel, ['rev-parse', 'HEAD'])
   if (basisRefRoh === null) {
-    return degradiertesArtefakt(laufId, erzeugtAm, null, 'Ermittlung nicht möglich: kein Git-Repository oder kein Commit unter HEAD an der Repo-Wurzel.', maxBytes)
+    return degradiertesArtefakt(laufId, erzeugtAm, null, GRUND_NICHT_MOEGLICH, maxBytes)
   }
   const basisRef = basisRefRoh.trim()
 
@@ -268,7 +288,7 @@ export function erzeugeAenderungsuebersichtDaten(laufId: string, repoWurzel: str
   const porcelainRoh = leseGitOderNull(repoWurzel, ['status', '--porcelain'])
 
   if (nameStatusRoh === null || numstatRoh === null || statTextRoh === null || porcelainRoh === null) {
-    return degradiertesArtefakt(laufId, erzeugtAm, basisRef, 'Ermittlung unvollständig: mindestens einer der git-Befehle (diff/status) ist fehlgeschlagen.', maxBytes)
+    return degradiertesArtefakt(laufId, erzeugtAm, basisRef, GRUND_UNVOLLSTAENDIG, maxBytes)
   }
 
   const dateien = [...parseTrackedDateien(nameStatusRoh, numstatRoh), ...parseUntrackedDateien(porcelainRoh)]
@@ -311,4 +331,88 @@ export function erzeugeAenderungsuebersichtDaten(laufId: string, repoWurzel: str
     gekuerzt,
     budget_bytes: maxBytes,
   }
+}
+
+/**
+ * Stand des 'scripts'-Objekts einer package.json auf einer Seite des Vergleichs (F-713):
+ * 'fehlt' = keine package.json auf dieser Seite; sonst die JSON-Serialisierung des
+ * 'scripts'-Objekts mit sortierten Schlüsseln (eine reine Umsortierung ist keine Änderung). Ist die
+ * Datei kein gültiges JSON, trägt der Stand 'UNPARSEBAR:' plus den Rohinhalt — zwei verschieden
+ * kaputte Seiten weichen damit voneinander ab (fail closed), zwei identische nicht.
+ */
+export type PackageScriptsStand = { art: 'fehlt' } | { art: 'vorhanden'; scriptsJson: string }
+
+/** Pfadmuster der Prüfkette, deren BESTEHENDE Dateien ein 'ausfuehrung'-Lauf nicht unbemerkt ändern darf (F-713). */
+const PRUEFKETTEN_PFADE = [/^scripts\/check-[^/]*$/, /^\.github\/workflows\//]
+
+/** Status, die eine BESTEHENDE Datei betreffen — 'NEU' (A/untracked) löst bewusst nichts aus (F-713: neue Gates allein sind keine Veränderung der bestehenden Prüfkette). */
+const PRUEFKETTEN_STATUS: AenderungsuebersichtDateiStatus[] = ['GEAENDERT', 'GELOESCHT', 'UMBENANNT']
+
+/**
+ * Wandelt den Rohinhalt einer package.json (oder null = Datei fehlt) in einen PackageScriptsStand.
+ * @param rohInhalt - Dateiinhalt, oder null, wenn die Datei auf dieser Seite fehlt
+ * @returns der Stand des 'scripts'-Objekts
+ */
+export function leseScriptsStand(rohInhalt: string | null): PackageScriptsStand {
+  if (rohInhalt === null) return { art: 'fehlt' }
+  // Eine UTF-8-BOM (unter Windows z. B. aus PowerShell 5) ließe JSON.parse auf beiden Seiten
+  // scheitern und jede scripts-Änderung unerkannt — deshalb vor dem Parsen entfernen.
+  const ohneBom = rohInhalt.charCodeAt(0) === 0xfeff ? rohInhalt.slice(1) : rohInhalt
+  try {
+    const wurzel: unknown = JSON.parse(ohneBom)
+    const scripts = istObjekt(wurzel) ? wurzel.scripts : undefined
+    const sortiert = istObjekt(scripts) ? Object.fromEntries(Object.entries(scripts).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : (scripts ?? null)
+    return { art: 'vorhanden', scriptsJson: JSON.stringify(sortiert) }
+  } catch {
+    return { art: 'vorhanden', scriptsJson: `UNPARSEBAR:${ohneBom}` }
+  }
+}
+
+/**
+ * Reine Funktion (F-713, Regel 1j): ermittelt, ob ein Lauf die Prüfkette verändert hat, mit der er
+ * selbst gemessen wird.
+ * (a) Das 'scripts'-Objekt der package.json weicht zwischen HEAD und Arbeitskopie ab — fehlt die
+ *     Datei auf beiden Seiten, ist das keine Abweichung; fehlt sie auf genau einer, schon.
+ * (b) Eine Datei unter scripts/check-* oder .github/workflows/* trägt Status GEAENDERT, GELOESCHT
+ *     oder UMBENANNT. Neue Dateien allein lösen nichts aus.
+ * Bekannte Grenzen: bei UMBENANNT trägt die Änderungsübersicht nur den NEUEN Pfad — eine
+ * Umbenennung AUS scripts/check-* heraus an einen anderen Ort bleibt unerkannt (eine nicht
+ * gestagte Umbenennung erscheint ohnehin als GELOESCHT + NEU und wird erkannt). Hilfsdateien der
+ * Prüfkette (scripts/_*.ts, scripts/aufraeumen-nachlauf.mjs, biome.json, tsconfig.json, *.test.ts)
+ * und Unterordner scripts/check-* /… sind bewusst nicht erfasst (Auftragsumfang F-713).
+ * @param head - Stand des 'scripts'-Objekts in HEAD
+ * @param arbeitskopie - Stand des 'scripts'-Objekts in der Arbeitskopie
+ * @param dateien - 'dateien' der Änderungsübersicht des Laufs
+ * @returns Liste lesbarer Befunde; leeres Array = Prüfkette unverändert
+ */
+export function ermittlePruefkettenAenderungen(head: PackageScriptsStand, arbeitskopie: PackageScriptsStand, dateien: AenderungsuebersichtDatei[]): string[] {
+  const befunde: string[] = []
+  const scriptsAbweichend =
+    head.art !== arbeitskopie.art || (head.art === 'vorhanden' && arbeitskopie.art === 'vorhanden' && head.scriptsJson !== arbeitskopie.scriptsJson)
+  if (scriptsAbweichend) befunde.push('package.json (scripts)')
+  for (const datei of dateien) {
+    if (PRUEFKETTEN_STATUS.includes(datei.status) && PRUEFKETTEN_PFADE.some((muster) => muster.test(datei.pfad))) {
+      befunde.push(`${datei.pfad} (${datei.status})`)
+    }
+  }
+  return befunde
+}
+
+/**
+ * Liest die beiden package.json-Stände für ermittlePruefkettenAenderungen: HEAD über
+ * `git show HEAD:package.json` (rein lesend, Muster leseGitOderNull), die Arbeitskopie direkt vom
+ * Dateisystem. Wirft nie: ein fehlgeschlagenes git show (kein Repo, kein Commit, Datei nicht in
+ * HEAD) zählt als 'fehlt'.
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel des Laufs
+ * @returns { head, arbeitskopie }
+ */
+export function lesePackageScriptsStaende(repoWurzel: string): { head: PackageScriptsStand; arbeitskopie: PackageScriptsStand } {
+  const arbeitskopiePfad = join(repoWurzel, 'package.json')
+  let arbeitskopieRoh: string | null = null
+  try {
+    arbeitskopieRoh = existsSync(arbeitskopiePfad) ? readFileSync(arbeitskopiePfad, 'utf8') : null
+  } catch {
+    arbeitskopieRoh = '\u0000UNLESBAR' // vorhanden, aber nicht lesbar — kein gültiges JSON, weicht damit von jedem lesbaren Stand ab (fail closed)
+  }
+  return { head: leseScriptsStand(leseGitOderNull(repoWurzel, ['show', 'HEAD:package.json'])), arbeitskopie: leseScriptsStand(arbeitskopieRoh) }
 }

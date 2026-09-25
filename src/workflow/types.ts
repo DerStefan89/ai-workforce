@@ -216,6 +216,24 @@ export interface SchrittErgebnis {
    */
   ausfuehrungSelbstblockiert?: boolean
   /**
+   * OPTIONAL (F-689, real beobachtet: Lauf 40045f94-6692-44a8-9514-766c5c5f295e endete ohne
+   * '- [x] Blockiert' mit "Frage an dich: Wie soll ich vorgehen?"): die von findeRueckfrageZeile
+   * (src/korrekturschleife/index.ts) erkannte Fragezeile eines 'ausfuehrung'-Laufs OHNE jede
+   * Dateiänderung. Der Aufrufer berechnet das Feld NUR, wenn die Änderungsübersicht des Laufs
+   * vorliegt und nicht degradiert ist (kein Halt aus Unwissen). Ein fehlendes Feld bleibt für
+   * Regel 1e folgenlos; ein gesetztes hält dort wie 'ausfuehrungSelbstblockiert'.
+   */
+  ausfuehrungRueckfrage?: string
+  /**
+   * OPTIONAL (F-713, Fixpaket vor F30): Befunde, mit denen ein gerade gelaufener
+   * 'ausfuehrung'-Schritt die eigene Prüfkette verändert hat — ein abweichendes 'scripts'-Objekt
+   * der package.json gegenüber HEAD, oder eine BESTEHENDE Datei unter scripts/check-* oder
+   * .github/workflows/* mit Status GEAENDERT/GELOESCHT/UMBENANNT (neue Dateien allein zählen
+   * nicht). Der Aufrufer berechnet das Feld in BEIDEN Modi (ermittlePruefkettenAenderungen,
+   * src/aenderungsuebersicht/index.ts). Leeres Array oder fehlendes Feld: Regel 1j folgenlos.
+   */
+  pruefketteVeraendert?: string[]
+  /**
    * OPTIONAL (F-652, state/findings.md F-652, BUG P1): das Ergebnis der deterministischen
    * Post-Build-Prüfung (Startvorlagenfeld pruefbefehl) eines gerade gelaufenen
    * 'ausfuehrung'-Schritts, roh aus dem registrierten 'pruefergebnis-<laufId>'-Artefakt gelesen

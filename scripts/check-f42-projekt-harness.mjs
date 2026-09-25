@@ -579,7 +579,9 @@ try {
               modell: 'claude-sonnet-5',
               eingaben: ['artefakt:ergebnis-@schritt-1-architekt'],
               output_schema: null,
-              freigabe: 'AUTOMATISCH',
+              // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+              freigabe: 'ZWINGEND',
+              freigabe_erteilt: true,
               risiko: 'Gate-Fixture.',
               zeitgrenze_ms: 600000,
               nachfolger: null,
@@ -640,7 +642,9 @@ try {
               modell: 'claude-sonnet-5',
               eingaben: ['artefakt:auftrag-' + auftragId],
               output_schema: null,
-              freigabe: 'AUTOMATISCH',
+              // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+              freigabe: 'ZWINGEND',
+              freigabe_erteilt: true,
               risiko: 'Gate-Fixture.',
               zeitgrenze_ms: 600000,
               nachfolger: null,
@@ -859,7 +863,9 @@ try {
               modell: 'claude-sonnet-5',
               eingaben: ['artefakt:ergebnis-@schritt-1-architekt', 'artefakt:entscheidung-@schritt-1-architekt'],
               output_schema: null,
-              freigabe: 'AUTOMATISCH',
+              // F-734: schreibend ⇒ ZWINGEND; die Freigabe gilt als bereits erteilt, der Startpfad bleibt unverändert.
+              freigabe: 'ZWINGEND',
+              freigabe_erteilt: true,
               risiko: 'Gate-Fixture.',
               zeitgrenze_ms: 600000,
               nachfolger: null,

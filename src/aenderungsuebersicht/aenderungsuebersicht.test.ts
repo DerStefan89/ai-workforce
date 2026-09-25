@@ -15,7 +15,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { erzeugeAenderungsuebersichtDaten, validiereAenderungsuebersichtDaten } from './index.ts'
+import { ermittlePruefkettenAenderungen, erzeugeAenderungsuebersichtDaten, istAenderungsuebersichtDegradiert, leseScriptsStand, validiereAenderungsuebersichtDaten } from './index.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
 function git(repoWurzel: string, argumente: string[]): string {
@@ -156,4 +156,50 @@ test('ein Dateiname mit Umlaut wird nicht durch git-Quoting verstümmelt — Rev
   } finally {
     raeumeVerzeichnis(repoWurzel)
   }
+})
+
+// ─── F-713: Prüfketten-Veränderung (Regel 1j) ─────────────────────────────
+
+const PAKET = (scripts: Record<string, string>): string => JSON.stringify({ name: 'x', scripts })
+
+test('ermittlePruefkettenAenderungen: abweichendes scripts-Objekt wird gemeldet, ein unverändertes (auch bei anderem Rest der Datei) nicht', () => {
+  const head = leseScriptsStand(PAKET({ check: 'node a.mjs' }))
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ check: 'node a.mjs && node b.mjs' })), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(JSON.stringify({ name: 'anders', version: '2', scripts: { check: 'node a.mjs' } })), []), [])
+})
+
+test('ermittlePruefkettenAenderungen: package.json fehlt auf beiden Seiten → keine Abweichung; auf genau einer Seite → Abweichung; unparsebar → Abweichung', () => {
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(null), []), [])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(null), leseScriptsStand(PAKET({})), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand(null), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(PAKET({})), leseScriptsStand('{kaputt'), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt-a'), leseScriptsStand('{kaputt-b'), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand('{kaputt'), leseScriptsStand('{kaputt'), []), [])
+})
+
+test('ermittlePruefkettenAenderungen: reine Umsortierung der scripts-Schlüssel ist keine Änderung; eine UTF-8-BOM verhindert das Erkennen nicht', () => {
+  const head = leseScriptsStand(PAKET({ a: 'node a.mjs', b: 'node b.mjs' }))
+  assert.deepEqual(ermittlePruefkettenAenderungen(head, leseScriptsStand(PAKET({ b: 'node b.mjs', a: 'node a.mjs' })), []), [])
+  const bom = String.fromCharCode(0xfeff)
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(bom + PAKET({ a: 'y' })), []), ['package.json (scripts)'])
+  assert.deepEqual(ermittlePruefkettenAenderungen(leseScriptsStand(bom + PAKET({ a: 'x' })), leseScriptsStand(PAKET({ a: 'x' })), []), [])
+})
+
+test('ermittlePruefkettenAenderungen: bestehende scripts/check-* und .github/workflows/* mit GEAENDERT/GELOESCHT/UMBENANNT melden, NEU und andere Pfade nicht', () => {
+  const gleich = leseScriptsStand(PAKET({}))
+  const dateien = [
+    { pfad: 'scripts/check-x.mjs', status: 'GEAENDERT' as const, plus: 1, minus: 1 },
+    { pfad: '.github/workflows/ci.yml', status: 'GELOESCHT' as const, plus: 0, minus: 3 },
+    { pfad: 'scripts/check-umbenannt.mjs', status: 'UMBENANNT' as const, plus: 0, minus: 0 },
+    { pfad: 'scripts/check-neu.mjs', status: 'NEU' as const, plus: null, minus: null },
+    { pfad: 'scripts/anderes.mjs', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
+    { pfad: 'scripts/unter/check-tief.mjs', status: 'GEAENDERT' as const, plus: 1, minus: 0 },
+  ]
+  assert.deepEqual(ermittlePruefkettenAenderungen(gleich, gleich, dateien), ['scripts/check-x.mjs (GEAENDERT)', '.github/workflows/ci.yml (GELOESCHT)', 'scripts/check-umbenannt.mjs (UMBENANNT)'])
+})
+
+test('istAenderungsuebersichtDegradiert: ein Artefakt ohne Git-Repo ist degradiert, ein leeres, erfolgreich ermitteltes nicht', () => {
+  const ohneRepo = erzeugeAenderungsuebersichtDaten('lauf-degradiert', join(tmpdir(), `kein-repo-${randomUUID()}`), 1000)
+  assert.equal(istAenderungsuebersichtDegradiert(ohneRepo), true)
+  assert.equal(istAenderungsuebersichtDegradiert({ ...ohneRepo, stat_text: '' }), false)
 })

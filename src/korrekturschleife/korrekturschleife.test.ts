@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from './index.ts'
+import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, erkenneRueckfrage, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from './index.ts'
 
 // Reale Begründung aus der Abnahme-Entscheidung (Lauf-übergreifend, Workflow
 // router-a0d04470-d4eb-4204-aec4-ad3ee21e2b91, entschieden_am 2026-09-23T17:09:35.892Z), wörtlich
@@ -91,4 +91,43 @@ test('leseSelbstblockadeAusAusfuehrungstext: null-Text (kein lesbares Ergebnis) 
 
 test('leseSelbstblockadeAusAusfuehrungstext: Text ohne jeden Status-Block liefert false', () => {
   assert.equal(leseSelbstblockadeAusAusfuehrungstext('Alles erledigt, keine offenen Punkte.'), false)
+})
+
+// ─── F-689: Rückfrage-Heuristik ───────────────────────────────────────────
+
+/** Endform der real beobachteten Rückfrage (Lauf 40045f94-6692-44a8-9514-766c5c5f295e, gekürzt). */
+const RUECKFRAGE_REAL = ['Ich habe den Auftrag geprüft.', '', 'Frage an dich: Wie soll ich vorgehen?', '1. Variante A', '2. Variante B', '3. Variante C'].join('\n')
+
+test('erkenneRueckfrage: F-689 — ohne Dateiänderung wird "Frage an dich: Wie soll ich vorgehen?" erkannt und die Fragezeile genannt', () => {
+  assert.equal(erkenneRueckfrage(RUECKFRAGE_REAL, 0), true)
+  assert.equal(findeRueckfrageZeile(RUECKFRAGE_REAL, 0), 'Frage an dich: Wie soll ich vorgehen?')
+})
+
+test('erkenneRueckfrage: mit mindestens einer geänderten Datei hält auch ein Text mit "?" nicht an (AK1)', () => {
+  assert.equal(erkenneRueckfrage(RUECKFRAGE_REAL, 1), false)
+  assert.equal(erkenneRueckfrage('Erledigt. Passt das so?', 3), false)
+})
+
+test('erkenneRueckfrage: Zeilenende "?" (auch hinter Markdown-Fettdruck) und jedes Muster unabhängig von Groß-/Kleinschreibung', () => {
+  assert.equal(findeRueckfrageZeile('Fertig.\n**Soll ich weitermachen?**', 0), '**Soll ich weitermachen?**')
+  assert.equal(erkenneRueckfrage('RÜCKFRAGE: Datenbank unklar.', 0), true)
+  assert.equal(erkenneRueckfrage('wie soll ich die Tabelle nennen.', 0), true)
+  assert.equal(erkenneRueckfrage('Eine FRAGE AN Stefan bleibt offen.', 0), true)
+})
+
+test('findeRueckfrageZeile: bei mehreren Treffern im Fenster wird die LETZTE (die Schlussfrage) genannt', () => {
+  assert.equal(findeRueckfrageZeile('Warum ist das so?\nErklärung.\nWie soll ich weitermachen?', 0), 'Wie soll ich weitermachen?')
+})
+
+test('erkenneRueckfrage: ohne Fragezeichen/Muster, bei leerem Text und bei null keine Rückfrage', () => {
+  assert.equal(erkenneRueckfrage('Nichts zu tun, alles bereits umgesetzt.', 0), false)
+  assert.equal(erkenneRueckfrage('Die Anfrage an die API ist umgesetzt.', 0), false)
+  assert.equal(erkenneRueckfrage('', 0), false)
+  assert.equal(erkenneRueckfrage(null, 0), false)
+})
+
+test('erkenneRueckfrage: nur die letzten 20 nicht-leeren Zeilen zählen — eine Frage weiter oben hält nicht an', () => {
+  const fuellzeilen = (anzahl: number): string[] => Array.from({ length: anzahl }, (_, i) => `Zeile ${i + 1}.`)
+  assert.equal(erkenneRueckfrage(['Wie soll ich das verstehen?', ...fuellzeilen(20)].join('\n\n'), 0), false)
+  assert.equal(erkenneRueckfrage(['Wie soll ich das verstehen?', ...fuellzeilen(19)].join('\n'), 0), true)
 })

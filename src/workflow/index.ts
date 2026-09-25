@@ -260,6 +260,14 @@ function pruefeSchrittForm(schritt: unknown, praefix: string, verstoesse: string
   }
   if (typeof schritt.freigabe !== 'string' || !FREIGABE.includes(schritt.freigabe)) {
     verstoesse.push(`'${praefix}freigabe' muss einer von ${FREIGABE.join(', ')} sein`)
+  } else if (schritt.werkzeugsatz === 'schreibend' && schritt.freigabe !== 'ZWINGEND') {
+    // F-734 (Fixpaket vor F30): ein schreibender Schritt startet nie ohne menschliche Freigabe.
+    // Real entdeckt bei der Verifikation von F35 WS-3 (scripts/check-f15-automat-real.mjs): nach
+    // einer automatischen Anpassung (wendeAutomatischeAnpassungAn) bleibt ein Workflow mit
+    // AUTOMATISCH-Ausführungsschritt dauerhaft auf LAEUFT, weil ihn niemand erneut dispatcht. Alle
+    // Vorlagen (workflow-vorlagen/*.json) tragen für 'schreibend' bereits 'ZWINGEND' — die Regel
+    // macht diese Konvention zur Invariante, statt sie jeder Fixture/Handanlage zu überlassen.
+    verstoesse.push(`'${praefix}freigabe' muss 'ZWINGEND' sein, wenn 'werkzeugsatz' 'schreibend' ist (F-734) — erhalten '${schritt.freigabe}'`)
   }
   if (!istNichtLeererString(schritt.risiko)) verstoesse.push(`'${praefix}risiko' muss ein nicht-leerer String sein`)
   if (!istGanzzahlAb(schritt.zeitgrenze_ms, 1)) verstoesse.push(`'${praefix}zeitgrenze_ms' muss eine ganze Zahl >= 1 sein`)
@@ -278,6 +286,18 @@ function pruefeSchrittForm(schritt: unknown, praefix: string, verstoesse: string
   if ('freigabe_erteilt' in schritt && typeof schritt.freigabe_erteilt !== 'boolean') {
     verstoesse.push(`'${praefix}freigabe_erteilt' muss ein boolean sein (optionales Feld)`)
   }
+}
+
+/** Höchstlänge der Fragezeile im Halt-Grund von Regel 1e (F-689). */
+const FRAGEZEILE_MAX_ZEICHEN = 300
+
+/**
+ * Kürzt eine vom Modell stammende Fragezeile für den persistierten Halt-Grund (F-689).
+ * @param zeile - die erkannte Fragezeile
+ * @returns die Zeile, bei Überlänge auf FRAGEZEILE_MAX_ZEICHEN gekürzt und mit '…' markiert
+ */
+function kuerzeFragezeile(zeile: string): string {
+  return zeile.length > FRAGEZEILE_MAX_ZEICHEN ? `${zeile.slice(0, FRAGEZEILE_MAX_ZEICHEN)}…` : zeile
 }
 
 /**
@@ -873,10 +893,21 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
     // output_schema wie Regel 1d, aus demselben Grund — 'ausfuehrung' trägt wie
     // 'architecture-advisor' bewusst output_schema:null. KEINE Aussage über die inhaltliche
     // Richtigkeit der Selbstblockade, nur darüber, dass sie nicht stillschweigend übergangen wird.
+    //
+    // F-689: zusätzlich hält eine erkannte Rückfrage OHNE jede Dateiänderung ('ausfuehrungRueckfrage',
+    // Heuristik findeRueckfrageZeile in src/korrekturschleife/index.ts) — der Grund nennt die Zeile.
     if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.ausfuehrungSelbstblockiert === true) {
       return {
         art: 'haltKlaerung',
         grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung) markiert sich selbst über den Status-Block als 'Blockiert' — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
+        aktiverSchrittId: vorschritt.schritt_id,
+      }
+    }
+    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.ausfuehrungRueckfrage !== undefined) {
+      return {
+        art: 'haltKlaerung',
+        // Die Zeile stammt vom Modell — gekürzt, damit der persistierte Grund nicht beliebig wächst.
+        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat keine Datei geändert und endet mit einer Rückfrage an den Menschen: "${kuerzeFragezeile(vorschrittErgebnis.ausfuehrungRueckfrage)}" — kein automatischer Fortschritt (F-689, Lauf '${vorschrittErgebnis.laufId}')`,
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
@@ -899,32 +930,54 @@ export function ermittleNaechstenSchritt(daten: WorkflowV0Daten, vorschrittErgeb
         aktiverSchrittId: vorschritt.schritt_id,
       }
     }
-    // Regel 1g (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
-    // dieselbe Kopplung an schritt.rolle wie Regel 1e/1f, aus demselben Grund ('ausfuehrung' trägt
-    // output_schema:null). Der Aufrufer berechnet 'scopeVerletzung' NUR im Projektmodus
-    // (herkunft.art === 'projekt_interview', pruefeProjektmodusScope gegen die bereits
-    // registrierte Änderungsübersicht) — ein nicht-leeres Array heißt: der Lauf hat außerhalb der
-    // Allowlist (docs/**, features/**, CLAUDE.md) geschrieben, der Auftrags-Scope hat aber
-    // Vorrang vor dem Architekturentwurf. Feature-Modus bleibt unberührt (Feld bleibt dort
-    // undefined).
-    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.scopeVerletzung !== undefined && vorschrittErgebnis.scopeVerletzung.length > 0) {
-      return {
-        art: 'haltKlaerung',
-        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${vorschrittErgebnis.scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712), kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
-        aktiverSchrittId: vorschritt.schritt_id,
+    // Regeln 1g, 1h und 1j (F-718, Fixpaket vor F30): drei voneinander unabhängige Nachlauf-
+    // Prüfungen eines 'ausfuehrung'-Laufs, die im selben Lauf GLEICHZEITIG zutreffen können (real:
+    // Lauf 3e0c0a31, Scope-Verstoß F-712 UND ungefüllter Stack F-714). Sie werden deshalb nicht
+    // als "erste Regel gewinnt" ausgewertet, sondern gesammelt: EIN haltKlaerung, dessen Grund
+    // jeden zutreffenden Verstoß in fester Reihenfolge 1g → 1h → 1j nennt (Trenner ' | '). Trifft
+    // nur einer zu, ist der Grund wortgleich mit dem bisherigen Einzeltext.
+    //
+    // Reihenfolge aller 'ausfuehrung'-Regeln: 1e (Selbstblockade/Rückfrage) → 1f (Prüfergebnis)
+    // → {1g, 1h, 1j} gemeinsam. 1e/1f bleiben vorgelagerte Einzelhalte: eine Rückfrage ohne
+    // Dateiänderung kann weder 1g noch 1j auslösen, und ein rotes Prüfergebnis macht jede weitere
+    // Aussage über den Lauf ohnehin zur Nachbereitung.
+    if (vorschritt.rolle === 'ausfuehrung') {
+      const nachlaufVerstoesse: string[] = []
+      // Regel 1g (F42 WS-4, löst F-712, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+      // dieselbe Kopplung an schritt.rolle wie Regel 1e/1f, aus demselben Grund ('ausfuehrung' trägt
+      // output_schema:null). Der Aufrufer berechnet 'scopeVerletzung' NUR im Projektmodus
+      // (herkunft.art === 'projekt_interview', pruefeProjektmodusScope gegen die bereits
+      // registrierte Änderungsübersicht) — ein nicht-leeres Array heißt: der Lauf hat außerhalb der
+      // Allowlist (docs/**, features/**, CLAUDE.md) geschrieben, der Auftrags-Scope hat aber
+      // Vorrang vor dem Architekturentwurf. Feature-Modus bleibt unberührt (Feld bleibt dort
+      // undefined).
+      if (vorschrittErgebnis.scopeVerletzung !== undefined && vorschrittErgebnis.scopeVerletzung.length > 0) {
+        nachlaufVerstoesse.push(
+          `Schritt '${vorschritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${vorschrittErgebnis.scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712), kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
+        )
       }
-    }
-    // Regel 1h (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
-    // dieselbe Kopplung an schritt.rolle wie Regel 1g direkt darüber. Der Aufrufer berechnet
-    // 'stackNichtGefuellt' NUR, wenn für den referenzierten Architektur-Schritt eine Entscheidung
-    // mit 'kategorie': 'stack' erfasst war (istStackOffen(repoWurzel) sonst irrelevant) — true
-    // heißt: CLAUDE.md/ADR wurden trotz Instruktion (baueStackEntscheidungsInstruktion) nicht
-    // geschrieben, der Stack bliebe für jeden künftigen Architektur-Lauf offen.
-    if (vorschritt.rolle === 'ausfuehrung' && vorschrittErgebnis.stackNichtGefuellt === true) {
-      return {
-        art: 'haltKlaerung',
-        grund: `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`,
-        aktiverSchrittId: vorschritt.schritt_id,
+      // Regel 1h (F42 WS-4, löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2):
+      // Der Aufrufer berechnet 'stackNichtGefuellt' NUR, wenn für den referenzierten
+      // Architektur-Schritt eine Entscheidung mit 'kategorie': 'stack' erfasst war — true heißt:
+      // CLAUDE.md/ADR wurden trotz Instruktion (baueStackEntscheidungsInstruktion) nicht
+      // geschrieben, der Stack bliebe für jeden künftigen Architektur-Lauf offen.
+      if (vorschrittErgebnis.stackNichtGefuellt === true) {
+        nachlaufVerstoesse.push(
+          `Schritt '${vorschritt.schritt_id}' (ausfuehrung): Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714) — kein automatischer Fortschritt (Lauf '${vorschrittErgebnis.laufId}')`
+        )
+      }
+      // Regel 1j (F-713, Fixpaket vor F30): in BEIDEN Modi, im Projektmodus zusätzlich zu 1g. Der
+      // Aufrufer berechnet 'pruefketteVeraendert' (ermittlePruefkettenAenderungen,
+      // src/aenderungsuebersicht/index.ts) — ein Lauf, der die Prüfkette verändert, mit der er
+      // selbst gemessen wird, darf nicht automatisch weiterlaufen: ein "GRÜN" dieser Prüfkette
+      // wäre kein verlässlicher Nachweis mehr.
+      if (vorschrittErgebnis.pruefketteVeraendert !== undefined && vorschrittErgebnis.pruefketteVeraendert.length > 0) {
+        nachlaufVerstoesse.push(
+          `Prüfkette durch den Lauf verändert: ${vorschrittErgebnis.pruefketteVeraendert.join(', ')} — menschliche Sichtung vor Fortsetzung (F-713, Schritt '${vorschritt.schritt_id}', Lauf '${vorschrittErgebnis.laufId}')`
+        )
+      }
+      if (nachlaufVerstoesse.length > 0) {
+        return { art: 'haltKlaerung', grund: nachlaufVerstoesse.join(' | '), aktiverSchrittId: vorschritt.schritt_id }
       }
     }
     if (vorschritt.nachfolger === null) {

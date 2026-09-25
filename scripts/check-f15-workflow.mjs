@@ -877,9 +877,19 @@ async function starteTestserver(optionen) {
         }
         const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, fuehreAufgabeDurchFn, startvorlagePfad, ...(repoWurzel !== undefined ? { repoWurzel } : {}) })
         try {
-          await legeWorkflowAn(basisUrl, workflowId, [
-            gateSchritt('schritt-1', null, { eingaben: [`artefakt:auftrag-${auftragId}`], worker: 'codex', modell: 'gpt-5-codex', ...schrittFelder }),
-          ])
+          const schritt = gateSchritt('schritt-1', null, { eingaben: [`artefakt:auftrag-${auftragId}`], worker: 'codex', modell: 'gpt-5-codex', ...schrittFelder })
+          if (schritt.werkzeugsatz === 'schreibend') {
+            // F-734: schreibend ⇒ ZWINGEND. POST /api/workflows verwirft freigabe_erteilt (F15 WS-2c
+            // (b1)) — der Workflow wird deshalb mit bereits erteilter Freigabe direkt registriert,
+            // damit POST .../starten unten denselben Startpfad prüft wie zuvor.
+            registriereWorkflow(
+              gateWorkflow([{ ...schritt, freigabe: 'ZWINGEND', freigabe_erteilt: true }], { workflow_id: workflowId, auftrag_id: auftragId }),
+              leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad)),
+              { basisVerzeichnis, schreiber: () => {} }
+            )
+          } else {
+            await legeWorkflowAn(basisUrl, workflowId, [schritt])
+          }
           const antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
           const koerper = await antwort.json()
           // Das .then der Nachbereitung läuft asynchron nach der Antwort.
