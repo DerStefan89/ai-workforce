@@ -10019,3 +10019,48 @@ Auswirkung: Niedrig — kein Datenfehler, nur eine fehlende Projektion; in diese
 Maßnahme: Beobachten — kein Umbau, solange kein zweiter Fall dasselbe Muster zeigt (CLAUDE.md-Entscheidungsregel: eine einmalige Beobachtung ist noch kein Muster).
 Status: offen.
 Feature/Run: F42 WS-3, 25.09.2026.
+
+**F-717** · `TECH_DEBT` · P3 · offen
+Titel: `pruefeProjektmodusScope` ist bei isolierter Betrachtung nicht robust gegen Pfad-Tricks (`../`-Sequenzen) — die Entschärfung liegt unausgesprochen beim Aufrufer.
+Beschreibung: Code-Review-Pass (F42-Review, 25.09.2026): `pruefeProjektmodusScope` (`src/architekt/index.ts:584-586`) prüft die Allowlist über naiven `startsWith('docs/')`/`startsWith('features/')`-Vergleich bzw. exakten Set-Vergleich gegen `'CLAUDE.md'`. Ein Pfad wie `docs/../scripts/x.mjs` würde `startsWith('docs/')` erfüllen und fälschlich als erlaubt durchgehen. In der Praxis ist das kein realer Bypass, weil der einzige Aufrufer (`src/aenderungsuebersicht/index.ts`, `parseUntrackedDateien`) ausschließlich `git status --porcelain`-Pfade liefert, die Git praktisch nie mit `../`-Sequenzen normalisiert — diese Entschärfung ist aber nirgends als bewusste Grenze dokumentiert oder getestet.
+Fundstelle: `src/architekt/index.ts:584-586` (`pruefeProjektmodusScope`); `src/aenderungsuebersicht/index.ts:217-221` (`parseUntrackedDateien`, einziger Aufrufer).
+Auswirkung: Niedrig — am real verdrahteten Aufrufpfad nicht ausnutzbar, aber die Funktion selbst wäre bei einem künftigen zweiten Aufrufer mit weniger kontrollierter Eingabe verwundbar, ohne dass das an der Funktion selbst sichtbar wäre.
+Maßnahme: Entweder `pruefeProjektmodusScope` selbst gegen `path.normalize`/`..`-Sequenzen härten, oder die Annahme "Aufrufer liefert ausschließlich git-normalisierte Pfade" explizit als Bekannte Grenze im Kopfkommentar der Funktion dokumentieren und mit einem Regressionstest absichern.
+Status: offen.
+Feature/Run: F42-Review-Pass (code-reviewer), 25.09.2026.
+
+**F-718** · `TECH_DEBT` · P2 · offen
+Titel: Kein Test für den Fall, dass Regel 1g (Scope-Verstoß) UND Regel 1h (Stack nicht gefüllt) im selben `ausfuehrung`-Lauf gleichzeitig zutreffen.
+Beschreibung: QA-Pass (F42-Review, 25.09.2026): Der reale `haushaltsbuch2`-Reallauf (Lauf `3e0c0a31`) zeigte genau diese Kombination — Scope-Verstoß (F-712) UND `CLAUDE.md` blieb `[FÜLLUNG]` (F-714) traten gleichzeitig auf. Im Gate (`scripts/check-f42-projekt-harness.mjs`, Blöcke g/h) und in den Unit-Tests sind Regel 1g und Regel 1h aber ausschließlich als vollständig getrennte Testfälle mit je eigenem Fixture-Workflow abgedeckt. Welche der beiden Regeln bei gleichzeitigem Verstoß den `grund`-Text bestimmt (`src/workflow/index.ts:882-905` implementiert 1g vor 1h, was Vorrang von 1g nahelegt, aber unbelegt) oder ob beide kombiniert gemeldet werden, ist nicht geprüft.
+Fundstelle: `src/workflow/index.ts:882-905` (Regel 1g vor 1h); `scripts/check-f42-projekt-harness.mjs` Blöcke (g)/(h) (getrennte Fixtures); Lauf `3e0c0a31` (realer Kombinationsfall).
+Auswirkung: Mittel — genau der reale Fall, der WS-4 motivierte, kombinierte beide Verstöße; die aktuelle Testabdeckung kann nicht belegen, dass beide Regeln in Kombination das erwartete Verhalten zeigen.
+Maßnahme: Einen Gate-/Unit-Testfall ergänzen, der beide Verstöße im selben Lauf reproduziert, und die Vorrang-/Kombinationslogik explizit dokumentieren.
+Status: offen.
+Feature/Run: F42-Review-Pass (qa), 25.09.2026.
+
+**F-719** · `BUG` · P3 · offen
+Titel: Unklar, ob `pruefeWorkspaceTrust` bei syntaktisch kaputtem `~/.claude.json` sauber `'fehlend'` liefert oder eine unbehandelte Exception wirft.
+Beschreibung: QA-Pass (F42-Review, 25.09.2026): Das Gate (`scripts/check-f42-projekt-harness.mjs`, Block e) testet vier Fixture-Varianten, darunter "Datei fehlt" — aber keinen Fall, in dem `~/.claude.json` existiert, aber kein valides JSON enthält (z. B. durch einen Absturz während eines Schreibvorgangs beschädigt). Nicht verifiziert, ob `JSON.parse` in diesem Fall abgefangen wird.
+Fundstelle: `src/projekt-anlegen/index.ts` (`pruefeWorkspaceTrust`); `scripts/check-f42-projekt-harness.mjs` Block (e) (vier Fixture-Varianten, kein Malformed-JSON-Fall).
+Auswirkung: Niedrig bis Mittel — ein Nutzer mit einer durch einen Absturz beschädigten `~/.claude.json` bekäme im schlechtesten Fall einen unbehandelten Fehler bei `POST /api/projekte` statt eines sauberen `'fehlend'`-Status.
+Maßnahme: Fixture mit ungültigem JSON-Inhalt ergänzen, `pruefeWorkspaceTrust` bei Bedarf mit try/catch um den Parse-Aufruf härten.
+Status: offen.
+Feature/Run: F42-Review-Pass (qa), 25.09.2026.
+
+**F-720** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Kein Laufzeit-Hinweis, dass `state/tooling.md` im neu kopierten Skelett noch Template-eigenen Inhalt trägt.
+Beschreibung: QA-Pass (F42-Review, 25.09.2026): Die in `features/F42/feature.md` ("Bekannte Grenzen") dokumentierte Lücke — `state/tooling.md` im Skelett enthält Template-Beispielzeilen (gitleaks, `ponytail`-Versionspin), nicht Angaben zum neuen Projekt — ist ausschließlich in `vorlagen/projekt-skelett/HERKUNFT.md` schriftlich festgehalten, aber weder in der `POST /api/projekte`-Erfolgsbox noch im Coach-Auftrag sichtbar (anders als der Trust-Hinweis, AK7). Ein Nutzer, der `HERKUNFT.md` nicht von sich aus liest, hält `state/tooling.md` für gültige Angaben zum neuen Projekt.
+Fundstelle: `features/F42/feature.md` Zeile 339–345 (Grenze dokumentiert); `vorlagen/projekt-skelett/HERKUNFT.md`; `public/leitstand/views/projekte-uebersicht.js` (`zeigeAnlegenErfolg`, kein Hinweis auf diese Grenze).
+Auswirkung: Niedrig — reine Doku-Falle, wird erst beim ersten `werkzeug-auswahl`-Lauf im neuen Projekt relevant (dort laut feature.md ohnehin zu korrigieren).
+Maßnahme: Analog zu AK7 einen kurzen Hinweis in `naechste_schritte` ergänzen ("state/tooling.md enthält noch Template-Beispielinhalt, beim ersten werkzeug-auswahl-Lauf korrigieren").
+Status: offen.
+Feature/Run: F42-Review-Pass (qa), 25.09.2026.
+
+**F-721** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: WS-4 (Regel 1g/1h, F-712/F-714-Fix) ist bislang nur gegen ein synthetisches Wegwerf-Git-Repo im Gate belegt, nicht gegen einen erneuten realen Fremdprojekt-Durchlauf.
+Beschreibung: QA-Pass (F42-Review, 25.09.2026): Der WS-3-Reallauf gegen `haushaltsbuch2` (der die F-712/F-714-Lücken erstmals real aufdeckte) fand zwangsläufig VOR WS-4 statt. WS-4s Nachweis (`scripts/check-f42-projekt-harness.mjs` Blöcke g/h) läuft gegen ein echtes, aber synthetisches `git init`-Wegwerf-Repo mit HTTP-Request-Handler — ein starker, aber anderer Nachweisgrad als ein dritter, vollständiger Fremdprojekt-Durchlauf, der belegt, dass genau der ursprünglich beobachtete Fall (`3e0c0a31`) durch WS-4 jetzt tatsächlich verhindert würde. `features/F42/feature.md` formuliert das selbst korrekt ("gegen ein echtes Wegwerf-Git-Repo"), die Kernaussage in `features/F42/nachweis-ws3-reallauf.md` könnte aber bei oberflächlicher Lektüre als "auch WS-4 im Fremdprojekt bestätigt" missverstanden werden.
+Fundstelle: `features/F42/feature.md` Zeile 111–116; `features/F42/nachweis-ws3-reallauf.md` Zeile 27–37 (Kernaussage nennt nur WS-1/WS-2 als im Fremdprojekt bestätigt, kein WS-4-Wiederholungslauf vorhanden).
+Auswirkung: Niedrig bis Mittel — kein Beleg dafür, dass etwas falsch ist, sondern eine Lücke im Nachweisgrad: der stärkste verfügbare Beleg für WS-4 ist synthetisch, nicht ein dritter Fremdprojekt-Durchlauf.
+Maßnahme: Bei nächster Gelegenheit (z. B. einem dritten Fremdprojekt oder einem erneuten Durchlauf gegen `haushaltsbuch2`) gezielt den ursprünglichen F-712/F-714-Auslösefall wiederholen und belegen, dass WS-4 ihn tatsächlich verhindert.
+Status: offen.
+Feature/Run: F42-Review-Pass (qa), 25.09.2026.

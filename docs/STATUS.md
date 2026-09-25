@@ -76,7 +76,8 @@ Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35–F38 noch nicht
 begonnen, F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, `IN_ARBEIT`, direkt nach
-F41 vor F35) läuft, F40
+F41 vor F35) ist `FEATURE_GATE` (Review-Pass 25.09.2026 „Freigegeben mit
+Hinweisen"), F40
 (Jarvis-
 Latenz: Streaming + Lagebild) `ABGESCHLOSSEN` (alle vier Workstreams
 gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
@@ -580,7 +581,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
 - 🚧 **F42** — Projekt-Harness (E-F41-3 = B, `state/findings.md`
   F-667/F-673/F-684/F-685/F-690). Direkt nach F41, vor F35 (Reihenfolge
   jetzt F41 → F42 → F35). Akte `features/F42/feature.md`, Status
-  `IN_ARBEIT` — WS-1 (Skelett `vorlagen/projekt-skelett/`, echter
+  `FEATURE_GATE` (unabhängiger Review-Pass 25.09.2026, `features/F42/
+  review-pass.md`, „Freigegeben mit Hinweisen" — code-reviewer + qa,
+  frischer Kontext, alle 15 AKs belegt, kein P1-Befund, fünf neue
+  Findings F-717…F-721 (P2/P3, Härtungs-/Nachweislücken); Abnahme
+  `ABGESCHLOSSEN` folgt Stefans separater Entscheidung) — WS-1 (Skelett
+  `vorlagen/projekt-skelett/`, echter
   `pruefbefehl`, Trust-Hinweis über `POST /api/projekte`) gebaut,
   `npm run check` grün, AK2-Probe real belegt (`GRUEN`, Exit 0, 1480 ms).
   WS-2 (löst F-685) gebaut: `istStackOffen`/`stackOffen`-Kopplung in

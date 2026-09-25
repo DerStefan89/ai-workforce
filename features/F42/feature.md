@@ -13,7 +13,16 @@ erzwingt CLAUDE.md/ADR (löst F-714), Entscheidungsformular-Vorauswahl
 verifiziert (löst F-711)
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
+
+Review-Pass (25.09.2026, `features/F42/review-pass.md`): Freigegeben mit
+Hinweisen — zwei unabhängige Subagenten (`code-reviewer`, `qa`, frischer
+Kontext) haben alle 15 Akzeptanzkriterien, die Verdrahtung an den realen
+Aufrufpfaden, die Featuremodus-Neutralität, Sicherheits-/Invarianten-Risiken
+und die Relevanz offener Findings geprüft. Kein AK-widersprechender oder
+P1-Befund. Fünf neue Findings (F-717 bis F-721, P2/P3, Härtungs-/
+Nachweislücken) in `state/findings.md` erfasst. Abnahme (ABGESCHLOSSEN)
+folgt Stefans separater Entscheidung.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
