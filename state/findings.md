@@ -10171,8 +10171,8 @@ Titel: Der Kontrollzustand wird nie committet, obwohl `kontrollzustand/` laut `.
 Beschreibung: `.gitignore` (Z. 76–77) trackt `kontrollzustand/`, aber der Ordner wird in der Praxis nie committet. Über 300 ungetrackte Laufartefakte liegen auf `main` (Jarvis-, Coach- und Router-Läufe, Workflows, Entscheidungen, Checkpoints 31–79 von `lineage-chat-ai-workforce`).
 Fundstelle: `git status` auf `feat/f35-ws1-feature-auftrag`, 25.09.2026; `.gitignore` Z. 76–77.
 Auswirkung: Mittel — Git führt für diesen Ordner real nicht: bei einem Neu-Klon oder Reset geht der Zustand verloren; `git status` ist unlesbar und verleitet zu `git add -A`.
-Maßnahme: Commit-Politik für den Kontrollzustand festlegen, oder ihn ausdrücklich lokal halten und `.gitignore` entsprechend anpassen (Entscheidung Mensch, eigenes Fixpaket).
-Status: offen.
+Maßnahme: Commit-Politik für den Kontrollzustand festlegen, oder ihn ausdrücklich lokal halten und `.gitignore` entsprechend anpassen (Entscheidung Mensch, eigenes Fixpaket). Entscheidung Stefan: Option A (sichern). Umgesetzt mit `npm run zustand:sichern` (`scripts/zustand-sichern.mjs`, Gate `scripts/check-zustand-sichern.mjs`): Das Skript legt den Branch `zustand/<datum>` an und stagt nur `kontrollzustand/`, es committet nie.
+Status: Maßnahme umgesetzt (npm run zustand:sichern); erste Sicherung durch Stefan ausstehend.
 Feature/Run: F35 WS-2, 25.09.2026.
 
 **F-734** · `TECH_DEBT` · P3 · **behoben** (Fixpaket)
@@ -10183,3 +10183,12 @@ Auswirkung: Gering — nur bei nicht vorlagenbasierten Workflows erreichbar, dor
 Maßnahme: Validator „schreibend ⇒ ZWINGEND“ in pruefeSchrittForm (validiereWorkflowDaten, eine Quelle). Gate-Fixtures mit schreibendem AUTOMATISCH-Schritt tragen jetzt 'ZWINGEND' mit bereits erteilter Freigabe (freigabe_erteilt: true) bzw. starten über POST …/freigabe, ohne ihren Prüfgegenstand zu ändern. Hinweis (bewusster Bestandsbruch, Entscheidung Mensch offen): ein bereits persistierter Bestands-Workflow mit schreibendem AUTOMATISCH/EMPFOHLEN-Schritt gilt jetzt als ungültig — /starten antwortet 409, die Detailansicht zeigt Verstöße, ein Nachlauf-Schreibvorgang über einen Serverneustart hinweg scheiterte. Real betroffen im lokalen Kontrollzustand: lineage-workflow-f15-ws4-l1, -f16-ws3b-ak12, -f17-ws3-ak8, -f17-ws3-ak9 (alte Gate-Bestände). Alternative nach Muster F-285: die Regel als Halt in ermittleNaechstenSchritt statt im Validator. Außerdem prüft der Validator den Werkzeugsatz-NAMEN 'schreibend', nicht die aufgelöste Art (die Startvorlage ist ihm unbekannt) — heute deckungsgleich.
 Status: behoben (Fixpaket vor F35-Reallauf, 25.09.2026). Belegt: src/workflow/workflow.test.ts (Rotfälle F-734), scripts/check-fixpaket-f30-vorbedingungen.mjs (g).
 Feature/Run: Verifikation F35 WS-3, 25.09.2026.
+
+**F-736** · `PROCESS_IMPROVEMENT` · P2 · **behoben** (feat/zustand-sichern)
+Titel: Freigabedatei wurde auch für manuelle Commits verlangt, wirkt dort aber nicht und hinterlässt einen gültigen Schlüssel.
+Beschreibung: `.claude/hooks/commit-guard.cjs` ist ein PreToolUse-Hook auf Bash und prüft/verbraucht `state/freigabe-commit.md` nur bei `git commit`/`git push` aus einer Claude-Sitzung. Die Challenger-Terminal-Blöcke seit F-706 (und die erste Fassung der `zustand:sichern`-Ausgabe) ließen den Menschen die Datei trotzdem vor manuellen Git-Befehlen in PowerShell schreiben — dort prüft sie niemand, `.githooks/pre-push` prüft nur die Divergenz zu `origin/main`.
+Fundstelle: `.claude/hooks/commit-guard.cjs` (PreToolUse/Bash), `.githooks/pre-push`, Challenger-Terminal-Blöcke seit F-706.
+Auswirkung: Ein gültiger Schlüssel liegt 10 Minuten offen, eine parallele Claude-Sitzung im selben Verzeichnis könnte committen; Scheinsicherheit.
+Maßnahme: Regel getrennt nach Weg (manuell: keine Freigabedatei; Claude: je Commit/Push eine), Skriptausgabe und Guide korrigiert — `scripts/zustand-sichern.mjs` gibt keine Set-Content-Zeilen mehr aus, nur einen Hinweis (`FREIGABE_HINWEIS`); `docs/guide/04-DEEPDIVE-gedaechtnis.md` beschreibt die seit Vertrag 5 (PR #12, 28.08.2026) wiederhergestellte Pflicht und ihre Grenze.
+Status: behoben (feat/zustand-sichern, 25.09.2026). Belegt: scripts/zustand-sichern.test.mjs (naechsteBefehle, F-736), scripts/check-zustand-sichern.mjs (5).
+Feature/Run: Verifikation zustand:sichern, 25.09.2026.
