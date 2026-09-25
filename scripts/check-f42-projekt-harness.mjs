@@ -18,6 +18,9 @@
  * Aufruf mit dem VORHER geplanten, fehlerhaften Befehl ['npm', 'run', …]
  * (Advisor-Finding F1, state/advisor-findings-f42-projekt-harness-ws1.md)
  * liefert real FEHLER, nicht GRUEN — belegt, warum die Korrektur nötig war.
+ * (c2) findeNpmCli (F-705, PR-CI-Fund) — Windows-Layout, Linux-Layout,
+ * npm_execpath (Vorrang) und der Rot-Fall "kein Treffer" gegen injizierte
+ * execPath/npmExecpath/existsSync, kein echtes Dateisystem-Layout nötig.
  * (d) Coach-Text ohne ai-workforce-Prüfungen im Fremdprojekt, MIT ECHTEN argv
  * (F-703, state/advisor-findings-f42-projekt-harness-ws1.md-Nachbarschaft) —
  * baueAuftragAusProjektentwurf mit istAiWorkforce:false nennt weder
@@ -39,7 +42,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { kopiereSkelett, pruefeWorkspaceTrust, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
+import { findeNpmCli, kopiereSkelett, pruefeWorkspaceTrust, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { fuehrePruefungDurch } from '../src/pruefschritt/index.ts'
 import { baueAuftragAusProjektentwurf } from '../src/product-coach/index.ts'
 import { vergebeFeatureIds } from '../src/product-coach/index.ts'
@@ -152,6 +155,42 @@ try {
 
     void eckdaten
     if (befunde.length === vor) console.log('✓ (c) pruefbefehl gesetzt (absoluter Pfad, run check:template) und real lauffähig (GRUEN gegen ein triviales Zielverzeichnis).')
+  }
+
+  // ─── (c2) findeNpmCli: Windows-/Linux-Layout, npm_execpath, kein Treffer → Wurf (F-705) ────
+  //
+  // F-705 (BUG P1, real in der PR-CI gefunden): schreibeStartvorlageUndProfil leitete npm-cli.js
+  // bisher NUR über das Windows-Layout ab — auf dem Linux-CI-Runner liegt npm unter
+  // <prefix>/lib/node_modules/npm/bin/npm-cli.js, nicht <node-dir>/node_modules/npm/bin/npm-cli.js.
+  // Injizierte execPath/npmExecpath/existsSync — kein echtes Dateisystem-Layout nötig.
+  {
+    const vor = befunde.length
+    const windowsExecPath = 'C:\\Program Files\\nodejs\\node.exe'
+    const windowsKandidat = join('C:\\Program Files\\nodejs', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    const gefundenWindows = findeNpmCli({ execPath: windowsExecPath, npmExecpath: undefined, existsSync: (pfad) => pfad === windowsKandidat })
+    if (gefundenWindows !== windowsKandidat) befunde.push(`(c2) Windows-Layout: erwartet '${windowsKandidat}', erhalten '${gefundenWindows}'`)
+
+    const linuxExecPath = '/opt/hostedtoolcache/node/24.21.0/x64/bin/node'
+    const linuxKandidat = join(dirname(linuxExecPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+    const gefundenLinux = findeNpmCli({ execPath: linuxExecPath, npmExecpath: undefined, existsSync: (pfad) => pfad === linuxKandidat })
+    if (gefundenLinux !== linuxKandidat) befunde.push(`(c2) Linux-Layout: erwartet '${linuxKandidat}', erhalten '${gefundenLinux}'`)
+
+    // npm_execpath hat Vorrang vor beiden Layout-Kandidaten, wenn er existiert.
+    const npmExecpathKandidat = '/custom/pfad/npm-cli.js'
+    const gefundenExecpath = findeNpmCli({ execPath: linuxExecPath, npmExecpath: npmExecpathKandidat, existsSync: (pfad) => pfad === npmExecpathKandidat })
+    if (gefundenExecpath !== npmExecpathKandidat) befunde.push(`(c2) npm_execpath: erwartet '${npmExecpathKandidat}', erhalten '${gefundenExecpath}'`)
+
+    // Rot-Fall: kein Kandidat existiert → Wurf, Meldung nennt alle geprüften Pfade.
+    let hatGeworfenOhneTreffer = false
+    try {
+      findeNpmCli({ execPath: linuxExecPath, npmExecpath: undefined, existsSync: () => false })
+    } catch (fehler) {
+      hatGeworfenOhneTreffer = true
+      if (!fehler.message.includes(linuxKandidat)) befunde.push(`(c2) Rot-Fall-Meldung nennt nicht den geprüften Linux-Pfad: ${fehler.message}`)
+    }
+    if (!hatGeworfenOhneTreffer) befunde.push('(c2) findeNpmCli ohne jeden existierenden Kandidaten hätte werfen müssen, hat es nicht')
+
+    if (befunde.length === vor) console.log('✓ (c2) findeNpmCli: Windows-Layout, Linux-Layout, npm_execpath (Vorrang) korrekt gefunden, Rot-Fall (kein Treffer) wirft real mit vollständiger Pfadliste.')
   }
 
   // ─── (d) Coach-Text ohne ai-workforce-Prüfungen im Fremdprojekt, MIT echten argv (F-703) ────

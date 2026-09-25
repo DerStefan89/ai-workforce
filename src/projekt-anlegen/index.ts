@@ -52,6 +52,11 @@
  * prozessstart.ts) `execFile` ohne Shell verwendet und ein bloßes `'npm'`
  * unter Windows nur auf `npm.cmd` auflöst (real gemessener Befund dort,
  * Advisor-Finding F1, state/advisor-findings-f42-projekt-harness-ws1.md).
+ * F-705-Nachtrag (PR-CI-Fund): `npm-cli.js` wurde zunächst nur über das
+ * Windows-Layout gesucht — CI (Linux) warf, weil dort
+ * `<prefix>/lib/node_modules/npm/bin/npm-cli.js` gilt, nicht
+ * `<node-dir>/node_modules/npm/bin/npm-cli.js`. `findeNpmCli` prüft jetzt
+ * `npm_execpath`, dann beide Layouts, plattformunabhängig.
  *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
  * scripts/check-f41-projekt-anlegen.mjs, scripts/check-f42-projekt-
@@ -263,6 +268,50 @@ export function kopiereSkelett(installWurzel: string, zielRepoWurzel: string): s
  * @param zielRepoWurzel - Repo-Wurzel des neuen Projekts
  * @returns die geschriebenen Eckdaten der neuen Startvorlage (werkzeugVersionDeklariert/berechtigungskontext/werkzeugStartziel) — pruefeVolleStartfreigabeFuerRepo braucht sie für Startbedingung 2 (E-188), ohne die Datei ein zweites Mal zu lesen
  */
+export interface FindeNpmCliOptionen {
+  /** Default process.execPath. */
+  execPath?: string
+  /** Default process.env.npm_execpath. */
+  npmExecpath?: string
+  /** Default node:fs' existsSync — injizierbar, damit der Gate-Test kein echtes Dateisystem-Layout braucht (F-705). */
+  existsSync?: (pfad: string) => boolean
+}
+
+/**
+ * F-705 (BUG P1, löst eine CI-Regression aus F42 WS-1): `schreibeStartvorlageUndProfil` leitete
+ * `npm-cli.js` bisher NUR über das Windows-Layout ab (`<node-dir>/node_modules/npm/bin/npm-cli.js`)
+ * — unter Linux (CI-Runner, `check-f34-product-coach.mjs`/`check-f42-projekt-harness.mjs`) liegt
+ * npm stattdessen unter `<prefix>/lib/node_modules/npm/bin/npm-cli.js`, der Wurf blieb lokal
+ * unbeobachtet, weil hier ausschließlich unter Windows entwickelt wird.
+ *
+ * Reihenfolge, erster existierender Treffer gewinnt: (a) `process.env.npm_execpath` — npm setzt
+ * diese Variable beim Start selbst auf den eigenen `npm-cli.js`-Pfad, plattformunabhängig, wenn ein
+ * Skript tatsächlich über `npm run …` gestartet wurde (nur verwendet, wenn sie auf `npm-cli.js`
+ * endet — sonst könnte eine fremde, zufällig gesetzte Variable einen falschen Pfad liefern); (b)
+ * das Windows-Layout relativ zu `execPath`; (c) das Linux/macOS-Layout relativ zu `execPath`
+ * (`<prefix>/bin/node` → `<prefix>/lib/node_modules/npm/bin/npm-cli.js`). Kein Treffer → Wurf, der
+ * Meldungstext nennt alle geprüften Pfade (kein stilles Raten).
+ * @param optionen - execPath/npmExecpath/existsSync injizierbar (Muster optionen.startfreigabeRepoWurzel) — für scripts/check-f42-projekt-harness.mjs, das gegen synthetische Layouts statt des echten Dateisystems prüft
+ * @returns der gefundene, absolute Pfad zu npm-cli.js
+ */
+export function findeNpmCli(optionen: FindeNpmCliOptionen = {}): string {
+  const execPath = optionen.execPath ?? process.execPath
+  const npmExecpath = optionen.npmExecpath ?? process.env.npm_execpath
+  const pruefeExistenz = optionen.existsSync ?? existsSync
+
+  const kandidaten: string[] = []
+  if (npmExecpath !== undefined && npmExecpath.toLowerCase().endsWith('npm-cli.js')) {
+    kandidaten.push(npmExecpath)
+  }
+  kandidaten.push(join(dirname(execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'))
+  kandidaten.push(join(dirname(execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'))
+
+  for (const kandidat of kandidaten) {
+    if (pruefeExistenz(kandidat)) return kandidat
+  }
+  throw new Error(`npm-cli.js an keinem der geprüften Pfade gefunden (execPath='${execPath}'): ${kandidaten.join(', ')}`)
+}
+
 export function schreibeStartvorlageUndProfil(id: string, quellRepoWurzel: string, zielRepoWurzel: string): NeueStartvorlageEckdaten {
   const startvorlage = JSON.parse(readFileSync(join(quellRepoWurzel, 'startvorlagen', 'ai-workforce.json'), 'utf8'))
   // F42 WS-1 (löst F-667): pruefbefehl bekommt einen ABSOLUTEN Programmpfad, kein bloßes 'npm' —
@@ -272,14 +321,12 @@ export function schreibeStartvorlageUndProfil(id: string, quellRepoWurzel: strin
   // über process.execPath statt Übernahme aus quellStartvorlage.pruefbefehl: der Server läuft
   // bereits unter genau dem node.exe, das die Prüfung später wieder ausführt (ARCHITECTURE.md §3,
   // ein einziger Nutzer/Rechner) — bleibt korrekt, auch wenn die Quell-Startvorlage veraltete, von
-  // Hand eingetragene Pfade trägt. Wirft statt still zu raten (kein Prüfbefehl ist besser als ein
-  // falscher) — der bestehende try/catch in POST /api/projekte fängt den Wurf bereits ab (D5, kein
-  // zweiter Rückbau-Mechanismus).
+  // Hand eingetragene Pfade trägt. npm-cli.js-Suche über findeNpmCli (F-705, plattformunabhängig)
+  // statt eines fest angenommenen Windows-Layouts. Wirft statt still zu raten (kein Prüfbefehl ist
+  // besser als ein falscher) — der bestehende try/catch in POST /api/projekte fängt den Wurf
+  // bereits ab (D5, kein zweiter Rückbau-Mechanismus).
   const nodeExePfad = process.execPath
-  const npmCliPfad = join(dirname(nodeExePfad), 'node_modules', 'npm', 'bin', 'npm-cli.js')
-  if (!existsSync(npmCliPfad)) {
-    throw new Error(`npm-cli.js nicht am erwarteten Pfad gefunden ('${npmCliPfad}', abgeleitet aus process.execPath='${nodeExePfad}') — pruefbefehl kann nicht gebaut werden`)
-  }
+  const npmCliPfad = findeNpmCli()
   startvorlage.pruefbefehl = [nodeExePfad, npmCliPfad, 'run', 'check:template']
   startvorlage.pruefZeitgrenzeMs = 120000
   // Realer Fund (Smoketest, Muster F-415/F25 WS-1): src/startvorlage/index.ts' leiteProfilReferenzAb
