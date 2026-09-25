@@ -33,13 +33,35 @@ export function entferneIdPraefix(titel) {
 }
 
 /**
+ * F-703 (BUG P1): kontext.pruefbefehl ist ein argv-Array mit ABSOLUTEM Programmpfad — ein rohes
+ * .join(' ') ergab einen weder ausführbaren noch mit der Bash(npm run …)-Allowlist vereinbaren
+ * Satz. Erkennt das Muster [node(.exe), …npm-cli.js, …rest] und zeigt `npm ${rest}`; sonst
+ * quotet sie jedes Element mit Leerzeichen.
+ * @param argv - pruefbefehl-Array (mindestens ein Element)
+ * @returns die für einen Menschen lesbare/ausführbare Anzeigeform
+ */
+export function anzeigePruefbefehl(argv) {
+  const basename0 = (argv[0].split(/[\\/]/).pop() ?? argv[0]).toLowerCase()
+  const istNode = basename0 === 'node' || basename0 === 'node.exe'
+  const istNpmCli = argv[1] !== undefined && argv[1].toLowerCase().endsWith('npm-cli.js')
+  if (istNode && istNpmCli) {
+    return `npm ${argv.slice(2).join(' ')}`
+  }
+  return argv.map((teil) => (teil.includes(' ') ? `"${teil}"` : teil)).join(' ')
+}
+
+/**
  * Baut aus einem Projekt-Entwurf mit bereits vergebenen IDs (vergebeFeatureIds, server-seitig)
  * deterministisches Markdown für einen F22-Auftrag, der ausschließlich Dokumentation schreibt.
+ * F42 WS-1: kontext (pruefbefehl/istAiWorkforce) additiv, aus dem zuletzt gepollten
+ * GET /api/zustand — fehlt kontext, erfindet die Funktion nichts (kein Prüfbefehl, keine
+ * ai-workforce-eigenen Prüfpfade).
  * @param projekt - ein Projekt-Entwurf mit bereits vergebenen IDs (meilensteine[].id/features[].id/abhaengig_von_ids)
  * @param modus - 'neu' (frisches Projekt) oder 'erweiterung' (bestehendes Projekt/Roadmap ergänzen)
+ * @param kontext - { pruefbefehl, istAiWorkforce } — optional, Default {}
  * @returns { titel, auftragstext }
  */
-export function baueAuftragAusProjektentwurf(projekt, modus) {
+export function baueAuftragAusProjektentwurf(projekt, modus, kontext = {}) {
   const visionCodepoints = [...projekt.vision]
   const visionGekuerzt = visionCodepoints.length > 80 ? `${visionCodepoints.slice(0, 77).join('')}...` : projekt.vision
 
@@ -118,9 +140,15 @@ export function baueAuftragAusProjektentwurf(projekt, modus) {
     '## Auftrag an den Baudurchgang',
     'Schreibe AUSSCHLIESSLICH Dokumentation, KEIN Produktcode:',
     `1. docs/projekt/kontext/beschreibung.md — ${beschreibungAktion}; die Einträge aus 'Capability-Bedarf' mit status 'fehlt' als eigenen Abschnitt "Scout-Kandidaten" aufnehmen (${scoutKandidatenText}); die 'Architektur-Hinweise' oben als eigenen Abschnitt "Für den Architekten (F39)" aufnehmen.`,
-    `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT; muss validiereRoadmapDaten (src/projektkontext/index.ts) bestehen.`,
-    '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF.',
-    'npm run check muss danach grün sein.',
+    kontext.istAiWorkforce === true
+      ? `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT; muss validiereRoadmapDaten (src/projektkontext/index.ts) bestehen.`
+      : `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT.`,
+    kontext.istAiWorkforce === true
+      ? '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF.'
+      : '3. Je Feature eine eigene features/<id>/feature.md mit den Abschnitten ## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies und Status: ENTWURF.',
+    kontext.pruefbefehl !== undefined && kontext.pruefbefehl.length > 0
+      ? `${anzeigePruefbefehl(kontext.pruefbefehl)} muss danach grün sein.`
+      : 'Kein Prüfbefehl konfiguriert — die Änderungen werden nicht automatisch geprüft.',
   ].join('\n')
 
   return { titel, auftragstext }

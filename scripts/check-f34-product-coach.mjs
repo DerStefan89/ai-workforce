@@ -99,11 +99,13 @@
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ROLLENVERTRAEGE } from '../src/rollen/index.ts'
-import { baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCapabilityAuszug, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
+import { anzeigePruefbefehl, baueAuftragAusProjektentwurf, baueAuftragAusScope, baueCapabilityAuszug, validiereErgebnisProductCoach, vergebeFeatureIds } from '../src/product-coach/index.ts'
+import { schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { baueAuftragAusScope as baueAuftragAusScopeBrowser } from '../public/leitstand/auftrag-aus-scope.js'
-import { baueAuftragAusProjektentwurf as baueAuftragAusProjektentwurfBrowser } from '../public/leitstand/auftrag-aus-projektentwurf.js'
+import { anzeigePruefbefehl as anzeigePruefbefehlBrowser, baueAuftragAusProjektentwurf as baueAuftragAusProjektentwurfBrowser } from '../public/leitstand/auftrag-aus-projektentwurf.js'
 import { erzeugeRequestHandler, loeseAusfuehrungsEingabenAuf, sammleBestehendeIds } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -902,16 +904,102 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   const zugewiesenPraefix = vergebeFeatureIds(projektMitIdPraefixRoh, { features: [], meilensteine: [] })
   const projektMitIdPraefix = { ...projektMitIdPraefixRoh, meilensteine: zugewiesenPraefix.meilensteine, offene_fragen: zugewiesenPraefix.offene_fragen }
 
+  // F-703 (BUG P1, löst eine Regression aus F42 WS-1): die kontext-Fixtures nutzen ECHTE argv
+  // statt künstlicher — ein künstliches argv wie ['npm', 'run', 'check'] (biserige Fassung dieses
+  // Gates) hätte den F-703-Bug (rohes .join(' ') eines ABSOLUTEN Programmpfads) nie aufgedeckt,
+  // weil es bereits wie die gewünschte Anzeigeform aussah. echtesAiWorkforceArgv kommt real aus
+  // startvorlagen/ai-workforce.json, echtesNeuesProjektArgv real aus schreibeStartvorlageUndProfil
+  // (src/projekt-anlegen/index.ts) — demselben Pfad, den POST /api/projekte tatsächlich schreibt.
+  const echtesAiWorkforceArgv = JSON.parse(readFileSync('startvorlagen/ai-workforce.json', 'utf-8')).pruefbefehl
+
+  const quelleF703 = join(tmpdir(), `check-f34-f703-quelle-${randomUUID()}`)
+  mkdirSync(join(quelleF703, 'startvorlagen'), { recursive: true })
+  mkdirSync(join(quelleF703, 'profiles'), { recursive: true })
+  writeFileSync(
+    join(quelleF703, 'startvorlagen', 'ai-workforce.json'),
+    JSON.stringify({ startvorlage_schema: 'v0', profilPfad: 'profiles/ai-workforce.json', werkzeugStartziel: ['irrelevant'], werkzeugVersionDeklariert: '0.0.0', berechtigungskontext: 'profil-standard', modell: 'test', standardBudget: {}, werkzeugsaetze: {} })
+  )
+  writeFileSync(join(quelleF703, 'profiles', 'ai-workforce.json'), JSON.stringify({ projekt: 'ai-workforce', version: 1, gates: [], dod: [], werkzeuge: {}, reviewRegeln: [] }))
+  const zielF703 = join(tmpdir(), `check-f34-f703-ziel-${randomUUID()}`)
+  mkdirSync(zielF703, { recursive: true })
+  schreibeStartvorlageUndProfil('f703-probe', quelleF703, zielF703)
+  const echtesNeuesProjektArgv = JSON.parse(readFileSync(join(zielF703, 'startvorlagen', 'f703-probe.json'), 'utf-8')).pruefbefehl
+  raeumeVerzeichnis(quelleF703)
+  raeumeVerzeichnis(zielF703)
+
+  // Fremd-argv MIT Leerzeichen im Pfad — belegt den Quotier-Zweig von anzeigePruefbefehl (kein
+  // node/npm-cli.js-Muster).
+  const fremdArgvMitLeerzeichen = ['C:\\Program Files\\Fremdtool\\tool.exe', '--run', 'alle-tests']
+
+  const kontexte = [
+    ['kein-kontext', undefined],
+    ['ai-workforce-echtes-argv', { istAiWorkforce: true, pruefbefehl: echtesAiWorkforceArgv }],
+    ['fremdprojekt-echtes-neues-projekt-argv', { istAiWorkforce: false, pruefbefehl: echtesNeuesProjektArgv }],
+    ['fremdprojekt-mit-leerzeichen', { istAiWorkforce: false, pruefbefehl: fremdArgvMitLeerzeichen }],
+    ['fremdprojekt-ohne-pruefbefehl', { istAiWorkforce: false }],
+  ]
+
   for (const auftragModus of ['neu', 'erweiterung']) {
     for (const [fixtureName, projekt] of [
       ['valid-projekt-entwurf', projektMitIds],
       ['id-praefix-im-titel', projektMitIdPraefix],
     ]) {
-      const serverErgebnis = baueAuftragAusProjektentwurf(projekt, auftragModus)
-      const browserErgebnis = baueAuftragAusProjektentwurfBrowser(projekt, auftragModus)
-      if (JSON.stringify(serverErgebnis) !== JSON.stringify(browserErgebnis)) {
-        befunde.push(`(q) Fixture '${fixtureName}', Modus '${auftragModus}': baueAuftragAusProjektentwurf (Server) und die Browser-Kopie liefern unterschiedliche Ergebnisse — Server: ${JSON.stringify(serverErgebnis)}, Browser: ${JSON.stringify(browserErgebnis)}`)
+      for (const [kontextName, kontext] of kontexte) {
+        const serverErgebnis = kontext === undefined ? baueAuftragAusProjektentwurf(projekt, auftragModus) : baueAuftragAusProjektentwurf(projekt, auftragModus, kontext)
+        const browserErgebnis = kontext === undefined ? baueAuftragAusProjektentwurfBrowser(projekt, auftragModus) : baueAuftragAusProjektentwurfBrowser(projekt, auftragModus, kontext)
+        if (JSON.stringify(serverErgebnis) !== JSON.stringify(browserErgebnis)) {
+          befunde.push(`(q) Fixture '${fixtureName}', Modus '${auftragModus}', Kontext '${kontextName}': baueAuftragAusProjektentwurf (Server) und die Browser-Kopie liefern unterschiedliche Ergebnisse — Server: ${JSON.stringify(serverErgebnis)}, Browser: ${JSON.stringify(browserErgebnis)}`)
+        }
       }
+    }
+  }
+
+  // Explizite Korrektheit der kontext-Zweige (F42 WS-1, löst F-701): ai-workforce-eigene
+  // Prüfpfade NUR bei istAiWorkforce===true, Prüfbefehl-Zeile spiegelt den gegebenen pruefbefehl
+  // in AUSFÜHRBARER Anzeigeform (F-703), ohne kontext wird nichts erfunden.
+  const ergebnisOhneKontext = baueAuftragAusProjektentwurf(projektMitIds, 'neu')
+  if (ergebnisOhneKontext.auftragstext.includes('validiereRoadmapDaten') || ergebnisOhneKontext.auftragstext.includes('check-feature.mjs')) {
+    befunde.push(`(q): ohne kontext behauptet der Auftragstext dennoch ai-workforce-eigene Prüfpfade (Regression von F-701): ${ergebnisOhneKontext.auftragstext}`)
+  } else if (!ergebnisOhneKontext.auftragstext.includes('Kein Prüfbefehl konfiguriert')) {
+    befunde.push(`(q): ohne kontext sollte der Auftragstext 'Kein Prüfbefehl konfiguriert' nennen, nicht 'npm run check' erfinden (Regression von F-701): ${ergebnisOhneKontext.auftragstext}`)
+  }
+
+  // (F-703) Fremdprojekt mit dem ECHTEN, von schreibeStartvorlageUndProfil erzeugten argv — muss
+  // 'npm run check:template' zeigen, NICHT die rohen absoluten node.exe/npm-cli.js-Pfade.
+  const ergebnisFremdprojekt = baueAuftragAusProjektentwurf(projektMitIds, 'neu', { istAiWorkforce: false, pruefbefehl: echtesNeuesProjektArgv })
+  if (ergebnisFremdprojekt.auftragstext.includes('validiereRoadmapDaten') || ergebnisFremdprojekt.auftragstext.includes('check-feature.mjs')) {
+    befunde.push(`(q): Fremdprojekt-kontext behauptet dennoch ai-workforce-eigene Prüfpfade (Regression von F-701): ${ergebnisFremdprojekt.auftragstext}`)
+  } else if (!ergebnisFremdprojekt.auftragstext.includes('npm run check:template muss danach grün sein.')) {
+    befunde.push(`(q/F-703): Fremdprojekt mit dem echten schreibeStartvorlageUndProfil-argv sollte 'npm run check:template' zeigen, nicht das rohe argv (${JSON.stringify(echtesNeuesProjektArgv)}): ${ergebnisFremdprojekt.auftragstext}`)
+  } else if (ergebnisFremdprojekt.auftragstext.includes(echtesNeuesProjektArgv[0])) {
+    befunde.push(`(q/F-703)-Rot-Fall-Beleg: der Auftragstext enthält noch den rohen absoluten Programmpfad '${echtesNeuesProjektArgv[0]}' — genau der Fehler, den ein bloßes .join(' ') erzeugt hätte: ${ergebnisFremdprojekt.auftragstext}`)
+  }
+
+  // (F-703) ai-workforce selbst mit dem ECHTEN argv aus startvorlagen/ai-workforce.json.
+  const ergebnisAiWorkforce = baueAuftragAusProjektentwurf(projektMitIds, 'neu', { istAiWorkforce: true, pruefbefehl: echtesAiWorkforceArgv })
+  if (!ergebnisAiWorkforce.auftragstext.includes('validiereRoadmapDaten') || !ergebnisAiWorkforce.auftragstext.includes('check-feature.mjs')) {
+    befunde.push(`(q): istAiWorkforce:true sollte weiterhin validiereRoadmapDaten/check-feature.mjs nennen (Regression von F-701): ${ergebnisAiWorkforce.auftragstext}`)
+  } else if (!ergebnisAiWorkforce.auftragstext.includes('npm run check muss danach grün sein.')) {
+    befunde.push(`(q/F-703): ai-workforce-Auftragstext sollte 'npm run check' zeigen (Anzeigeform des echten startvorlagen/ai-workforce.json-argv ${JSON.stringify(echtesAiWorkforceArgv)}), erhalten: ${ergebnisAiWorkforce.auftragstext}`)
+  }
+
+  // (F-703) Fremd-argv mit Leerzeichen im Pfad — muss gequotet erscheinen, nicht roh/unquotiert.
+  const ergebnisMitLeerzeichen = baueAuftragAusProjektentwurf(projektMitIds, 'neu', { istAiWorkforce: false, pruefbefehl: fremdArgvMitLeerzeichen })
+  const erwarteteQuotierteZeile = `"${fremdArgvMitLeerzeichen[0]}" ${fremdArgvMitLeerzeichen.slice(1).join(' ')} muss danach grün sein.`
+  if (!ergebnisMitLeerzeichen.auftragstext.includes(erwarteteQuotierteZeile)) {
+    befunde.push(`(q/F-703): Fremd-argv mit Leerzeichen sollte gequotet erscheinen ('${erwarteteQuotierteZeile}'), erhalten: ${ergebnisMitLeerzeichen.auftragstext}`)
+  }
+
+  // (F-703) Server/Browser-Gleichheit von anzeigePruefbefehl selbst, über alle drei Musterformen.
+  for (const [name, argv] of [
+    ['neues-projekt-node+npm-cli.js', echtesNeuesProjektArgv],
+    ['ai-workforce-node+npm-cli.js', echtesAiWorkforceArgv],
+    ['fremd-mit-leerzeichen', fremdArgvMitLeerzeichen],
+  ]) {
+    const serverAnzeige = anzeigePruefbefehl(argv)
+    const browserAnzeige = anzeigePruefbefehlBrowser(argv)
+    if (serverAnzeige !== browserAnzeige) {
+      befunde.push(`(q/F-703): anzeigePruefbefehl (Server) und die Browser-Kopie liefern für '${name}' unterschiedliche Ergebnisse — Server: '${serverAnzeige}', Browser: '${browserAnzeige}'`)
     }
   }
 
@@ -930,7 +1018,7 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   }
 
   if (befunde.length === befundeVor) {
-    console.log("✓ (q): baueAuftragAusProjektentwurf (src/product-coach/index.ts) und ihre Browser-JS-Kopie (public/leitstand/auftrag-aus-projektentwurf.js) liefern für 'neu'/'erweiterung' × zwei Fixtures (inkl. ID-artigem Titel-Präfix) byte-identische UND korrekte Ergebnisse (keine Dopplung, Titel aus Meilenstein statt vision) — löst F-611/F-612.")
+    console.log("✓ (q): baueAuftragAusProjektentwurf (src/product-coach/index.ts) und ihre Browser-JS-Kopie (public/leitstand/auftrag-aus-projektentwurf.js) liefern für 'neu'/'erweiterung' × zwei Fixtures (inkl. ID-artigem Titel-Präfix) byte-identische UND korrekte Ergebnisse (keine Dopplung, Titel aus Meilenstein statt vision) — löst F-611/F-612; anzeigePruefbefehl zeigt für die ECHTEN argv aus startvorlagen/ai-workforce.json und aus schreibeStartvorlageUndProfil 'npm run check'/'npm run check:template' statt der rohen, absoluten Programmpfade, und quotet ein Fremd-argv mit Leerzeichen — löst F-703.")
   }
 }
 

@@ -637,7 +637,12 @@ function leseAuftragKandidat(modus, antwort) {
   // projekt-Objekt (verarbeiteRollenChatErgebnis, leitstand-server.mjs) — das Modell selbst
   // entscheidet das nicht (dieselbe F-595-Begründung wie die Feature-/Meilenstein-IDs).
   if (modus === 'sparring' && antwort.art === 'projekt_entwurf' && antwort.projekt) {
-    return { ...baueAuftragAusProjektentwurf(antwort.projekt, antwort.projekt.auftragModus ?? 'neu'), herkunft: { art: 'projekt_interview' } }
+    // F42 WS-1 (löst F-701): kontext aus dem zuletzt gepollten GET /api/zustand (letzterZustand,
+    // additiv um pruefbefehl/istAiWorkforce erweitert) — kein neuer Poll-Timer (AK3-Gate
+    // check-f20-zustand-poll.mjs). letzterZustand ist vor dem ersten Poll-Tick null; die Funktion
+    // erfindet dann bewusst nichts (Default-Verhalten von baueAuftragAusProjektentwurf).
+    const kontext = { pruefbefehl: letzterZustand?.pruefbefehl ?? undefined, istAiWorkforce: letzterZustand?.istAiWorkforce ?? undefined }
+    return { ...baueAuftragAusProjektentwurf(antwort.projekt, antwort.projekt.auftragModus ?? 'neu', kontext), herkunft: { art: 'projekt_interview' } }
   }
   if (modus === 'jarvis' && antwort.art === 'auftrag_vorschlag' && antwort.auftrag) {
     return { titel: antwort.auftrag.titel ?? '', auftragstext: antwort.auftrag.text ?? '', herkunft: { art: 'jarvis' } }

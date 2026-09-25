@@ -137,3 +137,16 @@ export interface ProjektMitIds {
  * beschreiben, nicht nur, was vergebeFeatureIds selbst zurückgibt).
  */
 export type ProjektEntwurfMitIds = Omit<ProjektEntwurf, 'meilensteine' | 'offene_fragen'> & ProjektMitIds & { auftragModus: 'neu' | 'erweiterung' }
+
+/**
+ * F42 WS-1 (löst F-701): serverseitiges Wissen, das die reine Funktion
+ * baueAuftragAusProjektentwurf (src/product-coach/index.ts) selbst nicht
+ * besitzt — pruefbefehl (argv der Ziel-Startvorlage, aus GET /api/zustand)
+ * und istAiWorkforce (repoWurzel === installWurzel). Beide optional;
+ * fehlen sie, erfindet die Funktion nichts (kein Prüfbefehl, keine
+ * ai-workforce-eigenen Prüfpfade).
+ */
+export interface AuftragKontext {
+  pruefbefehl?: string[]
+  istAiWorkforce?: boolean
+}

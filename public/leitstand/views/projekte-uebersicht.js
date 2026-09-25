@@ -143,11 +143,16 @@ function zeigeAnlegenFormular(sichtbar) {
 /** Das zuletzt erfolgreich angelegte Projekt ({ id, name }) — trägt den "Zum Coach-Interview"-Sprung, ohne ein zweites Mal aus dem DOM gelesen werden zu müssen. Null vor dem ersten Erfolg dieser Sitzung. */
 let letztesAngelegtesProjekt = null
 
-/** Zeigt die "Nächste Schritte"-Box nach 201 — Git-Befehle und Hinweis als reiner Text (textContent, kein escapeHtml nötig, Muster views/workboard.js renderTerminalBlock: der Kern führt nichts davon aus). @param projekt - { id, name, ... } aus der 201-Antwort @param naechsteSchritte - { git: string[], hinweis: string } */
+/** Zeigt die "Nächste Schritte"-Box nach 201 — Git-Befehle, Hinweis und (F42 WS-1, QA-Befund: naechsteSchritte.trust wurde server-seitig berechnet, aber nie gerendert — E-PH-1 "meldet ihn" blieb dadurch nur eine API-Zusage) der Workspace-Trust-Hinweis, alle als reiner Text (textContent, kein escapeHtml nötig, Muster views/workboard.js renderTerminalBlock: der Kern führt nichts davon aus). @param projekt - { id, name, ... } aus der 201-Antwort @param naechsteSchritte - { git: string[], hinweis: string, trust?: { status, pfad, hinweis: string|null } } */
 function zeigeAnlegenErfolg(projekt, naechsteSchritte) {
   letztesAngelegtesProjekt = { id: projekt.id, name: projekt.name }
   document.getElementById('projekte-anlegen-erfolg-hinweis').textContent = naechsteSchritte.hinweis
   document.getElementById('projekte-anlegen-git-befehle').textContent = naechsteSchritte.git.join('\n')
+  // trust ist optional (ältere/unerwartete Serverantwort, AK4f-Muster oben) — kein Wurf, nur kein Hinweis.
+  const trustHinweis = naechsteSchritte.trust?.hinweis ?? null
+  const trustElement = document.getElementById('projekte-anlegen-erfolg-trust')
+  trustElement.textContent = trustHinweis ?? ''
+  trustElement.hidden = trustHinweis === null
   document.getElementById('projekte-anlegen-formular').hidden = true
   document.getElementById('projekte-anlegen-erfolg').hidden = false
 }

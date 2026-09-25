@@ -458,7 +458,7 @@ import { pruefeAusfuehrungsVorbedingung } from '../src/ausfuehrung-vorbedingung/
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
 import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
-import { baueNeuenProjektEintrag, kopiereBaseline, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
+import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
@@ -4799,6 +4799,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       try {
         mkdirSync(ziel, { recursive: true })
         kopiereBaseline(repoWurzel, ziel)
+        // F42 WS-1 (Projekt-Harness, E-F41-3 = B): Schicht 2 (Skelett) NACH der Baseline, VOR der
+        // Startvorlage — kein Pfadkonflikt zu keiner der beiden (vorlagen/projekt-skelett/HERKUNFT.md).
+        kopiereSkelett(repoWurzel, ziel)
         const neueStartvorlage = schreibeStartvorlageUndProfil(formular.id, repoWurzel, ziel)
 
         // (d) Echte Startprüfung gegen das NEUE Repo — VOLLE Startfreigabe (Bedingung 1 UND 2,
@@ -4832,11 +4835,25 @@ export function erzeugeRequestHandler(optionen = {}) {
         const neueTeilkarte = baueProjektHandlerMap([neuerEintrag], repoWurzel, globalerLaufZustand)
         for (const [id, handler] of neueTeilkarte) projektHandlerMap.set(id, handler)
 
+        // F42 WS-1 (E-PH-1 = B): read-only-Erkennung, KEIN Schreibzugriff auf ~/.claude.json — der
+        // Kern setzt Trust nie selbst, meldet nur den Status für genau den cwd-String, mit dem ein
+        // Worker gegen dieses Projekt starten würde (ziel, deterministisch eindeutig für einen
+        // frisch angelegten Registereintrag).
+        const trustStatus = pruefeWorkspaceTrust(ziel)
+
         sendeJson(res, 201, {
           projekt: neuerEintrag,
           naechste_schritte: {
             git: ['git init -b main', 'git add -A', 'git commit -m "Initiale Kopie der Harness-Baseline (F41 WS-1)"', 'git checkout -b arbeit/start'],
             hinweis: `Git-Befehle im neuen Ordner ('${ziel}') ausführen — der Kern legt kein Git-Repo an (Linie E-F39-1). Danach im Coach-Interview-Modus 'projekt' fortfahren (WS-2).`,
+            trust: {
+              status: trustStatus.status,
+              pfad: ziel,
+              hinweis:
+                trustStatus.status !== 'true'
+                  ? `Workspace-Trust fehlt für '${ziel}'. Einmal 'claude' in genau diesem Ordner starten und den Trust-Dialog bestätigen, bevor ein schreibender Lauf gegen dieses Projekt gestartet wird — sonst greift die kopierte Permission-Allowlist nicht (F-690).`
+                  : null,
+            },
           },
         })
       } catch (fehler) {
@@ -5101,7 +5118,15 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Zustand wäre daraus also nicht ableitbar. Keine neue Projektion, kein I/O — nur die zwei
       // bereits im Speicher gehaltenen Felder unverändert durchgereicht.
       const aktiverLauf = { aktiv: globalerLaufZustand.aktiv, laufId: globalerLaufZustand.laufId }
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf })
+      // F42 WS-1 (löst Teil von F-684/F-701-Nachbarschaft): additiv, direkt aus bereits vorhandenem
+      // Zustand gespiegelt (Muster F28 WS-1 aktiverLauf oben) — kein neuer Poll-Timer (AK3-Gate
+      // check-f20-zustand-poll.mjs verlangt genau einen setInterval in public/leitstand/**).
+      // baueAuftragAusProjektentwurf (src/product-coach/index.ts) liest beide Felder aus dem
+      // zuletzt gepollten Zustand, um Fremdprojekt-spezifische Prüfhinweise zu bauen statt
+      // ai-workforce-eigene Prüfpfade zu erfinden (F-701-Nachbarschaft).
+      const pruefbefehl = vorlage.pruefbefehl ?? null
+      const istAiWorkforce = repoWurzel === installWurzel
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce })
       return
     }
 

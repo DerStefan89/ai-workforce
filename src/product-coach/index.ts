@@ -29,6 +29,7 @@
 
 import { FEATURE_ID_MUSTER } from '../projektkontext/index.ts'
 import type {
+  AuftragKontext,
   BestehendeIds,
   CoachAlternative,
   CoachArt,
@@ -608,18 +609,53 @@ export function vergebeFeatureIds(projekt: { meilensteine: ProjektMeilensteinEnt
 }
 
 /**
+ * F-703 (BUG P1, löst eine Regression aus F42 WS-1): `kontext.pruefbefehl`
+ * ist ein argv-Array mit ABSOLUTEM Programmpfad
+ * (`schreibeStartvorlageUndProfil`, src/projekt-anlegen/index.ts — nötig,
+ * weil `starteProzess` execFile ohne Shell verwendet, ein bloßes `'npm'`
+ * unter Windows aber nur auf `npm.cmd` auflöst). Ein rohes `.join(' ')`
+ * dieses argv in den Coach-Auftragstext ergab einen für Stefan weder
+ * ausführbaren noch mit der `Bash(npm run …)`-Allowlist vereinbaren Satz
+ * (unquotierte Windows-Pfade mit Leerzeichen, z. B. `C:\Program Files\…`).
+ * Diese Funktion baut stattdessen die Anzeigeform: erkennt sie am
+ * argv-Muster [node(.exe), …npm-cli.js, …rest], zeigt sie `npm ${rest}` —
+ * exakt der Befehl, den die Allowlist tatsächlich erlaubt. Erkennt sie das
+ * Muster nicht (Fremd-Prüfbefehl ohne node/npm-cli.js-Form), quotet sie
+ * jedes Element mit Leerzeichen, damit der Satz wenigstens korrekt
+ * kopierbar bleibt.
+ * @param argv - pruefbefehl-Array (mindestens ein Element)
+ * @returns die für einen Menschen lesbare/ausführbare Anzeigeform
+ */
+export function anzeigePruefbefehl(argv: string[]): string {
+  const basename0 = (argv[0].split(/[\\/]/).pop() ?? argv[0]).toLowerCase()
+  const istNode = basename0 === 'node' || basename0 === 'node.exe'
+  const istNpmCli = argv[1] !== undefined && argv[1].toLowerCase().endsWith('npm-cli.js')
+  if (istNode && istNpmCli) {
+    return `npm ${argv.slice(2).join(' ')}`
+  }
+  return argv.map((teil) => (teil.includes(' ') ? `"${teil}"` : teil)).join(' ')
+}
+
+/**
  * Reine Funktion: baut aus einem Projekt-Entwurf mit bereits vergebenen IDs
  * (vergebeFeatureIds) deterministisches Markdown für einen F22-Auftrag, der
  * AUSSCHLIESSLICH Dokumentation schreibt (E-M5-12) — docs/projekt/kontext/
  * beschreibung.md, docs/projekt/roadmap.json, je Feature ein
  * features/<id>/feature.md-Skelett. Kein I/O, keine Registrierung, das bleibt
  * Sache des Aufrufers (POST /api/auftraege, Muster baueAuftragAusScope).
+ * F42 WS-1 (löst F-701, state/findings.md): die Funktion bleibt REIN (kein
+ * repoWurzel-Zugriff) — `kontext` trägt additiv, was nur der Server kennt
+ * (GET /api/zustand, additiv gespiegelt aus der Closure-Variable `vorlage`
+ * bzw. `repoWurzel === installWurzel`). Fehlt `kontext` (bestehende
+ * Aufrufer, z. B. Tests): sicherster Default — kein Prüfbefehl erfinden,
+ * keine ai-workforce-eigenen Prüfpfade behaupten.
  * @param projekt - ein gültiger Projekt-Entwurf mit bereits vergebenen IDs (vergebeFeatureIds)
  * @param modus - 'neu' (frisches Projekt) oder 'erweiterung' (bestehendes Projekt/Roadmap ergänzen —
  *   erkennt der Coach am eingespeisten Kontext eine bestehende Roadmap, ist das dieser Fall)
+ * @param kontext - pruefbefehl (argv der Ziel-Startvorlage) und istAiWorkforce (repoWurzel === installWurzel) des Projekts, in dem der Auftrag ausgeführt wird — optional, Default {} (F42 WS-1)
  * @returns { titel, auftragstext } — Rohmaterial für POST /api/auftraege
  */
-export function baueAuftragAusProjektentwurf(projekt: ProjektEntwurfMitIds, modus: 'neu' | 'erweiterung'): { titel: string; auftragstext: string } {
+export function baueAuftragAusProjektentwurf(projekt: ProjektEntwurfMitIds, modus: 'neu' | 'erweiterung', kontext: AuftragKontext = {}): { titel: string; auftragstext: string } {
   const visionCodepoints = [...projekt.vision]
   const visionGekuerzt = visionCodepoints.length > 80 ? `${visionCodepoints.slice(0, 77).join('')}...` : projekt.vision
 
@@ -699,15 +735,22 @@ export function baueAuftragAusProjektentwurf(projekt: ProjektEntwurfMitIds, modu
     '## Auftrag an den Baudurchgang',
     'Schreibe AUSSCHLIESSLICH Dokumentation, KEIN Produktcode:',
     `1. docs/projekt/kontext/beschreibung.md — ${beschreibungAktion}; die Einträge aus 'Capability-Bedarf' mit status 'fehlt' als eigenen Abschnitt "Scout-Kandidaten" aufnehmen (${scoutKandidatenText}); die 'Architektur-Hinweise' oben als eigenen Abschnitt "Für den Architekten (F39)" aufnehmen.`,
-    `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT; muss validiereRoadmapDaten (src/projektkontext/index.ts) bestehen.`,
-    '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF.',
-    'npm run check muss danach grün sein.',
+    kontext.istAiWorkforce === true
+      ? `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT; muss validiereRoadmapDaten (src/projektkontext/index.ts) bestehen.`
+      : `2. docs/projekt/roadmap.json — ${roadmapAktion}, jeder neue Meilenstein mit Status GEPLANT.`,
+    kontext.istAiWorkforce === true
+      ? '3. Je Feature eine eigene features/<id>/feature.md mit den Pflichtabschnitten aus scripts/check-feature.mjs (## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies) und Status: ENTWURF.'
+      : '3. Je Feature eine eigene features/<id>/feature.md mit den Abschnitten ## Ziel, ## Nicht-Ziele, ## Akzeptanzkriterien, ## Dependencies und Status: ENTWURF.',
+    kontext.pruefbefehl !== undefined && kontext.pruefbefehl.length > 0
+      ? `${anzeigePruefbefehl(kontext.pruefbefehl)} muss danach grün sein.`
+      : 'Kein Prüfbefehl konfiguriert — die Änderungen werden nicht automatisch geprüft.',
   ].join('\n')
 
   return { titel, auftragstext }
 }
 
 export type {
+  AuftragKontext,
   BestehendeIds,
   CoachAlternative,
   CoachArt,
