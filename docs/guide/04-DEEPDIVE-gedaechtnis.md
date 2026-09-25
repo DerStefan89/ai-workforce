@@ -132,13 +132,17 @@ würde Ehrlichkeit bestrafen und Einträge erzeugen statt Reibung zu messen.
 Die Datei trägt aus demselben Grund keinen `Stand dieser Fassung:`-Marker
 — sie ist ein Anhänge-Protokoll, kein Dokument mit festem Stand.
 
-### `state/freigabe-commit.md` (entfällt seit Befund B6)
-Trug bis Befund B6 den zweiten Schlüssel des Commit-Guards — eine vom
-Menschen im eigenen Editor angelegte Einmal-Freigabe pro Git-Vorgang. Die
-Pflicht wurde ersatzlos entfernt (siehe `state/gates.md`,
-Kalibrierungs-Log); die Datei wird nicht mehr erzeugt oder gelesen.
-`.claude/hooks/commit-guard.cjs` blockiert seitdem ausschließlich
-Bash-Zugriff auf die geteilte `.claude/settings.json`.
+### `state/freigabe-commit.md` — zweiter Schlüssel für Claude-Commits
+Der zweite Schlüssel des Commit-Guards: eine vom Menschen im eigenen
+Editor angelegte Einmal-Freigabe (`Freigegeben: <ISO-Zeitstempel>`). Mit
+Befund B6 zeitweise entfernt, seit Vertrag 5 (PR #12, 28.08.2026)
+wiederhergestellt. `.claude/hooks/commit-guard.cjs` prüft und verbraucht
+sie bei `git commit`/`git push` AUS EINER CLAUDE-SITZUNG — 10-Minuten-
+Fenster, ein Schlüssel je Vorgang (also je einmal vor Commit und vor
+Push). Git-Befehle, die der Mensch selbst im Terminal ausführt, prüft sie
+nicht; `.githooks/pre-push` prüft dort nur die Divergenz zu `origin/main`.
+Deshalb bei manuellen Commits KEINE Freigabedatei schreiben — sie bliebe
+unverbraucht als gültiger Schlüssel liegen (F-736).
 
 ### `state/tasks/` — Handoff-Verträge
 **Was das ist:** Ein Auftrag, so aufgeschrieben, dass eine Sitzung ohne
@@ -184,6 +188,13 @@ Vier Abschnitte, aus der Vorlage:
 Diese Dateien werden **nicht** ins Repo eingecheckt (außer der Vorlage) —
 sie sind Notizzettel, keine Dokumentation. Grenze: 10 000 Zeichen, weil
 der Ladeweg dort gedeckelt ist.
+
+### `kontrollzustand/` sichern
+Der Kontrollzustand ist getrackt, wird aber nur durch bewusstes Sichern
+Teil der Git-Historie (F-733). **Wann:** nach jedem Reallauf, mindestens
+wöchentlich. **Wie:** Leitstand beenden, `git checkout main; git pull`,
+`npm run zustand:sichern` ausführen und danach die ausgegebenen Befehle
+nacheinander ausführen (Freigabe, Commit, Push, PR, Merge). Das Skript stagt nur, es committet nie.
 
 ---
 
