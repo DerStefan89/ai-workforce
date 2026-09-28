@@ -443,7 +443,7 @@ import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
-import { loeseRessourcenAuf } from '../src/ressourcen/index.ts'
+import { baueMcpAufruf, loeseRessourcenAuf } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
@@ -2022,34 +2022,6 @@ export function filtereExistierendeAnfragen(anfragen, repoWurzel) {
 }
 
 /**
- * Löst einen geprüften Startauftrag zu fertigen AusfuehrungsEingaben auf
- * (F15 WS-2a) — verhaltensgleich aus dem POST /api/laeufe-Handler
- * extrahiert, wo dieser Block seit F11 WS-2 inline stand. Zwei Schritte,
- * unverändert in dieser Reihenfolge: (1) Werkzeugsatz über seinen Namen aus
- * der Startvorlage auflösen (F11 WS-2 AK4/AK5, nie über eine freie Liste),
- * (2) jede benannte Evidenzdatei selbst lesen — Pfadsicherheit VOR dem
- * Lesen, fehlende Datei → Ablehnung, nie leerer Inhalt (F11 WS-2 AK6).
- *
- * Warum überhaupt extrahiert: WS-2b startet Schritt n+1 eines Workflows und
- * braucht dieselben AusfuehrungsEingaben. Ein zweiter, eigener Weg dorthin
- * wäre eine zweite Fassung der AK6-Pfadprüfung — und die zweite Fassung ist
- * die, die beim nächsten Eingriff vergessen wird.
- *
- * KEINE HTTP-Kenntnis (kein res, kein sendeJson): die Funktion liefert einen
- * Ablehnungsgrund zurück, der Handler übersetzt ihn weiterhin selbst in
- * seine 400er — Muster der pruefe*-Funktionen oben. Ebenso wenig prüft sie
- * D13, laufIdBelegt oder die Existenz des Auftrags: diese drei stehen in
- * einer bewusst begründeten Reihenfolge im Handler und bleiben dort.
- * @param eingabenRoh - der eingaben-Teil aus pruefeStartauftrag
- * @param werkzeugsatzName - Name des Werkzeugsatzes aus dem Startauftrag
- * @param auftragstext - Text aus dem bereits geladenen Auftragsartefakt
- * @param vorlage - die geladene Startvorlage
- * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Pfadsicherheit)
- * @param optionen - { leseAusfuehrungsVorbedingung } — Testeinspritzung (Muster starter/schreiber
- *   in diesem Repo); ohne den Wert liest leseAusfuehrungsVorbedingungRealGit echt gegen repoWurzel
- * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
- */
-/**
  * Impure Wiring-Funktion für E-F39-1=B (löst F-643): liest .git/HEAD und führt
  * `git --no-optional-locks status --porcelain` real gegen repoWurzel aus, reicht beide Rohtexte
  * an die reine Prüfung (pruefeAusfuehrungsVorbedingung, src/ausfuehrung-vorbedingung/index.ts)
@@ -2077,6 +2049,55 @@ function leseAusfuehrungsVorbedingungRealGit(repoWurzel) {
   return pruefeAusfuehrungsVorbedingung(headInhalt, statusRoh)
 }
 
+/**
+ * F36 WS-2: einzige Regel, welcher Lauf Katalog-Fähigkeiten bekommt — 'ausfuehrung' mit
+ * schreibendem Werkzeugsatz; heute nur freigegebene lokale MCPs (loeseAusfuehrungsEingabenAuf,
+ * optionen.mcpEintraege). 'ausfuehrung' mit 'lesend' bleibt außen vor: ein lokaler MCP (z. B.
+ * Playwright) schreibt Dateien, das widerspräche der Art.
+ *
+ * 'Skill'/'Agent' kommen bewusst NICHT hinzu (Spike WS-2s S6, state/spike-f36-ws2s.md): im
+ * -p-Lauf brauchen beide keine --allowedTools-Freigabe — steht der Name in --tools, ist JEDER
+ * geladene Skill/Agent aufrufbar, Einzelregeln 'Skill(<id>)'/'Agent(<name>)' begrenzen nichts.
+ * Das öffnete die ungeprüften Nutzer-/Plugin-Skills (F-770) und eingebaute Agents; AK4 verlangt
+ * aber „ohne Freigabe fehlt es“. Offen, bis F-770 gelöst ist.
+ * @param rolle - Rollenname des Laufs
+ * @param art - 'art' des aufgelösten Werkzeugsatzes (undefined, wenn unbekannt)
+ * @returns true, wenn der Lauf freigegebene lokale MCPs bekommen darf
+ */
+export function erhaeltKatalogFaehigkeiten(rolle, art) {
+  return rolle === 'ausfuehrung' && art === 'schreibend'
+}
+
+/**
+ * Löst einen geprüften Startauftrag zu fertigen AusfuehrungsEingaben auf
+ * (F15 WS-2a) — verhaltensgleich aus dem POST /api/laeufe-Handler
+ * extrahiert, wo dieser Block seit F11 WS-2 inline stand. Zwei Schritte,
+ * unverändert in dieser Reihenfolge: (1) Werkzeugsatz über seinen Namen aus
+ * der Startvorlage auflösen (F11 WS-2 AK4/AK5, nie über eine freie Liste),
+ * (2) jede benannte Evidenzdatei selbst lesen — Pfadsicherheit VOR dem
+ * Lesen, fehlende Datei → Ablehnung, nie leerer Inhalt (F11 WS-2 AK6).
+ *
+ * Warum überhaupt extrahiert: WS-2b startet Schritt n+1 eines Workflows und
+ * braucht dieselben AusfuehrungsEingaben. Ein zweiter, eigener Weg dorthin
+ * wäre eine zweite Fassung der AK6-Pfadprüfung — und die zweite Fassung ist
+ * die, die beim nächsten Eingriff vergessen wird.
+ *
+ * KEINE HTTP-Kenntnis (kein res, kein sendeJson): die Funktion liefert einen
+ * Ablehnungsgrund zurück, der Handler übersetzt ihn weiterhin selbst in
+ * seine 400er — Muster der pruefe*-Funktionen oben. Ebenso wenig prüft sie
+ * D13, laufIdBelegt oder die Existenz des Auftrags: diese drei stehen in
+ * einer bewusst begründeten Reihenfolge im Handler und bleiben dort.
+ * @param eingabenRoh - der eingaben-Teil aus pruefeStartauftrag
+ * @param werkzeugsatzName - Name des Werkzeugsatzes aus dem Startauftrag
+ * @param auftragstext - Text aus dem bereits geladenen Auftragsartefakt
+ * @param vorlage - die geladene Startvorlage
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel (AK6-Pfadsicherheit)
+ * @param optionen - { leseAusfuehrungsVorbedingung, mcpEintraege } — leseAusfuehrungsVorbedingung ist Testeinspritzung (Muster starter/schreiber
+ *   in diesem Repo); ohne den Wert liest leseAusfuehrungsVorbedingungRealGit echt gegen repoWurzel.
+ *   mcpEintraege (F36 WS-2): aufgelöste, freigegebene lokale MCP-Katalogeinträge, nur für
+ *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueMcpAufruf); Default leer
+ * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
+ */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
   // Worker-Vorgabe (F16 WS-3a, AK11): fehlt das Feld, ist es 'claude-code'.
   // Dieselbe Lesart wie in der Laufakte (AK4) und im Result Evaluator (AK8) —
@@ -2241,6 +2262,28 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     }
   }
 
+  // F36 WS-2 (erhaeltKatalogFaehigkeiten): optional freigegebene lokale MCPs über
+  // optionen.mcpEintraege (baueMcpAufruf, fail-closed nach E-F36-4; in WS-2 immer leer, WS-3
+  // befüllt ihn) — deren Einzelnamen dedupliziert als neue Liste (die Startvorlage bleibt
+  // unverändert). Kein 'Skill'/'Agent' (Spike WS-2s S6, siehe erhaeltKatalogFaehigkeiten). Jede andere Rolle/Art: erlaubte_werkzeuge und
+  // aufrufEingaben bitgenau wie bisher, mcpEintraege wird ignoriert. mcpConfig wird nur bei
+  // übergebenen Einträgen gesetzt — sonst greift baueAufrufs Default '{"mcpServers":{}}' wie heute.
+  let erlaubteWerkzeuge = werkzeugsatz.erlaubte_werkzeuge
+  let mcpZusatz = {}
+  // Übergabepunkt WS-3: beide echten Aufrufer (loeseSchrittEingabenAuf, POST /api/laeufe)
+  // reichen optionen.mcpEintraege heute nicht durch — WS-3 setzt ihn aus der Empfehlung.
+  const mcpEintraege = optionen.mcpEintraege ?? []
+  if (erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) && mcpEintraege.length > 0) {
+    let mcpAufruf
+    try {
+      mcpAufruf = baueMcpAufruf(mcpEintraege)
+    } catch (fehler) {
+      return { ok: false, grund: `MCP-Freigabe abgelehnt: ${fehler.message}` }
+    }
+    erlaubteWerkzeuge = [...new Set([...erlaubteWerkzeuge, ...mcpAufruf.zusatzWerkzeuge])]
+    mcpZusatz = { mcpConfig: mcpAufruf.mcpConfig }
+  }
+
   const anfragenMitInhalt = []
   for (const anfrage of eingabenRoh.anfragen) {
     const pfadErgebnis = loeseEvidenzPfadAuf(anfrage.pfad, repoWurzel)
@@ -2266,7 +2309,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       rolle: eingabenRoh.rolle,
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
-      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: werkzeugsatz.erlaubte_werkzeuge } },
+      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
       werkzeugStartziel,
       werkzeugVersionDeklariert,
       berechtigungskontext,

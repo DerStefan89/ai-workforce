@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.34 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.35 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -66,6 +66,8 @@ v1.31 → v1.32: **§13.6 Zielsatz und Bestehensbedingung M5/V1 nachgetragen, E-
 v1.32 → v1.33: **§13.6 um E-F36-2/3/4 ergänzt, §9.1 Nachtrag E-F36-4, F36 neu geschnitten** (Stefan, 28.09.2026, F36-Challenge nach F-774): F36 heißt jetzt „Capability Library wirksam machen" (Durchstich Katalog → Freigabe → Lauf → Empfehlung → Beobachtung, `features/F36/feature.md`). E-F36-2 = A (V1 ohne Schritt-Empfehlung, Empfehlung deterministisch im Kern; erledigt F-738). E-F36-3 = A (Agents in V1 als Subagent-Empfehlung innerhalb der Ausführung, Katalog-Typ `agent`, erst nach dem Probelauf in den Werkzeugsatz). E-F36-4 = A (MCPs nur freigegeben mit `installation`, lokal ohne Schreibwirkung nach außen, nur im ZWINGEND-Schritt `ausfuehrung`, nur empfohlen und angezeigt; E-187 bleibt Default ERZWUNGEN, Ausnahme als eng benannter Nachtrag in §9.1).
 
 v1.33 → v1.34: **§13.6 um E-F36-5 und E-F36-6 ergänzt** (Stefan, 28.09.2026, F36 WS-1b): E-F36-5 = A (Recherche `docs/harness/kandidaten-2026-09-15.md` wird übernommen — Gruppe 1 Laufzeit-Fähigkeiten in den Katalog, `freigabe: OFFEN` mit `anwendbar_wenn`; Gruppe 2 Produkt-Bibliotheken in die Stack-Liste für den Architekten; Gruppe 3 Referenzen in den Design-Schnitt; vorab nichts installiert). E-F36-6 = A (die Workforce installiert nach Freigabe selbst, neuer F36 WS-5: nur von der Katalog-Adresse, nur in fester Version, erst in einen eigenen Ordner, dann ins Projekt-`.claude/`; Lizenz, Kosten und Wirkung vor dem Klick angezeigt). F36-Reihenfolge: WS-1b → WS-2 → WS-3 → WS-5 → Reallauf.
+
+v1.34 → v1.35: **§13.6 um E-F36-7 ergänzt** (Stefan, 28.09.2026, F36 WS-2s): E-F36-7 = A — playwright-mcp bleibt `wirkung: lokal`, nur mit `--allowed-origins` auf die Projekt-URL mit Port und `--output-dir` außerhalb des Projekts; bekannte Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright keine Sicherheitsgrenze (`state/spike-f36-ws2s.md` S5).
 
 ---
 
@@ -897,6 +899,17 @@ nur in fester Version (Commit bzw. Paketversion), zuerst in einen eigenen
 Ordner, danach ins Projekt-`.claude/`. Lizenz, Kosten und Wirkung werden
 vor dem Klick „Freigeben & installieren" angezeigt (Katalogfelder
 `lizenz`, `kosten`, `wirkung`).
+
+**E-F36-7 = A** *(Stefan, 28.09.2026, F36 WS-2s)* — playwright-mcp bleibt
+`wirkung: lokal`, aber nur mit zwei Startbedingungen: `--allowed-origins`
+auf die Projekt-URL MIT Port (semikolongetrennte Liste, z. B.
+`http://localhost:<port>;http://127.0.0.1:<port>` — ohne Port sperrt das
+Flag auch den lokalen Server, Spike S5a) und `--output-dir` außerhalb des
+Projekts (sonst landet `.playwright-mcp/` im Arbeitsbaum, S5b). Bekannte
+Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut
+Playwright ausdrücklich keine Sicherheitsgrenze. Beleg:
+`state/spike-f36-ws2s.md` S5. Die Adresse jedes `browser_navigate` wird
+ab F36 WS-5 in der Beobachtung festgehalten.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

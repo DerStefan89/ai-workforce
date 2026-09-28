@@ -44,6 +44,14 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   - in einen eigenen Ordner, danach ins Projekt-`.claude/`;
   - Lizenz, Kosten und Wirkung werden vor dem Klick „Freigeben &
     installieren" angezeigt (Katalogfelder `lizenz`, `kosten`, `wirkung`).
+- **E-F36-7 = A** (Stefan, 28.09.2026, Spike WS-2s S5): playwright-mcp
+  bleibt `wirkung: lokal`, nur mit diesen Startbedingungen:
+  - `--allowed-origins` auf die Projekt-URL MIT Port (Semikolon-Liste,
+    z. B. `http://localhost:<port>;http://127.0.0.1:<port>`);
+  - `--output-dir` außerhalb des Projekts.
+  Bekannte Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist
+  laut Playwright keine Sicherheitsgrenze
+  (`docs/projekt/zielfassung.md` §13.6).
 
 ## Nicht-Ziele
 - **Schritt-Empfehlung** (Katalog schlägt einen zusätzlichen Workflow-
@@ -105,13 +113,44 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   die Anzeige vor „Freigeben & installieren". Dazu F-781 (Vormerken-
   Auftragstext) und F-782 (`check-f24-capabilities` zählt nicht mehr fest).
   Nur Daten, Doku, Schema, kein Laufzeit-Code.
-- **WS-2 — Laufzeit.** Der Werkzeugsatz der Ausführung wird aus dem
+- **WS-2 — Laufzeit.** (Ursprünglicher Schnitt; gebaut ist nur der
+  MCP-Weg, siehe „Gebauter Zuschnitt“ unten.) Der Werkzeugsatz der Ausführung wird aus dem
   Katalog ergänzt (`Skill`, `Agent`, freigegebene `mcp__<server>__<name>`);
   freigegebene Skills/Agents werden ins Projekt-`.claude/` gelegt;
   freigegebene lokale MCPs gezielt in `mcpConfig` (nur `ausfuehrung`,
   nur wenn empfohlen und angezeigt, E-F36-4). Ausführungs-Instruktion
   verlangt Subagenten im Vordergrund (WS-0: sonst geht der Bericht im
   `-p`-Lauf verloren).
+  - **Gebauter Zuschnitt (28.09.2026, nach Spike WS-2s S6, Variante 3b):**
+    `Skill`/`Agent` kommen NICHT in den Werkzeugsatz der Ausführung
+    (`--tools` wie vor WS-2). S6 hat gemessen: beide brauchen im `-p`-Lauf
+    keine `--allowedTools`-Freigabe — steht der Name in `--tools`, ist jeder
+    geladene Skill/Agent aufrufbar; Einzelregeln `Skill(<id>)`/
+    `Agent(<name>)` begrenzen nichts. Das öffnete die ungeprüften Nutzer-/
+    Plugin-Skills (F-770) und eingebaute Agents wie `statusline-setup`;
+    AK4 („ohne Freigabe fehlt es“) bleibt im Wortlaut (Challenger-
+    Entscheidung). `--disallowedTools Skill(<id>)`/`Agent(<name>)` sperrt
+    dagegen gezielt (S6d), setzt aber eine vollständige Sperrliste voraus.
+    Gebaut ist nur der MCP-Weg: Regel `erhaeltKatalogFaehigkeiten`
+    (`ausfuehrung` + `schreibend`), `baueMcpAufruf` fail-closed,
+    `mcpEintraege` in WS-2 leer (WS-3 befüllt ihn). Alle anderen
+    Rollen/Arten bleiben bitgenau unverändert. Gate:
+    `scripts/check-f36-ws2-laufzeit.mjs`. Skill/Agent in der Ausführung
+    bleiben blockiert, bis F-770 gelöst ist (blockiert den F36-Reallauf).
+    Wenn `Agent` später aufgenommen wird, gehört der Satz „Subagenten nur im
+    Vordergrund mit `run_in_background: false`“ in den Auftragstext jedes
+    Startwegs dazu (Workflow und `POST /api/laeufe`; WS-0 P2) — in WS-2 schon
+    einmal gebaut und mit 3b wieder entfernt.
+    Übergabepunkt WS-3: `optionen.mcpEintraege` von
+    `loeseAusfuehrungsEingabenAuf` aus der Empfehlung setzen, in beiden
+    Aufrufern (`loeseSchrittEingabenAuf`, `POST /api/laeufe`).
+  - **Ort für externe Skills/Agents = B** (Spike WS-2s S1–S4, festgehalten
+    28.09.2026, Umsetzung in WS-5): Workforce-Ordner, je Eintrag ein
+    `--add-dir <cap>/<id>` plus Schreibsperre
+    `--disallowedTools Write(C:/…/<id>/**),Edit(C:/…/<id>/**)` (die Form
+    `//C:/…` greift nicht, S4c). Kein `--agents`: der Subagent hat den
+    eingebetteten Prompt als Injektion verweigert (S3). AK6 (Ablage ins
+    Projekt-`.claude/`) wird in WS-5 an Ort B angepasst.
 - **WS-3 — Empfehlung.** Deterministische Auswertung von `anwendbar_wenn`
   im Kern (E-F36-2), Anzeige am ZWINGEND-Start der Ausführung, eine Zeile
   im Auftrag. Zwei Listen: „Wird genutzt" (freigegeben und installiert) und
@@ -126,11 +165,16 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   Prüfung je `unterart` fail-closed (F-786): skill — `SKILL.md` mit
   Frontmatter; agent — `.md` mit Frontmatter; mcp — Serverstart mit den
   freigegebenen Einzelnamen.
-  - **playwright-mcp** (Entscheidung Challenger, 28.09.2026): `wirkung`
-    bleibt `lokal`. Freigabe nur mit einem Start, der `--allowed-origins`
-    auf `http://localhost` und `http://127.0.0.1` begrenzt; WS-5 belegt
-    das mit einem Rot-Fall (fremde Origin wird verweigert). Hält die
-    Begrenzung nicht, wird `wirkung` `extern_schreibend`.
+  - **playwright-mcp** (E-F36-7 = A, 28.09.2026): `wirkung` bleibt
+    `lokal`. Start nur mit `--allowed-origins` auf die Projekt-URL MIT Port
+    (z. B. `http://localhost:<port>;http://127.0.0.1:<port>` — ohne Port
+    sperrt das Flag auch den lokalen Server, Spike WS-2s S5a) und
+    `--output-dir` außerhalb des Projekts; WS-5 belegt das mit einem
+    Rot-Fall (fremde Origin wird verweigert, S5c). Bekannte Grenze:
+    Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright
+    keine Sicherheitsgrenze.
+  - **Adresse jedes `browser_navigate`** in der Beobachtung festhalten
+    (heute erfasst WS-4 nur den Werkzeugnamen; E-F36-7).
   - **open-code-review**: `unterart` `skill` ist vermutet; WS-5 prüft
     fail-closed auf `SKILL.md`.
 - **Reallauf.** Ein nicht installierter Eintrag wird empfohlen,
@@ -160,6 +204,9 @@ gebaut. Jeder Workstream wird vor dem Bau präzisiert (eigene Challenge).
   zeigt `Skill` in `init.tools`; ohne Freigabe fehlt es. Prüfweg:
   Gate mit gestubbtem Starter prüft die Tokens; ein Reallauf belegt die
   init-Zeile.
+  Stand WS-2 (28.09.2026): nur der Rotfall ist belegt (kein `Skill`/`Agent`
+  ohne Freigabe, `scripts/check-f36-ws2-laufzeit.mjs` (a)/(d)); der
+  Grünfall ist blockiert durch F-770 (Spike WS-2s S6).
 - AK5 (WS-2) Ein freigegebener lokaler MCP erscheint nur im
   `ausfuehrung`-Schritt in `mcpConfig`, nur mit seinen freigegebenen
   Einzelnamen in `--allowedTools`; jede andere Rolle behält
@@ -167,6 +214,10 @@ gebaut. Jeder Workstream wird vor dem Bau präzisiert (eigene Challenge).
 - AK6 (WS-2) Freigegebene Skills/Agents liegen nach der Vorbereitung im
   Projekt-`.claude/`; nicht freigegebene nicht. Prüfweg: Gate gegen ein
   Wegwerf-Projekt.
+  Stand WS-2 (28.09.2026): nach WS-5 verschoben und an Ort B angepasst
+  (Workforce-Ordner per `--add-dir`, Spike WS-2s) — schreibende Läufe
+  verlangen einen sauberen Arbeitsbaum, beim Laufstart wird nichts ins
+  Projekt kopiert.
 - AK7 (WS-3) Die Empfehlung ist deterministisch (gleicher Auftrag +
   Katalog → gleiche Liste) und erscheint am ZWINGEND-Start sowie als
   Zeile im Auftrag. Prüfweg: Unit-Test + Gate am HTTP-Rundlauf.
