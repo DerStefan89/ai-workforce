@@ -53,6 +53,10 @@ export interface Ressource {
   beschreibung?: string
   unterart?: ExternUnterart
   wirkung?: Wirkung
+  /** F36 WS-1b: nur typ 'extern' — Anzeige vor „Freigeben & installieren“ (E-F36-6). */
+  lizenz?: string
+  /** F36 WS-1b: nur typ 'extern' — Anzeige vor „Freigeben & installieren“ (E-F36-6). */
+  kosten?: string
   installation?: Installation
   anwendbar_wenn?: AnwendbarWenn
   capabilities: string[]

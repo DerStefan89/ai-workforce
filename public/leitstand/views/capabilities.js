@@ -32,6 +32,7 @@
 import { holeAbdeckung, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
+import { ableiteRessourcenId, baueVormerkenAuftragstext } from '../vormerken-auftrag.js'
 import { abonniereDetailAuffrischer } from '../zustand.js'
 
 /** Rollen, bereits alphabetisch aus der zuletzt geladenen Abdeckung — befüllt das Rollen-Select, ohne einen dritten Endpunkt zu brauchen. */
@@ -179,40 +180,6 @@ function baueScoutAuftragstext(rolle, capabilities) {
   ].join('\n\n')
 }
 
-/** Leitet eine ressourcen.json-taugliche id aus einem Kandidatennamen ab (Schema-Pattern ^[a-z0-9][a-z0-9-]*$). @param name - kandidat.name @returns kleingeschriebene, bindestrich-getrennte id, nie leer */
-function ableiteRessourcenId(name) {
-  const roh = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return roh.length > 0 ? roh : 'kandidat'
-}
-
-/**
- * Baut den Auftragstext des Vormerken-Auftrags (AK12) — weist die ausführende Rolle an, GENAU
- * EINEN neuen Eintrag zu ressourcen.json hinzuzufügen. freigabe:'OFFEN' steht als PFLICHTFELD im
- * Text (schemas/ressourcen.schema.json Regel R2 erzwingt es ohnehin für typ 'extern', hier
- * zusätzlich für typ 'skill' ausdrücklich verlangt — ein Vormerken ist nie zugleich eine
- * Freigabe). Kein neuer Endpunkt, keine neue Schreiblogik (F27/feature.md AK12) — der Auftrag
- * durchläuft denselben Weg wie jeder andere (POST /api/auftraege → POST .../routen →
- * ZWINGEND-Freigabe am ausfuehrung-Schritt, Muster views/workboard.js starteBearbeitung).
- * @param kandidat - ein Eintrag aus ergebnis.kandidaten
- * @param laufId - laufId des Scout-Laufs, aus dem der Kandidat stammt (Beleg)
- * @returns Auftragstext für POST /api/auftraege
- */
-function baueVormerkenAuftragstext(kandidat, laufId) {
-  const id = ableiteRessourcenId(kandidat.name)
-  const herkunftZeile =
-    kandidat.typ === 'skill'
-      ? `herkunft: { "art": "skill", "pfad": ".claude/skills/${id}" } (Zielpfad, sobald der Skill lokal vorliegt — Installation ist Nicht-Ziel dieses Auftrags)`
-      : `herkunft: { "art": "extern", "url": "${kandidat.quelle_url}" }`
-  return [
-    'Füge der Datei ressourcen.json (Repo-Wurzel) GENAU EINEN neuen Eintrag im ressourcen[]-Array hinzu. Keine weitere Änderung an dieser Datei, kein bestehender Eintrag wird verändert oder entfernt.',
-    `Neuer Eintrag:\n- id: "${id}"\n- typ: "${kandidat.typ}"\n- capabilities: ${JSON.stringify(kandidat.capabilities)}\n- freigabe: "OFFEN" (PFLICHT — Registrierung erzeugt keine Verfügbarkeit, schemas/ressourcen.schema.json Regel R2; eine spätere Freigabe entscheidet ein Mensch separat)\n- ${herkunftZeile}`,
-    `Beleg: Kandidat aus Scout-Lauf '${laufId}' (schemas/ergebnis-scout.schema.json).`,
-  ].join('\n\n')
-}
-
 /**
  * Verteidigung in der Tiefe (Code-Review-Befund): validiereErgebnisScout erzwingt bereits
  * '^https?://' für quelle_url (src/scout/index.ts) — das Rendern hier prüft trotzdem selbst
@@ -239,7 +206,7 @@ function kollisionsHinweis(kandidat) {
   return `<p class="fehler">Achtung: id "${escapeHtml(id)}" existiert bereits in ressourcen.json — ein Vormerken würde beim Schreiben real kollidieren.</p>`
 }
 
-/** Rendert die Vormerken-Zelle eines Kandidaten je nach vormerkenZustaende[index] — Button, Fortschritt, Fehler mit Wiederholen (reicht eine bereits angelegte auftragId erneut ein statt einen zweiten, verwaisten Auftrag anzulegen, Muster views/workboard.js wiederholeRouten), oder ein Link zur normalen Workflow-Freigabe (kein Duplikat der Kette aus views/workboard.js, siehe baueVormerkenAuftragstext-Kommentar). @param index - Position des Kandidaten @param kandidat - der Kandidat dieser Zeile (für den Kollisions-Vorab-Hinweis) */
+/** Rendert die Vormerken-Zelle eines Kandidaten je nach vormerkenZustaende[index] — Button, Fortschritt, Fehler mit Wiederholen (reicht eine bereits angelegte auftragId erneut ein statt einen zweiten, verwaisten Auftrag anzulegen, Muster views/workboard.js wiederholeRouten), oder ein Link zur normalen Workflow-Freigabe (kein Duplikat der Kette aus views/workboard.js, siehe baueVormerkenAuftragstext-Kommentar in ../vormerken-auftrag.js). @param index - Position des Kandidaten @param kandidat - der Kandidat dieser Zeile (für den Kollisions-Vorab-Hinweis) */
 function vormerkenZelle(index, kandidat) {
   const zustandKandidat = vormerkenZustaende.get(index)
   if (zustandKandidat === undefined) {
@@ -413,7 +380,7 @@ async function aktualisiereScoutZustand() {
 /**
  * Klick auf "Vormerken" (AK12) — legt den Vormerken-Auftrag an und routet ihn sofort (Muster
  * views/workboard.js starteBearbeitung), zeigt danach einen Link zur normalen Workflow-Freigabe
- * statt die Freigabe-Kette hier zu duplizieren (siehe baueVormerkenAuftragstext-Kommentar). Ein
+ * statt die Freigabe-Kette hier zu duplizieren (siehe baueVormerkenAuftragstext-Kommentar in ../vormerken-auftrag.js). Ein
  * "Erneut versuchen" NACH bereits angelegtem Auftrag (auftragId im vorherigen fehler-Zustand
  * gesetzt) reicht DENSELBEN Auftrag erneut zum Routen ein statt einen zweiten, verwaisten Auftrag
  * anzulegen (Code-Review-/QA-Befund, Muster views/workboard.js wiederholeRouten).

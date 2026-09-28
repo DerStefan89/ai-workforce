@@ -47,11 +47,13 @@ import { WERKZEUG_EINTRAG_MUSTER } from '../startvorlage/index.ts'
 import type { Anwendbarkeit, AnwendbarkeitsKontext, AufgelosteRessource, CapabilityGap, Ressource } from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
-const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'installation', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
+const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'lizenz', 'kosten', 'installation', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
 const RESSOURCEN_TYP = ['worker', 'skill', 'agent', 'extern']
 const FREIGABE = ['FREIGEGEBEN', 'OFFEN']
 const EXTERN_UNTERART = ['skill', 'agent', 'mcp']
 const WIRKUNG = ['lokal', 'extern_lesend', 'extern_schreibend']
+/** F36 WS-1b: optionale Anzeigefelder nur bei typ 'extern' (Lizenz/Kosten vor „Freigeben & installieren“, E-F36-6). */
+const ANZEIGE_FELDER = ['lizenz', 'kosten']
 const ANWENDBAR_WENN_FELDER = new Set(['task_typen_any', 'pfad_muster_any'])
 /** Zwilling von WORKER in src/workflow/index.ts. */
 const WORKER = ['claude-code', 'codex']
@@ -186,6 +188,7 @@ function pruefeRessourceForm(ressource: unknown, index: number, verstoesse: stri
 
 /**
  * F36 WS-1: unterart/wirkung/installation (nur typ 'extern') und R2 neu.
+ * F36 WS-1b: lizenz/kosten (nur typ 'extern', optional, nicht-leerer String).
  * R2 (E-M5-5, löst F-724): extern darf FREIGEGEBEN nur mit installation.
  * E-F36-4: unterart 'mcp' darf FREIGEGEBEN nur mit wirkung 'lokal'.
  */
@@ -194,7 +197,14 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
     if ('unterart' in ressource) verstoesse.push(`'${praefix}unterart' ist nur bei typ 'extern' zulässig`)
     if ('wirkung' in ressource) verstoesse.push(`'${praefix}wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
     if ('installation' in ressource) verstoesse.push(`'${praefix}installation' ist nur bei typ 'extern' zulässig`)
+    for (const feld of ANZEIGE_FELDER) {
+      if (feld in ressource) verstoesse.push(`'${praefix}${feld}' ist nur bei typ 'extern' zulässig`)
+    }
     return
+  }
+
+  for (const feld of ANZEIGE_FELDER) {
+    if (feld in ressource && !istNichtLeererString(ressource[feld])) verstoesse.push(`'${praefix}${feld}' muss ein nicht-leerer String sein`)
   }
 
   const unterart = ressource.unterart

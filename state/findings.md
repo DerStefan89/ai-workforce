@@ -10599,14 +10599,32 @@ Maßnahme: Messweg ohne Modellurteil — Hook-Testfall oder erzwungener Write-Au
 Status: offen.
 Feature/Run: F36 WS-1, 28.09.2026.
 
-**F-781** · `BUG` · P3 · offen
+**F-781** · `BUG` · P3 · **erledigt** (F36 WS-1b)
 Titel: Der Scout-Vormerken-Auftrag erzeugt einen `extern`-Eintrag ohne `unterart` (und ohne `wirkung` bei MCPs) — seit F36 WS-1 ungültig.
 Beschreibung: `baueVormerkenAuftragstext` weist die Ausführung an, einen Eintrag mit id, typ, capabilities, freigabe und herkunft anzulegen. Seit F36 WS-1 verlangt `validiereRessourcenDaten` für `typ: extern` zusätzlich `unterart` und bei `mcp` `wirkung`; name/beschreibung (R1) nennt der Text schon vorher nicht. Ein so angelegter Eintrag scheitert am Gate `check-f19-ressourcen`. Der Scout-Kandidat trägt heute nur `typ: skill | extern` ohne Unterart.
 Fundstelle: `public/leitstand/views/capabilities.js` (`baueVormerkenAuftragstext`); `src/scout/types.ts` (`ScoutKandidatTyp`).
 Auswirkung: Niedrig — das Gate fängt den Fehler vor dem Commit, der Vormerken-Weg braucht aber eine Handkorrektur.
 Maßnahme: Auftragstext um `name`, `beschreibung`, `unterart` (und bei MCP `wirkung`) ergänzen; ggf. `unterart` im Scout-Ergebnis. Außerhalb von WS-1 (kein Laufzeit-/UI-Code außer der Anzeige).
-Status: offen.
+Status: erledigt (F36 WS-1b, 28.09.2026) — `baueVormerkenAuftragstext` liegt jetzt als reines Modul in `public/leitstand/vormerken-auftrag.js` und nennt für `typ: extern` name, beschreibung, unterart und bei `mcp` wirkung (Test `public/leitstand/vormerken-auftrag.test.mjs`). `unterart` im Scout-Ergebnis bleibt ungeändert — die ausführende Rolle bestimmt sie aus der Quelle.
 Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-782** · `TECH_DEBT` · P3 · **erledigt** (F36 WS-1b)
+Titel: `check-f24-capabilities` zählte fest 26 Katalogeinträge.
+Beschreibung: Prüfung (1) verglich die Zahl der Library-Einträge mit der Konstanten 26. Jeder neue Katalogeintrag machte das Gate rot, ohne dass die Projektion falsch war — mit der Übernahme der Recherche (F36 WS-1b, 39 Einträge) real aufgetreten.
+Fundstelle: `scripts/check-f24-capabilities.mjs` Prüfung (1).
+Auswirkung: Niedrig — Fehlalarm bei jeder Katalogänderung.
+Maßnahme: Soll aus `ressourcen.json` ableiten (Anzahl und ids), fehlende ids benennen.
+Status: erledigt (F36 WS-1b, 28.09.2026).
+Feature/Run: F36 WS-1b, 28.09.2026.
+
+**F-783** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Ein vom Challenger zum Lesen eingebundener Worktree blockiert dessen Löschen.
+Beschreibung: Bindet der Challenger einen Worktree zum Lesen ein, schlägt das spätere Löschen des Worktrees fehl („von einem anderen Prozess verwendet").
+Fundstelle: Chat #84.
+Auswirkung: Niedrig — Aufräumen des Worktrees scheitert, Handarbeit nötig.
+Maßnahme: Worktrees nicht einbinden, sondern lesend aus dem Haupt-Checkout per `git diff main <commit>` prüfen; dafür committet der Mensch vorab auf den Feature-Branch.
+Status: offen.
+Feature/Run: Chat #84, 28.09.2026.
 
 **F-784** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: „nicht beobachtet“ in der Laufdetailansicht unterscheidet nicht zwischen alter Laufakte, Codex-Lauf und Abbruch vor der init-Zeile.
@@ -10625,3 +10643,12 @@ Auswirkung: Niedrig — rechte Spalten der Checkpoint-Kette nur eingeschränkt l
 Maßnahme: im Design-Schnitt (F-725).
 Status: offen.
 Feature/Run: F36 WS-4, 28.09.2026.
+
+**F-786** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: WS-5 muss je unterart fail-closed prüfen, bevor ein Katalogeintrag als installiert gilt.
+Beschreibung: WS-5 muss je unterart fail-closed prüfen (skill: `SKILL.md` mit Frontmatter; agent: `.md` mit Frontmatter; mcp: Serverstart mit freigegebenen Einzelnamen, playwright nur mit `--allowed-origins` localhost). Heute heißt `verfuegbar` für extern skill/agent nur „freigegeben und `installation.pfad` existiert“, für mcp „Serverstart nicht geprüft“; bei `open-code-review` ist die unterart zudem nur vermutet.
+Fundstelle: `src/ressourcen/index.ts` (`loeseRessourcenAuf`); `features/F36/feature.md` (WS-5, Bekannte Grenzen); `features/F36/katalog-uebernahme.md` (playwright-mcp, open-code-review).
+Auswirkung: Mittel — ohne die Prüfung kann ein falsch eingeordneter oder offen startender Eintrag als einsatzbereit gelten.
+Maßnahme: In WS-5 je unterart ein Rot-Fall; playwright-mcp mit Rot-Fall „fremde Origin wird verweigert“, sonst `wirkung: extern_schreibend`.
+Status: offen.
+Feature/Run: F36 WS-1b, 28.09.2026.

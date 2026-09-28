@@ -2,7 +2,7 @@
  * Datei: scripts/check-f24-capabilities.mjs
  *
  * Zweck: F24-Gate (Capabilities v1, WS-1, AK7). Prüft mechanisch, was
- * features/F24/feature.md AK7 nennt — AK1 (alle 26 Einträge — seit F36 WS-1 inkl. vier typ:agent —, plus der
+ * features/F24/feature.md AK7 nennt — AK1 (alle Einträge, plus der
  * "installiert, aber OFFEN"-Fall als eigener Rot-Fall: ein typ:'extern'-
  * Eintrag zeigt erkennbar "noch nicht freigegeben", nicht denselben Text
  * wie eine technisch nicht vorhandene Ressource), AK5 (ASSESSED bleibt eine
@@ -19,6 +19,11 @@
  * AK2-AK4 sind hier NICHT geprüft — features/F24/feature.md AK7 nennt sie
  * nicht (Coverage/Gap-Verlinkung/Rollen-Besetzung laufen über code-reviewer-/
  * QA-Pass und den dort dokumentierten realen Test).
+ *
+ * Prüfung (1) leitet ihr Soll seit F36 WS-1b aus ressourcen.json ab (F-782,
+ * vorher fest 26): Sie prüft, dass die Projektion verlustfrei ist, nicht den
+ * Umfang des Katalogs — ein versehentlich gelöschter Katalogeintrag fällt
+ * hier nicht auf.
  *
  * Wird aufgerufen von: npm run check.
  *
@@ -40,11 +45,14 @@ const rohDaten = JSON.parse(readFileSync('ressourcen.json', 'utf-8'))
 const aufgeloest = loeseRessourcenAuf(rohDaten.ressourcen, REPO_WURZEL, STARTVORLAGE_PFAD)
 const ansicht = projeziereLibrary(aufgeloest, STARTVORLAGE_PFAD)
 
-// ─── (1) AK1: alle 26 Einträge (F36 WS-1: +4 Agents) ──────────────────────────────────────────────
-if (ansicht.eintraege.length !== 26) {
-  befunde.push(`(1) GET /api/ressourcen liefert ${ansicht.eintraege.length} Einträge statt der erwarteten 26`)
+// ─── (1) AK1: alle Einträge aus ressourcen.json, keiner verloren oder erfunden (F-782: Soll abgeleitet statt fest) ─
+const erwarteteIds = rohDaten.ressourcen.map((r) => r.id)
+const gelieferteIds = new Set(ansicht.eintraege.map((e) => e.id))
+const fehlendeIds = erwarteteIds.filter((id) => !gelieferteIds.has(id))
+if (ansicht.eintraege.length !== erwarteteIds.length || fehlendeIds.length > 0) {
+  befunde.push(`(1) GET /api/ressourcen liefert ${ansicht.eintraege.length} Einträge statt der ${erwarteteIds.length} aus ressourcen.json${fehlendeIds.length > 0 ? ` — fehlend: ${fehlendeIds.join(', ')}` : ''}`)
 } else {
-  console.log('✓ (1) 26 Einträge.')
+  console.log(`✓ (1) ${erwarteteIds.length} Einträge (= ressourcen.json).`)
 }
 
 // ─── (2) AK1 Rot-Fall: "installiert, aber OFFEN" != technisch nicht vorhanden ──
