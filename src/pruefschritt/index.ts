@@ -3,10 +3,13 @@
  *
  * Zweck: Deterministischer Post-Build-Prüfschritt (F-652, state/findings.md
  * F-652, BUG P1). Löst den im Reallauf F39 WS-3b (Versuch 3c) beobachteten
- * Blocker: keine Rolle trägt einen Werkzeugsatz mit Bash/npm (ARCHITECTURE.md
- * §7 kennt keine Ausnahme dafür), eine Rolle kann `npm run check` also nicht
- * selbst ausführen — ohne diesen Fix blockiert jede Code-Ausführung, oder sie
- * meldet „fertig", ohne dass etwas verifiziert ist. Der KERN führt den in der
+ * Blocker: damals trug keine Rolle einen Werkzeugsatz mit Bash/npm, eine Rolle
+ * konnte `npm run check` also nicht selbst ausführen — ohne diesen Fix
+ * blockierte jede Code-Ausführung, oder sie meldete „fertig", ohne dass etwas
+ * verifiziert war. Seit E-F754 (docs/adr/ausfuehrung-bash-allowlist.md) trägt
+ * die Ausführung eine Bash-Allowlist für Paket- und Prüfbefehle und kann selbst
+ * prüfen; dieser Kern-Prüfschritt bleibt unverändert der verbindliche
+ * Nachweis, ein Selbstlauf der Rolle ersetzt ihn nicht. Der KERN führt den in der
  * Startvorlage konfigurierten `pruefbefehl` deshalb selbst aus, rein
  * ausführend (kein Ausführungswerkzeug-Prozess im Sinne von
  * src/invocation-policy/, dieses Modul startet nur ein deterministisches

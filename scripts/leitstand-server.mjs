@@ -465,6 +465,7 @@ import {
   baueStackEntscheidungsInstruktion,
   baueUmsetzungsInstruktion,
   istStackOffen,
+  leseEntschiedeneAdrs,
   pruefeProjektmodusScope,
   traegtAdrVerweisAufEntscheidung,
   validiereErgebnisArchitektur,
@@ -4314,8 +4315,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     let auftragstext = auftragVersion.daten.auftragstext
     // F42 WS-4 (löst F-712/F-714): aus dem 'architekt'-Zweig herausgehoben (unverändert dieselbe
     // Berechnung) — der 'ausfuehrung'-Zweig weiter unten braucht denselben Modus jetzt ebenfalls,
-    // um baueUmsetzungsInstruktion/baueStackEntscheidungsInstruktion projektmodus-bewusst
-    // aufzurufen.
+    // um baueUmsetzungsInstruktion projektmodus-bewusst aufzurufen (baueStackEntscheidungsInstruktion
+    // hängt seit F-753 modusunabhängig an).
     const modus = auftragVersion.daten.herkunft?.art === 'projekt_interview' ? 'projekt' : 'feature'
     if (schritt.rolle === 'architekt') {
       let capabilityAuszug = null
@@ -4331,14 +4332,16 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Default 'false' — STACK_OFFEN_HINWEIS erreichte den Architekten dann nie, obwohl
       // leseArchitekturErgebnisAusLaufakte (oben) bei offenem Stack bereits eine
       // 'kategorie: stack'-Entscheidung verlangt. repoWurzel (das PROJEKT), nicht installWurzel.
-      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, istStackOffen(repoWurzel))
+      // F-750: dazu die entschiedenen ADRs DESSELBEN Projekts als bindender Kontext.
+      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, istStackOffen(repoWurzel), leseEntschiedeneAdrs(repoWurzel))
     } else if (schritt.rolle === 'architecture-advisor') {
       // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
       // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
       // an die SPÄTERE 'ausfuehrung'-Rolle gerichtet, nicht an ihn. Real beobachtet (Lauf
       // 4b3ebc42-91df-422b-9dd4-b2fc02dc4151): ohne Rolleninstruktion plante der Advisor selbst
       // die Dokumentations-Schreibschritte und bat um Schreibzugriff, statt zu bewerten.
-      auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext)
+      // F-750: entschiedene ADRs des PROJEKTS (repoWurzel, nicht installWurzel) als bindender Kontext.
+      auftragstext = baueArchitectureAdvisorAuftragstext(auftragVersion.daten.auftragstext, leseEntschiedeneAdrs(repoWurzel))
     }
 
     // F39 WS-3a, Punkt 2 (Ergebnis-Umsetzung): ein 'ausfuehrung'-Schritt, der ein
@@ -4356,20 +4359,20 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (architektEingabeTreffer !== undefined) {
       auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion(modus).join('\n')}`
 
-      // F42 WS-4 (löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2): NUR im
-      // Projektmodus und NUR, wenn der referenzierte Architektur-Lauf tatsächlich eine
-      // 'kategorie: stack'-Entscheidung trägt UND dafür bereits eine menschliche Antwort erfasst
-      // ist (findeWorkflowEntscheidungFuerSchritt, Muster Regel 1c oben) — sonst bliebe die
-      // Instruktion eine Zusage ohne Deckung (kein Entscheidungsartefakt zum Verweisen).
-      if (modus === 'projekt') {
-        const architektSchrittId = architektEingabeTreffer[1]
-        const architektSchrittFuerStack = workflowDaten.schritte.find((s) => s.schritt_id === architektSchrittId)
-        const architektLaufakteFuerStack = architektSchrittFuerStack?.lauf_id != null ? ladeArtefaktVersion(`laufakte-${architektSchrittFuerStack.lauf_id}`, undefined, ladeOptionen) : null
-        const architekturErgebnisFuerStack = architektLaufakteFuerStack !== null ? leseArchitekturErgebnisAusLaufakte(architektLaufakteFuerStack.daten, false) : null
-        const traegtStackEntscheidung = architekturErgebnisFuerStack !== null && architekturErgebnisFuerStack.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
-        if (traegtStackEntscheidung && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittId) !== null) {
-          auftragstext = `${auftragstext}\n\n${baueStackEntscheidungsInstruktion(workflowEntscheidungArtefaktId(workflowId)).join('\n')}`
-        }
+      // F42 WS-4 (löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2): NUR,
+      // wenn der referenzierte Architektur-Lauf tatsächlich eine 'kategorie: stack'-Entscheidung
+      // trägt UND dafür bereits eine menschliche Antwort erfasst ist (findeWorkflowEntscheidungFuerSchritt,
+      // Muster Regel 1c oben) — sonst bliebe die Instruktion eine Zusage ohne Deckung (kein
+      // Entscheidungsartefakt zum Verweisen). F-753 (F35-Reallauf): in JEDEM Modus, nicht mehr nur
+      // im Projektmodus — Regel 1h im Nachlauf prüft dasselbe Vorbedingungspaar modusunabhängig,
+      // im Feature-Modus verlangte der Halt sonst etwas, das nie beauftragt wurde.
+      const architektSchrittId = architektEingabeTreffer[1]
+      const architektSchrittFuerStack = workflowDaten.schritte.find((s) => s.schritt_id === architektSchrittId)
+      const architektLaufakteFuerStack = architektSchrittFuerStack?.lauf_id != null ? ladeArtefaktVersion(`laufakte-${architektSchrittFuerStack.lauf_id}`, undefined, ladeOptionen) : null
+      const architekturErgebnisFuerStack = architektLaufakteFuerStack !== null ? leseArchitekturErgebnisAusLaufakte(architektLaufakteFuerStack.daten, false) : null
+      const traegtStackEntscheidung = architekturErgebnisFuerStack !== null && architekturErgebnisFuerStack.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
+      if (traegtStackEntscheidung && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittId) !== null) {
+        auftragstext = `${auftragstext}\n\n${baueStackEntscheidungsInstruktion(workflowEntscheidungArtefaktId(workflowId)).join('\n')}`
       }
     }
 
@@ -4382,7 +4385,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     // für 'ausfuehrung', nur wenn die Startvorlage tatsächlich einen pruefbefehl trägt (sonst
     // bliebe die Instruktion eine Zusage ohne Deckung).
     if (schritt.rolle === 'ausfuehrung' && vorlage.pruefbefehl !== undefined) {
-      auftragstext = `${auftragstext}\n\nHinweis: Tests und Checks führt das System nach deinem Lauf deterministisch selbst aus. Melde nicht "Blockiert", nur weil du sie nicht selbst ausführen kannst. Echte Blockaden meldest du weiterhin.`
+      auftragstext = `${auftragstext}\n\nHinweis: Tests und Checks führt das System nach deinem Lauf deterministisch selbst aus. Kannst du sie mit deinen Werkzeugen selbst ausführen, tu es trotzdem vor dem Abschluss. Melde nicht "Blockiert", nur weil du sie nicht selbst ausführen kannst. Echte Blockaden meldest du weiterhin.`
     }
     // F-689 (BUG P1, real beobachtet: Lauf 40045f94-6692-44a8-9514-766c5c5f295e endete mit einer
     // Rückfrage, aber ohne '- [x] Blockiert', und der Review startete automatisch): IMMER für

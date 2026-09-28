@@ -41,8 +41,10 @@ export interface StartvorlageV0Daten {
   /**
    * F-652 (state/findings.md F-652, BUG P1): argv eines deterministischen Prüfbefehls (z. B.
    * `npm run check`), den der KERN nach jedem real erfolgreich beendeten Lauf mit schreibendem
-   * Werkzeugsatz selbst ausführt (src/pruefschritt/index.ts) — kein Werkzeugsatz trägt Bash/npm,
-   * eine Rolle kann den Befehl also nicht selbst starten. [0] ist ein absoluter Programmpfad, kein
+   * Werkzeugsatz selbst ausführt (src/pruefschritt/index.ts). Seit E-F754 trägt der Werkzeugsatz
+   * 'schreibend' eine Bash-Allowlist für Paket- und Prüfbefehle (docs/adr/ausfuehrung-bash-allowlist.md),
+   * die Ausführung kann den Prüfbefehl also selbst starten — verbindlicher Nachweis bleibt trotzdem
+   * dieser Kern-Prüfschritt. [0] ist ein absoluter Programmpfad, kein
    * Shell-String (F-057, geprüft von pruefeStartziel wie jedes andere Startziel). Optional und
    * additiv: eine Startvorlage ohne dieses Feld bleibt bitgenau unverändert (kein Prüfschritt, kein
    * 'pruefergebnis-<laufId>'-Artefakt).

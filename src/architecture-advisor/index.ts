@@ -16,9 +16,15 @@
  * dem Prosa-Ergebnis — Regel 1d (src/workflow/index.ts) hält den Workflow an, wenn sie fehlt,
  * statt ein Ergebnis ohne jedes Urteil als ERFOLGREICH durchzuwinken.
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs,
+ * F-750 (F35-Reallauf gegen haushaltsbuch2): der Advisor las docs/adr/ nicht und ließ eine
+ * Empfehlung gegen das entschiedene ADR 0003 durch — baueArchitectureAdvisorAuftragstext nimmt
+ * deshalb den bindenden ADR-Block (baueAdrBlock, src/architekt/index.ts) entgegen.
+ *
+ * Wird aufgerufen von: scripts/leitstand-server.mjs, scripts/check-fixpaket-f35-reallauf.mjs,
  * src/architecture-advisor/architecture-advisor.test.ts.
  */
+
+import { baueAdrBlock } from '../architekt/index.ts'
 
 const ERLAUBTE_URTEILE = ['BEREIT', 'BEREIT_NACH_KORREKTUR', 'BLOCKIERT']
 
@@ -28,10 +34,12 @@ const ERLAUBTE_URTEILE = ['BEREIT', 'BEREIT_NACH_KORREKTUR', 'BLOCKIERT']
  * 'ergebnis-@'-Eingabe im Kontext, loeseSchrittEingabenAuf — diese Funktion fügt ihn nicht
  * zusätzlich ein). Reine Funktion, kein I/O.
  * @param planungstext - der vom Menschen/Vorgängerschritt gelieferte Planungsauftrag
+ * @param entschiedeneAdrs - F-750: Ergebnis von leseEntschiedeneAdrs(repoWurzel) des Zielprojekts;
+ *   Default '' lässt den Text bitgenau unverändert
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext den
  *   einzigen Eingabekanal für den Lauf bildet
  */
-export function baueArchitectureAdvisorAuftragstext(planungstext: string): string {
+export function baueArchitectureAdvisorAuftragstext(planungstext: string, entschiedeneAdrs = ''): string {
   const zeilen = [
     "Du bist als Rolle 'architecture-advisor' verantwortlich für die Prüfung eines Architekturentwurfs VOR dem Bau — NICHT für dessen Umsetzung.",
     'Du hast ausschließlich lesende Werkzeuge (Glob/Grep/Read). Das ist Absicht, keine fehlende Berechtigung: du schreibst und planst nichts, du bewertest. Fordere keinen Schreibzugriff an.',
@@ -39,6 +47,7 @@ export function baueArchitectureAdvisorAuftragstext(planungstext: string): strin
     "Der Abschnitt 'Auftrag an den Baudurchgang' im untenstehenden Planungsauftrag ist NICHT an dich gerichtet — er beschreibt, was der SPÄTERE Ausführungsschritt schreiben wird, nicht was du selbst tun sollst.",
     `Deine Antwort ist Prosa (kein JSON), MUSS aber eine eigene Zeile enthalten, die exakt mit 'Urteil: ' beginnt, gefolgt von genau einem von ${ERLAUBTE_URTEILE.join(' / ')}. Ohne diese Zeile gilt dein Ergebnis als kein Urteil — der Workflow hält dann automatisch an, statt fortzusetzen.`,
   ]
+  zeilen.push(...baueAdrBlock(entschiedeneAdrs))
   zeilen.push('', 'Planungsauftrag:', planungstext)
   return zeilen.join('\n')
 }
