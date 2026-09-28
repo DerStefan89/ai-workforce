@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.32 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.33 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -62,6 +62,8 @@ v1.29 → v1.30: **§13.6 um E-F41-3 = B und E-PH-1 = B ergänzt** (Stefan, 25.0
 v1.30 → v1.31: **F42 abgeschlossen, E-F42-WS4 = A und E-M5-15 ergänzt** (Stefan, 25.09.2026, Entscheidung "A" — Abnahme mit bekannten Grenzen, nach unabhängigem Review-Pass `features/F42/review-pass.md`, FREIGEGEBEN MIT HINWEISEN): Projekt-Harness ist mit allen vier Workstreams abgenommen, bekannte Grenzen F-721/F-718 und offene Folge-Findings F-715/F-713/F-709/F-710/F-716/F-717/F-719/F-720 dokumentiert. E-F42-WS4 = A: der in WS-4 bereits gebaute Weg (Auftrags-Scope-Vorrang vor dem Architekturentwurf über eine deterministische Pfad-Allowlist, Regel 1g; verpflichtender CLAUDE.md-/ADR-Nachzug nach einer Stack-Entscheidung, Regel 1h) ist die formal entschiedene Option, keine inhaltliche Änderung. E-M5-15: nach F42 lautet die M5-Reihenfolge — die verbleibenden wichtigen M5-Features (F35, F37, F38, F36 parallel) → Design → F30 Dogfooding → RC. F30 Dogfooding baut „Opportunity Scanner" — ein eigenständiges Produkt, vollständig in der Workforce geplant und gebaut, das anschließend von der Workforce selbst aufgerufen/angezeigt wird.
 
 v1.31 → v1.32: **§13.6 Zielsatz und Bestehensbedingung M5/V1 nachgetragen, E-M5-16 und E-M5-17 ergänzt, M5-Reihenfolge aktualisiert** (Stefan, 25.09.2026): der bislang offene Punkt „RC: Zielsatz/Bestehensbedingung M5 und V1" ist mit einem Fakt-Nachtrag aufgelöst — Zielsatz M5 (= V1-RC) und eine sechspunktige Bestehensbedingung liegen jetzt vor. E-M5-16 (löst F-534 Teil 2 für den verbleibenden Feature-Schnitt): vor dem Design werden F35 schlank, F36 (parallel), ein Fixpaket (F-689, F-713, F-718, F-683) und das Kern-Feature „Projekt aufrufen/anzeigen" (E-F30-3) gebaut; F37 und F38 gehen in ein V1-Backlog nach F30, gebaut bei erfülltem, in der Akte als messbare Bedingung geführtem Auslöser — die Workforce meldet einen erfüllten Auslöser über Jarvis als Empfehlung, der Bau bleibt eine Entscheidung des Menschen. E-M5-17: die in E-M5-1 nach F30 übertragenen Posten (Kollege-Durchlauf, Import-Wizard F25 WS-2b, Health-Projektion F25 WS-3) gehen ebenfalls mit Auslöser ins V1-Backlog, nicht still gestrichen, kein Teil der V1-Bestehensbedingung. `state/findings.md` F-713 auf P1 hochgestuft (blockiert F30, siehe Bestehensbedingung Punkt 5).
+
+v1.32 → v1.33: **§13.6 um E-F36-2/3/4 ergänzt, §9.1 Nachtrag E-F36-4, F36 neu geschnitten** (Stefan, 28.09.2026, F36-Challenge nach F-774): F36 heißt jetzt „Capability Library wirksam machen" (Durchstich Katalog → Freigabe → Lauf → Empfehlung → Beobachtung, `features/F36/feature.md`). E-F36-2 = A (V1 ohne Schritt-Empfehlung, Empfehlung deterministisch im Kern; erledigt F-738). E-F36-3 = A (Agents in V1 als Subagent-Empfehlung innerhalb der Ausführung, Katalog-Typ `agent`, erst nach dem Probelauf in den Werkzeugsatz). E-F36-4 = A (MCPs nur freigegeben mit `installation`, lokal ohne Schreibwirkung nach außen, nur im ZWINGEND-Schritt `ausfuehrung`, nur empfohlen und angezeigt; E-187 bleibt Default ERZWUNGEN, Ausnahme als eng benannter Nachtrag in §9.1).
 
 ---
 
@@ -232,6 +234,8 @@ Was `DEKLARIERT` ist, wird nicht „gesperrt" genannt.
 `[Fakt]` **Nachtrag 20.09.2026, Stefan (F31 WS-3b, MCP-Start):** Rolle `jarvis` begrenzt zusätzlich MCP-Werkzeuge im Ausführungslauf über `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` (`AufrufEingaben.mcpConfig`, ausschließlich vom Jarvis-Chat-Pfad gesetzt). Grund: real gemessen (`claude --output-format stream-json` Init-Nachricht im Repo-Ordner), dass trotz `--setting-sources ''` zwei Account-MCP-Server laden (`claude.ai Claude Docs`, `claude.ai Google Drive`) und acht `mcp__claude_ai_Claude_Docs__*`-Werkzeuge im Werkzeugsatz erscheinen, obwohl `--tools`/`--allowedTools` nur `Read,Grep,Glob` erlauben — exakt die in Zeile „MCP-Werkzeuge im Ausführungslauf" (`DEKLARIERT`, E-187) benannte Lücke. Schließt diese Lücke für die Rolle `jarvis` (Rot-/Grün-Fall real gemessen: `mcp_servers` im Init geht von zwei Einträgen auf `[]`, Werkzeugliste von elf auf drei Einträge zurück, `features/F31/latenzmessung.md` Abschnitt „WS-3b"). ~~**Kein Entscheid zu einer anderen Rolle** — die Zeile „MCP-Werkzeuge im Ausführungslauf" bleibt für jede andere Rolle unverändert `DEKLARIERT` (`state/findings.md` F-502).~~ **Überholt, siehe Nachtrag F31 WS-3c unten** — `jarvis` ist seit F31 WS-3c kein Sonderfall mehr, jede Rolle bekommt dieselbe Begrenzung als Standardwert.
 
 `[Fakt]` **Nachtrag 20.09.2026, Stefan (F31 WS-3c, MCP-Begrenzung für alle Rollen, löst F-502):** Der WS-3b-Nachtrag oben galt nur für `jarvis`. `baueAufruf` (`src/claude-code-gateway/index.ts`) hängt `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` jetzt an JEDEN Aufruf an — `AufrufEingaben.mcpConfig` überschreibt nur noch den Wert (Muster `settingSources`), wählt die Begrenzung nicht mehr an oder ab. Grund: dieselbe E-187-Lücke real für eine schreibende Rolle bestätigt (`ausfuehrung`, `Read,Grep,Glob,Write,Edit`, `--setting-sources project`) — Rot-Fall zeigt dieselben zwei Account-MCP-Server und acht zusätzliche `mcp__*`-Werkzeuge wie bei `jarvis`, Grün-Fall zeigt `mcp_servers: []` und die Werkzeugliste exakt auf die erlaubten fünf begrenzt. Gemessener Gewinn Wall-Clock-Median ≈2,49s (8,11s → 5,62s, n=5, ≈31%), Tokenersparnis ≈3.074 Tokens Median je Lauf (≈14,9%) — vollständiger Nachweis in `features/F31/nachweis-mcp-begrenzung.md`. Zeile „MCP-Werkzeuge im Ausführungslauf" oben damit auf `ERZWUNGEN` hochgestuft, `state/findings.md` F-502 erledigt.
+
+`[Fakt]` **Nachtrag 28.09.2026, Stefan (E-F36-4, eng benannte Ausnahme zu Zeile „MCP-Werkzeuge im Ausführungslauf"):** Die Zeile bleibt `ERZWUNGEN`, `--strict-mcp-config --mcp-config '{"mcpServers":{}}'` bleibt Default jedes Aufrufs. Einzige Ausnahme: im ZWINGEND-Schritt `ausfuehrung` darf `mcpConfig` genau die MCP-Server tragen, die (a) im Katalog vom Menschen freigegeben sind und `installation` tragen, (b) lokal laufen und keine Schreibwirkung nach außen haben, (c) für diesen Auftrag empfohlen sind und (d) beim Start angezeigt wurden. Freigegeben werden nur die einzeln benannten Werkzeuge des Servers über `--allowedTools`, keine Wildcard. Real gemessen (F36 WS-0, `state/spike-f36-werkzeugsatz.md` P3): `--tools` begrenzt MCP-Werkzeuge nicht, alle Werkzeuge eines geladenen Servers stehen im Angebotssatz — die Sperre des Aufrufs trägt allein `--allowedTools`. Jede andere Rolle bleibt bei `{"mcpServers":{}}`.
 
 ### 9.2 Freigabekette
 
@@ -666,7 +670,7 @@ vor F35 gezogen) · F41 Neues Projekt anlegen (F-523, E-M5-14, direkt nach
 F39) · F42 Projekt-Harness (E-F41-3, direkt nach F41, vor F35 —
 **abgeschlossen**, 25.09.2026, E-F42-WS4 = A) · F35 Challenge-Flow
 (Challenge-Schema, `qa`-Schritt, ADJUST-Automatik nach E-M5-4,
-Befund-Projektion) · F36 Capability Library Expansion (nach E-M5-5,
+Befund-Projektion) · F36 Capability Library wirksam machen (neu geschnitten 28.09.2026, E-F36-2/3/4; nach E-M5-5,
 parallel ab F34) · F37 Besetzungs-Erklärung & Override (V1-Backlog nach F30, gebaut bei
 erfülltem Auslöser, E-M5-16) · F38 Projektwissen-Index, wegwerfbar
 (V1-Backlog nach F30, gebaut bei erfülltem Auslöser, E-M5-16) · F40 Jarvis-Latenz
@@ -853,6 +857,26 @@ E-M5-15.
 Health-Projektion F25 WS-3) gehen ausdrücklich nach V1 ins Backlog,
 jeweils mit Auslöser. Sie sind nicht still gestrichen und kein Teil der
 V1-Bestehensbedingung.
+
+**E-F36-2 = A** *(Stefan, 28.09.2026, F36-Neuschnitt)* — V1 ohne
+Schritt-Empfehlung: der Katalog empfiehlt keine zusätzlichen
+Workflow-Schritte, nur Fähigkeiten innerhalb der Ausführung. Die
+Empfehlung wird deterministisch im Kern ausgewertet (`anwendbar_wenn`),
+nicht von einem Modell. Schritt-Empfehlung geht mit Auslöser („Rolle mit
+Output-Schema und Urteil") ins V1-Backlog. Erledigt F-738 (keine
+`planaenderung` nötig).
+
+**E-F36-3 = A** *(Stefan, 28.09.2026)* — Agents sind in V1 eine
+Subagent-Empfehlung innerhalb der Ausführung (Katalog-Typ `agent`),
+keine eigene Rolle. `Agent` kommt erst nach dem Probelauf (F36 WS-0,
+`state/spike-f36-werkzeugsatz.md`) in den Werkzeugsatz.
+
+**E-F36-4 = A** *(Stefan, 28.09.2026)* — MCP-Server sind in Läufen nur
+zulässig, wenn alles davon gilt: vom Menschen freigegeben, mit
+`installation`; in V1 nur lokal laufende MCPs ohne Schreibwirkung nach
+außen; nur im ZWINGEND-Schritt `ausfuehrung`; nur wenn empfohlen und
+beim Start angezeigt. E-187 bleibt als Default ERZWUNGEN; die Ausnahme
+steht als eng benannter Nachtrag in §9.1.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

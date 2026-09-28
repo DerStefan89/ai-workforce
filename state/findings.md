@@ -10091,7 +10091,7 @@ Beschreibung: `docs/projekt/zielfassung.md` §13.6 E-M5-5 lockert Schema-Regel R
 Fundstelle: `schemas/ressourcen.schema.json`; `docs/projekt/zielfassung.md` §13.6 E-M5-5; `docs/STATUS.md` (F29 `ABGESCHLOSSEN`).
 Auswirkung: Niedrig — kein aktueller Schaden, aber eine ungeklärte Diskrepanz zwischen einer dokumentierten Entscheidung und dem Schema-Ist-Stand.
 Maßnahme: Klären, wie F29 WS-0 tatsächlich aufgelöst wurde (Schema-Ergänzung an anderer Stelle, andere Lösung, oder Entscheidung nie umgesetzt); Ergebnis in F36 nachziehen.
-Status: offen.
+Status: offen (bleibt offen bis F36 WS-1, `features/F36/feature.md`).
 Feature/Run: M5-Schnitt, 25.09.2026.
 
 **F-725** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -10211,13 +10211,13 @@ Maßnahme: Skriptausgabe mit Warnhinweis, Merge und Pull als eigener Schritt (of
 Status: offen (Regeln erledigt, Skriptausgabe offen).
 Feature/Run: erste Sicherung, 25.09.2026.
 
-**F-738** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-738** · `PROCESS_IMPROVEMENT` · P2 · **erledigt** (E-F36-2)
 Titel: E-F36-1 verweist für die Bestätigung auf „bestehende planaenderung“; die kann aber nur Freigaben abschwächen, keine Schritte hinzufügen. Zusätzlich hat die Rolle qa kein Output-Schema.
 Beschreibung: Die Entscheidungsart planaenderung ist nur für das Abschwächen einer Freigabepflicht vorgesehen (`FREIGABEPFLICHT_ABGESCHWAECHT`), nicht für das Einfügen eines Schritts. Die Rolle qa trägt kein Output-Schema, gegen das ihr Ergebnis validiert werden könnte.
 Fundstelle: `src/entscheidung/types.ts` (FREIGABEPFLICHT_ABGESCHWAECHT); `src/rollen/index.ts` (Rolle qa).
 Auswirkung: Mittel — E-F36-1 ist in dieser Form nicht umsetzbar, ohne dass F36 stillschweigend eine neue Entscheidungsart oder ein neues Schema erfindet.
 Maßnahme: in der F36-Akte und der zielfassung präzisieren (E-F36-2).
-Status: offen.
+Status: erledigt (Stefan, 28.09.2026, E-F36-2 = A): V1 ohne Schritt-Empfehlung, die Empfehlung wird deterministisch im Kern ausgewertet — es wird kein Schritt eingefügt, also ist keine `planaenderung` nötig; das fehlende qa-Output-Schema ist Auslöser des Backlog-Postens „Schritt-Empfehlung".
 Feature/Run: F36-Challenge-Vorbereitung, 25.09.2026.
 
 **F-739** · `PROCESS_IMPROVEMENT` · P2 · **behoben** (docs/harness-gedaechtnis)
@@ -10489,3 +10489,66 @@ Auswirkung: Mittel — jede Sichtung wird zur manuellen JSON-Operation; die Begr
 Maßnahme: Knopf „Sichtung bestätigt – weiter" mit Pflichtbegründung als Entscheidungsartefakt — Design-Schnitt.
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-769** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Projekt-Skills und -Agents sind in realen haushaltsbuch2-Läufen geladen, aber nicht aufrufbar — `Skill` und `Agent` fehlen in `--tools`.
+Beschreibung: Die init-Zeilen der haushaltsbuch2-Läufe vom 28.09.2026 zeigen `tools` = `Bash, Edit, GetTask, Glob, Grep, Read, Write`; `agents` enthält `qa`, `code-reviewer`, `architecture-advisor`, `skills` die Projekt-Skills. 0 Skill-/Agent-Aufrufe in 5 Läufen. F36 WS-0 bestätigt: mit `Skill` bzw. `Agent` im Werkzeugsatz sind beide aufrufbar (`state/spike-f36-werkzeugsatz.md` P1/P2), ohne nicht (P4).
+Fundstelle: `kontrollzustand-roh/` (init-Zeilen haushaltsbuch2, 28.09.2026); `startvorlagen/*.json` `werkzeugsaetze.schreibend`; `src/claude-code-gateway/index.ts` `baueAufruf`.
+Auswirkung: Mittel — die im Projekt-Harness mitgelieferten Skills und Prüfrollen wirken im Lauf nicht.
+Maßnahme: F36 WS-0 (erledigt) / WS-2.
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-770** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Rund 20 Nutzer- bzw. Plugin-Skills erscheinen trotz `--setting-sources project` in der init-Zeile — ohne Katalog und ohne Freigabe.
+Beschreibung: Im Spike F36 WS-0 trug `init.skills` 28 Einträge: 7 Projekt-Skills plus 21 Nutzer-/Plugin-/eingebaute Skills (u. a. `deep-research`, `design`, `dataviz`, `schedule`, `loop`, `claude-api`). Verwandt mit F-755.
+Fundstelle: `state/spike-f36-werkzeugsatz.md` („Je Probe“); init-Zeilen realer Läufe in `kontrollzustand-roh/`.
+Auswirkung: Niedrig heute (ohne `Skill` im Werkzeugsatz nicht aufrufbar), steigt mit F36 WS-2.
+Maßnahme: Mit F36 WS-4 sichtbar machen, Begrenzung später entscheiden.
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-771** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `git diff` über die Challenger-Bridge lief in ein Timeout (>120 s).
+Beschreibung: Bei der F36-Challenge brach ein `git diff` über die Bridge nach über 120 s ab.
+Fundstelle: Challenger-Bridge, F36-Challenge 28.09.2026.
+Auswirkung: Niedrig — Challenge verzögert, kein Datenverlust.
+Maßnahme: In der Bridge kein Worktree-diff; nur `git log`/`git show`/`git ls-tree` oder Dateien direkt lesen.
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-772** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Terminalbefehle für den Menschen kamen in bash-Syntax statt PowerShell.
+Beschreibung: Stefan arbeitet unter Windows in PowerShell; Befehlsblöcke für ihn waren teils in bash-Syntax (`&&`, `export`, `/dev/null`).
+Fundstelle: Übergaben/Antworten an Stefan, F36-Challenge 28.09.2026.
+Auswirkung: Niedrig — Reibung und Fehlversuche beim Abtippen.
+Maßnahme: Terminalbefehle für den Menschen in PowerShell-Syntax (Windows) formulieren.
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-773** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: CLAUDE.md/ARCHITECTURE.md im Projekt-Skelett verweisen auf Skills, die die Ausführung nicht aufrufen kann.
+Beschreibung: `vorlagen/projekt-skelett/CLAUDE.md` und `ARCHITECTURE.md` nennen Skills (z. B. `git-flow`, `advisor-pass`) und Prüfrollen als Arbeitsweise; ohne `Skill`/`Agent` im Werkzeugsatz ist das für die Ausführung toter Text (F-769).
+Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md`, `vorlagen/projekt-skelett/ARCHITECTURE.md`.
+Auswirkung: Mittel — die Ausführung liest Anweisungen, die sie nicht befolgen kann.
+Maßnahme: Erledigt sich mit F36 WS-2; bis dahin bekannt.
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-774** · `HARNESS_IMPROVEMENT` · P1 · offen
+Titel: Die Capability Library hat keinen Weg in die Läufe.
+Beschreibung: Werkzeugsatz ohne `Skill`/`Agent` (F-769), MCP-Sperre als Default (E-187, `--strict-mcp-config`), nur Projekteinstellungen (`--setting-sources project`). Katalog (F19), Scout (F27) und Freigabe enden im Register `state/ressourcen.json`; kein freigegebener Eintrag erreicht je einen Lauf.
+Fundstelle: `src/claude-code-gateway/index.ts` `baueAufruf`; `state/ressourcen.json`; `features/F36/feature.md`.
+Auswirkung: Hoch — der Capability-Pfad der M5-Planung ist ohne Wirkung.
+Maßnahme: F36 neu geschnitten: „Capability Library wirksam machen“ (E-F36-2/3/4, `docs/projekt/zielfassung.md` §13.6).
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-775** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Challenges zu F19/F27/F36 haben nie geprüft, ob Katalogeinträge in einem echten Lauf ankommen.
+Beschreibung: Katalog, Scout und Freigabe wurden je für sich abgenommen; die init-Zeile eines echten Laufs (tools, agents, skills, mcp_servers) war in keiner Challenge Prüfgegenstand — so blieb F-774 bis zum F35-Reallauf unentdeckt.
+Fundstelle: `features/F19/feature.md`, `features/F27/feature.md`, F36-Challenge.
+Auswirkung: Mittel — Wirkungslücke über drei Features unbemerkt.
+Maßnahme: Jede Capability-Challenge prüft die init-Zeile eines echten Laufs (tools, agents, skills, mcp_servers).
+Status: offen.
+Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
