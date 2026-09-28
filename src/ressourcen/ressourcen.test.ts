@@ -269,6 +269,29 @@ test('validiereRessourcenDaten: anwendbar_wenn — mindestens ein Schlüssel, ke
   assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: 'immer' })), "'ressourcen[3].anwendbar_wenn' ist kein Objekt"))
 })
 
+// ─── F36 WS-1b: lizenz/kosten (nur extern, optional, Anzeige vor „Freigeben & installieren“) ─
+
+test('validiereRessourcenDaten: lizenz/kosten — optional bei extern, als nicht-leerer String gültig', () => {
+  assert.deepStrictEqual(verstoesseMit(externSkill({ lizenz: 'MIT (GitHub-Metadaten)', kosten: 'Skill kostenlos; Modellquota' })), [])
+  assert.deepStrictEqual(verstoesseMit(externMcp({ lizenz: 'Apache-2.0' })), [])
+  assert.deepStrictEqual(verstoesseMit(externMcp({ kosten: 'Lokal; kostenlos' })), [])
+})
+
+test('validiereRessourcenDaten: lizenz/kosten — nur bei typ extern zulässig', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ lizenz: 'MIT' })), "'ressourcen[3].lizenz' ist nur bei typ 'extern' zulässig"))
+  const daten = gueltigeDaten()
+  ;(daten.ressourcen as Eintrag[])[0].lizenz = 'MIT'
+  ;(daten.ressourcen as Eintrag[])[1].kosten = 'kostenlos'
+  const verstoesse = validiereRessourcenDaten(daten)
+  assert.ok(hat(verstoesse, "'ressourcen[0].lizenz' ist nur bei typ 'extern' zulässig"))
+  assert.ok(hat(verstoesse, "'ressourcen[1].kosten' ist nur bei typ 'extern' zulässig"))
+})
+
+test('validiereRessourcenDaten: lizenz/kosten — leer oder kein String wird abgelehnt', () => {
+  assert.ok(hat(verstoesseMit(externSkill({ lizenz: '' })), "'ressourcen[3].lizenz' muss ein nicht-leerer String sein"))
+  assert.ok(hat(verstoesseMit(externSkill({ kosten: 0 })), "'ressourcen[3].kosten' muss ein nicht-leerer String sein"))
+})
+
 // ─── loeseRessourcenAuf ─────────────────────────────────────────────────────
 
 function neuesTestRepo(): string {

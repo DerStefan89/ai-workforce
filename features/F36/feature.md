@@ -25,7 +25,25 @@ Glob, Grep, Read, Write` — `Skill` und `Agent` fehlen; die Projekt-Agents
 `qa`, `code-reviewer`, `architecture-advisor` sind geladen, aber nicht
 aufrufbar; `mcp_servers` = `[]` (E-187). 0 Skill-/Agent-Aufrufe in 5
 Läufen (F-769, F-774). Grundlage: `docs/projekt/zielfassung.md` §13.6
-E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
+E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
+
+## Entscheidungen
+- **E-F36-5 = A** (Stefan, 28.09.2026): Die Recherche
+  `docs/harness/kandidaten-2026-09-15.md` wird übernommen.
+  - Gruppe 1 = Laufzeit-Fähigkeiten (Skill/Agent/MCP) → Katalog
+    `ressourcen.json`, `freigabe: OFFEN`, mit `anwendbar_wenn`.
+  - Gruppe 2 = Produkt-Bibliotheken → Stack-Liste für den Architekten
+    (`docs/harness/stack-kandidaten.md`).
+  - Gruppe 3 = Referenzen → Design-Schnitt (F-725/F-776).
+  - Vorab wird NICHTS installiert. Freigabe und Installation erfolgen
+    erst, wenn ein Eintrag empfohlen wird.
+- **E-F36-6 = A** (Stefan, 28.09.2026): Die Workforce installiert nach
+  Freigabe selbst (WS-5):
+  - nur von der Katalog-Adresse (`herkunft.url`),
+  - nur in fester Version (Commit bzw. Paketversion),
+  - in einen eigenen Ordner, danach ins Projekt-`.claude/`;
+  - Lizenz, Kosten und Wirkung werden vor dem Klick „Freigeben &
+    installieren" angezeigt (Katalogfelder `lizenz`, `kosten`, `wirkung`).
 
 ## Nicht-Ziele
 - **Schritt-Empfehlung** (Katalog schlägt einen zusätzlichen Workflow-
@@ -76,6 +94,17 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
   Agents `qa`, `code-reviewer`, `architecture-advisor`, `scout` als
   `typ: agent`; extern-Einträge mit `unterart`/`wirkung`, weiter `OFFEN`
   ohne `installation` (setzt der Mensch). Kein Laufzeit-Code.
+- **WS-1b — Übernahme der Recherche (E-F36-5).** Die 38 Kandidaten mit
+  Urteil „Aufnehmen" (21) und „Pilot" (17) aus
+  `docs/harness/kandidaten-2026-09-15.md` sind eingeordnet:
+  `features/F36/katalog-uebernahme.md` (Gruppe, Ziel, Grund/Unsicherheit
+  je Kandidat). Gruppe 1 als `extern`-Einträge in `ressourcen.json`
+  (`OFFEN`, ohne `installation`, `anwendbar_wenn` als Vorschlag), Gruppe 2
+  in `docs/harness/stack-kandidaten.md` (noch nicht verdrahtet, das ist
+  WS-3). Schema-Ergänzung `lizenz`/`kosten` (nur `extern`, optional) für
+  die Anzeige vor „Freigeben & installieren". Dazu F-781 (Vormerken-
+  Auftragstext) und F-782 (`check-f24-capabilities` zählt nicht mehr fest).
+  Nur Daten, Doku, Schema, kein Laufzeit-Code.
 - **WS-2 — Laufzeit.** Der Werkzeugsatz der Ausführung wird aus dem
   Katalog ergänzt (`Skill`, `Agent`, freigegebene `mcp__<server>__<name>`);
   freigegebene Skills/Agents werden ins Projekt-`.claude/` gelegt;
@@ -85,12 +114,35 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
   `-p`-Lauf verloren).
 - **WS-3 — Empfehlung.** Deterministische Auswertung von `anwendbar_wenn`
   im Kern (E-F36-2), Anzeige am ZWINGEND-Start der Ausführung, eine Zeile
-  im Auftrag.
+  im Auftrag. Zwei Listen: „Wird genutzt" (freigegeben und installiert) und
+  „Passt, nicht installiert" (anwendbar, aber `OFFEN` oder ohne
+  `installation`); dazu die Stack-Liste (`docs/harness/stack-kandidaten.md`)
+  für den Architekten.
+- **WS-5 — Installation (E-F36-6).** „Freigeben & installieren" aus der
+  Liste „Passt, nicht installiert": Anzeige von Lizenz, Kosten und Wirkung
+  vor dem Klick; Installation nur von `herkunft.url`, nur in fester Version
+  (Commit bzw. Paketversion), erst in einen eigenen Ordner, dann ins
+  Projekt-`.claude/`; setzt `installation` und `freigabe: FREIGEGEBEN`.
+  Prüfung je `unterart` fail-closed (F-786): skill — `SKILL.md` mit
+  Frontmatter; agent — `.md` mit Frontmatter; mcp — Serverstart mit den
+  freigegebenen Einzelnamen.
+  - **playwright-mcp** (Entscheidung Challenger, 28.09.2026): `wirkung`
+    bleibt `lokal`. Freigabe nur mit einem Start, der `--allowed-origins`
+    auf `http://localhost` und `http://127.0.0.1` begrenzt; WS-5 belegt
+    das mit einem Rot-Fall (fremde Origin wird verweigert). Hält die
+    Begrenzung nicht, wird `wirkung` `extern_schreibend`.
+  - **open-code-review**: `unterart` `skill` ist vermutet; WS-5 prüft
+    fail-closed auf `SKILL.md`.
+- **Reallauf.** Ein nicht installierter Eintrag wird empfohlen,
+  freigegeben, installiert und im selben Durchstich genutzt (init-Zeile und
+  Aufruf beobachtet, WS-4).
 - **WS-4 — Beobachtung (F-730).** Läuft parallel auf
   `feat/f36-ws4-beobachtung`: init-Zeile (tools, agents, skills,
   mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
-WS-1 bis WS-3 werden nach WS-0 präzisiert (eigene Challenge vor dem Bau).
+Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
+Empfehlung → WS-5 Installation → Reallauf. WS-0, WS-1 und WS-4 sind
+gebaut. Jeder Workstream wird vor dem Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
 - AK1 (WS-0) `state/spike-f36-werkzeugsatz.md` hält je Probe P1–P4
@@ -121,6 +173,19 @@ WS-1 bis WS-3 werden nach WS-0 präzisiert (eigene Challenge vor dem Bau).
 - AK8 (WS-4) Je Lauf sind init-Zeile und Skill-/Agent-/MCP-Aufrufe in der
   Laufansicht sichtbar. Prüfweg: Gate + Render-Nachweis.
 - AK9 `npm run check` ist grün.
+- AK10 (WS-1b) Jeder der 38 Kandidaten („Aufnehmen"/„Pilot") steht in
+  `features/F36/katalog-uebernahme.md` mit Gruppe und Ziel; jeder Eintrag
+  der Gruppe 1 steht in `ressourcen.json` als `extern`, `OFFEN`, ohne
+  `installation`; `lizenz`/`kosten` sind nur bei `extern` zulässig.
+  Prüfweg: Unit-Tests `validiereRessourcenDaten` (Grün/Rot), Gates
+  `check-f19-ressourcen` und `check-f24-capabilities` grün.
+- AK11 (WS-5) Eine Installation nutzt nur `herkunft.url` und eine feste
+  Version, legt erst in einen eigenen Ordner, dann ins Projekt-`.claude/`,
+  und zeigt vorher Lizenz, Kosten und Wirkung. Prüfweg: wird vor dem Bau
+  präzisiert.
+- AK12 (Reallauf) Ein zuvor nicht installierter Eintrag wird empfohlen,
+  freigegeben, installiert und genutzt. Prüfweg: Laufakte mit init-Zeile
+  und Aufruf (WS-4).
 
 ## Dependencies
 - F19 (Ressourcen-Katalog) — `schemas/ressourcen.schema.json`,
@@ -141,9 +206,19 @@ WS-1 bis WS-3 werden nach WS-0 präzisiert (eigene Challenge vor dem Bau).
   unbelegt; Maßnahme Hook-Testfall oder erzwungener Aufruf).
 - `--tools` begrenzt MCP-Werkzeuge nicht; alle Werkzeuge eines Servers
   stehen im Angebotssatz, nur `--allowedTools` sperrt den Aufruf (WS-0 P3).
-- Der Scout-Vormerken-Auftrag (`baueVormerkenAuftragstext`) nennt
-  `unterart`/`wirkung` noch nicht; ein so vorgemerkter `extern`-Eintrag
-  scheitert seit WS-1 am Gate (F-781).
+- Der Scout-Vormerken-Auftrag (`public/leitstand/vormerken-auftrag.js`)
+  nennt seit WS-1b name, beschreibung, unterart und bei mcp wirkung
+  (F-781 erledigt). Der Scout-Kandidat selbst trägt weder `beschreibung`
+  noch `unterart`/`wirkung` — die ausführende Rolle bestimmt sie aus der
+  Quelle; ob sie das richtig tut, prüft erst das Gate `check-f19-ressourcen`.
+- WS-1b-Einordnung (Entscheidung Challenger, 28.09.2026): Headroom,
+  Doberman, Airship, Ontology Atlas, OrcaReplay und Shannon stehen in der
+  eigenen Rubrik „Harness-Kandidaten (nicht im Katalog)" — Werkzeuge für
+  die Workforce selbst bzw. Sonderwerkzeuge. `graft` ist aus dem Katalog
+  entfernt (Identität unklar, Auswahlfilter: zurückstellen)
+  (`features/F36/katalog-uebernahme.md`).
+- `unterart` ist bei `open-code-review` (skill) nicht aus der Recherche
+  belegt, sondern vermutet; WS-5 prüft fail-closed auf `SKILL.md`.
 - `verfuegbar` für extern skill/agent heißt in WS-1 nur „freigegeben und
   `installation.pfad` existiert“ — ob dort eine `SKILL.md` bzw. eine
   Agent-Datei mit Frontmatter liegt, prüft der Katalog nicht. WS-2 (Ablage
