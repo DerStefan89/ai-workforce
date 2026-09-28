@@ -2,14 +2,19 @@
  * Datei: src/ressourcen/index.ts
  *
  * Zweck: Ressourcen-Modul (F19 WS-2, Meilenstein 3, docs/projekt/
- * zielfassung.md §13.4). Vier reine Verantwortlichkeiten:
+ * zielfassung.md §13.4). Reine Verantwortlichkeiten:
  * validiereRessourcenDaten prüft ein geparstes Objekt gegen
  * schemas/ressourcen.schema.json (Muster validiereErgebnisRouter,
- * D5 — handgeschrieben statt ajv, dieselbe Repo-Entscheidung) plus die drei
- * semantischen Regeln R1-R3, die das Schema allein nicht abbilden kann;
+ * D5 — handgeschrieben statt ajv, dieselbe Repo-Entscheidung) plus die
+ * semantischen Regeln R1-R4, die das Schema allein nicht abbilden kann;
  * loeseRessourcenAuf leitet aus einem Register-Eintrag und der laufenden
  * Umgebung ab, ob eine Ressource verfügbar ist; ressourcenFuerCapability und
- * pruefeAbdeckung sind reine Lookups auf dem Ergebnis davon. Dieses Modul
+ * pruefeAbdeckung sind reine Lookups auf dem Ergebnis davon. Seit F36 WS-1
+ * zusätzlich: typ 'agent' (Frontmatter wie skill), extern.unterart/wirkung,
+ * installation (R4) mit R2 neu (E-M5-5: extern FREIGEGEBEN nur mit
+ * installation; E-F36-4: mcp nur mit wirkung 'lokal'), anwendbar_wenn, und
+ * zwei reine Funktionen pruefeAnwendbarkeit (Aufrufer ab WS-3) und
+ * fehltFuerEinsatz (einziger Aufrufer: src/capabilities-ansicht). Dieses Modul
  * ENTSCHEIDET nichts — keine automatische Worker- oder Modellwahl (E-M3-3
  * bleibt unberührt, docs/projekt/zielfassung.md §13.4): es prüft und meldet.
  *
@@ -30,25 +35,37 @@
  * (F346_AUSNAHMEN) statt der Verengung.
  *
  * Wird aufgerufen von: scripts/check-f19-ressourcen.mjs,
- * src/ressourcen/ressourcen.test.ts.
+ * src/ressourcen/ressourcen.test.ts, src/capabilities-ansicht/index.ts
+ * (fehltFuerEinsatz).
  */
 
 import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-import type { AufgelosteRessource, CapabilityGap, Ressource } from './types.ts'
+import { homedir } from 'node:os'
+import { join, posix, resolve } from 'node:path'
+import { TASK_TYPEN } from '../router/index.ts'
+import { WERKZEUG_EINTRAG_MUSTER } from '../startvorlage/index.ts'
+import type { Anwendbarkeit, AnwendbarkeitsKontext, AufgelosteRessource, CapabilityGap, Ressource } from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
-const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'capabilities', 'freigabe', 'herkunft'])
-const RESSOURCEN_TYP = ['worker', 'skill', 'extern']
+const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'installation', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
+const RESSOURCEN_TYP = ['worker', 'skill', 'agent', 'extern']
 const FREIGABE = ['FREIGEGEBEN', 'OFFEN']
+const EXTERN_UNTERART = ['skill', 'agent', 'mcp']
+const WIRKUNG = ['lokal', 'extern_lesend', 'extern_schreibend']
+const ANWENDBAR_WENN_FELDER = new Set(['task_typen_any', 'pfad_muster_any'])
 /** Zwilling von WORKER in src/workflow/index.ts. */
 const WORKER = ['claude-code', 'codex']
 /** herkunft.art -> der dazu passende typ (R3). */
-const HERKUNFT_ART_ZU_TYP: Record<string, string> = { startvorlage: 'worker', skill: 'skill', extern: 'extern' }
+const HERKUNFT_ART_ZU_TYP: Record<string, string> = { startvorlage: 'worker', skill: 'skill', agent: 'agent', extern: 'extern' }
 
 const ID_MUSTER = /^[a-z0-9][a-z0-9-]*$/
 const CAPABILITY_MUSTER = /^[A-Z][A-Z0-9_]*$/
 const URL_MUSTER = /^https?:\/\//
+const AGENT_PFAD_MUSTER = /^\.claude\/agents\/[A-Za-z0-9][A-Za-z0-9_-]*\.md$/
+/** R4: installation.pfad ist absolut (POSIX, Laufwerk, UNC) oder beginnt mit '~/' bzw. '~\' — plattformunabhängig geprüft, damit das Urteil nicht vom Prüfrechner abhängt. */
+const INSTALLATIONS_PFAD_MUSTER = /^(~[\\/]|\/|[A-Za-z]:[\\/]|\\\\)/
+/** Spike P3: nur Einzelnamen 'mcp__<server>__<werkzeug>', keine Wildcard — zusätzlich muss WERKZEUG_EINTRAG_MUSTER (E-F754) gelten. */
+const MCP_WERKZEUG_MUSTER = /^mcp__([a-z0-9][a-z0-9-]*)__[A-Za-z0-9_-]+$/
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -83,13 +100,18 @@ function pruefeHerkunftForm(herkunft: unknown, typ: unknown, praefix: string, ve
   } else if (art === 'skill') {
     meldeUnbekannteFelder(herkunft, new Set(['art', 'pfad']), `${praefix}herkunft.`, verstoesse)
     if (!istNichtLeererString(herkunft.pfad)) verstoesse.push(`'${praefix}herkunft.pfad' muss ein nicht-leerer String sein`)
+  } else if (art === 'agent') {
+    meldeUnbekannteFelder(herkunft, new Set(['art', 'pfad']), `${praefix}herkunft.`, verstoesse)
+    if (!istNichtLeererString(herkunft.pfad) || !AGENT_PFAD_MUSTER.test(herkunft.pfad)) {
+      verstoesse.push(`'${praefix}herkunft.pfad' muss die Form '.claude/agents/<name>.md' haben`)
+    }
   } else if (art === 'extern') {
     meldeUnbekannteFelder(herkunft, new Set(['art', 'url']), `${praefix}herkunft.`, verstoesse)
     if (!istNichtLeererString(herkunft.url) || !URL_MUSTER.test(herkunft.url)) {
       verstoesse.push(`'${praefix}herkunft.url' muss mit http:// oder https:// beginnen`)
     }
   } else {
-    verstoesse.push(`'${praefix}herkunft.art' muss einer von startvorlage, skill, extern sein`)
+    verstoesse.push(`'${praefix}herkunft.art' muss einer von startvorlage, skill, agent, extern sein`)
     return
   }
 
@@ -146,20 +168,132 @@ function pruefeRessourceForm(ressource: unknown, index: number, verstoesse: stri
   pruefeHerkunftForm(ressource.herkunft, typ, praefix, verstoesse)
 
   // R1: nur typ 'extern' trägt name/beschreibung, dort Pflicht.
-  if (typ === 'worker' || typ === 'skill') {
+  if (typ === 'worker' || typ === 'skill' || typ === 'agent') {
     if ('name' in ressource) verstoesse.push(`'${praefix}name' darf bei typ '${typ}' nicht gesetzt sein (R1)`)
     if ('beschreibung' in ressource) verstoesse.push(`'${praefix}beschreibung' darf bei typ '${typ}' nicht gesetzt sein (R1)`)
   } else if (typ === 'extern') {
     if (!istNichtLeererString(ressource.name)) verstoesse.push(`'${praefix}name' ist bei typ 'extern' Pflicht (R1)`)
     if (!istNichtLeererString(ressource.beschreibung)) verstoesse.push(`'${praefix}beschreibung' ist bei typ 'extern' Pflicht (R1)`)
-    // R2: typ 'extern' ausschließlich freigabe 'OFFEN'.
-    if (ressource.freigabe !== 'OFFEN') verstoesse.push(`'${praefix}freigabe' muss bei typ 'extern' 'OFFEN' sein (R2)`)
+  }
+
+  pruefeExternFelder(ressource, typ, praefix, verstoesse)
+
+  if ('anwendbar_wenn' in ressource) {
+    if (typ === 'worker') verstoesse.push(`'${praefix}anwendbar_wenn' ist bei typ 'worker' nicht zulässig`)
+    else pruefeAnwendbarWennForm(ressource.anwendbar_wenn, `${praefix}anwendbar_wenn`, verstoesse)
   }
 }
 
 /**
+ * F36 WS-1: unterart/wirkung/installation (nur typ 'extern') und R2 neu.
+ * R2 (E-M5-5, löst F-724): extern darf FREIGEGEBEN nur mit installation.
+ * E-F36-4: unterart 'mcp' darf FREIGEGEBEN nur mit wirkung 'lokal'.
+ */
+function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, praefix: string, verstoesse: string[]): void {
+  if (typ !== 'extern') {
+    if ('unterart' in ressource) verstoesse.push(`'${praefix}unterart' ist nur bei typ 'extern' zulässig`)
+    if ('wirkung' in ressource) verstoesse.push(`'${praefix}wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
+    if ('installation' in ressource) verstoesse.push(`'${praefix}installation' ist nur bei typ 'extern' zulässig`)
+    return
+  }
+
+  const unterart = ressource.unterart
+  if (!('unterart' in ressource)) {
+    verstoesse.push(`'${praefix}unterart' ist bei typ 'extern' Pflicht`)
+  } else if (typeof unterart !== 'string' || !EXTERN_UNTERART.includes(unterart)) {
+    verstoesse.push(`'${praefix}unterart' muss einer von ${EXTERN_UNTERART.join(', ')} sein`)
+  }
+
+  if (unterart === 'mcp') {
+    if (!('wirkung' in ressource)) verstoesse.push(`'${praefix}wirkung' ist bei unterart 'mcp' Pflicht`)
+    else if (typeof ressource.wirkung !== 'string' || !WIRKUNG.includes(ressource.wirkung)) verstoesse.push(`'${praefix}wirkung' muss einer von ${WIRKUNG.join(', ')} sein`)
+  } else if ('wirkung' in ressource) {
+    verstoesse.push(`'${praefix}wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
+  }
+
+  if ('installation' in ressource && (unterart === 'skill' || unterart === 'agent' || unterart === 'mcp')) {
+    pruefeInstallationForm(ressource.installation, unterart, String(ressource.id), `${praefix}installation`, verstoesse)
+  }
+
+  if (ressource.freigabe === 'FREIGEGEBEN') {
+    if (!('installation' in ressource)) verstoesse.push(`'${praefix}freigabe' FREIGEGEBEN verlangt bei typ 'extern' das Feld 'installation' (R2, E-M5-5)`)
+    if (unterart === 'mcp' && ressource.wirkung !== 'lokal') {
+      verstoesse.push(`'${praefix}freigabe' FREIGEGEBEN ist bei unterart 'mcp' nur mit wirkung 'lokal' zulässig, nicht '${String(ressource.wirkung)}' (E-F36-4)`)
+    }
+  }
+}
+
+/** R4: Form von installation je unterart. MCP-Werkzeuge sind Einzelnamen des eigenen Servers (Server-Kennung = Ressourcen-id), keine Wildcard (Spike P3). */
+function pruefeInstallationForm(installation: unknown, unterart: 'skill' | 'agent' | 'mcp', id: string, pfad: string, verstoesse: string[]): void {
+  if (!istObjekt(installation)) {
+    verstoesse.push(`'${pfad}' ist kein Objekt`)
+    return
+  }
+  if (!istNichtLeererString(installation.version)) verstoesse.push(`'${pfad}.version' muss ein nicht-leerer String sein`)
+
+  if (unterart !== 'mcp') {
+    meldeUnbekannteFelder(installation, new Set(['pfad', 'version']), `${pfad}.`, verstoesse)
+    if (!istNichtLeererString(installation.pfad) || !INSTALLATIONS_PFAD_MUSTER.test(installation.pfad)) {
+      verstoesse.push(`'${pfad}.pfad' muss absolut sein oder mit ~ beginnen`)
+    }
+    return
+  }
+
+  meldeUnbekannteFelder(installation, new Set(['version', 'mcp_server', 'werkzeuge']), `${pfad}.`, verstoesse)
+  const server = installation.mcp_server
+  if (!istObjekt(server)) {
+    verstoesse.push(`'${pfad}.mcp_server' muss ein Objekt {command, args} sein`)
+  } else {
+    meldeUnbekannteFelder(server, new Set(['command', 'args']), `${pfad}.mcp_server.`, verstoesse)
+    if (!istNichtLeererString(server.command)) verstoesse.push(`'${pfad}.mcp_server.command' muss ein nicht-leerer String sein`)
+    if (!Array.isArray(server.args) || !server.args.every((a) => typeof a === 'string')) verstoesse.push(`'${pfad}.mcp_server.args' muss ein Array aus Strings sein`)
+  }
+
+  if (!Array.isArray(installation.werkzeuge) || installation.werkzeuge.length === 0) {
+    verstoesse.push(`'${pfad}.werkzeuge' muss ein Array mit mindestens einem Eintrag sein`)
+    return
+  }
+  const gesehen = new Set<string>()
+  installation.werkzeuge.forEach((w, i) => {
+    const treffer = typeof w === 'string' ? MCP_WERKZEUG_MUSTER.exec(w) : null
+    if (typeof w !== 'string' || treffer === null || treffer[1] !== id || !WERKZEUG_EINTRAG_MUSTER.test(w)) {
+      verstoesse.push(`'${pfad}.werkzeuge[${i}]' muss ein Einzelname 'mcp__${id}__<name>' sein, keine Wildcard (Spike P3)`)
+    } else if (gesehen.has(w)) {
+      verstoesse.push(`'${pfad}.werkzeuge[${i}]' ('${w}') ist doppelt`)
+    } else {
+      gesehen.add(w)
+    }
+  })
+}
+
+/** anwendbar_wenn: mindestens ein Schlüssel, keine unbekannten; task_typen_any aus TASK_TYPEN (Router), pfad_muster_any nicht-leere Globs. */
+function pruefeAnwendbarWennForm(wert: unknown, pfad: string, verstoesse: string[]): void {
+  if (!istObjekt(wert)) {
+    verstoesse.push(`'${pfad}' ist kein Objekt`)
+    return
+  }
+  meldeUnbekannteFelder(wert, ANWENDBAR_WENN_FELDER, `${pfad}.`, verstoesse)
+  if (!Object.keys(wert).some((k) => ANWENDBAR_WENN_FELDER.has(k))) verstoesse.push(`'${pfad}' braucht mindestens einen Schlüssel (task_typen_any, pfad_muster_any)`)
+
+  const pruefeListe = (schluessel: string, gueltig: (e: unknown) => boolean, meldung: string): void => {
+    if (!(schluessel in wert)) return
+    const liste = wert[schluessel]
+    if (!Array.isArray(liste) || liste.length === 0) {
+      verstoesse.push(`'${pfad}.${schluessel}' muss ein Array mit mindestens einem Eintrag sein`)
+      return
+    }
+    liste.forEach((e, i) => {
+      if (!gueltig(e)) verstoesse.push(`'${pfad}.${schluessel}[${i}]' ${meldung}`)
+    })
+  }
+  pruefeListe('task_typen_any', (e) => typeof e === 'string' && TASK_TYPEN.includes(e), `muss einer von ${TASK_TYPEN.join(', ')} sein`)
+  // Backslash abgelehnt: posix.matchesGlob liest '\' als Escape, ein Windows-Muster 'src\**' träfe still nie.
+  pruefeListe('pfad_muster_any', (e) => istNichtLeererString(e) && !e.includes('\\'), "muss ein nicht-leerer Glob mit '/' als Trenner sein (kein Backslash)")
+}
+
+/**
  * Reine Funktion: prüft ein geparstes Objekt gegen
- * schemas/ressourcen.schema.json UND die drei semantischen Regeln R1-R3, die
+ * schemas/ressourcen.schema.json UND die semantischen Regeln R1-R4 (plus E-F36-4 und anwendbar_wenn), die
  * das Schema allein nicht abbilden kann. Keine Seiteneffekte, kein
  * Datei-I/O — Muster validiereErgebnisRouter (src/router/index.ts, D5).
  * @param daten - geparstes, sonst unbekanntes Objekt
@@ -274,21 +408,72 @@ function leseFrontmatter(inhalt: string): { name: string | null; beschreibung: s
   return { name, beschreibung }
 }
 
-/** Auflösung einer typ:'skill'-Ressource gegen SKILL.md + Frontmatter. */
-function loeseSkillAuf(ressource: Ressource, repoWurzel: string): Pick<AufgelosteRessource, 'name' | 'beschreibung' | 'verfuegbar' | 'grund'> {
-  const pfad = (ressource.herkunft as { art: 'skill'; pfad: string }).pfad
-  const skillMdPfad = join(repoWurzel, pfad, 'SKILL.md')
-  if (!existsSync(skillMdPfad)) {
-    return { name: ressource.id, beschreibung: '', verfuegbar: false, grund: `SKILL.md fehlt unter '${pfad}'` }
+type Aufloesung = Pick<AufgelosteRessource, 'name' | 'beschreibung' | 'verfuegbar' | 'grund'>
+
+/**
+ * Auflösung einer typ:'skill'- oder typ:'agent'-Ressource gegen eine Markdown-Datei mit Frontmatter
+ * (name/description) — skill: '<pfad>/SKILL.md', agent: der herkunft.pfad selbst ('.claude/agents/<name>.md').
+ */
+function loeseFrontmatterRessourceAuf(ressource: Ressource, repoWurzel: string): Aufloesung {
+  const herkunftPfad = (ressource.herkunft as { pfad: string }).pfad
+  const relativ = ressource.typ === 'skill' ? `${herkunftPfad}/SKILL.md` : herkunftPfad
+  const datei = ressource.typ === 'skill' ? 'SKILL.md' : 'Agent-Datei'
+  const ort = ressource.typ === 'skill' ? `unter '${herkunftPfad}'` : `'${herkunftPfad}'`
+  const mdPfad = join(repoWurzel, relativ)
+  if (!existsSync(mdPfad)) {
+    return { name: ressource.id, beschreibung: '', verfuegbar: false, grund: `${datei} fehlt ${ort}` }
   }
-  const { name, beschreibung } = leseFrontmatter(readFileSync(skillMdPfad, 'utf8'))
+  const { name, beschreibung } = leseFrontmatter(readFileSync(mdPfad, 'utf8'))
   if (name === null || beschreibung === null) {
-    return { name: name ?? ressource.id, beschreibung: beschreibung ?? '', verfuegbar: false, grund: `SKILL.md unter '${pfad}' trägt kein vollständiges Frontmatter (name/description)` }
+    return { name: name ?? ressource.id, beschreibung: beschreibung ?? '', verfuegbar: false, grund: `${datei} ${ort} trägt kein vollständiges Frontmatter (name/description)` }
   }
   if (ressource.freigabe !== 'FREIGEGEBEN') {
-    return { name, beschreibung, verfuegbar: false, grund: `SKILL.md vorhanden, aber freigabe '${ressource.freigabe}'` }
+    return { name, beschreibung, verfuegbar: false, grund: `${datei} vorhanden, aber freigabe '${ressource.freigabe}'` }
   }
-  return { name, beschreibung, verfuegbar: true, grund: "SKILL.md mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'" }
+  return { name, beschreibung, verfuegbar: true, grund: `${datei} mit vollständigem Frontmatter und freigabe 'FREIGEGEBEN'` }
+}
+
+/** Grund einer extern-Ressource ohne installation — fehltFuerEinsatz meldet das bereits als 'installation fehlt'. */
+const EXTERN_INSTALLATION_FEHLT = 'extern, installation fehlt'
+
+/** Ersetzt ein führendes '~' durch das Home-Verzeichnis (R4: installation.pfad darf mit ~ beginnen). */
+function expandiereHome(pfad: string): string {
+  return /^~[\\/]/.test(pfad) ? join(homedir(), pfad.slice(2)) : pfad
+}
+
+/**
+ * Auflösung einer typ:'extern'-Ressource (F36 WS-1). skill|agent: verfügbar, wenn FREIGEGEBEN und
+ * installation.pfad existiert. mcp: verfügbar, wenn FREIGEGEBEN, wirkung 'lokal' und installation
+ * vollständig — der Server wird NICHT gestartet (keine Prozessstarts im Katalog), der Grund sagt das.
+ */
+function loeseExternAuf(ressource: Ressource): Aufloesung {
+  const name = ressource.name as string
+  const beschreibung = ressource.beschreibung as string
+  const nicht = (grund: string): Aufloesung => ({ name, beschreibung, verfuegbar: false, grund })
+
+  // Technische Prüfungen vor der Freigabe, damit ein kaputter Eintrag schon vor dem Umstellen auf
+  // FREIGEGEBEN sichtbar ist. installation wird hier erneut geprüft (defensiv): die Ansicht löst auch
+  // eine von Hand bearbeitete, noch nicht validierte ressourcen.json auf — kein Wurf, kein falsches Grün.
+  const installation = ressource.installation
+  if (installation === undefined) return nicht(EXTERN_INSTALLATION_FEHLT)
+  const unterart = ressource.unterart
+  if (unterart !== 'skill' && unterart !== 'agent' && unterart !== 'mcp') return nicht(`extern, unterart '${String(unterart)}' unbekannt`)
+  const formFehler: string[] = []
+  pruefeInstallationForm(installation, unterart, ressource.id, 'installation', formFehler)
+  if (formFehler.length > 0) return nicht(`extern, installation ungültig: ${formFehler.join('; ')}`)
+
+  let bereit: string
+  if (unterart === 'mcp') {
+    if (ressource.wirkung !== 'lokal') return nicht(`extern, wirkung '${ressource.wirkung}' — in V1 nicht zulässig (E-F36-4)`)
+    bereit = `wirkung 'lokal', installation vollständig (${(installation as { werkzeuge: string[] }).werkzeuge.length} Werkzeug(e)) — Serverstart nicht geprüft`
+  } else {
+    const vollerPfad = expandiereHome((installation as { pfad: string }).pfad)
+    if (!existsSync(vollerPfad)) return nicht(`extern, installation.pfad '${vollerPfad}' existiert nicht`)
+    bereit = `installation.pfad '${vollerPfad}' vorhanden (Version ${installation.version})`
+  }
+
+  if (ressource.freigabe !== 'FREIGEGEBEN') return nicht(`extern, ${bereit}, aber freigabe '${ressource.freigabe}'`)
+  return { name, beschreibung, verfuegbar: true, grund: `freigegeben, ${bereit}` }
 }
 
 /**
@@ -317,14 +502,76 @@ export function loeseRessourcenAuf(ressourcen: Ressource[], repoWurzel: string, 
     if (ressource.typ === 'worker') {
       if (startvorlage === null) startvorlage = ladeStartvorlage(vollerStartvorlagePfad)
       aufgeloest = loeseWorkerAuf(ressource, startvorlage)
-    } else if (ressource.typ === 'skill') {
-      aufgeloest = loeseSkillAuf(ressource, repoWurzel)
+    } else if (ressource.typ === 'skill' || ressource.typ === 'agent') {
+      aufgeloest = loeseFrontmatterRessourceAuf(ressource, repoWurzel)
     } else {
-      aufgeloest = { name: ressource.name as string, beschreibung: ressource.beschreibung as string, verfuegbar: false, grund: 'extern, nicht auflösbar' }
+      aufgeloest = loeseExternAuf(ressource)
     }
 
     return { ...ressource, ...aufgeloest }
   })
+}
+
+/**
+ * Reine Funktion (E-F36-2, deterministisch, kein Modell): wertet anwendbar_wenn einer Ressource gegen
+ * einen Auftrag aus. ODER innerhalb eines Schlüssels, UND zwischen den Schlüsseln. Ohne anwendbar_wenn
+ * ist eine Ressource nie anwendbar. Fehlen die pfade, gilt pfad_muster_any als nicht erfüllt.
+ * Aufrufer ab F36 WS-3 (Empfehlung); in WS-1 nur Tests.
+ * @param ressource - ein validierter Katalogeintrag
+ * @param kontext - task_typen des Auftrags (Router-Ergebnis), optional betroffene Pfade (repo-relativ)
+ * @returns anwendbar plus Klartext-Begründung
+ */
+export function pruefeAnwendbarkeit(ressource: Ressource, kontext: AnwendbarkeitsKontext): Anwendbarkeit {
+  const regel = ressource.anwendbar_wenn
+  if (regel === undefined) return { anwendbar: false, begruendung: 'kein anwendbar_wenn: wird nie empfohlen' }
+
+  const teile: string[] = []
+  let anwendbar = true
+  if (regel.task_typen_any !== undefined) {
+    const treffer = regel.task_typen_any.filter((t) => kontext.task_typen.includes(t))
+    if (treffer.length > 0) teile.push(`task_typen_any erfüllt (${treffer.join(', ')})`)
+    else {
+      anwendbar = false
+      teile.push(`task_typen_any nicht erfüllt (erwartet eines von ${regel.task_typen_any.join(', ')}, Auftrag: ${kontext.task_typen.join(', ') || '—'})`)
+    }
+  }
+  if (regel.pfad_muster_any !== undefined) {
+    if (kontext.pfade === undefined || kontext.pfade.length === 0) {
+      anwendbar = false
+      teile.push('pfad_muster_any nicht erfüllt (keine Pfade im Auftrag)')
+    } else {
+      const pfade = kontext.pfade.map((p) => p.replaceAll('\\', '/'))
+      const muster = regel.pfad_muster_any.find((m) => pfade.some((p) => posix.matchesGlob(p, m)))
+      if (muster !== undefined) teile.push(`pfad_muster_any erfüllt ('${muster}')`)
+      else {
+        anwendbar = false
+        teile.push(`pfad_muster_any nicht erfüllt (kein Pfad passt auf ${regel.pfad_muster_any.join(', ')})`)
+      }
+    }
+  }
+  return { anwendbar, begruendung: teile.join('; ') }
+}
+
+/**
+ * Reine Funktion (F36 WS-1): was einer Ressource für einen Einsatz im Lauf fehlt, in Klartext —
+ * Anzeige in der Capabilities-Ansicht, sonst kein Aufrufer. Leere Liste = einsatzbereit.
+ * @param ressource - validierter Katalogeintrag
+ * @param aufgeloest - dieselbe Ressource nach loeseRessourcenAuf (verfuegbar/grund)
+ * @returns Liste fehlender Voraussetzungen
+ */
+export function fehltFuerEinsatz(ressource: Ressource, aufgeloest: AufgelosteRessource): string[] {
+  const fehlt: string[] = []
+  if (ressource.freigabe === 'OFFEN') fehlt.push('freigabe OFFEN')
+  if (ressource.typ === 'extern' && ressource.installation === undefined) fehlt.push('installation fehlt')
+  const wirkungGesperrt = ressource.typ === 'extern' && ressource.unterart === 'mcp' && ressource.wirkung !== 'lokal'
+  if (wirkungGesperrt) fehlt.push(`wirkung ${ressource.wirkung}: in V1 nicht freigebbar (E-F36-4)`)
+  // Technischer Grund zusätzlich — auch bei freigabe OFFEN —, außer er sagt nur, was oben schon steht:
+  // die Auflösung prüft Technisches vor der Freigabe, ein reiner Freigabe-Grund endet auf "freigabe '<wert>'".
+  const nurFreigabe = aufgeloest.grund.endsWith(`freigabe '${ressource.freigabe}'`)
+  const schonGenannt = nurFreigabe || aufgeloest.grund === EXTERN_INSTALLATION_FEHLT || (wirkungGesperrt && aufgeloest.grund.includes('(E-F36-4)'))
+  if (!aufgeloest.verfuegbar && !schonGenannt) fehlt.push(`nicht verfügbar: ${aufgeloest.grund}`)
+  if (ressource.typ !== 'worker' && ressource.anwendbar_wenn === undefined) fehlt.push('kein anwendbar_wenn: wird nie empfohlen')
+  return fehlt
 }
 
 /**

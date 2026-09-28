@@ -77,6 +77,8 @@
       "typ": "extern",
       "name": "Playwright MCP",
       "beschreibung": "Browser-Automatisierung für Agenten über Accessibility-Snapshots: Seiten öffnen, klicken, Formulare füllen, strukturiert auslesen.",
+      "unterart": "mcp",
+      "wirkung": "lokal",
       "capabilities": ["BROWSER_AUTOMATION", "UI_VISUAL_TESTING"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/microsoft/playwright-mcp" }
@@ -86,6 +88,8 @@
       "typ": "extern",
       "name": "Supabase MCP",
       "beschreibung": "Direkter Zugriff auf ein Supabase-Projekt: SQL ausführen, Schema und Migrationen verwalten, Edge Functions ausrollen, Logs lesen.",
+      "unterart": "mcp",
+      "wirkung": "extern_schreibend",
       "capabilities": ["DATABASE_ACCESS"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/supabase-community/supabase-mcp" }
@@ -95,6 +99,8 @@
       "typ": "extern",
       "name": "Firecrawl MCP",
       "beschreibung": "Web-Extraktion für Agenten: scrapen, crawlen, suchen, strukturiert extrahieren, Ausgabe als Markdown, HTML oder JSON.",
+      "unterart": "mcp",
+      "wirkung": "extern_lesend",
       "capabilities": ["WEB_RESEARCH"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/firecrawl/firecrawl-mcp-server" }
@@ -104,6 +110,8 @@
       "typ": "extern",
       "name": "Context7 MCP",
       "beschreibung": "Liefert versionsgenaue, aktuelle Bibliotheks-Dokumentation in den Kontext.",
+      "unterart": "mcp",
+      "wirkung": "extern_lesend",
       "capabilities": ["LIBRARY_DOCS"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/upstash/context7" }
@@ -113,6 +121,8 @@
       "typ": "extern",
       "name": "Claude in Chrome",
       "beschreibung": "Browser-Steuerung durch Claude selbst: Seiten öffnen, Inhalt nach JavaScript-Ausführung lesen, Formulare bedienen.",
+      "unterart": "mcp",
+      "wirkung": "extern_schreibend",
       "capabilities": ["BROWSER_AUTOMATION"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://www.anthropic.com/news/claude-for-chrome" }
@@ -122,6 +132,8 @@
       "typ": "extern",
       "name": "Perplexity MCP",
       "beschreibung": "Websuche mit Quellenangaben: Kurzantworten und längere Rechercheberichte.",
+      "unterart": "mcp",
+      "wirkung": "extern_lesend",
       "capabilities": ["WEB_RESEARCH"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/perplexityai/modelcontextprotocol" }
@@ -131,6 +143,8 @@
       "typ": "extern",
       "name": "21st.dev Magic MCP",
       "beschreibung": "Generiert UI-Komponenten aus natürlicher Sprache und schreibt sie in das Arbeitsverzeichnis, dazu Suche in einem Komponenten-Katalog.",
+      "unterart": "mcp",
+      "wirkung": "extern_lesend",
       "capabilities": ["UI_COMPONENT_GENERATION"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/21st-dev" }
@@ -140,6 +154,8 @@
       "typ": "extern",
       "name": "Obsidian MCP",
       "beschreibung": "Lese- und Schreibzugriff auf einen Obsidian-Wissensspeicher: Notizen anlegen, durchsuchen, verknüpfen.",
+      "unterart": "mcp",
+      "wirkung": "lokal",
       "capabilities": ["NOTES_ACCESS"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/MarkusPfundstein/mcp-obsidian" }
@@ -149,6 +165,7 @@
       "typ": "extern",
       "name": "frontend-design",
       "beschreibung": "Erstanbieter-Plugin, das Claudes Frontend-Ausgabe von der Standard-AI-Optik wegführt (Typografie, Farbwahl, Motion, räumliche Komposition).",
+      "unterart": "skill",
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/anthropics/claude-plugins-official" }
@@ -158,6 +175,7 @@
       "typ": "extern",
       "name": "taste-skill",
       "beschreibung": "Liest die Design-Entscheidungen einer bestehenden Website aus und liefert Design-Tokens mit Begründung.",
+      "unterart": "skill",
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/senlindesign/taste-skill" }
@@ -167,6 +185,7 @@
       "typ": "extern",
       "name": "animate-skill",
       "beschreibung": "Animations- und Motion-Regeln (Dauer, Easing-Kurven, reduced-motion-Fallbacks).",
+      "unterart": "skill",
       "capabilities": ["UI_ANIMATION"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/delphi-ai/animate-skill" }
@@ -176,6 +195,7 @@
       "typ": "extern",
       "name": "Impeccable",
       "beschreibung": "Design-Kontext-Protokoll (Zielgruppe, Markenpersönlichkeit, Anwendungsfall) mit Katalog von AI-Design-Mustern und Browser-Editiermodus.",
+      "unterart": "skill",
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/pbakaus/impeccable" }
@@ -185,6 +205,7 @@
       "typ": "extern",
       "name": "UI/UX Pro Max",
       "beschreibung": "Nachschlage-Ansatz aus UI-Stilen, Paletten, Schriftpaarungen, UX-Regeln und Accessibility-Prüfungen.",
+      "unterart": "skill",
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill" }
@@ -194,7 +215,37 @@
       "typ": "skill",
       "capabilities": ["SIMPLICITY_REVIEW"],
       "freigabe": "FREIGEGEBEN",
-      "herkunft": { "art": "skill", "pfad": ".claude/skills/ponytail" }
+      "herkunft": { "art": "skill", "pfad": ".claude/skills/ponytail" },
+      "anwendbar_wenn": { "task_typen_any": ["neues-feature", "refactoring"] }
+    },
+    {
+      "id": "qa",
+      "typ": "agent",
+      "capabilities": ["TEST_DESIGN"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "agent", "pfad": ".claude/agents/qa.md" },
+      "anwendbar_wenn": { "task_typen_any": ["neues-feature", "bugfix"] }
+    },
+    {
+      "id": "code-reviewer",
+      "typ": "agent",
+      "capabilities": ["CODE_REVIEW"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "agent", "pfad": ".claude/agents/code-reviewer.md" }
+    },
+    {
+      "id": "architecture-advisor",
+      "typ": "agent",
+      "capabilities": ["PLAN_REVIEW"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "agent", "pfad": ".claude/agents/architecture-advisor.md" }
+    },
+    {
+      "id": "scout",
+      "typ": "agent",
+      "capabilities": ["WEB_RESEARCH"],
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": { "art": "agent", "pfad": ".claude/agents/scout.md" }
     }
   ]
 }

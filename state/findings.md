@@ -10085,13 +10085,13 @@ Maßnahme: Die F35-Challenge (vor dem Bau, laut E-M5-16) muss den Feature-Schnit
 Status: erledigt (F35-Akte) — `features/F35/feature.md` wurde am 25.09.2026 gegen den realen Repo-Stand geschnitten (WS-1 „Feature bauen aus Akte" statt des alten Challenge-Flow-Schnitts; qa-Schritt/Advisor-Schema/Befund-Projektion als V1-Backlog mit Auslöser statt als Teil des Scopes).
 Feature/Run: M5-Schnitt, 25.09.2026; F35-Akte F35 WS-1, 25.09.2026.
 
-**F-724** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-724** · `PROCESS_IMPROVEMENT` · P3 · **erledigt** (F36 WS-1)
 Titel: E-M5-5 (Feld `installation`, R2-Lockerung) ist entschieden, aber `schemas/ressourcen.schema.json` kennt kein `installation`, obwohl F29 `ABGESCHLOSSEN` ist.
 Beschreibung: `docs/projekt/zielfassung.md` §13.6 E-M5-5 lockert Schema-Regel R2 — `FREIGEGEBEN` ist für `typ: extern` zulässig, sobald der Eintrag ein lokal prüfbares Feld `installation` (Pfad/Befehl/Version) trägt; das sollte die Blockade von F29 WS-0 lösen. F29 (Design Scout + visuelle Produktisierung) steht laut `docs/STATUS.md` auf `ABGESCHLOSSEN`, aber `schemas/ressourcen.schema.json` trägt kein `installation`-Feld — unklar, ob F29 WS-0 die Blockade auf einem anderen Weg gelöst hat oder ob hier eine Lücke zwischen Entscheidung und Schema besteht.
 Fundstelle: `schemas/ressourcen.schema.json`; `docs/projekt/zielfassung.md` §13.6 E-M5-5; `docs/STATUS.md` (F29 `ABGESCHLOSSEN`).
 Auswirkung: Niedrig — kein aktueller Schaden, aber eine ungeklärte Diskrepanz zwischen einer dokumentierten Entscheidung und dem Schema-Ist-Stand.
 Maßnahme: Klären, wie F29 WS-0 tatsächlich aufgelöst wurde (Schema-Ergänzung an anderer Stelle, andere Lösung, oder Entscheidung nie umgesetzt); Ergebnis in F36 nachziehen.
-Status: offen (bleibt offen bis F36 WS-1, `features/F36/feature.md`).
+Status: erledigt (F36 WS-1, 28.09.2026) — E-M5-5 umgesetzt: `schemas/ressourcen.schema.json` trägt `installation` (R4), `validiereRessourcenDaten` lässt `FREIGEGEBEN` für `typ: extern` nur mit `installation` zu (R2 neu), zusätzlich E-F36-4 für `unterart: mcp`.
 Feature/Run: M5-Schnitt, 25.09.2026.
 
 **F-725** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -10451,6 +10451,7 @@ Beschreibung: Seit F-760 (#265) nennt die Ausführungs-Instruktion die erlaubten
 Fundstelle: `src/architekt/index.ts` (`baueBashAllowlistSatz`), `startvorlagen/ai-workforce.json` (`werkzeugsaetze.schreibend`); Beleg haushaltsbuch2-Workflow `router-8b138eac-…` Versionen 22 und 29.
 Auswirkung: Mittel — die Ausführung bleibt sicher begrenzt, aber der Normalfall wird zum Ausnahmefall; die Sichtung verliert als Signal an Wert.
 Maßnahme: Harmlose Lesebefehle erlauben oder zusammengesetzte Befehle, deren Teile alle erlaubt sind, gesondert behandeln. Erweitert die Sicherheitsfläche der Ausführung → Advisor-Pass vor dem Bau.
+Ergänzung (F36 WS-0/WS-1, 28.09.2026): Die CLI lässt reine Lesebefehle wie `pwd` ohne Allowlist-Regel zu (`state/spike-f36-werkzeugsatz.md` P2, `general-purpose`-Subagent: `Bash pwd` erlaubt). Vor dem Fix prüfen, welche der beobachteten Probebefehle wirklich VERWEIGERT auslösen — nur die brauchen eine Regel.
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
@@ -10537,8 +10538,8 @@ Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
 **F-774** · `HARNESS_IMPROVEMENT` · P1 · offen
 Titel: Die Capability Library hat keinen Weg in die Läufe.
-Beschreibung: Werkzeugsatz ohne `Skill`/`Agent` (F-769), MCP-Sperre als Default (E-187, `--strict-mcp-config`), nur Projekteinstellungen (`--setting-sources project`). Katalog (F19), Scout (F27) und Freigabe enden im Register `state/ressourcen.json`; kein freigegebener Eintrag erreicht je einen Lauf.
-Fundstelle: `src/claude-code-gateway/index.ts` `baueAufruf`; `state/ressourcen.json`; `features/F36/feature.md`.
+Beschreibung: Werkzeugsatz ohne `Skill`/`Agent` (F-769), MCP-Sperre als Default (E-187, `--strict-mcp-config`), nur Projekteinstellungen (`--setting-sources project`). Katalog (F19), Scout (F27) und Freigabe enden im Register `ressourcen.json`; kein freigegebener Eintrag erreicht je einen Lauf.
+Fundstelle: `src/claude-code-gateway/index.ts` `baueAufruf`; `ressourcen.json`; `features/F36/feature.md`.
 Auswirkung: Hoch — der Capability-Pfad der M5-Planung ist ohne Wirkung.
 Maßnahme: F36 neu geschnitten: „Capability Library wirksam machen“ (E-F36-2/3/4, `docs/projekt/zielfassung.md` §13.6).
 Status: offen.
@@ -10552,3 +10553,57 @@ Auswirkung: Mittel — Wirkungslücke über drei Features unbemerkt.
 Maßnahme: Jede Capability-Challenge prüft die init-Zeile eines echten Laufs (tools, agents, skills, mcp_servers).
 Status: offen.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
+
+**F-776** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Design-Referenzseiten haben keinen Weg in Aufträge.
+Beschreibung: `docs/harness/kandidaten-2026-09-15.md` führt 41 Einträge der Kategorie „Referenz" („als Link/Wissensquelle aufnehmen, ohne automatisch ausführbare Tools oder Hooks zu installieren"). Der Katalog (`ressourcen.json`) kennt nur ausführbare Ressourcen (worker, skill, agent, extern); eine Referenzseite kann weder registriert noch einem Auftrag beigelegt werden.
+Fundstelle: `docs/harness/kandidaten-2026-09-15.md` (Kategorie „Referenz"); `schemas/ressourcen.schema.json`.
+Auswirkung: Niedrig — gesammeltes Design-Wissen bleibt ungenutzt, kein Laufzeitrisiko.
+Maßnahme: Katalogart „referenz" im Design-Schnitt (F-725).
+Status: offen.
+Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-777** · `PROCESS_IMPROVEMENT` · P3 · **erledigt** (F36 WS-1)
+Titel: Context7 war in der F36-Challenge als „lokal" genannt, schickt aber Anfragen an einen fremden Dienst.
+Beschreibung: Die Challenge zählte Context7 zu den lokalen MCPs. Der Server fragt die Dokumentation bei einem fremden Dienst ab — nach E-F36-4 ist das keine lokale Wirkung.
+Fundstelle: F36-Challenge 28.09.2026; `ressourcen.json` Eintrag `context7-mcp`.
+Auswirkung: Niedrig — hätte zu einer Freigabe außerhalb von E-F36-4 führen können.
+Maßnahme: `wirkung: extern_lesend` im Katalog; E-F36-4 lässt den Eintrag damit nicht freigeben.
+Status: erledigt (F36 WS-1, 28.09.2026).
+Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-778** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Es fehlt eine Freigabeklasse „extern, nur lesend" (Perplexity u. a.), auch für recherchierende Rollen.
+Beschreibung: E-F36-4 lässt in V1 nur lokale MCPs zu. Nur lesende externe Dienste (Perplexity, Context7, Firecrawl, 21st.dev Magic) tragen jetzt `wirkung: extern_lesend` und sind nicht freigebbar — auch nicht für Rollen, deren Zweck Recherche ist (Coach, Architekt, Scout).
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 E-F36-4; `ressourcen.json`; `features/F36/feature.md` (Nicht-Ziele).
+Auswirkung: Niedrig in V1 — Recherche läuft über eingebaute Web-Werkzeuge; die Lücke wird mit dem ersten Bedarf sichtbar.
+Maßnahme: V1-Backlog mit Auslöser in der F36-Akte: Der Mensch setzt `installation` bei einem `extern_lesend`-Eintrag; Jarvis meldet das als Empfehlung (E-M5-16).
+Status: offen.
+Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-779** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: F36 WS-0 wurde im Haupt-Checkout auf `main` gebaut statt im zugewiesenen Worktree.
+Beschreibung: Der WS-0-Probelauf entstand im Haupt-Checkout auf `main` statt im zugewiesenen Worktree. Kein Commit auf `main`; der Schaden wurde über #267 behoben.
+Fundstelle: F36 WS-0, 28.09.2026; PR #267.
+Auswirkung: Mittel — ein Commit auf `main` oder eine Kollision mit einer parallelen Sitzung wäre möglich gewesen.
+Maßnahme: Jeder Bauauftrag beginnt mit einer Vorprüfung von Branch und Arbeitsverzeichnis (Abbruch ohne Schreiben, wenn sie nicht passen); die Sitzung startet im Worktree-Ordner. Angewendet ab F36 WS-1.
+Status: offen.
+Feature/Run: F36 WS-0/WS-1, 28.09.2026.
+
+**F-780** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Ob Write in der Ausführung außerhalb des Arbeitsverzeichnisses gesperrt ist, ist unbelegt.
+Beschreibung: Spike F36 WS-0 P2 c): Der Schreibversuch außerhalb des Arbeitsverzeichnisses wurde dreimal vom Modell selbst verweigert, es gab keinen Write-Aufruf. Damit ist nur das Modellverhalten gemessen, nicht die Werkzeugsperre.
+Fundstelle: `state/spike-f36-werkzeugsatz.md` (P2 c); `features/F36/feature.md` (Bekannte Grenzen).
+Auswirkung: Mittel — mit `Agent` im Werkzeugsatz (WS-2) hängt die Grenze der Ausführung an einer ungemessenen Annahme.
+Maßnahme: Messweg ohne Modellurteil — Hook-Testfall oder erzwungener Write-Aufruf.
+Status: offen.
+Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-781** · `BUG` · P3 · offen
+Titel: Der Scout-Vormerken-Auftrag erzeugt einen `extern`-Eintrag ohne `unterart` (und ohne `wirkung` bei MCPs) — seit F36 WS-1 ungültig.
+Beschreibung: `baueVormerkenAuftragstext` weist die Ausführung an, einen Eintrag mit id, typ, capabilities, freigabe und herkunft anzulegen. Seit F36 WS-1 verlangt `validiereRessourcenDaten` für `typ: extern` zusätzlich `unterart` und bei `mcp` `wirkung`; name/beschreibung (R1) nennt der Text schon vorher nicht. Ein so angelegter Eintrag scheitert am Gate `check-f19-ressourcen`. Der Scout-Kandidat trägt heute nur `typ: skill | extern` ohne Unterart.
+Fundstelle: `public/leitstand/views/capabilities.js` (`baueVormerkenAuftragstext`); `src/scout/types.ts` (`ScoutKandidatTyp`).
+Auswirkung: Niedrig — das Gate fängt den Fehler vor dem Commit, der Vormerken-Weg braucht aber eine Handkorrektur.
+Maßnahme: Auftragstext um `name`, `beschreibung`, `unterart` (und bei MCP `wirkung`) ergänzen; ggf. `unterart` im Scout-Ergebnis. Außerhalb von WS-1 (kein Laufzeit-/UI-Code außer der Anzeige).
+Status: offen.
+Feature/Run: F36 WS-1, 28.09.2026.

@@ -54,6 +54,12 @@ function renderVerfuegbarBadge(verfuegbar) {
   return verfuegbar ? '<span class="badge ok">verfügbar</span>' : '<span class="badge fehler">nicht verfügbar</span>'
 }
 
+/** F36 WS-1: Klartext aus fehltFuerEinsatz (src/ressourcen) — nur Anzeige; leer heißt einsatzbereit. @param fehlt - eintrag.fehltFuerEinsatz */
+function renderFehltFuerEinsatz(fehlt) {
+  if (!Array.isArray(fehlt) || fehlt.length === 0) return '<span class="badge ok">nichts</span>'
+  return fehlt.map((f) => `<div class="grund">${escapeHtml(f)}</div>`).join('')
+}
+
 function libraryZeile(eintrag) {
   return `<tr>
     <td><code>${escapeHtml(eintrag.id)}</code></td>
@@ -63,10 +69,11 @@ function libraryZeile(eintrag) {
     <td>${renderVerfuegbarBadge(eintrag.verfuegbar)}</td>
     <td>${renderPhasenBadges(eintrag.phasen)}</td>
     <td>${escapeHtml(eintrag.anzeigeGrund)}</td>
+    <td>${renderFehltFuerEinsatz(eintrag.fehltFuerEinsatz)}</td>
   </tr>`
 }
 
-const LIBRARY_TABELLE_KOPF = '<tr><th>ID</th><th>Typ</th><th>Name</th><th>Freigabe</th><th>Verfügbar</th><th>Phasen</th><th>Grund</th></tr>'
+const LIBRARY_TABELLE_KOPF = '<tr><th>ID</th><th>Typ</th><th>Name</th><th>Freigabe</th><th>Verfügbar</th><th>Phasen</th><th>Grund</th><th>Fehlt für Einsatz</th></tr>'
 
 /** AK5: rendert die vier Phasen — die Library-Tabelle selbst (alle Einträge, mit ihren jeweiligen Phasen-Badges) plus eine benannte Zeile für ASSESSED, die strukturell nie ein Badge trägt (kein stilles Verschwinden dieser Phase). @param ansicht - Antwort von GET /api/ressourcen */
 function renderLibrary(ansicht) {

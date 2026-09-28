@@ -1,0 +1,17 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": { "breite": 1400, "hoehe": 900 },
+  "screenshotAusschnitt": { "selector": "#capabilities-library", "hoehe": 2600 },
+  "beobachtete": {
+    "vorhanden": [
+      { "name": "Spaltenkopf Fehlt für Einsatz", "selector": "#capabilities-library th:nth-child(8)" },
+      { "name": "Zeile mit Klartext-Grund", "selector": "#capabilities-library td:nth-child(8) .grund" },
+      { "name": "Zeile einsatzbereit", "selector": "#capabilities-library td:nth-child(8) .badge.ok" }
+    ],
+    "titel": { "name": "Spaltenkopf", "selector": "#capabilities-library th:nth-child(8)" }
+  },
+  "schritte": [
+    { "label": "Warten auf Library", "warteAufSelector": { "selector": "#capabilities-library table", "timeoutMs": 8000 } },
+    { "label": "Library Desktop", "reload": false, "screenshot": "01-library-desktop.png" }
+  ]
+}

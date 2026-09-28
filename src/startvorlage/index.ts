@@ -20,6 +20,7 @@
  * - scripts/leitstand-server.mjs (lädt die Startvorlage einmal beim
  *   Aufbau des Request-Handlers, löst je Startauftrag einen benannten
  *   Werkzeugsatz auf)
+ * - src/ressourcen/index.ts (nur WERKZEUG_EINTRAG_MUSTER für installation.werkzeuge, F36 WS-1)
  */
 
 import { readFileSync } from 'node:fs'
@@ -146,7 +147,7 @@ export const ERLAUBTE_BASH_REGELN: readonly string[] = [
 ]
 
 /** E-F754: Form eines Eintrags — Werkzeugname, optional genau eine Klammer-Regel. Hält die Ableitung der Werkzeugnamen für '--tools' (baueAufruf) eindeutig. */
-const WERKZEUG_EINTRAG_MUSTER = /^[A-Za-z][A-Za-z0-9_-]*(\([^()]+\))?$/
+export const WERKZEUG_EINTRAG_MUSTER = /^[A-Za-z][A-Za-z0-9_-]*(\([^()]+\))?$/
 
 /** E-F754 (Advisor-Pass K5): Shell-Werkzeuge, die kein Werkzeugsatz tragen darf — Bash nur über ERLAUBTE_BASH_REGELN. */
 const GESPERRTE_SHELL_WERKZEUGE = ['powershell']

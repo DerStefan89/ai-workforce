@@ -14,7 +14,7 @@ Neu geschnitten: Stefan, 28.09.2026 (vorher „Capability Library Expansion“) 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
 ## Ziel
-Eine im Katalog (`state/ressourcen.json`) freigegebene Fähigkeit — Skill,
+Eine im Katalog (`ressourcen.json`) freigegebene Fähigkeit — Skill,
 Agent oder lokaler MCP-Server — kommt in einem echten `ausfuehrung`-Lauf
 an, wird dort empfohlen und ihre Nutzung ist beobachtbar. Durchstich:
 **Katalog → Freigabe → Lauf → Empfehlung → Beobachtung.**
@@ -33,6 +33,12 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
   Auslöser: eine Rolle mit Output-Schema und Urteil steht zur Verfügung,
   die als eigener Schritt empfohlen werden könnte.
 - **Automatische Scout-Läufe** — Scout bleibt vom Menschen angestoßen.
+- **Externe, nur lesende MCPs** (`wirkung: extern_lesend`, z. B.
+  Perplexity, Context7) — auch für recherchierende Rollen (Coach,
+  Architekt, Scout). V1-Backlog (F-778). Auslöser: Der Mensch setzt
+  `installation` bei einem `extern_lesend`-Eintrag; Jarvis meldet das als
+  Empfehlung (E-M5-16). Bis dahin bleibt ein solcher Eintrag nach E-F36-4
+  nicht freigebbar.
 - **MCPs mit Schreibwirkung nach außen** (E-Mail, Tickets, Cloud-Dokumente,
   Deployments) — V1-Backlog (E-F36-4 = A). Auslöser: ein Projekt braucht
   nachweislich eine Außenwirkung, die kein lokaler Weg abdeckt, und Stefan
@@ -52,11 +58,24 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
   `state/spike-f36-werkzeugsatz.md`, Skript
   `scripts/spike-f36-werkzeugsatz.mjs` (Wegwerf). **Erledigt 28.09.2026.**
 - **WS-1 — Katalog.** `schemas/ressourcen.schema.json` und
-  `validiereRessourcenDaten`: Typ `agent`; `extern.unterart`
-  `skill | agent | mcp`; Feld `installation` (Pfad/Befehl/Version) mit
-  R2-Lockerung nach E-M5-5 (löst F-724); `anwendbar_wenn` mit
-  `task_typen_any` und `pfad_muster_any`. Für MCP zusätzlich die Liste der
-  freizugebenden Werkzeugnamen (WS-0: Einzelnamen, keine Wildcard).
+  `validiereRessourcenDaten`: Typ `agent` (Herkunft
+  `.claude/agents/<name>.md`, name/beschreibung aus dem Frontmatter, R1/R3);
+  `extern.unterart` `skill | agent | mcp` (Pflicht); `extern.wirkung`
+  `lokal | extern_lesend | extern_schreibend` (Pflicht nur bei `mcp`);
+  Feld `installation` (R4: skill/agent `{pfad, version}`, mcp `{version,
+  mcp_server {command, args}, werkzeuge}` mit Einzelnamen
+  `mcp__<id>__<name>`, keine Wildcard) mit R2 nach E-M5-5 (extern
+  `FREIGEGEBEN` nur mit `installation`, löst F-724) und E-F36-4 (mcp
+  `FREIGEGEBEN` nur mit `wirkung: lokal`); `anwendbar_wenn` mit
+  `task_typen_any` und `pfad_muster_any` (ODER innerhalb, UND zwischen den
+  Schlüsseln). Reine Funktionen `pruefeAnwendbarkeit` (Aufrufer ab WS-3)
+  und `fehltFuerEinsatz` (Zeile „Fehlt für Einsatz“ in der
+  Capabilities-Ansicht, nur Anzeige). `loeseRessourcenAuf` löst `agent`
+  über das Frontmatter auf, extern skill/agent über `installation.pfad`,
+  extern mcp ohne Prozessstart („Serverstart nicht geprüft“). Katalog:
+  Agents `qa`, `code-reviewer`, `architecture-advisor`, `scout` als
+  `typ: agent`; extern-Einträge mit `unterart`/`wirkung`, weiter `OFFEN`
+  ohne `installation` (setzt der Mensch). Kein Laufzeit-Code.
 - **WS-2 — Laufzeit.** Der Werkzeugsatz der Ausführung wird aus dem
   Katalog ergänzt (`Skill`, `Agent`, freigegebene `mcp__<server>__<name>`);
   freigegebene Skills/Agents werden ins Projekt-`.claude/` gelegt;
@@ -117,6 +136,16 @@ WS-1 bis WS-3 werden nach WS-0 präzisiert (eigene Challenge vor dem Bau).
 ## Bekannte Grenzen
 - WS-0 c): Ob ein Subagent außerhalb des Arbeitsverzeichnisses schreiben
   kann, ist nicht gemessen — das Modell verweigerte den Versuch selbst.
-  Braucht einen Messweg ohne Modellurteil.
+  Braucht einen Messweg ohne Modellurteil (F-780: ob Write in der
+  Ausführung außerhalb des Arbeitsverzeichnisses gesperrt ist, ist
+  unbelegt; Maßnahme Hook-Testfall oder erzwungener Aufruf).
 - `--tools` begrenzt MCP-Werkzeuge nicht; alle Werkzeuge eines Servers
   stehen im Angebotssatz, nur `--allowedTools` sperrt den Aufruf (WS-0 P3).
+- Der Scout-Vormerken-Auftrag (`baueVormerkenAuftragstext`) nennt
+  `unterart`/`wirkung` noch nicht; ein so vorgemerkter `extern`-Eintrag
+  scheitert seit WS-1 am Gate (F-781).
+- `verfuegbar` für extern skill/agent heißt in WS-1 nur „freigegeben und
+  `installation.pfad` existiert“ — ob dort eine `SKILL.md` bzw. eine
+  Agent-Datei mit Frontmatter liegt, prüft der Katalog nicht. WS-2 (Ablage
+  ins Projekt-`.claude/`) und WS-3 (Empfehlung) dürfen sich darauf nicht
+  verlassen.

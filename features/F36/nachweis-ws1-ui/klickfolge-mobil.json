@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:4391/#/capabilities",
+  "viewport": { "breite": 400, "hoehe": 900 },
+  "screenshotAusschnitt": { "selector": "#view-capabilities", "hoehe": 1400 },
+  "beobachtete": {
+    "vorhanden": [
+      { "name": "Spaltenkopf Fehlt für Einsatz", "selector": "#capabilities-library th:nth-child(8)" }
+    ]
+  },
+  "schritte": [
+    { "label": "Warten auf Library", "warteAufSelector": { "selector": "#capabilities-library table", "timeoutMs": 8000 } },
+    { "label": "Library mobil (400 px)", "reload": false, "screenshot": "02-library-mobil.png" }
+  ]
+}

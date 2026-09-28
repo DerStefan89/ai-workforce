@@ -2,7 +2,7 @@
  * Datei: scripts/check-f24-capabilities.mjs
  *
  * Zweck: F24-Gate (Capabilities v1, WS-1, AK7). Prüft mechanisch, was
- * features/F24/feature.md AK7 nennt — AK1 (alle 22 Einträge, plus der
+ * features/F24/feature.md AK7 nennt — AK1 (alle 26 Einträge — seit F36 WS-1 inkl. vier typ:agent —, plus der
  * "installiert, aber OFFEN"-Fall als eigener Rot-Fall: ein typ:'extern'-
  * Eintrag zeigt erkennbar "noch nicht freigegeben", nicht denselben Text
  * wie eine technisch nicht vorhandene Ressource), AK5 (ASSESSED bleibt eine
@@ -40,15 +40,16 @@ const rohDaten = JSON.parse(readFileSync('ressourcen.json', 'utf-8'))
 const aufgeloest = loeseRessourcenAuf(rohDaten.ressourcen, REPO_WURZEL, STARTVORLAGE_PFAD)
 const ansicht = projeziereLibrary(aufgeloest, STARTVORLAGE_PFAD)
 
-// ─── (1) AK1: alle 22 Einträge ──────────────────────────────────────────────
-if (ansicht.eintraege.length !== 22) {
-  befunde.push(`(1) GET /api/ressourcen liefert ${ansicht.eintraege.length} Einträge statt der erwarteten 22`)
+// ─── (1) AK1: alle 26 Einträge (F36 WS-1: +4 Agents) ──────────────────────────────────────────────
+if (ansicht.eintraege.length !== 26) {
+  befunde.push(`(1) GET /api/ressourcen liefert ${ansicht.eintraege.length} Einträge statt der erwarteten 26`)
 } else {
-  console.log('✓ (1) 22 Einträge.')
+  console.log('✓ (1) 26 Einträge.')
 }
 
 // ─── (2) AK1 Rot-Fall: "installiert, aber OFFEN" != technisch nicht vorhanden ──
-const externEintraege = ansicht.eintraege.filter((e) => e.typ === 'extern')
+// Seit F36 WS-1 (E-M5-5) darf extern mit installation FREIGEGEBEN sein — dann zeigt die Ansicht den Kern-Grund.
+const externEintraege = ansicht.eintraege.filter((e) => e.typ === 'extern' && e.freigabe === 'OFFEN')
 const technischNichtVorhanden = ansicht.eintraege.find((e) => e.typ !== 'extern' && !e.verfuegbar)
 
 if (externEintraege.length === 0) {
