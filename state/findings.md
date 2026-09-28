@@ -10496,16 +10496,18 @@ Titel: Projekt-Skills und -Agents sind in realen haushaltsbuch2-Läufen geladen,
 Beschreibung: Die init-Zeilen der haushaltsbuch2-Läufe vom 28.09.2026 zeigen `tools` = `Bash, Edit, GetTask, Glob, Grep, Read, Write`; `agents` enthält `qa`, `code-reviewer`, `architecture-advisor`, `skills` die Projekt-Skills. 0 Skill-/Agent-Aufrufe in 5 Läufen. F36 WS-0 bestätigt: mit `Skill` bzw. `Agent` im Werkzeugsatz sind beide aufrufbar (`state/spike-f36-werkzeugsatz.md` P1/P2), ohne nicht (P4).
 Fundstelle: `kontrollzustand-roh/` (init-Zeilen haushaltsbuch2, 28.09.2026); `startvorlagen/*.json` `werkzeugsaetze.schreibend`; `src/claude-code-gateway/index.ts` `baueAufruf`.
 Auswirkung: Mittel — die im Projekt-Harness mitgelieferten Skills und Prüfrollen wirken im Lauf nicht.
-Maßnahme: F36 WS-0 (erledigt) / WS-2.
+Maßnahme: F36 WS-0 (erledigt); Aufrufbarkeit erst nach F-770 (WS-2 hat Skill/Agent nach S6 herausgenommen).
+Vermerk (F36 WS-2, 28.09.2026): Haus-Skills/Agents sind in der Ausführung weiterhin NICHT aufrufbar — WS-2 hat `Skill`/`Agent` nach Spike WS-2s S6 wieder herausgenommen (Variante 3b), weil `--allowedTools` sie nicht auf freigegebene Einträge begrenzt (`state/spike-f36-ws2s.md`). Offen, bis F-770 gelöst ist; erledigt erst nach dem Reallauf.
 Status: offen.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
-**F-770** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-770** · `HARNESS_IMPROVEMENT` · P1 · offen
 Titel: Rund 20 Nutzer- bzw. Plugin-Skills erscheinen trotz `--setting-sources project` in der init-Zeile — ohne Katalog und ohne Freigabe.
 Beschreibung: Im Spike F36 WS-0 trug `init.skills` 28 Einträge: 7 Projekt-Skills plus 21 Nutzer-/Plugin-/eingebaute Skills (u. a. `deep-research`, `design`, `dataviz`, `schedule`, `loop`, `claude-api`). Verwandt mit F-755.
 Fundstelle: `state/spike-f36-werkzeugsatz.md` („Je Probe“); init-Zeilen realer Läufe in `kontrollzustand-roh/`.
-Auswirkung: Niedrig heute (ohne `Skill` im Werkzeugsatz nicht aufrufbar), steigt mit F36 WS-2.
-Maßnahme: Mit F36 WS-4 sichtbar machen, Begrenzung später entscheiden.
+Auswirkung: Hoch — solange diese Skills geladen sind, kann `Skill` nicht in den Werkzeugsatz der Ausführung (Spike WS-2s S6); blockiert den F36-Reallauf.
+Maßnahme: In F36 WS-4 sichtbar gemacht; Begrenzung vor dem Reallauf entscheiden (Sperrliste per `--disallowedTools` oder Quellen abschalten).
+Vermerk (F36 WS-2s S6, 28.09.2026): **blockiert F36-Reallauf.** Gemessen: `Skill`/`Agent` brauchen im `-p`-Lauf keine `--allowedTools`-Freigabe; steht der Name in `--tools`, ist jeder geladene Skill/Agent aufrufbar — mit `Skill(ponytail)`/`Agent(qa)` liefen auch `advisor-pass`, `general-purpose` und `statusline-setup` ohne Denial (S6a–c). `--disallowedTools Skill(<id>)`/`Agent(<name>)` sperrt dagegen gezielt (S6d: „Skill execution blocked by permission rules“, „denied by permission rule … from cliArg“). WS-2 nimmt `Skill`/`Agent` deshalb nicht in den Werkzeugsatz (Variante 3b). Priorität auf P1 (Challenger, 28.09.2026). Lösungsweg offen: Sperrliste aus der init-Zeile ist nicht vorab bekannt (fail-open für neue Skills) — oder die Nutzer-/Plugin-Quellen für den Lauf abschalten.
 Status: offen.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
@@ -10532,7 +10534,8 @@ Titel: CLAUDE.md/ARCHITECTURE.md im Projekt-Skelett verweisen auf Skills, die di
 Beschreibung: `vorlagen/projekt-skelett/CLAUDE.md` und `ARCHITECTURE.md` nennen Skills (z. B. `git-flow`, `advisor-pass`) und Prüfrollen als Arbeitsweise; ohne `Skill`/`Agent` im Werkzeugsatz ist das für die Ausführung toter Text (F-769).
 Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md`, `vorlagen/projekt-skelett/ARCHITECTURE.md`.
 Auswirkung: Mittel — die Ausführung liest Anweisungen, die sie nicht befolgen kann.
-Maßnahme: Erledigt sich mit F36 WS-2; bis dahin bekannt.
+Maßnahme: Erledigt sich erst, wenn Skill/Agent in der Ausführung aufrufbar sind (nach F-770); bis dahin bekannt.
+Vermerk (F36 WS-2, 28.09.2026): Haus-Skills/Agents sind in der Ausführung weiterhin NICHT aufrufbar — WS-2 hat `Skill`/`Agent` nach Spike WS-2s S6 wieder herausgenommen (Variante 3b), weil `--allowedTools` sie nicht auf freigegebene Einträge begrenzt (`state/spike-f36-ws2s.md`). Offen, bis F-770 gelöst ist; erledigt erst nach dem Reallauf.
 Status: offen.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
@@ -10652,3 +10655,39 @@ Auswirkung: Mittel — ohne die Prüfung kann ein falsch eingeordneter oder offe
 Maßnahme: In WS-5 je unterart ein Rot-Fall; playwright-mcp mit Rot-Fall „fremde Origin wird verweigert“, sonst `wirkung: extern_schreibend`.
 Status: offen.
 Feature/Run: F36 WS-1b, 28.09.2026.
+
+**F-787** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: TERMINAL-Blöcke des Challengers landeten in der Claude-Code-Sitzung, dort blockiert der commit-guard.
+Beschreibung: Für Stefans eigenes Terminal gedachte TERMINAL-Blöcke (commit/push) wurden in die Claude-Code-Sitzung eingefügt; dort greift der commit-guard und blockiert.
+Fundstelle: Chat #84 (Challenger-Übergaben).
+Auswirkung: Niedrig — Reibung, Wiederholung im richtigen Fenster.
+Maßnahme: TERMINAL-Blöcke tragen den Hinweis „eigenes PowerShell-Fenster“.
+Status: offen.
+Feature/Run: Chat #84, 28.09.2026.
+
+**F-788** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Empfehlungsrauschen — bei neues-feature mit UI-Pfaden treffen etwa 10 Katalogeinträge zu.
+Beschreibung: Nach der Übernahme der Recherche (F36 WS-1b) passt `anwendbar_wenn` bei einem neues-feature-Auftrag mit UI-Pfaden auf rund 10 Einträge; eine ungefilterte Liste am ZWINGEND-Start wäre Rauschen.
+Fundstelle: `ressourcen.json` (`anwendbar_wenn`); `features/F36/feature.md` (WS-3).
+Auswirkung: Mittel — zu lange Empfehlungslisten werden überlesen.
+Maßnahme: WS-3 mit Rangfolge und Obergrenze (z. B. höchstens 3 je Liste; installiert vor nicht installiert; spezifischere Bedingung zuerst). `okf-agent-memory` auf Harness-Kandidat prüfen.
+Status: offen.
+Feature/Run: F36 WS-1b, 28.09.2026.
+
+**F-789** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: #270 wurde vor der Challenger-Verifikation gemergt.
+Beschreibung: Der PR #270 (F36 WS-1b) wurde gemergt, bevor der Challenger ihn verifiziert hatte; die Nachprüfung war in Ordnung.
+Fundstelle: Chat #84; PR #270.
+Auswirkung: Niedrig — diesmal folgenlos, die Reihenfolge schützt aber nicht.
+Maßnahme: Reihenfolge Push → Verifikation → PR.
+Status: offen.
+Feature/Run: Chat #84, 28.09.2026.
+
+**F-790** · `HARNESS_IMPROVEMENT` · P2 · entschieden (E-F36-7 = A), bekannte Grenze
+Titel: Playwright `--allowed-origins` braucht den Port in der Origin, ist keine Sicherheitsgrenze und greift nicht bei Weiterleitungen.
+Beschreibung: Spike F36 WS-2s S5: `--allowed-origins "http://localhost;http://127.0.0.1"` sperrte auch `http://127.0.0.1:<port>` (`ERR_BLOCKED_BY_CLIENT`); erst mit Port (`http://127.0.0.1:<port>`) war der lokale Server erreichbar und example.com blockiert. Die Hilfe von `@playwright/mcp@0.0.82` sagt wörtlich: „*does not* serve as a security boundary and *does not* affect redirects“.
+Fundstelle: `state/spike-f36-ws2s.md` (S5a–S5c); `features/F36/feature.md` (WS-5, playwright-mcp).
+Auswirkung: Mittel — eine Origin ohne Port macht den Server unbrauchbar; eine Weiterleitung umgeht die Sperre.
+Maßnahme: E-F36-7 = A (Stefan, 28.09.2026): playwright-mcp bleibt `wirkung: lokal`, Start nur mit `--allowed-origins` auf die Projekt-URL mit Port und `--output-dir` außerhalb des Projekts; WS-5 hält die Adresse jedes `browser_navigate` in der Beobachtung fest. Weiterleitungen bleiben bekannte Grenze.
+Status: entschieden (E-F36-7 = A), bekannte Grenze.
+Feature/Run: F36 WS-2s, 28.09.2026.

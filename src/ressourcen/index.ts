@@ -13,7 +13,7 @@
  * zusätzlich: typ 'agent' (Frontmatter wie skill), extern.unterart/wirkung,
  * installation (R4) mit R2 neu (E-M5-5: extern FREIGEGEBEN nur mit
  * installation; E-F36-4: mcp nur mit wirkung 'lokal'), anwendbar_wenn, und
- * zwei reine Funktionen pruefeAnwendbarkeit (Aufrufer ab WS-3) und
+ * reine Funktionen pruefeAnwendbarkeit (Aufrufer ab WS-3), baueMcpAufruf (WS-2) und
  * fehltFuerEinsatz (einziger Aufrufer: src/capabilities-ansicht). Dieses Modul
  * ENTSCHEIDET nichts — keine automatische Worker- oder Modellwahl (E-M3-3
  * bleibt unberührt, docs/projekt/zielfassung.md §13.4): es prüft und meldet.
@@ -36,7 +36,7 @@
  *
  * Wird aufgerufen von: scripts/check-f19-ressourcen.mjs,
  * src/ressourcen/ressourcen.test.ts, src/capabilities-ansicht/index.ts
- * (fehltFuerEinsatz).
+ * (fehltFuerEinsatz), scripts/leitstand-server.mjs (baueMcpAufruf, F36 WS-2).
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -611,6 +611,46 @@ export function pruefeAbdeckung(aufgeloest: AufgelosteRessource[], rolle: string
     if (!gedeckt) luecken.push({ capability, rolle })
   }
   return luecken
+}
+
+/** Default-Wert von --mcp-config für jeden Lauf ohne freigegebenen MCP (F31 WS-3c, E-187) — bitgenau wie baueAufrufs Vorgabe. */
+const LEERE_MCP_CONFIG = '{"mcpServers":{}}'
+
+/**
+ * F36 WS-2: baut aus aufgelösten, freigegebenen lokalen MCP-Katalogeinträgen den
+ * --mcp-config-Wert und die Einzelnamen für --allowedTools (Spike WS-0 P3 (iii): nur
+ * Einzelnamen geben gezielt frei, --tools begrenzt MCP-Werkzeuge nicht). Server-Schlüssel ist
+ * die Ressourcen-id — dieselbe Kennung, die R4 als Präfix mcp__<id>__ der Einzelnamen verlangt.
+ * Fail-closed (E-F36-4): jeder Eintrag, der nicht extern/mcp, nicht FREIGEGEBEN, nicht
+ * wirkung 'lokal', mit ungültiger id oder mit einer installation ist, die R4 verletzt
+ * (pruefeInstallationForm: leere werkzeuge, Wildcard, fremder Präfix, Sonderzeichen, leerer
+ * command), wirft — ein stilles Überspringen würde einen geplanten Server lautlos fehlen oder
+ * einen gesperrten durchrutschen lassen. Reine Funktion, kein Prozessstart.
+ * @param mcpEintraege - aufgelöste Katalogeinträge (typ 'extern', unterart 'mcp')
+ * @returns { mcpConfig, zusatzWerkzeuge }; leere Eingabe = '{"mcpServers":{}}' und []
+ */
+export function baueMcpAufruf(mcpEintraege: readonly Ressource[]): { mcpConfig: string; zusatzWerkzeuge: string[] } {
+  // Object.create(null): eine id wie '__proto__' darf den Prototyp nicht treffen (ID_MUSTER schließt sie ohnehin aus).
+  const mcpServers: Record<string, { command: string; args: string[] }> = Object.create(null)
+  const zusatzWerkzeuge: string[] = []
+  for (const eintrag of mcpEintraege) {
+    const kennung = `MCP-Eintrag '${String(eintrag.id)}'`
+    if (typeof eintrag.id !== 'string' || !ID_MUSTER.test(eintrag.id)) throw new Error(`${kennung}: id verletzt ${ID_MUSTER}`)
+    if (eintrag.typ !== 'extern' || eintrag.unterart !== 'mcp') throw new Error(`${kennung}: nur typ 'extern' mit unterart 'mcp' zulässig`)
+    if (eintrag.freigabe !== 'FREIGEGEBEN') throw new Error(`${kennung}: freigabe muss FREIGEGEBEN sein, ist '${eintrag.freigabe}'`)
+    if (eintrag.wirkung !== 'lokal') throw new Error(`${kennung}: wirkung muss 'lokal' sein, ist '${String(eintrag.wirkung)}' (E-F36-4)`)
+    if (eintrag.id in mcpServers) throw new Error(`${kennung}: Ressourcen-id doppelt`)
+    const verstoesse: string[] = []
+    pruefeInstallationForm(eintrag.installation, 'mcp', eintrag.id, 'installation', verstoesse)
+    const installation = eintrag.installation
+    // Die zweite und dritte Bedingung greifen nach bestandener Formprüfung nie — sie engen nur den Typ auf die mcp-Form ein.
+    if (verstoesse.length > 0 || installation === undefined || !('mcp_server' in installation)) {
+      throw new Error(`${kennung}: installation ungültig (R4): ${verstoesse.join('; ') || 'mcp_server fehlt'}`)
+    }
+    mcpServers[eintrag.id] = { command: installation.mcp_server.command, args: [...installation.mcp_server.args] }
+    zusatzWerkzeuge.push(...installation.werkzeuge)
+  }
+  return { mcpConfig: mcpEintraege.length === 0 ? LEERE_MCP_CONFIG : JSON.stringify({ mcpServers }), zusatzWerkzeuge }
 }
 
 export type { AufgelosteRessource, CapabilityGap, Ressource }

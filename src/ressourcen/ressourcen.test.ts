@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
+import { baueMcpAufruf, fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
 import type { AufgelosteRessource, Ressource } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -689,4 +689,98 @@ test('pruefeAbdeckung: Gap bei fehlender Ressource', () => {
 test('pruefeAbdeckung: Gap wenn Ressource registriert, aber nicht verfuegbar (Red-2-Analog)', () => {
   const a = aufgeloesteRessource({ id: 'a', capabilities: ['CAP_A'], verfuegbar: false })
   assert.deepStrictEqual(pruefeAbdeckung([a], 'test-rolle', ['CAP_A']), [{ capability: 'CAP_A', rolle: 'test-rolle' }])
+})
+
+// ─── baueMcpAufruf (F36 WS-2) ───────────────────────────────────────────────
+
+function lokalerMcp(ueberschreibung: Partial<Ressource> = {}): Ressource {
+  return {
+    id: 'playwright',
+    typ: 'extern',
+    unterart: 'mcp',
+    wirkung: 'lokal',
+    capabilities: ['BROWSER_TEST'],
+    freigabe: 'FREIGEGEBEN',
+    herkunft: { art: 'extern', url: 'https://github.com/microsoft/playwright-mcp' },
+    installation: {
+      version: '0.0.41',
+      mcp_server: { command: 'npx', args: ['-y', '@playwright/mcp@0.0.41', '--headless'] },
+      werkzeuge: ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_snapshot'],
+    },
+    ...ueberschreibung,
+  }
+}
+
+test('baueMcpAufruf: leere Eingabe ergibt bitgenau den heutigen Default', () => {
+  assert.deepEqual(baueMcpAufruf([]), { mcpConfig: '{"mcpServers":{}}', zusatzWerkzeuge: [] })
+})
+
+test('baueMcpAufruf: ein lokaler MCP ergibt Config unter der Ressourcen-id und seine Einzelnamen', () => {
+  const ergebnis = baueMcpAufruf([lokalerMcp()])
+  assert.deepEqual(JSON.parse(ergebnis.mcpConfig), {
+    mcpServers: { playwright: { command: 'npx', args: ['-y', '@playwright/mcp@0.0.41', '--headless'] } },
+  })
+  assert.deepEqual(ergebnis.zusatzWerkzeuge, ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_snapshot'])
+})
+
+test('baueMcpAufruf: extern_lesend wirft (fail-closed, E-F36-4)', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ wirkung: 'extern_lesend' })]), /E-F36-4/)
+})
+
+test('baueMcpAufruf: nicht FREIGEGEBEN wirft', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ freigabe: 'OFFEN' })]), /FREIGEGEBEN/)
+})
+
+test('baueMcpAufruf: unterart skill oder fehlende installation wirft', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ unterart: 'skill' })]), /unterart 'mcp'/)
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ installation: undefined })]), /installation/)
+})
+
+test('baueMcpAufruf: Wildcard oder fremder Server-Präfix in werkzeuge wirft', () => {
+  const mitWildcard = lokalerMcp()
+  mitWildcard.installation = { version: '1', mcp_server: { command: 'npx', args: [] }, werkzeuge: ['mcp__playwright__*'] }
+  assert.throws(() => baueMcpAufruf([mitWildcard]), /Einzelname/)
+  const nurPraefix = lokalerMcp()
+  nurPraefix.installation = { version: '1', mcp_server: { command: 'npx', args: [] }, werkzeuge: ['mcp__playwright__'] }
+  assert.throws(() => baueMcpAufruf([nurPraefix]), /Einzelname/)
+  const fremd = lokalerMcp()
+  fremd.installation = { version: '1', mcp_server: { command: 'npx', args: [] }, werkzeuge: ['mcp__anderer__x'] }
+  assert.throws(() => baueMcpAufruf([fremd]), /Einzelname/)
+})
+
+test('baueMcpAufruf: doppelte Ressourcen-id wirft', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp(), lokalerMcp()]), /doppelt/)
+})
+
+test('baueMcpAufruf: leere werkzeuge, leerer command oder Komma im Namen werfen (kein stilles Weglassen, keine eingeschleuste Regel)', () => {
+  const leer = lokalerMcp()
+  leer.installation = { version: '1', mcp_server: { command: 'npx', args: [] }, werkzeuge: [] }
+  assert.throws(() => baueMcpAufruf([leer]), /werkzeuge/)
+  const ohneCommand = lokalerMcp()
+  ohneCommand.installation = { version: '1', mcp_server: { command: '', args: [] }, werkzeuge: ['mcp__playwright__browser_navigate'] }
+  assert.throws(() => baueMcpAufruf([ohneCommand]), /command/)
+  const komma = lokalerMcp()
+  komma.installation = { version: '1', mcp_server: { command: 'npx', args: [] }, werkzeuge: ['mcp__playwright__x,Bash'] }
+  assert.throws(() => baueMcpAufruf([komma]), /Einzelname/)
+})
+
+test('baueMcpAufruf: ungültige id (__proto__, Großbuchstaben) wirft', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ id: '__proto__' })]), /id verletzt/)
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ id: 'Playwright' })]), /id verletzt/)
+})
+
+test('baueMcpAufruf: typ ungleich extern bei unterart mcp wirft', () => {
+  assert.throws(() => baueMcpAufruf([lokalerMcp({ typ: 'skill' })]), /unterart 'mcp'/)
+})
+
+test('baueMcpAufruf: zwei MCPs in Eingabereihenfolge, Eingabe unverändert', () => {
+  const a = lokalerMcp()
+  const b = lokalerMcp({ id: 'zweiter' })
+  b.installation = { version: '1', mcp_server: { command: 'node', args: ['s.js'] }, werkzeuge: ['mcp__zweiter__lesen'] }
+  const ergebnis = baueMcpAufruf([a, b])
+  assert.deepEqual(Object.keys(JSON.parse(ergebnis.mcpConfig).mcpServers), ['playwright', 'zweiter'])
+  assert.deepEqual(ergebnis.zusatzWerkzeuge, ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_snapshot', 'mcp__zweiter__lesen'])
+  const eingabeVorher = JSON.stringify([a, b])
+  baueMcpAufruf([a, b])
+  assert.equal(JSON.stringify([a, b]), eingabeVorher)
 })
