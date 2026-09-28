@@ -10426,3 +10426,66 @@ Auswirkung: Gering — irreführender, aber folgenloser Statustext; kein Fachfeh
 Maßnahme: Fünftes Kästchen ergänzen (z. B. „Bereit zum Commit — wartet auf Freigabe“) oder den Vorlagentext klarstellen, dass „Blockiert“ ein echtes Hindernis meint. Design-Schnitt am Harness-Template, nicht an diesem Projekt allein.
 Status: offen.
 Feature/Run: fix/f760-verweigert-bau, 28.09.2026 (beim F35-Reallauf-Nachlauf entdeckt, nicht Teil dieses Fixes).
+
+**F-762** · `TECH_DEBT` · P2 · offen
+Titel: Race in `fuehreNachlaufAus` — parallele Testprozesse löschen Je-PID-Dateien zwischen `readdirSync` und `readFileSync`, der Nachlauf scheitert sporadisch mit ENOENT.
+Beschreibung: `fuehreNachlaufAus` listet mit `readdirSync(RESTE_VERZEICHNIS)` alle Je-PID-Dateien und liest jede danach mit `readFileSync`. Laufen mehrere Testprozesse parallel, kann ein anderer Prozess seine Datei zwischen Auflisten und Lesen bereits gelöscht haben — `readFileSync` wirft ENOENT, der Nachlauf bricht ab. Real beobachtet als einmalig rotes CI in PR #265, ohne Code- oder Konfigurationsänderung.
+Fundstelle: `scripts/aufraeumen-nachlauf.mjs` (~Z. 33–41, `fuehreNachlaufAus`).
+Auswirkung: Mittel — sporadisch rotes CI ohne echten Fehler, kostet Wiederholungsläufe und untergräbt das Vertrauen in rote Läufe.
+Maßnahme: ENOENT je Datei tolerieren (Datei überspringen, beim `unlinkSync` ebenso).
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-763** · `BUG` · P3 · offen
+Titel: Die Abnahme-Knöpfe (Annehmen/Ablehnen/Anpassung) sind in der Workflow-Detailansicht aktiv, während die Ausführung LAEUFT.
+Beschreibung: Im Reallauf zeigte die Workflow-Detailansicht die drei Abnahme-Knöpfe auch bei Workflow-Status `LAEUFT`. Geprüft (28.09.2026, Quelltext): Der Server lehnt den Klick in diesem Zustand ab — `POST /api/workflows/<id>/abnahme` antwortet mit 409 für `ANGENOMMEN` außer bei `ABGESCHLOSSEN` und für `ABGELEHNT`/`ANPASSUNG_ANGEFORDERT` außer bei `ABGESCHLOSSEN`/`KLAERUNG_ERFORDERLICH`. Daher P3 statt der vorgeschlagenen P2: reiner Anzeigefehler, keine falsche Entscheidung möglich.
+Fundstelle: `public/leitstand/views/workflows.js` (Abnahme-Bereich der Detailansicht); serverseitige Sperre `scripts/leitstand-server.mjs` (Handler ab ~Z. 7973, Statusprüfungen ~Z. 8020–8036).
+Auswirkung: Gering — der Mensch sieht Handlungsoptionen, die der Server ablehnt; verwirrend, aber folgenlos.
+Maßnahme: Knöpfe nur zeigen, wenn der Workflow-Status die jeweilige Abnahme erlaubt — dieselbe Statustabelle wie der Server.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-764** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der Allowlist-Satz in der Ausführungs-Instruktion verhindert Probebefehle nicht; jeder Baulauf endet VERWEIGERT und braucht menschliche Sichtung.
+Beschreibung: Seit F-760 (#265) nennt die Ausführungs-Instruktion die erlaubten Bash-Befehle. Im Reallauf probierte die Ausführung trotzdem in jedem Baulauf Befehle außerhalb der Allowlist: verkettete `cd … && echo … && sed -n … && cat …`, `node -v`/`npm -v`, `git status`/`git log`, `find`, `node --test | head` (Läufe `2f6509a1`, `630e4282`). Alle korrekt abgelehnt, kein Bypass-Verdacht — aber alle drei Bauläufe nach #264 endeten VERWEIGERT, jeder brauchte eine menschliche Sichtung (Halt F-760) und eine Reparaturfassung (F-768).
+Fundstelle: `src/architekt/index.ts` (`baueBashAllowlistSatz`), `startvorlagen/ai-workforce.json` (`werkzeugsaetze.schreibend`); Beleg haushaltsbuch2-Workflow `router-8b138eac-…` Versionen 22 und 29.
+Auswirkung: Mittel — die Ausführung bleibt sicher begrenzt, aber der Normalfall wird zum Ausnahmefall; die Sichtung verliert als Signal an Wert.
+Maßnahme: Harmlose Lesebefehle erlauben oder zusammengesetzte Befehle, deren Teile alle erlaubt sind, gesondert behandeln. Erweitert die Sicherheitsfläche der Ausführung → Advisor-Pass vor dem Bau.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-765** · `BUG` · P2 · offen
+Titel: Die Ausführung schreibt eine Kern-Entscheidung dem Menschen zu und dokumentiert sie als entschieden.
+Beschreibung: haushaltsbuch2 ADR 0006 (Lauf `630e4282`) begründet sich mit der „menschlichen Abnahme-Entscheidung" und trägt „Status: Entschieden". Tatsächlich war die zugrundeliegende `ANPASSUNG_ANGEFORDERT` eine automatische Anpassung des Kerns (Abnahme-Version 2, `herkunft.erzeuger 'kern'`). Ursache im Harness: Die Korrektur-Instruktionen stellen jede Abnahme-Begründung als menschliche dar, unabhängig vom Erzeuger — `baueAusfuehrungKorrekturInstruktion` („der Mensch hat … ‚Anpassung anfordern' gewählt") und `baueReviewKorrekturInstruktion` („Verbindliche Klarstellung des Auftrags durch den Menschen"). Bezug F-757.
+Fundstelle: `src/korrekturschleife/index.ts:50`, `:86`; haushaltsbuch2 `docs/adr/0006-erster-schreibender-http-zugriff-mit-ursprungspruefung.md` Z. 3, 16, 25.
+Auswirkung: Mittel — die Entscheidungshistorie des Projekts wird verfälscht; eine Kern-Heuristik erscheint als menschlich autorisierte, bindende Entscheidung.
+Maßnahme: `erzeuger` (mensch/kern) der Entscheidungs-Eingaben im Auftragstext sichtbar machen (beide Instruktionen je nach Erzeuger formulieren); Instruktion ergänzen: Kern-Entscheidungen nie als menschliche dokumentieren.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-766** · `TECH_DEBT` · P2 · offen
+Titel: Der Kontrollzustand von Fremdprojekten ist gitignored; Reallauf-Evidenz im Projekt ist ungesichert.
+Beschreibung: haushaltsbuch2 `.gitignore` Zeile 1 schließt `kontrollzustand/` aus, während ai-workforce seinen eigenen Kontrollzustand trackt (F-733, `zustand:sichern`). Die Belege des F35-Reallaufs (Workflow-, Abnahme-, Lauf-Checkpoints) existieren nur lokal; `features/F35/nachweis-reallauf.md` ist ihre einzige versionierte Sicherung.
+Fundstelle: haushaltsbuch2 `.gitignore` Z. 1; Projekt-Skelett (`src/projekt-anlegen/`); `zustand:sichern` (F-733).
+Auswirkung: Mittel — ein Verlust des Arbeitsordners vernichtet die Nachweisbasis; ein späterer Review kann Aussagen nicht mehr gegen den Kontrollzustand prüfen.
+Maßnahme: Projekt-Skelett und `zustand:sichern` auf Fremdprojekte ausweiten oder bewusst lokal lassen — Entscheidung Stefan.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-767** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Coach-Akten formulieren AK ohne Zugangsweg; das Review verlangt Bedienbarkeit über die Anwendung, was eine zusätzliche ADJUST-Iteration kostet.
+Beschreibung: F1 in haushaltsbuch2 formuliert „Eine neue Kategorie kann mit Namen angelegt werden." — ohne zu sagen, ob über Oberfläche, API oder CLI. Iteration 2 lieferte Fachlogik und Persistenz mit 17 grünen Tests; das Review `0efc9683` urteilte trotzdem AK1–AK3 `NICHT_ERFUELLT` („nicht über die Anwendung bedienbar"), der Kern legte ADJUST 2/3 an, erst Iteration 3 (HTTP-Server + Oberfläche) erfüllte die AK.
+Fundstelle: Coach-Modus `feature`/Projekt-Interview (AK-Format `- AK<n>: …`); haushaltsbuch2 `features/F1/feature.md`.
+Auswirkung: Mittel — eine vermeidbare Iteration je Feature mit mehrdeutigem AK (hier gut 9 Minuten Baulauf plus Review und Sichtung).
+Maßnahme: Die AK-Vorlage nennt den Zugangsweg (Oberfläche/API/CLI) als Pflichtbestandteil.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-768** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Fortsetzung nach einer Sichtung erfordert das vollständige Workflow-JSON per Copy-Paste in der Reparaturfassung.
+Beschreibung: Im Reallauf wurde der Workflow viermal nach einem Halt über eine Reparaturfassung fortgesetzt (Versionen 12, 19, 23, 30 im Workflow `router-8b138eac-…`) — jedes Mal mit dem vollständigen, von Hand angepassten Workflow-JSON. Fehleranfällig und ohne eigenes Entscheidungsartefakt, das festhält, was gesichtet wurde. Bezug F-653.
+Fundstelle: Workflow-Detailansicht (`public/leitstand/views/workflows.js`), Reparaturfassung des Workflows.
+Auswirkung: Mittel — jede Sichtung wird zur manuellen JSON-Operation; die Begründung der Fortsetzung bleibt undokumentiert.
+Maßnahme: Knopf „Sichtung bestätigt – weiter" mit Pflichtbegründung als Entscheidungsartefakt — Design-Schnitt.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.

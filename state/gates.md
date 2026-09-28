@@ -1727,3 +1727,19 @@ nicht die Tabelle oben stillschweigend überschreiben.
   ERFOLGREICH-Gegenstück rollenunabhängig (bedient auch den ad-hoc-Endpunkt
   `POST /api/laeufe`) — Kopfkommentar an der Stelle ergänzt, kein
   Verhaltenswechsel.
+- 2026-09-28, F35-WS3-Adjust-Automatik-Gate
+  (`scripts/check-f35-ws3-adjust-automatik.mjs`), K1 aus
+  `features/F35/review-pass.md` (AK18 widersprochen): Ein fehlendes oder
+  unbekanntes Review-Urteil MIT AK-Verstößen löste die ADJUST-Automatik aus,
+  obwohl AK18 die Entscheidung dann beim Menschen lässt. Fix:
+  `ermittleAutomatischeAnpassung` löst nur noch bei urteil ∈ {BEREIT,
+  BEREIT_NACH_KORREKTUR, BLOCKIERT} aus, sonst `{ ausloesen: false, grund:
+  'Urteil fehlt/unbekannt — Entscheidung beim Menschen (AK18)' }`. Neuer
+  Gate-Fall (e2) — (e) parametrisiert: Urteil 'UNKLAR' + AK2 NICHT_ERFUELLT.
+  Grün — alle Fälle (a)–(f) inkl. (e2) sauber, Exit 0. Rot, real
+  zurückgedreht und danach wiederhergestellt: die neue Urteilsprüfung auf
+  `false && …` gesetzt → (e2) meldet „erhalten status "WARTET_FREIGABE",
+  Abnahme-Versionen 1“, Exit 1; die zwei neuen Unit-Tests
+  (`f35-ws3-adjust-automatik.test.mjs`, fehlendes Urteil null/undefined bzw.
+  'UNKLAR', jeweils mit AK-Verstoß) scheitern ebenfalls (14 pass / 2 fail).
+  Wiederhergestellt, danach wieder Exit 0 bzw. 16/16.

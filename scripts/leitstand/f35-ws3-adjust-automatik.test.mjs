@@ -77,6 +77,24 @@ test('ermittleAutomatischeAnpassung: löst NICHT aus bei einem Urteil außerhalb
   assert.equal(ergebnis.ausloesen, false)
 })
 
+// K1 (features/F35/review-pass.md, AK18): AK-Verstöße dürfen ein fehlendes/unbekanntes Urteil nicht überstimmen.
+test('ermittleAutomatischeAnpassung: löst NICHT aus bei fehlendem Urteil, auch mit AK-Verstößen (K1/AK18)', () => {
+  for (const urteil of [null, undefined]) {
+    const ergebnis = ermittleAutomatischeAnpassung({ outputSchema: 'ergebnis-code-reviewer', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil, akVerstoesse: ["AK 'AK2': Urteil NICHT_ERFUELLT"], anzahlBisherigerKernVersionen: 0 })
+    assert.deepEqual(ergebnis, { ausloesen: false, grund: 'Urteil fehlt/unbekannt — Entscheidung beim Menschen (AK18)' })
+  }
+})
+
+test('ermittleAutomatischeAnpassung: löst NICHT aus bei unbekanntem Urteil, auch mit AK-Verstößen (K1/AK18)', () => {
+  const ergebnis = ermittleAutomatischeAnpassung({ outputSchema: 'ergebnis-code-reviewer', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil: 'UNKLAR', akVerstoesse: ["AK 'AK2': Urteil NICHT_ERFUELLT"], anzahlBisherigerKernVersionen: 0 })
+  assert.deepEqual(ergebnis, { ausloesen: false, grund: 'Urteil fehlt/unbekannt — Entscheidung beim Menschen (AK18)' })
+})
+
+test('ermittleAutomatischeAnpassung: löst AUS bei Urteil BEREIT_NACH_KORREKTUR mit AK-Verstößen', () => {
+  const ergebnis = ermittleAutomatischeAnpassung({ outputSchema: 'ergebnis-code-reviewer', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil: 'BEREIT_NACH_KORREKTUR', akVerstoesse: ["AK 'AK2': Urteil NICHT_ERFUELLT"], anzahlBisherigerKernVersionen: 0 })
+  assert.equal(ergebnis.ausloesen, true)
+})
+
 test('ermittleAutomatischeAnpassung: löst NICHT aus, wenn die Grenze von 3 bisherigen automatischen Anpassungen bereits erreicht ist', () => {
   const ergebnis = ermittleAutomatischeAnpassung({ outputSchema: 'ergebnis-code-reviewer', schrittStatus: 'ERFOLGREICH', heilbar: false, urteil: 'BLOCKIERT', akVerstoesse: [], anzahlBisherigerKernVersionen: 3 })
   assert.equal(ergebnis.ausloesen, false)

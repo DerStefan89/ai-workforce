@@ -74,7 +74,8 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 `ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
-`features/F39/feature.md`), F35/F36 noch nicht begonnen (F37/F38 als
+`features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
+Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 noch nicht begonnen (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
@@ -521,9 +522,19 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   durch Stefan am 23.09.2026** (F39-WS-1-Auftrag, Punkt 0). Restfindings
   F-627 (P3) und F-631 (P3) bleiben offen, ebenso die in F-630 dokumentierte
   offene Entscheidung zum P4-Prioritätsniveau). Nach F33.
-- ⏳ **F35** — Challenge-Flow (Challenge-Schema, `qa`-Schritt,
-  ADJUST-Automatik nach E-M5-4, Befund-Projektion), schlank, vor dem
-  Design. Noch nicht begonnen. Nach F42, parallel zu F36
+- ✅ **F35** — Feature bauen aus Akte (schlank, E-M5-16: WS-1 Auftrag
+  aus Akte, WS-2 Urteil je AK, WS-3 ADJUST-Automatik; `qa`-Schritt,
+  Advisor-Schema und Befund-Projektion V1-Backlog). Status
+  `ABGESCHLOSSEN`, **Abnahme durch Stefan am 28.09.2026**.
+  Reallauf gegen `haushaltsbuch2` (F1 „Kategorien verwalten“, Pfad
+  `hoch`, 3 Iterationen, 2 automatische Anpassungen, Abnahme F1
+  `ANGENOMMEN`, 25 Tests grün): `features/F35/nachweis-reallauf.md`,
+  dabei F-752/F-753/F-754 (#264) und F-760 (#265) behoben. Review-Pass
+  „Freigegeben mit Hinweisen“ für FEATURE_GATE:
+  `features/F35/review-pass.md`. K1 (AK18 in einem Fall widersprochen)
+  vor der Abnahme behoben; K2 (Render-Nachweis) nur als Beobachtung
+  Stefans belegt, F-622 bleibt bekannte Grenze. Offene Findings
+  F-762 bis F-768. Nach F42, parallel zu F36
   (`docs/projekt/zielfassung.md` §13.6, E-M5-16 — Reihenfolge jetzt
   F34 → F39 → F41 → F42 → F35 schlank ∥ F36 → Fixpaket → Kern-Feature
   „Projekt aufrufen/anzeigen" → Design → F30 → RC).

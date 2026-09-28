@@ -36,6 +36,9 @@ import { listeVersionen } from '../../src/lineage-registry/index.ts'
 
 const GRENZE_AUTOMATISCHE_ANPASSUNGEN = 3
 
+/** Die drei Gesamturteile aus schemas/ergebnis-code-reviewer.schema.json — nur sie dürfen die Automatik auslösen (AK18, K1). */
+const BEKANNTE_URTEILE = new Set(['BEREIT', 'BEREIT_NACH_KORREKTUR', 'BLOCKIERT'])
+
 /** Name der Kernartefakt-Kette einer Workflow-Abnahme-Entscheidung — dieselbe ID wie GET/POST /api/workflows/<id>/abnahme (D5, kein zweiter Lesepfad). */
 function abnahmeArtefaktId(workflowId) {
   return `entscheidung-workflow-${workflowId}-abnahme`
@@ -104,6 +107,12 @@ export function ermittleAutomatischeAnpassung({ outputSchema, schrittStatus, hei
   }
   if (schrittStatus !== 'ERFOLGREICH') {
     return { ausloesen: false, grund: `Lauf ist '${schrittStatus}', nicht ERFOLGREICH` }
+  }
+  // K1 (features/F35/review-pass.md, AK18): ohne eines der drei bekannten
+  // Urteile entscheidet der Mensch — auch dann, wenn zusätzlich AK-Verstöße
+  // vorliegen (Regel 1b hält den Workflow ohnehin in KLAERUNG_ERFORDERLICH).
+  if (!BEKANNTE_URTEILE.has(urteil)) {
+    return { ausloesen: false, grund: 'Urteil fehlt/unbekannt — Entscheidung beim Menschen (AK18)' }
   }
   const istBlockiert = urteil === 'BLOCKIERT'
   const hatAkVerstoesse = Array.isArray(akVerstoesse) && akVerstoesse.length > 0

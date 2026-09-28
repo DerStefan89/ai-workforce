@@ -75,7 +75,8 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 `ausfuehrung` (Versuch 2) — ein vollständiger realer `hoch`-Lauf ist
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
-`features/F39/feature.md`), F35/F36 noch nicht begonnen (F37/F38 als
+`features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
+Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 noch nicht begonnen (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
