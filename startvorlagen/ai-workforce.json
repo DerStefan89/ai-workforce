@@ -25,7 +25,20 @@
     "schreibend": {
       "art": "schreibend",
       "modus": "DEKLARIERT",
-      "erlaubte_werkzeuge": ["Read", "Grep", "Glob", "Write", "Edit"]
+      "erlaubte_werkzeuge": [
+        "Read",
+        "Grep",
+        "Glob",
+        "Write",
+        "Edit",
+        "Bash(npm install)",
+        "Bash(npm ci)",
+        "Bash(npm run check:*)",
+        "Bash(npm run lint:*)",
+        "Bash(npm run typecheck:*)",
+        "Bash(npm run test:*)",
+        "Bash(npm run build:*)"
+      ]
     },
     "recherchierend": {
       "art": "recherchierend",

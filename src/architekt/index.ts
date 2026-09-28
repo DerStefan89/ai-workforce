@@ -40,9 +40,17 @@
  * CLAUDE.md-Stack-Abschnitt und ein ADR (F-714) — beide Schreibziele liegen
  * innerhalb der F-712-Allowlist.
  *
+ * Fixpaket F35-Reallauf (löst F-750/F-752, state/findings.md): leseEntschiedeneAdrs liest die
+ * bereits entschiedenen ADRs des Zielprojekts (docs/adr/, 'Status: Entschieden'), baueAdrBlock
+ * macht daraus den bindenden Kontextblock für Architekt und architecture-advisor — beide kannten
+ * im Reallauf ADR 0003 (Stack entschieden) nicht und eröffneten die Stack-Frage neu.
+ * baueUmsetzungsInstruktion('feature') verlangt seitdem den BAU des Features, nicht nur das
+ * Zurückschreiben des Entwurfs (F-752).
+ *
  * Wird aufgerufen von: scripts/check-f39-architekt.mjs,
- * scripts/check-f42-projekt-harness.mjs, scripts/leitstand-server.mjs
- * (istStackOffen, real gegen die repoWurzel des Zielprojekts),
+ * scripts/check-f42-projekt-harness.mjs, scripts/check-fixpaket-f35-reallauf.mjs,
+ * scripts/leitstand-server.mjs (istStackOffen/leseEntschiedeneAdrs, real gegen die repoWurzel
+ * des Zielprojekts), src/architecture-advisor/index.ts (baueAdrBlock),
  * src/architekt/architekt.test.ts.
  */
 
@@ -433,6 +441,99 @@ export function traegtAdrVerweisAufEntscheidung(repoWurzel: string, entscheidung
     .some((datei) => readFileSync(join(adrOrdner, datei), 'utf-8').includes(entscheidungArtefaktId))
 }
 
+/** F-750: Obergrenze für den Abschnitt '## Entscheidung' je ADR im Kontextblock. */
+const ADR_ENTSCHEIDUNG_MAX_ZEICHEN = 1500
+/** F-750 (Advisor-Hinweis): Obergrenze für den gesamten Block, damit viele ADRs den Auftragstext nicht fluten. */
+const ADR_BLOCK_MAX_ZEICHEN = 8000
+/** F-750: sichtbarer Kürzungsmarker — ein gekürzter Text darf nie wie der vollständige aussehen. */
+const ADR_KUERZUNG_MARKER = ' … [gekürzt]'
+/** F-750: 'Status: Entschieden', '**Status:** Entschieden' oder 'Status: **Entschieden**', Groß-/Kleinschreibung tolerant; der Wert muss mit 'Entschieden' BEGINNEN ('Entwurf | Entschieden' aus TEMPLATE.md trifft nicht). */
+const ADR_STATUS_ENTSCHIEDEN = /^\s*(?:\*\*)?status(?:\*\*)?\s*:(?:\*\*)?\s*(?:\*\*)?entschieden(?!\p{L})/iu
+
+/**
+ * Liest den Abschnitt unter der Überschrift, deren getrimmte Zeile exakt 'ueberschrift' ist, bis
+ * zur nächsten Überschrift der Ebene 1 oder 2. '## Entscheidung (Mensch)' trifft '## Entscheidung'
+ * deshalb nicht.
+ * @param zeilen - Zeilen der ADR-Datei (LF-normalisiert)
+ * @param ueberschrift - exakte Überschriftzeile, z. B. '## Entscheidung'
+ * @returns den getrimmten Abschnittstext, oder '' wenn die Überschrift fehlt
+ */
+function leseAdrAbschnitt(zeilen: string[], ueberschrift: string): string {
+  const start = zeilen.findIndex((zeile) => zeile.trim() === ueberschrift)
+  if (start === -1) return ''
+  const ende = zeilen.findIndex((zeile, index) => index > start && /^#{1,2}\s/.test(zeile))
+  return zeilen
+    .slice(start + 1, ende === -1 ? undefined : ende)
+    .join('\n')
+    .trim()
+}
+
+/**
+ * F-750 (löst "Architekt und Advisor kannten entschiedene ADRs nicht", F35-Reallauf gegen
+ * haushaltsbuch2: ADR 0003 legte den Stack fest, der Architekt empfahl trotzdem die dort verworfene
+ * Option): liest '<repoWurzel>/docs/adr/*.md' außer TEMPLATE.md in alphabetischer Reihenfolge und
+ * nimmt nur Dateien mit einer Status-Zeile 'Entschieden' im Kopfbereich (vor der ersten
+ * '## '-Überschrift — ein Zitat im Fließtext zählt nicht). Je ADR: erste '# '-Titelzeile, Dateipfad
+ * und der Abschnitt '## Entscheidung', gekürzt auf ADR_ENTSCHEIDUNG_MAX_ZEICHEN, der Gesamtblock auf
+ * ADR_BLOCK_MAX_ZEICHEN, jeweils mit sichtbarem Marker. Liest das Dateisystem, schreibt nie. Fehlt
+ * der Ordner, liefert die Funktion '' (kein Wurf, Muster istStackOffen); eine unlesbare Datei wird
+ * protokolliert und übersprungen.
+ * @param repoWurzel - absoluter Pfad der Repo-Wurzel des Zielprojekts (NICHT installWurzel)
+ * @returns der Kontextblock, oder '' wenn kein entschiedenes ADR vorliegt
+ */
+export function leseEntschiedeneAdrs(repoWurzel: string): string {
+  const adrOrdner = join(repoWurzel, 'docs', 'adr')
+  if (!existsSync(adrOrdner)) return ''
+  let dateien: string[]
+  try {
+    dateien = readdirSync(adrOrdner)
+      .filter((datei) => datei.endsWith('.md') && datei !== 'TEMPLATE.md')
+      .sort()
+  } catch (fehler) {
+    console.error(`[architekt] docs/adr unter '${repoWurzel}' nicht lesbar, ADR-Kontext entfällt: ${(fehler as Error).message}`)
+    return ''
+  }
+  const eintraege: string[] = []
+  for (const datei of dateien) {
+    let text: string
+    try {
+      text = readFileSync(join(adrOrdner, datei), 'utf-8')
+    } catch (fehler) {
+      console.error(`[architekt] ADR '${datei}' nicht lesbar, übersprungen: ${(fehler as Error).message}`)
+      continue
+    }
+    const zeilen = text.replace(/\r\n/g, '\n').split('\n')
+    const ersteAbschnittsZeile = zeilen.findIndex((zeile) => zeile.startsWith('## '))
+    const kopf = ersteAbschnittsZeile === -1 ? zeilen : zeilen.slice(0, ersteAbschnittsZeile)
+    if (!kopf.some((zeile) => ADR_STATUS_ENTSCHIEDEN.test(zeile))) continue
+    const titel = zeilen.find((zeile) => zeile.startsWith('# '))?.trim() ?? `# ${datei}`
+    const entscheidung = leseAdrAbschnitt(zeilen, '## Entscheidung')
+    const gekuerzt = entscheidung.length > ADR_ENTSCHEIDUNG_MAX_ZEICHEN ? `${entscheidung.slice(0, ADR_ENTSCHEIDUNG_MAX_ZEICHEN)}${ADR_KUERZUNG_MARKER}` : entscheidung
+    eintraege.push(`${titel} (docs/adr/${datei})\n${gekuerzt === '' ? "(kein Abschnitt '## Entscheidung' gefunden)" : gekuerzt}`)
+  }
+  const block = eintraege.join('\n\n')
+  return block.length > ADR_BLOCK_MAX_ZEICHEN ? `${block.slice(0, ADR_BLOCK_MAX_ZEICHEN)}${ADR_KUERZUNG_MARKER} — weitere entschiedene ADRs unter docs/adr/` : block
+}
+
+/** F-750: bindende Regel zum ADR-Block, für Architekt und architecture-advisor wortgleich. */
+const ADR_BLOCK_REGEL =
+  "Entschiedene ADRs nicht neu verhandeln. Widerspricht der Auftrag einem ADR, das als eigene Entscheidung (kategorie 'sonstig') mit Verweis auf das ADR vorlegen."
+
+/** F-750: Zusatz nur im Architekt-Text, wenn der Stack laut CLAUDE.md offen ist, aber ein entschiedenes ADR vorliegt (istStackOffen bleibt marker-basiert). */
+const ADR_STACK_HINWEIS = "Legt ein entschiedenes ADR den Stack bereits fest, nenne genau diese Wahl als 'empfehlung' deiner Stack-Entscheidung und begründe mit dem ADR."
+
+/**
+ * F-750: baut die Zeilen des bindenden ADR-Kontextblocks (Überschrift, Regel, Inhalt). Reine
+ * Funktion; ein leerer Block liefert keine Zeilen, damit der Auftragstext ohne entschiedene ADRs
+ * bitgenau unverändert bleibt.
+ * @param entschiedeneAdrs - Ergebnis von leseEntschiedeneAdrs
+ * @returns Zeilen zum Einfügen vor dem Planungsauftrag (leer bei leerem Block)
+ */
+export function baueAdrBlock(entschiedeneAdrs: string): string[] {
+  if (entschiedeneAdrs === '') return []
+  return ['', 'Bereits entschiedene Projektentscheidungen (bindend):', ADR_BLOCK_REGEL, entschiedeneAdrs]
+}
+
 /** F42 WS-2 (löst F-685): angehängt an die Rolleninstruktion, wenn istStackOffen(repoWurzel) true liefert — hält den Architekten an, den Stack als Entscheidung statt als eigene Festlegung vorzulegen. */
 const STACK_OFFEN_HINWEIS =
   "Der Stack (Laufzeit, Sprache, Speicherform) dieses Projekts ist NOCH OFFEN (CLAUDE.md trägt den Füllungs-Marker oder existiert noch nicht) — lege ihn NICHT selbst fest, auch nicht als ADR-Entwurf. Trage stattdessen einen Eintrag in 'entscheidungen_mensch' mit 'kategorie': 'stack' ein, mit mindestens zwei 'optionen' inkl. je eigener Vor-/Nachteile; 'empfehlung' nennt den Titel einer dieser Optionen."
@@ -487,14 +588,19 @@ function baueProjektRolleninstruktion(stackOffen: boolean): string[] {
  * @param stackOffen - F42 WS-2 (löst F-685): true, wenn istStackOffen(repoWurzel) für das
  *   Zielprojekt true liefert — hängt STACK_OFFEN_HINWEIS an die Rolleninstruktion an. Default
  *   false, rückwärtskompatibel.
+ * @param entschiedeneAdrs - F-750: Ergebnis von leseEntschiedeneAdrs(repoWurzel) des Zielprojekts.
+ *   Default '' lässt den Text bitgenau unverändert; sonst folgt vor dem Planungsauftrag der
+ *   bindende ADR-Block, bei offenem Stack zusätzlich ADR_STACK_HINWEIS.
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext
  *   den einzigen Eingabekanal für den Lauf bildet
  */
-export function baueArchitektAuftragstext(planungstext: string, modus: ArchitektModus = 'feature', capabilityAuszug: string | null = null, stackOffen = false): string {
+export function baueArchitektAuftragstext(planungstext: string, modus: ArchitektModus = 'feature', capabilityAuszug: string | null = null, stackOffen = false, entschiedeneAdrs = ''): string {
   const zeilen = modus === 'projekt' ? baueProjektRolleninstruktion(stackOffen) : baueFeatureRolleninstruktion(stackOffen)
   if (modus === 'projekt' && capabilityAuszug !== null) {
     zeilen.push('', 'Verfügbare Ressourcen (Capability-Auszug):', capabilityAuszug)
   }
+  zeilen.push(...baueAdrBlock(entschiedeneAdrs))
+  if (stackOffen && entschiedeneAdrs !== '') zeilen.push(ADR_STACK_HINWEIS)
   zeilen.push('', 'Planungsauftrag:', planungstext)
   return zeilen.join('\n')
 }
@@ -511,9 +617,14 @@ export function baueArchitektAuftragstext(planungstext: string, modus: Architekt
  * Projektmodus-Auftrag "AUSSCHLIESSLICH Dokumentation" wurde trotzdem als Bauauftrag für
  * Schemas/Skripte/ADRs gelesen): im Modus 'projekt' ist der Entwurf AUSSCHLIESSLICH Kontext,
  * kein Bauauftrag — der Auftrags-Scope (der ursprüngliche Auftragstext, bereits vor diesem
- * Zusatzblock im Prompt) hat Vorrang. Modus 'feature' bleibt bitgenau die bisherige, seit F39
- * WS-3a bestehende Instruktion (Rückwärtskompatibilität, Default-Parameter).
- * @param modus - 'feature' (Default, unverändert) oder 'projekt' (F42 WS-4, löst F-712)
+ * Zusatzblock im Prompt) hat Vorrang.
+ *
+ * F-752 (F35-Reallauf gegen haushaltsbuch2, Lauf 7873df97: die Ausführung schrieb nur ADR, Schema
+ * und Akte-Abschnitte und hielt den Bau ausdrücklich für "out of scope" — die vier Rückschreib-
+ * Punkte waren die EINZIGE Anweisung): im Modus 'feature' sind die vier Rückschreib-Punkte jetzt
+ * Teil 1, Teil 2 verlangt den Bau des Features mit Tests je AK und eigenem Prüflauf. Der
+ * Projektmodus bleibt bitgenau unverändert.
+ * @param modus - 'feature' (Default, Bauauftrag) oder 'projekt' (F42 WS-4, löst F-712)
  * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
  */
 export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): string[] {
@@ -527,11 +638,20 @@ export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): st
     ]
   }
   return [
-    "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor. Setze ihn wie folgt um:",
+    "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor. Dein Auftrag ist der BAU des Features laut Auftragstext oben: Jedes Akzeptanzkriterium muss durch lauffähigen Code erfüllt und durch Tests belegt sein.",
+    'Teil 1 — Architekturentwurf zurückschreiben (zuerst):',
     "- Für jeden Eintrag in 'adr_entwuerfe': lege 'docs/adr/<slug-aus-titel>.md' nach dem Muster 'docs/adr/TEMPLATE.md' an — fortlaufende ADR-Nummer nach den bestehenden Dateien unter 'docs/adr/' (TEMPLATE.md nicht mitgezählt).",
     "- Für jeden Eintrag in 'schema_entwuerfe': 'json_schema' liegt als String (JSON-Text, F-638) vor — mit JSON.parse in ein Objekt umwandeln, dieses nach 'schemas/<name>.schema.json' schreiben, dazu ein Beispiel 'schemas/examples/<name>.json' anlegen und die Prüfung in das für diesen Auftrag zuständige Gate einhängen.",
     "- Für 'module' bzw. ein neues Datenmodell: ergänze NUR die optionalen technischen Abschnitte, die der Entwurf tatsächlich liefert (z. B. Komponenten/Module, Datenmodell, Interfaces/Contracts, State/Persistenz, Security/Permissions, Datenflüsse, Migration, Red-/Green-Cases), in der betroffenen 'features/<id>/feature.md'.",
     "- Liegt eine bereits erfasste menschliche Architektur-Entscheidung vor (Eingabe 'entscheidung-@', nicht leer): übernimm sie als eigenen Abschnitt 'Entscheidung (Mensch)' im betroffenen ADR.",
+    'Teil 2 — Feature bauen (danach, Pflicht):',
+    '- Implementiere das Feature laut Auftragstext und Architekturentwurf als lauffähigen Produktcode.',
+    "- Neue Pakete trägst du in package.json ein und rufst danach 'npm install' (ohne weitere Argumente) auf — 'npm install <paket>' und globale Installationen sind nicht erlaubt.",
+    '- Lege je Akzeptanzkriterium mindestens einen Test an, der es belegt.',
+    "- Führe 'npm run check' (bzw. den Prüfbefehl des Projekts) selbst aus, soweit deine Werkzeuge es erlauben, und korrigiere, bis er grün ist.",
+    "- Sind lint/typecheck/test im Projekt noch Platzhalter: wähle die Werkzeuge nach dem Projekt-Skill '.claude/skills/werkzeug-auswahl' (falls vorhanden) und trage sie ein. Verlangt der Skill eine menschliche Wahl, stelle sie als Rückfrage, statt zu raten.",
+    "- ARCHITECTURE.md: Befülle die Abschnitte, die dieser Bau erstmals festlegt (Ordnerstruktur, Datenzugriff/Transaktionsgrenzen, Fehlerbehandlung/Logging, Tests), und entferne deren '[FÜLLUNG]'-Marker.",
+    'Das Zurückschreiben des Entwurfs allein erfüllt den Auftrag NICHT.',
     'Keine Umsetzung, die dem Architekturentwurf widerspricht, ohne das ausdrücklich zu vermerken (CLAUDE.md, Entscheidungsregel 5).',
   ]
 }
@@ -543,7 +663,8 @@ export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): st
  * 'ausfuehrung'-Instruktion eines Projektmodus-Schritts, dessen referenzierter Architektur-Lauf
  * eine Entscheidung mit 'kategorie': 'stack' trägt UND für die bereits eine menschliche Antwort
  * erfasst ist (der Aufrufer prüft beides, diese Funktion nimmt nur noch die Artefakt-Referenz
- * entgegen). Beide verlangten Schreibziele (CLAUDE.md, docs/adr/) liegen innerhalb der
+ * entgegen). Seit F-753 in JEDEM Modus angehängt — dieselbe Vorbedingung wie Regel 1h, die
+ * ebenfalls modusunabhängig prüft. Beide verlangten Schreibziele (CLAUDE.md, docs/adr/) liegen innerhalb der
  * F-712-Allowlist — kein Widerspruch zu baueUmsetzungsInstruktion(modus: 'projekt').
  * @param entscheidungArtefaktId - Kernartefakt-Id der erfassten Entscheidung (workflowEntscheidungArtefaktId), für die Referenz im ADR
  * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen

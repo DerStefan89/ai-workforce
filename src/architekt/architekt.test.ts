@@ -172,11 +172,15 @@ test('baueArchitektAuftragstext: stackOffen:true hängt den Stack-Hinweis an, De
 
 // ─── F42 WS-4 (löst F-712/F-714) ─────────────────────────────────────────────
 
-test('baueUmsetzungsInstruktion: Default (kein Argument, Feature-Modus) bleibt bitgenau die bisherige Instruktion', () => {
+test('baueUmsetzungsInstruktion: Default (Feature-Modus) trägt die vier Rückschreib-Punkte UND die Baupflicht (F-752)', () => {
   const zeilen = baueUmsetzungsInstruktion()
   assert.ok(zeilen.some((z) => z.includes('docs/adr/TEMPLATE.md')))
   assert.ok(zeilen.some((z) => z.includes('schemas/examples/')))
   assert.ok(!zeilen.some((z) => z.includes('Scope des ursprünglichen Auftrags')))
+  assert.ok(zeilen.includes('Das Zurückschreiben des Entwurfs allein erfüllt den Auftrag NICHT.'))
+  const teil1 = zeilen.indexOf('Teil 1 — Architekturentwurf zurückschreiben (zuerst):')
+  const teil2 = zeilen.indexOf('Teil 2 — Feature bauen (danach, Pflicht):')
+  assert.ok(teil1 !== -1 && teil2 !== -1 && teil1 < teil2)
 })
 
 test("baueUmsetzungsInstruktion: modus 'feature' explizit ist bitgenau dasselbe wie das Default", () => {

@@ -10264,3 +10264,138 @@ Auswirkung: Gering — jede Zeile über der Grenze verdrängt Kontext in jeder S
 Maßnahme: F-590-Block nach `state/reibung.md` verschoben; CLAUDE.md jetzt 191 Zeilen.
 Status: behoben (docs/harness-gedaechtnis, 26.09.2026).
 Feature/Run: harness-gedaechtnis, 26.09.2026.
+
+**F-744** · `BUG` · P2 · offen
+Titel: Ein gescheiterter Worker-Lauf zeigt im Leitstand nur „kein Ergebnistext im Rohstrom“, nicht die Ursache (z. B. 401, Verbindungsabbruch).
+Beschreibung: Endet ein Worker-Lauf mit exit ≠ 0 ohne Ergebnis, sieht der Mensch im Leitstand nur den Sammeltext „kein Ergebnistext im Rohstrom“. Die eigentliche Ursache (Authentifizierungsfehler, Verbindungsabbruch) steht nur im Rohstrom.
+Fundstelle: Leitstand-Laufansicht / Rohstrom-Projektion (`scripts/leitstand-server.mjs`, `baueRohstromProjektion`).
+Auswirkung: Mittel — die Ursache eines Abbruchs ist ohne Blick in die Rohdatei nicht erkennbar.
+Maßnahme: bei exit ≠ 0 ohne Ergebnis die letzte `type:"error"`-Meldung (codex-stdout) bzw. stderr anzeigen, API-Schlüssel maskiert; nur Anzeige, keine Klassifikation aus Konsolentext (ARCHITECTURE.md §4/§7).
+Status: offen.
+Feature/Run: F35-Reallauf Z1, 26.09.2026.
+
+**F-745** · `BUG` · P3 · offen
+Titel: Die Workflow-Ansicht öffnet entscheidung-router-*-Artefakte als ungültigen Workflow, mit aktiven Knöpfen.
+Beschreibung: Ein `entscheidung-router-*`-Artefakt erscheint in der Workflow-Ansicht als Workflow, wird als ungültig angezeigt und trägt trotzdem aktive Bedienknöpfe.
+Fundstelle: `public/leitstand/views/workflows.js` (Auswahl der angezeigten Artefakte).
+Auswirkung: Gering — irreführende Anzeige, Knöpfe ohne sinnvolle Wirkung.
+Maßnahme: `entscheidung-router-*` aus der Workflow-Liste herausfiltern oder als eigene Art anzeigen; Knöpfe bei ungültigem Workflow deaktivieren.
+Status: offen.
+Feature/Run: F35-Reallauf, 26.09.2026.
+
+**F-746** · `TECH_DEBT` · P2 · offen
+Titel: Reviewer (standard/hoch) und Architekt (hoch) hängen allein am Worker codex, ohne erklärten Fallback.
+Beschreibung: Fällt codex aus (real beobachtet: Codex-Störung), stehen Review und Architekturentwurf still; ein Ausweichweg ist weder vorgesehen noch dokumentiert.
+Fundstelle: `workflow-vorlagen/standard.json`, `workflow-vorlagen/hoch.json`.
+Auswirkung: Mittel — eine externe Störung blockiert den ganzen Pfad.
+Maßnahme: im Design-Schnitt bzw. F30 bewerten; kein stiller Fallback (ARCHITECTURE.md §4).
+Status: offen.
+Feature/Run: F35-Reallauf, 26.09.2026 (Codex-Störung).
+
+**F-747** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: codex-CLI schreibt „failed to refresh available models: request timed out“ auf stderr, läuft aber weiter.
+Beschreibung: Die Meldung erscheint auf stderr, ohne dass der Lauf scheitert. Wird stderr künftig angezeigt (F-744), könnte sie fälschlich als Ursache eines Abbruchs erscheinen.
+Fundstelle: codex-Rohstrom (stderr) im F35-Reallauf.
+Auswirkung: Gering — nur Anzeige.
+Maßnahme: beobachten, ob der Leitstand das als Ursache anzeigt (Bezug F-744).
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-748** · `BUG` · P2 · offen
+Titel: Router-`rueckfragen` werden außer der Validierung nirgends verwendet: nicht angezeigt, nicht an Folgeschritte übergeben, kein Halt.
+Beschreibung: Der Router darf Rückfragen ausgeben; sie werden validiert und danach verworfen. Der Mensch sieht sie nicht, Folgeschritte kennen sie nicht, der Workflow hält nicht.
+Fundstelle: `src/router/index.ts` (~Z. 125, Validierung von `rueckfragen`).
+Auswirkung: Mittel — offene Fragen des Routers gehen still verloren.
+Maßnahme: anzeigen und Antwort als Auftragsergänzung übernehmen oder halten.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-749** · `BUG` · P3 · offen
+Titel: Laufakte deklariert `codex-cli 0.153.4` statisch; installiert war 0.157.0.
+Beschreibung: Die Werkzeugversion in der Laufakte stammt aus `worker.codex.versionDeklariert` der Startvorlage, nicht aus dem tatsächlich gestarteten Programm.
+Fundstelle: `startvorlagen/ai-workforce.json` (`worker.codex.versionDeklariert`), Laufakte des Architekt-Laufs.
+Auswirkung: Gering — die Laufakte trägt eine falsche Versionsangabe.
+Maßnahme: Version beim Start lesen.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-750** · `BUG` · P1 · **behoben** (dieser PR, fix/f35-reallauf-fixpaket)
+Titel: Architekt und Advisor kannten entschiedene ADRs nicht; istStackOffen sieht nur den CLAUDE.md-Marker; Stack-Frage gegen ADR 0003 neu eröffnet.
+Beschreibung: Der Architekt (codex) bekam nur Auftragstext und Profil. haushaltsbuch2 hat ADR 0003 „Entschieden: TypeScript/Node.js/SQLite“, aber den CLAUDE.md-Stack noch mit `[FÜLLUNG]`. `STACK_OFFEN_HINWEIS` erzwang eine Stack-Frage, der Architekt empfahl Browser-Speicher, also genau die in ADR 0003 verworfene Option. Der Advisor las docs/adr/ ebenfalls nicht.
+Fundstelle: `src/architekt/index.ts` (`istStackOffen`, `baueArchitektAuftragstext`), `src/architecture-advisor/index.ts`, `scripts/leitstand-server.mjs` (Schrittstart).
+Auswirkung: Hoch — bereits getroffene Entscheidungen des Menschen wurden neu verhandelt.
+Maßnahme: `leseEntschiedeneAdrs` liest docs/adr/*.md mit `Status: Entschieden` (Titel + „## Entscheidung“, gekürzt); Architekt- und Advisor-Auftragstext tragen den Block „Bereits entschiedene Projektentscheidungen (bindend)“ samt Regel; bei offenem Stack nennt der Architekt die ADR-Wahl als Empfehlung. Gate `scripts/check-fixpaket-f35-reallauf.mjs` (c)/(d). Restgrenze: istStackOffen bleibt marker-basiert, der Validator verlangt bei offenem Stack weiterhin eine Stack-Entscheidung.
+Status: behoben (fix/f35-reallauf-fixpaket, 28.09.2026).
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-751** · `TECH_DEBT` · P2 · offen
+Titel: Urteil des architecture-advisor (real BEREIT_NACH_KORREKTUR) ist nicht maschinenlesbar und hält den Workflow nie.
+Beschreibung: Regel 1d prüft nur, ob eine `Urteil:`-Zeile vorhanden ist. Ein BEREIT_NACH_KORREKTUR oder BLOCKIERT lässt den Workflow trotzdem weiterlaufen; die Korrekturpunkte erreichen die Ausführung nicht gezielt.
+Fundstelle: `src/architecture-advisor/index.ts` (`leseUrteilAusAdvisorText`), `src/workflow/index.ts` (Regel 1d).
+Auswirkung: Mittel — ein Prüfurteil ohne Wirkung.
+Maßnahme: schematisieren oder im Freigabe-Block der Ausführung anzeigen; Kopplung an F36-Backlog „Rolle mit Output-Schema und Urteil“.
+Status: offen.
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-752** · `BUG` · P1 · **behoben** (dieser PR, fix/f35-reallauf-fixpaket)
+Titel: Feature-Modus-Umsetzungsinstruktion beschränkte die Ausführung auf das Zurückschreiben des Entwurfs; kein Produktcode.
+Beschreibung: `baueUmsetzungsInstruktion('feature')` hängte nur vier Rückschreib-Punkte an (ADR, Schema, Akte-Abschnitte, Entscheidung Mensch). Die Ausführung (Lauf 7873df97) schrieb nur ADR 0004, ein Schema, scripts/check-schemas.mjs und Akte-Abschnitte und hielt den Bau ausdrücklich für „out of scope … per the task's explicit 4-bullet translation instructions“. Review (codex) daraufhin BLOCKIERT, AK1–AK3 NICHT_ERFUELLT.
+Fundstelle: `src/architekt/index.ts` (`baueUmsetzungsInstruktion`).
+Auswirkung: Hoch — der Pfad `hoch` konnte kein Feature bauen.
+Maßnahme: Rückschreib-Punkte als Teil 1, danach Teil 2 „Feature bauen“ (Tests je AK, eigener Prüflauf, Werkzeugwahl nach Skill, ARCHITECTURE.md füllen) und der Satz „Das Zurückschreiben des Entwurfs allein erfüllt den Auftrag NICHT.“ Projektmodus bitgenau unverändert. Gate (a)/(b).
+Status: behoben (fix/f35-reallauf-fixpaket, 28.09.2026).
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-753** · `BUG` · P1 · **behoben** (dieser PR, fix/f35-reallauf-fixpaket)
+Titel: 1h im Feature-Modus geprüft, Stack-Instruktion nur im Projektmodus angehängt.
+Beschreibung: `scripts/leitstand-server.mjs` hängte `baueStackEntscheidungsInstruktion` nur bei `modus === 'projekt'` an, die 1h-Prüfung (`stackNichtGefuellt`, `stackPruefkettenPfadeFehlen`) lief modusunabhängig. Im Feature-Modus verlangte der Halt etwas, das nie beauftragt wurde.
+Fundstelle: `scripts/leitstand-server.mjs` (Schrittstart, Anhängen der Stack-Instruktion; Nachlauf Regel 1h).
+Auswirkung: Hoch — ein Feature-Workflow mit Stack-Entscheidung hielt zwingend.
+Maßnahme: Modus-Bedingung entfernt; Instruktion und 1h haben dieselbe Vorbedingung (Stack-Entscheidung im Architekt-Lauf UND erfasste Antwort). Gate (b).
+Status: behoben (fix/f35-reallauf-fixpaket, 28.09.2026).
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-754** · `BUG` · P1 · **behoben** (dieser PR, fix/f35-reallauf-fixpaket)
+Titel: Werkzeugsatz 'schreibend' ohne Bash; ein echter Bau mit Abhängigkeiten war unmöglich. Entscheidung E-F754 = A.
+Beschreibung: `werkzeugsaetze.schreibend` in `startvorlagen/ai-workforce.json` trug Read, Grep, Glob, Write, Edit. Die Ausführung konnte weder `npm install` noch Typecheck/Tests laufen lassen („no shell execution capability“). Neue Projekte erben die Werkzeugsätze.
+Fundstelle: `startvorlagen/ai-workforce.json`, `src/startvorlage/index.ts`, `src/claude-code-gateway/index.ts` (`baueAufruf`).
+Auswirkung: Hoch — kein Bau mit Abhängigkeiten möglich.
+Maßnahme: E-F754 = A (Stefan, 28.09.2026), `docs/adr/ausfuehrung-bash-allowlist.md`: feste Bash-Allowlist für Paket- und Prüfbefehle; Validator mit positiver Allowlist (nacktes Bash, Wildcards, git, PowerShell abgewiesen); `baueAufruf` gibt `--tools` die Werkzeugnamen (real gemessen: `--tools` mit Regelsyntax deaktiviert Bash) und setzt `--disallowedTools Bash(git:*)`. Gate (e)/(f). Bestehende Projekte (haushaltsbuch2) tragen die Allowlist in ihrer eigenen Startvorlage nicht; das trägt der Mensch nach.
+Status: behoben (fix/f35-reallauf-fixpaket, 28.09.2026).
+Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+
+**F-755** · `TECH_DEBT` · P2 · offen
+Titel: LEITSTAND_*-Umgebungsvariablen des Servers erreichen das `npm run check` der Ausführung.
+Beschreibung: Seit E-F754 startet die Ausführung Prüfbefehle selbst. Ihr Bash-Kindprozess erbt die Umgebung des claude-Kindprozesses, also auch `LEITSTAND_*` des Servers. Der Kern-Prüfschritt entfernt diese Variablen (`entferneLeitstandUmgebungsvariablen`, F-652), der claude-Kindprozess nicht. Läuft ai-workforce selbst als Projekt, können dessen Gates dadurch falsch rot oder grün werden.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (spawn mit `{ ...process.env, … }`), `src/pruefschritt/index.ts` (`entferneLeitstandUmgebungsvariablen`).
+Auswirkung: Mittel — Selbstprüfung der Ausführung kann verfälscht sein; der verbindliche Kern-Prüfschritt ist nicht betroffen.
+Maßnahme: `LEITSTAND_*` für 'ausfuehrung'-Läufe aus der Umgebung des Kindprozesses entfernen (Muster `entferneLeitstandUmgebungsvariablen`).
+Status: offen.
+Feature/Run: fix/f35-reallauf-fixpaket, Review-Pass, 28.09.2026.
+
+**F-756** · `TECH_DEBT` · P2 · **behoben** (dieser PR, fix/f35-reallauf-fixpaket)
+Titel: `Bash(npm install:*)` und `Bash(npx tsc:*)` sind breiter als „Paket- und Prüfbefehle“.
+Beschreibung: `npm install:*` erlaubt auch `npm install -g <paket>` und `--prefix <anderes-repo>`, also Wirkung außerhalb des Projekts. `npx tsc` lädt ohne lokales TypeScript das fremde Registry-Paket `tsc` (ohne TTY nimmt npx `--yes` an). Die Liste ist so im Vertrag festgelegt (E-F754).
+Fundstelle: `startvorlagen/ai-workforce.json`, `src/startvorlage/index.ts` (`ERLAUBTE_BASH_REGELN`), `docs/adr/ausfuehrung-bash-allowlist.md`.
+Auswirkung: Mittel — größere Angriffsfläche als nötig, begrenzt durch ZWINGEND-Freigabe.
+Maßnahme: Entscheidung Stefan (28.09.2026, verengen): `Bash(npm install)`/`Bash(npm ci)` exakt ohne `:*`, `Bash(npx tsc:*)` gestrichen (`npm run typecheck` reicht). Neue Pakete trägt die Ausführung in package.json ein und ruft danach `npm install` auf (baueUmsetzungsInstruktion). Real gemessen (claude 2.1.258): `npm install` läuft, `npm install -g <paket>`, `npm install <paket>` und `npm ci --ignore-scripts` werden abgelehnt. Gate (e) weist die alten Regeln als Verstoß ab.
+Status: behoben (fix/f35-reallauf-fixpaket, 28.09.2026).
+Feature/Run: fix/f35-reallauf-fixpaket, Advisor- und Review-Pass, 28.09.2026.
+
+**F-757** · `BUG` · P2 · offen
+Titel: „Status: Entschieden“ in einem ADR heißt nicht, dass ein Mensch entschieden hat.
+Beschreibung: `leseEntschiedeneAdrs` macht jedes ADR mit `Status: Entschieden` für Architekt und Advisor bindend (F-750). In haushaltsbuch2 hat der gescheiterte Lauf 7873df97 ADR-0004 selbst mit diesem Status geschrieben, ohne menschliche Entscheidung. Teil 1 der Feature-Instruktion erzeugt weitere solche ADRs.
+Fundstelle: `src/architekt/index.ts` (`leseEntschiedeneAdrs`, `baueUmsetzungsInstruktion`), haushaltsbuch2 `docs/adr/0004-…`.
+Auswirkung: Mittel — eine KI-Festlegung kann als bindende Projektentscheidung weiterwirken.
+Maßnahme: Die Ausführung schreibt ADR-Entwürfe mit Status „Vorgeschlagen“, der Mensch setzt „Entschieden“ — oder das ADR verweist auf ein Entscheidungsartefakt. Im Design-Schnitt klären.
+Status: offen.
+Feature/Run: fix/f35-reallauf-fixpaket, QA-Pass, 28.09.2026.
+
+**F-758** · `BUG` · P3 · offen
+Titel: Stack-Instruktion und ADR-Regel passen nicht zu jeder Lage.
+Beschreibung: (1) `baueStackEntscheidungsInstruktion` verlangt „Lege ein ADR an“, auch wenn ein entschiedenes Stack-ADR schon existiert (haushaltsbuch2 ADR-0003) — wahrscheinliche Folge ein doppeltes Stack-ADR; einen Verweis im bestehenden ADR akzeptiert Regel 1h bereits (`traegtAdrVerweisAufEntscheidung`), die Instruktion sagt das nicht. (2) Die ADR-Regel „als eigene Entscheidung (kategorie 'sonstig') vorlegen“ richtet sich an das JSON des Architekten; der Advisor antwortet in Prosa ohne `entscheidungen_mensch` und bräuchte „als Befund melden“. Der Vertrag verlangte beide wortgleich.
+Fundstelle: `src/architekt/index.ts` (`baueStackEntscheidungsInstruktion`, `ADR_BLOCK_REGEL`), `src/architecture-advisor/index.ts`.
+Auswirkung: Gering — doppelte ADRs, unpassende Anweisung an den Advisor.
+Maßnahme: Instruktion um „oder den Verweis im bestehenden Stack-ADR ergänzen“ erweitern; für den Advisor eine eigene Regelzeile.
+Status: offen.
+Feature/Run: fix/f35-reallauf-fixpaket, QA- und Review-Pass, 28.09.2026.

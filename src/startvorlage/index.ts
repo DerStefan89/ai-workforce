@@ -27,7 +27,7 @@ import { sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import type { BenannterWerkzeugsatz, StartvorlageV0Daten } from './types.ts'
 
-/** Reine Funktion: prüft ein geparstes Objekt gegen schemas/startvorlage.schema.json. Die JSON-Schema-Datei kann "mindestens je ein lesender/schreibender Werkzeugsatz" nicht ausdrücken (patternProperties kennt kein Gegenstück je Wert) — diese Regel prüft ausschließlich diese Funktion, D5-Analogie zu check-datenformate.mjs' handgeschriebenen Validatoren. */
+/** Reine Funktion: prüft ein geparstes Objekt gegen schemas/startvorlage.schema.json. Die JSON-Schema-Datei kann "mindestens je ein lesender/schreibender Werkzeugsatz" nicht ausdrücken (patternProperties kennt kein Gegenstück je Wert) — diese Regel prüft ausschließlich diese Funktion, D5-Analogie zu check-datenformate.mjs' handgeschriebenen Validatoren. Dasselbe gilt für die Bash-Allowlist der Werkzeugsätze (E-F754, pruefeErlaubteWerkzeuge). */
 export function validiereStartvorlageDaten(daten: unknown): string[] {
   if (typeof daten !== 'object' || daten === null || Array.isArray(daten)) {
     return ['Wurzel ist kein Objekt']
@@ -87,6 +87,8 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
       if (w.modus !== 'DEKLARIERT') verstoesse.push(`'werkzeugsaetze.${name}.modus' muss 'DEKLARIERT' sein`)
       if (!Array.isArray(w.erlaubte_werkzeuge) || w.erlaubte_werkzeuge.length === 0 || w.erlaubte_werkzeuge.some((t) => typeof t !== 'string' || t.length === 0)) {
         verstoesse.push(`'werkzeugsaetze.${name}.erlaubte_werkzeuge' muss ein nicht-leeres Array nicht-leerer Strings sein`)
+      } else {
+        verstoesse.push(...pruefeErlaubteWerkzeuge(name, w.erlaubte_werkzeuge as string[], w.art))
       }
     }
     if (eintraege.length > 0 && !arten.has('lesend')) verstoesse.push("'werkzeugsaetze' braucht mindestens einen Eintrag mit art='lesend' (AK4)")
@@ -119,6 +121,81 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   }
   if ('pruefketten_pfade' in obj) verstoesse.push(...pruefePruefkettenPfade(obj.pruefketten_pfade))
 
+  return verstoesse
+}
+
+/**
+ * E-F754 (docs/adr/ausfuehrung-bash-allowlist.md): die EINZIGEN Bash-Regeln, die ein Werkzeugsatz
+ * tragen darf — Paket- und Prüfbefehle. Positive Allowlist statt Sperrliste (Advisor-Pass K5): die
+ * Werkzeugsätze eines Fremdprojekts liegen in dessen Repo und sind für die Ausführung schreibbar,
+ * jede nicht gelistete Bash-Regel (z. B. 'Bash(npm:*)', 'Bash(npm run:*)', 'Bash(sh:*)') weist der
+ * Validator deshalb ab. Real gemessen (claude 2.1.258): ':*' ist eine Präfixregel mit Wortgrenze
+ * ('npm run test:*' lässt 'npm run testx' nicht zu), verkettete Befehle werden je Teil geprüft.
+ * F-756 (Stefan, 28.09.2026, verengt): 'npm install'/'npm ci' nur exakt, ohne ':*' — real
+ * gemessen lehnt 'Bash(npm install)' 'npm install -g …' und 'npm install <paket>' ab. Neue Pakete
+ * kommen nur über eine sichtbare Änderung an package.json; 'npx tsc' ist gestrichen.
+ */
+export const ERLAUBTE_BASH_REGELN: readonly string[] = [
+  'Bash(npm install)',
+  'Bash(npm ci)',
+  'Bash(npm run check:*)',
+  'Bash(npm run lint:*)',
+  'Bash(npm run typecheck:*)',
+  'Bash(npm run test:*)',
+  'Bash(npm run build:*)',
+]
+
+/** E-F754: Form eines Eintrags — Werkzeugname, optional genau eine Klammer-Regel. Hält die Ableitung der Werkzeugnamen für '--tools' (baueAufruf) eindeutig. */
+const WERKZEUG_EINTRAG_MUSTER = /^[A-Za-z][A-Za-z0-9_-]*(\([^()]+\))?$/
+
+/** E-F754 (Advisor-Pass K5): Shell-Werkzeuge, die kein Werkzeugsatz tragen darf — Bash nur über ERLAUBTE_BASH_REGELN. */
+const GESPERRTE_SHELL_WERKZEUGE = ['powershell']
+
+/**
+ * E-F754 (löst F-754): prüft die Einträge von erlaubte_werkzeuge fail-closed. Abgewiesen werden
+ * nacktes 'Bash', Bash-Wildcards ('Bash(*)', 'Bash(:*)'), jede Bash-Regel, deren Präfix mit 'git'
+ * beginnt, jede andere Bash-Regel außerhalb von ERLAUBTE_BASH_REGELN, ein Shell-Werkzeug wie
+ * 'PowerShell' und jeder Eintrag, der nicht der Form WERKZEUG_EINTRAG_MUSTER entspricht.
+ * Bash-Regeln sind außerdem nur in einem Satz mit art 'schreibend' erlaubt (Review-Befund): nur
+ * dessen Läufe stehen unter der ZWINGEND-Freigabe, auf die sich E-F754 stützt — ein lesender
+ * Review- oder Advisor-Lauf darf kein 'npm install' ausführen.
+ * @param name - Name des Werkzeugsatzes, für die Fehlermeldung
+ * @param eintraege - erlaubte_werkzeuge (bereits als nicht-leere Strings geprüft)
+ * @param art - art des Werkzeugsatzes (unbekannte Werte meldet der Aufrufer selbst)
+ * @returns Liste der Verstöße (leer = gültig)
+ */
+export function pruefeErlaubteWerkzeuge(name: string, eintraege: string[], art: unknown): string[] {
+  const verstoesse: string[] = []
+  for (const eintrag of eintraege) {
+    const pfad = `'werkzeugsaetze.${name}.erlaubte_werkzeuge'`
+    if (!WERKZEUG_EINTRAG_MUSTER.test(eintrag)) {
+      verstoesse.push(`${pfad}: Eintrag '${eintrag}' hat keine zulässige Form (Werkzeugname, optional genau eine Klammer-Regel)`)
+      continue
+    }
+    const werkzeug = eintrag.split('(')[0].toLowerCase()
+    if (GESPERRTE_SHELL_WERKZEUGE.includes(werkzeug)) {
+      verstoesse.push(`${pfad}: Shell-Werkzeug '${eintrag}' ist nicht erlaubt (E-F754)`)
+      continue
+    }
+    if (werkzeug !== 'bash') continue
+    if (!eintrag.includes('(')) {
+      verstoesse.push(`${pfad}: nacktes '${eintrag}' ist nicht erlaubt — Bash nur über die feste Allowlist (E-F754)`)
+      continue
+    }
+    const praefix = eintrag
+      .slice(eintrag.indexOf('(') + 1, -1)
+      .replace(/:\*$/, '')
+      .trim()
+    if (praefix === '' || praefix === '*') {
+      verstoesse.push(`${pfad}: Bash-Wildcard '${eintrag}' ist nicht erlaubt (E-F754)`)
+    } else if (/^git/i.test(praefix)) {
+      verstoesse.push(`${pfad}: git über Bash ('${eintrag}') ist nicht erlaubt (E-F754)`)
+    } else if (!ERLAUBTE_BASH_REGELN.includes(eintrag)) {
+      verstoesse.push(`${pfad}: Bash-Regel '${eintrag}' steht nicht in der festen Allowlist (E-F754): ${ERLAUBTE_BASH_REGELN.join(', ')}`)
+    } else if (art !== 'schreibend') {
+      verstoesse.push(`${pfad}: Bash-Regel '${eintrag}' ist nur in einem Werkzeugsatz mit art 'schreibend' erlaubt (E-F754)`)
+    }
+  }
   return verstoesse
 }
 

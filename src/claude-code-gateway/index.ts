@@ -92,6 +92,14 @@
  * jeden Aufruf per E-182 verboten (VERBOTENE_AUFRUFPARAMETER) und schaltet
  * ohnehin mehr ab als nur Auto-Memory — kein gezielter Abschaltweg. Siehe
  * types.ts' AufrufEingaben.disallowedTools für die Details.
+ *
+ * E-F754 (löst F-754, docs/adr/ausfuehrung-bash-allowlist.md): der Werkzeugsatz 'schreibend' trägt
+ * Bash-Präfixregeln wie 'Bash(npm run check:*)'. Real gemessen (claude 2.1.258, 28.09.2026):
+ * `--tools` versteht nur Werkzeugnamen — mit 'Bash(…)' in `--tools` fehlt Bash im Werkzeugsatz
+ * ganz. baueAufruf gibt `--tools` deshalb die abgeleiteten Werkzeugnamen, `--allowedTools`
+ * unverändert die vollen Regeln (für Sätze ohne Klammer-Regel bleibt das Argv bitgenau gleich).
+ * Trägt der Satz eine Bash-Regel, kommt 'Bash(git:*)' als Sperrregel dazu: eine Sperre schlägt
+ * real auch ein 'allow: ["Bash"]' aus den Projekteinstellungen (--setting-sources project).
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -344,6 +352,9 @@ export function leseVerbrauch(ergebnisObjekt: Record<string, unknown> | null): V
   }
 }
 
+/** E-F754 (Advisor-Pass K1): Sperrregel für jeden Werkzeugsatz mit Bash-Regel — git bleibt verboten, auch wenn Projekteinstellungen Bash allgemein erlauben. */
+export const BASH_SPERRREGELN = 'Bash(git:*)'
+
 /**
  * Wirft synchron (D4-Ausnahme wie F1Bs schreibeWirkungsmarke bei
  * ungültigem art/ergebnis), wenn eingaben.modell oder eingaben.prompt leer
@@ -360,7 +371,12 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
   if (!eingaben.prompt) {
     throw new Error('AufrufEingaben.prompt ist Pflichtfeld (F-124) — leer oder fehlend')
   }
-  const werkzeugListe = eingaben.werkzeugsatz.erlaubte_werkzeuge.join(',')
+  const regeln = eingaben.werkzeugsatz.erlaubte_werkzeuge
+  const werkzeugListe = regeln.join(',')
+  // E-F754: `--tools` kennt nur Werkzeugnamen — 'Bash(npm run check:*)' → 'Bash', dedupliziert, Reihenfolge stabil.
+  const werkzeugNamen = [...new Set(regeln.map((regel) => regel.split('(')[0]))].join(',')
+  const traegtBashRegel = regeln.some((regel) => regel.startsWith('Bash('))
+  const disallowedTools = [eingaben.disallowedTools, traegtBashRegel ? BASH_SPERRREGELN : undefined].filter((wert) => wert !== undefined).join(',')
   return [
     '--model',
     eingaben.modell,
@@ -371,7 +387,7 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--setting-sources',
     eingaben.settingSources ?? 'project',
     '--tools',
-    werkzeugListe,
+    werkzeugNamen,
     '--allowedTools',
     werkzeugListe,
     // F31 WS-3c (löst F-502): Standard für JEDEN Aufruf, nicht mehr nur für jarvis (F31 WS-3b) —
@@ -380,8 +396,9 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     '--mcp-config',
     eingaben.mcpConfig ?? '{"mcpServers":{}}',
     // F40 WS-3 (löst F-567): additiv, kein Default — nur gesetzt, wenn eingaben.disallowedTools
-    // einen Wert trägt (aktuell ausschließlich jarvis/router, 'Read(~/.claude/**)').
-    ...(eingaben.disallowedTools !== undefined ? ['--disallowedTools', eingaben.disallowedTools] : []),
+    // einen Wert trägt (aktuell ausschließlich jarvis/router, 'Read(~/.claude/**)'). E-F754: bei
+    // einer Bash-Regel im Werkzeugsatz zusätzlich BASH_SPERRREGELN.
+    ...(disallowedTools !== '' ? ['--disallowedTools', disallowedTools] : []),
     '-p',
     eingaben.prompt,
   ]
