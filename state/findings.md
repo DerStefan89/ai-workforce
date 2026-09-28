@@ -10139,13 +10139,13 @@ Maßnahme: Kontrolltiefe-Untergrenze `standard` für `herkunft.art: 'feature_akt
 Status: in Arbeit (F35 WS-1).
 Feature/Run: F35 WS-1, 25.09.2026.
 
-**F-730** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-730** · `HARNESS_IMPROVEMENT` · P2 · **erledigt** (F36 WS-4)
 Titel: Ein `ausfuehrung`-Lauf kann Harness-Subagenten und Skills selbst aufrufen, unsichtbar in der Laufakte.
 Beschreibung: Ein `ausfuehrung`-Lauf (`claude-code`, `--setting-sources project`, `src/claude-code-gateway/index.ts` ~Z. 371) kann Harness-Subagenten (`.claude/agents`) und Skills (`.claude/skills`) selbst aufrufen — das wird weder gemessen noch in der Laufakte sichtbar. Reine Beobachtung, kein Verbot.
 Fundstelle: `src/claude-code-gateway/index.ts` ~Z. 371.
 Auswirkung: Niedrig — kein bekannter Missbrauchsfall, aber ein Sichtbarkeitsloch im Wirksamkeitsnachweis eines Laufs.
 Maßnahme: In F36 Subagent- und Skill-Aufrufe aus dem Rohstrom in die Laufakte projizieren.
-Status: offen.
+Status: erledigt (F36 WS-4, 28.09.2026) — optionales Laufakten-Feld `beobachtung` (init-Zeile + Skill-/Subagent-/MCP-Aufrufe, `leseBeobachtung`), Zeile „Beobachtung“ in der Laufdetailansicht; Render-Nachweis `features/F36/nachweis-ws4-ui/`; `npm run check` grün.
 Feature/Run: F35 WS-2, 25.09.2026.
 
 **F-731** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -10607,3 +10607,21 @@ Auswirkung: Niedrig — das Gate fängt den Fehler vor dem Commit, der Vormerken
 Maßnahme: Auftragstext um `name`, `beschreibung`, `unterart` (und bei MCP `wirkung`) ergänzen; ggf. `unterart` im Scout-Ergebnis. Außerhalb von WS-1 (kein Laufzeit-/UI-Code außer der Anzeige).
 Status: offen.
 Feature/Run: F36 WS-1, 28.09.2026.
+
+**F-784** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: „nicht beobachtet“ in der Laufdetailansicht unterscheidet nicht zwischen alter Laufakte, Codex-Lauf und Abbruch vor der init-Zeile.
+Beschreibung: Das Laufakten-Feld `beobachtung` fehlt in drei Fällen: Laufakte vor F36 WS-4 (append-only), Codex-Lauf (kein init im JSONL-Strom) und claude-code-Lauf mit Abbruch vor der init-Zeile. Die Anzeige zeigt in allen drei Fällen dasselbe „nicht beobachtet“.
+Fundstelle: `public/leitstand/beobachtung-zeile.js` (`formatiereBeobachtung`); `public/leitstand/views/runs.js` (`renderLaufakte`); `src/claude-code-gateway/index.ts` (`leseBeobachtung`).
+Auswirkung: Niedrig — Worker und „Beobachtungsbasis vollständig“ stehen in derselben Tabelle und grenzen den Fall meist ein.
+Maßnahme: Grund mitführen, sobald ein Fall im Reallauf stört.
+Status: offen.
+Feature/Run: F36 WS-4, 28.09.2026.
+
+**F-785** · `TECH_DEBT` · P3 · offen
+Titel: Die Checkpoint-Tabelle der Laufdetailansicht wird auch auf 1400 px am Kartenrand abgeschnitten.
+Beschreibung: Die Checkpoint-Kette in `#lauf-detail` ist breiter als ihre Karte und wird bei 1400 px wie bei 400 px abgeschnitten (vor WS-4 vorhanden). Eine globale Umbruchregel würde die Zeitstempel zerlegen, deshalb hat WS-4 nur die Laufakten-Tabelle angepasst.
+Fundstelle: `public/leitstand/views/runs.js` (Checkpoint-Kette); `public/leitstand/style.css`. Beleg: `features/F36/nachweis-ws4-ui/README.md`.
+Auswirkung: Niedrig — rechte Spalten der Checkpoint-Kette nur eingeschränkt lesbar.
+Maßnahme: im Design-Schnitt (F-725).
+Status: offen.
+Feature/Run: F36 WS-4, 28.09.2026.

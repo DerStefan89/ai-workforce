@@ -110,7 +110,7 @@ import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
 import { registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { pruefeStartziel, starteProzess } from './prozessstart.ts'
-import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
+import type { AufrufEingaben, AufrufTokens, GatewayEingaben, GatewayErgebnis, BeobachtungV0, LaufakteV0Daten, Starter, VerbrauchV0, Werkzeugaufruf } from './types.ts'
 
 /**
  * Von Stefan bestätigter Pfad zur aktuell gültigen Autorisierungsreferenz
@@ -241,24 +241,34 @@ export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | nu
 const ZIEL_PARAMETER = ['file_path', 'pattern', 'path', 'notebook_path', 'url']
 
 /**
- * F40 WS-1: zieht die tool_use-Blöcke aus EINER stream-json-Zeile (type "assistant", message.content[]). Jede andere Zeile liefert []. Reine Funktion, wirft nie — die CLI-Zeilenform ist extern, ein unerwartetes Feld darf den Lauf nicht stören.
+ * Einzige Stelle, die die tool_use-Blöcke EINER stream-json-Zeile (type "assistant", message.content[]) liest — geteilt von leseWerkzeugaufrufe (F40 WS-1) und leseBeobachtung (F36 WS-4), damit eine Formänderung der CLI beide Pfade gleich trifft. Jede andere Zeile liefert []; wirft nie.
+ * @param zeile - eine geparste stream-json-Zeile
+ * @returns Name und Eingabeobjekt ({} ohne input) je tool_use-Block
  */
-export function leseWerkzeugaufrufe(zeile: Record<string, unknown>): Werkzeugaufruf[] {
+function leseToolUseBloecke(zeile: Record<string, unknown>): Array<{ name: string; eingabe: Record<string, unknown> }> {
   if (zeile.type !== 'assistant') return []
   const message = zeile.message
   if (typeof message !== 'object' || message === null) return []
   const inhalt = (message as Record<string, unknown>).content
   if (!Array.isArray(inhalt)) return []
-  const aufrufe: Werkzeugaufruf[] = []
+  const bloecke: Array<{ name: string; eingabe: Record<string, unknown> }> = []
   for (const block of inhalt) {
     if (typeof block !== 'object' || block === null) continue
     const b = block as Record<string, unknown>
     if (b.type !== 'tool_use' || typeof b.name !== 'string') continue
-    const eingabe = typeof b.input === 'object' && b.input !== null ? (b.input as Record<string, unknown>) : {}
-    const zielFeld = ZIEL_PARAMETER.find((f) => typeof eingabe[f] === 'string' && (eingabe[f] as string).length > 0)
-    aufrufe.push({ werkzeug: b.name, ziel: zielFeld !== undefined ? (eingabe[zielFeld] as string) : null })
+    bloecke.push({ name: b.name, eingabe: typeof b.input === 'object' && b.input !== null ? (b.input as Record<string, unknown>) : {} })
   }
-  return aufrufe
+  return bloecke
+}
+
+/**
+ * F40 WS-1: zieht die tool_use-Blöcke aus EINER stream-json-Zeile (type "assistant", message.content[]). Jede andere Zeile liefert []. Reine Funktion, wirft nie — die CLI-Zeilenform ist extern, ein unerwartetes Feld darf den Lauf nicht stören.
+ */
+export function leseWerkzeugaufrufe(zeile: Record<string, unknown>): Werkzeugaufruf[] {
+  return leseToolUseBloecke(zeile).map(({ name, eingabe }) => {
+    const zielFeld = ZIEL_PARAMETER.find((f) => typeof eingabe[f] === 'string' && (eingabe[f] as string).length > 0)
+    return { werkzeug: name, ziel: zielFeld !== undefined ? (eingabe[zielFeld] as string) : null }
+  })
 }
 
 /** F40 WS-1: übersetzt eine stream-json-Zeile in beiWerkzeugaufruf-Rückrufe. Ein Wurf des Rückrufs darf den Prozess-Ablauf nie stören (reine Anzeige) — gefangen und geloggt. */
@@ -351,6 +361,73 @@ export function leseVerbrauch(ergebnisObjekt: Record<string, unknown> | null): V
     quelle: 'claude-code',
   }
 }
+
+/**
+ * Nur die String-Einträge einer Liste; alles andere (fehlend, kein Array, fremde Typen) ergibt [].
+ * @param wert - beliebiges Feld einer init-Zeile
+ * @returns die String-Einträge, sonst []
+ */
+function stringListe(wert: unknown): string[] {
+  return Array.isArray(wert) ? wert.filter((e): e is string => typeof e === 'string') : []
+}
+
+/**
+ * F36 WS-4 (AK8, löst F-730): reine Beobachtung, was ein claude-code-Lauf
+ * geladen und aufgerufen hat — aus den stream-json-Zeilen des Rohstroms.
+ * Belegte Formen (state/spike-f36-werkzeugsatz.md): init-Zeile type
+ * "system"/subtype "init" mit tools, agents, skills, mcp_servers[].name;
+ * tool_use "Skill" mit input.skill; tool_use "Agent" (toleriert: "Task") mit
+ * input.subagent_type; MCP als tool_use, dessen Name mit "mcp__" beginnt.
+ * Aufrufe in Reihenfolge des Auftretens, Duplikate erhalten, Zeilen aus
+ * Subagenten (parent_tool_use_id gesetzt) zählen mit. Ohne init-Zeile (Codex,
+ * Abbruch vor init) null — das Laufakten-Feld entfällt dann, statt leer
+ * gesetzt zu werden. Wirft nie: unparsbare Zeilen werden übersprungen.
+ * @param zeilen - NDJSON-Zeilen des stdout (einzelne Strings)
+ * @returns BeobachtungV0, oder null ohne init-Zeile
+ */
+export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
+  let init: Record<string, unknown> | null = null
+  const skillAufrufe: string[] = []
+  const subagentAufrufe: string[] = []
+  const mcpAufrufe: string[] = []
+  for (const text of zeilen) {
+    const zeile = parseObjekt(text.trim())
+    if (zeile === null) continue
+    if (init === null && zeile.type === 'system' && zeile.subtype === 'init') {
+      init = zeile
+      continue
+    }
+    for (const { name, eingabe } of leseToolUseBloecke(zeile)) {
+      if (name === 'Skill' && typeof eingabe.skill === 'string') skillAufrufe.push(eingabe.skill)
+      else if ((name === 'Agent' || name === 'Task') && typeof eingabe.subagent_type === 'string') subagentAufrufe.push(eingabe.subagent_type)
+      else if (name.startsWith('mcp__')) mcpAufrufe.push(name)
+    }
+  }
+  if (init === null) return null
+  const mcpServer = Array.isArray(init.mcp_servers)
+    ? init.mcp_servers.flatMap((s) => (typeof s === 'object' && s !== null && typeof (s as Record<string, unknown>).name === 'string' ? [(s as Record<string, unknown>).name as string] : []))
+    : []
+  return {
+    init_tools: stringListe(init.tools),
+    init_agents: stringListe(init.agents),
+    init_skills: stringListe(init.skills),
+    init_mcp_server: mcpServer,
+    skill_aufrufe: skillAufrufe,
+    subagent_aufrufe: subagentAufrufe,
+    mcp_aufrufe: mcpAufrufe,
+  }
+}
+
+/** Die sieben Listenfelder von BeobachtungV0 — einzige Quelle für den Validator. */
+const BEOBACHTUNG_FELDER: readonly string[] = [
+  'init_tools',
+  'init_agents',
+  'init_skills',
+  'init_mcp_server',
+  'skill_aufrufe',
+  'subagent_aufrufe',
+  'mcp_aufrufe',
+] as const satisfies readonly (keyof BeobachtungV0)[]
 
 /** E-F754 (Advisor-Pass K1): Sperrregel für jeden Werkzeugsatz mit Bash-Regel — git bleibt verboten, auch wenn Projekteinstellungen Bash allgemein erlauben. */
 export const BASH_SPERRREGELN = 'Bash(git:*)'
@@ -534,6 +611,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
   const modellBeobachtet = leseModellBeobachtet(ergebnisObjekt)
   const verbrauch = leseVerbrauch(ergebnisObjekt)
+  const beobachtung = leseBeobachtung(prozessErgebnis.stdout.split('\n'))
 
   const rohBasisVerzeichnis = optionen.rohBasisVerzeichnis ?? STANDARD_ROH_BASISVERZEICHNIS
   const rohVerzeichnis = join(rohBasisVerzeichnis, eingaben.laufId)
@@ -568,6 +646,7 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     rohstrom_referenz: { pfad: rohPfad, inhalts_hash: sha256Hex(rohInhalt) },
     erstellt_am: jetzt(),
     ...(verbrauch !== null ? { verbrauch } : {}),
+    ...(beobachtung !== null ? { beobachtung } : {}),
   }
 
   const { pfad, versionSequenz } = registriereKernArtefakt(
@@ -607,6 +686,8 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     'modell_deklariert',
     // F32 WS-1: additiv erlaubt, bewusst nicht Pflicht (Muster worker/modell_deklariert).
     'verbrauch',
+    // F36 WS-4: additiv erlaubt, bewusst nicht Pflicht (Muster verbrauch).
+    'beobachtung',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -683,6 +764,24 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
       }
       if ('quelle' in v && v.quelle !== 'claude-code' && v.quelle !== 'codex') {
         verstoesse.push("'verbrauch.quelle' muss 'claude-code' oder 'codex' sein")
+      }
+    }
+  }
+  // F36 WS-4: additiv erlaubt, bewusst nicht Pflicht — wenn vorhanden, alle sieben Listen Pflicht.
+  if ('beobachtung' in obj) {
+    const beobachtung = obj.beobachtung
+    if (typeof beobachtung !== 'object' || beobachtung === null || Array.isArray(beobachtung)) {
+      verstoesse.push("'beobachtung' muss, wenn angegeben, ein Objekt sein")
+    } else {
+      const b = beobachtung as Record<string, unknown>
+      for (const feld of Object.keys(b)) {
+        if (!BEOBACHTUNG_FELDER.includes(feld)) verstoesse.push(`unbekanntes Feld 'beobachtung.${feld}' (additionalProperties: false)`)
+      }
+      for (const feld of BEOBACHTUNG_FELDER) {
+        if (!(feld in b)) verstoesse.push(`Pflichtfeld 'beobachtung.${feld}' fehlt`)
+        else if (!Array.isArray(b[feld]) || !(b[feld] as unknown[]).every((e) => typeof e === 'string')) {
+          verstoesse.push(`'beobachtung.${feld}' muss ein Array aus Strings sein`)
+        }
       }
     }
   }

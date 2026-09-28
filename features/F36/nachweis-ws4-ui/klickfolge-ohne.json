@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:4175/#/runs/f36-ws4-ohne-beobachtung",
+  "viewport": {
+    "breite": 1400,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#lauf-detail"
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Zeile Beobachtung",
+        "selector": "#lauf-detail .lauf-beobachtung"
+      },
+      {
+        "name": "nicht beobachtet",
+        "selector": "#lauf-detail .lauf-beobachtung .unbekannt"
+      }
+    ],
+    "titel": {
+      "name": "Beobachtung",
+      "selector": "#lauf-detail .lauf-beobachtung"
+    }
+  },
+  "schritte": [
+    {
+      "label": "Warten auf Laufakte",
+      "warteAufSelector": {
+        "selector": "#lauf-detail .lauf-beobachtung",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Laufdetail ohne Beobachtung",
+      "reload": false,
+      "screenshot": "01-laufdetail-ohne.png"
+    }
+  ]
+}

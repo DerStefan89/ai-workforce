@@ -36,7 +36,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
-import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeUndVerweigereBeiTreffer, starteGateway } from './index.ts'
+import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -319,6 +319,45 @@ test('starteGateway liefert eine vollständige Laufakte bei validem Ergebnisobje
     raeumeKette(laufId)
   }
 })
+
+// F36 WS-4 (AK8): Verdrahtung leseBeobachtung → Laufakte über den echten Gateway-Pfad.
+const BEOBACHTUNG_INIT = JSON.stringify({ type: 'system', subtype: 'init', tools: ['Read', 'Skill'], agents: ['qa'], skills: ['ponytail'], mcp_servers: [{ name: 'playwright-mcp', status: 'connected' }] })
+const BEOBACHTUNG_SKILL = JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'ponytail' } }] }, parent_tool_use_id: null })
+const BEOBACHTUNG_RESULT = JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'ok', permission_denials: [] })
+
+/** Starter-Attrappe, die den übergebenen stream-json-stdout zurückgibt. */
+function streamStarter(stdout: string): Starter {
+  return async () => ({ stdout, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null })
+}
+
+for (const fall of [
+  { name: 'stream-json mit init → beobachtung in der Laufakte', stdout: `${BEOBACHTUNG_INIT}\n${BEOBACHTUNG_SKILL}\n${BEOBACHTUNG_RESULT}\n`, basis: true, skills: ['ponytail'] },
+  { name: 'Abbruch nach init, vor result → beobachtung mit bis dahin gesehenen Aufrufen, Beobachtungsbasis unvollständig', stdout: `${BEOBACHTUNG_INIT}\n${BEOBACHTUNG_SKILL}\n{"type":"assis`, basis: false, skills: ['ponytail'] },
+  { name: 'gepufferter json-Altrohstrom ohne init → Feld fehlt', stdout: BEOBACHTUNG_RESULT, basis: true, skills: null },
+]) {
+  test(`starteGateway (F36 WS-4): ${fall.name}`, async () => {
+    const laufId = neueLaufId('gateway-beobachtung')
+    try {
+      const ergebnis = await starteGateway(gueltigeGatewayEingaben(laufId), {
+        ...startfreigabeOptionen(),
+        basisVerzeichnis: KONTROLLZUSTAND_BASIS,
+        rohBasisVerzeichnis: 'kontrollzustand-roh',
+        starter: streamStarter(fall.stdout),
+        schreiber: () => {},
+      })
+      assert.ok(ergebnis.ok)
+      assert.strictEqual(ergebnis.laufakte.beobachtungsbasis_vollstaendig, fall.basis)
+      if (fall.skills === null) assert.ok(!('beobachtung' in ergebnis.laufakte))
+      else {
+        assert.deepStrictEqual(ergebnis.laufakte.beobachtung?.skill_aufrufe, fall.skills)
+        assert.deepStrictEqual(ergebnis.laufakte.beobachtung?.init_mcp_server, ['playwright-mcp'])
+      }
+      assert.deepStrictEqual(validiereLaufakteDaten(ergebnis.laufakte), [])
+    } finally {
+      raeumeKette(laufId)
+    }
+  })
+}
 
 test('starteGateway reicht optionen.abbruchSignal unverändert an starteProzess durch (F14 WS-4, AK7)', async () => {
   const laufId = neueLaufId('gateway-abbruchsignal')
