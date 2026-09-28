@@ -50,7 +50,7 @@ function aufgelosteRessourcen(): AufgelosteRessource[] {
       name: 'Claude in Chrome',
       beschreibung: 'Browser-Steuerung.',
       verfuegbar: false,
-      grund: 'extern, nicht auflösbar',
+      grund: 'extern, installation fehlt',
     },
   ]
 }
@@ -81,6 +81,38 @@ test('projeziereLibrary: AK5 — DISCOVERED/APPROVED/AVAILABLE korrekt aus typ/f
   assert.deepStrictEqual(claudeCode.phasen.sort(), ['APPROVED', 'AVAILABLE'])
   assert.deepStrictEqual(codex.phasen.sort(), ['APPROVED'])
   assert.deepStrictEqual(chrome.phasen.sort(), ['DISCOVERED'])
+})
+
+test('projeziereLibrary: F36 WS-1 — jede Zeile trägt fehltFuerEinsatz (Klartext aus src/ressourcen)', () => {
+  const ansicht = projeziereLibrary(aufgelosteRessourcen(), 'startvorlagen/beispielprojekt.json')
+  const claudeCode = ansicht.eintraege.find((e) => e.id === 'claude-code')!
+  const chrome = ansicht.eintraege.find((e) => e.id === 'claude-in-chrome')!
+  assert.deepStrictEqual(claudeCode.fehltFuerEinsatz, [])
+  assert.ok(chrome.fehltFuerEinsatz.includes('freigabe OFFEN'), JSON.stringify(chrome.fehltFuerEinsatz))
+  assert.ok(chrome.fehltFuerEinsatz.includes('installation fehlt'), JSON.stringify(chrome.fehltFuerEinsatz))
+})
+
+test('projeziereLibrary: F36 WS-1 — extern FREIGEGEBEN (mit installation) zeigt den Kern-Grund, nicht „noch nicht freigegeben“', () => {
+  const freigegeben: AufgelosteRessource = {
+    ...aufgelosteRessourcen()[2],
+    unterart: 'skill',
+    freigabe: 'FREIGEGEBEN',
+    installation: { pfad: '~/x', version: '1' },
+    grund: "extern, installation.pfad '~/x' existiert nicht",
+  }
+  const [eintrag] = projeziereLibrary([freigegeben], 'x.json').eintraege
+  assert.strictEqual(eintrag.anzeigeGrund, freigegeben.grund)
+})
+
+test('projeziereLibrary: F36 WS-1 — extern OFFEN mit technischem Defekt zeigt den Kern-Grund, nicht „kein technischer Defekt“', () => {
+  const basis = aufgelosteRessourcen()[2]
+  const defekt: AufgelosteRessource = { ...basis, unterart: 'skill', installation: { pfad: '~/fehlt', version: '1' }, grund: "extern, installation.pfad 'C:\\fehlt' existiert nicht" }
+  const bereit: AufgelosteRessource = { ...basis, unterart: 'skill', installation: { pfad: '~/da', version: '1' }, grund: "extern, installation.pfad 'C:\\da' vorhanden (Version 1), aber freigabe 'OFFEN'" }
+  const ohne: AufgelosteRessource = { ...basis, unterart: 'skill', grund: 'extern, installation fehlt' }
+  const [d, b, o] = projeziereLibrary([defekt, bereit, ohne], 'x.json').eintraege
+  assert.strictEqual(d.anzeigeGrund, defekt.grund)
+  assert.ok(b.anzeigeGrund.includes('noch nicht freigegeben'), b.anzeigeGrund)
+  assert.ok(o.anzeigeGrund.includes('noch nicht freigegeben'), o.anzeigeGrund)
 })
 
 test('projeziereLibrary: AK6 — startvorlagePfad wird unverändert durchgereicht', () => {

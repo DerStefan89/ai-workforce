@@ -45,7 +45,8 @@
  *    und ein expliziter Freigabe-Halt vor jedem schreibenden Schritt.
  *
  * Wird aufgerufen von: scripts/route-auftrag.mjs, scripts/leitstand-server.mjs
- * (F22 WS-1), scripts/check-f22-click-to-work.mjs, src/router/router.test.ts.
+ * (F22 WS-1), scripts/check-f22-click-to-work.mjs, src/router/router.test.ts,
+ * src/ressourcen/index.ts (nur TASK_TYPEN, F36 WS-1).
  */
 
 import { readFileSync } from 'node:fs'
@@ -55,7 +56,8 @@ import type { WorkflowV0Daten } from '../workflow/types.ts'
 
 const KONTROLLTIEFE = ['fast-lane', 'standard', 'hoch']
 const RISIKOKLASSE = ['niedrig', 'mittel', 'hoch']
-const TASK_TYPEN = ['text-aenderung', 'neues-feature', 'bugfix', 'refactoring', 'dokumentation', 'unklar']
+/** Zwilling des task_typen-Enums in schemas/ergebnis-router.schema.json — auch von src/ressourcen (anwendbar_wenn.task_typen_any, F36 WS-1) genutzt. */
+export const TASK_TYPEN = ['text-aenderung', 'neues-feature', 'bugfix', 'refactoring', 'dokumentation', 'unklar']
 
 /** Rang je Kontrolltiefe, für den Untergrenzen-Vergleich unten — Zwilling der KONTROLLTIEFE-Reihenfolge oben. */
 const KONTROLLTIEFE_RANG: Record<string, number> = { 'fast-lane': 0, standard: 1, hoch: 2 }

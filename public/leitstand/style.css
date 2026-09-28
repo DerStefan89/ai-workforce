@@ -1472,6 +1472,14 @@ th {
   margin-top: var(--space-2xl);
 }
 
+/* F36 WS-1 (Render-Nachweis features/F36/nachweis-ws1-ui/messung.md): die Library-Tabelle war schon
+   mit sieben Spalten breiter als die Karte (716 px in 690 px) und wurde am Kartenrand abgeschnitten —
+   mit der achten Spalte „Fehlt für Einsatz“ verschwand diese fast vollständig. Horizontal scrollen
+   innerhalb der Karte statt abschneiden; keine neue Farbe, kein neuer Schatten. */
+#capabilities-library {
+  overflow-x: auto;
+}
+
 #capabilities-scout:empty {
   margin-top: 0;
 }

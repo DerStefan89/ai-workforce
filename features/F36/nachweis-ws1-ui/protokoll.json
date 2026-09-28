@@ -1,0 +1,16 @@
+[
+  {
+    "label": "Warten auf Library",
+    "Spaltenkopf": "Fehlt für Einsatz",
+    "Spaltenkopf Fehlt für Einsatz": true,
+    "Zeile mit Klartext-Grund": true,
+    "Zeile einsatzbereit": true
+  },
+  {
+    "label": "Library Desktop",
+    "Spaltenkopf": "Fehlt für Einsatz",
+    "Spaltenkopf Fehlt für Einsatz": true,
+    "Zeile mit Klartext-Grund": true,
+    "Zeile einsatzbereit": true
+  }
+]

@@ -3,8 +3,9 @@
  *
  * Zweck: Ressourcen-Gate (F19 WS-1/WS-2). Prüft, dass ressourcen.json
  * (Repo-Wurzel) gegen validiereRessourcenDaten gültig ist, dass jeder
- * 'worker'/'skill'-Eintrag gegen die laufende Umgebung auflösbar ist, dass
- * R1/R2 zusätzlich als Regressionsschutz direkt hier greifen, und — die
+ * 'worker'/'skill'/'agent'-Eintrag gegen die laufende Umgebung auflösbar ist, dass
+ * R1/R2 (seit F36 WS-1: R2 nach E-M5-5/E-F36-4) zusätzlich als
+ * Regressionsschutz direkt hier greifen, und — die
  * NEUE Regel aus state/findings.md F-346 — dass jeder in
  * ROLLENVERTRAEGE.erlaubte_worker genannte, registrierte Worker die
  * benoetigte_capabilities seiner Rolle vollständig deckt. Regel 7 verlangt
@@ -81,28 +82,32 @@ for (const r of aufgeloest) {
       befunde.push(`(2) Ressource '${r.id}' (typ 'worker') ist gegen startvorlagen/ai-workforce.json nicht auflösbar: ${r.grund}`)
     }
   }
-  if (r.typ === 'skill' && !r.verfuegbar) {
-    befunde.push(`(3) Ressource '${r.id}' (typ 'skill') ist nicht auflösbar: ${r.grund}`)
+  if ((r.typ === 'skill' || r.typ === 'agent') && !r.verfuegbar) {
+    befunde.push(`(3) Ressource '${r.id}' (typ '${r.typ}') ist nicht auflösbar: ${r.grund}`)
   }
 }
 if (befunde.length === befundeVor23) {
   console.log('✓ (2) Jeder typ \'worker\' ist über startvorlagen/ai-workforce.json auflösbar, herkunft.worker liegt in WORKER.')
-  console.log('✓ (3) Jeder typ \'skill\' zeigt auf ein existierendes SKILL.md mit vollständigem Frontmatter.')
+  console.log("✓ (3) Jeder typ 'skill'/'agent' zeigt auf ein existierendes SKILL.md bzw. .claude/agents/<name>.md mit vollständigem Frontmatter.")
 }
 
 // ─── (4)+(5) R1/R2 als Regressionsschutz direkt auf den Rohdaten ───────────
+// (5) seit F36 WS-1 nach E-M5-5/E-F36-4: extern FREIGEGEBEN nur mit installation, mcp nur mit wirkung 'lokal'.
 const befundeVor45 = befunde.length
 for (const [i, r] of rohDaten.ressourcen.entries()) {
-  if ((r.typ === 'worker' || r.typ === 'skill') && ('name' in r || 'beschreibung' in r)) {
+  if ((r.typ === 'worker' || r.typ === 'skill' || r.typ === 'agent') && ('name' in r || 'beschreibung' in r)) {
     befunde.push(`(4) ressourcen[${i}] ('${r.id}', typ '${r.typ}') trägt name/beschreibung — R1-Regression`)
   }
-  if (r.typ === 'extern' && r.freigabe !== 'OFFEN') {
-    befunde.push(`(5) ressourcen[${i}] ('${r.id}', typ 'extern') trägt freigabe '${r.freigabe}' statt 'OFFEN' — R2-Regression`)
+  if (r.typ === 'extern' && r.freigabe === 'FREIGEGEBEN' && !('installation' in r)) {
+    befunde.push(`(5) ressourcen[${i}] ('${r.id}', typ 'extern') trägt freigabe 'FREIGEGEBEN' ohne installation — R2-Regression (E-M5-5)`)
+  }
+  if (r.typ === 'extern' && r.unterart === 'mcp' && r.freigabe === 'FREIGEGEBEN' && r.wirkung !== 'lokal') {
+    befunde.push(`(5) ressourcen[${i}] ('${r.id}', mcp) trägt freigabe 'FREIGEGEBEN' mit wirkung '${r.wirkung}' — E-F36-4-Regression`)
   }
 }
 if (befunde.length === befundeVor45) {
-  console.log("✓ (4) Kein 'worker'/'skill'-Eintrag trägt name oder beschreibung (R1).")
-  console.log("✓ (5) Jeder 'extern'-Eintrag trägt freigabe 'OFFEN' (R2).")
+  console.log("✓ (4) Kein 'worker'/'skill'/'agent'-Eintrag trägt name oder beschreibung (R1).")
+  console.log("✓ (5) Kein 'extern'-Eintrag ist ohne installation FREIGEGEBEN (R2, E-M5-5), kein mcp ohne wirkung 'lokal' (E-F36-4).")
 }
 
 // ─── (6) F-346: erlaubte_worker müssen benoetigte_capabilities decken ──────

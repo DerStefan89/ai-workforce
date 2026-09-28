@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { loeseRessourcenAuf, pruefeAbdeckung, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
+import { fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
 import type { AufgelosteRessource, Ressource } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -44,12 +44,62 @@ function gueltigeDaten(): Record<string, unknown> {
         typ: 'extern',
         name: 'Playwright MCP',
         beschreibung: 'Browser-Automatisierung.',
+        unterart: 'mcp',
+        wirkung: 'lokal',
         capabilities: ['BROWSER_AUTOMATION'],
         freigabe: 'OFFEN',
         herkunft: { art: 'extern', url: 'https://github.com/microsoft/playwright-mcp' },
       },
     ],
   }
+}
+
+type Eintrag = Record<string, unknown>
+
+/** Hängt einen Eintrag an gueltigeDaten() an und liefert die Verstöße. */
+function verstoesseMit(eintrag: Eintrag): string[] {
+  const daten = gueltigeDaten()
+  ;(daten.ressourcen as Eintrag[]).push(eintrag)
+  return validiereRessourcenDaten(daten)
+}
+
+function agentEintrag(overrides: Eintrag = {}): Eintrag {
+  return { id: 'qa', typ: 'agent', capabilities: ['TEST_DESIGN'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'agent', pfad: '.claude/agents/qa.md' }, ...overrides }
+}
+
+function externSkill(overrides: Eintrag = {}): Eintrag {
+  return {
+    id: 'taste-skill',
+    typ: 'extern',
+    name: 'taste-skill',
+    beschreibung: 'Design-Tokens.',
+    unterart: 'skill',
+    capabilities: ['UI_UX_DESIGN'],
+    freigabe: 'OFFEN',
+    herkunft: { art: 'extern', url: 'https://github.com/x/taste-skill' },
+    ...overrides,
+  }
+}
+
+function externMcp(overrides: Eintrag = {}): Eintrag {
+  return {
+    id: 'obsidian-mcp',
+    typ: 'extern',
+    name: 'Obsidian MCP',
+    beschreibung: 'Notizen.',
+    unterart: 'mcp',
+    wirkung: 'lokal',
+    capabilities: ['NOTES_ACCESS'],
+    freigabe: 'OFFEN',
+    herkunft: { art: 'extern', url: 'https://github.com/x/mcp-obsidian' },
+    ...overrides,
+  }
+}
+
+const MCP_INSTALLATION = { version: '1.0.0', mcp_server: { command: 'npx', args: ['-y', 'mcp-obsidian'] }, werkzeuge: ['mcp__obsidian-mcp__search'] }
+
+function hat(verstoesse: string[], teil: string): boolean {
+  return verstoesse.some((v) => v.includes(teil))
 }
 
 test('validiereRessourcenDaten: gültige Daten liefern keine Verstöße', () => {
@@ -76,11 +126,11 @@ test('validiereRessourcenDaten: R1 — typ extern verlangt name UND beschreibung
   assert.ok(verstoesse.some((v) => v.includes("'ressourcen[2].name' ist bei typ 'extern' Pflicht (R1)")), JSON.stringify(verstoesse))
 })
 
-test('validiereRessourcenDaten: R2 — typ extern muss freigabe OFFEN tragen', () => {
+test('validiereRessourcenDaten: R2 (E-M5-5) — typ extern darf FREIGEGEBEN nicht ohne installation tragen', () => {
   const daten = gueltigeDaten()
   ;(daten.ressourcen as Record<string, unknown>[])[2].freigabe = 'FREIGEGEBEN'
   const verstoesse = validiereRessourcenDaten(daten)
-  assert.ok(verstoesse.some((v) => v.includes('(R2)')), JSON.stringify(verstoesse))
+  assert.ok(verstoesse.some((v) => v.includes('(R2, E-M5-5)')), JSON.stringify(verstoesse))
 })
 
 test('validiereRessourcenDaten: R3 — herkunft.art muss zu typ passen', () => {
@@ -100,6 +150,123 @@ test('validiereRessourcenDaten: doppelte id wird gemeldet', () => {
 test('validiereRessourcenDaten: unbekanntes Feld auf Wurzelebene wird gemeldet', () => {
   const verstoesse = validiereRessourcenDaten({ ...gueltigeDaten(), zusatz: 'x' })
   assert.ok(verstoesse.some((v) => v.includes("unbekanntes Feld 'zusatz'")))
+})
+
+// ─── F36 WS-1: agent, unterart/wirkung, installation, R2 neu, anwendbar_wenn ─
+
+test('validiereRessourcenDaten: typ agent mit herkunft agent ist gültig', () => {
+  assert.deepStrictEqual(verstoesseMit(agentEintrag()), [])
+})
+
+test('validiereRessourcenDaten: R3 — typ agent verlangt herkunft.art agent', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ herkunft: { art: 'skill', pfad: '.claude/skills/qa' } })), '(R3)'))
+  assert.ok(hat(verstoesseMit(externSkill({ herkunft: { art: 'agent', pfad: '.claude/agents/qa.md' } })), '(R3)'))
+})
+
+test('validiereRessourcenDaten: herkunft agent — pfad muss .claude/agents/<name>.md sein, keine Zusatzfelder', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ herkunft: { art: 'agent', pfad: 'agents/qa.txt' } })), "'ressourcen[3].herkunft.pfad'"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ herkunft: { art: 'agent', pfad: '.claude/agents/qa.md', x: 1 } })), "unbekanntes Feld 'ressourcen[3].herkunft.x'"))
+})
+
+test('validiereRessourcenDaten: R1 — typ agent darf name/beschreibung nicht tragen', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ name: 'qa' })), "'ressourcen[3].name' darf bei typ 'agent' nicht gesetzt sein (R1)"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ beschreibung: 'x' })), "'ressourcen[3].beschreibung' darf bei typ 'agent' nicht gesetzt sein (R1)"))
+})
+
+test('validiereRessourcenDaten: extern — unterart ist Pflicht und aus skill|agent|mcp', () => {
+  const ohne = externSkill()
+  delete ohne.unterart
+  assert.ok(hat(verstoesseMit(ohne), "'ressourcen[3].unterart' ist bei typ 'extern' Pflicht"))
+  assert.ok(hat(verstoesseMit(externSkill({ unterart: 'plugin' })), "'ressourcen[3].unterart' muss einer von skill, agent, mcp sein"))
+  assert.deepStrictEqual(verstoesseMit(externSkill({ unterart: 'agent' })), [])
+})
+
+test('validiereRessourcenDaten: unterart/wirkung nur bei typ extern zulässig', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ unterart: 'agent' })), "'ressourcen[3].unterart' ist nur bei typ 'extern' zulässig"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ wirkung: 'lokal' })), "'ressourcen[3].wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig"))
+})
+
+test('validiereRessourcenDaten: wirkung ist bei unterart mcp Pflicht, sonst unzulässig', () => {
+  const ohne = externMcp()
+  delete ohne.wirkung
+  assert.ok(hat(verstoesseMit(ohne), "'ressourcen[3].wirkung' ist bei unterart 'mcp' Pflicht"))
+  assert.ok(hat(verstoesseMit(externMcp({ wirkung: 'remote' })), "'ressourcen[3].wirkung' muss einer von lokal, extern_lesend, extern_schreibend sein"))
+  assert.ok(hat(verstoesseMit(externSkill({ wirkung: 'lokal' })), "'ressourcen[3].wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig"))
+  assert.deepStrictEqual(verstoesseMit(externMcp({ wirkung: 'extern_schreibend' })), [])
+})
+
+test('validiereRessourcenDaten: installation skill|agent — pfad (absolut oder ~) und version Pflicht', () => {
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: '~/.claude/skills/taste-skill', version: '1.2.0' } })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: 'C:\\Users\\x\\.claude\\skills\\taste', version: '1.2.0' } })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: '/opt/skills/taste', version: '1.2.0' } })), [])
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '.claude/skills/taste', version: '1' } })), "'ressourcen[3].installation.pfad' muss absolut sein oder mit ~ beginnen"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x' } })), "'ressourcen[3].installation.version' muss ein nicht-leerer String sein"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x', version: '1', werkzeuge: ['a'] } })), "unbekanntes Feld 'ressourcen[3].installation.werkzeuge'"))
+})
+
+test('validiereRessourcenDaten: installation mcp — version, mcp_server{command,args[]}, werkzeuge ≥1 Pflicht', () => {
+  assert.deepStrictEqual(verstoesseMit(externMcp({ installation: MCP_INSTALLATION })), [])
+  assert.ok(hat(verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, version: '' } })), "'ressourcen[3].installation.version'"))
+  assert.ok(hat(verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, mcp_server: { command: 'npx' } } })), "'ressourcen[3].installation.mcp_server.args' muss ein Array aus Strings sein"))
+  assert.ok(hat(verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, mcp_server: { args: [] } } })), "'ressourcen[3].installation.mcp_server.command' muss ein nicht-leerer String sein"))
+  assert.ok(hat(verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, werkzeuge: [] } })), "'ressourcen[3].installation.werkzeuge' muss ein Array mit mindestens einem Eintrag sein"))
+  assert.ok(hat(verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, pfad: '~/x' } })), "unbekanntes Feld 'ressourcen[3].installation.pfad'"))
+})
+
+test('validiereRessourcenDaten: installation mcp — werkzeuge sind Einzelnamen mcp__<id>__<name>, keine Wildcard (Spike P3)', () => {
+  const mit = (werkzeuge: string[]) => verstoesseMit(externMcp({ installation: { ...MCP_INSTALLATION, werkzeuge } }))
+  assert.ok(hat(mit(['mcp__obsidian-mcp__*']), "'ressourcen[3].installation.werkzeuge[0]'"))
+  assert.ok(hat(mit(['search']), "'ressourcen[3].installation.werkzeuge[0]'"))
+  assert.ok(hat(mit(['mcp__anderer-server__search']), "'ressourcen[3].installation.werkzeuge[0]'"))
+  assert.ok(hat(mit(['mcp__obsidian-mcp__search(x)']), "'ressourcen[3].installation.werkzeuge[0]'"))
+  assert.ok(hat(mit(['mcp__obsidian-mcp__search', 'mcp__obsidian-mcp__search']), 'doppelt'))
+})
+
+test('validiereRessourcenDaten: installation nur bei typ extern zulässig', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ installation: { pfad: '~/x', version: '1' } })), "'ressourcen[3].installation' ist nur bei typ 'extern' zulässig"))
+})
+
+test('validiereRessourcenDaten: R2 (E-M5-5) — extern mit installation darf FREIGEGEBEN sein', () => {
+  assert.deepStrictEqual(verstoesseMit(externSkill({ freigabe: 'FREIGEGEBEN', installation: { pfad: '~/x', version: '1' } })), [])
+  assert.deepStrictEqual(verstoesseMit(externMcp({ freigabe: 'FREIGEGEBEN', installation: MCP_INSTALLATION })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ unterart: 'agent', freigabe: 'FREIGEGEBEN', installation: { pfad: '~/.claude/agents/x.md', version: '1' } })), [])
+  assert.ok(hat(verstoesseMit(externSkill({ freigabe: 'FREIGEGEBEN' })), '(R2, E-M5-5)'))
+  assert.ok(hat(verstoesseMit(externSkill({ unterart: 'agent', freigabe: 'FREIGEGEBEN' })), '(R2, E-M5-5)'))
+})
+
+test('validiereRessourcenDaten: E-F36-4 — unterart mcp darf FREIGEGEBEN nur mit wirkung lokal', () => {
+  const v = verstoesseMit(externMcp({ freigabe: 'FREIGEGEBEN', wirkung: 'extern_lesend', installation: MCP_INSTALLATION }))
+  assert.ok(hat(v, '(E-F36-4)'), JSON.stringify(v))
+  assert.ok(hat(verstoesseMit(externMcp({ freigabe: 'FREIGEGEBEN', wirkung: 'extern_schreibend', installation: MCP_INSTALLATION })), '(E-F36-4)'))
+  assert.deepStrictEqual(verstoesseMit(externMcp({ freigabe: 'OFFEN', wirkung: 'extern_lesend' })), [])
+})
+
+test('validiereRessourcenDaten: anwendbar_wenn — gültig bei skill, agent, extern', () => {
+  const aw = { task_typen_any: ['neues-feature', 'bugfix'], pfad_muster_any: ['src/**/*.ts'] }
+  assert.deepStrictEqual(verstoesseMit(agentEintrag({ anwendbar_wenn: aw })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ anwendbar_wenn: { task_typen_any: ['refactoring'] } })), [])
+  const daten = gueltigeDaten()
+  ;(daten.ressourcen as Eintrag[])[1].anwendbar_wenn = { pfad_muster_any: ['docs/**'] }
+  assert.deepStrictEqual(validiereRessourcenDaten(daten), [])
+})
+
+test('validiereRessourcenDaten: anwendbar_wenn — nicht bei worker', () => {
+  const daten = gueltigeDaten()
+  ;(daten.ressourcen as Eintrag[])[0].anwendbar_wenn = { task_typen_any: ['bugfix'] }
+  assert.ok(hat(validiereRessourcenDaten(daten), "'ressourcen[0].anwendbar_wenn' ist bei typ 'worker' nicht zulässig"))
+})
+
+test('validiereRessourcenDaten: anwendbar_wenn — mindestens ein Schlüssel, keine unbekannten, Enum/Globs geprüft', () => {
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: {} })), "'ressourcen[3].anwendbar_wenn' braucht mindestens einen Schlüssel"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { task_typen_any: ['bugfix'], risiko: 'hoch' } })), "unbekanntes Feld 'ressourcen[3].anwendbar_wenn.risiko'"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { task_typen_any: ['feature'] } })), "'ressourcen[3].anwendbar_wenn.task_typen_any[0]' muss einer von"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { task_typen_any: [] } })), "'ressourcen[3].anwendbar_wenn.task_typen_any' muss ein Array mit mindestens einem Eintrag sein"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { pfad_muster_any: [''] } })), "'ressourcen[3].anwendbar_wenn.pfad_muster_any[0]' muss ein nicht-leerer Glob"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { pfad_muster_any: ['src\\**\\*.ts'] } })), 'kein Backslash'))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { pfad_muster_any: [] } })), "'ressourcen[3].anwendbar_wenn.pfad_muster_any' muss ein Array mit mindestens einem Eintrag sein"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { pfad_muster_any: 'src/**' } })), "'ressourcen[3].anwendbar_wenn.pfad_muster_any' muss ein Array"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: { pfad_muster_any: [42] } })), "'ressourcen[3].anwendbar_wenn.pfad_muster_any[0]'"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ anwendbar_wenn: 'immer' })), "'ressourcen[3].anwendbar_wenn' ist kein Objekt"))
 })
 
 // ─── loeseRessourcenAuf ─────────────────────────────────────────────────────
@@ -197,27 +364,263 @@ test('loeseRessourcenAuf: typ skill verfuegbar false, wenn SKILL.md fehlt', () =
   }
 })
 
-test('loeseRessourcenAuf: typ extern ist immer verfuegbar false', () => {
+function externRessource(overrides: Partial<Ressource>): Ressource {
+  return {
+    id: 'playwright-mcp',
+    typ: 'extern',
+    name: 'Playwright MCP',
+    beschreibung: 'Browser-Automatisierung.',
+    unterart: 'mcp',
+    wirkung: 'lokal',
+    capabilities: ['BROWSER_AUTOMATION'],
+    freigabe: 'OFFEN',
+    herkunft: { art: 'extern', url: 'https://github.com/microsoft/playwright-mcp' },
+    ...overrides,
+  }
+}
+
+const PLAYWRIGHT_INSTALLATION = { version: '0.0.40', mcp_server: { command: 'npx', args: ['-y', '@playwright/mcp'] }, werkzeuge: ['mcp__playwright-mcp__browser_navigate'] }
+
+test('loeseRessourcenAuf: typ extern mit freigabe OFFEN ist verfuegbar false, name aus dem Eintrag', () => {
+  const [aufgeloest] = loeseRessourcenAuf([externRessource({ installation: PLAYWRIGHT_INSTALLATION })], tmpdir(), 'startvorlagen/unbenutzt.json')
+  assert.strictEqual(aufgeloest.verfuegbar, false)
+  assert.match(aufgeloest.grund, /freigabe 'OFFEN'/)
+  assert.strictEqual(aufgeloest.name, 'Playwright MCP')
+})
+
+test('loeseRessourcenAuf: typ agent über Frontmatter aufgelöst, verfuegbar bei FREIGEGEBEN', () => {
   const repoWurzel = neuesTestRepo()
   try {
-    const ressourcen: Ressource[] = [
-      {
-        id: 'playwright-mcp',
-        typ: 'extern',
-        name: 'Playwright MCP',
-        beschreibung: 'Browser-Automatisierung.',
-        capabilities: ['BROWSER_AUTOMATION'],
-        freigabe: 'OFFEN',
-        herkunft: { art: 'extern', url: 'https://github.com/microsoft/playwright-mcp' },
-      },
-    ]
-    const [aufgeloest] = loeseRessourcenAuf(ressourcen, repoWurzel, 'startvorlagen/unbenutzt.json')
-    assert.strictEqual(aufgeloest.verfuegbar, false)
-    assert.strictEqual(aufgeloest.grund, 'extern, nicht auflösbar')
-    assert.strictEqual(aufgeloest.name, 'Playwright MCP')
+    mkdirSync(join(repoWurzel, '.claude', 'agents'), { recursive: true })
+    writeFileSync(join(repoWurzel, '.claude', 'agents', 'qa.md'), '---\nname: qa\ndescription: Prüft Akzeptanz.\ntools: Read\n---\n\n# QA\n')
+    const agent: Ressource = { id: 'qa', typ: 'agent', capabilities: ['TEST_DESIGN'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'agent', pfad: '.claude/agents/qa.md' } }
+    const [a, b, c] = loeseRessourcenAuf(
+      [agent, { ...agent, freigabe: 'OFFEN' }, { ...agent, id: 'fehlt', herkunft: { art: 'agent', pfad: '.claude/agents/fehlt.md' } }],
+      repoWurzel,
+      'startvorlagen/unbenutzt.json'
+    )
+    assert.strictEqual(a.verfuegbar, true)
+    assert.strictEqual(a.name, 'qa')
+    assert.strictEqual(a.beschreibung, 'Prüft Akzeptanz.')
+    assert.strictEqual(b.verfuegbar, false)
+    assert.match(b.grund, /freigabe 'OFFEN'/)
+    assert.strictEqual(c.verfuegbar, false)
+    assert.match(c.grund, /fehlt/)
   } finally {
     raeumeVerzeichnis(repoWurzel)
   }
+})
+
+test('loeseRessourcenAuf: typ agent ohne vollständiges Frontmatter ist nicht verfuegbar', () => {
+  const repoWurzel = neuesTestRepo()
+  try {
+    mkdirSync(join(repoWurzel, '.claude', 'agents'), { recursive: true })
+    writeFileSync(join(repoWurzel, '.claude', 'agents', 'qa.md'), '# QA ohne Frontmatter\n')
+    const [a] = loeseRessourcenAuf([{ id: 'qa', typ: 'agent', capabilities: ['TEST_DESIGN'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'agent', pfad: '.claude/agents/qa.md' } }], repoWurzel, 'x.json')
+    assert.strictEqual(a.verfuegbar, false)
+    assert.match(a.grund, /Frontmatter/)
+  } finally {
+    raeumeVerzeichnis(repoWurzel)
+  }
+})
+
+test('loeseRessourcenAuf: extern skill|agent verfuegbar nur bei FREIGEGEBEN und existierendem installation.pfad', () => {
+  const repoWurzel = neuesTestRepo()
+  try {
+    const installiert = join(repoWurzel, 'global', 'taste-skill')
+    mkdirSync(installiert, { recursive: true })
+    const basis = externRessource({ id: 'taste-skill', unterart: 'skill', wirkung: undefined, freigabe: 'FREIGEGEBEN' })
+    delete basis.wirkung
+    const [da, fehlt, offen, agent] = loeseRessourcenAuf(
+      [
+        { ...basis, installation: { pfad: installiert, version: '1.0.0' } },
+        { ...basis, installation: { pfad: join(repoWurzel, 'gibt-es-nicht'), version: '1.0.0' } },
+        { ...basis, freigabe: 'OFFEN', installation: { pfad: installiert, version: '1.0.0' } },
+        { ...basis, unterart: 'agent', installation: { pfad: installiert, version: '1.0.0' } },
+      ],
+      repoWurzel,
+      'x.json'
+    )
+    assert.strictEqual(da.verfuegbar, true, da.grund)
+    assert.strictEqual(fehlt.verfuegbar, false)
+    assert.match(fehlt.grund, /existiert nicht/)
+    assert.strictEqual(offen.verfuegbar, false)
+    assert.strictEqual(agent.verfuegbar, true)
+  } finally {
+    raeumeVerzeichnis(repoWurzel)
+  }
+})
+
+test('loeseRessourcenAuf: extern skill mit ~-Pfad wird gegen das Home-Verzeichnis aufgelöst', () => {
+  const basis = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: { pfad: `~/f36-gibt-es-nicht-${randomUUID()}`, version: '1' } })
+  delete basis.wirkung
+  const [a] = loeseRessourcenAuf([basis], tmpdir(), 'x.json')
+  assert.strictEqual(a.verfuegbar, false)
+  assert.ok(!a.grund.includes('~'), a.grund)
+})
+
+test('loeseRessourcenAuf: extern mcp verfuegbar bei FREIGEGEBEN, wirkung lokal, installation — Grund nennt „Serverstart nicht geprüft“', () => {
+  const [lokal, lesend, ohne] = loeseRessourcenAuf(
+    [
+      externRessource({ freigabe: 'FREIGEGEBEN', installation: PLAYWRIGHT_INSTALLATION }),
+      externRessource({ wirkung: 'extern_lesend', installation: PLAYWRIGHT_INSTALLATION }),
+      externRessource({ freigabe: 'FREIGEGEBEN' }),
+    ],
+    tmpdir(),
+    'x.json'
+  )
+  assert.strictEqual(lokal.verfuegbar, true)
+  assert.match(lokal.grund, /Serverstart nicht geprüft/)
+  assert.strictEqual(lesend.verfuegbar, false)
+  assert.strictEqual(ohne.verfuegbar, false)
+  assert.match(ohne.grund, /installation fehlt/)
+})
+
+test('loeseRessourcenAuf: ungültige installation (unvalidierte Handbearbeitung) — kein Wurf, kein falsches Grün', () => {
+  const kaputt = [
+    externRessource({ freigabe: 'FREIGEGEBEN', installation: { ...PLAYWRIGHT_INSTALLATION, werkzeuge: ['mcp__playwright-mcp__*'] } }),
+    externRessource({ freigabe: 'FREIGEGEBEN', installation: { version: '1', werkzeuge: ['mcp__playwright-mcp__browser_navigate'] } as unknown as Ressource['installation'] }),
+    externRessource({ freigabe: 'FREIGEGEBEN', installation: null as unknown as Ressource['installation'] }),
+    externRessource({ freigabe: 'FREIGEGEBEN', installation: 'npx x' as unknown as Ressource['installation'] }),
+  ]
+  for (const r of loeseRessourcenAuf(kaputt, tmpdir(), 'x.json')) {
+    assert.strictEqual(r.verfuegbar, false)
+    assert.match(r.grund, /installation ungültig/)
+  }
+})
+
+test('loeseRessourcenAuf: extern OFFEN mit falschem installation.pfad meldet den Pfad schon vor der Freigabe', () => {
+  const r = externRessource({ id: 'taste-skill', unterart: 'skill', installation: { pfad: join(tmpdir(), `f36-fehlt-${randomUUID()}`), version: '1' } })
+  delete r.wirkung
+  const [a] = loeseRessourcenAuf([r], tmpdir(), 'x.json')
+  assert.strictEqual(a.verfuegbar, false)
+  assert.match(a.grund, /existiert nicht/)
+  assert.ok(fehltFuerEinsatz(r, a).some((z) => z.startsWith('nicht verfügbar:') && z.includes('existiert nicht')), JSON.stringify(fehltFuerEinsatz(r, a)))
+})
+
+// ─── pruefeAnwendbarkeit ────────────────────────────────────────────────────
+
+function skillMit(anwendbar_wenn?: Ressource['anwendbar_wenn']): Ressource {
+  const r: Ressource = { id: 'ponytail', typ: 'skill', capabilities: ['SIMPLICITY_REVIEW'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'skill', pfad: '.claude/skills/ponytail' } }
+  return anwendbar_wenn === undefined ? r : { ...r, anwendbar_wenn }
+}
+
+test('pruefeAnwendbarkeit: ohne anwendbar_wenn nie anwendbar', () => {
+  const e = pruefeAnwendbarkeit(skillMit(), { task_typen: ['neues-feature'] })
+  assert.strictEqual(e.anwendbar, false)
+  assert.match(e.begruendung, /kein anwendbar_wenn/)
+})
+
+test('pruefeAnwendbarkeit: task_typen_any — ODER innerhalb des Schlüssels', () => {
+  const r = skillMit({ task_typen_any: ['neues-feature', 'refactoring'] })
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['bugfix', 'refactoring'] }).anwendbar, true)
+  const nein = pruefeAnwendbarkeit(r, { task_typen: ['bugfix'] })
+  assert.strictEqual(nein.anwendbar, false)
+  assert.match(nein.begruendung, /task_typen_any/)
+})
+
+test('pruefeAnwendbarkeit: pfad_muster_any — Glob-Treffer, Backslash-Pfade normalisiert', () => {
+  const r = skillMit({ pfad_muster_any: ['src/**/*.ts', 'docs/*.md'] })
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['bugfix'], pfade: ['README.md', 'src\\a\\b.ts'] }).anwendbar, true)
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['bugfix'], pfade: ['README.md'] }).anwendbar, false)
+})
+
+test('pruefeAnwendbarkeit: fehlende pfade → pfad_muster_any nicht erfüllt, mit Begründung', () => {
+  const e = pruefeAnwendbarkeit(skillMit({ pfad_muster_any: ['src/**'] }), { task_typen: ['bugfix'] })
+  assert.strictEqual(e.anwendbar, false)
+  assert.match(e.begruendung, /keine Pfade/)
+})
+
+test('pruefeAnwendbarkeit: UND zwischen den Schlüsseln', () => {
+  const r = skillMit({ task_typen_any: ['bugfix'], pfad_muster_any: ['src/**'] })
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['bugfix'], pfade: ['src/x.ts'] }).anwendbar, true)
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['bugfix'], pfade: ['docs/x.md'] }).anwendbar, false)
+  assert.strictEqual(pruefeAnwendbarkeit(r, { task_typen: ['refactoring'], pfade: ['src/x.ts'] }).anwendbar, false)
+})
+
+// ─── fehltFuerEinsatz ───────────────────────────────────────────────────────
+
+function aufgeloestAus(r: Ressource, verfuegbar: boolean, grund = 'x'): AufgelosteRessource {
+  return { ...r, name: r.name ?? r.id, beschreibung: r.beschreibung ?? '', verfuegbar, grund }
+}
+
+test('fehltFuerEinsatz: einsatzbereiter Skill mit anwendbar_wenn → leere Liste', () => {
+  const r = skillMit({ task_typen_any: ['bugfix'] })
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, true)), [])
+})
+
+test('fehltFuerEinsatz: extern mcp OFFEN, extern_lesend, ohne installation, ohne anwendbar_wenn → alle Gründe in Klartext', () => {
+  const r = externRessource({ wirkung: 'extern_lesend' })
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, 'extern, installation fehlt')), [
+    'freigabe OFFEN',
+    'installation fehlt',
+    'wirkung extern_lesend: in V1 nicht freigebbar (E-F36-4)',
+    'kein anwendbar_wenn: wird nie empfohlen',
+  ])
+})
+
+test('fehltFuerEinsatz: freigegeben, aber technisch nicht verfügbar → Grund der Auflösung', () => {
+  const r = skillMit({ task_typen_any: ['bugfix'] })
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, "SKILL.md fehlt unter 'x'")), ["nicht verfügbar: SKILL.md fehlt unter 'x'"])
+})
+
+test('fehltFuerEinsatz: extern FREIGEGEBEN mit fehlendem Pfad — technischer Grund vor dem Empfehlungshinweis', () => {
+  const r = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: { pfad: '~/x', version: '1' } })
+  delete r.wirkung
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, "extern, installation.pfad 'C:\\x' existiert nicht")), [
+    "nicht verfügbar: extern, installation.pfad 'C:\\x' existiert nicht",
+    'kein anwendbar_wenn: wird nie empfohlen',
+  ])
+})
+
+test('fehltFuerEinsatz: reiner Freigabe-Grund wird nicht doppelt gemeldet', () => {
+  const r: Ressource = { ...skillMit({ task_typen_any: ['bugfix'] }), freigabe: 'OFFEN' }
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, "SKILL.md vorhanden, aber freigabe 'OFFEN'")), ['freigabe OFFEN'])
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, "SKILL.md fehlt unter 'x'")), ['freigabe OFFEN', "nicht verfügbar: SKILL.md fehlt unter 'x'"])
+})
+
+test('fehltFuerEinsatz: Kopplung an die echten Grund-Texte — worker, skill, agent, extern mit OFFEN melden nur „freigabe OFFEN“', () => {
+  const repoWurzel = neuesTestRepo()
+  try {
+    schreibeJson(join(repoWurzel, 'startvorlagen', 'test.json'), { werkzeugStartziel: ['claude.exe'], werkzeugVersionDeklariert: '1' })
+    mkdirSync(join(repoWurzel, '.claude', 'skills', 's'), { recursive: true })
+    writeFileSync(join(repoWurzel, '.claude', 'skills', 's', 'SKILL.md'), '---\nname: s\ndescription: S.\n---\n')
+    mkdirSync(join(repoWurzel, '.claude', 'agents'), { recursive: true })
+    writeFileSync(join(repoWurzel, '.claude', 'agents', 'a.md'), '---\nname: a\ndescription: A.\n---\n')
+    const aw = { task_typen_any: ['bugfix' as const] }
+    const extern = externRessource({ id: 'x', unterart: 'skill', installation: { pfad: repoWurzel, version: '1' }, anwendbar_wenn: aw })
+    delete extern.wirkung
+    const ressourcen: Ressource[] = [
+      { id: 'claude-code', typ: 'worker', capabilities: ['C'], freigabe: 'OFFEN', herkunft: { art: 'startvorlage', worker: 'claude-code' } },
+      { id: 's', typ: 'skill', capabilities: ['C'], freigabe: 'OFFEN', herkunft: { art: 'skill', pfad: '.claude/skills/s' }, anwendbar_wenn: aw },
+      { id: 'a', typ: 'agent', capabilities: ['C'], freigabe: 'OFFEN', herkunft: { art: 'agent', pfad: '.claude/agents/a.md' }, anwendbar_wenn: aw },
+      extern,
+    ]
+    for (const aufgeloest of loeseRessourcenAuf(ressourcen, repoWurzel, 'startvorlagen/test.json')) {
+      assert.deepStrictEqual(fehltFuerEinsatz(aufgeloest, aufgeloest), ['freigabe OFFEN'], `${aufgeloest.id}: ${aufgeloest.grund}`)
+    }
+  } finally {
+    raeumeVerzeichnis(repoWurzel)
+  }
+})
+
+test('fehltFuerEinsatz: mcp mit gesperrter wirkung UND ungültiger installation zeigt beide Gründe', () => {
+  const r = externRessource({ wirkung: 'extern_lesend', installation: { version: '1', werkzeuge: ['x'] } as unknown as Ressource['installation'] })
+  const [a] = loeseRessourcenAuf([r], tmpdir(), 'x.json')
+  const fehlt = fehltFuerEinsatz(r, a)
+  assert.ok(fehlt.some((z) => z.includes('(E-F36-4)')), JSON.stringify(fehlt))
+  assert.ok(fehlt.some((z) => z.includes('installation ungültig')), JSON.stringify(fehlt))
+})
+
+test('pruefeAnwendbarkeit: leere pfade-Liste gilt wie fehlende Pfade', () => {
+  const e = pruefeAnwendbarkeit(skillMit({ pfad_muster_any: ['src/**'] }), { task_typen: ['bugfix'], pfade: [] })
+  assert.strictEqual(e.anwendbar, false)
+  assert.match(e.begruendung, /keine Pfade/)
+})
+
+test('fehltFuerEinsatz: worker braucht kein anwendbar_wenn', () => {
+  const r: Ressource = { id: 'codex', typ: 'worker', capabilities: ['CODE_REVIEW'], freigabe: 'FREIGEGEBEN', herkunft: { art: 'startvorlage', worker: 'codex' } }
+  assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, true)), [])
 })
 
 // ─── ressourcenFuerCapability ───────────────────────────────────────────────

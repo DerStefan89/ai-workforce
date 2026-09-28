@@ -20,9 +20,11 @@ export type LibraryPhase = 'DISCOVERED' | 'ASSESSED' | 'APPROVED' | 'AVAILABLE'
 
 /** Eine aufgelöste Ressource plus die view-eigenen, additiven Felder (AK1, AK5) — der Kern (AufgelosteRessource) bleibt unverändert, anzeigeGrund/phasen kommen ausschließlich aus dieser View-Schicht. */
 export interface LibraryEintrag extends AufgelosteRessource {
-  /** AK1: für typ 'extern' (immer freigabe 'OFFEN', R2) erkennbar anderer Text als bei einer technisch nicht vorhandenen Ressource. Sonst unverändert r.grund. */
+  /** AK1: für typ 'extern' mit freigabe 'OFFEN' (seit F36 WS-1 darf extern mit installation auch FREIGEGEBEN sein, E-M5-5) erkennbar anderer Text als bei einer technisch nicht vorhandenen Ressource. Sonst unverändert r.grund. */
   anzeigeGrund: string
   phasen: LibraryPhase[]
+  /** F36 WS-1: was für einen Einsatz im Lauf fehlt, in Klartext (fehltFuerEinsatz, src/ressourcen) — leer = einsatzbereit. Nur Anzeige. */
+  fehltFuerEinsatz: string[]
 }
 
 export interface LibraryAnsicht {

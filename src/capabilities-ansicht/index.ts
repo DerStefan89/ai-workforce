@@ -29,6 +29,7 @@
  * src/capabilities-ansicht/capabilities-ansicht.test.ts.
  */
 
+import { fehltFuerEinsatz } from '../ressourcen/index.ts'
 import type { AufgelosteRessource } from '../ressourcen/types.ts'
 import type { Rollenvertrag } from '../rollen/types.ts'
 import type {
@@ -48,11 +49,18 @@ export type { AbdeckungsAnsicht, AbdeckungsEintrag, LibraryAnsicht, LibraryEintr
 /** AK5: v1 hat kein Scout-Artefakt (F27-Scope) — die Phase bleibt strukturell leer, aber benannt statt einer stillen leeren Liste. */
 export const ASSESSED_HINWEIS = 'Scout-Artefakt kommt mit F27 — in v1 strukturell leer, keine Ressource kann diese Phase erreichen.'
 
-/** AK1: fester Anzeigetext für jede typ:'extern'-Ressource — R2 erzwingt bei 'extern' immer freigabe 'OFFEN', der Kern (loeseRessourcenAuf) liefert dafür den generischen, identischen Text 'extern, nicht auflösbar'. Diese View unterscheidet daraus erkennbar "wartet auf einen Menschen" von "technisch kaputt/fehlt" (z. B. ein Skill ohne SKILL.md, ein Worker ohne Startvorlagen-Block). */
+/** AK1: fester Anzeigetext für jede typ:'extern'-Ressource mit freigabe 'OFFEN' (seit F36 WS-1 darf extern mit installation auch FREIGEGEBEN sein, E-M5-5 — dann zeigt die Ansicht den Kern-Grund). Diese View unterscheidet daraus erkennbar "wartet auf einen Menschen" von "technisch kaputt/fehlt" (z. B. ein Skill ohne SKILL.md, ein Worker ohne Startvorlagen-Block). */
 const EXTERN_ANZEIGE_GRUND = 'Vom Menschen noch nicht freigegeben (freigabe: OFFEN) — kein technischer Defekt, sondern eine offene Entscheidung.'
 
+/**
+ * Pauschaltext nur, wenn extern/OFFEN wirklich nur auf den Menschen wartet: der Kern-Grund ist ein reiner
+ * Freigabe-Grund oder „installation fehlt“ (F36 WS-1). Ein technischer Defekt oder eine in V1 gesperrte
+ * wirkung (E-F36-4) bleibt als Kern-Grund sichtbar — sonst widerspräche die Spalte „Fehlt für Einsatz“.
+ */
 function leiteAnzeigeGrundAb(ressource: AufgelosteRessource): string {
-  return ressource.typ === 'extern' ? EXTERN_ANZEIGE_GRUND : ressource.grund
+  if (ressource.typ !== 'extern' || ressource.freigabe !== 'OFFEN') return ressource.grund
+  const wartetNurAufMenschen = ressource.grund.endsWith("freigabe 'OFFEN'") || ressource.grund === 'extern, installation fehlt'
+  return wartetNurAufMenschen ? EXTERN_ANZEIGE_GRUND : ressource.grund
 }
 
 function leitePhasenAb(ressource: AufgelosteRessource): LibraryPhase[] {
@@ -75,6 +83,7 @@ export function projeziereLibrary(aufgeloest: AufgelosteRessource[], startvorlag
     ...ressource,
     anzeigeGrund: leiteAnzeigeGrundAb(ressource),
     phasen: leitePhasenAb(ressource),
+    fehltFuerEinsatz: fehltFuerEinsatz(ressource, ressource),
   }))
   return { startvorlagePfad, eintraege, assessedHinweis: ASSESSED_HINWEIS }
 }
