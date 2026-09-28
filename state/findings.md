@@ -10399,3 +10399,30 @@ Auswirkung: Gering — doppelte ADRs, unpassende Anweisung an den Advisor.
 Maßnahme: Instruktion um „oder den Verweis im bestehenden Stack-ADR ergänzen“ erweitern; für den Advisor eine eigene Regelzeile.
 Status: offen.
 Feature/Run: fix/f35-reallauf-fixpaket, QA- und Review-Pass, 28.09.2026.
+
+**F-759** · `BUG` · P3 · offen
+Titel: Ein direkter Link `#/workflows/<id>` sucht nur im gerade aktiven Projekt und endet sonst in 404, ohne das Projekt zu nennen.
+Beschreibung: `public/leitstand/projekt-kontext.js` löst einen Deep-Link `#/workflows/<id>` gegen das Projekt auf, das die Oberfläche gerade geladen hat — zeigt der Link auf einen Workflow eines ANDEREN Projekts, bekommt der Mensch ein bloßes 404, ohne dass die Seite sagt, welches Projekt gemeint war oder wie er dorthin wechselt.
+Fundstelle: `public/leitstand/projekt-kontext.js`.
+Auswirkung: Gering — betrifft nur projektübergreifend geteilte Links (z. B. aus einer Benachrichtigung), keine Kernfunktion.
+Maßnahme: Projekt-Id in die Route aufnehmen (`#/projekte/<projektId>/workflows/<id>`) oder die 404-Meldung um einen Projekt-Hinweis/Wechsel-Link ergänzen — Design-Schnitt (welche Variante) noch offen.
+Status: offen.
+Feature/Run: fix/f760-verweigert-bau, 28.09.2026 (beim F35-Reallauf-Nachlauf entdeckt, nicht Teil dieses Fixes).
+
+**F-760** · `BUG` · P1 · **behoben** (dieser PR, fix/f760-verweigert-bau)
+Titel: Ein vollständiger Baulauf mit Bash-Allowlist endete wegen abgelehnter Probebefehle als VERWEIGERT ohne Änderungsübersicht und Prüfergebnis; die Kette zum Review riss ab.
+Beschreibung: Reallauf F35, Iteration 2 (haushaltsbuch2, Lauf 08c84cd7, 28.09.2026): Die Ausführung hat F1 vollständig gebaut (Code, 19 Tests, eigener `npm run check` grün), endete aber VERWEIGERT. `permission_denials`: `git status`/`git log` (3×), `node -e …` (2×), `node_modules/.bin/biome check --write .`, `npm run lint:fix` — alle korrekt abgelehnt (Allowlist E-F754, Sperre `Bash(git:*)`), kein Bypass-Verdacht. Die Instruktion (`baueUmsetzungsInstruktion`) nannte die Bash-Allowlist selbst nie — nur die Werkzeugrechte trugen sie, die Ausführung probierte deshalb wiederholt Befehle außerhalb. `scripts/leitstand-server.mjs` registrierte für VERWEIGERT weder Änderungsübersicht noch Prüfergebnis (nur für ERFOLGREICH), der Review-Schritt (Eingaben `aenderungsuebersicht-@`/`pruefergebnis-@`) war damit unerreichbar — ein vollständiger Bau ohne Sackgasse-Ausweg.
+Fundstelle: `src/architekt/index.ts` (`baueUmsetzungsInstruktion`), `scripts/leitstand-server.mjs` (`starteLaufUndVergiss`-Registrierungsblock, Nachlauf-Rückruf mit Regeln 1g/1h/1j).
+Auswirkung: Hoch — ein real vollständiger Bau lief in eine Sackgasse, kein Review, keine menschliche Sichtung möglich, nur ein Neustart von vorn.
+Maßnahme: (1) `baueUmsetzungsInstruktion('feature', traegtBashRegeln)` hängt an Teil 2 die aus `ERLAUBTE_BASH_REGELN` abgeleitete Befehlsliste an — nur, wenn der Werkzeugsatz des Schritts tatsächlich eine `Bash(...)`-Regel trägt; der Satz selbst steht jetzt in der eigenständigen, exportierten `baueBashAllowlistSatz()`. (2) Endet ein `ausfuehrung`-Lauf VERWEIGERT mit `bypass_verdacht_anzahl === 0`, registriert der Kern Änderungsübersicht und Prüfergebnis wie bei ERFOLGREICH und hält den Workflow mit `KLAERUNG_ERFORDERLICH`, Grund „Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: … — menschliche Sichtung vor Fortsetzung (F-760)“, ergänzt um dieselben Nachlauf-Verstöße wie Regeln 1g/1h/1j (Muster F-718), OHNE `ermittleNaechstenSchritt`/Regeln 1e–1j selbst zu ändern (die Klassifikation VERWEIGERT und der fail-closed-Halt bleiben unverändert — mit Bypass-Verdacht > 0 bleibt das Verhalten bitgenau wie zuvor). (3) Die Eingabeauflösung (`loesePraefixPlatzhalterAuf`) war nie an `zielSchritt.status` gekoppelt, nur an `lauf_id !== null` — eine Reparaturfassung mit Cursor auf dem Review-Folgeschritt löst deren `aenderungsuebersicht-@`/`pruefergebnis-@`-Eingaben deshalb ohne weitere Änderung auf, sobald die Artefakte (aus (2)) existieren. QA-Korrekturrunde (28.09.2026): (1) lief serverseitig ursprünglich nur im `hoch`-Pfad (`architektEingabeTreffer`-Zweig) — `workflow-vorlagen/standard.json`/`fast-lane.json` (kein `architekt`-Schritt, derselbe `schreibend`-Werkzeugsatz) bekamen die Allowlist nie genannt, derselbe Auslöser außerhalb von `hoch`. `baueBashAllowlistSatz()` wird jetzt zusätzlich in einem eigenen `else if (schritt.rolle === 'ausfuehrung')`-Zweig angehängt. Gate `scripts/check-fixpaket-f35-reallauf.mjs` (g)–(k).
+Status: behoben (fix/f760-verweigert-bau, 28.09.2026).
+Feature/Run: F35-Reallauf haushaltsbuch2, Iteration 2, Lauf 08c84cd7, 28.09.2026.
+
+**F-761** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Projekt-CLAUDE.md-Vorlage lässt die Ausführung „Status: Blockiert“ ausgeben, obwohl nur der Commit durch den Menschen aussteht.
+Beschreibung: CLAUDE.md verlangt am Ende jeder Ausgabe eines der vier Status-Kästchen (Freigegeben / Freigegeben mit Hinweisen / Nicht freigegeben / Blockiert) — keines davon passt auf die Lage „gebaut, geprüft, grün, wartet nur auf die menschliche Commit-Freigabe“ (KEINE Commits ohne explizite Freigabe ist selbst Teil derselben Vorlage). Eine Ausführung wählt in diesem Fall typischerweise „Blockiert“, was den Eindruck eines echten Problems erweckt, obwohl planmäßig nur der Mensch am Zug ist.
+Fundstelle: CLAUDE.md (Abschnitt „Status-Format“), Projekt-Vorlage.
+Auswirkung: Gering — irreführender, aber folgenloser Statustext; kein Fachfehler.
+Maßnahme: Fünftes Kästchen ergänzen (z. B. „Bereit zum Commit — wartet auf Freigabe“) oder den Vorlagentext klarstellen, dass „Blockiert“ ein echtes Hindernis meint. Design-Schnitt am Harness-Template, nicht an diesem Projekt allein.
+Status: offen.
+Feature/Run: fix/f760-verweigert-bau, 28.09.2026 (beim F35-Reallauf-Nachlauf entdeckt, nicht Teil dieses Fixes).

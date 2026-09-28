@@ -462,6 +462,7 @@ import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import {
   baueArchitektAuftragstext,
+  baueBashAllowlistSatz,
   baueStackEntscheidungsInstruktion,
   baueUmsetzungsInstruktion,
   istStackOffen,
@@ -2880,6 +2881,50 @@ function leseErgebnistextAusRohstrom(laufakteDaten) {
   return { ok: true, text, worker }
 }
 
+/**
+ * F-760 (state/findings.md): liest die abgelehnten Werkzeugaufrufe eines VERWEIGERT-Laufs aus
+ * dessen Rohstrom — für den menschenlesbaren Halt-Grund, NICHT für eine Klassifikationsentscheidung
+ * (die trifft ausschließlich src/result-evaluator/index.ts, F7-Grenze). Dasselbe einfache Lesemuster
+ * wie leseErgebnistextAusRohstrom direkt darüber (F6as leseErgebnisobjekt, kein eigenes Parsing,
+ * D5), hier auf 'permission_denials' statt 'result'. NUR claude-code: 'VERWEIGERT' kommt aus
+ * permission_denials[] (ermittleErgebnis, src/result-evaluator/index.ts); die Codex-Klassifikation
+ * (ermittleErgebnisCodex) kennt dieses Feld nicht, ein Codex-Lauf liefert deshalb immer [].
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten
+ * @returns Liste kurzer Beschreibungen ('<tool_name>: <command>' bzw. nur '<tool_name>'); leer, wenn nicht lesbar oder keine Ablehnungen
+ */
+function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
+  if ((laufakteDaten.worker ?? 'claude-code') === 'codex') return []
+  let rohInhalt
+  try {
+    rohInhalt = readFileSync(laufakteDaten.rohstrom_referenz.pfad, 'utf8')
+  } catch {
+    return []
+  }
+  let rohstrom
+  try {
+    rohstrom = JSON.parse(rohInhalt)
+  } catch {
+    return []
+  }
+  const ergebnisobjekt = typeof rohstrom.stdout === 'string' ? leseErgebnisobjekt(rohstrom.stdout) : null
+  const denialsRoh = ergebnisobjekt?.permission_denials
+  const denials = Array.isArray(denialsRoh) ? denialsRoh.filter((d) => typeof d === 'object' && d !== null) : []
+  return denials.map((denial) => {
+    const name = typeof denial.tool_name === 'string' ? denial.tool_name : 'unbekannt'
+    const command = typeof denial.tool_input?.command === 'string' ? denial.tool_input.command : null
+    return command !== null ? `${name}: ${command}` : name
+  })
+}
+
+/** F-760: kürzt die Liste abgelehnter Befehle (leseAbgelehnteBefehleAusRohstrom) für den persistierten Halt-Grund — der Text soll nicht mit der Zahl der Probeaufrufe beliebig wachsen. @returns lesbarer Fließtext */
+function formatiereAbgelehnteBefehle(befehle) {
+  if (befehle.length === 0) return 'keine im Rohstrom lesbar'
+  const GRENZE = 8
+  const sichtbar = befehle.slice(0, GRENZE)
+  const rest = befehle.length - sichtbar.length
+  return rest > 0 ? `${sichtbar.join(', ')}, … (+${rest} weitere)` : sichtbar.join(', ')
+}
+
 function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
   const { jsonObjektFallback = false } = optionen
   const textErgebnis = leseErgebnistextAusRohstrom(laufakteDaten)
@@ -4071,7 +4116,25 @@ export function erzeugeRequestHandler(optionen = {}) {
           // D13-UEBERGABE-OHNE-FENSTER: ENDE
           return
         }
-        if (werkzeugsatzArt === 'schreibend' && ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH') {
+        // F-760 (state/findings.md, löst "ein vollständiger Baulauf mit Bash-Allowlist endete
+        // VERWEIGERT, weil er wiederholt Probebefehle außerhalb der Allowlist versuchte — jede
+        // Ablehnung war eine korrekt gegriffene Werkzeuggrenze (kein Bypass-Verdacht), trotzdem
+        // registrierte der Kern weder Änderungsübersicht noch Prüfergebnis, die Kette zum Review
+        // riss ab"): dieselbe Registrierung wie bei ERFOLGREICH bekommt jetzt auch ein VERWEIGERT
+        // OHNE Bypass-Verdacht (bypass_verdacht_anzahl === 0 — dieselbe Zahl, die execution-
+        // controller/index.ts für die E-186-Eskalation liest). Mit echtem Bypass-Verdacht (> 0)
+        // bleibt das Verhalten unverändert unregistriert — dort übernimmt die Eskalation.
+        // Code-Review-Befund (28.09.2026): dieser Block ist wie sein ERFOLGREICH-Gegenstück oben
+        // rollenunabhängig — starteLaufUndVergiss bedient auch den ad-hoc-Startendpunkt POST
+        // /api/laeufe, nicht nur einen Workflow-'ausfuehrung'-Schritt. Bewusst dieselbe Reichweite
+        // wie das bestehende ERFOLGREICH-Verhalten (kein zweiter Regelsatz, D5): der Halt-Grund mit
+        // den abgelehnten Befehlen (unten, im 'ausfuehrung'-spezifischen Nachlauf-Rückruf) bleibt
+        // trotzdem auf 'ausfuehrung' beschränkt — ein ad-hoc-Lauf hat dort keinen Workflow-Schritt,
+        // an den sich ein Halt richten könnte.
+        const laufAbgeschlossen = ergebnis.laufStatus?.status === 'ABGESCHLOSSEN'
+        const laufErfolgreich = laufAbgeschlossen && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH'
+        const laufVerweigertOhneBypassVerdacht = laufAbgeschlossen && ergebnis.laufStatus.ergebnis === 'VERWEIGERT' && (ergebnis.klassifikation?.bypass_verdacht_anzahl ?? 0) === 0
+        if (werkzeugsatzArt === 'schreibend' && (laufErfolgreich || laufVerweigertOhneBypassVerdacht)) {
           // F23 WS-0 (state/findings.md F-378): Änderungsübersicht NACH einem real erfolgreichen
           // Lauf mit schreibendem Werkzeugsatz — dieselbe Erfolgsbedingung wie
           // normalisiereSchrittAusgang (D5, kein zweiter Erfolgsbegriff). Bewusst SYNCHRON und VOR
@@ -4357,7 +4420,11 @@ export function erzeugeRequestHandler(optionen = {}) {
     // unverändert: kein Treffer, kein Zusatzblock.
     const architektEingabeTreffer = findeArchitektEingabeTreffer(schritt, workflowDaten)
     if (architektEingabeTreffer !== undefined) {
-      auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion(modus).join('\n')}`
+      // F-760: die Instruktion nennt die Bash-Allowlist nur, wenn DIESER Schritt überhaupt eine
+      // Bash-Regel im Werkzeugsatz trägt (E-F754) — ein rein lesender oder Codex-Satz ohne
+      // 'Bash(...)' bekommt den Shell-Absatz nicht (bitgenau unverändert).
+      const traegtBashRegeln = (loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.erlaubte_werkzeuge ?? []).some((eintrag) => eintrag.startsWith('Bash('))
+      auftragstext = `${auftragstext}\n\n${baueUmsetzungsInstruktion(modus, traegtBashRegeln).join('\n')}`
 
       // F42 WS-4 (löst F-714, real beobachtet im F42-WS-3-Reallauf gegen haushaltsbuch2): NUR,
       // wenn der referenzierte Architektur-Lauf tatsächlich eine 'kategorie: stack'-Entscheidung
@@ -4373,6 +4440,18 @@ export function erzeugeRequestHandler(optionen = {}) {
       const traegtStackEntscheidung = architekturErgebnisFuerStack !== null && architekturErgebnisFuerStack.entscheidungenMensch.some((eintrag) => eintrag.kategorie === 'stack')
       if (traegtStackEntscheidung && findeWorkflowEntscheidungFuerSchritt(basisVerzeichnis, workflowId, architektSchrittId) !== null) {
         auftragstext = `${auftragstext}\n\n${baueStackEntscheidungsInstruktion(workflowEntscheidungArtefaktId(workflowId)).join('\n')}`
+      }
+    } else if (schritt.rolle === 'ausfuehrung') {
+      // F-760 (QA-Pass 28.09.2026): ein 'ausfuehrung'-Schritt OHNE architekt-Vorschritt
+      // (workflow-vorlagen/standard.json, fast-lane.json) durchläuft baueUmsetzungsInstruktion
+      // gar nicht — deren Teil 1 verlangt einen Architekturentwurf, den es in diesem Pfad nicht
+      // gibt. Trägt sein Werkzeugsatz trotzdem eine 'Bash(...)'-Regel (E-F754, dieselbe Prüfung
+      // wie oben), bekäme die Ausführung ihre Allowlist sonst NIE genannt — genau der reale
+      // F-760-Auslöser, nur außerhalb des hoch-Pfads. baueBashAllowlistSatz() ist derselbe Satz,
+      // den baueUmsetzungsInstruktion oben anhängt (D5, kein zweiter Wortlaut).
+      const traegtBashRegeln = (loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.erlaubte_werkzeuge ?? []).some((eintrag) => eintrag.startsWith('Bash('))
+      if (traegtBashRegeln) {
+        auftragstext = `${auftragstext}\n\n${baueBashAllowlistSatz()}`
       }
     }
 
@@ -4615,6 +4694,15 @@ export function erzeugeRequestHandler(optionen = {}) {
 
       const schrittStatus = fehler !== null ? 'FEHLGESCHLAGEN' : normalisiereSchrittAusgang(ergebnis)
       const schrittFelder = heilbar ? { status: 'OFFEN', lauf_id: null } : { status: schrittStatus, lauf_id: laufId }
+      // F-760 (state/findings.md, löst "ein vollständiger Baulauf endete VERWEIGERT, ohne dass die
+      // Kette zum Review noch erreichbar war"): dieselbe bypass_verdacht_anzahl wie beim
+      // Registrierungsblock oben (starteLaufUndVergiss' eigenes .then) — hier ein zweites Mal
+      // gelesen, weil dieser Rückruf eine eigene, spätere Closure ist (kein gemeinsamer Zwischenwert
+      // über die D13-Übergabe hinweg). NUR für einen 'ausfuehrung'-Schritt (CONTEXT: der Reallauf,
+      // der F-760 auslöste, war ein 'ausfuehrung'-Schritt; jede andere Rolle bleibt beim bisherigen,
+      // generischen Regel-1-Halt aus ermittleNaechstenSchritt).
+      const bypassVerdachtAnzahl = schrittStatus === 'VERWEIGERT' ? (ergebnis?.klassifikation?.bypass_verdacht_anzahl ?? 0) : undefined
+      const verweigertOhneBypassVerdacht = !heilbar && schrittStatus === 'VERWEIGERT' && schritt.rolle === 'ausfuehrung' && bypassVerdachtAnzahl === 0
       // F23 WS-1b (löst F-351/F-377): fuehreAufgabeDurchs Rückgabewert (ergebnis.klassifikation)
       // kennt nur die drei Terminalausgänge (F7) — das Urteil eines Post-Build-Reviews steht
       // ausschließlich im Rohstrom des Laufs und wird deshalb hier, ein zweites Mal und
@@ -4709,7 +4797,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       // dort ist HEAD der Stand vor dem Lauf. Der package.json-Vergleich läuft auch ohne Übersicht.
       let ausfuehrungRueckfrage
       let pruefketteVeraendert
-      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung' && loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art === 'schreibend') {
+      // F-760: pruefketteVeraendert (Regel 1j) wird jetzt auch für einen VERWEIGERT-Lauf ohne
+      // Bypass-Verdacht berechnet — derselbe Registrierungsblock (starteLaufUndVergiss) legt für
+      // diesen Fall bereits die Änderungsübersicht an, aus der diese Regel liest (Reihenfolge
+      // gesichert: SYNCHRON registriert, VOR meldeLaufende, s. dortiger Kommentar).
+      if (!heilbar && (schrittStatus === 'ERFOLGREICH' || verweigertOhneBypassVerdacht) && schritt.rolle === 'ausfuehrung' && loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art === 'schreibend') {
         const uebersichtVersionFuerNachlauf = ladeArtefaktVersion(`aenderungsuebersicht-${laufId}`, undefined, ladeOptionen)
         const uebersichtBekannt = uebersichtVersionFuerNachlauf !== null && !istAenderungsuebersichtDegradiert(uebersichtVersionFuerNachlauf.daten)
         if (uebersichtBekannt && ausfuehrungSelbstblockiert !== true) {
@@ -4774,7 +4866,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // — NUR im Projektmodus (herkunft.art === 'projekt_interview'), sonst bleibt das Feld
       // undefined und Regel 1g folgenlos (Feature-Modus unverändert, AK3).
       let scopeVerletzung
-      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung' && auftragVersion.daten.herkunft?.art === 'projekt_interview') {
+      // F-760: dieselbe Erweiterung wie bei pruefketteVeraendert oben — VERWEIGERT ohne
+      // Bypass-Verdacht bekommt Regel 1g mitgewertet.
+      if (!heilbar && (schrittStatus === 'ERFOLGREICH' || verweigertOhneBypassVerdacht) && schritt.rolle === 'ausfuehrung' && auftragVersion.daten.herkunft?.art === 'projekt_interview') {
         const uebersichtVersionFuerScope = ladeArtefaktVersion(`aenderungsuebersicht-${laufId}`, undefined, ladeOptionen)
         scopeVerletzung = uebersichtVersionFuerScope !== null ? pruefeProjektmodusScope(uebersichtVersionFuerScope.daten.dateien.map((datei) => datei.pfad)) : []
       }
@@ -4791,7 +4885,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Prüfung unbemerkt bestanden. traegtAdrVerweisAufEntscheidung schließt die zweite Hälfte.
       let stackNichtGefuellt
       let stackPruefkettenPfadeFehlen
-      if (!heilbar && schrittStatus === 'ERFOLGREICH' && schritt.rolle === 'ausfuehrung') {
+      // F-760: dieselbe Erweiterung wie bei scopeVerletzung/pruefketteVeraendert oben — VERWEIGERT
+      // ohne Bypass-Verdacht bekommt Regel 1h mitgewertet.
+      if (!heilbar && (schrittStatus === 'ERFOLGREICH' || verweigertOhneBypassVerdacht) && schritt.rolle === 'ausfuehrung') {
         const architektEingabeTrefferFuerStack = findeArchitektEingabeTreffer(schritt, workflowDaten)
         if (architektEingabeTrefferFuerStack !== undefined) {
           const architektSchrittIdFuerStack = architektEingabeTrefferFuerStack[1]
@@ -4816,6 +4912,40 @@ export function erzeugeRequestHandler(optionen = {}) {
       const anlass = fehler !== null ? `Wurf: ${String(fehler?.message ?? fehler)}` : nichtErfolgreich ? beschreibeAblehnung(ergebnis) : null
       const heilungsGrund = `Schritt '${schritt.schritt_id}': ${anlass} — kein Checkpoint geschrieben, Schritt auf OFFEN zurückgesetzt (kein Replan)`
 
+      // F-760 (state/findings.md, löst "ein vollständiger Baulauf mit ausschließlich abgelehnten
+      // Probebefehlen endete VERWEIGERT ohne Änderungsübersicht/Prüfergebnis, die Kette zum Review
+      // riss ab"): für diesen Fall ERSETZT dieser Block Regel 1s generischen Text ("Schritt endete
+      // VERWEIGERT") durch einen eigenen Halt, der die abgelehnten Befehle nennt und — Muster F-718
+      // — dieselben Nachlauf-Verstöße sammelt, die ein ERFOLGREICH an dieser Stelle über
+      // ermittleNaechstenSchritt geprüft bekäme (1g/1h/1j, oben bereits mitberechnet). Bewusst NICHT
+      // über ermittleNaechstenSchritt selbst: dessen Regel 1 hält für JEDES Nicht-ERFOLGREICH
+      // (auch VERWEIGERT MIT Bypass-Verdacht) bereits VOR 1g/1h/1j an (src/workflow/index.ts,
+      // NICHT Teil dieses Fixes) — dieser Block läuft NUR im engeren Fall verweigertOhneBypassVerdacht
+      // und lässt jeden anderen Ausgang unverändert über ermittleNaechstenSchritt laufen.
+      let verweigertHalt = null
+      if (verweigertOhneBypassVerdacht) {
+        const laufakteVersionFuerBefehle = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
+        const abgelehnteBefehle = laufakteVersionFuerBefehle !== null ? leseAbgelehnteBefehleAusRohstrom(laufakteVersionFuerBefehle.daten) : []
+        const nachlaufVerstoesseVerweigert = [
+          `Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: ${formatiereAbgelehnteBefehle(abgelehnteBefehle)} — menschliche Sichtung vor Fortsetzung (F-760, Schritt '${schritt.schritt_id}', Lauf '${laufId}')`,
+        ]
+        if (scopeVerletzung !== undefined && scopeVerletzung.length > 0) {
+          nachlaufVerstoesseVerweigert.push(
+            `Schritt '${schritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712)`
+          )
+        }
+        if (stackNichtGefuellt === true) {
+          nachlaufVerstoesseVerweigert.push(`Schritt '${schritt.schritt_id}' (ausfuehrung): Stack entschieden, aber CLAUDE.md/ADR nicht vollständig gepflegt (F-714)`)
+        }
+        if (stackPruefkettenPfadeFehlen === true) {
+          nachlaufVerstoesseVerweigert.push(`Schritt '${schritt.schritt_id}' (ausfuehrung): Stack entschieden, aber pruefketten_pfade in der Startvorlage fehlt (F-735)`)
+        }
+        if (pruefketteVeraendert !== undefined && pruefketteVeraendert.length > 0) {
+          nachlaufVerstoesseVerweigert.push(`Prüfkette durch den Lauf verändert: ${pruefketteVeraendert.join(', ')} (F-713)`)
+        }
+        verweigertHalt = { art: 'haltKlaerung', grund: nachlaufVerstoesseVerweigert.join(' | '), aktiverSchrittId: schritt.schritt_id }
+      }
+
       // WS-2c (a2) 1.: das Ergebnis von ermittleNaechstenSchritt, das der Updater ohnehin
       // berechnet, zusätzlich hier festhalten. Kein Trick — schreibeWorkflowFortschritt ruft
       // leiteWorkflowFelderAb synchron auf, die Zuweisung ist nach dem Aufruf sicher belegt.
@@ -4832,26 +4962,28 @@ export function erzeugeRequestHandler(optionen = {}) {
           // dem ein Folgeschritt entstehen dürfte. Der Cursor bleibt auf ihm stehen, der
           // Mensch klärt (KLAERUNG_ERFORDERLICH), und ein erneuter Start ist danach möglich.
           if (heilbar) return { status: 'KLAERUNG_ERFORDERLICH', aktiver_schritt_id: schritt.schritt_id, grund: heilungsGrund }
-          naechster = ermittleNaechstenSchritt(datenMitSchritt, {
-            schrittId: schritt.schritt_id,
-            ergebnis: schrittStatus,
-            laufId,
-            urteil,
-            akVerstoesse,
-            architekturVerstoesse,
-            architekturEntscheidungAusstehend,
-            architekturAnzahlFragen,
-            advisorUrteilFehlt,
-            ausfuehrungSelbstblockiert,
-            ausfuehrungRueckfrage,
-            pruefergebnis,
-            pruefergebnisExitCode,
-            pruefergebnisAusgabeEnde,
-            scopeVerletzung,
-            stackNichtGefuellt,
-            stackPruefkettenPfadeFehlen,
-            pruefketteVeraendert,
-          })
+          naechster =
+            verweigertHalt ??
+            ermittleNaechstenSchritt(datenMitSchritt, {
+              schrittId: schritt.schritt_id,
+              ergebnis: schrittStatus,
+              laufId,
+              urteil,
+              akVerstoesse,
+              architekturVerstoesse,
+              architekturEntscheidungAusstehend,
+              architekturAnzahlFragen,
+              advisorUrteilFehlt,
+              ausfuehrungSelbstblockiert,
+              ausfuehrungRueckfrage,
+              pruefergebnis,
+              pruefergebnisExitCode,
+              pruefergebnisAusgabeEnde,
+              scopeVerletzung,
+              stackNichtGefuellt,
+              stackPruefkettenPfadeFehlen,
+              pruefketteVeraendert,
+            })
           return {
             status: workflowStatusZuAusgang(naechster),
             aktiver_schritt_id: naechster.aktiverSchrittId,

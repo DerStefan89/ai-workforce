@@ -57,6 +57,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { baueCapabilityAuszug } from '../product-coach/index.ts'
+import { ERLAUBTE_BASH_REGELN } from '../startvorlage/index.ts'
 import type {
   AdrEntwurf,
   ArchitektModus,
@@ -606,6 +607,46 @@ export function baueArchitektAuftragstext(planungstext: string, modus: Architekt
 }
 
 /**
+ * F-760 (state/findings.md, löst "ein vollständiger Baulauf endete VERWEIGERT, weil er wiederholt
+ * Befehle außerhalb der Allowlist probierte, ohne dass die Instruktion diese Allowlist je
+ * nannte"): baut aus ERLAUBTE_BASH_REGELN (src/startvorlage/index.ts, E-F754) den Satz Fließtext
+ * für den Shell-Absatz der Bauinstruktion — abgeleitet, nicht zweimal gepflegt. 'npm run X:*'-
+ * Einträge werden zu einer gemeinsamen 'npm run X|Y|Z'-Aufzählung zusammengefasst, exakte
+ * Einträge (kein ':*', z. B. 'npm install') einzeln übernommen.
+ * @returns z. B. "npm install, npm ci, npm run check|lint|typecheck|test|build"
+ */
+function leiteErlaubteBefehlsliste(): string {
+  const exakt: string[] = []
+  const npmRunSuffixe: string[] = []
+  for (const regel of ERLAUBTE_BASH_REGELN) {
+    const praefix = regel.slice('Bash('.length, -1).replace(/:\*$/, '')
+    if (praefix.startsWith('npm run ')) {
+      npmRunSuffixe.push(praefix.slice('npm run '.length))
+    } else {
+      exakt.push(praefix)
+    }
+  }
+  const teile = [...exakt]
+  if (npmRunSuffixe.length > 0) teile.push(`npm run ${npmRunSuffixe.join('|')}`)
+  return teile.join(', ')
+}
+
+/**
+ * F-760: der volle Shell-Absatz-Satz (leiteErlaubteBefehlsliste plus die feste Rahmung) —
+ * EXPORTIERT, weil scripts/leitstand-server.mjs ihn für EINEN zweiten Schrittstart-Pfad braucht:
+ * ein 'ausfuehrung'-Schritt OHNE architekt-Vorschritt (workflow-vorlagen/standard.json,
+ * fast-lane.json) durchläuft baueUmsetzungsInstruktion gar nicht (deren Teil 1 verlangt einen
+ * Architekturentwurf, den es dort nicht gibt) — trägt sein Werkzeugsatz trotzdem eine
+ * 'Bash(...)'-Regel (E-F754), bekäme die Ausführung ihre Allowlist sonst nie genannt, obwohl
+ * genau das der reale F-760-Auslöser war (QA-Pass 28.09.2026). baueUmsetzungsInstruktion ruft
+ * dieselbe Funktion für den hoch-Pfad auf (D5, ein Satz, kein zweiter Wortlaut).
+ * @returns der vollständige Satz, an den Auftragstext anzuhängen
+ */
+export function baueBashAllowlistSatz(): string {
+  return `Shell: Du darfst ausschließlich diese Befehle ausführen: ${leiteErlaubteBefehlsliste()} (jeweils ohne weitere Skripte). Keine git-Befehle, kein 'node -e', keine direkten Aufrufe aus node_modules/.bin, keine weiteren npm-Skripte. Jeder andere Befehl wird abgelehnt und macht den Lauf zu VERWEIGERT. Commits macht der Mensch.`
+}
+
+/**
  * F39 WS-3a: Zusatzblock für die 'ausfuehrung'-Instruktion eines hoch-Workflow-Schritts, der
  * einen Architekturentwurf (Rolle architekt, ergebnis-architektur) als 'ergebnis-@'-Eingabe
  * bekommt — der Entwurf selbst steht bereits unverändert als eigene Eingabe-Anfrage im Kontext
@@ -624,10 +665,19 @@ export function baueArchitektAuftragstext(planungstext: string, modus: Architekt
  * Punkte waren die EINZIGE Anweisung): im Modus 'feature' sind die vier Rückschreib-Punkte jetzt
  * Teil 1, Teil 2 verlangt den Bau des Features mit Tests je AK und eigenem Prüflauf. Der
  * Projektmodus bleibt bitgenau unverändert.
+ *
+ * F-760 (state/findings.md, löst "ein Baulauf mit Bash-Allowlist endete VERWEIGERT, weil er
+ * wiederholt Befehle außerhalb der Allowlist probierte — die Instruktion nannte die Allowlist nie,
+ * nur die Werkzeugrechte selbst trugen sie"): traegtBashRegeln (Default false, vom Aufrufer aus dem
+ * tatsächlichen Werkzeugsatz des Schritts ermittelt) hängt im Modus 'feature' zusätzlich eine
+ * Zeile mit der aus ERLAUBTE_BASH_REGELN abgeleiteten Befehlsliste an Teil 2 an — nur, wenn der
+ * Werkzeugsatz überhaupt eine Bash-Regel trägt, sonst bleibt der Text bitgenau unverändert.
  * @param modus - 'feature' (Default, Bauauftrag) oder 'projekt' (F42 WS-4, löst F-712)
+ * @param traegtBashRegeln - true, wenn der Werkzeugsatz DIESES Schritts mindestens eine
+ *   'Bash(...)'-Regel trägt (F-760); nur dann bekommt der Modus 'feature' den Shell-Absatz
  * @returns Zeilen des Zusatzblocks, an den bestehenden Auftragstext anzuhängen
  */
-export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): string[] {
+export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature', traegtBashRegeln = false): string[] {
   if (modus === 'projekt') {
     return [
       "Zusätzlich liegt dir ein geprüfter Architekturentwurf (Rolle 'architekt', Schema 'ergebnis-architektur') als Eingabe vor — im Projektmodus ist er AUSSCHLIESSLICH Kontext für deine Entscheidungen, KEIN Bauauftrag.",
@@ -653,6 +703,9 @@ export function baueUmsetzungsInstruktion(modus: ArchitektModus = 'feature'): st
     "- ARCHITECTURE.md: Befülle die Abschnitte, die dieser Bau erstmals festlegt (Ordnerstruktur, Datenzugriff/Transaktionsgrenzen, Fehlerbehandlung/Logging, Tests), und entferne deren '[FÜLLUNG]'-Marker.",
     'Das Zurückschreiben des Entwurfs allein erfüllt den Auftrag NICHT.',
     'Keine Umsetzung, die dem Architekturentwurf widerspricht, ohne das ausdrücklich zu vermerken (CLAUDE.md, Entscheidungsregel 5).',
+    ...(traegtBashRegeln
+      ? [baueBashAllowlistSatz()]
+      : []),
   ]
 }
 
