@@ -3,9 +3,11 @@
  * Datei: scripts/check-fixpaket-f35-reallauf.mjs
  *
  * Zweck: Gate für das Fixpaket nach dem F35-Reallauf gegen haushaltsbuch2 (state/findings.md
- * F-750, F-752, F-753, F-754; Vertrag state/tasks/fixpaket-f35-reallauf.md). Damit ein
- * Feature-Bau im Pfad 'hoch' echten Produktcode erzeugt, entschiedene ADRs respektiert und die
- * Ausführung Paket- und Prüfbefehle ausführen darf.
+ * F-750, F-752, F-753, F-754, F-760; Verträge state/tasks/fixpaket-f35-reallauf.md und
+ * state/tasks/fix-f760-verweigert-bau.md). Damit ein Feature-Bau im Pfad 'hoch' echten
+ * Produktcode erzeugt, entschiedene ADRs respektiert, die Ausführung Paket- und Prüfbefehle
+ * ausführen darf UND ein Baulauf, der ausschließlich an dieser Bash-Allowlist abprallt, nicht in
+ * einer Sackgasse ohne Review-Kette endet (F-760).
  *
  * (a) Unit: baueUmsetzungsInstruktion('feature') trägt Baupflicht und den Satz "Das Zurückschreiben
  *     des Entwurfs allein erfüllt den Auftrag NICHT."; baueUmsetzungsInstruktion('projekt') ist
@@ -29,6 +31,24 @@
  *     Weiter bis zum Spawn: src/execution-controller/index.ts (cwd: optionen.cwd) →
  *     src/claude-code-gateway/index.ts (starteProzess cwd) → prozessstart.ts (spawn cwd), dort
  *     belegt von scripts/check-f25-projekte.mjs (2c).
+ * (g) F-760, Unit: baueUmsetzungsInstruktion('feature', true) trägt die aus ERLAUBTE_BASH_REGELN
+ *     abgeleitete Befehlsliste; traegtBashRegeln=false/Default/Modus 'projekt' bleiben bitgenau
+ *     ohne den Shell-Absatz.
+ * (h) F-760, realer Aufrufpfad: ein 'ausfuehrung'-Lauf, der VERWEIGERT ohne Bypass-Verdacht endet
+ *     (bypass_verdacht_anzahl 0), bekommt Änderungsübersicht UND Prüfergebnis registriert wie ein
+ *     ERFOLGREICH und hält mit einem eigenen Grund, der die abgelehnten Befehle (aus dem Rohstrom
+ *     gelesen) und 'F-760' nennt.
+ * (i) F-760, Rotfall-Kalibrierung zu (h): derselbe Lauf MIT Bypass-Verdacht (bypass_verdacht_anzahl
+ *     1) registriert nichts und hält mit dem bisherigen, generischen Regel-1-Text — kein
+ *     F-760-Zusatz.
+ * (j) F-760, realer Aufrufpfad: eine Reparaturfassung, die den Cursor nach einem VERWEIGERT-ohne-
+ *     Bypass-Verdacht-Halt auf den Review-Folgeschritt setzt (schritt-1 behält status VERWEIGERT
+ *     und lauf_id unverändert), löst dessen 'aenderungsuebersicht-@'/'pruefergebnis-@'-Eingaben
+ *     real auf.
+ * (k) F-760, QA-Befund: ein 'ausfuehrung'-Schritt OHNE architekt-Vorschritt (Muster
+ *     workflow-vorlagen/standard.json, fast-lane.json) bekommt die Bash-Allowlist im Auftragstext
+ *     trotzdem genannt — baueUmsetzungsInstruktion läuft dort nie (kein Architekturentwurf),
+ *     baueBashAllowlistSatz() hängt sie unabhängig davon an.
  *
  * Jeder HTTP-Fall bekommt ein eigenes Wegwerf-Repo und einen eigenen Server (Muster
  * scripts/check-fixpaket-f30-vorbedingungen.mjs).
@@ -124,11 +144,21 @@ const TEMPLATE_TEXT = '# ADR-NNNN: <Titel>\n\nStatus: Entwurf | Entschieden | Ve
 const CODEX_BLOCK = { codex: { startziel: [String.raw`C:\fixpaket-f35-gate-dummy\codex.exe`], versionDeklariert: 'codex-cli-gate-fixture', sandbox: 'read-only' } }
 
 /** Schreibt eine Wegwerf-Startvorlage (beispielprojekt + Codex-Block) außerhalb des Repos. @returns { pfad, verzeichnis } */
-function schreibeStartvorlage() {
+/**
+ * @param optionen - { mitBashAllowlist } (F-760, Fall k: beispielprojekt.json trägt selbst keine
+ *   Bash-Regeln — true hängt E-F754s Allowlist an werkzeugsaetze.schreibend an, damit der reale
+ *   'traegtBashRegeln'-Pfad in scripts/leitstand-server.mjs real geprüft werden kann)
+ */
+function schreibeStartvorlage(optionen = {}) {
   const verzeichnis = mkdtempSync(join(tmpdir(), 'fixpaket-f35-vorlage-'))
   const pfad = join(verzeichnis, 'startvorlage.json')
+  const basis = ladeStartvorlage('startvorlagen/beispielprojekt.json')
+  const werkzeugsaetze =
+    optionen.mitBashAllowlist === true
+      ? { ...basis.werkzeugsaetze, schreibend: { ...basis.werkzeugsaetze.schreibend, erlaubte_werkzeuge: [...basis.werkzeugsaetze.schreibend.erlaubte_werkzeuge, ...ERLAUBTE_BASH_REGELN] } }
+      : basis.werkzeugsaetze
   // pruefbefehl wie bei jedem echten Projekt (sonst fehlt der F-652-Hinweis im Auftragstext); ein No-op, damit der Kern-Prüfschritt schnell grün ist.
-  writeFileSync(pfad, JSON.stringify({ ...ladeStartvorlage('startvorlagen/beispielprojekt.json'), worker: CODEX_BLOCK, pruefbefehl: [process.execPath, '-e', '0'] }, null, 2))
+  writeFileSync(pfad, JSON.stringify({ ...basis, werkzeugsaetze, worker: CODEX_BLOCK, pruefbefehl: [process.execPath, '-e', '0'] }, null, 2))
   return { pfad, verzeichnis }
 }
 
@@ -152,22 +182,46 @@ const STACK_ENTSCHEIDUNG = {
 /**
  * Startet genau einen Workflow-Schritt über den echten HTTP-Pfad und liefert, was der Worker sah.
  * @param fall - Fallkennung für Befundtexte
- * @param optionen - { adrDateien, rolle ('architekt'|'architecture-advisor'|'ausfuehrung'), stackEntscheidungErfasst, cwdAusRegister }
- * @returns { auftragstext, laufOptionen, repoWurzel, erwartetesCwd } oder null bei Vorbedingungsfehler
+ * @param optionen - { adrDateien, rolle ('architekt'|'architecture-advisor'|'ausfuehrung'), stackEntscheidungErfasst, cwdAusRegister,
+ *   verweigert ({ bypassVerdachtAnzahl, denials } — F-760: statt eines ERFOLGREICH-Ausgangs simuliert der Worker ein VERWEIGERT mit
+ *   echter Laufakte/Rohstrom (permission_denials: denials), damit leseAbgelehnteBefehleAusRohstrom real etwas findet),
+ *   ohneArchitekt (F-760, Fall k: rolle 'ausfuehrung' baut EIN Schritt ohne architekt-Vorschritt, Muster fast-lane.json,
+ *   statt der sonstigen Zwei-Schritt-Fixtur architekt→ausfuehrung) }
+ * @returns { auftragstext, laufOptionen, repoWurzel, erwartetesCwd, workflowStatus, workflowGrund, ausfuehrungsSchrittStatus,
+ *   laufId1, uebersichtRegistriert, pruefergebnisRegistriert } oder null bei Vorbedingungsfehler
  */
 async function starteSchritt(fall, optionen) {
   const basisVerzeichnis = `kontrollzustand-test-fixpaket-f35-${randomUUID()}`
   raeumeVerzeichnis(basisVerzeichnis)
   const repoWurzel = baueFremdprojekt(optionen.adrDateien ?? null)
-  const { pfad: startvorlagePfad, verzeichnis } = schreibeStartvorlage()
+  const { pfad: startvorlagePfad, verzeichnis } = schreibeStartvorlage({ mitBashAllowlist: optionen.ohneArchitekt === true })
   const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad))
   const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
   // (f): cwd so abgeleitet wie im CLI-Bindeblock (baueProjektHandlerMap → loeseProjektPfade).
   const erwartetesCwd = loeseProjektPfade({ repo_pfad: repoWurzel, basisverzeichnis: 'kontrollzustand', startvorlage_pfad: 'startvorlagen/x.json' }, INSTALL_WURZEL).cwd
 
   let gesehen = null
-  const fuehreAufgabeDurchFn = async (_laufId, _profilReferenz, eingaben, laufOptionen) => {
-    gesehen = { auftragstext: eingaben.auftragstext, laufOptionen }
+  const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben, laufOptionen) => {
+    gesehen = { auftragstext: eingaben.auftragstext, laufOptionen, anfragen: eingaben.anfragen }
+    if (optionen.verweigert !== undefined) {
+      // F-760 (h/i): eine echte Laufakte mit permission_denials im Rohstrom — sonst fände
+      // leseAbgelehnteBefehleAusRohstrom nichts und der Halt-Grund bliebe ungeprüft ("keine im
+      // Rohstrom lesbar").
+      const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+      writeFileSync(
+        rohstromPfad,
+        JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: 'GATE-VERWEIGERT-ERGEBNISTEXT', permission_denials: optionen.verweigert.denials }) })
+      )
+      registriereKernArtefakt(
+        `laufakte-${laufId}`,
+        profilReferenz,
+        { erzeuger: 'kern', schritt: 'gate-fixture' },
+        { laufakte_schema: 'v0', lauf_id: laufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+        [],
+        ladeOptionen
+      )
+      return { ok: true, klassifikation: { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: optionen.verweigert.bypassVerdachtAnzahl }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'VERWEIGERT' } }
+    }
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
   const server = createServer(
@@ -191,7 +245,27 @@ async function starteSchritt(fall, optionen) {
     }
     const workflowId = `fixpaket-f35-gate-${randomUUID()}`
     const schritte = []
-    if (optionen.rolle === 'ausfuehrung') {
+    if (optionen.rolle === 'ausfuehrung' && optionen.ohneArchitekt === true) {
+      // F-760 (QA-Pass 28.09.2026, Fall k): Muster workflow-vorlagen/fast-lane.json — EIN
+      // 'ausfuehrung'-Schritt ohne architekt-Vorschritt, derselbe schreibende Werkzeugsatz wie
+      // überall sonst in diesem Gate.
+      schritte.push({
+        schritt_id: 'schritt-1-ausfuehrung',
+        rolle: 'ausfuehrung',
+        werkzeugsatz: 'schreibend',
+        worker: 'claude-code',
+        modell: 'claude-sonnet-5',
+        eingaben: [`artefakt:auftrag-${auftragId}`],
+        output_schema: null,
+        freigabe: 'ZWINGEND',
+        freigabe_erteilt: true,
+        risiko: 'Gate-Fixture.',
+        zeitgrenze_ms: 600000,
+        nachfolger: null,
+        status: 'OFFEN',
+        lauf_id: null,
+      })
+    } else if (optionen.rolle === 'ausfuehrung') {
       const architektLaufId = `${workflowId}-architekt-lauf`
       const ergebnisArchitektur = {
         modus: 'feature',
@@ -294,7 +368,7 @@ async function starteSchritt(fall, optionen) {
         auftrag_id: auftragId,
         version: 1,
         ziel: 'F35-Fixpaket-Gate-Fixture.',
-        status: optionen.rolle === 'ausfuehrung' ? 'LAEUFT' : 'OFFEN',
+        status: optionen.rolle === 'ausfuehrung' && optionen.ohneArchitekt !== true ? 'LAEUFT' : 'OFFEN',
         aktiver_schritt_id: schritte.find((s) => s.status === 'OFFEN').schritt_id,
         grund: null,
         grenzen: { max_schritte: 4, max_replans: 1 },
@@ -315,7 +389,25 @@ async function starteSchritt(fall, optionen) {
       if (status !== 'LAEUFT' && status !== 'OFFEN') break
       await verzoegerung(50)
     }
-    return { auftragstext: gesehen?.auftragstext ?? null, laufOptionen: gesehen?.laufOptionen ?? null, repoWurzel, erwartetesCwd }
+    // F-760 (h/i): der Nachlauf-Zustand muss VOR dem finally-Aufräumen gelesen werden — danach
+    // sind basisVerzeichnis/repoWurzel bereits gelöscht.
+    const workflowEndDaten = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten ?? null
+    const ausfuehrungsSchrittEnd = workflowEndDaten?.schritte?.find((s) => s.rolle === 'ausfuehrung') ?? null
+    const laufId1 = ausfuehrungsSchrittEnd?.lauf_id ?? null
+    const uebersichtRegistriert = laufId1 !== null && ladeArtefaktVersion(`aenderungsuebersicht-${laufId1}`, undefined, ladeOptionen) !== null
+    const pruefergebnisRegistriert = laufId1 !== null && ladeArtefaktVersion(`pruefergebnis-${laufId1}`, undefined, ladeOptionen) !== null
+    return {
+      auftragstext: gesehen?.auftragstext ?? null,
+      laufOptionen: gesehen?.laufOptionen ?? null,
+      repoWurzel,
+      erwartetesCwd,
+      workflowStatus: workflowEndDaten?.status ?? null,
+      workflowGrund: workflowEndDaten?.grund ?? null,
+      ausfuehrungsSchrittStatus: ausfuehrungsSchrittEnd?.status ?? null,
+      laufId1,
+      uebersichtRegistriert,
+      pruefergebnisRegistriert,
+    }
   } finally {
     await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
@@ -507,6 +599,229 @@ async function starteSchritt(fall, optionen) {
   const kombiniert = baueAufruf({ modell: 'm', prompt: 'p', disallowedTools: 'Read(~/.claude/**)', werkzeugsatz: { modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'Bash(npm ci)'] } })
   if (wert(kombiniert, '--disallowedTools') !== 'Read(~/.claude/**),Bash(git:*)') befunde.push(`(e) baueAufruf: disallowedTools plus Bash-Regel erwartet 'Read(~/.claude/**),Bash(git:*)', erhalten '${wert(kombiniert, '--disallowedTools')}'`)
   if (befunde.length === vor) console.log("✓ (e) Validator weist nacktes Bash, git, Wildcards, Nicht-Allowlist-Regeln, PowerShell und Fehlformen ab; Allowlist E-F754 und startvorlagen/ai-workforce.json gültig; baueAufruf trennt --tools/--allowedTools und sperrt git nur bei Bash-Regeln (F-754).")
+}
+
+// ─── (g) F-760: die Instruktion trägt die aus ERLAUBTE_BASH_REGELN abgeleitete Befehlsliste ────
+{
+  const vor = befunde.length
+  const mitBash = baueUmsetzungsInstruktion('feature', true).join('\n')
+  const ohneBash = baueUmsetzungsInstruktion('feature', false).join('\n')
+  const default_ = baueUmsetzungsInstruktion('feature').join('\n')
+  for (const teil of ['npm install', 'npm ci', 'npm run check|lint|typecheck|test|build', "kein 'node -e'", 'macht den Lauf zu VERWEIGERT', 'Commits macht der Mensch']) {
+    if (!mitBash.includes(teil)) befunde.push(`(g) Instruktion mit traegtBashRegeln=true: Fragment ${JSON.stringify(teil)} fehlt`)
+  }
+  if (ohneBash.includes('Shell: Du darfst ausschließlich')) befunde.push('(g) Instruktion mit traegtBashRegeln=false trägt trotzdem den Shell-Absatz')
+  if (ohneBash !== default_) befunde.push("(g) baueUmsetzungsInstruktion('feature') ohne zweites Argument muss bitgenau traegtBashRegeln=false entsprechen")
+  if (baueUmsetzungsInstruktion('projekt', true).join('\n').includes('Shell: Du darfst ausschließlich')) {
+    befunde.push('(g) Modus projekt darf den Shell-Absatz nie tragen, auch nicht mit traegtBashRegeln=true')
+  }
+  if (befunde.length === vor) {
+    console.log("✓ (g) baueUmsetzungsInstruktion('feature', true) trägt die aus ERLAUBTE_BASH_REGELN abgeleitete Befehlsliste; false/Default/Modus 'projekt' bleiben bitgenau ohne den Shell-Absatz (F-760).")
+  }
+}
+
+// ─── (h) F-760: VERWEIGERT ohne Bypass-Verdacht registriert Artefakte, hält mit eigenem Grund ──
+{
+  const vor = befunde.length
+  const denials = [
+    { tool_name: 'Bash', tool_input: { command: 'git status' } },
+    { tool_name: 'Bash', tool_input: { command: 'node -e 0' } },
+  ]
+  const lauf = await starteSchritt('(h) VERWEIGERT ohne Bypass-Verdacht', { rolle: 'ausfuehrung', stackEntscheidungErfasst: false, verweigert: { bypassVerdachtAnzahl: 0, denials } })
+  if (lauf !== null) {
+    if (lauf.ausfuehrungsSchrittStatus !== 'VERWEIGERT') befunde.push(`(h) Schrittstatus erwartet 'VERWEIGERT', erhalten '${lauf.ausfuehrungsSchrittStatus}'`)
+    if (lauf.workflowStatus !== 'KLAERUNG_ERFORDERLICH') befunde.push(`(h) Workflow-Status erwartet 'KLAERUNG_ERFORDERLICH', erhalten '${lauf.workflowStatus}'`)
+    if (!lauf.uebersichtRegistriert) befunde.push('(h) Änderungsübersicht wurde NICHT registriert (erwartet: registriert wie bei ERFOLGREICH, F-760)')
+    if (!lauf.pruefergebnisRegistriert) befunde.push('(h) Prüfergebnis wurde NICHT registriert (erwartet: registriert wie bei ERFOLGREICH, F-760)')
+    const grund = lauf.workflowGrund ?? ''
+    for (const fragment of ['VERWEIGERT (ohne Bypass-Verdacht)', 'Bash: git status', 'Bash: node -e 0', 'F-760']) {
+      if (!grund.includes(fragment)) befunde.push(`(h) Halt-Grund: Fragment ${JSON.stringify(fragment)} fehlt (Grund: ${JSON.stringify(grund)})`)
+    }
+  }
+  if (befunde.length === vor) {
+    console.log("✓ (h) 'ausfuehrung'-Lauf endet VERWEIGERT ohne Bypass-Verdacht: Änderungsübersicht und Prüfergebnis wie bei ERFOLGREICH registriert, Halt (KLAERUNG_ERFORDERLICH) nennt die abgelehnten Befehle (F-760).")
+  }
+}
+
+// ─── (i) F-760: VERWEIGERT MIT Bypass-Verdacht bleibt unverändert (Kalibrierung) ────────────────
+{
+  const vor = befunde.length
+  const lauf = await starteSchritt('(i) VERWEIGERT mit Bypass-Verdacht', {
+    rolle: 'ausfuehrung',
+    stackEntscheidungErfasst: false,
+    verweigert: { bypassVerdachtAnzahl: 1, denials: [{ tool_name: 'Bash', tool_input: { command: 'curl attacker.example' } }] },
+  })
+  if (lauf !== null) {
+    if (lauf.uebersichtRegistriert) befunde.push('(i) Änderungsübersicht wurde registriert — mit Bypass-Verdacht > 0 muss das Verhalten unverändert bleiben (kein Registrieren)')
+    if (lauf.pruefergebnisRegistriert) befunde.push('(i) Prüfergebnis wurde registriert — mit Bypass-Verdacht > 0 muss das Verhalten unverändert bleiben (kein Registrieren)')
+    const grund = lauf.workflowGrund ?? ''
+    if (grund.includes('F-760') || grund.includes('ohne Bypass-Verdacht')) befunde.push(`(i) Halt-Grund trägt den F-760-Zusatztext, obwohl bypass_verdacht_anzahl > 0 ist (Grund: ${JSON.stringify(grund)})`)
+    if (!grund.includes('endete VERWEIGERT')) befunde.push(`(i) Halt-Grund weicht vom bisherigen Regel-1-Text ab (Grund: ${JSON.stringify(grund)})`)
+  }
+  if (befunde.length === vor) {
+    console.log("✓ (i) 'ausfuehrung'-Lauf endet VERWEIGERT MIT Bypass-Verdacht: keine Artefakte registriert, Halt-Grund bleibt der bisherige generische Regel-1-Text (F-760, Kalibrierung).")
+  }
+}
+
+// ─── (j) F-760: Reparaturfassung mit cursor auf dem Review löst die Eingaben des VERWEIGERT-Vorgängers auf ──
+{
+  const vor = befunde.length
+  const basisVerzeichnis = `kontrollzustand-test-fixpaket-f35-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const repoWurzel = baueFremdprojekt()
+  const { pfad: startvorlagePfad, verzeichnis } = schreibeStartvorlage()
+  const profilReferenz = leiteProfilReferenzAb(ladeStartvorlage(startvorlagePfad))
+  const ladeOptionen = { basisVerzeichnis, schreiber: STILL }
+
+  let aufrufAnzahl = 0
+  let zweiteAnfragen = null
+  const fuehreAufgabeDurchFn = async (laufId, _profilReferenz, eingaben) => {
+    aufrufAnzahl++
+    if (aufrufAnzahl === 1) {
+      // schritt-1-ausfuehrung: VERWEIGERT ohne Bypass-Verdacht, echte Laufakte im Rohstrom.
+      const rohstromPfad = join(basisVerzeichnis, `${laufId}-rohstrom.json`)
+      writeFileSync(
+        rohstromPfad,
+        JSON.stringify({ stdout: JSON.stringify({ type: 'result', result: 'GATE-VERWEIGERT-ERGEBNISTEXT', permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'git status' } }] }) })
+      )
+      registriereKernArtefakt(
+        `laufakte-${laufId}`,
+        profilReferenz,
+        { erzeuger: 'kern', schritt: 'gate-fixture' },
+        { laufakte_schema: 'v0', lauf_id: laufId, worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } },
+        [],
+        ladeOptionen
+      )
+      return { ok: true, klassifikation: { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: 0 }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'VERWEIGERT' } }
+    }
+    // schritt-2-review (Reparaturfassung): die real aufgelösten Eingaben festhalten.
+    zweiteAnfragen = eingaben.anfragen
+    return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
+  }
+
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, fuehreAufgabeDurchFn, repoWurzel, installWurzel: INSTALL_WURZEL, startvorlagePfad }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const basisUrl = `http://127.0.0.1:${server.address().port}`
+  try {
+    const auftragAntwort = await fetch(`${basisUrl}/api/auftraege`, { method: 'POST', body: JSON.stringify({ titel: 'F35-Fixpaket-Gate (j)', auftragstext: 'GATE-PLANUNGSTEXT-F35-FIX-J' }) })
+    const { auftragId } = await auftragAntwort.json().catch(() => ({}))
+    if (auftragAntwort.status !== 201 || typeof auftragId !== 'string') {
+      befunde.push(`(j): Vorbedingung POST /api/auftraege erwartet 201, erhalten ${auftragAntwort.status}`)
+    } else {
+      const workflowId = `fixpaket-f35-gate-j-${randomUUID()}`
+      const schritte = [
+        {
+          schritt_id: 'schritt-1-ausfuehrung',
+          rolle: 'ausfuehrung',
+          werkzeugsatz: 'schreibend',
+          worker: 'claude-code',
+          modell: 'claude-sonnet-5',
+          eingaben: [],
+          output_schema: null,
+          freigabe: 'ZWINGEND',
+          freigabe_erteilt: true,
+          risiko: 'Gate-Fixture.',
+          zeitgrenze_ms: 600000,
+          nachfolger: 'schritt-2-review',
+          status: 'OFFEN',
+          lauf_id: null,
+        },
+        {
+          schritt_id: 'schritt-2-review',
+          rolle: 'architecture-advisor',
+          werkzeugsatz: 'lesend',
+          worker: 'claude-code',
+          modell: 'claude-sonnet-5',
+          eingaben: ['artefakt:aenderungsuebersicht-@schritt-1-ausfuehrung', 'artefakt:pruefergebnis-@schritt-1-ausfuehrung'],
+          output_schema: null,
+          freigabe: 'AUTOMATISCH',
+          risiko: 'Gate-Fixture.',
+          zeitgrenze_ms: 600000,
+          nachfolger: null,
+          status: 'OFFEN',
+          lauf_id: null,
+        },
+      ]
+      registriereWorkflow(
+        {
+          workflow_schema: 'v0',
+          workflow_id: workflowId,
+          auftrag_id: auftragId,
+          version: 1,
+          ziel: 'F35-Fixpaket-Gate-Fixture (j).',
+          status: 'OFFEN',
+          aktiver_schritt_id: 'schritt-1-ausfuehrung',
+          grund: null,
+          grenzen: { max_schritte: 4, max_replans: 1 },
+          schritte,
+        },
+        profilReferenz,
+        ladeOptionen
+      )
+      const start1 = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+      if (start1.status !== 202) {
+        befunde.push(`(j): erster POST .../starten erwartet 202, erhalten ${start1.status} (${await start1.text()})`)
+      } else {
+        const startzeit1 = Date.now()
+        while (Date.now() - startzeit1 < 5000) {
+          const status = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten?.status
+          if (status !== 'LAEUFT' && status !== 'OFFEN') break
+          await verzoegerung(50)
+        }
+        const nachVerweigert = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten
+        const schritt1NachVerweigert = nachVerweigert?.schritte.find((s) => s.schritt_id === 'schritt-1-ausfuehrung')
+        if (nachVerweigert?.status !== 'KLAERUNG_ERFORDERLICH' || schritt1NachVerweigert?.status !== 'VERWEIGERT' || schritt1NachVerweigert?.lauf_id == null) {
+          befunde.push(
+            `(j): Vorbedingung — schritt-1 sollte VERWEIGERT mit lauf_id enden, Workflow KLAERUNG_ERFORDERLICH, erhalten ${JSON.stringify({ workflowStatus: nachVerweigert?.status, schritt1: schritt1NachVerweigert })}`
+          )
+        } else {
+          // Reparaturfassung (Regel-1j-Muster, CLAUDE.md): cursor auf den Review-Folgeschritt,
+          // schritt-1 behält status VERWEIGERT und lauf_id unverändert.
+          registriereWorkflow({ ...nachVerweigert, version: 2, status: 'OFFEN', aktiver_schritt_id: 'schritt-2-review', grund: null }, profilReferenz, ladeOptionen)
+          const start2 = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/starten`, { method: 'POST' })
+          if (start2.status !== 202) {
+            befunde.push(`(j): zweiter POST .../starten (Reparaturfassung) erwartet 202, erhalten ${start2.status} (${await start2.text()})`)
+          } else {
+            const startzeit2 = Date.now()
+            while (Date.now() - startzeit2 < 5000) {
+              const status = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)?.daten?.status
+              if (status !== 'LAEUFT' && status !== 'OFFEN') break
+              await verzoegerung(50)
+            }
+            const laufId1 = schritt1NachVerweigert.lauf_id
+            const pfade = (zweiteAnfragen ?? []).map((a) => a.pfad)
+            if (!pfade.includes(`artefakt:aenderungsuebersicht-${laufId1}`)) befunde.push(`(j): Review-Schritt bekam 'aenderungsuebersicht-@schritt-1-ausfuehrung' nicht aufgelöst (Anfragen: ${JSON.stringify(pfade)})`)
+            if (!pfade.includes(`artefakt:pruefergebnis-${laufId1}`)) befunde.push(`(j): Review-Schritt bekam 'pruefergebnis-@schritt-1-ausfuehrung' nicht aufgelöst (Anfragen: ${JSON.stringify(pfade)})`)
+          }
+        }
+      }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+    raeumeVerzeichnis(repoWurzel)
+    raeumeVerzeichnis(verzeichnis)
+  }
+  if (befunde.length === vor) {
+    console.log("✓ (j) Reparaturfassung (cursor auf den Review-Folgeschritt, schritt-1 behält status VERWEIGERT/lauf_id) löst 'aenderungsuebersicht-@'/'pruefergebnis-@' des VERWEIGERT-Vorgängers auf (F-760).")
+  }
+}
+
+// ─── (k) F-760 (QA-Befund): 'ausfuehrung' OHNE architekt-Vorschritt (fast-lane.json-Muster) bekommt die Allowlist trotzdem ──
+{
+  const vor = befunde.length
+  const lauf = await starteSchritt('(k) ausfuehrung ohne architekt-Vorschritt', { rolle: 'ausfuehrung', ohneArchitekt: true })
+  if (lauf !== null) {
+    if (typeof lauf.auftragstext !== 'string' || !lauf.auftragstext.includes('Shell: Du darfst ausschließlich diese Befehle ausführen')) {
+      befunde.push(`(k) 'ausfuehrung' ohne architekt-Vorschritt: Shell-Allowlist-Satz fehlt im Auftragstext (Ende: ${JSON.stringify(lauf.auftragstext?.slice(-300))})`)
+    }
+    if (typeof lauf.auftragstext === 'string' && !lauf.auftragstext.includes('npm run check|lint|typecheck|test|build')) {
+      befunde.push(`(k) 'ausfuehrung' ohne architekt-Vorschritt: abgeleitete Befehlsliste fehlt im Auftragstext`)
+    }
+  }
+  if (befunde.length === vor) {
+    console.log("✓ (k) Ein 'ausfuehrung'-Schritt ohne architekt-Vorschritt (workflow-vorlagen/standard.json, fast-lane.json) bekommt die Bash-Allowlist trotzdem genannt — nicht nur im hoch-Pfad (F-760, QA-Befund).")
+  }
 }
 
 if (befunde.length > 0) {
