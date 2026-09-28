@@ -7,7 +7,9 @@ F35
 Feature bauen aus Akte
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
+
+Abgenommen: Stefan, 28.09.2026 (Reallauf-Nachweis features/F35/nachweis-reallauf.md, Review-Pass features/F35/review-pass.md, K1 behoben)
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -34,17 +36,15 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
   strukturierte AK erzeugen lassen) — bleibt WS-1-Scope: die AK-Struktur
   entsteht ausschließlich deterministisch aus der bereits geschriebenen
   Akte, nicht als weiteres Coach-Ausgabeschema.
-- **Reviewer-Schema und Urteil je AK** (WS-2) — eigener Workstream, nicht
-  Teil von WS-1.
-- **ADJUST-Automatik** (WS-3, automatisches
-  `ANPASSUNG_ANGEFORDERT` aus Befunden) — eigener Workstream, Start bleibt
-  in WS-1 unverändert `ZWINGEND`.
+- **Automatischer Start nach einer Anpassung** — die ADJUST-Automatik (WS-3)
+  legt nur die Entscheidung an; der nächste `ausfuehrung`-Start bleibt
+  `ZWINGEND` beim Menschen (AK20).
 - **Schreiben in Feature-Akten** — WS-1 liest `feature.md` ausschließlich
   lesend; die Akte selbst bleibt nur über bestehende Wege (Architekt-
   Schritt, Mensch) editierbar.
 
 ## Workstreams
-- **WS-1 — Feature bauen aus Akte (dieser Auftrag).** `POST
+- **WS-1 — Feature bauen aus Akte.** `POST
   /api/projekte/<projektId>/features/<featureId>/auftrag` leitet
   deterministisch einen Auftrag aus `features/<featureId>/feature.md` ab
   (`baueAuftragAusFeatureAkte`, `src/feature-auftrag/index.ts`) — Ziel,
@@ -204,3 +204,25 @@ ein Urteil im Review) bleibt unerfüllbar. Grundlage:
   Bullet, der zufällig mit `AK<Ziffer>` beginnt und dadurch als explizite ID
   statt als Fließtext gelesen wird, spezifikationsgemäß laut AK3) werden
   erst nach der Auftragserzeugung sichtbar, wenn überhaupt.
+- **Offene Punkte aus dem Review-Pass vor FEATURE_GATE (28.09.2026):**
+  Details und Fundstellen stehen in `features/F35/review-pass.md`, der
+  Reallauf in `features/F35/nachweis-reallauf.md`. Entscheidung Stefan
+  28.09.2026 (ESCALATE): K1 beheben, K2 als Beobachtung festhalten, V1
+  korrigieren, übrige V-Punkte nur verweisen.
+  - K1 (behoben in diesem PR): AK18 war in einem Fall widersprochen — bei
+    fehlendem oder unbekanntem Review-Urteil mit AK-Verstößen legte der Kern
+    trotzdem eine Anpassung an. `ermittleAutomatischeAnpassung` löst jetzt
+    nur bei `BEREIT`/`BEREIT_NACH_KORREKTUR`/`BLOCKIERT` aus; belegt durch
+    zwei Unit-Tests und WS3-Gate-Fall (e2), Rot/Grün in `state/gates.md`.
+  - K2: AK6, AK13 und der UI-Teil von AK22 sind nur durch Stefans
+    Beobachtung in der Oberfläche belegt (Abschnitt „Beobachtung in der
+    Oberfläche“ in `nachweis-reallauf.md`), nicht durch einen automatisierten
+    Render-Test — F-622 bleibt für F35 eine bekannte Grenze.
+  - V1 (korrigiert in diesem PR): Die Nicht-Ziele nennen WS-2/WS-3 nicht
+    mehr als Nicht-Ziel; Nicht-Ziele und Schnitt WS-1..3 passen zusammen.
+  - V2 bis V4 und V6 bis V9: Gate- und Kommentarlücken — nicht behoben,
+    siehe `review-pass.md`.
+  - AK19 ist wörtlich erfüllt, aber die Korrekturschleife stellt
+    Kern-Entscheidungen als menschliche dar: `state/findings.md` F-765 (V5).
+  - Weitere offene Punkte aus dem Reallauf: F-762 bis F-764 und F-766 bis
+    F-768.

@@ -34,6 +34,9 @@
  * (e) Reviewer-Stub liefert ein Urteil außerhalb der drei bekannten Werte
  *     (aber vollständige ERFUELLT-ak_urteile, damit NUR Regel 1b geprüft
  *     wird) → KLAERUNG_ERFORDERLICH, KEINE automatische Anpassung.
+ * (e2) K1 (features/F35/review-pass.md, AK18): wie (e), aber mit AK2
+ *     NICHT_ERFUELLT → ebenfalls KLAERUNG_ERFORDERLICH, KEINE automatische
+ *     Anpassung (ein AK-Verstoß überstimmt ein fehlendes Urteil nicht).
  * (f) Der menschliche POST .../abnahme mit ANPASSUNG_ANGEFORDERT
  *     funktioniert unverändert, Artefakt trägt erzeuger 'mensch'.
  *
@@ -406,18 +409,23 @@ const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenf
 
 // ── (e) Urteil außerhalb der drei bekannten Werte, aber vollständige ERFUELLT-ak_urteile ────────
 // ── (NUR Regel 1b greift, keine AK-Verstöße — sonst würde die AK-Prüfung selbst schon auslösen) ──
-{
-  const basisVerzeichnis = `kontrollzustand-test-f35-ws3-e-${randomUUID()}`
+// ── (e2) K1 (features/F35/review-pass.md, AK18): Urteil außerhalb der bekannten Werte UND ein AK-Verstoß ──
+// ── → ebenfalls KEINE automatische Anpassung, der AK-Verstoß überstimmt das fehlende Urteil nicht ──
+for (const fall of [
+  { kennung: 'e', akUrteile: AK_BEIDE_ERFUELLT, text: "Reviewer-Stub ohne gültiges Urteil ('UNKLAR')" },
+  { kennung: 'e2', akUrteile: [{ ak_id: 'AK1', urteil: 'ERFUELLT', beleg: 'src/beispiel.ts:1' }, { ak_id: 'AK2', urteil: 'NICHT_ERFUELLT', beleg: 'Verhalten weicht ab.' }], text: "Reviewer-Stub ohne gültiges Urteil ('UNKLAR') UND mit AK2 NICHT_ERFUELLT" },
+]) {
+  const basisVerzeichnis = `kontrollzustand-test-f35-ws3-${fall.kennung}-${randomUUID()}`
   raeumeVerzeichnis(basisVerzeichnis)
   const fremdprojekt = baueFremdprojekt({ [FEATURE_ID]: AKTE_MIT_2_AK })
-  const verzeichnis = mkdtempSync(join(tmpdir(), 'f35-ws3-gate-e-'))
+  const verzeichnis = mkdtempSync(join(tmpdir(), `f35-ws3-gate-${fall.kennung}-`))
   const startvorlagePfad = schreibeStartvorlage(verzeichnis)
   const vorlage = ladeStartvorlage(startvorlagePfad)
   const profilReferenz = leiteProfilReferenzAb(vorlage)
   const auftragstexte = new Map()
   const ausfuehrungLaufIds = new Set()
   const reviewLaufIds = []
-  const reviewErgebnisRef = { aktuell: JSON.stringify({ urteil: 'UNKLAR', befunde: [], empfehlung: 'Kein klares Urteil.', ak_urteile: AK_BEIDE_ERFUELLT }) }
+  const reviewErgebnisRef = { aktuell: JSON.stringify({ urteil: 'UNKLAR', befunde: [], empfehlung: 'Kein klares Urteil.', ak_urteile: fall.akUrteile }) }
   const { basisUrl, schliessen } = await starteTestserver({
     basisVerzeichnis,
     fuehreAufgabeDurchFn: baueAttrappe(basisVerzeichnis, profilReferenz, auftragstexte, reviewErgebnisRef, ausfuehrungLaufIds, reviewLaufIds),
@@ -429,15 +437,15 @@ const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenf
     const auftragAntwort = await fetch(`${basisUrl}/api/features/${encodeURIComponent(FEATURE_ID)}/auftrag`, { method: 'POST' })
     const { auftragId } = await auftragAntwort.json().catch(() => ({}))
     if (typeof auftragId !== 'string') {
-      befunde.push(`(e) Vorbedingung POST .../auftrag lieferte keine auftragId, Status ${auftragAntwort.status}`)
+      befunde.push(`(${fall.kennung}) Vorbedingung POST .../auftrag lieferte keine auftragId, Status ${auftragAntwort.status}`)
     } else {
       const workflowId = baueWorkflowFixture(basisVerzeichnis, vorlage, auftragId)
       const freigabe = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/freigabe`, {
         method: 'POST',
-        body: JSON.stringify({ schrittId: 'schritt-1-ausfuehrung', entscheidung: 'FREIGEGEBEN', begruendung: 'Gate (e): initiale Freigabe.' }),
+        body: JSON.stringify({ schrittId: 'schritt-1-ausfuehrung', entscheidung: 'FREIGEGEBEN', begruendung: `Gate (${fall.kennung}): initiale Freigabe.` }),
       })
       if (freigabe.status !== 202 && freigabe.status !== 200) {
-        befunde.push(`(e) Vorbedingung POST .../freigabe erwartet 200/202, erhalten ${freigabe.status} (${await freigabe.text()})`)
+        befunde.push(`(${fall.kennung}) Vorbedingung POST .../freigabe erwartet 200/202, erhalten ${freigabe.status} (${await freigabe.text()})`)
       } else {
         const daten = await warteBis(() => {
           const aktuell = ladeWorkflow(workflowId, basisVerzeichnis)
@@ -445,11 +453,11 @@ const EIN_BEFUND = { schwere: 'HOCH', fundstelle: 'src/beispiel.ts:9', zusammenf
         }, 3000)
         const abnahmeVersionen = listeAbnahmeVersionen(workflowId, basisVerzeichnis)
         if (daten === null) {
-          befunde.push(`(e) Workflow '${workflowId}' hat innerhalb der Wartezeit keinen Endzustand erreicht`)
+          befunde.push(`(${fall.kennung}) Workflow '${workflowId}' hat innerhalb der Wartezeit keinen Endzustand erreicht`)
         } else if (daten.status !== 'KLAERUNG_ERFORDERLICH' || abnahmeVersionen.length !== 0) {
-          befunde.push(`(e) ein Urteil außerhalb der bekannten Werte sollte KLAERUNG_ERFORDERLICH ergeben, OHNE Abnahme-Artefakt — erhalten status ${JSON.stringify(daten.status)}, Abnahme-Versionen ${abnahmeVersionen.length}`)
+          befunde.push(`(${fall.kennung}) ein Urteil außerhalb der bekannten Werte sollte KLAERUNG_ERFORDERLICH ergeben, OHNE Abnahme-Artefakt — erhalten status ${JSON.stringify(daten.status)}, Abnahme-Versionen ${abnahmeVersionen.length}`)
         } else {
-          console.log("✓ (e) Reviewer-Stub ohne gültiges Urteil ('UNKLAR'): KLAERUNG_ERFORDERLICH, keine automatische Anpassung.")
+          console.log(`✓ (${fall.kennung}) ${fall.text}: KLAERUNG_ERFORDERLICH, keine automatische Anpassung.`)
         }
       }
     }
