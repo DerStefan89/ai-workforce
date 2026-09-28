@@ -34,6 +34,7 @@
  */
 
 import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
+import { formatiereBeobachtung } from '../beobachtung-zeile.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, pollJetzt } from '../zustand.js'
@@ -225,7 +226,7 @@ function renderKontextpaket(kontextpaket) {
   return `<div class="detail-block"><h3>Kontextpaket (Rolle: ${escapeHtml(kontextpaket.rolle ?? '')})</h3>${elemente}${ausgeschlossen}</div>`
 }
 
-/** Worker und deklariertes Modell vor dem beobachteten Modell (F16 AK12) — beide Zeilen nennen ihren Rang ausdrücklich. @param laufakte - detail.laufakte */
+/** Worker und deklariertes Modell vor dem beobachteten Modell (F16 AK12) — beide Zeilen nennen ihren Rang ausdrücklich. F36 WS-4 (AK8): Zeile „Beobachtung“ (geladen/aufgerufen), ohne Feld „nicht beobachtet“. @param laufakte - detail.laufakte */
 function renderLaufakte(laufakte) {
   if (laufakte.status !== 'ok') {
     return '<div class="detail-block"><h3>Laufakte</h3><p class="unbekannt">Keine Laufakte vorhanden.</p></div>'
@@ -236,6 +237,7 @@ function renderLaufakte(laufakte) {
     <tr><th>Modell (beobachtet)</th><td>${laufakte.modellBeobachtet ? escapeHtml(laufakte.modellBeobachtet) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
     <tr><th>Beobachtungsbasis vollständig</th><td>${laufakte.beobachtungsbasisVollstaendig ? 'Ja' : 'Nein'}</td></tr>
     <tr><th>Arbeitsverzeichnis</th><td><code>${escapeHtml(laufakte.arbeitsverzeichnisPfad ?? '')}</code></td></tr>
+    <tr><th>Beobachtung</th><td class="lauf-beobachtung">${laufakte.beobachtung ? escapeHtml(formatiereBeobachtung(laufakte.beobachtung)) : '<span class="unbekannt">nicht beobachtet</span>'}</td></tr>
   </tbody></table></div>`
 }
 

@@ -1613,6 +1613,13 @@ th {
   margin-bottom: var(--space-sm);
 }
 
+/* F36 WS-4 (AK8): lange MCP-Werkzeugnamen (mcp__server__werkzeug) und der Arbeitsverzeichnis-Pfad
+   (ohne Leerzeichen) dürfen die Kopfdaten-Tabelle der Laufakte auf schmalen Bildschirmen nicht
+   über den Kartenrand treiben — sonst wird auch die neue Beobachtungszeile abgeschnitten. */
+#lauf-detail .lauf-kopfdaten:has(.lauf-beobachtung) td {
+  overflow-wrap: anywhere;
+}
+
 .unbekannt {
   color: var(--color-text-subtle);
   font-style: italic;

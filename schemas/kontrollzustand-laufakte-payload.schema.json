@@ -67,6 +67,21 @@
         "turns": { "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
         "quelle": { "enum": ["claude-code", "codex"] }
       }
+    },
+    "beobachtung": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["init_tools", "init_agents", "init_skills", "init_mcp_server", "skill_aufrufe", "subagent_aufrufe", "mcp_aufrufe"],
+      "description": "F36 WS-4 (AK8, F-730). Rang OBSERVED, reine Beobachtung aus dem stream-json-Rohstrom (state/spike-f36-werkzeugsatz.md): init-Zeile (tools, agents, skills, mcp_servers[].name) sowie Skill- (input.skill), Subagent- (Agent/Task, input.subagent_type) und MCP-Aufrufe (voller Werkzeugname mcp__…) in Reihenfolge des Auftretens, Duplikate erhalten, Subagent-Zeilen inbegriffen. Additiv und optional wie verbrauch (append-only): ohne init-Zeile (Codex, Abbruch vor init) fehlt das Feld ganz, statt leer gesetzt zu werden.",
+      "properties": {
+        "init_tools": { "type": "array", "items": { "type": "string" } },
+        "init_agents": { "type": "array", "items": { "type": "string" } },
+        "init_skills": { "type": "array", "items": { "type": "string" } },
+        "init_mcp_server": { "type": "array", "items": { "type": "string" } },
+        "skill_aufrufe": { "type": "array", "items": { "type": "string" } },
+        "subagent_aufrufe": { "type": "array", "items": { "type": "string" } },
+        "mcp_aufrufe": { "type": "array", "items": { "type": "string" } }
+      }
     }
   }
 }

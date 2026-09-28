@@ -87,7 +87,7 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4.
   im Kern (E-F36-2), Anzeige am ZWINGEND-Start der Ausführung, eine Zeile
   im Auftrag.
 - **WS-4 — Beobachtung (F-730).** Läuft parallel auf
-  `feat/f36-ws3-beobachtung`: init-Zeile (tools, agents, skills,
+  `feat/f36-ws4-beobachtung`: init-Zeile (tools, agents, skills,
   mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 WS-1 bis WS-3 werden nach WS-0 präzisiert (eigene Challenge vor dem Bau).

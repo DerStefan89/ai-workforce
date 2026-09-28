@@ -776,10 +776,12 @@ function baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis, auftragMemo) {
  * fehlend BEDEUTET claude-code, das ist kein Raten, sondern der definierte
  * Vorzustand), modellDeklariert bleibt null (dort gibt es keine solche
  * Bedeutung, also wird nichts erfunden).
+ *
+ * F36 WS-4 (AK8) additiv: beobachtung (Laufakten-Feld, sonst null).
  * @param laufakteVersion - ArtefaktVersion der Laufakte, oder null
  * @returns { status: 'ok', ... } | { status: 'nicht_vorhanden' }
  */
-function baueLaufakteProjektion(laufakteVersion) {
+export function baueLaufakteProjektion(laufakteVersion) {
   if (laufakteVersion === null) return { status: 'nicht_vorhanden' }
   const daten = laufakteVersion.daten ?? {}
   return {
@@ -789,6 +791,8 @@ function baueLaufakteProjektion(laufakteVersion) {
     arbeitsverzeichnisPfad: daten.arbeitsverzeichnis_pfad ?? null,
     worker: daten.worker ?? 'claude-code',
     modellDeklariert: daten.modell_deklariert ?? null,
+    // F36 WS-4 (AK8): unverändert durchgereicht; fehlt es (alte Laufakte, Codex), bleibt es null — nie geraten.
+    beobachtung: daten.beobachtung ?? null,
   }
 }
 

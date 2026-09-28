@@ -114,6 +114,19 @@ export interface LaufakteV0Daten {
   modell_deklariert?: string
   /** F32 WS-1: Verbrauchsdaten des Laufs, Rang OBSERVED. Additiv und optional wie worker/modell_deklariert — fehlt die Beobachtungsbasis, bleibt das Feld weg statt geschätzt zu werden. */
   verbrauch?: VerbrauchV0
+  /** F36 WS-4 (AK8, F-730): init-Zeile und Skill-/Subagent-/MCP-Aufrufe aus dem stream-json-Rohstrom, Rang OBSERVED, reine Beobachtung. Additiv und optional wie verbrauch (append-only) — ohne init-Zeile (Codex, Abbruch vor init) bleibt das Feld weg, statt leer gesetzt zu werden. */
+  beobachtung?: BeobachtungV0
+}
+
+/** F36 WS-4: was ein Lauf geladen (init-Zeile) und tatsächlich aufgerufen hat. Aufruflisten in Reihenfolge des Auftretens, Duplikate bleiben erhalten, Zeilen aus Subagenten (parent_tool_use_id gesetzt) zählen mit. init_mcp_server trägt nur die Servernamen, mcp_aufrufe den vollen Werkzeugnamen (mcp__<server>__<werkzeug>). */
+export interface BeobachtungV0 {
+  init_tools: string[]
+  init_agents: string[]
+  init_skills: string[]
+  init_mcp_server: string[]
+  skill_aufrufe: string[]
+  subagent_aufrufe: string[]
+  mcp_aufrufe: string[]
 }
 
 export type GatewayErgebnis =

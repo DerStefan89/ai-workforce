@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Warten auf Laufakte",
+    "Beobachtung": "Geladen: 3 Skills · 4 Agents · 1 MCP · Aufgerufen: Skills [ponytail] · Subagenten [qa] · MCP [mcp__playwright-mcp__browser_navigate]",
+    "Zeile Beobachtung": true,
+    "nicht beobachtet": false
+  },
+  {
+    "label": "Laufdetail mit Beobachtung",
+    "Beobachtung": "Geladen: 3 Skills · 4 Agents · 1 MCP · Aufgerufen: Skills [ponytail] · Subagenten [qa] · MCP [mcp__playwright-mcp__browser_navigate]",
+    "Zeile Beobachtung": true,
+    "nicht beobachtet": false
+  }
+]

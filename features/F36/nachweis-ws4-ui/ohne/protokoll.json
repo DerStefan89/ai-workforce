@@ -1,0 +1,14 @@
+[
+  {
+    "label": "Warten auf Laufakte",
+    "Beobachtung": "nicht beobachtet",
+    "Zeile Beobachtung": true,
+    "nicht beobachtet": true
+  },
+  {
+    "label": "Laufdetail ohne Beobachtung",
+    "Beobachtung": "nicht beobachtet",
+    "Zeile Beobachtung": true,
+    "nicht beobachtet": true
+  }
+]
