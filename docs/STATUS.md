@@ -76,8 +76,8 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
 Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 „Capability Library wirksam
-machen“ `IN_ARBEIT` (gemergt: WS-0 #267, WS-1 #268, WS-4 #269, WS-1b #270,
-WS-2 #271, Spike S7 #272; offen: WS-3, WS-5, Reallauf;
+machen“ `ABGESCHLOSSEN` (Abnahme durch Stefan 29.09.2026 nach Review-Pass
+und Fixpaket #282; gemergt #267–#282; Agents bleiben gesperrt, F-815;
 `features/F36/feature.md`) (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
@@ -554,9 +554,9 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   (`docs/projekt/zielfassung.md` §13.6, E-M5-16 — Reihenfolge jetzt
   F34 → F39 → F41 → F42 → F35 schlank ∥ F36 → Fixpaket → Kern-Feature
   „Projekt aufrufen/anzeigen" → Design → F30 → RC).
-- ⏳ **F36** — Capability Library wirksam machen (neu geschnitten
+- ✅ **F36** — Capability Library wirksam machen (neu geschnitten
   28.09.2026, vorher „Capability Library Expansion“, Anlass F-774), vor dem
-  Design. Akte `features/F36/feature.md`, Status `FEATURE_GATE`. Gemergt:
+  Design. Akte `features/F36/feature.md`, Status `ABGESCHLOSSEN`, **Abnahme durch Stefan am 29.09.2026**. Gemergt:
   WS-0 Probelauf Werkzeugsatz (#267), WS-1 Katalog (#268), WS-4
   Beobachtung (#269), WS-1b Übernahme der Recherche (#270), WS-2 Laufzeit
   (#271, MCP-Weg; Skill/Agent in der Ausführung wegen S6 bewusst aus),
@@ -565,8 +565,9 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   CSRF (#277), WS-5b Ort-B-Skills (#278), F-814 Host-Allowlist (#279),
   Reallauf-Nachweis haushaltsbuch2 (#280), Installationen im Katalog (#281).
   Review-Pass 29.09.2026 mit Fixpaket (Startvorlage-Validator H-A,
-  Reallauf-Auszug H-B, Doku H-C). Agents bleiben gesperrt (F-815). Offen:
-  Abnahme durch Stefan. Nach E-M5-5, parallel zu F35 ab F34 (disjunkte
+  Reallauf-Auszug H-B, Doku H-C; #282). Agents bleiben gesperrt (F-815).
+  Offene Folge-Findings F-815/F-816, F-818, F-822/F-823, F-824 bis F-838.
+  Nächster Schritt: Fixpaket (F-764 zuerst). Nach E-M5-5, parallel zu F35 ab F34 (disjunkte
   Dateien).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/

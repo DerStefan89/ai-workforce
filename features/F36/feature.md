@@ -7,7 +7,9 @@ F36
 Capability Library wirksam machen
 
 ## Status
-Status: FEATURE_GATE
+Status: ABGESCHLOSSEN
+
+Abgenommen durch Stefan am 29.09.2026 nach Review-Pass und Fixpaket (#282).
 
 Neu geschnitten: Stefan, 28.09.2026 (vorher „Capability Library Expansion“) — Anlass F-774: Katalog, Scout und Freigabe enden im Register und erreichen keinen Lauf.
 
