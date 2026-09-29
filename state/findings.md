@@ -10453,6 +10453,7 @@ Fundstelle: `src/architekt/index.ts` (`baueBashAllowlistSatz`), `startvorlagen/a
 Auswirkung: Mittel — die Ausführung bleibt sicher begrenzt, aber der Normalfall wird zum Ausnahmefall; die Sichtung verliert als Signal an Wert.
 Maßnahme: Harmlose Lesebefehle erlauben oder zusammengesetzte Befehle, deren Teile alle erlaubt sind, gesondert behandeln. Erweitert die Sicherheitsfläche der Ausführung → Advisor-Pass vor dem Bau.
 Ergänzung (F36 WS-0/WS-1, 28.09.2026): Die CLI lässt reine Lesebefehle wie `pwd` ohne Allowlist-Regel zu (`state/spike-f36-werkzeugsatz.md` P2, `general-purpose`-Subagent: `Bash pwd` erlaubt). Vor dem Fix prüfen, welche der beobachteten Probebefehle wirklich VERWEIGERT auslösen — nur die brauchen eine Regel.
+Vermerk (F36 Reallauf, 29.09.2026): Alle vier Ausführungsläufe (`1c4a1163`, `7b6d0f40`, `8cee6c98`, `74290fb5`) endeten VERWEIGERT. Der Grund waren in allen vier nur Probebefehle (`git status`/`git log`, `node scripts/…`, `npm run dev`). Jeder brauchte eine manuelle Reparaturfassung (F-768). Das Muster ist damit über zwei Reallauf-Serien stabil.
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
@@ -10659,6 +10660,7 @@ Auswirkung: Mittel — ohne die Prüfung kann ein falsch eingeordneter oder offe
 Maßnahme: In WS-5 je unterart ein Rot-Fall; playwright-mcp mit Rot-Fall „fremde Origin wird verweigert“, sonst `wirkung: extern_schreibend`.
 Status: Teil mcp erledigt (F36 WS-5a): `installiereRessource` (`src/ressourcen/installation.ts`) gibt einen MCP erst frei, wenn Lockfile-Version und -integrity der Anzeige entsprechen, `bin` existiert und der Serverstart per `initialize` + `tools/list` alle freigegebenen Einzelnamen liefert; Rot-Fälle im Gate `scripts/check-f36-ws5a-installation.mjs` (c)–(e), echter Nachweis `features/F36/nachweis-ws5a-installation/`. Offen: Teil skill/agent (WS-5b) und der Rot-Fall „fremde Origin wird verweigert“ mit der installierten Fassung (WS-5b bzw. Reallauf).
 Vermerk (F36 WS-5b, 29.09.2026): Teil skill erledigt. `installiereRessource` gibt einen externen Skill erst frei, wenn diese Prüfungen bestanden sind: angezeigte Commit-SHA = Ref beim Installieren; flacher Fetch genau dieser SHA; kein Symlink/Submodul im Quellbaum; `SKILL.md` mit Frontmatter name + description; name nach `[a-z0-9-]`; keine Kollision mit eingebauten oder anderen Ort-B-Skills. Danach wird `inhalt_hash` festgehalten. „Verfügbar“ heißt für Skills seither: SKILL.md + passender inhalt_hash (`loeseRessourcenAuf`); der Start rechnet ihn neu. Belegt: Gate `scripts/check-f36-ws5b-skill.mjs` (a), (f)–(i), (k); echter Nachweis `features/F36/nachweis-ws5b/` (frontend-design). Teil agent zurückgestellt (F-815). Der Rot-Fall „fremde Origin“ bleibt beim Reallauf.
+Vermerk (F36 Reallauf, 29.09.2026): Rot-Fall „fremde Origin“ mit der real installierten Fassung belegt (`@playwright/mcp` 0.0.83, CLI 2.1.284; `features/F36/nachweis-reallauf/`). (A) Den Server exakt mit `installation.mcp_server` aus dem Haupt-Checkout per MCP-stdio gestartet: `browser_navigate` auf `http://127.0.0.1:3000` und `http://localhost:3000` erlaubt (haushaltsbuch2 geladen). Auf `https://example.com` kommt `isError: true`, „net::ERR_BLOCKED_BY_CLIENT“. (B) Echter CLI-Lauf über `loeseAusfuehrungsEingabenAuf` → `baueMcpAufruf` → `baueAufruf` → `starteProzess`: `init.tools` zeigt alle 25 Playwright-Werkzeuge. `browser_run_code_unsafe` und `browser_evaluate` wurden aufgerufen, beide mit tool_result „Claude requested permissions to use … but you haven't granted it yet.“ (`is_error: true`, auch in `permission_denials`). Freigegebene Werkzeuge liefen normal. Kein nicht freigegebenes Werkzeug war aufrufbar. Teil mcp damit vollständig; offen bleibt nur Teil agent (F-815).
 Feature/Run: F36 WS-1b, 28.09.2026.
 
 **F-787** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -10695,6 +10697,7 @@ Fundstelle: `state/spike-f36-ws2s.md` (S5a–S5c); `features/F36/feature.md` (WS
 Auswirkung: Mittel — eine Origin ohne Port macht den Server unbrauchbar; eine Weiterleitung umgeht die Sperre.
 Maßnahme: E-F36-7 = A (Stefan, 28.09.2026): playwright-mcp bleibt `wirkung: lokal`, Start nur mit `--allowed-origins` auf die Projekt-URL mit Port und `--output-dir` außerhalb des Projekts; WS-5 hält die Adresse jedes `browser_navigate` in der Beobachtung fest. Weiterleitungen bleiben bekannte Grenze.
 Status: entschieden (E-F36-7 = A), bekannte Grenze.
+Vermerk (F36 Reallauf, 29.09.2026): Mit der installierten Fassung `@playwright/mcp` 0.0.83 bestätigt. Projekt-Origins mit Port erlaubt, `https://example.com` → `ERR_BLOCKED_BY_CLIENT` (`features/F36/nachweis-reallauf/origin-sperre.json`). Weiterleitungen sind weiterhin nicht gemessen; die Grenze bleibt.
 Feature/Run: F36 WS-2s, 28.09.2026.
 
 **F-791** · `HARNESS_IMPROVEMENT` · P1 · offen
@@ -10714,6 +10717,7 @@ Vermerk (F36 WS-5b, 29.09.2026): Skill-Teil umgesetzt, Agent-Teil zurückgestell
 - Reviewer-Pass (29.09.2026): Projekt-Commands `.claude/commands/**.md` standen nicht in `init.skills`, waren aber per Skill-Werkzeug aufrufbar (real gemessen, fail-open vor dem Fix). Seither stehen sie in `Skill(…)`/`skillOverrides` (Nachweis 9b′). Das Init-Gate hätte das nicht gefunden; eine Sperrliste braucht deshalb alle Quellen, die das Skill-Werkzeug bedient.
 - Belege: Gate `scripts/check-f36-ws5b-skill.mjs` (i), (l)–(n), kalibriert; `features/F36/nachweis-ws5b/`.
 Vermerk (Challenger-Verifikation WS-5b, 29.09.2026): `init.tools` enthält in allen WS-5b-Läufen `GetTask`, obwohl es nicht in `--tools` steht (`features/F36/nachweis-ws5b/lauf-*.json`). Im Reallauf beobachten, ob es Subagent- bzw. Aufgabenwirkung hat.
+Vermerk (F36 Reallauf, 29.09.2026): Im echten Korrekturlauf `7b6d0f40` (haushaltsbuch2) enthielt `init.tools` wieder `GetTask`. Es gab keinen `GetTask`-Aufruf und damit keine beobachtete Wirkung. Die Frage bleibt offen, bis ein Lauf es aufruft oder ein erzwungener Aufruf die Wirkung misst.
 Status: offen.
 Feature/Run: F36 Spike S7, 29.09.2026.
 
@@ -11005,3 +11009,66 @@ Auswirkung: Mittel — ein lokaler Prozess kann den Leitstand samt laufender Lä
 Maßnahme: URL-Aufbau im Dispatcher in try/catch, bei Fehler 400 `{ grund }`; Gate mit rohem TCP-Rotfall (Muster `scripts/check-f814-host.mjs`, `sendeRoh`). Eigener kleiner Auftrag.
 Status: offen.
 Feature/Run: F-814-Fix, Reviewer-Pass, 29.09.2026.
+
+**F-824** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Der Bau-Auftrag aus der Feature-Akte enthält nur Ziel, Nicht-Ziele und AKs. Datenmodell und Security erreichen den Architekten nicht.
+Beschreibung: Im F36-Reallauf (Workflow `router-59f6cbd8…`, Lauf `e2ce802f`) bekam der Architekt aus der Feature-Akte nur Ziel, Nicht-Ziele und Akzeptanzkriterien. Die geklärten Abschnitte Datenmodell und Security fehlten im Auftrag. Er fragte deshalb Punkte erneut, die schon entschieden waren.
+Fundstelle: Auftragsbau aus der Feature-Akte für den Architekten-Schritt (Workflow `router-59f6cbd8…`, Lauf `e2ce802f`).
+Auswirkung: Mittel — doppelte Rückfragen an Stefan. Außerdem kann der Architekt anders entscheiden als bereits festgelegt.
+Maßnahme: Geklärte technische Abschnitte (Datenmodell, Security) in den Auftrag übernehmen oder die Akte selbst als Eingabe des Architekten mitgeben.
+Status: offen.
+Feature/Run: F36 Reallauf, 29.09.2026.
+
+**F-825** · `BUG` · P2 · offen
+Titel: Die Obergrenze 3 in „Passt, nicht im Lauf“ verdrängt installierbare Einträge zugunsten nicht installierbarer.
+Beschreibung: `baueEmpfehlung` sortiert „Passt, nicht im Lauf“ nach Treffergüte (`rang`) und dann nach id und kürzt auf 3 (F-788). Im Reallauf fiel `playwright-mcp` (installierbar) aus der Liste. Angezeigt wurden stattdessen `image-to-code` und `mengto-skills`, beide ohne `installation_vorlage` und damit nicht installierbar.
+Fundstelle: `src/ressourcen/index.ts` (`baueEmpfehlung`, Kürzung auf `EMPFEHLUNG_OBERGRENZE`).
+Auswirkung: Mittel — der eine Eintrag, den Stefan direkt freigeben und installieren könnte, steht nur in der Zählzeile.
+Maßnahme: Installierbare Einträge vor nicht installierbare sortieren. Alternativ nicht installierbare nur als Zählzeile zeigen.
+Status: offen.
+Feature/Run: F36 Reallauf, 29.09.2026.
+
+**F-826** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Ausführung ist am ZWINGEND-Start freigebbar, ohne Hinweis auf einen passenden installierbaren Eintrag, der im Lauf fehlt.
+Beschreibung: In Lauf `1c4a1163` stand ein passender installierbarer Eintrag in „Passt, nicht im Lauf“. „Freigeben“ ließ sich trotzdem ohne Hinweis klicken, dass dieser Eintrag im Lauf fehlt.
+Fundstelle: ZWINGEND-Start der Ausführung (Empfehlungsblock neben „Freigeben“, WS-3).
+Auswirkung: Niedrig — der Lauf startet ohne die Fähigkeit, obwohl eine Installation möglich wäre.
+Maßnahme: Neben „Freigeben“ einen Hinweis zeigen, sobald ein installierbarer Eintrag in „Passt, nicht im Lauf“ steht.
+Status: offen.
+Feature/Run: F36 Reallauf, 29.09.2026.
+
+**F-827** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Ausführung kennt die laufende Projekt-Vorschau nicht, deshalb bleibt Playwright für die eigentliche Prüfung ungenutzt.
+Beschreibung: Im F3-Reallauf (haushaltsbuch2) hatte der Lauf `8cee6c98` `playwright-mcp` verbunden. Er versuchte aber, `npm run dev` selbst zu starten, und wurde verweigert. Der Korrekturlauf `74290fb5` navigierte auf `file:///…/public/index.html`. Playwright blockierte das mit „Access to "file:" protocol is blocked“. Die Vorschau lief die ganze Zeit unter der `vorschau_url`, das wusste die Ausführung aber nicht.
+Fundstelle: Empfehlungszeile im Auftrag (`baueEmpfehlungsZeile`, `src/ressourcen/index.ts`); Läufe `8cee6c98`, `74290fb5`.
+Auswirkung: Mittel — der MCP ist im Lauf, wird aber für die Sichtprüfung nie wirksam genutzt.
+Maßnahme: Bei einem MCP mit `{projekt_origins}` nennt die Empfehlungszeile im Auftrag die `vorschau_url` und den Satz: „läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten“.
+Status: offen.
+Feature/Run: F36 Reallauf (F3), 29.09.2026.
+
+**F-828** · `BUG` · P3 · offen
+Titel: Die Lauf-Detailansicht zeigt bei einem laufenden Lauf „Klärung erforderlich“ samt Maske „Klärung auflösen“.
+Beschreibung: Während Lauf `8cee6c98` lief (nur `run_prepared`), zeigte die Detailansicht „Klärzustand: Klärung erforderlich“ und die Maske „Klärung auflösen“. Eine Entscheidung dort würde den aktiven Lauf als geklärt einstufen.
+Fundstelle: Lauf-Detailansicht im Leitstand (Klärzustand-Anzeige); gesehen an `8cee6c98`.
+Auswirkung: Niedrig — irreführend; eine versehentliche Entscheidung würde einen laufenden Lauf falsch einstufen.
+Maßnahme: Bei aktivem Lauf „läuft“ statt eines Klärzustands anzeigen und die Maske sperren.
+Status: offen.
+Feature/Run: F36 Reallauf (F3), 29.09.2026.
+
+**F-829** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Das Workforce-Review hat keinen festen Qualitätsmaßstab jenseits der AKs.
+Beschreibung: Das Review urteilt über die Akzeptanzkriterien. Dass die Checkliste `.claude/agents/code-reviewer.md` und die DoD aus der `CLAUDE.md` des Projekts als Review-Eingabe dienen, ist nicht belegt.
+Fundstelle: Review-Schritt der Workflow-Vorlagen (`workflow-vorlagen/*.json`), Rolle review (`src/rollen/index.ts`).
+Auswirkung: Mittel — Wartbarkeit, Fehler- und Leerzustände, Kommentarstandard werden nicht verlässlich geprüft.
+Maßnahme: Checkliste und DoD als verbindliche Eingabe des Reviews mit Urteil je Punkt. Gemeinsam mit dem qa-Schritt (F-820) umsetzen.
+Status: offen.
+Feature/Run: F36 Reallauf (F3), 29.09.2026.
+
+**F-830** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die DoD im Projekt-Skelett verlangt Reviewer-/QA-Pass per Subagent, in Workforce-Läufen ist das nicht erfüllbar.
+Beschreibung: Die `CLAUDE.md` im Projekt-Skelett verlangt einen Reviewer-/QA-Pass per Subagent vor der Freigabe. Workforce-Ausführungsläufe haben kein `Agent` im Werkzeugsatz. Die DoD-Zeile ist dort also nicht erfüllbar, und das wird nirgends erklärt.
+Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md` (Definition of Done); F42 (Projekt-Harness).
+Auswirkung: Niedrig — widersprüchliche Vorgabe für das Modell im Lauf.
+Maßnahme: Die DoD-Zeile im Skelett (F42) ergänzen um „in Workforce-Läufen: Review/QA als Workflow-Schritte“.
+Status: offen.
+Feature/Run: F36 Reallauf (F3), 29.09.2026.
