@@ -382,6 +382,9 @@ function stringListe(wert: unknown): string[] {
  * Subagenten (parent_tool_use_id gesetzt) zählen mit. Ohne init-Zeile (Codex,
  * Abbruch vor init) null — das Laufakten-Feld entfällt dann, statt leer
  * gesetzt zu werden. Wirft nie: unparsbare Zeilen werden übersprungen.
+ * F36 WS-5a (E-F36-7): zusätzlich navigate_adressen — je Aufruf mcp__<server>__browser_navigate die
+ * input.url (ohne url: NAVIGATE_OHNE_URL), in Reihenfolge. Erfasst wird nur der ausdrückliche
+ * browser_navigate — ein Seitenwechsel per Klick oder Weiterleitung steht nicht darin.
  * @param zeilen - NDJSON-Zeilen des stdout (einzelne Strings)
  * @returns BeobachtungV0, oder null ohne init-Zeile
  */
@@ -390,6 +393,7 @@ export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
   const skillAufrufe: string[] = []
   const subagentAufrufe: string[] = []
   const mcpAufrufe: string[] = []
+  const navigateAdressen: string[] = []
   for (const text of zeilen) {
     const zeile = parseObjekt(text.trim())
     if (zeile === null) continue
@@ -400,7 +404,10 @@ export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
     for (const { name, eingabe } of leseToolUseBloecke(zeile)) {
       if (name === 'Skill' && typeof eingabe.skill === 'string') skillAufrufe.push(eingabe.skill)
       else if ((name === 'Agent' || name === 'Task') && typeof eingabe.subagent_type === 'string') subagentAufrufe.push(eingabe.subagent_type)
-      else if (name.startsWith('mcp__')) mcpAufrufe.push(name)
+      else if (name.startsWith('mcp__')) {
+        mcpAufrufe.push(name)
+        if (NAVIGATE_WERKZEUG.test(name)) navigateAdressen.push(typeof eingabe.url === 'string' && eingabe.url.length > 0 ? eingabe.url : NAVIGATE_OHNE_URL)
+      }
     }
   }
   if (init === null) return null
@@ -415,8 +422,14 @@ export function leseBeobachtung(zeilen: string[]): BeobachtungV0 | null {
     skill_aufrufe: skillAufrufe,
     subagent_aufrufe: subagentAufrufe,
     mcp_aufrufe: mcpAufrufe,
+    navigate_adressen: navigateAdressen,
   }
 }
+
+/** F36 WS-5a: Werkzeugname eines browser_navigate-Aufrufs irgendeines MCP-Servers. */
+const NAVIGATE_WERKZEUG = /^mcp__[^_].*__browser_navigate$/
+/** F36 WS-5a: Platzhalter in navigate_adressen, wenn der Aufruf keine url trägt. */
+export const NAVIGATE_OHNE_URL = '(keine url)'
 
 /** Die sieben Listenfelder von BeobachtungV0 — einzige Quelle für den Validator. */
 const BEOBACHTUNG_FELDER: readonly string[] = [
@@ -775,13 +788,17 @@ export function validiereLaufakteDaten(daten: unknown): string[] {
     } else {
       const b = beobachtung as Record<string, unknown>
       for (const feld of Object.keys(b)) {
-        if (!BEOBACHTUNG_FELDER.includes(feld)) verstoesse.push(`unbekanntes Feld 'beobachtung.${feld}' (additionalProperties: false)`)
+        if (!BEOBACHTUNG_FELDER.includes(feld) && feld !== 'navigate_adressen') verstoesse.push(`unbekanntes Feld 'beobachtung.${feld}' (additionalProperties: false)`)
       }
       for (const feld of BEOBACHTUNG_FELDER) {
         if (!(feld in b)) verstoesse.push(`Pflichtfeld 'beobachtung.${feld}' fehlt`)
         else if (!Array.isArray(b[feld]) || !(b[feld] as unknown[]).every((e) => typeof e === 'string')) {
           verstoesse.push(`'beobachtung.${feld}' muss ein Array aus Strings sein`)
         }
+      }
+      // F36 WS-5a: optional (append-only, ältere Laufakten ohne das Feld bleiben gültig).
+      if ('navigate_adressen' in b && (!Array.isArray(b.navigate_adressen) || !b.navigate_adressen.every((e) => typeof e === 'string'))) {
+        verstoesse.push("'beobachtung.navigate_adressen' muss, wenn angegeben, ein Array aus Strings sein")
       }
     }
   }

@@ -1,0 +1,32 @@
+[
+  {
+    "label": "Ohne vorschau_url: Hinweis + Knopf",
+    "Projekt-URL nicht gesetzt": true,
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+    "Projekt-URL nicht gesetzt": true,
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Bestätigungsblock → Installieren",
+    "Projekt-URL nicht gesetzt": true,
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Klick: [data-installation-aktion=\"installieren\"]",
+    "Projekt-URL nicht gesetzt": true,
+    "Fehlermeldung am Eintrag": true,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Abgelehnt: integrity weicht ab",
+    "Projekt-URL nicht gesetzt": true,
+    "Fehlermeldung am Eintrag": true,
+    "Erfolgsmeldung (darf fehlen)": false
+  }
+]

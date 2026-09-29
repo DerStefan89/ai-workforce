@@ -4,7 +4,8 @@
  * Zweck: F36 WS-4 (features/F36/feature.md AK8, löst F-730) — reine
  * Beobachtung der init-Zeile sowie der Skill-, Subagent- und MCP-Aufrufe aus
  * dem stream-json-Rohstrom (leseBeobachtung) und das additive, optionale
- * Laufakten-Feld `beobachtung` (validiereLaufakteDaten).
+ * Laufakten-Feld `beobachtung` (validiereLaufakteDaten). Seit F36 WS-5a zusätzlich
+ * navigate_adressen (input.url je browser_navigate, E-F36-7).
  *
  * Die Fixture-Zeilen sind gekürzte Zeilen aus den realen Spike-Rohströmen
  * (state/spike-f36-werkzeugsatz.md, P1_skill / P2_agent_gp / P3iii_mcp_namen):
@@ -14,7 +15,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { leseBeobachtung, validiereLaufakteDaten } from './index.ts'
+import { leseBeobachtung, NAVIGATE_OHNE_URL, validiereLaufakteDaten } from './index.ts'
 
 const INIT = JSON.stringify({
   type: 'system',
@@ -69,6 +70,7 @@ test('leseBeobachtung: realer Rohstrom mit init, Skill ponytail, Agent qa und MC
     skill_aufrufe: ['ponytail', 'ponytail'],
     subagent_aufrufe: ['qa'],
     mcp_aufrufe: ['mcp__playwright-mcp__browser_navigate'],
+    navigate_adressen: ['about:blank'],
   })
 })
 
@@ -102,6 +104,7 @@ test('leseBeobachtung: init mit fehlenden oder fremdtypisierten Listen → leere
     skill_aufrufe: [],
     subagent_aufrufe: [],
     mcp_aufrufe: [],
+    navigate_adressen: [],
   })
 })
 
@@ -136,4 +139,21 @@ test('validiereLaufakteDaten: beobachtung mit fehlendem, unbekanntem oder falsch
   assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: { ...gueltig, extra: [] } }).some((v) => v.includes('beobachtung.extra')))
   assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: { ...gueltig, skill_aufrufe: [1] } }).some((v) => v.includes('beobachtung.skill_aufrufe')))
   assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: [] }).some((v) => v.includes("'beobachtung'")))
+})
+
+test('leseBeobachtung (F36 WS-5a): input.url je browser_navigate irgendeines Servers, in Reihenfolge; ohne url Platzhalter; andere Werkzeuge nicht', () => {
+  const navigate = (id: string, server: string, input: Record<string, unknown>): string =>
+    JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id, name: `mcp__${server}__browser_navigate`, input }] }, parent_tool_use_id: null })
+  const klick = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'k', name: 'mcp__playwright-mcp__browser_click', input: { url: 'http://nicht-zaehlen' } }] } })
+  const zurueck = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'z', name: 'mcp__playwright-mcp__browser_navigate_back', input: {} }] } })
+  const b = leseBeobachtung([INIT, navigate('a', 'playwright-mcp', { url: 'http://localhost:5173/' }), klick, zurueck, navigate('b', 'anderer', {}), navigate('c', 'playwright-mcp', { url: 'https://example.com' })])
+  assert.deepStrictEqual(b?.navigate_adressen, ['http://localhost:5173/', NAVIGATE_OHNE_URL, 'https://example.com'])
+})
+
+test('validiereLaufakteDaten (F36 WS-5a): navigate_adressen optional, falsch typisiert ungültig', () => {
+  const gueltig = leseBeobachtung([INIT])
+  assert.ok(gueltig !== null)
+  const { navigate_adressen: _weg, ...ohneAdressen } = gueltig
+  assert.deepStrictEqual(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: ohneAdressen }), [])
+  assert.ok(validiereLaufakteDaten({ ...ALTE_LAUFAKTE, beobachtung: { ...gueltig, navigate_adressen: [3] } }).some((v) => v.includes('navigate_adressen')))
 })

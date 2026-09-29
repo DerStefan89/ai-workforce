@@ -10,6 +10,9 @@
  * - public/leitstand/views/runs.js (renderLaufakte, Zeile „Beobachtung“)
  * - public/leitstand/beobachtung-zeile.test.mjs
  *
+ * Seit F36 WS-5a (E-F36-7): die Adresse jedes browser_navigate (Feld navigate_adressen, optional —
+ * ältere Laufakten tragen es nicht) als Zusatz „Navigiert: […]“.
+ *
  * Wichtig: liefert reinen Text — das Escaping übernimmt der Aufrufer
  * (escapeHtml), Muster verbrauch-zeitraum.js.
  */
@@ -26,6 +29,7 @@ export function formatiereBeobachtung(beobachtung) {
   const liste = (feld) => `[${werte(feld).join(', ')}]`
   return (
     `Geladen: ${werte('init_skills').length} Skills · ${werte('init_agents').length} Agents · ${werte('init_mcp_server').length} MCP · ` +
-    `Aufgerufen: Skills ${liste('skill_aufrufe')} · Subagenten ${liste('subagent_aufrufe')} · MCP ${liste('mcp_aufrufe')}`
+    `Aufgerufen: Skills ${liste('skill_aufrufe')} · Subagenten ${liste('subagent_aufrufe')} · MCP ${liste('mcp_aufrufe')}` +
+    (werte('navigate_adressen').length > 0 ? ` · Navigiert: ${liste('navigate_adressen')}` : '')
   )
 }

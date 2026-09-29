@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Ohne vorschau_url: Knopf",
+    "Erfolgsmeldung": false,
+    "Knopf Freigeben & installieren": true
+  },
+  {
+    "label": "Klick „Freigeben & installieren“",
+    "Erfolgsmeldung": false,
+    "Knopf Freigeben & installieren": true
+  },
+  {
+    "label": "Bestätigung",
+    "Erfolgsmeldung": false,
+    "Knopf Freigeben & installieren": true
+  },
+  {
+    "label": "Klick „Installieren“",
+    "Erfolgsmeldung": false,
+    "Knopf Freigeben & installieren": true
+  },
+  {
+    "label": "Erfolg, Eintrag bleibt in „Passt, nicht im Lauf“",
+    "Erfolgsmeldung": true,
+    "Knopf Freigeben & installieren": false
+  }
+]

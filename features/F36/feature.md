@@ -39,7 +39,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     erst, wenn ein Eintrag empfohlen wird.
 - **E-F36-6 = A** (Stefan, 28.09.2026): Die Workforce installiert nach
   Freigabe selbst (WS-5):
-  - nur von der Katalog-Adresse (`herkunft.url`),
+  - nur von der Katalog-Adresse (`herkunft.url` bzw. bei Registry-Paketen
+    `herkunft.paket`, E-F36-9),
   - nur in fester Version (Commit bzw. Paketversion),
   - in einen eigenen Ordner, danach ins Projekt-`.claude/` (überholt für
     Skills/Agents: Ort B ohne Ablage im Projekt, E-F36-8);
@@ -71,6 +72,11 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     Projekt-Agents (siehe AK4).
   - Die Namensliste der eingebauten Einträge driftet mit der CLI-Version
     (F-791).
+- **E-F36-9 = A** (Stefan, 29.09.2026): MCP-Server, die als Registry-Paket
+  verteilt werden, installiert die Workforce nur aus der ausdrücklichen
+  Katalog-Adresse `herkunft.paket` (z. B. „npm:@playwright/mcp“), in exakter
+  Version; `herkunft.url` bleibt die Informationsadresse. `herkunft.paket`
+  wird vor dem Klick zusammen mit Lizenz, Kosten und Wirkung angezeigt.
 
 ## Nicht-Ziele
 - **Schritt-Empfehlung** (Katalog schlägt einen zusätzlichen Workflow-
@@ -179,7 +185,7 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   „Passt, nicht installiert" (anwendbar, aber `OFFEN` oder ohne
   `installation`); dazu die Stack-Liste (`docs/harness/stack-kandidaten.md`)
   für den Architekten.
-  - **Stand: gebaut, nicht gemergt (29.09.2026).** Zuschnitt nach
+  - **Stand: gemergt (#275, 29.09.2026).** Zuschnitt nach
     Challenger-[EMPFEHLUNG] 29.09.2026 (die zweite Liste heißt jetzt
     „Passt, nicht im Lauf“):
     - Reine Funktion `baueEmpfehlung` (`src/ressourcen/index.ts`).
@@ -207,24 +213,73 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       Installationswurzel (`leseStackKandidatenAuszug`).
     - Gate: `scripts/check-f36-ws3-empfehlung.mjs`.
 - **WS-5 — Installation (E-F36-6).** „Freigeben & installieren" aus der
-  Liste „Passt, nicht installiert": Anzeige von Lizenz, Kosten und Wirkung
-  vor dem Klick; Installation nur von `herkunft.url`, nur in fester Version
-  (Commit bzw. Paketversion), in den Workforce-Ordner `<cap>/<id>`
-  (Ort B, E-F36-8; keine Ablage im Projekt-`.claude/`); setzt `installation`
-  und `freigabe: FREIGEGEBEN`.
-  Prüfung je `unterart` fail-closed (F-786): skill — `SKILL.md` mit
-  Frontmatter; agent — `.md` mit Frontmatter; mcp — Serverstart mit den
-  freigegebenen Einzelnamen.
-  - **playwright-mcp** (E-F36-7 = A, 28.09.2026): `wirkung` bleibt
-    `lokal`. Start nur mit `--allowed-origins` auf die Projekt-URL MIT Port
-    (z. B. `http://localhost:<port>;http://127.0.0.1:<port>` — ohne Port
-    sperrt das Flag auch den lokalen Server, Spike WS-2s S5a) und
-    `--output-dir` außerhalb des Projekts; WS-5 belegt das mit einem
-    Rot-Fall (fremde Origin wird verweigert, S5c). Bekannte Grenze:
+  Liste „Passt, nicht im Lauf": Anzeige von Lizenz, Kosten und Wirkung
+  vor dem Klick; Installation nur von der Katalog-Adresse (`herkunft.url`
+  bzw. `herkunft.paket`, E-F36-9), nur in fester Version (Commit bzw.
+  Paketversion), in den Workforce-Ordner `<cap>/<id>` (Ort B, E-F36-8;
+  keine Ablage im Projekt-`.claude/`); setzt `installation` und
+  `freigabe: FREIGEGEBEN`. Prüfung je `unterart` fail-closed (F-786):
+  skill — `SKILL.md` mit Frontmatter; agent — `.md` mit Frontmatter;
+  mcp — Serverstart mit den freigegebenen Einzelnamen.
+  Geteilt am 29.09.2026 (Challenger-[EMPFEHLUNG]) in **WS-5a** (MCP-
+  Installation) und **WS-5b** (Skill/Agent).
+- **WS-5a — MCP-Installation.** **Stand: gebaut, nicht gemergt
+  (29.09.2026).** Zuschnitt nach Challenger-[EMPFEHLUNG] 29.09.2026 und
+  E-F36-9 = A:
+  - **Katalog:** `herkunft.paket` (`npm:<name>` nach npm-Namensregeln,
+    nur extern mcp) und `installation_vorlage` `{bin, args, werkzeuge}`
+    (nur extern mcp; `bin` relativ im Paket, `werkzeuge` Einzelnamen nach
+    R4). In `args` von Vorlage und `installation` sind nur die Platzhalter
+    `{projekt_origins}` und `{ausgabe_ordner}` erlaubt, jeder andere
+    `{…}` wird abgelehnt. `playwright-mcp` trägt `npm:@playwright/mcp`,
+    `bin` `cli.js` (aus dem Paket geprüft) und acht Werkzeugnamen (gegen
+    `tools/list` geprüft); `freigabe` bleibt `OFFEN`, keine `installation`.
+  - **Projekt-URL (E-F36-7):** Feld `vorschau_url` im Projektregister
+    (`projekte.json`/`projekte.lokal.json`, `loeseProjektPfade`), nur
+    `http://localhost:<port>` bzw. `http://127.0.0.1:<port>`. Beim Start:
+    `{projekt_origins}` → `http://localhost:<port>;http://127.0.0.1:<port>`,
+    `{ausgabe_ordner}` → `~/.ai-workforce/laufausgabe/<laufId>`. Ohne
+    `vorschau_url` steht ein Eintrag mit `{projekt_origins}` in „Passt,
+    nicht im Lauf“ („Projekt-URL (vorschau_url) fehlt“) und kommt nie in den
+    Lauf. Die Empfehlung zeigt die Projekt-URL an.
+  - **Installation** (`src/ressourcen/installation.ts`, nur extern + mcp +
+    `wirkung: lokal` + `herkunft.paket`, sonst 400):
+    `POST /api/ressourcen/<id>/installation/vorbereiten` (`npm view`, nur
+    lesend: exakte Version + integrity) und `POST
+    /api/ressourcen/<id>/installation` mit genau dieser Version + integrity
+    und dem `eintragHash` der angezeigten Katalogfelder (geändert → 409):
+    `npm install <paket>@<version> --prefix ~/.ai-workforce/cap/<id>
+    --ignore-scripts --save-exact --no-audit --no-fund` (asynchron, eine zur
+    Zeit, Zeitgrenze). Danach fail-closed (F-786): Version und integrity im
+    Lockfile = angezeigte, `bin` existiert, Serverstart mit den
+    Vorlagen-args (Testwerte) liefert per `initialize` + `tools/list` alle
+    `werkzeuge`, Prozess beendet. Erst dann `installation` (`command` =
+    absoluter node-Pfad, `args` = [bin im cap-Ordner, …Vorlagen-args mit
+    Platzhaltern]) und `FREIGEGEBEN` in `ressourcen.json` — nur der Text
+    dieses Eintrags wird ersetzt. Kein npx zur Laufzeit. Jeder Fehlschlag:
+    `ressourcen.json` unverändert, eigener Zielordner entfernt, Klartext-
+    Grund. Runner injizierbar.
+  - **Oberfläche:** Knopf „Freigeben & installieren“ in „Passt, nicht im
+    Lauf“ (Workflow-Bedienung und Workboard) → Bestätigungsblock (Paket,
+    Version, integrity, Lizenz, Kosten, Wirkung, Werkzeuge, Zielordner) →
+    „Installieren“ → Ergebnis, danach Empfehlung neu geladen.
+  - **F-808:** `empfehlungIds` sind `<id>@<sha256 der kanonischen
+    installation>`; der Start vergleicht id und Hash.
+  - **Beobachtung (E-F36-7):** `navigate_adressen` (input.url je
+    `mcp__<id>__browser_navigate`) in der Laufakte und der Laufansicht.
+  - **Poll-Last:** die Anzeige am ZWINGEND-Start wird zwischengespeichert
+    (auftragId, mtime/Größe von `ressourcen.json`, HEAD des Projekts); der
+    Start rechnet frisch.
+  - Gate `scripts/check-f36-ws5a-installation.mjs` (a)–(k) + Zwischenspeicher;
+    echter Installationsnachweis `features/F36/nachweis-ws5a-installation/`
+    (`@playwright/mcp` 0.0.83, alle acht Namen gefunden); Render-Nachweis
+    `features/F36/nachweis-ws5a-ui/`.
+- **WS-5b — Skill/Agent (offen).** Ort B, V4a, Prüfung der init-Zeile,
+  Scan vor dem Start, F-791, offene QA-Punkte; dazu aus WS-5:
+  - **playwright-mcp**: Rot-Fall „fremde Origin wird verweigert“ (S5c) mit
+    der installierten Fassung, spätestens im Reallauf. Bekannte Grenze:
     Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright
     keine Sicherheitsgrenze.
-  - **Adresse jedes `browser_navigate`** in der Beobachtung festhalten
-    (heute erfasst WS-4 nur den Werkzeugnamen; E-F36-7).
   - **open-code-review**: `unterart` `skill` ist vermutet; WS-5 prüft
     fail-closed auf `SKILL.md`.
   - **V4a-Startkombination** (E-F36-8 = B, Präzisierung S7;
@@ -293,7 +348,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       browser-use-CLI, die Prüfung auf `SKILL.md` allein reicht nicht; er
       wirkt über den Browser nach außen, das Schema kennt `wirkung` aber
       nur bei `mcp`.
-- **Reallauf.** Ein nicht installierter Eintrag wird empfohlen,
+- **Reallauf** (nach WS-5b, mit `playwright-mcp` und `frontend-design`).
+  Ein nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und im selben Durchstich genutzt (init-Zeile und
   Aufruf beobachtet, WS-4). Zusätzlich wird beobachtet, ob das Modell
   gesperrte Agents ansteuert. Geschieht das wiederholt, wird die
@@ -308,9 +364,9 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   agents, skills, mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
-Empfehlung → WS-5 Installation → Reallauf. Stand 29.09.2026 gebaut und
+Empfehlung → WS-5a MCP-Installation → WS-5b Skill/Agent → Reallauf. Stand 29.09.2026 gebaut und
 gemergt: WS-0 (#267), WS-1 (#268), WS-4 (#269), WS-1b (#270), WS-2 (#271),
-Spike S7 (#272). WS-3 gebaut, nicht gemergt. Offen: WS-5, Reallauf. Jeder Workstream wird vor dem
+Spike S7 (#272), WS-3 (#275). WS-5a gebaut, nicht gemergt. Offen: WS-5b, Reallauf. Jeder Workstream wird vor dem
 Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
@@ -360,7 +416,7 @@ Bau präzisiert (eigene Challenge).
 - AK7 (WS-3) Die Empfehlung ist deterministisch (gleicher Auftrag +
   Katalog → gleiche Liste) und erscheint am ZWINGEND-Start sowie als
   Zeile im Auftrag. Prüfweg: Unit-Test + Gate am HTTP-Rundlauf.
-  Stand WS-3 (29.09.2026, nicht gemergt): belegt durch Unit-Tests
+  Stand WS-3 (29.09.2026, gemergt #275): belegt durch Unit-Tests
   `baueEmpfehlung` (Rangfolge, Obergrenze, Determinismus, Skill/Agent nie
   genutzt, `wirkung` ≠ `lokal` in keiner Liste, leere `task_typen`) und
   `scripts/check-f36-ws3-empfehlung.mjs` (a)–(h), gestubbter Starter.
@@ -377,10 +433,23 @@ Bau präzisiert (eigene Challenge).
   `installation`; `lizenz`/`kosten` sind nur bei `extern` zulässig.
   Prüfweg: Unit-Tests `validiereRessourcenDaten` (Grün/Rot), Gates
   `check-f19-ressourcen` und `check-f24-capabilities` grün.
-- AK11 (WS-5) Eine Installation nutzt nur `herkunft.url` und eine feste
-  Version, legt erst in einen eigenen Ordner, dann ins Projekt-`.claude/`,
+- AK11 (WS-5) Eine Installation nutzt nur die Katalog-Adresse (`herkunft.url`
+  bzw. `herkunft.paket`, E-F36-9) und eine feste
+  Version, legt erst in einen eigenen Ordner, dann ins Projekt-`.claude/`
+  (für MCP: nur in den eigenen Ordner, Ort B),
   und zeigt vorher Lizenz, Kosten und Wirkung. Prüfweg: wird vor dem Bau
   präzisiert.
+  Präzisiert für MCP (WS-5a, 29.09.2026, E-F36-9): Ein MCP-Eintrag (extern,
+  `wirkung: lokal`, `herkunft.paket`) wird nur aus `herkunft.paket` in der
+  vor dem Klick angezeigten exakten Version installiert, in
+  `~/.ai-workforce/cap/<id>` (Ort B, nichts im Projekt); vorher angezeigt:
+  Paket, Version, integrity, Lizenz, Kosten, Wirkung, Werkzeuge, Zielordner.
+  Freigegeben wird erst nach bestandener Prüfung (Lockfile-Version und
+  -integrity, `bin`, Serverstart mit allen Werkzeugen); jeder Fehlschlag
+  lässt `ressourcen.json` unverändert. Prüfweg: Gate
+  `scripts/check-f36-ws5a-installation.mjs` (a)–(f), (j); einmaliger echter
+  Nachweis `features/F36/nachweis-ws5a-installation/`; Render-Nachweis
+  `features/F36/nachweis-ws5a-ui/`. Für Skill/Agent präzisiert WS-5b.
 - AK12 (Reallauf) Ein zuvor nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und genutzt. Prüfweg: Laufakte mit init-Zeile
   und Aufruf (WS-4).
@@ -436,12 +505,58 @@ Bau präzisiert (eigene Challenge).
   wirklich angezeigt wurden. Ein API-Client (`POST /api/laeufe`, für den
   der Leitstand keine Anzeige hat, oder `POST .../freigabe`) kann die
   richtigen ids ohne Anzeige mitschicken (Einzelnutzer, lokal). Verglichen
-  wird die Menge der ids, nicht die `installation` dahinter; ändert sich
-  diese zwischen Anzeige und Start, merkt der Start es nicht (ab WS-5
-  relevant, F-808).
-- WS-3 Last: Am ZWINGEND-Start rechnet `GET /api/workflows/<id>` die
-  Empfehlung bei jedem Poll neu (`git ls-files` mit 5 s Zeitgrenze,
-  Katalog lesen und auflösen, synchron). In großen Projekten spürbar; bei
-  Bedarf zwischenspeichern. Ändert sich die Empfehlung, rendert die
-  Workflow-Ansicht den Freigabe-Block neu (eine angefangene Begründung
-  geht dann verloren).
+  wurde bis WS-5a nur die Menge der ids, nicht die `installation` dahinter
+  (F-808) — seit WS-5a tragen die ids den Hash der `installation`.
+- WS-3 Last (erledigt in WS-5a, F-809): Die Anzeige am ZWINGEND-Start wird
+  zwischengespeichert (auftragId, mtime/Größe von `ressourcen.json`, HEAD
+  des Projekts). Eine Änderung, die weder Katalog noch HEAD berührt (z. B.
+  eine neue, nicht committete Datei für `pfad_muster_any` oder eine neue
+  Router-Klassifikation desselben Auftrags), erscheint erst
+  nach dem nächsten Start oder Commit; der Start selbst rechnet immer frisch.
+  Ändert sich die Empfehlung tatsächlich, rendert die Workflow-Ansicht den
+  Freigabe-Block weiterhin neu.
+- WS-5a Integrität: Geprüft wird die Registry-Integrität (integrity aus
+  `npm view` = integrity im Lockfile), keine eigene Signaturprüfung des
+  Pakets. Exakt gebunden ist nur das Hauptpaket; transitive Abhängigkeiten
+  löst npm beim Installieren nach ihren Versionsbereichen auf, sie werden
+  nicht angezeigt.
+- WS-5a cap-Ordner: `~/.ai-workforce/cap` ist für alle Checkouts/Worktrees
+  gemeinsam, `ressourcen.json` gehört je Checkout. Bricht eine Installation
+  hart ab (Serverneustart), bleibt `cap/<id>` liegen; der nächste Versuch
+  meldet 409 „existiert bereits“ mit dem Hinweis, erst zu prüfen, ob ein
+  anderer Katalog ihn nutzt. Eine installierte Fassung, deren absoluter
+  node- oder bin-Pfad fehlt (gelöschter Ordner, Node-Update), gilt als
+  nicht verfügbar und kommt nicht in den Lauf.
+- WS-5a Anfragen fremder Seiten: Die beiden Installationsrouten lehnen
+  Browser-Anfragen einer fremden Seite ab (`Sec-Fetch-Site` nicht
+  same-origin/none bzw. fremder `Origin` → 403, Gate (j)). Ohne beide Header
+  (Nicht-Browser-Client auf dem Rechner) bleibt die Anfrage zulässig. Die
+  übrigen POST-Routen des Leitstands prüfen weiterhin nichts davon (bestand
+  schon vorher, F-813).
+- WS-5a Neuinstallation: Ist eine Installation kaputt (cap-Ordner gelöscht,
+  Node-Pfad geändert), gilt sie als nicht verfügbar; einen Weg zur
+  Neuinstallation über die Oberfläche gibt es nicht — `installation`/
+  `freigabe` in `ressourcen.json` von Hand zurücksetzen und `cap/<id>`
+  löschen.
+- WS-5a Routen: Die zwei Installationsrouten stehen in
+  `scripts/leitstand-server.mjs` (erlaubte Pfade des Auftrags), nicht nach
+  Arbeitsregel M5 in `scripts/leitstand/routen-<feature>.mjs`; die Logik
+  liegt in `src/ressourcen/installation.ts`.
+- WS-5a Render-Nachweis: belegt die Workflow-Bedienung; im Workboard nutzt
+  derselbe Baustein denselben Ablauf, einen eigenen Klickweg-Nachweis dort
+  gibt es nicht.
+- WS-5a Anzeigezustand: Offene Bestätigungsblöcke sind je Katalog-id im
+  Browser gehalten, nicht je Workflow oder Projekt; die Erfolgsmeldung
+  erscheint nur in Blöcken, in denen der Eintrag unter „Wird genutzt“ steht.
+- WS-5a `--ignore-scripts`: Pakete, die Install-Skripte brauchen, können
+  dadurch unbrauchbar installiert werden; die Serverstart-Prüfung fängt
+  das nur ab, wenn der Server dann nicht startet oder Werkzeuge fehlen.
+- WS-5a Browser: Die Browser-Binärdateien von Playwright werden nicht
+  installiert (`--ignore-scripts`, kein `playwright install`); playwright-mcp
+  braucht ein vorhandenes Chrome/Chromium. Die Installationsprüfung startet
+  keinen Browser.
+- WS-5a Katalog im Repo: `ressourcen.json` ist versioniert; eine
+  Installation schreibt dort `installation` (mit absoluten Pfaden dieses
+  Rechners) und `FREIGEGEBEN`. Nach einer Installation committet Stefan
+  (F-812); arbeitet die Workforce an sich selbst, sperrt der geänderte
+  Arbeitsbaum bis dahin jeden schreibenden Lauf.

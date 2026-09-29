@@ -127,6 +127,8 @@ export interface BeobachtungV0 {
   skill_aufrufe: string[]
   subagent_aufrufe: string[]
   mcp_aufrufe: string[]
+  /** F36 WS-5a (E-F36-7): input.url je Aufruf mcp__<server>__browser_navigate, in Reihenfolge. Optional — Laufakten vor WS-5a tragen das Feld nicht. */
+  navigate_adressen?: string[]
 }
 
 export type GatewayErgebnis =

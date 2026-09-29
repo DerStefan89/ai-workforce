@@ -1,0 +1,59 @@
+{
+  "url": "http://127.0.0.1:4177/#/workflows/f36-ws5a-nachweis",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workflow-bedienung",
+    "hoehe": 700
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Projekt-URL nicht gesetzt",
+        "selector": "#workflow-bedienung .hinweis"
+      },
+      {
+        "name": "Fehlermeldung am Eintrag",
+        "selector": ".empfehlung-installation .fehler"
+      },
+      {
+        "name": "Erfolgsmeldung (darf fehlen)",
+        "selector": "#workflow-bedienung .erfolg"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Ohne vorschau_url: Hinweis + Knopf",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+      "klick": "[data-installation-aktion=\"vorbereiten\"]"
+    },
+    {
+      "label": "Bestätigungsblock → Installieren",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"installieren\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Klick: [data-installation-aktion=\"installieren\"]",
+      "klick": "[data-installation-aktion=\"installieren\"]"
+    },
+    {
+      "label": "Abgelehnt: integrity weicht ab",
+      "warteAufSelector": {
+        "selector": ".empfehlung-installation .fehler",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-fehler.png"
+    }
+  ]
+}

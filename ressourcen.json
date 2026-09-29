@@ -83,7 +83,21 @@
       "kosten": "Server lokal kostenlos; Browser und Agentenquota",
       "capabilities": ["BROWSER_AUTOMATION", "UI_VISUAL_TESTING"],
       "freigabe": "OFFEN",
-      "herkunft": { "art": "extern", "url": "https://github.com/microsoft/playwright-mcp" },
+      "herkunft": { "art": "extern", "url": "https://github.com/microsoft/playwright-mcp", "paket": "npm:@playwright/mcp" },
+      "installation_vorlage": {
+        "bin": "cli.js",
+        "args": ["--headless", "--isolated", "--output-dir", "{ausgabe_ordner}", "--allowed-origins", "{projekt_origins}"],
+        "werkzeuge": [
+          "mcp__playwright-mcp__browser_navigate",
+          "mcp__playwright-mcp__browser_snapshot",
+          "mcp__playwright-mcp__browser_take_screenshot",
+          "mcp__playwright-mcp__browser_click",
+          "mcp__playwright-mcp__browser_type",
+          "mcp__playwright-mcp__browser_wait_for",
+          "mcp__playwright-mcp__browser_console_messages",
+          "mcp__playwright-mcp__browser_close"
+        ]
+      },
       "anwendbar_wenn": { "task_typen_any": ["neues-feature", "bugfix"], "pfad_muster_any": ["**/*.html", "**/*.css", "public/**"] }
     },
     {

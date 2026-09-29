@@ -11,7 +11,8 @@
  * zusätzlich die Abnahme (ACCEPT/REJECT), seit WS-2b auch ADJUST bedienbar
  * (Freigabe-Halt danach als Hinweis statt der Abnahme-Schaltflächen). Seit F36
  * WS-3 zeigt der Freigabe-Block die Katalog-Empfehlung (empfehlung-anzeige.js) und
- * schickt die angezeigten wirdGenutzt-ids mit der Freigabe mit.
+ * schickt die angezeigten wirdGenutzt-ids mit der Freigabe mit; seit WS-5a samt
+ * „Freigeben & installieren“ (empfehlung-installation.js).
  *
  * Die Oberfläche entscheidet dabei NICHTS selbst (D5). Was angeboten wird,
  * hängt an zwei Aussagen des Servers: naechster.art (das Verdikt von
@@ -61,6 +62,7 @@ import {
   wiederholeWorkflowPruefung,
 } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
+import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -700,8 +702,19 @@ let bedienungsKennzeichen = null
 function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null) {
   const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}|${JSON.stringify(empfehlung)}`
   if (kennzeichen === bedienungsKennzeichen) return
+  // F36 WS-5a (F-809): Wechselt nur die Empfehlung (z. B. nach „Freigeben & installieren“), bleiben
+  // Workflow, Halt, Schritt und Architektur-Fragen gleich — nur dann überleben angefangene Begründungen
+  // das Neu-Rendern (nie auf einen anderen Schritt übertragen).
+  const ohneEmpfehlung = (k) => (k === null ? null : k.slice(0, k.lastIndexOf('|')))
+  const gleicherWorkflow = ohneEmpfehlung(bedienungsKennzeichen) === ohneEmpfehlung(kennzeichen)
   bedienungsKennzeichen = kennzeichen
-  document.getElementById('workflow-bedienung').innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung)
+  const container = document.getElementById('workflow-bedienung')
+  const eingaben = gleicherWorkflow ? [...container.querySelectorAll('textarea[id]')].map((feld) => [feld.id, feld.value]) : []
+  container.innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung)
+  for (const [id, wert] of eingaben) {
+    const feld = document.getElementById(id)
+    if (feld instanceof HTMLTextAreaElement && container.contains(feld)) feld.value = wert
+  }
 }
 
 // ─── Reparaturzug (löst F-240, F-218; zeigt F-219, F-223, F-226) ────────────
@@ -1202,6 +1215,8 @@ function initWorkflowBedienung() {
     if (!button) return
     void fuehreWorkflowAktionAus(button)
   })
+  // F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock; danach Detail (und Empfehlung) neu laden.
+  bindeEmpfehlungInstallation(document.getElementById('workflow-bedienung'), () => (gewaehlteWorkflowId !== null ? ladeWorkflowDetail(gewaehlteWorkflowId, false) : undefined))
   document.getElementById('workflow-abnahme').addEventListener('click', (ereignis) => {
     const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
     if (abnahmeButton) {

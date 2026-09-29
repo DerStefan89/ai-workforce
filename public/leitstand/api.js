@@ -18,6 +18,7 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2)
+ * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
  * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
  * - public/leitstand/views/chat.js (F26 WS-2a)
  * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
@@ -112,6 +113,10 @@ export const holeWorkflowDetail = (workflowId, signal) => fetch(mitPraefix(`/wor
 export const reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST', body: JSON.stringify(koerper) })
 export const starteWorkflowSchritt = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/starten`), { method: 'POST', body: JSON.stringify({}) })
 export const sendeWorkflowFreigabe = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/freigabe`), { method: 'POST', body: JSON.stringify(koerper) })
+/** F36 WS-5a: „Freigeben & installieren“ Schritt 1 — Version/integrity aus der Registry, nur lesend. */
+export const bereiteInstallationVor = (id) => fetch(mitPraefix(`/ressourcen/${encodeURIComponent(id)}/installation/vorbereiten`), { method: 'POST', body: '{}' })
+/** F36 WS-5a: Schritt 2 — installiert genau koerper { version, integrity, eintragHash } und gibt den Eintrag frei. */
+export const installiereRessource = (id, koerper) => fetch(mitPraefix(`/ressourcen/${encodeURIComponent(id)}/installation`), { method: 'POST', body: JSON.stringify(koerper) })
 export const stoppeWorkflow = (workflowId, koerper) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/stoppen`), { method: 'POST', body: JSON.stringify(koerper) })
 /** F-656: wiederholt die deterministische Prüfung (Regel 1f) für den bereits gelaufenen Ausführungsschritt — nur zulässig, solange der Workflow genau dort auf KLAERUNG_ERFORDERLICH steht. Keine Begründungspflicht, kein Body. */
 export const wiederholeWorkflowPruefung = (workflowId) => fetch(mitPraefix(`/workflows/${encodeURIComponent(workflowId)}/pruefung-wiederholen`), { method: 'POST', body: JSON.stringify({}) })

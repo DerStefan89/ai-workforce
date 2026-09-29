@@ -10,6 +10,9 @@
  * scripts/leitstand-server.mjs — ein Konfigurationsfehler des Servers ist
  * kein Fachergebnis eines Startauftrags).
  *
+ * Seit F36 WS-5a: optionales Feld vorschau_url (Projekt-URL mit Port, E-F36-7) und
+ * projektOriginsAus für den Platzhalter {projekt_origins} der Katalog-MCPs.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
  * scripts/check-f25-projekte.mjs (Rot-/Grün-Fälle gegen die reale
  * validiereProjekteDaten, läuft in npm run check — kein separates
@@ -20,10 +23,37 @@ import { existsSync, readFileSync } from 'node:fs'
 import type { ProjektEintrag } from './types.ts'
 
 const PROJEKTE_WURZEL_FELDER = new Set(['projekte_schema', 'projekte'])
-const PROJEKT_FELDER = new Set(['id', 'name', 'repo_pfad', 'startvorlage_pfad', 'profil_pfad', 'basisverzeichnis', 'status', 'kontext_pfad', 'roadmap_pfad'])
+const PROJEKT_FELDER = new Set(['id', 'name', 'repo_pfad', 'startvorlage_pfad', 'profil_pfad', 'basisverzeichnis', 'status', 'kontext_pfad', 'roadmap_pfad', 'vorschau_url'])
 const PROJEKT_STATUS = ['IDEE', 'DISCOVERY', 'GEPLANT', 'IN_ENTWICKLUNG', 'TEST', 'NUTZBAR', 'BETRIEB', 'PAUSIERT', 'ARCHIVIERT']
 /** F41 WS-1: exportiert (Muster D5) — dieselbe Form prüft src/projekt-anlegen/index.ts für eine NEUE id, bevor sie überhaupt einen Registereintrag bildet. */
 export const ID_MUSTER = /^[a-z0-9][a-z0-9-]*$/
+/** F36 WS-5a (E-F36-7): Projekt-URL nur lokal mit Port, ohne Pfad — Quelle von {projekt_origins}. */
+const VORSCHAU_URL_MUSTER = /^http:\/\/(localhost|127\.0\.0\.1):([1-9][0-9]{0,4})$/
+
+/**
+ * F36 WS-5a (E-F36-7): Port aus vorschau_url, oder null bei falscher Form (nur http://localhost:<port>
+ * bzw. http://127.0.0.1:<port>, Port 1–65535, ohne Pfad).
+ * @param vorschauUrl - Feldwert
+ * @returns Port oder null
+ */
+export function vorschauPortAus(vorschauUrl: unknown): number | null {
+  if (typeof vorschauUrl !== 'string') return null
+  const treffer = VORSCHAU_URL_MUSTER.exec(vorschauUrl)
+  if (treffer === null) return null
+  const port = Number(treffer[2])
+  return port <= 65535 ? port : null
+}
+
+/**
+ * F36 WS-5a (E-F36-7): Wert für {projekt_origins} — beide lokalen Origins MIT Port, semikolongetrennt
+ * (Spike WS-2s S5c: ohne Port sperrt --allowed-origins auch den lokalen Server).
+ * @param vorschauUrl - vorschau_url des Projekts, oder undefined/null
+ * @returns 'http://localhost:<port>;http://127.0.0.1:<port>' oder null ohne gültige URL
+ */
+export function projektOriginsAus(vorschauUrl: unknown): string | null {
+  const port = vorschauPortAus(vorschauUrl)
+  return port === null ? null : `http://localhost:${port};http://127.0.0.1:${port}`
+}
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -82,6 +112,10 @@ function pruefeProjektForm(projekt: unknown, index: number, verstoesse: string[]
   }
   if ('roadmap_pfad' in projekt && !istNichtLeererString(projekt.roadmap_pfad)) {
     verstoesse.push(`'${praefix}roadmap_pfad' muss, wenn gesetzt, ein nicht-leerer String sein`)
+  }
+  // F36 WS-5a (E-F36-7): optional; nur lokal mit Port.
+  if ('vorschau_url' in projekt && vorschauPortAus(projekt.vorschau_url) === null) {
+    verstoesse.push(`'${praefix}vorschau_url' muss, wenn gesetzt, 'http://localhost:<port>' oder 'http://127.0.0.1:<port>' sein (Port 1–65535, ohne Pfad)`)
   }
 }
 

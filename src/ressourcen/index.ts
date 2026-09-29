@@ -16,7 +16,10 @@
  * reine Funktionen pruefeAnwendbarkeit, baueMcpAufruf (WS-2) und fehltFuerEinsatz
  * (src/capabilities-ansicht). Seit F36 WS-3: baueEmpfehlung und baueEmpfehlungsZeile
  * (Empfehlung am ZWINGEND-Start der Ausführung, Aufrufer von pruefeAnwendbarkeit und
- * fehltFuerEinsatz). Dieses Modul
+ * fehltFuerEinsatz). Seit F36 WS-5a (E-F36-6/7/9): herkunft.paket und installation_vorlage (nur
+ * extern mcp), Platzhalter {projekt_origins}/{ausgabe_ordner} in args (ersetzePlatzhalter,
+ * brauchtProjektOrigins), pruefeInstallierbarkeit und empfehlungsKennung (F-808); die Installation
+ * selbst (Prozesse, Dateien) liegt in src/ressourcen/installation.ts. Dieses Modul
  * ENTSCHEIDET nichts — keine automatische Worker- oder Modellwahl (E-M3-3
  * bleibt unberührt, docs/projekt/zielfassung.md §13.4): es prüft und meldet.
  *
@@ -44,13 +47,25 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, posix, resolve } from 'node:path'
+import { isAbsolute, join, posix, resolve } from 'node:path'
+import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
 import { TASK_TYPEN } from '../router/index.ts'
 import { WERKZEUG_EINTRAG_MUSTER } from '../startvorlage/index.ts'
-import type { Anwendbarkeit, AnwendbarkeitsKontext, AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, Ressource } from './types.ts'
+import type {
+  Anwendbarkeit,
+  AnwendbarkeitsKontext,
+  AufgelosteRessource,
+  CapabilityGap,
+  Empfehlung,
+  EmpfehlungsEintrag,
+  EmpfehlungsLaufKontext,
+  InstallationsVorlage,
+  McpPlatzhalterWerte,
+  Ressource,
+} from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
-const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'lizenz', 'kosten', 'installation', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
+const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'lizenz', 'kosten', 'installation', 'installation_vorlage', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
 const RESSOURCEN_TYP = ['worker', 'skill', 'agent', 'extern']
 const FREIGABE = ['FREIGEGEBEN', 'OFFEN']
 const EXTERN_UNTERART = ['skill', 'agent', 'mcp']
@@ -71,6 +86,17 @@ const AGENT_PFAD_MUSTER = /^\.claude\/agents\/[A-Za-z0-9][A-Za-z0-9_-]*\.md$/
 const INSTALLATIONS_PFAD_MUSTER = /^(~[\\/]|\/|[A-Za-z]:[\\/]|\\\\)/
 /** Spike P3: nur Einzelnamen 'mcp__<server>__<werkzeug>', keine Wildcard — zusätzlich muss WERKZEUG_EINTRAG_MUSTER (E-F754) gelten. */
 const MCP_WERKZEUG_MUSTER = /^mcp__([a-z0-9][a-z0-9-]*)__[A-Za-z0-9_-]+$/
+/**
+ * F36 WS-5a (E-F36-9): herkunft.paket = 'npm:<name>' nach den npm-Namensregeln (klein, höchstens 214
+ * Zeichen, optional '@scope/', kein führender Punkt/Unterstrich/Bindestrich — sonst läse npm den Namen
+ * als Option —, nur a-z 0-9 - . _ ~).
+ */
+const PAKET_MUSTER = /^npm:((?:@[a-z0-9~][a-z0-9-._~]*\/)?[a-z0-9~][a-z0-9-._~]*)$/
+const PAKETNAME_MAX = 214
+/** F36 WS-5a: die einzigen Platzhalter in mcp_server.args bzw. installation_vorlage.args (E-F36-7). */
+export const MCP_PLATZHALTER = ['projekt_origins', 'ausgabe_ordner'] as const
+const PLATZHALTER_TREFFER = /\{([^{}]*)\}/g
+const VORLAGE_FELDER = new Set(['bin', 'args', 'werkzeuge'])
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -84,6 +110,75 @@ function meldeUnbekannteFelder(obj: Record<string, unknown>, erlaubt: Set<string
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${praefix}${feld}' (additionalProperties: false)`)
   }
+}
+
+/**
+ * F36 WS-5a (E-F36-9): Paketname aus herkunft.paket ('npm:<name>'), oder null bei falscher Form.
+ * @param paket - Feldwert herkunft.paket
+ * @returns npm-Paketname (z. B. '@playwright/mcp') oder null
+ */
+export function paketNameAus(paket: unknown): string | null {
+  if (typeof paket !== 'string') return null
+  const treffer = PAKET_MUSTER.exec(paket)
+  return treffer === null || treffer[1].length > PAKETNAME_MAX ? null : treffer[1]
+}
+
+/**
+ * F36 WS-5a: meldet jeden Platzhalter '{…}' in args, der nicht in MCP_PLATZHALTER steht (fail-closed:
+ * ein vertippter Platzhalter würde sonst wörtlich an den Server gehen).
+ * @param args - mcp_server.args bzw. installation_vorlage.args (bereits als string[] geprüft)
+ * @param pfad - Feldpfad für die Meldung
+ * @param verstoesse - Sammelliste
+ */
+function pruefePlatzhalter(args: readonly string[], pfad: string, verstoesse: string[]): void {
+  args.forEach((arg, i) => {
+    for (const treffer of arg.matchAll(PLATZHALTER_TREFFER)) {
+      if (!(MCP_PLATZHALTER as readonly string[]).includes(treffer[1])) {
+        verstoesse.push(`'${pfad}[${i}]' enthält den unbekannten Platzhalter '${treffer[0]}' (erlaubt: ${MCP_PLATZHALTER.map((p) => `{${p}}`).join(', ')})`)
+      }
+    }
+  })
+}
+
+/**
+ * F36 WS-5a: Einzelnamen 'mcp__<id>__<name>' des eigenen Servers, keine Wildcard, keine Doppelten (R4,
+ * Spike P3) — geteilt von installation.werkzeuge und installation_vorlage.werkzeuge.
+ */
+function pruefeMcpWerkzeuge(werkzeuge: unknown, id: string, pfad: string, verstoesse: string[]): void {
+  if (!Array.isArray(werkzeuge) || werkzeuge.length === 0) {
+    verstoesse.push(`'${pfad}' muss ein Array mit mindestens einem Eintrag sein`)
+    return
+  }
+  const gesehen = new Set<string>()
+  werkzeuge.forEach((w, i) => {
+    const treffer = typeof w === 'string' ? MCP_WERKZEUG_MUSTER.exec(w) : null
+    if (typeof w !== 'string' || treffer === null || treffer[1] !== id || !WERKZEUG_EINTRAG_MUSTER.test(w)) {
+      verstoesse.push(`'${pfad}[${i}]' muss ein Einzelname 'mcp__${id}__<name>' sein, keine Wildcard (Spike P3)`)
+    } else if (gesehen.has(w)) {
+      verstoesse.push(`'${pfad}[${i}]' ('${w}') ist doppelt`)
+    } else {
+      gesehen.add(w)
+    }
+  })
+}
+
+/**
+ * F36 WS-5a: installation_vorlage { bin, args, werkzeuge } — bin relativ im Paket (kein absoluter Pfad,
+ * kein '..', kein Backslash), args mit bekannten Platzhaltern, werkzeuge wie R4.
+ */
+function pruefeInstallationsVorlageForm(vorlage: unknown, id: string, pfad: string, verstoesse: string[]): void {
+  if (!istObjekt(vorlage)) {
+    verstoesse.push(`'${pfad}' ist kein Objekt`)
+    return
+  }
+  meldeUnbekannteFelder(vorlage, VORLAGE_FELDER, `${pfad}.`, verstoesse)
+  const bin = vorlage.bin
+  if (!istNichtLeererString(bin) || bin.includes('\\') || bin.startsWith('/') || /^[A-Za-z]:/.test(bin) || bin.split('/').some((teil) => teil === '..' || teil === '')) {
+    verstoesse.push(`'${pfad}.bin' muss ein relativer Pfad im Paket sein ('/' als Trenner, ohne '..')`)
+  }
+  if (!Array.isArray(vorlage.args) || !vorlage.args.every((a) => typeof a === 'string')) verstoesse.push(`'${pfad}.args' muss ein Array aus Strings sein`)
+  else pruefePlatzhalter(vorlage.args, `${pfad}.args`, verstoesse)
+  pruefeMcpWerkzeuge(vorlage.werkzeuge, id, `${pfad}.werkzeuge`, verstoesse)
 }
 
 /**
@@ -111,9 +206,13 @@ function pruefeHerkunftForm(herkunft: unknown, typ: unknown, praefix: string, ve
       verstoesse.push(`'${praefix}herkunft.pfad' muss die Form '.claude/agents/<name>.md' haben`)
     }
   } else if (art === 'extern') {
-    meldeUnbekannteFelder(herkunft, new Set(['art', 'url']), `${praefix}herkunft.`, verstoesse)
+    meldeUnbekannteFelder(herkunft, new Set(['art', 'url', 'paket']), `${praefix}herkunft.`, verstoesse)
     if (!istNichtLeererString(herkunft.url) || !URL_MUSTER.test(herkunft.url)) {
       verstoesse.push(`'${praefix}herkunft.url' muss mit http:// oder https:// beginnen`)
+    }
+    // Nur die Form; dass paket nur bei unterart 'mcp' steht, prüft pruefeExternFelder.
+    if ('paket' in herkunft && paketNameAus(herkunft.paket) === null) {
+      verstoesse.push(`'${praefix}herkunft.paket' muss die Form 'npm:<paketname>' nach den npm-Namensregeln haben (z. B. 'npm:@scope/name')`)
     }
   } else {
     verstoesse.push(`'${praefix}herkunft.art' muss einer von startvorlage, skill, agent, extern sein`)
@@ -200,6 +299,7 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
     if ('unterart' in ressource) verstoesse.push(`'${praefix}unterart' ist nur bei typ 'extern' zulässig`)
     if ('wirkung' in ressource) verstoesse.push(`'${praefix}wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
     if ('installation' in ressource) verstoesse.push(`'${praefix}installation' ist nur bei typ 'extern' zulässig`)
+    if ('installation_vorlage' in ressource) verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
     for (const feld of ANZEIGE_FELDER) {
       if (feld in ressource) verstoesse.push(`'${praefix}${feld}' ist nur bei typ 'extern' zulässig`)
     }
@@ -226,6 +326,14 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
 
   if ('installation' in ressource && (unterart === 'skill' || unterart === 'agent' || unterart === 'mcp')) {
     pruefeInstallationForm(ressource.installation, unterart, String(ressource.id), `${praefix}installation`, verstoesse)
+  }
+
+  // F36 WS-5a (E-F36-9): Registry-Paket und Installationsvorlage nur bei unterart 'mcp'.
+  if (unterart !== 'mcp') {
+    if (istObjekt(ressource.herkunft) && 'paket' in ressource.herkunft) verstoesse.push(`'${praefix}herkunft.paket' ist nur bei unterart 'mcp' zulässig`)
+    if ('installation_vorlage' in ressource) verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
+  } else if ('installation_vorlage' in ressource) {
+    pruefeInstallationsVorlageForm(ressource.installation_vorlage, String(ressource.id), `${praefix}installation_vorlage`, verstoesse)
   }
 
   if (ressource.freigabe === 'FREIGEGEBEN') {
@@ -260,23 +368,10 @@ function pruefeInstallationForm(installation: unknown, unterart: 'skill' | 'agen
     meldeUnbekannteFelder(server, new Set(['command', 'args']), `${pfad}.mcp_server.`, verstoesse)
     if (!istNichtLeererString(server.command)) verstoesse.push(`'${pfad}.mcp_server.command' muss ein nicht-leerer String sein`)
     if (!Array.isArray(server.args) || !server.args.every((a) => typeof a === 'string')) verstoesse.push(`'${pfad}.mcp_server.args' muss ein Array aus Strings sein`)
+    else pruefePlatzhalter(server.args, `${pfad}.mcp_server.args`, verstoesse)
   }
 
-  if (!Array.isArray(installation.werkzeuge) || installation.werkzeuge.length === 0) {
-    verstoesse.push(`'${pfad}.werkzeuge' muss ein Array mit mindestens einem Eintrag sein`)
-    return
-  }
-  const gesehen = new Set<string>()
-  installation.werkzeuge.forEach((w, i) => {
-    const treffer = typeof w === 'string' ? MCP_WERKZEUG_MUSTER.exec(w) : null
-    if (typeof w !== 'string' || treffer === null || treffer[1] !== id || !WERKZEUG_EINTRAG_MUSTER.test(w)) {
-      verstoesse.push(`'${pfad}.werkzeuge[${i}]' muss ein Einzelname 'mcp__${id}__<name>' sein, keine Wildcard (Spike P3)`)
-    } else if (gesehen.has(w)) {
-      verstoesse.push(`'${pfad}.werkzeuge[${i}]' ('${w}') ist doppelt`)
-    } else {
-      gesehen.add(w)
-    }
-  })
+  pruefeMcpWerkzeuge(installation.werkzeuge, id, `${pfad}.werkzeuge`, verstoesse)
 }
 
 /** anwendbar_wenn: mindestens ein Schlüssel, keine unbekannten; task_typen_any aus TASK_TYPEN (Router), pfad_muster_any nicht-leere Globs. */
@@ -478,6 +573,11 @@ function loeseExternAuf(ressource: Ressource): Aufloesung {
   let bereit: string
   if (unterart === 'mcp') {
     if (ressource.wirkung !== 'lokal') return nicht(`extern, wirkung '${ressource.wirkung}' — in V1 nicht zulässig (E-F36-4)`)
+    // F36 WS-5a: absolute Pfade (node, bin im cap-Ordner) müssen existieren — z. B. nach gelöschtem
+    // cap-Ordner oder Node-Update. Nicht absolute Werte ('node', 'npx', relative args) bleiben ungeprüft.
+    const server = (installation as { mcp_server: { command: string; args: string[] } }).mcp_server
+    const fehlt = [server.command, server.args[0]].find((pfad) => typeof pfad === 'string' && isAbsolute(pfad) && !existsSync(pfad))
+    if (fehlt !== undefined) return nicht(`extern, '${fehlt}' existiert nicht (installation.mcp_server)`)
     bereit = `wirkung 'lokal', installation vollständig (${(installation as { werkzeuge: string[] }).werkzeuge.length} Werkzeug(e)) — Serverstart nicht geprüft`
   } else {
     const vollerPfad = expandiereHome((installation as { pfad: string }).pfad)
@@ -617,6 +717,66 @@ export function pruefeAbdeckung(aufgeloest: AufgelosteRessource[], rolle: string
   return luecken
 }
 
+/**
+ * F36 WS-5a (E-F36-7): ersetzt {projekt_origins}/{ausgabe_ordner} in args. Wirft, wenn ein
+ * vorkommender Platzhalter unbekannt ist oder keinen Wert hat — nie wörtlich an den Server durchreichen.
+ * @param args - mcp_server.args
+ * @param werte - Werte der Platzhalter
+ * @returns neue args-Liste
+ */
+export function ersetzePlatzhalter(args: readonly string[], werte: McpPlatzhalterWerte): string[] {
+  return args.map((arg) =>
+    arg.replace(PLATZHALTER_TREFFER, (ganz, name: string) => {
+      if (!(MCP_PLATZHALTER as readonly string[]).includes(name)) throw new Error(`unbekannter Platzhalter '${ganz}' in mcp_server.args`)
+      const wert = werte[name as keyof McpPlatzhalterWerte]
+      if (typeof wert !== 'string' || wert.length === 0) {
+        throw new Error(name === 'projekt_origins' ? 'Projekt-URL (vorschau_url) fehlt für {projekt_origins}' : `kein Wert für '${ganz}'`)
+      }
+      return wert
+    })
+  )
+}
+
+/**
+ * F36 WS-5a: true, wenn installation.mcp_server.args den Platzhalter {projekt_origins} tragen — ein
+ * solcher Eintrag darf ohne Projekt-URL nie in den Lauf (E-F36-7, fail-closed).
+ * @param ressource - Katalogeintrag
+ * @returns ob die Projekt-URL gebraucht wird
+ */
+export function brauchtProjektOrigins(ressource: Ressource): boolean {
+  // Installiert: die args der installation; noch nicht installiert: die der Vorlage (die daraus werden).
+  const installation = ressource.installation
+  const args = installation !== undefined ? ('mcp_server' in installation && istObjekt(installation.mcp_server) ? installation.mcp_server.args : undefined) : ressource.installation_vorlage?.args
+  return Array.isArray(args) && args.some((a) => typeof a === 'string' && a.includes('{projekt_origins}'))
+}
+
+/**
+ * F36 WS-5a (F-808): Kennung eines angezeigten „Wird genutzt“-Eintrags — '<id>@<sha256 über die
+ * kanonische JSON der installation>'. Ändert sich installation zwischen Anzeige und Start, weicht die
+ * Kennung ab und der Start bricht ab.
+ * @param ressource - Katalogeintrag mit installation
+ * @returns Kennung
+ */
+export function empfehlungsKennung(ressource: Ressource): string {
+  return `${ressource.id}@${sha256Hex(kanonischesJson(ressource.installation ?? null))}`
+}
+
+/**
+ * F36 WS-5a (E-F36-6/9): warum ein Eintrag nicht über „Freigeben & installieren“ installiert werden
+ * darf — null, wenn er darf. Zulässig nur typ 'extern', unterart 'mcp', wirkung 'lokal', mit
+ * herkunft.paket und installation_vorlage. Ob er schon installiert ist, prüft der Aufrufer.
+ * @param ressource - validierter Katalogeintrag
+ * @returns Klartext-Grund oder null
+ */
+export function pruefeInstallierbarkeit(ressource: Ressource): string | null {
+  if (ressource.typ !== 'extern' || ressource.unterart !== 'mcp') return "nur typ 'extern' mit unterart 'mcp' ist über die Workforce installierbar (WS-5a)"
+  if (ressource.wirkung !== 'lokal') return `wirkung '${String(ressource.wirkung)}' — in V1 nur 'lokal' freigebbar (E-F36-4)`
+  const herkunft = ressource.herkunft as { paket?: string }
+  if (paketNameAus(herkunft.paket) === null) return 'herkunft.paket fehlt — installiert wird nur aus der ausdrücklichen Registry-Adresse (E-F36-9)'
+  if (ressource.installation_vorlage === undefined) return 'installation_vorlage fehlt'
+  return null
+}
+
 /** Default-Wert von --mcp-config für jeden Lauf ohne freigegebenen MCP (F31 WS-3c, E-187) — bitgenau wie baueAufrufs Vorgabe. */
 const LEERE_MCP_CONFIG = '{"mcpServers":{}}'
 
@@ -630,10 +790,13 @@ const LEERE_MCP_CONFIG = '{"mcpServers":{}}'
  * (pruefeInstallationForm: leere werkzeuge, Wildcard, fremder Präfix, Sonderzeichen, leerer
  * command), wirft — ein stilles Überspringen würde einen geplanten Server lautlos fehlen oder
  * einen gesperrten durchrutschen lassen. Reine Funktion, kein Prozessstart.
+ * Seit F36 WS-5a ersetzt sie die Platzhalter {projekt_origins}/{ausgabe_ordner} in args
+ * (ersetzePlatzhalter); fehlt ein benötigter Wert, wirft sie ebenfalls (E-F36-7, fail-closed).
  * @param mcpEintraege - aufgelöste Katalogeinträge (typ 'extern', unterart 'mcp')
+ * @param platzhalterWerte - Werte für die Platzhalter; Default {} (dann darf kein Platzhalter vorkommen)
  * @returns { mcpConfig, zusatzWerkzeuge }; leere Eingabe = '{"mcpServers":{}}' und []
  */
-export function baueMcpAufruf(mcpEintraege: readonly Ressource[]): { mcpConfig: string; zusatzWerkzeuge: string[] } {
+export function baueMcpAufruf(mcpEintraege: readonly Ressource[], platzhalterWerte: McpPlatzhalterWerte = {}): { mcpConfig: string; zusatzWerkzeuge: string[] } {
   // Object.create(null): eine id wie '__proto__' darf den Prototyp nicht treffen (ID_MUSTER schließt sie ohnehin aus).
   const mcpServers: Record<string, { command: string; args: string[] }> = Object.create(null)
   const zusatzWerkzeuge: string[] = []
@@ -651,7 +814,13 @@ export function baueMcpAufruf(mcpEintraege: readonly Ressource[]): { mcpConfig: 
     if (verstoesse.length > 0 || installation === undefined || !('mcp_server' in installation)) {
       throw new Error(`${kennung}: installation ungültig (R4): ${verstoesse.join('; ') || 'mcp_server fehlt'}`)
     }
-    mcpServers[eintrag.id] = { command: installation.mcp_server.command, args: [...installation.mcp_server.args] }
+    let args: string[]
+    try {
+      args = ersetzePlatzhalter(installation.mcp_server.args, platzhalterWerte)
+    } catch (fehler) {
+      throw new Error(`${kennung}: ${(fehler as Error).message}`)
+    }
+    mcpServers[eintrag.id] = { command: installation.mcp_server.command, args }
     zusatzWerkzeuge.push(...installation.werkzeuge)
   }
   return { mcpConfig: mcpEintraege.length === 0 ? LEERE_MCP_CONFIG : JSON.stringify({ mcpServers }), zusatzWerkzeuge }
@@ -661,6 +830,8 @@ export function baueMcpAufruf(mcpEintraege: readonly Ressource[]): { mcpConfig: 
 const EMPFEHLUNG_OBERGRENZE = 3
 /** Seit Variante 3b (Spike WS-2s S6) sind Skill/Agent nicht im Werkzeugsatz der Ausführung — das ändert erst WS-5. */
 const SKILL_AGENT_ERST_AB_WS5 = 'Skill/Agent in der Ausführung erst ab WS-5'
+/** F36 WS-5a (E-F36-7): Grund, wenn ein Eintrag mit {projekt_origins} ohne vorschau_url des Projekts empfohlen würde. */
+export const PROJEKT_URL_FEHLT = 'Projekt-URL (vorschau_url) fehlt'
 
 /** Ein Listeneintrag samt Rang (0 = beide anwendbar_wenn-Schlüssel, 1 = nur einer) vor dem Sortieren. */
 type Kandidat = { rang: number; eintrag: EmpfehlungsEintrag }
@@ -686,12 +857,17 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
  *   zusätzlich SKILL_AGENT_ERST_AB_WS5.
  * - MCP mit wirkung ≠ 'lokal' (E-F36-4, in V1 nicht freigebbar) steht in keiner Liste, nur in
  *   nichtFreigebbarAnzahl.
+ * - Seit F36 WS-5a: ein MCP, dessen args {projekt_origins} tragen, kommt ohne Projekt-URL nie in
+ *   „Wird genutzt“ (Grund PROJEKT_URL_FEHLT, E-F36-7); jeder „Wird genutzt“-Eintrag trägt
+ *   empfehlungId (F-808), ein über die Workforce installierbarer Eintrag in „Passt, nicht im Lauf“
+ *   installierbar: true (pruefeInstallierbarkeit, noch ohne installation).
  * Rangfolge und Obergrenze siehe sortiereUndBegrenze. Die Eingabereihenfolge beeinflusst das Ergebnis nicht.
  * @param aufgeloest - Katalog nach loeseRessourcenAuf
  * @param kontext - task_typen des Auftrags (Router) und Pfade des Projekts
+ * @param laufKontext - { projektUrlVorhanden } des Projekts; Default {} = keine Projekt-URL (fail-closed)
  * @returns die beiden Listen, je Liste die Anzahl weiterer Einträge, die Anzahl nicht freigebbarer
  */
-export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext): Empfehlung {
+export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext, laufKontext: EmpfehlungsLaufKontext = {}): Empfehlung {
   const genutzt: Kandidat[] = []
   const passtNicht: Kandidat[] = []
   let nichtFreigebbarAnzahl = 0
@@ -706,13 +882,16 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
     const regel = ressource.anwendbar_wenn
     const rang = regel?.task_typen_any !== undefined && regel.pfad_muster_any !== undefined ? 0 : 1
     const basis = { id: ressource.id, name: ressource.name, typ: ressource.typ, ...(ressource.unterart !== undefined ? { unterart: ressource.unterart } : {}) }
-    if (istMcp && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar) {
-      genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung } })
+    const ohneProjektUrl = istMcp && brauchtProjektOrigins(ressource) && laufKontext.projektUrlVorhanden !== true
+    if (istMcp && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar && !ohneProjektUrl) {
+      genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung, empfehlungId: empfehlungsKennung(ressource) } })
       continue
     }
     const gruende = fehltFuerEinsatz(ressource, ressource)
     if (!istMcp) gruende.push(SKILL_AGENT_ERST_AB_WS5)
-    passtNicht.push({ rang, eintrag: { ...basis, grund: gruende.length > 0 ? gruende.join('; ') : 'nicht einsatzbereit' } })
+    if (ohneProjektUrl) gruende.push(PROJEKT_URL_FEHLT)
+    const installierbar = istMcp && ressource.installation === undefined && pruefeInstallierbarkeit(ressource) === null
+    passtNicht.push({ rang, eintrag: { ...basis, grund: gruende.length > 0 ? gruende.join('; ') : 'nicht einsatzbereit', ...(installierbar ? { installierbar: true } : {}) } })
   }
   const a = sortiereUndBegrenze(genutzt)
   const b = sortiereUndBegrenze(passtNicht)
@@ -730,4 +909,4 @@ export function baueEmpfehlungsZeile(wirdGenutzt: readonly EmpfehlungsEintrag[])
   return `Freigegebene Katalog-Fähigkeiten in diesem Lauf: ${wirdGenutzt.map((e) => `${e.id} (${e.name})`).join(', ')} — nutzen, wo sie passen.`
 }
 
-export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, Ressource }
+export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, EmpfehlungsLaufKontext, InstallationsVorlage, McpPlatzhalterWerte, Ressource }

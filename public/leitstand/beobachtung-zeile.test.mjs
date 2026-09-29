@@ -39,3 +39,10 @@ test('formatiereBeobachtung: fehlendes Feld (alte Laufakte, Codex) → "nicht be
   assert.strictEqual(formatiereBeobachtung(null), 'nicht beobachtet')
   assert.strictEqual(formatiereBeobachtung(undefined), 'nicht beobachtet')
 })
+
+test('formatiereBeobachtung (F36 WS-5a): navigate_adressen als „Navigiert“, fehlt das Feld, kein Zusatz', () => {
+  const basis = { init_tools: [], init_agents: [], init_skills: [], init_mcp_server: ['playwright-mcp'], skill_aufrufe: [], subagent_aufrufe: [], mcp_aufrufe: ['mcp__playwright-mcp__browser_navigate'] }
+  assert.ok(formatiereBeobachtung({ ...basis, navigate_adressen: ['http://localhost:5173/', 'https://example.com'] }).endsWith(' · Navigiert: [http://localhost:5173/, https://example.com]'))
+  assert.doesNotMatch(formatiereBeobachtung(basis), /Navigiert/)
+  assert.doesNotMatch(formatiereBeobachtung({ ...basis, navigate_adressen: [] }), /Navigiert/)
+})

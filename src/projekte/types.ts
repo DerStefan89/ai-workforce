@@ -28,4 +28,6 @@ export interface ProjektEintrag {
   kontext_pfad?: string
   /** F33 WS-1 (E-M4-2). Optional — fehlt das Feld, gilt 'docs/projekt/roadmap.json'. */
   roadmap_pfad?: string
+  /** F36 WS-5a (E-F36-7). Optional — 'http://localhost:<port>' oder 'http://127.0.0.1:<port>'; ohne das Feld kommt kein Katalog-MCP mit {projekt_origins} in einen Lauf. */
+  vorschau_url?: string
 }
