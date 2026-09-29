@@ -10,6 +10,7 @@ derselbe Fakt an drei Stellen im Quell-Projekt dieses Templates).
 | Stack, Regeln, Definition of Done | `CLAUDE.md` | |
 | Verbindliche Code-Konventionen | `ARCHITECTURE.md` | |
 | Aktueller Phasenstand, Scope | `docs/STATUS.md` | nicht in CLAUDE.md duplizieren |
+| Aktueller Arbeitsstand / Übergabe zwischen Sitzungen | `state/uebergabe-aktuell.md` | nicht: `docs/STATUS.md` (= Projektphase), nicht: `state/zwischenstand/` (= Aufgabengedächtnis einer Sitzung) |
 | Architekturentscheidungen mit Alternativen | `docs/adr/*.md` | nicht nur im Chat/PR-Text |
 | Objektive Gates + Kalibrierung | `state/gates.md` | |
 | Trigger für menschliche/Agent-Handlungen | `state/triggers.md` | |

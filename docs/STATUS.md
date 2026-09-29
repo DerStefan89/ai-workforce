@@ -75,7 +75,10 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
-Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 noch nicht begonnen (F37/F38 als
+Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 „Capability Library wirksam
+machen“ `IN_ARBEIT` (gemergt: WS-0 #267, WS-1 #268, WS-4 #269, WS-1b #270,
+WS-2 #271, Spike S7 #272; offen: WS-3, WS-5, Reallauf;
+`features/F36/feature.md`) (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
@@ -89,7 +92,7 @@ gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
 Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
-feature.md`) (Stand 22.09.2026).
+feature.md`) (Stand 22.09.2026; F36 29.09.2026).
 
 ## Erledigt
 
@@ -101,12 +104,14 @@ feature.md`) (Stand 22.09.2026).
   + `journal.md` als Ablageort, `scripts/check-feature.mjs` als Gate
   (eingehängt in `npm run check:template`), erste befüllte Akte
   `features/AF-F001/` mit `Status: READY_FOR_TECH`.
-- Feature 0 (Datenformate) ist umgesetzt: `kontrollzustand/` und
+- Feature 0 (F0, Datenformate;
+  `features/F0/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `kontrollzustand/` und
   `profiles/` existieren real im Repo, ihr Format ist über
   `schemas/*.schema.json` + `schemas/examples/` maschinell geprüft
   (`scripts/check-datenformate.mjs`, eingehängt in `npm run check` und
   `npm run check:template`). `F-010` ist damit erledigt.
-- Feature 1 (Checkpoint Store) ist umgesetzt: `src/checkpoint-store/`
+- Feature 1 (F1, Checkpoint Store;
+  `features/F1/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `src/checkpoint-store/`
   schreibt, lädt und validiert eine Hash-Kette von Checkpoints je
   `lauf_id` (Schreiben, Laden, Validierung, Hash-Kette, Gate
   `scripts/check-checkpoint-store.mjs`, eingehängt in `npm run check` und
@@ -115,7 +120,8 @@ feature.md`) (Stand 22.09.2026).
   (`scripts/verify-rename-atomicity.mjs`) real gelaufen, bewusst
   **nicht** in die Standardkette eingehängt — bleibt ein einmaliger,
   plattformabhängiger Nachweis, siehe `state/gates.md`.
-- Feature 2 (Artifact Registry / Lineage) ist umgesetzt: `src/lineage-
+- Feature 2 (F2, Artifact Registry / Lineage;
+  `features/F2/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `src/lineage-
   registry/` registriert kern- und werkzeug-erzeugte Artefakt-Versionen,
   hält Eingaben fest, prüft mechanisch auf STALE und hält eine
   menschliche STALE-Entscheidung fest. Lineage-Einträge nutzen F1s
@@ -123,7 +129,7 @@ feature.md`) (Stand 22.09.2026).
   eigener Dateibaum unter `kontrollzustand/` (Gate
   `scripts/check-lineage-registry.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
-- F1B (Wirkungsmarke, `RUN_PREPARED`, Terminalartefakt, Klärzustands-
+- F1B (`features/F1B/feature.md`, Status `ABGESCHLOSSEN`; Wirkungsmarke, `RUN_PREPARED`, Terminalartefakt, Klärzustands-
   Feststellung) ist umgesetzt: `src/checkpoint-store/` schreibt und lädt
   zusätzlich zu Checkpoints auch Wirkungsmarken (`typ: "wirkungsmarke"`)
   in derselben Hash-Kette; `stelleLaufstatusFest` stellt für eine
@@ -132,7 +138,8 @@ feature.md`) (Stand 22.09.2026).
   mehreren offenen Marken) — nie automatischer Neustart (Gate
   `scripts/check-f1b-wirkungsmarke.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
-- F3 (Authorization Boundary, minimal) ist umgesetzt: `src/authorization-
+- F3 (Authorization Boundary, minimal;
+  `features/F3/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `src/authorization-
   boundary/` prüft eine Freigabe-/Verweigerungsentscheidung, die in einem
   lokalen Git-Repository außerhalb dieses Produkt-Repos liegt
   (`C:\Users\stefa\ai-workforce-autorisierung\`, D16), gegen den echten
@@ -143,7 +150,8 @@ feature.md`) (Stand 22.09.2026).
   eingehängt in `npm run check` und `npm run check:template`). Deckt nur
   die "Veränderungs"-Hälfte von E-189 — die "Erzeugungs"-Hälfte (OS-
   seitige Schreibsperre) ist ausdrücklicher Nicht-Ziel-Rand.
-- F9 (Human Transport) ist umgesetzt: `src/human-transport/` erfasst einen
+- F9 (Human Transport;
+  `features/F9/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `src/human-transport/` erfasst einen
   `BEDARF_V0`, bündelt ihn zu einem Transportpaket (F2
   `registriereKernArtefakt`), bezeugt die Aushändigung mit F1Bs
   `RUN_PREPARED` und schließt den Lauf über ein F1B-Terminalartefakt ab.
@@ -157,7 +165,8 @@ feature.md`) (Stand 22.09.2026).
   Human-Transport-Läufe an, ohne neuen Schreibpfad (Gate
   `scripts/check-f9-human-transport.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
-- F5 (Context Builder) ist umgesetzt: `src/context-builder/` baut aus
+- F5 (Context Builder;
+  `features/F5/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt: `src/context-builder/` baut aus
   einer Anfrageliste (Pfad, Frage, Begründung, vom Aufrufer bereits
   gelesener Inhalt) ein begrenztes Kontextpaket je Auftrag und Rolle —
   Rollenfilter (Kern-Konstante, keine Profilzuordnung, D1/D14),
@@ -174,7 +183,8 @@ feature.md`) (Stand 22.09.2026).
   freigegeben mit Hinweisen) vor dem Bau (Gate
   `scripts/check-f5-context-builder.mjs`, eingehängt in `npm run check`
   und `npm run check:template`).
-- F4 (Invocation Policy / Protection Validator, minimal) ist umgesetzt:
+- F4 (Invocation Policy / Protection Validator, minimal;
+  `features/F4/feature.md`, Status `ABGESCHLOSSEN`) ist umgesetzt:
   `src/invocation-policy/` stellt für eine geplante schreibende Execution
   lokal, ohne Werkzeugaufruf fest, ob (a) die Werkzeugkonfiguration gültig
   ist und jedes referenzierte Schutzskript mit dem in einer extern
@@ -196,7 +206,10 @@ feature.md`) (Stand 22.09.2026).
   Schreibschutz-Auflage für die künftige Wirksamkeitsnachweis-Ablageort-
   Entscheidung) (Gate `scripts/check-f4-invocation-policy.mjs`, eingehängt
   in `npm run check` und `npm run check:template`).
-- F8 (Execution Controller) ist mit WS-1/WS-2a/WS-2b vollständig
+- F6a (Claude-Code-Gateway, Lesepfad): `features/F6a/feature.md`, Status `ABGESCHLOSSEN`.
+- F7 (Result Evaluator): `features/F7/feature.md`, Status `ABGESCHLOSSEN`.
+- F8 (Execution Controller;
+  `features/F8/feature.md`, Status `ABGESCHLOSSEN`) ist mit WS-1/WS-2a/WS-2b vollständig
   umgesetzt und `ABGESCHLOSSEN`: `src/execution-controller/` führt einen
   Lauf vollständig durch F5 (`baueKontextpaket`) → F6a (`baueAufruf`,
   `starteGateway`) → F7 (`klassifiziereLauf`) → F1B
@@ -224,7 +237,8 @@ feature.md`) (Stand 22.09.2026).
   `schreibeWirkungsmarke`/`schreibeCheckpoint`/`starteGateway` übergibt —
   der Vorgängerlauf bleibt unverändert (real getestet, echter
   Vorher/Nachher-Vergleich).
-- F10 (Leitstand-Schreibpfad) ist mit WS-1/WS-2 vollständig umgesetzt und
+- F10 (Leitstand-Schreibpfad;
+  `features/F10/feature.md`, Status `ABGESCHLOSSEN`) ist mit WS-1/WS-2 vollständig umgesetzt und
   `ABGESCHLOSSEN`: der bislang wegwerfbare, vertragsfreie Leitstand-
   Prototyp (`scripts/leitstand-server.mjs`, `public/leitstand/`) bekommt
   einen Schreibpfad mit eigenem Vertrag. `POST /api/laeufe` löst reale
@@ -240,7 +254,8 @@ feature.md`) (Stand 22.09.2026).
   `laufId` und `vorgaengerLaufId` erzeugt; die UI aktualisiert Läufe und
   Startfehler periodisch (Gate `scripts/check-f10-leitstand.mjs`,
   eingehängt in `npm run check`).
-- F11 (Auftrag und geführter Start) ist mit WS-1/WS-2/WS-3 vollständig
+- F11 (Auftrag und geführter Start;
+  `features/F11/feature.md`, Status `ABGESCHLOSSEN`) ist mit WS-1/WS-2/WS-3 vollständig
   umgesetzt und `ABGESCHLOSSEN`: ein Auftrag wird als eigenes
   Kernartefakt (`AUFTRAG_V0`) registriert, der Auftragstext geht als
   eigener, von der Evidenz getrennter Abschnitt in den Prompt (AK1-3);
@@ -256,7 +271,8 @@ feature.md`) (Stand 22.09.2026).
   Kindprozesses. Dabei real gefunden und behoben: ein
   Konfigurationsfehler in der Startvorlage (`werkzeugStartziel`-Drift
   gegen den Wirksamkeitsnachweis, E-188, `state/findings.md` F-136).
-- F12 (Bedienbarer Lauf: Auftrag, Liste, Detail) ist mit WS-1/WS-2/WS-3/
+- F12 (Bedienbarer Lauf: Auftrag, Liste, Detail;
+  `features/F12/feature.md`, Status `ABGESCHLOSSEN`) ist mit WS-1/WS-2/WS-3/
   WS-4 vollständig umgesetzt und `ABGESCHLOSSEN`: die Laufliste zeigt
   ausschließlich echte Laufketten mit Zeitstempeln aus dem Artefakt
   statt der Dateizeit, ein Auftrag wird über einen eigenen Endpunkt
@@ -438,7 +454,7 @@ beide real erfüllt; in `docs/projekt/zielfassung.md` §13.4 nachgetragen
   `src/ressourcen/index.ts` löst Verfügbarkeit ausschließlich zur
   Abfragezeit auf (kein gespeichertes Statusfeld);
   `scripts/check-f19-ressourcen.mjs` läuft in `npm run check`
-  (`features/F19/feature.md`, Status `FEATURE_GATE`, AK1–AK8 erfüllt,
+  (`features/F19/feature.md`, Status `ABGESCHLOSSEN`, AK1–AK8 erfüllt,
   Realnachweis `features/F19/nachweis-ws2.md`). **Abgeschlossen per
   E-M5-1 (Stefan, 20.09.2026)**, Restfinding bleibt offen: `state/
   findings.md` F-346 — `claude-code` kann `STRUCTURED_OUTPUT` strukturell
@@ -524,8 +540,8 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   offene Entscheidung zum P4-Prioritätsniveau). Nach F33.
 - ✅ **F35** — Feature bauen aus Akte (schlank, E-M5-16: WS-1 Auftrag
   aus Akte, WS-2 Urteil je AK, WS-3 ADJUST-Automatik; `qa`-Schritt,
-  Advisor-Schema und Befund-Projektion V1-Backlog). Status
-  `ABGESCHLOSSEN`, **Abnahme durch Stefan am 28.09.2026**.
+  Advisor-Schema und Befund-Projektion V1-Backlog). Akte
+  `features/F35/feature.md`, Status `ABGESCHLOSSEN`, **Abnahme durch Stefan am 28.09.2026**.
   Reallauf gegen `haushaltsbuch2` (F1 „Kategorien verwalten“, Pfad
   `hoch`, 3 Iterationen, 2 automatische Anpassungen, Abnahme F1
   `ANGENOMMEN`, 25 Tests grün): `features/F35/nachweis-reallauf.md`,
@@ -538,8 +554,16 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   (`docs/projekt/zielfassung.md` §13.6, E-M5-16 — Reihenfolge jetzt
   F34 → F39 → F41 → F42 → F35 schlank ∥ F36 → Fixpaket → Kern-Feature
   „Projekt aufrufen/anzeigen" → Design → F30 → RC).
-- ⏳ **F36** — Capability Library Expansion, vor dem Design. Noch nicht
-  begonnen. Nach E-M5-5, parallel zu F35 ab F34 (disjunkte Dateien).
+- ⏳ **F36** — Capability Library wirksam machen (neu geschnitten
+  28.09.2026, vorher „Capability Library Expansion“, Anlass F-774), vor dem
+  Design. Akte `features/F36/feature.md`, Status `IN_ARBEIT`. Gemergt:
+  WS-0 Probelauf Werkzeugsatz (#267), WS-1 Katalog (#268), WS-4
+  Beobachtung (#269), WS-1b Übernahme der Recherche (#270), WS-2 Laufzeit
+  (#271, MCP-Weg; Skill/Agent in der Ausführung wegen S6 bewusst aus),
+  Spike S7 (#272, E-F36-8 = B hält mit V4a, F-791 (1)–(5) als Bauvorgaben
+  für WS-5). Offen: WS-3 Empfehlung, WS-5 Installation, Reallauf gegen
+  `haushaltsbuch2` → Abnahme. Nach E-M5-5, parallel zu F35 ab F34
+  (disjunkte Dateien).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).

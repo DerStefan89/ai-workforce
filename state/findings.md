@@ -10701,3 +10701,76 @@ Auswirkung: Hoch — die Begrenzung nach E-F36-8 wäre nach dem nächsten CLI-Up
 Maßnahme (Umsetzung in WS-5 zusammen mit V4a, `features/F36/feature.md`): (1) Das init-Gate kennt nur die Menge „freigegeben ∪ bewusst gesperrt“; jeder andere Name in `init.skills`/`init.agents` → Lauf abbrechen und die unbekannten Namen melden. (2) Vorstart-Scan: Existiert unterhalb der Projektwurzel ein weiteres `.claude/skills` oder `.claude/agents` außer dem der Wurzel → Lauf abbrechen (fail-closed, schließt die Lücke der nachgeladenen verschachtelten Skills). (3) Das Gate wird beim CLI-Versionswechsel rot, wenn sich die Menge der eingebauten Namen ändert. Aus dem QA-Pass S7, bestätigt (Challenger-[EMPFEHLUNG], 29.09.2026): (4) Write/Edit-Sperre auf `**/.claude/**` (`Write(**/.claude/**)`, `Edit(**/.claude/**)` in `--disallowedTools`). (4a) Rotfall in WS-5: Ein Lauf legt im selben Lauf einen Skill unter `.claude/skills/` an, einmal per `Write` und einmal per `Bash`, und versucht ihn aufzurufen; ist er aufrufbar, eskaliert WS-5 an den Challenger. (4b) Enthält der Laufdiff Änderungen unter `.claude/`, ist das Laufergebnis rot. Den Folgelauf deckt bereits das init-Gate (1) ab. (5) Namenskollision: Ein Ort-B-Eintrag mit dem Namen eines eingebauten oder eines Projekt-Skills/-Agents wird bei der Freigabe abgelehnt und beim Start erneut geprüft (Treffer → Lauf abbrechen, fail-closed). Weitere offene Punkte für die WS-5-Challenge stehen in `features/F36/feature.md` (WS-5).
 Status: offen.
 Feature/Run: F36 Spike S7, 29.09.2026.
+
+**F-792** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Scope-Gate fehlt — im manuellen Ablauf prüft nichts maschinell, ob der Diff nur beauftragte Pfade berührt.
+Beschreibung: Bauaufträge nennen ihren Zielbereich nur in Prosa. Ob der fertige Diff darüber hinausgreift, fällt erst im Review oder gar nicht auf; kein Gate vergleicht die geänderten Pfade mit dem Auftrag.
+Fundstelle: Handoff-Verträge (Skill `handoff-vertrag`); Commit-Ablauf (Skill `git-flow`, `commit-guard`).
+Auswirkung: Mittel — Änderungen außerhalb des Auftrags können unbemerkt mitcommittet werden.
+Maßnahme: Bauaufträge enthalten eine Liste „erlaubte Pfade“; ein Skript vergleicht `git diff --name-only` damit und meldet Abweichungen vor dem Commit. Nicht im Gedächtnis-PR bauen.
+Status: offen.
+Feature/Run: Nachtrag Gedächtnis-Auftrag, 29.09.2026.
+
+**F-793** · `TECH_DEBT` · P3 · offen
+Titel: Perf-Flake `GET /api/zustand` — Median im ersten Lauf über der Grenze, bei Wiederholung weit darunter.
+Beschreibung: Median 426 ms im ersten Lauf, 26 ms bei Wiederholung (Grenze 300 ms), ohne Code- oder Konfigurationsänderung. [Annahme] Ursache ist ein Kaltstart (erster Zugriff, Dateisystem-Cache).
+Fundstelle: Perf-Prüfung für `GET /api/zustand` in `npm run check`.
+Auswirkung: Niedrig — einmalig roter Lauf, kostet eine Wiederholung und Vertrauen in das Gate.
+Maßnahme: Aufwärmrunde vor der Messung oder Wiederholung nur bei Überschreitung prüfen; die Grenze von 300 ms nicht aufweichen. Möglicherweise verwandt mit F-590/F-762 (parallele Testprozesse, Dateisystem-Last).
+Status: offen.
+Feature/Run: `npm run check`, 29.09.2026.
+
+**F-794** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Gedächtnislücken-PR)
+Titel: `docs/STATUS.md` veraltet still — das Lagebild meldete „F36 nicht begonnen“.
+Beschreibung: Nach fünf gemergten F36-Workstreams und Spike S7 stand in `docs/STATUS.md` weiter „F36 noch nicht begonnen“; das daraus erzeugte Lagebild gab den falschen Stand weiter. Beim Abgleich fielen zusätzlich F19 (STATUS `FEATURE_GATE`, Akte `ABGESCHLOSSEN`) und F0 (in STATUS.md nur als „Feature 0“, ohne ID) auf. Kein Gate verglich STATUS.md mit den Akten.
+Fundstelle: `docs/STATUS.md`; `features/*/feature.md`; `docs/projekt/kontext/lagebild.md`.
+Auswirkung: Mittel — Jarvis und neue Sitzungen arbeiten mit falschem Projektstand.
+Maßnahme: Gate `scripts/check-status-akten.mjs` in `npm run check`, maßgeblich allein die Standardform „`features/<ID>/feature.md`, Status `<WERT>`“ (Freitext mit ID zählt nicht): (a) Für jede Akte mit Status `IN_ARBEIT`, `FEATURE_GATE` oder `ABGESCHLOSSEN` enthält STATUS.md die Standardform (fängt F36 und F0); (b) jede Standardform-Angabe nennt den Aktenstatus und zeigt auf eine existierende Akte (fängt F19). STATUS.md für 15 Akten ohne Standardform auf die Form nachgezogen. Kalibrierung in `state/gates.md`. Bekannte Grenze: Die Akten markieren gemergte Workstreams nicht maschinenlesbar, die Workstream-Prüfung ist deshalb nicht gebaut. `features/F36/feature.md` (Abschnitt vor „Akzeptanzkriterien“) im selben PR auf den Stand gebracht (gemergt WS-0, WS-1, WS-4, WS-1b, WS-2, S7; offen WS-3, WS-5, Reallauf).
+Status: erledigt mit dem Gedächtnislücken-PR.
+Feature/Run: Gedächtnislücken, 29.09.2026.
+
+**F-795** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Gedächtnislücken-PR)
+Titel: Übergaben zwischen Sitzungen liegen nur im Claude-Projekt (`claude/*`), nicht im Repo.
+Beschreibung: Der aktuelle Arbeitsstand und die nächsten Schritte standen nur in Übergabedateien des Claude-Projekts; eine Claude-Code-Sitzung im Repo sah sie nicht.
+Fundstelle: `state/memory-map.md`; `state/uebergabe-aktuell.md`.
+Auswirkung: Mittel — neue Sitzungen starten ohne Übergabe oder mit veralteter.
+Maßnahme: `state/uebergabe-aktuell.md`, am Ende jeder Challenger-Runde über den letzten Claude-Code-Prompt vollständig überschrieben (Historie im Git-Log); Zeile in `state/memory-map.md`.
+Status: erledigt mit dem Gedächtnislücken-PR.
+Feature/Run: Gedächtnislücken, 29.09.2026.
+
+**F-796** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: TERMINAL-Blöcke des Challengers nur mit absolutem `cd` und absoluten Pfaden.
+Beschreibung: Am 28.09.2026 enthielt ein TERMINAL-Block des Challengers relative Pfade; im Home-Ordner ausgeführt, liefen die Befehle ins Leere.
+Fundstelle: Challenger-Runde 28.09.2026; `CLAUDE.md` (Iterationsprinzip, „Jeder Befehlsblock beginnt mit `cd` auf den vollständigen Pfad“).
+Auswirkung: Mittel — Befehle wirken im falschen Verzeichnis oder gar nicht.
+Maßnahme: Jeder TERMINAL-Block des Challengers beginnt mit `cd` auf den vollständigen Pfad und nutzt nur absolute Pfade.
+Verwandt: F-513, F-528, F-787 (Terminal-Blöcke, Pfade, cd-Prüfung) — F-796 ergänzt die Pflicht zu absoluten Pfaden im Block selbst.
+Status: offen.
+Feature/Run: Challenger-Runde, 28.09.2026.
+
+**F-797** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Der Challenger liest vor jedem Spike-Prompt die betroffenen Findings im Repo.
+Beschreibung: Die S7-Variante V1 war durch F-770 bereits widerlegt, wurde aber erneut als Variante angesetzt, weil das Finding vor dem Spike-Prompt nicht gelesen wurde.
+Fundstelle: `state/spike-f36-ws2s.md` (S7); `state/findings.md` F-770.
+Auswirkung: Niedrig — Messaufwand für bereits widerlegte Varianten.
+Maßnahme: Vor jedem Spike-Prompt liest der Challenger die betroffenen Findings im Repo und streicht widerlegte Varianten.
+Status: offen.
+Feature/Run: F36 Spike S7, 29.09.2026.
+
+**F-798** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Im Chat vergebene Finding-Nummern kollidieren mit Repo-Nummern.
+Beschreibung: Der Challenger vergab im Chat Finding-Nummern, die im Repo bereits belegt waren oder parallel vergeben wurden.
+Fundstelle: `state/findings.md`; Challenger-Chat.
+Auswirkung: Niedrig — Verweise zeigen auf das falsche Finding.
+Maßnahme: Der Challenger vergibt nur Platzhalter; die Nummer vergibt das Repo beim Eintragen.
+Status: offen.
+Feature/Run: Gedächtnislücken, 29.09.2026.
+
+**F-799** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: CLAUDE.md verlangt Commit und Push per `git-flow` zum Iterationsende; in ai-workforce committet und pusht Stefan selbst.
+Beschreibung: CLAUDE.md (Iterationsprinzip, „Iterationsende“) verlangt nach Freigabe Commit und Push über den Skill `git-flow`. In ai-workforce committet und pusht Stefan selbst: Der commit-guard blockiert (F-787), und der Challenger prüft vor dem PR per Hash (F-789). CLAUDE.md ist zugleich Vorlage für neue Projekte (F41/F42), der Widerspruch wandert also mit.
+Fundstelle: `CLAUDE.md` (Iterationsprinzip); `state/uebergabe-aktuell.md` (Bedienregeln); F-787; F-789.
+Auswirkung: Niedrig — widersprüchliche Anweisung an Claude-Code-Sitzungen und an neue Projekte.
+Maßnahme: Bei der nächsten Harness-Runde entscheiden, ob CLAUDE.md die Variante „Mensch committet“ als Projekt-Option aufnimmt.
+Status: offen.
+Feature/Run: Gedächtnislücken, 29.09.2026.
