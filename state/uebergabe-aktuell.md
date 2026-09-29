@@ -3,9 +3,30 @@ Wird am Ende jeder Challenger-Runde vollständig überschrieben. Historie: Git-L
 Stand: 29.09.2026.
 
 ## Stand
-F36 "Capability Library wirksam machen" IN_ARBEIT. Gemergt: WS-0, WS-1, WS-4, WS-1b, WS-2 (#271, MCP-Weg), Spike S7 (#272), Gedächtnislücken (#273), Datennachtrag (#274), WS-3 Empfehlung (#275), WS-5a MCP-Installation (#276), F-813 CSRF zentral (#277), WS-5b Ort-B-Skills (#278).
+F36 "Capability Library wirksam machen" IN_ARBEIT. Gemergt: WS-0, WS-1, WS-4, WS-1b, WS-2 (#271, MCP-Weg), Spike S7 (#272), Gedächtnislücken (#273), Datennachtrag (#274), WS-3 Empfehlung (#275), WS-5a MCP-Installation (#276), F-813 CSRF zentral (#277), WS-5b Ort-B-Skills (#278), F-814 Host-Allowlist (#279).
 
-F-814 (DNS-Rebinding) ist behoben, nicht gemergt. Worktree `aiw-f814-host`, Branch `fix/f814-host-allowlist`, Basis `c6fbb2a`. Zentraler Host-Haken `istUnzulaessigerHost` in `requestHandler` vor dem CSRF-Haken, für alle Methoden; zulässig nur `127.0.0.1|localhost|[::1]:<gebundener Port>`, sonst 403. Gate `scripts/check-f814-host.mjs` (in `npm run check`). Neu: F-821 (Wartepunkt und Aufräumen im selben TERMINAL-Block; Wiederherstellung WS-5b aus 5cbf80f), F-822 (404-Orakel des Projekt-Dispatchers vor dem Host-Haken, P3), F-823 (ungültige absolute Request-URI beendet den Prozess, P2, real nachgemessen).
+**Reallauf erledigt (29.09.2026).** Branch `docs/f36-reallauf-nachweis`, Worktree `aiw-f36-reallauf`, nur Doku und Nachweis, nicht committet. Details: `features/F36/feature.md` (Reallauf, „Stand 29.09.2026“) und `features/F36/nachweis-reallauf/`.
+- Gebaut und abgenommen in haushaltsbuch2:
+  - F2 (hoch-Kette, `router-59f6cbd8…`, Läufe `1c4a1163`/`7b6d0f40`, Review `fbb5839e` BEREIT);
+  - F3 (standard-Kette, `router-8f1b8883…`, Läufe `8cee6c98`/`74290fb5`, Review `b7a88cce` BEREIT).
+- `frontend-design` und `playwright-mcp` wurden über den Leitstand installiert.
+- Belegt:
+  - AK12 ist erfüllt: `8cee6c98` hat `frontend-design` real aufgerufen. AK4 und AK5 sind real belegt.
+  - Zählregel: 0 fremde Skill-`tool_use` in allen vier Läufen.
+- Playwright-Grenzen mit der installierten Fassung 0.0.83 (F-786):
+  - Fremde Origin → `ERR_BLOCKED_BY_CLIENT`. `file:` wird im echten Lauf ebenfalls blockiert.
+  - `browser_run_code_unsafe` und `browser_evaluate` sind im init sichtbar, beim Aufruf aber verweigert.
+- Neue Findings:
+  - F-824 (Akte → Architekt, P2)
+  - F-825 (Obergrenze verdrängt Installierbare, BUG P2)
+  - F-826 (Hinweis am ZWINGEND-Start, P3)
+  - F-827 (Vorschau im Auftrag nennen, P2)
+  - F-828 (Klärzustand bei laufendem Lauf, BUG P3)
+  - F-829 (Review-Maßstab: Checkliste + DoD, P2)
+  - F-830 (DoD im Skelett vs. Workforce-Läufe, P3)
+- Vermerke an F-764, F-786, F-790 und F-791.
+
+F-814 (DNS-Rebinding) ist gemergt (#279). Zentraler Host-Haken `istUnzulaessigerHost` in `requestHandler` vor dem CSRF-Haken, für alle Methoden; zulässig nur `127.0.0.1|localhost|[::1]:<gebundener Port>`, sonst 403. Gate `scripts/check-f814-host.mjs` (in `npm run check`). Neu: F-821 (Wartepunkt und Aufräumen im selben TERMINAL-Block; Wiederherstellung WS-5b aus 5cbf80f), F-822 (404-Orakel des Projekt-Dispatchers vor dem Host-Haken, P3), F-823 (ungültige absolute Request-URI beendet den Prozess, P2, real nachgemessen).
 
 Inhalt WS-5b (gemergt #278). Challenger-Zuschnitt 29.09.2026: nur Ort-B-Skills; Agents, Projekt-Skills und eingebaute Skills bleiben gesperrt; kein enabledPlugins.
 
@@ -46,18 +67,11 @@ Inhalt WS-5b (gemergt #278). Challenger-Zuschnitt 29.09.2026: nur Ort-B-Skills; 
 - **Nebenbefund 9c:** Ein lesender Bash-Befehl (`pwd && ls -la …`) lief ohne Allowlist-Eintrag. Der vorgeschriebene Skript-Hinweis ist für lesende Befehle zu stark. Challenger entscheidet über ein Finding.
 
 ## Nächste Schritte
-1. F-814 prüfen (Challenger per Hash) und mergen.
-2. Wartepunkte beenden einen TERMINAL-Block; Aufräumen erst nach bestätigtem `git rev-parse` (F-821).
-3. Reallauf haushaltsbuch2 mit playwright-mcp + frontend-design (Vorbedingungen in feature.md „Reallauf“):
-   - vorschau_url im Projektregister setzen; „Freigeben & installieren“ für beide über den Leitstand;
-   - Zählregel (Challenger 29.09.2026):
-     - Gezählt wird nur ein Skill-tool_use mit einem Namen außerhalb der freigegebenen Menge, erkannt am tool_result-Text.
-     - Erwartet: 0. Jeder Treffer geht an den Challenger.
-     - Read auf gesperrte Skill-Dateien wird nicht gezählt.
-   - Rot-Fall „fremde Origin“ mit installiertem playwright-mcp;
-   - beobachten, ob GetTask in init.tools Wirkung hat (F-791-Vermerk).
-4. Review-Pass → Abnahme F36.
-5. Fixpaket (F-764 zuerst; F-765/757, F-767, F-748/751, F-755, F-762).
+1. Reallauf-Nachweis prüfen (Challenger per Hash), dann committen und pushen (`docs/f36-reallauf-nachweis`). Wartepunkte beenden einen TERMINAL-Block; Aufräumen erst nach bestätigtem `git rev-parse` (F-821).
+2. F36-Review-Pass: `code-reviewer` + `qa` mit frischem Kontext über WS-0 bis Reallauf.
+3. FEATURE_GATE, danach Abnahme F36 durch Stefan.
+4. Fixpaket, F-764 zuerst. Dazu F-824, F-825, F-826 und die Reallauf-Findings F-827 bis F-830, außerdem F-765/757, F-767, F-748/751, F-755 und F-762. F-829 zusammen mit F-820 schneiden.
+5. Den Katalog-Stand nach den Leitstand-Installationen im Haupt-Checkout committen (`ressourcen.json`, F-812).
 6. Projekt-Kern „Projekt aufrufen/anzeigen“.
 7. Scout Datenanalyse (F-800).
 8. Design-Schnitt F-725, mit Scope-Ergänzung vom 29.09.2026.
@@ -73,7 +87,7 @@ Inhalt WS-5b (gemergt #278). Challenger-Zuschnitt 29.09.2026: nur Ort-B-Skills; 
 ## Offene Entscheidungen Stefan
 - F-766 (Kontrollzustand von Projekten gitignored).
 - Schema-Zwilling navigate_adressen (Laufakten-Payload-Schema) nachziehen: ja/nein.
-- Die Freigabe von frontend-design macht Stefan im Reallauf (F-812: danach committen).
+- frontend-design und playwright-mcp sind im Reallauf freigegeben und installiert; `ressourcen.json` im Haupt-Checkout noch committen (F-812).
 
 ## Bedienregeln
 - Claude Code committet und pusht in ai-workforce nicht selbst (commit-guard F-787, Ablauf F-789); das weicht bewusst von CLAUDE.md 'Iterationsende' ab, siehe F-799.

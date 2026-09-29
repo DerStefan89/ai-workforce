@@ -427,13 +427,55 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     - im Reallauf-Protokoll die volle init-Zeile ablegen. Zu prüfen sind
       `init.skills` = erwartete Ort-B-Skills (das Gate prüft nur ⊆) und der
       Status von `mcp_servers`.
+  - **Stand 29.09.2026:**
+    - F2 in haushaltsbuch2 über die hoch-Kette gebaut und abgenommen
+      (Workflow `router-59f6cbd8…`, Läufe `1c4a1163`/`7b6d0f40`, Review
+      `fbb5839e` BEREIT, AK1–3 ERFUELLT).
+    - Über den Leitstand installiert: `frontend-design` (`fbe07fb6…`) und
+      `playwright-mcp`.
+    - Korrekturlauf `7b6d0f40`: `init.skills` = [`frontend-design`],
+      `mcp_servers` = [`playwright-mcp` connected], kein Agent, 0 Denials.
+      Skill und MCP waren verfügbar, wurden aber nicht aufgerufen (der Aufruf
+      folgte im F3-Lauf `8cee6c98`). `GetTask` stand in `init.tools`, wurde aber
+      nicht aufgerufen (F-791).
+    - Playwright-Grenzen mit der installierten Fassung
+      (`features/F36/nachweis-reallauf/`, F-786): Fremde Origin →
+      `ERR_BLOCKED_BY_CLIENT`, Projekt-Origin erlaubt. `init.tools` zeigt
+      alle 25 Playwright-Werkzeuge. `browser_run_code_unsafe` und
+      `browser_evaluate` wurden im echten Lauf verweigert, und zwar am
+      tool_result-Text.
+    - F3 in haushaltsbuch2 über die standard-Kette gebaut und abgenommen
+      (Workflow `router-8f1b8883…`, Läufe `8cee6c98` (Iteration 1) und
+      `74290fb5` (Korrektur), Review `b7a88cce` BEREIT, AK1–3 ERFUELLT).
+    - AK12 erfüllt: Lauf `8cee6c98` hat `frontend-design` real aufgerufen
+      (Skill-`tool_use`, „Launching skill: frontend-design“). Dabei war
+      `init.skills` = [`frontend-design`], `playwright-mcp` connected, kein
+      Agent.
+    - Playwright im echten Lauf:
+      - `8cee6c98`: kein Aufruf. Das Modell wollte `npm run dev` selbst
+        starten und wurde verweigert.
+      - `74290fb5`: `browser_navigate` auf `file:///…/public/index.html`.
+        Playwright hat das blockiert („Access to "file:" protocol is
+        blocked“). Die Sperre hält also auch gegen `file:`.
+    - Zählregel Reallauf: In allen vier Ausführungsläufen (`1c4a1163`,
+      `7b6d0f40`, `8cee6c98`, `74290fb5`) gab es 0 Skill-`tool_use` mit einem
+      Namen außerhalb der freigegebenen Menge.
+    - Befunde aus dem Reallauf:
+      - F-824 (Akte → Architekt)
+      - F-825 (Obergrenze verdrängt Installierbare)
+      - F-826 (Hinweis am ZWINGEND-Start)
+      - F-827 (Vorschau im Auftrag nennen)
+      - F-828 (Klärzustand bei laufendem Lauf)
+      - F-829 (Review-Maßstab)
+      - F-830 (DoD im Skelett)
+      - Vermerk an F-764 (alle vier Läufe VERWEIGERT nur wegen Probebefehlen)
 - **WS-4 — Beobachtung (F-730).** Gemergt (#269): init-Zeile (tools,
   agents, skills, mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
 Empfehlung → WS-5a MCP-Installation → WS-5b Skill/Agent → Reallauf. Stand 29.09.2026 gebaut und
 gemergt: WS-0 (#267), WS-1 (#268), WS-4 (#269), WS-1b (#270), WS-2 (#271),
-Spike S7 (#272), WS-3 (#275), WS-5a (#276). WS-5b gebaut, nicht gemergt. Offen: Reallauf. Jeder Workstream wird vor dem
+Spike S7 (#272), WS-3 (#275), WS-5a (#276), WS-5b (#278). Reallauf erledigt (29.09.2026, F2 und F3 in haushaltsbuch2). Jeder Workstream wird vor dem
 Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
@@ -484,10 +526,21 @@ Bau präzisiert (eigene Challenge).
     prüft (F-791 (3), Messung je CLI-Version wiederholen).
   - Agents sind nicht Teil von WS-5b (F-815). Der Reallauf belegt AK4 im
     Durchstich.
+  Stand Reallauf (29.09.2026): real belegt. Im Korrekturlauf `7b6d0f40`
+  (haushaltsbuch2) stand der installierte, freigegebene und empfohlene
+  `frontend-design` in `init.skills` (einziger Eintrag). Kein Agent, 0
+  Denials. Für Agents gilt weiter F-815.
 - AK5 (WS-2) Ein freigegebener lokaler MCP erscheint nur im
   `ausfuehrung`-Schritt in `mcpConfig`, nur mit seinen freigegebenen
   Einzelnamen in `--allowedTools`; jede andere Rolle behält
   `{"mcpServers":{}}`. Prüfweg: Gate auf `baueAufruf`-Tokens je Rolle.
+  Stand Reallauf (29.09.2026): real belegt.
+  - Korrekturlauf `7b6d0f40`: `mcp_servers` = [`playwright-mcp`
+    connected].
+  - `features/F36/nachweis-reallauf/` (B): Über den Produktionsweg stehen
+    in `--allowedTools` genau die 8 freigegebenen Einzelnamen. Die übrigen
+    Werkzeuge sind im init sichtbar, aber nicht aufrufbar
+    (`browser_run_code_unsafe` und `browser_evaluate` verweigert).
 - AK6 (WS-2, an Ort B angepasst in WS-5b) Freigegebene Ort-B-Skills liegen
   nach der Installation in `~/.ai-workforce/cap/<id>/.claude/skills/<name>/`
   und kommen je Lauf per `--add-dir <cap>/<id>` (schreibgesperrt) in die
@@ -559,6 +612,13 @@ Bau präzisiert (eigene Challenge).
 - AK12 (Reallauf) Ein zuvor nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und genutzt. Prüfweg: Laufakte mit init-Zeile
   und Aufruf (WS-4).
+  Stand Reallauf (29.09.2026): erfüllt (Lauf `8cee6c98`).
+  - `frontend-design` und `playwright-mcp` wurden über den Leitstand
+    installiert.
+  - In `7b6d0f40` standen beide bereit, wurden aber nicht aufgerufen.
+  - In `8cee6c98` (F3) wurde `frontend-design` per Skill-`tool_use`
+    aufgerufen („Launching skill: frontend-design“).
+  - `playwright-mcp` wurde nicht wirksam genutzt (F-827).
 
 ## Dependencies
 - F19 (Ressourcen-Katalog) — `schemas/ressourcen.schema.json`,
