@@ -19,7 +19,10 @@
  * fehltFuerEinsatz). Seit F36 WS-5a (E-F36-6/7/9): herkunft.paket und installation_vorlage (nur
  * extern mcp), Platzhalter {projekt_origins}/{ausgabe_ordner} in args (ersetzePlatzhalter,
  * brauchtProjektOrigins), pruefeInstallierbarkeit und empfehlungsKennung (F-808); die Installation
- * selbst (Prozesse, Dateien) liegt in src/ressourcen/installation.ts. Dieses Modul
+ * selbst (Prozesse, Dateien) liegt in src/ressourcen/installation.ts. Seit F36 WS-5b: installation_vorlage
+ * { skill_pfad } und installation { pfad, version = Commit-SHA, inhalt_hash } für extern skill, Verfügbarkeit
+ * eines Skills nur mit passendem inhalt_hash (Bausteine in src/ressourcen/skill-dateien.ts), externe Skills
+ * installierbar (pruefeInstallierbarkeit) und in „Wird genutzt“ (baueEmpfehlung). Dieses Modul
  * ENTSCHEIDET nichts — keine automatische Worker- oder Modellwahl (E-M3-3
  * bleibt unberührt, docs/projekt/zielfassung.md §13.4): es prüft und meldet.
  *
@@ -51,6 +54,7 @@ import { isAbsolute, join, posix, resolve } from 'node:path'
 import { kanonischesJson, sha256Hex } from '../checkpoint-store/index.ts'
 import { TASK_TYPEN } from '../router/index.ts'
 import { WERKZEUG_EINTRAG_MUSTER } from '../startvorlage/index.ts'
+import { berechneInhaltHash, expandiereHome, leseFrontmatter, pruefeSkillPfad, zerlegeGithubUrl } from './skill-dateien.ts'
 import type {
   Anwendbarkeit,
   AnwendbarkeitsKontext,
@@ -60,8 +64,10 @@ import type {
   EmpfehlungsEintrag,
   EmpfehlungsLaufKontext,
   InstallationsVorlage,
+  McpInstallationsVorlage,
   McpPlatzhalterWerte,
   Ressource,
+  SkillInstallationsVorlage,
 } from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
@@ -97,6 +103,11 @@ const PAKETNAME_MAX = 214
 export const MCP_PLATZHALTER = ['projekt_origins', 'ausgabe_ordner'] as const
 const PLATZHALTER_TREFFER = /\{([^{}]*)\}/g
 const VORLAGE_FELDER = new Set(['bin', 'args', 'werkzeuge'])
+/** F36 WS-5b: Felder der installation_vorlage eines externen Skills. */
+const SKILL_VORLAGE_FELDER = new Set(['skill_pfad'])
+/** F36 WS-5b (R4 skill): installation.version ist die 40-stellige Commit-SHA, inhalt_hash ein sha256. */
+const COMMIT_SHA_MUSTER = /^[0-9a-f]{40}$/
+const SHA256_MUSTER = /^[0-9a-f]{64}$/
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {
   return typeof wert === 'object' && wert !== null && !Array.isArray(wert)
@@ -179,6 +190,20 @@ function pruefeInstallationsVorlageForm(vorlage: unknown, id: string, pfad: stri
   if (!Array.isArray(vorlage.args) || !vorlage.args.every((a) => typeof a === 'string')) verstoesse.push(`'${pfad}.args' muss ein Array aus Strings sein`)
   else pruefePlatzhalter(vorlage.args, `${pfad}.args`, verstoesse)
   pruefeMcpWerkzeuge(vorlage.werkzeuge, id, `${pfad}.werkzeuge`, verstoesse)
+}
+
+/**
+ * F36 WS-5b: installation_vorlage { skill_pfad } eines externen Skills — relativer Pfad im Repo (unter
+ * dem Unterpfad der herkunft.url), '/' als Trenner, ohne '..' (pruefeSkillPfad).
+ */
+function pruefeSkillVorlageForm(vorlage: unknown, pfad: string, verstoesse: string[]): void {
+  if (!istObjekt(vorlage)) {
+    verstoesse.push(`'${pfad}' ist kein Objekt`)
+    return
+  }
+  meldeUnbekannteFelder(vorlage, SKILL_VORLAGE_FELDER, `${pfad}.`, verstoesse)
+  const fehler = pruefeSkillPfad(vorlage.skill_pfad)
+  if (fehler !== null) verstoesse.push(`'${pfad}.skill_pfad' ${fehler}`)
 }
 
 /**
@@ -299,7 +324,7 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
     if ('unterart' in ressource) verstoesse.push(`'${praefix}unterart' ist nur bei typ 'extern' zulässig`)
     if ('wirkung' in ressource) verstoesse.push(`'${praefix}wirkung' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
     if ('installation' in ressource) verstoesse.push(`'${praefix}installation' ist nur bei typ 'extern' zulässig`)
-    if ('installation_vorlage' in ressource) verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
+    if ('installation_vorlage' in ressource) verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' oder 'skill' zulässig`)
     for (const feld of ANZEIGE_FELDER) {
       if (feld in ressource) verstoesse.push(`'${praefix}${feld}' ist nur bei typ 'extern' zulässig`)
     }
@@ -328,12 +353,13 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
     pruefeInstallationForm(ressource.installation, unterart, String(ressource.id), `${praefix}installation`, verstoesse)
   }
 
-  // F36 WS-5a (E-F36-9): Registry-Paket und Installationsvorlage nur bei unterart 'mcp'.
-  if (unterart !== 'mcp') {
-    if (istObjekt(ressource.herkunft) && 'paket' in ressource.herkunft) verstoesse.push(`'${praefix}herkunft.paket' ist nur bei unterart 'mcp' zulässig`)
-    if ('installation_vorlage' in ressource) verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' zulässig`)
-  } else if ('installation_vorlage' in ressource) {
-    pruefeInstallationsVorlageForm(ressource.installation_vorlage, String(ressource.id), `${praefix}installation_vorlage`, verstoesse)
+  // F36 WS-5a (E-F36-9): Registry-Paket nur bei unterart 'mcp'. Installationsvorlage je unterart:
+  // mcp {bin, args, werkzeuge} (WS-5a), skill {skill_pfad} (WS-5b), agent keine (Agents erst später).
+  if (unterart !== 'mcp' && istObjekt(ressource.herkunft) && 'paket' in ressource.herkunft) verstoesse.push(`'${praefix}herkunft.paket' ist nur bei unterart 'mcp' zulässig`)
+  if ('installation_vorlage' in ressource) {
+    if (unterart === 'mcp') pruefeInstallationsVorlageForm(ressource.installation_vorlage, String(ressource.id), `${praefix}installation_vorlage`, verstoesse)
+    else if (unterart === 'skill') pruefeSkillVorlageForm(ressource.installation_vorlage, `${praefix}installation_vorlage`, verstoesse)
+    else verstoesse.push(`'${praefix}installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' oder 'skill' zulässig`)
   }
 
   if (ressource.freigabe === 'FREIGEGEBEN') {
@@ -344,7 +370,11 @@ function pruefeExternFelder(ressource: Record<string, unknown>, typ: unknown, pr
   }
 }
 
-/** R4: Form von installation je unterart. MCP-Werkzeuge sind Einzelnamen des eigenen Servers (Server-Kennung = Ressourcen-id), keine Wildcard (Spike P3). */
+/**
+ * R4: Form von installation je unterart. MCP-Werkzeuge sind Einzelnamen des eigenen Servers
+ * (Server-Kennung = Ressourcen-id), keine Wildcard (Spike P3). Seit F36 WS-5b trägt ein Skill
+ * {pfad, version = 40-stellige Commit-SHA, inhalt_hash = sha256}; ein Agent bleibt {pfad, version}.
+ */
 function pruefeInstallationForm(installation: unknown, unterart: 'skill' | 'agent' | 'mcp', id: string, pfad: string, verstoesse: string[]): void {
   if (!istObjekt(installation)) {
     verstoesse.push(`'${pfad}' ist kein Objekt`)
@@ -353,9 +383,13 @@ function pruefeInstallationForm(installation: unknown, unterart: 'skill' | 'agen
   if (!istNichtLeererString(installation.version)) verstoesse.push(`'${pfad}.version' muss ein nicht-leerer String sein`)
 
   if (unterart !== 'mcp') {
-    meldeUnbekannteFelder(installation, new Set(['pfad', 'version']), `${pfad}.`, verstoesse)
+    meldeUnbekannteFelder(installation, new Set(unterart === 'skill' ? ['pfad', 'version', 'inhalt_hash'] : ['pfad', 'version']), `${pfad}.`, verstoesse)
     if (!istNichtLeererString(installation.pfad) || !INSTALLATIONS_PFAD_MUSTER.test(installation.pfad)) {
       verstoesse.push(`'${pfad}.pfad' muss absolut sein oder mit ~ beginnen`)
+    }
+    if (unterart === 'skill') {
+      if (typeof installation.version !== 'string' || !COMMIT_SHA_MUSTER.test(installation.version)) verstoesse.push(`'${pfad}.version' muss bei unterart 'skill' die 40-stellige Commit-SHA sein (klein, hex)`)
+      if (typeof installation.inhalt_hash !== 'string' || !SHA256_MUSTER.test(installation.inhalt_hash)) verstoesse.push(`'${pfad}.inhalt_hash' muss bei unterart 'skill' ein sha256 (64 Hex-Zeichen) sein`)
     }
     return
   }
@@ -492,30 +526,6 @@ function loeseWorkerAuf(ressource: Ressource, startvorlage: { daten: Record<stri
   return { name, beschreibung, verfuegbar: true, grund: "worker.codex-Block vorhanden und freigabe 'FREIGEGEBEN'" }
 }
 
-/** Sehr einfacher Frontmatter-Parser: Text zwischen den ersten beiden '---'-Zeilen, dann 'name:'/'description:' per Zeilen-Regex — kein externes Paket (Bauauftrag). */
-function leseFrontmatter(inhalt: string): { name: string | null; beschreibung: string | null } {
-  const zeilen = inhalt.split(/\r?\n/)
-  if (zeilen[0]?.trim() !== '---') return { name: null, beschreibung: null }
-  let ende = -1
-  for (let i = 1; i < zeilen.length; i++) {
-    if (zeilen[i].trim() === '---') {
-      ende = i
-      break
-    }
-  }
-  if (ende === -1) return { name: null, beschreibung: null }
-
-  let name: string | null = null
-  let beschreibung: string | null = null
-  for (const zeile of zeilen.slice(1, ende)) {
-    const nameTreffer = /^name:\s*(.+)$/.exec(zeile)
-    if (nameTreffer) name = nameTreffer[1].trim()
-    const beschreibungTreffer = /^description:\s*(.+)$/.exec(zeile)
-    if (beschreibungTreffer) beschreibung = beschreibungTreffer[1].trim()
-  }
-  return { name, beschreibung }
-}
-
 type Aufloesung = Pick<AufgelosteRessource, 'name' | 'beschreibung' | 'verfuegbar' | 'grund'>
 
 /**
@@ -544,14 +554,11 @@ function loeseFrontmatterRessourceAuf(ressource: Ressource, repoWurzel: string):
 /** Grund einer extern-Ressource ohne installation — fehltFuerEinsatz meldet das bereits als 'installation fehlt'. */
 const EXTERN_INSTALLATION_FEHLT = 'extern, installation fehlt'
 
-/** Ersetzt ein führendes '~' durch das Home-Verzeichnis (R4: installation.pfad darf mit ~ beginnen). */
-function expandiereHome(pfad: string): string {
-  return /^~[\\/]/.test(pfad) ? join(homedir(), pfad.slice(2)) : pfad
-}
 
 /**
- * Auflösung einer typ:'extern'-Ressource (F36 WS-1). skill|agent: verfügbar, wenn FREIGEGEBEN und
- * installation.pfad existiert. mcp: verfügbar, wenn FREIGEGEBEN, wirkung 'lokal' und installation
+ * Auflösung einer typ:'extern'-Ressource (F36 WS-1). agent: verfügbar, wenn FREIGEGEBEN und
+ * installation.pfad existiert; skill (seit WS-5b) zusätzlich SKILL.md mit Frontmatter und inhalt_hash
+ * des Ordners = installation.inhalt_hash. mcp: verfügbar, wenn FREIGEGEBEN, wirkung 'lokal' und installation
  * vollständig — der Server wird NICHT gestartet (keine Prozessstarts im Katalog), der Grund sagt das.
  */
 function loeseExternAuf(ressource: Ressource): Aufloesung {
@@ -583,6 +590,22 @@ function loeseExternAuf(ressource: Ressource): Aufloesung {
     const vollerPfad = expandiereHome((installation as { pfad: string }).pfad)
     if (!existsSync(vollerPfad)) return nicht(`extern, installation.pfad '${vollerPfad}' existiert nicht`)
     bereit = `installation.pfad '${vollerPfad}' vorhanden (Version ${installation.version})`
+    // F36 WS-5b (F-786 Teil skill): verfügbar heißt für einen Skill zusätzlich SKILL.md mit Frontmatter
+    // und inhalt_hash = gespeicherter Wert — ein nachträglich veränderter Ordner kommt nie in den Lauf.
+    if (unterart === 'skill') {
+      const skillMd = join(vollerPfad, 'SKILL.md')
+      if (!existsSync(skillMd)) return nicht(`extern, SKILL.md fehlt unter '${vollerPfad}'`)
+      let hash: string
+      try {
+        const { name: fmName, beschreibung: fmBeschreibung } = leseFrontmatter(readFileSync(skillMd, 'utf8'))
+        if (fmName === null || fmBeschreibung === null) return nicht(`extern, SKILL.md unter '${vollerPfad}' trägt kein vollständiges Frontmatter (name/description)`)
+        hash = berechneInhaltHash(vollerPfad)
+      } catch (fehler) {
+        return nicht(`extern, Skill-Ordner '${vollerPfad}' nicht prüfbar: ${(fehler as Error).message}`)
+      }
+      if (hash !== (installation as { inhalt_hash: string }).inhalt_hash) return nicht(`extern, inhalt_hash des Skill-Ordners '${vollerPfad}' weicht von installation.inhalt_hash ab (Ordner nach der Installation verändert)`)
+      bereit = `${bereit}, inhalt_hash stimmt`
+    }
   }
 
   if (ressource.freigabe !== 'FREIGEGEBEN') return nicht(`extern, ${bereit}, aber freigabe '${ressource.freigabe}'`)
@@ -746,7 +769,8 @@ export function ersetzePlatzhalter(args: readonly string[], werte: McpPlatzhalte
 export function brauchtProjektOrigins(ressource: Ressource): boolean {
   // Installiert: die args der installation; noch nicht installiert: die der Vorlage (die daraus werden).
   const installation = ressource.installation
-  const args = installation !== undefined ? ('mcp_server' in installation && istObjekt(installation.mcp_server) ? installation.mcp_server.args : undefined) : ressource.installation_vorlage?.args
+  const vorlage = ressource.installation_vorlage
+  const args = installation !== undefined ? ('mcp_server' in installation && istObjekt(installation.mcp_server) ? installation.mcp_server.args : undefined) : vorlage !== undefined && 'args' in vorlage ? vorlage.args : undefined
   return Array.isArray(args) && args.some((a) => typeof a === 'string' && a.includes('{projekt_origins}'))
 }
 
@@ -762,20 +786,33 @@ export function empfehlungsKennung(ressource: Ressource): string {
 }
 
 /**
- * F36 WS-5a (E-F36-6/9): warum ein Eintrag nicht über „Freigeben & installieren“ installiert werden
- * darf — null, wenn er darf. Zulässig nur typ 'extern', unterart 'mcp', wirkung 'lokal', mit
- * herkunft.paket und installation_vorlage. Ob er schon installiert ist, prüft der Aufrufer.
+ * F36 WS-5a/5b (E-F36-6/9): warum ein Eintrag nicht über „Freigeben & installieren“ installiert werden
+ * darf — null, wenn er darf. Zulässig:
+ * - typ 'extern', unterart 'mcp', wirkung 'lokal', mit herkunft.paket und installation_vorlage (WS-5a);
+ * - typ 'extern', unterart 'skill', mit installation_vorlage { skill_pfad } und einer herkunft.url der
+ *   Form https://github.com/<owner>/<repo>[/tree/<ref>/<unterpfad>] (WS-5b).
+ * Extern-Agents: „erst später“ (WS-5b schaltet nur Skills). Ob er schon installiert ist, prüft der Aufrufer.
  * @param ressource - validierter Katalogeintrag
  * @returns Klartext-Grund oder null
  */
 export function pruefeInstallierbarkeit(ressource: Ressource): string | null {
-  if (ressource.typ !== 'extern' || ressource.unterart !== 'mcp') return "nur typ 'extern' mit unterart 'mcp' ist über die Workforce installierbar (WS-5a)"
+  if (ressource.typ === 'extern' && ressource.unterart === 'agent') return AGENT_INSTALLATION_ERST_SPAETER
+  if (ressource.typ === 'extern' && ressource.unterart === 'skill') {
+    const vorlage = ressource.installation_vorlage
+    if (vorlage === undefined || !('skill_pfad' in vorlage)) return 'installation_vorlage (skill_pfad) fehlt — ohne Vorlage ist der Skill nicht installierbar'
+    const quelle = zerlegeGithubUrl((ressource.herkunft as { url?: string }).url)
+    return quelle.ok ? null : quelle.grund
+  }
+  if (ressource.typ !== 'extern' || ressource.unterart !== 'mcp') return "nur typ 'extern' mit unterart 'mcp' oder 'skill' ist über die Workforce installierbar (WS-5a/5b)"
   if (ressource.wirkung !== 'lokal') return `wirkung '${String(ressource.wirkung)}' — in V1 nur 'lokal' freigebbar (E-F36-4)`
   const herkunft = ressource.herkunft as { paket?: string }
   if (paketNameAus(herkunft.paket) === null) return 'herkunft.paket fehlt — installiert wird nur aus der ausdrücklichen Registry-Adresse (E-F36-9)'
   if (ressource.installation_vorlage === undefined) return 'installation_vorlage fehlt'
   return null
 }
+
+/** F36 WS-5b: Grund für Extern-Agents — Installation und Laufzeit sind nicht gebaut (Zuschnitt, F-770/F-791). */
+export const AGENT_INSTALLATION_ERST_SPAETER = 'Agents: Installation und Nutzung im Lauf erst später (F36 WS-5b schaltet nur Ort-B-Skills)'
 
 /** Default-Wert von --mcp-config für jeden Lauf ohne freigegebenen MCP (F31 WS-3c, E-187) — bitgenau wie baueAufrufs Vorgabe. */
 const LEERE_MCP_CONFIG = '{"mcpServers":{}}'
@@ -828,8 +865,10 @@ export function baueMcpAufruf(mcpEintraege: readonly Ressource[], platzhalterWer
 
 /** F-788: höchstens so viele Einträge je Empfehlungsliste, der Rest nur als Anzahl. */
 const EMPFEHLUNG_OBERGRENZE = 3
-/** Seit Variante 3b (Spike WS-2s S6) sind Skill/Agent nicht im Werkzeugsatz der Ausführung — das ändert erst WS-5. */
+/** Seit Variante 3b (Spike WS-2s S6) sind Agents nicht im Werkzeugsatz der Ausführung; WS-5b schaltet nur Ort-B-Skills — für Agents bleibt der Grund. */
 const SKILL_AGENT_ERST_AB_WS5 = 'Skill/Agent in der Ausführung erst ab WS-5'
+/** F36 WS-5b: Projekt-Skills (typ 'skill') bleiben im Lauf gesperrt (skillOverrides/Skill(…)), auch wenn FREIGEGEBEN. */
+export const PROJEKT_SKILL_GESPERRT = 'Projekt-Skill im Lauf gesperrt (nur installierte Ort-B-Skills sind aufrufbar, F36 WS-5b)'
 /** F36 WS-5a (E-F36-7): Grund, wenn ein Eintrag mit {projekt_origins} ohne vorschau_url des Projekts empfohlen würde. */
 export const PROJEKT_URL_FEHLT = 'Projekt-URL (vorschau_url) fehlt'
 
@@ -850,11 +889,13 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
 /**
  * Reine Funktion (F36 WS-3, E-F36-2: deterministisch, kein Modell, keine I/O): teilt die anwendbaren
  * Katalogeinträge (pruefeAnwendbarkeit) in „Wird genutzt“ und „Passt, nicht im Lauf“.
- * - wirdGenutzt: nur, was der Start dem Lauf tatsächlich übergibt — heute typ 'extern', unterart
- *   'mcp', FREIGEGEBEN, installation gesetzt, wirkung 'lokal', verfuegbar. Skill/Agent (intern oder
- *   extern) nie (Variante 3b, erst WS-5).
- * - passtNichtImLauf: alle übrigen anwendbaren Einträge, grund aus fehltFuerEinsatz, bei Skill/Agent
- *   zusätzlich SKILL_AGENT_ERST_AB_WS5.
+ * - wirdGenutzt: nur, was der Start dem Lauf tatsächlich übergibt — typ 'extern', unterart 'mcp',
+ *   FREIGEGEBEN, installation gesetzt, wirkung 'lokal', verfuegbar; seit F36 WS-5b auch typ 'extern',
+ *   unterart 'skill', FREIGEGEBEN, installation gesetzt, verfuegbar (Ordner da, inhalt_hash stimmt).
+ *   Agents (intern oder extern) und Projekt-Skills (typ 'skill') nie.
+ * - passtNichtImLauf: alle übrigen anwendbaren Einträge, grund aus fehltFuerEinsatz, bei Agents
+ *   zusätzlich SKILL_AGENT_ERST_AB_WS5, bei Projekt-Skills PROJEKT_SKILL_GESPERRT, bei einem nicht
+ *   installierbaren externen Skill ohne installation der Grund aus pruefeInstallierbarkeit.
  * - MCP mit wirkung ≠ 'lokal' (E-F36-4, in V1 nicht freigebbar) steht in keiner Liste, nur in
  *   nichtFreigebbarAnzahl.
  * - Seit F36 WS-5a: ein MCP, dessen args {projekt_origins} tragen, kommt ohne Projekt-URL nie in
@@ -875,6 +916,7 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
     const anwendbarkeit = pruefeAnwendbarkeit(ressource, kontext)
     if (!anwendbarkeit.anwendbar) continue
     const istMcp = ressource.typ === 'extern' && ressource.unterart === 'mcp'
+    const istOrtBSkill = ressource.typ === 'extern' && ressource.unterart === 'skill'
     if (istMcp && ressource.wirkung !== 'lokal') {
       nichtFreigebbarAnzahl++
       continue
@@ -883,14 +925,18 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
     const rang = regel?.task_typen_any !== undefined && regel.pfad_muster_any !== undefined ? 0 : 1
     const basis = { id: ressource.id, name: ressource.name, typ: ressource.typ, ...(ressource.unterart !== undefined ? { unterart: ressource.unterart } : {}) }
     const ohneProjektUrl = istMcp && brauchtProjektOrigins(ressource) && laufKontext.projektUrlVorhanden !== true
-    if (istMcp && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar && !ohneProjektUrl) {
+    if ((istMcp || istOrtBSkill) && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar && !ohneProjektUrl) {
       genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung, empfehlungId: empfehlungsKennung(ressource) } })
       continue
     }
     const gruende = fehltFuerEinsatz(ressource, ressource)
-    if (!istMcp) gruende.push(SKILL_AGENT_ERST_AB_WS5)
+    const nichtInstallierbar = (istMcp || istOrtBSkill) && ressource.installation === undefined ? pruefeInstallierbarkeit(ressource) : null
+    if (ressource.typ === 'skill') gruende.push(PROJEKT_SKILL_GESPERRT)
+    else if (!istMcp && !istOrtBSkill) gruende.push(SKILL_AGENT_ERST_AB_WS5)
+    // Nur für Skills als Grund angezeigt (neu in WS-5b); die MCP-Gründe bleiben wie in WS-5a.
+    if (istOrtBSkill && nichtInstallierbar !== null) gruende.push(`nicht installierbar: ${nichtInstallierbar}`)
     if (ohneProjektUrl) gruende.push(PROJEKT_URL_FEHLT)
-    const installierbar = istMcp && ressource.installation === undefined && pruefeInstallierbarkeit(ressource) === null
+    const installierbar = (istMcp || istOrtBSkill) && ressource.installation === undefined && nichtInstallierbar === null
     passtNicht.push({ rang, eintrag: { ...basis, grund: gruende.length > 0 ? gruende.join('; ') : 'nicht einsatzbereit', ...(installierbar ? { installierbar: true } : {}) } })
   }
   const a = sortiereUndBegrenze(genutzt)
@@ -909,4 +955,4 @@ export function baueEmpfehlungsZeile(wirdGenutzt: readonly EmpfehlungsEintrag[])
   return `Freigegebene Katalog-Fähigkeiten in diesem Lauf: ${wirdGenutzt.map((e) => `${e.id} (${e.name})`).join(', ')} — nutzen, wo sie passen.`
 }
 
-export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, EmpfehlungsLaufKontext, InstallationsVorlage, McpPlatzhalterWerte, Ressource }
+export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, EmpfehlungsLaufKontext, InstallationsVorlage, McpInstallationsVorlage, McpPlatzhalterWerte, Ressource, SkillInstallationsVorlage }

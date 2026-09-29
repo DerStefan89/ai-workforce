@@ -12,7 +12,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, setzeInstallationsAnzeige, setzeInstallationsMeldung } from './empfehlung-anzeige.js'
-import { renderInstallationsBestaetigung, renderInstallationsErgebnis } from './empfehlung-installation.js'
+import { installationsErfolgText, renderInstallationsBestaetigung, renderInstallationsErgebnis } from './empfehlung-installation.js'
 
 const VORBEREITUNG = {
   id: 'playwright-mcp',
@@ -91,4 +91,37 @@ test('renderEmpfehlung (WS-5a): Projekt-URL, Knopf nur bei installierbar, Ablauf
 
 test('empfehlungIdsFuerFreigabe (F-808): schickt die empfehlungId (<id>@<hash>)', () => {
   assert.deepEqual(empfehlungIdsFuerFreigabe(EMPFEHLUNG), [`gate-mcp@${'a'.repeat(64)}`])
+})
+
+const SKILL_VORBEREITUNG = {
+  art: 'skill',
+  id: 'frontend-design',
+  name: 'frontend <design>',
+  repo: 'https://github.com/anthropics/claude-plugins-official.git',
+  ref: 'main',
+  version: 'f'.repeat(40),
+  skillPfad: 'skills/frontend-design',
+  quellPfad: 'plugins/frontend-design/skills/frontend-design',
+  lizenz: 'Apache-2.0 im Plugin-LICENSE',
+  kosten: null,
+  zielordner: 'C:/Users/x/.ai-workforce/cap/frontend-design/.claude/skills/<name aus SKILL.md>',
+  herkunftUrl: 'https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design',
+  hinweis: 'Skill-Dateien können Skripte enthalten; ausgeführt werden nur Befehle, die der Werkzeugsatz der Ausführung zulässt – lesende Befehle lässt die CLI auch ohne Eintrag zu.',
+  eintragHash: 'e'.repeat(64),
+}
+
+test('renderInstallationsBestaetigung (WS-5b): Skill zeigt Repo, Ref, SHA, skill_pfad, Lizenz, Kosten, Zielordner und Skript-Hinweis; Knopf trägt SHA + eintragHash', () => {
+  const html = renderInstallationsBestaetigung(SKILL_VORBEREITUNG)
+  for (const teil of ['Repo:', 'claude-plugins-official.git', 'Ref:', '<code>main</code>', 'Commit (SHA):', 'f'.repeat(40), 'skill_pfad:', 'skills/frontend-design', 'Lizenz:', 'Apache-2.0 im Plugin-LICENSE', 'Kosten:', 'Zielordner:', '&lt;name aus SKILL.md&gt;', 'Skript', 'Werkzeugsatz der Ausführung', 'lesende Befehle lässt die CLI auch ohne Eintrag zu']) {
+    assert.ok(html.includes(teil), `fehlt: ${teil}`)
+  }
+  assert.ok(html.includes('frontend &lt;design&gt;'), 'Name escaped')
+  assert.equal(html.split('nicht angegeben').length - 1, 1, 'Kosten null → „nicht angegeben“')
+  assert.match(html, new RegExp(`data-installation-aktion="installieren" data-ressource-id="frontend-design" data-version="${'f'.repeat(40)}" data-integrity="" data-eintrag-hash="${'e'.repeat(64)}"`))
+  assert.doesNotMatch(html, /npm:/)
+})
+
+test('installationsErfolgText (WS-5b): Skill nennt Name, Commit und Dateizahl; MCP bleibt Paket + Werkzeuge', () => {
+  assert.match(installationsErfolgText({ art: 'skill', id: 'fd', name: 'frontend-design', version: 'a'.repeat(40), dateien: ['LICENSE.txt', 'SKILL.md'] }), /Skill 'frontend-design' @ a{40} \(2 Dateien\)/)
+  assert.match(installationsErfolgText({ art: 'mcp', id: 'pw', paket: '@playwright/mcp', version: '0.0.83', werkzeugeGefunden: ['a', 'b'] }), /@playwright\/mcp@0\.0\.83 \(2 Werkzeuge/)
 })

@@ -7,7 +7,7 @@
  * ist das additive Feld `empfehlung` von GET /api/workflows/<id>. empfehlungIdsFuerFreigabe liefert
  * die angezeigten wirdGenutzt-ids, die mit der Freigabe mitgehen („Anzeige = Start“, E-F36-4).
  * Seit F36 WS-5a: die ids sind die empfehlungIds '<id>@<hash der installation>' (F-808); der Block zeigt
- * die Projekt-URL (vorschau_url, E-F36-7) und je installierbarem MCP in „Passt, nicht im Lauf“ den Knopf
+ * die Projekt-URL (vorschau_url, E-F36-7) und je installierbarem Eintrag (MCP, seit F36 WS-5b auch externer Skill) in „Passt, nicht im Lauf“ den Knopf
  * „Freigeben & installieren“ samt Platz für den Bestätigungsblock (Ablauf: empfehlung-installation.js).
  *
  * Wird aufgerufen von:

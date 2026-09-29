@@ -43,6 +43,14 @@ export interface AufrufEingaben {
   umgebungsvariablen?: Record<string, string>
   /** F40 WS-3 (löst F-567): überschreibt baueAufrufs Standardwert (kein `--disallowedTools`) — real belegt (`state/nachweis-jarvis-latenz.md` Abschnitt "F40 WS-2", Turn 4, sowie `state/spike-f40-streaming.md` §3, 4/15 Läufe), dass ein claude-code-Prozess trotz `--setting-sources ''` per Read-Werkzeug `~/.claude/projects/…/memory/MEMORY.md` liest — kein Projekt-, sondern Entwickler-Kontext in einer Produktrolle, plus eine zusätzliche Werkzeug-Runde. `--bare` (der einzige Abschaltweg der CLI für "auto memory", `claude --help`) ist für JEDEN Aufruf per E-182 (`VERBOTENE_AUFRUFPARAMETER`) verboten und schaltet zusätzlich Hooks/CLAUDE.md/Attribution ab — kein gezielter Weg. Ausschließlich von `starteJarvisChatLauf` und dem Router-Lauf-Handler gesetzt (`Read(~/.claude/**)`, Permission-Rule-Syntax `code.claude.com/docs/en/permissions#read-and-edit`: `Read`-Deny-Regeln gelten laut Doku auch für Grep/Glob). scripts/leitstand-server.mjs' pruefeStartauftrag lehnt das Feld im Body von POST /api/laeufe ab (Muster settingSources/mcpConfig/umgebungsvariablen). */
   disallowedTools?: string
+  /**
+   * F36 WS-5b (E-F36-8 = B, V4a): Ort-B-Skills eines `ausfuehrung`-Laufs — je Eintrag `--add-dir`, dazu
+   * `--settings` (disableBundledSkills + skillOverrides), beides vor `-p`. Ausschließlich serverseitig von
+   * loeseAusfuehrungsEingabenAuf aus baueOrtBSkillStart (src/ressourcen/ort-b-start.ts) gesetzt; die
+   * Sperrregeln stehen in disallowedTools. pruefeStartauftrag lehnt das Feld im Body von POST /api/laeufe
+   * ab (Muster settingSources/mcpConfig). Fehlt es, bleibt das Argv bitgenau wie vor WS-5b.
+   */
+  ortB?: { addDirs: string[]; settings: string }
 }
 
 /** Ergebnis eines einzelnen Prozessstart-Versuchs (F-057: Argv-Array, nie ein Shell-String). startfehler trägt den Code/die Meldung eines Callback-Fehlers ohne numerischen exitCode (F-071) — null bei jedem regulären Prozessende, auch bei einem nichtnullwertigen exitCode. beendigungsart unterscheidet additiv (F14 WS-1, AK3) einen durch zeitgrenzeMs oder abbruchSignal beendeten Prozess von einem regulären Ende oder einem Startfehler — null in beiden letzteren Fällen, bestehende Felder ändern ihre Bedeutung nicht. */

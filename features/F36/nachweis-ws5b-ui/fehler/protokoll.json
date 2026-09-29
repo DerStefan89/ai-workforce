@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Knopf",
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Bestätigungsblock → Installieren",
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Klick: [data-installation-aktion=\"installieren\"]",
+    "Fehlermeldung am Eintrag": false,
+    "Erfolgsmeldung (darf fehlen)": false
+  },
+  {
+    "label": "Abgelehnt: SKILL.md fehlt",
+    "Fehlermeldung am Eintrag": true,
+    "Erfolgsmeldung (darf fehlen)": false
+  }
+]

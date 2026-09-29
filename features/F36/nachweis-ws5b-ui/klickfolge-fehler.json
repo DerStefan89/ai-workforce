@@ -1,0 +1,55 @@
+{
+  "url": "http://127.0.0.1:4178/#/workflows/f36-ws5b-nachweis",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workflow-bedienung",
+    "hoehe": 900
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Fehlermeldung am Eintrag",
+        "selector": ".empfehlung-installation .fehler"
+      },
+      {
+        "name": "Erfolgsmeldung (darf fehlen)",
+        "selector": "#workflow-bedienung .erfolg"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Knopf",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+      "klick": "[data-installation-aktion=\"vorbereiten\"]"
+    },
+    {
+      "label": "Bestätigungsblock → Installieren",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"installieren\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Klick: [data-installation-aktion=\"installieren\"]",
+      "klick": "[data-installation-aktion=\"installieren\"]"
+    },
+    {
+      "label": "Abgelehnt: SKILL.md fehlt",
+      "warteAufSelector": {
+        "selector": ".empfehlung-installation .fehler",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-fehler.png"
+    }
+  ]
+}

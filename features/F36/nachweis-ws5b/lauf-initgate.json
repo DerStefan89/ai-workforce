@@ -1,0 +1,135 @@
+{
+  "lauf": "initgate",
+  "erzeugt_am": "2026-09-29T15:40:05.485Z",
+  "cli_version": "2.1.284 (Claude Code)",
+  "dauer_ms": 2461,
+  "rohstrom": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\initgate-2026-09-29T15-40-05.482Z.ndjson",
+  "projekt": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-initgate-bA2b1p",
+  "argv_ohne_prompt": [
+    "--model",
+    "claude-sonnet-5",
+    "--output-format",
+    "stream-json",
+    "--verbose",
+    "--setting-sources",
+    "project",
+    "--tools",
+    "Read,Grep,Glob,Write,Edit,Bash,Skill",
+    "--allowedTools",
+    "Read,Grep,Glob,Write,Edit,Bash(npm install),Bash(npm ci),Bash(npm run check:*),Bash(npm run lint:*),Bash(npm run typecheck:*),Bash(npm run test:*),Bash(npm run build:*),Skill",
+    "--strict-mcp-config",
+    "--mcp-config",
+    "{\"mcpServers\":{}}",
+    "--disallowedTools",
+    "Write(C:/Users/stefa/AppData/Local/Temp/f36-ws5b-nachweis/cap/frontend-design/**),Edit(C:/Users/stefa/AppData/Local/Temp/f36-ws5b-nachweis/cap/frontend-design/**),Write(C:/Users/stefa/AppData/Local/Temp/f36-ws5b-nachweis/cap/pruef-skill/**),Edit(C:/Users/stefa/AppData/Local/Temp/f36-ws5b-nachweis/cap/pruef-skill/**),Write(**/.claude/**),Edit(**/.claude/**),Skill(design),Skill(doctor),Skill(advisor-pass),Skill(git-flow),Skill(handoff-vertrag),Skill(ponytail),Skill(repo-audit),Skill(spec-schreiben),Skill(werkzeug-auswahl),Bash(git:*)",
+    "--add-dir",
+    "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\frontend-design",
+    "--add-dir",
+    "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\pruef-skill",
+    "--settings",
+    "{\"disableBundledSkills\":true,\"skillOverrides\":{\"design\":\"off\",\"doctor\":\"off\",\"advisor-pass\":\"off\",\"git-flow\":\"off\",\"handoff-vertrag\":\"off\",\"ponytail\":\"off\",\"repo-audit\":\"off\",\"spec-schreiben\":\"off\",\"werkzeug-auswahl\":\"off\"}}",
+    "-p"
+  ],
+  "ortBLauf": {
+    "skillNamen": [
+      "frontend-design",
+      "pruef-skill"
+    ],
+    "mcpServer": [],
+    "projektWurzel": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-initgate-bA2b1p"
+  },
+  "init_gate": "bestanden",
+  "exitCode": null,
+  "beendigungsart": "ABBRUCH",
+  "stderr": "",
+  "init": {
+    "claude_code_version": "2.1.284",
+    "tools": [
+      "Bash",
+      "Edit",
+      "GetTask",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write"
+    ],
+    "skills": [
+      "frontend-design",
+      "pruef-skill"
+    ],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ],
+    "mcp_servers": [],
+    "plugins": [
+      {
+        "name": "telemetry",
+        "path": "builtin",
+        "source": "telemetry@builtin"
+      }
+    ],
+    "slash_commands": [
+      "frontend-design",
+      "pruef-skill",
+      "advisor",
+      "agents",
+      "auto-mode-setup",
+      "autocompact",
+      "clear",
+      "color",
+      "compact",
+      "config",
+      "output-style",
+      "context",
+      "effort",
+      "fast",
+      "focus",
+      "heapdump",
+      "init",
+      "mcp",
+      "import",
+      "model",
+      "__remote-workflow",
+      "workflow-launch-exec",
+      "reload-plugins",
+      "reload-skills",
+      "rename",
+      "ultrareview",
+      "security-review",
+      "usage-credits",
+      "extra-usage",
+      "usage",
+      "insights",
+      "recap",
+      "skill-doctor",
+      "goal",
+      "design-consent",
+      "design-revoke",
+      "list-agents",
+      "team-onboarding"
+    ]
+  },
+  "aufrufe": [],
+  "permission_denials": null,
+  "is_error": null,
+  "result": null,
+  "init_gate_echt": {
+    "erwartete_skills": [
+      "pruef-skill"
+    ],
+    "verstoss": "Init-Gate: init.skills enthält nicht übergebene Skills: frontend-design — Lauf vor dem ersten tool_use beendet",
+    "abbruchNachMs": 1704,
+    "zeilenBisAbbruch": 1,
+    "tool_use_im_rohstrom": 0
+  },
+  "laufdiff_claude": [],
+  "projekt_git_status": ""
+}

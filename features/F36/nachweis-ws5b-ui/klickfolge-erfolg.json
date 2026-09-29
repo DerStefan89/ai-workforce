@@ -1,0 +1,69 @@
+{
+  "url": "http://127.0.0.1:4178/#/workflows/f36-ws5b-nachweis",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workflow-bedienung",
+    "hoehe": 1000
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Knopf Freigeben & installieren",
+        "selector": "[data-installation-aktion=\"vorbereiten\"]"
+      },
+      {
+        "name": "Bestätigungsblock",
+        "selector": ".empfehlung-installation-bestaetigung"
+      },
+      {
+        "name": "Knopf Installieren",
+        "selector": "[data-installation-aktion=\"installieren\"]"
+      },
+      {
+        "name": "Erfolgsmeldung",
+        "selector": "#workflow-bedienung .erfolg"
+      },
+      {
+        "name": "Freigeben mit data-empfehlung-ids",
+        "selector": "[data-aktion=\"freigeben\"][data-empfehlung-ids]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Empfehlung am ZWINGEND-Start: Knopf nur bei frontend-design, browser-use mit Grund",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-knopf.png"
+    },
+    {
+      "label": "Klick „Freigeben & installieren“ → Bestätigungsblock",
+      "klick": "[data-installation-aktion=\"vorbereiten\"]"
+    },
+    {
+      "label": "Bestätigungsblock: Repo, Ref, SHA, skill_pfad, Lizenz, Kosten, Zielordner, Hinweis",
+      "warteAufSelector": {
+        "selector": ".empfehlung-installation-bestaetigung",
+        "timeoutMs": 5000
+      },
+      "screenshot": "02-bestaetigung.png"
+    },
+    {
+      "label": "Klick „Installieren“",
+      "klick": "[data-installation-aktion=\"installieren\"]"
+    },
+    {
+      "label": "Erfolg: Skill in „Wird genutzt“",
+      "warteAufSelector": {
+        "selector": "#workflow-bedienung .erfolg",
+        "timeoutMs": 8000
+      },
+      "screenshot": "03-erfolg.png"
+    }
+  ]
+}

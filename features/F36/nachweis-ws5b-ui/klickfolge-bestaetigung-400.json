@@ -1,0 +1,40 @@
+{
+  "url": "http://127.0.0.1:4178/#/workflows/f36-ws5b-nachweis",
+  "viewport": {
+    "breite": 400,
+    "hoehe": 4000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workflow-bedienung",
+    "hoehe": 1600
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Bestätigungsblock",
+        "selector": ".empfehlung-installation-bestaetigung"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "400 px: Knopf",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+      "klick": "[data-installation-aktion=\"vorbereiten\"]"
+    },
+    {
+      "label": "400 px: Bestätigungsblock (lange SHA/Pfade brechen um)",
+      "warteAufSelector": {
+        "selector": ".empfehlung-installation-bestaetigung",
+        "timeoutMs": 5000
+      },
+      "screenshot": "01-bestaetigung-400.png"
+    }
+  ]
+}

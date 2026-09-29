@@ -13,7 +13,8 @@
  *
  * Wird aufgerufen von: src/ressourcen/index.ts,
  * src/ressourcen/ressourcen.test.ts, scripts/check-f19-ressourcen.mjs,
- * src/ressourcen/installation.ts (F36 WS-5a).
+ * src/ressourcen/installation.ts (F36 WS-5a), src/ressourcen/skill-installation.ts und
+ * src/ressourcen/ort-b-start.ts (F36 WS-5b).
  */
 
 import type { TaskTyp } from '../router/types.ts'
@@ -38,19 +39,36 @@ export type Herkunft =
   /** paket (F36 WS-5a, E-F36-9): ausdrückliche Registry-Adresse 'npm:<name>', nur bei unterart 'mcp'; url bleibt Informationsadresse. */
   | { art: 'extern'; url: string; paket?: string }
 
-/** R4: installation einer externen Ressource — Form je unterart (skill|agent: Pfad, mcp: Serverstart + Einzelnamen). */
-export type Installation = { pfad: string; version: string } | { version: string; mcp_server: { command: string; args: string[] }; werkzeuge: string[] }
+/**
+ * R4: installation einer externen Ressource — Form je unterart (agent: Pfad + Version; skill seit F36
+ * WS-5b: Pfad + Commit-SHA + inhalt_hash über alle Dateien; mcp: Serverstart + Einzelnamen).
+ */
+export type Installation =
+  | { pfad: string; version: string }
+  | { pfad: string; version: string; inhalt_hash: string }
+  | { version: string; mcp_server: { command: string; args: string[] }; werkzeuge: string[] }
 
 /**
  * F36 WS-5a (E-F36-9): Vorlage, aus der „Freigeben & installieren“ die installation (R4) baut — bin
  * relativ im Paket, args mit den Platzhaltern {projekt_origins}/{ausgabe_ordner}, werkzeuge als
  * Einzelnamen mcp__<id>__<name>. Nur typ 'extern' mit unterart 'mcp'.
  */
-export interface InstallationsVorlage {
+export interface McpInstallationsVorlage {
   bin: string
   args: string[]
   werkzeuge: string[]
 }
+
+/**
+ * F36 WS-5b: Vorlage für einen externen Skill — skill_pfad ist der Ordner des Skills relativ zum
+ * Unterpfad der herkunft.url ('/' als Trenner, ohne '..'). Ohne Vorlage ist der Skill nicht installierbar.
+ */
+export interface SkillInstallationsVorlage {
+  skill_pfad: string
+}
+
+/** Vorlage je unterart: mcp (WS-5a) oder skill (WS-5b). */
+export type InstallationsVorlage = McpInstallationsVorlage | SkillInstallationsVorlage
 
 /** F36 WS-5a: Werte der Platzhalter in mcp_server.args — fehlt ein benötigter Wert, wirft baueMcpAufruf (fail-closed). */
 export interface McpPlatzhalterWerte {
@@ -77,7 +95,7 @@ export interface Ressource {
   /** F36 WS-1b: nur typ 'extern' — Anzeige vor „Freigeben & installieren“ (E-F36-6). */
   kosten?: string
   installation?: Installation
-  /** F36 WS-5a: nur typ 'extern' mit unterart 'mcp' — Vorlage für „Freigeben & installieren“. */
+  /** F36 WS-5a/5b: nur typ 'extern' mit unterart 'mcp' bzw. 'skill' — Vorlage für „Freigeben & installieren“. */
   installation_vorlage?: InstallationsVorlage
   anwendbar_wenn?: AnwendbarWenn
   capabilities: string[]

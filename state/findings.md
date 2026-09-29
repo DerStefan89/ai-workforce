@@ -10100,6 +10100,7 @@ Beschreibung: `docs/projekt/zielfassung.md` §13.6 nennt „Design" als eigenen 
 Fundstelle: `docs/projekt/zielfassung.md` §13.6, Reihenfolge-Zeile.
 Auswirkung: Mittel — ohne eigenen Scope droht „Design" entweder übersprungen oder unkontrolliert groß zu werden, wenn die Kette ihn erreicht.
 Maßnahme: Vor Erreichen dieses Punkts einen eigenen Schnitt (Scope, Akte, Bestehensbedingung) für „Design" anlegen, analog zu den übrigen Kettengliedern.
+Vermerk (Scope-Ergänzung 29.09.2026): (1) Ablage der von Stefan mitgebrachten Designvorlage im Projekt-Repo (Tokens, Referenz-Screenshots, gewählte Richtung); (2) design-guardian als Review-Schritt bei UI-Aufträgen mit Playwright-Screenshots; (3) Motion mit Prüfweg (Screenshot-Sequenz/Video, prefers-reduced-motion).
 Status: offen.
 Feature/Run: M5-Schnitt, 25.09.2026.
 
@@ -10509,6 +10510,7 @@ Auswirkung: Hoch — solange diese Skills geladen sind, kann `Skill` nicht in de
 Maßnahme: In F36 WS-4 sichtbar gemacht; Begrenzung vor dem Reallauf entscheiden (Sperrliste per `--disallowedTools` oder Quellen abschalten).
 Vermerk (F36 WS-2s S6, 28.09.2026): **blockiert F36-Reallauf.** Gemessen: `Skill`/`Agent` brauchen im `-p`-Lauf keine `--allowedTools`-Freigabe; steht der Name in `--tools`, ist jeder geladene Skill/Agent aufrufbar — mit `Skill(ponytail)`/`Agent(qa)` liefen auch `advisor-pass`, `general-purpose` und `statusline-setup` ohne Denial (S6a–c). `--disallowedTools Skill(<id>)`/`Agent(<name>)` sperrt dagegen gezielt (S6d: „Skill execution blocked by permission rules“, „denied by permission rule … from cliArg“). WS-2 nimmt `Skill`/`Agent` deshalb nicht in den Werkzeugsatz (Variante 3b). Priorität auf P1 (Challenger, 28.09.2026). Lösungsweg offen: Sperrliste aus der init-Zeile ist nicht vorab bekannt (fail-open für neue Skills) — oder die Nutzer-/Plugin-Quellen für den Lauf abschalten.
 Vermerk (Spike S7, 29.09.2026, CLI 2.1.284, `state/spike-f36-ws2s.md` S7): Herkunft korrigiert — die 21 bzw. heute 18 Zusatz-Skills sind **eingebaut** (CLI-Bundle), nicht Nutzer/Plugin; `--setting-sources project` hält Nutzer-, Plugin- und claude.ai-Quellen bereits heraus. Eingebaute Agents: `claude, Explore, general-purpose, Plan, statusline-setup`. Tragende Kombination V4a: `--settings` mit `disableBundledSkills: true` + `skillOverrides` „off“ (eingebaute Reste `design`, `doctor` und Projekt-Skills) + `--disallowedTools Skill(…)/Agent(…)` (eingebaute und Projekt-Agents) — nur `probe-skill`/`probe-agent` aus Ort B aufrufbar, alles andere erzwungen verweigert (2/2 Läufe). Nicht erreichbar: Projekt-Agents aus `init.agents` entfernen (`--add-dir` lädt nur mit Quelle `project`). `--setting-sources ''`/`local` verliert Ort B; `CLAUDE_CONFIG_DIR` verlangt Anmeldung; `--disable-slash-commands` entfernt auch Ort-B-Skills; `CLAUDE_CODE_AGENT_SDK_DISABLE_BUILTIN_AGENTS=1` ohne Wirkung.
+Vermerk (F36 WS-5b, 29.09.2026): Skill-Teil umgesetzt, Agent-Teil zurückgestellt (F-815). Ein `ausfuehrung`-Lauf mit ≥1 installiertem Ort-B-Skill startet mit `Skill` (nie `Agent`) in `--tools` und mit V4a ohne `enabledPlugins`: `disableBundledSkills`, `skillOverrides` off und `Skill(…)` für design/doctor/Projekt-Skills, dazu `Write/Edit(**/.claude/**)`. Real belegt (`features/F36/nachweis-ws5b/`, CLI 2.1.284): `init.skills` = nur die zwei Ort-B-Skills; ponytail/advisor-pass/design/doctor/loop erzwungen nicht aufrufbar; `Agent` fehlt in `init.tools`. Ohne Ort-B-Skill bleibt der Start bitgenau wie vorher.
 Status: E-F36-8 = B, S7 HÄLT (mit V4a). Challenger-Präzisierung ([EMPFEHLUNG] 29.09.2026, keine Entscheidung Stefans): AK4 heißt „nicht aufrufbar ohne Freigabe“. Projekt-Agents sind im init sichtbar, aber deterministisch gesperrt. Verwerfen, wenn das Modell im Reallauf wiederholt gesperrte Agents ansteuert. Umsetzung in WS-5, Namensdrift → F-791.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
@@ -10649,13 +10651,14 @@ Maßnahme: im Design-Schnitt (F-725).
 Status: offen.
 Feature/Run: F36 WS-4, 28.09.2026.
 
-**F-786** · `HARNESS_IMPROVEMENT` · P2 · teilweise erledigt (Teil mcp: F36 WS-5a)
+**F-786** · `HARNESS_IMPROVEMENT` · P2 · erledigt für mcp (F36 WS-5a) und skill (F36 WS-5b); agent zurückgestellt (F-815)
 Titel: WS-5 muss je unterart fail-closed prüfen, bevor ein Katalogeintrag als installiert gilt.
 Beschreibung: WS-5 muss je unterart fail-closed prüfen (skill: `SKILL.md` mit Frontmatter; agent: `.md` mit Frontmatter; mcp: Serverstart mit freigegebenen Einzelnamen, playwright nur mit `--allowed-origins` localhost). Heute heißt `verfuegbar` für extern skill/agent nur „freigegeben und `installation.pfad` existiert“, für mcp „Serverstart nicht geprüft“; bei `open-code-review` ist die unterart zudem nur vermutet.
 Fundstelle: `src/ressourcen/index.ts` (`loeseRessourcenAuf`); `features/F36/feature.md` (WS-5, Bekannte Grenzen); `features/F36/katalog-uebernahme.md` (playwright-mcp, open-code-review).
 Auswirkung: Mittel — ohne die Prüfung kann ein falsch eingeordneter oder offen startender Eintrag als einsatzbereit gelten.
 Maßnahme: In WS-5 je unterart ein Rot-Fall; playwright-mcp mit Rot-Fall „fremde Origin wird verweigert“, sonst `wirkung: extern_schreibend`.
 Status: Teil mcp erledigt (F36 WS-5a): `installiereRessource` (`src/ressourcen/installation.ts`) gibt einen MCP erst frei, wenn Lockfile-Version und -integrity der Anzeige entsprechen, `bin` existiert und der Serverstart per `initialize` + `tools/list` alle freigegebenen Einzelnamen liefert; Rot-Fälle im Gate `scripts/check-f36-ws5a-installation.mjs` (c)–(e), echter Nachweis `features/F36/nachweis-ws5a-installation/`. Offen: Teil skill/agent (WS-5b) und der Rot-Fall „fremde Origin wird verweigert“ mit der installierten Fassung (WS-5b bzw. Reallauf).
+Vermerk (F36 WS-5b, 29.09.2026): Teil skill erledigt. `installiereRessource` gibt einen externen Skill erst frei, wenn diese Prüfungen bestanden sind: angezeigte Commit-SHA = Ref beim Installieren; flacher Fetch genau dieser SHA; kein Symlink/Submodul im Quellbaum; `SKILL.md` mit Frontmatter name + description; name nach `[a-z0-9-]`; keine Kollision mit eingebauten oder anderen Ort-B-Skills. Danach wird `inhalt_hash` festgehalten. „Verfügbar“ heißt für Skills seither: SKILL.md + passender inhalt_hash (`loeseRessourcenAuf`); der Start rechnet ihn neu. Belegt: Gate `scripts/check-f36-ws5b-skill.mjs` (a), (f)–(i), (k); echter Nachweis `features/F36/nachweis-ws5b/` (frontend-design). Teil agent zurückgestellt (F-815). Der Rot-Fall „fremde Origin“ bleibt beim Reallauf.
 Feature/Run: F36 WS-1b, 28.09.2026.
 
 **F-787** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -10700,6 +10703,17 @@ Beschreibung: WS-0 (CLI 2.1.283) sah 21 eingebaute Skills, darunter `slides`, `a
 Fundstelle: `state/spike-f36-ws2s.md` S7; `state/spike-f36-werkzeugsatz.md` (WS-0, init-Liste).
 Auswirkung: Hoch — die Begrenzung nach E-F36-8 wäre nach dem nächsten CLI-Update unbemerkt wirkungslos.
 Maßnahme (Umsetzung in WS-5 zusammen mit V4a, `features/F36/feature.md`): (1) Das init-Gate kennt nur die Menge „freigegeben ∪ bewusst gesperrt“; jeder andere Name in `init.skills`/`init.agents` → Lauf abbrechen und die unbekannten Namen melden. (2) Vorstart-Scan: Existiert unterhalb der Projektwurzel ein weiteres `.claude/skills` oder `.claude/agents` außer dem der Wurzel → Lauf abbrechen (fail-closed, schließt die Lücke der nachgeladenen verschachtelten Skills). (3) Das Gate wird beim CLI-Versionswechsel rot, wenn sich die Menge der eingebauten Namen ändert. Aus dem QA-Pass S7, bestätigt (Challenger-[EMPFEHLUNG], 29.09.2026): (4) Write/Edit-Sperre auf `**/.claude/**` (`Write(**/.claude/**)`, `Edit(**/.claude/**)` in `--disallowedTools`). (4a) Rotfall in WS-5: Ein Lauf legt im selben Lauf einen Skill unter `.claude/skills/` an, einmal per `Write` und einmal per `Bash`, und versucht ihn aufzurufen; ist er aufrufbar, eskaliert WS-5 an den Challenger. (4b) Enthält der Laufdiff Änderungen unter `.claude/`, ist das Laufergebnis rot. Den Folgelauf deckt bereits das init-Gate (1) ab. (5) Namenskollision: Ein Ort-B-Eintrag mit dem Namen eines eingebauten oder eines Projekt-Skills/-Agents wird bei der Freigabe abgelehnt und beim Start erneut geprüft (Treffer → Lauf abbrechen, fail-closed). Weitere offene Punkte für die WS-5-Challenge stehen in `features/F36/feature.md` (WS-5).
+Vermerk (F36 WS-5b, 29.09.2026): Skill-Teil umgesetzt, Agent-Teil zurückgestellt (F-815).
+- (1) Init-Gate für Läufe mit Ort-B-Skills (`pruefeInitZeile`, `starteGateway` optionen.initGate): `init.skills` ⊆ übergebene Ort-B-Namen, kein `Agent` in `init.tools`, `init.mcp_servers` = übergebene MCPs; sonst Abbruch vor dem ersten `tool_use` → `FEHLGESCHLAGEN init_gate_verstoss`. `init.agents` wird nicht geprüft, weil Agents ohne Agent-Werkzeug nicht aufrufbar sind.
+- (2) Vorstart-Scan (`scanneVerschachtelteClaudeOrdner`): `.claude/skills|agents|commands` unterhalb der Wurzel, mit `node_modules`, ohne `.git`, ohne Links zu folgen.
+- (3) Offen: kein eigenes Gate beim CLI-Versionswechsel; das Init-Gate fängt neue eingebaute Skills im Lauf.
+- (4) `Write/Edit(**/.claude/**)`: real gemessen erzwungen (Rotfall 9c).
+- (4a) Rotfall real: per Write „denied by your permission settings“, per Bash „denied“, beide Skills „Unknown skill“ — keine Eskalation.
+- (4b) Laufdiff unter `.claude/` → `FEHLGESCHLAGEN claude_ordner_veraendert`.
+- (5) Namenskollision bei Installation (eingebaut, Ort-B) und Start (zusätzlich Projekt-Skills aus Frontmatter-name und Ordnername).
+- Reviewer-Pass (29.09.2026): Projekt-Commands `.claude/commands/**.md` standen nicht in `init.skills`, waren aber per Skill-Werkzeug aufrufbar (real gemessen, fail-open vor dem Fix). Seither stehen sie in `Skill(…)`/`skillOverrides` (Nachweis 9b′). Das Init-Gate hätte das nicht gefunden; eine Sperrliste braucht deshalb alle Quellen, die das Skill-Werkzeug bedient.
+- Belege: Gate `scripts/check-f36-ws5b-skill.mjs` (i), (l)–(n), kalibriert; `features/F36/nachweis-ws5b/`.
+Vermerk (Challenger-Verifikation WS-5b, 29.09.2026): `init.tools` enthält in allen WS-5b-Läufen `GetTask`, obwohl es nicht in `--tools` steht (`features/F36/nachweis-ws5b/lauf-*.json`). Im Reallauf beobachten, ob es Subagent- bzw. Aufgabenwirkung hat.
 Status: offen.
 Feature/Run: F36 Spike S7, 29.09.2026.
 
@@ -10910,3 +10924,57 @@ Auswirkung: Mittel — setzt einen aktiven Angreifer voraus, trifft aber auch di
 Maßnahme: `Host`-Header zentral gegen eine Allowlist (`127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>`) prüfen, für alle Methoden; Gate mit Rotfall fremder Host. Eigener kleiner Auftrag, spätestens vor Freigabe von Skill-/Agent-Installation (F36 WS-5b).
 Status: offen.
 Feature/Run: F-813-Fix, Reviewer-/QA-Hinweis, 29.09.2026.
+
+**F-815** · `TECH_DEBT` · P2 · offen
+Titel: Agents (extern + Projekt) und Projekt-Skills sind in der Ausführung weiter nicht nutzbar — WS-5b schaltet nur Ort-B-Skills.
+Beschreibung: F36 WS-5b bringt `Skill` in den Werkzeugsatz der Ausführung, aber nur, wenn ein Ort-B-Skill übergeben wird. Unter V4a lässt es nur installierte externe Skills aufrufbar. `Agent` bleibt aus `--tools`. Extern-Agents sind weder installierbar (400 „erst später“) noch im Lauf. Projekt-Skills (`<projekt>/.claude/skills`) und -Agents bleiben gesperrt, auch wenn sie im Katalog `FREIGEGEBEN` sind. E-F36-3 (Agents als Subagent-Empfehlung) ist damit nicht umgesetzt.
+Fundstelle: `src/ressourcen/ort-b-start.ts` (`baueOrtBSkillStart`); `src/ressourcen/index.ts` (`pruefeInstallierbarkeit`, `baueEmpfehlung`); `features/F36/feature.md` (WS-5b, Zurückgestellt).
+Auswirkung: Mittel — die Prüfrollen des Projekt-Harness (qa, code-reviewer, architecture-advisor) und die Projekt-Skills wirken in der Ausführung nicht (vgl. F-769).
+Maßnahme: Zurückgestellt bis zu realem Bedarf. Dann gehören dazu: der V4a-Agent-Teil mit Sperrliste `Agent(…)` je CLI-Version (eingebaute Agents driften, F-791), der Satz „Subagenten nur im Vordergrund mit run_in_background: false“ in jedem Startweg (WS-0 P2), das Init-Gate auch für `init.agents`, eine Reallauf-Zählung gesperrter Agent-Aufrufe am tool_result-Text und die Identitätsprüfung nach F-816.
+Status: offen.
+Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
+
+**F-816** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Die Freigabe von Projekt-Skills/-Agents gilt nach Namen bzw. Workforce-Pfad, der Lauf lädt aber die gleichnamige Datei des Zielprojekts.
+Beschreibung: Katalogeinträge vom Typ `skill`/`agent` verweisen auf `.claude/skills/<name>` bzw. `.claude/agents/<name>.md` der Workforce-Installationswurzel. Ein Ausführungslauf mit `--setting-sources project` lädt dagegen die Dateien des Zielprojekts. Ein Projekt kann unter demselben Namen einen anderen Inhalt tragen; `skillOverrides`/`Skill(…)`/`Agent(…)` greifen nach Namen, nicht nach Inhalt. Würde eine Katalogfreigabe eines Projekt-Skills später aus der Sperrliste herausnehmen (S7-Präzisierung „freigegebene Katalogeinträge fallen aus der Sperrliste“), wäre im Lauf ungeprüfter Inhalt aufrufbar.
+Fundstelle: `src/ressourcen/index.ts` (`loeseFrontmatterRessourceAuf`); `src/ressourcen/ort-b-start.ts` (Sperrliste nach Namen); `features/F36/feature.md` (AK4, Präzisierung S7).
+Auswirkung: Mittel — heute ohne Wirkung, weil WS-5b jeden Projekt-Skill sperrt; relevant ab der ersten Freischaltung von Projekt-Skills/-Agents (F-815).
+Maßnahme: Vor jeder Freischaltung die Identität klären, z. B. über den Hash der Zieldatei im Projekt = freigegebener Hash, beim Start neu geprüft (Muster `inhalt_hash` der Ort-B-Skills); sonst gesperrt lassen.
+Status: offen.
+Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
+
+**F-817** · `TECH_DEBT` · P3 · offen
+Titel: Skills tragen kein Feld `wirkung` — ein nach außen wirkender Skill (browser-use) ist im Schema nicht unterscheidbar.
+Beschreibung: `wirkung` (lokal/extern_lesend/extern_schreibend) ist nur bei `unterart` `mcp` zulässig. `browser-use` wirkt über den Browser nach außen und braucht die browser-use-CLI; die Prüfung auf `SKILL.md` allein genügt nicht. WS-5b macht einen externen Skill nur mit `installation_vorlage` installierbar; `browser-use` hat keine und ist deshalb nicht installierbar (Grund in der Empfehlung).
+Fundstelle: `src/ressourcen/index.ts` (`pruefeExternFelder`, `pruefeInstallierbarkeit`); `ressourcen.json` (`browser-use`); `features/F36/feature.md` (WS-5b, Offene QA-Punkte).
+Auswirkung: Niedrig — solange niemand eine Vorlage für einen solchen Skill setzt; mit Vorlage würde `wirkung` nicht geprüft.
+Maßnahme: Bei Bedarf das Schema um `wirkung` für Skills erweitern (E-F36-4 analog: freigebbar nur mit `lokal`) und die Prüfung um benötigte CLIs ergänzen.
+Status: offen.
+Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
+
+**F-818** · `TECH_DEBT` · P2 · offen
+Titel: Vorstart-Scan blockiert Ort-B-Skill-Läufe auf ai-workforce selbst.
+Beschreibung: `vorlagen/projekt-skelett/.claude/skills|agents` ist ein verschachteltes `.claude`. `scanneVerschachtelteClaudeOrdner` bricht deshalb jeden Ort-B-Lauf mit Projektwurzel ai-workforce ab (fail-closed, korrekt).
+Fundstelle: `src/ressourcen/ort-b-start.ts` (`scanneVerschachtelteClaudeOrdner`); `vorlagen/projekt-skelett/.claude`.
+Auswirkung: Mittel — die Workforce kann für den Selbstbau (F30-Dogfooding) keine Ort-B-Skills nutzen.
+Maßnahme: Vor F30 entscheiden, z. B. das Skelett-`.claude` unter anderem Namen ablegen und beim Anlegen umbenennen, oder eine feste, im Repo versionierte Ausnahmeliste mit Begründung.
+Status: offen.
+Feature/Run: F36 WS-5b Challenger-Verifikation 29.09.2026.
+
+**F-819** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Laufzeit von `npm run check` wächst mit jedem Feature (69 Gates, >1000 Tests).
+Beschreibung: Die volle Kette läuft bei jedem Zwischenstand; mit jedem Feature kommen Gates und Tests dazu.
+Fundstelle: `package.json` (`check`).
+Auswirkung: Niedrig — längere Wartezeiten bei Zwischenständen.
+Maßnahme: Bei spürbarer Störung eine schnelle Teilkette für Zwischenstände, die volle Kette vor der Übergabe.
+Status: offen.
+Feature/Run: Chat 29.09.2026.
+
+**F-820** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: qa-Schritt im Workflow fehlt.
+Beschreibung: Die Rolle qa hat kein Ausgabeschema, der Schritt steht im Backlog (F35). Randfälle prüft heute nur das Review.
+Fundstelle: `src/rollen/index.ts` (Rolle qa); `workflow-vorlagen/*.json`; F35-Backlog.
+Auswirkung: Mittel — Randfälle aus Nutzersicht werden im Workflow nicht eigens geprüft.
+Maßnahme: qa-Ausgabeschema (Randfall-Urteil mit Beleg) und ein Schritt vor der Abnahme. Reihenfolge: nach dem Design-Bau, vor F30 (Entscheidung Stefan 29.09.2026).
+Status: offen.
+Feature/Run: Chat 29.09.2026.

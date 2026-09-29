@@ -115,6 +115,13 @@ export interface AusfuehrungsEingaben {
   auftragId: string
   /** Lineage-Verweis auf einen Vorgängerlauf bei Wiederaufnahme nach KLAERUNG_ERFORDERLICH oder ABGESCHLOSSEN/FEHLGESCHLAGEN (WS-2b, plan-v1 Abschnitt 2.3, AK7). Vom Aufrufer gewählt — der Controller generiert und prüft diese ID nicht. */
   vorgaengerLaufId?: string
+  /**
+   * F36 WS-5b: nur bei einem `ausfuehrung`-Lauf mit ≥1 Ort-B-Skill gesetzt (loeseAusfuehrungsEingabenAuf in
+   * scripts/leitstand-server.mjs). skillNamen/mcpServer gehen als Init-Gate an starteGateway;
+   * projektWurzel ist das Repo, dessen Laufdiff nach dem Lauf auf Änderungen unter .claude/ geprüft wird
+   * (→ klassifiziereLauf, 'claude_ordner_veraendert'). Fehlt das Feld, läuft alles wie vor WS-5b.
+   */
+  ortBLauf?: { skillNamen: string[]; mcpServer: string[]; projektWurzel: string }
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */

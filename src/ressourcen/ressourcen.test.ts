@@ -25,6 +25,7 @@ import {
   ersetzePlatzhalter,
   fehltFuerEinsatz,
   loeseRessourcenAuf,
+  PROJEKT_SKILL_GESPERRT,
   PROJEKT_URL_FEHLT,
   paketNameAus,
   pruefeAbdeckung,
@@ -33,6 +34,7 @@ import {
   ressourcenFuerCapability,
   validiereRessourcenDaten,
 } from './index.ts'
+import { berechneInhaltHash } from './skill-dateien.ts'
 import type { AufgelosteRessource, Ressource } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -96,6 +98,13 @@ function externSkill(overrides: Eintrag = {}): Eintrag {
     herkunft: { art: 'extern', url: 'https://github.com/x/taste-skill' },
     ...overrides,
   }
+}
+
+/** F36 WS-5b: R4-Form einer Skill-installation (Commit-SHA + inhalt_hash). */
+const SHA = 'a'.repeat(40)
+const HASH = 'b'.repeat(64)
+function skillInstallation(pfad: string, inhaltHash: string = HASH): { pfad: string; version: string; inhalt_hash: string } {
+  return { pfad, version: SHA, inhalt_hash: inhaltHash }
 }
 
 function externMcp(overrides: Eintrag = {}): Eintrag {
@@ -212,13 +221,19 @@ test('validiereRessourcenDaten: wirkung ist bei unterart mcp Pflicht, sonst unzu
   assert.deepStrictEqual(verstoesseMit(externMcp({ wirkung: 'extern_schreibend' })), [])
 })
 
-test('validiereRessourcenDaten: installation skill|agent — pfad (absolut oder ~) und version Pflicht', () => {
-  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: '~/.claude/skills/taste-skill', version: '1.2.0' } })), [])
-  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: 'C:\\Users\\x\\.claude\\skills\\taste', version: '1.2.0' } })), [])
-  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: { pfad: '/opt/skills/taste', version: '1.2.0' } })), [])
-  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '.claude/skills/taste', version: '1' } })), "'ressourcen[3].installation.pfad' muss absolut sein oder mit ~ beginnen"))
-  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x' } })), "'ressourcen[3].installation.version' muss ein nicht-leerer String sein"))
-  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x', version: '1', werkzeuge: ['a'] } })), "unbekanntes Feld 'ressourcen[3].installation.werkzeuge'"))
+test('validiereRessourcenDaten: installation skill|agent — pfad (absolut oder ~) und version Pflicht; skill mit Commit-SHA + inhalt_hash (WS-5b)', () => {
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: skillInstallation('~/.claude/skills/taste-skill') })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: skillInstallation('C:\\Users\\x\\.claude\\skills\\taste') })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ installation: skillInstallation('/opt/skills/taste') })), [])
+  assert.ok(hat(verstoesseMit(externSkill({ installation: skillInstallation('.claude/skills/taste') })), "'ressourcen[3].installation.pfad' muss absolut sein oder mit ~ beginnen"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x', inhalt_hash: HASH } })), "'ressourcen[3].installation.version' muss ein nicht-leerer String sein"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { ...skillInstallation('~/x'), werkzeuge: ['a'] } })), "unbekanntes Feld 'ressourcen[3].installation.werkzeuge'"))
+  // WS-5b (R4 skill): version = 40-stellige Commit-SHA, inhalt_hash = sha256 Pflicht.
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { ...skillInstallation('~/x'), version: '1.2.0' } })), "'ressourcen[3].installation.version' muss bei unterart 'skill' die 40-stellige Commit-SHA sein"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation: { pfad: '~/x', version: SHA } })), "'ressourcen[3].installation.inhalt_hash' muss bei unterart 'skill' ein sha256"))
+  // agent bleibt {pfad, version} — ohne inhalt_hash, mit inhalt_hash abgelehnt.
+  assert.deepStrictEqual(verstoesseMit(externSkill({ unterart: 'agent', installation: { pfad: '~/.claude/agents/x.md', version: '1' } })), [])
+  assert.ok(hat(verstoesseMit(externSkill({ unterart: 'agent', installation: { pfad: '~/x.md', version: '1', inhalt_hash: HASH } })), "unbekanntes Feld 'ressourcen[3].installation.inhalt_hash'"))
 })
 
 test('validiereRessourcenDaten: installation mcp — version, mcp_server{command,args[]}, werkzeuge ≥1 Pflicht', () => {
@@ -244,7 +259,7 @@ test('validiereRessourcenDaten: installation nur bei typ extern zulässig', () =
 })
 
 test('validiereRessourcenDaten: R2 (E-M5-5) — extern mit installation darf FREIGEGEBEN sein', () => {
-  assert.deepStrictEqual(verstoesseMit(externSkill({ freigabe: 'FREIGEGEBEN', installation: { pfad: '~/x', version: '1' } })), [])
+  assert.deepStrictEqual(verstoesseMit(externSkill({ freigabe: 'FREIGEGEBEN', installation: skillInstallation('~/x') })), [])
   assert.deepStrictEqual(verstoesseMit(externMcp({ freigabe: 'FREIGEGEBEN', installation: MCP_INSTALLATION })), [])
   assert.deepStrictEqual(verstoesseMit(externSkill({ unterart: 'agent', freigabe: 'FREIGEGEBEN', installation: { pfad: '~/.claude/agents/x.md', version: '1' } })), [])
   assert.ok(hat(verstoesseMit(externSkill({ freigabe: 'FREIGEGEBEN' })), '(R2, E-M5-5)'))
@@ -464,35 +479,46 @@ test('loeseRessourcenAuf: typ agent ohne vollständiges Frontmatter ist nicht ve
   }
 })
 
-test('loeseRessourcenAuf: extern skill|agent verfuegbar nur bei FREIGEGEBEN und existierendem installation.pfad', () => {
+test('loeseRessourcenAuf: extern skill|agent verfuegbar nur bei FREIGEGEBEN und existierendem installation.pfad (skill: SKILL.md + inhalt_hash, WS-5b)', () => {
   const repoWurzel = neuesTestRepo()
   try {
     const installiert = join(repoWurzel, 'global', 'taste-skill')
     mkdirSync(installiert, { recursive: true })
+    writeFileSync(join(installiert, 'SKILL.md'), '---\nname: taste-skill\ndescription: T.\n---\n')
+    const hash = berechneInhaltHash(installiert)
+    const ohneSkillMd = join(repoWurzel, 'global', 'leer')
+    mkdirSync(ohneSkillMd, { recursive: true })
     const basis = externRessource({ id: 'taste-skill', unterart: 'skill', wirkung: undefined, freigabe: 'FREIGEGEBEN' })
     delete basis.wirkung
-    const [da, fehlt, offen, agent] = loeseRessourcenAuf(
+    const [da, fehlt, offen, agent, hashAnders, keinSkillMd] = loeseRessourcenAuf(
       [
-        { ...basis, installation: { pfad: installiert, version: '1.0.0' } },
-        { ...basis, installation: { pfad: join(repoWurzel, 'gibt-es-nicht'), version: '1.0.0' } },
-        { ...basis, freigabe: 'OFFEN', installation: { pfad: installiert, version: '1.0.0' } },
+        { ...basis, installation: skillInstallation(installiert, hash) },
+        { ...basis, installation: skillInstallation(join(repoWurzel, 'gibt-es-nicht'), hash) },
+        { ...basis, freigabe: 'OFFEN', installation: skillInstallation(installiert, hash) },
         { ...basis, unterart: 'agent', installation: { pfad: installiert, version: '1.0.0' } },
+        { ...basis, installation: skillInstallation(installiert, 'c'.repeat(64)) },
+        { ...basis, installation: skillInstallation(ohneSkillMd, hash) },
       ],
       repoWurzel,
       'x.json'
     )
     assert.strictEqual(da.verfuegbar, true, da.grund)
+    assert.match(da.grund, /inhalt_hash stimmt/)
     assert.strictEqual(fehlt.verfuegbar, false)
     assert.match(fehlt.grund, /existiert nicht/)
     assert.strictEqual(offen.verfuegbar, false)
     assert.strictEqual(agent.verfuegbar, true)
+    assert.strictEqual(hashAnders.verfuegbar, false)
+    assert.match(hashAnders.grund, /inhalt_hash .* weicht .* ab/)
+    assert.strictEqual(keinSkillMd.verfuegbar, false)
+    assert.match(keinSkillMd.grund, /SKILL.md fehlt/)
   } finally {
     raeumeVerzeichnis(repoWurzel)
   }
 })
 
 test('loeseRessourcenAuf: extern skill mit ~-Pfad wird gegen das Home-Verzeichnis aufgelöst', () => {
-  const basis = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: { pfad: `~/f36-gibt-es-nicht-${randomUUID()}`, version: '1' } })
+  const basis = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: skillInstallation(`~/f36-gibt-es-nicht-${randomUUID()}`) })
   delete basis.wirkung
   const [a] = loeseRessourcenAuf([basis], tmpdir(), 'x.json')
   assert.strictEqual(a.verfuegbar, false)
@@ -530,7 +556,7 @@ test('loeseRessourcenAuf: ungültige installation (unvalidierte Handbearbeitung)
 })
 
 test('loeseRessourcenAuf: extern OFFEN mit falschem installation.pfad meldet den Pfad schon vor der Freigabe', () => {
-  const r = externRessource({ id: 'taste-skill', unterart: 'skill', installation: { pfad: join(tmpdir(), `f36-fehlt-${randomUUID()}`), version: '1' } })
+  const r = externRessource({ id: 'taste-skill', unterart: 'skill', installation: skillInstallation(join(tmpdir(), `f36-fehlt-${randomUUID()}`)) })
   delete r.wirkung
   const [a] = loeseRessourcenAuf([r], tmpdir(), 'x.json')
   assert.strictEqual(a.verfuegbar, false)
@@ -605,7 +631,7 @@ test('fehltFuerEinsatz: freigegeben, aber technisch nicht verfügbar → Grund d
 })
 
 test('fehltFuerEinsatz: extern FREIGEGEBEN mit fehlendem Pfad — technischer Grund vor dem Empfehlungshinweis', () => {
-  const r = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: { pfad: '~/x', version: '1' } })
+  const r = externRessource({ id: 'taste-skill', unterart: 'skill', freigabe: 'FREIGEGEBEN', installation: skillInstallation('~/x') })
   delete r.wirkung
   assert.deepStrictEqual(fehltFuerEinsatz(r, aufgeloestAus(r, false, "extern, installation.pfad 'C:\\x' existiert nicht")), [
     "nicht verfügbar: extern, installation.pfad 'C:\\x' existiert nicht",
@@ -628,7 +654,8 @@ test('fehltFuerEinsatz: Kopplung an die echten Grund-Texte — worker, skill, ag
     mkdirSync(join(repoWurzel, '.claude', 'agents'), { recursive: true })
     writeFileSync(join(repoWurzel, '.claude', 'agents', 'a.md'), '---\nname: a\ndescription: A.\n---\n')
     const aw = { task_typen_any: ['bugfix' as const] }
-    const extern = externRessource({ id: 'x', unterart: 'skill', installation: { pfad: repoWurzel, version: '1' }, anwendbar_wenn: aw })
+    const skillOrdner = join(repoWurzel, '.claude', 'skills', 's')
+    const extern = externRessource({ id: 'x', unterart: 'skill', installation: skillInstallation(skillOrdner, berechneInhaltHash(skillOrdner)), anwendbar_wenn: aw })
     delete extern.wirkung
     const ressourcen: Ressource[] = [
       { id: 'claude-code', typ: 'worker', capabilities: ['C'], freigabe: 'OFFEN', herkunft: { art: 'startvorlage', worker: 'claude-code' } },
@@ -852,15 +879,43 @@ test('baueEmpfehlung: deterministisch — gleiche Eingabe (auch umsortiert) gibt
   assert.deepEqual(baueEmpfehlung([...eintraege].reverse(), KONTEXT), eins)
 })
 
-test('baueEmpfehlung: Skill/Agent (intern und extern) nie in wirdGenutzt, Grund nennt WS-5', () => {
+test('baueEmpfehlung (WS-5b): Agents und Projekt-Skills nie in wirdGenutzt; Agents behalten „erst ab WS-5“, Projekt-Skills „gesperrt“', () => {
   const internSkill = kandidat('skill-intern', { typ: 'skill', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'skill', pfad: '.claude/skills/x' } })
   const internAgent = kandidat('agent-intern', { typ: 'agent', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'agent', pfad: '.claude/agents/x.md' } })
-  const externSkillFrei = kandidat('skill-extern', { unterart: 'skill', wirkung: undefined, installation: { pfad: '/x', version: '1' } })
   const externAgentFrei = kandidat('agent-extern', { unterart: 'agent', wirkung: undefined, installation: { pfad: '/x', version: '1' } })
-  const e = baueEmpfehlung([internSkill, internAgent, externSkillFrei, externAgentFrei], KONTEXT)
+  const e = baueEmpfehlung([internSkill, internAgent, externAgentFrei], KONTEXT)
   assert.deepEqual(e.wirdGenutzt, [])
-  assert.equal(e.passtNichtImLauf.length + e.weitereAnzahl.passtNichtImLauf, 4)
-  for (const x of e.passtNichtImLauf) assert.match(x.grund, /Skill\/Agent in der Ausführung erst ab WS-5/)
+  assert.equal(e.passtNichtImLauf.length, 3)
+  const grund = (id: string) => e.passtNichtImLauf.find((x) => x.id === id)?.grund ?? ''
+  assert.match(grund('agent-intern'), /Skill\/Agent in der Ausführung erst ab WS-5/)
+  assert.match(grund('agent-extern'), /Skill\/Agent in der Ausführung erst ab WS-5/)
+  assert.ok(grund('skill-intern').includes(PROJEKT_SKILL_GESPERRT))
+  assert.doesNotMatch(grund('skill-intern'), /erst ab WS-5/)
+})
+
+test('baueEmpfehlung (WS-5b): extern skill FREIGEGEBEN + installation + verfügbar → wirdGenutzt mit empfehlungId id@hash; nicht verfügbar → Grund', () => {
+  const inst = { pfad: '/cap/fd/.claude/skills/fd', version: 'a'.repeat(40), inhalt_hash: 'b'.repeat(64) }
+  const frei = kandidat('fd', { unterart: 'skill', wirkung: undefined, installation: inst })
+  const kaputt = kandidat('fd2', { unterart: 'skill', wirkung: undefined, installation: inst, verfuegbar: false, grund: 'extern, inhalt_hash des Skill-Ordners weicht ab' })
+  const e = baueEmpfehlung([frei, kaputt], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt.map((x) => x.empfehlungId), [empfehlungsKennung(frei)])
+  assert.match(e.wirdGenutzt[0].empfehlungId ?? '', /^fd@[0-9a-f]{64}$/)
+  assert.match(e.passtNichtImLauf[0].grund, /inhalt_hash/)
+  assert.doesNotMatch(e.passtNichtImLauf[0].grund, /erst ab WS-5/)
+})
+
+test('baueEmpfehlung (WS-5b): extern skill ohne installation — installierbar nur mit Vorlage und GitHub-Adresse, sonst Grund', () => {
+  const offen = { freigabe: 'OFFEN' as const, installation: undefined, verfuegbar: false, grund: 'extern, installation fehlt', unterart: 'skill' as const, wirkung: undefined }
+  const mit = kandidat('mit', { ...offen, herkunft: { art: 'extern', url: 'https://github.com/o/r/tree/main/plugins/x' }, installation_vorlage: { skill_pfad: 'skills/x' } })
+  const ohne = kandidat('ohne', { ...offen, herkunft: { art: 'extern', url: 'https://github.com/o/r' } })
+  const fremd = kandidat('fremd', { ...offen, herkunft: { art: 'extern', url: 'https://gitlab.com/o/r' }, installation_vorlage: { skill_pfad: 'x' } })
+  const e = baueEmpfehlung([mit, ohne, fremd], KONTEXT)
+  const eintrag = (id: string) => e.passtNichtImLauf.find((x) => x.id === id)
+  assert.equal(eintrag('mit')?.installierbar, true)
+  assert.equal('installierbar' in (eintrag('ohne') ?? {}), false)
+  assert.match(eintrag('ohne')?.grund ?? '', /nicht installierbar: installation_vorlage \(skill_pfad\) fehlt/)
+  assert.match(eintrag('fremd')?.grund ?? '', /nicht installierbar: herkunft.url/)
+  assert.match(pruefeInstallierbarkeit(kandidat('ag', { unterart: 'agent', wirkung: undefined })) ?? '', /erst später/)
 })
 
 test('baueEmpfehlung: wirkung ≠ lokal steht in keiner Liste, nur in nichtFreigebbarAnzahl (E-F36-4)', () => {
@@ -915,10 +970,14 @@ test('validiereRessourcenDaten (WS-5a): herkunft.paket — Form npm:<name> nach 
   assert.equal(paketNameAus(`npm:${'a'.repeat(214)}`), 'a'.repeat(214))
 })
 
-test('validiereRessourcenDaten (WS-5a): herkunft.paket und installation_vorlage nur bei unterart mcp', () => {
+test('validiereRessourcenDaten (WS-5a/5b): herkunft.paket nur bei mcp; installation_vorlage je unterart (mcp {bin,args,werkzeuge}, skill {skill_pfad}, agent keine)', () => {
   assert.ok(hat(verstoesseMit(externSkill({ herkunft: { art: 'extern', url: 'https://x', paket: 'npm:x' } })), "herkunft.paket' ist nur bei unterart 'mcp'"))
-  assert.ok(hat(verstoesseMit(externSkill({ installation_vorlage: VORLAGE })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp'"))
-  assert.ok(hat(verstoesseMit(agentEintrag({ installation_vorlage: VORLAGE })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp'"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation_vorlage: VORLAGE })), "unbekanntes Feld 'ressourcen[3].installation_vorlage.bin'"))
+  assert.ok(hat(verstoesseMit(externSkill({ unterart: 'agent', installation_vorlage: { skill_pfad: 'x' } })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' oder 'skill'"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ installation_vorlage: VORLAGE })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp' oder 'skill'"))
+  assert.deepEqual(verstoesseMit(externSkill({ installation_vorlage: { skill_pfad: 'skills/frontend-design' } })), [])
+  for (const skill_pfad of ['', '../x', 'a//b', '/abs', 'a\\b', 'a/./b', 'C:/x', 7]) assert.ok(hat(verstoesseMit(externSkill({ installation_vorlage: { skill_pfad } })), 'installation_vorlage.skill_pfad'), `skill_pfad ${String(skill_pfad)}`)
+  assert.ok(hat(verstoesseMit(externSkill({ installation_vorlage: { skill_pfad: 'x', extra: 1 } })), 'installation_vorlage.extra'))
 })
 
 test('validiereRessourcenDaten (WS-5a): installation_vorlage — Form, bin relativ, werkzeuge wie R4', () => {
@@ -1016,7 +1075,8 @@ test('baueEmpfehlung (WS-5a): installierbar nur für extern mcp lokal mit paket 
   assert.equal('installierbar' in (e.passtNichtImLauf.find((x) => x.id === 'ohne-paket') ?? {}), false)
   assert.match(pruefeInstallierbarkeit(ohnePaket) ?? '', /herkunft.paket fehlt/)
   assert.match(pruefeInstallierbarkeit(kandidat('l', { wirkung: 'extern_lesend' })) ?? '', /E-F36-4/)
-  assert.match(pruefeInstallierbarkeit(kandidat('s', { unterart: 'skill' })) ?? '', /nur typ 'extern' mit unterart 'mcp'/)
+  assert.match(pruefeInstallierbarkeit(kandidat('s', { unterart: 'skill' })) ?? '', /installation_vorlage \(skill_pfad\) fehlt/)
+  assert.match(pruefeInstallierbarkeit(kandidat('w', { typ: 'worker' })) ?? '', /nur typ 'extern' mit unterart 'mcp' oder 'skill'/)
   assert.match(pruefeInstallierbarkeit(kandidat('v', { herkunft: { art: 'extern', url: 'https://x', paket: 'npm:v' } })) ?? '', /installation_vorlage fehlt/)
 })
 

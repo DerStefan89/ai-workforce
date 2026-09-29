@@ -106,7 +106,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -128,7 +128,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
-import { fuehreAufgabeDurch } from './index.ts'
+import { fuehreAufgabeDurch, leseClaudeAenderungen } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -1557,4 +1557,34 @@ test('F16 AK11: ein Worker, den die Weiche nicht kennt, wirft VOR jeder Schreibw
   } finally {
     raeumeKette(laufId)
   }
+})
+
+// ─── F36 WS-5b: Laufdiff unter .claude/ (leseClaudeAenderungen) ────────────────
+
+test('F36 WS-5b leseClaudeAenderungen: neue, geänderte und umbenannte Pfade mit Segment .claude; übrige nicht; git nicht lesbar → Treffer', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'ws5b-laufdiff-'))
+  try {
+    const g = (...a: string[]) => execFileSync('git', a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    g('init', '-q')
+    g('config', 'user.email', 't@example.invalid')
+    g('config', 'user.name', 'T')
+    mkdirSync(join(repo, '.claude', 'skills', 'alt'), { recursive: true })
+    writeFileSync(join(repo, '.claude', 'skills', 'alt', 'SKILL.md'), 'a')
+    writeFileSync(join(repo, 'README.md'), 'r')
+    g('add', '-A')
+    g('commit', '-q', '-m', 'init')
+    assert.deepEqual(leseClaudeAenderungen(repo), [])
+    writeFileSync(join(repo, 'README.md'), 'r2')
+    assert.deepEqual(leseClaudeAenderungen(repo), [], 'Änderung außerhalb .claude zählt nicht')
+    mkdirSync(join(repo, '.claude', 'skills', 'neu'), { recursive: true })
+    writeFileSync(join(repo, '.claude', 'skills', 'neu', 'SKILL.md'), 'n')
+    mkdirSync(join(repo, 'sub', '.claude'), { recursive: true })
+    writeFileSync(join(repo, 'sub', '.claude', 'x.json'), '{}')
+    g('mv', '.claude/skills/alt/SKILL.md', 'umbenannt.md')
+    assert.deepEqual(leseClaudeAenderungen(repo).sort(), ['.claude/skills/alt/SKILL.md', '.claude/skills/neu/SKILL.md', 'sub/.claude/x.json'])
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
+  const keinRepo = join(tmpdir(), `ws5b-kein-repo-${randomUUID()}`)
+  assert.match(leseClaudeAenderungen(keinRepo)[0] ?? '', /Laufdiff nicht lesbar/)
 })
