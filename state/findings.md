@@ -10916,14 +10916,14 @@ Maßnahme: `istFremdeBrowserAnfrage` zentral vor jede zustandsändernde Route se
 Status: erledigt (Commit auf diesem Branch, fix/f813-csrf-post-routen): `istFremdeBrowserAnfrage` läuft zentral einmal am Anfang von `requestHandler` für jede Methode außer GET/HEAD (403 `{ grund }`), damit auch für `/api/projekte/<id>/…`; der Einzelaufruf an den Installationsrouten ist entfallen. Beleg `scripts/check-f813-csrf.mjs` (echter HTTP-Testserver; Rotfall vor dem Fix real: 91 Befunde; leitet die schreibenden Routen aus dem Quelltext ab und prüft den zentralen Haken strukturell). Semantik unverändert: ohne Origin/Sec-Fetch-Site weiter zulässig.
 Feature/Run: F36 WS-5a, 29.09.2026; behoben 29.09.2026.
 
-**F-814** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-814** · `HARNESS_IMPROVEMENT` · P2 · erledigt (fix/f814-host-allowlist)
 Titel: Leitstand prüft den Host-Header nicht gegen eine feste Liste (DNS-Rebinding).
 Beschreibung: `istFremdeBrowserAnfrage` vergleicht `Origin` nur mit dem `Host`-Header. Eine Seite, deren Domain per DNS-Rebinding auf 127.0.0.1 zeigt, gilt als Same-Origin und erreicht alle schreibenden Routen (Läufe, Freigaben, Installationen).
 Fundstelle: `scripts/leitstand-server.mjs` (`istFremdeBrowserAnfrage`, zentraler Haken F-813).
 Auswirkung: Mittel — setzt einen aktiven Angreifer voraus, trifft aber auch die Installationsrouten.
 Maßnahme: `Host`-Header zentral gegen eine Allowlist (`127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>`) prüfen, für alle Methoden; Gate mit Rotfall fremder Host. Eigener kleiner Auftrag, spätestens vor Freigabe von Skill-/Agent-Installation (F36 WS-5b).
-Status: offen.
-Feature/Run: F-813-Fix, Reviewer-/QA-Hinweis, 29.09.2026.
+Status: erledigt (dieser Branch, fix/f814-host-allowlist): `istUnzulaessigerHost` läuft zentral einmal am Anfang von `requestHandler`, für jede Methode (auch GET/HEAD) und vor dem CSRF-Haken. Zulässig nur `127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>` (Hostname ohne Groß-/Kleinschreibung; Port = `req.socket.localPort`, also der tatsächlich gebundene Port). Sonst 403 `{ grund }`, ohne Body zu lesen. Beleg `scripts/check-f814-host.mjs` (echter HTTP-Testserver, roher TCP-Client; Rotfall vor dem Fix real: 53 Befunde, u. a. gestartete Läufe unter Host `evil.example:<port>`; Strukturprüfung: genau ein Host-Haken vor dem CSRF-Haken).
+Feature/Run: F-813-Fix, Reviewer-/QA-Hinweis, 29.09.2026; behoben 29.09.2026.
 
 **F-815** · `TECH_DEBT` · P2 · offen
 Titel: Agents (extern + Projekt) und Projekt-Skills sind in der Ausführung weiter nicht nutzbar — WS-5b schaltet nur Ort-B-Skills.
@@ -10978,3 +10978,30 @@ Auswirkung: Mittel — Randfälle aus Nutzersicht werden im Workflow nicht eigen
 Maßnahme: qa-Ausgabeschema (Randfall-Urteil mit Beleg) und ein Schritt vor der Abnahme. Reihenfolge: nach dem Design-Bau, vor F30 (Entscheidung Stefan 29.09.2026).
 Status: offen.
 Feature/Run: Chat 29.09.2026.
+
+**F-821** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Wartepunkt (Web-Merge) und Aufräumbefehle im selben TERMINAL-Block.
+Beschreibung: Der Challenger gab Merge und Worktree-/Branch-Löschung in einem Block aus; das Aufräumen lief vor dem Merge (Remote-Branch gelöscht, PR geschlossen, F-814-Worktree auf altem main). Behoben durch Wiederherstellen aus dem lokalen Commit 5cbf80f, gemergt als #278.
+Fundstelle: TERMINAL-Blöcke des Challengers (Bedienregeln in `state/uebergabe-aktuell.md`).
+Auswirkung: Niedrig — lokal wiederherstellbar, kostete aber einen geschlossenen PR und eine Wiederherstellungsrunde.
+Maßnahme: Wartepunkte beenden einen Block; Aufräumen erst nach bestätigtem `git rev-parse`.
+Status: offen.
+Feature/Run: F36 WS-5b, 29.09.2026.
+
+**F-822** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Projekt-Dispatcher antwortet vor dem Host-Haken — 404-Orakel für Projekt-ids.
+Beschreibung: `erzeugeMultiProjektDispatcher` antwortet bei `/api/projekte/<unbekannte id>/…` mit 404 „Unbekanntes Projekt“, bevor der Host-Haken (F-814) in `requestHandler` greift; bei bekannter id kommt 403. Eine per DNS-Rebinding umgebogene Seite kann so prüfen, ob eine Projekt-id existiert. Sie liest und ändert keinen Zustand.
+Fundstelle: `scripts/leitstand-server.mjs` (`erzeugeMultiProjektDispatcher`); `scripts/check-f814-host.mjs` (Kopf, „bewusst nicht abgedeckt“).
+Auswirkung: Niedrig — nur Existenz einer vom Angreifer geratenen id.
+Maßnahme: Bei Bedarf `istUnzulaessigerHost` auch am Anfang des Dispatchers prüfen und die Strukturprüfung (3) des Gates um diesen begründeten zweiten Aufruf erweitern, plus Rotfall „unbekanntes Projekt, fremder Host“. Im F-814-Auftrag bewusst nicht gemacht (Vorgabe: Dispatcher nicht gesondert behandeln).
+Status: offen.
+Feature/Run: F-814-Fix, Reviewer-/QA-Pass, 29.09.2026.
+
+**F-823** · `TECH_DEBT` · P2 · offen
+Titel: Ungültige absolute Anfrage-URI beendet den Leitstand-Prozess.
+Beschreibung: `erzeugeMultiProjektDispatcher` ruft `new URL(req.url, 'http://localhost')` synchron ohne try auf. Eine rohe Anfrage `GET http://[/ HTTP/1.1` lässt Node durch; der Konstruktor wirft „Invalid URL“ im Request-Listener, unbehandelt → Prozessende. Real nachgemessen 29.09.2026 (roher TCP-Aufruf gegen den Dispatcher: uncaughtException „Invalid URL“). Vor F-814 schon vorhanden. Per DNS-Rebinding nicht erreichbar (Browser senden origin-form), wohl aber für jeden lokalen Prozess.
+Fundstelle: `scripts/leitstand-server.mjs` (`erzeugeMultiProjektDispatcher`, erste Zeile).
+Auswirkung: Mittel — ein lokaler Prozess kann den Leitstand samt laufender Läufe beenden.
+Maßnahme: URL-Aufbau im Dispatcher in try/catch, bei Fehler 400 `{ grund }`; Gate mit rohem TCP-Rotfall (Muster `scripts/check-f814-host.mjs`, `sendeRoh`). Eigener kleiner Auftrag.
+Status: offen.
+Feature/Run: F-814-Fix, Reviewer-Pass, 29.09.2026.

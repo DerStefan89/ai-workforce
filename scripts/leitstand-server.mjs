@@ -2313,6 +2313,28 @@ export function istFremdeBrowserAnfrage(req) {
 }
 
 /**
+ * F-814: DNS-Rebinding-Schutz. Der Host-Header muss exakt 127.0.0.1:<port>, localhost:<port> oder
+ * [::1]:<port> sein (Hostname ohne Rücksicht auf Groß-/Kleinschreibung). Eine per DNS auf 127.0.0.1
+ * umgebogene fremde Domain trägt ihren eigenen Namen im Host-Header und fällt hier heraus — der
+ * Origin-Vergleich in istFremdeBrowserAnfrage allein hielte sie für Same-Origin.
+ * Port = req.socket.localPort: der Port, auf dem der laufende Server diese Verbindung tatsächlich
+ * angenommen hat (identisch mit server.address().port, auch bei listen(0)) — nie aus Konfiguration.
+ * Gewollte Grenze: Zugriff über Portweiterleitung/Proxy mit abweichendem Port oder Namen und Port 80
+ * (Browser lässt ihn im Host weg) wird ebenfalls abgelehnt.
+ * @param req - eingehende Anfrage
+ * @returns Ablehnungsgrund oder null
+ */
+export function istUnzulaessigerHost(req) {
+  const host = req.headers.host
+  const port = req.socket?.localPort
+  if (typeof port !== 'number') return 'Anfrage abgelehnt (lokaler Port nicht bestimmbar)'
+  const zulaessig = [`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]
+  const hinweis = `Leitstand über http://127.0.0.1:${port} oder http://localhost:${port} öffnen`
+  if (typeof host !== 'string' || host === '') return `Anfrage ohne Host-Header abgelehnt — ${hinweis}`
+  return zulaessig.includes(host.toLowerCase()) ? null : `Anfrage mit fremdem Host abgelehnt (Host: ${host}) — ${hinweis}`
+}
+
+/**
  * F36 WS-5a (E-F36-7): Werte der Platzhalter für einen Lauf — {projekt_origins} aus vorschau_url
  * (fehlt sie, bleibt der Wert weg und baueMcpAufruf lehnt einen Eintrag mit dem Platzhalter ab),
  * {ausgabe_ordner} = <laufausgabeWurzel>/<laufId>, außerhalb des Projekts. Der Ordner wird nicht
@@ -5487,6 +5509,15 @@ export function erzeugeRequestHandler(optionen = {}) {
     // gesamte Routenkette) — try öffnet hier, catch schließt kurz vor der abschließenden
     // schließenden Klammer der Funktion.
     try {
+    // F-814: DNS-Rebinding-Schutz zentral EINMAL vor jeder Route und für JEDE Methode (auch
+    // GET/HEAD — sonst könnte eine umgebogene fremde Domain Zustand lesen), vor dem CSRF-Haken,
+    // dessen Origin-Vergleich einem gefälschten Host sonst vertraut. Kein Body wird gelesen.
+    // Nicht pro Route wiederholen — scripts/check-f814-host.mjs prüft genau einen Aufruf hier.
+    const fremderHost = istUnzulaessigerHost(req)
+    if (fremderHost !== null) {
+      sendeJson(res, 403, { grund: fremderHost })
+      return
+    }
     // F-813: CSRF-Schutz zentral EINMAL vor jeder Route mit nicht-lesender Methode — eine fremde
     // Seite im selben Browser darf keinen Lauf starten, keine Freigabe/Entscheidung festhalten.
     // Gilt auch für /api/projekte/<id>/... (der Dispatcher reicht an diese Instanz durch).

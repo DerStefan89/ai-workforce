@@ -3,9 +3,11 @@ Wird am Ende jeder Challenger-Runde vollständig überschrieben. Historie: Git-L
 Stand: 29.09.2026.
 
 ## Stand
-F36 "Capability Library wirksam machen" IN_ARBEIT. Gemergt: WS-0, WS-1, WS-4, WS-1b, WS-2 (#271, MCP-Weg), Spike S7 (#272), Gedächtnislücken (#273), Datennachtrag (#274), WS-3 Empfehlung (#275), WS-5a MCP-Installation (#276), F-813 CSRF zentral (#277).
+F36 "Capability Library wirksam machen" IN_ARBEIT. Gemergt: WS-0, WS-1, WS-4, WS-1b, WS-2 (#271, MCP-Weg), Spike S7 (#272), Gedächtnislücken (#273), Datennachtrag (#274), WS-3 Empfehlung (#275), WS-5a MCP-Installation (#276), F-813 CSRF zentral (#277), WS-5b Ort-B-Skills (#278).
 
-WS-5b ist gebaut, nicht gemergt. Worktree `aiw-f36-ws5b`, Branch `feat/f36-ws5b-skill-installation`, Basis `0c5c1f9`. Challenger-Zuschnitt 29.09.2026: nur Ort-B-Skills; Agents, Projekt-Skills und eingebaute Skills bleiben gesperrt; kein enabledPlugins.
+F-814 (DNS-Rebinding) ist behoben, nicht gemergt. Worktree `aiw-f814-host`, Branch `fix/f814-host-allowlist`, Basis `c6fbb2a`. Zentraler Host-Haken `istUnzulaessigerHost` in `requestHandler` vor dem CSRF-Haken, für alle Methoden; zulässig nur `127.0.0.1|localhost|[::1]:<gebundener Port>`, sonst 403. Gate `scripts/check-f814-host.mjs` (in `npm run check`). Neu: F-821 (Wartepunkt und Aufräumen im selben TERMINAL-Block; Wiederherstellung WS-5b aus 5cbf80f), F-822 (404-Orakel des Projekt-Dispatchers vor dem Host-Haken, P3), F-823 (ungültige absolute Request-URI beendet den Prozess, P2, real nachgemessen).
+
+Inhalt WS-5b (gemergt #278). Challenger-Zuschnitt 29.09.2026: nur Ort-B-Skills; Agents, Projekt-Skills und eingebaute Skills bleiben gesperrt; kein enabledPlugins.
 
 - **Katalog:**
   - `installation_vorlage {skill_pfad}` und `installation {pfad, version = Commit-SHA, inhalt_hash}` für extern skill.
@@ -44,8 +46,8 @@ WS-5b ist gebaut, nicht gemergt. Worktree `aiw-f36-ws5b`, Branch `feat/f36-ws5b-
 - **Nebenbefund 9c:** Ein lesender Bash-Befehl (`pwd && ls -la …`) lief ohne Allowlist-Eintrag. Der vorgeschriebene Skript-Hinweis ist für lesende Befehle zu stark. Challenger entscheidet über ein Finding.
 
 ## Nächste Schritte
-1. WS-5b-Merge. Die Challenger-Verifikation vom 29.09.2026 lautet „freigegeben mit Hinweisen“, der Nachtrag ist eingearbeitet.
-2. F-814: Host-Allowlist, vor der ersten Installation über den Leitstand.
+1. F-814 prüfen (Challenger per Hash) und mergen.
+2. Wartepunkte beenden einen TERMINAL-Block; Aufräumen erst nach bestätigtem `git rev-parse` (F-821).
 3. Reallauf haushaltsbuch2 mit playwright-mcp + frontend-design (Vorbedingungen in feature.md „Reallauf“):
    - vorschau_url im Projektregister setzen; „Freigeben & installieren“ für beide über den Leitstand;
    - Zählregel (Challenger 29.09.2026):
