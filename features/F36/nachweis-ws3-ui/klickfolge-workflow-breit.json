@@ -1,0 +1,16 @@
+{
+  "url": "http://127.0.0.1:4176/#/workflows/f36-ws3-nachweis",
+  "viewport": { "breite": 1100, "hoehe": 3000 },
+  "screenshotAusschnitt": { "selector": "#workflow-bedienung", "hoehe": 560 },
+  "beobachtete": {
+    "vorhanden": [
+      { "name": "Empfehlungsblock", "selector": "#workflow-bedienung h3" },
+      { "name": "Freigeben mit data-empfehlung-ids", "selector": "[data-aktion=\"freigeben\"][data-empfehlung-ids]" }
+    ]
+  },
+  "schritte": [
+    { "label": "Breit: Empfehlung am ZWINGEND-Start", "warteAufSelector": { "selector": "[data-aktion=\"freigeben\"]", "timeoutMs": 8000 }, "screenshot": "01-workflow-breit.png" },
+    { "label": "Begründung + Freigeben (mit ids)", "tippen": { "selector": "#wf-freigabe-begruendung", "text": "Render-Nachweis" }, "klick": "[data-aktion=\"freigeben\"]" },
+    { "label": "Workflow gestartet (Freigabe-Block weg)", "warteAufSelector": { "selector": "#nie-vorhanden", "timeoutMs": 3000 }, "screenshot": "02-workflow-gestartet.png" }
+  ]
+}

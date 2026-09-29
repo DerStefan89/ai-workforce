@@ -76,6 +76,24 @@ export interface AnwendbarkeitsKontext {
   pfade?: string[]
 }
 
+/** F36 WS-3: ein Eintrag einer Empfehlungsliste — grund sagt bei „Wird genutzt“, warum er passt, bei „Passt, nicht im Lauf“, was fehlt. */
+export interface EmpfehlungsEintrag {
+  id: string
+  name: string
+  typ: RessourcenTyp
+  unterart?: ExternUnterart
+  grund: string
+}
+
+/** F36 WS-3: Ergebnis von baueEmpfehlung — je Liste höchstens drei Einträge, der Rest nur als Anzahl (F-788). */
+export interface Empfehlung {
+  wirdGenutzt: EmpfehlungsEintrag[]
+  passtNichtImLauf: EmpfehlungsEintrag[]
+  weitereAnzahl: { wirdGenutzt: number; passtNichtImLauf: number }
+  /** Anwendbare MCP-Einträge mit wirkung ≠ 'lokal' — in V1 nicht freigebbar (E-F36-4), in keiner Liste. */
+  nichtFreigebbarAnzahl: number
+}
+
 /**
  * Ressource + zur Abfragezeit abgeleitete Felder. name/beschreibung sind
  * hier immer gesetzt (aus der Herkunft aufgelöst oder aus dem Eintrag

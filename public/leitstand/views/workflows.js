@@ -9,7 +9,9 @@
  * Deckt zwei der sechs Bedienflüsse ab, die laut F20 AK1 real unverändert
  * funktionieren müssen: Freigabe/Stopp und Reparaturfassung. Seit F23 WS-2a
  * zusätzlich die Abnahme (ACCEPT/REJECT), seit WS-2b auch ADJUST bedienbar
- * (Freigabe-Halt danach als Hinweis statt der Abnahme-Schaltflächen).
+ * (Freigabe-Halt danach als Hinweis statt der Abnahme-Schaltflächen). Seit F36
+ * WS-3 zeigt der Freigabe-Block die Katalog-Empfehlung (empfehlung-anzeige.js) und
+ * schickt die angezeigten wirdGenutzt-ids mit der Freigabe mit.
  *
  * Die Oberfläche entscheidet dabei NICHTS selbst (D5). Was angeboten wird,
  * hängt an zwei Aussagen des Servers: naechster.art (das Verdikt von
@@ -58,6 +60,7 @@ import {
   stoppeWorkflow,
   wiederholeWorkflowPruefung,
 } from '../api.js'
+import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -633,9 +636,10 @@ function renderArchitekturEntscheidung(workflowId, architekturEntscheidung) {
  * @param naechster - Automaten-Verdikt aus dem Server, oder null
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
  * @param architekturEntscheidung - { schrittId, fragen } aus GET /api/workflows/<id>, oder null
+ * @param empfehlung - F36 WS-3: Katalog-Empfehlung am ZWINGEND-Start (GET /api/workflows/<id>), oder null
  * @returns HTML-Block
  */
-function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null) {
+function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null) {
   const art = naechster === null || naechster === undefined ? null : naechster.art
   const kennung = escapeHtml(workflowId)
   const faelligerSchritt = escapeHtml(naechster?.schrittId ?? '')
@@ -653,12 +657,16 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
   }
 
   if (art === 'haltFreigabe') {
+    // F36 WS-3: die angezeigten wirdGenutzt-ids gehen mit der Freigabe mit (data-empfehlung-ids, „Anzeige = Start“).
+    const empfehlungIds = empfehlungIdsFuerFreigabe(empfehlung)
+    const empfehlungAttribut = empfehlungIds === undefined ? '' : ` data-empfehlung-ids="${escapeHtml(JSON.stringify(empfehlungIds))}"`
+    bloecke.push(renderEmpfehlung(empfehlung))
     bloecke.push(`<div class="unterabschnitt">
       <p>Schritt <code>${faelligerSchritt}</code> verlangt eine menschliche Freigabe. Ohne dich läuft hier nichts weiter.</p>
       <label for="wf-freigabe-begruendung">Begründung (Pflicht)</label>
       <textarea id="wf-freigabe-begruendung" rows="2"></textarea>
       <div>
-        <button class="btn btn-primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Freigeben</button>
+        <button class="btn btn-primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}"${empfehlungAttribut}>Freigeben</button>
         <button class="btn wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Ablehnen</button>
       </div>
     </div>`)
@@ -688,12 +696,12 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
 /** Kennzeichen des zuletzt gerenderten Bedienblocks — verhindert, dass eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren geht (F-249). Nur bei ECHTER Lageänderung wird neu gebaut. */
 let bedienungsKennzeichen = null
 
-/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null) {
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}`
+/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) */
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null) {
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}|${JSON.stringify(empfehlung)}`
   if (kennzeichen === bedienungsKennzeichen) return
   bedienungsKennzeichen = kennzeichen
-  document.getElementById('workflow-bedienung').innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung)
+  document.getElementById('workflow-bedienung').innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung)
 }
 
 // ─── Reparaturzug (löst F-240, F-218; zeigt F-219, F-223, F-226) ────────────
@@ -999,7 +1007,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const daten = detail.daten ?? {}
     const verstoesse = Array.isArray(detail.verstoesse) ? detail.verstoesse : []
     const naechster = detail.naechster ?? null
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null)
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null, detail.empfehlung ?? null)
     // Eigener Endpunkt, eigener Überholschutz (istUeberholt), fire-and-forget — blockiert das
     // übrige Rendern nicht.
     void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
@@ -1089,8 +1097,17 @@ async function fuehreWorkflowAktionAus(button) {
       zeigeBedienungsMeldung('Die Begründung ist Pflicht — ohne sie wird die Entscheidung nicht festgehalten.')
       return
     }
+    // F36 WS-3: data-empfehlung-ids steht nur am Freigeben-Knopf, und nur wenn eine Empfehlung angezeigt wurde.
+    let empfehlungIds = {}
+    try {
+      empfehlungIds = button.dataset.empfehlungIds !== undefined ? { empfehlungIds: JSON.parse(button.dataset.empfehlungIds) } : {}
+    } catch (fehler) {
+      console.error('[workflows] data-empfehlung-ids nicht lesbar:', fehler)
+      zeigeBedienungsMeldung('Die angezeigte Katalog-Empfehlung ist nicht lesbar — Ansicht neu laden und erneut freigeben.')
+      return
+    }
     await sendeWorkflowBedienung(
-      () => sendeWorkflowFreigabe(workflowId, { schrittId: button.dataset.schrittId, entscheidung: aktion === 'freigeben' ? 'FREIGEGEBEN' : 'ABGELEHNT', begruendung }),
+      () => sendeWorkflowFreigabe(workflowId, { schrittId: button.dataset.schrittId, entscheidung: aktion === 'freigeben' ? 'FREIGEGEBEN' : 'ABGELEHNT', begruendung, ...empfehlungIds }),
       button,
       aktion === 'freigeben' ? 'Freigabe erteilt und als Entscheidung festgehalten — der Schritt startet.' : 'Ablehnung festgehalten — der Workflow ist gestoppt.'
     )

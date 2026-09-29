@@ -10,6 +10,9 @@
  * doppelte Filterlogik hier. "Neu laden" löst denselben Abruf ohne
  * Filteränderung aus.
  *
+ * F36 WS-3: der Workflow-Vorschlag zeigt die Katalog-Empfehlung (empfehlung-anzeige.js),
+ * „Freigeben“ schickt die angezeigten wirdGenutzt-ids mit.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initWorkboardView beim Bootstrap)
  *
@@ -46,6 +49,7 @@
  */
 
 import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { holeAktivesProjekt } from '../projekt-kontext.js'
 import { filtereAttentionWorkflows } from '../attention-daten.js'
@@ -384,6 +388,8 @@ function renderBearbeitungsInhalt(workitem, zustand) {
       <p class="hinweis">Kontrolltiefe, Risikoklasse und Begründung liegen im Router-Ergebnis-Artefakt, das über keinen Lesepfad erreichbar ist (F-372) — ersatzweise die Schrittkette aus dem Vorschlag:</p>
       <p><strong>Ziel:</strong> ${escapeHtml(daten?.ziel ?? '')} — <strong>Workflow:</strong> <code>${escapeHtml(zustand.workflowId)}</code></p>
       ${renderSchrittkette(daten)}
+      ${renderEmpfehlung(zustand.workflowDetail?.empfehlung)}
+      ${zustand.meldung ? `<p class="fehler">${escapeHtml(zustand.meldung)}</p>` : ''}
       <div>
         <button class="btn btn-primary wb-freigeben" data-id="${escapeHtml(workitem.id)}">Freigeben</button>
         <button class="btn wb-ablehnen" data-id="${escapeHtml(workitem.id)}">Ablehnen</button>
@@ -566,12 +572,24 @@ async function freigebenBearbeitung(workitem) {
   const zustand = bearbeitungsZustand
   if (zustand === null || zustand.workitemId !== workitem.id) return
   const schrittId = zustand.workflowDetail?.naechster?.schrittId ?? null
+  // F36 WS-3: die angezeigten wirdGenutzt-ids gehen mit („Anzeige = Start“, E-F36-4) — aus demselben
+  // workflowDetail, das renderBearbeitungsInhalt eben angezeigt hat; ohne Anzeige kein Feld.
+  const empfehlungIds = empfehlungIdsFuerFreigabe(zustand.workflowDetail?.empfehlung)
   zustand.phase = 'wird_gestartet'
+  zustand.meldung = null
   renderBearbeitungsAbschnitt(workitem)
   try {
-    const antwort = await sendeWorkflowFreigabe(zustand.workflowId, { schrittId, entscheidung: 'FREIGEGEBEN', begruendung: FREIGABE_BEGRUENDUNG_STANDARD })
+    const antwort = await sendeWorkflowFreigabe(zustand.workflowId, { schrittId, entscheidung: 'FREIGEGEBEN', begruendung: FREIGABE_BEGRUENDUNG_STANDARD, ...(empfehlungIds !== undefined ? { empfehlungIds } : {}) })
     const inhalt = await antwort.json().catch(() => ({}))
-    if (!antwort.ok) {
+    if (antwort.status === 409 && inhalt.status === undefined && String(inhalt.grund ?? '').includes('Katalog-Empfehlung')) {
+      // F36 WS-3: nur die VORPRÜFUNG der Freigabe (Antwort ohne status-Feld, nichts festgehalten) —
+      // abweichende oder nicht ermittelbare Empfehlung. Der Vorschlag bleibt offen; der
+      // Detail-Auffrischer lädt die neue Empfehlung (bzw. den Fehler, dann ohne ids), erneutes
+      // Freigeben ist möglich. Ein 409 NACH festgehaltener Freigabe (status KLAERUNG_ERFORDERLICH)
+      // geht in den Fehlerpfad.
+      zustand.phase = 'vorschlag'
+      zustand.meldung = `Freigabe nicht erteilt: ${inhalt.grund}`
+    } else if (!antwort.ok) {
       zustand.phase = 'fehler'
       zustand.meldung = `Freigabe fehlgeschlagen: ${antwort.status} ${inhalt.grund ?? ''}`.trim()
     } else {

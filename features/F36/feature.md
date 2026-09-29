@@ -179,6 +179,33 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   „Passt, nicht installiert" (anwendbar, aber `OFFEN` oder ohne
   `installation`); dazu die Stack-Liste (`docs/harness/stack-kandidaten.md`)
   für den Architekten.
+  - **Stand: gebaut, nicht gemergt (29.09.2026).** Zuschnitt nach
+    Challenger-[EMPFEHLUNG] 29.09.2026 (die zweite Liste heißt jetzt
+    „Passt, nicht im Lauf“):
+    - Reine Funktion `baueEmpfehlung` (`src/ressourcen/index.ts`).
+      „Wird genutzt“ = nur, was der Start übergibt: extern/mcp,
+      `FREIGEGEBEN`, `installation`, `wirkung: lokal`, verfügbar.
+      Skill/Agent nie (Variante 3b, erst WS-5). „Passt, nicht im Lauf“ =
+      alle übrigen anwendbaren Einträge mit Grund (`fehltFuerEinsatz`,
+      bei Skill/Agent zusätzlich „erst ab WS-5“). MCP mit `wirkung` ≠
+      `lokal` nur als Zählzeile. Rangfolge: beide `anwendbar_wenn`-
+      Schlüssel vor einem, dann id; höchstens 3 je Liste (F-788).
+    - Kontext: `task_typen` aus `router-<auftragId>` (fehlt es: `[]`,
+      Hinweis „keine Router-Klassifikation“), Pfade = `git ls-files` der
+      Projekt-Wurzel.
+    - Anzeige = Start (E-F36-4): `GET /api/workflows/<id>` trägt am
+      ZWINGEND-Start einer `ausfuehrung` mit schreibendem Werkzeugsatz das
+      Feld `empfehlung`; Leitstand (Workflow-Bedienung und Workboard)
+      zeigt beide Listen. Die angezeigten ids gehen als `empfehlungIds`
+      mit der Freigabe (bzw. im Startauftrag von `POST /api/laeufe`) mit;
+      der Start rechnet neu und bricht bei Abweichung ab (Freigabe 409,
+      nichts festgehalten; `POST /api/laeufe` 400). Nur dann gehen genau
+      die angezeigten MCPs als `optionen.mcpEintraege` in den Lauf, und
+      eine Zeile kommt an den Auftrag. Ohne `empfehlungIds` bleibt jeder
+      Start bitgenau wie vor WS-3.
+    - Architekt: bei offenem Stack Auszug der Stack-Liste aus der
+      Installationswurzel (`leseStackKandidatenAuszug`).
+    - Gate: `scripts/check-f36-ws3-empfehlung.mjs`.
 - **WS-5 — Installation (E-F36-6).** „Freigeben & installieren" aus der
   Liste „Passt, nicht installiert": Anzeige von Lizenz, Kosten und Wirkung
   vor dem Klick; Installation nur von `herkunft.url`, nur in fester Version
@@ -283,7 +310,7 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
 Empfehlung → WS-5 Installation → Reallauf. Stand 29.09.2026 gebaut und
 gemergt: WS-0 (#267), WS-1 (#268), WS-4 (#269), WS-1b (#270), WS-2 (#271),
-Spike S7 (#272). Offen: WS-3, WS-5, Reallauf. Jeder Workstream wird vor dem
+Spike S7 (#272). WS-3 gebaut, nicht gemergt. Offen: WS-5, Reallauf. Jeder Workstream wird vor dem
 Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
@@ -333,6 +360,14 @@ Bau präzisiert (eigene Challenge).
 - AK7 (WS-3) Die Empfehlung ist deterministisch (gleicher Auftrag +
   Katalog → gleiche Liste) und erscheint am ZWINGEND-Start sowie als
   Zeile im Auftrag. Prüfweg: Unit-Test + Gate am HTTP-Rundlauf.
+  Stand WS-3 (29.09.2026, nicht gemergt): belegt durch Unit-Tests
+  `baueEmpfehlung` (Rangfolge, Obergrenze, Determinismus, Skill/Agent nie
+  genutzt, `wirkung` ≠ `lokal` in keiner Liste, leere `task_typen`) und
+  `scripts/check-f36-ws3-empfehlung.mjs` (a)–(h), gestubbter Starter.
+  „Gleicher Auftrag“ heißt dabei: gleiche Router-`task_typen` und gleicher
+  Dateistand des Projekts (`git ls-files`). Render-Nachweis (Workflow-
+  Ansicht 400 px und breit, Workboard mit Freigabe und 409-Fall):
+  `features/F36/nachweis-ws3-ui/`. Offen: Beleg im Reallauf.
 - AK8 (WS-4) Je Lauf sind init-Zeile und Skill-/Agent-/MCP-Aufrufe in der
   Laufansicht sichtbar. Prüfweg: Gate + Render-Nachweis.
 - AK9 `npm run check` ist grün.
@@ -387,3 +422,26 @@ Bau präzisiert (eigene Challenge).
   Agent-Datei mit Frontmatter liegt, prüft der Katalog nicht. WS-2 (Ablage
   ins Projekt-`.claude/`) und WS-3 (Empfehlung) dürfen sich darauf nicht
   verlassen.
+- WS-3 Pfadquelle: `pfad_muster_any` wird gegen die versionierten Dateien
+  des Projekts geprüft (`git ls-files`), heißt also „Projekt enthält
+  passende Dateien“, nicht „Auftrag betrifft sie“ (F-806). Maßnahme bei
+  Rauschen im Reallauf: Pfade aus den Architekt-Modulen ableiten.
+- WS-3 Anzeige: Nur ein Start mit mitgeschickten `empfehlungIds` bekommt
+  Katalog-Fähigkeiten — heute nur `POST .../freigabe` aus dem Leitstand.
+  Ein Ausführungsschritt, der über `POST .../starten` oder die
+  automatische Fortsetzung startet (z. B. ein nicht-ZWINGEND-Schritt in
+  einem eigenen Workflow), läuft ohne Katalog-MCPs.
+- WS-3 „angezeigt“ ist eine Aussage des Clients: Der Server prüft, dass die
+  mitgeschickten ids der neu berechneten Liste entsprechen, nicht, dass sie
+  wirklich angezeigt wurden. Ein API-Client (`POST /api/laeufe`, für den
+  der Leitstand keine Anzeige hat, oder `POST .../freigabe`) kann die
+  richtigen ids ohne Anzeige mitschicken (Einzelnutzer, lokal). Verglichen
+  wird die Menge der ids, nicht die `installation` dahinter; ändert sich
+  diese zwischen Anzeige und Start, merkt der Start es nicht (ab WS-5
+  relevant, F-808).
+- WS-3 Last: Am ZWINGEND-Start rechnet `GET /api/workflows/<id>` die
+  Empfehlung bei jedem Poll neu (`git ls-files` mit 5 s Zeitgrenze,
+  Katalog lesen und auflösen, synchron). In großen Projekten spürbar; bei
+  Bedarf zwischenspeichern. Ändert sich die Empfehlung, rendert die
+  Workflow-Ansicht den Freigabe-Block neu (eine angefangene Begründung
+  geht dann verloren).

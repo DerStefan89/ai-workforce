@@ -1,6 +1,6 @@
 <!--
 Ziel-Pfad im Repo: docs/harness/stack-kandidaten.md
-Stand dieser Fassung: 29.09.2026 (Datennachtrag Opportunity Scanner)
+Stand dieser Fassung: 29.09.2026 (Datennachtrag Opportunity Scanner; Verdrahtung F36 WS-3)
 Erstlektüre: nein — Nachschlagewerk für den Architekten, kein Teil des Einstiegs.
 -->
 # Stack-Kandidaten (Gruppe 2 der Recherche-Übernahme)
@@ -11,8 +11,13 @@ Laufs (die stehen im Katalog `ressourcen.json`). Grundlage ist E-F36-5
 (`docs/projekt/zielfassung.md` §13.6); die Einordnung aller 38 Kandidaten
 steht in `features/F36/katalog-uebernahme.md` (samt Datennachtrag 29.09.2026).
 
-**Noch nicht verdrahtet.** Der Architekt liest diese Liste heute nicht
-automatisch; die Verdrahtung ist F36 WS-3. Nichts davon ist installiert,
+**Verdrahtet seit F36 WS-3.** Ist der Stack eines Projekts offen
+(`istStackOffen`), bekommt der Architekt einen Auszug dieser Tabelle
+(Name, Zweck, Einsatzgebiet, Lizenz, Kosten; ohne Zeilen mit
+„zurückgestellt“) unter der Überschrift „Stack-Kandidaten (ungeprüft,
+nicht installiert; nur als Option nennen)“ in seinen Auftrag. Gelesen wird
+diese Datei aus der Installation der Workforce, nicht aus dem Projekt; bei
+entschiedenem Stack entfällt der Auszug. Nichts davon ist installiert,
 geprüft oder freigegeben. Vor einer Stack-Entscheidung Version pinnen und
 die vollständige Lizenz lesen (Auswahlfilter der Quelle).
 
@@ -30,7 +35,9 @@ Laufzeit-Fähigkeiten. Sie stehen auf Vorgabe des Auftrags hier, als
 Bausteine, die ein Projekt wie der Opportunity Scanner (F30) selbst
 einsetzt — nicht als Fähigkeit eines Laufs. Google Trends MCP ist
 zurückgestellt (Entscheidung Stefan 29.09.2026, Begründung in der
-Tabelle).
+Tabelle). Switchyard ist ausgeschlossen, weil die Kosten zum Werkzeug
+gehören (Pflicht-API); Google Trends MCP ist zurückgestellt, weil das
+Hindernis behebbar ist (eigener Schlüssel, belegter Preis).
 
 | Name | Zweck | Einsatzgebiet | Lizenz | Kosten | URL | Quelle-Zeile |
 |---|---|---|---|---|---|---|

@@ -1,0 +1,17 @@
+[
+  {
+    "label": "Breit: Empfehlung am ZWINGEND-Start",
+    "Empfehlungsblock": true,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Begründung + Freigeben (mit ids)",
+    "Empfehlungsblock": true,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Workflow gestartet (Freigabe-Block weg)",
+    "Empfehlungsblock": true,
+    "Freigeben mit data-empfehlung-ids": false
+  }
+]

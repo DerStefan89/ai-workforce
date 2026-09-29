@@ -47,7 +47,11 @@
  * baueUmsetzungsInstruktion('feature') verlangt seitdem den BAU des Features, nicht nur das
  * Zurückschreiben des Entwurfs (F-752).
  *
- * Wird aufgerufen von: scripts/check-f39-architekt.mjs,
+ * F36 WS-3: leseStackKandidatenAuszug liest die Stack-Liste (docs/harness/stack-kandidaten.md) aus
+ * der INSTALLATIONSWURZEL der Workforce (nicht aus dem Projekt); baueArchitektAuftragstext hängt
+ * sie nur bei offenem Stack an (sechster Parameter, Default null = Text bitgenau unverändert).
+ *
+ * Wird aufgerufen von: scripts/check-f39-architekt.mjs, scripts/check-f36-ws3-empfehlung.mjs,
  * scripts/check-f42-projekt-harness.mjs, scripts/check-fixpaket-f35-reallauf.mjs,
  * scripts/leitstand-server.mjs (istStackOffen/leseEntschiedeneAdrs, real gegen die repoWurzel
  * des Zielprojekts), src/architecture-advisor/index.ts (baueAdrBlock),
@@ -576,6 +580,43 @@ function baueProjektRolleninstruktion(stackOffen: boolean): string[] {
   return zeilen
 }
 
+/** F36 WS-3: Überschrift des Stack-Auszugs im Architekt-Auftrag. */
+export const STACK_KANDIDATEN_UEBERSCHRIFT = 'Stack-Kandidaten (ungeprüft, nicht installiert; nur als Option nennen):'
+
+/**
+ * F36 WS-3: liest aus docs/harness/stack-kandidaten.md der Installationswurzel die Zeilen der ersten
+ * Tabelle mit Kopfzeile „| Name | Zweck |“ und baut daraus je Kandidat eine Zeile „- Name — Zweck (Einsatzgebiet; Lizenz; Kosten)“. Zeilen,
+ * die „zurückgestellt“ enthalten, fallen weg. Liest nur; fehlt die Datei oder trägt sie keine
+ * Tabellenzeile, liefert die Funktion null (kein Wurf).
+ * @param installWurzel - Installationswurzel der Workforce, NIE die Projekt-repoWurzel
+ * @returns der Auszug oder null
+ */
+export function leseStackKandidatenAuszug(installWurzel: string): string | null {
+  const pfad = join(installWurzel, 'docs', 'harness', 'stack-kandidaten.md')
+  let inhalt: string
+  try {
+    inhalt = readFileSync(pfad, 'utf-8')
+  } catch {
+    return null
+  }
+  // Nur die ERSTE Tabelle mit Kopfzeile „| Name | Zweck |“ — eine spätere zweite Tabelle wird nicht mitgelesen.
+  const zeilen: string[] = []
+  let inTabelle = false
+  for (const zeile of inhalt.split(/\r?\n/)) {
+    if (!inTabelle) {
+      inTabelle = /^\|\s*Name\s*\|\s*Zweck\s*\|/.test(zeile)
+      continue
+    }
+    if (!zeile.startsWith('|')) break
+    if (/^\|\s*-/.test(zeile) || zeile.includes('zurückgestellt')) continue
+    const zellen = zeile.split('|').slice(1, -1).map((z) => z.trim())
+    if (zellen.length < 5) continue
+    const [name, zweck, einsatzgebiet, lizenz, kosten] = zellen
+    zeilen.push(`- ${name} — ${zweck} (${einsatzgebiet}; ${lizenz}; ${kosten})`)
+  }
+  return zeilen.length === 0 ? null : zeilen.join('\n')
+}
+
 /**
  * Baut den Auftragstext für einen Architekt-Lauf: Rolleninstruktion (je
  * 'modus' unterschiedlich), gefolgt vom optionalen Capability-Auszug (nur
@@ -592,16 +633,26 @@ function baueProjektRolleninstruktion(stackOffen: boolean): string[] {
  * @param entschiedeneAdrs - F-750: Ergebnis von leseEntschiedeneAdrs(repoWurzel) des Zielprojekts.
  *   Default '' lässt den Text bitgenau unverändert; sonst folgt vor dem Planungsauftrag der
  *   bindende ADR-Block, bei offenem Stack zusätzlich ADR_STACK_HINWEIS.
+ * @param stackKandidatenAuszug - F36 WS-3: Ergebnis von leseStackKandidatenAuszug(installWurzel);
+ *   nur bei stackOffen und nicht-null vor dem Planungsauftrag eingefügt. Default null.
  * @returns der vollständige Auftragstext, der als AusfuehrungsEingaben.auftragstext
  *   den einzigen Eingabekanal für den Lauf bildet
  */
-export function baueArchitektAuftragstext(planungstext: string, modus: ArchitektModus = 'feature', capabilityAuszug: string | null = null, stackOffen = false, entschiedeneAdrs = ''): string {
+export function baueArchitektAuftragstext(
+  planungstext: string,
+  modus: ArchitektModus = 'feature',
+  capabilityAuszug: string | null = null,
+  stackOffen = false,
+  entschiedeneAdrs = '',
+  stackKandidatenAuszug: string | null = null
+): string {
   const zeilen = modus === 'projekt' ? baueProjektRolleninstruktion(stackOffen) : baueFeatureRolleninstruktion(stackOffen)
   if (modus === 'projekt' && capabilityAuszug !== null) {
     zeilen.push('', 'Verfügbare Ressourcen (Capability-Auszug):', capabilityAuszug)
   }
   zeilen.push(...baueAdrBlock(entschiedeneAdrs))
   if (stackOffen && entschiedeneAdrs !== '') zeilen.push(ADR_STACK_HINWEIS)
+  if (stackOffen && stackKandidatenAuszug !== null) zeilen.push('', STACK_KANDIDATEN_UEBERSCHRIFT, stackKandidatenAuszug)
   zeilen.push('', 'Planungsauftrag:', planungstext)
   return zeilen.join('\n')
 }

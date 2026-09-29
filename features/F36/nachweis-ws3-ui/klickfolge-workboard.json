@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:4176/#/workboard",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workboard-bearbeitung",
+    "hoehe": 760
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Freigeben-Knopf",
+        "selector": ".wb-freigeben"
+      },
+      {
+        "name": "Fehlermeldung",
+        "selector": "#workboard-bearbeitung .fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Finding öffnen",
+      "warteAufSelector": {
+        "selector": ".workboard-zeile[data-id=\"F-001\"]",
+        "timeoutMs": 8000
+      },
+      "klick": ".workboard-zeile[data-id=\"F-001\"]"
+    },
+    {
+      "label": "Bearbeiten (Auftrag + Router-Lauf)",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten",
+        "timeoutMs": 8000
+      },
+      "klick": "#workboard-bearbeiten"
+    },
+    {
+      "label": "Vorschlag mit Empfehlung",
+      "warteAufSelector": {
+        "selector": ".wb-freigeben",
+        "timeoutMs": 15000
+      },
+      "screenshot": "01-workboard-vorschlag.png"
+    },
+    {
+      "label": "Freigeben (mit ids)",
+      "klick": ".wb-freigeben"
+    },
+    {
+      "label": "Gestartet",
+      "warteAufSelector": {
+        "selector": "#nie-vorhanden",
+        "timeoutMs": 3000
+      },
+      "screenshot": "02-workboard-gestartet.png"
+    }
+  ]
+}

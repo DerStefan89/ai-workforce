@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Finding öffnen",
+    "Freigeben-Knopf": false,
+    "Fehlermeldung": false
+  },
+  {
+    "label": "Bearbeiten (Auftrag + Router-Lauf)",
+    "Freigeben-Knopf": true,
+    "Fehlermeldung": false
+  },
+  {
+    "label": "Vorschlag mit Empfehlung",
+    "Freigeben-Knopf": true,
+    "Fehlermeldung": false
+  },
+  {
+    "label": "Freigeben (mit ids)",
+    "Freigeben-Knopf": false,
+    "Fehlermeldung": false
+  },
+  {
+    "label": "Gestartet",
+    "Freigeben-Knopf": false,
+    "Fehlermeldung": false
+  }
+]
