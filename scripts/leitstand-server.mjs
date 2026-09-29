@@ -5449,6 +5449,19 @@ export function erzeugeRequestHandler(optionen = {}) {
     // gesamte Routenkette) — try öffnet hier, catch schließt kurz vor der abschließenden
     // schließenden Klammer der Funktion.
     try {
+    // F-813: CSRF-Schutz zentral EINMAL vor jeder Route mit nicht-lesender Methode — eine fremde
+    // Seite im selben Browser darf keinen Lauf starten, keine Freigabe/Entscheidung festhalten.
+    // Gilt auch für /api/projekte/<id>/... (der Dispatcher reicht an diese Instanz durch).
+    // GET/HEAD bleiben unberührt; ohne Origin/Sec-Fetch-Site (curl, Node-fetch) weiter zulässig.
+    // Nicht pro Route wiederholen — scripts/check-f813-csrf.mjs prüft genau einen Aufruf hier.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const fremd = istFremdeBrowserAnfrage(req)
+      if (fremd !== null) {
+        sendeJson(res, 403, { grund: fremd })
+        return
+      }
+    }
+
     const angefragteUrl = new URL(req.url, `http://${req.headers.host}`)
     const pfad = angefragteUrl.pathname
 
@@ -6029,14 +6042,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // src/ressourcen/installation.ts; hier nur Registrierung.
     const installationTreffer = req.method === 'POST' ? /^\/api\/ressourcen\/([^/]+)\/installation(\/vorbereiten)?$/.exec(pfad) : null
     if (installationTreffer !== null) {
-      // Nur aus dem Leitstand selbst: eine fremde Seite im selben Browser darf keine Installation +
-      // Freigabe auslösen (Reviewer-Pass WS-5a). Browser setzen Sec-Fetch-Site bzw. Origin; fehlen
-      // beide (Nicht-Browser-Client, lokal), bleibt die Anfrage zulässig.
-      const fremd = istFremdeBrowserAnfrage(req)
-      if (fremd !== null) {
-        sendeJson(res, 403, { grund: fremd })
-        return
-      }
+      // Anfragen fremder Seiten (CSRF) weist seit F-813 der zentrale Haken am Anfang von
+      // requestHandler ab (403), bevor diese Route erreicht wird.
       const id = dekodiereSegment(installationTreffer[1])
       if (id === null || id.length === 0) {
         sendeJson(res, 400, { grund: 'Ressourcen-id fehlt oder ist nicht dekodierbar' })
