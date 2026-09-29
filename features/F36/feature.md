@@ -278,8 +278,10 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
-Empfehlung → WS-5 Installation → Reallauf. WS-0, WS-1 und WS-4 sind
-gebaut. Jeder Workstream wird vor dem Bau präzisiert (eigene Challenge).
+Empfehlung → WS-5 Installation → Reallauf. Stand 29.09.2026 gebaut und
+gemergt: WS-0 (#267), WS-1 (#268), WS-4 (#269), WS-1b (#270), WS-2 (#271),
+Spike S7 (#272). Offen: WS-3, WS-5, Reallauf. Jeder Workstream wird vor dem
+Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
 - AK1 (WS-0) `state/spike-f36-werkzeugsatz.md` hält je Probe P1–P4

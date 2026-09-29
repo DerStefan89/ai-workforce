@@ -76,7 +76,10 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 **Pflicht-AK der F41-Abnahme** (F-666), kein unbestimmt vertagter eigener
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
-Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 noch nicht begonnen (F37/F38 als
+Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 „Capability Library wirksam
+machen“ `IN_ARBEIT` (gemergt: WS-0 #267, WS-1 #268, WS-4 #269, WS-1b #270,
+WS-2 #271, Spike S7 #272; offen: WS-3, WS-5, Reallauf;
+`features/F36/feature.md`) (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
 gezogen, E-M5-14), F42 Projekt-Harness (E-F41-3, direkt nach F41 vor F35)
@@ -90,7 +93,7 @@ gebaut und gemergt: WS-0 Spike #203, WS-1 Streaming-Reaktion auf die
 result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
 Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
-feature.md`) (Stand 22.09.2026).
+feature.md`) (Stand 22.09.2026; F36 29.09.2026).
 
 ## Offene P1-Findings
 
