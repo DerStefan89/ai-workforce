@@ -77,8 +77,8 @@ real erbracht** (Korrektur 24.09.2026, E-F39-2 = A): `standard`-Kette
 Auftrag mehr; **Abnahme durch Stefan am 24.09.2026**, siehe
 `features/F39/feature.md`), F35 `ABGESCHLOSSEN` (Abnahme durch Stefan 28.09.2026 nach
 Reallauf-Nachweis `features/F35/nachweis-reallauf.md`), F36 „Capability Library wirksam
-machen“ `IN_ARBEIT` (gemergt: WS-0 #267, WS-1 #268, WS-4 #269, WS-1b #270,
-WS-2 #271, Spike S7 #272; offen: WS-3, WS-5, Reallauf;
+machen“ `ABGESCHLOSSEN` (Abnahme durch Stefan 29.09.2026 nach Review-Pass
+und Fixpaket #282; gemergt #267–#282; Agents bleiben gesperrt, F-815;
 `features/F36/feature.md`) (F37/F38 als
 V1-Backlog nach F30 zurückgestellt, gebaut bei erfülltem Auslöser,
 `docs/projekt/zielfassung.md` §13.6 E-M5-16), F41 `ABGESCHLOSSEN` (Abnahme 25.09.2026, direkt nach F39
