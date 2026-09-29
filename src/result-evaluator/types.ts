@@ -17,6 +17,12 @@ import type { Schreiber as CheckpointSchreiber } from '../checkpoint-store/types
 
 export interface KlassifikationsEingaben {
   laufakte: LaufakteV0Daten
+  /**
+   * F36 WS-5b (F-791 (4b)): nur bei Läufen mit Ort-B-Skills gesetzt — geänderte/neue Pfade des Laufdiffs
+   * unter einem .claude-Ordner (vom Execution Controller ermittelt). Nicht leer → FEHLGESCHLAGEN
+   * 'claude_ordner_veraendert'. Fehlt das Feld, bleibt die Klassifikation unverändert.
+   */
+  claudeAenderungen?: string[]
 }
 
 export interface KlassifikationsOptionen {

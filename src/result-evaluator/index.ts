@@ -36,6 +36,12 @@
  * KEIN VERWEIGERT und liest kein stderr — beides real begründet (F-300,
  * F-309), Details am Funktionskommentar.
  *
+ * F36 WS-5b (nur Läufe mit Ort-B-Skills): nach der Rohstrom-Integrität und vor TIMEOUT/ABBRUCH zwei
+ * neue FEHLGESCHLAGEN-Gründe — 'init_gate_verstoss' (rohstrom.init_gate_verstoss, vom Gateway
+ * geschrieben, wenn das Init-Gate den Prozess beendet hat) und 'claude_ordner_veraendert'
+ * (eingaben.claudeAenderungen nicht leer, Laufdiff unter .claude/, F-791 (4b)). Beide tragen ihre
+ * Einzelheiten in daten der Terminalmarke. Ohne diese Eingaben bleibt die Reihenfolge wie bisher.
+ *
  * Der tool_input→Tokens-Adapter (toolInputZuTokens/tokenisiereCommand) ist
  * neuer Code (Design-Entscheidung 5): pruefeAufrufparameter (F4) erwartet ein
  * Tokens-Array, tool_input ist ein werkzeugabhängiges Objekt (`{"command":…}`,
@@ -57,7 +63,7 @@ import { pruefeAufrufparameter } from '../invocation-policy/index.ts'
 import type { KlassifikationsEingaben, KlassifikationsErgebnis, KlassifikationsOptionen } from './types.ts'
 
 type ErgebnisOhneWirkungsmarke =
-  | { ergebnis: 'FEHLGESCHLAGEN'; grund: string }
+  | { ergebnis: 'FEHLGESCHLAGEN'; grund: string; daten?: Record<string, unknown> }
   | { ergebnis: 'VERWEIGERT'; bypass_verdacht_anzahl: number; is_error?: unknown; non_execution_kind?: unknown }
   | { ergebnis: 'ERFOLGREICH'; is_error?: unknown; non_execution_kind?: unknown }
 
@@ -82,6 +88,53 @@ function toolInputZuTokens(toolInput: unknown): string[] {
     tokens.push(...(feld === 'command' ? tokenisiereCommand(wert) : [saeubereToken(wert)]))
   }
   return tokens
+}
+
+/**
+ * F36 WS-5b: zählt die permission_denials des Ergebnisobjekts mit Verbotswert (dieselbe Regel wie der
+ * VERWEIGERT-Zweig) — für claude_ordner_veraendert, damit ein Umgehungsverdacht in daten sichtbar bleibt.
+ * @param rohInhalt - hash-geprüfter Rohstrom
+ * @returns Anzahl (0 ohne Ergebnisobjekt)
+ */
+function zaehleBypassVerdacht(rohInhalt: string): number {
+  let stdout: unknown
+  try {
+    stdout = (JSON.parse(rohInhalt) as { stdout?: unknown }).stdout
+  } catch {
+    return 0
+  }
+  const ergebnisobjekt = typeof stdout === 'string' ? leseErgebnisobjekt(stdout) : null
+  const denials = Array.isArray(ergebnisobjekt?.permission_denials) ? (ergebnisobjekt.permission_denials as unknown[]).filter(istPermissionDenial) : []
+  return zaehleVerbotswerte(denials)
+}
+
+/**
+ * Einzige Zählregel für den Umgehungsverdacht (E-186): Denials, deren tool_input einen Verbotswert trägt.
+ * @param denials - permission_denials des Ergebnisobjekts
+ * @returns Anzahl
+ */
+function zaehleVerbotswerte(denials: readonly PermissionDenial[]): number {
+  let anzahl = 0
+  for (const denial of denials) {
+    if (!pruefeAufrufparameter(toolInputZuTokens(denial?.tool_input)).ok) anzahl++
+  }
+  return anzahl
+}
+
+/**
+ * F36 WS-5b: liest rohstrom.init_gate_verstoss (vom Gateway geschrieben, wenn das Init-Gate eines
+ * Ort-B-Laufs den Prozess beendet hat) — null bei ungültigem JSON oder fehlendem/leerem Feld, wirft nie.
+ */
+function leseInitGateVerstoss(rohInhalt: string): string | null {
+  let geparst: unknown
+  try {
+    geparst = JSON.parse(rohInhalt)
+  } catch {
+    return null
+  }
+  if (typeof geparst !== 'object' || geparst === null) return null
+  const wert = (geparst as Record<string, unknown>).init_gate_verstoss
+  return typeof wert === 'string' && wert.length > 0 ? wert : null
 }
 
 /** Tolerantes Auslesen von rohstrom.beendigungsart (F14 WS-1, claude-code-gateway/index.ts:314) — liefert null bei ungültigem JSON, fehlendem Feld oder einem anderen Wert als 'TIMEOUT'/'ABBRUCH', wirft nie. Eigenständig vom stdout-Parsing weiter unten (das bei defektem JSON eine eigene, differenziertere Fehlerbehandlung braucht). */
@@ -220,7 +273,7 @@ function ermittleErgebnisCodex(rohInhalt: string): ErgebnisOhneWirkungsmarke {
  * von klassifiziereLauf, damit die Prüfreihenfolge (SCOPE.2) an einer Stelle
  * steht und der Schreibaufruf in allen drei Ausgängen identisch bleibt.
  */
-function ermittleErgebnis(laufakte: LaufakteV0Daten): ErgebnisOhneWirkungsmarke {
+function ermittleErgebnis(laufakte: LaufakteV0Daten, claudeAenderungen: readonly string[] | undefined): ErgebnisOhneWirkungsmarke & { daten?: Record<string, unknown> } {
   let rohInhalt: string
   try {
     rohInhalt = readFileSync(laufakte.rohstrom_referenz.pfad, 'utf8')
@@ -230,6 +283,19 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten): ErgebnisOhneWirkungsmarke 
 
   if (sha256Hex(rohInhalt) !== laufakte.rohstrom_referenz.inhalts_hash) {
     return { ergebnis: 'FEHLGESCHLAGEN', grund: 'rohstrom_integritaet' }
+  }
+
+  // F36 WS-5b: das Init-Gate eines Ort-B-Laufs hat den Prozess beendet — steht vor ABBRUCH, weil der
+  // Abbruch über denselben Weg läuft (beendigungsart ABBRUCH), aber kein manueller war.
+  const initGateVerstoss = leseInitGateVerstoss(rohInhalt)
+  if (initGateVerstoss !== null) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'init_gate_verstoss', daten: { grund: 'init_gate_verstoss', verstoss: initGateVerstoss } }
+  }
+  // F36 WS-5b (F-791 (4b)): Laufdiff eines Ort-B-Laufs mit Änderungen unter .claude/ ist rot — vor
+  // TIMEOUT/ABBRUCH, damit die Selbstanlage nie hinter einem anderen Grund verschwindet.
+  // Reviewer (E-186): ein zugleich gezählter Umgehungsverdacht geht nicht verloren, sondern steht in daten.
+  if (claudeAenderungen !== undefined && claudeAenderungen.length > 0) {
+    return { ergebnis: 'FEHLGESCHLAGEN', grund: 'claude_ordner_veraendert', daten: { grund: 'claude_ordner_veraendert', pfade: [...claudeAenderungen], bypass_verdacht_anzahl: zaehleBypassVerdacht(rohInhalt) } }
   }
 
   // AK5: spezifischer (TIMEOUT/ABBRUCH) schlägt generischer
@@ -284,13 +350,7 @@ function ermittleErgebnis(laufakte: LaufakteV0Daten): ErgebnisOhneWirkungsmarke 
     return { ergebnis: 'ERFOLGREICH', ...zusatzFelder }
   }
 
-  let bypassVerdachtAnzahl = 0
-  for (const denial of denials) {
-    const tokens = toolInputZuTokens(denial?.tool_input)
-    if (!pruefeAufrufparameter(tokens).ok) bypassVerdachtAnzahl++
-  }
-
-  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: bypassVerdachtAnzahl, ...zusatzFelder }
+  return { ergebnis: 'VERWEIGERT', bypass_verdacht_anzahl: zaehleVerbotswerte(denials), ...zusatzFelder }
 }
 
 export function klassifiziereLauf(
@@ -299,9 +359,10 @@ export function klassifiziereLauf(
   eingaben: KlassifikationsEingaben,
   optionen: KlassifikationsOptionen = {}
 ): KlassifikationsErgebnis {
-  const teilergebnis = ermittleErgebnis(eingaben.laufakte)
+  // F36 WS-5b: daten (init_gate_verstoss/claude_ordner_veraendert) gehen unverändert in die Terminalmarke.
+  const { daten: teilDaten, ...teilergebnis } = ermittleErgebnis(eingaben.laufakte, eingaben.claudeAenderungen)
 
-  let zusatzDaten: { daten?: unknown } = {}
+  let zusatzDaten: { daten?: unknown } = teilDaten !== undefined ? { daten: teilDaten } : {}
   if (teilergebnis.ergebnis === 'VERWEIGERT') {
     zusatzDaten = {
       daten: {

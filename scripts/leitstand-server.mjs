@@ -466,6 +466,7 @@ import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
 import { bereiteInstallationVor, installiereRessource } from '../src/ressourcen/installation.ts'
+import { baueOrtBSkillStart } from '../src/ressourcen/ort-b-start.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
@@ -1871,6 +1872,14 @@ export function pruefeStartauftrag(body) {
       grund: "'aufrufEingaben.disallowedTools' wird ausschließlich serverseitig für die Rollen 'jarvis'/'router' gesetzt (F40 WS-3) und ist im Body nicht erlaubt",
     }
   }
+  // F36 WS-5b: 'ortB' (--add-dir/--settings der Ort-B-Skills) setzt ausschließlich loeseAusfuehrungsEingabenAuf
+  // aus der angezeigten Empfehlung — kein Eingabekanal für einen Body-getriebenen Lauf (Muster oben).
+  if (typeof body.aufrufEingaben === 'object' && body.aufrufEingaben !== null && !Array.isArray(body.aufrufEingaben) && 'ortB' in body.aufrufEingaben) {
+    return {
+      ok: false,
+      grund: "'aufrufEingaben.ortB' wird ausschließlich serverseitig aus der angezeigten Katalog-Empfehlung gesetzt (F36 WS-5b) und ist im Body nicht erlaubt",
+    }
+  }
   if (!Array.isArray(body.anfragen)) {
     return { ok: false, grund: "'anfragen' muss ein Array sein" }
   }
@@ -2081,15 +2090,16 @@ function leseAusfuehrungsVorbedingungRealGit(repoWurzel) {
 
 /**
  * F36 WS-2: einzige Regel, welcher Lauf Katalog-Fähigkeiten bekommt — 'ausfuehrung' mit
- * schreibendem Werkzeugsatz; heute nur freigegebene lokale MCPs (loeseAusfuehrungsEingabenAuf,
- * optionen.mcpEintraege). 'ausfuehrung' mit 'lesend' bleibt außen vor: ein lokaler MCP (z. B.
+ * schreibendem Werkzeugsatz; freigegebene lokale MCPs (loeseAusfuehrungsEingabenAuf,
+ * optionen.mcpEintraege) und seit F36 WS-5b installierte Ort-B-Skills (optionen.skillEintraege, V4a). 'ausfuehrung' mit 'lesend' bleibt außen vor: ein lokaler MCP (z. B.
  * Playwright) schreibt Dateien, das widerspräche der Art.
  *
  * 'Skill'/'Agent' kommen bewusst NICHT hinzu (Spike WS-2s S6, state/spike-f36-ws2s.md): im
  * -p-Lauf brauchen beide keine --allowedTools-Freigabe — steht der Name in --tools, ist JEDER
  * geladene Skill/Agent aufrufbar, Einzelregeln 'Skill(<id>)'/'Agent(<name>)' begrenzen nichts.
  * Das öffnete die ungeprüften Nutzer-/Plugin-Skills (F-770) und eingebaute Agents; AK4 verlangt
- * aber „ohne Freigabe fehlt es“. Offen, bis F-770 gelöst ist.
+ * aber „ohne Freigabe fehlt es“. Seit F36 WS-5b kommt 'Skill' (nie 'Agent') nur mit ≥1 Ort-B-Skill
+ * hinzu, zusammen mit der V4a-Sperrkombination (baueOrtBSkillStart) und dem Init-Gate.
  * @param rolle - Rollenname des Laufs
  * @param art - 'art' des aufgelösten Werkzeugsatzes (undefined, wenn unbekannt)
  * @returns true, wenn der Lauf freigegebene lokale MCPs bekommen darf
@@ -2244,7 +2254,7 @@ export function pruefeEmpfehlungIdsForm(wert) {
  * @param startvorlagePfad - Startvorlage
  * @param ladeOptionen - basisVerzeichnis/schreiber
  * @param zusatz - F36 WS-5a: { vorschauUrl } wie ermittleAusfuehrungsEmpfehlung
- * @returns { ok: true, mcpEintraege, zeile } oder { ok: false, grund }
+ * @returns { ok: true, mcpEintraege, skillEintraege (F36 WS-5b), zeile } oder { ok: false, grund }
  *
  * Seit F36 WS-5a (F-808) sind die ids die empfehlungIds '<id>@<sha256 der installation>' — ändert sich
  * die installation eines angezeigten Eintrags zwischen Anzeige und Start, weicht der Hash ab und der
@@ -2270,7 +2280,13 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
       grund: `Katalog-Empfehlung hat sich seit der Anzeige geändert (angezeigt: ${liste(angezeigteIds)}; beim Start: ${liste(beimStart)}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
     }
   }
-  return { ok: true, mcpEintraege: ermittelt.genutzteEintraege, zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt) }
+  // F36 WS-5b: „Wird genutzt“ trägt MCPs UND Ort-B-Skills — getrennt übergeben (MCP-Weg unverändert).
+  return {
+    ok: true,
+    mcpEintraege: ermittelt.genutzteEintraege.filter((eintrag) => eintrag.unterart === 'mcp'),
+    skillEintraege: ermittelt.genutzteEintraege.filter((eintrag) => eintrag.unterart === 'skill'),
+    zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt),
+  }
 }
 
 /**
@@ -2340,7 +2356,10 @@ export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) {
  *   mcpEintraege (F36 WS-2): aufgelöste, freigegebene lokale MCP-Katalogeinträge, nur für
  *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueMcpAufruf); Default leer.
  *   mcpPlatzhalter (F36 WS-5a): { projekt_origins, ausgabe_ordner } für die Platzhalter in
- *   mcp_server.args (baueMcpPlatzhalter); fehlt ein benötigter Wert, wird der Start abgelehnt
+ *   mcp_server.args (baueMcpPlatzhalter); fehlt ein benötigter Wert, wird der Start abgelehnt.
+ *   skillEintraege (F36 WS-5b): aufgelöste, angezeigte Ort-B-Skills (extern skill) — nur für
+ *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueOrtBSkillStart, V4a); Default leer.
+ *   capWurzel (F36 WS-5b): Workforce-Ordner der Installationen — Pflicht, sobald skillEintraege übergeben werden
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -2529,6 +2548,24 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     mcpZusatz = { mcpConfig: mcpAufruf.mcpConfig }
   }
 
+  // F36 WS-5b (E-F36-8 = B, V4a): nur mit ≥1 übergebenem Ort-B-Skill — sonst bitgenau wie vorher.
+  // baueOrtBSkillStart prüft fail-closed (inhalt_hash, Namenskollision, Ort-B-Layout, Vorstart-Scan)
+  // und liefert --add-dir/--settings/Sperrregeln; 'Skill' kommt in den Werkzeugsatz, 'Agent' nie.
+  // ortBLauf trägt die erwartete init-Menge (Init-Gate) und die Projektwurzel (Laufdiff unter .claude/).
+  let skillZusatz = {}
+  let ortBLauf
+  const skillEintraege = optionen.skillEintraege ?? []
+  if (erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) && skillEintraege.length > 0) {
+    if (typeof optionen.capWurzel !== 'string' || optionen.capWurzel.length === 0) return { ok: false, grund: 'Ort-B-Skill-Start abgelehnt: cap-Wurzel fehlt (optionen.capWurzel)' }
+    const ortB = baueOrtBSkillStart(skillEintraege, repoWurzel, optionen.capWurzel)
+    if (!ortB.ok) return { ok: false, grund: ortB.grund }
+    erlaubteWerkzeuge = [...new Set([...erlaubteWerkzeuge, 'Skill'])]
+    // Zusammenführen statt ersetzen: ein künftig gesetztes disallowedTools bliebe erhalten (heute setzt es keine Ausführung).
+    const bisher = typeof eingabenRoh.aufrufEingaben?.disallowedTools === 'string' && eingabenRoh.aufrufEingaben.disallowedTools.length > 0 ? [eingabenRoh.aufrufEingaben.disallowedTools] : []
+    skillZusatz = { ortB: { addDirs: ortB.start.addDirs, settings: ortB.start.settings }, disallowedTools: [...bisher, ...ortB.start.disallowedTools].join(',') }
+    ortBLauf = { skillNamen: ortB.start.skillNamen, mcpServer: mcpEintraege.map((eintrag) => eintrag.id), projektWurzel: repoWurzel }
+  }
+
   const anfragenMitInhalt = []
   for (const anfrage of eingabenRoh.anfragen) {
     const pfadErgebnis = loeseEvidenzPfadAuf(anfrage.pfad, repoWurzel)
@@ -2554,13 +2591,14 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
       rolle: eingabenRoh.rolle,
       anfragen: anfragenMitInhalt,
       budget: eingabenRoh.budget,
-      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
+      aufrufEingaben: { ...eingabenRoh.aufrufEingaben, ...mcpZusatz, ...skillZusatz, werkzeugsatz: { modus: werkzeugsatz.modus, erlaubte_werkzeuge: erlaubteWerkzeuge } },
       werkzeugStartziel,
       werkzeugVersionDeklariert,
       berechtigungskontext,
       auftragstext,
       auftragId: eingabenRoh.auftragId,
       ...(eingabenRoh.vorgaengerLaufId !== undefined ? { vorgaengerLaufId: eingabenRoh.vorgaengerLaufId } : {}),
+      ...(ortBLauf !== undefined ? { ortBLauf } : {}),
       // worker/ausgabeSchemaPfad erscheinen NUR beim Codex-Zweig im Ergebnis
       // (F-286): ein Claude-Code-Lauf behält damit exakt den Feldsatz, den er
       // vor F16 hatte — byte-identisch, kein bestehender Test muss angepasst
@@ -4858,7 +4896,7 @@ export function erzeugeRequestHandler(optionen = {}) {
     if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
       const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
-      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
 
@@ -6460,7 +6498,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
         }
-        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
         if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
       }
       const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)

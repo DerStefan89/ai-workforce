@@ -30,7 +30,7 @@
 
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -970,5 +970,41 @@ test('AK8 rot: exitCode null bei sonst vollständigem Strom → exit_code (null 
     assert.equal(ergebnis.ergebnis === 'FEHLGESCHLAGEN' ? ergebnis.grund : '', 'exit_code')
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+// ─── F36 WS-5b: Init-Gate-Verstoß und .claude-Änderung im Laufdiff ────────────
+
+test('F36 WS-5b: rohstrom.init_gate_verstoss → FEHLGESCHLAGEN init_gate_verstoss (vor ABBRUCH), Grund in daten', () => {
+  const laufId = neueLaufId('init-gate')
+  try {
+    const verstoss = 'Init-Gate: init.skills enthält nicht übergebene Skills: fremd — Lauf vor dem ersten tool_use beendet'
+    const rohstromReferenz = schreibeRohstromRoh(laufId, JSON.stringify({ stdout: '', stderr: '', exitCode: null, beendigungsart: 'ABBRUCH', init_gate_verstoss: verstoss }))
+    const ergebnis = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte: baueLaufakte(laufId, rohstromReferenz, false) }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.equal(ergebnis.ergebnis, 'FEHLGESCHLAGEN')
+    assert.ok(ergebnis.ergebnis === 'FEHLGESCHLAGEN')
+    assert.equal(ergebnis.grund, 'init_gate_verstoss')
+    const marke = JSON.parse(readFileSync(ergebnis.wirkungsmarke.pfad, 'utf8'))
+    assert.deepEqual(marke.payload.daten, { grund: 'init_gate_verstoss', verstoss })
+  } finally {
+    raeumeKette(laufId)
+  }
+})
+
+test('F36 WS-5b: claudeAenderungen nicht leer → FEHLGESCHLAGEN claude_ordner_veraendert, auch bei sonst ERFOLGREICH; leer/fehlend → unverändert', async () => {
+  const laufId = neueLaufId('claude-diff')
+  const laufIdLeer = neueLaufId('claude-diff-leer')
+  try {
+    const prozessErgebnis = await attrappeMitValidemErgebnis([], [])
+    const laufakte = baueLaufakte(laufId, schreibeRohstrom(laufId, prozessErgebnis), true)
+    const rot = klassifiziereLauf(laufId, PROFIL_REFERENZ, { laufakte, claudeAenderungen: ['.claude/skills/neu/SKILL.md'] }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS })
+    assert.ok(rot.ergebnis === 'FEHLGESCHLAGEN')
+    assert.equal(rot.grund, 'claude_ordner_veraendert')
+    assert.deepEqual(JSON.parse(readFileSync(rot.wirkungsmarke.pfad, 'utf8')).payload.daten, { grund: 'claude_ordner_veraendert', pfade: ['.claude/skills/neu/SKILL.md'], bypass_verdacht_anzahl: 0 })
+    const laufakteLeer = baueLaufakte(laufIdLeer, schreibeRohstrom(laufIdLeer, prozessErgebnis), true)
+    assert.equal(klassifiziereLauf(laufIdLeer, PROFIL_REFERENZ, { laufakte: laufakteLeer, claudeAenderungen: [] }, { basisVerzeichnis: KONTROLLZUSTAND_BASIS }).ergebnis, 'ERFOLGREICH')
+  } finally {
+    raeumeKette(laufId)
+    raeumeKette(laufIdLeer)
   }
 })

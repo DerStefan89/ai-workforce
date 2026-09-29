@@ -128,6 +128,7 @@ test('bereiteInstallationVor: liefert exakte Version, integrity und Anzeige-Feld
     const runner = stubRunner()
     const ergebnis = await bereiteInstallationVor('pw-mcp', { installWurzel: u.installWurzel, capWurzel: u.capWurzel, runner })
     assert.ok(ergebnis.ok)
+    assert.ok(ergebnis.daten.art === 'mcp')
     assert.equal(ergebnis.daten.version, VERSION)
     assert.equal(ergebnis.daten.integrity, INTEGRITY)
     assert.equal(ergebnis.daten.paket, '@fixture/pw')

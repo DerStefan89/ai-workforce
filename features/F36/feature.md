@@ -223,8 +223,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   mcp — Serverstart mit den freigegebenen Einzelnamen.
   Geteilt am 29.09.2026 (Challenger-[EMPFEHLUNG]) in **WS-5a** (MCP-
   Installation) und **WS-5b** (Skill/Agent).
-- **WS-5a — MCP-Installation.** **Stand: gebaut, nicht gemergt
-  (29.09.2026).** Zuschnitt nach Challenger-[EMPFEHLUNG] 29.09.2026 und
+- **WS-5a — MCP-Installation.** **Stand: gemergt (#276,
+  29.09.2026).** Zuschnitt nach Challenger-[EMPFEHLUNG] 29.09.2026 und
   E-F36-9 = A:
   - **Katalog:** `herkunft.paket` (`npm:<name>` nach npm-Namensregeln,
     nur extern mcp) und `installation_vorlage` `{bin, args, werkzeuge}`
@@ -274,99 +274,166 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     echter Installationsnachweis `features/F36/nachweis-ws5a-installation/`
     (`@playwright/mcp` 0.0.83, alle acht Namen gefunden); Render-Nachweis
     `features/F36/nachweis-ws5a-ui/`.
-- **WS-5b — Skill/Agent (offen).** Ort B, V4a, Prüfung der init-Zeile,
-  Scan vor dem Start, F-791, offene QA-Punkte; dazu aus WS-5:
-  - **playwright-mcp**: Rot-Fall „fremde Origin wird verweigert“ (S5c) mit
-    der installierten Fassung, spätestens im Reallauf. Bekannte Grenze:
-    Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright
-    keine Sicherheitsgrenze.
-  - **open-code-review**: `unterart` `skill` ist vermutet; WS-5 prüft
-    fail-closed auf `SKILL.md`.
-  - **V4a-Startkombination** (E-F36-8 = B, Präzisierung S7;
-    `state/spike-f36-ws2s.md` S7). Gilt nur für `ausfuehrung`, sobald ein
-    Ort-B-Eintrag freigegeben ist, zusätzlich zum heutigen `baueAufruf`
-    (`--setting-sources project`, `--strict-mcp-config`):
-    `Skill`/`Agent` in `--tools`; je freigegebenem Eintrag
-    `--add-dir <cap>/<id>` + `Write(C:/…/<id>/**),Edit(C:/…/<id>/**)` in
-    `--disallowedTools`; `--settings` mit `enabledPlugins` aller aktiven
-    Plugins auf `false` (so gemessen; ohne diesen Schlüssel nicht gemessen),
-    `disableBundledSkills: true` und
-    `skillOverrides` „off“ für `design`, `doctor` und die nicht
-    freigegebenen Projekt-Skills; `--disallowedTools` `Skill(…)` für
-    dieselben Namen und `Agent(…)` für die eingebauten Agents (`claude`,
-    `Explore`, `general-purpose`, `Plan`, `statusline-setup`, Stand CLI
-    2.1.284) und die nicht freigegebenen Projekt-Agents. Die Projektnamen
-    liest der Start vor dem Lauf aus `<projekt>/.claude/skills|agents`.
-    Freigegebene Katalogeinträge, auch Projekt-Skills/-Agents, fallen aus
-    der Sperrliste heraus.
-  - **Init-Gate und Vorstart-Scan (F-791)**:
-    (1) Das init-Gate kennt nur die Menge „freigegeben ∪ bewusst gesperrt“;
-    jeder andere Name in `init.skills`/`init.agents` → Lauf abbrechen.
-    (2) Vorstart-Scan: Existiert unterhalb der Projektwurzel ein weiteres
-    `.claude/skills` oder `.claude/agents` außer dem der Wurzel → Lauf
-    abbrechen (fail-closed gegen verschachtelte, erst beim Dateizugriff
-    nachgeladene Skills).
-    (3) Das Gate wird beim CLI-Versionswechsel rot, wenn sich die Menge der
-    eingebauten Namen ändert.
-    Aus dem QA-Pass S7, bestätigt (Challenger-[EMPFEHLUNG], 29.09.2026):
-    (4) Keine Selbstanlage: `Write(**/.claude/**)` und `Edit(**/.claude/**)`
-    in `--disallowedTools`.
-    (4a) Rotfall in WS-5: Ein Lauf legt im selben Lauf einen Skill unter
-    `.claude/skills/` an, einmal per `Write` und einmal per `Bash`, und
-    versucht ihn aufzurufen. Ist er aufrufbar, eskaliert WS-5 an den
-    Challenger.
-    (4b) Enthält der Laufdiff Änderungen unter `.claude/`, ist das
-    Laufergebnis rot.
-    Den Folgelauf deckt bereits das init-Gate (1) ab: Ein im Vorlauf
-    angelegter Name ist weder freigegeben noch bewusst gesperrt.
-    (5) Namenskollision: Ein Ort-B-Eintrag mit dem Namen eines eingebauten
-    oder eines Projekt-Skills/-Agents wird bei der Freigabe abgelehnt und
-    beim Start erneut geprüft (Treffer → Lauf abbrechen, fail-closed).
-    Grund: `skillOverrides` und `Skill()`/`Agent()` greifen nach Namen,
-    nicht nach Herkunft.
-  - **Offen für die WS-5-Challenge** (QA-Pass S7):
-    - Kollision zweier Ort-B-Einträge mit gleichem Namen (von (5) nicht
-      erfasst).
-    - Sperrnamen aus dem Frontmatter-Feld `name` lesen, nicht aus Datei-
-      oder Ordnernamen.
-    - `.claude/commands` in Sperrliste und Scan aufnehmen.
-    - Das Init-Gate prüft zusätzlich `init.plugins`, `mcp_servers` und
-      `slash_commands`. Jeder Name mit `:` gilt als unbekannt.
-    - Für Skills gilt strenger `init.skills` ⊆ freigegeben.
-    - Abbruch vor dem ersten `tool_use`.
-    - Die Referenzmenge je CLI-Version und ihre Abhängigkeit vom
-      Anmeldestatus (`schedule`) festlegen.
-    - Scan-Umfang festlegen: `node_modules`, `.git`, Junctions/Symlinks.
-    - Ort-B-Layout festschreiben: nur `<cap>/<id>/.claude/skills|agents/…`,
-      keine eigene `settings.json`.
-    - Sind mehrere `--add-dir` und ein freigegebener Projekt-Agent unter
-      V4a aufrufbar? Das ist noch nicht gemessen.
-    - Sperren über den Text des `tool_result` erkennen, denn
-      `permission_denials` bleibt leer.
-    - Grenze der Windows-Kommandozeile prüfen.
-    - `browser-use` (Datennachtrag 29.09.2026): Der Skill braucht die
-      browser-use-CLI, die Prüfung auf `SKILL.md` allein reicht nicht; er
-      wirkt über den Browser nach außen, das Schema kennt `wirkung` aber
-      nur bei `mcp`.
+- **WS-5b — Ort-B-Skills.** **Stand: gebaut, nicht gemergt (29.09.2026).**
+  Zuschnitt nach Challenger-[EMPFEHLUNG] 29.09.2026 (GO_STANDARD):
+  - **Umfang:** Nur `extern`-Einträge mit `unterart` `skill`. `Agent` bleibt
+    aus `--tools`.
+    - Projekt-Skills (`<projekt>/.claude/skills`) und eingebaute Skills
+      bleiben im Lauf gesperrt, auch wenn sie im Katalog `FREIGEGEBEN` sind
+      (Grund in der Empfehlung: „Projekt-Skill im Lauf gesperrt“).
+    - Extern-Agents: keine Installation, keine Laufzeit. Vorbereiten und
+      Installieren antworten 400 „erst später“. In der Empfehlung bleibt der
+      Grund „erst ab WS-5“.
+    - Kein `enabledPlugins`, kein `claude plugin list` beim Start.
+  - **Katalog:**
+    - `installation_vorlage` `{skill_pfad}` für extern skill: relativ zum
+      Unterpfad der `herkunft.url`, ohne `..`. Ohne Vorlage ist der Skill
+      nicht installierbar, die Empfehlung zeigt den Grund (z. B.
+      `browser-use`).
+    - `installation` für extern skill: `{pfad, version = 40-stellige
+      Commit-SHA, inhalt_hash = sha256}` (R4). Agent bleibt `{pfad, version}`.
+    - `frontend-design` trägt `skill_pfad` `skills/frontend-design`, geprüft
+      an der realen Plugin-Struktur (`features/F36/nachweis-ws5b/README.md`).
+      Er bleibt `OFFEN`, ohne `installation`.
+  - **Installation** (`src/ressourcen/installation.ts` +
+    `skill-installation.ts`, dieselben Routen, derselbe `eintragHash`-/409-
+    Mechanismus, eine Installation zur Zeit, Zeitgrenze):
+    - `herkunft.url` ist nur zulässig als
+      `https://github.com/<owner>/<repo>[/tree/<ref>/<unterpfad>]`, sonst 400.
+      Eine Commit-SHA als Ref ist abgelehnt. Grund: GitHub liefert über die
+      Original-URL auch Commits aus Forks aus, also nur Branch oder Tag
+      (Reviewer-Pass).
+    - git läuft ohne `GIT_*`-Umgebung des Servers, ohne System- und
+      Nutzerkonfiguration (auch bei `ls-remote`) und mit leerem
+      `credential.helper`.
+    - Vorbereiten: `git ls-remote` → Commit-SHA. Gewertet wird nur der exakte
+      Name `refs/heads/<ref>`, `refs/tags/<ref>` oder `HEAD`, weil
+      `ls-remote … main` real auch `…/main` meldet. Angezeigt werden Repo,
+      Ref, SHA, skill_pfad, Lizenz, Kosten, Zielordner und der Hinweis
+      „Skill-Dateien können Skripte enthalten; ausgeführt werden nur Befehle, die der Werkzeugsatz der Ausführung zulässt – lesende Befehle lässt die CLI auch ohne Eintrag zu“ (Challenger-Nachtrag 29.09.2026, nach
+      Nachweis 9c).
+    - Installieren genau dieser SHA. Zeigt die Ref inzwischen woandershin →
+      409. Ablauf:
+      - temporäres Repo, flacher Fetch der SHA;
+      - `git ls-tree` über `<unterpfad>/<skill_pfad>`: Symlink oder
+        Submodul → Abbruch;
+      - Checkout nur dieses Pfads. git läuft ohne System- und
+        Nutzerkonfiguration (keine Filter, kein LFS), mit `core.hooksPath` auf
+        ein leeres Verzeichnis und `core.symlinks=false`;
+      - Kopie nach `~/.ai-workforce/cap/<id>/.claude/skills/<name>/`.
+        Enthält der Skill-Ordner ein `.claude`-Segment oder eine `CLAUDE.md`,
+        wird abgebrochen.
+    - Fail-closed-Prüfung (F-786 Teil skill):
+      - `SKILL.md` mit Frontmatter `name` + `description`;
+      - `name` nach `[a-z0-9-]`;
+      - keine Kollision mit den 18 eingebauten Skills aus S7 (Konstante nur
+        für diese Prüfung) oder einem anderen Ort-B-Skill des Katalogs.
+    - Erst danach werden `installation` + `FREIGEGEBEN` geschrieben (nur der
+      Text dieses Eintrags). Jeder Fehlschlag: `ressourcen.json` unverändert,
+      Zielordner entfernt, Klartext-Grund. Der git-Runner ist injizierbar.
+  - **Empfehlung** (`baueEmpfehlung`): extern skill `FREIGEGEBEN` +
+    `installation` + verfügbar kommt in „Wird genutzt“, mit `empfehlungId`
+    `<id>@<hash>` (F-808). Verfügbar heißt: Ordner da, `SKILL.md` mit
+    Frontmatter, `inhalt_hash` stimmt.
+  - **Start** (nur `ausfuehrung` mit schreibendem Werkzeugsatz und nur mit
+    ≥1 übergebenem Ort-B-Skill, sonst bitgenau wie vorher; `baueOrtBSkillStart`
+    in `src/ressourcen/ort-b-start.ts`):
+    - `--tools …,Skill` (auch `--allowedTools`), kein `Agent`;
+    - je Skill `--add-dir <cap>/<id>` und in `--disallowedTools`
+      `Write(C:/…/<id>/**)`, `Edit(C:/…/<id>/**)` (S4b-Form);
+    - zusätzlich in `--disallowedTools`: `Write(**/.claude/**)`,
+      `Edit(**/.claude/**)`, `Skill(design)`, `Skill(doctor)` und
+      `Skill(<Projekt-Skill>)`. Die Projekt-Skill-Namen kommen aus Ordnername
+      UND Frontmatter-`name`;
+    - ebenso die **Projekt-Commands** `.claude/commands/**.md` (Dateiname,
+      Unterordner als Namensraum `sub:name`, Frontmatter-`name`). Real
+      gemessen (Reviewer-Befund, Nachweis 9b′): Commands stehen nicht in
+      `init.skills`, sind ohne Sperre aber per Skill-Werkzeug aufrufbar;
+    - `--settings {disableBundledSkills: true, skillOverrides: design/doctor/
+      Projekt-Skills "off"}`.
+    - Vor dem Spawn, jeweils fail-closed (Lauf startet nicht, Grund mit Pfad):
+      - `inhalt_hash` jedes übergebenen Skills neu berechnen;
+      - `installation.pfad` = `<capWurzel>/<id>/.claude/skills/<name>`;
+        der cap-Pfad darf die Regelsyntax nicht brechen (kein Leerzeichen,
+        Komma, Klammer, `*`);
+      - Ort-B-Layout: nur `.claude/skills/<name>` im cap-Ordner;
+      - Namenskollision Ort-B ↔ eingebaut, Projekt und Ort-B;
+      - Vorstart-Scan unterhalb der Projektwurzel (ohne `.git`, ohne Junctions
+        und Symlinks zu folgen, mit `node_modules`): jedes weitere
+        `.claude/skills|agents|commands`.
+  - **Init-Gate** (Gateway, vor dem ersten `tool_use`): `init.skills` ⊆
+    übergebene Ort-B-Namen, `Agent` ∉ `init.tools`, `init.mcp_servers` =
+    übergebene MCPs.
+    - Bei einem Verstoß, einem `tool_use` vor der init-Zeile oder einem
+      regulären Ende ohne init-Zeile wird der Prozess über den bestehenden
+      Abbruchweg beendet bzw. der Lauf rot gewertet. Startfehler und manueller
+      Abbruch bleiben, was sie sind. Real belegt (9d): Abbruch nach 1,7 s,
+      0 `tool_use`. Klassifikation:
+      `FEHLGESCHLAGEN` `init_gate_verstoss`, die unbekannten Namen stehen im
+      Grund.
+    - Gilt nur für Läufe mit Ort-B-Skills.
+  - **Ergebnis:** Enthält der Laufdiff eines solchen Laufs Änderungen unter
+    `.claude/`, ist das Ergebnis `FEHLGESCHLAGEN` `claude_ordner_veraendert`
+    (Bewertung in `klassifiziereLauf`, der Diff kommt aus dem Execution
+    Controller).
+  - **Oberfläche:** „Freigeben & installieren“ auch für installierbare
+    Skills. Der Bestätigungsblock zeigt die Felder aus „Installation“.
+  - Gate `scripts/check-f36-ws5b-skill.mjs` (a)–(o), kalibriert: Das Gate
+    wird rot, wenn Init-Gate, Vorstart-Scan, inhalt_hash-Prüfung,
+    Laufdiff-Prüfung oder Symlink-Prüfung fehlen.
+  - Echte Nachweise `features/F36/nachweis-ws5b/`: Installation
+    `frontend-design`, CLI-Lauf mit zwei Ort-B-Skills, Rotfall 4a.
+    Render-Nachweis: `features/F36/nachweis-ws5b-ui/`.
+  - **Zurückgestellt** (F-815):
+    - Agents (extern + Projekt), Projekt-Skills in der Ausführung, E-F36-3;
+    - Rot-Fall „fremde Origin wird verweigert“ mit installiertem
+      playwright-mcp (Reallauf);
+    - `open-code-review`: `unterart` weiter vermutet, installierbar erst mit
+      `installation_vorlage`.
+  - **Offene QA-Punkte aus S7, Stand WS-5b:**
+    - erledigt: Kollision zweier Ort-B-Einträge; Sperrnamen aus Frontmatter
+      UND Ordnername; `.claude/commands` im Scan; `init.mcp_servers` im Gate;
+      strenger `init.skills` ⊆ Ort-B; Abbruch vor dem ersten `tool_use`;
+      Scan-Umfang (`node_modules` ja, `.git` nein, keine Links); Ort-B-Layout
+      nur `.claude/skills/<name>`; Sperren am `tool_result`-Text (siehe
+      Reallauf); `.claude/commands` in der Sperrliste (9b′).
+    - offen: `init.plugins`/`slash_commands` im Gate; die Referenzmenge je
+      CLI-Version und ihre Abhängigkeit vom Anmeldestatus; mehrere
+      `--add-dir` mit freigegebenem Projekt-Agent; Grenze der
+      Windows-Kommandozeile; `browser-use` (`wirkung` bei Skills, F-817).
 - **Reallauf** (nach WS-5b, mit `playwright-mcp` und `frontend-design`).
-  Ein nicht installierter Eintrag wird empfohlen,
-  freigegeben, installiert und im selben Durchstich genutzt (init-Zeile und
-  Aufruf beobachtet, WS-4). Zusätzlich wird beobachtet, ob das Modell
-  gesperrte Agents ansteuert. Geschieht das wiederholt, wird die
-  S7-Präzisierung zu E-F36-8 verworfen. Vor dem Reallauf festzulegen
-  (QA-Pass S7):
-  - Zählgröße: `Agent`-`tool_use` mit `subagent_type` aus der Sperrliste,
-    erkannt am Denial-Text;
-  - Schwelle und Stichprobe;
-  - ein Auftrag ohne Aufforderung zu gesperrten Agents;
-  - wer urteilt.
+  Ein nicht installierter Eintrag wird empfohlen, freigegeben, installiert
+  und im selben Durchstich genutzt (init-Zeile und Aufruf beobachtet, WS-4).
+  Kriterium (Challenger-Zuschnitt WS-5b, 29.09.2026):
+  - Zählgröße: `Skill`-`tool_use` mit einem Namen außerhalb der
+    freigegebenen Menge, erkannt am Text des `tool_result`. Erwartet: 0.
+  - Jeder Treffer wird dokumentiert, der Challenger beurteilt ihn.
+  - Agents sind nicht aufrufbar: `Agent` fehlt in `init.tools`.
+  - Vorschlag QA (Challenger entscheidet): zwei Zählgrößen.
+    - (a) Erfolgreiche fremde Aufrufe („Launching skill: …“) — erwartet 0,
+      jeder ist rot.
+    - (b) Verweigerte Versuche — dokumentieren, der Challenger urteilt.
+    - Dazu: Der Auftrag verlangt die Nutzung von frontend-design
+      ausdrücklich (AK12 „genutzt“).
+  - Vorbedingungen:
+    - F-814 ist behoben;
+    - `~/.ai-workforce/cap/frontend-design` existiert nicht;
+    - passende UI-Dateien in haushaltsbuch2 sind committet;
+    - der Router ordnet den Auftrag als `neues-feature` ein
+      (`anwendbar_wenn`);
+    - Trockenlauf `scanneVerschachtelteClaudeOrdner` auf haushaltsbuch2
+      (nach `npm install`): Liefert ein Paket in `node_modules` ein
+      `.claude/skills|agents|commands` mit, startet kein Lauf;
+    - im Reallauf-Protokoll die volle init-Zeile ablegen. Zu prüfen sind
+      `init.skills` = erwartete Ort-B-Skills (das Gate prüft nur ⊆) und der
+      Status von `mcp_servers`.
 - **WS-4 — Beobachtung (F-730).** Gemergt (#269): init-Zeile (tools,
   agents, skills, mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
 Empfehlung → WS-5a MCP-Installation → WS-5b Skill/Agent → Reallauf. Stand 29.09.2026 gebaut und
 gemergt: WS-0 (#267), WS-1 (#268), WS-4 (#269), WS-1b (#270), WS-2 (#271),
-Spike S7 (#272), WS-3 (#275). WS-5a gebaut, nicht gemergt. Offen: WS-5b, Reallauf. Jeder Workstream wird vor dem
+Spike S7 (#272), WS-3 (#275), WS-5a (#276). WS-5b gebaut, nicht gemergt. Offen: Reallauf. Jeder Workstream wird vor dem
 Bau präzisiert (eigene Challenge).
 
 ## Akzeptanzkriterien
@@ -402,13 +469,33 @@ Bau präzisiert (eigene Challenge).
     ansteuert.
   AK4 bleibt offen, bis WS-5 die Kombination samt Init-Gate (F-791) baut
   und der Reallauf sie belegt.
+  Stand WS-5b (29.09.2026, gebaut, nicht gemergt): Für Ort-B-Skills gebaut
+  und belegt.
+  - Mit installiertem, freigegebenem und empfohlenem Skill steht `Skill` in
+    `--tools` (Gate `check-f36-ws5b-skill` (c)); ohne Ort-B-Skill fehlt es
+    (Gate (o), `check-f36-ws2-laufzeit`).
+  - Echter Lauf `features/F36/nachweis-ws5b/` (9b, 9b′): `init.tools` mit
+    `Skill`, ohne `Agent`; `init.skills` = nur die zwei Ort-B-Skills.
+    Erzwungen nicht aufrufbar sind die Projekt-Skills und -Commands sowie
+    jeder Name aus `init.skills` und `init.slash_commands` dieser
+    CLI-Version (9b′, 9b″: alle Namen per Skill-Werkzeug geprüft, alle
+    verweigert). Ein neuer Name in `init.skills` stoppt das Init-Gate. Für
+    neue Slash-Commands gilt das nicht, weil das Gate `slash_commands` nicht
+    prüft (F-791 (3), Messung je CLI-Version wiederholen).
+  - Agents sind nicht Teil von WS-5b (F-815). Der Reallauf belegt AK4 im
+    Durchstich.
 - AK5 (WS-2) Ein freigegebener lokaler MCP erscheint nur im
   `ausfuehrung`-Schritt in `mcpConfig`, nur mit seinen freigegebenen
   Einzelnamen in `--allowedTools`; jede andere Rolle behält
   `{"mcpServers":{}}`. Prüfweg: Gate auf `baueAufruf`-Tokens je Rolle.
-- AK6 (WS-2) Freigegebene Skills/Agents liegen nach der Vorbereitung im
-  Projekt-`.claude/`; nicht freigegebene nicht. Prüfweg: Gate gegen ein
-  Wegwerf-Projekt.
+- AK6 (WS-2, an Ort B angepasst in WS-5b) Freigegebene Ort-B-Skills liegen
+  nach der Installation in `~/.ai-workforce/cap/<id>/.claude/skills/<name>/`
+  und kommen je Lauf per `--add-dir <cap>/<id>` (schreibgesperrt) in die
+  Ausführung. Ins Projekt-`.claude/` wird nichts gelegt; ein Lauf, der dort
+  etwas ändert, ist rot (`claude_ordner_veraendert`). Nicht freigegebene
+  kommen nicht in den Lauf. Prüfweg: Gate `scripts/check-f36-ws5b-skill.mjs`
+  (a), (c), (n) gegen ein Wegwerf-Projekt; echter Lauf
+  `features/F36/nachweis-ws5b/`.
   Stand WS-2 (28.09.2026): nach WS-5 verschoben und an Ort B angepasst
   (Workforce-Ordner per `--add-dir`, Spike WS-2s) — schreibende Läufe
   verlangen einen sauberen Arbeitsbaum, beim Laufstart wird nichts ins
@@ -450,6 +537,25 @@ Bau präzisiert (eigene Challenge).
   `scripts/check-f36-ws5a-installation.mjs` (a)–(f), (j); einmaliger echter
   Nachweis `features/F36/nachweis-ws5a-installation/`; Render-Nachweis
   `features/F36/nachweis-ws5a-ui/`. Für Skill/Agent präzisiert WS-5b.
+  Präzisiert für Skill (WS-5b, 29.09.2026):
+  - Ein externer Skill mit `installation_vorlage` `{skill_pfad}` wird nur
+    von der `herkunft.url` (`https://github.com/<owner>/<repo>[/tree/<ref>/<unterpfad>]`)
+    installiert, und zwar in der vor dem Klick angezeigten Commit-SHA
+    (`git ls-remote`). Zeigt die Ref beim Installieren woandershin → 409.
+  - Geholt wird nur `<unterpfad>/<skill_pfad>`: flacher Fetch, ohne Hooks,
+    Filter und Symlinks. Ziel ist `~/.ai-workforce/cap/<id>/.claude/skills/<name>/`
+    (Ort B, nichts im Projekt).
+  - Vorher angezeigt: Repo, Ref, SHA, skill_pfad, Lizenz, Kosten, Zielordner,
+    Skript-Hinweis.
+  - Freigegeben wird erst nach bestandener Prüfung: `SKILL.md` mit name +
+    description, Name nach `[a-z0-9-]`, keine Kollision mit eingebauten oder
+    Ort-B-Skills. Dann steht `installation` `{pfad, version = SHA,
+    inhalt_hash}` im Katalog. Jeder Fehlschlag lässt `ressourcen.json`
+    unverändert.
+  - Extern-Agents: 400 „erst später“.
+  - Prüfweg: Gate `scripts/check-f36-ws5b-skill.mjs` (a), (d)–(j);
+    einmaliger echter Nachweis `features/F36/nachweis-ws5b/` (9a,
+    frontend-design); Render-Nachweis `features/F36/nachweis-ws5b-ui/`.
 - AK12 (Reallauf) Ein zuvor nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und genutzt. Prüfweg: Laufakte mit init-Zeile
   und Aufruf (WS-4).
@@ -490,7 +596,8 @@ Bau präzisiert (eigene Challenge).
   `installation.pfad` existiert“ — ob dort eine `SKILL.md` bzw. eine
   Agent-Datei mit Frontmatter liegt, prüft der Katalog nicht. WS-2 (Ablage
   ins Projekt-`.claude/`) und WS-3 (Empfehlung) dürfen sich darauf nicht
-  verlassen.
+  verlassen. Seit WS-5b gilt für extern skill zusätzlich: `SKILL.md` mit
+  Frontmatter und `inhalt_hash` = gespeicherter Wert.
 - WS-3 Pfadquelle: `pfad_muster_any` wird gegen die versionierten Dateien
   des Projekts geprüft (`git ls-files`), heißt also „Projekt enthält
   passende Dateien“, nicht „Auftrag betrifft sie“ (F-806). Maßnahme bei
@@ -560,3 +667,44 @@ Bau präzisiert (eigene Challenge).
   Rechners) und `FREIGEGEBEN`. Nach einer Installation committet Stefan
   (F-812); arbeitet die Workforce an sich selbst, sperrt der geänderte
   Arbeitsbaum bis dahin jeden schreibenden Lauf.
+- WS-5b Laufdiff: `claude_ordner_veraendert` sieht nur, was `git status`
+  zeigt, also keine ignorierten Dateien. Eine per Bash angelegte, von
+  `.gitignore` erfasste Datei unter `.claude/` bliebe unsichtbar. Write/Edit
+  sperrt `Write(**/.claude/**)` davon unabhängig (9c gemessen), und die
+  Bash-Allowlist lehnt schreibende Befehle ab.
+- WS-5b lesende Bash-Befehle: Im Rotfall-Lauf 9c lief `pwd && ls -la
+  .claude/skills` ohne Allowlist-Eintrag. Die CLI lässt lesende Befehle
+  offenbar zu. Der Skript-Hinweis im Bestätigungsblock sagt das seit dem
+  Challenger-Nachtrag 29.09.2026 ausdrücklich.
+- WS-5b Vorstart-Scan: Junctions und Symlinks im Projekt werden nicht
+  verfolgt. Ein `.claude` hinter einem Link außerhalb eines `.claude`-Namens
+  sieht der Scan nicht; ein verschachteltes `.claude`, das selbst ein Link
+  ist, zählt als Treffer. Der Scan läuft über den ganzen Baum samt
+  `node_modules` (Dauer wächst mit der Projektgröße).
+- WS-5b Namensliste: Die 18 eingebauten Skill-Namen (S7, CLI 2.1.284) dienen
+  nur der Kollisionsprüfung. Gesperrt werden `design`/`doctor` (Reste nach
+  `disableBundledSkills`). Eine neue eingebaute Fähigkeit hält das Init-Gate
+  auf (F-791).
+- WS-5b Identität: Projekt-Skills werden nach Namen gesperrt. Eine
+  Freischaltung von Projekt-Skills/-Agents braucht vorher eine Klärung der
+  Identität (F-816).
+- WS-5b Anfragen fremder Seiten: F-814 (Host-Header, DNS-Rebinding) ist noch
+  offen. Die Findings-Akte nennt es „spätestens vor Freigabe von
+  Skill-/Agent-Installation“.
+- WS-5b Lesen gesperrter Skills: „Nicht aufrufbar“ gilt für das
+  Skill-Werkzeug. Den Inhalt eines gesperrten Projekt-Skills kann der Lauf mit
+  Read lesen und befolgen (9c: `ponytail/SKILL.md` gelesen). Die Zählgröße im
+  Reallauf erfasst das nicht; der Challenger entscheidet, ob Read auf
+  `.claude/skills|commands` mitgezählt wird.
+- WS-5b Init-Gate: Geprüft wird nur die erste init-Zeile. Eine spätere
+  `system`/`init`-Zeile, etwa nach einer Kontext-Zusammenfassung, bleibt
+  ungeprüft. Slash-Commands (`init.slash_commands`) prüft das Gate nicht; die
+  gemessenen sind über das Skill-Werkzeug nicht aufrufbar (9b′).
+- WS-5b Refs: Eine Commit-SHA als Ref in `herkunft.url` ist abgelehnt (nur
+  Branch/Tag). Eine Ref mit „/“ (`tree/release/v2/x`) wird als Ref `release`
+  plus Unterpfad gelesen; das bleibt fail-closed, wenn es den Pfad dort nicht
+  gibt.
+- WS-5b cap-Pfad: Enthält der Home-Pfad Leerzeichen oder Kommas, startet kein
+  Ort-B-Lauf, weil die Sperrregel sonst zerfiele (fail-closed). Bricht eine
+  Skill-Installation hart ab, bleibt `cap/<id>` liegen; es gilt dasselbe wie
+  in „WS-5a Neuinstallation“.

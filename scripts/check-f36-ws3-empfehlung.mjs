@@ -304,7 +304,8 @@ const angezeigt = await durchlauf('(a) workflow', { art: 'workflow', taskTypen: 
   } else {
     if (JSON.stringify(e.wirdGenutzt.map((x) => x.id)) !== '["gate-mcp"]') befunde.push(`(d) wirdGenutzt ist nicht ['gate-mcp']: ${JSON.stringify(e.wirdGenutzt)}`)
     const skill = e.passtNichtImLauf.find((x) => x.id === 'gate-skill')
-    if (skill === undefined || !/freigabe OFFEN/.test(skill.grund) || !/erst ab WS-5/.test(skill.grund)) befunde.push(`(d) passtNichtImLauf trägt gate-skill nicht mit Grund: ${JSON.stringify(e.passtNichtImLauf)}`)
+    // Seit F36 WS-5b entfällt „erst ab WS-5“ für externe Skills; ohne installation_vorlage nennt der Grund, warum er nicht installierbar ist.
+    if (skill === undefined || !/freigabe OFFEN/.test(skill.grund) || !/nicht installierbar: installation_vorlage/.test(skill.grund) || /erst ab WS-5/.test(skill.grund)) befunde.push(`(d) passtNichtImLauf trägt gate-skill nicht mit Grund: ${JSON.stringify(e.passtNichtImLauf)}`)
     if (e.nichtFreigebbarAnzahl !== 1 || e.passtNichtImLauf.some((x) => x.id === 'gate-lesend')) befunde.push(`(d) extern_lesend nicht nur als Zählzeile: ${JSON.stringify(e)}`)
     const html = renderEmpfehlung(e)
     if (!html.includes('<code>gate-mcp</code>') || !html.includes('1 passende Einträge in V1 nicht freigebbar')) befunde.push('(d) renderEmpfehlung zeigt die Server-Empfehlung nicht vollständig')

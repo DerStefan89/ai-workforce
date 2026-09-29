@@ -1,0 +1,42 @@
+[
+  {
+    "label": "Empfehlung am ZWINGEND-Start: Knopf nur bei frontend-design, browser-use mit Grund",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Klick „Freigeben & installieren“ → Bestätigungsblock",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": true,
+    "Knopf Installieren": true,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Bestätigungsblock: Repo, Ref, SHA, skill_pfad, Lizenz, Kosten, Zielordner, Hinweis",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": true,
+    "Knopf Installieren": true,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Klick „Installieren“",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Erfolg: Skill in „Wird genutzt“",
+    "Knopf Freigeben & installieren": false,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": true,
+    "Freigeben mit data-empfehlung-ids": true
+  }
+]

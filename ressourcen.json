@@ -188,6 +188,7 @@
       "capabilities": ["UI_UX_DESIGN"],
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design" },
+      "installation_vorlage": { "skill_pfad": "skills/frontend-design" },
       "anwendbar_wenn": { "task_typen_any": ["neues-feature"], "pfad_muster_any": ["**/*.html", "**/*.css", "**/*.tsx", "**/*.jsx"] }
     },
     {

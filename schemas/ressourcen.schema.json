@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/ressourcen.schema.json",
   "title": "Ressourcen-Register (RESSOURCEN_V0)",
-  "description": "F19 WS-1. Trägt das Register der Ressourcen (Worker, Skills, Agents, bekannte externe Kandidaten), die eine Capability bereitstellen können — getrennt von der Rolle, die eine Capability benötigt (src/rollen/index.ts, Feld benoetigte_capabilities). Kein Verfügbarkeitszustand: dieses Schema kennt kein Feld 'status' und keinen Wert 'AVAILABLE' — Verfügbarkeit wird erst zur Abfragezeit abgeleitet (F19 WS-2). Dies ist kein Ersatz für state/tooling.md (Dev-Werkzeuge des Bauprozesses) oder docs/harness/werkzeug-katalog.md (Bewertung, Vetting-Status, Prüfdatum) — siehe dort für die Abgrenzung. F36 WS-1: typ 'agent', extern.unterart/wirkung, installation (R4), R2 nach E-M5-5 und E-F36-4, anwendbar_wenn (E-F36-2). F36 WS-1b: lizenz/kosten (nur 'extern', optional). F36 WS-5a: herkunft.paket und installation_vorlage (nur extern mcp, E-F36-9), Platzhalter in mcp_server.args.",
+  "description": "F19 WS-1. Trägt das Register der Ressourcen (Worker, Skills, Agents, bekannte externe Kandidaten), die eine Capability bereitstellen können — getrennt von der Rolle, die eine Capability benötigt (src/rollen/index.ts, Feld benoetigte_capabilities). Kein Verfügbarkeitszustand: dieses Schema kennt kein Feld 'status' und keinen Wert 'AVAILABLE' — Verfügbarkeit wird erst zur Abfragezeit abgeleitet (F19 WS-2). Dies ist kein Ersatz für state/tooling.md (Dev-Werkzeuge des Bauprozesses) oder docs/harness/werkzeug-katalog.md (Bewertung, Vetting-Status, Prüfdatum) — siehe dort für die Abgrenzung. F36 WS-1: typ 'agent', extern.unterart/wirkung, installation (R4), R2 nach E-M5-5 und E-F36-4, anwendbar_wenn (E-F36-2). F36 WS-1b: lizenz/kosten (nur 'extern', optional). F36 WS-5a: herkunft.paket und installation_vorlage (nur extern mcp, E-F36-9), Platzhalter in mcp_server.args. F36 WS-5b: installation_vorlage { skill_pfad } und installation { pfad, version = Commit-SHA, inhalt_hash } für extern skill.",
   "type": "object",
   "additionalProperties": false,
   "required": ["ressourcen_schema", "ressourcen"],
@@ -62,13 +62,20 @@
           "description": "F36 WS-1b: optional, nur bei typ 'extern' zulässig — Kostenangabe aus der Kandidaten-Recherche, angezeigt vor „Freigeben & installieren“ (E-F36-6). Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts)."
         },
         "installation": {
-          "description": "R4 (F36 WS-1): optional, nur bei typ 'extern', vom Menschen gesetzt, lokal prüfbar (E-M5-5). Form je unterart — skill|agent: installationPfad; mcp: installationMcp. Die Zuordnung zur unterart prüft validiereRessourcenDaten (src/ressourcen/index.ts), nicht dieses Schema allein.",
+          "description": "R4 (F36 WS-1): optional, nur bei typ 'extern', lokal prüfbar (E-M5-5). Form je unterart — agent: installationPfad; skill (seit F36 WS-5b): installationSkill; mcp: installationMcp. Die Zuordnung zur unterart prüft validiereRessourcenDaten (src/ressourcen/index.ts), nicht dieses Schema allein.",
           "oneOf": [
             { "$ref": "#/$defs/installationPfad" },
+            { "$ref": "#/$defs/installationSkill" },
             { "$ref": "#/$defs/installationMcp" }
           ]
         },
-        "installation_vorlage": { "$ref": "#/$defs/installationVorlage" },
+        "installation_vorlage": {
+          "description": "F36 WS-5a/5b: optional, nur bei typ 'extern' — mcp: installationVorlage; skill: installationVorlageSkill; agent: keine (Agents erst später). Die Zuordnung prüft validiereRessourcenDaten.",
+          "oneOf": [
+            { "$ref": "#/$defs/installationVorlage" },
+            { "$ref": "#/$defs/installationVorlageSkill" }
+          ]
+        },
         "anwendbar_wenn": { "$ref": "#/$defs/anwendbarWenn" },
         "capabilities": {
           "type": "array",
@@ -155,7 +162,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["pfad", "version"],
-      "description": "R4: installation für extern.unterart 'skill' oder 'agent'. verfuegbar setzt FREIGEGEBEN und einen existierenden pfad voraus (loeseRessourcenAuf).",
+      "description": "R4: installation für extern.unterart 'agent' (bis F36 WS-5a auch 'skill'). verfuegbar setzt FREIGEGEBEN und einen existierenden pfad voraus (loeseRessourcenAuf).",
       "properties": {
         "pfad": {
           "type": "string",
@@ -163,6 +170,21 @@
           "description": "Absoluter Pfad oder mit ~ beginnend (Home-Verzeichnis)."
         },
         "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "installationSkill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pfad", "version", "inhalt_hash"],
+      "description": "F36 WS-5b (R4 skill): von „Freigeben & installieren“ gesetzt — pfad = <cap>/<id>/.claude/skills/<name> (Ort B), version = installierte Commit-SHA, inhalt_hash = sha256 über alle Dateien des Ordners (src/ressourcen/skill-dateien.ts). verfuegbar setzt FREIGEGEBEN, SKILL.md mit Frontmatter und einen passenden inhalt_hash voraus; der Start prüft ihn erneut.",
+      "properties": {
+        "pfad": {
+          "type": "string",
+          "pattern": "^(~[\\\\/]|/|[A-Za-z]:[\\\\/]|\\\\\\\\)",
+          "description": "Absoluter Pfad oder mit ~ beginnend (Home-Verzeichnis)."
+        },
+        "version": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "40-stellige Commit-SHA (klein)." },
+        "inhalt_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "sha256 (hex) über '<relativer Pfad>\\0<sha256 des Inhalts>\\n' je Datei, sortiert." }
       }
     },
     "installationMcp": {
@@ -209,6 +231,15 @@
           "description": "Einzelnamen mcp__<id>__<name> wie installationMcp.werkzeuge (R4, keine Wildcard); die Installation prüft per tools/list, dass der Server jeden anbietet.",
           "items": { "type": "string", "pattern": "^mcp__[a-z0-9][a-z0-9-]*__[A-Za-z0-9_-]+$" }
         }
+      }
+    },
+    "installationVorlageSkill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill_pfad"],
+      "description": "F36 WS-5b: optional, nur bei typ 'extern' mit unterart 'skill' — ohne Vorlage ist der Skill nicht installierbar. skill_pfad ist der Skill-Ordner relativ zum Unterpfad der herkunft.url (https://github.com/<owner>/<repo>[/tree/<ref>/<unterpfad>]).",
+      "properties": {
+        "skill_pfad": { "type": "string", "pattern": "^(?!(.*/)?\\.\\.?(/|$))[A-Za-z0-9._@+-]+(/[A-Za-z0-9._@+-]+)*$", "description": "Relativer Pfad ('/' als Trenner, ohne '..'), z. B. 'skills/frontend-design'." }
       }
     },
     "anwendbarWenn": {

@@ -104,8 +104,13 @@
  * Weiche in der Klassifikation gibt es bewusst nicht — klassifiziereLauf
  * verzweigt seit F16 WS-2 (AK8) selbst nach laufakte.worker. Zwei Stellen,
  * die dieselbe Worker-Frage beantworten, laufen auseinander.
+ *
+ * F36 WS-5b: bei eingaben.ortBLauf (nur Ausführung mit Ort-B-Skills) geht ein Init-Gate an starteGateway,
+ * und nach dem Lauf liest leseClaudeAenderungen den Laufdiff unter .claude/ — die Bewertung (rot) bleibt
+ * bei klassifiziereLauf (eingaben.claudeAenderungen), der Controller urteilt nicht selbst.
  */
 
+import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { starteGateway, baueAufruf } from '../claude-code-gateway/index.ts'
 import { starteCodexGateway, baueCodexAufruf } from '../codex-gateway/index.ts'
@@ -131,6 +136,42 @@ function vorgaengerLaufakteArtefaktId(vorgaengerLaufId: string): string {
 /** Artefakt-ID einer über POST /api/entscheidungen(art:'terminal') festgehaltenen Entscheidung zum Vorgängerlauf (F13 WS-3, AK5) — Gegenstück zu scripts/leitstand-server.mjs' entscheidung-<laufId>-Registrierung. */
 function vorgaengerEntscheidungArtefaktId(vorgaengerLaufId: string): string {
   return `entscheidung-${vorgaengerLaufId}`
+}
+
+/**
+ * F36 WS-5b (F-791 (4b)): Pfade des Laufdiffs (`git status --porcelain -z --untracked-files=all`, also
+ * geänderte, gelöschte, umbenannte und neue Dateien, ohne ignorierte) mit einem Segment '.claude'. Die
+ * Ausführung verlangt vorher einen sauberen Arbeitsbaum, jeder Treffer stammt also aus dem Lauf. Ist git
+ * nicht lesbar, gilt das als Treffer (fail-closed).
+ * @param projektWurzel - Repo des Laufs
+ * @returns betroffene Pfade ('/' als Trenner), leer = keine Änderung unter .claude/
+ */
+export function leseClaudeAenderungen(projektWurzel: string): string[] {
+  let roh: string
+  try {
+    roh = execFileSync('git', ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all'], {
+      cwd: projektWurzel,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      maxBuffer: 50_000_000,
+      timeout: 30_000,
+    })
+  } catch (fehler) {
+    console.error(`[execution-controller] Laufdiff in '${projektWurzel}' nicht lesbar:`, fehler)
+    return [`(Laufdiff nicht lesbar: ${(fehler as Error).message})`]
+  }
+  const pfade: string[] = []
+  const teile = roh.split('\0')
+  for (let i = 0; i < teile.length; i++) {
+    const eintrag = teile[i]
+    if (eintrag.length < 4) continue
+    const status = eintrag.slice(0, 2)
+    pfade.push(eintrag.slice(3))
+    // Umbenennung/Kopie: der alte Pfad folgt als eigenes Feld.
+    if (/[RC]/.test(status)) pfade.push(teile[++i] ?? '')
+  }
+  // Groß-/Kleinschreibung egal: auf NTFS ist .Claude/skills derselbe Ort (Reviewer).
+  return pfade.filter((pfad) => pfad.replaceAll('\\', '/').split('/').some((segment) => segment.toLowerCase() === '.claude'))
 }
 
 /**
@@ -373,11 +414,17 @@ export async function fuehreAufgabeDurch(
             // settingSources/mcpConfig zum Aufrufbau-Parametersatz EINES Laufs gehört, nicht zur
             // Controller-weiten Durchreichung.
             umgebungsvariablen: eingaben.aufrufEingaben.umgebungsvariablen,
+            // F36 WS-5b: Init-Gate nur für Läufe mit Ort-B-Skills (eingaben.ortBLauf).
+            ...(eingaben.ortBLauf !== undefined ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer } } : {}),
           }
         )
   if (!gatewayErgebnis.ok) {
     return { ok: false, stufe: 'gateway', grund: gatewayErgebnis.grund }
   }
+
+  // F36 WS-5b (F-791 (4b)): Laufdiff eines Ort-B-Laufs auf Änderungen unter .claude/ — die Bewertung
+  // selbst (rot) macht klassifiziereLauf; hier wird nur der Diff gelesen.
+  const claudeAenderungen = eingaben.ortBLauf !== undefined ? leseClaudeAenderungen(eingaben.ortBLauf.projektWurzel) : undefined
 
   // F31 WS-3-Zeitmessung (nur bei LEITSTAND_ZEITMESSUNG=1 gesetzt, sonst undefined — No-op):
   // klassifiziereLauf schreibt die terminale Wirkungsmarke über F1B, ist also die Grenze
@@ -388,7 +435,7 @@ export async function fuehreAufgabeDurch(
   const klassifikation = klassifiziereLauf(
     laufId,
     profilReferenz,
-    { laufakte: gatewayErgebnis.laufakte },
+    { laufakte: gatewayErgebnis.laufakte, ...(claudeAenderungen !== undefined ? { claudeAenderungen } : {}) },
     { basisVerzeichnis: optionen.basisVerzeichnis, schreiber: optionen.schreiber }
   )
   optionen.zeitmessung?.('terminal_checkpoint_geschrieben')

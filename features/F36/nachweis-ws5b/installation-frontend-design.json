@@ -1,0 +1,94 @@
+{
+  "erzeugt_am": "2026-09-29T14:54:16.856Z",
+  "git_version": "git version 2.54.0.windows.1",
+  "vorbereitung": {
+    "art": "skill",
+    "id": "frontend-design",
+    "name": "frontend-design",
+    "repo": "https://github.com/anthropics/claude-plugins-official.git",
+    "ref": "main",
+    "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+    "skillPfad": "skills/frontend-design",
+    "quellPfad": "plugins/frontend-design/skills/frontend-design",
+    "lizenz": "Apache-2.0 im Plugin-LICENSE",
+    "kosten": "Kein separater Pluginpreis; Modellquota",
+    "zielordner": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\frontend-design\\.claude\\skills\\<name aus SKILL.md>",
+    "herkunftUrl": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design",
+    "hinweis": "Skill-Dateien können Skripte enthalten; ausgeführt wird nur, was die Bash-Allowlist erlaubt.",
+    "eintragHash": "de3c8550790cf5d8c4c338e1749abbd7b7804e25ba35c325899d8ccd8e1fa234"
+  },
+  "ls_remote_main_roh": [
+    "95380b3cd58f7fbf575ebda0fe291224ba028317\trefs/heads/daisy/caffeinate/main",
+    "5989f5b2027b5010e3ea01770c2e9bdcc3978c84\trefs/heads/daisy/cwc-makers/main",
+    "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80\trefs/heads/main"
+  ],
+  "ergebnis": {
+    "art": "skill",
+    "id": "frontend-design",
+    "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+    "name": "frontend-design",
+    "zielordner": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\frontend-design\\.claude\\skills\\frontend-design",
+    "installation": {
+      "pfad": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\frontend-design\\.claude\\skills\\frontend-design",
+      "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+      "inhalt_hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b"
+    },
+    "dateien": [
+      "LICENSE.txt",
+      "SKILL.md"
+    ],
+    "dauerMs": 2965
+  },
+  "eintrag_nach_installation": {
+    "id": "frontend-design",
+    "typ": "extern",
+    "name": "frontend-design",
+    "beschreibung": "Erstanbieter-Plugin, das Claudes Frontend-Ausgabe von der Standard-AI-Optik wegführt (Typografie, Farbwahl, Motion, räumliche Komposition).",
+    "unterart": "skill",
+    "lizenz": "Apache-2.0 im Plugin-LICENSE",
+    "kosten": "Kein separater Pluginpreis; Modellquota",
+    "capabilities": [
+      "UI_UX_DESIGN"
+    ],
+    "freigabe": "FREIGEGEBEN",
+    "herkunft": {
+      "art": "extern",
+      "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design"
+    },
+    "installation_vorlage": {
+      "skill_pfad": "skills/frontend-design"
+    },
+    "installation": {
+      "pfad": "C:\\Users\\stefa\\AppData\\Local\\Temp\\f36-ws5b-nachweis\\cap\\frontend-design\\.claude\\skills\\frontend-design",
+      "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+      "inhalt_hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b"
+    },
+    "anwendbar_wenn": {
+      "task_typen_any": [
+        "neues-feature"
+      ],
+      "pfad_muster_any": [
+        "**/*.html",
+        "**/*.css",
+        "**/*.tsx",
+        "**/*.jsx"
+      ]
+    }
+  },
+  "dateien_im_zielordner": [
+    "LICENSE.txt",
+    "SKILL.md"
+  ],
+  "inhalt_hash_neu_berechnet": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b",
+  "frontmatter": {
+    "name": "frontend-design",
+    "beschreibung": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults."
+  },
+  "frontmatter_roh": [
+    "---",
+    "name: frontend-design",
+    "description: Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+    "license: Complete terms in LICENSE.txt",
+    "---"
+  ]
+}

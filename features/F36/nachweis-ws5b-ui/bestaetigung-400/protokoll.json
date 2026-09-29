@@ -1,0 +1,14 @@
+[
+  {
+    "label": "400 px: Knopf",
+    "Bestätigungsblock": false
+  },
+  {
+    "label": "Klick: [data-installation-aktion=\"vorbereiten\"]",
+    "Bestätigungsblock": true
+  },
+  {
+    "label": "400 px: Bestätigungsblock (lange SHA/Pfade brechen um)",
+    "Bestätigungsblock": true
+  }
+]

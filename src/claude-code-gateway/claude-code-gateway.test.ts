@@ -36,7 +36,7 @@ import { schreibeWirkungsmarke, sha256Hex, stelleLaufstatusFest } from '../check
 import type { ProfilReferenz } from '../checkpoint-store/types.ts'
 import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion } from '../lineage-registry/index.ts'
-import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
+import { baueAufruf, leseModellBeobachtet, leseVerbrauch, pruefeInitZeile, pruefeUndVerweigereBeiTreffer, starteGateway, validiereLaufakteDaten } from './index.ts'
 import { attrappeMitValidemErgebnis, attrappeOhneErgebnisobjekt, pruefeStartziel, starteProzess } from './prozessstart.ts'
 import type { AufrufEingaben, GatewayEingaben, ProzessErgebnis, Starter, StarterOptionen } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
@@ -1197,5 +1197,117 @@ test('F-642 grün (real gemessen, kein Spy): starteGateway spawnt mit einem Argv
     assert.ok((empfangenerArgvGesamtlaenge ?? 0) < 32767, 'der tatsächlich gespawnte Argv muss den Prompt NICHT mehr enthalten und damit unter der Windows-Grenze bleiben')
   } finally {
     raeumeKette(laufId)
+  }
+})
+
+// ─── F36 WS-5b: Ort-B-Skills (V4a-Tokens, Init-Gate) ──────────────────────────
+
+test('F36 WS-5b baueAufruf: ohne ortB bitgenau wie vorher; mit ortB je Skill --add-dir, dann --settings, unmittelbar vor -p', () => {
+  const basis = gueltigeEingaben()
+  const ohne = baueAufruf(basis)
+  assert.deepEqual(baueAufruf({ ...basis, ortB: undefined }), ohne)
+  const mit = baueAufruf({ ...basis, disallowedTools: 'Skill(design)', ortB: { addDirs: ['C:\\cap\\a', 'C:\\cap\\b'], settings: '{"disableBundledSkills":true}' } })
+  const p = mit.indexOf('-p')
+  assert.deepEqual(mit.slice(p - 6, p), ['--add-dir', 'C:\\cap\\a', '--add-dir', 'C:\\cap\\b', '--settings', '{"disableBundledSkills":true}'])
+  assert.equal(mit.at(-1), basis.prompt)
+  assert.equal(mit[mit.indexOf('--disallowedTools') + 1], 'Skill(design)')
+})
+
+test('F36 WS-5b pruefeInitZeile: Skills ⊆ Ort-B, kein Agent in tools, mcp_servers = übergebene; fehlende Felder = Verstoß', () => {
+  const erwartet = { skills: ['frontend-design', 'pruef-skill'], mcpServer: [] }
+  const init = { type: 'system', subtype: 'init', tools: ['Bash', 'Read', 'Skill'], skills: ['frontend-design', 'pruef-skill'], mcp_servers: [] }
+  assert.equal(pruefeInitZeile(init, erwartet), null)
+  assert.equal(pruefeInitZeile({ ...init, skills: ['frontend-design'] }, erwartet), null, 'Teilmenge genügt')
+  assert.match(pruefeInitZeile({ ...init, skills: ['frontend-design', 'ponytail', 'design:ux-copy'] }, erwartet) ?? '', /nicht übergebene Skills: ponytail, design:ux-copy/)
+  assert.match(pruefeInitZeile({ ...init, tools: [...init.tools, 'Agent'] }, erwartet) ?? '', /init\.tools enthält Agent/)
+  assert.match(pruefeInitZeile({ ...init, mcp_servers: [{ name: 'fremd' }] }, erwartet) ?? '', /fremd: fremd/)
+  assert.match(pruefeInitZeile(init, { ...erwartet, mcpServer: ['pw'] }) ?? '', /fehlend: pw/)
+  assert.match(pruefeInitZeile({ type: 'system', subtype: 'init' }, erwartet) ?? '', /init\.skills fehlt.*init\.tools fehlt.*init\.mcp_servers fehlt/)
+})
+
+/**
+ * Starter-Attrappe eines Ort-B-Laufs: meldet die init-Zeile über beiStreamZeile und prüft danach das
+ * Abbruchsignal — ist es gesetzt, endet der „Prozess“ als ABBRUCH, bevor ein tool_use gesendet wurde.
+ */
+function initGateStarter(init: Record<string, unknown>, protokoll: { toolUseGesendet: boolean }): Starter {
+  return async (_startziel, _tokens, optionen) => {
+    const zeilen = [JSON.stringify(init)]
+    optionen?.beiStreamZeile?.(init)
+    if (optionen?.abbruchSignal?.aborted === true) return { stdout: `${zeilen.join('\n')}\n`, stderr: '', exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' }
+    const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'frontend-design' } }] }, parent_tool_use_id: null }
+    protokoll.toolUseGesendet = true
+    optionen?.beiStreamZeile?.(toolUse)
+    const ende = JSON.parse(BEOBACHTUNG_RESULT)
+    optionen?.beiStreamZeile?.(ende)
+    return { stdout: `${[...zeilen, JSON.stringify(toolUse), BEOBACHTUNG_RESULT].join('\n')}\n`, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null }
+  }
+}
+
+test('F36 WS-5b starteGateway (initGate): fremder Skill in init → Abbruch vor dem ersten tool_use, init_gate_verstoss im Rohstrom; passende init → läuft durch', async () => {
+  const laufRot = neueLaufId('init-gate-rot')
+  const laufGruen = neueLaufId('init-gate-gruen')
+  try {
+    const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
+    const rotProtokoll = { toolUseGesendet: false }
+    const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design', 'ponytail'], mcp_servers: [] }
+    const rot = await starteGateway(gueltigeGatewayEingaben(laufRot), { ...optionen, starter: initGateStarter(init, rotProtokoll) })
+    assert.ok(rot.ok)
+    assert.equal(rotProtokoll.toolUseGesendet, false, 'Abbruch vor tool_use')
+    const rohRot = JSON.parse(readFileSync(rot.laufakte.rohstrom_referenz.pfad, 'utf8'))
+    assert.equal(rohRot.beendigungsart, 'ABBRUCH')
+    assert.match(rohRot.init_gate_verstoss, /nicht übergebene Skills: ponytail/)
+
+    const gruenProtokoll = { toolUseGesendet: false }
+    const gruen = await starteGateway(gueltigeGatewayEingaben(laufGruen), { ...optionen, starter: initGateStarter({ ...init, skills: ['frontend-design'] }, gruenProtokoll) })
+    assert.ok(gruen.ok)
+    assert.equal(gruenProtokoll.toolUseGesendet, true)
+    assert.equal('init_gate_verstoss' in JSON.parse(readFileSync(gruen.laufakte.rohstrom_referenz.pfad, 'utf8')), false)
+  } finally {
+    raeumeKette(laufRot)
+    raeumeKette(laufGruen)
+  }
+})
+
+test('F36 WS-5b starteGateway (initGate): tool_use vor init → Abbruch; keine init-Zeile bei regulärem Ende → Verstoß mit Exitcode; Startfehler → kein Verstoß; manueller Abbruch → kein Verstoß, ABBRUCH bleibt manuell', async () => {
+  const ids = ['vor-init', 'ohne-init', 'startfehler', 'manuell'].map((n) => neueLaufId(`init-gate-${n}`))
+  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }
+  const roh = (ergebnis: Awaited<ReturnType<typeof starteGateway>>) => (ergebnis.ok ? JSON.parse(readFileSync(ergebnis.laufakte.rohstrom_referenz.pfad, 'utf8')) : {})
+  const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: 'x' } }] }, parent_tool_use_id: null }
+  const init = { type: 'system', subtype: 'init', tools: ['Read', 'Skill'], skills: ['frontend-design'], mcp_servers: [] }
+  try {
+    // (1) tool_use vor der init-Zeile: das Gate bricht beim ersten tool_use ab.
+    let weitergelaufen = false
+    const vorInit: Starter = async (_s, _t, o) => {
+      o?.beiStreamZeile?.(toolUse)
+      if (o?.abbruchSignal?.aborted === true) return { stdout: `${JSON.stringify(toolUse)}\n`, stderr: '', exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' }
+      weitergelaufen = true
+      return { stdout: '', stderr: '', exitCode: 0, startfehler: null, beendigungsart: null }
+    }
+    const r1 = roh(await starteGateway(gueltigeGatewayEingaben(ids[0]), { ...optionen, starter: vorInit }))
+    assert.equal(weitergelaufen, false)
+    assert.match(r1.init_gate_verstoss, /tool_use vor der init-Zeile/)
+
+    // (2) Prozess endet regulär ohne init-Zeile → Verstoß mit Exitcode und stderr-Auszug.
+    const ohneInit: Starter = async () => ({ stdout: `${BEOBACHTUNG_RESULT}\n`, stderr: 'Not logged in', exitCode: 1, startfehler: null, beendigungsart: null })
+    const r2 = roh(await starteGateway(gueltigeGatewayEingaben(ids[1]), { ...optionen, starter: ohneInit }))
+    assert.match(r2.init_gate_verstoss, /keine init-Zeile im Datenstrom \(Exitcode 1, stderr: Not logged in\)/)
+
+    // (3) Startfehler → kein init_gate_verstoss, die echte Ursache bleibt führend.
+    const startfehler: Starter = async () => ({ stdout: '', stderr: '', exitCode: null, startfehler: { code: 'ENOENT', message: 'spawn claude ENOENT' }, beendigungsart: null })
+    assert.equal('init_gate_verstoss' in roh(await starteGateway(gueltigeGatewayEingaben(ids[2]), { ...optionen, starter: startfehler })), false)
+
+    // (4) Manueller Abbruch nach passender init-Zeile: Signal wird über AbortSignal.any durchgereicht, kein Verstoß.
+    const manuell = new AbortController()
+    const mitAbbruch: Starter = async (_s, _t, o) => {
+      o?.beiStreamZeile?.(init)
+      manuell.abort()
+      assert.equal(o?.abbruchSignal?.aborted, true, 'manuelles Signal kommt am Starter an')
+      return { stdout: `${JSON.stringify(init)}\n`, stderr: '', exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' }
+    }
+    const r4 = roh(await starteGateway(gueltigeGatewayEingaben(ids[3]), { ...optionen, abbruchSignal: manuell.signal, starter: mitAbbruch }))
+    assert.equal(r4.beendigungsart, 'ABBRUCH')
+    assert.equal('init_gate_verstoss' in r4, false)
+  } finally {
+    for (const id of ids) raeumeKette(id)
   }
 })

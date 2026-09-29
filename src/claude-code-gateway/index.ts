@@ -100,6 +100,12 @@
  * unverändert die vollen Regeln (für Sätze ohne Klammer-Regel bleibt das Argv bitgenau gleich).
  * Trägt der Satz eine Bash-Regel, kommt 'Bash(git:*)' als Sperrregel dazu: eine Sperre schlägt
  * real auch ein 'allow: ["Bash"]' aus den Projekteinstellungen (--setting-sources project).
+ *
+ * F36 WS-5b (E-F36-8 = B, V4a): baueAufruf hängt bei AufrufEingaben.ortB je Ort-B-Skill `--add-dir` und
+ * `--settings` vor `-p` an (sonst Argv unverändert). starteGateway prüft mit optionen.initGate die
+ * init-Zeile (pruefeInitZeile: init.skills ⊆ Ort-B-Namen, kein Agent in init.tools, mcp_servers =
+ * übergebene) und beendet den Prozess bei einem Verstoß vor dem ersten tool_use über den Abbruchweg;
+ * der Grund steht als init_gate_verstoss im Rohstrom.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -196,6 +202,14 @@ interface GatewayOptionen {
   umgebungsvariablen?: Record<string, string>
   /** F40 WS-1: optionaler Rückruf je live erkanntem Werkzeugaufruf (tool_use-Zeile im stream-json) — reine Fortschrittsanzeige, kein Checkpoint (D4), ohne Wirkung auf den Ablauf. Ein Wurf daraus wird gefangen und geloggt. */
   beiWerkzeugaufruf?: (aufruf: Werkzeugaufruf) => void
+  /**
+   * F36 WS-5b (Auftrag Punkt 5): Init-Gate nur für Läufe mit Ort-B-Skills — erwartete Menge der Skills
+   * und MCP-Server. Verstößt die init-Zeile (pruefeInitZeile) oder kommt ein tool_use vor ihr, bricht
+   * starteGateway den Prozess über den bestehenden Abbruchweg ab (beendigungsart ABBRUCH) und hält den
+   * Grund als init_gate_verstoss im Rohstrom fest (Klassifikation: FEHLGESCHLAGEN, init_gate_verstoss).
+   * Fehlt die Option, liest starteGateway die init-Zeile nicht (bitgenau wie vorher).
+   */
+  initGate?: { skills: readonly string[]; mcpServer: readonly string[] }
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -489,9 +503,42 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
     // einen Wert trägt (aktuell ausschließlich jarvis/router, 'Read(~/.claude/**)'). E-F754: bei
     // einer Bash-Regel im Werkzeugsatz zusätzlich BASH_SPERRREGELN.
     ...(disallowedTools !== '' ? ['--disallowedTools', disallowedTools] : []),
+    // F36 WS-5b (V4a): nur mit Ort-B-Skills — je Skill ein --add-dir, dann --settings; beides wie im
+    // Spike S7 gemessen unmittelbar vor -p. Ohne eingaben.ortB bleibt das Argv bitgenau gleich.
+    ...(eingaben.ortB !== undefined ? [...eingaben.ortB.addDirs.flatMap((dir) => ['--add-dir', dir]), '--settings', eingaben.ortB.settings] : []),
     '-p',
     eingaben.prompt,
   ]
+}
+
+/**
+ * F36 WS-5b: Init-Gate eines Ort-B-Laufs (F-791 (1), Auftrag Punkt 5) — reine Prüfung der init-Zeile:
+ * init.skills ⊆ übergebene Ort-B-Namen, 'Agent' (bzw. 'Task') ∉ init.tools, Menge init.mcp_servers[].name =
+ * übergebene MCP-Server. Fehlt ein Feld oder ist es kein Array, gilt das als Verstoß (fail-closed).
+ * @param init - geparste init-Zeile (type 'system', subtype 'init')
+ * @param erwartet - { skills, mcpServer } aus dem Start
+ * @returns null, wenn alles passt, sonst der Klartext-Grund (unbekannte Namen aufgelistet)
+ */
+export function pruefeInitZeile(init: Record<string, unknown>, erwartet: { skills: readonly string[]; mcpServer: readonly string[] }): string | null {
+  const verstoesse: string[] = []
+  if (!Array.isArray(init.skills)) verstoesse.push('init.skills fehlt')
+  else {
+    const fremd = stringListe(init.skills).filter((name) => !erwartet.skills.includes(name))
+    if (fremd.length > 0 || init.skills.length !== stringListe(init.skills).length) verstoesse.push(`init.skills enthält nicht übergebene Skills: ${fremd.join(', ') || '(kein String)'}`)
+  }
+  if (!Array.isArray(init.tools)) verstoesse.push('init.tools fehlt')
+  else {
+    const agent = stringListe(init.tools).filter((name) => name === 'Agent' || name === 'Task')
+    if (agent.length > 0) verstoesse.push(`init.tools enthält ${agent.join(', ')}`)
+  }
+  if (!Array.isArray(init.mcp_servers)) verstoesse.push('init.mcp_servers fehlt')
+  else {
+    const namen = init.mcp_servers.map((s) => (typeof s === 'object' && s !== null && typeof (s as Record<string, unknown>).name === 'string' ? ((s as Record<string, unknown>).name as string) : '(ohne Namen)'))
+    const fremd = namen.filter((n) => !erwartet.mcpServer.includes(n))
+    const fehlend = erwartet.mcpServer.filter((n) => !namen.includes(n))
+    if (fremd.length > 0 || fehlend.length > 0) verstoesse.push(`init.mcp_servers ≠ übergebene MCPs (fremd: ${fremd.join(', ') || '—'}; fehlend: ${fehlend.join(', ') || '—'})`)
+  }
+  return verstoesse.length === 0 ? null : `Init-Gate: ${verstoesse.join('; ')} — Lauf vor dem ersten tool_use beendet`
 }
 
 export function pruefeUndVerweigereBeiTreffer(
@@ -595,10 +642,44 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
   const spawnTokens = eingaben.tokens.slice(0, -1)
   const promptFuerStdin = eingaben.tokens[eingaben.tokens.length - 1]
 
+  // F36 WS-5b: Init-Gate (optionen.initGate) — eigener AbortController, mit einem manuellen
+  // Abbruchsignal verknüpft; der Abbruch läuft damit über denselben Weg wie „Lauf abbrechen“.
+  const initGate = optionen.initGate
+  const initAbbruch = initGate !== undefined ? new AbortController() : null
+  let initGesehen = false
+  let initGateVerstoss: string | null = null
+  const verletzeInitGate = (grund: string): void => {
+    if (initGateVerstoss !== null) return
+    initGateVerstoss = grund
+    console.error(`[claude-code-gateway] Lauf '${eingaben.laufId}': ${grund}`)
+    initAbbruch?.abort()
+  }
+  const pruefeZeileGegenInitGate = (zeile: Record<string, unknown>): void => {
+    // Nur die erste init-Zeile wird geprüft (Bekannte Grenze: eine spätere system/init-Zeile nicht).
+    if (initGate === undefined || initGateVerstoss !== null || initGesehen) return
+    if (zeile.type === 'system' && zeile.subtype === 'init') {
+      initGesehen = true
+      const verstoss = pruefeInitZeile(zeile, initGate)
+      if (verstoss !== null) verletzeInitGate(verstoss)
+    } else if (leseToolUseBloecke(zeile).length > 0) {
+      verletzeInitGate('Init-Gate: tool_use vor der init-Zeile — Lauf beendet')
+    }
+  }
+  const abbruchSignal =
+    initAbbruch === null ? optionen.abbruchSignal : optionen.abbruchSignal !== undefined ? AbortSignal.any([optionen.abbruchSignal, initAbbruch.signal]) : initAbbruch.signal
+  const meldeAufrufe = optionen.beiWerkzeugaufruf !== undefined ? meldeWerkzeugaufrufe(optionen.beiWerkzeugaufruf, eingaben.laufId) : undefined
+  const beiStreamZeile =
+    initGate === undefined
+      ? meldeAufrufe
+      : (zeile: Record<string, unknown>) => {
+          pruefeZeileGegenInitGate(zeile)
+          meldeAufrufe?.(zeile)
+        }
+
   const prozessErgebnis = await starteProzess(eingaben.werkzeugStartziel, spawnTokens, {
     starter: optionen.starter,
     zeitgrenzeMs: optionen.zeitgrenzeMs,
-    abbruchSignal: optionen.abbruchSignal,
+    abbruchSignal,
     cwd: optionen.cwd,
     stdinDaten: promptFuerStdin,
     umgebungsvariablen: optionen.umgebungsvariablen,
@@ -615,10 +696,18 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
         console.error(`[claude-code-gateway] Lauf '${eingaben.laufId}': Prozess endete mit Exitcode ${ende.exitCode ?? '—'}${ende.signal !== null ? `, Signal ${ende.signal}` : ''}`)
       }
     },
-    ...(optionen.beiWerkzeugaufruf !== undefined ? { beiStreamZeile: meldeWerkzeugaufrufe(optionen.beiWerkzeugaufruf, eingaben.laufId) } : {}),
+    ...(beiStreamZeile !== undefined ? { beiStreamZeile } : {}),
   })
 
   optionen.zeitmessung?.('prozess_beendet')
+
+  // F36 WS-5b: ein Ort-B-Lauf ohne init-Zeile ist nicht geprüft — fail-closed ebenfalls ein Verstoß.
+  // Ein manueller Abbruch/Timeout oder ein Startfehler vor der init-Zeile bleibt, was er ist (Reviewer:
+  // sonst verdeckte „keine init-Zeile“ die echte Ursache). Exitcode und stderr-Auszug stehen im Grund.
+  if (initGate !== undefined && !initGesehen && initGateVerstoss === null && prozessErgebnis.beendigungsart === null && prozessErgebnis.startfehler === null) {
+    const stderrAuszug = prozessErgebnis.stderr.trim().slice(-300)
+    verletzeInitGate(`Init-Gate: keine init-Zeile im Datenstrom (Exitcode ${prozessErgebnis.exitCode ?? '—'}${stderrAuszug !== '' ? `, stderr: ${stderrAuszug}` : ''})`)
+  }
 
   const ergebnisObjekt = leseErgebnisobjekt(prozessErgebnis.stdout)
   const beobachtungsbasisVollstaendig = ergebnisObjekt !== null
@@ -639,6 +728,8 @@ export async function starteGateway(eingaben: GatewayEingaben, optionen: Gateway
     beendigungsart: prozessErgebnis.beendigungsart,
     // F40 WS-1: macht im Audit sichtbar, warum exitCode null ist (Auflösung vor Prozessende).
     ...(prozessErgebnis.ergebnisZeileVorProzessende === true ? { ergebnisZeileVorProzessende: true } : {}),
+    // F36 WS-5b: Grund des Init-Gate-Abbruchs (nur Ort-B-Läufe) — der Result Evaluator liest ihn vor ABBRUCH.
+    ...(initGateVerstoss !== null ? { init_gate_verstoss: initGateVerstoss } : {}),
   })
   const rohPfad = join(rohVerzeichnis, 'rohstrom.json')
   writeFileSync(rohPfad, rohInhalt, 'utf8')
