@@ -82,11 +82,22 @@
       "lizenz": "Apache-2.0 (GitHub-Metadaten)",
       "kosten": "Server lokal kostenlos; Browser und Agentenquota",
       "capabilities": ["BROWSER_AUTOMATION", "UI_VISUAL_TESTING"],
-      "freigabe": "OFFEN",
-      "herkunft": { "art": "extern", "url": "https://github.com/microsoft/playwright-mcp", "paket": "npm:@playwright/mcp" },
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": {
+        "art": "extern",
+        "url": "https://github.com/microsoft/playwright-mcp",
+        "paket": "npm:@playwright/mcp"
+      },
       "installation_vorlage": {
         "bin": "cli.js",
-        "args": ["--headless", "--isolated", "--output-dir", "{ausgabe_ordner}", "--allowed-origins", "{projekt_origins}"],
+        "args": [
+          "--headless",
+          "--isolated",
+          "--output-dir",
+          "{ausgabe_ordner}",
+          "--allowed-origins",
+          "{projekt_origins}"
+        ],
         "werkzeuge": [
           "mcp__playwright-mcp__browser_navigate",
           "mcp__playwright-mcp__browser_snapshot",
@@ -98,7 +109,35 @@
           "mcp__playwright-mcp__browser_close"
         ]
       },
-      "anwendbar_wenn": { "task_typen_any": ["neues-feature", "bugfix"], "pfad_muster_any": ["**/*.html", "**/*.css", "public/**"] }
+      "installation": {
+        "version": "0.0.83",
+        "mcp_server": {
+          "command": "C:\\Program Files\\nodejs\\node.exe",
+          "args": [
+            "C:\\Users\\stefa\\.ai-workforce\\cap\\playwright-mcp\\node_modules\\@playwright\\mcp\\cli.js",
+            "--headless",
+            "--isolated",
+            "--output-dir",
+            "{ausgabe_ordner}",
+            "--allowed-origins",
+            "{projekt_origins}"
+          ]
+        },
+        "werkzeuge": [
+          "mcp__playwright-mcp__browser_navigate",
+          "mcp__playwright-mcp__browser_snapshot",
+          "mcp__playwright-mcp__browser_take_screenshot",
+          "mcp__playwright-mcp__browser_click",
+          "mcp__playwright-mcp__browser_type",
+          "mcp__playwright-mcp__browser_wait_for",
+          "mcp__playwright-mcp__browser_console_messages",
+          "mcp__playwright-mcp__browser_close"
+        ]
+      },
+      "anwendbar_wenn": {
+        "task_typen_any": ["neues-feature", "bugfix"],
+        "pfad_muster_any": ["**/*.html", "**/*.css", "public/**"]
+      }
     },
     {
       "id": "supabase-mcp",
@@ -186,10 +225,21 @@
       "lizenz": "Apache-2.0 im Plugin-LICENSE",
       "kosten": "Kein separater Pluginpreis; Modellquota",
       "capabilities": ["UI_UX_DESIGN"],
-      "freigabe": "OFFEN",
-      "herkunft": { "art": "extern", "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design" },
+      "freigabe": "FREIGEGEBEN",
+      "herkunft": {
+        "art": "extern",
+        "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/frontend-design"
+      },
       "installation_vorlage": { "skill_pfad": "skills/frontend-design" },
-      "anwendbar_wenn": { "task_typen_any": ["neues-feature"], "pfad_muster_any": ["**/*.html", "**/*.css", "**/*.tsx", "**/*.jsx"] }
+      "installation": {
+        "pfad": "C:\\Users\\stefa\\.ai-workforce\\cap\\frontend-design\\.claude\\skills\\frontend-design",
+        "version": "fbe07fb6ce7d51d8e86ca6efdf050059894cdb80",
+        "inhalt_hash": "89a6e59de80320a32e8b4c597a329ef3c503f624a2e68874bb0475dfb66dbf4b"
+      },
+      "anwendbar_wenn": {
+        "task_typen_any": ["neues-feature"],
+        "pfad_muster_any": ["**/*.html", "**/*.css", "**/*.tsx", "**/*.jsx"]
+      }
     },
     {
       "id": "taste-skill",
