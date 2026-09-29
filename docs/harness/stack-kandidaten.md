@@ -1,6 +1,6 @@
 <!--
 Ziel-Pfad im Repo: docs/harness/stack-kandidaten.md
-Stand dieser Fassung: 28.09.2026
+Stand dieser Fassung: 29.09.2026 (Datennachtrag Opportunity Scanner)
 Erstlektüre: nein — Nachschlagewerk für den Architekten, kein Teil des Einstiegs.
 -->
 # Stack-Kandidaten (Gruppe 2 der Recherche-Übernahme)
@@ -9,7 +9,7 @@ Produkt-Bibliotheken und Werkzeuge, die ein Projekt der Workforce als
 Teil seines eigenen Stacks nutzen kann — keine Laufzeit-Fähigkeiten eines
 Laufs (die stehen im Katalog `ressourcen.json`). Grundlage ist E-F36-5
 (`docs/projekt/zielfassung.md` §13.6); die Einordnung aller 38 Kandidaten
-steht in `features/F36/katalog-uebernahme.md`.
+steht in `features/F36/katalog-uebernahme.md` (samt Datennachtrag 29.09.2026).
 
 **Noch nicht verdrahtet.** Der Architekt liest diese Liste heute nicht
 automatisch; die Verdrahtung ist F36 WS-3. Nichts davon ist installiert,
@@ -19,7 +19,18 @@ die vollständige Lizenz lesen (Auswahlfilter der Quelle).
 Alle Werte stammen aus `docs/harness/kandidaten-2026-09-15.md` (Prüfdatum
 15.09.2026, keine eigene Recherche). „Quelle-Zeile" ist die Zeilennummer
 der Bewertungsmatrix dort. Lizenzangaben mit „GitHub-Metadaten" sind
-schwächere Evidenz als der Lizenzvolltext.
+schwächere Evidenz als der Lizenzvolltext. Ausnahme: Lizenz, Zweck
+(RapidAPI) und Standardschlüssel-Hinweis von Google Trends MCP stammen
+von der offiziellen Projektseite
+(Abruf 29.09.2026), weil die Quelle nur „je konkretem Server" nennt.
+
+Datennachtrag (29.09.2026): Google Trends MCP (ein MCP-Server) und
+Scientific-agent-skills (eine Skill-Sammlung) wären nach E-F36-5
+Laufzeit-Fähigkeiten. Sie stehen auf Vorgabe des Auftrags hier, als
+Bausteine, die ein Projekt wie der Opportunity Scanner (F30) selbst
+einsetzt — nicht als Fähigkeit eines Laufs. Google Trends MCP ist
+zurückgestellt (Entscheidung Stefan 29.09.2026, Begründung in der
+Tabelle).
 
 | Name | Zweck | Einsatzgebiet | Lizenz | Kosten | URL | Quelle-Zeile |
 |---|---|---|---|---|---|---|
@@ -34,6 +45,10 @@ schwächere Evidenz als der Lizenzvolltext.
 | Hyperframes | HTML-/CSS-basierte Videoerstellung für Agenten. | Video | Apache-2.0 (GitHub-Metadaten) | Framework kostenlos; Rendering und optionale KI extra | https://github.com/heygen-com/hyperframes | 195 |
 | ntfy | Push-Benachrichtigungen für Jobabschluss, Fehler und Freigabeanfragen. | Benachrichtigung | Apache-2.0 oder GPL-2.0 laut README | Self-Hosting; gehostete Gratis-/Bezahlpläne | https://github.com/binwiederhier/ntfy | 178 |
 | Portless | Stabile lokale Entwicklungs-URLs statt wechselnder Portnummern. | Entwicklungsumgebung | Apache-2.0 (GitHub-Metadaten) | Lokal; kostenlos | https://github.com/vercel-labs/portless | 267 |
+| ScrapeGraph AI | LLM-gestützte strukturierte Extraktion aus Webseiten. | Datenanalyse (Opportunity Scanner) | MIT (GitHub-Metadaten) | Framework kostenlos; Modell/API, Browser/Proxies | https://github.com/ScrapeGraphAI/Scrapegraph-ai | 243 |
+| Google Trends MCP (zurückgestellt) | **Zurückgestellt.** Entscheidung Stefan 29.09.2026: kostenpflichtige Schnittstelle (RapidAPI), Preis nicht belegt; ohne eigenen Schlüssel Rückfall auf eingebauten fremden Schlüssel (Datenschutz-/Vertrauensrisiko). Wiederaufnahme nur mit eigenem Schlüssel und belegtem Preis. Zweck: Google-Trends-Daten über einen Community-MCP-Server (RapidAPI „Google Trends Scraper"). | Datenanalyse (Opportunity Scanner) | MIT (offizielle Projektseite, 29.09.2026) | Datenprovider/API separat; Preis nicht verifiziert | https://github.com/andrewlwn77/google-trends-mcp | 320 |
+| MixPost | Social-Media-Planung und Veröffentlichung auf eigenem Server. | Marketing (Opportunity Scanner) | MIT (GitHub-Metadaten) | Community-Code kostenlos; Server, APIs und Pro separat | https://github.com/inovector/mixpost | 153 |
+| Scientific-agent-skills | Forschungs-Skills für wissenschaftliche Analysen und Datenquellen. | Datenanalyse (Opportunity Scanner) | MIT (GitHub-Metadaten) | Skills kostenlos; Daten-/API-/Compute-Kosten separat | https://github.com/K-Dense-AI/scientific-agent-skills | 207 |
 
 ## Hinweise aus der Quelle
 
@@ -44,3 +59,25 @@ schwächere Evidenz als der Lizenzvolltext.
 - **Hyperframes:** Schrift- und Medienrechte separat prüfen.
 - **ntfy, Portless:** eher Infrastruktur als Bibliothek; ntfy ist in der
   Quelle auch für Benachrichtigungen der Workforce selbst gedacht.
+- **ScrapeGraph AI:** nur für Fälle, die Firecrawl oder deterministische
+  Parser nicht lösen; Inhalte als untrusted behandeln.
+- **Google Trends MCP (zurückgestellt):** kein offizieller Google-MCP.
+  Laut Projektseite braucht er einen RapidAPI-Schlüssel und fällt ohne
+  eigenen Schlüssel auf einen eingebauten Standardschlüssel zurück.
+  Trends sind relative Signale, keine Absatzprognosen.
+- **MixPost:** nur mit passenden Plattformrechten und Review vor jeder
+  Veröffentlichung; unterstützte Netzwerke konkret prüfen.
+- **Scientific-agent-skills:** nur einzelne passende Statistik-/Research-
+  Skills; wissenschaftliche Resultate brauchen fachliche Validierung.
+
+## Nicht übernommen: Scraper für personenbezogene Daten (DSGVO)
+
+Vorgabe Datennachtrag (29.09.2026): Google-Maps-Scraper
+(`Mahanaicoach/google-maps-scraper-kit`, Quelle-Zeile 311),
+Social-analyzer (`qeeqbox/social-analyzer`, 225) und Vayne (312) kommen
+nicht in diese Liste. Begründung: **DSGVO** — sie erheben
+personenbezogene Daten (Einträge zu lokalen Unternehmen und Personen,
+Profile zu Nutzernamen, LinkedIn-Kontakte), für deren Verarbeitung ein
+Projekt der Workforce keine Rechtsgrundlage belegen kann. Vayne ist
+zusätzlich kostenpflichtig und kollidiert mit den LinkedIn-Regeln
+(Quelle Z. 109, 312).

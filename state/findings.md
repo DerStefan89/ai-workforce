@@ -10600,6 +10600,7 @@ Beschreibung: Spike F36 WS-0 P2 c): Der Schreibversuch außerhalb des Arbeitsver
 Fundstelle: `state/spike-f36-werkzeugsatz.md` (P2 c); `features/F36/feature.md` (Bekannte Grenzen).
 Auswirkung: Mittel — mit `Agent` im Werkzeugsatz (WS-2) hängt die Grenze der Ausführung an einer ungemessenen Annahme.
 Maßnahme: Messweg ohne Modellurteil — Hook-Testfall oder erzwungener Write-Aufruf.
+Vermerk (Stand 28.09.2026): Doberman (Apache-2.0, Telemetrie abschalten) ist Kandidat für einen Messweg ohne Modellurteil (Laufzeitprüfung von Toolaufrufen; `docs/harness/kandidaten-2026-09-15.md` Z. 189, Harness-Kandidat in `features/F36/katalog-uebernahme.md`).
 Status: offen.
 Feature/Run: F36 WS-1, 28.09.2026.
 
@@ -10774,3 +10775,57 @@ Auswirkung: Niedrig — widersprüchliche Anweisung an Claude-Code-Sitzungen und
 Maßnahme: Bei der nächsten Harness-Runde entscheiden, ob CLAUDE.md die Variante „Mensch committet“ als Projekt-Option aufnimmt.
 Status: offen.
 Feature/Run: Gedächtnislücken, 29.09.2026.
+
+**F-800** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Recherche enthält nur vereinzelt und ungeprüft Bausteine für Datenanalyse, die der Opportunity Scanner (F30) braucht.
+Beschreibung: In `docs/harness/kandidaten-2026-09-15.md` kommen Bausteine für Datenerhebung und -auswertung (Trends, strukturierte Extraktion, Statistik) nur vereinzelt und mit dem Urteil „Optional“/„Offen“ vor. Der Datennachtrag vom 29.09.2026 hat drei davon (ScrapeGraph AI, Google Trends MCP — inzwischen zurückgestellt —, Scientific-agent-skills) plus MixPost (Marketing) in die Stack-Liste übernommen; eine gezielte Suche fehlt.
+Fundstelle: `docs/harness/kandidaten-2026-09-15.md`; `docs/harness/stack-kandidaten.md` (Datennachtrag 29.09.2026).
+Auswirkung: Mittel — F30 startet ohne geprüfte Bausteine für seinen Kern.
+Maßnahme: Scout-Auftrag „Datenanalyse/Scraping“ vor F30; Ergebnisse in `docs/harness/stack-kandidaten.md`.
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-801** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Der Auswahlfilter der Recherche kennt kein Ausschlusskriterium „personenbezogene Daten / DSGVO“.
+Beschreibung: Der Filter schließt nichtkommerzielle, kostenpflichtige und lizenz- oder identitätsungeklärte Kandidaten aus. Scraper für personenbezogene Daten (Google-Maps-Scraper, Social-analyzer, Vayne) blieben als „Sonderfall“/„Nur Ausnahme“ in der Recherche und wurden erst im Datennachtrag von Hand ausgeschlossen.
+Fundstelle: `docs/harness/kandidaten-2026-09-15.md` (Auswahlfilter Z. 15–23; Bewertungsmatrix Z. 225, 311, 312); `docs/harness/stack-kandidaten.md` (Abschnitt „Nicht übernommen“).
+Auswirkung: Niedrig — ohne Kriterium kann ein solcher Kandidat in Katalog oder Stack-Liste rutschen.
+Maßnahme: Kriterium „personenbezogene Daten / DSGVO“ in den Filter aufnehmen (Skill `werkzeug-auswahl` bzw. Scout-Vorgaben).
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-802** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Nachtrag-Prompts setzen voraus, dass der Basis-Auftrag in derselben Sitzung angekommen ist.
+Beschreibung: Am 29.09.2026 schickte der Challenger nur einen Nachtrag zu einem Auftrag, der in der Sitzung nicht angekommen war; eine Runde ging verloren.
+Fundstelle: Challenger-Runde 29.09.2026.
+Auswirkung: Niedrig — verlorene Runde, Gefahr eines halben Auftrags.
+Maßnahme: Der Challenger gibt bei Änderungen immer den vollständigen Auftrag neu aus.
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-803** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Löschungen im Scratchpad per `rm -rf "$S"/…` lösen Rückfragen aus, die im unbeaufsichtigten Betrieb automatisch abgelehnt werden.
+Beschreibung: Claude Code löscht Scratchpad-Dateien mit `rm -rf "$S"/…`. Weil `$S` leer sein könnte, fragt die Berechtigungsprüfung nach; ohne Menschen wird die Rückfrage abgelehnt und der Schritt bricht ab.
+Fundstelle: Claude-Code-Sitzungen F36, 29.09.2026.
+Auswirkung: Niedrig — abgebrochene Aufräumschritte im unbeaufsichtigten Betrieb.
+Maßnahme: Löschungen nur mit `"${S:?}"` oder festen Pfaden; Vermerk in CLAUDE.md „Bekannte Fallen“ oder im passenden Skill.
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-804** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Auftrag widersprach E-F36-5.
+Beschreibung: Der Datennachtrag-Auftrag legte Google Trends MCP und Scientific-agent-skills in die Stack-Liste (`docs/harness/stack-kandidaten.md`), obwohl sie nach E-F36-5 als MCP-Server bzw. Skill-Sammlung Katalog-Einträge (Gruppe 1, `ressourcen.json`) wären. Der Reviewer-Pass hat den Widerspruch gefunden; er ist in der Stack-Liste als „Vorgabe des Auftrags“ vermerkt.
+Fundstelle: `docs/harness/stack-kandidaten.md` (Absatz Datennachtrag); `features/F36/katalog-uebernahme.md` (Datennachtrag); `features/F36/feature.md` (E-F36-5).
+Auswirkung: Niedrig — zwei Einträge liegen außerhalb der Gruppenregel und erreichen die Empfehlung (WS-3) nicht über den Katalog.
+Maßnahme: In WS-3 zuordnen oder bewusst begründen; der Challenger prüft Aufträge gegen bestehende E-Entscheidungen.
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-805** · `BUG` · P3 · offen
+Titel: `taste-skill` verweist eventuell auf die falsche Quelle.
+Beschreibung: Der Katalogeintrag `taste-skill` verweist auf `senlindesign/taste-skill`; die Recherche (`docs/harness/kandidaten-2026-09-15.md` Z. 304) nennt `leonxlnx/taste-skill`. Ob Fehlzuordnung oder ein anderes Werkzeug, ist ungeprüft.
+Fundstelle: `ressourcen.json` (Eintrag `taste-skill`); `features/F36/katalog-uebernahme.md` (Datennachtrag, Zeile Image to code).
+Auswirkung: Niedrig — eine Installation nach WS-5 würde nur von `herkunft.url` laden, also womöglich vom falschen Repo.
+Maßnahme: Quelle klären, Eintrag ggf. korrigieren.
+Status: offen.
+Feature/Run: F36 Datennachtrag, 29.09.2026.
