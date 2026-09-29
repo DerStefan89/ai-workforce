@@ -41,6 +41,7 @@ import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-reg
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { renderEmpfehlung } from '../public/leitstand/empfehlung-anzeige.js'
+import { empfehlungsKennung } from '../src/ressourcen/index.ts'
 import { erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
@@ -233,7 +234,7 @@ async function durchlauf(fall, o) {
         // 'angezeigt' = genau das, was die Oberfläche schickt (empfehlungIdsFuerFreigabe): ohne Anzeige oder bei Fehler kein Feld.
         const anzeige = ergebnis.detail.empfehlung
         if (o.empfehlungIds === 'angezeigt') {
-          if (anzeige !== null && anzeige !== undefined && anzeige.fehler === undefined) body.empfehlungIds = anzeige.wirdGenutzt.map((e) => e.id)
+          if (anzeige !== null && anzeige !== undefined && anzeige.fehler === undefined) body.empfehlungIds = anzeige.wirdGenutzt.map((e) => e.empfehlungId)
         } else if (o.empfehlungIds !== undefined) body.empfehlungIds = o.empfehlungIds
         antwort = await fetch(`${basisUrl}/api/workflows/${encodeURIComponent(workflowId)}/freigabe`, { method: 'POST', body: JSON.stringify(body) })
         ergebnis.entscheidungFestgehalten = ladeArtefaktVersion(`entscheidung-workflow-${workflowId}-${schrittId}`, undefined, ladeOptionen) !== null
@@ -290,7 +291,8 @@ const angezeigt = await durchlauf('(a) workflow', { art: 'workflow', taskTypen: 
 {
   const vor = befunde.length
   pruefeMitMcp('(a) workflow', angezeigt)
-  const direkt = await durchlauf('(a) direkt', { art: 'direkt', taskTypen: ['bugfix'], empfehlungIds: ['gate-mcp'] })
+  // Seit F36 WS-5a (F-808) ist die angezeigte Kennung '<id>@<hash der installation>'.
+  const direkt = await durchlauf('(a) direkt', { art: 'direkt', taskTypen: ['bugfix'], empfehlungIds: [empfehlungsKennung(KATALOG.ressourcen[0])] })
   pruefeMitMcp('(a) direkt', direkt)
   if (befunde.length === vor) console.log('✓ (a) Empfohlen und angezeigt: --mcp-config enthält gate-mcp, --allowedTools genau seine Einzelnamen, Auftragstext die Zeile (Freigabe und POST /api/laeufe).')
 }

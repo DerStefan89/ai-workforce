@@ -11,7 +11,8 @@
  * Filteränderung aus.
  *
  * F36 WS-3: der Workflow-Vorschlag zeigt die Katalog-Empfehlung (empfehlung-anzeige.js),
- * „Freigeben“ schickt die angezeigten wirdGenutzt-ids mit.
+ * „Freigeben“ schickt die angezeigten wirdGenutzt-ids mit; seit WS-5a samt „Freigeben &
+ * installieren“ (empfehlung-installation.js).
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initWorkboardView beim Bootstrap)
@@ -50,6 +51,7 @@
 
 import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
+import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { holeAktivesProjekt } from '../projekt-kontext.js'
 import { filtereAttentionWorkflows } from '../attention-daten.js'
@@ -718,6 +720,8 @@ function initListenBedienung() {
 
 /** Klick-Delegation für #workboard-bearbeitung (F22 WS-2): Bearbeiten/Wiederholen/Freigeben/Ablehnen — ein Container statt vier eigener Listener, Muster #workflow-bedienung in views/workflows.js. */
 function initBearbeitungBedienung() {
+  // F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock des Vorschlags; danach Detail neu laden.
+  bindeEmpfehlungInstallation(document.getElementById('workboard-bearbeitung'), () => aktualisiereBearbeitungsZustand())
   document.getElementById('workboard-bearbeitung').addEventListener('click', (ereignis) => {
     const bearbeitenKnopf = ereignis.target.closest('#workboard-bearbeiten')
     if (bearbeitenKnopf) {

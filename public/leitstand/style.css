@@ -3001,3 +3001,22 @@ th {
   margin-top: var(--space-lg);
   color: var(--color-text-muted);
 }
+
+/* F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock — nur bestehende Tokens; lange Werte
+   (integrity, Zielordner, Werkzeugnamen) brechen um statt die Karte zu sprengen. */
+.empfehlung-installieren {
+  margin-left: var(--space-md);
+}
+
+.empfehlung-installation:empty {
+  display: none;
+}
+
+.empfehlung-installation {
+  margin-top: var(--space-md);
+  overflow-wrap: anywhere;
+}
+
+.empfehlung-installation-bestaetigung ul {
+  margin: var(--space-md) 0;
+}

@@ -1,0 +1,55 @@
+{
+  "url": "http://127.0.0.1:4177/#/workflows/f36-ws5a-nachweis",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workflow-bedienung",
+    "hoehe": 600
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Erfolgsmeldung",
+        "selector": "#workflow-bedienung .erfolg"
+      },
+      {
+        "name": "Knopf Freigeben & installieren",
+        "selector": "[data-installation-aktion=\"vorbereiten\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Ohne vorschau_url: Knopf",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"vorbereiten\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Klick „Freigeben & installieren“",
+      "klick": "[data-installation-aktion=\"vorbereiten\"]"
+    },
+    {
+      "label": "Bestätigung",
+      "warteAufSelector": {
+        "selector": "[data-installation-aktion=\"installieren\"]",
+        "timeoutMs": 5000
+      }
+    },
+    {
+      "label": "Klick „Installieren“",
+      "klick": "[data-installation-aktion=\"installieren\"]"
+    },
+    {
+      "label": "Erfolg, Eintrag bleibt in „Passt, nicht im Lauf“",
+      "warteAufSelector": {
+        "selector": "#workflow-bedienung .erfolg",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-erfolg-ohne-url.png"
+    }
+  ]
+}

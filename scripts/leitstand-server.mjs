@@ -432,12 +432,23 @@
  * bei nicht leerer Liste eine Zeile an den Auftragstext. Ohne 'empfehlungIds' bleibt jeder Start
  * bitgenau wie bisher. Der Architekt bekommt bei offenem Stack den Auszug der Stack-Liste
  * (leseStackKandidatenAuszug, Installationswurzel).
+ *
+ * F36 WS-5a (MCP-Installation, E-F36-6/7/9, F-808): „Wird genutzt“-Einträge tragen empfehlungId
+ * ('<id>@<sha256 der kanonischen installation>'); der Start vergleicht id UND Hash. Die Projekt-URL
+ * (vorschau_url des Registereintrags, Option vorschauUrl) wird in der Empfehlung angezeigt und ersetzt
+ * beim Start {projekt_origins}; {ausgabe_ordner} wird <laufausgabeWurzel>/<laufId> (außerhalb des
+ * Projekts). Ohne vorschau_url kommt kein Eintrag mit {projekt_origins} in den Lauf. POST
+ * /api/ressourcen/<id>/installation/vorbereiten (npm view, nur lesend) und POST
+ * /api/ressourcen/<id>/installation (src/ressourcen/installation.ts, Runner über
+ * Option installationsRunner injizierbar). Die Anzeige der Empfehlung im 2-s-Poll wird zwischengespeichert
+ * (ermittleAusfuehrungsEmpfehlungGecached: auftragId, mtime von ressourcen.json, HEAD des Projekts).
  */
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { performance } from 'node:perf_hooks'
 import { execFileSync } from 'node:child_process'
+import { homedir } from 'node:os'
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -454,6 +465,7 @@ import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-ga
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
 import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
+import { bereiteInstallationVor, installiereRessource } from '../src/ressourcen/installation.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
@@ -487,7 +499,7 @@ import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehr
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
-import { ladeProjektregisterMitLokal } from '../src/projekte/index.ts'
+import { ladeProjektregisterMitLokal, projektOriginsAus } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -2121,10 +2133,13 @@ function leseVersionierteDateien(repoWurzel) {
  * @param installWurzel - Installationswurzel der Workforce (ressourcen.json)
  * @param startvorlagePfad - Startvorlage für loeseRessourcenAuf
  * @param ladeOptionen - basisVerzeichnis/schreiber für ladeArtefaktVersion
- * @returns { ok: true, empfehlung, hinweise, genutzteEintraege } (genutzteEintraege = aufgelöste
- *   Einträge von wirdGenutzt in Anzeigereihenfolge) oder { ok: false, grund }
+ * @param zusatz - F36 WS-5a: { vorschauUrl } des Projekts (vorschau_url, oder null/undefined) — ohne sie
+ *   kommt kein Eintrag mit {projekt_origins} in „Wird genutzt“ (E-F36-7)
+ * @returns { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl } (genutzteEintraege =
+ *   aufgelöste Einträge von wirdGenutzt in Anzeigereihenfolge) oder { ok: false, grund }
  */
-export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen) {
+export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz = {}) {
+  const projektUrl = projektOriginsAus(zusatz.vorschauUrl) === null ? null : zusatz.vorschauUrl
   try {
     const ressourcenRoh = leseRessourcenRoh(installWurzel)
     const verstoesse = validiereRessourcenDaten(ressourcenRoh)
@@ -2134,14 +2149,73 @@ export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWur
     const hatKlassifikation = Array.isArray(taskTypen) && taskTypen.every((typ) => typeof typ === 'string')
     if (!hatKlassifikation) hinweise.push('keine Router-Klassifikation')
     const pfade = leseVersionierteDateien(repoWurzel)
-    if (pfade === null) hinweise.push('versionierte Dateien nicht lesbar (git ls-files)')
+    if (pfade === null) hinweise.push(PFADE_NICHT_LESBAR)
     const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
-    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] })
+    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] }, { projektUrlVorhanden: projektUrl !== null })
     const genutzteEintraege = empfehlung.wirdGenutzt.map((eintrag) => aufgeloest.find((r) => r.id === eintrag.id))
-    return { ok: true, empfehlung, hinweise, genutzteEintraege }
+    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl }
   } catch (fehler) {
     return { ok: false, grund: fehler.message }
   }
+}
+
+/** F36 WS-5a: höchstens so viele zwischengespeicherte Empfehlungen (je Auftrag/Projekt ein Eintrag). */
+const EMPFEHLUNG_CACHE_GROESSE = 50
+/** F36 WS-5a: Zwischenspeicher der Anzeige (Schlüssel → Ergebnis von ermittleAusfuehrungsEmpfehlung). */
+const empfehlungCache = new Map()
+
+/**
+ * F36 WS-5a: Schlüssel des Zwischenspeichers — auftragId, Projekt/Installation/Startvorlage/Projekt-URL
+ * dieser Instanz, mtime + Größe von ressourcen.json und HEAD des Projekts. null, wenn ein Teil nicht
+ * lesbar ist (dann wird nicht zwischengespeichert, sondern jedes Mal gerechnet).
+ */
+function empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz) {
+  try {
+    const katalog = statSync(join(installWurzel, 'ressourcen.json'))
+    const head = execFileSync('git', ['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
+    return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, katalog.mtimeMs, katalog.size, head])
+  } catch {
+    return null
+  }
+}
+
+/** Hinweis, wenn git ls-files nicht lesbar war — ein solches Ergebnis wird nicht zwischengespeichert. */
+const PFADE_NICHT_LESBAR = 'versionierte Dateien nicht lesbar (git ls-files)'
+
+/**
+ * Legt ein Ergebnis im Zwischenspeicher ab (älteste zuerst verdrängt). Fehlschläge (ok: false) und
+ * Ergebnisse mit nicht lesbaren Pfaden werden NICHT gemerkt: sie können vorübergehend sein (z. B. EBUSY
+ * während Cloud-Sync, git-Zeitgrenze), und ein Start ohne angezeigte ids rechnet nie neu.
+ */
+function merkeEmpfehlung(schluessel, ergebnis) {
+  if (schluessel === null) return
+  if (!ergebnis.ok || ergebnis.hinweise.includes(PFADE_NICHT_LESBAR)) {
+    empfehlungCache.delete(schluessel)
+    return
+  }
+  empfehlungCache.delete(schluessel)
+  empfehlungCache.set(schluessel, ergebnis)
+  if (empfehlungCache.size > EMPFEHLUNG_CACHE_GROESSE) empfehlungCache.delete(empfehlungCache.keys().next().value)
+}
+
+/**
+ * F36 WS-5a (Poll-Last aus WS-3): wie ermittleAusfuehrungsEmpfehlung, aber für die ANZEIGE im 2-s-Poll
+ * von GET /api/workflows/<id> zwischengespeichert, solange sich auftragId, ressourcen.json (mtime/Größe)
+ * und HEAD des Projekts nicht ändern — so bleibt auch eine angefangene Begründung im Freigabe-Block
+ * stehen. Der Start rechnet immer frisch (bereiteEmpfehlungFuerStartVor) und legt sein Ergebnis hier
+ * ab: weicht es ab, zeigt der nächste Poll schon die neue Empfehlung (kein 409-Kreislauf).
+ * Bekannte Grenze: eine Änderung, die weder Katalog noch HEAD berührt (z. B. neue, nicht committete
+ * Datei oder eine neue Router-Klassifikation desselben Auftrags), erscheint erst nach dem nächsten
+ * Start oder Commit.
+ * Parameter wie ermittleAusfuehrungsEmpfehlung.
+ * @returns dasselbe Ergebnisobjekt
+ */
+export function ermittleAusfuehrungsEmpfehlungGecached(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz = {}) {
+  const schluessel = empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz)
+  if (schluessel !== null && empfehlungCache.has(schluessel)) return empfehlungCache.get(schluessel)
+  const ergebnis = ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz)
+  merkeEmpfehlung(schluessel, ergebnis)
+  return ergebnis
 }
 
 /**
@@ -2169,17 +2243,27 @@ export function pruefeEmpfehlungIdsForm(wert) {
  * @param installWurzel - Installationswurzel
  * @param startvorlagePfad - Startvorlage
  * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @param zusatz - F36 WS-5a: { vorschauUrl } wie ermittleAusfuehrungsEmpfehlung
  * @returns { ok: true, mcpEintraege, zeile } oder { ok: false, grund }
+ *
+ * Seit F36 WS-5a (F-808) sind die ids die empfehlungIds '<id>@<sha256 der installation>' — ändert sich
+ * die installation eines angezeigten Eintrags zwischen Anzeige und Start, weicht der Hash ab und der
+ * Start bricht genauso ab wie bei einer anderen Menge. Das frische Ergebnis ersetzt die zwischen-
+ * gespeicherte Anzeige (ermittleAusfuehrungsEmpfehlungGecached).
  */
-export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen) {
-  const ermittelt = ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz = {}) {
+  // Schlüssel VOR dem Rechnen: ändert sich der Katalog währenddessen, landet das Ergebnis unter dem alten Schlüssel.
+  const schluessel = empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz)
+  const ermittelt = ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz)
+  merkeEmpfehlung(schluessel, ermittelt)
   if (!ermittelt.ok) {
     // Nur hier protokolliert, nicht in ermittleAusfuehrungsEmpfehlung: die Anzeige (GET, 2-s-Poll) zeigt den Fehler selbst.
     console.error(`[leitstand] Katalog-Empfehlung für Auftrag '${auftragId}' beim Start nicht ermittelbar:`, ermittelt.grund)
     return { ok: false, grund: `Katalog-Empfehlung beim Start nicht ermittelbar (${ermittelt.grund}) — Start abgebrochen` }
   }
-  const beimStart = ermittelt.empfehlung.wirdGenutzt.map((eintrag) => eintrag.id)
-  const liste = (ids) => (ids.length === 0 ? 'keine' : ids.join(', '))
+  const beimStart = ermittelt.empfehlung.wirdGenutzt.map((eintrag) => eintrag.empfehlungId)
+  // Hash gekürzt, damit der Grund lesbar bleibt (voller Wert steht in der Anzeige/im Body).
+  const liste = (ids) => (ids.length === 0 ? 'keine' : ids.map((id) => String(id).replace(/@([0-9a-f]{12})[0-9a-f]{52}$/, '@$1…')).join(', '))
   if (JSON.stringify([...angezeigteIds].sort()) !== JSON.stringify([...beimStart].sort())) {
     return {
       ok: false,
@@ -2187,6 +2271,44 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
     }
   }
   return { ok: true, mcpEintraege: ermittelt.genutzteEintraege, zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt) }
+}
+
+/**
+ * F36 WS-5a (Reviewer-Pass): erkennt eine Browser-Anfrage von einer fremden Seite (CSRF) an eine
+ * zustandsändernde Route. Sec-Fetch-Site muss, wenn gesetzt, 'same-origin' oder 'none' sein; Origin
+ * muss, wenn gesetzt, zum Host der Anfrage passen. Ohne beide Header (curl, Node-fetch) → zulässig.
+ * @param req - eingehende Anfrage
+ * @returns Ablehnungsgrund oder null
+ */
+export function istFremdeBrowserAnfrage(req) {
+  const seite = req.headers['sec-fetch-site']
+  if (seite !== undefined && seite !== 'same-origin' && seite !== 'none') return `Anfrage von fremder Seite abgelehnt (Sec-Fetch-Site: ${seite})`
+  const origin = req.headers.origin
+  if (origin !== undefined && origin !== 'null') {
+    try {
+      if (new URL(origin).host !== req.headers.host) return `Anfrage von fremder Seite abgelehnt (Origin: ${origin})`
+    } catch {
+      return 'Anfrage mit ungültigem Origin abgelehnt'
+    }
+  } else if (origin === 'null') {
+    return 'Anfrage mit Origin null abgelehnt'
+  }
+  return null
+}
+
+/**
+ * F36 WS-5a (E-F36-7): Werte der Platzhalter für einen Lauf — {projekt_origins} aus vorschau_url
+ * (fehlt sie, bleibt der Wert weg und baueMcpAufruf lehnt einen Eintrag mit dem Platzhalter ab),
+ * {ausgabe_ordner} = <laufausgabeWurzel>/<laufId>, außerhalb des Projekts. Der Ordner wird nicht
+ * vorab angelegt; der MCP-Server legt ihn beim ersten Schreiben an.
+ * @param vorschauUrl - vorschau_url des Projekts, oder null/undefined
+ * @param laufausgabeWurzel - Wurzel der Laufausgaben (Default ~/.ai-workforce/laufausgabe)
+ * @param laufId - laufId des Laufs
+ * @returns { projekt_origins?, ausgabe_ordner }
+ */
+export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) {
+  const origins = projektOriginsAus(vorschauUrl)
+  return { ...(origins !== null ? { projekt_origins: origins } : {}), ausgabe_ordner: join(laufausgabeWurzel, laufId) }
 }
 
 /**
@@ -2216,7 +2338,9 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
  * @param optionen - { leseAusfuehrungsVorbedingung, mcpEintraege } — leseAusfuehrungsVorbedingung ist Testeinspritzung (Muster starter/schreiber
  *   in diesem Repo); ohne den Wert liest leseAusfuehrungsVorbedingungRealGit echt gegen repoWurzel.
  *   mcpEintraege (F36 WS-2): aufgelöste, freigegebene lokale MCP-Katalogeinträge, nur für
- *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueMcpAufruf); Default leer
+ *   'ausfuehrung' mit schreibendem Werkzeugsatz ausgewertet (baueMcpAufruf); Default leer.
+ *   mcpPlatzhalter (F36 WS-5a): { projekt_origins, ausgabe_ordner } für die Platzhalter in
+ *   mcp_server.args (baueMcpPlatzhalter); fehlt ein benötigter Wert, wird der Start abgelehnt
  * @returns bei Erfolg { ok: true, eingaben }, sonst { ok: false, grund }
  */
 export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, optionen = {}) {
@@ -2397,7 +2521,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   if (erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) && mcpEintraege.length > 0) {
     let mcpAufruf
     try {
-      mcpAufruf = baueMcpAufruf(mcpEintraege)
+      mcpAufruf = baueMcpAufruf(mcpEintraege, optionen.mcpPlatzhalter ?? {})
     } catch (fehler) {
       return { ok: false, grund: `MCP-Freigabe abgelehnt: ${fehler.message}` }
     }
@@ -4127,6 +4251,17 @@ export function erzeugeRequestHandler(optionen = {}) {
     // bereits absoluten Pfad ab (AK6-Pfadsicherheit) — ein join(repoWurzel, …) hier wäre falsch.
     kontextPfad = 'docs/projekt/kontext',
     roadmapPfad = 'docs/projekt/roadmap.json',
+    // F36 WS-5a (E-F36-7): vorschau_url des Registereintrags (loeseProjektPfade) — Quelle von
+    // {projekt_origins}; null = keine Projekt-URL, dann kommt kein Katalog-MCP mit dem Platzhalter in
+    // einen Lauf (fail-closed).
+    vorschauUrl = null,
+    // F36 WS-5a (E-F36-6/8): Workforce-Ordner der installierten Fähigkeiten (Ort B, je Eintrag <id>)
+    // und Wurzel der Laufausgaben ({ausgabe_ordner} = <wurzel>/<laufId>, außerhalb des Projekts).
+    // Gates und Nachweise setzen Wegwerf-Ordner, damit ~/.ai-workforce unberührt bleibt.
+    capWurzel = join(homedir(), '.ai-workforce', 'cap'),
+    laufausgabeWurzel = join(homedir(), '.ai-workforce', 'laufausgabe'),
+    // F36 WS-5a: { npm, pruefeServer } für src/ressourcen/installation.ts — undefined = echte Runner.
+    installationsRunner = undefined,
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -4721,9 +4856,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // anderen Fall bleibt alles bitgenau wie bisher.
     let ausfuehrungsOptionen = {}
     if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
-      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
-      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege }
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
 
@@ -5791,8 +5926,11 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (naechster?.art === 'haltFreigabe') {
         const faelligerSchritt = version.daten.schritte.find((s) => s.schritt_id === naechster.schrittId)
         if (erhaeltKatalogFaehigkeiten(faelligerSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, faelligerSchritt?.werkzeugsatz)?.art)) {
-          const ermittelt = ermittleAusfuehrungsEmpfehlung(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-          empfehlung = ermittelt.ok ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise } : { schrittId: naechster.schrittId, fehler: ermittelt.grund }
+          // F36 WS-5a: zwischengespeichert (Poll-Last), Projekt-URL mit angezeigt.
+          const ermittelt = ermittleAusfuehrungsEmpfehlungGecached(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl })
+          empfehlung = ermittelt.ok
+            ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise, projektUrl: ermittelt.projektUrl }
+            : { schrittId: naechster.schrittId, fehler: ermittelt.grund }
         }
       }
 
@@ -5881,6 +6019,50 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
       sendeJson(res, 200, pfad === '/api/ressourcen' ? projeziereLibrary(aufgeloest, startvorlagePfad) : projeziereAbdeckung(ROLLENVERTRAEGE, aufgeloest, startvorlagePfad))
+      return
+    }
+
+    // F36 WS-5a (E-F36-6/9): „Freigeben & installieren“ in zwei Schritten — vorbereiten (npm view, nur
+    // lesend: exakte Version + integrity, dazu Lizenz/Kosten/Wirkung/werkzeuge/Zielordner zur Anzeige)
+    // und installieren (genau diese version + integrity, fail-closed geprüft, erst dann ressourcen.json).
+    // Nur extern + mcp + wirkung lokal + herkunft.paket (sonst 400). Logik und Statuscodes:
+    // src/ressourcen/installation.ts; hier nur Registrierung.
+    const installationTreffer = req.method === 'POST' ? /^\/api\/ressourcen\/([^/]+)\/installation(\/vorbereiten)?$/.exec(pfad) : null
+    if (installationTreffer !== null) {
+      // Nur aus dem Leitstand selbst: eine fremde Seite im selben Browser darf keine Installation +
+      // Freigabe auslösen (Reviewer-Pass WS-5a). Browser setzen Sec-Fetch-Site bzw. Origin; fehlen
+      // beide (Nicht-Browser-Client, lokal), bleibt die Anfrage zulässig.
+      const fremd = istFremdeBrowserAnfrage(req)
+      if (fremd !== null) {
+        sendeJson(res, 403, { grund: fremd })
+        return
+      }
+      const id = dekodiereSegment(installationTreffer[1])
+      if (id === null || id.length === 0) {
+        sendeJson(res, 400, { grund: 'Ressourcen-id fehlt oder ist nicht dekodierbar' })
+        return
+      }
+      const kontext = { installWurzel, capWurzel, ...(installationsRunner !== undefined ? { runner: installationsRunner } : {}) }
+      let antwort
+      if (installationTreffer[2] !== undefined) {
+        antwort = await bereiteInstallationVor(id, kontext)
+      } else {
+        let body
+        try {
+          body = JSON.parse(await leseBody(req))
+        } catch {
+          sendeJson(res, 400, { grund: 'Body ist kein gültiges JSON' })
+          return
+        }
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+          sendeJson(res, 400, { grund: 'Body muss ein Objekt { version, integrity, eintragHash } sein' })
+          return
+        }
+        antwort = await installiereRessource(id, { version: body.version, integrity: body.integrity, eintragHash: body.eintragHash }, kontext)
+        if (!antwort.ok) console.error(`[leitstand] Installation von '${id}' abgelehnt (${antwort.status}):`, antwort.grund)
+      }
+      if (antwort.ok) sendeJson(res, 200, antwort.daten)
+      else sendeJson(res, antwort.status, { grund: antwort.grund })
       return
     }
 
@@ -6266,12 +6448,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       let auftragstext = auftragVersion.daten.auftragstext
       let ausfuehrungsOptionen = {}
       if (empfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.art)) {
-        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl })
         if (!vorbereitet.ok) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
         }
-        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
         if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
       }
       const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)
@@ -7586,7 +7768,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         body.empfehlungIds !== undefined &&
         erhaeltKatalogFaehigkeiten(freizugebenderSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, freizugebenderSchritt?.werkzeugsatz)?.art)
       ) {
-        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl })
         if (!vorpruefung.ok) {
           sendeJson(res, 409, { grund: `${vorpruefung.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
           return
@@ -8822,6 +9004,8 @@ export function baueProjektHandlerMap(projekte, repoWurzelBasis, globalerLaufZus
           // ('docs/projekt/kontext'/'docs/projekt/roadmap.json') greift.
           kontextPfad: projekt.kontext_pfad,
           roadmapPfad: projekt.roadmap_pfad,
+          // F36 WS-5a: Projekt-URL für {projekt_origins} (E-F36-7).
+          vorschauUrl: pfade.vorschauUrl,
         })
       )
     } catch (fehler) {
@@ -8850,6 +9034,9 @@ export function loeseProjektPfade(projekt, repoWurzelBasis) {
     settingsPfad: join(repoWurzel, '.claude', 'settings.json'),
     aktuelleAutorisierungPfad: join(repoWurzel, 'state', 'aktuelle-autorisierung.json'),
     cwd: repoWurzel,
+    // F36 WS-5a (E-F36-7): Projekt-URL mit Port, roh aus dem Registereintrag (validiert von
+    // validiereProjekteDaten); null, wenn der Eintrag sie nicht trägt.
+    vorschauUrl: projekt.vorschau_url ?? null,
   }
 }
 
@@ -8972,7 +9159,10 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   // und ihm als Option gereicht — POST /api/projekte kann dadurch spätere Einträge direkt in
   // dieselbe Map schreiben, die der Dispatcher unten liest (per Referenz geteilt, keine Kopie).
   const projektHandlerMap = new Map()
-  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad })
+  // F36 WS-5a: der Registereintrag der Installation selbst (repo_pfad = process.cwd()) liefert die
+  // Projekt-URL auch für den unpräfigierten Pfad.
+  const selbstEintrag = projekte.find((projekt) => resolve(projekteBasis, projekt.repo_pfad) === projekteBasis)
+  const defaultHandler = erzeugeRequestHandler({ startvorlagePfad, globalerLaufZustand, projekte, projektHandlerMap, projekteLokalPfad, vorschauUrl: selbstEintrag?.vorschau_url ?? null })
   const anfangsHandlerKarte = baueProjektHandlerMap(projekte, projekteBasis, globalerLaufZustand, {
     selbstRepoWurzel: projekteBasis,
     selbstHandler: defaultHandler,

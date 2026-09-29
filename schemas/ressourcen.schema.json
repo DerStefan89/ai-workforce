@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ai-workforce.local/schemas/ressourcen.schema.json",
   "title": "Ressourcen-Register (RESSOURCEN_V0)",
-  "description": "F19 WS-1. Trägt das Register der Ressourcen (Worker, Skills, Agents, bekannte externe Kandidaten), die eine Capability bereitstellen können — getrennt von der Rolle, die eine Capability benötigt (src/rollen/index.ts, Feld benoetigte_capabilities). Kein Verfügbarkeitszustand: dieses Schema kennt kein Feld 'status' und keinen Wert 'AVAILABLE' — Verfügbarkeit wird erst zur Abfragezeit abgeleitet (F19 WS-2). Dies ist kein Ersatz für state/tooling.md (Dev-Werkzeuge des Bauprozesses) oder docs/harness/werkzeug-katalog.md (Bewertung, Vetting-Status, Prüfdatum) — siehe dort für die Abgrenzung. F36 WS-1: typ 'agent', extern.unterart/wirkung, installation (R4), R2 nach E-M5-5 und E-F36-4, anwendbar_wenn (E-F36-2). F36 WS-1b: lizenz/kosten (nur 'extern', optional).",
+  "description": "F19 WS-1. Trägt das Register der Ressourcen (Worker, Skills, Agents, bekannte externe Kandidaten), die eine Capability bereitstellen können — getrennt von der Rolle, die eine Capability benötigt (src/rollen/index.ts, Feld benoetigte_capabilities). Kein Verfügbarkeitszustand: dieses Schema kennt kein Feld 'status' und keinen Wert 'AVAILABLE' — Verfügbarkeit wird erst zur Abfragezeit abgeleitet (F19 WS-2). Dies ist kein Ersatz für state/tooling.md (Dev-Werkzeuge des Bauprozesses) oder docs/harness/werkzeug-katalog.md (Bewertung, Vetting-Status, Prüfdatum) — siehe dort für die Abgrenzung. F36 WS-1: typ 'agent', extern.unterart/wirkung, installation (R4), R2 nach E-M5-5 und E-F36-4, anwendbar_wenn (E-F36-2). F36 WS-1b: lizenz/kosten (nur 'extern', optional). F36 WS-5a: herkunft.paket und installation_vorlage (nur extern mcp, E-F36-9), Platzhalter in mcp_server.args.",
   "type": "object",
   "additionalProperties": false,
   "required": ["ressourcen_schema", "ressourcen"],
@@ -68,6 +68,7 @@
             { "$ref": "#/$defs/installationMcp" }
           ]
         },
+        "installation_vorlage": { "$ref": "#/$defs/installationVorlage" },
         "anwendbar_wenn": { "$ref": "#/$defs/anwendbarWenn" },
         "capabilities": {
           "type": "array",
@@ -141,7 +142,12 @@
         "url": {
           "type": "string",
           "pattern": "^https?://",
-          "description": "Quelle des externen Kandidaten. Bewertung, Vetting-Status und Prüfdatum bleiben in docs/harness/werkzeug-katalog.md."
+          "description": "Quelle des externen Kandidaten. Bewertung, Vetting-Status und Prüfdatum bleiben in docs/harness/werkzeug-katalog.md. Bei Registry-Paketen reine Informationsadresse (E-F36-9)."
+        },
+        "paket": {
+          "type": "string",
+          "pattern": "^npm:(@[a-z0-9~][a-z0-9-._~]*/)?[a-z0-9~][a-z0-9-._~]*$",
+          "description": "F36 WS-5a (E-F36-9): optional, nur bei typ 'extern' mit unterart 'mcp' — ausdrückliche Registry-Adresse 'npm:<paketname>' nach den npm-Namensregeln (höchstens 214 Zeichen Paketname). Nur von hier installiert die Workforce (exakte Version, integrity geprüft). Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts)."
         }
       }
     },
@@ -172,7 +178,11 @@
           "required": ["command", "args"],
           "properties": {
             "command": { "type": "string", "minLength": 1 },
-            "args": { "type": "array", "items": { "type": "string" } }
+            "args": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "F36 WS-5a: darf die Platzhalter {projekt_origins} (→ 'http://localhost:<port>;http://127.0.0.1:<port>' aus vorschau_url des Projekts) und {ausgabe_ordner} (→ Ordner außerhalb des Projekts je Lauf) tragen; jeder andere '{…}' wird abgelehnt. Ohne vorschau_url kommt ein Eintrag mit {projekt_origins} nie in den Lauf (E-F36-7)."
+            }
           }
         },
         "werkzeuge": {
@@ -180,6 +190,23 @@
           "minItems": 1,
           "uniqueItems": true,
           "description": "Einzelnamen für --allowedTools (F36 WS-2), keine Wildcard (Spike F36 WS-0 P3). Jeder erfüllt zusätzlich WERKZEUG_EINTRAG_MUSTER (src/startvorlage/index.ts); <id> muss die id dieser Ressource sein (semantisch geprüft von validiereRessourcenDaten).",
+          "items": { "type": "string", "pattern": "^mcp__[a-z0-9][a-z0-9-]*__[A-Za-z0-9_-]+$" }
+        }
+      }
+    },
+    "installationVorlage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bin", "args", "werkzeuge"],
+      "description": "F36 WS-5a (E-F36-6/9): optional, nur bei typ 'extern' mit unterart 'mcp'. Vorlage, aus der „Freigeben & installieren“ nach erfolgreicher Prüfung die installation baut: command = absoluter node-Pfad, args = [<cap>/<id>/node_modules/<paket>/<bin>, ...args]. Semantisch geprüft von validiereRessourcenDaten (src/ressourcen/index.ts).",
+      "properties": {
+        "bin": { "type": "string", "minLength": 1, "description": "Relativer Pfad der Startdatei im Paket ('/' als Trenner, ohne '..'), z. B. 'cli.js'." },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Serverargumente; Platzhalter wie installationMcp.mcp_server.args." },
+        "werkzeuge": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Einzelnamen mcp__<id>__<name> wie installationMcp.werkzeuge (R4, keine Wildcard); die Installation prüft per tools/list, dass der Server jeden anbietet.",
           "items": { "type": "string", "pattern": "^mcp__[a-z0-9][a-z0-9-]*__[A-Za-z0-9_-]+$" }
         }
       }

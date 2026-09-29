@@ -80,7 +80,12 @@
         "init_mcp_server": { "type": "array", "items": { "type": "string" } },
         "skill_aufrufe": { "type": "array", "items": { "type": "string" } },
         "subagent_aufrufe": { "type": "array", "items": { "type": "string" } },
-        "mcp_aufrufe": { "type": "array", "items": { "type": "string" } }
+        "mcp_aufrufe": { "type": "array", "items": { "type": "string" } },
+        "navigate_adressen": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "F36 WS-5a (E-F36-7). Optional (append-only: Laufakten vor WS-5a tragen das Feld nicht, daher nicht in required). input.url je Aufruf mcp__<server>__browser_navigate in Reihenfolge; ohne url der Platzhalter '(keine url)'. Erfasst nur den ausdrücklichen browser_navigate, keinen Seitenwechsel per Klick oder Weiterleitung. Zwilling von validiereLaufakteDaten (src/claude-code-gateway/index.ts)."
+        }
       }
     }
   }

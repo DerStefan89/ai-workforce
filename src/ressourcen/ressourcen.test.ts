@@ -6,16 +6,33 @@
  * schemas/ressourcen.schema.json und R1/R2/R3, Muster router.test.ts),
  * loeseRessourcenAuf (eigene Test-Fixtures unter os.tmpdir(), kein
  * Schreiben ins echte Repo), ressourcenFuerCapability und pruefeAbdeckung
- * (reine Filter/Lookup-Funktionen, keine Fixtures nötig).
+ * (reine Filter/Lookup-Funktionen, keine Fixtures nötig). Seit F36 WS-5a am Ende: herkunft.paket,
+ * installation_vorlage, Platzhalter in args, empfehlungsKennung (F-808), Projekt-URL in der Empfehlung.
  */
 
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
+import {
+  baueEmpfehlung,
+  baueEmpfehlungsZeile,
+  baueMcpAufruf,
+  brauchtProjektOrigins,
+  empfehlungsKennung,
+  ersetzePlatzhalter,
+  fehltFuerEinsatz,
+  loeseRessourcenAuf,
+  PROJEKT_URL_FEHLT,
+  paketNameAus,
+  pruefeAbdeckung,
+  pruefeAnwendbarkeit,
+  pruefeInstallierbarkeit,
+  ressourcenFuerCapability,
+  validiereRessourcenDaten,
+} from './index.ts'
 import type { AufgelosteRessource, Ressource } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -873,4 +890,150 @@ test('baueEmpfehlungsZeile: leer → null, sonst eine Zeile mit id (name)', () =
     baueEmpfehlungsZeile([{ id: 'a', name: 'A', typ: 'extern', unterart: 'mcp', grund: 'g' }]),
     'Freigegebene Katalog-Fähigkeiten in diesem Lauf: a (A) — nutzen, wo sie passen.'
   )
+})
+
+// ─── F36 WS-5a: herkunft.paket, installation_vorlage, Platzhalter, Hash ─────────
+
+const VORLAGE = {
+  bin: 'cli.js',
+  args: ['--headless', '--output-dir', '{ausgabe_ordner}', '--allowed-origins', '{projekt_origins}'],
+  werkzeuge: ['mcp__obsidian-mcp__search', 'mcp__obsidian-mcp__read'],
+}
+const PAKET_HERKUNFT = { art: 'extern', url: 'https://github.com/x/mcp-obsidian', paket: 'npm:@scope/mcp-obsidian' }
+
+test('validiereRessourcenDaten (WS-5a): herkunft.paket + installation_vorlage bei extern mcp gültig', () => {
+  assert.deepEqual(verstoesseMit(externMcp({ herkunft: PAKET_HERKUNFT, installation_vorlage: VORLAGE })), [])
+  assert.deepEqual(verstoesseMit(externMcp({ herkunft: { ...PAKET_HERKUNFT, paket: 'npm:mcp-obsidian' } })), [])
+})
+
+test('validiereRessourcenDaten (WS-5a): herkunft.paket — Form npm:<name> nach npm-Regeln', () => {
+  for (const paket of ['@scope/x', 'npm:', 'npm:Gross', 'npm:.punkt', 'npm:_unter', 'npm:@scope/', 'npm:a b', 'npm:../x', 'npm:-x', 'npm:--foo', 'npm:@-scope/x', 'pypi:x', `npm:${'a'.repeat(215)}`, 7]) {
+    assert.ok(hat(verstoesseMit(externMcp({ herkunft: { ...PAKET_HERKUNFT, paket } })), 'herkunft.paket'), `paket ${String(paket).slice(0, 20)} müsste abgelehnt werden`)
+  }
+  assert.equal(paketNameAus('npm:@playwright/mcp'), '@playwright/mcp')
+  assert.equal(paketNameAus('npm:a.b-c_d~e'), 'a.b-c_d~e')
+  assert.equal(paketNameAus(`npm:${'a'.repeat(214)}`), 'a'.repeat(214))
+})
+
+test('validiereRessourcenDaten (WS-5a): herkunft.paket und installation_vorlage nur bei unterart mcp', () => {
+  assert.ok(hat(verstoesseMit(externSkill({ herkunft: { art: 'extern', url: 'https://x', paket: 'npm:x' } })), "herkunft.paket' ist nur bei unterart 'mcp'"))
+  assert.ok(hat(verstoesseMit(externSkill({ installation_vorlage: VORLAGE })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp'"))
+  assert.ok(hat(verstoesseMit(agentEintrag({ installation_vorlage: VORLAGE })), "installation_vorlage' ist nur bei typ 'extern' mit unterart 'mcp'"))
+})
+
+test('validiereRessourcenDaten (WS-5a): installation_vorlage — Form, bin relativ, werkzeuge wie R4', () => {
+  const mit = (vorlage: unknown) => verstoesseMit(externMcp({ installation_vorlage: vorlage }))
+  assert.ok(hat(mit('x'), "installation_vorlage' ist kein Objekt"))
+  assert.ok(hat(mit({ ...VORLAGE, extra: 1 }), 'installation_vorlage.extra'))
+  for (const bin of ['', '/abs/cli.js', 'C:/cli.js', '..\\cli.js', '../cli.js', 'a//b.js', 'a\\b.js']) assert.ok(hat(mit({ ...VORLAGE, bin }), 'installation_vorlage.bin'), `bin '${bin}'`)
+  assert.deepEqual(mit({ ...VORLAGE, bin: 'dist/cli.js' }), [])
+  assert.ok(hat(mit({ ...VORLAGE, args: 'x' }), 'installation_vorlage.args'))
+  assert.ok(hat(mit({ ...VORLAGE, werkzeuge: [] }), 'installation_vorlage.werkzeuge'))
+  assert.ok(hat(mit({ ...VORLAGE, werkzeuge: ['mcp__obsidian-mcp__*'] }), 'keine Wildcard'))
+  assert.ok(hat(mit({ ...VORLAGE, werkzeuge: ['mcp__fremd__search'] }), 'installation_vorlage.werkzeuge[0]'))
+  assert.ok(hat(mit({ ...VORLAGE, werkzeuge: ['mcp__obsidian-mcp__a', 'mcp__obsidian-mcp__a'] }), 'doppelt'))
+})
+
+test('validiereRessourcenDaten (WS-5a): Platzhalter — nur {projekt_origins}/{ausgabe_ordner}, in Vorlage UND installation', () => {
+  const unbekannt = { ...VORLAGE, args: ['--x', '{projekt_url}'] }
+  assert.ok(hat(verstoesseMit(externMcp({ installation_vorlage: unbekannt })), "unbekannten Platzhalter '{projekt_url}'"))
+  const installation = { ...MCP_INSTALLATION, mcp_server: { command: 'node', args: ['cli.js', '--allowed-origins', '{projekt_origins}', '--out={ausgabe_ordner}'] } }
+  assert.deepEqual(verstoesseMit(externMcp({ installation })), [])
+  const falsch = { ...MCP_INSTALLATION, mcp_server: { command: 'node', args: ['{Projekt_Origins}'] } }
+  assert.ok(hat(verstoesseMit(externMcp({ installation: falsch })), 'installation.mcp_server.args[0]'))
+  // Einzelne Klammern ohne Platzhalterform bleiben erlaubt.
+  assert.deepEqual(verstoesseMit(externMcp({ installation_vorlage: { ...VORLAGE, args: ['{', '}'] } })), [])
+})
+
+test('validiereRessourcenDaten (WS-5a): echter Katalog — playwright-mcp trägt paket und Vorlage mit E-F36-7-Startbedingungen', () => {
+  // Regel, kein Zwischenstand: auch nach einer committeten Installation (installation + FREIGEGEBEN) grün.
+  const katalog = JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', 'ressourcen.json'), 'utf8'))
+  assert.deepEqual(validiereRessourcenDaten(katalog), [])
+  const pw = katalog.ressourcen.find((r: Ressource) => r.id === 'playwright-mcp')
+  assert.equal(pw.herkunft.paket, 'npm:@playwright/mcp')
+  assert.equal(pw.wirkung, 'lokal')
+  assert.deepEqual(pw.installation_vorlage.args, ['--headless', '--isolated', '--output-dir', '{ausgabe_ordner}', '--allowed-origins', '{projekt_origins}'])
+  assert.equal(pruefeInstallierbarkeit(pw), null)
+  // Installiert heißt: die Startbedingungen aus der Vorlage stehen unverändert in der installation.
+  if (pw.installation !== undefined) assert.deepEqual(pw.installation.mcp_server.args.slice(1), pw.installation_vorlage.args)
+})
+
+test('ersetzePlatzhalter: ersetzt beide, wirft bei fehlendem Wert oder unbekanntem Platzhalter', () => {
+  const args = ['--output-dir', '{ausgabe_ordner}', '--allowed-origins', '{projekt_origins}', 'x={ausgabe_ordner}/y']
+  assert.deepEqual(ersetzePlatzhalter(args, { projekt_origins: 'http://localhost:5173;http://127.0.0.1:5173', ausgabe_ordner: '/tmp/l' }), [
+    '--output-dir',
+    '/tmp/l',
+    '--allowed-origins',
+    'http://localhost:5173;http://127.0.0.1:5173',
+    'x=/tmp/l/y',
+  ])
+  assert.throws(() => ersetzePlatzhalter(args, { ausgabe_ordner: '/tmp/l' }), /Projekt-URL \(vorschau_url\) fehlt/)
+  assert.throws(() => ersetzePlatzhalter(['{ausgabe_ordner}'], { ausgabe_ordner: '' }), /kein Wert/)
+  assert.throws(() => ersetzePlatzhalter(['{fremd}'], { ausgabe_ordner: '/x' }), /unbekannter Platzhalter/)
+  assert.deepEqual(ersetzePlatzhalter(['--headless'], {}), ['--headless'])
+})
+
+test('baueMcpAufruf (WS-5a): Platzhalter ersetzt; ohne projekt_origins wirft er (fail-closed)', () => {
+  const mitPlatzhalter = lokalerMcp({
+    installation: { version: '1', mcp_server: { command: 'node', args: ['cli.js', '--allowed-origins', '{projekt_origins}', '--output-dir', '{ausgabe_ordner}'] }, werkzeuge: ['mcp__playwright__browser_navigate'] },
+  })
+  const aufruf = baueMcpAufruf([mitPlatzhalter], { projekt_origins: 'http://localhost:1;http://127.0.0.1:1', ausgabe_ordner: '/aus' })
+  assert.deepEqual(JSON.parse(aufruf.mcpConfig).mcpServers.playwright.args, ['cli.js', '--allowed-origins', 'http://localhost:1;http://127.0.0.1:1', '--output-dir', '/aus'])
+  assert.throws(() => baueMcpAufruf([mitPlatzhalter], { ausgabe_ordner: '/aus' }), /Projekt-URL \(vorschau_url\) fehlt/)
+  assert.throws(() => baueMcpAufruf([mitPlatzhalter]), /Projekt-URL/)
+})
+
+test('empfehlungsKennung (F-808): id@sha256 der kanonischen installation — Schlüsselreihenfolge egal, jede Änderung ändert den Hash', () => {
+  const kennung = empfehlungsKennung(kandidat('pw'))
+  assert.match(kennung, /^pw@[0-9a-f]{64}$/)
+  const umsortiert = kandidat('pw', { installation: { werkzeuge: ['mcp__pw__lesen'], mcp_server: { args: ['s.js'], command: 'node' }, version: '1' } })
+  assert.equal(empfehlungsKennung(umsortiert), kennung)
+  assert.notEqual(empfehlungsKennung(kandidat('pw', { installation: { ...MCP_INSTALL('pw'), mcp_server: { command: 'node', args: ['s.js', '--x'] } } })), kennung)
+  assert.notEqual(empfehlungsKennung(kandidat('pw', { installation: { ...MCP_INSTALL('pw'), version: '2' } })), kennung)
+})
+
+test('baueEmpfehlung (WS-5a): wirdGenutzt trägt empfehlungId; {projekt_origins} ohne Projekt-URL → passtNichtImLauf mit Grund', () => {
+  const mitOrigins = kandidat('pw', { installation: { ...MCP_INSTALL('pw'), mcp_server: { command: 'node', args: ['s.js', '--allowed-origins', '{projekt_origins}'] } } })
+  assert.equal(brauchtProjektOrigins(mitOrigins), true)
+  assert.equal(brauchtProjektOrigins(kandidat('x')), false)
+  const ohne = baueEmpfehlung([mitOrigins, kandidat('x')], KONTEXT)
+  assert.deepEqual(ohne.wirdGenutzt.map((e) => e.id), ['x'])
+  assert.equal(ohne.wirdGenutzt[0].empfehlungId, empfehlungsKennung(kandidat('x')))
+  assert.equal(ohne.passtNichtImLauf[0].id, 'pw')
+  assert.ok(ohne.passtNichtImLauf[0].grund.includes(PROJEKT_URL_FEHLT))
+  const mit = baueEmpfehlung([mitOrigins], KONTEXT, { projektUrlVorhanden: true })
+  assert.deepEqual(mit.wirdGenutzt.map((e) => e.empfehlungId), [empfehlungsKennung(mitOrigins)])
+})
+
+test('baueEmpfehlung (WS-5a): installierbar nur für extern mcp lokal mit paket + Vorlage und ohne installation', () => {
+  const offen = { freigabe: 'OFFEN' as const, installation: undefined, verfuegbar: false, grund: 'extern, installation fehlt' }
+  const vorlage = { bin: 'cli.js', args: ['--allowed-origins', '{projekt_origins}'], werkzeuge: ['mcp__pw__lesen'] }
+  const installierbar = kandidat('pw', { ...offen, herkunft: { art: 'extern', url: 'https://x', paket: 'npm:pw' }, installation_vorlage: vorlage })
+  const ohnePaket = kandidat('ohne-paket', { ...offen, installation_vorlage: { ...vorlage, werkzeuge: ['mcp__ohne-paket__lesen'] } })
+  const e = baueEmpfehlung([installierbar, ohnePaket], KONTEXT)
+  assert.equal(e.passtNichtImLauf.find((x) => x.id === 'pw')?.installierbar, true)
+  assert.ok((e.passtNichtImLauf.find((x) => x.id === 'pw')?.grund ?? '').includes(PROJEKT_URL_FEHLT))
+  assert.equal('installierbar' in (e.passtNichtImLauf.find((x) => x.id === 'ohne-paket') ?? {}), false)
+  assert.match(pruefeInstallierbarkeit(ohnePaket) ?? '', /herkunft.paket fehlt/)
+  assert.match(pruefeInstallierbarkeit(kandidat('l', { wirkung: 'extern_lesend' })) ?? '', /E-F36-4/)
+  assert.match(pruefeInstallierbarkeit(kandidat('s', { unterart: 'skill' })) ?? '', /nur typ 'extern' mit unterart 'mcp'/)
+  assert.match(pruefeInstallierbarkeit(kandidat('v', { herkunft: { art: 'extern', url: 'https://x', paket: 'npm:v' } })) ?? '', /installation_vorlage fehlt/)
+})
+
+test('loeseRessourcenAuf (WS-5a): mcp mit absolutem command oder bin, der fehlt, ist nicht verfügbar', () => {
+  const repo = neuesTestRepo()
+  try {
+    const bin = join(repo, 'cli.js')
+    writeFileSync(bin, '')
+    const mit = (command: string, args: string[]) =>
+      loeseRessourcenAuf([externRessource({ id: 'pw', unterart: 'mcp', wirkung: 'lokal', freigabe: 'FREIGEGEBEN', installation: { version: '1', mcp_server: { command, args }, werkzeuge: ['mcp__pw__a'] } })], repo, 'x.json')[0]
+    assert.equal(mit(process.execPath, [bin, '--x']).verfuegbar, true)
+    assert.equal(mit('node', ['relativ.js']).verfuegbar, true, 'nicht absolute Werte werden wie bisher nicht geprüft')
+    const ohneBin = mit(process.execPath, [join(repo, 'fehlt.js')])
+    assert.equal(ohneBin.verfuegbar, false)
+    assert.match(ohneBin.grund, /fehlt\.js' existiert nicht/)
+    assert.equal(mit(join(repo, 'kein-node.exe'), [bin]).verfuegbar, false)
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
 })

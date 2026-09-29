@@ -67,6 +67,11 @@
           "type": "string",
           "minLength": 1,
           "description": "F33 WS-1 (E-M4-2). Pfad zur roadmap.json dieses Projekts, relativ zu repo_pfad. OPTIONAL — fehlt das Feld, gilt der Standardpfad 'docs/projekt/roadmap.json'."
+        },
+        "vorschau_url": {
+          "type": "string",
+          "pattern": "^http://(localhost|127\\.0\\.0\\.1):[1-9][0-9]{0,4}$",
+          "description": "F36 WS-5a (E-F36-7). Projekt-URL des lokalen Entwicklungsservers MIT Port (Port 1–65535, ohne Pfad). OPTIONAL — daraus wird der Platzhalter {projekt_origins} der Katalog-MCPs ('http://localhost:<port>;http://127.0.0.1:<port>'); fehlt das Feld, kommt kein Katalog-MCP mit {projekt_origins} in einen Lauf (fail-closed). Geprüft von validiereProjekteDaten (src/projekte/index.ts)."
         }
       }
     }

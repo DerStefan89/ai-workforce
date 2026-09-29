@@ -12,7 +12,8 @@
  * begründet).
  *
  * Wird aufgerufen von: src/ressourcen/index.ts,
- * src/ressourcen/ressourcen.test.ts, scripts/check-f19-ressourcen.mjs.
+ * src/ressourcen/ressourcen.test.ts, scripts/check-f19-ressourcen.mjs,
+ * src/ressourcen/installation.ts (F36 WS-5a).
  */
 
 import type { TaskTyp } from '../router/types.ts'
@@ -34,10 +35,28 @@ export type Herkunft =
   | { art: 'startvorlage'; worker: 'claude-code' | 'codex' }
   | { art: 'skill'; pfad: string }
   | { art: 'agent'; pfad: string }
-  | { art: 'extern'; url: string }
+  /** paket (F36 WS-5a, E-F36-9): ausdrückliche Registry-Adresse 'npm:<name>', nur bei unterart 'mcp'; url bleibt Informationsadresse. */
+  | { art: 'extern'; url: string; paket?: string }
 
 /** R4: installation einer externen Ressource — Form je unterart (skill|agent: Pfad, mcp: Serverstart + Einzelnamen). */
 export type Installation = { pfad: string; version: string } | { version: string; mcp_server: { command: string; args: string[] }; werkzeuge: string[] }
+
+/**
+ * F36 WS-5a (E-F36-9): Vorlage, aus der „Freigeben & installieren“ die installation (R4) baut — bin
+ * relativ im Paket, args mit den Platzhaltern {projekt_origins}/{ausgabe_ordner}, werkzeuge als
+ * Einzelnamen mcp__<id>__<name>. Nur typ 'extern' mit unterart 'mcp'.
+ */
+export interface InstallationsVorlage {
+  bin: string
+  args: string[]
+  werkzeuge: string[]
+}
+
+/** F36 WS-5a: Werte der Platzhalter in mcp_server.args — fehlt ein benötigter Wert, wirft baueMcpAufruf (fail-closed). */
+export interface McpPlatzhalterWerte {
+  projekt_origins?: string
+  ausgabe_ordner?: string
+}
 
 /** Deterministische Anwendbarkeitsregel (E-F36-2): ODER innerhalb eines Schlüssels, UND zwischen den Schlüsseln. */
 export interface AnwendbarWenn {
@@ -58,6 +77,8 @@ export interface Ressource {
   /** F36 WS-1b: nur typ 'extern' — Anzeige vor „Freigeben & installieren“ (E-F36-6). */
   kosten?: string
   installation?: Installation
+  /** F36 WS-5a: nur typ 'extern' mit unterart 'mcp' — Vorlage für „Freigeben & installieren“. */
+  installation_vorlage?: InstallationsVorlage
   anwendbar_wenn?: AnwendbarWenn
   capabilities: string[]
   freigabe: Freigabe
@@ -83,6 +104,15 @@ export interface EmpfehlungsEintrag {
   typ: RessourcenTyp
   unterart?: ExternUnterart
   grund: string
+  /** F36 WS-5a (F-808): nur in „Wird genutzt“ — '<id>@<sha256 der kanonischen installation>', geht mit der Freigabe zurück. */
+  empfehlungId?: string
+  /** F36 WS-5a: nur in „Passt, nicht im Lauf“ — true, wenn „Freigeben & installieren“ angeboten wird. */
+  installierbar?: boolean
+}
+
+/** F36 WS-5a: Kontext des Starts für baueEmpfehlung — ohne Projekt-URL kommt kein Eintrag mit {projekt_origins} in den Lauf. */
+export interface EmpfehlungsLaufKontext {
+  projektUrlVorhanden?: boolean
 }
 
 /** F36 WS-3: Ergebnis von baueEmpfehlung — je Liste höchstens drei Einträge, der Rest nur als Anzahl (F-788). */

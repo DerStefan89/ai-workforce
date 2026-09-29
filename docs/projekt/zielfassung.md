@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.36 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.37 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -70,6 +70,8 @@ v1.33 → v1.34: **§13.6 um E-F36-5 und E-F36-6 ergänzt** (Stefan, 28.09.2026,
 v1.34 → v1.35: **§13.6 um E-F36-7 ergänzt** (Stefan, 28.09.2026, F36 WS-2s): E-F36-7 = A — playwright-mcp bleibt `wirkung: lokal`, nur mit `--allowed-origins` auf die Projekt-URL mit Port und `--output-dir` außerhalb des Projekts; bekannte Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright keine Sicherheitsgrenze (`state/spike-f36-ws2s.md` S5).
 
 v1.35 → v1.36: **§13.6 um E-F36-8 ergänzt** (Stefan, 28.09.2026; Spike S7 am 29.09.2026): E-F36-8 = B („Eigener Raum“): Der Ausführungslauf lädt keine ungeprüften Skills oder Agents, sichtbar ist nur der Ort-B-Ordner der Workforce. Challenger-Präzisierung nach S7 ([EMPFEHLUNG] 29.09.2026, keine Entscheidung Stefans): „S7 HÄLT mit V4a“, AK4 heißt „nicht aufrufbar ohne Freigabe“, nicht „unsichtbar“ (`state/spike-f36-ws2s.md` S7).
+
+v1.36 → v1.37: **§13.6 um E-F36-9 ergänzt, E-F36-6 präzisiert** (Stefan, 29.09.2026, F36 WS-5a): E-F36-9 = A — MCP-Server, die als Registry-Paket verteilt werden, installiert die Workforce nur aus der ausdrücklichen Katalog-Adresse `herkunft.paket` (z. B. `npm:@playwright/mcp`), in exakter Version; `herkunft.url` bleibt die Informationsadresse; `herkunft.paket` wird vor dem Klick zusammen mit Lizenz, Kosten und Wirkung angezeigt. E-F36-6 nennt als Katalog-Adresse jetzt `herkunft.url` bzw. bei Registry-Paketen `herkunft.paket`.
 
 ---
 
@@ -896,7 +898,8 @@ installiert; Freigabe und Installation erst, wenn ein Eintrag empfohlen
 wird. Einordnung je Kandidat: `features/F36/katalog-uebernahme.md`.
 
 **E-F36-6 = A** *(Stefan, 28.09.2026)* — Die Workforce installiert nach
-Freigabe selbst (F36 WS-5): nur von der Katalog-Adresse (`herkunft.url`),
+Freigabe selbst (F36 WS-5): nur von der Katalog-Adresse (`herkunft.url` bzw.
+bei Registry-Paketen `herkunft.paket`, E-F36-9),
 nur in fester Version (Commit bzw. Paketversion), zuerst in einen eigenen
 Ordner, danach ins Projekt-`.claude/`. Lizenz, Kosten und Wirkung werden
 vor dem Klick „Freigeben & installieren" angezeigt (Katalogfelder
@@ -930,6 +933,13 @@ Entscheidung Stefans: „S7 HÄLT mit V4a.“** AK4 heißt „nicht aufrufbar oh
 wenn das Modell im Reallauf wiederholt gesperrte Agents ansteuert. Die
 Namensliste der eingebauten Einträge driftet mit der CLI-Version. Dagegen
 baut WS-5 ein Init-Gate und einen Vorstart-Scan (F-791).
+
+**E-F36-9 = A** *(Stefan, 29.09.2026, F36 WS-5a)* — MCP-Server, die als
+Registry-Paket verteilt werden, installiert die Workforce nur aus der
+ausdrücklichen Katalog-Adresse `herkunft.paket` (z. B.
+„npm:@playwright/mcp“), in exakter Version; `herkunft.url` bleibt die
+Informationsadresse. `herkunft.paket` wird vor dem Klick zusammen mit
+Lizenz, Kosten und Wirkung angezeigt.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

@@ -10649,13 +10649,13 @@ Maßnahme: im Design-Schnitt (F-725).
 Status: offen.
 Feature/Run: F36 WS-4, 28.09.2026.
 
-**F-786** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-786** · `HARNESS_IMPROVEMENT` · P2 · teilweise erledigt (Teil mcp: F36 WS-5a)
 Titel: WS-5 muss je unterart fail-closed prüfen, bevor ein Katalogeintrag als installiert gilt.
 Beschreibung: WS-5 muss je unterart fail-closed prüfen (skill: `SKILL.md` mit Frontmatter; agent: `.md` mit Frontmatter; mcp: Serverstart mit freigegebenen Einzelnamen, playwright nur mit `--allowed-origins` localhost). Heute heißt `verfuegbar` für extern skill/agent nur „freigegeben und `installation.pfad` existiert“, für mcp „Serverstart nicht geprüft“; bei `open-code-review` ist die unterart zudem nur vermutet.
 Fundstelle: `src/ressourcen/index.ts` (`loeseRessourcenAuf`); `features/F36/feature.md` (WS-5, Bekannte Grenzen); `features/F36/katalog-uebernahme.md` (playwright-mcp, open-code-review).
 Auswirkung: Mittel — ohne die Prüfung kann ein falsch eingeordneter oder offen startender Eintrag als einsatzbereit gelten.
 Maßnahme: In WS-5 je unterart ein Rot-Fall; playwright-mcp mit Rot-Fall „fremde Origin wird verweigert“, sonst `wirkung: extern_schreibend`.
-Status: offen.
+Status: Teil mcp erledigt (F36 WS-5a): `installiereRessource` (`src/ressourcen/installation.ts`) gibt einen MCP erst frei, wenn Lockfile-Version und -integrity der Anzeige entsprechen, `bin` existiert und der Serverstart per `initialize` + `tools/list` alle freigegebenen Einzelnamen liefert; Rot-Fälle im Gate `scripts/check-f36-ws5a-installation.mjs` (c)–(e), echter Nachweis `features/F36/nachweis-ws5a-installation/`. Offen: Teil skill/agent (WS-5b) und der Rot-Fall „fremde Origin wird verweigert“ mit der installierten Fassung (WS-5b bzw. Reallauf).
 Feature/Run: F36 WS-1b, 28.09.2026.
 
 **F-787** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -10848,11 +10848,56 @@ Maßnahme: Durch WS-3 abgefangen: `baueEmpfehlung` setzt solche Einträge in kei
 Status: durch WS-3 abgefangen (keine Liste), Daten unverändert.
 Feature/Run: F36 WS-3, 29.09.2026.
 
-**F-808** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-808** · `HARNESS_IMPROVEMENT` · P2 · erledigt (F36 WS-5a)
 Titel: Der Start vergleicht nur die Menge der Empfehlungs-ids, nicht die installation dahinter.
 Beschreibung: Zwischen Anzeige und Freigabe kann sich die `installation` eines angezeigten Eintrags ändern (`command`, `args`, `werkzeuge`), ohne dass der Start abweicht. Heute ohne Wirkung, weil kein Katalog-MCP freigegeben ist.
 Fundstelle: `scripts/leitstand-server.mjs` (Vergleich `empfehlungIds`, `bereiteEmpfehlungFuerStartVor`); `features/F36/feature.md` (Bekannte Grenzen).
 Auswirkung: Mittel ab WS-5.
 Maßnahme: In WS-5 zusätzlich einen Hash über `installation` (bzw. den ganzen Eintrag) je id mitschicken und vergleichen; Entscheidung in der WS-5-Challenge.
-Status: offen.
+Status: erledigt (F36 WS-5a): `empfehlungIds` sind `<id>@<sha256 über die kanonische JSON der installation>` (`empfehlungsKennung`, `src/ressourcen/index.ts`); `bereiteEmpfehlungFuerStartVor` vergleicht id und Hash, Abweichung → Freigabe 409 bzw. `POST /api/laeufe` 400 wie bisher. Beleg: `scripts/check-f36-ws5a-installation.mjs` (i).
 Feature/Run: F36 WS-3, 29.09.2026.
+
+**F-809** · `TECH_DEBT` · P3 · erledigt (F36 WS-5a)
+Titel: Empfehlung wurde bei jedem Poll neu gerechnet; eine angefangene Begründung ging bei geänderter Empfehlung verloren.
+Beschreibung: Am ZWINGEND-Start rechnete `GET /api/workflows/<id>` die Katalog-Empfehlung bei jedem 2-s-Poll neu (`git ls-files` mit 5 s Zeitgrenze, Katalog lesen und auflösen, synchron). Schwankte das Ergebnis (z. B. `git ls-files` einmal nicht lesbar), renderte die Workflow-Ansicht den Freigabe-Block neu und eine angefangene Begründung ging verloren (Bekannte Grenze aus WS-3).
+Fundstelle: `scripts/leitstand-server.mjs` (`ermittleAusfuehrungsEmpfehlung`, GET `/api/workflows/<id>`); `features/F36/feature.md` (Bekannte Grenzen).
+Auswirkung: Niedrig — Last in großen Projekten, verlorene Eingabe.
+Maßnahme: Anzeige zwischenspeichern, Schlüssel auftragId, mtime/Größe von `ressourcen.json`, HEAD des Projekts; der Start rechnet frisch und erneuert den Zwischenspeicher.
+Status: erledigt (F36 WS-5a): `ermittleAusfuehrungsEmpfehlungGecached` (Fehlschläge und Ergebnisse mit nicht lesbaren Pfaden werden nicht gemerkt); ändert sich die Empfehlung doch (z. B. nach einer Installation), behält die Workflow-Ansicht angefangene Begründungen desselben Workflows. Beleg `scripts/check-f36-ws5a-installation.mjs` (Cache). Bekannte Grenze: Änderungen, die weder Katalog noch HEAD berühren, erscheinen erst nach dem nächsten Start oder Commit.
+Feature/Run: F36 WS-5a, 29.09.2026.
+
+**F-810** · `PROCESS_IMPROVEMENT` · P2 · erledigt (E-F36-9)
+Titel: E-F36-6 nannte nur herkunft.url.
+Beschreibung: E-F36-6 verlangte die Installation „nur von der Katalog-Adresse (`herkunft.url`)“. Für Registry-Pakete (npm) ist die Repository-URL aber keine Installationsquelle; offen war, woher die Workforce ein MCP-Paket tatsächlich bezieht.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 (E-F36-6); `features/F36/feature.md` (Entscheidungen, WS-5).
+Auswirkung: Mittel — ohne ausdrückliche Paketadresse hätte WS-5a die Quelle raten müssen (z. B. aus dem Repo-Namen).
+Maßnahme: E-F36-9 = A (Stefan, 29.09.2026): Registry-Pakete nur aus `herkunft.paket` (`npm:<name>`), exakte Version; `herkunft.url` bleibt Informationsadresse; `herkunft.paket` wird vor dem Klick angezeigt.
+Status: erledigt durch E-F36-9 (Zielfassung v1.37, WS-5a).
+Feature/Run: F36 WS-5a, 29.09.2026.
+
+**F-811** · `HARNESS_IMPROVEMENT` · P2 · erledigt (F36 WS-5a)
+Titel: Projekt-URL mit Port fehlte als Datum für E-F36-7.
+Beschreibung: E-F36-7 verlangt `--allowed-origins` auf die Projekt-URL MIT Port; das Projektregister kannte aber keine Projekt-URL. Ohne sie hätte der Start den Port raten oder den MCP ohne Origin-Sperre starten müssen.
+Fundstelle: `src/projekte/index.ts`, `schemas/projekte.schema.json`; `scripts/leitstand-server.mjs` (`loeseProjektPfade`).
+Auswirkung: Mittel — ohne Datum ist E-F36-7 nicht umsetzbar.
+Maßnahme: Optionales Feld `vorschau_url` je Projekt (nur `http://localhost:<port>`/`http://127.0.0.1:<port>`); `{projekt_origins}` daraus; fehlt es, kommt ein Eintrag mit `{projekt_origins}` nie in den Lauf (fail-closed).
+Status: erledigt durch `vorschau_url` (F36 WS-5a); Beleg `scripts/check-f36-ws5a-installation.mjs` (g)/(h), `src/projekte/projekte.test.ts`.
+Feature/Run: F36 WS-5a, 29.09.2026.
+
+**F-812** · `TECH_DEBT` · P3 · offen
+Titel: Freigabe/Installation schreibt das versionierte ressourcen.json.
+Beschreibung: „Freigeben & installieren“ schreibt `installation` (mit absoluten Pfaden dieses Rechners: node, cap-Ordner) und `freigabe: FREIGEGEBEN` in das versionierte `ressourcen.json` der Installationswurzel. Der Arbeitsbaum ist danach geändert; Stefan committet von Hand. Auf einem zweiten Rechner stimmen die Pfade nicht.
+Fundstelle: `src/ressourcen/installation.ts` (`schreibeInstallierteRessource`); `ressourcen.json`.
+Auswirkung: Niedrig — Einzelnutzer, ein Rechner. Arbeitet die Workforce an sich selbst, sperrt der geänderte Arbeitsbaum nach JEDER Installation jeden schreibenden Lauf, bis committet ist (die Erfolgsmeldung sagt das).
+Maßnahme: Bei Störung lokale Überlagerung (z. B. gitignoriertes `ressourcen.lokal.json` für `installation`/`freigabe`, Muster `projekte.lokal.json`).
+Status: offen.
+Feature/Run: F36 WS-5a, 29.09.2026.
+
+**F-813** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Zustandsändernde POST-Routen des Leitstands prüfen die Herkunft der Anfrage nicht.
+Beschreibung: Der Leitstand liest POST-Bodies ohne Prüfung von `Origin`, `Sec-Fetch-Site` oder Content-Type. Eine fremde Webseite im selben Browser kann per einfacher Anfrage (text/plain, `no-cors`) z. B. `POST /api/laeufe` oder eine Freigabe an `127.0.0.1` schicken. Gefunden im Reviewer-Pass F36 WS-5a an den Installationsrouten; diese beiden lehnen seit WS-5a fremde Browser-Anfragen ab (`istFremdeBrowserAnfrage`, 403), alle übrigen nicht.
+Fundstelle: `scripts/leitstand-server.mjs` (`leseBody`, POST-Routen; `istFremdeBrowserAnfrage`).
+Auswirkung: Mittel — Einzelnutzer, lokal gebunden, aber eine besuchte Seite könnte Läufe starten oder Entscheidungen festhalten.
+Maßnahme: `istFremdeBrowserAnfrage` zentral vor jede zustandsändernde Route setzen (eigener kleiner Auftrag mit Gate über alle POST-Routen). Vor dem F36-Reallauf beheben, weil auch POST …/freigabe einen schreibenden Lauf startet (Challenger 29.09.2026).
+Status: offen (Installationsrouten erledigt in F36 WS-5a).
+Feature/Run: F36 WS-5a, 29.09.2026.

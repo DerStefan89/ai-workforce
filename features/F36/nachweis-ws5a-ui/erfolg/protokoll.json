@@ -1,0 +1,42 @@
+[
+  {
+    "label": "Empfehlung am ZWINGEND-Start mit Knopf",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Klick „Freigeben & installieren“ → Bestätigungsblock",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": true,
+    "Knopf Installieren": true,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Bestätigungsblock sichtbar",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": true,
+    "Knopf Installieren": true,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Klick „Installieren“",
+    "Knopf Freigeben & installieren": true,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": false,
+    "Freigeben mit data-empfehlung-ids": true
+  },
+  {
+    "label": "Erfolg: Eintrag in „Wird genutzt“",
+    "Knopf Freigeben & installieren": false,
+    "Bestätigungsblock": false,
+    "Knopf Installieren": false,
+    "Erfolgsmeldung": true,
+    "Freigeben mit data-empfehlung-ids": true
+  }
+]
