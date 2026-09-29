@@ -41,7 +41,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   Freigabe selbst (WS-5):
   - nur von der Katalog-Adresse (`herkunft.url`),
   - nur in fester Version (Commit bzw. Paketversion),
-  - in einen eigenen Ordner, danach ins Projekt-`.claude/`;
+  - in einen eigenen Ordner, danach ins Projekt-`.claude/` (überholt für
+    Skills/Agents: Ort B ohne Ablage im Projekt, E-F36-8);
   - Lizenz, Kosten und Wirkung werden vor dem Klick „Freigeben &
     installieren" angezeigt (Katalogfelder `lizenz`, `kosten`, `wirkung`).
 - **E-F36-7 = A** (Stefan, 28.09.2026, Spike WS-2s S5): playwright-mcp
@@ -52,6 +53,24 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   Bekannte Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist
   laut Playwright keine Sicherheitsgrenze
   (`docs/projekt/zielfassung.md` §13.6).
+- **E-F36-8 = B** (Stefan, 28.09.2026): „Eigener Raum“. Der
+  Ausführungslauf lädt keine ungeprüften Skills oder Agents. Sichtbar ist
+  nur, was die Workforce nach Freigabe in ihren eigenen Ordner installiert:
+  `--add-dir <cap>/<id>` mit Write/Edit-Sperre, kein `--agents` (Ort B).
+  Ist S7 negativ, fällt die Entscheidung auf A zurück (Sperrliste).
+  Stand Spike S7 (29.09.2026, `state/spike-f36-ws2s.md` S7):
+  - Im Wortlaut **HÄLT NICHT**, und zwar an (b) für Agents. Projekt-Agents
+    bleiben in `init.agents`, weil das Laden von `--add-dir` an der Quelle
+    `project` hängt.
+  - Die Kombination V4a (`disableBundledSkills` + `skillOverrides` off +
+    Sperrliste `Skill(…)`/`Agent(…)`) lässt nur Ort-B-Einträge aufrufbar;
+    alle anderen sind erzwungen gesperrt.
+  - Challenger-Präzisierung ([EMPFEHLUNG] 29.09.2026), keine Entscheidung
+    Stefans: **S7 HÄLT mit
+    V4a.** „Sichtbar, aber deterministisch gesperrt“ genügt für
+    Projekt-Agents (siehe AK4).
+  - Die Namensliste der eingebauten Einträge driftet mit der CLI-Version
+    (F-791).
 
 ## Nicht-Ziele
 - **Schritt-Empfehlung** (Katalog schlägt einen zusätzlichen Workflow-
@@ -70,9 +89,10 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   nachweislich eine Außenwirkung, die kein lokaler Weg abdeckt, und Stefan
   benennt sie in einer Feature-Akte.
 - **Nutzer-Agents außerhalb des Katalogs** — nur freigegebene
-  Katalog-Einträge kommen ins Projekt-`.claude/`; Nutzer-/Plugin-Skills, die
-  heute ungefragt in der init-Zeile erscheinen (F-770), werden in WS-4 nur
-  sichtbar gemacht, nicht begrenzt.
+  Katalog-Einträge kommen in den Workforce-Ordner (Ort B, E-F36-8). Die
+  Skills, die heute ungefragt in der init-Zeile erscheinen, sind laut S7
+  eingebaut (F-770). WS-4 macht sie nur sichtbar, begrenzt werden sie in
+  WS-5 über V4a und F-791.
 - **Agents als eigene Werkzeugsatz-Rolle** — in V1 nur als
   Subagent-Empfehlung innerhalb der Ausführung (E-F36-3 = A).
 
@@ -126,8 +146,9 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     (`--tools` wie vor WS-2). S6 hat gemessen: beide brauchen im `-p`-Lauf
     keine `--allowedTools`-Freigabe — steht der Name in `--tools`, ist jeder
     geladene Skill/Agent aufrufbar; Einzelregeln `Skill(<id>)`/
-    `Agent(<name>)` begrenzen nichts. Das öffnete die ungeprüften Nutzer-/
-    Plugin-Skills (F-770) und eingebaute Agents wie `statusline-setup`;
+    `Agent(<name>)` begrenzen nichts. Das öffnete die ungeprüften Skills
+    (F-770; laut S7 eingebaut, nicht Nutzer-/Plugin-Skills) und eingebaute
+    Agents wie `statusline-setup`;
     AK4 („ohne Freigabe fehlt es“) bleibt im Wortlaut (Challenger-
     Entscheidung). `--disallowedTools Skill(<id>)`/`Agent(<name>)` sperrt
     dagegen gezielt (S6d), setzt aber eine vollständige Sperrliste voraus.
@@ -137,6 +158,7 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     Rollen/Arten bleiben bitgenau unverändert. Gate:
     `scripts/check-f36-ws2-laufzeit.mjs`. Skill/Agent in der Ausführung
     bleiben blockiert, bis F-770 gelöst ist (blockiert den F36-Reallauf).
+    Lösungsweg nach S7: V4a + F-791 in WS-5.
     Wenn `Agent` später aufgenommen wird, gehört der Satz „Subagenten nur im
     Vordergrund mit `run_in_background: false`“ in den Auftragstext jedes
     Startwegs dazu (Workflow und `POST /api/laeufe`; WS-0 P2) — in WS-2 schon
@@ -160,8 +182,9 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
 - **WS-5 — Installation (E-F36-6).** „Freigeben & installieren" aus der
   Liste „Passt, nicht installiert": Anzeige von Lizenz, Kosten und Wirkung
   vor dem Klick; Installation nur von `herkunft.url`, nur in fester Version
-  (Commit bzw. Paketversion), erst in einen eigenen Ordner, dann ins
-  Projekt-`.claude/`; setzt `installation` und `freigabe: FREIGEGEBEN`.
+  (Commit bzw. Paketversion), in den Workforce-Ordner `<cap>/<id>`
+  (Ort B, E-F36-8; keine Ablage im Projekt-`.claude/`); setzt `installation`
+  und `freigabe: FREIGEGEBEN`.
   Prüfung je `unterart` fail-closed (F-786): skill — `SKILL.md` mit
   Frontmatter; agent — `.md` mit Frontmatter; mcp — Serverstart mit den
   freigegebenen Einzelnamen.
@@ -177,9 +200,79 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     (heute erfasst WS-4 nur den Werkzeugnamen; E-F36-7).
   - **open-code-review**: `unterart` `skill` ist vermutet; WS-5 prüft
     fail-closed auf `SKILL.md`.
+  - **V4a-Startkombination** (E-F36-8 = B, Präzisierung S7;
+    `state/spike-f36-ws2s.md` S7). Gilt nur für `ausfuehrung`, sobald ein
+    Ort-B-Eintrag freigegeben ist, zusätzlich zum heutigen `baueAufruf`
+    (`--setting-sources project`, `--strict-mcp-config`):
+    `Skill`/`Agent` in `--tools`; je freigegebenem Eintrag
+    `--add-dir <cap>/<id>` + `Write(C:/…/<id>/**),Edit(C:/…/<id>/**)` in
+    `--disallowedTools`; `--settings` mit `enabledPlugins` aller aktiven
+    Plugins auf `false` (so gemessen; ohne diesen Schlüssel nicht gemessen),
+    `disableBundledSkills: true` und
+    `skillOverrides` „off“ für `design`, `doctor` und die nicht
+    freigegebenen Projekt-Skills; `--disallowedTools` `Skill(…)` für
+    dieselben Namen und `Agent(…)` für die eingebauten Agents (`claude`,
+    `Explore`, `general-purpose`, `Plan`, `statusline-setup`, Stand CLI
+    2.1.284) und die nicht freigegebenen Projekt-Agents. Die Projektnamen
+    liest der Start vor dem Lauf aus `<projekt>/.claude/skills|agents`.
+    Freigegebene Katalogeinträge, auch Projekt-Skills/-Agents, fallen aus
+    der Sperrliste heraus.
+  - **Init-Gate und Vorstart-Scan (F-791)**:
+    (1) Das init-Gate kennt nur die Menge „freigegeben ∪ bewusst gesperrt“;
+    jeder andere Name in `init.skills`/`init.agents` → Lauf abbrechen.
+    (2) Vorstart-Scan: Existiert unterhalb der Projektwurzel ein weiteres
+    `.claude/skills` oder `.claude/agents` außer dem der Wurzel → Lauf
+    abbrechen (fail-closed gegen verschachtelte, erst beim Dateizugriff
+    nachgeladene Skills).
+    (3) Das Gate wird beim CLI-Versionswechsel rot, wenn sich die Menge der
+    eingebauten Namen ändert.
+    Aus dem QA-Pass S7, bestätigt (Challenger-[EMPFEHLUNG], 29.09.2026):
+    (4) Keine Selbstanlage: `Write(**/.claude/**)` und `Edit(**/.claude/**)`
+    in `--disallowedTools`.
+    (4a) Rotfall in WS-5: Ein Lauf legt im selben Lauf einen Skill unter
+    `.claude/skills/` an, einmal per `Write` und einmal per `Bash`, und
+    versucht ihn aufzurufen. Ist er aufrufbar, eskaliert WS-5 an den
+    Challenger.
+    (4b) Enthält der Laufdiff Änderungen unter `.claude/`, ist das
+    Laufergebnis rot.
+    Den Folgelauf deckt bereits das init-Gate (1) ab: Ein im Vorlauf
+    angelegter Name ist weder freigegeben noch bewusst gesperrt.
+    (5) Namenskollision: Ein Ort-B-Eintrag mit dem Namen eines eingebauten
+    oder eines Projekt-Skills/-Agents wird bei der Freigabe abgelehnt und
+    beim Start erneut geprüft (Treffer → Lauf abbrechen, fail-closed).
+    Grund: `skillOverrides` und `Skill()`/`Agent()` greifen nach Namen,
+    nicht nach Herkunft.
+  - **Offen für die WS-5-Challenge** (QA-Pass S7):
+    - Kollision zweier Ort-B-Einträge mit gleichem Namen (von (5) nicht
+      erfasst).
+    - Sperrnamen aus dem Frontmatter-Feld `name` lesen, nicht aus Datei-
+      oder Ordnernamen.
+    - `.claude/commands` in Sperrliste und Scan aufnehmen.
+    - Das Init-Gate prüft zusätzlich `init.plugins`, `mcp_servers` und
+      `slash_commands`. Jeder Name mit `:` gilt als unbekannt.
+    - Für Skills gilt strenger `init.skills` ⊆ freigegeben.
+    - Abbruch vor dem ersten `tool_use`.
+    - Die Referenzmenge je CLI-Version und ihre Abhängigkeit vom
+      Anmeldestatus (`schedule`) festlegen.
+    - Scan-Umfang festlegen: `node_modules`, `.git`, Junctions/Symlinks.
+    - Ort-B-Layout festschreiben: nur `<cap>/<id>/.claude/skills|agents/…`,
+      keine eigene `settings.json`.
+    - Sind mehrere `--add-dir` und ein freigegebener Projekt-Agent unter
+      V4a aufrufbar? Das ist noch nicht gemessen.
+    - Sperren über den Text des `tool_result` erkennen, denn
+      `permission_denials` bleibt leer.
+    - Grenze der Windows-Kommandozeile prüfen.
 - **Reallauf.** Ein nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und im selben Durchstich genutzt (init-Zeile und
-  Aufruf beobachtet, WS-4).
+  Aufruf beobachtet, WS-4). Zusätzlich wird beobachtet, ob das Modell
+  gesperrte Agents ansteuert. Geschieht das wiederholt, wird die
+  S7-Präzisierung zu E-F36-8 verworfen. Vor dem Reallauf festzulegen
+  (QA-Pass S7):
+  - Zählgröße: `Agent`-`tool_use` mit `subagent_type` aus der Sperrliste,
+    erkannt am Denial-Text;
+  - Schwelle und Stichprobe;
+  - ein Auftrag ohne Aufforderung zu gesperrten Agents;
+  - wer urteilt.
 - **WS-4 — Beobachtung (F-730).** Läuft parallel auf
   `feat/f36-ws4-beobachtung`: init-Zeile (tools, agents, skills,
   mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
@@ -207,6 +300,20 @@ gebaut. Jeder Workstream wird vor dem Bau präzisiert (eigene Challenge).
   Stand WS-2 (28.09.2026): nur der Rotfall ist belegt (kein `Skill`/`Agent`
   ohne Freigabe, `scripts/check-f36-ws2-laufzeit.mjs` (a)/(d)); der
   Grünfall ist blockiert durch F-770 (Spike WS-2s S6).
+  Stand S7 (29.09.2026): Der Grünfall ist über Ort B + V4a real belegt
+  (`probe-skill`/`probe-agent` aufgerufen, alles andere gesperrt;
+  `state/spike-f36-ws2s.md` S7). **Challenger-Präzisierung ([EMPFEHLUNG]
+  29.09.2026) zu E-F36-8 = B, keine Entscheidung Stefans: „S7 HÄLT mit
+  V4a.“** AK4 heißt
+  „nicht aufrufbar ohne Freigabe“, nicht „unsichtbar“:
+  - Projekt-Agents dürfen im init sichtbar sein, wenn `--disallowedTools`
+    sie deterministisch sperrt.
+  - Freigegebene Katalogeinträge (auch Projekt-Agents/-Skills) fallen aus
+    der Sperrliste heraus.
+  - Verwerfen, wenn das Modell im Reallauf wiederholt gesperrte Agents
+    ansteuert.
+  AK4 bleibt offen, bis WS-5 die Kombination samt Init-Gate (F-791) baut
+  und der Reallauf sie belegt.
 - AK5 (WS-2) Ein freigegebener lokaler MCP erscheint nur im
   `ausfuehrung`-Schritt in `mcpConfig`, nur mit seinen freigegebenen
   Einzelnamen in `--allowedTools`; jede andere Rolle behält

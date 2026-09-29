@@ -142,5 +142,5 @@ feature.md`) (Stand 22.09.2026).
 - F-684 · BUG · Product-Coach-Vorlage "Auftrag an den Baudurchgang" schreibt ai-workforce-spezifische Prüfungen in JEDEN Auftrag — auch in Fremdprojekte, wo diese Dateien nicht existieren.
 - F-690 · BUG · Ein über F41 neu angelegtes Projekt ist für Claude Code nicht "trusted" — die kopierte `.claude/settings.json`-Permission-Allowlist greift real nicht.
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
-- F-770 · HARNESS_IMPROVEMENT · Rund 20 Nutzer- bzw. Plugin-Skills erscheinen trotz `--setting-sources project` in der init-Zeile — ohne Katalog und ohne Freigabe.
 - F-774 · HARNESS_IMPROVEMENT · Die Capability Library hat keinen Weg in die Läufe.
+- F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.

@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.35 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.36 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -68,6 +68,8 @@ v1.32 → v1.33: **§13.6 um E-F36-2/3/4 ergänzt, §9.1 Nachtrag E-F36-4, F36 n
 v1.33 → v1.34: **§13.6 um E-F36-5 und E-F36-6 ergänzt** (Stefan, 28.09.2026, F36 WS-1b): E-F36-5 = A (Recherche `docs/harness/kandidaten-2026-09-15.md` wird übernommen — Gruppe 1 Laufzeit-Fähigkeiten in den Katalog, `freigabe: OFFEN` mit `anwendbar_wenn`; Gruppe 2 Produkt-Bibliotheken in die Stack-Liste für den Architekten; Gruppe 3 Referenzen in den Design-Schnitt; vorab nichts installiert). E-F36-6 = A (die Workforce installiert nach Freigabe selbst, neuer F36 WS-5: nur von der Katalog-Adresse, nur in fester Version, erst in einen eigenen Ordner, dann ins Projekt-`.claude/`; Lizenz, Kosten und Wirkung vor dem Klick angezeigt). F36-Reihenfolge: WS-1b → WS-2 → WS-3 → WS-5 → Reallauf.
 
 v1.34 → v1.35: **§13.6 um E-F36-7 ergänzt** (Stefan, 28.09.2026, F36 WS-2s): E-F36-7 = A — playwright-mcp bleibt `wirkung: lokal`, nur mit `--allowed-origins` auf die Projekt-URL mit Port und `--output-dir` außerhalb des Projekts; bekannte Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut Playwright keine Sicherheitsgrenze (`state/spike-f36-ws2s.md` S5).
+
+v1.35 → v1.36: **§13.6 um E-F36-8 ergänzt** (Stefan, 28.09.2026; Spike S7 am 29.09.2026): E-F36-8 = B („Eigener Raum“): Der Ausführungslauf lädt keine ungeprüften Skills oder Agents, sichtbar ist nur der Ort-B-Ordner der Workforce. Challenger-Präzisierung nach S7 ([EMPFEHLUNG] 29.09.2026, keine Entscheidung Stefans): „S7 HÄLT mit V4a“, AK4 heißt „nicht aufrufbar ohne Freigabe“, nicht „unsichtbar“ (`state/spike-f36-ws2s.md` S7).
 
 ---
 
@@ -910,6 +912,24 @@ Grenze: Weiterleitungen umgehen die Origin-Sperre, das Flag ist laut
 Playwright ausdrücklich keine Sicherheitsgrenze. Beleg:
 `state/spike-f36-ws2s.md` S5. Die Adresse jedes `browser_navigate` wird
 ab F36 WS-5 in der Beobachtung festgehalten.
+
+**E-F36-8 = B** *(Stefan, 28.09.2026; Spike S7 29.09.2026)* — „Eigener Raum“:
+Der Ausführungslauf lädt keine ungeprüften Skills oder Agents. Sichtbar ist
+nur, was die Workforce nach Freigabe in ihren eigenen Ordner installiert
+(`--add-dir <cap>/<id>`, Write/Edit-Sperre, kein `--agents`). Ist S7 negativ,
+fällt die Entscheidung auf A zurück (Sperrliste). Stand S7 (CLI 2.1.284):
+Nutzer-, Plugin- und claude.ai-Quellen lädt `--setting-sources project`
+ohnehin nicht. Eingebaute und Projekt-Skills blendet die Kombination
+`disableBundledSkills` + `skillOverrides` aus. Eingebaute und Projekt-Agents
+bleiben im init und werden per `--disallowedTools Agent(…)` erzwungen
+gesperrt. **Challenger-Präzisierung ([EMPFEHLUNG] 29.09.2026), keine
+Entscheidung Stefans: „S7 HÄLT mit V4a.“** AK4 heißt „nicht aufrufbar ohne Freigabe“, nicht
+„unsichtbar“. Projekt-Agents dürfen im init sichtbar sein, wenn
+`--disallowedTools` sie deterministisch sperrt. Freigegebene Katalogeinträge
+(auch Projekt-Agents/-Skills) fallen aus der Sperrliste heraus. Verwerfen,
+wenn das Modell im Reallauf wiederholt gesperrte Agents ansteuert. Die
+Namensliste der eingebauten Einträge driftet mit der CLI-Version. Dagegen
+baut WS-5 ein Init-Gate und einen Vorstart-Scan (F-791).
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur
