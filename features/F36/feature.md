@@ -7,7 +7,7 @@ F36
 Capability Library wirksam machen
 
 ## Status
-Status: IN_ARBEIT
+Status: FEATURE_GATE
 
 Neu geschnitten: Stefan, 28.09.2026 (vorher „Capability Library Expansion“) — Anlass F-774: Katalog, Scout und Freigabe enden im Register und erreichen keinen Lauf.
 
@@ -18,6 +18,11 @@ Eine im Katalog (`ressourcen.json`) freigegebene Fähigkeit — Skill,
 Agent oder lokaler MCP-Server — kommt in einem echten `ausfuehrung`-Lauf
 an, wird dort empfohlen und ihre Nutzung ist beobachtbar. Durchstich:
 **Katalog → Freigabe → Lauf → Empfehlung → Beobachtung.**
+
+Gebauter Umfang (Review-Pass 29.09.2026): Skills (Ort B) und lokale MCPs
+kommen in den Lauf. Agents (extern und Projekt) und Projekt-Skills bleiben in
+der Ausführung gesperrt, `Agent` steht nie in `--tools` (F-815, Bekannte
+Grenzen). Das Ziel ist für Agents damit nicht erreicht.
 
 Ausgangslage (Fakt, init-Zeilen realer haushaltsbuch2-Läufe vom
 28.09.2026 in `kontrollzustand-roh/`): `tools` = `Bash, Edit, GetTask,
@@ -133,7 +138,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   `docs/harness/kandidaten-2026-09-15.md` sind eingeordnet:
   `features/F36/katalog-uebernahme.md` (Gruppe, Ziel, Grund/Unsicherheit
   je Kandidat). Gruppe 1 als `extern`-Einträge in `ressourcen.json`
-  (`OFFEN`, ohne `installation`, `anwendbar_wenn` als Vorschlag), Gruppe 2
+  (`OFFEN`, ohne `installation`, `anwendbar_wenn` als Vorschlag; seit #281
+  sind `frontend-design` und `playwright-mcp` `FREIGEGEBEN`), Gruppe 2
   in `docs/harness/stack-kandidaten.md` (noch nicht verdrahtet, das ist
   WS-3). Schema-Ergänzung `lizenz`/`kosten` (nur `extern`, optional) für
   die Anzeige vor „Freigeben & installieren". Dazu F-781 (Vormerken-
@@ -233,7 +239,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     `{projekt_origins}` und `{ausgabe_ordner}` erlaubt, jeder andere
     `{…}` wird abgelehnt. `playwright-mcp` trägt `npm:@playwright/mcp`,
     `bin` `cli.js` (aus dem Paket geprüft) und acht Werkzeugnamen (gegen
-    `tools/list` geprüft); `freigabe` bleibt `OFFEN`, keine `installation`.
+    `tools/list` geprüft); `freigabe` blieb mit WS-5a `OFFEN`, keine
+    `installation` (seit dem Reallauf, #281: `FREIGEGEBEN`, 0.0.83).
   - **Projekt-URL (E-F36-7):** Feld `vorschau_url` im Projektregister
     (`projekte.json`/`projekte.lokal.json`, `loeseProjektPfade`), nur
     `http://localhost:<port>` bzw. `http://127.0.0.1:<port>`. Beim Start:
@@ -274,7 +281,7 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     echter Installationsnachweis `features/F36/nachweis-ws5a-installation/`
     (`@playwright/mcp` 0.0.83, alle acht Namen gefunden); Render-Nachweis
     `features/F36/nachweis-ws5a-ui/`.
-- **WS-5b — Ort-B-Skills.** **Stand: gebaut, nicht gemergt (29.09.2026).**
+- **WS-5b — Ort-B-Skills.** **Stand: gemergt (#278, 29.09.2026).**
   Zuschnitt nach Challenger-[EMPFEHLUNG] 29.09.2026 (GO_STANDARD):
   - **Umfang:** Nur `extern`-Einträge mit `unterart` `skill`. `Agent` bleibt
     aus `--tools`.
@@ -294,7 +301,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       Commit-SHA, inhalt_hash = sha256}` (R4). Agent bleibt `{pfad, version}`.
     - `frontend-design` trägt `skill_pfad` `skills/frontend-design`, geprüft
       an der realen Plugin-Struktur (`features/F36/nachweis-ws5b/README.md`).
-      Er bleibt `OFFEN`, ohne `installation`.
+      Er blieb mit WS-5b `OFFEN`, ohne `installation`; seit dem Reallauf
+      (#281) ist er `FREIGEGEBEN` und installiert.
   - **Installation** (`src/ressourcen/installation.ts` +
     `skill-installation.ts`, dieselben Routen, derselbe `eintragHash`-/409-
     Mechanismus, eine Installation zur Zeit, Zeitgrenze):
@@ -386,8 +394,9 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     Render-Nachweis: `features/F36/nachweis-ws5b-ui/`.
   - **Zurückgestellt** (F-815):
     - Agents (extern + Projekt), Projekt-Skills in der Ausführung, E-F36-3;
-    - Rot-Fall „fremde Origin wird verweigert“ mit installiertem
-      playwright-mcp (Reallauf);
+    - ~~Rot-Fall „fremde Origin wird verweigert“ mit installiertem
+      playwright-mcp (Reallauf)~~ — belegt in `nachweis-reallauf/` A
+      (`ERR_BLOCKED_BY_CLIENT`);
     - `open-code-review`: `unterart` weiter vermutet, installierbar erst mit
       `installation_vorlage`.
   - **Offene QA-Punkte aus S7, Stand WS-5b:**
@@ -428,6 +437,14 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       `init.skills` = erwartete Ort-B-Skills (das Gate prüft nur ⊆) und der
       Status von `mcp_servers`.
   - **Stand 29.09.2026:**
+    - Beleg im Repo (Review-Pass H-B): `features/F36/nachweis-reallauf/`
+      Abschnitt C und `auszug-laeufe.json` — init-Zeilen, Skill-/MCP-
+      `tool_use` samt `tool_result`, `permission_denials` und sha256 der
+      Rohströme aller vier Läufe; dazu cap-Zeitstempel, Installation (#281)
+      und Freigabe-Entscheidungen. Nicht gespeichert und daher nicht belegt:
+      die Anzeige der Empfehlung und der Klickweg für `playwright-mcp`
+      (F-825, F-838 (4)). Die Nutzung von `frontend-design` folgte im
+      Folge-Workflow F3, nicht im selben Durchstich wie die Installation.
     - F2 in haushaltsbuch2 über die hoch-Kette gebaut und abgenommen
       (Workflow `router-59f6cbd8…`, Läufe `1c4a1163`/`7b6d0f40`, Review
       `fbb5839e` BEREIT, AK1–3 ERFUELLT).
@@ -503,15 +520,17 @@ Bau präzisiert (eigene Challenge).
   29.09.2026) zu E-F36-8 = B, keine Entscheidung Stefans: „S7 HÄLT mit
   V4a.“** AK4 heißt
   „nicht aufrufbar ohne Freigabe“, nicht „unsichtbar“:
-  - Projekt-Agents dürfen im init sichtbar sein, wenn `--disallowedTools`
-    sie deterministisch sperrt.
+  - Projekt-Agents dürfen im init sichtbar sein, wenn sie deterministisch
+    nicht aufrufbar sind (gebaut: `Agent` fehlt in `--tools`).
   - Freigegebene Katalogeinträge (auch Projekt-Agents/-Skills) fallen aus
-    der Sperrliste heraus.
+    der Sperrliste heraus. **Gebaut ist das nicht:** Projekt-Skills bleiben
+    auch bei `FREIGEGEBEN` gesperrt (Identität ungeklärt, F-816), Agents
+    sind zurückgestellt (F-815). Aus der Sperrliste fallen nur Ort-B-Skills.
   - Verwerfen, wenn das Modell im Reallauf wiederholt gesperrte Agents
     ansteuert.
   AK4 bleibt offen, bis WS-5 die Kombination samt Init-Gate (F-791) baut
   und der Reallauf sie belegt.
-  Stand WS-5b (29.09.2026, gebaut, nicht gemergt): Für Ort-B-Skills gebaut
+  Stand WS-5b (29.09.2026, gemergt #278): Für Ort-B-Skills gebaut
   und belegt.
   - Mit installiertem, freigegebenem und empfohlenem Skill steht `Skill` in
     `--tools` (Gate `check-f36-ws5b-skill` (c)); ohne Ort-B-Skill fehlt es
@@ -527,9 +546,15 @@ Bau präzisiert (eigene Challenge).
   - Agents sind nicht Teil von WS-5b (F-815). Der Reallauf belegt AK4 im
     Durchstich.
   Stand Reallauf (29.09.2026): real belegt. Im Korrekturlauf `7b6d0f40`
-  (haushaltsbuch2) stand der installierte, freigegebene und empfohlene
-  `frontend-design` in `init.skills` (einziger Eintrag). Kein Agent, 0
-  Denials. Für Agents gilt weiter F-815.
+  (haushaltsbuch2) stand der installierte, freigegebene und (nur mittelbar
+  belegt, siehe Reallauf) empfohlene `frontend-design` in `init.skills` (einziger Eintrag). Kein Agent, 0
+  Denials. Für Agents gilt weiter F-815. Beleg:
+  `features/F36/nachweis-reallauf/auszug-laeufe.json` (`7b6d0f40`; zum
+  Vergleich `1c4a1163` vor der Installation: kein `Skill` in `init.tools`).
+  Seit dem Review-Pass lehnt der Startvorlage-Validator `Skill`, `Agent`,
+  `Task` und `mcp__…` in `erlaubte_werkzeuge` ab (H-A); ohne Ort-B-Skill
+  kann auch eine Projekt-Startvorlage `Skill`/`Agent` nicht öffnen (Gate
+  `check-f36-ws2-laufzeit` (e), Test `startvorlage.test.ts`).
 - AK5 (WS-2) Ein freigegebener lokaler MCP erscheint nur im
   `ausfuehrung`-Schritt in `mcpConfig`, nur mit seinen freigegebenen
   Einzelnamen in `--allowedTools`; jede andere Rolle behält
@@ -541,6 +566,10 @@ Bau präzisiert (eigene Challenge).
     in `--allowedTools` genau die 8 freigegebenen Einzelnamen. Die übrigen
     Werkzeuge sind im init sichtbar, aber nicht aufrufbar
     (`browser_run_code_unsafe` und `browser_evaluate` verweigert).
+  - Auszug der Rohströme: `features/F36/nachweis-reallauf/auszug-laeufe.json`
+    (`7b6d0f40` init, `74290fb5` `browser_navigate` auf `file:` → blockiert).
+    Das Argv (`--allowedTools`) steht nicht im Rohstrom; die 8 Einzelnamen
+    belegt Nachweis B über denselben Produktionsweg.
 - AK6 (WS-2, an Ort B angepasst in WS-5b) Freigegebene Ort-B-Skills liegen
   nach der Installation in `~/.ai-workforce/cap/<id>/.claude/skills/<name>/`
   und kommen je Lauf per `--add-dir <cap>/<id>` (schreibgesperrt) in die
@@ -553,6 +582,11 @@ Bau präzisiert (eigene Challenge).
   (Workforce-Ordner per `--add-dir`, Spike WS-2s) — schreibende Läufe
   verlangen einen sauberen Arbeitsbaum, beim Laufstart wird nichts ins
   Projekt kopiert.
+  Endstand (Review-Pass 29.09.2026): erfüllt. Gate `check-f36-ws5b-skill`
+  (a), (c), (n); echter Lauf `nachweis-ws5b/` 9b/9c; im Reallauf lag
+  `frontend-design` unter `~/.ai-workforce/cap/frontend-design/.claude/skills/`
+  (`nachweis-reallauf/` C). Grenze: Der Laufdiff sieht keine ignorierten
+  Dateien (F-832).
 - AK7 (WS-3) Die Empfehlung ist deterministisch (gleicher Auftrag +
   Katalog → gleiche Liste) und erscheint am ZWINGEND-Start sowie als
   Zeile im Auftrag. Prüfweg: Unit-Test + Gate am HTTP-Rundlauf.
@@ -563,20 +597,37 @@ Bau präzisiert (eigene Challenge).
   „Gleicher Auftrag“ heißt dabei: gleiche Router-`task_typen` und gleicher
   Dateistand des Projekts (`git ls-files`). Render-Nachweis (Workflow-
   Ansicht 400 px und breit, Workboard mit Freigabe und 409-Fall):
-  `features/F36/nachweis-ws3-ui/`. Offen: Beleg im Reallauf.
+  `features/F36/nachweis-ws3-ui/`.
+  Endstand (Review-Pass 29.09.2026): erfüllt über Unit-Tests, Gate und
+  Render-Nachweis. Im Reallauf wurde die Empfehlung am ZWINGEND-Start
+  angezeigt und beobachtet (F-825, F-826). Gespeichert ist die Anzeige in
+  keinem Artefakt, einen Reallauf-Beleg im Repo gibt es dafür nicht.
 - AK8 (WS-4) Je Lauf sind init-Zeile und Skill-/Agent-/MCP-Aufrufe in der
   Laufansicht sichtbar. Prüfweg: Gate + Render-Nachweis.
+  Endstand (Review-Pass 29.09.2026): erfüllt. Tests `beobachtung.test.ts`,
+  `beobachtung-zeile.test.mjs`, Render-Nachweis `nachweis-ws4-ui/`. Ein
+  eigenes WS-4-Gate-Skript gibt es nicht, die Tests laufen in `npm run
+  check`. Im Reallauf trägt die Laufakte `beobachtung` (`init_skills`,
+  `init_tools`, `init_mcp_server`, `init_agents`, `skill_aufrufe`), z. B.
+  `8cee6c98`: `skill_aufrufe` = [`frontend-design`].
 - AK9 `npm run check` ist grün.
+  Endstand (Review-Pass 29.09.2026): siehe Abschnitt „Review-Pass
+  29.09.2026“.
 - AK10 (WS-1b) Jeder der 38 Kandidaten („Aufnehmen"/„Pilot") steht in
   `features/F36/katalog-uebernahme.md` mit Gruppe und Ziel; jeder Eintrag
   der Gruppe 1 steht in `ressourcen.json` als `extern`, `OFFEN`, ohne
   `installation`; `lizenz`/`kosten` sind nur bei `extern` zulässig.
   Prüfweg: Unit-Tests `validiereRessourcenDaten` (Grün/Rot), Gates
   `check-f19-ressourcen` und `check-f24-capabilities` grün.
+  Endstand (Review-Pass 29.09.2026): erfüllt für den Stand von WS-1b. Seit
+  dem Reallauf (#281) sind `frontend-design` und `playwright-mcp` als
+  einzige Gruppe-1-Einträge `FREIGEGEBEN` mit `installation`, alle übrigen
+  bleiben `OFFEN` ohne `installation`.
 - AK11 (WS-5) Eine Installation nutzt nur die Katalog-Adresse (`herkunft.url`
   bzw. `herkunft.paket`, E-F36-9) und eine feste
-  Version, legt erst in einen eigenen Ordner, dann ins Projekt-`.claude/`
-  (für MCP: nur in den eigenen Ordner, Ort B),
+  Version, legt nur in einen eigenen Ordner (Ort B, `~/.ai-workforce/cap/<id>`;
+  die ursprüngliche Ablage „danach ins Projekt-`.claude/`“ ist durch
+  E-F36-8 überholt, nichts kommt ins Projekt)
   und zeigt vorher Lizenz, Kosten und Wirkung. Prüfweg: wird vor dem Bau
   präzisiert.
   Präzisiert für MCP (WS-5a, 29.09.2026, E-F36-9): Ein MCP-Eintrag (extern,
@@ -619,6 +670,63 @@ Bau präzisiert (eigene Challenge).
   - In `8cee6c98` (F3) wurde `frontend-design` per Skill-`tool_use`
     aufgerufen („Launching skill: frontend-design“).
   - `playwright-mcp` wurde nicht wirksam genutzt (F-827).
+  - Beleg im Repo: `features/F36/nachweis-reallauf/auszug-laeufe.json`
+    (Rohstrom `8cee6c98`, sha256 `84910fc0…`: `tool_use` `Skill`
+    `{"skill":"frontend-design"}`, `tool_result` „Launching skill:
+    frontend-design“, `is_error: false`). „Empfohlen“ ist nur mittelbar
+    belegt (siehe Reallauf, Stand 29.09.2026).
+
+## Review-Pass 29.09.2026
+Feature-Review-Pass vor FEATURE_GATE über #267–#281 (dazu #277 F-813 und
+#279 F-814). Subagenten `code-reviewer` und `qa` mit frischem Kontext.
+
+- **Erster Pass:** beide „nicht freigegeben“. Drei HOCH-Befunde:
+  - H-A: Eine Projekt-Startvorlage konnte `Skill`, `Agent`, `Task` und
+    `mcp__…` öffnen (F-839).
+  - H-B: Die Reallauf-Belege standen nur in Prosa.
+  - H-C: Die Sicherheitsgrenzen waren veraltet, das Ziel nannte Agents.
+  - MITTEL/NIEDRIG → F-831 bis F-838.
+- **Fixpaket (Branch `docs/f36-feature-review`):**
+  - H-A: Validator plus Rotfälle (`startvorlage.test.ts`, Gate
+    `check-f36-ws2-laufzeit` (e), kalibriert).
+  - H-B: `nachweis-reallauf/` Abschnitt C mit `auszug-laeufe.json` aus den
+    vorhandenen Rohströmen.
+  - H-C und F-837: Doku nachgezogen.
+  - F-832: nur der Satz korrigiert, der Code-Fix bleibt offen (über dem
+    Umfang, siehe Finding).
+- **Kurz-Review-Pass über das Fixpaket:** `code-reviewer` (H-A) und `qa`
+  (H-B, H-C) beide „freigegeben mit Hinweisen“. Die Hinweise sind
+  eingearbeitet:
+  - ADR-Satz zu F-839;
+  - `readonly`;
+  - Verweis AK9 auf diesen Abschnitt;
+  - WS-1b-, AK4- und Origin-Rotfall-Zeilen;
+  - Zählregel-Vermerk im Reallauf-README.
+- **`npm run check`** auf dem Endstand des Fixpakets (Basis `54d6eb6` plus
+  uncommittete Änderungen, 29.09.2026): Exit 0, 1060/1060 Tests.
+
+| AK | Urteil | Beleg |
+|---|---|---|
+| AK1 | erfüllt | `state/spike-f36-werkzeugsatz.md` P1–P4, Rohstrom stichprobenartig geprüft |
+| AK2 | erfüllt | `ressourcen.test.ts`, Gate `check-f19-ressourcen` |
+| AK3 | erfüllt | `ressourcen.test.ts` (`anwendbar_wenn`) |
+| AK4 | erfüllt für Skills (Ort B); Agents zurückgestellt (F-815) | Gates ws5b (c)/(o), ws2 (a)/(e); `nachweis-ws5b/` 9b/9b′/9b″; Reallauf `7b6d0f40` (`auszug-laeufe.json`) |
+| AK5 | erfüllt | Gate ws2 (b)/(c); `nachweis-reallauf/` B; Reallauf `7b6d0f40`/`74290fb5` (C) |
+| AK6 | erfüllt, Grenze F-832 | Gate ws5b (a)/(c)/(n); `nachweis-ws5b/` 9b/9c; Reallauf C |
+| AK7 | erfüllt; Reallauf-Anzeige nicht als Artefakt gespeichert | Unit-Tests `baueEmpfehlung`, Gate ws3 (a)–(h), `nachweis-ws3-ui/` |
+| AK8 | erfüllt | `beobachtung.test.ts`, `beobachtung-zeile.test.mjs`, `nachweis-ws4-ui/`; Laufakte `8cee6c98` `skill_aufrufe` |
+| AK9 | erfüllt | `npm run check` Exit 0, 1060/1060 Tests (29.09.2026, Endstand Fixpaket) |
+| AK10 | erfüllt (Stand WS-1b; seit #281 zwei Einträge FREIGEGEBEN) | `katalog-uebernahme.md`, Gates `check-f19-ressourcen`, `check-f24-capabilities` |
+| AK11 | erfüllt (MCP und Skill) | Gates ws5a (a)–(k), ws5b (a), (d)–(j); `nachweis-ws5a-installation/`, `nachweis-ws5b/` 9a; UI-Nachweise |
+| AK12 | erfüllt; „empfohlen“ nur mittelbar belegt | Reallauf `8cee6c98` (`auszug-laeufe.json`: Skill-`tool_use` + „Launching skill: frontend-design“) |
+
+Offen für die Abnahme (keine Blocker, alle als Findings):
+- F-831 bis F-836, F-838;
+- F-832 (Code);
+- F-815/F-816 (Agents, Projekt-Skills);
+- F-791 (Namensdrift, GetTask);
+- F-818, F-822, F-823;
+- F-824 bis F-830.
 
 ## Dependencies
 - F19 (Ressourcen-Katalog) — `schemas/ressourcen.schema.json`,
@@ -697,9 +805,9 @@ Bau präzisiert (eigene Challenge).
 - WS-5a Anfragen fremder Seiten: Die beiden Installationsrouten lehnen
   Browser-Anfragen einer fremden Seite ab (`Sec-Fetch-Site` nicht
   same-origin/none bzw. fremder `Origin` → 403, Gate (j)). Ohne beide Header
-  (Nicht-Browser-Client auf dem Rechner) bleibt die Anfrage zulässig. Die
-  übrigen POST-Routen des Leitstands prüfen weiterhin nichts davon (bestand
-  schon vorher, F-813).
+  (Nicht-Browser-Client auf dem Rechner) bleibt die Anfrage zulässig. Seit
+  F-813 (#277) gilt derselbe CSRF-Haken zentral für alle nicht lesenden
+  Leitstand-Routen (Gate `check-f813-csrf`).
 - WS-5a Neuinstallation: Ist eine Installation kaputt (cap-Ordner gelöscht,
   Node-Pfad geändert), gilt sie als nicht verfügbar; einen Weg zur
   Neuinstallation über die Oberfläche gibt es nicht — `installation`/
@@ -726,12 +834,24 @@ Bau präzisiert (eigene Challenge).
   Installation schreibt dort `installation` (mit absoluten Pfaden dieses
   Rechners) und `FREIGEGEBEN`. Nach einer Installation committet Stefan
   (F-812); arbeitet die Workforce an sich selbst, sperrt der geänderte
-  Arbeitsbaum bis dahin jeden schreibenden Lauf.
+  Arbeitsbaum bis dahin jeden schreibenden Lauf. Seit #281 stehen die
+  Installationen von `frontend-design` und `playwright-mcp` mit absoluten
+  Pfaden dieses Rechners (`C:\Users\stefa\…`, node-Pfad) im versionierten
+  Katalog. Auf einem anderen Rechner oder unter einem anderen Nutzerpfad
+  gelten sie als nicht verfügbar; alle Checkouts und Worktrees desselben
+  Rechners nutzen dieselben Installationen in `~/.ai-workforce/cap`.
 - WS-5b Laufdiff: `claude_ordner_veraendert` sieht nur, was `git status`
-  zeigt, also keine ignorierten Dateien. Eine per Bash angelegte, von
-  `.gitignore` erfasste Datei unter `.claude/` bliebe unsichtbar. Write/Edit
-  sperrt `Write(**/.claude/**)` davon unabhängig (9c gemessen), und die
-  Bash-Allowlist lehnt schreibende Befehle ab.
+  zeigt, also keine ignorierten Dateien. Write/Edit auf `.claude/` sperrt
+  `Write(**/.claude/**)` davon unabhängig (9c gemessen). Umgehbar ist die
+  Prüfung trotzdem: Die Bash-Allowlist lässt `npm install` sowie `npm run
+  check:*|build:*|…` zu, und `package.json` und `.gitignore` sind per Write
+  änderbar. Ein Lauf kann also ein npm-Skript ergänzen, das unter `.claude/`
+  schreibt, und `.claude/` ignorieren lassen; der Laufdiff zeigt dann nur
+  die geänderte `.gitignore`/`package.json` (aus dem Code abgeleitet, nicht
+  gemessen). Folgeläufe schützt der Vorstart-Scan (Dateisystem, nicht git).
+  Maßnahme offen (F-832): ein Vorher-/Nachher-Vergleich; `git status
+  --ignored` allein reicht nicht, weil ignorierte Dateien wie
+  `.claude/settings.local.json` schon vor dem Lauf da sein dürfen.
 - WS-5b lesende Bash-Befehle: Im Rotfall-Lauf 9c lief `pwd && ls -la
   .claude/skills` ohne Allowlist-Eintrag. Die CLI lässt lesende Befehle
   offenbar zu. Der Skript-Hinweis im Bestätigungsblock sagt das seit dem
@@ -748,14 +868,17 @@ Bau präzisiert (eigene Challenge).
 - WS-5b Identität: Projekt-Skills werden nach Namen gesperrt. Eine
   Freischaltung von Projekt-Skills/-Agents braucht vorher eine Klärung der
   Identität (F-816).
-- WS-5b Anfragen fremder Seiten: F-814 (Host-Header, DNS-Rebinding) ist noch
-  offen. Die Findings-Akte nennt es „spätestens vor Freigabe von
-  Skill-/Agent-Installation“.
+- WS-5b Anfragen fremder Seiten: F-814 (Host-Header, DNS-Rebinding) ist
+  erledigt (#279): Der Host-Haken prüft vor allen Routen, zulässig ist nur
+  `127.0.0.1|localhost|[::1]:<gebundener Port>` (Gate `check-f814-host`).
+  Offen sind F-822 (404-Orakel des Projekt-Dispatchers vor dem Host-Haken,
+  P3) und F-823 (eine ungültige absolute Request-URI beendet den
+  Leitstand-Prozess, P2).
 - WS-5b Lesen gesperrter Skills: „Nicht aufrufbar“ gilt für das
   Skill-Werkzeug. Den Inhalt eines gesperrten Projekt-Skills kann der Lauf mit
   Read lesen und befolgen (9c: `ponytail/SKILL.md` gelesen). Die Zählgröße im
-  Reallauf erfasst das nicht; der Challenger entscheidet, ob Read auf
-  `.claude/skills|commands` mitgezählt wird.
+  Reallauf erfasst das nicht; entschieden (Challenger, 29.09.2026): Read auf
+  `.claude/skills|commands` wird nicht mitgezählt.
 - WS-5b Init-Gate: Geprüft wird nur die erste init-Zeile. Eine spätere
   `system`/`init`-Zeile, etwa nach einer Kontext-Zusammenfassung, bleibt
   ungeprüft. Slash-Commands (`init.slash_commands`) prüft das Gate nicht; die
@@ -768,3 +891,28 @@ Bau präzisiert (eigene Challenge).
   Ort-B-Lauf, weil die Sperrregel sonst zerfiele (fail-closed). Bricht eine
   Skill-Installation hart ab, bleibt `cap/<id>` liegen; es gilt dasselbe wie
   in „WS-5a Neuinstallation“.
+- Agents (Review-Pass 29.09.2026): Weder externe noch Projekt-Agents sind in
+  der Ausführung aufrufbar, `Agent` steht nie in `--tools`. Projekt-Skills
+  bleiben auch bei `FREIGEGEBEN` gesperrt. Zurückgestellt nach F-815
+  (Identität F-816). E-F36-3 (Agent als Subagent-Empfehlung) ist damit nicht
+  umgesetzt.
+- GetTask: `GetTask` steht in `init.tools` jedes Ausführungslaufs (auch im
+  Reallauf), obwohl es der Werkzeugsatz nicht nennt. Das Init-Gate prüft es
+  nicht, seine Wirkung ist nicht gemessen (F-791).
+- Vorstart-Scan auf ai-workforce selbst: Das Skelett trägt verschachtelte
+  `.claude`-Ordner, deshalb startet auf ai-workforce kein Ort-B-Lauf (F-818,
+  vor F30 zu entscheiden).
+- Playwright-Navigation: Die Origin-Sperre ist ein Katalogdatum von
+  `playwright-mcp` (`--allowed-origins`), keine allgemeine Regel.
+  Weiterleitungen und Navigation per `browser_click`/`browser_type` auf eine
+  fremde Origin sind nicht gemessen; `navigate_adressen` erfasst nur
+  `browser_navigate` (F-834). `file:` blockiert Playwright (Reallauf
+  `74290fb5`).
+- Startvorlage (Review-Pass H-A, behoben): Der Validator lehnt `Skill`,
+  `Agent`, `Task` und `mcp__…` in `erlaubte_werkzeuge` ab. Vorher hätte eine
+  Projekt-Startvorlage diese Werkzeuge am Katalog, an V4a und am Init-Gate
+  vorbei öffnen können.
+- Bitgenau-Zusage: Für Läufe ohne Katalog-Einträge ist nur das Argv
+  erzwungen (Snapshot `claude-code-gateway.test.ts`, Gates ws2 (a)/(b), ws5b
+  (o)). Für den Auftragstext und für das Gateway ohne `initGate` gibt es
+  keinen Rotfall gegen den Stand vor F36 (F-833).

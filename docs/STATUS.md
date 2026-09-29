@@ -556,14 +556,18 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   „Projekt aufrufen/anzeigen" → Design → F30 → RC).
 - ⏳ **F36** — Capability Library wirksam machen (neu geschnitten
   28.09.2026, vorher „Capability Library Expansion“, Anlass F-774), vor dem
-  Design. Akte `features/F36/feature.md`, Status `IN_ARBEIT`. Gemergt:
+  Design. Akte `features/F36/feature.md`, Status `FEATURE_GATE`. Gemergt:
   WS-0 Probelauf Werkzeugsatz (#267), WS-1 Katalog (#268), WS-4
   Beobachtung (#269), WS-1b Übernahme der Recherche (#270), WS-2 Laufzeit
   (#271, MCP-Weg; Skill/Agent in der Ausführung wegen S6 bewusst aus),
   Spike S7 (#272, E-F36-8 = B hält mit V4a, F-791 (1)–(5) als Bauvorgaben
-  für WS-5). Offen: WS-3 Empfehlung, WS-5 Installation, Reallauf gegen
-  `haushaltsbuch2` → Abnahme. Nach E-M5-5, parallel zu F35 ab F34
-  (disjunkte Dateien).
+  für WS-5), WS-3 Empfehlung (#275), WS-5a MCP-Installation (#276), F-813
+  CSRF (#277), WS-5b Ort-B-Skills (#278), F-814 Host-Allowlist (#279),
+  Reallauf-Nachweis haushaltsbuch2 (#280), Installationen im Katalog (#281).
+  Review-Pass 29.09.2026 mit Fixpaket (Startvorlage-Validator H-A,
+  Reallauf-Auszug H-B, Doku H-C). Agents bleiben gesperrt (F-815). Offen:
+  Abnahme durch Stefan. Nach E-M5-5, parallel zu F35 ab F34 (disjunkte
+  Dateien).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).

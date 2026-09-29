@@ -224,4 +224,6 @@ und die Datei danach zurückgesetzt. Endstand:
   gar nicht erst starten (Gate (l)).
 - Ob die CLI einen während des Laufs angelegten Skill live nachlädt. Die Anlage wurde auf
   allen Wegen verhindert, deshalb ist das hier nicht messbar.
-- Die übrigen eingebauten Slash-Commands außerhalb der Tabelle in 9b′.
+- ~~Die übrigen eingebauten Slash-Commands außerhalb der Tabelle in 9b′.~~ Nachgemessen in 9b″
+  (alle 29 übrigen `init.slash_commands` per Skill-Werkzeug verweigert). Offen bleibt nur die
+  Wiederholung je CLI-Version (F-791 (3), F-831).

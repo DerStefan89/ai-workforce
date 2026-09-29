@@ -541,6 +541,15 @@ export function pruefeInitZeile(init: Record<string, unknown>, erwartet: { skill
   return verstoesse.length === 0 ? null : `Init-Gate: ${verstoesse.join('; ')} — Lauf vor dem ersten tool_use beendet`
 }
 
+/**
+ * WS1 (E-182): prüft die Aufruf-Tokens mit pruefeAufrufparameter und hält bei einem Treffer die
+ * Verweigerung fest (verweigereStart), bevor irgendein Prozess startet.
+ * @param tokens - fertige Aufruf-Tokens aus baueAufruf
+ * @param laufId - Lauf, dem die Verweigerung zugeordnet wird
+ * @param profilReferenz - Profilreferenz für den Verweigerungs-Checkpoint
+ * @param optionen - Speicheroptionen (Basisverzeichnis, Schreiber)
+ * @returns { ok: true } oder { ok: false, grund } bei einem verbotenen Parameter
+ */
 export function pruefeUndVerweigereBeiTreffer(
   tokens: AufrufTokens,
   laufId: string,

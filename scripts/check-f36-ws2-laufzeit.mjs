@@ -16,7 +16,10 @@
  *     den Start ab (E-F36-4);
  * (d) realer Aufrufpfad (POST /api/workflows/<id>/starten bzw. POST /api/laeufe, Attrappen-Starter
  *     statt Prozess): ein 'ausfuehrung'-Lauf mit 'schreibend' trägt weder Skill/Agent in den
- *     Tokens noch einen Subagenten-Satz im Auftragstext.
+ *     Tokens noch einen Subagenten-Satz im Auftragstext;
+ * (e) eine Startvorlage aus einem Projekt-Repo, die 'Skill', 'Agent', 'Task' oder 'mcp__…' in
+ *     erlaubte_werkzeuge trägt, wird von ladeStartvorlage abgelehnt (F36 Review-Pass H-A): Skill/MCP
+ *     kommen nur über den Katalog-/Ort-B-Weg, Agent/Task bleiben gesperrt.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -302,6 +305,29 @@ function pruefeOhneSkillAgent(fall, eingaben) {
   const direkt = await starteAusfuehrung('(d) direkt', 'direkt', 'schreibend')
   if (direkt !== null) pruefeOhneSkillAgent('(d) direkt', direkt)
   if (befunde.length === vor) console.log("✓ (d) Realer 'ausfuehrung'-Start mit 'schreibend' (Workflow-Schritt und POST /api/laeufe, Attrappen-Starter): kein Skill/Agent in --tools/--allowedTools, kein Subagenten-Satz.")
+}
+
+// ─── (e) Projekt-Startvorlage mit Skill/Agent/Task/mcp__ in erlaubte_werkzeuge: abgelehnt ──
+{
+  const vor = befunde.length
+  const projekt = mkdtempSync(join(tmpdir(), 'f36-ws2-projekt-'))
+  try {
+    for (const eintrag of ['Skill', 'Agent', 'Task', 'mcp__playwright-mcp']) {
+      const pfad = join(projekt, `startvorlage-${eintrag}.json`)
+      const schreibend = { ...vorlage.werkzeugsaetze.schreibend, erlaubte_werkzeuge: [...vorlage.werkzeugsaetze.schreibend.erlaubte_werkzeuge, eintrag] }
+      writeFileSync(pfad, JSON.stringify({ ...vorlage, werkzeugsaetze: { ...vorlage.werkzeugsaetze, schreibend } }, null, 2))
+      let abgelehnt = false
+      try {
+        ladeStartvorlage(pfad)
+      } catch (fehler) {
+        abgelehnt = fehler.message.includes(`'${eintrag}' ist nicht erlaubt`)
+      }
+      if (!abgelehnt) befunde.push(`(e) Projekt-Startvorlage mit '${eintrag}' in erlaubte_werkzeuge wurde nicht abgelehnt`)
+    }
+  } finally {
+    raeumeVerzeichnis(projekt)
+  }
+  if (befunde.length === vor) console.log("✓ (e) Projekt-Startvorlage mit 'Skill'/'Agent'/'Task'/'mcp__…' in erlaubte_werkzeuge: abgelehnt (H-A).")
 }
 
 if (befunde.length > 0) {

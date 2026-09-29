@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.37 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.38 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -72,6 +72,8 @@ v1.34 → v1.35: **§13.6 um E-F36-7 ergänzt** (Stefan, 28.09.2026, F36 WS-2s):
 v1.35 → v1.36: **§13.6 um E-F36-8 ergänzt** (Stefan, 28.09.2026; Spike S7 am 29.09.2026): E-F36-8 = B („Eigener Raum“): Der Ausführungslauf lädt keine ungeprüften Skills oder Agents, sichtbar ist nur der Ort-B-Ordner der Workforce. Challenger-Präzisierung nach S7 ([EMPFEHLUNG] 29.09.2026, keine Entscheidung Stefans): „S7 HÄLT mit V4a“, AK4 heißt „nicht aufrufbar ohne Freigabe“, nicht „unsichtbar“ (`state/spike-f36-ws2s.md` S7).
 
 v1.36 → v1.37: **§13.6 um E-F36-9 ergänzt, E-F36-6 präzisiert** (Stefan, 29.09.2026, F36 WS-5a): E-F36-9 = A — MCP-Server, die als Registry-Paket verteilt werden, installiert die Workforce nur aus der ausdrücklichen Katalog-Adresse `herkunft.paket` (z. B. `npm:@playwright/mcp`), in exakter Version; `herkunft.url` bleibt die Informationsadresse; `herkunft.paket` wird vor dem Klick zusammen mit Lizenz, Kosten und Wirkung angezeigt. E-F36-6 nennt als Katalog-Adresse jetzt `herkunft.url` bzw. bei Registry-Paketen `herkunft.paket`.
+
+v1.37 → v1.38: **§13.6 Umsetzungsvermerke zu E-F36-6 und E-F36-8** (F36 Review-Pass, 29.09.2026; keine neue Entscheidung): E-F36-6 „danach ins Projekt-`.claude/`“ ist durch E-F36-8 (Ort B) überholt, installiert wird nur nach `~/.ai-workforce/cap/<id>`. Zu E-F36-8 ist der gebaute Stand vermerkt: `Agent` steht nie in `--tools` (statt `--disallowedTools Agent(…)`), Projekt-Skills bleiben auch bei `FREIGEGEBEN` gesperrt (F-815, F-816); aus der Sperrliste fallen nur Ort-B-Skills.
 
 ---
 
@@ -903,7 +905,10 @@ bei Registry-Paketen `herkunft.paket`, E-F36-9),
 nur in fester Version (Commit bzw. Paketversion), zuerst in einen eigenen
 Ordner, danach ins Projekt-`.claude/`. Lizenz, Kosten und Wirkung werden
 vor dem Klick „Freigeben & installieren" angezeigt (Katalogfelder
-`lizenz`, `kosten`, `wirkung`).
+`lizenz`, `kosten`, `wirkung`). *Umsetzungsvermerk (F36 Review-Pass,
+29.09.2026):* „danach ins Projekt-`.claude/`“ ist durch E-F36-8 (Ort B)
+überholt; installiert wird nur nach `~/.ai-workforce/cap/<id>`, ins Projekt
+kommt nichts.
 
 **E-F36-7 = A** *(Stefan, 28.09.2026, F36 WS-2s)* — playwright-mcp bleibt
 `wirkung: lokal`, aber nur mit zwei Startbedingungen: `--allowed-origins`
@@ -932,7 +937,12 @@ Entscheidung Stefans: „S7 HÄLT mit V4a.“** AK4 heißt „nicht aufrufbar oh
 (auch Projekt-Agents/-Skills) fallen aus der Sperrliste heraus. Verwerfen,
 wenn das Modell im Reallauf wiederholt gesperrte Agents ansteuert. Die
 Namensliste der eingebauten Einträge driftet mit der CLI-Version. Dagegen
-baut WS-5 ein Init-Gate und einen Vorstart-Scan (F-791).
+baut WS-5 ein Init-Gate und einen Vorstart-Scan (F-791). *Umsetzungsvermerk
+(F36 Review-Pass, 29.09.2026):* Gebaut ist `Agent` gar nicht in `--tools`
+(statt einer Sperre per `--disallowedTools Agent(…)`); Agents sind damit
+sichtbar, aber nicht aufrufbar. Projekt-Skills bleiben auch bei
+`FREIGEGEBEN` gesperrt (Identität ungeklärt, F-816), Agents sind
+zurückgestellt (F-815). Aus der Sperrliste fallen nur Ort-B-Skills.
 
 **E-F36-9 = A** *(Stefan, 29.09.2026, F36 WS-5a)* — MCP-Server, die als
 Registry-Paket verteilt werden, installiert die Workforce nur aus der

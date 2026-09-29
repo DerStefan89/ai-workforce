@@ -153,10 +153,20 @@ export const WERKZEUG_EINTRAG_MUSTER = /^[A-Za-z][A-Za-z0-9_-]*(\([^()]+\))?$/
 const GESPERRTE_SHELL_WERKZEUGE = ['powershell']
 
 /**
+ * F36 Review-Pass H-A: Werkzeuge, die kein Werkzeugsatz tragen darf. Skill/MCP kommen nur über den
+ * Katalog-/Ort-B-Weg in den Lauf (loeseAusfuehrungsEingabenAuf, nach dieser Prüfung), dort mit
+ * V4a-Sperren und Init-Gate; Agent/Task bleiben gesperrt (F-815). Eine Projekt-Startvorlage liegt
+ * im schreibbaren Projekt-Repo und darf diese Grenzen nicht öffnen.
+ */
+const KATALOG_WERKZEUGE: readonly string[] = ['skill', 'agent', 'task']
+
+/**
  * E-F754 (löst F-754): prüft die Einträge von erlaubte_werkzeuge fail-closed. Abgewiesen werden
  * nacktes 'Bash', Bash-Wildcards ('Bash(*)', 'Bash(:*)'), jede Bash-Regel, deren Präfix mit 'git'
  * beginnt, jede andere Bash-Regel außerhalb von ERLAUBTE_BASH_REGELN, ein Shell-Werkzeug wie
- * 'PowerShell' und jeder Eintrag, der nicht der Form WERKZEUG_EINTRAG_MUSTER entspricht.
+ * 'PowerShell', 'Skill'/'Agent'/'Task' (jede Schreibweise, auch mit Klammer-Regel) und jeder
+ * 'mcp__…'-Eintrag (F36 Review-Pass H-A, KATALOG_WERKZEUGE) sowie jeder Eintrag, der nicht der
+ * Form WERKZEUG_EINTRAG_MUSTER entspricht.
  * Bash-Regeln sind außerdem nur in einem Satz mit art 'schreibend' erlaubt (Review-Befund): nur
  * dessen Läufe stehen unter der ZWINGEND-Freigabe, auf die sich E-F754 stützt — ein lesender
  * Review- oder Advisor-Lauf darf kein 'npm install' ausführen.
@@ -176,6 +186,10 @@ export function pruefeErlaubteWerkzeuge(name: string, eintraege: string[], art: 
     const werkzeug = eintrag.split('(')[0].toLowerCase()
     if (GESPERRTE_SHELL_WERKZEUGE.includes(werkzeug)) {
       verstoesse.push(`${pfad}: Shell-Werkzeug '${eintrag}' ist nicht erlaubt (E-F754)`)
+      continue
+    }
+    if (KATALOG_WERKZEUGE.includes(werkzeug) || werkzeug.startsWith('mcp__')) {
+      verstoesse.push(`${pfad}: '${eintrag}' ist nicht erlaubt — Skill/MCP nur über den Katalog, Agent/Task gesperrt (F36)`)
       continue
     }
     if (werkzeug !== 'bash') continue
