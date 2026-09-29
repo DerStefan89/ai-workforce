@@ -1,0 +1,581 @@
+{
+  "erzeugt": "2026-09-29T19:42:44.945Z",
+  "ort_b_menge": [
+    "frontend-design"
+  ],
+  "laeufe": [
+    {
+      "laufId": "1c4a1163-17de-4063-95b3-41eb31352c23",
+      "rolle": "F2 Iteration 1",
+      "rohstrom": {
+        "pfad": "ai-workforce/kontrollzustand-roh/1c4a1163-17de-4063-95b3-41eb31352c23/rohstrom.json",
+        "sha256": "c73a4accd3e3e8befe0bd1037c7eb3ee2a16eb7a8f61d50834b6ae099e3e5276",
+        "zeilen": 501
+      },
+      "laufakten": [
+        {
+          "datei": "haushaltsbuch2/kontrollzustand/lineage-laufakte-1c4a1163-17de-4063-95b3-41eb31352c23/checkpoints/1-53dae53e69c2e7f846558110a338796ea2da7e75369cf3488e695beb03521431.json",
+          "sha256": "2e7485cc6d5162edd53d6636747f970af5a9d8f9f67ef4cb32b07eb8768b24ce"
+        }
+      ],
+      "init": {
+        "claude_code_version": "2.1.284",
+        "skills": [
+          "advisor-pass",
+          "git-flow",
+          "handoff-vertrag",
+          "ponytail",
+          "repo-audit",
+          "spec-schreiben",
+          "werkzeug-auswahl",
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator"
+        ],
+        "tools": [
+          "Bash",
+          "Edit",
+          "GetTask",
+          "Glob",
+          "Grep",
+          "Read",
+          "Write"
+        ],
+        "mcp_servers": [],
+        "slash_commands": [
+          "advisor-pass",
+          "git-flow",
+          "handoff-vertrag",
+          "ponytail",
+          "repo-audit",
+          "spec-schreiben",
+          "werkzeug-auswahl",
+          "deep-research",
+          "design",
+          "design-sync",
+          "dataviz",
+          "update-config",
+          "verify",
+          "debug",
+          "code-review",
+          "simplify",
+          "batch",
+          "fewer-permission-prompts",
+          "doctor",
+          "loop",
+          "schedule",
+          "claude-api",
+          "workflow-authoring",
+          "run",
+          "run-skill-generator",
+          "advisor",
+          "agents",
+          "auto-mode-setup",
+          "autocompact",
+          "clear",
+          "color",
+          "compact",
+          "config",
+          "output-style",
+          "context",
+          "effort",
+          "fast",
+          "focus",
+          "heapdump",
+          "init",
+          "mcp",
+          "import",
+          "model",
+          "__remote-workflow",
+          "workflow-launch-exec",
+          "reload-plugins",
+          "reload-skills",
+          "rename",
+          "ultrareview",
+          "security-review",
+          "usage-credits",
+          "extra-usage",
+          "usage",
+          "insights",
+          "recap",
+          "skill-doctor",
+          "goal",
+          "design-consent",
+          "design-revoke",
+          "list-agents",
+          "team-onboarding"
+        ],
+        "agents": [
+          "architecture-advisor",
+          "claude",
+          "code-reviewer",
+          "Explore",
+          "general-purpose",
+          "Plan",
+          "qa",
+          "statusline-setup"
+        ],
+        "plugins": [
+          {
+            "name": "telemetry",
+            "path": "builtin",
+            "source": "telemetry@builtin"
+          }
+        ]
+      },
+      "werkzeug_aufrufe": [],
+      "permission_denials": [
+        {
+          "tool_name": "Bash",
+          "tool_use_id": "toolu_01885bG3RJJrrSWdz3bbccnN",
+          "tool_input": {
+            "command": "cd \"C:\\Users\\stefa\\Projekte\\haushaltsbuch2\" && node scripts/check-schemas.mjs",
+            "description": "Run schema gate check"
+          }
+        },
+        {
+          "tool_name": "Bash",
+          "tool_use_id": "toolu_019aHBgJKG2TeLecHUat9gS7",
+          "tool_input": {
+            "command": "cd \"C:\\Users\\stefa\\Projekte\\haushaltsbuch2\" && git status --short",
+            "description": "Show working tree status"
+          }
+        }
+      ],
+      "zaehlregel_skill_ausserhalb_ort_b": 0
+    },
+    {
+      "laufId": "7b6d0f40-4479-4e88-bf6c-c81487531652",
+      "rolle": "F2 Korrektur (AK4/AK5)",
+      "rohstrom": {
+        "pfad": "ai-workforce/kontrollzustand-roh/7b6d0f40-4479-4e88-bf6c-c81487531652/rohstrom.json",
+        "sha256": "8f67ec41140f8a0d18bba6edee20ab63b232546f0bc78706a7876ff2a4fb5b60",
+        "zeilen": 104
+      },
+      "laufakten": [
+        {
+          "datei": "haushaltsbuch2/kontrollzustand/lineage-laufakte-7b6d0f40-4479-4e88-bf6c-c81487531652/checkpoints/1-a9d57c67c98185a11f6d1ed265b0f89ff21133fe5bb7d3a20e08e6fff3a6f86b.json",
+          "sha256": "6701ce7fa5c4c1c0c95d2075903344710c43a7808e1da9409f884e600a28b800"
+        }
+      ],
+      "init": {
+        "claude_code_version": "2.1.284",
+        "skills": [
+          "frontend-design"
+        ],
+        "tools": [
+          "Bash",
+          "Edit",
+          "GetTask",
+          "Glob",
+          "Grep",
+          "Read",
+          "Skill",
+          "Write",
+          "mcp__playwright-mcp__browser_click",
+          "mcp__playwright-mcp__browser_close",
+          "mcp__playwright-mcp__browser_console_messages",
+          "mcp__playwright-mcp__browser_drag",
+          "mcp__playwright-mcp__browser_drop",
+          "mcp__playwright-mcp__browser_emulate_media",
+          "mcp__playwright-mcp__browser_evaluate",
+          "mcp__playwright-mcp__browser_file_upload",
+          "mcp__playwright-mcp__browser_fill_form",
+          "mcp__playwright-mcp__browser_find",
+          "mcp__playwright-mcp__browser_handle_dialog",
+          "mcp__playwright-mcp__browser_hover",
+          "mcp__playwright-mcp__browser_navigate",
+          "mcp__playwright-mcp__browser_navigate_back",
+          "mcp__playwright-mcp__browser_network_request",
+          "mcp__playwright-mcp__browser_network_requests",
+          "mcp__playwright-mcp__browser_press_key",
+          "mcp__playwright-mcp__browser_resize",
+          "mcp__playwright-mcp__browser_run_code_unsafe",
+          "mcp__playwright-mcp__browser_select_option",
+          "mcp__playwright-mcp__browser_snapshot",
+          "mcp__playwright-mcp__browser_tabs",
+          "mcp__playwright-mcp__browser_take_screenshot",
+          "mcp__playwright-mcp__browser_type",
+          "mcp__playwright-mcp__browser_wait_for"
+        ],
+        "mcp_servers": [
+          {
+            "name": "playwright-mcp",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "slash_commands": [
+          "frontend-design",
+          "advisor",
+          "agents",
+          "auto-mode-setup",
+          "autocompact",
+          "clear",
+          "color",
+          "compact",
+          "config",
+          "output-style",
+          "context",
+          "effort",
+          "fast",
+          "focus",
+          "heapdump",
+          "init",
+          "mcp",
+          "import",
+          "model",
+          "__remote-workflow",
+          "workflow-launch-exec",
+          "reload-plugins",
+          "reload-skills",
+          "rename",
+          "ultrareview",
+          "security-review",
+          "usage-credits",
+          "extra-usage",
+          "usage",
+          "insights",
+          "recap",
+          "skill-doctor",
+          "goal",
+          "design-consent",
+          "design-revoke",
+          "list-agents",
+          "team-onboarding"
+        ],
+        "agents": [
+          "architecture-advisor",
+          "claude",
+          "code-reviewer",
+          "Explore",
+          "general-purpose",
+          "Plan",
+          "qa",
+          "statusline-setup"
+        ],
+        "plugins": [
+          {
+            "name": "telemetry",
+            "path": "builtin",
+            "source": "telemetry@builtin"
+          }
+        ]
+      },
+      "werkzeug_aufrufe": [],
+      "permission_denials": [],
+      "zaehlregel_skill_ausserhalb_ort_b": 0
+    },
+    {
+      "laufId": "8cee6c98-74ee-4c22-9bbf-e7211af7f401",
+      "rolle": "F3 Iteration 1 (AK12)",
+      "rohstrom": {
+        "pfad": "ai-workforce/kontrollzustand-roh/8cee6c98-74ee-4c22-9bbf-e7211af7f401/rohstrom.json",
+        "sha256": "84910fc0d3a8cf02ae49f39750765f415ea96bd4003b6c91a073e9745ec44a9f",
+        "zeilen": 213
+      },
+      "laufakten": [
+        {
+          "datei": "haushaltsbuch2/kontrollzustand/lineage-laufakte-8cee6c98-74ee-4c22-9bbf-e7211af7f401/checkpoints/1-aa4e32ca9975521b67c1e1601d605193a7cb7526b660abafe43f0855011a3b08.json",
+          "sha256": "8f139590dd37124b1c5b001c9a720b38ad4e74da3941ec3ad5a392c46c68ef9f"
+        }
+      ],
+      "init": {
+        "claude_code_version": "2.1.284",
+        "skills": [
+          "frontend-design"
+        ],
+        "tools": [
+          "Bash",
+          "Edit",
+          "GetTask",
+          "Glob",
+          "Grep",
+          "Read",
+          "Skill",
+          "Write",
+          "mcp__playwright-mcp__browser_click",
+          "mcp__playwright-mcp__browser_close",
+          "mcp__playwright-mcp__browser_console_messages",
+          "mcp__playwright-mcp__browser_drag",
+          "mcp__playwright-mcp__browser_drop",
+          "mcp__playwright-mcp__browser_emulate_media",
+          "mcp__playwright-mcp__browser_evaluate",
+          "mcp__playwright-mcp__browser_file_upload",
+          "mcp__playwright-mcp__browser_fill_form",
+          "mcp__playwright-mcp__browser_find",
+          "mcp__playwright-mcp__browser_handle_dialog",
+          "mcp__playwright-mcp__browser_hover",
+          "mcp__playwright-mcp__browser_navigate",
+          "mcp__playwright-mcp__browser_navigate_back",
+          "mcp__playwright-mcp__browser_network_request",
+          "mcp__playwright-mcp__browser_network_requests",
+          "mcp__playwright-mcp__browser_press_key",
+          "mcp__playwright-mcp__browser_resize",
+          "mcp__playwright-mcp__browser_run_code_unsafe",
+          "mcp__playwright-mcp__browser_select_option",
+          "mcp__playwright-mcp__browser_snapshot",
+          "mcp__playwright-mcp__browser_tabs",
+          "mcp__playwright-mcp__browser_take_screenshot",
+          "mcp__playwright-mcp__browser_type",
+          "mcp__playwright-mcp__browser_wait_for"
+        ],
+        "mcp_servers": [
+          {
+            "name": "playwright-mcp",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "slash_commands": [
+          "frontend-design",
+          "advisor",
+          "agents",
+          "auto-mode-setup",
+          "autocompact",
+          "clear",
+          "color",
+          "compact",
+          "config",
+          "output-style",
+          "context",
+          "effort",
+          "fast",
+          "focus",
+          "heapdump",
+          "init",
+          "mcp",
+          "import",
+          "model",
+          "__remote-workflow",
+          "workflow-launch-exec",
+          "reload-plugins",
+          "reload-skills",
+          "rename",
+          "ultrareview",
+          "security-review",
+          "usage-credits",
+          "extra-usage",
+          "usage",
+          "insights",
+          "recap",
+          "skill-doctor",
+          "goal",
+          "design-consent",
+          "design-revoke",
+          "list-agents",
+          "team-onboarding"
+        ],
+        "agents": [
+          "architecture-advisor",
+          "claude",
+          "code-reviewer",
+          "Explore",
+          "general-purpose",
+          "Plan",
+          "qa",
+          "statusline-setup"
+        ],
+        "plugins": [
+          {
+            "name": "telemetry",
+            "path": "builtin",
+            "source": "telemetry@builtin"
+          }
+        ]
+      },
+      "werkzeug_aufrufe": [
+        {
+          "tool_use_id": "toolu_01UtfMvLXaVhxHDPN4zLWTHe",
+          "name": "Skill",
+          "input": {
+            "skill": "frontend-design",
+            "args": "Neue Monatsübersicht-Sektion (Monatsauswahl, Kategorie-Summen-Liste, Einnahmen/Ausgaben/Saldo) für eine schlichte, bereits bestehende Haushaltsbuch-Oberfläche (reines HTML/CSS/JS, kein Framework, system-ui Schrift, sehr minimalistisch). Soll sich stilistisch einfügen, aber Zahlen klar lesbar/gut gegliedert darstellen."
+          },
+          "tool_result": {
+            "is_error": false,
+            "text": "Launching skill: frontend-design"
+          }
+        }
+      ],
+      "permission_denials": [
+        {
+          "tool_name": "Bash",
+          "tool_use_id": "toolu_01KjE3pdaruhVvd4yZyLBexj",
+          "tool_input": {
+            "command": "cd \"C:\\Users\\stefa\\Projekte\\haushaltsbuch2\" && npm run dev > /tmp/haushaltsbuch-dev.log 2>&1 &\nsleep 2\ncat /tmp/haushaltsbuch-dev.log",
+            "description": "Start dev server in background"
+          }
+        }
+      ],
+      "zaehlregel_skill_ausserhalb_ort_b": 0
+    },
+    {
+      "laufId": "74290fb5-1b1c-4aa2-ae81-1587018a9eb0",
+      "rolle": "F3 Korrektur",
+      "rohstrom": {
+        "pfad": "ai-workforce/kontrollzustand-roh/74290fb5-1b1c-4aa2-ae81-1587018a9eb0/rohstrom.json",
+        "sha256": "1ff64e77b516e3dbd165b4daca3ef0b7823142c3b643ef731df07506cae4b3ab",
+        "zeilen": 78
+      },
+      "laufakten": [
+        {
+          "datei": "haushaltsbuch2/kontrollzustand/lineage-laufakte-74290fb5-1b1c-4aa2-ae81-1587018a9eb0/checkpoints/1-a4aa14b1a1109d07f5130791527f3352c18184a1de9930166e1fbed84d3afa55.json",
+          "sha256": "88703174b791b9da36700d45d17808335a053ecd2b8fab0db7dac7187b33deec"
+        }
+      ],
+      "init": {
+        "claude_code_version": "2.1.284",
+        "skills": [
+          "frontend-design"
+        ],
+        "tools": [
+          "Bash",
+          "Edit",
+          "GetTask",
+          "Glob",
+          "Grep",
+          "Read",
+          "Skill",
+          "Write",
+          "mcp__playwright-mcp__browser_click",
+          "mcp__playwright-mcp__browser_close",
+          "mcp__playwright-mcp__browser_console_messages",
+          "mcp__playwright-mcp__browser_drag",
+          "mcp__playwright-mcp__browser_drop",
+          "mcp__playwright-mcp__browser_emulate_media",
+          "mcp__playwright-mcp__browser_evaluate",
+          "mcp__playwright-mcp__browser_file_upload",
+          "mcp__playwright-mcp__browser_fill_form",
+          "mcp__playwright-mcp__browser_find",
+          "mcp__playwright-mcp__browser_handle_dialog",
+          "mcp__playwright-mcp__browser_hover",
+          "mcp__playwright-mcp__browser_navigate",
+          "mcp__playwright-mcp__browser_navigate_back",
+          "mcp__playwright-mcp__browser_network_request",
+          "mcp__playwright-mcp__browser_network_requests",
+          "mcp__playwright-mcp__browser_press_key",
+          "mcp__playwright-mcp__browser_resize",
+          "mcp__playwright-mcp__browser_run_code_unsafe",
+          "mcp__playwright-mcp__browser_select_option",
+          "mcp__playwright-mcp__browser_snapshot",
+          "mcp__playwright-mcp__browser_tabs",
+          "mcp__playwright-mcp__browser_take_screenshot",
+          "mcp__playwright-mcp__browser_type",
+          "mcp__playwright-mcp__browser_wait_for"
+        ],
+        "mcp_servers": [
+          {
+            "name": "playwright-mcp",
+            "status": "connected",
+            "source": "dynamic"
+          }
+        ],
+        "slash_commands": [
+          "frontend-design",
+          "advisor",
+          "agents",
+          "auto-mode-setup",
+          "autocompact",
+          "clear",
+          "color",
+          "compact",
+          "config",
+          "output-style",
+          "context",
+          "effort",
+          "fast",
+          "focus",
+          "heapdump",
+          "init",
+          "mcp",
+          "import",
+          "model",
+          "__remote-workflow",
+          "workflow-launch-exec",
+          "reload-plugins",
+          "reload-skills",
+          "rename",
+          "ultrareview",
+          "security-review",
+          "usage-credits",
+          "extra-usage",
+          "usage",
+          "insights",
+          "recap",
+          "skill-doctor",
+          "goal",
+          "design-consent",
+          "design-revoke",
+          "list-agents",
+          "team-onboarding"
+        ],
+        "agents": [
+          "architecture-advisor",
+          "claude",
+          "code-reviewer",
+          "Explore",
+          "general-purpose",
+          "Plan",
+          "qa",
+          "statusline-setup"
+        ],
+        "plugins": [
+          {
+            "name": "telemetry",
+            "path": "builtin",
+            "source": "telemetry@builtin"
+          }
+        ]
+      },
+      "werkzeug_aufrufe": [
+        {
+          "tool_use_id": "toolu_01Gpkxxq4WdttHGiKTDAykgf",
+          "name": "mcp__playwright-mcp__browser_navigate",
+          "input": {
+            "url": "file:///C:/Users/stefa/Projekte/haushaltsbuch2/public/index.html"
+          },
+          "tool_result": {
+            "is_error": true,
+            "text": "### Error\nError: Access to \"file:\" protocol is blocked. Attempted URL: \"file:///C:/Users/stefa/Projekte/haushaltsbuch2/public/index.html\""
+          }
+        }
+      ],
+      "permission_denials": [
+        {
+          "tool_name": "Bash",
+          "tool_use_id": "toolu_01FcxtiY3M2giGsXtRxCHN2e",
+          "tool_input": {
+            "command": "git status && git log --oneline -5",
+            "description": "Check working directory git status"
+          }
+        },
+        {
+          "tool_name": "Bash",
+          "tool_use_id": "toolu_01SjeTX4RTBhJozGWhAeeWP7",
+          "tool_input": {
+            "command": "npm run dev",
+            "description": "Start dev server",
+            "run_in_background": true
+          }
+        }
+      ],
+      "zaehlregel_skill_ausserhalb_ort_b": 0
+    }
+  ]
+}

@@ -10500,7 +10500,8 @@ Fundstelle: `kontrollzustand-roh/` (init-Zeilen haushaltsbuch2, 28.09.2026); `st
 Auswirkung: Mittel — die im Projekt-Harness mitgelieferten Skills und Prüfrollen wirken im Lauf nicht.
 Maßnahme: F36 WS-0 (erledigt); Aufrufbarkeit erst nach F-770 (WS-2 hat Skill/Agent nach S6 herausgenommen).
 Vermerk (F36 WS-2, 28.09.2026): Haus-Skills/Agents sind in der Ausführung weiterhin NICHT aufrufbar — WS-2 hat `Skill`/`Agent` nach Spike WS-2s S6 wieder herausgenommen (Variante 3b), weil `--allowedTools` sie nicht auf freigegebene Einträge begrenzt (`state/spike-f36-ws2s.md`). Offen, bis F-770 gelöst ist; erledigt erst nach dem Reallauf.
-Status: offen.
+Vermerk (F36 Review-Pass, 29.09.2026): Nach dem Reallauf gilt: `Skill` steht nur bei Ort-B-Läufen in `--tools`, und dann sind nur Ort-B-Skills aufrufbar. Projekt-Skills, Projekt-Commands und Projekt-Agents bleiben bewusst gesperrt (V4a, `Agent` nie in `--tools`). Das Ziel dieses Findings ist also nicht erreicht, sondern nach F-815 (Agents/Projekt-Skills) und F-816 (Identität) zurückgestellt. Beleg: `features/F36/nachweis-reallauf/auszug-laeufe.json`.
+Status: offen (zurückgestellt nach F-815/F-816).
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
 **F-770** · `HARNESS_IMPROVEMENT` · P1 · E-F36-8 = B, S7 HÄLT (mit V4a)
@@ -10540,16 +10541,18 @@ Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md`, `vorlagen/projekt-skelett/ARCH
 Auswirkung: Mittel — die Ausführung liest Anweisungen, die sie nicht befolgen kann.
 Maßnahme: Erledigt sich erst, wenn Skill/Agent in der Ausführung aufrufbar sind (nach F-770); bis dahin bekannt.
 Vermerk (F36 WS-2, 28.09.2026): Haus-Skills/Agents sind in der Ausführung weiterhin NICHT aufrufbar — WS-2 hat `Skill`/`Agent` nach Spike WS-2s S6 wieder herausgenommen (Variante 3b), weil `--allowedTools` sie nicht auf freigegebene Einträge begrenzt (`state/spike-f36-ws2s.md`). Offen, bis F-770 gelöst ist; erledigt erst nach dem Reallauf.
+Vermerk (F36 Review-Pass, 29.09.2026): Auch nach dem Reallauf bleiben die Skelett-Skills (`git-flow`, `advisor-pass` usw.) und Prüfrollen in der Ausführung gesperrt; aufrufbar sind nur installierte Ort-B-Skills. Der tote Text bleibt. Zusammen mit F-830 (DoD im Skelett) im Fixpaket schneiden: Skelett-Texte auf „in Workforce-Läufen nicht verfügbar“ ergänzen oder nach F-815 freischalten.
 Status: offen.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
-**F-774** · `HARNESS_IMPROVEMENT` · P1 · offen
+**F-774** · `HARNESS_IMPROVEMENT` · P1 · erledigt (Skills/MCP; Agents → F-815)
 Titel: Die Capability Library hat keinen Weg in die Läufe.
 Beschreibung: Werkzeugsatz ohne `Skill`/`Agent` (F-769), MCP-Sperre als Default (E-187, `--strict-mcp-config`), nur Projekteinstellungen (`--setting-sources project`). Katalog (F19), Scout (F27) und Freigabe enden im Register `ressourcen.json`; kein freigegebener Eintrag erreicht je einen Lauf.
 Fundstelle: `src/claude-code-gateway/index.ts` `baueAufruf`; `ressourcen.json`; `features/F36/feature.md`.
 Auswirkung: Hoch — der Capability-Pfad der M5-Planung ist ohne Wirkung.
 Maßnahme: F36 neu geschnitten: „Capability Library wirksam machen“ (E-F36-2/3/4, `docs/projekt/zielfassung.md` §13.6).
-Status: offen.
+Vermerk (F36 Review-Pass, 29.09.2026): Für Skills (Ort B) und lokale MCPs gebaut und im Reallauf belegt: Katalog → Freigabe/Installation → Lauf → Beobachtung. Lauf `8cee6c98` (haushaltsbuch2) hat `frontend-design` aufgerufen, `playwright-mcp` war in drei Läufen verbunden (`features/F36/nachweis-reallauf/` C). Agents erreichen keinen Lauf (F-815).
+Status: erledigt für Skills/MCP (F36, #267–#281); Agents offen unter F-815.
 Feature/Run: F36-Challenge / F36 WS-0, 28.09.2026.
 
 **F-775** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -11072,3 +11075,86 @@ Auswirkung: Niedrig — widersprüchliche Vorgabe für das Modell im Lauf.
 Maßnahme: Die DoD-Zeile im Skelett (F42) ergänzen um „in Workforce-Läufen: Review/QA als Workflow-Schritte“.
 Status: offen.
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
+
+**F-831** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Init-Gate und V4a erfassen Slash-Commands außerhalb von `<projekt>/.claude/commands` nicht; ein `tool_use` vor der init-Zeile wird nur beendet, nicht verhindert.
+Beschreibung: `pruefeInitZeile` prüft nur `skills`, `tools` und `mcp_servers`. Commands stehen laut 9b′ nicht in `init.skills`, sind aber per Skill-Werkzeug aufrufbar. Ein Command aus einer Nutzer- oder Plugin-Quelle oder aus einer neuen CLI-Version steht in keiner Sperrliste, und kein Gate wird rot. Ergänzt F-791 (3) um den fehlenden Rotfall. Zusätzlich: Im Zweig „tool_use vor init“ reagiert das Gateway auf eine bereits gestreamte `tool_use`-Zeile; die CLI hat das Werkzeug dann schon ausgeführt.
+Fundstelle: `src/claude-code-gateway/index.ts:522-541` (`pruefeInitZeile`), `:664-665`; `src/ressourcen/ort-b-start.ts:75-77`.
+Auswirkung: Mittel — die V4a-Grenze gilt nur für gemessene Namen; neue Commands bleiben unbemerkt aufrufbar.
+Maßnahme: `init.slash_commands` gegen eine Referenzmenge je CLI-Version prüfen (unbekannt → Abbruch) samt Rotfall; „vor dem ersten tool_use“ in der Akte auf den tatsächlichen Umfang präzisieren.
+Status: offen.
+Feature/Run: F36 Review-Pass (code-reviewer Befunde 2, 6), 29.09.2026.
+
+**F-832** · `BUG` · P2 · offen
+Titel: `claude_ordner_veraendert` lässt sich über `.gitignore` plus npm-Skript umgehen; die Begründung in der Akte trägt nicht.
+Beschreibung: feature.md (Bekannte Grenzen, „WS-5b Laufdiff“) stützt die Lücke „gitignorierte Datei unter `.claude/` bleibt unsichtbar“ auf „die Bash-Allowlist lehnt schreibende Befehle ab“. Die Allowlist erlaubt aber `npm run check:*`, `npm run build:*` und `npm install`; Write auf `package.json` und `.gitignore` ist nicht gesperrt. Ein Lauf kann ein npm-Skript ergänzen, das `.claude/…` anlegt, und `.claude/` ignorieren lassen; `leseClaudeAenderungen` (ohne `--ignored`) meldet dann nichts. Aus dem Code abgeleitet, nicht gemessen. Folgeläufe schützt der Vorstart-Scan (Dateisystem, nicht git).
+Fundstelle: `src/execution-controller/index.ts:149-175`; `src/startvorlage/index.ts:139-147`; `src/ressourcen/ort-b-start.ts:37`.
+Auswirkung: Mittel — die Laufdiff-Grenze ist im Lauf selbst umgehbar.
+Maßnahme: `git status --ignored` für Pfade unter `.claude` oder Dateisystem-Vergleich vorher/nachher, mit Rotfall; Satz in der Akte korrigieren.
+Vermerk (F36 Fixpaket, 29.09.2026): Der Satz in feature.md („WS-5b Laufdiff“) ist korrigiert. Der Code-Fix bleibt offen: `git status --ignored` allein würde jede schon vor dem Lauf vorhandene ignorierte Datei (z. B. `.claude/settings.local.json`) rot werten; nötig ist ein Vorher-/Nachher-Vergleich, der über den Umfang des Fixpakets (~30 Zeilen) hinausgeht.
+Status: offen (Doku erledigt, Code offen).
+Feature/Run: F36 Review-Pass (code-reviewer Befund 3), 29.09.2026.
+
+**F-833** · `TECH_DEBT` · P2 · offen
+Titel: Die Bitgenau-Zusage „Läufe ohne Katalog-Einträge unverändert“ ist nur für das Argv erzwungen, nicht für den Auftragstext und nicht für das Gateway ohne `initGate`.
+Beschreibung: Argv: literaler Snapshot `claude-code-gateway.test.ts:201-222` (Stand vor F36) plus Relativvergleiche `check-f36-ws2-laufzeit` (a)/(b) und `check-f36-ws5b-skill` (o). Auftragstext: nur Relativvergleiche im heutigen Code (`check-f36-ws3-empfehlung.mjs:329-332`, `check-f36-ws2-laufzeit.mjs:297-304`); eine unbedingte Änderung am Textbau bliebe grün. Dass `starteGateway` ohne `initGate` die init-Zeile nicht auswertet (Läufe ohne Ort-B, Codex, ohne init-Zeile), hat keinen Test. Nach ARCHITECTURE.md §8 nicht ERZWUNGEN.
+Fundstelle: siehe Beschreibung; `src/claude-code-gateway/index.ts:210`.
+Auswirkung: Mittel — eine Regression für alle Läufe ohne Katalog-Einträge bliebe unbemerkt.
+Maßnahme: literaler Snapshot des Ausführungs-Auftragstexts ohne `empfehlungIds`; Rotfall „ohne initGate kein Abbruch bei beliebiger init-Zeile“.
+Status: offen.
+Feature/Run: F36 Review-Pass (code-reviewer Befund 4, qa Bitgenau), 29.09.2026.
+
+**F-834** · `TECH_DEBT` · P3 · offen
+Titel: Die Origin-Sperre ist ein Katalogdatum von `playwright-mcp`, keine Regel; Weiterleitung und Klick-Navigation sind weder gemessen noch beobachtet.
+Beschreibung: Nur `ressourcen.test.ts:1014,1017` bindet `--allowed-origins {projekt_origins}` an die id `playwright-mcp`; ein zweiter Browser-MCP ohne das Flag wäre gültig und freigebbar. Freigegeben sind `browser_click` und `browser_type`; ob eine Weiterleitung oder ein Klick auf eine fremde Origin führt, ist nicht gemessen (`features/F36/nachweis-reallauf/README.md`). `navigate_adressen` erfasst nur `browser_navigate`, keine Klick- oder Weiterleitungs-Navigation (`kontrollzustand-laufakte-payload.schema.json:87`).
+Fundstelle: siehe Beschreibung.
+Auswirkung: Niedrig — lokal, Einzelnutzer; Playwright nennt das Flag selbst keine Sicherheitsgrenze.
+Maßnahme: Messung Weiterleitung/Klick mit der installierten Fassung; Grenze in feature.md aufnehmen; bei einem zweiten Browser-MCP Regel statt Datum.
+Status: offen.
+Feature/Run: F36 Review-Pass (code-reviewer Befund 5, qa M1), 29.09.2026.
+
+**F-835** · `TECH_DEBT` · P3 · offen
+Titel: Rotfall-Lücken bei der git-Installation von Skills.
+Beschreibung: Die Ablehnung von Submodulen (`src/ressourcen/skill-installation.ts:169`) und unbekannten Modi (`:170`) hat keinen Test. Für „ohne Hooks“ prüft das Gate nur, dass `core.hooksPath=` im Argv steht (`scripts/check-f36-ws5b-skill.mjs:372`); ein tatsächlich ausgelöster Hook als Rotfall fehlt.
+Fundstelle: siehe Beschreibung.
+Auswirkung: Niedrig — Implementierung vorhanden, nur nicht nach §8 erzwungen.
+Maßnahme: je ein Rotfall-Test für Submodul, unbekannten Modus und einen Hook im Fixture-Repo.
+Status: offen.
+Feature/Run: F36 Review-Pass (code-reviewer Befund 7), 29.09.2026.
+
+**F-836** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Serverstart-Prüfung führt Paketcode vor der Freigabe aus; der Hinweis vor dem Klick sagt das nicht.
+Beschreibung: `src/ressourcen/installation.ts:507` startet das `bin` des frisch installierten Pakets mit den Rechten des Nutzers. `--ignore-scripts` verhindert Install-Skripte, nicht diesen Start.
+Fundstelle: `src/ressourcen/installation.ts:507`; Bestätigungsblock „Freigeben & installieren“.
+Auswirkung: Niedrig — durch den Klick gedeckt, aber nicht angekündigt.
+Maßnahme: Satz im Bestätigungsblock: „Zur Prüfung wird der Server einmal gestartet.“
+Status: offen.
+Feature/Run: F36 Review-Pass (code-reviewer Befund 8), 29.09.2026.
+
+**F-837** · `PROCESS_IMPROVEMENT` · P2 · erledigt
+Titel: Doku-Drift in der F36-Akte, der Zielfassung, STATUS.md und der Übergabe.
+Beschreibung: (1) zielfassung E-F36-6 und AK11 sagen noch „danach ins Projekt-`.claude/`“, ohne „überholt“ (widerspricht E-F36-8/AK6). (2) zielfassung und AK4 sagen „freigegebene Projekt-Agents/-Skills fallen aus der Sperrliste“; gebaut bleiben Projekt-Skills auch bei FREIGEGEBEN gesperrt (F-816); die zielfassung beschreibt eine Sperre per `Agent(…)`, gebaut ist `Agent` gar nicht in `--tools`. (3) feature.md „WS-5b gebaut, nicht gemergt“ neben „#278 gemergt“; docs/STATUS.md nennt „Offen: WS-3, WS-5, Reallauf“. (4) AK7 „Offen: Beleg im Reallauf“ nicht nachgezogen; AK6, AK8, AK9 ohne Endstand. (5) AK10 sowie WS-1b/WS-5b sagen „OFFEN, ohne installation“; seit #281 sind `frontend-design`/`playwright-mcp` FREIGEGEBEN mit absoluten Pfaden — die F-812-Grenze nennt nicht, dass diese Pfade auf anderen Rechnern/Checkouts nicht stimmen. (6) uebergabe-aktuell: Reallauf-Nachweis „nicht committet“ (#280 gemergt), `ressourcen.json` „noch committen“ (#281), „Schema-Zwilling navigate_adressen offen“ (Feld steht im Schema). (7) feature.md „Challenger entscheidet, ob Read mitgezählt wird“ — laut Übergabe entschieden (nicht gezählt). (8) `features/F36/nachweis-ws5b/README.md:227` „übrige Slash-Commands nicht gemessen“ widerspricht 9b″ derselben Datei. (9) Unter „Bekannte Grenzen“ fehlen: GetTask in `init.tools` vom Init-Gate ungeprüft (F-791), F-818, F-822/F-823. (10) `pruefeUndVerweigereBeiTreffer` (`src/claude-code-gateway/index.ts:544`) ohne JSDoc.
+Fundstelle: siehe Beschreibung.
+Auswirkung: Mittel — FEATURE_GATE und Abnahme würden gegen einen falschen Stand geprüft.
+Maßnahme: Im F36-Doku-Fixpaket vor FEATURE_GATE nachziehen.
+Vermerk (F36 Fixpaket, 29.09.2026): (1) zielfassung v1.38 Umsetzungsvermerk E-F36-6, AK11 angepasst; (2) AK4-Wortlaut und zielfassung E-F36-8 um den gebauten Stand ergänzt (F-815/F-816); (3) WS-5b-Status in feature.md auf „gemergt #278“, docs/STATUS.md nachgezogen; (4) Endstände AK6/AK7/AK8/AK9 eingetragen; (5) AK10 und die OFFEN-Aussagen in WS-1b/WS-5a/WS-5b nachgezogen, F-812-Grenze um absolute Pfade ergänzt; (6) state/uebergabe-aktuell.md neu geschrieben; (7) Read-Zählregel als entschieden vermerkt; (8) nachweis-ws5b/README.md korrigiert; (9) Grenzen GetTask, F-818, F-822/F-823, Agents ergänzt; (10) JSDoc `pruefeUndVerweigereBeiTreffer` ergänzt (war nie vorhanden).
+Status: erledigt (F36 Fixpaket, 29.09.2026).
+Feature/Run: F36 Review-Pass (qa M1–M4, N1–N4; code-reviewer Befund 9), 29.09.2026.
+
+**F-838** · `TECH_DEBT` · P3 · offen
+Titel: Randfälle ohne Test und ohne dokumentierte Grenze aus dem F36-Review.
+Beschreibung: (1) `inhalt_hash` wird nur vor dem Spawn geprüft; ein während des Laufs geänderter oder neu installierter Skill bleibt unbemerkt. (2) Ein Lauf ohne Ort-B, aber mit Katalog-MCP und abweichendem `init.mcp_servers` hat kein Init-Gate. (3) Worktrees teilen `~/.ai-workforce/cap` und tragen seit #281 committete FREIGEGEBEN-Einträge; ein Leitstand aus einer Worktree nutzt die Installation eines anderen Checkouts (beschrieben ist nur der 409-Fall). (4) Der Reallauf nutzte `frontend-design` im Folge-Workflow F3, nicht „im selben Durchstich“; wie `playwright-mcp` trotz F-825 (fiel aus der Liste „Passt, nicht im Lauf“) über den Knopf freigegeben wurde, ist nicht dokumentiert.
+Fundstelle: `src/ressourcen/ort-b-start.ts:199-226`; `src/execution-controller/index.ts:418`; feature.md „WS-5a cap-Ordner“, „Reallauf“.
+Auswirkung: Niedrig.
+Maßnahme: Je Punkt Grenze in feature.md oder Test; (4) im Reallauf-Nachweis erklären.
+Status: offen.
+Feature/Run: F36 Review-Pass (qa Randfälle und M5), 29.09.2026.
+
+**F-839** · `BUG` · P1 · erledigt
+Titel: Eine Projekt-Startvorlage konnte `Skill`, `Agent`, `Task` und `mcp__<server>` am Katalog, an V4a und am Init-Gate vorbei öffnen.
+Beschreibung: `pruefeErlaubteWerkzeuge` lehnte nur Bash- und Shell-Formen ab. `Skill`, `Agent`, `Task` und ein reiner Servername `mcp__playwright-mcp` passten zu `WERKZEUG_EINTRAG_MUSTER`. Die Startvorlage eines Projekts liegt in dessen Repo und ist für die Ausführung schreibbar; `baueAufruf` übernimmt `erlaubte_werkzeuge` ungefiltert in `--tools`/`--allowedTools`. V4a-Sperren und Init-Gate gelten nur für Ort-B-Läufe. Keine committete Startvorlage (ai-workforce, Fixtures, haushaltsbuch, haushaltsbuch2, f25-testprojekt-b) nutzte diese Namen.
+Fundstelle: `src/startvorlage/index.ts` (`pruefeErlaubteWerkzeuge`).
+Auswirkung: Hoch — AK4 („ohne Freigabe nicht aufrufbar“) war über die Startvorlage unterlaufbar; aufgefangen nur menschlich (sauberer Arbeitsbaum, Stefans Commit).
+Maßnahme: `KATALOG_WERKZEUGE` (`skill`, `agent`, `task`, Groß-/Kleinschreibung egal, mit oder ohne Klammer-Regel) und jedes `mcp__…` werden abgelehnt. Rotfälle: `src/startvorlage/startvorlage.test.ts` (zehn Formen in beiden Sätzen, Grünseite `TaskOutput`/`Skills`), Gate `scripts/check-f36-ws2-laufzeit.mjs` (e) (Projekt-Startvorlage mit je einem der vier Namen → `ladeStartvorlage` wirft). Beide kalibriert: ohne die Prüfung rot.
+Status: erledigt (F36 Fixpaket, 29.09.2026).
+Feature/Run: F36 Review-Pass (code-reviewer Befund 1, H-A), 29.09.2026.

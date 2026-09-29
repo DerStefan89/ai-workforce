@@ -46,7 +46,10 @@ Umsetzung:
   Bash-Regel außerhalb von `ERLAUBTE_BASH_REGELN` ist ein Validierungsfehler.
   Ebenso nacktes `Bash`, `Bash(*)`, `Bash(:*)`, jede Regel mit git-Präfix,
   `PowerShell` und jeder Eintrag ohne die Form „Name, optional eine
-  Klammer-Regel“. `ladeStartvorlage` wirft dann (fail-closed).
+  Klammer-Regel“. `ladeStartvorlage` wirft dann (fail-closed). Seit F-839
+  (F36 Review-Pass) auch `Skill`, `Agent`, `Task` (jede Schreibweise, mit
+  oder ohne Klammer-Regel) und jedes `mcp__…`: Skills und MCPs kommen nur über
+  den Katalog-/Ort-B-Weg in den Lauf.
 - `src/claude-code-gateway/index.ts` (`baueAufruf`) gibt `--tools` nur die
   Werkzeugnamen und `--allowedTools` die vollen Regeln. Trägt der Satz eine
   Bash-Regel, kommt `--disallowedTools Bash(git:*)` dazu.

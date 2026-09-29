@@ -229,3 +229,17 @@ test("validiereStartvorlageDaten: pruefketten_pfade lehnt '..', absolute Pfade, 
   // '..' nur als Segment unzulässig — ein Punktpaar im Dateinamen ist kein Ausbruch aus dem Repo.
   assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, pruefketten_pfade: ['a..b.toml'] }), [])
 })
+
+test('validiereStartvorlageDaten: Skill, Agent, Task und mcp__… in erlaubte_werkzeuge sind ein Verstoß (F36 Review-Pass H-A)', () => {
+  const formen = ['Skill', 'skill', 'Skill(frontend-design)', 'Agent', 'AGENT(qa)', 'Task', 'task(x)', 'mcp__playwright-mcp', 'mcp__playwright-mcp__browser_navigate', 'MCP__x']
+  for (const eintrag of formen) {
+    for (const satz of ['lesend', 'schreibend'] as const) {
+      const vorlage = structuredClone(GUELTIGE_VORLAGE)
+      vorlage.werkzeugsaetze[satz].erlaubte_werkzeuge = [...vorlage.werkzeugsaetze[satz].erlaubte_werkzeuge, eintrag]
+      const verstoesse = validiereStartvorlageDaten(vorlage)
+      assert.ok(verstoesse.some((v) => v.includes(`'${eintrag}' ist nicht erlaubt`)), `'${eintrag}' in ${satz} sollte abgelehnt werden, erhalten ${JSON.stringify(verstoesse)}`)
+    }
+  }
+  // Grünseite: ähnliche, aber andere Namen bleiben zulässig.
+  assert.deepStrictEqual(validiereStartvorlageDaten({ ...GUELTIGE_VORLAGE, werkzeugsaetze: { ...GUELTIGE_VORLAGE.werkzeugsaetze, lesend: { art: 'lesend', modus: 'DEKLARIERT', erlaubte_werkzeuge: ['Read', 'TaskOutput', 'Skills'] } } }), [])
+})

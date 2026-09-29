@@ -69,3 +69,64 @@ Kein nicht freigegebenes Werkzeug war aufrufbar (`nicht_freigegeben_aufgerufen`:
 - Die fremde Origin sperrt der Server selbst.
 - Beides ist mit der real installierten Fassung belegt, nicht mehr nur mit der Spike-Fassung
   (0.0.82, WS-2s S5).
+
+## C — Reallauf-Läufe in haushaltsbuch2 (Auszug aus den Rohströmen, F36 Review-Pass H-B)
+
+Datei: `auszug-laeufe.json`, erzeugt mit `node features/F36/nachweis-reallauf/auszug-laeufe.mjs`
+(einmalig von Hand, nicht Teil von `npm run check`). Quelle sind die unveränderten Rohströme
+`C:\Users\stefa\Projekte\ai-workforce\kontrollzustand-roh\<laufId>\rohstrom.json` (gitignored) und
+die Laufakten `C:\Users\stefa\Projekte\haushaltsbuch2\kontrollzustand\lineage-laufakte-<laufId>\`
+(gitignored, F-766). Der Auszug hält je Lauf die sha256 des Rohstroms und der Laufakte fest, dazu die
+init-Zeile (skills, tools, mcp_servers, slash_commands, agents), jede `Skill`- und `mcp__`-`tool_use`
+samt `tool_result` und die `permission_denials`. Rekonstruiert wurde nichts. CLI 2.1.284 in allen
+vier Läufen.
+
+| Lauf | Rolle | Rohstrom sha256 (Anfang) | `init.skills` | `Skill` in tools | `Agent` in tools | `mcp_servers` | Skill/MCP-Aufrufe | fremde Skill-`tool_use` |
+|---|---|---|---|---|---|---|---|---|
+| `1c4a1163` | F2 Iteration 1, vor der Installation | `c73a4accd3e3e8be` | 25 Namen (eingebaut/Projekt) | nein | nein | `[]` | 0 | 0 |
+| `7b6d0f40` | F2 Korrektur (AK4, AK5) | `8f67ec41140f8a0d` | `["frontend-design"]` | ja | nein | `playwright-mcp` connected | 0 | 0 |
+| `8cee6c98` | F3 Iteration 1 (AK12) | `84910fc0d3a8cf02` | `["frontend-design"]` | ja | nein | `playwright-mcp` connected | 1 | 0 |
+| `74290fb5` | F3 Korrektur | `1ff64e77b516e3db` | `["frontend-design"]` | ja | nein | `playwright-mcp` connected | 1 | 0 |
+
+- **AK12 (`8cee6c98`):** `tool_use` `Skill` mit `{"skill":"frontend-design", …}`, `tool_result`
+  `is_error: false`, Text „Launching skill: frontend-design“.
+- **AK4 (`7b6d0f40`):** `init.tools` = `Bash, Edit, GetTask, Glob, Grep, Read, Skill, Write` plus 25
+  `mcp__playwright-mcp__*`; `init.skills` nur der Ort-B-Skill. `init.agents` nennt 8 Agents (sichtbar),
+  `Agent` fehlt in `init.tools` (nicht aufrufbar, Lesart AK4). `slash_commands`: 37 Namen, vom Init-Gate
+  nicht geprüft (F-791 (3), F-831).
+- **AK5 / Playwright (`74290fb5`):** `mcp__playwright-mcp__browser_navigate` auf
+  `file:///C:/Users/stefa/Projekte/haushaltsbuch2/public/index.html` → `is_error: true`,
+  „Access to "file:" protocol is blocked“. In `8cee6c98` kein MCP-Aufruf; verweigert wurde nur
+  `npm run dev` (Bash). Die 8 Einzelnamen in `--allowedTools` stehen nicht im Rohstrom (er enthält
+  kein Argv); sie sind über denselben Produktionsweg in B belegt.
+- **Zählregel:** 0 `Skill`-`tool_use` außerhalb der Ort-B-Menge in allen vier Läufen. Das Skript
+  zählt am `input.skill` des `tool_use`, das Kriterium verlangt den Text des `tool_result`. Beide
+  fallen hier zusammen: Es gibt genau einen `Skill`-`tool_use` (`8cee6c98`, `frontend-design`), sein
+  `tool_result` lautet „Launching skill: frontend-design“; einen zweiten gibt es in keinem Rohstrom.
+
+Weitere Belege:
+
+- **cap-Ordner vorher leer:** `%USERPROFILE%\.ai-workforce` wurde am 29.09.2026 19:54:02 (+02:00)
+  angelegt, `cap\frontend-design` um 19:54:04, `cap\playwright-mcp` um 19:55:42 (Dateisystem-
+  Zeitstempel). Die erste Ausführungs-Freigabe von F2 (`1c4a1163`) lag um 17:26:03Z, also vor der
+  Installation; ihr init zeigt weder `Skill` noch einen MCP.
+- **Installation:** `ressourcen.json` in #281 (`54d6eb6`): `frontend-design` `FREIGEGEBEN`,
+  `installation.version` = `fbe07fb6ce7d51d8e86ca6efdf050059894cdb80`, `inhalt_hash` =
+  `89a6e59d…`; `playwright-mcp` `FREIGEGEBEN`, `installation.version` = `0.0.83`.
+- **Freigabe mit Katalog-Fähigkeiten:** Entscheidung
+  `entscheidung-workflow-router-59f6cbd8-…-schritt-3-ausfuehrung`, Checkpoint 2 (`22b86f63…`),
+  18:03:38Z, Begründung „Korrektur Iteration 1 mit frontend-design + playwright-mcp (F36-Reallauf)“.
+  F3: `entscheidung-workflow-router-8f1b8883-…-schritt-1-ausfuehrung`, Checkpoints 1 (`4b44b6c9…`,
+  „Freigabe über Workboard Click-to-Work“) und 2 (`bcefde94…`).
+- **Vorstart-Scan:** Ein eigener Trockenlauf-Beleg ist nicht abgelegt. Der Scan läuft fail-closed bei
+  jedem Ort-B-Start (`baueOrtBSkillStart`); `7b6d0f40`, `8cee6c98` und `74290fb5` sind gestartet, er
+  hat also dreimal ohne Treffer bestanden.
+
+Nicht belegt (in keiner Laufakte gespeichert):
+
+- Die **Anzeige der Empfehlung** und die mitgeschickten `empfehlungIds`. Die Entscheidungs-Artefakte
+  tragen sie nicht. Belegt ist nur das Ergebnis: Die drei Läufe nach der Installation hatten genau die
+  installierten Einträge im init.
+- Der Klickweg für `playwright-mcp`: Laut F-825 stand er nicht in der gekürzten Liste „Passt, nicht im
+  Lauf“. Wie er trotzdem über den Leitstand installiert wurde, ist nicht festgehalten (F-838 (4)).
+- `frontend-design` wurde im Folge-Workflow F3 aufgerufen, nicht in F2, wo er erstmals bereitstand.
