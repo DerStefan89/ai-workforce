@@ -10893,11 +10893,20 @@ Maßnahme: Bei Störung lokale Überlagerung (z. B. gitignoriertes `ressourcen.l
 Status: offen.
 Feature/Run: F36 WS-5a, 29.09.2026.
 
-**F-813** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-813** · `HARNESS_IMPROVEMENT` · P2 · erledigt (fix/f813-csrf-post-routen)
 Titel: Zustandsändernde POST-Routen des Leitstands prüfen die Herkunft der Anfrage nicht.
 Beschreibung: Der Leitstand liest POST-Bodies ohne Prüfung von `Origin`, `Sec-Fetch-Site` oder Content-Type. Eine fremde Webseite im selben Browser kann per einfacher Anfrage (text/plain, `no-cors`) z. B. `POST /api/laeufe` oder eine Freigabe an `127.0.0.1` schicken. Gefunden im Reviewer-Pass F36 WS-5a an den Installationsrouten; diese beiden lehnen seit WS-5a fremde Browser-Anfragen ab (`istFremdeBrowserAnfrage`, 403), alle übrigen nicht.
 Fundstelle: `scripts/leitstand-server.mjs` (`leseBody`, POST-Routen; `istFremdeBrowserAnfrage`).
 Auswirkung: Mittel — Einzelnutzer, lokal gebunden, aber eine besuchte Seite könnte Läufe starten oder Entscheidungen festhalten.
 Maßnahme: `istFremdeBrowserAnfrage` zentral vor jede zustandsändernde Route setzen (eigener kleiner Auftrag mit Gate über alle POST-Routen). Vor dem F36-Reallauf beheben, weil auch POST …/freigabe einen schreibenden Lauf startet (Challenger 29.09.2026).
-Status: offen (Installationsrouten erledigt in F36 WS-5a).
-Feature/Run: F36 WS-5a, 29.09.2026.
+Status: erledigt (Commit auf diesem Branch, fix/f813-csrf-post-routen): `istFremdeBrowserAnfrage` läuft zentral einmal am Anfang von `requestHandler` für jede Methode außer GET/HEAD (403 `{ grund }`), damit auch für `/api/projekte/<id>/…`; der Einzelaufruf an den Installationsrouten ist entfallen. Beleg `scripts/check-f813-csrf.mjs` (echter HTTP-Testserver; Rotfall vor dem Fix real: 91 Befunde; leitet die schreibenden Routen aus dem Quelltext ab und prüft den zentralen Haken strukturell). Semantik unverändert: ohne Origin/Sec-Fetch-Site weiter zulässig.
+Feature/Run: F36 WS-5a, 29.09.2026; behoben 29.09.2026.
+
+**F-814** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Leitstand prüft den Host-Header nicht gegen eine feste Liste (DNS-Rebinding).
+Beschreibung: `istFremdeBrowserAnfrage` vergleicht `Origin` nur mit dem `Host`-Header. Eine Seite, deren Domain per DNS-Rebinding auf 127.0.0.1 zeigt, gilt als Same-Origin und erreicht alle schreibenden Routen (Läufe, Freigaben, Installationen).
+Fundstelle: `scripts/leitstand-server.mjs` (`istFremdeBrowserAnfrage`, zentraler Haken F-813).
+Auswirkung: Mittel — setzt einen aktiven Angreifer voraus, trifft aber auch die Installationsrouten.
+Maßnahme: `Host`-Header zentral gegen eine Allowlist (`127.0.0.1:<port>`, `localhost:<port>`, `[::1]:<port>`) prüfen, für alle Methoden; Gate mit Rotfall fremder Host. Eigener kleiner Auftrag, spätestens vor Freigabe von Skill-/Agent-Installation (F36 WS-5b).
+Status: offen.
+Feature/Run: F-813-Fix, Reviewer-/QA-Hinweis, 29.09.2026.
