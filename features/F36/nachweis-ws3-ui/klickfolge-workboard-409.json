@@ -1,0 +1,60 @@
+{
+  "url": "http://127.0.0.1:4176/#/workboard",
+  "viewport": {
+    "breite": 1100,
+    "hoehe": 3000
+  },
+  "screenshotAusschnitt": {
+    "selector": "#workboard-bearbeitung .unterabschnitt .unterabschnitt",
+    "hoehe": 480
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Freigeben-Knopf",
+        "selector": ".wb-freigeben"
+      },
+      {
+        "name": "Fehlermeldung",
+        "selector": "#workboard-bearbeitung .fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Finding öffnen",
+      "warteAufSelector": {
+        "selector": ".workboard-zeile[data-id=\"F-001\"]",
+        "timeoutMs": 8000
+      },
+      "klick": ".workboard-zeile[data-id=\"F-001\"]"
+    },
+    {
+      "label": "Bearbeiten (Auftrag + Router-Lauf)",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten",
+        "timeoutMs": 8000
+      },
+      "klick": "#workboard-bearbeiten"
+    },
+    {
+      "label": "Vorschlag mit Empfehlung",
+      "warteAufSelector": {
+        "selector": ".wb-freigeben",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Freigeben (mit ids)",
+      "klick": ".wb-freigeben"
+    },
+    {
+      "label": "409: Empfehlung neu geladen (Anzeige nach der Abweichung)",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeitung .fehler",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-workboard-409-liste.png"
+    }
+  ]
+}

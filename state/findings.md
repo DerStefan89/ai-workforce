@@ -10667,13 +10667,13 @@ Maßnahme: TERMINAL-Blöcke tragen den Hinweis „eigenes PowerShell-Fenster“.
 Status: offen.
 Feature/Run: Chat #84, 28.09.2026.
 
-**F-788** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-788** · `HARNESS_IMPROVEMENT` · P2 · erledigt (F36 WS-3)
 Titel: Empfehlungsrauschen — bei neues-feature mit UI-Pfaden treffen etwa 10 Katalogeinträge zu.
 Beschreibung: Nach der Übernahme der Recherche (F36 WS-1b) passt `anwendbar_wenn` bei einem neues-feature-Auftrag mit UI-Pfaden auf rund 10 Einträge; eine ungefilterte Liste am ZWINGEND-Start wäre Rauschen.
 Fundstelle: `ressourcen.json` (`anwendbar_wenn`); `features/F36/feature.md` (WS-3).
 Auswirkung: Mittel — zu lange Empfehlungslisten werden überlesen.
 Maßnahme: WS-3 mit Rangfolge und Obergrenze (z. B. höchstens 3 je Liste; installiert vor nicht installiert; spezifischere Bedingung zuerst). `okf-agent-memory` auf Harness-Kandidat prüfen.
-Status: offen.
+Status: erledigt (F36 WS-3): `baueEmpfehlung` (`src/ressourcen/index.ts`) trennt „Wird genutzt“ und „Passt, nicht im Lauf“, ordnet je Liste beide `anwendbar_wenn`-Schlüssel vor einem, dann id alphabetisch, zeigt höchstens 3 und den Rest als Anzahl; `okf-agent-memory` trägt kein `anwendbar_wenn` mehr (Harness-Kandidat).
 Feature/Run: F36 WS-1b, 28.09.2026.
 
 **F-789** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -10812,13 +10812,13 @@ Maßnahme: Löschungen nur mit `"${S:?}"` oder festen Pfaden; Vermerk in CLAUDE.
 Status: offen.
 Feature/Run: F36 Datennachtrag, 29.09.2026.
 
-**F-804** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-804** · `PROCESS_IMPROVEMENT` · P3 · erledigt (F36 WS-3)
 Titel: Auftrag widersprach E-F36-5.
 Beschreibung: Der Datennachtrag-Auftrag legte Google Trends MCP und Scientific-agent-skills in die Stack-Liste (`docs/harness/stack-kandidaten.md`), obwohl sie nach E-F36-5 als MCP-Server bzw. Skill-Sammlung Katalog-Einträge (Gruppe 1, `ressourcen.json`) wären. Der Reviewer-Pass hat den Widerspruch gefunden; er ist in der Stack-Liste als „Vorgabe des Auftrags“ vermerkt.
 Fundstelle: `docs/harness/stack-kandidaten.md` (Absatz Datennachtrag); `features/F36/katalog-uebernahme.md` (Datennachtrag); `features/F36/feature.md` (E-F36-5).
 Auswirkung: Niedrig — zwei Einträge liegen außerhalb der Gruppenregel und erreichen die Empfehlung (WS-3) nicht über den Katalog.
 Maßnahme: In WS-3 zuordnen oder bewusst begründen; der Challenger prüft Aufträge gegen bestehende E-Entscheidungen.
-Status: offen.
+Status: erledigt (F36 WS-3): Google Trends MCP und Scientific-agent-skills bleiben bewusst in der Stack-Liste: Bausteine des Projektprodukts (F30), keine Fähigkeit eines Laufs; Switchyard/Google-Trends-Unterschied in stack-kandidaten.md begründet.
 Feature/Run: F36 Datennachtrag, 29.09.2026.
 
 **F-805** · `BUG` · P3 · offen
@@ -10829,3 +10829,30 @@ Auswirkung: Niedrig — eine Installation nach WS-5 würde nur von `herkunft.url
 Maßnahme: Quelle klären, Eintrag ggf. korrigieren.
 Status: offen.
 Feature/Run: F36 Datennachtrag, 29.09.2026.
+
+**F-806** · `TECH_DEBT` · P3 · offen
+Titel: Pfadquelle der Empfehlung ist „Projekt enthält“, nicht „Auftrag betrifft“.
+Beschreibung: `ermittleAusfuehrungsEmpfehlung` (`scripts/leitstand-server.mjs`) nimmt als Pfade die versionierten Dateien der Projekt-Repo-Wurzel (`git ls-files`). `pfad_muster_any` heißt damit „das Projekt enthält passende Dateien“, nicht „der Auftrag betrifft sie“ — in einem großen Projekt ist die Pfadbedingung fast immer erfüllt.
+Fundstelle: `scripts/leitstand-server.mjs` (`leseVersionierteDateien`, `ermittleAusfuehrungsEmpfehlung`); `features/F36/feature.md` (Bekannte Grenzen).
+Auswirkung: Niedrig — Rangfolge und Obergrenze (F-788) begrenzen das Rauschen; die Pfadbedingung trennt aber kaum.
+Maßnahme: Zeigt der Reallauf Rauschen, Pfade aus den Modulen des Architekt-Ergebnisses ableiten.
+Status: offen.
+Feature/Run: F36 WS-3, 29.09.2026.
+
+**F-807** · `BUG` · P3 · abgefangen (F36 WS-3)
+Titel: Einträge mit `wirkung` ≠ `lokal` tragen `anwendbar_wenn`.
+Beschreibung: `github-mcp` (`extern_schreibend`) und `iannuttall-seo` (`extern_lesend`) tragen `anwendbar_wenn`, obwohl sie nach E-F36-4 in V1 nicht freigebbar sind und nie empfohlen werden dürfen.
+Fundstelle: `ressourcen.json` (Einträge `github-mcp`, `iannuttall-seo`).
+Auswirkung: Niedrig — die Daten widersprechen der Regel, die Empfehlung fängt es ab.
+Maßnahme: Durch WS-3 abgefangen: `baueEmpfehlung` setzt solche Einträge in keine Liste, nur in die Zählzeile „n passende Einträge in V1 nicht freigebbar“. Die Daten bleiben unverändert; bereinigen, sobald E-F36-4 oder der Katalog ohnehin angefasst wird.
+Status: durch WS-3 abgefangen (keine Liste), Daten unverändert.
+Feature/Run: F36 WS-3, 29.09.2026.
+
+**F-808** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Der Start vergleicht nur die Menge der Empfehlungs-ids, nicht die installation dahinter.
+Beschreibung: Zwischen Anzeige und Freigabe kann sich die `installation` eines angezeigten Eintrags ändern (`command`, `args`, `werkzeuge`), ohne dass der Start abweicht. Heute ohne Wirkung, weil kein Katalog-MCP freigegeben ist.
+Fundstelle: `scripts/leitstand-server.mjs` (Vergleich `empfehlungIds`, `bereiteEmpfehlungFuerStartVor`); `features/F36/feature.md` (Bekannte Grenzen).
+Auswirkung: Mittel ab WS-5.
+Maßnahme: In WS-5 zusätzlich einen Hash über `installation` (bzw. den ganzen Eintrag) je id mitschicken und vergleichen; Entscheidung in der WS-5-Challenge.
+Status: offen.
+Feature/Run: F36 WS-3, 29.09.2026.

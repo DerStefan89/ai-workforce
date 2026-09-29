@@ -16,6 +16,8 @@ import {
   baueStackEntscheidungsInstruktion,
   baueUmsetzungsInstruktion,
   istStackOffen,
+  leseStackKandidatenAuszug,
+  STACK_KANDIDATEN_UEBERSCHRIFT,
   pruefeProjektmodusScope,
   traegtAdrVerweisAufEntscheidung,
   validiereErgebnisArchitektur,
@@ -254,4 +256,36 @@ test('traegtAdrVerweisAufEntscheidung: ein ADR mit Verweis auf die Entscheidung 
   mkdirSync(join(verzeichnis, 'docs', 'adr'), { recursive: true })
   writeFileSync(join(verzeichnis, 'docs', 'adr', '0001-stack.md'), '# ADR 0001\n\nEntscheidung: workflow-entscheidung-x\n')
   assert.strictEqual(traegtAdrVerweisAufEntscheidung(verzeichnis, 'workflow-entscheidung-x'), true)
+})
+
+test('leseStackKandidatenAuszug (F36 WS-3): liest die Tabelle der Installationswurzel ohne zurückgestellte Zeilen', () => {
+  const auszug = leseStackKandidatenAuszug(process.cwd())
+  assert.ok(auszug !== null)
+  assert.match(auszug, /^- shadcn\/ui — /)
+  assert.doesNotMatch(auszug, /Google Trends|zurückgestellt|Quelle-Zeile|https:\/\//)
+})
+
+test('leseStackKandidatenAuszug (F36 WS-3): fehlende Datei oder keine Tabellenzeile → null, kein Wurf', () => {
+  const wurzel = mkdtempSync(join(tmpdir(), 'f36-ws3-stack-'))
+  assert.equal(leseStackKandidatenAuszug(wurzel), null)
+  mkdirSync(join(wurzel, 'docs', 'harness'), { recursive: true })
+  writeFileSync(join(wurzel, 'docs', 'harness', 'stack-kandidaten.md'), '| Name | Zweck | Einsatzgebiet | Lizenz | Kosten |\n|---|---|---|---|---|\n| X (zurückgestellt) | z | e | l | k |\n')
+  assert.equal(leseStackKandidatenAuszug(wurzel), null)
+})
+
+test('leseStackKandidatenAuszug (F36 WS-3): nur die erste Kandidaten-Tabelle, eine zweite Tabelle wird nicht mitgelesen', () => {
+  const wurzel = mkdtempSync(join(tmpdir(), 'f36-ws3-stack-'))
+  mkdirSync(join(wurzel, 'docs', 'harness'), { recursive: true })
+  const kandidaten = ['| Name | Zweck | Einsatzgebiet | Lizenz | Kosten | URL |', '|---|---|---|---|---|---|', '| A | z | e | l | k | u |']
+  const zweite = ['| a | b | c | d | e |', '|---|---|---|---|---|', '| 1 | 2 | 3 | 4 | 5 |']
+  writeFileSync(join(wurzel, 'docs', 'harness', 'stack-kandidaten.md'), ['Text', '', ...kandidaten, '', '## Anderes', '', ...zweite, ''].join('\n'))
+  assert.equal(leseStackKandidatenAuszug(wurzel), '- A — z (e; l; k)')
+})
+
+test('baueArchitektAuftragstext (F36 WS-3): Stack-Auszug nur bei offenem Stack, sonst bitgenau unverändert', () => {
+  const auszug = '- A — z (e; l; k)'
+  const offen = baueArchitektAuftragstext('x', 'feature', null, true, '', auszug)
+  assert.ok(offen.includes(`${STACK_KANDIDATEN_UEBERSCHRIFT}\n${auszug}\n\nPlanungsauftrag:`))
+  assert.equal(baueArchitektAuftragstext('x', 'feature', null, false, '', auszug), baueArchitektAuftragstext('x', 'feature', null, false, ''))
+  assert.equal(baueArchitektAuftragstext('x', 'projekt', null, true, '', null), baueArchitektAuftragstext('x', 'projekt', null, true, ''))
 })

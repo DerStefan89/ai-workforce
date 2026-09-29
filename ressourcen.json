@@ -409,8 +409,7 @@
       "kosten": "Lokal; keine Embedding-API für Basissuche",
       "capabilities": ["NOTES_ACCESS"],
       "freigabe": "OFFEN",
-      "herkunft": { "art": "extern", "url": "https://github.com/okf-memory/okf-agent-memory" },
-      "anwendbar_wenn": { "task_typen_any": ["neues-feature", "bugfix", "refactoring"] }
+      "herkunft": { "art": "extern", "url": "https://github.com/okf-memory/okf-agent-memory" }
     },
     {
       "id": "claude-code-setup",

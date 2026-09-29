@@ -1,0 +1,14 @@
+{
+  "url": "http://127.0.0.1:4176/#/workflows/f36-ws3-nachweis",
+  "viewport": { "breite": 400, "hoehe": 4000 },
+  "screenshotAusschnitt": { "selector": "#workflow-bedienung", "hoehe": 1000 },
+  "beobachtete": {
+    "vorhanden": [
+      { "name": "Empfehlungsblock", "selector": "#workflow-bedienung h3" },
+      { "name": "Freigeben mit data-empfehlung-ids", "selector": "[data-aktion=\"freigeben\"][data-empfehlung-ids]" }
+    ]
+  },
+  "schritte": [
+    { "label": "400 px: Empfehlung am ZWINGEND-Start, lange Kennung", "warteAufSelector": { "selector": "[data-aktion=\"freigeben\"]", "timeoutMs": 8000 }, "screenshot": "01-workflow-400.png" }
+  ]
+}

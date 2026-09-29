@@ -422,6 +422,16 @@
  * /api/workflows/<id> (AK7, Muster 'naechster', baueWerkzeugsatzDurchsetzungProjektion):
  * 'ERZWUNGEN' je Schritt mit worker 'claude-code' (die --allowedTools-Grenze wirkt
  * real), 'DEKLARIERT' bei worker 'codex'.
+ *
+ * F36 WS-3 (Empfehlung, E-F36-4 „nur wenn empfohlen und angezeigt“): GET /api/workflows/<id>
+ * trägt am ZWINGEND-Start eines Schritts mit Katalog-Fähigkeiten das additive Feld 'empfehlung'
+ * (ermittleAusfuehrungsEmpfehlung: Router-task_typen + git ls-files der Projekt-Wurzel, Katalog aus
+ * der Installationswurzel). POST .../freigabe und POST /api/laeufe nehmen optional 'empfehlungIds'
+ * (die angezeigten wirdGenutzt-ids); bereiteEmpfehlungFuerStartVor rechnet beim Start neu, bricht
+ * bei Abweichung fail-closed ab, übergibt sonst genau diese MCPs (optionen.mcpEintraege) und hängt
+ * bei nicht leerer Liste eine Zeile an den Auftragstext. Ohne 'empfehlungIds' bleibt jeder Start
+ * bitgenau wie bisher. Der Architekt bekommt bei offenem Stack den Auszug der Stack-Liste
+ * (leseStackKandidatenAuszug, Installationswurzel).
  */
 
 import { createServer } from 'node:http'
@@ -443,7 +453,7 @@ import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
-import { baueMcpAufruf, loeseRessourcenAuf } from '../src/ressourcen/index.ts'
+import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, loeseRessourcenAuf, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
 import { baueRollenBesetzungsAnsicht, findeVorlagenBesetzung, projeziereAbdeckung, projeziereLibrary } from '../src/capabilities-ansicht/index.ts'
 import { baueRouterAuftragstext, validiereErgebnisRouter, validiereRouterErgebnisDaten, waehleWorkflowVorlage } from '../src/router/index.ts'
 import { validiereErgebnisScout } from '../src/scout/index.ts'
@@ -467,6 +477,7 @@ import {
   baueUmsetzungsInstruktion,
   istStackOffen,
   leseEntschiedeneAdrs,
+  leseStackKandidatenAuszug,
   pruefeProjektmodusScope,
   traegtAdrVerweisAufEntscheidung,
   validiereErgebnisArchitektur,
@@ -1603,7 +1614,8 @@ export const VERBOTENE_OPTIONEN_FELDER = new Set([
 const SCHEMANAME_MUSTER = /^[a-z0-9][a-z0-9-]*$/
 
 /** Erlaubte Top-Level-Felder eines Startauftrags (AK2, F11 WS-2 AK4/AK5) — laufId plus die AusfuehrungsEingaben-Felder, die noch aus dem Body kommen, plus werkzeugsatz (Name aus der Startvorlage) und optional vorgaengerLaufId. werkzeugStartziel/werkzeugVersionDeklariert/berechtigungskontext/profilReferenz sind NICHT mehr erlaubt (VERBOTENE_STARTVORLAGE_FELDER) — sie kommen serverseitig aus der Startvorlage. */
-const ERLAUBTE_STARTAUFTRAG_FELDER = new Set(['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz', 'vorgaengerLaufId'])
+// F36 WS-3: 'empfehlungIds' = die angezeigten wirdGenutzt-ids der Katalog-Empfehlung (optional, bereiteEmpfehlungFuerStartVor).
+const ERLAUBTE_STARTAUFTRAG_FELDER = new Set(['laufId', 'rolle', 'anfragen', 'budget', 'aufrufEingaben', 'auftragId', 'werkzeugsatz', 'vorgaengerLaufId', 'empfehlungIds'])
 
 /** F11 WS-2, AK5: diese vier Felder sind jetzt Sache der Startvorlage, nicht mehr des Body — ein Vorkommen wird wie ein AusfuehrungsOptionen-Feld mit 400 abgelehnt, nicht still ignoriert. */
 export const VERBOTENE_STARTVORLAGE_FELDER = new Set(['werkzeugStartziel', 'werkzeugVersionDeklariert', 'berechtigungskontext', 'profilReferenz'])
@@ -1864,11 +1876,17 @@ export function pruefeStartauftrag(body) {
   if (body.vorgaengerLaufId !== undefined && typeof body.vorgaengerLaufId !== 'string') {
     return { ok: false, grund: "'vorgaengerLaufId' muss ein String sein" }
   }
+  const empfehlungIdsFehler = pruefeEmpfehlungIdsForm(body.empfehlungIds)
+  if (empfehlungIdsFehler !== null) {
+    return { ok: false, grund: empfehlungIdsFehler }
+  }
 
   return {
     ok: true,
     laufId: body.laufId,
     werkzeugsatzName: body.werkzeugsatz,
+    // F36 WS-3: neben, nicht in eingaben — AusfuehrungsEingaben bleiben bitgenau wie bisher.
+    ...(body.empfehlungIds !== undefined ? { empfehlungIds: body.empfehlungIds } : {}),
     eingaben: {
       rolle: body.rolle,
       anfragen: body.anfragen,
@@ -2069,6 +2087,109 @@ export function erhaeltKatalogFaehigkeiten(rolle, art) {
 }
 
 /**
+ * F36 WS-3: versionierte Dateien der Projekt-Repo-Wurzel ('git ls-files', nur lesend) — Pfadquelle
+ * der Empfehlung. Bedeutung: „Projekt enthält passende Dateien“, nicht „Auftrag betrifft“ (Bekannte
+ * Grenze in features/F36/feature.md). null statt Wurf, wenn git nicht lesbar ist (kein Repo, git fehlt).
+ * @param repoWurzel - absoluter Pfad der Projekt-Repo-Wurzel
+ * @returns repo-relative Pfade mit '/' oder null
+ */
+function leseVersionierteDateien(repoWurzel) {
+  try {
+    // timeout: synchroner Aufruf (auch im 2-s-Poll von GET /api/workflows/<id>) — ein hängendes git
+    // (z. B. Cloud-Sync) darf den Server nicht blockieren; Überschreitung = nicht lesbar (null).
+    const roh = execFileSync('git', ['-c', 'core.quotePath=false', 'ls-files', '-z'], {
+      cwd: repoWurzel,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      maxBuffer: 50_000_000,
+      timeout: 5000,
+    })
+    return roh.split('\0').filter((pfad) => pfad.length > 0)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * F36 WS-3: ermittelt die Katalog-Empfehlung für den Ausführungsstart eines Auftrags (baueEmpfehlung,
+ * deterministisch). Kontext: task_typen aus dem Router-Artefakt 'router-<auftragId>'
+ * (klassifikation.task_typen; fehlt es, [] und Hinweis „keine Router-Klassifikation“), pfade aus
+ * leseVersionierteDateien. Der Katalog kommt aus der Installationswurzel und wird validiert — ein
+ * ungültiger Katalog liefert ok:false statt einer Empfehlung.
+ * @param auftragId - bereits geprüfte Auftrags-ID
+ * @param repoWurzel - Projekt-Repo-Wurzel (Pfade, Skill-/Agent-Auflösung)
+ * @param installWurzel - Installationswurzel der Workforce (ressourcen.json)
+ * @param startvorlagePfad - Startvorlage für loeseRessourcenAuf
+ * @param ladeOptionen - basisVerzeichnis/schreiber für ladeArtefaktVersion
+ * @returns { ok: true, empfehlung, hinweise, genutzteEintraege } (genutzteEintraege = aufgelöste
+ *   Einträge von wirdGenutzt in Anzeigereihenfolge) oder { ok: false, grund }
+ */
+export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen) {
+  try {
+    const ressourcenRoh = leseRessourcenRoh(installWurzel)
+    const verstoesse = validiereRessourcenDaten(ressourcenRoh)
+    if (verstoesse.length > 0) return { ok: false, grund: `ressourcen.json ungültig: ${verstoesse.join('; ')}` }
+    const hinweise = []
+    const taskTypen = ladeArtefaktVersion(`router-${auftragId}`, undefined, ladeOptionen)?.daten?.klassifikation?.task_typen
+    const hatKlassifikation = Array.isArray(taskTypen) && taskTypen.every((typ) => typeof typ === 'string')
+    if (!hatKlassifikation) hinweise.push('keine Router-Klassifikation')
+    const pfade = leseVersionierteDateien(repoWurzel)
+    if (pfade === null) hinweise.push('versionierte Dateien nicht lesbar (git ls-files)')
+    const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
+    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] })
+    const genutzteEintraege = empfehlung.wirdGenutzt.map((eintrag) => aufgeloest.find((r) => r.id === eintrag.id))
+    return { ok: true, empfehlung, hinweise, genutzteEintraege }
+  } catch (fehler) {
+    return { ok: false, grund: fehler.message }
+  }
+}
+
+/**
+ * F36 WS-3: Formprüfung der mitgeschickten, angezeigten wirdGenutzt-ids (Freigabe-Body bzw.
+ * Startauftrag). undefined ist zulässig (= nichts angezeigt).
+ * @param wert - Feldwert aus dem Body
+ * @returns null bei gültiger Form, sonst der Ablehnungsgrund
+ */
+export function pruefeEmpfehlungIdsForm(wert) {
+  if (wert === undefined) return null
+  if (!Array.isArray(wert) || !wert.every((id) => typeof id === 'string' && id.length > 0)) return "'empfehlungIds' muss ein Array aus nicht-leeren Strings sein"
+  return null
+}
+
+/**
+ * F36 WS-3, „Anzeige = Start“ (E-F36-4: nur, wenn empfohlen und angezeigt): berechnet die
+ * Empfehlung beim Start neu und vergleicht „Wird genutzt“ mit den angezeigten ids. Weicht die Menge
+ * ab oder ist die Empfehlung nicht ermittelbar, bricht der Start fail-closed ab. Sonst liefert die
+ * Funktion die MCP-Einträge für optionen.mcpEintraege (genau die angezeigten) und die Auftragszeile
+ * (null bei leerer Liste). Aufrufer: starteWorkflowSchritt, POST .../freigabe (Vorprüfung) und
+ * POST /api/laeufe — jeweils nur für erhaeltKatalogFaehigkeiten und nur mit mitgeschickten ids.
+ * @param angezeigteIds - wirdGenutzt-ids aus der Anzeige (Form bereits geprüft)
+ * @param auftragId - Auftrag des Laufs
+ * @param repoWurzel - Projekt-Repo-Wurzel
+ * @param installWurzel - Installationswurzel
+ * @param startvorlagePfad - Startvorlage
+ * @param ladeOptionen - basisVerzeichnis/schreiber
+ * @returns { ok: true, mcpEintraege, zeile } oder { ok: false, grund }
+ */
+export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen) {
+  const ermittelt = ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+  if (!ermittelt.ok) {
+    // Nur hier protokolliert, nicht in ermittleAusfuehrungsEmpfehlung: die Anzeige (GET, 2-s-Poll) zeigt den Fehler selbst.
+    console.error(`[leitstand] Katalog-Empfehlung für Auftrag '${auftragId}' beim Start nicht ermittelbar:`, ermittelt.grund)
+    return { ok: false, grund: `Katalog-Empfehlung beim Start nicht ermittelbar (${ermittelt.grund}) — Start abgebrochen` }
+  }
+  const beimStart = ermittelt.empfehlung.wirdGenutzt.map((eintrag) => eintrag.id)
+  const liste = (ids) => (ids.length === 0 ? 'keine' : ids.join(', '))
+  if (JSON.stringify([...angezeigteIds].sort()) !== JSON.stringify([...beimStart].sort())) {
+    return {
+      ok: false,
+      grund: `Katalog-Empfehlung hat sich seit der Anzeige geändert (angezeigt: ${liste(angezeigteIds)}; beim Start: ${liste(beimStart)}) — Start abgebrochen, Anzeige neu laden und erneut freigeben`,
+    }
+  }
+  return { ok: true, mcpEintraege: ermittelt.genutzteEintraege, zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt) }
+}
+
+/**
  * Löst einen geprüften Startauftrag zu fertigen AusfuehrungsEingaben auf
  * (F15 WS-2a) — verhaltensgleich aus dem POST /api/laeufe-Handler
  * extrahiert, wo dieser Block seit F11 WS-2 inline stand. Zwei Schritte,
@@ -2263,15 +2384,15 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
   }
 
   // F36 WS-2 (erhaeltKatalogFaehigkeiten): optional freigegebene lokale MCPs über
-  // optionen.mcpEintraege (baueMcpAufruf, fail-closed nach E-F36-4; in WS-2 immer leer, WS-3
-  // befüllt ihn) — deren Einzelnamen dedupliziert als neue Liste (die Startvorlage bleibt
+  // optionen.mcpEintraege (baueMcpAufruf, fail-closed nach E-F36-4; seit WS-3 aus der angezeigten
+  // Empfehlung, bereiteEmpfehlungFuerStartVor) — deren Einzelnamen dedupliziert als neue Liste (die Startvorlage bleibt
   // unverändert). Kein 'Skill'/'Agent' (Spike WS-2s S6, siehe erhaeltKatalogFaehigkeiten). Jede andere Rolle/Art: erlaubte_werkzeuge und
   // aufrufEingaben bitgenau wie bisher, mcpEintraege wird ignoriert. mcpConfig wird nur bei
   // übergebenen Einträgen gesetzt — sonst greift baueAufrufs Default '{"mcpServers":{}}' wie heute.
   let erlaubteWerkzeuge = werkzeugsatz.erlaubte_werkzeuge
   let mcpZusatz = {}
-  // Übergabepunkt WS-3: beide echten Aufrufer (loeseSchrittEingabenAuf, POST /api/laeufe)
-  // reichen optionen.mcpEintraege heute nicht durch — WS-3 setzt ihn aus der Empfehlung.
+  // F36 WS-3: beide echten Aufrufer (loeseSchrittEingabenAuf über starteWorkflowSchritt, POST
+  // /api/laeufe) setzen ihn nur, wenn die Empfehlung angezeigt und beim Start bestätigt wurde.
   const mcpEintraege = optionen.mcpEintraege ?? []
   if (erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, werkzeugsatz.art) && mcpEintraege.length > 0) {
     let mcpAufruf
@@ -2556,7 +2677,7 @@ function loesePraefixPlatzhalterAuf(artefaktId, praefix, schritt, workflowDaten)
   return { ok: true, artefaktId: `${praefix}-${zielSchritt.lauf_id}` }
 }
 
-export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen, installWurzel = repoWurzel) {
+export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId, auftragstext, vorlage, repoWurzel, ladeOptionen, installWurzel = repoWurzel, ausfuehrungsOptionen = {}) {
   // AK10, ZUERST: der Schemaname wird aufgelöst und geprüft, bevor diese
   // Funktion irgendetwas lädt oder zusammenstellt. Die Reihenfolge ist die
   // Aussage (QA-Pass 11.09.2026, Befund 4): ein Schritt mit kaputtem
@@ -2766,7 +2887,9 @@ export function loeseSchrittEingabenAuf(schritt, workflowDaten, vorgaengerLaufId
     ...(vorgaengerLaufId !== undefined ? { vorgaengerLaufId } : {}),
   }
 
-  const ergebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, schritt.werkzeugsatz, auftragstext, vorlage, repoWurzel)
+  // F36 WS-3: ausfuehrungsOptionen trägt nur { mcpEintraege } aus der Empfehlung (starteWorkflowSchritt);
+  // Default {} — jeder andere Aufrufer bleibt bitgenau wie bisher.
+  const ergebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, schritt.werkzeugsatz, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)
   if (!ergebnis.ok) {
     return { ok: false, grund: `Schritt '${schritt.schritt_id}': ${ergebnis.grund}` }
   }
@@ -4365,9 +4488,12 @@ export function erzeugeRequestHandler(optionen = {}) {
    * nicht. ladeArtefaktVersion ist synchron — die Invariante bleibt gewahrt.
    * @param workflowId - Kennung des Workflows
    * @param ausgang - 'starte'-Ausgang von ermittleNaechstenSchritt
+   * @param angezeigteEmpfehlungIds - F36 WS-3: die am ZWINGEND-Start angezeigten wirdGenutzt-ids
+   *   (nur POST .../freigabe reicht sie durch); undefined = nichts angezeigt, dann bekommt der Lauf
+   *   keine Katalog-Fähigkeiten und der Auftragstext bleibt bitgenau (E-F36-4)
    * @returns { ok: true, schrittId, laufId } oder { ok: false, art, grund }
    */
-  function starteWorkflowSchritt(workflowId, ausgang) {
+  function starteWorkflowSchritt(workflowId, ausgang, angezeigteEmpfehlungIds = undefined) {
     // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
     const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
 
@@ -4443,7 +4569,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       // leseArchitekturErgebnisAusLaufakte (oben) bei offenem Stack bereits eine
       // 'kategorie: stack'-Entscheidung verlangt. repoWurzel (das PROJEKT), nicht installWurzel.
       // F-750: dazu die entschiedenen ADRs DESSELBEN Projekts als bindender Kontext.
-      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, istStackOffen(repoWurzel), leseEntschiedeneAdrs(repoWurzel))
+      // F36 WS-3: bei offenem Stack zusätzlich der Auszug der Stack-Liste — aus der INSTALLATIONSWURZEL
+      // (Workforce-eigenes Dokument), nicht aus dem Projekt; fehlt die Datei, kein Auszug.
+      const stackOffen = istStackOffen(repoWurzel)
+      auftragstext = baueArchitektAuftragstext(auftragVersion.daten.auftragstext, modus, capabilityAuszug, stackOffen, leseEntschiedeneAdrs(repoWurzel), stackOffen ? leseStackKandidatenAuszug(installWurzel) : null)
     } else if (schritt.rolle === 'architecture-advisor') {
       // F-641 (Muster F39 WS-3a/baueArchitektAuftragstext oben): ohne diese Umhüllung bekommt der
       // Advisor nur den rohen Planungsauftrag — dessen Abschnitt "Auftrag an den Baudurchgang" ist
@@ -4585,6 +4714,19 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
     const vorgaengerLaufId = gelaufeneVorschritte[0]?.lauf_id ?? undefined
 
+    // F36 WS-3 („Anzeige = Start“, E-F36-4): nur mit angezeigten ids und nur für Läufe mit
+    // Katalog-Fähigkeiten (erhaeltKatalogFaehigkeiten) — dann Empfehlung neu berechnen, bei
+    // Abweichung fail-closed abbrechen (VOR jeder Zustandsänderung), sonst genau die angezeigten
+    // MCPs übergeben und bei nicht leerer Liste eine Zeile an den Auftragstext hängen. In jedem
+    // anderen Fall bleibt alles bitgenau wie bisher.
+    let ausfuehrungsOptionen = {}
+    if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
+      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+      if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege }
+      if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
+    }
+
     const eingabenErgebnis = loeseSchrittEingabenAuf(
       schritt,
       workflowDaten,
@@ -4593,7 +4735,8 @@ export function erzeugeRequestHandler(optionen = {}) {
       vorlage,
       repoWurzel,
       ladeOptionen,
-      installWurzel
+      installWurzel,
+      ausfuehrungsOptionen
     )
     if (!eingabenErgebnis.ok) {
       return { ok: false, art: 'ungueltig', grund: eingabenErgebnis.grund }
@@ -5636,14 +5779,30 @@ export function erzeugeRequestHandler(optionen = {}) {
             : { status: 'ok', laufId: ausfuehrungSchrittFuerPruefung.lauf_id, ergebnis: pruefergebnisVersion.daten.ergebnis, exitCode: pruefergebnisVersion.daten.exit_code }
       }
 
+      // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
+      // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
+      const naechster = baueNaechsterProjektion(version.daten, verstoesse)
+
+      // F36 WS-3 (E-F36-4 „nur wenn empfohlen und angezeigt“): additiv, NUR am ZWINGEND-Start
+      // (haltFreigabe) eines Schritts mit Katalog-Fähigkeiten (erhaeltKatalogFaehigkeiten) — sonst
+      // null. Die angezeigten wirdGenutzt-ids schickt die Oberfläche mit der Freigabe zurück
+      // (empfehlungIds); starteWorkflowSchritt rechnet neu und bricht bei Abweichung ab.
+      let empfehlung = null
+      if (naechster?.art === 'haltFreigabe') {
+        const faelligerSchritt = version.daten.schritte.find((s) => s.schritt_id === naechster.schrittId)
+        if (erhaeltKatalogFaehigkeiten(faelligerSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, faelligerSchritt?.werkzeugsatz)?.art)) {
+          const ermittelt = ermittleAusfuehrungsEmpfehlung(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+          empfehlung = ermittelt.ok ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise } : { schrittId: naechster.schrittId, fehler: ermittelt.grund }
+        }
+      }
+
       sendeJson(res, 200, {
         workflowId,
         versionSequenz: version.versionSequenz,
         daten: version.daten,
         verstoesse,
-        // verstoesse wird durchgereicht statt ein zweites Mal berechnet: dieselbe Prüfung auf
-        // demselben Datensatz im selben Request (Reviewer-Pass 10.09.2026).
-        naechster: baueNaechsterProjektion(version.daten, verstoesse),
+        naechster,
+        empfehlung,
         // F17 WS-2 (AK7): additiv, reine Anzeige — siehe baueWerkzeugsatzDurchsetzungProjektion.
         werkzeugsatzDurchsetzung: baueWerkzeugsatzDurchsetzungProjektion(version.daten),
         architekturEntscheidung,
@@ -6075,7 +6234,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
       if (pruefeGlobaleLaufSperre(res)) return
 
-      const { laufId, werkzeugsatzName, eingaben: eingabenRoh } = startauftrag
+      const { laufId, werkzeugsatzName, empfehlungIds, eingaben: eingabenRoh } = startauftrag
       if (laufIdBelegt(laufId)) {
         sendeJson(res, 409, { grund: `laufId '${laufId}' ist bereits vergeben` })
         return
@@ -6100,7 +6259,22 @@ export function erzeugeRequestHandler(optionen = {}) {
       // weiterhin 400). Grund für die Extraktion: der Schritt-Automat (WS-2b) muss Schritt n+1
       // über GENAU denselben Weg starten wie ein HTTP-Start — zwei divergierende Wege zu
       // AusfuehrungsEingaben wären zwei Sicherheitsprüfungen, von denen eine altert.
-      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragVersion.daten.auftragstext, vorlage, repoWurzel)
+      // F36 WS-3 („Anzeige = Start“, E-F36-4): Muster starteWorkflowSchritt — nur mit angezeigten ids
+      // und nur für erhaeltKatalogFaehigkeiten; Abweichung → 400, nichts reserviert. Sonst bitgenau:
+      // bei einer Rolle/Art ohne Katalog-Fähigkeiten wird empfehlungIds BEWUSST still ignoriert
+      // (Vorgabe „jede andere Rolle/Art bitgenau wie bisher“, auch in POST .../freigabe).
+      let auftragstext = auftragVersion.daten.auftragstext
+      let ausfuehrungsOptionen = {}
+      if (empfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.art)) {
+        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        if (!vorbereitet.ok) {
+          sendeJson(res, 400, { grund: vorbereitet.grund })
+          return
+        }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege }
+        if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
+      }
+      const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)
       if (!eingabenErgebnis.ok) {
         sendeJson(res, 400, { grund: eingabenErgebnis.grund })
         return
@@ -7375,6 +7549,12 @@ export function erzeugeRequestHandler(optionen = {}) {
         sendeJson(res, 400, { grund: `'begruendung' muss ein nicht-leerer String sein (Pflichtfeld)${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
         return
       }
+      // F36 WS-3: optional die am ZWINGEND-Start angezeigten wirdGenutzt-ids (GET /api/workflows/<id>, empfehlung).
+      const empfehlungIdsFehler = pruefeEmpfehlungIdsForm(body.empfehlungIds)
+      if (empfehlungIdsFehler !== null) {
+        sendeJson(res, 400, { grund: `${empfehlungIdsFehler}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+        return
+      }
 
       // (5) D13, wortgleich zu POST /api/laeufe und POST .../starten und aus demselben Grund an
       // derselben Stelle: die Sperre gilt unabhängig vom konkreten Request und läuft deshalb
@@ -7395,6 +7575,23 @@ export function erzeugeRequestHandler(optionen = {}) {
       const schrittId = body.schrittId
       const begruendung = body.begruendung
       const entschiedenAm = new Date().toISOString()
+
+      // F36 WS-3, Vorprüfung „Anzeige = Start“ VOR dem Festhalten der Entscheidung (Muster
+      // Stale-Schutz schrittId oben): weicht die angezeigte Empfehlung schon jetzt von der neu
+      // berechneten ab, wird nichts festgehalten und nichts gestartet — 409, Anzeige neu laden.
+      // Verbindlich bleibt die zweite Prüfung in starteWorkflowSchritt (dieselbe Funktion).
+      const freizugebenderSchritt = workflowDaten.schritte.find((s) => s.schritt_id === schrittId)
+      if (
+        body.entscheidung === 'FREIGEGEBEN' &&
+        body.empfehlungIds !== undefined &&
+        erhaeltKatalogFaehigkeiten(freizugebenderSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, freizugebenderSchritt?.werkzeugsatz)?.art)
+      ) {
+        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen)
+        if (!vorpruefung.ok) {
+          sendeJson(res, 409, { grund: `${vorpruefung.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
+          return
+        }
+      }
 
       // Das Entscheidungsartefakt entsteht VOR jeder Zustandsänderung und in BEIDEN Zweigen
       // (D2, AK7 Satz 2). Muster: der kenntnisnahme-Zweig in POST /api/entscheidungen — kein
@@ -7529,7 +7726,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
-      const gestartet = starteWorkflowSchritt(workflowId, startAusgang)
+      const gestartet = starteWorkflowSchritt(workflowId, startAusgang, body.empfehlungIds)
       // D13-UEBERGABE-OHNE-FENSTER: ENDE
       if (!gestartet.ok) {
         // Derselbe Behandlungspfad wie bei der gescheiterten Auto-Fortsetzung aus (a), über

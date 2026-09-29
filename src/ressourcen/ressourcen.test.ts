@@ -15,7 +15,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { baueMcpAufruf, fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
+import { baueEmpfehlung, baueEmpfehlungsZeile, baueMcpAufruf, fehltFuerEinsatz, loeseRessourcenAuf, pruefeAbdeckung, pruefeAnwendbarkeit, ressourcenFuerCapability, validiereRessourcenDaten } from './index.ts'
 import type { AufgelosteRessource, Ressource } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -783,4 +783,94 @@ test('baueMcpAufruf: zwei MCPs in Eingabereihenfolge, Eingabe unverändert', () 
   const eingabeVorher = JSON.stringify([a, b])
   baueMcpAufruf([a, b])
   assert.equal(JSON.stringify([a, b]), eingabeVorher)
+})
+
+// ─── baueEmpfehlung (F36 WS-3) ──────────────────────────────────────────────
+
+const MCP_INSTALL = (id: string) => ({ version: '1', mcp_server: { command: 'node', args: ['s.js'] }, werkzeuge: [`mcp__${id}__lesen`] })
+
+/** Aufgelöster Katalogeintrag für baueEmpfehlung — Default: freigegebener, verfügbarer lokaler MCP mit beiden anwendbar_wenn-Schlüsseln. */
+function kandidat(id: string, overrides: Partial<AufgelosteRessource> = {}): AufgelosteRessource {
+  return {
+    id,
+    typ: 'extern',
+    name: `Name ${id}`,
+    beschreibung: 'b',
+    unterart: 'mcp',
+    wirkung: 'lokal',
+    capabilities: ['X'],
+    freigabe: 'FREIGEGEBEN',
+    herkunft: { art: 'extern', url: 'https://example.invalid' },
+    installation: MCP_INSTALL(id),
+    anwendbar_wenn: { task_typen_any: ['bugfix'], pfad_muster_any: ['src/**'] },
+    verfuegbar: true,
+    grund: 'freigegeben',
+    ...overrides,
+  }
+}
+
+const KONTEXT = { task_typen: ['bugfix' as const], pfade: ['src/a.ts'] }
+const NUR_TASK = { task_typen_any: ['bugfix' as const] }
+
+test('baueEmpfehlung: Rangfolge — beide Schlüssel vor einem, danach id alphabetisch', () => {
+  const e = baueEmpfehlung([kandidat('zeta'), kandidat('alpha', { anwendbar_wenn: NUR_TASK }), kandidat('mitte')], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt.map((x) => x.id), ['mitte', 'zeta', 'alpha'])
+  assert.match(e.wirdGenutzt[0].grund, /task_typen_any erfüllt/)
+})
+
+test('baueEmpfehlung: höchstens drei je Liste, Rest als Anzahl (F-788)', () => {
+  const genutzt = ['a', 'b', 'c', 'd', 'e'].map((id) => kandidat(id))
+  const offen = ['p', 'q', 'r', 's'].map((id) => kandidat(id, { freigabe: 'OFFEN', installation: undefined, verfuegbar: false, grund: 'extern, installation fehlt' }))
+  const e = baueEmpfehlung([...genutzt, ...offen], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt.map((x) => x.id), ['a', 'b', 'c'])
+  assert.deepEqual(e.passtNichtImLauf.map((x) => x.id), ['p', 'q', 'r'])
+  assert.deepEqual(e.weitereAnzahl, { wirdGenutzt: 2, passtNichtImLauf: 1 })
+  assert.match(e.passtNichtImLauf[0].grund, /freigabe OFFEN; installation fehlt/)
+})
+
+test('baueEmpfehlung: deterministisch — gleiche Eingabe (auch umsortiert) gibt gleiche Ausgabe', () => {
+  const eintraege = [kandidat('c'), kandidat('a', { anwendbar_wenn: NUR_TASK }), kandidat('b', { freigabe: 'OFFEN', verfuegbar: false }), kandidat('d')]
+  const eins = baueEmpfehlung(eintraege, KONTEXT)
+  assert.deepEqual(baueEmpfehlung(eintraege, KONTEXT), eins)
+  assert.deepEqual(baueEmpfehlung([...eintraege].reverse(), KONTEXT), eins)
+})
+
+test('baueEmpfehlung: Skill/Agent (intern und extern) nie in wirdGenutzt, Grund nennt WS-5', () => {
+  const internSkill = kandidat('skill-intern', { typ: 'skill', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'skill', pfad: '.claude/skills/x' } })
+  const internAgent = kandidat('agent-intern', { typ: 'agent', unterart: undefined, wirkung: undefined, installation: undefined, herkunft: { art: 'agent', pfad: '.claude/agents/x.md' } })
+  const externSkillFrei = kandidat('skill-extern', { unterart: 'skill', wirkung: undefined, installation: { pfad: '/x', version: '1' } })
+  const externAgentFrei = kandidat('agent-extern', { unterart: 'agent', wirkung: undefined, installation: { pfad: '/x', version: '1' } })
+  const e = baueEmpfehlung([internSkill, internAgent, externSkillFrei, externAgentFrei], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt, [])
+  assert.equal(e.passtNichtImLauf.length + e.weitereAnzahl.passtNichtImLauf, 4)
+  for (const x of e.passtNichtImLauf) assert.match(x.grund, /Skill\/Agent in der Ausführung erst ab WS-5/)
+})
+
+test('baueEmpfehlung: wirkung ≠ lokal steht in keiner Liste, nur in nichtFreigebbarAnzahl (E-F36-4)', () => {
+  const e = baueEmpfehlung([kandidat('lesend', { wirkung: 'extern_lesend', freigabe: 'OFFEN' }), kandidat('schreibend', { wirkung: 'extern_schreibend', freigabe: 'OFFEN' })], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt, [])
+  assert.deepEqual(e.passtNichtImLauf, [])
+  assert.equal(e.nichtFreigebbarAnzahl, 2)
+})
+
+test('baueEmpfehlung: leere task_typen — nur reine Pfad-Einträge sind anwendbar', () => {
+  const e = baueEmpfehlung([kandidat('mit-task'), kandidat('nur-pfad', { anwendbar_wenn: { pfad_muster_any: ['src/**'] } })], { task_typen: [], pfade: ['src/a.ts'] })
+  assert.deepEqual(e.wirdGenutzt.map((x) => x.id), ['nur-pfad'])
+  assert.deepEqual(e.passtNichtImLauf, [])
+  const leer = baueEmpfehlung([kandidat('mit-task')], { task_typen: [], pfade: [] })
+  assert.deepEqual(leer, { wirdGenutzt: [], passtNichtImLauf: [], weitereAnzahl: { wirdGenutzt: 0, passtNichtImLauf: 0 }, nichtFreigebbarAnzahl: 0 })
+})
+
+test('baueEmpfehlung: freigegebener MCP, aber nicht verfügbar → passtNichtImLauf mit Grund', () => {
+  const e = baueEmpfehlung([kandidat('kaputt', { verfuegbar: false, grund: 'extern, installation ungültig: x' })], KONTEXT)
+  assert.deepEqual(e.wirdGenutzt, [])
+  assert.match(e.passtNichtImLauf[0].grund, /nicht verfügbar: extern, installation ungültig/)
+})
+
+test('baueEmpfehlungsZeile: leer → null, sonst eine Zeile mit id (name)', () => {
+  assert.equal(baueEmpfehlungsZeile([]), null)
+  assert.equal(
+    baueEmpfehlungsZeile([{ id: 'a', name: 'A', typ: 'extern', unterart: 'mcp', grund: 'g' }]),
+    'Freigegebene Katalog-Fähigkeiten in diesem Lauf: a (A) — nutzen, wo sie passen.'
+  )
 })

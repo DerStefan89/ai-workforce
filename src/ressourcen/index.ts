@@ -13,8 +13,10 @@
  * zusätzlich: typ 'agent' (Frontmatter wie skill), extern.unterart/wirkung,
  * installation (R4) mit R2 neu (E-M5-5: extern FREIGEGEBEN nur mit
  * installation; E-F36-4: mcp nur mit wirkung 'lokal'), anwendbar_wenn, und
- * reine Funktionen pruefeAnwendbarkeit (Aufrufer ab WS-3), baueMcpAufruf (WS-2) und
- * fehltFuerEinsatz (einziger Aufrufer: src/capabilities-ansicht). Dieses Modul
+ * reine Funktionen pruefeAnwendbarkeit, baueMcpAufruf (WS-2) und fehltFuerEinsatz
+ * (src/capabilities-ansicht). Seit F36 WS-3: baueEmpfehlung und baueEmpfehlungsZeile
+ * (Empfehlung am ZWINGEND-Start der Ausführung, Aufrufer von pruefeAnwendbarkeit und
+ * fehltFuerEinsatz). Dieses Modul
  * ENTSCHEIDET nichts — keine automatische Worker- oder Modellwahl (E-M3-3
  * bleibt unberührt, docs/projekt/zielfassung.md §13.4): es prüft und meldet.
  *
@@ -36,7 +38,8 @@
  *
  * Wird aufgerufen von: scripts/check-f19-ressourcen.mjs,
  * src/ressourcen/ressourcen.test.ts, src/capabilities-ansicht/index.ts
- * (fehltFuerEinsatz), scripts/leitstand-server.mjs (baueMcpAufruf, F36 WS-2).
+ * (fehltFuerEinsatz), scripts/leitstand-server.mjs (baueMcpAufruf, F36 WS-2; baueEmpfehlung,
+ * baueEmpfehlungsZeile, F36 WS-3), scripts/check-f36-ws3-empfehlung.mjs.
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -44,7 +47,7 @@ import { homedir } from 'node:os'
 import { join, posix, resolve } from 'node:path'
 import { TASK_TYPEN } from '../router/index.ts'
 import { WERKZEUG_EINTRAG_MUSTER } from '../startvorlage/index.ts'
-import type { Anwendbarkeit, AnwendbarkeitsKontext, AufgelosteRessource, CapabilityGap, Ressource } from './types.ts'
+import type { Anwendbarkeit, AnwendbarkeitsKontext, AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, Ressource } from './types.ts'
 
 const RESSOURCEN_WURZEL_FELDER = new Set(['ressourcen_schema', 'ressourcen'])
 const RESSOURCE_FELDER = new Set(['id', 'typ', 'name', 'beschreibung', 'unterart', 'wirkung', 'lizenz', 'kosten', 'installation', 'anwendbar_wenn', 'capabilities', 'freigabe', 'herkunft'])
@@ -526,7 +529,7 @@ export function loeseRessourcenAuf(ressourcen: Ressource[], repoWurzel: string, 
  * Reine Funktion (E-F36-2, deterministisch, kein Modell): wertet anwendbar_wenn einer Ressource gegen
  * einen Auftrag aus. ODER innerhalb eines Schlüssels, UND zwischen den Schlüsseln. Ohne anwendbar_wenn
  * ist eine Ressource nie anwendbar. Fehlen die pfade, gilt pfad_muster_any als nicht erfüllt.
- * Aufrufer ab F36 WS-3 (Empfehlung); in WS-1 nur Tests.
+ * Aufrufer: baueEmpfehlung (F36 WS-3).
  * @param ressource - ein validierter Katalogeintrag
  * @param kontext - task_typen des Auftrags (Router-Ergebnis), optional betroffene Pfade (repo-relativ)
  * @returns anwendbar plus Klartext-Begründung
@@ -564,7 +567,8 @@ export function pruefeAnwendbarkeit(ressource: Ressource, kontext: Anwendbarkeit
 
 /**
  * Reine Funktion (F36 WS-1): was einer Ressource für einen Einsatz im Lauf fehlt, in Klartext —
- * Anzeige in der Capabilities-Ansicht, sonst kein Aufrufer. Leere Liste = einsatzbereit.
+ * Anzeige in der Capabilities-Ansicht und (seit WS-3) Grund der Liste „Passt, nicht im Lauf“
+ * (baueEmpfehlung). Leere Liste = einsatzbereit.
  * @param ressource - validierter Katalogeintrag
  * @param aufgeloest - dieselbe Ressource nach loeseRessourcenAuf (verfuegbar/grund)
  * @returns Liste fehlender Voraussetzungen
@@ -653,4 +657,77 @@ export function baueMcpAufruf(mcpEintraege: readonly Ressource[]): { mcpConfig: 
   return { mcpConfig: mcpEintraege.length === 0 ? LEERE_MCP_CONFIG : JSON.stringify({ mcpServers }), zusatzWerkzeuge }
 }
 
-export type { AufgelosteRessource, CapabilityGap, Ressource }
+/** F-788: höchstens so viele Einträge je Empfehlungsliste, der Rest nur als Anzahl. */
+const EMPFEHLUNG_OBERGRENZE = 3
+/** Seit Variante 3b (Spike WS-2s S6) sind Skill/Agent nicht im Werkzeugsatz der Ausführung — das ändert erst WS-5. */
+const SKILL_AGENT_ERST_AB_WS5 = 'Skill/Agent in der Ausführung erst ab WS-5'
+
+/** Ein Listeneintrag samt Rang (0 = beide anwendbar_wenn-Schlüssel, 1 = nur einer) vor dem Sortieren. */
+type Kandidat = { rang: number; eintrag: EmpfehlungsEintrag }
+
+/**
+ * Rangfolge je Liste: beide anwendbar_wenn-Schlüssel erfüllt vor nur einem, danach id alphabetisch
+ * (Codepunkte, nicht locale-abhängig); danach auf EMPFEHLUNG_OBERGRENZE gekürzt.
+ * @param kandidaten - Einträge einer Liste mit Rang
+ * @returns die angezeigten Einträge und die Anzahl der weggekürzten
+ */
+function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintrag[]; weitere: number } {
+  const sortiert = [...kandidaten].sort((a, b) => a.rang - b.rang || (a.eintrag.id < b.eintrag.id ? -1 : a.eintrag.id > b.eintrag.id ? 1 : 0))
+  return { liste: sortiert.slice(0, EMPFEHLUNG_OBERGRENZE).map((k) => k.eintrag), weitere: Math.max(0, sortiert.length - EMPFEHLUNG_OBERGRENZE) }
+}
+
+/**
+ * Reine Funktion (F36 WS-3, E-F36-2: deterministisch, kein Modell, keine I/O): teilt die anwendbaren
+ * Katalogeinträge (pruefeAnwendbarkeit) in „Wird genutzt“ und „Passt, nicht im Lauf“.
+ * - wirdGenutzt: nur, was der Start dem Lauf tatsächlich übergibt — heute typ 'extern', unterart
+ *   'mcp', FREIGEGEBEN, installation gesetzt, wirkung 'lokal', verfuegbar. Skill/Agent (intern oder
+ *   extern) nie (Variante 3b, erst WS-5).
+ * - passtNichtImLauf: alle übrigen anwendbaren Einträge, grund aus fehltFuerEinsatz, bei Skill/Agent
+ *   zusätzlich SKILL_AGENT_ERST_AB_WS5.
+ * - MCP mit wirkung ≠ 'lokal' (E-F36-4, in V1 nicht freigebbar) steht in keiner Liste, nur in
+ *   nichtFreigebbarAnzahl.
+ * Rangfolge und Obergrenze siehe sortiereUndBegrenze. Die Eingabereihenfolge beeinflusst das Ergebnis nicht.
+ * @param aufgeloest - Katalog nach loeseRessourcenAuf
+ * @param kontext - task_typen des Auftrags (Router) und Pfade des Projekts
+ * @returns die beiden Listen, je Liste die Anzahl weiterer Einträge, die Anzahl nicht freigebbarer
+ */
+export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext): Empfehlung {
+  const genutzt: Kandidat[] = []
+  const passtNicht: Kandidat[] = []
+  let nichtFreigebbarAnzahl = 0
+  for (const ressource of aufgeloest) {
+    const anwendbarkeit = pruefeAnwendbarkeit(ressource, kontext)
+    if (!anwendbarkeit.anwendbar) continue
+    const istMcp = ressource.typ === 'extern' && ressource.unterart === 'mcp'
+    if (istMcp && ressource.wirkung !== 'lokal') {
+      nichtFreigebbarAnzahl++
+      continue
+    }
+    const regel = ressource.anwendbar_wenn
+    const rang = regel?.task_typen_any !== undefined && regel.pfad_muster_any !== undefined ? 0 : 1
+    const basis = { id: ressource.id, name: ressource.name, typ: ressource.typ, ...(ressource.unterart !== undefined ? { unterart: ressource.unterart } : {}) }
+    if (istMcp && ressource.freigabe === 'FREIGEGEBEN' && ressource.installation !== undefined && ressource.verfuegbar) {
+      genutzt.push({ rang, eintrag: { ...basis, grund: anwendbarkeit.begruendung } })
+      continue
+    }
+    const gruende = fehltFuerEinsatz(ressource, ressource)
+    if (!istMcp) gruende.push(SKILL_AGENT_ERST_AB_WS5)
+    passtNicht.push({ rang, eintrag: { ...basis, grund: gruende.length > 0 ? gruende.join('; ') : 'nicht einsatzbereit' } })
+  }
+  const a = sortiereUndBegrenze(genutzt)
+  const b = sortiereUndBegrenze(passtNicht)
+  return { wirdGenutzt: a.liste, passtNichtImLauf: b.liste, weitereAnzahl: { wirdGenutzt: a.weitere, passtNichtImLauf: b.weitere }, nichtFreigebbarAnzahl }
+}
+
+/**
+ * F36 WS-3: die eine Zeile für den Auftragstext der Ausführung — null, wenn nichts genutzt wird (dann
+ * bleibt der Auftragstext bitgenau unverändert).
+ * @param wirdGenutzt - die angezeigte Liste „Wird genutzt“ aus baueEmpfehlung
+ * @returns die Zeile oder null
+ */
+export function baueEmpfehlungsZeile(wirdGenutzt: readonly EmpfehlungsEintrag[]): string | null {
+  if (wirdGenutzt.length === 0) return null
+  return `Freigegebene Katalog-Fähigkeiten in diesem Lauf: ${wirdGenutzt.map((e) => `${e.id} (${e.name})`).join(', ')} — nutzen, wo sie passen.`
+}
+
+export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, Ressource }
