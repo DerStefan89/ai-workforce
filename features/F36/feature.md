@@ -262,6 +262,10 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
     - Sperren über den Text des `tool_result` erkennen, denn
       `permission_denials` bleibt leer.
     - Grenze der Windows-Kommandozeile prüfen.
+    - `browser-use` (Datennachtrag 29.09.2026): Der Skill braucht die
+      browser-use-CLI, die Prüfung auf `SKILL.md` allein reicht nicht; er
+      wirkt über den Browser nach außen, das Schema kennt `wirkung` aber
+      nur bei `mcp`.
 - **Reallauf.** Ein nicht installierter Eintrag wird empfohlen,
   freigegeben, installiert und im selben Durchstich genutzt (init-Zeile und
   Aufruf beobachtet, WS-4). Zusätzlich wird beobachtet, ob das Modell
@@ -273,9 +277,8 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
   - Schwelle und Stichprobe;
   - ein Auftrag ohne Aufforderung zu gesperrten Agents;
   - wer urteilt.
-- **WS-4 — Beobachtung (F-730).** Läuft parallel auf
-  `feat/f36-ws4-beobachtung`: init-Zeile (tools, agents, skills,
-  mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
+- **WS-4 — Beobachtung (F-730).** Gemergt (#269): init-Zeile (tools,
+  agents, skills, mcp_servers) und tatsächliche Skill-/Agent-/MCP-Aufrufe je Lauf sichtbar.
 
 Reihenfolge ab 28.09.2026 (E-F36-5/6): WS-1b → WS-2 Laufzeit → WS-3
 Empfehlung → WS-5 Installation → Reallauf. Stand 29.09.2026 gebaut und

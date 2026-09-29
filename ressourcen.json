@@ -411,6 +411,55 @@
       "freigabe": "OFFEN",
       "herkunft": { "art": "extern", "url": "https://github.com/okf-memory/okf-agent-memory" },
       "anwendbar_wenn": { "task_typen_any": ["neues-feature", "bugfix", "refactoring"] }
+    },
+    {
+      "id": "claude-code-setup",
+      "typ": "extern",
+      "name": "Claude Code Setup",
+      "beschreibung": "Erstanbieter-Plugin mit dem Skill claude-automation-recommender: analysiert ein Projekt und schlägt passende Skills, Hooks und MCPs vor, installiert nichts.",
+      "unterart": "skill",
+      "lizenz": "Apache-2.0 im Plugin-LICENSE",
+      "kosten": "Modellquota; Empfehlungen selbst kostenlos",
+      "capabilities": ["TOOL_SELECTION"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/anthropics/claude-plugins-official/tree/main/plugins/claude-code-setup" }
+    },
+    {
+      "id": "image-to-code",
+      "typ": "extern",
+      "name": "Image to code",
+      "beschreibung": "Skill aus leonxlnx/taste-skill: Designbild erzeugen, analysieren und das Frontend danach umsetzen.",
+      "unterart": "skill",
+      "lizenz": "MIT (GitHub-Metadaten)",
+      "kosten": "Bildgenerierung und Coding-Quota",
+      "capabilities": ["UI_UX_DESIGN"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/leonxlnx/taste-skill/tree/main/skills/image-to-code-skill" },
+      "anwendbar_wenn": { "task_typen_any": ["neues-feature"], "pfad_muster_any": ["**/*.html", "**/*.css", "**/*.tsx", "**/*.jsx"] }
+    },
+    {
+      "id": "i-have-adhd",
+      "typ": "extern",
+      "name": "i-have-adhd",
+      "beschreibung": "Ausgabestil für kürzere, leichter erfassbare Agentenantworten; nur auf ausdrücklichen Stilbedarf, kein medizinisches Produkt.",
+      "unterart": "skill",
+      "lizenz": "MIT (GitHub-Metadaten)",
+      "kosten": "Skill kostenlos; Modellquota",
+      "capabilities": ["ANSWER_STYLE"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/ayghri/i-have-adhd" }
+    },
+    {
+      "id": "browser-use",
+      "typ": "extern",
+      "name": "Browser Use",
+      "beschreibung": "Agentenbasierte Browserautomatisierung über Sprachmodelle (Skill skills/browser-use, setzt die browser-use-CLI voraus). Wirkt über den Browser nach außen; nur mit eigenem Testaccount und Sandbox. Für reproduzierbare Tests zuerst Playwright.",
+      "unterart": "skill",
+      "lizenz": "MIT (GitHub-Metadaten)",
+      "kosten": "Library kostenlos; Modell und optional Cloudbrowser kostenpflichtig",
+      "capabilities": ["BROWSER_AUTOMATION"],
+      "freigabe": "OFFEN",
+      "herkunft": { "art": "extern", "url": "https://github.com/browser-use/browser-use/tree/main/skills/browser-use" }
     }
   ]
 }
