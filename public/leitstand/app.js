@@ -34,21 +34,12 @@
  * erste Tick etwas zu melden hätte. initStartView() (F29 WS-1a) registriert
  * aus demselben Grund ebenfalls vor initZustandPoll().
  *
- * renderProjektKontext() (F25 WS-2a, AK14) läuft einmalig beim Bootstrap,
- * damit die Kopfzeile von Anfang an das aktive Projekt zeigt — welches das
- * ist (Standardprojekt oder ein aus der Sitzung wiederhergestelltes, siehe
- * projekt-kontext.js Kopfkommentar) entscheidet bereits deren eigener
- * Modul-Top-Level-Code, der vor diesem Aufruf gelaufen ist. Jeder spätere
- * Projektwechsel rendert die Kopfzeile über setzeAktivesProjekt() selbst
- * neu, kein zweiter Aufrufpunkt hier nötig.
- *
  * leiteBeimStartEin() (F29 WS-1a, views/start.js) läuft NACH allen
  * initXView()-Aufrufen (die Route '#/start' muss bereits registriert sein)
  * und VOR starteRouter() — sie setzt den Hash höchstens einmal pro Sitzung
  * auf '#/start', bevor dessen erster dispatch() ihn liest (Datei-Kommentar
- * dort). initShell() (Chat-Umschalter, Persona-Kachel-Klick) hat keine
- * solche Reihenfolge-Abhängigkeit, steht hier nur aus Lesbarkeit neben den
- * anderen init-Aufrufen.
+ * dort). initShell() hat keine solche Reihenfolge-Abhängigkeit, steht hier nur
+ * aus Lesbarkeit neben den anderen init-Aufrufen.
  *
  * F44 WS-1a: initialisiereSprache() (i18n.js) und initialisiereTheme() (theme.js) laufen
  * ALS ERSTES, vor jedem Rendern — jede View, die t() nutzt, soll von Anfang an die gespeicherte
@@ -57,16 +48,26 @@
  * DOM oder Storage beim Import); erst diese Aufrufe lesen localStorage.
  * initEinstellungenView() registriert '#/einstellungen' wie jede andere View vor
  * starteRouter().
+ *
+ * F44 WS-1b: initPlatzhalterViews() registriert '#/brain', '#/produktzyklus', '#/roadmap' und
+ * '#/nutzung' (views/platzhalter.js) wie jede andere View vor starteRouter(). initKommt()
+ * (kommt.js) hängt einmalig die Sperre für aria-disabled-Knöpfe an (E-F44-1), vor jeder View,
+ * damit ihr Einfang-Listener vor allen übrigen Handlern steht. initShell() übersetzt die
+ * statischen Texte von Sidebar und Kopf, rendert die Projektauswahl im Kopf
+ * (renderProjektKontext, projekt-kontext.js — welches Projekt aktiv ist, entscheidet dessen
+ * Modul-Code schon beim Import) und verdrahtet Sidebar und Kopf. Jeder spätere Projektwechsel
+ * rendert die Auswahl über setzeAktivesProjekt() selbst neu.
  */
 
 import { initialisiereSprache } from './i18n.js'
+import { initKommt } from './kommt.js'
 import { registriere, starteRouter } from './router.js'
-import { renderProjektKontext } from './projekt-kontext.js'
 import { initAttentionView } from './views/attention.js'
 import { initCapabilitiesView } from './views/capabilities.js'
 import { initChatView } from './views/chat.js'
 import { initDashboardView } from './views/dashboard.js'
 import { initEinstellungenView } from './views/einstellungen.js'
+import { initPlatzhalterViews } from './views/platzhalter.js'
 import { initProjektView } from './views/projekt.js'
 import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
 import { initRunsView } from './views/runs.js'
@@ -80,7 +81,7 @@ import { initZustandPoll } from './zustand.js'
 
 initialisiereSprache()
 initialisiereTheme()
-renderProjektKontext()
+initKommt()
 
 initDashboardView()
 initProjektView()
@@ -92,6 +93,7 @@ initWorkflowsView()
 initCapabilitiesView()
 initAttentionView()
 initEinstellungenView()
+initPlatzhalterViews()
 initStartView()
 initPersona()
 initShell()

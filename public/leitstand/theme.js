@@ -13,7 +13,9 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initialisiereTheme beim Bootstrap)
- * - public/leitstand/views/einstellungen.js (aktuellesTheme, setzeTheme)
+ * - public/leitstand/views/einstellungen.js (aktuellesTheme, setzeTheme, abonniereThemeWechsel)
+ * - public/leitstand/shell.js (F44 WS-1b: Hell/Dunkel-Schalter im Kopf — aktuellesTheme, setzeTheme,
+ *   abonniereThemeWechsel; beide Bedienstellen bleiben so synchron)
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM oder Storage beim Import.
@@ -27,6 +29,17 @@ export const THEMES = ['dark', 'light']
 
 const STANDARD_THEME = 'dark'
 const SPEICHER_SCHLUESSEL = 'leitstand-theme'
+
+/** F44 WS-1b: Abonnenten eines Theme-Wechsels (Schalter im Kopf, Seite Einstellungen). */
+const themeAbonnenten = []
+
+/**
+ * F44 WS-1b: Meldet jeden Wechsel über setzeTheme() (Muster abonniereBewegungsAenderung in persona.js).
+ * @param fn - () => void
+ */
+export function abonniereThemeWechsel(fn) {
+  themeAbonnenten.push(fn)
+}
 
 /**
  * Prüft, ob ein Wert ein unterstütztes Theme ist.
@@ -95,4 +108,12 @@ export function setzeTheme(theme) {
     console.error('theme: Auswahl konnte nicht gespeichert werden:', fehler)
   }
   aktualisiereThemeColor()
+  // Jeder Abonnent einzeln gefangen — ein werfender blockiert die übrigen nicht.
+  for (const fn of themeAbonnenten) {
+    try {
+      fn()
+    } catch (fehler) {
+      console.error('theme: ein Abonnent ist fehlgeschlagen:', fehler)
+    }
+  }
 }

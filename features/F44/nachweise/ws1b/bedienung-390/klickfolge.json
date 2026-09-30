@@ -1,0 +1,66 @@
+{
+  "url": "http://127.0.0.1:4173/#/dashboard",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Menü offen",
+        "selector": "#shell-menue-oeffner",
+        "attribut": "aria-expanded"
+      }
+    ],
+    "getroffen": [
+      {
+        "name": "„Ausführungen“ klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"runs\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Initial (Menü zu)"
+    },
+    {
+      "label": "Menü öffnen",
+      "klick": "#shell-menue-oeffner",
+      "screenshot": "d390-menue.webp"
+    },
+    {
+      "label": "Klick „Ausführungen“ (Menü schließt)",
+      "klick": "#shell-sidebar a[data-nav-view=\"runs\"]",
+      "screenshot": "d390-runs-menue-zu.webp"
+    }
+  ]
+}

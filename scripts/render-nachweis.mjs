@@ -69,6 +69,10 @@
  *   "screenshotVollseite": true       — ganze Seitenhöhe statt Viewport (ohne screenshotAusschnitt);
  *                                       je Schritt überschreibbar.
  *   "screenshotQualitaet": 0.8        — nur für Dateinamen auf .webp: Qualität 0–1 (Standard 0.8).
+ *   "anfragenBlockieren": ["**\/api/zustand"] — F44 WS-1b: Anfragen auf diese Glob-Muster
+ *                                       (Playwright page.route) scheitern mit einem Netzfehler —
+ *                                       für Fehlerzustände (z. B. Poll-Fehlerbanner) ohne den
+ *                                       Server anzuhalten.
  * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
  * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
  * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
@@ -77,6 +81,15 @@
  * "getroffen": [{ "name", "selector" }] (trifft ein Klick auf die Mitte das Element?),
  * "ueberlauf": true (waagerechter Überlauf der Seite) und immer die Spalte "Seite geladen"
  * (document.readyState === 'complete').
+ *
+ * F44 WS-1b (Motion-Nachweis, Abgleich F-725 §4 Punkt 9): Schritt "animationenBei": <ms> hält
+ * unmittelbar vor dem Ablesen und dem Screenshot ALLE Animationen der Seite an
+ * (document.getAnimations(): CSS-Animationen und -Transitions) und setzt ihre currentTime auf
+ * <ms> — gemessen je Animation ab ihrem eigenen Start, also z. B. 800 = „0,8 s nach dem Beginn
+ * des Aufwachens“, unabhängig davon, wie lange Laden und Warten gedauert haben. Die Animationen
+ * bleiben danach angehalten; ein folgender Schritt mit Navigation startet neue. Eine Seite ohne
+ * Animationen (z. B. mit "reduzierteBewegung": true) bleibt unverändert; die Anzahl steht in der
+ * Protokollspalte „Animationen angehalten“.
  *
  * Aufruf: node scripts/render-nachweis.mjs <klickfolge.json> <ausgabeVerzeichnis>
  * NICHT Teil von `npm run check` (braucht eine laufende Server-Instanz UND
@@ -161,6 +174,8 @@ async function main() {
     deviceScaleFactor: zoom,
   })
   if (klickfolge.reduzierteBewegung === true) await page.emulateMedia({ reducedMotion: 'reduce' })
+  // F44 WS-1b: Netzfehler für bestimmte Anfragen nachstellen (Datei-Kommentar, "anfragenBlockieren").
+  for (const muster of klickfolge.anfragenBlockieren ?? []) await page.route(muster, (route) => route.abort())
 
   /**
    * Kodiert ein PNG im Browser als WebP um (F44 WS-1a) — keine Bildbibliothek als Abhängigkeit.
@@ -274,18 +289,32 @@ async function main() {
         // dann bleibt die feste Wartezeit unten die Rückfalllösung.
       }
       await page.waitForTimeout(300)
+      // F44 WS-1b: Animationen auf einen festen Zeitpunkt stellen (Datei-Kommentar), NACH allen Wartezeiten.
+      let angehalten
+      if (schritt.animationenBei !== undefined) {
+        if (!(typeof schritt.animationenBei === 'number' && schritt.animationenBei >= 0)) throw new Error(`animationenBei muss eine Zahl >= 0 sein, erhalten: ${schritt.animationenBei}`)
+        angehalten = await page.evaluate((ms) => {
+          const animationen = document.getAnimations()
+          for (const animation of animationen) {
+            animation.pause()
+            animation.currentTime = ms
+          }
+          return animationen.length
+        }, schritt.animationenBei)
+      }
       const zustand = await leseZustand(page, klickfolge.beobachtete)
-      protokoll.push({ label: schritt.label, ...zustand })
+      protokoll.push({ label: schritt.label, ...zustand, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
       if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite)
     }
   } finally {
     await browser.close()
   }
 
-  const spalten = ['Aktion', ...Object.keys(protokoll[0] ?? {}).filter((k) => k !== 'label')]
+  // Spalten aus allen Zeilen (F44 WS-1b: 'Animationen angehalten' steht nur in Schritten mit animationenBei).
+  const spalten = ['Aktion', ...new Set(protokoll.flatMap((eintrag) => Object.keys(eintrag)).filter((k) => k !== 'label'))]
   const kopf = `| ${spalten.join(' | ')} |`
   const trenner = `| ${spalten.map(() => '---').join(' | ')} |`
-  const zeilen = protokoll.map((eintrag) => `| ${[eintrag.label, ...spalten.slice(1).map((s) => String(eintrag[s]))].join(' | ')} |`)
+  const zeilen = protokoll.map((eintrag) => `| ${[eintrag.label, ...spalten.slice(1).map((s) => String(eintrag[s] ?? '–'))].join(' | ')} |`)
   const markdown = [kopf, trenner, ...zeilen].join('\n')
 
   writeFileSync(join(ausgabeVerzeichnis, 'protokoll.md'), `${markdown}\n`, 'utf-8')

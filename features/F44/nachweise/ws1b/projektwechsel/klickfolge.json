@@ -1,0 +1,156 @@
+{
+  "url": "http://127.0.0.1:4292/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Erste Auftragsoption",
+        "selector": "#start-auftrag option"
+      },
+      {
+        "name": "Zuletzt geöffnet",
+        "selector": "#zuletzt-verlauf"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Auftrag B (641dd347)",
+        "selector": "#start-auftrag option[value=\"641dd347-d11d-4ce6-b3d9-d9f1ae13608e\"]"
+      },
+      {
+        "name": "Option projekt-b im Kopf",
+        "selector": "#kopf-projekt-auswahl option[value=\"projekt-b\"]"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Zuletzt geöffnet sichtbar",
+        "id": "shell-zuletzt"
+      },
+      {
+        "name": "Lauf-Detail offen",
+        "id": "lauf-detail"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/projekt, A aktiv",
+      "screenshot": "wechsel-a.webp"
+    },
+    {
+      "label": "Kopfauswahl → Projekt B",
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "projekt-b"
+      },
+      "warteAufSelector": {
+        "selector": "#start-auftrag option[value=\"641dd347-d11d-4ce6-b3d9-d9f1ae13608e\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "wechsel-b.webp"
+    },
+    {
+      "label": "Neu laden (B bleibt, sessionStorage)",
+      "reload": true
+    },
+    {
+      "label": "Kopfauswahl → A",
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "ai-workforce"
+      }
+    },
+    {
+      "label": "Tastatur: Pfeiltaste im Feld (A bleibt aktiv)",
+      "fokus": "#kopf-projekt-auswahl",
+      "taste": "ArrowDown"
+    },
+    {
+      "label": "Tastatur: Escape (Anzeige zurück auf A)",
+      "taste": "Escape"
+    },
+    {
+      "label": "Tastatur: Pfeiltaste, dann Tab (Wechsel zu B)",
+      "taste": "ArrowDown"
+    },
+    {
+      "label": "… Tab verlässt das Feld",
+      "taste": "Tab",
+      "warteAufSelector": {
+        "selector": "#start-auftrag option[value=\"641dd347-d11d-4ce6-b3d9-d9f1ae13608e\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Kopfauswahl → A (Maus)",
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "ai-workforce"
+      }
+    },
+    {
+      "label": "Aus #/runs/<id> nach B (Liste statt fremdem Detail)",
+      "navigiere": "#/runs/lauf-gibt-es-nicht"
+    },
+    {
+      "label": "… Kopfauswahl → B",
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "projekt-b"
+      }
+    },
+    {
+      "label": "… Kopfauswahl → A",
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "ai-workforce"
+      }
+    },
+    {
+      "label": "Alle Produkte → „Öffnen“ B (merkt „Zuletzt geöffnet“)",
+      "navigiere": "#/projekte-uebersicht",
+      "warteAufSelector": {
+        "selector": ".projekt-waehlen[data-id=\"projekt-b\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Klick „Öffnen“ B",
+      "klick": ".projekt-waehlen[data-id=\"projekt-b\"]",
+      "screenshot": "wechsel-zuletzt.webp"
+    }
+  ]
+}

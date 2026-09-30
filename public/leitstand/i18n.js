@@ -20,7 +20,8 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initialisiereSprache beim Bootstrap)
  * - public/leitstand/views/einstellungen.js (t, aktuelleSprache, setzeSprache)
- * - public/leitstand/shell.js (t, Eintrag „Einstellungen“ im Dropdown der Nutzerkarte)
+ * - public/leitstand/shell.js (t, uebersetzeDokument, aktuelleSprache, setzeSprache — Sidebar und Kopf, F44 WS-1b)
+ * - public/leitstand/persona.js, projekt-kontext.js, kommt.js, views/start.js, views/platzhalter.js (t, F44 WS-1b)
  * - public/leitstand/i18n.test.mjs (node:test)
  * - scripts/check-f44-i18n.mjs (SPRACHEN, Wörterbücher)
  *
@@ -174,4 +175,24 @@ export function setzeSprache(code) {
   }
   location.reload()
   return true
+}
+
+/** Attribute, die uebersetzeDokument() aus einem data-i18n-*-Schlüssel setzt (F44 WS-1b). */
+const UEBERSETZBARE_ATTRIBUTE = ['aria-label', 'title']
+
+/**
+ * F44 WS-1b: Übersetzt die statischen Texte in index.html (Sidebar, Kopf, Fehlerbanner), die dort
+ * deutsch als Rückfall stehen. Das Attribut `data-i18n` (Wert: Schlüssel) setzt den Textinhalt,
+ * `data-i18n-aria-label`/`data-i18n-title` das jeweilige Attribut. Die Schlüssel prüft das
+ * i18n-Gate (Regel 6) auch in *.html. Einmalig beim Bootstrap nach initialisiereSprache() —
+ * ein Sprachwechsel lädt ohnehin neu.
+ * @param wurzel - Element oder Dokument, dessen Nachfahren übersetzt werden (Standard: document)
+ */
+export function uebersetzeDokument(wurzel = document) {
+  for (const element of wurzel.querySelectorAll('[data-i18n]')) element.textContent = t(element.dataset.i18n)
+  for (const attribut of UEBERSETZBARE_ATTRIBUTE) {
+    for (const element of wurzel.querySelectorAll(`[data-i18n-${attribut}]`)) {
+      element.setAttribute(attribut, t(element.getAttribute(`data-i18n-${attribut}`)))
+    }
+  }
 }

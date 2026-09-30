@@ -1,0 +1,74 @@
+{
+  "url": "http://127.0.0.1:4173/#/brain",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Wortmarke",
+        "selector": "#shell-sidebar .brand"
+      },
+      {
+        "name": "Frag Jarvis",
+        "selector": "#chat-umschalter"
+      }
+    ],
+    "ueberlauf": true,
+    "getroffen": [
+      {
+        "name": "Projektauswahl klickbar",
+        "selector": "#kopf-projekt-auswahl"
+      },
+      {
+        "name": "„+“ klickbar",
+        "selector": "#kopf-neues-projekt"
+      },
+      {
+        "name": "Persona klickbar",
+        "selector": "#persona-kopf-oeffner"
+      },
+      {
+        "name": "Einstellungen (Sidebar) klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"einstellungen\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/brain",
+      "screenshot": "d1440-brain.webp"
+    }
+  ]
+}

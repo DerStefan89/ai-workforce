@@ -1,0 +1,51 @@
+{
+  "url": "http://127.0.0.1:4173/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.9,
+  "screenshotAusschnitt": {
+    "selector": "#shell-kopf .persona-kopf"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Klasse Portrait",
+        "selector": "#persona-platzhalter img",
+        "attribut": "class"
+      },
+      {
+        "name": "Zustand",
+        "selector": "#persona-platzhalter",
+        "attribut": "data-persona-zustand"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Seitenwechsel → #/brain, 0 ms",
+      "navigiere": "#/brain",
+      "animationenBei": 0,
+      "screenshot": "persona-0000ms.webp"
+    },
+    {
+      "label": "Seitenwechsel → #/dashboard, 350 ms",
+      "navigiere": "#/dashboard",
+      "animationenBei": 350,
+      "screenshot": "persona-0350ms.webp"
+    },
+    {
+      "label": "Seitenwechsel → #/brain, 700 ms",
+      "navigiere": "#/brain",
+      "animationenBei": 700,
+      "screenshot": "persona-0700ms.webp"
+    }
+  ]
+}

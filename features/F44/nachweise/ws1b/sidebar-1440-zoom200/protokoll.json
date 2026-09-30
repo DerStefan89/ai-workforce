@@ -1,0 +1,30 @@
+[
+  {
+    "label": "Sidebar ans Ende gescrollt (dunkel)",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktübersicht",
+    "Alle Produkte klickbar": true,
+    "Einstellungen klickbar": true,
+    "Workforce klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Theme hell (Kopf)",
+    "Ansicht": "dashboard",
+    "data-theme": "light",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktübersicht",
+    "Alle Produkte klickbar": true,
+    "Einstellungen klickbar": true,
+    "Workforce klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

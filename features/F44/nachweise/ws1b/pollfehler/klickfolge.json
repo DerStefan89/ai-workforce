@@ -1,0 +1,64 @@
+{
+  "url": "http://127.0.0.1:4173/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "anfragenBlockieren": [
+    "**/api/zustand"
+  ],
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Banner",
+        "selector": "#poll-fehler"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Banner sichtbar",
+        "id": "poll-fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/dashboard, Zustand nicht erreichbar",
+      "warteAufSelector": {
+        "selector": "#poll-fehler:not([hidden])",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-pollfehler.webp"
+    }
+  ]
+}

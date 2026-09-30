@@ -1,0 +1,69 @@
+{
+  "url": "http://127.0.0.1:4173/#/dashboard",
+  "viewport": {
+    "breite": 1024,
+    "hoehe": 800
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.8,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      }
+    ],
+    "ueberlauf": true,
+    "getroffen": [
+      {
+        "name": "Alle Produkte klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"projekte-uebersicht\"]"
+      },
+      {
+        "name": "Einstellungen klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"einstellungen\"]"
+      },
+      {
+        "name": "Workforce klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"capabilities\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Sidebar ans Ende gescrollt (dunkel)",
+      "fokus": "#shell-sidebar .secondary-workforce",
+      "screenshot": "d1024x800-sidebar.webp"
+    },
+    {
+      "label": "Theme hell (Kopf)",
+      "klick": "#kopf-theme",
+      "fokus": "#shell-sidebar .secondary-workforce",
+      "screenshot": "l1024x800-sidebar.webp"
+    }
+  ]
+}
