@@ -10102,6 +10102,7 @@ Auswirkung: Mittel — ohne eigenen Scope droht „Design" entweder übersprunge
 Maßnahme: Vor Erreichen dieses Punkts einen eigenen Schnitt (Scope, Akte, Bestehensbedingung) für „Design" anlegen, analog zu den übrigen Kettengliedern.
 Vermerk (Scope-Ergänzung 29.09.2026): (1) Ablage der von Stefan mitgebrachten Designvorlage im Projekt-Repo (Tokens, Referenz-Screenshots, gewählte Richtung); (2) design-guardian als Review-Schritt bei UI-Aufträgen mit Playwright-Screenshots; (3) Motion mit Prüfweg (Screenshot-Sequenz/Video, prefers-reduced-motion).
 Status: offen.
+Vermerk (F44 WS-0, 30.09.2026): Akte `features/F44/feature.md` „Design-Schnitt (F-725)“ angelegt, Status IN_ARBEIT. Schnitt WS-0 bis WS-8 nach dem Challenger-Dokument 474 (`GO_STANDARD`), übernommen als `docs/design/abgleich-f725.md`; Entscheidungen E-F44-1 = B (Zukunft sichtbar, deaktiviert, „kommt“) und E-F44-2 = B (de/en/tr/ru), Stefan 30.09.2026. WS-0 (Ablage der Vorlage unter `docs/design/vorlage-v10/`, 50 Referenz-Screenshots mit Motion-Serie, design-guardian, Token-Gate) auf Branch `feat/f725-ws0-design-ablage`.
 Feature/Run: M5-Schnitt, 25.09.2026.
 
 **F-726** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -10574,6 +10575,7 @@ Fundstelle: `docs/harness/kandidaten-2026-09-15.md` (Kategorie „Referenz"); `s
 Auswirkung: Niedrig — gesammeltes Design-Wissen bleibt ungenutzt, kein Laufzeitrisiko.
 Maßnahme: Katalogart „referenz" im Design-Schnitt (F-725).
 Status: offen.
+Vermerk (Challenger-Empfehlung 30.09.2026): nicht Teil von F-725 (F44). Die Designvorlage steht fest, die 41 Referenzen sind damit ein Nebenweg; F-776 geht ins V1-Backlog mit Auslöser. Bestätigung durch Stefan offen.
 Feature/Run: F36 WS-1, 28.09.2026.
 
 **F-777** · `PROCESS_IMPROVEMENT` · P3 · **erledigt** (F36 WS-1)
@@ -11309,6 +11311,7 @@ Fundstelle: Workboard, Kachel „Roadmap“; `roadmap_pfad` des Registereintrags
 Auswirkung: Niedrig — Anzeige einer Fehlermeldung statt eines leeren Zustands.
 Maßnahme: Ursache prüfen (roadmap_pfad des Projekts vs. Endpunkt); fehlt die Roadmap bewusst, einen leeren Zustand mit Hinweis statt einer Fehlermeldung zeigen. Nur erfasst, nicht gefixt.
 Status: offen.
+Vermerk (F44, 30.09.2026): → WS-2 (Roadmap, Tabellenzeile D4 in `docs/design/abgleich-f725.md`: fehlende Roadmap als Leerzustand zeigen).
 Feature/Run: Abnahme F43 durch Stefan, 30.09.2026.
 
 **F-855** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -11336,6 +11339,7 @@ Fundstelle: Render-Nachweis `features/F43/nachweis-f849/mobil/`.
 Auswirkung: Niedrig — Darstellungsfehler auf schmalen Bildschirmen, keine Funktionseinbuße.
 Maßnahme: Im Design-Schnitt F-725 mitnehmen.
 Status: offen.
+Vermerk (F44, 30.09.2026): → WS-6 (Produkte, Tabellenzeile H2 in `docs/design/abgleich-f725.md`: Pfad in die Akte, nicht auf die Karte).
 Feature/Run: Entdeckt: F43-Abnahme, 30.09.2026.
 
 **F-858** · `PROCESS_IMPROVEMENT` · P3 · erledigt
@@ -11355,3 +11359,84 @@ Auswirkung: Niedrig — der Scanner-Architekt (F30) hat für Stack-Recherchen ke
 Maßnahme: Vor F30 klären, ob und wie der Scanner-Architekt einen Scout nutzt.
 Status: offen.
 Feature/Run: Scout F-800, 30.09.2026.
+
+**F-860** · `BUG` · P2 · offen
+Titel: Ein Projektwechsel lädt Workitems, Roadmap, P0/P1-Zahl, Verbrauch und die Auswahllisten des Direktstarts nicht neu.
+Beschreibung: Nur der Chat abonniert `abonniereProjektWechsel` (Fakt, Code). Workitems und Roadmap im Workboard, P0/P1 und Verbrauch im Dashboard sowie Aufträge und Werkzeugsätze im Direktstart werden nur beim Bootstrap geladen; im Direktstart geht der POST an den neuen Präfix, die Auswahlliste zeigt aber noch das alte Projekt. Dass nach „Öffnen“ eines anderen Projekts alte Daten stehen bleiben, ist nicht im Browser geprüft (Schlussfolgerung).
+Fundstelle: `public/leitstand/projekt-kontext.js:86-101`, `public/leitstand/views/workboard.js:1312-1313`, `public/leitstand/views/dashboard.js:219-220`, `public/leitstand/views/projekt.js:303-308` (Stand `50bbccb`).
+Auswirkung: Mittel — nach einem Projektwechsel können Ansichten Daten des vorigen Projekts zeigen; die Vorlage V10 stellt den Produktwechsel ins Zentrum.
+Maßnahme: Zentraler Neuladen-Hook beim Projektwechsel in F44 WS-1. Möglicherweise verwandt mit F-854 (Annahme).
+Status: offen.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-861** · `HARNESS_IMPROVEMENT` · P2 · behoben auf Branch
+Titel: Das Token-Gate kennt keine Token-Blöcke `:root[data-theme]`, scannt nur `style.css` und erkennt `hsl()` nicht.
+Beschreibung: Ein manueller Hell/Dunkel-Umschalter (Vorlage V10) wäre rot, weil `:root[data-theme="light"] { … }` nicht als Token-Definition galt. Als CSS prüfte das Gate nur `style.css`, ein zweites Stylesheet bliebe ungeprüft. `hsl()` und Farbnamen erkannte es nicht.
+Fundstelle: `scripts/check-f20-design-tokens.mjs`.
+Auswirkung: Mittel — ohne Erweiterung blockiert das Gate das Hell-Theme oder lässt Literale in weiteren Stylesheets durch.
+Maßnahme: In F44 WS-0 erweitert.
+Status: behoben auf Branch (30.09.2026, Branch `feat/f725-ws0-design-ablage`, F44 WS-0): `:root[data-theme="light"|"dark"]` gilt in `style.css` als Token-Block; innerhalb von Token-Blöcken sind Literale nur in Custom Properties (`--name:`) erlaubt; jede weitere `*.css` unter `public/leitstand/` wird rekursiv mit derselben Literal-Regel und Kommentar-Balance geprüft und darf keine eigenen Farb-Tokens definieren; `rgb/hsl/hwb/lab/lch/oklab/oklch/color()` gelten ohne Groß-/Kleinschreibung als Farbliteral (heutiger Stand bleibt grün); Rot/Grün-Selbsttest (3) mit zwölf konstruierten Stylesheets und Wegwerf-Dateien im Temp-Ordner. Kalibriert am 30.09.2026 durch vier Mutationen einer Kopie des Gates (je ein Lauf `node scripts/_m.mjs`, danach gelöscht): ohne `data-theme` im Token-Muster → 3 Selbsttest-Befunde; CSS-Sammlung nur `style.css` → 2; Farbfunktionen nur `rgba?` → 2; Token-Block vollständig statt nur Custom Properties entfernt → 1. Bekannte Grenzen (Kopf des Gates): Farbnamen, `var()`-Ausnahme für ganze Funktionsaufrufe, `manifest.webmanifest`/`*.svg` ungeprüft.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-862** · `BUG` · P3 · offen
+Titel: Schnellzugriff „Neues Projekt“ in der Sidebar ist deaktiviert mit „kommt bald“, obwohl F41 gebaut ist.
+Beschreibung: Der Sidebar-Schnellzugriff „Neues Projekt“ ist disabled und trägt „kommt bald“, obwohl das Anlegen eines Projekts (F41, `POST /api/projekte`) gebaut ist.
+Fundstelle: `public/leitstand/index.html:122` (Stand `50bbccb`).
+Auswirkung: Niedrig — der Weg ist über die Projekte-Übersicht erreichbar, der Hinweis ist aber falsch.
+Maßnahme: In F44 WS-1 (das „+“ neben der Projektauswahl).
+Status: offen.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-863** · `PROCESS_IMPROVEMENT` · P3 · behoben auf Branch
+Titel: Eine Designvorlage trägt den Funktionsstand ihres Briefings.
+Beschreibung: Die Vorlage V10 beruht auf dem Briefing vom 26.09.2026 und zeigt F36 (Katalog-Empfehlung, Installation, Beobachtung) und F43 (Projekt aufrufen) als „In Entwicklung“, obwohl beides auf `main` läuft. Wer die Vorlage wörtlich übernimmt, baut gebaute Funktionen als Platzhalter.
+Fundstelle: `docs/design/vorlage-v10/START-HERE-CLAUDE.md`; `docs/design/abgleich-f725.md` §1 und V\*-Zeilen der Tabelle.
+Auswirkung: Niedrig — mit dem Abgleich erkannt, ohne ihn Funktionsverlust im Produkt.
+Maßnahme: Die Checkliste des design-guardian verlangt vor der Übernahme einen Abgleich gegen `main` (`.claude/agents/design-guardian.md`, Punkt 1 und Regeln; angelegt in F44 WS-0).
+Status: behoben auf Branch (30.09.2026, Branch `feat/f725-ws0-design-ablage`, F44 WS-0): Checklistenpunkt 1 und die letzte Regel in `.claude/agents/design-guardian.md`.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-864** · `TECH_DEBT` · P3 · offen
+Titel: Der einzige Browser-Klicktest blockiert nicht.
+Beschreibung: `scripts/check-f20-leitstand-shell.mjs` ist der einzige echte Klicktest des Leitstands; er läuft nur in CI und dort mit `continue-on-error`, blockiert also nichts.
+Fundstelle: `scripts/check-f20-leitstand-shell.mjs`; `.github/workflows/ci.yml` (Schritt mit `continue-on-error: true`).
+Auswirkung: Niedrig — im Umbau ersetzen ihn die Render-Nachweise je Paket.
+Maßnahme: Nach F44 WS-5 entscheiden, ob er mit neuen Selektoren blockierend wird.
+Status: offen.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-865** · `BUG` · P3 · offen
+Titel: In der Vorlage V10 liegt die Sidebar-Illustration unter „Alle Produkte“, „Nutzung“ und „Einstellungen“.
+Beschreibung: Bei 1440×1000 überdeckt die Sidebar-Illustration (`gear.png`) die Einträge „Alle Produkte“, „Nutzung“ und „Einstellungen“; der Kontrast der Einträge leidet. In WS-0 bestätigt (`docs/design/vorlage-v10/screens/d_uebersicht.png`, `l_arbeit_board.png`).
+Fundstelle: Vorlage V10, `docs/design/vorlage-v10/style.css` (`.side-art`); Referenz-Screenshots.
+Auswirkung: Niedrig — Lesbarkeit der unteren Sidebar-Einträge.
+Maßnahme: In F44 WS-1 den Kontrast durch den design-guardian prüfen lassen und minimal korrigieren, ohne neue Gestaltung.
+Status: offen.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-866** · `TECH_DEBT` · P3 · offen
+Titel: Die Übersetzungen ins Türkische und Russische entstehen ohne muttersprachliche Prüfung.
+Beschreibung: Mit E-F44-2 = B gehören de/en/tr/ru zum Design-Schnitt. Das geplante i18n-Gate prüft nur Vollständigkeit (Schlüssel, Platzhalter, Pluralformen), nicht die Qualität der Übersetzung.
+Fundstelle: geplant `public/leitstand/i18n/` (F44 WS-1); `docs/design/abgleich-f725.md` §5.4.
+Auswirkung: Niedrig — mögliche fehlerhafte oder unidiomatische Texte in tr/ru.
+Maßnahme: Übersetzungen im Wörterbuch-Kopf als „maschinell, ungeprüft“ kennzeichnen; eine Prüfung durch eine muttersprachliche Person bei Bedarf nachholen.
+Status: offen.
+Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
+
+**F-867** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: `render-nachweis` kann Theme, reduzierte Bewegung und Zoom nicht setzen, die der design-guardian verlangt.
+Beschreibung: Der design-guardian (Punkt 9) und F44 (Pro UI-Paket, AK5) verlangen Render-Nachweise hell und dunkel, mit reduzierter Bewegung und bei 200 % Zoom. `scripts/render-nachweis.mjs` setzt nur den Viewport und kann localStorage-Einträge entfernen, aber keine setzen (Theme). `reducedMotion`, `colorScheme` und Zoom fehlen.
+Fundstelle: `scripts/render-nachweis.mjs` (Klickfolge-Format, Browser-Kontext); `.claude/agents/design-guardian.md` Punkt 9; `features/F44/feature.md` (Scope, AK5).
+Auswirkung: Mittel — ohne Erweiterung endet jede Designprüfung der UI-Pakete mit „Nicht freigegeben“, oder Nachweise entstehen mit eigenen Ad-hoc-Skripten.
+Maßnahme: In F44 WS-1 das Klickfolge-Format um `localStorageSetzen`, `reducedMotion`, `colorScheme` und `zoom` (bzw. `deviceScaleFactor` mit schmalerem Viewport) erweitern; Muster `docs/design/vorlage-v10/erzeuge-screens.mjs`.
+Status: offen.
+Feature/Run: Code-Review und QA-Pass F44 WS-0, 30.09.2026.
+
+**F-868** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: `docs/STATUS.md` enthält einen absoluten Benutzerpfad (öffentliches Repo).
+Beschreibung: Der Abschnitt zur Autorisierungsgrenze (F3) nennt den Ordner des Autorisierungs-Repos mit vollständigem Windows-Benutzerpfad. Nach F-858 stehen im öffentlichen Repo nur relative Pfade.
+Fundstelle: `docs/STATUS.md` (Abschnitt „Erledigt“, Autorisierungsgrenze, D16).
+Auswirkung: Niedrig — Offenlegung von Benutzername und Ordnerstruktur.
+Maßnahme: Pfad relativ bzw. als Platzhalter („Autorisierungs-Repo neben dem Produkt-Repo“) schreiben; bei der Gelegenheit das Repo nach weiteren Benutzerpfaden durchsuchen.
+Status: offen.
+Feature/Run: Code-Review F44 WS-0, 30.09.2026.

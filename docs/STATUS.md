@@ -95,7 +95,9 @@ Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 feature.md`), F43 „Projekt aufrufen/anzeigen“ (E-F30-3, Variante A,
 vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
 am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
-behoben, PR folgt) (Stand 22.09.2026; F36 29.09.2026; F43 30.09.2026).
+gemergt #288), F44 Design-Schnitt (F-725) `IN_ARBEIT` (WS-0
+„Ablage & Harness“ auf Branch, WS-1 bis WS-8 offen) (Stand 22.09.2026;
+F36 29.09.2026; F43 30.09.2026; F44 30.09.2026).
 
 ## Erledigt
 
@@ -577,7 +579,16 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   **Abnahme durch Stefan am 30.09.2026** (real im Leitstand an
   haushaltsbuch2: Vorschau erreichbar/nicht erreichbar, Aufruf Exit 0).
   Gemergt: WS-1 (#287). F-849 (vorschau_url auf dem Leitstand-Port)
-  behoben, PR folgt. Offene Folge-Findings F-845, F-847, F-848, F-850 bis F-854.
+  gemergt (#288). Offene Folge-Findings F-845, F-847, F-848, F-850 bis F-856.
+- ⏳ **F44** — Design-Schnitt (F-725), Designvorlage V10. Akte
+  `features/F44/feature.md`, Status `IN_ARBEIT`. Schnitt WS-0 bis WS-8
+  nach dem Challenger-Dokument 474 (`GO_STANDARD`), Abgleich
+  `docs/design/abgleich-f725.md`; E-F44-1 = B, E-F44-2 = B (Stefan,
+  30.09.2026). WS-0 „Ablage & Harness“ auf Branch
+  `feat/f725-ws0-design-ablage` (nicht gemergt; `impeccable` offen,
+  das fremde Repo pbakaus/impeccable hat mehrere Skill-Ordner). Findings
+  F-860 bis F-868. Nach F43, vor
+  F30.
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).
