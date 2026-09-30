@@ -130,7 +130,7 @@ delegiert.
 | `architecture-advisor` | Pläne VOR dem Bau prüfen |
 | `code-reviewer` | Code nach dem Bauen prüfen |
 | `qa` | Akzeptanztests und Randfälle definieren |
-| `design-guardian` [FÜLLUNG, nur UI-Projekte] | Design-Treue gegen Referenzen prüfen |
+| `design-guardian` | Design-Treue gegen Referenzen prüfen (aktiv seit F44, Vorlage V10) |
 
 Sie können ihre Befunde nicht selbst wegräumen — das ist Absicht. Ein
 Prüfer mit Schreibrechten wird heimlich zum Autor.
