@@ -65,6 +65,16 @@ export interface StartvorlageV0Daten {
    */
   pruefketten_pfade?: string[]
   /**
+   * F43 (E-F30-3, Variante A): argv, das der Kern auf Klick „Aufrufen“ EINMAL in der Repo-Wurzel
+   * ausführt (src/projekt-aufruf/index.ts) — gleiche Regeln wie pruefbefehl. Optional: ohne das
+   * Feld bietet die Projektansicht keinen Aufruf an.
+   */
+  startbefehl?: string[]
+  /** F43: Zeitgrenze des Aufrufs (1 … MAX_START_ZEITGRENZE_MS); fehlt sie, gilt STANDARD_START_ZEITGRENZE_MS — nie ohne Grenze. */
+  startZeitgrenzeMs?: number
+  /** F43: repo-relativer Pfad der Datei, die der startbefehl schreibt; nach dem Aufruf read-only angezeigt. */
+  ergebnis_datei?: string
+  /**
    * Startfelder je zusätzlichem Worker (F16 WS-1, AK5). Optional: eine
    * Startvorlage ohne diesen Block bleibt unverändert gültig, und
    * startvorlage_schema bleibt 'v0' (Präzedenz zeitgrenzeMs, F14 WS-4 —

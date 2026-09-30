@@ -84,6 +84,10 @@ export interface StarterOptionen {
   beiProzessende?: (ende: { exitCode: number | null; signal: string | null }) => void
   /** F40 WS-1: überschreibt prozessstart.ts' NACHLAUF_FRIST_MS (Kill eines nach der result-Zeile weiterlebenden Prozesses). Nur für Tests; kein Aufrufer im Produktpfad setzt das Feld. */
   nachlaufFristMs?: number
+  /** F43: Rückruf direkt nach dem Spawn mit der PID des Kindprozesses (undefined, wenn keine vergeben wurde) — damit ein Aufrufer mit eigener Zeitgrenze den Prozessbaum beenden kann, solange das Kind noch lebt (Node killt beim eigenen timeout nur das direkte Kind). Ein Wurf des Rückrufs wird gefangen und geloggt. */
+  beiStart?: (pid: number | undefined) => void
+  /** F43 (Delta-Review P2): Rückruf beim 'exit' des direkten Kindes — ab dann ist seine PID frei und darf nicht mehr gekillt werden ('close' kann ausbleiben, solange ein Enkel die Ausgabe hält). */
+  beiExit?: () => void
 }
 
 /** Ein live gemeldeter Werkzeugaufruf (F40 WS-1): Werkzeugname plus, falls vorhanden, sein Pfad-/Muster-Parameter. */

@@ -1,0 +1,114 @@
+{
+  "url": "http://127.0.0.1:4175/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 1360,
+    "hoehe": 3000
+  },
+  "beobachtete": {
+    "sichtbarkeit": [],
+    "vorhanden": [
+      {
+        "name": "f43-demo: erreichbar",
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-vorschau .badge.ok"
+      },
+      {
+        "name": "f43-offline: nicht erreichbar",
+        "selector": "[data-aufruf-id=\"f43-offline\"] .projekt-aufruf-vorschau .badge.fehler"
+      },
+      {
+        "name": "f43-leer: Hinweis vorschau_url",
+        "selector": "[data-aufruf-id=\"f43-leer\"] .projekt-aufruf-vorschau code"
+      },
+      {
+        "name": "Öffnen-Link (neuer Tab)",
+        "selector": "[data-aufruf-id=\"f43-demo\"] a[target=\"_blank\"][rel=\"noopener noreferrer\"]"
+      },
+      {
+        "name": "f43-demo: Aufrufen-Knopf aktiv",
+        "selector": ".projekt-aufrufen[data-id=\"f43-demo\"]:not([disabled])"
+      },
+      {
+        "name": "f43-demo: Ergebnis Exit 0",
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis .badge.ok"
+      },
+      {
+        "name": "f43-demo: Ergebnisdatei als Text",
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis pre"
+      },
+      {
+        "name": "HTML aus Projektinhalt gerendert (muss false sein)",
+        "selector": ".projekt-aufruf-ergebnis b, .projekt-aufruf-ergebnis script"
+      },
+      {
+        "name": "f43-offline: Zeitgrenze gemeldet",
+        "selector": "[data-aufruf-id=\"f43-offline\"] .projekt-aufruf-ergebnis .badge.fehler"
+      },
+      {
+        "name": "f43-lang: Läuft… (Knopf gesperrt)",
+        "selector": ".projekt-aufrufen[data-id=\"f43-lang\"][disabled]"
+      },
+      {
+        "name": "f43-lang: Ergebnis Exit 0",
+        "selector": "[data-aufruf-id=\"f43-lang\"] .projekt-aufruf-ergebnis .badge.ok"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Projekte-Übersicht: Vorschau erreichbar / nicht erreichbar / Hinweise",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-offline\"] .projekt-aufruf-vorschau .badge",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-uebersicht.png"
+    },
+    {
+      "label": "Klick „Aufrufen“ bei f43-demo → Exit 0, stdout/stderr, ergebnis.md",
+      "klick": ".projekt-aufrufen[data-id=\"f43-demo\"]",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis .badge.ok",
+        "timeoutMs": 15000
+      },
+      "screenshot": "02-aufruf-demo.png"
+    },
+    {
+      "label": "Klick „Aufrufen“ bei f43-offline → Zeitgrenze 2 s, Prozess beendet",
+      "klick": ".projekt-aufrufen[data-id=\"f43-offline\"]",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-offline\"] .projekt-aufruf-ergebnis .badge.fehler",
+        "timeoutMs": 15000
+      },
+      "screenshot": "03-aufruf-zeitgrenze.png"
+    },
+    {
+      "label": "Seite neu laden → letzter Aufruf bleibt sichtbar (Server hält ihn flüchtig)",
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis .badge.ok",
+        "timeoutMs": 8000
+      },
+      "screenshot": "04-nach-reload.png"
+    },
+    {
+      "label": "Klick „Aufrufen“ bei f43-lang (läuft 4 s)",
+      "klick": ".projekt-aufrufen[data-id=\"f43-lang\"]"
+    },
+    {
+      "label": "Sofort neu laden, während der Aufruf läuft → „Läuft…“",
+      "reload": true,
+      "warteAufSelector": {
+        "selector": ".projekt-aufrufen[data-id=\"f43-lang\"][disabled]",
+        "timeoutMs": 3000
+      },
+      "screenshot": "05-laeuft-nach-reload.png"
+    },
+    {
+      "label": "Ohne weiteren Klick: Ergebnis erscheint (Nachladen solange aktiv)",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-lang\"] .projekt-aufruf-ergebnis .badge.ok",
+        "timeoutMs": 15000
+      },
+      "screenshot": "06-ergebnis-ohne-klick.png"
+    }
+  ]
+}

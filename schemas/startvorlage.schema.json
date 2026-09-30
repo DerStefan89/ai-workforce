@@ -55,6 +55,23 @@
       "items": { "type": "string", "minLength": 1 },
       "description": "F-735. Projektspezifische Glob-Muster der Prüfkette relativ zur Repo-Wurzel ('*', '**', Präfix mit abschließendem '/'), die Regel 1j ZUSÄTZLICH zur immer aktiven Default-Liste überwacht (STANDARD_PRUEFKETTEN_MUSTER, src/aenderungsuebersicht/index.ts) — ergänzt, ersetzt nie. Kein '..'-Segment, kein absoluter Pfad, kein Backslash — semantisch geprüft von validiereStartvorlageDaten (src/startvorlage/index.ts). Optional; Regel 1h verlangt das Feld, sobald eine Stack-Entscheidung erfasst ist."
     },
+    "startbefehl": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "F43 (E-F30-3, Variante A). argv, das der Kern auf Klick 'Aufrufen' einmal in der Repo-Wurzel des Projekts ausführt, ohne Shell. Gleiche Regeln wie pruefbefehl ([0] nicht auf .cmd/.bat/.com/.ps1, F-280). Optional — ohne das Feld kein Aufruf."
+    },
+    "startZeitgrenzeMs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 240000,
+      "description": "F43. Harte Wanduhr-Grenze des Aufrufs; danach wird der Prozessbaum beendet. Fehlt sie, gilt 60000 — ein Aufruf läuft nie ohne Grenze."
+    },
+    "ergebnis_datei": {
+      "type": "string",
+      "minLength": 1,
+      "description": "F43. Repo-relativer Pfad der Ergebnisdatei des startbefehl, nach dem Aufruf read-only angezeigt. Kein '..'-Segment, kein absoluter Pfad, kein Backslash, kein '*', '?', '[]', '{}' — semantisch geprüft von validiereStartvorlageDaten (src/startvorlage/index.ts)."
+    },
     "worker": {
       "type": "object",
       "additionalProperties": false,

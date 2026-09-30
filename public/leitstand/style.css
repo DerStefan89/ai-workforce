@@ -1585,6 +1585,39 @@ th {
   overflow-x: auto;
 }
 
+/* F43: Block „Vorschau & Aufruf“ je Projektkarte — nur bestehende Tokens, keine neue Farbe.
+   Projektausgaben als umbrechender, in der Höhe begrenzter Textblock (lange Zeilen/viel Ausgabe
+   dürfen die Karte nicht sprengen, DoD „lange Texte“/„Mobile“). */
+.projekt-aufruf {
+  margin-top: var(--space-2xl);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-lg);
+}
+
+.projekt-aufruf-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.projekt-aufruf code {
+  overflow-wrap: anywhere;
+}
+
+.projekt-aufruf-befehl {
+  word-break: break-all;
+}
+
+.projekt-aufruf-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  max-height: 16rem;
+  width: 100%;
+  max-width: 100%;
+}
+
 .startfehler-eintrag {
   font-size: var(--font-size-md);
   margin: var(--space-xs) 0;
