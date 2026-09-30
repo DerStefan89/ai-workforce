@@ -39,6 +39,7 @@ import { formatiereBeobachtung } from '../beobachtung-zeile.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, pollJetzt } from '../zustand.js'
+import { holeAktivesProjekt } from '../projekt-kontext.js'
 import { wendeWiederaufnahmeAn, zeigeVorbelegungsFehler } from './projekt.js'
 
 /** Rendert die Gültigkeits-Zelle einer Checkpoint-Zeile in der Detailansicht. */
@@ -146,6 +147,8 @@ function initWiederaufnahmeBedienung() {
     const button = ereignis.target.closest('.wiederaufnahme-btn')
     if (!button) return
     const alterLaufId = button.dataset.laufId
+    // F44 WS-1a (F-860): Projekt des Laufs festhalten, bevor gewartet wird (siehe wendeWiederaufnahmeAn).
+    const projektId = holeAktivesProjekt().id
     zeigeVorbelegungsFehler('')
 
     let detail
@@ -162,8 +165,9 @@ function initWiederaufnahmeBedienung() {
       return
     }
 
+    if (holeAktivesProjekt().id !== projektId) return
     navigiere('#/projekt')
-    await wendeWiederaufnahmeAn(detail, alterLaufId)
+    await wendeWiederaufnahmeAn(detail, alterLaufId, projektId)
     document.getElementById('start-starten').scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
 }

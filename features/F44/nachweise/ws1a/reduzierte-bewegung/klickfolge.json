@@ -1,0 +1,58 @@
+{
+  "url": "http://127.0.0.1:4291/#/einstellungen",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "reduzierteBewegung": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "theme-color",
+        "selector": "meta[name=\"theme-color\"]",
+        "attribut": "content"
+      },
+      {
+        "name": "reduzierte-bewegung",
+        "selector": "html",
+        "attribut": "data-reduzierte-bewegung"
+      },
+      {
+        "name": "Schalter Nutzerkarte",
+        "selector": "#persona-bewegung-schalter"
+      },
+      {
+        "name": "Beschreibung",
+        "selector": "#einstellungen-bewegung-text"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Häkchen deaktiviert",
+        "selector": "#einstellungen-bewegung:disabled"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "prefers-reduced-motion: reduce",
+      "screenshot": "reduziert-einstellungen.webp"
+    }
+  ]
+}

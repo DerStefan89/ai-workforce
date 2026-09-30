@@ -13,6 +13,9 @@
  * - public/leitstand/app.js (renderProjektKontext beim Bootstrap)
  * - public/leitstand/views/projekte-uebersicht.js (setzeAktivesProjekt bei Kartenklick, AK13)
  * - public/leitstand/views/chat.js (abonniereProjektWechsel, F26 WS-2a — Reset des projektgebundenen Client-Zustands)
+ * - public/leitstand/views/workboard.js, views/dashboard.js, views/projekt.js (abonniereProjektWechsel,
+ *   F44 WS-1a / F-860 — zentraler Neuladen-Hook: projektgebundene Daten, die sonst nur beim
+ *   Bootstrap geladen würden, laden beim Wechsel neu)
  *
  * Wichtig: STANDARD_PROJEKT entspricht dem Starteintrag 'ai-workforce' aus
  * projekte.json (F25 WS-1, AK1) — sein Präfix ist '/api' (api.js' eigener
@@ -42,6 +45,7 @@
 import { setzeAktivesProjektPraefix } from './api.js'
 import { escapeHtml } from './render.js'
 import { navigiere } from './router.js'
+import { pollJetzt, verwerfeLaufendenZustand } from './zustand.js'
 
 const STANDARD_PROJEKT = { id: 'ai-workforce', name: 'AI Workforce' }
 const SESSION_SCHLUESSEL = 'leitstand-aktives-projekt'
@@ -97,8 +101,20 @@ export function setzeAktivesProjekt(projekt) {
     // Privates Fenster/blockierter Zugriff — der Kontext gilt dann nur bis zum nächsten Reload,
     // kein Absturz (Muster oben, leseGespeichertesProjekt).
   }
-  for (const fn of projektWechselAbonnenten) fn()
+  // F44 WS-1a (F-860): ein laufender Zustands-Abruf gehört zum alten Projekt — verwerfen und sofort
+  // einen Abruf mit dem neuen Präfix anstoßen (zustand.js), statt bis zum nächsten Tick zu warten.
+  verwerfeLaufendenZustand()
+  // F44 WS-1a (F-860): ein werfender Abonnent darf die übrigen nicht blockieren — sonst bliebe
+  // z. B. das Workboard beim alten Projekt stehen, nur weil der Chat-Reset scheitert.
+  for (const fn of projektWechselAbonnenten) {
+    try {
+      fn()
+    } catch (fehler) {
+      console.error('Projektwechsel: ein Abonnent ist fehlgeschlagen:', fehler)
+    }
+  }
   renderProjektKontext()
+  void pollJetzt()
 }
 
 /** Rendert die Kontext-Anzeige in der Kopfzeile (AK14) — Name des aktiven Projekts plus Bedienung zurück zur Übersicht. */

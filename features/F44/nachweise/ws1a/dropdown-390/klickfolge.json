@@ -1,0 +1,34 @@
+{
+  "url": "http://127.0.0.1:4291/#/workboard",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "light",
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "sichtbarkeit": [
+      {
+        "name": "Dropdown offen",
+        "id": "nutzerkarte-dropdown"
+      }
+    ],
+    "getroffen": [
+      {
+        "name": "Eintrag Einstellungen klickbar",
+        "selector": "#nutzerkarte-einstellungen"
+      },
+      {
+        "name": "Schalter Nutzerkarte klickbar",
+        "selector": "#persona-bewegung-schalter"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/workboard, Nutzerkarte öffnen",
+      "klick": "#nutzerkarte-oeffner",
+      "screenshot": "dropdown-390-workboard.webp"
+    }
+  ]
+}

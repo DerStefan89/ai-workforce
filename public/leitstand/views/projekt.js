@@ -32,6 +32,7 @@
 
 import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, starteLauf } from '../api.js'
 import { escapeHtml } from '../render.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 
 /** Präfix der synthetischen Kontextpaket-Elemente, die der Server selbst voranstellt (execution-controller/index.ts) — keine vom Nutzer benannten Evidenzdateien, werden bei der Vorbelegung herausgefiltert. */
 const ARTEFAKT_PRAEFIX = 'artefakt:'
@@ -133,12 +134,18 @@ function zeigeStartErfolg(text) {
   anzeige.hidden = text === ''
 }
 
+/** Überholschutz (F44 WS-1a, F-860, Muster views/dashboard.js verbrauchAnfrageZaehler): nach einem Projektwechsel darf eine späte Antwort des alten Projekts die Auswahllisten des neuen nicht überschreiben. */
+let auftraegeAnfrageZaehler = 0
+let werkzeugsaetzeAnfrageZaehler = 0
+
 /** Lädt GET /api/auftraege in das Auftrag-Dropdown des Startformulars — Anzeige aus titel/erstellt_am, Wert auftragId. Erhält die vorherige Auswahl über einen Reload hinweg, wenn sie noch existiert. */
 async function ladeAuftraege() {
+  const meineAnfrageNummer = ++auftraegeAnfrageZaehler
   const select = document.getElementById('start-auftrag')
   const vorherAusgewaehlt = select.value
   try {
     const auftraege = await holeAuftraege()
+    if (meineAnfrageNummer !== auftraegeAnfrageZaehler) return
     select.innerHTML =
       auftraege.length === 0
         ? '<option value="">— kein Auftrag vorhanden, zuerst anlegen —</option>'
@@ -147,17 +154,25 @@ async function ladeAuftraege() {
       select.value = vorherAusgewaehlt
     }
   } catch (fehler) {
+    if (meineAnfrageNummer !== auftraegeAnfrageZaehler) return
+    // F44 WS-1a (F-860): keine Aufträge eines anderen Projekts stehen lassen — „Starten“ schickte
+    // sonst eine fremde auftragId an den neuen Präfix.
+    select.innerHTML = '<option value="">— Aufträge nicht verfügbar —</option>'
     zeigeStartFehler(`Aufträge konnten nicht geladen werden: ${fehler.message}`)
   }
 }
 
-/** Lädt GET /api/startvorlage/werkzeugsaetze in das Werkzeugsatz-Dropdown — die Antwort trägt bereits nur name/modus/erlaubte_werkzeuge (serverseitige Allowlist). */
+/** Lädt GET /api/startvorlage/werkzeugsaetze in das Werkzeugsatz-Dropdown — die Antwort trägt bereits nur name/modus/erlaubte_werkzeuge (serverseitige Allowlist). Im Fehlerfall wird die Liste geleert (F44 WS-1a: keine Werkzeugsätze eines anderen Projekts stehen lassen). */
 async function ladeWerkzeugsaetze() {
+  const meineAnfrageNummer = ++werkzeugsaetzeAnfrageZaehler
   const select = document.getElementById('start-werkzeugsatz')
   try {
     const werkzeugsaetze = await holeWerkzeugsaetze()
+    if (meineAnfrageNummer !== werkzeugsaetzeAnfrageZaehler) return
     select.innerHTML = werkzeugsaetze.map((w) => `<option value="${escapeHtml(w.name)}">${escapeHtml(w.name)} (${escapeHtml(w.erlaubte_werkzeuge.join(', '))})</option>`).join('')
   } catch (fehler) {
+    if (meineAnfrageNummer !== werkzeugsaetzeAnfrageZaehler) return
+    select.innerHTML = '<option value="">— Werkzeugsätze nicht verfügbar —</option>'
     zeigeStartFehler(`Werkzeugsätze konnten nicht geladen werden: ${fehler.message}`)
   }
 }
@@ -280,13 +295,19 @@ function initStartformular() {
  * von der Runs-View, nachdem sie GET /api/laeufe/<laufId> geladen und zu
  * `#/projekt` navigiert hat (AK1: Wiederaufnahme bleibt real unverändert).
  * werkzeugsatz bleibt bewusst unverändert (F-161, nirgends rekonstruierbar).
+ * F44 WS-1a (F-860): projektId ist das Projekt, zu dem der Lauf gehört (vom Aufrufer VOR seinem
+ * eigenen Abruf festgehalten). Hat das aktive Projekt inzwischen gewechselt — vor oder während des
+ * Wartens hier —, wird nichts vorbelegt; sonst schickte „Starten“ eine fremde vorgaengerLaufId.
  * @param detail - Antwortkörper von GET /api/laeufe/<laufId>
  * @param alterLaufId - laufId des wiederaufzunehmenden Laufs
+ * @param projektId - id des Projekts des Laufs (Standard: das aktive)
  */
-export async function wendeWiederaufnahmeAn(detail, alterLaufId) {
+export async function wendeWiederaufnahmeAn(detail, alterLaufId, projektId = holeAktivesProjekt().id) {
+  if (holeAktivesProjekt().id !== projektId) return
   const auftragSelect = document.getElementById('start-auftrag')
   if (detail.auftrag?.status === 'ok') {
     await ladeAuftraege()
+    if (holeAktivesProjekt().id !== projektId) return
     auftragSelect.value = detail.auftrag.auftragId
   } else {
     auftragSelect.value = ''
@@ -304,6 +325,22 @@ export function initProjektView() {
   initEvidenzdateien()
   initAuftragFormular()
   initStartformular()
+  // F44 WS-1a (F-860): Aufträge und Werkzeugsätze gehören zum Projekt — beim Wechsel neu laden,
+  // damit die Auswahlliste zum Präfix passt, an den „Starten“ sendet. Ein alter Startfehler/-erfolg
+  // bezog sich auf das vorige Projekt und wird ausgeblendet.
+  // Eine vorbereitete Wiederaufnahme gehört zum alten Projekt (vorgaengerLaufId und die daraus
+  // vorbelegten Evidenzpfade) und wird verworfen; bis zur Antwort zeigt die Auftragsliste „Lädt…“.
+  abonniereProjektWechsel(() => {
+    if (aktiveVorgaengerLaufId !== null) ersetzeEvidenzdateien([])
+    loescheWiederaufnahmeVorbelegung()
+    zeigeVorbelegungsFehler('')
+    zeigeStartFehler('')
+    zeigeStartErfolg('')
+    document.getElementById('start-auftrag').innerHTML = '<option value="">Lädt…</option>'
+    document.getElementById('start-werkzeugsatz').innerHTML = '<option value="">Lädt…</option>'
+    void ladeAuftraege().then(aktualisiereLaufIdVorschlag)
+    void ladeWerkzeugsaetze()
+  })
   void ladeAuftraege().then(aktualisiereLaufIdVorschlag)
   void ladeWerkzeugsaetze()
 }

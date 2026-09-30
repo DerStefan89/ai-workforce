@@ -1,0 +1,64 @@
+{
+  "url": "http://127.0.0.1:4291/#/einstellungen",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "light",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "theme-color",
+        "selector": "meta[name=\"theme-color\"]",
+        "attribut": "content"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1, [data-view]:not([hidden]) h2"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/einstellungen",
+      "screenshot": "l1440-einstellungen.webp",
+      "screenshotVollseite": false
+    },
+    {
+      "label": "#/dashboard",
+      "navigiere": "#/dashboard",
+      "screenshot": "l1440-dashboard.webp",
+      "screenshotVollseite": false
+    },
+    {
+      "label": "#/workboard",
+      "navigiere": "#/workboard",
+      "screenshot": "l1440-workboard.webp",
+      "screenshotVollseite": false
+    },
+    {
+      "label": "#/runs",
+      "navigiere": "#/runs",
+      "screenshot": "l1440-runs.webp",
+      "screenshotVollseite": false
+    }
+  ]
+}

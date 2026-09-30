@@ -10576,6 +10576,7 @@ Auswirkung: Niedrig — gesammeltes Design-Wissen bleibt ungenutzt, kein Laufzei
 Maßnahme: Katalogart „referenz" im Design-Schnitt (F-725).
 Status: offen.
 Vermerk (Challenger-Empfehlung 30.09.2026): nicht Teil von F-725 (F44). Die Designvorlage steht fest, die 41 Referenzen sind damit ein Nebenweg; F-776 geht ins V1-Backlog mit Auslöser. Bestätigung durch Stefan offen.
+Vermerk (F44 WS-1a): nicht in F-725, bestätigt (Stefan/Challenger, 30.09.2026).
 Feature/Run: F36 WS-1, 28.09.2026.
 
 **F-777** · `PROCESS_IMPROVEMENT` · P3 · **erledigt** (F36 WS-1)
@@ -11360,13 +11361,13 @@ Maßnahme: Vor F30 klären, ob und wie der Scanner-Architekt einen Scout nutzt.
 Status: offen.
 Feature/Run: Scout F-800, 30.09.2026.
 
-**F-860** · `BUG` · P2 · offen
+**F-860** · `BUG` · P2 · erledigt
 Titel: Ein Projektwechsel lädt Workitems, Roadmap, P0/P1-Zahl, Verbrauch und die Auswahllisten des Direktstarts nicht neu.
 Beschreibung: Nur der Chat abonniert `abonniereProjektWechsel` (Fakt, Code). Workitems und Roadmap im Workboard, P0/P1 und Verbrauch im Dashboard sowie Aufträge und Werkzeugsätze im Direktstart werden nur beim Bootstrap geladen; im Direktstart geht der POST an den neuen Präfix, die Auswahlliste zeigt aber noch das alte Projekt. Dass nach „Öffnen“ eines anderen Projekts alte Daten stehen bleiben, ist nicht im Browser geprüft (Schlussfolgerung).
 Fundstelle: `public/leitstand/projekt-kontext.js:86-101`, `public/leitstand/views/workboard.js:1312-1313`, `public/leitstand/views/dashboard.js:219-220`, `public/leitstand/views/projekt.js:303-308` (Stand `50bbccb`).
 Auswirkung: Mittel — nach einem Projektwechsel können Ansichten Daten des vorigen Projekts zeigen; die Vorlage V10 stellt den Produktwechsel ins Zentrum.
 Maßnahme: Zentraler Neuladen-Hook beim Projektwechsel in F44 WS-1. Möglicherweise verwandt mit F-854 (Annahme).
-Status: offen.
+Status: erledigt (F44 WS-1a, Branch `feat/f725-ws1a-fundament`, 30.09.2026): Workboard (Workitems, Roadmap; Filter zurück auf „Alle“), Dashboard (P0/P1, Verbrauch) und Direktstart (Aufträge, Werkzeugsätze) abonnieren `abonniereProjektWechsel` und laden neu; späte Antworten des alten Projekts verwirft je Lader ein Anfragezähler; ein werfender Abonnent blockiert die übrigen nicht mehr (`projekt-kontext.js`). Belege: `public/leitstand/projekt-wechsel.test.mjs` (9 Fälle; Mutationen der Hooks, des verworfenen Poll-Abrufs, des Filter-Resets, des Dashboard-Resets und des Projekt-Wächters je rot) und Render-Nachweis `features/F44/nachweise/ws1a/projektwechsel-f860/` (A öffnen, dann B: Workboard, Dashboard, Poll-Kennzahlen und Auftragsliste zeigen sofort B). Korrekturrunde nach dem Prüfpass: Ein laufender Zustands-Abruf des alten Projekts wird verworfen (`zustand.js`, Kontext-Generation), das alte Aggregat, ein offenes Workboard-Detail samt Click-to-Work-Zustand und eine vorbereitete Wiederaufnahme im Direktstart ebenso; Wiederaufnahme (`runs.js` → `wendeWiederaufnahmeAn`) und Click-to-Work-Kette prüfen nach jedem Warten, ob das Projekt noch dasselbe ist. Rückweg B → A im Nachweis ebenfalls belegt. Nicht erfasst ist das Workflow-Detail unter `#/workflows/<id>` (eigener Befund F-874, WS-4).
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
 **F-861** · `HARNESS_IMPROVEMENT` · P2 · behoben auf Branch
@@ -11423,13 +11424,13 @@ Maßnahme: Übersetzungen im Wörterbuch-Kopf als „maschinell, ungeprüft“ k
 Status: offen.
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
-**F-867** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-867** · `HARNESS_IMPROVEMENT` · P2 · erledigt
 Titel: `render-nachweis` kann Theme, reduzierte Bewegung und Zoom nicht setzen, die der design-guardian verlangt.
 Beschreibung: Der design-guardian (Punkt 9) und F44 (Pro UI-Paket, AK5) verlangen Render-Nachweise hell und dunkel, mit reduzierter Bewegung und bei 200 % Zoom. `scripts/render-nachweis.mjs` setzt nur den Viewport und kann localStorage-Einträge entfernen, aber keine setzen (Theme). `reducedMotion`, `colorScheme` und Zoom fehlen.
 Fundstelle: `scripts/render-nachweis.mjs` (Klickfolge-Format, Browser-Kontext); `.claude/agents/design-guardian.md` Punkt 9; `features/F44/feature.md` (Scope, AK5).
 Auswirkung: Mittel — ohne Erweiterung endet jede Designprüfung der UI-Pakete mit „Nicht freigegeben“, oder Nachweise entstehen mit eigenen Ad-hoc-Skripten.
 Maßnahme: In F44 WS-1 das Klickfolge-Format um `localStorageSetzen`, `reducedMotion`, `colorScheme` und `zoom` (bzw. `deviceScaleFactor` mit schmalerem Viewport) erweitern; Muster `docs/design/vorlage-v10/erzeuge-screens.mjs`.
-Status: offen.
+Status: erledigt (F44 WS-1a, Branch `feat/f725-ws1a-fundament`, 30.09.2026): neue Optionen `farbschema` (localStorage `leitstand-theme`), `reduzierteBewegung` (`page.emulateMedia({ reducedMotion })`), `zoom` (Viewport geteilt durch Zoom, `deviceScaleFactor` = Zoom), `localStorageSetzen`, `screenshotVollseite`, WebP-Ausgabe über den Browser, Schritte `navigiere` und `auswaehlen`, Beobachtung `texte`; Doku im Dateikopf von `scripts/render-nachweis.mjs`. Beleg: `features/F44/nachweise/ws1a/` (Theme, 390/1440, 200 % Zoom, reduzierte Bewegung, ru/tr).
 Feature/Run: Code-Review und QA-Pass F44 WS-0, 30.09.2026.
 
 **F-868** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -11440,3 +11441,66 @@ Auswirkung: Niedrig — Offenlegung von Benutzername und Ordnerstruktur.
 Maßnahme: Pfad relativ bzw. als Platzhalter („Autorisierungs-Repo neben dem Produkt-Repo“) schreiben; bei der Gelegenheit das Repo nach weiteren Benutzerpfaden durchsuchen.
 Status: offen.
 Feature/Run: Code-Review F44 WS-0, 30.09.2026.
+
+**F-869** · `TECH_DEBT` · P3 · offen
+Titel: Die Designvorlage liegt mit rund 21 MB im öffentlichen Repo.
+Beschreibung: WS-0 hat die Vorlage V10 byte-gleich abgelegt, dazu 50 Referenz-Screenshots als PNG (`docs/design/vorlage-v10/screens/`, rund 16 MB) und die PNG-Originale der Bilder (`assets/`, rund 5 MB). Jede Neuerzeugung der Screenshots vergrößert die Git-Historie um dieselbe Menge.
+Fundstelle: `docs/design/vorlage-v10/screens/`, `docs/design/vorlage-v10/assets/`.
+Auswirkung: Niedrig — Klon- und Historiengröße, kein Laufzeitrisiko.
+Maßnahme: Referenz-Screenshots nur bei einer Änderung der Vorlage neu erzeugen; dann prüfen, ob WebP genügt. Nachweise der Pakete klein halten (WebP über `render-nachweis`, seit F44 WS-1a). Ausgeliefert wird in WS-1a nur eine verkleinerte WebP-Fassung von `gear.png` (480 × 480, 87 KB), weil kein verlustfreier WebP-Encoder ohne neue Abhängigkeit verfügbar war; das Original bleibt unter `docs/design/vorlage-v10/assets/`.
+Status: offen.
+Feature/Run: Challenger F44 WS-1a, 30.09.2026.
+
+**F-870** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: impeccable wird nicht freigegeben.
+Beschreibung: Das Repo `pbakaus/impeccable` trägt rund 20 Kopien des Skills (je Agent-Harness eine), einen Binär-Starter (`scripts/impeccable` startet eine Plattform-Binärdatei) und Verweise auf Projekt-Agents, die in der Ausführung gesperrt sind (F-815). Ein eindeutiger `skill_pfad` lässt sich nicht festlegen, ohne eine der Kopien willkürlich zu wählen.
+Fundstelle: `features/F44/feature.md` (WS0-6); `state/uebergabe-aktuell.md` (Stand WS-0).
+Auswirkung: Niedrig — der design-guardian arbeitet ohne impeccable; gestaltende Skills sind für F44 ohnehin ausgeschlossen (die Vorlage ist fest).
+Maßnahme: Im Feature „Harness im Lauf“ neu bewerten (Skill-Kopien, Binär-Starter, Agents nach F-815).
+Status: offen.
+Feature/Run: Challenger F44 WS-1a, 30.09.2026.
+
+**F-871** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: TERMINAL-Blöcke des Challengers nennen den Worktree nicht immer.
+Beschreibung: Mit mehreren Worktrees nebeneinander (`../aiw-f725-ws0`, `../aiw-f725-ws1a` …) ist ein TERMINAL-Block ohne `cd` auf den Worktree und ohne Kontrolle des Branchs fehleranfällig: Ein Befehl kann im falschen Arbeitsverzeichnis landen.
+Fundstelle: Übergaben des Challengers (`state/uebergabe-aktuell.md`, Bedienregeln).
+Auswirkung: Niedrig — Risiko eines Commits oder Checks im falschen Worktree.
+Maßnahme: TERMINAL-Blöcke des Challengers beginnen immer mit `cd <Worktree>` und `git branch --show-current`.
+Status: offen.
+Feature/Run: Challenger F44 WS-1a, 30.09.2026.
+
+**F-872** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Referenzbilder der Vorlage für en/tr/ru fehlen.
+Beschreibung: WS-0 sollte die Vorlage auch in den anderen Sprachen abbilden; `docs/design/vorlage-v10/screens/` enthält nur deutsche Bilder. Wie sich die längste Sprache (ru, tr) im Layout verhält, lässt sich deshalb nicht an der Vorlage vergleichen.
+Fundstelle: `docs/design/vorlage-v10/screens/`; `docs/design/vorlage-v10/erzeuge-screens.mjs`.
+Auswirkung: Niedrig — Layoutbrüche langer Texte fallen erst am Produkt auf.
+Maßnahme: Die längste Sprache wird am Produkt geprüft (Render-Nachweis ru/tr je UI-Paket, erstmals `features/F44/nachweise/ws1a/ru-*`, `tr-*`) statt an der Vorlage.
+Status: offen.
+Feature/Run: Challenger F44 WS-1a, 30.09.2026.
+
+**F-873** · `BUG` · P3 · offen
+Titel: Der Hinweis-Kasten der Einstellungen beschreibt Fragezeichen-Hinweise, die es noch nicht gibt.
+Beschreibung: Die Seite `#/einstellungen` übernimmt nach Auftrag den Hinweis-Kasten der Vorlage („Hinweise öffnen sich nach kurzem Verweilen auf einem Fragezeichen …“). Den Mechanismus dazu (`.help`/Tooltip der Vorlage) hat der Leitstand noch nicht; der Text verspricht damit eine Funktion, die fehlt. Gefunden von design-guardian, code-reviewer und qa (F44 WS-1a).
+Fundstelle: `public/leitstand/i18n/de.js` (`einstellungen.hinweis`, ebenso en/tr/ru); `public/leitstand/views/einstellungen.js`.
+Auswirkung: Niedrig — irreführender Text, keine Fehlfunktion.
+Maßnahme: Den Kasten mit dem Paket ausliefern, das die Fragezeichen-Hinweise baut, oder bis dahin ausblenden — Entscheidung Stefan. Die Schlüssel bleiben.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-1a, 30.09.2026.
+
+**F-874** · `BUG` · P2 · offen
+Titel: Das Workflow-Detail pollt nach einem Projektwechsel die workflowId des alten Projekts weiter.
+Beschreibung: `views/workflows.js` hat keinen Abonnenten von `abonniereProjektWechsel`. Ist beim Wechsel ein Workflow-Detail offen, fragt sein Detail-Auffrischer die workflowId des alten Projekts über den Präfix des neuen ab — bei jedem Tick ein 404 (Fehlerklasse F26 im Chat). Eine angefangene Pflichtbegründung im Freigabedialog gehört ebenfalls zum alten Projekt. Keine Regression von F44 WS-1a; gefunden im QA-Pass WS-1a.
+Fundstelle: `public/leitstand/views/workflows.js` (Detail-Auffrischer, `schliesseWorkflowDetail` nur bei `#/runs` bzw. Schließen-Knopf).
+Auswirkung: Mittel — Dauer-404 im Hintergrund, Detail zeigt Stand des alten Projekts.
+Maßnahme: In F44 WS-4 (Ablauf & Abnahme) `abonniereProjektWechsel` ergänzen: Detail schließen, Bedienung verwerfen; Verhalten bei angefangener Begründung festlegen.
+Status: offen.
+Feature/Run: QA-Pass F44 WS-1a, 30.09.2026.
+
+**F-875** · `TECH_DEBT` · P3 · offen
+Titel: Nach einem Projektwechsel wartet der neue Zustands-Abruf auf das Ende des verworfenen alten.
+Beschreibung: `zustand.js` verwirft seit F44 WS-1a die Antwort eines Abrufs, der vor dem Projektwechsel begann, bricht ihn aber nicht ab. Der Nachlauf mit dem neuen Präfix startet erst danach — bei langsamem Server bis zum Zeitlimit von 5 s (F-561); so lange zeigen Dashboard und Workboard „Lädt…“.
+Fundstelle: `public/leitstand/zustand.js` (`verwerfeLaufendenZustand`, `pollJetzt`).
+Auswirkung: Niedrig — Wartezeit nach dem Wechsel, keine falschen Daten.
+Maßnahme: Den alten Abruf per AbortController abbrechen; die Zusage „nie zwei Abrufe gleichzeitig“ bleibt dabei erhalten. Gate `check-f20-zustand-poll` um einen Fall ergänzen.
+Status: offen.
+Feature/Run: Code-Review F44 WS-1a, 30.09.2026.

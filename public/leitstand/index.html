@@ -4,6 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Leitstand</title>
+  <!-- F44 WS-1a: Theme vor dem ersten Rendern setzen (kein Aufblitzen des falschen Themes).
+       Dieselbe Regel wie theme.js: nur 'light' gilt als hell, alles andere (fehlend, kaputt,
+       Storage gesperrt) als dunkel. Keine Farbwerte hier — theme-color setzt theme.js zur
+       Laufzeit aus dem Token --bg. -->
+  <script>
+    try {
+      document.documentElement.dataset.theme = localStorage.getItem('leitstand-theme') === 'light' ? 'light' : 'dark'
+    } catch (e) {
+      document.documentElement.dataset.theme = 'dark'
+    }
+  </script>
+  <meta name="theme-color" content="" />
   <link rel="stylesheet" href="/style.css" />
   <!-- F29 WS-1b: Web-App-Manifest (Installierbarkeit) — KEIN Service Worker in diesem Auftrag,
        siehe manifest.webmanifest und state/findings.md. -->
@@ -140,6 +152,9 @@
         <!-- F29 WS-1a: Startfläche, siehe views/start.js — eigene View, kein Overlay. Erscheint
              einmal pro Sitzung (sessionStorage) oder auf Klick auf die Persona-Kachel oben. -->
         <section id="view-start" data-view="start" hidden></section>
+        <!-- F44 WS-1a: Seite „Einstellungen“ (views/einstellungen.js, Vorlage V10 d_einstellungen).
+             Erreichbar über den Eintrag im Dropdown der Nutzerkarte (shell.js). -->
+        <section id="view-einstellungen" data-view="einstellungen" hidden></section>
 
         <section id="view-dashboard" data-view="dashboard" hidden></section>
 

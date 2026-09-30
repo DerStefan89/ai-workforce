@@ -38,6 +38,10 @@
  *    unverändert (F29-Nicht-Ziel), der Klick-Handler sitzt am umschließenden
  *    <button> aus index.html, nicht am Persona-Host selbst.
  *
+ * 3. F44 WS-1a: Eintrag „Einstellungen“ im Dropdown der Nutzerkarte
+ *    (initNutzerkartenDropdown) — führt nach '#/einstellungen'
+ *    (views/einstellungen.js). Sidebar und Kopf bleiben in WS-1a unverändert.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initShell beim Bootstrap, vor starteRouter())
  */
@@ -46,6 +50,8 @@ import { zeigeStartflaeche } from './views/start.js'
 import { navigiere } from './router.js'
 import { montierePartikelDrift } from './particle-drift.js'
 import { escapeHtml } from './render.js'
+import { t } from './i18n.js'
+import { fokussiereEinstellungen } from './views/einstellungen.js'
 import { holeVerlauf } from './zuletzt-geoeffnet.js'
 
 const CHAT_OFFEN_SCHLUESSEL = 'leitstand-chat-offen'
@@ -134,6 +140,22 @@ function initNutzerkartenDropdown() {
     dropdown.hidden = false
     oeffner.setAttribute('aria-expanded', 'true')
   }
+
+  // F44 WS-1a: Eintrag „Einstellungen“ (#/einstellungen) als erster Punkt des Dropdowns — vor dem
+  // Bewegungs-Schalter, den persona.js bereits angehängt hat. Ein Klick navigiert über den Hash
+  // und schließt das Menü; der Schalter selbst bleibt unverändert im Dropdown.
+  const einstellungen = document.createElement('a')
+  einstellungen.href = '#/einstellungen'
+  einstellungen.id = 'nutzerkarte-einstellungen'
+  einstellungen.className = 'nutzerkarte-dropdown-eintrag'
+  einstellungen.textContent = t('navigation.einstellungen')
+  einstellungen.addEventListener('click', () => {
+    schliesse()
+    // Schon auf der Seite: kein hashchange, kein Routen-Eintritt — den Fokus hier setzen, sonst
+    // bliebe er auf dem nun ausgeblendeten Menüeintrag.
+    if (location.hash === '#/einstellungen') fokussiereEinstellungen()
+  })
+  dropdown.prepend(einstellungen)
 
   oeffner.addEventListener('click', () => {
     if (dropdown.hidden) oeffne()

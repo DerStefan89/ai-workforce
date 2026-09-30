@@ -54,6 +54,9 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initPersona beim Bootstrap)
+ * - public/leitstand/views/einstellungen.js (F44 WS-1a: bewegungsZustand,
+ *   setzeReduzierteBewegung, abonniereBewegungsAenderung — „Sanfte Bewegung“ nutzt
+ *   denselben Zustand wie der Schalter der Nutzerkarte, die Logik bleibt hier)
  *
  * Wichtig: #persona-platzhalter bleibt aria-hidden="true" (index.html), der
  * neu erzeugte #persona-gross-Container ebenso. Das Bild ist dekorativ
@@ -117,6 +120,52 @@ function wendeReduzierteBewegungAn() {
   document.documentElement.dataset.reduzierteBewegung = String(reduzierteBewegungAktiv())
 }
 
+/** F44 WS-1a: Abonnenten einer Änderung der Bewegungs-Präferenz (Schalter der Nutzerkarte, Seite Einstellungen). */
+const bewegungsAbonnenten = []
+
+/**
+ * F44 WS-1a: Zustand der Bewegungs-Präferenz für andere Bedienstellen (views/einstellungen.js),
+ * damit die Logik (OS-Präferenz ODER gespeicherter Schalter) nur hier lebt.
+ * @returns { reduziert, systemVorrang } — reduziert: Animationen aus; systemVorrang: die
+ *   OS-Präferenz erzwingt das, ein Schalter kann es nicht ändern
+ */
+export function bewegungsZustand() {
+  const systemVorrang = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  return { reduziert: reduzierteBewegungAktiv(), systemVorrang }
+}
+
+/**
+ * F44 WS-1a: Speichert die Bewegungs-Präferenz (localStorage 'leitstand-reduzierte-bewegung'),
+ * wendet sie an und benachrichtigt alle Bedienstellen. Einziger Schreibpfad dieses Zustands.
+ * @param reduziert - true: Animationen reduzieren
+ */
+export function setzeReduzierteBewegung(reduziert) {
+  try {
+    localStorage.setItem(REDUZIERTE_BEWEGUNG_SCHLUESSEL, String(reduziert))
+  } catch (fehler) {
+    // Privates Fenster/blockierter Zugriff — kein Absturz, aber gemeldet: Ohne Speicher bleibt der
+    // bisherige Zustand stehen, und die Bedienstellen zeigen nach der Benachrichtigung genau ihn.
+    console.warn('Bewegungs-Präferenz konnte nicht gespeichert werden:', fehler)
+  }
+  wendeReduzierteBewegungAn()
+  // Jeder Abonnent einzeln gefangen (Muster projekt-kontext.js setzeAktivesProjekt).
+  for (const fn of bewegungsAbonnenten) {
+    try {
+      fn()
+    } catch (fehler) {
+      console.error('Bewegungs-Präferenz: ein Abonnent ist fehlgeschlagen:', fehler)
+    }
+  }
+}
+
+/**
+ * F44 WS-1a: Meldet jede Änderung der Bewegungs-Präferenz (über setzeReduzierteBewegung).
+ * @param fn - () => void
+ */
+export function abonniereBewegungsAenderung(fn) {
+  bewegungsAbonnenten.push(fn)
+}
+
 /**
  * Baut den sichtbaren Schalter "Animationen reduzieren" in #shell-kopf (harte Regel: zusätzlich
  * zur OS-Präferenz ein sichtbarer Schalter, Präferenz in localStorage). QA-Pass 18.09.2026: bei
@@ -130,22 +179,23 @@ function baueBewegungsSchalter() {
   schalter.type = 'button'
   schalter.id = 'persona-bewegung-schalter'
   const aktualisiereBeschriftung = () => {
-    const osPraeferenz = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-    const aus = reduzierteBewegungAktiv()
+    const { reduziert: aus, systemVorrang: osPraeferenz } = bewegungsZustand()
     schalter.disabled = osPraeferenz
     schalter.setAttribute('aria-pressed', String(aus))
     schalter.textContent = osPraeferenz ? 'Persona-Animationen reduziert (Systemeinstellung)' : aus ? 'Persona-Animationen einschalten' : 'Persona-Animationen reduzieren'
   }
   schalter.addEventListener('click', () => {
-    const neu = localStorage.getItem(REDUZIERTE_BEWEGUNG_SCHLUESSEL) !== 'true'
+    let gespeichert = false
     try {
-      localStorage.setItem(REDUZIERTE_BEWEGUNG_SCHLUESSEL, String(neu))
+      gespeichert = localStorage.getItem(REDUZIERTE_BEWEGUNG_SCHLUESSEL) === 'true'
     } catch {
-      // s.o. — der Schalter wirkt dann nur für die laufende Seitenansicht.
+      // s.o. — Speicher gesperrt, Schalter gilt als aus.
     }
-    wendeReduzierteBewegungAn()
-    aktualisiereBeschriftung()
+    // F44 WS-1a: ein Schreibpfad für Nutzerkarte und Seite Einstellungen; die Beschriftung folgt
+    // über abonniereBewegungsAenderung (unten), auch wenn die Seite Einstellungen umschaltet.
+    setzeReduzierteBewegung(!gespeichert)
   })
+  abonniereBewegungsAenderung(aktualisiereBeschriftung)
   aktualisiereBeschriftung()
   // F29 WS-D2 (Auftrag Punkt B): Mount-Ziel geändert — der Schalter wandert optisch ins Dropdown
   // der Nutzerkarte (index.html #nutzerkarte-dropdown, shell.js öffnet/schließt es). Reiner

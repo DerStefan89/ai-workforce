@@ -24,7 +24,13 @@
  * "pollWorkflows() nach jeder Bedienung", jetzt zentral statt je View). Es
  * startet KEINEN zweiten Timer, nur einen einmaligen Tick.
  *
+ * F44 WS-1a (F-860): verwerfeLaufendenZustand() erhöht eine Kontext-Generation. Ein Tick,
+ * dessen Abruf vor dem Wechsel gestartet wurde, verteilt seine Antwort danach nicht mehr —
+ * sonst zeigten Dashboard und Workboard nach einem Projektwechsel noch Sekunden lang das
+ * Aggregat des alten Projekts (Render-Nachweis 30.09.2026). Aufgerufen von projekt-kontext.js.
+ *
  * Wird aufgerufen von:
+ * - public/leitstand/projekt-kontext.js (verwerfeLaufendenZustand, pollJetzt beim Projektwechsel)
  * - public/leitstand/app.js (initZustandPoll beim Bootstrap, NACH allen
  *   initXView()-Aufrufen, die ihrerseits abonniere() registrieren)
  * - public/leitstand/views/runs.js, views/workflows.js, views/dashboard.js
@@ -98,10 +104,22 @@ function pollZustand() {
   return starteTick()
 }
 
+/** Kontext-Generation (F44 WS-1a, F-860): ändert sich beim Projektwechsel; ein Tick einer älteren Generation verteilt nichts. */
+let kontextGeneration = 0
+
+/** F44 WS-1a (F-860): Beim Projektwechsel aufgerufen — ein bereits laufender Abruf gehört zum alten Projekt, seine Antwort wird verworfen (siehe Dateikopf). */
+export function verwerfeLaufendenZustand() {
+  kontextGeneration++
+}
+
 /** Der eigentliche Tick — ausschließlich von pollZustand() aufgerufen, nie direkt (Überlappungsschutz dort). */
 async function fuehrePollTickAus() {
+  const generation = kontextGeneration
   try {
     const zustand = await holeZustand()
+    // F-860: Antwort eines Abrufs, der vor einem Projektwechsel begann — weder verteilen noch als
+    // Fehler melden; der von projekt-kontext.js angestoßene Nachlauf holt den neuen Stand.
+    if (generation !== kontextGeneration) return
     // Jeder Abnehmer einzeln gefangen (QA-Pass F20 WS-2): ein werfender Abnehmer darf weder die
     // übrigen Abnehmer stoppen noch fälschlich als fetch()-Fehlschlag gemeldet werden — der Fetch
     // war erfolgreich, nur eine EINZELNE Anzeige hat einen Fehler.
@@ -114,6 +132,7 @@ async function fuehrePollTickAus() {
     }
     zeigePollFehler(false)
   } catch {
+    if (generation !== kontextGeneration) return
     zeigePollFehler(true)
   }
   // F-560: jeder Auffrischer einzeln gefangen — Muster der abnehmer-Schleife oben. Ein Wurf hier
