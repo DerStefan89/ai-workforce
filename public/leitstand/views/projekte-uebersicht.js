@@ -25,6 +25,8 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initProjekteUebersichtView beim Bootstrap)
+ * - public/leitstand/shell.js (oeffneAnlegenFormularAusKopf — „+“ neben der Projektauswahl im Kopf,
+ *   F44 WS-1b, F-862)
  *
  * Wichtig: der Kartenklick ändert weiterhin nur Client-Zustand
  * (api.js-Präfix, Muster views/capabilities.js Library/Coverage-Teil) —
@@ -56,7 +58,7 @@
 
 import { holeProjekte, holeProjektAufruf, legeProjektAn, rufeProjektAuf } from '../api.js'
 import { renderAufrufBereich, renderVorschau } from '../projekt-aufruf-anzeige.js'
-import { holeAktivesProjekt, setzeAktivesProjekt } from '../projekt-kontext.js'
+import { holeAktivesProjekt, ladeProjektAuswahl, setzeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
 import { merkeGeoeffnet } from '../zuletzt-geoeffnet.js'
@@ -194,7 +196,7 @@ function initBedienung() {
     const button = ereignis.target.closest('.projekt-waehlen')
     if (button === null) return
     setzeAktivesProjekt({ id: button.dataset.id, name: button.dataset.name })
-    // F29 WS-D2 (Auftrag Punkt B): merkt den Öffnen-Klick für die Schnellzugriff-Box (zuletzt-geoeffnet.js).
+    // F29 WS-D2 (Auftrag Punkt B): merkt den Öffnen-Klick für „Zuletzt geöffnet“ in der Sidebar (zuletzt-geoeffnet.js).
     merkeGeoeffnet({ typ: 'projekt', id: button.dataset.id, label: button.dataset.name, hash: '#/dashboard', statusKategorie: button.dataset.statusKategorie })
     navigiere('#/dashboard')
   })
@@ -303,6 +305,8 @@ function initAnlegenFormular() {
         return
       }
       zeigeAnlegenErfolg(rumpf.projekt, rumpf.naechste_schritte)
+      // F44 WS-1b: die Projektauswahl im Kopf kennt das neue Projekt erst nach einem neuen Abruf.
+      void ladeProjektAuswahl()
       await ladeProjekte()
     } finally {
       absendenButton.disabled = false
@@ -332,6 +336,23 @@ function initAnlegenFormular() {
     wechsleZuSparringProjekt()
     navigiere('#/chat')
   })
+}
+
+/**
+ * F44 WS-1b (F-862): „+“ im Kopf — navigiert zur Projekte-Übersicht und öffnet dort das bestehende
+ * Anlegeformular (F41). navigiere() dispatcht synchron; der Routen-Eintritt blendet das Formular
+ * zuerst aus (versteckeAnlegenZustand), erst danach wird es geöffnet. Läuft gerade eine
+ * Anlege-Anfrage („+ Neues Projekt“ ist dann gesperrt), bleibt es beim Navigieren — ein Reset der
+ * Felder mitten in der Anfrage öffnete dieselbe Race wie in initAnlegenFormular beschrieben.
+ */
+export function oeffneAnlegenFormularAusKopf() {
+  const anlageLaeuft = document.getElementById('projekte-anlegen-oeffnen').disabled
+  // Schon hier und eine Anlage läuft: nichts tun — der Routen-Eintritt blendete das laufende
+  // Formular samt späterer Fehlerantwort aus (code-reviewer/qa WS-1b).
+  if (anlageLaeuft && location.hash === '#/projekte-uebersicht') return
+  navigiere('#/projekte-uebersicht')
+  if (anlageLaeuft) return
+  zeigeAnlegenFormular(true)
 }
 
 /** Initialisiert die Projekte-Übersicht einmalig beim Bootstrap (Muster views/capabilities.js initCapabilitiesView) — registriert ihre Route selbst (Muster views/workboard.js), weil sie beim Eintritt einen echten Abruf braucht. */

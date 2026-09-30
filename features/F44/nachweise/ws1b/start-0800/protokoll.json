@@ -1,0 +1,13 @@
+[
+  {
+    "label": "#/start bei 800 ms",
+    "Ansicht": "start",
+    "data-eingang": "true",
+    "Link": "Enter the Rabbit hole↗",
+    "Wartezeile": "26 Punkte brauchen Aufmerksamkeit",
+    "Fokus": "Enter the Rabbit hole↗",
+    "Link klickbar": true,
+    "Seite geladen": true,
+    "Animationen angehalten": 5
+  }
+]

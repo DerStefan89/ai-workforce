@@ -1,96 +1,73 @@
 /**
  * Datei: public/leitstand/views/start.js
  *
- * Zweck: F29 WS-1a — Startfläche `#/start`, eine eigene View (kein Overlay).
- * Zeigt die Persona groß und zentriert (Variante 'gross', wiederverwendet
- * über persona.js' exportiertes montierePersona() — siehe dessen
- * Kopfkommentar: keine zweite Lid-/Awakening-Mechanik). Nach dem Erwachen
- * übernimmt die Persona ihren echten Zustand aus leitePersonaZustandAb()
- * (dieselbe Ableitung wie persona.js/#persona-text-status); eine eigene,
- * NICHT aria-live-Zeile benennt zusätzlich, was konkret wartet (Auftrag:
- * "2 Entscheidungen warten") — #persona-text-status bleibt die einzige
- * aria-live-Quelle im Dokument, diese Zeile ist reiner Sichttext.
+ * Zweck: F29 WS-1a — Startfläche `#/start`, eine eigene View (kein Overlay im Router-Sinn).
+ * F44 WS-1b (F-725, Abgleich A1/A2): der Eingang der Vorlage V10 (.rabbit-entrance):
+ * „JARVIS“ oben, dasselbe Gesicht in drei Ebenen (linkes Auge, rechtes Auge, Grinsen — je ein
+ * <img> desselben Bildes mit eigenem clip-path), die in ~2,2 s aufwachen (Keyframes wake-left,
+ * wake-right, wake-grin in style.css), darunter der Link „Enter the Rabbit hole ↗“
+ * (enter-arrive) und „AI WORKFORCE“ unten. Der Link führt nach '#/dashboard' — die
+ * Produktübersicht ist in der Vorlage der erste Eintrag (vorher '#/workboard').
  *
- * Einmal-pro-Sitzung-Regel (sessionStorage, Konvention projekt-kontext.js):
- * leiteBeimStartEin() wird von app.js VOR dem ersten Router-Dispatch
- * aufgerufen und setzt den Hash nur dann auf '#/start', wenn (a) diese
- * Sitzung die Fläche noch nicht gezeigt hat UND (b) der Hash leer ist (ein
- * Reload/Deeplink auf eine andere View wird respektiert, kein erzwungener
- * Sprung dorthin). Ein Reload/Deeplink auf exakt '#/start' NACH bereits
- * gezeigter Fläche leitet in beimBetreten() sofort zu '#/dashboard' weiter
- * (Auftrag: "Reloads und Deeplinks überspringen sie") — AUSSER
- * zeigeStartflaeche() (Klick auf die Persona-Kachel, shell.js) hat den
- * nächsten Eintritt ausdrücklich erzwungen.
+ * Unter dem Link steht weiter die Wartezeile (#start-warte-hinweis, A2 — fehlt in der Vorlage):
+ * Sie benennt, was konkret wartet („2 Entscheidungen warten“), mit Plural über t(). Sie ist
+ * reiner Sichttext, KEINE aria-live-Region — #persona-text-status (persona.js) bleibt die
+ * einzige im Dokument.
  *
- * F29 WS-D2 (Auftrag Punkt A): die Fläche ist jetzt ein ECHTES Vollbild-Overlay
- * (position: fixed, style.css) über der gesamten Shell (Banner/Sidebar/Chat
- * bleiben im DOM, sind aber unsichtbar dahinter) statt einer `<main>`-View
- * unter dem Banner — Sitzungsregel/Rückweg/Attention-Text unverändert (s.o.).
- * Ziel nach Klick/Enter ist jetzt '#/workboard' (nicht mehr '#/dashboard') —
- * Workboard ist seit WS-D2 die Startansicht (Auftrag Punkt C). F-473: die
- * Particle-Drift-Instanz (particle-drift.js) wird jetzt NUR montiert, wenn
- * '#/start' wirklich betreten wird, und über deren zurückgegebene
- * Cleanup-Funktion abgebaut, sobald die Route verlassen wird (eigener
- * 'hashchange'-Listener unten) — vorher lief sie unsichtbar in einer
- * Endlosschleife weiter, weil #view-start nur `hidden` wurde, nie verlassen
- * im Sinne eines Mount/Unmount.
+ * Einmal-pro-Sitzung-Regel (sessionStorage, Konvention projekt-kontext.js), unverändert:
+ * leiteBeimStartEin() wird von app.js VOR dem ersten Router-Dispatch aufgerufen und setzt den
+ * Hash nur dann auf '#/start', wenn (a) diese Sitzung die Fläche noch nicht gezeigt hat UND
+ * (b) der Hash leer ist (ein Reload/Deeplink auf eine andere View wird respektiert). Ein
+ * Reload/Deeplink auf exakt '#/start' NACH bereits gezeigter Fläche leitet in beimBetreten()
+ * sofort weiter — AUSSER zeigeStartflaeche() (Klick auf die Persona im Kopf oder die Wortmarke,
+ * shell.js) hat den nächsten Eintritt ausdrücklich erzwungen.
+ *
+ * Solange die Fläche sichtbar ist, trägt <html> das Attribut data-eingang="true"; style.css
+ * blendet damit Sidebar, Kopf und Chatspalte aus (Vorlage .is-entrance) — sie sind dann auch
+ * per Tastatur nicht erreichbar. Bei reduzierter Bewegung ist alles statisch (style.css).
+ * Enter betritt wie bisher: Der Link trägt beim Eintritt den Fokus, und liegt der Fokus nach einem
+ * Klick auf die Fläche auf body, reicht Enter ebenfalls. Ein Klick irgendwo auf die Fläche betritt
+ * nicht mehr (Vorlage: nur der Link).
+ * Die frühere Partikelfläche (particle-drift.js) und die große Persona-Instanz entfallen.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initStartView beim Bootstrap, leiteBeimStartEin vor starteRouter())
- * - public/leitstand/shell.js (zeigeStartflaeche, Klick auf die Persona-Kachel)
+ * - public/leitstand/shell.js (zeigeStartflaeche — Persona-Knopf im Kopf, Wortmarke der Sidebar)
  */
 
+import { t } from '../i18n.js'
 import { registriere, navigiere, unterdrueckeFolgendesHashchange } from '../router.js'
-import { montierePersona } from '../persona.js'
-import { montierePartikelDrift } from '../particle-drift.js'
 import { abonniere } from '../zustand.js'
 import { leitePersonaZustandAb } from '../persona-state.js'
 import { filtereAttentionLaeufe, filtereAttentionWorkflows } from '../attention-daten.js'
+import { escapeHtml } from '../render.js'
 
 const SESSION_SCHLUESSEL = 'leitstand-start-gezeigt'
-// Auftrag Punkt 5 (WS-D1) / Punkt A (WS-D2, "vollflächig in ROT"): höchstens 250, Rot-Töne statt
-// des Banner-Cyan/Rot-Paars (particle-drift.js' Default).
-const START_PARTIKEL_DICHTE = 250
-const START_ZIEL_HASH = '#/workboard'
-// Fade-Dauer vor der Navigation (Auftrag: "blendet aus und navigiert") — deckt sich mit
-// --motion-slow (style.css); bei reduzierter Bewegung entfällt die Wartezeit ganz (s. betreteLeitstand).
-const AUSBLENDEN_DAUER_MS = 320
-// Deckt sich mit persona.js' AWAKENING_DAUER_MS / der CSS-Keyframe-Dauer (--motion-awakening,
-// style.css) — dieselbe Mechanik, hier für einen erzwungenen Re-Eintritt erneut ausgelöst.
-const AWAKENING_DAUER_MS = 1200
+const START_ZIEL_HASH = '#/dashboard'
+const BILD_PFAD = '/persona-gesicht.webp'
 
-let personaHost = null
 let letzterZustand = null
 let erzwingeNaechstenEintritt = false
 
-/** F-473: Cleanup-Funktion der aktuell gemounteten Particle-Drift-Instanz, oder null (noch keine/bereits abgebaut). */
-let partikelCleanup = null
-
 /**
- * QA-Hinweis 18.09.2026: prüft bewusst NICHT selbst die OS-Präferenz (anders als
- * persona.js' eigene reduzierteBewegungAktiv()), sondern liest nur das von persona.js
- * gespiegelte Root-Attribut — korrekt NUR, weil app.js initPersona() (setzt das Attribut beim
- * Bootstrap) vor jedem möglichen ersten Dispatch auf '#/start' aufruft (Reihenfolge-Kommentar
- * dort). Eine künftige Umordnung der init-Aufrufe müsste diese Abhängigkeit erhalten.
+ * Text der Wartezeile unter dem Link — konkreter als der Persona-Status, weil hier Platz für
+ * eine Zahl ist (A2). Plural über t() (Intl.PluralRules).
+ * @param zustand - Aggregat aus GET /api/zustand, oder null vor dem ersten Poll-Tick
+ * @returns der Text
  */
-function reduzierteBewegungAktiv() {
-  return document.documentElement.dataset.reduzierteBewegung === 'true'
-}
-
-/** Text der Sichtzeile unter der Persona — konkreter als persona.js' generischer ZUSTAND_TEXT, weil hier Platz für eine Zahl ist (Auftrag Punkt 4). @param zustand - Aggregat aus GET /api/zustand, oder null vor dem ersten Poll-Tick */
 function ermittleWarteText(zustand) {
-  if (zustand === null) return 'Lädt…'
+  if (zustand === null) return t('start.warte.laedt')
   const persona = leitePersonaZustandAb(zustand)
   if (persona === 'error') {
     const anzahl = (zustand.startfehler?.length ?? 0) + (filtereAttentionLaeufe(zustand.laeufe ?? null)?.length ?? 0)
-    return anzahl > 0 ? `${anzahl} Punkt${anzahl === 1 ? '' : 'e'} brauchen Aufmerksamkeit` : 'Aktualisierung fehlgeschlagen'
+    return anzahl > 0 ? t('start.warte.aufmerksamkeit', { anzahl }) : t('start.warte.fehlgeschlagen')
   }
   if (persona === 'waiting_for_human') {
     const anzahl = filtereAttentionWorkflows(zustand.workflows ?? null)?.length ?? 0
-    return `${anzahl} Entscheidung${anzahl === 1 ? '' : 'en'} warten`
+    return t('start.warte.entscheidungen', { anzahl })
   }
-  if (persona === 'thinking') return 'Ein Lauf ist gerade aktiv'
-  return 'Nichts wartet gerade'
+  if (persona === 'thinking') return t('start.warte.lauf')
+  return t('start.warte.nichts')
 }
 
 function renderWarteText() {
@@ -98,56 +75,29 @@ function renderWarteText() {
   if (zeile !== null) zeile.textContent = ermittleWarteText(letzterZustand)
 }
 
-/** Baut die Startfläche einmalig beim Bootstrap — ein <button>, der die Fläche füllt (Auftrag: kein div mit Klick-Handler), Enter/Space aktivieren ihn nativ. F29 WS-D2: echtes Vollbild-Overlay (style.css) statt einer `<main>`-View — Persona (F28, unverändert) montiert hier weiterhin einmalig; die Particle-Drift-Instanz NICHT mehr hier, sondern erst bei jedem echten Eintritt in '#/start' (F-473, s. montierePartikel/verlassePartikel unten). */
+/** Baut den Eingang einmalig beim Bootstrap (Markup der Vorlage, Texte über t()). */
 function baueStartflaeche() {
   const container = document.getElementById('view-start')
+  const ebene = (klasse) => `<img class="face-part ${klasse}" src="${BILD_PFAD}" alt="" width="1536" height="1024" />`
   container.innerHTML = `
-    <button type="button" id="start-flaeche" class="start-flaeche" aria-label="Leitstand betreten">
-      <div id="start-partikel" class="start-partikel" aria-hidden="true"></div>
-      <p class="start-wortmarke" aria-hidden="true">JARVIS</p>
-      <div id="start-persona-host" aria-hidden="true"></div>
+    <section class="rabbit-entrance">
+      <div class="rabbit-signature" translate="no">${escapeHtml(t('start.signatur'))}</div>
+      <div class="awakening-face" role="img" aria-label="${escapeHtml(t('start.gesicht'))}">
+        ${ebene('eye-left')}${ebene('eye-right')}${ebene('waking-grin')}
+      </div>
+      <a class="rabbit-enter" id="start-betreten" href="${START_ZIEL_HASH}" translate="no" lang="en"><span>${escapeHtml(t('start.betreten'))}</span><span aria-hidden="true">↗</span></a>
       <p id="start-warte-hinweis" class="start-hinweis"></p>
-      <p class="start-betreten-hinweis" aria-hidden="true">Klicken oder Enter</p>
-    </button>`
-  document.getElementById('start-flaeche').addEventListener('click', betreteLeitstand)
-  personaHost = document.getElementById('start-persona-host')
-  montierePersona(personaHost, 'gross')
+      <div class="rabbit-wordmark" translate="no">${escapeHtml(t('start.wortmarke'))}</div>
+    </section>`
 }
 
-/** F-473: montiert die Particle-Drift-Instanz — aufgerufen bei jedem echten Eintritt in '#/start' (beimBetreten). Räumt eine evtl. noch laufende vorherige Instanz zuerst ab (Re-Entry-Schutz, z. B. ein zweiter zeigeStartflaeche()-Aufruf, während die Fläche bereits offen ist). */
-function montierePartikel() {
-  if (partikelCleanup !== null) partikelCleanup()
-  partikelCleanup = montierePartikelDrift(document.getElementById('start-partikel'), {
-    density: START_PARTIKEL_DICHTE,
-    basisToken: '--color-brand-rgb',
-    akzentToken: '--color-brand-strong-rgb',
-  })
-}
-
-/** F-473: baut die Particle-Drift-Instanz ab — aufgerufen über den 'hashchange'-Listener unten, sobald '#/start' wirklich verlassen wird (nicht bei jedem Re-Render). */
-function verlassePartikel() {
-  if (partikelCleanup === null) return
-  partikelCleanup()
-  partikelCleanup = null
-}
-
-// F-473: einziger zuverlässiger Ort für "die Route wurde verlassen" — router.js kennt kein
-// eigenes onLeave-Konzept (nur onEnter je Route), ein natives 'hashchange' feuert aber IMMER, wenn
-// location.hash sich ändert (auch wenn router.js' eigene Unterdrückung, s. dessen Datei-Kommentar,
-// einen ZWEITEN internen dispatch()-Lauf für denselben Hash unterdrückt — das Browser-Ereignis
-// selbst bleibt davon unberührt).
-window.addEventListener('hashchange', () => {
-  if (location.hash !== '#/start') verlassePartikel()
-})
-
-/** Klick/Enter auf die Startfläche (Auftrag Punkt A): blendet aus, navigiert danach zu '#/workboard' — bei reduzierter Bewegung ohne Wartezeit (kein sichtbares Ausblenden, das warten müsste). */
-function betreteLeitstand() {
-  if (reduzierteBewegungAktiv()) {
-    navigiere(START_ZIEL_HASH)
-    return
-  }
-  document.getElementById('start-flaeche').classList.add('start-verlaesst')
-  setTimeout(() => navigiere(START_ZIEL_HASH), AUSBLENDEN_DAUER_MS)
+/**
+ * Markiert <html>, solange die Startfläche die Route ist (style.css blendet dann die Shell aus).
+ * @param aktiv - true beim Betreten, false beim Verlassen
+ */
+function setzeEingang(aktiv) {
+  if (aktiv) document.documentElement.dataset.eingang = 'true'
+  else delete document.documentElement.dataset.eingang
 }
 
 function markiereGezeigt() {
@@ -166,7 +116,19 @@ function bereitsGezeigt() {
   }
 }
 
-/** onEnter der Route '#/start' — Reload/Deeplink NACH bereits gezeigter Fläche weicht zum Workboard aus (Auftrag Punkt C: Workboard ist die Startansicht), außer zeigeStartflaeche() hat diesen Eintritt erzwungen (Datei-Kommentar). Montiert bei einem ECHTEN Eintritt die Particle-Drift-Instanz neu (F-473). */
+/**
+ * Startet die Aufwach-Animationen neu (Klasse entfernen, Reflow, setzen) — auch bei einem
+ * erzwungenen zweiten Eintritt, nicht nur beim ersten Rendern.
+ */
+function starteAufwachen() {
+  const flaeche = document.querySelector('#view-start .rabbit-entrance')
+  if (flaeche === null) return
+  flaeche.classList.remove('rabbit-wach')
+  void flaeche.offsetWidth
+  flaeche.classList.add('rabbit-wach')
+}
+
+/** onEnter der Route '#/start' — Reload/Deeplink NACH bereits gezeigter Fläche weicht zur Produktübersicht aus, außer zeigeStartflaeche() hat diesen Eintritt erzwungen (Datei-Kommentar). */
 function beimBetreten() {
   const erzwungen = erzwingeNaechstenEintritt
   erzwingeNaechstenEintritt = false
@@ -174,15 +136,19 @@ function beimBetreten() {
     navigiere(START_ZIEL_HASH)
     return
   }
-  document.getElementById('start-flaeche').classList.remove('start-verlaesst')
-  montierePartikel()
+  setzeEingang(true)
   renderWarteText()
-  if (!reduzierteBewegungAktiv()) {
-    personaHost.classList.add('persona-awakening')
-    setTimeout(() => personaHost.classList.remove('persona-awakening'), AWAKENING_DAUER_MS)
-  }
+  starteAufwachen()
   markiereGezeigt()
-  document.getElementById('start-flaeche').focus()
+  // Der Link ist sofort bedienbar (Vorlage) und trägt den Fokus, damit Enter wie bisher sofort
+  // betritt — auch wenn er erst nach ~0,7 s sichtbar einblendet. Den Fokusrahmen blendet style.css
+  // bis zur ersten Eingabe aus (data-autofokus), die Vorlage zeigt dort keinen.
+  const link = document.getElementById('start-betreten')
+  link.dataset.autofokus = 'true'
+  const eingabe = () => delete link.dataset.autofokus
+  document.addEventListener('keydown', eingabe, { once: true, capture: true })
+  document.addEventListener('pointermove', eingabe, { once: true, capture: true })
+  link.focus()
 }
 
 /** Löst genau einmal pro Sitzung den automatischen Einstieg über '#/start' aus — vor dem ersten Router-Dispatch aufgerufen (app.js), respektiert einen bereits gesetzten, abweichenden Hash (Reload/Deeplink auf eine andere View). */
@@ -193,13 +159,13 @@ export function leiteBeimStartEin() {
     // unterdrueckeFolgendesHashchange VOR der Zuweisung (router.js Datei-Kommentar dort): sonst
     // dispatcht starteRouter() gleich darauf synchron korrekt einmal, aber das dadurch
     // ausgelöste, verzögerte native hashchange-Event würde beimBetreten() ein zweites Mal
-    // aufrufen — mit dann bereits gesetztem Sitzungsflag fälschlich sofort zum Dashboard weichend.
+    // aufrufen — mit dann bereits gesetztem Sitzungsflag fälschlich sofort weiterleitend.
     unterdrueckeFolgendesHashchange('#/start')
     location.hash = '#/start'
   }
 }
 
-/** Holt die Startfläche gezielt zurück — Klick auf die Persona-Kachel in der Kopfzeile (shell.js), unabhängig vom Sitzungsflag. */
+/** Holt die Startfläche gezielt zurück — Persona im Kopf oder Wortmarke der Sidebar (shell.js), unabhängig vom Sitzungsflag. */
 export function zeigeStartflaeche() {
   erzwingeNaechstenEintritt = true
   navigiere('#/start')
@@ -208,6 +174,19 @@ export function zeigeStartflaeche() {
 /** Initialisiert die Startfläche einmalig beim Bootstrap. */
 export function initStartView() {
   baueStartflaeche()
+  // Einziger zuverlässiger Ort für „die Route wurde verlassen“ — router.js kennt nur onEnter. Ein
+  // natives 'hashchange' feuert immer, wenn location.hash sich ändert (auch wenn router.js einen
+  // zweiten internen dispatch() für denselben Hash unterdrückt).
+  window.addEventListener('hashchange', () => {
+    if (location.hash !== '#/start') setzeEingang(false)
+  })
+  // Bisheriges Verhalten „Klicken oder Enter“: Enter betritt auch, wenn der Fokus nach einem Klick
+  // auf die Fläche nicht mehr auf dem Link liegt (sondern auf body).
+  document.addEventListener('keydown', (ereignis) => {
+    if (ereignis.key !== 'Enter' || location.hash !== '#/start') return
+    if (document.activeElement !== null && document.activeElement !== document.body) return
+    document.getElementById('start-betreten').click()
+  })
   abonniere((zustand) => {
     letzterZustand = zustand
     renderWarteText()

@@ -1,0 +1,26 @@
+[
+  {
+    "label": "Seitenwechsel → #/brain, 0 ms",
+    "Ansicht": "brain",
+    "Klasse Portrait": "persona-bild persona-portrait persona-arrive",
+    "Zustand": "error",
+    "Seite geladen": true,
+    "Animationen angehalten": 2
+  },
+  {
+    "label": "Seitenwechsel → #/dashboard, 350 ms",
+    "Ansicht": "dashboard",
+    "Klasse Portrait": "persona-bild persona-portrait persona-arrive",
+    "Zustand": "error",
+    "Seite geladen": true,
+    "Animationen angehalten": 2
+  },
+  {
+    "label": "Seitenwechsel → #/brain, 700 ms",
+    "Ansicht": "brain",
+    "Klasse Portrait": "persona-bild persona-portrait persona-arrive",
+    "Zustand": "error",
+    "Seite geladen": true,
+    "Animationen angehalten": 2
+  }
+]

@@ -1,0 +1,47 @@
+{
+  "url": "http://127.0.0.1:4173/",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "screenshotQualitaet": 0.8,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-eingang",
+        "selector": "html",
+        "attribut": "data-eingang"
+      },
+      {
+        "name": "Link",
+        "selector": "#start-betreten"
+      },
+      {
+        "name": "Wartezeile",
+        "selector": "#start-warte-hinweis"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      }
+    ],
+    "getroffen": [
+      {
+        "name": "Link klickbar",
+        "selector": "#start-betreten"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/start bei 0 ms",
+      "animationenBei": 0,
+      "screenshot": "start-0000ms.webp"
+    }
+  ]
+}

@@ -17,7 +17,10 @@
  *       scannt (ein „PR #145“ im Wörterbuch wäre dort ein Farbliteral);
  *   (6) jeder literale Aufruf t('…') in den Laufzeitmodulen (*.js) unter public/leitstand
  *       existiert in de. Testdateien (*.test.mjs) sind ausgenommen — sie prüfen den Rückfall
- *       absichtlich mit fehlenden Schlüsseln.
+ *       absichtlich mit fehlenden Schlüsseln. F44 WS-1b: dasselbe gilt für die Attribute
+ *       data-i18n, data-i18n-aria-label und data-i18n-title in *.html (statische Shell-Texte,
+ *       übersetzt von uebersetzeDokument() in i18n.js) — derselbe Schlüssel-Vertrag, nur ein
+ *       anderer Aufrufort.
  * Abschnitt (7) ist ein Rot/Grün-Selbsttest: je Regel ein konstruierter Rotfall, der
  * genau diese Regel auslösen muss, und ein sauberer Grünfall.
  *
@@ -46,6 +49,8 @@ const RAUTE_MUSTER = /#(?:\d|[0-9a-fA-F]{3,8}\b)/
 const PLATZHALTER_MUSTER = /\{(\w+)\}/g
 // Literaler t()-Aufruf, nicht als Methode (.t) oder Teil eines Namens (split(, holeT().
 const T_AUFRUF_MUSTER = /(?<![\w$.])t\(\s*(?:'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`$\\]*)`)/g
+// F44 WS-1b: Schlüssel in HTML-Attributen (uebersetzeDokument in i18n.js).
+const HTML_SCHLUESSEL_MUSTER = /\bdata-i18n(?:-aria-label|-title)?="([^"]*)"/g
 
 console.log('\n=== F44-i18n-Check (Wörterbücher de/en/tr/ru, t()-Aufrufe) ===\n')
 
@@ -142,11 +147,15 @@ export function pruefeTAufrufe(pfad, text, basisBuch) {
     const schluessel = treffer[1] ?? treffer[2] ?? treffer[3]
     if (!Object.hasOwn(basisBuch, schluessel)) befunde.push({ regel: 6, text: `${pfad}: t('${schluessel}') fehlt in ${BASIS_SPRACHE}` })
   }
+  for (const treffer of text.matchAll(HTML_SCHLUESSEL_MUSTER)) {
+    if (!Object.hasOwn(basisBuch, treffer[1])) befunde.push({ regel: 6, text: `${pfad}: ${treffer[0]} fehlt in ${BASIS_SPRACHE}` })
+  }
   return befunde
 }
 
 /**
- * Sammelt rekursiv alle Laufzeitmodule (*.js) unter einem Verzeichnis — ohne *.test.mjs.
+ * Sammelt rekursiv alle Laufzeitmodule (*.js) und Seiten (*.html, F44 WS-1b) unter einem
+ * Verzeichnis — ohne *.test.mjs.
  * @param verzeichnis - Wurzel
  * @returns Pfade mit '/'
  */
@@ -155,7 +164,7 @@ function sammleSkripte(verzeichnis) {
   for (const eintrag of readdirSync(verzeichnis, { withFileTypes: true })) {
     const pfad = `${verzeichnis}/${eintrag.name}`
     if (eintrag.isDirectory()) ergebnis.push(...sammleSkripte(pfad))
-    else if (eintrag.name.endsWith('.js')) ergebnis.push(pfad)
+    else if (eintrag.name.endsWith('.js') || eintrag.name.endsWith('.html')) ergebnis.push(pfad)
   }
   return ergebnis
 }
@@ -173,7 +182,7 @@ befunde.push(...pruefeWoerterbuecher(WOERTERBUECHER, SPRACHEN))
 let anzahlAufrufe = 0
 for (const pfad of sammleSkripte(LEITSTAND_VERZEICHNIS)) {
   const text = readFileSync(pfad, 'utf8')
-  anzahlAufrufe += [...text.matchAll(T_AUFRUF_MUSTER)].length
+  anzahlAufrufe += [...text.matchAll(T_AUFRUF_MUSTER)].length + [...text.matchAll(HTML_SCHLUESSEL_MUSTER)].length
   befunde.push(...pruefeTAufrufe(pfad, text, WOERTERBUECHER[BASIS_SPRACHE]))
 }
 
@@ -217,6 +226,10 @@ for (const pfad of sammleSkripte(LEITSTAND_VERZEICHNIS)) {
     { text: 't(`a.fehlt`)', rot: true },
     { text: "x = t( 'a.fehlt', { name: 1 })", rot: true },
     { text: 't(`a.${b}`) + split(\'a.fehlt\') + i18n.t(\'a.fehlt\')', rot: false },
+    { text: '<span data-i18n="a.b">x</span><a data-i18n-aria-label="a.b" data-i18n-title="a.b">', rot: false },
+    { text: '<span data-i18n="a.fehlt">x</span>', rot: true },
+    { text: '<button data-i18n-aria-label="a.fehlt">', rot: true },
+    { text: '<button data-i18n-title="a.fehlt">', rot: true },
   ]
   for (const fall of tFaelle) {
     const ergebnis = pruefeTAufrufe('selbsttest.js', fall.text, sauber.de)
@@ -224,7 +237,7 @@ for (const pfad of sammleSkripte(LEITSTAND_VERZEICHNIS)) {
   }
 }
 
-console.log(`Sprachen: ${SPRACHEN.join(', ')} · Schlüssel in ${BASIS_SPRACHE}: ${Object.keys(WOERTERBUECHER[BASIS_SPRACHE]).length} · literale t()-Aufrufe: ${anzahlAufrufe}`)
+console.log(`Sprachen: ${SPRACHEN.join(', ')} · Schlüssel in ${BASIS_SPRACHE}: ${Object.keys(WOERTERBUECHER[BASIS_SPRACHE]).length} · literale t()-Aufrufe und data-i18n-Schlüssel: ${anzahlAufrufe}`)
 console.log('')
 if (befunde.length === 0) {
   console.log('✓ Keine Befunde (Selbsttest (7): Rot- und Grünfälle je Regel wie erwartet).\n')

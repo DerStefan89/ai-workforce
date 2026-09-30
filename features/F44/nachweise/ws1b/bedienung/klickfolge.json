@@ -1,0 +1,158 @@
+{
+  "url": "http://127.0.0.1:4173/#/dashboard",
+  "viewport": {
+    "breite": 1024,
+    "hoehe": 800
+  },
+  "farbschema": "dark",
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Frag Jarvis gedrückt",
+        "selector": "#chat-umschalter",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "data-eingang",
+        "selector": "html",
+        "attribut": "data-eingang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Kopf-Sprache",
+        "selector": "#kopf-sprache",
+        "attribut": "title"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Chatspalte",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Anlegeformular",
+        "id": "projekte-anlegen-formular"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Initial #/dashboard"
+    },
+    {
+      "label": "Klick „+“ (F-862)",
+      "klick": "#kopf-neues-projekt",
+      "screenshot": "bedienung-plus.webp"
+    },
+    {
+      "label": "Klick „Frag Jarvis“ (auf)",
+      "klick": "#chat-umschalter"
+    },
+    {
+      "label": "Klick „Frag Jarvis“ (zu)",
+      "klick": "#chat-umschalter"
+    },
+    {
+      "label": "Route #/chat (Chat-Route)",
+      "navigiere": "#/chat"
+    },
+    {
+      "label": "Sidebar „Ausführungen“",
+      "klick": "#shell-sidebar a[data-nav-view=\"runs\"]"
+    },
+    {
+      "label": "Sidebar „Auftrag & Start“",
+      "klick": "#shell-sidebar a[data-nav-view=\"projekt\"]"
+    },
+    {
+      "label": "Sidebar „Einstellungen“ (Bewegungsschalter dort)",
+      "klick": "#shell-sidebar a[data-nav-view=\"einstellungen\"]"
+    },
+    {
+      "label": "Profil → #/einstellungen (Fokus auf h1)",
+      "klick": "#shell-profil"
+    },
+    {
+      "label": "Theme-Schalter Kopf → hell",
+      "klick": "#kopf-theme",
+      "screenshot": "bedienung-hell.webp"
+    },
+    {
+      "label": "Theme-Schalter Kopf → dunkel",
+      "klick": "#kopf-theme"
+    },
+    {
+      "label": "Brain: „kommt“ per Enter (ohne Wirkung)",
+      "navigiere": "#/brain",
+      "fokus": ".kommt-knopf",
+      "taste": "Enter"
+    },
+    {
+      "label": "Klick Persona → Startfläche",
+      "klick": "#persona-kopf-oeffner"
+    },
+    {
+      "label": "Tastatur Enter auf „Enter the Rabbit hole“",
+      "fokus": "#start-betreten",
+      "taste": "Enter"
+    },
+    {
+      "label": "Sprache per Pfeiltaste (noch kein Wechsel)",
+      "fokus": "#kopf-sprache",
+      "taste": "ArrowDown"
+    },
+    {
+      "label": "Feld verlassen (Tab) → English, lädt neu",
+      "taste": "Tab",
+      "warteAufSelector": {
+        "selector": "html[lang=\"en\"] #persona-text-status",
+        "timeoutMs": 30000
+      }
+    },
+    {
+      "label": "Sprache per Maus → Deutsch, lädt neu",
+      "auswaehlen": {
+        "selector": "#kopf-sprache",
+        "wert": "de"
+      },
+      "warteAufSelector": {
+        "selector": "html[lang=\"de\"] #persona-text-status",
+        "timeoutMs": 30000
+      }
+    }
+  ]
+}

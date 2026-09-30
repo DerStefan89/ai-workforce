@@ -23,138 +23,93 @@
 </head>
 <body>
   <div id="shell">
-    <!-- F29 WS-D2 (Auftrag Punkt B, nach docs/design/referenz/01-workboard.png): Wortmarke+Tagline
-         links, Particle-Drift-Hintergrund (particle-drift.js, shell.js, jetzt in Rot statt
-         Cyan/Rot) hinter allem, in der Mitte die bestehende F28-Persona (unverändert, größer und
-         randlos per mask-image ausgeblendet — style.css), rechts Zitat + Nutzerkarte mit
-         Dropdown (Status-Chip + "Animationen reduzieren", shell.js/persona.js).
-         #persona-platzhalter/#persona-kopf-oeffner bleiben UNVERÄNDERT der Mount-/Klick-Punkt von
-         persona.js/shell.js (F28-Nicht-Ziel: keine zweite Mount-Logik). -->
-    <header id="shell-kopf">
-      <div id="shell-banner-partikel" class="shell-banner-partikel" aria-hidden="true"></div>
-      <div class="shell-banner-marke">
-        <p class="shell-wortmarke">JARVIS</p>
-        <p class="shell-wortmarke-zusatz">AI WORKFORCE</p>
-        <p class="shell-tagline">Intelligenz.<br />Aus Fokus.<br />Echte Ergebnisse.</p>
-      </div>
-      <button type="button" id="persona-kopf-oeffner" class="persona-oeffner" aria-label="Startfläche öffnen">
-        <div id="persona-platzhalter" aria-hidden="true"></div>
-      </button>
-      <div class="shell-banner-rechts">
-        <div class="shell-zitat-block">
-          <p class="shell-zitat">„Ich denke mit dir. Heute. Für morgen."</p>
-          <p class="shell-zitat-urheber">— JARVIS</p>
+    <!-- F44 WS-1b (F-725, Vorlage V10 #sidebar): Wortmarke, Navigation mit den Routen aus
+         docs/design/abgleich-f725.md §5.2, „Zuletzt geöffnet“, Illustration (.side-art) und die
+         unteren Einträge. Texte über data-i18n (shell.js übersetzt beim Bootstrap, das i18n-Gate
+         prüft die Schlüssel). Die Nav-Anker tragen weiter nur href und data-nav-view — der Anker
+         für attention steht exakt so, wie ihn scripts/check-f21-ws2-workboard-oberflaeche.mjs
+         verlangt. „Entwicklung“ ist bis WS-3/WS-5 eine Gruppe mit zwei Untereinträgen (F-879);
+         style.css markiert sie über :has() als aktiv, wenn einer ihrer Einträge aktiv ist.
+         Unter 700 px ist die Sidebar ein ausklappbares Menü (#shell-menue-oeffner, shell.js). -->
+    <div id="shell-sidebar">
+      <a class="brand" id="shell-marke" href="#/start" translate="no"><strong>JARVIS</strong><small>AI WORKFORCE</small></a>
+      <nav id="shell-nav" aria-label="Hauptnavigation" data-i18n-aria-label="nav.haupt">
+        <a href="#/dashboard" data-nav-view="dashboard"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 10 12 3l9 7v11h-6v-7H9v7H3Z" /></svg><span data-i18n="nav.produktuebersicht">Produktübersicht</span></a>
+        <a href="#/roadmap" data-nav-view="roadmap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6" /></svg><span data-i18n="nav.roadmap">Roadmap</span></a>
+        <div class="nav-gruppe">
+          <a href="#/workboard" data-nav-view="workboard"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21V11h4v10ZM10 21V6h4v15ZM17 21V2h4v19Z" /></svg><span data-i18n="nav.entwicklung">Entwicklung</span></a>
+          <a href="#/runs" data-nav-view="runs" class="nav-unter"><span data-i18n="nav.ausfuehrungen">Ausführungen</span></a>
+          <a href="#/projekt" data-nav-view="projekt" class="nav-unter"><span data-i18n="nav.auftragStart">Auftrag &amp; Start</span></a>
         </div>
-        <!-- F29 WS-D2: Dropdown der Nutzerkarte — Inhalt (Status-Chip-Host, "Animationen
-             reduzieren"-Schalter) wird von persona.js dorthin gemountet (s. dessen Kommentar),
-             Öffnen/Schließen verdrahtet shell.js (initNutzerkartenDropdown). Kein neuer
-             Schreibpfad — reine Menü-Mechanik. -->
-        <div class="shell-nutzerkarte-wrapper">
-          <button type="button" id="nutzerkarte-oeffner" class="shell-nutzerkarte" aria-haspopup="true" aria-expanded="false" aria-controls="nutzerkarte-dropdown">
-            <span class="shell-nutzer-avatar" aria-hidden="true">S</span>
-            <span class="shell-nutzer-info">
-              <span class="shell-nutzer-name">Stefan</span>
-              <span class="shell-nutzer-unterzeile">Build what's real.</span>
-            </span>
-            <svg class="nutzerkarte-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-          </button>
-          <span id="nutzerkarte-status-chip-host" class="nutzerkarte-status-chip-host"></span>
-          <div id="nutzerkarte-dropdown" class="nutzerkarte-dropdown" hidden></div>
-        </div>
-      </div>
-    </header>
-
-    <!-- F25 WS-2a (AK14): Kontext-Anzeige des aktiven Projekts, befüllt von projekt-kontext.js.
-         F29 WS-D2 (Auftrag Punkt B): die Leiste selbst entfällt aus dem Layout (per CSS
-         ausgeblendet) — das aktive Projekt steht jetzt im Fokus-Panel (views/workboard.js),
-         "Projekt wechseln" in der Sidebar-Schnellzugriff-Box unten. Element bleibt im DOM, sonst
-         wirft projekt-kontext.js' renderProjektKontext() beim nächsten Projektwechsel (Auftrag:
-         keine Änderung an dieser Datei). -->
-    <div id="projekt-kontext" class="projekt-kontext"></div>
-
-    <p id="poll-fehler" class="fehler" hidden>Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
-
-    <div id="shell-koerper">
-      <!-- F29 WS-D2 (Auftrag Punkt B): Reihenfolge Workboard, Dashboard, Projekte, Projekt, Chat,
-           Runs, Capabilities, Attention (vorher Dashboard zuerst) — Workboard ist seit diesem
-           Auftrag die Startansicht. -->
-      <nav id="shell-nav" aria-label="Hauptnavigation">
-        <a href="#/workboard" data-nav-view="workboard">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="5.5" height="16" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="9.5" y="4" width="5.5" height="10" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="15.5" y="4" width="5" height="13" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Workboard</span>
-        </a>
-        <a href="#/dashboard" data-nav-view="dashboard">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="3.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="13.5" y="13.5" width="7" height="7" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Dashboard</span>
-        </a>
-        <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Projekte</span>
-        </a>
-        <a href="#/projekt" data-nav-view="projekt">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
-          <span class="nav-label">Projekt</span>
-        </a>
-        <a href="#/chat" data-nav-view="chat">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
-          <span class="nav-label">Chat</span>
-        </a>
-        <a href="#/runs" data-nav-view="runs">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="M10 8.5l6 3.5-6 3.5v-7Z" fill="currentColor" /></svg>
-          <span class="nav-label">Runs</span>
-        </a>
-        <a href="#/capabilities" data-nav-view="capabilities">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4.5h6v3.2a2.3 2.3 0 0 1 2.3 2.3H20v6h-3.2a2.3 2.3 0 0 1-2.3 2.3V21H9v-3.2a2.3 2.3 0 0 1-2.3-2.3H4v-6h2.7A2.3 2.3 0 0 1 9 7.2V4.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
-          <span class="nav-label">Capabilities</span>
-        </a>
-        <a href="#/attention" data-nav-view="attention">
-          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4a5.5 5.5 0 0 0-5.5 5.5v3.2L5 16h14l-1.5-3.3V9.5A5.5 5.5 0 0 0 12 4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /><path d="M10 18.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-          <span class="nav-label">Attention</span>
-        </a>
-
-        <!-- F29 WS-D2 (Auftrag Punkt B): roter Orb-Ausschnitt aus persona-gesicht.webp (dasselbe
-             Bild, derselbe Zuschnitt wie die Badge-Persona — --persona-badge-zoom/-anker-y,
-             style.css — kein neues Bild) plus Slogan. Rein dekorativ, keine Persona-Instanz (kein
-             data-persona-zustand, kein montierePersona()-Aufruf — F28-Nicht-Ziel). -->
-        <div class="sidebar-orb-block">
-          <div class="sidebar-orb" aria-hidden="true">
-            <img src="/persona-gesicht.webp" alt="" class="sidebar-orb-bild" />
-            <div class="sidebar-orb-tint"></div>
-          </div>
-          <p class="sidebar-slogan">Bessere Menschen.<br />Größere Möglichkeiten.</p>
-        </div>
-
-        <!-- F29 WS-D1/D2 (Auftrag Punkt 1 bzw. B): Schnellzugriff-Box — "+ Neues Projekt"
-             (deaktiviert, kommt bald), "Projekt wechseln" (bestehende Funktion,
-             projekt-kontext.js) und der Chat-Spalten-Umschalter (bestehende Funktion, shell.js),
-             plus die zuletzt geöffneten Projekte/Workflows (zuletzt-geoeffnet.js, echte, lokal
-             gemerkte Navigationshistorie dieser Sitzung — kein neuer Server-Schreibpfad). -->
-        <div id="shell-schnellzugriff">
-          <p class="schnellzugriff-titel">Schnellzugriff</p>
-          <button type="button" id="schnellzugriff-neues-projekt" class="schnellzugriff-eintrag" disabled title="kommt bald">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
-            <span>Neues Projekt</span>
-          </button>
-          <button type="button" id="schnellzugriff-projekt-wechseln" class="schnellzugriff-eintrag">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3.5" y="4" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="10" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /><rect x="3.5" y="16" width="17" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8" /></svg>
-            <span>Projekt wechseln</span>
-          </button>
-          <!-- F29 WS-1a: Umschalter der rechten Chat-Spalte (shell.js), Zustand in localStorage. -->
-          <button type="button" id="chat-umschalter" class="chat-umschalter schnellzugriff-eintrag" aria-pressed="false" aria-controls="shell-chat-spalte">
-            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg>
-            <span>Chat</span>
-          </button>
-          <div id="schnellzugriff-verlauf" class="schnellzugriff-verlauf"></div>
-        </div>
+        <a href="#/attention" data-nav-view="attention"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2ZM12 9v5M12 17v1" /></svg><span data-i18n="nav.entscheidungen">Entscheidungen</span></a>
+        <a href="#/produktzyklus" data-nav-view="produktzyklus"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6" /></svg><span data-i18n="nav.produktzyklus">Produktzyklus</span></a>
+        <a href="#/brain" data-nav-view="brain"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg><span data-i18n="nav.brain">Brain</span></a>
       </nav>
 
+      <!-- Zuletzt geöffnet (zuletzt-geoeffnet.js, sessionStorage dieser Sitzung): shell.js füllt die
+           Liste und blendet den Block aus, solange nichts gemerkt ist. -->
+      <div id="shell-zuletzt" class="side-zuletzt" hidden>
+        <p class="eyebrow" data-i18n="nav.zuletzt">Zuletzt geöffnet</p>
+        <div id="zuletzt-verlauf"></div>
+      </div>
+
+      <!-- Illustration der Vorlage (gear), rein dekorativ und nicht klickbar. Sie hängt am unteren
+           Block statt am Sidebar-Rand, damit sie bei geringer Fensterhöhe (200 % Zoom) nicht über die
+           Hauptnavigation wandert (F-865, minimale Korrektur). -->
+      <nav class="side-bottom" aria-label="Weitere Bereiche" data-i18n-aria-label="nav.weitere">
+        <img class="side-art" src="/assets/gear.webp" alt="" aria-hidden="true" />
+        <a href="#/projekte-uebersicht" data-nav-view="projekte-uebersicht"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 6h7l2 3h9v12H3ZM3 6V4h7l2 2" /></svg><span data-i18n="nav.alleProdukte">Alle Produkte</span></a>
+        <a href="#/nutzung" data-nav-view="nutzung"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21V11h4v10ZM10 21V6h4v15ZM17 21V2h4v19Z" /></svg><span data-i18n="nav.nutzung">Nutzung</span></a>
+        <a href="#/einstellungen" data-nav-view="einstellungen"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" /></svg><span data-i18n="nav.einstellungen">Einstellungen</span></a>
+        <a href="#/einstellungen" class="profile" id="shell-profil"><span class="avatar" aria-hidden="true">S</span><span>Stefan<small data-i18n="nav.profil.unterzeile">Dein persönliches Atelier</small></span></a>
+        <a href="#/capabilities" data-nav-view="capabilities" class="secondary-workforce"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg><span data-i18n="nav.workforce">Workforce</span></a>
+      </nav>
+    </div>
+
+    <div id="shell-arbeitsflaeche">
+      <!-- F44 WS-1b (Vorlage V10 #topbar): links die Projektauswahl (projekt-kontext.js, GET
+           /api/projekte) mit „+“ (F-862, öffnet das Anlegeformular F41), in der Mitte der
+           Persona-Knopf mit der Statuszeile (#persona-text-status, persona.js — die einzige
+           aria-live-Region), rechts Sprache, Hell/Dunkel und „Frag Jarvis“ (#chat-umschalter,
+           shell.js, bis WS-8 der Umschalter der Chatspalte). #persona-platzhalter und
+           #persona-kopf-oeffner bleiben die Mount- und Klickpunkte von persona.js/shell.js. -->
+      <header id="shell-kopf">
+        <div class="top-left">
+          <button type="button" id="shell-menue-oeffner" class="icon-button mobile-menu" aria-expanded="false" aria-controls="shell-sidebar" aria-label="Navigation öffnen" data-i18n-aria-label="kopf.menue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
+          <span class="eyebrow" aria-hidden="true" data-i18n="kopf.projekt">Projekt</span>
+          <select id="kopf-projekt-auswahl" class="project-picker" aria-label="Aktives Projekt" data-i18n-aria-label="kopf.projektAuswahl"></select>
+          <button type="button" id="kopf-neues-projekt" class="button new-product-shortcut" aria-label="Neues Projekt anlegen" title="Neues Projekt anlegen" data-i18n-aria-label="kopf.neuesProjekt" data-i18n-title="kopf.neuesProjekt"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16" /></svg></button>
+        </div>
+        <div class="persona-kopf">
+          <button type="button" id="persona-kopf-oeffner" class="persona-button" aria-label="Startfläche öffnen" data-i18n-aria-label="kopf.personaOeffnen">
+            <span id="persona-platzhalter" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="top-right">
+          <label class="language-picker"><span class="sr-only" data-i18n="kopf.sprache">Sprache</span><select id="kopf-sprache"></select></label>
+          <button type="button" id="kopf-theme" class="icon-button theme-toggle" title="Hell / Dunkel" data-i18n-title="kopf.themeTitel"></button>
+          <button type="button" id="chat-umschalter" class="button chat-umschalter" aria-pressed="false" aria-controls="shell-chat-spalte" title="Frag Jarvis" data-i18n-title="kopf.fragJarvis"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-umschalter-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
+        </div>
+      </header>
+
+      <p id="poll-fehler" class="note red" hidden data-i18n="kopf.pollFehler">Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
+
+      <div id="shell-koerper">
       <main id="shell-hauptbereich">
-        <!-- F29 WS-1a: Startfläche, siehe views/start.js — eigene View, kein Overlay. Erscheint
-             einmal pro Sitzung (sessionStorage) oder auf Klick auf die Persona-Kachel oben. -->
+        <!-- F29 WS-1a: Startfläche, siehe views/start.js. F44 WS-1b: Eingang der Vorlage V10
+             („Enter the Rabbit hole“); solange sie sichtbar ist, blendet style.css Sidebar, Kopf und
+             Chatspalte aus. Erscheint einmal pro Sitzung (sessionStorage) oder auf Klick auf die
+             Persona im Kopf bzw. die Wortmarke. -->
         <section id="view-start" data-view="start" hidden></section>
         <!-- F44 WS-1a: Seite „Einstellungen“ (views/einstellungen.js, Vorlage V10 d_einstellungen).
-             Erreichbar über den Eintrag im Dropdown der Nutzerkarte (shell.js). -->
-        <section id="view-einstellungen" data-view="einstellungen" hidden></section>
+             F44 WS-1b: erreichbar über „Einstellungen“ und das Profil unten in der Sidebar. -->
+        <section id="view-einstellungen" data-view="einstellungen" class="v10-seite" hidden></section>
+        <!-- F44 WS-1b: Z-Seiten Brain und Produktzyklus (Baustein „kommt“, E-F44-1) und die
+             Zwischenseiten Roadmap und Nutzung (F-880) — alle vier aus views/platzhalter.js. -->
+        <section id="view-roadmap" data-view="roadmap" class="v10-seite" hidden></section>
+        <section id="view-produktzyklus" data-view="produktzyklus" class="v10-seite" hidden></section>
+        <section id="view-brain" data-view="brain" class="v10-seite" hidden></section>
+        <section id="view-nutzung" data-view="nutzung" class="v10-seite" hidden></section>
 
         <section id="view-dashboard" data-view="dashboard" hidden></section>
 
@@ -502,6 +457,7 @@
           <p class="chat-eingabe-hinweis">Shift + Enter für neue Zeile</p>
         </section>
       </aside>
+    </div>
     </div>
   </div>
 

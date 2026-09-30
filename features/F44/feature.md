@@ -13,8 +13,8 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 30.09.2026, Ergebnis `GO_STANDARD`; übernommen als
 `docs/design/abgleich-f725.md`. WS-0 „Ablage & Harness“ in Arbeit seit
 30.09.2026 (Branch `feat/f725-ws0-design-ablage`, gemergt #290). WS-1 ist geteilt
-(Challenger, 30.09.2026): WS-1a „Fundament“ in Arbeit seit 30.09.2026 (Branch
-`feat/f725-ws1a-fundament`); WS-1b und WS-2 bis WS-8 offen.
+(Challenger, 30.09.2026): WS-1a „Fundament“ gemergt (#291, `1f9ddb2`); WS-1b „Shell &
+Einstieg“ in Arbeit seit 30.09.2026 (Branch `feat/f725-ws1b-shell`); WS-2 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -299,6 +299,69 @@ Branch `feat/f725-ws1a-fundament` (Basis `3c779d8`), nicht committet.
 - **WS1a-7** F-867: Theme, reduzierte Bewegung und Zoom im Klickfolge-Format.
 - **WS1a-8** Keine Änderung an Sidebar, Kopf, Persona, `#/start`, Chat-Layout, Server, API;
   keine neue Abhängigkeit; keine zweite aria-live-Region.
+
+## Stand WS-1b „Shell & Einstieg“ (30.09.2026)
+Branch `feat/f725-ws1b-shell` (Worktree `../aiw-f725-ws1a`, Basis `1f9ddb2`), nicht committet.
+- **Persona-Bild:** `public/leitstand/persona-gesicht.webp` ist `face.png` der Vorlage, verlustfrei mit
+  `exact` (cwebp 1.2.1, 0 abweichende Bytes im Pixelvergleich, F-882).
+- **Sidebar V10** (`index.html` #shell-sidebar): Wortmarke (Klick → Startfläche wie in der Vorlage),
+  Navigation nach §5.2 mit den neuen Routen `#/roadmap`, `#/produktzyklus`, `#/brain`, `#/nutzung`;
+  „Entwicklung“ mit den Untereinträgen Ausführungen und Auftrag & Start (F-879); „Zuletzt geöffnet“
+  unter der Navigation; Illustration `assets/gear.webp` hinter den unteren Einträgen, am unteren Block
+  verankert (F-865); unten Alle Produkte, Nutzung, Einstellungen, Profil, Workforce. Unter 700 px
+  ausklappbares Menü. Texte über `data-i18n` (`uebersetzeDokument` in `i18n.js`); das i18n-Gate
+  prüft diese Schlüssel jetzt auch in `*.html` (Regel 6, Selbsttest ergänzt).
+- **Kopf V10** (#shell-kopf): Projektauswahl (`projekt-kontext.js`, ersetzt die Leiste
+  #projekt-kontext) mit „+“ (öffnet das Anlegeformular, F-862), Persona-Knopf mit Statuszeile
+  #persona-text-status (einzige aria-live-Region, vier Texte über t()), Sprachwahl, Hell/Dunkel
+  (`theme.js`, synchron mit den Einstellungen), „Frag Jarvis“ (= #chat-umschalter, Chatspalte bis
+  WS-8). Beide <select> übernehmen eine Tastaturauswahl erst mit Enter oder beim Verlassen (WCAG
+  3.2.2). Tagline, Zitat, Partikel (`particle-drift.js` gelöscht), Nutzerkarte samt Dropdown und
+  Status-Chip entfallen (F-878); der Bewegungsschalter bleibt auf `#/einstellungen`.
+- **Persona:** `object-fit: contain` im Kopf (92 × 58, kleiner wie in der Vorlage) und am
+  Chat-Avatar (wie `.bubble-persona`); Badge-Zoom, Augenkern-Overlay, Blickversatz, Lid/Blinzeln,
+  Awakening und die Variante 'gross' entfallen (Vorlage hat sie nicht, F-881). Neu `persona-arrive`
+  (0,7 s) bei jedem Seitenwechsel. Zustandsfarben über `data-persona-zustand` und die Tokens
+  `--persona-denkt/-warten/-fehler` (Palette der Vorlage).
+- **Startfläche** `#/start`: Eingang der Vorlage (drei Ebenen, Aufwachen ~2,2 s, „Enter the Rabbit
+  hole ↗“ → `#/dashboard`), Wartezeile mit Plural, Einmal-pro-Sitzung-Regel unverändert; Shell
+  ausgeblendet, solange sie offen ist (`data-eingang`).
+- **Baustein „kommt“** (`kommt.js`, E-F44-1) und Seiten (`views/platzhalter.js`): Brain und
+  Produktzyklus als Z-Seiten, Roadmap und Nutzung als Zwischenseiten mit Link (F-880).
+- **Poll-Fehlerbanner** #poll-fehler als `.note.red`, Text über t(). **F-873:** Hinweis-Kasten der
+  Einstellungen entfernt.
+- **render-nachweis:** Schritt `animationenBei` (Motion-Nachweis).
+- **Nachweise** `features/F44/nachweise/ws1b/` (kleine Matrix, F-876): `#/dashboard` bei 1440
+  dunkel/hell, 390 dunkel, 200 % Zoom, ru; `#/brain`; Start bei 0/800/1600/2400 ms und reduziert;
+  Kopf-Persona bei 0/350/700 ms und reduziert; Bedienung (Checkliste „nichts fällt weg“) bei 1024
+  und 390 px; Projektwechsel über die Kopfauswahl (A → B, Daten von B; Tastatur-Bremse; Wechsel
+  aus `#/runs/<id>`) gegen einen zweiten Leitstand mit Wegwerf-Projekt A und `../f25-testprojekt-b`;
+  nach der Korrekturrunde zusätzlich Sidebar ans Ende gescrollt bei 1024 × 800, 1366 × 768 und
+  200 % Zoom (dunkel und hell), hell 390, Produktzyklus/Roadmap/Nutzung und das Poll-Fehlerbanner.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal; F-876): alle drei „Nicht
+  freigegeben“. Eine Korrekturrunde, eingearbeitet: `initKommt()` stand versehentlich im
+  Kommentar von `app.js` (Sperre lief nie) — jetzt aufgerufen und mit `kommt.test.mjs` belegt; die
+  Tastatur-Bremse der Kopf-<select> ist ein eigenes Modul `auswahl-bremse.js` mit
+  `auswahl-bremse.test.mjs` (Escape verwirft, Alt+↓/Leertaste öffnen, Mausklick nach Pfeiltaste
+  ließ Anzeige und aktives Projekt auseinanderlaufen); Projektwechsel aus einem Detail per
+  `location.replace`; Register lädt beim Fokus neu, Fehler als sichtbare Option; „+“ bei laufender
+  Anlage; F-865 (Illustration nicht mehr über der Hauptnavigation, Schein hinter den unteren
+  Einträgen); Sprachwahl unter 420 px als Code; `title` an Persona-Knopf und „Frag Jarvis“;
+  error-Tönung gedämpft; Wartezeile ohne Versatz und mit Einblendung; Enter ohne Fokus betritt die
+  Startfläche; mobiles Menü schließt auch beim aktiven Eintrag; Kommentare. `render-nachweis` kann
+  Anfragen blockieren (`anfragenBlockieren`, für das Fehlerbanner). Rest als Findings F-883 bis F-890.
+- **Findings:** neu F-876 bis F-890; erledigt F-862, F-865, F-873, F-878.
+
+### Akzeptanzkriterien WS-1b
+- **WS1b-1** Sidebar und Kopf nach Vorlage V10, Nav-Anker für attention unverändert (f21-ws2).
+- **WS1b-2** Eine aria-live-Region; vier Statustexte in de/en/tr/ru; i18n-Gate grün.
+- **WS1b-3** Persona überall `object-fit: contain`, `persona-arrive` mit Motion-Nachweis, keine
+  Farbliterale (f28).
+- **WS1b-4** `#/start` nach Vorlage mit Motion-Nachweis, Wartezeile, Ziel `#/dashboard`.
+- **WS1b-5** „kommt“ mit `aria-disabled`, per Tastatur erreichbar, ohne Wirkung.
+- **WS1b-6** Kein heutiges Verhalten fällt weg (Checkliste im Bericht und in
+  `nachweise/ws1b/bedienung`).
+- **WS1b-7** `npm run check` und `npm run check:template` grün.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

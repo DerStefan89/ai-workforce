@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Initial (Menü zu)",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktübersicht",
+    "Menü offen": "false",
+    "„Ausführungen“ klickbar": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Menü öffnen",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktübersicht",
+    "Menü offen": "true",
+    "„Ausführungen“ klickbar": true,
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Ausführungen“ (Menü schließt)",
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Ausführungen",
+    "Menü offen": "false",
+    "„Ausführungen“ klickbar": false,
+    "Seite geladen": true
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "label": "#/produktzyklus",
+    "Ansicht": "produktzyklus",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktzyklus",
+    "Überschrift": "AI Workforce",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "#/roadmap",
+    "Ansicht": "roadmap",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Roadmap",
+    "Überschrift": "Roadmap",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "#/nutzung",
+    "Ansicht": "nutzung",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Nutzung",
+    "Überschrift": "Nutzung",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

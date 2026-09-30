@@ -1,0 +1,61 @@
+{
+  "url": "http://127.0.0.1:4173/#/produktzyklus",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Projekt",
+        "selector": "#kopf-projekt-auswahl option:checked"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/produktzyklus",
+      "screenshot": "d1440-produktzyklus.webp"
+    },
+    {
+      "label": "#/roadmap",
+      "navigiere": "#/roadmap",
+      "screenshot": "d1440-roadmap.webp"
+    },
+    {
+      "label": "#/nutzung",
+      "navigiere": "#/nutzung",
+      "screenshot": "d1440-nutzung.webp"
+    }
+  ]
+}

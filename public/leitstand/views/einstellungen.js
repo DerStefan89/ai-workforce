@@ -4,30 +4,34 @@
  * Zweck: Seite „Einstellungen“ (#/einstellungen, F44 WS-1a, Abgleich F-725 A6/A7/A11),
  * aufgebaut nach der Vorlage V10 (docs/design/vorlage-v10/screens/d_einstellungen.png):
  * Kopf „Dein Atelier / Einstellungen“, links Darstellung & Bewegung (Dunkel/Hell,
- * „Sanfte Bewegung aktivieren“), der Hinweis-Kasten und die Sprachwahl, rechts die
+ * „Sanfte Bewegung aktivieren“) und die Sprachwahl, rechts die
  * Spalte „Silberstich & Himmelsmechanik“ mit der Illustration der Vorlage.
  *
  * Nicht übernommen, weil Prototyp-Inhalt der Vorlage (Abgleich A8): „Designzustände
  * ausprobieren“, „Projekt & Anbindung“, „Alle gestalteten Ansichten“, „Für die
  * Umsetzung“, „Vorschau zurücksetzen“, Badge DESIGNVORSCHAU und Fußzeile „Beispieldaten“.
+ * F44 WS-1b (F-873): Der Hinweis-Kasten zu den Fragezeichen-Hinweisen entfällt — die Hinweise,
+ * die er beschreibt, gibt es im Leitstand noch nicht.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initEinstellungenView beim Bootstrap)
+ * - public/leitstand/shell.js (fokussiereEinstellungen — Einstellungen und Profil in der Sidebar)
  *
  * Wichtig:
  * - Alle Texte über t() (i18n.js) in de/en/tr/ru; das i18n-Gate prüft die literalen
  *   Schlüssel. Jeder Text geht durch escapeHtml, weil Übersetzungen „&“ enthalten.
  * - „Sanfte Bewegung“ ist die Umkehrung von 'leitstand-reduzierte-bewegung'; Zustand und
  *   Schreibpfad liegen in persona.js (bewegungsZustand, setzeReduzierteBewegung), nicht hier.
- *   Der Schalter der Nutzerkarte bleibt bestehen; beide Stellen bleiben über
- *   abonniereBewegungsAenderung synchron. Bei aktiver Systemeinstellung ist der Schalter
+ *   Seit F44 WS-1b ist diese Seite die einzige Bedienstelle (die Nutzerkarte entfällt);
+ *   abonniereBewegungsAenderung hält sie trotzdem aktuell. Bei aktiver Systemeinstellung ist der Schalter
  *   deaktiviert — die Systemeinstellung hat Vorrang (Text der Vorlage).
- * - Theme wechselt sofort (theme.js), die Sprache speichert und lädt neu (i18n.js). Die
+ * - Theme wechselt sofort (theme.js); abonniereThemeWechsel hält die Seite synchron mit dem
+ *   Schalter im Kopf (F44 WS-1b). Die Sprache speichert und lädt neu (i18n.js). Die
  *   Sprachwahl ist deshalb eine Schaltflächengruppe im Stil der Farbschema-Wahl und kein
  *   <select>: Unter Windows löst eine Pfeiltaste im geschlossenen <select> sofort „change“
  *   aus — jede Taste hätte die Seite neu geladen (QA-Pass WS-1a, WCAG 3.2.2).
  * - Beim Betreten der Route erhält die Überschrift den Fokus (tabindex="-1"), sonst stünde er
- *   nach dem Klick im Dropdown der Nutzerkarte auf einem ausgeblendeten Element.
+ *   nach dem Klick in der Sidebar (Einstellungen, Profil) auf einem Element außerhalb der Seite.
  * - Kein Serverzugriff; die Seite ist reine Client-Einstellung.
  */
 
@@ -35,7 +39,7 @@ import { SPRACHEN, aktuelleSprache, setzeSprache, t } from '../i18n.js'
 import { abonniereBewegungsAenderung, bewegungsZustand, setzeReduzierteBewegung } from '../persona.js'
 import { escapeHtml } from '../render.js'
 import { registriere } from '../router.js'
-import { aktuellesTheme, setzeTheme } from '../theme.js'
+import { abonniereThemeWechsel, aktuellesTheme, setzeTheme } from '../theme.js'
 
 const BILD_PFAD = '/assets/gear.webp'
 
@@ -91,7 +95,6 @@ function baueSeite() {
         <input type="checkbox" id="einstellungen-bewegung"${reduziert ? '' : ' checked'}${systemVorrang ? ' disabled' : ''} />
         <span>${escapeHtml(t('einstellungen.bewegung.titel'))}<br /><span class="subtle" id="einstellungen-bewegung-text">${escapeHtml(t('einstellungen.bewegung.beschreibung'))}${systemVorrang ? ` ${escapeHtml(t('einstellungen.bewegung.systemvorrang'))}` : ''}</span></span>
       </label>
-      <div class="note">${escapeHtml(t('einstellungen.hinweis'))}</div>
       <div class="section-label"><h2>${escapeHtml(t('einstellungen.sprache.titel'))}</h2></div>
       <div class="theme-choices" role="group" aria-label="${escapeHtml(t('einstellungen.sprache.feld'))}" aria-describedby="einstellungen-sprache-text">
         ${SPRACHEN.map((code) => sprachKnopf(code, namen[code], code === sprache)).join('')}
@@ -147,8 +150,8 @@ function initBedienung() {
     }
     const knopf = ereignis.target.closest('[data-theme-wahl]')
     if (knopf === null) return
+    // render() folgt über abonniereThemeWechsel (initEinstellungenView), wie beim Schalter im Kopf.
     setzeTheme(knopf.dataset.themeWahl)
-    render()
   })
   container.addEventListener('change', (ereignis) => {
     if (ereignis.target.id === 'einstellungen-bewegung') {
@@ -163,4 +166,5 @@ export function initEinstellungenView() {
   initBedienung()
   registriere(/^#\/einstellungen$/, 'einstellungen', beimBetreten)
   abonniereBewegungsAenderung(render)
+  abonniereThemeWechsel(render)
 }

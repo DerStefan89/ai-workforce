@@ -2,8 +2,12 @@
  * Datei: public/leitstand/projekt-kontext.js
  *
  * Zweck: F25 WS-2a (AK13/AK14) — hält das aktuell aktive Projekt (id/name)
- * und rendert die Kontext-Anzeige in der Kopfzeile (Name + Bedienung
- * zurück zur Projekte-Übersicht). Getrennt von api.js: api.js kennt nur
+ * und rendert die Kontext-Anzeige in der Kopfzeile. Seit F44 WS-1b (Abgleich
+ * F-725 A4) ist diese Anzeige die Projektauswahl im Kopf (#kopf-projekt-auswahl,
+ * ein <select> aus GET /api/projekte); die frühere Leiste #projekt-kontext mit
+ * „Projekt wechseln“ entfällt, der Container wird nicht mehr gebraucht. Die
+ * Auswahl setzt das Projekt über setzeAktivesProjekt() — denselben Weg wie
+ * „Öffnen“ in der Projekte-Übersicht; die Bedienung verdrahtet shell.js. Getrennt von api.js: api.js kennt nur
  * den Fetch-Präfix (AK10), dieses Modul zusätzlich das menschenlesbare
  * Projekt und die DOM-Anzeige — setzeAktivesProjekt() hält beides
  * synchron in einem Aufruf, damit nie eines ohne das andere aktualisiert
@@ -11,6 +15,10 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (renderProjektKontext beim Bootstrap)
+ * - public/leitstand/shell.js (holeAktivesProjekt, renderProjektKontext, ladeProjektAuswahl, projektAusListe,
+ *   projektListeFehlt, setzeAktivesProjekt — Kopf, F44 WS-1b)
+ * - public/leitstand/views/projekte-uebersicht.js (ladeProjektAuswahl nach dem Anlegen, F44 WS-1b)
+ * - public/leitstand/views/platzhalter.js (holeAktivesProjekt, abonniereProjektWechsel, F44 WS-1b)
  * - public/leitstand/views/projekte-uebersicht.js (setzeAktivesProjekt bei Kartenklick, AK13)
  * - public/leitstand/views/chat.js (abonniereProjektWechsel, F26 WS-2a — Reset des projektgebundenen Client-Zustands)
  * - public/leitstand/views/workboard.js, views/dashboard.js, views/projekt.js (abonniereProjektWechsel,
@@ -42,9 +50,9 @@
  * Absturz.
  */
 
-import { setzeAktivesProjektPraefix } from './api.js'
+import { holeProjekte, setzeAktivesProjektPraefix } from './api.js'
+import { t } from './i18n.js'
 import { escapeHtml } from './render.js'
-import { navigiere } from './router.js'
 import { pollJetzt, verwerfeLaufendenZustand } from './zustand.js'
 
 const STANDARD_PROJEKT = { id: 'ai-workforce', name: 'AI Workforce' }
@@ -117,9 +125,55 @@ export function setzeAktivesProjekt(projekt) {
   void pollJetzt()
 }
 
-/** Rendert die Kontext-Anzeige in der Kopfzeile (AK14) — Name des aktiven Projekts plus Bedienung zurück zur Übersicht. */
+/** F44 WS-1b: zuletzt geladenes Projektregister ([{ id, name }]) oder null, solange noch nichts geladen ist. */
+let projektListe = null
+/** F44 WS-1b: true, wenn der letzte Abruf des Registers scheiterte. */
+let projektListeFehler = false
+
+/**
+ * Rendert die Kontext-Anzeige (AK14): seit F44 WS-1b die Projektauswahl im Kopf. Das aktive
+ * Projekt steht immer als Option darin — auch vor dem ersten Abruf und nach einem Fehler, dann
+ * als einzige Option (der Leitstand arbeitet ja weiter in diesem Projekt). Ein Fehler steht
+ * sichtbar als deaktivierte Option und im title der Auswahl; geloggt hat ihn ladeProjektAuswahl(),
+ * neu geladen wird beim nächsten Fokus auf die Auswahl (shell.js).
+ */
 export function renderProjektKontext() {
-  const container = document.getElementById('projekt-kontext')
-  container.innerHTML = `Aktives Projekt: <strong>${escapeHtml(aktivesProjekt.name)}</strong> <button type="button" id="projekt-kontext-wechseln">Projekt wechseln</button>`
-  document.getElementById('projekt-kontext-wechseln').addEventListener('click', () => navigiere('#/projekte-uebersicht'))
+  const auswahl = document.getElementById('kopf-projekt-auswahl')
+  if (auswahl === null) return
+  const liste = projektListe ?? []
+  const eintraege = liste.some((p) => p.id === aktivesProjekt.id) ? liste : [aktivesProjekt, ...liste]
+  const fehlerOption = projektListeFehler ? `<option value="" disabled>${escapeHtml(t('kopf.projekteFehler'))}</option>` : ''
+  auswahl.innerHTML = eintraege.map((p) => `<option value="${escapeHtml(p.id)}"${p.id === aktivesProjekt.id ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('') + fehlerOption
+  auswahl.value = aktivesProjekt.id
+  auswahl.title = projektListeFehler ? t('kopf.projekteFehler') : ''
+}
+
+/**
+ * F44 WS-1b: Lädt das Projektregister (GET /api/projekte, unpräfigiert) für die Auswahl im Kopf
+ * und rendert sie neu. Beim Bootstrap und nach dem Anlegen eines Projekts. Wirft nie.
+ */
+export async function ladeProjektAuswahl() {
+  try {
+    const daten = await holeProjekte()
+    projektListe = daten.projekte.map((p) => ({ id: p.id, name: p.name }))
+    projektListeFehler = false
+  } catch (fehler) {
+    console.error('Projektauswahl: Register konnte nicht geladen werden:', fehler)
+    projektListeFehler = true
+  }
+  renderProjektKontext()
+}
+
+/** F44 WS-1b: @returns true, solange das Register nicht geladen ist oder der letzte Abruf scheiterte (shell.js lädt dann beim Fokus neu). */
+export function projektListeFehlt() {
+  return projektListe === null || projektListeFehler
+}
+
+/**
+ * F44 WS-1b: Sucht ein Projekt des zuletzt geladenen Registers.
+ * @param id - Projekt-id aus der Auswahl
+ * @returns { id, name } oder null
+ */
+export function projektAusListe(id) {
+  return (projektListe ?? []).find((p) => p.id === id) ?? null
 }

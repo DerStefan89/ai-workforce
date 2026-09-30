@@ -1,0 +1,19 @@
+[
+  {
+    "label": "#/dashboard",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status": "Meldet ein Problem",
+    "Projekt": "AI Workforce",
+    "aktiv in der Nav": "Produktübersicht",
+    "Wortmarke": "JARVISAI WORKFORCE",
+    "Frag Jarvis": "Frag Jarvis",
+    "Projektauswahl klickbar": true,
+    "„+“ klickbar": true,
+    "Persona klickbar": true,
+    "Einstellungen (Sidebar) klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

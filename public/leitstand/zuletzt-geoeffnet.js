@@ -2,7 +2,7 @@
  * Datei: public/leitstand/zuletzt-geoeffnet.js
  *
  * Zweck: F29 WS-D2 (Auftrag Punkt B) — merkt die zuletzt geöffneten
- * Projekte/Workflows DIESER Sitzung für die Schnellzugriff-Box
+ * Projekte/Workflows DIESER Sitzung für „Zuletzt geöffnet“ in der Sidebar (F44 WS-1b; vorher die Schnellzugriff-Box)
  * (index.html #schnellzugriff-verlauf, shell.js). Rein client-seitig
  * (sessionStorage, Muster projekt-kontext.js) — kein neuer Server-Endpunkt,
  * kein neuer Schreibpfad gegen kontrollzustand/. Zeigt ausschließlich, was
@@ -13,7 +13,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/projekte-uebersicht.js (merkeGeoeffnet bei "Öffnen")
  * - public/leitstand/views/workboard.js (merkeGeoeffnet bei "Workflow öffnen")
- * - public/leitstand/shell.js (holeVerlauf für die Schnellzugriff-Box)
+ * - public/leitstand/shell.js (holeVerlauf für „Zuletzt geöffnet“, #zuletzt-verlauf)
  */
 
 const SESSION_SCHLUESSEL = 'leitstand-zuletzt-geoeffnet'

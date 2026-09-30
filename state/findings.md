@@ -11379,13 +11379,13 @@ Maßnahme: In F44 WS-0 erweitert.
 Status: behoben auf Branch (30.09.2026, Branch `feat/f725-ws0-design-ablage`, F44 WS-0): `:root[data-theme="light"|"dark"]` gilt in `style.css` als Token-Block; innerhalb von Token-Blöcken sind Literale nur in Custom Properties (`--name:`) erlaubt; jede weitere `*.css` unter `public/leitstand/` wird rekursiv mit derselben Literal-Regel und Kommentar-Balance geprüft und darf keine eigenen Farb-Tokens definieren; `rgb/hsl/hwb/lab/lch/oklab/oklch/color()` gelten ohne Groß-/Kleinschreibung als Farbliteral (heutiger Stand bleibt grün); Rot/Grün-Selbsttest (3) mit zwölf konstruierten Stylesheets und Wegwerf-Dateien im Temp-Ordner. Kalibriert am 30.09.2026 durch vier Mutationen einer Kopie des Gates (je ein Lauf `node scripts/_m.mjs`, danach gelöscht): ohne `data-theme` im Token-Muster → 3 Selbsttest-Befunde; CSS-Sammlung nur `style.css` → 2; Farbfunktionen nur `rgba?` → 2; Token-Block vollständig statt nur Custom Properties entfernt → 1. Bekannte Grenzen (Kopf des Gates): Farbnamen, `var()`-Ausnahme für ganze Funktionsaufrufe, `manifest.webmanifest`/`*.svg` ungeprüft.
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
-**F-862** · `BUG` · P3 · offen
+**F-862** · `BUG` · P3 · erledigt
 Titel: Schnellzugriff „Neues Projekt“ in der Sidebar ist deaktiviert mit „kommt bald“, obwohl F41 gebaut ist.
 Beschreibung: Der Sidebar-Schnellzugriff „Neues Projekt“ ist disabled und trägt „kommt bald“, obwohl das Anlegen eines Projekts (F41, `POST /api/projekte`) gebaut ist.
 Fundstelle: `public/leitstand/index.html:122` (Stand `50bbccb`).
 Auswirkung: Niedrig — der Weg ist über die Projekte-Übersicht erreichbar, der Hinweis ist aber falsch.
 Maßnahme: In F44 WS-1 (das „+“ neben der Projektauswahl).
-Status: offen.
+Status: erledigt (F44 WS-1b, Branch `feat/f725-ws1b-shell`, 30.09.2026): Der Schnellzugriff entfällt; „+“ neben der Projektauswahl im Kopf öffnet das Anlegeformular (F41) in der Projekte-Übersicht. Beleg `features/F44/nachweise/ws1b/bedienung` (Schritt „Klick „+““: Anlegeformular sichtbar).
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
 **F-863** · `PROCESS_IMPROVEMENT` · P3 · behoben auf Branch
@@ -11406,13 +11406,13 @@ Maßnahme: Nach F44 WS-5 entscheiden, ob er mit neuen Selektoren blockierend wir
 Status: offen.
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
-**F-865** · `BUG` · P3 · offen
+**F-865** · `BUG` · P3 · erledigt
 Titel: In der Vorlage V10 liegt die Sidebar-Illustration unter „Alle Produkte“, „Nutzung“ und „Einstellungen“.
 Beschreibung: Bei 1440×1000 überdeckt die Sidebar-Illustration (`gear.png`) die Einträge „Alle Produkte“, „Nutzung“ und „Einstellungen“; der Kontrast der Einträge leidet. In WS-0 bestätigt (`docs/design/vorlage-v10/screens/d_uebersicht.png`, `l_arbeit_board.png`).
 Fundstelle: Vorlage V10, `docs/design/vorlage-v10/style.css` (`.side-art`); Referenz-Screenshots.
 Auswirkung: Niedrig — Lesbarkeit der unteren Sidebar-Einträge.
 Maßnahme: In F44 WS-1 den Kontrast durch den design-guardian prüfen lassen und minimal korrigieren, ohne neue Gestaltung.
-Status: offen.
+Status: erledigt (F44 WS-1b, Branch `feat/f725-ws1b-shell`, 30.09.2026): Der design-guardian fand zwei Mängel — die Illustration wanderte bei geringer Fensterhöhe über die Hauptnavigation, und über ihren Linien fiel der Kontrast der Einträge auf etwa 2,3:1 (dunkel) bzw. 1,4–2,5:1 (hell, geschätzt). Minimal korrigiert nach seinem Vorschlag, ohne neue Farbe: Illustration am unteren Block verankert (`.side-bottom .side-art`, `.side-bottom { flex-shrink: 0 }`), Schein in der Sidebar-Farbe hinter Text und Symbolen (`text-shadow`/`drop-shadow` mit `--sidebar-bg`). Beleg `features/F44/nachweise/ws1b/sidebar-1024x800`, `sidebar-1366x768`, `sidebar-1440-zoom200` (je dunkel und hell, Sidebar ans Ende gescrollt), `dunkel-1440`, `hell-1440`. Kein zweiter Guardian-Pass (eine Korrekturrunde, F-876).
 Feature/Run: Challenger-Dokument 474 (F-725), 30.09.2026.
 
 **F-866** · `TECH_DEBT` · P3 · offen
@@ -11478,13 +11478,13 @@ Maßnahme: Die längste Sprache wird am Produkt geprüft (Render-Nachweis ru/tr 
 Status: offen.
 Feature/Run: Challenger F44 WS-1a, 30.09.2026.
 
-**F-873** · `BUG` · P3 · offen
+**F-873** · `BUG` · P3 · erledigt
 Titel: Der Hinweis-Kasten der Einstellungen beschreibt Fragezeichen-Hinweise, die es noch nicht gibt.
 Beschreibung: Die Seite `#/einstellungen` übernimmt nach Auftrag den Hinweis-Kasten der Vorlage („Hinweise öffnen sich nach kurzem Verweilen auf einem Fragezeichen …“). Den Mechanismus dazu (`.help`/Tooltip der Vorlage) hat der Leitstand noch nicht; der Text verspricht damit eine Funktion, die fehlt. Gefunden von design-guardian, code-reviewer und qa (F44 WS-1a).
 Fundstelle: `public/leitstand/i18n/de.js` (`einstellungen.hinweis`, ebenso en/tr/ru); `public/leitstand/views/einstellungen.js`.
 Auswirkung: Niedrig — irreführender Text, keine Fehlfunktion.
 Maßnahme: Den Kasten mit dem Paket ausliefern, das die Fragezeichen-Hinweise baut, oder bis dahin ausblenden — Entscheidung Stefan. Die Schlüssel bleiben.
-Status: offen.
+Status: erledigt (F44 WS-1b, Branch `feat/f725-ws1b-shell`, 30.09.2026): Kasten ausgeblendet (Auftrag WS-1b, Punkt 8), dazu der Schlüssel `einstellungen.hinweis` in de/en/tr/ru entfernt, weil ihn kein t()-Aufruf mehr nutzt; er kommt mit dem Paket der Fragezeichen-Hinweise wieder.
 Feature/Run: Prüfpass F44 WS-1a, 30.09.2026.
 
 **F-874** · `BUG` · P2 · offen
@@ -11504,3 +11504,138 @@ Auswirkung: Niedrig — Wartezeit nach dem Wechsel, keine falschen Daten.
 Maßnahme: Den alten Abruf per AbortController abbrechen; die Zusage „nie zwei Abrufe gleichzeitig“ bleibt dabei erhalten. Gate `check-f20-zustand-poll` um einen Fall ergänzen.
 Status: offen.
 Feature/Run: Code-Review F44 WS-1a, 30.09.2026.
+
+**F-876** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Die Nachweis-Matrix der UI-Pakete ist zu breit, die Prüfer laufen nacheinander (NEU-H).
+Beschreibung: WS-1a lieferte Render-Nachweise über vier Routen in sechs Darstellungen plus Sprache, Bedienung und Projektwechsel, und design-guardian, code-reviewer und qa liefen in zwei Durchgängen nacheinander. Das kostete mehr Zeit als der Bau und brachte in der Breite kaum zusätzliche Befunde.
+Fundstelle: `features/F44/nachweise/ws1a/` (Matrix); `features/F44/feature.md` (Stand WS-1a, Prüfpässe).
+Auswirkung: Mittel — Durchlaufzeit je UI-Paket, Kontextverbrauch.
+Maßnahme: Kleinste Matrix je Paket (nur die Darstellungen, die das Paket ändert), die drei Prüfer parallel und einmal am Ende, danach höchstens eine Korrekturrunde; der Rest wird Finding. Erstmals angewendet in F44 WS-1b (`features/F44/nachweise/ws1b/`).
+Status: offen.
+Feature/Run: Challenger F44 WS-1b, 30.09.2026.
+
+**F-877** · `TECH_DEBT` · P2 · offen
+Titel: Zwei Gates wackeln unter Windows (NEU-I).
+Beschreibung: `check-f20-zustand-poll` scheitert gelegentlich an einem Messwert (Zeitgrenze), `check-f36-ws5b-skill` gelegentlich mit „TypeError: fetch failed“ in der Vorbereitung (l); beide sind beim Wiederholen grün. Beobachtet in WS-1a und erneut in WS-1b (30.09.2026, 23:47 Ortszeit, `check-f36-ws5b-skill` einmal rot, einzeln und in der Kette danach grün; parallel lief ein Leitstand auf Port 4173).
+Fundstelle: `scripts/check-f20-zustand-poll.mjs`, `scripts/check-f36-ws5b-skill.mjs` (Abschnitt l).
+Auswirkung: Mittel — rote Kette ohne Codefehler, Wiederholen kostet Minuten.
+Maßnahme: Toleranz für den Messwert in `check-f20-zustand-poll`; Wiederholung mit kurzer Pause für den Verbindungsaufbau in `check-f36-ws5b-skill` (l).
+Status: offen.
+Feature/Run: Challenger F44 WS-1b, 30.09.2026.
+
+**F-878** · `BUG` · P3 · erledigt
+Titel: Der Status-Chip der Persona überdeckt den Namen in der Nutzerkarte (NEU-J).
+Beschreibung: Im Zustand error (und bei 200 % Zoom) lag der Chip `#persona-text-status` über dem Namen „Stefan“ der Nutzerkarte im Kopf. Gefunden im Prüfpass WS-1a (Prüfpunkt für Folgepakete).
+Fundstelle: `public/leitstand/style.css` (`.nutzerkarte-status-chip-host`, Stand `1f9ddb2`).
+Auswirkung: Niedrig — Lesbarkeit.
+Maßnahme: Mit F44 WS-1b erledigt: Die Nutzerkarte samt Chip entfällt; die Statuszeile steht als #persona-text-status neben dem Persona-Knopf im Kopf (Render-Nachweis `features/F44/nachweise/ws1b/`).
+Status: erledigt (F44 WS-1b, Branch `feat/f725-ws1b-shell`, 30.09.2026).
+Feature/Run: Challenger F44 WS-1b, 30.09.2026.
+
+**F-879** · `TECH_DEBT` · P3 · offen
+Titel: „Entwicklung“ trägt bis WS-3/WS-5 zwei Untereinträge.
+Beschreibung: Die Sidebar der Vorlage kennt nur „Entwicklung“. Bis Ausführungen (`#/runs`) und Auftrag & Start (`#/projekt`) in der Entwicklung aufgehen, stehen sie als eingerückte Untereinträge darunter; „Entwicklung“ gilt für workboard, runs und projekt als aktiv (`:has()` in style.css).
+Fundstelle: `public/leitstand/index.html` (`.nav-gruppe`); `public/leitstand/style.css` (`#shell-nav .nav-gruppe`).
+Auswirkung: Niedrig — Abweichung von der Vorlage, zwei zusätzliche Einträge.
+Maßnahme: Untereinträge entfernen, wenn WS-3 (Entwicklung) und WS-5 (Ausführungen & Direktstart) die Ansichten zusammenführen.
+Status: offen.
+Feature/Run: F44 WS-1b, 30.09.2026.
+
+**F-880** · `TECH_DEBT` · P3 · offen
+Titel: `#/roadmap` und `#/nutzung` sind bis WS-2/WS-6 Zwischenseiten.
+Beschreibung: Die Sidebar V10 führt Roadmap und Nutzung als eigene Seiten. Die Daten gibt es (Roadmap-Karte im Workboard, Verbrauch im Dashboard); bis zum Umbau zeigen die neuen Routen nur Titel, einen Satz und einen Link zur heutigen Stelle — ohne „kommt“, weil nichts Zukünftiges fehlt.
+Fundstelle: `public/leitstand/views/platzhalter.js` (`zwischenseite`).
+Auswirkung: Niedrig — ein Klick mehr bis zu den Daten.
+Maßnahme: In WS-2 (Roadmap, D1–D4) bzw. WS-6 (Nutzung, I1–I3) die Seiten mit den echten Ansichten füllen und die Karten an der alten Stelle entfernen.
+Status: offen.
+Feature/Run: F44 WS-1b, 30.09.2026.
+
+**F-881** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Planung nahm eine Neukalibrierung des Persona-Bilds an, die Vorlage zeigt es ohne Zuschnitt.
+Beschreibung: Challenger-Dokumente 474/480 und die Paketbeschreibung von WS-1 sahen vor, Zuschnitt, Orb, Avatar und Augen-Overlay auf das neue Bild „neu zu kalibrieren“. Die Vorlage zeigt das Gesicht aber überall ganz (`object-fit: contain`, `.persona-portrait`, `.bubble-persona`) — es gibt nichts zu kalibrieren, Zuschnitt und Overlay entfallen.
+Fundstelle: `docs/design/abgleich-f725.md` §4 Punkt 5 („Risiko Bildtausch“); `docs/design/vorlage-v10/style.css`.
+Auswirkung: Niedrig — Planungsaufwand für eine Arbeit, die es nicht gibt.
+Maßnahme: Die Checkliste des design-guardian verlangt, vor Planungsannahmen zur Gestaltung die Vorlage-CSS zu lesen.
+Status: offen.
+Feature/Run: Challenger F44 WS-1b, 30.09.2026.
+
+**F-882** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Übergabe von Binärdateien vom Challenger per Chat-Download ist gescheitert.
+Beschreibung: Das verlustfreie Persona-Bild für WS-1b sollte als Download aus dem Challenger-Chat kommen; der Download beim Menschen scheiterte. Claude Code hat die Datei stattdessen lokal erzeugt: `cwebp -lossless -exact -z 9` (cwebp-bin, libwebp 1.2.1) in einem Wegwerf-Ordner außerhalb des Repos, abgenommen über einen Pixelvergleich (dwebp nach PAM gegen pngjs-Dekodierung des PNG: 1536×1024 RGBA, 0 abweichende Bytes; SHA-256 8a7bf0bc90d7c4e6cda6eeea9e3c861e8fad655123301738117eb6db5de5064a).
+Fundstelle: `public/leitstand/persona-gesicht.webp`; `docs/design/vorlage-v10/assets/face.png`.
+Auswirkung: Niedrig — Verzögerung, kein Qualitätsverlust.
+Maßnahme: Binärdateien erzeugt Claude Code lokal mit Wegwerf-Werkzeugen außerhalb des Repos (keine Änderung an package.json); die Abnahme läuft über einen byteweisen Pixelvergleich.
+Status: offen.
+Feature/Run: F44 WS-1b, 30.09.2026.
+
+**F-883** · `BUG` · P3 · offen
+Titel: Bei ausgefallenem Zustands-Poll bleiben Persona-Status und Wartezeile auf dem alten Stand.
+Beschreibung: Scheitert GET …/zustand ganz, zeigt #poll-fehler das Banner, aber zustand.js benachrichtigt die Abonnenten nur bei Erfolg: Die Statuszeile (einzige aria-live-Region) behält z. B. „Bereit für deine Idee“, ein Screenreader erfährt vom Ausfall nichts; die Wartezeile der Startfläche bleibt beim ersten Laden auf „Lädt…“ (das Banner ist dort ausgeblendet). Die Vorlage sieht „Status unbekannt“ vor (Abgleich A5/A9). Dazu: Im Zustand error zählt die Wartezeile nur Startfehler und Läufe, die Übersicht „Attention“ auch wartende Workflows (26 gegen 32 im Nachweis). Gefunden von qa und design-guardian (F44 WS-1b).
+Fundstelle: `public/leitstand/zustand.js` (Abonnenten nur bei Erfolg), `public/leitstand/persona.js` (aktualisierePersona), `public/leitstand/views/start.js` (ermittleWarteText); Nachweis `features/F44/nachweise/ws1b/pollfehler`.
+Auswirkung: Mittel — veralteter Status neben dem Fehlerbanner, keine Ansage.
+Maßnahme: zustand.js meldet einen Fehlschlag an die Abonnenten (eigener Rückruf oder Zustand „unbekannt“); Persona-Text „Status unbekannt“ in de/en/tr/ru; Zählregel der Wartezeile an Attention angleichen. Gate `check-f20-zustand-poll` beachten.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-1b, 30.09.2026.
+
+**F-884** · `TECH_DEBT` · P3 · offen
+Titel: „Frag Jarvis“ wirkt ab 1280 px nicht sichtbar.
+Beschreibung: Ab 1280 px ist die Chatspalte immer sichtbar (`#shell-chat-spalte[hidden]` mit display, F29 WS-1a). Der Knopf „Frag Jarvis“ (#chat-umschalter) schaltet dort nur die gespeicherte Vorliebe und aria-pressed, das dann `false` zeigt, obwohl die Spalte sichtbar ist. Altbestand des Umschalters, mit WS-1b in den Kopf gezogen.
+Fundstelle: `public/leitstand/style.css` (`@media (min-width: 1280px)`), `public/leitstand/shell.js` (wendeChatSichtbarkeitAn).
+Auswirkung: Niedrig — Knopf ohne sichtbare Wirkung, aria-pressed widerspricht der Anzeige.
+Maßnahme: Mit dem Chat-Dock in WS-8 auflösen (Blase statt Spalte); bis dahin unverändert.
+Status: offen.
+Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
+
+**F-885** · `BUG` · P2 · offen
+Titel: Ein Projektwechsel verwirft offene Eingaben ohne Rückfrage.
+Beschreibung: Seit WS-1b reicht für einen Projektwechsel ein Klick in der Kopfauswahl (vorher: Alle Produkte, „Öffnen“). Der Neuladen-Hook (F-860) setzt projektgebundene Ansichten zurück; eine angefangene Pflichtbegründung, ein Reparaturentwurf oder ein Chat-Entwurf geht dabei ohne Hinweis verloren. Prüfpunkt aus dem QA-Pass WS-0, bisher nicht festgelegt. Verwandt mit F-874.
+Fundstelle: `public/leitstand/shell.js` (initProjektAuswahl), `public/leitstand/projekt-kontext.js` (setzeAktivesProjekt).
+Auswirkung: Mittel — Verlust einer getippten Begründung.
+Maßnahme: Verhalten festlegen (Rückfrage, wenn eine Eingabe offen ist, oder Entwurf je Projekt halten) und mit F-874 in WS-4 umsetzen.
+Status: offen.
+Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
+
+**F-886** · `BUG` · P3 · offen
+Titel: Startfläche: „Zurück“ springt über #/start wieder vor, der Fokus fällt nach dem Betreten auf body.
+Beschreibung: Nach bereits gezeigter Fläche leitet `beimBetreten()` per navigiere() mit neuem Verlaufseintrag weiter; „Zurück“ aus der Produktübersicht landet auf #/start und wird sofort wieder vorgeleitet (Altbestand F29, durch die Wortmarke als zweiten Einstieg häufiger). Nach Enter auf „Enter the Rabbit hole“ liegt der Fokus auf dem nun versteckten Link und fällt auf body. Die Autofokus-Listener werden je Eintritt neu angehängt (harmlos).
+Fundstelle: `public/leitstand/views/start.js` (beimBetreten).
+Auswirkung: Niedrig — Verlauf und Tastaturfokus.
+Maßnahme: Weiterleitung per location.replace; nach dem Betreten den Fokus auf die Überschrift der Zielansicht setzen; Listener je Eintritt über einen AbortController.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-1b (code-reviewer, qa), 30.09.2026.
+
+**F-887** · `BUG` · P3 · offen
+Titel: „Zuletzt geöffnet“ setzt bei Projekt-Einträgen das Projekt nicht.
+Beschreibung: Ein gemerktes Projekt (aus „Öffnen“ in Alle Produkte) führt beim Klick nur nach #/dashboard des aktuell aktiven Projekts, statt das gemerkte Projekt zu aktivieren. Der Wechsel über die Kopfauswahl wird nicht gemerkt. Logik unverändert seit F29 WS-D2 (Auftrag WS-1b: Logik unverändert lassen).
+Fundstelle: `public/leitstand/zuletzt-geoeffnet.js`, `public/leitstand/views/projekte-uebersicht.js` (merkeGeoeffnet), `public/leitstand/shell.js` (initZuletztGeoeffnet).
+Auswirkung: Niedrig — irreführender Eintrag.
+Maßnahme: Projekt-Einträge setzen das Projekt über setzeAktivesProjekt; entscheiden, ob die Kopfauswahl ebenfalls merkt.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-1b (code-reviewer, qa), 30.09.2026.
+
+**F-888** · `TECH_DEBT` · P3 · offen
+Titel: #/produktzyklus zeigt noch nicht die Struktur der Vorlage (K1).
+Beschreibung: WS-1b liefert nach Auftrag nur Titel, Einleitung, „Notiz hinzufügen“ mit „kommt“ und den Leerzustand „Produktbriefing“. K1 und §9 des Abgleichs sehen die Gliederung der Vorlage vor (Ideate / Plan / Deliver mit den Schritten; Deliver-Schritte verlinken auf vorhandene Sichten, „Deployen“ bleibt Z). Gefunden vom design-guardian.
+Fundstelle: `public/leitstand/views/platzhalter.js` (produktzyklusSeite); `docs/design/vorlage-v10/screens/d_produktzyklus_ideate_strategy.png`.
+Auswirkung: Niedrig — Seite ärmer als die Vorlage.
+Maßnahme: Phasen und Schrittleiste statisch nach der Vorlage ergänzen, Deliver-Schritte auf #/workboard, #/attention und #/runs verlinken, „Deployen“ mit kommtKnopf — in WS-2 oder einem eigenen kleinen Paket.
+Status: offen.
+Feature/Run: design-guardian F44 WS-1b, 30.09.2026.
+
+**F-889** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Verhalten des leeren Hashs ist nicht entschieden.
+Beschreibung: Der Abgleich (§4 Punkt 3) sagt „der leere Hash führt nach #/start“. Umgesetzt ist (unverändert seit F29): Nur der erste leere Hash einer Sitzung führt dorthin, jeder weitere auf #/dashboard (router.js STANDARD_HASH). Prüfpunkt aus WS-0 („Verhalten beim zweiten leeren Hash festlegen“) offen.
+Fundstelle: `public/leitstand/views/start.js` (leiteBeimStartEin), `public/leitstand/router.js` (STANDARD_HASH); `features/F44/feature.md` (Prüfpunkte).
+Auswirkung: Niedrig — Einstieg nach Neuladen ohne Hash.
+Maßnahme: Entscheidung Stefan: Einmal-pro-Sitzung beibehalten oder leerer Hash immer #/start.
+Status: offen.
+Feature/Run: design-guardian F44 WS-1b, 30.09.2026.
+
+**F-890** · `TECH_DEBT` · P3 · offen
+Titel: Barrierefreiheit der Shell: Reste nach WS-1b.
+Beschreibung: (1) Unter 700 px liegt der Öffner unter der offenen Sidebar; es gibt keinen Fokus-Einschluss im offenen Menü (Escape, Klick außerhalb und Klick auf einen Eintrag schließen es). (2) Der Profil-Link heißt für Screenreader „Stefan Dein persönliches Atelier“ und nennt sein Ziel (Einstellungen) nicht; die Wortmarke sagt nicht, dass sie die Startfläche öffnet. (3) Die Links der Zwischenseiten (#/roadmap, #/nutzung) landen oben auf der Zielseite, nicht an der Karte. Gefunden von qa (F44 WS-1b).
+Fundstelle: `public/leitstand/shell.js` (initMenue), `public/leitstand/index.html` (#shell-profil, #shell-marke), `public/leitstand/views/platzhalter.js`.
+Auswirkung: Niedrig.
+Maßnahme: Beim nächsten Shell-Paket: Fokus-Einschluss oder Schließknopf im Menü, sprechende Namen über t(), Sprungziel zur Karte (entfällt mit WS-2/WS-6, F-880).
+Status: offen.
+Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
