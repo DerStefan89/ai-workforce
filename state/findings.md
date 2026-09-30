@@ -11254,14 +11254,15 @@ Maßnahme: Bei F30 entscheiden, ob der Aufruf einen gegenüber HEAD veränderten
 Status: offen.
 Feature/Run: F43, 30.09.2026.
 
-**F-849** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-849** · `HARNESS_IMPROVEMENT` · P2 · behoben (PR folgt)
 Titel: `vorschau_url` darf auf den Port des Leitstands zeigen.
 Beschreibung: `validiereProjekteDaten` prüft nur die Form `http://localhost|127.0.0.1:<port>`. Zeigt `vorschau_url` auf den Leitstand selbst, meldet F43 „erreichbar“ und „Öffnen“ öffnet den Leitstand; über F36 (`{projekt_origins}`) bekäme ein Browser-MCP eines Laufs den Leitstand-Origin freigeschaltet und könnte dort bedienen, ohne dass der CSRF-Haken greift (gleicher Origin).
 Fundstelle: `src/projekte/index.ts` (`vorschauPortAus`); `scripts/leitstand-server.mjs` (`baueMcpPlatzhalter`, Bindeblock `PORT`).
 Auswirkung: Mittel für F36-Läufe mit Browser-MCP, gering für F43.
 Maßnahme: Beim Serverstart einen Registereintrag mit `vorschau_url`-Port = Leitstand-Port abweisen oder `{projekt_origins}` dafür leer lassen.
-Status: offen.
+Status: behoben (PR folgt).
 Vermerk: Einstufung Challenger 30.09.2026: ein Lauf mit Browser-MCP könnte bei vorschau_url = Leitstand-Port den Leitstand bedienen (bis zur eigenen Freigabe); Fix als eigener Auftrag nach F43.
+Vermerk (Fix 30.09.2026): `vorschauLeitstandSperre` (`src/projekte/index.ts`) vergleicht den Port der vorschau_url mit dem tatsächlich gebundenen Port der Verbindung (`req.socket.localPort`, wie der Host-Schutz F-814), fail-closed bei unbekanntem Port. (1) Laufstart/Anzeige: `ermittleAusfuehrungsEmpfehlung` und `baueMcpPlatzhalter` lösen `{projekt_origins}` dann nicht auf; der Eintrag steht in „Passt, nicht im Lauf“ mit eigenem Grund („vorschau_url zeigt auf den Leitstand-Port — nicht als Projekt-Origin zulässig“ bzw. „Leitstand-Port unbekannt …“), Projekt-URL-Zeile nennt den Grund. (2) `POST /api/projekte` weist eine solche vorschau_url mit 400 ab (das Feld wird dort sonst nicht übernommen); beim Serverstart meldet die Konsole betroffene Registereinträge. (3) F43: `pruefeVorschau` fragt nicht an, die Projektkarte zeigt „nicht zulässig (Leitstand-Port)“ ohne „Öffnen“. Gates: `check-f36-ws5a-installation.mjs` (l), `check-f43-projekt-aufrufen.mjs` (h), je localhost und 127.0.0.1 mit gleichem Port, Gutfall anderer Port; kalibriert (Sperre deaktiviert → beide Gates rot). Render-Nachweis `features/F43/nachweis-f849/` (Karte mit Badge und Abhilfe, ohne „Öffnen“; anderer Port unverändert; mobil 400 px). `POST /api/projekte` antwortet auch bei unbekanntem Port mit 400 (fail-closed, strenger als verlangt). Bekannte Grenze: verglichen wird nur mit dem Port der eigenen Instanz — eine vorschau_url auf eine zweite, parallel laufende Leitstand-Instanz (z. B. Worktree mit anderem `LEITSTAND_PORT`) bleibt zulässig (F-855).
 Feature/Run: QA-Pass F43, 30.09.2026.
 
 **F-850** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -11290,3 +11291,39 @@ Auswirkung: Niedrig — der Leitstand läuft real nur unter Windows; die CI prü
 Maßnahme: POSIX-Prozessgruppe (detached + kill(-pid)), sobald der Leitstand real auf Nicht-Windows läuft.
 Status: offen.
 Feature/Run: Challenger-Befund F43, 30.09.2026.
+
+**F-853** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Gates werden lokal nur unter Windows verifiziert, die CI läuft auf ubuntu-latest.
+Beschreibung: Claude Code verifiziert Gates nur unter Windows, die CI läuft auf ubuntu-latest; plattformabhängige Gates (F43 Baum-Kill) fielen erst beim Challenger auf.
+Fundstelle: Bauaufträge (Handoff-Verträge); `scripts/check-f43-projekt-aufrufen.mjs` (g) als Beispiel einer Weiche.
+Auswirkung: Niedrig — Plattformfehler werden spät (Challenger/CI) statt beim Bau sichtbar.
+Maßnahme: Bauaufträge verlangen bei Prozess-/Dateisystem-Plattformbezug eine Weiche, die auf beiden Zweigen getestet ist.
+Status: offen.
+Feature/Run: Entdeckt: F43, 30.09.2026.
+
+**F-854** · `BUG` · P3 · offen
+Titel: Workboard-Kachel „Roadmap“ zeigt beim Projekt haushaltsbuch2 „Roadmap konnte nicht geladen werden“.
+Beschreibung: Workboard-Kachel ‚Roadmap‘ zeigt beim aktiven Projekt haushaltsbuch2 ‚Roadmap konnte nicht geladen werden‘ (gesehen 30.09.2026).
+Fundstelle: Workboard, Kachel „Roadmap“; `roadmap_pfad` des Registereintrags bzw. der Roadmap-Endpunkt der Projekt-Instanz (ungeprüft).
+Auswirkung: Niedrig — Anzeige einer Fehlermeldung statt eines leeren Zustands.
+Maßnahme: Ursache prüfen (roadmap_pfad des Projekts vs. Endpunkt); fehlt die Roadmap bewusst, einen leeren Zustand mit Hinweis statt einer Fehlermeldung zeigen. Nur erfasst, nicht gefixt.
+Status: offen.
+Feature/Run: Abnahme F43 durch Stefan, 30.09.2026.
+
+**F-855** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: vorschau_url darf auf eine zweite, parallel laufende Leitstand-Instanz zeigen.
+Beschreibung: Die F-849-Sperre vergleicht nur mit dem gebundenen Port der eigenen Instanz. Läuft parallel ein weiterer Leitstand (z. B. aus einem Worktree mit anderem `LEITSTAND_PORT`), kann eine vorschau_url auf dessen Port zeigen; ein Browser-MCP eines Laufs bekäme dann den Origin dieser anderen Instanz freigeschaltet.
+Fundstelle: `src/projekte/index.ts` (`vorschauLeitstandSperre`), `scripts/leitstand-server.mjs`.
+Auswirkung: Niedrig — nur bei parallel laufenden Leitständen und passend gesetzter vorschau_url.
+Maßnahme: Prüfen, ob die Zielseite ein Leitstand ist (z. B. Kennung im Antwort-Header vor der Freischaltung), oder als bekannte Grenze belassen.
+Status: offen.
+Feature/Run: Code-Review F-849, 30.09.2026.
+
+**F-856** · `BUG` · P3 · offen
+Titel: `POST /api/projekte` ist auch unter dem Projekt-Präfix erreichbar.
+Beschreibung: Der Dispatcher reicht `POST /api/projekte/<id>/projekte` an die Projekt-Instanz durch; deren Handler führt dann den F41-Anlegeweg mit der `repoWurzel` des fremden Projekts aus (Baseline-Kopie aus dessen Repo, `projekte.lokal.json` im Projekt-Repo, Registrierung in eine private Map). Der Kommentar an der Route behauptet, eine Instanz erreiche den Zweig nie. POST-Pendant zu F-421 (dort nur GET). Altfehler aus F41, nicht durch F-849 entstanden.
+Fundstelle: `scripts/leitstand-server.mjs` (POST `/api/projekte`, `erzeugeMultiProjektDispatcher`).
+Auswirkung: Niedrig — nur über einen API-Aufruf mit Präfix erreichbar, die Oberfläche nutzt den unpräfigierten Pfad.
+Maßnahme: In Projekt-Instanzen `POST /api/projekte` mit 404 ablehnen (Muster F-421) und im Gate belegen.
+Status: offen.
+Feature/Run: QA-Pass F-849, 30.09.2026.

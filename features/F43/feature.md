@@ -8,11 +8,11 @@ Projekt aufrufen/anzeigen (E-F30-3, `docs/projekt/zielfassung.md` E-M5-16),
 Variante A (Entscheidung Stefan, 30.09.2026)
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
 
-WS-1 gebaut 30.09.2026 (Branch `feat/f43-projekt-aufrufen`), nicht
-committet. Reviewer-/QA-Pass siehe Abschnitt „Review-Pass“. Abnahme durch
-Stefan steht aus.
+WS-1 gebaut 30.09.2026, gemergt als #287. Reviewer-/QA-Pass siehe
+Abschnitt „Review-Pass“. Abnahme durch Stefan am 30.09.2026, siehe
+Abschnitt „Abnahme 30.09.2026“.
 
 ## Ziel
 Die Workforce ruft ein eigenständiges Projekt auf und zeigt es an, ohne
@@ -165,7 +165,13 @@ im Projekt-Repo. Ein Kernartefakt bräuchte ein neues Schema
 - `ergebnis_datei` im Repo macht den Arbeitsbaum unsauber, wenn sie nicht
   gitignoriert ist — die nächste schreibende Ausführung blockiert dann
   (F-847). Die Oberfläche weist darauf nicht hin.
-- `vorschau_url` darf heute auf den Leitstand-Port zeigen (F-849).
+- `vorschau_url` auf dem Leitstand-Port: seit F-849 (Challenger-Einstufung
+  P2, behoben, PR folgt) zeigt die Projektkarte „nicht zulässig
+  (Leitstand-Port)“ mit Abhilfe, ohne Anfrage und ohne „Öffnen“;
+  `{projekt_origins}` bleibt dafür unaufgelöst. Render-Nachweis
+  `features/F43/nachweis-f849/`. Grenze: verglichen wird nur mit dem Port
+  der eigenen Instanz; eine zweite, parallel laufende Leitstand-Instanz ist
+  nicht erfasst (F-855).
 - Ein registriertes Projekt mit ungültiger Startvorlage (z. B.
   `startbefehl` mit `.cmd`) fehlt nach dem Serverstart; die Karte meldet
   „beim Serverstart nicht initialisiert“, den Grund nennt nur die Konsole
@@ -215,3 +221,15 @@ nachgezogen. Abschluss-Review des P2-Fixes (frischer Kontext): „Freigegeben
 mit Hinweisen“; P4 nachgezogen (Rest-Risiko taskkill-Fenster im Kopf von
 `src/projekt-aufruf/index.ts`, präziser Text bei regulär beendetem Kind,
 Gate-Kommentar); das gleiche PID-Muster in `prozessstart.ts` als F-851.
+
+## Abnahme 30.09.2026
+Abnahme durch Stefan am 30.09.2026, 15:01, real im Leitstand am Projekt
+`haushaltsbuch2`:
+- **Vorschau:** bei gestoppter App „nicht erreichbar (ECONNREFUSED)“, bei
+  laufender App (`npm run dev`, Port 3000) „erreichbar, HTTP 200“;
+  „Öffnen“ zeigt die App.
+- **Aufruf:** `startbefehl` `["…node.exe","--version"]` → Exit 0,
+  101 ms, stdout „v24.16.0“. Der Befehl ist vor dem Klick sichtbar, mit dem
+  Hinweis „Stand beim Serverstart“.
+- Dabei gesehen, nicht Teil von F43: Workboard-Kachel „Roadmap“ meldet bei
+  `haushaltsbuch2` „Roadmap konnte nicht geladen werden“ (F-854).

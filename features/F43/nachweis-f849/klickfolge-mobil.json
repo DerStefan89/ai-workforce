@@ -1,0 +1,25 @@
+{
+  "url": "http://127.0.0.1:4177/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 400,
+    "hoehe": 2400
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "f849-leitstand: Badge nicht zulässig",
+        "selector": "[data-aufruf-id=\"f849-leitstand\"] .projekt-aufruf-vorschau .badge.fehler"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Mobil 400 px: Übersicht",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f849-leitstand\"] .projekt-aufruf-vorschau .badge",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-mobil.png"
+    }
+  ]
+}

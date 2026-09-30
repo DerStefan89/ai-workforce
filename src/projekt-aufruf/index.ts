@@ -35,7 +35,7 @@ import { closeSync, existsSync, openSync, readSync, realpathSync, statSync } fro
 import { extname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { killeProzessbaumFallsWindows, starteProzess } from '../claude-code-gateway/prozessstart.ts'
 import type { Starter } from '../claude-code-gateway/types.ts'
-import { vorschauPortAus } from '../projekte/index.ts'
+import { vorschauLeitstandSperre, vorschauPortAus } from '../projekte/index.ts'
 import { STDERR_ENDE_MAX_BYTES, STDOUT_ENDE_MAX_BYTES, entferneLeitstandUmgebungsvariablen, filtereStderrRauschen, klassifizierePruefergebnis, kuerzeAusgabeEnde } from '../pruefschritt/index.ts'
 import { STANDARD_START_ZEITGRENZE_MS } from '../startvorlage/index.ts'
 import type { AufrufErgebnis, ErgebnisDateiAnsicht, VorschauStatus } from './types.ts'
@@ -48,6 +48,9 @@ const TEXT_ENDUNGEN = new Set(['.md', '.json', '.txt'])
 
 /** Harte Nachfrist nach der Zeitgrenze: kommt bis dahin kein Prozessende, wird der Aufruf trotzdem beendet gemeldet (die Sperre fällt). */
 export const NACHFRIST_MS = 5000
+
+/** F-849: Anzeigegrund, wenn vorschau_url auf den Leitstand-Port zeigt (oder dieser unbekannt ist) — dann wird nicht angefragt. */
+export const VORSCHAU_NICHT_ZULAESSIG = 'nicht zulässig (Leitstand-Port)'
 
 /** Zeitgrenze der Erreichbarkeitsprüfung der vorschau_url. */
 export const VORSCHAU_ZEITGRENZE_MS = 2000
@@ -201,13 +204,18 @@ export async function fuehreAufrufDurch(
  * Prüft, ob die vorschau_url antwortet. Angefragt wird nur eine URL, die vorschauPortAus als
  * 'http://localhost:<port>' bzw. 'http://127.0.0.1:<port>' anerkennt; Weiterleitungen werden
  * nicht verfolgt. Jede HTTP-Antwort gilt als erreichbar.
+ * F-849: Zeigt die URL auf den Leitstand-Port (oder ist er unbekannt, fail-closed), wird nicht
+ * angefragt: url bleibt gesetzt, erreichbar null, grund VORSCHAU_NICHT_ZULAESSIG — die Anzeige zeigt
+ * dann weder Status noch „Öffnen“.
  * @param url - vorschau_url des Projekts oder null
+ * @param leitstandPort - gebundener Port des Leitstands (req.socket.localPort), undefined/null = unbekannt
  * @param zeitgrenzeMs - Zeitgrenze der Anfrage
  * @returns Status, nie ein Wurf
  */
-export async function pruefeVorschau(url: string | null, zeitgrenzeMs: number = VORSCHAU_ZEITGRENZE_MS): Promise<VorschauStatus> {
+export async function pruefeVorschau(url: string | null, leitstandPort: number | null | undefined, zeitgrenzeMs: number = VORSCHAU_ZEITGRENZE_MS): Promise<VorschauStatus> {
   if (url === null) return { url: null, erreichbar: null, grund: 'keine vorschau_url gesetzt' }
   if (vorschauPortAus(url) === null) return { url: null, erreichbar: null, grund: 'vorschau_url ist keine lokale URL mit Port — nicht angefragt' }
+  if (vorschauLeitstandSperre(url, leitstandPort) !== null) return { url, erreichbar: null, grund: VORSCHAU_NICHT_ZULAESSIG }
   try {
     const antwort = await fetch(url, { signal: AbortSignal.timeout(zeitgrenzeMs), redirect: 'manual' })
     await antwort.body?.cancel()

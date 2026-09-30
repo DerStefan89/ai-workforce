@@ -81,6 +81,10 @@ function renderInstallierenKnopf(id) {
  */
 function renderProjektUrl(empfehlung) {
   if (empfehlung.projektUrl === undefined) return ''
+  // F-849: gesperrte vorschau_url (Leitstand-Port) mit ihrem Grund statt „nicht gesetzt“.
+  if (empfehlung.projektUrl === null && typeof empfehlung.projektUrlGrund === 'string') {
+    return `<p class="hinweis">Projekt-URL gesperrt: ${escapeHtml(empfehlung.projektUrlGrund)}. Katalog-MCPs mit Origin-Sperre kommen nicht in den Lauf; Abhilfe: in vorschau_url den Port der Projekt-App eintragen und den Leitstand neu starten.</p>`
+  }
   return empfehlung.projektUrl === null
     ? '<p class="hinweis">Projekt-URL: nicht gesetzt (vorschau_url im Projektregister) — Katalog-MCPs mit Origin-Sperre kommen nicht in den Lauf</p>'
     : `<p class="hinweis">Projekt-URL: <code>${escapeHtml(empfehlung.projektUrl)}</code></p>`
@@ -114,6 +118,8 @@ export function renderEmpfehlung(empfehlung) {
 
 /** F-826: Wortlaut von PROJEKT_URL_FEHLT (src/ressourcen/index.ts) — der Browser kann das TS-Modul nicht importieren. */
 const PROJEKT_URL_FEHLT_TEXT = 'Projekt-URL (vorschau_url) fehlt'
+/** F-849: gemeinsamer Teil von VORSCHAU_LEITSTAND_PORT und VORSCHAU_LEITSTAND_PORT_UNBEKANNT (src/projekte/index.ts). */
+const VORSCHAU_NICHT_ZULAESSIG_TEXT = 'nicht als Projekt-Origin zulässig'
 
 /**
  * F-826: Hinweis neben „Freigeben“, sobald ein installierbarer Eintrag in „Passt, nicht im Lauf“
@@ -123,10 +129,12 @@ const PROJEKT_URL_FEHLT_TEXT = 'Projekt-URL (vorschau_url) fehlt'
  */
 export function renderInstallierbarHinweis(empfehlung) {
   if (empfehlung === null || empfehlung === undefined || typeof empfehlung.fehler === 'string') return ''
-  // Ein Eintrag, dem die Projekt-URL fehlt (PROJEKT_URL_FEHLT, src/ressourcen/index.ts), käme auch nach
-  // der Installation nicht in den Lauf — der Hinweis würde dort mehr versprechen, als die Installation hält.
+  // Ein Eintrag, dem die Projekt-URL fehlt (PROJEKT_URL_FEHLT, src/ressourcen/index.ts) oder dessen
+  // vorschau_url gesperrt ist (Leitstand-Port, F-849), käme auch nach der Installation nicht in den
+  // Lauf — der Hinweis würde dort mehr versprechen, als die Installation hält.
+  const ohneProjektUrl = (grund) => grund.includes(PROJEKT_URL_FEHLT_TEXT) || grund.includes(VORSCHAU_NICHT_ZULAESSIG_TEXT)
   const ids = empfehlung.passtNichtImLauf
-    .filter((e) => e.installierbar === true && !String(e.grund ?? '').includes(PROJEKT_URL_FEHLT_TEXT))
+    .filter((e) => e.installierbar === true && !ohneProjektUrl(String(e.grund ?? '')))
     .map((e) => `<code>${escapeHtml(e.id)}</code>`)
   if (ids.length === 0) return ''
   const satz = ids.length === 1 ? `${ids[0]} passt und ist installierbar, ist in diesem Lauf aber nicht dabei` : `${ids.join(', ')} passen und sind installierbar, sind in diesem Lauf aber nicht dabei`

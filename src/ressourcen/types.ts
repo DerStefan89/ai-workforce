@@ -131,6 +131,8 @@ export interface EmpfehlungsEintrag {
 /** F36 WS-5a: Kontext des Starts für baueEmpfehlung — ohne Projekt-URL kommt kein Eintrag mit {projekt_origins} in den Lauf. */
 export interface EmpfehlungsLaufKontext {
   projektUrlVorhanden?: boolean
+  /** F-849: Grund statt PROJEKT_URL_FEHLT, wenn die vorschau_url gesperrt ist (z. B. Leitstand-Port). */
+  projektUrlGrund?: string
 }
 
 /** F36 WS-3: Ergebnis von baueEmpfehlung — je Liste höchstens drei Einträge, der Rest nur als Anzahl (F-788). */

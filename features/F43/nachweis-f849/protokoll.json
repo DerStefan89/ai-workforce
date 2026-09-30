@@ -1,0 +1,9 @@
+[
+  {
+    "label": "Übersicht: vorschau_url auf dem Leitstand-Port vs. anderer Port",
+    "f849-leitstand: Badge nicht zulässig": true,
+    "f849-leitstand: Öffnen-Link (muss false sein)": false,
+    "f849-anderer-port: nicht erreichbar": true,
+    "f849-anderer-port: Öffnen-Link": true
+  }
+]

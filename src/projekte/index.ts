@@ -11,12 +11,14 @@
  * kein Fachergebnis eines Startauftrags).
  *
  * Seit F36 WS-5a: optionales Feld vorschau_url (Projekt-URL mit Port, E-F36-7) und
- * projektOriginsAus für den Platzhalter {projekt_origins} der Katalog-MCPs.
+ * projektOriginsAus für den Platzhalter {projekt_origins} der Katalog-MCPs. Seit F-849:
+ * vorschauLeitstandSperre — eine vorschau_url auf dem gebundenen Leitstand-Port (oder bei
+ * unbekanntem Port) gilt nicht als Projekt-Origin.
  *
- * Wird aufgerufen von: scripts/leitstand-server.mjs,
- * scripts/check-f25-projekte.mjs (Rot-/Grün-Fälle gegen die reale
- * validiereProjekteDaten, läuft in npm run check — kein separates
- * node:test-Pendant in diesem Modul).
+ * Wird aufgerufen von: scripts/leitstand-server.mjs, src/projekt-aufruf/index.ts,
+ * scripts/check-f25-projekte.mjs (Rot-/Grün-Fälle gegen die reale validiereProjekteDaten),
+ * scripts/check-f36-ws5a-installation.mjs, scripts/check-f43-projekt-aufrufen.mjs,
+ * src/projekte/projekte.test.ts, public/leitstand/empfehlung-anzeige.test.mjs.
  */
 
 import { existsSync, readFileSync } from 'node:fs'
@@ -53,6 +55,28 @@ export function vorschauPortAus(vorschauUrl: unknown): number | null {
 export function projektOriginsAus(vorschauUrl: unknown): string | null {
   const port = vorschauPortAus(vorschauUrl)
   return port === null ? null : `http://localhost:${port};http://127.0.0.1:${port}`
+}
+
+/** F-849: Grund, wenn vorschau_url auf den Port des laufenden Leitstands zeigt. */
+export const VORSCHAU_LEITSTAND_PORT = 'vorschau_url zeigt auf den Leitstand-Port — nicht als Projekt-Origin zulässig'
+/** F-849: Grund, wenn der Port des Leitstands nicht bestimmbar ist (fail-closed). */
+export const VORSCHAU_LEITSTAND_PORT_UNBEKANNT = 'Leitstand-Port unbekannt — vorschau_url nicht als Projekt-Origin zulässig'
+
+/**
+ * F-849: Zeigt vorschau_url auf den Leitstand selbst, würde {projekt_origins} dem Browser-MCP eines
+ * Laufs den Leitstand-Origin freischalten (ein Lauf könnte ihn bedienen, bis zur eigenen Freigabe).
+ * Verglichen wird nur der Port — localhost und 127.0.0.1 binden denselben Leitstand. leitstandPort ist
+ * der tatsächlich gebundene Port (req.socket.localPort), nie ein Default. Fail-closed: ist er nicht
+ * bestimmbar, gilt die vorschau_url ebenfalls als unzulässig.
+ * @param vorschauUrl - vorschau_url des Projekts
+ * @param leitstandPort - gebundener Port des Leitstands, oder undefined/null wenn unbekannt
+ * @returns Sperrgrund oder null (zulässig, oder keine gültige vorschau_url — dafür gelten die bisherigen Regeln)
+ */
+export function vorschauLeitstandSperre(vorschauUrl: unknown, leitstandPort: unknown): string | null {
+  const port = vorschauPortAus(vorschauUrl)
+  if (port === null) return null
+  if (typeof leitstandPort !== 'number' || !Number.isInteger(leitstandPort) || leitstandPort < 1 || leitstandPort > 65535) return VORSCHAU_LEITSTAND_PORT_UNBEKANNT
+  return port === leitstandPort ? VORSCHAU_LEITSTAND_PORT : null
 }
 
 function istObjekt(wert: unknown): wert is Record<string, unknown> {

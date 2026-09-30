@@ -28,7 +28,7 @@ export interface AufrufErgebnis {
   ergebnis_datei: ErgebnisDateiAnsicht | null
 }
 
-/** Erreichbarkeit der vorschau_url. erreichbar null = keine gültige URL gesetzt. */
+/** Erreichbarkeit der vorschau_url. erreichbar null = nicht angefragt: keine gültige URL gesetzt (url null) oder, mit url, nicht zulässig (Leitstand-Port, F-849). */
 export interface VorschauStatus {
   url: string | null
   erreichbar: boolean | null

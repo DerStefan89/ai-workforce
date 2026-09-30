@@ -3,7 +3,9 @@ Wird am Ende jeder Challenger-Runde vollständig überschrieben. Historie: Git-L
 Stand: 30.09.2026.
 
 ## Stand
-**F43 „Projekt aufrufen/anzeigen“ ist in Arbeit (WS-1 gebaut, nicht committet).** Branch `feat/f43-projekt-aufrufen`, Worktree `aiw-f43`, Basis `12a190c`. Variante A (Stefan, 30.09.2026): Projekte-Übersicht zeigt `vorschau_url` mit erreichbar/nicht erreichbar und „Öffnen“; neue optionale Startvorlage-Felder `startbefehl`/`startZeitgrenzeMs`/`ergebnis_datei`; „Aufrufen“ führt den `startbefehl` einmal aus (`POST /api/projekte/<id>/projekt-aufruf`). Ergebnis flüchtig. Gate `scripts/check-f43-projekt-aufrufen.mjs`, Render-Nachweis `features/F43/nachweis-ws1/`. Regel 1j deckte die Startvorlage im Repo bereits ab (F-735). Review-/QA-Pass mit Korrekturgang und Delta-Pass durchlaufen. Neue Findings F-845 bis F-852 (F-846 behoben, F-849 vom Challenger auf P2). Gate-Plattformweiche nach Challenger-Befund (Linux-CI). Details: `features/F43/feature.md`.
+**F43 „Projekt aufrufen/anzeigen“ ist ABGESCHLOSSEN.** WS-1 gemergt als #287 (`ecd9be1`). Abnahme durch Stefan am 30.09.2026, 15:01, real im Leitstand an haushaltsbuch2: Vorschau „nicht erreichbar (ECONNREFUSED)“ bzw. „erreichbar, HTTP 200“ (`npm run dev`, Port 3000), „Öffnen“ zeigt die App; Aufruf `["…node.exe","--version"]` → Exit 0, 101 ms. Belege in `features/F43/feature.md`, Abschnitt „Abnahme 30.09.2026“. Offene Folge-Findings F-845, F-847, F-848, F-850 bis F-852; neu F-853 (Gates auch auf dem Nicht-Windows-Zweig testen) und F-854 (Roadmap-Kachel bei haushaltsbuch2, nur erfasst).
+
+**F-849 (vorschau_url auf dem Leitstand-Port) ist behoben, PR folgt.** Branch `fix/f849-vorschau-leitstand-port`, Worktree `aiw-fix-f849`, Basis `ecd9be1`, nicht committet. Vergleich gegen den gebundenen Port der Verbindung (`req.socket.localPort`), fail-closed: Lauf ohne `{projekt_origins}` mit eigenem Grund, `POST /api/projekte` → 400, Projektkarte „nicht zulässig (Leitstand-Port)“ ohne Anfrage. Gates `check-f36-ws5a-installation.mjs` (l) und `check-f43-projekt-aufrufen.mjs` (h), Render-Nachweis `features/F43/nachweis-f849/`. Neu aus Review/QA: F-855 (zweite Leitstand-Instanz nicht erfasst), F-856 (POST /api/projekte unter Projekt-Präfix erreichbar, Altfehler F41). Derselbe Branch trägt die F43-Abnahme-Doku.
 
 **F-831 (Init-Gate prüft `init.slash_commands`) ist gemergt** (#286, `12a190c`). Branch `fix/f831-slash-commands`, Worktree `aiw-fix-f831`, Basis `39c9986`. Gemessen mit der installierten CLI (Nachweis `features/F36/nachweis-f831/`): 36 Slash-Commands außer dem Ort-B-Skill, dieselbe Menge wie bei 9b′/9b″; Gegenprüfung an 7 Namen, alle verweigert. Referenzmenge `src/claude-code-gateway/slash-commands-referenz.json`. Fixpaket PR 1 und PR 2 nach F36 sind als #284 und #285 gemergt.
 
@@ -19,13 +21,13 @@ Stand: 30.09.2026.
 - Abnahme-Branch `docs/f36-abnahme` ist als #283 gemergt (`1255df1`).
 
 ## Nächste Schritte
-1. Stefan committet und pusht `feat/f43-projekt-aufrufen` (Challenger prüft per Hash), danach PR und Merge; Abnahme F43.
-2. Worktree `aiw-fix-f831` aufräumen (F-831 ist gemergt).
-3. Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab: mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
-4. F-829 zusammen mit F-820 schneiden. Weiter vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762.
-5. Scout Datenanalyse (F-800).
-6. Design-Schnitt F-725, mit der Scope-Ergänzung vom 29.09.2026. `impeccable` soll installierbar werden (Stefan, 29.09.2026).
-7. Design-Bau.
+1. Stefan committet und pusht `fix/f849-vorschau-leitstand-port` (Challenger prüft per Hash), danach PR und Merge.
+2. Worktrees `aiw-f43` und `aiw-fix-f831` aufräumen (beide gemergt).
+3. Scout Datenanalyse (F-800).
+4. Design-Schnitt F-725, mit der Scope-Ergänzung vom 29.09.2026. `impeccable` soll installierbar werden (Stefan, 29.09.2026).
+5. Design-Bau.
+6. Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab: mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
+7. F-829 zusammen mit F-820 schneiden. Weiter vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762; F-854 (Roadmap-Kachel) klären.
 8. qa-Schritt (F-820).
 9. Opportunity Scanner (F30). Vorher F-818 entscheiden: Der Vorstart-Scan blockiert Ort-B-Läufe auf ai-workforce selbst.
 

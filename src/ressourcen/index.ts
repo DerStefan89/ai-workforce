@@ -902,13 +902,14 @@ function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintra
  * - MCP mit wirkung ≠ 'lokal' (E-F36-4, in V1 nicht freigebbar) steht in keiner Liste, nur in
  *   nichtFreigebbarAnzahl.
  * - Seit F36 WS-5a: ein MCP, dessen args {projekt_origins} tragen, kommt ohne Projekt-URL nie in
- *   „Wird genutzt“ (Grund PROJEKT_URL_FEHLT, E-F36-7); jeder „Wird genutzt“-Eintrag trägt
+ *   „Wird genutzt“ (Grund PROJEKT_URL_FEHLT, E-F36-7; seit F-849 stattdessen laufKontext.projektUrlGrund,
+ *   wenn gesetzt, z. B. bei vorschau_url auf dem Leitstand-Port); jeder „Wird genutzt“-Eintrag trägt
  *   empfehlungId (F-808), ein über die Workforce installierbarer Eintrag in „Passt, nicht im Lauf“
  *   installierbar: true (pruefeInstallierbarkeit, noch ohne installation).
  * Rangfolge und Obergrenze siehe sortiereUndBegrenze. Die Eingabereihenfolge beeinflusst das Ergebnis nicht.
  * @param aufgeloest - Katalog nach loeseRessourcenAuf
  * @param kontext - task_typen des Auftrags (Router) und Pfade des Projekts
- * @param laufKontext - { projektUrlVorhanden } des Projekts; Default {} = keine Projekt-URL (fail-closed)
+ * @param laufKontext - { projektUrlVorhanden, projektUrlGrund? } des Projekts; Default {} = keine Projekt-URL (fail-closed)
  * @returns die beiden Listen, je Liste die Anzahl weiterer Einträge, die Anzahl nicht freigebbarer
  */
 export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], kontext: AnwendbarkeitsKontext, laufKontext: EmpfehlungsLaufKontext = {}): Empfehlung {
@@ -938,7 +939,7 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
     else if (!istMcp && !istOrtBSkill) gruende.push(SKILL_AGENT_ERST_AB_WS5)
     // Nur für Skills als Grund angezeigt (neu in WS-5b); die MCP-Gründe bleiben wie in WS-5a.
     if (istOrtBSkill && nichtInstallierbar !== null) gruende.push(`nicht installierbar: ${nichtInstallierbar}`)
-    if (ohneProjektUrl) gruende.push(PROJEKT_URL_FEHLT)
+    if (ohneProjektUrl) gruende.push(laufKontext.projektUrlGrund ?? PROJEKT_URL_FEHLT)
     const installierbar = (istMcp || istOrtBSkill) && ressource.installation === undefined && nichtInstallierbar === null
     passtNicht.push({ rang, eintrag: { ...basis, grund: gruende.length > 0 ? gruende.join('; ') : 'nicht einsatzbereit', ...(installierbar ? { installierbar: true } : {}) } })
   }
