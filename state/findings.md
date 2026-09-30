@@ -10446,7 +10446,7 @@ Maßnahme: Knöpfe nur zeigen, wenn der Workflow-Status die jeweilige Abnahme er
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
-**F-764** · `HARNESS_IMPROVEMENT` · P2 · offen
+**F-764** · `HARNESS_IMPROVEMENT` · P2 · behoben (PR folgt)
 Titel: Der Allowlist-Satz in der Ausführungs-Instruktion verhindert Probebefehle nicht; jeder Baulauf endet VERWEIGERT und braucht menschliche Sichtung.
 Beschreibung: Seit F-760 (#265) nennt die Ausführungs-Instruktion die erlaubten Bash-Befehle. Im Reallauf probierte die Ausführung trotzdem in jedem Baulauf Befehle außerhalb der Allowlist: verkettete `cd … && echo … && sed -n … && cat …`, `node -v`/`npm -v`, `git status`/`git log`, `find`, `node --test | head` (Läufe `2f6509a1`, `630e4282`). Alle korrekt abgelehnt, kein Bypass-Verdacht — aber alle drei Bauläufe nach #264 endeten VERWEIGERT, jeder brauchte eine menschliche Sichtung (Halt F-760) und eine Reparaturfassung (F-768).
 Fundstelle: `src/architekt/index.ts` (`baueBashAllowlistSatz`), `startvorlagen/ai-workforce.json` (`werkzeugsaetze.schreibend`); Beleg haushaltsbuch2-Workflow `router-8b138eac-…` Versionen 22 und 29.
@@ -10454,7 +10454,8 @@ Auswirkung: Mittel — die Ausführung bleibt sicher begrenzt, aber der Normalfa
 Maßnahme: Harmlose Lesebefehle erlauben oder zusammengesetzte Befehle, deren Teile alle erlaubt sind, gesondert behandeln. Erweitert die Sicherheitsfläche der Ausführung → Advisor-Pass vor dem Bau.
 Ergänzung (F36 WS-0/WS-1, 28.09.2026): Die CLI lässt reine Lesebefehle wie `pwd` ohne Allowlist-Regel zu (`state/spike-f36-werkzeugsatz.md` P2, `general-purpose`-Subagent: `Bash pwd` erlaubt). Vor dem Fix prüfen, welche der beobachteten Probebefehle wirklich VERWEIGERT auslösen — nur die brauchen eine Regel.
 Vermerk (F36 Reallauf, 29.09.2026): Alle vier Ausführungsläufe (`1c4a1163`, `7b6d0f40`, `8cee6c98`, `74290fb5`) endeten VERWEIGERT. Der Grund waren in allen vier nur Probebefehle (`git status`/`git log`, `node scripts/…`, `npm run dev`). Jeder brauchte eine manuelle Reparaturfassung (F-768). Das Muster ist damit über zwei Reallauf-Serien stabil.
-Status: offen.
+Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): `baueBashAllowlistSatz` nennt jetzt die beobachteten Formen und geht ausdrücklich der Projekt-CLAUDE.md vor. Die Vorlage `vorlagen/projekt-skelett/CLAUDE.md` verlangt `cd` am Blockanfang und `git status` am Iterationsende, das ist laut QA-Pass eine wahrscheinliche Hauptursache. Die Regeln: kein `cd`, genau ein Befehl ohne Verkettung (auch keine Zeilenumbrüche), ohne Umleitung und ohne Hintergrund, Prüfskripte nur über `npm run check`, keine Server, kein git, Versionen und Dateien über Read/Glob/Grep. Die Allowlist wurde bewusst nicht erweitert: `git log`/`git diff` erlauben per Präfix `--output`, und `git status` schreibt `index.lock`. `startvorlagen/ai-workforce.json` und `ERLAUBTE_BASH_REGELN` sind unverändert. Läufe ohne Bash-Regel bleiben bitgenau. Gate: `scripts/check-fixpaket-f36-nachlauf.mjs` (a). Neu bewerten, wenn nach dem Fix weiterhin ≥2 von 4 Bauläufen wegen Probebefehlen VERWEIGERT enden.
+Status: behoben (PR folgt).
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
 **F-765** · `BUG` · P2 · offen
@@ -10484,13 +10485,14 @@ Maßnahme: Die AK-Vorlage nennt den Zugangsweg (Oberfläche/API/CLI) als Pflicht
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
-**F-768** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-768** · `PROCESS_IMPROVEMENT` · P2 · behoben (PR folgt)
 Titel: Die Fortsetzung nach einer Sichtung erfordert das vollständige Workflow-JSON per Copy-Paste in der Reparaturfassung.
 Beschreibung: Im Reallauf wurde der Workflow viermal nach einem Halt über eine Reparaturfassung fortgesetzt (Versionen 12, 19, 23, 30 im Workflow `router-8b138eac-…`) — jedes Mal mit dem vollständigen, von Hand angepassten Workflow-JSON. Fehleranfällig und ohne eigenes Entscheidungsartefakt, das festhält, was gesichtet wurde. Bezug F-653.
 Fundstelle: Workflow-Detailansicht (`public/leitstand/views/workflows.js`), Reparaturfassung des Workflows.
 Auswirkung: Mittel — jede Sichtung wird zur manuellen JSON-Operation; die Begründung der Fortsetzung bleibt undokumentiert.
 Maßnahme: Knopf „Sichtung bestätigt – weiter" mit Pflichtbegründung als Entscheidungsartefakt — Design-Schnitt.
-Status: offen.
+Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): Die Workflow-Bedienung zeigt den Knopf nur beim reinen F-760-Halt: Ausführungsschritt VERWEIGERT ohne Bypass-Verdacht und ohne Zusatzgründe (Scope, Stack, Prüfkette). Sonst bleibt allein die Reparaturfassung. Der Knopf baut die Fassung selbst: Cursor auf den Folgeschritt, der VERWEIGERT-Schritt behält status und `lauf_id`. Er sendet über den bestehenden `POST /api/workflows` mit dem Transportfeld `sichtung_bestaetigt`, das nicht in die Fassung gelangt. Der Server prüft Halt, Bypass-Verdacht = 0 laut Terminalmarke, Begründung und aktiven Lauf; sonst antwortet er mit 409 bzw. 400. Festgehalten wird die Sichtung als `art 'kenntnisnahme'` (ergebnis VERWEIGERT, `entscheidung-<laufId>`, derselbe Helfer wie `POST /api/entscheidungen`), weil `planaenderung` laut Schema nur `FREIGABEPFLICHT_ABGESCHWAECHT` kennt (Entscheidung Stefan, 30.09.2026). Eine eigene Art `sichtung` wäre ein späterer Schemapass, falls die Sichtung mehr als die Begründung festhalten muss. Den Folgeschritt startet der Mensch weiter selbst (Regel 1 unverändert). Nach dem Reviewer-/QA-Pass gilt außerdem: Die Fassung muss bis auf `status`, Cursor, `grund` und `freigabe_erteilt` gleich dem Bestand sein, damit keine weitere Planänderung mitgeht. Der Folgeschritt muss startbereit sein. Eine Entscheidung anderer Art zum Lauf wird nicht überlagert (409). Gate: `scripts/check-fixpaket-f36-nachlauf.mjs` (c)–(f), (d) inklusive realem Start des Folgeschritts. Render-Nachweis: `features/F36/nachweis-fixpaket-nachlauf/` (reiner Halt und Halt mit Zusatzgrund). Der Nachweis ergab eine Grenze: Die Pflichtfeld-Meldung bleibt nach dem Tippen stehen, bis zur nächsten Aktion. Das ist dasselbe Verhalten wie bei den übrigen Bedienblöcken.
+Status: behoben (PR folgt).
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
 **F-769** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -11040,13 +11042,14 @@ Maßnahme: Neben „Freigeben“ einen Hinweis zeigen, sobald ein installierbare
 Status: offen.
 Feature/Run: F36 Reallauf, 29.09.2026.
 
-**F-827** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-827** · `PROCESS_IMPROVEMENT` · P2 · behoben (PR folgt)
 Titel: Die Ausführung kennt die laufende Projekt-Vorschau nicht, deshalb bleibt Playwright für die eigentliche Prüfung ungenutzt.
 Beschreibung: Im F3-Reallauf (haushaltsbuch2) hatte der Lauf `8cee6c98` `playwright-mcp` verbunden. Er versuchte aber, `npm run dev` selbst zu starten, und wurde verweigert. Der Korrekturlauf `74290fb5` navigierte auf `file:///…/public/index.html`. Playwright blockierte das mit „Access to "file:" protocol is blocked“. Die Vorschau lief die ganze Zeit unter der `vorschau_url`, das wusste die Ausführung aber nicht.
 Fundstelle: Empfehlungszeile im Auftrag (`baueEmpfehlungsZeile`, `src/ressourcen/index.ts`); Läufe `8cee6c98`, `74290fb5`.
 Auswirkung: Mittel — der MCP ist im Lauf, wird aber für die Sichtprüfung nie wirksam genutzt.
 Maßnahme: Bei einem MCP mit `{projekt_origins}` nennt die Empfehlungszeile im Auftrag die `vorschau_url` und den Satz: „läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten“.
-Status: offen.
+Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): `baueEmpfehlungsZeile` hängt „Projekt-Vorschau: <url> läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten; keine file://-URLs.“ an, wenn ein genutzter Eintrag `{projekt_origins}` trägt und das Projekt eine gültige `vorschau_url` hat. Die URL kommt über den bestehenden Weg (`ermittleAusfuehrungsEmpfehlung` → `projektUrl`). Ohne solchen Eintrag bleibt die Zeile bitgenau. Belege: `src/ressourcen/ressourcen.test.ts`, `scripts/check-fixpaket-f36-nachlauf.mjs` (b), realer Start `scripts/check-f36-ws5a-installation.mjs` (h). Bekannte Grenzen (Reviewer-/QA-Pass): „läuft bereits“ wird nicht geprüft, denn `vorschau_url` ist nur konfiguriert. Läuft die Vorschau nicht, scheitert `browser_navigate`, und die Ausführung darf sie nicht selbst starten. Der Werkzeugname `browser_navigate` hängt am Platzhalter `{projekt_origins}`, nicht am tatsächlichen Werkzeug des MCP. Beides folgt dem Wortlaut der Maßnahme und ist nur für `playwright-mcp` zutreffend (vgl. F-834).
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
 **F-828** · `BUG` · P3 · offen
@@ -11158,3 +11161,12 @@ Auswirkung: Hoch — AK4 („ohne Freigabe nicht aufrufbar“) war über die Sta
 Maßnahme: `KATALOG_WERKZEUGE` (`skill`, `agent`, `task`, Groß-/Kleinschreibung egal, mit oder ohne Klammer-Regel) und jedes `mcp__…` werden abgelehnt. Rotfälle: `src/startvorlage/startvorlage.test.ts` (zehn Formen in beiden Sätzen, Grünseite `TaskOutput`/`Skills`), Gate `scripts/check-f36-ws2-laufzeit.mjs` (e) (Projekt-Startvorlage mit je einem der vier Namen → `ladeStartvorlage` wirft). Beide kalibriert: ohne die Prüfung rot.
 Status: erledigt (F36 Fixpaket, 29.09.2026).
 Feature/Run: F36 Review-Pass (code-reviewer Befund 1, H-A), 29.09.2026.
+
+**F-840** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Prüfrollen (Reviewer/QA) in Claude Code im Vordergrund laufen lassen und erst nach ihrem Ende berichten.
+Beschreibung: Im F36 Review-Pass liefen `code-reviewer` und `qa` als Hintergrund-Agents. Die Variante kostete einen Leer-Umlauf: Der Bericht war vor ihrem Ende fertig, die Befunde kamen erst danach.
+Fundstelle: F36 Review-Pass, 29.09.2026; CLAUDE.md, Definition of Done (Reviewer-/QA-Pass).
+Auswirkung: Niedrig — ein zusätzlicher Umlauf, kein falsches Ergebnis.
+Maßnahme: Prüfrollen im Vordergrund starten und erst nach ihrem Ende berichten; bei Bedarf in der DoD von CLAUDE.md festhalten.
+Status: offen.
+Feature/Run: F36 Review-Pass, 29.09.2026.

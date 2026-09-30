@@ -947,12 +947,21 @@ export function baueEmpfehlung(aufgeloest: readonly AufgelosteRessource[], konte
 /**
  * F36 WS-3: die eine Zeile für den Auftragstext der Ausführung — null, wenn nichts genutzt wird (dann
  * bleibt der Auftragstext bitgenau unverändert).
+ *
+ * F-827 (Reallauf F3: die Ausführung startete 'npm run dev' selbst bzw. navigierte auf file://,
+ * obwohl die Vorschau lief): trägt einer der genutzten Einträge {projekt_origins}
+ * (brauchtProjektOrigins) und ist eine Projekt-URL bekannt, nennt die Zeile sie. Sonst bleibt die
+ * Zeile bitgenau wie vorher.
  * @param wirdGenutzt - die angezeigte Liste „Wird genutzt“ aus baueEmpfehlung
+ * @param vorschauUrl - vorschau_url des Projekts, oder null
+ * @param genutzteRessourcen - die aufgelösten Katalogeinträge zu wirdGenutzt
  * @returns die Zeile oder null
  */
-export function baueEmpfehlungsZeile(wirdGenutzt: readonly EmpfehlungsEintrag[]): string | null {
+export function baueEmpfehlungsZeile(wirdGenutzt: readonly EmpfehlungsEintrag[], vorschauUrl: string | null = null, genutzteRessourcen: readonly Ressource[] = []): string | null {
   if (wirdGenutzt.length === 0) return null
-  return `Freigegebene Katalog-Fähigkeiten in diesem Lauf: ${wirdGenutzt.map((e) => `${e.id} (${e.name})`).join(', ')} — nutzen, wo sie passen.`
+  const zeile = `Freigegebene Katalog-Fähigkeiten in diesem Lauf: ${wirdGenutzt.map((e) => `${e.id} (${e.name})`).join(', ')} — nutzen, wo sie passen.`
+  if (vorschauUrl === null || !genutzteRessourcen.some(brauchtProjektOrigins)) return zeile
+  return `${zeile} Projekt-Vorschau: ${vorschauUrl} läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten; keine file://-URLs.`
 }
 
 export type { AufgelosteRessource, CapabilityGap, Empfehlung, EmpfehlungsEintrag, EmpfehlungsLaufKontext, InstallationsVorlage, McpInstallationsVorlage, McpPlatzhalterWerte, Ressource, SkillInstallationsVorlage }

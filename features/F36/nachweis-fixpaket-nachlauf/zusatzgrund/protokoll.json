@@ -1,0 +1,8 @@
+[
+  {
+    "label": "F-760-Halt mit Zusatzgrund (Prüfkette)",
+    "Workflow": "nachweis-f768-zusatzgrund",
+    "Knopf „Sichtung bestätigt – weiter“": false,
+    "Knopf „Reparaturfassung vorbereiten“": true
+  }
+]

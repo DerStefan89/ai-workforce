@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Reiner F-760-Halt",
+    "Begründungsfeld Sichtung": true,
+    "Bedienungsmeldung": false,
+    "Workflow": "nachweis-f768-rein",
+    "Knopf „Sichtung bestätigt – weiter“": true,
+    "Knopf „Reparaturfassung vorbereiten“": true,
+    "Knopf „Starten“": false
+  },
+  {
+    "label": "Klick ohne Begründung (Pflichtfeld)",
+    "Begründungsfeld Sichtung": true,
+    "Bedienungsmeldung": true,
+    "Workflow": "nachweis-f768-rein",
+    "Knopf „Sichtung bestätigt – weiter“": true,
+    "Knopf „Reparaturfassung vorbereiten“": true,
+    "Knopf „Starten“": false
+  },
+  {
+    "label": "Begründung tippen, zwei Polls abwarten",
+    "Begründungsfeld Sichtung": true,
+    "Bedienungsmeldung": true,
+    "Workflow": "nachweis-f768-rein",
+    "Knopf „Sichtung bestätigt – weiter“": true,
+    "Knopf „Reparaturfassung vorbereiten“": true,
+    "Knopf „Starten“": false
+  },
+  {
+    "label": "Klick „Sichtung bestätigt – weiter“",
+    "Begründungsfeld Sichtung": "(fehlt)",
+    "Bedienungsmeldung": true,
+    "Workflow": "nachweis-f768-rein",
+    "Knopf „Sichtung bestätigt – weiter“": false,
+    "Knopf „Reparaturfassung vorbereiten“": false,
+    "Knopf „Starten“": true
+  }
+]

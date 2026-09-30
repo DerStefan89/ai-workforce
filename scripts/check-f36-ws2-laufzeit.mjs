@@ -294,7 +294,8 @@ function pruefeOhneSkillAgent(fall, eingaben) {
       if (flagWert(tokens, flag).split(',').some((w) => w.split('(')[0] === name)) befunde.push(`${fall}: '${name}' steht in ${flag}: ${flagWert(tokens, flag)}`)
     }
   }
-  if (eingaben.auftragstext.includes('run_in_background')) befunde.push(`${fall}: Auftragstext trägt einen Subagenten-Satz`)
+  // F-764: der Shell-Satz nennt 'run_in_background' seither als Verbot — geprüft wird daher der Subagenten-Bezug selbst.
+  if (/subagent|agent-werkzeug/i.test(eingaben.auftragstext)) befunde.push(`${fall}: Auftragstext trägt einen Subagenten-Satz`)
 }
 
 // ─── (d) realer Start (Workflow-Schritt und POST /api/laeufe), ausfuehrung/schreibend: kein Skill/Agent ──

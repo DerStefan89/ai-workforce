@@ -2285,7 +2285,8 @@ export function bereiteEmpfehlungFuerStartVor(angezeigteIds, auftragId, repoWurz
     ok: true,
     mcpEintraege: ermittelt.genutzteEintraege.filter((eintrag) => eintrag.unterart === 'mcp'),
     skillEintraege: ermittelt.genutzteEintraege.filter((eintrag) => eintrag.unterart === 'skill'),
-    zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt),
+    // F-827: projektUrl ist nur gesetzt, wenn vorschau_url gültige Origins liefert (ermittleAusfuehrungsEmpfehlung).
+    zeile: baueEmpfehlungsZeile(ermittelt.empfehlung.wirdGenutzt, ermittelt.projektUrl, ermittelt.genutzteEintraege),
   }
 }
 
@@ -3268,6 +3269,98 @@ function leseAbgelehnteBefehleAusRohstrom(laufakteDaten) {
     const command = typeof denial.tool_input?.command === 'string' ? denial.tool_input.command : null
     return command !== null ? `${name}: ${command}` : name
   })
+}
+
+/** F-760: Anfang des Halt-Grunds bei VERWEIGERT ohne Bypass-Verdacht — geteilt mit ermittleSichtungsHalt (F-768), damit Bau und Erkennung nicht auseinanderlaufen. */
+const F760_HALT_ANFANG = 'Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: '
+
+/**
+ * F-760: Schluss des ersten Halt-Grund-Teils. Zusatzgründe (Scope, Stack, Prüfkette) hängt der Halt
+ * mit ' | ' dahinter an — endet der Grund genau hiermit, gibt es keine.
+ * @param schrittId - der VERWEIGERT-Schritt
+ * @param laufId - dessen Lauf
+ * @returns der Schlusstext
+ */
+function f760HaltSchluss(schrittId, laufId) {
+  return `menschliche Sichtung vor Fortsetzung (F-760, Schritt '${schrittId}', Lauf '${laufId}')`
+}
+
+/**
+ * F-768: erkennt den reinen F-760-Halt — Workflow KLAERUNG_ERFORDERLICH, Cursor auf einem
+ * 'ausfuehrung'-Schritt mit status VERWEIGERT, lauf_id und nachfolger, der Folgeschritt ist noch
+ * startbereit (OFFEN/WARTET_FREIGABE ohne lauf_id), Grund ist der F-760-Text OHNE Zusatzgründe. Nur
+ * dann darf „Sichtung bestätigt – weiter“ die Fassung selbst bauen. Der Anzeige-Zwilling ist
+ * istSichtungsHaltAnzeige in public/leitstand/sichtung-anzeige.js; maßgeblich ist diese Funktion.
+ * Bypass-Verdacht prüft der Aufrufer gegen die Terminalmarke.
+ * @param daten - WORKFLOW_V0-Datensatz des Bestands
+ * @returns { schritt, laufId } oder null
+ */
+export function ermittleSichtungsHalt(daten) {
+  if (daten?.status !== 'KLAERUNG_ERFORDERLICH' || typeof daten.grund !== 'string' || !Array.isArray(daten.schritte)) return null
+  const schritt = daten.schritte.find((s) => s?.schritt_id === daten.aktiver_schritt_id)
+  if (schritt === undefined || schritt.rolle !== 'ausfuehrung' || schritt.status !== 'VERWEIGERT') return null
+  if (typeof schritt.lauf_id !== 'string' || typeof schritt.nachfolger !== 'string') return null
+  const folge = daten.schritte.find((s) => s?.schritt_id === schritt.nachfolger)
+  if (folge === undefined || folge.lauf_id !== null || !['OFFEN', 'WARTET_FREIGABE'].includes(folge.status)) return null
+  if (!daten.grund.startsWith(F760_HALT_ANFANG) || !daten.grund.endsWith(f760HaltSchluss(schritt.schritt_id, schritt.lauf_id))) return null
+  return { schritt, laufId: schritt.lauf_id }
+}
+
+/**
+ * F-768: der Teil einer Fassung, den die Sichtung NICHT ändern darf — alles außer status,
+ * aktiver_schritt_id, grund und schritte[].freigabe_erteilt (die normalisiert der Server ohnehin).
+ * @param daten - WORKFLOW_V0-Datensatz
+ * @returns kanonischer JSON-Text zum Vergleich
+ */
+function sichtungsVergleichsform(daten) {
+  const { status: _s, aktiver_schritt_id: _a, grund: _g, ...rest } = daten
+  return kanonischesJson({ ...rest, schritte: (rest.schritte ?? []).map(({ freigabe_erteilt: _f, ...schritt }) => schritt) })
+}
+
+/**
+ * F13 WS-4 (F-166), seit F-768 geteilt: ist eine Kenntnisnahme für diesen Lauf zulässig? Nur bei
+ * ABGESCHLOSSEN mit VERWEIGERT/FEHLGESCHLAGEN und — bei VERWEIGERT — ohne Bypass-Verdacht (E-186).
+ * @param laufId - Lauf-Kennung
+ * @param laufStatus - Ergebnis von stelleLaufstatusFest
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns null oder der Ablehnungsgrund
+ */
+function pruefeKenntnisnahmeZulaessig(laufId, laufStatus, basisVerzeichnis) {
+  if (laufStatus.status !== 'ABGESCHLOSSEN' || (laufStatus.ergebnis !== 'VERWEIGERT' && laufStatus.ergebnis !== 'FEHLGESCHLAGEN')) {
+    const statusText = laufStatus.status === 'ABGESCHLOSSEN' ? `${laufStatus.status} (${laufStatus.ergebnis})` : laufStatus.status
+    return `art 'kenntnisnahme' ist nur bei Status ABGESCHLOSSEN mit Ergebnis VERWEIGERT oder FEHLGESCHLAGEN erlaubt, aktueller Status: ${statusText}`
+  }
+  // QA-Befund (F13 WS-4): ein VERWEIGERT MIT echtem Bypass-Verdacht ist der E-186-Fall —
+  // renderEntscheidungBlock zeigt dafür bewusst 'antwort' statt 'kenntnisnahme' (app.js,
+  // hatBypassVerdacht). Serverseitig gespiegelt über dieselbe Projektion wie das Lauf-Detail (D5).
+  if (laufStatus.ergebnis === 'VERWEIGERT') {
+    const verweigertDaten = baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis)
+    if (typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0) {
+      return `art 'kenntnisnahme' ist bei VERWEIGERT mit Bypass-Verdacht (bypass_verdacht_anzahl=${verweigertDaten.bypassVerdachtAnzahl}) nicht erlaubt — das ist der E-186-Fall, der eine echte Antwort (art 'antwort') statt einer bloßen Kenntnisnahme erfordert`
+    }
+  }
+  return null
+}
+
+/**
+ * F13 WS-4 (F-166), seit F-768 geteilt: schreibt die Kenntnisnahme als Entscheidungsartefakt
+ * 'entscheidung-<laufId>'. ergebnis kommt aus dem Laufstatus, nie vom Client. Validiert vor dem
+ * Registrieren; wirft bei Verstoß oder Schreibfehler.
+ * @param laufId - Lauf-Kennung (Zulässigkeit bereits geprüft)
+ * @param ergebnis - laufStatus.ergebnis
+ * @param begruendung - nicht-leere Begründung
+ * @param profilReferenz - Profil der Instanz
+ * @param optionen - basisVerzeichnis/schreiber
+ * @returns { artefaktId, versionSequenz }
+ */
+function schreibeKenntnisnahme(laufId, ergebnis, begruendung, profilReferenz, optionen) {
+  const kenntnisnahmeDaten = { entscheidung_schema: 'v0', art: 'kenntnisnahme', ergebnis, begruendung, entschieden_am: new Date().toISOString() }
+  const kenntnisnahmeVerstoesse = validiereEntscheidungsDaten(kenntnisnahmeDaten)
+  if (kenntnisnahmeVerstoesse.length > 0) {
+    throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${kenntnisnahmeVerstoesse.join('; ')}`)
+  }
+  const artefakt = registriereKernArtefakt(`entscheidung-${laufId}`, profilReferenz, { erzeuger: 'mensch', schritt: 'entscheidung-kenntnisnahme' }, kenntnisnahmeDaten, [], optionen)
+  return { artefaktId: `entscheidung-${laufId}`, versionSequenz: artefakt.versionSequenz }
 }
 
 /** F-760: kürzt die Liste abgelehnter Befehle (leseAbgelehnteBefehleAusRohstrom) für den persistierten Halt-Grund — der Text soll nicht mit der Zahl der Probeaufrufe beliebig wachsen. @returns lesbarer Fließtext */
@@ -5311,9 +5404,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       if (verweigertOhneBypassVerdacht) {
         const laufakteVersionFuerBefehle = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, ladeOptionen)
         const abgelehnteBefehle = laufakteVersionFuerBefehle !== null ? leseAbgelehnteBefehleAusRohstrom(laufakteVersionFuerBefehle.daten) : []
-        const nachlaufVerstoesseVerweigert = [
-          `Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: ${formatiereAbgelehnteBefehle(abgelehnteBefehle)} — menschliche Sichtung vor Fortsetzung (F-760, Schritt '${schritt.schritt_id}', Lauf '${laufId}')`,
-        ]
+        const nachlaufVerstoesseVerweigert = [`${F760_HALT_ANFANG}${formatiereAbgelehnteBefehle(abgelehnteBefehle)} — ${f760HaltSchluss(schritt.schritt_id, laufId)}`]
         if (scopeVerletzung !== undefined && scopeVerletzung.length > 0) {
           nachlaufVerstoesseVerweigert.push(
             `Schritt '${schritt.schritt_id}' (ausfuehrung) hat im Projektmodus außerhalb der erlaubten Pfade geschrieben (docs/**, features/**, CLAUDE.md): ${scopeVerletzung.join(', ')} — der Auftrags-Scope hat Vorrang vor dem Architekturentwurf (F-712)`
@@ -6239,6 +6330,18 @@ export function erzeugeRequestHandler(optionen = {}) {
         begruendungDerPlanaenderung = begruendung
         body = ohneBegruendung
       }
+      // F-768: 'sichtung_bestaetigt' ist ebenso ein Transportfeld („Sichtung bestätigt – weiter“) und
+      // landet nie in der gespeicherten Fassung.
+      let sichtungBestaetigt
+      if (body !== null && typeof body === 'object' && !Array.isArray(body) && 'sichtung_bestaetigt' in body) {
+        const { sichtung_bestaetigt, ...ohneSichtung } = body
+        sichtungBestaetigt = sichtung_bestaetigt
+        body = ohneSichtung
+      }
+      if (sichtungBestaetigt !== undefined && sichtungBestaetigt !== true) {
+        sendeJson(res, 400, { grund: "'sichtung_bestaetigt' muss true sein, wenn es mitgeschickt wird" })
+        return
+      }
 
       // Einzige fachliche Prüfung: F15s validiereWorkflowDaten (D5, kein zweiter,
       // selbstgebauter Regelsatz im Server). Die Verstoßtexte gehen unverändert an den Client.
@@ -6315,6 +6418,77 @@ export function erzeugeRequestHandler(optionen = {}) {
           status: bestand.daten?.status ?? null,
         })
         return
+      }
+
+      // ─── F-768: „Sichtung bestätigt – weiter“ — erst alle Prüfungen, geschrieben wird unten ────
+      //
+      // Nur auf dem reinen F-760-Halt (ermittleSichtungsHalt) und nur mit Bypass-Verdacht 0 laut
+      // Terminalmarke. Die Fassung muss genau die Sichtungsfassung sein: nur status (OFFEN),
+      // aktiver_schritt_id (nachfolger), grund und freigabe_erteilt dürfen abweichen — alles andere
+      // gleicht sichtungsVergleichsform gegen den Bestand ab, damit dieser Weg keine weitere
+      // Planänderung (etwa eine abgeschwächte Freigabe) mitnimmt. Festgehalten wird die Sichtung als
+      // Kenntnisnahme 'entscheidung-<laufId>' (derselbe Helfer wie POST /api/entscheidungen) —
+      // 'planaenderung' kennt laut Schema nur FREIGABEPFLICHT_ABGESCHWAECHT (Entscheidung Stefan,
+      // 30.09.2026). Anders als die Anzeige (Knopf nur bei gültigem Bestand) nimmt der Server die
+      // Sichtung auch auf einem ungültigen Bestand an; die neue Fassung ist oben bereits validiert.
+      let sichtung = null
+      if (sichtungBestaetigt === true) {
+        if (typeof begruendungDerPlanaenderung !== 'string' || begruendungDerPlanaenderung.trim().length === 0) {
+          sendeJson(res, 400, { grund: "„Sichtung bestätigt – weiter“ braucht eine 'begruendung' (nicht-leerer String) — sie wird als Kenntnisnahme festgehalten" })
+          return
+        }
+        const halt = bestand === null ? null : ermittleSichtungsHalt(bestand.daten)
+        if (halt === null) {
+          sendeJson(res, 409, {
+            grund: `Workflow '${body.workflow_id}' steht nicht (mehr) auf einem reinen F-760-Halt (VERWEIGERT ohne Bypass-Verdacht, ohne Zusatzgründe, Folgeschritt startbereit) — ist die Sichtung schon erfolgt, Ansicht neu laden; sonst die Reparaturfassung nutzen`,
+            status: bestand?.daten?.status ?? null,
+          })
+          return
+        }
+        if (laufAktiv && laufAktivLaufId === halt.laufId) {
+          sendeJson(res, 409, { grund: `Lauf '${halt.laufId}' ist noch aktiv, Sichtung nicht möglich` })
+          return
+        }
+        let laufStatus
+        try {
+          laufStatus = stelleLaufstatusFest(halt.laufId, optionen)
+        } catch (fehler) {
+          console.error(`[leitstand] Laufstatus von '${halt.laufId}' für die Sichtung nicht feststellbar:`, fehler)
+          sendeJson(res, 500, { grund: `Laufstatus von '${halt.laufId}' nicht feststellbar (${fehler.message}) — nichts geschrieben` })
+          return
+        }
+        const unzulaessig = pruefeKenntnisnahmeZulaessig(halt.laufId, laufStatus, basisVerzeichnis)
+        if (unzulaessig !== null) {
+          sendeJson(res, 409, { grund: unzulaessig })
+          return
+        }
+        // Strenger als die Kenntnisnahme allein: 'unbekannt' reicht hier nicht, nur eine belegte 0.
+        const bypassVerdachtAnzahl = baueVerweigertDatenProjektion(halt.laufId, laufStatus, basisVerzeichnis)?.bypassVerdachtAnzahl
+        if (bypassVerdachtAnzahl !== 0) {
+          sendeJson(res, 409, { grund: `Lauf '${halt.laufId}' trägt keinen belegten Bypass-Verdacht 0 (bypass_verdacht_anzahl=${bypassVerdachtAnzahl ?? 'unbekannt'}) — „Sichtung bestätigt – weiter“ ist nicht möglich` })
+          return
+        }
+        if (body.status !== 'OFFEN' || body.aktiver_schritt_id !== halt.schritt.nachfolger || sichtungsVergleichsform(body) !== sichtungsVergleichsform(bestand.daten)) {
+          sendeJson(res, 400, {
+            grund: `Die Sichtungsfassung muss status 'OFFEN' tragen, den Cursor auf '${halt.schritt.nachfolger}' setzen und sonst unverändert sein ('${halt.schritt.schritt_id}' bleibt VERWEIGERT mit lauf_id '${halt.laufId}') — für weitere Änderungen die Reparaturfassung nutzen`,
+          })
+          return
+        }
+        // Gelesen wird hier, geschrieben erst unten: eine schon vorhandene Kenntnisnahme wird nicht
+        // doppelt geschrieben; eine Entscheidung anderer Art wird nicht überlagert.
+        let vorhandeneEntscheidung
+        try {
+          vorhandeneEntscheidung = ladeArtefaktVersion(`entscheidung-${halt.laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+        } catch (fehler) {
+          console.error(`[leitstand] Entscheidung zu Lauf '${halt.laufId}' für die Sichtung nicht lesbar:`, fehler)
+          sendeJson(res, 500, { grund: `Entscheidung zu Lauf '${halt.laufId}' nicht lesbar (${fehler.message}) — nichts geschrieben` })
+          return
+        }
+        if (vorhandeneEntscheidung !== null && vorhandeneEntscheidung.daten?.art !== 'kenntnisnahme') {
+          sendeJson(res, 409, { grund: `Zu Lauf '${halt.laufId}' liegt bereits eine Entscheidung der Art '${vorhandeneEntscheidung.daten?.art ?? 'unbekannt'}' vor — die Sichtung überlagert sie nicht` })
+          return
+        }
+        sichtung = { laufId: halt.laufId, ergebnis: laufStatus.ergebnis, vorhandeneKenntnisnahme: vorhandeneEntscheidung }
       }
 
       // ─── Bezeugung einer abgeschwächten Freigabepflicht (F15 WS-2c (b3), löst F-226) ────
@@ -6397,6 +6571,24 @@ export function erzeugeRequestHandler(optionen = {}) {
         }
       }
 
+      // F-768: Kenntnisnahme VOR der Fassung (D2) — alle Prüfungen sind oben gelaufen. Liegt für den
+      // Lauf schon eine Kenntnisnahme (Wiederholung nach einem Teilfehler oder frühere Lauf-Kenntnisnahme),
+      // wird sie nicht doppelt geschrieben; dann entsteht nur die Fassung (Antwort kenntnisnahme.neu false).
+      let sichtungsKenntnisnahme = null
+      if (sichtung !== null) {
+        const vorhanden = sichtung.vorhandeneKenntnisnahme
+        try {
+          sichtungsKenntnisnahme =
+            vorhanden !== null
+              ? { artefaktId: `entscheidung-${sichtung.laufId}`, versionSequenz: vorhanden.versionSequenz, neu: false }
+              : { ...schreibeKenntnisnahme(sichtung.laufId, sichtung.ergebnis, begruendungDerPlanaenderung, profilReferenz, optionen), neu: true }
+        } catch (fehler) {
+          console.error(`[leitstand] Sichtung zu Lauf '${sichtung.laufId}' konnte nicht festgehalten werden:`, fehler)
+          sendeJson(res, 500, { grund: `Die Sichtung konnte nicht als Kenntnisnahme festgehalten werden (${fehler.message}) — die neue Fassung wurde deshalb NICHT geschrieben.` })
+          return
+        }
+      }
+
       // registriereWorkflow führt echte, synchrone Disk-I/O aus und kann werfen — derselbe
       // Grund wie bei registriereAuftrag oben (requestHandler ist eine async function, deren
       // Promise niemand awaitet; ein ungefangener Wurf würde den Prozess beenden).
@@ -6457,6 +6649,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       sendeJson(res, 201, {
         workflowId: body.workflow_id,
         versionSequenz: registriert.versionSequenz,
+        ...(sichtungsKenntnisnahme === null ? {} : { kenntnisnahme: sichtungsKenntnisnahme }),
         ...(planaenderungsArtefakt === null
           ? {}
           : {
@@ -8820,40 +9013,13 @@ export function erzeugeRequestHandler(optionen = {}) {
         // zweite Wirkungsmarke, nur dieselbe Lineage-Registrierung wie im terminal-Zweig (D5).
         // ergebnis kommt ausschließlich aus laufStatus, nie vom Client (verhindert Divergenz
         // zwischen angezeigtem und festgehaltenem Ergebnis).
-        if (laufStatus.status !== 'ABGESCHLOSSEN' || (laufStatus.ergebnis !== 'VERWEIGERT' && laufStatus.ergebnis !== 'FEHLGESCHLAGEN')) {
-          const statusText = laufStatus.status === 'ABGESCHLOSSEN' ? `${laufStatus.status} (${laufStatus.ergebnis})` : laufStatus.status
-          sendeJson(res, 400, { grund: `art 'kenntnisnahme' ist nur bei Status ABGESCHLOSSEN mit Ergebnis VERWEIGERT oder FEHLGESCHLAGEN erlaubt, aktueller Status: ${statusText}` })
+        // Zulässigkeit und Schreiben seit F-768 geteilt mit „Sichtung bestätigt – weiter“ (POST /api/workflows).
+        const unzulaessig = pruefeKenntnisnahmeZulaessig(pruefung.laufId, laufStatus, basisVerzeichnis)
+        if (unzulaessig !== null) {
+          sendeJson(res, 400, { grund: unzulaessig })
           return
         }
-        // QA-Befund (F13 WS-4): ein VERWEIGERT MIT echtem Bypass-Verdacht ist der E-186-Fall —
-        // renderEntscheidungBlock zeigt dafür bewusst 'antwort' statt 'kenntnisnahme' (app.js,
-        // hatBypassVerdacht). Diese client-seitige Weiche allein wäre ein zweiter, nur im Client
-        // durchgesetzter Regelsatz (Verstoß gegen "Server ist maßgeblich") — deshalb serverseitig
-        // gespiegelt, über dieselbe Projektion (baueVerweigertDatenProjektion), die auch das
-        // GET /api/laeufe/<laufId>-Detail nutzt (D5, kein zweiter Regelsatz, keine neue Prüfung).
-        if (laufStatus.ergebnis === 'VERWEIGERT') {
-          const verweigertDaten = baueVerweigertDatenProjektion(pruefung.laufId, laufStatus, basisVerzeichnis)
-          if (typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0) {
-            sendeJson(res, 400, {
-              grund: `art 'kenntnisnahme' ist bei VERWEIGERT mit Bypass-Verdacht (bypass_verdacht_anzahl=${verweigertDaten.bypassVerdachtAnzahl}) nicht erlaubt — das ist der E-186-Fall, der eine echte Antwort (art 'antwort') statt einer bloßen Kenntnisnahme erfordert`,
-            })
-            return
-          }
-        }
-        const kenntnisnahmeDaten = { entscheidung_schema: 'v0', art: 'kenntnisnahme', ergebnis: laufStatus.ergebnis, begruendung: pruefung.begruendung, entschieden_am: new Date().toISOString() }
-        const kenntnisnahmeVerstoesse = validiereEntscheidungsDaten(kenntnisnahmeDaten)
-        if (kenntnisnahmeVerstoesse.length > 0) {
-          throw new Error(`verstößt gegen schemas/kontrollzustand-entscheidung-payload.schema.json: ${kenntnisnahmeVerstoesse.join('; ')}`)
-        }
-        const kenntnisnahmeArtefakt = registriereKernArtefakt(
-          `entscheidung-${pruefung.laufId}`,
-          profilReferenz,
-          { erzeuger: 'mensch', schritt: 'entscheidung-kenntnisnahme' },
-          kenntnisnahmeDaten,
-          [],
-          optionen
-        )
-        sendeJson(res, 200, { artefaktId: `entscheidung-${pruefung.laufId}`, versionSequenz: kenntnisnahmeArtefakt.versionSequenz })
+        sendeJson(res, 200, schreibeKenntnisnahme(pruefung.laufId, laufStatus.ergebnis, pruefung.begruendung, profilReferenz, optionen))
         return
       } catch (fehler) {
         sendeJson(res, 400, { grund: fehler.message })
