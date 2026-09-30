@@ -65,9 +65,13 @@ leeren Template grün.
   wird abgebrochen statt gewechselt. Jeder Befehlsblock beginnt mit `cd`
   auf den vollständigen Pfad, nie mit einem relativen Sprung. Das gilt für
   Mensch und Modell gleichermaßen: Ein verfügbarer Zweitordner ist bequem
-  und genau deshalb gefährlich.
+  und genau deshalb gefährlich. In Workforce-Läufen gilt der Shell-Satz im
+  Auftrag: kein `cd`, das Arbeitsverzeichnis ist bereits das Projekt.
 - Iterationsende heißt: `git status` prüfen, Freigabe einholen, committen
   UND pushen (Skill `git-flow`). Eine Bremse ohne Gaspedal erzeugt Halden.
+  In Workforce-Läufen gilt das nicht: Dort finden in der Ausführung weder
+  git noch Commit statt; die Workforce erhebt die Änderungen, committet
+  wird vom Menschen. Der Shell-Satz im Auftrag hat Vorrang.
 - Keine Versionsnummern in Prosa. Versionen stehen ausschließlich in der
   Paketdatei des Stacks.
 - Zuschnitt-Heuristik für Handoff-Verträge: ein Baudurchgang plus höchstens
@@ -89,6 +93,11 @@ leeren Template grün.
 - [ ] Code ist sinnvoll kommentiert (Datei-Header + Funktionsdoku, siehe
       `docs/kommentar-standard.md`)
 - [ ] `npm run check` → Exit 0
+- [ ] Reviewer-/QA-Pass (Subagenten `code-reviewer` + `qa`, frischer
+      Kontext) vor Freigabe/Commit. In Workforce-Läufen sind Review und QA
+      eigene Workflow-Schritte; die Ausführung delegiert nicht an
+      Subagenten, und weder git noch Commit finden in ihr statt (der
+      Shell-Satz im Auftrag hat Vorrang).
 - [ ] KEINE Commits ohne explizite Freigabe
 
 ---
@@ -120,6 +129,9 @@ delegiert.
 
 Sie können ihre Befunde nicht selbst wegräumen — das ist Absicht. Ein
 Prüfer mit Schreibrechten wird heimlich zum Autor.
+
+In Workforce-Läufen sind diese Prüfrollen in der Ausführung nicht
+aufrufbar; Review und QA laufen dort als eigene Workflow-Schritte.
 
 ---
 

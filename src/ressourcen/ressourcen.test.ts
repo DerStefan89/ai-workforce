@@ -918,6 +918,25 @@ test('baueEmpfehlung (WS-5b): extern skill ohne installation — installierbar n
   assert.match(pruefeInstallierbarkeit(kandidat('ag', { unterart: 'agent', wirkung: undefined })) ?? '', /erst später/)
 })
 
+test('baueEmpfehlung (F-825): Reallauf-Fall — installierbares playwright-mcp vor nicht installierbaren Skills, übersteht die Obergrenze', () => {
+  const offenerSkill = (id: string) =>
+    kandidat(id, { freigabe: 'OFFEN', installation: undefined, verfuegbar: false, grund: 'extern, installation fehlt', unterart: 'skill', wirkung: undefined, herkunft: { art: 'extern', url: `https://github.com/o/${id}` } })
+  const playwright = kandidat('playwright-mcp', {
+    freigabe: 'OFFEN',
+    installation: undefined,
+    verfuegbar: false,
+    grund: 'extern, installation fehlt',
+    anwendbar_wenn: NUR_TASK,
+    herkunft: { art: 'extern', url: 'https://github.com/microsoft/playwright-mcp', paket: 'npm:@playwright/mcp' },
+    installation_vorlage: { bin: 'cli.js', args: [], werkzeuge: ['mcp__playwright-mcp__browser_navigate'] },
+  })
+  const e = baueEmpfehlung([offenerSkill('frontend-x'), offenerSkill('image-to-code'), offenerSkill('mengto-skills'), playwright], KONTEXT)
+  // Ohne F-825 stünde playwright-mcp (Rang 1, id hinten) nur in der Zählzeile.
+  assert.deepEqual(e.passtNichtImLauf.map((x) => x.id), ['playwright-mcp', 'frontend-x', 'image-to-code'])
+  assert.equal(e.passtNichtImLauf[0].installierbar, true)
+  assert.equal(e.weitereAnzahl.passtNichtImLauf, 1)
+})
+
 test('baueEmpfehlung: wirkung ≠ lokal steht in keiner Liste, nur in nichtFreigebbarAnzahl (E-F36-4)', () => {
   const e = baueEmpfehlung([kandidat('lesend', { wirkung: 'extern_lesend', freigabe: 'OFFEN' }), kandidat('schreibend', { wirkung: 'extern_schreibend', freigabe: 'OFFEN' })], KONTEXT)
   assert.deepEqual(e.wirdGenutzt, [])

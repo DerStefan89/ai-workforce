@@ -1,6 +1,6 @@
 {
   "url": "http://127.0.0.1:4175/#/workflows/nachweis-f768-rein",
-  "viewport": { "breite": 1100, "hoehe": 1600 },
+  "viewport": { "breite": 1100, "hoehe": 3200 },
   "screenshotAusschnitt": { "selector": "#workflow-detail", "hoehe": 1400 },
   "beobachtete": {
     "sichtbarkeit": [

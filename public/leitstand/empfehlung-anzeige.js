@@ -9,6 +9,8 @@
  * Seit F36 WS-5a: die ids sind die empfehlungIds '<id>@<hash der installation>' (F-808); der Block zeigt
  * die Projekt-URL (vorschau_url, E-F36-7) und je installierbarem Eintrag (MCP, seit F36 WS-5b auch externer Skill) in „Passt, nicht im Lauf“ den Knopf
  * „Freigeben & installieren“ samt Platz für den Bestätigungsblock (Ablauf: empfehlung-installation.js).
+ * Seit F-826: renderInstallierbarHinweis liefert den Hinweis neben „Freigeben“, solange ein
+ * installierbarer Eintrag in „Passt, nicht im Lauf“ steht (Text, kein Blocker).
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js (Bedienblock, haltFreigabe)
@@ -108,6 +110,27 @@ export function renderEmpfehlung(empfehlung) {
     ${renderListe('Passt, nicht im Lauf', empfehlung.passtNichtImLauf, passtWeitere > 0 ? `+${passtWeitere} weitere` : null)}
     ${nichtFreigebbar}
   </div>`
+}
+
+/** F-826: Wortlaut von PROJEKT_URL_FEHLT (src/ressourcen/index.ts) — der Browser kann das TS-Modul nicht importieren. */
+const PROJEKT_URL_FEHLT_TEXT = 'Projekt-URL (vorschau_url) fehlt'
+
+/**
+ * F-826: Hinweis neben „Freigeben“, sobald ein installierbarer Eintrag in „Passt, nicht im Lauf“
+ * steht — kein Blocker, Freigeben bleibt klickbar. Leerer String sonst.
+ * @param empfehlung - detail.empfehlung, oder null/undefined
+ * @returns HTML oder ''
+ */
+export function renderInstallierbarHinweis(empfehlung) {
+  if (empfehlung === null || empfehlung === undefined || typeof empfehlung.fehler === 'string') return ''
+  // Ein Eintrag, dem die Projekt-URL fehlt (PROJEKT_URL_FEHLT, src/ressourcen/index.ts), käme auch nach
+  // der Installation nicht in den Lauf — der Hinweis würde dort mehr versprechen, als die Installation hält.
+  const ids = empfehlung.passtNichtImLauf
+    .filter((e) => e.installierbar === true && !String(e.grund ?? '').includes(PROJEKT_URL_FEHLT_TEXT))
+    .map((e) => `<code>${escapeHtml(e.id)}</code>`)
+  if (ids.length === 0) return ''
+  const satz = ids.length === 1 ? `${ids[0]} passt und ist installierbar, ist in diesem Lauf aber nicht dabei` : `${ids.join(', ')} passen und sind installierbar, sind in diesem Lauf aber nicht dabei`
+  return `<p class="hinweis empfehlung-installierbar-hinweis">Hinweis: ${satz}. Erst oben „Freigeben &amp; installieren“, sonst startet der Lauf ohne ${ids.length === 1 ? 'diese Fähigkeit' : 'diese Fähigkeiten'}.</p>`
 }
 
 /**

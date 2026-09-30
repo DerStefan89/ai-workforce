@@ -10492,6 +10492,7 @@ Fundstelle: Workflow-Detailansicht (`public/leitstand/views/workflows.js`), Repa
 Auswirkung: Mittel — jede Sichtung wird zur manuellen JSON-Operation; die Begründung der Fortsetzung bleibt undokumentiert.
 Maßnahme: Knopf „Sichtung bestätigt – weiter" mit Pflichtbegründung als Entscheidungsartefakt — Design-Schnitt.
 Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): Die Workflow-Bedienung zeigt den Knopf nur beim reinen F-760-Halt: Ausführungsschritt VERWEIGERT ohne Bypass-Verdacht und ohne Zusatzgründe (Scope, Stack, Prüfkette). Sonst bleibt allein die Reparaturfassung. Der Knopf baut die Fassung selbst: Cursor auf den Folgeschritt, der VERWEIGERT-Schritt behält status und `lauf_id`. Er sendet über den bestehenden `POST /api/workflows` mit dem Transportfeld `sichtung_bestaetigt`, das nicht in die Fassung gelangt. Der Server prüft Halt, Bypass-Verdacht = 0 laut Terminalmarke, Begründung und aktiven Lauf; sonst antwortet er mit 409 bzw. 400. Festgehalten wird die Sichtung als `art 'kenntnisnahme'` (ergebnis VERWEIGERT, `entscheidung-<laufId>`, derselbe Helfer wie `POST /api/entscheidungen`), weil `planaenderung` laut Schema nur `FREIGABEPFLICHT_ABGESCHWAECHT` kennt (Entscheidung Stefan, 30.09.2026). Eine eigene Art `sichtung` wäre ein späterer Schemapass, falls die Sichtung mehr als die Begründung festhalten muss. Den Folgeschritt startet der Mensch weiter selbst (Regel 1 unverändert). Nach dem Reviewer-/QA-Pass gilt außerdem: Die Fassung muss bis auf `status`, Cursor, `grund` und `freigabe_erteilt` gleich dem Bestand sein, damit keine weitere Planänderung mitgeht. Der Folgeschritt muss startbereit sein. Eine Entscheidung anderer Art zum Lauf wird nicht überlagert (409). Gate: `scripts/check-fixpaket-f36-nachlauf.mjs` (c)–(f), (d) inklusive realem Start des Folgeschritts. Render-Nachweis: `features/F36/nachweis-fixpaket-nachlauf/` (reiner Halt und Halt mit Zusatzgrund). Der Nachweis ergab eine Grenze: Die Pflichtfeld-Meldung bleibt nach dem Tippen stehen, bis zur nächsten Aktion. Das ist dasselbe Verhalten wie bei den übrigen Bedienblöcken.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Render-Nachweis nachgebessert: `rein/01-halt-knopf.png` war abgeschnitten, weil der Ausschnitt unterhalb des Viewports lag (Clip am Viewport-Rand, Bild nur 204 px hoch). `klickfolge-rein.json` hat jetzt einen Viewport von 3200 px Höhe; neu erzeugt mit `erzeuge-nachweis.mjs`, Knopf „Sichtung bestätigt – weiter“ und Begründungsfeld sind sichtbar.
 Status: behoben (PR folgt).
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
@@ -11006,40 +11007,44 @@ Maßnahme: Bei Bedarf `istUnzulaessigerHost` auch am Anfang des Dispatchers prü
 Status: offen.
 Feature/Run: F-814-Fix, Reviewer-/QA-Pass, 29.09.2026.
 
-**F-823** · `TECH_DEBT` · P2 · offen
+**F-823** · `TECH_DEBT` · P2 · behoben (PR folgt)
 Titel: Ungültige absolute Anfrage-URI beendet den Leitstand-Prozess.
 Beschreibung: `erzeugeMultiProjektDispatcher` ruft `new URL(req.url, 'http://localhost')` synchron ohne try auf. Eine rohe Anfrage `GET http://[/ HTTP/1.1` lässt Node durch; der Konstruktor wirft „Invalid URL“ im Request-Listener, unbehandelt → Prozessende. Real nachgemessen 29.09.2026 (roher TCP-Aufruf gegen den Dispatcher: uncaughtException „Invalid URL“). Vor F-814 schon vorhanden. Per DNS-Rebinding nicht erreichbar (Browser senden origin-form), wohl aber für jeden lokalen Prozess.
 Fundstelle: `scripts/leitstand-server.mjs` (`erzeugeMultiProjektDispatcher`, erste Zeile).
 Auswirkung: Mittel — ein lokaler Prozess kann den Leitstand samt laufender Läufe beenden.
 Maßnahme: URL-Aufbau im Dispatcher in try/catch, bei Fehler 400 `{ grund }`; Gate mit rohem TCP-Rotfall (Muster `scripts/check-f814-host.mjs`, `sendeRoh`). Eigener kleiner Auftrag.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Neuer Helfer `leseAnfrageUrl` (try/catch um `new URL`). Der Dispatcher `erzeugeMultiProjektDispatcher` antwortet bei einer ungültigen Anfrage-URI mit 400 `{ grund: 'Ungültige Anfrage-URI' }`, der Prozess läuft weiter. Die zweite synchrone Stelle im Request-Pfad (`requestHandler`, bisher 500 über den catch der Routenkette) antwortet ebenso mit 400. Gate: `scripts/check-f814-host.mjs` (4), roher TCP-Rotfall `GET http://[/ HTTP/1.1` über den Dispatcher und direkt gegen `requestHandler`, danach `GET /api/laeufe` weiter 200. Kalibriert: ohne try endet das Gate-Skript selbst mit uncaughtException „Invalid URL“. Nach dem Reviewer-/QA-Pass: Der Dispatcher antwortet mit seinem 400 vor dem Host-Haken, wie beim 404 aus F-822 (fester Text, kein Zustand); im Gate-Kopf unter „Bewusst nicht abgedeckt“ genannt. Verwandte Klasse `decodeURIComponent` → 500 als F-842 erfasst.
+Status: behoben (PR folgt).
 Feature/Run: F-814-Fix, Reviewer-Pass, 29.09.2026.
 
-**F-824** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-824** · `PROCESS_IMPROVEMENT` · P2 · behoben (PR folgt)
 Titel: Der Bau-Auftrag aus der Feature-Akte enthält nur Ziel, Nicht-Ziele und AKs. Datenmodell und Security erreichen den Architekten nicht.
 Beschreibung: Im F36-Reallauf (Workflow `router-59f6cbd8…`, Lauf `e2ce802f`) bekam der Architekt aus der Feature-Akte nur Ziel, Nicht-Ziele und Akzeptanzkriterien. Die geklärten Abschnitte Datenmodell und Security fehlten im Auftrag. Er fragte deshalb Punkte erneut, die schon entschieden waren.
 Fundstelle: Auftragsbau aus der Feature-Akte für den Architekten-Schritt (Workflow `router-59f6cbd8…`, Lauf `e2ce802f`).
 Auswirkung: Mittel — doppelte Rückfragen an Stefan. Außerdem kann der Architekt anders entscheiden als bereits festgelegt.
 Maßnahme: Geklärte technische Abschnitte (Datenmodell, Security) in den Auftrag übernehmen oder die Akte selbst als Eingabe des Architekten mitgeben.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): `baueAuftragAusFeatureAkte` hängt die Abschnitte `## Datenmodell` und `## Security…` als Block „Geklärte Vorgaben (aus der Feature-Akte, bereits entschieden — nicht erneut fragen)“ vor die Referenzzeile an. Namen geprüft: Die Coach-Vorlage (`src/product-coach`) kennt beide Abschnitte nicht. Sie heißen laut `src/workboard/feature-abschnitte.ts` und Architekten-Instruktion `Datenmodell` bzw. `Security/Permissions` (so auch in haushaltsbuch2 F1/F2); gesucht wird exakt `## Datenmodell` bzw. `## Security` oder `## Security/Permissions`. Fehlen beide oder sind sie leer, bleibt der Auftragstext bitgenau (literaler Snapshot im Test). Kein Schemafeld. Längenobergrenze `GEKLAERTER_ABSCHNITT_OBERGRENZE` = 4000 Zeichen je Abschnitt, danach gekürzt mit Verweis auf die Akte (JSDoc in `src/feature-auftrag/index.ts`). Test: `src/feature-auftrag/feature-auftrag.test.ts` (F-824, drei Fälle). Nach dem Reviewer-/QA-Pass: Überschriften nur exakt (nicht `## Security-Review`, nicht `## Datenmodell (alt)`); ein Abschnitt, der nur einen Platzhalter trägt (`[FÜLLUNG…`, „offen“, „TBD“, „todo“), gilt nicht als entschieden und geht nicht mit. Grenzen im JSDoc: Kürzung nach UTF-16-Einheiten, ggf. mitten in einem Code-Fence; weitere technische Abschnitte (State/Persistenz, Interfaces/Contracts …) gehen bewusst nicht mit. Test ergänzt (vierter F-824-Fall).
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf, 29.09.2026.
 
-**F-825** · `BUG` · P2 · offen
+**F-825** · `BUG` · P2 · behoben (PR folgt)
 Titel: Die Obergrenze 3 in „Passt, nicht im Lauf“ verdrängt installierbare Einträge zugunsten nicht installierbarer.
 Beschreibung: `baueEmpfehlung` sortiert „Passt, nicht im Lauf“ nach Treffergüte (`rang`) und dann nach id und kürzt auf 3 (F-788). Im Reallauf fiel `playwright-mcp` (installierbar) aus der Liste. Angezeigt wurden stattdessen `image-to-code` und `mengto-skills`, beide ohne `installation_vorlage` und damit nicht installierbar.
 Fundstelle: `src/ressourcen/index.ts` (`baueEmpfehlung`, Kürzung auf `EMPFEHLUNG_OBERGRENZE`).
 Auswirkung: Mittel — der eine Eintrag, den Stefan direkt freigeben und installieren könnte, steht nur in der Zählzeile.
 Maßnahme: Installierbare Einträge vor nicht installierbare sortieren. Alternativ nicht installierbare nur als Zählzeile zeigen.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): `sortiereUndBegrenze` (`src/ressourcen/index.ts`) sortiert installierbare Einträge (`installierbar: true`, nur in „Passt, nicht im Lauf“) vor nicht installierbare, danach wie bisher nach `rang` und id, dann Kürzung auf `EMPFEHLUNG_OBERGRENZE`. „Wird genutzt“ bleibt unverändert (dort gibt es kein `installierbar`). Test mit dem Reallauf-Fall: `src/ressourcen/ressourcen.test.ts` (F-825, `playwright-mcp` installierbar vor `image-to-code`/`mengto-skills`); kalibriert, ohne die Sortierung rot. Nach dem Reviewer-/QA-Pass: Mehr als drei installierbare Einträge: der vierte steht weiter nur in der Zählzeile (Obergrenze bleibt, F-788).
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf, 29.09.2026.
 
-**F-826** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-826** · `PROCESS_IMPROVEMENT` · P3 · behoben (PR folgt)
 Titel: Die Ausführung ist am ZWINGEND-Start freigebbar, ohne Hinweis auf einen passenden installierbaren Eintrag, der im Lauf fehlt.
 Beschreibung: In Lauf `1c4a1163` stand ein passender installierbarer Eintrag in „Passt, nicht im Lauf“. „Freigeben“ ließ sich trotzdem ohne Hinweis klicken, dass dieser Eintrag im Lauf fehlt.
 Fundstelle: ZWINGEND-Start der Ausführung (Empfehlungsblock neben „Freigeben“, WS-3).
 Auswirkung: Niedrig — der Lauf startet ohne die Fähigkeit, obwohl eine Installation möglich wäre.
 Maßnahme: Neben „Freigeben“ einen Hinweis zeigen, sobald ein installierbarer Eintrag in „Passt, nicht im Lauf“ steht.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Neu `renderInstallierbarHinweis` (`public/leitstand/empfehlung-anzeige.js`): Hinweistext direkt vor „Freigeben“, sobald ein installierbarer Eintrag in „Passt, nicht im Lauf“ steht, an beiden ZWINGEND-Starts (Workflow-Bedienung und Workboard-Vorschlag). Kein Blocker, „Freigeben“ bleibt klickbar. Test: `public/leitstand/empfehlung-anzeige.test.mjs` (F-826, Inhalt und Stelle vor dem Knopf in beiden Ansichten). Nach dem Reviewer-/QA-Pass: Ein installierbarer MCP, dem die Projekt-URL fehlt (`PROJEKT_URL_FEHLT`), steht nicht im Hinweis — er käme auch installiert nicht in den Lauf. Singular/Plural je Anzahl; der Text nennt „oben“ als Ort des Knopfs. Der Stellen-Test sucht jetzt gezielt `${renderInstallierbarHinweis(`. Render-Nachweis: `features/F36/nachweis-fixpaket-pr2/f826-hinweis-vor-freigeben.png` (aus `nachweis-ws5a-ui`, Szenario erfolg). Grenze: Ein Eintrag, den Stefan bewusst nicht will, bringt den Hinweis bei jedem Start wieder (kein Status „abgelehnt“).
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf, 29.09.2026.
 
 **F-827** · `PROCESS_IMPROVEMENT` · P2 · behoben (PR folgt)
@@ -11052,13 +11057,14 @@ Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): `baueEmpfehlungsZeile` hängt „P
 Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
-**F-828** · `BUG` · P3 · offen
+**F-828** · `BUG` · P3 · behoben (PR folgt)
 Titel: Die Lauf-Detailansicht zeigt bei einem laufenden Lauf „Klärung erforderlich“ samt Maske „Klärung auflösen“.
 Beschreibung: Während Lauf `8cee6c98` lief (nur `run_prepared`), zeigte die Detailansicht „Klärzustand: Klärung erforderlich“ und die Maske „Klärung auflösen“. Eine Entscheidung dort würde den aktiven Lauf als geklärt einstufen.
 Fundstelle: Lauf-Detailansicht im Leitstand (Klärzustand-Anzeige); gesehen an `8cee6c98`.
 Auswirkung: Niedrig — irreführend; eine versehentliche Entscheidung würde einen laufenden Lauf falsch einstufen.
 Maßnahme: Bei aktivem Lauf „läuft“ statt eines Klärzustands anzeigen und die Maske sperren.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Serverseitig keine Lücke: `POST /api/entscheidungen` lehnt `terminal`/`kenntnisnahme` auf der aktiven laufId schon mit 400 ab (F14 WS-4 AK8, Gate `check-f13-entscheiden.mjs` (k)); `laufAktiv` setzen auch Workflow-Schrittstarts. Die Lücke lag in der Oberfläche: `renderLaufStatus` zeigt bei `detail.aktiv` ohne Terminalmarke „Klärzustand: läuft“, `renderEntscheidungBlock` zeigt dort keine Maske, sondern „Entscheidung erst nach seinem Ende möglich“. Test: `public/leitstand/views/runs.test.mjs` (neu, drei Fälle inkl. „aktiv, aber schon ABGESCHLOSSEN → unverändert“). Nach dem Reviewer-/QA-Pass: Auch im Nachlauf (Terminalmarke schon geschrieben, Prüfschritt läuft, `aktiv` noch true) zeigt `renderEntscheidungBlock` keine Maske `terminal`/`kenntnisnahme` mehr, die der Server mit 400 abgelehnt hätte; die Maske `antwort` (Bypass-Fall) bleibt, der Server erlaubt sie. Beide Texte sagen „Stand beim Öffnen; nach Laufende das Detail erneut öffnen“, weil das Detail nicht gepollt wird (Grenze F-363). Test ergänzt (vierter Fall). Render-Nachweis: `features/F36/nachweis-fixpaket-pr2/` (`aktiv/`, `nach-ende/`, `erzeuge-nachweis.mjs`). Beobachtet dabei: Die Laufliste zeigt für den aktiven Lauf weiter `KLAERUNG_ERFORDERLICH` und „Wiederaufnahme starten“ (F-844).
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
 **F-829** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -11070,13 +11076,14 @@ Maßnahme: Checkliste und DoD als verbindliche Eingabe des Reviews mit Urteil je
 Status: offen.
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
-**F-830** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-830** · `PROCESS_IMPROVEMENT` · P3 · behoben (PR folgt)
 Titel: Die DoD im Projekt-Skelett verlangt Reviewer-/QA-Pass per Subagent, in Workforce-Läufen ist das nicht erfüllbar.
 Beschreibung: Die `CLAUDE.md` im Projekt-Skelett verlangt einen Reviewer-/QA-Pass per Subagent vor der Freigabe. Workforce-Ausführungsläufe haben kein `Agent` im Werkzeugsatz. Die DoD-Zeile ist dort also nicht erfüllbar, und das wird nirgends erklärt.
 Fundstelle: `vorlagen/projekt-skelett/CLAUDE.md` (Definition of Done); F42 (Projekt-Harness).
 Auswirkung: Niedrig — widersprüchliche Vorgabe für das Modell im Lauf.
 Maßnahme: Die DoD-Zeile im Skelett (F42) ergänzen um „in Workforce-Läufen: Review/QA als Workflow-Schritte“.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Die Skelett-`CLAUDE.md` hatte bisher keine DoD-Zeile Reviewer/QA, nur den Abschnitt „Prüfrollen als Subagenten“. Die DoD-Zeile ist jetzt ergänzt, mit dem Zusatz „In Workforce-Läufen sind Review und QA eigene Workflow-Schritte; weder git noch Commit in der Ausführung (Shell-Satz hat Vorrang)“. Derselbe Zusatz steht am „Iterationsende“ und am Abschnitt „Prüfrollen“. HERKUNFT.md vermerkt die lokale Abweichung von der Quelle. F42-Gate angepasst: `scripts/check-f42-projekt-harness.mjs` (a) prüft beide Zusätze; kalibriert, ohne Zusatz rot. Nach dem Reviewer-/QA-Pass: Zusätzlich „kein `cd`“ am Iterationsprinzip. HERKUNFT.md nennt, dass bestehende Projekte (z. B. haushaltsbuch2) die alte Fassung behalten (`kopiereSkelett` überschreibt nicht). Nicht geändert (Grenze): der Status-Block „Jede Ausgabe endet mit …“ und die Nennung von `npm run dev` im Skelett; in Workforce-Läufen gehen Shell-Satz und Rollen-Ausgabeformat vor.
+Status: behoben (PR folgt).
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
 
 **F-831** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -11088,23 +11095,25 @@ Maßnahme: `init.slash_commands` gegen eine Referenzmenge je CLI-Version prüfen
 Status: offen.
 Feature/Run: F36 Review-Pass (code-reviewer Befunde 2, 6), 29.09.2026.
 
-**F-832** · `BUG` · P2 · offen
+**F-832** · `BUG` · P2 · behoben (PR folgt)
 Titel: `claude_ordner_veraendert` lässt sich über `.gitignore` plus npm-Skript umgehen; die Begründung in der Akte trägt nicht.
 Beschreibung: feature.md (Bekannte Grenzen, „WS-5b Laufdiff“) stützt die Lücke „gitignorierte Datei unter `.claude/` bleibt unsichtbar“ auf „die Bash-Allowlist lehnt schreibende Befehle ab“. Die Allowlist erlaubt aber `npm run check:*`, `npm run build:*` und `npm install`; Write auf `package.json` und `.gitignore` ist nicht gesperrt. Ein Lauf kann ein npm-Skript ergänzen, das `.claude/…` anlegt, und `.claude/` ignorieren lassen; `leseClaudeAenderungen` (ohne `--ignored`) meldet dann nichts. Aus dem Code abgeleitet, nicht gemessen. Folgeläufe schützt der Vorstart-Scan (Dateisystem, nicht git).
 Fundstelle: `src/execution-controller/index.ts:149-175`; `src/startvorlage/index.ts:139-147`; `src/ressourcen/ort-b-start.ts:37`.
 Auswirkung: Mittel — die Laufdiff-Grenze ist im Lauf selbst umgehbar.
 Maßnahme: `git status --ignored` für Pfade unter `.claude` oder Dateisystem-Vergleich vorher/nachher, mit Rotfall; Satz in der Akte korrigieren.
 Vermerk (F36 Fixpaket, 29.09.2026): Der Satz in feature.md („WS-5b Laufdiff“) ist korrigiert. Der Code-Fix bleibt offen: `git status --ignored` allein würde jede schon vor dem Lauf vorhandene ignorierte Datei (z. B. `.claude/settings.local.json`) rot werten; nötig ist ein Vorher-/Nachher-Vergleich, der über den Umfang des Fixpakets (~30 Zeilen) hinausgeht.
-Status: offen (Doku erledigt, Code offen).
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): Neu `erfasseClaudeOrdner`/`vergleicheClaudeOrdner` (`src/execution-controller/index.ts`): Momentaufnahme von `<projekt>/.claude` vor dem Start (rekursiv, relativer Pfad plus sha256, inklusive git-ignorierter Dateien), Vergleich nach dem Ende. Neue, geänderte oder gelöschte Pfade gehen zusätzlich zum git-Weg in `claudeAenderungen` → `claude_ordner_veraendert`. Grenzen (feature.md „WS-5b Laufdiff“ nachgezogen): nur `<projekt>/.claude`, keine verschachtelten ignorierten `.claude`-Ordner; ohne lesbare Momentaufnahme gilt nur der git-Weg. Die CLI schreibt im normalen Lauf nichts unter `<projekt>/.claude` (haushaltsbuch2 nach den Reallauf-Serien 28./29.09.: keine Datei jünger als 25.09.), also keine Ausnahme und kein Blocker. Tests: `src/execution-controller/execution-controller.test.ts` (F-832), Gate `scripts/check-f36-ws5b-skill.mjs` (n): Rotfall gitignorierte neue Datei → FEHLGESCHLAGEN, Gutfall vorhandene settings.local.json → ERFOLGREICH; kalibriert. Nach dem Reviewer-/QA-Pass: Nur reguläre Dateien werden gelesen (FIFO o. Ä. zählt mit dem Typ, kein Hängen). Grenzen in feature.md ergänzt: beide Wege nur bei Ort-B-Läufen; `.claude` vor dem Start nicht lesbar → nur git-Weg (Vorgabe des Auftrags), nachher nicht lesbar → rot; keine Größengrenze, `.claude/worktrees/` o. Ä. kostet Zeit und macht bei paralleler Schreibsitzung rot (F-843).
+Status: behoben (PR folgt).
 Feature/Run: F36 Review-Pass (code-reviewer Befund 3), 29.09.2026.
 
-**F-833** · `TECH_DEBT` · P2 · offen
+**F-833** · `TECH_DEBT` · P2 · behoben (PR folgt)
 Titel: Die Bitgenau-Zusage „Läufe ohne Katalog-Einträge unverändert“ ist nur für das Argv erzwungen, nicht für den Auftragstext und nicht für das Gateway ohne `initGate`.
 Beschreibung: Argv: literaler Snapshot `claude-code-gateway.test.ts:201-222` (Stand vor F36) plus Relativvergleiche `check-f36-ws2-laufzeit` (a)/(b) und `check-f36-ws5b-skill` (o). Auftragstext: nur Relativvergleiche im heutigen Code (`check-f36-ws3-empfehlung.mjs:329-332`, `check-f36-ws2-laufzeit.mjs:297-304`); eine unbedingte Änderung am Textbau bliebe grün. Dass `starteGateway` ohne `initGate` die init-Zeile nicht auswertet (Läufe ohne Ort-B, Codex, ohne init-Zeile), hat keinen Test. Nach ARCHITECTURE.md §8 nicht ERZWUNGEN.
 Fundstelle: siehe Beschreibung; `src/claude-code-gateway/index.ts:210`.
 Auswirkung: Mittel — eine Regression für alle Läufe ohne Katalog-Einträge bliebe unbemerkt.
 Maßnahme: literaler Snapshot des Ausführungs-Auftragstexts ohne `empfehlungIds`; Rotfall „ohne initGate kein Abbruch bei beliebiger init-Zeile“.
-Status: offen.
+Vermerk (Fixpaket PR 2 nach F36, 30.09.2026): (1) Literaler Snapshot als Hash: `scripts/check-f36-ws3-empfehlung.mjs` (e) vergleicht den Ausführungs-Auftragstext ohne `empfehlungIds` mit einem festen sha256 (`AUFTRAGSTEXT_OHNE_EMPFEHLUNG_SHA256`); kalibriert, eine unbedingte Textänderung ist rot, obwohl der Relativvergleich grün bleibt. (2) Rotfall: `src/claude-code-gateway/claude-code-gateway.test.ts` (F-833): `starteGateway` ohne `initGate` bricht bei fremden Skills, `Agent` und fremdem MCP in der init-Zeile nicht ab und schreibt kein `init_gate_verstoss`, ebenso ohne init-Zeile; kalibriert mit einem Default-Gate rot. Nach dem Reviewer-/QA-Pass: Bei Abweichung gibt das Gate den vollständigen Ist-Text aus, damit eine bewusste Änderung benannt werden kann; der Text enthält keine rechner- oder pfadabhängigen Teile (Reviewer geprüft).
+Status: behoben (PR folgt).
 Feature/Run: F36 Review-Pass (code-reviewer Befund 4, qa Bitgenau), 29.09.2026.
 
 **F-834** · `TECH_DEBT` · P3 · offen
@@ -11167,6 +11176,42 @@ Titel: Prüfrollen (Reviewer/QA) in Claude Code im Vordergrund laufen lassen und
 Beschreibung: Im F36 Review-Pass liefen `code-reviewer` und `qa` als Hintergrund-Agents. Die Variante kostete einen Leer-Umlauf: Der Bericht war vor ihrem Ende fertig, die Befunde kamen erst danach.
 Fundstelle: F36 Review-Pass, 29.09.2026; CLAUDE.md, Definition of Done (Reviewer-/QA-Pass).
 Auswirkung: Niedrig — ein zusätzlicher Umlauf, kein falsches Ergebnis.
-Maßnahme: Prüfrollen im Vordergrund starten und erst nach ihrem Ende berichten; bei Bedarf in der DoD von CLAUDE.md festhalten.
+Maßnahme: Prüfrollen starten und erst nach ihrem Ende berichten (das Agent-Werkzeug startet asynchron); bei Bedarf in der DoD von CLAUDE.md festhalten.
 Status: offen.
 Feature/Run: F36 Review-Pass, 29.09.2026.
+
+**F-841** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Challenger gab einen Schreibweg für ein Artefakt-Format vor, ohne den Schemazweig zu lesen.
+Beschreibung: Challenger gab im Bauauftrag PR 1 den Schreibweg art 'planaenderung' vor, ohne die je-Art-Zweige in `schemas/kontrollzustand-entscheidung-payload.schema.json` zu lesen; Claude Code fing es ab, ein Rückfrage-Zyklus.
+Fundstelle: Bauauftrag Fixpaket PR 1 nach F36 (F-768); `schemas/kontrollzustand-entscheidung-payload.schema.json`.
+Auswirkung: Niedrig — ein zusätzlicher Rückfrage-Zyklus, kein falsches Ergebnis.
+Maßnahme: Vor Vorgaben zu Artefakt-Formaten den Schemazweig lesen.
+Status: offen.
+Feature/Run: Entdeckt: Fixpaket PR 1 nach F36, 30.09.2026.
+
+**F-842** · `TECH_DEBT` · P3 · offen
+Titel: Ein kaputtes Prozent-Escape in der laufId ergibt 500 statt 400.
+Beschreibung: `requestHandler` ruft für `GET /api/laeufe/<laufId>` `decodeURIComponent` ohne try auf. `/api/laeufe/%E0` wirft einen URIError, der catch der Routenkette antwortet 500. Den Prozess beendet das nicht (anders als F-823).
+Fundstelle: `scripts/leitstand-server.mjs` (Detailendpunkt `/api/laeufe/<laufId>`, `decodeURIComponent`).
+Auswirkung: Niedrig — falscher Statuscode, keine Zustandsänderung.
+Maßnahme: `decodeURIComponent` absichern, 400 `{ grund }`; Rotfall im Gate.
+Status: offen.
+Feature/Run: Fixpaket PR 2 nach F36, Reviewer-/QA-Pass, 30.09.2026.
+
+**F-843** · `TECH_DEBT` · P3 · offen
+Titel: Der Dateisystem-Vergleich von `<projekt>/.claude` (F-832) hat keine Größengrenze.
+Beschreibung: `erfasseClaudeOrdner` liest vor und nach jedem Ort-B-Lauf alle Dateien unter `<projekt>/.claude`. Liegt dort z. B. `.claude/worktrees/` mit Repo-Kopien samt `node_modules`, kostet das zwei volle Durchgänge; schreibt eine parallele Sitzung dort, wird der Lauf rot (`claude_ordner_veraendert`, fail-closed).
+Fundstelle: `src/execution-controller/index.ts` (`erfasseClaudeOrdner`).
+Auswirkung: Niedrig — Laufzeit, schlimmstenfalls ein falsch roter Lauf; keine Lücke.
+Maßnahme: Obergrenze für Dateianzahl/Bytes mit fail-closed-Marker; Ausnahmen wie `worktrees/` nur als bewusste Entscheidung.
+Status: offen.
+Feature/Run: Fixpaket PR 2 nach F36, Reviewer-Pass, 30.09.2026.
+
+**F-844** · `BUG` · P3 · offen
+Titel: Die Laufliste zeigt einen aktiven Lauf als KLAERUNG_ERFORDERLICH mit „Wiederaufnahme starten“.
+Beschreibung: Beim Render-Nachweis zu F-828 zeigte die Laufzeile des aktiven Laufs `nachweis-f828-aktiv` Status `KLAERUNG_ERFORDERLICH` und den Knopf „Wiederaufnahme starten“, während das Detail (seit F-828) „läuft“ zeigt. Der Laufstart selbst ist durch D13 gesperrt, solange ein Lauf aktiv ist; die Anzeige ist trotzdem irreführend.
+Fundstelle: Laufliste `public/leitstand/views/runs.js` (`renderLaeufe`); `features/F36/nachweis-fixpaket-pr2/aktiv/01-lauf-detail-aktiv.png`.
+Auswirkung: Niedrig — irreführende Anzeige, kein falscher Zustand.
+Maßnahme: In der Laufliste bei aktivem Lauf „läuft“ statt des Klärzustands zeigen und „Wiederaufnahme starten“ ausblenden (Quelle für aktiv im Zustands-Aggregat prüfen).
+Status: offen.
+Feature/Run: Fixpaket PR 2 nach F36, Render-Nachweis F-828, 30.09.2026.

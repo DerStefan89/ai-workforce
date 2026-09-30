@@ -2,14 +2,17 @@
  * Datei: public/leitstand/empfehlung-anzeige.test.mjs
  *
  * Zweck: node:test-Fälle für renderEmpfehlung und empfehlungIdsFuerFreigabe (F36 WS-3, AK7) —
- * beide Listen mit Grund, „+n weitere“, Zählzeile, Hinweise, Escaping, Fehler- und Leerfall.
+ * beide Listen mit Grund, „+n weitere“, Zählzeile, Hinweise, Escaping, Fehler- und Leerfall; seit
+ * F-826 renderInstallierbarHinweis und seine Stelle vor „Freigeben“ in beiden Ansichten.
  *
  * Wird aufgerufen von: `npm run test` (node --test).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from './empfehlung-anzeige.js'
+import { readFileSync } from 'node:fs'
+import { PROJEKT_URL_FEHLT } from '../../src/ressourcen/index.ts'
+import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from './empfehlung-anzeige.js'
 
 const EMPFEHLUNG = {
   schrittId: 'schritt-1-ausfuehrung',
@@ -50,4 +53,35 @@ test('empfehlungIdsFuerFreigabe: ids der angezeigten Liste, sonst undefined', ()
   assert.deepEqual(empfehlungIdsFuerFreigabe({ ...EMPFEHLUNG, wirdGenutzt: [] }), [])
   assert.equal(empfehlungIdsFuerFreigabe(null), undefined)
   assert.equal(empfehlungIdsFuerFreigabe({ schrittId: 's', fehler: 'x' }), undefined)
+})
+
+test('renderInstallierbarHinweis (F-826): Hinweis nur bei installierbarem Eintrag in „Passt, nicht im Lauf“, kein Blocker', () => {
+  const mitInstallierbar = { ...EMPFEHLUNG, passtNichtImLauf: [{ id: 'playwright-mcp', name: 'Playwright', typ: 'extern', unterart: 'mcp', grund: 'freigabe OFFEN', installierbar: true }, ...EMPFEHLUNG.passtNichtImLauf] }
+  const html = renderInstallierbarHinweis(mitInstallierbar)
+  assert.match(html, /<code>playwright-mcp<\/code> passt und ist installierbar, ist in diesem Lauf aber nicht dabei\. Erst oben „Freigeben &amp; installieren“, sonst startet der Lauf ohne diese Fähigkeit\./)
+  assert.doesNotMatch(html, /<button|disabled/)
+  assert.doesNotMatch(html, /<code>qa<\/code>/)
+  assert.equal(renderInstallierbarHinweis(EMPFEHLUNG), '')
+  assert.equal(renderInstallierbarHinweis(null), '')
+  assert.equal(renderInstallierbarHinweis({ schrittId: 's', fehler: 'x' }), '')
+})
+
+test('renderInstallierbarHinweis (F-826): beide ZWINGEND-Starts (Workflow-Bedienung, Workboard-Vorschlag) zeigen ihn direkt vor „Freigeben“', () => {
+  for (const [datei, knopf] of [
+    ['views/workflows.js', 'data-aktion="freigeben"'],
+    ['views/workboard.js', 'wb-freigeben'],
+  ]) {
+    const quelle = readFileSync(new URL(`./${datei}`, import.meta.url), 'utf8')
+    const hinweis = quelle.indexOf('${renderInstallierbarHinweis(')
+    const freigeben = quelle.indexOf(knopf, hinweis)
+    assert.ok(hinweis > 0 && freigeben > hinweis && freigeben - hinweis < 400, `${datei}: Hinweis nicht unmittelbar vor ${knopf}`)
+  }
+})
+
+test('renderInstallierbarHinweis (F-826): Plural; Eintrag ohne Projekt-URL fehlt im Hinweis (käme auch installiert nicht in den Lauf)', () => {
+  const eintrag = (id, grund) => ({ id, name: id, typ: 'extern', unterart: 'mcp', grund, installierbar: true })
+  const zwei = renderInstallierbarHinweis({ ...EMPFEHLUNG, passtNichtImLauf: [eintrag('a', 'freigabe OFFEN'), eintrag('b', 'freigabe OFFEN')] })
+  assert.ok(zwei.includes('<code>a</code>, <code>b</code> passen und sind installierbar, sind in diesem Lauf aber nicht dabei.'), zwei)
+  assert.ok(zwei.includes('ohne diese Fähigkeiten.'), zwei)
+  assert.equal(renderInstallierbarHinweis({ ...EMPFEHLUNG, passtNichtImLauf: [eintrag('pw', `freigabe OFFEN; ${PROJEKT_URL_FEHLT}`)] }), '')
 })

@@ -16,6 +16,7 @@
  * - public/leitstand/app.js (initRunsView beim Bootstrap)
  * - public/leitstand/views/workflows.js (Navigation zu `#/runs/<laufId>` für
  *   den lauf_id-Verweis einer Workflow-Schrittzeile)
+ * - public/leitstand/views/runs.test.mjs (renderLaufStatus/renderEntscheidungBlock, F-828)
  *
  * Wichtig: renderLaeufe() ersetzt #laeufe bei jedem Poll-Tick komplett —
  * jede Bedienung an einer Laufzeile hängt deshalb per Event-Delegation am
@@ -188,8 +189,20 @@ function renderAuftrag(auftrag) {
   return `<div class="detail-block"><h3>Auftrag</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(auftrag.status, texte))}</p></div>`
 }
 
-/** Klärzustand unverfälscht sichtbar (F13 WS-1 AK2). @param laufStatus - detail.laufStatus @param verweigertDaten - detail.verweigertDaten (null außer bei ABGESCHLOSSEN/VERWEIGERT) */
-function renderLaufStatus(laufStatus, verweigertDaten) {
+/** F-828: Hinweis bei aktivem Lauf — das Detail wird nur beim Öffnen geladen (F-363), nicht gepollt. */
+const LAEUFT_HINWEIS = 'Der Lauf läuft noch (Stand beim Öffnen; nach Laufende das Detail erneut öffnen).'
+
+/**
+ * Klärzustand unverfälscht sichtbar (F13 WS-1 AK2). F-828: ein aktiver Lauf (detail.aktiv, D13) steht
+ * bis zur Terminalmarke auf KLAERUNG_ERFORDERLICH („RUN_PREPARED ohne Terminalartefakt“) — das ist
+ * keine Klärungslage, angezeigt wird „läuft“ (nur ohne Terminalmarke, also nicht bei ABGESCHLOSSEN).
+ * @param laufStatus - detail.laufStatus
+ * @param verweigertDaten - detail.verweigertDaten (null außer bei ABGESCHLOSSEN/VERWEIGERT)
+ * @param aktiv - detail.aktiv
+ * @returns HTML
+ */
+export function renderLaufStatus(laufStatus, verweigertDaten, aktiv = false) {
+  if (aktiv === true && laufStatus.status !== 'ABGESCHLOSSEN') return `<div class="detail-block"><h3>Klärzustand: läuft</h3><p>${LAEUFT_HINWEIS} Der Klärzustand steht erst danach fest.</p></div>`
   if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
     return `<div class="detail-block"><h3>Klärzustand: Klärung erforderlich</h3><table class="lauf-kopfdaten"><tbody>
       <tr><th>blockerId</th><td><code>${escapeHtml(laufStatus.blockerId)}</code></td></tr>
@@ -289,8 +302,20 @@ function hatBypassVerdacht(verweigertDaten) {
   return typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0
 }
 
-/** Baut den Entscheidungs-Block der Detailansicht — art:'terminal'/'antwort'/'kenntnisnahme' je nach Klärfall, sonst ein expliziter Leerzustandstext. @param laufStatus - detail.laufStatus @param verweigertDaten - detail.verweigertDaten */
-function renderEntscheidungBlock(laufStatus, verweigertDaten) {
+/**
+ * Baut den Entscheidungs-Block der Detailansicht — art:'terminal'/'antwort'/'kenntnisnahme' je nach
+ * Klärfall, sonst ein expliziter Leerzustandstext. F-828: solange der Lauf aktiv ist (auch im Nachlauf
+ * mit schon geschriebener Terminalmarke, etwa während des Prüfschritts) keine Maske 'terminal'/
+ * 'kenntnisnahme' — der Server lehnt beide dort mit 400 ab (F14 WS-4 AK8). 'antwort' (Bypass-Fall)
+ * bleibt, der Server erlaubt sie. Das Detail wird nicht gepollt (F-363), daher der Hinweis zum Neuladen.
+ * @param laufStatus - detail.laufStatus
+ * @param verweigertDaten - detail.verweigertDaten
+ * @param aktiv - detail.aktiv
+ * @returns HTML
+ */
+export function renderEntscheidungBlock(laufStatus, verweigertDaten, aktiv = false) {
+  const antwortFall = laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT' && hatBypassVerdacht(verweigertDaten)
+  if (aktiv === true && !antwortFall) return `<p class="leer">${LAEUFT_HINWEIS} Eine Entscheidung ist erst danach möglich.</p>`
   if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
     return `<div class="detail-block">
       <h3>Entscheidung: Klärung auflösen</h3>
@@ -445,13 +470,13 @@ export async function ladeLaufDetail(laufId) {
     inhalt.innerHTML = [
       renderAbbrechenBlock(detail.aktiv, laufId),
       renderAuftrag(detail.auftrag),
-      renderLaufStatus(detail.laufStatus, detail.verweigertDaten),
+      renderLaufStatus(detail.laufStatus, detail.verweigertDaten, detail.aktiv),
       renderKontextpaket(detail.kontextpaket),
       renderLaufakte(detail.laufakte),
       renderRohstrom(detail.rohstrom),
       `<div class="detail-block"><h3>Checkpoint-Kette</h3>${renderCheckpoints(detail.checkpoints)}</div>`,
     ].join('')
-    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus, detail.verweigertDaten)
+    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus, detail.verweigertDaten, detail.aktiv)
   } catch (fehler) {
     if (gewaehlteLaufId !== laufId) return
     inhalt.innerHTML = ''

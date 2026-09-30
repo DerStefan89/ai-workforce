@@ -12,7 +12,8 @@
  *     festgehalten; 400 bei POST /api/laeufe), der Starter wird nie aufgerufen;
  * (d) HTTP-Rundlauf: GET /api/workflows/<id> zeigt die Liste am ZWINGEND-Start (beide Listen mit
  *     Grund, Zählzeile), ohne Router-Artefakt mit Hinweis „keine Router-Klassifikation“;
- * (e) leere Liste → Auftragstext bitgenau wie ein Start ohne Anzeige;
+ * (e) leere Liste → Auftragstext bitgenau wie ein Start ohne Anzeige; ohne empfehlungIds gleich dem
+ *     literalen sha256-Snapshot AUFTRAGSTEXT_OHNE_EMPFEHLUNG_SHA256 (F-833);
  * (f) Stack-Auszug im Architekt-Auftrag nur bei offenem Stack;
  * (g) falsche Form von empfehlungIds → 400 (Freigabe: nichts festgehalten), ABGELEHNT mit veralteten
  *     ids → 200 GESTOPPT (keine Vorprüfung), lesender Ausführungsschritt → keine Empfehlung, ids
@@ -30,7 +31,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
 import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -316,6 +317,9 @@ const angezeigt = await durchlauf('(a) workflow', { art: 'workflow', taskTypen: 
   if (befunde.length === vor) console.log('✓ (d) HTTP-Rundlauf: GET /api/workflows/<id> zeigt am ZWINGEND-Start beide Listen mit Grund und die Zählzeile; ohne Router-Artefakt „keine Router-Klassifikation“.')
 }
 
+/** F-833: sha256 des Ausführungs-Auftragstexts dieses Gates ohne empfehlungIds (1425 Zeichen: Auftrag, Shell-Satz F-764, Prüf- und Blockiert-Hinweis). */
+const AUFTRAGSTEXT_OHNE_EMPFEHLUNG_SHA256 = '3bf40a5dfeb0fb13e0a303865717d324f4aec921e7711fdcd762ff19fbf139cd'
+
 // ─── (b) + (e) nicht anwendbar: leere mcp-config, Auftragstext bitgenau ──
 {
   const vor = befunde.length
@@ -330,7 +334,13 @@ const angezeigt = await durchlauf('(a) workflow', { art: 'workflow', taskTypen: 
     if (ohne.gesehen === null) befunde.push('(e) Vergleichslauf ohne Anzeige hat den Starter nicht erreicht')
     else if (ohne.gesehen.auftragstext !== leer.gesehen.auftragstext) befunde.push('(e) Auftragstext bei leerer Liste weicht vom Start ohne Anzeige ab')
     else if (leer.gesehen.auftragstext.includes('Katalog-Fähigkeiten')) befunde.push('(e) Auftragstext trägt bei leerer Liste eine Empfehlungszeile')
-    if (befunde.length === vorE) console.log('✓ (e) Leere Liste: Auftragstext bitgenau wie ein Start ohne Anzeige.')
+    // F-833: literaler Snapshot — der Relativvergleich oben bliebe bei einer unbedingten Änderung am
+    // Textbau (beide Seiten gleich verändert) grün. Ändert sich der Auftragstext ohne empfehlungIds
+    // absichtlich, den Hash bewusst neu setzen und die Änderung benennen.
+    else if (createHash('sha256').update(ohne.gesehen.auftragstext).digest('hex') !== AUFTRAGSTEXT_OHNE_EMPFEHLUNG_SHA256) {
+      befunde.push(`(e) F-833: Auftragstext ohne empfehlungIds weicht vom literalen Snapshot ab (sha256 ${AUFTRAGSTEXT_OHNE_EMPFEHLUNG_SHA256.slice(0, 12)}…); ist-Text vollständig: ${JSON.stringify(ohne.gesehen.auftragstext)}`)
+    }
+    if (befunde.length === vorE) console.log('✓ (e) Leere Liste: Auftragstext bitgenau wie ein Start ohne Anzeige; ohne empfehlungIds gleich dem literalen Snapshot (sha256, F-833).')
   }
 }
 

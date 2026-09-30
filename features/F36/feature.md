@@ -587,8 +587,9 @@ Bau präzisiert (eigene Challenge).
   Endstand (Review-Pass 29.09.2026): erfüllt. Gate `check-f36-ws5b-skill`
   (a), (c), (n); echter Lauf `nachweis-ws5b/` 9b/9c; im Reallauf lag
   `frontend-design` unter `~/.ai-workforce/cap/frontend-design/.claude/skills/`
-  (`nachweis-reallauf/` C). Grenze: Der Laufdiff sieht keine ignorierten
-  Dateien (F-832).
+  (`nachweis-reallauf/` C). Grenze: Der Laufdiff sah keine ignorierten
+  Dateien (F-832); seit Fixpaket PR 2 nach F36 prüft ein
+  Dateisystem-Vergleich `<projekt>/.claude` vor/nach dem Lauf.
 - AK7 (WS-3) Die Empfehlung ist deterministisch (gleicher Auftrag +
   Katalog → gleiche Liste) und erscheint am ZWINGEND-Start sowie als
   Zeile im Auftrag. Prüfweg: Unit-Test + Gate am HTTP-Rundlauf.
@@ -730,6 +731,13 @@ Offen für die Abnahme (keine Blocker, alle als Findings):
 - F-818, F-822, F-823;
 - F-824 bis F-830.
 
+Nachtrag (Fixpaket PR 1 und PR 2 nach F36, 30.09.2026): Die Tabelle oben ist der
+Stand der Abnahme vom 29.09.2026. Behoben (PR folgt bzw. #284) sind seither F-764,
+F-768, F-827 (PR 1) sowie F-823, F-824, F-825, F-826, F-828, F-830, F-832 (Code, damit
+entfällt die Grenze bei AK6 bis auf die unter „Bekannte Grenzen“ genannten Reste) und
+F-833 (PR 2). Offen bleiben F-829, F-831, F-834 bis F-836, F-838, F-815/F-816, F-791,
+F-818, F-822.
+
 ## Dependencies
 - F19 (Ressourcen-Katalog) — `schemas/ressourcen.schema.json`,
   `validiereRessourcenDaten`, die WS-1 erweitert.
@@ -842,18 +850,30 @@ Offen für die Abnahme (keine Blocker, alle als Findings):
   Katalog. Auf einem anderen Rechner oder unter einem anderen Nutzerpfad
   gelten sie als nicht verfügbar; alle Checkouts und Worktrees desselben
   Rechners nutzen dieselben Installationen in `~/.ai-workforce/cap`.
-- WS-5b Laufdiff: `claude_ordner_veraendert` sieht nur, was `git status`
-  zeigt, also keine ignorierten Dateien. Write/Edit auf `.claude/` sperrt
-  `Write(**/.claude/**)` davon unabhängig (9c gemessen). Umgehbar ist die
-  Prüfung trotzdem: Die Bash-Allowlist lässt `npm install` sowie `npm run
-  check:*|build:*|…` zu, und `package.json` und `.gitignore` sind per Write
-  änderbar. Ein Lauf kann also ein npm-Skript ergänzen, das unter `.claude/`
-  schreibt, und `.claude/` ignorieren lassen; der Laufdiff zeigt dann nur
-  die geänderte `.gitignore`/`package.json` (aus dem Code abgeleitet, nicht
-  gemessen). Folgeläufe schützt der Vorstart-Scan (Dateisystem, nicht git).
-  Maßnahme offen (F-832): ein Vorher-/Nachher-Vergleich; `git status
-  --ignored` allein reicht nicht, weil ignorierte Dateien wie
-  `.claude/settings.local.json` schon vor dem Lauf da sein dürfen.
+- WS-5b Laufdiff: `claude_ordner_veraendert` prüft zwei Wege. Der
+  git-Weg (`git status`) sieht alle nicht ignorierten Änderungen mit einem
+  Segment `.claude`, auch verschachtelt. Seit F-832 (Fixpaket PR 2 nach
+  F36) kommt ein Dateisystem-Vergleich von `<projekt>/.claude` hinzu:
+  Momentaufnahme vor dem Start (relativer Pfad plus sha256, inklusive
+  git-ignorierter Dateien), Vergleich nach dem Ende. Neue, geänderte oder
+  gelöschte Pfade sind rot. Damit ist der Umweg über ein npm-Skript plus
+  `.gitignore` geschlossen. Eine vor dem Lauf vorhandene, unveränderte
+  ignorierte Datei (z. B. `.claude/settings.local.json`) bleibt grün.
+  Write/Edit auf `.claude/` sperrt `Write(**/.claude/**)` davon unabhängig
+  (9c gemessen). Grenzen: Beide Wege greifen nur bei Ort-B-Läufen
+  (`eingaben.ortBLauf`). Der Dateisystem-Vergleich deckt nur
+  `<projekt>/.claude` ab; ein verschachteltes, ignoriertes `sub/.claude/`
+  sieht keiner der beiden Wege (Folgeläufe schützt der Vorstart-Scan). Ist
+  `.claude` vor dem Start nicht lesbar (z. B. ein gesperrter Datei-Handle),
+  fehlt die Momentaufnahme, und es gilt nur der git-Weg (Vorgabe des
+  Auftrags); ist es nach dem Lauf nicht lesbar, ist der Lauf rot. Der
+  Vergleich liest den ganzen Ordner ohne Größengrenze; liegt dort z. B.
+  `.claude/worktrees/` mit Repo-Kopien, kostet das Zeit, und eine parallele
+  Sitzung, die dort schreibt, macht den Lauf rot (fail-closed, F-843). Nach einem Serverneustart gibt es keinen laufenden
+  Lauf, dessen Momentaufnahme fehlen könnte, denn ein unterbrochener Lauf
+  wird nie fortgesetzt (ARCHITECTURE.md §4). In den Reallauf-Serien vom
+  28./29.09.2026 schrieb die CLI nichts unter `haushaltsbuch2/.claude`
+  (keine Datei jünger als 25.09.2026), eine Ausnahme ist nicht nötig.
 - WS-5b lesende Bash-Befehle: Im Rotfall-Lauf 9c lief `pwd && ls -la
   .claude/skills` ohne Allowlist-Eintrag. Die CLI lässt lesende Befehle
   offenbar zu. Der Skript-Hinweis im Bestätigungsblock sagt das seit dem

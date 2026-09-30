@@ -106,7 +106,7 @@
 
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
@@ -128,7 +128,7 @@ import { ermittleIstZustand } from '../invocation-policy/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../lineage-registry/index.ts'
 import { klassifiziereLauf } from '../result-evaluator/index.ts'
 import { registriereAuftrag } from '../auftrag/index.ts'
-import { fuehreAufgabeDurch, leseClaudeAenderungen } from './index.ts'
+import { erfasseClaudeOrdner, fuehreAufgabeDurch, leseClaudeAenderungen, vergleicheClaudeOrdner } from './index.ts'
 import type { AusfuehrungsEingaben } from './types.ts'
 import { raeumeVerzeichnis } from '../../scripts/_aufraeumen.ts'
 
@@ -1587,4 +1587,30 @@ test('F36 WS-5b leseClaudeAenderungen: neue, geänderte und umbenannte Pfade mit
   }
   const keinRepo = join(tmpdir(), `ws5b-kein-repo-${randomUUID()}`)
   assert.match(leseClaudeAenderungen(keinRepo)[0] ?? '', /Laufdiff nicht lesbar/)
+})
+
+test('F-832 erfasseClaudeOrdner/vergleicheClaudeOrdner: gitignorierte neue Datei → Treffer; vorhandene settings.local.json unverändert → keiner; geändert/gelöscht → Treffer; ohne Momentaufnahme nur git-Weg', () => {
+  const repo = mkdtempSync(join(tmpdir(), 'f832-'))
+  try {
+    assert.deepEqual([...(erfasseClaudeOrdner(repo) ?? new Map())], [], 'ohne .claude: leere Momentaufnahme')
+    const g = (...a: string[]) => execFileSync('git', a, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    g('init', '-q')
+    mkdirSync(join(repo, '.claude', 'skills', 'a'), { recursive: true })
+    writeFileSync(join(repo, '.claude', 'settings.local.json'), '{"permissions":{}}')
+    writeFileSync(join(repo, '.claude', 'skills', 'a', 'SKILL.md'), 'a')
+    writeFileSync(join(repo, '.gitignore'), '.claude/\n')
+    const vorher = erfasseClaudeOrdner(repo)
+    assert.ok(vorher !== null)
+    assert.deepEqual(vergleicheClaudeOrdner(vorher, repo), [], 'Gutfall: vorhandene settings.local.json unverändert')
+    mkdirSync(join(repo, '.claude', 'skills', 'neu'), { recursive: true })
+    writeFileSync(join(repo, '.claude', 'skills', 'neu', 'SKILL.md'), 'n')
+    assert.deepEqual(leseClaudeAenderungen(repo), [], 'git-Weg sieht die ignorierte Datei nicht')
+    assert.deepEqual(vergleicheClaudeOrdner(vorher, repo), ['.claude/skills/neu/SKILL.md'], 'Rotfall: gitignorierte neue Datei')
+    writeFileSync(join(repo, '.claude', 'settings.local.json'), '{"permissions":{"allow":["Bash"]}}')
+    rmSync(join(repo, '.claude', 'skills', 'a', 'SKILL.md'))
+    assert.deepEqual(vergleicheClaudeOrdner(vorher, repo), ['.claude/settings.local.json', '.claude/skills/a/SKILL.md', '.claude/skills/neu/SKILL.md'])
+    assert.deepEqual(vergleicheClaudeOrdner(null, repo), [], 'Grenze: ohne Momentaufnahme nur der git-Weg')
+  } finally {
+    raeumeVerzeichnis(repo)
+  }
 })
