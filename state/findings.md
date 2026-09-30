@@ -10800,13 +10800,14 @@ Maßnahme: Bei der nächsten Harness-Runde entscheiden, ob CLAUDE.md die Variant
 Status: offen.
 Feature/Run: Gedächtnislücken, 29.09.2026.
 
-**F-800** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-800** · `PROCESS_IMPROVEMENT` · P2 · erledigt (Scout F-800)
 Titel: Die Recherche enthält nur vereinzelt und ungeprüft Bausteine für Datenanalyse, die der Opportunity Scanner (F30) braucht.
 Beschreibung: In `docs/harness/kandidaten-2026-09-15.md` kommen Bausteine für Datenerhebung und -auswertung (Trends, strukturierte Extraktion, Statistik) nur vereinzelt und mit dem Urteil „Optional“/„Offen“ vor. Der Datennachtrag vom 29.09.2026 hat drei davon (ScrapeGraph AI, Google Trends MCP — inzwischen zurückgestellt —, Scientific-agent-skills) plus MixPost (Marketing) in die Stack-Liste übernommen; eine gezielte Suche fehlt.
 Fundstelle: `docs/harness/kandidaten-2026-09-15.md`; `docs/harness/stack-kandidaten.md` (Datennachtrag 29.09.2026).
 Auswirkung: Mittel — F30 startet ohne geprüfte Bausteine für seinen Kern.
 Maßnahme: Scout-Auftrag „Datenanalyse/Scraping“ vor F30; Ergebnisse in `docs/harness/stack-kandidaten.md`.
-Status: offen.
+Status: erledigt (Scout F-800).
+Vermerk (30.09.2026, Branch `docs/f800-scout`): Scout als Claude-Code-Recherche (ohne Installation, ohne Ausführung; siehe F-859). Acht neue Zeilen in der ersten Tabelle von `docs/harness/stack-kandidaten.md` (Einsatzgebiet „Datenerhebung K1–K5 (Opportunity Scanner)“, Quelle-Zeile „Scout F-800“): Trafilatura, Mozilla Readability (K1), Playwright als Bibliothek (K2), Cheerio (K3), feed-extractor, robots-parser (K4), DuckDB, Polars (K5). ScrapeGraph AI und Scientific-agent-skills nachgeprüft (Lizenzvolltext MIT; ScrapeGraph-Telemetrie standardmäßig an). Belege 1–7 je Kandidat und die Liste „Geprüft und verworfen“ (u. a. Crawl4AI wegen Zusatzklausel, Firecrawl AGPL/Credits, Stealth-Werkzeuge) im Abschnitt „Scout F-800 (30.09.2026)“. Offen dort: HTTP-Client mit Rate-Limit (K4) nicht geprüft. Den Opportunity Scanner selbst plant weiterhin die Workforce (E-F30-4).
 Feature/Run: F36 Datennachtrag, 29.09.2026.
 
 **F-801** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -11327,3 +11328,30 @@ Auswirkung: Niedrig — nur über einen API-Aufruf mit Präfix erreichbar, die O
 Maßnahme: In Projekt-Instanzen `POST /api/projekte` mit 404 ablehnen (Muster F-421) und im Gate belegen.
 Status: offen.
 Feature/Run: QA-Pass F-849, 30.09.2026.
+
+**F-857** · `BUG` · P3 · offen
+Titel: Der Pfad-Text der Projektkarte läuft mobil (400 px) über.
+Beschreibung: In der Projektübersicht (F43) läuft der Pfad-Text der Projektkarte bei 400 px Breite über den Kartenrand hinaus.
+Fundstelle: Render-Nachweis `features/F43/nachweis-f849/mobil/`.
+Auswirkung: Niedrig — Darstellungsfehler auf schmalen Bildschirmen, keine Funktionseinbuße.
+Maßnahme: Im Design-Schnitt F-725 mitnehmen.
+Status: offen.
+Feature/Run: Entdeckt: F43-Abnahme, 30.09.2026.
+
+**F-858** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: `state/uebergabe-aktuell.md` enthielt absolute Benutzerpfade (öffentliches Repo).
+Beschreibung: Die Übergabe nannte Worktree-Ordner mit vollständigem Benutzerpfad dieses Rechners; das Repo ist öffentlich.
+Fundstelle: `state/uebergabe-aktuell.md` (Abschnitt „Aufräumen“, Fassung vor 30.09.2026).
+Auswirkung: Niedrig — Offenlegung von Benutzername und Ordnerstruktur.
+Maßnahme: In der Übergabe nur relative Pfade verwenden.
+Status: erledigt (Scout F-800, 30.09.2026): Übergabe mit relativen Pfaden neu geschrieben.
+Feature/Run: Scout F-800, 30.09.2026.
+
+**F-859** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Der F27-Scout taugt nicht für eine Stack-Recherche mit Lizenz-Volltext.
+Beschreibung: Der Subagent `.claude/agents/scout.md` ist auf 3 WebFetch je Lauf, höchstens 5 Kandidaten und das Ziel `ressourcen.json` zugeschnitten. Eine Stack-Recherche mit Lizenzvolltext, Paketregister und Datenwirkung je Kandidat braucht deutlich mehr Abrufe und schreibt in `docs/harness/stack-kandidaten.md`. F-800 lief deshalb als Claude-Code-Recherche (38 WebFetch, 2 WebSearch).
+Fundstelle: `.claude/agents/scout.md`; `docs/harness/stack-kandidaten.md` (Abschnitt „Scout F-800 (30.09.2026)“).
+Auswirkung: Niedrig — der Scanner-Architekt (F30) hat für Stack-Recherchen keinen passenden Scout.
+Maßnahme: Vor F30 klären, ob und wie der Scanner-Architekt einen Scout nutzt.
+Status: offen.
+Feature/Run: Scout F-800, 30.09.2026.
