@@ -64,65 +64,107 @@
  * Punkt 4: "kein Umbau ihres Inhalts", nur die CSS-Fläche wandert automatisch
  * mit, weil sie an .card selbst hängt).
  *
+ * F44 WS-1a (Design-Schnitt F-725, Vorlage V10): Die Token-Namen bleiben die
+ * API aller Views; ihre Werte kommen jetzt aus der Designvorlage
+ * (docs/design/vorlage-v10/style.css). Das dunkle Theme ist Standard (:root),
+ * das helle steht als Token-Überschreibung in :root[data-theme='light'].
+ * Dazu kommen die 22 Vorlage-Tokens (--bg, --panel, --ink, --mint …) und die
+ * Schrift der Vorlage (Arial für Text, Georgia für Überschriften). Das Gate
+ * prüft zusätzlich den Kontrast der Textpaare in beiden Themes (WCAG). Neu
+ * ist außerdem der Bereich „Einstellungen“ (#view-einstellungen) am Ende.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/index.html
  */
 
 :root {
-  /* ─── Farbe — Shell (F20, F29 WS-1a dunkel invertiert; F29 WS-D2 auf Navyblau-Schwarz
-     umgefärbt statt Grauschwarz, Auftrag Punkt B — dieselben Tokennamen, nur die Werte drehen
-     leicht ins Blaue statt ins neutrale Grau; keine neue Bedeutung, kein neues Token nötig). ─── */
-  --color-bg: #060811;
-  --color-surface: #0d1324;
-  --color-text: #e8ecf8;
-  --color-text-muted: #98a2c4;
-  --color-text-subtle: #6d769a;
-  --color-border: #232d4d;
-  --color-border-subtle: #182036;
-  --color-surface-muted: #131b32;
-  --color-success-bg: #123322;
-  --color-success-text: #4ade80;
-  --color-danger-bg: #3a1414;
-  --color-danger-text: #ff6b6b;
-  --color-warning-bg: #3a2c0d;
-  --color-warning-text: #ffb84d;
-  --color-info-bg: #142a3a;
-  --color-info-text: #7cc3ff;
-  --color-bg-rgb: 6, 8, 17;
-  --color-surface-rgb: 13, 19, 36;
+  /* ─── Vorlage V10 — Farbwelt und Schrift (F44 WS-1a, F-725) ───
+     Die 22 Tokens der Designvorlage (docs/design/vorlage-v10/style.css, beide :root-Blöcke
+     dort) mit ihren Werten für das dunkle Theme, das Standard ist. Sie stehen neben den
+     bestehenden Namen unten, damit WS-1b ff. Vorlage-CSS direkt übernehmen kann. Das helle
+     Theme überschreibt sie im Block :root[data-theme='light'] weiter unten. */
+  --bg: #10212b;
+  --panel: #162832;
+  --panel-hover: #1d323c;
+  --ink: #f0ede4;
+  --muted: #9caeb5;
+  --line: #ffffff20;
+  --mint: #8bd8c1;
+  --amber: #dbc08c;
+  --red: #e6a29c;
+  --serif: Georgia, 'Times New Roman', serif;
+  --sans: Arial, Helvetica, sans-serif;
+  --radius: 12px;
+  --surface-solid: #162b35;
+  --surface-raised: #213944;
+  --soft: #ffffff05;
+  --track: #ffffff15;
+  --shadow: 0 22px 65px #0005;
+  --chat-user: #ffffff08;
+  --field: #0b1b2390;
+  --success-soft: #8bd8c110;
+  --map-stroke: #91aaa54d;
+  --light-art-filter: none;
+  /* Farbwerte, die die Vorlage direkt in Regeln schreibt (.button:hover, .note) — hier als
+     Token, weil außerhalb der Token-Blöcke kein Farbliteral stehen darf. */
+  --button-hover-bg: #ffffff0b;
+  --button-hover-line: #ffffff45;
+  --note-bg: #8bd8c107;
 
-  /* ─── Farbe — interaktiver Akzent, Cyan (F29 WS-1a, neu) ───
-     Seit F29 WS-D1 SEKUNDÄR: Status/Links/Fokusring. Aktive Navigation und
-     Primärschaltflächen sind seither --color-brand-* (unten) — Rot ist jetzt
-     der dominante Akzent, Cyan bleibt für alles, was ausdrücklich NICHT der
-     Hauptakzent sein soll (Auftrag: Fehler bleiben über Icon/Text
-     unterscheidbar, nicht mehr allein über eine für Rot reservierte Farbe). */
-  --color-accent: #22d3ee;
-  --color-accent-strong: #67e8f9;
-  --color-accent-rgb: 34, 211, 238;
-  --color-accent-text: #06252b;
+  /* ─── Farbe — Shell (F20; F44 WS-1a: Werte aus der Vorlage V10) ───
+     Die Namen bleiben die API aller Views, die Werte zeigen auf die Vorlage. Wo die Vorlage
+     kein Gegenstück hat, ist der Wert aus ihrer Palette abgeleitet und nicht neu gestaltet:
+     - --color-text-subtle ist --muted: Die Vorlage kennt nur zwei Textstufen (.subtle, .empty p),
+       und die dritte Stufe trägt auch kleinen Fließtext (.leer, .unbekannt), der 4,5:1 braucht;
+     - --color-*-bg mischen die Statusfarbe der Vorlage (mint, red, amber, für info die
+       Schriftfarbe) zu 8 Prozent (info: 6 Prozent) in --panel, statt eine neue Fläche einzuführen;
+     - Info-Text ist --muted, wie der neutrale Status der Vorlage (.status.neutral).
+     Weil die Namen auf Vorlage-Tokens verweisen, folgen sie dem hellen Theme von selbst;
+     nur die rgb-Tripel und die Literale brauchen einen eigenen Hellwert.
+     Kontrast in beiden Themes prüft scripts/check-f20-design-tokens.mjs (WCAG). */
+  --color-bg: var(--bg);
+  --color-surface: var(--panel);
+  --color-text: var(--ink);
+  --color-text-muted: var(--muted);
+  --color-text-subtle: var(--muted);
+  --color-border: var(--line);
+  --color-border-subtle: var(--track);
+  --color-surface-muted: var(--panel-hover);
+  --color-success-bg: color-mix(in srgb, var(--mint) 8%, var(--panel));
+  --color-success-text: var(--mint);
+  --color-danger-bg: color-mix(in srgb, var(--red) 8%, var(--panel));
+  --color-danger-text: var(--red);
+  --color-warning-bg: color-mix(in srgb, var(--amber) 8%, var(--panel));
+  --color-warning-text: var(--amber);
+  --color-info-bg: color-mix(in srgb, var(--ink) 6%, var(--panel));
+  --color-info-text: var(--muted);
+  --color-bg-rgb: 16, 33, 43;
+  --color-surface-rgb: 22, 40, 50;
 
-  /* ─── Farbe — Marken-Akzent, Rot (F29 WS-D1, neu) ───
-     Dominanter Rahmen-/Glow-/Aktivzustand-Akzent (Panelrahmen, Donuts,
-     Pipeline, aktive Navigation, .btn-primary) — löst dieselbe Rolle ab, die
-     vorher --color-accent (Cyan) trug. Bewusst eine eigene, hellere Rot-
-     Nuance statt --color-danger-* bzw. --persona-* wiederzuverwenden: beide
-     bleiben für ihre eigene, unveränderte Bedeutung reserviert (Fehler bzw.
-     Persona-Zustand), ein gemeinsames Token für drei Bedeutungen würde sie
-     wieder vermischen — genau das, was F29 WS-1a für Cyan/Danger bereits
-     einmal getrennt hat. */
-  --color-brand: #ff3b4a;
-  --color-brand-strong: #ff6b6b;
-  --color-brand-rgb: 255, 59, 74;
-  --color-brand-strong-rgb: 255, 107, 107;
-  --color-brand-text: #2a0508;
-  --color-brand-glow: rgba(var(--color-brand-rgb), 0.45);
-  --color-brand-glow-soft: rgba(var(--color-brand-rgb), 0.18);
+  /* ─── Farbe — interaktiver Akzent (F29 WS-1a; F44 WS-1a: Jade der Vorlage) ───
+     Status, Links, Fokusring. --color-accent-strong und --color-accent-text sind die
+     Hover- und Schriftfarbe der Primärschaltfläche der Vorlage (.primary). */
+  --color-accent: var(--mint);
+  --color-accent-strong: #ace7d5;
+  --color-accent-rgb: 139, 216, 193;
+  --color-accent-text: #102a28;
 
-  /* ─── Typografie (F29 WS-1a, neu) ───
-     Werte 1:1 aus den vorher verstreuten Literalen übernommen (keine
-     optische Änderung), nur benannt statt wiederholt. */
-  --font-family-base: system-ui, sans-serif;
+  /* ─── Farbe — Marken-Akzent (F29 WS-D1; F44 WS-1a: Jade der Vorlage) ───
+     Rahmen, Aktivzustände, .btn-primary. Die Vorlage kennt nur einen Akzent (Jade) und
+     keinen Glow; Rot ist dort ausschließlich Fehler. --color-brand-* zeigt deshalb auf
+     denselben Akzent wie --color-accent-*. Die Glow-Tokens tragen Jade mit der Deckkraft,
+     die die Vorlage selbst verwendet (--success-soft bzw. der Rahmen von .badge-count). */
+  --color-brand: var(--mint);
+  --color-brand-strong: var(--color-accent-strong);
+  --color-brand-rgb: var(--color-accent-rgb);
+  --color-brand-strong-rgb: 172, 231, 213;
+  --color-brand-text: var(--color-accent-text);
+  --color-brand-glow: color-mix(in srgb, var(--mint) 25%, transparent);
+  --color-brand-glow-soft: var(--success-soft);
+
+  /* ─── Typografie (F29 WS-1a; F44 WS-1a: Schrift der Vorlage) ───
+     Text in Arial/Helvetica, Überschriften in Georgia (Regel h1–h3 unten); keine Webfonts. */
+  --font-family-base: var(--sans);
   --font-family-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.8rem;
@@ -153,15 +195,17 @@
   --radius-lg: 0.5rem;
   --radius-pill: 0.75rem;
 
-  /* ─── Schatten (F29 WS-1a, neu) — nur für die neue dunkle Shell gebraucht, die alte helle Fläche kam ohne aus. ─── */
+  /* ─── Schatten (F29 WS-1a; F44 WS-1a: --shadow-md ist der Schatten schwebender Elemente der
+     Vorlage — Dropdown, Popover. Flächen (.card) tragen wie .panel der Vorlage keinen Schwebeschatten,
+     sondern --shadow-sm.) ─── */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-md: var(--shadow);
 
   /* ─── Motion-Grundwerte (F29 WS-1a, neu) ───
      Gelten für NEU gebaute Shell-Elemente (Nav, Chat-Umschalter). Die
      Persona-Timings unten (F28) bleiben bewusst unangetastet — eigene,
      visuell kalibrierte Werte, kein F29-Eingriff. --motion-awakening
-     dokumentiert lediglich denselben Wert, den persona.js/views/start.js
+     dokumentiert lediglich denselben Wert, den persona.js und views/start.js
      bereits als JS-Konstante AWAKENING_DAUER_MS führen (Kommentare dort). */
   --motion-fast: 150ms;
   --motion-base: 200ms;
@@ -181,7 +225,8 @@
      hängt sie klein (2,5rem) in #shell-kopf, WS-2 überschreibt dieselbe Variable lokal, wenn
      dasselbe Modul groß in #view-chat hängt (kein zweites Modul, keine zweite Größenlogik).
      F29 WS-1a: die Shell drumherum ist jetzt selbst dunkel — die Persona bleibt unverändert,
-     "dunkle Insel" ist kein Gegensatz mehr, nur die Farbwelt drumherum hat sich angeglichen. */
+     "dunkle Insel" ist kein Gegensatz mehr, nur die Farbwelt drumherum hat sich angeglichen.
+     F44 WS-1a: Werte unverändert — das neue Persona-Bild samt Farben kalibriert WS-1b. */
   --persona-groesse: 2.5rem;
   --persona-grund: #0c0c11;
   --persona-iris-ruhig: #b3261e;
@@ -195,6 +240,46 @@
      zwei Werten, statt von Hand vorab ausgerechnete Prozentzahlen zu pflegen. */
   --persona-badge-zoom: 2.2;
   --persona-badge-anker-y: 40%;
+}
+
+/* ─── Helles Theme (F44 WS-1a, Vorlage V10 Block [data-theme=light]) ───
+   Werte 1:1 aus dem Hell-Block der Vorlage; nur die Selektorform ist an das Token-Gate
+   angepasst (:root[data-theme='light'] statt [data-theme=light]). Gesetzt wird das Attribut
+   vom Inline-Skript in index.html (vor dem ersten Rendern) und von theme.js. Dazu kommen
+   die rgb-Tripel und Literale der bestehenden Namen, die nicht auf ein Vorlage-Token zeigen:
+   --color-accent-strong und --color-accent-text sind Hover- und Schriftfarbe der hellen
+   Primärschaltfläche der Vorlage, --shadow-sm nimmt die Schattenfarbe der hellen Vorlage. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f1e9;
+  --panel: #faf9f5;
+  --panel-hover: #e9eee8;
+  --ink: #20343a;
+  --muted: #54666b;
+  --line: #213f4229;
+  --mint: #247864;
+  --amber: #89621d;
+  --red: #a1403d;
+  --surface-solid: #faf9f5;
+  --surface-raised: #e9ece5;
+  --soft: #20343a04;
+  --track: #254c411c;
+  --shadow: 0 22px 65px #243c3029;
+  --chat-user: #2478640c;
+  --field: #ffffffa3;
+  --success-soft: #24786409;
+  --map-stroke: #365b5550;
+  --light-art-filter: contrast(1.2) saturate(0.55);
+  --button-hover-bg: #20343a09;
+  --button-hover-line: #20343a66;
+  --note-bg: var(--success-soft);
+  --color-bg-rgb: 243, 241, 233;
+  --color-surface-rgb: 250, 249, 245;
+  --color-accent-strong: #1b6654;
+  --color-accent-rgb: 36, 120, 100;
+  --color-accent-text: #fff;
+  --color-brand-strong-rgb: 27, 102, 84;
+  --shadow-sm: 0 1px 2px #243c3029;
 }
 
 /* ─────────────────────────── Basis / Reset ─────────────────────────────
@@ -214,6 +299,13 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+/* F44 WS-1a: Überschriften in der Serifenschrift der Vorlage (Georgia, normales Gewicht).
+   Nur Schrift und Gewicht — Größen und Abstände bleiben Sache der jeweiligen View. */
+h1, h2, h3 {
+  font-family: var(--serif);
+  font-weight: 400;
 }
 
 button, input, select, textarea {
@@ -284,8 +376,15 @@ a:focus-visible,
   padding: 0 var(--space-2xl);
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  overflow: hidden;
+  /* F44 WS-1a: overflow sichtbar, damit das Dropdown der Nutzerkarte unter die Bannerkante reichen
+     kann (mit dem Eintrag „Einstellungen“ wurde der Bewegungs-Schalter sonst abgeschnitten, A11).
+     Das einzige Element, das über den Kopf hinausragt, ist das Persona-Bild; sein Zuschnitt oben
+     und unten sitzt jetzt am Öffner (.persona-oeffner, clip-path). Vorher: overflow: hidden. */
+  overflow: visible;
   isolation: isolate;
+  /* Mit overflow: visible ragt das Dropdown in den Körper hinein; ohne eigenen z-index zeichneten
+     später positionierte Elemente dort (Donut, Pipeline, Chat-Persona) über ihm (Code-Review WS-1a). */
+  z-index: 1;
 }
 
 /* Particle-Drift-Hintergrund (F29 WS-D1, particle-drift.js) — hinter und um
@@ -353,6 +452,10 @@ a:focus-visible,
   align-self: stretch;
   display: flex;
   align-items: center;
+  /* F44 WS-1a: schneidet das Persona-Bild oben und unten an der Bannerkante ab (der Öffner ist per
+     align-self: stretch genau so hoch wie #shell-kopf) — übernimmt den Zuschnitt, den bisher
+     overflow: hidden am Kopf leistete; seitlich bleibt das Bild frei wie bisher. */
+  clip-path: inset(0 -100vw);
 }
 
 /* F29 WS-D2 (Auftrag Punkt B): "GROSS und mittig, randlos, ohne Kreis... läuft per mask-image
@@ -475,6 +578,10 @@ a:focus-visible,
   top: calc(-1 * var(--space-sm));
   right: calc(-1 * var(--space-sm));
   z-index: 2;
+  /* F44 WS-1a: Der Chip ist reine Anzeige (kein Handler, kein Tooltip). Mit der Schrift der
+     Vorlage wurde er 1 px höher und überdeckte die Mitte der Nutzerkarte, ein Klick dort traf den
+     Chip statt des Öffners (Render-Nachweis, 30.09.2026). Klicks gehen deshalb durch ihn hindurch. */
+  pointer-events: none;
 }
 
 .nutzerkarte-status-chip-host .persona-text-status {
@@ -985,7 +1092,7 @@ a:focus-visible,
   box-sizing: border-box;
   max-width: 100%;
   width: 100%;
-  box-shadow: 0 0 0 1px var(--color-brand-glow-soft) inset, var(--shadow-md);
+  box-shadow: 0 0 0 1px var(--color-brand-glow-soft) inset, var(--shadow-sm);
 }
 
 .card-kopf {
@@ -1648,8 +1755,11 @@ th {
 
 /* F36 WS-4 (AK8): lange MCP-Werkzeugnamen (mcp__server__werkzeug) und der Arbeitsverzeichnis-Pfad
    (ohne Leerzeichen) dürfen die Kopfdaten-Tabelle der Laufakte auf schmalen Bildschirmen nicht
-   über den Kartenrand treiben — sonst wird auch die neue Beobachtungszeile abgeschnitten. */
-#lauf-detail .lauf-kopfdaten:has(.lauf-beobachtung) td {
+   über den Kartenrand treiben — sonst wird auch die neue Beobachtungszeile abgeschnitten.
+   F44 WS-1a: gilt jetzt für alle Kopfdaten-Tabellen (vorher nur #lauf-detail mit Beobachtung) —
+   mit der Schrift der Vorlage (Arial, etwas breiter als system-ui) trieben lange Werte ohne
+   Leerzeichen die Tabellen der Laufkarten bei 390 px um 8 px über den Viewport (Render-Nachweis). */
+.lauf-kopfdaten td {
   overflow-wrap: anywhere;
 }
 
@@ -1961,6 +2071,13 @@ th {
 
 .verbrauch-karte h4 {
   margin: var(--space-xl) 0 var(--space-sm);
+}
+
+/* F44 WS-1a: Die Tabellen „Nach Rolle“/„Nach Modell“ sind bei schmaler Fläche (390 px, 200 % Zoom)
+   breiter als die Karte und verbreiterten die ganze Seite (schon vor WS-1a um 31 px, mit Arial
+   um 39 px; Render-Nachweis). Sie scrollen jetzt innerhalb der Karte. */
+.verbrauch-karte {
+  overflow-x: auto;
 }
 
 .verbrauch-zeitraum-auswahl {
@@ -3052,4 +3169,245 @@ th {
 
 .empfehlung-installation-bestaetigung ul {
   margin: var(--space-md) 0;
+}
+
+/* ───────────────────────── Einstellungen (F44 WS-1a, Vorlage V10) ─────────────────────────
+   Regeln der Vorlage (page-heading, eyebrow, split, summary, theme-choices, button/primary,
+   check, note, section-label, rail-art) für die Seite #/einstellungen, auf
+   #view-einstellungen begrenzt, damit bestehende Views unberührt bleiben. Maße wie in der
+   Vorlage; Farben nur über Tokens. Kein display auf #view-einstellungen selbst — sonst
+   überschriebe es das hidden-Attribut des Routers. */
+#view-einstellungen {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+#view-einstellungen p,
+#view-einstellungen h1,
+#view-einstellungen h2,
+#view-einstellungen h3 {
+  margin-top: 0;
+}
+
+#view-einstellungen h1 {
+  font: 42px/1.15 var(--serif);
+  font-weight: 400;
+  margin-bottom: 14px;
+  letter-spacing: -0.8px;
+}
+
+#view-einstellungen h2 {
+  font: 28px/1.3 var(--serif);
+  font-weight: 400;
+  margin-bottom: 18px;
+}
+
+#view-einstellungen h3 {
+  font: 20px/1.25 var(--serif);
+  font-weight: 400;
+  margin-bottom: 10px;
+}
+
+#view-einstellungen .page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin: 14px 0 34px;
+}
+
+#view-einstellungen .eyebrow {
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Die Überschrift erhält beim Eintritt nur als Lesestartpunkt den Fokus (views/einstellungen.js);
+   sie ist nicht bedienbar und trägt deshalb keinen Fokusring (die Vorlage zeigt keinen). */
+#view-einstellungen h1:focus,
+#view-einstellungen h1:focus-visible {
+  outline: none;
+}
+
+#view-einstellungen .page-heading .eyebrow {
+  margin-bottom: 12px;
+}
+
+#view-einstellungen .description,
+#view-einstellungen .subtle {
+  color: var(--muted);
+}
+
+#view-einstellungen .page-heading .description {
+  max-width: 650px;
+  margin-bottom: 0;
+}
+
+#view-einstellungen .split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 285px;
+  gap: 36px;
+}
+
+#view-einstellungen .summary {
+  border-left: 1px solid var(--line);
+  padding-left: 28px;
+}
+
+#view-einstellungen .theme-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+#view-einstellungen .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  padding: 10px 17px;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+#view-einstellungen .button:hover {
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-line);
+}
+
+#view-einstellungen .button.primary {
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  border-color: var(--color-accent);
+}
+
+#view-einstellungen .button.primary:hover {
+  background: var(--color-accent-strong);
+  border-color: var(--color-accent-strong);
+}
+
+#view-einstellungen button:focus-visible,
+#view-einstellungen input:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 5px;
+}
+
+#view-einstellungen .check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 15px 0;
+  font-size: 13px;
+}
+
+#view-einstellungen .check input {
+  accent-color: var(--mint);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin: 3px 0 0;
+}
+
+#view-einstellungen .note {
+  padding: 17px 20px;
+  border-left: 2px solid var(--mint);
+  background: var(--note-bg);
+  font-size: 12px;
+  color: var(--muted);
+  margin: 20px 0;
+}
+
+#view-einstellungen .section-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 28px 0 18px;
+}
+
+#view-einstellungen .section-label h2 {
+  margin: 0;
+  font-size: 24px;
+}
+
+#view-einstellungen .rail-art {
+  display: block;
+  width: 190px;
+  max-width: 100%;
+  height: 170px;
+  object-fit: contain;
+  opacity: 0.4;
+  margin-top: 25px;
+}
+
+:root[data-theme='light'] #view-einstellungen .rail-art {
+  filter: contrast(1.4) brightness(0.75);
+  opacity: 0.5;
+}
+
+@media (max-width: 1150px) {
+  #view-einstellungen .split {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 800px) {
+  #view-einstellungen .split {
+    grid-template-columns: 1fr;
+  }
+
+  #view-einstellungen .summary {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 24px 0 0;
+  }
+}
+
+@media (max-width: 700px) {
+  #view-einstellungen h1 {
+    font-size: 35px;
+  }
+
+  #view-einstellungen .page-heading {
+    margin: 5px 0 28px;
+    flex-wrap: wrap;
+    gap: 18px;
+  }
+
+  #view-einstellungen .page-heading .description {
+    font-size: 12px;
+  }
+
+  #view-einstellungen .rail-art {
+    display: none;
+  }
+
+  #view-einstellungen .button {
+    white-space: normal;
+  }
+}
+
+/* Eintrag „Einstellungen“ im Dropdown der Nutzerkarte (shell.js), über dem Bewegungs-Schalter. */
+.nutzerkarte-dropdown-eintrag {
+  display: block;
+  margin-bottom: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+}
+
+.nutzerkarte-dropdown-eintrag:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
 }

@@ -1,0 +1,125 @@
+{
+  "url": "http://127.0.0.1:4291/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Aktives Projekt",
+        "selector": "#projekt-kontext strong"
+      },
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Fokus-Karte",
+        "selector": ".bento-fokus"
+      },
+      {
+        "name": "Filter Typ",
+        "selector": "#workboard-filter-typ [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Roadmap-Karte",
+        "selector": ".bento-roadmap-karte"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": ".dashboard-kennzahlen"
+      },
+      {
+        "name": "Erste Auftragsoption",
+        "selector": "#start-auftrag option"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Workitem-Zeilen",
+        "selector": ".workboard-zeile"
+      },
+      {
+        "name": "Auftrag A (00a7e6bf)",
+        "selector": "#start-auftrag option[value=\"00a7e6bf-a744-4eca-be4a-c4290acf2662\"]"
+      },
+      {
+        "name": "Auftrag B (641dd347)",
+        "selector": "#start-auftrag option[value=\"641dd347-d11d-4ce6-b3d9-d9f1ae13608e\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Übersicht (A aktiv)"
+    },
+    {
+      "label": "A: #/workboard",
+      "navigiere": "#/workboard",
+      "screenshot": "f860-a-workboard.webp"
+    },
+    {
+      "label": "A: Filter Typ setzen",
+      "klick": "#workboard-filter-typ .filter-chip:nth-child(2)"
+    },
+    {
+      "label": "A: #/dashboard",
+      "navigiere": "#/dashboard"
+    },
+    {
+      "label": "A: #/projekt",
+      "navigiere": "#/projekt"
+    },
+    {
+      "label": "Zur Übersicht",
+      "navigiere": "#/projekte-uebersicht"
+    },
+    {
+      "label": "Projekt B öffnen",
+      "klick": ".projekt-waehlen[data-id=\"projekt-b\"]"
+    },
+    {
+      "label": "Zur Übersicht",
+      "navigiere": "#/projekte-uebersicht"
+    },
+    {
+      "label": "Projekt A wieder öffnen",
+      "klick": ".projekt-waehlen[data-id=\"ai-workforce\"]"
+    },
+    {
+      "label": "A: #/workboard (zurück, wartet auf Workitems von A)",
+      "navigiere": "#/workboard",
+      "warteAufSelector": {
+        "selector": ".workboard-zeile",
+        "timeoutMs": 60000
+      }
+    },
+    {
+      "label": "Zur Übersicht",
+      "navigiere": "#/projekte-uebersicht"
+    },
+    {
+      "label": "Projekt B öffnen (zweites Mal)",
+      "klick": ".projekt-waehlen[data-id=\"projekt-b\"]"
+    },
+    {
+      "label": "B: #/workboard",
+      "navigiere": "#/workboard",
+      "screenshot": "f860-b-workboard.webp"
+    },
+    {
+      "label": "B: #/dashboard",
+      "navigiere": "#/dashboard",
+      "screenshot": "f860-b-dashboard.webp"
+    },
+    {
+      "label": "B: #/projekt",
+      "navigiere": "#/projekt",
+      "screenshot": "f860-b-projekt.webp"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "url": "http://127.0.0.1:4291/#/einstellungen",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "localStorageSetzen": {
+    "leitstand-sprache": "tr"
+  },
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "theme-color",
+        "selector": "meta[name=\"theme-color\"]",
+        "attribut": "content"
+      },
+      {
+        "name": "Titel",
+        "selector": "#view-einstellungen h1"
+      },
+      {
+        "name": "Dropdown-Eintrag",
+        "selector": "#nutzerkarte-einstellungen"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/einstellungen (tr)",
+      "screenshot": "tr390-einstellungen.webp",
+      "screenshotVollseite": true
+    }
+  ]
+}

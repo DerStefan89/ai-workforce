@@ -49,14 +49,24 @@
  * dort). initShell() (Chat-Umschalter, Persona-Kachel-Klick) hat keine
  * solche Reihenfolge-Abhängigkeit, steht hier nur aus Lesbarkeit neben den
  * anderen init-Aufrufen.
+ *
+ * F44 WS-1a: initialisiereSprache() (i18n.js) und initialisiereTheme() (theme.js) laufen
+ * ALS ERSTES, vor jedem Rendern — jede View, die t() nutzt, soll von Anfang an die gespeicherte
+ * Sprache sehen, und theme-color soll zum Theme passen, das das Inline-Skript in index.html
+ * schon vor dem ersten Rendern gesetzt hat. Beide Module sind import-sicher (kein Zugriff auf
+ * DOM oder Storage beim Import); erst diese Aufrufe lesen localStorage.
+ * initEinstellungenView() registriert '#/einstellungen' wie jede andere View vor
+ * starteRouter().
  */
 
+import { initialisiereSprache } from './i18n.js'
 import { registriere, starteRouter } from './router.js'
 import { renderProjektKontext } from './projekt-kontext.js'
 import { initAttentionView } from './views/attention.js'
 import { initCapabilitiesView } from './views/capabilities.js'
 import { initChatView } from './views/chat.js'
 import { initDashboardView } from './views/dashboard.js'
+import { initEinstellungenView } from './views/einstellungen.js'
 import { initProjektView } from './views/projekt.js'
 import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
 import { initRunsView } from './views/runs.js'
@@ -65,8 +75,11 @@ import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
 import { initPersona } from './persona.js'
 import { initShell } from './shell.js'
+import { initialisiereTheme } from './theme.js'
 import { initZustandPoll } from './zustand.js'
 
+initialisiereSprache()
+initialisiereTheme()
 renderProjektKontext()
 
 initDashboardView()
@@ -78,6 +91,7 @@ initRunsView()
 initWorkflowsView()
 initCapabilitiesView()
 initAttentionView()
+initEinstellungenView()
 initStartView()
 initPersona()
 initShell()

@@ -1,0 +1,174 @@
+{
+  "url": "http://127.0.0.1:4291/#/einstellungen",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "localStorageSetzen": {
+    "leitstand-reduzierte-bewegung": "false"
+  },
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "theme-color",
+        "selector": "meta[name=\"theme-color\"]",
+        "attribut": "content"
+      },
+      {
+        "name": "reduzierte-bewegung",
+        "selector": "html",
+        "attribut": "data-reduzierte-bewegung"
+      },
+      {
+        "name": "Dunkel gedrückt",
+        "selector": "[data-theme-wahl=\"dark\"]",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Hell gedrückt",
+        "selector": "[data-theme-wahl=\"light\"]",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Schalter Nutzerkarte",
+        "selector": "#persona-bewegung-schalter"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dropdown offen",
+        "id": "nutzerkarte-dropdown"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Sanfte Bewegung an",
+        "selector": "#einstellungen-bewegung:checked"
+      }
+    ],
+    "getroffen": [
+      {
+        "name": "Eintrag Einstellungen klickbar",
+        "selector": "#nutzerkarte-einstellungen"
+      },
+      {
+        "name": "Schalter Nutzerkarte klickbar",
+        "selector": "#persona-bewegung-schalter"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Initial dunkel"
+    },
+    {
+      "label": "Klick „Hell“",
+      "klick": "[data-theme-wahl=\"light\"]",
+      "screenshot": "bedienung-hell.webp"
+    },
+    {
+      "label": "Neu laden (Theme bleibt)",
+      "reload": true
+    },
+    {
+      "label": "Klick „Dunkel“",
+      "klick": "[data-theme-wahl=\"dark\"]"
+    },
+    {
+      "label": "Sanfte Bewegung aus",
+      "klick": "#einstellungen-bewegung"
+    },
+    {
+      "label": "Sanfte Bewegung an",
+      "klick": "#einstellungen-bewegung"
+    },
+    {
+      "label": "Nutzerkarte öffnen",
+      "klick": "#nutzerkarte-oeffner",
+      "screenshot": "bedienung-dropdown.webp"
+    },
+    {
+      "label": "Schalter Nutzerkarte (reduzieren)",
+      "klick": "#persona-bewegung-schalter"
+    },
+    {
+      "label": "Schalter Nutzerkarte (einschalten)",
+      "klick": "#persona-bewegung-schalter"
+    },
+    {
+      "label": "Nutzerkarte schließen",
+      "klick": "#nutzerkarte-oeffner"
+    },
+    {
+      "label": "Nach #/dashboard",
+      "navigiere": "#/dashboard"
+    },
+    {
+      "label": "Dropdown → Einstellungen",
+      "klick": "#nutzerkarte-oeffner"
+    },
+    {
+      "label": "Klick „Einstellungen“ (Fokus auf h1)",
+      "klick": "#nutzerkarte-einstellungen"
+    },
+    {
+      "label": "Tastatur: Fokus „Hell“, Enter",
+      "fokus": "[data-theme-wahl=\"light\"]",
+      "taste": "Enter"
+    },
+    {
+      "label": "Tastatur: Fokus „Dunkel“, Leertaste",
+      "fokus": "[data-theme-wahl=\"dark\"]",
+      "taste": "Space"
+    },
+    {
+      "label": "Tastatur: Häkchen, Leertaste (aus)",
+      "fokus": "#einstellungen-bewegung",
+      "taste": "Space"
+    },
+    {
+      "label": "Tastatur: Häkchen, Leertaste (an)",
+      "fokus": "#einstellungen-bewegung",
+      "taste": "Space"
+    },
+    {
+      "label": "Sprache → English (lädt neu)",
+      "klick": "[data-sprache-wahl=\"en\"]",
+      "warteAufSelector": {
+        "selector": "html[lang=\"en\"] #view-einstellungen h1",
+        "timeoutMs": 30000
+      },
+      "screenshot": "bedienung-en.webp"
+    },
+    {
+      "label": "Sprache → Deutsch per Tastatur (lädt neu)",
+      "fokus": "[data-sprache-wahl=\"de\"]",
+      "taste": "Enter",
+      "warteAufSelector": {
+        "selector": "html[lang=\"de\"] #view-einstellungen h1",
+        "timeoutMs": 30000
+      }
+    }
+  ]
+}

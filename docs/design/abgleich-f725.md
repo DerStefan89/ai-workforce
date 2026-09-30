@@ -274,6 +274,8 @@ Endpunkte relativ zu `P` = `/api` bzw. `/api/projekte/<id>`.
 | **WS-7** Workforce | J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8** Chat | L (Dock und große Ansicht, alle heutigen Chat-Funktionen) | f34 (IDs, Modus-Buttons) |
 
+> **Vermerk WS-1a (Challenger, 30.09.2026):** WS-1 ist geteilt. **WS-1a „Fundament“**: i18n-Kern und -Gate, Tokens dunkel und hell (Kontrastprüfung im Token-Gate), Theme mit `theme-color` und Manifest, Einstellungen (`#/einstellungen` über das Dropdown der Nutzerkarte), zentraler Neuladen-Hook (F-860), `render-nachweis` (F-867). **WS-1b**: Sidebar V10, Kopf (Projektauswahl, „+“ mit F-862, Persona-Bild neu und kalibriert, 4 Statustexte, Sprach- und Theme-Schalter im Kopf), `#/start` mit Motion, Platzhalterseiten, Baustein „kommt“, Poll-Fehlerbanner, Zuletzt geöffnet, F-865. Das **Chat-Dock** (Blase) wandert aus WS-1 nach **WS-8**; bis dahin bleibt die Chatspalte und bekommt nur die neuen Tokens (f34-Risiko). Maßgeblich ist die Pakettabelle in `features/F44/feature.md`.
+
 **Regel für alle Pakete:** Gates prüfen Invarianten. Wo Literale (IDs, Texte) umziehen, zieht das Gate im selben PR mit und begründet den Umzug. Die geprüfte Invariante bleibt: 4 Attention-Quellen, Pflichtbegründungen, Escaping, ein Poll, keine Farbliterale.
 
 **Pro UI-Paket:**

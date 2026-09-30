@@ -53,7 +53,7 @@ import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRo
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
-import { holeAktivesProjekt } from '../projekt-kontext.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { filtereAttentionWorkflows } from '../attention-daten.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -458,6 +458,9 @@ function istNochOffenesPanel(workitem) {
  * @returns true, wenn zustand jetzt (wieder) das gültige, renderbare bearbeitungsZustand ist
  */
 function pruefeUndUebernimmZustand(workitem, zustand) {
+  // F44 WS-1a (F-860): ein Zustand aus einem anderen Projekt (Wechsel während der Requests) wird
+  // nie übernommen — auch nicht, wenn im neuen Projekt zufällig dieselbe Workitem-Id offen ist.
+  if (zustand.projektId !== holeAktivesProjekt().id) return false
   if (gewaehlteId !== workitem.id) return false
   if (bearbeitungsZustand === null) bearbeitungsZustand = zustand
   return bearbeitungsZustand === zustand
@@ -513,6 +516,9 @@ async function fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, erzeuge
     zustand.workflowId = `router-${auftragInhalt.auftragId}`
     zustand.phase = 'wird_geroutet'
     if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
+    // F44 WS-1a (F-860): nach einem Projektwechsel den Auftrag des alten Projekts nicht über den
+    // Präfix des neuen routen — die Kette endet hier; der Auftrag bleibt im alten Projekt liegen.
+    if (zustand.projektId !== holeAktivesProjekt().id) return
     await verarbeiteRoutenAntwort(await routeAuftrag(auftragInhalt.auftragId), workitem, zustand)
   } catch (fehler) {
     zustand.phase = 'fehler'
@@ -523,7 +529,7 @@ async function fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, erzeuge
 
 /** Neues, leeres Bearbeitungszustand-Objekt für workitem (Muster beider Einstiegsknöpfe). @param workitem - das geklickte Workitem */
 function baueLeerenBearbeitungsZustand(workitem) {
-  return { workitemId: workitem.id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
+  return { workitemId: workitem.id, projektId: holeAktivesProjekt().id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
 }
 
 /** Klick auf "Bearbeiten": legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. @param workitem - das geklickte Finding */
@@ -1309,6 +1315,32 @@ export function initWorkboardView() {
     void aktualisiereBearbeitungsZustand()
   })
 
+  // F44 WS-1a (F-860): beim Projektwechsel allen projektgebundenen Zustand verwerfen und neu laden.
+  // Filter gehen auf „Alle“ zurück (die Optionen stammen aus dem alten Projekt und werden aus der
+  // ersten ungefilterten Antwort des neuen abgeleitet). Poll-Aggregat, Donut und Roadmap sind bis
+  // zur Antwort leer („Kein aktiver Workflow“, „Keine Workitems geladen.“, „Lädt…“) statt mit
+  // Daten des alten Projekts gefüllt. Ein offenes Detail samt Click-to-Work-Zustand gehört zum
+  // alten Projekt und wird geschlossen — sonst fragte der Detail-Auffrischer dessen workflowId über
+  // den neuen Präfix ab (Fehlerklasse F26 im Chat). Späte Antworten des alten Projekts verwirft
+  // der Überholschutz (anfrageZaehler/roadmapAnfrageZaehler).
+  abonniereProjektWechsel(ladeNachProjektWechsel)
+
+  renderBento()
+  void ladeWorkitems()
+  void ladeRoadmap()
+}
+
+/** F44 WS-1a (F-860): Neuladen-Hook des Workboards beim Projektwechsel (siehe initWorkboardView). */
+function ladeNachProjektWechsel() {
+  for (const id of ['workboard-filter-typ', 'workboard-filter-status', 'workboard-filter-prioritaet']) fuelleChipGruppe(id, [])
+  optionenBefuellt = false
+  schliesseDetail()
+  bearbeitungsZustand = null
+  document.getElementById('workboard-bearbeitung').innerHTML = ''
+  letzterZustand = null
+  letzteWorkitems = []
+  alleWorkitemsUngefiltert = []
+  letzteRoadmap = null
   renderBento()
   void ladeWorkitems()
   void ladeRoadmap()

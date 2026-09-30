@@ -42,6 +42,9 @@
  *   ]
  * }
  *
+ * 'texte' (F44 WS-1a): [{ "name", "selector", "attribut"? }] — Textinhalt bzw. Attributwert je
+ * Selector (erste Übereinstimmung, auf 120 Zeichen gekürzt), z. B. html lang oder theme-color.
+ *
  * 'vorhanden' (F34 Fixpaket, F-624/F-625/F-626): prüft je Beobachtung nur, ob IRGENDEIN Element den
  * Selector matcht (document.querySelector !== null) — für dynamisch von renderEintrag/
  * renderAuftragBruecke erzeugte Klassen ohne stabile ID (anders als 'sichtbarkeit', das eine feste ID
@@ -51,6 +54,29 @@
  * wendbare Schritt-Arten (kein F34-Spezifikum) — ein Fixture-Server anstelle eines echten LLM-Laufs
  * hinter der Nachricht macht 'warteAufSelector' auch für einen sekundenschnellen Regressionsnachweis
  * praktikabel (features/F34/nachweis-fixpaket-ui/erzeuge-nachweis.mjs).
+ *
+ * F44 WS-1a (F-867, Theme/Bewegung/Zoom für den design-guardian): weitere Optionen auf oberster Ebene
+ * der Klickfolge, alle optional und ohne Wirkung, wenn sie fehlen:
+ *   "farbschema": "dark" | "light"   — setzt localStorage['leitstand-theme'] vor dem ersten
+ *                                       geprüften Laden (Inline-Skript in index.html liest es).
+ *   "reduzierteBewegung": true        — page.emulateMedia({ reducedMotion: 'reduce' }) vor der
+ *                                       ersten Navigation (prefers-reduced-motion: reduce).
+ *   "zoom": 2                         — Browser-Zoom nachgestellt: CSS-Viewport = viewport / zoom,
+ *                                       deviceScaleFactor = zoom; das Bild hat danach wieder die
+ *                                       Pixelbreite des Viewports (1440 bei 200 % → 720 CSS-px).
+ *   "localStorageSetzen": { "schlüssel": "wert" } — generisch, vor dem ersten geprüften Laden;
+ *                                       "farbschema" wird zuletzt angewendet und gewinnt.
+ *   "screenshotVollseite": true       — ganze Seitenhöhe statt Viewport (ohne screenshotAusschnitt);
+ *                                       je Schritt überschreibbar.
+ *   "screenshotQualitaet": 0.8        — nur für Dateinamen auf .webp: Qualität 0–1 (Standard 0.8).
+ * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
+ * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
+ * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
+ * und wartet wie nach einem Klick), "auswaehlen": { "selector", "wert" } (page.selectOption),
+ * "fokus": "<selector>" und "taste": "Enter" (Tastaturbedienung). Beobachtungen zusätzlich:
+ * "getroffen": [{ "name", "selector" }] (trifft ein Klick auf die Mitte das Element?),
+ * "ueberlauf": true (waagerechter Überlauf der Seite) und immer die Spalte "Seite geladen"
+ * (document.readyState === 'complete').
  *
  * Aufruf: node scripts/render-nachweis.mjs <klickfolge.json> <ausgabeVerzeichnis>
  * NICHT Teil von `npm run check` (braucht eine laufende Server-Instanz UND
@@ -85,6 +111,28 @@ async function leseZustand(page, beobachtete) {
     for (const eintrag of beobachtete.vorhanden ?? []) {
       zeile[eintrag.name] = document.querySelector(eintrag.selector) !== null
     }
+    // F44 WS-1a: mehrere Textbeobachtungen ('titel' kennt nur eine); Zeilenumbrüche/Pipes entschärft für die Tabelle.
+    for (const eintrag of beobachtete.texte ?? []) {
+      const element = document.querySelector(eintrag.selector)
+      zeile[eintrag.name] = element ? (eintrag.attribut ? String(element.getAttribute(eintrag.attribut)) : element.textContent).replace(/\s+/g, ' ').replace(/\|/g, '/').trim().slice(0, 120) : '(fehlt)'
+    }
+    // F44 WS-1a: 'getroffen' — trifft ein Klick auf die Mitte des Elements wirklich das Element (nicht
+    // abgeschnitten, nicht überdeckt)? Belegt Sichtbarkeit, die 'sichtbarkeit' (display) nicht zeigt.
+    for (const eintrag of beobachtete.getroffen ?? []) {
+      const element = document.querySelector(eintrag.selector)
+      if (!element) {
+        zeile[eintrag.name] = '(fehlt)'
+        continue
+      }
+      const r = element.getBoundingClientRect()
+      const oben = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      zeile[eintrag.name] = oben !== null && (oben === element || element.contains(oben))
+    }
+    // F44 WS-1a: 'ueberlauf' — läuft die Seite waagerecht über den Viewport hinaus?
+    if (beobachtete.ueberlauf) zeile['waagerechter Überlauf'] = document.documentElement.scrollWidth > window.innerWidth
+    // F44 WS-1a: immer — war die Seite beim Ablesen vollständig geladen ('load')? Ein tolerant
+    // übergangenes 'load' (siehe erzwingeNavigation) bleibt so im Protokoll sichtbar.
+    zeile['Seite geladen'] = document.readyState === 'complete'
     return zeile
   }, beobachtete)
 }
@@ -100,19 +148,61 @@ async function main() {
   const klickfolge = JSON.parse(readFileSync(klickfolgePfad, 'utf-8'))
   mkdirSync(ausgabeVerzeichnis, { recursive: true })
 
+  const zoom = klickfolge.zoom ?? 1
+  if (!(typeof zoom === 'number' && zoom > 0)) throw new Error(`zoom muss eine positive Zahl sein, erhalten: ${klickfolge.zoom}`)
+  if (klickfolge.farbschema !== undefined && !['dark', 'light'].includes(klickfolge.farbschema)) throw new Error(`farbschema muss dark oder light sein, erhalten: ${klickfolge.farbschema}`)
+  const zuSetzen = { ...(klickfolge.localStorageSetzen ?? {}) }
+  if (klickfolge.farbschema) zuSetzen['leitstand-theme'] = klickfolge.farbschema
+
   const browser = await chromium.launch()
   const page = await browser.newPage({
-    viewport: { width: klickfolge.viewport?.breite ?? 1280, height: klickfolge.viewport?.hoehe ?? 800 },
+    // F-867: Browser-Zoom = schmalerer CSS-Viewport bei höherer Pixeldichte (Muster docs/design/vorlage-v10/erzeuge-screens.mjs).
+    viewport: { width: Math.round((klickfolge.viewport?.breite ?? 1280) / zoom), height: Math.round((klickfolge.viewport?.hoehe ?? 800) / zoom) },
+    deviceScaleFactor: zoom,
   })
+  if (klickfolge.reduzierteBewegung === true) await page.emulateMedia({ reducedMotion: 'reduce' })
 
-  const knappesScreenshot = async (dateiname) => {
-    const ausschnitt = klickfolge.screenshotAusschnitt
-    if (!ausschnitt) {
-      await page.screenshot({ path: join(ausgabeVerzeichnis, dateiname) })
-      return
+  /**
+   * Kodiert ein PNG im Browser als WebP um (F44 WS-1a) — keine Bildbibliothek als Abhängigkeit.
+   * @param png - PNG-Buffer
+   * @returns WebP-Buffer
+   */
+  const alsWebp = async (png) => {
+    const qualitaet = klickfolge.screenshotQualitaet ?? 0.8
+    const hilfsseite = await browser.newPage()
+    try {
+      const daten = await hilfsseite.evaluate(
+        async ({ base64, qualitaet }) => {
+          const bild = await new Promise((ok, fehl) => {
+            const i = new Image()
+            i.onload = () => ok(i)
+            i.onerror = fehl
+            i.src = `data:image/png;base64,${base64}`
+          })
+          const leinwand = document.createElement('canvas')
+          leinwand.width = bild.naturalWidth
+          leinwand.height = bild.naturalHeight
+          leinwand.getContext('2d').drawImage(bild, 0, 0)
+          return leinwand.toDataURL('image/webp', qualitaet)
+        },
+        { base64: png.toString('base64'), qualitaet }
+      )
+      if (!daten.startsWith('data:image/webp')) throw new Error('Browser liefert kein WebP')
+      return Buffer.from(daten.split(',')[1], 'base64')
+    } finally {
+      await hilfsseite.close()
     }
-    const box = await page.locator(ausschnitt.selector).boundingBox()
-    await page.screenshot({ path: join(ausgabeVerzeichnis, dateiname), clip: { x: box.x, y: box.y, width: box.width, height: ausschnitt.hoehe ?? box.height } })
+  }
+
+  const knappesScreenshot = async (dateiname, vollseite) => {
+    const ausschnitt = klickfolge.screenshotAusschnitt
+    let optionen = { fullPage: vollseite === true }
+    if (ausschnitt) {
+      const box = await page.locator(ausschnitt.selector).boundingBox()
+      optionen = { clip: { x: box.x, y: box.y, width: box.width, height: ausschnitt.hoehe ?? box.height } }
+    }
+    const png = await page.screenshot({ ...optionen, type: 'png' })
+    writeFileSync(join(ausgabeVerzeichnis, dateiname), dateiname.endsWith('.webp') ? await alsWebp(png) : png)
   }
 
   // Verifikation dieses Skripts, 23.09.2026 (F34 Fixpaket): ein Wurf mitten in der Klickfolge (z. B.
@@ -132,16 +222,27 @@ async function main() {
   // Schritt jeder bisherigen Klickfolge — blieb dort folgenlos, weil ein frischer Playwright-Kontext
   // ohnehin leeres localStorage mitbringt (page.reload() selbst hängt bei Hash-URLs in dieser
   // Umgebung, s. u. — kein Ausweg dorthin).
+  // F44 WS-1a: goto wartet nur bis DOMContentLoaded; auf 'load' wird danach tolerant gewartet. Real
+  // beobachtet (30.09.2026): Der Leitstand beantwortet Anfragen seriell (GET /api/verbrauch ≈ 2,4 s);
+  // nach mehreren Läufen hintereinander stauten sich die Anfragen, ein Bild der Seite kam nicht
+  // rechtzeitig, und goto brach nach 30 s mit TimeoutError ab, obwohl die Seite längst bedienbar war.
   const erzwingeNavigation = async (url) => {
     await page.goto('about:blank')
-    await page.goto(url)
+    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.waitForLoadState('load', { timeout: 30000 }).catch(() => {
+      console.warn(`Hinweis: 'load' für ${url} nicht innerhalb von 30 s — Nachweis läuft weiter.`)
+    })
   }
   try {
     await erzwingeNavigation(klickfolge.url)
     for (const schluessel of klickfolge.localStorageEntfernen ?? []) {
       await page.evaluate((s) => localStorage.removeItem(s), schluessel)
     }
-    if ((klickfolge.localStorageEntfernen ?? []).length > 0) {
+    // F-867: Einträge setzen (farbschema zuletzt, s. o.) — gilt ab dem folgenden, echten Laden.
+    await page.evaluate((eintraege) => {
+      for (const [schluessel, wert] of Object.entries(eintraege)) localStorage.setItem(schluessel, String(wert))
+    }, zuSetzen)
+    if ((klickfolge.localStorageEntfernen ?? []).length > 0 || Object.keys(zuSetzen).length > 0) {
       await erzwingeNavigation(klickfolge.url)
     }
 
@@ -150,6 +251,11 @@ async function main() {
       // beides innerhalb DESSELBEN Schritts formulierbar).
       if (schritt.tippen) await page.fill(schritt.tippen.selector, schritt.tippen.text)
       if (schritt.klick) await page.click(schritt.klick)
+      if (schritt.navigiere) await page.evaluate((hash) => { location.hash = hash }, schritt.navigiere)
+      if (schritt.auswaehlen) await page.selectOption(schritt.auswaehlen.selector, schritt.auswaehlen.wert)
+      // F44 WS-1a: Tastaturbedienung — 'fokus' setzt den Fokus per Selector, 'taste' drückt danach eine Taste (page.keyboard.press).
+      if (schritt.fokus) await page.focus(schritt.fokus)
+      if (schritt.taste) await page.keyboard.press(schritt.taste)
       if (schritt.reload) await erzwingeNavigation(klickfolge.url) // page.reload() hängt bei Hash-URLs (#/chat) in dieser Umgebung — goto() über 'about:blank' erzwingt stattdessen real eine echte Navigation (löst F-628)
       if (schritt.warteAufSelector) {
         // Timeout-Überschreitung wird bewusst verschluckt (Muster networkidle-catch unten) — ein
@@ -170,7 +276,7 @@ async function main() {
       await page.waitForTimeout(300)
       const zustand = await leseZustand(page, klickfolge.beobachtete)
       protokoll.push({ label: schritt.label, ...zustand })
-      if (schritt.screenshot) await knappesScreenshot(schritt.screenshot)
+      if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite)
     }
   } finally {
     await browser.close()

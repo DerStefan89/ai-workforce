@@ -38,6 +38,7 @@ import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workit
 import { holeVerbrauch } from '../api.js'
 import { berechneVerbrauchsVon, VERBRAUCH_ZEITRAEUME } from '../verbrauch-zeitraum.js'
 import { escapeHtml } from '../render.js'
+import { abonniereProjektWechsel } from '../projekt-kontext.js'
 
 /** Letztes Zustands-Aggregat aus dem Poll, oder null vor dem ersten Tick. */
 let letzterZustand = null
@@ -155,17 +156,25 @@ function render() {
     ${statKarte('Läufe', zahl(letzterZustand.laeufe))}
     ${statKarte('Startfehler', zahl(letzterZustand.startfehler))}
     ${statKarte('Workflows', zahl(letzterZustand.workflows))}
-    ${statKarte('Offene P0/P1-Workitems', zahl(workitemsAntwort === null ? null : workitemsAntwort.workitems))}
+    ${statKarte('Offene P0/P1-Workitems', workitemsAntwort === null ? '<span class="leer">Lädt…</span>' : zahl(workitemsAntwort.workitems))}
     ${statKarte('Attention (Workflows/Läufe)', attentionZahl(workflowsAttention, laeufeAttention))}
   </div>
   <div class="dashboard-verbrauch">${verbrauchKarte()}</div>`
 }
 
-/** Lädt die offenen P0/P1-Workitems einmalig beim Bootstrap. */
+/** Überholschutz für ladeWorkitems (F44 WS-1a, F-860) — nach einem Projektwechsel darf eine späte Antwort des alten Projekts die des neuen nicht überschreiben (Muster verbrauchAnfrageZaehler). */
+let workitemsAnfrageZaehler = 0
+
+/** Lädt die offenen P0/P1-Workitems — beim Bootstrap und bei jedem Projektwechsel (F-860). */
 async function ladeWorkitems() {
+  const meineAnfrageNummer = ++workitemsAnfrageZaehler
   try {
-    workitemsAntwort = await holeOffeneP0P1Workitems()
+    const antwort = await holeOffeneP0P1Workitems()
+    if (meineAnfrageNummer !== workitemsAnfrageZaehler) return
+    workitemsAntwort = antwort
   } catch (fehler) {
+    if (meineAnfrageNummer !== workitemsAnfrageZaehler) return
+    console.error('GET /api/workitems (P0/P1) fehlgeschlagen:', fehler)
     workitemsAntwort = { workitems: null, befunde: [], fehler: [{ quelle: 'workitems', grund: fehler.message }] }
   }
   render()
@@ -216,6 +225,17 @@ export function initDashboardView() {
     render()
   })
   initVerbrauchBedienung()
+  // F44 WS-1a (F-860): Poll-Aggregat, P0/P1 und Verbrauch gehören zum Projekt — beim Wechsel
+  // verwerfen und neu laden. Bis das Aggregat des neuen Projekts da ist (projekt-kontext.js stößt
+  // den Abruf an), zeigt die Ansicht „Lädt…“ statt der Zahlen des alten Projekts; der Zeitraum bleibt.
+  abonniereProjektWechsel(() => {
+    letzterZustand = null
+    workitemsAntwort = null
+    verbrauchAntwort = null
+    document.getElementById('view-dashboard').innerHTML = '<p class="leer">Lädt…</p>'
+    void ladeWorkitems()
+    void ladeVerbrauch()
+  })
   void ladeWorkitems()
   void ladeVerbrauch()
 }

@@ -1,0 +1,42 @@
+[
+  {
+    "label": "#/einstellungen",
+    "Ansicht": "einstellungen",
+    "data-theme": "dark",
+    "lang": "de",
+    "theme-color": "#10212b",
+    "Überschrift": "Einstellungen",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "#/dashboard",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "theme-color": "#10212b",
+    "Überschrift": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "#/workboard",
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "theme-color": "#10212b",
+    "Überschrift": "Workitems",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "#/runs",
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "de",
+    "theme-color": "#10212b",
+    "Überschrift": "Startfehler",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

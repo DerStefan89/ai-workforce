@@ -48,9 +48,25 @@
  *   Stylesheets und an Wegwerf-Dateien in einem Temp-Ordner, nie unter
  *   public/.
  *
+ * F44 WS-1a (Tokens der Vorlage V10 dunkel und hell): Abschnitt (4) prüft den
+ * Kontrast nach WCAG 2.x in beiden Themes. Grundlage sind die Token-Blöcke von
+ * style.css: dunkel = :root (plus :root[data-theme='dark'], falls vorhanden), hell =
+ * :root überschrieben von :root[data-theme='light']. Aufgelöst werden var() (mit
+ * Rückfallwert), Hex mit und ohne Alpha, rgb()/rgba() und color-mix(in srgb, …)
+ * einschließlich transparent. Eine Fläche mit Alpha wird auf --color-bg gelegt, ein
+ * Text mit Alpha auf seine Fläche. Paare und Schwellen stehen in KONTRAST_PAARE:
+ * Text, Muted und Subtle auf bg/surface/surface-muted je 4,5:1, *-text auf
+ * *-bg, accent-text auf accent und brand-text auf brand je 4,5:1. Ein Paar, das die
+ * Vorlage selbst vorgibt und das durchfällt, wird nicht umgestaltet, sondern steht
+ * begründet in KONTRAST_AUSNAHMEN (mit Finding); eine Ausnahme, die inzwischen besteht,
+ * ist selbst ein Befund. Abschnitt (5) ist der Rot/Grün-Selbsttest dazu.
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Wichtig — bekannte Grenzen:
+ * - Kontrast (4): Nur die Paare in KONTRAST_PAARE, nicht jede Kombination, die eine
+ *   Regel im Stylesheet tatsächlich bildet; der Browser-Nachweis bleibt Sache von
+ *   render-nachweis und design-guardian. color-mix nur im Farbraum srgb.
  * - Farbnamen (`white`, `red` …) erkennt das Gate nicht.
  * - Ein Funktionsaufruf mit irgendeinem `var(` gilt als Token-Nutzung, auch
  *   wenn daneben feste Kanäle stehen (`rgb(255 0 0 / var(--a))`,
@@ -267,9 +283,257 @@ for (const pfad of sammleDateien(LEITSTAND_VERZEICHNIS, ['.js', '.html'])) {
   }
 }
 
+// ─── (4) Kontrast nach WCAG in beiden Themes (F44 WS-1a) ───────────────────────────
+// Paare: [Text-Token, Flächen-Token, Mindestkontrast]. Auch --color-text-subtle braucht 4,5:1 —
+// es färbt kleinen Fließtext (.leer, .unbekannt, Zeitstempel), nicht nur großen Text (WCAG 1.4.3).
+const KONTRAST_PAARE = [
+  ...['--color-text', '--color-text-muted', '--color-text-subtle'].flatMap((text) => ['--color-bg', '--color-surface', '--color-surface-muted'].map((flaeche) => [text, flaeche, 4.5])),
+  ...['success', 'danger', 'warning', 'info'].map((art) => [`--color-${art}-text`, `--color-${art}-bg`, 4.5]),
+  // Akzent als Link-/Textfarbe (a { color: var(--color-accent) }) und Statusfarben als Text auf
+  // gewöhnlichen Flächen (.fehler, .erfolg, Status-Punkte mit Text) — Code-Review WS-1a.
+  ...['--color-accent', '--color-success-text', '--color-danger-text', '--color-warning-text'].flatMap((text) => ['--color-bg', '--color-surface'].map((flaeche) => [text, flaeche, 4.5])),
+  ['--color-accent-text', '--color-accent', 4.5],
+  ['--color-brand-text', '--color-brand', 4.5],
+]
+
+// Begründete Ausnahmen: Paare, die die Vorlage selbst vorgibt und die durchfallen. Form:
+// { theme: 'dunkel'|'hell', text, flaeche, grund, finding }. Leer, solange alle Paare bestehen.
+const KONTRAST_AUSNAHMEN = []
+
+/**
+ * Liest die Custom Properties eines Token-Blocks.
+ * @param block - Text eines Token-Blocks inklusive Selektor und Klammern
+ * @returns Map Name → Rohwert
+ */
+function leseCustomProperties(block) {
+  const werte = new Map()
+  const inhalt = block.slice(block.indexOf('{') + 1, block.lastIndexOf('}'))
+  for (const deklaration of inhalt.split(';')) {
+    const treffer = deklaration.match(/^\s*(--[\w-]+)\s*:\s*([\s\S]*?)\s*$/)
+    if (treffer) werte.set(treffer[1], treffer[2])
+  }
+  return werte
+}
+
+/**
+ * Baut die Token-Tabellen beider Themes aus einem Stylesheet.
+ * @param rohtext - CSS-Quelltext (Token-Quelle)
+ * @returns { dunkel: Map, hell: Map }
+ */
+function tokenTabellen(rohtext) {
+  const quelltext = rohtext.replace(/\/\*[\s\S]*?\*\//g, ' ')
+  // Basis = nur :root; jedes Theme = Basis plus seine eigenen Überschreibungen. So erbt hell nie
+  // Werte eines :root[data-theme='dark']-Blocks, die im Browser dort nicht gelten.
+  const basis = new Map()
+  const dunkelUeberschreibungen = new Map()
+  const hellUeberschreibungen = new Map()
+  for (const block of quelltext.match(TOKEN_BLOCK_MUSTER) ?? []) {
+    const selektor = block.slice(0, block.indexOf('{'))
+    const ziel = /^:root\s*$/.test(selektor) ? basis : /dark/.test(selektor) ? dunkelUeberschreibungen : hellUeberschreibungen
+    for (const [n, w] of leseCustomProperties(block)) ziel.set(n, w)
+  }
+  return { dunkel: new Map([...basis, ...dunkelUeberschreibungen]), hell: new Map([...basis, ...hellUeberschreibungen]) }
+}
+
+/**
+ * Ersetzt alle var()-Verweise eines Ausdrucks rekursiv durch ihre Werte.
+ * @param ausdruck - CSS-Wert
+ * @param tabelle - Token-Tabelle des Themes
+ * @param tiefe - Rekursionsschutz
+ * @returns Ausdruck ohne var()
+ */
+function loeseVarAuf(ausdruck, tabelle, tiefe = 0) {
+  if (tiefe > 20) throw new Error(`var()-Kette zu tief: ${ausdruck}`)
+  const start = ausdruck.search(/var\(/)
+  if (start === -1) return ausdruck
+  let ebene = 0
+  let ende = start + 4
+  for (; ende < ausdruck.length; ende++) {
+    if (ausdruck[ende] === '(') ebene++
+    else if (ausdruck[ende] === ')') {
+      if (ebene === 0) break
+      ebene--
+    }
+  }
+  const innen = ausdruck.slice(start + 4, ende)
+  const komma = innen.indexOf(',')
+  const name = (komma === -1 ? innen : innen.slice(0, komma)).trim()
+  const rueckfall = komma === -1 ? undefined : innen.slice(komma + 1).trim()
+  const wert = tabelle.get(name) ?? rueckfall
+  if (wert === undefined) throw new Error(`Token nicht definiert: ${name}`)
+  return loeseVarAuf(ausdruck.slice(0, start) + wert + ausdruck.slice(ende + 1), tabelle, tiefe + 1)
+}
+
+/**
+ * Teilt eine Argumentliste an Kommas der obersten Ebene.
+ * @param text - Inhalt zwischen den Klammern einer Funktion
+ * @returns Argumente (getrimmt)
+ */
+function teileArgumente(text) {
+  const teile = []
+  let ebene = 0
+  let anfang = 0
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '(') ebene++
+    else if (text[i] === ')') ebene--
+    else if (text[i] === ',' && ebene === 0) {
+      teile.push(text.slice(anfang, i).trim())
+      anfang = i + 1
+    }
+  }
+  teile.push(text.slice(anfang).trim())
+  return teile
+}
+
+/**
+ * Wertet einen var()-freien Farbausdruck aus.
+ * @param ausdruck - Hex, rgb()/rgba(), transparent oder color-mix(in srgb, …)
+ * @returns { r, g, b, a } mit Kanälen 0–255 und Alpha 0–1
+ */
+function werteFarbeAus(ausdruck) {
+  const text = ausdruck.trim()
+  if (text === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }
+  const hex = text.match(/^#([0-9a-f]{3,8})$/i)
+  if (hex) {
+    let ziffern = hex[1]
+    if (ziffern.length === 3 || ziffern.length === 4) ziffern = [...ziffern].map((z) => z + z).join('')
+    if (ziffern.length !== 6 && ziffern.length !== 8) throw new Error(`Hex ungültig: ${text}`)
+    const kanal = (i) => Number.parseInt(ziffern.slice(i, i + 2), 16)
+    return { r: kanal(0), g: kanal(2), b: kanal(4), a: ziffern.length === 8 ? kanal(6) / 255 : 1 }
+  }
+  const rgb = text.match(/^rgba?\(([\s\S]*)\)$/i)
+  if (rgb) {
+    const zahlen = rgb[1].split(/[\s,/]+/).filter(Boolean).map(Number)
+    if (zahlen.length < 3 || zahlen.some(Number.isNaN)) throw new Error(`rgb ungültig: ${text}`)
+    return { r: zahlen[0], g: zahlen[1], b: zahlen[2], a: zahlen[3] ?? 1 }
+  }
+  const mix = text.match(/^color-mix\(([\s\S]*)\)$/i)
+  if (mix) {
+    const [raum, erster, zweiter] = teileArgumente(mix[1])
+    if (!/^in\s+srgb$/i.test(raum)) throw new Error(`color-mix nur in srgb unterstützt: ${text}`)
+    const teil = (arg) => {
+      const prozent = arg.match(/\s(\d+(?:\.\d+)?)%$/)
+      return { farbe: werteFarbeAus(prozent ? arg.slice(0, prozent.index) : arg), anteil: prozent ? Number(prozent[1]) / 100 : null }
+    }
+    const a = teil(erster)
+    const b = teil(zweiter)
+    const pa = a.anteil ?? (b.anteil === null ? 0.5 : 1 - b.anteil)
+    const pb = b.anteil ?? 1 - pa
+    const alpha = a.farbe.a * pa + b.farbe.a * pb
+    if (alpha === 0) return { r: 0, g: 0, b: 0, a: 0 }
+    // CSS color-mix interpoliert mit vormultipliziertem Alpha.
+    const kanal = (k) => (a.farbe[k] * a.farbe.a * pa + b.farbe[k] * b.farbe.a * pb) / alpha
+    return { r: kanal('r'), g: kanal('g'), b: kanal('b'), a: alpha }
+  }
+  throw new Error(`Farbausdruck nicht auswertbar: ${text}`)
+}
+
+/**
+ * Legt eine Farbe mit Alpha auf einen deckenden Grund.
+ * @param oben - Farbe mit Alpha
+ * @param grund - deckende Farbe
+ * @returns deckende Mischfarbe
+ */
+function legeAuf(oben, grund) {
+  const k = (c) => oben[c] * oben.a + grund[c] * (1 - oben.a)
+  return { r: k('r'), g: k('g'), b: k('b'), a: 1 }
+}
+
+/**
+ * Relative Leuchtdichte nach WCAG 2.x.
+ * @param farbe - deckende Farbe
+ * @returns Leuchtdichte 0–1
+ */
+function leuchtdichte(farbe) {
+  const lin = (c) => {
+    const s = c / 255
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * lin(farbe.r) + 0.7152 * lin(farbe.g) + 0.0722 * lin(farbe.b)
+}
+
+/**
+ * Prüft die Kontrastpaare beider Themes. Reine Funktion — auch der Selbsttest ruft sie auf.
+ * @param rohtext - CSS der Token-Quelle
+ * @param paare - [text, flaeche, mindestkontrast][]
+ * @param ausnahmen - begründete Ausnahmen (siehe KONTRAST_AUSNAHMEN)
+ * @returns { befunde: string[], zeilen: string[], ausnahmenGenutzt: string[] }
+ */
+function pruefeKontrast(rohtext, paare, ausnahmen) {
+  const befunde = []
+  const zeilen = []
+  const ausnahmenGenutzt = []
+  const tabellen = tokenTabellen(rohtext)
+  for (const [theme, tabelle] of [['dunkel', tabellen.dunkel], ['hell', tabellen.hell]]) {
+    const farbe = (name) => werteFarbeAus(loeseVarAuf(`var(${name})`, tabelle))
+    let grund
+    try {
+      grund = farbe('--color-bg')
+      if (grund.a < 1) befunde.push(`(4) ${theme}: --color-bg ist nicht deckend`)
+      grund = legeAuf(grund, { r: 255, g: 255, b: 255, a: 1 })
+    } catch (fehler) {
+      befunde.push(`(4) ${theme}: --color-bg nicht auswertbar (${fehler.message})`)
+      continue
+    }
+    for (const [text, flaeche, minimum] of paare) {
+      let verhaeltnis
+      try {
+        const hinten = legeAuf(farbe(flaeche), grund)
+        const vorne = legeAuf(farbe(text), hinten)
+        const [hell, dunkel] = [leuchtdichte(vorne), leuchtdichte(hinten)].sort((x, y) => y - x)
+        verhaeltnis = (hell + 0.05) / (dunkel + 0.05)
+      } catch (fehler) {
+        befunde.push(`(4) ${theme}: ${text} auf ${flaeche} nicht auswertbar (${fehler.message})`)
+        continue
+      }
+      const ausnahme = ausnahmen.find((a) => a.theme === theme && a.text === text && a.flaeche === flaeche)
+      const besteht = verhaeltnis >= minimum
+      zeilen.push(`${theme.padEnd(6)} ${text} auf ${flaeche}: ${verhaeltnis.toFixed(2)}:1 (min ${minimum})${besteht ? '' : ausnahme ? ' — Ausnahme' : ' — ZU NIEDRIG'}`)
+      if (!besteht && ausnahme) ausnahmenGenutzt.push(`${theme}: ${text} auf ${flaeche} ${verhaeltnis.toFixed(2)}:1 — ${ausnahme.grund} (${ausnahme.finding})`)
+      else if (!besteht) befunde.push(`(4) ${theme}: ${text} auf ${flaeche} hat ${verhaeltnis.toFixed(2)}:1, verlangt ${minimum}:1`)
+      else if (ausnahme) befunde.push(`(4) ${theme}: Ausnahme für ${text} auf ${flaeche} ist veraltet — das Paar besteht (${verhaeltnis.toFixed(2)}:1); Ausnahme streichen`)
+    }
+  }
+  return { befunde, zeilen, ausnahmenGenutzt }
+}
+
+{
+  const kontrast = pruefeKontrast(readFileSync(`${LEITSTAND_VERZEICHNIS}/${CSS_PFLICHT_ROOT}`, 'utf8'), KONTRAST_PAARE, KONTRAST_AUSNAHMEN)
+  console.log('Kontrast (WCAG) je Theme:')
+  for (const zeile of kontrast.zeilen) console.log(`  ${zeile}`)
+  for (const ausnahme of kontrast.ausnahmenGenutzt) console.log(`  Ausnahme: ${ausnahme}`)
+  befunde.push(...kontrast.befunde)
+}
+
+// ─── (5) Rot/Grün-Selbsttest zur Kontrastprüfung (F44 WS-1a) ───
+{
+  const paare = [['--t', '--f', 4.5]]
+  const faelle = [
+    { name: 'grün: Schwarz auf Weiß', css: ':root{--color-bg:#fff;--t:#000;--f:#fff}', rot: false },
+    { name: 'rot: Grau auf Grau', css: ':root{--color-bg:#fff;--t:#999;--f:#fff}', rot: true },
+    { name: 'rot nur im hellen Theme', css: ":root{--color-bg:#000;--t:#fff;--f:#000}:root[data-theme='light']{--color-bg:#fff;--f:#fff}", rot: true },
+    { name: 'grün: color-mix mit var() und Rückfall', css: ':root{--color-bg:#fff;--x:#000;--t:color-mix(in srgb, var(--x) 90%, var(--nichtda, #fff));--f:#fff}', rot: false },
+    { name: 'rot: Text mit Alpha verblasst', css: ':root{--color-bg:#fff;--t:#00000030;--f:#fff}', rot: true },
+    // Fläche mit Alpha liegt auf --color-bg: #00000010 auf Weiß bleibt fast weiß → Weiß darauf ist rot.
+    // Würde das Alpha ignoriert (Schwarz), wäre Weiß darauf grün — der Fall belegt das Übereinanderlegen.
+    { name: 'rot: Fläche mit Alpha wird auf --color-bg gelegt', css: ':root{--color-bg:#fff;--t:#fff;--f:#00000010}', rot: true },
+    { name: 'grün: color-mix mit zwei Prozentangaben', css: ':root{--color-bg:#fff;--t:color-mix(in srgb, #000 60%, #fff 40%);--f:#fff}', rot: false },
+    { name: 'grün: dunkler Block wirkt nicht ins helle Theme', css: ":root{--color-bg:#fff;--t:#000;--f:#fff}:root[data-theme='dark']{--color-bg:#000;--t:#fff;--f:#000}:root[data-theme='light']{--f:#fff}", rot: false },
+    { name: 'rot: dunkler Block mit schlechtem Paar', css: ":root{--color-bg:#fff;--t:#000;--f:#fff}:root[data-theme='dark']{--f:#000}", rot: true },
+    { name: 'rot: nicht auflösbares Token', css: ':root{--color-bg:#fff;--t:var(--fehlt);--f:#fff}', rot: true },
+  ]
+  for (const fall of faelle) {
+    const ergebnis = pruefeKontrast(fall.css, paare, [])
+    if ((ergebnis.befunde.length > 0) !== fall.rot) befunde.push(`(5) Selbsttest Kontrast „${fall.name}“: erwartet ${fall.rot ? 'rot' : 'grün'}, erhalten ${ergebnis.befunde.length > 0 ? ergebnis.befunde.join(' | ') : 'grün'}`)
+  }
+  const ausnahme = ['dunkel', 'hell'].map((theme) => ({ theme, text: '--t', flaeche: '--f', grund: 'Test', finding: 'F-0' }))
+  if (pruefeKontrast(':root{--color-bg:#fff;--t:#999;--f:#fff}', paare, ausnahme).befunde.length !== 0) befunde.push('(5) Selbsttest Kontrast: eine begründete Ausnahme muss das durchfallende Paar grün machen')
+  if (pruefeKontrast(':root{--color-bg:#fff;--t:#000;--f:#fff}', paare, ausnahme).befunde.length === 0) befunde.push('(5) Selbsttest Kontrast: eine Ausnahme für ein bestehendes Paar muss als veraltet rot werden')
+}
+
 console.log('')
 if (befunde.length === 0) {
-  console.log('✓ Keine Befunde (Selbsttest (3): Rot- und Grünfälle wie erwartet).\n')
+  console.log('✓ Keine Befunde (Selbsttests (3) und (5): Rot- und Grünfälle wie erwartet).\n')
   process.exitCode = 0
 } else {
   console.log(`✗ ${befunde.length} Befund(e):\n`)

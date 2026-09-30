@@ -12,7 +12,9 @@ Status: IN_ARBEIT
 Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 30.09.2026, Ergebnis `GO_STANDARD`; übernommen als
 `docs/design/abgleich-f725.md`. WS-0 „Ablage & Harness“ in Arbeit seit
-30.09.2026 (Branch `feat/f725-ws0-design-ablage`). WS-1 bis WS-8 offen.
+30.09.2026 (Branch `feat/f725-ws0-design-ablage`, gemergt #290). WS-1 ist geteilt
+(Challenger, 30.09.2026): WS-1a „Fundament“ in Arbeit seit 30.09.2026 (Branch
+`feat/f725-ws1a-fundament`); WS-1b und WS-2 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -62,14 +64,21 @@ abgehakten F-Zeilen des Pakets.
 | WS | Inhalt | Gates mit Anpassungsbedarf |
 |---|---|---|
 | **WS-0** Ablage & Harness (keine UI) | Feature-Akte; Vorlage unverändert unter `docs/design/vorlage-v10/`; Referenz-Screenshots; `docs/design/abgleich-f725.md`; `.claude/agents/design-guardian.md`; `impeccable` installierbar machen (`installation_vorlage`); Token-Gate: `:root[data-theme=…]` zulassen und alle `.css` unter `public/leitstand` scannen | f20-tokens (Erweiterung), check-docs (neuer Agent) |
-| **WS-1** Tokens, Shell, Einstieg | i18n-Kern und -Gate, Sprachwahl im Kopf, Baustein „kommt“ (E-F44-1), Tokens dunkel und hell, Persona-Bild neu kalibrieren (Zuschnitt, Orb, Avatar, Augen-Overlay), eine Live-Region, Typografie, Sidebar V10 auf bestehende Routen, Kopf (Projektauswahl, „+“, Persona mit 4 Status-Texten, Theme), `#/start` mit Motion-Nachweis und Wartezeile, Chat-Dock als Hülle, Einstellungen, Platzhalterseiten, zentraler Neuladen-Hook beim Projektwechsel (F-860), Poll-Fehlerbanner, Zuletzt geöffnet, Manifest, „+“ statt „kommt bald“ (F-862), Sidebar-Kontrast (F-865). Bestehende Views laufen schon im neuen Look (Tokens) | f20-tokens, f28-persona, f21-ws2 (Nav-Anker), f34 (`[hidden]`-Regeln), f20-zustand-poll, neues i18n-Gate, `render-nachweis` (Theme, reduzierte Bewegung, Zoom; F-867) |
+| **WS-1a** Fundament | i18n-Kern und -Gate, Tokens dunkel und hell samt Typografie und Kontrastprüfung, Theme (`data-theme`, kein Aufblitzen, `theme-color`, Manifest), Seite Einstellungen (`#/einstellungen`, erreichbar über das Dropdown der Nutzerkarte), zentraler Neuladen-Hook beim Projektwechsel (F-860), `render-nachweis` (Theme, reduzierte Bewegung, Zoom; F-867). Sidebar, Kopf, Persona, `#/start` und Chat-Layout bleiben unverändert; bestehende Views bekommen nur die neuen Token-Werte | f20-tokens (Kontrast), neues i18n-Gate |
+| **WS-1b** Shell, Einstieg | Sidebar V10 auf bestehende Routen, Kopf (Projektauswahl, „+“ mit F-862, Persona-Bild neu und kalibriert — Zuschnitt, Orb, Avatar, Augen-Overlay —, 4 Statustexte, Sprach- und Theme-Schalter im Kopf), eine Live-Region, `#/start` mit Motion-Nachweis und Wartezeile, Platzhalterseiten, Baustein „kommt“ (E-F44-1), Poll-Fehlerbanner, Zuletzt geöffnet, Sidebar-Kontrast (F-865) | f28-persona, f21-ws2 (Nav-Anker), f34 (`[hidden]`-Regeln), f20-zustand-poll |
 | **WS-2** Übersicht, Entscheidungen, Roadmap | Tabellenabschnitte B, C, D (mit F-854) | f21-ws2 (IDs `attention-*`) |
 | **WS-3** Entwicklung | Abschnitt E (Board, Listen, Detail, Bauen, Click-to-Work samt Git-Block) | f21-ws2 (IDs `workboard-*`, keine POST-Methode in workboard.js) |
 | **WS-4** Ablauf & Abnahme | Abschnitt F vollständig, einschließlich F3b (Ablehnen), F5, F6, F7, F8, F9 und F16; Invariante „Anzeige = Start“ | f15-oberflaeche (IDs und Texte), f42, `empfehlung-*.test.mjs`, f20-shell (CI) |
 | **WS-5** Ausführungen & Direktstart | Abschnitt G | f12 (Markup der Laufakte), `runs.test.mjs` |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
-| **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen) | f34 (IDs, Modus-Buttons) |
+| **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
+
+**Schnitt WS-1 (Challenger, 30.09.2026):** WS-1 ist in WS-1a „Fundament“ und WS-1b
+„Shell, Einstieg“ geteilt, damit jedes Teilpaket einen Baudurchgang plus höchstens
+eine Korrekturrunde bleibt. Das Chat-Dock (Blase) wandert nach WS-8; bis dahin bleibt
+die Chatspalte und bekommt nur die neuen Tokens (Risiko f34, `[hidden]`-Regeln).
+Vermerkt in `docs/design/abgleich-f725.md` §5.1.
 
 **Regel für alle Pakete:** Gates prüfen Invarianten. Wo Literale (IDs,
 Texte) umziehen, zieht das Gate im selben PR mit und begründet den Umzug.
@@ -104,8 +113,8 @@ Routen nur für neue Seiten (`docs/design/abgleich-f725.md` §4 Punkt 2 und
   werden nicht kopiert, nichts aus `docs/design/vorlage-v10/` wird
   ausgeliefert.
 - **Keine Fixtures**, keine Beispielzahlen, kein Badge „Designvorschau“.
-- **F-776 ist nicht Teil** (Katalogart „referenz“). Challenger-Empfehlung
-  vom 30.09.2026: V1-Backlog mit Auslöser; Bestätigung durch Stefan offen.
+- **F-776 ist nicht Teil** (Katalogart „referenz“): V1-Backlog mit Auslöser;
+  bestätigt (Stefan/Challenger, 30.09.2026).
 - Keine Übersetzung von Serverantworten, Projektinhalten, Nutzereingaben,
   IDs und Befehlen (E-F44-2).
 
@@ -182,12 +191,128 @@ ausgeschlossen (Persona bleibt die einzige).
 - **WS0-5** Nichts unter `public/` geändert, `ressourcen.json` unverändert,
   `npm run check` Exit 0. Beleg 30.09.2026: `npm run check` Exit 0
   (node:test 1080/1080), `npm run check:template` Exit 0.
-- **WS0-6** `impeccable` installierbar machen: **offen**, nicht erfüllt.
-  Stefan entscheidet den `skill_pfad` (mehrere Skill-Ordner im fremden
-  Repo); bis dahin bleibt der Punkt in WS-0 offen oder wird ausdrücklich
-  in ein Folgepaket verschoben.
+- **WS0-6** `impeccable` installierbar machen: **geschlossen, nicht
+  umgesetzt** (Challenger, 30.09.2026). impeccable wird nicht freigegeben
+  (rund 20 Skill-Kopien, Binär-Starter, Verweise auf gesperrte Agents,
+  F-815); Neubewertung im Feature „Harness im Lauf“, siehe F-870.
+
+## Stand WS-1a „Fundament“ (30.09.2026)
+Branch `feat/f725-ws1a-fundament` (Basis `3c779d8`), nicht committet.
+- **i18n-Kern** `public/leitstand/i18n.js` (t, formatiereDatum, formatiereZahl,
+  aktuelleSprache, initialisiereSprache, setzeSprache; import-sicher, in Node de;
+  Sprachwechsel speichert und lädt neu) mit Wörterbüchern `public/leitstand/i18n/{de,en,tr,ru}.js`
+  (26 Schlüssel, nur für WS-1a; en/tr/ru maschinell, F-866). Test `public/leitstand/i18n.test.mjs`.
+- **i18n-Gate** `scripts/check-f44-i18n.mjs` in `npm run check`: Schlüsselmengen,
+  Platzhalter, Pluralkategorien, keine leeren Werte, kein `#` vor Ziffer/Hex, literale
+  t()-Schlüssel in de; Rot-Selbsttest je Regel.
+- **Tokens** in `public/leitstand/style.css`: die 71 bisherigen Namen zeigen auf die Werte der
+  Vorlage (dunkel = `:root` der Vorlage), die 22 Vorlage-Tokens sind aufgenommen, hell steht in
+  `:root[data-theme='light']`. Abgeleitet (nicht in der Vorlage): `--color-text-subtle`
+  (Mischung muted/bg), `--color-*-bg` (Statusfarbe zu 8 %, info 6 % in panel), Info-Text =
+  muted; `--color-brand-*` zeigt auf Jade, weil die Vorlage nur einen Akzent und keinen Glow
+  kennt. `--color-text-subtle` zeigt auf `--muted` (die Vorlage kennt zwei Textstufen; die dritte
+  färbt auch kleinen Fließtext und braucht 4,5:1). Karten (`.card`) tragen wie `.panel` der
+  Vorlage keinen Schwebeschatten mehr (`--shadow-sm`), `--shadow-md` bleibt für Dropdowns.
+  Drei Farbliterale, die die Vorlage in Regeln schreibt (Button-Hover, Hinweis-Kasten),
+  stehen als Token. Schrift: Arial für Text, Georgia für h1–h3. `--persona-*` unverändert
+  (Persona-Bild und Farben kalibriert WS-1b).
+- **Kontrast** im Token-Gate (Abschnitt 4/5): alle Paare bestehen in beiden Themes mit 4,5:1,
+  auch `--color-text-subtle`; keine Ausnahme nötig (niedrigste Werte: hell success 4,55:1, hell
+  warning 4,69:1, hell muted/subtle auf surface-muted 5,12:1).
+- **Theme** `public/leitstand/theme.js`; Inline-Skript im `<head>` von `index.html` gegen
+  Aufblitzen (ohne Farbwerte), `theme-color` zur Laufzeit aus `--bg`, Manifest auf
+  `#10212b`.
+- **Einstellungen** `#/einstellungen` (`public/leitstand/views/einstellungen.js`), Aufbau nach
+  `d_einstellungen.png`: Dunkel/Hell, „Sanfte Bewegung“ (Zustand und Schreibpfad in
+  `persona.js`, beide Bedienstellen synchron), Hinweis-Kasten (Vorgabe des Auftrags; die
+  Fragezeichen-Hinweise, die er beschreibt, gibt es noch nicht — F-873), Sprache als
+  Schaltflächengruppe im Stil der Farbschema-Wahl (ein `<select>` lüde unter Windows bei jeder
+  Pfeiltaste neu), Fokus auf der Überschrift beim Eintritt, rechte Spalte mit
+  Illustration `public/leitstand/assets/gear.webp`. Erreichbar über den Eintrag
+  „Einstellungen“ im Dropdown der Nutzerkarte (`shell.js`). Prototyp-Inhalte der Vorlage (A8)
+  nicht übernommen.
+- **Bild:** Die Vorlage zeigt in den Einstellungen `gear.png` (nicht `armillary.png`).
+  Ausgeliefert wird eine auf 480 × 480 verkleinerte WebP-Fassung (Qualität 0,9; 87 KB statt
+  1,26 MB), weil ohne neue Abhängigkeit kein verlustfreier WebP-Encoder verfügbar war
+  (Chromium kodiert auch bei Qualität 1 verlustbehaftet); das deckt die größte Nutzung der
+  Vorlage (240 px) bei doppelter Pixeldichte. Abweichung von §4.5 (verlustfrei, pixelgleich),
+  vermerkt in F-869.
+- **Neuladen-Hook F-860:** Workboard, Dashboard und Direktstart abonnieren
+  `abonniereProjektWechsel`; Überholschutz je Lader; ein werfender Abonnent blockiert die
+  übrigen nicht. Beim Wechsel verwirft `zustand.js` einen laufenden Zustands-Abruf
+  (Kontext-Generation) und `projekt-kontext.js` stößt sofort einen neuen an; Dashboard und
+  Workboard verwerfen das alte Aggregat, das Workboard schließt ein offenes Detail samt
+  Click-to-Work-Zustand, der Direktstart verwirft eine vorbereitete Wiederaufnahme und zeigt bis
+  zur Antwort „Lädt…“ (Aufträge und Werkzeugsätze). Wiederaufnahme und Click-to-Work-Kette prüfen
+  nach jedem Warten, ob das Projekt noch dasselbe ist. Test `public/leitstand/projekt-wechsel.test.mjs`
+  (9 Fälle). Nicht erfasst: Workflow-Detail (F-874, WS-4); Wartezeit bis zu 5 s (F-875).
+- **render-nachweis F-867:** `farbschema`, `reduzierteBewegung`, `zoom`,
+  `localStorageSetzen`, `screenshotVollseite`, WebP-Ausgabe, Schritte `navigiere` und
+  `auswaehlen`, Beobachtung `texte`; `goto` wartet nur bis DOMContentLoaded, `load` tolerant.
+- **Prüfpässe:** Erster Pass design-guardian, code-reviewer und qa je „Nicht freigegeben“; alle
+  Befunde eingearbeitet. Zweiter Pass je „Freigegeben mit Hinweisen“; eingearbeitet: z-index am
+  Kopf (Dropdown über dem Körper), kein Fokusring auf der h1, Knöpfe brechen unter 700 px um,
+  Fokus bei erneutem Klick auf „Einstellungen“, sichtbarer Hinweis, wenn die Sprache nicht
+  gespeichert werden kann, Werkzeugsätze beim Wechsel/Fehler geleert, Projekt-Wächter nach
+  `await`, weitere Kontrastpaare (Akzent und Statusfarben auf bg/surface), drei zusätzliche Tests.
+- **Nebenbefunde behoben:**
+  - Mit der Arial-Schrift wurde der Persona-Status-Chip 1 px höher und fing Klicks auf die Mitte
+    der Nutzerkarte ab; der Chip ist jetzt klickdurchlässig (`pointer-events: none`, reine Anzeige).
+  - Mit dem Eintrag „Einstellungen“ wurde der Bewegungs-Schalter im Dropdown vom
+    `overflow: hidden` des Kopfs abgeschnitten. Der Kopf ist jetzt `overflow: visible`, den
+    Zuschnitt des Persona-Bilds oben und unten übernimmt `.persona-oeffner` (`clip-path`);
+    nachgemessen: kein anderes Element ragt über den Kopf.
+  - Mit Arial trieben die Kopfdaten-Tabellen der Laufkarten (`#/runs`, 390 px) und die
+    Verbrauchstabellen (Dashboard, 200 % Zoom; dort schon vor WS-1a) die Seite waagerecht auf;
+    `.lauf-kopfdaten td` bricht jetzt um, `.verbrauch-karte` scrollt in sich.
+- **Nachweise** `features/F44/nachweise/ws1a/` (Skript `erzeuge-nachweis.mjs`, je Ordner
+  `klickfolge.json`, `protokoll.md`, WebP): Routen einstellungen/dashboard/workboard/runs bei
+  1440 und 390 px, dunkel und hell, 200 % Zoom (je mit Messung des waagerechten Überlaufs);
+  Einstellungen auf ru und tr; Bedienung mit Maus und Tastatur und Klickbarkeit der
+  Dropdown-Einträge (1440 px auf `#/dashboard`, 390 px auf `#/workboard`); reduzierte Bewegung;
+  kaputte Speicherwerte; Projektwechsel F-860 (mit aktivem Filter vor dem Wechsel, Rückweg B → A).
+  Die Spalte „Seite geladen“ steht direkt nach einem Sprachwechsel auf false: abgelesen wird,
+  sobald die Überschrift in der neuen Sprache steht, das Bild lädt dann noch. Umgebungsnotiz: Der Leitstand beantwortete Anfragen zeitweise
+  so langsam, dass Abrufe mit 5-s-Grenze (Poll, Roadmap) scheiterten; einzelne Aufnahmen zeigen
+  deshalb „Roadmap konnte nicht geladen werden“ bzw. „Lädt…“. Dasselbe betraf einmal das Gate
+  `check-f20-zustand-poll` (d), das beim Wiederholen grün war.
+
+### Abnahme durch Stefan (Abweichungen von WS1a-8)
+- Kopf: `overflow: visible` statt `hidden`, `z-index: 1`, Zuschnitt des Persona-Bilds am Öffner
+  (`clip-path`), Status-Chip klickdurchlässig — nötig, damit Dropdown und Nutzerkarte bedienbar
+  bleiben.
+- `.card` ohne Schwebeschatten wirkt in allen Views (Vorlage `.panel`).
+- `.lauf-kopfdaten td` bricht um, `.verbrauch-karte` scrollt in sich (Überlauf durch die neue Schrift).
+- F-873: Hinweis-Kasten behalten oder ausblenden.
+
+### Akzeptanzkriterien WS-1a
+- **WS1a-1** i18n-Kern import-sicher (Node: de), Rückfall de → Schlüssel mit console.warn,
+  Plural über Intl.PluralRules (ru 0/1/2/5/11–14/21 getestet).
+- **WS1a-2** i18n-Gate in der Kette, je Regel ein Rotfall im Selbsttest.
+- **WS1a-3** Tokens dunkel und hell aus der Vorlage; Kontrast in beiden Themes nach WCAG im
+  Token-Gate (alle Textpaare 4,5:1), keine Ausnahme.
+- **WS1a-4** Theme ohne Aufblitzen, gespeichert, kaputter Wert → dunkel, `theme-color` aus dem
+  Token; Manifest auf `--bg` dunkel.
+- **WS1a-5** `#/einstellungen` nach `d_einstellungen.png`, alle Texte über t() in vier
+  Sprachen, Bewegungsschalter der Nutzerkarte bleibt.
+- **WS1a-6** F-860: Unit-Test und Render-Nachweis (A, dann B: Daten von B).
+- **WS1a-7** F-867: Theme, reduzierte Bewegung und Zoom im Klickfolge-Format.
+- **WS1a-8** Keine Änderung an Sidebar, Kopf, Persona, `#/start`, Chat-Layout, Server, API;
+  keine neue Abhängigkeit; keine zweite aria-live-Region.
 
 ## Prüfpunkte für Folgepakete
+Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:
+- Persona im hellen Theme: dunkler Fleck mit schwarzem Lid-Band auf hellem Kopf
+  (`bedienung/bedienung-hell.webp`) — mit dem neuen Persona-Bild kalibrieren.
+- Status-Chip verdeckt im Zustand error den Namen in der Nutzerkarte (`style.css`
+  `.nutzerkarte-status-chip-host`), besonders bei 200 % Zoom.
+- Bei 390 px steht über der Navigation ein leerer Streifen von etwa 200 px.
+- Theme, Sprache und Bewegung gleichen sich zwischen Tabs erst beim Neuladen an (kein
+  `storage`-Event); eine Änderung von `prefers-reduced-motion` zur Laufzeit erreicht das Häkchen
+  der Einstellungen erst beim nächsten Rendern — Verhalten festlegen.
+- Bei gesperrtem Storage wechselt das Theme sichtbar, bleibt aber nicht gespeichert, obwohl der
+  Text „wird gespeichert“ sagt.
+
 Aus dem QA-Pass WS-0 (30.09.2026); jedes UI-Paket prüft die zutreffenden:
 - Startfläche: Link und Motiv sind bei t = 0 unsichtbar, sollen aber sofort
   bedienbar sein — Tastaturfokus und Fokusreihenfolge festlegen (WS-1).
