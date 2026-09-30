@@ -106,6 +106,8 @@ export function leseErgebnisDatei(repoWurzel: string, relPfad: string, standVorh
  * stdin geschlossen) und liest danach ergebnis_datei. An der Zeitgrenze wird der Prozessbaum über
  * die PID beendet (ausgang 'ZEITGRENZE'); endet der Prozess auch NACHFRIST_MS danach nicht (ein
  * Unterprozess hält die Ausgabe offen), wird trotzdem aufgelöst und das gemeldet.
+ * Plattform: der Baum-Kill an der Zeitgrenze (taskkill /T) gibt es nur unter Windows; auf anderen
+ * Plattformen wird nur das direkte Kind beendet (SIGKILL), Enkel können weiterlaufen (F-852).
  * @param befehl - startbefehl (argv, [0] absoluter Programmpfad)
  * @param repoWurzel - Repo-Wurzel des Projekts
  * @param zeitgrenzeMs - startZeitgrenzeMs oder undefined (dann STANDARD_START_ZEITGRENZE_MS)

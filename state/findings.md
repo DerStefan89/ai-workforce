@@ -11254,13 +11254,14 @@ Maßnahme: Bei F30 entscheiden, ob der Aufruf einen gegenüber HEAD veränderten
 Status: offen.
 Feature/Run: F43, 30.09.2026.
 
-**F-849** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-849** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: `vorschau_url` darf auf den Port des Leitstands zeigen.
 Beschreibung: `validiereProjekteDaten` prüft nur die Form `http://localhost|127.0.0.1:<port>`. Zeigt `vorschau_url` auf den Leitstand selbst, meldet F43 „erreichbar“ und „Öffnen“ öffnet den Leitstand; über F36 (`{projekt_origins}`) bekäme ein Browser-MCP eines Laufs den Leitstand-Origin freigeschaltet und könnte dort bedienen, ohne dass der CSRF-Haken greift (gleicher Origin).
 Fundstelle: `src/projekte/index.ts` (`vorschauPortAus`); `scripts/leitstand-server.mjs` (`baueMcpPlatzhalter`, Bindeblock `PORT`).
 Auswirkung: Mittel für F36-Läufe mit Browser-MCP, gering für F43.
 Maßnahme: Beim Serverstart einen Registereintrag mit `vorschau_url`-Port = Leitstand-Port abweisen oder `{projekt_origins}` dafür leer lassen.
 Status: offen.
+Vermerk: Einstufung Challenger 30.09.2026: ein Lauf mit Browser-MCP könnte bei vorschau_url = Leitstand-Port den Leitstand bedienen (bis zur eigenen Freigabe); Fix als eigener Auftrag nach F43.
 Feature/Run: QA-Pass F43, 30.09.2026.
 
 **F-850** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -11280,3 +11281,12 @@ Auswirkung: Niedrig — schmales Zeitfenster, aber erzwungenes Beenden eines fre
 Maßnahme: Den Baum-Kill vor Nodes eigenem Kill auslösen (eigener Timer wie in `src/projekt-aufruf/`) oder den Aufruf im `'close'`-Pfad streichen, da er laut F-181 dort wirkungslos ist.
 Status: offen.
 Feature/Run: Abschluss-Review F43, 30.09.2026.
+
+**F-852** · `TECH_DEBT` · P3 · offen
+Titel: F43-Aufruf beendet an der Zeitgrenze den Prozessbaum nur unter Windows.
+Beschreibung: F43-Aufruf beendet an der Zeitgrenze den Prozessbaum nur unter Windows; unter Linux/macOS können Enkelprozesse weiterlaufen (`killeProzessbaumFallsWindows` ist dort ein No-op, beendet wird nur das direkte Kind per SIGKILL). Real beobachtet vom Challenger unter Linux/Node 22 (wie CI ubuntu-latest): Enkel überlebte, Aufruf endete erst nach der Nachfrist (6503 ms).
+Fundstelle: `src/projekt-aufruf/index.ts` (`fuehreAufrufDurch`); Gate `scripts/check-f43-projekt-aufrufen.mjs` (b)/(g).
+Auswirkung: Niedrig — der Leitstand läuft real nur unter Windows; die CI prüft die plattformneutralen Zusagen.
+Maßnahme: POSIX-Prozessgruppe (detached + kill(-pid)), sobald der Leitstand real auf Nicht-Windows läuft.
+Status: offen.
+Feature/Run: Challenger-Befund F43, 30.09.2026.

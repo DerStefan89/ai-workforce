@@ -180,9 +180,13 @@ im Projekt-Repo. Ein Kernartefakt bräuchte ein neues Schema
 - Die Nachfrist (5 s) läuft ab der Grenze, `taskkill` braucht davon ~2 s;
   unter hoher Last kann ein tatsächlich beendeter Baum als „Ausgabe blieb
   offen“ gemeldet werden.
-- Der Baum-Kill über `taskkill` ist Windows-spezifisch; auf anderen
-  Plattformen wird nur das direkte Kind beendet (Gate-Fall „Enkel erbt
-  stdout“ ist nur unter Windows kalibriert).
+- Baum-Kill an der Zeitgrenze nur unter Windows (`taskkill /T`); auf
+  anderen Plattformen wird nur das direkte Kind beendet, Enkelprozesse
+  können weiterlaufen (F-852). Das Gate sichert den Baum-Kill deshalb nur
+  unter win32 zu und gibt die Weiche sichtbar aus; sonst prüft es Ende
+  binnen Zeitgrenze + Nachfrist, direktes Kind beendet, Sperre gefallen,
+  Ausgang ZEITGRENZE, und räumt überlebende Enkel selbst ab (Gate (b)/(g),
+  Challenger-Befund CI ubuntu-latest, 30.09.2026).
 
 ## Nachweis
 - Gate `scripts/check-f43-projekt-aufrufen.mjs` (in `npm run check`),

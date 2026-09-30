@@ -17,6 +17,9 @@
  *       ohne startbefehl;
  *   (e) Vorschau: erreichbar, nicht erreichbar (geschlossener Port, keine Antwort binnen Zeitgrenze),
  *       nicht-lokale URL wird nicht angefragt;
+ *   (g) Plattformweiche: der Baum-Kill (Enkel beendet) wird nur unter win32 zugesichert, sonst Ende
+ *       binnen Zeitgrenze + Nachfrist, direktes Kind beendet, Sperre fällt; beide Zweige werden mit
+ *       injizierter Plattform geprüft, überlebende Testprozesse räumt das Gate selbst ab;
  *   (f) Regel 1j: die im Repo liegende Startvorlage geht weiter in die Prüfketten-Muster ein
  *       (Quelltext-Vertrag; der Verhaltensnachweis ist Fall (m) in check-fixpaket-f30-vorbedingungen.mjs).
  *
@@ -33,7 +36,7 @@ import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderAufrufBereich, renderAufrufErgebnis, renderVorschau } from '../public/leitstand/projekt-aufruf-anzeige.js'
-import { VORSCHAU_ZEITGRENZE_MS, fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
+import { NACHFRIST_MS, VORSCHAU_ZEITGRENZE_MS, fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
 import { MAX_START_ZEITGRENZE_MS, validiereStartvorlageDaten } from '../src/startvorlage/index.ts'
 import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
@@ -55,6 +58,40 @@ function pruefe(bedingung, ok, fehler) {
 const escapeText = (t) => t.replace(/[&<>"']/g, (z) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[z])
 
 const warte = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Plattformweiche für die Zeitgrenzen-Fälle (Challenger-Befund: unter Linux ist
+ * killeProzessbaumFallsWindows ein No-op, Enkel überleben). Reine Funktion mit injizierbarer
+ * Plattform, damit (g) den Nicht-win32-Zweig auch unter Windows prüft.
+ * @param d - { status, ergebnis, dauer, grenze, pids: [kind, enkel], lebend, aktivDanach }
+ * @param plattform - process.platform oder ein injizierter Wert
+ * @returns Liste der Verstöße (leer = erfüllt)
+ */
+function bewerteZeitgrenzenFall(d, plattform) {
+  const v = []
+  if (d.status !== 200 || d.ergebnis?.ausgang !== 'ZEITGRENZE' || d.ergebnis.exit_code !== null) v.push('kein ZEITGRENZE-Ergebnis mit exit_code null')
+  if (d.pids.length !== 2) v.push('PIDs von Kind und Enkel fehlen')
+  else if (d.lebend.includes(d.pids[0])) v.push('direktes Kind lebt noch')
+  if (d.aktivDanach !== false) v.push('Sperre (aktiv) ist nicht gefallen')
+  if (plattform === 'win32') {
+    if (d.lebend.length > 0) v.push(`Prozessbaum nicht beendet, überlebend ${JSON.stringify(d.lebend)}`)
+    if (d.dauer >= d.grenze + 4000) v.push(`Dauer ${d.dauer} ms ≥ Zeitgrenze + 4000`)
+  } else if (d.dauer >= d.grenze + NACHFRIST_MS + 1500) {
+    v.push(`Dauer ${d.dauer} ms ≥ Zeitgrenze + Nachfrist + 1500`)
+  }
+  return v
+}
+
+/** Beendet überlebende Testprozesse (Enkel auf Nicht-Windows), damit die CI keine Prozesse zurücklässt. @param pids - lebende PIDs */
+function raeumeProzesseAb(pids) {
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      // schon beendet
+    }
+  }
+}
 
 /** @param pid - Prozess-id @returns true, solange der Prozess lebt */
 function lebt(pid) {
@@ -203,46 +240,33 @@ try {
     pruefe(status === 200 && koerper.ergebnis?.ausgang === 'ROT' && koerper.ergebnis.exit_code === 3 && koerper.ergebnis.stderr_ende.includes('kaputt'), '(b) Exit ≠ 0 wird mit Code und stderr gemeldet', `(b) Exit 3: ${JSON.stringify(koerper)}`)
   }
 
-  // Zeitgrenze: Prozess samt Kindprozess beendet
-  {
+  // Zeitgrenze: Kind + Enkel (haengt) bzw. Enkel mit geerbter Ausgabe (erbt, Review P1). Der Baum-Kill
+  // (Enkel beendet) ist nur unter win32 zugesichert; sonst gelten die plattformneutralen Zusagen
+  // (bewerteZeitgrenzenFall). Überlebende Prozesse räumt das Gate selbst ab.
+  console.log(`– Plattformweiche: Baum-Kill nur win32 geprüft (hier: ${process.platform}${process.platform === 'win32' ? ', geprüft' : ' — geprüft werden Ende binnen Zeitgrenze + Nachfrist, direktes Kind beendet, Sperre fällt, ZEITGRENZE'})`)
+  for (const [id, text] of [
+    ['haengt', 'Zeitgrenze überschritten → ZEITGRENZE gemeldet, Prozess beendet'],
+    ['erbt', 'Enkel mit geerbter Ausgabe: Aufruf endet ohne Hänger'],
+  ]) {
     const vorher = Date.now()
-    const { status, koerper } = await rufeAuf('haengt')
+    const { status, koerper } = await rufeAuf(id)
     const dauer = Date.now() - vorher
     let pids = []
     try {
-      pids = JSON.parse(readFileSync(join(instanzen.haengt.repo, 'pids.json'), 'utf8'))
+      pids = JSON.parse(readFileSync(join(instanzen[id].repo, 'pids.json'), 'utf8'))
     } catch {
       // pids fehlen → Befund unten
     }
     await warte(1000)
-    const ueberlebende = pids.filter(lebt)
+    const get = await (await fetch(`${BASIS}/api/projekte/${id}/projekt-aufruf`)).json()
+    const daten = { status, ergebnis: koerper.ergebnis, dauer, grenze: 1500, pids, lebend: pids.filter(lebt), aktivDanach: get.aktiv }
+    const verstoesse = bewerteZeitgrenzenFall(daten, process.platform)
     pruefe(
-      status === 200 && koerper.ergebnis?.ausgang === 'ZEITGRENZE' && koerper.ergebnis.exit_code === null && dauer < 15000 && pids.length === 2 && ueberlebende.length === 0,
-      '(b) Zeitgrenze überschritten → ZEITGRENZE gemeldet, Prozess und Kindprozess beendet',
-      `(b) Zeitgrenze: ${status} ${JSON.stringify(koerper.ergebnis)} Dauer ${dauer} ms, pids ${JSON.stringify(pids)}, überlebend ${JSON.stringify(ueberlebende)}`
+      verstoesse.length === 0,
+      `(b) ${text}${process.platform === 'win32' ? ', Prozessbaum (Kind und Enkel) beendet' : ', direktes Kind beendet, Sperre gefallen'}`,
+      `(b) ${id}: ${verstoesse.join('; ')} — ${JSON.stringify({ ...daten, ergebnis: daten.ergebnis?.ausgang })}`
     )
-    for (const pid of ueberlebende) process.kill(pid)
-  }
-
-  // Enkel erbt stdout: Baum-Kill an der eigenen Zeitgrenze (Review P1)
-  {
-    const vorher = Date.now()
-    const { status, koerper } = await rufeAuf('erbt')
-    const dauer = Date.now() - vorher
-    let pids = []
-    try {
-      pids = JSON.parse(readFileSync(join(instanzen.erbt.repo, 'pids.json'), 'utf8'))
-    } catch {
-      // pids fehlen → Befund unten
-    }
-    await warte(1000)
-    const ueberlebende = pids.filter(lebt)
-    pruefe(
-      status === 200 && koerper.ergebnis?.ausgang === 'ZEITGRENZE' && pids.length === 2 && ueberlebende.length === 0 && dauer < 1500 + 4000,
-      '(b) Enkel mit geerbter Ausgabe: Baum an der Zeitgrenze beendet, Aufruf endet ohne Hänger',
-      `(b) Enkel erbt stdout: ${status} ${JSON.stringify(koerper.ergebnis)} Dauer ${dauer} ms, überlebend ${JSON.stringify(ueberlebende)}`
-    )
-    for (const pid of ueberlebende) process.kill(pid)
+    raeumeProzesseAb(daten.lebend)
   }
 
   // Prozessende bleibt ganz aus (z. B. Nicht-Node-Kind, dessen Enkel die Pipe hält): harte Nachfrist löst auf
@@ -436,6 +460,21 @@ try {
       '(f) Regel 1j überwacht die im Repo liegende Startvorlage (und damit startbefehl) — Verhalten: check-fixpaket-f30-vorbedingungen (m)',
       '(f) Die Startvorlage fehlt in den Prüfketten-Mustern von Regel 1j'
     )
+  }
+  // (g) Plattformweiche: beide Zweige mit injizierter Plattform, unabhängig vom Host-Betriebssystem
+  {
+    const basis = { status: 200, ergebnis: { ausgang: 'ZEITGRENZE', exit_code: null }, dauer: 1500 + NACHFRIST_MS + 200, grenze: 1500, pids: [11, 12], lebend: [12], aktivDanach: false }
+    const faelle = [
+      ['linux: Enkel lebt, Ende nach Nachfrist → erfüllt', bewerteZeitgrenzenFall(basis, 'linux').length === 0],
+      ['win32: derselbe Fall → Verstoß (Baum nicht beendet)', bewerteZeitgrenzenFall(basis, 'win32').length > 0],
+      ['linux: direktes Kind lebt → Verstoß', bewerteZeitgrenzenFall({ ...basis, lebend: [11, 12] }, 'linux').length > 0],
+      ['linux: Sperre nicht gefallen → Verstoß', bewerteZeitgrenzenFall({ ...basis, aktivDanach: true }, 'linux').length > 0],
+      ['linux: Dauer über Grenze + Nachfrist + 1500 → Verstoß', bewerteZeitgrenzenFall({ ...basis, dauer: 1500 + NACHFRIST_MS + 1500 }, 'darwin').length > 0],
+      ['linux: kein ZEITGRENZE → Verstoß', bewerteZeitgrenzenFall({ ...basis, ergebnis: { ausgang: 'GRUEN', exit_code: 0 } }, 'linux').length > 0],
+      ['win32: Baum beendet, schnell → erfüllt', bewerteZeitgrenzenFall({ ...basis, lebend: [], dauer: 3900 }, 'win32').length === 0],
+    ]
+    const falsch = faelle.filter(([, ok]) => !ok).map(([name]) => name)
+    pruefe(falsch.length === 0, '(g) Plattformweiche der Zeitgrenzen-Fälle: win32- und Nicht-win32-Zweig mit injizierter Plattform geprüft', `(g) Weiche falsch: ${falsch.join('; ')}`)
   }
 } finally {
   server.closeAllConnections()
