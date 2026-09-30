@@ -24,7 +24,7 @@
  * (j) extern agent → 400 „erst später“; (k) inhalt_hash nach der Installation geändert → nicht in
  *     „Wird genutzt“ und direkter Start abgelehnt; (l) verschachteltes .claude/skills bzw.
  *     node_modules/x/.claude/agents → kein Start (auch über die Freigabe);
- * (m) init mit fremdem Skill / Agent in tools / fremdem MCP, tool_use vor init, keine init-Zeile →
+ * (m) init mit fremdem Skill / Agent in tools / fremdem MCP / (F-831) unbekanntem Slash-Command, tool_use vor init, keine init-Zeile →
  *     Abbruch vor dem ersten tool_use bzw. Verstoß,
  *     FEHLGESCHLAGEN init_gate_verstoss (echter fuehreAufgabeDurch, gestubbter Starter);
  * (n) .claude-Änderung im Laufdiff → FEHLGESCHLAGEN claude_ordner_veraendert; seit F-832 auch eine
@@ -407,13 +407,13 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
       if (flag(tokens, '--settings') !== erwartetSettings) befunde.push(`(c) --settings: ${flag(tokens, '--settings')}`)
       if (tokens.join(' ').includes('enabledPlugins') || tokens.includes('--agents')) befunde.push('(c) enabledPlugins oder --agents in den Tokens')
       if (tokens.indexOf('--settings') !== tokens.indexOf('-p') - 2) befunde.push('(c) --settings steht nicht unmittelbar vor -p')
-      if (JSON.stringify(eingaben.ortBLauf) !== JSON.stringify({ skillNamen: ['gate-skill', 'pruef-skill'], mcpServer: ['gate-mcp'], projektWurzel: u.repoWurzel })) befunde.push(`(c) ortBLauf: ${JSON.stringify(eingaben.ortBLauf)}`)
+      if (JSON.stringify(eingaben.ortBLauf) !== JSON.stringify({ skillNamen: ['gate-skill', 'pruef-skill'], gesperrteNamen: ['design', 'doctor', 'anders-x', 'lessons', 'ordner-x', 'ponytail', 'sub:tief'], mcpServer: ['gate-mcp'], projektWurzel: u.repoWurzel })) befunde.push(`(c) ortBLauf: ${JSON.stringify(eingaben.ortBLauf)}`)
       // Skill + MCP (Reallauf-Kombination): Init-Gate-Menge = Schlüssel der --mcp-config; passende init besteht.
       const mcpSchluessel = Object.keys(JSON.parse(flag(tokens, '--mcp-config')).mcpServers ?? {})
       if (JSON.stringify(mcpSchluessel) !== JSON.stringify(eingaben.ortBLauf?.mcpServer)) befunde.push(`(c) ortBLauf.mcpServer ≠ --mcp-config-Schlüssel: ${JSON.stringify(mcpSchluessel)}`)
       if (!flag(tokens, '--allowedTools').split(',').includes('mcp__gate-mcp__lesen')) befunde.push('(c) MCP-Einzelname fehlt in --allowedTools')
-      const initZeile = { type: 'system', subtype: 'init', tools: [...tools, 'mcp__gate-mcp__lesen'], skills: ['gate-skill', 'pruef-skill'], mcp_servers: [{ name: 'gate-mcp', status: 'connected' }] }
-      const urteil = pruefeInitZeile(initZeile, { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer })
+      const initZeile = { type: 'system', subtype: 'init', tools: [...tools, 'mcp__gate-mcp__lesen'], skills: ['gate-skill', 'pruef-skill'], slash_commands: ['gate-skill', 'pruef-skill', 'clear', 'lessons'], mcp_servers: [{ name: 'gate-mcp', status: 'connected' }] }
+      const urteil = pruefeInitZeile(initZeile, { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen })
       if (urteil !== null) befunde.push(`(c) passende init-Zeile (Skill + MCP) besteht das Init-Gate nicht: ${urteil}`)
       if (!/Freigegebene Katalog-Fähigkeiten in diesem Lauf: gate-mcp \(Gate MCP\), gate-skill \(Gate gate-skill\), pruef-skill/.test(eingaben.auftragstext)) befunde.push('(c) Auftragszeile fehlt')
     }
@@ -549,7 +549,7 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
     if (!basis.ok) throw new Error(`direkter Start: ${basis.grund}`)
     // Startziel/Version/Kontext auf die F4-Fixture (sonst lehnt die Startfreigabe ab); alles andere unverändert.
     const eingaben = { ...basis.eingaben, werkzeugStartziel: [process.execPath], werkzeugVersionDeklariert: UEBRIG.werkzeug_version_deklariert, berechtigungskontext: UEBRIG.berechtigungskontext }
-    const initZeile = (felder) => ({ type: 'system', subtype: 'init', tools: ['Bash', 'Edit', 'Read', 'Skill', 'Write'], skills: ['gate-skill'], mcp_servers: [], agents: ['qa'], ...felder })
+    const initZeile = (felder) => ({ type: 'system', subtype: 'init', tools: ['Bash', 'Edit', 'Read', 'Skill', 'Write'], skills: ['gate-skill'], slash_commands: ['gate-skill', 'clear', 'ponytail'], mcp_servers: [], agents: ['qa'], ...felder })
     const toolUse = { type: 'assistant', message: { content: [{ type: 'tool_use', id: 't1', name: 'Skill', input: { skill: 'gate-skill' } }] }, parent_tool_use_id: null }
     const resultZeile = { type: 'result', subtype: 'success', is_error: false, result: 'ok', permission_denials: [] }
     /** Starter: init melden; bei gesetztem Abbruchsignal ABBRUCH vor dem tool_use, sonst tool_use (+ optional Schreiben unter .claude/) und result. */
@@ -573,12 +573,19 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
       return { ergebnis, protokoll, status: stelleLaufstatusFest(laufId, { basisVerzeichnis: u.basisVerzeichnis }) }
     }
     const vorM = befunde.length
-    for (const [text, init] of [
+    for (const [text, init, grundMuster] of [
       ['fremder Skill in init.skills', initZeile({ skills: ['gate-skill', 'ponytail'] })],
       ['Agent in init.tools', initZeile({ tools: ['Agent', 'Read', 'Skill'] })],
       ['fremder MCP in init.mcp_servers', initZeile({ mcp_servers: [{ name: 'fremd' }] })],
+      // F-831: ein Command aus Nutzer-, Plugin- oder neuer CLI-Quelle wäre per Skill-Werkzeug aufrufbar.
+      ['unbekannter Command in init.slash_commands', initZeile({ slash_commands: ['gate-skill', 'clear', 'neuer-command'] }), /init\.slash_commands enthält unbekannte Commands: neuer-command \(Referenzmenge nachmessen\)/],
     ]) {
       const { ergebnis, protokoll, status } = await lauf(init)
+      // Der Grund steht in der Terminal-Wirkungsmarke (daten.verstoss aus rohstrom.init_gate_verstoss).
+      if (grundMuster !== undefined) {
+        const marke = ergebnis.klassifikation?.wirkungsmarke?.pfad !== undefined ? readFileSync(ergebnis.klassifikation.wirkungsmarke.pfad, 'utf8') : ''
+        if (!grundMuster.test(marke)) befunde.push(`(m) ${text}: Grund ohne die unbekannten Namen in der Wirkungsmarke: ${marke.slice(0, 400)}`)
+      }
       if (protokoll.toolUse) befunde.push(`(m) ${text}: tool_use wurde trotzdem gesendet (kein Abbruch davor)`)
       if (ergebnis.ok !== true || ergebnis.klassifikation.ergebnis !== 'FEHLGESCHLAGEN' || ergebnis.klassifikation.grund !== 'init_gate_verstoss') befunde.push(`(m) ${text}: Klassifikation ${JSON.stringify(ergebnis.klassifikation ?? ergebnis)}`)
       if (status.status !== 'ABGESCHLOSSEN') befunde.push(`(m) ${text}: Laufstatus ${JSON.stringify(status)}`)
@@ -609,7 +616,7 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
     if (ergOhne.klassifikation?.ergebnis !== 'FEHLGESCHLAGEN' || ergOhne.klassifikation.grund !== 'init_gate_verstoss') befunde.push(`(m) ohne init-Zeile nicht rot: ${JSON.stringify(ergOhne.klassifikation)}`)
     const gruen = await lauf(initZeile({}))
     if (gruen.ergebnis.klassifikation?.ergebnis !== 'ERFOLGREICH' || !gruen.protokoll.toolUse) befunde.push(`(m) passende init-Zeile: ${JSON.stringify(gruen.ergebnis.klassifikation)}`)
-    if (befunde.length === vorM) console.log('✓ (m) Init-Gate: fremder Skill / Agent in tools / fremder MCP / tool_use vor init → Prozess vor dem ersten tool_use beendet, keine init-Zeile → Verstoß; jeweils FEHLGESCHLAGEN init_gate_verstoss (bestehender Abbruchweg); passende init-Zeile läuft durch.')
+    if (befunde.length === vorM) console.log('✓ (m) Init-Gate: fremder Skill / Agent in tools / fremder MCP / unbekannter Slash-Command (F-831, Grund im Verstoß) / tool_use vor init → Prozess vor dem ersten tool_use beendet, keine init-Zeile → Verstoß; jeweils FEHLGESCHLAGEN init_gate_verstoss (bestehender Abbruchweg); passende init-Zeile läuft durch.')
 
     const vorN = befunde.length
     // F-832: git-ignorierte Dateien unter .claude/ — der git-Weg sieht sie nicht, der Dateisystem-

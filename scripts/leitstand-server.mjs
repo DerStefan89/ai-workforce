@@ -2586,7 +2586,7 @@ export function loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auft
     // Zusammenführen statt ersetzen: ein künftig gesetztes disallowedTools bliebe erhalten (heute setzt es keine Ausführung).
     const bisher = typeof eingabenRoh.aufrufEingaben?.disallowedTools === 'string' && eingabenRoh.aufrufEingaben.disallowedTools.length > 0 ? [eingabenRoh.aufrufEingaben.disallowedTools] : []
     skillZusatz = { ortB: { addDirs: ortB.start.addDirs, settings: ortB.start.settings }, disallowedTools: [...bisher, ...ortB.start.disallowedTools].join(',') }
-    ortBLauf = { skillNamen: ortB.start.skillNamen, mcpServer: mcpEintraege.map((eintrag) => eintrag.id), projektWurzel: repoWurzel }
+    ortBLauf = { skillNamen: ortB.start.skillNamen, gesperrteNamen: ortB.start.gesperrteNamen, mcpServer: mcpEintraege.map((eintrag) => eintrag.id), projektWurzel: repoWurzel }
   }
 
   const anfragenMitInhalt = []

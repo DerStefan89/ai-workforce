@@ -54,6 +54,8 @@ export interface OrtBSkillStart {
   skillNamen: string[]
   /** Namen der Projekt-Skills (gesperrt), sortiert. */
   projektSkillNamen: string[]
+  /** Alle gesperrten Namen (Skill(…)/skillOverrides off: Rest-Skills + Projekt-Skills/-Commands) — F-831: im Init-Gate in init.slash_commands zulässig. */
+  gesperrteNamen: string[]
 }
 
 /** Pfad in einer Sperrregel: nur Zeichen, die die Regelsyntax von --disallowedTools nicht brechen (kein Leerzeichen, Komma, Klammer, *). */
@@ -248,5 +250,5 @@ export function baueOrtBSkillStart(skillEintraege: readonly Ressource[], projekt
   const gesperrt = [...EINGEBAUT_REST_SKILLS, ...projekt.namen.filter((n) => !EINGEBAUT_REST_SKILLS.includes(n))]
   const disallowedTools = [...addDirs.flatMap((d) => [`Write(${regelPfad(d)}/**)`, `Edit(${regelPfad(d)}/**)`]), ...CLAUDE_ORDNER_SPERREN, ...gesperrt.map((n) => `Skill(${n})`)]
   const settings = JSON.stringify({ disableBundledSkills: true, skillOverrides: Object.fromEntries(gesperrt.map((n) => [n, 'off'])) })
-  return { ok: true, start: { addDirs, disallowedTools, settings, skillNamen, projektSkillNamen: projekt.namen } }
+  return { ok: true, start: { addDirs, disallowedTools, settings, skillNamen, projektSkillNamen: projekt.namen, gesperrteNamen: gesperrt } }
 }
