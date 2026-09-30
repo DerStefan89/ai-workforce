@@ -93,9 +93,9 @@ result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
 Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
 feature.md`), F43 „Projekt aufrufen/anzeigen“ (E-F30-3, Variante A,
-vor dem Design) in Arbeit: `features/F43/feature.md`, Status `IN_ARBEIT`
-(WS-1 gebaut 30.09.2026, nicht committet) (Stand 22.09.2026; F36
-29.09.2026; F43 30.09.2026).
+vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
+am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
+behoben, PR folgt) (Stand 22.09.2026; F36 29.09.2026; F43 30.09.2026).
 
 ## Erledigt
 
@@ -572,6 +572,12 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   Offene Folge-Findings F-815/F-816, F-818, F-822/F-823, F-824 bis F-838.
   Nächster Schritt: Fixpaket (F-764 zuerst). Nach E-M5-5, parallel zu F35 ab F34 (disjunkte
   Dateien).
+- ✅ **F43** — Projekt aufrufen/anzeigen (E-F30-3, Variante A, vor dem
+  Design). Akte `features/F43/feature.md`, Status `ABGESCHLOSSEN`,
+  **Abnahme durch Stefan am 30.09.2026** (real im Leitstand an
+  haushaltsbuch2: Vorschau erreichbar/nicht erreichbar, Aufruf Exit 0).
+  Gemergt: WS-1 (#287). F-849 (vorschau_url auf dem Leitstand-Port)
+  behoben, PR folgt. Offene Folge-Findings F-845, F-847, F-848, F-850 bis F-854.
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).

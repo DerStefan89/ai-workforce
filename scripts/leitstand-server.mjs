@@ -437,7 +437,8 @@
  * ('<id>@<sha256 der kanonischen installation>'); der Start vergleicht id UND Hash. Die Projekt-URL
  * (vorschau_url des Registereintrags, Option vorschauUrl) wird in der Empfehlung angezeigt und ersetzt
  * beim Start {projekt_origins}; {ausgabe_ordner} wird <laufausgabeWurzel>/<laufId> (außerhalb des
- * Projekts). Ohne vorschau_url kommt kein Eintrag mit {projekt_origins} in den Lauf. POST
+ * Projekts). Ohne vorschau_url kommt kein Eintrag mit {projekt_origins} in den Lauf — ebenso nicht, wenn
+ * sie auf den gebundenen Leitstand-Port (req.socket.localPort) zeigt oder dieser unbekannt ist (F-849). POST
  * /api/ressourcen/<id>/installation/vorbereiten (npm view, nur lesend) und POST
  * /api/ressourcen/<id>/installation (src/ressourcen/installation.ts, Runner über
  * Option installationsRunner injizierbar). Die Anzeige der Empfehlung im 2-s-Poll wird zwischengespeichert
@@ -446,7 +447,8 @@
  * F43 (Projekt aufrufen/anzeigen, E-F30-3, Variante A): GET /api/projekt-aufruf (vorschau_url
  * erreichbar?, startbefehl, letzter Aufruf) und POST /api/projekt-aufruf (startbefehl einmal
  * ausführen, src/projekt-aufruf/index.ts). Ein laufender Aufruf sperrt Laufstarts dieser Instanz
- * (pruefeGlobaleLaufSperre); ein aktiver Lauf dieses Projekts sperrt den Aufruf (409).
+ * (pruefeGlobaleLaufSperre); ein aktiver Lauf dieses Projekts sperrt den Aufruf (409). Eine vorschau_url
+ * auf dem Leitstand-Port wird nicht angefragt (F-849, „nicht zulässig (Leitstand-Port)“).
  */
 
 import { createServer } from 'node:http'
@@ -506,7 +508,7 @@ import { istAusnahmePfad, pruefeAusfuehrungsVorbedingung } from '../src/ausfuehr
 import { baueAusfuehrungKorrekturInstruktion, baueReviewKorrekturInstruktion, findeRueckfrageZeile, leseSelbstblockadeAusAusfuehrungstext } from '../src/korrekturschleife/index.ts'
 import { baueAkPruefInstruktion, pruefeAkUrteile } from '../src/ak-pruefung/index.ts'
 import { pruefeAntwortenGegenFragen } from '../src/workflow-entscheidung/index.ts'
-import { ladeProjektregisterMitLokal, projektOriginsAus } from '../src/projekte/index.ts'
+import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre } from '../src/projekte/index.ts'
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
@@ -2150,12 +2152,15 @@ function leseVersionierteDateien(repoWurzel) {
  * @param startvorlagePfad - Startvorlage für loeseRessourcenAuf
  * @param ladeOptionen - basisVerzeichnis/schreiber für ladeArtefaktVersion
  * @param zusatz - F36 WS-5a: { vorschauUrl } des Projekts (vorschau_url, oder null/undefined) — ohne sie
- *   kommt kein Eintrag mit {projekt_origins} in „Wird genutzt“ (E-F36-7)
- * @returns { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl } (genutzteEintraege =
+ *   kommt kein Eintrag mit {projekt_origins} in „Wird genutzt“ (E-F36-7). F-849: { leitstandPort } =
+ *   gebundener Port (req.socket.localPort); zeigt vorschau_url darauf oder fehlt er, gilt die
+ *   Projekt-URL als nicht vorhanden, mit eigenem Grund (vorschauLeitstandSperre, fail-closed)
+ * @returns { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, projektUrlGrund? (F-849) } (genutzteEintraege =
  *   aufgelöste Einträge von wirdGenutzt in Anzeigereihenfolge) oder { ok: false, grund }
  */
 export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, zusatz = {}) {
-  const projektUrl = projektOriginsAus(zusatz.vorschauUrl) === null ? null : zusatz.vorschauUrl
+  const sperre = vorschauLeitstandSperre(zusatz.vorschauUrl, zusatz.leitstandPort)
+  const projektUrl = sperre !== null || projektOriginsAus(zusatz.vorschauUrl) === null ? null : zusatz.vorschauUrl
   try {
     const ressourcenRoh = leseRessourcenRoh(installWurzel)
     const verstoesse = validiereRessourcenDaten(ressourcenRoh)
@@ -2167,9 +2172,9 @@ export function ermittleAusfuehrungsEmpfehlung(auftragId, repoWurzel, installWur
     const pfade = leseVersionierteDateien(repoWurzel)
     if (pfade === null) hinweise.push(PFADE_NICHT_LESBAR)
     const aufgeloest = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
-    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] }, { projektUrlVorhanden: projektUrl !== null })
+    const empfehlung = baueEmpfehlung(aufgeloest, { task_typen: hatKlassifikation ? taskTypen : [], pfade: pfade ?? [] }, { projektUrlVorhanden: projektUrl !== null, ...(sperre !== null ? { projektUrlGrund: sperre } : {}) })
     const genutzteEintraege = empfehlung.wirdGenutzt.map((eintrag) => aufgeloest.find((r) => r.id === eintrag.id))
-    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl }
+    return { ok: true, empfehlung, hinweise, genutzteEintraege, projektUrl, ...(sperre !== null ? { projektUrlGrund: sperre } : {}) }
   } catch (fehler) {
     return { ok: false, grund: fehler.message }
   }
@@ -2189,7 +2194,7 @@ function empfehlungCacheSchluessel(auftragId, repoWurzel, installWurzel, startvo
   try {
     const katalog = statSync(join(installWurzel, 'ressourcen.json'))
     const head = execFileSync('git', ['--no-optional-locks', 'rev-parse', 'HEAD'], { cwd: repoWurzel, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 5000 }).trim()
-    return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, katalog.mtimeMs, katalog.size, head])
+    return JSON.stringify([auftragId, repoWurzel, installWurzel, startvorlagePfad, zusatz.vorschauUrl ?? null, zusatz.leitstandPort ?? null, katalog.mtimeMs, katalog.size, head])
   } catch {
     return null
   }
@@ -2259,7 +2264,7 @@ export function pruefeEmpfehlungIdsForm(wert) {
  * @param installWurzel - Installationswurzel
  * @param startvorlagePfad - Startvorlage
  * @param ladeOptionen - basisVerzeichnis/schreiber
- * @param zusatz - F36 WS-5a: { vorschauUrl } wie ermittleAusfuehrungsEmpfehlung
+ * @param zusatz - F36 WS-5a: { vorschauUrl, leitstandPort (F-849) } wie ermittleAusfuehrungsEmpfehlung
  * @returns { ok: true, mcpEintraege, skillEintraege (F36 WS-5b), zeile } oder { ok: false, grund }
  *
  * Seit F36 WS-5a (F-808) sind die ids die empfehlungIds '<id>@<sha256 der installation>' — ändert sich
@@ -2349,10 +2354,12 @@ export function istUnzulaessigerHost(req) {
  * @param vorschauUrl - vorschau_url des Projekts, oder null/undefined
  * @param laufausgabeWurzel - Wurzel der Laufausgaben (Default ~/.ai-workforce/laufausgabe)
  * @param laufId - laufId des Laufs
+ * @param leitstandPort - F-849: gebundener Port des Leitstands (req.socket.localPort); zeigt vorschau_url
+ *   darauf oder ist er unbekannt, bleibt {projekt_origins} unaufgelöst (vorschauLeitstandSperre, fail-closed)
  * @returns { projekt_origins?, ausgabe_ordner }
  */
-export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) {
-  const origins = projektOriginsAus(vorschauUrl)
+export function baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort) {
+  const origins = vorschauLeitstandSperre(vorschauUrl, leitstandPort) === null ? projektOriginsAus(vorschauUrl) : null
   return { ...(origins !== null ? { projekt_origins: origins } : {}), ausgabe_ordner: join(laufausgabeWurzel, laufId) }
 }
 
@@ -4800,9 +4807,11 @@ export function erzeugeRequestHandler(optionen = {}) {
    * @param angezeigteEmpfehlungIds - F36 WS-3: die am ZWINGEND-Start angezeigten wirdGenutzt-ids
    *   (nur POST .../freigabe reicht sie durch); undefined = nichts angezeigt, dann bekommt der Lauf
    *   keine Katalog-Fähigkeiten und der Auftragstext bleibt bitgenau (E-F36-4)
+   * @param leitstandPort - F-849: gebundener Port des Leitstands (req.socket.localPort der Freigabe);
+   *   nur mit angezeigten ids gebraucht, undefined = unbekannt (fail-closed für {projekt_origins})
    * @returns { ok: true, schrittId, laufId } oder { ok: false, art, grund }
    */
-  function starteWorkflowSchritt(workflowId, ausgang, angezeigteEmpfehlungIds = undefined) {
+  function starteWorkflowSchritt(workflowId, ausgang, angezeigteEmpfehlungIds = undefined, leitstandPort = undefined) {
     // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b)
     const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
 
@@ -5030,9 +5039,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // anderen Fall bleibt alles bitgenau wie bisher.
     let ausfuehrungsOptionen = {}
     if (angezeigteEmpfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(schritt.rolle, loeseWerkzeugsatzAuf(vorlage, schritt.werkzeugsatz)?.art)) {
-      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl })
+      const vorbereitet = bereiteEmpfehlungFuerStartVor(angezeigteEmpfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort })
       if (!vorbereitet.ok) return { ok: false, art: 'konflikt', grund: vorbereitet.grund }
-      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
+      ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, leitstandPort) }
       if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
     }
 
@@ -5775,7 +5784,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // einem Neustart, und Regel 1j meldet die Änderung (Startvorlage im Repo = Prüfkette, F-735).
     if (req.method === 'GET' && pfad === '/api/projekt-aufruf') {
       sendeJson(res, 200, {
-        vorschau: await pruefeVorschau(vorschauUrl),
+        // F-849: gegen den gebundenen Port dieser Verbindung — zeigt vorschau_url darauf, wird nicht angefragt.
+        vorschau: await pruefeVorschau(vorschauUrl, req.socket?.localPort),
         startbefehl: vorlage.startbefehl ?? null,
         ergebnis_datei: vorlage.ergebnis_datei ?? null,
         // QA-Befund: die TATSÄCHLICH geladene Vorlage nennen — für ai-workforce selbst ist das die
@@ -5837,6 +5847,13 @@ export function erzeugeRequestHandler(optionen = {}) {
       const formular = pruefeNeuesProjektFormular(body)
       if (!formular.ok) {
         sendeJson(res, 400, { grund: formular.grund })
+        return
+      }
+      // F-849: vorschau_url wird hier nicht übernommen (baueNeuenProjektEintrag setzt sie nie), eine
+      // auf den Leitstand-Port zeigende wird trotzdem ausdrücklich abgewiesen statt still ignoriert.
+      const vorschauSperre = 'vorschau_url' in body ? vorschauLeitstandSperre(body.vorschau_url, req.socket?.localPort) : null
+      if (vorschauSperre !== null) {
+        sendeJson(res, 400, { grund: vorschauSperre })
         return
       }
       if (projekte.some((eintrag) => eintrag.id === formular.id)) {
@@ -6173,9 +6190,9 @@ export function erzeugeRequestHandler(optionen = {}) {
         const faelligerSchritt = version.daten.schritte.find((s) => s.schritt_id === naechster.schrittId)
         if (erhaeltKatalogFaehigkeiten(faelligerSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, faelligerSchritt?.werkzeugsatz)?.art)) {
           // F36 WS-5a: zwischengespeichert (Poll-Last), Projekt-URL mit angezeigt.
-          const ermittelt = ermittleAusfuehrungsEmpfehlungGecached(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl })
+          const ermittelt = ermittleAusfuehrungsEmpfehlungGecached(version.daten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort })
           empfehlung = ermittelt.ok
-            ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise, projektUrl: ermittelt.projektUrl }
+            ? { schrittId: naechster.schrittId, ...ermittelt.empfehlung, hinweise: ermittelt.hinweise, projektUrl: ermittelt.projektUrl, ...(ermittelt.projektUrlGrund !== undefined ? { projektUrlGrund: ermittelt.projektUrlGrund } : {}) }
             : { schrittId: naechster.schrittId, fehler: ermittelt.grund }
         }
       }
@@ -6790,12 +6807,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       let auftragstext = auftragVersion.daten.auftragstext
       let ausfuehrungsOptionen = {}
       if (empfehlungIds !== undefined && erhaeltKatalogFaehigkeiten(eingabenRoh.rolle, loeseWerkzeugsatzAuf(vorlage, werkzeugsatzName)?.art)) {
-        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl })
+        const vorbereitet = bereiteEmpfehlungFuerStartVor(empfehlungIds, eingabenRoh.auftragId, repoWurzel, installWurzel, startvorlagePfad, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }, { vorschauUrl, leitstandPort: req.socket?.localPort })
         if (!vorbereitet.ok) {
           sendeJson(res, 400, { grund: vorbereitet.grund })
           return
         }
-        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId) }
+        ausfuehrungsOptionen = { mcpEintraege: vorbereitet.mcpEintraege, skillEintraege: vorbereitet.skillEintraege, capWurzel, mcpPlatzhalter: baueMcpPlatzhalter(vorschauUrl, laufausgabeWurzel, laufId, req.socket?.localPort) }
         if (vorbereitet.zeile !== null) auftragstext = `${auftragstext}\n\n${vorbereitet.zeile}`
       }
       const eingabenErgebnis = loeseAusfuehrungsEingabenAuf(eingabenRoh, werkzeugsatzName, auftragstext, vorlage, repoWurzel, ausfuehrungsOptionen)
@@ -8110,7 +8127,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         body.empfehlungIds !== undefined &&
         erhaeltKatalogFaehigkeiten(freizugebenderSchritt?.rolle, loeseWerkzeugsatzAuf(vorlage, freizugebenderSchritt?.werkzeugsatz)?.art)
       ) {
-        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl })
+        const vorpruefung = bereiteEmpfehlungFuerStartVor(body.empfehlungIds, workflowDaten.auftrag_id, repoWurzel, installWurzel, startvorlagePfad, ladeOptionen, { vorschauUrl, leitstandPort: req.socket?.localPort })
         if (!vorpruefung.ok) {
           sendeJson(res, 409, { grund: `${vorpruefung.grund}${ENTSCHEIDUNG_NICHT_FESTGEHALTEN_SATZ}` })
           return
@@ -8250,7 +8267,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
-      const gestartet = starteWorkflowSchritt(workflowId, startAusgang, body.empfehlungIds)
+      const gestartet = starteWorkflowSchritt(workflowId, startAusgang, body.empfehlungIds, req.socket?.localPort)
       // D13-UEBERGABE-OHNE-FENSTER: ENDE
       if (!gestartet.ok) {
         // Derselbe Behandlungspfad wie bei der gescheiterten Auto-Fortsetzung aus (a), über
@@ -9512,5 +9529,11 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
     console.log(
       `Leitstand läuft auf http://127.0.0.1:${PORT} (Startvorlage: ${startvorlagePfad}, Projekte: ${projekte.map((p) => p.id).join(', ') || '—'})`
     )
+    // F-849: Registereinträge, deren vorschau_url auf den gebundenen Port zeigt, sichtbar melden —
+    // gesperrt sind sie je Anfrage ohnehin (vorschauLeitstandSperre gegen req.socket.localPort).
+    for (const projekt of projekte) {
+      const sperre = vorschauLeitstandSperre(projekt.vorschau_url, server.address()?.port)
+      if (sperre !== null) console.warn(`[leitstand] Projekt '${projekt.id}': ${sperre} (${projekt.vorschau_url}) — {projekt_origins} bleibt leer, die Vorschau wird nicht angefragt`)
+    }
   })
 }

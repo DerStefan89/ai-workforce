@@ -3,7 +3,7 @@
  *
  * Zweck: node:test-Fälle für das Feld vorschau_url (F36 WS-5a, E-F36-7) im Projektregister:
  * Validierung (nur http://localhost:<port> bzw. http://127.0.0.1:<port>, Port 1–65535, ohne Pfad) und
- * projektOriginsAus (Wert für {projekt_origins}). Die übrigen Registerregeln prüft
+ * projektOriginsAus (Wert für {projekt_origins}), vorschauLeitstandSperre (F-849). Die übrigen Registerregeln prüft
  * scripts/check-f25-projekte.mjs.
  *
  * Wird aufgerufen von: `npm run test` (node --test).
@@ -11,7 +11,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { projektOriginsAus, validiereProjekteDaten, vorschauPortAus } from './index.ts'
+import { VORSCHAU_LEITSTAND_PORT, VORSCHAU_LEITSTAND_PORT_UNBEKANNT, projektOriginsAus, validiereProjekteDaten, vorschauLeitstandSperre, vorschauPortAus } from './index.ts'
 
 const EINTRAG = { id: 'p', name: 'P', repo_pfad: '.', startvorlage_pfad: 's.json', profil_pfad: 'p.json', basisverzeichnis: 'k', status: 'IDEE' }
 const mit = (felder: Record<string, unknown>) => validiereProjekteDaten({ projekte_schema: 'v0', projekte: [{ ...EINTRAG, ...felder }] })
@@ -35,4 +35,18 @@ test('projektOriginsAus: beide Origins mit Port, semikolongetrennt; ohne gültig
   assert.equal(projektOriginsAus(null), null)
   assert.equal(projektOriginsAus('http://localhost'), null)
   assert.equal(vorschauPortAus('http://localhost:8080'), 8080)
+})
+
+test('vorschauLeitstandSperre (F-849): gleicher Port (localhost/127.0.0.1) und unbekannter Port gesperrt, anderer Port frei', () => {
+  assert.equal(vorschauLeitstandSperre('http://127.0.0.1:4200', 4200), VORSCHAU_LEITSTAND_PORT)
+  assert.equal(vorschauLeitstandSperre('http://localhost:4200', 4200), VORSCHAU_LEITSTAND_PORT)
+  assert.equal(vorschauLeitstandSperre('http://localhost:5173', 4200), null)
+  // Portgrenzen: 1 und 65535 sind gültige Leitstand-Ports.
+  assert.equal(vorschauLeitstandSperre('http://127.0.0.1:1', 1), VORSCHAU_LEITSTAND_PORT)
+  assert.equal(vorschauLeitstandSperre('http://127.0.0.1:65535', 65535), VORSCHAU_LEITSTAND_PORT)
+  assert.equal(vorschauLeitstandSperre('http://127.0.0.1:65535', 1), null)
+  for (const port of [undefined, null, 0, 70000, 4200.5, '4200']) assert.equal(vorschauLeitstandSperre('http://localhost:4200', port), VORSCHAU_LEITSTAND_PORT_UNBEKANNT, String(port))
+  // Ohne gültige vorschau_url keine Sperre — dafür gelten die bisherigen Regeln (PROJEKT_URL_FEHLT).
+  assert.equal(vorschauLeitstandSperre(null, 4200), null)
+  assert.equal(vorschauLeitstandSperre('http://example.com:4200', undefined), null)
 })

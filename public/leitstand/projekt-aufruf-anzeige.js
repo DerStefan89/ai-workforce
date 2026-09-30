@@ -52,7 +52,8 @@ export function renderAufrufErgebnis(e) {
 }
 
 /**
- * Vorschau-Zeile: URL, erreichbar/nicht erreichbar, „Öffnen“ — oder der Hinweis, wie vorschau_url gesetzt wird.
+ * Vorschau-Zeile: URL, erreichbar/nicht erreichbar, „Öffnen“ — oder der Hinweis, wie vorschau_url gesetzt wird;
+ * bei vorschau_url auf dem Leitstand-Port (F-849) nur URL und „nicht zulässig (Leitstand-Port)“.
  * @param v - VorschauStatus oder null (noch nicht geprüft)
  * @returns HTML
  */
@@ -60,6 +61,11 @@ export function renderVorschau(v) {
   if (v === null) return '<p class="leer">Vorschau wird geprüft…</p>'
   if (v.url === null) {
     return `<p class="hinweis">Keine Vorschau-URL (${escapeHtml(v.grund)}). Setzen: Feld <code>vorschau_url</code>, z. B. <code>http://127.0.0.1:3000</code>, im Registereintrag des Projekts (projekte.json bzw. projekte.lokal.json), danach den Leitstand neu starten.</p>`
+  }
+  // F-849: vorschau_url auf dem Leitstand-Port — nicht angefragt, kein „Öffnen“ (grund = VORSCHAU_NICHT_ZULAESSIG).
+  if (v.erreichbar === null) {
+    return `<p class="projekt-aufruf-zeile"><code>${escapeHtml(v.url)}</code> <span class="badge fehler">${escapeHtml(v.grund)}</span></p>
+    <p class="hinweis">Der Port ist der des Leitstands selbst — die Vorschau wird nicht angefragt, und ein Lauf bekommt diese Adresse nicht als erlaubte Browser-Origin. Abhilfe: in <code>vorschau_url</code> den Port der Projekt-App eintragen (projekte.json bzw. projekte.lokal.json), danach den Leitstand neu starten.</p>`
   }
   const status = v.erreichbar ? '<span class="badge ok">erreichbar</span>' : '<span class="badge fehler">nicht erreichbar</span>'
   return `<p class="projekt-aufruf-zeile"><code>${escapeHtml(v.url)}</code> ${status} <span class="hinweis">${escapeHtml(v.grund)}</span>

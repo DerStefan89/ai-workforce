@@ -17,6 +17,9 @@
  *       ohne startbefehl;
  *   (e) Vorschau: erreichbar, nicht erreichbar (geschlossener Port, keine Antwort binnen Zeitgrenze),
  *       nicht-lokale URL wird nicht angefragt;
+ *   (h) F-849: vorschau_url auf dem Leitstand-Port (localhost und 127.0.0.1, gleicher Port) → „nicht
+ *       zulässig (Leitstand-Port)“ ohne Anfrage und ohne „Öffnen“, auch bei unbekanntem Port
+ *       (fail-closed); POST /api/projekte mit einer solchen vorschau_url → 400; anderer Port unverändert;
  *   (g) Plattformweiche: der Baum-Kill (Enkel beendet) wird nur unter win32 zugesichert, sonst Ende
  *       binnen Zeitgrenze + Nachfrist, direktes Kind beendet, Sperre fällt; beide Zweige werden mit
  *       injizierter Plattform geprüft, überlebende Testprozesse räumt das Gate selbst ab;
@@ -36,7 +39,8 @@ import { mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { renderAufrufBereich, renderAufrufErgebnis, renderVorschau } from '../public/leitstand/projekt-aufruf-anzeige.js'
-import { NACHFRIST_MS, VORSCHAU_ZEITGRENZE_MS, fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
+import { NACHFRIST_MS, VORSCHAU_NICHT_ZULAESSIG, VORSCHAU_ZEITGRENZE_MS, fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
+import { VORSCHAU_LEITSTAND_PORT } from '../src/projekte/index.ts'
 import { MAX_START_ZEITGRENZE_MS, validiereStartvorlageDaten } from '../src/startvorlage/index.ts'
 import { erzeugeMultiProjektDispatcher, erzeugeRequestHandler } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
@@ -205,9 +209,17 @@ process.env.LEITSTAND_F43_GATE_PROBE = '1'
 writeFileSync(join(instanzen.alt.repo, 'alt.md'), 'von früher')
 
 const map = new Map(Object.entries(instanzen).map(([id, i]) => [id, i.handler]))
-const server = createServer(erzeugeMultiProjektDispatcher(map, instanzen.ohne.handler))
+const dispatcher = erzeugeMultiProjektDispatcher(map, instanzen.ohne.handler)
+/** (h) Anzahl der Anfragen an den Test-Leitstand — belegt, dass die Vorschauprüfung ihn nicht selbst anfragt. */
+let leitstandAnfragen = 0
+const server = createServer((req, res) => {
+  leitstandAnfragen++
+  return dispatcher(req, res)
+})
 await new Promise((r) => server.listen(0, '127.0.0.1', r))
-const BASIS = `http://127.0.0.1:${server.address().port}`
+/** Gebundener Port des Test-Leitstands (listen(0) — nicht der Default 4173). */
+const LEITSTAND_PORT = server.address().port
+const BASIS = `http://127.0.0.1:${LEITSTAND_PORT}`
 
 /** POST auf den Aufruf-Endpunkt eines Projekts. @returns { status, koerper } */
 async function rufeAuf(id, headers = {}) {
@@ -432,17 +444,17 @@ try {
     map.set('vorschau', iOffen.handler)
     const erreichbar = await (await fetch(`${BASIS}/api/projekte/vorschau/projekt-aufruf`)).json()
     await new Promise((r) => vorschauServer.close(r))
-    const zu = await pruefeVorschau(offen)
-    const keineAntwort = await pruefeVorschau(stumm, 300)
+    const zu = await pruefeVorschau(offen, LEITSTAND_PORT)
+    const keineAntwort = await pruefeVorschau(stumm, LEITSTAND_PORT, 300)
     stummServer.closeAllConnections()
     await new Promise((r) => stummServer.close(r))
-    const fremd = await pruefeVorschau('http://example.com:80')
+    const fremd = await pruefeVorschau('http://example.com:80', LEITSTAND_PORT)
     const umleitServer = createServer((_req, res) => {
       res.writeHead(302, { Location: 'http://127.0.0.1:1/' })
       res.end()
     })
     await new Promise((r) => umleitServer.listen(0, '127.0.0.1', r))
-    const umleitung = await pruefeVorschau(`http://127.0.0.1:${umleitServer.address().port}`)
+    const umleitung = await pruefeVorschau(`http://127.0.0.1:${umleitServer.address().port}`, LEITSTAND_PORT)
     await new Promise((r) => umleitServer.close(r))
     pruefe(umleitung.erreichbar === true && umleitung.grund === 'HTTP 302' && VORSCHAU_ZEITGRENZE_MS === 2000, '(e) Weiterleitung wird nicht verfolgt (HTTP 302 = erreichbar); Zeitgrenze der Prüfung 2000 ms', `(e) Weiterleitung/Grenze: ${JSON.stringify(umleitung)} ${VORSCHAU_ZEITGRENZE_MS}`)
     const ohne = await (await fetch(`${BASIS}/api/projekte/ohne/projekt-aufruf`)).json()
@@ -450,6 +462,58 @@ try {
     pruefe(zu.erreichbar === false && keineAntwort.erreichbar === false && keineAntwort.grund.includes('300 ms'), '(e) nicht erreichbar bei geschlossenem Port und bei ausbleibender Antwort (Zeitgrenze)', `(e) nicht erreichbar: ${JSON.stringify([zu, keineAntwort])}`)
     pruefe(fremd.url === null && fremd.erreichbar === null, '(e) nicht-lokale URL wird nicht angefragt', `(e) fremde URL: ${JSON.stringify(fremd)}`)
     pruefe(ohne.vorschau?.url === null && renderVorschau(ohne.vorschau).includes('<code>vorschau_url</code>'), '(e) ohne vorschau_url: Hinweis, wie sie gesetzt wird', `(e) ohne URL: ${JSON.stringify(ohne.vorschau)}`)
+  }
+
+  // (h) F-849: vorschau_url auf dem Leitstand-Port
+  {
+    for (const host of ['127.0.0.1', 'localhost']) {
+      const id = `leitstand-${host === 'localhost' ? 'lh' : 'ip'}`
+      map.set(id, baueInstanz(id, {}, { vorschauUrl: `http://${host}:${LEITSTAND_PORT}` }).handler)
+      const vorher = leitstandAnfragen
+      const v = (await (await fetch(`${BASIS}/api/projekte/${id}/projekt-aufruf`)).json()).vorschau
+      const html = renderVorschau(v)
+      pruefe(
+        v?.url === `http://${host}:${LEITSTAND_PORT}` && v.erreichbar === null && v.grund === VORSCHAU_NICHT_ZULAESSIG && leitstandAnfragen - vorher === 1 && html.includes('nicht zulässig (Leitstand-Port)') && html.includes('neu starten') && !html.includes('target="_blank"'),
+        `(h) vorschau_url http://${host}:<Leitstand-Port>: „nicht zulässig (Leitstand-Port)“, keine Anfrage, kein „Öffnen“`,
+        `(h) ${host}: ${JSON.stringify(v)}, Anfragen ${leitstandAnfragen - vorher}, ${html}`
+      )
+    }
+    // Fail-closed: Port unbekannt → ebenfalls nicht zulässig und nicht angefragt (Zählserver).
+    let gezaehlt = 0
+    const zaehlServer = createServer((_req, res) => {
+      gezaehlt++
+      res.end('ok')
+    })
+    await new Promise((r) => zaehlServer.listen(0, '127.0.0.1', r))
+    const zaehlPort = zaehlServer.address().port
+    const unbekannt = await pruefeVorschau(`http://127.0.0.1:${zaehlPort}`, undefined)
+    const gleich = await pruefeVorschau(`http://localhost:${zaehlPort}`, zaehlPort)
+    const anderer = await pruefeVorschau(`http://127.0.0.1:${zaehlPort}`, LEITSTAND_PORT)
+    await new Promise((r) => zaehlServer.close(r))
+    pruefe(
+      unbekannt.grund === VORSCHAU_NICHT_ZULAESSIG && gleich.grund === VORSCHAU_NICHT_ZULAESSIG && anderer.erreichbar === true && gezaehlt === 1,
+      '(h) Leitstand-Port unbekannt → nicht zulässig (fail-closed); anderer Port wird wie bisher angefragt',
+      `(h) fail-closed/Gutfall: ${JSON.stringify([unbekannt, gleich, anderer])}, Anfragen ${gezaehlt}`
+    )
+    // POST /api/projekte unpräfigiert, wie im Betrieb: eigener Server für einen Handler mit belegter id,
+    // damit der Gutfall ohne Schreibwirkung mit 409 endet. Leitstand-Port = dessen gebundener Port.
+    const anlegeServer = createServer(baueInstanz('anlegen', {}, { projekte: [{ id: 'belegt', name: 'Belegt' }] }).handler)
+    await new Promise((r) => anlegeServer.listen(0, '127.0.0.1', r))
+    const anlegePort = anlegeServer.address().port
+    const anlegen = async (vorschauUrl) => {
+      const a = await fetch(`http://127.0.0.1:${anlegePort}/api/projekte`, { method: 'POST', body: JSON.stringify({ id: 'belegt', name: 'Belegt', vorschau_url: vorschauUrl }) })
+      return { status: a.status, grund: (await a.json().catch(() => ({}))).grund }
+    }
+    const rotIp = await anlegen(`http://127.0.0.1:${anlegePort}`)
+    const rotLh = await anlegen(`http://localhost:${anlegePort}`)
+    const gut = await anlegen(`http://127.0.0.1:${anlegePort === 65535 ? 65534 : anlegePort + 1}`)
+    anlegeServer.closeAllConnections()
+    await new Promise((r) => anlegeServer.close(r))
+    pruefe(
+      rotIp.status === 400 && rotIp.grund === VORSCHAU_LEITSTAND_PORT && rotLh.status === 400 && rotLh.grund === VORSCHAU_LEITSTAND_PORT && gut.status === 409,
+      '(h) POST /api/projekte (unpräfigiert) mit vorschau_url auf dem Leitstand-Port → 400 (127.0.0.1 und localhost); anderer Port passiert die Prüfung',
+      `(h) POST: ${JSON.stringify([rotIp, rotLh, gut])}`
+    )
   }
 
   // (f) Regel 1j: Startvorlage im Repo bleibt Teil der Prüfkette

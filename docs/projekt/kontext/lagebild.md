@@ -94,9 +94,9 @@ result-Zeile #204, WS-2 Lagebild-Einspeisung #206, WS-3
 Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 22.09.2026, Restfindings F-581/F-583 bleiben offen, `features/F40/
 feature.md`), F43 „Projekt aufrufen/anzeigen“ (E-F30-3, Variante A,
-vor dem Design) in Arbeit: `features/F43/feature.md`, Status `IN_ARBEIT`
-(WS-1 gebaut 30.09.2026, nicht committet) (Stand 22.09.2026; F36
-29.09.2026; F43 30.09.2026).
+vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
+am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
+behoben, PR folgt) (Stand 22.09.2026; F36 29.09.2026; F43 30.09.2026).
 
 ## Offene P1-Findings
 

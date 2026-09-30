@@ -23,6 +23,9 @@
  * (j) wirkung ≠ lokal oder ohne herkunft.paket → 400 (Vorbereiten und Installieren); Anfrage einer
  *     fremden Seite (Sec-Fetch-Site/Origin) → 403;
  * (k) die Adresse jedes browser_navigate steht in der Beobachtung und in der Laufansicht-Zeile;
+ * (l) F-849: vorschau_url auf dem gebundenen Leitstand-Port (localhost und 127.0.0.1) → „Passt, nicht
+ *     im Lauf“ mit eigenem Grund, Lauf mit leerem --mcp-config; baueMcpPlatzhalter löst
+ *     {projekt_origins} bei gleichem oder unbekanntem Port nicht auf, bei anderem Port unverändert;
  * (Cache) die Anzeige der Empfehlung wird zwischengespeichert (Auftrag, Katalog-mtime, HEAD).
  *
  * Wird aufgerufen von: `npm run check`.
@@ -39,12 +42,14 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { baueAufruf, leseBeobachtung, validiereLaufakteDaten } from '../src/claude-code-gateway/index.ts'
 import { ladeArtefaktVersion, registriereKernArtefakt } from '../src/lineage-registry/index.ts'
-import { PROJEKT_URL_FEHLT, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
+import { VORSCHAU_LEITSTAND_PORT, VORSCHAU_LEITSTAND_PORT_UNBEKANNT } from '../src/projekte/index.ts'
+import { PROJEKT_URL_FEHLT, empfehlungsKennung, validiereRessourcenDaten } from '../src/ressourcen/index.ts'
 import { eintragsKennung } from '../src/ressourcen/installation.ts'
 import { ladeStartvorlage, leiteProfilReferenzAb } from '../src/startvorlage/index.ts'
 import { registriereWorkflow } from '../src/workflow/index.ts'
 import { formatiereBeobachtung } from '../public/leitstand/beobachtung-zeile.js'
-import { erzeugeRequestHandler, ermittleAusfuehrungsEmpfehlungGecached } from './leitstand-server.mjs'
+import { renderEmpfehlung } from '../public/leitstand/empfehlung-anzeige.js'
+import { baueMcpPlatzhalter, erzeugeRequestHandler, ermittleAusfuehrungsEmpfehlungGecached } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -135,7 +140,8 @@ async function warte(bedingung, ms = 10000) {
 /**
  * Frische Umgebung: Wegwerf-Installationswurzel (Fixture-Katalog), cap- und Laufausgabe-Wurzel,
  * Projekt-Repo, Startvorlage, Server. Alles Angelegte räumt ende() ab.
- * @param o - { vorschauUrl, runner }
+ * @param o - { vorschauUrl, runner, vorschauAufLeitstand } — vorschauAufLeitstand ('localhost' | '127.0.0.1',
+ *   F-849): vorschau_url = http://<host>:<gebundener Port dieses Servers>, erst nach listen(0) bekannt
  */
 async function umgebung(o = {}) {
   const basisVerzeichnis = `kontrollzustand-test-f36-ws5a-${randomUUID()}`
@@ -170,7 +176,12 @@ async function umgebung(o = {}) {
     return { ok: true, klassifikation: { ergebnis: 'ERFOLGREICH' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'ERFOLGREICH' } }
   }
   const runner = o.runner ?? stubRunner()
-  const server = createServer(
+  // Handler erst nach listen(0) bauen: für vorschauAufLeitstand muss der gebundene Port feststehen.
+  let handler = null
+  const server = createServer((req, res) => handler(req, res))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const vorschauUrl = o.vorschauAufLeitstand !== undefined ? `http://${o.vorschauAufLeitstand}:${server.address().port}` : o.vorschauUrl
+  handler =
     erzeugeRequestHandler({
       basisVerzeichnis,
       fuehreAufgabeDurchFn,
@@ -180,10 +191,8 @@ async function umgebung(o = {}) {
       capWurzel,
       laufausgabeWurzel,
       installationsRunner: runner,
-      ...(o.vorschauUrl !== undefined ? { vorschauUrl: o.vorschauUrl } : {}),
+      ...(vorschauUrl !== undefined ? { vorschauUrl } : {}),
     })
-  )
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   const basisUrl = `http://127.0.0.1:${server.address().port}`
   const post = async (pfad, body) => {
     const antwort = await fetch(`${basisUrl}${pfad}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
@@ -439,6 +448,48 @@ for (const [fall, runnerOptionen, muster] of [
   if (befunde.length === vor) console.log(`✓ (g) Ohne vorschau_url: „Passt, nicht im Lauf“ mit „${PROJEKT_URL_FEHLT}“, Lauf mit --mcp-config '${LEERE_MCP_CONFIG}'.`)
 }
 
+// ─── (l) F-849: vorschau_url auf dem Leitstand-Port → nicht im Lauf ──
+for (const host of ['127.0.0.1', 'localhost']) {
+  const vor = befunde.length
+  const u = await umgebung({ vorschauAufLeitstand: host })
+  try {
+    const antwort = await u.post('/api/ressourcen/pw-mcp/installation', angezeigt(u))
+    if (antwort.status !== 200) throw new Error(`Installation erwartet 200, erhalten ${antwort.status} (${antwort.inhalt.grund})`)
+    const wf = await workflowAmZwingendStart(u)
+    const e = wf.detail.empfehlung
+    const pw = e?.passtNichtImLauf?.find((x) => x.id === 'pw-mcp')
+    if (e?.wirdGenutzt?.length !== 0 || pw === undefined || !pw.grund.includes(VORSCHAU_LEITSTAND_PORT)) befunde.push(`(l) ${host}: nicht „Passt, nicht im Lauf“ mit Leitstand-Port-Grund: ${JSON.stringify(e)}`)
+    if (e?.projektUrl !== null) befunde.push(`(l) ${host}: projektUrl sollte null sein: ${e?.projektUrl}`)
+    // Die Anzeige nennt den Sperrgrund (Server reicht projektUrlGrund durch, renderEmpfehlung zeigt ihn).
+    if (e?.projektUrlGrund !== VORSCHAU_LEITSTAND_PORT || !renderEmpfehlung(e).includes(VORSCHAU_LEITSTAND_PORT)) befunde.push(`(l) ${host}: Sperrgrund fehlt in Antwort oder Anzeige: ${e?.projektUrlGrund}`)
+    // Die echte Kennung des installierten Eintrags (ohne Sperre stünde genau sie in „Wird genutzt“).
+    const echteKennung = empfehlungsKennung(JSON.parse(readFileSync(u.katalogPfad, 'utf8')).ressourcen.find((r) => r.id === 'pw-mcp'))
+    const start = await freigeben(u, wf, angezeigteIds(wf.detail))
+    if (start.status !== 202 || u.gesehen.eingaben === null) befunde.push(`(l) ${host}: Freigabe erwartet 202, erhalten ${start.status} (${start.inhalt.grund})`)
+    else if (flagWert(baueAufruf({ ...u.gesehen.eingaben.aufrufEingaben, prompt: 'GATE' }), '--mcp-config') !== LEERE_MCP_CONFIG) befunde.push(`(l) ${host}: Lauf trägt trotz vorschau_url auf dem Leitstand-Port einen MCP`)
+    const direkt = await u.post('/api/laeufe', { laufId: `f36-ws5a-${randomUUID()}`, rolle: 'ausfuehrung', anfragen: [], budget: {}, aufrufEingaben: { modell: 'claude-sonnet-5' }, werkzeugsatz: 'schreibend', auftragId: wf.detail.daten.auftrag_id, empfehlungIds: [echteKennung] })
+    if (direkt.status !== 400) befunde.push(`(l) ${host}: POST /api/laeufe mit der echten pw-mcp-Kennung: erwartet 400, erhalten ${direkt.status}`)
+  } catch (fehler) {
+    befunde.push(`(l) ${host}: Vorbereitung gescheitert: ${fehler.message}`)
+  } finally {
+    await u.ende()
+  }
+  if (befunde.length === vor) console.log(`✓ (l) vorschau_url http://${host}:<Leitstand-Port>: „Passt, nicht im Lauf“ mit „${VORSCHAU_LEITSTAND_PORT}“, Grund in Antwort und Anzeige, Lauf mit --mcp-config '${LEERE_MCP_CONFIG}', POST /api/laeufe mit der echten Kennung 400.`)
+}
+{
+  const vor = befunde.length
+  const origins = (url, port) => baueMcpPlatzhalter(url, 'wurzel', 'lauf', port).projekt_origins
+  const faelle = [
+    ['127.0.0.1, gleicher Port → nicht aufgelöst', origins('http://127.0.0.1:4200', 4200) === undefined],
+    ['localhost, gleicher Port → nicht aufgelöst', origins('http://localhost:4200', 4200) === undefined],
+    ['Port unbekannt → nicht aufgelöst (fail-closed)', origins('http://localhost:5173', undefined) === undefined && origins('http://localhost:5173', null) === undefined],
+    ['anderer Port → unverändert beide Origins', origins('http://localhost:5173', 4200) === 'http://localhost:5173;http://127.0.0.1:5173'],
+  ]
+  const falsch = faelle.filter(([, ok]) => !ok).map(([name]) => name)
+  if (falsch.length > 0) befunde.push(`(l) baueMcpPlatzhalter: ${falsch.join('; ')}`)
+  if (befunde.length === vor) console.log(`✓ (l) baueMcpPlatzhalter: {projekt_origins} bei gleichem Port (localhost/127.0.0.1) und bei unbekanntem Port („${VORSCHAU_LEITSTAND_PORT_UNBEKANNT}“) nicht aufgelöst, anderer Port unverändert.`)
+}
+
 // ─── (i) installation nach der Anzeige geändert → Start abgelehnt (F-808) ──
 {
   const vor = befunde.length
@@ -505,7 +556,7 @@ for (const [fall, runnerOptionen, muster] of [
   try {
     const wf = await workflowAmZwingendStart(u)
     const auftragId = wf.detail.daten.auftrag_id
-    const holen = () => ermittleAusfuehrungsEmpfehlungGecached(auftragId, u.repoWurzel, u.installWurzel, 'egal', u.ladeOptionen, { vorschauUrl: VORSCHAU_URL })
+    const holen = () => ermittleAusfuehrungsEmpfehlungGecached(auftragId, u.repoWurzel, u.installWurzel, 'egal', u.ladeOptionen, { vorschauUrl: VORSCHAU_URL, leitstandPort: 4173 })
     const eins = holen()
     if (holen() !== eins) befunde.push('(Cache) zweiter Aufruf ohne Änderung rechnet neu (anderes Objekt)')
     // Katalog ändern (Größe/mtime) → neu gerechnet; neuer Commit im Projekt (HEAD) → neu gerechnet.

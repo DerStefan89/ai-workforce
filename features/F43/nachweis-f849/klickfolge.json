@@ -1,0 +1,37 @@
+{
+  "url": "http://127.0.0.1:4177/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 1360,
+    "hoehe": 1400
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "f849-leitstand: Badge nicht zulässig",
+        "selector": "[data-aufruf-id=\"f849-leitstand\"] .projekt-aufruf-vorschau .badge.fehler"
+      },
+      {
+        "name": "f849-leitstand: Öffnen-Link (muss false sein)",
+        "selector": "[data-aufruf-id=\"f849-leitstand\"] .projekt-aufruf-vorschau a"
+      },
+      {
+        "name": "f849-anderer-port: nicht erreichbar",
+        "selector": "[data-aufruf-id=\"f849-anderer-port\"] .projekt-aufruf-vorschau .badge.fehler"
+      },
+      {
+        "name": "f849-anderer-port: Öffnen-Link",
+        "selector": "[data-aufruf-id=\"f849-anderer-port\"] .projekt-aufruf-vorschau a[target=\"_blank\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Übersicht: vorschau_url auf dem Leitstand-Port vs. anderer Port",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f849-anderer-port\"] .projekt-aufruf-vorschau .badge",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-uebersicht.png"
+    }
+  ]
+}

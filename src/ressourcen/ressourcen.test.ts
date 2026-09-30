@@ -1095,6 +1095,11 @@ test('baueEmpfehlung (WS-5a): wirdGenutzt trägt empfehlungId; {projekt_origins}
   assert.ok(ohne.passtNichtImLauf[0].grund.includes(PROJEKT_URL_FEHLT))
   const mit = baueEmpfehlung([mitOrigins], KONTEXT, { projektUrlVorhanden: true })
   assert.deepEqual(mit.wirdGenutzt.map((e) => e.empfehlungId), [empfehlungsKennung(mitOrigins)])
+  // F-849: gesperrte vorschau_url → derselbe Weg, eigener Grund statt PROJEKT_URL_FEHLT.
+  const gesperrt = baueEmpfehlung([mitOrigins], KONTEXT, { projektUrlVorhanden: false, projektUrlGrund: 'gesperrt (Leitstand-Port)' })
+  assert.equal(gesperrt.wirdGenutzt.length, 0)
+  assert.ok(gesperrt.passtNichtImLauf[0].grund.includes('gesperrt (Leitstand-Port)'))
+  assert.ok(!gesperrt.passtNichtImLauf[0].grund.includes(PROJEKT_URL_FEHLT))
 })
 
 test('baueEmpfehlung (WS-5a): installierbar nur für extern mcp lokal mit paket + Vorlage und ohne installation', () => {

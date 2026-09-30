@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFileSync } from 'node:fs'
+import { VORSCHAU_LEITSTAND_PORT, VORSCHAU_LEITSTAND_PORT_UNBEKANNT } from '../../src/projekte/index.ts'
 import { PROJEKT_URL_FEHLT } from '../../src/ressourcen/index.ts'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from './empfehlung-anzeige.js'
 
@@ -84,4 +85,14 @@ test('renderInstallierbarHinweis (F-826): Plural; Eintrag ohne Projekt-URL fehlt
   assert.ok(zwei.includes('<code>a</code>, <code>b</code> passen und sind installierbar, sind in diesem Lauf aber nicht dabei.'), zwei)
   assert.ok(zwei.includes('ohne diese Fähigkeiten.'), zwei)
   assert.equal(renderInstallierbarHinweis({ ...EMPFEHLUNG, passtNichtImLauf: [eintrag('pw', `freigabe OFFEN; ${PROJEKT_URL_FEHLT}`)] }), '')
+  // F-849: gesperrte vorschau_url (Leitstand-Port, auch unbekannt) wie fehlende behandeln.
+  assert.equal(renderInstallierbarHinweis({ ...EMPFEHLUNG, passtNichtImLauf: [eintrag('pw', `freigabe OFFEN; ${VORSCHAU_LEITSTAND_PORT}`)] }), '')
+  assert.equal(renderInstallierbarHinweis({ ...EMPFEHLUNG, passtNichtImLauf: [eintrag('pw', `freigabe OFFEN; ${VORSCHAU_LEITSTAND_PORT_UNBEKANNT}`)] }), '')
+})
+
+test('renderEmpfehlung (F-849): gesperrte Projekt-URL nennt ihren Grund statt „nicht gesetzt“', () => {
+  const html = renderEmpfehlung({ ...EMPFEHLUNG, projektUrl: null, projektUrlGrund: VORSCHAU_LEITSTAND_PORT })
+  assert.ok(html.includes(`Projekt-URL gesperrt: ${VORSCHAU_LEITSTAND_PORT}.`), html)
+  assert.ok(!html.includes('nicht gesetzt'), html)
+  assert.ok(renderEmpfehlung({ ...EMPFEHLUNG, projektUrl: null }).includes('Projekt-URL: nicht gesetzt'))
 })
