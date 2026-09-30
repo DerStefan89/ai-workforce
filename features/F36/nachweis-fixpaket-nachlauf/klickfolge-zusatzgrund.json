@@ -1,0 +1,15 @@
+{
+  "url": "http://127.0.0.1:4175/#/workflows/nachweis-f768-zusatzgrund",
+  "viewport": { "breite": 1100, "hoehe": 1600 },
+  "screenshotAusschnitt": { "selector": "#workflow-detail", "hoehe": 1400 },
+  "beobachtete": {
+    "titel": { "name": "Workflow", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Knopf „Sichtung bestätigt – weiter“", "selector": "[data-aktion=\"sichtung\"]" },
+      { "name": "Knopf „Reparaturfassung vorbereiten“", "selector": "[data-aktion=\"reparatur\"]" }
+    ]
+  },
+  "schritte": [
+    { "label": "F-760-Halt mit Zusatzgrund (Prüfkette)", "warteAufSelector": { "selector": "[data-aktion=\"reparatur\"]", "timeoutMs": 5000 }, "screenshot": "01-zusatzgrund-nur-reparatur.png" }
+  ]
+}

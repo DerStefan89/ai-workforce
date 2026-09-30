@@ -65,6 +65,7 @@ import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzei
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
+import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 
 /**
@@ -564,7 +565,7 @@ async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext) {
     const antwort = await anfrage()
     const inhalt = await antwort.json().catch(() => ({}))
     if (antwort.ok) {
-      zeigeBedienungsMeldung(`${erfolgstext}${inhalt.laufAbgebrochen === true ? ' Der laufende Schritt wurde abgebrochen.' : ''}${inhalt.laufAbgebrochen === false ? ' Es lief kein Schritt dieses Workflows — nichts abgebrochen.' : ''}${inhalt.bezeugt === false ? ' ACHTUNG: die Entscheidung konnte NICHT als Artefakt festgehalten werden.' : ''}`, 'erfolg')
+      zeigeBedienungsMeldung(`${erfolgstext}${inhalt.laufAbgebrochen === true ? ' Der laufende Schritt wurde abgebrochen.' : ''}${inhalt.laufAbgebrochen === false ? ' Es lief kein Schritt dieses Workflows — nichts abgebrochen.' : ''}${inhalt.bezeugt === false ? ' ACHTUNG: die Entscheidung konnte NICHT als Artefakt festgehalten werden.' : ''}${inhalt.kenntnisnahme?.neu === false ? ' Hinweis: Zu diesem Lauf lag schon eine Kenntnisnahme vor — deine Begründung wurde nicht zusätzlich gespeichert.' : ''}`, 'erfolg')
     } else {
       zeigeBedienungsMeldung(`${antwort.status}: ${inhalt.grund ?? 'unbekannter Fehler'}`)
     }
@@ -639,9 +640,10 @@ function renderArchitekturEntscheidung(workflowId, architekturEntscheidung) {
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
  * @param architekturEntscheidung - { schrittId, fragen } aus GET /api/workflows/<id>, oder null
  * @param empfehlung - F36 WS-3: Katalog-Empfehlung am ZWINGEND-Start (GET /api/workflows/<id>), oder null
+ * @param sichtung - F-768: Ergebnis von istSichtungsHaltAnzeige, oder null (dann kein Sichtungsknopf)
  * @returns HTML-Block
  */
-function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null) {
+function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
   const art = naechster === null || naechster === undefined ? null : naechster.art
   const kennung = escapeHtml(workflowId)
   const faelligerSchritt = escapeHtml(naechster?.schrittId ?? '')
@@ -682,6 +684,16 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
     </div>`)
   }
 
+  // F-768: nur beim reinen F-760-Halt; mit Zusatzgründen bleibt allein die Reparaturfassung darunter.
+  if (sichtung !== null && !ungueltig) {
+    bloecke.push(`<div class="unterabschnitt">
+      <p>Schritt <code>${escapeHtml(sichtung.schrittId)}</code> endete VERWEIGERT, nur weil Befehle abgelehnt wurden (siehe „Grund“ unten). Sieh dir die abgelehnten Befehle und die Änderungen des Laufs an. Der Halt-Grund wird danach nicht mehr angezeigt; die abgelehnten Befehle bleiben im Lauf-Detail <code>${escapeHtml(sichtung.laufId)}</code> lesbar. Bestätigst du, geht es mit <code>${escapeHtml(sichtung.nachfolger)}</code> weiter; <code>${escapeHtml(sichtung.schrittId)}</code> bleibt als VERWEIGERT festgehalten. Der nächste Schritt startet nicht von selbst — danach unten „Starten“ bzw. „Freigeben“.</p>
+      <label for="wf-sichtung-begruendung">Begründung der Sichtung (Pflicht)</label>
+      <textarea id="wf-sichtung-begruendung" rows="2"></textarea>
+      <div><button class="btn btn-primary wf-aktion" data-aktion="sichtung" data-workflow-id="${kennung}">Sichtung bestätigt – weiter</button></div>
+    </div>`)
+  }
+
   if (REPARIERBARE_WORKFLOW_STATUS.includes(status) || ungueltig) {
     bloecke.push(`<div class="unterabschnitt">
       <p>${ungueltig ? 'Diese Fassung validiert nicht — aus ihr startet kein Lauf. Der Weg heraus ist eine neue Fassung derselben' : 'Der Workflow steht. Der Weg heraus ist eine neue Fassung derselben'} <code>workflow_id</code>.</p>
@@ -698,9 +710,10 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
 /** Kennzeichen des zuletzt gerenderten Bedienblocks — verhindert, dass eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren geht (F-249). Nur bei ECHTER Lageänderung wird neu gebaut. */
 let bedienungsKennzeichen = null
 
-/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) */
-function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null) {
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}|${JSON.stringify(empfehlung)}`
+/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null */
+function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
+  // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung unten schneidet am letzten '|').
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}|${sichtung?.laufId ?? 'null'}|${JSON.stringify(empfehlung)}`
   if (kennzeichen === bedienungsKennzeichen) return
   // F36 WS-5a (F-809): Wechselt nur die Empfehlung (z. B. nach „Freigeben & installieren“), bleiben
   // Workflow, Halt, Schritt und Architektur-Fragen gleich — nur dann überleben angefangene Begründungen
@@ -710,11 +723,36 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   bedienungsKennzeichen = kennzeichen
   const container = document.getElementById('workflow-bedienung')
   const eingaben = gleicherWorkflow ? [...container.querySelectorAll('textarea[id]')].map((feld) => [feld.id, feld.value]) : []
-  container.innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung)
+  container.innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung, sichtung)
   for (const [id, wert] of eingaben) {
     const feld = document.getElementById(id)
     if (feld instanceof HTMLTextAreaElement && container.contains(feld)) feld.value = wert
   }
+}
+
+// ─── Sichtung bestätigt – weiter (F-768; Erkennung und Fassung in ../sichtung-anzeige.js) ────
+
+/**
+ * F-768: lädt die aktuelle Fassung frisch, prüft den Halt und reicht die Sichtungsfassung über den
+ * bestehenden Reparatur-Schreibweg (POST /api/workflows) mit sichtung_bestaetigt und Begründung ein.
+ * @param workflowId - Kennung des Workflows
+ * @param begruendung - nicht-leere Begründung
+ * @param knopf - auslösender Button
+ */
+async function bestaetigeSichtung(workflowId, begruendung, knopf) {
+  await sendeWorkflowBedienung(
+    async () => {
+      const antwort = await holeWorkflowDetail(workflowId)
+      const inhalt = await antwort.json().catch(() => ({}))
+      const sichtung = antwort.ok ? istSichtungsHaltAnzeige(inhalt.daten) : null
+      if (sichtung === null) {
+        return new Response(JSON.stringify({ grund: 'Der Workflow steht nicht mehr auf dem F-760-Halt — Ansicht neu laden.' }), { status: 409 })
+      }
+      return reicheWorkflowFassungEin({ ...baueSichtungsFassung(inhalt.daten, sichtung), sichtung_bestaetigt: true, begruendung })
+    },
+    knopf,
+    'Sichtung festgehalten, neue Fassung angenommen. Der nächste Schritt startet nicht von selbst — bitte „Starten“ bzw. „Freigeben“.'
+  )
 }
 
 // ─── Reparaturzug (löst F-240, F-218; zeigt F-219, F-223, F-226) ────────────
@@ -1020,7 +1058,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const daten = detail.daten ?? {}
     const verstoesse = Array.isArray(detail.verstoesse) ? detail.verstoesse : []
     const naechster = detail.naechster ?? null
-    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null, detail.empfehlung ?? null)
+    aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null, detail.empfehlung ?? null, istSichtungsHaltAnzeige(daten))
     // Eigener Endpunkt, eigener Überholschutz (istUeberholt), fire-and-forget — blockiert das
     // übrige Rendern nicht.
     void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
@@ -1134,6 +1172,16 @@ async function fuehreWorkflowAktionAus(button) {
       return
     }
     await sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung }), button, 'Stopp festgeschrieben und als Entscheidung festgehalten.')
+    return
+  }
+
+  if (aktion === 'sichtung') {
+    const begruendung = document.getElementById('wf-sichtung-begruendung').value
+    if (begruendung.trim().length === 0) {
+      zeigeBedienungsMeldung('Die Begründung ist Pflicht — sie wird als Kenntnisnahme zum VERWEIGERT-Lauf festgehalten.')
+      return
+    }
+    await bestaetigeSichtung(workflowId, begruendung, button)
     return
   }
 

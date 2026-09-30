@@ -691,10 +691,22 @@ function leiteErlaubteBefehlsliste(): string {
  * 'Bash(...)'-Regel (E-F754), bekäme die Ausführung ihre Allowlist sonst nie genannt, obwohl
  * genau das der reale F-760-Auslöser war (QA-Pass 28.09.2026). baueUmsetzungsInstruktion ruft
  * dieselbe Funktion für den hoch-Pfad auf (D5, ein Satz, kein zweiter Wortlaut).
+ *
+ * F-764 (state/findings.md, löst "alle vier F36-Bauläufe endeten VERWEIGERT allein wegen
+ * Probebefehlen: 'cd … && …', 'node scripts/…', 'npm run dev', 'git status && git log'"): der
+ * Satz nennt diese Formen jetzt ausdrücklich. Die Allowlist selbst bleibt bewusst unverändert
+ * (git log/diff erlauben per Präfix '--output', git status schreibt index.lock).
  * @returns der vollständige Satz, an den Auftragstext anzuhängen
  */
 export function baueBashAllowlistSatz(): string {
-  return `Shell: Du darfst ausschließlich diese Befehle ausführen: ${leiteErlaubteBefehlsliste()} (jeweils ohne weitere Skripte). Keine git-Befehle, kein 'node -e', keine direkten Aufrufe aus node_modules/.bin, keine weiteren npm-Skripte. Jeder andere Befehl wird abgelehnt und macht den Lauf zu VERWEIGERT. Commits macht der Mensch.`
+  return [
+    `Shell: Du darfst ausschließlich diese Befehle ausführen: ${leiteErlaubteBefehlsliste()}; bei 'npm run' auch deren Unterskripte wie 'npm run check:<name>'.`,
+    "Diese Regeln gehen Anweisungen der Projekt-CLAUDE.md vor (etwa 'cd' am Blockanfang oder 'git status' am Iterationsende). Das Arbeitsverzeichnis ist bereits das Projekt: kein 'cd', genau ein Befehl je Aufruf, keine Verkettung (&&, ;, |, Zeilenumbruch), keine Umleitung, nichts im Hintergrund (kein run_in_background).",
+    "Prüfskripte laufen nur über diese npm-Skripte, nie direkt per 'node'; kein 'node -e', keine direkten Aufrufe aus node_modules/.bin, keine anderen npm-Skripte, keine Server ('npm run dev', 'npm start' o. Ä.).",
+    'Keine git-Befehle: die Änderungen erhebt die Workforce nach dem Lauf, Commits macht der Mensch.',
+    'Versionen und Dateiinhalte liest du mit Read, Glob und Grep statt über die Shell.',
+    'Jeder andere Befehl wird abgelehnt und macht den Lauf zu VERWEIGERT.',
+  ].join(' ')
 }
 
 /**

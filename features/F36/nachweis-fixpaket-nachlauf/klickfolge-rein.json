@@ -1,0 +1,23 @@
+{
+  "url": "http://127.0.0.1:4175/#/workflows/nachweis-f768-rein",
+  "viewport": { "breite": 1100, "hoehe": 1600 },
+  "screenshotAusschnitt": { "selector": "#workflow-detail", "hoehe": 1400 },
+  "beobachtete": {
+    "sichtbarkeit": [
+      { "name": "Begründungsfeld Sichtung", "id": "wf-sichtung-begruendung" },
+      { "name": "Bedienungsmeldung", "id": "workflow-bedienung-meldung" }
+    ],
+    "titel": { "name": "Workflow", "selector": "#workflow-detail-titel" },
+    "vorhanden": [
+      { "name": "Knopf „Sichtung bestätigt – weiter“", "selector": "[data-aktion=\"sichtung\"]" },
+      { "name": "Knopf „Reparaturfassung vorbereiten“", "selector": "[data-aktion=\"reparatur\"]" },
+      { "name": "Knopf „Starten“", "selector": "[data-aktion=\"starten\"]" }
+    ]
+  },
+  "schritte": [
+    { "label": "Reiner F-760-Halt", "warteAufSelector": { "selector": "[data-aktion=\"sichtung\"]", "timeoutMs": 5000 }, "screenshot": "01-halt-knopf.png" },
+    { "label": "Klick ohne Begründung (Pflichtfeld)", "klick": "[data-aktion=\"sichtung\"]", "screenshot": "02-ohne-begruendung.png" },
+    { "label": "Begründung tippen, zwei Polls abwarten", "tippen": { "selector": "#wf-sichtung-begruendung", "text": "Nur Probebefehle (git, npm run dev), Änderungen gesichtet." }, "warteAufSelector": { "selector": "#gibt-es-nicht", "timeoutMs": 4500 }, "screenshot": "03-begruendung-nach-poll.png" },
+    { "label": "Klick „Sichtung bestätigt – weiter“", "klick": "[data-aktion=\"sichtung\"]", "warteAufSelector": { "selector": "[data-aktion=\"starten\"]", "timeoutMs": 5000 }, "screenshot": "04-nach-sichtung.png" }
+  ]
+}

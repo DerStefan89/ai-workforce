@@ -399,8 +399,12 @@ for (const [fall, runnerOptionen, muster] of [
       if (args.some((a) => /\{[a-z_]+\}/.test(a))) befunde.push(`(h) Platzhalter nicht ersetzt: ${JSON.stringify(args)}`)
       const mcpNamen = flagWert(tokens, '--allowedTools').split(',').filter((w) => w.startsWith('mcp__'))
       if (JSON.stringify(mcpNamen) !== JSON.stringify(['mcp__pw-mcp__browser_navigate', 'mcp__pw-mcp__browser_snapshot'])) befunde.push(`(h) --allowedTools trägt nicht genau die Einzelnamen: ${JSON.stringify(mcpNamen)}`)
+      // F-827: die Empfehlungszeile im realen Auftragstext nennt die laufende Vorschau.
+      if (!u.gesehen.eingaben.auftragstext.includes(`Projekt-Vorschau: ${VORSCHAU_URL} läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten; keine file://-URLs.`)) {
+        befunde.push('(h) F-827: Auftragstext nennt die vorschau_url nicht in der Empfehlungszeile')
+      }
     }
-    if (befunde.length === vorH) console.log('✓ (h) Mit vorschau_url: --mcp-config mit ersetzten Platzhaltern (--allowed-origins localhost/127.0.0.1 mit Port, --output-dir <laufausgabe>/<laufId> außerhalb des Projekts), Einzelnamen in --allowedTools.')
+    if (befunde.length === vorH) console.log('✓ (h) Mit vorschau_url: --mcp-config mit ersetzten Platzhaltern (--allowed-origins localhost/127.0.0.1 mit Port, --output-dir <laufausgabe>/<laufId> außerhalb des Projekts), Einzelnamen in --allowedTools; die Empfehlungszeile nennt die vorschau_url (F-827).')
   } catch (fehler) {
     befunde.push(`(b)/(f)/(h) Vorbereitung gescheitert: ${fehler.message}`)
   } finally {

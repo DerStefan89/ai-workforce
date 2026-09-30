@@ -947,6 +947,20 @@ test('baueEmpfehlungsZeile: leer → null, sonst eine Zeile mit id (name)', () =
   )
 })
 
+test('baueEmpfehlungsZeile (F-827): Vorschau-Satz nur mit {projekt_origins}-Eintrag UND Projekt-URL, sonst bitgenau', () => {
+  const basis = 'Freigegebene Katalog-Fähigkeiten in diesem Lauf: pw (Name pw) — nutzen, wo sie passen.'
+  const eintrag = [{ id: 'pw', name: 'Name pw', typ: 'extern' as const, unterart: 'mcp' as const, grund: 'g' }]
+  const mitOrigins = kandidat('pw', { installation: { ...MCP_INSTALL('pw'), mcp_server: { command: 'node', args: ['s.js', '--allowed-origins', '{projekt_origins}'] } } })
+  assert.equal(
+    baueEmpfehlungsZeile(eintrag, 'http://127.0.0.1:5173', [mitOrigins]),
+    `${basis} Projekt-Vorschau: http://127.0.0.1:5173 läuft bereits, zum Prüfen browser_navigate darauf nutzen, nicht selbst starten; keine file://-URLs.`
+  )
+  assert.equal(baueEmpfehlungsZeile(eintrag, null, [mitOrigins]), basis, 'ohne vorschau_url bitgenau')
+  assert.equal(baueEmpfehlungsZeile(eintrag, 'http://127.0.0.1:5173', [kandidat('pw')]), basis, 'ohne {projekt_origins} bitgenau')
+  assert.equal(baueEmpfehlungsZeile(eintrag), basis, 'Default-Argumente bitgenau')
+  assert.equal(baueEmpfehlungsZeile([], 'http://127.0.0.1:5173', [mitOrigins]), null)
+})
+
 // ─── F36 WS-5a: herkunft.paket, installation_vorlage, Platzhalter, Hash ─────────
 
 const VORLAGE = {
