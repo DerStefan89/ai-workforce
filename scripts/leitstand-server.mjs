@@ -442,6 +442,11 @@
  * /api/ressourcen/<id>/installation (src/ressourcen/installation.ts, Runner über
  * Option installationsRunner injizierbar). Die Anzeige der Empfehlung im 2-s-Poll wird zwischengespeichert
  * (ermittleAusfuehrungsEmpfehlungGecached: auftragId, mtime von ressourcen.json, HEAD des Projekts).
+ *
+ * F43 (Projekt aufrufen/anzeigen, E-F30-3, Variante A): GET /api/projekt-aufruf (vorschau_url
+ * erreichbar?, startbefehl, letzter Aufruf) und POST /api/projekt-aufruf (startbefehl einmal
+ * ausführen, src/projekt-aufruf/index.ts). Ein laufender Aufruf sperrt Laufstarts dieser Instanz
+ * (pruefeGlobaleLaufSperre); ein aktiver Lauf dieses Projekts sperrt den Aufruf (409).
  */
 
 import { createServer } from 'node:http'
@@ -482,6 +487,7 @@ import {
   validiereAenderungsuebersichtDaten,
 } from '../src/aenderungsuebersicht/index.ts'
 import { fuehrePruefungDurch, letzteZeilen, validierePruefergebnisDaten } from '../src/pruefschritt/index.ts'
+import { fuehreAufrufDurch, pruefeVorschau } from '../src/projekt-aufruf/index.ts'
 import { validiereEntscheidungsDaten } from '../src/entscheidung/index.ts'
 import {
   baueArchitektAuftragstext,
@@ -4432,6 +4438,10 @@ export function erzeugeRequestHandler(optionen = {}) {
   let laufAktivAbortController = null
   /** F40 WS-1: letzter live gemeldeter Werkzeugaufruf des aktiven Laufs ({ werkzeug, ziel }) oder null — rein In-Memory (kein Checkpoint pro stream-json-Zeile, D4), genau einer wegen D13, zusammen mit laufAktiv zurückgesetzt. Ausgeliefert über GET /api/laeufe/<laufId> (Feld fortschritt), gelesen vom 500ms-Chat-Poll. */
   let laufAktivFortschritt = null
+  /** F43: true, solange POST /api/projekt-aufruf den startbefehl dieses Projekts ausführt — sperrt einen zweiten Aufruf und jeden Laufstart dieser Instanz (pruefeGlobaleLaufSperre). Rein In-Memory. */
+  let aufrufAktiv = false
+  /** F43: Ergebnis des letzten Aufrufs dieser Instanz oder null — flüchtig (Begründung src/projekt-aufruf/index.ts). */
+  let letzterAufruf = null
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
@@ -4447,10 +4457,21 @@ export function erzeugeRequestHandler(optionen = {}) {
    * sucht den D13-Vertrag über den wörtlichen Quelltext-Substring 'if (laufAktiv)' und würde bei
    * einem Ersatz durch diese Funktion fälschlich melden, der Vertrag sei nicht erfüllt.
    * Sendet bei Sperre selbst die 409-Antwort.
+   *
+   * F43: sperrt zusätzlich INSTANZLOKAL, solange ein Projekt-Aufruf (POST /api/projekt-aufruf)
+   * dieses Projekts läuft — betrifft jeden Aufrufer dieser Funktion (Laufstarts, Freigaben,
+   * Entscheidungen, Abnahmen, Chat, „Prüfung wiederholen“, im Default-Handler auch POST
+   * /api/projekte), längstens bis Zeitgrenze + Nachfrist des Aufrufs.
    * @param res - Response-Objekt, an das im Sperrfall die 409-Antwort geht
-   * @returns true, wenn projektübergreifend gesperrt (Antwort bereits gesendet, Aufrufer muss sofort return)
+   * @returns true, wenn gesperrt (Antwort bereits gesendet, Aufrufer muss sofort return)
    */
   function pruefeGlobaleLaufSperre(res) {
+    // F43: jeder Laufstart ruft diese Prüfung auf — ein laufender Projekt-Aufruf sperrt so alle
+    // Laufstarts DIESES Projekts (instanzlokal, nicht projektübergreifend), bis seine Zeitgrenze greift.
+    if (aufrufAktiv) {
+      sendeJson(res, 409, { grund: 'ein Projekt-Aufruf (F43) läuft in diesem Projekt — nach seinem Ende erneut starten' })
+      return true
+    }
     if (globalerLaufZustand.aktiv) {
       sendeJson(res, 409, { grund: `ein anderer, projektübergreifend gestarteter Lauf ('${globalerLaufZustand.laufId}') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang je Workforce-Instanz` })
       return true
@@ -5741,6 +5762,53 @@ export function erzeugeRequestHandler(optionen = {}) {
           return { ...projekt, laufAktiv }
         }),
       })
+      return
+    }
+
+    // ─── GET/POST /api/projekt-aufruf (F43, features/F43/feature.md) ─────────────────────────
+    //
+    // Projekt anzeigen und aufrufen (E-F30-3, Variante A), je Projekt-Instanz über
+    // /api/projekte/<id>/projekt-aufruf. GET prüft die vorschau_url (kurze Zeitgrenze, nur lokal)
+    // und nennt startbefehl/ergebnis_datei sowie den letzten Aufruf. POST führt den startbefehl
+    // EINMAL aus, nur auf Klick des Menschen — bewusst synchron (Muster pruefung-wiederholen). Quelle
+    // ist die beim Aufbau geladene Startvorlage: ändert ein Lauf den startbefehl, wirkt das erst nach
+    // einem Neustart, und Regel 1j meldet die Änderung (Startvorlage im Repo = Prüfkette, F-735).
+    if (req.method === 'GET' && pfad === '/api/projekt-aufruf') {
+      sendeJson(res, 200, {
+        vorschau: await pruefeVorschau(vorschauUrl),
+        startbefehl: vorlage.startbefehl ?? null,
+        ergebnis_datei: vorlage.ergebnis_datei ?? null,
+        // QA-Befund: die TATSÄCHLICH geladene Vorlage nennen — für ai-workforce selbst ist das die
+        // des Serverstarts (LEITSTAND_STARTVORLAGE_PFAD), nicht startvorlage_pfad des Registers.
+        startvorlage: relative(repoWurzel, resolve(startvorlagePfad)).replaceAll('\\', '/'),
+        aktiv: aufrufAktiv,
+        letzterAufruf,
+      })
+      return
+    }
+    if (req.method === 'POST' && pfad === '/api/projekt-aufruf') {
+      if (vorlage.startbefehl === undefined) {
+        sendeJson(res, 409, { grund: `Die Startvorlage '${startvorlagePfad}' trägt keinen startbefehl — Feld 'startbefehl' (argv) setzen und den Leitstand neu starten` })
+        return
+      }
+      // Kein await zwischen den Prüfungen und aufrufAktiv = true — ein zweiter, gleichzeitiger
+      // Klick sieht die Sperre sicher.
+      if (aufrufAktiv) {
+        sendeJson(res, 409, { grund: 'Für dieses Projekt läuft bereits ein Aufruf' })
+        return
+      }
+      const globalerLaufHier = globalerLaufZustand.aktiv && globalerLaufZustand.laufId !== null && existsSync(join(basisVerzeichnis, globalerLaufZustand.laufId))
+      if (laufAktiv || globalerLaufHier) {
+        sendeJson(res, 409, { grund: `In diesem Projekt ist ein Workforce-Lauf aktiv ('${laufAktivLaufId ?? globalerLaufZustand.laufId}') — Aufruf erst nach seinem Ende` })
+        return
+      }
+      aufrufAktiv = true
+      try {
+        letzterAufruf = await fuehreAufrufDurch(vorlage.startbefehl, repoWurzel, vorlage.startZeitgrenzeMs, vorlage.ergebnis_datei)
+      } finally {
+        aufrufAktiv = false
+      }
+      sendeJson(res, 200, { ergebnis: letzterAufruf })
       return
     }
 

@@ -171,6 +171,12 @@ export const holeProjekte = () => holeJsonOderWirf('/api/projekte')
 // { grund }, die aufrufende View wertet den Status selbst aus.
 export const legeProjektAn = (koerper) => fetch('/api/projekte', { method: 'POST', body: JSON.stringify(koerper) })
 
+// F43: Vorschau & Aufruf je Projektkarte — bewusst NICHT über mitPraefix, die Übersicht adressiert
+// jedes Projekt über seine eigene id, unabhängig vom aktiven Projekt. holeProjektAufruf wirft bei
+// Nicht-2xx (Muster holeProjekte); rufeProjektAuf liefert die rohe Response (200/409 wertet die View aus).
+export const holeProjektAufruf = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`)
+export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`, { method: 'POST', body: '{}' })
+
 // F33 WS-2: Roadmap-Projektion fürs Workboard (Karte "Roadmap", views/workboard.js) — nur beim
 // Öffnen/Aktualisieren des Workboards abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur
 // durch Commits, Muster holeWorkitems). Liefert immer 200 (nicht_vorhanden/ungueltig sind

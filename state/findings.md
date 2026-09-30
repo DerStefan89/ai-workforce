@@ -11217,3 +11217,66 @@ Auswirkung: Niedrig — irreführende Anzeige, kein falscher Zustand.
 Maßnahme: In der Laufliste bei aktivem Lauf „läuft“ statt des Klärzustands zeigen und „Wiederaufnahme starten“ ausblenden (Quelle für aktiv im Zustands-Aggregat prüfen).
 Status: offen.
 Feature/Run: Fixpaket PR 2 nach F36, Render-Nachweis F-828, 30.09.2026.
+
+**F-845** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Die Kollisionsprüfung beim Ort-B-Start kennt die Slash-Command-Referenzmenge nicht.
+Beschreibung: Die Kollisionsprüfung beim Ort-B-Start (`src/ressourcen/ort-b-start.ts`) kennt die Slash-Command-Referenzmenge (`src/claude-code-gateway/slash-commands-referenz.json`) nicht; ein Ort-B-Skill mit gleichem Namen wie ein Referenzeintrag würde vom Init-Gate als bekannt durchgelassen.
+Fundstelle: `src/ressourcen/ort-b-start.ts`; `src/claude-code-gateway/slash-commands-referenz.json`.
+Auswirkung: Niedrig — ein gleichnamiger Ort-B-Skill fiele im Init-Gate nicht auf.
+Maßnahme: Solche Ort-B-Namen beim Start ablehnen.
+Status: offen.
+Feature/Run: Entdeckt: F-831, 30.09.2026.
+
+**F-846** · `TECH_DEBT` · P3 · behoben
+Titel: Der Startvorlage-Validator sperrte `.com` nicht, obwohl Schema und `pruefeStartziel` es tun.
+Beschreibung: `GESPERRTE_STARTZIEL_ENDUNGEN` in `src/startvorlage/index.ts` enthielt nur `.cmd/.bat/.ps1`; die Schemabeschreibung von `pruefbefehl` und die Laufzeitprüfung (`ENDUNGS_SPERRLISTE`, `prozessstart.ts`) nennen zusätzlich `.com`. Ein `.com`-Startziel fiel dadurch erst beim Start auf, nicht beim Laden der Vorlage.
+Fundstelle: `src/startvorlage/index.ts` (`GESPERRTE_STARTZIEL_ENDUNGEN`).
+Auswirkung: Niedrig — die Laufzeitprüfung griff trotzdem.
+Maßnahme: `.com` ergänzt; gilt für `pruefbefehl`, `startbefehl` und `worker.codex.startziel`. Gate `check-f43-projekt-aufrufen.mjs` (a).
+Status: behoben (F43, PR folgt).
+Feature/Run: F43, 30.09.2026.
+
+**F-847** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Ein Projekt-Aufruf kann den Arbeitsbaum des Projekts verändern und damit die nächste Ausführung blockieren.
+Beschreibung: Der `startbefehl` (F43) läuft in der Repo-Wurzel und schreibt typischerweise `ergebnis_datei` dorthin. Ist die Datei nicht gitignoriert, ist der Arbeitsbaum danach unsauber — eine schreibende Ausführung startet nur auf sauberem Baum (`src/ausfuehrung-vorbedingung/`) und blockiert.
+Fundstelle: `src/projekt-aufruf/index.ts`; `features/F43/feature.md` „Bekannte Grenzen“.
+Auswirkung: Niedrig — sichtbarer Blocker mit Grund, kein stiller Fehler.
+Maßnahme: Vorerst Doku (ergebnis_datei im Projekt gitignoren). Bei F30 prüfen, ob der Aufruf den Arbeitsbaum vor/nach vergleichen und eine Änderung melden soll.
+Status: offen.
+Feature/Run: F43, 30.09.2026.
+
+**F-848** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Regel 1j meldet eine Änderung am `startbefehl` nur für Workflow-Ausführungen.
+Beschreibung: Die im Repo liegende Startvorlage gehört zu den Prüfketten-Mustern von Regel 1j (F-735), damit meldet ein Workflow-Schritt `ausfuehrung` eine Änderung am `startbefehl`. Ein direkter schreibender Lauf über `POST /api/laeufe` (Startformular) läuft nicht durch Regel 1j. Abgemildert: der Aufruf nutzt die beim Serverstart geladene Startvorlage (Änderung wirkt erst nach Neustart) und die Oberfläche zeigt das argv vor dem Klick.
+Fundstelle: `scripts/leitstand-server.mjs` (Regel-1j-Berechnung im Workflow-Nachlauf, `POST /api/projekt-aufruf`).
+Auswirkung: Niedrig — ein veränderter startbefehl bliebe bis zum nächsten Neustart wirkungslos und ist vor dem Klick sichtbar.
+Maßnahme: Bei F30 entscheiden, ob der Aufruf einen gegenüber HEAD veränderten startbefehl ablehnt.
+Status: offen.
+Feature/Run: F43, 30.09.2026.
+
+**F-849** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: `vorschau_url` darf auf den Port des Leitstands zeigen.
+Beschreibung: `validiereProjekteDaten` prüft nur die Form `http://localhost|127.0.0.1:<port>`. Zeigt `vorschau_url` auf den Leitstand selbst, meldet F43 „erreichbar“ und „Öffnen“ öffnet den Leitstand; über F36 (`{projekt_origins}`) bekäme ein Browser-MCP eines Laufs den Leitstand-Origin freigeschaltet und könnte dort bedienen, ohne dass der CSRF-Haken greift (gleicher Origin).
+Fundstelle: `src/projekte/index.ts` (`vorschauPortAus`); `scripts/leitstand-server.mjs` (`baueMcpPlatzhalter`, Bindeblock `PORT`).
+Auswirkung: Mittel für F36-Läufe mit Browser-MCP, gering für F43.
+Maßnahme: Beim Serverstart einen Registereintrag mit `vorschau_url`-Port = Leitstand-Port abweisen oder `{projekt_origins}` dafür leer lassen.
+Status: offen.
+Feature/Run: QA-Pass F43, 30.09.2026.
+
+**F-850** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Ein registriertes Projekt mit ungültiger Startvorlage antwortet „404 Unbekanntes Projekt“.
+Beschreibung: `baueProjektHandlerMap` überspringt einen Eintrag, dessen Handler beim Serverstart nicht gebaut werden kann (z. B. `startbefehl` mit `.cmd`), und loggt den Grund nur auf der Konsole; der Dispatcher antwortet für die id 404 „Unbekanntes Projekt“. F43 macht das wahrscheinlicher (unter Windows ist `npm` eine `npm.cmd`). Die Übersicht benennt den Fall seit F43 in Klartext, der Server liefert den Grund aber nicht.
+Fundstelle: `scripts/leitstand-server.mjs` (`baueProjektHandlerMap`, `erzeugeMultiProjektDispatcher`); Gate `check-f25-projekte.mjs` (2d) legt das Überspringen fest.
+Auswirkung: Niedrig — Projekt unerreichbar, Grund nur in der Konsole.
+Maßnahme: Initialisierungsfehler je id merken und vom Dispatcher als 503 mit Grund liefern; Gate (2d) entsprechend anpassen.
+Status: offen.
+Feature/Run: QA-Pass F43, 30.09.2026.
+
+**F-851** · `BUG` · P3 · offen
+Titel: Der Baum-Kill nach Timeout/Abbruch in `prozessstart.ts` läuft auf eine schon freie PID.
+Beschreibung: `echterStarter` ruft `killeProzessbaumFallsWindows(kindprozess.pid)` erst im `'close'`-Pfad auf (TIMEOUT/ABBRUCH), wenn das direkte Kind längst beendet und seine PID frei ist. Laut F-181 scheitert taskkill dort erwartbar; vergibt Windows die PID aber inzwischen neu, trifft `taskkill /T /F` einen fremden Prozessbaum. Dasselbe Muster galt im F43-Delta-Review als P2 und ist dort über `StarterOptionen.beiExit` behoben; die bestehenden Pfade (Claude-/Codex-Lauf, Prüfschritt) sind unverändert.
+Fundstelle: `src/claude-code-gateway/prozessstart.ts` (`behandeleErgebnis`, Zweige ABBRUCH/TIMEOUT).
+Auswirkung: Niedrig — schmales Zeitfenster, aber erzwungenes Beenden eines fremden Baums.
+Maßnahme: Den Baum-Kill vor Nodes eigenem Kill auslösen (eigener Timer wie in `src/projekt-aufruf/`) oder den Aufruf im `'close'`-Pfad streichen, da er laut F-181 dort wirkungslos ist.
+Status: offen.
+Feature/Run: Abschluss-Review F43, 30.09.2026.

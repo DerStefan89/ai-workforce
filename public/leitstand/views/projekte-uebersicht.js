@@ -44,9 +44,18 @@
  * geladenen Zeitpunkt dafür (nur laufAktiv als Bool), ein Zeitpunkt bräuchte
  * einen zusätzlichen Abruf JE Projektkarte (Auftrag: "sofern Daten
  * vorhanden" — hier nicht der Fall), siehe Bericht.
+ *
+ * F43 (Projekt aufrufen/anzeigen): je Karte ein Block „Vorschau & Aufruf“ — nach dem Rendern
+ * einzeln über GET /api/projekte/<id>/projekt-aufruf gefüllt (projekt-aufruf-anzeige.js), damit
+ * eine langsame Vorschauprüfung (≤ 2 s) die Liste nicht aufhält. „Aufrufen“ ist ein zweiter
+ * Server-Schreibpfad: nur auf Klick, danach wird der Block frisch vom Server geladen (der Server
+ * hält den letzten Aufruf). Meldet der Server aktiv (Aufruf läuft, z. B. nach F5 oder aus einem
+ * zweiten Tab gestartet), lädt der Block alle AKTIV_NACHLADEN_MS nach, bis der Aufruf endet — so
+ * bleibt kein Knopf dauerhaft auf „Läuft…“.
  */
 
-import { holeProjekte, legeProjektAn } from '../api.js'
+import { holeProjekte, holeProjektAufruf, legeProjektAn, rufeProjektAuf } from '../api.js'
+import { renderAufrufBereich, renderVorschau } from '../projekt-aufruf-anzeige.js'
 import { holeAktivesProjekt, setzeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
@@ -91,6 +100,11 @@ function projektKarte(projekt, aktivesProjektId) {
       ${metaKachel(ICON_PHASE, 'Phase', escapeHtml(projekt.status))}
       ${metaKachel(ICON_LAUF, 'Aktiver Lauf', projekt.laufAktiv ? 'Ja' : 'Nein')}
     </div>
+    <div class="projekt-aufruf" data-aufruf-id="${escapeHtml(projekt.id)}">
+      <h3>Vorschau &amp; Aufruf</h3>
+      <div class="projekt-aufruf-vorschau">${renderVorschau(null)}</div>
+      <div class="projekt-aufruf-bereich"></div>
+    </div>
   </div>`
 }
 
@@ -101,13 +115,82 @@ async function ladeProjekte() {
     const daten = await holeProjekte()
     const aktivesProjektId = holeAktivesProjekt().id
     container.innerHTML = daten.projekte.length === 0 ? '<p class="leer">Keine Projekte registriert.</p>' : daten.projekte.map((p) => projektKarte(p, aktivesProjektId)).join('')
+    for (const p of daten.projekte) void ladeAufrufBlock(p.id)
   } catch (fehler) {
     container.innerHTML = `<p class="fehler">Anfrage fehlgeschlagen: ${escapeHtml(fehler.message)}</p>`
   }
 }
 
+/** F43: Abstand des Nachladens, solange ein Aufruf läuft (jeder GET prüft auch die Vorschau, ≤ 2 s). */
+const AKTIV_NACHLADEN_MS = 3000
+
+/** F43: je Projekt-id höchstens EINE Nachlade-Kette (Delta-Review) — Neu laden/Routeneintritt ersetzt den Timer statt eine weitere Kette zu starten. */
+const nachladeTimer = new Map()
+
+/** @param id - Projekt-id @returns der aktuell gerenderte Block „Vorschau & Aufruf“ oder null */
+function findeAufrufBlock(id) {
+  return document.getElementById('projekte-uebersicht-liste').querySelector(`.projekt-aufruf[data-aufruf-id="${CSS.escape(id)}"]`)
+}
+
+/**
+ * F43: füllt den Block „Vorschau & Aufruf“ einer Karte frisch vom Server.
+ * @param id - Projekt-id
+ * @param fehlerText - Ablehnungsgrund des vorherigen Aufrufs ('' = keiner), nach dem Neurendern angezeigt
+ */
+async function ladeAufrufBlock(id, fehlerText = '') {
+  let daten
+  try {
+    daten = await holeProjektAufruf(id)
+  } catch (fehler) {
+    const block = findeAufrufBlock(id)
+    if (block === null) return
+    block.querySelector('.projekt-aufruf-vorschau').innerHTML = ''
+    // QA-Befund: ein registriertes Projekt, dessen Handler beim Serverstart nicht gebaut werden
+    // konnte (z. B. startbefehl mit .cmd), antwortet 404 „Unbekanntes Projekt“ — hier klarer benennen.
+    const grund = fehler.message.startsWith('404') ? 'Projekt beim Serverstart nicht initialisiert (z. B. ungültige Startvorlage) — Grund steht in der Konsole des Leitstands' : fehler.message
+    block.querySelector('.projekt-aufruf-bereich').innerHTML = `<p class="fehler">Vorschau & Aufruf nicht ladbar: ${escapeHtml(grund)}</p>`
+    return
+  }
+  const block = findeAufrufBlock(id)
+  if (block === null) return
+  block.querySelector('.projekt-aufruf-vorschau').innerHTML = renderVorschau(daten.vorschau)
+  block.querySelector('.projekt-aufruf-bereich').innerHTML = renderAufrufBereich(daten, id)
+  const fehlerAnzeige = block.querySelector('.projekt-aufruf-fehler')
+  if (fehlerAnzeige !== null && fehlerText !== '') {
+    fehlerAnzeige.textContent = fehlerText
+    fehlerAnzeige.hidden = false
+  }
+  clearTimeout(nachladeTimer.get(id))
+  nachladeTimer.delete(id)
+  // Ablehnungsgrund (z. B. 409 aus einem zweiten Tab) bleibt über das Nachladen hinweg stehen.
+  if (daten.aktiv) nachladeTimer.set(id, setTimeout(() => void ladeAufrufBlock(id, fehlerText), AKTIV_NACHLADEN_MS))
+}
+
+/** F43: Klick auf „Aufrufen“ — POST, danach Block neu laden; 409 (Aufruf/Lauf aktiv) u. a. im Klartext. @param button - der geklickte Knopf */
+async function rufeAuf(button) {
+  const id = button.dataset.id
+  button.disabled = true
+  button.textContent = 'Läuft…'
+  let fehlerText = ''
+  try {
+    const antwort = await rufeProjektAuf(id)
+    if (antwort.status !== 200) {
+      const koerper = await antwort.json().catch(() => ({}))
+      fehlerText = `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`
+    }
+  } catch (fehler) {
+    fehlerText = `Anfrage fehlgeschlagen: ${fehler.message}`
+  }
+  await ladeAufrufBlock(id, fehlerText)
+}
+
 function initBedienung() {
   document.getElementById('projekte-uebersicht-liste').addEventListener('click', (ereignis) => {
+    const aufrufButton = ereignis.target.closest('.projekt-aufrufen')
+    if (aufrufButton !== null) {
+      if (!aufrufButton.disabled) void rufeAuf(aufrufButton)
+      return
+    }
     const button = ereignis.target.closest('.projekt-waehlen')
     if (button === null) return
     setzeAktivesProjekt({ id: button.dataset.id, name: button.dataset.name })

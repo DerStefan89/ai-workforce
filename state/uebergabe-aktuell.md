@@ -3,7 +3,9 @@ Wird am Ende jeder Challenger-Runde vollständig überschrieben. Historie: Git-L
 Stand: 30.09.2026.
 
 ## Stand
-**F-831 (Init-Gate prüft `init.slash_commands`) ist gebaut, aber nicht committet.** Branch `fix/f831-slash-commands`, Worktree `aiw-fix-f831`, Basis `39c9986`. Gemessen mit der installierten CLI (Nachweis `features/F36/nachweis-f831/`): 36 Slash-Commands außer dem Ort-B-Skill, dieselbe Menge wie bei 9b′/9b″; Gegenprüfung an 7 Namen, alle verweigert. Referenzmenge `src/claude-code-gateway/slash-commands-referenz.json`. Fixpaket PR 1 und PR 2 nach F36 sind als #284 und #285 gemergt.
+**F43 „Projekt aufrufen/anzeigen“ ist in Arbeit (WS-1 gebaut, nicht committet).** Branch `feat/f43-projekt-aufrufen`, Worktree `aiw-f43`, Basis `12a190c`. Variante A (Stefan, 30.09.2026): Projekte-Übersicht zeigt `vorschau_url` mit erreichbar/nicht erreichbar und „Öffnen“; neue optionale Startvorlage-Felder `startbefehl`/`startZeitgrenzeMs`/`ergebnis_datei`; „Aufrufen“ führt den `startbefehl` einmal aus (`POST /api/projekte/<id>/projekt-aufruf`). Ergebnis flüchtig. Gate `scripts/check-f43-projekt-aufrufen.mjs`, Render-Nachweis `features/F43/nachweis-ws1/`. Regel 1j deckte die Startvorlage im Repo bereits ab (F-735). Review-/QA-Pass mit Korrekturgang und Delta-Pass durchlaufen. Neue Findings F-845 bis F-851 (F-846 behoben). Details: `features/F43/feature.md`.
+
+**F-831 (Init-Gate prüft `init.slash_commands`) ist gemergt** (#286, `12a190c`). Branch `fix/f831-slash-commands`, Worktree `aiw-fix-f831`, Basis `39c9986`. Gemessen mit der installierten CLI (Nachweis `features/F36/nachweis-f831/`): 36 Slash-Commands außer dem Ort-B-Skill, dieselbe Menge wie bei 9b′/9b″; Gegenprüfung an 7 Namen, alle verweigert. Referenzmenge `src/claude-code-gateway/slash-commands-referenz.json`. Fixpaket PR 1 und PR 2 nach F36 sind als #284 und #285 gemergt.
 
 **F36 „Capability Library wirksam machen“ ist ABGESCHLOSSEN.** Stefan hat am 29.09.2026 abgenommen, nach Review-Pass und Fixpaket (#282). Gemergt sind #267–#282. Details stehen in `features/F36/feature.md`, Abschnitt „Review-Pass 29.09.2026“ (Urteil je AK).
 - Gebaut und belegt:
@@ -17,8 +19,8 @@ Stand: 30.09.2026.
 - Abnahme-Branch `docs/f36-abnahme` ist als #283 gemergt (`1255df1`).
 
 ## Nächste Schritte
-1. Stefan committet und pusht `fix/f831-slash-commands`, danach PR und Merge.
-2. Nächster Schritt: Projekt-Kern „Projekt aufrufen/anzeigen“.
+1. Stefan committet und pusht `feat/f43-projekt-aufrufen` (Challenger prüft per Hash), danach PR und Merge; Abnahme F43.
+2. Worktree `aiw-fix-f831` aufräumen (F-831 ist gemergt).
 3. Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab: mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
 4. F-829 zusammen mit F-820 schneiden. Weiter vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762.
 5. Scout Datenanalyse (F-800).

@@ -21,6 +21,9 @@
  *   Aufbau des Request-Handlers, löst je Startauftrag einen benannten
  *   Werkzeugsatz auf)
  * - src/ressourcen/index.ts (nur WERKZEUG_EINTRAG_MUSTER für installation.werkzeuge, F36 WS-1)
+ * - src/projekt-aufruf/index.ts (STANDARD_START_ZEITGRENZE_MS, F43)
+ *
+ * Seit F43: optionale Aufruf-Felder startbefehl/startZeitgrenzeMs/ergebnis_datei (E-F30-3).
  */
 
 import { readFileSync } from 'node:fs'
@@ -49,6 +52,9 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
     'pruefbefehl',
     'pruefZeitgrenzeMs',
     'pruefketten_pfade',
+    'startbefehl',
+    'startZeitgrenzeMs',
+    'ergebnis_datei',
   ])
   for (const feld of Object.keys(obj)) {
     if (!erlaubt.has(feld)) verstoesse.push(`unbekanntes Feld '${feld}' (additionalProperties: false)`)
@@ -106,21 +112,22 @@ export function validiereStartvorlageDaten(daten: unknown): string[] {
   // F-652: 'pruefbefehl' ist optional (jede Startvorlage ohne das Feld bleibt bitgenau
   // unverändert) — ist es gesetzt, gilt derselbe Hygiene-Guard wie für jedes andere Startziel
   // (F-057/F-280): [0] darf nicht auf eine Shell-interpretierte Endung enden.
-  if ('pruefbefehl' in obj) {
-    if (!Array.isArray(obj.pruefbefehl) || obj.pruefbefehl.length === 0 || obj.pruefbefehl.some((t) => typeof t !== 'string' || t.length === 0)) {
-      verstoesse.push("'pruefbefehl' muss, wenn angegeben, ein nicht-leeres Array nicht-leerer Strings sein")
-    } else {
-      const programm = (obj.pruefbefehl[0] as string).toLowerCase()
-      const gesperrt = GESPERRTE_STARTZIEL_ENDUNGEN.find((endung) => programm.endsWith(endung))
-      if (gesperrt !== undefined) {
-        verstoesse.push(`'pruefbefehl[0]' darf nicht auf '${gesperrt}' enden (F-280) — ein Skript-Startziel hebt die Argv-Zusicherung auf`)
-      }
-    }
-  }
+  if ('pruefbefehl' in obj) verstoesse.push(...pruefeArgvFeld(obj.pruefbefehl, 'pruefbefehl'))
   if ('pruefZeitgrenzeMs' in obj && (typeof obj.pruefZeitgrenzeMs !== 'number' || !Number.isInteger(obj.pruefZeitgrenzeMs) || obj.pruefZeitgrenzeMs <= 0)) {
     verstoesse.push("'pruefZeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl sein")
   }
   if ('pruefketten_pfade' in obj) verstoesse.push(...pruefePruefkettenPfade(obj.pruefketten_pfade))
+
+  // F43 (E-F30-3, Variante A): optionale Aufruf-Felder — dieselben Regeln wie pruefbefehl bzw.
+  // pruefketten_pfade; fehlen sie, bleibt die Vorlage bitgenau gültig.
+  if ('startbefehl' in obj) verstoesse.push(...pruefeArgvFeld(obj.startbefehl, 'startbefehl'))
+  if ('startZeitgrenzeMs' in obj && (!Number.isInteger(obj.startZeitgrenzeMs) || (obj.startZeitgrenzeMs as number) <= 0 || (obj.startZeitgrenzeMs as number) > MAX_START_ZEITGRENZE_MS)) {
+    verstoesse.push(`'startZeitgrenzeMs' muss, wenn angegeben, eine positive ganze Zahl bis ${MAX_START_ZEITGRENZE_MS} sein (kein Dauerprozess, F43)`)
+  }
+  if ('ergebnis_datei' in obj) {
+    const grund = typeof obj.ergebnis_datei === 'string' && /[*?[\]{}]/.test(obj.ergebnis_datei) ? "ist ein Dateipfad, kein Muster — '*', '?', '[]', '{}' sind nicht erlaubt" : pruefeRepoRelativenPfad(obj.ergebnis_datei)
+    if (grund !== null) verstoesse.push(`'ergebnis_datei' ${grund}`)
+  }
 
   return verstoesse
 }
@@ -227,25 +234,54 @@ export function pruefePruefkettenPfade(wert: unknown): string[] {
   if (!Array.isArray(wert)) return ["'pruefketten_pfade' muss, wenn angegeben, ein Array von Strings sein"]
   const verstoesse: string[] = []
   wert.forEach((muster, index) => {
-    const praefix = `'pruefketten_pfade[${index}]'`
-    if (typeof muster !== 'string' || muster.length === 0) {
-      verstoesse.push(`${praefix} muss ein nicht-leerer String sein`)
-    } else if (muster.includes('\\')) {
-      verstoesse.push(`${praefix} darf keinen Backslash enthalten — Muster sind '/'-getrennt und relativ zur Repo-Wurzel`)
-    } else if (muster.startsWith('/') || /^[A-Za-z]:/.test(muster)) {
-      verstoesse.push(`${praefix} darf kein absoluter Pfad sein ('${muster}')`)
-    } else if (muster.split('/').includes('..')) {
-      verstoesse.push(`${praefix} darf kein '..'-Segment enthalten ('${muster}')`)
-    } else if (/[?[\]{}]/.test(muster)) {
-      // Review-Befund F-735: globZuRegExp nähme '?'/'[]'/'{}' wörtlich — ein so geschriebenes Muster träfe still nie.
-      verstoesse.push(`${praefix} darf nur '*' und '**' als Platzhalter nutzen — '?', '[]' und '{}' werden nicht unterstützt ('${muster}')`)
-    }
+    const grund = pruefeRepoRelativenPfad(muster)
+    if (grund !== null) verstoesse.push(`'pruefketten_pfade[${index}]' ${grund}`)
   })
   return verstoesse
 }
 
 /**
- * Gesperrte Startziel-Endungen (F-280). Eine .cmd/.bat/.ps1-Datei ist kein
+ * Gemeinsame Pfadregel für pruefketten_pfade (F-735) und ergebnis_datei (F43): nicht-leerer
+ * String, '/'-getrennt, relativ zur Repo-Wurzel, ohne '..'-Segment, ohne '?', '[]', '{}' — ein
+ * Pfad darf nie aus dem Repo herauszeigen.
+ * @param wert - roher Feldwert
+ * @returns Grund (ohne Feldnamen) oder null, wenn gültig
+ */
+function pruefeRepoRelativenPfad(wert: unknown): string | null {
+  if (typeof wert !== 'string' || wert.length === 0) return 'muss ein nicht-leerer String sein'
+  if (wert.includes('\\')) return "darf keinen Backslash enthalten — Pfade sind '/'-getrennt und relativ zur Repo-Wurzel"
+  if (wert.startsWith('/') || /^[A-Za-z]:/.test(wert)) return `darf kein absoluter Pfad sein ('${wert}')`
+  if (wert.split('/').includes('..')) return `darf kein '..'-Segment enthalten ('${wert}')`
+  // Review-Befund F-735: globZuRegExp nähme '?'/'[]'/'{}' wörtlich — ein so geschriebenes Muster träfe still nie.
+  if (/[?[\]{}]/.test(wert)) return `darf nur '*' und '**' als Platzhalter nutzen — '?', '[]' und '{}' werden nicht unterstützt ('${wert}')`
+  return null
+}
+
+/**
+ * Argv-Regel für pruefbefehl (F-652) und startbefehl (F43): nicht-leeres Array nicht-leerer
+ * Strings, [0] ohne Skript-Endung (F-280). Zur Startzeit prüft pruefeStartziel
+ * (src/claude-code-gateway/prozessstart.ts) zusätzlich absoluten Pfad, Shell-Basisnamen und Existenz.
+ * @param wert - roher Feldwert
+ * @param feld - Feldname für die Meldung
+ * @returns Liste der Verstöße (leer = gültig)
+ */
+function pruefeArgvFeld(wert: unknown, feld: string): string[] {
+  if (!Array.isArray(wert) || wert.length === 0 || wert.some((t) => typeof t !== 'string' || t.length === 0)) {
+    return [`'${feld}' muss, wenn angegeben, ein nicht-leeres Array nicht-leerer Strings sein`]
+  }
+  const programm = (wert[0] as string).toLowerCase()
+  const gesperrt = GESPERRTE_STARTZIEL_ENDUNGEN.find((endung) => programm.endsWith(endung))
+  return gesperrt === undefined ? [] : [`'${feld}[0]' darf nicht auf '${gesperrt}' enden (F-280) — ein Skript-Startziel hebt die Argv-Zusicherung auf`]
+}
+
+/** F43: Obergrenze für startZeitgrenzeMs — ein Aufruf ist ein einmaliger, begrenzter Lauf, kein Dauerprozess (Variante B bleibt V1-Backlog). 240 s plus Nachfrist bleiben unter dem Antwort-Zeitlimit gängiger Browser (Firefox 300 s, QA-Befund), weil der Aufruf synchron in der Anfrage läuft. */
+export const MAX_START_ZEITGRENZE_MS = 240_000
+
+/** F43: Zeitgrenze eines Aufrufs, wenn die Startvorlage kein startZeitgrenzeMs trägt — anders als pruefZeitgrenzeMs nie „ohne Grenze“. */
+export const STANDARD_START_ZEITGRENZE_MS = 60_000
+
+/**
+ * Gesperrte Startziel-Endungen (F-280; .com seit F43, wie ENDUNGS_SPERRLISTE in prozessstart.ts). Eine .cmd/.bat/.com/.ps1-Datei ist kein
  * Programm, sondern ein Skript, das der Betriebssystem-Loader an einen
  * Interpreter weiterreicht — das Argv geht dann durch eine
  * Shell-Zeilenzerlegung, die die Argv-Zusicherung (F-057) aufhebt. Dieselbe
@@ -253,7 +289,7 @@ export function pruefePruefkettenPfade(wert: unknown): string[] {
  * src/claude-code-gateway/prozessstart.ts zur Startzeit durch; hier greift
  * sie schon beim Laden der Vorlage, also bevor überhaupt ein Lauf beginnt.
  */
-const GESPERRTE_STARTZIEL_ENDUNGEN = ['.cmd', '.bat', '.ps1']
+const GESPERRTE_STARTZIEL_ENDUNGEN = ['.cmd', '.bat', '.com', '.ps1']
 
 /**
  * Prüft den optionalen worker-Block (F16 WS-1, AK5) gegen dieselbe Form wie

@@ -58,6 +58,10 @@
  * process.chdir(), kein Shell. Fehlt der Wert, bleibt execFiles eigener
  * Default (process.cwd() des Serverprozesses) unangetastet.
  *
+ * F43: StarterOptionen.beiStart/beiExit melden PID und Ende des direkten Kindes; killeProzessbaumFallsWindows
+ * ist exportiert, damit src/projekt-aufruf/ den Baum an seiner eigenen Zeitgrenze beenden kann,
+ * solange das direkte Kind noch lebt.
+ *
  * Was dazu real gemessen ist und was nicht — die Unterscheidung zählt:
  * GEMESSEN ist, dass Codex ohne angebundenes stdin
  * `Reading additional input from stdin...` auf stderr meldet
@@ -216,8 +220,12 @@ export function pruefeStartziel(startziel: string[]): { ok: true } | { ok: false
  * ebenfalls nicht mehr erreichbar, da taskkill /T eine lebende Ziel-PID
  * braucht, um den Baum aufzubauen. Auf anderen Plattformen (kein realer
  * Nachweis möglich, YAGNI) und ohne bekannte pid ein No-op.
+ *
+ * F43: zweiter Aufrufer src/projekt-aufruf/index.ts ruft die Funktion an seiner EIGENEN Zeitgrenze,
+ * solange das direkte Kind noch lebt (beiExit hat die PID dann noch nicht verworfen) — dort ist der
+ * Baum-Kill also wirksam, anders als im Nachlauf oben beschrieben.
  */
-function killeProzessbaumFallsWindows(pid: number | undefined): Promise<void> {
+export function killeProzessbaumFallsWindows(pid: number | undefined): Promise<void> {
   if (process.platform !== 'win32' || pid === undefined) {
     return Promise.resolve()
   }
@@ -331,6 +339,24 @@ const echterStarter: Starter = (startziel, tokens, optionen) =>
         beendigungsart: null,
       })
       return
+    }
+
+    if (optionen?.beiStart !== undefined) {
+      try {
+        optionen.beiStart(kindprozess.pid)
+      } catch (fehler) {
+        console.error('[prozessstart] beiStart fehlgeschlagen:', fehler)
+      }
+    }
+    if (optionen?.beiExit !== undefined) {
+      const beiExit = optionen.beiExit
+      kindprozess.once('exit', () => {
+        try {
+          beiExit()
+        } catch (fehler) {
+          console.error('[prozessstart] beiExit fehlgeschlagen:', fehler)
+        }
+      })
     }
 
     // F-642: Prompt-Übergabe per stdin statt Argv (ENAMETOOLONG-Vermeidung). Der
@@ -499,6 +525,8 @@ export function starteProzess(startziel: string[], tokens: AufrufTokens, optione
     beiStreamZeile: optionen.beiStreamZeile,
     beiProzessende: optionen.beiProzessende,
     nachlaufFristMs: optionen.nachlaufFristMs,
+    beiStart: optionen.beiStart,
+    beiExit: optionen.beiExit,
   }
   return starter(startziel, tokens, starterOptionen)
 }

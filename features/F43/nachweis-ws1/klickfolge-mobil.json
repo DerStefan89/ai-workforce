@@ -1,0 +1,25 @@
+{
+  "url": "http://127.0.0.1:4175/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 400,
+    "hoehe": 4200
+  },
+  "beobachtete": {
+    "vorhanden": [
+      {
+        "name": "Karte f43-demo mit Ergebnis",
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis .badge.ok"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Mobil 400 px: Übersicht mit Ergebnis von f43-demo",
+      "warteAufSelector": {
+        "selector": "[data-aufruf-id=\"f43-demo\"] .projekt-aufruf-ergebnis .badge.ok",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-mobil.png"
+    }
+  ]
+}
