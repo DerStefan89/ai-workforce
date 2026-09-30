@@ -50,7 +50,7 @@
  */
 
 import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
-import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
+import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { holeAktivesProjekt } from '../projekt-kontext.js'
@@ -392,6 +392,7 @@ function renderBearbeitungsInhalt(workitem, zustand) {
       ${renderSchrittkette(daten)}
       ${renderEmpfehlung(zustand.workflowDetail?.empfehlung)}
       ${zustand.meldung ? `<p class="fehler">${escapeHtml(zustand.meldung)}</p>` : ''}
+      ${renderInstallierbarHinweis(zustand.workflowDetail?.empfehlung)}
       <div>
         <button class="btn btn-primary wb-freigeben" data-id="${escapeHtml(workitem.id)}">Freigeben</button>
         <button class="btn wb-ablehnen" data-id="${escapeHtml(workitem.id)}">Ablehnen</button>

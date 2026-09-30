@@ -5622,7 +5622,12 @@ export function erzeugeRequestHandler(optionen = {}) {
       }
     }
 
-    const angefragteUrl = new URL(req.url, `http://${req.headers.host}`)
+    // F-823: eine ungültige absolute Anfrage-URI (z. B. `GET http://[/`) → 400 statt 500.
+    const angefragteUrl = leseAnfrageUrl(req.url, `http://${req.headers.host}`)
+    if (angefragteUrl === null) {
+      sendeJson(res, 400, { grund: UNGUELTIGE_URL_GRUND })
+      return
+    }
     const pfad = angefragteUrl.pathname
 
     // Detailendpunkt (AK2) VOR dem Listenendpunkt geprüft — längeres, spezielleres
@@ -9282,6 +9287,25 @@ export function loeseProjektPfade(projekt, repoWurzelBasis) {
   }
 }
 
+/** F-823: Antwortgrund bei einer nicht parsebaren Anfrage-URI. */
+const UNGUELTIGE_URL_GRUND = 'Ungültige Anfrage-URI'
+
+/**
+ * F-823: baut die URL einer Anfrage, ohne zu werfen. `new URL` wirft bei einer ungültigen absoluten
+ * Anfrage-URI (roh `GET http://[/ HTTP/1.1`, Node lässt sie durch); im synchronen Dispatcher beendete
+ * das den Prozess.
+ * @param rohUrl - req.url
+ * @param basis - Basis-URL für relative Pfade
+ * @returns URL oder null, wenn sie nicht parsebar ist
+ */
+function leseAnfrageUrl(rohUrl, basis) {
+  try {
+    return new URL(rohUrl, basis)
+  } catch {
+    return null
+  }
+}
+
 /**
  * F25 WS-1 (AK2): leitet /api/projekte/<id>/... an die zu <id> gehörende Handler-Instanz um —
  * req.url wird auf den Rest nach der id umgeschrieben, jede Instanz sieht dadurch unverändert
@@ -9295,7 +9319,12 @@ export function loeseProjektPfade(projekt, repoWurzelBasis) {
  */
 export function erzeugeMultiProjektDispatcher(projektHandlerMap, defaultHandler) {
   return (req, res) => {
-    const url = new URL(req.url, 'http://localhost')
+    // F-823: synchroner Listener ohne umschließendes try — ein Wurf hier beendete den Prozess.
+    const url = leseAnfrageUrl(req.url, 'http://localhost')
+    if (url === null) {
+      sendeJson(res, 400, { grund: UNGUELTIGE_URL_GRUND })
+      return
+    }
     const treffer = url.pathname.match(/^\/api\/projekte\/([^/]+)(\/.*)?$/)
     if (treffer === null) {
       defaultHandler(req, res)

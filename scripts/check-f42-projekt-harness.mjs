@@ -8,7 +8,9 @@
  *
  * Prüft: (a) Skelett vorhanden — vorlagen/projekt-skelett/CLAUDE.md +
  * HERKUNFT.md existieren real in DIESEM Repo, HERKUNFT.md nennt die SHA
- * '9189959'; Rot-Fall: kopiereSkelett gegen eine installWurzel OHNE
+ * '9189959'; seit F-830 trägt CLAUDE.md an der DoD-Zeile Reviewer/QA und am
+ * Iterationsende den Workforce-Zusatz (kein git/Commit, kein Subagent in der Ausführung);
+ * Rot-Fall: kopiereSkelett gegen eine installWurzel OHNE
  * vorlagen/projekt-skelett/ wirft. (b) Baseline unverändert — kopiereSkelett
  * überschreibt NIE eine bereits vorhandene Datei (Kollisionsschutz), belegt
  * an einer künstlichen Kollision mit einem Baseline-Pfad. (c) pruefbefehl
@@ -106,6 +108,16 @@ try {
     const claudeMdPfad = join(ECHTE_INSTALL_WURZEL, 'vorlagen', 'projekt-skelett', 'CLAUDE.md')
     const herkunftPfad = join(ECHTE_INSTALL_WURZEL, 'vorlagen', 'projekt-skelett', 'HERKUNFT.md')
     if (!existsSync(claudeMdPfad)) befunde.push(`(a) 'vorlagen/projekt-skelett/CLAUDE.md' fehlt in diesem Repo (${claudeMdPfad})`)
+    // F-830: DoD-Zeile Reviewer/QA und Iterationsende nennen, dass in Workforce-Läufen weder
+    // Subagent-Review noch git/Commit in der Ausführung stattfinden (Shell-Satz F-764 hat Vorrang).
+    else {
+      const skelett = readFileSync(claudeMdPfad, 'utf8')
+      // Zeilenumbrüche der Markdown-Datei auf ein Leerzeichen zusammenfassen, dann wörtlich suchen.
+      const flach = skelett.replace(/\s+/g, ' ')
+      const reviewZeile = /- \[ \] Reviewer-\/QA-Pass [^\[]*In Workforce-Läufen sind Review und QA eigene Workflow-Schritte[^\[]*weder git noch Commit[^\[]*Shell-Satz/.test(flach)
+      const iterationsende = /Iterationsende heißt:.*?In Workforce-Läufen gilt das nicht: Dort finden in der Ausführung weder git noch Commit statt.*?Shell-Satz/.test(flach)
+      if (!reviewZeile || !iterationsende) befunde.push(`(a) F-830: Skelett-CLAUDE.md ohne Workforce-Zusatz (DoD-Zeile Reviewer/QA: ${reviewZeile}, Iterationsende: ${iterationsende})`)
+    }
     if (!existsSync(herkunftPfad)) {
       befunde.push(`(a) 'vorlagen/projekt-skelett/HERKUNFT.md' fehlt in diesem Repo (${herkunftPfad})`)
     } else if (!readFileSync(herkunftPfad, 'utf8').includes('9189959')) {
@@ -124,7 +136,7 @@ try {
     }
     if (!hatGeworfen) befunde.push('(a) Rot-Fall: kopiereSkelett gegen eine installWurzel OHNE vorlagen/projekt-skelett/ hätte werfen müssen, hat es nicht')
 
-    if (befunde.length === vor) console.log("✓ (a) Skelett vorhanden in diesem Repo (CLAUDE.md + HERKUNFT.md mit SHA 9189959), Rot-Fall (fehlende installWurzel) wirft real.")
+    if (befunde.length === vor) console.log("✓ (a) Skelett vorhanden in diesem Repo (CLAUDE.md + HERKUNFT.md mit SHA 9189959, CLAUDE.md mit F-830-Workforce-Zusatz an DoD und Iterationsende), Rot-Fall (fehlende installWurzel) wirft real.")
   }
 
   // ─── (b) Baseline unverändert — kopiereSkelett überschreibt nie eine vorhandene Datei ────

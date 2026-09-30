@@ -27,7 +27,8 @@
  * (m) init mit fremdem Skill / Agent in tools / fremdem MCP, tool_use vor init, keine init-Zeile →
  *     Abbruch vor dem ersten tool_use bzw. Verstoß,
  *     FEHLGESCHLAGEN init_gate_verstoss (echter fuehreAufgabeDurch, gestubbter Starter);
- * (n) .claude-Änderung im Laufdiff → FEHLGESCHLAGEN claude_ordner_veraendert;
+ * (n) .claude-Änderung im Laufdiff → FEHLGESCHLAGEN claude_ordner_veraendert; seit F-832 auch eine
+ *     git-ignorierte neue Datei (Dateisystem-Vergleich vor/nach); vorhandene settings.local.json → grün;
  * (o) ohne Ort-B-Skill bitgenau wie heute (keine Zusatzfelder, keine Zusatz-Tokens); aufrufEingaben.ortB
  *     im Body von POST /api/laeufe → 400.
  *
@@ -557,7 +558,8 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
       if (o?.abbruchSignal?.aborted === true) return { stdout: `${JSON.stringify(init)}\n`, stderr: '', exitCode: null, startfehler: null, beendigungsart: 'ABBRUCH' }
       protokoll.toolUse = true
       o?.beiStreamZeile?.(toolUse)
-      if (schreibe) {
+      if (typeof schreibe === 'function') schreibe(u.repoWurzel)
+      else if (schreibe) {
         mkdirSync(join(u.repoWurzel, '.claude', 'skills', 'selbst-angelegt'), { recursive: true })
         writeFileSync(join(u.repoWurzel, '.claude', 'skills', 'selbst-angelegt', 'SKILL.md'), '---\nname: selbst-angelegt\ndescription: x\n---\n')
       }
@@ -610,9 +612,22 @@ function direkterStart(u, ids, auftragId = 'gate-auftrag') {
     if (befunde.length === vorM) console.log('✓ (m) Init-Gate: fremder Skill / Agent in tools / fremder MCP / tool_use vor init → Prozess vor dem ersten tool_use beendet, keine init-Zeile → Verstoß; jeweils FEHLGESCHLAGEN init_gate_verstoss (bestehender Abbruchweg); passende init-Zeile läuft durch.')
 
     const vorN = befunde.length
+    // F-832: git-ignorierte Dateien unter .claude/ — der git-Weg sieht sie nicht, der Dateisystem-
+    // Vergleich vor/nach dem Lauf schon. Vor dem Lauf vorhandene, unveränderte settings.local.json → grün.
+    writeFileSync(join(u.repoWurzel, '.gitignore'), '.claude/settings.local.json\n.claude/ignoriert/\n')
+    writeFileSync(join(u.repoWurzel, '.claude', 'settings.local.json'), '{"permissions":{}}\n')
+    const gutIgnoriert = await lauf(initZeile({}))
+    if (gutIgnoriert.ergebnis.klassifikation?.ergebnis !== 'ERFOLGREICH') befunde.push(`(n) F-832 Gutfall: vorhandene settings.local.json unverändert, erwartet ERFOLGREICH: ${JSON.stringify(gutIgnoriert.ergebnis.klassifikation)}`)
+    const rotIgnoriert = await lauf(initZeile({}), (wurzel) => {
+      mkdirSync(join(wurzel, '.claude', 'ignoriert'), { recursive: true })
+      writeFileSync(join(wurzel, '.claude', 'ignoriert', 'neu.md'), 'x')
+    })
+    const k = rotIgnoriert.ergebnis.klassifikation
+    if (k?.ergebnis !== 'FEHLGESCHLAGEN' || k.grund !== 'claude_ordner_veraendert') befunde.push(`(n) F-832 Rotfall: gitignorierte neue Datei unter .claude/ nicht rot: ${JSON.stringify(k)}`)
+    raeumeVerzeichnis(join(u.repoWurzel, '.claude', 'ignoriert'))
     const rot = await lauf(initZeile({}), true)
     if (rot.ergebnis.klassifikation?.ergebnis !== 'FEHLGESCHLAGEN' || rot.ergebnis.klassifikation.grund !== 'claude_ordner_veraendert') befunde.push(`(n) .claude-Änderung im Laufdiff nicht rot: ${JSON.stringify(rot.ergebnis.klassifikation)}`)
-    if (befunde.length === vorN) console.log('✓ (n) Laufdiff mit neuer Datei unter .claude/skills/ → FEHLGESCHLAGEN claude_ordner_veraendert (bestehender Bewertungsweg klassifiziereLauf).')
+    if (befunde.length === vorN) console.log('✓ (n) Laufdiff mit neuer Datei unter .claude/skills/ → FEHLGESCHLAGEN claude_ordner_veraendert (bestehender Bewertungsweg klassifiziereLauf); F-832: git-ignorierte neue Datei unter .claude/ → ebenso rot, vorhandene unveränderte settings.local.json → ERFOLGREICH.')
   } catch (fehler) {
     befunde.push(`(m)/(n) Vorbereitung gescheitert: ${fehler.stack}`)
   } finally {

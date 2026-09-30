@@ -876,13 +876,16 @@ export const PROJEKT_URL_FEHLT = 'Projekt-URL (vorschau_url) fehlt'
 type Kandidat = { rang: number; eintrag: EmpfehlungsEintrag }
 
 /**
- * Rangfolge je Liste: beide anwendbar_wenn-Schlüssel erfüllt vor nur einem, danach id alphabetisch
+ * Rangfolge je Liste: installierbare Einträge (installierbar: true, nur in „Passt, nicht im Lauf“)
+ * vor nicht installierbaren (F-825: sonst verdrängte die Obergrenze den einen direkt freigebbaren
+ * Eintrag), danach beide anwendbar_wenn-Schlüssel erfüllt vor nur einem, danach id alphabetisch
  * (Codepunkte, nicht locale-abhängig); danach auf EMPFEHLUNG_OBERGRENZE gekürzt.
  * @param kandidaten - Einträge einer Liste mit Rang
  * @returns die angezeigten Einträge und die Anzahl der weggekürzten
  */
 function sortiereUndBegrenze(kandidaten: Kandidat[]): { liste: EmpfehlungsEintrag[]; weitere: number } {
-  const sortiert = [...kandidaten].sort((a, b) => a.rang - b.rang || (a.eintrag.id < b.eintrag.id ? -1 : a.eintrag.id > b.eintrag.id ? 1 : 0))
+  const nichtInstallierbar = (k: Kandidat) => (k.eintrag.installierbar === true ? 0 : 1)
+  const sortiert = [...kandidaten].sort((a, b) => nichtInstallierbar(a) - nichtInstallierbar(b) || a.rang - b.rang || (a.eintrag.id < b.eintrag.id ? -1 : a.eintrag.id > b.eintrag.id ? 1 : 0))
   return { liste: sortiert.slice(0, EMPFEHLUNG_OBERGRENZE).map((k) => k.eintrag), weitere: Math.max(0, sortiert.length - EMPFEHLUNG_OBERGRENZE) }
 }
 

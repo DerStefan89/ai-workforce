@@ -18,6 +18,14 @@ DerStefan89/harness-fix/8-start-klein"
 gehasht**, kann von der Quelle driften (state/findings.md F-700, TECH_DEBT,
 bewusst nicht automatisiert nachgezogen).
 
+**Lokale Abweichung von der Quelle:** `CLAUDE.md` trägt seit F-830
+(state/findings.md) eine zusätzliche DoD-Zeile Reviewer-/QA-Pass sowie
+Zusätze an „Iterationsende“ und „Prüfrollen als Subagenten“: In
+Workforce-Läufen finden weder git noch Commit noch Subagent-Review in der
+Ausführung statt; dazu der Hinweis „kein `cd`“ am Iterationsprinzip. Bereits
+angelegte Projekte (z. B. haushaltsbuch2) behalten ihre alte Fassung,
+weil `kopiereSkelett` nichts überschreibt.
+
 ## Whitelist
 
 ### Explizit vom Auftrag benannt

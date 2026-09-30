@@ -61,7 +61,7 @@ import {
   stoppeWorkflow,
   wiederholeWorkflowPruefung,
 } from '../api.js'
-import { empfehlungIdsFuerFreigabe, renderEmpfehlung } from '../empfehlung-anzeige.js'
+import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml } from '../render.js'
 import { navigiere, registriere } from '../router.js'
@@ -669,6 +669,7 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
       <p>Schritt <code>${faelligerSchritt}</code> verlangt eine menschliche Freigabe. Ohne dich läuft hier nichts weiter.</p>
       <label for="wf-freigabe-begruendung">Begründung (Pflicht)</label>
       <textarea id="wf-freigabe-begruendung" rows="2"></textarea>
+      ${renderInstallierbarHinweis(empfehlung)}
       <div>
         <button class="btn btn-primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}"${empfehlungAttribut}>Freigeben</button>
         <button class="btn wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Ablehnen</button>

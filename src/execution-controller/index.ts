@@ -107,11 +107,15 @@
  *
  * F36 WS-5b: bei eingaben.ortBLauf (nur Ausführung mit Ort-B-Skills) geht ein Init-Gate an starteGateway,
  * und nach dem Lauf liest leseClaudeAenderungen den Laufdiff unter .claude/ — die Bewertung (rot) bleibt
- * bei klassifiziereLauf (eingaben.claudeAenderungen), der Controller urteilt nicht selbst.
+ * bei klassifiziereLauf (eingaben.claudeAenderungen), der Controller urteilt nicht selbst. Seit F-832
+ * kommt ein Dateisystem-Vergleich von <projekt>/.claude vor/nach dem Lauf hinzu (erfasseClaudeOrdner,
+ * vergleicheClaudeOrdner), der auch git-ignorierte Dateien sieht.
  */
 
 import { execFileSync } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { existsSync, readdirSync, readFileSync, readlinkSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { starteGateway, baueAufruf } from '../claude-code-gateway/index.ts'
 import { starteCodexGateway, baueCodexAufruf } from '../codex-gateway/index.ts'
 import { baueKontextpaket, elementSchluessel } from '../context-builder/index.ts'
@@ -172,6 +176,49 @@ export function leseClaudeAenderungen(projektWurzel: string): string[] {
   }
   // Groß-/Kleinschreibung egal: auf NTFS ist .Claude/skills derselbe Ort (Reviewer).
   return pfade.filter((pfad) => pfad.replaceAll('\\', '/').split('/').some((segment) => segment.toLowerCase() === '.claude'))
+}
+
+/**
+ * F-832: Momentaufnahme von <projekt>/.claude im Dateisystem — rekursiv, relativer Pfad ('/' als
+ * Trenner) → sha256 des Inhalts, INKLUSIVE git-ignorierter Dateien (der git-Weg sieht sie nicht:
+ * `.gitignore` plus npm-Skript umgingen ihn). Symlinks zählen mit ihrem Ziel, nicht gefolgt.
+ * @param projektWurzel - Repo des Laufs
+ * @returns Map (leer, wenn .claude fehlt) oder null, wenn der Ordner nicht lesbar ist
+ */
+export function erfasseClaudeOrdner(projektWurzel: string): Map<string, string> | null {
+  const wurzel = join(projektWurzel, '.claude')
+  const stand = new Map<string, string>()
+  if (!existsSync(wurzel)) return stand
+  try {
+    for (const eintrag of readdirSync(wurzel, { recursive: true, withFileTypes: true })) {
+      if (eintrag.isDirectory()) continue
+      const pfad = join(eintrag.parentPath, eintrag.name)
+      // Nur reguläre Dateien werden gelesen — eine FIFO o. Ä. ließe readFileSync hängen; sie zählt mit ihrem Typ.
+      const inhalt = eintrag.isSymbolicLink() ? `symlink:${readlinkSync(pfad)}` : eintrag.isFile() ? readFileSync(pfad) : 'sonderdatei'
+      stand.set(relative(wurzel, pfad).replaceAll('\\', '/'), createHash('sha256').update(inhalt).digest('hex'))
+    }
+  } catch (fehler) {
+    console.error(`[execution-controller] .claude-Ordner in '${projektWurzel}' nicht lesbar:`, fehler)
+    return null
+  }
+  return stand
+}
+
+/**
+ * F-832: Vorher/Nachher-Vergleich von <projekt>/.claude — neue, geänderte und gelöschte Pfade.
+ * Fehlt die Momentaufnahme von vorher (nicht lesbar), gilt nur der git-Weg (leseClaudeAenderungen) —
+ * bekannte Grenze. Ist der Ordner nachher nicht lesbar, zählt das als Treffer (fail-closed).
+ * @param vorher - erfasseClaudeOrdner vor dem Start, oder null
+ * @param projektWurzel - Repo des Laufs
+ * @returns Pfade mit Präfix '.claude/', leer = unverändert
+ */
+export function vergleicheClaudeOrdner(vorher: Map<string, string> | null, projektWurzel: string): string[] {
+  if (vorher === null) return []
+  const nachher = erfasseClaudeOrdner(projektWurzel)
+  if (nachher === null) return ['(.claude-Ordner nach dem Lauf nicht lesbar)']
+  const pfade = [...nachher].filter(([pfad, hash]) => vorher.get(pfad) !== hash).map(([pfad]) => pfad)
+  for (const pfad of vorher.keys()) if (!nachher.has(pfad)) pfade.push(pfad)
+  return pfade.sort().map((pfad) => `.claude/${pfad}`)
 }
 
 /**
@@ -347,6 +394,8 @@ export async function fuehreAufgabeDurch(
   // (Regel 4) hat diesen Fall bereits abgefangen, ein Wert, der trotzdem
   // ankommt, ist eine Vorbedingungsverletzung des Aufrufers (Muster
   // auftragId ohne Auftragsakte oben).
+  // F-832: Momentaufnahme von <projekt>/.claude vor dem Start (inkl. git-ignorierter Dateien).
+  const claudeOrdnerVorher = eingaben.ortBLauf !== undefined ? erfasseClaudeOrdner(eingaben.ortBLauf.projektWurzel) : undefined
   const gatewayErgebnis =
     workerGewaehlt === 'codex'
       ? await starteCodexGateway(
@@ -424,7 +473,11 @@ export async function fuehreAufgabeDurch(
 
   // F36 WS-5b (F-791 (4b)): Laufdiff eines Ort-B-Laufs auf Änderungen unter .claude/ — die Bewertung
   // selbst (rot) macht klassifiziereLauf; hier wird nur der Diff gelesen.
-  const claudeAenderungen = eingaben.ortBLauf !== undefined ? leseClaudeAenderungen(eingaben.ortBLauf.projektWurzel) : undefined
+  // F-832: zusätzlich der Dateisystem-Vergleich gegen die Momentaufnahme vor dem Start.
+  const claudeAenderungen =
+    eingaben.ortBLauf !== undefined && claudeOrdnerVorher !== undefined
+      ? [...new Set([...leseClaudeAenderungen(eingaben.ortBLauf.projektWurzel), ...vergleicheClaudeOrdner(claudeOrdnerVorher, eingaben.ortBLauf.projektWurzel)])]
+      : undefined
 
   // F31 WS-3-Zeitmessung (nur bei LEITSTAND_ZEITMESSUNG=1 gesetzt, sonst undefined — No-op):
   // klassifiziereLauf schreibt die terminale Wirkungsmarke über F1B, ist also die Grenze

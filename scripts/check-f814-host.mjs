@@ -17,7 +17,10 @@
  *   (3) Struktur: istUnzulaessigerHost wird genau einmal aufgerufen, als erste Anweisung in
  *       requestHandler (403 + return) vor istFremdeBrowserAnfrage, nirgends in scripts/leitstand/.
  *       Bewusst nicht abgedeckt: erzeugeMultiProjektDispatcher antwortet vor dem Haken mit 404 bei
- *       unbekannter Projekt-id (F-822).
+ *       unbekannter Projekt-id (F-822) und mit 400 bei ungültiger Anfrage-URI (F-823) — beides
+ *       fester Text ohne Zustand.
+ *   (4) F-823: roh `GET http://[/` (ungültige absolute Anfrage-URI) über den Dispatcher und direkt
+ *       gegen requestHandler → 400 { grund }, der Prozess läuft weiter, GET /api/laeufe danach 200.
  *
  * Wichtig: Den Haken nicht pro Route duplizieren und nicht hinter eine Methodenweiche legen — (3)
  * wird sonst rot, und GET-Routen blieben per Rebinding lesbar.
@@ -266,6 +269,28 @@ try {
     else if (hostAufrufe.length !== 1) befunde.push(`(3) istUnzulaessigerHost(req) ${hostAufrufe.length}× aufgerufen — erwartet genau einmal, zentral`)
     else if (!(hostAufrufe[0] > start && hostAufrufe[0] < csrfAufruf) || !alsErsteAnweisung) befunde.push('(3) istUnzulaessigerHost(req) ist nicht die erste Anweisung in requestHandler (mit 403 + return, vor dem CSRF-Haken)')
     if (befunde.length === vor) console.log('✓ (3) istUnzulaessigerHost genau einmal, als erste Anweisung in requestHandler (403 + return), vor dem CSRF-Haken.')
+  }
+
+  // ─── (4) F-823: ungültige absolute Anfrage-URI → 400, der Prozess läuft weiter ──
+  // Ohne die Absicherung wirft `new URL` im synchronen Dispatcher-Listener → uncaughtException →
+  // dieses Gate-Skript endet selbst (rot). Der Direktaufruf ohne Dispatcher prüft die zweite Stelle
+  // in requestHandler (dort vorher 500 über den catch der Routenkette).
+  {
+    const vor = befunde.length
+    const host = `127.0.0.1:${port}`
+    for (const uri of ['http://[/', 'http://[/api/projekte/p1/laeufe']) {
+      const a = await sendeRoh(port, 'GET', uri, host)
+      if (a.status !== 400 || !/Ungültige Anfrage-URI/.test(a.inhalt.grund ?? '')) befunde.push(`(4) GET ${uri}: erwartet 400 { grund }, erhalten ${a.status} (${a.inhalt.grund ?? String(a.inhalt.roh ?? '').slice(0, 80)})`)
+    }
+    const direkt = createServer(standard.handler)
+    await new Promise((resolve) => direkt.listen(0, '127.0.0.1', resolve))
+    const direktPort = direkt.address().port
+    const d = await sendeRoh(direktPort, 'GET', 'http://[/', `127.0.0.1:${direktPort}`)
+    await new Promise((resolve) => direkt.close(resolve))
+    if (d.status !== 400) befunde.push(`(4) requestHandler direkt, GET http://[/: erwartet 400, erhalten ${d.status}`)
+    const danach = await sendeRoh(port, 'GET', '/api/laeufe', host)
+    if (danach.status !== 200) befunde.push(`(4) GET /api/laeufe nach der ungültigen URI: erwartet 200, erhalten ${danach.status}`)
+    if (befunde.length === vor) console.log('✓ (4) F-823: GET http://[/ (Dispatcher und requestHandler direkt) → 400 { grund }, danach GET /api/laeufe weiter 200.')
   }
 } catch (fehler) {
   befunde.push(`Gate-Ausführung gescheitert: ${fehler.message}`)

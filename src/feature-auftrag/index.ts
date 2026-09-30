@@ -13,6 +13,12 @@
  * '## <Name>'-Überschrift, Abschnittstext bis zur nächsten '## '-Überschrift
  * oder Dateiende.
  *
+ * F-824 (F36-Reallauf: der Architekt fragte bereits entschiedene Punkte erneut): die optionalen
+ * Abschnitte '## Datenmodell' und '## Security…' (Name laut src/workboard/feature-abschnitte.ts
+ * 'Security/Permissions'; die Coach-Vorlage in src/product-coach kennt beide nicht, sie entstehen
+ * im Architekten-Schritt bzw. von Hand) gehen als „Geklärte Vorgaben“ in den Auftragstext. Fehlen
+ * beide, bleibt der Auftragstext bitgenau wie vorher. Kein Schemafeld — nur Text.
+ *
  * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs,
  * scripts/check-f35-ws1-feature-auftrag.mjs.
  */
@@ -33,6 +39,26 @@ export interface FeatureAuftragErgebnis {
 
 export type FeatureAuftragBauergebnis = ({ ok: true } & FeatureAuftragErgebnis) | { ok: false; grund: string }
 
+/**
+ * F-824: übernommene technische Abschnitte in Ausgabe-Reihenfolge — exakter Überschriftsname (Regex-
+ * Fragment für leseAbschnitt mit exakt=true, also weder '## Security-Review' noch '## Datenmodell (alt)')
+ * und Überschrift im Auftrag.
+ */
+const GEKLAERTE_ABSCHNITTE = [
+  { suchname: 'Datenmodell', ueberschrift: 'Datenmodell' },
+  { suchname: 'Security(?:/Permissions)?', ueberschrift: 'Security' },
+] as const
+
+/** F-824: ein Abschnitt, der nur einen Platzhalter trägt (Skelett-Füllung, „offen“, „TBD“), ist nicht entschieden und geht nicht mit. */
+const PLATZHALTER_MUSTER = /\[FÜLLUNG|^(?:offen|noch offen|tbd|todo)\.?$/i
+
+/**
+ * F-824: Längenobergrenze je übernommenem Abschnitt (Zeichen, nach trim). Längeres wird abgeschnitten
+ * und mit Verweis auf die Akte markiert — der Auftragstext selbst hat im Schema keine Obergrenze
+ * (schemas/kontrollzustand-auftrag-payload.schema.json), die Grenze schützt nur den Kontext des Laufs.
+ */
+export const GEKLAERTER_ABSCHNITT_OBERGRENZE = 4000
+
 /** Erkennt eine explizite AK-ID am Bullet-Anfang ('AK<n>', optional gefolgt von ':'/'.'/')' und Leerzeichen). */
 const AK_ID_PRAEFIX_MUSTER = /^AK(\d+)\b[:.)]?\s*/
 
@@ -41,10 +67,13 @@ const AK_ID_PRAEFIX_MUSTER = /^AK(\d+)\b[:.)]?\s*/
  * src/workboard/feature-abschnitte.ts' leseAbschnitt) — der Rest des
  * Dokuments ab der Überschriftzeile bis zur nächsten '## '-Überschrift
  * oder Dateiende.
+ * @param inhalt - Text der Akte
+ * @param name - Überschriftsname bzw. Regex-Fragment
+ * @param exakt - true: die Überschriftzeile trägt nur den Namen (F-824); sonst genügt ein Wortanfang (Bestand)
  * @returns Abschnittstext (ungetrimmt), oder null, wenn die Überschrift fehlt
  */
-function leseAbschnitt(inhalt: string, name: string): string | null {
-  const ueberschrift = new RegExp(`^##\\s+${name}\\b.*$`, 'm')
+function leseAbschnitt(inhalt: string, name: string, exakt = false): string | null {
+  const ueberschrift = new RegExp(exakt ? `^##[ \\t]+${name}[ \\t]*$` : `^##\\s+${name}\\b.*$`, 'm')
   const treffer = ueberschrift.exec(inhalt)
   if (treffer === null) return null
   const restAbUeberschrift = inhalt.slice(treffer.index + treffer[0].length)
@@ -94,6 +123,28 @@ function leseTopLevelBullets(abschnitt: string): string[] {
   }
   if (laufend !== null) bullets.push(laufend.join('\n').trim())
   return bullets.filter((bullet) => bullet.length > 0)
+}
+
+/**
+ * F-824: Block „Geklärte Vorgaben“ aus '## Datenmodell' und '## Security' bzw. '## Security/Permissions'
+ * — null, wenn beide fehlen, leer sind oder nur einen Platzhalter tragen (dann bleibt der Auftragstext
+ * bitgenau). Je Abschnitt höchstens GEKLAERTER_ABSCHNITT_OBERGRENZE Zeichen; die Kürzung zählt
+ * UTF-16-Einheiten und kann mitten in einem Code-Fence liegen (kosmetisch, der Verweis nennt die Akte).
+ * Weitere technische Abschnitte (State/Persistenz, Interfaces/Contracts …) gehen bewusst nicht mit.
+ * @param inhalt - vollständiger Text der Feature-Akte
+ * @param featureId - Ordner-id der Akte (Verweis bei Kürzung)
+ * @returns Textblock oder null
+ */
+function leseGeklaerteVorgaben(inhalt: string, featureId: string): string | null {
+  const teile: string[] = []
+  for (const { suchname, ueberschrift } of GEKLAERTE_ABSCHNITTE) {
+    const text = leseAbschnitt(inhalt, suchname, true)?.trim() ?? ''
+    if (text.length === 0 || PLATZHALTER_MUSTER.test(text)) continue
+    const gekuerzt = text.length > GEKLAERTER_ABSCHNITT_OBERGRENZE ? `${text.slice(0, GEKLAERTER_ABSCHNITT_OBERGRENZE)}\n… (gekürzt, vollständig in features/${featureId}/feature.md)` : text
+    teile.push(`${ueberschrift}\n${gekuerzt}`)
+  }
+  if (teile.length === 0) return null
+  return `Geklärte Vorgaben (aus der Feature-Akte, bereits entschieden — nicht erneut fragen)\n\n${teile.join('\n\n')}`
 }
 
 /**
@@ -151,6 +202,8 @@ export function baueAuftragAusFeatureAkte(inhalt: string, featureId: string): Fe
     textTeile.push(`Nicht-Ziele\n${nicht_ziele.map((eintrag) => `- ${eintrag}`).join('\n')}`)
   }
   textTeile.push(`Akzeptanzkriterien\n${akzeptanzkriterien.map((ak) => `- ${ak.id}: ${ak.text}`).join('\n')}`)
+  const geklaert = leseGeklaerteVorgaben(inhalt, featureId)
+  if (geklaert !== null) textTeile.push(geklaert)
   textTeile.push(`workitem:feature:${featureId}`)
 
   return {

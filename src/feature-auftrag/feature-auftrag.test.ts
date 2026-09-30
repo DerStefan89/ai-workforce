@@ -8,7 +8,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAuftragAusFeatureAkte } from './index.ts'
+import { baueAuftragAusFeatureAkte, GEKLAERTER_ABSCHNITT_OBERGRENZE } from './index.ts'
 
 const AKTE_VOLLSTAENDIG = `# F99 — Testfeature
 
@@ -176,4 +176,76 @@ Ziel-Text.
     { id: 'AK9', text: 'Abgehaktes AK klein.' },
     { id: 'AK3', text: 'Abgehaktes AK groß.' },
   ])
+})
+
+const AKTE_OHNE_TECHNIK = `## Titel
+Titel X
+
+## Ziel
+Ziel-Text.
+
+## Nicht-Ziele
+- Kein Export.
+
+## Akzeptanzkriterien
+- AK1: Erstes AK.
+
+## Dependencies
+- keine
+`
+
+test('F-824: ohne Datenmodell/Security bleibt der Auftragstext bitgenau (literaler Snapshot)', () => {
+  const ergebnis = baueAuftragAusFeatureAkte(AKTE_OHNE_TECHNIK, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.equal(ergebnis.auftragstext, 'Ziel\nZiel-Text.\n\nNicht-Ziele\n- Kein Export.\n\nAkzeptanzkriterien\n- AK1: Erstes AK.\n\nworkitem:feature:F99')
+})
+
+test("F-824: '## Datenmodell' und '## Security/Permissions' gehen als geklärte Vorgaben vor die Referenzzeile", () => {
+  const akte = `${AKTE_OHNE_TECHNIK}
+## Datenmodell
+Buchung { betrag: number, datum: string }
+
+## Red-/Green-Cases
+- rot: leer
+
+## Security/Permissions
+Nur lokal, keine Anmeldung.
+`
+  const ergebnis = baueAuftragAusFeatureAkte(akte, 'F99')
+  assert.ok(ergebnis.ok, !ergebnis.ok ? ergebnis.grund : undefined)
+  assert.equal(
+    ergebnis.auftragstext,
+    'Ziel\nZiel-Text.\n\nNicht-Ziele\n- Kein Export.\n\nAkzeptanzkriterien\n- AK1: Erstes AK.\n\n' +
+      'Geklärte Vorgaben (aus der Feature-Akte, bereits entschieden — nicht erneut fragen)\n\n' +
+      'Datenmodell\nBuchung { betrag: number, datum: string }\n\nSecurity\nNur lokal, keine Anmeldung.\n\nworkitem:feature:F99'
+  )
+  assert.doesNotMatch(ergebnis.auftragstext, /Red-\/Green/)
+})
+
+test('F-824: nur ein Abschnitt, leerer Abschnitt entfällt; Obergrenze je Abschnitt mit Verweis auf die Akte', () => {
+  const nurSecurity = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Datenmodell\n\n## Security\nlokal\n`, 'F99')
+  assert.ok(nurSecurity.ok)
+  assert.match(nurSecurity.auftragstext, /nicht erneut fragen\)\n\nSecurity\nlokal\n\nworkitem/)
+  assert.doesNotMatch(nurSecurity.auftragstext, /\nDatenmodell\n/)
+  const lang = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Datenmodell\n${'x'.repeat(GEKLAERTER_ABSCHNITT_OBERGRENZE + 50)}\n`, 'F99')
+  assert.ok(lang.ok)
+  assert.ok(lang.auftragstext.endsWith(`
+${'x'.repeat(GEKLAERTER_ABSCHNITT_OBERGRENZE)}
+… (gekürzt, vollständig in features/F99/feature.md)
+
+workitem:feature:F99`))
+})
+
+test('F-824: nur exakte Überschriften; Platzhalter-Abschnitte ([FÜLLUNG], offen, TBD) gelten nicht als entschieden', () => {
+  const fremd = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Security-Review\nBefund A\n\n## Datenmodell (alt)\nx\n`, 'F99')
+  assert.ok(fremd.ok)
+  assert.doesNotMatch(fremd.auftragstext, /Geklärte Vorgaben/, 'fremde Überschriften gehen nicht mit')
+  for (const platzhalter of ['[FÜLLUNG: Datenmodell]', 'offen', 'TBD.']) {
+    const akte = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Datenmodell\n${platzhalter}\n`, 'F99')
+    assert.ok(akte.ok)
+    assert.doesNotMatch(akte.auftragstext, /Geklärte Vorgaben/, platzhalter)
+  }
+  const beide = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Datenmodell\noffen\n\n## Security\nlokal\n`, 'F99')
+  assert.ok(beide.ok)
+  assert.match(beide.auftragstext, /nicht erneut fragen\)\n\nSecurity\nlokal\n\nworkitem/)
 })

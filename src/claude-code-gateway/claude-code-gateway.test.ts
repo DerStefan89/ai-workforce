@@ -1268,6 +1268,27 @@ test('F36 WS-5b starteGateway (initGate): fremder Skill in init → Abbruch vor 
   }
 })
 
+test('F-833 starteGateway ohne initGate: beliebige init-Zeile (fremde Skills, Agent, fremder MCP) → kein Abbruch, kein init_gate_verstoss; ohne init-Zeile ebenso', async () => {
+  const ids = ['fremd', 'ohne-init'].map((n) => neueLaufId(`ohne-init-gate-${n}`))
+  // Läufe ohne Ort-B (Codex, Läufe ohne Katalog-Einträge) bekommen kein initGate — dort darf die init-Zeile nichts auslösen.
+  const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {} }
+  try {
+    const protokoll = { toolUseGesendet: false }
+    const init = { type: 'system', subtype: 'init', tools: ['Agent', 'Bash', 'Skill'], skills: ['ponytail', 'unbekannt'], mcp_servers: [{ name: 'fremd' }], agents: ['qa'] }
+    const fremd = await starteGateway(gueltigeGatewayEingaben(ids[0]), { ...optionen, starter: initGateStarter(init, protokoll) })
+    assert.ok(fremd.ok)
+    assert.equal(protokoll.toolUseGesendet, true, 'ohne initGate kein Abbruch vor dem tool_use')
+    const rohFremd = JSON.parse(readFileSync(fremd.laufakte.rohstrom_referenz.pfad, 'utf8'))
+    assert.equal(rohFremd.beendigungsart, null)
+    assert.equal('init_gate_verstoss' in rohFremd, false)
+    const ohneInit = await starteGateway(gueltigeGatewayEingaben(ids[1]), { ...optionen, starter: async () => ({ stdout: `${BEOBACHTUNG_RESULT}\n`, stderr: '', exitCode: 0, startfehler: null, beendigungsart: null }) })
+    assert.ok(ohneInit.ok)
+    assert.equal('init_gate_verstoss' in JSON.parse(readFileSync(ohneInit.laufakte.rohstrom_referenz.pfad, 'utf8')), false)
+  } finally {
+    for (const id of ids) raeumeKette(id)
+  }
+})
+
 test('F36 WS-5b starteGateway (initGate): tool_use vor init → Abbruch; keine init-Zeile bei regulärem Ende → Verstoß mit Exitcode; Startfehler → kein Verstoß; manueller Abbruch → kein Verstoß, ABBRUCH bleibt manuell', async () => {
   const ids = ['vor-init', 'ohne-init', 'startfehler', 'manuell'].map((n) => neueLaufId(`init-gate-${n}`))
   const optionen = { ...startfreigabeOptionen(), basisVerzeichnis: KONTROLLZUSTAND_BASIS, rohBasisVerzeichnis: 'kontrollzustand-roh', schreiber: () => {}, initGate: { skills: ['frontend-design'], mcpServer: [] } }

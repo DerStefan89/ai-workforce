@@ -1,0 +1,13 @@
+{
+  "url": "http://127.0.0.1:4176/#/runs/nachweis-f828-aktiv",
+  "viewport": { "breite": 1100, "hoehe": 1400 },
+  "beobachtete": {
+    "vorhanden": [
+      { "name": "Klärzustand „läuft“", "selector": ".detail-block h3" },
+      { "name": "Maske „Klärung auflösen“/„Kenntnisnahme“ (Speichern-Knopf)", "selector": "#entscheidung-terminal-speichern, #entscheidung-kenntnisnahme-speichern" }
+    ]
+  },
+  "schritte": [
+    { "label": "Lauf-Detail aktiv", "warteAufSelector": { "selector": "#lauf-detail .detail-block", "timeoutMs": 5000 }, "screenshot": "01-lauf-detail-aktiv.png" }
+  ]
+}
