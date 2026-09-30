@@ -1,0 +1,103 @@
+{
+  "lauf": "messung",
+  "erzeugt_am": "2026-09-30T08:36:46.603Z",
+  "cli_version": "2.1.285 (Claude Code)",
+  "modell": "claude-sonnet-5",
+  "dauer_ms": 4933,
+  "rohstrom": "%TEMP%\\f831-nachweis\\messung-2026-09-30T08-36-46.589Z.ndjson (flüchtig, nicht im Repo)",
+  "ortBLauf_skillNamen": [
+    "pruef-skill"
+  ],
+  "gesperrte_namen": [
+    "design",
+    "doctor",
+    "advisor-pass",
+    "git-flow",
+    "handoff-vertrag",
+    "lessons",
+    "ponytail",
+    "repo-audit",
+    "spec-schreiben",
+    "sub:tief",
+    "werkzeug-auswahl"
+  ],
+  "exitCode": null,
+  "beendigungsart": null,
+  "init": {
+    "claude_code_version": "2.1.285",
+    "tools": [
+      "Bash",
+      "Edit",
+      "GetTask",
+      "Glob",
+      "Grep",
+      "Read",
+      "Skill",
+      "Write"
+    ],
+    "skills": [
+      "pruef-skill"
+    ],
+    "slash_commands": [
+      "pruef-skill",
+      "advisor",
+      "agents",
+      "auto-mode-setup",
+      "autocompact",
+      "clear",
+      "color",
+      "compact",
+      "config",
+      "output-style",
+      "context",
+      "effort",
+      "fast",
+      "focus",
+      "heapdump",
+      "init",
+      "mcp",
+      "import",
+      "model",
+      "__remote-workflow",
+      "workflow-launch-exec",
+      "reload-plugins",
+      "reload-skills",
+      "rename",
+      "ultrareview",
+      "security-review",
+      "usage-credits",
+      "extra-usage",
+      "usage",
+      "insights",
+      "recap",
+      "skill-doctor",
+      "goal",
+      "design-consent",
+      "design-revoke",
+      "list-agents",
+      "team-onboarding"
+    ],
+    "plugins": [
+      {
+        "name": "cc-plugin-telemetry",
+        "path": "builtin",
+        "source": "cc-plugin-telemetry@builtin"
+      }
+    ],
+    "mcp_servers": [],
+    "agents": [
+      "architecture-advisor",
+      "claude",
+      "code-reviewer",
+      "Explore",
+      "general-purpose",
+      "Plan",
+      "qa",
+      "statusline-setup"
+    ]
+  },
+  "init_gate": "bestanden",
+  "aufrufe": [],
+  "is_error": false,
+  "result": "OK"
+}

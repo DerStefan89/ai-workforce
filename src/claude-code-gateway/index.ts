@@ -104,8 +104,9 @@
  * F36 WS-5b (E-F36-8 = B, V4a): baueAufruf hängt bei AufrufEingaben.ortB je Ort-B-Skill `--add-dir` und
  * `--settings` vor `-p` an (sonst Argv unverändert). starteGateway prüft mit optionen.initGate die
  * init-Zeile (pruefeInitZeile: init.skills ⊆ Ort-B-Namen, kein Agent in init.tools, mcp_servers =
- * übergebene) und beendet den Prozess bei einem Verstoß vor dem ersten tool_use über den Abbruchweg;
- * der Grund steht als init_gate_verstoss im Rohstrom.
+ * übergebene, F-831: slash_commands ⊆ Referenzmenge ∪ gesperrt ∪ Ort-B) und beendet den Prozess bei
+ * einem Verstoß über den Abbruchweg, sobald die init-Zeile im Strom steht (ein tool_use davor wird
+ * beendet, nicht verhindert); der Grund steht als init_gate_verstoss im Rohstrom.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
@@ -209,7 +210,7 @@ interface GatewayOptionen {
    * Grund als init_gate_verstoss im Rohstrom fest (Klassifikation: FEHLGESCHLAGEN, init_gate_verstoss).
    * Fehlt die Option, liest starteGateway die init-Zeile nicht (bitgenau wie vorher).
    */
-  initGate?: { skills: readonly string[]; mcpServer: readonly string[] }
+  initGate?: InitGateErwartung
 }
 
 const STANDARD_ROH_BASISVERZEICHNIS = 'kontrollzustand-roh'
@@ -511,20 +512,73 @@ export function baueAufruf(eingaben: AufrufEingaben): AufrufTokens {
   ]
 }
 
+/** F-831: Referenzmenge der gemessenen, per Skill-Werkzeug nicht aufrufbaren Slash-Commands (Pfad relativ zu dieser Datei). */
+export const SLASH_COMMANDS_REFERENZ_URL = new URL('./slash-commands-referenz.json', import.meta.url)
+
+/** F36 WS-5b / F-831: erwartete Menge des Init-Gates (aus dem Start, siehe GatewayOptionen.initGate). */
+export interface InitGateErwartung {
+  /** Frontmatter-namen der übergebenen Ort-B-Skills. */
+  skills: readonly string[]
+  /** Namen der übergebenen MCP-Server. */
+  mcpServer: readonly string[]
+  /** Gesperrte Namen (Skill(…)/skillOverrides off); fehlt das Feld, gilt [] — das Gate wird nur strenger. */
+  gesperrt?: readonly string[]
+  /** Quelle der Referenzmenge; Standard SLASH_COMMANDS_REFERENZ_URL (anderer Wert nur für Tests). */
+  slashCommandsReferenz?: URL | string
+}
+
+/**
+ * F-831: liest die Referenzmenge (Feld namen) bei jedem Aufruf neu — eine nachgemessene Datei wirkt ohne
+ * Neustart. Fehlt die Datei, ist sie kein JSON oder hat sie nicht die Form { namen: string[] } mit ≥1
+ * Eintrag, ist das Ergebnis ein Fehler — das Init-Gate wertet ihn als Verstoß (fail-closed).
+ * @param quelle - Pfad/URL der Referenzdatei
+ * @returns { ok: true, namen } oder { ok: false, grund }
+ */
+export function leseSlashCommandsReferenz(quelle: URL | string = SLASH_COMMANDS_REFERENZ_URL): { ok: true; namen: readonly string[] } | { ok: false; grund: string } {
+  let roh: unknown
+  try {
+    roh = JSON.parse(readFileSync(quelle, 'utf8'))
+  } catch (fehler) {
+    const grund = `Slash-Command-Referenzmenge nicht lesbar: ${(fehler as Error).message}`
+    console.error(`[claude-code-gateway] ${grund}`)
+    return { ok: false, grund }
+  }
+  const namenRoh = typeof roh === 'object' && roh !== null ? (roh as Record<string, unknown>).namen : undefined
+  const namen = stringListe(namenRoh)
+  if (!Array.isArray(namenRoh) || namen.length !== namenRoh.length || namen.length === 0) {
+    const grund = 'Slash-Command-Referenzmenge hat nicht die Form { namen: string[] } mit mindestens einem Namen'
+    console.error(`[claude-code-gateway] ${grund}`)
+    return { ok: false, grund }
+  }
+  return { ok: true, namen }
+}
+
 /**
  * F36 WS-5b: Init-Gate eines Ort-B-Laufs (F-791 (1), Auftrag Punkt 5) — reine Prüfung der init-Zeile:
  * init.skills ⊆ übergebene Ort-B-Namen, 'Agent' (bzw. 'Task') ∉ init.tools, Menge init.mcp_servers[].name =
- * übergebene MCP-Server. Fehlt ein Feld oder ist es kein Array, gilt das als Verstoß (fail-closed).
+ * übergebene MCP-Server. F-831: init.slash_commands ⊆ Referenzmenge (slash-commands-referenz.json) ∪
+ * gesperrte Namen ∪ Ort-B-Skills — ein unbekannter Command wäre sonst per Skill-Werkzeug aufrufbar.
+ * Fehlt ein Feld oder ist es kein Array, gilt das als Verstoß (fail-closed). init.plugins wird nicht geprüft.
  * @param init - geparste init-Zeile (type 'system', subtype 'init')
- * @param erwartet - { skills, mcpServer } aus dem Start
+ * @param erwartet - InitGateErwartung aus dem Start (gesperrt = Namen aus Skill(…)/skillOverrides)
  * @returns null, wenn alles passt, sonst der Klartext-Grund (unbekannte Namen aufgelistet)
  */
-export function pruefeInitZeile(init: Record<string, unknown>, erwartet: { skills: readonly string[]; mcpServer: readonly string[] }): string | null {
+export function pruefeInitZeile(init: Record<string, unknown>, erwartet: InitGateErwartung): string | null {
   const verstoesse: string[] = []
   if (!Array.isArray(init.skills)) verstoesse.push('init.skills fehlt')
   else {
     const fremd = stringListe(init.skills).filter((name) => !erwartet.skills.includes(name))
     if (fremd.length > 0 || init.skills.length !== stringListe(init.skills).length) verstoesse.push(`init.skills enthält nicht übergebene Skills: ${fremd.join(', ') || '(kein String)'}`)
+  }
+  if (!Array.isArray(init.slash_commands)) verstoesse.push('init.slash_commands fehlt')
+  else {
+    const referenz = leseSlashCommandsReferenz(erwartet.slashCommandsReferenz)
+    if (!referenz.ok) verstoesse.push(referenz.grund)
+    else {
+      const bekannt = new Set([...referenz.namen, ...(erwartet.gesperrt ?? []), ...erwartet.skills])
+      const fremd = stringListe(init.slash_commands).filter((name) => !bekannt.has(name))
+      if (fremd.length > 0 || init.slash_commands.length !== stringListe(init.slash_commands).length) verstoesse.push(`init.slash_commands enthält unbekannte Commands: ${fremd.join(', ') || '(kein String)'} (Referenzmenge nachmessen)`)
+    }
   }
   if (!Array.isArray(init.tools)) verstoesse.push('init.tools fehlt')
   else {

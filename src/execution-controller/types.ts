@@ -117,11 +117,12 @@ export interface AusfuehrungsEingaben {
   vorgaengerLaufId?: string
   /**
    * F36 WS-5b: nur bei einem `ausfuehrung`-Lauf mit ≥1 Ort-B-Skill gesetzt (loeseAusfuehrungsEingabenAuf in
-   * scripts/leitstand-server.mjs). skillNamen/mcpServer gehen als Init-Gate an starteGateway;
+   * scripts/leitstand-server.mjs). skillNamen/gesperrteNamen/mcpServer gehen als Init-Gate an starteGateway
+   * (gesperrteNamen: F-831, zulässig in init.slash_commands);
    * projektWurzel ist das Repo, dessen Laufdiff nach dem Lauf auf Änderungen unter .claude/ geprüft wird
    * (→ klassifiziereLauf, 'claude_ordner_veraendert'). Fehlt das Feld, läuft alles wie vor WS-5b.
    */
-  ortBLauf?: { skillNamen: string[]; mcpServer: string[]; projektWurzel: string }
+  ortBLauf?: { skillNamen: string[]; gesperrteNamen: string[]; mcpServer: string[]; projektWurzel: string }
 }
 
 /** Diskriminierte Union über die drei möglichen Ausgänge der Kette (Abbruch bei F5, Abbruch bei F6a, vollständiger Durchlauf). */

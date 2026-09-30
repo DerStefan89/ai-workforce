@@ -3,7 +3,7 @@ Wird am Ende jeder Challenger-Runde vollständig überschrieben. Historie: Git-L
 Stand: 30.09.2026.
 
 ## Stand
-**Fixpaket PR 2 nach F36 (F-823, F-824, F-825, F-826, F-828, F-830, F-832, F-833 behoben; Render-Nachweis F-768 nachgebessert, neue Nachweise in `features/F36/nachweis-fixpaket-pr2/`) ist gebaut, aber nicht committet.** Branch `fix/fixpaket-f36-pr2`, Worktree `aiw-fix-pr2`, Basis `ddabcf7`. Fixpaket PR 1 (F-764, F-827, F-768) ist als #284 gemergt. Neu: F-841 (Challenger liest vor Vorgaben zu Artefakt-Formaten den Schemazweig).
+**F-831 (Init-Gate prüft `init.slash_commands`) ist gebaut, aber nicht committet.** Branch `fix/f831-slash-commands`, Worktree `aiw-fix-f831`, Basis `39c9986`. Gemessen mit der installierten CLI (Nachweis `features/F36/nachweis-f831/`): 36 Slash-Commands außer dem Ort-B-Skill, dieselbe Menge wie bei 9b′/9b″; Gegenprüfung an 7 Namen, alle verweigert. Referenzmenge `src/claude-code-gateway/slash-commands-referenz.json`. Fixpaket PR 1 und PR 2 nach F36 sind als #284 und #285 gemergt.
 
 **F36 „Capability Library wirksam machen“ ist ABGESCHLOSSEN.** Stefan hat am 29.09.2026 abgenommen, nach Review-Pass und Fixpaket (#282). Gemergt sind #267–#282. Details stehen in `features/F36/feature.md`, Abschnitt „Review-Pass 29.09.2026“ (Urteil je AK).
 - Gebaut und belegt:
@@ -12,14 +12,14 @@ Stand: 30.09.2026.
 - Bewusst gesperrt: Agents (extern und Projekt) und Projekt-Skills (F-815, F-816).
 - Offene Folge-Findings:
   - F-829 (Review-Maßstab, mit F-820); F-822; F-840, F-841 (Prozess); F-842 bis F-844 (aus PR 2);
-  - F-831 (Slash-Commands/Init-Gate), F-834 bis F-836, F-838;
+  - F-834 bis F-836, F-838; `init.plugins` bleibt ungeprüft (Grenze in feature.md);
   - F-815/F-816, F-818, F-791.
 - Abnahme-Branch `docs/f36-abnahme` ist als #283 gemergt (`1255df1`).
 
 ## Nächste Schritte
-1. Stefan committet und pusht `fix/fixpaket-f36-pr2` (PR 2), danach PR und Merge.
-2. Nächster Schritt: F-831 als eigener kleiner Auftrag — Referenzmenge `init.slash_commands` je CLI-Version messen (unbekannt → Abbruch, samt Rotfall).
-3. Danach Projekt-Kern „Projekt aufrufen/anzeigen“.
+1. Stefan committet und pusht `fix/f831-slash-commands`, danach PR und Merge.
+2. Nächster Schritt: Projekt-Kern „Projekt aufrufen/anzeigen“.
+3. Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab: mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
 4. F-829 zusammen mit F-820 schneiden. Weiter vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762.
 5. Scout Datenanalyse (F-800).
 6. Design-Schnitt F-725, mit der Scope-Ergänzung vom 29.09.2026. `impeccable` soll installierbar werden (Stefan, 29.09.2026).

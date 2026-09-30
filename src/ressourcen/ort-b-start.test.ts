@@ -81,6 +81,7 @@ test('baueOrtBSkillStart: zwei Skills → add-dir je cap-Ordner, Sperrregeln S4b
     assert.ok(!e.start.disallowedTools.some((r) => r.startsWith('Write(//')), 'nicht die //C:/-Form (S4c)')
     assert.deepEqual(JSON.parse(e.start.settings), { disableBundledSkills: true, skillOverrides: { design: 'off', doctor: 'off', 'anders-x': 'off', 'ordner-x': 'off', ponytail: 'off' } })
     assert.deepEqual(e.start.skillNamen, ['frontend-design', 'pruef-skill'])
+    assert.deepEqual(e.start.gesperrteNamen, ['design', 'doctor', 'anders-x', 'ordner-x', 'ponytail'], 'F-831: dieselbe Menge wie Skill(…)/skillOverrides')
     assert.equal(e.start.settings.includes('enabledPlugins'), false)
   } finally {
     u.ende()

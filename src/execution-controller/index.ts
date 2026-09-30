@@ -464,7 +464,7 @@ export async function fuehreAufgabeDurch(
             // Controller-weiten Durchreichung.
             umgebungsvariablen: eingaben.aufrufEingaben.umgebungsvariablen,
             // F36 WS-5b: Init-Gate nur für Läufe mit Ort-B-Skills (eingaben.ortBLauf).
-            ...(eingaben.ortBLauf !== undefined ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer } } : {}),
+            ...(eingaben.ortBLauf !== undefined ? { initGate: { skills: eingaben.ortBLauf.skillNamen, mcpServer: eingaben.ortBLauf.mcpServer, gesperrt: eingaben.ortBLauf.gesperrteNamen } } : {}),
           }
         )
   if (!gatewayErgebnis.ok) {

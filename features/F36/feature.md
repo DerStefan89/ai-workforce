@@ -371,9 +371,16 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       - Vorstart-Scan unterhalb der Projektwurzel (ohne `.git`, ohne Junctions
         und Symlinks zu folgen, mit `node_modules`): jedes weitere
         `.claude/skills|agents|commands`.
-  - **Init-Gate** (Gateway, vor dem ersten `tool_use`): `init.skills` ⊆
+  - **Init-Gate** (Gateway, an der init-Zeile): `init.skills` ⊆
     übergebene Ort-B-Namen, `Agent` ∉ `init.tools`, `init.mcp_servers` =
-    übergebene MCPs.
+    übergebene MCPs. Seit F-831 außerdem `init.slash_commands` ⊆
+    Referenzmenge (`src/claude-code-gateway/slash-commands-referenz.json`)
+    ∪ gesperrte Namen (`Skill(…)`/`skillOverrides`) ∪ Ort-B-Skills; fehlt
+    das Feld oder ist es kein Array, ist das ein Verstoß.
+    - Das Gate reagiert auf die init-Zeile im Datenstrom. Steht sie wie
+      gemessen vor jedem `tool_use`, endet der Lauf vor dem ersten Aufruf.
+      Kommt ein `tool_use` vor der init-Zeile, wird der Lauf beendet, aber
+      nicht verhindert: Die CLI hat das Werkzeug dann schon ausgeführt.
     - Bei einem Verstoß, einem `tool_use` vor der init-Zeile oder einem
       regulären Ende ohne init-Zeile wird der Prozess über den bestehenden
       Abbruchweg beendet bzw. der Lauf rot gewertet. Startfehler und manueller
@@ -408,8 +415,10 @@ E-M5-5, E-M5-16, E-F36-2, E-F36-3, E-F36-4, E-F36-5, E-F36-6.
       Scan-Umfang (`node_modules` ja, `.git` nein, keine Links); Ort-B-Layout
       nur `.claude/skills/<name>`; Sperren am `tool_result`-Text (siehe
       Reallauf); `.claude/commands` in der Sperrliste (9b′).
-    - offen: `init.plugins`/`slash_commands` im Gate; die Referenzmenge je
-      CLI-Version und ihre Abhängigkeit vom Anmeldestatus; mehrere
+    - erledigt (F-831): `init.slash_commands` im Gate gegen eine gemessene
+      Referenzmenge (`features/F36/nachweis-f831/`).
+    - offen: `init.plugins` im Gate; die Abhängigkeit der Referenzmenge vom
+      Anmeldestatus; mehrere
       `--add-dir` mit freigegebenem Projekt-Agent; Grenze der
       Windows-Kommandozeile; `browser-use` (`wirkung` bei Skills, F-817).
 - **Reallauf** (nach WS-5b, mit `playwright-mcp` und `frontend-design`).
@@ -542,9 +551,13 @@ Bau präzisiert (eigene Challenge).
     Erzwungen nicht aufrufbar sind die Projekt-Skills und -Commands sowie
     jeder Name aus `init.skills` und `init.slash_commands` dieser
     CLI-Version (9b′, 9b″: alle Namen per Skill-Werkzeug geprüft, alle
-    verweigert). Ein neuer Name in `init.skills` stoppt das Init-Gate. Für
-    neue Slash-Commands gilt das nicht, weil das Gate `slash_commands` nicht
-    prüft (F-791 (3), Messung je CLI-Version wiederholen).
+    verweigert). Ein neuer Name in `init.skills` stoppt das Init-Gate.
+    Ebenso ein neuer Name in `init.slash_commands`, der weder in der
+    gemessenen Referenzmenge noch unter den gesperrten Namen oder den
+    Ort-B-Skills steht (F-831; Messung und Gegenprüfung
+    `features/F36/nachweis-f831/`). Die Referenzmenge wird bei einem
+    solchen Abbruch nachgemessen; aufgenommen werden nur Namen, die per
+    Skill-Werkzeug verweigert werden.
   - Agents sind nicht Teil von WS-5b (F-815). Der Reallauf belegt AK4 im
     Durchstich.
   Stand Reallauf (29.09.2026): real belegt. Im Korrekturlauf `7b6d0f40`
@@ -735,8 +748,8 @@ Nachtrag (Fixpaket PR 1 und PR 2 nach F36, 30.09.2026): Die Tabelle oben ist der
 Stand der Abnahme vom 29.09.2026. Behoben (PR folgt bzw. #284) sind seither F-764,
 F-768, F-827 (PR 1) sowie F-823, F-824, F-825, F-826, F-828, F-830, F-832 (Code, damit
 entfällt die Grenze bei AK6 bis auf die unter „Bekannte Grenzen“ genannten Reste) und
-F-833 (PR 2). Offen bleiben F-829, F-831, F-834 bis F-836, F-838, F-815/F-816, F-791,
-F-818, F-822.
+F-833 (PR 2). F-831 (Init-Gate prüft `init.slash_commands`) ist behoben (PR folgt). Offen
+bleiben F-829, F-834 bis F-836, F-838, F-815/F-816, F-791, F-818, F-822.
 
 ## Dependencies
 - F19 (Ressourcen-Katalog) — `schemas/ressourcen.schema.json`,
@@ -903,8 +916,28 @@ F-818, F-822.
   `.claude/skills|commands` wird nicht mitgezählt.
 - WS-5b Init-Gate: Geprüft wird nur die erste init-Zeile. Eine spätere
   `system`/`init`-Zeile, etwa nach einer Kontext-Zusammenfassung, bleibt
-  ungeprüft. Slash-Commands (`init.slash_commands`) prüft das Gate nicht; die
-  gemessenen sind über das Skill-Werkzeug nicht aufrufbar (9b′).
+  ungeprüft. `init.slash_commands` prüft das Gate gegen die gemessene
+  Referenzmenge (F-831); ein unbekannter Name bricht den Lauf ab, auch wenn
+  er in Wahrheit nicht aufrufbar wäre (fail-closed, dann nachmessen).
+  `init.plugins` prüft das Gate nicht. Der Eintrag hat sich zwischen zwei
+  CLI-Versionen umbenannt (`telemetry@builtin` → `cc-plugin-telemetry@builtin`);
+  dass die Namen, die ein Plugin dem Skill-Werkzeug liefert, in
+  `init.skills` oder `init.slash_commands` erscheinen und damit geprüft
+  werden, ist abgeleitet, nicht gemessen. Das Gate reagiert auf die
+  init-Zeile: Ein `tool_use` vor ihr beendet den Lauf, verhindert den
+  Aufruf aber nicht.
+- WS-5b Referenzmenge Slash-Commands (F-831, Entscheidung im Fix): Die Menge
+  gilt versionsunabhängig und nach Namen. Eine Menge je CLI-Version würde bei
+  jedem Update ohne neuen Namen rot und verlangte eine Messung, die nichts
+  Neues zeigt; neue Namen fängt das Gate auch so. Zwei Fälle erkennt das Gate
+  deshalb nicht: (1) Ein Name der Menge wird in einer neuen CLI-Version oder
+  unter anderen Settings aufrufbar (`security-review` ist nur wegen
+  `disableBundledSkills` verweigert). (2) Ein Nutzer-Command
+  (`~/.claude/commands`), ein Plugin-Command oder ein Ort-B-Skill trägt
+  denselben Namen wie ein Eintrag der Menge; welcher Eintrag dann gilt, ist
+  nicht gemessen. Gegenmittel ist die Nachmessung (`nachweis-f831/`) bei
+  einem CLI-Update. Die Referenzdatei wird bei jedem Ort-B-Start neu gelesen;
+  fehlt sie oder ist sie kaputt, startet kein Ort-B-Lauf (fail-closed).
 - WS-5b Refs: Eine Commit-SHA als Ref in `herkunft.url` ist abgelehnt (nur
   Branch/Tag). Eine Ref mit „/“ (`tree/release/v2/x`) wird als Ref `release`
   plus Unterpfad gelesen; das bleibt fail-closed, wenn es den Pfad dort nicht
