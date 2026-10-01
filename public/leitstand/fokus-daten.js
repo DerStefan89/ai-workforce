@@ -10,6 +10,7 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/dashboard.js
+ * - public/leitstand/views/workboard-detail.js (schrittFolge — „Wer macht was“ im Detail der Entwicklung, F44 WS-3b)
  * - public/leitstand/fokus-daten.test.mjs (node:test, reine Funktionen)
  *
  * Wichtig:

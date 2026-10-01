@@ -16,8 +16,9 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 (Challenger, 30.09.2026): WS-1a „Fundament“ gemergt (#291, `1f9ddb2`); WS-1b „Shell &
 Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026): WS-2a
 „Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ gemergt (#294, `67e757c`).
-WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ in Arbeit seit 01.10.2026
-(Branch `feat/f725-ws3a-board`); WS-3b „Detail, Bauen, Click-to-Work“ und WS-4 bis WS-8 offen.
+WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ gemergt (#295, `1191231`);
+WS-3b „Detail, Bauen, Click-to-Work“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws3b-detail`);
+WS-4 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -652,6 +653,108 @@ Branch `feat/f725-ws3a-board` (Basis `67e757c`), nicht committet.
   f21-ws2 grün.
 - **WS3a-6** Texte in de/en/tr/ru, Plural über Intl.PluralRules, Zahlen über Intl; i18n-Gate und
   `npm run check` grün.
+
+## Stand WS-3b „Detail & Click-to-Work“ (01.10.2026)
+Branch `feat/f725-ws3b-detail` (Basis `1191231`), nicht committet.
+- **Leseendpunkt Akte:** `src/feature-auftrag` `leseFeatureAkteAnzeige(inhalt, featureId)` auf demselben
+  internen Leser `leseAkte` wie `baueAuftragAusFeatureAkte` (keine zweite Parse-Logik; der Auftragstext
+  bleibt bitgenau, Snapshot-Test grün). `GET /api/features/<id>/akte` über den Multi-Projekt-Dispatcher
+  (Logik `leseFeatureAkteFuerAnzeige` in `scripts/leitstand/routen-f35.mjs`): 400 bei ungültiger ID
+  (F-595), 404 ohne Akte, 200 `{ status: 'ok', id, titel, featureStatus, ziel, nicht_ziele,
+  akzeptanzkriterien }` bzw. 200 `{ status: 'unvollstaendig', id, grund }`. **Abweichung vom Auftrag:**
+  Der Feature-Status heißt `featureStatus`, weil `status` schon den Antwortzustand trägt (ein Objekt
+  kann den Schlüssel nur einmal führen). Gate `check-f35-ws1` (g) prüft die vier Fälle am echten
+  HTTP-Pfad und dass kein Artefakt geschrieben wird. `api.js` `holeFeatureAkte` über
+  `holeJsonOderWirf`.
+- **Detail als ganze Seite** `#/workboard/<id>` (d_arbeit_f35, E8/E13): Übersicht (`#workboard-uebersicht`:
+  Kopf, Register, Board, Listen) ausgeblendet, „← <Register>“ führt zum zuletzt aktiven Register
+  zurück. Kopf mit Typ · ID, Titel, „Ergebnis prüfen“ (nur wenn der verknüpfte Ablauf ABGESCHLOSSEN ist
+  und noch keine gültige Abnahme-Entscheidung hat — Regel wie `views/workflows.js`
+  renderAbnahmeEntscheidung, Link auf `#/workflows/<id>`), „Eintrag bearbeiten“ und „Insights ansehen“
+  als kommt; Statuszeile (Status, Phase, „Gerade dran“); „Auftrag vorbereiten“; „Wer macht was“
+  (Zuvor/Jetzt/Danach über `schrittFolge`); „Was soll möglich werden“ (Feature: Ziel aus der Akte;
+  Finding: „Was funktioniert nicht?“ bzw. „Was soll besser werden?“ mit Beschreibung, Fundstelle,
+  Auswirkung, Maßnahme, Feature/Run); „Stand der Entwicklung“ (Schritte, x/y, Fortschrittsbalken);
+  „Woran wir ein gutes Ergebnis erkennen“ (AKs der Akte, bei unvollständiger Akte Grund und Pfad;
+  Finding: Hinweis, dass die Kriterien im Auftrag entstehen; Nicht-Ziele aufklappbar); „Einordnung &
+  Quelle“; rechte Spalte „Deine Produktplanung“ (Priorität bzw. „Ohne Priorität“, Meilenstein aus der
+  Roadmap nur lesend; Zeitfenster, Ändern, „Planung speichern“ als kommt); „Insights & Erkenntnisse“
+  als Z-Element ohne Beispielkarten. Die IDs `workboard-detail`, `-titel`, `-inhalt`, `-schliessen`,
+  `workboard-bearbeitung` bleiben. Gerendert in `views/workboard-detail.js` (rein, ohne fetch und
+  DOM; Test `workboard-detail.test.mjs`).
+- **Nachtrag des Details** (`detailNachtrag`): beim Öffnen Akte und Roadmap (Features), Schritte des
+  verknüpften Ablaufs (`holeWorkflowDetail`) und bei ABGESCHLOSSEN die Abnahme. Verknüpfung wie das
+  Board (`baueVerknuepfung`, `verknuepfterWorkflow`: wartend vor nicht terminal vor dem letzten). Ist sie
+  beim Öffnen noch nicht bestimmbar (Deep-Link vor Poll bzw. Aufträgen), lädt der erste Tick, der sie
+  bestimmbar macht. **Entscheidung im Prüfpass:** Danach lädt ein Tick nur bei einem Übergang nach —
+  ein anderer Ablauf wird maßgeblich (etwa nach „Auftrag vorbereiten“; dann lädt die Seite auch die
+  Aufträge einmal neu, ereignisgetrieben) oder der maßgebliche wechselt seine Phase
+  (`<workflowId>|<Phase>`); ein Tick ohne Übergang lädt nichts (Tests). So widersprechen Statuszeile,
+  „Wer macht was“ und „Stand“ dem Click-to-Work-Bereich nicht. Ein Poll-Tick schreibt Kopf, Statuszeile,
+  Inhalt und den Click-to-Work-Bereich nur bei geändertem HTML (aufgeklappte Abschnitte und der Fokus auf
+  „Freigeben“ bleiben). Ladezustand beim Deep-Link bis zu den Workitems (F-921); im Fehlerzustand ein
+  eigenes „Erneut laden“, ohne Eintrag keine Z-Knöpfe.
+- **Click-to-Work (E9–E12):** Einstieg heißt „Auftrag vorbereiten“ (IDs `#workboard-bearbeiten` bzw.
+  `#workboard-bauen` unverändert); Verhalten, Phasen, Freigabe (`empfehlungIds`, feste Begründung
+  F-375) unverändert. Vorschlag, Konflikt 409 („Es läuft bereits eine Ausführung.“ mit „Wiederholen“),
+  Fehler, Kette und Git-Block „Commit / Push / PR“ im Stil V10, Texte über i18n einschließlich der
+  Platzhalter im Git-Block (Server- und Projekttexte escaped). Nach einem Zustandswechsel geht der
+  Fokus auf die Überschrift bzw. den Hinweis des neuen Zustands (ohne zweite Live-Region). **F-922
+  (Entscheidung Challenger, 01.10.2026, reversibel):** „Auftrag vorbereiten“ ist gesperrt (disabled,
+  aria-disabled, Hinweis über i18n, Link „Ablauf öffnen“), solange ein verknüpfter Workflow nicht
+  terminal ist (`laufenderWorkflow`, dieselbe Statusmenge wie das Board) oder eine Abnahme offen ist
+  (dieselbe Angabe wie „Ergebnis prüfen“); solange die Verknüpfung lädt, ebenfalls. Klasse
+  `wb-freigeben` bleibt, der Installierbar-Hinweis steht weiter direkt davor
+  (`empfehlung-anzeige.test.mjs`). Die Kette zeigt Rollennamen.
+- **F-914:** `public/leitstand/rollen-anzeige.js` (`rollenName`, gemeinsame Spalte `werSpalte`) für die
+  neun Rollen aus `ROLLENVERTRAEGE`; genutzt in B3/B11, Detail und Kette.
+- **F-919 (teilweise):** Sortierung P0, P1, Features, P2, P3, P4, ohne Priorität; „Alle x anzeigen“ mit
+  der Zahl der ganzen Spalte im Ziel-Tab. Offen: „Abgenommen“ nach Erledigungsdatum (F-915).
+- **F-920:** Projektwechsel bei geschlossener Seite setzt nur zurück; das nächste Betreten lädt.
+- **F-921:** Karte zeigt die Phase des verknüpften Ablaufs aus dem Aggregat (ohne x/y).
+- **F-918 entschieden:** Filter-Chips bleiben (gleiche Funktion, Gate-IDs, keine Datenänderung).
+- **Gate f21-ws2:** (f) gilt auch für `views/workboard-detail.js` (kein schreibender Request, aus api.js
+  höchstens hole*, kein fetch/document/window, Rot-Kalibrierung (f-kal)); (g) prüft zusätzlich
+  `views/workboard-detail.js` und `rollen-anzeige.js`. Kein Literal zieht um.
+- **render-nachweis:** optional `methode` je fester Antwort (GET und POST auf `/api/auftraege` getrennt).
+- **Akten:** `docs/design/abgleich-f725.md` Vermerk zu E11 (die Git-Befehle gibt es seit F22 AK6; offen
+  war nur der Stil).
+- **Nachweise** `features/F44/nachweise/ws3b/` (Skript `erzeuge-nachweis.mjs`, Leitstand dieses Worktrees auf
+  Port 4381, feste Antworten): Detail Feature (Akte mit AKs, abgeschlossener Ablauf mit offener Abnahme)
+  und Detail Finding bis zum Click-to-Work-Vorschlag, je 1440 dunkel und hell, 390 dunkel, 200 %, ru;
+  dazu Feature ru-390 und mit reduzierter Bewegung; Konflikt 409 mit „Wiederholen“; Finding nach
+  „Freigeben“ bis „abgeschlossen“ mit Git-Block (1440 dunkel, 390 hell), „Ablehnen“ und Freigabe-Fehler;
+  `#/workboard` 1440 dunkel gegen echte Daten (ganze Seite und sichtbarer Ausschnitt, F-919/F-921, „Alle
+  x anzeigen“ in den Tab); `#/dashboard` 1440 dunkel (F-914). Kein waagerechter Überlauf.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal): design-guardian und qa „Nicht
+  freigegeben“, code-reviewer „Freigegeben mit Hinweisen“. Eine Korrekturrunde, eingearbeitet: Detail
+  folgt Click-to-Work und Phasenwechseln (Aufträge nach dem Anlegen neu, Nachladen bei Übergang, Tests);
+  Fokus nach Zustandswechsel und Schreiben nur bei geändertem HTML; Tests 409 → „Wiederholen“ (genau ein
+  Auftrag), späte Akte nach Projektwechsel, Übergang lädt genau einmal; Phase „Deine Abnahme“ bei offener
+  Abnahme, Phasen-Label im Stil der Vorlage, nur eine Primäraktion; Git-Platzhalter und Skill-Name über
+  i18n; „Erneut laden“ im Fehlerzustand; keine Z-Knöpfe ohne Eintrag; `pruefeAkte` prüft die Einträge;
+  Zwischenspeicher für „Ergebnis prüfen“; JSDoc `featureStatus`; Gate (f) für das Render-Modul;
+  fehlende Nachweis-Zustände ergänzt. Nicht übernommen, als Findings: doppelter Auftrag (F-922,
+  danach per Challenger-Entscheidung im selben Paket erledigt), Hash nach Projektwechsel (F-923), Feature-Ordner außerhalb des Musters (F-924),
+  URIError im Router (F-925), Zurück und History (F-926), Modellzeile/weitere Abläufe/fehlende Quelle im
+  Detail (F-927), Größe von `workboard.js` (F-928). Eine zweite Live-Region (`aria-live` am
+  Click-to-Work-Bereich, Vorschlag qa) bleibt ausgeschlossen (Invariante: eine Live-Region).
+- **Findings:** neu F-922 (erledigt, Sperre) und F-923 bis F-928 (offen); erledigt F-914, F-920, F-921;
+  F-918 entschieden; F-919 teilweise (offen bleibt die Sortierung von „Abgenommen“). Aus den Fragen
+  Stefans (Challenger, 01.10.2026) neu F-929 bis F-933 (Fixpaket Arbeitsfähigkeit, Baustein 1 bzw. F-930
+  nach F30).
+
+### Akzeptanzkriterien WS-3b
+- **WS3b-1** `GET /api/features/<id>/akte` lesend (400/404/200 ok/unvollständig, kein Artefakt), derselbe
+  Leser wie der Bau-Auftrag (Gate `check-f35-ws1` (g), `feature-auftrag.test.ts`).
+- **WS3b-2** `#/workboard/<id>` als ganze Seite nach d_arbeit_f35 mit allen Abschnitten, Leer-, Lade- und
+  Fehlerzuständen; Z-Elemente `aria-disabled` mit „kommt“ ohne Beispieldaten (`workboard-detail.test.mjs`).
+- **WS3b-3** Nachtrag nur beim Öffnen, nie aus dem Poll; Ladezustand beim Deep-Link
+  (`projekt-wechsel.test.mjs`).
+- **WS3b-4** Click-to-Work mit „Auftrag vorbereiten“, Verhalten unverändert, Texte über i18n; Gate f21-ws2
+  und `empfehlung-anzeige.test.mjs` grün.
+- **WS3b-5** F-914, F-920, F-921 erledigt, F-918 entschieden, F-919 teilweise.
+- **WS3b-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

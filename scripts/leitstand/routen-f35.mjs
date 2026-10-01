@@ -18,6 +18,10 @@
  * und registriert ihn über registriereAuftrag — denselben Pfad wie POST
  * /api/auftraege (D5, kein zweiter Registrierungsweg).
  *
+ * F44 WS-3b: leseFeatureAkteFuerAnzeige ist die lesende Logik für GET
+ * /api/features/<featureId>/akte (Detail im Leitstand) — gleiche ID-Prüfung,
+ * Pfadsicherheit und Status-Zeile, registriert und schreibt nichts.
+ *
  * Wird aufgerufen von: scripts/leitstand-server.mjs,
  * scripts/check-f35-ws1-feature-auftrag.mjs.
  */
@@ -26,7 +30,7 @@ import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve, sep } from 'node:path'
 import { registriereAuftrag, validiereAuftragAkzeptanzkriterien, validiereAuftragNichtZiele } from '../../src/auftrag/index.ts'
-import { baueAuftragAusFeatureAkte } from '../../src/feature-auftrag/index.ts'
+import { baueAuftragAusFeatureAkte, leseFeatureAkteAnzeige } from '../../src/feature-auftrag/index.ts'
 import { FEATURE_ID_MUSTER } from '../../src/projektkontext/index.ts'
 
 // Zwilling von public/leitstand/views/workboard.js' FEATURE_STATUS_NICHT_BAUBAR (F35 WS-1 AK6) —
@@ -107,4 +111,47 @@ export function baueUndRegistriereAuftragAusFeatureAkte(featureId, repoWurzel, p
     return { ok: false, status: 500, grund: `Auftrag konnte nicht registriert werden: ${fehler.message}` }
   }
   return { ok: true, auftragId }
+}
+
+/**
+ * F44 WS-3b: Lesende Projektion einer Feature-Akte für das Detail im Leitstand
+ * (GET /api/features/<featureId>/akte). Gleiche ID-Prüfung (F-595), gleiche Pfadsicherheit und
+ * gleiche Status-Zeile wie baueUndRegistriereAuftragAusFeatureAkte; Titel, Ziel, Nicht-Ziele und
+ * AKs über leseFeatureAkteAnzeige (derselbe Leser wie der Bau-Auftrag). Liest nur — registriert
+ * nichts, schreibt nichts. Wirft nicht.
+ * @param featureId - Feature-id aus dem Pfad (noch ungeprüft)
+ * @param repoWurzel - Repo-Wurzel DIESES Projekts (E-F41-2, NIE die installWurzel)
+ * @returns { status: 400 | 404 | 500, koerper: { grund } } | { status: 200, koerper: { status: 'ok', id, titel, featureStatus, ziel, nicht_ziele, akzeptanzkriterien } | { status: 'unvollstaendig', id, grund } }
+ */
+export function leseFeatureAkteFuerAnzeige(featureId, repoWurzel) {
+  if (typeof featureId !== 'string' || !FEATURE_ID_MUSTER.test(featureId)) {
+    return { status: 400, koerper: { grund: `featureId muss dem Muster ^F[0-9]+[A-Za-z]?$ entsprechen (F-595), erhalten ${JSON.stringify(featureId)}` } }
+  }
+  const pfad = loeseFeatureAktePfadAuf(featureId, repoWurzel)
+  if (pfad === null || !existsSync(pfad)) {
+    return { status: 404, koerper: { grund: `features/${featureId}/feature.md nicht gefunden` } }
+  }
+  let inhalt
+  try {
+    inhalt = readFileSync(pfad, 'utf8')
+  } catch (fehler) {
+    return { status: 500, koerper: { grund: `features/${featureId}/feature.md nicht lesbar: ${fehler.message}` } }
+  }
+  const ergebnis = leseFeatureAkteAnzeige(inhalt, featureId)
+  if (!ergebnis.ok) return { status: 200, koerper: { status: 'unvollstaendig', id: featureId, grund: ergebnis.grund } }
+  const statusTreffer = STATUS_ZEILE_MUSTER.exec(inhalt)
+  return {
+    status: 200,
+    koerper: {
+      status: 'ok',
+      id: featureId,
+      titel: ergebnis.titel,
+      // Der Feature-Status aus der Status-Zeile heißt featureStatus: 'status' trägt bereits den
+      // Antwortzustand ('ok' | 'unvollstaendig'), ein Objekt kann den Schlüssel nur einmal führen.
+      featureStatus: statusTreffer !== null ? statusTreffer[1] : null,
+      ziel: ergebnis.ziel,
+      nicht_ziele: ergebnis.nicht_ziele,
+      akzeptanzkriterien: ergebnis.akzeptanzkriterien,
+    },
+  }
 }

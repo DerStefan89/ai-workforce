@@ -236,9 +236,11 @@
              Abgleich F-725 E1–E7). Kopf mit Register, darunter das Status-Kanban bzw. die
              Listen-Tabs, beide befüllt von views/workboard.js (Regeln in entwicklung-daten.js).
              Die IDs workboard-befunde/-filter/-filter-typ/-filter-status/-filter-prioritaet/
-             -neu-laden/-liste/-detail* bleiben (Gate f21-ws2 (a)); Detail und Click-to-Work
-             unverändert bis WS-3b. Das frühere Bento (#workboard-bento) ist entfernt (F-892). -->
+             -neu-laden/-liste/-detail* bleiben (Gate f21-ws2 (a)). Das frühere Bento
+             (#workboard-bento) ist entfernt (F-892). F44 WS-3b: Übersicht (#workboard-uebersicht)
+             und Detail (#workboard-detail, d_arbeit_f35) schalten sich gegenseitig aus. -->
         <section id="view-workboard" data-view="workboard" class="v10-seite" hidden>
+          <div id="workboard-uebersicht">
           <div class="page-heading">
             <div>
               <div class="eyebrow" data-i18n="entwicklung.eyebrow">Produktentwicklung</div>
@@ -284,14 +286,27 @@
 
             <div id="workboard-liste" class="line-list"></div>
           </div>
+          </div>
 
-          <section id="workboard-detail" class="card" hidden>
-            <h2>Detail: <span id="workboard-detail-titel"></span> <button type="button" id="workboard-detail-schliessen" class="btn">Schließen</button></h2>
-            <div id="workboard-detail-inhalt"></div>
+          <!-- F44 WS-3b: Detail #/workboard/<id> als ganze Seite (d_arbeit_f35, Abgleich E8–E13):
+               „← <Register>“, Kopf mit Typ · ID und Titel, „Ergebnis prüfen“ (nur bei offener
+               Abnahme), Z-Knöpfe, Statuszeile, Auftrag vorbereiten (Click-to-Work), Inhalt. -->
+          <section id="workboard-detail" class="workboard-detail" aria-labelledby="workboard-detail-titel" hidden>
+            <button type="button" id="workboard-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span id="workboard-detail-zurueck-text"></span></button>
+            <div class="page-heading">
+              <div>
+                <div id="workboard-detail-eyebrow" class="eyebrow"></div>
+                <h1 id="workboard-detail-titel" tabindex="-1"></h1>
+              </div>
+              <div id="workboard-detail-aktion"></div>
+            </div>
+            <div id="workboard-detail-z" class="feature-edit-actions"></div>
+            <div id="workboard-detail-status" class="pm-detail-status"></div>
             <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
                  #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
-                 Vorschlag/Kette) überlebt so ein stilles Nachrendern der Finding-Tabelle. -->
-            <div id="workboard-bearbeitung"></div>
+                 Vorschlag/Kette) überlebt so ein stilles Nachrendern des Inhalts. -->
+            <div id="workboard-bearbeitung" class="workboard-auftrag"></div>
+            <div id="workboard-detail-inhalt"></div>
           </section>
         </section>
 

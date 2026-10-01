@@ -132,6 +132,8 @@ Endpunkte relativ zu `P` = `/api` bzw. `/api/projekte/<id>`.
 | E12 | Toast „Es läuft bereits eine Ausführung.“ | Konfliktzustand 409 mit „Wiederholen“ | – | V (Hinweis) / F (Konfliktzustand und „Wiederholen“) |
 | E13 | Eintrag bearbeiten mit Revision und Änderungsgrund, „Zeitfenster ändern“, „Als Nächstes vormerken“, Insights | – | – | Z |
 
+> **Vermerk WS-3b (01.10.2026), Korrektur zu E11:** Die Git-Befehle zum Kopieren fehlten nicht. Der Block „Commit / Push / PR“ (`git add <geänderte Dateien>`, `git commit`, `git push`, Verweis auf Skill `git-flow`) existiert seit F22 AK6 im Terminal-Zustand von Click-to-Work (`views/workboard.js`, renderTerminalBlock). Offen war nur der Stil der Vorlage; WS-3b hat ihn übertragen. Die Spalte „Status“ bleibt F, weil die Vorlage den Block nicht kennt.
+
 ### F. Auftrag, Ablauf, Abnahme
 | # | Vorlage | Heute | API/Quelle | Status |
 |---|---|---|---|---|

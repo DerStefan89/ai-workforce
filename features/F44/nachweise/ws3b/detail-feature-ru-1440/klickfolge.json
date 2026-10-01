@@ -1,0 +1,285 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard/F91",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-workboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workitems*",
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-9001",
+            "titel": "Nachweis: Fehlende Nutzungsdaten kennzeichnen",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P1",
+            "beschreibung": "Wenn Nutzungsdaten einer Ausführung fehlen, zeigt die Anzeige 0 statt „nicht erfasst“. <b>HTML bleibt Text.</b>",
+            "fundstelle": "public/leitstand/views/nutzung.js",
+            "auswirkung": "Ein unbekannter Verbrauch sieht wie kostenloses Arbeiten aus.",
+            "massnahme": "Einen ausdrücklichen Zustand „nicht erfasst“ anzeigen.",
+            "featureRun": null
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F91",
+            "titel": "Nachweis: Bauen aus der Akte",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F91/feature.md"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "json": [
+        {
+          "auftragId": "nachweis-a91",
+          "titel": "Bauen aus der Akte",
+          "erstellt_am": "2026-10-01T08:00:00Z",
+          "workitem_referenz": "workitem:feature:F91"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nachweis-w91",
+            "auftragId": "nachweis-a91",
+            "ziel": "Vom beschriebenen Feature direkt zur freigabefähigen Arbeit, ohne den Auftrag noch einmal aufzubauen.",
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "naechster": null
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w91",
+      "json": {
+        "daten": {
+          "workflowId": "nachweis-w91",
+          "auftragId": "nachweis-a91",
+          "ziel": "Vom beschriebenen Feature direkt zur freigabefähigen Arbeit, ohne den Auftrag noch einmal aufzubauen.",
+          "status": "ABGESCHLOSSEN",
+          "aktiverSchrittId": "s2",
+          "grund": null,
+          "naechster": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "status": "ERFOLGREICH",
+              "freigabe": "ZWINGEND",
+              "nachfolger": "s2",
+              "lauf_id": "l1"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt",
+              "status": "ERFOLGREICH",
+              "freigabe": "KEINE",
+              "nachfolger": null,
+              "lauf_id": "l2"
+            }
+          ]
+        },
+        "naechster": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w91/abnahme",
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "fehlt"
+        }
+      }
+    },
+    {
+      "muster": "**/api/features/F91/akte",
+      "json": {
+        "status": "ok",
+        "id": "F91",
+        "titel": "Bauen aus der Akte",
+        "featureStatus": "IN_ARBEIT",
+        "ziel": "Aus einer Feature-Beschreibung direkt einen klaren Auftrag machen.\nDer Ablauf ist vor dem Start sichtbar.",
+        "nicht_ziele": [
+          "Die Akte im Leitstand bearbeiten.",
+          "Ohne Freigabe starten."
+        ],
+        "akzeptanzkriterien": [
+          {
+            "id": "AK1",
+            "text": "Ein Auftrag lässt sich aus einer Feature-Datei vorbereiten."
+          },
+          {
+            "id": "AK2",
+            "text": "Der vorgeschlagene Ablauf ist vor dem Start sichtbar."
+          },
+          {
+            "id": "AK3",
+            "text": "Kein schreibender Schritt startet ohne Freigabe; <script> bleibt Text."
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "json": {
+        "status": "ok",
+        "vision": "Nachweis",
+        "meilensteine": [
+          {
+            "id": "m1",
+            "titel": "Verlässlich arbeiten",
+            "status": "LAEUFT",
+            "features": [
+              {
+                "id": "F91",
+                "titel": "Bauen aus der Akte",
+                "status": "IN_ARBEIT"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1:not(:empty)"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Zurück",
+        "selector": "#workboard-detail-schliessen"
+      },
+      {
+        "name": "Eyebrow",
+        "selector": "#workboard-detail-eyebrow"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workboard-detail-titel"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#workboard-detail-aktion"
+      },
+      {
+        "name": "Statuszeile",
+        "selector": "#workboard-detail-status"
+      },
+      {
+        "name": "Auftrag",
+        "selector": "#workboard-bearbeitung"
+      },
+      {
+        "name": "Stand",
+        "selector": "#workboard-detail-inhalt .progress-caption"
+      },
+      {
+        "name": "erstes AK",
+        "selector": "#workboard-detail-inhalt .checklist li"
+      },
+      {
+        "name": "Planung",
+        "selector": "#workboard-detail-inhalt .workboard-detail-planung"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Übersicht (Board/Listen)",
+        "id": "workboard-uebersicht"
+      },
+      {
+        "name": "Detail",
+        "id": "workboard-detail"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "kommt (aria-disabled) im Detail",
+        "selector": "#workboard-detail [aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Freigeben (wb-freigeben)",
+        "selector": "#workboard-bearbeitung .wb-freigeben"
+      },
+      {
+        "name": "Ergebnis prüfen",
+        "selector": "#workboard-detail-aktion a[href^=\"#/workflows/\"]"
+      },
+      {
+        "name": "Beispiel-Insights (muss fehlen)",
+        "selector": "#workboard-detail .insight-card"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Deep-Link #/workboard/F91 (Akte, Ablauf, Abnahme offen)",
+      "warteAufSelector": {
+        "selector": "#workboard-detail-aktion a",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-feature.webp"
+    }
+  ]
+}

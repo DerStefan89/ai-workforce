@@ -17,7 +17,7 @@
  * - public/leitstand/views/runs.js
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
- * - public/leitstand/views/workboard.js (F22 WS-2)
+ * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme)
  * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems)
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems — nur lesend)
  * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
@@ -190,6 +190,12 @@ export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(
 // Antwort (404 für ein nicht initialisiertes Projekt, 500) ging vorher als Erfolg mit einem Körper
 // ohne status durch; jetzt ist sie ein Wurf und erscheint als Fehler, nie als „keine Roadmap“.
 export const holeRoadmap = () => holeJsonOderWirf(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+// F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite
+// „Entwicklung“ (views/workboard.js) — nur beim Öffnen des Details, nie aus dem Poll. 200 trägt
+// { status: 'ok' | 'unvollstaendig' }; 400/404/500 werfen (holeJsonOderWirf), die Ansicht zeigt
+// dann den Fehlerzustand (scripts/leitstand/routen-f35.mjs leseFeatureAkteFuerAnzeige).
+export const holeFeatureAkte = (featureId) => holeJsonOderWirf(mitPraefix(`/features/${encodeURIComponent(featureId)}/akte`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F32 WS-2: Verbrauchsprojektion für die Karte "Verbrauch" (seit F44 WS-2b views/nutzung.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:

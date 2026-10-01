@@ -4,14 +4,16 @@
  * Zweck: node:test-Fälle für die reinen Regeln der Seite „Entwicklung“ (F44 WS-3a,
  * entwicklung-daten.js): jede Zeile der Spaltenregel, Vorrang a > b > c > d, die Verknüpfung
  * Workitem ↔ Workflow über den Auftrag, Begrenzung und Sortierung je Spalte, leere und defekte
- * Quellen, die clientseitige Suche. Belegt zugleich, dass das Modul ohne DOM importierbar ist.
+ * Quellen, die clientseitige Suche. F44 WS-3b: Sortierung nach F-919, jeTab für „Alle x
+ * anzeigen“, verknüpfter Workflow und Phase (F-921), Schrittfortschritt. Belegt zugleich, dass das
+ * Modul ohne DOM importierbar ist.
  *
  * Wird aufgerufen von: `npm run test` (node --test).
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueBoard, baueVerknuepfung, KARTEN_JE_SPALTE, SPALTEN, spalteVon, sucheWorkitems, tabFuerTyp } from './entwicklung-daten.js'
+import { baueBoard, baueVerknuepfung, KARTEN_JE_SPALTE, SPALTEN, schrittFortschritt, spalteVon, sucheWorkitems, tabFuerTyp, verknuepfterWorkflow, workflowPhase } from './entwicklung-daten.js'
 
 const feature = (id, status, extra = {}) => ({ quelle: 'feature', typ: 'FEATURE', id, titel: `Feature ${id}`, status, ...extra })
 const finding = (id, status, prioritaet = 'P2', typ = 'BUG') => ({ quelle: 'finding', typ, id, titel: `Finding ${id}`, status, prioritaet })
@@ -119,7 +121,8 @@ test('baueBoard: vier Spalten, Zahl außerhalb, Zuordnung über Auftrag', () => 
   assert.deepEqual(Object.keys(board.spalten), SPALTEN)
   assert.deepEqual(
     board.spalten.geplant.karten.map((w) => w.id),
-    ['F-1', 'F1']
+    // F-919: das Feature steht vor dem P2-Finding.
+    ['F1', 'F-1']
   )
   assert.deepEqual(
     board.spalten.in_arbeit.karten.map((w) => w.id),
@@ -134,7 +137,7 @@ test('baueBoard: vier Spalten, Zahl außerhalb, Zuordnung über Auftrag', () => 
   assert.deepEqual(board.fehlend, [])
 })
 
-test('baueBoard: Sortierung P0 → P4, Features ohne Priorität dahinter, bei gleicher Stufe Feature vor Finding, sonst Quellreihenfolge', () => {
+test('baueBoard (F-919): Sortierung P0, P1, Features, P2, P3, P4, ohne Priorität; innerhalb einer Stufe Quellreihenfolge', () => {
   const workitems = [
     finding('F-p3', 'OFFEN', 'P3'),
     feature('F-ohne', 'ENTWURF'),
@@ -143,17 +146,19 @@ test('baueBoard: Sortierung P0 → P4, Features ohne Priorität dahinter, bei gl
     finding('F-p0', 'OFFEN', 'P0'),
     finding('F-p1b', 'OFFEN', 'P1'),
     finding('F-p4', 'OFFEN', 'P4'),
+    finding('F-p2', 'OFFEN', 'P2'),
     // Ein geerbter Objektschlüssel ist keine Priorität (Object.hasOwn).
     finding('F-proto', 'OFFEN', 'constructor'),
   ]
   const board = baueBoard(workitems, [], [])
+  // Features stehen als eigene Stufe zwischen P1 und P2 (eine Priorität in der Akte ändert daran nichts).
   assert.deepEqual(
     board.spalten.geplant.karten.map((w) => w.id),
-    ['F-p0', 'F-p1', 'F-p1a', 'F-p1b', 'F-p3', 'F-p4', 'F-ohne', 'F-proto']
+    ['F-p0', 'F-p1a', 'F-p1b', 'F-ohne', 'F-p1', 'F-p2', 'F-p3', 'F-p4', 'F-proto']
   )
 })
 
-test('baueBoard: höchstens KARTEN_JE_SPALTE Karten, der Rest als Zahl je Listen-Tab', () => {
+test('baueBoard: höchstens KARTEN_JE_SPALTE Karten; weitere = Rest, jeTab = alle Workitems der Spalte je Listen-Tab (F-919)', () => {
   const workitems = [
     ...Array.from({ length: KARTEN_JE_SPALTE }, (_, i) => finding(`F-b${i}`, 'OFFEN', 'P1')),
     finding('F-h1', 'OFFEN', 'P2', 'HARNESS_IMPROVEMENT'),
@@ -166,9 +171,11 @@ test('baueBoard: höchstens KARTEN_JE_SPALTE Karten, der Rest als Zahl je Listen
   assert.equal(spalte.karten.length, KARTEN_JE_SPALTE)
   assert.equal(spalte.anzahl, KARTEN_JE_SPALTE + 5)
   assert.equal(spalte.weitere, 5)
-  // Unbekannter Typ zählt in „weitere“, hat aber keinen Listen-Tab.
-  assert.deepEqual(spalte.weitereJeTab, [
+  // „Alle x anzeigen“ führt in den Tab mit der ganzen Spalte: jeTab zählt auch die Karten auf dem
+  // Board. Ein unbekannter Typ zählt in anzahl, hat aber keinen Listen-Tab.
+  assert.deepEqual(spalte.jeTab, [
     { tab: 'features', anzahl: 1 },
+    { tab: 'bugs', anzahl: KARTEN_JE_SPALTE },
     { tab: 'harness', anzahl: 1 },
     { tab: 'weitere', anzahl: 2 },
   ])
@@ -176,7 +183,7 @@ test('baueBoard: höchstens KARTEN_JE_SPALTE Karten, der Rest als Zahl je Listen
 
 test('baueBoard: leere Liste ergibt leere Spalten', () => {
   const board = baueBoard([], [], [])
-  for (const spalte of SPALTEN) assert.deepEqual(board.spalten[spalte], { karten: [], anzahl: 0, weitere: 0, weitereJeTab: [] })
+  for (const spalte of SPALTEN) assert.deepEqual(board.spalten[spalte], { karten: [], anzahl: 0, weitere: 0, jeTab: [] })
   assert.equal(board.ausserhalb, 0)
 })
 
@@ -241,4 +248,44 @@ test('sucheWorkitems: über id und titel, ohne Groß-/Kleinschreibung, getrimmt'
 test('sucheWorkitems: ohne Liste leer', () => {
   assert.deepEqual(sucheWorkitems(null, 'x'), [])
   assert.deepEqual(sucheWorkitems(undefined, ''), [])
+})
+
+test('baueBoard: liefert die Verknüpfung mit (Phase der Karten, F-921)', () => {
+  const board = baueBoard([finding('F-1', 'OFFEN')], [workflow('w1', 'a1', 'LAEUFT')], [auftrag('a1', 'workitem:finding:F-1')])
+  assert.equal(verknuepfterWorkflow(finding('F-1', 'OFFEN'), board.verknuepfung)?.workflowId, 'w1')
+})
+
+test('verknuepfterWorkflow: wartend vor nicht terminal vor dem letzten; ohne Verknüpfung null', () => {
+  const auftraege = [auftrag('a1', 'workitem:feature:F1'), auftrag('a2', 'workitem:feature:F1'), auftrag('a3', 'workitem:feature:F1')]
+  const f1 = feature('F1', 'IN_ARBEIT')
+  const alle = (workflows) => verknuepfterWorkflow(f1, baueVerknuepfung(workflows, auftraege))?.workflowId ?? null
+  assert.equal(alle([workflow('w1', 'a1', 'ABGESCHLOSSEN'), workflow('w2', 'a2', 'LAEUFT'), workflow('w3', 'a3', 'LAEUFT', 'haltKlaerung')]), 'w3')
+  // Freigabe vor Rückfrage (Reihenfolge von baueEntscheidungen).
+  assert.equal(alle([workflow('w1', 'a1', 'LAEUFT', 'haltKlaerung'), workflow('w2', 'a2', 'WARTET_FREIGABE', 'haltFreigabe')]), 'w2')
+  assert.equal(alle([workflow('w1', 'a1', 'ABGESCHLOSSEN'), workflow('w2', 'a2', 'LAEUFT')]), 'w2')
+  assert.equal(alle([workflow('w1', 'a1', 'GESTOPPT'), workflow('w2', 'a2', 'ABGESCHLOSSEN')]), 'w2')
+  assert.equal(alle([]), null)
+  assert.equal(verknuepfterWorkflow(f1, baueVerknuepfung(undefined, auftraege)), null)
+  assert.equal(verknuepfterWorkflow(f1, undefined), null)
+})
+
+test('workflowPhase: Freigabe/Rückfrage aus attention-daten, sonst nach Status; ohne Workflow null', () => {
+  assert.equal(workflowPhase(workflow('w', 'a', 'WARTET_FREIGABE', 'haltFreigabe')), 'freigabe')
+  assert.equal(workflowPhase(workflow('w', 'a', 'KLAERUNG_ERFORDERLICH', 'haltKlaerung')), 'rueckfrage')
+  assert.equal(workflowPhase(workflow('w', 'a', 'LAEUFT', 'starte')), 'laeuft')
+  assert.equal(workflowPhase(workflow('w', 'a', 'OFFEN')), 'bereit')
+  assert.equal(workflowPhase(workflow('w', 'a', 'KLAERUNG_ERFORDERLICH')), 'klaerung')
+  assert.equal(workflowPhase(workflow('w', 'a', 'ABGESCHLOSSEN')), 'abgeschlossen')
+  assert.equal(workflowPhase(workflow('w', 'a', 'GESTOPPT')), 'gestoppt')
+  assert.equal(workflowPhase(workflow('w', 'a', 'NEU')), 'unbekannt')
+  assert.equal(workflowPhase(workflow('w', 'a', 'constructor')), 'unbekannt')
+  assert.equal(workflowPhase(null), null)
+})
+
+test('schrittFortschritt: ERFOLGREICH zählt, ganzzahlige Prozent, leere/fehlende Schritte 0', () => {
+  const s = (status) => ({ status })
+  assert.deepEqual(schrittFortschritt([s('ERFOLGREICH'), s('ERFOLGREICH'), s('WARTET_FREIGABE')]), { erledigt: 2, gesamt: 3, prozent: 67 })
+  assert.deepEqual(schrittFortschritt([s('UEBERSPRUNGEN'), null]), { erledigt: 0, gesamt: 2, prozent: 0 })
+  assert.deepEqual(schrittFortschritt([]), { erledigt: 0, gesamt: 0, prozent: 0 })
+  assert.deepEqual(schrittFortschritt(undefined), { erledigt: 0, gesamt: 0, prozent: 0 })
 })

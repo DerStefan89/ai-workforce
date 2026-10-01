@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Deep-Link #/workboard/F91 (Akte, Ablauf, Abnahme offen)",
+    "Übersicht (Board/Listen)": false,
+    "Detail": true,
+    "kommt (aria-disabled) im Detail": true,
+    "Freigeben (wb-freigeben)": false,
+    "Ergebnis prüfen": true,
+    "Beispiel-Insights (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Arbeit im Überblick",
+    "Fokus": "Nachweis: Bauen aus der Akte",
+    "Zurück": "← Kanban-Board",
+    "Eyebrow": "Feature · F91",
+    "Titel": "Nachweis: Bauen aus der Akte",
+    "Aktion": "Ergebnis prüfen",
+    "Statuszeile": "In ArbeitPhase: Deine AbnahmeGerade dran: Du",
+    "Auftrag": "Auftrag vorbereitenDer Ablauf wartet auf deine Abnahme. Prüfe zuerst das Ergebnis; danach ist ein weiterer Auftrag mögli",
+    "Stand": "2 von 2 Schritten abgeschlossen100 %",
+    "erstes AK": "○AK1 Ein Auftrag lässt sich aus einer Feature-Datei vorbereiten.",
+    "Planung": "PrioritätOhne Priorität MeilensteinVerlässlich arbeiten",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

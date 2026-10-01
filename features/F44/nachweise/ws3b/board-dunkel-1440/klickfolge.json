@@ -1,0 +1,80 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-workboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1:not(:empty)"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Spalte Geplant (Zahl)",
+        "selector": ".board-spalte-geplant .board-column-title"
+      },
+      {
+        "name": "erste Karte Geplant",
+        "selector": ".board-spalte-geplant .board-item"
+      },
+      {
+        "name": "Alle x anzeigen (Geplant)",
+        "selector": ".board-spalte-geplant .board-weitere-zeile"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/workboard (F-919 Sortierung, „Alle x anzeigen“)",
+      "warteAufSelector": {
+        "selector": "#workboard-board .pm-board",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-board.webp"
+    },
+    {
+      "label": "Sichtbarer Ausschnitt (Karten lesbar: Typ, Priorität, Titel, Phase bzw. Status, ID — F-921)",
+      "screenshotVollseite": false,
+      "screenshot": "d1440-board-ausschnitt.webp"
+    },
+    {
+      "label": "Klick „Alle x anzeigen“ in Geplant: Listen-Tab mit Spaltenfilter",
+      "klick": ".board-spalte-geplant .board-weitere >> nth=0",
+      "warteAufSelector": {
+        "selector": "#workboard-liste .workboard-zeile",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-board-alle.webp"
+    }
+  ]
+}
