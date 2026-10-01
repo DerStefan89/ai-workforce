@@ -21,6 +21,7 @@
  * - public/leitstand/fokus-daten.js (F44 WS-3a, F-913: Fokuswahl über baueEntscheidungen)
  * - public/leitstand/entwicklung-daten.js (F44 WS-3a: Spalte „Braucht dich“ über filtereAttentionWorkflows;
  *   F44 WS-3b: verknüpfter Ablauf und Phase Freigabe/Rückfrage über baueEntscheidungen)
+ * - public/leitstand/views/projekte-uebersicht.js (F44 WS-6a: waehleP0P1 und baueEntscheidungen je Produktkarte)
  * - public/leitstand/attention-daten.test.mjs (node:test, baueEntscheidungen)
  */
 
@@ -45,7 +46,16 @@ export function filtereAttentionLaeufe(laeufe) {
  * @returns { workitems, befunde, fehler } — workitems null bei defekter Quelle
  */
 export async function holeOffeneP0P1Workitems() {
-  const antwort = await holeWorkitems({ status: 'OFFEN' })
+  return waehleP0P1(await holeWorkitems({ status: 'OFFEN' }))
+}
+
+/**
+ * Filtert eine Antwort von GET …/workitems?status=OFFEN auf P0/P1 — rein, damit auch
+ * views/projekte-uebersicht.js (F44 WS-6a, Abruf je Projekt mit expliziter id) dieselbe Regel nutzt.
+ * @param antwort - geparste Antwort ({ workitems: Liste oder null, befunde?, fehler? })
+ * @returns { workitems, befunde, fehler } — workitems null bei defekter Quelle
+ */
+export function waehleP0P1(antwort) {
   const workitems = antwort.workitems === null ? null : antwort.workitems.filter((w) => w.prioritaet === 'P0' || w.prioritaet === 'P1')
   return { workitems, befunde: antwort.befunde ?? [], fehler: antwort.fehler ?? [] }
 }

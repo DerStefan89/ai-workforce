@@ -17,6 +17,7 @@
  * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a;
  *   im Detail Eintrag bearbeiten, Insights ansehen; F44 WS-3b)
  * - public/leitstand/views/workboard-detail.js (kommtKnopf — Detail: Zeitfenster, Planung ändern/speichern, Insight hinzufügen; F44 WS-3b)
+ * - public/leitstand/views/projekte-uebersicht.js (kommtKnopf — „Produkt bearbeiten“ in der Technik-Klappe; F44 WS-6a)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
  * Wichtig:
@@ -27,7 +28,8 @@
  *   in der Übersicht die Z-Karte „Deployer · Mensch“ und „Als Nächstes vorgesehen“
  *   (views/dashboard.js, .cockpit-deployer und .pm-next; beide ohne Links — ein Link darin wäre
  *   gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
- *   (views/workboard.js, .view-switch-knopf); jedes künftige bekommt dieselbe Wirkung (gewollt,
+ *   (views/workboard.js, .view-switch-knopf) sowie auf „Neues Produkt“ das Feld #projekte-anlegen-ziel
+ *   (readonly) und der Knopf „Zielgruppe ergänzen“ (statisch in index.html, F44 WS-6a); jedes künftige bekommt dieselbe Wirkung (gewollt,
  *   eine Regel).
  */
 

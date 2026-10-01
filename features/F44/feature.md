@@ -20,8 +20,9 @@ WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ gemerg
 WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist geteilt (Auftrag Stefan,
 01.10.2026): WS-4a „Ablauf & Freigabe“ gemergt (#297, `493d953`); WS-4b „Klärung, Reparatur & Abnahme“
 gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ gemergt
-(#299, `a91029d`); WS-5b „Auftrag & Direktstart“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws5b-auftrag`);
-WS-6 bis WS-8 offen.
+(#299, `a91029d`); WS-5b „Auftrag & Direktstart“ gemergt (#300, `ca0fbae`).
+WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) in Arbeit seit 01.10.2026 (Branch
+`feat/f725-ws6a-produkte`); Abschnitt I (Nutzung), WS-7 und WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -1222,7 +1223,7 @@ G10, G11 (Vermerk §5.1); Entscheidung E-F44-3 = A. Nur Leitstand-UI, keine Serv
     Ausschnitt `#view-runs`, Protokollspalten ohne Texte verborgener Elemente („Direktstart offen“ als
     vorhanden-Prüfung).
   - **Abgleich:** der Rücklink „← Alle Aufträge“ statt „← Arbeit“ steht im Vermerk WS-5b.
-  Nicht übernommen (Prüfpunkte für WS-6): Wiederaufnahme-Satz aus zwei Schlüsseln, rohe ISO-Zeit in der Auswahl,
+  Nicht übernommen (Prüfpunkte → Fixpaket B5): Wiederaufnahme-Satz aus zwei Schlüsseln, rohe ISO-Zeit in der Auswahl,
   Enter im Titelfeld, Pflichtprüfung im Client, Zeitlimit für POST …/routen, Sprachwechsel verwirft Eingaben, laufId
   als Link, Abonnement-Reihenfolge (Titel der Ablauf-Seite kurz als ID).
 - **Schätzung** 0,3–0,6 AT (Challenger); Ist: nach Merge (F-944).
@@ -1242,7 +1243,7 @@ G10, G11 (Vermerk §5.1); Entscheidung E-F44-3 = A. Nur Leitstand-UI, keine Serv
   wählt den neuen Auftrag; die Wiederaufnahme öffnet `#direktstart` und fokussiert ihn.
 - **WS5b-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor.
 
-### Prüfpunkte für WS-6
+### Prüfpunkte für WS-6 → Fixpaket B5 (betreffen #/projekt, nicht H/I)
 - Die Kette „anlegen → routen → warten“ steht in `views/workboard.js` und `views/projekt.js` (F-943); beim Schnitt
   F-928 zusammenlegen.
 - Die Auswahl im Direktstart zeigt `erstellt_am` roh (ISO); der laufId-Vorschlag hängt am Optionstext — eine
@@ -1258,6 +1259,130 @@ G10, G11 (Vermerk §5.1); Entscheidung E-F44-3 = A. Nur Leitstand-UI, keine Serv
 - „Lieber mit dem Coach besprechen“ bleibt „kommt“ bis WS-8 (Chat-Dock).
 - Die Wartezeit in Schritt 2 hat keine Obergrenze (der Router-Lauf meldet entweder den Ablauf oder einen
   Startfehler); hängt er, hilft „Neuen Auftrag beschreiben“ oder der Blick in „Ausführungen“.
+
+## Stand WS-6a „Alle Produkte“ (01.10.2026)
+Branch `feat/f725-ws6a-produkte` (Basis `ca0fbae`), nicht committet. Vorlage V10 d_projekte, m_projekte, d_projekt_neu;
+Abgleich F-725 H1–H7 (Vermerk WS-6a unter §5.1). Nur Leitstand-UI, keine Serveränderung, kein neuer Endpunkt.
+- **`#/projekte-uebersicht` nach d_projekte:** Eyebrow „Dein Produktportfolio“, h1 „Was entwickeln wir?“,
+  Beschreibung, rechts „+ Neues Produkt“ (`#projekte-anlegen-oeffnen`, primär) und „Neu laden“ (Symbolknopf).
+  Darunter die Zeile „n Produkte · Ausführung aktiv / Keine Ausführung aktiv · Du priorisierst · die Workforce
+  entwickelt“ (Plural über `Intl.PluralRules`, „aktiv“ = irgendein Projekt mit `laufAktiv`). Karten im
+  Zweierraster (eine Spalte unter 1100 px).
+- **Karte (H1):** Ordner-Symbol, Statuszeile (`kartenLage`: Entscheidungen > 0 → „Deine Entscheidung“, sonst
+  `laufAktiv` → „Läuft“, sonst „Bereit“), Name, Ring „Erfasste Einträge abgenommen“ (alle Features aller
+  Meilensteine, `zaehleRoadmap` neu in `roadmap-anzeige.js`; Ring aus `fortschritt-ring.js`, aus `views/dashboard.js`
+  herausgelöst), Ziel = `roadmap.vision` roh und escaped, sonst „Noch kein Ziel festgehalten“ (Korrektur H1: V+ statt
+  Z), drei Werte Entscheidungen (`baueEntscheidungen(zustand, P0/P1).eintraege.length`, dieselbe Auswahl wie „Deine
+  Entscheidungen“; P0/P1-Filter als reine `waehleP0P1` aus `attention-daten.js`), abgenommen x/y, gerade aktiv („Ja“
+  / „—“). Fuß: „Weiterarbeiten →“ mit dem Verhalten des früheren „Öffnen“ (setzeAktivesProjekt, merkeGeoeffnet,
+  `#/dashboard`), auch auf der aktiven Karte; dort entfällt nur das erneute `setzeAktivesProjekt`, das die Abonnenten
+  des Projektwechsels (F-860, u. a. einen laufenden Chat) ohne Wechsel zurückgesetzt hätte. Hinweis rechts „Du bist
+  gefragt“ / „Läuft gerade“ / „Nächsten Schritt planen“. Die aktive Karte trägt einen Mint-Rahmen und „Aktives
+  Produkt“; ein Wechsel über die Auswahl im Kopf verschiebt nur diese Markierung.
+- **Zähler lazy je Karte (V+, F-945):** die Liste steht sofort; je Karte GET `/api/projekte/<id>/roadmap`, `…/zustand`
+  und `…/workitems?status=OFFEN` mit expliziter id (neu in `api.js`: `holeProjektRoadmap`, `holeProjektZustand`,
+  `holeProjektOffeneWorkitems` im Muster `holeProjektAufruf`, mit Zeitlimit; die präfixgebundenen Funktionen bleiben).
+  Roadmap und Entscheidungen scheitern je für sich zu „—“ mit dem Grund im `title` (und als Text für Screenreader);
+  ohne Entscheidungszahl entscheidet nur `laufAktiv` über die Statuszeile. Späte Antworten nach „Neu laden“ oder
+  erneutem Betreten schreiben nicht in die neu gerenderte Karte (Render-Stand, `findeKarte`); dasselbe gilt für eine
+  späte Antwort von GET `/api/projekte`.
+- **F43 und F-849 (H5, H6; Sicherheitsgrenze §5.3 Punkt 6):** je Karte `<details class="projekt-technik">` „Vorschau &
+  Aufruf · Technik“ mit ID, vollem `repo_pfad` (bricht um, kein Überlauf bei 390 px → F-857 erledigt), Serverstatus
+  roh, H7 „Produkt bearbeiten“ als Baustein „kommt“ und dem unveränderten F43-Block (`.projekt-aufruf`,
+  `data-aufruf-id`, `renderVorschau`/`renderAufrufBereich`, Nachlade-Timer). Die Zusammenfassung zeigt den Kurzstand
+  aus `daten.vorschau` (`vorschauKurzstand`: erreichbar / nicht erreichbar / gesperrt (Leitstand-Port) / nicht gesetzt;
+  „wird geprüft“ bzw. „nicht ladbar“). Ein Öffnen-Link entsteht nur in `renderVorschau`.
+  `projekt-aufruf-anzeige.js` ist unverändert und bleibt deutsch (f43 prüft dessen Ausgabe) — die Ausgabe im
+  Block („Vorschau wird geprüft…“, „Aufrufen“, „Läuft…“, Hinweise zu `vorschau_url`/`startbefehl`) erscheint
+  deshalb auch in en/tr/ru deutsch; die Texte der View um den Block herum sind Schlüssel.
+- **„Neues Produkt“ als Unterseite `#/projekte-uebersicht/neu` nach d_projekt_neu (H3, H4, A14):** gleicher
+  View-Container und dieselbe Nav-Markierung „Alle Produkte“. „← Alle Produkte“, Eyebrow, h1 „Was möchtest du
+  entwickeln?“, Beschreibung. Pflicht ist nur der Produktname. „Was soll dein Produkt ermöglichen?“ (readonly,
+  `aria-disabled`) und „Zielgruppe ergänzen · optional“ sind „kommt“, ohne Beispieldaten (E-F44-1 = B; kein
+  Speicherort). „Projektordner · optional“ (`#projekte-anlegen-zielordner-details`) mit ID und Zielordner. Die ID
+  leitet `leiteProjektIdAb` aus dem Namen ab, solange sie nicht von Hand geändert wurde (eine geleerte ID wird bei der
+  nächsten Namenseingabe bzw. beim Absenden wieder abgeleitet): Kleinbuchstaben, ä→ae, ö→oe, ü→ue, ß→ss, danach übrige
+  Akzente entfernt (ç→c, ş→s, é→e, ı→i — Abweichung vom Auftrag aus der Korrekturrunde: tr ist eine UI-Sprache), sonst
+  „-“, zusammengefasst, Ränder getrimmt, gekürzt auf 41 Zeichen; unter 2 Zeichen leer (Server:
+  `^[a-z0-9][a-z0-9-]{1,40}$` für neue Projekte). Leerer Slug (z. B. kyrillischer Name oder „X“) → Klappe auf, „Bitte
+  eine ID angeben“, Fokus auf der ID, kein POST. Server- und Netzfehler beim Anlegen bekommen den Fokus (keine eigene
+  Live-Region). IDs `projekte-anlegen-*`, POST-Körper
+  `{ id, name[, zielordner] }`, die gemeinsame Sperre von „Produkt anlegen“, „Abbrechen“ und „+ Neues Produkt“ während
+  der Anfrage, die Fehleranzeige (Status und `grund` roh) und die Erfolgsbox (Git-Befehle, Trust-Hinweis, „Zum
+  Coach-Interview“, `ladeProjektAuswahl`) bleiben. Nach Erfolg steht die Box auf der Unterseite (Fokus auf „Nächste
+  Schritte“); „Schließen“ und „Abbrechen“ führen nach `#/projekte-uebersicht`, die Liste lädt beim Betreten neu.
+  Betreten der Unterseite setzt Formular und Box zurück, außer eine Anlage läuft oder ihr Ergebnis traf ein, während
+  die Unterseite verlassen war (dann steht es beim nächsten Betreten, Fokus darauf); steht der Nutzer bei Erfolg auf
+  der Liste, lädt sie sofort neu. `oeffneAnlegenFormularAusKopf`
+  (F-862) navigiert nur noch auf die Unterseite; die Regel „Anlage läuft → nichts zurücksetzen“ liegt im Eintritt.
+  Ein Projektwechsel setzt das Formular nicht zurück.
+- **Modulschnitt:** reines Modul `produkte-anzeige.js` (ID-Ableitung, Statuszeile, Kennzahlen aus Roadmap bzw. Zustand
+  und Workitems, Vorschau-Kurzstand; ohne DOM importierbar); Bedienung und Abrufe in `views/projekte-uebersicht.js`.
+  Alte Regeln `.projekte-kopf*`, `.projekte-karte*`, `#projekte-anlegen-formular …` und die nur noch hier genutzten
+  `.bento-*`-Bausteine sind entfernt; die Ring-Regeln gelten für Übersicht und „Alle Produkte“.
+- **i18n:** 67 Schlüssel (`produkte.*`, `produktNeu.*`) in de/en/tr/ru, auch die bisher deutschen Texte der View um den
+  F43-Block. Projektdaten (Name, vision, Pfad, Status, `grund`) bleiben roh.
+- **Gates:** keines musste mitziehen — f43, f25, f41, f21-ws2, f20-tokens, i18n-Gate und `projekt-wechsel.test.mjs`
+  unverändert grün (kein Gate liest die Literale dieser View). Neue Tests: `produkte-anzeige.test.mjs`
+  (ID-Ableitung samt Servermuster für neue Projekte, Akzenten, Mindest- und Höchstlänge — Rotfall der Mindestlänge per
+  Mutation belegt —, Ring-Summe über alle Meilensteine, Ring im Modus „unbekannt“, Statuszeile/Hinweis, Kennzahlen mit
+  defekten Quellen, Vorschau-Kurzstand). Der Schutz gegen späte Antworten (Render-Stand) ist nur im Code und im
+  Prüfpass belegt, nicht durch einen Test.
+- **Festlegungen:** Solange die Zahl der Entscheidungen fehlt (lädt oder nicht ladbar), entscheidet nur `laufAktiv` über
+  die Statuszeile („Bereit“ neben „—“). Der Ring zeigt „–“ (Halbgeviert, aus der Übersicht übernommen), die Werte „—“.
+  Der Schutz gegen späte Antworten gilt für die Zähler; der F43-Block behält sein bisheriges Verhalten.
+- **Nachweise** `features/F44/nachweise/ws6a/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner, feste
+  Antworten, eigener Leitstand auf Port 4199): 8 Folgen, 37 WebP — Matrix je Darstellung (1440 dunkel und hell, 390
+  dunkel und hell, 200 %, ru): Liste mit Zählern, Technik-Klappe der langen Karte offen (F-857), leere Unterseite,
+  ausgefüllt mit abgeleiteter ID, „Nächste Schritte“; reduzierte Bewegung (Liste, Unterseite); Zustände:
+  Technik-Klappen gesperrt (F-849, kein Öffnen-Link) und erreichbar, „+“ im Kopf, kyrillischer Name → leere ID, 409 mit
+  Fokus auf der Meldung, „Abbrechen“, erneutes Betreten setzt zurück, 201 → „Schließen“, leere Liste, Ladefehler ohne
+  Intro-Zeile. Kein waagerechter Überlauf, keine zweite Live-Region.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): design-guardian „Freigegeben mit
+  Hinweisen“, code-reviewer und qa „Nicht freigegeben“. Eine Korrekturrunde, eingearbeitet:
+  - **Intro-Zeile trotz `hidden` sichtbar** (code-reviewer, F-622-Muster; im eigenen Nachweis neben dem Ladefehler):
+    Regel `.produkte-intro[hidden]` und Leeren des Inhalts.
+  - **Ergebnis der Anlage ging verloren**, wenn die Unterseite während des POST verlassen wurde (qa 1): es bleibt bis
+    zum nächsten Betreten; steht der Nutzer auf der Liste, lädt ein Erfolg sie neu.
+  - **Fehler beim Anlegen ohne Fokus** (qa 2, design-guardian 2): Fokus auf die Meldung, `aria-describedby` an Name und ID.
+  - **ID-Ableitung** (code-reviewer 2/3, qa 5/6): unter 2 Zeichen leer, Akzente lesbar, geleerte ID beim Absenden
+    abgeleitet; Test gegen das Muster für neue Projekte.
+  - **Körper ohne `projekte`** ist ein Ladefehler statt eines Wurfs (code-reviewer 1).
+  - **Kleinkram:** „gerade aktiv“ „—“ mit lesbarem „Nein“; ru-Texte (Ring-Bezeichnung ohne Plural, „Готов“);
+    `hyphens: manual` für Projektnamen (design-guardian 3); Statuszeilen-Klassen einmal (`chipKlassen`); Funktionsdoku;
+    Kopf von `kommt.js`; Folge „bewegung-reduziert“ (design-guardian 1); Vermerk WS-6a ergänzt (design-guardian 4).
+  Nicht übernommen: siehe „Prüfpunkte `#/projekte-uebersicht`“ unten.
+
+### Akzeptanzkriterien WS-6a
+- **WS6a-1** `#/projekte-uebersicht` nach d_projekte: Eyebrow, Frage, Beschreibung, „+ Neues Produkt“, „Neu laden“,
+  Zeile „n Produkte · Ausführung aktiv/Keine Ausführung aktiv · Du priorisierst · die Workforce entwickelt“ (Plural
+  über `Intl.PluralRules`).
+- **WS6a-2** Karte je Projekt mit Statuszeile (Entscheidung vor Läuft vor Bereit), Name, Ziel aus `roadmap.vision`
+  (roh, escaped; sonst „Noch kein Ziel festgehalten“), Ring über alle Features aller Meilensteine, drei Werten und
+  Hinweis; „Weiterarbeiten →“ auch auf der aktiven Karte, die erkennbar markiert ist (`produkte-anzeige.test.mjs`).
+- **WS6a-3** Zähler lazy je Karte mit expliziter id; jeder Teil scheitert einzeln zu „—“ mit Grund im `title`; späte
+  Antworten der Zähler schreiben nicht in eine neu gerenderte Karte (F43-Block wie bisher).
+- **WS6a-4** Klappe „Vorschau & Aufruf · Technik“ mit ID, vollem Pfad ohne Überlauf bei 390 px (F-857), Status roh,
+  „Produkt bearbeiten“ als „kommt“ und dem unveränderten F43-Block; Kurzstand der Vorschau in der Zusammenfassung;
+  kein Öffnen-Link bei gesperrter Vorschau (F-849); f43 unverändert grün.
+- **WS6a-5** `#/projekte-uebersicht/neu` nach d_projekt_neu: Pflicht nur der Name, Ziel und Zielgruppe „kommt“, ID aus
+  dem Namen abgeleitet (unter 2 Zeichen leer → Klappe offen, Fehler, kein POST); POST-Körper, Sperre, Fehleranzeige
+  (mit Fokus) und „Nächste Schritte“ wie F41; Betreten setzt zurück, außer eine Anlage läuft oder ihr Ergebnis ist noch
+  ungesehen; „+“ im Kopf führt auf die Unterseite.
+- **WS6a-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor.
+
+### Prüfpunkte `#/projekte-uebersicht` (aus dem Prüfpass WS-6a; nach Route abgelegt, F-946)
+- Das Zeitlimit von 5 s der Zähler zählt die Wartezeit im Browser mit (4·n gleichzeitige Abrufe, 6 Verbindungen je
+  Host) — mit mindestens 8 Projekten gegen einen echten Server prüfen; Maßnahme F-945.
+- „Neu laden“ bricht laufende Abrufe nicht ab; GET `/api/projekte` hat kein Zeitlimit („Lädt…“ kann stehen bleiben).
+- Enter im Produktnamen sendet nicht ab (kein Formular-Element); Fokus nach „Abbrechen“, „Schließen“ und
+  „← Alle Produkte“ liegt auf `body`.
+- Das „+“ im Kopf heißt „Neues Projekt anlegen“, die Seite „Neues Produkt“ (Schlüssel `kopf.neuesProjekt`, Shell).
+- Nach „Aufrufen“ mischt sich in en/tr/ru das deutsche `projekt-aufruf-anzeige.js` mit den übersetzten Texten der View.
+- Kein automatischer Test für den Schutz gegen späte Antworten und für „Anlage läuft, Seite verlassen“
+  (render-nachweis kann eine Antwort nicht zurückhalten); die Protokollspalten messen das eigene `hidden`, nicht die
+  Sichtbarkeit des Elternteils.
+- Bei 200 % Zoom endet die Sidebar im Vollseitenbild nach „Brain“ (Shell, WS-1b, nicht dieses Paket).
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

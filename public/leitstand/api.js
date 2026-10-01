@@ -23,7 +23,8 @@
  * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
  * - public/leitstand/fokus-daten.js (F44 WS-2b: holeWorkflowDetail, holeAbnahme, holeLaufDetail)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
- * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
+ * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a; F44 WS-6a: holeProjektRoadmap, holeProjektZustand,
+ *   holeProjektOffeneWorkitems mit expliziter id)
  * - public/leitstand/views/chat.js (F26 WS-2a)
  * - public/leitstand/projekt-kontext.js (F25 WS-2a, setzeAktivesProjektPraefix)
  *
@@ -180,6 +181,16 @@ export const legeProjektAn = (koerper) => fetch('/api/projekte', { method: 'POST
 // Nicht-2xx (Muster holeProjekte); rufeProjektAuf liefert die rohe Response (200/409 wertet die View aus).
 export const holeProjektAufruf = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`)
 export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`, { method: 'POST', body: '{}' })
+
+// F44 WS-6a: Zähler je Produktkarte auf „Alle Produkte“ (Ziel, Ring, Entscheidungen) — wie
+// holeProjektAufruf mit EXPLIZITER id, nie über mitPraefix: die Übersicht fragt jedes Projekt
+// unabhängig vom aktiven ab. Die präfixgebundenen holeRoadmap/holeZustand/holeWorkitems oben
+// bleiben unverändert. Alle drei werfen bei Nicht-2xx; Zeitlimit wie holeRoadmap (F-561), weil eine
+// hängende Antwort sonst einen Zähler dauerhaft auf „lädt“ hielte. Nur beim Betreten bzw. „Neu
+// laden“, nie aus dem Poll (F-945: drei Zusatzabrufe je Karte).
+export const holeProjektRoadmap = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/roadmap`, { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const holeProjektZustand = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/zustand`, { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const holeProjektOffeneWorkitems = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/workitems?status=OFFEN`, { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F33 WS-2: Roadmap-Projektion für die Seite #/roadmap (views/roadmap.js, F44 WS-2a) und die
 // Übersicht (views/dashboard.js, F44 WS-2b; die Bento-Karte im Workboard entfiel mit WS-3a) — nur beim Öffnen/Aktualisieren bzw.

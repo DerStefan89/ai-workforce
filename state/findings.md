@@ -11345,13 +11345,13 @@ Maßnahme: In Projekt-Instanzen `POST /api/projekte` mit 404 ablehnen (Muster F-
 Status: offen.
 Feature/Run: QA-Pass F-849, 30.09.2026.
 
-**F-857** · `BUG` · P3 · offen
+**F-857** · `BUG` · P3 · erledigt
 Titel: Der Pfad-Text der Projektkarte läuft mobil (400 px) über.
 Beschreibung: In der Projektübersicht (F43) läuft der Pfad-Text der Projektkarte bei 400 px Breite über den Kartenrand hinaus.
 Fundstelle: Render-Nachweis `features/F43/nachweis-f849/mobil/`.
 Auswirkung: Niedrig — Darstellungsfehler auf schmalen Bildschirmen, keine Funktionseinbuße.
 Maßnahme: Im Design-Schnitt F-725 mitnehmen.
-Status: offen.
+Status: erledigt (F44 WS-6a, 01.10.2026): Der volle Pfad steht nicht mehr auf der Karte, sondern in der Klappe „Vorschau & Aufruf · Technik“ und bricht dort um (`overflow-wrap: anywhere`); Render-Nachweis `features/F44/nachweise/ws6a/matrix-dunkel-390/` und `matrix-hell-390/` (Klappe offen, kein waagerechter Überlauf).
 Vermerk (F44, 30.09.2026): → WS-6 (Produkte, Tabellenzeile H2 in `docs/design/abgleich-f725.md`: Pfad in die Akte, nicht auf die Karte).
 Feature/Run: Entdeckt: F43-Abnahme, 30.09.2026.
 
@@ -12140,3 +12140,21 @@ Auswirkung: Mittel — ohne Schätzungen keine belastbare Planung bis V0.9/V1.0.
 Maßnahme: im Fixpaket „Arbeitsfähigkeit“ B5 bauen (≈ 3–4 Arbeitstage zusammen mit dem Prioritäts-Kanban, F-917); Schätzung wird Teil des Arbeitspakets (F-938). Bis dahin schätzt der Challenger je Workstream.
 Status: offen.
 Feature/Run: Entscheidung Stefan, 01.10.2026 (Challenge F44 WS-5).
+
+**F-945** · `TECH_DEBT` · P3 · offen
+Titel: Zähler auf „Alle Produkte“ kosten je Karte drei Zusatzabrufe.
+Beschreibung: Die Seite `#/projekte-uebersicht` (F44 WS-6a) lädt je Produktkarte nach dem Rendern GET `/api/projekte/<id>/roadmap`, `…/zustand` und `…/workitems?status=OFFEN` (dazu wie bisher `…/projekt-aufruf` für F43), um Ziel, Ring, Entscheidungen und „abgenommen“ zu zeigen. Bei n Projekten sind das 3·n Abrufe zusätzlich zu GET `/api/projekte`, bei jedem Betreten und jedem „Neu laden“. Jeder Abruf baut serverseitig eine volle Projektion (Roadmap, Zustands-Aggregat, Workitems-Parser), obwohl die Karte nur wenige Zahlen braucht.
+Fundstelle: `public/leitstand/views/projekte-uebersicht.js` (`ladeRoadmapZaehler`, `ladeEntscheidungsZaehler`), `public/leitstand/api.js` (`holeProjektRoadmap`, `holeProjektZustand`, `holeProjektOffeneWorkitems`).
+Auswirkung: Niedrig — bei wenigen lokalen Projekten unkritisch; wächst linear mit der Zahl der Projekte. Weil das Zeitlimit (5 s, `AbortSignal.timeout`) schon beim Aufruf von `fetch` beginnt, zählt die Wartezeit im Browser (6 Verbindungen je Host) mit — ab einigen Projekten können Zähler fälschlich auf „—“ fallen (QA-Pass WS-6a, nicht belegt).
+Maßnahme: Bei Bedarf die Kennzahlen (vision, abgenommen/gesamt, Zahl der Entscheidungen) serverseitig in GET `/api/projekte` projizieren und die drei Abrufe je Karte ersetzen.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-6a, 01.10.2026.
+
+**F-946** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Prüfpunkte in der Akte nach Fundort/Route statt nach nächstem Paket ablegen.
+Beschreibung: Die Akte F44 sammelt Prüfpunkte aus jedem Prüfpass unter „Prüfpunkte für WS-<nächstes Paket>“. Das nächste Paket betrifft aber oft eine andere Route: die „Prüfpunkte für WS-6“ aus WS-5b betrafen ausschließlich `#/projekt` (Auftrag & Direktstart), nicht die Abschnitte H/I von WS-6. Sie wären dort leicht übersehen oder fälschlich WS-6 zugerechnet worden und mussten nachträglich auf das Fixpaket B5 umgehängt werden.
+Fundstelle: `features/F44/feature.md` (Abschnitte „Prüfpunkte für WS-…“).
+Auswirkung: Niedrig — Prüfpunkte landen beim falschen Paket oder bleiben liegen.
+Maßnahme: Prüfpunkte nach Fundort bzw. Route ablegen (z. B. „Prüfpunkte `#/projekt`“) und das zuständige Paket nur als Vermerk nennen.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-6a, 01.10.2026 (Auftrag Stefan).
