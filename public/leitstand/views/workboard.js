@@ -68,7 +68,7 @@ import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, hol
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { baueBoard, baueVerknuepfung, LISTEN_TABS, laufenderWorkflow, SPALTEN, spalteVon, sucheWorkitems, verknuepfterWorkflow, workflowPhase } from '../entwicklung-daten.js'
-import { formatiereZahl, t } from '../i18n.js'
+import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
@@ -103,6 +103,12 @@ let listenZustand = 'laedt'
 
 /** id des aktuell offenen Details, oder null — erlaubt einen stillen Inhalts-Refresh, sobald eine Liste nachträglich eintrifft. */
 let gewaehlteId = null
+
+/** F-926 (F44 WS-4b, Muster views/workflows.js): true, solange seit dem letzten Betreten von `#/workboard` keine andere Route kam — öffnet der Nutzer dann ein Detail, war der vorige History-Eintrag die Übersicht. */
+let uebersichtZuletzt = false
+
+/** true, wenn das offene Detail direkt aus der Übersicht geöffnet wurde: „← <Register>“ geht dann per history.back() zurück statt einen neuen Eintrag anzulegen. */
+let detailAusUebersicht = false
 
 /**
  * Nachtrag des offenen Details (F44 WS-3b), geladen beim Öffnen und bei Übergängen des verknüpften
@@ -164,16 +170,6 @@ let bearbeitungsZustand = null
 let letzterZustand
 
 /**
- * Escapter, übersetzter Text (Muster views/dashboard.js).
- * @param schluessel - i18n-Schlüssel
- * @param werte - Platzhalterwerte
- * @returns HTML
- */
-function tx(schluessel, werte) {
-  return escapeHtml(t(schluessel, werte))
-}
-
-/**
  * Lesbare Meldung eines geworfenen Werts (Error oder etwas anderes).
  * @param fehler - gefangener Wert
  * @returns Meldungstext
@@ -220,7 +216,7 @@ function renderBefunde(befunde) {
     container.innerHTML = ''
     return
   }
-  container.innerHTML = `<div class="note red"><strong>${tx('entwicklung.befunde.titel', { anzahl: befunde.length, zahl: formatiereZahl(befunde.length) })}</strong><p>${befunde.map((b) => escapeHtml(b.meldung)).join('; ')}</p></div>`
+  container.innerHTML = `<div class="note red"><strong>${tHtml('entwicklung.befunde.titel', { anzahl: befunde.length, zahl: formatiereZahl(befunde.length) })}</strong><p>${befunde.map((b) => escapeHtml(b.meldung)).join('; ')}</p></div>`
 }
 
 // ─── Kopf und Register ───────────────────────────────────────────────────────
@@ -231,9 +227,9 @@ function renderKopf() {
   document.getElementById('workboard-beschreibung').textContent = t(`entwicklung.tab.${aktiverTab}.beschreibung`)
   const knoepfe = TABS.map((tab) => {
     const aktiv = tab === aktiverTab
-    return `<button type="button" class="tab-knopf${aktiv ? ' active' : ''}" data-tab="${tab}" aria-pressed="${aktiv}">${tx(`entwicklung.tab.${tab}`)}</button>`
+    return `<button type="button" class="tab-knopf${aktiv ? ' active' : ''}" data-tab="${tab}" aria-pressed="${aktiv}">${tHtml(`entwicklung.tab.${tab}`)}</button>`
   }).join('')
-  document.getElementById('workboard-tabs').innerHTML = `${knoepfe}<a href="#/projekt">${tx('entwicklung.tab.auftraege')}</a><a href="#/runs">${tx('entwicklung.tab.ausfuehrungen')}</a>`
+  document.getElementById('workboard-tabs').innerHTML = `${knoepfe}<a href="#/projekt">${tHtml('entwicklung.tab.auftraege')}</a><a href="#/runs">${tHtml('entwicklung.tab.ausfuehrungen')}</a>`
   document.getElementById('workboard-board-bereich').hidden = aktiverTab !== 'board'
   document.getElementById('workboard-listen-bereich').hidden = aktiverTab === 'board'
 }
@@ -241,11 +237,11 @@ function renderKopf() {
 /** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips, „Alle“-Chips der Filter, die Z-Knöpfe im Detail-Kopf (E13). */
 function baueFesteBedienung() {
   document.getElementById('workboard-erfassen').innerHTML = kommtKnopf(t('entwicklung.eintragErfassen'), { primaer: true, symbol: '+' })
-  document.getElementById('workboard-modi').innerHTML = `<button type="button" class="view-switch-knopf active" aria-pressed="true">${tx('entwicklung.modus.status')}</button>
-    <button type="button" class="view-switch-knopf" aria-disabled="true">${tx('entwicklung.modus.prioritaet')} ${kommtBadge()}</button>
-    <button type="button" class="view-switch-knopf" aria-disabled="true">${tx('entwicklung.modus.zeitleiste')} ${kommtBadge()}</button>`
-  document.getElementById('workboard-ansicht').innerHTML = `<span>${tx('entwicklung.ansicht')}</span>${ANSICHTEN.map(
-    (ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tx(`entwicklung.ansicht.${ansicht}`)}</button>`
+  document.getElementById('workboard-modi').innerHTML = `<button type="button" class="view-switch-knopf active" aria-pressed="true">${tHtml('entwicklung.modus.status')}</button>
+    <button type="button" class="view-switch-knopf" aria-disabled="true">${tHtml('entwicklung.modus.prioritaet')} ${kommtBadge()}</button>
+    <button type="button" class="view-switch-knopf" aria-disabled="true">${tHtml('entwicklung.modus.zeitleiste')} ${kommtBadge()}</button>`
+  document.getElementById('workboard-ansicht').innerHTML = `<span>${tHtml('entwicklung.ansicht')}</span>${ANSICHTEN.map(
+    (ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tHtml(`entwicklung.ansicht.${ansicht}`)}</button>`
   ).join('')}`
   for (const id of ['workboard-filter-typ', 'workboard-filter-status', 'workboard-filter-prioritaet']) fuelleChipGruppe(id, [])
   // F44 WS-3b (E13): „Eintrag bearbeiten“ und „Insights ansehen“ im Detail-Kopf sind Z-Elemente.
@@ -266,7 +262,7 @@ function boardKarte(workitem, verknuepfung) {
   const symbol = TYP_SYMBOL[workitem.typ] ?? '·'
   const prioritaet = workitem.quelle === 'finding' ? `<span>${escapeHtml(workitem.prioritaet)}</span>` : ''
   const workflow = verknuepfterWorkflow(workitem, verknuepfung)
-  return `<a class="board-item" href="#/workboard/${encodeURIComponent(workitem.id)}">
+  return `<a class="board-item" href="#/workboard/${encodeURIComponent(workitem.id)}" data-id="${escapeHtml(workitem.id)}">
       <span class="board-item-meta"><span><span aria-hidden="true">${escapeHtml(symbol)}</span> ${typText(workitem.typ)}</span>${prioritaet}</span>
       <span class="board-item-titel">${escapeHtml(titelVon(workitem))}</span>
       <span class="board-phase">${workflow === null ? kartenStatus(workitem) : phaseHtml(workflow)}</span>
@@ -286,9 +282,9 @@ function boardKarte(workitem, verknuepfung) {
 function weitereZeile(spalte, daten) {
   if (daten.weitere === 0 || daten.jeTab.length === 0) return ''
   const sprung = (tab, inhalt) => `<button type="button" class="board-weitere" data-weitere-tab="${tab}" data-weitere-spalte="${spalte}">${inhalt}</button>`
-  if (daten.jeTab.length === 1) return `<p class="board-weitere-zeile">${sprung(daten.jeTab[0].tab, tx('entwicklung.alleAnzeigen', { zahl: formatiereZahl(daten.jeTab[0].anzahl) }))}</p>`
-  const spruenge = daten.jeTab.map(({ tab, anzahl }) => sprung(tab, `${tx(`entwicklung.tab.${tab}`)} ${escapeHtml(formatiereZahl(anzahl))}`)).join('')
-  return `<p class="board-weitere-zeile"><span>${tx('entwicklung.alleAnzeigen.label')}</span>${spruenge}</p>`
+  if (daten.jeTab.length === 1) return `<p class="board-weitere-zeile">${sprung(daten.jeTab[0].tab, tHtml('entwicklung.alleAnzeigen', { zahl: formatiereZahl(daten.jeTab[0].anzahl) }))}</p>`
+  const spruenge = daten.jeTab.map(({ tab, anzahl }) => sprung(tab, `${tHtml(`entwicklung.tab.${tab}`)} ${escapeHtml(formatiereZahl(anzahl))}`)).join('')
+  return `<p class="board-weitere-zeile"><span>${tHtml('entwicklung.alleAnzeigen.label')}</span>${spruenge}</p>`
 }
 
 /**
@@ -303,9 +299,9 @@ function weitereZeile(spalte, daten) {
  */
 function boardSpalte(spalte, daten, unvollstaendig, verknuepfung) {
   const leerSchluessel = unvollstaendig && (spalte === 'in_arbeit' || spalte === 'braucht_dich') ? 'entwicklung.spalte.leer.unvollstaendig' : `entwicklung.spalte.${spalte}.leer`
-  const inhalt = daten.karten.length === 0 ? `<p class="board-empty">${tx(leerSchluessel)}</p>` : daten.karten.map((workitem) => boardKarte(workitem, verknuepfung)).join('')
+  const inhalt = daten.karten.length === 0 ? `<p class="board-empty">${tHtml(leerSchluessel)}</p>` : daten.karten.map((workitem) => boardKarte(workitem, verknuepfung)).join('')
   return `<section class="board-column board-spalte-${spalte}" aria-labelledby="workboard-spalte-${spalte}">
-      <div class="board-column-title"><h2 id="workboard-spalte-${spalte}">${tx(`entwicklung.spalte.${spalte}`)}</h2><span>${escapeHtml(formatiereZahl(daten.anzahl))}</span></div>
+      <div class="board-column-title"><h2 id="workboard-spalte-${spalte}">${tHtml(`entwicklung.spalte.${spalte}`)}</h2><span>${escapeHtml(formatiereZahl(daten.anzahl))}</span></div>
       ${inhalt}
       ${weitereZeile(spalte, daten)}
     </section>`
@@ -321,21 +317,21 @@ function boardSpalte(spalte, daten, unvollstaendig, verknuepfung) {
 function verknuepfungsHinweis(board) {
   if (board.fehlend.length > 0) {
     const quellen = board.fehlend.map((quelle) => t(`entwicklung.quelle.${quelle}`)).join(', ')
-    return `<div class="note amber"><strong>${tx('entwicklung.verknuepfung.titel')}</strong><p>${tx('entwicklung.verknuepfung.text', { quellen })}</p></div>`
+    return `<div class="note amber"><strong>${tHtml('entwicklung.verknuepfung.titel')}</strong><p>${tHtml('entwicklung.verknuepfung.text', { quellen })}</p></div>`
   }
-  return board.laedt.length > 0 ? `<p class="subtle board-verknuepfung-laedt">${tx('entwicklung.verknuepfung.laedt')}</p>` : ''
+  return board.laedt.length > 0 ? `<p class="subtle board-verknuepfung-laedt">${tHtml('entwicklung.verknuepfung.laedt')}</p>` : ''
 }
 
 /** HTML des Board-Inhalts je Zustand (lädt, Fehler, Quelle defekt, Spalten). @returns HTML */
 function boardHtml() {
   if (alleFehler !== null) {
-    return `<div class="note red"><strong>${tx('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-erneut>${tx('entwicklung.fehler.erneut')}</button></div>`
+    return `<div class="note red"><strong>${tHtml('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-erneut>${tHtml('entwicklung.fehler.erneut')}</button></div>`
   }
-  if (alleWorkitems === undefined) return `<p class="subtle">${tx('entwicklung.laedt')}</p>`
+  if (alleWorkitems === undefined) return `<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
   const board = baueBoard(alleWorkitems, letzterZustand?.workflows, auftraege)
-  if (board === null) return `<div class="note red"><strong>${tx('entwicklung.nichtVerfuegbar')}</strong></div>`
+  if (board === null) return `<div class="note red"><strong>${tHtml('entwicklung.nichtVerfuegbar')}</strong></div>`
   const spalten = SPALTEN.filter((spalte) => boardAnsicht === 'alle' || boardAnsicht === spalte)
-  const ausserhalb = board.ausserhalb > 0 ? `<p class="subtle board-ausserhalb">${tx('entwicklung.ausserhalb', { anzahl: board.ausserhalb, zahl: formatiereZahl(board.ausserhalb) })}</p>` : ''
+  const ausserhalb = board.ausserhalb > 0 ? `<p class="subtle board-ausserhalb">${tHtml('entwicklung.ausserhalb', { anzahl: board.ausserhalb, zahl: formatiereZahl(board.ausserhalb) })}</p>` : ''
   const unvollstaendig = board.fehlend.length > 0 || board.laedt.length > 0
   return `${verknuepfungsHinweis(board)}<div class="pm-board${boardAnsicht === 'alle' ? '' : ' filtered-board'}">${spalten.map((spalte) => boardSpalte(spalte, board.spalten[spalte], unvollstaendig, board.verknuepfung)).join('')}</div>${ausserhalb}`
 }
@@ -361,7 +357,7 @@ function fuelleChipGruppe(id, werte) {
   const aktuellerWert = gruppe.querySelector('[data-wert][aria-pressed="true"]')?.dataset.wert ?? ''
   const neuerWert = werte.includes(aktuellerWert) ? aktuellerWert : ''
   gruppe.innerHTML =
-    `<button type="button" class="filter-chip" data-wert="" aria-pressed="${neuerWert === '' ? 'true' : 'false'}">${tx('entwicklung.filter.alle')}</button>` +
+    `<button type="button" class="filter-chip" data-wert="" aria-pressed="${neuerWert === '' ? 'true' : 'false'}">${tHtml('entwicklung.filter.alle')}</button>` +
     werte.map((w) => `<button type="button" class="filter-chip" data-wert="${escapeHtml(w)}" aria-pressed="${w === neuerWert ? 'true' : 'false'}">${escapeHtml(w)}</button>`).join('')
 }
 
@@ -407,7 +403,7 @@ function renderSpaltenfilter() {
   container.innerHTML =
     listenSpalte === null
       ? ''
-      : `<button type="button" class="filter-chip" data-spalte-entfernen aria-pressed="true" aria-label="${tx('entwicklung.spaltenfilter.entfernen', { spalte: t(`entwicklung.spalte.${listenSpalte}`) })}">${tx('entwicklung.spaltenfilter', { spalte: t(`entwicklung.spalte.${listenSpalte}`) })} <span aria-hidden="true">×</span></button>`
+      : `<button type="button" class="filter-chip" data-spalte-entfernen aria-pressed="true" aria-label="${tHtml('entwicklung.spaltenfilter.entfernen', { spalte: t(`entwicklung.spalte.${listenSpalte}`) })}">${tHtml('entwicklung.spaltenfilter', { spalte: t(`entwicklung.spalte.${listenSpalte}`) })} <span aria-hidden="true">×</span></button>`
 }
 
 /** Schreibt die Liste aus letzteWorkitems: Tab-Typen, Spaltenfilter, Suche — nur bei geändertem Inhalt. */
@@ -421,7 +417,7 @@ function renderListe() {
   }
   liste = sucheWorkitems(liste, suchText)
   const leer = suchText.trim() !== '' ? 'entwicklung.liste.keineTreffer' : 'entwicklung.liste.leer'
-  const html = liste.length === 0 ? `<p class="leer">${tx(leer)}</p>` : liste.map(workitemZeile).join('')
+  const html = liste.length === 0 ? `<p class="leer">${tHtml(leer)}</p>` : liste.map(workitemZeile).join('')
   if (html === letztesListenHtml) return
   letztesListenHtml = html
   document.getElementById('workboard-liste').innerHTML = html
@@ -454,7 +450,7 @@ async function ladeListe() {
     return
   }
   listenZustand = 'laedt'
-  setzeListe(`<p class="leer">${tx('entwicklung.laedt')}</p>`)
+  setzeListe(`<p class="leer">${tHtml('entwicklung.laedt')}</p>`)
   const filter = aktuelleFilter()
   try {
     const antwort = await holeWorkitems(filter)
@@ -463,7 +459,7 @@ async function ladeListe() {
     if (!Array.isArray(antwort.workitems)) {
       listenZustand = 'fehler'
       letzteWorkitems = []
-      setzeListe(`<p class="unbekannt">${tx('entwicklung.nichtVerfuegbar')}</p>`)
+      setzeListe(`<p class="unbekannt">${tHtml('entwicklung.nichtVerfuegbar')}</p>`)
       return
     }
     letzteWorkitems = antwort.workitems
@@ -475,7 +471,7 @@ async function ladeListe() {
     console.error('GET …/workitems (Liste) fehlgeschlagen:', fehler)
     listenZustand = 'fehler'
     letzteWorkitems = []
-    setzeListe(`<p class="fehler">${tx('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) })}</p>`)
+    setzeListe(`<p class="fehler">${tHtml('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) })}</p>`)
   }
 }
 
@@ -597,7 +593,7 @@ function baueAuftragstext(workitem) {
 /** Rolle→Worker→Modell-Kette eines Workflow-Datensatzes — Ersatzanzeige für Kontrolltiefe/Risikoklasse/Begründung, die nur im Router-Artefakt stehen und über keinen Lesepfad erreichbar sind (F-372). Die Rolle erscheint mit lesbarem Namen (F-914). @param daten - WORKFLOW_V0-Datensatz aus GET /api/workflows/<id>, oder undefined */
 function renderSchrittkette(daten) {
   if (!Array.isArray(daten?.schritte) || daten.schritte.length === 0) {
-    return `<p class="subtle">${tx('entwicklung.ctw.keineSchritte')}</p>`
+    return `<p class="subtle">${tHtml('entwicklung.ctw.keineSchritte')}</p>`
   }
   const eintrag = (schritt) => `<li><strong>${escapeHtml(rollenName(schritt.rolle))}</strong><span>${escapeHtml(schritt.worker)} · ${escapeHtml(schritt.modell)}</span></li>`
   return `<ol class="workboard-kette">${daten.schritte.map(eintrag).join('')}</ol>`
@@ -606,12 +602,12 @@ function renderSchrittkette(daten) {
 /** Die drei git-Befehle als reiner Text-Block (F22 AK6, E11 im Stil V10) — die Oberfläche führt nichts davon aus. Platzhalter statt `git add -A`/`git add .` (CLAUDE.md, Pauschales Stagen ist ausgeschlossen); die konkreten Dateien wählt der Mensch. Befehle und Pfade werden nicht übersetzt, nur die Platzhalter in spitzen Klammern; der Skill-Name steht im Hinweis als {skill} (Satzstellung je Sprache). */
 function renderTerminalBlock() {
   return `<section class="workboard-git" aria-labelledby="workboard-git-titel">
-    <h3 id="workboard-git-titel">${tx('entwicklung.ctw.git.titel')}</h3>
-    <p class="subtle">${tx('entwicklung.ctw.git.hinweis').replace('{skill}', '<code>git-flow</code>')}</p>
+    <h3 id="workboard-git-titel">${tHtml('entwicklung.ctw.git.titel')}</h3>
+    <p class="subtle">${tHtml('entwicklung.ctw.git.hinweis').replace('{skill}', '<code>git-flow</code>')}</p>
     <pre>git add ${escapeHtml(`<${t('entwicklung.ctw.git.dateien')}>`)}
 git commit -m "${escapeHtml(`<${t('entwicklung.ctw.git.nachricht')}>`)}"
 git push</pre>
-    <p class="subtle">${tx('entwicklung.ctw.git.siehe')} <code>state/freigabe-commit.md</code></p>
+    <p class="subtle">${tHtml('entwicklung.ctw.git.siehe')} <code>state/freigabe-commit.md</code></p>
   </section>`
 }
 
@@ -625,42 +621,42 @@ git push</pre>
 function renderBearbeitungsInhalt(workitem, zustand) {
   const daten = zustand.workflowDetail?.daten
   const id = escapeHtml(workitem.id)
-  const wiederholen = `<button type="button" class="button wb-wiederholen" data-id="${id}">${tx('entwicklung.ctw.wiederholen')}</button>`
+  const wiederholen = `<button type="button" class="button wb-wiederholen" data-id="${id}">${tHtml('entwicklung.ctw.wiederholen')}</button>`
   // FOKUS markiert je Zustand das Element, das nach einem Zustandswechsel den Fokus übernimmt
   // (schreibeBearbeitung) — ohne zweite Live-Region.
-  if (zustand.phase === 'wird_angelegt') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.wirdAngelegt')}</p>`
-  if (zustand.phase === 'wird_geroutet') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.routet')}</p>`
-  if (zustand.phase === 'wird_gestartet') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.wirdGestartet')}</p>`
+  if (zustand.phase === 'wird_angelegt') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.wirdAngelegt')}</p>`
+  if (zustand.phase === 'wird_geroutet') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.routet')}</p>`
+  if (zustand.phase === 'wird_gestartet') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.wirdGestartet')}</p>`
   if (zustand.phase === 'routet') {
-    return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.routet')} ${tx('entwicklung.ctw.auftrag')} <code>${escapeHtml(zustand.auftragId)}</code> · ${tx('entwicklung.ctw.lauf')} <code>${escapeHtml(zustand.laufId)}</code></p>`
+    return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.routet')} ${tHtml('entwicklung.ctw.auftrag')} <code>${escapeHtml(zustand.auftragId)}</code> · ${tHtml('entwicklung.ctw.lauf')} <code>${escapeHtml(zustand.laufId)}</code></p>`
   }
   if (zustand.phase === 'konflikt') {
     // E12: Konfliktzustand (409/D13) statt Fehlerdialog; der Auftrag ist angelegt, „Wiederholen“ routet erneut.
-    return `<div class="note amber" ${FOKUS}><strong>${tx('entwicklung.ctw.konflikt.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p><p>${tx('entwicklung.ctw.konflikt.text')}</p>${wiederholen}</div>`
+    return `<div class="note amber" ${FOKUS}><strong>${tHtml('entwicklung.ctw.konflikt.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p><p>${tHtml('entwicklung.ctw.konflikt.text')}</p>${wiederholen}</div>`
   }
   if (zustand.phase === 'fehler') {
     // Wiederholen nur, wenn der Auftrag bereits real angelegt ist (sonst gäbe es nichts, das
     // wiederholeRouten routen könnte) — Reviewer-/QA-Pass 14.09.2026: ohne diesen Knopf war
     // 'fehler' eine Sackgasse, ein erneuter Einstieg hätte einen zweiten Auftrag angelegt.
-    return `<div class="note red" ${FOKUS}><strong>${tx('entwicklung.ctw.fehler.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p>${zustand.auftragId !== null ? wiederholen : ''}</div>`
+    return `<div class="note red" ${FOKUS}><strong>${tHtml('entwicklung.ctw.fehler.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p>${zustand.auftragId !== null ? wiederholen : ''}</div>`
   }
   if (zustand.phase === 'vorschlag') {
     return `<section class="workboard-vorschlag" aria-labelledby="workboard-vorschlag-titel">
-      <h3 id="workboard-vorschlag-titel" ${FOKUS}>${tx('entwicklung.ctw.vorschlag.titel')}</h3>
-      <p class="subtle">${tx('entwicklung.ctw.vorschlag.hinweis')}</p>
-      <dl class="workboard-vorschlag-kopf"><dt>${tx('entwicklung.ctw.vorschlag.ziel')}</dt><dd>${escapeHtml(daten?.ziel ?? '')}</dd><dt>${tx('entwicklung.ctw.vorschlag.workflow')}</dt><dd><code>${escapeHtml(zustand.workflowId)}</code></dd></dl>
+      <h3 id="workboard-vorschlag-titel" ${FOKUS}>${tHtml('entwicklung.ctw.vorschlag.titel')}</h3>
+      <p class="subtle">${tHtml('entwicklung.ctw.vorschlag.hinweis')}</p>
+      <dl class="workboard-vorschlag-kopf"><dt>${tHtml('entwicklung.ctw.vorschlag.ziel')}</dt><dd>${escapeHtml(daten?.ziel ?? '')}</dd><dt>${tHtml('entwicklung.ctw.vorschlag.workflow')}</dt><dd><code>${escapeHtml(zustand.workflowId)}</code></dd></dl>
       ${renderSchrittkette(daten)}
       ${renderEmpfehlung(zustand.workflowDetail?.empfehlung)}
       ${zustand.meldung ? `<div class="note red"><p>${escapeHtml(zustand.meldung)}</p></div>` : ''}
       ${renderInstallierbarHinweis(zustand.workflowDetail?.empfehlung)}
-      <div class="action-row"><button type="button" class="button primary wb-freigeben" data-id="${id}">${tx('entwicklung.ctw.freigeben')}</button><button type="button" class="button wb-ablehnen" data-id="${id}">${tx('entwicklung.ctw.ablehnen')}</button></div>
+      <div class="action-row"><button type="button" class="button primary wb-freigeben" data-id="${id}">${tHtml('entwicklung.ctw.freigeben')}</button><button type="button" class="button wb-ablehnen" data-id="${id}">${tHtml('entwicklung.ctw.ablehnen')}</button></div>
     </section>`
   }
-  if (zustand.phase === 'verworfen') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.verworfen')}</p>`
+  if (zustand.phase === 'verworfen') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.verworfen')}</p>`
   if (zustand.phase === 'gestartet' || zustand.phase === 'abgeschlossen') {
     return `<section class="workboard-vorschlag" aria-labelledby="workboard-kette-titel">
-      <h3 id="workboard-kette-titel" ${FOKUS}>${tx('entwicklung.ctw.kette.titel')}</h3>
-      <p>${tx('entwicklung.ctw.kette.status')}: <code>${escapeHtml(daten?.status ?? '')}</code> · <a href="#/workflows/${encodeURIComponent(zustand.workflowId ?? '')}">${tx('uebersicht.rolle.link')}</a></p>
+      <h3 id="workboard-kette-titel" ${FOKUS}>${tHtml('entwicklung.ctw.kette.titel')}</h3>
+      <p>${tHtml('entwicklung.ctw.kette.status')}: <code>${escapeHtml(daten?.status ?? '')}</code> · <a href="#/workflows/${encodeURIComponent(zustand.workflowId ?? '')}">${tHtml('uebersicht.rolle.link')}</a></p>
       ${renderSchrittkette(daten)}
     </section>${zustand.phase === 'abgeschlossen' ? renderTerminalBlock() : ''}`
   }
@@ -699,16 +695,16 @@ function renderBearbeitungsAbschnitt(workitem) {
   const sperre = auftragsSperre(workitem)
   const einstieg = (knopfId, hinweis) => {
     if (sperre === null) {
-      return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button primary" data-id="${escapeHtml(workitem.id)}" data-ctw-fokus>${tx('entwicklung.ctw.vorbereiten')}</button><p class="subtle">${tx(hinweis)}</p></div>`
+      return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button primary" data-id="${escapeHtml(workitem.id)}" data-ctw-fokus>${tHtml('entwicklung.ctw.vorbereiten')}</button><p class="subtle">${tHtml(hinweis)}</p></div>`
     }
-    const link = sperre.workflowId !== null ? ` <a href="#/workflows/${encodeURIComponent(sperre.workflowId)}">${tx('uebersicht.rolle.link')}</a>` : ''
-    return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button" data-id="${escapeHtml(workitem.id)}" disabled aria-disabled="true" aria-describedby="workboard-auftrag-sperre" data-ctw-fokus>${tx('entwicklung.ctw.vorbereiten')}</button><p class="subtle" id="workboard-auftrag-sperre">${tx(`entwicklung.ctw.gesperrt.${sperre.grund}`)}${link}</p></div>`
+    const link = sperre.workflowId !== null ? ` <a href="#/workflows/${encodeURIComponent(sperre.workflowId)}">${tHtml('uebersicht.rolle.link')}</a>` : ''
+    return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button" data-id="${escapeHtml(workitem.id)}" disabled aria-disabled="true" aria-describedby="workboard-auftrag-sperre" data-ctw-fokus>${tHtml('entwicklung.ctw.vorbereiten')}</button><p class="subtle" id="workboard-auftrag-sperre">${tHtml(`entwicklung.ctw.gesperrt.${sperre.grund}`)}${link}</p></div>`
   }
   let einstiegHtml = null
   if (workitem.quelle === 'finding') einstiegHtml = einstieg('workboard-bearbeiten', 'entwicklung.ctw.hinweis.finding')
   else if (workitem.quelle === 'feature' && istFeatureBaubar(workitem)) einstiegHtml = einstieg('workboard-bauen', 'entwicklung.ctw.hinweis.feature')
   if (einstiegHtml === null) {
-    schreibeBearbeitung(workitem.quelle === 'feature' ? `<p class="subtle">${tx('entwicklung.ctw.nichtBaubar')}</p>` : '')
+    schreibeBearbeitung(workitem.quelle === 'feature' ? `<p class="subtle">${tHtml('entwicklung.ctw.nichtBaubar')}</p>` : '')
     return
   }
   if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) {
@@ -1121,7 +1117,7 @@ function renderDetailSeite(workitem) {
   const titel = document.getElementById('workboard-detail-titel')
   if (titel.textContent !== titelVon(workitem)) titel.textContent = titelVon(workitem)
   document.getElementById('workboard-detail-eyebrow').textContent = detailEyebrow(workitem)
-  const aktion = sicht.abnahmeOffen && sicht.workflow !== null ? `<a class="button primary" href="#/workflows/${encodeURIComponent(sicht.workflow.workflowId)}">${tx('entwicklung.detail.ergebnisPruefen')}</a>` : ''
+  const aktion = sicht.abnahmeOffen && sicht.workflow !== null ? `<a class="button primary" href="#/workflows/${encodeURIComponent(sicht.workflow.workflowId)}">${tHtml('entwicklung.detail.ergebnisPruefen')}</a>` : ''
   letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', aktion, letztesDetailAktionHtml)
   document.getElementById('workboard-detail-z').hidden = false
   document.getElementById('workboard-detail-status').hidden = false
@@ -1136,10 +1132,10 @@ function renderDetailSeite(workitem) {
  */
 function renderDetailOhneWorkitem(id) {
   let html
-  if (alleFehler !== null) html = `<div class="note red"><strong>${tx('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-detail-erneut>${tx('entwicklung.fehler.erneut')}</button></div>`
-  else if (alleWorkitems === undefined) html = `<p class="subtle">${tx('entwicklung.detail.laedt')}</p>`
-  else if (alleWorkitems === null) html = `<div class="note red"><strong>${tx('entwicklung.nichtVerfuegbar')}</strong></div>`
-  else html = `<div class="note amber"><strong>${tx('entwicklung.detail.nichtGefunden.titel')}</strong><p>${tx('entwicklung.detail.nichtGefunden')}</p></div>`
+  if (alleFehler !== null) html = `<div class="note red"><strong>${tHtml('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-detail-erneut>${tHtml('entwicklung.fehler.erneut')}</button></div>`
+  else if (alleWorkitems === undefined) html = `<p class="subtle">${tHtml('entwicklung.detail.laedt')}</p>`
+  else if (alleWorkitems === null) html = `<div class="note red"><strong>${tHtml('entwicklung.nichtVerfuegbar')}</strong></div>`
+  else html = `<div class="note amber"><strong>${tHtml('entwicklung.detail.nichtGefunden.titel')}</strong><p>${tHtml('entwicklung.detail.nichtGefunden')}</p></div>`
   document.getElementById('workboard-detail-titel').textContent = id
   document.getElementById('workboard-detail-eyebrow').textContent = ''
   letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', '', letztesDetailAktionHtml)
@@ -1213,6 +1209,7 @@ function ladeDetail(id) {
 /** Schließt das Detail (Route `#/workboard`, Projektwechsel) und zeigt die Übersicht; ein laufender Nachtrag wird verworfen. */
 function schliesseDetail() {
   gewaehlteId = null
+  detailAusUebersicht = false
   detailNachtrag = null
   zeigeDetail(false)
 }
@@ -1298,12 +1295,24 @@ function initListenBedienung() {
     ereignis.preventDefault()
     navigiere(`#/workboard/${encodeURIComponent(zeile.dataset.id)}`)
   })
-  // „← <Register>“: zurück zur Übersicht mit dem zuletzt aktiven Register (die Route #/workboard
-  // schließt das Detail); der Fokus geht auf die Seitenüberschrift.
+  // „← <Register>“ (F-926, F44 WS-4b): kam das Detail direkt aus der Übersicht, geht es per
+  // history.back() zurück (kein neuer Eintrag, Browser-Zurück öffnet das Detail nicht wieder), sonst
+  // per navigiere. Die Route #/workboard schließt das Detail und legt den Fokus auf die Karte bzw. Zeile.
   document.getElementById('workboard-detail-schliessen').addEventListener('click', () => {
-    navigiere('#/workboard')
-    document.getElementById('workboard-titel').focus()
+    if (detailAusUebersicht) history.back()
+    else navigiere('#/workboard')
   })
+}
+
+/**
+ * F-926: legt nach dem Schließen des Details den Fokus auf die Karte (Board) bzw. Zeile (Listen) des
+ * Eintrags; ohne sichtbare Karte oder Zeile auf die Seitenüberschrift.
+ * @param id - Workitem-id des zuvor offenen Details
+ */
+function fokussiereEintrag(id) {
+  const kandidaten = [...document.querySelectorAll('#workboard-board .board-item, #workboard-liste .workboard-zeile')]
+  const treffer = kandidaten.find((el) => el.dataset.id === id && el.offsetParent !== null)
+  ;(treffer ?? document.getElementById('workboard-titel')).focus()
 }
 
 /** Klick-Delegation für #workboard-bearbeitung (F22 WS-2): Auftrag vorbereiten (#workboard-bearbeiten/#workboard-bauen)/Wiederholen/Freigeben/Ablehnen — ein Container statt eigener Listener, Muster #workflow-bedienung in views/workflows.js. */
@@ -1362,13 +1371,18 @@ export function initWorkboardView() {
   initBearbeitungBedienung()
 
   registriere(/^#\/workboard$/, 'workboard', () => {
+    const vorher = gewaehlteId
     schliesseDetail()
     betreteSeite()
     // Während das Detail offen war, hat der Poll Board bzw. Liste nicht nachgeführt.
     if (aktiverTab === 'board') renderBoard()
     else renderListe()
+    uebersichtZuletzt = true
+    if (vorher !== null) fokussiereEintrag(vorher)
   })
   registriere(/^#\/workboard\/([^/]+)$/, 'workboard', (id) => {
+    if (gewaehlteId !== id) detailAusUebersicht = uebersichtZuletzt
+    uebersichtZuletzt = false
     betreteSeite()
     ladeDetail(id)
   })
@@ -1377,6 +1391,8 @@ export function initWorkboardView() {
   // überlagerte Route wie #/chat lässt sie sichtbar und das Board aktuell; ein Wechsel Board ↔
   // Detail bleibt ohne erneuten Abruf.
   window.addEventListener('hashchange', () => {
+    // F-926: jede andere Route beendet den Merker „zuletzt die Übersicht“.
+    if (location.hash !== '#/workboard') uebersichtZuletzt = false
     setTimeout(() => {
       if (document.getElementById('view-workboard').hidden) seiteAktiv = false
     }, 0)

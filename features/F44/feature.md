@@ -881,6 +881,125 @@ Branch `feat/f725-ws4a-ablauf` (Basis `5b0b683`), nicht committet.
   Aktionszeile bzw. im Dialog.
 - Die Texte der Blöcke von WS-4b (Architekt, Sichtung, Reparatur, Abnahme) sind noch deutsch.
 
+## Stand WS-4b „Klärung, Reparatur & Abnahme“ (01.10.2026)
+Branch `feat/f725-ws4b-abnahme` (Basis `493d953`), nicht committet. Vorlage V10 d_abnahme_f35 (d/m/l),
+d_workflow_klaerung; Abgleich F-725 F6, F8, F9, F13–F18 (Vermerk §5.1). Die drei Prüfpunkte aus WS-4a sind
+erledigt: Notizen stehen über der Timeline, die Aktionszeile direkt darunter; kein Verweis auf „Block
+‚Bedienung‘“ mehr; alle Texte in de/en/tr/ru.
+- **Abnahme (F13–F18)** auf `#/workflows/<id>`, ohne neue Route. Die Lage kommt allein aus GET …/abnahme
+  (`abnahmeLage`). **Regel (Entscheidung Challenger 01.10.2026):** „Passt das Ergebnis?“ steht nur bei
+  `workflowStatus` ABGESCHLOSSEN ohne aktuelle Entscheidung (ANGENOMMEN erlaubt); erlaubt der Server sonst
+  eine Aktion (heute ABGELEHNT/ANPASSUNG_ANGEFORDERT bei KLAERUNG_ERFORDERLICH, vor und nach dem Bau, auch im
+  Sichtungs-Halt), steht unter der Timeline der kompakte **vorab**-Block mit nur den erlaubten Knöpfen und
+  demselben Pflichtfeld — „Ergebnis ablehnen oder Anpassung wünschen“ samt „Geänderte Dateien“ und
+  „Prüfbericht & Nachweise“ als `<details>`, wenn die Ausführung gelaufen ist, sonst „Auftrag ablehnen oder
+  Anpassung wünschen“ —, sonst die Zeile „Deine Abnahme folgt …“. Im Fall „entscheidbar“ steht über der Timeline
+  der Abschnitt „Dein letztes Wort · Passt das Ergebnis?“ mit Status „Deine Abnahme fehlt“: Notiz „Empfehlung
+  des Code Reviewers“ (Urteil übersetzt, `empfehlung` roh, Farbe je Urteil), „Vereinbart & überprüft“ aus
+  `ak_urteile` (Symbol plus Text, Nachweis = `beleg`), Befunde als Liste (Schwere, Fundstelle,
+  Zusammenfassung, Beleg), `<details>` „Geänderte Dateien · n Dateien“ (heutige Tabelle) und „Prüfbericht &
+  Nachweise“ (Prüfergebnis, F16 „Prüfung wiederholen“ nach unveränderter Regel; bei wiederholbarer Prüfung
+  aufgeklappt) und „Deine Entscheidung“ inline (Pflichtfeld `wf-abnahme-begruendung`, „Ergebnis abnehmen“,
+  „Anpassung wünschen“, „Ablehnen“; Klasse `wf-abnahme-aktion` und `data-aktion` unverändert; bei ABGESCHLOSSEN
+  sind alle drei erlaubt). **Offen** (Freigabe-Halt,
+  gestoppt ohne Entscheidung): eine Zeile „Deine Abnahme folgt, wenn Umsetzung und Prüfung abgeschlossen
+  sind.“ unter den Aktionen (`#workflow-abnahme-stand`). **Entschieden**: kompakte Zeile mit Ergebnis,
+  Begründung und Datum (Intl); F18 „Automatisch angelegt · Iteration n/3 · Start erfordert deine Freigabe“ als
+  Notiz nur bei `erzeuger` `kern`. Eine **veraltete** Entscheidung bleibt als Hinweis sichtbar (Audit-Spur,
+  F-384). Greift die F-656-Regel außerhalb des Abschnitts, steht die Prüfzeile mit Knopf auch dort.
+  Kein erfundener Text „Was sich verbessert hat“ (der Seitenkopf trägt das Ziel). Die Nicht-ok-Texte von
+  Urteil, Änderungsübersicht und Prüfergebnis sind inhaltlich gleich, nur übersetzt.
+- **Auf einen Blick:** sobald GET …/abnahme da ist, „Review-Urteil“ (bei vorhandenem Urteil, Statuspunkt)
+  und „Deine Abnahme“ (Noch offen bzw. Ergebnis) mit dem Hinweis der Vorlage („‚Ausführung erfolgreich‘ heißt
+  nur …“). Detail und Abnahme kommen über getrennte Endpunkte; `zeichneBlick` setzt beide zusammen.
+- **Kennzeichen:** Die Abnahme wird nur bei echter Änderung neu gebaut (Kennzeichen um Halt,
+  Entscheidungsversion und Review-Lauf erweitert); wird sie bei gleichem Workflow neu gebaut, steht eine
+  angefangene Begründung wieder im Feld (samt Fokus). Nach einer Abnahme bekommt die Meldung den Fokus; eine
+  Antwort zu einem inzwischen geschlossenen Workflow wird verworfen. Beim Ladefehler des Details wird die
+  Abnahme nur ausgeblendet.
+- **Klärung (F6):** Notiz „Jarvis braucht deine Entscheidung.“ mit der ersten Frage (bei mehreren „und n
+  weitere“) und „Rückfrage beantworten“. Der Knopf öffnet `#workflow-dialog` mit der Art `klaerung`: das
+  Formular aus `renderArchitekturEntscheidung` (Optionen als Radio-Karten mit Vor- und Nachteilen, die
+  Empfehlung per Titel vorgewählt, eigene Begründung je Frage, „Entscheidung speichern“). Sperre während des
+  POST, Schließen bei Stand-Änderung und Verwerfen später Antworten wie bei der Freigabe; eine nur geänderte
+  Katalog-Empfehlung schließt Rückfrage und Sichtung nicht (`dialogUeberholt`).
+- **Sichtung (F9, F-768):** Notiz „Abgelehnte Befehle sichten“ (Schritt, Lauf mit Verweis auf das
+  Lauf-Detail) und „Sichtung bestätigen“; Dialog `sichtung` mit dem Rest des bisherigen Satzes (Nachfolger,
+  Folgen), Pflichtfeld `wf-sichtung-begruendung` und „Sichtung bestätigt – weiter“. `bestaetigeSichtung`
+  unverändert, nur aus dem Dialog (Sperre, Fehler im Dialog).
+- **Reparatur (F8):** Notiz rot „Dieser Ablauf ist nicht gültig. Start und Freigabe sind gesperrt.“ bei
+  ungültiger Fassung, sonst bernstein „Der Ablauf steht.“ (GESTOPPT, KLAERUNG_ERFORDERLICH), Knopf „Ablauf
+  reparieren“. Der Editor bleibt inline unter der Notiz (`#workflow-reparatur`, der Poll fasst ihn nicht
+  an), neuer Stil, Warnungen F-219/223/226/240/384 inhaltlich gleich als Schlüssel `reparatur.warnung.*`;
+  IDs `wf-reparatur-*` unverändert. Die Überschrift „Bedienung“ entfällt.
+- **Modulschnitt (F-935 erledigt):** `views/workflow-abnahme.js` (Abnahme, Blick-Zeilen) und
+  `views/workflow-eingriffe.js` (Notizen, Dialoginhalte Freigabe/Stopp/Rückfrage/Sichtung, Reparatureditor,
+  `baueReparaturEntwurf`, `ermittleAbgeschwaechteFreigabenAnzeige`, `ermittleReparaturWarnungen`) — beide rein,
+  ohne schreibende api.js-Funktion, in Node ohne DOM importierbar, mit Tests `workflow-abnahme.test.mjs` und
+  `workflow-eingriffe.test.mjs`. In `views/workflows.js` (jetzt unter 1 000 Zeilen) bleiben Bedienlogik,
+  Kennzeichen, Dialogsteuerung und alle POSTs; Meldungen über ein gemeinsames `zeigeMeldung`.
+- **tHtml (F-935, F-940 erledigt):** `i18n.js` exportiert `tHtml(schluessel, werte, htmlWerte)` =
+  escapeHtml(t(…)) mit optionalen HTML-Platzhaltern; die fünf lokalen `tx()` und `txHtml` sind ersetzt.
+  `scripts/check-f44-i18n.mjs` (6) prüft literale `t(` und `tHtml(`, Selbsttest (7) mit Rotfällen; 626 statt
+  300 geprüfte Aufrufe, kein Schlüssel fehlte.
+- **Restpunkte WS-4a:** Timeline ohne „Läuft · läuft jetzt“ (aktiver laufender Schritt: „Läuft jetzt“);
+  Worker lesbar über `worker.<id>` mit Rückfall auf die ID (`workerName`, Zwillingstest gegen `WORKER` in
+  `src/workflow/index.ts`), in der F12-Tabelle roh; die disabled-angekreuzte Checkbox der Katalog-Empfehlung
+  selbst gezeichnet (Tokens `--check-rand`, `--check-haken`, Kontrastpaare im Token-Gate, hell 5,05:1);
+  F-926 Workboard-Teil („← <Register>“ per `history.back()` aus der Übersicht, Fokus auf Karte bzw. Zeile).
+- **i18n:** alle angefassten Texte als Schlüssel `abnahme.*`, `eingriff.*`, `reparatur.*`, `worker.*` in
+  de/en/tr/ru; Serverwerte (`grund`, `beleg`, `befunde`, `empfehlung`, Pfade, IDs, Statuswerte) bleiben roh.
+- **Gates:** f15 liest zusätzlich `workflow-eingriffe.js` und `workflow-abnahme.js`; (h) „Ablauf reparieren“
+  und die Warnungen als Schlüssel plus de-Wert, `reicheWorkflowFassungEin(koerper)` wörtlich in
+  `views/workflows.js`; (f) prüft die Syntax beider Module. f42 (i) liest die Datei, in der
+  `renderArchitekturEntscheidung` liegt (Begründung im Gate-Kopf, Rotfall belegt). Token-Gate: neue
+  Kontrastpaare. `empfehlung-anzeige.test.mjs` liest den Freigabedialog in `workflow-eingriffe.js`.
+  `workflows-dialog.test.mjs` um `klaerung` und `sichtung` ergänzt (Sperre, Stand-Änderung; Rotfall belegt).
+  f23, f652, f656: Server unverändert.
+- **Nachweise** `features/F44/nachweise/ws4b/` (Skript `erzeuge-nachweis.mjs`, leert vor dem Lauf nur die
+  eigenen Folge-Ordner; Leitstand dieses Worktrees auf Port 4381, feste Antworten; Workboard mit echten
+  Daten).
+
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): alle drei „Freigegeben
+  mit Hinweisen“. Eine Korrekturrunde, eingearbeitet:
+  - **Abnahme gesperrt während des POST** (alle Knöpfe, „Prüfung wiederholen“ und das Feld; kein Neu-Rendern
+    bis zur Antwort): genau ein POST. Eine späte Antwort nach einem Wechsel wird verworfen; die Sperren des
+    alten Workflows (Dialog, Abnahme) blockieren einen neuen nicht.
+  - **Sichtung nur für den angezeigten Halt** (gleiche `lauf_id`, sonst 409 im Dialog, kein POST).
+  - **Meldung beim richtigen Block:** über der Timeline nur in der Lage „entscheidbar“, sonst unter der Timeline
+    (vorab, entschieden, Prüfung wiederholen); Abnahme-Felder mit `aria-describedby` auf die Meldung.
+  - **Robustheit:** fehlende Änderungsübersicht gilt als nicht gelaufen; fehlende `optionen`/`vorteile`/
+    `nachteile`/`dateien` brechen nichts; das Abnahme-Kennzeichen gilt erst nach gelungenem Rendern; das
+    Kennzeichen der Rückfrage enthält die Fragetexte; ein Fehler bei geändertem Stand rettet die Begründung;
+    die späte Antwort der Reparatur wird verworfen; der Ladefehler blendet auch die Abnahme-Meldung aus.
+  - **Design:** Zahlen in „Geänderte Dateien“ brechen nicht um (`.abnahme-dateien`), Abstand des Hinweises
+    „Frühere Entscheidung“, Mono-Schrift über `--font-family-mono`, Knöpfe bei 390 px in natürlicher Breite,
+    „(+n weitere Fragen)“ statt „und n weitere“; `rollen-anzeige.js` nutzt `tHtml`.
+  - **Tests:** `workflows-dialog.test.mjs` um Abnahme-Sperre, späte Antworten (Abnahme, Rückfrage), Rettung der
+    Begründung beim Wechsel vorab → entscheidbar und Sichtung mit anderem Lauf (je Rotfall belegt).
+  - **Nachweise ergänzt:** Wechsel vorab → entschieden, vorab auf Türkisch, Klärung auf Englisch, Spalte
+    „Fokus-name/Wert“ (Fokus auf der vorgewählten Option).
+  Nicht übernommen: die Dialogsteuerung als eigenes Modul (F-941, `views/workflows.js` knapp unter 1 000
+  Zeilen); bei 1440 px rutscht „Ablehnen“ in eine zweite Zeile und bei 200 % Zoom stehen die Werte in „Auf
+  einen Blick“ etwas höher als ihre Beschriftungen — beides folgt aus der Spaltenbreite bzw. dem Raster aus
+  WS-4a (Prüfpunkt unten). Die Fachfrage aus dem QA-Pass (Sichtungs-Halt nach dem Bau mit
+  „Passt das Ergebnis?“) ist entschieden: siehe Regel oben (nur bei ABGESCHLOSSEN).
+
+### Akzeptanzkriterien WS-4b
+- **WS4b-1** Abnahme in vier Lagen (entscheidbar, vorab, offen, entschieden) nach d_abnahme_f35 auf `#/workflows/<id>`; Nicht-ok-Texte inhaltlich
+  gleich; F16 und F18 unverändert (`workflow-abnahme.test.mjs`).
+- **WS4b-2** Klärung und Sichtung als Notiz mit Dialog (Sperre, Stand-Änderung, späte Antwort); Reparatur als
+  Notiz mit Editor inline; IDs unverändert (`workflows-dialog.test.mjs`, `workflow-eingriffe.test.mjs`, f15).
+- **WS4b-3** Modulschnitt und `tHtml`; `views/workflows.js` unter 1 000 Zeilen; i18n-Gate prüft `tHtml(`.
+- **WS4b-4** Restpunkte WS-4a erledigt (Timeline, Worker, Checkbox-Kontrast, F-926 Workboard).
+- **WS4b-5** Texte in de/en/tr/ru, `npm run check` grün; Render-Nachweise liegen vor.
+
+### Prüfpunkte für WS-5 (aus dem Prüfpass WS-4b)
+- Hauptspalte der Seite `#/workflows/<id>` (aus WS-4a) ist schmaler als in der Vorlage: bei 1440 px rutscht
+  „Ablehnen“ in eine zweite Zeile; bei 200 % Zoom stehen die Werte in „Auf einen Blick“ etwa 10 px höher als
+  ihre Beschriftungen.
+- F-941: Dialogsteuerung aus `views/workflows.js` in ein eigenes Modul schneiden, bevor weitere Bedienung dazukommt.
+
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:
 - Persona im hellen Theme: dunkler Fleck mit schwarzem Lid-Band auf hellem Kopf

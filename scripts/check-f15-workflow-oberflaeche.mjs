@@ -101,6 +101,15 @@
  * steht im Code, das deutsche Wörterbuch trägt genau den bisherigen Text. Neu in (f): die
  * Syntaxprüfung auch für views/workflow-detail.js.
  *
+ * F44 WS-4b (01.10.2026, F-935): Notizen, Dialoginhalte und der Reparaturzug (baueReparaturEntwurf,
+ * ermittleReparaturWarnungen, Reparatureditor) liegen in views/workflow-eingriffe.js, die Abnahme in
+ * views/workflow-abnahme.js — beide gehören jetzt zum Workflow-Quelltext; (h)
+ * 'reicheWorkflowFassungEin(koerper)' bleibt wörtlich in views/workflows.js (dort liegen alle
+ * POSTs). Die Texte von (h) sind i18n-Schlüssel geworden: „Reparaturfassung vorbereiten“ heißt nach
+ * Vorlage V10 „Ablauf reparieren“ (Schlüssel eingriff.reparatur.knopf), die Warnungen F-219/223/226/240
+ * stehen im deutschen Wörterbuch (reparatur.warnung.*) und werden dort mit ihrer Befundnummer und dem
+ * bisherigen Wortlaut geprüft, der Schlüssel im Code. Neu in (f): Syntaxprüfung beider Module.
+ *
  * Alle Quelltext-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
  * (entferneKommentare). Sonst hielte ein Kommentar, der einen Endpunkt nur
  * ERWÄHNT, die Scope-Grenze fälschlich für verletzt — und ein Feldname in
@@ -142,9 +151,14 @@ function entferneKommentare(quelltext) {
 const htmlQuelltext = readFileSync('public/leitstand/index.html', 'utf8')
 // F44 WS-4a: views/workflows.js (Bedienung, Dialog, POST) und views/workflow-detail.js (Rendern von
 // Liste und Detailseite) bilden zusammen die Workflow-Ansicht — siehe Kopfkommentar.
+// F44 WS-4b: dazu views/workflow-eingriffe.js (Notizen, Dialoginhalte, Reparaturzug) und
+// views/workflow-abnahme.js (Abnahme).
+const nurBedienQuelltext = entferneKommentare(readFileSync('public/leitstand/views/workflows.js', 'utf8'))
 const workflowsQuelltext = [
-  entferneKommentare(readFileSync('public/leitstand/views/workflows.js', 'utf8')),
+  nurBedienQuelltext,
   entferneKommentare(readFileSync('public/leitstand/views/workflow-detail.js', 'utf8')),
+  entferneKommentare(readFileSync('public/leitstand/views/workflow-eingriffe.js', 'utf8')),
+  entferneKommentare(readFileSync('public/leitstand/views/workflow-abnahme.js', 'utf8')),
 ].join('\n')
 const deWoerterbuch = readFileSync('public/leitstand/i18n/de.js', 'utf8')
 const apiQuelltext = entferneKommentare(readFileSync('public/leitstand/api.js', 'utf8'))
@@ -398,7 +412,8 @@ verlangeVorkommen('g', 'F-252: der Bedienblock hängt am Überholschutz des Deta
 // Die vier Korrekturen aus F-240 einzeln, weil sie einzeln vergessen werden können und jede
 // einzelne Auslassung denselben Endzustand erzeugt: eine Fassung, die angenommen wird und
 // sofort wieder steht.
-verlangeVorkommen('h', 'Knopf "Reparaturfassung vorbereiten"', appQuelltext, 'Reparaturfassung vorbereiten')
+// F44 WS-4b: der Knopf heißt nach Vorlage V10 „Ablauf reparieren“ (Schlüssel statt Literal).
+verlangeText('h', 'Knopf „Ablauf reparieren“ (früher „Reparaturfassung vorbereiten“)', appQuelltext, "'eingriff.reparatur.knopf'", 'eingriff.reparatur.knopf', 'Ablauf reparieren')
 verlangeVorkommen('h', 'Reparatur nur aus GESTOPPT/KLAERUNG_ERFORDERLICH', appQuelltext, "REPARIERBARE_WORKFLOW_STATUS = ['GESTOPPT', 'KLAERUNG_ERFORDERLICH']")
 verlangeVorkommen('h', 'Korrektur (1): status -> OFFEN', appQuelltext, "status: 'OFFEN', aktiver_schritt_id: cursor")
 verlangeVorkommen('h', 'Korrektur (2): Schrittfelder des abgebrochenen/gescheiterten Schritts', appQuelltext, "REPARIERBARE_SCHRITT_STATUS = ['LAEUFT', 'FEHLGESCHLAGEN', 'VERWEIGERT']")
@@ -412,14 +427,19 @@ if (/function baueReparaturEntwurf[\s\S]{0,600}?grund:/.test(appQuelltext)) {
 }
 verlangeVorkommen('h', 'der Entwurf ist bearbeitbarer JSON-Text, kein Formular', appQuelltext, 'JSON.stringify(entwurf, null, 2)')
 // F20 WS-1 (F-352): der fetch()-Aufruf liegt seither in api.js (reicheWorkflowFassungEin).
-verlangeVorkommen('h', 'Einreichen ruft reicheWorkflowFassungEin(koerper) auf', workflowsQuelltext, 'reicheWorkflowFassungEin(koerper)')
+// F44 WS-4b: wörtlich in views/workflows.js (dort liegen alle POSTs), nicht nur irgendwo im Workflow-Quelltext.
+verlangeVorkommen('h', 'Einreichen ruft reicheWorkflowFassungEin(koerper) auf', nurBedienQuelltext, 'reicheWorkflowFassungEin(koerper)')
 // F25 WS-2a (AK10): mitPraefix() ohne eigenes '/api', siehe Kommentar bei (b).
 verlangeVorkommen('h', 'api.js: reicheWorkflowFassungEin geht an POST /api/workflows', apiQuelltext, "reicheWorkflowFassungEin = (koerper) => fetch(mitPraefix('/workflows'), { method: 'POST'")
 
 // Die drei Warnungen, jede an ihrer Befundnummer erkennbar — der Text ist die Zusage, nicht
 // bloß Beiwerk: er sagt dem Menschen, WAS er verliert.
+// F44 WS-4b: die Warnungen sind i18n-Schlüssel — der Schlüssel steht im Code, der Text mit seiner
+// Befundnummer im deutschen Wörterbuch.
 for (const befund of ['F-223', 'F-219', 'F-226']) {
-  verlangeVorkommen('h', `Warnung ${befund} über dem Entwurf`, appQuelltext, `${befund}:`)
+  const schluessel = `reparatur.warnung.${befund.replace('F-', 'f')}`
+  verlangeVorkommen('h', `Warnung ${befund} über dem Entwurf — Schlüssel im Code`, appQuelltext, `'${schluessel}'`)
+  verlangeVorkommen('h', `Warnung ${befund} über dem Entwurf — de-Wert mit Befundnummer`, deWoerterbuch, `'${schluessel}': '${befund}:`)
 }
 verlangeVorkommen('h', 'F-223: erkannt an erteilter Freigabe ohne Lauf', appQuelltext, 'schritt.freigabe_erteilt === true && schritt.lauf_id === null')
 verlangeVorkommen('h', 'F-226: Begründungsfeld steht am Entwurf, nicht erst im 400', appQuelltext, 'wf-reparatur-begruendung')
@@ -429,8 +449,10 @@ verlangeVorkommen('h', 'F-226: die Warnungen werden beim Tippen neu gerechnet', 
 // Zwei weitere Verluste derselben Klasse, beide aus F-240s eigener Aufzählung: der Halt-Grund
 // wird beim Einreichen wegnormalisiert, und eine erreichte Schrittgrenze hebt der Entwurf nicht
 // an — ohne Hinweis wird die Fassung angenommen und steht sofort wieder.
-verlangeVorkommen('h', 'F-240: Warnung vor dem Verlust des Halt-Grunds', appQuelltext, 'wird beim Einreichen auf null normalisiert')
-verlangeVorkommen('h', 'F-240: Warnung vor der bereits erreichten Schrittgrenze', appQuelltext, 'grenzen.max_schritte ${grenze}')
+verlangeVorkommen('h', 'F-240: Warnung vor dem Verlust des Halt-Grunds — Schlüssel im Code', appQuelltext, "'reparatur.warnung.f240Grund'")
+verlangeVorkommen('h', 'F-240: Warnung vor dem Verlust des Halt-Grunds — de-Wert', deWoerterbuch, 'wird beim Einreichen auf null normalisiert')
+verlangeVorkommen('h', 'F-240: Warnung vor der bereits erreichten Schrittgrenze — Schlüssel im Code', appQuelltext, "'reparatur.warnung.f240Grenze'")
+verlangeVorkommen('h', 'F-240: Warnung vor der bereits erreichten Schrittgrenze — de-Wert', deWoerterbuch, 'grenzen.max_schritte {grenze}')
 
 // Der Reparaturweg darf NICHT allein am Status hängen: POST /api/workflows lässt einen
 // ungültigen Bestand in JEDEM Status ersetzen (bestandUngueltig). Ohne diesen Öffner wäre genau
@@ -449,7 +471,7 @@ verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 're
 // seither verteilt sich das auf mehrere Dateien, und eine kaputte views/workflows.js wäre sonst
 // unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe. F20 WS-2 (F-362):
 // zustand.js ergänzt — der eine Poll-Timer, von dem seither jede hier geprüfte View abhängt.
-for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/views/workflow-detail.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
+for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/views/workflow-detail.js', 'public/leitstand/views/workflow-eingriffe.js', 'public/leitstand/views/workflow-abnahme.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

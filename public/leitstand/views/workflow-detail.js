@@ -21,15 +21,16 @@
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM oder Storage beim Import.
- * - Servertexte (ziel, grund, IDs, Statuswerte, Worker, Modell) werden nie übersetzt und immer
- *   escaped; alle übrigen Texte über t().
+ * - Servertexte (ziel, grund, IDs, Statuswerte, Modell) werden nie übersetzt und immer escaped;
+ *   alle übrigen Texte über t()/tHtml(). Worker erscheinen in der Timeline lesbar (workerName,
+ *   F44 WS-4b, Rückfall auf die ID), in der technischen Schritttabelle (F12) roh.
  * - scripts/check-f15-workflow-oberflaeche.mjs liest dieses Modul zusammen mit
  *   views/workflows.js (Felder, Planreihenfolge, LAGE_JE_AUSGANG, Stopp nur bei gültiger Fassung).
  */
 
-import { t } from '../i18n.js'
+import { t, tHtml } from '../i18n.js'
 import { escapeHtml } from '../render.js'
-import { rollenName } from '../rollen-anzeige.js'
+import { rollenName, workerName } from '../rollen-anzeige.js'
 
 /**
  * Die LAGE eines Workflows in einem Satz, je Ausgang von ermittleNaechstenSchritt (löst F-253):
@@ -74,16 +75,6 @@ export const STOPPBARE_WORKFLOW_STATUS = ['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 
 
 /** Pfeil der Listenzeile (Vorlage icon('arrow')). */
 const PFEIL = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6" /></svg>'
-
-/**
- * Escapter, übersetzter Text (Muster views/workboard-detail.js).
- * @param schluessel - i18n-Schlüssel
- * @param werte - Platzhalterwerte
- * @returns HTML
- */
-function tx(schluessel, werte) {
-  return escapeHtml(t(schluessel, werte))
-}
 
 /**
  * Übersetzt status und naechster in die angezeigte Lage. status hat VORRANG, wenn er LAEUFT lautet
@@ -142,9 +133,9 @@ export function seitenTitel(ziel, workflowId) {
  */
 function workflowZeile(workflow) {
   const id = String(workflow.workflowId ?? '')
-  const fassung = typeof workflow.versionSequenz === 'number' ? ` · ${tx('ablauf.liste.fassung', { nummer: String(workflow.versionSequenz) })}` : ''
-  const cursor = workflow.aktiverSchrittId ? ` · ${tx('ablauf.liste.schritt')} <code>${escapeHtml(workflow.aktiverSchrittId)}</code>` : ''
-  const grund = workflow.grund === null || workflow.grund === undefined ? '' : `<p class="subtle workflow-zeile-grund">${tx('ablauf.liste.grund')}: ${escapeHtml(workflow.grund)}</p>`
+  const fassung = typeof workflow.versionSequenz === 'number' ? ` · ${tHtml('ablauf.liste.fassung', { nummer: String(workflow.versionSequenz) })}` : ''
+  const cursor = workflow.aktiverSchrittId ? ` · ${tHtml('ablauf.liste.schritt')} <code>${escapeHtml(workflow.aktiverSchrittId)}</code>` : ''
+  const grund = workflow.grund === null || workflow.grund === undefined ? '' : `<p class="subtle workflow-zeile-grund">${tHtml('ablauf.liste.grund')}: ${escapeHtml(workflow.grund)}</p>`
   return `<a class="list-row workflow-zeile" href="#/workflows/${escapeHtml(encodeURIComponent(id))}" data-workflow-id="${escapeHtml(id)}">
     <div class="workflow-zeile-text">
       <h3>${escapeHtml(seitenTitel(workflow.ziel, id))}</h3>
@@ -163,10 +154,10 @@ function workflowZeile(workflow) {
  */
 export function renderWorkflowListe(workflows) {
   if (workflows === null || workflows === undefined) {
-    return `<div class="note red"><strong>${tx('ablauf.liste.nichtVerfuegbar.titel')}</strong><p>${tx('ablauf.liste.nichtVerfuegbar.text')}</p></div>`
+    return `<div class="note red"><strong>${tHtml('ablauf.liste.nichtVerfuegbar.titel')}</strong><p>${tHtml('ablauf.liste.nichtVerfuegbar.text')}</p></div>`
   }
   if (workflows.length === 0) {
-    return `<div class="empty"><h3>${tx('ablauf.liste.leer.titel')}</h3><p>${tx('ablauf.liste.leer.text')}</p></div>`
+    return `<div class="empty"><h3>${tHtml('ablauf.liste.leer.titel')}</h3><p>${tHtml('ablauf.liste.leer.text')}</p></div>`
   }
   return workflows.map(workflowZeile).join('')
 }
@@ -229,21 +220,23 @@ function timelineKlasse(schritt, faellig, cursor) {
  * @returns HTML
  */
 export function renderTimeline(geordnet, { naechster = null, cursorId = null, aktiveLaufIds = new Set() } = {}) {
-  if (!Array.isArray(geordnet) || geordnet.length === 0) return `<p class="subtle ablauf-leer">${tx('ablauf.weg.leer')}</p>`
+  if (!Array.isArray(geordnet) || geordnet.length === 0) return `<p class="subtle ablauf-leer">${tHtml('ablauf.weg.leer')}</p>`
   const faelligId = naechster?.schrittId ?? null
   const eintraege = geordnet.map(({ schritt, inKette }) => {
     const faellig = faelligId !== null && schritt.schritt_id === faelligId
     const cursor = cursorId !== null && schritt.schritt_id === cursorId
     const klasse = timelineKlasse(schritt, faellig, cursor)
     const name = rollenName(schritt.rolle) || String(schritt.schritt_id ?? '')
-    const laeuftJetzt = typeof schritt.lauf_id === 'string' && aktiveLaufIds.has(schritt.lauf_id) ? ` · ${tx('ablauf.weg.laeuftJetzt')}` : ''
-    const naechsterMarke = faellig ? ` <span class="ablauf-marke">${tx(MARKE_JE_AUSGANG[naechster.art] ?? 'ablauf.weg.marke.sonst')}</span>` : ''
-    const ausserhalb = inKette ? '' : ` <span class="ablauf-marke fehler">${tx('ablauf.weg.ausserhalb')}</span>`
-    const freigabe = schritt.freigabe === 'ZWINGEND' ? ` · ${tx('ablauf.weg.freigabePflicht')}` : ''
+    // F44 WS-4b: ein Schritt auf LAEUFT mit aktivem Lauf heißt nur „Läuft jetzt“ (nicht „Läuft · läuft jetzt“).
+    const aktiv = typeof schritt.lauf_id === 'string' && aktiveLaufIds.has(schritt.lauf_id)
+    const statusSatz = aktiv && schritt.status === 'LAEUFT' ? tHtml('ablauf.schritt.laeuftJetzt') : `${escapeHtml(schrittStatusSatz(schritt.status))}${aktiv ? ` · ${tHtml('ablauf.weg.laeuftJetzt')}` : ''}`
+    const naechsterMarke = faellig ? ` <span class="ablauf-marke">${tHtml(MARKE_JE_AUSGANG[naechster.art] ?? 'ablauf.weg.marke.sonst')}</span>` : ''
+    const ausserhalb = inKette ? '' : ` <span class="ablauf-marke fehler">${tHtml('ablauf.weg.ausserhalb')}</span>`
+    const freigabe = schritt.freigabe === 'ZWINGEND' ? ` · ${tHtml('ablauf.weg.freigabePflicht')}` : ''
     return `<li${klasse ? ` class="${klasse}"` : ''}>
       <h3>${escapeHtml(name)}${naechsterMarke}${ausserhalb}</h3>
-      <p>${escapeHtml(schrittStatusSatz(schritt.status))}${laeuftJetzt}</p>
-      <small>${tx('ablauf.weg.verantwortung', { wer: String(schritt.worker ?? '–') })}${freigabe} · <code>${escapeHtml(schritt.schritt_id)}</code></small>
+      <p>${statusSatz}</p>
+      <small>${tHtml('ablauf.weg.verantwortung', { wer: workerName(schritt.worker) || '–' })}${freigabe} · <code>${escapeHtml(schritt.schritt_id)}</code></small>
     </li>`
   })
   return `<ol class="timeline">${eintraege.join('')}</ol>`
@@ -284,20 +277,20 @@ export function verantwortung(status, naechster, schritt) {
 export function renderAufEinenBlick({ daten, naechster = null, geordnet = [], projektName = '' }) {
   const schritt = aktuellerSchritt(geordnet, daten?.aktiver_schritt_id ?? null, naechster)
   const schrittText = schritt === null ? '–' : `${escapeHtml(rollenName(schritt.rolle) || schritt.schritt_id)} <code>${escapeHtml(schritt.schritt_id)}</code>`
-  return `<h3>${tx('ablauf.blick.titel')}</h3>
+  return `<h3>${tHtml('ablauf.blick.titel')}</h3>
     <dl>
-      <dt>${tx('ablauf.blick.status')}</dt><dd>${lageBadge(daten?.status ?? null, naechster)}</dd>
-      <dt>${tx('ablauf.blick.projekt')}</dt><dd>${escapeHtml(projektName)}</dd>
-      <dt>${tx('ablauf.blick.schritt')}</dt><dd>${schrittText}</dd>
-      <dt>${tx('ablauf.blick.verantwortung')}</dt><dd>${escapeHtml(verantwortung(daten?.status ?? null, naechster, schritt))}</dd>
+      <dt>${tHtml('ablauf.blick.status')}</dt><dd>${lageBadge(daten?.status ?? null, naechster)}</dd>
+      <dt>${tHtml('ablauf.blick.projekt')}</dt><dd>${escapeHtml(projektName)}</dd>
+      <dt>${tHtml('ablauf.blick.schritt')}</dt><dd>${schrittText}</dd>
+      <dt>${tHtml('ablauf.blick.verantwortung')}</dt><dd>${escapeHtml(verantwortung(daten?.status ?? null, naechster, schritt))}</dd>
     </dl>`
 }
 
 /**
  * Die Aktionen unter der Timeline, nur nach naechster.art bzw. status: „Nächsten Schritt
  * freigeben“ (öffnet den Freigabedialog), „Starten“ (direkt) und „Ausführung stoppen“ (öffnet den
- * Stoppdialog). Keine Aktion → ''. Architekt-Entscheidung, Sichtung und Reparatur stehen weiter
- * im Bedienblock (views/workflows.js renderWorkflowBedienung).
+ * Stoppdialog). Keine Aktion → ''. Rückfrage, Sichtung und Reparatur stehen seit WS-4b
+ * als Notizen über der Timeline (views/workflow-eingriffe.js renderEingriffe).
  * @param workflowId - Kennung
  * @param status - daten.status
  * @param naechster - Automaten-Verdikt oder null
@@ -310,14 +303,14 @@ export function renderAktionen(workflowId, status, naechster, ungueltig = false)
   const knoepfe = []
   let hinweis = ''
   if (art === 'haltFreigabe') {
-    knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="freigabe-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tx('ablauf.aktion.freigeben')}</button>`)
+    knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="freigabe-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tHtml('ablauf.aktion.freigeben')}</button>`)
   }
   if (art === 'starte') {
-    knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">${tx('ablauf.aktion.starten')}</button>`)
-    hinweis = `<p class="subtle ablauf-aktion-hinweis">${tx('ablauf.aktion.startenHinweis')} <code>${escapeHtml(naechster.schrittId ?? '')}</code></p>`
+    knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">${tHtml('ablauf.aktion.starten')}</button>`)
+    hinweis = `<p class="subtle ablauf-aktion-hinweis">${tHtml('ablauf.aktion.startenHinweis')} <code>${escapeHtml(naechster.schrittId ?? '')}</code></p>`
   }
   if (STOPPBARE_WORKFLOW_STATUS.includes(status) && !ungueltig) {
-    knoepfe.push(`<button type="button" class="button danger wf-aktion" data-aktion="stopp-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tx('ablauf.aktion.stoppen')}</button>`)
+    knoepfe.push(`<button type="button" class="button danger wf-aktion" data-aktion="stopp-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tHtml('ablauf.aktion.stoppen')}</button>`)
   }
   if (knoepfe.length === 0) return ''
   return `<div class="action-row">${knoepfe.join('')}</div>${hinweis}`
@@ -331,7 +324,7 @@ export function renderAktionen(workflowId, status, naechster, ungueltig = false)
  */
 export function renderWorkflowUngueltig(verstoesse) {
   const liste = verstoesse.map((verstoss) => `<li>${escapeHtml(verstoss)}</li>`).join('')
-  return `<div class="note red ablauf-ungueltig"><strong>${tx('ablauf.ungueltig.titel')}</strong><p>${tx('ablauf.ungueltig.text')}</p><ul>${liste}</ul></div>`
+  return `<div class="note red ablauf-ungueltig"><strong>${tHtml('ablauf.ungueltig.titel')}</strong><p>${tHtml('ablauf.ungueltig.text')}</p><ul>${liste}</ul></div>`
 }
 
 /**
@@ -342,16 +335,16 @@ export function renderWorkflowUngueltig(verstoesse) {
  * @returns HTML
  */
 export function renderWorkflowKopf(daten, versionSequenz, naechster) {
-  const verdikt = naechster === null || naechster === undefined ? `<span class="unbekannt">${tx('ablauf.technik.nichtBestimmbar')}</span>` : `${escapeHtml(naechster.art)} — ${escapeHtml(naechster.grund)}`
-  return `<div class="detail-block"><h3>${tx('ablauf.technik.workflow')}</h3><div class="ablauf-tabelle"><table class="lauf-kopfdaten"><tbody>
-    <tr><th>${tx('ablauf.technik.ziel')}</th><td>${escapeHtml(daten.ziel ?? '')}</td></tr>
-    <tr><th>${tx('ablauf.technik.auftrag')}</th><td><code>${escapeHtml(daten.auftrag_id ?? '')}</code></td></tr>
-    <tr><th>${tx('ablauf.technik.version')}</th><td>${escapeHtml(String(daten.version))} / ${escapeHtml(String(versionSequenz))}</td></tr>
-    <tr><th>${tx('ablauf.technik.lage')}</th><td>${escapeHtml(beschreibeLage(daten.status, naechster))}</td></tr>
-    <tr><th>${tx('ablauf.technik.verdikt')}</th><td>${verdikt}</td></tr>
-    <tr><th>${tx('ablauf.technik.status')}</th><td>${escapeHtml(daten.status ?? '')}</td></tr>
-    <tr><th>${tx('ablauf.technik.cursor')}</th><td>${daten.aktiver_schritt_id ? `<code>${escapeHtml(daten.aktiver_schritt_id)}</code>` : `<span class="unbekannt">${tx('ablauf.technik.keinCursor')}</span>`}</td></tr>
-    <tr><th>${tx('ablauf.technik.grund')}</th><td>${daten.grund ? escapeHtml(daten.grund) : `<span class="unbekannt">${tx('ablauf.technik.keinGrund')}</span>`}</td></tr>
+  const verdikt = naechster === null || naechster === undefined ? `<span class="unbekannt">${tHtml('ablauf.technik.nichtBestimmbar')}</span>` : `${escapeHtml(naechster.art)} — ${escapeHtml(naechster.grund)}`
+  return `<div class="detail-block"><h3>${tHtml('ablauf.technik.workflow')}</h3><div class="ablauf-tabelle"><table class="lauf-kopfdaten"><tbody>
+    <tr><th>${tHtml('ablauf.technik.ziel')}</th><td>${escapeHtml(daten.ziel ?? '')}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.auftrag')}</th><td><code>${escapeHtml(daten.auftrag_id ?? '')}</code></td></tr>
+    <tr><th>${tHtml('ablauf.technik.version')}</th><td>${escapeHtml(String(daten.version))} / ${escapeHtml(String(versionSequenz))}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.lage')}</th><td>${escapeHtml(beschreibeLage(daten.status, naechster))}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.verdikt')}</th><td>${verdikt}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.status')}</th><td>${escapeHtml(daten.status ?? '')}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.cursor')}</th><td>${daten.aktiver_schritt_id ? `<code>${escapeHtml(daten.aktiver_schritt_id)}</code>` : `<span class="unbekannt">${tHtml('ablauf.technik.keinCursor')}</span>`}</td></tr>
+    <tr><th>${tHtml('ablauf.technik.grund')}</th><td>${daten.grund ? escapeHtml(daten.grund) : `<span class="unbekannt">${tHtml('ablauf.technik.keinGrund')}</span>`}</td></tr>
   </tbody></table></div></div>`
 }
 
@@ -367,23 +360,23 @@ export function renderWorkflowKopf(daten, versionSequenz, naechster) {
 export function workflowSchrittZeile(eintrag, aktiveLaufIds, faelligId = null, cursorId = null) {
   const { schritt } = eintrag
   const laeuftJetzt = typeof schritt.lauf_id === 'string' && aktiveLaufIds.has(schritt.lauf_id)
-  const cursorMarke = cursorId !== null && schritt.schritt_id === cursorId ? ` <span class="badge" title="${tx('ablauf.technik.cursorTitel')}">${tx('ablauf.technik.cursorMarke')}</span>` : ''
-  const faelligMarke = faelligId !== null && schritt.schritt_id === faelligId ? ` <span class="badge aktiv" title="${tx('ablauf.technik.faelligTitel')}">${tx('ablauf.technik.faelligMarke')}</span>` : ''
+  const cursorMarke = cursorId !== null && schritt.schritt_id === cursorId ? ` <span class="badge" title="${tHtml('ablauf.technik.cursorTitel')}">${tHtml('ablauf.technik.cursorMarke')}</span>` : ''
+  const faelligMarke = faelligId !== null && schritt.schritt_id === faelligId ? ` <span class="badge aktiv" title="${tHtml('ablauf.technik.faelligTitel')}">${tHtml('ablauf.technik.faelligMarke')}</span>` : ''
   const laufVerweis =
     typeof schritt.lauf_id === 'string'
       ? `<button type="button" class="workflow-lauf-verweis" data-lauf-id="${escapeHtml(schritt.lauf_id)}">${escapeHtml(schritt.lauf_id)}</button>`
-      : `<span class="unbekannt">${tx('ablauf.technik.keinLauf')}</span>`
+      : `<span class="unbekannt">${tHtml('ablauf.technik.keinLauf')}</span>`
   const freigabeErteilt = schritt.freigabe_erteilt === undefined ? '—' : String(schritt.freigabe_erteilt)
   return `<tr>
-    <td><code>${escapeHtml(schritt.schritt_id)}</code>${cursorMarke}${faelligMarke}${eintrag.inKette ? '' : ` <span class="badge fehler" title="${tx('ablauf.technik.ausserhalbTitel')}">${tx('ablauf.weg.ausserhalb')}</span>`}</td>
+    <td><code>${escapeHtml(schritt.schritt_id)}</code>${cursorMarke}${faelligMarke}${eintrag.inKette ? '' : ` <span class="badge fehler" title="${tHtml('ablauf.technik.ausserhalbTitel')}">${tHtml('ablauf.weg.ausserhalb')}</span>`}</td>
     <td>${escapeHtml(schritt.rolle ?? '')}</td>
     <td>${escapeHtml(schritt.worker ?? '')}</td>
     <td>${escapeHtml(schritt.modell ?? '')}</td>
-    <td>${escapeHtml(schritt.freigabe)} <span class="unbekannt">${schritt.freigabe === 'ZWINGEND' ? tx('ablauf.technik.haeltAn') : tx('ablauf.technik.haeltNichtAn')}</span></td>
+    <td>${escapeHtml(schritt.freigabe)} <span class="unbekannt">${schritt.freigabe === 'ZWINGEND' ? tHtml('ablauf.technik.haeltAn') : tHtml('ablauf.technik.haeltNichtAn')}</span></td>
     <td>${escapeHtml(freigabeErteilt)}</td>
-    <td>${escapeHtml(schritt.status)}${laeuftJetzt ? ` <span class="badge aktiv">${tx('ablauf.weg.laeuftJetzt')}</span>` : ''}</td>
+    <td>${escapeHtml(schritt.status)}${laeuftJetzt ? ` <span class="badge aktiv">${tHtml('ablauf.weg.laeuftJetzt')}</span>` : ''}</td>
     <td>${laufVerweis}</td>
-    <td>${schritt.nachfolger ? `<code>${escapeHtml(schritt.nachfolger)}</code>` : `<span class="unbekannt">${tx('ablauf.technik.ende')}</span>`}</td>
+    <td>${schritt.nachfolger ? `<code>${escapeHtml(schritt.nachfolger)}</code>` : `<span class="unbekannt">${tHtml('ablauf.technik.ende')}</span>`}</td>
     <td>${escapeHtml(String(schritt.zeitgrenze_ms))}</td>
   </tr>`
 }
@@ -391,7 +384,7 @@ export function workflowSchrittZeile(eintrag, aktiveLaufIds, faelligId = null, c
 /** Kopfzeile der Schritttabelle (F12). @returns HTML */
 function schrittTabelleKopf() {
   const spalten = ['schritt', 'rolle', 'worker', 'modell', 'freigabe', 'freigabeErteilt', 'status', 'lauf', 'nachfolger', 'zeitgrenze']
-  return `<tr>${spalten.map((s) => `<th>${tx(`ablauf.technik.spalte.${s}`)}</th>`).join('')}</tr>`
+  return `<tr>${spalten.map((s) => `<th>${tHtml(`ablauf.technik.spalte.${s}`)}</th>`).join('')}</tr>`
 }
 
 /**
@@ -404,7 +397,7 @@ export function renderTechnik({ daten, versionSequenz, naechster = null, geordne
   const kopf = renderWorkflowKopf(daten, versionSequenz, naechster)
   if (geordnet.length === 0) return kopf
   const ausserhalb = geordnet.filter((e) => !e.inKette).length
-  const ueberschrift = ausserhalb === 0 ? tx('ablauf.technik.schritte') : tx('ablauf.technik.schritteAusserhalb', { anzahl: ausserhalb })
+  const ueberschrift = ausserhalb === 0 ? tHtml('ablauf.technik.schritte') : tHtml('ablauf.technik.schritteAusserhalb', { anzahl: ausserhalb })
   const zeilen = geordnet.map((e) => workflowSchrittZeile(e, aktiveLaufIds, naechster?.schrittId ?? null, daten.aktiver_schritt_id ?? null)).join('')
   return `${kopf}<div class="detail-block"><h3>${ueberschrift}</h3><div class="ablauf-tabelle"><table class="lauf-kopfdaten ablauf-schritte"><thead>${schrittTabelleKopf()}</thead><tbody>${zeilen}</tbody></table></div></div>`
 }

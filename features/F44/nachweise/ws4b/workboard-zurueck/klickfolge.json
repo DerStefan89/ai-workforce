@@ -1,0 +1,190 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Klasse",
+        "selector": ":focus",
+        "attribut": "class"
+      },
+      {
+        "name": "Fokus-data-id",
+        "selector": ":focus",
+        "attribut": "data-id"
+      },
+      {
+        "name": "Fokus-name/Wert",
+        "selector": ":focus",
+        "attribut": "value"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Notizen",
+        "selector": "#workflow-bedienung"
+      },
+      {
+        "name": "Abnahme (oben)",
+        "selector": "#workflow-abnahme"
+      },
+      {
+        "name": "Abnahme (unten)",
+        "selector": "#workflow-abnahme-stand"
+      },
+      {
+        "name": "Aktionen",
+        "selector": "#workflow-aktionen"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": "#workflow-blick"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Abnahme-Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      },
+      {
+        "name": "Dialog offen",
+        "selector": "#workflow-dialog",
+        "attribut": "open"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Detailseite",
+        "id": "workflow-detail"
+      },
+      {
+        "name": "Reparatureditor",
+        "id": "workflow-reparatur"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Überschrift „Bedienung“ (muss fehlen)",
+        "selector": "#workflow-bedienung h3"
+      },
+      {
+        "name": "Abnahme-Abschnitt über der Timeline",
+        "selector": "#workflow-abnahme .abnahme-abschnitt"
+      },
+      {
+        "name": "Pflichtfeld wf-abnahme-begruendung",
+        "selector": "#wf-abnahme-begruendung"
+      },
+      {
+        "name": "Abnahme-Knöpfe (.wf-abnahme-aktion)",
+        "selector": ".wf-abnahme-aktion"
+      },
+      {
+        "name": "Prüfung wiederholen",
+        "selector": ".wf-pruefung-wiederholen"
+      },
+      {
+        "name": "Notiz Rückfrage",
+        "selector": "#workflow-bedienung .wf-klaerung"
+      },
+      {
+        "name": "Notiz Sichtung",
+        "selector": "#workflow-bedienung .wf-sichtung"
+      },
+      {
+        "name": "Notiz Reparatur",
+        "selector": "#workflow-bedienung .wf-reparatur-notiz"
+      },
+      {
+        "name": "Empfehlung vorgewählt",
+        "selector": "#workflow-dialog input[type=\"radio\"][value=\"Browser-Freigabe\"]:checked"
+      },
+      {
+        "name": "Pflichtfeld wf-sichtung-begruendung",
+        "selector": "#workflow-dialog #wf-sichtung-begruendung"
+      },
+      {
+        "name": "Reparatureditor offen",
+        "selector": "#wf-reparatur-entwurf"
+      },
+      {
+        "name": "aria-live im Dialog (muss fehlen)",
+        "selector": "#workflow-dialog [aria-live], #workflow-dialog[aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/workboard: Board mit Karten",
+      "warteAufSelector": {
+        "selector": "#workboard-board .board-item[data-id]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-workboard-1-board.webp"
+    },
+    {
+      "label": "Klick auf die erste Karte → Detail als Seite",
+      "klick": "#workboard-board .board-item[data-id]",
+      "warteAufSelector": {
+        "selector": "#workboard-detail:not([hidden]) #workboard-detail-titel",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Klick „← <Register>“ → history.back(), Board, Fokus auf der Karte (F-926)",
+      "klick": "#workboard-detail-schliessen",
+      "warteAufSelector": {
+        "selector": "#workboard-board .board-item[data-id]:focus",
+        "timeoutMs": 10000
+      },
+      "screenshot": "d1440-workboard-2-zurueck-fokus.webp"
+    }
+  ]
+}

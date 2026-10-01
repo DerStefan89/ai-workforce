@@ -294,6 +294,11 @@ const KONTRAST_PAARE = [
   ...['--color-accent', '--color-success-text', '--color-danger-text', '--color-warning-text'].flatMap((text) => ['--color-bg', '--color-surface'].map((flaeche) => [text, flaeche, 4.5])),
   ['--color-accent-text', '--color-accent', 4.5],
   ['--color-brand-text', '--color-brand', 4.5],
+  // F44 WS-4b: die selbst gezeichnete, disabled-angekreuzte Checkbox der Katalog-Empfehlung (F4) —
+  // Haken auf der Fläche (Grafik, WCAG 1.4.11: 3:1, hier strenger 4,5:1) und Fläche bzw. Rahmen auf dem
+  // Grund von Seite und Dialog (3:1). Die native disabled-Darstellung fiel im hellen Theme durch.
+  ['--check-haken', '--mint', 4.5],
+  ...['--mint', '--check-rand'].flatMap((vorne) => ['--color-bg', '--color-surface'].map((flaeche) => [vorne, flaeche, 3])),
 ]
 
 // Begründete Ausnahmen: Paare, die die Vorlage selbst vorgibt und die durchfallen. Form:

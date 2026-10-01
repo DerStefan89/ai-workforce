@@ -58,7 +58,7 @@
 import { holeRoadmap, holeWorkitems } from '../api.js'
 import { baueEntscheidungen, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
 import { ladeFokusNachtrag, schrittFolge, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
-import { formatiereDatum, formatiereZahl, t } from '../i18n.js'
+import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
@@ -108,19 +108,9 @@ const KACHEL_TYPEN = ['FEATURE', 'BUG', 'HARNESS_IMPROVEMENT']
 
 // ─── Kleine Bausteine ────────────────────────────────────────────────────────
 
-/**
- * Escapter, übersetzter Text.
- * @param schluessel - i18n-Schlüssel
- * @param werte - Platzhalterwerte
- * @returns HTML
- */
-function tx(schluessel, werte) {
-  return escapeHtml(t(schluessel, werte))
-}
-
 /** @returns Absatz „Lädt…“ */
 function laedt() {
-  return `<p class="subtle">${tx('uebersicht.laedt')}</p>`
+  return `<p class="subtle">${tHtml('uebersicht.laedt')}</p>`
 }
 
 /**
@@ -128,7 +118,7 @@ function laedt() {
  * @returns HTML
  */
 function nichtVerfuegbar() {
-  return `<span class="unbekannt">${tx('uebersicht.nichtVerfuegbar')}</span>`
+  return `<span class="unbekannt">${tHtml('uebersicht.nichtVerfuegbar')}</span>`
 }
 
 /**
@@ -165,7 +155,7 @@ function ring(abgenommen, gesamt, optionen = {}) {
  */
 function featureStatus(status) {
   const kategorie = statusKategorie(status)
-  return `<span class="roadmap-symbol roadmap-kat-${kategorie}" aria-hidden="true">${STATUS_SYMBOL[kategorie]}</span> <span class="roadmap-status roadmap-kat-${kategorie}" title="${escapeHtml(status ?? '')}">${tx(`roadmap.status.${kategorie}`)}</span>`
+  return `<span class="roadmap-symbol roadmap-kat-${kategorie}" aria-hidden="true">${STATUS_SYMBOL[kategorie]}</span> <span class="roadmap-status roadmap-kat-${kategorie}" title="${escapeHtml(status ?? '')}">${tHtml(`roadmap.status.${kategorie}`)}</span>`
 }
 
 /**
@@ -287,10 +277,10 @@ function istLeeresProdukt() {
  */
 function kopfBlock() {
   const { zustand, meilenstein } = roadmapLage()
-  const zeile = meilenstein !== null ? tx('uebersicht.meilenstein.aktuell', { titel: meilenstein.titel }) : escapeHtml(ohneMeilensteinText(zustand))
+  const zeile = meilenstein !== null ? tHtml('uebersicht.meilenstein.aktuell', { titel: meilenstein.titel }) : escapeHtml(ohneMeilensteinText(zustand))
   return `<div class="page-heading uebersicht-kopf">
       <div>
-        <div class="eyebrow">${tx('uebersicht.eyebrow')}</div>
+        <div class="eyebrow">${tHtml('uebersicht.eyebrow')}</div>
         <h1 tabindex="-1">${escapeHtml(holeAktivesProjekt().name)}</h1>
         <p class="description">${zeile}</p>
       </div>
@@ -313,15 +303,15 @@ function fortschrittKarte() {
     const { abgenommen, gesamt } = zaehleMeilenstein(meilenstein)
     inhalt = `${ring(abgenommen, gesamt, { label: t('uebersicht.ring.label', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) }) })}
       <div>
-        <span class="eyebrow">${tx('uebersicht.fortschritt.eyebrow')}</span>
-        <h2>${escapeHtml(formatiereZahl(abgenommen))} / ${escapeHtml(formatiereZahl(gesamt))} <span>${tx('uebersicht.fortschritt.abgenommen')}</span></h2>
-        <p>${tx('uebersicht.fortschritt.text', { titel: meilenstein.titel })}</p>
-        <button type="button" class="text-link" data-sprung="uebersicht-stand">${tx('uebersicht.fortschritt.link')} <span aria-hidden="true">→</span></button>
+        <span class="eyebrow">${tHtml('uebersicht.fortschritt.eyebrow')}</span>
+        <h2>${escapeHtml(formatiereZahl(abgenommen))} / ${escapeHtml(formatiereZahl(gesamt))} <span>${tHtml('uebersicht.fortschritt.abgenommen')}</span></h2>
+        <p>${tHtml('uebersicht.fortschritt.text', { titel: meilenstein.titel })}</p>
+        <button type="button" class="text-link" data-sprung="uebersicht-stand">${tHtml('uebersicht.fortschritt.link')} <span aria-hidden="true">→</span></button>
       </div>`
   } else {
     const text = zustand === 'ungueltig' || zustand === 'fehler' ? nichtVerfuegbar() : escapeHtml(ohneMeilensteinText(zustand))
     inhalt = `<div>
-        <span class="eyebrow">${tx('uebersicht.fortschritt.eyebrow')}</span>
+        <span class="eyebrow">${tHtml('uebersicht.fortschritt.eyebrow')}</span>
         <p>${text}</p>
       </div>`
   }
@@ -335,25 +325,25 @@ function fortschrittKarte() {
  * @returns HTML
  */
 function rolleKarte(l) {
-  const kopf = `<span class="eyebrow">${tx('uebersicht.rolle.eyebrow')}</span>`
+  const kopf = `<span class="eyebrow">${tHtml('uebersicht.rolle.eyebrow')}</span>`
   if (l.zustand === null) return `<article class="cockpit-role">${kopf}${laedt()}</article>`
   if (!Array.isArray(l.zustand.workflows)) return `<article class="cockpit-role">${kopf}<p>${nichtVerfuegbar()}</p></article>`
-  if (l.fokus === null) return `<article class="cockpit-role">${kopf}<h2>${tx('uebersicht.rolle.keine')}</h2><small>${tx('uebersicht.rolle.keinAblauf')}</small></article>`
+  if (l.fokus === null) return `<article class="cockpit-role">${kopf}<h2>${tHtml('uebersicht.rolle.keine')}</h2><small>${tHtml('uebersicht.rolle.keinAblauf')}</small></article>`
 
   const art = l.fokus.naechster?.art
   let titel
   let unterzeile = ''
   if (art === 'haltFreigabe' || art === 'haltKlaerung') {
-    titel = tx(art === 'haltFreigabe' ? 'uebersicht.rolle.freigabe' : 'uebersicht.rolle.rueckfrage')
-    unterzeile = `<small>${tx('uebersicht.rolle.menschlich')}</small>`
+    titel = tHtml(art === 'haltFreigabe' ? 'uebersicht.rolle.freigabe' : 'uebersicht.rolle.rueckfrage')
+    unterzeile = `<small>${tHtml('uebersicht.rolle.menschlich')}</small>`
   } else if (l.fokusNachtrag?.status === 'ok') {
     const laufend = l.fokusNachtrag.daten.schritte.find((s) => s.status === 'LAEUFT') ?? null
-    titel = laufend !== null ? escapeHtml(rollenName(laufend.rolle)) : tx('uebersicht.rolle.keine')
-    if (laufend !== null) unterzeile = `<small>${tx('uebersicht.rolle.schritt')} <code>${escapeHtml(laufend.schritt_id)}</code></small>`
+    titel = laufend !== null ? escapeHtml(rollenName(laufend.rolle)) : tHtml('uebersicht.rolle.keine')
+    if (laufend !== null) unterzeile = `<small>${tHtml('uebersicht.rolle.schritt')} <code>${escapeHtml(laufend.schritt_id)}</code></small>`
   } else if (l.fokusNachtrag?.status === 'fehler') {
     titel = nichtVerfuegbar()
   } else {
-    titel = tx('uebersicht.laedt')
+    titel = tHtml('uebersicht.laedt')
   }
   return `<article class="cockpit-role">
       ${kopf}
@@ -370,9 +360,9 @@ function rolleKarte(l) {
  */
 function deployerKarte() {
   return `<article class="cockpit-deployer" aria-disabled="true">
-      <span class="eyebrow">${tx('uebersicht.deployer.eyebrow')}</span>
-      <h2>${tx('uebersicht.deployer.titel')} ${kommtBadge()}</h2>
-      <small>${tx('uebersicht.deployer.text')}</small>
+      <span class="eyebrow">${tHtml('uebersicht.deployer.eyebrow')}</span>
+      <h2>${tHtml('uebersicht.deployer.titel')} ${kommtBadge()}</h2>
+      <small>${tHtml('uebersicht.deployer.text')}</small>
     </article>`
 }
 
@@ -396,7 +386,7 @@ function wert(label, unterzeile, wertHtml, klasse = '') {
 function werteBlock() {
   const zustand = letzterZustand
   const zahl = (n) => escapeHtml(formatiereZahl(n))
-  const laedtText = `<span class="uebersicht-wert-laedt">${tx('uebersicht.laedt')}</span>`
+  const laedtText = `<span class="uebersicht-wert-laedt">${tHtml('uebersicht.laedt')}</span>`
 
   let inArbeit = laedtText
   let entscheidung = laedtText
@@ -438,13 +428,13 @@ function werteBlock() {
 function zielBlock() {
   const zustand = roadmapZustand(roadmap)
   let text
-  if (zustand === 'laedt') text = tx('uebersicht.laedt')
+  if (zustand === 'laedt') text = tHtml('uebersicht.laedt')
   else if (zustand === 'ok' && typeof roadmap.vision === 'string' && roadmap.vision.trim() !== '') text = escapeHtml(roadmap.vision)
-  else if (zustand === 'ok' || zustand === 'nicht_vorhanden') text = `<span class="subtle">${tx('uebersicht.ziel.leer')}</span>`
+  else if (zustand === 'ok' || zustand === 'nicht_vorhanden') text = `<span class="subtle">${tHtml('uebersicht.ziel.leer')}</span>`
   else text = nichtVerfuegbar()
   return `<section class="product-brief-strip">
       <div>
-        <div class="eyebrow">${tx('uebersicht.ziel.eyebrow')}</div>
+        <div class="eyebrow">${tHtml('uebersicht.ziel.eyebrow')}</div>
         <p>${text}</p>
         <div class="uebersicht-brief-mehr">${kommtKnopf(t('uebersicht.ziel.zielgruppe'), { symbol: '▸' })}</div>
       </div>
@@ -457,14 +447,14 @@ function zielBlock() {
  * @returns HTML
  */
 function produktzyklusBlock() {
-  const phasen = ['strategie', 'nutzerwissen', 'planung', 'entwicklung', 'veroeffentlichung', 'lernen'].map((p) => tx(`uebersicht.zyklus.phase.${p}`)).join(' · ')
+  const phasen = ['strategie', 'nutzerwissen', 'planung', 'entwicklung', 'veroeffentlichung', 'lernen'].map((p) => tHtml(`uebersicht.zyklus.phase.${p}`)).join(' · ')
   return `<a class="cycle-entry" href="#/produktzyklus">
       <div>
-        <span class="eyebrow">${tx('uebersicht.zyklus.eyebrow')}</span>
-        <strong>${tx('uebersicht.zyklus.titel')}</strong>
+        <span class="eyebrow">${tHtml('uebersicht.zyklus.eyebrow')}</span>
+        <strong>${tHtml('uebersicht.zyklus.titel')}</strong>
         <p>${phasen}</p>
       </div>
-      <span>${tx('uebersicht.zyklus.link')} <span aria-hidden="true">→</span></span>
+      <span>${tHtml('uebersicht.zyklus.link')} <span aria-hidden="true">→</span></span>
     </a>`
 }
 
@@ -474,12 +464,12 @@ function produktzyklusBlock() {
  * @returns HTML
  */
 function entscheidungZeile(eintrag) {
-  const art = tx(`attention.art.${eintrag.art}`)
+  const art = tHtml(`attention.art.${eintrag.art}`)
   const eyebrow = eintrag.art === 'befund' ? `${art} · ${escapeHtml(eintrag.prioritaet)}` : art
   let satz
   if (eintrag.satz !== null) satz = escapeHtml(eintrag.satz)
   else if (eintrag.art === 'startproblem') satz = escapeHtml(eintrag.fehler ?? '')
-  else satz = tx(`attention.satz.${eintrag.art}`)
+  else satz = tHtml(`attention.satz.${eintrag.art}`)
   const ziel = eintrag.hash ?? '#/attention'
   return `<div class="pm-decision">
       <div>
@@ -487,7 +477,7 @@ function entscheidungZeile(eintrag) {
         <h3>${escapeHtml(eintrag.titel)}</h3>
         <p>${satz}</p>
       </div>
-      <a class="button" href="${escapeHtml(ziel)}">${tx(`uebersicht.entscheidungen.aktion.${eintrag.art}`)} <span aria-hidden="true">→</span></a>
+      <a class="button" href="${escapeHtml(ziel)}">${tHtml(`uebersicht.entscheidungen.aktion.${eintrag.art}`)} <span aria-hidden="true">→</span></a>
     </div>`
 }
 
@@ -497,19 +487,19 @@ function entscheidungZeile(eintrag) {
  */
 function entscheidungenSpalte() {
   const kopf = (anzahlHtml) => `<div class="section-label">
-      <h2>${tx('uebersicht.entscheidungen.titel')}</h2>
-      <a class="uebersicht-alle" href="#/attention">${tx('uebersicht.entscheidungen.alle')} <span aria-hidden="true">→</span>${anzahlHtml}</a>
+      <h2>${tHtml('uebersicht.entscheidungen.titel')}</h2>
+      <a class="uebersicht-alle" href="#/attention">${tHtml('uebersicht.entscheidungen.alle')} <span aria-hidden="true">→</span>${anzahlHtml}</a>
     </div>`
   if (letzterZustand === null) return `<section class="pm-focus">${kopf('')}${laedt()}</section>`
   const { eintraege, zaehler, defekt, alleLeer } = baueEntscheidungen(letzterZustand, p0p1)
   // Die Gesamtzahl nur, wenn alle vier Quellen da sind — nie eine Teilsumme als Gesamtzahl.
   const vollstaendig = Object.values(zaehler).every((z) => typeof z === 'number')
-  const anzahlText = vollstaendig ? tx('uebersicht.entscheidungen.offen', { zahl: formatiereZahl(eintraege.length) }) : defekt ? tx('uebersicht.nichtVerfuegbar') : tx('uebersicht.laedt')
+  const anzahlText = vollstaendig ? tHtml('uebersicht.entscheidungen.offen', { zahl: formatiereZahl(eintraege.length) }) : defekt ? tHtml('uebersicht.nichtVerfuegbar') : tHtml('uebersicht.laedt')
   const anzahl = `<span class="uebersicht-zaehler">${anzahlText}</span>`
-  const hinweis = defekt ? `<p class="subtle">${tx('uebersicht.entscheidungen.defekt')}</p>` : ''
+  const hinweis = defekt ? `<p class="subtle">${tHtml('uebersicht.entscheidungen.defekt')}</p>` : ''
   let liste
   if (eintraege.length > 0) liste = eintraege.slice(0, ENTSCHEIDUNGEN_MAX).map(entscheidungZeile).join('')
-  else if (alleLeer) liste = `<p class="pm-clear">${tx('uebersicht.entscheidungen.leer')}</p>`
+  else if (alleLeer) liste = `<p class="pm-clear">${tHtml('uebersicht.entscheidungen.leer')}</p>`
   else if (defekt) liste = ''
   else liste = laedt()
   return `<section class="pm-focus">${kopf(anzahl)}${hinweis}${liste}</section>`
@@ -526,33 +516,33 @@ function workforceSpalte(l) {
   let text
   let link = ''
   if (l.zustand === null) {
-    titel = tx('uebersicht.laedt')
+    titel = tHtml('uebersicht.laedt')
     text = ''
   } else if (l.zustand.aktiverLauf?.aktiv === true) {
-    titel = tx('uebersicht.workforce.laeuft')
+    titel = tHtml('uebersicht.workforce.laeuft')
     const aufgabe = l.fokusNachtrag?.status === 'ok' ? l.fokusNachtrag.daten.aktivLauf?.aufgabe : null
-    text = aufgabe ? escapeHtml(aufgabe) : tx('uebersicht.workforce.laeuft.text')
+    text = aufgabe ? escapeHtml(aufgabe) : tHtml('uebersicht.workforce.laeuft.text')
     const laufId = l.zustand.aktiverLauf.laufId
     if (typeof laufId === 'string' && laufId !== '') link = textLink(`#/runs/${encodeURIComponent(laufId)}`, t('uebersicht.workforce.lauf'))
   } else if (typeof l.zustand.aktiverLauf?.aktiv !== 'boolean') {
     titel = nichtVerfuegbar()
     text = ''
   } else if (l.fokus !== null && (l.fokus.naechster?.art === 'haltFreigabe' || l.fokus.naechster?.art === 'haltKlaerung')) {
-    titel = tx('uebersicht.workforce.wartet')
-    text = tx('uebersicht.workforce.ruhig')
+    titel = tHtml('uebersicht.workforce.wartet')
+    text = tHtml('uebersicht.workforce.ruhig')
     link = textLink(`#/workflows/${encodeURIComponent(l.fokus.workflowId)}`, t('uebersicht.rolle.link'))
   } else {
-    titel = tx('uebersicht.workforce.keine')
-    text = tx('uebersicht.workforce.keine.text')
+    titel = tHtml('uebersicht.workforce.keine')
+    text = tHtml('uebersicht.workforce.keine.text')
   }
   return `<aside class="pm-now">
-      <span class="eyebrow">${tx('uebersicht.workforce.eyebrow')}</span>
+      <span class="eyebrow">${tHtml('uebersicht.workforce.eyebrow')}</span>
       <h2>${titel}</h2>
       ${text ? `<p>${text}</p>` : ''}
       ${link}
       <div class="pm-next" aria-disabled="true">
-        <span class="eyebrow">${tx('uebersicht.workforce.naechstes')} ${kommtBadge()}</span>
-        <p class="subtle">${tx('uebersicht.workforce.naechstes.leer')}</p>
+        <span class="eyebrow">${tHtml('uebersicht.workforce.naechstes')} ${kommtBadge()}</span>
+        <p class="subtle">${tHtml('uebersicht.workforce.naechstes.leer')}</p>
       </div>
     </aside>`
 }
@@ -564,26 +554,26 @@ function workforceSpalte(l) {
  * @returns HTML
  */
 function wegBlock() {
-  const kopf = `<div class="section-label"><h2>${tx('uebersicht.weg.titel')}</h2>${textLink('#/roadmap', t('uebersicht.weg.link'))}</div>`
+  const kopf = `<div class="section-label"><h2>${tHtml('uebersicht.weg.titel')}</h2>${textLink('#/roadmap', t('uebersicht.weg.link'))}</div>`
   const { zustand, meilenstein: aktueller } = roadmapLage()
   let inhalt
   if (zustand === 'fehler') {
-    inhalt = `<div class="note red"><strong>${tx('roadmap.fehler.titel')}</strong><p>${tx('roadmap.fehler.text')}</p><button type="button" class="button" data-uebersicht-erneut>${tx('roadmap.fehler.erneut')}</button></div>`
+    inhalt = `<div class="note red"><strong>${tHtml('roadmap.fehler.titel')}</strong><p>${tHtml('roadmap.fehler.text')}</p><button type="button" class="button" data-uebersicht-erneut>${tHtml('roadmap.fehler.erneut')}</button></div>`
   } else if (zustand === 'ungueltig') {
-    inhalt = `<div class="note red"><strong>${tx('roadmap.ungueltig.titel', { anzahl: roadmap.fehler.length })}</strong><p>${tx('roadmap.ungueltig.text')}</p></div>`
+    inhalt = `<div class="note red"><strong>${tHtml('roadmap.ungueltig.titel', { anzahl: roadmap.fehler.length })}</strong><p>${tHtml('roadmap.ungueltig.text')}</p></div>`
   } else if (zustand !== 'ok') {
     inhalt = `<p class="subtle">${escapeHtml(ohneMeilensteinText(zustand))}</p>`
   } else if (roadmap.meilensteine.length === 0) {
-    inhalt = `<p class="subtle">${tx('roadmap.keineMeilensteine')}</p>`
+    inhalt = `<p class="subtle">${tHtml('roadmap.keineMeilensteine')}</p>`
   } else {
     const zeilen = roadmap.meilensteine
       .map((m) => {
         const { abgenommen, gesamt } = zaehleMeilenstein(m)
         const istAktuell = m === aktueller
         return `<li class="uebersicht-weg-zeile${istAktuell ? ' aktuell' : ''}"${istAktuell ? ' aria-current="step"' : ''}>
-            <span class="uebersicht-weg-titel">${istAktuell ? `<span class="eyebrow">${tx('roadmap.meilenstein.aktuell')}</span>` : ''}<strong>${escapeHtml(titelVon(m))}</strong></span>
+            <span class="uebersicht-weg-titel">${istAktuell ? `<span class="eyebrow">${tHtml('roadmap.meilenstein.aktuell')}</span>` : ''}<strong>${escapeHtml(titelVon(m))}</strong></span>
             <span class="uebersicht-weg-status">${featureStatus(m.status)}</span>
-            <small class="uebersicht-weg-zaehler">${tx('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })}</small>
+            <small class="uebersicht-weg-zaehler">${tHtml('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })}</small>
           </li>`
       })
       .join('')
@@ -600,21 +590,21 @@ function wegBlock() {
  * @returns HTML
  */
 function werBlock(l) {
-  const kopf = `<div class="section-label"><h2>${tx('uebersicht.wer.titel')}</h2></div>`
+  const kopf = `<div class="section-label"><h2>${tHtml('uebersicht.wer.titel')}</h2></div>`
   if (l.zustand === null) return `${kopf}${laedt()}`
   if (!Array.isArray(l.zustand.workflows)) return `${kopf}<p>${nichtVerfuegbar()}</p>`
-  if (l.fokus === null) return `${kopf}<p class="subtle">${tx('uebersicht.wer.leer')}</p>`
-  if (l.fokusNachtrag?.status === 'fehler') return `${kopf}<p>${tx('uebersicht.wer.fehler')}</p>`
+  if (l.fokus === null) return `${kopf}<p class="subtle">${tHtml('uebersicht.wer.leer')}</p>`
+  if (l.fokusNachtrag?.status === 'fehler') return `${kopf}<p>${tHtml('uebersicht.wer.fehler')}</p>`
   if (l.fokusNachtrag?.status !== 'ok') return `${kopf}${laedt()}`
 
   const { zuvor, jetzt, danach } = schrittFolge(l.fokus, l.fokusNachtrag.daten.schritte)
   const art = l.fokus.naechster?.art
-  const menschlich = art === 'haltFreigabe' ? tx('uebersicht.rolle.freigabe') : art === 'haltKlaerung' ? tx('uebersicht.rolle.rueckfrage') : ''
+  const menschlich = art === 'haltFreigabe' ? tHtml('uebersicht.rolle.freigabe') : art === 'haltKlaerung' ? tHtml('uebersicht.rolle.rueckfrage') : ''
   const lauf = l.fokusNachtrag.daten.aktivLauf
   const modell =
     lauf !== null && typeof lauf.modellBeobachtet === 'string' && lauf.modellBeobachtet !== ''
-      ? tx('uebersicht.wer.modell', { worker: lauf.worker ?? '–', modell: lauf.modellBeobachtet })
-      : tx('uebersicht.wer.modellNichtBeobachtet')
+      ? tHtml('uebersicht.wer.modell', { worker: lauf.worker ?? '–', modell: lauf.modellBeobachtet })
+      : tHtml('uebersicht.wer.modellNichtBeobachtet')
   return `${kopf}
     <div class="execution-triptych">
       ${werSpalte(t('uebersicht.wer.zuvor'), zuvor)}
@@ -622,7 +612,7 @@ function werBlock(l) {
       ${werSpalte(t('uebersicht.wer.danach'), danach)}
     </div>
     <div class="expected-output">
-      <span class="eyebrow">${tx('uebersicht.wer.output')}</span>
+      <span class="eyebrow">${tHtml('uebersicht.wer.output')}</span>
       <p>${escapeHtml(titelVon({ id: '–', titel: l.fokus.ziel }))}</p>
     </div>`
 }
@@ -635,15 +625,15 @@ function werBlock(l) {
 function kachelnBlock() {
   return `<div class="pm-category-links">${KACHEL_TYPEN.map((typ) => {
     let zeile
-    if (workitems === undefined) zeile = tx('uebersicht.laedt')
+    if (workitems === undefined) zeile = tHtml('uebersicht.laedt')
     else if (workitems === null) zeile = nichtVerfuegbar()
     else {
       const anzahl = workitems.reduce((summe, w) => (w.typ === typ && (typ === 'FEATURE' ? w.status !== 'ABGESCHLOSSEN' && w.status !== 'ABGEBROCHEN' : w.status === 'OFFEN') ? summe + 1 : summe), 0)
-      zeile = tx('uebersicht.kachel.offen', { anzahl, zahl: formatiereZahl(anzahl) })
+      zeile = tHtml('uebersicht.kachel.offen', { anzahl, zahl: formatiereZahl(anzahl) })
     }
     return `<a class="pm-category-card" href="#/workboard">
         <span aria-hidden="true">${KACHEL_SYMBOL[typ]}</span>
-        <div><strong>${tx(`uebersicht.kachel.${typ}`)}</strong><small>${zeile}</small></div>
+        <div><strong>${tHtml(`uebersicht.kachel.${typ}`)}</strong><small>${zeile}</small></div>
         ${PFEIL}
       </a>`
   }).join('')}</div>`
@@ -656,10 +646,10 @@ function kachelnBlock() {
  * @returns HTML
  */
 function standZeile(eintrag) {
-  const titel = `<strong>${escapeHtml(titelVon(eintrag))}</strong><small><code>${escapeHtml(eintrag.id)}</code> · ${tx(`uebersicht.stand.art.${eintrag.art}`)}</small>`
+  const titel = `<strong>${escapeHtml(titelVon(eintrag))}</strong><small><code>${escapeHtml(eintrag.id)}</code> · ${tHtml(`uebersicht.stand.art.${eintrag.art}`)}</small>`
   const ohneAkte = eintrag.art === 'feature' && statusKategorie(eintrag.status) === 'ohne_akte'
   const name = ohneAkte ? `<span class="pm-item-name">${titel}</span>` : `<a class="pm-item-name" href="#/workboard/${encodeURIComponent(eintrag.id)}">${titel}</a>`
-  const status = eintrag.art === 'feature' ? featureStatus(eintrag.status) : `<span class="roadmap-status" title="${escapeHtml(eintrag.status ?? '')}">${tx('uebersicht.stand.offen')}</span>`
+  const status = eintrag.art === 'feature' ? featureStatus(eintrag.status) : `<span class="roadmap-status" title="${escapeHtml(eintrag.status ?? '')}">${tHtml('uebersicht.stand.offen')}</span>`
   return `<div class="pm-status-row">${name}<span class="pm-row-status">${status}</span>${kommtKnopf(eintrag.prioritaet ?? t('uebersicht.stand.ohnePrioritaet'))}</div>`
 }
 
@@ -671,16 +661,16 @@ function standZeile(eintrag) {
  * @returns HTML
  */
 function standBlock() {
-  const kopf = `<div class="section-label"><h2 id="uebersicht-stand-titel" tabindex="-1">${tx('uebersicht.stand.titel')}</h2></div>`
+  const kopf = `<div class="section-label"><h2 id="uebersicht-stand-titel" tabindex="-1">${tHtml('uebersicht.stand.titel')}</h2></div>`
   const { zustand, meilenstein } = roadmapLage()
   const { eintraege } = waehleEntwicklungsstand(meilenstein, workitems)
   const hinweise = []
-  if (workitems === undefined || zustand === 'laedt') hinweise.push(tx('uebersicht.laedt'))
-  if (workitems === null) hinweise.push(tx('uebersicht.stand.befundeNichtVerfuegbar'))
-  if (zustand === 'fehler' || zustand === 'ungueltig') hinweise.push(tx('uebersicht.stand.featuresNichtVerfuegbar'))
+  if (workitems === undefined || zustand === 'laedt') hinweise.push(tHtml('uebersicht.laedt'))
+  if (workitems === null) hinweise.push(tHtml('uebersicht.stand.befundeNichtVerfuegbar'))
+  if (zustand === 'fehler' || zustand === 'ungueltig') hinweise.push(tHtml('uebersicht.stand.featuresNichtVerfuegbar'))
   let zeilen = ''
   if (eintraege.length > 0) zeilen = `<div class="pm-work-table">${eintraege.map(standZeile).join('')}</div>`
-  else if (hinweise.length === 0) zeilen = `<p class="subtle">${tx('uebersicht.stand.leer')}</p>`
+  else if (hinweise.length === 0) zeilen = `<p class="subtle">${tHtml('uebersicht.stand.leer')}</p>`
   const hinweisHtml = hinweise.map((h) => `<p class="subtle">${h}</p>`).join('')
   return `${kopf}${zeilen}${hinweisHtml}<p class="uebersicht-stand-alle">${textLink('#/workboard', t('uebersicht.stand.alle'))}</p>${kachelnBlock()}`
 }
@@ -691,10 +681,10 @@ function standBlock() {
  * @returns HTML
  */
 function zuletztBlock(l) {
-  const eyebrow = `<span class="eyebrow">${tx('uebersicht.zuletzt.eyebrow')}</span>`
+  const eyebrow = `<span class="eyebrow">${tHtml('uebersicht.zuletzt.eyebrow')}</span>`
   if (l.zustand === null) return `<div>${eyebrow}${laedt()}</div>`
   if (!Array.isArray(l.zustand.laeufe)) return `<div>${eyebrow}<p>${nichtVerfuegbar()}</p></div>`
-  if (l.lauf === null) return `<div>${eyebrow}<p class="subtle">${tx('uebersicht.zuletzt.leer')}</p></div>`
+  if (l.lauf === null) return `<div>${eyebrow}<p class="subtle">${tHtml('uebersicht.zuletzt.leer')}</p></div>`
 
   const titel = titelVon({ id: titelVon({ id: l.lauf.laufId, titel: l.lauf.auftragsbezug?.titel }), titel: l.laufWorkflow?.ziel })
   const ergebnis = l.lauf.ergebnis ?? l.lauf.laufStatus?.status ?? null
@@ -706,7 +696,7 @@ function zuletztBlock(l) {
       const erledigt = schritte.filter((s) => s.status === 'ERFOLGREICH').length
       schritteHtml = ring(erledigt, schritte.length, { klein: true, label: t('uebersicht.zuletzt.schritte', { anzahl: schritte.length, erledigt: formatiereZahl(erledigt), gesamt: formatiereZahl(schritte.length) }) })
     } else if (l.laufNachtrag?.status === 'fehler') {
-      schritteHtml = `<p class="subtle">${tx('uebersicht.zuletzt.schritteNichtVerfuegbar')}</p>`
+      schritteHtml = `<p class="subtle">${tHtml('uebersicht.zuletzt.schritteNichtVerfuegbar')}</p>`
     }
   }
   const links = [textLink(`#/runs/${encodeURIComponent(l.lauf.laufId)}`, t('uebersicht.zuletzt.lauf'))]
@@ -715,7 +705,7 @@ function zuletztBlock(l) {
       <div>
         ${eyebrow}
         <h2>${escapeHtml(titel)}</h2>
-        <p>${tx('uebersicht.zuletzt.ergebnis')} ${ergebnis === null ? tx('uebersicht.zuletzt.offen') : `<code>${escapeHtml(ergebnis)}</code>`} · <code>${escapeHtml(l.lauf.laufId)}</code>${zeit}</p>
+        <p>${tHtml('uebersicht.zuletzt.ergebnis')} ${ergebnis === null ? tHtml('uebersicht.zuletzt.offen') : `<code>${escapeHtml(ergebnis)}</code>`} · <code>${escapeHtml(l.lauf.laufId)}</code>${zeit}</p>
         <div class="action-row">${links.join('')}</div>
       </div>
       ${schritteHtml}
@@ -729,9 +719,9 @@ function zuletztBlock(l) {
 function dahinterBlock() {
   return `<section class="uebersicht-dahinter">
       <div>
-        <span class="eyebrow">${tx('uebersicht.dahinter.eyebrow')}</span>
-        <h2>${tx('uebersicht.dahinter.titel')}</h2>
-        <p class="subtle">${tx('uebersicht.dahinter.text')}</p>
+        <span class="eyebrow">${tHtml('uebersicht.dahinter.eyebrow')}</span>
+        <h2>${tHtml('uebersicht.dahinter.titel')}</h2>
+        <p class="subtle">${tHtml('uebersicht.dahinter.text')}</p>
       </div>
       <div class="action-row">
         ${kommtKnopf(t('uebersicht.dahinter.architektur'))}
@@ -749,12 +739,12 @@ function betriebBlock() {
   const zustand = letzterZustand
   const eintrag = (schluessel, liste, hash) => {
     let wertHtml
-    if (zustand === null) wertHtml = tx('uebersicht.laedt')
+    if (zustand === null) wertHtml = tHtml('uebersicht.laedt')
     else if (!Array.isArray(liste)) wertHtml = nichtVerfuegbar()
     else wertHtml = `<strong>${escapeHtml(formatiereZahl(liste.length))}</strong>`
-    return `<a href="${hash}">${tx(schluessel)} ${wertHtml}</a>`
+    return `<a href="${hash}">${tHtml(schluessel)} ${wertHtml}</a>`
   }
-  return `<p class="uebersicht-betrieb"><span class="eyebrow">${tx('uebersicht.betrieb.eyebrow')}</span>
+  return `<p class="uebersicht-betrieb"><span class="eyebrow">${tHtml('uebersicht.betrieb.eyebrow')}</span>
       ${eintrag('uebersicht.betrieb.laeufe', zustand?.laeufe, '#/runs')}
       ${eintrag('uebersicht.betrieb.workflows', zustand?.workflows, '#/runs')}
       ${eintrag('uebersicht.betrieb.startfehler', zustand?.startfehler, '#/runs')}
@@ -766,12 +756,12 @@ function betriebBlock() {
  * @returns HTML
  */
 function ersterSchrittBlock() {
-  const schritte = ['beschreiben', 'pruefen', 'freigeben'].map((s) => `<li><strong>${tx(`uebersicht.ersterSchritt.${s}`)}</strong><span>${tx(`uebersicht.ersterSchritt.${s}.text`)}</span></li>`).join('')
+  const schritte = ['beschreiben', 'pruefen', 'freigeben'].map((s) => `<li><strong>${tHtml(`uebersicht.ersterSchritt.${s}`)}</strong><span>${tHtml(`uebersicht.ersterSchritt.${s}.text`)}</span></li>`).join('')
   return `<section class="first-step">
-      <span class="eyebrow">${tx('uebersicht.ersterSchritt.eyebrow')}</span>
-      <h2>${tx('uebersicht.ersterSchritt.titel')}</h2>
-      <p>${tx('uebersicht.ersterSchritt.text')}</p>
-      <div class="action-row"><a class="button primary" href="#/projekt">${tx('uebersicht.ersterSchritt.aktion')}</a></div>
+      <span class="eyebrow">${tHtml('uebersicht.ersterSchritt.eyebrow')}</span>
+      <h2>${tHtml('uebersicht.ersterSchritt.titel')}</h2>
+      <p>${tHtml('uebersicht.ersterSchritt.text')}</p>
+      <div class="action-row"><a class="button primary" href="#/projekt">${tHtml('uebersicht.ersterSchritt.aktion')}</a></div>
       <ol class="onboarding-steps">${schritte}</ol>
     </section>`
 }
@@ -780,7 +770,7 @@ function ersterSchrittBlock() {
 
 /** Gerüst mit einem Container je Block; jeder Block zeigt zunächst „Lädt…“. */
 function geruest() {
-  const l = `<p class="subtle">${tx('uebersicht.laedt')}</p>`
+  const l = `<p class="subtle">${tHtml('uebersicht.laedt')}</p>`
   return `<div id="uebersicht-b1">${l}</div>
     <div id="uebersicht-erster-schritt" hidden></div>
     <div id="uebersicht-inhalt">

@@ -25,8 +25,8 @@
  */
 
 import { bereiteInstallationVor, installiereRessource } from './api.js'
-import { setzeInstallationsAnzeige, setzeInstallationsMeldung, txHtml } from './empfehlung-anzeige.js'
-import { t } from './i18n.js'
+import { setzeInstallationsAnzeige, setzeInstallationsMeldung } from './empfehlung-anzeige.js'
+import { t, tHtml } from './i18n.js'
 import { escapeHtml } from './render.js'
 
 /**
@@ -41,7 +41,7 @@ export function renderInstallationsBestaetigung(daten) {
   const lizenz = daten.lizenzRegistry !== null && daten.lizenzRegistry !== undefined ? `${text(daten.lizenz)} ${escapeHtml(t('installation.registry', { lizenz: daten.lizenzRegistry }))}` : text(daten.lizenz)
   const werkzeuge = (daten.werkzeuge ?? []).map((w) => `<code>${escapeHtml(w)}</code>`).join(', ')
   return `<div class="empfehlung-installation-bestaetigung">
-    <p>${txHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
+    <p>${tHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
     <ul>
       ${zeile('installation.paket', `<code>npm:${escapeHtml(daten.paket)}</code>`)}
       ${zeile('installation.version', `<code>${escapeHtml(daten.version)}</code>`)}
@@ -69,7 +69,7 @@ export function renderInstallationsBestaetigung(daten) {
 function renderSkillBestaetigung(daten, zeile, text) {
   const code = (wert) => `<code>${escapeHtml(wert)}</code>`
   return `<div class="empfehlung-installation-bestaetigung">
-    <p>${txHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
+    <p>${tHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
     <ul>
       ${zeile('installation.repo', code(daten.repo))}
       ${zeile('installation.ref', code(daten.ref))}

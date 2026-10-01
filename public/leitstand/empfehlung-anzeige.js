@@ -15,7 +15,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js (Freigabedialog im haltFreigabe, F44 WS-4a)
  * - public/leitstand/views/workboard.js (Workflow-Vorschlag)
- * - public/leitstand/empfehlung-installation.js (txHtml, Zustand des Installationsablaufs)
+ * - public/leitstand/empfehlung-installation.js (Zustand des Installationsablaufs)
  * - public/leitstand/empfehlung-anzeige.test.mjs
  *
  * F44 WS-4a (F4/F5, Vorlage V10): Texte über i18n (Schlüssel empfehlung.*; Server- und
@@ -28,23 +28,9 @@
  * derselben Serverantwort, die gerendert wurde; eine zweite Quelle bräche „Anzeige = Start“.
  */
 
-import { t } from './i18n.js'
+// F44 WS-4b (F-940): txHtml ist als tHtml nach i18n.js gezogen (ein zentraler, vom i18n-Gate geprüfter Aufruf).
+import { t, tHtml } from './i18n.js'
 import { escapeHtml } from './render.js'
-
-/**
- * Escapter, übersetzter Text, in den fertiges HTML eingesetzt wird (etwa eine Liste von <code>-IDs):
- * die HTML-Werte gehen als Platzhalter-Marken durch t() und escapeHtml und werden danach ersetzt.
- * @param schluessel - i18n-Schlüssel
- * @param werte - Text-Platzhalter (werden escaped)
- * @param htmlWerte - HTML-Platzhalter (bereits escaptes HTML)
- * @returns HTML
- */
-export function txHtml(schluessel, werte = {}, htmlWerte = {}) {
-  const marken = Object.fromEntries(Object.keys(htmlWerte).map((name, i) => [name, `\u2063${i}\u2063`]))
-  let html = escapeHtml(t(schluessel, { ...werte, ...marken }))
-  for (const [name, marke] of Object.entries(marken)) html = html.split(marke).join(htmlWerte[name])
-  return html
-}
 
 /**
  * F36 WS-5a: Zustand des Installationsablaufs je Katalog-id (Bestätigungsblock, Fortschritt, Fehler) und
@@ -163,7 +149,7 @@ export function renderInstallierbarHinweis(empfehlung) {
     .filter((e) => e.installierbar === true && !ohneProjektUrl(String(e.grund ?? '')))
     .map((e) => `<code>${escapeHtml(e.id)}</code>`)
   if (ids.length === 0) return ''
-  return `<p class="hinweis empfehlung-installierbar-hinweis">${txHtml('empfehlung.hinweisInstallierbar', { anzahl: ids.length }, { ids: ids.join(', ') })}</p>`
+  return `<p class="hinweis empfehlung-installierbar-hinweis">${tHtml('empfehlung.hinweisInstallierbar', { anzahl: ids.length }, { ids: ids.join(', ') })}</p>`
 }
 
 /**

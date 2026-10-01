@@ -137,6 +137,10 @@
   --dialog-backdrop: #061118bd;
   --danger-line: color-mix(in srgb, var(--red) 31%, transparent);
   --timeline-glanz: #dbc08c12;
+  /* F44 WS-4b: selbst gezeichnete, disabled-angekreuzte Checkbox der Katalog-Empfehlung (F4) — die
+     native Darstellung blasst sie im hellen Theme aus. Rahmen und Haken auf --mint (Token-Gate). */
+  --check-rand: var(--muted);
+  --check-haken: var(--bg);
 
   /* ─── Farbe — Shell (F20; F44 WS-1a: Werte aus der Vorlage V10) ───
      Die Namen bleiben die API aller Views, die Werte zeigen auf die Vorlage. Wo die Vorlage
@@ -287,6 +291,7 @@
   --side-art-deckkraft: 0.5;
   --side-art-links: -132px;
   --timeline-glanz: #89621d10;
+  --check-haken: var(--panel);
   --color-bg-rgb: 243, 241, 233;
   --color-surface-rgb: 250, 249, 245;
   --color-accent-strong: #1b6654;
@@ -5532,11 +5537,6 @@ th {
   white-space: nowrap;
 }
 
-/* Abstand der unveränderten Blöcke (Bedienung, Abnahme; Restyling WS-4b) zur Aktionszeile. */
-.workflow-seite #workflow-bedienung > .detail-block,
-.workflow-seite #workflow-abnahme > .detail-block {
-  margin-top: 28px;
-}
 
 /* Dialog (Vorlage dialog, dialog::backdrop, .dialog-heading, .dialog-actions, label.field). */
 .workflow-dialog {
@@ -5663,6 +5663,289 @@ th {
   }
 }
 
+/* ─────────── Klärung, Reparatur & Abnahme (F44 WS-4b, Vorlage V10 d_workflow_klaerung, d_abnahme_f35) ───────────
+   Notizen über der Timeline (.note.amber/.red mit Knopf), der Reparatureditor inline darunter, der
+   Abschnitt „Passt das Ergebnis?“ (Kriterien und Befunde als Linienliste, details wie F12, Entscheidung
+   inline), die Zeile unter den Aktionen und die Zeilen in „Auf einen Blick“; im Dialog das Formular der
+   Rückfrage. Maße wie die Vorlage, Farben nur über Tokens; kein display auf Containern mit hidden. */
+.workflow-seite #workflow-bedienung .note {
+  margin: 0 0 20px;
+}
+
+.workflow-seite #workflow-bedienung .note .button {
+  margin-top: 14px;
+}
+
+.workflow-seite .note p,
+.workflow-seite .note strong {
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .wf-weitere {
+  color: var(--muted);
+}
+
+#workflow-abnahme-meldung:focus,
+#workflow-abnahme-meldung:focus-visible {
+  outline: none;
+}
+
+/* Reparatureditor (inline unter der Notiz) */
+.workflow-seite .wf-reparatur-editor {
+  margin: 0 0 28px;
+  padding: 0 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.workflow-seite .wf-reparatur-editor .note ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite label.field {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 12px;
+}
+
+.workflow-seite textarea,
+.workflow-seite .wf-reparatur-editor input[type='text'] {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.workflow-seite textarea {
+  resize: vertical;
+}
+
+.workflow-seite #wf-reparatur-entwurf {
+  font: 12px/1.5 var(--font-family-mono);
+}
+
+.workflow-seite textarea:focus-visible,
+.workflow-seite .wf-reparatur-editor input[type='text']:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+/* Abnahme: Abschnitt „Passt das Ergebnis?“ */
+.workflow-seite .abnahme-abschnitt {
+  margin: 0 0 42px;
+}
+
+.workflow-seite .abnahme-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px 24px;
+}
+
+.workflow-seite .abnahme-kopf > div {
+  min-width: 0;
+}
+
+.workflow-seite .abnahme-kopf h2 {
+  margin: 8px 0 0;
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.workflow-seite .abnahme-abschnitt > h3 {
+  margin: 32px 0 6px;
+  font-size: 24px;
+}
+
+.workflow-seite .abnahme-empfehlung .abnahme-lauf {
+  font-size: 11px;
+}
+
+.workflow-seite .abnahme-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .abnahme-liste > li {
+  display: flex;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.workflow-seite .abnahme-liste > li > div {
+  min-width: 0;
+}
+
+.workflow-seite .abnahme-liste strong {
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .abnahme-liste p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .abnahme-befund {
+  flex-direction: column;
+  gap: 0;
+}
+
+.workflow-seite .abnahme-befund p:first-child {
+  margin-top: 0;
+}
+
+.workflow-seite .abnahme-befund p:nth-child(2) {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.workflow-seite .abnahme-symbol {
+  flex-shrink: 0;
+  width: 14px;
+  color: var(--mint);
+}
+
+.workflow-seite .abnahme-symbol.fehler {
+  color: var(--red);
+}
+
+.workflow-seite .abnahme-symbol.warten {
+  color: var(--amber);
+}
+
+.workflow-seite details.abnahme-details {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.workflow-seite details.abnahme-details summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.workflow-seite details.abnahme-details[open] summary {
+  margin-bottom: 14px;
+  color: var(--ink);
+}
+
+.workflow-seite .abnahme-pruefung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.workflow-seite .abnahme-hinweis {
+  font-size: 12px;
+}
+
+/* Abnahme: Zeile unter den Aktionen (folgt / entschieden / frühere Entscheidung / F18) */
+.workflow-seite .abnahme-stand {
+  margin: 18px 0 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .abnahme-stand p {
+  margin: 0 0 8px;
+}
+
+/* Lage „vorab“: Auftrag ablehnen oder Anpassung wünschen, bevor die Ausführung gelaufen ist. */
+.workflow-seite .abnahme-vorab {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.workflow-seite .abnahme-frueher {
+  margin: 12px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* „Geänderte Dateien“: Status und Zahlen brechen nicht mitten in der Zahl (.lauf-kopfdaten td bricht sonst
+   überall); nur der Pfad darf umbrechen. */
+.workflow-seite .abnahme-dateien td:not(:nth-child(2)),
+.workflow-seite .abnahme-dateien th {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+/* „Auf einen Blick“: Review-Urteil, Deine Abnahme, Hinweis */
+.workflow-seite .summary .abnahme-blick-hinweis {
+  margin: 28px 0 0;
+}
+
+/* Dialog „Rückfrage beantworten“: je Frage ein fieldset, Optionen als Radio-Karten */
+.workflow-dialog .wf-architektur-frage {
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  min-width: 0;
+}
+
+.workflow-dialog .wf-architektur-frage legend {
+  padding: 0;
+  font: 18px/1.3 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.workflow-dialog .wf-architektur-option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 13px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.workflow-dialog .wf-architektur-option:has(input:checked) {
+  border-color: var(--mint);
+}
+
+.workflow-dialog .wf-architektur-option input {
+  flex-shrink: 0;
+  margin: 3px 0 0;
+  accent-color: var(--mint);
+}
+
+.workflow-dialog .wf-architektur-option > span {
+  min-width: 0;
+}
+
+.workflow-dialog .wf-architektur-option ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 700px) {
+  .workflow-seite .abnahme-kopf h2 {
+    font-size: 28px;
+  }
+}
+
 /* F4 (Vorlage V10 .check): die Katalog-Empfehlung als Ankreuzliste mit disabled-Checkboxen, rein
    anzeigend („Wird genutzt“ angekreuzt); Knopf „Freigeben & installieren“ im Stil .button. */
 .empfehlung-liste {
@@ -5682,4 +5965,37 @@ th {
 
 .empfehlung-liste .check input {
   accent-color: var(--mint);
+}
+
+/* F44 WS-4b: Die Checkboxen sind disabled (rein anzeigend). Die native Darstellung blasst eine
+   disabled-angekreuzte Box im hellen Theme bis zur Unkenntlichkeit aus — deshalb selbst gezeichnet:
+   Rahmen --check-rand, angekreuzt Fläche --mint mit Haken --check-haken (Kontrastpaare im Token-Gate). */
+.empfehlung-liste .check input[type='checkbox'] {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  box-sizing: border-box;
+  border: 1px solid var(--check-rand);
+  border-radius: 3px;
+  background: var(--field);
+}
+
+.empfehlung-liste .check input[type='checkbox']:checked {
+  border-color: var(--mint);
+  background: var(--mint);
+}
+
+.empfehlung-liste .check input[type='checkbox']:checked::after {
+  content: '';
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid var(--check-haken);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.empfehlung-liste .check input[type='checkbox']:disabled {
+  opacity: 1;
+  cursor: default;
 }

@@ -1,0 +1,1068 @@
+{
+  "url": "http://127.0.0.1:4381/#/workflows/nw-ab",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "light",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-ab",
+            "auftragId": "nw-ab-a",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": null,
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "fertig",
+              "grund": "Alle Schritte abgeschlossen",
+              "schrittId": null
+            }
+          },
+          {
+            "workflowId": "nw-halt",
+            "auftragId": "nw-halt-a",
+            "ziel": "Fehlende Nutzungsdaten kennzeichnen",
+            "versionSequenz": 2,
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltFreigabe",
+              "grund": "Schritt s2 ist ZWINGEND",
+              "schrittId": "s2"
+            }
+          },
+          {
+            "workflowId": "nw-iter",
+            "auftragId": "nw-iter-a",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltFreigabe",
+              "grund": "Neubau nach Anpassung",
+              "schrittId": "s2"
+            }
+          },
+          {
+            "workflowId": "nw-rot",
+            "auftragId": "nw-rot-a",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s2",
+            "grund": "Prüfschritt ROT: 2 Tests fehlgeschlagen (Exit 1)",
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "Prüfung ROT (Exit 1)",
+              "schrittId": "s2"
+            }
+          },
+          {
+            "workflowId": "nw-kl",
+            "auftragId": "nw-kl-a",
+            "ziel": "Fehler verständlich erklären",
+            "versionSequenz": 2,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s1",
+            "grund": "Der Architekt hat 2 offene Fragen gestellt — ohne Entscheidung setzt die Kette nicht fort.",
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "Offene Frage des Architekten (Regel 1c)",
+              "schrittId": "s1"
+            }
+          },
+          {
+            "workflowId": "nw-si",
+            "auftragId": "nw-si-a",
+            "ziel": "Abhängigkeiten aktualisieren",
+            "versionSequenz": 2,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s1",
+            "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: npm install --global — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'nw-s1')",
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "F-760",
+              "schrittId": "s1"
+            }
+          },
+          {
+            "workflowId": "nw-ug",
+            "auftragId": "nw-ug-a",
+            "ziel": "Ablauf mit kaputter Fassung",
+            "versionSequenz": 2,
+            "status": "GESTOPPT",
+            "aktiverSchrittId": "s1",
+            "grund": "Gestoppt durch Stefan: Worker gemini ist nicht zugelassen.",
+            "schritteAnzahl": 2,
+            "naechster": null
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ab",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-ab",
+          "auftrag_id": "nw-ab-a",
+          "version": 1,
+          "ziel": "Bauen aus der Akte",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-l1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s3",
+              "lauf_id": "nw-l2",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": null,
+              "lauf_id": "nw-l3",
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig",
+          "grund": "Alle Schritte abgeschlossen",
+          "schrittId": null
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-halt",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-halt",
+          "auftrag_id": "nw-halt-a",
+          "version": 1,
+          "ziel": "Fehlende Nutzungsdaten kennzeichnen",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s2",
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-h1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "WARTET_FREIGABE",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "grund": "Schritt s2 ist ZWINGEND",
+          "schrittId": "s2"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": {
+          "schrittId": "s2",
+          "wirdGenutzt": [
+            {
+              "id": "playwright-mcp",
+              "empfehlungId": "playwright-mcp",
+              "name": "Playwright",
+              "typ": "extern",
+              "unterart": "mcp",
+              "grund": "task_typen_any erfüllt (bugfix)"
+            }
+          ],
+          "passtNichtImLauf": [
+            {
+              "id": "axe-mcp",
+              "name": "axe Accessibility",
+              "typ": "extern",
+              "unterart": "mcp",
+              "grund": "freigabe OFFEN",
+              "installierbar": true
+            }
+          ],
+          "weitereAnzahl": {
+            "wirdGenutzt": 0,
+            "passtNichtImLauf": 0
+          },
+          "nichtFreigebbarAnzahl": 0,
+          "hinweise": []
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-iter",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-iter",
+          "auftrag_id": "nw-iter-a",
+          "version": 1,
+          "ziel": "Bauen aus der Akte",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s2",
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-i1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "WARTET_FREIGABE",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "grund": "Neubau nach Anpassung",
+          "schrittId": "s2"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-rot",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-rot",
+          "auftrag_id": "nw-rot-a",
+          "version": 1,
+          "ziel": "Bauen aus der Akte",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s2",
+          "grund": "Prüfschritt ROT: 2 Tests fehlgeschlagen (Exit 1)",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-r1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s3",
+              "lauf_id": "nw-r2",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "Prüfung ROT (Exit 1)",
+          "schrittId": "s2"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-kl",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-kl",
+          "auftrag_id": "nw-kl-a",
+          "version": 1,
+          "ziel": "Fehler verständlich erklären",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s1",
+          "grund": "Der Architekt hat 2 offene Fragen gestellt — ohne Entscheidung setzt die Kette nicht fort.",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-k1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "OFFEN",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "Offene Frage des Architekten (Regel 1c)",
+          "schrittId": "s1"
+        },
+        "architekturEntscheidung": {
+          "schrittId": "s1",
+          "fragen": [
+            {
+              "frage": "Welche Fehlermeldung sollen wir zuerst verständlicher machen?",
+              "auswirkung_bestand": "Betrifft nur die Anzeige im Leitstand.",
+              "begruendung": "Die Browser-Freigabe ist der häufigste Abbruch.",
+              "empfehlung": "Browser-Freigabe",
+              "optionen": [
+                {
+                  "titel": "Browser-Freigabe",
+                  "vorteile": [
+                    "häufigster Fall",
+                    "klar abgegrenzt"
+                  ],
+                  "nachteile": []
+                },
+                {
+                  "titel": "Zeitgrenze",
+                  "vorteile": [
+                    "einfach"
+                  ],
+                  "nachteile": [
+                    "selten"
+                  ]
+                }
+              ]
+            },
+            {
+              "frage": "Soll die Meldung einen Link zur Hilfe enthalten?",
+              "auswirkung_bestand": "Neue Hilfeseite nötig.",
+              "begruendung": "Ohne Hilfeseite ins Leere.",
+              "empfehlung": "Nein",
+              "optionen": [
+                {
+                  "titel": "Ja",
+                  "vorteile": [
+                    "hilft sofort"
+                  ],
+                  "nachteile": [
+                    "Seite fehlt noch"
+                  ]
+                },
+                {
+                  "titel": "Nein",
+                  "vorteile": [
+                    "kein toter Link"
+                  ],
+                  "nachteile": []
+                }
+              ]
+            }
+          ]
+        },
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-si",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-si",
+          "auftrag_id": "nw-si-a",
+          "version": 1,
+          "ziel": "Abhängigkeiten aktualisieren",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s1",
+          "grund": "Lauf endete VERWEIGERT (ohne Bypass-Verdacht). Abgelehnte Befehle: npm install --global — menschliche Sichtung vor Fortsetzung (F-760, Schritt 's1', Lauf 'nw-s1')",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "VERWEIGERT",
+              "nachfolger": "s2",
+              "lauf_id": "nw-s1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "F-760",
+          "schrittId": "s1"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ug",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-ug",
+          "auftrag_id": "nw-ug-a",
+          "version": 1,
+          "ziel": "Ablauf mit kaputter Fassung",
+          "status": "GESTOPPT",
+          "aktiver_schritt_id": "s1",
+          "grund": "Gestoppt durch Stefan: Worker gemini ist nicht zugelassen.",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "FEHLGESCHLAGEN",
+              "nachfolger": "s2",
+              "lauf_id": "nw-u1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "gemini",
+              "modell": "claude-sonnet",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [
+          "'schritte[1].worker' muss einer von claude-code, codex sein"
+        ],
+        "naechster": null,
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ab/abnahme",
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "nw-l3",
+          "urteil": "BEREIT",
+          "empfehlung": "Die vereinbarten Kriterien sind erfüllt. Prüfe, ob das Ergebnis auch deinen Erwartungen entspricht.",
+          "befunde": [
+            {
+              "schwere": "NIEDRIG",
+              "fundstelle": "public/leitstand/views/auftrag.js:42",
+              "zusammenfassung": "Ein Kommentar nennt noch den alten Funktionsnamen.",
+              "beleg": "Zeile 42: „siehe baueAuftragAlt“"
+            }
+          ],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "Feature F35 erfolgreich in einen Auftrag überführt (auftrag.test.mjs)."
+            },
+            {
+              "ak_id": "AK2",
+              "urteil": "ERFUELLT",
+              "beleg": "Umsetzung und Code Review werden vor der Freigabe gezeigt."
+            },
+            {
+              "ak_id": "AK3",
+              "urteil": "ERFUELLT",
+              "beleg": "Schreibende Aktionen bleiben bis zur Freigabe gesperrt (check-f15)."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "nw-l2",
+          "daten": {
+            "basis_ref": "493d953",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/auftrag.js",
+                "plus": 48,
+                "minus": 12
+              },
+              {
+                "status": "A",
+                "pfad": "public/leitstand/views/auftrag.test.mjs",
+                "plus": 96,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "public/leitstand/i18n/de.js",
+                "plus": 6,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "scripts/check-f15-workflow-oberflaeche.mjs",
+                "plus": 4,
+                "minus": 1
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "nw-l2p",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-halt/abnahme",
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s2",
+          "grund": null
+        },
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-iter/abnahme",
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s2",
+          "grund": null
+        },
+        "entscheidung": {
+          "status": "ok",
+          "ergebnis": "ANPASSUNG_ANGEFORDERT",
+          "begruendung": "Review BEREIT_NACH_KORREKTUR: automatische Anpassung (F35 WS-3).",
+          "entschiedenAm": "2026-10-01T08:40:00.000Z",
+          "bezug": null,
+          "versionSequenz": 2,
+          "erzeuger": "kern",
+          "automatische_iteration": 2
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "nw-l3",
+          "urteil": "BEREIT_NACH_KORREKTUR",
+          "empfehlung": "Die vereinbarten Kriterien sind erfüllt. Prüfe, ob das Ergebnis auch deinen Erwartungen entspricht.",
+          "befunde": [
+            {
+              "schwere": "NIEDRIG",
+              "fundstelle": "public/leitstand/views/auftrag.js:42",
+              "zusammenfassung": "Ein Kommentar nennt noch den alten Funktionsnamen.",
+              "beleg": "Zeile 42: „siehe baueAuftragAlt“"
+            }
+          ],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "Feature F35 erfolgreich in einen Auftrag überführt (auftrag.test.mjs)."
+            },
+            {
+              "ak_id": "AK2",
+              "urteil": "ERFUELLT",
+              "beleg": "Umsetzung und Code Review werden vor der Freigabe gezeigt."
+            },
+            {
+              "ak_id": "AK3",
+              "urteil": "ERFUELLT",
+              "beleg": "Schreibende Aktionen bleiben bis zur Freigabe gesperrt (check-f15)."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "nw-l2",
+          "daten": {
+            "basis_ref": "493d953",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/auftrag.js",
+                "plus": 48,
+                "minus": 12
+              },
+              {
+                "status": "A",
+                "pfad": "public/leitstand/views/auftrag.test.mjs",
+                "plus": 96,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "public/leitstand/i18n/de.js",
+                "plus": 6,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "scripts/check-f15-workflow-oberflaeche.mjs",
+                "plus": 4,
+                "minus": 1
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "nw-l2p",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-rot/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "nw-l2",
+          "daten": {
+            "basis_ref": "493d953",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/auftrag.js",
+                "plus": 48,
+                "minus": 12
+              },
+              {
+                "status": "A",
+                "pfad": "public/leitstand/views/auftrag.test.mjs",
+                "plus": 96,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "public/leitstand/i18n/de.js",
+                "plus": 6,
+                "minus": 0
+              },
+              {
+                "status": "M",
+                "pfad": "scripts/check-f15-workflow-oberflaeche.mjs",
+                "plus": 4,
+                "minus": 1
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "nw-r2p",
+          "ergebnis": "ROT",
+          "exitCode": 1
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-kl/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-si/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "nicht_vorhanden"
+        },
+        "pruefergebnis": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ug/abnahme",
+      "json": {
+        "workflowStatus": "GESTOPPT",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Klasse",
+        "selector": ":focus",
+        "attribut": "class"
+      },
+      {
+        "name": "Fokus-data-id",
+        "selector": ":focus",
+        "attribut": "data-id"
+      },
+      {
+        "name": "Fokus-name/Wert",
+        "selector": ":focus",
+        "attribut": "value"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Notizen",
+        "selector": "#workflow-bedienung"
+      },
+      {
+        "name": "Abnahme (oben)",
+        "selector": "#workflow-abnahme"
+      },
+      {
+        "name": "Abnahme (unten)",
+        "selector": "#workflow-abnahme-stand"
+      },
+      {
+        "name": "Aktionen",
+        "selector": "#workflow-aktionen"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": "#workflow-blick"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Abnahme-Meldung",
+        "selector": "#workflow-abnahme-meldung"
+      },
+      {
+        "name": "Dialog offen",
+        "selector": "#workflow-dialog",
+        "attribut": "open"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Detailseite",
+        "id": "workflow-detail"
+      },
+      {
+        "name": "Reparatureditor",
+        "id": "workflow-reparatur"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Überschrift „Bedienung“ (muss fehlen)",
+        "selector": "#workflow-bedienung h3"
+      },
+      {
+        "name": "Abnahme-Abschnitt über der Timeline",
+        "selector": "#workflow-abnahme .abnahme-abschnitt"
+      },
+      {
+        "name": "Pflichtfeld wf-abnahme-begruendung",
+        "selector": "#wf-abnahme-begruendung"
+      },
+      {
+        "name": "Abnahme-Knöpfe (.wf-abnahme-aktion)",
+        "selector": ".wf-abnahme-aktion"
+      },
+      {
+        "name": "Prüfung wiederholen",
+        "selector": ".wf-pruefung-wiederholen"
+      },
+      {
+        "name": "Notiz Rückfrage",
+        "selector": "#workflow-bedienung .wf-klaerung"
+      },
+      {
+        "name": "Notiz Sichtung",
+        "selector": "#workflow-bedienung .wf-sichtung"
+      },
+      {
+        "name": "Notiz Reparatur",
+        "selector": "#workflow-bedienung .wf-reparatur-notiz"
+      },
+      {
+        "name": "Empfehlung vorgewählt",
+        "selector": "#workflow-dialog input[type=\"radio\"][value=\"Browser-Freigabe\"]:checked"
+      },
+      {
+        "name": "Pflichtfeld wf-sichtung-begruendung",
+        "selector": "#workflow-dialog #wf-sichtung-begruendung"
+      },
+      {
+        "name": "Reparatureditor offen",
+        "selector": "#wf-reparatur-entwurf"
+      },
+      {
+        "name": "aria-live im Dialog (muss fehlen)",
+        "selector": "#workflow-dialog [aria-live], #workflow-dialog[aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Deep-Link #/workflows/nw-ab (ABGESCHLOSSEN): „Passt das Ergebnis?“ über der Timeline, Entscheidung inline, Review-Urteil und Abnahme in „Auf einen Blick“",
+      "warteAufSelector": {
+        "selector": "#workflow-abnahme .abnahme-abschnitt",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l390-abnahme.webp"
+    },
+    {
+      "label": "„Geänderte Dateien“ und „Prüfbericht & Nachweise“ aufgeklappt",
+      "klick": "#workflow-abnahme details.abnahme-details:nth-of-type(1) summary",
+      "warteAufSelector": {
+        "selector": "#workflow-abnahme details[open] table",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l390-abnahme-2-dateien.webp"
+    }
+  ]
+}

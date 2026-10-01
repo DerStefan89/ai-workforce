@@ -672,8 +672,18 @@ test('F44 WS-3b: Detail per Deep-Link — Ladezustand (F-921), Übersicht ausgeb
     `Poll lädt im Detail nach: ${aufrufe.join(', ')}`
   )
 
-  // „← zurück“ führt zur Übersicht.
+  // „← zurück“ führt zur Übersicht. F-926 (F44 WS-4b): Der vorige Eintrag war hier die Übersicht
+  // (#/workboard aus dem vorigen Fall) — zurück geht es deshalb per history.back(), kein neuer Eintrag.
+  // Der Schein-Browser springt dabei auf den vorigen Hash zurück und dispatcht.
+  let zurueck = 0
+  history.back = () => {
+    zurueck += 1
+    location.hash = '#/workboard'
+    dispatch()
+  }
   document.getElementById('workboard-detail-schliessen').handler.click({})
+  history.back = () => {}
+  assert.equal(zurueck, 1, '„← zurück“ nimmt history.back(), wenn der vorige Eintrag die Übersicht war')
   assert.equal(location.hash, '#/workboard')
   assert.equal(document.getElementById('workboard-detail').hidden, true)
   assert.equal(document.getElementById('workboard-uebersicht').hidden, false)
