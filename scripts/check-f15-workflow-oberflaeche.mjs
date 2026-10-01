@@ -110,6 +110,10 @@
  * stehen im deutschen Wörterbuch (reparatur.warnung.*) und werden dort mit ihrer Befundnummer und dem
  * bisherigen Wortlaut geprüft, der Schlüssel im Code. Neu in (f): Syntaxprüfung beider Module.
  *
+ * F44 WS-5a (01.10.2026): das Lauf-Detail #/runs/<laufId> rendert im reinen Modul
+ * views/lauf-detail.js; (c) bleibt unverändert (Route und ladeLaufDetail(laufId) in views/runs.js),
+ * neu in (f) die Syntaxprüfung von views/lauf-detail.js. Rotfall belegt: ein Syntaxfehler dort → Befund.
+ *
  * Alle Quelltext-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
  * (entferneKommentare). Sonst hielte ein Kommentar, der einen Endpunkt nur
  * ERWÄHNT, die Scope-Grenze fälschlich für verletzt — und ein Feldname in
@@ -470,8 +474,10 @@ verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 're
 // F20 WS-1 (F-352): app.js allein zu prüfen reichte, solange es die gesamte Logik enthielt —
 // seither verteilt sich das auf mehrere Dateien, und eine kaputte views/workflows.js wäre sonst
 // unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe. F20 WS-2 (F-362):
-// zustand.js ergänzt — der eine Poll-Timer, von dem seither jede hier geprüfte View abhängt.
-for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/views/workflow-detail.js', 'public/leitstand/views/workflow-eingriffe.js', 'public/leitstand/views/workflow-abnahme.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
+// zustand.js ergänzt — der eine Poll-Timer, von dem seither jede hier geprüfte View abhängt. F44 WS-5a:
+// views/lauf-detail.js ergänzt — das Render-Modul des Lauf-Details, das runs.js für die Route
+// '#/runs/<laufId>' (Fall (c)) importiert.
+for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/views/workflow-detail.js', 'public/leitstand/views/workflow-eingriffe.js', 'public/leitstand/views/workflow-abnahme.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/views/lauf-detail.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

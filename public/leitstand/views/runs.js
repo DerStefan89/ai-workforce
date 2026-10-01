@@ -1,575 +1,567 @@
 /**
  * Datei: public/leitstand/views/runs.js
  *
- * Zweck: View `#/runs` (F20 WS-1) — Laufliste und Startfehler-Projektion aus
- * dem Zustands-Aggregat (GET /api/zustand, seit F20 WS-2 über den einen
- * Poll-Timer in zustand.js — kein eigener fetch()/setInterval mehr, siehe
- * renderLaeufe/renderStartfehler) sowie die Lauf-Detailansicht (GET
- * /api/laeufe/<laufId>, Route `#/runs/<laufId>`, nur auf Anforderung, NICHT
- * gepollt — TECH_DEBT F-363). Deckt vier der sechs Bedienflüsse ab, die laut
- * F20 AK1 real funktionieren müssen: Wiederaufnahme-Vorbelegung,
- * Freigabe/Stopp gehören zur Workflow-Bedienung (views/workflows.js,
- * ebenfalls unter dieser View gemountet), Entscheidung und Abbruch liegen
- * hier in der Detailansicht.
+ * Zweck: Bedienung der Ausführungen (F20 WS-1/WS-2, F44 WS-5a, Vorlage V10 d_arbeit_verlauf und
+ * d_ausfuehrung_failed; Abgleich F-725 G1–G9, F7): die Register „Aufträge“ (`#/runs`, Liste aus
+ * views/workflows.js) und „Ausführungen“ (`#/ausfuehrungen`: Laufliste und Startfehler aus dem
+ * Zustands-Aggregat, ein Poll in zustand.js) sowie das Lauf-Detail `#/runs/<laufId>` als ganze Seite
+ * (GET /api/laeufe/<laufId>, nur beim Öffnen und über „Aktualisieren“ — NICHT gepollt, F-363). Hier
+ * liegen Laden, Dialogsteuerung (#lauf-dialog) und alle POSTs der Lauf-Bedienung: Kenntnisnahme (G6),
+ * Klärung auflösen (G8, art 'terminal'), Rückfrage beantworten (F7, art 'antwort'), Lauf abbrechen
+ * (G9) und „Fortsetzung vorbereiten“ (G7, Wiederaufnahme über views/projekt.js). Gerendert wird im
+ * reinen Modul views/lauf-detail.js.
+ *
+ * Die Route der Ausführungen heißt `#/ausfuehrungen` und nicht `#/runs/ausfuehrungen`: das Muster
+ * `#/runs/<laufId>` ([^/]+) würde mit einer laufId „ausfuehrungen“ kollidieren (Abweichung von
+ * Abgleich §5.2, vermerkt in §5.1).
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initRunsView beim Bootstrap)
- * - public/leitstand/views/workflows.js (Navigation zu `#/runs/<laufId>` für
- *   den lauf_id-Verweis einer Workflow-Schrittzeile)
- * - public/leitstand/views/runs.test.mjs (renderLaufStatus/renderEntscheidungBlock, F-828)
+ * - public/leitstand/views/workflows.js (Navigation zu `#/runs/<laufId>` aus der Schritttabelle)
+ * - public/leitstand/views/runs-dialog.test.mjs (Dialogsteuerung)
  *
- * Wichtig: renderLaeufe() ersetzt #laeufe bei jedem Poll-Tick komplett —
- * jede Bedienung an einer Laufzeile hängt deshalb per Event-Delegation am
- * Container #laeufe, nie an einem einzelnen Zeilen-Button (der wäre nach dem
- * nächsten Tick wieder weg). #lauf-detail liegt in index.html bewusst
- * AUSSERHALB von #laeufe aus demselben Grund.
- *
- * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
- * views/workboard.js (F29 WS-1b) — .card für laufAbschnitt()/#lauf-detail/
- * #startfehler-abschnitt (index.html), .btn/.btn-primary für die
- * Schaltflächen. .detail-block/.badge/die Kopfdaten-Tabellen (.lauf-
- * kopfdaten) waren bereits im Einsatz und bleiben unverändert — insbesondere
- * renderLaufakte/renderAuftrag, deren Markup wortgleich an
- * scripts/check-f12-leitstand-ansicht.mjs (Fälle f/g) gebunden ist. Keine
- * Verhaltensänderung, kein neues Farbpaar.
+ * Wichtig: Liste und Startfehler werden bei jedem Poll-Tick nur bei geändertem HTML neu geschrieben
+ * (sonst ginge der Tastaturfokus einer Zeile verloren); die Bedienung hängt per Delegation an den
+ * Containern. Der Dialog wird beim Öffnen aus dem aktuellen Detail gebaut, ist während einer Anfrage
+ * gesperrt (genau ein POST) und schließt bei geändertem Stand; eine Antwort zu einem inzwischen
+ * anderen Lauf oder Projekt wird verworfen (F-860).
  */
 
 import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
-import { formatiereBeobachtung } from '../beobachtung-zeile.js'
+import { t, tHtml } from '../i18n.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
-import { navigiere, registriere } from '../router.js'
+import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { abonniere, pollJetzt } from '../zustand.js'
-import { holeAktivesProjekt } from '../projekt-kontext.js'
+import {
+  darfFortsetzen,
+  ermittleLaufLage,
+  LAUF_DIALOG_FELD,
+  laufStatusBadge,
+  laufTitel,
+  renderAufklappInhalte,
+  renderEinordnung,
+  renderLaufDialog,
+  renderLaufListe,
+  renderLaufNotiz,
+  renderStartfehlerListe,
+  renderWasPassiertIst,
+} from './lauf-detail.js'
 import { wendeWiederaufnahmeAn, zeigeVorbelegungsFehler } from './projekt.js'
 
-/** Rendert die Gültigkeits-Zelle einer Checkpoint-Zeile in der Detailansicht. */
-function statusZelle(cp) {
-  if (cp.gueltig) return '<span class="badge ok">gültig</span>'
-  const gruende = (cp.gruende ?? []).join('; ')
-  return `<span class="badge fehler" title="${escapeHtml(gruende)}">ungültig</span><div class="grund">${escapeHtml(gruende)}</div>`
-}
+/** Muster der Lauf-Detailroute. */
+const DETAIL_MUSTER = /^#\/runs\/[^/]+$/
 
-/** Rendert die Stale-Zelle einer Checkpoint-Zeile in der Detailansicht. */
-function staleZelle(cp) {
-  if (!cp.stale) return ''
-  if (cp.stale.stale) {
-    return `<span class="badge stale" title="${escapeHtml(cp.stale.geaenderteEingaben.join('; '))}">STALE</span>`
+/** Alle Routen der View `runs` (Register, Lauf- und Workflow-Detail). */
+const RUNS_VIEW_MUSTER = /^#\/(runs|ausfuehrungen|workflows)(\/[^/]+)?$/
+
+// ─── Register und Liste (G1) ────────────────────────────────────────────────
+
+/** HTML der zuletzt geschriebenen Laufliste bzw. Startfehler — ein Poll-Tick schreibt nur bei geändertem Inhalt. */
+let letzteListeHtml = null
+let letzteStartfehlerHtml = null
+
+/** zustand.laeufe des letzten Ticks (oder null) — liefert Titel und kenntnisgenommen eines offenen Details. */
+let letzteLaeufe = null
+
+/**
+ * Zeigt eines der beiden Register und markiert seinen Reiter (aria-current, .active).
+ * @param register - 'auftraege' oder 'ausfuehrungen'
+ */
+function zeigeRegister(register) {
+  document.getElementById('workflows-abschnitt').hidden = register !== 'auftraege'
+  document.getElementById('ausfuehrungen-abschnitt').hidden = register !== 'ausfuehrungen'
+  for (const reiter of document.querySelectorAll('#runs-register a[data-register]')) {
+    const aktiv = reiter.dataset.register === register
+    reiter.classList.toggle('active', aktiv)
+    if (aktiv) reiter.setAttribute('aria-current', 'page')
+    else reiter.removeAttribute('aria-current')
   }
-  return '<span class="badge aktuell">aktuell</span>'
 }
 
-/** Eine Checkpoint-Zeile der Detailansicht-Kette. */
-function checkpointZeile(cp) {
-  const lin = cp.lineage ?? {}
-  const wm = cp.wirkungsmarke ?? {}
-  const aufgabe = lin.beschreibung ?? ''
-  const status = lin.transportStatus ?? wm.art ?? ''
-  const executor = lin.executor ?? ''
-  const ergebnis = wm.ergebnis ?? ''
-  return `<tr>
-    <td>${cp.sequenz}</td>
-    <td>${cp.zeitstempel ? escapeHtml(cp.zeitstempel) : '<span class="unbekannt">Zeit unbekannt</span>'}</td>
-    <td>${statusZelle(cp)}</td>
-    <td>${escapeHtml(cp.typ)}</td>
-    <td>${escapeHtml(lin.art ?? '')}</td>
-    <td>${escapeHtml(lin.erzeugungsart ?? '')}</td>
-    <td>${escapeHtml(lin.artefaktId ?? '')}</td>
-    <td>${escapeHtml(lin.entscheidung ?? '')}</td>
-    <td>${lin.beziehtSichAuf ? escapeHtml(`sequenz ${lin.beziehtSichAuf.sequenz}`) : ''}</td>
-    <td>${staleZelle(cp)}</td>
-    <td>${escapeHtml(aufgabe)}</td>
-    <td>${escapeHtml(status)}</td>
-    <td>${escapeHtml(executor)}</td>
-    <td>${escapeHtml(ergebnis)}</td>
-  </tr>`
-}
-
-/** Wiederaufnahme-Bedienung ist nur für einen Lauf sinnvoll, dessen letzter Zustand entweder auf eine offene Klärung oder auf einen Fehlschlag zeigt (D-F10-1). @param laufStatus - der von stelleLaufstatusFest gelieferte LaufStatus @returns true, wenn eine Wiederaufnahme angeboten wird */
-function darfWiederaufnehmen(laufStatus) {
-  if (laufStatus?.status === 'KLAERUNG_ERFORDERLICH') return true
-  if (laufStatus?.status !== 'ABGESCHLOSSEN') return false
-  return laufStatus.ergebnis === 'FEHLGESCHLAGEN' || laufStatus.ergebnis === 'VERWEIGERT'
-}
-
-/** Zeigt die Kopfdaten-Zeile aus GET /api/laeufe — die volle Checkpoint-Tabelle liegt in der Detailansicht (GET /api/laeufe/<laufId>). F29 WS-2b: eigene Karte (.card) statt einer bloßen, unumrandeten Section — Muster #workboard-detail. */
-function laufAbschnitt(lauf) {
-  const wiederaufnahmeButton = darfWiederaufnehmen(lauf.laufStatus)
-    ? `<button class="btn wiederaufnahme-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Wiederaufnahme starten</button>`
-    : ''
-  const detailsButton = `<button class="btn details-btn" data-lauf-id="${escapeHtml(lauf.laufId)}">Details</button>`
-
-  return `<section class="card lauf">
-    <h2>${escapeHtml(lauf.laufId)} ${detailsButton} ${wiederaufnahmeButton}</h2>
-    <table class="lauf-kopfdaten">
-      <tbody>
-        <tr><th>Status</th><td>${escapeHtml(lauf.laufStatus?.status ?? '')}</td></tr>
-        <tr><th>Ergebnis</th><td>${escapeHtml(lauf.ergebnis ?? '')}</td></tr>
-        <tr><th>Zeitpunkt</th><td>${lauf.zeitpunkt ? escapeHtml(lauf.zeitpunkt) : '<span class="unbekannt">Zeit unbekannt</span>'}</td></tr>
-        <tr><th>Checkpoints</th><td>${lauf.anzahlCheckpoints}</td></tr>
-        <tr><th>Kettenintegrität</th><td>${lauf.kettenintegritaet ? '<span class="badge ok">Ja</span>' : '<span class="badge fehler">Nein</span>'}</td></tr>
-      </tbody>
-    </table>
-  </section>`
-}
-
-/** Rendert die Laufliste aus dem Zustands-Aggregat (F20 WS-2) — Abnehmer des einen Poll-Timers in zustand.js, kein eigener fetch() mehr. @param laeufe - zustand.laeufe aus GET /api/zustand, oder null bei defekter Quelle (siehe zustand.js/leitstand-server.mjs) */
-function renderLaeufe(laeufe) {
-  const container = document.getElementById('laeufe')
-  if (laeufe === null) {
-    container.innerHTML = '<p class="unbekannt">Läufe nicht verfügbar (Quelle im Aggregat defekt).</p>'
-    return
+/**
+ * Schreibt Laufliste und Startfehler aus dem Zustands-Aggregat, jeweils nur bei geändertem HTML.
+ * Ändert sich kenntnisgenommen des offenen Laufs, wird dessen Notiz neu gezeichnet.
+ * @param zustand - Aggregat aus GET /api/zustand
+ */
+function renderAusfuehrungen(zustand) {
+  // Bei defekter Quelle (null) bleibt der letzte bekannte Stand — sonst erschiene „Kenntnisnahme“ wieder.
+  if (Array.isArray(zustand.laeufe)) letzteLaeufe = zustand.laeufe
+  const liste = renderLaufListe(zustand.laeufe, zustand.aktiverLauf)
+  if (liste !== letzteListeHtml) {
+    letzteListeHtml = liste
+    document.getElementById('laeufe').innerHTML = liste
   }
-  container.innerHTML = laeufe.length === 0
-    ? '<p class="leer">Keine Läufe unter kontrollzustand/ gefunden.</p>'
-    : laeufe.map(laufAbschnitt).join('')
-}
-
-function startfehlerZeile(eintrag) {
-  return `<p class="startfehler-eintrag"><code>${escapeHtml(eintrag.zeitstempel)}</code>
-    <strong>${escapeHtml(eintrag.laufId)}</strong>: ${escapeHtml(eintrag.fehler)}</p>`
-}
-
-/** Rendert die Startfehler-Projektion aus dem Zustands-Aggregat — flüchtig, geht bei Serverneustart verloren. @param startfehler - zustand.startfehler aus GET /api/zustand, oder null bei defekter Quelle */
-function renderStartfehler(startfehler) {
-  const container = document.getElementById('startfehler')
-  if (startfehler === null) {
-    container.innerHTML = '<p class="unbekannt">Startfehler nicht verfügbar (Quelle im Aggregat defekt).</p>'
-    return
+  const startfehler = renderStartfehlerListe(zustand.startfehler)
+  if (startfehler !== letzteStartfehlerHtml) {
+    letzteStartfehlerHtml = startfehler
+    document.getElementById('startfehler').innerHTML = startfehler
   }
-  container.innerHTML = startfehler.length === 0
-    ? '<p class="leer">Keine Startfehler.</p>'
-    : startfehler.map(startfehlerZeile).join('')
+  if (aktuellesDetail !== null && laufendeDialogBedienung === null && kenntnisAusAggregat(aktuellesDetail.laufId) !== aktuellesDetail.kenntnisgenommen) {
+    zeichneLaufDetail(aktuellesDetail.laufId, aktuellesDetail.detail, aktuellesDetail.geladenAm)
+  }
 }
 
-/** Klick-Delegation für "Wiederaufnahme starten": lädt GET /api/laeufe/<laufId>, übergibt die Vorbelegung an die Projekt-View und navigiert dorthin (AK1: Wiederaufnahme bleibt real unverändert, jetzt view-übergreifend). */
-function initWiederaufnahmeBedienung() {
-  document.getElementById('laeufe').addEventListener('click', async (ereignis) => {
-    const button = ereignis.target.closest('.wiederaufnahme-btn')
-    if (!button) return
-    const alterLaufId = button.dataset.laufId
-    // F44 WS-1a (F-860): Projekt des Laufs festhalten, bevor gewartet wird (siehe wendeWiederaufnahmeAn).
-    const projektId = holeAktivesProjekt().id
-    zeigeVorbelegungsFehler('')
-
-    let detail
-    try {
-      const antwort = await holeLaufDetail(alterLaufId)
-      if (!antwort.ok) {
-        const koerper = await antwort.json().catch(() => ({}))
-        zeigeVorbelegungsFehler(`Vorbelegung fehlgeschlagen (${antwort.status}): ${koerper.grund ?? 'unbekannter Fehler'}`)
-        return
-      }
-      detail = await antwort.json()
-    } catch (fehler) {
-      zeigeVorbelegungsFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
-      return
-    }
-
-    if (holeAktivesProjekt().id !== projektId) return
-    navigiere('#/projekt')
-    await wendeWiederaufnahmeAn(detail, alterLaufId, projektId)
-    document.getElementById('start-starten').scrollIntoView({ behavior: 'smooth', block: 'center' })
-  })
+/** @param laufId - Kennung @returns kenntnisgenommen laut letztem Aggregat (false, solange unbekannt) */
+function kenntnisAusAggregat(laufId) {
+  return letzteLaeufe?.find((l) => l.laufId === laufId)?.kenntnisgenommen === true
 }
 
-// ─── Lauf-Detailansicht (GET /api/laeufe/<laufId>, Route `#/runs/<laufId>`) ──
+// ─── Lauf-Detail als Seite ──────────────────────────────────────────────────
 
-/** laufId des aktuell im Detail-Panel angezeigten Laufs, oder null. */
+/** laufId des als Seite angezeigten Laufs, oder null. */
 let gewaehlteLaufId = null
 
-function unbekanntStatusText(status, texte) {
-  return texte[status] ?? status
-}
+/** Fortlaufende Nummer je ladeLaufDetail-Aufruf (Überholschutz). */
+let ladeZaehler = 0
 
-function renderAuftrag(auftrag) {
-  if (auftrag.status === 'ok') {
-    return `<div class="detail-block"><h3>Auftrag: ${escapeHtml(auftrag.titel ?? '')}</h3><p>${escapeHtml(auftrag.auftragstext ?? '')}</p></div>`
-  }
-  const texte = {
-    kein_auftragsbezug: 'Kein Auftragsbezug (Bestandslauf ohne Auftrag).',
-    kontextpaket_fehlt: 'Auftragsbezug nicht ermittelbar — Kontextpaket fehlt.',
-    auftrag_fehlt: `Auftragsreferenz vorhanden ('${auftrag.auftragId ?? ''}'), Auftragsartefakt fehlt.`,
-  }
-  return `<div class="detail-block"><h3>Auftrag</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(auftrag.status, texte))}</p></div>`
-}
+/** Das zuletzt gezeichnete Detail: { laufId, detail, lage, kenntnisgenommen, kennzeichen, geladenAm }, oder null. */
+let aktuellesDetail = null
 
-/** F-828: Hinweis bei aktivem Lauf — das Detail wird nur beim Öffnen geladen (F-363), nicht gepollt. */
-const LAEUFT_HINWEIS = 'Der Lauf läuft noch (Stand beim Öffnen; nach Laufende das Detail erneut öffnen).'
+/** Generation des angezeigten Laufs — zählt bei jedem Lauf-, Routen- und Projektwechsel hoch; eine Antwort aus einer älteren Generation wird verworfen (auch bei A → B → A). */
+let laufGeneration = 0
 
-/**
- * Klärzustand unverfälscht sichtbar (F13 WS-1 AK2). F-828: ein aktiver Lauf (detail.aktiv, D13) steht
- * bis zur Terminalmarke auf KLAERUNG_ERFORDERLICH („RUN_PREPARED ohne Terminalartefakt“) — das ist
- * keine Klärungslage, angezeigt wird „läuft“ (nur ohne Terminalmarke, also nicht bei ABGESCHLOSSEN).
- * @param laufStatus - detail.laufStatus
- * @param verweigertDaten - detail.verweigertDaten (null außer bei ABGESCHLOSSEN/VERWEIGERT)
- * @param aktiv - detail.aktiv
- * @returns HTML
- */
-export function renderLaufStatus(laufStatus, verweigertDaten, aktiv = false) {
-  if (aktiv === true && laufStatus.status !== 'ABGESCHLOSSEN') return `<div class="detail-block"><h3>Klärzustand: läuft</h3><p>${LAEUFT_HINWEIS} Der Klärzustand steht erst danach fest.</p></div>`
-  if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
-    return `<div class="detail-block"><h3>Klärzustand: Klärung erforderlich</h3><table class="lauf-kopfdaten"><tbody>
-      <tr><th>blockerId</th><td><code>${escapeHtml(laufStatus.blockerId)}</code></td></tr>
-      <tr><th>Grund</th><td>${escapeHtml(laufStatus.grund)}</td></tr>
-      <tr><th>Auflösungsbedingung</th><td>${escapeHtml(laufStatus.aufloesungsbedingung)}</td></tr>
-      <tr><th>Resume-Ziel</th><td>${escapeHtml(laufStatus.resumeZiel)}</td></tr>
-      <tr><th>Offene run_prepared-Sequenzen</th><td>${laufStatus.evidenz.offeneRunPreparedSequenzen.length}</td></tr>
-    </tbody></table></div>`
-  }
-  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT') {
-    const vd = verweigertDaten ?? { bypassVerdachtAnzahl: 'unbekannt', isError: 'unbekannt', nonExecutionKind: 'unbekannt' }
-    return `<div class="detail-block"><h3>Klärzustand: Abgeschlossen (VERWEIGERT)</h3><table class="lauf-kopfdaten"><tbody>
-      <tr><th>bypass_verdacht_anzahl</th><td>${escapeHtml(String(vd.bypassVerdachtAnzahl))}</td></tr>
-      <tr><th>is_error</th><td>${escapeHtml(String(vd.isError))}</td></tr>
-      <tr><th>non_execution_kind</th><td>${escapeHtml(String(vd.nonExecutionKind))}</td></tr>
-    </tbody></table></div>`
-  }
-  const statusText = laufStatus.status === 'ABGESCHLOSSEN' ? `${laufStatus.status} (${laufStatus.ergebnis})` : laufStatus.status
-  return `<div class="detail-block"><h3>Klärzustand</h3><p>${escapeHtml(statusText)}</p></div>`
-}
+/** laufIds, für die in dieser Sitzung ein Abbruch angefordert wurde, solange der Server sie noch als aktiv meldet. */
+const abbruchAngefordert = new Set()
 
-function renderKontextpaket(kontextpaket) {
-  if (kontextpaket.status !== 'ok') {
-    return '<div class="detail-block"><h3>Kontextpaket</h3><p class="unbekannt">Kein Kontextpaket vorhanden.</p></div>'
-  }
-  const elemente =
-    kontextpaket.elemente.length === 0
-      ? '<p class="leer">Keine Elemente.</p>'
-      : `<ul>${kontextpaket.elemente.map((e) => `<li><code>${escapeHtml(e.pfad)}</code>${e.zitierter_bereich ? ` (${escapeHtml(e.zitierter_bereich)})` : ''}</li>`).join('')}</ul>`
-  const ausgeschlossen =
-    kontextpaket.ausgeschlossen.length === 0
-      ? ''
-      : `<details><summary>${kontextpaket.ausgeschlossen.length} ausgeschlossen</summary><ul>${kontextpaket.ausgeschlossen.map((a) => `<li><code>${escapeHtml(a.pfad)}</code> (${escapeHtml(a.grund)})</li>`).join('')}</ul></details>`
-  return `<div class="detail-block"><h3>Kontextpaket (Rolle: ${escapeHtml(kontextpaket.rolle ?? '')})</h3>${elemente}${ausgeschlossen}</div>`
-}
+/** F-926-Muster: true, solange seit dem letzten Betreten von `#/ausfuehrungen` keine andere Route kam. */
+let listeZuletzt = false
 
-/** Worker und deklariertes Modell vor dem beobachteten Modell (F16 AK12) — beide Zeilen nennen ihren Rang ausdrücklich. F36 WS-4 (AK8): Zeile „Beobachtung“ (geladen/aufgerufen), ohne Feld „nicht beobachtet“. @param laufakte - detail.laufakte */
-function renderLaufakte(laufakte) {
-  if (laufakte.status !== 'ok') {
-    return '<div class="detail-block"><h3>Laufakte</h3><p class="unbekannt">Keine Laufakte vorhanden.</p></div>'
-  }
-  return `<div class="detail-block"><h3>Laufakte</h3><table class="lauf-kopfdaten"><tbody>
-    <tr><th>Worker</th><td>${laufakte.worker ? escapeHtml(laufakte.worker) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
-    <tr><th>Modell (deklariert)</th><td>${laufakte.modellDeklariert ? escapeHtml(laufakte.modellDeklariert) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
-    <tr><th>Modell (beobachtet)</th><td>${laufakte.modellBeobachtet ? escapeHtml(laufakte.modellBeobachtet) : '<span class="unbekannt">unbekannt</span>'}</td></tr>
-    <tr><th>Beobachtungsbasis vollständig</th><td>${laufakte.beobachtungsbasisVollstaendig ? 'Ja' : 'Nein'}</td></tr>
-    <tr><th>Arbeitsverzeichnis</th><td><code>${escapeHtml(laufakte.arbeitsverzeichnisPfad ?? '')}</code></td></tr>
-    <tr><th>Beobachtung</th><td class="lauf-beobachtung">${laufakte.beobachtung ? escapeHtml(formatiereBeobachtung(laufakte.beobachtung)) : '<span class="unbekannt">nicht beobachtet</span>'}</td></tr>
-  </tbody></table></div>`
-}
+/** true, wenn das offene Detail direkt aus der Liste geöffnet wurde („← Alle Ausführungen“ per history.back()). */
+let detailAusListe = false
 
-function renderRohstrom(rohstrom) {
-  const texte = {
-    hash_weicht_ab: 'Hash weicht ab — Inhalt wird nicht angezeigt.',
-    nicht_verfuegbar: 'Rohstrom nicht verfügbar (Datei fehlt oder nicht lesbar).',
-    nicht_parsebar: 'Rohstrom ist kein gültiges JSON.',
-    laufakte_fehlt: 'Keine Laufakte — kein Rohstrom-Bezug.',
-  }
-  if (rohstrom.status !== 'ok') {
-    return `<div class="detail-block"><h3>Rohstrom</h3><p class="unbekannt">${escapeHtml(unbekanntStatusText(rohstrom.status, texte))}</p></div>`
-  }
-  const ergebnisobjekt = rohstrom.ergebnisobjekt
-  const permissionZeile =
-    ergebnisobjekt.status === 'ok'
-      ? `<tr><th>Permission Denials</th><td>${ergebnisobjekt.permissionDenials.anzahl}${ergebnisobjekt.permissionDenials.toolNamen.length > 0 ? ` (${ergebnisobjekt.permissionDenials.toolNamen.map(escapeHtml).join(', ')})` : ''}</td></tr>`
-      : '<tr><th>Permission Denials</th><td><span class="unbekannt">unbekannt (kein Ergebnisobjekt)</span></td></tr>'
-  return `<div class="detail-block"><h3>Rohstrom</h3><table class="lauf-kopfdaten"><tbody>
-    <tr><th>Exit-Code</th><td>${rohstrom.exitCode ?? (rohstrom.ergebnisZeileVorProzessende === true ? '— (bei der Ergebniszeile vor Prozessende aufgelöst)' : '<span class="unbekannt">unbekannt</span>')}</td></tr>
-    <tr><th>Startfehler</th><td>${rohstrom.startfehler ? escapeHtml(JSON.stringify(rohstrom.startfehler)) : '—'}</td></tr>
-    ${permissionZeile}
-    <tr><th>stdout-Länge</th><td>${rohstrom.stdoutLaenge ?? '—'}</td></tr>
-    <tr><th>stderr-Länge</th><td>${rohstrom.stderrLaenge ?? '—'}</td></tr>
-  </tbody></table></div>`
-}
-
-/** Abbrechen-Button, nur bei detail.aktiv === true (D13). @param aktiv - detail.aktiv @param laufId - Lauf-Kennung */
-function renderAbbrechenBlock(aktiv, laufId) {
-  if (!aktiv) return ''
-  return `<div class="detail-block">
-    <button id="abbrechen-btn" class="btn" data-lauf-id="${escapeHtml(laufId)}">Abbrechen</button>
-    <p id="abbrechen-fehler" class="fehler" hidden></p>
-  </div>`
-}
-
-const CHECKPOINT_TABELLE_KOPF = `<tr>
-  <th>Sequenz</th><th>Zeit</th><th>Status</th><th>Typ</th><th>Lineage-Art</th><th>Erzeugungsart</th>
-  <th>Artefakt-ID</th><th>Entscheidung</th><th>Bezieht sich auf</th><th>Stale</th><th>Aufgabe</th><th>Transport-Status</th><th>Executor</th><th>Ergebnis</th>
-</tr>`
-
-function renderCheckpoints(checkpoints) {
-  if (checkpoints.length === 0) return '<p class="leer">Keine Checkpoints.</p>'
-  return `<table class="lauf-kopfdaten"><thead>${CHECKPOINT_TABELLE_KOPF}</thead><tbody>${checkpoints.map(checkpointZeile).join('')}</tbody></table>`
-}
-
-/** true, wenn ein VERWEIGERT-Lauf einen Bypass-Verdacht des Modells trägt (E-186-Fall). @param verweigertDaten - detail.verweigertDaten, oder null @returns true nur bei einer echten, positiven bypassVerdachtAnzahl */
-function hatBypassVerdacht(verweigertDaten) {
-  return typeof verweigertDaten?.bypassVerdachtAnzahl === 'number' && verweigertDaten.bypassVerdachtAnzahl > 0
+/** Zeigt bzw. verbirgt die Seite (Kopf, Register und Workflow-Seite verschwinden über die Klasse an #view-runs). @param offen - true: Detail als Seite */
+function zeigeLaufSeite(offen) {
+  document.getElementById('lauf-detail').hidden = !offen
+  document.getElementById('view-runs').classList.toggle('lauf-seite-offen', offen)
 }
 
 /**
- * Baut den Entscheidungs-Block der Detailansicht — art:'terminal'/'antwort'/'kenntnisnahme' je nach
- * Klärfall, sonst ein expliziter Leerzustandstext. F-828: solange der Lauf aktiv ist (auch im Nachlauf
- * mit schon geschriebener Terminalmarke, etwa während des Prüfschritts) keine Maske 'terminal'/
- * 'kenntnisnahme' — der Server lehnt beide dort mit 400 ab (F14 WS-4 AK8). 'antwort' (Bypass-Fall)
- * bleibt, der Server erlaubt sie. Das Detail wird nicht gepollt (F-363), daher der Hinweis zum Neuladen.
- * @param laufStatus - detail.laufStatus
- * @param verweigertDaten - detail.verweigertDaten
- * @param aktiv - detail.aktiv
- * @returns HTML
+ * Meldung unter der Notiz (Text, nie HTML), keine Live-Region — wo nötig, bekommt sie danach den Fokus.
+ * @param text - Text oder null zum Ausblenden
+ * @param art - 'fehler' (Vorgabe) oder 'erfolg'
  */
-export function renderEntscheidungBlock(laufStatus, verweigertDaten, aktiv = false) {
-  const antwortFall = laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT' && hatBypassVerdacht(verweigertDaten)
-  if (aktiv === true && !antwortFall) return `<p class="leer">${LAEUFT_HINWEIS} Eine Entscheidung ist erst danach möglich.</p>`
-  if (laufStatus.status === 'KLAERUNG_ERFORDERLICH') {
-    return `<div class="detail-block">
-      <h3>Entscheidung: Klärung auflösen</h3>
-      <label for="entscheidung-terminal-ergebnis">Ergebnis</label>
-      <select id="entscheidung-terminal-ergebnis">
-        <option value="ERFOLGREICH">ERFOLGREICH</option>
-        <option value="VERWEIGERT">VERWEIGERT</option>
-        <option value="FEHLGESCHLAGEN">FEHLGESCHLAGEN</option>
-      </select>
-      <label for="entscheidung-terminal-begruendung">Begründung (Pflichtfeld)</label>
-      <textarea id="entscheidung-terminal-begruendung" rows="3"></textarea>
-      <div><button id="entscheidung-terminal-speichern" class="btn btn-primary">Entscheidung speichern</button></div>
-      <p id="entscheidung-terminal-erfolg" class="erfolg" hidden></p>
-      <p id="entscheidung-terminal-fehler" class="fehler" hidden></p>
-    </div>`
-  }
-  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'VERWEIGERT' && hatBypassVerdacht(verweigertDaten)) {
-    return `<div class="detail-block">
-      <h3>Entscheidung: Antwort auf Rückfrage</h3>
-      <label for="entscheidung-antwort-text">Antwort</label>
-      <textarea id="entscheidung-antwort-text" rows="3"></textarea>
-      <label for="entscheidung-antwort-einstufung">Einstufung</label>
-      <select id="entscheidung-antwort-einstufung">
-        <option value="ERFOLGREICH">ERFOLGREICH</option>
-        <option value="VERWEIGERT">VERWEIGERT</option>
-      </select>
-      <div><button id="entscheidung-antwort-speichern" class="btn btn-primary">Antwort speichern</button></div>
-      <p id="entscheidung-antwort-erfolg" class="erfolg" hidden></p>
-      <p id="entscheidung-antwort-fehler" class="fehler" hidden></p>
-    </div>`
-  }
-  if (laufStatus.status === 'ABGESCHLOSSEN' && (laufStatus.ergebnis === 'FEHLGESCHLAGEN' || (laufStatus.ergebnis === 'VERWEIGERT' && !hatBypassVerdacht(verweigertDaten)))) {
-    return `<div class="detail-block">
-      <h3>Entscheidung: Kenntnisnahme</h3>
-      <label for="entscheidung-kenntnisnahme-begruendung">Begründung (Pflichtfeld)</label>
-      <textarea id="entscheidung-kenntnisnahme-begruendung" rows="3"></textarea>
-      <div><button id="entscheidung-kenntnisnahme-speichern" class="btn btn-primary">Kenntnisnahme speichern</button></div>
-      <p id="entscheidung-kenntnisnahme-erfolg" class="erfolg" hidden></p>
-      <p id="entscheidung-kenntnisnahme-fehler" class="fehler" hidden></p>
-    </div>`
-  }
-  return '<p class="leer">Keine offene Entscheidung für diesen Lauf.</p>'
+function zeigeMeldung(text, art = 'fehler') {
+  const anzeige = document.getElementById('lauf-meldung')
+  anzeige.hidden = text === null
+  if (text === null) return
+  anzeige.className = art
+  anzeige.textContent = text
 }
 
-/** Sendet eine Entscheidung über POST /api/entscheidungen und zeigt Erfolg/Fehler an — ein 400 wird als Klartext gezeigt, kein verschluckter Fehler. */
-async function sendeEntscheidung(koerper, laufId, erfolgId, fehlerId) {
-  document.getElementById(erfolgId).hidden = true
-  document.getElementById(fehlerId).hidden = true
-  try {
-    const antwort = await sendeEntscheidungAnfrage(koerper)
-    if (!antwort.ok) {
-      const rueckgabe = await antwort.json().catch(() => ({}))
-      const anzeige = document.getElementById(fehlerId)
-      anzeige.textContent = `${antwort.status}: ${rueckgabe.grund ?? 'unbekannter Fehler'}`
-      anzeige.hidden = false
-      return
-    }
-    const anzeige = document.getElementById(erfolgId)
-    anzeige.textContent = 'Entscheidung gespeichert.'
-    anzeige.hidden = false
-    await ladeLaufDetail(laufId)
-    await pollJetzt()
-  } catch (fehler) {
-    const anzeige = document.getElementById(fehlerId)
-    anzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
-    anzeige.hidden = false
+/**
+ * Fehlerzustand des Details (404, 500, Netz): nichts vom alten Stand bleibt bedienbar — Notiz,
+ * Timeline, Einordnung und Aufklappbereiche werden geleert, ein offener Dialog schließt.
+ * @param text - Fehlertext (Servergrund bzw. Netzfehler)
+ */
+function zeigeLaufNichtLadbar(text) {
+  for (const id of ['lauf-notiz', 'lauf-timeline', 'lauf-einordnung', 'lauf-detail-status', 'lauf-auftrag-inhalt', 'lauf-herkunft-inhalt', 'lauf-protokoll-inhalt', 'lauf-faehigkeiten-inhalt']) {
+    document.getElementById(id).innerHTML = ''
   }
+  document.getElementById('lauf-detail-beschreibung').textContent = ''
+  document.getElementById('lauf-aufklapp').hidden = true
+  // Das leere Gerüst (Überschrift, Spalte „Einordnung“) verschwindet über eine Klasse, nicht über hidden (F-622).
+  document.getElementById('lauf-detail').classList.add('lauf-nicht-ladbar')
+  aktuellesDetail = null
+  zeigeMeldung(null)
+  if (laufendeDialogBedienung === null) schliesseDialog()
+  const anzeige = document.getElementById('lauf-detail-fehler')
+  anzeige.innerHTML = `<strong>${tHtml('lauf.fehler.titel')}</strong><p>${escapeHtml(text)}</p>`
+  anzeige.hidden = false
+  // Keine Live-Region: ein Screenreader liest den Fehler über den Fokus.
+  anzeige.focus()
 }
 
-/** Klick-Delegation für den Entscheidungs-Block — wird bei jedem ladeLaufDetail()-Aufruf komplett neu gerendert. */
-function initEntscheidungBedienung() {
-  document.getElementById('entscheidung-block').addEventListener('click', (ereignis) => {
-    if (ereignis.target.id === 'entscheidung-terminal-speichern') {
-      void sendeEntscheidung(
-        {
-          art: 'terminal',
-          laufId: gewaehlteLaufId,
-          ergebnis: document.getElementById('entscheidung-terminal-ergebnis').value,
-          begruendung: document.getElementById('entscheidung-terminal-begruendung').value,
-        },
-        gewaehlteLaufId,
-        'entscheidung-terminal-erfolg',
-        'entscheidung-terminal-fehler'
-      )
-      return
-    }
-    if (ereignis.target.id === 'entscheidung-antwort-speichern') {
-      void sendeEntscheidung(
-        {
-          art: 'antwort',
-          laufId: gewaehlteLaufId,
-          antwort: document.getElementById('entscheidung-antwort-text').value,
-          einstufung: document.getElementById('entscheidung-antwort-einstufung').value,
-        },
-        gewaehlteLaufId,
-        'entscheidung-antwort-erfolg',
-        'entscheidung-antwort-fehler'
-      )
-      return
-    }
-    if (ereignis.target.id === 'entscheidung-kenntnisnahme-speichern') {
-      void sendeEntscheidung(
-        {
-          art: 'kenntnisnahme',
-          laufId: gewaehlteLaufId,
-          begruendung: document.getElementById('entscheidung-kenntnisnahme-begruendung').value,
-        },
-        gewaehlteLaufId,
-        'entscheidung-kenntnisnahme-erfolg',
-        'entscheidung-kenntnisnahme-fehler'
-      )
-    }
+/**
+ * Zeichnet die Seite aus einem geladenen Detail. Ist ein Dialog offen und hat sich der Stand
+ * (Kennzeichen) geändert, schließt er mit „Der Stand hat sich geändert“ (kein Nachladen in den
+ * offenen Dialog). Lag der Fokus in der Notiz, geht er auf denselben Knopf bzw. den Titel.
+ * @param laufId - Kennung @param detail - Antwort von GET /api/laeufe/<laufId> @param geladenAm - Zeitpunkt der Antwort (ISO)
+ */
+function zeichneLaufDetail(laufId, detail, geladenAm) {
+  const lage = ermittleLaufLage(detail.laufStatus, detail.verweigertDaten, detail.aktiv)
+  const kenntnisgenommen = kenntnisAusAggregat(laufId)
+  const ls = detail.laufStatus ?? {}
+  const kennzeichen = `${laufId}|${lage}|${ls.status}|${ls.ergebnis ?? '-'}|${ls.blockerId ?? '-'}|${detail.aktiv === true}|${detail.verweigertDaten?.bypassVerdachtAnzahl ?? '-'}|${kenntnisgenommen}`
+  const aktiv = detail.aktiv === true
+  if (!aktiv) abbruchAngefordert.delete(laufId)
+  aktuellesDetail = { laufId, detail, lage, kenntnisgenommen, kennzeichen, geladenAm, aktiv, abbruchAngefordert: abbruchAngefordert.has(laufId) }
+
+  document.getElementById('lauf-detail-fehler').hidden = true
+  document.getElementById('lauf-detail').classList.remove('lauf-nicht-ladbar')
+  document.getElementById('lauf-detail-titel').textContent = laufTitel(detail.auftrag?.status === 'ok' ? detail.auftrag.titel : titelAusListe(laufId), laufId)
+  document.getElementById('lauf-detail-beschreibung').textContent = t(`lauf.beschreibung.${lage}`)
+  document.getElementById('lauf-detail-status').innerHTML = laufStatusBadge(detail.laufStatus, detail.aktiv)
+
+  const notiz = document.getElementById('lauf-notiz')
+  const fokusAktion = notiz.contains(document.activeElement) ? document.activeElement?.dataset?.aktion : undefined
+  notiz.innerHTML = renderLaufNotiz(lage, {
+    laufStatus: detail.laufStatus,
+    verweigertDaten: detail.verweigertDaten ?? null,
+    rohstrom: detail.rohstrom,
+    kenntnisgenommen,
+    fortsetzung: darfFortsetzen(detail.laufStatus, lage, aktiv),
+    geladenAm,
+    aktiv,
+    abbruchAngefordert: aktuellesDetail.abbruchAngefordert,
   })
+  if (fokusAktion !== undefined) (notiz.querySelector(`.lauf-aktion[data-aktion="${fokusAktion}"]`) ?? document.getElementById('lauf-detail-titel')).focus()
+
+  document.getElementById('lauf-timeline').innerHTML = renderWasPassiertIst(detail.checkpoints, ls.status === 'ABGESCHLOSSEN' && ls.ergebnis === 'ERFOLGREICH')
+  document.getElementById('lauf-einordnung').innerHTML = renderEinordnung(detail)
+  const inhalte = renderAufklappInhalte(detail, letzteLaeufe?.find((l) => l.laufId === laufId) ?? null)
+  document.getElementById('lauf-auftrag-inhalt').innerHTML = inhalte.auftrag
+  document.getElementById('lauf-herkunft-inhalt').innerHTML = inhalte.herkunft
+  document.getElementById('lauf-protokoll-inhalt').innerHTML = inhalte.protokoll
+  document.getElementById('lauf-faehigkeiten-inhalt').innerHTML = inhalte.faehigkeiten
+  document.getElementById('lauf-aufklapp').hidden = false
+
+  if (offenerDialog !== null && laufendeDialogBedienung === null && (offenerDialog.laufId !== laufId || offenerDialog.kennzeichen !== kennzeichen)) {
+    schliesseDialog()
+    zeigeMeldung(t('lauf.dialog.standGeaendert'))
+    document.getElementById('lauf-meldung').focus()
+  }
+}
+
+/** @param laufId - Kennung @returns Auftragstitel aus dem letzten Aggregat, oder null */
+function titelAusListe(laufId) {
+  return letzteLaeufe?.find((l) => l.laufId === laufId)?.auftragsbezug?.titel ?? null
 }
 
 /**
- * Lädt und rendert den Detailendpunkt für einen Lauf — aufgerufen von der
- * Route `#/runs/<laufId>` (AK2), nicht Teil des 2-Sekunden-Polls. Ein
- * Fehlschlag (Netzwerk, 404 bei zwischenzeitlich verschwundenem Lauf) zeigt
- * Klartext im Panel statt eines leeren Containers.
+ * Lädt GET /api/laeufe/<laufId> und zeichnet die Seite — beim Öffnen der Route und über
+ * „Aktualisieren“, nicht im Poll (F-363). Nur der jüngste Aufruf schreibt; eine Antwort nach einem
+ * Lauf- oder Projektwechsel wird verworfen (F-860).
  * @param laufId - Lauf-Kennung
+ * @param oeffnen - true beim Öffnen (Ladezustand, Fokus auf den Titel), false beim Neuladen
  */
-export async function ladeLaufDetail(laufId) {
+export async function ladeLaufDetail(laufId, oeffnen = true) {
+  if (gewaehlteLaufId !== null && gewaehlteLaufId !== laufId) raeumeLaufZustand()
   gewaehlteLaufId = laufId
-  const abschnitt = document.getElementById('lauf-detail')
-  const fehleranzeige = document.getElementById('lauf-detail-fehler')
-  const inhalt = document.getElementById('lauf-detail-inhalt')
+  ladeZaehler += 1
+  const meineNummer = ladeZaehler
+  const projektBeimStart = holeAktivesProjekt().id
+  const istUeberholt = () => gewaehlteLaufId !== laufId || ladeZaehler !== meineNummer || holeAktivesProjekt().id !== projektBeimStart
 
-  const entscheidungBlock = document.getElementById('entscheidung-block')
-  document.getElementById('lauf-detail-titel').textContent = laufId
-  fehleranzeige.hidden = true
-  abschnitt.hidden = false
-  inhalt.innerHTML = '<p class="leer">Lädt…</p>'
-  entscheidungBlock.innerHTML = ''
-  abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  zeigeLaufSeite(true)
+  if (oeffnen) {
+    const titel = document.getElementById('lauf-detail-titel')
+    titel.textContent = laufTitel(titelAusListe(laufId), laufId)
+    document.getElementById('lauf-detail-fehler').hidden = true
+    document.getElementById('lauf-detail').classList.remove('lauf-nicht-ladbar')
+    document.getElementById('lauf-timeline').innerHTML = `<p class="subtle">${tHtml('ablauf.laedt')}</p>`
+    for (const id of ['lauf-notiz', 'lauf-einordnung', 'lauf-detail-status']) document.getElementById(id).innerHTML = ''
+    document.getElementById('lauf-detail-beschreibung').textContent = ''
+    document.getElementById('lauf-aufklapp').hidden = true
+    zeigeMeldung(null)
+    titel.focus({ preventScroll: true })
+    document.getElementById('lauf-detail').scrollIntoView({ block: 'start' })
+  }
 
   try {
     const antwort = await holeLaufDetail(laufId)
-    // Race-Schutz: ein schnellerer zweiter Klick auf einen ANDEREN Lauf hat gewaehlteLaufId
-    // inzwischen überschrieben — diese, spätere Antwort gehört nicht mehr zum sichtbaren Panel.
-    if (gewaehlteLaufId !== laufId) return
+    if (istUeberholt()) return
+    const koerper = await antwort.json().catch(() => ({}))
+    if (istUeberholt()) return
     if (!antwort.ok) {
-      const koerper = await antwort.json().catch(() => ({}))
-      if (gewaehlteLaufId !== laufId) return
-      inhalt.innerHTML = ''
-      fehleranzeige.textContent = `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`
-      fehleranzeige.hidden = false
+      zeigeLaufNichtLadbar(`${antwort.status}: ${koerper.grund ?? t('lauf.fehler.unbekannt')}`)
       return
     }
-    const detail = await antwort.json()
-    if (gewaehlteLaufId !== laufId) return
-    inhalt.innerHTML = [
-      renderAbbrechenBlock(detail.aktiv, laufId),
-      renderAuftrag(detail.auftrag),
-      renderLaufStatus(detail.laufStatus, detail.verweigertDaten, detail.aktiv),
-      renderKontextpaket(detail.kontextpaket),
-      renderLaufakte(detail.laufakte),
-      renderRohstrom(detail.rohstrom),
-      `<div class="detail-block"><h3>Checkpoint-Kette</h3>${renderCheckpoints(detail.checkpoints)}</div>`,
-    ].join('')
-    entscheidungBlock.innerHTML = renderEntscheidungBlock(detail.laufStatus, detail.verweigertDaten, detail.aktiv)
+    zeichneLaufDetail(laufId, koerper, new Date().toISOString())
   } catch (fehler) {
-    if (gewaehlteLaufId !== laufId) return
-    inhalt.innerHTML = ''
-    fehleranzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
-    fehleranzeige.hidden = false
+    if (istUeberholt()) return
+    zeigeLaufNichtLadbar(t('lauf.fehler.anfrage', { meldung: fehler.message }))
   }
 }
 
-/** Schließt das Lauf-Detail-Panel und navigiert zurück zur Liste. */
+/** Räumt Dialog, Meldung und Detailstand auf — beim Lauf-, Routen- und Projektwechsel. */
+function raeumeLaufZustand() {
+  laufGeneration += 1
+  schliesseDialog()
+  // Eine laufende Anfrage des alten Laufs sperrt den neuen nicht (ihre Antwort wird ohnehin verworfen).
+  laufendeDialogBedienung = null
+  aktuellesDetail = null
+  zeigeMeldung(null)
+}
+
+/** Schließt die Seite des Lauf-Details; Kopf und Register erscheinen wieder. */
 function schliesseLaufDetail() {
   gewaehlteLaufId = null
-  document.getElementById('lauf-detail').hidden = true
-  document.getElementById('entscheidung-block').innerHTML = ''
+  detailAusListe = false
+  zeigeLaufSeite(false)
+  raeumeLaufZustand()
+}
+
+/** F-926-Muster: Fokus auf die Zeile des zuvor offenen Laufs, ohne Zeile auf die Seitenüberschrift. @param laufId - Kennung */
+function fokussiereLaufZeile(laufId) {
+  const zeile = [...document.getElementById('laeufe').querySelectorAll('.lauf-zeile')].find((z) => z.dataset.laufId === laufId)
+  ;(zeile ?? document.getElementById('runs-titel')).focus()
+}
+
+// ─── Dialog #lauf-dialog (G6, G8, F7, G9) ───────────────────────────────────
+
+/** Der offene Dialog: null oder { art, laufId, kennzeichen } — kennzeichen ist das Kennzeichen des Details beim Öffnen. */
+let offenerDialog = null
+
+/** Die laufende Anfrage aus dem Dialog ({ laufId }) oder null — sperrt Escape, Abbrechen, Wiederöffnen und das Schließen bei Stand-Änderung, bis die Antwort da ist. */
+let laufendeDialogBedienung = null
+
+/** @returns true, solange #lauf-dialog offen ist */
+function dialogOffen() {
+  return document.getElementById('lauf-dialog').open === true
+}
+
+/** Fehlertext im Dialog (der Fokus geht auf ihn), null blendet ihn aus. @param text - Text oder null */
+function zeigeDialogMeldung(text) {
+  const anzeige = document.getElementById('lauf-dialog-meldung')
+  if (anzeige === null) return
+  anzeige.hidden = text === null
+  if (text === null) return
+  anzeige.textContent = text
+  anzeige.focus()
 }
 
 /**
- * Klick-Delegation: "Details" navigiert per Hash zu `#/runs/<laufId>` (AK2)
- * statt die Detailansicht direkt zu laden — der Router ruft ladeLaufDetail
- * über die registrierte Route auf.
- *
- * "Schließen" navigiert bewusst NICHT über `navigiere('#/runs')`: die exakte
- * Route `#/runs` ist zugleich bei workflows.js registriert (beide Views
- * schließen dort ihr eigenes Detail, siehe router.js-Kommentar zu mehreren
- * Treffern) — ein Wechsel über den Hash würde ungefragt auch ein offenes
- * Workflow-Detail samt eines dort begonnenen Reparaturentwurfs schließen
- * (QA-Pass F20 WS-1). schliesseLaufDetail() bleibt deshalb ein lokaler
- * Aufruf, der ausschließlich das Lauf-Detail betrifft — wie vor der
- * Modul-Aufteilung.
+ * Öffnet den Dialog (nativ, showModal) mit Inhalt aus dem aktuellen Detail; der Fokus liegt auf dem
+ * Pflichtfeld, beim Abbruch auf „Zurück“ (die harmlose Wahl).
+ * @param art - 'kenntnisnahme', 'terminal', 'antwort' oder 'abbrechen'
  */
-function initDetailBedienung() {
-  document.getElementById('laeufe').addEventListener('click', (ereignis) => {
-    const button = ereignis.target.closest('.details-btn')
-    if (!button) return
-    navigiere(`#/runs/${encodeURIComponent(button.dataset.laufId)}`)
-  })
-  document.getElementById('lauf-detail-schliessen').addEventListener('click', () => {
-    schliesseLaufDetail()
-  })
+function oeffneDialog(art) {
+  // Solange eine Dialog-Bedienung läuft, öffnet kein neuer Dialog (sonst wäre ein zweiter POST möglich).
+  if (aktuellesDetail === null || laufendeDialogBedienung !== null) return
+  const inhalt = renderLaufDialog(art, aktuellesDetail)
+  if (inhalt === null) return
+  const dialog = document.getElementById('lauf-dialog')
+  dialog.innerHTML = inhalt
+  offenerDialog = { art, laufId: aktuellesDetail.laufId, kennzeichen: aktuellesDetail.kennzeichen }
+  if (!dialog.open) dialog.showModal()
+  const feld = LAUF_DIALOG_FELD[art] === null ? null : document.getElementById(LAUF_DIALOG_FELD[art])
+  ;(feld ?? dialog.querySelector('.lauf-dialog-abbrechen.button'))?.focus()
 }
 
-/** Siehe initAbbrechenBedienung — zeigt den Fehler nur, wenn das Detail-Panel noch denselben Lauf zeigt. */
-function meldeAbbrechenFehler(laufId, text, button) {
-  if (gewaehlteLaufId !== laufId) {
-    console.error(`Abbruch für '${laufId}' fehlgeschlagen (Detail-Panel zeigt inzwischen einen anderen Lauf): ${text}`)
-    return
+/** Schließt den Dialog ohne Wirkung (Abbrechen, Erfolg, Lauf-, Routen- oder Projektwechsel); Escape schließt nativ. */
+function schliesseDialog() {
+  const dialog = document.getElementById('lauf-dialog')
+  offenerDialog = null
+  if (dialog.open) dialog.close()
+}
+
+/**
+ * Baut den Körper der Bedienung aus dem Dialog; eine leere Pflichtangabe meldet sich im Dialog
+ * (Fokus ins Feld). Geprüft wird „nicht leer nach trim“ — bei kenntnisnahme/terminal dieselbe Bedingung wie
+ * der Server, bei der Antwort etwas strenger (der Server prüft dort nur die Länge).
+ * @param art - Dialogart
+ * @param laufId - Kennung
+ * @returns Körper für POST /api/entscheidungen, {} für den Abbruch, oder null bei fehlender Pflichtangabe
+ */
+function baueKoerper(art, laufId) {
+  if (art === 'abbrechen') return {}
+  const feld = document.getElementById(LAUF_DIALOG_FELD[art])
+  if (feld.value.trim().length === 0) {
+    zeigeDialogMeldung(t(art === 'antwort' ? 'lauf.dialog.antwort.pflicht' : 'lauf.dialog.pflicht'))
+    feld.focus()
+    return null
   }
-  const anzeige = document.getElementById('abbrechen-fehler')
-  anzeige.textContent = text
-  anzeige.hidden = false
-  button.disabled = false
-  button.textContent = 'Abbrechen'
+  if (art === 'kenntnisnahme') return { art: 'kenntnisnahme', laufId, begruendung: feld.value }
+  if (art === 'terminal') return { art: 'terminal', laufId, ergebnis: document.getElementById('entscheidung-terminal-ergebnis').value, begruendung: feld.value }
+  return { art: 'antwort', laufId, antwort: feld.value, einstufung: document.getElementById('entscheidung-antwort-einstufung').value }
 }
 
-/** Klick-Delegation für #abbrechen-btn — POST /api/laeufe/<laufId>/abbrechen, sofortige clientseitige Rückmeldung, kein Reload des Panels (der Terminalzustand erscheint über den bestehenden Poll in der Kopfdaten-Liste). */
-function initAbbrechenBedienung() {
-  document.getElementById('lauf-detail-inhalt').addEventListener('click', async (ereignis) => {
-    const button = ereignis.target.closest('#abbrechen-btn')
-    if (!button || button.disabled) return
-    const laufId = button.dataset.laufId
-    button.disabled = true
-    button.textContent = 'Abbruch angefordert'
-    try {
-      const antwort = await abbrichLauf(laufId)
-      if (!antwort.ok) {
-        const koerper = await antwort.json().catch(() => ({}))
-        meldeAbbrechenFehler(laufId, `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`, button)
-      }
-    } catch (fehler) {
-      meldeAbbrechenFehler(laufId, `Anfrage fehlgeschlagen: ${fehler.message}`, button)
+/**
+ * Schickt GENAU EINE Bedienung aus dem Dialog. Bis zur Antwort sind alle Knöpfe und Felder gesperrt
+ * (Escape und Wiederöffnen über laufendeDialogBedienung). Die Antwort gehört zu Lauf, Projekt und
+ * Dialog beim Absenden — wechselt eines, wird sie verworfen. Erfolg: Dialog zu, Meldung, Poll und
+ * Detail neu; Fehler (Pflicht, 400, 409, Netz): im offenen Dialog, der offen bleibt.
+ * @param art - Dialogart
+ */
+async function sendeDialogBedienung(art) {
+  if (laufendeDialogBedienung !== null || offenerDialog === null) return
+  const laufId = offenerDialog.laufId
+  const koerper = baueKoerper(art, laufId)
+  if (koerper === null) return
+  const projektBeimStart = holeAktivesProjekt().id
+  const generationBeimStart = laufGeneration
+  const dialogBeimStart = offenerDialog
+  const meine = { laufId }
+  laufendeDialogBedienung = meine
+  zeigeDialogMeldung(null)
+  zeigeMeldung(null)
+  const gesperrt = [...document.getElementById('lauf-dialog').querySelectorAll('button, textarea, select')].filter((el) => !el.disabled)
+  for (const el of gesperrt) el.disabled = true
+  const giltNoch = () => gewaehlteLaufId === laufId && laufGeneration === generationBeimStart && holeAktivesProjekt().id === projektBeimStart
+  const unserDialogOffen = () => offenerDialog === dialogBeimStart && dialogOffen()
+  let erfolg = false
+  try {
+    const antwort = art === 'abbrechen' ? await abbrichLauf(laufId) : await sendeEntscheidungAnfrage(koerper)
+    const inhalt = await antwort.json().catch(() => ({}))
+    if (!giltNoch()) {
+      console.warn(`[runs] Antwort zu '${laufId}' verworfen — Lauf oder Projekt inzwischen gewechselt (HTTP ${antwort.status}).`)
+      return
+    }
+    if (antwort.ok) {
+      erfolg = true
+      if (art === 'abbrechen') abbruchAngefordert.add(laufId)
+      if (unserDialogOffen()) schliesseDialog()
+      zeigeMeldung(t(art === 'abbrechen' ? 'lauf.meldung.abbruch' : 'lauf.meldung.gespeichert'), 'erfolg')
+    } else if (unserDialogOffen()) {
+      zeigeDialogMeldung(`${antwort.status}: ${inhalt.grund ?? t('lauf.fehler.unbekannt')}`)
+    } else {
+      zeigeMeldung(`${antwort.status}: ${inhalt.grund ?? t('lauf.fehler.unbekannt')}`)
+      document.getElementById('lauf-meldung').focus()
+    }
+  } catch (fehler) {
+    console.error('[runs] Bedienung fehlgeschlagen:', fehler)
+    if (!giltNoch()) return
+    if (unserDialogOffen()) zeigeDialogMeldung(t('lauf.fehler.anfrage', { meldung: fehler.message }))
+    else {
+      zeigeMeldung(t('lauf.fehler.anfrage', { meldung: fehler.message }))
+      document.getElementById('lauf-meldung').focus()
+    }
+  } finally {
+    // Nur die eigene Sperre lösen — nach einem Laufwechsel kann schon eine neue laufen.
+    if (laufendeDialogBedienung === meine) laufendeDialogBedienung = null
+    for (const el of gesperrt) el.disabled = false
+  }
+  // Das Aggregat zuerst (kenntnisgenommen), dann das Detail; die Meldung behält danach den Fokus.
+  await pollJetzt()
+  if (erfolg && giltNoch()) {
+    await ladeLaufDetail(laufId, false)
+    if (giltNoch()) document.getElementById('lauf-meldung').focus()
+  }
+}
+
+// ─── Fortsetzung vorbereiten (G7, Wiederaufnahme) ───────────────────────────
+
+/**
+ * Lädt das Detail frisch, übergibt die Vorbelegung an die Projekt-View und navigiert dorthin
+ * (D-F10-1; wendeWiederaufnahmeAn unverändert). Ein Fehler steht als Meldung am Lauf.
+ * @param laufId - Kennung des Vorgängerlaufs
+ * @param knopf - auslösender Knopf (gesperrt bis zur Antwort)
+ */
+async function bereiteFortsetzungVor(laufId, knopf) {
+  // F44 WS-1a (F-860): Projekt des Laufs festhalten, bevor gewartet wird (siehe wendeWiederaufnahmeAn).
+  const projektId = holeAktivesProjekt().id
+  const generation = laufGeneration
+  const giltNoch = () => gewaehlteLaufId === laufId && laufGeneration === generation && holeAktivesProjekt().id === projektId
+  /** Fehler am Lauf, mit Fokus (keine Live-Region). @param text - Text */
+  const meldeFehler = (text) => {
+    zeigeMeldung(text)
+    document.getElementById('lauf-meldung').focus()
+  }
+  zeigeVorbelegungsFehler('')
+  zeigeMeldung(null)
+  knopf.disabled = true
+  let detail
+  try {
+    const antwort = await holeLaufDetail(laufId)
+    const koerper = await antwort.json().catch(() => ({}))
+    if (!giltNoch()) return
+    if (!antwort.ok) {
+      meldeFehler(t('lauf.meldung.vorbelegung', { status: String(antwort.status), grund: koerper.grund ?? t('lauf.fehler.unbekannt') }))
+      return
+    }
+    detail = koerper
+  } catch (fehler) {
+    if (giltNoch()) meldeFehler(t('lauf.fehler.anfrage', { meldung: fehler.message }))
+    return
+  } finally {
+    knopf.disabled = false
+  }
+  navigiere('#/projekt')
+  await wendeWiederaufnahmeAn(detail, laufId, projektId)
+  document.getElementById('start-starten').scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+// ─── Bedienung, Routen, Projektwechsel ──────────────────────────────────────
+
+/** Klick-Delegation: Zeilen der Liste, Knöpfe der Notiz, Dialog und „← Alle Ausführungen“. */
+function initBedienung() {
+  document.getElementById('laeufe').addEventListener('click', (ereignis) => {
+    const zeile = ereignis.target.closest('.lauf-zeile')
+    // Strg/Cmd/Umschalt-Klick und Mittelklick bleiben beim Browser (neuer Tab bzw. neues Fenster).
+    if (!zeile || ereignis.ctrlKey || ereignis.metaKey || ereignis.shiftKey || ereignis.button > 0) return
+    ereignis.preventDefault()
+    navigiere(`#/runs/${encodeURIComponent(zeile.dataset.laufId)}`)
+  })
+  document.getElementById('lauf-notiz').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target.closest('.lauf-aktion')
+    if (!knopf || gewaehlteLaufId === null) return
+    const aktion = knopf.dataset.aktion
+    if (aktion === 'aktualisieren') {
+      void pollJetzt()
+      void ladeLaufDetail(gewaehlteLaufId, false)
+    } else if (aktion === 'fortsetzung') {
+      void bereiteFortsetzungVor(gewaehlteLaufId, knopf)
+    } else if (aktion.endsWith('-oeffnen')) {
+      oeffneDialog(aktion.slice(0, -'-oeffnen'.length))
     }
   })
+  const dialog = document.getElementById('lauf-dialog')
+  dialog.addEventListener('click', (ereignis) => {
+    if (ereignis.target.closest('.lauf-dialog-abbrechen')) {
+      if (laufendeDialogBedienung === null) schliesseDialog()
+      return
+    }
+    const knopf = ereignis.target.closest('.lauf-dialog-aktion')
+    if (knopf) void sendeDialogBedienung(knopf.dataset.aktion)
+  })
+  // Escape während einer laufenden Bedienung schließt nicht — die Entscheidung ist schon unterwegs.
+  dialog.addEventListener('cancel', (ereignis) => {
+    if (laufendeDialogBedienung !== null) ereignis.preventDefault()
+  })
+  dialog.addEventListener('close', () => {
+    offenerDialog = null
+  })
+  // „← Alle Ausführungen“ (F-926): aus der Liste per history.back() (kein neuer Eintrag), sonst navigiere.
+  document.getElementById('lauf-detail-schliessen').addEventListener('click', () => {
+    if (detailAusListe) history.back()
+    else navigiere('#/ausfuehrungen')
+  })
 }
 
-/** Initialisiert die Runs-View einmalig beim Bootstrap: Bedienung, Routen, Abonnement des Zustands-Aggregats (F20 WS-2 — kein eigener Poll-Timer mehr, siehe zustand.js). */
+/** F-860: Beim Projektwechsel Detail, Dialog und Listenstand des alten Projekts verwerfen; ein Detail-Hash geht ohne neuen Eintrag auf `#/ausfuehrungen`. */
+function verwirfNachProjektWechsel() {
+  schliesseLaufDetail()
+  letzteListeHtml = null
+  letzteStartfehlerHtml = null
+  letzteLaeufe = null
+  listeZuletzt = false
+  if (DETAIL_MUSTER.test(location.hash)) ersetzeRoute('#/ausfuehrungen')
+}
+
+/** Initialisiert die Runs-View einmalig beim Bootstrap: Bedienung, Routen, Abonnement des Zustands-Aggregats (kein eigener Poll-Timer, zustand.js), Projektwechsel. */
 export function initRunsView() {
-  initWiederaufnahmeBedienung()
-  initDetailBedienung()
-  initEntscheidungBedienung()
-  initAbbrechenBedienung()
+  initBedienung()
 
   registriere(/^#\/runs$/, 'runs', () => {
     schliesseLaufDetail()
+    zeigeRegister('auftraege')
+  })
+  registriere(/^#\/ausfuehrungen$/, 'runs', () => {
+    const vorher = gewaehlteLaufId
+    schliesseLaufDetail()
+    zeigeRegister('ausfuehrungen')
+    listeZuletzt = true
+    if (vorher !== null) fokussiereLaufZeile(vorher)
   })
   registriere(/^#\/runs\/([^/]+)$/, 'runs', (laufId) => {
+    if (gewaehlteLaufId !== laufId) detailAusListe = listeZuletzt
+    listeZuletzt = false
     void ladeLaufDetail(laufId)
   })
-
-  abonniere((zustand) => {
-    renderLaeufe(zustand.laeufe)
-    renderStartfehler(zustand.startfehler)
+  registriere(/^#\/workflows\/([^/]+)$/, 'runs', () => {
+    schliesseLaufDetail()
   })
+  // Jede andere Route beendet „zuletzt die Liste“; verlässt der Hash das Detail, schließt der Dialog.
+  // Verlässt der Hash die Runs-View ganz (Übersicht, Projekt …), gilt das Detail als geschlossen: späte
+  // Antworten werden verworfen, „← Alle Ausführungen“ greift nicht auf einen veralteten Verlauf zurück. Die
+  // Runs-Routen räumen selbst auf (ihr onEnter läuft nach diesem Zuhörer und braucht gewaehlteLaufId noch).
+  window.addEventListener('hashchange', () => {
+    if (location.hash !== '#/ausfuehrungen') listeZuletzt = false
+    if (!DETAIL_MUSTER.test(location.hash)) schliesseDialog()
+    if (!RUNS_VIEW_MUSTER.test(location.hash) && gewaehlteLaufId !== null) schliesseLaufDetail()
+  })
+
+  abonniere(renderAusfuehrungen)
+  abonniereProjektWechsel(verwirfNachProjektWechsel)
 }

@@ -67,6 +67,13 @@
  *     GET /api/laeufe/<laufId> real reproduzierbar wäre — der Zustand
  *     entsteht aus einer Auftragsreferenz ohne Auftragsartefakt.
  *
+ * F44 WS-5a (01.10.2026, Abgleich F-725 G4, §5.4): renderLaufakte und renderAuftrag liegen im reinen
+ * Render-Modul public/leitstand/views/lauf-detail.js, ihre Texte sind Schlüssel in de/en/tr/ru. (f)
+ * und (g) lesen deshalb dieses Modul und prüfen je Beschriftung den Schlüssel im Code UND seinen
+ * deutschen Wörterbuchwert (Regel für alle Pakete: das Literal zieht um, die Invariante bleibt —
+ * Label↔Feld gepaart und escaped, keine unqualifizierte „Modell“-Zeile, auftrag_fehlt genau einmal
+ * escaped). Rotfälle sind an den beiden Stellen unten belegt.
+ *
  * Wird aufgerufen von: `npm run check`, `npm run check:template`
  *
  * Aufruf: node scripts/check-f12-leitstand-ansicht.mjs
@@ -83,6 +90,9 @@ import { schreibeWirkungsmarke, sha256Hex } from '../src/checkpoint-store/index.
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
+
+// F44 WS-5a: (f)/(g) prüfen die Beschriftung über den Schlüssel UND seinen deutschen Wörterbuchwert.
+const { default: deWoerterbuch } = await import('../public/leitstand/i18n/de.js')
 
 const befunde = []
 console.log('\n=== F12-WS-3-Check (Detailansicht, Rohstrom-Lesepfad, Gate) ===\n')
@@ -389,37 +399,47 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 // laufakte.worker") bliebe grün, wenn jemand die Werte vertauscht — genau
 // der Fehler, der einen Codex-Lauf als claude-code ausweisen würde.
 {
-  // F20 WS-1 (14.09.2026, F-352): renderLaufakte liegt seit der Modul-Aufteilung von app.js
-  // in views/runs.js (unverändert portiert, byte-gleich zur Vorgängerfassung) — nicht mehr in
-  // app.js selbst, das seither nur noch der Bootstrap ist.
-  const runsQuelltext = readFileSync('public/leitstand/views/runs.js', 'utf8')
+  // F20 WS-1 (14.09.2026, F-352): renderLaufakte lag seit der Modul-Aufteilung von app.js in
+  // views/runs.js. F44 WS-5a (01.10.2026, Abgleich F-725 G4, §5.4): renderLaufakte zieht in das reine
+  // Render-Modul views/lauf-detail.js, die Beschriftungen werden Schlüssel (lauf.laufakte.*) in
+  // de/en/tr/ru. Die Invariante bleibt: je Zeile steht das Label (jetzt tHtml('<schlüssel>') mit genau
+  // dem bisherigen deutschen Wörterbuchwert) neben GENAU seinem Feld, der Wert läuft durch escapeHtml,
+  // und keine Zeile nennt nur „Modell“. Rotfall belegt (01.10.2026): vertauschte Felder
+  // (laufakte.modellBeobachtet in der Zeile 'lauf.laufakte.modellDeklariert') → Befund; ein de-Wert
+  // „Modell“ für 'lauf.laufakte.modellDeklariert' → Befund.
+  const quelltext = readFileSync('public/leitstand/views/lauf-detail.js', 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 
-  for (const [label, feld] of [
-    ['Worker', 'worker'],
-    ['Modell \\(deklariert\\)', 'modellDeklariert'],
-    ['Modell \\(beobachtet\\)', 'modellBeobachtet'],
+  for (const [schluessel, deWert, feld] of [
+    ['lauf.laufakte.worker', 'Worker', 'worker'],
+    ['lauf.laufakte.modellDeklariert', 'Modell (deklariert)', 'modellDeklariert'],
+    ['lauf.laufakte.modellBeobachtet', 'Modell (beobachtet)', 'modellBeobachtet'],
   ]) {
-    // <tr><th>LABEL</th><td>${laufakte.FELD ? escapeHtml(laufakte.FELD) : ...
-    const muster = new RegExp(`<tr><th>${label}</th><td>\\$\\{laufakte\\.${feld}\\s*\\?\\s*escapeHtml\\(laufakte\\.${feld}\\)`)
-    if (!muster.test(runsQuelltext)) {
+    // <tr><th>${tHtml('SCHLÜSSEL')}</th><td>${laufakte.FELD ? escapeHtml(laufakte.FELD) : ...
+    const muster = new RegExp(`<tr><th>\\$\\{tHtml\\('${schluessel.replace(/\./g, '\\.')}'\\)\\}</th><td>\\$\\{laufakte\\.${feld}\\s*\\?\\s*escapeHtml\\(laufakte\\.${feld}\\)`)
+    if (!muster.test(quelltext)) {
       befunde.push(
-        `AK12-Anzeige: renderLaufakte führt keine Zeile, die das Label '${label.replace(/\\/g, '')}' mit dem Feld laufakte.${feld} paart (escapeHtml inbegriffen) — Zeile fehlt, Label und Feld sind vertauscht, oder der Wert wird ungeescaped eingesetzt (gesucht: ${muster})`
+        `AK12-Anzeige: renderLaufakte führt keine Zeile, die den Schlüssel '${schluessel}' mit dem Feld laufakte.${feld} paart (escapeHtml inbegriffen) — Zeile fehlt, Label und Feld sind vertauscht, oder der Wert wird ungeescaped eingesetzt (gesucht: ${muster})`
       )
+    }
+    if (deWoerterbuch[schluessel] !== deWert) {
+      befunde.push(`AK12-Anzeige: der deutsche Wörterbuchwert von '${schluessel}' ist nicht '${deWert}' (erhalten ${JSON.stringify(deWoerterbuch[schluessel])}) — die Zeile nennt ihren Rang nicht mehr`)
     }
   }
 
-  // Die unqualifizierte Zeile darf NICHT zurückkehren: "Modell" neben "Modell (deklariert)"
-  // liest sich als die maßgebliche Angabe, obwohl sie die beobachtete ist. Umgedrehte
-  // Zusage statt gelöschter Grenze (Muster check-f15-workflow-oberflaeche.mjs Fall (e)).
-  if (/<tr><th>Modell<\/th>/.test(runsQuelltext)) {
-    befunde.push("AK12-Anzeige: renderLaufakte führt wieder eine unqualifizierte Zeile '<th>Modell</th>' — beide Modellzeilen müssen ihren Rang nennen ('beobachtet'/'deklariert')")
+  // Die unqualifizierte Zeile darf NICHT zurückkehren: "Modell" neben "Modell (deklariert)" liest
+  // sich als die maßgebliche Angabe, obwohl sie die beobachtete ist — weder als Literal noch über
+  // einen Schlüssel, dessen deutscher Wert nur „Modell“ lautet.
+  const thSchluessel = [...quelltext.matchAll(/<th>\$\{tHtml\('([^']+)'\)\}<\/th>/g)].map((m) => m[1])
+  const unqualifiziert = thSchluessel.filter((s) => deWoerterbuch[s] === 'Modell')
+  if (/<tr><th>Modell<\/th>/.test(quelltext) || unqualifiziert.length > 0) {
+    befunde.push(`AK12-Anzeige: renderLaufakte führt wieder eine unqualifizierte Zeile 'Modell' (${unqualifiziert.join(', ') || 'Literal'}) — beide Modellzeilen müssen ihren Rang nennen ('beobachtet'/'deklariert')`)
   }
 
   if (befunde.length === 0) {
     console.log(
-      '✓ AK12-Anzeige (Regressionsschutz, kein AK12-Beleg — F-272): renderLaufakte paart Worker/Modell (deklariert)/Modell (beobachtet) mit je ihrem Feld, alle über escapeHtml; keine unqualifizierte Modell-Zeile.'
+      '✓ AK12-Anzeige (Regressionsschutz, kein AK12-Beleg — F-272): renderLaufakte (views/lauf-detail.js) paart Worker/Modell (deklariert)/Modell (beobachtet) als Schlüssel mit genau diesem de-Wert mit je ihrem Feld, alle über escapeHtml; keine unqualifizierte Modell-Zeile.'
     )
   }
 }
@@ -432,26 +452,36 @@ const gueltigerStartauftrag = (laufId, auftragId) => ({
 // `<p class="unbekannt">${escapeHtml(unbekanntStatusText(...))}</p>`). Eine
 // verschachtelte escapeHtml()-Verwendung wäre die exakte Regression von
 // F-359 (z. B. '&amp;' → '&amp;amp;' bei einer auftragId mit '&').
+//
+// F44 WS-5a (01.10.2026): renderAuftrag liegt in views/lauf-detail.js, der Text ist der Schlüssel
+// 'lauf.auftrag.auftragFehlt' mit dem Platzhalter {auftragId}. Weiterhin genau EINE Escapierung: der
+// Text kommt über t() (nicht tHtml(), das selbst escapen würde), auftragId geht roh als Platzhalterwert
+// hinein, die äußere escapeHtml(unbekanntStatusText(...))-Umhüllung bleibt. Rotfall belegt
+// (01.10.2026): t( → tHtml( in der auftrag_fehlt-Zeile → Befund; escapeHtml(auftrag.auftragId) → Befund.
 {
-  const runsQuelltextRoh = readFileSync('public/leitstand/views/runs.js', 'utf8')
-  const runsQuelltextOhneKommentare = runsQuelltextRoh.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+  const quelltext = readFileSync('public/leitstand/views/lauf-detail.js', 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 
-  const auftragFehltZeile = runsQuelltextOhneKommentare.match(/auftrag_fehlt:[^\n]*/)
+  const auftragFehltZeile = quelltext.match(/auftrag_fehlt:[^\n]*/)
   if (!auftragFehltZeile) {
     befunde.push("F-359-Anzeige: renderAuftrag führt keine 'auftrag_fehlt'-Zeile in texte mehr — Fall entfernt oder umbenannt, Prüfung greift ins Leere")
-  } else if (!/\$\{auftrag\.auftragId\s*\?\?\s*''\}/.test(auftragFehltZeile[0])) {
-    befunde.push(`F-359-Anzeige: texte.auftrag_fehlt interpoliert auftrag.auftragId nicht mehr roh (erwartet '\${auftrag.auftragId ?? ''}' ohne escapeHtml), erhalten: ${auftragFehltZeile[0]}`)
-  } else if (/escapeHtml\(auftrag\.auftragId/.test(auftragFehltZeile[0])) {
+  } else if (!/\bt\('lauf\.auftrag\.auftragFehlt',\s*\{\s*auftragId:\s*auftrag\.auftragId\s*\?\?\s*''\s*\}\)/.test(auftragFehltZeile[0])) {
+    befunde.push(`F-359-Anzeige: texte.auftrag_fehlt setzt auftrag.auftragId nicht mehr roh über t('lauf.auftrag.auftragFehlt', { auftragId: auftrag.auftragId ?? '' }) ein (tHtml oder escapeHtml escapieren doppelt), erhalten: ${auftragFehltZeile[0]}`)
+  } else if (/escapeHtml\(auftrag\.auftragId|tHtml\(/.test(auftragFehltZeile[0])) {
     befunde.push(`F-359-Anzeige: texte.auftrag_fehlt escapiert auftrag.auftragId erneut selbst (Doppel-Escaping-Regression) — Zeile: ${auftragFehltZeile[0]}`)
   }
+  if (typeof deWoerterbuch['lauf.auftrag.auftragFehlt'] !== 'string' || !deWoerterbuch['lauf.auftrag.auftragFehlt'].includes('{auftragId}')) {
+    befunde.push("F-359-Anzeige: der deutsche Wörterbuchwert von 'lauf.auftrag.auftragFehlt' trägt den Platzhalter {auftragId} nicht mehr")
+  }
 
-  if (!/<p class="unbekannt">\$\{escapeHtml\(unbekanntStatusText\(auftrag\.status, texte\)\)\}<\/p>/.test(runsQuelltextOhneKommentare)) {
+  if (!/<p class="unbekannt">\$\{escapeHtml\(unbekanntStatusText\(auftrag\.status, texte\)\)\}<\/p>/.test(quelltext)) {
     befunde.push('F-359-Anzeige: renderAuftrag escapiert den unbekanntStatusText-Rückgabewert nicht mehr genau einmal (äußere escapeHtml-Umhüllung fehlt oder wurde verändert)')
   }
 
   if (befunde.length === 0) {
     console.log(
-      "✓ F-359-Anzeige (Regressionsschutz): renderAuftrag escapiert den auftrag_fehlt-Text genau einmal — texte.auftrag_fehlt interpoliert auftrag.auftragId roh, die äußere escapeHtml(unbekanntStatusText(...))-Umhüllung bleibt die einzige Escapierung."
+      "✓ F-359-Anzeige (Regressionsschutz): renderAuftrag (views/lauf-detail.js) escapiert den auftrag_fehlt-Text genau einmal — t('lauf.auftrag.auftragFehlt', { auftragId }) setzt auftrag.auftragId roh ein, die äußere escapeHtml(unbekanntStatusText(...))-Umhüllung bleibt die einzige Escapierung."
     )
   }
 }

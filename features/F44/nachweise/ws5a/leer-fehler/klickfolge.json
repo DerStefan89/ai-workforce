@@ -1,0 +1,857 @@
+{
+  "url": "http://127.0.0.1:4381/#/ausfuehrungen",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-runs"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "nw-lauf",
+            "laufStatus": {
+              "status": "KLAERUNG_ERFORDERLICH",
+              "blockerId": "blocker-nw-lauf",
+              "grund": "RUN_PREPARED ohne Terminalartefakt",
+              "aufloesungsbedingung": "terminale Entscheidung",
+              "resumeZiel": "lauf",
+              "evidenz": {
+                "offeneRunPreparedSequenzen": [
+                  1
+                ]
+              }
+            },
+            "ergebnis": null,
+            "zeitpunkt": "2026-10-01T11:03:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-bau",
+              "titel": "Bauen aus der Akte"
+            },
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "nw-fehl",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 4
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-01T10:42:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-browser",
+              "titel": "Browser-Prüfung"
+            },
+            "anzahlCheckpoints": 4,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "nw-rueck",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "VERWEIGERT",
+              "terminalSequenz": 3
+            },
+            "ergebnis": "VERWEIGERT",
+            "zeitpunkt": "2026-10-01T09:20:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-deps",
+              "titel": "Abhängigkeiten aktualisieren"
+            },
+            "anzahlCheckpoints": 3,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "nw-ok",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH"
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-01T08:44:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-review",
+              "titel": "Code Review"
+            },
+            "anzahlCheckpoints": 3,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "nw-klaer",
+            "laufStatus": {
+              "status": "KLAERUNG_ERFORDERLICH",
+              "blockerId": "blocker-nw-klaer",
+              "grund": "RUN_PREPARED ohne Terminalartefakt",
+              "aufloesungsbedingung": "terminale Entscheidung",
+              "resumeZiel": "lauf",
+              "evidenz": {
+                "offeneRunPreparedSequenzen": [
+                  1
+                ]
+              }
+            },
+            "ergebnis": null,
+            "zeitpunkt": "2026-10-01T08:00:00.000Z",
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 1,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          },
+          {
+            "laufId": "nw-alt-2026-09-12-ein-sehr-langer-lauf-bezeichner",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN"
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": null,
+            "auftragsbezug": null,
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": false,
+            "kenntnisgenommen": true
+          }
+        ],
+        "startfehler": [
+          {
+            "zeitstempel": "2026-10-01T07:58:00.000Z",
+            "laufId": "nw-start",
+            "fehler": "Worker 'codex' nicht gefunden (ENOENT: spawn codex)"
+          }
+        ],
+        "workflows": [
+          {
+            "workflowId": "nw-ab",
+            "auftragId": "nw-ab-a",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": null,
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "fertig",
+              "grund": "Alle Schritte abgeschlossen",
+              "schrittId": null
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": true,
+          "laufId": "nw-lauf"
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-fehl",
+      "methode": "GET",
+      "json": {
+        "laufId": "nw-fehl",
+        "fortschritt": null,
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "FEHLGESCHLAGEN",
+          "terminalSequenz": 4
+        },
+        "aktiv": false,
+        "verweigertDaten": null,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-browser",
+          "titel": "Browser-Prüfung",
+          "auftragstext": "Prüfe die Abnahme-Seite im Browser bei 390 und 1440 px."
+        },
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "qa",
+          "elemente": [
+            {
+              "pfad": "features/F35/feature.md"
+            },
+            {
+              "pfad": "public/leitstand/views/auftrag.js",
+              "zitierter_bereich": "Z. 1–80"
+            }
+          ],
+          "ausgeschlossen": [
+            {
+              "pfad": ".env",
+              "grund": "geheim"
+            }
+          ]
+        },
+        "laufakte": {
+          "status": "ok",
+          "worker": "codex",
+          "modellDeklariert": "gpt-5",
+          "modellBeobachtet": "gpt-5",
+          "beobachtungsbasisVollstaendig": true,
+          "arbeitsverzeichnisPfad": "C:/arbeit/nw",
+          "beobachtung": {
+            "geladen": [
+              "playwright-mcp"
+            ],
+            "aufgerufen": [
+              "playwright-mcp"
+            ]
+          }
+        },
+        "rohstrom": {
+          "status": "ok",
+          "exitCode": 1,
+          "startfehler": null,
+          "stdoutLaenge": 18234,
+          "stderrLaenge": 0,
+          "ergebnisobjekt": {
+            "status": "ok",
+            "permissionDenials": {
+              "anzahl": 1,
+              "toolNamen": [
+                "mcp__playwright__browser_navigate"
+              ]
+            }
+          }
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-01T10:31:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-01T10:33:00.000Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "lineage": {
+              "art": "artefakt_version",
+              "artefaktId": "kontextpaket-nw-fehl",
+              "erzeugungsart": "kern"
+            }
+          },
+          {
+            "sequenz": 3,
+            "zeitstempel": "2026-10-01T10:40:00.000Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "lineage": {
+              "art": "artefakt_version",
+              "artefaktId": "bedarf-nw-fehl-1",
+              "erzeugungsart": "werkzeug",
+              "beschreibung": "Browserzugriff für die Prüfung benötigt."
+            }
+          },
+          {
+            "sequenz": 4,
+            "zeitstempel": "2026-10-01T10:42:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "FEHLGESCHLAGEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-rueck",
+      "methode": "GET",
+      "json": {
+        "laufId": "nw-rueck",
+        "fortschritt": null,
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "VERWEIGERT",
+          "terminalSequenz": 3
+        },
+        "aktiv": false,
+        "verweigertDaten": {
+          "bypassVerdachtAnzahl": 2,
+          "isError": false,
+          "nonExecutionKind": "permission_denied"
+        },
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-deps",
+          "titel": "Abhängigkeiten aktualisieren",
+          "auftragstext": "Aktualisiere die Entwicklungsabhängigkeiten."
+        },
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "pfad": "features/F35/feature.md"
+            },
+            {
+              "pfad": "public/leitstand/views/auftrag.js",
+              "zitierter_bereich": "Z. 1–80"
+            }
+          ],
+          "ausgeschlossen": [
+            {
+              "pfad": ".env",
+              "grund": "geheim"
+            }
+          ]
+        },
+        "laufakte": {
+          "status": "ok",
+          "worker": "claude-code",
+          "modellDeklariert": "claude-sonnet",
+          "modellBeobachtet": "claude-sonnet",
+          "beobachtungsbasisVollstaendig": true,
+          "arbeitsverzeichnisPfad": "C:/arbeit/nw",
+          "beobachtung": {
+            "geladen": [
+              "playwright-mcp"
+            ],
+            "aufgerufen": [
+              "playwright-mcp"
+            ]
+          }
+        },
+        "rohstrom": {
+          "status": "ok",
+          "exitCode": 1,
+          "startfehler": null,
+          "stdoutLaenge": 18234,
+          "stderrLaenge": 0,
+          "ergebnisobjekt": {
+            "status": "ok",
+            "permissionDenials": {
+              "anzahl": 1,
+              "toolNamen": [
+                "Bash"
+              ]
+            }
+          }
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-01T09:12:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-01T09:13:00.000Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "lineage": {
+              "art": "artefakt_version",
+              "artefaktId": "kontextpaket-nw-rueck",
+              "erzeugungsart": "kern"
+            }
+          },
+          {
+            "sequenz": 3,
+            "zeitstempel": "2026-10-01T09:20:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "VERWEIGERT"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-lauf",
+      "methode": "GET",
+      "json": {
+        "laufId": "nw-lauf",
+        "fortschritt": null,
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "KLAERUNG_ERFORDERLICH",
+          "blockerId": "blocker-nw-lauf",
+          "grund": "RUN_PREPARED ohne Terminalartefakt",
+          "aufloesungsbedingung": "terminale Entscheidung",
+          "resumeZiel": "lauf",
+          "evidenz": {
+            "offeneRunPreparedSequenzen": [
+              1
+            ]
+          }
+        },
+        "aktiv": true,
+        "verweigertDaten": null,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-bau",
+          "titel": "Bauen aus der Akte",
+          "auftragstext": "Baue Feature F35 aus seiner Akte."
+        },
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "pfad": "features/F35/feature.md"
+            },
+            {
+              "pfad": "public/leitstand/views/auftrag.js",
+              "zitierter_bereich": "Z. 1–80"
+            }
+          ],
+          "ausgeschlossen": [
+            {
+              "pfad": ".env",
+              "grund": "geheim"
+            }
+          ]
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-01T11:02:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-01T11:03:00.000Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "lineage": {
+              "art": "artefakt_version",
+              "artefaktId": "kontextpaket-nw-lauf",
+              "erzeugungsart": "kern"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-klaer",
+      "methode": "GET",
+      "json": {
+        "laufId": "nw-klaer",
+        "fortschritt": null,
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "KLAERUNG_ERFORDERLICH",
+          "blockerId": "blocker-nw-klaer",
+          "grund": "RUN_PREPARED ohne Terminalartefakt",
+          "aufloesungsbedingung": "terminale Entscheidung",
+          "resumeZiel": "lauf",
+          "evidenz": {
+            "offeneRunPreparedSequenzen": [
+              1
+            ]
+          }
+        },
+        "aktiv": false,
+        "verweigertDaten": null,
+        "auftrag": {
+          "status": "kein_auftragsbezug"
+        },
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-01T08:00:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nw-weg",
+      "methode": "GET",
+      "status": 404,
+      "json": {
+        "grund": "Lauf 'nw-weg' nicht gefunden"
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ab",
+      "json": {
+        "daten": {
+          "workflow_id": "nw-ab",
+          "auftrag_id": "nw-ab-a",
+          "version": 1,
+          "ziel": "Bauen aus der Akte",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nw-l1",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s3",
+              "lauf_id": "nw-l2",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": null,
+              "lauf_id": "nw-l3",
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig",
+          "grund": "Alle Schritte abgeschlossen",
+          "schrittId": null
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nw-ab/abnahme",
+      "json": {
+        "workflowStatus": "ABGESCHLOSSEN",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "nw-l3",
+          "urteil": "BEREIT",
+          "empfehlung": "Die vereinbarten Kriterien sind erfüllt. Prüfe, ob das Ergebnis auch deinen Erwartungen entspricht.",
+          "befunde": [],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "auftrag.test.mjs grün."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "nw-l2",
+          "daten": {
+            "basis_ref": "772f4e5",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/auftrag.js",
+                "plus": 48,
+                "minus": 12
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "nw-l2p",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nw-ab",
+            "auftragId": "nw-ab-a",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": null,
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "fertig",
+              "grund": "Alle Schritte abgeschlossen",
+              "schrittId": null
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Klasse",
+        "selector": ":focus",
+        "attribut": "class"
+      },
+      {
+        "name": "Fokus-data-lauf-id",
+        "selector": ":focus",
+        "attribut": "data-lauf-id"
+      },
+      {
+        "name": "Reiter aktiv",
+        "selector": "#runs-register [aria-current=\"page\"]"
+      },
+      {
+        "name": "Titel",
+        "selector": "#lauf-detail-titel"
+      },
+      {
+        "name": "Status",
+        "selector": "#lauf-detail-status"
+      },
+      {
+        "name": "Notiz",
+        "selector": "#lauf-notiz"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#lauf-meldung"
+      },
+      {
+        "name": "Einordnung",
+        "selector": "#lauf-einordnung"
+      },
+      {
+        "name": "Dialog offen",
+        "selector": "#lauf-dialog",
+        "attribut": "open"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#lauf-dialog-titel"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#lauf-dialog-meldung"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#lauf-detail-fehler"
+      },
+      {
+        "name": "Reviewer-Notiz (ohne Schema-Pfad)",
+        "selector": "#workflow-abnahme .abnahme-lauf"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Register Aufträge",
+        "id": "workflows-abschnitt"
+      },
+      {
+        "name": "Register Ausführungen",
+        "id": "ausfuehrungen-abschnitt"
+      },
+      {
+        "name": "Lauf-Seite",
+        "id": "lauf-detail"
+      },
+      {
+        "name": "Aufklappbereiche",
+        "id": "lauf-aufklapp"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Knopf Kenntnisnahme (G6)",
+        "selector": "#lauf-notiz [data-aktion=\"kenntnisnahme-oeffnen\"]"
+      },
+      {
+        "name": "Zeile „zur Kenntnis genommen“",
+        "selector": "#lauf-notiz .lauf-kenntnis-zeile"
+      },
+      {
+        "name": "Knopf Fortsetzung (G7)",
+        "selector": "#lauf-notiz [data-aktion=\"fortsetzung\"]"
+      },
+      {
+        "name": "Knopf Klärung (G8)",
+        "selector": "#lauf-notiz [data-aktion=\"terminal-oeffnen\"]"
+      },
+      {
+        "name": "Knopf Rückfrage (F7)",
+        "selector": "#lauf-notiz [data-aktion=\"antwort-oeffnen\"]"
+      },
+      {
+        "name": "Knopf Abbrechen (G9)",
+        "selector": "#lauf-notiz [data-aktion=\"abbrechen-oeffnen\"]"
+      },
+      {
+        "name": "Grundfeld im Dialog",
+        "selector": "#lauf-dialog textarea"
+      },
+      {
+        "name": "aria-live im Dialog (muss fehlen)",
+        "selector": "#lauf-dialog [aria-live], #lauf-dialog[aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Leerzustand: „Noch keine Ausführungen.“, „Keine Startfehler.“",
+      "warteAufSelector": {
+        "selector": "#laeufe .empty",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-leer.webp"
+    },
+    {
+      "label": "Fehlerzustand: laeufe und startfehler null → rote Notiz, keine Entwarnung",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/zustand",
+          "json": {
+            "laeufe": null,
+            "startfehler": null,
+            "workflows": [
+              {
+                "workflowId": "nw-ab",
+                "auftragId": "nw-ab-a",
+                "ziel": "Bauen aus der Akte",
+                "versionSequenz": 2,
+                "status": "ABGESCHLOSSEN",
+                "aktiverSchrittId": null,
+                "grund": null,
+                "schritteAnzahl": 3,
+                "naechster": {
+                  "art": "fertig",
+                  "grund": "Alle Schritte abgeschlossen",
+                  "schrittId": null
+                }
+              }
+            ],
+            "fehler": [
+              {
+                "quelle": "laeufe",
+                "grund": "basisVerzeichnis defekt"
+              }
+            ],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            },
+            "pruefbefehl": null,
+            "istAiWorkforce": true
+          }
+        }
+      ],
+      "warteAufSelector": {
+        "selector": "#laeufe .note.red",
+        "timeoutMs": 10000
+      },
+      "screenshot": "d1440-nicht-verfuegbar.webp"
+    },
+    {
+      "label": "Deep-Link auf einen verschwundenen Lauf: 404 als rote Notiz, nichts Altes bedienbar",
+      "navigiere": "#/runs/nw-weg",
+      "warteAufSelector": {
+        "selector": "#lauf-detail-fehler:not([hidden])",
+        "timeoutMs": 10000
+      },
+      "screenshot": "d1440-detail-404.webp"
+    }
+  ]
+}

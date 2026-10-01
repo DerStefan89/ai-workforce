@@ -959,8 +959,12 @@ export function initWorkflowsView() {
     listeZuletzt = true
     if (vorher !== null) fokussiereZeile(vorher)
   })
-  // Browser-Zurück aus dem Detail auf ein Lauf-Detail (#/runs/<laufId>): auch dann schließt die Seite.
+  // Browser-Zurück aus dem Detail auf ein Lauf-Detail (#/runs/<laufId>) oder das Register „Ausführungen“
+  // (#/ausfuehrungen, F44 WS-5a): auch dann schließt die Seite.
   registriere(/^#\/runs\/([^/]+)$/, 'runs', () => {
+    schliesseWorkflowDetail()
+  })
+  registriere(/^#\/ausfuehrungen$/, 'runs', () => {
     schliesseWorkflowDetail()
   })
   registriere(/^#\/workflows\/([^/]+)$/, 'runs', (workflowId) => {

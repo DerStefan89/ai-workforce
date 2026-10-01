@@ -6160,6 +6160,7 @@ Auswirkung: gering; ein offenes Lauf-Detail veraltet bis zum erneuten Öffnen.
 Maßnahme: bei F21+ entscheiden, ob das Lauf-Detail denselben Auffrisch-Haken
 (`abonniereDetailAuffrischer`) bekommt.
 Status: offen.
+Vermerk (F44 WS-5a, 01.10.2026): Aktualisieren-Knopf statt Detail-Poll — das Lauf-Detail `#/runs/<laufId>` lädt beim Öffnen und über „Aktualisieren“ (in jeder Lage), die Notiz „läuft“ nennt den Stand beim Öffnen; ein geänderter Stand schließt einen offenen Dialog. Nur `kenntnisgenommen` kommt live aus dem Aggregat (kein zusätzlicher Abruf). Ein Detail-Poll bleibt bewusst aus (keine Mehrlast je Tick).
 Feature/Run: F20 WS-2 Challenge, 14.09.2026.
 
 **F-364** · `TECH_DEBT` · P3 · offen
@@ -11222,13 +11223,13 @@ Maßnahme: Obergrenze für Dateianzahl/Bytes mit fail-closed-Marker; Ausnahmen w
 Status: offen.
 Feature/Run: Fixpaket PR 2 nach F36, Reviewer-Pass, 30.09.2026.
 
-**F-844** · `BUG` · P3 · offen
+**F-844** · `BUG` · P3 · erledigt
 Titel: Die Laufliste zeigt einen aktiven Lauf als KLAERUNG_ERFORDERLICH mit „Wiederaufnahme starten“.
 Beschreibung: Beim Render-Nachweis zu F-828 zeigte die Laufzeile des aktiven Laufs `nachweis-f828-aktiv` Status `KLAERUNG_ERFORDERLICH` und den Knopf „Wiederaufnahme starten“, während das Detail (seit F-828) „läuft“ zeigt. Der Laufstart selbst ist durch D13 gesperrt, solange ein Lauf aktiv ist; die Anzeige ist trotzdem irreführend.
 Fundstelle: Laufliste `public/leitstand/views/runs.js` (`renderLaeufe`); `features/F36/nachweis-fixpaket-pr2/aktiv/01-lauf-detail-aktiv.png`.
 Auswirkung: Niedrig — irreführende Anzeige, kein falscher Zustand.
 Maßnahme: In der Laufliste bei aktivem Lauf „läuft“ statt des Klärzustands zeigen und „Wiederaufnahme starten“ ausblenden (Quelle für aktiv im Zustands-Aggregat prüfen).
-Status: offen.
+Status: erledigt durch diesen PR (F44 WS-5a): Die Liste „Ausführungen“ zeigt für den Lauf aus `zustand.aktiverLauf` (aktiv, ohne Terminalmarke) den Statuspunkt „Läuft“; die Zeile trägt keine Knöpfe mehr, „Fortsetzung vorbereiten“ (Wiederaufnahme) steht nur im Lauf-Detail und nicht, solange der Lauf läuft (`darfFortsetzen`, Test `lauf-detail.test.mjs`, `runs.test.mjs`).
 Feature/Run: Fixpaket PR 2 nach F36, Render-Nachweis F-828, 30.09.2026.
 
 **F-845** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -12110,4 +12111,14 @@ Fundstelle: `public/leitstand/views/workflows.js`.
 Auswirkung: Niedrig — Wartbarkeit; jede weitere Bedienung überschreitet die Grenze.
 Maßnahme: In WS-5 (oder vorher) die Dialogsteuerung samt Kennzeichen-Vergleich in ein eigenes Modul (z. B. `views/workflow-dialog.js`) schneiden; POSTs bleiben in `workflows.js`, Gate f15 (h) und `workflows-dialog.test.mjs` begründet mitziehen.
 Status: offen.
+Vermerk (F44 WS-5a, 01.10.2026): nicht geschnitten — WS-5a fasst `views/workflows.js` nur für die Route `#/ausfuehrungen` an (989 Zeilen); das Lauf-Detail hat eine eigene, kleine Dialogsteuerung in `views/runs.js` (Muster von `workflows.js`, Test `views/runs-dialog.test.mjs`). Ein gemeinsames Dialogmodul für beide bleibt Kandidat für den Schnitt.
 Feature/Run: Entdeckt: Prüfpass F44 WS-4b (code-reviewer), 01.10.2026.
+
+**F-942** · `TECH_DEBT` · P3 · offen
+Titel: Ausführungsliste ohne Worker und Rolle.
+Beschreibung: Die Vorlage V10 (d_arbeit_verlauf) zeigt je Ausführung „Worker · Rolle“ unter dem Titel. Die Kopfdaten von GET /api/laeufe (`sammleLaufKopfdaten`, über das Zustands-Aggregat) tragen beides nicht — nur das Lauf-Detail (Laufakte, Kontextpaket) kennt Worker und Rolle. Die Liste zeigt deshalb Titel, laufId, Status, Kenntnisnahme und Zeit; Worker und Rolle stehen erst in der „Einordnung“ des Details.
+Fundstelle: `scripts/leitstand-server.mjs` (`sammleLaufKopfdaten`), `public/leitstand/views/lauf-detail.js` (`laufZeile`).
+Auswirkung: Niedrig — die Liste ist weniger aussagekräftig als die Vorlage, nichts Falsches wird gezeigt.
+Maßnahme: Bei Bedarf Worker (Laufakte) und Rolle (Kontextpaket) in die Kopfdaten aufnehmen — mit Memo bzw. im bestehenden Kopfdaten-Cache, ohne Mehrlast je Poll; danach die Zeile um „Worker · Rolle“ ergänzen.
+Status: offen.
+Feature/Run: Entdeckt: Challenge WS-5, 01.10.2026.

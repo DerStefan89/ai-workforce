@@ -55,7 +55,7 @@ const CHAT_OFFEN_SCHLUESSEL = 'leitstand-chat-offen'
 
 /** Detailrouten, deren ID an ein Projekt gebunden ist, und die Liste, zu der ein Projektwechsel führt. */
 const DETAIL_ROUTEN = [
-  { muster: /^#\/runs\/.+/, liste: '#/runs' },
+  { muster: /^#\/runs\/.+/, liste: '#/ausfuehrungen' },
   { muster: /^#\/workflows\/.+/, liste: '#/runs' },
   { muster: /^#\/workboard\/.+/, liste: '#/workboard' },
 ]
