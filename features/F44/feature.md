@@ -21,8 +21,8 @@ WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist get
 01.10.2026): WS-4a „Ablauf & Freigabe“ gemergt (#297, `493d953`); WS-4b „Klärung, Reparatur & Abnahme“
 gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ gemergt
 (#299, `a91029d`); WS-5b „Auftrag & Direktstart“ gemergt (#300, `ca0fbae`).
-WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) in Arbeit seit 01.10.2026 (Branch
-`feat/f725-ws6a-produkte`); Abschnitt I (Nutzung), WS-7 und WS-8 offen.
+WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) gemergt (#301, `5075215`); WS-6b „Nutzung“
+(Abschnitt I) in Arbeit seit 01.10.2026 (Branch `feat/f725-ws6b-nutzung`); WS-7 und WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -1383,6 +1383,100 @@ Abgleich F-725 H1–H7 (Vermerk WS-6a unter §5.1). Nur Leitstand-UI, keine Serv
   (render-nachweis kann eine Antwort nicht zurückhalten); die Protokollspalten messen das eigene `hidden`, nicht die
   Sichtbarkeit des Elternteils.
 - Bei 200 % Zoom endet die Sidebar im Vollseitenbild nach „Brain“ (Shell, WS-1b, nicht dieses Paket).
+
+## Stand WS-6b „Nutzung“ (01.10.2026)
+Branch `feat/f725-ws6b-nutzung` (Basis `5075215`, main mit WS-6a), nicht committet. Vorlage V10 d_nutzung; Abgleich
+F-725 I1–I3 (Vermerk WS-6b unter §5.1). Nur Leitstand-UI, keine Serveränderung. Dazu Nachtrag F-947.
+- **`#/nutzung` nach d_nutzung** (Route seit WS-2b): Eyebrow „Verständlich eingeordnet“, h1 „Nutzung“, Beschreibung
+  „Wie viel KI-Arbeit wurde erfasst? Ohne erfundene Kosten oder ein vermeintliches Restbudget.“, darunter der
+  Projektname roh („Erfasste KI-Arbeit für …“, Schlüssel `nutzung.projekt`, früher `nutzung.beschreibung`).
+- **Zeitraum als Register** „Letzte 7 Tage“ / „Letzte 30 Tage“ / „Gesamter Zeitraum“ (Knöpfe mit `aria-pressed` in
+  einer Gruppe, Stil `.tabs`), Standard 30 Tage. Verhalten unverändert: Klick lädt, Klick auf den aktiven Zeitraum ist
+  ein No-Op außer nach einem Fehler, Überholschutz (`verbrauchAnfrageZaehler`), Laden bei Eintritt und Projektwechsel,
+  nie aus dem Poll.
+- **Drei Kennzahlen (I1):** Ausführungen = `laeufeGesamt`; Mit Nutzungsdaten = `laeufeGesamt − ohneBeobachtungGesamt`
+  als „x von y“ (nie negativ); Nicht erfasst = `ohneBeobachtungGesamt` in Bernstein mit „Verbrauch unbekannt · nicht
+  null“ und einem Knopf „?“ (`aria-expanded`, tastaturbedienbar), der eine Erklärung mit Plural über
+  `Intl.PluralRules` aufklappt.
+- **„Was wurde verarbeitet?“ (I2)** mit Chip „Nur erfasste Messwerte“: Gelesen · Eingabe = Summe `inputTokens +
+  cacheReadTokens + cacheWriteTokens` über alle Gruppen, darunter „davon aus dem Zwischenspeicher n“ (=
+  `cacheReadTokens`); Erzeugt · Ausgabe = Summe `outputTokens`. Balken nur relativ zueinander (größerer Wert voll),
+  darunter der Hinweis zu Tokens und Größenordnung. Alle Zahlen über `formatiereZahl`.
+- **`<details>` „Technische Aufschlüsselung nach Rolle und Worker“ (I3):** Tabelle je Rolle + Worker mit „Modell: …“ je
+  Zeile (alle in der Gruppe beobachteten Modelle), Läufe, ohne Beobachtung, Eingabe, Ausgabe, Cache gelesen, Cache
+  geschrieben (getrennt); darunter die eigene Tabelle „Nach Modell“ (F, wie bisher) und ein Satz, dass „Eingabe“ nur den
+  ungecachten Teil zählt. null bei Rolle, Worker oder Modell als „unbekannt“ mit dem bisherigen Tooltip (Worker neu).
+  Leerzustand „Keine Läufe im Zeitraum.“; Fehlerzustand als rote Notiz mit „Erneut versuchen“ (lädt den aktiven
+  Zeitraum neu). Aufschlüsselung und Erklärung behalten ihren Auf-/Zu-Zustand über einen Zeitraumwechsel.
+- **Schlusshinweis** „Fehlende Modellbeobachtung bleibt ausdrücklich ‚nicht erfasst‘.“ ohne „Beispieldaten“; keine
+  Kosten in Euro/USD (Entscheidung 30), kein Kontingent (Nicht-Ziel F32).
+- **Modulschnitt:** reines Modul `nutzung-daten.js` (Kennzahlen, Summen, Balken, Gruppierung Rolle + Worker und Modell,
+  defensiv nach F-603); `views/nutzung.js` rendert und lädt. Die F32-Regeln `.verbrauch-*` und `.dashboard-verbrauch`
+  sind durch den Block „Nutzung“ ersetzt; die Knopf-Regel des Registers gilt nur für `.nutzung-zeitraum` (die `.tabs`
+  von `#/workboard` bleiben unberührt).
+- **i18n:** 46 Schlüssel `nutzung.*` in de/en/tr/ru, davon 43 neu (die bisher deutschen Kartentexte eingeschlossen). Rollen-,
+  Worker- und Modellnamen bleiben roh und escaped (keine Übersetzung über `rollenName`, Auftrag).
+- **F-947** (Nachtrag aus der Verifikation WS-6a): Kartentitel auf `#/projekte-uebersicht` wieder `hyphens: auto` mit
+  `overflow-wrap: break-word` — mit `html lang` trennt der Browser mit Trennstrich; Nachweis bei 1440 und 390 dunkel und
+  390 en. Grenze: getrennt wird nach der Sprache der Oberfläche, nicht der des Namens (ein deutscher Name in en trennt
+  nach englischen Regeln); gegen Überlauf schützt `break-word` in jeder Sprache.
+- **Festlegungen** (Korrekturrunde, dem Auftrag folgend): Spalten „Läufe“ und „ohne Beobachtung“ sowie der Leerzustand
+  „Keine Läufe im Zeitraum.“ wie im Auftrag (Vorlage: „Ausführungen“, „Ohne Messung“); Hinweis zu Tokens im Wortlaut des
+  Auftrags; Balken „größerer Wert voll“ wie im Auftrag (Vorlage: Anteil an der Summe), ein Wert über 0 mindestens 1 %.
+  „Nicht erfasst“ heißt fachlich: Ausführung ohne Verbrauchsfeld (`ohneBeobachtung`, unabhängig vom Modell) — die
+  Erklärung sagt deshalb „keine Nutzungsdaten“; der Schlusshinweis bleibt im Wortlaut des Auftrags. Hat keine Ausführung
+  Nutzungsdaten, zeigen Gelesen und Erzeugt „—“ (lesbar „nicht erfasst“) statt 0, ebenso die Tokenzellen einer Zeile, deren
+  Ausführungen alle ohne Messung sind.
+- **Gates:** keines musste mitziehen — f32-verbrauch, f32-verbrauch-ansicht, f20-tokens, i18n-Gate, f21-ws2 (Syntax von
+  `views/nutzung.js`) und `projekt-wechsel.test.mjs` („Nutzung Verbrauch“ lädt mit neuem Präfix; ein Körper ohne
+  `gruppen` zeigt den Fehlerzustand statt zu werfen) grün. Neue Tests: `nutzung-daten.test.mjs` (Kennzahlen, Gelesen
+  inklusive Cache — Rotfall per Mutation belegt —, Balken samt Mindestbreite, Gruppierung mit Modellen je Zeile,
+  null-Gruppe getrennt vom Text „null“, defensive Eingaben) und `views/nutzung.test.mjs` (Körper ohne `gruppen` als
+  Fehler und Klick auf den aktiven Zeitraum lädt dann neu, „Erneut versuchen“, Überholschutz, „—“ ohne Nutzungsdaten,
+  Leerzustand außerhalb der Klappe, Fokus — Rotfälle für Fehlerform, Fokus und Überholschutz per Mutation belegt).
+- **Nachweise** `features/F44/nachweise/ws6b/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner, feste
+  Antworten, eigener Leitstand auf Port 4199): 11 Folgen, 27 WebP — Matrix je Darstellung (1440 dunkel und hell, 390
+  dunkel und hell, 200 %, ru): 30 Tage, Aufschlüsselung und Erklärung offen, 7 Tage (Fokus bleibt auf dem Register);
+  reduzierte Bewegung; Zustände: Leerzustand bei zugeklappter Aufschlüsselung, alle ohne Nutzungsdaten („—“), Fehler mit
+  Fokus auf der Notiz, „Erneut versuchen“; F-947 bei 1440 und 390 dunkel und 390 en. Kein waagerechter Überlauf (der
+  Nachweis fand einen durch die neuen `.sr-only`-Texte in der scrollenden Tabelle — behoben über `position: relative` am
+  Scroll-Container), keine zweite Live-Region.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): design-guardian und code-reviewer
+  „Freigegeben mit Hinweisen“, qa „Nicht freigegeben“. Eine Korrekturrunde, eingearbeitet: Fokus nach Zeitraumwechsel und
+  „Erneut versuchen“ (alle drei); eine Fehlerform in `ladeVerbrauch`, auch für einen Körper ohne `gruppen` oder `null`
+  (code-reviewer 2, qa 7); Knopf-Regel nur für `.nutzung-zeitraum` (code-reviewer 3); Leerzustand sichtbar (code-reviewer 4,
+  qa 3); Erklärtext „keine Nutzungsdaten“ (qa 2); „—“ statt 0 ohne Messwerte (qa 4); Balken mindestens 1 % (code-reviewer
+  6); Spaltenköpfe brechen um, `width: 100%`, Abstand des Cache-Hinweises, Knopf „?“ 24 px, Fokusring des Registers nach
+  innen (design-guardian 5/9, qa 6/8); Nachweise F-947 bei 390, 390 hell, reduzierte Bewegung, ohne die wirkungslose
+  Prüfung „Euro/USD“ (design-guardian 3/4, qa 5/9); Funktionsdoku und veraltete Verweise auf `.verbrauch-zeitraum-auswahl`
+  (code-reviewer 8). Nicht übernommen: siehe „Prüfpunkte `#/nutzung`“.
+
+### Akzeptanzkriterien WS-6b
+- **WS6b-1** `#/nutzung` nach d_nutzung: Eyebrow, h1, Beschreibung, Projektname roh; keine Kosten, kein Kontingent,
+  kein „Beispieldaten“.
+- **WS6b-2** Zeitraum-Register 7 / 30 / gesamt mit `aria-pressed`, Standard 30; No-Op auf dem aktiven außer nach Fehler
+  (jede Fehlerform); Überholschutz; Laden bei Eintritt und Projektwechsel, nie aus dem Poll; nach einer Bedienung bleibt
+  der Fokus auf dem gewählten Zeitraum (`views/nutzung.test.mjs`).
+- **WS6b-3** Kennzahlen Ausführungen, Mit Nutzungsdaten („x von y“), Nicht erfasst (bernstein; Erklärung „keine
+  Nutzungsdaten“ tastaturbedienbar) (`nutzung-daten.test.mjs`).
+- **WS6b-4** Gelesen = Eingabe + Cache gelesen + Cache geschrieben mit „davon aus dem Zwischenspeicher“, Erzeugt =
+  Ausgabe, Balken relativ, Hinweis zu Tokens; ohne Nutzungsdaten „—“ statt 0 (`nutzung-daten.test.mjs`,
+  `views/nutzung.test.mjs`).
+- **WS6b-5** Aufschlüsselung nach Rolle + Worker mit Modell je Zeile und getrenntem Cache, Tabelle „Nach Modell“,
+  „unbekannt“ mit Tooltip; Leerzustand auch bei zugeklappter Aufschlüsselung sichtbar; Fehlerzustand mit Fokus und
+  „Erneut versuchen“.
+- **WS6b-6** F-947: lange Produktnamen trennen mit Trennstrich, kein Überlauf bei 390 px.
+- **WS6b-7** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor.
+
+### Prüfpunkte `#/nutzung` (aus dem Prüfpass WS-6b; nach Route abgelegt, F-946)
+- „unbekannt“ erklärt sich nur über `title` — für Tastatur und Touch nicht erreichbar (bekannte F32-Grenze).
+- Laden und Ergebnis eines Zeitraumwechsels werden Screenreadern nicht angesagt (eine Live-Region pro Seite, Persona);
+  nur der Fehler bekommt den Fokus.
+- Kein Nachweis mit sehr langen Rollen-/Modellnamen und sehr großen Zahlen bei 390 px; ru nur bei 1440.
+- ~~Wortwahl „Läufe“ (Tabelle) neben „Ausführungen“ (Kennzahl) ist Auftragstext — bei Bedarf vereinheitlichen.~~
+  Erledigt (Nachtrag WS-6b, Auftrag Stefan 01.10.2026): Spaltenkopf in beiden Tabellen heißt „Ausführungen“ (de/en/tr/ru,
+  wie die Kennzahl); der Leerzustand „Keine Läufe im Zeitraum.“ bleibt.
+- Der Schlusshinweis spricht von „Modellbeobachtung“, gezählt wird „ohne Nutzungsdaten“ — Wortlaut bei Bedarf angleichen.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

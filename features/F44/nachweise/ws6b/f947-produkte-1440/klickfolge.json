@@ -1,0 +1,265 @@
+{
+  "url": "http://127.0.0.1:4199/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-projekte-uebersicht"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/verbrauch?*",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 28,
+        "ohneBeobachtungGesamt": 4,
+        "gruppen": [
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 14,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 182400,
+              "outputTokens": 96500,
+              "cacheReadTokens": 812000,
+              "cacheWriteTokens": 121300,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 2,
+            "ohneBeobachtung": 2,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "code-reviewer",
+            "worker": "codex",
+            "modell": "gpt-5-codex",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 8,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 64200,
+              "outputTokens": 21800,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "qa",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 3,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 21000,
+              "outputTokens": 9100,
+              "cacheReadTokens": 88000,
+              "cacheWriteTokens": 14000,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": null,
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 1,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/verbrauch",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 0,
+        "ohneBeobachtungGesamt": 0,
+        "gruppen": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          },
+          {
+            "id": "rezeptbuch-familie",
+            "name": "Familien-Rezeptbuch mit Wochenplanung, Einkaufsliste und Vorratskammer",
+            "repo_pfad": "../rezeptbuch-familie",
+            "status": "DISCOVERY",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/projekte/*/roadmap",
+      "json": {
+        "status": "nicht_vorhanden"
+      }
+    },
+    {
+      "muster": "**/api/projekte/*/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/projekte/*/workitems?status=OFFEN",
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/projekte/*/projekt-aufruf",
+      "methode": "GET",
+      "json": {
+        "vorschau": {
+          "url": null,
+          "erreichbar": null,
+          "grund": "nicht gesetzt"
+        },
+        "startbefehl": null,
+        "ergebnis_datei": null,
+        "startvorlage": "startvorlage.json",
+        "aktiv": false,
+        "letzterAufruf": null
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Zeitraum",
+        "selector": ":focus",
+        "attribut": "data-verbrauch-zeitraum"
+      },
+      {
+        "name": "Zeitraum aktiv",
+        "selector": "#view-nutzung [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Werte",
+        "selector": "#view-nutzung .nutzung-kennzahlen"
+      },
+      {
+        "name": "Gelesen",
+        "selector": "#view-nutzung .nutzung-flaeche .nutzung-gross"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Aufschlüsselung offen",
+        "selector": "#nutzung-aufschluesselung[open]"
+      },
+      {
+        "name": "Erklärung „Nicht erfasst“ sichtbar",
+        "selector": "#nutzung-hilfe-text:not([hidden])"
+      },
+      {
+        "name": "Leerzustand",
+        "selector": "#nutzung-aufschluesselung .leer"
+      },
+      {
+        "name": "Fehler mit „Erneut versuchen“",
+        "selector": "#nutzung-fehler [data-aktion=\"erneut\"]"
+      },
+      {
+        "name": "zweite Live-Region (muss fehlen)",
+        "selector": "#view-nutzung [aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "F-947: langer Produktname trennt mit Trennstrich (hyphens: auto, html lang de), kein Überlauf",
+      "warteAufSelector": {
+        "selector": "[data-produkt-id=\"rezeptbuch-familie\"] [data-teil=\"hinweis\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-f947-liste.webp"
+    }
+  ]
+}

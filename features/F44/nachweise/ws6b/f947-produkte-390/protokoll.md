@@ -1,0 +1,3 @@
+| Aktion | Aufschlüsselung offen | Erklärung „Nicht erfasst“ sichtbar | Leerzustand | Fehler mit „Erneut versuchen“ | zweite Live-Region (muss fehlen) | Ansicht | data-theme | lang | Fokus-ID | Fokus-Zeitraum | Zeitraum aktiv | Werte | Gelesen | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F-947: langer Produktname trennt mit Trennstrich (hyphens: auto, html lang de), kein Überlauf | false | false | false | false | false | projekte-uebersicht | dark | de | (fehlt) | (fehlt) | (fehlt) | (fehlt) | (fehlt) | false | true |

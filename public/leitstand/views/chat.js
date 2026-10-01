@@ -1120,7 +1120,7 @@ function initGanzenVerlaufLink() {
   })
 }
 
-/** F34 WS-2: "Jarvis"/"Sparring"-Umschalter — reine Anzeige-/Zielwahl (Muster verbrauch-zeitraum-auswahl, btn/btn-primary). Ein Wechsel setzt weder ausstehenderLauf noch den Verlauf des jeweils anderen Modus zurück (beide leben unabhängig in zustandJeModus) — lädt den Zielmodus nur beim ERSTEN Wechsel dorthin nach (zustand.geladen), jeder weitere Wechsel zeigt den bereits geladenen/aktualisierten Stand ohne erneuten Fetch. */
+/** F34 WS-2: "Jarvis"/"Sparring"-Umschalter — reine Anzeige-/Zielwahl (Muster der früheren F32-Regel .verbrauch-zeitraum-auswahl, seit F44 WS-6b entfernt; btn/btn-primary). Ein Wechsel setzt weder ausstehenderLauf noch den Verlauf des jeweils anderen Modus zurück (beide leben unabhängig in zustandJeModus) — lädt den Zielmodus nur beim ERSTEN Wechsel dorthin nach (zustand.geladen), jeder weitere Wechsel zeigt den bereits geladenen/aktualisierten Stand ohne erneuten Fetch. */
 function initModusUmschalter() {
   const waehleModus = (modus) => {
     if (modus === aktiverModus) return

@@ -1,0 +1,4 @@
+| Aktion | Aufschlüsselung offen | Erklärung „Nicht erfasst“ sichtbar | Leerzustand | Fehler mit „Erneut versuchen“ | zweite Live-Region (muss fehlen) | Ansicht | data-theme | lang | Fokus-ID | Fokus-Zeitraum | Zeitraum aktiv | Werte | Gelesen | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Reduzierte Bewegung: Seite (keine eigene Animation) | false | false | false | false | false | nutzung | dark | de | (fehlt) | (fehlt) | Letzte 30 Tage | Ausführungen 28 Einzelne Arbeitsschritte im Zeitraum Mit Nutzungsdaten 24 von 28 Für diese Ausführungen liegen Messwerte | 1.302.900 | false | true |
+| Reduzierte Bewegung: Aufschlüsselung offen | true | false | false | false | false | nutzung | dark | de | null | null | Letzte 30 Tage | Ausführungen 28 Einzelne Arbeitsschritte im Zeitraum Mit Nutzungsdaten 24 von 28 Für diese Ausführungen liegen Messwerte | 1.302.900 | false | true |
