@@ -12,7 +12,8 @@
  * - public/leitstand/views/roadmap.js
  * - public/leitstand/views/dashboard.js (F44 WS-2b: aktueller Meilenstein, Fortschrittsring, Vier Werte,
  *   Weg zum Produkt, Auswahl des Entwicklungsstands)
- * - public/leitstand/views/workboard.js (F44 WS-3a: statusKategorie für den Kartenstatus von Feature-Akten)
+ * - public/leitstand/views/workboard-detail.js (F44 WS-3a/3b: statusKategorie für den Kartenstatus von Feature-Akten,
+ *   roadmapZustand für den Meilenstein im Detail)
  * - public/leitstand/roadmap-anzeige.test.mjs (node:test)
  *
  * Wichtig:

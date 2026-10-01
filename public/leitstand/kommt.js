@@ -14,7 +14,9 @@
  * - public/leitstand/views/platzhalter.js (kommtKnopf — Brain, Produktzyklus)
  * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Projektakte, Zeitplanung; F44 WS-2a)
  * - public/leitstand/views/dashboard.js (kommtKnopf, kommtBadge — Übersicht V10, Z-Elemente B1/B4/B6/B8/B10/B13; F44 WS-2b)
- * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a)
+ * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a;
+ *   im Detail Eintrag bearbeiten, Insights ansehen; F44 WS-3b)
+ * - public/leitstand/views/workboard-detail.js (kommtKnopf — Detail: Zeitfenster, Planung ändern/speichern, Insight hinzufügen; F44 WS-3b)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
  * Wichtig:

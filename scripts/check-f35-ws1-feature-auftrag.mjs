@@ -35,6 +35,10 @@
  *     einer `herkunft.art: 'feature_akte'`-Auftragsversion und einer
  *     gestubbten `fast-lane`-Klassifikation wählt real `standard.json`
  *     (Schritt 'code-reviewer' vorhanden), nicht `fast-lane.json`.
+ * (g) F44 WS-3b: `GET /api/features/<featureId>/akte` liefert 200 ok mit
+ *     Titel, featureStatus, Ziel, Nicht-Zielen und AKs (derselbe Leser wie der
+ *     Auftrag), 200 unvollstaendig mit Grund, 400 bei ungültiger ID, 404 ohne
+ *     Akte — und schreibt kein Artefakt (Kontrollzustand leer, Akten unverändert).
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -44,7 +48,7 @@
 
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ladeArtefaktVersion } from '../src/lineage-registry/index.ts'
@@ -253,6 +257,52 @@ function baueFremdprojekt(featureAkten) {
         console.log('✓ (e) POST /api/auftraege mit akzeptanzkriterien im Body → 400 (unbekanntes Feld).')
       }
     }
+  } finally {
+    await schliessen()
+    raeumeVerzeichnis(basisVerzeichnis)
+    raeumeVerzeichnis(fremdprojekt)
+  }
+}
+
+// ─── (g) F44 WS-3b: GET /api/features/<id>/akte — lesend, schreibt kein Artefakt ───────────
+{
+  const basisVerzeichnis = `kontrollzustand-test-f35-g-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const fremdprojekt = baueFremdprojekt({ [FREMDPROJEKT_ID]: AKTE_MIT_AKS, [`${FREMDPROJEKT_ID}B`]: AKTE_OHNE_AK })
+  const aktenVorher = readdirSync(join(fremdprojekt, 'features'), { recursive: true }).sort()
+  const { basisUrl, schliessen } = await starteTestserver({ basisVerzeichnis, repoWurzel: fremdprojekt, installWurzel: INSTALL_WURZEL })
+  const hole = async (id) => {
+    const antwort = await fetch(`${basisUrl}/api/features/${encodeURIComponent(id)}/akte`)
+    return { status: antwort.status, inhalt: await antwort.json().catch(() => ({})) }
+  }
+  try {
+    const befundeVor = befunde.length
+    const ok = await hole(FREMDPROJEKT_ID)
+    const erwartet = {
+      status: 'ok',
+      id: FREMDPROJEKT_ID,
+      titel: 'Gate-Feature',
+      featureStatus: 'ENTWURF',
+      ziel: 'Ziel des Gate-Features.',
+      nicht_ziele: ['Erstes Nicht-Ziel.', 'Zweites Nicht-Ziel.'],
+      akzeptanzkriterien: [
+        { id: 'AK1', text: 'Erstes AK ohne explizite ID.' },
+        { id: 'AK2', text: 'Zweites AK ohne explizite ID.' },
+        { id: 'AK5', text: 'Drittes AK mit expliziter ID.' },
+      ],
+    }
+    if (ok.status !== 200 || JSON.stringify(ok.inhalt) !== JSON.stringify(erwartet)) befunde.push(`(g) Grünfall: erwartet 200 ${JSON.stringify(erwartet)}, erhalten ${ok.status} ${JSON.stringify(ok.inhalt)}`)
+    const ohneAk = await hole(`${FREMDPROJEKT_ID}B`)
+    if (ohneAk.status !== 200 || ohneAk.inhalt.status !== 'unvollstaendig' || !String(ohneAk.inhalt.grund).includes('Akzeptanzkriterien')) befunde.push(`(g) Akte ohne AK: erwartet 200 unvollstaendig mit Grund, erhalten ${ohneAk.status} ${JSON.stringify(ohneAk.inhalt)}`)
+    const ungueltig = await hole('../x')
+    if (ungueltig.status !== 400) befunde.push(`(g) featureId '../x': erwartet 400, erhalten ${ungueltig.status}`)
+    const fehlt = await hole('F999')
+    if (fehlt.status !== 404) befunde.push(`(g) fehlende Akte: erwartet 404, erhalten ${fehlt.status}`)
+    // Schreibt kein Artefakt: kein Kontrollzustand angelegt, Akten unverändert.
+    if (existsSync(basisVerzeichnis) && readdirSync(basisVerzeichnis).length > 0) befunde.push(`(g) GET …/akte hat unter ${basisVerzeichnis} geschrieben: ${readdirSync(basisVerzeichnis).join(', ')}`)
+    const aktenNachher = readdirSync(join(fremdprojekt, 'features'), { recursive: true }).sort()
+    if (JSON.stringify(aktenNachher) !== JSON.stringify(aktenVorher)) befunde.push(`(g) GET …/akte hat unter features/ etwas verändert: ${JSON.stringify(aktenNachher)}`)
+    if (befunde.length === befundeVor) console.log('✓ (g) GET …/akte: 200 ok mit Titel/featureStatus/Ziel/Nicht-Zielen/AKs, 200 unvollstaendig, 400, 404; kein Artefakt geschrieben.')
   } finally {
     await schliessen()
     raeumeVerzeichnis(basisVerzeichnis)

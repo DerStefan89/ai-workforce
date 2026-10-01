@@ -19,6 +19,10 @@
  * im Architekten-Schritt bzw. von Hand) gehen als „Geklärte Vorgaben“ in den Auftragstext. Fehlen
  * beide, bleibt der Auftragstext bitgenau wie vorher. Kein Schemafeld — nur Text.
  *
+ * F44 WS-3b: leseFeatureAkteAnzeige liefert dieselben Teile (Titel, Ziel, Nicht-Ziele, AKs) für
+ * das Detail im Leitstand (GET /api/features/<id>/akte) — über denselben internen Leser leseAkte
+ * wie baueAuftragAusFeatureAkte, keine zweite Parse-Logik.
+ *
  * Wird aufgerufen von: scripts/leitstand/routen-f35.mjs,
  * scripts/check-f35-ws1-feature-auftrag.mjs.
  */
@@ -38,6 +42,11 @@ export interface FeatureAuftragErgebnis {
 }
 
 export type FeatureAuftragBauergebnis = ({ ok: true } & FeatureAuftragErgebnis) | { ok: false; grund: string }
+
+/** F44 WS-3b: lesbare Teile einer Feature-Akte für das Leitstand-Detail (leseFeatureAkteAnzeige). */
+export type FeatureAkteAnzeige =
+  | { ok: true; titel: string; ziel: string; nicht_ziele: string[]; akzeptanzkriterien: FeatureAuftragAkzeptanzkriterium[] }
+  | { ok: false; grund: string }
 
 /**
  * F-824: übernommene technische Abschnitte in Ausgabe-Reihenfolge — exakter Überschriftsname (Regex-
@@ -148,22 +157,22 @@ function leseGeklaerteVorgaben(inhalt: string, featureId: string): string | null
 }
 
 /**
- * Baut deterministisch einen Bau-Auftrag aus einer Feature-Akte (F35 WS-1,
- * AK3). Reine Funktion, kein I/O — gleiche Akte liefert immer dasselbe
- * Ergebnis (kein Zeitstempel, keine Zufallskomponente).
+ * Gemeinsamer Leser der Akte für den Bau-Auftrag (baueAuftragAusFeatureAkte) und die Anzeige
+ * (leseFeatureAkteAnzeige, F44 WS-3b) — eine Parse-Logik, damit das Detail nie andere
+ * Kriterien zeigt, als der Auftrag übernähme.
  *
  * Jedes Top-Level-Bullet unter '## Akzeptanzkriterien' ist ein AK.
  * Beginnt ein Bullet mit 'AK<n>' (optional ':'/'.'/')' danach), wird diese
  * ID übernommen und aus dem Bullet-Text entfernt; sonst erhält der Bullet
  * seine Position (1-basiert) als ID (AK1…n).
  *
- * '## Ziel' fehlt/leer oder kein Bullet unter '## Akzeptanzkriterien':
- * ok:false mit Grund, kein Ergebnis.
+ * '## Ziel' fehlt/leer, kein Bullet unter '## Akzeptanzkriterien' oder eine
+ * doppelte AK-ID: ok:false mit Grund, kein Ergebnis.
  * @param inhalt - vollständiger Text von features/<featureId>/feature.md
- * @param featureId - Ordner-id der Akte (Fallback-Titel, Referenzzeile `workitem:feature:<featureId>`)
- * @returns bei Erfolg { ok: true, titel, auftragstext, akzeptanzkriterien, nicht_ziele, herkunft }, sonst { ok: false, grund }
+ * @param featureId - Ordner-id der Akte (Fallback-Titel)
+ * @returns { ok: true, titel, ziel (getrimmt), nicht_ziele, akzeptanzkriterien } | { ok: false, grund }
  */
-export function baueAuftragAusFeatureAkte(inhalt: string, featureId: string): FeatureAuftragBauergebnis {
+function leseAkte(inhalt: string, featureId: string): FeatureAkteAnzeige {
   const zielAbschnitt = leseAbschnitt(inhalt, 'Ziel')
   if (zielAbschnitt === null || zielAbschnitt.trim().length === 0) {
     return { ok: false, grund: "Abschnitt '## Ziel' fehlt oder ist leer — kein Auftrag ableitbar" }
@@ -197,7 +206,36 @@ export function baueAuftragAusFeatureAkte(inhalt: string, featureId: string): Fe
   const titelAbschnitt = leseAbschnitt(inhalt, 'Titel')
   const titel = (titelAbschnitt !== null ? ersteNichtLeereZeile(titelAbschnitt) : null) ?? featureId
 
-  const textTeile = [`Ziel\n${zielAbschnitt.trim()}`]
+  return { ok: true, titel, ziel: zielAbschnitt.trim(), nicht_ziele, akzeptanzkriterien }
+}
+
+/**
+ * Liest Titel, Ziel, Nicht-Ziele und Akzeptanzkriterien einer Feature-Akte für die Anzeige im
+ * Leitstand-Detail (F44 WS-3b, GET /api/features/<id>/akte). Reine Funktion, kein I/O; dieselben
+ * Leser und dieselben Ablehnungsgründe wie baueAuftragAusFeatureAkte.
+ * @param inhalt - vollständiger Text von features/<featureId>/feature.md
+ * @param featureId - Ordner-id der Akte (Fallback-Titel)
+ * @returns { ok: true, titel, ziel, nicht_ziele, akzeptanzkriterien } | { ok: false, grund }
+ */
+export function leseFeatureAkteAnzeige(inhalt: string, featureId: string): FeatureAkteAnzeige {
+  return leseAkte(inhalt, featureId)
+}
+
+/**
+ * Baut deterministisch einen Bau-Auftrag aus einer Feature-Akte (F35 WS-1,
+ * AK3). Reine Funktion, kein I/O — gleiche Akte liefert immer dasselbe
+ * Ergebnis (kein Zeitstempel, keine Zufallskomponente). Titel, Ziel,
+ * Nicht-Ziele und AKs liest leseAkte (Regeln dort).
+ * @param inhalt - vollständiger Text von features/<featureId>/feature.md
+ * @param featureId - Ordner-id der Akte (Fallback-Titel, Referenzzeile `workitem:feature:<featureId>`)
+ * @returns bei Erfolg { ok: true, titel, auftragstext, akzeptanzkriterien, nicht_ziele, herkunft }, sonst { ok: false, grund }
+ */
+export function baueAuftragAusFeatureAkte(inhalt: string, featureId: string): FeatureAuftragBauergebnis {
+  const akte = leseAkte(inhalt, featureId)
+  if (!akte.ok) return akte
+  const { titel, ziel, nicht_ziele, akzeptanzkriterien } = akte
+
+  const textTeile = [`Ziel\n${ziel}`]
   if (nicht_ziele.length > 0) {
     textTeile.push(`Nicht-Ziele\n${nicht_ziele.map((eintrag) => `- ${eintrag}`).join('\n')}`)
   }

@@ -513,7 +513,7 @@ import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordn
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
-import { baueUndRegistriereAuftragAusFeatureAkte } from './leitstand/routen-f35.mjs'
+import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
@@ -6388,6 +6388,21 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
       sendeJson(res, 201, { auftragId: ergebnis.auftragId })
+      return
+    }
+
+    // F44 WS-3b: GET /api/features/<featureId>/akte — Titel, Status, Ziel, Nicht-Ziele und AKs für
+    // das Detail im Leitstand, aufgerufen über den Multi-Projekt-Dispatcher wie die auftrag-Route.
+    // Rein lesend; die Logik liegt in leseFeatureAkteFuerAnzeige (scripts/leitstand/routen-f35.mjs).
+    const featureAkteTreffer = /^\/api\/features\/([^/]+)\/akte$/.exec(pfad)
+    if (req.method === 'GET' && featureAkteTreffer !== null) {
+      const featureId = dekodiereSegment(featureAkteTreffer[1])
+      if (featureId === null) {
+        sendeJson(res, 400, { grund: 'featureId ist keine gültige URL-Kodierung' })
+        return
+      }
+      const ergebnis = leseFeatureAkteFuerAnzeige(featureId, repoWurzel)
+      sendeJson(res, ergebnis.status, ergebnis.koerper)
       return
     }
 

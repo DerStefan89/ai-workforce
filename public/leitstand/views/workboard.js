@@ -9,8 +9,9 @@
  * als Links.
  *
  * - Kanban-Board (E1): Spalten Geplant · In Arbeit · Braucht dich · Abgenommen nach der Regel in
- *   entwicklung-daten.js (baueBoard), höchstens 12 Karten je Spalte, „+ x weitere“ springt in den
- *   passenden Listen-Tab mit Spaltenfilter. „Kanban · Priorität“ (E2) und „Zeitleiste“ (E3) sind
+ *   entwicklung-daten.js (baueBoard), höchstens 12 Karten je Spalte, „Alle x anzeigen“ springt in den
+ *   passenden Listen-Tab mit Spaltenfilter (F-919). Eine Karte mit verknüpftem Ablauf zeigt dessen
+ *   Phase aus dem Aggregat (F-921, kein Zusatzabruf). „Kanban · Priorität“ (E2) und „Zeitleiste“ (E3) sind
  *   „kommt“ (aria-disabled, keine Beispieldaten). Ansicht-Chips Alles/Geplant/In Arbeit/Braucht
  *   dich/Abgenommen.
  * - Listen-Tabs (E4): Serverfilter über holeWorkitems(filter) (Typ nur im Tab „Weitere“, Status,
@@ -23,15 +24,30 @@
  * aus dem bestehenden Poll-Abo (abonniere), kein zweiter Timer; ein Poll-Tick schreibt Board bzw.
  * Liste nur bei geändertem Inhalt neu (Fokus bleibt).
  *
- * Detail und Click-to-Work sind funktional unverändert (Umbau WS-3b): Das Detail sucht das
- * Workitem in der zuletzt geladenen Liste des Listen-Tabs und in der ungefilterten Liste des
- * Boards — kein eigener Request (F21 AK5). "Bearbeiten" an einem Finding bzw. "Bauen" an einer
- * baubaren Feature-Akte legt einen Auftrag mit der Referenzzeile `workitem:<quelle>:<id>` an und
- * routet ihn sofort (legeAuftragAn/baueAuftragAusFeature, routeAuftrag). Der Fortschritt rendert in
+ * Detail (F44 WS-3b, Vorlage d_arbeit_f35, E8/E13): `#/workboard/<id>` ist eine ganze Seite — Board
+ * und Listen sind ausgeblendet, „← <Register>“ führt zum zuletzt aktiven Register zurück. Das
+ * Workitem kommt aus der zuletzt geladenen Liste des Listen-Tabs bzw. der ungefilterten Liste des
+ * Boards (F21 AK5); bis diese da ist, zeigt das Detail einen Ladezustand (F-921). Die Abschnitte
+ * rendert views/workboard-detail.js. Nachgeladen wird beim Öffnen des Details (detailNachtrag): bei
+ * Features die Akte (holeFeatureAkte) und die Roadmap (Meilenstein), für den verknüpften Ablauf
+ * dessen Schritte (holeWorkflowDetail) und — steht er auf ABGESCHLOSSEN — die Abnahme (holeAbnahme,
+ * „Ergebnis prüfen“, wenn noch keine Abnahme-Entscheidung gilt; Regel wie views/workflows.js). Ist
+ * die Verknüpfung beim Öffnen noch nicht bestimmbar (Deep-Link vor dem ersten Poll-Tick bzw. vor den
+ * Aufträgen), lädt der erste Tick, der sie bestimmbar macht. Danach lädt ein Tick die Schritte nur
+ * bei einem Übergang: ein anderer Ablauf wird maßgeblich (etwa nach „Auftrag vorbereiten“ — dann
+ * lädt die Seite auch die Aufträge einmal neu) oder der maßgebliche wechselt seine Phase. Ein Tick
+ * ohne Übergang rendert nur.
+ *
+ * Click-to-Work (E9–E12): „Auftrag vorbereiten“ an einem Finding bzw. an einer baubaren
+ * Feature-Akte legt einen Auftrag mit der Referenzzeile `workitem:<quelle>:<id>` an und routet ihn
+ * sofort (legeAuftragAn/baueAuftragAusFeature, routeAuftrag); Verhalten, Phasen und Freigabe sind
+ * unverändert seit F22/F35/F36, Texte über i18n. Der Fortschritt rendert in
  * #workboard-bearbeitung, getrennt von #workboard-detail-inhalt, damit ein stilles Nachrendern den
  * Bearbeitungszustand nicht mitreißt; der Detail-Auffrischer hängt am einen Poll-Timer aus
  * zustand.js. F36 WS-3/WS-5a: Katalog-Empfehlung im Vorschlag, „Freigeben“ schickt die angezeigten
- * wirdGenutzt-ids mit, „Freigeben & installieren“ (empfehlung-installation.js).
+ * wirdGenutzt-ids mit, „Freigeben & installieren“ (empfehlung-installation.js). F-922: Der
+ * Einstieg ist gesperrt (disabled, aria-disabled, Hinweis, „Ablauf öffnen“), solange ein
+ * verknüpfter Workflow nicht terminal ist oder eine Abnahme offen ist (auftragsSperre).
  *
  * F44 WS-3a: Das Bento (Aktueller Fokus, Letzter Projektstand, Schnellzugriff, AI Workflow,
  * Projekt Fortschritt, Roadmap) ist entfernt (F-892) — die Übersicht (#/dashboard) und die
@@ -42,23 +58,24 @@
  * - public/leitstand/app.js (initWorkboardView beim Bootstrap)
  *
  * Wichtig:
- * - Projektinhalte (Titel, IDs, Statuswerte, Parser-Meldungen) werden nicht übersetzt und immer
- *   escaped; alle übrigen Texte über t() (tx = escapt). Die Texte von Detail und Click-to-Work
- *   ziehen in WS-3b auf Schlüssel um.
+ * - Projektinhalte (Titel, IDs, Statuswerte, Parser-Meldungen, Akten- und Servertexte) werden nicht
+ *   übersetzt und immer escaped; alle übrigen Texte über t() (tx = escapt). Die feste Begründung der
+ *   Freigabe (F-375) ist Serverinhalt und bleibt deutsch.
  * - Kein schreibender Request außer über die api.js-Bausteine von Click-to-Work (Gate f21-ws2 (f)).
  */
 
-import { baueAuftragAusFeature, holeAuftraege, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
-import { baueBoard, baueVerknuepfung, LISTEN_TABS, SPALTEN, spalteVon, sucheWorkitems } from '../entwicklung-daten.js'
+import { baueBoard, baueVerknuepfung, LISTEN_TABS, laufenderWorkflow, SPALTEN, spalteVon, sucheWorkitems, verknuepfterWorkflow, workflowPhase } from '../entwicklung-daten.js'
 import { formatiereZahl, t } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
-import { statusKategorie as roadmapStatusKategorie } from '../roadmap-anzeige.js'
+import { rollenName } from '../rollen-anzeige.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
+import { detailEyebrow, detailInhaltHtml, detailStatusHtml, kartenStatus, phaseHtml, statusKategorie, titelVon, typBezeichnung } from './workboard-detail.js'
 
 /** Register der Seite: das Board und die vier Listen-Tabs (LISTEN_TABS). */
 const TABS = ['board', ...Object.keys(LISTEN_TABS)]
@@ -68,9 +85,6 @@ const ANSICHTEN = ['alle', ...SPALTEN]
 
 /** Symbol je Workitem-Typ (Vorlage: ◇ Feature, ! Bug, ↻ Harness Improvement), sonst ein Punkt. */
 const TYP_SYMBOL = { FEATURE: '◇', BUG: '!', HARNESS_IMPROVEMENT: '↻' }
-
-/** Bekannte Workitem-Typen mit übersetzter Bezeichnung; ein anderer Typ erscheint roh. */
-const BEKANNTE_TYPEN = new Set(['FEATURE', 'BUG', 'HARNESS_IMPROVEMENT', 'TECH_DEBT', 'PROCESS_IMPROVEMENT'])
 
 /** Ungefilterte Workitems (Board, Filteroptionen, Detail): undefined = lädt, null = Quelle defekt, sonst Liste. */
 let alleWorkitems
@@ -87,8 +101,26 @@ let letzteWorkitems = []
 /** Zustand des Listenabrufs: 'laedt' | 'ok' | 'fehler' — ein Poll-Tick rendert die Liste nur bei 'ok' nach. */
 let listenZustand = 'laedt'
 
-/** id des aktuell offenen Detail-Panels, oder null — erlaubt einen stillen Inhalts-Refresh, sobald eine Liste nachträglich eintrifft. */
+/** id des aktuell offenen Details, oder null — erlaubt einen stillen Inhalts-Refresh, sobald eine Liste nachträglich eintrifft. */
 let gewaehlteId = null
+
+/**
+ * Nachtrag des offenen Details (F44 WS-3b), geladen beim Öffnen und bei Übergängen des verknüpften
+ * Ablaufs — nie periodisch aus dem Poll (pruefeDetailNachtrag): { id, projektId, akteGestartet,
+ * akte, roadmap (je undefined = lädt, nur Features), workflowBestimmt (false = Verknüpfung noch
+ * nicht bestimmbar), workflowKennung (`<workflowId>|<Phase>` der letzten Ladung), verknuepfungFehlt
+ * (Workflows oder Aufträge nicht verfügbar), workflowId (null = kein verknüpfter Ablauf),
+ * workflowEintrag, schritte (undefined = lädt, null = nicht ladbar), abnahmeOffen, ablaufLadung
+ * (Zähler gegen überholte Ablauf-Antworten) }, oder null ohne offenes Detail.
+ * Jedes Öffnen legt ein neues Objekt an; eine Antwort für ein älteres Objekt wird verworfen
+ * (Überholschutz über die Identität, auch beim Projektwechsel).
+ */
+let detailNachtrag = null
+
+/** Zuletzt geschriebenes HTML von Statuszeile und Inhalt des Details — ein Poll-Tick schreibt nur bei geändertem Inhalt (aufgeklappte Abschnitte bleiben). */
+let letztesDetailStatusHtml = ''
+let letztesDetailInhaltHtml = ''
+let letztesDetailAktionHtml = ''
 
 /** Überholschutz (Muster views/workflows.js workflowRenderZaehler): je Abrufart verwirft eine spätere Anfrage die Antwort einer früheren. */
 let anfrageZaehler = 0
@@ -101,7 +133,7 @@ let aktiverTab = 'board'
 /** Gewählter Ansicht-Chip des Boards. */
 let boardAnsicht = 'alle'
 
-/** Spaltenfilter eines Listen-Tabs nach „+ x weitere“ (eine Spalte aus SPALTEN), oder null. */
+/** Spaltenfilter eines Listen-Tabs nach „Alle x anzeigen“ (eine Spalte aus SPALTEN), oder null. */
 let listenSpalte = null
 
 /** Suchtext der Listen-Tabs (clientseitig, sucheWorkitems). */
@@ -151,42 +183,12 @@ function meldungVon(fehler) {
 }
 
 /**
- * Ordnet den Status eines Workitems einer der drei bestehenden .badge-Modifikatorklassen zu
- * (ok/aktiv/neutral) — für den Statuspunkt in Listenzeile und Detail-Kopf (F29 WS-1b). Kein neues
- * Farbvokabular: fehler/stale bleiben echten Fehlern/veralteten Ständen vorbehalten.
- * @param workitem - ein Workitem (Finding oder Feature-Akte)
- * @returns 'ok' | 'aktiv' | 'neutral'
- */
-function statusKategorie(workitem) {
-  if (workitem.status === 'ERLEDIGT' || workitem.status === 'ABGESCHLOSSEN') return 'ok'
-  if (workitem.status === 'OFFEN' || workitem.status === 'FEATURE_GATE') return 'aktiv'
-  return 'neutral'
-}
-
-/** Statustext einer Zeile/eines Kopfs — Findings zeigen zusätzlich den Rohwert aus state/findings.md (unterschiedliches Vokabular je Quelle). @param workitem - ein Workitem @returns Statustext, bereits escaped */
-function statusText(workitem) {
-  return workitem.quelle === 'finding' ? `${escapeHtml(workitem.status)} (${escapeHtml(workitem.statusRoh)})` : escapeHtml(workitem.status)
-}
-
-/**
- * Übersetzte Typbezeichnung; ein unbekannter Typ erscheint roh (Projektinhalt).
+ * Übersetzte Typbezeichnung als HTML (typBezeichnung aus views/workboard-detail.js, escaped).
  * @param typ - workitem.typ
  * @returns HTML
  */
 function typText(typ) {
-  return BEKANNTE_TYPEN.has(typ) ? tx(`entwicklung.typ.${typ}`) : escapeHtml(typ ?? '')
-}
-
-/**
- * Übersetzter Status einer Karte: Feature-Akten über die Kategorien der Roadmap
- * (roadmap-anzeige.js, eine Regel), Findings OFFEN/ERLEDIGT/SONSTIGES; der Rohwert steht im title.
- * @param workitem - ein Workitem
- * @returns HTML
- */
-function kartenStatus(workitem) {
-  const roh = workitem.quelle === 'finding' ? (workitem.statusRoh ?? workitem.status) : workitem.status
-  const text = workitem.quelle === 'feature' ? t(`roadmap.status.${roadmapStatusKategorie(workitem.status)}`) : t(`entwicklung.findingStatus.${['OFFEN', 'ERLEDIGT'].includes(workitem.status) ? workitem.status : 'SONSTIGES'}`)
-  return `<span title="${escapeHtml(roh ?? '')}">${escapeHtml(text)}</span>`
+  return escapeHtml(typBezeichnung(typ))
 }
 
 /**
@@ -196,7 +198,7 @@ function kartenStatus(workitem) {
  */
 function workitemZeile(workitem) {
   const prioritaet = workitem.quelle === 'finding' ? ` · ${escapeHtml(workitem.prioritaet)}` : ''
-  const titel = typeof workitem.titel === 'string' && workitem.titel.trim() !== '' ? workitem.titel : workitem.id
+  const titel = titelVon(workitem)
   return `<div class="list-row workboard-zeile" data-id="${escapeHtml(workitem.id)}" role="link" tabindex="0">
     <span class="workboard-zeile-symbol" aria-hidden="true">${escapeHtml(TYP_SYMBOL[workitem.typ] ?? '·')}</span>
     <div class="workboard-zeile-haupt">
@@ -236,7 +238,7 @@ function renderKopf() {
   document.getElementById('workboard-listen-bereich').hidden = aktiverTab === 'board'
 }
 
-/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips, „Alle“-Chips der Filter. */
+/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips, „Alle“-Chips der Filter, die Z-Knöpfe im Detail-Kopf (E13). */
 function baueFesteBedienung() {
   document.getElementById('workboard-erfassen').innerHTML = kommtKnopf(t('entwicklung.eintragErfassen'), { primaer: true, symbol: '+' })
   document.getElementById('workboard-modi').innerHTML = `<button type="button" class="view-switch-knopf active" aria-pressed="true">${tx('entwicklung.modus.status')}</button>
@@ -246,55 +248,62 @@ function baueFesteBedienung() {
     (ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tx(`entwicklung.ansicht.${ansicht}`)}</button>`
   ).join('')}`
   for (const id of ['workboard-filter-typ', 'workboard-filter-status', 'workboard-filter-prioritaet']) fuelleChipGruppe(id, [])
+  // F44 WS-3b (E13): „Eintrag bearbeiten“ und „Insights ansehen“ im Detail-Kopf sind Z-Elemente.
+  document.getElementById('workboard-detail-z').innerHTML = kommtKnopf(t('entwicklung.detail.bearbeiten')) + kommtKnopf(t('entwicklung.detail.insights'))
 }
 
 // ─── Board (E1) ──────────────────────────────────────────────────────────────
 
 /**
- * Eine Karte: Typ, Priorität (nur Findings), Titel, Status, ID — Link ins Detail.
+ * Eine Karte: Typ, Priorität (nur Findings), Titel, Phase bzw. Status, ID — Link ins Detail. Mit
+ * verknüpftem Ablauf zeigt die Karte dessen Phase aus dem Aggregat (F-921, workflowPhase), sonst
+ * den Status des Eintrags; kein x/y (die Schritte stehen erst im Detail).
  * @param workitem - ein Workitem
+ * @param verknuepfung - board.verknuepfung (baueVerknuepfung)
  * @returns HTML
  */
-function boardKarte(workitem) {
+function boardKarte(workitem, verknuepfung) {
   const symbol = TYP_SYMBOL[workitem.typ] ?? '·'
   const prioritaet = workitem.quelle === 'finding' ? `<span>${escapeHtml(workitem.prioritaet)}</span>` : ''
-  const titel = typeof workitem.titel === 'string' && workitem.titel.trim() !== '' ? workitem.titel : workitem.id
+  const workflow = verknuepfterWorkflow(workitem, verknuepfung)
   return `<a class="board-item" href="#/workboard/${encodeURIComponent(workitem.id)}">
       <span class="board-item-meta"><span><span aria-hidden="true">${escapeHtml(symbol)}</span> ${typText(workitem.typ)}</span>${prioritaet}</span>
-      <span class="board-item-titel">${escapeHtml(titel)}</span>
-      <span class="board-phase">${kartenStatus(workitem)}</span>
+      <span class="board-item-titel">${escapeHtml(titelVon(workitem))}</span>
+      <span class="board-phase">${workflow === null ? kartenStatus(workitem) : phaseHtml(workflow)}</span>
       <span class="board-owner"><code>${escapeHtml(workitem.id)}</code></span>
     </a>`
 }
 
 /**
- * „+ x weitere“ einer Spalte: je Listen-Tab ein Sprung mit Spaltenfilter; Workitems ohne Tab
- * (unbekannter Typ) zählen nur mit.
+ * „Alle x anzeigen“ einer Spalte mit mehr Karten als KARTEN_JE_SPALTE (F-919): springt in den
+ * Listen-Tab mit Spaltenfilter, der die ganze Spalte zeigt — x ist deshalb die Zahl aller Einträge
+ * der Spalte in diesem Tab, nicht nur der verborgenen. Verteilt sich die Spalte auf mehrere Tabs,
+ * je Tab ein Sprung; Workitems ohne Tab (unbekannter Typ) zählen nur in der Spaltenzahl.
  * @param spalte - Spaltenschlüssel
  * @param daten - Spalte aus baueBoard
  * @returns HTML
  */
 function weitereZeile(spalte, daten) {
-  if (daten.weitere === 0) return ''
-  const gesamt = tx('entwicklung.weitere', { anzahl: daten.weitere, zahl: formatiereZahl(daten.weitere) })
+  if (daten.weitere === 0 || daten.jeTab.length === 0) return ''
   const sprung = (tab, inhalt) => `<button type="button" class="board-weitere" data-weitere-tab="${tab}" data-weitere-spalte="${spalte}">${inhalt}</button>`
-  if (daten.weitereJeTab.length === 1 && daten.weitereJeTab[0].anzahl === daten.weitere) return `<p class="board-weitere-zeile">${sprung(daten.weitereJeTab[0].tab, gesamt)}</p>`
-  const spruenge = daten.weitereJeTab.map(({ tab, anzahl }) => sprung(tab, `${tx(`entwicklung.tab.${tab}`)} ${escapeHtml(formatiereZahl(anzahl))}`)).join('')
-  return `<p class="board-weitere-zeile"><span>${gesamt}</span>${spruenge}</p>`
+  if (daten.jeTab.length === 1) return `<p class="board-weitere-zeile">${sprung(daten.jeTab[0].tab, tx('entwicklung.alleAnzeigen', { zahl: formatiereZahl(daten.jeTab[0].anzahl) }))}</p>`
+  const spruenge = daten.jeTab.map(({ tab, anzahl }) => sprung(tab, `${tx(`entwicklung.tab.${tab}`)} ${escapeHtml(formatiereZahl(anzahl))}`)).join('')
+  return `<p class="board-weitere-zeile"><span>${tx('entwicklung.alleAnzeigen.label')}</span>${spruenge}</p>`
 }
 
 /**
- * Eine Spalte mit Titel, Zahl, Karten, Leerzustand und „+ x weitere“.
+ * Eine Spalte mit Titel, Zahl, Karten, Leerzustand und „Alle x anzeigen“.
  * Fehlt der Ausführungsstand (Workflows oder Aufträge lädt bzw. nicht verfügbar), behaupten die
  * Spalten „In Arbeit“ und „Braucht dich“ im Leerzustand nichts, was sie nicht wissen können.
  * @param spalte - Spaltenschlüssel
  * @param daten - Spalte aus baueBoard
  * @param unvollstaendig - true, solange die Verknüpfung zu den Workflows fehlt
+ * @param verknuepfung - board.verknuepfung (Phase der Karten)
  * @returns HTML
  */
-function boardSpalte(spalte, daten, unvollstaendig) {
+function boardSpalte(spalte, daten, unvollstaendig, verknuepfung) {
   const leerSchluessel = unvollstaendig && (spalte === 'in_arbeit' || spalte === 'braucht_dich') ? 'entwicklung.spalte.leer.unvollstaendig' : `entwicklung.spalte.${spalte}.leer`
-  const inhalt = daten.karten.length === 0 ? `<p class="board-empty">${tx(leerSchluessel)}</p>` : daten.karten.map(boardKarte).join('')
+  const inhalt = daten.karten.length === 0 ? `<p class="board-empty">${tx(leerSchluessel)}</p>` : daten.karten.map((workitem) => boardKarte(workitem, verknuepfung)).join('')
   return `<section class="board-column board-spalte-${spalte}" aria-labelledby="workboard-spalte-${spalte}">
       <div class="board-column-title"><h2 id="workboard-spalte-${spalte}">${tx(`entwicklung.spalte.${spalte}`)}</h2><span>${escapeHtml(formatiereZahl(daten.anzahl))}</span></div>
       ${inhalt}
@@ -328,7 +337,7 @@ function boardHtml() {
   const spalten = SPALTEN.filter((spalte) => boardAnsicht === 'alle' || boardAnsicht === spalte)
   const ausserhalb = board.ausserhalb > 0 ? `<p class="subtle board-ausserhalb">${tx('entwicklung.ausserhalb', { anzahl: board.ausserhalb, zahl: formatiereZahl(board.ausserhalb) })}</p>` : ''
   const unvollstaendig = board.fehlend.length > 0 || board.laedt.length > 0
-  return `${verknuepfungsHinweis(board)}<div class="pm-board${boardAnsicht === 'alle' ? '' : ' filtered-board'}">${spalten.map((spalte) => boardSpalte(spalte, board.spalten[spalte], unvollstaendig)).join('')}</div>${ausserhalb}`
+  return `${verknuepfungsHinweis(board)}<div class="pm-board${boardAnsicht === 'alle' ? '' : ' filtered-board'}">${spalten.map((spalte) => boardSpalte(spalte, board.spalten[spalte], unvollstaendig, board.verknuepfung)).join('')}</div>${ausserhalb}`
 }
 
 /** Schreibt das Board, aber nur bei geändertem Inhalt (ein Poll-Tick zerstört keinen Fokus). */
@@ -392,7 +401,7 @@ function aktuelleFilter() {
   return filter
 }
 
-/** Der entfernbare Spaltenfilter-Chip nach „+ x weitere“. */
+/** Der entfernbare Spaltenfilter-Chip nach „Alle x anzeigen“. */
 function renderSpaltenfilter() {
   const container = document.getElementById('workboard-spaltenfilter')
   container.innerHTML =
@@ -493,6 +502,8 @@ async function ladeAlleWorkitems() {
     if (meineAnfrageNummer !== alleAnfrageZaehler) return
     console.error('GET …/workitems fehlgeschlagen:', fehler)
     alleFehler = meldungVon(fehler)
+    // Ein offenes Detail stand bis hierher auf „lädt“ (F-921) — jetzt zeigt es den Fehler.
+    if (gewaehlteId !== null) renderDetailInhalt(gewaehlteId)
   }
   renderBoard()
 }
@@ -512,6 +523,7 @@ async function ladeAuftraege() {
   }
   renderBoard()
   renderListe()
+  renderDetailNachtrag()
 }
 
 /** Lädt alles, was die Seite außerhalb des Polls braucht (Betreten, „Neu laden“, Projektwechsel). */
@@ -531,7 +543,7 @@ function betreteSeite() {
 /**
  * Wechselt das Register. Die Filter gehen auf „Alle“ zurück, die Suche wird geleert.
  * @param tab - 'board' oder ein Listen-Tab
- * @param spalte - optionaler Spaltenfilter (aus „+ x weitere“)
+ * @param spalte - optionaler Spaltenfilter (aus „Alle x anzeigen“)
  */
 function wechsleTab(tab, spalte = null) {
   aktiverTab = tab
@@ -551,7 +563,7 @@ function wechsleTab(tab, spalte = null) {
   void ladeListe()
 }
 
-// ─── Detail und Click-to-Work (funktional unverändert, Umbau WS-3b) ──────────
+// ─── Detail (F44 WS-3b) und Click-to-Work ───────────────────────────────────
 
 /**
  * Sucht ein Workitem für das Detail: zuerst in der zuletzt geladenen Liste des Listen-Tabs, dann
@@ -563,22 +575,6 @@ function findeWorkitem(id) {
   return letzteWorkitems.find((w) => w.id === id) ?? (Array.isArray(alleWorkitems) ? alleWorkitems.find((w) => w.id === id) : undefined) ?? null
 }
 
-function unbekanntFeld(wert) {
-  return wert ? escapeHtml(wert) : '<span class="unbekannt">—</span>'
-}
-
-function renderFindingDetail(workitem) {
-  return `<div class="detail-block">
-    <h3>${escapeHtml(workitem.titel)}</h3>
-    <p><code>${escapeHtml(workitem.id)}</code> · <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${statusText(workitem)} · <span class="badge">${escapeHtml(workitem.typ)}</span> <span class="badge">${escapeHtml(workitem.prioritaet)}</span></p>
-  </div>
-  <div class="detail-block"><h3>Beschreibung</h3><p>${unbekanntFeld(workitem.beschreibung)}</p></div>
-  <div class="detail-block"><h3>Fundstelle</h3><p>${unbekanntFeld(workitem.fundstelle)}</p></div>
-  <div class="detail-block"><h3>Auswirkung</h3><p>${unbekanntFeld(workitem.auswirkung)}</p></div>
-  <div class="detail-block"><h3>Maßnahme</h3><p>${unbekanntFeld(workitem.massnahme)}</p></div>
-  <div class="detail-block"><h3>Feature-Run</h3><p>${unbekanntFeld(workitem.featureRun)}</p></div>`
-}
-
 /** Feature-Status, unter denen kein Bau-Auftrag mehr angelegt werden kann (F35 WS-1 AK6). */
 const FEATURE_STATUS_NICHT_BAUBAR = new Set(['ABGESCHLOSSEN', 'ABGEBROCHEN'])
 
@@ -587,19 +583,7 @@ function istFeatureBaubar(workitem) {
   return !FEATURE_STATUS_NICHT_BAUBAR.has(workitem.status)
 }
 
-function renderFeatureDetail(workitem) {
-  const hinweis = istFeatureBaubar(workitem)
-    ? 'Die Akte selbst bleibt nur lesbar (F23-Scope) — der Bau-Auftrag entsteht deterministisch aus Ziel/Nicht-Zielen/Akzeptanzkriterien (F35).'
-    : 'Nur lesend — der Status lässt keinen Bau-Auftrag mehr zu (ABGESCHLOSSEN/ABGEBROCHEN).'
-  return `<div class="detail-block">
-    <h3>${escapeHtml(workitem.titel)}</h3>
-    <p><code>${escapeHtml(workitem.id)}</code> · <span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${escapeHtml(workitem.status)}</p>
-  </div>
-  <div class="detail-block"><h3>Pfad</h3><p><code>${escapeHtml(workitem.pfad)}</code></p></div>
-  <p class="hinweis">${hinweis}</p>`
-}
-
-// ─── F22 WS-2: Bearbeiten (Click-to-Work) ───────────────────────────────────
+// ─── F22 WS-2 / F35 WS-1: Auftrag vorbereiten (Click-to-Work) ───────────────
 
 /** Baut den Auftragstext eines Findings — MUSS die Referenzzeile `workitem:finding:<id>` tragen (WORKITEM_REFERENZ_MUSTER, scripts/leitstand-server.mjs), sonst bleibt workitem_referenz aus WS-1 für immer null (Gegenstück zu leseWorkitemReferenz). @param workitem - ein Finding-Workitem @returns Auftragstext für POST /api/auftraege */
 function baueAuftragstext(workitem) {
@@ -610,94 +594,150 @@ function baueAuftragstext(workitem) {
   return teile.join('\n\n')
 }
 
-/** Rolle→Worker→Modell-Kette eines Workflow-Datensatzes — Ersatzanzeige für Kontrolltiefe/Risikoklasse/Begründung, die nur im Router-Artefakt stehen und über keinen Lesepfad erreichbar sind (F-372). @param daten - WORKFLOW_V0-Datensatz aus GET /api/workflows/<id>, oder undefined */
+/** Rolle→Worker→Modell-Kette eines Workflow-Datensatzes — Ersatzanzeige für Kontrolltiefe/Risikoklasse/Begründung, die nur im Router-Artefakt stehen und über keinen Lesepfad erreichbar sind (F-372). Die Rolle erscheint mit lesbarem Namen (F-914). @param daten - WORKFLOW_V0-Datensatz aus GET /api/workflows/<id>, oder undefined */
 function renderSchrittkette(daten) {
   if (!Array.isArray(daten?.schritte) || daten.schritte.length === 0) {
-    return '<p class="unbekannt">Keine Schritte in dieser Fassung.</p>'
+    return `<p class="subtle">${tx('entwicklung.ctw.keineSchritte')}</p>`
   }
-  return `<ol>${daten.schritte.map((schritt) => `<li>${escapeHtml(schritt.rolle)} → ${escapeHtml(schritt.worker)} → ${escapeHtml(schritt.modell)}</li>`).join('')}</ol>`
+  const eintrag = (schritt) => `<li><strong>${escapeHtml(rollenName(schritt.rolle))}</strong><span>${escapeHtml(schritt.worker)} · ${escapeHtml(schritt.modell)}</span></li>`
+  return `<ol class="workboard-kette">${daten.schritte.map(eintrag).join('')}</ol>`
 }
 
-/** Die drei git-Befehle als reiner Text-Block (AK6) — die Oberfläche führt nichts davon aus. Platzhalter statt `git add -A`/`git add .` (CLAUDE.md, Pauschales Stagen ist ausgeschlossen); die konkreten Dateien wählt der Mensch. */
+/** Die drei git-Befehle als reiner Text-Block (F22 AK6, E11 im Stil V10) — die Oberfläche führt nichts davon aus. Platzhalter statt `git add -A`/`git add .` (CLAUDE.md, Pauschales Stagen ist ausgeschlossen); die konkreten Dateien wählt der Mensch. Befehle und Pfade werden nicht übersetzt, nur die Platzhalter in spitzen Klammern; der Skill-Name steht im Hinweis als {skill} (Satzstellung je Sprache). */
 function renderTerminalBlock() {
-  return `<div class="unterabschnitt">
-    <h3>Commit / Push / PR</h3>
-    <p class="hinweis">Die Kette ist abgeschlossen. Zum Kopieren ins Terminal (Skill <code>git-flow</code> — gezieltes Stagen, keine Sammelstage):</p>
-    <pre>git add &lt;geänderte Dateien&gt;
-git commit -m "&lt;Commit-Message&gt;"
+  return `<section class="workboard-git" aria-labelledby="workboard-git-titel">
+    <h3 id="workboard-git-titel">${tx('entwicklung.ctw.git.titel')}</h3>
+    <p class="subtle">${tx('entwicklung.ctw.git.hinweis').replace('{skill}', '<code>git-flow</code>')}</p>
+    <pre>git add ${escapeHtml(`<${t('entwicklung.ctw.git.dateien')}>`)}
+git commit -m "${escapeHtml(`<${t('entwicklung.ctw.git.nachricht')}>`)}"
 git push</pre>
-    <p class="hinweis">Siehe zusätzlich <code>state/freigabe-commit.md</code>.</p>
-  </div>`
+    <p class="subtle">${tx('entwicklung.ctw.git.siehe')} <code>state/freigabe-commit.md</code></p>
+  </section>`
 }
 
 /**
- * Der Inhalt von #workboard-bearbeitung für EIN Finding, je nach bearbeitungsZustand.phase.
- * @param workitem - das Finding, dessen Detail-Panel offen ist
+ * Der Inhalt von #workboard-bearbeitung für EIN Workitem, je nach bearbeitungsZustand.phase.
+ * Texte über i18n; Server- und Projekttexte (Gründe, IDs, Ziel) escaped.
+ * @param workitem - das Workitem, dessen Detail offen ist
  * @param zustand - bearbeitungsZustand (nicht null, workitemId === workitem.id)
  * @returns HTML-Block
  */
 function renderBearbeitungsInhalt(workitem, zustand) {
   const daten = zustand.workflowDetail?.daten
-  if (zustand.phase === 'wird_angelegt') return '<p class="hinweis">Auftrag wird angelegt…</p>'
-  if (zustand.phase === 'wird_geroutet') return '<p class="hinweis">Routet…</p>'
-  if (zustand.phase === 'wird_gestartet') return '<p class="hinweis">Freigabe wird gesendet…</p>'
+  const id = escapeHtml(workitem.id)
+  const wiederholen = `<button type="button" class="button wb-wiederholen" data-id="${id}">${tx('entwicklung.ctw.wiederholen')}</button>`
+  // FOKUS markiert je Zustand das Element, das nach einem Zustandswechsel den Fokus übernimmt
+  // (schreibeBearbeitung) — ohne zweite Live-Region.
+  if (zustand.phase === 'wird_angelegt') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.wirdAngelegt')}</p>`
+  if (zustand.phase === 'wird_geroutet') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.routet')}</p>`
+  if (zustand.phase === 'wird_gestartet') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.wirdGestartet')}</p>`
   if (zustand.phase === 'routet') {
-    return `<p class="hinweis">Routet… (Auftrag <code>${escapeHtml(zustand.auftragId)}</code>, Lauf <code>${escapeHtml(zustand.laufId)}</code>)</p>`
+    return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.routet')} ${tx('entwicklung.ctw.auftrag')} <code>${escapeHtml(zustand.auftragId)}</code> · ${tx('entwicklung.ctw.lauf')} <code>${escapeHtml(zustand.laufId)}</code></p>`
   }
   if (zustand.phase === 'konflikt') {
-    return `<p class="fehler">${escapeHtml(zustand.meldung)}</p><button class="btn wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>`
+    // E12: Konfliktzustand (409/D13) statt Fehlerdialog; der Auftrag ist angelegt, „Wiederholen“ routet erneut.
+    return `<div class="note amber" ${FOKUS}><strong>${tx('entwicklung.ctw.konflikt.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p><p>${tx('entwicklung.ctw.konflikt.text')}</p>${wiederholen}</div>`
   }
   if (zustand.phase === 'fehler') {
     // Wiederholen nur, wenn der Auftrag bereits real angelegt ist (sonst gäbe es nichts, das
     // wiederholeRouten routen könnte) — Reviewer-/QA-Pass 14.09.2026: ohne diesen Knopf war
-    // 'fehler' eine Sackgasse, ein erneutes "Bearbeiten" hätte einen zweiten Auftrag angelegt.
-    const wiederholenKnopf = zustand.auftragId !== null ? `<button class="btn wb-wiederholen" data-id="${escapeHtml(workitem.id)}">Wiederholen</button>` : ''
-    return `<p class="fehler">${escapeHtml(zustand.meldung)}</p>${wiederholenKnopf}`
+    // 'fehler' eine Sackgasse, ein erneuter Einstieg hätte einen zweiten Auftrag angelegt.
+    return `<div class="note red" ${FOKUS}><strong>${tx('entwicklung.ctw.fehler.titel')}</strong><p>${escapeHtml(zustand.meldung)}</p>${zustand.auftragId !== null ? wiederholen : ''}</div>`
   }
   if (zustand.phase === 'vorschlag') {
-    return `<div class="unterabschnitt">
-      <h3>Workflow-Vorschlag</h3>
-      <p class="hinweis">Kontrolltiefe, Risikoklasse und Begründung liegen im Router-Ergebnis-Artefakt, das über keinen Lesepfad erreichbar ist (F-372) — ersatzweise die Schrittkette aus dem Vorschlag:</p>
-      <p><strong>Ziel:</strong> ${escapeHtml(daten?.ziel ?? '')} — <strong>Workflow:</strong> <code>${escapeHtml(zustand.workflowId)}</code></p>
+    return `<section class="workboard-vorschlag" aria-labelledby="workboard-vorschlag-titel">
+      <h3 id="workboard-vorschlag-titel" ${FOKUS}>${tx('entwicklung.ctw.vorschlag.titel')}</h3>
+      <p class="subtle">${tx('entwicklung.ctw.vorschlag.hinweis')}</p>
+      <dl class="workboard-vorschlag-kopf"><dt>${tx('entwicklung.ctw.vorschlag.ziel')}</dt><dd>${escapeHtml(daten?.ziel ?? '')}</dd><dt>${tx('entwicklung.ctw.vorschlag.workflow')}</dt><dd><code>${escapeHtml(zustand.workflowId)}</code></dd></dl>
       ${renderSchrittkette(daten)}
       ${renderEmpfehlung(zustand.workflowDetail?.empfehlung)}
-      ${zustand.meldung ? `<p class="fehler">${escapeHtml(zustand.meldung)}</p>` : ''}
+      ${zustand.meldung ? `<div class="note red"><p>${escapeHtml(zustand.meldung)}</p></div>` : ''}
       ${renderInstallierbarHinweis(zustand.workflowDetail?.empfehlung)}
-      <div>
-        <button class="btn btn-primary wb-freigeben" data-id="${escapeHtml(workitem.id)}">Freigeben</button>
-        <button class="btn wb-ablehnen" data-id="${escapeHtml(workitem.id)}">Ablehnen</button>
-      </div>
-    </div>`
+      <div class="action-row"><button type="button" class="button primary wb-freigeben" data-id="${id}">${tx('entwicklung.ctw.freigeben')}</button><button type="button" class="button wb-ablehnen" data-id="${id}">${tx('entwicklung.ctw.ablehnen')}</button></div>
+    </section>`
   }
-  if (zustand.phase === 'verworfen') return '<p class="hinweis">Vorschlag verworfen.</p>'
+  if (zustand.phase === 'verworfen') return `<p class="subtle" ${FOKUS}>${tx('entwicklung.ctw.verworfen')}</p>`
   if (zustand.phase === 'gestartet' || zustand.phase === 'abgeschlossen') {
-    return `<div class="unterabschnitt">
-      <h3>Kette</h3>
-      <p>Status: <code>${escapeHtml(daten?.status ?? '')}</code></p>
+    return `<section class="workboard-vorschlag" aria-labelledby="workboard-kette-titel">
+      <h3 id="workboard-kette-titel" ${FOKUS}>${tx('entwicklung.ctw.kette.titel')}</h3>
+      <p>${tx('entwicklung.ctw.kette.status')}: <code>${escapeHtml(daten?.status ?? '')}</code> · <a href="#/workflows/${encodeURIComponent(zustand.workflowId ?? '')}">${tx('uebersicht.rolle.link')}</a></p>
       ${renderSchrittkette(daten)}
-    </div>${zustand.phase === 'abgeschlossen' ? renderTerminalBlock() : ''}`
+    </section>${zustand.phase === 'abgeschlossen' ? renderTerminalBlock() : ''}`
   }
   return ''
 }
 
-/** Rendert #workboard-bearbeitung für workitem — Einstiegsknopf (Findings: "Bearbeiten"; baubare Feature-Akten, F35 WS-1: "Bauen") ohne offenen Bearbeitungszustand, den laufenden Zustand (beide Quellen teilen sich renderBearbeitungsInhalt), oder nichts (nicht mehr baubare Feature-Akten). @param workitem - das aktuell im Detail-Panel gezeigte Workitem */
+/**
+ * Sperre von „Auftrag vorbereiten“ (F-922, Entscheidung Challenger 01.10.2026, reversibel): gesperrt,
+ * solange ein verknüpfter Workflow nicht terminal ist (laufenderWorkflow, dieselbe Statusmenge wie
+ * das Board) oder die Abnahme des maßgeblichen Ablaufs offen ist (dieselbe Angabe wie „Ergebnis
+ * prüfen“, detailNachtrag.abnahmeOffen). Solange die Verknüpfung noch lädt, bleibt der Einstieg
+ * ebenfalls gesperrt — sonst ließe ein Deep-Link vor dem ersten Poll-Tick einen zweiten Auftrag zu.
+ * Ist eine Quelle nicht verfügbar (null), bleibt er frei (Server-Regel D13 gilt weiter).
+ * @param workitem - das Workitem des offenen Details
+ * @returns null (frei) oder { grund: 'laeuft' | 'abnahme' | 'laedt', workflowId: Ziel von „Ablauf öffnen“ oder null }
+ */
+function auftragsSperre(workitem) {
+  const verknuepfung = baueVerknuepfung(letzterZustand?.workflows, auftraege)
+  if (verknuepfung.laedt.length > 0) return { grund: 'laedt', workflowId: null }
+  const laufend = laufenderWorkflow(workitem, verknuepfung)
+  if (laufend !== null) return { grund: 'laeuft', workflowId: laufend.workflowId }
+  const nachtrag = detailNachtrag?.id === workitem.id ? detailNachtrag : null
+  if (nachtrag?.abnahmeOffen === true && typeof nachtrag.workflowId === 'string') return { grund: 'abnahme', workflowId: nachtrag.workflowId }
+  return null
+}
+
+/**
+ * Rendert #workboard-bearbeitung für workitem: ohne offenen Bearbeitungszustand den Einstieg
+ * „Auftrag vorbereiten“ (E9 Feature, E10 Finding; IDs #workboard-bauen bzw. #workboard-bearbeiten
+ * und ihr Verhalten unverändert) — gesperrt mit Hinweis und „Ablauf öffnen“, solange
+ * auftragsSperre greift (F-922) —, sonst den laufenden Zustand (beide Quellen teilen sich
+ * renderBearbeitungsInhalt). Eine nicht mehr baubare Feature-Akte zeigt nur einen Hinweis.
+ * @param workitem - das aktuell im Detail gezeigte Workitem
+ */
 function renderBearbeitungsAbschnitt(workitem) {
-  const container = document.getElementById('workboard-bearbeitung')
-  const einstiegsKnopf =
-    workitem.quelle === 'finding'
-      ? `<button id="workboard-bearbeiten" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bearbeiten</button>`
-      : workitem.quelle === 'feature' && istFeatureBaubar(workitem)
-        ? `<button id="workboard-bauen" class="btn btn-primary" data-id="${escapeHtml(workitem.id)}">Bauen</button>`
-        : null
-  if (einstiegsKnopf === null) {
-    container.innerHTML = ''
+  const sperre = auftragsSperre(workitem)
+  const einstieg = (knopfId, hinweis) => {
+    if (sperre === null) {
+      return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button primary" data-id="${escapeHtml(workitem.id)}" data-ctw-fokus>${tx('entwicklung.ctw.vorbereiten')}</button><p class="subtle">${tx(hinweis)}</p></div>`
+    }
+    const link = sperre.workflowId !== null ? ` <a href="#/workflows/${encodeURIComponent(sperre.workflowId)}">${tx('uebersicht.rolle.link')}</a>` : ''
+    return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button" data-id="${escapeHtml(workitem.id)}" disabled aria-disabled="true" aria-describedby="workboard-auftrag-sperre" data-ctw-fokus>${tx('entwicklung.ctw.vorbereiten')}</button><p class="subtle" id="workboard-auftrag-sperre">${tx(`entwicklung.ctw.gesperrt.${sperre.grund}`)}${link}</p></div>`
+  }
+  let einstiegHtml = null
+  if (workitem.quelle === 'finding') einstiegHtml = einstieg('workboard-bearbeiten', 'entwicklung.ctw.hinweis.finding')
+  else if (workitem.quelle === 'feature' && istFeatureBaubar(workitem)) einstiegHtml = einstieg('workboard-bauen', 'entwicklung.ctw.hinweis.feature')
+  if (einstiegHtml === null) {
+    schreibeBearbeitung(workitem.quelle === 'feature' ? `<p class="subtle">${tx('entwicklung.ctw.nichtBaubar')}</p>` : '')
     return
   }
   if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) {
-    container.innerHTML = einstiegsKnopf
+    schreibeBearbeitung(einstiegHtml)
     return
   }
-  container.innerHTML = renderBearbeitungsInhalt(workitem, bearbeitungsZustand)
+  schreibeBearbeitung(renderBearbeitungsInhalt(workitem, bearbeitungsZustand))
+}
+
+/** Markierung des Elements, das nach einem Zustandswechsel im Click-to-Work-Bereich den Fokus übernimmt (Text und Überschriften per tabindex=-1 fokussierbar, ohne in die Tab-Reihenfolge zu kommen; Knöpfe tragen nur data-ctw-fokus). */
+const FOKUS = 'tabindex="-1" data-ctw-fokus'
+
+/** Zuletzt geschriebenes HTML von #workboard-bearbeitung. */
+let letztesBearbeitungsHtml = ''
+
+/**
+ * Schreibt #workboard-bearbeitung nur bei geändertem HTML — der Detail-Auffrischer rendert bei jedem
+ * Poll-Tick, ein Neuschreiben nähme dem Tastaturfokus sonst „Freigeben“ weg. Lag der Fokus im
+ * Bereich (der geklickte Knopf verschwindet), geht er auf das markierte Element des neuen Zustands
+ * (FOKUS); Ansagen laufen weiter nur über die Persona (eine Live-Region).
+ * @param html - neuer Inhalt
+ */
+function schreibeBearbeitung(html) {
+  if (html === letztesBearbeitungsHtml) return
+  letztesBearbeitungsHtml = html
+  const container = document.getElementById('workboard-bearbeitung')
+  const hatteFokus = document.activeElement !== null && container.contains(document.activeElement)
+  container.innerHTML = html
+  if (hatteFokus) container.querySelector('[data-ctw-fokus]')?.focus()
 }
 
 /**
@@ -750,10 +790,10 @@ async function verarbeiteRoutenAntwort(routeAntwort, workitem, zustand) {
   const inhalt = await routeAntwort.json().catch(() => ({}))
   if (routeAntwort.status === 409) {
     zustand.phase = 'konflikt'
-    zustand.meldung = inhalt.grund ?? 'ein anderer Lauf ist aktiv (D13)'
+    zustand.meldung = inhalt.grund ?? t('entwicklung.ctw.konflikt.standard')
   } else if (!routeAntwort.ok) {
     zustand.phase = 'fehler'
-    zustand.meldung = `Routen fehlgeschlagen: ${routeAntwort.status} ${inhalt.grund ?? ''}`.trim()
+    zustand.meldung = t('entwicklung.ctw.fehler.routen', { status: routeAntwort.status, grund: inhalt.grund ?? '' }).trim()
   } else {
     zustand.laufId = inhalt.laufId
     zustand.phase = 'routet'
@@ -778,7 +818,7 @@ async function fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, erzeuge
     const auftragInhalt = await auftragAntwort.json().catch(() => ({}))
     if (!auftragAntwort.ok) {
       zustand.phase = 'fehler'
-      zustand.meldung = `Auftrag konnte nicht angelegt werden: ${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim()
+      zustand.meldung = t('entwicklung.ctw.fehler.anlegen', { status: auftragAntwort.status, grund: auftragInhalt.grund ?? '' }).trim()
       if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
       return
     }
@@ -786,13 +826,16 @@ async function fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, erzeuge
     zustand.workflowId = `router-${auftragInhalt.auftragId}`
     zustand.phase = 'wird_geroutet'
     if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
+    // F44 WS-3b: Der neue Auftrag trägt die Referenzzeile — die Aufträge einmal neu laden, damit Board
+    // und Detail den entstehenden Ablauf verknüpfen (ereignisgetrieben, nicht aus dem Poll).
+    if (zustand.projektId === holeAktivesProjekt().id) void ladeAuftraege()
     // F44 WS-1a (F-860): nach einem Projektwechsel den Auftrag des alten Projekts nicht über den
     // Präfix des neuen routen — die Kette endet hier; der Auftrag bleibt im alten Projekt liegen.
     if (zustand.projektId !== holeAktivesProjekt().id) return
     await verarbeiteRoutenAntwort(await routeAuftrag(auftragInhalt.auftragId), workitem, zustand)
   } catch (fehler) {
     zustand.phase = 'fehler'
-    zustand.meldung = `Anfrage fehlgeschlagen: ${fehler.message}`
+    zustand.meldung = t('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) })
     if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
   }
 }
@@ -802,7 +845,7 @@ function baueLeerenBearbeitungsZustand(workitem) {
   return { workitemId: workitem.id, projektId: holeAktivesProjekt().id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null, workflowDetail: null }
 }
 
-/** Klick auf "Bearbeiten": legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. @param workitem - das geklickte Finding */
+/** Klick auf „Auftrag vorbereiten“ an einem Finding (#workboard-bearbeiten, bis F44 WS-3b „Bearbeiten“): legt den Auftrag an (mit Referenzzeile, baueAuftragstext) und routet ihn sofort. @param workitem - das geklickte Finding */
 async function starteBearbeitung(workitem) {
   const zustand = baueLeerenBearbeitungsZustand(workitem)
   bearbeitungsZustand = zustand
@@ -810,7 +853,7 @@ async function starteBearbeitung(workitem) {
   await fuehreAuftragserzeugungUndRoutungDurch(workitem, zustand, () => legeAuftragAn({ titel: workitem.titel, auftragstext: baueAuftragstext(workitem) }))
 }
 
-/** Klick auf "Bauen" (F35 WS-1): leitet den Auftrag deterministisch aus der Feature-Akte ab (baueAuftragAusFeature) und routet ihn sofort. @param workitem - die geklickte Feature-Akte */
+/** Klick auf „Auftrag vorbereiten“ an einer Feature-Akte (#workboard-bauen, F35 WS-1, bis F44 WS-3b „Bauen“): leitet den Auftrag deterministisch aus der Feature-Akte ab (baueAuftragAusFeature) und routet ihn sofort. @param workitem - die geklickte Feature-Akte */
 async function starteBauenFeature(workitem) {
   const zustand = baueLeerenBearbeitungsZustand(workitem)
   bearbeitungsZustand = zustand
@@ -829,7 +872,7 @@ async function wiederholeRouten(workitem) {
     await verarbeiteRoutenAntwort(await routeAuftrag(zustand.auftragId), workitem, zustand)
   } catch (fehler) {
     zustand.phase = 'fehler'
-    zustand.meldung = `Anfrage fehlgeschlagen: ${fehler.message}`
+    zustand.meldung = t('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) })
     if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
   }
 }
@@ -867,16 +910,16 @@ async function freigebenBearbeitung(workitem) {
       // Freigeben ist möglich. Ein 409 NACH festgehaltener Freigabe (status KLAERUNG_ERFORDERLICH)
       // geht in den Fehlerpfad.
       zustand.phase = 'vorschlag'
-      zustand.meldung = `Freigabe nicht erteilt: ${inhalt.grund}`
+      zustand.meldung = t('entwicklung.ctw.freigabeNichtErteilt', { grund: inhalt.grund })
     } else if (!antwort.ok) {
       zustand.phase = 'fehler'
-      zustand.meldung = `Freigabe fehlgeschlagen: ${antwort.status} ${inhalt.grund ?? ''}`.trim()
+      zustand.meldung = t('entwicklung.ctw.fehler.freigabe', { status: antwort.status, grund: inhalt.grund ?? '' }).trim()
     } else {
       zustand.phase = 'gestartet'
     }
   } catch (fehler) {
     zustand.phase = 'fehler'
-    zustand.meldung = `Anfrage fehlgeschlagen: ${fehler.message}`
+    zustand.meldung = t('entwicklung.fehler.anfrage', { meldung: meldungVon(fehler) })
   }
   if (pruefeUndUebernimmZustand(workitem, zustand)) renderBearbeitungsAbschnitt(workitem)
   void pollJetzt()
@@ -926,49 +969,256 @@ async function aktualisiereBearbeitungsZustand() {
   }
 }
 
+// ─── Detail als ganze Seite (F44 WS-3b, E8/E13) ─────────────────────────────
+
 /**
- * Rendert NUR den Inhalt des Detail-Panels (Workitem über findeWorkitem) — ohne das
- * Panel zu öffnen oder zu scrollen. Getrennt von ladeDetail(), damit
- * ladeListe() und ladeAlleWorkitems() das offene Panel still nachrendern können, sobald eine
- * Liste eintrifft (siehe dortigen Kommentar), ohne einen ungewollten zweiten
- * Scroll-Sprung auszulösen. Ein Workitem ohne Formularfelder — die Detail-
- * ansicht ist rein lesend (AK5), ein Überschreiben von innerHTML kann hier
- * anders als bei der Lauf-Entscheidung (views/runs.js) keine Nutzereingabe
- * verlieren.
- * @param id - Workitem-id des aktuell offenen Panels
+ * Prüft die Antwort von GET …/features/<id>/akte auf die erwartete Form (Server- und Aktentexte
+ * bleiben roh, escaped wird beim Rendern).
+ * @param antwort - geparster Körper
+ * @returns { status: 'ok', … } | { status: 'unvollstaendig', grund } | { status: 'fehler', meldung }
  */
-function renderDetailInhalt(id) {
-  const inhalt = document.getElementById('workboard-detail-inhalt')
-  const workitem = findeWorkitem(id)
-  if (workitem === null) {
-    inhalt.innerHTML = '<p class="unbekannt">Workitem nicht in der aktuell geladenen Liste gefunden — Filter zurücksetzen oder neu laden.</p>'
-    document.getElementById('workboard-bearbeitung').innerHTML = ''
+function pruefeAkte(antwort) {
+  const istAk = (ak) => typeof ak?.id === 'string' && typeof ak.text === 'string'
+  if (antwort?.status === 'ok' && typeof antwort.ziel === 'string' && Array.isArray(antwort.akzeptanzkriterien) && antwort.akzeptanzkriterien.every(istAk) && Array.isArray(antwort.nicht_ziele) && antwort.nicht_ziele.every((z) => typeof z === 'string')) return antwort
+  if (antwort?.status === 'unvollstaendig') return { status: 'unvollstaendig', grund: String(antwort.grund ?? '') }
+  return { status: 'fehler', meldung: t('entwicklung.detail.akte.unerwartet') }
+}
+
+/**
+ * Lädt Akte und Roadmap eines Features für das offene Detail (einmal je Öffnen). Eine überholte
+ * Antwort (anderes Detail, Projektwechsel) wird verworfen.
+ * @param nachtrag - der detailNachtrag, für den geladen wird
+ */
+async function ladeAkteUndRoadmap(nachtrag) {
+  const [akte, roadmap] = await Promise.allSettled([holeFeatureAkte(nachtrag.id), holeRoadmap()])
+  if (detailNachtrag !== nachtrag) return
+  if (akte.status === 'rejected') console.error('GET …/features/<id>/akte fehlgeschlagen:', akte.reason)
+  if (roadmap.status === 'rejected') console.error('GET …/roadmap (Detail) fehlgeschlagen:', roadmap.reason)
+  nachtrag.akte = akte.status === 'fulfilled' ? pruefeAkte(akte.value) : { status: 'fehler', meldung: meldungVon(akte.reason) }
+  nachtrag.roadmap = roadmap.status === 'fulfilled' ? roadmap.value : { status: 'fehler' }
+  renderDetailNachtrag()
+}
+
+/**
+ * Lädt die Schritte des verknüpften Ablaufs (GET …/workflows/<id>) und — steht er auf
+ * ABGESCHLOSSEN — die Abnahme (GET …/abnahme) für „Ergebnis prüfen“. Offen ist die Abnahme nach
+ * derselben Regel wie in views/workflows.js (renderAbnahmeEntscheidung): Workflow ABGESCHLOSSEN,
+ * kein Freigabe-Halt, keine gültige Abnahme-Entscheidung. Eine überholte Antwort (anderes Detail,
+ * Projektwechsel, inzwischen neuere Ladung desselben Details) wird verworfen.
+ * @param nachtrag - der detailNachtrag, für den geladen wird
+ * @param workflow - verknüpfter Workflow-Eintrag des Aggregats
+ */
+async function ladeAblaufNachtrag(nachtrag, workflow) {
+  const ladung = ++nachtrag.ablaufLadung
+  const aktuell = () => detailNachtrag === nachtrag && nachtrag.ablaufLadung === ladung
+  try {
+    const antwort = await holeWorkflowDetail(workflow.workflowId)
+    const inhalt = antwort.ok ? await antwort.json() : null
+    if (!aktuell()) return
+    nachtrag.schritte = Array.isArray(inhalt?.daten?.schritte) ? inhalt.daten.schritte : null
+  } catch (fehler) {
+    if (!aktuell()) return
+    console.error('GET …/workflows/<id> (Detail) fehlgeschlagen:', fehler)
+    nachtrag.schritte = null
+  }
+  nachtrag.abnahmeOffen = false
+  if (workflow.status === 'ABGESCHLOSSEN') {
+    try {
+      const abnahme = await holeAbnahme(workflow.workflowId)
+      if (!aktuell()) return
+      const entscheidung = abnahme?.entscheidung?.status
+      nachtrag.abnahmeOffen = abnahme?.workflowStatus === 'ABGESCHLOSSEN' && (abnahme.freigabeHalt ?? null) === null && typeof entscheidung === 'string' && entscheidung !== 'ok'
+    } catch (fehler) {
+      // Ohne Abnahme-Projektion kein „Ergebnis prüfen“; der Rest des Details bleibt.
+      console.error('GET …/abnahme (Detail) fehlgeschlagen:', fehler)
+    }
+  }
+  renderDetailNachtrag()
+}
+
+/**
+ * Startet die ausstehenden Teile des Detail-Nachtrags: die Akte (Features, einmal je Öffnen) und
+ * den verknüpften Ablauf samt Schritten, sobald Workflows (Poll) und Aufträge vorliegen. Die
+ * Schritte lädt sie beim ersten Bestimmen und danach nur bei einem Übergang — wenn ein anderer
+ * Ablauf maßgeblich wird (z. B. der eben über „Auftrag vorbereiten“ entstandene) oder der
+ * maßgebliche seine Phase wechselt (workflowPhase: Status bzw. Freigabe/Rückfrage). Ein Poll-Tick
+ * ohne Übergang lädt nichts. Eine nicht verfügbare Quelle (null) hält die erste Bestimmung offen;
+ * eine bereits bestimmte bleibt dann stehen.
+ */
+function pruefeDetailNachtrag() {
+  const nachtrag = detailNachtrag
+  if (nachtrag === null || gewaehlteId !== nachtrag.id || nachtrag.projektId !== holeAktivesProjekt().id) return
+  const workitem = findeWorkitem(nachtrag.id)
+  if (workitem === null) return
+  if (workitem.quelle === 'feature' && !nachtrag.akteGestartet) {
+    nachtrag.akteGestartet = true
+    void ladeAkteUndRoadmap(nachtrag)
+  }
+  const verknuepfung = baueVerknuepfung(letzterZustand?.workflows, auftraege)
+  if (verknuepfung.laedt.length > 0) return
+  if (verknuepfung.fehlend.length > 0) {
+    if (!nachtrag.workflowBestimmt) nachtrag.verknuepfungFehlt = true
     return
   }
-  inhalt.innerHTML = workitem.quelle === 'finding' ? renderFindingDetail(workitem) : renderFeatureDetail(workitem)
+  nachtrag.verknuepfungFehlt = false
+  const workflow = verknuepfterWorkflow(workitem, verknuepfung)
+  const kennung = workflow === null ? null : `${workflow.workflowId}|${workflowPhase(workflow)}`
+  if (nachtrag.workflowBestimmt && kennung === nachtrag.workflowKennung) return
+  const andererAblauf = !nachtrag.workflowBestimmt || (workflow?.workflowId ?? null) !== nachtrag.workflowId
+  nachtrag.workflowBestimmt = true
+  nachtrag.workflowKennung = kennung
+  nachtrag.workflowId = workflow?.workflowId ?? null
+  nachtrag.workflowEintrag = workflow
+  // Beim selben Ablauf bleiben die bisherigen Schritte stehen, bis die neuen da sind (kein Flackern).
+  if (andererAblauf) {
+    nachtrag.schritte = undefined
+    nachtrag.abnahmeOffen = false
+  }
+  if (workflow !== null) void ladeAblaufNachtrag(nachtrag, workflow)
+}
+
+/**
+ * Die Sicht des Details (views/workboard-detail.js) für workitem. Der verknüpfte Ablauf ist der
+ * beim Öffnen bestimmte; Status und Halt kommen aus dem jüngsten Aggregat (die Phase bleibt
+ * aktuell), sonst aus dem Eintrag zum Zeitpunkt der Bestimmung.
+ * @param workitem - das Workitem des offenen Details
+ * @returns Sicht
+ */
+function baueDetailSicht(workitem) {
+  const nachtrag = detailNachtrag?.id === workitem.id ? detailNachtrag : null
+  let verknuepfung = 'laedt'
+  let workflow = null
+  if (nachtrag?.workflowBestimmt) {
+    verknuepfung = 'ok'
+    const aktuell = Array.isArray(letzterZustand?.workflows) ? letzterZustand.workflows.find((w) => w?.workflowId === nachtrag.workflowId) : undefined
+    workflow = nachtrag.workflowId === null ? null : (aktuell ?? nachtrag.workflowEintrag)
+  } else if (nachtrag?.verknuepfungFehlt) {
+    verknuepfung = 'fehlt'
+  }
+  return { workitem, workflow, verknuepfung, schritte: nachtrag?.schritte, akte: nachtrag?.akte, roadmap: nachtrag?.roadmap, abnahmeOffen: nachtrag?.abnahmeOffen === true }
+}
+
+/**
+ * Schreibt innerHTML nur bei geändertem Inhalt (ein Poll-Tick klappt so keine Abschnitte zu).
+ * @param id - Element-id
+ * @param html - neuer Inhalt
+ * @param letztes - zuletzt geschriebener Inhalt
+ * @returns der jetzt gültige Inhalt
+ */
+function schreibeWennGeaendert(id, html, letztes) {
+  if (html !== letztes) document.getElementById(id).innerHTML = html
+  return html
+}
+
+/**
+ * Rendert Kopf, Statuszeile und Inhalt des Details für ein gefundenes Workitem — ohne den
+ * Click-to-Work-Bereich (#workboard-bearbeitung), damit ein Poll-Tick dessen Bedienung nicht
+ * zerstört.
+ * @param workitem - das Workitem des offenen Details
+ */
+function renderDetailSeite(workitem) {
+  const sicht = baueDetailSicht(workitem)
+  const titel = document.getElementById('workboard-detail-titel')
+  if (titel.textContent !== titelVon(workitem)) titel.textContent = titelVon(workitem)
+  document.getElementById('workboard-detail-eyebrow').textContent = detailEyebrow(workitem)
+  const aktion = sicht.abnahmeOffen && sicht.workflow !== null ? `<a class="button primary" href="#/workflows/${encodeURIComponent(sicht.workflow.workflowId)}">${tx('entwicklung.detail.ergebnisPruefen')}</a>` : ''
+  letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', aktion, letztesDetailAktionHtml)
+  document.getElementById('workboard-detail-z').hidden = false
+  document.getElementById('workboard-detail-status').hidden = false
+  letztesDetailStatusHtml = schreibeWennGeaendert('workboard-detail-status', detailStatusHtml(sicht), letztesDetailStatusHtml)
+  letztesDetailInhaltHtml = schreibeWennGeaendert('workboard-detail-inhalt', detailInhaltHtml(sicht), letztesDetailInhaltHtml)
+}
+
+/**
+ * Detail ohne (noch) gefundenes Workitem: Ladezustand, solange die Workitems laden (F-921, kein
+ * „nicht gefunden“ beim Deep-Link), sonst Fehler, „nicht verfügbar“ oder „nicht gefunden“.
+ * @param id - Workitem-id aus der Route
+ */
+function renderDetailOhneWorkitem(id) {
+  let html
+  if (alleFehler !== null) html = `<div class="note red"><strong>${tx('entwicklung.fehler.titel')}</strong><p><code>${escapeHtml(alleFehler)}</code></p><button type="button" class="button" data-workboard-detail-erneut>${tx('entwicklung.fehler.erneut')}</button></div>`
+  else if (alleWorkitems === undefined) html = `<p class="subtle">${tx('entwicklung.detail.laedt')}</p>`
+  else if (alleWorkitems === null) html = `<div class="note red"><strong>${tx('entwicklung.nichtVerfuegbar')}</strong></div>`
+  else html = `<div class="note amber"><strong>${tx('entwicklung.detail.nichtGefunden.titel')}</strong><p>${tx('entwicklung.detail.nichtGefunden')}</p></div>`
+  document.getElementById('workboard-detail-titel').textContent = id
+  document.getElementById('workboard-detail-eyebrow').textContent = ''
+  letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', '', letztesDetailAktionHtml)
+  // Ohne Eintrag gibt es nichts zu bearbeiten: die Z-Knöpfe des Kopfs treten mit zurück.
+  document.getElementById('workboard-detail-z').hidden = true
+  document.getElementById('workboard-detail-status').hidden = true
+  letztesDetailStatusHtml = schreibeWennGeaendert('workboard-detail-status', '', letztesDetailStatusHtml)
+  letztesDetailInhaltHtml = schreibeWennGeaendert('workboard-detail-inhalt', html, letztesDetailInhaltHtml)
+  schreibeBearbeitung('')
+}
+
+/**
+ * Rendert das offene Detail vollständig (Workitem über findeWorkitem), einschließlich des
+ * Click-to-Work-Bereichs — ohne zu öffnen oder zu scrollen. Getrennt von ladeDetail(), damit
+ * ladeListe() und ladeAlleWorkitems() das offene Detail still nachrendern können, sobald eine
+ * Liste eintrifft. Der Inhalt hat keine Formularfelder; ein Überschreiben kann keine Eingabe
+ * verlieren.
+ * @param id - Workitem-id des offenen Details
+ */
+function renderDetailInhalt(id) {
+  const workitem = findeWorkitem(id)
+  if (workitem === null) {
+    renderDetailOhneWorkitem(id)
+    return
+  }
+  pruefeDetailNachtrag()
+  renderDetailSeite(workitem)
   renderBearbeitungsAbschnitt(workitem)
 }
 
-/** Öffnet das Detail-Panel für id (Routen-Eintritt `#/workboard/<id>`) — merkt sich id für den stillen Nachtrag aus ladeListe()/ladeAlleWorkitems() (siehe renderDetailInhalt). F22 WS-2: ein bearbeitungsZustand eines ANDEREN Workitems wird verworfen — nur ein Wiederöffnen DESSELBEN Findings behält seinen Fortschritt (siehe bearbeitungsZustand-Kommentar). */
+/** Rendert nach einem eingetroffenen Nachtrag bzw. einem Poll-Tick das offene Detail neu; der Click-to-Work-Bereich wird nur bei geändertem HTML geschrieben (schreibeBearbeitung — etwa, wenn „Auftrag vorbereiten“ bei offener Abnahme zurücktritt). */
+function renderDetailNachtrag() {
+  if (gewaehlteId === null) return
+  const workitem = findeWorkitem(gewaehlteId)
+  if (workitem === null) return
+  pruefeDetailNachtrag()
+  renderDetailSeite(workitem)
+  renderBearbeitungsAbschnitt(workitem)
+}
+
+/**
+ * Schaltet zwischen Übersicht (Kopf, Register, Board, Listen) und Detail um; „←“ nennt das zuletzt
+ * aktive Register.
+ * @param offen - true: Detail zeigen
+ */
+function zeigeDetail(offen) {
+  document.getElementById('workboard-uebersicht').hidden = offen
+  document.getElementById('workboard-detail').hidden = !offen
+  const tab = t(`entwicklung.tab.${aktiverTab}`)
+  document.getElementById('workboard-detail-zurueck-text').textContent = tab
+  document.getElementById('workboard-detail-schliessen').setAttribute('aria-label', t('entwicklung.detail.zurueck', { tab }))
+}
+
+/** Öffnet das Detail für id (Routen-Eintritt `#/workboard/<id>`) als ganze Seite und startet einen frischen Nachtrag (Akte, Roadmap, Ablauf). F22 WS-2: ein bearbeitungsZustand eines ANDEREN Workitems wird verworfen — nur ein Wiederöffnen DESSELBEN Workitems behält seinen Fortschritt (siehe bearbeitungsZustand-Kommentar). */
 function ladeDetail(id) {
   gewaehlteId = id
   if (bearbeitungsZustand !== null && bearbeitungsZustand.workitemId !== id) {
     bearbeitungsZustand = null
   }
-  const abschnitt = document.getElementById('workboard-detail')
-  document.getElementById('workboard-detail-titel').textContent = id
-  abschnitt.hidden = false
+  detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahmeOffen: false, ablaufLadung: 0 }
+  letztesDetailStatusHtml = ''
+  letztesDetailInhaltHtml = ''
+  letztesDetailAktionHtml = ''
+  zeigeDetail(true)
   renderDetailInhalt(id)
-  abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const titel = document.getElementById('workboard-detail-titel')
+  titel.focus({ preventScroll: true })
+  document.getElementById('workboard-detail').scrollIntoView({ block: 'start' })
 }
 
+/** Schließt das Detail (Route `#/workboard`, Projektwechsel) und zeigt die Übersicht; ein laufender Nachtrag wird verworfen. */
 function schliesseDetail() {
   gewaehlteId = null
-  document.getElementById('workboard-detail').hidden = true
+  detailNachtrag = null
+  zeigeDetail(false)
 }
 
 /**
- * Klick-Delegation für Register, Ansicht-Chips, „+ x weitere“, „Erneut laden“, Filter-Chips,
+ * Klick-Delegation für Register, Ansicht-Chips, „Alle x anzeigen“, „Erneut laden“, Filter-Chips,
  * Spaltenfilter, Suche und „Neu laden“. Ein Filter-Chip markiert innerhalb SEINER Gruppe genau
  * einen Chip als gewählt (Radio-Verhalten über aria-pressed) und lädt die Liste neu; die Suche
  * filtert nur clientseitig.
@@ -1029,8 +1279,12 @@ function initFilterBedienung() {
   })
 }
 
-/** Klick- und Enter-Delegation für Listenzeilen (Navigation zu `#/workboard/<id>`) und das Schließen des Detail-Panels — Muster views/runs.js. */
+/** Klick- und Enter-Delegation für Listenzeilen (Navigation zu `#/workboard/<id>`) und „← zurück“ im Detail — Muster views/runs.js. */
 function initListenBedienung() {
+  // Fehlerzustand des Details: „Erneut laden“ holt die Workitems neu (der Knopf der Übersicht ist ausgeblendet).
+  document.getElementById('workboard-detail-inhalt').addEventListener('click', (ereignis) => {
+    if (ereignis.target.closest('[data-workboard-detail-erneut]') !== null) void ladeAlleWorkitems()
+  })
   const liste = document.getElementById('workboard-liste')
   liste.addEventListener('click', (ereignis) => {
     const zeile = ereignis.target.closest('.workboard-zeile')
@@ -1044,16 +1298,21 @@ function initListenBedienung() {
     ereignis.preventDefault()
     navigiere(`#/workboard/${encodeURIComponent(zeile.dataset.id)}`)
   })
+  // „← <Register>“: zurück zur Übersicht mit dem zuletzt aktiven Register (die Route #/workboard
+  // schließt das Detail); der Fokus geht auf die Seitenüberschrift.
   document.getElementById('workboard-detail-schliessen').addEventListener('click', () => {
-    schliesseDetail()
+    navigiere('#/workboard')
+    document.getElementById('workboard-titel').focus()
   })
 }
 
-/** Klick-Delegation für #workboard-bearbeitung (F22 WS-2): Bearbeiten/Wiederholen/Freigeben/Ablehnen — ein Container statt vier eigener Listener, Muster #workflow-bedienung in views/workflows.js. */
+/** Klick-Delegation für #workboard-bearbeitung (F22 WS-2): Auftrag vorbereiten (#workboard-bearbeiten/#workboard-bauen)/Wiederholen/Freigeben/Ablehnen — ein Container statt eigener Listener, Muster #workflow-bedienung in views/workflows.js. */
 function initBearbeitungBedienung() {
   // F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock des Vorschlags; danach Detail neu laden.
   bindeEmpfehlungInstallation(document.getElementById('workboard-bearbeitung'), () => aktualisiereBearbeitungsZustand())
   document.getElementById('workboard-bearbeitung').addEventListener('click', (ereignis) => {
+    // F-922: ein gesperrter Einstieg (disabled/aria-disabled) löst nichts aus — auch nicht über eine künstliche Klickfolge.
+    if (ereignis.target.closest('[aria-disabled="true"]') !== null) return
     const bearbeitenKnopf = ereignis.target.closest('#workboard-bearbeiten')
     if (bearbeitenKnopf) {
       const workitem = findeWorkitem(bearbeitenKnopf.dataset.id)
@@ -1105,6 +1364,9 @@ export function initWorkboardView() {
   registriere(/^#\/workboard$/, 'workboard', () => {
     schliesseDetail()
     betreteSeite()
+    // Während das Detail offen war, hat der Poll Board bzw. Liste nicht nachgeführt.
+    if (aktiverTab === 'board') renderBoard()
+    else renderListe()
   })
   registriere(/^#\/workboard\/([^/]+)$/, 'workboard', (id) => {
     betreteSeite()
@@ -1123,30 +1385,47 @@ export function initWorkboardView() {
   abonniere((zustand) => {
     letzterZustand = zustand
     if (!seiteAktiv) return
-    // Nur der sichtbare Bereich; der andere wird beim Registerwechsel ohnehin gebaut.
-    if (aktiverTab === 'board') renderBoard()
+    // Nur der sichtbare Bereich; der andere wird beim Register- bzw. Detailwechsel ohnehin gebaut.
+    // Im Detail rendert ein Tick nur neu (Phase); geladen wird höchstens der beim Öffnen noch nicht
+    // bestimmbare Ablauf, einmal (pruefeDetailNachtrag).
+    if (gewaehlteId !== null) renderDetailNachtrag()
+    else if (aktiverTab === 'board') renderBoard()
     else renderListe()
   })
   abonniereDetailAuffrischer(() => {
     void aktualisiereBearbeitungsZustand()
   })
 
-  // F44 WS-1a (F-860): beim Projektwechsel allen projektgebundenen Zustand verwerfen und neu laden.
-  // Register, Filter und Suche gehen auf den Anfang zurück (die Optionen stammen aus dem alten
-  // Projekt). Ein offenes Detail samt Click-to-Work-Zustand gehört zum alten Projekt und wird
-  // geschlossen — sonst fragte der Detail-Auffrischer dessen workflowId über den neuen Präfix ab
+  // F44 WS-1a (F-860): beim Projektwechsel allen projektgebundenen Zustand verwerfen. Neu geladen
+  // wird nur bei offener Seite; sonst lädt das nächste Betreten (F-920, F44 WS-3b). Register, Filter
+  // und Suche gehen auf den Anfang zurück (die Optionen stammen aus dem alten Projekt). Ein offenes
+  // Detail samt Click-to-Work-Zustand gehört zum alten Projekt und wird geschlossen — sonst fragte der Detail-Auffrischer dessen workflowId über den neuen Präfix ab
   // (Fehlerklasse F26 im Chat). Späte Antworten des alten Projekts verwirft der Überholschutz.
   abonniereProjektWechsel(ladeNachProjektWechsel)
 }
 
-/** F44 WS-1a (F-860): Neuladen-Hook der Seite beim Projektwechsel (siehe initWorkboardView). */
+/**
+ * F44 WS-1a (F-860): Neuladen-Hook der Seite beim Projektwechsel (siehe initWorkboardView).
+ * F-920 (F44 WS-3b): Ist die Seite nicht offen, wird nur zurückgesetzt — Workitems und Aufträge
+ * gelten als „lädt“, die Zähler verwerfen späte Antworten des alten Projekts, und das nächste
+ * Betreten (betreteSeite) lädt. Bei offener Seite lädt der Hook sofort.
+ */
 function ladeNachProjektWechsel() {
   schliesseDetail()
   bearbeitungsZustand = null
-  document.getElementById('workboard-bearbeitung').innerHTML = ''
+  // Unbedingt leeren, auch wenn der Zwischenspeicher schon leer meint (etwa nach einem fremden Eingriff in den Bereich).
+  letztesBearbeitungsHtml = null
+  schreibeBearbeitung('')
   letzterZustand = undefined
   letzteWorkitems = []
   renderBefunde(null)
+  if (!seiteAktiv) {
+    alleAnfrageZaehler++
+    auftraegeAnfrageZaehler++
+    alleWorkitems = undefined
+    alleFehler = null
+    auftraege = undefined
+  }
   wechsleTab('board')
-  ladeSeite()
+  if (seiteAktiv) ladeSeite()
 }

@@ -13,7 +13,10 @@
  * verworfen); der Verbrauch ist auf #/nutzung umgezogen (views/nutzung.js). F44 WS-3a: Die Seite
  * „Entwicklung“ lädt statt der Roadmap (Bento entfernt, F-892) die Aufträge für die Verknüpfung
  * Workitem ↔ Workflow — beim Betreten und beim Wechsel, nie aus dem Poll; das Board ordnet ein
- * Finding mit wartendem Workflow „Braucht dich“ zu.
+ * Finding mit wartendem Workflow „Braucht dich“ zu. F44 WS-3b: Beim Wechsel lädt die Entwicklung nur,
+ * wenn sie offen ist, sonst beim nächsten Betreten (F-920); das Detail zeigt beim Deep-Link bis zu
+ * den Workitems einen Ladezustand (F-921), lädt Akte, Ablauf-Schritte und Abnahme genau einmal je
+ * Öffnen (nie aus dem Poll) und blendet die Übersicht aus.
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -105,6 +108,10 @@ const aufrufe = []
 /** Zurückgehaltene Antworten: URL-Präfix → { freigeben } — für den Überholschutz-Fall. */
 const zurueckgehalten = new Map()
 
+/** F44 WS-3b: Status des Ablaufs w-33 in projekt-w3 und seine Abnahme-Entscheidung (Tests schalten beides um). */
+let statusW3 = 'LAEUFT'
+let entscheidungW3 = 'fehlt'
+
 /**
  * Antwortkörper je Endpunkt — genug, damit die Views ohne Fehler rendern.
  * @param url - angefragte URL
@@ -120,6 +127,29 @@ function koerperFuer(url) {
   // F44 WS-3a: Listenabruf (Tab Bugs) von projekt-q mit Parser-Befund — für den Überholschutz der Liste.
   if (url.includes('/projekte/projekt-q/workitems?typ=BUG'))
     return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-1', titel: 'Befund aus Q', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1' }], befunde: [{ meldung: 'Parser-Befund aus Q' }], fehler: [] }
+  // F44 WS-3b: projekt-ctw mit einem Finding für Click-to-Work (POST-Antworten über sonderAntworten).
+  if (url.includes('/projekte/projekt-ctw/workitems'))
+    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-8', titel: 'Befund K', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P2' }], befunde: [], fehler: [] }
+  if (url.includes('/projekte/projekt-ctw/auftraege')) return []
+  // F44 WS-3b: projekt-w3 mit einem Finding, dessen Ablauf den Status wechselt (statusW3).
+  if (url.includes('/projekte/projekt-w3/workitems'))
+    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-33', titel: 'Befund W3', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P2' }], befunde: [], fehler: [] }
+  if (url.includes('/projekte/projekt-w3/auftraege')) return [{ auftragId: 'a-33', titel: 'Auftrag W3', erstellt_am: 'x', workitem_referenz: 'workitem:finding:F-33' }]
+  if (url.includes('/projekte/projekt-w3/zustand'))
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-33', auftragId: 'a-33', status: statusW3, ziel: 'Ziel W3', naechster: null }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+  if (url.includes('/projekte/projekt-w3/workflows/w-33/abnahme')) return { workflowStatus: statusW3, freigabeHalt: null, entscheidung: { status: entscheidungW3 } }
+  if (url.includes('/projekte/projekt-w3/workflows/w-33')) return { daten: { status: statusW3, schritte: [{ schritt_id: 's1', rolle: 'ausfuehrung', worker: 'claude-code', status: statusW3 === 'LAEUFT' ? 'LAEUFT' : 'ERFOLGREICH', nachfolger: null }] } }
+  // F44 WS-3b: projekt-z mit Feature F7, dessen abgeschlossener Ablauf (über den Auftrag) auf die Abnahme wartet.
+  if (url.includes('/projekte/projekt-z/workitems'))
+    return { workitems: [{ quelle: 'feature', typ: 'FEATURE', id: 'F7', titel: 'Feature <Sieben>', status: 'IN_ARBEIT', pfad: 'features/F7/feature.md' }], befunde: [], fehler: [] }
+  if (url.includes('/projekte/projekt-z/auftraege')) return [{ auftragId: 'a-z', titel: 'Auftrag Z', erstellt_am: 'x', workitem_referenz: 'workitem:feature:F7' }]
+  if (url.includes('/projekte/projekt-z/zustand'))
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-z', auftragId: 'a-z', status: 'ABGESCHLOSSEN', ziel: 'Ziel Z', naechster: null }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+  if (url.includes('/projekte/projekt-z/workflows/w-z/abnahme')) return { workflowStatus: 'ABGESCHLOSSEN', freigabeHalt: null, entscheidung: { status: 'fehlt' } }
+  if (url.includes('/projekte/projekt-z/workflows/w-z'))
+    return { daten: { status: 'ABGESCHLOSSEN', schritte: [{ schritt_id: 's1', rolle: 'ausfuehrung', worker: 'claude-code', status: 'ERFOLGREICH', nachfolger: 's2' }, { schritt_id: 's2', rolle: 'code-reviewer', worker: 'codex', status: 'ERFOLGREICH', nachfolger: null }] } }
+  if (url.includes('/projekte/projekt-z/features/F7/akte'))
+    return { status: 'ok', id: 'F7', titel: 'Feature Sieben', featureStatus: 'IN_ARBEIT', ziel: 'Ziel <b>Z</b>', nicht_ziele: [], akzeptanzkriterien: [{ id: 'AK1', text: 'Kriterium <i>eins</i>' }] }
   if (url.includes('/workitems')) return { workitems: [], befunde: [], fehler: [] }
   // F44 WS-2b: eine gültige Roadmap nur für projekt-l — für den Überholschutz-Fall der Übersicht.
   if (url.includes('/projekte/projekt-l/roadmap')) return { status: 'ok', vision: 'Vision von L', meilensteine: [] }
@@ -135,8 +165,23 @@ function koerperFuer(url) {
   return {}
 }
 
-globalThis.fetch = (url) => {
+/**
+ * F44 WS-3b: Antworten mit eigenem Status je Methode und URL (Click-to-Work), als Warteschlange:
+ * Schlüssel `<METHODE> <url>` → [{ status, json }, …]; der letzte Eintrag bleibt stehen.
+ */
+const sonderAntworten = new Map()
+/** Aufgezeichnete schreibende Anfragen (`<METHODE> <url>`). */
+const schreibend = []
+
+globalThis.fetch = (url, optionen = {}) => {
   aufrufe.push(String(url))
+  const methode = optionen.method ?? 'GET'
+  if (methode !== 'GET') schreibend.push(`${methode} ${url}`)
+  const sonder = sonderAntworten.get(`${methode} ${url}`)
+  if (sonder !== undefined) {
+    const { status, json } = sonder.length > 1 ? sonder.shift() : sonder[0]
+    return Promise.resolve({ ok: status >= 200 && status < 300, status, json: async () => json })
+  }
   const antwort = { ok: true, status: 200, json: async () => koerperFuer(String(url)) }
   for (const [praefix, halt] of zurueckgehalten) {
     if (String(url).startsWith(praefix)) return new Promise((ok) => halt.push(() => ok(antwort)))
@@ -171,7 +216,7 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
 
   const neu = '/api/projekte/projekt-b'
   const erwartet = {
-    'Workboard Workitems (ungefiltert)': (u) => u === `${neu}/workitems` || u === `${neu}/workitems?`,
+    'Übersicht Workitems (ungefiltert)': (u) => u === `${neu}/workitems` || u === `${neu}/workitems?`,
     'Dashboard P0/P1 (status=OFFEN)': (u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN'),
     'Nutzung Verbrauch': (u) => u.startsWith(`${neu}/verbrauch`),
     'Direktstart Aufträge': (u) => u === `${neu}/auftraege`,
@@ -180,8 +225,9 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
   for (const [name, passt] of Object.entries(erwartet)) {
     assert.ok(aufrufe.some(passt), `${name} wurde nach dem Wechsel nicht mit ${neu} geladen; Aufrufe: ${aufrufe.join(', ')}`)
   }
-  // F44 WS-3a: Aufträge laden Direktstart UND Workboard (Verknüpfung Workitem ↔ Workflow).
-  assert.ok(aufrufe.filter((u) => u === `${neu}/auftraege`).length >= 2, `Workboard lädt die Aufträge nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  // F-920 (F44 WS-3b): Die Seite „Entwicklung“ ist hier (noch) nicht betreten — sie lädt beim Wechsel
+  // nichts; die Aufträge lädt nur der Direktstart. Das Laden bei offener Seite prüft der Test „F-920“ unten.
+  assert.equal(aufrufe.filter((u) => u === `${neu}/auftraege`).length, 1, `Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
     [],
@@ -340,9 +386,9 @@ test('F44 WS-2b: die Übersicht lädt nach dem Wechsel Roadmap, alle Workitems u
   const neu = '/api/projekte/projekt-j'
   const anzahl = (passt) => aufrufe.filter(passt).length
   // Roadmap: Roadmap-Seite und Übersicht (F44 WS-3a: die Bento-Karte im Workboard ist entfernt);
-  // ungefilterte Workitems: Workboard und Übersicht.
+  // ungefilterte Workitems: die Übersicht (F-920: die nicht betretene Entwicklung lädt beim Wechsel nicht).
   assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 2, `Übersicht lädt die Roadmap nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
-  assert.ok(anzahl((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`) >= 2, `Übersicht lädt die Workitems nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(anzahl((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`) >= 1, `Übersicht lädt die Workitems nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
     [],
@@ -515,4 +561,239 @@ test('F44 WS-3a: „Neu laden“ lädt Workitems und Aufträge; erneutes Betrete
   dispatch()
   await warte()
   assert.deepEqual(geladen(), { workitems: 0, auftraege: 0 })
+})
+
+test('F-920: der Wechsel lädt die Entwicklung nur bei offener Seite; sonst lädt das nächste Betreten', async () => {
+  const { dispatch } = await import('./router.js')
+  const ansicht = document.getElementById('view-workboard')
+  const auftraegeVon = (projekt) => aufrufe.filter((u) => u === `/api/projekte/${projekt}/auftraege`).length
+
+  // Seite offen: der Wechsel lädt Workitems und Aufträge der Entwicklung (Aufträge zusätzlich zum Direktstart).
+  location.hash = '#/workboard'
+  dispatch()
+  await warte()
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-t', name: 'Projekt T' })
+  await warte()
+  assert.equal(auftraegeVon('projekt-t'), 2, `offene Seite; Aufrufe: ${aufrufe.join(', ')}`)
+
+  // Seite verlassen (verborgen, hashchange): der Wechsel lädt für die Entwicklung nichts.
+  ansicht.hidden = true
+  for (const handler of hashchangeHandler) handler()
+  await warte()
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-u', name: 'Projekt U' })
+  await warte()
+  assert.equal(auftraegeVon('projekt-u'), 1, `geschlossene Seite lädt mit; Aufrufe: ${aufrufe.join(', ')}`)
+
+  // Erneutes Betreten lädt Workitems und Aufträge des neuen Projekts.
+  aufrufe.length = 0
+  ansicht.hidden = false
+  dispatch()
+  await warte()
+  assert.equal(auftraegeVon('projekt-u'), 1, `Betreten; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(aufrufe.some((u) => u === '/api/projekte/projekt-u/workitems' || u === '/api/projekte/projekt-u/workitems?'), `Betreten lädt die Workitems nicht; Aufrufe: ${aufrufe.join(', ')}`)
+})
+
+test('F44 WS-3b: Detail per Deep-Link — Ladezustand (F-921), Übersicht ausgeblendet, Nachtrag genau einmal, nie aus dem Poll', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-z/workitems', halt)
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-z', name: 'Projekt Z' })
+  location.hash = '#/workboard/F7'
+  dispatch()
+  await warte()
+  const inhalt = document.getElementById('workboard-detail-inhalt')
+  assert.match(inhalt.innerHTML, /Der Eintrag wird geladen/)
+  assert.doesNotMatch(inhalt.innerHTML, /nicht gefunden|gibt es im aktuellen Projekt nicht/)
+  assert.equal(document.getElementById('workboard-detail').hidden, false)
+  assert.equal(document.getElementById('workboard-uebersicht').hidden, true)
+
+  // Die Übersicht lädt für ihren Fokus-Ablauf (hier derselbe) eigene Nachträge — gezählt wird nur,
+  // was nach dem Eintreffen der Workitems dazukommt (vorher kennt das Detail sein Workitem nicht).
+  const anzahl = (ende) => aufrufe.filter((u) => u === `/api/projekte/projekt-z${ende}`).length
+  const vorher = { akte: anzahl('/features/F7/akte'), schritte: anzahl('/workflows/w-z'), abnahme: anzahl('/workflows/w-z/abnahme') }
+  assert.equal(vorher.akte, 0)
+  zurueckgehalten.clear()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  await pollJetzt()
+  await warte()
+  assert.equal(anzahl('/features/F7/akte') - vorher.akte, 1, `Akte; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(anzahl('/workflows/w-z') - vorher.schritte, 1, `Ablauf-Schritte; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(anzahl('/workflows/w-z/abnahme') - vorher.abnahme, 1, `Abnahme; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(document.getElementById('workboard-detail-titel').textContent, 'Feature <Sieben>')
+  assert.equal(document.getElementById('workboard-detail-eyebrow').textContent, 'Feature · F7')
+  assert.match(inhalt.innerHTML, /Ziel &lt;b&gt;Z&lt;\/b&gt;/, 'Ziel aus der Akte, escaped')
+  assert.match(inhalt.innerHTML, /<code>AK1<\/code> Kriterium &lt;i&gt;eins&lt;\/i&gt;/, 'AK aus der Akte, escaped')
+  assert.match(inhalt.innerHTML, /2 von 2 Schritten abgeschlossen/)
+  assert.match(inhalt.innerHTML, /Umsetzung/, 'Rollenname statt ID (F-914)')
+  // Abgeschlossener Ablauf mit offener Abnahme: Phase „Deine Abnahme“, gerade dran „Du“.
+  assert.match(document.getElementById('workboard-detail-status').innerHTML, /Phase: <strong>Deine Abnahme<\/strong>.*Gerade dran: <strong>Du<\/strong>/)
+  assert.match(document.getElementById('workboard-detail-aktion').innerHTML, /href="#\/workflows\/w-z">Ergebnis prüfen/)
+  assert.match(document.getElementById('workboard-bearbeitung').innerHTML, /id="workboard-bauen"[^>]*>Auftrag vorbereiten/)
+
+  // Weitere Poll-Ticks laden nichts nach.
+  aufrufe.length = 0
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.deepEqual(
+    aufrufe.filter((u) => !u.endsWith('/zustand')),
+    [],
+    `Poll lädt im Detail nach: ${aufrufe.join(', ')}`
+  )
+
+  // „← zurück“ führt zur Übersicht.
+  document.getElementById('workboard-detail-schliessen').handler.click({})
+  assert.equal(location.hash, '#/workboard')
+  assert.equal(document.getElementById('workboard-detail').hidden, true)
+  assert.equal(document.getElementById('workboard-uebersicht').hidden, false)
+})
+
+/**
+ * Löst einen Klick im Click-to-Work-Bereich aus (Klick-Delegation in views/workboard.js).
+ * @param selektor - Selektor, auf den closest() treffen soll
+ * @param id - data-id des Knopfs
+ */
+function klickeBearbeitung(selektor, id) {
+  document.getElementById('workboard-bearbeitung').handler.click({ target: { closest: (s) => (s === selektor ? { dataset: { id } } : null) } })
+}
+
+test('F44 WS-3b (E12): Konflikt 409 → „Wiederholen“ routet erneut, ohne einen zweiten Auftrag anzulegen; danach lädt die Seite die Aufträge neu', async () => {
+  const { dispatch } = await import('./router.js')
+  const neu = '/api/projekte/projekt-ctw'
+  sonderAntworten.set(`POST ${neu}/auftraege`, [{ status: 201, json: { auftragId: 'a-k' } }])
+  sonderAntworten.set(`POST ${neu}/auftraege/a-k/routen`, [
+    { status: 409, json: { grund: 'Ein anderer Lauf ist aktiv <D13>' } },
+    { status: 202, json: { laufId: 'l-k' } },
+  ])
+  setzeAktivesProjekt({ id: 'projekt-ctw', name: 'Projekt CTW' })
+  location.hash = '#/workboard/F-8'
+  dispatch()
+  await warte()
+  const bereich = document.getElementById('workboard-bearbeitung')
+  assert.match(bereich.innerHTML, /id="workboard-bearbeiten"[^>]*>Auftrag vorbereiten/)
+
+  schreibend.length = 0
+  aufrufe.length = 0
+  klickeBearbeitung('#workboard-bearbeiten', 'F-8')
+  await warte()
+  assert.match(bereich.innerHTML, /Es läuft bereits eine Ausführung\./)
+  assert.match(bereich.innerHTML, /Ein anderer Lauf ist aktiv &lt;D13&gt;/, 'Servergrund escaped')
+  assert.match(bereich.innerHTML, /class="button wb-wiederholen"/)
+  assert.equal(aufrufe.filter((u) => u === `${neu}/auftraege`).length, 2, `POST und danach einmal GET der Aufträge; Aufrufe: ${aufrufe.join(', ')}`)
+
+  klickeBearbeitung('.wb-wiederholen', 'F-8')
+  await warte()
+  assert.match(bereich.innerHTML, /Der Ablauf wird vorgeschlagen …[\s\S]*<code>l-k<\/code>/)
+  assert.deepEqual(schreibend, [`POST ${neu}/auftraege`, `POST ${neu}/auftraege/a-k/routen`, `POST ${neu}/auftraege/a-k/routen`])
+  sonderAntworten.clear()
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F44 WS-3b: Ein Phasenwechsel des verknüpften Ablaufs lädt Schritte und Abnahme genau einmal nach; ohne Übergang lädt der Poll nichts', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  statusW3 = 'LAEUFT'
+  setzeAktivesProjekt({ id: 'projekt-w3', name: 'Projekt W3' })
+  location.hash = '#/workboard/F-33'
+  dispatch()
+  await warte()
+  await pollJetzt()
+  await warte()
+  const inhalt = document.getElementById('workboard-detail-inhalt')
+  assert.match(document.getElementById('workboard-detail-status').innerHTML, /In Ausführung/)
+  const anzahl = (ende) => aufrufe.filter((u) => u === `/api/projekte/projekt-w3${ende}`).length
+  const vorher = { schritte: anzahl('/workflows/w-33'), abnahme: anzahl('/workflows/w-33/abnahme') }
+
+  statusW3 = 'ABGESCHLOSSEN'
+  await pollJetzt()
+  await warte()
+  assert.equal(anzahl('/workflows/w-33') - vorher.schritte, 1, 'Schritte beim Übergang genau einmal')
+  assert.equal(anzahl('/workflows/w-33/abnahme') - vorher.abnahme, 1, 'Abnahme beim Übergang nach ABGESCHLOSSEN')
+  assert.match(inhalt.innerHTML, /1 von 1 Schritt abgeschlossen/)
+  assert.match(document.getElementById('workboard-detail-aktion').innerHTML, /Ergebnis prüfen/)
+  assert.match(document.getElementById('workboard-bearbeitung').innerHTML, /class="button" data-id="F-33" disabled aria-disabled="true"/, '„Auftrag vorbereiten“ ist bei offener Abnahme gesperrt (F-922)')
+
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.equal(anzahl('/workflows/w-33') - vorher.schritte, 1, 'ohne Übergang kein weiterer Abruf')
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F44 WS-3b: Eine späte Akte des alten Projekts erscheint nach dem Wechsel nicht im Detail', async () => {
+  const { dispatch } = await import('./router.js')
+  const halt = []
+  setzeAktivesProjekt({ id: 'projekt-z', name: 'Projekt Z' })
+  zurueckgehalten.set('/api/projekte/projekt-z/features/F7/akte', halt)
+  location.hash = '#/workboard/F7'
+  dispatch()
+  await warte()
+  assert.ok(halt.length > 0, 'die Akte von Z ist unterwegs')
+  zurueckgehalten.clear()
+  setzeAktivesProjekt({ id: 'projekt-y', name: 'Projekt Y' })
+  await warte()
+  dispatch()
+  await warte()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  const inhalt = document.getElementById('workboard-detail-inhalt').innerHTML
+  assert.doesNotMatch(inhalt, /Ziel &lt;b&gt;Z/)
+  assert.match(inhalt, /Eintrag nicht gefunden/)
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F-922: „Auftrag vorbereiten“ gesperrt bei laufendem Ablauf und bei offener Abnahme, frei bei terminalem Ablauf ohne offene Abnahme', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  const bereich = document.getElementById('workboard-bearbeitung')
+  /** Öffnet das Detail F-33 frisch (neuer Nachtrag) und wartet Poll und Nachtrag ab. */
+  const oeffne = async () => {
+    location.hash = '#/workboard'
+    dispatch()
+    location.hash = '#/workboard/F-33'
+    dispatch()
+    await warte()
+    await pollJetzt()
+    await warte()
+  }
+  const gesperrt = /id="workboard-bearbeiten" class="button" data-id="F-33" disabled aria-disabled="true"/
+
+  statusW3 = 'LAEUFT'
+  entscheidungW3 = 'fehlt'
+  setzeAktivesProjekt({ id: 'projekt-w3', name: 'Projekt W3' })
+  await oeffne()
+  assert.match(bereich.innerHTML, gesperrt, 'laufender Ablauf sperrt')
+  assert.match(bereich.innerHTML, /Für diesen Eintrag läuft bereits ein Ablauf\./)
+  assert.match(bereich.innerHTML, /<a href="#\/workflows\/w-33">Ablauf öffnen<\/a>/)
+
+  // Ein Klick auf den gesperrten Knopf legt nichts an.
+  schreibend.length = 0
+  bereich.handler.click({ target: { closest: (s) => (s === '[aria-disabled="true"]' || s === '#workboard-bearbeiten' ? { dataset: { id: 'F-33' } } : null) } })
+  await warte()
+  assert.deepEqual(schreibend, [])
+
+  statusW3 = 'ABGESCHLOSSEN'
+  entscheidungW3 = 'fehlt'
+  await oeffne()
+  assert.match(bereich.innerHTML, gesperrt, 'offene Abnahme sperrt')
+  assert.match(bereich.innerHTML, /Der Ablauf wartet auf deine Abnahme\./)
+  assert.match(bereich.innerHTML, /<a href="#\/workflows\/w-33">Ablauf öffnen<\/a>/)
+
+  entscheidungW3 = 'ok'
+  await oeffne()
+  assert.match(bereich.innerHTML, /id="workboard-bearbeiten" class="button primary" data-id="F-33" data-ctw-fokus>Auftrag vorbereiten/, 'terminaler Ablauf ohne offene Abnahme: frei')
+  assert.doesNotMatch(bereich.innerHTML, /disabled/)
+
+  statusW3 = 'LAEUFT'
+  entscheidungW3 = 'fehlt'
+  location.hash = '#/workboard'
+  dispatch()
 })

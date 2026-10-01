@@ -1,0 +1,142 @@
+{
+  "url": "http://127.0.0.1:4381/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-dashboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nachweis-w91",
+            "auftragId": "nachweis-a91",
+            "ziel": "Vom beschriebenen Feature direkt zur freigabefähigen Arbeit, ohne den Auftrag noch einmal aufzubauen.",
+            "status": "LAEUFT",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "naechster": {
+              "art": "starte",
+              "schrittId": "s2"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w91",
+      "json": {
+        "daten": {
+          "workflowId": "nachweis-w91",
+          "auftragId": "nachweis-a91",
+          "ziel": "Vom beschriebenen Feature direkt zur freigabefähigen Arbeit, ohne den Auftrag noch einmal aufzubauen.",
+          "status": "LAEUFT",
+          "aktiverSchrittId": "s2",
+          "grund": null,
+          "naechster": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "status": "ERFOLGREICH",
+              "freigabe": "ZWINGEND",
+              "nachfolger": "s2",
+              "lauf_id": "l1"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt",
+              "status": "LAEUFT",
+              "freigabe": "KEINE",
+              "nachfolger": null,
+              "lauf_id": "l2"
+            }
+          ]
+        },
+        "naechster": {
+          "art": "starte",
+          "schrittId": "s2"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w91/abnahme",
+      "json": {
+        "workflowStatus": "LAEUFT",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "fehlt"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1:not(:empty)"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "B3 Rolle",
+        "selector": "#uebersicht-cockpit .cockpit-role h2"
+      },
+      {
+        "name": "B11 Wer macht was",
+        "selector": ".execution-triptych"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/dashboard (F-914: Rollennamen statt IDs)",
+      "warteAufSelector": {
+        "selector": ".execution-triptych",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-dashboard.webp"
+    }
+  ]
+}

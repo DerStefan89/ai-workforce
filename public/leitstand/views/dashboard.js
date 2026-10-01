@@ -50,8 +50,9 @@
  *   (alle zwei Sekunden) zerstört so keinen Tastaturfokus.
  * - Keine Schreibaktion: Jede Bedienung ist ein Link, ein Sprung innerhalb der Seite, ein
  *   erneutes Laden (lesend) oder ein Z-Knopf ohne Wirkung.
- * - Projektname, Vision, Titel, IDs, Rollen- und Statuswerte sowie Servertexte werden nicht
- *   übersetzt und immer escaped; alle übrigen Texte über t().
+ * - Projektname, Vision, Titel, IDs, Statuswerte sowie Servertexte werden nicht
+ *   übersetzt und immer escaped; alle übrigen Texte über t(). Rollen erscheinen seit F44 WS-3b
+ *   (F-914) mit ihrem übersetzten Namen (rollen-anzeige.js), eine unbekannte Rolle als ID.
  */
 
 import { holeRoadmap, holeWorkitems } from '../api.js'
@@ -62,6 +63,7 @@ import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { aktuellerMeilenstein, roadmapZustand, STATUS_SYMBOL, statusKategorie, waehleEntwicklungsstand, zaehleGeplant, zaehleMeilenstein } from '../roadmap-anzeige.js'
+import { rollenName, werSpalte } from '../rollen-anzeige.js'
 import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
 
@@ -346,7 +348,7 @@ function rolleKarte(l) {
     unterzeile = `<small>${tx('uebersicht.rolle.menschlich')}</small>`
   } else if (l.fokusNachtrag?.status === 'ok') {
     const laufend = l.fokusNachtrag.daten.schritte.find((s) => s.status === 'LAEUFT') ?? null
-    titel = laufend !== null ? escapeHtml(laufend.rolle) : tx('uebersicht.rolle.keine')
+    titel = laufend !== null ? escapeHtml(rollenName(laufend.rolle)) : tx('uebersicht.rolle.keine')
     if (laufend !== null) unterzeile = `<small>${tx('uebersicht.rolle.schritt')} <code>${escapeHtml(laufend.schritt_id)}</code></small>`
   } else if (l.fokusNachtrag?.status === 'fehler') {
     titel = nichtVerfuegbar()
@@ -591,25 +593,9 @@ function wegBlock() {
 }
 
 /**
- * Eine Spalte von „Wer macht was“.
- * @param eyebrow - übersetzte Spaltenüberschrift
- * @param schritt - Schritt oder null
- * @param titelHtml - optionaler Titel statt der Rolle (fertiges HTML)
- * @param zusatz - optionaler Zusatz unter dem Schritt (fertiges HTML)
- * @param klasse - optionale Klasse der Spalte
- * @returns HTML
- */
-function werSpalte(eyebrow, schritt, titelHtml = '', zusatz = '', klasse = '') {
-  const inhalt =
-    schritt === null
-      ? `<strong>–</strong><p>${tx('uebersicht.wer.keinSchritt')}</p>`
-      : `<strong>${titelHtml || escapeHtml(schritt.rolle)}</strong><p>${titelHtml ? `${escapeHtml(schritt.rolle)} · ` : ''}${tx('uebersicht.rolle.schritt')} <code>${escapeHtml(schritt.schritt_id)}</code></p>`
-  return `<div${klasse ? ` class="${klasse}"` : ''}><span class="eyebrow">${escapeHtml(eyebrow)}</span>${inhalt}${zusatz}</div>`
-}
-
-/**
  * Wer macht was (B11): Zuvor, Jetzt, Danach aus den Schritten des Fokus-Workflows, erwarteter
- * Output = workflow.ziel, Zeile zu Worker und beobachtetem Modell.
+ * Output = workflow.ziel, Zeile zu Worker und beobachtetem Modell. Die Spalten baut werSpalte aus
+ * rollen-anzeige.js (lesbarer Rollenname statt ID, F-914; gemeinsam mit dem Detail der Entwicklung).
  * @param l - lage()
  * @returns HTML
  */
@@ -632,7 +618,7 @@ function werBlock(l) {
   return `${kopf}
     <div class="execution-triptych">
       ${werSpalte(t('uebersicht.wer.zuvor'), zuvor)}
-      ${werSpalte(t('uebersicht.wer.jetzt'), jetzt, menschlich, `<span class="model-label">${modell}</span>`, 'execution-current')}
+      ${werSpalte(t('uebersicht.wer.jetzt'), jetzt, { titelHtml: menschlich, zusatz: `<span class="model-label">${modell}</span>`, klasse: 'execution-current' })}
       ${werSpalte(t('uebersicht.wer.danach'), danach)}
     </div>
     <div class="expected-output">

@@ -29,16 +29,21 @@ Stand: 01.10.2026.
 
 ## Nächste Schritte
 1. F44 Design: WS-2b (Branch `feat/f725-ws2b-uebersicht`) → WS-3 bis WS-8.
-2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach dem Design und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4.
+2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach WS-8 und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4.
    - B1 Harness im Lauf:
      - Agents und Projekt-Skills sind im Ausführungslauf aufrufbar (F-815, F-816).
      - Das Review prüft gegen die Checkliste `.claude/agents/code-reviewer.md` und die DoD aus CLAUDE.md (F-829).
      - Der Vorstart-Scan blockiert ai-workforce selbst nicht mehr (F-818).
+     - Klären, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen (F-929, K1).
+     - ARCHITECTURE.md wird Prüfmaßstab für Review und qa; das Lesen in der Ausführung wird beobachtet (F-931, K3).
+     - Hooks im Workforce-Lauf prüfen (feuern sie mit `--setting-sources project`, sind session-reminder und zwischenstand-* dort sinnvoll); PostToolUse-Lint (Harness G7) nachziehen, auch in ai-workforce (F-932, K4).
+     - Lernschleife: nach der Abnahme ein Lessons-Eintrag wie `/lessons` (F-933, K5).
    - B2 Planungs- und Prüfkette:
      - architecture-advisor bekommt ein output_schema mit vierstufigem Urteil.
      - Plan v2 wird ein eigener Schritt (Rolle architekt) mit eigenem Artefakt.
      - Bei „überarbeiten“ führt ein Rückweg zum Plan (F-203, F-909).
      - Der qa-Schritt kommt dazu (F-820).
+     - Spec und Handoff als Verfahren prüfen.
    - B5 Feature-Fluss (F-912):
      - Der Coach legt im bestehenden Projekt eine Feature-Akte an, statt den Scope direkt zum Auftrag zu machen.
      - Die Akte ist im Leitstand bearbeitbar (E-F45-1 = A).
@@ -52,7 +57,8 @@ Stand: 01.10.2026.
      - Web- und kostenpflichtige MCPs nach der geänderten E-F36-4.
      - Die wichtigsten GitHub-Einträge mit freigabe OFFEN werden installierbar.
      - Der Scout wird für Stack-Recherche tauglich (F-859).
-   - In der Challenge mitklären: F-715, F-766, F-764.
+   - In der Challenge mitklären: F-715, F-766, F-764, F-915.
+   - K2 gestufter Kontext nach F30 (F-930): erst den Verbrauch je Rolle in F30 messen, dann F38 neu schneiden — nicht im Fixpaket.
 3. F30 Opportunity Scanner — Planung vollständig in der Workforce (E-F30-4); Stack-Kandidaten aus `docs/harness/stack-kandidaten.md`.
 4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel, mit F-874 in WS-4).
 

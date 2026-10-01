@@ -2077,12 +2077,6 @@ th {
   background: var(--color-danger-text);
 }
 
-/* Box-Optik kommt jetzt von .card (index.html, F29 WS-1b) — hier nur noch der Abstand zur Liste
-   darüber, spezifisch für diese Stelle im Layout. */
-#workboard-detail {
-  margin-top: var(--space-3xl);
-}
-
 /* F32 WS-2: Karte "Verbrauch" — schlicht mit bestehenden Tokens (.card/.btn/.stat/table sind alle
    bereits definiert), kein neuer Farb-/Schattenwert. Seit F44 WS-2b auf #/nutzung (views/nutzung.js);
    die Kennzahlen-Kacheln der alten Übersicht sind entfallen. Nur Abstand zum Seitenkopf darüber und
@@ -4111,59 +4105,69 @@ th {
   color: var(--muted);
 }
 
-#view-dashboard .execution-brief {
+#view-dashboard .execution-brief,
+#view-workboard .execution-brief {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   padding: 24px 0;
   margin: 24px 0 30px;
 }
 
-#view-dashboard .execution-brief > .section-label {
+#view-dashboard .execution-brief > .section-label,
+#view-workboard .execution-brief > .section-label {
   margin-top: 0;
 }
 
-#view-dashboard .execution-triptych {
+#view-dashboard .execution-triptych,
+#view-workboard .execution-triptych {
   display: grid;
   grid-template-columns: 1fr 1.2fr 1fr;
   gap: 24px;
 }
 
-#view-dashboard .execution-triptych > div {
+#view-dashboard .execution-triptych > div,
+#view-workboard .execution-triptych > div {
   padding: 20px;
   border-left: 1px solid var(--line);
   min-width: 0;
 }
 
-#view-dashboard .execution-triptych strong {
+#view-dashboard .execution-triptych strong,
+#view-workboard .execution-triptych strong {
   display: block;
   margin: 10px 0;
   font-size: 16px;
   overflow-wrap: break-word;
 }
 
-#view-dashboard .execution-triptych p {
+#view-dashboard .execution-triptych p,
+#view-workboard .execution-triptych p {
   color: var(--muted);
   font-size: 13px;
   margin: 8px 0;
 }
 
-#view-dashboard .execution-triptych > .execution-current {
+#view-dashboard .execution-triptych > .execution-current,
+#view-workboard .execution-triptych > .execution-current {
   background: var(--note-bg);
   border-left-color: var(--mint);
   border-radius: 0 10px 10px 0;
 }
 
-#view-dashboard .model-label {
+#view-dashboard .model-label,
+#view-workboard .model-label {
   font-size: 11px;
   color: var(--muted);
 }
 
-#view-dashboard .expected-output {
+#view-dashboard .expected-output,
+#view-workboard .expected-output {
   margin: 20px 0 0;
   padding: 0 20px;
 }
 
-#view-dashboard .expected-output p {
+#view-dashboard .expected-output p,
+#view-workboard .expected-output p {
   font-size: 14px;
   line-height: 1.6;
   max-width: 850px;
@@ -4850,4 +4854,386 @@ th {
     flex-basis: 100%;
     padding-left: calc(1.2rem + 12px);
   }
+}
+
+/* ─────────────────── Entwicklung · Detail (F44 WS-3b, Vorlage V10 d_arbeit_f35) ───────────────────
+   #/workboard/<id> als ganze Seite: „←“ als Knopf im Stil .back, Z-Knöpfe (.feature-edit-actions),
+   Statuszeile (.pm-detail-status), Auftrag vorbereiten (.workboard-auftrag), „Wer macht was“
+   (.execution-brief/.execution-triptych, Regeln oben gemeinsam mit der Übersicht), Stand der
+   Entwicklung (.pm-feature-steps, .mini-pipeline, .work-progress/.progress-track), Kriterien
+   (.checklist), Planung (.pm-planning, .planning-window) und Insights (.item-insights). Maße wie die
+   Vorlage, Farben nur über Tokens. Die Statuszeile schaltet über [hidden] — display deshalb nur für
+   :not([hidden]) (F-622). Übersicht (#workboard-uebersicht) und Detail tragen kein display. */
+#view-workboard .workboard-detail .back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+#view-workboard .workboard-detail .page-heading {
+  margin-bottom: 18px;
+}
+
+#view-workboard .workboard-detail h1 {
+  overflow-wrap: break-word;
+}
+
+#view-workboard .feature-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+#view-workboard .pm-detail-status:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 17px 0;
+  margin-bottom: 28px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#view-workboard .pm-detail-status strong {
+  color: var(--ink);
+  font-weight: 400;
+}
+
+#view-workboard .workboard-detail-statuswert {
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+#view-workboard .workboard-auftrag {
+  margin: 0 0 8px;
+}
+
+#view-workboard .workboard-auftrag-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+#view-workboard .workboard-auftrag-start p {
+  flex: 1 1 260px;
+  margin: 0;
+  font-size: 12px;
+}
+
+#view-workboard .workboard-vorschlag {
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin: 0 0 20px;
+}
+
+#view-workboard .workboard-vorschlag h3,
+#view-workboard .workboard-git h3 {
+  margin-bottom: 8px;
+}
+
+#view-workboard .workboard-vorschlag-kopf,
+#view-workboard .workboard-detail-felder,
+#view-workboard .workboard-detail-planung {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 14px 0;
+  font-size: 13px;
+}
+
+#view-workboard .workboard-vorschlag-kopf dt,
+#view-workboard .workboard-detail-felder dt,
+#view-workboard .workboard-detail-planung dt {
+  color: var(--muted);
+}
+
+#view-workboard .workboard-vorschlag-kopf dd,
+#view-workboard .workboard-detail-felder dd,
+#view-workboard .workboard-detail-planung dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .workboard-kette {
+  margin: 14px 0;
+  padding-left: 20px;
+  font-size: 13px;
+}
+
+#view-workboard .workboard-kette li {
+  margin: 6px 0;
+}
+
+#view-workboard .workboard-kette span {
+  margin-left: 10px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+#view-workboard .workboard-git {
+  margin: 0 0 20px;
+}
+
+#view-workboard .workboard-git pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font-size: 12px;
+}
+
+#view-workboard .workboard-detail-ziel {
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  font-size: 14px;
+}
+
+#view-workboard .pm-feature-steps {
+  margin: 28px 0 36px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+#view-workboard .pm-feature-steps h2 {
+  font-size: 25px;
+}
+
+#view-workboard .mini-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+  list-style: none;
+  margin: 26px 0 30px;
+  padding: 0;
+}
+
+#view-workboard .mini-pipeline li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 130px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+#view-workboard .mini-pipeline li > span {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+#view-workboard .mini-pipeline li.done > span {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+#view-workboard .mini-pipeline li.current > span {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+#view-workboard .mini-pipeline li.current {
+  color: var(--ink);
+}
+
+#view-workboard .mini-pipeline small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .work-progress {
+  margin: 25px 0 0;
+}
+
+#view-workboard .progress-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#view-workboard .progress-caption strong {
+  color: var(--ink);
+  font-weight: 400;
+  font-size: 15px;
+}
+
+#view-workboard .progress-track {
+  height: 5px;
+  margin: 10px 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--track);
+}
+
+#view-workboard .progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+  background: var(--mint);
+}
+
+#view-workboard .work-progress > small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .checklist {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+}
+
+#view-workboard .checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 10px 0;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .checkmark {
+  flex-shrink: 0;
+  color: var(--mint);
+}
+
+#view-workboard .workboard-detail details {
+  margin: 18px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+#view-workboard .workboard-detail summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+#view-workboard .pm-planning .planning-window {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+#view-workboard .pm-planning .planning-window > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .pm-planning .text-link {
+  font-size: 16px;
+}
+
+#view-workboard .scope {
+  margin: 12px 0 24px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-workboard .item-insights {
+  margin-top: 32px;
+  padding-top: 25px;
+  border-top: 1px solid var(--line);
+}
+
+#view-workboard .workboard-detail code {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+@container entwicklung (max-width: 640px) {
+  #view-workboard .execution-triptych {
+    grid-template-columns: 1fr;
+  }
+
+  #view-workboard .pm-feature-steps {
+    padding: 19px;
+  }
+
+  #view-workboard .pm-detail-status > span {
+    flex-basis: 100%;
+  }
+
+  #view-workboard .mini-pipeline {
+    display: grid;
+  }
+}
+
+/* Link als Knopf („Ergebnis prüfen“) ohne Unterstreichung; die Überschrift des Details erhält den
+   Fokus nur als Lesestartpunkt (Muster .v10-seite h1:focus) und trägt deshalb keinen Fokusrahmen. */
+#view-workboard a.button {
+  text-decoration: none;
+}
+
+#view-workboard .workboard-detail h1:focus,
+#view-workboard .workboard-detail h1:focus-visible {
+  outline: none;
+}
+
+/* Phase im Kopf von „Wer macht was“ als kleines Versal-Label mit Punkt (Vorlage „● ABNAHME OFFEN“);
+   die Überschrift bricht bei schmaler Fläche um, statt das Label zu quetschen. Lange Titel ohne
+   Leerzeichen brechen im Detail-Kopf an jeder Stelle. */
+#view-workboard .workboard-detail .section-label {
+  flex-wrap: wrap;
+}
+
+#view-workboard .workboard-detail-phase {
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+#view-workboard .workboard-detail .page-heading > div:first-child {
+  min-width: 0;
+}
+
+#view-workboard .workboard-detail h1 {
+  overflow-wrap: anywhere;
+}
+
+/* F-922: gesperrter Einstieg „Auftrag vorbereiten“ (disabled + aria-disabled) sieht wie die
+   kommt-Knöpfe deaktiviert aus und reagiert nicht auf Hover. */
+#view-workboard .workboard-auftrag-start .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#view-workboard .workboard-auftrag-start .button:disabled:hover {
+  background: transparent;
+  border-color: var(--line);
 }

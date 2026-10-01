@@ -1,0 +1,254 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard/F-9001",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-workboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workitems*",
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-9001",
+            "titel": "Nachweis: Fehlende Nutzungsdaten kennzeichnen",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P1",
+            "beschreibung": "Wenn Nutzungsdaten einer Ausführung fehlen, zeigt die Anzeige 0 statt „nicht erfasst“. <b>HTML bleibt Text.</b>",
+            "fundstelle": "public/leitstand/views/nutzung.js",
+            "auswirkung": "Ein unbekannter Verbrauch sieht wie kostenloses Arbeiten aus.",
+            "massnahme": "Einen ausdrücklichen Zustand „nicht erfasst“ anzeigen.",
+            "featureRun": null
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F91",
+            "titel": "Nachweis: Bauen aus der Akte",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F91/feature.md"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "json": []
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "nachweis-a1"
+      }
+    },
+    {
+      "muster": "**/api/auftraege/nachweis-a1/routen",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "router-nachweis-a1-1"
+      }
+    },
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workflows/router-nachweis-a1",
+      "json": {
+        "daten": {
+          "workflow_id": "router-nachweis-a1",
+          "ziel": "Fehlende Nutzungsdaten kennzeichnen",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s1",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "status": "WARTET_FREIGABE",
+              "freigabe": "ZWINGEND",
+              "nachfolger": "s2",
+              "lauf_id": null
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt",
+              "status": "OFFEN",
+              "freigabe": "KEINE",
+              "nachfolger": null,
+              "lauf_id": null
+            }
+          ]
+        },
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "s1"
+        },
+        "empfehlung": {
+          "schrittId": "s1",
+          "wirdGenutzt": [
+            {
+              "id": "playwright-mcp",
+              "name": "Playwright",
+              "typ": "extern",
+              "unterart": "mcp",
+              "grund": "task_typen_any erfüllt (bugfix)"
+            }
+          ],
+          "passtNichtImLauf": [],
+          "weitereAnzahl": {
+            "wirdGenutzt": 0,
+            "passtNichtImLauf": 0
+          },
+          "nichtFreigebbarAnzahl": 0,
+          "hinweise": []
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1:not(:empty)"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Zurück",
+        "selector": "#workboard-detail-schliessen"
+      },
+      {
+        "name": "Eyebrow",
+        "selector": "#workboard-detail-eyebrow"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workboard-detail-titel"
+      },
+      {
+        "name": "Aktion",
+        "selector": "#workboard-detail-aktion"
+      },
+      {
+        "name": "Statuszeile",
+        "selector": "#workboard-detail-status"
+      },
+      {
+        "name": "Auftrag",
+        "selector": "#workboard-bearbeitung"
+      },
+      {
+        "name": "Stand",
+        "selector": "#workboard-detail-inhalt .progress-caption"
+      },
+      {
+        "name": "erstes AK",
+        "selector": "#workboard-detail-inhalt .checklist li"
+      },
+      {
+        "name": "Planung",
+        "selector": "#workboard-detail-inhalt .workboard-detail-planung"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Übersicht (Board/Listen)",
+        "id": "workboard-uebersicht"
+      },
+      {
+        "name": "Detail",
+        "id": "workboard-detail"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "kommt (aria-disabled) im Detail",
+        "selector": "#workboard-detail [aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Freigeben (wb-freigeben)",
+        "selector": "#workboard-bearbeitung .wb-freigeben"
+      },
+      {
+        "name": "Ergebnis prüfen",
+        "selector": "#workboard-detail-aktion a[href^=\"#/workflows/\"]"
+      },
+      {
+        "name": "Beispiel-Insights (muss fehlen)",
+        "selector": "#workboard-detail .insight-card"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Deep-Link #/workboard/F-9001",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-finding.webp"
+    },
+    {
+      "label": "Klick „Auftrag vorbereiten“ → Auftrag, Routen, Vorschlag (Detail-Auffrischer)",
+      "klick": "#workboard-bearbeiten",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeitung .wb-freigeben",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-finding-vorschlag.webp"
+    }
+  ]
+}

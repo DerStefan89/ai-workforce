@@ -1,0 +1,41 @@
+[
+  {
+    "label": "#/workboard (F-919 Sortierung, „Alle x anzeigen“)",
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Arbeit im Überblick",
+    "Fokus": "(fehlt)",
+    "Spalte Geplant (Zahl)": "Geplant529",
+    "erste Karte Geplant": "· ProzessverbesserungP1 Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt. Offen F-013",
+    "Alle x anzeigen (Geplant)": "Alle anzeigen:Features 3Bugs 40Harness Improvements 67Weitere 419",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Sichtbarer Ausschnitt (Karten lesbar: Typ, Priorität, Titel, Phase bzw. Status, ID — F-921)",
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Arbeit im Überblick",
+    "Fokus": "(fehlt)",
+    "Spalte Geplant (Zahl)": "Geplant529",
+    "erste Karte Geplant": "· ProzessverbesserungP1 Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt. Offen F-013",
+    "Alle x anzeigen (Geplant)": "Alle anzeigen:Features 3Bugs 40Harness Improvements 67Weitere 419",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Klick „Alle x anzeigen“ in Geplant: Listen-Tab mit Spaltenfilter",
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Features",
+    "Fokus": "Features",
+    "Spalte Geplant (Zahl)": "Geplant529",
+    "erste Karte Geplant": "· ProzessverbesserungP1 Claude-Projekt-GitHub-Sync liefert keine Repo-Dateien in dieses Projekt. Offen F-013",
+    "Alle x anzeigen (Geplant)": "Alle anzeigen:Features 3Bugs 40Harness Improvements 67Weitere 419",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

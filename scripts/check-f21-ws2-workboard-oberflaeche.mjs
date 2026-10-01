@@ -40,8 +40,15 @@
  *     Bausteinen, die sie aufrufen) — F21 WS-2 ist rein lesend (Nicht-Ziel:
  *     Schreiben ist F23-Scope). Zusätzlich importiert dashboard.js aus api.js
  *     nur lesende hole*-Funktionen (Prüfpass WS-2b: ein importierter Schreiber
- *     wie sendeWorkflowFreigabe bliebe sonst unentdeckt).
- * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen —
+ *     wie sendeWorkflowFreigabe bliebe sonst unentdeckt). F44 WS-3b: Das Detail
+ *     der Entwicklung ist nach views/workboard-detail.js ausgelagert (reines
+ *     Rendern); (f) gilt dort ebenso (kein method: 'POST…', aus api.js höchstens
+ *     hole*, kein fetch/document/window — mit Rot-Kalibrierung (f-kal)). workboard.js
+ *     selbst schreibt weiter nur über die api.js-Bausteine
+ *     von Click-to-Work. Kein Literal zieht um: alle IDs aus (a) bleiben in
+ *     index.html, `holeWorkitems(filter)` bleibt in workboard.js.
+ * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen (F44 WS-3b:
+ *     zusätzlich views/workboard-detail.js und rollen-anzeige.js) —
  *     public/ liegt außerhalb von Biome/tsc (siehe check-f15-workflow-
  *     oberflaeche.mjs Fall (f)).
  * (h) F44 WS-3a: Das Board der Seite „Entwicklung“ (entwicklung-daten.js)
@@ -72,6 +79,7 @@ function entferneKommentare(quelltext) {
 
 const htmlQuelltext = readFileSync('public/leitstand/index.html', 'utf8')
 const workboardQuelltext = entferneKommentare(readFileSync('public/leitstand/views/workboard.js', 'utf8'))
+const workboardDetailQuelltext = entferneKommentare(readFileSync('public/leitstand/views/workboard-detail.js', 'utf8'))
 const attentionQuelltext = entferneKommentare(readFileSync('public/leitstand/views/attention.js', 'utf8'))
 const dashboardQuelltext = entferneKommentare(readFileSync('public/leitstand/views/dashboard.js', 'utf8'))
 const attentionDatenQuelltext = entferneKommentare(readFileSync('public/leitstand/attention-daten.js', 'utf8'))
@@ -167,6 +175,7 @@ for (const [name, quelltext, erwartetRot] of kalibrierung) {
 // ─── (f) Scope: kein schreibender Request in workboard.js/attention.js ──────
 for (const [name, quelltext] of [
   ['views/workboard.js', workboardQuelltext],
+  ['views/workboard-detail.js', workboardDetailQuelltext],
   ['views/attention.js', attentionQuelltext],
   ['views/dashboard.js', dashboardQuelltext],
 ]) {
@@ -175,14 +184,32 @@ for (const [name, quelltext] of [
   }
 }
 
-// F44 WS-2b: Die Übersicht importiert aus api.js nur lesende hole*-Funktionen.
-const dashboardApiImport = dashboardQuelltext.match(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/api\.js'/)
-if (dashboardApiImport !== null) {
-  const schreibend = dashboardApiImport[1]
+// F44 WS-3b: views/workboard-detail.js rendert nur — kein fetch, kein DOM-Zugriff (Zusage im
+// Dateikopf; Laden und DOM bleiben in workboard.js). (f-kal) belegt Rot- und Grünfall.
+const NUR_RENDERN_VERSTOSS = /\bfetch\s*\(|\bdocument\s*\.|\bwindow\s*\./
+if (NUR_RENDERN_VERSTOSS.test(workboardDetailQuelltext)) befunde.push('(f) views/workboard-detail.js greift auf fetch, document oder window zu — das Modul soll nur rendern')
+for (const [name, quelltext, erwartetRot] of [
+  ['fetch im Render-Modul', "const a = fetch('/api/x')", true],
+  ['DOM im Render-Modul', "document.getElementById('x').innerHTML = ''", true],
+  ['sauber', 'export function f(sicht) { return `<p>${sicht.id}</p>` }', false],
+]) {
+  if (NUR_RENDERN_VERSTOSS.test(quelltext) !== erwartetRot) befunde.push(`(f-kal) Rot-Kalibrierung '${name}': erwartet ${erwartetRot ? 'rot' : 'grün'}, Gate urteilt anders`)
+}
+
+// F44 WS-2b: Die Übersicht importiert aus api.js nur lesende hole*-Funktionen. F44 WS-3b: dasselbe
+// für das ausgelagerte Detail der Entwicklung (views/workboard-detail.js) — es rendert nur und
+// importiert heute gar nichts aus api.js; ein Import wäre nur als lesende hole*-Funktion zulässig.
+for (const [name, quelltext] of [
+  ['views/dashboard.js', dashboardQuelltext],
+  ['views/workboard-detail.js', workboardDetailQuelltext],
+]) {
+  const apiImport = quelltext.match(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/api\.js'/)
+  if (apiImport === null) continue
+  const schreibend = apiImport[1]
     .split(',')
-    .map((name) => name.trim())
-    .filter((name) => name !== '' && !name.startsWith('hole'))
-  if (schreibend.length > 0) befunde.push(`(f) views/dashboard.js importiert aus api.js nicht nur lesende hole*-Funktionen: ${schreibend.join(', ')}`)
+    .map((eintrag) => eintrag.trim())
+    .filter((eintrag) => eintrag !== '' && !eintrag.startsWith('hole'))
+  if (schreibend.length > 0) befunde.push(`(f) ${name} importiert aus api.js nicht nur lesende hole*-Funktionen: ${schreibend.join(', ')}`)
 }
 
 // ─── (h) Entwicklung-Board: „Braucht dich“ aus attention-daten.js, keine eigene Halt-Regel ──
@@ -216,7 +243,7 @@ for (const [name, quelltext, erwartetRot] of kalibrierungH) {
 }
 
 // ─── (g) Syntaxprüfung (node --check) ───────────────────────────────────────
-for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/views/nutzung.js', 'public/leitstand/attention-daten.js', 'public/leitstand/fokus-daten.js', 'public/leitstand/entwicklung-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
+for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/workboard-detail.js', 'public/leitstand/rollen-anzeige.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/views/nutzung.js', 'public/leitstand/attention-daten.js', 'public/leitstand/fokus-daten.js', 'public/leitstand/entwicklung-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

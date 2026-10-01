@@ -1,14 +1,15 @@
 /**
  * Datei: src/feature-auftrag/feature-auftrag.test.ts
  *
- * Zweck: node:test-Fälle für baueAuftragAusFeatureAkte (F35 WS-1, AK3).
+ * Zweck: node:test-Fälle für baueAuftragAusFeatureAkte (F35 WS-1, AK3) und
+ * leseFeatureAkteAnzeige (F44 WS-3b, gleicher Leser).
  * Reine Funktion, kein I/O — jeder Fall übergibt den Akteninhalt direkt als
  * String.
  */
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueAuftragAusFeatureAkte, GEKLAERTER_ABSCHNITT_OBERGRENZE } from './index.ts'
+import { baueAuftragAusFeatureAkte, GEKLAERTER_ABSCHNITT_OBERGRENZE, leseFeatureAkteAnzeige } from './index.ts'
 
 const AKTE_VOLLSTAENDIG = `# F99 — Testfeature
 
@@ -248,4 +249,33 @@ test('F-824: nur exakte Überschriften; Platzhalter-Abschnitte ([FÜLLUNG], offe
   const beide = baueAuftragAusFeatureAkte(`${AKTE_OHNE_TECHNIK}\n## Datenmodell\noffen\n\n## Security\nlokal\n`, 'F99')
   assert.ok(beide.ok)
   assert.match(beide.auftragstext, /nicht erneut fragen\)\n\nSecurity\nlokal\n\nworkitem/)
+})
+
+test('F44 WS-3b: leseFeatureAkteAnzeige liefert Titel, Ziel, Nicht-Ziele und AKs — identisch mit dem Bau-Auftrag', () => {
+  const anzeige = leseFeatureAkteAnzeige(AKTE_VOLLSTAENDIG, 'F99')
+  const auftrag = baueAuftragAusFeatureAkte(AKTE_VOLLSTAENDIG, 'F99')
+  assert.ok(anzeige.ok && auftrag.ok)
+  assert.equal(anzeige.titel, 'Ein Testfeature')
+  assert.equal(anzeige.ziel, 'Das ist das Ziel des Features.')
+  assert.deepEqual(anzeige.akzeptanzkriterien, auftrag.akzeptanzkriterien)
+  assert.deepEqual(anzeige.nicht_ziele, auftrag.nicht_ziele)
+  assert.ok(auftrag.auftragstext.startsWith(`Ziel\n${anzeige.ziel}\n\n`))
+})
+
+test('F44 WS-3b: leseFeatureAkteAnzeige lehnt mit denselben Gründen ab wie der Bau-Auftrag', () => {
+  for (const akte of ['## Titel\nX\n', '## Ziel\nZiel.\n', '## Ziel\nZiel.\n\n## Akzeptanzkriterien\n- AK2: a\n- b\n']) {
+    const anzeige = leseFeatureAkteAnzeige(akte, 'F98')
+    const auftrag = baueAuftragAusFeatureAkte(akte, 'F98')
+    assert.equal(anzeige.ok, false)
+    assert.equal(auftrag.ok, false)
+    assert.ok(!anzeige.ok && !auftrag.ok && anzeige.grund === auftrag.grund)
+  }
+})
+
+test('F44 WS-3b: leseFeatureAkteAnzeige — Titel-Rückfall auf die ID, mehrzeiliges Ziel bleibt erhalten', () => {
+  const anzeige = leseFeatureAkteAnzeige('## Ziel\nErste Zeile.\n\nZweite Zeile.\n\n## Akzeptanzkriterien\n- Eins\n', 'F97')
+  assert.ok(anzeige.ok)
+  assert.equal(anzeige.titel, 'F97')
+  assert.equal(anzeige.ziel, 'Erste Zeile.\n\nZweite Zeile.')
+  assert.deepEqual(anzeige.nicht_ziele, [])
 })

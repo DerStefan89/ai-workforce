@@ -1,0 +1,14 @@
+[
+  {
+    "label": "#/dashboard (F-914: Rollennamen statt IDs)",
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "AI Workforce",
+    "Fokus": "(fehlt)",
+    "B3 Rolle": "Code Review",
+    "B11 Wer macht was": "ZuvorUmsetzungSchritt s1 JetztCode ReviewSchritt s2Letzter Worker · Modell: nicht beobachtet Danach–Kein Schritt",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

@@ -11859,13 +11859,13 @@ Maßnahme: Fokuswahl folgt baueEntscheidungen (Freigabe vor Rückfrage).
 Status: erledigt (F44 WS-3a, Branch `feat/f725-ws3a-board`, 01.10.2026): `waehleFokusWorkflow` nimmt den ersten Workflow-Eintrag aus `baueEntscheidungen`; Test `fokus-daten.test.mjs` (F-913, gegen die alte Fassung rot).
 Feature/Run: Entdeckt: Verifikation F44 WS-2b.
 
-**F-914** · `TECH_DEBT` · P3 · offen
+**F-914** · `TECH_DEBT` · P3 · erledigt
 Titel: B11 „Wer macht was“ zeigt Rollen-IDs statt lesbarer Namen.
 Beschreibung: Die Übersicht zeigt in „Wer macht was“ die Rollen-ID (z. B. `ausfuehrung`) statt eines lesbaren, übersetzten Rollennamens.
 Fundstelle: `public/leitstand/views/dashboard.js` (B11).
 Auswirkung: Niedrig — technischer Bezeichner statt Klartext.
 Maßnahme: Rollennamen über t(), wie die frühere rollenAnzeige im Workboard.
-Status: offen. Geplant: WS-3b.
+Status: erledigt (F44 WS-3b, Branch `feat/f725-ws3b-detail`, 01.10.2026): neues Modul `public/leitstand/rollen-anzeige.js` — `rollenName(rolle)` übersetzt über `rolle.<id>` genau die neun Rollen aus `ROLLENVERTRAEGE` (`src/rollen/index.ts`; `rollen-anzeige.test.mjs` prüft die Gleichheit und die Schlüssel in de/en/tr/ru), eine unbekannte Rolle bleibt die ID. Genutzt in B3/B11 (`views/dashboard.js`, gemeinsame Spalte `werSpalte`), im Detail der Entwicklung und in der Click-to-Work-Kette.
 Feature/Run: Entdeckt: Verifikation F44 WS-2b.
 
 **F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -11895,38 +11895,146 @@ Maßnahme: Stefan entscheidet: (a) in WS-3b ein lesendes Prioritäts-Kanban (Spa
 Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
 
-**F-918** · `TECH_DEBT` · P3 · offen
+**F-918** · `TECH_DEBT` · P3 · entschieden
 Titel: Listen-Tabs filtern mit Chips statt mit den Auswahlfeldern der Vorlage.
 Beschreibung: `d_arbeit_features` zeigt neben der Suche Auswahlfelder „Alle Status“/„Alle Prioritäten“. WS-3a behält die Filter-Chips aus F29 (`workboard-filter-*`, Gate f21-ws2 (a)) mit rohen Statuswerten als Beschriftung.
 Fundstelle: `public/leitstand/index.html` (`#workboard-filter`), `public/leitstand/views/workboard.js` (fuelleChipGruppe).
 Auswirkung: Niedrig — gleiche Funktion, andere Form; viele Status-Chips brauchen bei 390 px mehrere Zeilen.
 Maßnahme: In WS-3b Auswahlfelder mit übersetzten Optionen bauen (IDs bleiben) oder die Chips als Abweichung festhalten.
-Status: offen.
+Status: entschieden (Auftrag WS-3b, 01.10.2026): Die Chips bleiben als bewusste Abweichung von der Vorlage. Begründung: gleiche Funktion (Serverfilter Typ/Status/Priorität), die IDs `workboard-filter-*` prüft Gate f21-ws2 (a), und ein Umbau auf Auswahlfelder änderte nichts an den Daten.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
 
-**F-919** · `TECH_DEBT` · P3 · offen
+**F-919** · `TECH_DEBT` · P3 · offen (teilweise erledigt)
 Titel: Board mit echten Daten wenig aussagekräftig; „+ x weitere“ zeigt die ganze Spalte.
 Beschreibung: Mit über 500 offenen Findings zeigt „Geplant“ nur alte P0/P1-Befunde, Features stehen ohne Priorität dahinter und erscheinen kaum; „Abgenommen“ zeigt die ältesten P0-Einträge statt der zuletzt abgenommenen; „Braucht dich“ besteht aus alten Features im FEATURE_GATE. „+ x weitere“ führt in den Listen-Tab mit der ganzen Spalte (auch die Karten, die schon auf dem Board stehen) — die Zahl auf dem Knopf und die Länge der Liste passen nicht zusammen.
 Fundstelle: `public/leitstand/entwicklung-daten.js` (Sortierung in baueBoard), `public/leitstand/views/workboard.js` (renderListe mit Spaltenfilter).
 Auswirkung: Niedrig bis mittel für die Orientierung; die Regel selbst ist wie beauftragt.
 Maßnahme: Mit der Sichtung F-915 entscheiden: Sortierung von „Abgenommen“ nach Erledigungsdatum (falls verfügbar), Features im Board sichtbarer (eigene Stufe oder Priorität in der Akte), Liste nach „+ x weitere“ ohne die Karten des Boards oder Knopftext „alle x anzeigen“.
-Status: offen.
+Status: offen, teilweise erledigt (F44 WS-3b, 01.10.2026; Kopfzeile „offen (teilweise erledigt)“, damit der Workitem-Parser den offenen Rest nicht als ERLEDIGT zählt): Sortierung je Spalte P0, P1, Feature-Akten, P2, P3, P4, ohne Priorität (`entwicklung-daten.js`, rang; Test gegen die alte Reihenfolge rot); der Sprung heißt „Alle x anzeigen“, x zählt alle Einträge der Spalte im Ziel-Tab (`jeTab`), damit Zahl und Liste zusammenpassen. Offen bleibt die Sortierung von „Abgenommen“ nach Erledigungsdatum (mit der Sichtung F-915).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (qa), 01.10.2026.
 
-**F-920** · `TECH_DEBT` · P3 · offen
+**F-920** · `TECH_DEBT` · P3 · erledigt
 Titel: Projektwechsel lädt die Seite „Entwicklung“ auch, wenn sie nicht offen ist.
 Beschreibung: Der Neuladen-Hook (F-860) lädt Workitems und Aufträge der Entwicklung bei jedem Projektwechsel; ist die Seite nicht offen, lädt das nächste Betreten sie ein zweites Mal.
 Fundstelle: `public/leitstand/views/workboard.js` (ladeNachProjektWechsel, betreteSeite).
 Auswirkung: Niedrig — ein überflüssiger Abruf je Wechsel.
 Maßnahme: Bei geschlossener Seite nur den Zustand zurücksetzen und `projekt-wechsel.test.mjs` auf „lädt beim nächsten Betreten“ umstellen; der Auftrag WS-3a verlangte das Laden beim Wechsel ausdrücklich.
-Status: offen.
+Status: erledigt (F44 WS-3b, 01.10.2026): `ladeNachProjektWechsel` setzt bei geschlossener Seite nur zurück (Workitems und Aufträge „lädt“, Überholschutz-Zähler erhöht) und lädt bei offener Seite sofort; Test „F-920“ in `projekt-wechsel.test.mjs` (offen: lädt; verlassen: lädt nicht; erneutes Betreten: lädt).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (code-reviewer), 01.10.2026.
 
-**F-921** · `TECH_DEBT` · P3 · offen
+**F-921** · `TECH_DEBT` · P3 · erledigt
 Titel: Board-Karte ohne Rolle und Fortschritt der Vorlage; Detail zeigt beim Deep-Link kurz „nicht gefunden“.
 Beschreibung: Die Karte der Vorlage zeigt Phase, zuständige Rolle und bei laufender Arbeit „x/y Schritte abgeschlossen“; WS-3a zeigt Status und ID. Ein Deep-Link auf `#/workboard/<id>` zeigt, bis die Workitems geladen sind, „Workitem nicht in der aktuell geladenen Liste gefunden — Filter zurücksetzen oder neu laden.“ statt eines Ladezustands.
 Fundstelle: `public/leitstand/views/workboard.js` (boardKarte, renderDetailInhalt).
 Auswirkung: Niedrig.
 Maßnahme: WS-3b (Detail E8): Ladezustand im Detail, Rolle/Fortschritt auf der Karte aus dem verknüpften Workflow.
-Status: offen. Geplant: WS-3b.
+Status: erledigt (F44 WS-3b, 01.10.2026): Die Karte zeigt mit verknüpftem Ablauf dessen Phase aus dem Aggregat (`workflowPhase`, ohne Zusatzabruf; bewusst ohne x/y — die Schritte lädt erst das Detail), sonst den Status. Der Deep-Link zeigt bis zu den Workitems „Der Eintrag wird geladen …“ (Test in `projekt-wechsel.test.mjs`); x/y und Rollen stehen im Detail.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian, qa), 01.10.2026.
+
+**F-922** · `TECH_DEBT` · P2 · erledigt
+Titel: „Auftrag vorbereiten“ kann einen zweiten Auftrag für denselben Eintrag anlegen.
+Beschreibung: Zwei Wege führen zu einem zweiten Auftrag. (1) Wer während des Anlegens zu einem anderen Eintrag wechselt und zurückkehrt, sieht wieder „Auftrag vorbereiten“ — `ladeDetail` verwirft den Bearbeitungszustand des anderen Eintrags, `pruefeUndUebernimmZustand` übernimmt ihn nicht mehr (bekannte Lücke aus F22 AK5). (2) Ein Feature mit laufendem oder auf die Abnahme wartendem Ablauf bietet weiter „Auftrag vorbereiten“ an; `istFeatureBaubar` prüft nur den Akten-Status. WS-3b lässt den Knopf bei offener Abnahme nur zurücktreten (keine Primärform), das Verhalten ist laut Auftrag unverändert.
+Fundstelle: `public/leitstand/views/workboard.js` (ladeDetail, pruefeUndUebernimmZustand, renderBearbeitungsAbschnitt, istFeatureBaubar).
+Auswirkung: Mittel — ein verwaister zweiter Auftrag bzw. ein zweiter Bau neben einer offenen Abnahme.
+Maßnahme: Stefan entscheidet: Einstieg sperren oder mit Rückfrage versehen, solange ein verknüpfter Ablauf nicht terminal ist oder eine Abnahme offen ist; den Bearbeitungszustand je Workitem halten statt nur für das offene Detail.
+Status: erledigt (F44 WS-3b, Entscheidung Challenger 01.10.2026, reversibel): „Auftrag vorbereiten“ ist für Feature und Finding gesperrt (disabled, aria-disabled, Hinweis über i18n in de/en/tr/ru, Link „Ablauf öffnen“ auf `#/workflows/<id>`), solange ein verknüpfter Workflow nicht terminal ist (`laufenderWorkflow` in `entwicklung-daten.js` auf derselben Menge NICHT_TERMINALE_WORKFLOW_STATUS wie das Board) oder die Abnahme offen ist (dieselbe Angabe wie „Ergebnis prüfen“); solange die Verknüpfung noch lädt, ebenfalls gesperrt. Test in `projekt-wechsel.test.mjs` (gesperrt bei laufendem Ablauf, gesperrt bei offener Abnahme, frei bei terminalem Ablauf ohne offene Abnahme; ein Klick auf den gesperrten Knopf sendet nichts). Restlücke: Zwischen dem Anlegen des Auftrags und dem Erscheinen des Router-Workflows im Aggregat gibt es noch keinen verknüpften Workflow — wer in diesem Fenster wegnavigiert und zurückkehrt, sieht den Einstieg frei (Weg 1 der Beschreibung).
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
+
+**F-923** · `BUG` · P3 · offen
+Titel: Nach einem Projektwechsel bleibt der Hash auf dem Detail des alten Projekts.
+Beschreibung: Ist `#/workboard/<id>` offen und wechselt das Projekt, schließt der Neuladen-Hook das Detail und zeigt die Übersicht, der Hash bleibt aber `#/workboard/<id>`. Ein Neuladen (F5) öffnet dann das Detail derselben ID im neuen Projekt — gleiche IDs sind zwischen Projekten üblich.
+Fundstelle: `public/leitstand/views/workboard.js` (ladeNachProjektWechsel).
+Auswirkung: Niedrig — verwirrender Zustand nach Neuladen.
+Maßnahme: Beim Wechsel mit offenem Detail den Hash ohne neuen History-Eintrag auf `#/workboard` setzen (history.replaceState plus dispatch) und `projekt-wechsel.test.mjs` ergänzen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
+
+**F-924** · `BUG` · P3 · offen
+Titel: Feature-Ordner außerhalb des ID-Musters: technischer Fehlertext und ein Einstieg, der scheitert.
+Beschreibung: Die Workitem-Liste übernimmt jeden Ordner unter `features/` (etwa `F100-neu`). Das Detail zeigt dann rot „Die Akte konnte nicht gelesen werden“ mit dem 400-Text „featureId muss dem Muster … entsprechen (F-595)“, bietet aber „Auftrag vorbereiten“ an, das am selben Muster scheitert. Ähnlich zeigt eine unvollständige Akte den Servergrund „… — kein Auftrag ableitbar“, der Einstieg bleibt trotzdem stehen.
+Fundstelle: `public/leitstand/views/workboard.js` (renderBearbeitungsAbschnitt), `public/leitstand/views/workboard-detail.js` (akteHinweis), `src/workboard/features.ts`.
+Auswirkung: Niedrig.
+Maßnahme: Einstieg nur bei lesbarer Akte anbieten (nach dem Nachtrag), sonst ein Hinweis; den Parser-Befund für Ordner außerhalb des Musters in E6 zeigen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa, code-reviewer), 01.10.2026.
+
+**F-925** · `BUG` · P3 · offen
+Titel: Eine kaputte Prozent-Kodierung im Hash wirft im Router.
+Beschreibung: `dispatch` ruft `decodeURIComponent` ohne `try` auf; ein Deep-Link wie `#/workboard/%E0%A4%A` wirft einen URIError, die Seite bleibt im vorherigen Zustand. Älter als WS-3b, betrifft aber den neuen Deep-Link.
+Fundstelle: `public/leitstand/router.js` (dispatch).
+Auswirkung: Niedrig.
+Maßnahme: Dekodierung abfangen und auf die Standardroute bzw. „nicht gefunden“ leiten; Test.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
+
+**F-926** · `TECH_DEBT` · P3 · offen
+Titel: „← zurück“ im Detail legt einen History-Eintrag an; nach Browser-Zurück fehlt ein Fokusziel.
+Beschreibung: Der Zurück-Knopf navigiert über `navigiere('#/workboard')`, das einen neuen Eintrag anlegt — Browser-Zurück öffnet danach das Detail wieder. Nach Browser-Zurück aus dem Detail setzt niemand den Fokus; er liegt auf der verborgenen Überschrift des Details. Die zuvor geöffnete Karte bekommt den Fokus nicht zurück.
+Fundstelle: `public/leitstand/views/workboard.js` (initListenBedienung, Route `#/workboard`).
+Auswirkung: Niedrig (Tastatur, Screenreader).
+Maßnahme: Zurück über history.back(), wenn der vorige Eintrag die Übersicht war; beim Schließen den Fokus auf die Karte bzw. Zeile des Eintrags legen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
+
+**F-927** · `TECH_DEBT` · P3 · offen
+Titel: Detail ohne Zeile „Letzter Worker · Modell“ und ohne Hinweis auf weitere Abläufe bzw. fehlende Quellen.
+Beschreibung: „Wer macht was“ im Detail zeigt unter jedem Schritt „Worker · Status“; die Übersicht (B11) und die Vorlage zeigen „Letzter Worker · Modell: nicht beobachtet“ aus der Laufakte. Hat ein Eintrag mehrere verknüpfte Abläufe, zeigt das Detail den maßgeblichen ohne Hinweis auf die übrigen. Sind Workflows oder Aufträge nicht verfügbar, sagt das Detail „Ohne Ausführungsstand nicht bestimmbar“, nennt die Quelle aber nicht (das Board nennt sie).
+Fundstelle: `public/leitstand/views/workboard-detail.js` (werBlock), `public/leitstand/views/workboard.js` (pruefeDetailNachtrag).
+Auswirkung: Niedrig.
+Maßnahme: Laufakte des laufenden Schritts wie `fokus-daten.js` ladeFokusNachtrag nachladen (beim Öffnen und bei Übergängen); Zahl weiterer Abläufe mit Link; fehlende Quelle nennen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (design-guardian, qa), 01.10.2026.
+
+**F-928** · `TECH_DEBT` · P3 · offen
+Titel: `views/workboard.js` ist mit rund 1 400 Zeilen zu groß; Click-to-Work gehört in ein eigenes Modul.
+Beschreibung: WS-3b hat das Rendern des Details nach `views/workboard-detail.js` ausgelagert. Click-to-Work (Zustandsautomat, Klick-Ketten, Auffrischer, Rendern) liegt weiter in `workboard.js`. `empfehlung-anzeige.test.mjs` liest den Quelltext von `views/workboard.js` (Abstand Installierbar-Hinweis zu `wb-freigeben`) und müsste beim Umzug mitziehen.
+Fundstelle: `public/leitstand/views/workboard.js`, `public/leitstand/empfehlung-anzeige.test.mjs`.
+Auswirkung: Niedrig — Wartbarkeit.
+Maßnahme: In WS-4 oder im Fixpaket „Arbeitsfähigkeit“ ein Modul `views/click-to-work.js` mit klarer Schnittstelle (Workitem, Container) schneiden; Test und Gate begründet mitziehen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3b (code-reviewer), 01.10.2026.
+
+**F-929** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Unklar, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen.
+Beschreibung: Workflow-Vorlagen setzen für Architekt und Review den Worker codex ein. Codex lädt keine Claude-Skills; ob und wie die Harness-Regeln (CLAUDE.md, ARCHITECTURE.md, Skills) in diese Schritte gelangen, ist nicht belegt.
+Fundstelle: `workflow-vorlagen/hoch.json` (worker codex).
+Auswirkung: Mittel — Planung und Review durch Codex folgen dem Harness womöglich nicht.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-930** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: F38 als „gestufter Kontext“ neu fassen.
+Beschreibung: Kontext gestuft statt pauschal: eine Projektkarte immer, Steckbriefe je Phase bzw. Feature bei Bedarf, Quellen gezielt. Die Stufen werden aus dem Repo erzeugt und tragen einen Stempel des Quellstands (Muster `docs/projekt/kontext/lagebild.md` und Gate f40). Ein Index bzw. Graph (z. B. Graphify) bleibt wegwerfbar und verweist nur. Gliederung nach Ideate – Plan – Deliver.
+Fundstelle: F38 (Feature-Schnitt); `docs/projekt/kontext/lagebild.md`; Gate `scripts/check-f40-lagebild.mjs`.
+Auswirkung: Mittel — ohne Stufung wächst der Kontext je Rolle unkontrolliert.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18): Verbrauch je Rolle in F30 messen, danach F38 neu schneiden (nach F30, nicht im Fixpaket).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-931** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: ARCHITECTURE.md wirkt nur im Plan, nicht nachweislich in Bau und Review.
+Beschreibung: Architekt und Architecture-Advisor lesen ARCHITECTURE.md bzw. prüfen dagegen; für den Bauschritt, das Review und qa ist nicht belegt, dass ARCHITECTURE.md Prüfmaßstab ist oder gelesen wird.
+Fundstelle: `src/architekt/index.ts:766`, `src/architecture-advisor/index.ts:46`, `vorlagen/projekt-skelett/CLAUDE.md`.
+Auswirkung: Mittel — Konventionen greifen im Plan, können im Bau aber unbemerkt verletzt werden.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 (Prüfmaßstab für Review und qa, Lesen in der Ausführung beobachten).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-932** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Hooks im Workforce-Lauf ungeprüft; PostToolUse-Lint (Harness G7) fehlt auch in ai-workforce.
+Beschreibung: kopiereBaseline kopiert `.claude/settings.json` und alle Hooks in neue Projekte. Nicht belegt ist, ob sie im -p-Lauf mit `--setting-sources project` feuern und ob session-reminder und zwischenstand-* dort sinnvoll sind. Der Lint-Hook aus `docs/harness/HARNESS-OVERVIEW.md` (Ebene 3) steht nicht in `.claude/settings.json`.
+Fundstelle: `src/projekt-anlegen/index.ts:185` (kopiereBaseline), `.claude/settings.json`, `docs/harness/HARNESS-OVERVIEW.md`.
+Auswirkung: Mittel — Schutz- und Komfort-Hooks wirken im Workforce-Lauf womöglich nicht oder falsch; ein behaupteter Lint-Schritt fehlt.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-933** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Die Lernschleife /lessons gibt es in der Workforce nicht.
+Beschreibung: Im Harness hält `/lessons` (`.claude/commands/lessons.md`) Erkenntnisse einer Sitzung fest; die Workforce hat nach einer Abnahme keinen entsprechenden Schritt.
+Fundstelle: `.claude/commands/lessons.md`.
+Auswirkung: Niedrig — Erkenntnisse aus Läufen gehen verloren; fehlende Grundlage für den gestuften Kontext (F-930).
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1: nach der Abnahme ein Lessons-Eintrag; Grundlage für F-930 (K2).
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.

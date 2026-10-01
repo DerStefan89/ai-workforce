@@ -78,6 +78,9 @@
  *                                       Anfragen auf dieses Glob-Muster beantwortet der Browser selbst
  *                                       mit genau diesem JSON (page.route + fulfill) — für Fachzustände,
  *                                       die das laufende Projekt nicht hat (z. B. „keine Roadmap“).
+ *                                       F44 WS-3b: optional "methode": "POST" — dann nur für diese
+ *                                       HTTP-Methode (GET und POST auf denselben Pfad getrennt);
+ *                                       eine später eingetragene Route hat Vorrang (Playwright).
  * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
  * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
  * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
@@ -182,8 +185,11 @@ async function main() {
   // F44 WS-1b: Netzfehler für bestimmte Anfragen nachstellen (Datei-Kommentar, "anfragenBlockieren").
   for (const muster of klickfolge.anfragenBlockieren ?? []) await page.route(muster, (route) => route.abort())
   // F44 WS-2a: feste Antwort für bestimmte Anfragen (Datei-Kommentar, "anfragenAntworten").
-  for (const { muster, status = 200, json } of klickfolge.anfragenAntworten ?? []) {
-    await page.route(muster, (route) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) }))
+  // F44 WS-3b: optional nur für eine HTTP-Methode ("methode"); andere Methoden gehen an die nächste Route bzw. den Server.
+  for (const { muster, status = 200, json, methode } of klickfolge.anfragenAntworten ?? []) {
+    await page.route(muster, (route) =>
+      methode !== undefined && route.request().method() !== methode ? route.fallback() : route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) })
+    )
   }
 
   /**
