@@ -3,7 +3,8 @@
  *
  * Zweck: Kleinste gemeinsame Rendering-Helfer des F20-Leitstands, die von
  * mehreren Views gebraucht werden — escapeHtml (jede View, die Serverdaten in
- * innerHTML schreibt).
+ * innerHTML schreibt), formatiereZeitpunkt/formatiereUhrzeit und ersetzeListeMitFokus
+ * (Zeilenliste neu schreiben, ohne den Fokus der Zeile zu verlieren; F44 WS-5b).
  *
  * F20 WS-2 (AK3): zeigePollFehler ist nach public/leitstand/zustand.js
  * umgezogen — seit der Poll-Konsolidierung gibt es nur noch EINEN fetch()-
@@ -14,6 +15,7 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js, views/projekte-uebersicht.js, views/chat.js (F29 WS-D2, formatiereZeitpunkt/formatiereUhrzeit)
+ * - public/leitstand/views/runs.js, views/workflows.js (ersetzeListeMitFokus, F44 WS-5b); public/leitstand/render.test.mjs
  *
  * Wichtig: Bleibt bewusst klein. Alles, was nur EINE View betrifft (Badges,
  * Tabellenzeilen einer bestimmten Ansicht), gehört in die View selbst, nicht
@@ -44,4 +46,27 @@ export function formatiereUhrzeit(iso) {
   const datum = new Date(iso)
   if (Number.isNaN(datum.getTime())) return null
   return `${String(datum.getHours()).padStart(2, '0')}:${String(datum.getMinutes()).padStart(2, '0')}`
+}
+
+/**
+ * F44 WS-5b (Prüfpunkt WS-5a): ersetzt den Inhalt einer Zeilenliste und setzt den Fokus wieder auf
+ * dieselbe Zeile, wenn er vorher in der Liste lag — sonst fiele er beim Neuschreiben durch den Poll
+ * auf body (Listen „Aufträge“ und „Ausführungen“). Gibt es die Zeile nicht mehr, bleibt der Fokus,
+ * wo der Browser ihn lässt.
+ * @param container - Listen-Element
+ * @param html - neuer Inhalt
+ * @param zeilenSelektor - Selektor einer Zeile, z. B. '.lauf-zeile'
+ * @param schluessel - dataset-Feld, das die Zeile kennzeichnet, z. B. 'laufId'
+ */
+export function ersetzeListeMitFokus(container, html, zeilenSelektor, schluessel) {
+  const aktiv = document.activeElement
+  const fokusWert = aktiv !== null && container.contains(aktiv) ? aktiv.closest?.(zeilenSelektor)?.dataset?.[schluessel] : undefined
+  container.innerHTML = html
+  if (fokusWert === undefined) return
+  for (const zeile of container.querySelectorAll(zeilenSelektor)) {
+    if (zeile.dataset[schluessel] === fokusWert) {
+      zeile.focus()
+      return
+    }
+  }
 }

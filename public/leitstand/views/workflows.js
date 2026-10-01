@@ -39,7 +39,7 @@ import {
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
-import { escapeHtml } from '../render.js'
+import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
@@ -59,7 +59,7 @@ function renderWorkflows(workflows) {
   const html = renderWorkflowListe(workflows)
   if (html === letzteListeHtml) return
   letzteListeHtml = html
-  document.getElementById('workflows').innerHTML = html
+  ersetzeListeMitFokus(document.getElementById('workflows'), html, '.workflow-zeile', 'workflowId')
 }
 
 /**

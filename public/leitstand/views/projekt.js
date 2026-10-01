@@ -1,38 +1,46 @@
 /**
  * Datei: public/leitstand/views/projekt.js
  *
- * Zweck: View `#/projekt` (F20 WS-1) — der bestehende Abschnitt „Auftrag &
- * Start" aus dem früheren app.js, unverändert in Verhalten: Auftrag anlegen
- * (POST /api/auftraege) und der geführte Start (POST /api/laeufe). Deckt
- * zwei der sechs Bedienflüsse ab, die laut F20 AK1 real unverändert
- * funktionieren müssen (Auftrag anlegen, Lauf starten).
+ * Zweck: View `#/projekt` „Auftrag & Direktstart“ (F44 WS-5b, Vorlage V10 d_auftrag_neu, Abgleich
+ * F-725 F1, G10, G11; Entscheidung E-F44-3 = A). Hauptweg ist „Ablauf vorbereiten“: Auftrag anlegen
+ * (POST …/auftraege) → routen (POST …/auftraege/<id>/routen) → auf den Vorschlag warten → zum Ablauf
+ * `#/workflows/router-<auftragId>`, wo der bestehende Freigabedialog (F3) freigibt — hier gibt es
+ * keine zweite Freigabe. Gewartet wird über das Zustands-Aggregat (abonniere, kein eigener Timer).
+ * Der Direktstart eines Einzelschritts (POST …/laeufe) bleibt als aufklappbarer Nebenweg
+ * (#direktstart) mit unverändertem Verhalten, unveränderten IDs und unverändertem POST-Körper.
  *
- * Die Wiederaufnahme-VORBELEGUNG lebt hier (wendeWiederaufnahmeAn,
- * exportiert), weil sie das Startformular dieser View befüllt — AUSGELÖST
- * wird sie aber von der Runs-View (der "Wiederaufnahme starten"-Button
- * gehört zur Laufliste dort), die per Router zu `#/projekt` navigiert und
- * anschließend diese Funktion aufruft. Bewusste Kopplung über einen
- * Funktionsexport statt eines Event-Bus — die App hat genau zwei Views, die
- * sich hier berühren, ein Bus wäre eine Abstraktion ohne zweiten Nutzer.
+ * Die Wiederaufnahme-VORBELEGUNG lebt hier (wendeWiederaufnahmeAn, exportiert), weil sie das
+ * Startformular dieser View befüllt — AUSGELÖST wird sie von der Runs-View („Fortsetzung
+ * vorbereiten“), die per Router zu `#/projekt` navigiert und anschließend diese Funktion aufruft.
+ * Bewusste Kopplung über einen Funktionsexport statt eines Event-Bus.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initProjektView beim Bootstrap)
  * - public/leitstand/views/runs.js (wendeWiederaufnahmeAn, zeigeVorbelegungsFehler)
+ * - public/leitstand/views/projekt.test.mjs, public/leitstand/projekt-wechsel.test.mjs (node:test)
  *
- * Wichtig: rolle/budget/aufrufEingaben.modell bleiben im Startformular FEST
- * (§13.3-Nicht-Ziel „keine dynamische Rollen-/Modell-/Werkzeugwahl") —
- * unverändert aus dem Vorgänger übernommen, hier nicht neu entschieden.
- *
- * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
- * views/workboard.js (F29 WS-1b) — #auftrag-start ist jetzt eine .card
- * (index.html), seine Schaltflächen (inklusive der hier dynamisch erzeugten
- * Evidenzdatei-Entfernen-Zeile) tragen .btn/.btn-primary. Keine
- * Verhaltensänderung, kein neues Farbpaar.
+ * Wichtig:
+ * - rolle/budget/aufrufEingaben.modell bleiben im Startformular FEST (§13.3-Nicht-Ziel „keine
+ *   dynamische Rollen-/Modell-/Werkzeugwahl“, F-161) — unverändert übernommen.
+ * - Erlaubnis nur aus Serverantworten: D13 (ein Lauf zur Zeit) wird nicht vorweggenommen; ein 409
+ *   beim Routen erscheint als Notiz mit dem Servergrund. „Erneut versuchen“ routet denselben Auftrag
+ *   neu und legt NIE einen zweiten an.
+ * - Projektwechsel (F-860): eine laufende Vorbereitung des alten Projekts wird verworfen (späte
+ *   Antworten und Aggregat-Treffer gehen ins Leere); Titel, Ergebnis und Kontext bleiben stehen
+ *   (Text gehört dem Menschen, F-885).
+ * - Keine eigene Live-Region: Fehler und Schritt 2 bekommen den Fokus.
+ * - Die Kette „anlegen → routen → warten“ existiert auch in views/workboard.js (Click-to-Work);
+ *   Zusammenlegen ist F-943 (beim Schnitt F-928).
  */
 
-import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, starteLauf } from '../api.js'
-import { escapeHtml } from '../render.js'
+import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
+import { t } from '../i18n.js'
+import { kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
+import { escapeHtml } from '../render.js'
+import { navigiere } from '../router.js'
+import { abonniere } from '../zustand.js'
+import { baueAuftragstext, pruefeAggregat, renderVorbereitung, workflowIdFuer } from './auftrag-vorbereitung.js'
 
 /** Präfix der synthetischen Kontextpaket-Elemente, die der Server selbst voranstellt (execution-controller/index.ts) — keine vom Nutzer benannten Evidenzdateien, werden bei der Vorbelegung herausgefiltert. */
 const ARTEFAKT_PRAEFIX = 'artefakt:'
@@ -41,6 +49,13 @@ const ARTEFAKT_PRAEFIX = 'artefakt:'
 function filtereEchteEvidenzPfade(elemente) {
   return elemente.filter((e) => typeof e?.pfad === 'string' && !e.pfad.startsWith(ARTEFAKT_PRAEFIX)).map((e) => e.pfad)
 }
+
+/** Fehlertext einer abgefangenen Ausnahme. @param fehler - gefangener Wert @returns Text */
+function meldungVon(fehler) {
+  return fehler instanceof Error ? fehler.message : String(fehler)
+}
+
+// ─── Wiederaufnahme-Vorbelegung (Direktstart) ───────────────────────────────
 
 /** laufId des Laufs, dessen Wiederaufnahme gerade vorbereitet wird, oder null im Normalstart — geht als vorgaengerLaufId in den nächsten POST /api/laeufe-Body ein, bis loescheWiederaufnahmeVorbelegung() sie zurücksetzt. Bewusst kein editierbares Formularfeld. */
 let aktiveVorgaengerLaufId = null
@@ -69,7 +84,7 @@ function loescheWiederaufnahmeVorbelegung() {
 function fuegeEvidenzdateiZeileHinzu() {
   const zeile = document.createElement('div')
   zeile.className = 'evidenzdatei-zeile'
-  zeile.innerHTML = '<input type="text" class="evidenzdatei-pfad" placeholder="repo-relativer Pfad, z. B. src/beispiel.ts" /><button type="button" class="btn evidenzdatei-entfernen">–</button>'
+  zeile.innerHTML = `<input type="text" class="evidenzdatei-pfad" placeholder="${escapeHtml(t('direktstart.evidenz.platzhalter'))}" aria-label="${escapeHtml(t('direktstart.evidenz.pfad'))}" /><button type="button" class="button evidenzdatei-entfernen" aria-label="${escapeHtml(t('direktstart.evidenz.entfernen'))}">–</button>`
   document.getElementById('start-evidenzdateien-liste').appendChild(zeile)
 }
 
@@ -116,18 +131,22 @@ function slugifiereFuerLaufId(titel) {
   )
 }
 
+/** Fehlerzeile des Auftragsformulars (Anlegen über beide Wege); bekommt beim Zeigen den Fokus (keine Live-Region). @param text - Fehlertext, '' blendet aus */
 function zeigeAuftragAnlegenFehler(text) {
   const anzeige = document.getElementById('auftrag-anlegen-fehler')
   anzeige.textContent = text
   anzeige.hidden = text === ''
+  if (text !== '') anzeige.focus()
 }
 
+/** Fehlerzeile des Direktstarts. @param text - Fehlertext, '' blendet aus */
 function zeigeStartFehler(text) {
   const anzeige = document.getElementById('start-fehler')
   anzeige.textContent = text
   anzeige.hidden = text === ''
 }
 
+/** Erfolgszeile des Direktstarts. @param text - Text, '' blendet aus */
 function zeigeStartErfolg(text) {
   const anzeige = document.getElementById('start-erfolg')
   anzeige.textContent = text
@@ -138,27 +157,28 @@ function zeigeStartErfolg(text) {
 let auftraegeAnfrageZaehler = 0
 let werkzeugsaetzeAnfrageZaehler = 0
 
-/** Lädt GET /api/auftraege in das Auftrag-Dropdown des Startformulars — Anzeige aus titel/erstellt_am, Wert auftragId. Erhält die vorherige Auswahl über einen Reload hinweg, wenn sie noch existiert. */
-async function ladeAuftraege() {
+/** Lädt GET /api/auftraege in das Auftrag-Dropdown des Startformulars — Anzeige aus titel/erstellt_am, Wert auftragId. Erhält die vorherige Auswahl über einen Reload hinweg, wenn sie noch existiert. @param auszuwaehlen - optional: auftragId, die nach dem Laden gewählt wird (neu angelegter Auftrag) */
+async function ladeAuftraege(auszuwaehlen) {
   const meineAnfrageNummer = ++auftraegeAnfrageZaehler
   const select = document.getElementById('start-auftrag')
-  const vorherAusgewaehlt = select.value
+  const vorherAusgewaehlt = auszuwaehlen ?? select.value
   try {
     const auftraege = await holeAuftraege()
     if (meineAnfrageNummer !== auftraegeAnfrageZaehler) return
     select.innerHTML =
       auftraege.length === 0
-        ? '<option value="">— kein Auftrag vorhanden, zuerst anlegen —</option>'
-        : auftraege.map((a) => `<option value="${escapeHtml(a.auftragId)}">${escapeHtml(a.titel)} (${escapeHtml(a.erstellt_am ?? 'Zeit unbekannt')})</option>`).join('')
+        ? `<option value="">${escapeHtml(t('direktstart.auswahl.leer'))}</option>`
+        : auftraege.map((a) => `<option value="${escapeHtml(a.auftragId)}">${escapeHtml(a.titel)} (${escapeHtml(a.erstellt_am ?? t('direktstart.zeitUnbekannt'))})</option>`).join('')
     if (auftraege.some((a) => a.auftragId === vorherAusgewaehlt)) {
       select.value = vorherAusgewaehlt
     }
   } catch (fehler) {
     if (meineAnfrageNummer !== auftraegeAnfrageZaehler) return
+    console.error('[projekt] GET …/auftraege fehlgeschlagen:', fehler)
     // F44 WS-1a (F-860): keine Aufträge eines anderen Projekts stehen lassen — „Starten“ schickte
     // sonst eine fremde auftragId an den neuen Präfix.
-    select.innerHTML = '<option value="">— Aufträge nicht verfügbar —</option>'
-    zeigeStartFehler(`Aufträge konnten nicht geladen werden: ${fehler.message}`)
+    select.innerHTML = `<option value="">${escapeHtml(t('direktstart.auswahl.nichtVerfuegbar'))}</option>`
+    zeigeStartFehler(t('direktstart.fehler.auftraege', { meldung: meldungVon(fehler) }))
   }
 }
 
@@ -172,42 +192,294 @@ async function ladeWerkzeugsaetze() {
     select.innerHTML = werkzeugsaetze.map((w) => `<option value="${escapeHtml(w.name)}">${escapeHtml(w.name)} (${escapeHtml(w.erlaubte_werkzeuge.join(', '))})</option>`).join('')
   } catch (fehler) {
     if (meineAnfrageNummer !== werkzeugsaetzeAnfrageZaehler) return
-    select.innerHTML = '<option value="">— Werkzeugsätze nicht verfügbar —</option>'
-    zeigeStartFehler(`Werkzeugsätze konnten nicht geladen werden: ${fehler.message}`)
+    console.error('[projekt] GET …/startvorlage/werkzeugsaetze fehlgeschlagen:', fehler)
+    select.innerHTML = `<option value="">${escapeHtml(t('direktstart.werkzeugsaetze.nichtVerfuegbar'))}</option>`
+    zeigeStartFehler(t('direktstart.fehler.werkzeugsaetze', { meldung: meldungVon(fehler) }))
   }
 }
 
-/** Formular „Auftrag anlegen": POST /api/auftraege, danach Dropdown-Reload — neuer Auftrag muss sofort wählbar sein. */
-function initAuftragFormular() {
-  const button = document.getElementById('auftrag-anlegen')
-  button.addEventListener('click', async () => {
-    if (button.disabled) return
-    const titelFeld = document.getElementById('auftrag-titel')
-    const auftragstextFeld = document.getElementById('auftrag-auftragstext')
+// ─── Auftrag anlegen (beide Wege) ───────────────────────────────────────────
+
+/** Felder des Auftragsformulars: Titel, gewünschtes Ergebnis, Kontext. @returns die drei Eingabeelemente */
+function auftragsFelder() {
+  return { titel: document.getElementById('auftrag-titel'), ergebnis: document.getElementById('auftrag-auftragstext'), kontext: document.getElementById('auftrag-kontext') }
+}
+
+/** Leert Titel, Ergebnis und Kontext — nur nach einem Erfolg (der Text ist dann beim Server). */
+function leereAuftragsFelder() {
+  const felder = auftragsFelder()
+  felder.titel.value = ''
+  felder.ergebnis.value = ''
+  felder.kontext.value = ''
+}
+
+/** true, solange ein POST …/auftraege läuft — sperrt beide Anlege-Knöpfe gemeinsam (genau ein POST je Klick). */
+let anlegenLaeuft = false
+
+/** Sperrt bzw. entsperrt beide Anlege-Knöpfe während einer Anfrage. @param gesperrt - true während der Anfrage */
+function sperreAnlegen(gesperrt) {
+  anlegenLaeuft = gesperrt
+  aktualisiereAnlegeKnoepfe()
+}
+
+/**
+ * Sperre der Anlege-Knöpfe: beide während eines POST …/auftraege; „Auftrag ohne Ablauf anlegen“
+ * zusätzlich in Schritt 2 — dann sind Titel, Ergebnis und Kontext verborgen und gehören zum schon
+ * angelegten Auftrag (Prüfpass WS-5b: sonst entstand daraus ein zweiter Auftrag). Ein Hinweis sagt,
+ * warum der Knopf gesperrt ist.
+ */
+function aktualisiereAnlegeKnoepfe() {
+  const inVorbereitung = vorbereitung !== null
+  document.getElementById('auftrag-ablauf-vorbereiten').disabled = anlegenLaeuft
+  document.getElementById('auftrag-anlegen').disabled = anlegenLaeuft || inVorbereitung
+  document.getElementById('direktstart-anlegen-gesperrt').hidden = !inVorbereitung
+}
+
+/**
+ * POST …/auftraege mit Titel und Auftragstext (Ergebnis plus Kontext-Absatz). Zeigt nichts an — der
+ * Aufrufer entscheidet nach seinem Überholschutz, ob der Fehler an die Fehlerzeile geht; die
+ * Eingaben bleiben in jedem Fehlerfall stehen.
+ * @returns { auftragId, meldung }: bei 201 die auftragId (meldung null), sonst auftragId null und der Fehlertext
+ */
+async function legeAuftragAusFormularAn() {
+  const felder = auftragsFelder()
+  zeigeAuftragAnlegenFehler('')
+  let antwort
+  try {
+    antwort = await legeAuftragAn({ titel: felder.titel.value, auftragstext: baueAuftragstext(felder.ergebnis.value, felder.kontext.value) })
+  } catch (fehler) {
+    console.error('[projekt] POST …/auftraege fehlgeschlagen:', fehler)
+    return { auftragId: null, meldung: t('auftrag.fehler.anfrage', { meldung: meldungVon(fehler) }) }
+  }
+  const koerper = await antwort.json().catch(() => ({}))
+  if (antwort.status !== 201) return { auftragId: null, meldung: t('auftrag.fehler.status', { status: String(antwort.status), grund: koerper.grund ?? t('auftrag.fehler.unbekannt') }) }
+  // Ein 201 ohne auftragId ist kein brauchbarer Erfolg — sonst ginge POST …/auftraege//routen hinaus.
+  if (typeof koerper.auftragId !== 'string' || koerper.auftragId === '') {
+    console.error('[projekt] POST …/auftraege: 201 ohne auftragId', koerper)
+    return { auftragId: null, meldung: t('auftrag.fehler.status', { status: '201', grund: t('auftrag.fehler.ohneId') }) }
+  }
+  return { auftragId: koerper.auftragId, meldung: null }
+}
+
+/** „Auftrag ohne Ablauf anlegen“ (#auftrag-anlegen, im Direktstart): legt nur den Auftrag an, lädt die Auswahl neu und wählt ihn. */
+async function legeAuftragOhneAblaufAn() {
+  if (anlegenLaeuft || vorbereitung !== null) return
+  const projektId = holeAktivesProjekt().id
+  sperreAnlegen(true)
+  try {
+    const { auftragId, meldung } = await legeAuftragAusFormularAn()
+    // F-860: nach einem Projektwechsel gehört die Antwort zum alten Projekt — nichts mehr anfassen.
+    if (holeAktivesProjekt().id !== projektId) return
+    if (auftragId === null) {
+      zeigeAuftragAnlegenFehler(meldung)
+      return
+    }
+    leereAuftragsFelder()
+    await ladeAuftraege(auftragId)
+    aktualisiereLaufIdVorschlag()
+    // Rückmeldung ohne Live-Region: der Fokus liegt auf der Auswahl, die den neuen Auftrag zeigt.
+    if (holeAktivesProjekt().id === projektId) document.getElementById('start-auftrag').focus()
+  } finally {
+    sperreAnlegen(false)
+  }
+}
+
+// ─── Ablauf vorbereiten (Hauptweg, E-F44-3 = A) ─────────────────────────────
+
+/**
+ * Laufende Vorbereitung oder null (Schritt 1, Formular). Je Klick ein neues Objekt; jede Kette
+ * prüft nach einem await, ob ihr Objekt noch das aktuelle ist — ein Projektwechsel oder „Neuen
+ * Auftrag beschreiben“ setzt null, späte Antworten gehen dann ins Leere.
+ * { projektId, phase, auftragId, laufId, workflowId, meldung }
+ */
+let vorbereitung = null
+
+/** Setzt aria-current="step" (und .active) auf den aktuellen Schritt der Schrittanzeige. @param schritt - 1 (Auftrag) oder 2 (Ablauf prüfen); Schritt 3 findet auf `#/workflows/<id>` statt */
+function setzeSchritt(schritt) {
+  for (const eintrag of document.querySelectorAll('#auftrag-schritte [data-schritt]')) {
+    const aktiv = eintrag.dataset.schritt === String(schritt)
+    eintrag.classList.toggle('active', aktiv)
+    if (aktiv) eintrag.setAttribute('aria-current', 'step')
+    else eintrag.removeAttribute('aria-current')
+  }
+}
+
+/**
+ * Zeigt Schritt 1 (Formular) oder Schritt 2 (Notiz der Vorbereitung).
+ * @param fokus - true: Fokus auf die Notiz bzw. den Titel (nach einer Bedienung); sonst nur, wenn der Fokus in der ersetzten Notiz lag
+ */
+function zeigeVorbereitung(fokus) {
+  const formular = document.getElementById('auftrag-formular')
+  const anzeige = document.getElementById('auftrag-vorbereitung')
+  const sichtbar = vorbereitung !== null && vorbereitung.phase !== 'wird_angelegt'
+  const fokusInNotiz = anzeige.contains(document.activeElement)
+  formular.hidden = sichtbar
+  anzeige.hidden = !sichtbar
+  anzeige.innerHTML = sichtbar ? renderVorbereitung(vorbereitung) : ''
+  setzeSchritt(sichtbar ? 2 : 1)
+  aktualisiereAnlegeKnoepfe()
+  if (!fokus && !fokusInNotiz) return
+  if (sichtbar) document.getElementById('auftrag-vorbereitung-notiz')?.focus()
+  else auftragsFelder().titel.focus()
+}
+
+/**
+ * Routet den Auftrag der Vorbereitung v (Erststart oder „Erneut versuchen“): 202 → 'wartet' mit
+ * laufId, 409 → 'konflikt' mit dem Servergrund (D13), sonst → 'fehler'.
+ * @param v - die Vorbereitung, zu der geroutet wird
+ */
+async function routeVorbereitung(v) {
+  v.phase = 'wird_geroutet'
+  v.meldung = null
+  // Die laufId eines früheren, gescheiterten Versuchs gehört nicht zu diesem.
+  v.laufId = null
+  v.wiederholbar = true
+  zeigeVorbereitung(true)
+  let antwort
+  let koerper
+  try {
+    antwort = await routeAuftrag(v.auftragId)
+    koerper = await antwort.json().catch(() => ({}))
+  } catch (fehler) {
+    console.error('[projekt] POST …/routen fehlgeschlagen:', fehler)
+    if (vorbereitung !== v) return
+    v.phase = 'fehler'
+    v.meldung = t('auftrag.fehler.anfrage', { meldung: meldungVon(fehler) })
+    zeigeVorbereitung(true)
+    return
+  }
+  if (vorbereitung !== v) return
+  if (antwort.status === 202) {
+    v.phase = 'wartet'
+    v.laufId = String(koerper.laufId ?? '')
+  } else if (antwort.status === 409) {
+    v.phase = 'konflikt'
+    v.meldung = koerper.grund ?? t('auftrag.vorbereitung.konflikt.standard')
+  } else {
+    v.phase = 'fehler'
+    v.meldung = t('auftrag.fehler.status', { status: String(antwort.status), grund: koerper.grund ?? t('auftrag.fehler.unbekannt') })
+    // Ein 4xx (z. B. Auftrag nicht gefunden) wird durch Wiederholen nicht besser; 5xx und Netz schon.
+    v.wiederholbar = antwort.status >= 500
+  }
+  zeigeVorbereitung(true)
+}
+
+/** „Ablauf vorbereiten“: Auftrag anlegen (201) → routen. Genau ein POST …/auftraege je Klick. */
+async function bereiteAblaufVor() {
+  if (anlegenLaeuft || vorbereitung !== null) return
+  const v = { projektId: holeAktivesProjekt().id, phase: 'wird_angelegt', auftragId: null, laufId: null, workflowId: null, meldung: null }
+  vorbereitung = v
+  sperreAnlegen(true)
+  let ergebnis
+  try {
+    ergebnis = await legeAuftragAusFormularAn()
+  } finally {
+    sperreAnlegen(false)
+  }
+  if (vorbereitung !== v) return
+  if (ergebnis.auftragId === null) {
+    vorbereitung = null
+    // Die Sperre im finally oben sah noch die Vorbereitung — sonst bliebe „ohne Ablauf“ gesperrt.
+    aktualisiereAnlegeKnoepfe()
+    zeigeAuftragAnlegenFehler(ergebnis.meldung)
+    return
+  }
+  v.auftragId = ergebnis.auftragId
+  v.workflowId = workflowIdFuer(ergebnis.auftragId)
+  // Der neue Auftrag gehört in die Auswahl des Direktstarts (wie nach „Auftrag ohne Ablauf anlegen“).
+  void ladeAuftraege()
+  await routeVorbereitung(v)
+}
+
+/**
+ * Abnehmer des Zustands-Aggregats (ein Poll, zustand.js): erscheint der Ablauf `router-<auftragId>`,
+ * geht es — solange der Nutzer auf `#/projekt` ist — dorthin, und die Felder werden geleert; sonst
+ * steht dort beim Zurückkehren „Der Ablauf ist vorbereitet“. Ein Startfehler zu genau dieser laufId
+ * zeigt die rote Notiz. Treffer eines anderen Projekts werden ignoriert.
+ * @param zustand - Aggregat aus GET …/zustand
+ */
+function beiZustand(zustand) {
+  const v = vorbereitung
+  if (v === null || v.projektId !== holeAktivesProjekt().id) return
+  const treffer = pruefeAggregat(zustand, v)
+  if (treffer === null) return
+  if (treffer.art === 'startfehler') {
+    v.phase = 'startfehler'
+    v.meldung = treffer.fehler
+    zeigeVorbereitung(false)
+    return
+  }
+  leereAuftragsFelder()
+  // Nicht mitten aus einer Eingabe im Direktstart wegspringen (Prüfpass WS-5b): dann wie „woanders“.
+  const imDirektstart = document.getElementById('direktstart').contains(document.activeElement)
+  if (location.hash === '#/projekt' && !imDirektstart) {
+    vorbereitung = null
+    zeigeVorbereitung(false)
+    navigiere(`#/workflows/${encodeURIComponent(v.workflowId)}`)
+    return
+  }
+  v.phase = 'bereit'
+  zeigeVorbereitung(false)
+}
+
+/** Klick-Delegation der Notiz: „Erneut versuchen“ (denselben Auftrag neu routen), „Neuen Auftrag beschreiben“, „Ablauf prüfen“ (Link). @param ereignis - Klick */
+function beiVorbereitungsKlick(ereignis) {
+  const knopf = ereignis.target.closest('[data-aktion]')
+  const v = vorbereitung
+  if (!knopf || v === null) return
+  const aktion = knopf.dataset.aktion
+  if (aktion === 'erneut' && (v.phase === 'konflikt' || v.phase === 'startfehler' || v.phase === 'fehler')) {
+    void routeVorbereitung(v)
+  } else if (aktion === 'neu') {
+    // Der Auftrag ist beim Server angelegt (sein Text liegt dort); ein neuer Auftrag beginnt leer —
+    // sonst entstünde aus demselben Text ein zweiter Auftrag (Prüfpass WS-5b).
+    vorbereitung = null
+    leereAuftragsFelder()
     zeigeAuftragAnlegenFehler('')
-    button.disabled = true
+    zeigeVorbereitung(true)
+  } else if (aktion === 'pruefen') {
+    // Ein Klick in einen neuen Tab lässt diese Seite unverändert.
+    if (ereignis.ctrlKey || ereignis.metaKey || ereignis.shiftKey || ereignis.button > 0) return
+    // Der Link navigiert selbst; die Seite steht beim nächsten Betreten wieder auf Schritt 1.
+    vorbereitung = null
+    zeigeVorbereitung(false)
+  }
+}
+
+/** true, wenn `#/projekt` direkt aus `#/runs` (Register „Aufträge“) betreten wurde — „← Alle Aufträge“ geht dann per history.back() zurück (F-926-Muster). */
+let ausAuftraegen = false
+
+/** Hauptformular, Notiz, „Lieber mit dem Coach besprechen“ (kommt) und „← Alle Aufträge“. */
+function initAuftragFormular() {
+  const felder = auftragsFelder()
+  felder.titel.placeholder = t('auftrag.feld.titel.platzhalter')
+  felder.ergebnis.placeholder = t('auftrag.feld.ergebnis.platzhalter')
+  felder.kontext.placeholder = t('auftrag.kontext.platzhalter')
+  // Vorlage: sekundär „Lieber mit dem Coach besprechen“ — das Chat-Dock folgt in WS-8 (E-F44-1).
+  document.getElementById('auftrag-aktionen').insertAdjacentHTML('beforeend', kommtKnopf(t('auftrag.coach')))
+  document.getElementById('auftrag-formular').addEventListener('submit', (ereignis) => {
+    ereignis.preventDefault()
+    void bereiteAblaufVor()
+  })
+  document.getElementById('auftrag-vorbereitung').addEventListener('click', beiVorbereitungsKlick)
+  document.getElementById('auftrag-anlegen').addEventListener('click', () => {
+    void legeAuftragOhneAblaufAn()
+  })
+  window.addEventListener('hashchange', (ereignis) => {
+    if (location.hash !== '#/projekt') return
     try {
-      let antwort
-      try {
-        antwort = await legeAuftragAn({ titel: titelFeld.value, auftragstext: auftragstextFeld.value })
-      } catch (fehler) {
-        zeigeAuftragAnlegenFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
-        return
-      }
-      if (antwort.status !== 201) {
-        const koerper = await antwort.json().catch(() => ({}))
-        zeigeAuftragAnlegenFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
-        return
-      }
-      titelFeld.value = ''
-      auftragstextFeld.value = ''
-      await ladeAuftraege()
-      aktualisiereLaufIdVorschlag()
-    } finally {
-      button.disabled = false
+      ausAuftraegen = new URL(ereignis.oldURL).hash === '#/runs'
+    } catch {
+      ausAuftraegen = false
     }
   })
+  document.getElementById('auftrag-zurueck').addEventListener('click', () => {
+    if (ausAuftraegen) history.back()
+    else navigiere('#/runs')
+  })
 }
+
+// ─── Direktstart (G10, G11) ─────────────────────────────────────────────────
 
 /** Zuletzt in #start-laufid eingetragener Vorschlagswert — aktualisiereLaufIdVorschlag() überschreibt das Feld nur, wenn es noch diesen Wert (oder leer) trägt, nie eine manuelle Nutzereingabe. */
 let letzterLaufIdVorschlag = ''
@@ -243,7 +515,7 @@ function initStartformular() {
     const auftragId = document.getElementById('start-auftrag').value
     zeigeStartFehler('')
     if (auftragId === '') {
-      zeigeStartFehler('Bitte zuerst einen Auftrag anlegen oder wählen.')
+      zeigeStartFehler(t('direktstart.fehler.keinAuftrag'))
       return
     }
 
@@ -265,18 +537,19 @@ function initStartformular() {
       try {
         antwort = await starteLauf(startauftrag)
       } catch (fehler) {
-        zeigeStartFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+        console.error('[projekt] POST …/laeufe fehlgeschlagen:', fehler)
+        zeigeStartFehler(t('direktstart.fehler.anfrage', { meldung: meldungVon(fehler) }))
         return
       }
 
       if (antwort.status !== 202) {
         const koerper = await antwort.json().catch(() => ({}))
-        zeigeStartFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+        zeigeStartFehler(t('direktstart.fehler.status', { status: String(antwort.status), grund: koerper.grund ?? t('auftrag.fehler.unbekannt') }))
         return
       }
 
       const angenommen = await antwort.json().catch(() => ({}))
-      zeigeStartErfolg(`Angenommen: laufId '${angenommen.laufId ?? startauftrag.laufId}'. Erscheint in der Laufliste, sobald der erste Checkpoint geschrieben ist.`)
+      zeigeStartErfolg(t('direktstart.erfolg', { laufId: angenommen.laufId ?? startauftrag.laufId }))
       document.querySelectorAll('.evidenzdatei-pfad').forEach((eingabe) => {
         eingabe.value = ''
       })
@@ -298,6 +571,8 @@ function initStartformular() {
  * F44 WS-1a (F-860): projektId ist das Projekt, zu dem der Lauf gehört (vom Aufrufer VOR seinem
  * eigenen Abruf festgehalten). Hat das aktive Projekt inzwischen gewechselt — vor oder während des
  * Wartens hier —, wird nichts vorbelegt; sonst schickte „Starten“ eine fremde vorgaengerLaufId.
+ * F44 WS-5b: Der Direktstart ist aufklappbar; die Vorbelegung öffnet ihn und legt den Fokus auf
+ * seine Überschrift, damit sie sichtbar bleibt.
  * @param detail - Antwortkörper von GET /api/laeufe/<laufId>
  * @param alterLaufId - laufId des wiederaufzunehmenden Laufs
  * @param projektId - id des Projekts des Laufs (Standard: das aktive)
@@ -318,6 +593,8 @@ export async function wendeWiederaufnahmeAn(detail, alterLaufId, projektId = hol
 
   setzeWiederaufnahmeVorbelegung(alterLaufId)
   aktualisiereLaufIdVorschlag()
+  document.getElementById('direktstart').open = true
+  document.getElementById('direktstart-titel').focus()
 }
 
 /** Initialisiert die Projekt-View einmalig beim Bootstrap. */
@@ -325,19 +602,26 @@ export function initProjektView() {
   initEvidenzdateien()
   initAuftragFormular()
   initStartformular()
+  abonniere(beiZustand)
   // F44 WS-1a (F-860): Aufträge und Werkzeugsätze gehören zum Projekt — beim Wechsel neu laden,
   // damit die Auswahlliste zum Präfix passt, an den „Starten“ sendet. Ein alter Startfehler/-erfolg
   // bezog sich auf das vorige Projekt und wird ausgeblendet.
   // Eine vorbereitete Wiederaufnahme gehört zum alten Projekt (vorgaengerLaufId und die daraus
   // vorbelegten Evidenzpfade) und wird verworfen; bis zur Antwort zeigt die Auftragsliste „Lädt…“.
+  // F44 WS-5b: Eine laufende Vorbereitung des alten Projekts wird verworfen (Schritt 1); Titel,
+  // Ergebnis und Kontext bleiben stehen (F-885).
   abonniereProjektWechsel(() => {
+    vorbereitung = null
+    zeigeVorbereitung(false)
+    zeigeAuftragAnlegenFehler('')
     if (aktiveVorgaengerLaufId !== null) ersetzeEvidenzdateien([])
     loescheWiederaufnahmeVorbelegung()
     zeigeVorbelegungsFehler('')
     zeigeStartFehler('')
     zeigeStartErfolg('')
-    document.getElementById('start-auftrag').innerHTML = '<option value="">Lädt…</option>'
-    document.getElementById('start-werkzeugsatz').innerHTML = '<option value="">Lädt…</option>'
+    const laedt = `<option value="">${escapeHtml(t('direktstart.laedt'))}</option>`
+    document.getElementById('start-auftrag').innerHTML = laedt
+    document.getElementById('start-werkzeugsatz').innerHTML = laedt
     void ladeAuftraege().then(aktualisiereLaufIdVorschlag)
     void ladeWerkzeugsaetze()
   })

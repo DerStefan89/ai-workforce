@@ -40,7 +40,7 @@
  * Stylingumstellung der drei letzten Views ohne eigenen Referenz-Consumer.
  * .detail-block/.badge/.lauf-kopfdaten-Tabellen waren dort bereits im
  * Einsatz (F20/F21/F24) — neu ist ausschließlich .card für die bisherigen
- * ID-basierten Rahmenboxen (#auftrag-start, #startfehler-abschnitt,
+ * ID-basierten Rahmenboxen (damals #auftrag-start, #startfehler-abschnitt,
  * #lauf-detail, die drei Capabilities-Unterabschnitte) und .btn/.btn-primary
  * für deren Schaltflächen. Die 14-spaltige Checkpoint-Tabelle und die
  * Laufakte-Tabelle (runs.js, an scripts/check-f12-leitstand-ansicht.mjs
@@ -1583,7 +1583,7 @@ th {
 
 /* F29 WS-2b: Box-Optik kommt jetzt von .card (index.html) — hier nur noch der Abstand zum
    Abschnitt darunter (#workflows-abschnitt), spezifisch für diese Stelle im Layout (Muster
-   #workboard-detail). #auftrag-start braucht keine solche Regel mehr — es ist der einzige
+   #workboard-detail). #auftrag-start (bis F44 WS-5b) brauchte keine solche Regel — es war der einzige
    Abschnitt seiner View. */
 #startfehler-abschnitt {
   margin-bottom: var(--space-4xl);
@@ -1622,45 +1622,6 @@ th {
   margin-top: 0;
 }
 
-#auftrag-start label {
-  display: block;
-  margin-top: var(--space-xl);
-  margin-bottom: var(--space-2xs);
-  font-weight: 600;
-}
-
-#auftrag-start input[type="text"],
-#auftrag-start select,
-#auftrag-start textarea {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-base);
-  padding: var(--space-xs) var(--space-sm);
-}
-
-#start-evidenzdateien {
-  margin-top: var(--space-xl);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
-}
-
-.evidenzdatei-zeile {
-  display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.evidenzdatei-zeile input[type="text"] {
-  flex: 1;
-}
-
-#auftrag-start button {
-  margin-top: var(--space-lg);
-}
-
 .fehler {
   color: var(--color-danger-text);
   font-weight: 600;
@@ -1671,7 +1632,7 @@ th {
   font-weight: 600;
 }
 
-/* F41 WS-2: Formularfeld-Stil des Anlegen-Formulars, analog #auftrag-start oben (eigener Selektor,
+/* F41 WS-2: Formularfeld-Stil des Anlegen-Formulars, analog dem früheren #auftrag-start (eigener Selektor,
    weil beide Formulare unabhängig gepflegt werden) — ohne das würden label/input hier auf
    ungestylte Browser-Standards zurückfallen (kein width: 100%, keine Konsistenz zum übrigen
    Leitstand-Formular-Look). */
@@ -1813,7 +1774,7 @@ th {
 /*
  * F15 WS-3b: die Eingabefelder der Workflow-Bedienung und des
  * Reparaturentwurfs. Wortgleich zur Regel des Startformulars, aber als eigener
- * Selektor: die dortige ist auf #auftrag-start geschnitten, und ein
+ * Selektor: die damalige war auf #auftrag-start geschnitten (bis F44 WS-5b), und ein
  * Zusammenlegen hieße, den Selektor eines fremden Abschnitts zu erweitern.
  * width UND max-width zusammen (Definition of Done: jeder Container mit
  * max-width trägt auch width: 100%).
@@ -6175,4 +6136,261 @@ th {
       padding-left: 22px;
     }
   }
+}
+
+/* ─────────────── Auftrag & Direktstart (F44 WS-5b, Vorlage V10 d_auftrag_neu) ───────────────
+   #/projekt als Seite: Schrittanzeige (.stepper, aria-current="step"), Formular (.auftrag-formular,
+   label.field, Felder max. 700 px wie .form der Vorlage), „Kontext hinzufügen · optional“ als
+   details, Schritt 2 als Notiz (#auftrag-vorbereitung, .note/.amber/.red) und der aufklappbare
+   Direktstart (#direktstart) mit den bisherigen Feldern. Farben nur über Tokens. */
+.auftrag-seite .stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0 0 35px;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--line);
+  list-style: none;
+}
+
+.auftrag-seite .stepper li {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.auftrag-seite .stepper li.active {
+  color: var(--mint);
+}
+
+.auftrag-seite .stepper b {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.auftrag-seite .auftrag-formular,
+.auftrag-seite .auftrag-vorbereitung,
+.auftrag-seite .direktstart {
+  width: 100%;
+  max-width: 700px;
+}
+
+.auftrag-seite label.field {
+  display: block;
+  margin: 22px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.auftrag-seite .auftrag-formular > label.field:first-child {
+  margin-top: 0;
+}
+
+.auftrag-seite input[type='text'],
+.auftrag-seite textarea,
+.auftrag-seite select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.auftrag-seite textarea {
+  min-height: 115px;
+  line-height: 1.65;
+  resize: vertical;
+}
+
+.auftrag-seite input[type='text']::placeholder,
+.auftrag-seite textarea::placeholder {
+  color: var(--muted);
+}
+
+.auftrag-seite textarea:focus-visible,
+.auftrag-seite select:focus-visible,
+.auftrag-seite input[type='text']:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.auftrag-seite small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Autor-CSS schlägt die UA-Regel [hidden] (F-622): der Sperrhinweis im Direktstart ist sonst immer sichtbar. */
+.auftrag-seite small[hidden] {
+  display: none;
+}
+
+.auftrag-seite details {
+  margin: 22px 0 0;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.auftrag-seite details summary {
+  cursor: pointer;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.auftrag-seite details[open] > summary {
+  margin-bottom: 18px;
+  color: var(--ink);
+}
+
+.auftrag-seite details.auftrag-kontext label.field {
+  margin-top: 0;
+}
+
+.auftrag-seite .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 0;
+}
+
+.auftrag-seite .action-row .button {
+  white-space: normal;
+  text-align: left;
+}
+
+.auftrag-seite .button:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.auftrag-seite .fehler {
+  margin: 14px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.auftrag-seite .fehler:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+.auftrag-seite .erfolg {
+  margin: 14px 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* Schritt 2: die Notiz trägt Titel, Text (Servertexte roh), Auftrag und laufId und die Knöpfe. */
+.auftrag-seite #auftrag-vorbereitung-notiz {
+  margin-top: 0;
+  overflow-wrap: anywhere;
+}
+
+.auftrag-seite #auftrag-vorbereitung-notiz:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+.auftrag-seite .auftrag-daten {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.auftrag-seite .auftrag-daten dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.auftrag-seite .note .action-row {
+  margin-top: 16px;
+}
+
+/* Nebenweg „Einzelnen Arbeitsschritt direkt starten“: steht unter dem Hauptweg, abgesetzt durch eine
+   Linie oben; die Felder behalten ihre IDs und ihr Verhalten. */
+.auftrag-seite details.direktstart {
+  margin-top: 44px;
+  border-top: 1px solid var(--line);
+}
+
+.auftrag-seite .direktstart .description {
+  margin: 0 0 18px;
+  font-size: 12px;
+}
+
+.auftrag-seite .direktstart-anlegen {
+  margin: 0 0 8px;
+}
+
+.auftrag-seite .direktstart .note {
+  margin: 18px 0;
+}
+
+.auftrag-seite .direktstart .note p {
+  margin: 0 0 12px;
+  overflow-wrap: anywhere;
+}
+
+.auftrag-seite #start-evidenzdateien {
+  margin: 22px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  min-width: 0;
+}
+
+.auftrag-seite #start-evidenzdateien legend {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auftrag-seite .evidenzdatei-zeile {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.auftrag-seite .evidenzdatei-zeile input[type='text'] {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 700px) {
+  .auftrag-seite .stepper {
+    gap: 16px;
+  }
+
+  .auftrag-seite .stepper li {
+    font-size: 11px;
+  }
+
+  .auftrag-seite .action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+.auftrag-seite .back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }

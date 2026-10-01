@@ -424,3 +424,20 @@ test('Fortsetzung vorbereiten (G7): frisches Detail, dann #/projekt und Vorbeleg
   await warte()
   assert.equal(document.getElementById('start-wiederaufnahme-laufid').textContent, '', 'späte Antwort zu l-5 belegt nichts vor')
 })
+
+test('F44 WS-5b (Prüfpunkt WS-5a): der Fehlerzustand des Details bietet „Erneut laden“ — lädt denselben Lauf neu und zeigt ihn, sobald er ladbar ist', async () => {
+  details.delete('l-9')
+  location.hash = '#/runs/l-9'
+  dispatch()
+  await warte()
+  const fehler = document.getElementById('lauf-detail-fehler')
+  assert.equal(fehler.hidden, false)
+  assert.match(fehler.innerHTML, /data-aktion="erneut-laden"/)
+  details.set('l-9', detailVon('l-1'))
+  const abrufe = detailAbrufe.length
+  fehler.handler.click({ target: { closest: (s) => (s === '[data-aktion="erneut-laden"]' ? {} : null) } })
+  await warte()
+  assert.equal(detailAbrufe.length, abrufe + 1)
+  assert.equal(detailAbrufe.at(-1), 'l-9')
+  assert.equal(fehler.hidden, true, 'nach erfolgreichem Laden verschwindet der Fehler')
+})

@@ -11605,7 +11605,7 @@ Beschreibung: Seit WS-1b reicht für einen Projektwechsel ein Klick in der Kopfa
 Fundstelle: `public/leitstand/shell.js` (initProjektAuswahl), `public/leitstand/projekt-kontext.js` (setzeAktivesProjekt).
 Auswirkung: Mittel — Verlust einer getippten Begründung.
 Maßnahme: Verhalten festlegen (Rückfrage, wenn eine Eingabe offen ist, oder Entwurf je Projekt halten) und mit F-874 in WS-4 umsetzen.
-Status: offen. Vermerk (Challenger, 01.10.2026): von P2 auf P3 gesenkt; Auslöser für die Umsetzung ist ein realer Verlust einer Eingabe. Vermerk F44 WS-4a (01.10.2026): Seit WS-4a verwirft der Projektwechsel eine angefangene Begründung im Freigabe- bzw. Stoppdialog ohne Rückfrage (F-874); dieselbe Klasse ist Browser-Zurück bei offenem Dialog (der Dialog schließt ohne Wirkung, die Begründung ist weg). Gerettet wird sie nur, wenn eine Stand-Änderung den Dialog schließt und derselbe Halt wieder geöffnet wird.
+Status: offen. Vermerk (Challenger, 01.10.2026): von P2 auf P3 gesenkt; Auslöser für die Umsetzung ist ein realer Verlust einer Eingabe. Vermerk F44 WS-4a (01.10.2026): Seit WS-4a verwirft der Projektwechsel eine angefangene Begründung im Freigabe- bzw. Stoppdialog ohne Rückfrage (F-874); dieselbe Klasse ist Browser-Zurück bei offenem Dialog (der Dialog schließt ohne Wirkung, die Begründung ist weg). Gerettet wird sie nur, wenn eine Stand-Änderung den Dialog schließt und derselbe Halt wieder geöffnet wird. Vermerk F44 WS-5b (01.10.2026): Auf `#/projekt` bleiben Titel, Ergebnis und Kontext beim Projektwechsel stehen (der Text gehört dem Menschen); verworfen wird nur eine laufende Vorbereitung des alten Projekts (späte Antworten, Aggregat-Treffer). Die übrigen Eingaben (Begründungen in Dialogen, Reparaturentwurf, Chat) bleiben offen.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
 
 **F-886** · `BUG` · P3 · offen
@@ -11893,7 +11893,7 @@ Beschreibung: Der Auftrag WS-3a verlangt „Kanban · Priorität“ als „kommt
 Fundstelle: `public/leitstand/views/workboard.js` (baueFesteBedienung, `#workboard-modi`); `docs/design/abgleich-f725.md` §4 Punkt 4.
 Auswirkung: Mittel — ohne Entscheidung bleibt eine dokumentierte Zusage unerfüllt; die Daten lädt die Seite bereits.
 Maßnahme: Stefan entscheidet: (a) in WS-3b ein lesendes Prioritäts-Kanban (Spalten P0–P4 und „ohne Priorität“ aus den ungefilterten Workitems, Ziehen und Auswahlfelder „kommt“) oder (b) §4 Punkt 4 anpassen und E2 bleibt „kommt“.
-Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a).
+Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a). Vermerk (01.10.2026): entschieden: wird gebaut (Stefan, 01.10.2026), Fixpaket ‚Arbeitsfähigkeit‘ Baustein B5. Erst lesend, dann Ziehen = Prioritätsänderung mit Pflichtbegründung; Features bekommen ein Prioritätsfeld in der Akte.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
 
 **F-918** · `TECH_DEBT` · P3 · entschieden
@@ -12122,3 +12122,21 @@ Auswirkung: Niedrig — die Liste ist weniger aussagekräftig als die Vorlage, n
 Maßnahme: Bei Bedarf Worker (Laufakte) und Rolle (Kontextpaket) in die Kopfdaten aufnehmen — mit Memo bzw. im bestehenden Kopfdaten-Cache, ohne Mehrlast je Poll; danach die Zeile um „Worker · Rolle“ ergänzen.
 Status: offen.
 Feature/Run: Entdeckt: Challenge WS-5, 01.10.2026.
+
+**F-943** · `TECH_DEBT` · P3 · offen
+Titel: Kette „Auftrag anlegen → routen → auf Vorschlag warten“ existiert zweimal.
+Beschreibung: Click-to-Work in `views/workboard.js` (fuehreAuftragserzeugungUndRoutungDurch, verarbeiteRoutenAntwort, aktualisiereBearbeitungsZustand) und „Ablauf vorbereiten“ auf `#/projekt` (`views/projekt.js` mit dem reinen Modul `views/auftrag-vorbereitung.js`, F44 WS-5b) legen beide einen Auftrag an, routen ihn, behandeln 409 (D13) mit „Wiederholen“ ohne zweiten Auftrag und warten auf `router-<auftragId>` bzw. einen Startfehler zu genau dieser laufId. Das Workboard wartet über den Detail-Auffrischer (GET …/workflows/<id>), `#/projekt` über das Zustands-Aggregat.
+Fundstelle: `public/leitstand/views/workboard.js`, `public/leitstand/views/projekt.js`, `public/leitstand/views/auftrag-vorbereitung.js`.
+Auswirkung: Niedrig — Wartbarkeit; eine Regeländerung (etwa am 409-Pfad) muss an zwei Stellen nachgezogen werden.
+Maßnahme: Beim Schnitt F-928 (Fixpaket B5) in ein gemeinsames Modul ziehen.
+Status: offen.
+Feature/Run: Entdeckt: Challenge WS-5b, 01.10.2026.
+
+**F-944** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Timeline aus Schätzungen statt Kalenderdaten.
+Beschreibung: Jedes Feature, jeder Workstream, jedes Finding und jeder Meilenstein bekommt eine Aufwandsspanne in Arbeitstagen (min–max, „geschätzt von“, Datum); Findings ohne Angabe erhalten einen Standardwert je Priorität mit Kennzeichen; Meilensteine summieren ihre Features. Timeline = Reihenfolge (Roadmap, Priorität) × Schätzung ab heute, als Band frühestens–spätestens, klar als „geschätzt“ gekennzeichnet, ohne manuell gepflegte Kalenderdaten. Erledigte Einträge zeigen Plan gegen Ist (Branch angelegt → gemergt bzw. Laufakten).
+Fundstelle: Feature-Akten (Pakettabelle), `state/findings.md`, Roadmap-Ansicht.
+Auswirkung: Mittel — ohne Schätzungen keine belastbare Planung bis V0.9/V1.0.
+Maßnahme: im Fixpaket „Arbeitsfähigkeit“ B5 bauen (≈ 3–4 Arbeitstage zusammen mit dem Prioritäts-Kanban, F-917); Schätzung wird Teil des Arbeitspakets (F-938). Bis dahin schätzt der Challenger je Workstream.
+Status: offen.
+Feature/Run: Entscheidung Stefan, 01.10.2026 (Challenge F44 WS-5).

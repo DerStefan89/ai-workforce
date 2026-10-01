@@ -19,8 +19,9 @@ Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026)
 WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ gemergt (#295, `1191231`);
 WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist geteilt (Auftrag Stefan,
 01.10.2026): WS-4a „Ablauf & Freigabe“ gemergt (#297, `493d953`); WS-4b „Klärung, Reparatur & Abnahme“
-gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ in Arbeit seit
-01.10.2026 (Branch `feat/f725-ws5a-ausfuehrungen`); WS-5b „Auftrag & Direktstart“ und WS-6 bis WS-8 offen.
+gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ gemergt
+(#299, `a91029d`); WS-5b „Auftrag & Direktstart“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws5b-auftrag`);
+WS-6 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -59,6 +60,10 @@ Motion mit Prüfweg).
   Originalsprache. Umsetzung: `docs/design/abgleich-f725.md` §5.4.
   Challenger-Empfehlung war **A**: erst Deutsch, Sprachen als eigenes
   Paket später.
+- **E-F44-3 = A** (Stefan, 01.10.2026) — Hauptweg auf `#/projekt`: „Ablauf
+  vorbereiten“ (Auftrag anlegen → routen → Ablauf auf `#/workflows/<id>` freigeben); der
+  Direktstart eines Einzelschritts bleibt als aufklappbarer Nebenweg. Umsetzung: WS-5b
+  (`docs/design/abgleich-f725.md` §5.1, Vermerk WS-5b).
 
 ## Scope
 Pakete nach `docs/design/abgleich-f725.md` §5.1. Jedes UI-Paket (WS-1 bis
@@ -79,7 +84,7 @@ abgehakten F-Zeilen des Pakets.
 | **WS-4a** Ablauf & Freigabe | F0 (Liste „Aufträge“ unter `#/runs`), F2 (Timeline „Der Weg zum Ergebnis“), F3, F3b (Ablehnen), F4, F5 (Freigabedialog mit Katalog-Empfehlung und „Freigeben & installieren“), F10 (Stoppdialog), F12 (Technischer Ablauf); Invariante „Anzeige = Start“; F-874, F-923, F-925, F-926 (Workflow-Detail) | f15-oberflaeche (IDs und Texte), `empfehlung-*.test.mjs`, f20-shell (CI), `projekt-wechsel.test.mjs` |
 | **WS-4b** Klärung, Reparatur & Abnahme | F6 (Architekt-Entscheidung), F8 (Reparatur), F9 (Sichtung), F13–F18 (Abnahme samt Prüfung wiederholen); Restyling des bisherigen Bedienblocks | f15-oberflaeche, f23, f42 |
 | **WS-5a** Ausführungen | G1–G9 und F7: Register „Aufträge“/„Ausführungen“ (`#/runs`, `#/ausfuehrungen`), Lauf-Detail `#/runs/<laufId>` als Seite mit Notiz je Lage, Timeline, Einordnung, Aufklappbereichen und Dialog (Kenntnisnahme, Klärung, Rückfrage, Abbruch); Prüfpunkte aus WS-4b (Raster von `#/workflows/<id>`) | f12 (f)/(g), f15 (f), f20-leitstand-shell (CI), `runs.test.mjs`, i18n |
-| **WS-5b** Auftrag & Direktstart | F1 (Auftrag anlegen) sowie G10 und G11 (Direktstart mit Werkzeugsatz, Evidenzdateien, laufId; Auswahl der Aufträge) in `#/projekt` nach d_auftrag_neu | offen |
+| **WS-5b** Auftrag & Direktstart | F1 (Auftrag anlegen) sowie G10 und G11 (Direktstart mit Werkzeugsatz, Evidenzdateien, laufId; Auswahl der Aufträge) in `#/projekt` nach d_auftrag_neu | `projekt-wechsel.test.mjs` (unverändert grün), f20-leitstand-shell (CI, IDs unverändert), i18n; neu `views/projekt.test.mjs` |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
@@ -1120,6 +1125,139 @@ d_ausfuehrung_failed (d/m/l); Abgleich F-725 G1–G9, F7 (Vermerk §5.1). Nur Le
   Liste, geht der Fokus einer Zeile verloren (wie bei „Aufträge“).
 - F-942 (Worker und Rolle in der Liste), F-363/F-365 (Detail nicht gepollt; ein 400 bei veraltetem Stand steht
   jetzt im Dialog, „Aktualisieren“ holt den Stand) und F-941 (gemeinsames Dialogmodul) bleiben offen.
+
+## Stand WS-5b „Auftrag & Direktstart“ (01.10.2026)
+Branch `feat/f725-ws5b-auftrag` (Basis `a91029d`), nicht committet. Vorlage V10 d_auftrag_neu; Abgleich F-725 F1,
+G10, G11 (Vermerk §5.1); Entscheidung E-F44-3 = A. Nur Leitstand-UI, keine Serveränderung.
+- **`#/projekt` als Seite** (Route unverändert): „← Alle Aufträge“ (F-926-Muster: kam die Seite direkt aus `#/runs`,
+  `history.back()`, sonst `navigiere('#/runs')`), Eyebrow „Ein klarer Auftrag“, h1 „Was soll deine Workforce
+  erledigen?“, Beschreibung, Schrittanzeige 1 Auftrag · 2 Ablauf prüfen · 3 Freigeben als Liste mit
+  `aria-current="step"` am aktuellen Schritt (Schritt 3 findet auf `#/workflows/<id>` statt).
+- **Formular:** Titel (→ `titel`, `#auftrag-titel`), „Gewünschtes Ergebnis“ (→ `auftragstext`,
+  `#auftrag-auftragstext`), `<details>` „Kontext hinzufügen · optional“ mit freiem Feld `#auftrag-kontext`; ist es nicht
+  leer, wird es als Absatz mit der festen Zeile „Kontext:“ (Projektinhalt, nicht übersetzt) an den Auftragstext
+  gehängt (`baueAuftragstext`). Notiz der Vorlage, primär „Ablauf vorbereiten“, sekundär „Lieber mit dem Coach
+  besprechen“ als Baustein „kommt“ (Chat-Dock folgt in WS-8). Abweichung von der Vorlage: kein Feld „Relevante
+  Dateien oder Nachweise“ im Kontext — Evidenzdateien gehören zum Direktstart (G10), der Kontext ist freier Text.
+- **„Ablauf vorbereiten“** (Muster Click-to-Work, klein und lokal; `views/workboard.js` unverändert): POST …/auftraege
+  → bei 201 POST …/auftraege/<id>/routen → bei 202 Schritt 2 „Jarvis bereitet den Ablauf vor …“ mit Auftrag und laufId
+  (Fokus auf der Notiz, keine Live-Region). Gewartet wird über das Zustands-Aggregat (`abonniere`, kein eigener Timer):
+  erscheint `router-<auftragId>` in `zustand.workflows`, navigiert die Seite nach `#/workflows/router-<auftragId>` —
+  dort gibt der bestehende Dialog (F3) frei, eine zweite Freigabe-UI gibt es nicht —, und die Felder werden geleert.
+  Ein Startfehler mit genau dieser laufId → rote Notiz mit dem Fehler roh und „Erneut versuchen“; 409 (D13) →
+  bernsteinfarbene Notiz mit `grund` roh und „Erneut versuchen“; eine andere Antwort oder ein Netzfehler beim Routen →
+  rote Notiz. „Erneut versuchen“ routet nur denselben Auftrag neu, legt nie einen zweiten an. Fehler beim Anlegen
+  (≠ 201) → `#auftrag-anlegen-fehler` mit Fokus, Eingaben bleiben. Während der Anfrage sind beide Anlege-Knöpfe
+  gesperrt, genau ein POST je Klick. „Neuen Auftrag beschreiben“ beendet die Vorbereitung ohne Serverwirkung (Text
+  bleibt). Erscheint der Ablauf, während der Nutzer woanders ist, springt die Seite nicht; beim Zurückkommen steht
+  „Der Ablauf ist vorbereitet“ mit dem Link „Ablauf prüfen“.
+- **Projektwechsel** (F-860, Teil F-885): eine laufende Vorbereitung des alten Projekts wird verworfen (späte Antworten
+  und Aggregat-Treffer gehen ins Leere), Schritt 1 erscheint; Titel, Ergebnis und Kontext bleiben stehen.
+- **Direktstart** (G10, G11) als `<details id="direktstart">` „Einzelnen Arbeitsschritt direkt starten“ unter dem
+  Hauptweg: Auftragsauswahl `#start-auftrag`, Werkzeugsatz, Evidenzdateien, laufId, „Starten“, Wiederaufnahme-Hinweis —
+  IDs, Verhalten und POST-Körper unverändert (rolle/budget/modell fest, F-161). „Auftrag ohne Ablauf anlegen“
+  (`#auftrag-anlegen`) nimmt Titel/Ergebnis/Kontext von oben, legt nur den Auftrag an, lädt die Auswahl neu und wählt
+  ihn. `wendeWiederaufnahmeAn` öffnet `#direktstart` und legt den Fokus auf seine Überschrift (statt `scrollIntoView`
+  in `views/runs.js`). Alte Regeln `#auftrag-start` entfernt.
+- **Modulschnitt:** reines Modul `views/auftrag-vorbereitung.js` (Kontext-Anhang, Aggregat-Treffer, Notiz je Phase; ohne
+  DOM und api.js importierbar); Bedienung und Anfragen in `views/projekt.js`. Die Kette „anlegen → routen → warten“
+  steht damit zweimal (F-943).
+- **i18n:** 67 Schlüssel (`auftrag.*`, `direktstart.*`, `lauf.aktion.erneutLaden`) in de/en/tr/ru; auch die bisher
+  deutschen Literale des Direktstarts sind Schlüssel. Serverwerte (grund, auftragId, laufId, Fehlertext) roh;
+  POST-Werte des Direktstarts (`frage`, `begruendung`) unverändert.
+- **Prüfpunkte für WS-5b** (aus WS-5a), soweit `#/projekt` oder `#/runs`: F1/G10/G11 und die sichtbare
+  Wiederaufnahme-Vorbelegung erledigt (oben); Fehlerzustand des Lauf-Details hat jetzt „Erneut laden“ (lädt dasselbe
+  Detail, Test `runs-dialog.test.mjs`, Rotfall belegt); ändert der Poll die Liste „Aufträge“ oder „Ausführungen“,
+  bleibt der Fokus auf derselben Zeile (`ersetzeListeMitFokus` in `render.js`, Test `render.test.mjs`, Rotfall belegt).
+  Begründet stehen gelassen: Umbruch von „Aktualisieren“ in Lage a bei schmaler Hauptspalte (gewollter Umbruch, kein
+  Überlauf); Ergebnis einer Dialog-Bedienung nach Verlassen der Seite (Verhalten festlegen, Entscheidung Mensch);
+  zweimal Escape im echten Chrome (Browserprüfung, nicht dieses Paket); „beantwortet“ in Lage c (Server liefert kein
+  Merkmal, keine Serveränderung); Text der Lage d im Nachlauf (Lauf-Detail, nicht dieses Paket); F-942, F-363/F-365,
+  F-941 offen.
+- **Gates:** keines musste mitziehen — `#auftrag-anlegen`, `#auftrag-titel`, `#auftrag-auftragstext`,
+  `#auftrag-anlegen-fehler` und alle `start-*` bleiben, die Klickfolge von f20-leitstand-shell (CI) klickt sie per
+  Skript auch im geschlossenen `<details>`; `projekt-wechsel.test.mjs` und `runs-dialog.test.mjs` unverändert grün,
+  i18n-Gate grün. Neue Tests: `views/projekt.test.mjs` (18 Fälle, Rotfälle per Mutation belegt: Überholschutz der
+  Routen-Antwort und des Anlegens, zweiter Auftrag bei „Erneut versuchen“, Sperre, laufId-Abgleich, Projektwechsel,
+  Wiederaufnahme, Kontext-Anhang, Navigation nur auf `#/projekt`, dazu die Fälle der Korrekturrunde unten),
+  `render.test.mjs`, ein Fall in `runs-dialog.test.mjs`.
+- **Nachweise** `features/F44/nachweise/ws5b/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner,
+  feste Antworten): 8 Folgen, 40 WebP — Matrix je Darstellung (1440 dunkel und hell, 390 dunkel, 200 %, ru): leer,
+  ausgefüllt mit offenem Kontext, Schritt 2 wartet, 409-Notiz, Startfehler-Notiz, Direktstart offen mit
+  Wiederaufnahme; Hauptweg: `#/runs` → „Auftrag anlegen“ → „← Alle Aufträge“ (history.back()), Schritt 2, Ablauf im
+  Aggregat → `#/workflows/router-nw-h` mit dem bestehenden Freigabeknopf, zurück mit geleerten Feldern; reduzierte
+  Bewegung (leer, Schritt 2); Zustände: Anlegefehler am Formular, Schritt 2 mit gesperrtem „Auftrag ohne Ablauf
+  anlegen“ samt Hinweis, Ablauf erscheint während der Nutzer woanders ist → „bereit“ → Klick „Ablauf prüfen“,
+  Lauf-Detail 404 mit „Erneut laden“ und erfolgreichem Neuladen. Kein
+  waagerechter Überlauf, keine zweite Live-Region. Gelaufen gegen die bereits laufende Leitstand-Instanz dieses
+  Worktrees (Port 4173; eine zweite Instanz verweigert der Instanz-Lock) — alle schreibenden Anfragen sind Festantworten.
+
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): design-guardian und
+  code-reviewer „Nicht freigegeben“, qa „Freigegeben mit Hinweisen“. Eine Korrekturrunde, eingearbeitet:
+  - **„Auftrag ohne Ablauf anlegen“ in Schritt 2** (alle drei): legte aus den verborgenen Feldern einen zweiten Auftrag
+    an, ein Fehler blieb unsichtbar. Jetzt gesperrt, solange eine Vorbereitung besteht, mit Hinweis „zuerst ‚Neuen
+    Auftrag beschreiben‘“; Guard auch in der Funktion. Der Render-Nachweis fand dabei einen Folgefehler (nach einem
+    Anlegefehler blieb der Knopf gesperrt) — behoben. Tests mit Rotfall.
+  - **„Neuen Auftrag beschreiben“ nach dem 201** (qa): der Text stand noch und erzeugte beim erneuten Absenden ein
+    Duplikat. Entscheidung im Korrekturgang: der Auftrag ist angelegt, sein Text liegt beim Server — „Neuen Auftrag
+    beschreiben“ leert die Felder und eine alte Fehlerzeile. Test mit Rotfall. **Entscheidung bestätigt** (Challenger,
+    01.10.2026): „Neuen Auftrag beschreiben“ in Schritt 2 leert die Felder — bleibt so.
+  - **Antworten ohne Wert** (code-reviewer 2, qa N9): ein 201 ohne `auftragId` ist ein Fehler am Formular (kein
+    POST …//routen); ein 4xx beim Routen (z. B. 404) bietet kein „Erneut versuchen“ mehr, nur „Neuen Auftrag
+    beschreiben“; 5xx und Netzfehler weiter mit „Erneut versuchen“.
+  - **Veraltete laufId** (code-reviewer 3): jeder Routen-Versuch beginnt ohne laufId. Test mit Rotfall.
+  - **Kein Sprung aus einer Eingabe** (qa N1): liegt der Fokus im Direktstart, wenn der Ablauf erscheint, springt die
+    Seite nicht, sondern zeigt „Der Ablauf ist vorbereitet“. Strg-/Mittelklick auf „Ablauf prüfen“ lässt die Seite
+    unverändert.
+  - **Rückmeldung** nach „Auftrag ohne Ablauf anlegen“: Fokus auf die Auswahl mit dem neuen Auftrag.
+  - **Logging** in allen Fehlerpfaden (`console.error`), Funktionsdoku für `zeigeStartFehler`/`zeigeStartErfolg`,
+    Dateikopf von `render.js`; `.auftrag-seite small[hidden]` gegen die Autor-Regel (F-622).
+  - **Texte:** neutraler Titel des 409 („Gerade nicht möglich“ — der Server antwortet 409 auch bei Projektsperre und
+    belegter laufId; der Grund steht roh darunter); Platzhalter des Kontexts ohne „Dateien“; tr-Wortstellung im
+    Wiederaufnahme-Hinweis.
+  - **Tests:** Netzfehler beim Routen und beim Anlegen, Projektwechsel während POST …/auftraege, 404 ohne „Erneut
+    versuchen“, 201 ohne `auftragId`, Sperre in Schritt 2, „Neuen Auftrag beschreiben“, Fokus im Direktstart; der
+    Direktstart-Fall ist nicht mehr vom vorigen Test abhängig; der falsch benannte Fall heißt jetzt „nach einem 500“.
+  - **Nachweise:** Folge „bewegung-reduziert“, Folge „zustaende“ (siehe oben), das Bild der Ablauf-Seite als
+    Ausschnitt `#view-runs`, Protokollspalten ohne Texte verborgener Elemente („Direktstart offen“ als
+    vorhanden-Prüfung).
+  - **Abgleich:** der Rücklink „← Alle Aufträge“ statt „← Arbeit“ steht im Vermerk WS-5b.
+  Nicht übernommen (Prüfpunkte für WS-6): Wiederaufnahme-Satz aus zwei Schlüsseln, rohe ISO-Zeit in der Auswahl,
+  Enter im Titelfeld, Pflichtprüfung im Client, Zeitlimit für POST …/routen, Sprachwechsel verwirft Eingaben, laufId
+  als Link, Abonnement-Reihenfolge (Titel der Ablauf-Seite kurz als ID).
+- **Schätzung** 0,3–0,6 AT (Challenger); Ist: nach Merge (F-944).
+
+### Akzeptanzkriterien WS-5b
+- **WS5b-1** `#/projekt` nach d_auftrag_neu: back-Link, Eyebrow, Frage, Beschreibung, Schrittanzeige mit
+  `aria-current="step"`, Formular mit Titel, Ergebnis, Kontext (aufklappbar), Notiz, „Ablauf vorbereiten“ und Coach
+  als „kommt“.
+- **WS5b-2** „Ablauf vorbereiten“: genau ein POST …/auftraege je Klick, danach routen; Schritt 2 mit Auftrag und
+  laufId; Warten nur über das Aggregat; Treffer `router-<auftragId>` → Navigation zum Ablauf, Freigabe nur dort;
+  Felder danach leer (`views/projekt.test.mjs`).
+- **WS5b-3** Startfehler mit genau dieser laufId (rot), 409 (bernstein, `grund` roh), 5xx und Netzfehler beim Routen
+  bieten „Erneut versuchen“, das nie einen zweiten Auftrag anlegt (4xx nicht); Fehler beim Anlegen (auch 201 ohne
+  `auftragId`) stehen am Formular, Eingaben bleiben; in Schritt 2 ist „Auftrag ohne Ablauf anlegen“ gesperrt.
+- **WS5b-4** Projektwechsel verwirft die Vorbereitung samt späten Antworten und Aggregat-Treffern; der Text bleibt.
+- **WS5b-5** Direktstart aufklappbar mit unveränderten IDs, Verhalten und POST-Körper; „Auftrag ohne Ablauf anlegen“
+  wählt den neuen Auftrag; die Wiederaufnahme öffnet `#direktstart` und fokussiert ihn.
+- **WS5b-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor.
+
+### Prüfpunkte für WS-6
+- Die Kette „anlegen → routen → warten“ steht in `views/workboard.js` und `views/projekt.js` (F-943); beim Schnitt
+  F-928 zusammenlegen.
+- Die Auswahl im Direktstart zeigt `erstellt_am` roh (ISO); der laufId-Vorschlag hängt am Optionstext — eine
+  lesbare Zeit ändert den Vorschlag mit (Verhalten festlegen).
+- Der Wiederaufnahme-Hinweis setzt sich aus zwei Schlüsseln um die laufId zusammen; besser ein Schlüssel mit
+  Platzhalter über `tHtml` (F-940), sobald die Tests das Element nicht mehr per ID lesen.
+- Verhalten festlegen (qa WS-5b): Enter im Titelfeld startet die schreibende Kette sofort (wie die Vorlage, Formular
+  mit Submit); keine Pflicht- und Leerzeichenprüfung im Client (der Server prüft nur auf leer); POST …/routen ohne
+  Zeitlimit, „wird geroutet“ ohne Ausweg; ein Sprachwechsel lädt neu und verwirft Text und Vorbereitung (F-885);
+  die laufId eines Startfehlers ist kein Link nach `#/runs/<laufId>`.
+- Reihenfolge der Abonnenten: `#/projekt` navigiert, bevor `views/workflows.js` das Aggregat desselben Ticks kennt —
+  der Titel der Ablauf-Seite zeigt bis zur Detailantwort kurz die ID.
+- „Lieber mit dem Coach besprechen“ bleibt „kommt“ bis WS-8 (Chat-Dock).
+- Die Wartezeit in Schritt 2 hat keine Obergrenze (der Router-Lauf meldet entweder den Ablauf oder einen
+  Startfehler); hängt er, hilft „Neuen Auftrag beschreiben“ oder der Blick in „Ausführungen“.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:
