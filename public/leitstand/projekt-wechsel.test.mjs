@@ -7,6 +7,8 @@
  * Antwort des alten Projekts überschreibt die Auswahlliste des neuen nicht (Überholschutz). Eine
  * Zustandsabfrage (Poll), die vor dem Wechsel begann, wird verworfen; Workboard-Filter und eine
  * vorbereitete Wiederaufnahme im Direktstart gehen beim Wechsel zurück (Korrekturrunde WS-1a).
+ * F44 WS-2a: „Deine Entscheidungen“ (P0/P1-Workitems) und die Seite #/roadmap (Roadmap und
+ * Feature-Workitems) laden beim Wechsel ebenfalls neu.
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -121,10 +123,14 @@ const { initWorkboardView } = await import('./views/workboard.js')
 const { initDashboardView } = await import('./views/dashboard.js')
 const { initProjektView, wendeWiederaufnahmeAn } = await import('./views/projekt.js')
 const { abonniere } = await import('./zustand.js')
+const { initAttentionView } = await import('./views/attention.js')
+const { initRoadmapView } = await import('./views/roadmap.js')
 
 initWorkboardView()
 initDashboardView()
 initProjektView()
+initAttentionView()
+initRoadmapView()
 await warte()
 
 test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart mit dem neuen Präfix', async () => {
@@ -223,7 +229,9 @@ test('F-860: Workboard-Filter gehen beim Wechsel auf „Alle“ zurück — der 
   setzeAktivesProjekt({ id: 'projekt-d', name: 'Projekt D' })
   await warte()
   assert.match(typ.innerHTML, /data-wert="" aria-pressed="true">Alle/)
-  const workitemAbrufe = aufrufe.filter((u) => u.startsWith('/api/projekte/projekt-d/workitems') && !u.includes('status=OFFEN'))
+  // Ausgenommen: P0/P1 (Dashboard, Entscheidungen) und typ=FEATURE der Roadmap-Seite (F44 WS-2a) —
+  // der gesetzte Workboard-Filter war BUG.
+  const workitemAbrufe = aufrufe.filter((u) => u.startsWith('/api/projekte/projekt-d/workitems') && !u.includes('status=OFFEN') && !u.includes('typ=FEATURE'))
   assert.ok(workitemAbrufe.length > 0, 'Workboard lädt die Workitems des neuen Projekts')
   assert.ok(workitemAbrufe.every((u) => !u.includes('typ=')), `Filter des alten Projekts im Abruf: ${workitemAbrufe.join(', ')}`)
 })
@@ -272,4 +280,23 @@ test('F-860: eine vorbereitete Wiederaufnahme des alten Projekts wird beim Wechs
   setzeAktivesProjekt({ id: 'projekt-e', name: 'Projekt E' })
   await warte()
   assert.equal(document.getElementById('start-wiederaufnahme-hinweis').hidden, true)
+})
+
+test('F44 WS-2a: Entscheidungen und Roadmap-Seite laden nach dem Wechsel mit dem neuen Präfix', async () => {
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-c', name: 'Projekt C' })
+  await warte()
+
+  const neu = '/api/projekte/projekt-c'
+  const anzahl = (passt) => aufrufe.filter(passt).length
+  // P0/P1 laden Dashboard UND Entscheidungen, die Roadmap Workboard-Karte UND Roadmap-Seite.
+  assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN')) >= 2, `Entscheidungen laden P0/P1 nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 2, `Roadmap-Seite lädt nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('typ=FEATURE')) >= 1, 'Roadmap-Seite lädt die Feature-Workitems nicht neu')
+  assert.deepEqual(
+    aufrufe.filter((u) => !u.startsWith(neu)),
+    [],
+    'nach dem Wechsel darf kein Lader mehr ein anderes Projekt abfragen'
+  )
+  assert.match(document.getElementById('view-roadmap').innerHTML, /Projekt C · Roadmap/)
 })

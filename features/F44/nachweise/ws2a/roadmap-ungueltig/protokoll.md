@@ -1,0 +1,4 @@
+| Aktion | Eintrag erfassen (kommt) | Projektakte (kommt) | Balken | Erneut laden | Meilenstein eingeklappt | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | Zustand | erster offener Meilenstein | erster Meilenstein (open) | Noch nicht eingeplant | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/roadmap | true | true | false | false | true | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | (fehlt) | Die Roadmap-Datei ist ungültig: 9 Regelverstöße. | (fehlt) | (fehlt) | (fehlt) | false | true |
+| Seitenende | true | true | false | false | true | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | Roadmap | Die Roadmap-Datei ist ungültig: 9 Regelverstöße. | (fehlt) | (fehlt) | (fehlt) | false | true |

@@ -1,0 +1,4 @@
+| Aktion | Hinweis defekt | Leerzustand | Gruppe Workflows | Gruppe Läufe | Gruppe Startfehler | Gruppe Befunde | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | erste Zeile | Kachel Befunde | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/attention | false | false | true | true | false | true | attention | dark | ru | Твои решения | Решения | (fehlt) | F26 WS2b Nachweis Testartefakt | Важные находки 49 P0 и P1 | false | true |
+| Seitenende | false | false | true | true | false | true | attention | dark | ru | Твои решения | Решения | Важная находка · P1 Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste | F26 WS2b Nachweis Testartefakt | Важные находки 49 P0 и P1 | false | true |

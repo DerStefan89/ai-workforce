@@ -1,15 +1,16 @@
 /**
  * Datei: public/leitstand/views/platzhalter.js
  *
- * Zweck: Vier Seiten der Sidebar V10, die es im Leitstand noch nicht als eigene Ansicht gibt
+ * Zweck: Drei Seiten der Sidebar V10, die es im Leitstand noch nicht als eigene Ansicht gibt
  * (F44 WS-1b, Abgleich F-725 §5.2):
  * - #/brain und #/produktzyklus sind Z-Seiten (Abgleich K1/K2, E-F44-1 = B): Titel und
  *   Einleitung wie die Vorlage (d_brain, d_produktzyklus_ideate_strategy), die Hauptaktion als
  *   deaktivierter Knopf mit „kommt“ (kommt.js) und ein Leerzustand. Kein Graph, keine Notizen,
  *   keine Beispieldaten.
- * - #/roadmap und #/nutzung sind Zwischenseiten (F-880): Die Daten gibt es schon, sie stehen
- *   bis zum Umbau in WS-2 bzw. WS-6 als Karte an anderer Stelle. Die Seite nennt die Stelle und
- *   verlinkt dorthin — ohne „kommt“, weil nichts Zukünftiges fehlt.
+ * - #/nutzung ist eine Zwischenseite (F-880): Die Daten gibt es schon, sie stehen bis zum
+ *   Umbau in WS-6 als Karte in der Produktübersicht. Die Seite nennt die Stelle und verlinkt
+ *   dorthin — ohne „kommt“, weil nichts Zukünftiges fehlt. #/roadmap ist seit F44 WS-2a eine
+ *   eigene Seite (views/roadmap.js).
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initPlatzhalterViews beim Bootstrap, vor starteRouter())
@@ -93,7 +94,6 @@ function zwischenseite(eyebrow, titel, text, linkText, ziel) {
 const SEITEN = {
   brain: brainSeite,
   produktzyklus: produktzyklusSeite,
-  roadmap: () => zwischenseite(t('platzhalter.roadmap.eyebrow'), t('platzhalter.roadmap.titel'), t('platzhalter.roadmap.text'), t('platzhalter.roadmap.link'), '#/workboard'),
   nutzung: () => zwischenseite(t('platzhalter.nutzung.eyebrow'), t('platzhalter.nutzung.titel'), t('platzhalter.nutzung.text'), t('platzhalter.nutzung.link'), '#/dashboard'),
 }
 
@@ -110,11 +110,10 @@ function rendere(name) {
   container.innerHTML = SEITEN[name]()
 }
 
-/** Registriert die vier Routen und rendert Brain/Produktzyklus bei einem Projektwechsel neu. */
+/** Registriert die drei Routen und rendert Brain/Produktzyklus bei einem Projektwechsel neu. */
 export function initPlatzhalterViews() {
   registriere(/^#\/brain$/, 'brain', () => rendere('brain'))
   registriere(/^#\/produktzyklus$/, 'produktzyklus', () => rendere('produktzyklus'))
-  registriere(/^#\/roadmap$/, 'roadmap', () => rendere('roadmap'))
   registriere(/^#\/nutzung$/, 'nutzung', () => rendere('nutzung'))
   abonniereProjektWechsel(() => {
     rendere('brain')

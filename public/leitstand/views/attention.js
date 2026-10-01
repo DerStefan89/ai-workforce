@@ -1,34 +1,48 @@
 /**
  * Datei: public/leitstand/views/attention.js
  *
- * Zweck: View `#/attention` (F21 WS-2) — Aufmerksamkeits-Ansicht als reine
- * Client-Projektion, ohne eigenen Endpunkt und ohne eigenen Poll (F21
- * Nicht-Ziele, features/F21/feature.md). Vier Quellen: Workflows, die auf
- * Freigabe/Klärung warten, und fehlgeschlagene, nicht kenntnisgenommene
- * Läufe (beide aus dem ohnehin gepollten Zustands-Aggregat, gefiltert über
- * das geteilte Modul attention-daten.js — dieselbe Regel wie
- * views/dashboard.js), Startfehler (zustand.startfehler, unverändert) sowie
- * offene P0/P1-Workitems (ein einmaliger GET /api/workitems-Abruf beim
- * Betreten dieser View).
+ * Zweck: View `#/attention` „Deine Entscheidungen“ (F21 WS-2; F44 WS-2a nach Vorlage V10,
+ * d_entscheidungen.png, Abgleich F-725 C1–C3) — Aufmerksamkeits-Ansicht als reine
+ * Client-Projektion, ohne eigenen Endpunkt und ohne eigenen Poll (F21 Nicht-Ziele,
+ * features/F21/feature.md). Vier Quellen: Workflows, die auf Freigabe/Klärung warten, und
+ * fehlgeschlagene, nicht kenntnisgenommene Läufe (beide aus dem ohnehin gepollten
+ * Zustands-Aggregat), Startfehler (zustand.startfehler) sowie offene P0/P1-Workitems (ein
+ * einmaliger GET /api/workitems-Abruf beim Betreten dieser View). Auswahl, Reihenfolge und
+ * Titel baut attention-daten.js (baueEntscheidungen) — dieselbe Regel wie views/dashboard.js.
+ *
+ * Aufbau: Kopf (index.html), Hinweis bei defekter Quelle mit „Erneut laden“, eine durchgehende
+ * Liste aus vier aufeinanderfolgenden Gruppen (die Sektionen attention-abschnitt-*, Gate
+ * f21-ws2), darunter „Die vier Quellen“ als vier Kacheln mit Zähler.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initAttentionView beim Bootstrap)
  *
- * Wichtig: der Leerzustand gilt nur, wenn ALLE VIER Quellen leer sind — eine
- * defekte Quelle (null) zählt NICHT als leer, sie zeigt ihren eigenen
- * Unbekannt-Hinweis, damit ein Defekt nie als "nichts zu tun" missverstanden
- * wird.
- *
- * F29 WS-2a: reine Stylingumstellung auf das Komponentenvokabular aus
- * views/workboard.js (WS-1b) — die vier Abschnitte sind jetzt .card statt
- * .unterabschnitt (index.html), Einträge nutzen .list-row statt eigener
- * <p>-Zeilen. Filterregeln, Quellen und Navigationsziele unverändert.
+ * Wichtig:
+ * - Der Leerzustand gilt nur, wenn ALLE VIER Quellen geladen und leer sind — eine defekte
+ *   Quelle (null) zählt NICHT als leer, sie zeigt „nicht verfügbar“ und den Hinweis oben, damit
+ *   ein Defekt nie als „nichts zu tun“ missverstanden wird. Eine leere Gruppe ist unsichtbar.
+ * - Keine Schreibaktion: Jede Zeile ist ein Link (Workflow → #/workflows/<id>, Lauf →
+ *   #/runs/<id>, Befund → #/workboard/<id>). Freigabe mit Pflichtbegründung und Ablehnen leben
+ *   in #/workflows/<id>. Startprobleme haben keine Detailroute und bleiben ohne Link, zeigen
+ *   aber Zeitstempel, laufId und Fehlertext.
+ * - Server- und Projekttexte (grund, Fehler, Titel, IDs) werden nicht übersetzt und immer
+ *   escaped; alle übrigen Texte über t().
+ * - „Erneut laden“ lädt nur die Workitems neu; die Poll-Quellen erholen sich mit dem nächsten
+ *   Tick von selbst. Verschwindet der Hinweis danach, geht der Fokus auf die Überschrift.
+ * - Ein Projektwechsel lädt die Workitems neu (abonniereProjektWechsel, F-860); der
+ *   Anfragezähler verwirft dabei eine noch laufende Antwort des alten Projekts. Die drei
+ *   Poll-Quellen kommen mit dem nächsten Tick aus dem neuen Projekt (zustand.js).
  */
 
+import { formatiereDatum, t } from '../i18n.js'
+import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
-import { navigiere, registriere } from '../router.js'
+import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
+// Die erste Importzeile bleibt wörtlich (Gate f21-ws2 (e): dieselbe Filterquelle wie
+// views/dashboard.js); die beiden Filter wendet baueEntscheidungen intern an.
 import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
+import { baueEntscheidungen } from '../attention-daten.js'
 
 /** Letztes Zustands-Aggregat aus dem Poll, oder null vor dem ersten Tick. */
 let letzterZustand = null
@@ -36,95 +50,136 @@ let letzterZustand = null
 /** Letzte Antwort aus holeOffeneP0P1Workitems, oder null vor dem ersten Abruf dieses View-Besuchs. */
 let workitemsAntwort = null
 
-const ABSCHNITT_IDS = ['attention-abschnitt-workflows', 'attention-abschnitt-laeufe', 'attention-abschnitt-startfehler', 'attention-abschnitt-workitems']
+/** Gruppen in Listenreihenfolge: Schlüssel in baueEntscheidungen().gruppen, Container-ID-Suffix. */
+const GRUPPEN = ['workflows', 'laeufe', 'startfehler', 'workitems']
 
-/** Ein klickbarer Eintrag, der per navigiere() zur jeweiligen Detailansicht springt — als .list-row-Zeile (Komponentenvokabular F29 WS-1a/WS-1b), der Button selbst trägt nur den Klick, die Optik kommt von .list-row/.attention-zeile. .attention-zeile-text schützt vor Layout-Bruch bei langem Freitext (Workflow-grund, Fehlermeldung), Muster .workboard-zeile-titel/.projekte-uebersicht-zeile-titel. @param text - Anzeigetext (bereits escaped) @param hash - Ziel-Hash, z. B. '#/runs/<laufId>' */
-function eintrag(text, hash) {
-  return `<button type="button" class="list-row attention-zeile" data-hash="${escapeHtml(hash)}"><span class="attention-zeile-text">${text}</span></button>`
+/** Datum und Uhrzeit über Intl in der aktiven Sprache (AK7). */
+const ZEIT_FORMAT = { dateStyle: 'medium', timeStyle: 'short' }
+
+/** Pfeil der Vorlage am Zeilenende (dekorativ). */
+const PFEIL = '<svg class="icon entscheidung-pfeil" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>'
+
+/**
+ * Eyebrow eines Eintrags: die Art, bei Befunden mit Priorität.
+ * @param eintrag - Eintrag aus baueEntscheidungen
+ * @returns escaptes HTML
+ */
+function eyebrow(eintrag) {
+  const art = escapeHtml(t(`attention.art.${eintrag.art}`))
+  return eintrag.art === 'befund' ? `${art} · ${escapeHtml(eintrag.prioritaet)}` : art
 }
 
-function renderWorkflowsAbschnitt(workflows) {
-  const container = document.getElementById('attention-workflows')
-  if (workflows === null) {
-    container.innerHTML = '<p class="unbekannt">Workflows nicht verfügbar (Quelle im Aggregat defekt).</p>'
-    return
-  }
-  container.innerHTML = workflows.length === 0
-    ? '<p class="leer">Keine Workflows, die auf dich warten.</p>'
-    : workflows
-        .map((w) => {
-          const lage = w.naechster?.art === 'haltFreigabe' ? 'wartet auf Freigabe' : 'wartet auf Klärung'
-          return eintrag(`${escapeHtml(w.workflowId)} — ${lage}${w.grund ? `: ${escapeHtml(w.grund)}` : ''}`, `#/workflows/${encodeURIComponent(w.workflowId)}`)
-        })
-        .join('')
+/**
+ * Der eine Satz unter dem Titel: Servertext `grund`, sonst ein übersetzter Standardsatz; die ID
+ * steht dahinter, wenn der Titel ein menschenlesbarer ist (sonst stünde sie doppelt).
+ * @param eintrag - Eintrag aus baueEntscheidungen
+ * @returns escaptes HTML
+ */
+function satz(eintrag) {
+  const text = eintrag.satz !== null ? escapeHtml(eintrag.satz) : escapeHtml(t(`attention.satz.${eintrag.art}`))
+  const zeit = eintrag.art === 'lauf' && eintrag.zeitpunkt ? ` · ${escapeHtml(formatiereDatum(eintrag.zeitpunkt, ZEIT_FORMAT))}` : ''
+  const id = eintrag.titel !== eintrag.id ? ` · <code>${escapeHtml(eintrag.id)}</code>` : ''
+  return `${text}${zeit}${id}`
 }
 
-function renderLaeufeAbschnitt(laeufe) {
-  const container = document.getElementById('attention-laeufe')
-  if (laeufe === null) {
-    container.innerHTML = '<p class="unbekannt">Läufe nicht verfügbar (Quelle im Aggregat defekt).</p>'
-    return
+/**
+ * Eine Zeile der Liste. Startprobleme ohne Link und ohne Pfeil, mit Zeitstempel, laufId und
+ * Fehlertext (C3); alle anderen als Link mit Pfeil (Direktaktion = Navigation).
+ * @param eintrag - Eintrag aus baueEntscheidungen
+ * @returns HTML
+ */
+function zeile(eintrag) {
+  if (eintrag.hash === null) {
+    return `<div class="entscheidung-zeile">
+      <div class="entscheidung-text">
+        <div class="eyebrow">${eyebrow(eintrag)}</div>
+        <h3>${escapeHtml(eintrag.titel)}</h3>
+        <p>${[eintrag.zeitstempel ? `<time datetime="${escapeHtml(eintrag.zeitstempel)}">${escapeHtml(formatiereDatum(eintrag.zeitstempel, ZEIT_FORMAT))}</time>` : '', eintrag.fehler ? escapeHtml(eintrag.fehler) : ''].filter((teil) => teil !== '').join(' · ')}</p>
+      </div>
+    </div>`
   }
-  container.innerHTML = laeufe.length === 0
-    ? '<p class="leer">Keine fehlgeschlagenen, nicht kenntnisgenommenen Läufe.</p>'
-    : laeufe.map((l) => eintrag(`${escapeHtml(l.laufId)} — fehlgeschlagen, nicht kenntnisgenommen`, `#/runs/${encodeURIComponent(l.laufId)}`)).join('')
+  return `<a class="entscheidung-zeile" href="${escapeHtml(eintrag.hash)}">
+      <div class="entscheidung-text">
+        <div class="eyebrow">${eyebrow(eintrag)}</div>
+        <h3>${escapeHtml(eintrag.titel)}</h3>
+        <p>${satz(eintrag)}</p>
+      </div>
+      ${PFEIL}
+    </a>`
 }
 
-/** Kein Link (Muster views/runs.js renderStartfehler) — Startfehler sind eine flüchtige Projektion ohne eigene Detailroute. Als .list-row-Zeile ohne Button (Komponentenvokabular, wie eintrag() oben, nur nicht klickbar). */
-function renderStartfehlerAbschnitt(startfehler) {
-  const container = document.getElementById('attention-startfehler')
-  if (startfehler === null) {
-    container.innerHTML = '<p class="unbekannt">Startfehler nicht verfügbar (Quelle im Aggregat defekt).</p>'
+/**
+ * Füllt eine Gruppe: leer → unsichtbar, defekt → „nicht verfügbar“, lädt → „Lädt…“, sonst Zeilen.
+ * @param name - Gruppenname aus GRUPPEN
+ * @param liste - Eintrag[] | null | undefined
+ */
+function renderGruppe(name, liste) {
+  const abschnitt = document.getElementById(`attention-abschnitt-${name}`)
+  const container = document.getElementById(`attention-${name}`)
+  if (Array.isArray(liste) && liste.length === 0) {
+    abschnitt.hidden = true
+    container.innerHTML = ''
     return
   }
-  container.innerHTML = startfehler.length === 0
-    ? '<p class="leer">Keine Startfehler.</p>'
-    : startfehler.map((s) => `<div class="list-row"><span class="attention-zeile-text"><code>${escapeHtml(s.zeitstempel)}</code> <strong>${escapeHtml(s.laufId)}</strong>: ${escapeHtml(s.fehler)}</span></div>`).join('')
+  abschnitt.hidden = false
+  if (liste === null) {
+    container.innerHTML = `<p class="entscheidung-zeile entscheidung-unbekannt">${escapeHtml(t(`attention.nichtVerfuegbar.${name}`))}</p>`
+  } else if (liste === undefined) {
+    container.innerHTML = `<p class="entscheidung-zeile subtle">${escapeHtml(t('attention.laedt'))}</p>`
+  } else {
+    container.innerHTML = liste.map(zeile).join('')
+  }
 }
 
-function renderWorkitemsAbschnitt(antwort) {
-  const container = document.getElementById('attention-workitems')
-  if (antwort === null) {
-    container.innerHTML = '<p class="leer">Lädt…</p>'
-    return
-  }
-  if (antwort.workitems === null) {
-    container.innerHTML = '<p class="unbekannt">Workitems nicht verfügbar (Quelle defekt).</p>'
-    return
-  }
-  container.innerHTML = antwort.workitems.length === 0
-    ? '<p class="leer">Keine offenen P0/P1-Workitems.</p>'
-    : antwort.workitems.map((w) => eintrag(`${escapeHtml(w.id)} · ${escapeHtml(w.prioritaet)} · ${escapeHtml(w.titel)}`, `#/workboard/${encodeURIComponent(w.id)}`)).join('')
+/**
+ * Unterzeile einer Quellen-Kachel.
+ * @param name - Gruppenname
+ * @param anzahl - Zahl, null (defekt) oder undefined (lädt)
+ * @returns übersetzter Text
+ */
+function kachelUnterzeile(name, anzahl) {
+  if (anzahl === null) return t('attention.quelle.nichtVerfuegbar')
+  if (anzahl === undefined) return t('attention.laedt')
+  if (anzahl === 0) return t('attention.quelle.geprueft')
+  return name === 'workitems' ? t('attention.quelle.offenBefunde') : t('attention.quelle.offen')
 }
 
-/** true nur, wenn alle vier Quellen tatsächlich (nicht defekt-null) leer sind — Voraussetzung für den zusammengefassten Leerzustand. */
-function alleQuellenLeer(workflows, laeufe, startfehler, workitems) {
-  return [workflows, laeufe, startfehler, workitems].every((liste) => Array.isArray(liste) && liste.length === 0)
+/**
+ * „Die vier Quellen“: je Quelle Name, Zähler (oder Strich) und Unterzeile.
+ * @param zaehler - baueEntscheidungen().zaehler
+ */
+function renderQuellen(zaehler) {
+  document.getElementById('attention-quellen').innerHTML = GRUPPEN.map((name) => {
+    const anzahl = zaehler[name]
+    const wert = typeof anzahl === 'number' ? String(anzahl) : '–'
+    const klasse = anzahl === null ? ' quelle-kachel-defekt' : ''
+    return `<div class="quelle-kachel${klasse}">
+      <div class="eyebrow">${escapeHtml(t(`attention.quelle.${name}`))}</div>
+      <strong>${escapeHtml(wert)}</strong>
+      <small>${escapeHtml(kachelUnterzeile(name, anzahl))}</small>
+    </div>`
+  }).join('')
 }
 
 function render() {
   if (letzterZustand === null) return
+  document.getElementById('attention-laedt').hidden = true
 
-  const workflows = filtereAttentionWorkflows(letzterZustand.workflows)
-  const laeufe = filtereAttentionLaeufe(letzterZustand.laeufe)
-  const startfehler = letzterZustand.startfehler
-  const workitems = workitemsAntwort === null ? null : workitemsAntwort.workitems
+  const workitems = workitemsAntwort === null ? undefined : workitemsAntwort.workitems
+  const { gruppen, zaehler, defekt, alleLeer } = baueEntscheidungen(letzterZustand, workitems)
 
-  const leer = workitemsAntwort !== null && alleQuellenLeer(workflows, laeufe, startfehler, workitems)
-  document.getElementById('attention-leer').hidden = !leer
-  for (const id of ABSCHNITT_IDS) document.getElementById(id).hidden = leer
-  if (leer) return
-
-  renderWorkflowsAbschnitt(workflows)
-  renderLaeufeAbschnitt(laeufe)
-  renderStartfehlerAbschnitt(startfehler)
-  renderWorkitemsAbschnitt(workitemsAntwort)
+  document.getElementById('attention-hinweis').hidden = !defekt
+  document.getElementById('attention-leer').hidden = !alleLeer
+  document.getElementById('attention-liste').hidden = alleLeer
+  for (const name of GRUPPEN) renderGruppe(name, gruppen[name])
+  document.getElementById('attention-quellen-bereich').hidden = false
+  renderQuellen(zaehler)
 }
 
 /** Zähler gegen überholte Antworten (Muster views/workflows.js workflowRenderZaehler): verlässt der Nutzer #/attention und kehrt schnell zurück, darf die zuerst gestartete, aber später auflösende Anfrage die Anzeige der neueren nicht überschreiben. */
 let anfrageZaehler = 0
 
-/** Lädt die offenen P0/P1-Workitems neu — aufgerufen bei jedem Betreten der View (kein Poll, siehe Dateikopf). */
+/** Lädt die offenen P0/P1-Workitems neu — beim Betreten der View und über „Erneut laden“ (kein Poll, siehe Dateikopf). */
 async function ladeWorkitems() {
   const meineAnfrageNummer = ++anfrageZaehler
   workitemsAntwort = null
@@ -133,27 +188,27 @@ async function ladeWorkitems() {
   try {
     ergebnis = await holeOffeneP0P1Workitems()
   } catch (fehler) {
-    ergebnis = { workitems: null, befunde: [], fehler: [{ quelle: 'workitems', grund: fehler.message }] }
+    console.error('GET /api/workitems (Attention) fehlgeschlagen:', fehler)
+    ergebnis = { workitems: null, befunde: [], fehler: [{ quelle: 'workitems', grund: fehler instanceof Error ? fehler.message : String(fehler) }] }
   }
   if (meineAnfrageNummer !== anfrageZaehler) return
   workitemsAntwort = ergebnis
   render()
 }
 
-/** Klick-Delegation für alle .attention-zeile-Einträge — ein Listener für die gesamte View statt vier je Abschnitt. */
-function initNavigation() {
-  document.getElementById('view-attention').addEventListener('click', (ereignis) => {
-    const button = ereignis.target.closest('.attention-zeile')
-    if (!button) return
-    navigiere(button.dataset.hash)
-  })
-}
-
-/** Initialisiert die Attention-View einmalig beim Bootstrap: Bedienung, Route, Abonnement des Zustands-Aggregats. */
+/** Initialisiert die Attention-View einmalig beim Bootstrap: „Erneut laden“, Route, Abonnement des Zustands-Aggregats. */
 export function initAttentionView() {
-  initNavigation()
+  document.getElementById('attention-erneut').addEventListener('click', async () => {
+    await ladeWorkitems()
+    // Der Knopf verschwindet mit dem Hinweis — der Fokus fiele sonst auf body.
+    if (document.getElementById('attention-hinweis').hidden) document.getElementById('attention-titel')?.focus()
+  })
 
   registriere(/^#\/attention$/, 'attention', () => {
+    void ladeWorkitems()
+  })
+
+  abonniereProjektWechsel(() => {
     void ladeWorkitems()
   })
 

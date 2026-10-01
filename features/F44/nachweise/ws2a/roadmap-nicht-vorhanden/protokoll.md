@@ -1,0 +1,4 @@
+| Aktion | Eintrag erfassen (kommt) | Projektakte (kommt) | Balken | Erneut laden | Meilenstein eingeklappt | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | Zustand | erster offener Meilenstein | erster Meilenstein (open) | Noch nicht eingeplant | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/roadmap | true | true | false | false | false | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | (fehlt) | Noch keine Roadmap | (fehlt) | (fehlt) | AF-F001Feature-Akte im Repo | false | true |
+| Seitenende | true | true | false | false | false | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | F9Human Transport | Noch keine Roadmap | (fehlt) | (fehlt) | AF-F001Feature-Akte im Repo | false | true |

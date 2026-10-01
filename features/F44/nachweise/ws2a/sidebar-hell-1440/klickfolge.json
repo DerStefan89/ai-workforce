@@ -1,0 +1,72 @@
+{
+  "url": "http://127.0.0.1:4381/#/attention",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "light",
+  "screenshotQualitaet": 0.8,
+  "screenshotAusschnitt": {
+    "selector": "#shell-sidebar",
+    "hoehe": 1000
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      }
+    ],
+    "ueberlauf": true,
+    "getroffen": [
+      {
+        "name": "Alle Produkte klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"projekte-uebersicht\"]"
+      },
+      {
+        "name": "Nutzung klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"nutzung\"]"
+      },
+      {
+        "name": "Einstellungen klickbar",
+        "selector": "#shell-sidebar a[data-nav-view=\"einstellungen\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Sidebar hell (F-891)",
+      "fokus": "#shell-sidebar .secondary-workforce",
+      "screenshot": "l1440-sidebar.webp"
+    },
+    {
+      "label": "Sidebar dunkel (Vergleich)",
+      "klick": "#kopf-theme",
+      "fokus": "#shell-sidebar .secondary-workforce",
+      "screenshot": "d1440-sidebar.webp"
+    }
+  ]
+}

@@ -18,6 +18,7 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2)
+ * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
  * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
  * - public/leitstand/views/chat.js (F26 WS-2a)
@@ -177,13 +178,15 @@ export const legeProjektAn = (koerper) => fetch('/api/projekte', { method: 'POST
 export const holeProjektAufruf = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`)
 export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`, { method: 'POST', body: '{}' })
 
-// F33 WS-2: Roadmap-Projektion fürs Workboard (Karte "Roadmap", views/workboard.js) — nur beim
-// Öffnen/Aktualisieren des Workboards abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur
-// durch Commits, Muster holeWorkitems). Liefert immer 200 (nicht_vorhanden/ungueltig sind
-// Fachergebnisse im Körper, kein Fehlerstatus, scripts/leitstand/routen-roadmap.mjs). Zeitlimit
-// wie holeZustand/holeLaufDetail (QA-Pass-Befund: ein hängender fetch, F-561, würde die Karte
-// sonst ohne jede Fehlermeldung dauerhaft auf "Lädt…" stehen lassen).
-export const holeRoadmap = () => fetch(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) }).then((r) => r.json())
+// F33 WS-2: Roadmap-Projektion für die Seite #/roadmap (views/roadmap.js, F44 WS-2a) und bis WS-3
+// die Karte "Roadmap" im Workboard (views/workboard.js) — nur beim Öffnen/Aktualisieren bzw.
+// Projektwechsel abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur durch Commits, Muster
+// holeWorkitems). Die Route liefert 200 auch für nicht_vorhanden/ungueltig (Fachergebnisse im
+// Körper, scripts/leitstand/routen-roadmap.mjs). Zeitlimit wie holeZustand/holeLaufDetail (F-561).
+// F-854: über holeJsonOderWirf statt eines rohen fetch().then(r => r.json()) — eine Nicht-2xx-
+// Antwort (404 für ein nicht initialisiertes Projekt, 500) ging vorher als Erfolg mit einem Körper
+// ohne status durch; jetzt ist sie ein Wurf und erscheint als Fehler, nie als „keine Roadmap“.
+export const holeRoadmap = () => holeJsonOderWirf(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F32 WS-2: Verbrauchsprojektion fürs Dashboard (Karte "Verbrauch", views/dashboard.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:

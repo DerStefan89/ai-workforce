@@ -123,8 +123,14 @@
   --topbar-line: #ffffff0b;
   --seiten-glanz: #35515a24;
   --note-rot-bg: #e6a29c07;
+  --note-amber-bg: #dbc08c07;
   --text-link-line: #ffffff5a;
   --tag-geplant-line: #dbc08c40;
+  /* F-891 (F44 WS-2a): Illustration der Sidebar (.side-art) — Filter, Deckkraft und waagerechter
+     Anker als Token, damit das helle Theme sie über seinen Token-Block anpasst. */
+  --side-art-filter: none;
+  --side-art-deckkraft: 0.42;
+  --side-art-links: -88px;
 
   /* ─── Farbe — Shell (F20; F44 WS-1a: Werte aus der Vorlage V10) ───
      Die Namen bleiben die API aller Views, die Werte zeigen auf die Vorlage. Wo die Vorlage
@@ -266,8 +272,14 @@
   --topbar-line: var(--line);
   --seiten-glanz: #d7e2d54d;
   --note-rot-bg: #a1403d0b;
+  --note-amber-bg: #b3882110;
   --text-link-line: var(--line);
   --tag-geplant-line: #89621d55;
+  /* F-891: Filter und Deckkraft wie die Vorlage; dazu liegt der dunkle Kern der Illustration
+     links neben statt hinter den Symbolen der unteren Einträge (auf hellem Grund verdeckte er sie). */
+  --side-art-filter: contrast(1.4) brightness(0.75);
+  --side-art-deckkraft: 0.5;
+  --side-art-links: -132px;
   --color-bg-rgb: 243, 241, 233;
   --color-surface-rgb: 250, 249, 245;
   --color-accent-strong: #1b6654;
@@ -543,18 +555,14 @@ svg.icon {
    (Sidebar-Innenabstand 20 px abgezogen). Die Einträge stehen im DOM danach und damit darüber. */
 .side-bottom .side-art {
   position: absolute;
-  left: -88px;
+  left: var(--side-art-links);
   bottom: 98px;
   width: 240px;
   height: 220px;
   object-fit: contain;
-  opacity: 0.42;
+  opacity: var(--side-art-deckkraft);
+  filter: var(--side-art-filter);
   pointer-events: none;
-}
-
-:root[data-theme='light'] .side-art {
-  filter: contrast(1.4) brightness(0.75);
-  opacity: 0.5;
 }
 
 .side-bottom {
@@ -3513,4 +3521,532 @@ th {
 .v10-seite .text-link:focus-visible {
   outline: 2px solid var(--mint);
   outline-offset: 5px;
+}
+
+/* ─────────────── Deine Entscheidungen und Roadmap (F44 WS-2a, Vorlage V10) ───────────────
+   Gemeinsame Seitenbausteine der Vorlage für .v10-seite (.back, .tabs, .note.amber/.red),
+   #/attention (d_entscheidungen: .line-list/.list-row, „Die vier Quellen“ als .panel.stat) und
+   #/roadmap (d_/m_projekt_ai-workforce_roadmap: .timeline-toolbar, .gantt-*, .roadmap-legend,
+   .unplanned-chips/.roadmap-chip). Maße wie die Vorlage, Farben nur über Tokens. Die
+   Wochenspalten sind ausgegraut und tragen keine Balken (E-F44-1). */
+.v10-seite .back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.v10-seite .back:hover {
+  color: var(--mint);
+}
+
+.v10-seite .tabs {
+  display: flex;
+  gap: 26px;
+  margin: 8px 0 28px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+
+.v10-seite .tabs a,
+.v10-seite .tabs .tab-kommt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 2px solid transparent;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.v10-seite .tabs a:hover {
+  color: var(--ink);
+}
+
+.v10-seite .tabs .active {
+  color: var(--ink);
+  border-color: var(--mint);
+}
+
+.v10-seite .tabs .tab-kommt {
+  cursor: not-allowed;
+}
+
+.v10-seite a:focus-visible,
+.v10-seite summary:focus-visible,
+.v10-seite [tabindex]:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 5px;
+}
+
+.v10-seite .note.amber {
+  border-left-color: var(--amber);
+  background: var(--note-amber-bg);
+}
+
+.v10-seite .note.red {
+  border-left-color: var(--red);
+  background: var(--note-rot-bg);
+}
+
+.v10-seite .note strong {
+  display: block;
+  color: var(--ink);
+}
+
+.v10-seite .note p {
+  margin: 6px 0 12px;
+}
+
+.v10-seite .note p:last-child {
+  margin-bottom: 0;
+}
+
+/* #/attention: eine durchgehende Liste; die vier Gruppen (Sektionen attention-abschnitt-*)
+   folgen ohne Rahmen aufeinander. Kein display auf den Sektionen — sonst überschriebe es das
+   hidden-Attribut (leere Gruppe unsichtbar). */
+#view-attention .entscheidungs-liste {
+  border-top: 1px solid var(--line);
+}
+
+#view-attention .attention-abschnitt {
+  margin: 0;
+}
+
+#view-attention .entscheidung-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: 0;
+  padding: 20px 5px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-attention a.entscheidung-zeile:hover {
+  background: var(--nav-hover-bg);
+  color: var(--ink);
+}
+
+#view-attention a.entscheidung-zeile:hover .entscheidung-pfeil {
+  color: var(--mint);
+}
+
+#view-attention .entscheidung-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#view-attention .entscheidung-text .eyebrow {
+  margin-bottom: 6px;
+}
+
+#view-attention .entscheidung-text h3 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+
+#view-attention .entscheidung-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-attention .entscheidung-pfeil {
+  color: var(--muted);
+}
+
+#view-attention .entscheidung-unbekannt {
+  font-size: 13px;
+  color: var(--amber);
+}
+
+#view-attention .empty .button {
+  text-decoration: none;
+}
+
+#view-attention .quellen-titel {
+  margin: 42px 0 20px;
+}
+
+#view-attention .quellen-raster {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+#view-attention .quelle-kachel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--soft);
+}
+
+/* Lange Quellennamen (ru, tr) brechen innerhalb der Kachel um statt über den Rand zu laufen. */
+#view-attention .quelle-kachel .eyebrow {
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+#view-attention .quelle-kachel strong {
+  display: block;
+  margin: 12px 0 5px;
+  font: 30px var(--serif);
+}
+
+#view-attention .quelle-kachel small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-attention .quelle-kachel-defekt small {
+  color: var(--amber);
+}
+
+/* #/roadmap */
+#view-roadmap .timeline-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 20px 0 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-zeitplanung {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+#view-roadmap .roadmap-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+/* Schmaler als die Vorlage (260px minmax(480px, 1fr), mindestens 780 px): Die Wochen sind leer,
+   so passen alle sechs neben der Chatspalte bei 1440 px ohne Anschnitt. */
+#view-roadmap .roadmap-tabelle {
+  min-width: 680px;
+}
+
+#view-roadmap .roadmap-kopfzeile,
+#view-roadmap .roadmap-gruppe-kopf,
+#view-roadmap .roadmap-zeile {
+  display: grid;
+  grid-template-columns: 260px minmax(420px, 1fr);
+}
+
+#view-roadmap .roadmap-kopfzeile {
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-kopfzeile > div:first-child {
+  padding: 18px;
+}
+
+/* Ausgegraut: die Wochen sind Z (Zeitplanung kommt), deshalb gedämpft und ohne Inhalt. */
+#view-roadmap .roadmap-wochen {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  opacity: 0.55;
+}
+
+#view-roadmap .roadmap-wochen span {
+  padding: 18px 8px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+
+#view-roadmap .roadmap-wochen-zelle {
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
+  background-size: calc(100% / 6) 100%;
+  opacity: 0.55;
+}
+
+#view-roadmap .roadmap-gruppe {
+  border-bottom: 1px solid var(--line);
+}
+
+#view-roadmap .roadmap-gruppe:last-child {
+  border-bottom: 0;
+}
+
+#view-roadmap .roadmap-gruppe-kopf {
+  min-height: 67px;
+  cursor: pointer;
+  list-style: none;
+}
+
+#view-roadmap .roadmap-gruppe-kopf::-webkit-details-marker {
+  display: none;
+}
+
+#view-roadmap .roadmap-gruppe-text {
+  position: relative;
+  min-width: 0;
+  padding: 20px 18px 12px 34px;
+}
+
+/* Auf-/Zuklappzeichen (details/summary), dreht sich beim Öffnen. */
+#view-roadmap .roadmap-gruppe-text::before {
+  content: '▸';
+  position: absolute;
+  left: 16px;
+  top: 20px;
+  color: var(--muted);
+  transition: transform 0.15s;
+}
+
+#view-roadmap .roadmap-gruppe[open] .roadmap-gruppe-text::before {
+  transform: rotate(90deg);
+}
+
+#view-roadmap .roadmap-gruppe-text strong {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .roadmap-gruppe-text small {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-aktuell-marke {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--mint);
+}
+
+#view-roadmap .roadmap-gruppe-zeilen {
+  padding-bottom: 15px;
+}
+
+#view-roadmap .roadmap-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px 18px 12px 34px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-roadmap .roadmap-feature:hover {
+  background: var(--panel-hover);
+  color: var(--ink);
+}
+
+#view-roadmap .roadmap-feature-titel {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ID und Status unter dem Titel, damit die schmale erste Spalte den Titel nicht zerdrückt. */
+#view-roadmap .roadmap-feature-titel small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-feature code {
+  font-size: 11px;
+}
+
+#view-roadmap .roadmap-leer-zeile {
+  margin: 0;
+  padding: 12px 18px 12px 34px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-symbol {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
+#view-roadmap .roadmap-kat-abgenommen,
+#view-roadmap .roadmap-kat-in_arbeit {
+  color: var(--mint);
+}
+
+#view-roadmap .roadmap-kat-freigabe,
+#view-roadmap .roadmap-kat-klaerung {
+  color: var(--amber);
+}
+
+#view-roadmap .roadmap-kat-geplant,
+#view-roadmap .roadmap-kat-abgebrochen,
+#view-roadmap .roadmap-kat-ohne_akte,
+#view-roadmap .roadmap-kat-unbekannt {
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-fussnote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .roadmap-fehler ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .roadmap-fehler summary {
+  cursor: pointer;
+  color: var(--ink);
+}
+
+#view-roadmap .roadmap-fehler code {
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .roadmap-nicht-eingeplant {
+  margin-top: 40px;
+}
+
+#view-roadmap .unplanned-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#view-roadmap .roadmap-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 39px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+#view-roadmap .roadmap-chip:hover {
+  background: var(--surface-raised);
+  border-color: var(--mint);
+  color: var(--ink);
+}
+
+#view-roadmap .roadmap-chip code {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-roadmap .chip-title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1150px) {
+  #view-attention .quellen-raster,
+  #view-roadmap .unplanned-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  #view-attention .entscheidung-zeile {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  #view-attention .entscheidung-text h3 {
+    font-size: 18px;
+  }
+
+  #view-roadmap .roadmap-kopfzeile,
+  #view-roadmap .roadmap-gruppe-kopf,
+  #view-roadmap .roadmap-zeile {
+    grid-template-columns: 200px minmax(420px, 1fr);
+  }
+
+  #view-roadmap .roadmap-tabelle {
+    min-width: 620px;
+  }
+
+  #view-roadmap .roadmap-feature {
+    padding-left: 24px;
+  }
+
+  #view-roadmap .roadmap-chip {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  #view-roadmap .unplanned-chips {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  #view-attention .quellen-raster {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Reduzierte Bewegung: Systemeinstellung und Schalter der Einstellungen (data-reduzierte-bewegung,
+   persona.js) — Muster der übrigen Bewegungsregeln in dieser Datei. */
+@media (prefers-reduced-motion: reduce) {
+  #view-roadmap .roadmap-gruppe-text::before,
+  #view-roadmap .roadmap-chip {
+    transition: none;
+  }
+}
+
+:root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-gruppe-text::before,
+:root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-chip {
+  transition: none;
 }

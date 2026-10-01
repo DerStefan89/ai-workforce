@@ -1,0 +1,42 @@
+[
+  {
+    "label": "#/roadmap",
+    "Eintrag erfassen (kommt)": true,
+    "Projektakte (kommt)": true,
+    "Balken": false,
+    "Erneut laden": false,
+    "Meilenstein eingeklappt": true,
+    "Ansicht": "roadmap",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "AI Workforce · Roadmap",
+    "aktiv in der Nav": "Roadmap",
+    "Fokus": "(fehlt)",
+    "Zustand": "Die Roadmap-Datei ist ungültig: 9 Regelverstöße.",
+    "erster offener Meilenstein": "(fehlt)",
+    "erster Meilenstein (open)": "(fehlt)",
+    "Noch nicht eingeplant": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Seitenende",
+    "Eintrag erfassen (kommt)": true,
+    "Projektakte (kommt)": true,
+    "Balken": false,
+    "Erneut laden": false,
+    "Meilenstein eingeklappt": true,
+    "Ansicht": "roadmap",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "AI Workforce · Roadmap",
+    "aktiv in der Nav": "Roadmap",
+    "Fokus": "Roadmap",
+    "Zustand": "Die Roadmap-Datei ist ungültig: 9 Regelverstöße.",
+    "erster offener Meilenstein": "(fehlt)",
+    "erster Meilenstein (open)": "(fehlt)",
+    "Noch nicht eingeplant": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

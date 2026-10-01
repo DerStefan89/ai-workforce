@@ -12,13 +12,15 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initKommt beim Bootstrap, einmalig)
  * - public/leitstand/views/platzhalter.js (kommtKnopf — Brain, Produktzyklus)
+ * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Projektakte, Zeitplanung; F44 WS-2a)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM beim Import; erst initKommt() hängt die Sperre an.
  * - Die Sperre wirkt dokumentweit in der Einfangphase auf jedes Element mit
- *   [aria-disabled="true"] — nicht nur auf Knöpfe dieses Bausteins. Heute trägt kein anderes
- *   Element dieses Attribut; ein künftiges bekommt dieselbe Wirkung (gewollt, eine Regel).
+ *   [aria-disabled="true"] — nicht nur auf Knöpfe dieses Bausteins. Außer ihnen trägt es heute
+ *   das Register „Projektakte“ der Roadmap (views/roadmap.js, span.tab-kommt mit kommtBadge);
+ *   jedes künftige bekommt dieselbe Wirkung (gewollt, eine Regel).
  */
 
 import { escapeHtml } from './render.js'

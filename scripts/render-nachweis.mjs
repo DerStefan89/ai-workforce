@@ -73,6 +73,10 @@
  *                                       (Playwright page.route) scheitern mit einem Netzfehler —
  *                                       für Fehlerzustände (z. B. Poll-Fehlerbanner) ohne den
  *                                       Server anzuhalten.
+ *   "anfragenAntworten": [{ "muster": "**\/api/roadmap", "status": 200, "json": { … } }] — F44 WS-2a:
+ *                                       Anfragen auf dieses Glob-Muster beantwortet der Browser selbst
+ *                                       mit genau diesem JSON (page.route + fulfill) — für Fachzustände,
+ *                                       die das laufende Projekt nicht hat (z. B. „keine Roadmap“).
  * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
  * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
  * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
@@ -176,6 +180,10 @@ async function main() {
   if (klickfolge.reduzierteBewegung === true) await page.emulateMedia({ reducedMotion: 'reduce' })
   // F44 WS-1b: Netzfehler für bestimmte Anfragen nachstellen (Datei-Kommentar, "anfragenBlockieren").
   for (const muster of klickfolge.anfragenBlockieren ?? []) await page.route(muster, (route) => route.abort())
+  // F44 WS-2a: feste Antwort für bestimmte Anfragen (Datei-Kommentar, "anfragenAntworten").
+  for (const { muster, status = 200, json } of klickfolge.anfragenAntworten ?? []) {
+    await page.route(muster, (route) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) }))
+  }
 
   /**
    * Kodiert ein PNG im Browser als WebP um (F44 WS-1a) — keine Bildbibliothek als Abhängigkeit.

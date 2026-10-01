@@ -1,0 +1,42 @@
+[
+  {
+    "label": "#/roadmap",
+    "Eintrag erfassen (kommt)": true,
+    "Projektakte (kommt)": true,
+    "Balken": false,
+    "Erneut laden": false,
+    "Meilenstein eingeklappt": true,
+    "Ansicht": "roadmap",
+    "data-theme": "light",
+    "lang": "de",
+    "Überschrift": "AI Workforce · Roadmap",
+    "aktiv in der Nav": "Roadmap",
+    "Fokus": "(fehlt)",
+    "Zustand": "Aktueller Meilenstein",
+    "erster offener Meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "erster Meilenstein (open)": "null",
+    "Noch nicht eingeplant": "AF-F001Feature-Akte im Repo",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Seitenende",
+    "Eintrag erfassen (kommt)": true,
+    "Projektakte (kommt)": true,
+    "Balken": false,
+    "Erneut laden": false,
+    "Meilenstein eingeklappt": true,
+    "Ansicht": "roadmap",
+    "data-theme": "light",
+    "lang": "de",
+    "Überschrift": "AI Workforce · Roadmap",
+    "aktiv in der Nav": "Roadmap",
+    "Fokus": "F44Design-Schnitt (F-725): Leitstand im Stil der Designvorlage V10",
+    "Zustand": "Aktueller Meilenstein",
+    "erster offener Meilenstein": "Meilenstein 5 — Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding",
+    "erster Meilenstein (open)": "null",
+    "Noch nicht eingeplant": "AF-F001Feature-Akte im Repo",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

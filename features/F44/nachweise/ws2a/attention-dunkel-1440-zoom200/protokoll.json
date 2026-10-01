@@ -1,0 +1,40 @@
+[
+  {
+    "label": "#/attention",
+    "Hinweis defekt": false,
+    "Leerzustand": false,
+    "Gruppe Workflows": true,
+    "Gruppe Läufe": true,
+    "Gruppe Startfehler": false,
+    "Gruppe Befunde": true,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "(fehlt)",
+    "erste Zeile": "F26 WS2b Nachweis Testartefakt",
+    "Kachel Befunde": "Wichtige Befunde 49 P0 & P1",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Seitenende",
+    "Hinweis defekt": false,
+    "Leerzustand": false,
+    "Gruppe Workflows": true,
+    "Gruppe Läufe": true,
+    "Gruppe Startfehler": false,
+    "Gruppe Befunde": true,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "Wichtiger Befund · P1 Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrlis",
+    "erste Zeile": "F26 WS2b Nachweis Testartefakt",
+    "Kachel Befunde": "Wichtige Befunde 49 P0 & P1",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

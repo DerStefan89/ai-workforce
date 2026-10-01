@@ -1,0 +1,92 @@
+{
+  "url": "http://127.0.0.1:4381/#/attention",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "reduzierteBewegung": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "erste Zeile",
+        "selector": "#attention-liste .entscheidung-zeile h3"
+      },
+      {
+        "name": "Kachel Befunde",
+        "selector": "#attention-quellen .quelle-kachel:last-child"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Hinweis defekt",
+        "id": "attention-hinweis"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "attention-leer"
+      },
+      {
+        "name": "Gruppe Workflows",
+        "id": "attention-abschnitt-workflows"
+      },
+      {
+        "name": "Gruppe Läufe",
+        "id": "attention-abschnitt-laeufe"
+      },
+      {
+        "name": "Gruppe Startfehler",
+        "id": "attention-abschnitt-startfehler"
+      },
+      {
+        "name": "Gruppe Befunde",
+        "id": "attention-abschnitt-workitems"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/attention",
+      "warteAufSelector": {
+        "selector": "#attention-quellen .quelle-kachel",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1440-attention-reduziert.webp"
+    },
+    {
+      "label": "Seitenende",
+      "fokus": "#view-attention a:visible >> nth=-1",
+      "screenshot": "d1440-attention-reduziert-ende.webp"
+    }
+  ]
+}

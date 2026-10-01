@@ -22,6 +22,7 @@
  * - public/leitstand/views/einstellungen.js (t, aktuelleSprache, setzeSprache)
  * - public/leitstand/shell.js (t, uebersetzeDokument, aktuelleSprache, setzeSprache — Sidebar und Kopf, F44 WS-1b)
  * - public/leitstand/persona.js, projekt-kontext.js, kommt.js, views/start.js, views/platzhalter.js (t, F44 WS-1b)
+ * - public/leitstand/views/attention.js, views/roadmap.js (t, formatiereDatum, F44 WS-2a)
  * - public/leitstand/i18n.test.mjs (node:test)
  * - scripts/check-f44-i18n.mjs (SPRACHEN, Wörterbücher)
  *

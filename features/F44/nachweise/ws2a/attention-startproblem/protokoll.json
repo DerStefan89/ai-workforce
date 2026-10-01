@@ -1,0 +1,21 @@
+[
+  {
+    "label": "#/attention",
+    "Hinweis defekt": false,
+    "Leerzustand": false,
+    "Gruppe Workflows": false,
+    "Gruppe Läufe": false,
+    "Gruppe Startfehler": true,
+    "Gruppe Befunde": false,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "(fehlt)",
+    "erste Zeile": "nachweis-startproblem-1",
+    "Kachel Befunde": "Wichtige Befunde 0 Geprüft · keine offenen Einträge",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
