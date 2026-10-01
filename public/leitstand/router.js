@@ -13,7 +13,7 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initRouter, einmalig beim Bootstrap)
- * - public/leitstand/views/*.js (registriere, dispatch)
+ * - public/leitstand/views/*.js (registriere, dispatch; ersetzeRoute seit F44 WS-4a: views/workflows.js, views/workboard.js)
  *
  * Wichtig: dispatch() ist absichtlich synchron und öffentlich exportiert —
  * eine View, die per Klick zu einer anderen View navigiert (z. B. die
@@ -117,10 +117,37 @@ export function dispatch() {
     zeigeView('dashboard')
     return
   }
-  zeigeView(treffer[0].route.view, treffer[0].route.ueberlagert)
-  for (const { route, match } of treffer) {
-    route.onEnter?.(...match.slice(1).map((segment) => decodeURIComponent(segment)))
+  // F-925: eine kaputte Prozent-Kodierung (z. B. '#/workboard/%E0%A4%A') wirft in
+  // decodeURIComponent einen URIError. Dekodiert wird deshalb VOR dem Umschalten der View; scheitert
+  // es, fällt die Seite ohne neuen History-Eintrag auf STANDARD_HASH zurück (Zurück führt so nicht
+  // erneut in denselben kaputten Link) — keine onEnter-Callbacks mit halbem Zustand.
+  let segmente
+  try {
+    segmente = treffer.map(({ match }) => match.slice(1).map((segment) => decodeURIComponent(segment)))
+  } catch (fehler) {
+    if (!(fehler instanceof URIError)) throw fehler
+    console.warn(`[router] Hash '${hash}' ist nicht dekodierbar (${fehler.message}) — zurück zu ${STANDARD_HASH}.`)
+    ersetzeRoute(STANDARD_HASH)
+    return
   }
+  zeigeView(treffer[0].route.view, treffer[0].route.ueberlagert)
+  treffer.forEach(({ route }, index) => {
+    route.onEnter?.(...segmente[index])
+  })
+}
+
+/**
+ * F44 WS-4a (F-923, F-925): setzt den Hash OHNE neuen History-Eintrag (history.replaceState löst
+ * kein hashchange aus) und dispatcht selbst — für Zustände, in die Browser-Zurück nicht wieder
+ * führen soll (Detail des alten Projekts nach einem Projektwechsel, kaputter Deep-Link).
+ * @param hash - vollständiger Ziel-Hash, z. B. '#/runs'
+ */
+export function ersetzeRoute(hash) {
+  // Ein von navigiere() gesetzter Merker gilt dem ersetzten Hash; sein Folge-Ereignis sieht schon den
+  // neuen — stehen gelassen unterdrückte er später ein echtes hashchange (Prüfpass WS-4a).
+  unterdrueckterHashchange = null
+  history.replaceState(history.state, '', hash)
+  dispatch()
 }
 
 /** hashchange-Handler des Routers — überspringt genau ein von navigiere() bereits synchron verarbeitetes Folge-Event (siehe Datei-Kommentar), dispatcht sonst normal. */

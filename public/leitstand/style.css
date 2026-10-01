@@ -131,6 +131,12 @@
   --side-art-filter: none;
   --side-art-deckkraft: 0.42;
   --side-art-links: -88px;
+  /* F44 WS-4a (Auftrag & Ablauf): Werte, die die Vorlage in dialog::backdrop, .danger und
+     .timeline li.current schreibt. Der Backdrop ist in beiden Themes derselbe (die Vorlage kennt
+     keinen hellen); der Rahmen von .danger folgt --red. */
+  --dialog-backdrop: #061118bd;
+  --danger-line: color-mix(in srgb, var(--red) 31%, transparent);
+  --timeline-glanz: #dbc08c12;
 
   /* ─── Farbe — Shell (F20; F44 WS-1a: Werte aus der Vorlage V10) ───
      Die Namen bleiben die API aller Views, die Werte zeigen auf die Vorlage. Wo die Vorlage
@@ -280,6 +286,7 @@
   --side-art-filter: contrast(1.4) brightness(0.75);
   --side-art-deckkraft: 0.5;
   --side-art-links: -132px;
+  --timeline-glanz: #89621d10;
   --color-bg-rgb: 243, 241, 233;
   --color-surface-rgb: 250, 249, 245;
   --color-accent-strong: #1b6654;
@@ -1803,28 +1810,10 @@ th {
   font-style: italic;
 }
 
-/* F29 WS-2c: Box-Optik von #workflow-detail kommt jetzt von .card (index.html) — hier nur noch
-   der Abstand zur Liste darüber bzw. zu #laeufe darunter (Muster #startfehler-abschnitt/
-   #workboard-detail). #workflows-abschnitt bleibt bewusst ohne .card: es trägt nur Überschrift
-   und Hinweistext, die eigentlichen Einträge sind je ein eigenes .card.workflow (siehe unten,
-   Muster .card.lauf in views/runs.js) — eine zweite, äußere Karte darum wäre eine verschachtelte
-   Karte ohne eigenen Inhalt. */
-#workflows-abschnitt, #workflow-detail {
-  margin-bottom: var(--space-4xl);
-}
-
-#workflow-detail h2, .workflow h3 {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xl);
-}
-
-/* F29 WS-2c: Muster .lauf (views/runs.js) — .card liefert Padding var(--space-4xl), gedacht für
-   Einzel-/Detailblöcke; bei einer LISTE wiederholter .card.workflow-Einträge (je Kopfdaten-Tabelle
-   plus Details-Button, kein einzeiliges .list-row-Format) summierte sich das mit einem eigenen
-   margin-bottom zu unnötigem Scroll-Aufwand — Padding hier auf den kompakteren, vor WS-2c bereits
-   genutzten Wert reduziert. */
-.workflow {
-  padding: var(--space-2xl);
+/* F44 WS-4a: #workflow-detail ist keine .card mehr, sondern eine ganze Seite (.v10-seite, Regeln
+   im Abschnitt „Auftrag & Ablauf“ am Ende); die Liste besteht aus .workflow-zeile statt je einer
+   .card.workflow. Hier bleibt nur der Abstand der Liste zu den Startfehlern darunter. */
+#workflows-abschnitt {
   margin-bottom: var(--space-4xl);
 }
 
@@ -5236,4 +5225,461 @@ th {
 #view-workboard .workboard-auftrag-start .button:disabled:hover {
   background: transparent;
   border-color: var(--line);
+}
+
+/* ─────────── Auftrag & Ablauf (F44 WS-4a, Vorlage V10 d_workflow_neu, d_arbeit_verlauf) ───────────
+   #/runs mit Seitenkopf und der Liste „Aufträge“ (.workflow-zeile, Muster .list-row der Vorlage),
+   das Detail #/workflows/<id> als ganze Seite (.workflow-seite: .back, Timeline, .summary „Auf
+   einen Blick“, .action-row, Aufklappbereich F12) und der native Dialog (.workflow-dialog,
+   Vorlage dialog/.dialog-heading/.dialog-actions). Maße wie die Vorlage, Farben nur über Tokens.
+   Die Seite blendet Liste, Startfehler und Läufe über eine Klasse an #view-runs aus, nicht über
+   deren hidden-Attribut (views/runs.js führt #lauf-detail selbst). Kein display auf dem Dialog —
+   sonst überschriebe es die UA-Regel dialog:not([open]) — und keines auf Containern mit
+   hidden-Attribut (F-622). */
+#view-runs.workflow-seite-offen > :not(#workflow-detail) {
+  display: none;
+}
+
+#view-runs a.button {
+  text-decoration: none;
+}
+
+/* Die Überschriften erhalten den Fokus nur als Lesestartpunkt (Muster #view-workboard .workboard-detail
+   h1); die ID-Selektoren schlagen .v10-seite [tabindex]:focus-visible. */
+#runs-kopf h1:focus,
+#runs-kopf h1:focus-visible,
+#workflow-detail h1:focus,
+#workflow-detail h1:focus-visible {
+  outline: none;
+}
+
+#workflows-abschnitt h2 {
+  font-size: 24px;
+  margin-bottom: 14px;
+}
+
+#workflows.line-list {
+  border-top: 1px solid var(--line);
+}
+
+#view-runs .workflow-zeile {
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 5px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-runs .workflow-zeile:hover {
+  background: var(--nav-hover-bg);
+}
+
+#view-runs .workflow-zeile:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+#view-runs .workflow-zeile-text {
+  min-width: 0;
+}
+
+#view-runs .workflow-zeile h3 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+
+#view-runs .workflow-zeile p {
+  margin: 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-runs .workflow-zeile-grund {
+  margin-top: 4px;
+}
+
+#view-runs .workflow-zeile .row-end {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--muted);
+}
+
+/* Lage als Statuszeile mit Punkt (Vorlage .status, .status.amber, .status.neutral). */
+.ablauf-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--mint);
+}
+
+.ablauf-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.ablauf-status.warten {
+  color: var(--amber);
+}
+
+.ablauf-status.fehler {
+  color: var(--red);
+}
+
+.ablauf-status.neutral {
+  color: var(--muted);
+}
+
+/* Detailseite */
+.workflow-seite .back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.workflow-seite .page-heading > div:first-child {
+  min-width: 0;
+}
+
+.workflow-seite h1 {
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .workflow-hauptspalte {
+  min-width: 0;
+}
+
+.workflow-seite code {
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .timeline {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .timeline li {
+  position: relative;
+  margin-left: 11px;
+  padding: 0 0 30px 29px;
+  border-left: 1px solid var(--line);
+}
+
+.workflow-seite .timeline li:last-child {
+  border-left-color: transparent;
+}
+
+.workflow-seite .timeline li::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -5px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+.workflow-seite .timeline li.done::before {
+  background: var(--mint);
+  border-color: var(--mint);
+}
+
+.workflow-seite .timeline li.current::before {
+  background: var(--amber);
+  border-color: var(--amber);
+  box-shadow: 0 0 0 5px var(--timeline-glanz);
+}
+
+.workflow-seite .timeline li.fehler::before {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.workflow-seite .timeline h3 {
+  margin-bottom: 5px;
+  font: 17px/1.3 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .timeline p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.workflow-seite .timeline small {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.ablauf-marke {
+  margin-left: 8px;
+  font: 10px/1.4 var(--sans);
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  color: var(--amber);
+}
+
+.ablauf-marke.fehler {
+  color: var(--red);
+}
+
+.workflow-seite .ablauf-ungueltig ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 12px;
+}
+
+.workflow-seite .ablauf-aktion-hinweis {
+  font-size: 12px;
+}
+
+.v10-seite .button.danger {
+  color: var(--red);
+  border-color: var(--danger-line);
+}
+
+.v10-seite .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Meldungen erhalten den Fokus nur, damit ein Screenreader sie liest (keine Live-Region) — kein Rahmen. */
+#workflow-bedienung-meldung:focus,
+#workflow-bedienung-meldung:focus-visible,
+#workflow-dialog-meldung:focus,
+#workflow-dialog-meldung:focus-visible {
+  outline: none;
+}
+
+.workflow-seite .summary h3 {
+  font-size: 20px;
+}
+
+.workflow-seite .summary dl {
+  margin: 0;
+}
+
+.workflow-seite .summary dt {
+  margin-top: 23px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.workflow-seite .summary dd {
+  margin: 5px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite details.workflow-technik {
+  margin: 18px 0 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.workflow-seite details.workflow-technik summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.workflow-seite details.workflow-technik[open] summary {
+  margin-bottom: 18px;
+  color: var(--ink);
+}
+
+.workflow-seite .ablauf-tabelle {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.workflow-seite .ablauf-tabelle .ablauf-schritte {
+  min-width: 760px;
+}
+
+/* Die Schritttabelle scrollt waagerecht in .ablauf-tabelle, statt Rollen und IDs mitten im Wort zu
+   brechen (.lauf-kopfdaten td bricht sonst überall). */
+.workflow-seite .ablauf-schritte td {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+/* Abstand der unveränderten Blöcke (Bedienung, Abnahme; Restyling WS-4b) zur Aktionszeile. */
+.workflow-seite #workflow-bedienung > .detail-block,
+.workflow-seite #workflow-abnahme > .detail-block {
+  margin-top: 28px;
+}
+
+/* Dialog (Vorlage dialog, dialog::backdrop, .dialog-heading, .dialog-actions, label.field). */
+.workflow-dialog {
+  width: calc(100% - 32px);
+  max-width: 580px;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-solid);
+  color: var(--ink);
+}
+
+.workflow-dialog::backdrop {
+  background: var(--dialog-backdrop);
+  backdrop-filter: blur(5px);
+}
+
+.workflow-dialog .dialog-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.workflow-dialog .dialog-heading h2 {
+  margin-bottom: 12px;
+  font-size: 28px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-dialog .icon-button {
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.workflow-dialog .icon-button:hover {
+  color: var(--ink);
+}
+
+.workflow-dialog label.field {
+  display: block;
+  margin: 18px 0 8px;
+  font-size: 12px;
+}
+
+.workflow-dialog textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+  resize: vertical;
+}
+
+.workflow-dialog textarea:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.workflow-dialog .dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.workflow-dialog code {
+  overflow-wrap: anywhere;
+}
+
+.workflow-dialog .fehler {
+  margin: 14px 0 0;
+}
+
+@media (max-width: 800px) {
+  .workflow-seite .summary dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+  }
+}
+
+@media (max-width: 700px) {
+  #view-runs .workflow-zeile {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  /* Vorlage: .list-row .row-end als Spalte, h3 18px, .status 9px; .summary dl wieder einspaltig. */
+  #view-runs .workflow-zeile .row-end {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  #view-runs .workflow-zeile h3 {
+    font-size: 18px;
+  }
+
+  #view-runs .workflow-zeile .ablauf-status {
+    font-size: 9px;
+  }
+
+  .workflow-seite .summary dl {
+    display: block;
+  }
+
+  .workflow-dialog {
+    padding: 22px;
+  }
+
+  .workflow-dialog .dialog-actions .button {
+    flex: 1 1 auto;
+  }
+}
+
+/* F4 (Vorlage V10 .check): die Katalog-Empfehlung als Ankreuzliste mit disabled-Checkboxen, rein
+   anzeigend („Wird genutzt“ angekreuzt); Knopf „Freigeben & installieren“ im Stil .button. */
+.empfehlung-liste {
+  margin: 6px 0 14px;
+  padding-left: 0;
+  list-style: none;
+}
+
+.empfehlung-liste li {
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+
+.empfehlung-liste .check {
+  margin: 0;
+}
+
+.empfehlung-liste .check input {
+  accent-color: var(--mint);
 }

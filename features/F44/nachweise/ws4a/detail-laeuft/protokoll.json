@@ -1,0 +1,29 @@
+[
+  {
+    "label": "Detail „läuft“: Umsetzung läuft jetzt, Verantwortung = Rolle, nur „Ausführung stoppen“",
+    "Kopf + Liste": false,
+    "Startfehler": false,
+    "Läufe": false,
+    "Detailseite": true,
+    "Freigeben & starten mit data-empfehlung-ids": false,
+    "Ablehnen im Dialog": false,
+    "Freigeben & installieren im Dialog": false,
+    "aria-live im Dialog (muss fehlen)": false,
+    "alter Bedienblock (Architekt)": false,
+    "Begründung im Feld": false,
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "de",
+    "Fokus": "Bauen aus der Akte",
+    "Fokus-ID": "workflow-detail-titel",
+    "Titel": "Bauen aus der Akte",
+    "Aktionen": "Ausführung stoppen",
+    "Auf einen Blick": "Auf einen Blick StatusLäuft ProjektAI Workforce Aktueller SchrittUmsetzung s2 VerantwortungUmsetzung",
+    "Meldung": "",
+    "Dialog offen": "null",
+    "Dialogtitel": "(fehlt)",
+    "Dialogmeldung": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

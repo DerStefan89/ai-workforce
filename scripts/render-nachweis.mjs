@@ -81,6 +81,14 @@
  *                                       F44 WS-3b: optional "methode": "POST" — dann nur für diese
  *                                       HTTP-Methode (GET und POST auf denselben Pfad getrennt);
  *                                       eine später eingetragene Route hat Vorrang (Playwright).
+ *                                       F44 WS-4a: "anfragenAntworten" auch je Schritt — die Routen
+ *                                       gelten ab diesem Schritt und haben Vorrang vor den früheren
+ *                                       (z. B. ein geänderter Serverstand bei offenem Dialog); dazu
+ *                                       "warteAufSelector.zustand" ("attached" | "detached" | "visible" |
+ *                                       "hidden", Standard "visible") für Elemente, die beim Warten nicht
+ *                                       sichtbar sind (etwa ein geschlossener <dialog>), sowie "ohneAusschnitt": true —
+ *                                       dieses Bild ohne screenshotAusschnitt (ganzer Viewport, z. B.
+ *                                       ein modaler Dialog über der Seite).
  * Ein Screenshot-Dateiname auf .webp wird als PNG aufgenommen und im selben Browser per
  * canvas.toDataURL('image/webp') verlustbehaftet umkodiert (keine neue Abhängigkeit; kleine
  * Nachweise im Repo, F-869). Je Schritt zusätzlich "navigiere": "#/route" (setzt location.hash
@@ -186,11 +194,15 @@ async function main() {
   for (const muster of klickfolge.anfragenBlockieren ?? []) await page.route(muster, (route) => route.abort())
   // F44 WS-2a: feste Antwort für bestimmte Anfragen (Datei-Kommentar, "anfragenAntworten").
   // F44 WS-3b: optional nur für eine HTTP-Methode ("methode"); andere Methoden gehen an die nächste Route bzw. den Server.
-  for (const { muster, status = 200, json, methode } of klickfolge.anfragenAntworten ?? []) {
-    await page.route(muster, (route) =>
-      methode !== undefined && route.request().method() !== methode ? route.fallback() : route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) })
-    )
+  // F44 WS-4a: dieselbe Regel je Schritt ("anfragenAntworten" im Schritt) — später eingetragene Routen haben Vorrang.
+  const setzeAntworten = async (antworten) => {
+    for (const { muster, status = 200, json, methode } of antworten ?? []) {
+      await page.route(muster, (route) =>
+        methode !== undefined && route.request().method() !== methode ? route.fallback() : route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(json) })
+      )
+    }
   }
+  await setzeAntworten(klickfolge.anfragenAntworten)
 
   /**
    * Kodiert ein PNG im Browser als WebP um (F44 WS-1a) — keine Bildbibliothek als Abhängigkeit.
@@ -224,8 +236,8 @@ async function main() {
     }
   }
 
-  const knappesScreenshot = async (dateiname, vollseite) => {
-    const ausschnitt = klickfolge.screenshotAusschnitt
+  const knappesScreenshot = async (dateiname, vollseite, ohneAusschnitt = false) => {
+    const ausschnitt = ohneAusschnitt ? undefined : klickfolge.screenshotAusschnitt
     let optionen = { fullPage: vollseite === true }
     if (ausschnitt) {
       const box = await page.locator(ausschnitt.selector).boundingBox()
@@ -282,6 +294,7 @@ async function main() {
     }
 
     for (const schritt of klickfolge.schritte) {
+      if (schritt.anfragenAntworten) await setzeAntworten(schritt.anfragenAntworten)
       // F34 Fixpaket: 'tippen' VOR 'klick' (Muster: Text erst eintippen, dann Senden-Button klicken,
       // beides innerhalb DESSELBEN Schritts formulierbar).
       if (schritt.tippen) await page.fill(schritt.tippen.selector, schritt.tippen.text)
@@ -296,7 +309,7 @@ async function main() {
         // Timeout-Überschreitung wird bewusst verschluckt (Muster networkidle-catch unten) — ein
         // Ausbleiben der erwarteten Antwort ist selbst ein reales, im Protokoll sichtbares Ergebnis
         // (die 'vorhanden'-Beobachtung bleibt dann false), kein Grund, den gesamten Lauf abzubrechen.
-        await page.waitForSelector(schritt.warteAufSelector.selector, { timeout: schritt.warteAufSelector.timeoutMs ?? 5000 }).catch(() => {})
+        await page.waitForSelector(schritt.warteAufSelector.selector, { timeout: schritt.warteAufSelector.timeoutMs ?? 5000, state: schritt.warteAufSelector.zustand ?? 'visible' }).catch(() => {})
       }
       // networkidle statt fixer Wartezeit: ein Klick, der einen ERSTEN Moduswechsel auslöst, lädt
       // seinen Verlauf per Fetch nach (chat.js ladeVerlauf) und rendert erst danach — eine feste,
@@ -324,7 +337,7 @@ async function main() {
       }
       const zustand = await leseZustand(page, klickfolge.beobachtete)
       protokoll.push({ label: schritt.label, ...zustand, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
-      if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite)
+      if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite, schritt.ohneAusschnitt === true)
     }
   } finally {
     await browser.close()

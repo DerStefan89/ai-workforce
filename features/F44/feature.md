@@ -17,8 +17,9 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026): WS-2a
 „Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ gemergt (#294, `67e757c`).
 WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ gemergt (#295, `1191231`);
-WS-3b „Detail, Bauen, Click-to-Work“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws3b-detail`);
-WS-4 bis WS-8 offen.
+WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist geteilt (Auftrag Stefan,
+01.10.2026): WS-4a „Ablauf & Freigabe“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws4a-ablauf`);
+WS-4b „Klärung, Reparatur & Abnahme“ und WS-5 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -74,8 +75,9 @@ abgehakten F-Zeilen des Pakets.
 | **WS-2b** Übersicht | Tabellenabschnitt B (`views/dashboard.js`), nutzt `baueEntscheidungen` für „Deine nächsten Entscheidungen“ und `roadmap-anzeige.js` für aktuellen Meilenstein und Fortschrittsring | f21-ws2 (Importzeile (e) in dashboard.js) |
 | **WS-3a** Board & Listen | Abschnitt E1–E7: Status-Kanban, Listen-Tabs mit Suche, Parser-Befunde, Z-Elemente E2/E3/E7; Bento entfernt (F-892); F-913 | f21-ws2 (IDs `workboard-*`, keine POST-Methode in workboard.js; neu (h)) |
 | **WS-3b** Detail, Bauen, Click-to-Work | Abschnitt E8–E13 (Detail, „Auftrag vorbereiten“, Click-to-Work samt Git-Block, 409 mit „Wiederholen“, E13 als kommt), F-914 | f21-ws2, f22, `empfehlung-*.test.mjs` |
-| **WS-4** Ablauf & Abnahme | Abschnitt F vollständig, einschließlich F3b (Ablehnen), F5, F6, F7, F8, F9 und F16; Invariante „Anzeige = Start“ | f15-oberflaeche (IDs und Texte), f42, `empfehlung-*.test.mjs`, f20-shell (CI) |
-| **WS-5** Ausführungen & Direktstart | Abschnitt G | f12 (Markup der Laufakte), `runs.test.mjs` |
+| **WS-4a** Ablauf & Freigabe | F0 (Liste „Aufträge“ unter `#/runs`), F2 (Timeline „Der Weg zum Ergebnis“), F3, F3b (Ablehnen), F4, F5 (Freigabedialog mit Katalog-Empfehlung und „Freigeben & installieren“), F10 (Stoppdialog), F12 (Technischer Ablauf); Invariante „Anzeige = Start“; F-874, F-923, F-925, F-926 (Workflow-Detail) | f15-oberflaeche (IDs und Texte), `empfehlung-*.test.mjs`, f20-shell (CI), `projekt-wechsel.test.mjs` |
+| **WS-4b** Klärung, Reparatur & Abnahme | F6 (Architekt-Entscheidung), F8 (Reparatur), F9 (Sichtung), F13–F18 (Abnahme samt Prüfung wiederholen); Restyling des bisherigen Bedienblocks | f15-oberflaeche, f23, f42 |
+| **WS-5** Ausführungen & Direktstart | Abschnitt G, dazu F7 (Lauf-Entscheidung „Antwort auf Rückfrage“) und F1 (Auftrag anlegen), beide aus WS-4 | f12 (Markup der Laufakte), `runs.test.mjs` |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
@@ -755,6 +757,129 @@ Branch `feat/f725-ws3b-detail` (Basis `1191231`), nicht committet.
   und `empfehlung-anzeige.test.mjs` grün.
 - **WS3b-5** F-914, F-920, F-921 erledigt, F-918 entschieden, F-919 teilweise.
 - **WS3b-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün.
+
+## Stand WS-4a „Ablauf & Freigabe“ (01.10.2026)
+Branch `feat/f725-ws4a-ablauf` (Basis `5b0b683`), nicht committet.
+- **Detail als ganze Seite** `#/workflows/<id>` (d_workflow_neu; F2, F12): „← Alle Aufträge“, Eyebrow
+  „Auftrag & Ablauf“, Titel = `ziel` (Rückfall `workflowId`), Unterzeile der Vorlage. Liste, Startfehler und
+  Läufe sind ausgeblendet (Klasse `workflow-seite-offen` an `#view-runs`, nicht deren `hidden`).
+  „Der Weg zum Ergebnis“ als Timeline in Planreihenfolge (`ordneSchritteNachPlan`): je Schritt Rollenname
+  (`rollen-anzeige.js`), Status als Satz, „Verantwortung: <worker>“ und bei ZWINGEND „Start nur mit deiner
+  Freigabe“; am vom Server genannten Schritt eine Marke je `naechster.art`; außerhalb der Kette
+  ausgewiesen; keine Zweck-Sätze je Rolle. Rechte Spalte „Auf einen Blick“: Status (Lage), Projekt,
+  aktueller Schritt (Cursor, ohne Cursor `naechster.schrittId`), Verantwortung („Du“ bei einem Halt, sonst
+  die Rolle; `status` LAEUFT hat Vorrang wie bei der Lage). Alles reine Anzeigeabbildung von `status` und
+  `naechster.art` (`LAGE_JE_AUSGANG`, `KATEGORIE_JE_AUSGANG`, `MARKE_JE_AUSGANG`).
+- **Aktionen** unter der Timeline nur nach `naechster.art` bzw. `status`: haltFreigabe → „Nächsten Schritt
+  freigeben“ (Dialog), starte → „Starten“ (direkt), stoppbarer Status bei gültiger Fassung → „Ausführung
+  stoppen“ (Dialog). Architekt-Entscheidung, Sichtung und Reparatur stehen funktional und im Markup
+  unverändert im bisherigen Bedienblock (Restyling WS-4b; Gate f42 bindet
+  `renderArchitekturEntscheidung`); ohne fällige Bedienung bleibt der Block leer.
+- **Dialog** `#workflow-dialog` (nativ, `showModal`, außerhalb der vom Poll ersetzten Container; F3, F3b,
+  F4, F5, F10): Inhalt beim Öffnen aus dem aktuellen Detail. Freigabe: fälliger Schritt, `renderEmpfehlung`
+  samt „Freigeben & installieren“ (`bindeEmpfehlungInstallation` am Dialog), Pflichtfeld
+  `wf-freigabe-begruendung`, Installierbar-Hinweis direkt vor „Freigeben & starten“
+  (`data-empfehlung-ids` aus `empfehlungIdsFuerFreigabe`, „Anzeige = Start“), „Ablehnen“ (ABGELEHNT,
+  dieselbe Pflichtbegründung, Freigabe-Veto) und „Abbrechen“. Stopp: Pflichtfeld `wf-stopp-begruendung`,
+  „Stoppen“, „Abbrechen“. Ändert sich das Bedienungs-Kennzeichen bei offenem Dialog, schließt er mit „Der
+  Stand hat sich geändert — bitte erneut prüfen.“ (Fokus auf die Meldung; kein Nachladen in den offenen
+  Dialog); eine angefangene Begründung steht beim erneuten Öffnen desselben Halts wieder im Feld (F-809,
+  ohne Empfehlung im Vergleich). Kein `aria-live` im Dialog; Fehler (Pflicht, 409, 4xx) stehen im Dialog,
+  der offen bleibt (Fokus auf Feld bzw. Meldung); Erfolg schließt ihn, die Meldung steht am Ablauf und
+  bekommt den Fokus. Escape und „Abbrechen“ schließen ohne Wirkung; verlässt der Hash das Detail,
+  schließt der Dialog ebenfalls. Freigeben und Ablehnen sind während der Anfrage gemeinsam gesperrt.
+- **F12** `<details>` „Technischer Ablauf & Serverentscheidung“ außerhalb der ersetzten Container (bleibt
+  beim Poll offen): Kopfdaten samt Lage, Verdikt und Grund, Schritttabelle mit Cursor, fällig, „läuft
+  jetzt“ und `workflow-lauf-verweis` (waagerecht scrollbar statt Wortbruch).
+- **F0** `#/runs` mit V10-Seitenkopf (Eyebrow „Produktentwicklung“, „Ausführungen“, „Auftrag anlegen“ →
+  `#/projekt`) und der Liste „Aufträge“ (`#workflows-abschnitt` bleibt): Zeile nach d_arbeit_verlauf —
+  Titel = Ziel, darunter `workflowId` als code mit Fassung und Cursor, bei einem Halt-Grund der Grund;
+  rechts Lage und Pfeil; die ganze Zeile führt zu `#/workflows/<id>`. Ein Poll-Tick schreibt die Liste
+  nur bei geändertem HTML (Fokus bleibt). Leerzustand („Noch keine Aufträge mit Ablauf.“) und
+  Fehlerzustand („Aufträge nicht verfügbar.“, keine Entwarnung) im Stil V10. Startfehler und Läufe
+  unverändert darunter (WS-5); keine Register-Tabs.
+- **F-926-Muster (Workflow-Detail):** „← Alle Aufträge“ geht per `history.back()` zurück, wenn der vorige
+  Eintrag `#/runs` war, sonst per `navigiere`; danach liegt der Fokus auf der Zeile des Workflows (ohne
+  Zeile auf der Seitenüberschrift). Der Workboard-Teil von F-926 ist nicht mitgebaut.
+- **Modulschnitt:** `views/workflow-detail.js` (rein rendernd, ohne api.js, in Node ohne DOM importierbar;
+  Test `views/workflow-detail.test.mjs`: Timeline-Reihenfolge, Zyklus, Statusabbildung, Aktionen,
+  Escaping, Leer- und Fehlerzustand, F12). In `views/workflows.js` bleiben Laden, Kennzeichen, Dialog und
+  alle POST-Aufrufe; Abnahme (`renderAbnahme*`, `renderUrteil`, `renderAenderungsuebersicht`,
+  `renderPruefergebnis`) und `renderArchitekturEntscheidung` sind nicht verschoben (WS-4b, Gates f23/f42).
+- **F-874, F-923:** `views/workflows.js` abonniert `abonniereProjektWechsel`: Dialog, Detail, Bedienzustand
+  und offener Reparaturentwurf werden verworfen, der Hash geht ohne neuen Eintrag auf `#/runs`
+  (`router.js` `ersetzeRoute`: `history.replaceState` plus `dispatch`); dasselbe für ein offenes
+  `#/workboard/<id>` → `#/workboard`. Der Wechsel über den Kopf ersetzte den Hash schon vorher
+  (`shell.js` `DETAIL_ROUTEN`); die Hooks gelten für jeden Wechselweg. `projekt-wechsel.test.mjs` um beide
+  Fälle ergänzt (Rotfall belegt). F-885 bleibt offen.
+- **F-925:** `router.js` `dispatch` dekodiert vor dem Umschalten; ein URIError führt ohne neuen Eintrag auf
+  die Standardroute, kein onEnter sieht den kaputten Wert (`router.test.mjs`).
+- **i18n:** alle angefassten Texte als Schlüssel `ablauf.*` in de/en/tr/ru (Seitenkopf, Liste, Lage,
+  Timeline, Auf einen Blick, Aktionen, Dialog, Meldungen, F12). Serverwerte (`grund`, `ziel`, IDs, Status,
+  Worker) bleiben roh. Unverändert deutsch bleiben die Texte der Blöcke von WS-4b (Architekt, Sichtung,
+  Reparatur, Abnahme).
+- **Gates:** f15 liest `views/workflows.js` und `views/workflow-detail.js` zusammen; `<h2>Workflows</h2>`,
+  „Fassung ungültig“, „läuft jetzt“ und „(hält nicht an)“ sind Schlüssel — das Gate prüft je Schlüssel im
+  Code und deutschen Wörterbuchwert (`verlangeText`, Rotfall belegt); (f) prüft die Syntax des neuen
+  Moduls. f20-leitstand-shell (CI): die Klickfolge öffnet zuerst den Dialog, dann wird die Begründung
+  gesetzt. Tokens: `--dialog-backdrop`, `--danger-line`, `--timeline-glanz` (hell eigener Wert).
+- **render-nachweis:** `anfragenAntworten` auch je Schritt (Vorrang ab diesem Schritt),
+  `warteAufSelector.zustand` und je Schritt `ohneAusschnitt`.
+- **Nachweise** `features/F44/nachweise/ws4a/` (Skript `erzeuge-nachweis.mjs`, Leitstand dieses Worktrees
+  auf Port 4381, feste Antworten): Liste `#/runs` und Detail im Freigabe-Halt mit Katalog-Empfehlung samt
+  offenem Dialog, je 1440 dunkel und hell, 390 dunkel, 200 %, ru; Liste → Detail → „← Alle Aufträge“ mit
+  Fokus auf der Zeile; Dialog mit Pflichtmeldung und 409; Dialog schließt bei Stand-Änderung; Ablehnen;
+  Stoppen-Dialog (Pflicht, Escape; 1440 und 390); Detail „läuft“; Detail KLAERUNG_ERFORDERLICH mit altem
+  Bedienblock; F12 aufgeklappt (bleibt nach Poll-Ticks offen); reduzierte Bewegung.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): code-reviewer und qa
+  „Freigegeben mit Hinweisen“, design-guardian „Nicht freigegeben“ (knapp). Eine Korrekturrunde, eingearbeitet:
+  - **Dialog während einer laufenden Bedienung gesperrt** (Escape über `cancel`, „Abbrechen“, Schließen,
+    erneutes Öffnen; alle Knöpfe disabled): genau ein POST. Die Antwort gehört zu Workflow, Projekt und Dialog
+    beim Absenden — nach einem Wechsel wird sie verworfen (keine Meldung von A unter B, kein Schließen eines neu
+    geöffneten Dialogs). Eine Stand-Änderung während der Anfrage schließt den Dialog erst mit der Antwort
+    (kein kurzes „Stand geändert“ über der eigenen Entscheidung); ein Fehler bei geändertem Stand steht am Ablauf.
+  - **Fehlerzustand des Details** (404, 500, Netz): Timeline, Blick, Aktionen und F12 geleert, kein Dialog aus dem
+    alten Stand, der Bedienblock nur ausgeblendet (angefangene Begründungen überstehen einen kurzen Fehler); der
+    Fehler flackert bei Poll-Ticks nicht mehr.
+  - **Nur die Empfehlung geändert** (etwa nach „Freigeben & installieren“ im Dialog): eigene Meldung im Stil
+    Hinweis, die Begründung steht beim erneuten Öffnen wieder im Feld; ein Dialog anderer Art lässt die gerettete
+    Begründung liegen.
+  - **F4/F5 übersetzt** (`empfehlung-anzeige.js`, `empfehlung-installation.js`; Schlüssel `empfehlung.*`,
+    `installation.*`, deutsche Texte wortgleich, Pluralformen über `Intl`), „Wird genutzt“/„Passt, nicht im Lauf“
+    als Ankreuzliste mit disabled-Checkboxen (rein anzeigend, „Anzeige = Start“ unverändert), Knöpfe im Stil
+    `.button`. Gilt auch im Workboard-Vorschlag (WS-3b), dort derselbe Baustein.
+  - **Design:** Timeline-Text 12/10 px in `--muted` wie die Vorlage; Listenzeile ≤ 700 px mit Status und Pfeil
+    untereinander, h3 18 px, Status 9 px; „Auf einen Blick“ ≤ 700 px einspaltig; kein Dialogschatten; der vom
+    Server genannte Schritt ist „current“ (amber) auch nach seinem Lauf (Rückfrage des Architekten).
+  - Strg/Cmd-Klick auf eine Zeile öffnet einen neuen Tab; `ersetzeRoute` setzt den Merker des Routers zurück.
+  - **Tests:** `views/workflows-dialog.test.mjs` (Stand-Änderung mit geretteter Begründung, Sperre und genau ein
+    POST, späte Antwort verworfen, 409 im Dialog, Ladefehler; Rotfall belegt), Timeline im Klärungsfall.
+  - **Nachweise ergänzt:** hell 390 (Liste, Freigabe-Dialog), Tab-Fokus im Dialog, Deep-Link 404 (bleibt nach
+    Poll-Ticks stehen), Installation im Dialog mit geretteter Begründung, Spalte „Fokus-ID“.
+  Nicht übernommen: die Reihenfolge Bedienblock vor der Aktionszeile und der Satz „siehe Block ‚Bedienung‘ oben“
+  in der Abnahme (beides WS-4b, Prüfpunkt unten); `workflows.js` schneiden und `tx()` zusammenführen (F-935);
+  Browser-Zurück bei offenem Dialog verwirft die Begründung ohne Rückfrage (Klasse F-885, offen).
+
+### Akzeptanzkriterien WS-4a
+- **WS4a-1** `#/workflows/<id>` als ganze Seite nach d_workflow_neu (Timeline, Auf einen Blick, Aktionen,
+  F12), Liste/Startfehler/Läufe ausgeblendet; reine Anzeigeabbildung von `status`/`naechster.art`
+  (`workflow-detail.test.mjs`).
+- **WS4a-2** Freigabe, Ablehnen und Stoppen nur über den Dialog mit Pflichtbegründung; „Anzeige = Start“
+  (`data-empfehlung-ids`), Fehler im offenen Dialog, Schließen bei Stand-Änderung; Gates f15 und
+  f20-leitstand-shell (CI), `empfehlung-*.test.mjs` grün.
+- **WS4a-3** `#/runs` mit Seitenkopf und Liste „Aufträge“ samt Leer- und Fehlerzustand; Startfehler und
+  Läufe unverändert.
+- **WS4a-4** F-874, F-923, F-925 erledigt; F-926 für das Workflow-Detail (`projekt-wechsel.test.mjs`,
+  `router.test.mjs`).
+- **WS4a-5** Texte in de/en/tr/ru (einschließlich F4/F5), i18n-Gate und `npm run check` grün; Render-Nachweise
+  liegen vor.
+
+### Prüfpunkte für WS-4b (aus dem Prüfpass WS-4a)
+- Reihenfolge: In der Vorlage steht die Aktionszeile direkt unter der Timeline; heute liegt der bisherige
+  Bedienblock (Architekt, Sichtung, Reparatur) dazwischen.
+- Die Abnahme sagt im Freigabe-Halt „siehe Block ‚Bedienung‘ oben“ — die Freigabe liegt seit WS-4a in der
+  Aktionszeile bzw. im Dialog.
+- Die Texte der Blöcke von WS-4b (Architekt, Sichtung, Reparatur, Abnahme) sind noch deutsch.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

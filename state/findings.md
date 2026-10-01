@@ -11499,13 +11499,13 @@ Maßnahme: Den Kasten mit dem Paket ausliefern, das die Fragezeichen-Hinweise ba
 Status: erledigt (F44 WS-1b, Branch `feat/f725-ws1b-shell`, 30.09.2026): Kasten ausgeblendet (Auftrag WS-1b, Punkt 8), dazu der Schlüssel `einstellungen.hinweis` in de/en/tr/ru entfernt, weil ihn kein t()-Aufruf mehr nutzt; er kommt mit dem Paket der Fragezeichen-Hinweise wieder.
 Feature/Run: Prüfpass F44 WS-1a, 30.09.2026.
 
-**F-874** · `BUG` · P2 · offen
+**F-874** · `BUG` · P2 · erledigt
 Titel: Das Workflow-Detail pollt nach einem Projektwechsel die workflowId des alten Projekts weiter.
 Beschreibung: `views/workflows.js` hat keinen Abonnenten von `abonniereProjektWechsel`. Ist beim Wechsel ein Workflow-Detail offen, fragt sein Detail-Auffrischer die workflowId des alten Projekts über den Präfix des neuen ab — bei jedem Tick ein 404 (Fehlerklasse F26 im Chat). Eine angefangene Pflichtbegründung im Freigabedialog gehört ebenfalls zum alten Projekt. Keine Regression von F44 WS-1a; gefunden im QA-Pass WS-1a.
 Fundstelle: `public/leitstand/views/workflows.js` (Detail-Auffrischer, `schliesseWorkflowDetail` nur bei `#/runs` bzw. Schließen-Knopf).
 Auswirkung: Mittel — Dauer-404 im Hintergrund, Detail zeigt Stand des alten Projekts.
 Maßnahme: In F44 WS-4 (Ablauf & Abnahme) `abonniereProjektWechsel` ergänzen: Detail schließen, Bedienung verwerfen; Verhalten bei angefangener Begründung festlegen.
-Status: offen.
+Status: erledigt (F44 WS-4a, 01.10.2026): `views/workflows.js` abonniert `abonniereProjektWechsel` (verwirfNachProjektWechsel). Beim Wechsel schließen Dialog und Detail ohne Wirkung, Bedienzustand und ein offener Reparaturentwurf werden verworfen, der Detail-Auffrischer fragt den alten Workflow nicht mehr ab, und ein Hash `#/workflows/<id>` geht ohne neuen History-Eintrag auf `#/runs`. Eine angefangene Begründung wird dabei verworfen (Entscheidung zu offenen Eingaben: F-885, offen). Test `projekt-wechsel.test.mjs` (Rotfall belegt).
 Feature/Run: QA-Pass F44 WS-1a, 30.09.2026.
 
 **F-875** · `TECH_DEBT` · P3 · offen
@@ -11604,7 +11604,7 @@ Beschreibung: Seit WS-1b reicht für einen Projektwechsel ein Klick in der Kopfa
 Fundstelle: `public/leitstand/shell.js` (initProjektAuswahl), `public/leitstand/projekt-kontext.js` (setzeAktivesProjekt).
 Auswirkung: Mittel — Verlust einer getippten Begründung.
 Maßnahme: Verhalten festlegen (Rückfrage, wenn eine Eingabe offen ist, oder Entwurf je Projekt halten) und mit F-874 in WS-4 umsetzen.
-Status: offen. Vermerk (Challenger, 01.10.2026): von P2 auf P3 gesenkt; Auslöser für die Umsetzung ist ein realer Verlust einer Eingabe.
+Status: offen. Vermerk (Challenger, 01.10.2026): von P2 auf P3 gesenkt; Auslöser für die Umsetzung ist ein realer Verlust einer Eingabe. Vermerk F44 WS-4a (01.10.2026): Seit WS-4a verwirft der Projektwechsel eine angefangene Begründung im Freigabe- bzw. Stoppdialog ohne Rückfrage (F-874); dieselbe Klasse ist Browser-Zurück bei offenem Dialog (der Dialog schließt ohne Wirkung, die Begründung ist weg). Gerettet wird sie nur, wenn eine Stand-Änderung den Dialog schließt und derselbe Halt wieder geöffnet wird.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
 
 **F-886** · `BUG` · P3 · offen
@@ -11877,13 +11877,13 @@ Maßnahme: Sichtungsrunde der alten P1 (schließen, herabstufen, bestätigen); p
 Status: offen.
 Feature/Run: Entdeckt: Verifikation F44 WS-2b.
 
-**F-916** · `TECH_DEBT` · P3 · offen
+**F-916** · `TECH_DEBT` · P3 · verworfen
 Titel: Abnahme-Vorauswahl ohne Erzeuger nach dem Entfernen des Bentos.
 Beschreibung: Die Abnahme-Vorauswahl (`ABNAHME_VORSCHLAG_SCHLUESSEL`) hat nach dem Entfernen des Bentos keinen Erzeuger mehr. Korrektur zur Fundstelle des Auftrags: Erzeuger (Aktionsleiste „AI Workflow“) und Verbraucher (`beobachteAbnahmeVorschlag`, hebt in `#/workflows/<id>` den passenden Abnahme-Knopf hervor) lagen beide in `views/workboard.js` und hingen nur am Bento; mit ihm sind beide entfernt, samt der CSS-Regel `.abnahme-vorgewaehlt`. `views/workflows.js` ist unverändert und hatte keinen eigenen Verbraucher.
 Fundstelle: `public/leitstand/views/workboard.js` (bis F44 WS-3a: ABNAHME_VORSCHLAG_SCHLUESSEL, beobachteAbnahmeVorschlag, initBentoBedienung); Ziel `public/leitstand/views/workflows.js` (`#wf-abnahme-begruendung`, `.wf-abnahme-aktion`).
 Auswirkung: Niedrig — der Sprung aus einer Übersicht in die Abnahme wählt keine Aktion mehr vor; die Abnahme selbst ist unverändert.
 Maßnahme: In WS-4 aus dem neuen Abnahmeblock bzw. der Übersicht wieder anbinden oder endgültig verwerfen.
-Status: offen.
+Status: verworfen (F44 WS-4a, 01.10.2026): Die Vorauswahl hat keinen Erzeuger mehr und bringt gegenüber der Abnahmeseite keinen Nutzen — dort stehen Annehmen, Ablehnen und Anpassung anfordern mit Pflichtbegründung ohnehin direkt bereit.
 Feature/Run: Entdeckt: Challenge F44 WS-3.
 
 **F-917** · `TECH_DEBT` · P2 · entschieden
@@ -11940,13 +11940,13 @@ Maßnahme: Stefan entscheidet: Einstieg sperren oder mit Rückfrage versehen, so
 Status: erledigt (F44 WS-3b, Entscheidung Challenger 01.10.2026, reversibel): „Auftrag vorbereiten“ ist für Feature und Finding gesperrt (disabled, aria-disabled, Hinweis über i18n in de/en/tr/ru, Link „Ablauf öffnen“ auf `#/workflows/<id>`), solange ein verknüpfter Workflow nicht terminal ist (`laufenderWorkflow` in `entwicklung-daten.js` auf derselben Menge NICHT_TERMINALE_WORKFLOW_STATUS wie das Board) oder die Abnahme offen ist (dieselbe Angabe wie „Ergebnis prüfen“); solange die Verknüpfung noch lädt, ebenfalls gesperrt. Test in `projekt-wechsel.test.mjs` (gesperrt bei laufendem Ablauf, gesperrt bei offener Abnahme, frei bei terminalem Ablauf ohne offene Abnahme; ein Klick auf den gesperrten Knopf sendet nichts). Restlücke: Zwischen dem Anlegen des Auftrags und dem Erscheinen des Router-Workflows im Aggregat gibt es noch keinen verknüpften Workflow — wer in diesem Fenster wegnavigiert und zurückkehrt, sieht den Einstieg frei (Weg 1 der Beschreibung).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
-**F-923** · `BUG` · P3 · offen
+**F-923** · `BUG` · P3 · erledigt
 Titel: Nach einem Projektwechsel bleibt der Hash auf dem Detail des alten Projekts.
 Beschreibung: Ist `#/workboard/<id>` offen und wechselt das Projekt, schließt der Neuladen-Hook das Detail und zeigt die Übersicht, der Hash bleibt aber `#/workboard/<id>`. Ein Neuladen (F5) öffnet dann das Detail derselben ID im neuen Projekt — gleiche IDs sind zwischen Projekten üblich.
 Fundstelle: `public/leitstand/views/workboard.js` (ladeNachProjektWechsel).
 Auswirkung: Niedrig — verwirrender Zustand nach Neuladen.
 Maßnahme: Beim Wechsel mit offenem Detail den Hash ohne neuen History-Eintrag auf `#/workboard` setzen (history.replaceState plus dispatch) und `projekt-wechsel.test.mjs` ergänzen.
-Status: offen.
+Status: erledigt (F44 WS-4a, 01.10.2026): `router.js` `ersetzeRoute` (history.replaceState plus dispatch); `views/workboard.js` ladeNachProjektWechsel setzt ein offenes `#/workboard/<id>` damit auf `#/workboard`, `views/workflows.js` ein offenes `#/workflows/<id>` auf `#/runs`. Der Wechsel über den Kopf tat das bereits (`shell.js` DETAIL_ROUTEN); die View-Hooks gelten für jeden Wechselweg. Tests in `projekt-wechsel.test.mjs`.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
 **F-924** · `BUG` · P3 · offen
@@ -11955,25 +11955,25 @@ Beschreibung: Die Workitem-Liste übernimmt jeden Ordner unter `features/` (etwa
 Fundstelle: `public/leitstand/views/workboard.js` (renderBearbeitungsAbschnitt), `public/leitstand/views/workboard-detail.js` (akteHinweis), `src/workboard/features.ts`.
 Auswirkung: Niedrig.
 Maßnahme: Einstieg nur bei lesbarer Akte anbieten (nach dem Nachtrag), sonst ein Hinweis; den Parser-Befund für Ordner außerhalb des Musters in E6 zeigen.
-Status: offen.
+Status: offen → Fixpaket Arbeitsfähigkeit B5 (Vermerk F44 WS-4a, 01.10.2026).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa, code-reviewer), 01.10.2026.
 
-**F-925** · `BUG` · P3 · offen
+**F-925** · `BUG` · P3 · erledigt
 Titel: Eine kaputte Prozent-Kodierung im Hash wirft im Router.
 Beschreibung: `dispatch` ruft `decodeURIComponent` ohne `try` auf; ein Deep-Link wie `#/workboard/%E0%A4%A` wirft einen URIError, die Seite bleibt im vorherigen Zustand. Älter als WS-3b, betrifft aber den neuen Deep-Link.
 Fundstelle: `public/leitstand/router.js` (dispatch).
 Auswirkung: Niedrig.
 Maßnahme: Dekodierung abfangen und auf die Standardroute bzw. „nicht gefunden“ leiten; Test.
-Status: offen.
+Status: erledigt (F44 WS-4a, 01.10.2026): `dispatch` dekodiert vor dem Umschalten der View; ein URIError führt ohne neuen History-Eintrag auf die Standardroute (`ersetzeRoute`), kein onEnter sieht den kaputten Wert. Test `router.test.mjs`.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
-**F-926** · `TECH_DEBT` · P3 · offen
+**F-926** · `TECH_DEBT` · P3 · offen (teilweise erledigt)
 Titel: „← zurück“ im Detail legt einen History-Eintrag an; nach Browser-Zurück fehlt ein Fokusziel.
 Beschreibung: Der Zurück-Knopf navigiert über `navigiere('#/workboard')`, das einen neuen Eintrag anlegt — Browser-Zurück öffnet danach das Detail wieder. Nach Browser-Zurück aus dem Detail setzt niemand den Fokus; er liegt auf der verborgenen Überschrift des Details. Die zuvor geöffnete Karte bekommt den Fokus nicht zurück.
 Fundstelle: `public/leitstand/views/workboard.js` (initListenBedienung, Route `#/workboard`).
 Auswirkung: Niedrig (Tastatur, Screenreader).
 Maßnahme: Zurück über history.back(), wenn der vorige Eintrag die Übersicht war; beim Schließen den Fokus auf die Karte bzw. Zeile des Eintrags legen.
-Status: offen.
+Status: offen, teilweise erledigt (F44 WS-4a, 01.10.2026; Kopfzeile „offen (teilweise erledigt)“, damit der Workitem-Parser den offenen Rest nicht als ERLEDIGT zählt): Für das Workflow-Detail geht „← Alle Aufträge“ per `history.back()` zurück, wenn der vorige Eintrag `#/runs` war, sonst per navigiere; danach (auch nach Browser-Zurück) liegt der Fokus auf der Zeile des Workflows. Offen bleibt der Workboard-Teil (`#/workboard/<id>`), nicht mitgebaut.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
 **F-927** · `TECH_DEBT` · P3 · offen
@@ -11982,7 +11982,7 @@ Beschreibung: „Wer macht was“ im Detail zeigt unter jedem Schritt „Worker 
 Fundstelle: `public/leitstand/views/workboard-detail.js` (werBlock), `public/leitstand/views/workboard.js` (pruefeDetailNachtrag).
 Auswirkung: Niedrig.
 Maßnahme: Laufakte des laufenden Schritts wie `fokus-daten.js` ladeFokusNachtrag nachladen (beim Öffnen und bei Übergängen); Zahl weiterer Abläufe mit Link; fehlende Quelle nennen.
-Status: offen.
+Status: offen → Fixpaket Arbeitsfähigkeit B5 (Vermerk F44 WS-4a, 01.10.2026).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (design-guardian, qa), 01.10.2026.
 
 **F-928** · `TECH_DEBT` · P3 · offen
@@ -11991,7 +11991,7 @@ Beschreibung: WS-3b hat das Rendern des Details nach `views/workboard-detail.js`
 Fundstelle: `public/leitstand/views/workboard.js`, `public/leitstand/empfehlung-anzeige.test.mjs`.
 Auswirkung: Niedrig — Wartbarkeit.
 Maßnahme: In WS-4 oder im Fixpaket „Arbeitsfähigkeit“ ein Modul `views/click-to-work.js` mit klarer Schnittstelle (Workitem, Container) schneiden; Test und Gate begründet mitziehen.
-Status: offen.
+Status: offen → Fixpaket Arbeitsfähigkeit B5 (Vermerk F44 WS-4a, 01.10.2026).
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (code-reviewer), 01.10.2026.
 
 **F-929** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12038,3 +12038,57 @@ Auswirkung: Niedrig — Erkenntnisse aus Läufen gehen verloren; fehlende Grundl
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1: nach der Abnahme ein Lessons-Eintrag; Grundlage für F-930 (K2).
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-934** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Abgleich §3/§5.1 vs. §9 widersprüchlich bei F7, F1 offen.
+Beschreibung: `docs/design/abgleich-f725.md` §5.1 ordnete WS-4 „Abschnitt F vollständig, einschließlich … F7“ zu, §9 dagegen `d_ausfuehrung_failed` (G2–G9, F7) dem Paket WS-5; F1 (`d_auftrag_neu`) stand in §9 offen bei „WS-4 / WS-5“. Ohne Festlegung hätte WS-4a entweder F7 und F1 ungefragt mitgebaut oder stillschweigend ausgelassen.
+Fundstelle: `docs/design/abgleich-f725.md` §3 (F1, F7), §5.1, §9.
+Auswirkung: Niedrig — Zuschnittsunklarheit, keine Verhaltensänderung.
+Maßnahme: Vermerk WS-4a in §5.1: WS-4 geteilt in WS-4a (F0, F2, F3, F3b, F4, F5, F10, F12) und WS-4b (F6, F8, F9, F13–F18); F7 und F1 gehen nach WS-5. Pakettabelle in `features/F44/feature.md` nachgezogen.
+Status: erledigt durch den Vermerk WS-4a (F44 WS-4a, 01.10.2026).
+Feature/Run: Auftrag Stefan F44 WS-4a, 01.10.2026.
+
+**F-935** · `TECH_DEBT` · P3 · offen
+Titel: `views/workflows.js` ist mit rund 1 500 Zeilen zu groß; `tx()` ist dreifach dupliziert.
+Beschreibung: WS-4a hat das Rendern von Liste und Detailseite nach `views/workflow-detail.js` ausgelagert. In `views/workflows.js` liegen weiter Abnahme, Reparaturzug, Bedienung und die neue Dialogsteuerung (offenerDialog, laufendeDialogBedienung, geretteteBegruendung). Der Helfer `tx()` (escapter, übersetzter Text) steht gleich in `views/workflows.js`, `views/workflow-detail.js` und `views/workboard-detail.js`; `txHtml` liegt in `empfehlung-anzeige.js`.
+Fundstelle: `public/leitstand/views/workflows.js`, `views/workflow-detail.js`, `views/workboard-detail.js`, `empfehlung-anzeige.js`.
+Auswirkung: Niedrig — Wartbarkeit.
+Maßnahme: In WS-4b (Abnahme und Reparatur werden ohnehin umgebaut) die Dialogsteuerung und die Abnahme in eigene Module schneiden; `tx`/`txHtml` einmal in `render.js` oder `i18n.js` anbieten. Gates f15/f23/f42 begründet mitziehen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-4a (code-reviewer), 01.10.2026.
+
+**F-936** · `PROCESS_IMPROVEMENT` · P1 · offen
+Titel: Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.
+Beschreibung: Projektbeschreibung, Arbeitsweise, Roadmap/Vision und Lagebild bekommen nur Router und Jarvis. Der Architekt bekommt Auftragstext, Rolleninstruktion und die entschiedenen ADRs, bei offenem Stack die Stackliste und im Projektmodus einen Capability-Auszug. Dass Codex im Read-only-Sandbox selbst Repo-Dateien liest, ist Zufall und kein Verfahren.
+Fundstelle: `scripts/leitstand-server.mjs`, `baueProjektkontextAnfragen` (ca. Z. 1996); aufgerufen nur für Router und Jarvis (ca. Z. 6949, 7126); Architekt-Kontext ca. Z. 4870 ff.
+Auswirkung: Hoch. Planende und prüfende Rollen urteilen ohne Vision und Ziele.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Eine Projektkarte (Vision, Ziele, Roadmap, Lagebild) geht an alle planenden und prüfenden Rollen. Architekt, Advisor und Review bekommen zusätzlich ARCHITECTURE.md und die ADRs. Zusammen mit F-929 und F-930.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
+
+**F-937** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Die Laufakte-Beobachtung (Skill-, Subagent- und MCP-Aufrufe) erreicht weder Review noch Abnahme.
+Beschreibung: Die Laufakte erfasst `skill_aufrufe`, `subagent_aufrufe` und `mcp_aufrufe` (claude-code-gateway). Angezeigt wird das nur im Leitstand. Code-Review und Abnahme bekommen es nicht und können deshalb nicht prüfen, ob die vorgesehenen Skills und Agents benutzt wurden.
+Fundstelle: `public/leitstand/beobachtung-zeile.js`; Laufakte (claude-code-gateway).
+Auswirkung: Mittel. „Harness als Verfahren“ (E-M5-19) ist nicht nachprüfbar.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1. Das Review prüft „vorgesehen gegen benutzt“, die Abnahme zeigt eine Kurzliste der benutzten Fähigkeiten.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
+
+**F-938** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Aufträge aus Findings tragen weder AK noch Nicht-Ziele, und keine Rolle bekommt eine DoD.
+Beschreibung: Ein Auftrag aus einer Feature-Akte (F35) trägt AK und Nicht-Ziele. Das Review urteilt dann je AK; berührt eine Änderung ein Nicht-Ziel, ist das ein Befund HOCH (`src/ak-pruefung/index.ts` ca. Z. 112). Ein Auftrag per Click-to-Work aus einem Finding trägt nur einen Auftragstext, und das Review läuft dann ohne AK-Block. Eine DoD als Eingabe gibt es für keine Rolle (siehe F-829).
+Fundstelle: `baueAuftragstext` (`public/leitstand/views/workboard.js`), `src/ak-pruefung`, F-829.
+Auswirkung: Mittel. Aufträge aus Findings sind bei der Abnahme nicht gegen AK prüfbar.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 2. Das „Arbeitspaket“ wird das einzige Übergabeformat, mit den Pflichtfeldern Ziel, AK mit IDs, Nicht-Ziele, DoD, betroffene Bereiche, Risiko und Kontrolltiefe. Bei Findings entsteht ein AK-Entwurf aus der Maßnahme, den Stefan bestätigt.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
+
+**F-939** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Das Projekt-Skelett hat keine Mindest-Qualitätsgates.
+Beschreibung: `vorlagen/projekt-skelett` bringt nur check-contract, check-docs und check-rules mit. Lint, Typecheck, Tests mit Untergrenze sowie ein Abhängigkeits- und Sicherheitsscan sind nicht vorgegeben. Der Prüfschritt führt nur aus, was das Fremdprojekt selbst in `npm run check` definiert.
+Fundstelle: `vorlagen/projekt-skelett/scripts`.
+Auswirkung: Mittel. Wie gut der Code wird, hängt davon ab, was der Architekt im Fremdprojekt zufällig einrichtet.
+Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 bzw. 3. Eine stack-abhängige Gate-Vorlage mit allen vier Gates in `npm run check`, die der Architekt bei der Stack-Entscheidung mit anlegt. Der Prüfschritt bricht bei Rot ab.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
