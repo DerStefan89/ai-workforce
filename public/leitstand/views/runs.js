@@ -30,7 +30,7 @@
 import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
-import { escapeHtml } from '../render.js'
+import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { abonniere, pollJetzt } from '../zustand.js'
 import {
@@ -90,7 +90,7 @@ function renderAusfuehrungen(zustand) {
   const liste = renderLaufListe(zustand.laeufe, zustand.aktiverLauf)
   if (liste !== letzteListeHtml) {
     letzteListeHtml = liste
-    document.getElementById('laeufe').innerHTML = liste
+    ersetzeListeMitFokus(document.getElementById('laeufe'), liste, '.lauf-zeile', 'laufId')
   }
   const startfehler = renderStartfehlerListe(zustand.startfehler)
   if (startfehler !== letzteStartfehlerHtml) {
@@ -166,7 +166,8 @@ function zeigeLaufNichtLadbar(text) {
   zeigeMeldung(null)
   if (laufendeDialogBedienung === null) schliesseDialog()
   const anzeige = document.getElementById('lauf-detail-fehler')
-  anzeige.innerHTML = `<strong>${tHtml('lauf.fehler.titel')}</strong><p>${escapeHtml(text)}</p>`
+  // F44 WS-5b (Prüfpunkt WS-5a): „Erneut laden“ lädt dasselbe Detail neu, ohne die Seite zu verlassen.
+  anzeige.innerHTML = `<strong>${tHtml('lauf.fehler.titel')}</strong><p>${escapeHtml(text)}</p><div class="action-row"><button type="button" class="button" data-aktion="erneut-laden">${tHtml('lauf.aktion.erneutLaden')}</button></div>`
   anzeige.hidden = false
   // Keine Live-Region: ein Screenreader liest den Fehler über den Fokus.
   anzeige.focus()
@@ -468,8 +469,8 @@ async function bereiteFortsetzungVor(laufId, knopf) {
     knopf.disabled = false
   }
   navigiere('#/projekt')
+  // F44 WS-5b: wendeWiederaufnahmeAn öffnet den aufklappbaren Direktstart und legt den Fokus darauf.
   await wendeWiederaufnahmeAn(detail, laufId, projektId)
-  document.getElementById('start-starten').scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 
 // ─── Bedienung, Routen, Projektwechsel ──────────────────────────────────────
@@ -495,6 +496,10 @@ function initBedienung() {
     } else if (aktion.endsWith('-oeffnen')) {
       oeffneDialog(aktion.slice(0, -'-oeffnen'.length))
     }
+  })
+  document.getElementById('lauf-detail-fehler').addEventListener('click', (ereignis) => {
+    if (!ereignis.target.closest('[data-aktion="erneut-laden"]') || gewaehlteLaufId === null) return
+    void ladeLaufDetail(gewaehlteLaufId, true)
   })
   const dialog = document.getElementById('lauf-dialog')
   dialog.addEventListener('click', (ereignis) => {

@@ -1,0 +1,500 @@
+{
+  "url": "http://127.0.0.1:4173/#/projekt",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "light",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-projekt"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "nw-fehl",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "FEHLGESCHLAGEN",
+              "terminalSequenz": 2
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-01T10:42:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-browser",
+              "titel": "Browser-Prüfung"
+            },
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "json": [
+        {
+          "auftragId": "a-browser",
+          "titel": "Browser-Prüfung",
+          "erstellt_am": "2026-10-01T10:30:00.000Z"
+        },
+        {
+          "auftragId": "a-login",
+          "titel": "Login-Seite reparieren",
+          "erstellt_am": "2026-10-01T09:12:00.000Z"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/startvorlage/werkzeugsaetze",
+      "json": [
+        {
+          "name": "lesen",
+          "modus": "nur_lesen",
+          "erlaubte_werkzeuge": [
+            "Read",
+            "Grep",
+            "Glob"
+          ]
+        },
+        {
+          "name": "bearbeiten",
+          "modus": "schreiben",
+          "erlaubte_werkzeuge": [
+            "Read",
+            "Edit",
+            "Write"
+          ]
+        }
+      ]
+    },
+    {
+      "muster": "**/api/laeufe/nw-fehl",
+      "methode": "GET",
+      "json": {
+        "laufId": "nw-fehl",
+        "fortschritt": null,
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "FEHLGESCHLAGEN",
+          "terminalSequenz": 2
+        },
+        "aktiv": false,
+        "verweigertDaten": null,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-browser",
+          "titel": "Browser-Prüfung",
+          "auftragstext": "Prüfe die Abnahme-Seite im Browser."
+        },
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "qa",
+          "elemente": [
+            {
+              "pfad": "artefakt:kontext-nw"
+            },
+            {
+              "pfad": "features/F35/feature.md"
+            },
+            {
+              "pfad": "public/leitstand/views/projekt.js"
+            }
+          ],
+          "ausgeschlossen": []
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-01T10:31:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-01T10:42:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "FEHLGESCHLAGEN"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workflows/router-nw-h",
+      "json": {
+        "daten": {
+          "workflow_id": "router-nw-h",
+          "auftrag_id": "nw-h",
+          "version": 1,
+          "ziel": "Login-Seite reparieren",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s1",
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "WARTET_FREIGABE",
+              "nachfolger": "s2",
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 1,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "grund": "Schritt s1 verlangt eine Freigabe",
+          "schrittId": "s1"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/router-nw-h/abnahme",
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s1"
+        },
+        "entscheidung": {
+          "status": "fehlt"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Schritt aktuell",
+        "selector": "#auftrag-schritte [aria-current=\"step\"]"
+      },
+      {
+        "name": "Notiz Schritt 2",
+        "selector": "#auftrag-vorbereitung-notiz"
+      },
+      {
+        "name": "Notiz-Klasse",
+        "selector": "#auftrag-vorbereitung-notiz",
+        "attribut": "class"
+      },
+      {
+        "name": "Fehler Anlegen",
+        "selector": "#auftrag-anlegen-fehler"
+      },
+      {
+        "name": "Ablauf-Titel",
+        "selector": "#workflow-detail-titel"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Formular (Schritt 1)",
+        "id": "auftrag-formular"
+      },
+      {
+        "name": "Schritt 2",
+        "id": "auftrag-vorbereitung"
+      },
+      {
+        "name": "Wiederaufnahme-Hinweis",
+        "id": "start-wiederaufnahme-hinweis"
+      },
+      {
+        "name": "Ablauf-Seite",
+        "id": "workflow-detail"
+      },
+      {
+        "name": "Sperrhinweis „ohne Ablauf“",
+        "id": "direktstart-anlegen-gesperrt"
+      },
+      {
+        "name": "Lauf-Fehlerzustand",
+        "id": "lauf-detail-fehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Coach „kommt“ (aria-disabled)",
+        "selector": "#auftrag-aktionen .kommt-knopf[aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Knopf „Erneut versuchen“",
+        "selector": "#auftrag-vorbereitung [data-aktion=\"erneut\"]"
+      },
+      {
+        "name": "Direktstart offen",
+        "selector": "#direktstart[open]"
+      },
+      {
+        "name": "„Auftrag ohne Ablauf anlegen“ gesperrt",
+        "selector": "#auftrag-anlegen:disabled"
+      },
+      {
+        "name": "Knopf „Erneut laden“ (Lauf-Detail)",
+        "selector": "#lauf-detail-fehler [data-aktion=\"erneut-laden\"]"
+      },
+      {
+        "name": "Freigabe auf der Ablauf-Seite",
+        "selector": "#workflow-aktionen [data-aktion=\"freigabe-oeffnen\"]"
+      },
+      {
+        "name": "zweite Live-Region (muss fehlen)",
+        "selector": "#view-projekt [aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Leer: Eyebrow, Frage, Schrittanzeige (1 aktuell), Titel, Ergebnis, Kontext zu, Notiz, „Ablauf vorbereiten“, Coach „kommt“, Direktstart zu",
+      "warteAufSelector": {
+        "selector": "#start-auftrag option[value=\"a-browser\"]",
+        "timeoutMs": 15000,
+        "zustand": "attached"
+      },
+      "screenshot": "l1440-1-leer.webp"
+    },
+    {
+      "label": "Ausgefüllt, „Kontext hinzufügen · optional“ offen",
+      "tippen": {
+        "selector": "#auftrag-titel",
+        "text": "Login-Seite reparieren"
+      }
+    },
+    {
+      "label": "Ergebnis tippen",
+      "tippen": {
+        "selector": "#auftrag-auftragstext",
+        "text": "Nach dem Login landet man wieder auf der Übersicht, auch bei abgelaufener Sitzung."
+      }
+    },
+    {
+      "label": "Kontext öffnen",
+      "klick": "#auftrag-kontext-bereich summary"
+    },
+    {
+      "label": "Kontext tippen",
+      "tippen": {
+        "selector": "#auftrag-kontext",
+        "text": "Betrifft public/leitstand/app.js; Fehlerbild im Ticket vom 30.09."
+      },
+      "screenshot": "l1440-2-ausgefuellt-kontext.webp"
+    },
+    {
+      "label": "Klick „Ablauf vorbereiten“ → 201, routen → 202: Schritt 2 „Jarvis bereitet den Ablauf vor …“ mit Auftrag und laufId, Fokus auf der Notiz",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/auftraege",
+          "methode": "POST",
+          "status": 201,
+          "json": {
+            "auftragId": "nw-a1"
+          }
+        },
+        {
+          "muster": "**/api/auftraege/nw-a1/routen",
+          "methode": "POST",
+          "status": 202,
+          "json": {
+            "laufId": "router-nw-a1-1759312800000"
+          }
+        }
+      ],
+      "klick": "#auftrag-ablauf-vorbereiten",
+      "warteAufSelector": {
+        "selector": "#auftrag-vorbereitung-notiz [data-aktion=\"neu\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l1440-3-schritt2-wartet.webp"
+    },
+    {
+      "label": "„Neuen Auftrag beschreiben“ → Schritt 1, Text steht noch",
+      "klick": "#auftrag-vorbereitung [data-aktion=\"neu\"]",
+      "warteAufSelector": {
+        "selector": "#auftrag-formular",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Erneut „Ablauf vorbereiten“ → 201, routen → 409 (D13): bernsteinfarbene Notiz mit grund roh, „Erneut versuchen“",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/auftraege",
+          "methode": "POST",
+          "status": 201,
+          "json": {
+            "auftragId": "nw-a2"
+          }
+        },
+        {
+          "muster": "**/api/auftraege/nw-a2/routen",
+          "methode": "POST",
+          "status": 409,
+          "json": {
+            "grund": "ein anderer, über diese Serverinstanz gestarteter Lauf ('router-a-bau-1759310000000') ist noch aktiv (D13) — genau ein aktiver Arbeitsstrang"
+          }
+        }
+      ],
+      "klick": "#auftrag-ablauf-vorbereiten",
+      "warteAufSelector": {
+        "selector": "#auftrag-vorbereitung .note.amber",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l1440-4-konflikt-409.webp"
+    },
+    {
+      "label": "„Erneut versuchen“ routet denselben Auftrag → 202; das Aggregat meldet einen Startfehler zu genau dieser laufId: rote Notiz, Fehler roh",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/auftraege/nw-a2/routen",
+          "methode": "POST",
+          "status": 202,
+          "json": {
+            "laufId": "router-nw-a2-1759312900000"
+          }
+        },
+        {
+          "muster": "**/api/zustand",
+          "json": {
+            "laeufe": [
+              {
+                "laufId": "nw-fehl",
+                "laufStatus": {
+                  "status": "ABGESCHLOSSEN",
+                  "ergebnis": "FEHLGESCHLAGEN",
+                  "terminalSequenz": 2
+                },
+                "ergebnis": "FEHLGESCHLAGEN",
+                "zeitpunkt": "2026-10-01T10:42:00.000Z",
+                "auftragsbezug": {
+                  "auftragId": "a-browser",
+                  "titel": "Browser-Prüfung"
+                },
+                "anzahlCheckpoints": 2,
+                "kettenintegritaet": true,
+                "kenntnisgenommen": false
+              }
+            ],
+            "startfehler": [
+              {
+                "zeitstempel": "2026-10-01T10:55:00.000Z",
+                "laufId": "router-nw-a2-1759312900000",
+                "fehler": "Router-Lauf 'router-nw-a2-1759312900000' ok:true, aber Laufakte 'laufakte-router-nw-a2-1759312900000' nicht gefunden"
+              }
+            ],
+            "workflows": [],
+            "fehler": [],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            },
+            "pruefbefehl": null,
+            "istAiWorkforce": true
+          }
+        }
+      ],
+      "klick": "#auftrag-vorbereitung [data-aktion=\"erneut\"]",
+      "warteAufSelector": {
+        "selector": "#auftrag-vorbereitung .note.red",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l1440-5-startfehler.webp"
+    },
+    {
+      "label": "Zum fehlgeschlagenen Lauf",
+      "navigiere": "#/runs/nw-fehl",
+      "warteAufSelector": {
+        "selector": "#lauf-notiz [data-aktion=\"fortsetzung\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "„Fortsetzung vorbereiten“ → #/projekt, Direktstart offen mit Wiederaufnahme-Hinweis, Auftrag und Evidenzdateien vorbelegt, Fokus auf dem Direktstart",
+      "klick": "#lauf-notiz [data-aktion=\"fortsetzung\"]",
+      "warteAufSelector": {
+        "selector": "#direktstart[open] #start-wiederaufnahme-hinweis",
+        "timeoutMs": 15000
+      },
+      "screenshot": "l1440-6-direktstart-wiederaufnahme.webp"
+    }
+  ]
+}

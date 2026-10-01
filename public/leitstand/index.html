@@ -114,54 +114,81 @@
 
         <section id="view-dashboard" data-view="dashboard" class="v10-seite" hidden></section>
 
-        <!-- F29 WS-D2 (Auftrag Punkt E): entfernter Hinweistext — Ausnahme vom sonst rein
-             lesenden Leitstand: das Startformular und die Wiederaufnahme-Bedienung schreiben real
-             (Auftrag anlegen, Lauf starten). -->
-        <section id="view-projekt" data-view="projekt" hidden>
-          <p class="hinweis">Auftrag anlegen und einen Lauf starten.</p>
+        <!-- F44 WS-5b (Vorlage V10 d_auftrag_neu, Abgleich F-725 F1, G10, G11; E-F44-3 = A): Hauptweg
+             „Ablauf vorbereiten“ (Auftrag anlegen → routen → Ablauf `#/workflows/router-<auftragId>`,
+             dort gibt der bestehende Dialog frei), Schritt 2 als Notiz in #auftrag-vorbereitung. Der
+             Direktstart eines Einzelschritts ist ein aufklappbarer Nebenweg (#direktstart) mit den
+             bisherigen IDs und unverändertem POST. Ausnahme vom sonst lesenden Leitstand: beide Wege
+             schreiben real (views/projekt.js). -->
+        <section id="view-projekt" data-view="projekt" class="v10-seite auftrag-seite" aria-labelledby="auftrag-seite-titel" hidden>
+          <button type="button" id="auftrag-zurueck" class="back"><span aria-hidden="true">←</span> <span data-i18n="auftrag.zurueck">Alle Aufträge</span></button>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow" data-i18n="auftrag.eyebrow">Ein klarer Auftrag</div>
+              <h1 id="auftrag-seite-titel" tabindex="-1" data-i18n="auftrag.titel">Was soll deine Workforce erledigen?</h1>
+              <p class="description" data-i18n="auftrag.beschreibung">Beschreibe das gewünschte Ergebnis. Jarvis bereitet daraus einen Ablauf vor.</p>
+            </div>
+          </div>
+          <ol id="auftrag-schritte" class="stepper" aria-label="Schritte" data-i18n-aria-label="auftrag.schritte">
+            <li data-schritt="1" class="active" aria-current="step"><b aria-hidden="true">1</b><span data-i18n="auftrag.schritt.auftrag">Auftrag</span></li>
+            <li data-schritt="2"><b aria-hidden="true">2</b><span data-i18n="auftrag.schritt.pruefen">Ablauf prüfen</span></li>
+            <li data-schritt="3"><b aria-hidden="true">3</b><span data-i18n="auftrag.schritt.freigeben">Freigeben</span></li>
+          </ol>
 
-          <section id="auftrag-start" class="card">
-            <h2>Auftrag &amp; Start</h2>
+          <form id="auftrag-formular" class="auftrag-formular" novalidate>
+            <label class="field" for="auftrag-titel" data-i18n="auftrag.feld.titel">Titel</label>
+            <input type="text" id="auftrag-titel" autocomplete="off" />
+            <label class="field" for="auftrag-auftragstext" data-i18n="auftrag.feld.ergebnis">Gewünschtes Ergebnis</label>
+            <textarea id="auftrag-auftragstext" rows="5"></textarea>
+            <details id="auftrag-kontext-bereich" class="auftrag-kontext">
+              <summary data-i18n="auftrag.kontext.zusammenfassung">Kontext hinzufügen · optional</summary>
+              <label class="field" for="auftrag-kontext" data-i18n="auftrag.kontext.feld">Kontext</label>
+              <textarea id="auftrag-kontext" rows="4" aria-describedby="auftrag-kontext-hinweis"></textarea>
+              <small id="auftrag-kontext-hinweis" data-i18n="auftrag.kontext.hinweis">Wird als eigener Absatz „Kontext:“ an das gewünschte Ergebnis angehängt. Hier werden keine Dateien hochgeladen.</small>
+            </details>
+            <div class="note" data-i18n="auftrag.notiz">Rolle und Arbeitsweise werden aus dem Projektkontext vorgeschlagen. Du prüfst den Ablauf, bevor etwas startet.</div>
+            <p id="auftrag-anlegen-fehler" class="fehler" tabindex="-1" hidden></p>
+            <div id="auftrag-aktionen" class="action-row">
+              <button type="submit" id="auftrag-ablauf-vorbereiten" class="button primary"><span data-i18n="auftrag.vorbereiten">Ablauf vorbereiten</span> <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+            </div>
+          </form>
+          <div id="auftrag-vorbereitung" class="auftrag-vorbereitung" hidden></div>
 
-            <div class="unterabschnitt">
-              <h3>Auftrag anlegen</h3>
-              <label for="auftrag-titel">Titel</label>
-              <input type="text" id="auftrag-titel" />
-              <label for="auftrag-auftragstext">Auftragstext</label>
-              <textarea id="auftrag-auftragstext" rows="4"></textarea>
-              <div><button id="auftrag-anlegen" class="btn">Auftrag anlegen</button></div>
-              <p id="auftrag-anlegen-fehler" class="fehler" hidden></p>
+          <details id="direktstart" class="direktstart">
+            <summary id="direktstart-titel" data-i18n="direktstart.titel">Einzelnen Arbeitsschritt direkt starten</summary>
+            <p class="description" data-i18n="direktstart.beschreibung">Für Ausnahmen: ein einzelner Arbeitsschritt ohne vorbereiteten Ablauf, mit fester Rolle und festem Modell.</p>
+
+            <div class="direktstart-anlegen">
+              <button type="button" id="auftrag-anlegen" class="button" data-i18n="direktstart.anlegen">Auftrag ohne Ablauf anlegen</button>
+              <small data-i18n="direktstart.anlegen.hinweis">Nimmt Titel, Ergebnis und Kontext von oben und legt nur den Auftrag an.</small>
+              <small id="direktstart-anlegen-gesperrt" data-i18n="direktstart.anlegen.gesperrt" hidden>Während ein Ablauf vorbereitet wird, nicht verfügbar — zuerst „Neuen Auftrag beschreiben“.</small>
             </div>
 
-            <div class="unterabschnitt">
-              <h3>Starten</h3>
-              <p id="start-wiederaufnahme-hinweis" class="hinweis" hidden>
-                Wiederaufnahme von Lauf <code id="start-wiederaufnahme-laufid"></code> — Auftrag und Evidenzdateien
-                unten sind daraus vorbelegt, wo ermittelbar. Werkzeugsatz bewusst nicht vorbelegt (F-161), bitte wählen.
-                <button type="button" id="start-wiederaufnahme-abbrechen" class="btn">Wiederaufnahme abbrechen</button>
-              </p>
-              <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
-
-              <label for="start-auftrag">Auftrag wählen</label>
-              <select id="start-auftrag"></select>
-
-              <label for="start-werkzeugsatz">Werkzeugsatz wählen</label>
-              <select id="start-werkzeugsatz"></select>
-
-              <fieldset id="start-evidenzdateien">
-                <legend>Evidenzdateien (repo-relative Pfade)</legend>
-                <div id="start-evidenzdateien-liste"></div>
-                <button type="button" id="start-evidenzdatei-hinzufuegen" class="btn">+ Datei</button>
-              </fieldset>
-
-              <label for="start-laufid">laufId</label>
-              <input type="text" id="start-laufid" />
-
-              <div><button id="start-starten" class="btn btn-primary">Starten</button></div>
-              <p id="start-erfolg" class="erfolg" hidden></p>
-              <p id="start-fehler" class="fehler" hidden></p>
+            <div id="start-wiederaufnahme-hinweis" class="note" hidden>
+              <p><span data-i18n="direktstart.wiederaufnahme.vor">Wiederaufnahme von Lauf</span> <code id="start-wiederaufnahme-laufid"></code> <span data-i18n="direktstart.wiederaufnahme.nach">— Auftrag und Evidenzdateien sind daraus vorbelegt, wo ermittelbar. Den Werkzeugsatz bitte selbst wählen; er ist bewusst nicht vorbelegt (F-161).</span></p>
+              <button type="button" id="start-wiederaufnahme-abbrechen" class="button" data-i18n="direktstart.wiederaufnahme.abbrechen">Wiederaufnahme abbrechen</button>
             </div>
-          </section>
+            <p id="start-vorbelegung-fehler" class="fehler" hidden></p>
+
+            <label class="field" for="start-auftrag" data-i18n="direktstart.auftrag">Auftrag wählen</label>
+            <select id="start-auftrag"></select>
+
+            <label class="field" for="start-werkzeugsatz" data-i18n="direktstart.werkzeugsatz">Werkzeugsatz wählen</label>
+            <select id="start-werkzeugsatz"></select>
+
+            <fieldset id="start-evidenzdateien">
+              <legend data-i18n="direktstart.evidenz">Evidenzdateien (repo-relative Pfade)</legend>
+              <div id="start-evidenzdateien-liste"></div>
+              <button type="button" id="start-evidenzdatei-hinzufuegen" class="button" data-i18n="direktstart.evidenz.hinzufuegen">+ Datei</button>
+            </fieldset>
+
+            <label class="field" for="start-laufid" data-i18n="direktstart.laufId">laufId</label>
+            <input type="text" id="start-laufid" autocomplete="off" />
+
+            <div class="action-row"><button type="button" id="start-starten" class="button primary" data-i18n="direktstart.starten">Starten</button></div>
+            <p id="start-erfolg" class="erfolg" hidden></p>
+            <p id="start-fehler" class="fehler" hidden></p>
+          </details>
         </section>
 
         <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b
