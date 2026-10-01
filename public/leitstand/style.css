@@ -2083,21 +2083,9 @@ th {
   margin-top: var(--space-3xl);
 }
 
-/* F29 WS-2a: Dashboard-Kennzahlen als .stat-Kacheln (siehe .card/.stat oben) statt einer
-   <table> — ein einfaches Flex-Wrap-Raster, jede Kachel bricht bei schmaler Breite auf eine
-   eigene Zeile um (Definition of Done: mobile Darstellung). */
-.dashboard-kennzahlen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2xl);
-}
-
-.dashboard-kennzahlen .stat {
-  flex: 1 1 12rem;
-}
-
 /* F32 WS-2: Karte "Verbrauch" — schlicht mit bestehenden Tokens (.card/.btn/.stat/table sind alle
-   bereits definiert), kein neuer Farb-/Schattenwert. Nur Abstand zur Kennzahlen-Reihe darüber und
+   bereits definiert), kein neuer Farb-/Schattenwert. Seit F44 WS-2b auf #/nutzung (views/nutzung.js);
+   die Kennzahlen-Kacheln der alten Übersicht sind entfallen. Nur Abstand zum Seitenkopf darüber und
    Layout des Zeitraum-Umschalters/der Gesamt-Kacheln sind hier neu. Design-Nachzug folgt vor F30
    (Muster F-596). */
 .dashboard-verbrauch {
@@ -4049,4 +4037,883 @@ th {
 :root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-gruppe-text::before,
 :root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-chip {
   transition: none;
+}
+
+/* ─────────────── Produktübersicht (F44 WS-2b, Vorlage V10 d_/l_/m_uebersicht) ───────────────
+   views/dashboard.js überträgt die Bausteine der Vorlage (.product-cockpit, .progress-bubble,
+   .pm-summary-strip, .product-brief-strip, .cycle-entry, .pm-focus-layout/.pm-decision/.pm-now,
+   .execution-triptych, .pm-status-row, .pm-category-card, .recent-delivery, .first-step). Maße wie
+   die Vorlage, Farben nur über Tokens. Kein display auf Block-Containern, die das hidden-Attribut
+   tragen (#uebersicht-erster-schritt, #uebersicht-inhalt). Die Umbrüche richten sich als Container-
+   Query nach der Breite des Hauptbereichs, nicht des Viewports: ab 1280 px steht die Chatspalte bis
+   WS-8 daneben, der Hauptbereich ist dann nur rund 840 px breit (Render-Nachweis WS-2b). */
+#view-dashboard {
+  container: uebersicht / inline-size;
+}
+
+#view-dashboard .uebersicht-kopf {
+  flex-wrap: wrap;
+}
+
+#view-dashboard .uebersicht-kopf > div:first-child {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+.kommt-symbol {
+  font-size: 15px;
+  line-height: 1;
+}
+
+#view-dashboard .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+#view-dashboard .uebersicht-kopf .description {
+  font-size: 14px;
+}
+
+#view-dashboard .text-link {
+  font-size: 14px;
+  gap: 8px;
+}
+
+#view-dashboard button.text-link {
+  text-align: left;
+  font-weight: 400;
+  background: none;
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  cursor: pointer;
+}
+
+#view-dashboard code {
+  font-size: 11px;
+}
+
+#view-dashboard .product-cockpit {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 18px;
+  margin: 18px 0 24px;
+}
+
+#view-dashboard .product-cockpit article {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+#view-dashboard .product-cockpit .cockpit-progress {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 22px;
+}
+
+#view-dashboard .product-cockpit .cockpit-progress > div:last-child {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+#view-dashboard .product-cockpit h2 {
+  font-size: 26px;
+  margin: 6px 0;
+  line-height: 1.2;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .product-cockpit h2 span {
+  font-family: inherit;
+  font-size: 16px;
+}
+
+#view-dashboard .product-cockpit p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 4px 0;
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .product-cockpit small {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+#view-dashboard .product-cockpit .text-link {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+#view-dashboard .product-cockpit .cockpit-role {
+  border-top: 2px solid var(--mint);
+}
+
+#view-dashboard .product-cockpit .cockpit-deployer {
+  border-top: 2px solid var(--amber);
+}
+
+#view-dashboard .progress-bubble {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+}
+
+#view-dashboard .progress-bubble.klein {
+  width: 80px;
+  height: 80px;
+}
+
+#view-dashboard .progress-bubble svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  fill: none;
+  stroke-width: 5;
+}
+
+#view-dashboard .bubble-track {
+  stroke: var(--line);
+}
+
+#view-dashboard .bubble-fill {
+  stroke: var(--mint);
+  stroke-linecap: round;
+}
+
+#view-dashboard .progress-bubble > div {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#view-dashboard .progress-bubble strong {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+#view-dashboard .progress-bubble.klein strong {
+  font-size: 17px;
+}
+
+#view-dashboard .progress-bubble small {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+#view-dashboard .pm-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 28px;
+  overflow: hidden;
+  background: var(--soft);
+}
+
+#view-dashboard .pm-summary {
+  padding: 20px 22px;
+  border-right: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 5px 15px;
+  min-width: 0;
+}
+
+#view-dashboard .pm-summary:last-child {
+  border-right: 0;
+}
+
+#view-dashboard .pm-summary > span {
+  font-size: 14px;
+  align-self: center;
+}
+
+#view-dashboard .pm-summary > strong {
+  font: 32px var(--serif);
+  grid-row: 1 / 3;
+  grid-column: 2;
+  align-self: center;
+}
+
+#view-dashboard .pm-summary > strong .unbekannt,
+#view-dashboard .pm-summary > strong .uebersicht-wert-laedt {
+  font: 12px var(--sans);
+  color: var(--muted);
+}
+
+#view-dashboard .pm-summary > small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-dashboard .pm-summary.waiting > strong {
+  color: var(--amber);
+}
+
+#view-dashboard .pm-summary.done > strong {
+  color: var(--mint);
+}
+
+#view-dashboard .product-brief-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 25px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 20px 0;
+  margin: 0 0 24px;
+}
+
+#view-dashboard .product-brief-strip > div {
+  max-width: 800px;
+  min-width: 0;
+}
+
+#view-dashboard .product-brief-strip p {
+  font-size: 16px;
+  margin: 8px 0 5px;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .uebersicht-brief-mehr .kommt-knopf {
+  border: 0;
+  padding: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-dashboard .cycle-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin: 20px 0 28px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-dashboard .cycle-entry strong {
+  display: block;
+  font: 23px var(--serif);
+  margin: 8px 0;
+}
+
+#view-dashboard .cycle-entry p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0;
+}
+
+#view-dashboard .cycle-entry > span {
+  color: var(--mint);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+#view-dashboard a:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+#view-dashboard .pm-focus-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(230px, 1fr);
+  gap: 28px;
+  margin-bottom: 32px;
+}
+
+#view-dashboard .pm-focus {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+  min-width: 0;
+}
+
+#view-dashboard .pm-focus > .section-label {
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+
+#view-dashboard .uebersicht-alle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#view-dashboard .uebersicht-alle:hover {
+  color: var(--mint);
+}
+
+#view-dashboard .uebersicht-zaehler {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+#view-dashboard .pm-decision {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+}
+
+#view-dashboard .pm-decision > div {
+  min-width: 0;
+}
+
+#view-dashboard .pm-decision h3 {
+  font-size: 21px;
+  margin: 7px 0;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .pm-decision p {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+  max-width: 470px;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .pm-decision .button {
+  flex-shrink: 0;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+#view-dashboard .pm-clear {
+  padding: 24px 0;
+  color: var(--mint);
+}
+
+#view-dashboard .pm-now {
+  padding: 24px 0 20px 22px;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+
+#view-dashboard .pm-now h2 {
+  font-size: 27px;
+  margin: 13px 0;
+}
+
+#view-dashboard .pm-now > p {
+  font-size: 14px;
+  color: var(--muted);
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .pm-next {
+  border-top: 1px solid var(--line);
+  padding: 17px 0;
+  margin: 20px 0 4px;
+  display: grid;
+  gap: 10px;
+}
+
+#view-dashboard .pm-next p {
+  margin: 0;
+  font-size: 13px;
+}
+
+#view-dashboard .pm-roadmap-section {
+  margin: 0 0 30px;
+}
+
+/* B9 (F-905): alle Meilensteine als kompakte Zeilen — Titel, Status, „x / y abgenommen“; der
+   aktuelle ist hervorgehoben. */
+#view-dashboard .uebersicht-weg {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#view-dashboard .uebersicht-weg-zeile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 13px 20px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+#view-dashboard .uebersicht-weg-zeile + .uebersicht-weg-zeile {
+  border-top: 1px solid var(--line);
+}
+
+#view-dashboard .uebersicht-weg-zeile.aktuell {
+  background: var(--note-bg);
+  box-shadow: inset 2px 0 0 var(--mint);
+}
+
+#view-dashboard .uebersicht-weg-titel {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .uebersicht-weg-titel strong {
+  font-weight: 400;
+  font-size: 14px;
+}
+
+#view-dashboard .uebersicht-weg-status {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+#view-dashboard .uebersicht-weg-zaehler {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+#view-dashboard .uebersicht-stand-alle {
+  margin: 14px 0 0;
+}
+
+#view-dashboard .roadmap-symbol {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+}
+
+#view-dashboard .roadmap-kat-abgenommen,
+#view-dashboard .roadmap-kat-in_arbeit {
+  color: var(--mint);
+}
+
+#view-dashboard .roadmap-kat-freigabe,
+#view-dashboard .roadmap-kat-klaerung {
+  color: var(--amber);
+}
+
+#view-dashboard .roadmap-kat-geplant,
+#view-dashboard .roadmap-kat-abgebrochen,
+#view-dashboard .roadmap-kat-ohne_akte,
+#view-dashboard .roadmap-kat-unbekannt {
+  color: var(--muted);
+}
+
+#view-dashboard .execution-brief {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 24px 0;
+  margin: 24px 0 30px;
+}
+
+#view-dashboard .execution-brief > .section-label {
+  margin-top: 0;
+}
+
+#view-dashboard .execution-triptych {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 24px;
+}
+
+#view-dashboard .execution-triptych > div {
+  padding: 20px;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+
+#view-dashboard .execution-triptych strong {
+  display: block;
+  margin: 10px 0;
+  font-size: 16px;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .execution-triptych p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+#view-dashboard .execution-triptych > .execution-current {
+  background: var(--note-bg);
+  border-left-color: var(--mint);
+  border-radius: 0 10px 10px 0;
+}
+
+#view-dashboard .model-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-dashboard .expected-output {
+  margin: 20px 0 0;
+  padding: 0 20px;
+}
+
+#view-dashboard .expected-output p {
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 850px;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .pm-work-table {
+  border-top: 1px solid var(--line);
+}
+
+#view-dashboard .pm-status-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(130px, 0.8fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+#view-dashboard .pm-item-name {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-dashboard a.pm-item-name:hover strong {
+  color: var(--mint);
+}
+
+#view-dashboard .pm-item-name strong {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  display: block;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .pm-item-name small {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+
+#view-dashboard .pm-row-status {
+  font-size: 12px;
+}
+
+#view-dashboard .pm-status-row .kommt-knopf {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+#view-dashboard .pm-category-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 28px;
+}
+
+#view-dashboard .pm-category-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 19px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: var(--ink);
+  text-decoration: none;
+  min-width: 0;
+}
+
+#view-dashboard .pm-category-card > span {
+  font-size: 24px;
+  color: var(--mint);
+}
+
+#view-dashboard .pm-category-card > div {
+  flex: 1;
+  min-width: 0;
+}
+
+#view-dashboard .pm-category-card strong {
+  font-weight: 400;
+  font-size: 16px;
+  display: block;
+  margin-bottom: 5px;
+}
+
+#view-dashboard .pm-category-card small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  display: block;
+}
+
+#view-dashboard .pm-category-card:hover {
+  background: var(--panel-hover);
+}
+
+#view-dashboard .uebersicht-pfeil {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  flex-shrink: 0;
+}
+
+#view-dashboard .recent-delivery {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 32px;
+  padding: 30px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 30px;
+}
+
+#view-dashboard .recent-delivery > div {
+  min-width: 0;
+}
+
+#view-dashboard .recent-delivery h2 {
+  margin: 10px 0;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .recent-delivery p {
+  line-height: 1.6;
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: break-word;
+}
+
+#view-dashboard .uebersicht-dahinter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 30px 0;
+  border-top: 1px solid var(--line);
+}
+
+#view-dashboard .uebersicht-dahinter h2 {
+  margin: 10px 0 8px;
+}
+
+#view-dashboard .uebersicht-betrieb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 22px;
+  margin: 10px 0 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-dashboard .uebersicht-betrieb a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+#view-dashboard .uebersicht-betrieb a:hover,
+#view-dashboard .uebersicht-betrieb strong {
+  color: var(--ink);
+}
+
+#view-dashboard .uebersicht-betrieb strong {
+  font-weight: 500;
+}
+
+#view-dashboard .first-step {
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  margin: 26px 0;
+}
+
+#view-dashboard .first-step h2 {
+  font-size: 32px;
+  margin: 10px 0 16px;
+}
+
+#view-dashboard .first-step > p {
+  font-size: 16px;
+  line-height: 1.65;
+  max-width: 680px;
+  color: var(--muted);
+}
+
+#view-dashboard .first-step .button {
+  text-decoration: none;
+}
+
+#view-dashboard .onboarding-steps {
+  list-style: none;
+  padding: 24px 0 0;
+  margin: 28px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+#view-dashboard .onboarding-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#view-dashboard .onboarding-steps strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#view-dashboard .onboarding-steps span {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* F-898: „+ x weitere“ in #/attention. */
+#view-attention .attention-mehr {
+  margin: 12px 0 0 2px;
+}
+
+@container uebersicht (max-width: 960px) {
+  #view-dashboard .product-cockpit {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #view-dashboard .product-cockpit .cockpit-progress {
+    grid-column: 1 / -1;
+  }
+
+  #view-dashboard .pm-summary {
+    padding: 18px 16px;
+    grid-template-columns: 1fr;
+  }
+
+  #view-dashboard .pm-summary > strong {
+    grid-row: auto;
+    grid-column: auto;
+    font-size: 28px;
+  }
+
+  #view-dashboard .pm-focus-layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(210px, 1fr);
+    gap: 20px;
+  }
+
+  #view-dashboard .pm-decision {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+}
+
+@container uebersicht (max-width: 640px) {
+  #view-dashboard .product-cockpit,
+  #view-dashboard .pm-focus-layout,
+  #view-dashboard .execution-triptych,
+  #view-dashboard .pm-category-links,
+  #view-dashboard .onboarding-steps {
+    grid-template-columns: 1fr;
+  }
+
+  #view-dashboard .pm-now {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 20px 0 0;
+  }
+
+  #view-dashboard .cycle-entry {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  #view-dashboard .recent-delivery {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@container uebersicht (max-width: 520px) {
+  #view-dashboard .pm-summary-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #view-dashboard .pm-summary:nth-child(2) {
+    border-right: 0;
+  }
+
+  #view-dashboard .pm-summary:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--line);
+  }
+
+  #view-dashboard .product-cockpit article,
+  #view-dashboard .first-step {
+    padding: 18px;
+  }
+
+  #view-dashboard .product-cockpit .cockpit-progress {
+    flex-wrap: wrap;
+  }
+
+  #view-dashboard .product-brief-strip {
+    flex-wrap: wrap;
+  }
+
+  #view-dashboard .pm-status-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  #view-dashboard .uebersicht-weg-zeile {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  #view-dashboard .uebersicht-weg-zaehler {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Sprungziel „Entwicklungsstand ansehen“ (B2): nur Lesestartpunkt, nicht bedienbar — wie die h1 ohne Fokusring. */
+#view-dashboard h2[tabindex='-1']:focus {
+  outline: none;
 }

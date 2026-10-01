@@ -13,14 +13,17 @@
  * - public/leitstand/app.js (initKommt beim Bootstrap, einmalig)
  * - public/leitstand/views/platzhalter.js (kommtKnopf — Brain, Produktzyklus)
  * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Projektakte, Zeitplanung; F44 WS-2a)
+ * - public/leitstand/views/dashboard.js (kommtKnopf, kommtBadge — Übersicht V10, Z-Elemente B1/B4/B6/B8/B10/B13; F44 WS-2b)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM beim Import; erst initKommt() hängt die Sperre an.
  * - Die Sperre wirkt dokumentweit in der Einfangphase auf jedes Element mit
- *   [aria-disabled="true"] — nicht nur auf Knöpfe dieses Bausteins. Außer ihnen trägt es heute
- *   das Register „Projektakte“ der Roadmap (views/roadmap.js, span.tab-kommt mit kommtBadge);
- *   jedes künftige bekommt dieselbe Wirkung (gewollt, eine Regel).
+ *   [aria-disabled="true"] — nicht nur auf Knöpfe dieses Bausteins. Außer ihnen tragen es heute
+ *   das Register „Projektakte“ der Roadmap (views/roadmap.js, span.tab-kommt mit kommtBadge) und
+ *   in der Übersicht die Z-Karte „Deployer · Mensch“ und „Als Nächstes vorgesehen“
+ *   (views/dashboard.js, .cockpit-deployer und .pm-next; beide ohne Links — ein Link darin wäre
+ *   gesperrt); jedes künftige bekommt dieselbe Wirkung (gewollt, eine Regel).
  */
 
 import { escapeHtml } from './render.js'
@@ -40,12 +43,15 @@ export function kommtBadge() {
 /**
  * Baut einen deaktivierten Knopf mit Badge „kommt“ (E-F44-1).
  * @param text - sichtbare Beschriftung (bereits übersetzt)
- * @param optionen - { primaer: true } für die Primärform der Vorlage (.button.primary)
+ * @param optionen - { primaer: true } für die Primärform der Vorlage (.button.primary);
+ *   { symbol: '+' } setzt ein dekoratives Zeichen vor den Text (aria-hidden, gehört nicht zum
+ *   Namen; F-897, „+ Eintrag erfassen“ der Vorlage)
  * @returns HTML
  */
 export function kommtKnopf(text, optionen = {}) {
   const klasse = optionen.primaer === true ? 'button primary kommt-knopf' : 'button kommt-knopf'
-  return `<button type="button" class="${klasse}" aria-disabled="true">${escapeHtml(text)} ${kommtBadge()}</button>`
+  const symbol = typeof optionen.symbol === 'string' && optionen.symbol !== '' ? `<span class="kommt-symbol" aria-hidden="true">${escapeHtml(optionen.symbol)}</span>` : ''
+  return `<button type="button" class="${klasse}" aria-disabled="true">${symbol}${escapeHtml(text)} ${kommtBadge()}</button>`
 }
 
 /**

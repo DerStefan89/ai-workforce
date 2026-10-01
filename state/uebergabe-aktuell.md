@@ -28,12 +28,33 @@ Stand: 01.10.2026.
 **F36 „Capability Library wirksam machen“ ist ABGESCHLOSSEN** (Abnahme 29.09.2026, #267–#283; Details in `features/F36/feature.md`). F-831 gemergt (#286). Offene Folge-Findings: F-829 (mit F-820); F-822; F-840, F-841; F-842 bis F-844; F-834 bis F-836, F-838; `init.plugins` bleibt ungeprüft; F-815/F-816, F-818, F-791.
 
 ## Nächste Schritte
-1. WS-1b prüfen (Challenger per Hash), Stefan committet, PR. Danach Worktree `../aiw-f725-ws1a` aufräumen.
-2. F44 WS-2 „Übersicht, Entscheidungen, Roadmap“ (B, C, D mit F-854; `#/roadmap` ersetzt die Zwischenseite, F-880; F-888 Produktzyklus-Gliederung mitnehmen oder eigenes kleines Paket), danach WS-3 bis WS-8.
-3. qa-Schritt F-820 zusammen mit F-829.
-4. Vor F30 F-818 entscheiden: Der Vorstart-Scan blockiert Ort-B-Läufe auf ai-workforce selbst. Dabei F-859 klären (Scout für den Scanner-Architekten).
-5. Opportunity Scanner (F30) — Planung vollständig in der Workforce (E-F30-4); Stack-Kandidaten aus `docs/harness/stack-kandidaten.md`.
-6. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel, mit F-874 in WS-4).
+1. F44 Design: WS-2b (Branch `feat/f725-ws2b-uebersicht`) → WS-3 bis WS-8.
+2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach dem Design und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4.
+   - B1 Harness im Lauf:
+     - Agents und Projekt-Skills sind im Ausführungslauf aufrufbar (F-815, F-816).
+     - Das Review prüft gegen die Checkliste `.claude/agents/code-reviewer.md` und die DoD aus CLAUDE.md (F-829).
+     - Der Vorstart-Scan blockiert ai-workforce selbst nicht mehr (F-818).
+   - B2 Planungs- und Prüfkette:
+     - architecture-advisor bekommt ein output_schema mit vierstufigem Urteil.
+     - Plan v2 wird ein eigener Schritt (Rolle architekt) mit eigenem Artefakt.
+     - Bei „überarbeiten“ führt ein Rückweg zum Plan (F-203, F-909).
+     - Der qa-Schritt kommt dazu (F-820).
+   - B5 Feature-Fluss (F-912):
+     - Der Coach legt im bestehenden Projekt eine Feature-Akte an, statt den Scope direkt zum Auftrag zu machen.
+     - Die Akte ist im Leitstand bearbeitbar (E-F45-1 = A).
+     - „In die Arbeit schicken“ geht mit einem Klick.
+   - B3 Design-Fähigkeit (F-911):
+     - impeccable wird installierbar (installation_vorlage).
+     - design-guardian kommt ins Projekt-Skelett und als UI-Prüfschritt in die Workflow-Vorlagen.
+     - Render-Nachweis und Token-Gate werden für Fremdprojekte nutzbar.
+   - B4 Fähigkeiten:
+     - Katalogart „plugin“ mit Freigabe und Init-Prüfung (F-910).
+     - Web- und kostenpflichtige MCPs nach der geänderten E-F36-4.
+     - Die wichtigsten GitHub-Einträge mit freigabe OFFEN werden installierbar.
+     - Der Scout wird für Stack-Recherche tauglich (F-859).
+   - In der Challenge mitklären: F-715, F-766, F-764.
+3. F30 Opportunity Scanner — Planung vollständig in der Workforce (E-F30-4); Stack-Kandidaten aus `docs/harness/stack-kandidaten.md`.
+4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel, mit F-874 in WS-4).
 
 Laufender Hinweis: Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab, mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
 

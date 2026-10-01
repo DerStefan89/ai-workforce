@@ -10,6 +10,8 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/roadmap.js
+ * - public/leitstand/views/dashboard.js (F44 WS-2b: aktueller Meilenstein, Fortschrittsring, Vier Werte,
+ *   Weg zum Produkt, Auswahl des Entwicklungsstands)
  * - public/leitstand/roadmap-anzeige.test.mjs (node:test)
  *
  * Wichtig:
@@ -43,6 +45,37 @@ const KATEGORIE_JE_STATUS = {
 
 /** Kategorien in Legendenreihenfolge (die ersten fünf wie die Vorlage). */
 export const STATUS_KATEGORIEN = ['abgenommen', 'freigabe', 'in_arbeit', 'klaerung', 'geplant', 'abgebrochen', 'ohne_akte', 'unbekannt']
+
+/** Symbol je Statuskategorie — die fünf der Vorlage (✓ ◉ ↻ ! ○), dazu Abgebrochen, Ohne Akte und Unbekannt. Gemeinsam für #/roadmap und die Übersicht (F44 WS-2b). */
+export const STATUS_SYMBOL = Object.freeze({
+  abgenommen: '✓',
+  freigabe: '◉',
+  in_arbeit: '↻',
+  klaerung: '!',
+  geplant: '○',
+  abgebrochen: '–',
+  ohne_akte: '◇',
+  unbekannt: '?',
+})
+
+/**
+ * Featurestatus, die in der Übersicht als „Geplant“ zählen (B5): noch nicht gestartet. Seit F-904
+ * (Challenger, 01.10.2026) ohne WORKSTREAM_SCHNITT_GENEHMIGT — der zählt wie in den Zeilen
+ * (statusKategorie) als „in Arbeit“.
+ */
+const GEPLANT_STATUS = new Set(['ENTWURF', 'READY_FOR_TECH'])
+
+/** Rang der Finding-Prioritäten im Entwicklungsstand (B10); Features ohne Priorität stehen dahinter. */
+const ENTWICKLUNG_RANG = { P0: 0, P1: 1, P2: 2 }
+
+/** Höchstzahl der Zeilen im Entwicklungsstand der Übersicht (B10, F-905). */
+export const ENTWICKLUNGSSTAND_MAX = 8
+
+/** Feature-ID nach der Roadmap-Regel (src/projektkontext, validiereRoadmapDaten) — nur solche IDs kann ein Meilenstein aufnehmen (F-895). */
+const ROADMAP_FEATURE_ID = /^F[0-9]+[A-Za-z]?$/
+
+/** Status, mit denen ein Feature keine Planungsentscheidung mehr braucht (F-895). */
+const ERLEDIGT_STATUS = new Set([ABGESCHLOSSEN, 'ABGEBROCHEN'])
 
 /**
  * Meilensteine einer gültigen Projektion, sonst eine leere Liste.
@@ -92,6 +125,17 @@ export function zaehleMeilenstein(meilenstein) {
 }
 
 /**
+ * Zählt die Features eines Meilensteins, die noch nicht gestartet sind (B5 „Geplant“): Status
+ * ENTWURF oder READY_FOR_TECH (F-904).
+ * @param meilenstein - Eintrag aus roadmap.meilensteine, oder null
+ * @returns Anzahl (0 ohne Meilenstein)
+ */
+export function zaehleGeplant(meilenstein) {
+  const features = Array.isArray(meilenstein?.features) ? meilenstein.features : []
+  return features.filter((f) => GEPLANT_STATUS.has(f?.status)).length
+}
+
+/**
  * Kategorie eines Meilenstein- oder Featurestatus für Symbol, Farbe und Legende.
  * @param status - roher Statuswert
  * @returns eine der STATUS_KATEGORIEN; unbekannte Werte → 'unbekannt'
@@ -116,7 +160,9 @@ export function meilensteinOffen(roadmap, meilenstein) {
 }
 
 /**
- * Features aus dem Arbeitsvorrat, die in keinem Meilenstein stehen (D3).
+ * Features aus dem Arbeitsvorrat, die in keinem Meilenstein stehen (D3). Seit F-895 (Challenger,
+ * F44 WS-2b, reversibel) nur offene Features — Status weder ABGESCHLOSSEN noch ABGEBROCHEN — mit
+ * einer ID nach der Roadmap-Regel; alle übrigen kann bzw. muss kein Meilenstein aufnehmen.
  * @param roadmap - Antwort von GET …/roadmap
  * @param featureWorkitems - Workitems aus GET …/workitems?typ=FEATURE, null bei defekter Quelle
  * @returns Liste (bei 'nicht_vorhanden' alle Features), oder null, wenn die Zuordnung nicht prüfbar ist (Workitems defekt, Roadmap ungültig, fehlerhaft oder noch nicht geladen)
@@ -124,8 +170,35 @@ export function meilensteinOffen(roadmap, meilenstein) {
 export function nichtEingeplant(roadmap, featureWorkitems) {
   if (!Array.isArray(featureWorkitems)) return null
   const zustand = roadmapZustand(roadmap)
-  if (zustand === 'nicht_vorhanden') return [...featureWorkitems]
-  if (zustand !== 'ok') return null
+  if (zustand !== 'ok' && zustand !== 'nicht_vorhanden') return null
+  const planbar = featureWorkitems.filter((w) => typeof w?.id === 'string' && ROADMAP_FEATURE_ID.test(w.id) && !ERLEDIGT_STATUS.has(w.status))
+  if (zustand === 'nicht_vorhanden') return planbar
   const eingeplant = new Set(meilensteineVon(roadmap).flatMap((m) => m.features.map((f) => f.id)))
-  return featureWorkitems.filter((w) => !eingeplant.has(w.id))
+  return planbar.filter((w) => !eingeplant.has(w.id))
+}
+
+/**
+ * Auswahl und Reihenfolge des Entwicklungsstands der Übersicht (B10, F-905 nach Vorlage V10):
+ * offene Findings mit Priorität P0–P2 (Status OFFEN) und die offenen Features des aktuellen
+ * Meilensteins (Status weder ABGESCHLOSSEN noch ABGEBROCHEN), sortiert P0 → P1 → P2 → Features
+ * („ohne Priorität“), höchstens `max` Einträge. Innerhalb einer Stufe bleibt die Reihenfolge der
+ * Quelle (Findings wie geliefert, Features wie im Meilenstein). Rein, ohne DOM und Netz.
+ * @param meilenstein - aktueller Meilenstein (aktuellerMeilenstein) oder null
+ * @param workitems - alle Workitems aus GET …/workitems, null bei defekter Quelle, undefined solange geladen wird
+ * @param max - Höchstzahl der Einträge (Standard ENTWICKLUNGSSTAND_MAX)
+ * @returns { eintraege: [{ art: 'finding' | 'feature', id, titel, status, prioritaet }], gesamt: Anzahl vor dem Kürzen, findingsVerfuegbar: false, wenn die Workitems fehlen oder defekt sind }
+ */
+export function waehleEntwicklungsstand(meilenstein, workitems, max = ENTWICKLUNGSSTAND_MAX) {
+  const findings = Array.isArray(workitems)
+    ? workitems
+        .filter((w) => w !== null && typeof w === 'object' && w.quelle === 'finding' && w.status === 'OFFEN' && Object.hasOwn(ENTWICKLUNG_RANG, w.prioritaet))
+        .map((w, index) => ({ w, index }))
+        .sort((a, b) => ENTWICKLUNG_RANG[a.w.prioritaet] - ENTWICKLUNG_RANG[b.w.prioritaet] || a.index - b.index)
+        .map(({ w }) => ({ art: 'finding', id: w.id, titel: w.titel, status: w.status, prioritaet: w.prioritaet }))
+    : []
+  const features = (Array.isArray(meilenstein?.features) ? meilenstein.features : [])
+    .filter((f) => f !== null && typeof f === 'object' && !ERLEDIGT_STATUS.has(f.status))
+    .map((f) => ({ art: 'feature', id: f.id, titel: f.titel, status: f.status, prioritaet: null }))
+  const alle = [...findings, ...features]
+  return { eintraege: alle.slice(0, max), gesamt: alle.length, findingsVerfuegbar: Array.isArray(workitems) }
 }

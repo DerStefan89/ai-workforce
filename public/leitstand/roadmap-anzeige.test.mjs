@@ -10,7 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { aktuellerMeilenstein, meilensteinOffen, nichtEingeplant, roadmapZustand, STATUS_KATEGORIEN, statusKategorie, zaehleMeilenstein } from './roadmap-anzeige.js'
+import { aktuellerMeilenstein, meilensteinOffen, nichtEingeplant, roadmapZustand, STATUS_KATEGORIEN, STATUS_SYMBOL, statusKategorie, waehleEntwicklungsstand, zaehleGeplant, zaehleMeilenstein } from './roadmap-anzeige.js'
 
 /** Baut eine gültige Projektion aus [id, status, features[]]-Tripeln. */
 function roadmap(...meilensteine) {
@@ -98,4 +98,95 @@ test('ein geplanter Meilenstein vor dem laufenden bleibt offen', () => {
   const r = roadmap(['M1', 'GEPLANT'], ['M2', 'LAEUFT'])
   assert.equal(meilensteinOffen(r, r.meilensteine[0]), true)
   assert.equal(aktuellerMeilenstein(r).id, 'M2')
+})
+
+test('F-895: nichtEingeplant zeigt nur offene Features mit einer ID nach der Roadmap-Regel', () => {
+  const r = roadmap(['M1', 'LAEUFT', [{ id: 'F1', status: 'IN_ARBEIT' }]])
+  const features = [
+    { id: 'F2', status: 'ENTWURF' },
+    { id: 'F3b', status: 'IN_ARBEIT' },
+    { id: 'F4', status: 'ABGESCHLOSSEN' },
+    { id: 'F5', status: 'ABGEBROCHEN' },
+    { id: 'AF-F001', status: 'ENTWURF' },
+    { id: 'f6', status: 'ENTWURF' },
+    { id: 'F1', status: 'IN_ARBEIT' },
+  ]
+  assert.deepEqual(
+    nichtEingeplant(r, features).map((f) => f.id),
+    ['F2', 'F3b']
+  )
+  assert.deepEqual(
+    nichtEingeplant({ status: 'nicht_vorhanden' }, features).map((f) => f.id),
+    ['F2', 'F3b', 'F1']
+  )
+})
+
+test('B5 (F-904): zaehleGeplant zählt nur ENTWURF und READY_FOR_TECH', () => {
+  const m = {
+    features: [
+      { id: 'F1', status: 'ENTWURF' },
+      { id: 'F2', status: 'READY_FOR_TECH' },
+      { id: 'F3', status: 'WORKSTREAM_SCHNITT_GENEHMIGT' },
+      { id: 'F4', status: 'IN_ARBEIT' },
+      { id: 'F5', status: 'ABGESCHLOSSEN' },
+      { id: 'F6', status: 'keine_akte' },
+    ],
+  }
+  assert.equal(zaehleGeplant(m), 2)
+  assert.equal(statusKategorie('WORKSTREAM_SCHNITT_GENEHMIGT'), 'in_arbeit')
+  assert.equal(zaehleGeplant(null), 0)
+  assert.equal(zaehleGeplant({ features: null }), 0)
+})
+
+test('B1/B2: aktueller Meilenstein und Zähler ohne gültige Roadmap', () => {
+  assert.equal(aktuellerMeilenstein({ status: 'nicht_vorhanden' }), null)
+  assert.equal(aktuellerMeilenstein({ status: 'ungueltig', fehler: ['x'] }), null)
+  assert.deepEqual(zaehleMeilenstein(null), { abgenommen: 0, gesamt: 0 })
+})
+
+test('STATUS_SYMBOL deckt jede Kategorie ab', () => {
+  for (const kategorie of STATUS_KATEGORIEN) assert.equal(typeof STATUS_SYMBOL[kategorie], 'string')
+})
+
+test('B10 (F-905): waehleEntwicklungsstand — offene P0–P2-Findings vor offenen Features, höchstens 8', () => {
+  const meilenstein = {
+    features: [
+      { id: 'F1', titel: 'Eins', status: 'IN_ARBEIT' },
+      { id: 'F2', status: 'ABGESCHLOSSEN' },
+      { id: 'F3', status: 'ABGEBROCHEN' },
+      { id: 'F4', status: 'keine_akte' },
+    ],
+  }
+  const workitems = [
+    { quelle: 'finding', id: 'F-10', titel: 'zwei', status: 'OFFEN', prioritaet: 'P2' },
+    { quelle: 'finding', id: 'F-11', titel: 'null', status: 'OFFEN', prioritaet: 'P0' },
+    { quelle: 'finding', id: 'F-12', titel: 'drei', status: 'OFFEN', prioritaet: 'P3' },
+    { quelle: 'finding', id: 'F-13', titel: 'erledigt', status: 'ERLEDIGT', prioritaet: 'P0' },
+    { quelle: 'finding', id: 'F-14', titel: 'eins', status: 'OFFEN', prioritaet: 'P1' },
+    { quelle: 'feature', typ: 'FEATURE', id: 'F1', titel: 'Eins', status: 'IN_ARBEIT' },
+    { quelle: 'failed-run', id: 'lauf-1', status: 'OFFEN', prioritaet: 'P0' },
+  ]
+  const { eintraege, gesamt, findingsVerfuegbar } = waehleEntwicklungsstand(meilenstein, workitems)
+  assert.deepEqual(
+    eintraege.map((e) => e.id),
+    ['F-11', 'F-14', 'F-10', 'F1', 'F4']
+  )
+  assert.equal(eintraege[3].prioritaet, null)
+  assert.equal(gesamt, 5)
+  assert.equal(findingsVerfuegbar, true)
+})
+
+test('B10: waehleEntwicklungsstand kürzt auf max, ohne Meilenstein nur Findings, ohne Workitems nur Features', () => {
+  const viele = Array.from({ length: 10 }, (_, i) => ({ quelle: 'finding', id: `F-${i}`, status: 'OFFEN', prioritaet: 'P1' }))
+  const gekuerzt = waehleEntwicklungsstand(null, viele)
+  assert.equal(gekuerzt.eintraege.length, 8)
+  assert.equal(gekuerzt.gesamt, 10)
+  const ohneWorkitems = waehleEntwicklungsstand({ features: [{ id: 'F1', status: 'ENTWURF' }] }, null)
+  assert.deepEqual(
+    ohneWorkitems.eintraege.map((e) => e.id),
+    ['F1']
+  )
+  assert.equal(ohneWorkitems.findingsVerfuegbar, false)
+  assert.equal(waehleEntwicklungsstand(null, undefined).findingsVerfuegbar, false)
+  assert.equal(waehleEntwicklungsstand(null, [], 3).eintraege.length, 0)
 })

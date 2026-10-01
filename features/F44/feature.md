@@ -15,8 +15,8 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 30.09.2026 (Branch `feat/f725-ws0-design-ablage`, gemergt #290). WS-1 ist geteilt
 (Challenger, 30.09.2026): WS-1a „Fundament“ gemergt (#291, `1f9ddb2`); WS-1b „Shell &
 Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026): WS-2a
-„Entscheidungen & Roadmap“ in Arbeit seit 01.10.2026 (Branch
-`feat/f725-ws2a-entscheidungen-roadmap`); WS-2b „Übersicht“ und WS-3 bis WS-8 offen.
+„Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ in Arbeit seit 01.10.2026
+(Branch `feat/f725-ws2b-uebersicht`); WS-3 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -76,6 +76,9 @@ abgehakten F-Zeilen des Pakets.
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
+
+**Vermerk WS-3 (Stefan, 01.10.2026):** E13 „Eintrag bearbeiten“ bleibt in WS-3 als kommt; wird im
+Fixpaket Arbeitsfähigkeit, B5, echt (E-F45-1 = A).
 
 **Schnitt WS-1 (Challenger, 30.09.2026):** WS-1 ist in WS-1a „Fundament“ und WS-1b
 „Shell, Einstieg“ geteilt, damit jedes Teilpaket einen Baudurchgang plus höchstens
@@ -448,6 +451,108 @@ Branch `feat/f725-ws2a-entscheidungen-roadmap` (Basis `71ff28b`), nicht committe
 - **WS2a-5** F-854: Serverfehler nie als Leerzustand (Unit-Test und Nachweis).
 - **WS2a-6** Texte in de/en/tr/ru, Plural über Intl.PluralRules; i18n-Gate grün.
 - **WS2a-7** F-891 mit Nachweis; `npm run check` grün.
+
+## Stand WS-2b „Übersicht“ (01.10.2026)
+Branch `feat/f725-ws2b-uebersicht` (Basis `7530cbf`), nicht committet.
+- **`#/dashboard` „Produktübersicht“** (Abschnitt B, `views/dashboard.js`, Vorlage d_/l_/m_uebersicht):
+  Kopf (B1: Eyebrow, Projektname, „Aktueller Meilenstein“ bzw. alle abgeschlossen / keine Roadmap /
+  ungültig / nicht ladbar; „Produkt bearbeiten“, „Architektur & Code“, „+ Eintrag erfassen“ als
+  „kommt“), drei Karten (B2 Ring „x / y abgenommen“ mit Sprung zum Entwicklungsstand; B3 Aktuelle
+  Rolle aus dem Fokus-Workflow; B4 Deployer als Z-Karte), Vier Werte (B5), Ziel dieser Version (B6,
+  Vision unübersetzt, „Ziel schärfen“ und „Zielgruppe & Erfolgskriterien“ als Z), Einstieg
+  Produktmanagement (`#/produktzyklus`), Deine nächsten Entscheidungen (B7, die ersten drei aus
+  `baueEntscheidungen`, „Alle ansehen“ mit Gesamtzahl, Direktaktion = Link) und Die Workforce
+  gerade (B8, „Als Nächstes vorgesehen“ als Z), Der Weg zum Produkt (B9, alle Meilensteine kompakt
+  mit Status und „x / y abgenommen“, der aktuelle hervorgehoben, ohne Featurezeilen und Zeitachse),
+  Entwicklungsstand (B10, offene P0–P2-Findings und offene Features des aktuellen Meilensteins,
+  höchstens acht, Priorität lesend als Z, „Alle ansehen“, drei Kacheln mit offenen Workitems je
+  Typ), Wer macht was (B11, Zuvor/Jetzt/Danach, erwarteter Output = `workflow.ziel`, „Letzter
+  Worker · Modell: nicht beobachtet“), Zuletzt umgesetzt (B12,
+  jüngster Lauf, sein Workflow über `auftragId`, Schritte als kleiner Ring), Was steckt dahinter
+  (B13, drei Z-Knöpfe), Betrieb (B16, Läufe/Workflows/Startfehler mit Links, bis WS-5), Leerzustand
+  B14 (keine Workitems, keine Roadmap und keine Workflows → „Auftrag beschreiben“, `#/projekt`). Jeder Block hat
+  eigene Zustände (lädt, nicht verfügbar, Fehler); ein Block wird nur bei geändertem Inhalt neu
+  geschrieben, damit der Poll-Tick keinen Fokus zerstört.
+- **Laden:** Roadmap, alle Workitems und P0/P1 beim Betreten (Route jetzt in `dashboard.js`) und
+  beim Projektwechsel, je mit Überholschutz, nie aus dem Poll. Der Fokus-Nachtrag lädt nicht aus
+  dem Poll, sondern bei wechselnder Workflow-ID, beim Betreten der Seite und 30 s nach einem
+  Fehlschlag (Korrekturrunde; Rest F-899).
+- **Gemeinsames Fokus-Modul** `public/leitstand/fokus-daten.js` (`waehleFokusWorkflow`,
+  `waehleLetztenLauf`, `ladeFokusNachtrag`, `schrittFolge`; Test `fokus-daten.test.mjs`). Logik
+  unverändert aus `views/workboard.js` umgezogen, `ladeFokusNachtrag` liefert zusätzlich Worker und
+  beobachtetes Modell aus der Laufakte. Das Workboard nutzt das Modul; Bento-Markup und Verhalten
+  unverändert, Gate f21-ws2 grün. Keine Duplizierung nötig.
+- **`#/nutzung`** (`views/nutzung.js`, F-880 ganz): Verbrauchskarte mit unveränderter Logik und
+  unverändertem Markup aus der Übersicht, Seitenkopf über t(), Laden beim Betreten und beim
+  Projektwechsel, erneuter Versuch per Klick auf den aktiven Zeitraum nach einem Fehler. Die
+  Zwischenseite in `views/platzhalter.js` entfällt.
+- **F-898** `#/attention`: Läufe, Startprobleme und Befunde je höchstens 5, „+ x weitere“
+  (aria-expanded) klappt auf; Freigaben und Rückfragen vollständig; Zähler bleiben Gesamtzahlen.
+- **F-895** `nichtEingeplant`: nur offene Features mit ID nach Roadmap-Regel. **F-896** Gate
+  f21-ws2 (e) prüft die Herkunft (Import aus `attention-daten.js`) statt einer wörtlichen Zeile, mit
+  Rot-Kalibrierung. **F-897** `kommtKnopf` mit optionalem Symbol („+ Eintrag erfassen“).
+- **Nachweise** `features/F44/nachweise/ws2b/` (Skript `erzeuge-nachweis.mjs`, Leitstand dieses Worktrees
+  auf Port 4381): `#/dashboard` 1440 dunkel/hell, 390 dunkel, 200 % Zoom, ru (je ganze Seite; ab 1280 px
+  als Ausschnitt `#view-dashboard`, weil die Chatspalte bis WS-8 daneben steht und sonst die
+  Seitenhöhe bestimmt), reduzierte Bewegung, Tastaturbedienung, Leerzustand B14, Roadmap blockiert,
+  Aggregat defekt; `#/nutzung`; `#/attention` mit „+ x weitere“ zu/auf (aria-expanded false → true,
+  Fokus bleibt); `#/workboard` als Regressionsbild. Kein waagerechter Überlauf.
+  `render-nachweis`: `screenshotAusschnitt` zusammen mit `screenshotVollseite` erfasst die ganze Höhe.
+- **Umbrüche als Container-Query** auf die Breite der Übersicht (nicht des Viewports): neben der
+  Chatspalte ist der Hauptbereich bei 1440 px nur rund 744 px breit.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal): design-guardian und qa „Nicht
+  freigegeben“, code-reviewer „Freigegeben mit Hinweisen“. Eine Korrekturrunde, eingearbeitet:
+  Fokus-Nachtrag nach Fehlschlag erneut (30 s) und frisch beim Betreten; ein Wurf beim Rendern trifft
+  nur seinen Block (`setzeBlock` mit try/catch); B7-Zähler nur bei vollständigen Quellen (sonst
+  „Lädt…“ bzw. „nicht verfügbar“, nie eine Teilsumme); B7-Direktaktion je Art („Freigabe prüfen“,
+  „Rückfrage klären“ …); B16 „Workflows“ führt zur Workflow-Liste (`#/runs`); Zahlen in Ring-Label
+  und Zählern über Intl, Plural für die Schritte in B12; B12-Titel nie leer; ru einheitlich „веха“;
+  Gate f21-ws2 (f): `dashboard.js` importiert aus `api.js` nur `hole*` (Rot-Fall geprüft);
+  `render-nachweis` meldet einen fehlenden Ausschnitt und rechnet den Bildlauf ein; Kommentarköpfe
+  `api.js`, `kommt.js`, `app.js`; Tests „Poll lädt nicht nach“, „späte Roadmap-Antwort des alten
+  Projekts“ (Rot unter Mutation) und `kommtKnopf` mit Symbol; Nachweise 200 % als ganze Seite,
+  reduzierte Bewegung, Tastatur. Zunächst nicht übernommen, weil der Auftrag es anders vorgab
+  (F-903, F-904, F-905); nach Entscheidung des Challengers umgesetzt, siehe unten. Rest als F-902,
+  F-906, F-907; F-899 und F-901 ergänzt.
+- **Findings:** neu F-898 (erledigt), F-899 bis F-908 (F-903, F-904, F-905 erledigt); erledigt
+  F-880, F-895, F-896, F-897.
+
+### Entscheidungen Challenger (01.10.2026) zum Prüfpass WS-2b, umgesetzt
+- **F-903 (BUG P2):** B14 nur bei leeren Workitems, Roadmap `nicht_vorhanden` und
+  `zustand.workflows` als leerem Array; defekte oder vorhandene Workflows zeigen die normalen
+  Blöcke (Test und Nachweis `dashboard-b14-wartender-workflow`).
+- **F-904:** „Geplant“ zählt nur ENTWURF und READY_FOR_TECH.
+- **F-905:** Die Vorgabe des Auftrags war falsch; jetzt nach Vorlage: B9 alle Meilensteine
+  kompakt, B10 offene P0–P2-Findings und offene Features des aktuellen Meilensteins (höchstens
+  acht, `waehleEntwicklungsstand` mit Unit-Test), Reihenfolge B10 vor B11. Nachweise neu.
+- **F-908** (Node 22 in den Übergaben, `package.json` verlangt 24.x) neu, offen.
+
+### Prüfpunkte aus der Übersicht (Regeln B1, B2, B5)
+- **B1** „Aktueller Meilenstein“ = `aktuellerMeilenstein(roadmap)` (erster mit LAEUFT, sonst erster
+  nicht abgeschlossener). Ohne ihn: „Alle Meilensteine sind abgeschlossen.“, „Noch keine Roadmap
+  hinterlegt.“, „Die Roadmap ist ungültig …“ bzw. „… konnte nicht geladen werden.“ — nie leer.
+- **B2** Ring „x / y abgenommen“ = `zaehleMeilenstein(aktueller Meilenstein)`: x = Features mit
+  ABGESCHLOSSEN, y = alle Features des Meilensteins einschließlich `keine_akte`. Ungültige oder nicht
+  ladbare Roadmap → „nicht verfügbar“.
+- **B5** In Arbeit = `aktiverLauf.aktiv ? 1 : 0`; Deine Entscheidung = Anzahl
+  `filtereAttentionWorkflows`; Abgenommen = x aus B2; Geplant = `zaehleGeplant` (Features des
+  aktuellen Meilensteins mit ENTWURF oder READY_FOR_TECH; WORKSTREAM_SCHNITT_GENEHMIGT zählt wie
+  in den Zeilen als „in Arbeit“, F-904). Eine
+  defekte Quelle zeigt „nicht verfügbar“, nie 0; ohne aktuellen Meilenstein (keine Roadmap, alles
+  abgeschlossen) steht „–“.
+
+### Akzeptanzkriterien WS-2b
+- **WS2b-1** `#/dashboard` nach d_/l_/m_uebersicht mit den Blöcken 1–13 (B1–B14, B16), keine
+  Schreibaktion, Z-Elemente mit `aria-disabled` und „kommt“ ohne Beispieldaten.
+- **WS2b-2** Regeln B1/B2/B5 wie oben (Unit-Tests `roadmap-anzeige.test.mjs`).
+- **WS2b-3** Laden beim Betreten und Projektwechsel mit Überholschutz, nie aus dem Poll
+  (`projekt-wechsel.test.mjs`); Fokus-Nachtrag nur bei ID-Wechsel.
+- **WS2b-4** Ein Fehler in einem Block blendet die anderen nicht aus (Nachweise Roadmap blockiert,
+  Aggregat defekt); B14 nur bei leeren Workitems und `nicht_vorhanden`.
+- **WS2b-5** `fokus-daten.js` import-sicher mit Unit-Test; Workboard nutzt es, f21-ws2 grün.
+- **WS2b-6** `#/nutzung` zeigt den Verbrauch (F-880); F-895, F-896, F-897, F-898 erledigt.
+- **WS2b-7** Texte in de/en/tr/ru, Plural über Intl.PluralRules, Zahlen über Intl; i18n-Gate und
+  `npm run check` grün.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

@@ -1,0 +1,76 @@
+{
+  "url": "http://127.0.0.1:4381/#/attention",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Knopf",
+        "selector": "#attention-liste .attention-mehr"
+      },
+      {
+        "name": "aria-expanded (fokussierter Knopf)",
+        "selector": ":focus",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Kachel Befunde",
+        "selector": "#attention-quellen .quelle-kachel:last-child"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/attention",
+      "warteAufSelector": {
+        "selector": "#attention-liste .attention-mehr",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "label": "Fokus auf „+ x weitere“ (eingeklappt)",
+      "fokus": "#attention-liste .attention-mehr >> nth=-1",
+      "screenshot": "d1440-attention-weitere-zu.webp"
+    },
+    {
+      "label": "Enter: Gruppe aufgeklappt, Fokus bleibt auf dem Knopf",
+      "taste": "Enter",
+      "screenshot": "d1440-attention-weitere-auf.webp"
+    }
+  ]
+}

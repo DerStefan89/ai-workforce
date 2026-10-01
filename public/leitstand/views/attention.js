@@ -32,17 +32,23 @@
  * - Ein Projektwechsel lädt die Workitems neu (abonniereProjektWechsel, F-860); der
  *   Anfragezähler verwirft dabei eine noch laufende Antwort des alten Projekts. Die drei
  *   Poll-Quellen kommen mit dem nächsten Tick aus dem neuen Projekt (zustand.js).
+ * - F-898 (F44 WS-2b): Freigaben und Rückfragen stehen immer vollständig da. Läufe,
+ *   Startprobleme und Befunde zeigen je höchstens GRUPPE_MAX Einträge, dazu einen Knopf
+ *   „+ x weitere“ (aria-expanded), der die Gruppe aufklappt; aufgeklappt heißt er „Weniger
+ *   anzeigen“. Die Zähler der vier Quellen bleiben die Gesamtzahlen. Der Zustand gilt je Gruppe
+ *   bis zum Projektwechsel. Eine Gruppe wird nur bei geändertem Inhalt neu geschrieben, damit der
+ *   Poll-Tick den Tastaturfokus (z. B. auf dem Knopf) nicht zerstört.
  */
 
-import { formatiereDatum, t } from '../i18n.js'
+import { formatiereDatum, formatiereZahl, t } from '../i18n.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
-// Die erste Importzeile bleibt wörtlich (Gate f21-ws2 (e): dieselbe Filterquelle wie
-// views/dashboard.js); die beiden Filter wendet baueEntscheidungen intern an.
-import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
-import { baueEntscheidungen } from '../attention-daten.js'
+// Gate f21-ws2 (e): Auswahl und Filterregel kommen aus attention-daten.js (baueEntscheidungen
+// wendet filtereAttentionWorkflows/filtereAttentionLaeufe intern an), dieselbe Quelle wie
+// views/dashboard.js.
+import { baueEntscheidungen, holeOffeneP0P1Workitems } from '../attention-daten.js'
 
 /** Letztes Zustands-Aggregat aus dem Poll, oder null vor dem ersten Tick. */
 let letzterZustand = null
@@ -52,6 +58,18 @@ let workitemsAntwort = null
 
 /** Gruppen in Listenreihenfolge: Schlüssel in baueEntscheidungen().gruppen, Container-ID-Suffix. */
 const GRUPPEN = ['workflows', 'laeufe', 'startfehler', 'workitems']
+
+/** Höchstzahl sichtbarer Einträge je begrenzter Gruppe, bevor „+ x weitere“ erscheint (F-898). */
+const GRUPPE_MAX = 5
+
+/** Gruppen, die immer vollständig erscheinen (Freigaben und Rückfragen, F-898). */
+const IMMER_VOLLSTAENDIG = new Set(['workflows'])
+
+/** Aufgeklappte begrenzte Gruppen (Name aus GRUPPEN), bis zum Projektwechsel. */
+const aufgeklappt = new Set()
+
+/** Zuletzt geschriebenes HTML je Gruppe — ein Poll-Tick schreibt nur bei Änderung neu (Fokus bleibt). */
+const gruppenCache = new Map()
 
 /** Datum und Uhrzeit über Intl in der aktiven Sprache (AK7). */
 const ZEIT_FORMAT = { dateStyle: 'medium', timeStyle: 'short' }
@@ -109,26 +127,43 @@ function zeile(eintrag) {
 }
 
 /**
+ * Zeilen einer vorhandenen Gruppe: vollständig, oder bei einer begrenzten Gruppe mit mehr als
+ * GRUPPE_MAX Einträgen die ersten GRUPPE_MAX und der Knopf „+ x weitere“ (F-898).
+ * @param name - Gruppenname aus GRUPPEN
+ * @param liste - Eintrag[]
+ * @returns HTML
+ */
+function gruppenZeilen(name, liste) {
+  if (IMMER_VOLLSTAENDIG.has(name) || liste.length <= GRUPPE_MAX) return liste.map(zeile).join('')
+  const offen = aufgeklappt.has(name)
+  const sichtbar = offen ? liste : liste.slice(0, GRUPPE_MAX)
+  const weitere = liste.length - GRUPPE_MAX
+  const text = offen ? t('attention.weniger') : t('attention.mehr', { anzahl: weitere, zahl: formatiereZahl(weitere) })
+  return `${sichtbar.map(zeile).join('')}<button type="button" class="button attention-mehr" data-attention-gruppe="${name}" aria-expanded="${offen}" aria-controls="attention-${name}">${escapeHtml(text)}</button>`
+}
+
+/**
  * Füllt eine Gruppe: leer → unsichtbar, defekt → „nicht verfügbar“, lädt → „Lädt…“, sonst Zeilen.
+ * Schreibt den Container nur bei geändertem Inhalt neu.
  * @param name - Gruppenname aus GRUPPEN
  * @param liste - Eintrag[] | null | undefined
  */
 function renderGruppe(name, liste) {
   const abschnitt = document.getElementById(`attention-abschnitt-${name}`)
   const container = document.getElementById(`attention-${name}`)
+  let html
   if (Array.isArray(liste) && liste.length === 0) {
     abschnitt.hidden = true
-    container.innerHTML = ''
-    return
-  }
-  abschnitt.hidden = false
-  if (liste === null) {
-    container.innerHTML = `<p class="entscheidung-zeile entscheidung-unbekannt">${escapeHtml(t(`attention.nichtVerfuegbar.${name}`))}</p>`
-  } else if (liste === undefined) {
-    container.innerHTML = `<p class="entscheidung-zeile subtle">${escapeHtml(t('attention.laedt'))}</p>`
+    html = ''
   } else {
-    container.innerHTML = liste.map(zeile).join('')
+    abschnitt.hidden = false
+    if (liste === null) html = `<p class="entscheidung-zeile entscheidung-unbekannt">${escapeHtml(t(`attention.nichtVerfuegbar.${name}`))}</p>`
+    else if (liste === undefined) html = `<p class="entscheidung-zeile subtle">${escapeHtml(t('attention.laedt'))}</p>`
+    else html = gruppenZeilen(name, liste)
   }
+  if (gruppenCache.get(name) === html) return
+  container.innerHTML = html
+  gruppenCache.set(name, html)
 }
 
 /**
@@ -204,11 +239,23 @@ export function initAttentionView() {
     if (document.getElementById('attention-hinweis').hidden) document.getElementById('attention-titel')?.focus()
   })
 
+  // F-898: „+ x weitere“ klappt eine begrenzte Gruppe auf bzw. zu; der Fokus bleibt auf dem Knopf.
+  document.getElementById('attention-liste')?.addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-attention-gruppe]') : null
+    if (knopf === null) return
+    const name = knopf.getAttribute('data-attention-gruppe')
+    if (aufgeklappt.has(name)) aufgeklappt.delete(name)
+    else aufgeklappt.add(name)
+    render()
+    document.querySelector(`[data-attention-gruppe="${name}"]`)?.focus()
+  })
+
   registriere(/^#\/attention$/, 'attention', () => {
     void ladeWorkitems()
   })
 
   abonniereProjektWechsel(() => {
+    aufgeklappt.clear()
     void ladeWorkitems()
   })
 

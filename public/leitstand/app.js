@@ -18,12 +18,13 @@
  * Poll-Timer) NACH allen initXView()-Aufrufen: jede View registriert ihr
  * abonniere() bei zustand.js, bevor der erste Tick etwas zu melden hätte.
  *
- * Dashboard/Projekt/Attention haben kein eigenes onEnter (reine Anzeige-
- * Views ohne Detail-Unterrouten wie Runs/Workflows) — ihre Routen
- * registriert deshalb die Shell hier zentral, statt jede View das für sich
+ * Projekt hat kein eigenes onEnter (reine Anzeige-View ohne Detail-
+ * Unterrouten wie Runs/Workflows) — seine Route registriert deshalb die
+ * Shell hier zentral (F44 WS-2b: Dashboard lädt beim Betreten Roadmap und
+ * Workitems und registriert #/dashboard seitdem selbst), statt jede View das für sich
  * wiederholen zu lassen. Workboard ist seit F21 WS-2, Capabilities seit
  * F24 WS-1, Projekte-Übersicht seit F25 WS-2a und Chat seit F26 WS-2a die
- * Ausnahme: alle vier brauchen beim Eintritt einen echten Abruf (onEnter)
+ * Ausnahme (seit F44 WS-2b auch das Dashboard): alle brauchen beim Eintritt einen echten Abruf (onEnter)
  * und registrieren ihre Route deshalb selbst (Muster views/runs.js) — KEINE
  * zentrale `#/workboard`- bzw. `#/capabilities`- bzw.
  * `#/projekte-uebersicht`- bzw. `#/chat`-Registrierung mehr hier, sonst
@@ -49,8 +50,8 @@
  * initEinstellungenView() registriert '#/einstellungen' wie jede andere View vor
  * starteRouter().
  *
- * F44 WS-1b: initPlatzhalterViews() registriert '#/brain', '#/produktzyklus' und
- * '#/nutzung' (views/platzhalter.js); F44 WS-2a: initRoadmapView() registriert '#/roadmap'
+ * F44 WS-1b: initPlatzhalterViews() registriert '#/brain' und '#/produktzyklus'
+ * (views/platzhalter.js); F44 WS-2b: initNutzungView() registriert '#/nutzung' (views/nutzung.js); F44 WS-2a: initRoadmapView() registriert '#/roadmap'
  * (views/roadmap.js) wie jede andere View vor starteRouter(). initKommt()
  * (kommt.js) hängt einmalig die Sperre für aria-disabled-Knöpfe an (E-F44-1), vor jeder View,
  * damit ihr Einfang-Listener vor allen übrigen Handlern steht. initShell() übersetzt die
@@ -68,6 +69,7 @@ import { initCapabilitiesView } from './views/capabilities.js'
 import { initChatView } from './views/chat.js'
 import { initDashboardView } from './views/dashboard.js'
 import { initEinstellungenView } from './views/einstellungen.js'
+import { initNutzungView } from './views/nutzung.js'
 import { initPlatzhalterViews } from './views/platzhalter.js'
 import { initProjektView } from './views/projekt.js'
 import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
@@ -96,12 +98,12 @@ initCapabilitiesView()
 initAttentionView()
 initEinstellungenView()
 initPlatzhalterViews()
+initNutzungView()
 initRoadmapView()
 initStartView()
 initPersona()
 initShell()
 
-registriere(/^#\/dashboard$/, 'dashboard')
 registriere(/^#\/projekt$/, 'projekt')
 
 initZustandPoll()
