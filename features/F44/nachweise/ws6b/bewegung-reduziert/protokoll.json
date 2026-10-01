@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Reduzierte Bewegung: Seite (keine eigene Animation)",
+    "Aufschlüsselung offen": false,
+    "Erklärung „Nicht erfasst“ sichtbar": false,
+    "Leerzustand": false,
+    "Fehler mit „Erneut versuchen“": false,
+    "zweite Live-Region (muss fehlen)": false,
+    "Ansicht": "nutzung",
+    "data-theme": "dark",
+    "lang": "de",
+    "Fokus-ID": "(fehlt)",
+    "Fokus-Zeitraum": "(fehlt)",
+    "Zeitraum aktiv": "Letzte 30 Tage",
+    "Werte": "Ausführungen 28 Einzelne Arbeitsschritte im Zeitraum Mit Nutzungsdaten 24 von 28 Für diese Ausführungen liegen Messwerte",
+    "Gelesen": "1.302.900",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Reduzierte Bewegung: Aufschlüsselung offen",
+    "Aufschlüsselung offen": true,
+    "Erklärung „Nicht erfasst“ sichtbar": false,
+    "Leerzustand": false,
+    "Fehler mit „Erneut versuchen“": false,
+    "zweite Live-Region (muss fehlen)": false,
+    "Ansicht": "nutzung",
+    "data-theme": "dark",
+    "lang": "de",
+    "Fokus-ID": "null",
+    "Fokus-Zeitraum": "null",
+    "Zeitraum aktiv": "Letzte 30 Tage",
+    "Werte": "Ausführungen 28 Einzelne Arbeitsschritte im Zeitraum Mit Nutzungsdaten 24 von 28 Für diese Ausführungen liegen Messwerte",
+    "Gelesen": "1.302.900",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

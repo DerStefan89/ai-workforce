@@ -1,0 +1,372 @@
+{
+  "url": "http://127.0.0.1:4199/#/nutzung",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-nutzung"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/verbrauch?*",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 28,
+        "ohneBeobachtungGesamt": 4,
+        "gruppen": [
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 14,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 182400,
+              "outputTokens": 96500,
+              "cacheReadTokens": 812000,
+              "cacheWriteTokens": 121300,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 2,
+            "ohneBeobachtung": 2,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "code-reviewer",
+            "worker": "codex",
+            "modell": "gpt-5-codex",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 8,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 64200,
+              "outputTokens": 21800,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "qa",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 3,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 21000,
+              "outputTokens": 9100,
+              "cacheReadTokens": 88000,
+              "cacheWriteTokens": 14000,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": null,
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 1,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/verbrauch",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 0,
+        "ohneBeobachtungGesamt": 0,
+        "gruppen": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Zeitraum",
+        "selector": ":focus",
+        "attribut": "data-verbrauch-zeitraum"
+      },
+      {
+        "name": "Zeitraum aktiv",
+        "selector": "#view-nutzung [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Werte",
+        "selector": "#view-nutzung .nutzung-kennzahlen"
+      },
+      {
+        "name": "Gelesen",
+        "selector": "#view-nutzung .nutzung-flaeche .nutzung-gross"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Aufschlüsselung offen",
+        "selector": "#nutzung-aufschluesselung[open]"
+      },
+      {
+        "name": "Erklärung „Nicht erfasst“ sichtbar",
+        "selector": "#nutzung-hilfe-text:not([hidden])"
+      },
+      {
+        "name": "Leerzustand",
+        "selector": "#nutzung-aufschluesselung .leer"
+      },
+      {
+        "name": "Fehler mit „Erneut versuchen“",
+        "selector": "#nutzung-fehler [data-aktion=\"erneut\"]"
+      },
+      {
+        "name": "zweite Live-Region (muss fehlen)",
+        "selector": "#view-nutzung [aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Seite geladen (30 Tage)",
+      "warteAufSelector": {
+        "selector": "#view-nutzung .nutzung-kennzahlen",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "„Gesamter Zeitraum“ ohne Läufe: Kennzahlen 0, Leerzustand „Keine Läufe im Zeitraum.“ auch bei zugeklappter Aufschlüsselung",
+      "klick": "#view-nutzung [data-verbrauch-zeitraum=\"gesamt\"]",
+      "warteAufSelector": {
+        "selector": "#view-nutzung .nutzung-leer",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-zustand-1-leer.webp"
+    },
+    {
+      "label": "„Letzte 7 Tage“: alle Ausführungen ohne Nutzungsdaten — Gelesen/Erzeugt und Tokenzellen „—“ statt 0",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/verbrauch?*",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "laeufeGesamt": 3,
+            "ohneBeobachtungGesamt": 3,
+            "gruppen": [
+              {
+                "rolle": "ausfuehrung",
+                "worker": "claude-code",
+                "modell": null,
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 3,
+                "ohneBeobachtung": 3,
+                "verbrauch": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0,
+                  "dauerMs": 1000
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "klick": "#view-nutzung [data-verbrauch-zeitraum=\"7t\"]",
+      "warteAufSelector": {
+        "selector": "#view-nutzung [data-verbrauch-zeitraum=\"7t\"][aria-pressed=\"true\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Aufschlüsselung öffnen",
+      "klick": "#nutzung-aufschluesselung > summary",
+      "warteAufSelector": {
+        "selector": "#nutzung-aufschluesselung[open]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-zustand-2-ohne-messwerte.webp"
+    },
+    {
+      "label": "„Letzte 30 Tage“ scheitert (500): Fehler mit „Erneut versuchen“, Register bleibt",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/verbrauch?*",
+          "status": 500,
+          "json": {
+            "grund": "Laufakten nicht lesbar"
+          }
+        }
+      ],
+      "klick": "#view-nutzung [data-verbrauch-zeitraum=\"30t\"]",
+      "warteAufSelector": {
+        "selector": "#nutzung-fehler",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-zustand-3-fehler.webp"
+    },
+    {
+      "label": "„Erneut versuchen“ lädt den aktiven Zeitraum (30 Tage) neu",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/verbrauch?*",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "laeufeGesamt": 28,
+            "ohneBeobachtungGesamt": 4,
+            "gruppen": [
+              {
+                "rolle": "ausfuehrung",
+                "worker": "claude-code",
+                "modell": "claude-sonnet-4-5",
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 14,
+                "ohneBeobachtung": 1,
+                "verbrauch": {
+                  "inputTokens": 182400,
+                  "outputTokens": 96500,
+                  "cacheReadTokens": 812000,
+                  "cacheWriteTokens": 121300,
+                  "dauerMs": 1000
+                }
+              },
+              {
+                "rolle": "ausfuehrung",
+                "worker": "claude-code",
+                "modell": null,
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 2,
+                "ohneBeobachtung": 2,
+                "verbrauch": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0,
+                  "dauerMs": 1000
+                }
+              },
+              {
+                "rolle": "code-reviewer",
+                "worker": "codex",
+                "modell": "gpt-5-codex",
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 8,
+                "ohneBeobachtung": 0,
+                "verbrauch": {
+                  "inputTokens": 64200,
+                  "outputTokens": 21800,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0,
+                  "dauerMs": 1000
+                }
+              },
+              {
+                "rolle": "qa",
+                "worker": "claude-code",
+                "modell": "claude-sonnet-4-5",
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 3,
+                "ohneBeobachtung": 0,
+                "verbrauch": {
+                  "inputTokens": 21000,
+                  "outputTokens": 9100,
+                  "cacheReadTokens": 88000,
+                  "cacheWriteTokens": 14000,
+                  "dauerMs": 1000
+                }
+              },
+              {
+                "rolle": null,
+                "worker": "claude-code",
+                "modell": null,
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 1,
+                "ohneBeobachtung": 1,
+                "verbrauch": {
+                  "inputTokens": 0,
+                  "outputTokens": 0,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0,
+                  "dauerMs": 1000
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "klick": "#nutzung-fehler [data-aktion=\"erneut\"]",
+      "warteAufSelector": {
+        "selector": "#view-nutzung .nutzung-kennzahlen",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-zustand-4-erneut.webp"
+    }
+  ]
+}

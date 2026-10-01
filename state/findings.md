@@ -12158,3 +12158,30 @@ Auswirkung: Niedrig — Prüfpunkte landen beim falschen Paket oder bleiben lieg
 Maßnahme: Prüfpunkte nach Fundort bzw. Route ablegen (z. B. „Prüfpunkte `#/projekt`“) und das zuständige Paket nur als Vermerk nennen.
 Status: offen.
 Feature/Run: Entdeckt: F44 WS-6a, 01.10.2026 (Auftrag Stefan).
+
+**F-947** · `BUG` · P3 · erledigt
+Titel: Lange Produktnamen brechen mitten im Wort.
+Beschreibung: Auf den Karten von `#/projekte-uebersicht` (F44 WS-6a) bricht ein langer Produktname ohne Trennstrich mitten im Wort („Wochenplanun / g“). Ursache: `hyphens: manual` aus der Korrekturrunde WS-6a; ohne Trennstelle bricht `overflow-wrap: break-word` irgendwo im Wort.
+Fundstelle: `public/leitstand/style.css` (`.v10-seite .produkt-karte h2`).
+Auswirkung: Niedrig — schlechter lesbar, kein Überlauf.
+Maßnahme: `hyphens: auto` (html lang ist gesetzt) mit `overflow-wrap: break-word` als Rückfall.
+Status: erledigt (F44 WS-6b, 01.10.2026): Kartentitel auf `overflow-wrap: break-word; hyphens: auto`; Render-Nachweise `features/F44/nachweise/ws6b/f947-produkte-1440/`, `f947-produkte-390/` und `f947-produkte-390-en/` (kein Überlauf). Grenze: getrennt wird nach der Sprache der Oberfläche, nicht der des Namens.
+Feature/Run: Entdeckt: Verifikation F44 WS-6a, 01.10.2026.
+
+**F-948** · `BUG` · P3 · offen
+Titel: Vorschau-Kurzstand zeigt „nicht gesetzt“ für eine gesetzte, aber nicht lokale vorschau_url.
+Beschreibung: `vorschauKurzstand` liest `url: null` als „nicht gesetzt“. Der Server meldet aber auch eine gesetzte `vorschau_url`, die nicht lokal ist, mit `url: null` (und eigenem `grund`), weil er sie nicht anfragt. Die Zusammenfassung der Technik-Klappe auf `#/projekte-uebersicht` sagt dann „Vorschau nicht gesetzt“, obwohl ein Wert im Register steht.
+Fundstelle: `public/leitstand/produkte-anzeige.js` (`vorschauKurzstand`); Serverseite `src/projekt-aufruf/index.ts:217`.
+Auswirkung: Niedrig — irreführender Kurzstand; der F43-Block darunter zeigt den Servergrund roh.
+Maßnahme: Den Server-`grund` unterscheiden oder einen eigenen Kurzstand „nicht angefragt“ einführen.
+Status: offen.
+Feature/Run: Entdeckt: Verifikation F44 WS-6a, 01.10.2026.
+
+**F-949** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Übergabe-Vorlage enthielt `git switch main`, das im Worktree aiw-f725-ws1a scheitert.
+Beschreibung: `main` ist im Worktree C:/Users/stefa/Projekte/ai-workforce ausgecheckt; `git switch main` im Worktree aiw-f725-ws1a bricht deshalb ab (real nach dem Merge von WS-6a, folgenlos).
+Fundstelle: Challenger-Übergaben (TERMINAL-Blöcke für neue Branches).
+Auswirkung: Niedrig — der Befehl scheitert sichtbar, ohne Folgen; ein neuer Branch muss anders angelegt werden.
+Maßnahme: In diesem Worktree nur `git fetch origin` und dann `git switch -c <branch> --no-track origin/main`.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-6a/6b, 01.10.2026.

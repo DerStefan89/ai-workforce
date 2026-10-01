@@ -1,0 +1,277 @@
+{
+  "url": "http://127.0.0.1:4199/#/nutzung",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 2,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/verbrauch?*",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 28,
+        "ohneBeobachtungGesamt": 4,
+        "gruppen": [
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 14,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 182400,
+              "outputTokens": 96500,
+              "cacheReadTokens": 812000,
+              "cacheWriteTokens": 121300,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "ausfuehrung",
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 2,
+            "ohneBeobachtung": 2,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "code-reviewer",
+            "worker": "codex",
+            "modell": "gpt-5-codex",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 8,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 64200,
+              "outputTokens": 21800,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": "qa",
+            "worker": "claude-code",
+            "modell": "claude-sonnet-4-5",
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 3,
+            "ohneBeobachtung": 0,
+            "verbrauch": {
+              "inputTokens": 21000,
+              "outputTokens": 9100,
+              "cacheReadTokens": 88000,
+              "cacheWriteTokens": 14000,
+              "dauerMs": 1000
+            }
+          },
+          {
+            "rolle": null,
+            "worker": "claude-code",
+            "modell": null,
+            "auftragId": "a-nw",
+            "anzahlLaeufe": 1,
+            "ohneBeobachtung": 1,
+            "verbrauch": {
+              "inputTokens": 0,
+              "outputTokens": 0,
+              "cacheReadTokens": 0,
+              "cacheWriteTokens": 0,
+              "dauerMs": 1000
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/verbrauch",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "laeufeGesamt": 0,
+        "ohneBeobachtungGesamt": 0,
+        "gruppen": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus-Zeitraum",
+        "selector": ":focus",
+        "attribut": "data-verbrauch-zeitraum"
+      },
+      {
+        "name": "Zeitraum aktiv",
+        "selector": "#view-nutzung [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Werte",
+        "selector": "#view-nutzung .nutzung-kennzahlen"
+      },
+      {
+        "name": "Gelesen",
+        "selector": "#view-nutzung .nutzung-flaeche .nutzung-gross"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Aufschlüsselung offen",
+        "selector": "#nutzung-aufschluesselung[open]"
+      },
+      {
+        "name": "Erklärung „Nicht erfasst“ sichtbar",
+        "selector": "#nutzung-hilfe-text:not([hidden])"
+      },
+      {
+        "name": "Leerzustand",
+        "selector": "#nutzung-aufschluesselung .leer"
+      },
+      {
+        "name": "Fehler mit „Erneut versuchen“",
+        "selector": "#nutzung-fehler [data-aktion=\"erneut\"]"
+      },
+      {
+        "name": "zweite Live-Region (muss fehlen)",
+        "selector": "#view-nutzung [aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Letzte 30 Tage (Standard): Kopf, Register, drei Kennzahlen, Was wurde verarbeitet?, Aufschlüsselung zu",
+      "warteAufSelector": {
+        "selector": "#view-nutzung .nutzung-kennzahlen",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440z2-1-30tage.webp"
+    },
+    {
+      "label": "Erklärung „Nicht erfasst“ öffnen (Knopf ?)",
+      "klick": "#view-nutzung [data-aktion=\"hilfe\"]",
+      "warteAufSelector": {
+        "selector": "#nutzung-hilfe-text:not([hidden])",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Technische Aufschlüsselung offen: Rolle · Worker mit Modell je Zeile, Cache getrennt, „Nach Modell“, unbekannt mit Tooltip",
+      "klick": "#nutzung-aufschluesselung > summary",
+      "warteAufSelector": {
+        "selector": "#nutzung-aufschluesselung[open]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440z2-2-aufschluesselung.webp"
+    },
+    {
+      "label": "„Letzte 7 Tage“: andere Zahlen, Aufschlüsselung bleibt offen",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/verbrauch?*",
+          "status": 200,
+          "json": {
+            "status": "ok",
+            "laeufeGesamt": 5,
+            "ohneBeobachtungGesamt": 1,
+            "gruppen": [
+              {
+                "rolle": "ausfuehrung",
+                "worker": "claude-code",
+                "modell": "claude-sonnet-4-5",
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 4,
+                "ohneBeobachtung": 1,
+                "verbrauch": {
+                  "inputTokens": 31200,
+                  "outputTokens": 18800,
+                  "cacheReadTokens": 140500,
+                  "cacheWriteTokens": 20100,
+                  "dauerMs": 1000
+                }
+              },
+              {
+                "rolle": "code-reviewer",
+                "worker": "codex",
+                "modell": "gpt-5-codex",
+                "auftragId": "a-nw",
+                "anzahlLaeufe": 1,
+                "ohneBeobachtung": 0,
+                "verbrauch": {
+                  "inputTokens": 9100,
+                  "outputTokens": 2600,
+                  "cacheReadTokens": 0,
+                  "cacheWriteTokens": 0,
+                  "dauerMs": 1000
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "klick": "#view-nutzung [data-verbrauch-zeitraum=\"7t\"]",
+      "warteAufSelector": {
+        "selector": "#view-nutzung [data-verbrauch-zeitraum=\"7t\"][aria-pressed=\"true\"]",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Kennzahlen des 7-Tage-Zeitraums geladen",
+      "warteAufSelector": {
+        "selector": "#view-nutzung .nutzung-kennzahlen",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440z2-3-7tage.webp"
+    }
+  ]
+}
