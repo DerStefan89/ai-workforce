@@ -1,4 +1,4 @@
-# AI Workforce — Ziel-Fassung v1.38 (konsolidierte Sollquelle)
+# AI Workforce — Ziel-Fassung v1.39 (konsolidierte Sollquelle)
 
 Stand: 06.09.2026
 Grundlage: Entscheidungsregister 001–176, Challenge 2 (`10_...`), TECHNICAL_PROOF (`13_...`), Architektur-Council (`16_` bis `20_`), realer Harness `main` HEAD `9189959`, zweite Challenge-Runde gegen den realen Harness (`54_...`, `57_...`), STALE-Korrekturen (`58_...`, `59_...`), Architekturphase A1–A9 (`40_ARCHITEKTUR_A1_A9.md`).
@@ -74,6 +74,8 @@ v1.35 → v1.36: **§13.6 um E-F36-8 ergänzt** (Stefan, 28.09.2026; Spike S7 am
 v1.36 → v1.37: **§13.6 um E-F36-9 ergänzt, E-F36-6 präzisiert** (Stefan, 29.09.2026, F36 WS-5a): E-F36-9 = A — MCP-Server, die als Registry-Paket verteilt werden, installiert die Workforce nur aus der ausdrücklichen Katalog-Adresse `herkunft.paket` (z. B. `npm:@playwright/mcp`), in exakter Version; `herkunft.url` bleibt die Informationsadresse; `herkunft.paket` wird vor dem Klick zusammen mit Lizenz, Kosten und Wirkung angezeigt. E-F36-6 nennt als Katalog-Adresse jetzt `herkunft.url` bzw. bei Registry-Paketen `herkunft.paket`.
 
 v1.37 → v1.38: **§13.6 Umsetzungsvermerke zu E-F36-6 und E-F36-8** (F36 Review-Pass, 29.09.2026; keine neue Entscheidung): E-F36-6 „danach ins Projekt-`.claude/`“ ist durch E-F36-8 (Ort B) überholt, installiert wird nur nach `~/.ai-workforce/cap/<id>`. Zu E-F36-8 ist der gebaute Stand vermerkt: `Agent` steht nie in `--tools` (statt `--disallowedTools Agent(…)`), Projekt-Skills bleiben auch bei `FREIGEGEBEN` gesperrt (F-815, F-816); aus der Sperrliste fallen nur Ort-B-Skills.
+
+v1.38 → v1.39: **§13.6 um E-M5-18, E-M5-19 und E-F45-1 ergänzt, E-F36-4 geändert** (Stefan, 01.10.2026, Fixpaket „Arbeitsfähigkeit“): E-M5-18 (Fixpaket „Arbeitsfähigkeit“ nach dem Design-Bau, vor F30, Bausteine B1–B5 in der Reihenfolge B1 → B2 → B5 → B3 → B4). E-M5-19 (Claude Code arbeitet innerhalb der Workforce nach dem Harness als Verfahren, nicht nur als Text in CLAUDE.md). E-F36-4 geändert (Web- und kostenpflichtige MCPs zulässig bei Einzelfreigabe, sichtbaren Kosten und rein lesender Nutzung; technisch bis B4 weiter nur „lokal“). E-F45-1 = A (Feature-Akte direkt im Leitstand bearbeiten). Findings F-909 bis F-912.
 
 ---
 
@@ -887,6 +889,11 @@ zulässig, wenn alles davon gilt: vom Menschen freigegeben, mit
 außen; nur im ZWINGEND-Schritt `ausfuehrung`; nur wenn empfohlen und
 beim Start angezeigt. E-187 bleibt als Default ERZWUNGEN; die Ausnahme
 steht als eng benannter Nachtrag in §9.1.
+**Geändert (Stefan, 01.10.2026, E-M5-18):** Web- und kostenpflichtige
+MCPs sind zulässig, wenn (a) jeder Eintrag einzeln von Stefan freigegeben
+ist, (b) die Kosten am Eintrag sichtbar sind und (c) der MCP nur lesend
+genutzt wird. Bis zur Umsetzung im Fixpaket „Arbeitsfähigkeit“, Baustein
+B4, gilt technisch weiter nur „lokal“ (§9.1 unverändert).
 
 **E-F36-5 = A** *(Stefan, 28.09.2026, F36 WS-1b)* — Die Recherche
 `docs/harness/kandidaten-2026-09-15.md` wird übernommen (Urteile
@@ -950,6 +957,42 @@ ausdrücklichen Katalog-Adresse `herkunft.paket` (z. B.
 „npm:@playwright/mcp“), in exakter Version; `herkunft.url` bleibt die
 Informationsadresse. `herkunft.paket` wird vor dem Klick zusammen mit
 Lizenz, Kosten und Wirkung angezeigt.
+
+**E-M5-18** *(Stefan, 01.10.2026)* — Fixpaket „Arbeitsfähigkeit“ direkt
+nach dem Design-Bau (F44 bis WS-8) und vor F30, mit eigener Challenge nach
+WS-8. Bausteine in der Reihenfolge B1 → B2 → B5 → B3 → B4:
+- B1 Harness im Lauf: Agents und Projekt-Skills im Ausführungslauf
+  aufrufbar (F-815, F-816); Review gegen die Checkliste
+  `.claude/agents/code-reviewer.md` und die DoD aus CLAUDE.md (F-829); der
+  Vorstart-Scan blockiert ai-workforce selbst nicht mehr (F-818).
+- B2 Planungs- und Prüfkette: architecture-advisor mit output_schema und
+  vierstufigem Urteil; Plan v2 als eigener Schritt (Rolle `architekt`) mit
+  eigenem Artefakt; Rückweg zum Plan bei „überarbeiten“ (F-203, F-909);
+  qa-Schritt (F-820).
+- B5 Feature-Fluss (F-912): Der Coach legt im bestehenden Projekt eine
+  Feature-Akte an, statt den Scope direkt zum Auftrag zu machen; die Akte
+  ist im Leitstand bearbeitbar (E-F45-1); „In die Arbeit schicken“ mit
+  einem Klick.
+- B3 Design-Fähigkeit (F-911): impeccable installierbar
+  (`installation_vorlage`); design-guardian im Projekt-Skelett und als
+  UI-Prüfschritt in den Workflow-Vorlagen; Render-Nachweis und Token-Gate
+  für Fremdprojekte nutzbar.
+- B4 Fähigkeiten: Katalogart „plugin“ mit Freigabe und Init-Prüfung
+  (F-910); Web- und kostenpflichtige MCPs nach der geänderten E-F36-4; die
+  wichtigsten GitHub-Einträge mit `freigabe: OFFEN` installierbar; Scout
+  für Stack-Recherche tauglich (F-859).
+In der Challenge mitzuklären: F-715, F-766, F-764.
+
+**E-M5-19** *(Stefan, 01.10.2026)* — Claude Code arbeitet innerhalb der
+Workforce nach dem Harness, und zwar als Verfahren (Skills, Agents,
+Planungskette Spec → Plan v1 → Advisor → Plan v2 → Handoff → Bauen), nicht
+nur als Text in CLAUDE.md.
+
+**E-F45-1 = A** *(Stefan, 01.10.2026)* — Eine Feature-Akte wird direkt im
+Leitstand bearbeitet: Formular für Ziel, Nicht-Ziele und AK mit dem
+Pflichtfeld Änderungsgrund; Konfliktschutz über den Datei-Hash; gesperrt,
+solange ein Workflow zum Feature läuft; kein Auto-Commit, der Leitstand
+zeigt den Git-Block. Umsetzung im Fixpaket „Arbeitsfähigkeit“, B5.
 
 **Arbeitsregeln M5:** neue HTTP-Routen ab F32 in
 `scripts/leitstand/routen-<feature>.mjs`, der Server registriert nur

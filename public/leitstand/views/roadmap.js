@@ -35,20 +35,8 @@ import { t } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
-import { aktuellerMeilenstein, meilensteinOffen, nichtEingeplant, roadmapZustand, STATUS_KATEGORIEN, statusKategorie, zaehleMeilenstein } from '../roadmap-anzeige.js'
+import { aktuellerMeilenstein, meilensteinOffen, nichtEingeplant, roadmapZustand, STATUS_KATEGORIEN, STATUS_SYMBOL, statusKategorie, zaehleMeilenstein } from '../roadmap-anzeige.js'
 import { registriere } from '../router.js'
-
-/** Symbol je Statuskategorie — die fünf der Vorlage (✓ ◉ ↻ ! ○), dazu Abgebrochen und Ohne Akte. */
-const SYMBOL = {
-  abgenommen: '✓',
-  freigabe: '◉',
-  in_arbeit: '↻',
-  klaerung: '!',
-  geplant: '○',
-  abgebrochen: '–',
-  ohne_akte: '◇',
-  unbekannt: '?',
-}
 
 /** Anzahl der ausgegrauten Wochenspalten (Vorlage: sechs relative Wochen). */
 const WOCHEN = 6
@@ -68,7 +56,7 @@ let roadmapAnfrageZaehler = 0
  * @returns HTML
  */
 function symbol(kategorie) {
-  return `<span class="roadmap-symbol roadmap-kat-${kategorie}" aria-hidden="true">${SYMBOL[kategorie]}</span>`
+  return `<span class="roadmap-symbol roadmap-kat-${kategorie}" aria-hidden="true">${STATUS_SYMBOL[kategorie]}</span>`
 }
 
 /**
@@ -98,7 +86,7 @@ function seitenkopf() {
         <h1 tabindex="-1">${escapeHtml(t('roadmap.titel', { projekt: projektName }))}</h1>
         <p class="description">${escapeHtml(t('roadmap.beschreibung'))}</p>
       </div>
-      ${kommtKnopf(t('roadmap.eintragErfassen'), { primaer: true })}
+      ${kommtKnopf(t('roadmap.eintragErfassen'), { primaer: true, symbol: '+' })}
     </div>
     <nav class="tabs" aria-label="${escapeHtml(t('roadmap.register'))}">
       <a href="#/dashboard">${escapeHtml(t('roadmap.register.ueberblick'))}</a>

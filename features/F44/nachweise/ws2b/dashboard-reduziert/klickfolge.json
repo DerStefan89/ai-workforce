@@ -1,0 +1,140 @@
+{
+  "url": "http://127.0.0.1:4381/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "reduzierteBewegung": true,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "B1 Meilensteinzeile",
+        "selector": "#uebersicht-b1 .description"
+      },
+      {
+        "name": "B2 Fortschritt",
+        "selector": "#uebersicht-cockpit .cockpit-progress"
+      },
+      {
+        "name": "B3 Rolle",
+        "selector": "#uebersicht-cockpit .cockpit-role h2"
+      },
+      {
+        "name": "B5 Werte",
+        "selector": "#uebersicht-werte .pm-summary-strip"
+      },
+      {
+        "name": "B7 erste Entscheidung",
+        "selector": "#uebersicht-fokus .pm-decision h3"
+      },
+      {
+        "name": "B8 Workforce",
+        "selector": "#uebersicht-fokus .pm-now h2"
+      },
+      {
+        "name": "B9 aktueller Meilenstein",
+        "selector": "#uebersicht-weg .uebersicht-weg-zeile.aktuell, #uebersicht-weg .note, #uebersicht-weg p"
+      },
+      {
+        "name": "B10 erste Zeile",
+        "selector": "#uebersicht-stand .pm-status-row, #uebersicht-stand p"
+      },
+      {
+        "name": "B11 Jetzt",
+        "selector": "#uebersicht-wer .execution-current strong, #uebersicht-wer p"
+      },
+      {
+        "name": "B12 Zuletzt",
+        "selector": "#uebersicht-zuletzt h2, #uebersicht-zuletzt p"
+      },
+      {
+        "name": "B16 Betrieb",
+        "selector": "#uebersicht-betrieb"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Erster Schritt (B14)",
+        "id": "uebersicht-erster-schritt"
+      },
+      {
+        "name": "Blöcke 2–11",
+        "id": "uebersicht-inhalt"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "kommt-Knöpfe (aria-disabled)",
+        "selector": "#view-dashboard .kommt-knopf[aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Deployer (aria-disabled)",
+        "selector": "#view-dashboard .cockpit-deployer[aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Wochenspalten/Gantt",
+        "selector": "#view-dashboard .roadmap-wochen, #view-dashboard .gantt-bar"
+      },
+      {
+        "name": "Erneut laden (Roadmap)",
+        "selector": "#view-dashboard [data-uebersicht-erneut]"
+      },
+      {
+        "name": "Verbrauchskarte",
+        "selector": "#view-dashboard .verbrauch-karte"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/dashboard",
+      "warteAufSelector": {
+        "selector": "#uebersicht-cockpit .cockpit-role h2, #uebersicht-erster-schritt .first-step",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "label": "Fokus-Nachtrag geladen",
+      "warteAufSelector": {
+        "selector": "#uebersicht-wer .execution-triptych, #uebersicht-wer p:not(.subtle), #uebersicht-wer p.subtle:not(:empty)",
+        "timeoutMs": 10000
+      },
+      "screenshot": "d1440-dashboard-reduziert.webp"
+    }
+  ]
+}

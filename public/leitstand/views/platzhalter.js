@@ -1,16 +1,14 @@
 /**
  * Datei: public/leitstand/views/platzhalter.js
  *
- * Zweck: Drei Seiten der Sidebar V10, die es im Leitstand noch nicht als eigene Ansicht gibt
+ * Zweck: Zwei Seiten der Sidebar V10, die es im Leitstand noch nicht als eigene Ansicht gibt
  * (F44 WS-1b, Abgleich F-725 §5.2):
  * - #/brain und #/produktzyklus sind Z-Seiten (Abgleich K1/K2, E-F44-1 = B): Titel und
  *   Einleitung wie die Vorlage (d_brain, d_produktzyklus_ideate_strategy), die Hauptaktion als
  *   deaktivierter Knopf mit „kommt“ (kommt.js) und ein Leerzustand. Kein Graph, keine Notizen,
  *   keine Beispieldaten.
- * - #/nutzung ist eine Zwischenseite (F-880): Die Daten gibt es schon, sie stehen bis zum
- *   Umbau in WS-6 als Karte in der Produktübersicht. Die Seite nennt die Stelle und verlinkt
- *   dorthin — ohne „kommt“, weil nichts Zukünftiges fehlt. #/roadmap ist seit F44 WS-2a eine
- *   eigene Seite (views/roadmap.js).
+ * - #/roadmap ist seit F44 WS-2a (views/roadmap.js), #/nutzung seit F44 WS-2b (views/nutzung.js)
+ *   eine eigene Seite; die Zwischenseiten (F-880) sind entfallen.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initPlatzhalterViews beim Bootstrap, vor starteRouter())
@@ -77,24 +75,10 @@ function produktzyklusSeite() {
   )
 }
 
-/**
- * Zwischenseite mit Verweis auf die heutige Stelle (F-880).
- * @param eyebrow - kleine Zeile über dem Titel
- * @param titel - Überschrift
- * @param text - ein Satz, wo die Daten heute stehen
- * @param linkText - Beschriftung des Verweises
- * @param ziel - Hash der heutigen Stelle
- * @returns HTML
- */
-function zwischenseite(eyebrow, titel, text, linkText, ziel) {
-  return `${seitenkopf(eyebrow, titel, text)}<a class="text-link" href="${ziel}">${escapeHtml(linkText)} <span aria-hidden="true">→</span></a>`
-}
-
 /** Seiten je View-Name: Container-ID ist view-<name>. */
 const SEITEN = {
   brain: brainSeite,
   produktzyklus: produktzyklusSeite,
-  nutzung: () => zwischenseite(t('platzhalter.nutzung.eyebrow'), t('platzhalter.nutzung.titel'), t('platzhalter.nutzung.text'), t('platzhalter.nutzung.link'), '#/dashboard'),
 }
 
 /**
@@ -110,11 +94,10 @@ function rendere(name) {
   container.innerHTML = SEITEN[name]()
 }
 
-/** Registriert die drei Routen und rendert Brain/Produktzyklus bei einem Projektwechsel neu. */
+/** Registriert die beiden Routen und rendert Brain/Produktzyklus bei einem Projektwechsel neu. */
 export function initPlatzhalterViews() {
   registriere(/^#\/brain$/, 'brain', () => rendere('brain'))
   registriere(/^#\/produktzyklus$/, 'produktzyklus', () => rendere('produktzyklus'))
-  registriere(/^#\/nutzung$/, 'nutzung', () => rendere('nutzung'))
   abonniereProjektWechsel(() => {
     rendere('brain')
     rendere('produktzyklus')

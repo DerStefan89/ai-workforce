@@ -8,7 +8,9 @@
  * Zustandsabfrage (Poll), die vor dem Wechsel begann, wird verworfen; Workboard-Filter und eine
  * vorbereitete Wiederaufnahme im Direktstart gehen beim Wechsel zurück (Korrekturrunde WS-1a).
  * F44 WS-2a: „Deine Entscheidungen“ (P0/P1-Workitems) und die Seite #/roadmap (Roadmap und
- * Feature-Workitems) laden beim Wechsel ebenfalls neu.
+ * Feature-Workitems) laden beim Wechsel ebenfalls neu. F44 WS-2b: Die Übersicht lädt Roadmap, alle
+ * Workitems und P0/P1 neu (nie aus dem Poll; eine späte Roadmap-Antwort des alten Projekts wird
+ * verworfen); der Verbrauch ist auf #/nutzung umgezogen (views/nutzung.js).
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -98,10 +100,16 @@ const zurueckgehalten = new Map()
  */
 function koerperFuer(url) {
   if (url.includes('/workitems')) return { workitems: [], befunde: [], fehler: [] }
+  // F44 WS-2b: eine gültige Roadmap nur für projekt-l — für den Überholschutz-Fall der Übersicht.
+  if (url.includes('/projekte/projekt-l/roadmap')) return { status: 'ok', vision: 'Vision von L', meilensteine: [] }
   if (url.includes('/roadmap')) return { status: 'nicht_vorhanden' }
   if (url.includes('/verbrauch')) return { status: 'ok' }
   if (url.includes('/auftraege')) return url.includes('projekt-b') ? [{ auftragId: 'b-1', titel: 'Auftrag B', erstellt_am: 'x' }] : [{ auftragId: 'a-1', titel: 'Auftrag A', erstellt_am: 'x' }]
   if (url.includes('/startvorlage/werkzeugsaetze')) return []
+  // F44 WS-2b (F-903): projekt-w hat einen wartenden Workflow, projekt-x eine defekte Workflow-Quelle.
+  if (url.includes('/projekte/projekt-w/zustand'))
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-1', status: 'LAEUFT', ziel: 'Wartet auf Freigabe', naechster: { art: 'haltFreigabe', schrittId: 's1' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+  if (url.includes('/projekte/projekt-x/zustand')) return { herkunft: url, laeufe: [], startfehler: [], workflows: null, fehler: [{ quelle: 'workflows', grund: 'Test' }], aktiverLauf: { aktiv: false, laufId: null } }
   if (url.includes('/zustand')) return { herkunft: url, laeufe: [], startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
   return {}
 }
@@ -125,12 +133,14 @@ const { initProjektView, wendeWiederaufnahmeAn } = await import('./views/projekt
 const { abonniere } = await import('./zustand.js')
 const { initAttentionView } = await import('./views/attention.js')
 const { initRoadmapView } = await import('./views/roadmap.js')
+const { initNutzungView } = await import('./views/nutzung.js')
 
 initWorkboardView()
 initDashboardView()
 initProjektView()
 initAttentionView()
 initRoadmapView()
+initNutzungView()
 await warte()
 
 test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart mit dem neuen Präfix', async () => {
@@ -143,7 +153,7 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
     'Workboard Workitems (ungefiltert)': (u) => u === `${neu}/workitems` || u === `${neu}/workitems?`,
     'Workboard Roadmap': (u) => u === `${neu}/roadmap`,
     'Dashboard P0/P1 (status=OFFEN)': (u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN'),
-    'Dashboard Verbrauch': (u) => u.startsWith(`${neu}/verbrauch`),
+    'Nutzung Verbrauch': (u) => u.startsWith(`${neu}/verbrauch`),
     'Direktstart Aufträge': (u) => u === `${neu}/auftraege`,
     'Direktstart Werkzeugsätze': (u) => u === `${neu}/startvorlage/werkzeugsaetze`,
   }
@@ -299,4 +309,77 @@ test('F44 WS-2a: Entscheidungen und Roadmap-Seite laden nach dem Wechsel mit dem
     'nach dem Wechsel darf kein Lader mehr ein anderes Projekt abfragen'
   )
   assert.match(document.getElementById('view-roadmap').innerHTML, /Projekt C · Roadmap/)
+})
+
+test('F44 WS-2b: die Übersicht lädt nach dem Wechsel Roadmap, alle Workitems und P0/P1 mit dem neuen Präfix', async () => {
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-j', name: 'Projekt J' })
+  await warte()
+  const neu = '/api/projekte/projekt-j'
+  const anzahl = (passt) => aufrufe.filter(passt).length
+  // Roadmap: Workboard-Karte, Roadmap-Seite und Übersicht; ungefilterte Workitems: Workboard und Übersicht.
+  assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 3, `Übersicht lädt die Roadmap nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(anzahl((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`) >= 2, `Übersicht lädt die Workitems nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.deepEqual(
+    aufrufe.filter((u) => !u.startsWith(neu)),
+    [],
+    'nach dem Wechsel darf kein Lader mehr ein anderes Projekt abfragen'
+  )
+  assert.match(document.getElementById('uebersicht-b1').innerHTML, /Projekt J/)
+})
+
+test('F44 WS-2b: Leerzustand B14 bei leeren Workitems und ohne Roadmap', async () => {
+  // koerperFuer liefert workitems [] und roadmap nicht_vorhanden.
+  setzeAktivesProjekt({ id: 'projekt-k', name: 'Projekt K' })
+  await warte()
+  assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, false)
+  assert.equal(document.getElementById('uebersicht-inhalt').hidden, true)
+  assert.match(document.getElementById('uebersicht-erster-schritt').innerHTML, /href="#\/projekt"/)
+})
+
+test('F44 WS-2b: ein Poll-Tick lädt weder Roadmap noch Workitems nach (nur beim Betreten und Wechsel)', async () => {
+  setzeAktivesProjekt({ id: 'projekt-n', name: 'Projekt N' })
+  await warte()
+  aufrufe.length = 0
+  const { pollJetzt } = await import('./zustand.js')
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.ok(aufrufe.some((u) => u.endsWith('/zustand')), 'der Poll fragt das Aggregat ab')
+  assert.deepEqual(
+    aufrufe.filter((u) => u.includes('/roadmap') || u.includes('/workitems')),
+    [],
+    `Poll löst Nachladen aus: ${aufrufe.join(', ')}`
+  )
+})
+
+test('F44 WS-2b: eine späte Roadmap-Antwort des alten Projekts überschreibt die Übersicht des neuen nicht', async () => {
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-l/roadmap', halt)
+  setzeAktivesProjekt({ id: 'projekt-l', name: 'Projekt L' })
+  zurueckgehalten.clear()
+  setzeAktivesProjekt({ id: 'projekt-m', name: 'Projekt M' })
+  await warte()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  // M hat keine Roadmap und keine Workitems → B14; übernähme die Übersicht die späte Antwort von L
+  // (gültige Roadmap mit Vision), stünden die Blöcke 2–11 mit „Vision von L“ da.
+  assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, false)
+  assert.doesNotMatch(document.getElementById('uebersicht-ziel').innerHTML, /Vision von L/)
+  assert.match(document.getElementById('uebersicht-b1').innerHTML, /Projekt M/)
+})
+
+test('F-903: kein Leerzustand B14, solange ein Workflow wartet — auch ohne Workitems und Roadmap', async () => {
+  setzeAktivesProjekt({ id: 'projekt-w', name: 'Projekt W' })
+  await warte()
+  assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, true, 'der geführte erste Schritt verdeckt eine wartende Freigabe')
+  assert.equal(document.getElementById('uebersicht-inhalt').hidden, false)
+  assert.match(document.getElementById('uebersicht-fokus').innerHTML, /Wartet auf Freigabe/)
+})
+
+test('F-903: kein Leerzustand B14 bei defekter Workflow-Quelle', async () => {
+  setzeAktivesProjekt({ id: 'projekt-x', name: 'Projekt X' })
+  await warte()
+  assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, true)
+  assert.equal(document.getElementById('uebersicht-inhalt').hidden, false)
 })

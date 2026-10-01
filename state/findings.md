@@ -2249,6 +2249,7 @@ geschriebene Workflow-Version ungültig machen; Kernartefakte sind append-only
 bleibt und wird im Schema als reserviert dokumentiert. Priorität auf P3.
 Status: offen.
 Feature/Run: F15 WS-2b, 10.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-204** · `TECH_DEBT` · P3 · offen
 Titel: max_schritte zählt anhand der aktuellen schritte[]-Liste, nicht
@@ -10012,6 +10013,7 @@ Auswirkung: Mittel — kein Fehlverhalten am Kontrollzustand (die Selbstblockade
 Maßnahme: Ein eng begrenztes Löschwerkzeug im Baupfad ergänzen (Sicherheitsentscheidung Stefan — Umfang, Pfad-Allowlist und Protokollierung müssen vorher geklärt werden, kein unbegrenztes `rm`). Kein Umbau in diesem Nur-Doku-Auftrag.
 Status: offen.
 Feature/Run: F42 WS-3, Lauf `28fd1ae5`, 25.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-716** · `BUG` · P3 · offen
 Titel: Die Abnahme-Änderungsübersicht zeigt nicht, welche laut Anpassung zu entfernenden Dateien tatsächlich stehen geblieben sind.
@@ -10458,6 +10460,7 @@ Vermerk (F36 Reallauf, 29.09.2026): Alle vier Ausführungsläufe (`1c4a1163`, `7
 Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): `baueBashAllowlistSatz` nennt jetzt die beobachteten Formen und geht ausdrücklich der Projekt-CLAUDE.md vor. Die Vorlage `vorlagen/projekt-skelett/CLAUDE.md` verlangt `cd` am Blockanfang und `git status` am Iterationsende, das ist laut QA-Pass eine wahrscheinliche Hauptursache. Die Regeln: kein `cd`, genau ein Befehl ohne Verkettung (auch keine Zeilenumbrüche), ohne Umleitung und ohne Hintergrund, Prüfskripte nur über `npm run check`, keine Server, kein git, Versionen und Dateien über Read/Glob/Grep. Die Allowlist wurde bewusst nicht erweitert: `git log`/`git diff` erlauben per Präfix `--output`, und `git status` schreibt `index.lock`. `startvorlagen/ai-workforce.json` und `ERLAUBTE_BASH_REGELN` sind unverändert. Läufe ohne Bash-Regel bleiben bitgenau. Gate: `scripts/check-fixpaket-f36-nachlauf.mjs` (a). Neu bewerten, wenn nach dem Fix weiterhin ≥2 von 4 Bauläufen wegen Probebefehlen VERWEIGERT enden.
 Status: behoben (PR folgt).
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-765** · `BUG` · P2 · offen
 Titel: Die Ausführung schreibt eine Kern-Entscheidung dem Menschen zu und dokumentiert sie als entschieden.
@@ -10476,6 +10479,7 @@ Auswirkung: Mittel — ein Verlust des Arbeitsordners vernichtet die Nachweisbas
 Maßnahme: Projekt-Skelett und `zustand:sichern` auf Fremdprojekte ausweiten oder bewusst lokal lassen — Entscheidung Stefan.
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-767** · `PROCESS_IMPROVEMENT` · P2 · offen
 Titel: Coach-Akten formulieren AK ohne Zugangsweg; das Review verlangt Bedienbarkeit über die Anwendung, was eine zusätzliche ADJUST-Iteration kostet.
@@ -10947,6 +10951,7 @@ Auswirkung: Mittel — die Prüfrollen des Projekt-Harness (qa, code-reviewer, a
 Maßnahme: Zurückgestellt bis zu realem Bedarf. Dann gehören dazu: der V4a-Agent-Teil mit Sperrliste `Agent(…)` je CLI-Version (eingebaute Agents driften, F-791), der Satz „Subagenten nur im Vordergrund mit run_in_background: false“ in jedem Startweg (WS-0 P2), das Init-Gate auch für `init.agents`, eine Reallauf-Zählung gesperrter Agent-Aufrufe am tool_result-Text und die Identitätsprüfung nach F-816.
 Status: offen.
 Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-816** · `HARNESS_IMPROVEMENT` · P2 · offen
 Titel: Die Freigabe von Projekt-Skills/-Agents gilt nach Namen bzw. Workforce-Pfad, der Lauf lädt aber die gleichnamige Datei des Zielprojekts.
@@ -10956,6 +10961,7 @@ Auswirkung: Mittel — heute ohne Wirkung, weil WS-5b jeden Projekt-Skill sperrt
 Maßnahme: Vor jeder Freischaltung die Identität klären, z. B. über den Hash der Zieldatei im Projekt = freigegebener Hash, beim Start neu geprüft (Muster `inhalt_hash` der Ort-B-Skills); sonst gesperrt lassen.
 Status: offen.
 Feature/Run: F36 WS-5b, Challenger-Zuschnitt 29.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-817** · `TECH_DEBT` · P3 · offen
 Titel: Skills tragen kein Feld `wirkung` — ein nach außen wirkender Skill (browser-use) ist im Schema nicht unterscheidbar.
@@ -10974,6 +10980,7 @@ Auswirkung: Mittel — die Workforce kann für den Selbstbau (F30-Dogfooding) ke
 Maßnahme: Vor F30 entscheiden, z. B. das Skelett-`.claude` unter anderem Namen ablegen und beim Anlegen umbenennen, oder eine feste, im Repo versionierte Ausnahmeliste mit Begründung.
 Status: offen.
 Feature/Run: F36 WS-5b Challenger-Verifikation 29.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-819** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Laufzeit von `npm run check` wächst mit jedem Feature (69 Gates, >1000 Tests).
@@ -10992,6 +10999,7 @@ Auswirkung: Mittel — Randfälle aus Nutzersicht werden im Workflow nicht eigen
 Maßnahme: qa-Ausgabeschema (Randfall-Urteil mit Beleg) und ein Schritt vor der Abnahme. Reihenfolge: nach dem Design-Bau, vor F30 (Entscheidung Stefan 29.09.2026).
 Status: offen.
 Feature/Run: Chat 29.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-821** · `PROCESS_IMPROVEMENT` · P3 · offen
 Titel: Wartepunkt (Web-Merge) und Aufräumbefehle im selben TERMINAL-Block.
@@ -11079,6 +11087,7 @@ Auswirkung: Mittel — Wartbarkeit, Fehler- und Leerzustände, Kommentarstandard
 Maßnahme: Checkliste und DoD als verbindliche Eingabe des Reviews mit Urteil je Punkt. Gemeinsam mit dem qa-Schritt (F-820) umsetzen.
 Status: offen.
 Feature/Run: F36 Reallauf (F3), 29.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-830** · `PROCESS_IMPROVEMENT` · P3 · behoben (PR folgt)
 Titel: Die DoD im Projekt-Skelett verlangt Reviewer-/QA-Pass per Subagent, in Workforce-Läufen ist das nicht erfüllbar.
@@ -11362,6 +11371,7 @@ Auswirkung: Niedrig — der Scanner-Architekt (F30) hat für Stack-Recherchen ke
 Maßnahme: Vor F30 klären, ob und wie der Scanner-Architekt einen Scout nutzt.
 Status: offen.
 Feature/Run: Scout F-800, 30.09.2026.
+Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
 **F-860** · `BUG` · P2 · erledigt
 Titel: Ein Projektwechsel lädt Workitems, Roadmap, P0/P1-Zahl, Verbrauch und die Auswahllisten des Direktstarts nicht neu.
@@ -11543,13 +11553,13 @@ Maßnahme: Untereinträge entfernen, wenn WS-3 (Entwicklung) und WS-5 (Ausführu
 Status: offen.
 Feature/Run: F44 WS-1b, 30.09.2026.
 
-**F-880** · `TECH_DEBT` · P3 · offen
+**F-880** · `TECH_DEBT` · P3 · erledigt
 Titel: `#/roadmap` und `#/nutzung` sind bis WS-2/WS-6 Zwischenseiten.
 Beschreibung: Die Sidebar V10 führt Roadmap und Nutzung als eigene Seiten. Die Daten gibt es (Roadmap-Karte im Workboard, Verbrauch im Dashboard); bis zum Umbau zeigen die neuen Routen nur Titel, einen Satz und einen Link zur heutigen Stelle — ohne „kommt“, weil nichts Zukünftiges fehlt.
 Fundstelle: `public/leitstand/views/platzhalter.js` (`zwischenseite`).
 Auswirkung: Niedrig — ein Klick mehr bis zu den Daten.
 Maßnahme: In WS-2 (Roadmap, D1–D4) bzw. WS-6 (Nutzung, I1–I3) die Seiten mit den echten Ansichten füllen und die Karten an der alten Stelle entfernen.
-Status: offen — Roadmap-Teil erledigt (F44 WS-2a, 01.10.2026: `#/roadmap` ist die echte Seite `public/leitstand/views/roadmap.js`; die Bento-Karte im Workboard entfernt WS-3, F-892). `#/nutzung` bleibt Zwischenseite bis WS-6.
+Status: erledigt — Roadmap-Teil F44 WS-2a (`#/roadmap` ist die echte Seite `public/leitstand/views/roadmap.js`; die Bento-Karte im Workboard entfernt WS-3, F-892); Nutzungs-Teil F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026: `#/nutzung` zeigt den Verbrauch (`public/leitstand/views/nutzung.js`, Logik und Markup unverändert aus der Übersicht), die Zwischenseite in `views/platzhalter.js` ist entfernt. Der Umbau der Nutzungsseite nach Vorlage bleibt WS-6.
 Feature/Run: F44 WS-1b, 30.09.2026.
 
 **F-881** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -11678,29 +11688,164 @@ Maßnahme: Das Roadmap-Format im Auftragstext auch für Fremdprojekte vorgeben (
 Status: offen.
 Feature/Run: Ursachenprüfung F-854, F44 WS-2a, 01.10.2026.
 
-**F-895** · `TECH_DEBT` · P3 · offen
+**F-895** · `TECH_DEBT` · P3 · erledigt
 Titel: „Noch nicht eingeplant“ zeigt auch abgeschlossene Features und IDs, die die Roadmap nie aufnehmen kann.
 Beschreibung: `nichtEingeplant` nimmt alle Workitems mit typ FEATURE, die in keinem Meilenstein stehen — auch abgeschlossene und abgebrochene, und Akten wie `AF-F001`, deren ID die Roadmap-Regel (`^F[0-9]+[A-Za-z]?$`) nie zulässt; sie stehen dort dauerhaft. D3 ist im Abgleich als Schlussfolgerung markiert, das Verhalten war nicht festgelegt. Gefunden von qa.
 Fundstelle: `public/leitstand/roadmap-anzeige.js` (nichtEingeplant), `public/leitstand/views/roadmap.js` (nichtEingeplantAbschnitt).
 Auswirkung: Niedrig — die Liste enthält Einträge, die keine Planungsentscheidung brauchen.
 Maßnahme: Festlegen (Stefan): nur offene Features, IDs nach Roadmap-Regel; dann Filter in `nichtEingeplant` mit Test.
-Status: offen.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026): `nichtEingeplant` nimmt nur Features, deren Status weder ABGESCHLOSSEN noch ABGEBROCHEN ist und deren ID `^F[0-9]+[A-Za-z]?$` entspricht; Test `roadmap-anzeige.test.mjs`. Entschieden vom Challenger, reversibel.
 Feature/Run: QA-Pass F44 WS-2a, 01.10.2026.
 
-**F-896** · `HARNESS_IMPROVEMENT` · P3 · offen
+**F-896** · `HARNESS_IMPROVEMENT` · P3 · erledigt
 Titel: Gate f21-ws2 (e) prüft eine wörtliche Importzeile statt der Herkunft der Filterregel.
 Beschreibung: `views/attention.js` muss die Zeile `import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'` wörtlich tragen, obwohl es seit WS-2a nur noch `baueEntscheidungen` und `holeOffeneP0P1Workitems` nutzt; die beiden Filter sind ungenutzte Importe (Biome prüft ungenutzte Importe nicht). Die Invariante — dieselbe Filterquelle wie die Übersicht, keine eigene Auswahl — ließe sich über „importiert aus attention-daten.js“ plus das bestehende Selektionsmuster prüfen. Dazu: Überholschutz und Escaping der Views sind nur über Nachweise und den Wechsel-Test belegt, nicht einzeln getestet. Gefunden von code-reviewer und qa.
 Fundstelle: `scripts/check-f21-ws2-workboard-oberflaeche.mjs` (e), `public/leitstand/views/attention.js` (Importe).
 Auswirkung: Niedrig — toter Import, das Gate bindet an eine Schreibweise.
 Maßnahme: In WS-2b (dashboard.js zieht ebenfalls auf baueEntscheidungen um) Gate (e) auf die Herkunft umstellen, Begründung im Gate-Kopf; die ungenutzten Importe entfernen.
-Status: offen.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026): Gate (e) prüft, dass `views/attention.js` und `views/dashboard.js` aus `'../attention-daten.js'` importieren (IMPORT_MUSTER); SELEKTIONS_MUSTER bleibt; Rot-Kalibrierung (e-kal) im Gate; Begründung im Gate-Kopf; ungenutzte Importe in `attention.js` entfernt. Überholschutz und Escaping einzeln testen bleibt offen (siehe F-901).
 Feature/Run: Prüfpass F44 WS-2a, 01.10.2026.
 
-**F-897** · `TECH_DEBT` · P3 · offen
+**F-897** · `TECH_DEBT` · P3 · erledigt
 Titel: „Eintrag erfassen“ ohne das „+“-Symbol der Vorlage.
 Beschreibung: Die Vorlage zeigt vor „Eintrag erfassen“ ein „+“ (`d_projekt_ai-workforce_roadmap.png`); `kommtKnopf` gibt nur Text und Badge aus. Gefunden vom design-guardian.
 Fundstelle: `public/leitstand/kommt.js` (kommtKnopf), `public/leitstand/views/roadmap.js` (seitenkopf).
 Auswirkung: Niedrig — Optik.
 Maßnahme: `kommtKnopf` um ein optionales dekoratives Symbol (aria-hidden) erweitern, sobald ein zweiter Aufrufer es braucht (WS-2b „Eintrag erfassen“ in der Übersicht).
-Status: offen.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026): `kommtKnopf(text, { symbol })` setzt ein dekoratives Zeichen (aria-hidden) vor den Text; „+ Eintrag erfassen“ auf `#/roadmap` und in der Übersicht.
 Feature/Run: design-guardian F44 WS-2a, 01.10.2026.
+
+**F-898** · `TECH_DEBT` · P3 · erledigt
+Titel: Deine Entscheidungen ohne Begrenzung.
+Beschreibung: `#/attention` zeigte jede Gruppe vollständig. Mit echten Daten sind das 81 Einträge (6 + 26 + 49); die Befunde dominieren die Liste, Freigaben und Rückfragen rutschen optisch aus dem Blick.
+Fundstelle: `public/leitstand/views/attention.js` (renderGruppe).
+Auswirkung: Niedrig — lange Liste, das Wichtigste bleibt zwar oben, der Rest überwiegt.
+Maßnahme: Freigaben und Rückfragen immer vollständig; Läufe, Startprobleme und Befunde je höchstens 5 Einträge mit einem Knopf „+ x weitere“ (aria-expanded), der die Gruppe aufklappt. Die Zähler der vier Quellen bleiben Gesamtzahlen.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026; Nachweis `features/F44/nachweise/ws2b/attention-weitere-1440/`).
+Feature/Run: Challenger-Verifikation F44 WS-2a, 01.10.2026.
+
+**F-899** · `TECH_DEBT` · P3 · offen
+Titel: Der Fokus-Nachtrag veraltet, solange die ID des Fokus-Workflows gleich bleibt.
+Beschreibung: Schritte, Abnahme-Flags und aktiver Lauf des Fokus-Workflows laden nur bei wechselnder Workflow-ID (Vorgabe WS-2b, Muster Workboard-Bento); seit der Korrekturrunde WS-2b in der Übersicht zusätzlich beim Betreten der Seite und 30 s nach einem Fehlschlag. Schreitet derselbe Workflow fort, während die Übersicht offen bleibt (ein Schritt endet, der nächste läuft), zeigen „Aktuelle Rolle“ (B3, Rolle des laufenden Schritts), „Wer macht was“ (B11) und „Zuletzt umgesetzt“ (B12, Schritte x/y) den alten Stand, bis die Fokus-ID wechselt oder das Projekt gewechselt wird. Wartet der Workflow auf Freigabe oder Rückfrage, stimmt B3 immer (kommt aus dem Aggregat).
+Fundstelle: `public/leitstand/views/dashboard.js` (stelleNachtraegeSicher), `public/leitstand/views/workboard.js` (aktualisiereFokusCache).
+Auswirkung: Niedrig bis mittel — veraltete Rolle/Schrittzahl während eines laufenden Ablaufs.
+Maßnahme: Den Schlüssel des Nachtrags um `versionSequenz` aus dem Aggregat erweitern (ändert sich nur bei einer neuen Workflow-Version, also nicht bei jedem Poll-Tick) — gemeinsam für Übersicht und Workboard in WS-3.
+Status: offen.
+Feature/Run: F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026.
+
+**F-900** · `TECH_DEBT` · P3 · offen
+Titel: Die Übersicht zeigt Rollen als rohe Rollen-ID.
+Beschreibung: „Aktuelle Rolle“ und „Wer macht was“ nennen die Rolle eines Schritts als ID aus dem Workflow (z. B. `ausfuehrung`, `code-reviewer`), unübersetzt. Die Vorlage zeigt sprechende Phasen- und Rollennamen; das Workboard führt dafür eine eigene, deutsche Zuordnung (`ROLLEN_ICON`). Eine übersetzte Rollenliste gibt es noch nicht.
+Fundstelle: `public/leitstand/views/dashboard.js` (rolleKarte, werSpalte).
+Auswirkung: Niedrig — lesbar, aber technisch.
+Maßnahme: Mit WS-7 (Workforce: Katalog, Rollen) ein Rollenverzeichnis mit Schlüsseln in vier Sprachen anlegen und in Übersicht und Workboard nutzen.
+Status: offen.
+Feature/Run: F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026.
+
+**F-901** · `TECH_DEBT` · P3 · offen
+Titel: Überholschutz und Blockzustände der Übersicht nur über den Wechsel-Test und Nachweise belegt.
+Beschreibung: `projekt-wechsel.test.mjs` belegt das Neuladen und den Leerzustand B14; die übrigen Blockzustände (Roadmap ungültig/Fehler, Aggregat defekt, Nachtrag fehlgeschlagen) und der Überholschutz der drei Lader sind nur über Render-Nachweise belegt, nicht einzeln getestet. Die Blöcke sind keine reinen Funktionen (lesen Modulzustand).
+Fundstelle: `public/leitstand/views/dashboard.js`.
+Auswirkung: Niedrig — Regressionen fallen erst im Nachweis auf.
+Maßnahme: Blockfunktionen auf Parameter umstellen (Zustand hinein, HTML heraus) und mit node:test gegen die Zustände prüfen; mit WS-3, wenn das Workboard dieselben Bausteine nutzt. Dabei ergänzen (Prüfpass WS-2b): ein Unit-Test für „+ x weitere“ in `#/attention` (F-898, bisher nur Render-Nachweis), ein Fall für die Generation der Fokus-Nachträge (später Nachtrag des alten Projekts), Negativfälle zu B14 (Roadmap-Fehler mit leeren Workitems, Workitems-Fehler mit `nicht_vorhanden`). Belegt sind seit der Korrekturrunde: kein Nachladen aus dem Poll und eine späte Roadmap-Antwort des alten Projekts (`projekt-wechsel.test.mjs`, Rot unter Mutation geprüft).
+Status: offen.
+Feature/Run: F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, 01.10.2026.
+
+**F-902** · `TECH_DEBT` · P3 · offen
+Titel: „Aktuelle Rolle“ und „Deine nächsten Entscheidungen“ wählen den ersten wartenden Workflow unterschiedlich.
+Beschreibung: `waehleFokusWorkflow` nimmt den ersten wartenden Workflow in der Reihenfolge der Quelle; `baueEntscheidungen` sortiert Freigaben vor Rückfragen. Im Nachweis steht B3 auf „Deine Rückfrage“, während B7 oben drei Freigaben zeigt. Die Logik ist für das Workboard bewusst unverändert umgezogen.
+Fundstelle: `public/leitstand/fokus-daten.js` (waehleFokusWorkflow), `public/leitstand/attention-daten.js` (baueEntscheidungen).
+Auswirkung: Niedrig — zwei Blöcke nennen verschiedene „nächste“ Aufgaben.
+Maßnahme: `waehleFokusWorkflow` auf die Reihenfolge von `baueEntscheidungen` (Freigabe vor Rückfrage) umstellen, gemeinsam für Übersicht und Workboard (WS-3).
+Status: offen.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (code-reviewer, qa).
+
+**F-903** · `BUG` · P2 · erledigt
+Titel: Der Leerzustand B14 kann wartende Entscheidungen eines neuen Produkts verdecken.
+Beschreibung: B14 gilt nach Vorgabe bei leeren Workitems und Roadmap `nicht_vorhanden`; das Aggregat zählt nicht mit. Folgt Stefan dem geführten Schritt („Auftrag beschreiben“ → Ablauf prüfen → Freigeben), entsteht ein Workflow mit wartender Freigabe, aber kein Workitem — die Übersicht zeigt weiter „Beschreibe die erste Funktion.“ und blendet B7 und B8 aus. Der Nachweis `dashboard-leer` (feste Antworten) zeigt B14 neben „Workflows 19“.
+Fundstelle: `public/leitstand/views/dashboard.js` (istLeeresProdukt).
+Auswirkung: Mittel — eine Freigabe ist auf der Übersicht nicht sichtbar (in `#/attention` und im Kopf-Status schon).
+Maßnahme: Entscheidung Stefan: B14 nur, wenn zusätzlich keine Workflows vorhanden sind, oder B7 auch im Leerzustand zeigen.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, Entscheidung Challenger 01.10.2026): B14 gilt nur, wenn keine Workitems, Roadmap `nicht_vorhanden` und `zustand.workflows` ein leeres Array ist; defekte (null) oder vorhandene Workflows zeigen die normalen Blöcke. Tests `projekt-wechsel.test.mjs` (wartender Workflow, defekte Quelle; Rot unter Mutation geprüft), Nachweis `features/F44/nachweise/ws2b/dashboard-b14-wartender-workflow/`.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (qa).
+
+**F-904** · `TECH_DEBT` · P3 · erledigt
+Titel: B5 „Geplant“ und die Statuskategorie derselben Seite widersprechen sich bei WORKSTREAM_SCHNITT_GENEHMIGT und GEPLANT.
+Beschreibung: Nach Vorgabe WS-2b zählt „Geplant“ ENTWURF, READY_FOR_TECH und WORKSTREAM_SCHNITT_GENEHMIGT (`zaehleGeplant`). `statusKategorie` zeigt WORKSTREAM_SCHNITT_GENEHMIGT in B9/B10 aber als „in Arbeit“ (↻) und GEPLANT als „geplant“, ohne dass GEPLANT gezählt wird.
+Fundstelle: `public/leitstand/roadmap-anzeige.js` (GEPLANT_STATUS, KATEGORIE_JE_STATUS).
+Auswirkung: Niedrig — ein Feature steht oben als „noch nicht gestartet“ und darunter als „in Arbeit“.
+Maßnahme: Entscheidung Stefan: eine gemeinsame Regel (z. B. „Geplant“ = Kategorie geplant) und dann eine Quelle für beide.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, Entscheidung Challenger 01.10.2026): `zaehleGeplant` zählt nur ENTWURF und READY_FOR_TECH; WORKSTREAM_SCHNITT_GENEHMIGT zählt wie in den Zeilen als „in Arbeit“. Test `roadmap-anzeige.test.mjs`.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (code-reviewer, qa).
+
+**F-905** · `TECH_DEBT` · P3 · erledigt
+Titel: Übersicht weicht bei B9/B10 und der Reihenfolge von der Vorlage ab (Vorgabe WS-2b).
+Beschreibung: Nach Auftrag zeigen B9 nur den aktuellen Meilenstein und B10 dessen Features mit „ohne Priorität“ (kommt), in der Reihenfolge Weg → Wer macht was → Entwicklungsstand. Die Vorlage zeigt in B9 alle Meilensteine, in B10 die offenen Einträge aller Typen (höchstens vier) mit echter Priorität der Findings und „Bereits erledigt“ in einer Zeile, und die Reihenfolge Weg → Entwicklungsstand → Wer macht was (Abgleich §3 B10, §4 Punkt 4). Folge: dieselben Features stehen in B9 und B10 untereinander.
+Fundstelle: `public/leitstand/views/dashboard.js` (wegBlock, standBlock, geruest); `docs/design/vorlage-v10/screens/d_uebersicht.png`.
+Auswirkung: Niedrig — doppelte Liste, Findings mit Priorität fehlen auf der Übersicht.
+Maßnahme: Entscheidung Stefan, ob B10 nach Vorlage (Workitems, echte Priorität lesend) und B9 mit allen Meilensteinen umgebaut wird; dann in WS-3 zusammen mit dem Board.
+Status: erledigt (F44 WS-2b, Branch `feat/f725-ws2b-uebersicht`, Entscheidung Challenger 01.10.2026; die Vorgabe des Auftrags war falsch, jetzt nach Vorlage): B9 zeigt alle Meilensteine als kompakte Zeilen (Titel, Status, „x / y abgenommen“, aktueller hervorgehoben, keine Featurezeilen); B10 zeigt offene P0–P2-Findings und offene Features des aktuellen Meilensteins, höchstens acht, P0 → P1 → P2 → Features, Priorität lesend als „kommt“ (reine Funktion `waehleEntwicklungsstand` in `roadmap-anzeige.js` mit Unit-Test); Reihenfolge B10 vor B11. Nachweise `features/F44/nachweise/ws2b/dashboard-*` neu.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (design-guardian).
+
+**F-906** · `TECH_DEBT` · P3 · offen
+Titel: Fokus-Nachtrag ohne Zeitlimit und doppelt geladen.
+Beschreibung: `holeWorkflowDetail` und `holeAbnahme` haben kein Zeitlimit; ein hängender Abruf lässt B3/B11/B12 auf „Lädt…“ stehen. Workboard und Übersicht laden denselben Nachtrag getrennt (je eigener Cache).
+Fundstelle: `public/leitstand/api.js` (holeWorkflowDetail, holeAbnahme), `public/leitstand/fokus-daten.js`.
+Auswirkung: Niedrig.
+Maßnahme: Zeitlimit wie holeRoadmap; ein gemeinsamer Cache in `fokus-daten.js` (mit F-899, WS-3).
+Status: offen.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (code-reviewer).
+
+**F-907** · `TECH_DEBT` · P3 · offen
+Titel: Kleinere Bedien- und Darstellungspunkte der Übersicht und von #/nutzung.
+Beschreibung: (a) B2–B4 und B7–B8 werden je als ein Block geschrieben; ändert sich ein Teil (Lauf startet), verliert ein fokussierter Link darin den Fokus. (b) `#/nutzung`: ein Zeitraumklick schreibt die ganze Seite neu (Fokus auf body), der aktive Zeitraum hat kein `aria-pressed` (Markup bis WS-6 unverändert). (c) Je Feature in B10 ein fokussierbarer Z-Knopf „ohne Priorität“ — viele Tab-Stopps ohne Wirkung. (d) B11 ohne Status-Pill im Kopf (Vorlage „• Abnahme offen“). (e) Für Workitems und P0/P1 gibt es auf der Übersicht kein „Erneut laden“ (nur für die Roadmap). (f) B12 nimmt bei mehreren Workflows je Auftrag den ersten. (g) `#/attention` setzt beim Projektwechsel das Aggregat nicht zurück (kurz alte Workflows neben neuen Befunden). (h) B5 „Deine Entscheidung“ (wartende Workflows) und der B7-Zähler (alle vier Quellen) sind ähnlich benannt, zählen aber Verschiedenes. (i) `aria-disabled` an den Z-Containern Deployer und „Als Nächstes vorgesehen“ (Invariante „Z mit aria-disabled“) wirkt für Hilfstechnik nicht; die Sperre in `kommt.js` würde einen späteren Link darin verschlucken (im Kopf von `kommt.js` vermerkt).
+Fundstelle: `public/leitstand/views/dashboard.js`, `public/leitstand/views/nutzung.js`, `public/leitstand/views/attention.js`.
+Auswirkung: Niedrig.
+Maßnahme: (a)(c)(e)(f)(h) mit WS-3, (b) mit WS-6, (d)(i) beim nächsten Übersichts-Durchgang, (g) mit dem nächsten Attention-Paket.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-2b, 01.10.2026 (design-guardian, code-reviewer, qa).
+
+**F-908** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Challenger-Übergaben nennen Node 22, package.json verlangt 24.x.
+Beschreibung: Die Aufträge (Claude-Übergaben 483 ff.) sagen „Wenn Node 22 fehlt: Node-Version im Bericht nennen“; `package.json` legt `engines.node` auf `24.x` fest, verifiziert wird hier mit Node 24.16.0. Eine Übergabe, die eine andere Laufzeit nennt als die Paketdatei, lädt zu einer Verifikation auf der falschen Version ein.
+Fundstelle: `package.json` (engines), Claude-Übergaben 483 ff.
+Auswirkung: Niedrig — Verwirrung im Bericht, Gefahr einer Verifikation unter falscher Version.
+Maßnahme: Übergaben nennen die Laufzeit aus `package.json` (Node 24.x) bzw. keine Versionsnummer in Prosa (CLAUDE.md); Verifikation unter Node 24.
+Status: offen.
+Feature/Run: Entdeckt im WS-2b-Bericht, 01.10.2026.
+
+**F-909** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Workforce-Planungskette ohne Plan v2 und ohne Rückweg nach dem Advisor-Urteil.
+Beschreibung: In `workflow-vorlagen/hoch.json` bekommt die Ausführung Plan v1 und das Advisor-Urteil als Eingabe und arbeitet beides selbst ein. Der Advisor hat `output_schema` null. Einen Replan-Pfad gibt es nicht (`max_replans` ohne Leser, F-203). `standard` und `fast-lane` haben weder Architekt noch Advisor.
+Fundstelle: `workflow-vorlagen/hoch.json`, `src/workflow/index.ts`, `.claude/skills/advisor-pass/SKILL.md`.
+Auswirkung: Der Bauende prüft das Urteil faktisch selbst.
+Maßnahme: Fixpaket Arbeitsfähigkeit, B2.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-910** · `TECH_DEBT` · P2 · offen
+Titel: Plugins sind im Fähigkeitenmodell nicht abgebildet; init.plugins wird nicht geprüft.
+Beschreibung: Der Katalog kennt die Typen worker, skill, agent und extern (mcp|skill), aber keine Plugins; `init.plugins` eines Laufs prüft `pruefeInitZeile` nicht.
+Fundstelle: `ressourcen.json` (Typen worker, skill, agent, extern mcp|skill), `pruefeInitZeile`.
+Auswirkung: Das Ziel „Claude arbeitet mit Plugins“ hat keinen Weg.
+Maßnahme: Fixpaket Arbeitsfähigkeit, B4.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-911** · `TECH_DEBT` · P2 · offen
+Titel: Fremdprojekte haben keine Design-Prüfkette.
+Beschreibung: design-guardian fehlt im Projekt-Skelett und in den Workflow-Vorlagen. impeccable steht auf OFFEN und hat keine `installation_vorlage`. Render-Nachweis und Token-Gate gibt es nur in ai-workforce. Installiert ist nur frontend-design.
+Fundstelle: `vorlagen/projekt-skelett/.claude/agents`, `workflow-vorlagen/*.json`, `ressourcen.json`.
+Auswirkung: Oberflächen in Fremdprojekten werden ohne Design-Prüfung gebaut.
+Maßnahme: Fixpaket Arbeitsfähigkeit, B3.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-912** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Der Coach legt in bestehenden Projekten keine Feature-Akte an; der Scope wird direkt zum Auftrag.
+Beschreibung: Im bestehenden Projekt macht der Coach aus dem Scope direkt einen Auftrag (`baueAuftragAusScope`), ohne eine Feature-Akte anzulegen.
+Fundstelle: `src/product-coach/index.ts` (baueAuftragAusScope), `public/leitstand/auftrag-aus-scope.js`.
+Auswirkung: Coach-Ideen erscheinen nicht als Feature im Board, AK werden nicht in einer Akte gepflegt, und F35 „Bauen aus der Akte“ greift nicht.
+Maßnahme: Fixpaket Arbeitsfähigkeit, B5.
+Status: offen.
+Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.

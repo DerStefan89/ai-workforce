@@ -25,10 +25,22 @@
  *     abweichenden Filterregel — die eigentliche Zusage von (d) wäre ohne
  *     diesen Fall durch ein zweites, stillschweigend abweichendes
  *     Vorkommen unterlaufbar.
- * (f) Scope: weder workboard.js noch attention.js senden einen
+ *     F44 WS-2b (F-896): Geprüft wird die HERKUNFT, nicht mehr eine wörtliche
+ *     Importzeile. Seit WS-2a/2b bauen beide Views ihre Auswahl über
+ *     baueEntscheidungen bzw. filtereAttentionWorkflows; die wörtliche Zeile
+ *     erzwang ungenutzte Importe (filtereAttentionLaeufe in beiden Views), die
+ *     Biome nicht meldet. Die Invariante bleibt in zwei Teilen: (1) beide Views
+ *     importieren aus '../attention-daten.js' (IMPORT_MUSTER), (2) keine der
+ *     beiden filtert workflows/laeufe selbst (SELEKTIONS_MUSTER, unverändert).
+ *     Ein Selbsttest (e-kal) belegt, dass eine View mit eigenem
+ *     .filter auf workflows und eine View ohne den Import weiter rot sind.
+ * (f) Scope: weder workboard.js noch attention.js noch dashboard.js (F44
+ *     WS-2b: keine Schreibaktion auf der Übersicht) senden einen
  *     schreibenden Request (kein 'method: '<POST/PUT/DELETE>'' in den
  *     Bausteinen, die sie aufrufen) — F21 WS-2 ist rein lesend (Nicht-Ziel:
- *     Schreiben ist F23-Scope).
+ *     Schreiben ist F23-Scope). Zusätzlich importiert dashboard.js aus api.js
+ *     nur lesende hole*-Funktionen (Prüfpass WS-2b: ein importierter Schreiber
+ *     wie sendeWorkflowFreigabe bliebe sonst unentdeckt).
  * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen —
  *     public/ liegt außerhalb von Biome/tsc (siehe check-f15-workflow-
  *     oberflaeche.mjs Fall (f)).
@@ -103,8 +115,10 @@ verlangeVorkommen('d', "Lauf-Filter: ergebnis === 'FEHLGESCHLAGEN'", attentionDa
 verlangeVorkommen('d', 'Lauf-Filter: kenntnisgenommen === false (F21 WS-1 AK4)', attentionDatenQuelltext, 'l.kenntnisgenommen === false')
 
 // ─── (e) attention.js UND dashboard.js beziehen die Attention-Zahlen aus attention-daten.js ──
-verlangeVorkommen('e', 'views/attention.js importiert filtereAttentionWorkflows aus attention-daten.js', attentionQuelltext, "import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'")
-verlangeVorkommen('e', 'views/dashboard.js importiert filtereAttentionWorkflows aus attention-daten.js', dashboardQuelltext, "import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'")
+// F44 WS-2b (F-896): Herkunft statt wörtlicher Zeile — ein named import aus '../attention-daten.js'.
+const IMPORT_MUSTER = /import\s*\{[^}]*\b(baueEntscheidungen|filtereAttentionWorkflows|filtereAttentionLaeufe)\b[^}]*\}\s*from\s*'\.\.\/attention-daten\.js'/
+verlangeVorkommen('e', 'views/attention.js bezieht Auswahl/Filter aus attention-daten.js', attentionQuelltext, IMPORT_MUSTER)
+verlangeVorkommen('e', 'views/dashboard.js bezieht Auswahl/Filter aus attention-daten.js', dashboardQuelltext, IMPORT_MUSTER)
 // Die eigentliche Regressionsgrenze: KEINE der beiden Views darf workflows/laeufe SELBST filtern
 // (workflows.filter(...)/laeufe.filter(...)) — das wäre ein zweiter Regelsatz für dieselbe
 // Auswahl-Entscheidung (D5), am geteilten Modul vorbei. Eine reine ANZEIGE-Verzweigung auf
@@ -119,18 +133,51 @@ if (SELEKTIONS_MUSTER.test(attentionQuelltext) || SELEKTIONS_MUSTER.test(dashboa
   befunde.push('(e) views/attention.js oder views/dashboard.js filtert workflows/laeufe SELBST (<liste>.filter(...)) — die Auswahl attention-relevanter Workflows/Läufe gehört ausschließlich in attention-daten.js (filtereAttentionWorkflows/filtereAttentionLaeufe), sonst kann sie stillschweigend abweichen')
 }
 
+// (e-kal) Rot-Kalibrierung von (e): konstruierte Views, die rot bzw. grün sein MÜSSEN. Ein
+// Gate, das hier nicht anschlägt, prüft nichts.
+/**
+ * Bewertet eine (kommentarfreie) View-Quelle nach (e).
+ * @param quelltext - Quelltext ohne Kommentare
+ * @returns true, wenn (e) die View beanstandet
+ */
+function verstoesstGegenE(quelltext) {
+  return !IMPORT_MUSTER.test(quelltext) || SELEKTIONS_MUSTER.test(quelltext)
+}
+const KAL_IMPORT = "import { baueEntscheidungen } from '../attention-daten.js'\n"
+const kalibrierung = [
+  ['eigener .filter auf workflows', `${KAL_IMPORT}const wartend = zustand.workflows.filter((w) => w.naechster?.art === 'haltFreigabe')`, true],
+  ['eigener .filter auf laeufe', `${KAL_IMPORT}const fehl = laeufe.filter((l) => l.ergebnis === 'FEHLGESCHLAGEN')`, true],
+  ['kein Import aus attention-daten.js', "import { holeWorkitems } from '../api.js'\nconst x = 1", true],
+  ['Import nur einer fremden Funktion aus attention-daten.js', "import { holeOffeneP0P1Workitems } from '../attention-daten.js'\n", true],
+  ['sauber: Import, keine eigene Auswahl', `${KAL_IMPORT}const { eintraege } = baueEntscheidungen(zustand, p0p1)\nconst n = schritte.filter((s) => s.status === 'ERFOLGREICH').length`, false],
+]
+for (const [name, quelltext, erwartetRot] of kalibrierung) {
+  if (verstoesstGegenE(quelltext) !== erwartetRot) befunde.push(`(e-kal) Rot-Kalibrierung '${name}': erwartet ${erwartetRot ? 'rot' : 'grün'}, Gate urteilt anders`)
+}
+
 // ─── (f) Scope: kein schreibender Request in workboard.js/attention.js ──────
 for (const [name, quelltext] of [
   ['views/workboard.js', workboardQuelltext],
   ['views/attention.js', attentionQuelltext],
+  ['views/dashboard.js', dashboardQuelltext],
 ]) {
   if (/method:\s*'(POST|PUT|DELETE|PATCH)'/.test(quelltext)) {
     befunde.push(`(f) ${name} sendet einen schreibenden Request — F21 WS-2 ist rein lesend (Schreiben ist F23-Scope)`)
   }
 }
 
+// F44 WS-2b: Die Übersicht importiert aus api.js nur lesende hole*-Funktionen.
+const dashboardApiImport = dashboardQuelltext.match(/import\s*\{([^}]*)\}\s*from\s*'\.\.\/api\.js'/)
+if (dashboardApiImport !== null) {
+  const schreibend = dashboardApiImport[1]
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name !== '' && !name.startsWith('hole'))
+  if (schreibend.length > 0) befunde.push(`(f) views/dashboard.js importiert aus api.js nicht nur lesende hole*-Funktionen: ${schreibend.join(', ')}`)
+}
+
 // ─── (g) Syntaxprüfung (node --check) ───────────────────────────────────────
-for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/attention-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
+for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/views/nutzung.js', 'public/leitstand/attention-daten.js', 'public/leitstand/fokus-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

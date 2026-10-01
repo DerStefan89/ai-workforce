@@ -1,0 +1,44 @@
+[
+  {
+    "label": "#/attention",
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "(fehlt)",
+    "Knopf": "+ 21 weitere",
+    "aria-expanded (fokussierter Knopf)": "(fehlt)",
+    "Kachel Befunde": "Wichtige Befunde 49 P0 & P1",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Fokus auf „+ x weitere“ (eingeklappt)",
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "+ 44 weitere",
+    "Knopf": "+ 21 weitere",
+    "aria-expanded (fokussierter Knopf)": "false",
+    "Kachel Befunde": "Wichtige Befunde 49 P0 & P1",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Enter: Gruppe aufgeklappt, Fokus bleibt auf dem Knopf",
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "Weniger anzeigen",
+    "Knopf": "+ 21 weitere",
+    "aria-expanded (fokussierter Knopf)": "true",
+    "Kachel Befunde": "Wichtige Befunde 49 P0 & P1",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

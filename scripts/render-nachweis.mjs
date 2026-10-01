@@ -66,7 +66,8 @@
  *                                       Pixelbreite des Viewports (1440 bei 200 % → 720 CSS-px).
  *   "localStorageSetzen": { "schlüssel": "wert" } — generisch, vor dem ersten geprüften Laden;
  *                                       "farbschema" wird zuletzt angewendet und gewinnt.
- *   "screenshotVollseite": true       — ganze Seitenhöhe statt Viewport (ohne screenshotAusschnitt);
+ *   "screenshotVollseite": true       — ganze Seitenhöhe statt Viewport; mit screenshotAusschnitt darf
+ *                                       der Ausschnitt über die Viewport-Höhe hinausgehen (F44 WS-2b);
  *                                       je Schritt überschreibbar.
  *   "screenshotQualitaet": 0.8        — nur für Dateinamen auf .webp: Qualität 0–1 (Standard 0.8).
  *   "anfragenBlockieren": ["**\/api/zustand"] — F44 WS-1b: Anfragen auf diese Glob-Muster
@@ -222,7 +223,12 @@ async function main() {
     let optionen = { fullPage: vollseite === true }
     if (ausschnitt) {
       const box = await page.locator(ausschnitt.selector).boundingBox()
-      optionen = { clip: { x: box.x, y: box.y, width: box.width, height: ausschnitt.hoehe ?? box.height } }
+      if (box === null) throw new Error(`screenshotAusschnitt: '${ausschnitt.selector}' ist nicht sichtbar oder fehlt`)
+      // F44 WS-2b: mit "screenshotVollseite" darf der Ausschnitt über die Viewport-Höhe hinausgehen
+      // (ganze Ansicht neben der Chatspalte); ohne bleibt er wie bisher im Viewport. Bei fullPage
+      // gelten Seitenkoordinaten, boundingBox() liefert Viewport-Koordinaten — daher der Bildlauf.
+      const bildlauf = vollseite === true ? await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY })) : { x: 0, y: 0 }
+      optionen = { fullPage: vollseite === true, clip: { x: box.x + bildlauf.x, y: box.y + bildlauf.y, width: box.width, height: ausschnitt.hoehe ?? box.height } }
     }
     const png = await page.screenshot({ ...optionen, type: 'png' })
     writeFileSync(join(ausgabeVerzeichnis, dateiname), dateiname.endsWith('.webp') ? await alsWebp(png) : png)

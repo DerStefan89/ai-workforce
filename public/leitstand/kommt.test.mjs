@@ -77,3 +77,10 @@ test('Tab am gesperrten Knopf und Klick an einem freien Element bleiben unberüh
   assert.equal(frei.verhindert, false)
   assert.equal(frei.angehalten, false)
 })
+
+test('kommtKnopf mit Symbol (F-897): dekorativ, aria-hidden, escaped, nicht Teil des Namens', () => {
+  const html = kommtKnopf('Eintrag erfassen', { primaer: true, symbol: '<+>' })
+  assert.match(html, /<span class="kommt-symbol" aria-hidden="true">&lt;\+&gt;<\/span>Eintrag erfassen/)
+  assert.match(html, /aria-disabled="true"/)
+  assert.doesNotMatch(kommtKnopf('Ohne'), /kommt-symbol/)
+})

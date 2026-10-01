@@ -1,0 +1,15 @@
+[
+  {
+    "label": "#/workboard",
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "(fehlt)",
+    "aktiv in der Nav": "Entwicklung",
+    "Fokus": "(fehlt)",
+    "Fokus-Karte": "Aktueller Fokus f15-ws4-l3 Klärung nötig AK10 Satz 3: ein Abbruch nach F14 wirkt auf den aktiven Schritt. Schritt 1 wird",
+    "Pipeline": "Ausführung claude-code · claude-sonnet-5 Baut und ändert Code, ohne Pfadeinschränkung.",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

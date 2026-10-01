@@ -49,12 +49,12 @@
  * offen ist (gewaehlteId-Gate, Muster ladeWorkflowDetail).
  */
 
-import { baueAuftragAusFeature, holeAbnahme, holeLaufDetail, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { baueAuftragAusFeature, holeRoadmap, holeRollenBesetzung, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { escapeHtml, formatiereZeitpunkt } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
-import { filtereAttentionWorkflows } from '../attention-daten.js'
+import { LEERER_FOKUS, ladeFokusNachtrag, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
 import { navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { merkeGeoeffnet } from '../zuletzt-geoeffnet.js'
@@ -116,9 +116,10 @@ let letzteRoadmap = null
  * spekulieren), nicht bei jedem 2-Sekunden-Poll-Tick — s. aktualisiereFokusCache().
  * aktivLauf.aufgabe/-.startZeit kommen aus dem LETZTEN Checkpoint des aktiven Laufs (Muster
  * views/runs.js checkpointZeile: lineage.beschreibung) bzw. dessen ERSTEM (Startzeitpunkt) — echte,
- * bereits vorhandene Felder, keine neue Berechnung.
+ * bereits vorhandene Felder, keine neue Berechnung. Seit F44 WS-2b lädt ladeFokusNachtrag
+ * (fokus-daten.js) diese Daten — dieselbe Logik, die auch die Übersicht nutzt.
  */
-let fokusCache = { workflowId: null, schritte: null, workflowStatus: null, freigabeHalt: null, aktivLauf: null }
+let fokusCache = { ...LEERER_FOKUS }
 
 /** F29 WS-D2 (Auftrag Punkt C): rollenvertrag.zweck je Rolle (GET /api/ressourcen/rollen/<rolle>, F24) — echte Kurzbeschreibung für die Pipeline-Knoten, gecacht (Rollenverträge ändern sich nicht zur Laufzeit), ein Eintrag pro tatsächlich vorkommender Rolle. */
 const rollenZweckCache = new Map()
@@ -768,19 +769,8 @@ function initBearbeitungBedienung() {
 // Workflow-/Abnahme-/Lauf-Abrufen (fokusCache, s.o.) — keine erfundenen
 // Zahlen, ein Leerzustand, wo eine Quelle (noch) nichts liefert.
 
-/** Wählt den für die Übersicht relevantesten Workflow: zuerst einer, der auf eine menschliche Aktion wartet (dieselbe Regel wie attention-daten.js — D5, die Oberfläche entscheidet nichts selbst), sonst ein laufender, sonst der erste überhaupt. @param workflows - zustand.workflows @returns ein Workflow-Eintrag, oder null */
-function waehleFokusWorkflow(workflows) {
-  if (!Array.isArray(workflows) || workflows.length === 0) return null
-  const wartend = filtereAttentionWorkflows(workflows)
-  if (wartend !== null && wartend.length > 0) return wartend[0]
-  return workflows.find((w) => w.status === 'LAEUFT') ?? workflows[0]
-}
-
-/** Der zuletzt aktualisierte Lauf für die Karte "Letzter Projektstand" — zeitpunkt ist ein ISO-Zeitstempel (Muster views/runs.js), Stringvergleich reicht. @param laeufe - zustand.laeufe @returns der jüngste Lauf, oder null */
-function waehleLetztenLauf(laeufe) {
-  if (!Array.isArray(laeufe) || laeufe.length === 0) return null
-  return laeufe.reduce((juengster, lauf) => (lauf.zeitpunkt && (!juengster.zeitpunkt || lauf.zeitpunkt > juengster.zeitpunkt) ? lauf : juengster))
-}
+// waehleFokusWorkflow und waehleLetztenLauf stehen seit F44 WS-2b in fokus-daten.js (gemeinsam mit
+// der Übersicht, views/dashboard.js).
 
 // ─── Icons (Inline-SVG, Muster index.html: fill="none" stroke="currentColor") ──────────────
 
@@ -1181,46 +1171,17 @@ function renderBento() {
  */
 async function aktualisiereFokusCache(workflow) {
   if (workflow === null) {
-    fokusCache = { workflowId: null, schritte: null, workflowStatus: null, freigabeHalt: null, aktivLauf: null }
+    fokusCache = { ...LEERER_FOKUS }
     return
   }
   if (fokusCache.workflowId === workflow.workflowId) return
-  try {
-    const [detailAntwort, abnahme] = await Promise.all([holeWorkflowDetail(workflow.workflowId), holeAbnahme(workflow.workflowId).catch(() => null)])
-    if (!detailAntwort.ok) return
-    const detailInhalt = await detailAntwort.json()
-    const schritte = Array.isArray(detailInhalt.daten?.schritte) ? detailInhalt.daten.schritte : []
-
-    let aktivLauf = null
-    const laufenderSchritt = schritte.find((s) => s.status === 'LAEUFT' && typeof s.lauf_id === 'string')
-    if (laufenderSchritt) {
-      try {
-        const laufAntwort = await holeLaufDetail(laufenderSchritt.lauf_id)
-        if (laufAntwort.ok) {
-          const laufDetail = await laufAntwort.json()
-          const checkpoints = Array.isArray(laufDetail.checkpoints) ? laufDetail.checkpoints : []
-          aktivLauf = {
-            startZeit: checkpoints[0]?.zeitstempel ?? null,
-            aufgabe: checkpoints[checkpoints.length - 1]?.lineage?.beschreibung ?? null,
-          }
-        }
-      } catch {
-        // Aktiver Lauf nicht ladbar — Start/Aufgabe/Laufzeit bleiben Leerzustand, kein Abbruch des restlichen Nachtrags.
-      }
-    }
-
-    fokusCache = {
-      workflowId: workflow.workflowId,
-      schritte,
-      workflowStatus: abnahme?.workflowStatus ?? workflow.status,
-      freigabeHalt: abnahme?.freigabeHalt ?? null,
-      aktivLauf,
-    }
-    renderBento()
-    void ladeRollenZweckeNach(schritte)
-  } catch {
-    // Netzwerkfehler beim Nachtrag: der nächste Poll-Tick (2s) versucht es erneut, kein eigener Fehlerzustand (Muster aktualisiereBearbeitungsZustand).
-  }
+  // F44 WS-2b: Laden aus fokus-daten.js (Logik unverändert umgezogen); null = Detail nicht ladbar,
+  // der nächste Poll-Tick versucht es erneut, kein eigener Fehlerzustand.
+  const nachtrag = await ladeFokusNachtrag(workflow)
+  if (nachtrag === null) return
+  fokusCache = nachtrag
+  renderBento()
+  void ladeRollenZweckeNach(nachtrag.schritte)
 }
 
 /**

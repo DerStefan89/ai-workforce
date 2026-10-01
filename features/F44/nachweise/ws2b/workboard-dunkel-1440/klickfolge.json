@@ -1,0 +1,62 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "screenshotQualitaet": 0.7,
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Fokus-Karte",
+        "selector": "#workboard-bento .bento-fokus"
+      },
+      {
+        "name": "Pipeline",
+        "selector": "#workboard-bento .pipeline-schritt"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/workboard",
+      "warteAufSelector": {
+        "selector": "#workboard-bento .pipeline-schritt, #workboard-bento .bento-leer",
+        "timeoutMs": 10000
+      },
+      "screenshot": "d1440-workboard.webp"
+    }
+  ]
+}

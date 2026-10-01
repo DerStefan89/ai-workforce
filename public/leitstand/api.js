@@ -19,6 +19,9 @@
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2)
  * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems)
+ * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems — nur lesend)
+ * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
+ * - public/leitstand/fokus-daten.js (F44 WS-2b: holeWorkflowDetail, holeAbnahme, holeLaufDetail)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
  * - public/leitstand/views/projekte-uebersicht.js (F25 WS-2a)
  * - public/leitstand/views/chat.js (F26 WS-2a)
@@ -188,11 +191,11 @@ export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(
 // ohne status durch; jetzt ist sie ein Wurf und erscheint als Fehler, nie als „keine Roadmap“.
 export const holeRoadmap = () => holeJsonOderWirf(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
-// F32 WS-2: Verbrauchsprojektion fürs Dashboard (Karte "Verbrauch", views/dashboard.js) — nur
+// F32 WS-2: Verbrauchsprojektion für die Karte "Verbrauch" (seit F44 WS-2b views/nutzung.js) — nur
 // beim Öffnen der View und bei Zeitraumwechsel abgerufen, NICHT im 2s-Poll (Muster holeRoadmap:
 // die Laufakten ändern sich nicht durch einen laufenden Poll-Tick, sondern nur durch neue,
 // abgeschlossene Läufe). `von` ist ein bereits client-seitig als gültiges ISO-8601-Datum gebauter
-// Wert (views/dashboard.js `zeitraumVon`) — kein freies Nutzereingabefeld, deshalb keine eigene
+// Wert (verbrauch-zeitraum.js `berechneVerbrauchsVon`) — kein freies Nutzereingabefeld, deshalb keine eigene
 // Formatprüfung hier nötig (F32-Bekannte-Grenze zu `?von=`/`?bis=`). Zeitlimit wie holeRoadmap.
 // F-603-Fix: über holeJsonOderWirf statt eines rohen fetch().then(r => r.json()) — ein 500 (Muster
 // holeRessourcen/holeAbdeckung) wird jetzt als Wurf erkannt statt fälschlich als Erfolg
