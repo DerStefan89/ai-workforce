@@ -16,7 +16,10 @@
  * Finding mit wartendem Workflow „Braucht dich“ zu. F44 WS-3b: Beim Wechsel lädt die Entwicklung nur,
  * wenn sie offen ist, sonst beim nächsten Betreten (F-920); das Detail zeigt beim Deep-Link bis zu
  * den Workitems einen Ladezustand (F-921), lädt Akte, Ablauf-Schritte und Abnahme genau einmal je
- * Öffnen (nie aus dem Poll) und blendet die Übersicht aus.
+ * Öffnen (nie aus dem Poll) und blendet die Übersicht aus. F44 WS-4a (F-874, F-923): Ein offenes
+ * Workflow-Detail samt Dialog, Bedienzustand und Reparaturentwurf wird beim Wechsel verworfen, der
+ * Hash geht ohne neuen History-Eintrag auf #/runs, und der Auffrischer fragt den alten Workflow nicht
+ * mehr ab; ein offenes #/workboard/<id> geht ebenso auf #/workboard.
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -100,6 +103,20 @@ globalThis.addEventListener = (typ, fn) => {
   if (typ === 'hashchange') hashchangeHandler.push(fn)
 }
 Object.defineProperty(globalThis, 'location', { value: { hash: '#/workboard' }, configurable: true, writable: true })
+// F44 WS-4a (F-923): router.js ersetzeRoute ersetzt den Hash per history.replaceState (kein neuer Eintrag).
+const ersetzt = []
+Object.defineProperty(globalThis, 'history', {
+  value: {
+    state: null,
+    replaceState(_zustand, _titel, url) {
+      ersetzt.push(url)
+      location.hash = url
+    },
+    back() {},
+  },
+  configurable: true,
+  writable: true,
+})
 Object.defineProperty(globalThis, 'sessionStorage', { value: speicher(), configurable: true, writable: true })
 Object.defineProperty(globalThis, 'localStorage', { value: speicher(), configurable: true, writable: true })
 
@@ -118,6 +135,13 @@ let entscheidungW3 = 'fehlt'
  * @returns JSON-Körper
  */
 function koerperFuer(url) {
+  // F44 WS-4a: projekt-wf mit einem Workflow im Freigabe-Halt (Detail, Aktionen, Dialog).
+  if (url.includes('/projekte/projekt-wf/zustand'))
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'wf-1', ziel: 'Ziel WF', status: 'WARTET_FREIGABE', naechster: { art: 'haltFreigabe', schrittId: 's1' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+  if (url.includes('/projekte/projekt-wf/workflows/wf-1/abnahme'))
+    return { workflowStatus: 'WARTET_FREIGABE', freigabeHalt: { schrittId: 's1' }, entscheidung: { status: 'fehlt' }, urteil: { status: 'noch_nicht_gelaufen' }, aenderungsuebersicht: { status: 'noch_nicht_gelaufen' }, pruefergebnis: { status: 'noch_nicht_gelaufen' } }
+  if (url.includes('/projekte/projekt-wf/workflows/wf-1'))
+    return { daten: { ziel: 'Ziel WF', status: 'WARTET_FREIGABE', aktiver_schritt_id: 's1', schritte: [{ schritt_id: 's1', rolle: 'ausfuehrung', worker: 'claude-code', freigabe: 'ZWINGEND', status: 'WARTET_FREIGABE', nachfolger: null, lauf_id: null }] }, naechster: { art: 'haltFreigabe', schrittId: 's1' }, empfehlung: null }
   // F44 WS-3a: projekt-v hat ein offenes Finding, dessen Workflow (über den Auftrag) auf Freigabe wartet.
   if (url.includes('/projekte/projekt-v/workitems'))
     return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-1', titel: 'Wartender Befund', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1' }], befunde: [], fehler: [] }
@@ -200,6 +224,7 @@ const { abonniere } = await import('./zustand.js')
 const { initAttentionView } = await import('./views/attention.js')
 const { initRoadmapView } = await import('./views/roadmap.js')
 const { initNutzungView } = await import('./views/nutzung.js')
+const { initWorkflowsView } = await import('./views/workflows.js')
 
 initWorkboardView()
 initDashboardView()
@@ -207,6 +232,7 @@ initProjektView()
 initAttentionView()
 initRoadmapView()
 initNutzungView()
+initWorkflowsView()
 await warte()
 
 test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart mit dem neuen Präfix', async () => {
@@ -739,6 +765,10 @@ test('F44 WS-3b: Eine späte Akte des alten Projekts erscheint nach dem Wechsel 
   zurueckgehalten.clear()
   setzeAktivesProjekt({ id: 'projekt-y', name: 'Projekt Y' })
   await warte()
+  // F-923: der Wechsel hat das Detail geschlossen und den Hash auf #/workboard gesetzt — hier öffnet
+  // der Nutzer dieselbe ID im neuen Projekt bewusst erneut.
+  assert.equal(location.hash, '#/workboard')
+  location.hash = '#/workboard/F7'
   dispatch()
   await warte()
   for (const freigeben of halt) freigeben()
@@ -796,4 +826,76 @@ test('F-922: „Auftrag vorbereiten“ gesperrt bei laufendem Ablauf und bei off
   entscheidungW3 = 'fehlt'
   location.hash = '#/workboard'
   dispatch()
+})
+
+test('F-874, F-923 (F44 WS-4a): Wechsel bei offenem Workflow-Detail und offenem Dialog — alles verworfen, Hash ohne neuen Eintrag auf #/runs, kein Abruf des alten Workflows', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  setzeAktivesProjekt({ id: 'projekt-wf', name: 'Projekt WF' })
+  await warte()
+  location.hash = '#/workflows/wf-1'
+  dispatch()
+  await warte()
+  assert.equal(document.getElementById('workflow-detail').hidden, false)
+  assert.equal(document.getElementById('workflow-detail-titel').textContent, 'Ziel WF')
+  assert.match(document.getElementById('workflow-aktionen').innerHTML, /data-aktion="freigabe-oeffnen"/)
+
+  // Dialog über die Aktionszeile öffnen; dazu ein angefangener Reparaturentwurf.
+  const dialog = document.getElementById('workflow-dialog')
+  let geschlossen = 0
+  dialog.open = false
+  dialog.showModal = () => {
+    dialog.open = true
+  }
+  dialog.close = () => {
+    dialog.open = false
+    geschlossen += 1
+  }
+  document.getElementById('workflow-aktionen').handler.click({ target: { closest: (s) => (s === '.wf-aktion' ? { dataset: { aktion: 'freigabe-oeffnen', workflowId: 'wf-1' } } : null) } })
+  assert.equal(dialog.open, true)
+  assert.match(dialog.innerHTML, /data-aktion="freigeben" data-workflow-id="wf-1" data-schritt-id="s1">Freigeben &amp; starten/)
+  document.getElementById('workflow-reparatur').innerHTML = '<p>Entwurf aus dem alten Projekt</p>'
+
+  ersetzt.length = 0
+  setzeAktivesProjekt({ id: 'projekt-wf2', name: 'Projekt WF2' })
+  await warte()
+  assert.equal(dialog.open, false, 'der Dialog des alten Projekts ist zu')
+  assert.ok(geschlossen >= 1)
+  assert.equal(document.getElementById('workflow-detail').hidden, true)
+  assert.equal(document.getElementById('workflow-aktionen').innerHTML, '')
+  assert.equal(document.getElementById('workflow-bedienung').innerHTML, '')
+  assert.equal(document.getElementById('workflow-reparatur').innerHTML, '', 'der Reparaturentwurf des alten Projekts ist verworfen')
+  assert.equal(location.hash, '#/runs')
+  assert.deepEqual(ersetzt, ['#/runs'], 'der Hash wird ersetzt, kein neuer History-Eintrag')
+
+  // F-874: weitere Poll-Ticks fragen den alten Workflow nicht mehr ab (früher: Dauer-404).
+  aufrufe.length = 0
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.deepEqual(
+    aufrufe.filter((u) => u.includes('/workflows/')),
+    [],
+    `Auffrischer fragt weiter ab: ${aufrufe.join(', ')}`
+  )
+})
+
+test('F-923: Wechsel bei offenem #/workboard/<id> setzt den Hash ohne neuen Eintrag auf #/workboard', async () => {
+  const { dispatch } = await import('./router.js')
+  setzeAktivesProjekt({ id: 'projekt-v', name: 'Projekt V' })
+  location.hash = '#/workboard/F-1'
+  dispatch()
+  await warte()
+  assert.equal(document.getElementById('workboard-detail').hidden, false)
+  ersetzt.length = 0
+  setzeAktivesProjekt({ id: 'projekt-w', name: 'Projekt W' })
+  await warte()
+  assert.equal(location.hash, '#/workboard')
+  assert.deepEqual(ersetzt, ['#/workboard'])
+  assert.equal(document.getElementById('workboard-detail').hidden, true)
+  // Ohne offenes Detail bleibt der Hash unberührt.
+  ersetzt.length = 0
+  setzeAktivesProjekt({ id: 'projekt-v', name: 'Projekt V' })
+  await warte()
+  assert.deepEqual(ersetzt, [])
 })

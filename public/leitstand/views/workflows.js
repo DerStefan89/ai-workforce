@@ -35,13 +35,26 @@
  * .btn — Werteverweis in einer Tabellenzelle, keine Aktion). Keine
  * Verhaltensänderung, kein neues Farbpaar.
  *
+ * F44 WS-4a (Vorlage V10 d_workflow_neu, d_arbeit_verlauf; Abgleich F-725 F0, F2, F3, F3b, F4,
+ * F5, F10, F12): `#/workflows/<id>` ist eine ganze Seite — „← Alle Aufträge“, Kopf mit Ziel,
+ * „Der Weg zum Ergebnis“ als Timeline, „Auf einen Blick“, die Aktionen darunter und der
+ * Aufklappbereich „Technischer Ablauf & Serverentscheidung“; Liste, Startfehler und Läufe sind
+ * dabei ausgeblendet. Freigeben/Ablehnen und Stoppen laufen über einen nativen Dialog
+ * (#workflow-dialog, showModal), dessen Inhalt beim Öffnen aus dem aktuellen Detail gebaut wird;
+ * ändert sich das Bedienungs-Kennzeichen bei offenem Dialog, schließt er mit „Der Stand hat sich
+ * geändert“. Die Render-Funktionen von Seite und Liste liegen in views/workflow-detail.js; hier
+ * bleiben Laden, Kennzeichen, Dialogsteuerung und alle POST-Aufrufe. Architekt-Entscheidung,
+ * Sichtung, Reparatur und Abnahme sind unverändert (Restyling WS-4b). Ein Projektwechsel verwirft
+ * Dialog, Detail und Entwurf und setzt den Hash ohne neuen History-Eintrag auf #/runs (F-874, F-923).
+ *
  * Wichtig: Kein eigener Zustand, keine eigene Laufstatus-Ableitung — jede
  * Anzeige stammt direkt aus dem Server. Die Liste (renderWorkflows) kommt
  * seit F20 WS-2 aus dem Zustands-Aggregat (Abnehmer des einen Poll-Timers in
  * zustand.js); das Detail bleibt ein eigener Endpunktaufruf
  * (GET /api/workflows/<id>) und hängt als Detail-Auffrischer am selben
- * Timer, solange eines offen ist. #workflow-detail-inhalt wird bei jedem
- * Tick komplett ersetzt, #workflow-bedienung nur bei ECHTER
+ * Timer, solange eines offen ist. #workflow-detail-inhalt (Timeline),
+ * #workflow-blick und #workflow-technik-inhalt werden bei jedem Tick komplett
+ * ersetzt, #workflow-bedienung und #workflow-aktionen nur bei ECHTER
  * Zustandsänderung (Signatur-Vergleich, F-249) und #workflow-reparatur gar
  * nicht — der Entwurf gehört dem Menschen, bis er ihn einreicht oder
  * verwirft (F-249). #workflow-abnahme ist EIN WEITERER eigener Endpunktaufruf
@@ -63,98 +76,38 @@ import {
 } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
+import { t } from '../i18n.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
-import { navigiere, registriere } from '../router.js'
+import { rollenName } from '../rollen-anzeige.js'
+import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
+import { ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 
 /**
- * Die LAGE eines Workflows in einem Satz, je Ausgang von
- * ermittleNaechstenSchritt (löst F-253). Die Texte sind ANZEIGE, keine
- * Regel: welcher Ausgang vorliegt, hat der Server entschieden.
+ * Escapter, übersetzter Text (Muster views/workboard-detail.js).
+ * @param schluessel - i18n-Schlüssel
+ * @param werte - Platzhalterwerte
+ * @returns HTML
  */
-const LAGE_JE_AUSGANG = {
-  starte: 'bereit zum Start',
-  haltFreigabe: 'wartet auf dich — Freigabe nötig',
-  haltKlaerung: 'steht — Klärung nötig',
-  haltGrenze: 'steht — Grenze erreicht',
-  haltGestoppt: 'gestoppt',
-  fertig: 'durchgelaufen',
+function tx(schluessel, werte) {
+  return escapeHtml(t(schluessel, werte))
 }
 
-/**
- * Übersetzt status und naechster in die angezeigte Lage. status hat VORRANG,
- * wenn er LAEUFT lautet (Auflösung einer Mehrdeutigkeit, siehe F-248/F-264 —
- * "läuft" heißt hier nur, dass der abgelegte Status LAEUFT lautet, nicht,
- * dass ein Lauf noch lebt).
- * @param status - daten.status bzw. workflow.status
- * @param naechster - Projektion aus dem Server, oder null bei ungültiger Fassung
- * @returns Lagetext
- */
-function beschreibeLage(status, naechster) {
-  if (naechster === null || naechster === undefined) return 'nicht bestimmbar — die Fassung validiert nicht'
-  if (status === 'LAEUFT') return 'läuft'
-  return LAGE_JE_AUSGANG[naechster.art] ?? `unbekannter Ausgang '${naechster.art}'`
-}
+/** HTML der zuletzt gerenderten Liste „Aufträge“ — ein Poll-Tick schreibt sie nur bei geändertem Inhalt neu, sonst ginge der Tastaturfokus einer Zeile alle zwei Sekunden verloren. */
+let letzteListeHtml = null
 
-/**
- * Eine Kopfdaten-Zeile aus GET /api/workflows. grund steht als eigene
- * Tabellenzeile (F-221 (a)) — bei KLAERUNG_ERFORDERLICH/GESTOPPT die einzige
- * Auskunft darüber, warum der Automat steht.
- * @param workflow - ein Eintrag aus GET /api/workflows
- * @returns HTML-Block für die Workflow-Liste
- */
-function workflowKopfzeile(workflow) {
-  const detailsButton = `<button class="btn workflow-details-btn" data-workflow-id="${escapeHtml(workflow.workflowId)}">Details</button>`
-  const grundZeile = workflow.grund === null || workflow.grund === undefined ? '' : `<tr><th>Grund</th><td>${escapeHtml(workflow.grund)}</td></tr>`
-  const faelligZusatz = workflow.naechster?.schrittId ? ` (<code>${escapeHtml(workflow.naechster.schrittId)}</code>)` : ''
-  return `<section class="card workflow">
-    <h3>${escapeHtml(workflow.workflowId)} ${detailsButton}</h3>
-    <table class="lauf-kopfdaten">
-      <tbody>
-        <tr><th>Ziel</th><td>${escapeHtml(workflow.ziel ?? '')}</td></tr>
-        <tr><th>Version</th><td>${escapeHtml(String(workflow.versionSequenz))}</td></tr>
-        <tr><th>Status</th><td>${escapeHtml(workflow.status ?? '')}</td></tr>
-        <tr><th>Lage</th><td>${escapeHtml(beschreibeLage(workflow.status, workflow.naechster))}${faelligZusatz}</td></tr>
-        <tr><th>Aktiver Schritt (Cursor)</th><td>${workflow.aktiverSchrittId ? `<code>${escapeHtml(workflow.aktiverSchrittId)}</code>` : '<span class="unbekannt">kein Cursor</span>'}</td></tr>
-        ${grundZeile}
-        <tr><th>Schritte</th><td>${escapeHtml(String(workflow.schritteAnzahl))}</td></tr>
-      </tbody>
-    </table>
-  </section>`
-}
+/** zustand.workflows des letzten Poll-Ticks (oder null) — liefert den Titel (ziel) eines Details schon vor seiner eigenen Antwort. */
+let letzteWorkflows = null
 
-/** Rendert die Workflow-Liste aus dem Zustands-Aggregat (F20 WS-2) — Abnehmer des einen Poll-Timers in zustand.js, kein eigener fetch() mehr. @param workflows - zustand.workflows aus GET /api/zustand, oder null bei defekter Quelle */
+/** Rendert die Liste „Aufträge“ aus dem Zustands-Aggregat (F20 WS-2) — Abnehmer des einen Poll-Timers in zustand.js, kein eigener fetch(). @param workflows - zustand.workflows aus GET /api/zustand, oder null bei defekter Quelle */
 function renderWorkflows(workflows) {
-  const container = document.getElementById('workflows')
-  if (workflows === null) {
-    container.innerHTML = '<p class="unbekannt">Workflows nicht verfügbar (Quelle im Aggregat defekt).</p>'
-    return
-  }
-  container.innerHTML = workflows.length === 0 ? '<p class="leer">Keine Workflows unter kontrollzustand/ gefunden.</p>' : workflows.map(workflowKopfzeile).join('')
-}
-
-/**
- * Bringt die Schritte in Planreihenfolge entlang der nachfolger-Kette. Der
- * Detailendpunkt validiert nicht (F-247): ein Zyklus, zwei Wurzeln oder eine
- * doppelt vergebene schritt_id kommen hier real an — der angehängte Rest
- * wird dann ausgewiesen statt still eingereiht.
- * @param schritte - daten.schritte aus GET /api/workflows/<id>
- * @returns je Schritt { schritt, inKette }, Kettenteil zuerst
- */
-function ordneSchritteNachPlan(schritte) {
-  const nachId = new Map()
-  for (const s of schritte) if (!nachId.has(s.schritt_id)) nachId.set(s.schritt_id, s)
-  const genannteNachfolger = new Set(schritte.map((s) => s.nachfolger).filter((n) => typeof n === 'string'))
-  const kette = []
-  const inKette = new Set()
-  let aktuell = schritte.find((s) => !genannteNachfolger.has(s.schritt_id))
-  while (aktuell !== undefined && !inKette.has(aktuell)) {
-    inKette.add(aktuell)
-    kette.push(aktuell)
-    aktuell = typeof aktuell.nachfolger === 'string' ? nachId.get(aktuell.nachfolger) : undefined
-  }
-  return [...kette.map((schritt) => ({ schritt, inKette: true })), ...schritte.filter((s) => !inKette.has(s)).map((schritt) => ({ schritt, inKette: false }))]
+  letzteWorkflows = Array.isArray(workflows) ? workflows : null
+  const html = renderWorkflowListe(workflows)
+  if (html === letzteListeHtml) return
+  letzteListeHtml = html
+  document.getElementById('workflows').innerHTML = html
 }
 
 /**
@@ -181,74 +134,6 @@ async function ermittleAktiveLaufIds(eintraege) {
     }
   }
   return aktive
-}
-
-/**
- * @param eintrag - ein { schritt, inKette } aus ordneSchritteNachPlan
- * @param aktiveLaufIds - Ergebnis von ermittleAktiveLaufIds
- * @param faelligId - naechster.schrittId aus dem Server, oder null (F-253)
- * @param cursorId - daten.aktiver_schritt_id, oder null
- * @returns Tabellenzeile der Schrittliste
- */
-function workflowSchrittZeile(eintrag, aktiveLaufIds, faelligId = null, cursorId = null) {
-  const { schritt } = eintrag
-  const laeuftJetzt = typeof schritt.lauf_id === 'string' && aktiveLaufIds.has(schritt.lauf_id)
-  const cursorMarke = cursorId !== null && schritt.schritt_id === cursorId ? ' <span class="badge" title="aktiver_schritt_id — der Cursor des Automaten">Cursor</span>' : ''
-  const faelligMarke = faelligId !== null && schritt.schritt_id === faelligId ? ' <span class="badge aktiv" title="Der Server nennt genau diesen Schritt als nächsten (naechster.schrittId)">fällig</span>' : ''
-  const laufVerweis =
-    typeof schritt.lauf_id === 'string'
-      ? `<button class="workflow-lauf-verweis" data-lauf-id="${escapeHtml(schritt.lauf_id)}">${escapeHtml(schritt.lauf_id)}</button>`
-      : '<span class="unbekannt">kein Lauf</span>'
-  const freigabeErteilt = schritt.freigabe_erteilt === undefined ? '—' : String(schritt.freigabe_erteilt)
-  return `<tr>
-    <td><code>${escapeHtml(schritt.schritt_id)}</code>${cursorMarke}${faelligMarke}${eintrag.inKette ? '' : ' <span class="badge fehler" title="Die nachfolger-Kette erreicht diesen Schritt nicht">außerhalb der Kette</span>'}</td>
-    <td>${escapeHtml(schritt.rolle)}</td>
-    <td>${escapeHtml(schritt.worker)}</td>
-    <td>${escapeHtml(schritt.modell)}</td>
-    <td>${escapeHtml(schritt.freigabe)} <span class="unbekannt">${schritt.freigabe === 'ZWINGEND' ? '(hält an)' : '(hält nicht an)'}</span></td>
-    <td>${escapeHtml(freigabeErteilt)}</td>
-    <td>${escapeHtml(schritt.status)}${laeuftJetzt ? ' <span class="badge aktiv">läuft jetzt</span>' : ''}</td>
-    <td>${laufVerweis}</td>
-    <td>${schritt.nachfolger ? `<code>${escapeHtml(schritt.nachfolger)}</code>` : '<span class="unbekannt">Ende</span>'}</td>
-    <td>${escapeHtml(String(schritt.zeitgrenze_ms))}</td>
-  </tr>`
-}
-
-const WORKFLOW_SCHRITT_TABELLE_KOPF = `<tr>
-  <th>Schritt</th><th>Rolle</th><th>Worker</th><th>Modell</th><th>Freigabe</th><th>Freigabe erteilt</th>
-  <th>Status</th><th>Lauf</th><th>Nachfolger</th><th>Zeitgrenze (ms)</th>
-</tr>`
-
-/**
- * @param daten - der WORKFLOW_V0-Datensatz aus GET /api/workflows/<id>
- * @param versionSequenz - Artefaktversion derselben Antwort
- * @param naechster - das Automaten-Verdikt derselben Antwort, oder null
- * @returns HTML-Block mit den Workflow-Feldern oberhalb der Schrittliste
- */
-function renderWorkflowKopf(daten, versionSequenz, naechster) {
-  const verdikt = naechster === null || naechster === undefined ? '<span class="unbekannt">nicht bestimmbar</span>' : `${escapeHtml(naechster.art)} — ${escapeHtml(naechster.grund)}`
-  return `<div class="detail-block"><h3>Workflow</h3><table class="lauf-kopfdaten"><tbody>
-    <tr><th>Ziel</th><td>${escapeHtml(daten.ziel ?? '')}</td></tr>
-    <tr><th>Auftrag</th><td><code>${escapeHtml(daten.auftrag_id ?? '')}</code></td></tr>
-    <tr><th>Version (Plan / Artefakt)</th><td>${escapeHtml(String(daten.version))} / ${escapeHtml(String(versionSequenz))}</td></tr>
-    <tr><th>Lage</th><td>${escapeHtml(beschreibeLage(daten.status, naechster))}</td></tr>
-    <tr><th>Verdikt des Automaten</th><td>${verdikt}</td></tr>
-    <tr><th>Status</th><td>${escapeHtml(daten.status ?? '')}</td></tr>
-    <tr><th>Aktiver Schritt (Cursor)</th><td>${daten.aktiver_schritt_id ? `<code>${escapeHtml(daten.aktiver_schritt_id)}</code>` : '<span class="unbekannt">kein Cursor</span>'}</td></tr>
-    <tr><th>Grund</th><td>${daten.grund ? escapeHtml(daten.grund) : '<span class="unbekannt">kein Halt-Grund hinterlegt</span>'}</td></tr>
-  </tbody></table></div>`
-}
-
-/**
- * F-247: eine Fassung, die nicht mehr gegen WORKFLOW_V0 validiert. Die
- * Schrittliste wird trotzdem gezeigt — sie anzusehen ist der erste Schritt
- * ihrer Reparatur.
- * @param verstoesse - string[] aus validiereWorkflowDaten
- * @returns HTML-Block
- */
-function renderWorkflowUngueltig(verstoesse) {
-  const liste = verstoesse.map((verstoss) => `<li>${escapeHtml(verstoss)}</li>`).join('')
-  return `<div class="detail-block"><h3>Fassung ungültig</h3><p class="fehler">Diese Fassung validiert nicht gegen WORKFLOW_V0 — der Startendpunkt lehnt sie mit 409 ab. Sie wird trotzdem vollständig gezeigt, weil die Reparatur damit beginnt, sie anzusehen.</p><ul>${liste}</ul></div>`
 }
 
 // ─── Abnahme (F23 WS-2a) ─────────────────────────────────────────────────────
@@ -531,9 +416,6 @@ async function sendeAbnahmeBedienung(workflowId, koerper, knopf, erfolgstext) {
 
 // ─── Bedienung (Starten, Freigeben, Ablehnen, Stoppen) ──────────────────────
 
-/** Workflow-Status, in denen POST .../stoppen etwas zu stoppen findet — ANZEIGE-Zwilling der Server-Regel, entscheidet nur, ob der Knopf angeboten wird. */
-const STOPPBARE_WORKFLOW_STATUS = ['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'KLAERUNG_ERFORDERLICH']
-
 /** Workflow-Status, aus denen heraus eine Reparaturfassung vorbereitet wird (F-240). */
 const REPARIERBARE_WORKFLOW_STATUS = ['GESTOPPT', 'KLAERUNG_ERFORDERLICH']
 
@@ -554,26 +436,215 @@ function zeigeBedienungsMeldung(text, art = 'fehler') {
  * außer der Reihe. Fehler werden gezeigt, nicht vorhergesagt (D13) — ein 409
  * nennt den fremden Lauf beim Namen. Der Poll läuft in JEDEM Fall, auch nach
  * einem Fehler: der Grund kann eine veraltete Anzeige sein.
+ * F44 WS-4a: Freigeben, Ablehnen und Stoppen kommen aus dem Dialog (imDialog). Ein Fehler steht
+ * dann im Dialog, der offen bleibt; bei Erfolg schließt er, und die Meldung steht am Ablauf. Hat
+ * sich der Dialog inzwischen geschlossen (Escape, Stand-Änderung), steht auch ein Fehler am Ablauf.
  * @param anfrage - () => Promise<Response>, die konkrete api.js-Bedienung
  * @param knopf - auslösender Button; wird während des Aufrufs gesperrt
  * @param erfolgstext - was im Erfolgsfall gemeldet wird
+ * @param imDialog - true, wenn die Bedienung aus #workflow-dialog kommt
  */
-async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext) {
+async function sendeWorkflowBedienung(anfrage, knopf, erfolgstext, imDialog = false) {
+  // Prüfpass WS-4a: die Antwort gehört zu GENAU diesem Workflow, diesem Projekt und diesem Dialog —
+  // wechselt eines davon während der Anfrage, wird ihre Ausgabe verworfen (keine Meldung von A unter B,
+  // kein Schließen eines inzwischen neu geöffneten Dialogs).
+  const workflowBeimStart = gewaehlteWorkflowId
+  const projektBeimStart = holeAktivesProjekt().id
+  const dialogBeimStart = imDialog ? offenerDialog : null
   zeigeBedienungsMeldung(null)
-  knopf.disabled = true
+  if (imDialog) zeigeDialogMeldung(null)
+  // Im Dialog ist ALLES gesperrt (Freigeben, Ablehnen, Abbrechen, Schließen; Escape über cancel und
+  // ein erneutes Öffnen über laufendeDialogBedienung) — kein zweiter POST, kein „Abbrechen“, das die
+  // laufende Entscheidung nicht mehr aufhält.
+  const knoepfe = imDialog ? [...document.getElementById('workflow-dialog').querySelectorAll('button')] : [knopf]
+  if (imDialog) laufendeDialogBedienung = { workflowId: workflowBeimStart }
+  for (const k of knoepfe) k.disabled = true
+  const giltNoch = () => gewaehlteWorkflowId === workflowBeimStart && holeAktivesProjekt().id === projektBeimStart
+  const unserDialogOffen = () => imDialog && offenerDialog === dialogBeimStart && dialogOffen()
   try {
     const antwort = await anfrage()
     const inhalt = await antwort.json().catch(() => ({}))
-    if (antwort.ok) {
-      zeigeBedienungsMeldung(`${erfolgstext}${inhalt.laufAbgebrochen === true ? ' Der laufende Schritt wurde abgebrochen.' : ''}${inhalt.laufAbgebrochen === false ? ' Es lief kein Schritt dieses Workflows — nichts abgebrochen.' : ''}${inhalt.bezeugt === false ? ' ACHTUNG: die Entscheidung konnte NICHT als Artefakt festgehalten werden.' : ''}${inhalt.kenntnisnahme?.neu === false ? ' Hinweis: Zu diesem Lauf lag schon eine Kenntnisnahme vor — deine Begründung wurde nicht zusätzlich gespeichert.' : ''}`, 'erfolg')
+    if (!giltNoch()) {
+      console.info(`[workflows] Antwort zu '${workflowBeimStart}' verworfen — Ansicht oder Projekt inzwischen gewechselt (HTTP ${antwort.status}).`)
+    } else if (antwort.ok) {
+      if (unserDialogOffen()) schliesseDialog()
+      zeigeBedienungsMeldung(`${erfolgstext}${inhalt.laufAbgebrochen === true ? ` ${t('ablauf.meldung.laufAbgebrochen')}` : ''}${inhalt.laufAbgebrochen === false ? ` ${t('ablauf.meldung.nichtsAbgebrochen')}` : ''}${inhalt.bezeugt === false ? ` ${t('ablauf.meldung.nichtBezeugt')}` : ''}${inhalt.kenntnisnahme?.neu === false ? ` ${t('ablauf.meldung.kenntnisnahme')}` : ''}`, 'erfolg')
+      // Nach dem Dialog liest ein Screenreader das Ergebnis über den Fokus (keine zweite Live-Region).
+      if (imDialog) document.getElementById('workflow-bedienung-meldung').focus()
     } else {
-      zeigeBedienungsMeldung(`${antwort.status}: ${inhalt.grund ?? 'unbekannter Fehler'}`)
+      zeigeBedienungsFehler(`${antwort.status}: ${inhalt.grund ?? t('ablauf.fehler.unbekannt')}`, unserDialogOffen(), dialogBeimStart)
     }
   } catch (fehler) {
-    zeigeBedienungsMeldung(`Anfrage fehlgeschlagen: ${fehler.message}`)
+    console.error('[workflows] Bedienung fehlgeschlagen:', fehler)
+    if (giltNoch()) zeigeBedienungsFehler(t('ablauf.fehler.anfrage', { meldung: fehler.message }), unserDialogOffen(), dialogBeimStart)
+  } finally {
+    if (imDialog) laufendeDialogBedienung = null
+    for (const k of knoepfe) k.disabled = false
   }
-  knopf.disabled = false
   void pollJetzt()
+}
+
+/**
+ * Ein Fehler einer Bedienung: im Dialog, solange dieser offen und sein Stand aktuell ist (der Dialog
+ * bleibt offen); hat sich der Stand während der Anfrage geändert, schließt der Dialog und der Fehler
+ * steht am Ablauf (er sagt mehr als „Stand geändert“); ohne Dialog ebenfalls am Ablauf.
+ * @param text - Fehlertext
+ * @param imOffenenDialog - true, wenn der auslösende Dialog noch offen ist
+ * @param dialog - offenerDialog beim Absenden, oder null
+ */
+function zeigeBedienungsFehler(text, imOffenenDialog, dialog) {
+  if (imOffenenDialog && dialog.kennzeichen === bedienungsKennzeichen) {
+    zeigeDialogMeldung(text)
+    return
+  }
+  if (imOffenenDialog) schliesseDialog()
+  zeigeBedienungsMeldung(text)
+  if (dialog !== null) document.getElementById('workflow-bedienung-meldung').focus()
+}
+
+// ─── Dialog „Nächsten Schritt freigeben“ / „Ausführung stoppen“ (F44 WS-4a, F3/F3b/F4/F5/F10) ────
+
+/**
+ * Der offene Dialog: null oder { art: 'freigabe' | 'stopp', kennzeichen }. kennzeichen ist das
+ * Bedienungs-Kennzeichen beim Öffnen — ändert es sich, schließt aktualisiereWorkflowBedienung den
+ * Dialog (kein Nachladen in einen offenen Dialog: sonst stünde eine Begründung unter einem anderen
+ * Schritt oder einer anderen Empfehlung, als sie geschrieben wurde).
+ */
+let offenerDialog = null
+
+/**
+ * Eine Begründung aus einem Dialog, den eine Stand-Änderung geschlossen hat: { art, basis, wert }.
+ * basis ist das Kennzeichen ohne Empfehlung (F-809) — nur bei gleichem Workflow, Halt und Schritt
+ * steht die Begründung beim erneuten Öffnen wieder im Feld, nie unter einem anderen Schritt.
+ */
+let geretteteBegruendung = null
+
+/** Detail des letzten Ladevorgangs, aus dem der Dialog beim Öffnen gebaut wird: { workflowId, daten, naechster, empfehlung }. */
+let aktuellesDetail = null
+
+/** Die laufende Bedienung aus dem Dialog ({ workflowId }) oder null — sperrt Escape, Abbrechen, Wiederöffnen und das Schließen bei Stand-Änderung, bis die Antwort da ist. */
+let laufendeDialogBedienung = null
+
+/** Bedienungs-Kennzeichen ohne Empfehlung vor einem Ladefehler des Details — damit überleben angefangene Begründungen im Bedienblock einen kurzen Fehler (siehe zeigeDetailNichtLadbar). */
+let bedienungsBasisVorFehler = null
+
+/** Kennzeichen ohne das letzte Glied (die Empfehlung, F-809). @param k - Kennzeichen oder null @returns Kennzeichen ohne Empfehlung oder null */
+function ohneEmpfehlung(k) {
+  return k === null ? null : k.slice(0, k.lastIndexOf('|'))
+}
+
+/** @returns true, solange #workflow-dialog offen ist */
+function dialogOffen() {
+  return document.getElementById('workflow-dialog').open === true
+}
+
+/** @param text - anzuzeigender Fehlertext im Dialog, oder null zum Ausblenden. Keine Live-Region (eine Live-Region: die Persona); der Fokus geht auf die Meldung. */
+function zeigeDialogMeldung(text) {
+  const anzeige = document.getElementById('workflow-dialog-meldung')
+  if (anzeige === null) return
+  if (text === null) {
+    anzeige.hidden = true
+    anzeige.textContent = ''
+    return
+  }
+  anzeige.textContent = text
+  anzeige.hidden = false
+  anzeige.focus()
+}
+
+/** Kopf des Dialogs (Vorlage .dialog-heading) mit Schließen-Knopf. @param titelSchluessel - i18n-Schlüssel des Titels @returns HTML */
+function dialogKopf(titelSchluessel) {
+  return `<div class="dialog-heading"><h2 id="workflow-dialog-titel">${tx(titelSchluessel)}</h2><button type="button" class="icon-button wf-dialog-abbrechen" aria-label="${tx('ablauf.dialog.schliessen')}"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18" /></svg></button></div>`
+}
+
+/**
+ * Inhalt des Freigabedialogs (F3, F3b, F4, F5): fälliger Schritt, Katalog-Empfehlung (Checkboxen
+ * disabled, „Freigeben & installieren“), Pflichtbegründung, „Freigeben & starten“ mit den
+ * angezeigten wirdGenutzt-ids (data-empfehlung-ids, „Anzeige = Start“), „Ablehnen“ (Freigabe-Veto,
+ * ABGELEHNT mit derselben Pflichtbegründung) und „Abbrechen“.
+ * @param detail - aktuellesDetail
+ * @returns HTML
+ */
+function renderFreigabeDialog(detail) {
+  const kennung = escapeHtml(detail.workflowId)
+  const faelligerSchritt = escapeHtml(detail.naechster?.schrittId ?? '')
+  const schritt = Array.isArray(detail.daten?.schritte) ? detail.daten.schritte.find((s) => s.schritt_id === detail.naechster?.schrittId) : undefined
+  const rolle = schritt === undefined ? '' : `<strong>${escapeHtml(rollenName(schritt.rolle))}</strong> `
+  // F36 WS-3: die angezeigten wirdGenutzt-ids gehen mit der Freigabe mit (data-empfehlung-ids, „Anzeige = Start“).
+  const empfehlungIds = empfehlungIdsFuerFreigabe(detail.empfehlung)
+  const empfehlungAttribut = empfehlungIds === undefined ? '' : ` data-empfehlung-ids="${escapeHtml(JSON.stringify(empfehlungIds))}"`
+  const abbrechen = `<button type="button" class="button wf-dialog-abbrechen">${tx('ablauf.dialog.abbrechen')}</button>`
+  const ablehnen = `<button type="button" class="button danger wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">${tx('ablauf.dialog.freigabe.ablehnen')}</button>`
+  return `${dialogKopf('ablauf.dialog.freigabe.titel')}
+    <p class="subtle">${tx('ablauf.dialog.freigabe.text')}</p>
+    <p class="workflow-dialog-schritt">${tx('ablauf.dialog.faellig')}: ${rolle}<code>${faelligerSchritt}</code></p>
+    ${renderEmpfehlung(detail.empfehlung)}
+    <label class="field" for="wf-freigabe-begruendung">${tx('ablauf.dialog.freigabe.begruendung')}</label>
+    <textarea id="wf-freigabe-begruendung" rows="3" aria-required="true" aria-describedby="workflow-dialog-meldung" placeholder="${tx('ablauf.dialog.freigabe.platzhalter')}"></textarea>
+    <p class="subtle">${tx('ablauf.dialog.freigabe.ablehnenHinweis')}</p>
+    ${renderInstallierbarHinweis(detail.empfehlung)}
+    <div class="dialog-actions">${abbrechen}${ablehnen}<button type="button" class="button primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}"${empfehlungAttribut}>${tx('ablauf.dialog.freigabe.bestaetigen')}</button></div>
+    <p id="workflow-dialog-meldung" class="fehler" tabindex="-1" hidden></p>`
+}
+
+/**
+ * Inhalt des Stoppdialogs (F10): Pflichtbegründung, „Stoppen“ und „Abbrechen“.
+ * @param detail - aktuellesDetail
+ * @returns HTML
+ */
+function renderStoppDialog(detail) {
+  return `${dialogKopf('ablauf.dialog.stopp.titel')}
+    <p class="subtle">${tx('ablauf.dialog.stopp.text')}</p>
+    <label class="field" for="wf-stopp-begruendung">${tx('ablauf.dialog.stopp.begruendung')}</label>
+    <textarea id="wf-stopp-begruendung" rows="3" aria-required="true" aria-describedby="workflow-dialog-meldung"></textarea>
+    <div class="dialog-actions"><button type="button" class="button wf-dialog-abbrechen">${tx('ablauf.dialog.abbrechen')}</button><button type="button" class="button danger wf-aktion" data-aktion="stoppen" data-workflow-id="${escapeHtml(detail.workflowId)}">${tx('ablauf.dialog.stopp.bestaetigen')}</button></div>
+    <p id="workflow-dialog-meldung" class="fehler" tabindex="-1" hidden></p>`
+}
+
+/**
+ * Öffnet den Dialog (nativ, showModal) mit Inhalt aus dem aktuellen Detail. Der Fokus liegt auf
+ * der Begründung; eine gerettete Begründung desselben Halts steht wieder im Feld.
+ * @param art - 'freigabe' oder 'stopp'
+ */
+function oeffneDialog(art) {
+  // Solange eine Dialog-Bedienung läuft, öffnet kein neuer Dialog (sonst wäre ein zweiter POST möglich).
+  if (aktuellesDetail === null || bedienungsKennzeichen === null || laufendeDialogBedienung !== null) return
+  const dialog = document.getElementById('workflow-dialog')
+  dialog.innerHTML = art === 'freigabe' ? renderFreigabeDialog(aktuellesDetail) : renderStoppDialog(aktuellesDetail)
+  offenerDialog = { art, kennzeichen: bedienungsKennzeichen }
+  const feld = document.getElementById(art === 'freigabe' ? 'wf-freigabe-begruendung' : 'wf-stopp-begruendung')
+  // Eine gerettete Begründung gilt nur für dieselbe Dialogart und denselben Halt; ein anderer Dialog lässt sie liegen.
+  if (geretteteBegruendung !== null && geretteteBegruendung.art === art) {
+    if (geretteteBegruendung.basis === ohneEmpfehlung(bedienungsKennzeichen)) feld.value = geretteteBegruendung.wert
+    geretteteBegruendung = null
+  }
+  if (!dialog.open) dialog.showModal()
+  feld.focus()
+}
+
+/** Schließt den Dialog ohne Wirkung (Abbrechen, Erfolg, Projekt- oder Workflowwechsel); Escape schließt nativ. */
+function schliesseDialog() {
+  const dialog = document.getElementById('workflow-dialog')
+  offenerDialog = null
+  if (dialog.open) dialog.close()
+}
+
+/**
+ * Schließt den Dialog, weil sich das Bedienungs-Kennzeichen geändert hat (c): Meldung am Ablauf,
+ * der Fokus geht auf sie (der auslösende Knopf ist inzwischen neu gerendert). Eine angefangene
+ * Begründung wird für denselben Halt gerettet. Hat sich nur die Katalog-Empfehlung geändert (etwa
+ * nach „Freigeben & installieren“ im Dialog), sagt die Meldung das und nennt die gerettete Begründung.
+ * @param neuesKennzeichen - das Bedienungs-Kennzeichen, das den Dialog überholt hat
+ */
+function schliesseDialogVeraltet(neuesKennzeichen) {
+  const art = offenerDialog?.art
+  const feld = art === undefined ? null : document.getElementById(art === 'freigabe' ? 'wf-freigabe-begruendung' : 'wf-stopp-begruendung')
+  const nurEmpfehlung = offenerDialog !== null && ohneEmpfehlung(offenerDialog.kennzeichen) === ohneEmpfehlung(neuesKennzeichen)
+  if (feld !== null && feld.value.trim() !== '') geretteteBegruendung = { art, basis: ohneEmpfehlung(offenerDialog.kennzeichen), wert: feld.value }
+  schliesseDialog()
+  if (nurEmpfehlung) zeigeBedienungsMeldung(t('ablauf.dialog.empfehlungGeaendert'), 'hinweis')
+  else zeigeBedienungsMeldung(t('ablauf.dialog.standGeaendert'))
+  document.getElementById('workflow-bedienung-meldung').focus()
 }
 
 /**
@@ -629,60 +700,26 @@ function renderArchitekturEntscheidung(workflowId, architekturEntscheidung) {
 
 /**
  * Der Bedienblock zu EINEM Workflow. Angeboten wird ausschließlich, was der
- * Server als möglich ausweist: naechster.art für Starten und
- * Freigeben/Ablehnen, status für Stoppen und den Reparaturzug,
+ * Server als möglich ausweist: status für den Reparaturzug,
  * architekturEntscheidung für die Architektur-Entscheidung (Regel 1c, F39
- * WS-2b) — sie steht bewusst ZUERST, wenn sie greift (dann ist naechster.art
- * 'haltKlaerung', kein 'starte'/'haltFreigabe').
+ * WS-2b) — sie steht bewusst ZUERST, wenn sie greift — und sichtung für den
+ * F-760-Halt. F44 WS-4a: Starten, Freigeben/Ablehnen und Stoppen sind in die
+ * Aktionszeile und den Dialog umgezogen (renderAktionen in workflow-detail.js,
+ * renderFreigabeDialog/renderStoppDialog oben); Markup und Verhalten der
+ * übrigen drei Blöcke sind unverändert (Restyling WS-4b, Gate f42).
  * @param workflowId - Kennung des angezeigten Workflows
  * @param status - daten.status
- * @param naechster - Automaten-Verdikt aus dem Server, oder null
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
  * @param architekturEntscheidung - { schrittId, fragen } aus GET /api/workflows/<id>, oder null
- * @param empfehlung - F36 WS-3: Katalog-Empfehlung am ZWINGEND-Start (GET /api/workflows/<id>), oder null
  * @param sichtung - F-768: Ergebnis von istSichtungsHaltAnzeige, oder null (dann kein Sichtungsknopf)
- * @returns HTML-Block
+ * @returns HTML-Block, oder '' ohne fällige Bedienung
  */
-function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
-  const art = naechster === null || naechster === undefined ? null : naechster.art
+function renderWorkflowBedienung(workflowId, status, ungueltig = false, architekturEntscheidung = null, sichtung = null) {
   const kennung = escapeHtml(workflowId)
-  const faelligerSchritt = escapeHtml(naechster?.schrittId ?? '')
   const bloecke = []
 
   if (architekturEntscheidung !== null) {
     bloecke.push(renderArchitekturEntscheidung(workflowId, architekturEntscheidung))
-  }
-
-  if (art === 'starte') {
-    bloecke.push(`<div class="unterabschnitt">
-      <p>Der nächste Schritt <code>${faelligerSchritt}</code> darf ohne Rückfrage starten.</p>
-      <button class="btn btn-primary wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">Starten</button>
-    </div>`)
-  }
-
-  if (art === 'haltFreigabe') {
-    // F36 WS-3: die angezeigten wirdGenutzt-ids gehen mit der Freigabe mit (data-empfehlung-ids, „Anzeige = Start“).
-    const empfehlungIds = empfehlungIdsFuerFreigabe(empfehlung)
-    const empfehlungAttribut = empfehlungIds === undefined ? '' : ` data-empfehlung-ids="${escapeHtml(JSON.stringify(empfehlungIds))}"`
-    bloecke.push(renderEmpfehlung(empfehlung))
-    bloecke.push(`<div class="unterabschnitt">
-      <p>Schritt <code>${faelligerSchritt}</code> verlangt eine menschliche Freigabe. Ohne dich läuft hier nichts weiter.</p>
-      <label for="wf-freigabe-begruendung">Begründung (Pflicht)</label>
-      <textarea id="wf-freigabe-begruendung" rows="2"></textarea>
-      ${renderInstallierbarHinweis(empfehlung)}
-      <div>
-        <button class="btn btn-primary wf-aktion" data-aktion="freigeben" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}"${empfehlungAttribut}>Freigeben</button>
-        <button class="btn wf-aktion" data-aktion="ablehnen" data-workflow-id="${kennung}" data-schritt-id="${faelligerSchritt}">Ablehnen</button>
-      </div>
-    </div>`)
-  }
-
-  if (STOPPBARE_WORKFLOW_STATUS.includes(status) && !ungueltig) {
-    bloecke.push(`<div class="unterabschnitt">
-      <label for="wf-stopp-begruendung">Begründung des Stopps (Pflicht)</label>
-      <textarea id="wf-stopp-begruendung" rows="2"></textarea>
-      <div><button class="btn wf-aktion" data-aktion="stoppen" data-workflow-id="${kennung}">Stoppen</button></div>
-    </div>`)
   }
 
   // F-768: nur beim reinen F-760-Halt; mit Zusatzgründen bleibt allein die Reparaturfassung darunter.
@@ -702,33 +739,49 @@ function renderWorkflowBedienung(workflowId, status, naechster, ungueltig = fals
     </div>`)
   }
 
-  if (bloecke.length === 0) {
-    bloecke.push('<p class="leer">Für diesen Workflow ist derzeit keine Bedienung fällig.</p>')
-  }
+  // F44 WS-4a: ohne fällige Bedienung bleibt der Block leer — Freigeben, Starten und Stoppen stehen
+  // in der Aktionszeile unter der Timeline (renderAktionen), der Status in „Auf einen Blick“.
+  if (bloecke.length === 0) return ''
   return `<div class="detail-block"><h3>Bedienung</h3>${bloecke.join('')}</div>`
 }
 
 /** Kennzeichen des zuletzt gerenderten Bedienblocks — verhindert, dass eine angefangene Pflichtbegründung durch den 2-Sekunden-Poll verloren geht (F-249). Nur bei ECHTER Lageänderung wird neu gebaut. */
 let bedienungsKennzeichen = null
 
-/** @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null */
+/**
+ * Baut Bedienblock und Aktionszeile neu, aber nur bei ECHTER Lageänderung (Kennzeichen). F44 WS-4a:
+ * Ist dabei der Dialog offen, schließt er mit „Der Stand hat sich geändert“ (kein Nachladen in den
+ * offenen Dialog). Lag der Fokus in der Aktionszeile, geht er auf ihre erste Aktion bzw. die
+ * Seitenüberschrift.
+ * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null
+ */
 function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
-  // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung unten schneidet am letzten '|').
+  // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|').
   const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${architekturEntscheidung?.fragen?.length ?? 0}|${sichtung?.laufId ?? 'null'}|${JSON.stringify(empfehlung)}`
   if (kennzeichen === bedienungsKennzeichen) return
   // F36 WS-5a (F-809): Wechselt nur die Empfehlung (z. B. nach „Freigeben & installieren“), bleiben
   // Workflow, Halt, Schritt und Architektur-Fragen gleich — nur dann überleben angefangene Begründungen
   // das Neu-Rendern (nie auf einen anderen Schritt übertragen).
-  const ohneEmpfehlung = (k) => (k === null ? null : k.slice(0, k.lastIndexOf('|')))
-  const gleicherWorkflow = ohneEmpfehlung(bedienungsKennzeichen) === ohneEmpfehlung(kennzeichen)
+  const basisAlt = bedienungsKennzeichen !== null ? ohneEmpfehlung(bedienungsKennzeichen) : bedienungsBasisVorFehler
+  bedienungsBasisVorFehler = null
+  const gleicherWorkflow = basisAlt === ohneEmpfehlung(kennzeichen)
+  // Während einer laufenden Dialog-Bedienung schließt der Dialog nicht hier, sondern mit ihrer Antwort
+  // (sendeWorkflowBedienung) — sonst stünde kurz „Stand geändert“ über der eigenen Entscheidung.
+  const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null
   bedienungsKennzeichen = kennzeichen
   const container = document.getElementById('workflow-bedienung')
   const eingaben = gleicherWorkflow ? [...container.querySelectorAll('textarea[id]')].map((feld) => [feld.id, feld.value]) : []
-  container.innerHTML = renderWorkflowBedienung(workflowId, status, naechster, ungueltig, architekturEntscheidung, empfehlung, sichtung)
+  container.innerHTML = renderWorkflowBedienung(workflowId, status, ungueltig, architekturEntscheidung, sichtung)
+  container.hidden = false
   for (const [id, wert] of eingaben) {
     const feld = document.getElementById(id)
     if (feld instanceof HTMLTextAreaElement && container.contains(feld)) feld.value = wert
   }
+  const aktionen = document.getElementById('workflow-aktionen')
+  const hatteFokus = aktionen.contains(document.activeElement)
+  aktionen.innerHTML = renderAktionen(workflowId, status, naechster, ungueltig)
+  if (hatteFokus) (aktionen.querySelector('.wf-aktion') ?? document.getElementById('workflow-detail-titel')).focus()
+  if (dialogVeraltet) schliesseDialogVeraltet(kennzeichen)
 }
 
 // ─── Sichtung bestätigt – weiter (F-768; Erkennung und Fassung in ../sichtung-anzeige.js) ────
@@ -996,7 +1049,7 @@ async function reicheReparaturEntwurfEin(workflowId, knopf) {
   void pollJetzt()
 }
 
-/** workflowId des aktuell im Workflow-Panel angezeigten Workflows, oder null. */
+/** workflowId des aktuell als Seite angezeigten Workflows, oder null. */
 let gewaehlteWorkflowId = null
 
 /** Fortlaufende Nummer je ladeWorkflowDetail-Aufruf (Überholschutz, siehe Funktionskommentar unten). */
@@ -1006,18 +1059,73 @@ let workflowRenderZaehler = 0
 let aktiveWorkflowDetailAnfrage = null
 
 /**
- * Lädt GET /api/workflows/<id> und rendert Kopf und Schrittliste. Anders als
- * ladeLaufDetail hängt diese Funktion am Poll (der Zweck der Ansicht ist zu
- * sehen, wie der Cursor wandert). Zwei Ticks für DENSELBEN Workflow können
- * sich überholen (F-252) — nur der jüngste Aufruf darf schreiben.
- * Wechselt der Aufruf dabei auf einen ANDEREN Workflow als den zuvor
- * angezeigten (Klick auf ein anderes Workflow-Detail, Browser-Vor/Zurück),
- * werden Bedienblock und ein offener Reparaturentwurf zuerst geräumt
- * (raeumeWorkflowBedienzustand, QA-Pass F20 WS-1, TC-11) — sonst bliebe ein
- * Entwurf des VORHERIGEN Workflows unter der neuen Ansicht sichtbar und
- * einreichbar, fachlich falsch zugeordnet.
- * @param workflowId - Kennung, aus dem geklickten Details-Button
- * @param scrollen - true beim Öffnen per Klick, false beim Neurendern durch den Poll
+ * F-926-Muster: true, solange seit dem letzten Betreten von `#/runs` keine andere Route kam —
+ * öffnet der Nutzer dann ein Detail, war der vorige History-Eintrag die Liste.
+ */
+let listeZuletzt = false
+
+/** true, wenn das offene Detail direkt aus der Liste geöffnet wurde: „← Alle Aufträge“ geht dann per history.back() zurück statt einen neuen Eintrag anzulegen. */
+let detailAusListe = false
+
+/**
+ * Zeigt bzw. verbirgt die Seite des Workflow-Details. Liste, Startfehler und Läufe verschwinden
+ * dabei über die Klasse an #view-runs (style.css) — nicht über ihr hidden-Attribut, das views/runs.js
+ * für #lauf-detail selbst führt.
+ * @param offen - true: Detail als ganze Seite
+ */
+function zeigeDetailSeite(offen) {
+  document.getElementById('workflow-detail').hidden = !offen
+  document.getElementById('view-runs').classList.toggle('workflow-seite-offen', offen)
+}
+
+/**
+ * Zeigt den Fehlerzustand des Details (Vorlage .note.red): Überschrift plus Servertext bzw.
+ * Netzfehler; null blendet ihn aus.
+ * @param text - Fehlertext oder null
+ */
+function zeigeDetailFehler(text) {
+  const anzeige = document.getElementById('workflow-detail-fehler')
+  if (text === null) {
+    anzeige.hidden = true
+    anzeige.innerHTML = ''
+    return
+  }
+  anzeige.innerHTML = `<strong>${tx('ablauf.fehler.titel')}</strong><p>${escapeHtml(text)}</p>`
+  anzeige.hidden = false
+}
+
+/**
+ * Fehlerzustand des Details (404, 500, Netz): nichts vom alten Stand bleibt bedienbar — Timeline,
+ * „Auf einen Blick“, Aktionen und F12 werden geleert, ein offener Dialog schließt, aus dem alten
+ * Detail lässt sich keiner mehr öffnen. Der Bedienblock (WS-4b) wird nur ausgeblendet, damit eine
+ * angefangene Begründung dort einen kurzen Fehler übersteht; der Reparaturentwurf bleibt.
+ * @param text - Fehlertext (Servergrund bzw. Netzfehler)
+ */
+function zeigeDetailNichtLadbar(text) {
+  document.getElementById('workflow-detail-inhalt').innerHTML = ''
+  document.getElementById('workflow-blick').innerHTML = ''
+  document.getElementById('workflow-technik-inhalt').innerHTML = ''
+  document.getElementById('workflow-aktionen').innerHTML = ''
+  document.getElementById('workflow-bedienung').hidden = true
+  if (bedienungsKennzeichen !== null) bedienungsBasisVorFehler = ohneEmpfehlung(bedienungsKennzeichen)
+  bedienungsKennzeichen = null
+  aktuellesDetail = null
+  if (laufendeDialogBedienung === null) schliesseDialog()
+  zeigeDetailFehler(text)
+}
+
+/**
+ * Lädt GET /api/workflows/<id> und rendert die Seite: Timeline, „Auf einen Blick“, Aktionen und
+ * den Aufklappbereich F12. Anders als ladeLaufDetail hängt diese Funktion am Poll (der Zweck der
+ * Ansicht ist zu sehen, wie der Cursor wandert). Zwei Ticks für DENSELBEN Workflow können sich
+ * überholen (F-252) — nur der jüngste Aufruf darf schreiben.
+ * Wechselt der Aufruf dabei auf einen ANDEREN Workflow als den zuvor angezeigten (Klick auf ein
+ * anderes Workflow-Detail, Browser-Vor/Zurück), werden Dialog, Bedienblock und ein offener
+ * Reparaturentwurf zuerst geräumt (raeumeWorkflowBedienzustand, QA-Pass F20 WS-1, TC-11) — sonst
+ * bliebe ein Entwurf des VORHERIGEN Workflows unter der neuen Ansicht sichtbar und einreichbar,
+ * fachlich falsch zugeordnet.
+ * @param workflowId - Kennung aus der Route `#/workflows/<id>`
+ * @param scrollen - true beim Öffnen (Ladezustand, Fokus auf den Titel), false beim Neurendern durch den Poll
  */
 export async function ladeWorkflowDetail(workflowId, scrollen = true) {
   if (gewaehlteWorkflowId !== null && gewaehlteWorkflowId !== workflowId) {
@@ -1031,16 +1139,21 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
   aktiveWorkflowDetailAnfrage?.abort()
   const abbruchsteuerung = new AbortController()
   aktiveWorkflowDetailAnfrage = abbruchsteuerung
-  const abschnitt = document.getElementById('workflow-detail')
-  const fehleranzeige = document.getElementById('workflow-detail-fehler')
   const inhalt = document.getElementById('workflow-detail-inhalt')
+  const titel = document.getElementById('workflow-detail-titel')
 
-  document.getElementById('workflow-detail-titel').textContent = workflowId
-  fehleranzeige.hidden = true
-  abschnitt.hidden = false
+  zeigeDetailSeite(true)
+  // Der Fehlerzustand bleibt bei Poll-Ticks stehen (kein Flackern alle zwei Sekunden); erst eine
+  // erfolgreiche Antwort oder ein neues Öffnen blendet ihn aus.
   if (scrollen) {
-    inhalt.innerHTML = '<p class="leer">Lädt…</p>'
-    abschnitt.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    zeigeDetailFehler(null)
+    // Bis zur eigenen Antwort trägt der Titel das Ziel aus der Liste, ohne Listeneintrag die ID.
+    titel.textContent = seitenTitel(letzteWorkflows?.find((w) => w.workflowId === workflowId)?.ziel, workflowId)
+    inhalt.innerHTML = `<p class="subtle">${tx('ablauf.laedt')}</p>`
+    document.getElementById('workflow-blick').innerHTML = ''
+    document.getElementById('workflow-technik-inhalt').innerHTML = ''
+    titel.focus({ preventScroll: true })
+    document.getElementById('workflow-detail').scrollIntoView({ block: 'start' })
   }
 
   try {
@@ -1049,9 +1162,7 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     if (!antwort.ok) {
       const koerper = await antwort.json().catch(() => ({}))
       if (istUeberholt()) return
-      inhalt.innerHTML = ''
-      fehleranzeige.textContent = `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`
-      fehleranzeige.hidden = false
+      zeigeDetailNichtLadbar(`${antwort.status}: ${koerper.grund ?? t('ablauf.fehler.unbekannt')}`)
       return
     }
     const detail = await antwort.json()
@@ -1059,40 +1170,44 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const daten = detail.daten ?? {}
     const verstoesse = Array.isArray(detail.verstoesse) ? detail.verstoesse : []
     const naechster = detail.naechster ?? null
+    zeigeDetailFehler(null)
+    titel.textContent = seitenTitel(daten.ziel, workflowId)
+    // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
+    aktuellesDetail = { workflowId, daten, naechster, empfehlung: detail.empfehlung ?? null }
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, verstoesse.length > 0, detail.architekturEntscheidung ?? null, detail.empfehlung ?? null, istSichtungsHaltAnzeige(daten))
     // Eigener Endpunkt, eigener Überholschutz (istUeberholt), fire-and-forget — blockiert das
     // übrige Rendern nicht.
     void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
     const ungueltigBlock = verstoesse.length > 0 ? renderWorkflowUngueltig(verstoesse) : ''
+    const projektName = holeAktivesProjekt().name
     if (!Array.isArray(daten.schritte) || daten.schritte.length === 0) {
-      inhalt.innerHTML = [
-        ungueltigBlock === '' ? renderWorkflowUngueltig(['Die gelieferte Fassung trägt keine lesbare Schrittliste.']) : ungueltigBlock,
-        renderWorkflowKopf(daten, detail.versionSequenz, naechster),
-      ].join('')
+      inhalt.innerHTML = [ungueltigBlock === '' ? renderWorkflowUngueltig([t('ablauf.ungueltig.keineSchritte')]) : ungueltigBlock, renderTimeline([])].join('')
+      document.getElementById('workflow-blick').innerHTML = renderAufEinenBlick({ daten, naechster, geordnet: [], projektName })
+      document.getElementById('workflow-technik-inhalt').innerHTML = renderTechnik({ daten, versionSequenz: detail.versionSequenz, naechster })
       return
     }
     const geordnet = ordneSchritteNachPlan(daten.schritte)
     const aktiveLaufIds = await ermittleAktiveLaufIds(geordnet)
     if (istUeberholt()) return
-    const ausserhalbDerKette = geordnet.filter((e) => !e.inKette).length
-    const ueberschrift = ausserhalbDerKette === 0 ? 'Schritte (Planreihenfolge)' : `Schritte (Planreihenfolge, ${ausserhalbDerKette} außerhalb der Kette)`
-    inhalt.innerHTML = [
-      ungueltigBlock,
-      renderWorkflowKopf(daten, detail.versionSequenz, naechster),
-      `<div class="detail-block"><h3>${escapeHtml(ueberschrift)}</h3><table class="lauf-kopfdaten"><thead>${WORKFLOW_SCHRITT_TABELLE_KOPF}</thead><tbody>${geordnet.map((e) => workflowSchrittZeile(e, aktiveLaufIds, naechster?.schrittId ?? null, daten.aktiver_schritt_id ?? null)).join('')}</tbody></table></div>`,
-    ].join('')
+    inhalt.innerHTML = ungueltigBlock + renderTimeline(geordnet, { naechster, cursorId: daten.aktiver_schritt_id ?? null, aktiveLaufIds })
+    document.getElementById('workflow-blick').innerHTML = renderAufEinenBlick({ daten, naechster, geordnet, projektName })
+    document.getElementById('workflow-technik-inhalt').innerHTML = renderTechnik({ daten, versionSequenz: detail.versionSequenz, naechster, geordnet, aktiveLaufIds })
   } catch (fehler) {
     if (istUeberholt()) return
-    inhalt.innerHTML = ''
-    fehleranzeige.textContent = `Anfrage fehlgeschlagen: ${fehler.message}`
-    fehleranzeige.hidden = false
+    zeigeDetailNichtLadbar(t('ablauf.fehler.anfrage', { meldung: fehler.message }))
   }
 }
 
-/** Räumt Bedienblock, Bedienungsmeldung und einen offenen Reparaturentwurf auf — gemeinsame Teilmenge von schliesseWorkflowDetail und dem Workflow-Wechsel in ladeWorkflowDetail (TC-11, QA-Pass F20 WS-1). */
+/** Räumt Dialog, Bedienblock, Aktionen, Meldungen und einen offenen Reparaturentwurf auf — gemeinsame Teilmenge von schliesseWorkflowDetail und dem Workflow-Wechsel in ladeWorkflowDetail (TC-11, QA-Pass F20 WS-1). */
 function raeumeWorkflowBedienzustand() {
+  schliesseDialog()
+  geretteteBegruendung = null
+  aktuellesDetail = null
   bedienungsKennzeichen = null
+  bedienungsBasisVorFehler = null
   document.getElementById('workflow-bedienung').innerHTML = ''
+  document.getElementById('workflow-bedienung').hidden = false
+  document.getElementById('workflow-aktionen').innerHTML = ''
   zeigeBedienungsMeldung(null)
   abnahmeKennzeichen = null
   document.getElementById('workflow-abnahme').innerHTML = ''
@@ -1100,17 +1215,31 @@ function raeumeWorkflowBedienzustand() {
   verwirfReparaturEntwurf()
 }
 
-/** Schließt das Workflow-Detail-Panel, den Bedienblock und einen offenen Reparaturentwurf. */
+/** Schließt die Seite des Workflow-Details samt Dialog, Bedienblock und offenem Reparaturentwurf; Liste, Startfehler und Läufe erscheinen wieder. */
 function schliesseWorkflowDetail() {
   gewaehlteWorkflowId = null
-  document.getElementById('workflow-detail').hidden = true
+  detailAusListe = false
+  aktiveWorkflowDetailAnfrage?.abort()
+  zeigeDetailSeite(false)
   raeumeWorkflowBedienzustand()
+}
+
+/**
+ * F-926-Muster: legt nach dem Schließen den Fokus auf die Zeile des Workflows in der Liste; ohne
+ * Zeile (Liste noch nicht geladen, Workflow nicht mehr da) auf die Seitenüberschrift.
+ * @param workflowId - Kennung des zuvor offenen Details
+ */
+function fokussiereZeile(workflowId) {
+  const zeile = [...document.getElementById('workflows').querySelectorAll('.workflow-zeile')].find((z) => z.dataset.workflowId === workflowId)
+  ;(zeile ?? document.getElementById('runs-titel')).focus()
 }
 
 /**
  * Führt EINE angeklickte Bedienung aus — die Pflichtbegründungen werden hier
  * NICHT gegen den Server vorgeprüft, sondern nur auf "nicht leer" (dieselbe
- * Bedingung, die der Server stellt).
+ * Bedingung, die der Server stellt). F44 WS-4a: „Nächsten Schritt freigeben“ und
+ * „Ausführung stoppen“ öffnen zuerst den Dialog; Freigeben, Ablehnen und Stoppen
+ * kommen aus ihm, ihre Meldungen stehen im Dialog (Fokus auf das Feld bzw. die Meldung).
  * @param button - der geklickte .wf-aktion-Knopf
  */
 async function fuehreWorkflowAktionAus(button) {
@@ -1118,8 +1247,13 @@ async function fuehreWorkflowAktionAus(button) {
   const aktion = button.dataset.aktion
   zeigeBedienungsMeldung(null)
 
+  if (aktion === 'freigabe-oeffnen' || aktion === 'stopp-oeffnen') {
+    oeffneDialog(aktion === 'freigabe-oeffnen' ? 'freigabe' : 'stopp')
+    return
+  }
+
   if (aktion === 'starten') {
-    await sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button, 'Schritt gestartet.')
+    await sendeWorkflowBedienung(() => starteWorkflowSchritt(workflowId), button, t('ablauf.meldung.gestartet'))
     return
   }
 
@@ -1144,9 +1278,11 @@ async function fuehreWorkflowAktionAus(button) {
   }
 
   if (aktion === 'freigeben' || aktion === 'ablehnen') {
-    const begruendung = document.getElementById('wf-freigabe-begruendung').value
+    const feld = document.getElementById('wf-freigabe-begruendung')
+    const begruendung = feld.value
     if (begruendung.trim().length === 0) {
-      zeigeBedienungsMeldung('Die Begründung ist Pflicht — ohne sie wird die Entscheidung nicht festgehalten.')
+      zeigeDialogMeldung(t('ablauf.dialog.pflicht'))
+      feld.focus()
       return
     }
     // F36 WS-3: data-empfehlung-ids steht nur am Freigeben-Knopf, und nur wenn eine Empfehlung angezeigt wurde.
@@ -1155,24 +1291,27 @@ async function fuehreWorkflowAktionAus(button) {
       empfehlungIds = button.dataset.empfehlungIds !== undefined ? { empfehlungIds: JSON.parse(button.dataset.empfehlungIds) } : {}
     } catch (fehler) {
       console.error('[workflows] data-empfehlung-ids nicht lesbar:', fehler)
-      zeigeBedienungsMeldung('Die angezeigte Katalog-Empfehlung ist nicht lesbar — Ansicht neu laden und erneut freigeben.')
+      zeigeDialogMeldung(t('ablauf.dialog.empfehlungUnlesbar'))
       return
     }
     await sendeWorkflowBedienung(
       () => sendeWorkflowFreigabe(workflowId, { schrittId: button.dataset.schrittId, entscheidung: aktion === 'freigeben' ? 'FREIGEGEBEN' : 'ABGELEHNT', begruendung, ...empfehlungIds }),
       button,
-      aktion === 'freigeben' ? 'Freigabe erteilt und als Entscheidung festgehalten — der Schritt startet.' : 'Ablehnung festgehalten — der Workflow ist gestoppt.'
+      aktion === 'freigeben' ? t('ablauf.meldung.freigegeben') : t('ablauf.meldung.abgelehnt'),
+      true
     )
     return
   }
 
   if (aktion === 'stoppen') {
-    const begruendung = document.getElementById('wf-stopp-begruendung').value
+    const feld = document.getElementById('wf-stopp-begruendung')
+    const begruendung = feld.value
     if (begruendung.trim().length === 0) {
-      zeigeBedienungsMeldung('Die Begründung ist Pflicht — sie ist der Text, den du in drei Tagen liest, wenn du wissen willst, warum die Kette steht.')
+      zeigeDialogMeldung(t('ablauf.dialog.stopp.pflicht'))
+      feld.focus()
       return
     }
-    await sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung }), button, 'Stopp festgeschrieben und als Entscheidung festgehalten.')
+    await sendeWorkflowBedienung(() => stoppeWorkflow(workflowId, { begruendung }), button, t('ablauf.meldung.gestoppt'), true)
     return
   }
 
@@ -1249,23 +1388,50 @@ async function fuehrePruefungWiederholenAus(button) {
 
 /** Klick-/Eingabe-Delegation der Workflow-Ansicht — jeder Container wird als Ganzes neu gerendert, die Zuhörer hängen deshalb am Container. */
 function initWorkflowBedienung() {
+  // F44 WS-4a: Die ganze Zeile ist ein Link auf #/workflows/<id>. navigiere statt des nativen
+  // Sprungs, damit ein zweiter Klick auf denselben, bereits offenen Hash das Detail neu lädt.
   document.getElementById('workflows').addEventListener('click', (ereignis) => {
-    const button = ereignis.target.closest('.workflow-details-btn')
-    if (!button) return
-    navigiere(`#/workflows/${encodeURIComponent(button.dataset.workflowId)}`)
+    const zeile = ereignis.target.closest('.workflow-zeile')
+    // Strg/Cmd/Umschalt-Klick und Mittelklick bleiben beim Browser (neuer Tab bzw. neues Fenster).
+    if (!zeile || ereignis.ctrlKey || ereignis.metaKey || ereignis.shiftKey || ereignis.button > 0) return
+    ereignis.preventDefault()
+    navigiere(`#/workflows/${encodeURIComponent(zeile.dataset.workflowId)}`)
   })
-  document.getElementById('workflow-detail-inhalt').addEventListener('click', (ereignis) => {
+  document.getElementById('workflow-technik-inhalt').addEventListener('click', (ereignis) => {
     const button = ereignis.target.closest('.workflow-lauf-verweis')
     if (!button) return
     navigiere(`#/runs/${encodeURIComponent(button.dataset.laufId)}`)
   })
-  document.getElementById('workflow-bedienung').addEventListener('click', (ereignis) => {
+  for (const id of ['workflow-bedienung', 'workflow-aktionen']) {
+    document.getElementById(id).addEventListener('click', (ereignis) => {
+      const button = ereignis.target.closest('.wf-aktion')
+      if (!button) return
+      void fuehreWorkflowAktionAus(button)
+    })
+  }
+  // F44 WS-4a: der Dialog liegt außerhalb der vom Poll ersetzten Container (index.html). „Abbrechen“
+  // und der Schließen-Knopf schließen ohne Wirkung; Escape schließt nativ (Ereignis close).
+  const dialog = document.getElementById('workflow-dialog')
+  dialog.addEventListener('click', (ereignis) => {
+    if (ereignis.target.closest('.wf-dialog-abbrechen')) {
+      if (laufendeDialogBedienung === null) schliesseDialog()
+      return
+    }
     const button = ereignis.target.closest('.wf-aktion')
     if (!button) return
     void fuehreWorkflowAktionAus(button)
   })
-  // F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock; danach Detail (und Empfehlung) neu laden.
-  bindeEmpfehlungInstallation(document.getElementById('workflow-bedienung'), () => (gewaehlteWorkflowId !== null ? ladeWorkflowDetail(gewaehlteWorkflowId, false) : undefined))
+  // Escape während einer laufenden Bedienung schließt nicht — die Entscheidung ist schon unterwegs.
+  dialog.addEventListener('cancel', (ereignis) => {
+    if (laufendeDialogBedienung !== null) ereignis.preventDefault()
+  })
+  dialog.addEventListener('close', () => {
+    offenerDialog = null
+  })
+  // F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock des Freigabedialogs; danach Detail (und
+  // Empfehlung) neu laden — die geänderte Empfehlung schließt den Dialog („Stand geändert“), die
+  // Begründung bleibt für denselben Halt erhalten (geretteteBegruendung).
+  bindeEmpfehlungInstallation(dialog, () => (gewaehlteWorkflowId !== null ? ladeWorkflowDetail(gewaehlteWorkflowId, false) : undefined))
   document.getElementById('workflow-abnahme').addEventListener('click', (ereignis) => {
     const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
     if (abnahmeButton) {
@@ -1289,24 +1455,56 @@ function initWorkflowBedienung() {
     if (!einreichen) return
     void reicheReparaturEntwurfEin(einreichen.dataset.workflowId, einreichen)
   })
-  // Lokaler Aufruf statt navigiere('#/runs') aus demselben Grund wie in runs.js
-  // initDetailBedienung: die exakte Route `#/runs` ist zugleich hier UND in runs.js
-  // registriert (beide räumen dort ihr eigenes Detail) — ein Hash-Wechsel würde ungefragt
-  // auch ein offenes Lauf-Detail schließen (QA-Pass F20 WS-1).
+  // „← Alle Aufträge“ (F-926-Muster): kam das Detail direkt aus der Liste, geht es per
+  // history.back() zurück (kein neuer Eintrag, Browser-Zurück öffnet das Detail nicht wieder);
+  // sonst (Deep-Link, Sprung von anderswo) per navigiere. In beiden Fällen schließt die Route
+  // #/runs das Detail und legt den Fokus auf die Zeile des Workflows.
   document.getElementById('workflow-detail-schliessen').addEventListener('click', () => {
-    schliesseWorkflowDetail()
+    if (detailAusListe) history.back()
+    else navigiere('#/runs')
   })
 }
 
-/** Initialisiert die Workflow-Bedienung einmalig beim Bootstrap: Delegation, Routen, Abonnement des Zustands-Aggregats für die Liste, Detail-Auffrischer für ein offenes Workflow-Detail (F20 WS-2 — kein eigener Poll-Timer mehr, siehe zustand.js). */
+/**
+ * F-874, F-923 (F44 WS-4a): Neuladen-Hook beim Projektwechsel. Dialog, Detail, Bedienzustand und
+ * ein offener Reparaturentwurf gehören zum alten Projekt und werden ohne Wirkung verworfen — sonst
+ * fragte der Detail-Auffrischer dessen workflowId über den Präfix des neuen Projekts ab (Dauer-404,
+ * Fehlerklasse F26). Stand der Hash auf einem Detail, geht er ohne neuen History-Eintrag auf
+ * #/runs (ein Neuladen öffnete sonst dieselbe ID im neuen Projekt). Die Liste kommt mit dem
+ * nächsten Poll des neuen Projekts.
+ */
+function verwirfNachProjektWechsel() {
+  schliesseWorkflowDetail()
+  letzteListeHtml = null
+  letzteWorkflows = null
+  listeZuletzt = false
+  if (/^#\/workflows\/[^/]+$/.test(location.hash)) ersetzeRoute('#/runs')
+}
+
+/** Initialisiert die Workflow-Bedienung einmalig beim Bootstrap: Delegation, Routen, Abonnement des Zustands-Aggregats für die Liste, Detail-Auffrischer für ein offenes Workflow-Detail (F20 WS-2 — kein eigener Poll-Timer mehr, siehe zustand.js), Projektwechsel (F-874). */
 export function initWorkflowsView() {
   initWorkflowBedienung()
 
   registriere(/^#\/runs$/, 'runs', () => {
+    const vorher = gewaehlteWorkflowId
+    schliesseWorkflowDetail()
+    listeZuletzt = true
+    if (vorher !== null) fokussiereZeile(vorher)
+  })
+  // Browser-Zurück aus dem Detail auf ein Lauf-Detail (#/runs/<laufId>): auch dann schließt die Seite.
+  registriere(/^#\/runs\/([^/]+)$/, 'runs', () => {
     schliesseWorkflowDetail()
   })
   registriere(/^#\/workflows\/([^/]+)$/, 'runs', (workflowId) => {
+    if (gewaehlteWorkflowId !== workflowId) detailAusListe = listeZuletzt
+    listeZuletzt = false
     void ladeWorkflowDetail(workflowId)
+  })
+  // Jede andere Route beendet den Merker „zuletzt die Liste“; verlässt der Hash das Detail (etwa
+  // Browser-Zurück bei offenem Dialog), schließt der Dialog ohne Wirkung.
+  window.addEventListener('hashchange', () => {
+    if (location.hash !== '#/runs') listeZuletzt = false
+    if (!/^#\/workflows\/[^/]+$/.test(location.hash)) schliesseDialog()
   })
 
   abonniere((zustand) => {
@@ -1318,4 +1516,5 @@ export function initWorkflowsView() {
   abonniereDetailAuffrischer(() => {
     if (gewaehlteWorkflowId !== null) void ladeWorkflowDetail(gewaehlteWorkflowId, false)
   })
+  abonniereProjektWechsel(verwirfNachProjektWechsel)
 }

@@ -73,7 +73,7 @@ import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { rollenName } from '../rollen-anzeige.js'
-import { navigiere, registriere } from '../router.js'
+import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
 import { detailEyebrow, detailInhaltHtml, detailStatusHtml, kartenStatus, phaseHtml, statusKategorie, titelVon, typBezeichnung } from './workboard-detail.js'
 
@@ -1428,4 +1428,8 @@ function ladeNachProjektWechsel() {
   }
   wechsleTab('board')
   if (seiteAktiv) ladeSeite()
+  // F-923 (F44 WS-4a): Stand der Hash auf einem Detail des alten Projekts, geht er ohne neuen
+  // History-Eintrag auf die Übersicht — ein Neuladen öffnete sonst dieselbe ID im neuen Projekt
+  // (gleiche IDs sind zwischen Projekten üblich). Die Route #/workboard lädt nicht erneut (betreteSeite).
+  if (/^#\/workboard\/[^/]+$/.test(location.hash)) ersetzeRoute('#/workboard')
 }

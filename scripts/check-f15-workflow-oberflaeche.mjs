@@ -87,6 +87,20 @@
  *     Reparaturentwurf mit seinen vier Korrekturen und den drei Warnungen
  *     (F-219, F-223, F-226).
  *
+ * F44 WS-4a (01.10.2026, Designumbau F-725, Vorlage V10): Die Render-Funktionen von Liste und
+ * Detailseite (Timeline, „Auf einen Blick“, Aktionen, Aufklappbereich mit Kopfdaten und
+ * Schritttabelle, LAGE_JE_AUSGANG, ordneSchritteNachPlan) sind nach views/workflow-detail.js
+ * umgezogen; Laden, Kennzeichen, Dialog und alle POST-Aufrufe bleiben in views/workflows.js.
+ * Das Gate liest deshalb BEIDE Dateien zusammen als „Workflow-Quelltext“ (workflowsQuelltext) —
+ * WAS geprüft wird, ist unverändert, nur die Fundstelle hat sich mit dem Modulschnitt bewegt.
+ * Die geprüften Ausdrücke und IDs bleiben erhalten. Umgezogen sind dabei nur UI-Texte, die seit
+ * WS-4a i18n-Schlüssel sind (Abgleich F-725 §5.4: „f15 greppt heute deutsche Quelltext-Literale;
+ * es prüft danach den Schlüssel bzw. den deutschen Wörterbuchwert. Die Invariante bleibt.“):
+ * (a) die Überschrift der Liste (data-i18n plus de-Wert statt <h2>Workflows</h2>), (d) „Fassung
+ * ungültig“ und „läuft jetzt“, (g) „(hält nicht an)“ — je verlangeText() unten: der Schlüssel
+ * steht im Code, das deutsche Wörterbuch trägt genau den bisherigen Text. Neu in (f): die
+ * Syntaxprüfung auch für views/workflow-detail.js.
+ *
  * Alle Quelltext-Prüfungen laufen gegen den KOMMENTARFREIEN Quelltext
  * (entferneKommentare). Sonst hielte ein Kommentar, der einen Endpunkt nur
  * ERWÄHNT, die Scope-Grenze fälschlich für verletzt — und ein Feldname in
@@ -126,7 +140,13 @@ function entferneKommentare(quelltext) {
 }
 
 const htmlQuelltext = readFileSync('public/leitstand/index.html', 'utf8')
-const workflowsQuelltext = entferneKommentare(readFileSync('public/leitstand/views/workflows.js', 'utf8'))
+// F44 WS-4a: views/workflows.js (Bedienung, Dialog, POST) und views/workflow-detail.js (Rendern von
+// Liste und Detailseite) bilden zusammen die Workflow-Ansicht — siehe Kopfkommentar.
+const workflowsQuelltext = [
+  entferneKommentare(readFileSync('public/leitstand/views/workflows.js', 'utf8')),
+  entferneKommentare(readFileSync('public/leitstand/views/workflow-detail.js', 'utf8')),
+].join('\n')
+const deWoerterbuch = readFileSync('public/leitstand/i18n/de.js', 'utf8')
 const apiQuelltext = entferneKommentare(readFileSync('public/leitstand/api.js', 'utf8'))
 const runsQuelltext = entferneKommentare(readFileSync('public/leitstand/views/runs.js', 'utf8'))
 // Kombiniert für Zusagen, die über die Modulgrenze hinweg gelten: die View ruft eine
@@ -147,9 +167,26 @@ function verlangeVorkommen(bereich, name, quelltext, muster) {
   }
 }
 
+/**
+ * F44 WS-4a: ein UI-Text, der zum i18n-Schlüssel geworden ist. Zwei Zusagen statt einer: der
+ * Schlüssel steht im Code (als Literal in Anführungszeichen bzw. als data-i18n-Attribut), und
+ * das deutsche Wörterbuch trägt für ihn genau den bisher geprüften Text.
+ * @param bereich - Kennung des Prüfblocks
+ * @param name - was die Zusage behauptet
+ * @param quelltext - Code, in dem der Schlüssel stehen muss
+ * @param schluesselMuster - String, der im Code vorkommen muss (z. B. "'ablauf.weg.laeuftJetzt'")
+ * @param schluessel - der i18n-Schlüssel
+ * @param deWert - der deutsche Text, den der Schlüssel tragen muss
+ */
+function verlangeText(bereich, name, quelltext, schluesselMuster, schluessel, deWert) {
+  verlangeVorkommen(bereich, `${name} — Schlüssel im Code`, quelltext, schluesselMuster)
+  verlangeVorkommen(bereich, `${name} — de-Wert '${deWert}'`, deWoerterbuch, `'${schluessel}': '${deWert}',`)
+}
+
 // ─── (a) index.html: Abschnitt und Container-ids ────────────────────────────
 verlangeVorkommen('a', 'Abschnitt <section id="workflows-abschnitt">', htmlQuelltext, '<section id="workflows-abschnitt">')
-verlangeVorkommen('a', 'Überschrift <h2>Workflows</h2>', htmlQuelltext, '<h2>Workflows</h2>')
+// F44 WS-4a: die Überschrift ist seither ein Schlüssel (Liste „Aufträge“ nach Vorlage V10).
+verlangeText('a', 'Überschrift der Liste', htmlQuelltext, '<h2 data-i18n="ablauf.liste.titel">', 'ablauf.liste.titel', 'Aufträge')
 // workflow-detail-schliessen steht bewusst in derselben Liste: initWorkflowBedienung() greift
 // unbedingt darauf zu und läuft VOR laden()/ladeWorkflows(). Fehlt die id, wirft der Bootstrap,
 // und die GANZE Seite bleibt leer — nicht nur die Workflow-Ansicht.
@@ -233,7 +270,7 @@ verlangeVorkommen('c', 'Planreihenfolge (ordneSchritteNachPlan)', appQuelltext, 
 // derselbe Endpunkt das Feld verstoesse — die Zusage lautet jetzt auf den realen Weg, und
 // zusätzlich darauf, dass die Ansicht die kaputte Fassung TROTZDEM zeigt: sie anzusehen ist der
 // erste Schritt ihrer Reparatur.
-verlangeVorkommen('d', 'benannter Zustand "Fassung ungültig"', appQuelltext, 'Fassung ungültig')
+verlangeText('d', 'benannter Zustand "Fassung ungültig"', appQuelltext, "'ablauf.ungueltig.titel'", 'ablauf.ungueltig.titel', 'Fassung ungültig')
 verlangeVorkommen('d', 'F-247: die Verstöße kommen aus der Server-Antwort', appQuelltext, 'detail.verstoesse')
 // Gesucht wird die AUFRUFSTELLE, nicht der Funktionsname: 'renderWorkflowUngueltig(verstoesse)'
 // allein stünde auch in der Deklaration der Funktion, und die Zusage wäre dann durch ihre
@@ -250,7 +287,7 @@ verlangeVorkommen('d', 'F-234: aktiver Lauf über holeLaufDetail(schritt.lauf_id
 // Zusage bleibt "holeLaufDetail geht über GET /laeufe/<laufId>", der Optionen-Teil ist offen.
 verlangeVorkommen('d', 'F-234: api.js holeLaufDetail ruft GET /api/laeufe/<laufId>', apiQuelltext, 'holeLaufDetail = (laufId) => fetch(mitPraefix(`/laeufe/${encodeURIComponent(laufId)}`)')
 verlangeVorkommen('d', 'F-234: Quelle ist das aktiv-Feld (D13), nicht der Schrittstatus', appQuelltext, 'detail.aktiv === true')
-verlangeVorkommen('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, 'läuft jetzt')
+verlangeText('d', 'F-234: der aktive Schritt ist markiert', appQuelltext, "'ablauf.weg.laeuftJetzt'", 'ablauf.weg.laeuftJetzt', 'läuft jetzt')
 
 // ─── (e) WS-3b: die Bedienung IST da — die umgedrehte Scope-Zusage ──────────
 //
@@ -314,7 +351,7 @@ for (const ausgang of ['starte', 'haltFreigabe', 'haltKlaerung', 'haltGrenze', '
 // ausgewiesen — beides Anzeigelücken, die AK8 auch LESEND unerfüllt ließen.
 verlangeVorkommen('g', 'F-253: der fällige Schritt ist in der Schrittliste markiert', appQuelltext, 'faelligMarke')
 verlangeVorkommen('g', 'F-253: der Cursor-Schritt ist in der Schrittliste markiert', appQuelltext, 'cursorMarke')
-verlangeVorkommen('g', 'F-253: die Freigabestufe ist als haltend/nicht haltend ausgewiesen', appQuelltext, '(hält nicht an)')
+verlangeText('g', 'F-253: die Freigabestufe ist als haltend/nicht haltend ausgewiesen', appQuelltext, "'ablauf.technik.haeltNichtAn'", 'ablauf.technik.haeltNichtAn', '(hält nicht an)')
 
 // Jede der vier Bedienungen ruft GENAU ihren Endpunkt — je einzeln nachgewiesen, nicht als
 // Sammelprüfung: drei von vier zu haben ist der wahrscheinliche Fehler, nicht null von vier.
@@ -412,7 +449,7 @@ verlangeVorkommen('h', 'Überholschutz des Reparaturentwurfs', appQuelltext, 're
 // seither verteilt sich das auf mehrere Dateien, und eine kaputte views/workflows.js wäre sonst
 // unentdeckt geblieben, obwohl das dünne app.js selbst weiter gültig bliebe. F20 WS-2 (F-362):
 // zustand.js ergänzt — der eine Poll-Timer, von dem seither jede hier geprüfte View abhängt.
-for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
+for (const pfad of ['public/leitstand/views/workflows.js', 'public/leitstand/views/workflow-detail.js', 'public/leitstand/api.js', 'public/leitstand/views/runs.js', 'public/leitstand/router.js', 'public/leitstand/zustand.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

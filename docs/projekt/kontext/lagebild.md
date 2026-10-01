@@ -152,3 +152,4 @@ F44 01.10.2026).
 - F-690 · BUG · Ein über F41 neu angelegtes Projekt ist für Claude Code nicht "trusted" — die kopierte `.claude/settings.json`-Permission-Allowlist greift real nicht.
 - F-696 · HARNESS_IMPROVEMENT · Sechster `index.lock`-Vorfall über die Remote-Bridge (nach F-100/F-118/F-122/F-123/F-126) — ein als lesend geltender `git diff HEAD`-Aufruf lief in einen Timeout und hinterließ `.git/index.lock`.
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
+- F-936 · PROCESS_IMPROVEMENT · Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.

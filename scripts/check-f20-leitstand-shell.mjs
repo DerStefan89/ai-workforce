@@ -49,6 +49,13 @@
  * Watchdog auf Skriptebene (WATCHDOG_OBERGRENZE_MS, siehe Dateiende) als zweite,
  * ursachenunabhängige Sicherung.
  *
+ * F44 WS-4a (01.10.2026, Designumbau F-725): Freigeben/Ablehnen und Stoppen laufen seither über einen
+ * nativen Dialog (#workflow-dialog), den „Nächsten Schritt freigeben“ (data-aktion="freigabe-oeffnen")
+ * bzw. „Ausführung stoppen“ (data-aktion="stopp-oeffnen") in der Aktionszeile öffnen. Die Klickfolge
+ * öffnet deshalb zuerst den Dialog und setzt erst danach die Begründung — dieselben IDs
+ * (wf-freigabe-begruendung, wf-stopp-begruendung) und dieselben Knöpfe (.wf-aktion mit data-aktion
+ * freigeben bzw. stoppen), dieselbe Wirkung am Server. Die Invariante (der Klick schreibt real) bleibt.
+ *
  * Aufruf: node scripts/check-f20-leitstand-shell.mjs
  * Exit 0 = sauber, Exit 1 = Befund gefunden
  */
@@ -370,13 +377,14 @@ async function testLaufStarten(tab, basisUrl) {
 
 async function testFreigabeErteilen(tab, basisUrl, workflowId) {
   await navigiere(tab, `${basisUrl}/#/workflows/${encodeURIComponent(workflowId)}`)
-  const knopfVorhanden = await tab.auswerten("document.querySelector('.wf-aktion[data-aktion=\"freigeben\"]') !== null")
+  const knopfVorhanden = await tab.auswerten("document.querySelector('.wf-aktion[data-aktion=\"freigabe-oeffnen\"]') !== null")
   if (!knopfVorhanden) {
     befunde.push(`Freigabe erteilen: kein 'Freigeben'-Button im DOM (Bedienblock: ${await tab.auswerten("document.getElementById('workflow-bedienung')?.textContent ?? ''")}).`)
     return
   }
   await tab.auswerten(
     `(() => {
+      document.querySelector('.wf-aktion[data-aktion="freigabe-oeffnen"]').click()
       document.getElementById('wf-freigabe-begruendung').value = 'F20-WS-1-Realnachweis.'
       document.querySelector('.wf-aktion[data-aktion="freigeben"]').click()
     })()`
@@ -394,13 +402,14 @@ async function testFreigabeErteilen(tab, basisUrl, workflowId) {
 
 async function testStoppen(tab, basisUrl, workflowId) {
   await navigiere(tab, `${basisUrl}/#/workflows/${encodeURIComponent(workflowId)}`)
-  const knopfVorhanden = await tab.auswerten("document.querySelector('.wf-aktion[data-aktion=\"stoppen\"]') !== null")
+  const knopfVorhanden = await tab.auswerten("document.querySelector('.wf-aktion[data-aktion=\"stopp-oeffnen\"]') !== null")
   if (!knopfVorhanden) {
     befunde.push('Stoppen: kein "Stoppen"-Button im DOM.')
     return
   }
   await tab.auswerten(
     `(() => {
+      document.querySelector('.wf-aktion[data-aktion="stopp-oeffnen"]').click()
       document.getElementById('wf-stopp-begruendung').value = 'F20-WS-1-Realnachweis.'
       document.querySelector('.wf-aktion[data-aktion="stoppen"]').click()
     })()`

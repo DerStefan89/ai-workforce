@@ -1,0 +1,29 @@
+[
+  {
+    "label": "KLAERUNG_ERFORDERLICH: alter Bedienblock (Architekt-Entscheidung) unverändert sichtbar, Verantwortung „Du“",
+    "Kopf + Liste": false,
+    "Startfehler": false,
+    "Läufe": false,
+    "Detailseite": true,
+    "Freigeben & starten mit data-empfehlung-ids": false,
+    "Ablehnen im Dialog": false,
+    "Freigeben & installieren im Dialog": false,
+    "aria-live im Dialog (muss fehlen)": false,
+    "alter Bedienblock (Architekt)": true,
+    "Begründung im Feld": false,
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "de",
+    "Fokus": "Fehler verständlich erklären",
+    "Fokus-ID": "workflow-detail-titel",
+    "Titel": "Fehler verständlich erklären",
+    "Aktionen": "Ausführung stoppen",
+    "Auf einen Blick": "Auf einen Blick StatusSteht – Klärung nötig ProjektAI Workforce Aktueller SchrittArchitekt s1 VerantwortungDu",
+    "Meldung": "",
+    "Dialog offen": "null",
+    "Dialogtitel": "(fehlt)",
+    "Dialogmeldung": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

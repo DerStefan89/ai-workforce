@@ -1,0 +1,531 @@
+{
+  "url": "http://127.0.0.1:4381/#/workflows/nachweis-w1",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "nachweis-w1",
+            "auftragId": "nachweis-a1",
+            "ziel": "Fehlende Nutzungsdaten kennzeichnen",
+            "versionSequenz": 1,
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltFreigabe",
+              "schrittId": "s2"
+            }
+          },
+          {
+            "workflowId": "nachweis-w2",
+            "auftragId": "nachweis-a2",
+            "ziel": "Bauen aus der Akte",
+            "versionSequenz": 2,
+            "status": "LAEUFT",
+            "aktiverSchrittId": "s2",
+            "grund": null,
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltKlaerung",
+              "grund": "Schritt 's2' trägt bereits den Lauf 'nachweis-l2' und wird nicht erneut gestartet"
+            }
+          },
+          {
+            "workflowId": "nachweis-w3",
+            "auftragId": "nachweis-a3",
+            "ziel": "Fehler verständlich erklären",
+            "versionSequenz": 1,
+            "status": "KLAERUNG_ERFORDERLICH",
+            "aktiverSchrittId": "s1",
+            "grund": "Der Architekt hat 1 offene Frage gestellt — ohne Entscheidung setzt die Kette nicht fort. <b>bleibt Text</b>",
+            "schritteAnzahl": 3,
+            "naechster": {
+              "art": "haltKlaerung",
+              "schrittId": "s1"
+            }
+          },
+          {
+            "workflowId": "nachweis-w4",
+            "auftragId": "nachweis-a4",
+            "ziel": null,
+            "versionSequenz": 3,
+            "status": "ABGESCHLOSSEN",
+            "aktiverSchrittId": null,
+            "grund": null,
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "fertig",
+              "schrittId": null
+            }
+          },
+          {
+            "workflowId": "nachweis-w5-sehr-lang",
+            "auftragId": "nachweis-a5",
+            "ziel": "EinSehrLangerTitelOhneLeerzeichenDerDasLayoutNichtSprengenDarfAuchNichtBeiDreihundertneunzigPixeln",
+            "versionSequenz": 1,
+            "status": "GESTOPPT",
+            "aktiverSchrittId": "s1",
+            "grund": "Gestoppt durch Stefan: falscher Ansatz.",
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "haltGestoppt",
+              "schrittId": null
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w1",
+      "json": {
+        "daten": {
+          "workflow_id": "nachweis-w1",
+          "auftrag_id": "nachweis-a1",
+          "version": 1,
+          "ziel": "Fehlende Nutzungsdaten kennzeichnen",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s2",
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nachweis-l1",
+              "zeitgrenze_ms": 900000,
+              "freigabe_erteilt": false
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "WARTET_FREIGABE",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 1800000,
+              "freigabe_erteilt": false
+            }
+          ]
+        },
+        "versionSequenz": 1,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "grund": "Schritt s2 ist ZWINGEND und noch nicht freigegeben",
+          "schrittId": "s2"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": {
+          "schrittId": "s2",
+          "wirdGenutzt": [
+            {
+              "id": "playwright-mcp",
+              "empfehlungId": "playwright-mcp",
+              "name": "Playwright",
+              "typ": "extern",
+              "unterart": "mcp",
+              "grund": "task_typen_any erfüllt (bugfix)"
+            }
+          ],
+          "passtNichtImLauf": [
+            {
+              "id": "axe-mcp",
+              "name": "axe Accessibility",
+              "typ": "extern",
+              "unterart": "mcp",
+              "grund": "freigabe OFFEN",
+              "installierbar": true
+            }
+          ],
+          "weitereAnzahl": {
+            "wirdGenutzt": 0,
+            "passtNichtImLauf": 0
+          },
+          "nichtFreigebbarAnzahl": 0,
+          "hinweise": []
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w1/abnahme",
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s2"
+        },
+        "entscheidung": {
+          "status": "fehlt"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w2",
+      "json": {
+        "daten": {
+          "workflow_id": "nachweis-w2",
+          "auftrag_id": "nachweis-a1",
+          "version": 1,
+          "ziel": "Bauen aus der Akte",
+          "status": "LAEUFT",
+          "aktiver_schritt_id": "s2",
+          "grund": null,
+          "schritte": [
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nachweis-l1",
+              "zeitgrenze_ms": 900000,
+              "freigabe_erteilt": false
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "LAEUFT",
+              "nachfolger": "s3",
+              "lauf_id": "nachweis-l2",
+              "zeitgrenze_ms": 1800000,
+              "freigabe_erteilt": true
+            }
+          ]
+        },
+        "versionSequenz": 2,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "Schritt 's2' trägt bereits den Lauf 'nachweis-l2' und wird nicht erneut gestartet"
+        },
+        "architekturEntscheidung": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w2/abnahme",
+      "json": {
+        "workflowStatus": "LAEUFT",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "fehlt"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w3",
+      "json": {
+        "daten": {
+          "workflow_id": "nachweis-w3",
+          "auftrag_id": "nachweis-a3",
+          "version": 1,
+          "ziel": "Fehler verständlich erklären",
+          "status": "KLAERUNG_ERFORDERLICH",
+          "aktiver_schritt_id": "s1",
+          "grund": "Der Architekt hat 1 offene Frage gestellt — ohne Entscheidung setzt die Kette nicht fort. <b>bleibt Text</b>",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "ERFOLGREICH",
+              "nachfolger": "s2",
+              "lauf_id": "nachweis-l31",
+              "zeitgrenze_ms": 900000
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet",
+              "freigabe": "ZWINGEND",
+              "status": "OFFEN",
+              "nachfolger": "s3",
+              "lauf_id": null,
+              "zeitgrenze_ms": 1800000
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-5",
+              "freigabe": "KEINE",
+              "status": "OFFEN",
+              "nachfolger": null,
+              "lauf_id": null,
+              "zeitgrenze_ms": 900000
+            }
+          ]
+        },
+        "versionSequenz": 1,
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "grund": "Offene Frage des Architekten (Regel 1c)",
+          "schrittId": "s1"
+        },
+        "architekturEntscheidung": {
+          "schrittId": "s1",
+          "fragen": [
+            {
+              "frage": "Welche Fehlermeldung soll zuerst verbessert werden?",
+              "auswirkung_bestand": "Betrifft nur die Anzeige im Leitstand.",
+              "begruendung": "Die Browser-Freigabe ist der häufigste Abbruch.",
+              "empfehlung": "Browser-Freigabe",
+              "optionen": [
+                {
+                  "titel": "Browser-Freigabe",
+                  "vorteile": [
+                    "häufigster Fall"
+                  ],
+                  "nachteile": []
+                },
+                {
+                  "titel": "Zeitgrenze",
+                  "vorteile": [
+                    "einfach"
+                  ],
+                  "nachteile": [
+                    "selten"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/nachweis-w3/abnahme",
+      "json": {
+        "workflowStatus": "KLAERUNG_ERFORDERLICH",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "fehlt"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/laeufe/nachweis-l2",
+      "json": {
+        "aktiv": true
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workflow-detail-titel"
+      },
+      {
+        "name": "Aktionen",
+        "selector": "#workflow-aktionen"
+      },
+      {
+        "name": "Auf einen Blick",
+        "selector": "#workflow-blick"
+      },
+      {
+        "name": "Meldung",
+        "selector": "#workflow-bedienung-meldung"
+      },
+      {
+        "name": "Dialog offen",
+        "selector": "#workflow-dialog",
+        "attribut": "open"
+      },
+      {
+        "name": "Dialogtitel",
+        "selector": "#workflow-dialog-titel"
+      },
+      {
+        "name": "Dialogmeldung",
+        "selector": "#workflow-dialog-meldung"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Kopf + Liste",
+        "id": "runs-kopf"
+      },
+      {
+        "name": "Startfehler",
+        "id": "startfehler-abschnitt"
+      },
+      {
+        "name": "Läufe",
+        "id": "laeufe"
+      },
+      {
+        "name": "Detailseite",
+        "id": "workflow-detail"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Freigeben & starten mit data-empfehlung-ids",
+        "selector": "#workflow-dialog [data-aktion=\"freigeben\"][data-empfehlung-ids]"
+      },
+      {
+        "name": "Ablehnen im Dialog",
+        "selector": "#workflow-dialog [data-aktion=\"ablehnen\"]"
+      },
+      {
+        "name": "Freigeben & installieren im Dialog",
+        "selector": "#workflow-dialog [data-installation-aktion]"
+      },
+      {
+        "name": "aria-live im Dialog (muss fehlen)",
+        "selector": "#workflow-dialog [aria-live], #workflow-dialog[aria-live]"
+      },
+      {
+        "name": "alter Bedienblock (Architekt)",
+        "selector": "#workflow-bedienung .wf-architektur-entscheidung"
+      },
+      {
+        "name": "Begründung im Feld",
+        "selector": "#wf-freigabe-begruendung:not(:placeholder-shown)"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Deep-Link #/workflows/nachweis-w1 (Freigabe-Halt): Timeline, Auf einen Blick, Aktionen",
+      "warteAufSelector": {
+        "selector": "#workflow-aktionen [data-aktion=\"freigabe-oeffnen\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d390-halt.webp"
+    },
+    {
+      "label": "Klick „Nächsten Schritt freigeben“ → Dialog",
+      "klick": "#workflow-aktionen [data-aktion=\"freigabe-oeffnen\"]",
+      "warteAufSelector": {
+        "selector": "#workflow-dialog[open] #workflow-dialog-titel",
+        "timeoutMs": 15000
+      },
+      "ohneAusschnitt": true,
+      "screenshotVollseite": false,
+      "screenshot": "d390-halt-dialog.webp"
+    },
+    {
+      "label": "Fokus „Ablehnen“, dann Tab → „Freigeben & starten“ (Tastatur, Fokusring sichtbar)",
+      "fokus": "#workflow-dialog [data-aktion=\"ablehnen\"]",
+      "taste": "Tab",
+      "ohneAusschnitt": true,
+      "screenshotVollseite": false,
+      "screenshot": "d390-halt-dialog-2-knoepfe.webp"
+    }
+  ]
+}

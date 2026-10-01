@@ -12,14 +12,19 @@ Stand: 01.10.2026.
 
 **WS-1a „Fundament“ ist gemergt** (#291, `1f9ddb2`): i18n-Kern und -Gate, Tokens hell/dunkel mit Kontrast, Theme, `#/einstellungen`, Neuladen-Hook (F-860), `render-nachweis` (F-867).
 
-**WS-1b „Shell & Einstieg“ liegt auf Branch `feat/f725-ws1b-shell`** (Worktree `../aiw-f725-ws1a`, Basis `1f9ddb2`, nicht committet). Inhalt (Einzelheiten: Akte, Abschnitt „Stand WS-1b“):
-- Persona-Bild `persona-gesicht.webp` = `face.png`, verlustfrei, pixelgleich (F-882).
-- Sidebar V10 mit den neuen Routen `#/roadmap`, `#/produktzyklus`, `#/brain`, `#/nutzung`; „Entwicklung“ mit Untereinträgen Ausführungen und Auftrag & Start (F-879); „Zuletzt geöffnet“; Illustration (F-865 erledigt); Menü unter 700 px.
-- Kopf V10: Projektauswahl mit „+“ (F-862 erledigt), Persona mit Statuszeile (einzige aria-live-Region), Sprache, Hell/Dunkel, „Frag Jarvis“ (Chatspalte bis WS-8). Nutzerkarte, Partikel, Schnellzugriff entfallen (F-878 erledigt); Bewegungsschalter nur auf `#/einstellungen`.
-- `#/start` nach der Vorlage mit Motion-Nachweis, Ziel `#/dashboard`; Baustein „kommt“; Zwischenseiten Roadmap/Nutzung (F-880); Poll-Fehlerbanner im Stil der Vorlage; F-873 erledigt.
-- Neue Module `kommt.js`, `auswahl-bremse.js`, `views/platzhalter.js` (mit Tests); `particle-drift.js` gelöscht; i18n-Gate prüft `data-i18n` in `*.html`; `render-nachweis` mit `animationenBei` und `anfragenBlockieren`.
-- Nachweise `features/F44/nachweise/ws1b/` (kleine Matrix, F-876). Erzeugt gegen den laufenden Leitstand dieses Worktrees (Port 4173) und für den Projektwechsel gegen einen zweiten Leitstand mit Wegwerf-Projekt A im Scratchpad und `../f25-testprojekt-b`.
-- Prüfpass einmal parallel, alle drei „Nicht freigegeben“; eine Korrekturrunde eingearbeitet (Akte), Rest als F-883 bis F-890. Kein zweiter Prüfpass.
+**WS-1b „Shell & Einstieg“ ist gemergt** (#292, `71ff28b`). **WS-2** (geteilt): WS-2a „Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`), WS-2b „Übersicht“ gemergt (#294, `67e757c`). **WS-3** (geteilt): WS-3a „Board & Listen“ gemergt (#295, `1191231`), WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`).
+
+**WS-4 ist geteilt** (Auftrag Stefan, 01.10.2026; Vermerk in `docs/design/abgleich-f725.md` §5.1, F-934): WS-4a „Ablauf & Freigabe“ (F0, F2, F3, F3b, F4, F5, F10, F12), WS-4b „Klärung, Reparatur & Abnahme“ (F6, F8, F9, F13–F18); F7 und F1 gehen nach WS-5.
+
+**WS-4a liegt auf Branch `feat/f725-ws4a-ablauf`** (Worktree `../aiw-f725-ws1a`, Basis `5b0b683`, nicht committet). Einzelheiten: Akte, Abschnitt „Stand WS-4a“.
+- `#/workflows/<id>` als ganze Seite: Timeline, „Auf einen Blick“, Aktionen, Aufklappbereich „Technischer Ablauf & Serverentscheidung“; Render-Modul `views/workflow-detail.js` (rein, mit Test).
+- Nativer Dialog `#workflow-dialog` für Freigeben/Ablehnen und Stoppen mit Pflichtbegründung; „Anzeige = Start“ unverändert; schließt bei Stand-Änderung; keine zweite Live-Region.
+- `#/runs` mit V10-Seitenkopf und Liste „Aufträge“; Startfehler und Läufe unverändert (WS-5).
+- F-874, F-923, F-925 erledigt, F-926 für das Workflow-Detail; F-916 verworfen; F-924, F-927, F-928 → Fixpaket Arbeitsfähigkeit B5.
+- Gates mitgezogen: f15 (liest beide Module, Schlüssel plus de-Wert), f20-leitstand-shell (CI, Dialog zuerst). `render-nachweis`: Antworten je Schritt, `warteAufSelector.zustand`, `ohneAusschnitt`.
+- Nachweise `features/F44/nachweise/ws4a/` (Leitstand dieses Worktrees, Port 4381, feste Antworten).
+- Prüfpass einmal parallel (code-reviewer und qa „Freigegeben mit Hinweisen“, design-guardian „Nicht freigegeben“, knapp); eine Korrekturrunde eingearbeitet (Akte). Neu F-935 (Größe `workflows.js`, `tx()`).
+- Nächste freie Finding-ID: F-940 (F-936 bis F-939 im Nachtrag WS-4a für das Fixpaket „Arbeitsfähigkeit“).
 
 **F-800 (Scout Datenerhebung) ist gemergt** (#289, `50bbccb`).
 
@@ -28,8 +33,8 @@ Stand: 01.10.2026.
 **F36 „Capability Library wirksam machen“ ist ABGESCHLOSSEN** (Abnahme 29.09.2026, #267–#283; Details in `features/F36/feature.md`). F-831 gemergt (#286). Offene Folge-Findings: F-829 (mit F-820); F-822; F-840, F-841; F-842 bis F-844; F-834 bis F-836, F-838; `init.plugins` bleibt ungeprüft; F-815/F-816, F-818, F-791.
 
 ## Nächste Schritte
-1. F44 Design: WS-2b (Branch `feat/f725-ws2b-uebersicht`) → WS-3 bis WS-8.
-2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach WS-8 und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4.
+1. F44 Design: WS-4a abschließen (Freigabe Stefan, Merge) → WS-4b → WS-5 (mit F7, F1) bis WS-8.
+2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach WS-8 und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4. Zuordnung der Findings und vorgeschlagene Bestehensbedingung: Abschnitt „Fixpaket Arbeitsfähigkeit“ unten.
    - B1 Harness im Lauf:
      - Agents und Projekt-Skills sind im Ausführungslauf aufrufbar (F-815, F-816).
      - Das Review prüft gegen die Checkliste `.claude/agents/code-reviewer.md` und die DoD aus CLAUDE.md (F-829).
@@ -44,7 +49,7 @@ Stand: 01.10.2026.
      - Bei „überarbeiten“ führt ein Rückweg zum Plan (F-203, F-909).
      - Der qa-Schritt kommt dazu (F-820).
      - Spec und Handoff als Verfahren prüfen.
-   - B5 Feature-Fluss (F-912):
+   - B5 Feature-Fluss (F-912; dazu F-924, F-927, F-928 aus WS-3b):
      - Der Coach legt im bestehenden Projekt eine Feature-Akte an, statt den Scope direkt zum Auftrag zu machen.
      - Die Akte ist im Leitstand bearbeitbar (E-F45-1 = A).
      - „In die Arbeit schicken“ geht mit einem Klick.
@@ -60,18 +65,27 @@ Stand: 01.10.2026.
    - In der Challenge mitklären: F-715, F-766, F-764, F-915.
    - K2 gestufter Kontext nach F30 (F-930): erst den Verbrauch je Rolle in F30 messen, dann F38 neu schneiden — nicht im Fixpaket.
 3. F30 Opportunity Scanner — Planung vollständig in der Workforce (E-F30-4); Stack-Kandidaten aus `docs/harness/stack-kandidaten.md`.
-4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel, mit F-874 in WS-4).
+4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel; F-874 ist mit WS-4a erledigt, eine angefangene Begründung wird beim Wechsel verworfen).
 
 Laufender Hinweis: Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab, mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
+
+## Fixpaket Arbeitsfähigkeit (E-M5-18)
+Kommt direkt nach WS-8 und vor F30. Reihenfolge B1 → B2 → B5 → B3 → B4; eigene Challenge nach WS-8.
+- **B1 Harness im Lauf:** F-929, F-931, F-932, F-933, F-937, F-939 (F-939 zusammen mit B3).
+- **B2 Planungs- und Prüfkette:** F-936 (Projektkarte für planende und prüfende Rollen), F-938 (Arbeitspaket mit AK, Nicht-Zielen und DoD).
+- **B5 Feature-Fluss:** F-924, F-927, F-928, F-917.
+- **K2 gestufter Kontext (F-930):** nach F30, nicht im Fixpaket.
+- **Vorgeschlagene Bestehensbedingung** (wird in der Fixpaket-Challenge bestätigt): Ein echter Referenzauftrag läuft vom Coach bis zur Abnahme in einem Fremdprojekt. Laufakte, AK-Urteile und Prüfbericht belegen, dass Projektkarte, Arbeitspaket mit DoD, Skill- und Agent-Nutzung und die Mindest-Gates gewirkt haben.
+- Nächste freie Finding-ID: F-940.
 
 ## Aufräumen
 - `docs/f800-scout` ist gemergt (#289): Worktree `../aiw-f800-scout` aus dem Haupt-Checkout entfernen (`git worktree remove ../aiw-f800-scout`), danach mit `git worktree list` prüfen.
 - WS-0 ist gemergt: Worktree `../aiw-f725-ws0` entfernen, falls noch vorhanden.
-- WS-1a ist gemergt; der Worktree `../aiw-f725-ws1a` trägt jetzt WS-1b (`feat/f725-ws1b-shell`). Nach deren Merge entfernen.
+- Der Worktree `../aiw-f725-ws1a` trägt jetzt WS-4a (`feat/f725-ws4a-ablauf`). Nach dessen Merge entfernen oder für WS-4b weiterverwenden.
 
 ## Offene Entscheidungen Stefan
 - F-889: Leerer Hash — nur beim ersten Laden einer Sitzung nach `#/start` (heute) oder immer.
-- F-885: Projektwechsel mit offener Eingabe — Rückfrage oder Entwurf je Projekt halten (WS-4).
+- F-885: Projektwechsel mit offener Eingabe — Rückfrage oder Entwurf je Projekt halten (WS-4a verwirft heute ohne Rückfrage).
 - F-766: Der Kontrollzustand von Projekten ist gitignored. Die Reallauf-Belege liegen deshalb nur als Auszug im Repo.
 - Schema-Zwilling `navigate_adressen`: Das Feld steht bereits in `schemas/kontrollzustand-laufakte-payload.schema.json`. Zu bestätigen ist, ob damit erledigt.
 - F-815/F-816: Wann werden Agents und Projekt-Skills in der Ausführung freigeschaltet (E-F36-3)?

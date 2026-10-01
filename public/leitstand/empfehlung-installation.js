@@ -12,9 +12,12 @@
  * (als version) mit dem eintragHash zurück.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/workflows.js (Bedienblock)
+ * - public/leitstand/views/workflows.js (Freigabedialog, F44 WS-4a)
  * - public/leitstand/views/workboard.js (Workflow-Vorschlag)
  * - public/leitstand/empfehlung-installation.test.mjs
+ *
+ * F44 WS-4a (F5): Texte über i18n (Schlüssel installation.*; Server- und Katalogwerte bleiben roh),
+ * Knöpfe im Stil .button der Vorlage.
  *
  * Wichtig: Jeder Serverwert wird escaped (escapeHtml). Die version/integrity des Klicks „Installieren“
  * stammen aus den data-Attributen des angezeigten Bestätigungsblocks — installiert wird genau, was
@@ -22,7 +25,8 @@
  */
 
 import { bereiteInstallationVor, installiereRessource } from './api.js'
-import { setzeInstallationsAnzeige, setzeInstallationsMeldung } from './empfehlung-anzeige.js'
+import { setzeInstallationsAnzeige, setzeInstallationsMeldung, txHtml } from './empfehlung-anzeige.js'
+import { t } from './i18n.js'
 import { escapeHtml } from './render.js'
 
 /**
@@ -31,27 +35,27 @@ import { escapeHtml } from './render.js'
  * @returns HTML
  */
 export function renderInstallationsBestaetigung(daten) {
-  const zeile = (titel, wert) => `<li><strong>${escapeHtml(titel)}:</strong> ${wert}</li>`
-  const text = (wert) => (wert === null || wert === undefined || wert === '' ? '<span class="hinweis">nicht angegeben</span>' : escapeHtml(wert))
+  const zeile = (titelSchluessel, wert) => `<li><strong>${escapeHtml(t(titelSchluessel))}:</strong> ${wert}</li>`
+  const text = (wert) => (wert === null || wert === undefined || wert === '' ? `<span class="hinweis">${escapeHtml(t('installation.nichtAngegeben'))}</span>` : escapeHtml(wert))
   if (daten.art === 'skill') return renderSkillBestaetigung(daten, zeile, text)
-  const lizenz = daten.lizenzRegistry !== null && daten.lizenzRegistry !== undefined ? `${text(daten.lizenz)} (Registry: ${escapeHtml(daten.lizenzRegistry)})` : text(daten.lizenz)
+  const lizenz = daten.lizenzRegistry !== null && daten.lizenzRegistry !== undefined ? `${text(daten.lizenz)} ${escapeHtml(t('installation.registry', { lizenz: daten.lizenzRegistry }))}` : text(daten.lizenz)
   const werkzeuge = (daten.werkzeuge ?? []).map((w) => `<code>${escapeHtml(w)}</code>`).join(', ')
   return `<div class="empfehlung-installation-bestaetigung">
-    <p><strong>${escapeHtml(daten.name)}</strong> installieren und freigeben?</p>
+    <p>${txHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
     <ul>
-      ${zeile('Paket', `<code>npm:${escapeHtml(daten.paket)}</code>`)}
-      ${zeile('Version', `<code>${escapeHtml(daten.version)}</code>`)}
-      ${zeile('integrity', `<code>${escapeHtml(daten.integrity)}</code>`)}
-      ${zeile('Lizenz', lizenz)}
-      ${zeile('Kosten', text(daten.kosten))}
-      ${zeile('Wirkung', text(daten.wirkung))}
-      ${zeile('Werkzeuge', werkzeuge || '<span class="hinweis">keine</span>')}
-      ${zeile('Zielordner', `<code>${escapeHtml(daten.zielordner)}</code>`)}
-      ${zeile('Informationsadresse', text(daten.herkunftUrl))}
+      ${zeile('installation.paket', `<code>npm:${escapeHtml(daten.paket)}</code>`)}
+      ${zeile('installation.version', `<code>${escapeHtml(daten.version)}</code>`)}
+      ${zeile('installation.integrity', `<code>${escapeHtml(daten.integrity)}</code>`)}
+      ${zeile('installation.lizenz', lizenz)}
+      ${zeile('installation.kosten', text(daten.kosten))}
+      ${zeile('installation.wirkung', text(daten.wirkung))}
+      ${zeile('installation.werkzeuge', werkzeuge || `<span class="hinweis">${escapeHtml(t('installation.keine'))}</span>`)}
+      ${zeile('installation.zielordner', `<code>${escapeHtml(daten.zielordner)}</code>`)}
+      ${zeile('installation.adresse', text(daten.herkunftUrl))}
     </ul>
-    <p class="hinweis">Installiert ohne Install-Skripte (--ignore-scripts); danach Prüfung von Version, integrity und Serverstart. Erst dann wird der Eintrag in ressourcen.json freigegeben.</p>
-    <button type="button" class="btn btn-primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="${escapeHtml(daten.integrity)}" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">Installieren</button>
-    <button type="button" class="btn" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">Abbrechen</button>
+    <p class="hinweis">${escapeHtml(t('installation.hinweisMcp'))}</p>
+    <button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="${escapeHtml(daten.integrity)}" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>
+    <button type="button" class="button" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">${escapeHtml(t('installation.abbrechen'))}</button>
   </div>`
 }
 
@@ -65,21 +69,21 @@ export function renderInstallationsBestaetigung(daten) {
 function renderSkillBestaetigung(daten, zeile, text) {
   const code = (wert) => `<code>${escapeHtml(wert)}</code>`
   return `<div class="empfehlung-installation-bestaetigung">
-    <p><strong>${escapeHtml(daten.name)}</strong> installieren und freigeben?</p>
+    <p>${txHtml('installation.frage', {}, { name: `<strong>${escapeHtml(daten.name)}</strong>` })}</p>
     <ul>
-      ${zeile('Repo', code(daten.repo))}
-      ${zeile('Ref', code(daten.ref))}
-      ${zeile('Commit (SHA)', code(daten.version))}
-      ${zeile('skill_pfad', code(daten.skillPfad))}
-      ${zeile('Pfad im Repo', code(daten.quellPfad))}
+      ${zeile('installation.repo', code(daten.repo))}
+      ${zeile('installation.ref', code(daten.ref))}
+      ${zeile('installation.commit', code(daten.version))}
+      ${zeile('installation.skillPfad', code(daten.skillPfad))}
+      ${zeile('installation.pfadImRepo', code(daten.quellPfad))}
       ${zeile('Lizenz', text(daten.lizenz))}
-      ${zeile('Kosten', text(daten.kosten))}
-      ${zeile('Zielordner', code(daten.zielordner))}
-      ${zeile('Informationsadresse', text(daten.herkunftUrl))}
+      ${zeile('installation.kosten', text(daten.kosten))}
+      ${zeile('installation.zielordner', code(daten.zielordner))}
+      ${zeile('installation.adresse', text(daten.herkunftUrl))}
     </ul>
-    <p class="hinweis">${escapeHtml(daten.hinweis)} Installiert wird genau dieser Commit; danach Prüfung von SKILL.md (name, description) und Namenskollisionen. Erst dann wird der Eintrag in ressourcen.json freigegeben.</p>
-    <button type="button" class="btn btn-primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">Installieren</button>
-    <button type="button" class="btn" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">Abbrechen</button>
+    <p class="hinweis">${escapeHtml(daten.hinweis)} ${escapeHtml(t('installation.hinweisSkill'))}</p>
+    <button type="button" class="button primary" data-installation-aktion="installieren" data-ressource-id="${escapeHtml(daten.id)}" data-version="${escapeHtml(daten.version)}" data-integrity="" data-eintrag-hash="${escapeHtml(daten.eintragHash)}">${escapeHtml(t('installation.installieren'))}</button>
+    <button type="button" class="button" data-installation-aktion="abbrechen" data-ressource-id="${escapeHtml(daten.id)}">${escapeHtml(t('installation.abbrechen'))}</button>
   </div>`
 }
 
@@ -89,8 +93,11 @@ function renderSkillBestaetigung(daten, zeile, text) {
  * @returns Klartext
  */
 export function installationsErfolgText(daten) {
-  const was = daten.art === 'skill' ? `Skill '${daten.name}' @ ${daten.version} (${(daten.dateien ?? []).length} Dateien)` : `${daten.paket}@${daten.version} (${(daten.werkzeugeGefunden ?? []).length} Werkzeuge vom Server gemeldet)`
-  return `Installiert und freigegeben: ${daten.id} — ${was}. ressourcen.json ist geändert: erst committen — arbeitet die Workforce an sich selbst, sperrt der geänderte Arbeitsbaum bis dahin jeden schreibenden Lauf.`
+  const was =
+    daten.art === 'skill'
+      ? t('installation.erfolg.skill', { name: String(daten.name), version: String(daten.version), anzahl: (daten.dateien ?? []).length })
+      : t('installation.erfolg.mcp', { paket: String(daten.paket), version: String(daten.version), anzahl: (daten.werkzeugeGefunden ?? []).length })
+  return t('installation.erfolg', { id: String(daten.id), was })
 }
 
 /**
@@ -142,11 +149,11 @@ export function bindeEmpfehlungInstallation(wurzel, neuLaden) {
     knopf.disabled = true
     try {
       if (aktion === 'vorbereiten') {
-        zeige('<p class="hinweis">Version wird aufgelöst (Registry bzw. git ls-remote) …</p>')
+        zeige(`<p class="hinweis">${escapeHtml(t('installation.loestAuf'))}</p>`)
         const antwort = await bereiteInstallationVor(id)
-        zeige(antwort.ok ? renderInstallationsBestaetigung(await antwort.json()) : renderInstallationsErgebnis(false, `Nicht installierbar: ${await grundAus(antwort)}`))
+        zeige(antwort.ok ? renderInstallationsBestaetigung(await antwort.json()) : renderInstallationsErgebnis(false, t('installation.nichtInstallierbar', { grund: await grundAus(antwort) })))
       } else if (aktion === 'installieren') {
-        zeige('<p class="hinweis">Installation läuft — laden und prüfen …</p>')
+        zeige(`<p class="hinweis">${escapeHtml(t('installation.laeuft'))}</p>`)
         const antwort = await installiereRessource(id, { version: knopf.dataset.version, integrity: knopf.dataset.integrity, eintragHash: knopf.dataset.eintragHash })
         if (antwort.ok) {
           const daten = await antwort.json()
@@ -160,12 +167,12 @@ export function bindeEmpfehlungInstallation(wurzel, neuLaden) {
             console.error('[empfehlung-installation] Neuladen nach Installation fehlgeschlagen:', fehler)
           }
         } else {
-          zeige(renderInstallationsErgebnis(false, `Installation abgelehnt, nichts freigegeben: ${await grundAus(antwort)}`))
+          zeige(renderInstallationsErgebnis(false, t('installation.abgelehnt', { grund: await grundAus(antwort) })))
         }
       }
     } catch (fehler) {
       console.error('[empfehlung-installation] Ablauf fehlgeschlagen:', fehler)
-      zeige(renderInstallationsErgebnis(false, `Anfrage fehlgeschlagen: ${fehler.message}`))
+      zeige(renderInstallationsErgebnis(false, t('installation.anfrageFehlgeschlagen', { meldung: fehler.message })))
     } finally {
       ablaufLaeuft = false
       knopf.disabled = false

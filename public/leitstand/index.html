@@ -313,8 +313,32 @@
         <!-- F29 WS-D2 (Auftrag Punkt E): entfernte Hinweistexte — überwiegend lesende Ansicht von
              kontrollzustand/ (F1-Checkpoints, F2-Lineage); Ausnahmen, die real schreiben: die
              Entscheidungs-/Abbruch-Bedienung am Lauf sowie die Workflow-Bedienung (Starten,
-             Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen). -->
+             Freigeben, Ablehnen, Stoppen, Reparaturfassung einreichen).
+             F44 WS-4a (Vorlage V10 d_arbeit_verlauf, Abgleich F-725 F0): Seitenkopf der Vorlage und
+             die Liste „Aufträge“ (eine Zeile je Workflow, views/workflow-detail.js); Startfehler und
+             Läufe stehen unverändert darunter (Umbau WS-5). Ist ein Workflow-Detail offen, blendet
+             die Klasse workflow-seite-offen (views/workflows.js, style.css) alles außer der Seite
+             #workflow-detail aus. -->
         <section id="view-runs" data-view="runs" hidden>
+          <div id="runs-kopf" class="v10-seite">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="ablauf.runs.eyebrow">Produktentwicklung</div>
+                <h1 id="runs-titel" tabindex="-1" data-i18n="ablauf.runs.titel">Ausführungen</h1>
+                <p class="description" data-i18n="ablauf.runs.beschreibung">Sieh, was gerade entsteht, was auf dich wartet und was bereits erledigt ist.</p>
+              </div>
+              <a class="button primary" href="#/projekt"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16" /></svg><span data-i18n="ablauf.runs.auftragAnlegen">Auftrag anlegen</span></a>
+            </div>
+
+            <!-- Workflows: Projektion von GET /api/workflows über das Zustands-Aggregat. Die Lage je
+                 Workflow ist das Verdikt des Servers (naechster), nicht eine eigene Rechnung der
+                 Oberfläche. -->
+            <section id="workflows-abschnitt">
+              <h2 data-i18n="ablauf.liste.titel">Aufträge</h2>
+              <div id="workflows" class="line-list"></div>
+            </section>
+          </div>
+
           <!-- Startfehler: flüchtige Projektion (GET /api/startfehler) — geht bei
                Serverneustart verloren. -->
           <section id="startfehler-abschnitt" class="card">
@@ -322,31 +346,44 @@
             <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
           </section>
 
-          <!-- Workflows: Projektion von GET /api/workflows. Die Lage je Workflow ist das
-               Verdikt des Servers (naechster), nicht eine eigene Rechnung der Oberfläche. -->
-          <section id="workflows-abschnitt">
-            <h2>Workflows</h2>
-            <div id="workflows"></div>
-          </section>
-
-          <section id="workflow-detail" class="card" hidden>
-            <h2>Workflow: <span id="workflow-detail-titel"></span> <button id="workflow-detail-schliessen" class="btn">Schließen</button></h2>
-            <p id="workflow-detail-fehler" class="fehler" hidden></p>
-            <!--
-              Drei Container statt einem: #workflow-detail-inhalt wird vom Poll alle zwei
-              Sekunden vollständig ersetzt (F15 WS-3a). #workflow-bedienung wird deshalb nur bei
-              ECHTER Zustandsänderung neu gebaut, und #workflow-reparatur fasst der Poll überhaupt
-              nicht an — der Entwurf gehört dem Menschen, bis er ihn einreicht oder verwirft (F-249).
-            -->
-            <div id="workflow-bedienung"></div>
-            <p id="workflow-bedienung-meldung" class="fehler" hidden></p>
-            <div id="workflow-detail-inhalt"></div>
-            <!-- F23 WS-2a: eigener Container, wie #workflow-bedienung nur bei ECHTER
-                 Zustandsänderung neu gebaut (Kennzeichen-Vergleich) — sonst ginge eine angefangene
-                 Pflichtbegründung durch den 2-Sekunden-Poll verloren (Muster F-249). -->
-            <div id="workflow-abnahme"></div>
-            <p id="workflow-abnahme-meldung" class="fehler" hidden></p>
-            <div id="workflow-reparatur"></div>
+          <!-- F44 WS-4a (Vorlage V10 d_workflow_neu, Abgleich F-725 F2, F3–F5, F10, F12): das Detail
+               #/workflows/<id> als ganze Seite. Sechs Container statt einem: #workflow-detail-inhalt
+               (Timeline), #workflow-blick und #workflow-technik-inhalt ersetzt der Poll alle zwei
+               Sekunden vollständig (F15 WS-3a). #workflow-bedienung (Architekt, Sichtung, Reparatur)
+               und #workflow-aktionen werden nur bei ECHTER Zustandsänderung neu gebaut, und
+               #workflow-reparatur fasst der Poll überhaupt nicht an — der Entwurf gehört dem
+               Menschen, bis er ihn einreicht oder verwirft (F-249). Der Aufklappbereich (details)
+               liegt außerhalb der ersetzten Container, damit er beim Poll offen bleibt. -->
+          <section id="workflow-detail" class="v10-seite workflow-seite" aria-labelledby="workflow-detail-titel" hidden>
+            <button type="button" id="workflow-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span data-i18n="ablauf.zurueck">Alle Aufträge</span></button>
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="ablauf.eyebrow">Auftrag &amp; Ablauf</div>
+                <h1 id="workflow-detail-titel" tabindex="-1"></h1>
+                <p class="description" data-i18n="ablauf.beschreibung">Jeder Schritt hat einen klaren Zweck. Du behältst die Kontrolle.</p>
+              </div>
+            </div>
+            <div id="workflow-detail-fehler" class="note red" hidden></div>
+            <div class="split">
+              <div class="workflow-hauptspalte">
+                <h2 data-i18n="ablauf.weg.titel">Der Weg zum Ergebnis</h2>
+                <div id="workflow-detail-inhalt"></div>
+                <div id="workflow-bedienung"></div>
+                <div id="workflow-aktionen"></div>
+                <p id="workflow-bedienung-meldung" class="fehler" tabindex="-1" hidden></p>
+                <div id="workflow-reparatur"></div>
+                <!-- F23 WS-2a: eigener Container, wie #workflow-bedienung nur bei ECHTER
+                     Zustandsänderung neu gebaut (Kennzeichen-Vergleich) — sonst ginge eine angefangene
+                     Pflichtbegründung durch den 2-Sekunden-Poll verloren (Muster F-249). -->
+                <div id="workflow-abnahme"></div>
+                <p id="workflow-abnahme-meldung" class="fehler" hidden></p>
+                <details id="workflow-technik" class="workflow-technik">
+                  <summary data-i18n="ablauf.technik.titel">Technischer Ablauf &amp; Serverentscheidung</summary>
+                  <div id="workflow-technik-inhalt"></div>
+                </details>
+              </div>
+              <aside id="workflow-blick" class="summary"></aside>
+            </div>
           </section>
 
           <div id="laeufe"></div>
@@ -518,6 +555,13 @@
     </div>
     </div>
   </div>
+
+  <!-- F44 WS-4a (Vorlage V10 modal(), Abgleich F-725 F3/F3b/F4/F5/F10, §4 Punkt 11 und 12): EIN
+       nativer Dialog für „Nächsten Schritt freigeben“ (mit Ablehnen) und „Ausführung stoppen“,
+       außerhalb aller vom Poll ersetzten Container. views/workflows.js baut seinen Inhalt beim
+       Öffnen aus dem aktuellen Detail und öffnet ihn mit showModal(); Escape und „Abbrechen“
+       schließen ohne Wirkung. Kein aria-live hier — die einzige Live-Region ist die Persona. -->
+  <dialog id="workflow-dialog" class="v10-seite workflow-dialog" aria-labelledby="workflow-dialog-titel"></dialog>
 
   <script type="module" src="/app.js"></script>
 </body>

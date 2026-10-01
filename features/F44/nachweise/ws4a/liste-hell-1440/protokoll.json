@@ -1,0 +1,29 @@
+[
+  {
+    "label": "#/runs: Seitenkopf, „Aufträge“, darunter Startfehler und Läufe",
+    "Kopf + Liste": true,
+    "Startfehler": true,
+    "Läufe": true,
+    "Detailseite": false,
+    "Freigeben & starten mit data-empfehlung-ids": false,
+    "Ablehnen im Dialog": false,
+    "Freigeben & installieren im Dialog": false,
+    "aria-live im Dialog (muss fehlen)": false,
+    "alter Bedienblock (Architekt)": false,
+    "Begründung im Feld": false,
+    "Ansicht": "runs",
+    "data-theme": "light",
+    "lang": "de",
+    "Fokus": "(fehlt)",
+    "Fokus-ID": "(fehlt)",
+    "Titel": "",
+    "Aktionen": "",
+    "Auf einen Blick": "",
+    "Meldung": "",
+    "Dialog offen": "null",
+    "Dialogtitel": "(fehlt)",
+    "Dialogmeldung": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
