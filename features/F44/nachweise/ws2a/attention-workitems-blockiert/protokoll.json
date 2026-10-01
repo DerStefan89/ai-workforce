@@ -1,0 +1,40 @@
+[
+  {
+    "label": "#/attention",
+    "Hinweis defekt": true,
+    "Leerzustand": false,
+    "Gruppe Workflows": true,
+    "Gruppe Läufe": true,
+    "Gruppe Startfehler": false,
+    "Gruppe Befunde": true,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "(fehlt)",
+    "erste Zeile": "F26 WS2b Nachweis Testartefakt",
+    "Kachel Befunde": "Wichtige Befunde – Nicht verfügbar",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Seitenende",
+    "Hinweis defekt": true,
+    "Leerzustand": false,
+    "Gruppe Workflows": true,
+    "Gruppe Läufe": true,
+    "Gruppe Startfehler": false,
+    "Gruppe Befunde": true,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "Unbestätigter Fehler Jarvis-Chat: Nachweis-Abbruch-Test A (ca 2s) Der Lauf ist fehlgeschlagen und noch nicht bestätigt. ",
+    "erste Zeile": "F26 WS2b Nachweis Testartefakt",
+    "Kachel Befunde": "Wichtige Befunde – Nicht verfügbar",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

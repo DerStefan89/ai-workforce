@@ -11305,7 +11305,7 @@ Maßnahme: Bauaufträge verlangen bei Prozess-/Dateisystem-Plattformbezug eine W
 Status: offen.
 Feature/Run: Entdeckt: F43, 30.09.2026.
 
-**F-854** · `BUG` · P3 · offen
+**F-854** · `BUG` · P3 · erledigt
 Titel: Workboard-Kachel „Roadmap“ zeigt beim Projekt haushaltsbuch2 „Roadmap konnte nicht geladen werden“.
 Beschreibung: Workboard-Kachel ‚Roadmap‘ zeigt beim aktiven Projekt haushaltsbuch2 ‚Roadmap konnte nicht geladen werden‘ (gesehen 30.09.2026).
 Fundstelle: Workboard, Kachel „Roadmap“; `roadmap_pfad` des Registereintrags bzw. der Roadmap-Endpunkt der Projekt-Instanz (ungeprüft).
@@ -11313,6 +11313,8 @@ Auswirkung: Niedrig — Anzeige einer Fehlermeldung statt eines leeren Zustands.
 Maßnahme: Ursache prüfen (roadmap_pfad des Projekts vs. Endpunkt); fehlt die Roadmap bewusst, einen leeren Zustand mit Hinweis statt einer Fehlermeldung zeigen. Nur erfasst, nicht gefixt.
 Status: offen.
 Vermerk (F44, 30.09.2026): → WS-2 (Roadmap, Tabellenzeile D4 in `docs/design/abgleich-f725.md`: fehlende Roadmap als Leerzustand zeigen).
+Ursache (belegt F44 WS-2a, 01.10.2026): Der Server antwortet für haushaltsbuch2 korrekt — GET `/api/projekte/haushaltsbuch2/roadmap`, nachgestellt mit der echten Projektinstanz (`erzeugeRequestHandler` + `erzeugeMultiProjektDispatcher`, ohne Instanz-Lock), liefert 200 mit `{ status: 'ungueltig' }` und 9 Regelverstößen in 32 ms; `docs/projekt/roadmap.json` dort ist seit 25.09.2026 unverändert, die Antwort war am 30.09. also dieselbe [Fakt]. Den Text „Roadmap konnte nicht geladen werden“ setzt `views/workboard.js` (ladeRoadmap) nur, wenn `holeRoadmap()` wirft, also bei einem Netzfehler oder dem 5-s-Zeitlimit (`AbortSignal.timeout`) — am selben Tag beantwortete der Leitstand Anfragen zeitweise langsamer als 5 s (Umgebungsnotiz WS-1a in `features/F44/feature.md`) [Schlussfolgerung: Zeitlimit; nicht nachstellbar]. Eine fehlende Roadmap war es nicht; die fachliche Lage von haushaltsbuch2 ist „ungültig“ (eigener Befund F-894). Nebenbei gefunden: `holeRoadmap` las eine Nicht-2xx-Antwort (404 eines nicht initialisierten Projekts, 500) als Erfolg — die Bento-Karte hätte dann `meilensteine` eines Körpers ohne status gelesen.
+Status: erledigt (F44 WS-2a, Branch `feat/f725-ws2a-entscheidungen-roadmap`, 01.10.2026): `holeRoadmap` läuft über `holeJsonOderWirf` (Nicht-2xx ist ein Wurf; gilt auch für die Bento-Karte, deren Markup unverändert bleibt); `roadmapZustand` (`public/leitstand/roadmap-anzeige.js`) ordnet jede unbekannte Antwort als Fehler ein, nur `nicht_vorhanden` erscheint als Leerzustand „Noch keine Roadmap“ (Test `roadmap-anzeige.test.mjs`; Nachweise `features/F44/nachweise/ws2a/roadmap-blockiert`, `roadmap-404`, `roadmap-nicht-vorhanden`, `roadmap-ungueltig`).
 Feature/Run: Abnahme F43 durch Stefan, 30.09.2026.
 
 **F-855** · `HARNESS_IMPROVEMENT` · P3 · offen
@@ -11547,7 +11549,7 @@ Beschreibung: Die Sidebar V10 führt Roadmap und Nutzung als eigene Seiten. Die 
 Fundstelle: `public/leitstand/views/platzhalter.js` (`zwischenseite`).
 Auswirkung: Niedrig — ein Klick mehr bis zu den Daten.
 Maßnahme: In WS-2 (Roadmap, D1–D4) bzw. WS-6 (Nutzung, I1–I3) die Seiten mit den echten Ansichten füllen und die Karten an der alten Stelle entfernen.
-Status: offen.
+Status: offen — Roadmap-Teil erledigt (F44 WS-2a, 01.10.2026: `#/roadmap` ist die echte Seite `public/leitstand/views/roadmap.js`; die Bento-Karte im Workboard entfernt WS-3, F-892). `#/nutzung` bleibt Zwischenseite bis WS-6.
 Feature/Run: F44 WS-1b, 30.09.2026.
 
 **F-881** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -11586,13 +11588,13 @@ Maßnahme: Mit dem Chat-Dock in WS-8 auflösen (Blase statt Spalte); bis dahin u
 Status: offen.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
 
-**F-885** · `BUG` · P2 · offen
+**F-885** · `BUG` · P3 · offen
 Titel: Ein Projektwechsel verwirft offene Eingaben ohne Rückfrage.
 Beschreibung: Seit WS-1b reicht für einen Projektwechsel ein Klick in der Kopfauswahl (vorher: Alle Produkte, „Öffnen“). Der Neuladen-Hook (F-860) setzt projektgebundene Ansichten zurück; eine angefangene Pflichtbegründung, ein Reparaturentwurf oder ein Chat-Entwurf geht dabei ohne Hinweis verloren. Prüfpunkt aus dem QA-Pass WS-0, bisher nicht festgelegt. Verwandt mit F-874.
 Fundstelle: `public/leitstand/shell.js` (initProjektAuswahl), `public/leitstand/projekt-kontext.js` (setzeAktivesProjekt).
 Auswirkung: Mittel — Verlust einer getippten Begründung.
 Maßnahme: Verhalten festlegen (Rückfrage, wenn eine Eingabe offen ist, oder Entwurf je Projekt halten) und mit F-874 in WS-4 umsetzen.
-Status: offen.
+Status: offen. Vermerk (Challenger, 01.10.2026): von P2 auf P3 gesenkt; Auslöser für die Umsetzung ist ein realer Verlust einer Eingabe.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
 
 **F-886** · `BUG` · P3 · offen
@@ -11622,13 +11624,13 @@ Maßnahme: Phasen und Schrittleiste statisch nach der Vorlage ergänzen, Deliver
 Status: offen.
 Feature/Run: design-guardian F44 WS-1b, 30.09.2026.
 
-**F-889** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-889** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: Verhalten des leeren Hashs ist nicht entschieden.
 Beschreibung: Der Abgleich (§4 Punkt 3) sagt „der leere Hash führt nach #/start“. Umgesetzt ist (unverändert seit F29): Nur der erste leere Hash einer Sitzung führt dorthin, jeder weitere auf #/dashboard (router.js STANDARD_HASH). Prüfpunkt aus WS-0 („Verhalten beim zweiten leeren Hash festlegen“) offen.
 Fundstelle: `public/leitstand/views/start.js` (leiteBeimStartEin), `public/leitstand/router.js` (STANDARD_HASH); `features/F44/feature.md` (Prüfpunkte).
 Auswirkung: Niedrig — Einstieg nach Neuladen ohne Hash.
 Maßnahme: Entscheidung Stefan: Einmal-pro-Sitzung beibehalten oder leerer Hash immer #/start.
-Status: offen.
+Status: erledigt (Entscheidung Challenger, 01.10.2026): Der leere Hash führt nur beim ersten Laden einer Sitzung zur Startfläche, danach zur Übersicht — das umgesetzte Verhalten bleibt; keine Codeänderung.
 Feature/Run: design-guardian F44 WS-1b, 30.09.2026.
 
 **F-890** · `TECH_DEBT` · P3 · offen
@@ -11639,3 +11641,66 @@ Auswirkung: Niedrig.
 Maßnahme: Beim nächsten Shell-Paket: Fokus-Einschluss oder Schließknopf im Menü, sprechende Namen über t(), Sprungziel zur Karte (entfällt mit WS-2/WS-6, F-880).
 Status: offen.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
+
+**F-891** · `BUG` · P3 · erledigt
+Titel: Hell-Theme: .side-art überdeckt die Symbole der unteren Sidebar-Einträge.
+Beschreibung: Im hellen Theme lag der dunkle Kern der Illustration (`assets/gear.webp`, Filter contrast/brightness wie die Vorlage) genau hinter den Symbolen von Alle Produkte, Nutzung und Einstellungen; die Symbole waren kaum lesbar. Im dunklen Theme unauffällig.
+Fundstelle: `public/leitstand/style.css` (`.side-bottom .side-art`, `:root[data-theme='light'] .side-art`, Stand `71ff28b`).
+Auswirkung: Niedrig — Lesbarkeit der unteren Navigation im hellen Theme.
+Maßnahme: Filter, Deckkraft und waagerechter Anker der Illustration als Tokens (`--side-art-filter`, `--side-art-deckkraft`, `--side-art-links`); der Hell-Block setzt Filter und Deckkraft wie die Vorlage und verschiebt den Anker um 44 px nach links, so dass der Kern links neben den Symbolen liegt. Dunkel unverändert.
+Status: erledigt (F44 WS-2a, Branch `feat/f725-ws2a-entscheidungen-roadmap`, 01.10.2026; Nachweis `features/F44/nachweise/ws2a/sidebar-hell-1440/`, hell und dunkel im Vergleich).
+Feature/Run: Entdeckt in der Verifikation F44 WS-1b, 30.09.2026.
+
+**F-892** · `TECH_DEBT` · P3 · offen
+Titel: Roadmap doppelt dargestellt bis WS-3.
+Beschreibung: Seit WS-2a zeigt `#/roadmap` die Roadmap mit den Regeln aus `roadmap-anzeige.js` (aktueller Meilenstein: erster mit LAEUFT, sonst erster nicht abgeschlossener). Die Bento-Karte in `views/workboard.js` zeigt dieselben Daten weiter mit abweichender Regel (hervorgehoben nur ein Meilenstein mit LAEUFT).
+Fundstelle: `public/leitstand/views/workboard.js` (bentoRoadmapKarte), `public/leitstand/roadmap-anzeige.js`.
+Auswirkung: Niedrig — zwei Darstellungen können beim aktuellen Meilenstein auseinanderlaufen.
+Maßnahme: WS-3 entfernt die Bento-Karte.
+Status: offen.
+Feature/Run: F44 WS-2a, 01.10.2026.
+
+**F-893** · `TECH_DEBT` · P3 · offen
+Titel: Roadmap ohne Hover-Detail (D1, 600 ms).
+Beschreibung: Die Vorlage zeigt auf der Roadmap nach 600 ms Verweilen ein Detail zum Eintrag (Abgleich F-725 D1). `#/roadmap` bietet nur den Klick ins Workboard-Detail; einen Tooltip-Baustein gibt es im Leitstand nicht.
+Fundstelle: `public/leitstand/views/roadmap.js`.
+Auswirkung: Niedrig — ein Klick statt eines Blicks.
+Maßnahme: Nachziehen, sobald ein Tooltip-Baustein existiert.
+Status: offen.
+Feature/Run: F44 WS-2a, 01.10.2026.
+
+**F-894** · `BUG` · P2 · offen
+Titel: Die Roadmap neuer Fremdprojekte besteht die Roadmap-Prüfung des Leitstands nicht.
+Beschreibung: `haushaltsbuch2` trägt eine `docs/projekt/roadmap.json`, die ein Baudurchgang aus dem Product-Coach-Auftrag geschrieben hat: mit `auftrag_id`, `ziel` je Meilenstein, Features als Objekte und ohne `vision`. `validiereRoadmapDaten` lehnt sie mit 9 Regelverstößen ab; `#/roadmap` zeigt deshalb „ungültig“ statt der Meilensteine. Ursache: Der Auftragstext verlangt das Bestehen von `validiereRoadmapDaten` nur für ai-workforce selbst (`kontext.istAiWorkforce`), für Fremdprojekte nennt er weder Format noch Prüfung.
+Fundstelle: `src/product-coach/index.ts` (Auftrag an den Baudurchgang, Punkt 2), `src/projektkontext/index.ts` (validiereRoadmapDaten), `docs/projekt/roadmap.json` im Projekt haushaltsbuch2.
+Auswirkung: Mittel — ein über den Coach aufgesetztes Fremdprojekt zeigt keine Roadmap, obwohl es eine hat.
+Maßnahme: Das Roadmap-Format im Auftragstext auch für Fremdprojekte vorgeben (Schema oder Beispiel beilegen) oder die Projektion für die Coach-Form öffnen; bestehende Fremdprojekt-Roadmaps nachziehen. Nicht Teil von F44 (`src/` bleibt dort unberührt).
+Status: offen.
+Feature/Run: Ursachenprüfung F-854, F44 WS-2a, 01.10.2026.
+
+**F-895** · `TECH_DEBT` · P3 · offen
+Titel: „Noch nicht eingeplant“ zeigt auch abgeschlossene Features und IDs, die die Roadmap nie aufnehmen kann.
+Beschreibung: `nichtEingeplant` nimmt alle Workitems mit typ FEATURE, die in keinem Meilenstein stehen — auch abgeschlossene und abgebrochene, und Akten wie `AF-F001`, deren ID die Roadmap-Regel (`^F[0-9]+[A-Za-z]?$`) nie zulässt; sie stehen dort dauerhaft. D3 ist im Abgleich als Schlussfolgerung markiert, das Verhalten war nicht festgelegt. Gefunden von qa.
+Fundstelle: `public/leitstand/roadmap-anzeige.js` (nichtEingeplant), `public/leitstand/views/roadmap.js` (nichtEingeplantAbschnitt).
+Auswirkung: Niedrig — die Liste enthält Einträge, die keine Planungsentscheidung brauchen.
+Maßnahme: Festlegen (Stefan): nur offene Features, IDs nach Roadmap-Regel; dann Filter in `nichtEingeplant` mit Test.
+Status: offen.
+Feature/Run: QA-Pass F44 WS-2a, 01.10.2026.
+
+**F-896** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Gate f21-ws2 (e) prüft eine wörtliche Importzeile statt der Herkunft der Filterregel.
+Beschreibung: `views/attention.js` muss die Zeile `import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'` wörtlich tragen, obwohl es seit WS-2a nur noch `baueEntscheidungen` und `holeOffeneP0P1Workitems` nutzt; die beiden Filter sind ungenutzte Importe (Biome prüft ungenutzte Importe nicht). Die Invariante — dieselbe Filterquelle wie die Übersicht, keine eigene Auswahl — ließe sich über „importiert aus attention-daten.js“ plus das bestehende Selektionsmuster prüfen. Dazu: Überholschutz und Escaping der Views sind nur über Nachweise und den Wechsel-Test belegt, nicht einzeln getestet. Gefunden von code-reviewer und qa.
+Fundstelle: `scripts/check-f21-ws2-workboard-oberflaeche.mjs` (e), `public/leitstand/views/attention.js` (Importe).
+Auswirkung: Niedrig — toter Import, das Gate bindet an eine Schreibweise.
+Maßnahme: In WS-2b (dashboard.js zieht ebenfalls auf baueEntscheidungen um) Gate (e) auf die Herkunft umstellen, Begründung im Gate-Kopf; die ungenutzten Importe entfernen.
+Status: offen.
+Feature/Run: Prüfpass F44 WS-2a, 01.10.2026.
+
+**F-897** · `TECH_DEBT` · P3 · offen
+Titel: „Eintrag erfassen“ ohne das „+“-Symbol der Vorlage.
+Beschreibung: Die Vorlage zeigt vor „Eintrag erfassen“ ein „+“ (`d_projekt_ai-workforce_roadmap.png`); `kommtKnopf` gibt nur Text und Badge aus. Gefunden vom design-guardian.
+Fundstelle: `public/leitstand/kommt.js` (kommtKnopf), `public/leitstand/views/roadmap.js` (seitenkopf).
+Auswirkung: Niedrig — Optik.
+Maßnahme: `kommtKnopf` um ein optionales dekoratives Symbol (aria-hidden) erweitern, sobald ein zweiter Aufrufer es braucht (WS-2b „Eintrag erfassen“ in der Übersicht).
+Status: offen.
+Feature/Run: design-guardian F44 WS-2a, 01.10.2026.

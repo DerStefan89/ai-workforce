@@ -1,0 +1,4 @@
+| Aktion | Eintrag erfassen (kommt) | Projektakte (kommt) | Balken | Erneut laden | Meilenstein eingeklappt | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | Zustand | erster offener Meilenstein | erster Meilenstein (open) | Noch nicht eingeplant | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/roadmap, Abruf blockiert | true | true | false | true | false | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | (fehlt) | Die Roadmap konnte nicht geladen werden. | (fehlt) | (fehlt) | (fehlt) | false | true |
+| Klick „Erneut laden“ (weiter blockiert: Fehler bleibt, Fokus auf der Überschrift) | true | true | false | true | false | roadmap | dark | de | AI Workforce · Roadmap | Roadmap | AI Workforce · Roadmap | Die Roadmap konnte nicht geladen werden. | (fehlt) | (fehlt) | (fehlt) | false | true |

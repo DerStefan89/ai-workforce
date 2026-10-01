@@ -96,9 +96,10 @@ Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 feature.md`), F43 „Projekt aufrufen/anzeigen“ (E-F30-3, Variante A,
 vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
 am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
-gemergt #288), F44 Design-Schnitt (F-725) `IN_ARBEIT` (WS-0
-„Ablage & Harness“ auf Branch, WS-1 bis WS-8 offen) (Stand 22.09.2026;
-F36 29.09.2026; F43 30.09.2026; F44 30.09.2026).
+gemergt #288), F44 Design-Schnitt (F-725) `IN_ARBEIT` (WS-0 #290,
+WS-1a #291, WS-1b #292 gemergt; WS-2a „Entscheidungen & Roadmap“ auf Branch;
+WS-2b bis WS-8 offen) (Stand 22.09.2026; F36 29.09.2026; F43 30.09.2026;
+F44 01.10.2026).
 
 ## Offene P1-Findings
 

@@ -49,8 +49,9 @@
  * initEinstellungenView() registriert '#/einstellungen' wie jede andere View vor
  * starteRouter().
  *
- * F44 WS-1b: initPlatzhalterViews() registriert '#/brain', '#/produktzyklus', '#/roadmap' und
- * '#/nutzung' (views/platzhalter.js) wie jede andere View vor starteRouter(). initKommt()
+ * F44 WS-1b: initPlatzhalterViews() registriert '#/brain', '#/produktzyklus' und
+ * '#/nutzung' (views/platzhalter.js); F44 WS-2a: initRoadmapView() registriert '#/roadmap'
+ * (views/roadmap.js) wie jede andere View vor starteRouter(). initKommt()
  * (kommt.js) hängt einmalig die Sperre für aria-disabled-Knöpfe an (E-F44-1), vor jeder View,
  * damit ihr Einfang-Listener vor allen übrigen Handlern steht. initShell() übersetzt die
  * statischen Texte von Sidebar und Kopf, rendert die Projektauswahl im Kopf
@@ -70,6 +71,7 @@ import { initEinstellungenView } from './views/einstellungen.js'
 import { initPlatzhalterViews } from './views/platzhalter.js'
 import { initProjektView } from './views/projekt.js'
 import { initProjekteUebersichtView } from './views/projekte-uebersicht.js'
+import { initRoadmapView } from './views/roadmap.js'
 import { initRunsView } from './views/runs.js'
 import { initStartView, leiteBeimStartEin } from './views/start.js'
 import { initWorkboardView } from './views/workboard.js'
@@ -94,6 +96,7 @@ initCapabilitiesView()
 initAttentionView()
 initEinstellungenView()
 initPlatzhalterViews()
+initRoadmapView()
 initStartView()
 initPersona()
 initShell()

@@ -1,0 +1,30 @@
+[
+  {
+    "label": "Sidebar hell (F-891)",
+    "Ansicht": "attention",
+    "data-theme": "light",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "Workforce",
+    "Alle Produkte klickbar": true,
+    "Nutzung klickbar": true,
+    "Einstellungen klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  },
+  {
+    "label": "Sidebar dunkel (Vergleich)",
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Deine Entscheidungen",
+    "aktiv in der Nav": "Entscheidungen",
+    "Fokus": "Workforce",
+    "Alle Produkte klickbar": true,
+    "Nutzung klickbar": true,
+    "Einstellungen klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

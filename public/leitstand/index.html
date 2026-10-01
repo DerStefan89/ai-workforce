@@ -365,33 +365,64 @@
           </section>
         </section>
 
-        <!-- F29 WS-D2 (Auftrag Punkt E): entfernter Hinweistext — reine Client-Projektion, kein
+        <!-- F29 WS-D2 (Auftrag Punkt E): reine Client-Projektion, kein
              eigener Endpunkt/Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem
              ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen
              Abruf beim Betreten dieser Ansicht. -->
-        <section id="view-attention" data-view="attention" hidden>
-          <p class="hinweis">Alles, was gerade deine Entscheidung braucht.</p>
-          <p id="attention-leer" class="leer" hidden>Nichts, das gerade Aufmerksamkeit braucht.</p>
+        <!-- F44 WS-2a: „Deine Entscheidungen“ nach Vorlage V10 (d_entscheidungen.png). Die vier
+             Gruppen bleiben als eigene Sektionen mit festen IDs (Gate f21-ws2), erscheinen aber
+             als eine durchgehende Liste ohne Kartenrahmen (je Gruppe eine nur für Screenreader
+             sichtbare h2, damit die h3 der Zeilen keinen Überschriftensprung erzeugen); eine leere Gruppe ist unsichtbar, eine
+             defekte zeigt „nicht verfügbar“ (views/attention.js). -->
+        <section id="view-attention" data-view="attention" class="v10-seite" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow" data-i18n="attention.eyebrow">Dein Fokus</div>
+              <h1 id="attention-titel" tabindex="-1" data-i18n="attention.titel">Deine Entscheidungen</h1>
+              <p class="description" data-i18n="attention.beschreibung">Freigaben zuerst. Danach Rückfragen, Fehler und wichtige Befunde. Du entscheidest; Jarvis bereitet vor.</p>
+            </div>
+          </div>
 
-          <!-- F29 WS-2a: jeder Abschnitt jetzt eine eigene .card (Muster WS-1b workboard-detail) statt .unterabschnitt. -->
-          <section id="attention-abschnitt-workflows" class="card attention-abschnitt" hidden>
-            <h2>Workflows</h2>
-            <div id="attention-workflows"></div>
+          <div id="attention-hinweis" class="note amber" hidden>
+            <strong data-i18n="attention.hinweis.titel">Ein Teil der Daten ist nicht verfügbar.</strong>
+            <p data-i18n="attention.hinweis.text">Mindestens eine Quelle konnte nicht geladen werden. Daher ist keine verlässliche Entwarnung möglich.</p>
+            <button type="button" id="attention-erneut" class="button" data-i18n="attention.hinweis.erneut">Erneut laden</button>
+          </div>
+
+          <p id="attention-laedt" class="subtle" data-i18n="attention.laedt">Lädt…</p>
+
+          <section id="attention-leer" class="empty" hidden>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
+            <h2 data-i18n="attention.leer.titel">Für den Moment ist alles geklärt.</h2>
+            <p data-i18n="attention.leer.text">Alle vier Quellen wurden geprüft: wartende Aufträge, unbestätigte Fehler, Startprobleme und wichtige Befunde.</p>
+            <a class="button primary" href="#/dashboard" data-i18n="attention.leer.link">Zur Übersicht</a>
           </section>
 
-          <section id="attention-abschnitt-laeufe" class="card attention-abschnitt" hidden>
-            <h2>Läufe</h2>
-            <div id="attention-laeufe"></div>
-          </section>
+          <div id="attention-liste" class="entscheidungs-liste">
+            <section id="attention-abschnitt-workflows" class="attention-abschnitt" aria-labelledby="attention-gruppe-workflows" hidden>
+              <h2 id="attention-gruppe-workflows" class="sr-only" data-i18n="attention.quelle.workflows">Wartende Aufträge</h2>
+              <div id="attention-workflows"></div>
+            </section>
 
-          <section id="attention-abschnitt-startfehler" class="card attention-abschnitt" hidden>
-            <h2>Startfehler</h2>
-            <div id="attention-startfehler"></div>
-          </section>
+            <section id="attention-abschnitt-laeufe" class="attention-abschnitt" aria-labelledby="attention-gruppe-laeufe" hidden>
+              <h2 id="attention-gruppe-laeufe" class="sr-only" data-i18n="attention.quelle.laeufe">Unbestätigte Fehler</h2>
+              <div id="attention-laeufe"></div>
+            </section>
 
-          <section id="attention-abschnitt-workitems" class="card attention-abschnitt" hidden>
-            <h2>Offene P0/P1-Workitems</h2>
-            <div id="attention-workitems"></div>
+            <section id="attention-abschnitt-startfehler" class="attention-abschnitt" aria-labelledby="attention-gruppe-startfehler" hidden>
+              <h2 id="attention-gruppe-startfehler" class="sr-only" data-i18n="attention.quelle.startfehler">Startprobleme</h2>
+              <div id="attention-startfehler"></div>
+            </section>
+
+            <section id="attention-abschnitt-workitems" class="attention-abschnitt" aria-labelledby="attention-gruppe-workitems" hidden>
+              <h2 id="attention-gruppe-workitems" class="sr-only" data-i18n="attention.quelle.workitems">Wichtige Befunde</h2>
+              <div id="attention-workitems"></div>
+            </section>
+          </div>
+
+          <section id="attention-quellen-bereich" aria-labelledby="attention-quellen-titel" hidden>
+            <h2 id="attention-quellen-titel" class="quellen-titel" data-i18n="attention.quellen.titel">Die vier Quellen</h2>
+            <div id="attention-quellen" class="quellen-raster"></div>
           </section>
         </section>
       </main>

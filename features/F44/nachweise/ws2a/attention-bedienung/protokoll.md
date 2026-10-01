@@ -1,0 +1,5 @@
+| Aktion | Hinweis defekt | Leerzustand | Gruppe Workflows | Gruppe Läufe | Gruppe Startfehler | Gruppe Befunde | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | erste Zeile | Kachel Befunde | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/attention, Workitems blockiert | true | false | true | true | false | true | attention | dark | de | Deine Entscheidungen | Entscheidungen | (fehlt) | F26 WS2b Nachweis Testartefakt | Wichtige Befunde – Nicht verfügbar | false | true |
+| Klick „Erneut laden“ (weiter blockiert: Hinweis bleibt) | true | false | true | true | false | true | attention | dark | de | Deine Entscheidungen | Entscheidungen | (fehlt) | F26 WS2b Nachweis Testartefakt | Wichtige Befunde – Nicht verfügbar | false | true |
+| Tastatur: Enter auf der ersten Zeile öffnet das Ziel (Ablauf-Detail #/workflows/<id>, Ansicht runs) | true | false | true | true | false | true | runs | dark | de | (fehlt) | Ausführungen | (fehlt) | F26 WS2b Nachweis Testartefakt | Wichtige Befunde – Nicht verfügbar | false | true |

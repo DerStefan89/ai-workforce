@@ -14,7 +14,9 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 `docs/design/abgleich-f725.md`. WS-0 „Ablage & Harness“ in Arbeit seit
 30.09.2026 (Branch `feat/f725-ws0-design-ablage`, gemergt #290). WS-1 ist geteilt
 (Challenger, 30.09.2026): WS-1a „Fundament“ gemergt (#291, `1f9ddb2`); WS-1b „Shell &
-Einstieg“ in Arbeit seit 30.09.2026 (Branch `feat/f725-ws1b-shell`); WS-2 bis WS-8 offen.
+Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026): WS-2a
+„Entscheidungen & Roadmap“ in Arbeit seit 01.10.2026 (Branch
+`feat/f725-ws2a-entscheidungen-roadmap`); WS-2b „Übersicht“ und WS-3 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -66,7 +68,8 @@ abgehakten F-Zeilen des Pakets.
 | **WS-0** Ablage & Harness (keine UI) | Feature-Akte; Vorlage unverändert unter `docs/design/vorlage-v10/`; Referenz-Screenshots; `docs/design/abgleich-f725.md`; `.claude/agents/design-guardian.md`; `impeccable` installierbar machen (`installation_vorlage`); Token-Gate: `:root[data-theme=…]` zulassen und alle `.css` unter `public/leitstand` scannen | f20-tokens (Erweiterung), check-docs (neuer Agent) |
 | **WS-1a** Fundament | i18n-Kern und -Gate, Tokens dunkel und hell samt Typografie und Kontrastprüfung, Theme (`data-theme`, kein Aufblitzen, `theme-color`, Manifest), Seite Einstellungen (`#/einstellungen`, erreichbar über das Dropdown der Nutzerkarte), zentraler Neuladen-Hook beim Projektwechsel (F-860), `render-nachweis` (Theme, reduzierte Bewegung, Zoom; F-867). Sidebar, Kopf, Persona, `#/start` und Chat-Layout bleiben unverändert; bestehende Views bekommen nur die neuen Token-Werte | f20-tokens (Kontrast), neues i18n-Gate |
 | **WS-1b** Shell, Einstieg | Sidebar V10 auf bestehende Routen, Kopf (Projektauswahl, „+“ mit F-862, Persona-Bild neu und kalibriert — Zuschnitt, Orb, Avatar, Augen-Overlay —, 4 Statustexte, Sprach- und Theme-Schalter im Kopf), eine Live-Region, `#/start` mit Motion-Nachweis und Wartezeile, Platzhalterseiten, Baustein „kommt“ (E-F44-1), Poll-Fehlerbanner, Zuletzt geöffnet, Sidebar-Kontrast (F-865) | f28-persona, f21-ws2 (Nav-Anker), f34 (`[hidden]`-Regeln), f20-zustand-poll |
-| **WS-2** Übersicht, Entscheidungen, Roadmap | Tabellenabschnitte B, C, D (mit F-854) | f21-ws2 (IDs `attention-*`) |
+| **WS-2a** Entscheidungen & Roadmap | Tabellenabschnitte C und D (mit F-854): `#/attention` „Deine Entscheidungen“, `#/roadmap` als eigene Seite (die Zwischenseite entfällt), reine Module `baueEntscheidungen` (`attention-daten.js`) und `roadmap-anzeige.js`; dazu F-891 | f21-ws2 (IDs `attention-*`, Importzeile (e)) |
+| **WS-2b** Übersicht | Tabellenabschnitt B (`views/dashboard.js`), nutzt `baueEntscheidungen` für „Deine nächsten Entscheidungen“ und `roadmap-anzeige.js` für aktuellen Meilenstein und Fortschrittsring | f21-ws2 (Importzeile (e) in dashboard.js) |
 | **WS-3** Entwicklung | Abschnitt E (Board, Listen, Detail, Bauen, Click-to-Work samt Git-Block) | f21-ws2 (IDs `workboard-*`, keine POST-Methode in workboard.js) |
 | **WS-4** Ablauf & Abnahme | Abschnitt F vollständig, einschließlich F3b (Ablehnen), F5, F6, F7, F8, F9 und F16; Invariante „Anzeige = Start“ | f15-oberflaeche (IDs und Texte), f42, `empfehlung-*.test.mjs`, f20-shell (CI) |
 | **WS-5** Ausführungen & Direktstart | Abschnitt G | f12 (Markup der Laufakte), `runs.test.mjs` |
@@ -362,6 +365,89 @@ Branch `feat/f725-ws1b-shell` (Worktree `../aiw-f725-ws1a`, Basis `1f9ddb2`), ni
 - **WS1b-6** Kein heutiges Verhalten fällt weg (Checkliste im Bericht und in
   `nachweise/ws1b/bedienung`).
 - **WS1b-7** `npm run check` und `npm run check:template` grün.
+
+## Stand WS-2a „Entscheidungen & Roadmap“ (01.10.2026)
+Branch `feat/f725-ws2a-entscheidungen-roadmap` (Basis `71ff28b`), nicht committet.
+- **`#/attention` „Deine Entscheidungen“** (C1–C3, `views/attention.js`, `index.html`): Kopf wie
+  die Vorlage (Dein Fokus, Titel, Einleitung über `data-i18n`), eine durchgehende Liste in der
+  Reihenfolge Freigaben → Rückfragen → unbestätigte fehlgeschlagene Läufe → Startprobleme →
+  Befunde P0/P1. Jede Zeile: Art als Eyebrow (Befund mit Priorität), Titel (Workflow-Ziel,
+  Auftragstitel des Laufs, Workitem-Titel, sonst ID), ein Satz (Servertext `grund` oder
+  Standardsatz; ID und Zeitpunkt dahinter), Pfeil. Die Zeilen sind Links auf `#/workflows/<id>`,
+  `#/runs/<id>`, `#/workboard/<id>` — keine Schreibaktion auf der Seite. Startprobleme ohne
+  Link mit Zeitstempel (Intl), laufId und Fehlertext. Die vier Sektionen
+  `attention-abschnitt-*` und `attention-leer` bleiben (Gate f21-ws2), als Gruppen ohne
+  Kartenrahmen; leer → unsichtbar, defekt → „nicht verfügbar“. „Die vier Quellen“ als Kacheln
+  mit Zähler; Hinweis mit „Erneut laden“ bei defekter Quelle; Leerzustand „Für den Moment ist
+  alles geklärt.“ mit Link zur Übersicht nur bei vier echt leeren Quellen. Auswahl, Reihenfolge
+  und Titel baut die reine Funktion `baueEntscheidungen` (`attention-daten.js`, Test
+  `attention-daten.test.mjs`); die Importzeile von `attention.js` ist unverändert.
+- **`#/roadmap`** (D1–D4, `views/roadmap.js`; Zwischenseite in `views/platzhalter.js` entfernt):
+  Rücklink, Eyebrow, „<Projektname> · Roadmap“, „Eintrag erfassen“ und Register „Projektakte“ mit
+  „kommt“, Register Überblick/Roadmap. Meilensteingruppen (details/summary) mit Status und
+  „x / y abgenommen“, Feature-Zeilen mit Symbol, Titel, ID und Status als Link ins
+  Workboard-Detail. Wochenspalten 1–6 ausgegraut mit „Zeitplanung kommt“, keine Balken, keine
+  Termine, keine Prioritätsspalte. Legende; „Noch nicht eingeplant“ aus
+  `workitems?typ=FEATURE`. Zustände nicht_vorhanden / ungueltig (Anzahl, Texte aufklappbar) /
+  Abruffehler (mit „Erneut laden“). Laden beim Betreten und bei Projektwechsel mit Überholschutz,
+  nie aus dem Poll.
+- **Reines Modul `public/leitstand/roadmap-anzeige.js`** (Test `roadmap-anzeige.test.mjs`):
+  `roadmapZustand`, `aktuellerMeilenstein`, `zaehleMeilenstein`, `statusKategorie`,
+  `meilensteinOffen`, `nichtEingeplant`.
+- **F-854** (Ursache in `state/findings.md`): `holeRoadmap` über `holeJsonOderWirf`; ein
+  Serverfehler erscheint nie als „keine Roadmap“. Die fachliche Lage von haushaltsbuch2 ist
+  „ungültig“ (F-894).
+- **F-891:** Illustration der Sidebar über Tokens; im hellen Theme links neben den Symbolen.
+- **render-nachweis:** Option `anfragenAntworten` (feste JSON-Antwort je Glob-Muster) für
+  Fachzustände, die das laufende Projekt nicht hat.
+- **Nachweise** `features/F44/nachweise/ws2a/` (Skript `erzeuge-nachweis.mjs`, Leitstand dieses Worktrees auf Port 4381): `#/attention`
+  und `#/roadmap` bei 1440 dunkel/hell, 390 dunkel, 200 % Zoom, ru, je Seitenanfang und
+  Seitenende; Workitems blockiert; Roadmap blockiert, 404, nicht_vorhanden, ungueltig; Sidebar
+  hell und dunkel (F-891). Kein waagerechter Überlauf.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal): alle drei „Nicht freigegeben“.
+  Eine Korrekturrunde, eingearbeitet: `#/attention` lädt die Workitems bei Projektwechsel neu
+  (alle drei Prüfer; Beleg `projekt-wechsel.test.mjs`, jetzt auch für die Roadmap-Seite);
+  russische Quellennamen brechen in der Kachel um; die Übergänge der Roadmap folgen auch dem
+  Bewegungsschalter (`data-reduzierte-bewegung`); die Wochenspalten passen bei 1440 px ohne
+  Anschnitt; `<summary>` nur mit Phrasing-Inhalt; doppelte CSS-Regel zusammengeführt; Startproblem
+  ohne Zeitstempel/Fehler ohne leeres `<time>`; nur für Screenreader sichtbare h2 je Gruppe;
+  Fokus nach „Erneut laden“ auf der Überschrift; die Roadmap wartet nicht mehr auf die
+  Feature-Workitems; Features ohne Akte ohne Link; `ungueltig` ohne Texte ohne leere
+  Aufklappliste; Kopfkommentar `kommt.js`; Unit-Randfälle ergänzt. Nachweise ergänzt um
+  Bedienung (Tastatur, „Erneut laden“, Meilenstein aufklappen, Feature öffnen), reduzierte
+  Bewegung, Startproblem (mit HTML im Fehlertext, escaped), Leerzustand und defekte
+  Aggregat-Quelle. Rest als F-895 bis F-897.
+- **Findings:** neu F-891 (erledigt), F-892 bis F-897; erledigt F-854, F-889; F-880 Roadmap-Teil
+  erledigt; F-885 auf P3.
+
+### Prüfpunkte aus roadmap-anzeige.js (für WS-2b und WS-3)
+- Aktueller Meilenstein: der erste mit Status LAEUFT, sonst der erste nicht abgeschlossene, sonst
+  keiner.
+- „x / y abgenommen“: x = Features mit Status ABGESCHLOSSEN, y = alle Features des Meilensteins
+  einschließlich `keine_akte`.
+- Eingeklappt ist nur ein abgeschlossener Meilenstein vor dem aktuellen; der aktuelle, alle
+  späteren und jeder nicht abgeschlossene sind offen.
+- Statuskategorien: ABGESCHLOSSEN → abgenommen; FEATURE_GATE → Deine Freigabe; LAEUFT,
+  IN_ARBEIT, WORKSTREAM_SCHNITT_GENEHMIGT → in Arbeit; BLOCKIERT → Klärung; GEPLANT, ENTWURF,
+  READY_FOR_TECH → geplant; ABGEBROCHEN; keine_akte → ohne Akte; alles andere → unbekannt.
+- Anzeigezustand: nur die Fachergebnisse nicht_vorhanden, ungueltig (mit Fehlerliste) und ok
+  (Meilensteine mit Feature-Listen) gelten; jede andere Antwort ist ein Fehler, nie „keine
+  Roadmap“ (F-854).
+- „Noch nicht eingeplant“: Features ohne Meilenstein; ohne Roadmap alle Features; bei ungültiger
+  oder fehlerhafter Roadmap nicht prüfbar.
+
+### Akzeptanzkriterien WS-2a
+- **WS2a-1** `#/attention` nach `d_entscheidungen.png`, Reihenfolge und Ziele wie oben, keine
+  Schreibaktion, Startprobleme mit Zeitstempel, laufId und Fehlertext (C3).
+- **WS2a-2** Vier Sektionen und `attention-leer` erhalten, Importzeile (e) unverändert;
+  f21-ws2 grün.
+- **WS2a-3** Defekte Quelle sichtbar („nicht verfügbar“, Hinweis, Kachel), Leerzustand nur bei
+  vier echt leeren Quellen.
+- **WS2a-4** `#/roadmap` nach `d_/m_projekt_ai-workforce_roadmap.png` mit D1–D4; Z-Elemente
+  mit `aria-disabled` und „kommt“, ohne Beispieldaten.
+- **WS2a-5** F-854: Serverfehler nie als Leerzustand (Unit-Test und Nachweis).
+- **WS2a-6** Texte in de/en/tr/ru, Plural über Intl.PluralRules; i18n-Gate grün.
+- **WS2a-7** F-891 mit Nachweis; `npm run check` grün.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

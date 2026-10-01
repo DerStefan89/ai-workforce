@@ -1,0 +1,4 @@
+| Aktion | Hinweis defekt | Leerzustand | Gruppe Workflows | Gruppe Läufe | Gruppe Startfehler | Gruppe Befunde | Ansicht | data-theme | lang | Überschrift | aktiv in der Nav | Fokus | erste Zeile | Kachel Befunde | waagerechter Überlauf | Seite geladen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| #/attention | true | false | true | true | false | true | attention | dark | de | Deine Entscheidungen | Entscheidungen | (fehlt) | F26 WS2b Nachweis Testartefakt | Wichtige Befunde – Nicht verfügbar | false | true |
+| Seitenende | true | false | true | true | false | true | attention | dark | de | Deine Entscheidungen | Entscheidungen | Unbestätigter Fehler Jarvis-Chat: Nachweis-Abbruch-Test A (ca 2s) Der Lauf ist fehlgeschlagen und noch nicht bestätigt.  | F26 WS2b Nachweis Testartefakt | Wichtige Befunde – Nicht verfügbar | false | true |
