@@ -181,8 +181,8 @@ export const legeProjektAn = (koerper) => fetch('/api/projekte', { method: 'POST
 export const holeProjektAufruf = (id) => holeJsonOderWirf(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`)
 export const rufeProjektAuf = (id) => fetch(`/api/projekte/${encodeURIComponent(id)}/projekt-aufruf`, { method: 'POST', body: '{}' })
 
-// F33 WS-2: Roadmap-Projektion für die Seite #/roadmap (views/roadmap.js, F44 WS-2a) und bis WS-3
-// die Karte "Roadmap" im Workboard (views/workboard.js) — nur beim Öffnen/Aktualisieren bzw.
+// F33 WS-2: Roadmap-Projektion für die Seite #/roadmap (views/roadmap.js, F44 WS-2a) und die
+// Übersicht (views/dashboard.js, F44 WS-2b; die Bento-Karte im Workboard entfiel mit WS-3a) — nur beim Öffnen/Aktualisieren bzw.
 // Projektwechsel abgerufen, NICHT im 2s-Poll (roadmap.json ändert sich nur durch Commits, Muster
 // holeWorkitems). Die Route liefert 200 auch für nicht_vorhanden/ungueltig (Fachergebnisse im
 // Körper, scripts/leitstand/routen-roadmap.mjs). Zeitlimit wie holeZustand/holeLaufDetail (F-561).

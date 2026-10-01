@@ -1,0 +1,155 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 2,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "#workboard-tabs [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Ansicht-Chip aktiv",
+        "selector": "#workboard-ansicht [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Spalte Geplant (Zahl)",
+        "selector": ".board-spalte-geplant .board-column-title"
+      },
+      {
+        "name": "Spalte In Arbeit (Zahl)",
+        "selector": ".board-spalte-in_arbeit .board-column-title"
+      },
+      {
+        "name": "Spalte Braucht dich (Zahl)",
+        "selector": ".board-spalte-braucht_dich .board-column-title"
+      },
+      {
+        "name": "Spalte Abgenommen (Zahl)",
+        "selector": ".board-spalte-abgenommen .board-column-title"
+      },
+      {
+        "name": "erste Karte Braucht dich",
+        "selector": ".board-spalte-braucht_dich .board-item-titel"
+      },
+      {
+        "name": "+ x weitere (Geplant)",
+        "selector": ".board-spalte-geplant .board-weitere-zeile"
+      },
+      {
+        "name": "außerhalb",
+        "selector": "#workboard-board .board-ausserhalb"
+      },
+      {
+        "name": "Hinweis Verknüpfung",
+        "selector": "#workboard-board .note"
+      },
+      {
+        "name": "Spaltenfilter",
+        "selector": "#workboard-spaltenfilter"
+      },
+      {
+        "name": "erste Listenzeile",
+        "selector": "#workboard-liste .workboard-zeile-titel, #workboard-liste p"
+      },
+      {
+        "name": "Parser-Befunde",
+        "selector": "#workboard-befunde"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Board-Bereich",
+        "id": "workboard-board-bereich"
+      },
+      {
+        "name": "Listen-Bereich",
+        "id": "workboard-listen-bereich"
+      },
+      {
+        "name": "Detail",
+        "id": "workboard-detail"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "kommt (aria-disabled) in der Seite",
+        "selector": "#view-workboard [aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Bento (muss fehlen)",
+        "selector": "#workboard-bento, .bento-fokus, .pipeline"
+      },
+      {
+        "name": "Filtergruppe Typ sichtbar",
+        "selector": "#workboard-filter .filter-chip-gruppe:not([hidden]) #workboard-filter-typ"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/workboard (Kanban-Board)",
+      "warteAufSelector": {
+        "selector": "#workboard-board .pm-board, #workboard-board .note.red",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440z2-board.webp"
+    },
+    {
+      "label": "Fokus erste Karte (Board-Inhalt bei 200 %)",
+      "fokus": ".board-spalte-geplant .board-item >> nth=0",
+      "screenshot": "d1440z2-board-karten.webp"
+    },
+    {
+      "label": "Klick Register „Bugs“",
+      "klick": "#workboard-tabs [data-tab=\"bugs\"]",
+      "warteAufSelector": {
+        "selector": "#workboard-liste .workboard-zeile, #workboard-liste .leer:not(:empty)",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440z2-bugs.webp"
+    },
+    {
+      "label": "Fokus erste Listenzeile (Listeninhalt bei 200 %)",
+      "fokus": "#workboard-liste .workboard-zeile >> nth=0",
+      "screenshot": "d1440z2-bugs-zeilen.webp"
+    }
+  ]
+}

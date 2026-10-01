@@ -232,46 +232,57 @@
           </div>
         </section>
 
-        <!-- F29 WS-D1/D2 (Auftrag Punkt 4 bzw. C): Workboard ist seit WS-D2 die Startansicht.
-             Bento-Übersicht aus dem bestehenden Zustands-Aggregat (Fokus/aktives Projekt,
-             Fortschritt, letzter Stand, Schnellzugriff, AI-Workflow-Pipeline+Aktionen) — NUR echte
-             Daten, befüllt von workboard.js; Leerzustand, wo eine Quelle fehlt. Darunter
-             unverändert die Findings-/Feature-Akten-Projektion aus state/findings.md bzw.
-             features/*/feature.md (F21 WS-1), rein lesend — Auftrag Punkt E: der frühere
-             Erklärtext dazu (Endpunkt, Scope-Hinweis) steht jetzt hier als Kommentar statt in der
-             UI, dort nur noch ein kurzer Untertitel. -->
-        <section id="view-workboard" data-view="workboard" hidden>
-          <div id="workboard-bento"></div>
+        <!-- F44 WS-3a: Seite „Entwicklung“ nach Vorlage V10 (d_arbeit_board, d_arbeit_features;
+             Abgleich F-725 E1–E7). Kopf mit Register, darunter das Status-Kanban bzw. die
+             Listen-Tabs, beide befüllt von views/workboard.js (Regeln in entwicklung-daten.js).
+             Die IDs workboard-befunde/-filter/-filter-typ/-filter-status/-filter-prioritaet/
+             -neu-laden/-liste/-detail* bleiben (Gate f21-ws2 (a)); Detail und Click-to-Work
+             unverändert bis WS-3b. Das frühere Bento (#workboard-bento) ist entfernt (F-892). -->
+        <section id="view-workboard" data-view="workboard" class="v10-seite" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow" data-i18n="entwicklung.eyebrow">Produktentwicklung</div>
+              <h1 id="workboard-titel" tabindex="-1">Arbeit im Überblick</h1>
+              <p id="workboard-beschreibung" class="description">Priorisiere die Arbeit. Die Workforce entwickelt. Du prüfst und gibst frei.</p>
+            </div>
+            <div class="workboard-kopf-aktionen">
+              <button type="button" id="workboard-neu-laden" class="button" data-i18n="entwicklung.neuLaden">Neu laden</button>
+              <span id="workboard-erfassen"></span>
+            </div>
+          </div>
+          <nav id="workboard-tabs" class="tabs" aria-label="Bereiche der Entwicklung" data-i18n-aria-label="entwicklung.register"></nav>
 
           <div id="workboard-befunde"></div>
 
-          <!-- F29 WS-1b: Filter und Liste gemeinsam in einer Karte statt zweier unumrandeter
-               Divs — Muster der Referenz-Vorlage ("Findings"-Ansicht). F29 WS-D2 (Auftrag Punkt
-               C): Panel-Kopf "Workitems" mit Icon, Filter als Chips statt Selects (Muster
-               04-findings.png) — workboard.js befüllt/bedient sie über .filter-chip/aria-pressed
-               statt <select>.value. -->
-          <div class="card">
-            <div class="card-kopf">
-              <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
-              <h2>Workitems</h2>
+          <div id="workboard-board-bereich">
+            <div id="workboard-modi" class="view-switch" role="group" aria-label="Darstellung" data-i18n-aria-label="entwicklung.modus"></div>
+            <div id="workboard-ansicht" class="board-filter" role="group" aria-label="Ansicht" data-i18n-aria-label="entwicklung.ansicht"></div>
+            <div id="workboard-board"></div>
+          </div>
+
+          <div id="workboard-listen-bereich" hidden>
+            <div class="workboard-suchzeile">
+              <input type="search" id="workboard-suche" autocomplete="off" />
+              <div id="workboard-spaltenfilter"></div>
             </div>
+            <!-- Filter-Chips (F29 WS-D2): workboard.js befüllt und bedient sie über
+                 .filter-chip/aria-pressed; die Optionen stammen aus der ungefilterten Liste des Tabs. -->
             <div id="workboard-filter">
               <div class="filter-chip-gruppe">
-                <span class="filter-chip-gruppe-label">Typ</span>
-                <div id="workboard-filter-typ" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+                <span class="filter-chip-gruppe-label" data-i18n="entwicklung.filter.typ">Typ</span>
+                <div id="workboard-filter-typ" class="filter-chip-liste"></div>
               </div>
               <div class="filter-chip-gruppe">
-                <span class="filter-chip-gruppe-label">Status</span>
-                <div id="workboard-filter-status" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+                <span class="filter-chip-gruppe-label" data-i18n="entwicklung.filter.status">Status</span>
+                <div id="workboard-filter-status" class="filter-chip-liste"></div>
               </div>
               <div class="filter-chip-gruppe">
-                <span class="filter-chip-gruppe-label">Priorität</span>
-                <div id="workboard-filter-prioritaet" class="filter-chip-liste"><button type="button" class="filter-chip" data-wert="" aria-pressed="true">Alle</button></div>
+                <span class="filter-chip-gruppe-label" data-i18n="entwicklung.filter.prioritaet">Priorität</span>
+                <div id="workboard-filter-prioritaet" class="filter-chip-liste"></div>
               </div>
-              <button type="button" id="workboard-neu-laden" class="btn">Neu laden</button>
             </div>
 
-            <div id="workboard-liste"></div>
+            <div id="workboard-liste" class="line-list"></div>
           </div>
 
           <section id="workboard-detail" class="card" hidden>

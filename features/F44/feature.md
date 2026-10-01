@@ -15,8 +15,9 @@ Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 30.09.2026 (Branch `feat/f725-ws0-design-ablage`, gemergt #290). WS-1 ist geteilt
 (Challenger, 30.09.2026): WS-1a „Fundament“ gemergt (#291, `1f9ddb2`); WS-1b „Shell &
 Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026): WS-2a
-„Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ in Arbeit seit 01.10.2026
-(Branch `feat/f725-ws2b-uebersicht`); WS-3 bis WS-8 offen.
+„Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ gemergt (#294, `67e757c`).
+WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ in Arbeit seit 01.10.2026
+(Branch `feat/f725-ws3a-board`); WS-3b „Detail, Bauen, Click-to-Work“ und WS-4 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -70,7 +71,8 @@ abgehakten F-Zeilen des Pakets.
 | **WS-1b** Shell, Einstieg | Sidebar V10 auf bestehende Routen, Kopf (Projektauswahl, „+“ mit F-862, Persona-Bild neu und kalibriert — Zuschnitt, Orb, Avatar, Augen-Overlay —, 4 Statustexte, Sprach- und Theme-Schalter im Kopf), eine Live-Region, `#/start` mit Motion-Nachweis und Wartezeile, Platzhalterseiten, Baustein „kommt“ (E-F44-1), Poll-Fehlerbanner, Zuletzt geöffnet, Sidebar-Kontrast (F-865) | f28-persona, f21-ws2 (Nav-Anker), f34 (`[hidden]`-Regeln), f20-zustand-poll |
 | **WS-2a** Entscheidungen & Roadmap | Tabellenabschnitte C und D (mit F-854): `#/attention` „Deine Entscheidungen“, `#/roadmap` als eigene Seite (die Zwischenseite entfällt), reine Module `baueEntscheidungen` (`attention-daten.js`) und `roadmap-anzeige.js`; dazu F-891 | f21-ws2 (IDs `attention-*`, Importzeile (e)) |
 | **WS-2b** Übersicht | Tabellenabschnitt B (`views/dashboard.js`), nutzt `baueEntscheidungen` für „Deine nächsten Entscheidungen“ und `roadmap-anzeige.js` für aktuellen Meilenstein und Fortschrittsring | f21-ws2 (Importzeile (e) in dashboard.js) |
-| **WS-3** Entwicklung | Abschnitt E (Board, Listen, Detail, Bauen, Click-to-Work samt Git-Block) | f21-ws2 (IDs `workboard-*`, keine POST-Methode in workboard.js) |
+| **WS-3a** Board & Listen | Abschnitt E1–E7: Status-Kanban, Listen-Tabs mit Suche, Parser-Befunde, Z-Elemente E2/E3/E7; Bento entfernt (F-892); F-913 | f21-ws2 (IDs `workboard-*`, keine POST-Methode in workboard.js; neu (h)) |
+| **WS-3b** Detail, Bauen, Click-to-Work | Abschnitt E8–E13 (Detail, „Auftrag vorbereiten“, Click-to-Work samt Git-Block, 409 mit „Wiederholen“, E13 als kommt), F-914 | f21-ws2, f22, `empfehlung-*.test.mjs` |
 | **WS-4** Ablauf & Abnahme | Abschnitt F vollständig, einschließlich F3b (Ablehnen), F5, F6, F7, F8, F9 und F16; Invariante „Anzeige = Start“ | f15-oberflaeche (IDs und Texte), f42, `empfehlung-*.test.mjs`, f20-shell (CI) |
 | **WS-5** Ausführungen & Direktstart | Abschnitt G | f12 (Markup der Laufakte), `runs.test.mjs` |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
@@ -78,7 +80,8 @@ abgehakten F-Zeilen des Pakets.
 | **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
 
 **Vermerk WS-3 (Stefan, 01.10.2026):** E13 „Eintrag bearbeiten“ bleibt in WS-3 als kommt; wird im
-Fixpaket Arbeitsfähigkeit, B5, echt (E-F45-1 = A).
+Fixpaket Arbeitsfähigkeit, B5, echt (E-F45-1 = A). WS-3 ist in WS-3a „Board & Listen“ (E1–E7) und
+WS-3b „Detail, Bauen, Click-to-Work“ (E8–E13, F-914) geteilt; E13 liegt damit in WS-3b.
 
 **Schnitt WS-1 (Challenger, 30.09.2026):** WS-1 ist in WS-1a „Fundament“ und WS-1b
 „Shell, Einstieg“ geteilt, damit jedes Teilpaket einen Baudurchgang plus höchstens
@@ -552,6 +555,102 @@ Branch `feat/f725-ws2b-uebersicht` (Basis `7530cbf`), nicht committet.
 - **WS2b-5** `fokus-daten.js` import-sicher mit Unit-Test; Workboard nutzt es, f21-ws2 grün.
 - **WS2b-6** `#/nutzung` zeigt den Verbrauch (F-880); F-895, F-896, F-897, F-898 erledigt.
 - **WS2b-7** Texte in de/en/tr/ru, Plural über Intl.PluralRules, Zahlen über Intl; i18n-Gate und
+  `npm run check` grün.
+
+## Stand WS-3a „Board & Listen“ (01.10.2026)
+Branch `feat/f725-ws3a-board` (Basis `67e757c`), nicht committet.
+- **Reines Modul `public/leitstand/entwicklung-daten.js`** (Test `entwicklung-daten.test.mjs`, kein DOM,
+  kein I/O): `baueBoard(workitems, workflows, auftraege)` ordnet in dieser Prüfreihenfolge zu —
+  a) abgenommen: Feature ABGESCHLOSSEN, Finding ERLEDIGT; b) braucht_dich: Feature FEATURE_GATE oder
+  BLOCKIERT oder ein verknüpfter Workflow in `filtereAttentionWorkflows`; c) in_arbeit: Feature
+  IN_ARBEIT oder WORKSTREAM_SCHNITT_GENEHMIGT oder ein verknüpfter, nicht terminaler Workflow (Status
+  aus `FORTSETZBARE_WORKFLOW_STATUS`, `src/workflow/index.ts`: OFFEN, WARTET_FREIGABE, LAEUFT,
+  KLAERUNG_ERFORDERLICH); d) geplant: Feature ENTWURF/READY_FOR_TECH, Finding OFFEN; e) außerhalb
+  (nur Zahl). Verknüpfung `workflow.auftragId` → Auftrag (GET …/auftraege) →
+  `workitem_referenz === workitem:<quelle>:<id>`. Je Spalte höchstens 12 Karten, P0 → P4, bei
+  gleicher Stufe Feature vor Finding, sonst Quellreihenfolge; der Rest als Zahl je Listen-Tab.
+  `sucheWorkitems` über id und titel ohne Groß-/Kleinschreibung.
+- **`#/workboard` „Entwicklung“** (`views/workboard.js`, `index.html`, Vorlage d_arbeit_board,
+  d_arbeit_features): Kopf „Arbeit im Überblick“ mit „Neu laden“ und „+ Eintrag erfassen“ (kommt,
+  E7); Register Kanban-Board · Features · Bugs · Harness Improvements · Weitere (TECH_DEBT und
+  PROCESS_IMPROVEMENT, E5) sowie Aufträge (`#/projekt`) und Ausführungen (`#/runs`) als Links;
+  Titel und Einleitung je Register. Board: Darstellung „Kanban · Status“ echt, „Kanban · Priorität“
+  (E2) und „Zeitleiste“ (E3) kommt (aria-disabled, ohne Beispieldaten); Ansicht-Chips
+  Alles/Geplant/In Arbeit/Braucht dich/Abgenommen; Karte mit Typ, Priorität (nur Findings), Titel,
+  Status und ID als Link ins Detail; Leerzustand je Spalte nach Vorlage; „+ x weitere“ springt in
+  den passenden Listen-Tab mit Spaltenfilter (entfernbarer Chip); Zahl „außerhalb des Boards“;
+  Hinweis, wenn Workflows oder Aufträge nicht verfügbar sind (die Karten stehen dann nur nach
+  Status). Listen-Tabs: Serverfilter über `holeWorkitems(filter)` (Typ nur bei „Weitere“, Status,
+  Priorität nicht bei Features), Suchfeld clientseitig. Parser-Befunde (E6) über Board und Listen.
+  Detail und Click-to-Work funktional unverändert; das Detail findet ein Workitem jetzt auch in der
+  ungefilterten Liste des Boards.
+- **Laden:** Workitems und Aufträge beim Betreten der Seite, bei „Neu laden“ und beim Projektwechsel
+  (F-860), je mit Überholschutz, nie aus dem Poll; ein Wechsel Board ↔ Detail lädt nicht erneut.
+  Workflows aus dem bestehenden Poll-Abo; ein Tick schreibt Board bzw. Liste nur bei geändertem
+  Inhalt.
+- **Bento entfernt (F-892):** sechs Karten, Icons, Fokus- und Rollen-Cache, Roadmap-Abruf,
+  Abnahme-Vorauswahl (F-916), `#workboard-bento` und die nur dort genutzten CSS-Regeln. Die von
+  `views/projekte-uebersicht.js` mitgenutzten Regeln (`bento-fokus-*`, `bento-meta-*`) bleiben bis
+  WS-6. `fokus-daten.js` bleibt (`views/dashboard.js`); der nur vom Bento genutzte Export
+  `LEERER_FOKUS` ist entfernt. `views/workflows.js` unverändert.
+- **F-913:** `waehleFokusWorkflow` wählt den ersten Eintrag aus `baueEntscheidungen` (Freigabe vor
+  Rückfrage); Test gegen die alte Fassung rot.
+- **Gate f21-ws2:** neu (h) — `entwicklung-daten.js` bezieht „Braucht dich“ aus
+  `filtereAttentionWorkflows` und prüft `naechster.art` nicht selbst (beide Rotfälle geprüft);
+  `entwicklung-daten.js` in der Syntaxprüfung (g). Kein Literal zieht um: alle IDs aus (a) bleiben
+  in `index.html`, `holeWorkitems(filter)` bleibt in `workboard.js`.
+- **`projekt-wechsel.test.mjs`:** Die Erwartung „Workboard lädt die Roadmap“ entfällt mit dem Bento;
+  neu: Aufträge beim Wechsel, Betreten lädt Workitems und Aufträge, Poll lädt nichts nach, Board
+  zeigt ein Finding mit wartendem Workflow unter „Braucht dich“, Board → Detail lädt nicht erneut.
+- **Entscheidung (dokumentiert):** Features tragen keine Priorität (src/workboard/types.ts); sie
+  stehen in einer Spalte wie in GET …/workitems hinter allen priorisierten Findings. Die Regel
+  „bei gleicher Stufe Feature vor Finding“ greift damit erst, wenn Features eine Priorität bekommen.
+  Mit vielen offenen Findings zeigt „Geplant“ deshalb kaum Features; „+ x weitere“ führt zu ihnen
+  (Tab Features).
+- **Nachweise** `features/F44/nachweise/ws3a/` (Skript `erzeuge-nachweis.mjs`, Leitstand dieses Worktrees
+  auf Port 4381): `#/workboard` Board und Tab „Bugs“ bei 1440 dunkel/hell (Ausschnitt in ganzer Höhe),
+  390 dunkel und 200 % (Viewport — die ganze Seite überschreitet die WebP-Höhe; bei 200 % zusätzlich
+  Karten und Zeilen per Fokus in den Viewport geholt), ru; feste Antworten: „Braucht dich“ über den
+  Auftrag mit Klick ins Detail, Workflow-Quelle defekt, Tab „Weitere“ mit Typ-Chips und Parser-Befund
+  (HTML escaped), Tab „Features“ ohne Prioritätschips, Deep-Link mit „Schließen“ und erneutem Öffnen;
+  Bedienung (Enter auf „Kanban · Priorität“ ohne Wirkung, Ansicht-Chips, „+ x weitere“, Suche,
+  Spaltenfilter entfernen); `#/dashboard` als Regressionsbild (F-913). Kein waagerechter Überlauf.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal): alle drei „Nicht freigegeben“.
+  Eine Korrekturrunde, eingearbeitet: Überholschutz der Liste beim Projektwechsel (`ladeListe` erhöht
+  den Zähler auch auf dem Board und leert die Liste; Test „späte Listenantwort des alten Projekts“, rot
+  unter der alten Fassung) — damit findet das Detail auf dem Board nie einen veralteten Listenstand;
+  Karten öffnen das Detail über `navigiere` (auch nach „Schließen“); Verlassen der Seite wird an der
+  Sichtbarkeit nach dem Routing erkannt (das Chat-Overlay friert das Board nicht mehr ein); der Poll
+  rendert nur den sichtbaren Bereich; `baueBoard` unterscheidet „lädt“ (undefined) und „nicht
+  verfügbar“ (null), die Ansicht nutzt das (leise Zeile bzw. Hinweis, neutraler Leertext in „In
+  Arbeit“/„Braucht dich“); fällt ein gewählter Filterwert nach „Neu laden“ weg, lädt die Liste mit dem
+  gültigen Filter neu; Listenzeile nach Vorlage (Symbol, Titel, „ID · Typ · Priorität“, übersetzter
+  Status) mit Umbruch unter 560 px; Register mit gerader Linie, Kopfaktionen nebeneinander, mobile
+  Kartentypografie; Regel c vor e dokumentiert und getestet (a > c, b/c > e); `Object.hasOwn` für
+  Prioritäten; Gate (h) prüft auch den Aufruf und hat eine eingebaute Rot-Kalibrierung (h-kal);
+  Tests „Neu laden“ und erneutes Betreten; Kommentarköpfe `attention-daten.js`, `kommt.js`,
+  `api.js`. Nicht übernommen, als Findings: E2 lesend nach §4 Punkt 4 (F-917, Widerspruch zum
+  Auftrag, Entscheidung Stefan), Auswahlfelder statt Chips (F-918), Aussagekraft des Boards und Länge
+  der Liste nach „+ x weitere“ (F-919), Laden beim Projektwechsel ohne offene Seite (F-920, der
+  Auftrag verlangt es), Karte mit Rolle/Fortschritt und Ladezustand im Detail (F-921, WS-3b). Der
+  Ansicht-Chip bleibt beim Projektwechsel bewusst stehen (Darstellungswahl, kein Projektinhalt).
+- **Entscheidung F-917 (Stefan, 01.10.2026):** E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert,
+  keine Daten), abweichend von `docs/design/abgleich-f725.md` §4 Punkt 4 (dort vermerkt); ein nur
+  lesendes Prioritäts-Kanban wird im Fixpaket „Arbeitsfähigkeit“ (B5 Feature-Fluss) neu bewertet.
+- **Findings:** neu F-913 (erledigt), F-914 bis F-921 (F-917 entschieden); erledigt F-892.
+
+### Akzeptanzkriterien WS-3a
+- **WS3a-1** `#/workboard` nach d_arbeit_board mit Kopf, Registern, Board-Modi (E2/E3 kommt),
+  Ansicht-Chips, Spalten, Karten, Leerzuständen und „+ x weitere“; Z-Elemente mit `aria-disabled`
+  und „kommt“ ohne Beispieldaten.
+- **WS3a-2** Zuordnungsregel a–e mit Vorrang, Verknüpfung über den Auftrag, Begrenzung und
+  Sortierung (Unit-Tests `entwicklung-daten.test.mjs`).
+- **WS3a-3** Listen-Tabs mit Serverfilter und Suche (E4, E5), Parser-Befunde sichtbar (E6).
+- **WS3a-4** Aufträge nur beim Betreten, „Neu laden“ und Projektwechsel, nie aus dem Poll
+  (`projekt-wechsel.test.mjs`).
+- **WS3a-5** Bento entfernt (F-892), F-913 erledigt; Detail und Click-to-Work unverändert,
+  f21-ws2 grün.
+- **WS3a-6** Texte in de/en/tr/ru, Plural über Intl.PluralRules, Zahlen über Intl; i18n-Gate und
   `npm run check` grün.
 
 ## Prüfpunkte für Folgepakete

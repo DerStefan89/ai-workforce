@@ -2,7 +2,8 @@
  * Datei: public/leitstand/fokus-daten.test.mjs
  *
  * Zweck: node:test-Fälle für die reinen Funktionen des Fokus-Moduls (F44 WS-2b):
- * waehleFokusWorkflow, waehleLetztenLauf, schrittFolge. Belegt zugleich, dass das Modul in Node
+ * waehleFokusWorkflow (seit F44 WS-3a in der Reihenfolge von baueEntscheidungen, F-913),
+ * waehleLetztenLauf, schrittFolge. Belegt zugleich, dass das Modul in Node
  * ohne DOM und Storage importierbar ist.
  *
  * Wird aufgerufen von: `npm run test` (node --test).
@@ -10,7 +11,8 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { LEERER_FOKUS, schrittFolge, waehleFokusWorkflow, waehleLetztenLauf } from './fokus-daten.js'
+import { baueEntscheidungen } from './attention-daten.js'
+import { schrittFolge, waehleFokusWorkflow, waehleLetztenLauf } from './fokus-daten.js'
 
 test('waehleFokusWorkflow: ohne Liste oder leer → null', () => {
   assert.equal(waehleFokusWorkflow(null), null)
@@ -22,6 +24,17 @@ test('waehleFokusWorkflow: ein wartender Workflow geht vor einem laufenden', () 
   const laufend = { workflowId: 'w-1', status: 'LAEUFT', naechster: { art: 'starte' } }
   const wartend = { workflowId: 'w-2', status: 'KLAERUNG_ERFORDERLICH', naechster: { art: 'haltKlaerung' } }
   assert.equal(waehleFokusWorkflow([laufend, wartend]).workflowId, 'w-2')
+})
+
+test('F-913: eine Freigabe geht einer früher gelisteten Rückfrage vor — wie „Deine nächsten Entscheidungen“', () => {
+  const rueckfrage = { workflowId: 'w-r', status: 'KLAERUNG_ERFORDERLICH', naechster: { art: 'haltKlaerung' } }
+  const freigabe = { workflowId: 'w-f', status: 'LAEUFT', naechster: { art: 'haltFreigabe' } }
+  const workflows = [rueckfrage, freigabe]
+  assert.equal(waehleFokusWorkflow(workflows).workflowId, 'w-f')
+  // Dieselbe Wahl wie der erste Eintrag der Entscheidungsliste (B3 = B7), nicht nur zufällig gleich.
+  assert.equal(waehleFokusWorkflow(workflows).workflowId, baueEntscheidungen({ workflows }, []).eintraege[0].id)
+  // Nur Rückfragen: die erste Rückfrage.
+  assert.equal(waehleFokusWorkflow([{ ...rueckfrage, workflowId: 'w-r1' }, { ...rueckfrage, workflowId: 'w-r2' }]).workflowId, 'w-r1')
 })
 
 test('waehleFokusWorkflow: ohne Wartenden der laufende, sonst der erste', () => {
@@ -82,9 +95,4 @@ test('schrittFolge: ohne Schritte oder ohne bestimmbaren Jetzt-Schritt alles nul
   assert.deepEqual(schrittFolge({}, null), leer)
   assert.deepEqual(schrittFolge({}, []), leer)
   assert.deepEqual(schrittFolge({ naechster: { schrittId: 'fehlt' } }, [{ schritt_id: 's1', status: 'ERFOLGREICH' }]), leer)
-})
-
-test('LEERER_FOKUS ist eingefroren', () => {
-  assert.ok(Object.isFrozen(LEERER_FOKUS))
-  assert.equal(LEERER_FOKUS.workflowId, null)
 })

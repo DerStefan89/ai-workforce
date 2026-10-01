@@ -1,0 +1,32 @@
+[
+  {
+    "label": "#/workboard, Workflow-Quelle defekt",
+    "Board-Bereich": true,
+    "Listen-Bereich": false,
+    "Detail": false,
+    "kommt (aria-disabled) in der Seite": true,
+    "Bento (muss fehlen)": false,
+    "Filtergruppe Typ sichtbar": true,
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Überschrift": "Arbeit im Überblick",
+    "aktiv in der Nav": "Entwicklung",
+    "Fokus": "(fehlt)",
+    "Register aktiv": "Kanban-Board",
+    "Ansicht-Chip aktiv": "Alles",
+    "Spalte Geplant (Zahl)": "Geplant2",
+    "Spalte In Arbeit (Zahl)": "In Arbeit1",
+    "Spalte Braucht dich (Zahl)": "Braucht dich0",
+    "Spalte Abgenommen (Zahl)": "Abgenommen1",
+    "erste Karte Braucht dich": "(fehlt)",
+    "+ x weitere (Geplant)": "(fehlt)",
+    "außerhalb": "(fehlt)",
+    "Hinweis Verknüpfung": "Ausführungsstand unvollständigWorkflows nicht verfügbar. Die Karten stehen nur nach ihrem Status; laufende Arbeit und of",
+    "Spaltenfilter": "",
+    "erste Listenzeile": "(fehlt)",
+    "Parser-Befunde": "",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

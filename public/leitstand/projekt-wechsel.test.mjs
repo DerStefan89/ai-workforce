@@ -10,7 +10,10 @@
  * F44 WS-2a: „Deine Entscheidungen“ (P0/P1-Workitems) und die Seite #/roadmap (Roadmap und
  * Feature-Workitems) laden beim Wechsel ebenfalls neu. F44 WS-2b: Die Übersicht lädt Roadmap, alle
  * Workitems und P0/P1 neu (nie aus dem Poll; eine späte Roadmap-Antwort des alten Projekts wird
- * verworfen); der Verbrauch ist auf #/nutzung umgezogen (views/nutzung.js).
+ * verworfen); der Verbrauch ist auf #/nutzung umgezogen (views/nutzung.js). F44 WS-3a: Die Seite
+ * „Entwicklung“ lädt statt der Roadmap (Bento entfernt, F-892) die Aufträge für die Verknüpfung
+ * Workitem ↔ Workflow — beim Betreten und beim Wechsel, nie aus dem Poll; das Board ordnet ein
+ * Finding mit wartendem Workflow „Braucht dich“ zu.
  *
  * Die echten View-Module laufen gegen ein minimales Schein-DOM (jede id liefert ein
  * gleichbleibendes Schein-Element) und ein aufzeichnendes fetch — kein Browser, kein Server.
@@ -42,9 +45,13 @@ function scheinElement(id = '') {
     selectedIndex: -1,
     dataset: {},
     style: {},
-    parentElement: null,
+    parentElement: { hidden: false },
     classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-    addEventListener() {},
+    // F44 WS-3a: Handler je Ereignistyp, damit ein Test einen Klick auf ein Register auslösen kann.
+    handler: {},
+    addEventListener(typ, fn) {
+      this.handler[typ] = fn
+    },
     removeEventListener() {},
     setAttribute() {},
     getAttribute: () => null,
@@ -84,6 +91,11 @@ globalThis.document = {
   activeElement: null,
 }
 Object.defineProperty(globalThis, 'window', { value: globalThis, configurable: true, writable: true })
+// F44 WS-3a: views/workboard.js merkt sich über hashchange das Verlassen der Seite.
+const hashchangeHandler = []
+globalThis.addEventListener = (typ, fn) => {
+  if (typ === 'hashchange') hashchangeHandler.push(fn)
+}
 Object.defineProperty(globalThis, 'location', { value: { hash: '#/workboard' }, configurable: true, writable: true })
 Object.defineProperty(globalThis, 'sessionStorage', { value: speicher(), configurable: true, writable: true })
 Object.defineProperty(globalThis, 'localStorage', { value: speicher(), configurable: true, writable: true })
@@ -99,6 +111,15 @@ const zurueckgehalten = new Map()
  * @returns JSON-Körper
  */
 function koerperFuer(url) {
+  // F44 WS-3a: projekt-v hat ein offenes Finding, dessen Workflow (über den Auftrag) auf Freigabe wartet.
+  if (url.includes('/projekte/projekt-v/workitems'))
+    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-1', titel: 'Wartender Befund', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1' }], befunde: [], fehler: [] }
+  if (url.includes('/projekte/projekt-v/auftraege')) return [{ auftragId: 'a-v', titel: 'Auftrag V', erstellt_am: 'x', workitem_referenz: 'workitem:finding:F-1' }]
+  if (url.includes('/projekte/projekt-v/zustand'))
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-v', auftragId: 'a-v', status: 'LAEUFT', ziel: 'Ziel V', naechster: { art: 'haltFreigabe', schrittId: 's1' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+  // F44 WS-3a: Listenabruf (Tab Bugs) von projekt-q mit Parser-Befund — für den Überholschutz der Liste.
+  if (url.includes('/projekte/projekt-q/workitems?typ=BUG'))
+    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-1', titel: 'Befund aus Q', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P1' }], befunde: [{ meldung: 'Parser-Befund aus Q' }], fehler: [] }
   if (url.includes('/workitems')) return { workitems: [], befunde: [], fehler: [] }
   // F44 WS-2b: eine gültige Roadmap nur für projekt-l — für den Überholschutz-Fall der Übersicht.
   if (url.includes('/projekte/projekt-l/roadmap')) return { status: 'ok', vision: 'Vision von L', meilensteine: [] }
@@ -151,7 +172,6 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
   const neu = '/api/projekte/projekt-b'
   const erwartet = {
     'Workboard Workitems (ungefiltert)': (u) => u === `${neu}/workitems` || u === `${neu}/workitems?`,
-    'Workboard Roadmap': (u) => u === `${neu}/roadmap`,
     'Dashboard P0/P1 (status=OFFEN)': (u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN'),
     'Nutzung Verbrauch': (u) => u.startsWith(`${neu}/verbrauch`),
     'Direktstart Aufträge': (u) => u === `${neu}/auftraege`,
@@ -160,6 +180,8 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
   for (const [name, passt] of Object.entries(erwartet)) {
     assert.ok(aufrufe.some(passt), `${name} wurde nach dem Wechsel nicht mit ${neu} geladen; Aufrufe: ${aufrufe.join(', ')}`)
   }
+  // F44 WS-3a: Aufträge laden Direktstart UND Workboard (Verknüpfung Workitem ↔ Workflow).
+  assert.ok(aufrufe.filter((u) => u === `${neu}/auftraege`).length >= 2, `Workboard lädt die Aufträge nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
     [],
@@ -299,7 +321,7 @@ test('F44 WS-2a: Entscheidungen und Roadmap-Seite laden nach dem Wechsel mit dem
 
   const neu = '/api/projekte/projekt-c'
   const anzahl = (passt) => aufrufe.filter(passt).length
-  // P0/P1 laden Dashboard UND Entscheidungen, die Roadmap Workboard-Karte UND Roadmap-Seite.
+  // P0/P1 laden Dashboard UND Entscheidungen, die Roadmap Roadmap-Seite UND Übersicht (F44 WS-3a: ohne Bento).
   assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN')) >= 2, `Entscheidungen laden P0/P1 nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 2, `Roadmap-Seite lädt nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('typ=FEATURE')) >= 1, 'Roadmap-Seite lädt die Feature-Workitems nicht neu')
@@ -317,8 +339,9 @@ test('F44 WS-2b: die Übersicht lädt nach dem Wechsel Roadmap, alle Workitems u
   await warte()
   const neu = '/api/projekte/projekt-j'
   const anzahl = (passt) => aufrufe.filter(passt).length
-  // Roadmap: Workboard-Karte, Roadmap-Seite und Übersicht; ungefilterte Workitems: Workboard und Übersicht.
-  assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 3, `Übersicht lädt die Roadmap nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
+  // Roadmap: Roadmap-Seite und Übersicht (F44 WS-3a: die Bento-Karte im Workboard ist entfernt);
+  // ungefilterte Workitems: Workboard und Übersicht.
+  assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 2, `Übersicht lädt die Roadmap nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.ok(anzahl((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`) >= 2, `Übersicht lädt die Workitems nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
@@ -382,4 +405,114 @@ test('F-903: kein Leerzustand B14 bei defekter Workflow-Quelle', async () => {
   await warte()
   assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, true)
   assert.equal(document.getElementById('uebersicht-inhalt').hidden, false)
+})
+
+test('F44 WS-3a: Entwicklung — Betreten lädt Workitems und Aufträge, der Poll lädt nichts nach, das Board zeigt „Braucht dich“ über den Auftrag', async () => {
+  const { dispatch } = await import('./router.js')
+  setzeAktivesProjekt({ id: 'projekt-v', name: 'Projekt V' })
+  await warte()
+  // Betreten der Seite (bisher nicht betreten: der Test-Router wurde nie gestartet).
+  aufrufe.length = 0
+  location.hash = '#/workboard'
+  dispatch()
+  await warte()
+  const neu = '/api/projekte/projekt-v'
+  assert.ok(aufrufe.some((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`), `Betreten lädt die Workitems nicht; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.ok(aufrufe.includes(`${neu}/auftraege`), `Betreten lädt die Aufträge nicht; Aufrufe: ${aufrufe.join(', ')}`)
+
+  aufrufe.length = 0
+  const { pollJetzt } = await import('./zustand.js')
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.deepEqual(
+    aufrufe.filter((u) => u.includes('/auftraege') || u.includes('/workitems') || u.includes('/roadmap')),
+    [],
+    `Poll löst Nachladen aus: ${aufrufe.join(', ')}`
+  )
+  const board = document.getElementById('workboard-board').innerHTML
+  const brauchtDich = board.slice(board.indexOf('board-spalte-braucht_dich'))
+  assert.match(brauchtDich, /Wartender Befund/, 'das Finding mit wartendem Workflow steht unter „Braucht dich“')
+  assert.doesNotMatch(board.slice(board.indexOf('board-spalte-geplant'), board.indexOf('board-spalte-in_arbeit')), /Wartender Befund/)
+
+  // Ein Wechsel Board → Detail lädt nicht erneut.
+  aufrufe.length = 0
+  location.hash = '#/workboard/F-1'
+  dispatch()
+  await warte()
+  assert.deepEqual(aufrufe.filter((u) => u.includes('/auftraege') || u.includes('/workitems')), [])
+  location.hash = '#/workboard'
+})
+
+/**
+ * Löst einen Klick auf ein Register der Seite „Entwicklung“ aus (Klick-Delegation in views/workboard.js).
+ * @param tab - data-tab des Registers
+ */
+function klickeRegister(tab) {
+  document.getElementById('workboard-tabs').handler.click({ target: { closest: (selektor) => (selektor === '[data-tab]' ? { dataset: { tab } } : null) } })
+}
+
+test('F44 WS-3a: eine späte Listenantwort des alten Projekts wird nach dem Wechsel verworfen (Parser-Befunde, Detail)', async () => {
+  setzeAktivesProjekt({ id: 'projekt-q', name: 'Projekt Q' })
+  await warte()
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-q/workitems?typ=BUG', halt)
+  klickeRegister('bugs')
+  await warte()
+  assert.ok(halt.length > 0, 'der Listenabruf des Tabs Bugs läuft')
+  zurueckgehalten.clear()
+  setzeAktivesProjekt({ id: 'projekt-r', name: 'Projekt R' })
+  await warte()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  assert.doesNotMatch(document.getElementById('workboard-befunde').innerHTML, /Parser-Befund aus Q/)
+  // Das Detail von F-1 im neuen Projekt (R hat keine Workitems) darf nicht das Finding aus Q zeigen.
+  location.hash = '#/workboard/F-1'
+  const { dispatch } = await import('./router.js')
+  dispatch()
+  assert.doesNotMatch(document.getElementById('workboard-detail-inhalt').innerHTML, /Befund aus Q/)
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F44 WS-3a: „Neu laden“ lädt Workitems und Aufträge; erneutes Betreten nach dem Verlassen lädt neu', async () => {
+  const { dispatch } = await import('./router.js')
+  setzeAktivesProjekt({ id: 'projekt-s', name: 'Projekt S' })
+  location.hash = '#/workboard'
+  dispatch()
+  await warte()
+  const neu = '/api/projekte/projekt-s'
+  const geladen = () => ({
+    workitems: aufrufe.filter((u) => u === `${neu}/workitems` || u === `${neu}/workitems?`).length,
+    auftraege: aufrufe.filter((u) => u === `${neu}/auftraege`).length,
+  })
+
+  aufrufe.length = 0
+  document.getElementById('workboard-neu-laden').handler.click({})
+  await warte()
+  assert.deepEqual(geladen(), { workitems: 1, auftraege: 1 }, `„Neu laden“; Aufrufe: ${aufrufe.join(', ')}`)
+
+  // Weiter auf der Seite: ein erneuter Routen-Eintritt lädt nicht.
+  aufrufe.length = 0
+  dispatch()
+  await warte()
+  assert.deepEqual(geladen(), { workitems: 0, auftraege: 0 })
+
+  // Verlassen (Seite verborgen, hashchange), dann zurück: lädt neu.
+  const ansicht = document.getElementById('view-workboard')
+  ansicht.hidden = true
+  for (const handler of hashchangeHandler) handler()
+  await warte()
+  ansicht.hidden = false
+  dispatch()
+  await warte()
+  assert.deepEqual(geladen(), { workitems: 1, auftraege: 1 }, `erneutes Betreten; Aufrufe: ${aufrufe.join(', ')}`)
+
+  // Eine überlagerte Route (Seite bleibt sichtbar) gilt nicht als Verlassen.
+  aufrufe.length = 0
+  for (const handler of hashchangeHandler) handler()
+  await warte()
+  dispatch()
+  await warte()
+  assert.deepEqual(geladen(), { workitems: 0, auftraege: 0 })
 })

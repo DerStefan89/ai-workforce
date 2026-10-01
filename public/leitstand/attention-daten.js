@@ -18,6 +18,8 @@
  * - public/leitstand/views/attention.js
  * - public/leitstand/views/dashboard.js
  * - public/leitstand/jarvis-vorfilter.js (F26 WS-2a, "was braucht mich")
+ * - public/leitstand/fokus-daten.js (F44 WS-3a, F-913: Fokuswahl über baueEntscheidungen)
+ * - public/leitstand/entwicklung-daten.js (F44 WS-3a: Spalte „Braucht dich“ über filtereAttentionWorkflows)
  * - public/leitstand/attention-daten.test.mjs (node:test, baueEntscheidungen)
  */
 

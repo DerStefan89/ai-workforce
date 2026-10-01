@@ -44,6 +44,14 @@
  * (g) Syntaxprüfung (node --check) auf allen neuen/geänderten Modulen —
  *     public/ liegt außerhalb von Biome/tsc (siehe check-f15-workflow-
  *     oberflaeche.mjs Fall (f)).
+ * (h) F44 WS-3a: Das Board der Seite „Entwicklung“ (entwicklung-daten.js)
+ *     ordnet „Braucht dich“ über filtereAttentionWorkflows aus
+ *     attention-daten.js zu und führt keine eigene Halt-Regel
+ *     (naechster.art) — dieselbe Zusage wie (d)/(e), nur für den dritten
+ *     Abnehmer; dazu, dass die Funktion auch aufgerufen (nicht nur importiert)
+ *     wird. (h-kal) belegt die Rotfälle (eigene Regel, nur Import, kein
+ *     Import) und den Grünfall. Das Bento (#workboard-bento) ist entfernt
+ *     (F-892); (a) hat es nie verlangt, kein Literal zieht um.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -69,6 +77,7 @@ const dashboardQuelltext = entferneKommentare(readFileSync('public/leitstand/vie
 const attentionDatenQuelltext = entferneKommentare(readFileSync('public/leitstand/attention-daten.js', 'utf8'))
 const apiQuelltext = entferneKommentare(readFileSync('public/leitstand/api.js', 'utf8'))
 const appQuelltext = entferneKommentare(readFileSync('public/leitstand/app.js', 'utf8'))
+const entwicklungDatenQuelltext = entferneKommentare(readFileSync('public/leitstand/entwicklung-daten.js', 'utf8'))
 
 /**
  * Eine einzelne Zusage: `muster` muss in `quelltext` vorkommen.
@@ -176,8 +185,38 @@ if (dashboardApiImport !== null) {
   if (schreibend.length > 0) befunde.push(`(f) views/dashboard.js importiert aus api.js nicht nur lesende hole*-Funktionen: ${schreibend.join(', ')}`)
 }
 
+// ─── (h) Entwicklung-Board: „Braucht dich“ aus attention-daten.js, keine eigene Halt-Regel ──
+const H_IMPORT_MUSTER = /import\s*\{[^}]*\bfiltereAttentionWorkflows\b[^}]*\}\s*from\s*'\.\/attention-daten\.js'/
+const H_AUFRUF_MUSTER = /\bfiltereAttentionWorkflows\(/
+const H_EIGENE_REGEL_MUSTER = /naechster\??\.art/
+/**
+ * Bewertet eine (kommentarfreie) Quelle von entwicklung-daten.js nach (h).
+ * @param quelltext - Quelltext ohne Kommentare
+ * @returns Liste der Verstöße (leer = grün)
+ */
+function verstoesseGegenH(quelltext) {
+  const verstoesse = []
+  if (!H_IMPORT_MUSTER.test(quelltext)) verstoesse.push('importiert filtereAttentionWorkflows nicht aus attention-daten.js')
+  if (!H_AUFRUF_MUSTER.test(quelltext)) verstoesse.push('ruft filtereAttentionWorkflows nicht auf (nur importiert)')
+  if (H_EIGENE_REGEL_MUSTER.test(quelltext)) verstoesse.push('prüft naechster.art selbst — „wartet auf den Menschen“ gehört ausschließlich in attention-daten.js, sonst laufen Board und Entscheidungen auseinander')
+  return verstoesse
+}
+for (const verstoss of verstoesseGegenH(entwicklungDatenQuelltext)) befunde.push(`(h) entwicklung-daten.js ${verstoss}`)
+
+// (h-kal) Rot-Kalibrierung von (h), Muster (e-kal).
+const H_KAL_IMPORT = "import { filtereAttentionWorkflows } from './attention-daten.js'\n"
+const kalibrierungH = [
+  ['eigene Halt-Regel', `${H_KAL_IMPORT}const wartet = (w) => filtereAttentionWorkflows([w]).length > 0 || w.naechster?.art === 'haltFreigabe'`, true],
+  ['nur importiert, nie aufgerufen', `${H_KAL_IMPORT}const x = 1`, true],
+  ['kein Import', "const wartet = (w) => filtereAttentionWorkflows([w]).length > 0", true],
+  ['sauber', `${H_KAL_IMPORT}const wartet = (w) => filtereAttentionWorkflows([w]).length > 0`, false],
+]
+for (const [name, quelltext, erwartetRot] of kalibrierungH) {
+  if (verstoesseGegenH(quelltext).length > 0 !== erwartetRot) befunde.push(`(h-kal) Rot-Kalibrierung '${name}': erwartet ${erwartetRot ? 'rot' : 'grün'}, Gate urteilt anders`)
+}
+
 // ─── (g) Syntaxprüfung (node --check) ───────────────────────────────────────
-for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/views/nutzung.js', 'public/leitstand/attention-daten.js', 'public/leitstand/fokus-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
+for (const pfad of ['public/leitstand/views/workboard.js', 'public/leitstand/views/attention.js', 'public/leitstand/views/dashboard.js', 'public/leitstand/views/nutzung.js', 'public/leitstand/attention-daten.js', 'public/leitstand/fokus-daten.js', 'public/leitstand/entwicklung-daten.js', 'public/leitstand/api.js', 'public/leitstand/app.js']) {
   try {
     execFileSync(process.execPath, ['--check', pfad], { encoding: 'utf8' })
   } catch (fehler) {

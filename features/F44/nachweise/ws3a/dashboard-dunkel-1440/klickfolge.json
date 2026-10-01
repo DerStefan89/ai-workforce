@@ -1,0 +1,66 @@
+{
+  "url": "http://127.0.0.1:4381/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-dashboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "B3 Rolle",
+        "selector": "#uebersicht-cockpit .cockpit-role h2"
+      },
+      {
+        "name": "B7 erste Entscheidung",
+        "selector": "#uebersicht-fokus .pm-decision h3"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/dashboard (Regression F-913)",
+      "warteAufSelector": {
+        "selector": "#uebersicht-cockpit .cockpit-role h2, #uebersicht-erster-schritt .first-step",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-dashboard.webp"
+    }
+  ]
+}

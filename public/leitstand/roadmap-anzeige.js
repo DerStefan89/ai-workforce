@@ -12,13 +12,14 @@
  * - public/leitstand/views/roadmap.js
  * - public/leitstand/views/dashboard.js (F44 WS-2b: aktueller Meilenstein, Fortschrittsring, Vier Werte,
  *   Weg zum Produkt, Auswahl des Entwicklungsstands)
+ * - public/leitstand/views/workboard.js (F44 WS-3a: statusKategorie für den Kartenstatus von Feature-Akten)
  * - public/leitstand/roadmap-anzeige.test.mjs (node:test)
  *
  * Wichtig:
  * - Import-sicher: kein Zugriff auf DOM, Storage oder Netz, keine Abhängigkeit — in Node
  *   importierbar.
- * - Die Bento-Karte im Workboard (views/workboard.js) folgt bis WS-3 einer eigenen, engeren
- *   Regel (nur LAEUFT hervorgehoben); sie entfällt mit WS-3 (F-892).
+ * - Die frühere Bento-Karte „Roadmap“ im Workboard mit eigener, engerer Regel ist seit F44 WS-3a
+ *   entfernt (F-892).
  */
 
 /** Status eines abgeschlossenen Meilensteins bzw. eines abgenommenen Features. */
