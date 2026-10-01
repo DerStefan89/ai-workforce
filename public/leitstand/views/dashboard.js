@@ -745,9 +745,9 @@ function betriebBlock() {
     return `<a href="${hash}">${tHtml(schluessel)} ${wertHtml}</a>`
   }
   return `<p class="uebersicht-betrieb"><span class="eyebrow">${tHtml('uebersicht.betrieb.eyebrow')}</span>
-      ${eintrag('uebersicht.betrieb.laeufe', zustand?.laeufe, '#/runs')}
+      ${eintrag('uebersicht.betrieb.laeufe', zustand?.laeufe, '#/ausfuehrungen')}
       ${eintrag('uebersicht.betrieb.workflows', zustand?.workflows, '#/runs')}
-      ${eintrag('uebersicht.betrieb.startfehler', zustand?.startfehler, '#/runs')}
+      ${eintrag('uebersicht.betrieb.startfehler', zustand?.startfehler, '#/ausfuehrungen')}
     </p>`
 }
 

@@ -1523,22 +1523,6 @@ svg.icon {
   color: var(--color-text-muted);
 }
 
-/* QA-Befund F29 WS-2b: .card liefert Padding var(--space-4xl), gedacht für Einzel-/Detailblöcke
-   (Muster #workboard-detail) — bei einer LISTE wiederholter .card.lauf-Einträge summierte sich
-   das mit dem margin-bottom unten zu deutlich mehr Scroll-Aufwand als vorher. Padding hier gezielt
-   auf den kompakteren, vor WS-2b bereits genutzten Wert reduziert (Muster #auftrag-start-Padding
-   vor diesem Auftrag), statt auf .list-row umzustellen — ein Lauf trägt eine eigene
-   Kopfdaten-Tabelle plus zwei Buttons, kein einzeiliges Zeilenformat wie workboard.js. */
-.lauf {
-  padding: var(--space-2xl);
-  margin-bottom: var(--space-4xl);
-}
-
-.lauf h2 {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xl);
-}
-
 table {
   border-collapse: collapse;
   width: 100%;
@@ -1677,14 +1661,6 @@ th {
   margin-top: var(--space-lg);
 }
 
-/* F29 WS-2b: Farbe/Chrome kommen jetzt von .btn (index.html/runs.js) — hier nur noch die
-   Positionierung neben der Überschrift, spezifisch für diese Stelle im Layout. */
-.wiederaufnahme-btn, .details-btn {
-  font-size: var(--font-size-sm);
-  vertical-align: middle;
-  margin-left: var(--space-md);
-}
-
 .fehler {
   color: var(--color-danger-text);
   font-weight: 600;
@@ -1772,22 +1748,8 @@ th {
   max-width: 100%;
 }
 
-.startfehler-eintrag {
-  font-size: var(--font-size-md);
-  margin: var(--space-xs) 0;
-}
-
-/* F29 WS-2b: Box-Optik kommt jetzt von .card — hier nur noch der Abstand zur Liste darüber
-   (Muster #workboard-detail). */
-#lauf-detail {
-  margin-top: var(--space-3xl);
-}
-
-#lauf-detail h2 {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-xl);
-}
-
+/* F44 WS-5a: .lauf, .startfehler-eintrag und die Kartenregeln von #lauf-detail entfallen — Liste, Startfehler
+   und Lauf-Detail stehen im V10-Stil (Abschnitt „Ausführungen“ am Dateiende). */
 .detail-block {
   margin-bottom: var(--space-3xl);
 }
@@ -1823,7 +1785,7 @@ th {
 }
 
 /* F29 WS-2c: Chrome der Details-Schaltfläche kommt jetzt von .btn — hier nur noch die
-   Positionierung neben der Überschrift (Muster .wiederaufnahme-btn/.details-btn,
+   Positionierung neben der Überschrift (früheres Muster der Laufliste, entfallen mit F44 WS-5a;
    views/runs.js). .workflow-lauf-verweis bleibt bewusst OHNE .btn: sie ist ein Werteverweis in
    einer Tabellenzelle (Sprung zum referenzierten Lauf), keine Aktion an diesem Workflow — die
    Positionsregel unten gilt nur noch für die eigene Feineinstellung dieses Verweises. */
@@ -5263,11 +5225,16 @@ th {
   margin-bottom: 14px;
 }
 
-#workflows.line-list {
+#workflows.line-list,
+#laeufe.line-list {
   border-top: 1px solid var(--line);
 }
 
-#view-runs .workflow-zeile {
+#view-runs .workflow-zeile,
+#view-runs .lauf-zeile {
+  /* F44 WS-5a (design-guardian, 200 % Zoom): reicht die Breite nicht, rückt die rechte Spalte als Ganzes
+     unter den Text, statt den Text Zeichen für Zeichen umzubrechen. */
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 20px;
   padding: 20px 5px;
@@ -5276,26 +5243,32 @@ th {
   text-decoration: none;
 }
 
-#view-runs .workflow-zeile:hover {
+#view-runs .workflow-zeile:hover,
+#view-runs .lauf-zeile:hover {
   background: var(--nav-hover-bg);
 }
 
-#view-runs .workflow-zeile:focus-visible {
+#view-runs .workflow-zeile:focus-visible,
+#view-runs .lauf-zeile:focus-visible {
   outline: 2px solid var(--mint);
   outline-offset: 2px;
 }
 
-#view-runs .workflow-zeile-text {
+#view-runs .workflow-zeile-text,
+#view-runs .lauf-zeile-text {
+  flex: 1 1 16rem;
   min-width: 0;
 }
 
-#view-runs .workflow-zeile h3 {
+#view-runs .workflow-zeile h3,
+#view-runs .lauf-zeile h3 {
   margin: 0 0 5px;
   font-size: 19px;
   overflow-wrap: anywhere;
 }
 
-#view-runs .workflow-zeile p {
+#view-runs .workflow-zeile p,
+#view-runs .lauf-zeile p {
   margin: 0;
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -5305,10 +5278,15 @@ th {
   margin-top: 4px;
 }
 
-#view-runs .workflow-zeile .row-end {
+#view-runs .workflow-zeile .row-end,
+#view-runs .lauf-zeile .row-end {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 24px;
+  gap: 8px 24px;
+  margin-left: auto;
+  max-width: 100%;
   flex-shrink: 0;
   text-align: right;
   color: var(--muted);
@@ -5622,36 +5600,52 @@ th {
 }
 
 @media (max-width: 800px) {
+  /* F44 WS-5a (Prüfpunkt WS-4b, 200 % Zoom): im zweispaltigen Raster stehen Beschriftung und Wert
+     nebeneinander — der Wert bekommt denselben Abstand nach oben wie die Beschriftung und liegt auf
+     ihrer Grundlinie (vorher stand er durch 5 px gegen 23 px Außenabstand etwa 10 px höher). */
   .workflow-seite .summary dl {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0 20px;
+    align-items: baseline;
+  }
+
+  .workflow-seite .summary dd {
+    margin-top: 23px;
   }
 }
 
 @media (max-width: 700px) {
-  #view-runs .workflow-zeile {
+  #view-runs .workflow-zeile,
+  #view-runs .lauf-zeile {
     align-items: flex-start;
     gap: 12px;
   }
 
   /* Vorlage: .list-row .row-end als Spalte, h3 18px, .status 9px; .summary dl wieder einspaltig. */
-  #view-runs .workflow-zeile .row-end {
+  #view-runs .workflow-zeile .row-end,
+  #view-runs .lauf-zeile .row-end {
     flex-direction: column;
     align-items: flex-end;
     gap: 8px;
   }
 
-  #view-runs .workflow-zeile h3 {
+  #view-runs .workflow-zeile h3,
+  #view-runs .lauf-zeile h3 {
     font-size: 18px;
   }
 
-  #view-runs .workflow-zeile .ablauf-status {
+  #view-runs .workflow-zeile .ablauf-status,
+  #view-runs .lauf-zeile .ablauf-status {
     font-size: 9px;
   }
 
   .workflow-seite .summary dl {
     display: block;
+  }
+
+  .workflow-seite .summary dd {
+    margin-top: 5px;
   }
 
   .workflow-dialog {
@@ -5998,4 +5992,187 @@ th {
 .empfehlung-liste .check input[type='checkbox']:disabled {
   opacity: 1;
   cursor: default;
+}
+
+/* ─────────── Ausführungen (F44 WS-5a, Vorlage V10 d_arbeit_verlauf, d_ausfuehrung_failed) ───────────
+   Register-Reiter unter #/runs (.tabs der Vorlage), das Register „Ausführungen“ (Hinweisnotiz, Laufliste
+   .lauf-zeile wie .workflow-zeile, Startfehler) und das Lauf-Detail #/runs/<laufId> als Seite
+   (.workflow-seite.lauf-seite: Notiz je Lage, Timeline, Einordnung, vier Aufklappbereiche) samt
+   #lauf-dialog (.workflow-dialog). Maße wie die Vorlage, Farben nur über Tokens; kein display auf
+   Containern mit hidden-Attribut (F-622) — die Seite blendet Kopf und Register über eine Klasse aus. */
+#view-runs.lauf-seite-offen > :not(#lauf-detail) {
+  display: none;
+}
+
+#lauf-detail h1:focus,
+#lauf-detail h1:focus-visible,
+#lauf-meldung:focus,
+#lauf-meldung:focus-visible,
+#lauf-dialog-meldung:focus,
+#lauf-dialog-meldung:focus-visible {
+  outline: none;
+}
+
+#ausfuehrungen-abschnitt .ausfuehrung-hinweis {
+  margin: 0 0 28px;
+}
+
+#ausfuehrungen-abschnitt .ausfuehrung-hinweis p,
+#ausfuehrungen-abschnitt .ausfuehrung-hinweis strong {
+  display: inline;
+  margin: 0;
+}
+
+#view-runs .lauf-zeile p.lauf-zeile-bruch {
+  margin-top: 4px;
+  color: var(--red);
+}
+
+#view-runs .lauf-kenntnis {
+  font-size: 10px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+#view-runs .lauf-zeit {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+#startfehler-abschnitt {
+  margin-top: 40px;
+}
+
+#startfehler-abschnitt h2 {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+#startfehler-abschnitt > .subtle {
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+#startfehler .startfehler-liste {
+  border-top: 1px solid var(--line);
+}
+
+#startfehler .startfehler-zeile {
+  padding: 14px 5px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+#startfehler .startfehler-zeile p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#startfehler .startfehler-zeile .lauf-zeit {
+  margin-left: 10px;
+  color: var(--muted);
+}
+
+#startfehler .startfehler-text {
+  margin-top: 4px;
+  color: var(--ink);
+}
+
+/* Lauf-Detail */
+.lauf-seite #lauf-notiz .note {
+  margin: 0 0 30px;
+}
+
+.lauf-seite .note .action-row {
+  margin: 16px 0 0;
+}
+
+.lauf-seite .lauf-daten {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+.lauf-seite .lauf-kenntnis-zeile {
+  color: var(--ink);
+}
+
+.lauf-seite #lauf-meldung {
+  margin: 0 0 20px;
+}
+
+.lauf-seite details.workflow-technik + details.workflow-technik {
+  margin-top: 0;
+  border-top: 0;
+}
+
+.lauf-seite .lauf-checkpoints {
+  min-width: 980px;
+}
+
+/* Die Checkpoint-Tabelle scrollt waagerecht in .ablauf-tabelle, statt Zeitstempel, Typ und Badges mitten im
+   Wort zu brechen (Muster .ablauf-schritte); nur „Aufgabe“ (lineage.beschreibung, Spalte 11) bricht um. */
+.lauf-seite .lauf-checkpoints th,
+.lauf-seite .lauf-checkpoints td:not(:nth-child(11)) {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.lauf-seite .lauf-checkpoints td:nth-child(11) {
+  min-width: 220px;
+}
+
+/* Fehlerzustand des Details: nur die rote Notiz, kein leeres Gerüst (Klasse statt hidden, F-622). */
+.lauf-seite.lauf-nicht-ladbar .split {
+  display: none;
+}
+
+#lauf-detail-fehler:focus,
+#lauf-detail-fehler:focus-visible {
+  outline: none;
+}
+
+.lauf-seite .detail-block + .detail-block {
+  margin-top: 22px;
+}
+
+.workflow-dialog select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.workflow-dialog select:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+/* Gemeinsames Raster von #/workflows/<id> und #/runs/<laufId> (Prüfpunkt WS-4b): ab 1280 px steht
+   die Chatspalte dauerhaft daneben (bis WS-8), die Seite ist dann schmaler als die Viewport-Regel
+   annimmt. Ist die Seite selbst höchstens 900 px breit, bekommt „Auf einen Blick“ bzw. „Einordnung“
+   die schmale Spalte der Vorlage (220 px, Abstand 24 px) — so passen „Ergebnis abnehmen“,
+   „Anpassung wünschen“ und „Ablehnen“ bei 1440 px in eine Zeile. Unter 801 px gilt weiter die
+   Viewport-Regel (eine Spalte). */
+.workflow-seite {
+  container: seite / inline-size;
+}
+
+@media (min-width: 801px) {
+  @container seite (max-width: 900px) {
+    .workflow-seite .split {
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 24px;
+    }
+
+    .workflow-seite .summary {
+      padding-left: 22px;
+    }
+  }
 }

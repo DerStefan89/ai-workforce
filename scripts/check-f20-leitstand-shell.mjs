@@ -449,6 +449,11 @@ async function testReparaturEinreichen(tab, basisUrl, workflowId) {
 
 async function testEntscheidungKlaerung(tab, basisUrl, laufId) {
   await navigiere(tab, `${basisUrl}/#/runs/${encodeURIComponent(laufId)}`)
+  // F44 WS-5a (Vorlage V10 d_ausfuehrung_failed, Abgleich F-725 G8): die Maske „Klärung auflösen“ steht
+  // im Dialog #lauf-dialog — erst die Notiz-Aktion öffnet ihn, dann werden Ergebnis und Begründung
+  // gesetzt (Muster WS-4a: Klickfolge öffnet zuerst den Dialog). IDs und POST unverändert.
+  await tab.auswerten("document.querySelector('#lauf-notiz .lauf-aktion[data-aktion=\"terminal-oeffnen\"]')?.click()")
+  await warte(tab, 300)
   const formularVorhanden = await tab.auswerten("document.getElementById('entscheidung-terminal-speichern') !== null")
   if (!formularVorhanden) {
     befunde.push(`Entscheidung (Klärung auflösen): Entscheidungs-Formular nicht im DOM (Detail-Titel: '${await tab.auswerten("document.getElementById('lauf-detail-titel')?.textContent ?? ''")}').`)
@@ -464,7 +469,7 @@ async function testEntscheidungKlaerung(tab, basisUrl, laufId) {
   await warte(tab, 500)
   const antwort = await fetch(`${basisUrl}/api/laeufe/${encodeURIComponent(laufId)}`).then((r) => r.json())
   if (antwort.laufStatus?.status !== 'ABGESCHLOSSEN' || antwort.laufStatus?.ergebnis !== 'ERFOLGREICH') {
-    befunde.push(`Entscheidung (Klärung auflösen): LaufStatus nach Klick erwartet ABGESCHLOSSEN/ERFOLGREICH, erhalten ${JSON.stringify(antwort.laufStatus)}. Fehler: '${await tab.auswerten("document.getElementById('entscheidung-terminal-fehler')?.textContent ?? ''")}'`)
+    befunde.push(`Entscheidung (Klärung auflösen): LaufStatus nach Klick erwartet ABGESCHLOSSEN/ERFOLGREICH, erhalten ${JSON.stringify(antwort.laufStatus)}. Fehler: '${await tab.auswerten("document.getElementById('lauf-dialog-meldung')?.textContent ?? ''")}'`)
     return
   }
   console.log('✓ Entscheidung (Klärung auflösen): Klick auf "Entscheidung speichern" hat real POST /api/entscheidungen ausgelöst (Lauf ABGESCHLOSSEN/ERFOLGREICH).')

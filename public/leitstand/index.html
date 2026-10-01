@@ -38,7 +38,7 @@
         <a href="#/roadmap" data-nav-view="roadmap"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6" /></svg><span data-i18n="nav.roadmap">Roadmap</span></a>
         <div class="nav-gruppe">
           <a href="#/workboard" data-nav-view="workboard"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21V11h4v10ZM10 21V6h4v15ZM17 21V2h4v19Z" /></svg><span data-i18n="nav.entwicklung">Entwicklung</span></a>
-          <a href="#/runs" data-nav-view="runs" class="nav-unter"><span data-i18n="nav.ausfuehrungen">Ausführungen</span></a>
+          <a href="#/ausfuehrungen" data-nav-view="runs" class="nav-unter"><span data-i18n="nav.ausfuehrungen">Ausführungen</span></a>
           <a href="#/projekt" data-nav-view="projekt" class="nav-unter"><span data-i18n="nav.auftragStart">Auftrag &amp; Start</span></a>
         </div>
         <a href="#/attention" data-nav-view="attention"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2ZM12 9v5M12 17v1" /></svg><span data-i18n="nav.entscheidungen">Entscheidungen</span></a>
@@ -330,6 +330,15 @@
               <a class="button primary" href="#/projekt"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16" /></svg><span data-i18n="ablauf.runs.auftragAnlegen">Auftrag anlegen</span></a>
             </div>
 
+            <!-- F44 WS-5a (Vorlage V10 d_arbeit_verlauf, Abgleich F-725 F0, G1): zwei echte Register als
+                 Links. „Aufträge“ = #/runs, „Ausführungen“ = #/ausfuehrungen (nicht #/runs/…, das
+                 Muster #/runs/<laufId> würde mit einer laufId „ausfuehrungen“ kollidieren). views/runs.js
+                 setzt aria-current und .active und blendet das jeweils andere Register aus. -->
+            <nav id="runs-register" class="tabs" aria-label="Register" data-i18n-aria-label="ausfuehrung.register">
+              <a href="#/runs" data-register="auftraege" data-i18n="ausfuehrung.reiter.auftraege">Aufträge</a>
+              <a href="#/ausfuehrungen" data-register="ausfuehrungen" data-i18n="ausfuehrung.reiter.ausfuehrungen">Ausführungen</a>
+            </nav>
+
             <!-- Workflows: Projektion von GET /api/workflows über das Zustands-Aggregat. Die Lage je
                  Workflow ist das Verdikt des Servers (naechster), nicht eine eigene Rechnung der
                  Oberfläche. -->
@@ -337,14 +346,21 @@
               <h2 data-i18n="ablauf.liste.titel">Aufträge</h2>
               <div id="workflows" class="line-list"></div>
             </section>
-          </div>
 
-          <!-- Startfehler: flüchtige Projektion (GET /api/startfehler) — geht bei
-               Serverneustart verloren. -->
-          <section id="startfehler-abschnitt" class="card">
-            <h2>Startfehler</h2>
-            <div id="startfehler"><p class="leer">Keine Startfehler.</p></div>
-          </section>
+            <!-- F44 WS-5a: Register „Ausführungen“ — Laufliste (Kopfdaten aus GET /api/laeufe über das
+                 Zustands-Aggregat) und die flüchtige Startfehler-Projektion (geht bei Serverneustart
+                 verloren). Beide ersetzt der Poll nur bei geändertem HTML. -->
+            <section id="ausfuehrungen-abschnitt" hidden>
+              <div class="note ausfuehrung-hinweis"><strong data-i18n="ausfuehrung.hinweis.titel">Eine Ausführung ist ein einzelner Arbeitsschritt.</strong> <p data-i18n="ausfuehrung.hinweis.text">Zum Beispiel die Umsetzung oder ein Code Review. Mehrere Ausführungen gehören zu einem Auftrag.</p></div>
+              <h2 class="sr-only" data-i18n="ausfuehrung.liste.titel">Ausführungen</h2>
+              <div id="laeufe" class="line-list"></div>
+              <section id="startfehler-abschnitt">
+                <h2 data-i18n="ausfuehrung.startfehler.titel">Startfehler</h2>
+                <p class="subtle" data-i18n="ausfuehrung.startfehler.hinweis">Flüchtig: Startfehler gehen bei einem Neustart des Servers verloren.</p>
+                <div id="startfehler"></div>
+              </section>
+            </section>
+          </div>
 
           <!-- F44 WS-4a (Vorlage V10 d_workflow_neu, Abgleich F-725 F2, F3–F5, F10, F12): das Detail
                #/workflows/<id> als ganze Seite. Sechs Container statt einem: #workflow-detail-inhalt
@@ -391,13 +407,49 @@
             </div>
           </section>
 
-          <div id="laeufe"></div>
-
-          <section id="lauf-detail" class="card" hidden>
-            <h2>Detail: <span id="lauf-detail-titel"></span> <button id="lauf-detail-schliessen" class="btn">Schließen</button></h2>
-            <p id="lauf-detail-fehler" class="fehler" hidden></p>
-            <div id="lauf-detail-inhalt"></div>
-            <div id="entscheidung-block"></div>
+          <!-- F44 WS-5a (Vorlage V10 d_ausfuehrung_failed, Abgleich F-725 G2–G9, F7): das Lauf-Detail
+               #/runs/<laufId> als ganze Seite. Geladen beim Öffnen und über „Aktualisieren“, nicht
+               gepollt (F-363). Die Notiz je Lage trägt die Aktionen; Kenntnisnahme, Klärung, Rückfrage
+               und Abbruch laufen über #lauf-dialog. Die Aufklappbereiche (details) liegen außerhalb der
+               neu gerenderten Container, damit sie beim Aktualisieren offen bleiben. -->
+          <section id="lauf-detail" class="v10-seite workflow-seite lauf-seite" aria-labelledby="lauf-detail-titel" hidden>
+            <button type="button" id="lauf-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span data-i18n="lauf.zurueck">Alle Ausführungen</span></button>
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="lauf.eyebrow">Ein Arbeitsschritt</div>
+                <h1 id="lauf-detail-titel" tabindex="-1"></h1>
+                <p id="lauf-detail-beschreibung" class="description"></p>
+              </div>
+              <div id="lauf-detail-status"></div>
+            </div>
+            <div id="lauf-detail-fehler" class="note red" tabindex="-1" hidden></div>
+            <div class="split">
+              <div class="workflow-hauptspalte">
+                <div id="lauf-notiz"></div>
+                <p id="lauf-meldung" class="fehler" tabindex="-1" hidden></p>
+                <h2 data-i18n="lauf.passiert.titel">Was passiert ist</h2>
+                <div id="lauf-timeline"></div>
+                <div id="lauf-aufklapp">
+                  <details id="lauf-auftrag" class="workflow-technik">
+                    <summary data-i18n="lauf.aufklapp.auftrag">Auftrag, Kontext &amp; Nachweise</summary>
+                    <div id="lauf-auftrag-inhalt"></div>
+                  </details>
+                  <details id="lauf-herkunft" class="workflow-technik">
+                    <summary data-i18n="lauf.aufklapp.herkunft">Worker, Modell &amp; Herkunft</summary>
+                    <div id="lauf-herkunft-inhalt"></div>
+                  </details>
+                  <details id="lauf-protokoll" class="workflow-technik">
+                    <summary data-i18n="lauf.aufklapp.protokoll">Technisches Protokoll</summary>
+                    <div id="lauf-protokoll-inhalt"></div>
+                  </details>
+                  <details id="lauf-faehigkeiten" class="workflow-technik">
+                    <summary data-i18n="lauf.aufklapp.faehigkeiten">Tatsächlich verwendete Fähigkeiten</summary>
+                    <div id="lauf-faehigkeiten-inhalt"></div>
+                  </details>
+                </div>
+              </div>
+              <aside id="lauf-einordnung" class="summary"></aside>
+            </div>
           </section>
         </section>
 
@@ -567,6 +619,8 @@
        Öffnen aus dem aktuellen Detail und öffnet ihn mit showModal(); Escape und „Abbrechen“
        schließen ohne Wirkung. Kein aria-live hier — die einzige Live-Region ist die Persona. -->
   <dialog id="workflow-dialog" class="v10-seite workflow-dialog" aria-labelledby="workflow-dialog-titel"></dialog>
+  <!-- F44 WS-5a: Dialog der Lauf-Bedienung (Kenntnisnahme, Klärung auflösen, Rückfrage beantworten, Lauf abbrechen); Inhalt und Steuerung in views/lauf-detail.js bzw. views/runs.js. -->
+  <dialog id="lauf-dialog" class="v10-seite workflow-dialog" aria-labelledby="lauf-dialog-titel"></dialog>
 
   <script type="module" src="/app.js"></script>
 </body>

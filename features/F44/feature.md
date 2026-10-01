@@ -18,8 +18,9 @@ Einstieg“ gemergt (#292, `71ff28b`). WS-2 ist geteilt (Challenger, 01.10.2026)
 „Entscheidungen & Roadmap“ gemergt (#293, `7530cbf`); WS-2b „Übersicht“ gemergt (#294, `67e757c`).
 WS-3 ist geteilt (Auftrag Stefan, 01.10.2026): WS-3a „Board & Listen“ gemergt (#295, `1191231`);
 WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist geteilt (Auftrag Stefan,
-01.10.2026): WS-4a „Ablauf & Freigabe“ in Arbeit seit 01.10.2026 (Branch `feat/f725-ws4a-ablauf`);
-WS-4b „Klärung, Reparatur & Abnahme“ und WS-5 bis WS-8 offen.
+01.10.2026): WS-4a „Ablauf & Freigabe“ gemergt (#297, `493d953`); WS-4b „Klärung, Reparatur & Abnahme“
+gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ in Arbeit seit
+01.10.2026 (Branch `feat/f725-ws5a-ausfuehrungen`); WS-5b „Auftrag & Direktstart“ und WS-6 bis WS-8 offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -77,7 +78,8 @@ abgehakten F-Zeilen des Pakets.
 | **WS-3b** Detail, Bauen, Click-to-Work | Abschnitt E8–E13 (Detail, „Auftrag vorbereiten“, Click-to-Work samt Git-Block, 409 mit „Wiederholen“, E13 als kommt), F-914 | f21-ws2, f22, `empfehlung-*.test.mjs` |
 | **WS-4a** Ablauf & Freigabe | F0 (Liste „Aufträge“ unter `#/runs`), F2 (Timeline „Der Weg zum Ergebnis“), F3, F3b (Ablehnen), F4, F5 (Freigabedialog mit Katalog-Empfehlung und „Freigeben & installieren“), F10 (Stoppdialog), F12 (Technischer Ablauf); Invariante „Anzeige = Start“; F-874, F-923, F-925, F-926 (Workflow-Detail) | f15-oberflaeche (IDs und Texte), `empfehlung-*.test.mjs`, f20-shell (CI), `projekt-wechsel.test.mjs` |
 | **WS-4b** Klärung, Reparatur & Abnahme | F6 (Architekt-Entscheidung), F8 (Reparatur), F9 (Sichtung), F13–F18 (Abnahme samt Prüfung wiederholen); Restyling des bisherigen Bedienblocks | f15-oberflaeche, f23, f42 |
-| **WS-5** Ausführungen & Direktstart | Abschnitt G, dazu F7 (Lauf-Entscheidung „Antwort auf Rückfrage“) und F1 (Auftrag anlegen), beide aus WS-4 | f12 (Markup der Laufakte), `runs.test.mjs` |
+| **WS-5a** Ausführungen | G1–G9 und F7: Register „Aufträge“/„Ausführungen“ (`#/runs`, `#/ausfuehrungen`), Lauf-Detail `#/runs/<laufId>` als Seite mit Notiz je Lage, Timeline, Einordnung, Aufklappbereichen und Dialog (Kenntnisnahme, Klärung, Rückfrage, Abbruch); Prüfpunkte aus WS-4b (Raster von `#/workflows/<id>`) | f12 (f)/(g), f15 (f), f20-leitstand-shell (CI), `runs.test.mjs`, i18n |
+| **WS-5b** Auftrag & Direktstart | F1 (Auftrag anlegen) sowie G10 und G11 (Direktstart mit Werkzeugsatz, Evidenzdateien, laufId; Auswahl der Aufträge) in `#/projekt` nach d_auftrag_neu | offen |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
@@ -107,7 +109,7 @@ Routen nur für neue Seiten (`docs/design/abgleich-f725.md` §4 Punkt 2 und
 |---|---|
 | Produktübersicht | `#/dashboard` |
 | Roadmap | `#/roadmap` (neu) |
-| Entwicklung | `#/workboard`, Detail `#/workboard/<id>`; Ablauf `#/workflows/<id>`; Ausführungen `#/runs`, `#/runs/<id>`; Auftrag & Direktstart `#/projekt` |
+| Entwicklung | `#/workboard`, Detail `#/workboard/<id>`; Ablauf `#/workflows/<id>`; Ausführungen `#/runs` (Register „Aufträge“) und `#/ausfuehrungen` (Register „Ausführungen“, seit WS-5a), Detail `#/runs/<id>`; Auftrag & Direktstart `#/projekt` |
 | Entscheidungen | `#/attention` |
 | Produktzyklus / Brain | `#/produktzyklus`, `#/brain` (neu, Platzhalter) |
 | Alle Produkte | `#/projekte-uebersicht` |
@@ -999,6 +1001,125 @@ erledigt: Notizen stehen über der Timeline, die Aktionszeile direkt darunter; k
   „Ablehnen“ in eine zweite Zeile; bei 200 % Zoom stehen die Werte in „Auf einen Blick“ etwa 10 px höher als
   ihre Beschriftungen.
 - F-941: Dialogsteuerung aus `views/workflows.js` in ein eigenes Modul schneiden, bevor weitere Bedienung dazukommt.
+
+## Stand WS-5a „Ausführungen“ (01.10.2026)
+Branch `feat/f725-ws5a-ausfuehrungen` (Basis `772f4e5`), nicht committet. Vorlage V10 d_arbeit_verlauf,
+d_ausfuehrung_failed (d/m/l); Abgleich F-725 G1–G9, F7 (Vermerk §5.1). Nur Leitstand-UI, keine Serveränderung.
+- **Register** unter `#/runs` (d_arbeit_verlauf, nur die zwei echten): „Aufträge“ = `#/runs` (Standard, Liste
+  `#workflows-abschnitt` unverändert) und „Ausführungen“ = `#/ausfuehrungen` (View `runs`). Reiter als Links mit
+  `aria-current` und `.active`. Abweichung von §5.2: `#/runs/<laufId>` matcht `[^/]+` und würde mit einer laufId
+  „ausfuehrungen“ kollidieren. Der Sidebar-Eintrag „Ausführungen“ führt nach `#/ausfuehrungen` (Name = Register);
+  ru/tr nutzen durchgehend einen Begriff („Запуски“, „Çalıştırmalar“). Übersicht (B16: Läufe, Startfehler), Reiter „Ausführungen“ der Entwicklung und der
+  Projektwechsel auf einem Lauf-Detail (`shell.js` `DETAIL_ROUTEN`, `runs.js` Hook) führen nach `#/ausfuehrungen`.
+- **G1 Register „Ausführungen“:** Hinweisnotiz der Vorlage, Linienliste: Titel = `auftragsbezug.titel` (sonst
+  laufId), darunter laufId als code, Kettenintegrität nur bei Bruch (rot), rechts Statuspunkt (Erfolgreich,
+  Fehlgeschlagen, Verweigert, Klärung nötig, Läuft — „Läuft“ aus `zustand.aktiverLauf`, löst F-844), „Zur Kenntnis
+  genommen“, Zeit über Intl, Pfeil; die ganze Zeile führt zu `#/runs/<laufId>` (Strg/Cmd-Klick neuer Tab). Worker und
+  Rolle stehen nicht in der Liste (F-942). Der Poll schreibt Liste und Startfehler nur bei geändertem HTML. Leer-
+  und Fehlerzustand im V10-Stil, keine Entwarnung bei `null`. Startfehler als Abschnitt im Register, gleiche Daten.
+- **Lauf-Detail `#/runs/<laufId>` als Seite** (d_ausfuehrung_failed, Muster `#/workflows/<id>`): „← Alle
+  Ausführungen“ (F-926: `history.back()` aus der Liste, Fokus auf der Zeile, sonst `navigiere`), Eyebrow „Ein
+  Arbeitsschritt“, h1 = Auftragstitel (sonst laufId), Unterzeile je Lage, Statuspunkt rechts; Spalte „Einordnung“:
+  Auftrag, Rolle (`kontextpaket.rolle`, lesbar), Worker (`workerName`), Ergebnis, Zeit (letzter gültiger Checkpoint).
+  Kopf, Register und Workflow-Seite blendet die Klasse `lauf-seite-offen` an `#view-runs` aus.
+- **Notiz je Lage** (`ermittleLaufLage`, Regeln von `renderEntscheidungBlock` F-828 inhaltlich exakt, `hatBypassVerdacht`):
+  a) Fehler (FEHLGESCHLAGEN, VERWEIGERT ohne Bypass): rot, Status neutral benannt, G3 „Ursache in Klartext“ als
+  Baustein „kommt“, vorhandene Servertexte roh (`non_execution_kind`, abgelehnte Werkzeuge); „Fehler zur Kenntnis
+  nehmen“ (G6) und „Fortsetzung vorbereiten“ (G7); schon zur Kenntnis genommen (`kenntnisgenommen` aus dem Aggregat) →
+  Zeile statt Knopf. b) Klärung (nicht aktiv): bernstein, `grund` roh, „Klärung auflösen“ (G8) und Fortsetzung.
+  c) Rückfrage (F7, VERWEIGERT mit Bypass-Verdacht, auch aktiv): Bypass-Daten, „Rückfrage beantworten“ und
+  Fortsetzung; im Nachlauf (aktiv) zusätzlich „Lauf abbrechen“ und keine Fortsetzung. d) läuft: „Stand beim Öffnen
+  (Uhrzeit)“, „Aktualisieren“ und „Lauf abbrechen“ (G9); nach einem angeforderten Abbruch steht der Knopf gesperrt
+  „Abbruch angefordert“, bis der Lauf nicht mehr aktiv ist. e) erfolgreich: keine Aktion. Der Abbruch hängt wie vorher
+  an `detail.aktiv`, nicht an der Lage. „Aktualisieren“ gibt es in jeder Lage (lädt das Detail neu, F-363 bleibt). „Fortsetzung vorbereiten“
+  folgt der bisherigen Wiederaufnahme-Regel (D-F10-1), nicht solange der Lauf aktiv ist; `wendeWiederaufnahmeAn`
+  unverändert. „Einordnung“ ohne die Zeile „Abnahme · Separat erforderlich“ der Vorlage (die Abnahme hängt am Auftrag,
+  nicht am Lauf; dafür „Zeit“).
+- **G2 „Was passiert ist“:** Timeline aus `detail.checkpoints` nach `sequenz`; Titel je typ über Schlüssel
+  (`lauf.passiert.typ.*`, Wirkungsmarke je Art) mit Rückfall auf den rohen typ, Unterzeile `lineage.beschreibung` roh
+  (ungültig: Gründe), Meta Zeit (Intl), Schritt, Ergebnis, Artefakt; Punkt rot bei ungültig, bernstein bei stale und
+  beim letzten Eintrag eines nicht erfolgreichen Laufs.
+- **G4/G5 Aufklappbereiche** (`<details>` außerhalb der neu gezeichneten Container, bleiben beim Aktualisieren offen):
+  „Auftrag, Kontext & Nachweise“, „Worker, Modell & Herkunft“ (Laufakte, Werte roh, Modelle mit Rang), „Technisches
+  Protokoll“ (Klärzustand-Tabelle, Rohstrom, Checkpoint-Tabelle samt Kettenintegrität und Zahl gültiger Checkpoints aus
+  den Kopfdaten des Servers — die Daten der entfallenen Kopfdaten-Tabelle der Liste; die Tabelle scrollt waagerecht
+  statt mitten im Wort zu brechen), „Tatsächlich verwendete Fähigkeiten“ (Zeile Beobachtung, echt, kein „kommt“).
+- **Dialog `#lauf-dialog`** (nativ, außerhalb der Container; G6, G8, F7, G9) mit eigener kleiner Steuerung in
+  `views/runs.js` (F-941 nicht geschnitten): Fokus auf dem Pflichtfeld (Abbruch: „Zurück“), Escape, genau ein POST
+  (Sperre: Knöpfe, Felder, Escape, „Abbrechen“, Wiederöffnen), Fehler (Pflicht, 400) im offenen Dialog, Erfolg → Dialog
+  zu, Meldung mit Fokus, `pollJetzt`, Detail neu. Späte Antworten zu einem anderen Lauf oder Projekt werden verworfen
+  (F-860); ein geänderter Stand (Aktualisieren, Kenntnisnahme im Aggregat) schließt einen offenen Dialog mit „Der Stand
+  hat sich geändert“. Kenntnisnahme und Klärung mit Pflichtbegründung, Rückfrage mit Pflichtantwort; der Abbruch ist
+  eine Bestätigung **ohne** Grundfeld (der Endpunkt speichert keinen Grund). Keine Live-Region im Dialog.
+- **Prüfpunkte WS-4b** auf `#/workflows/<id>` im gemeinsamen Raster behoben (gilt auch für das Lauf-Detail): ab 1280 px
+  steht die Chatspalte dauerhaft daneben (bis WS-8); `.workflow-seite` ist deshalb ein Container — bei höchstens 900 px
+  Seitenbreite (und Viewport über 800 px) bekommt die Seitenspalte 220 px statt 285 px, „Ablehnen“ steht bei 1440 px
+  in einer Zeile. Im zweispaltigen Raster (≤ 800 px, 200 % Zoom) haben Beschriftung und Wert denselben Abstand und
+  dieselbe Grundlinie. Die Reviewer-Notiz nennt keinen Schema-Pfad mehr (`abnahme.empfehlung.lauf`, vier Sprachen).
+- **Modulschnitt:** `views/lauf-detail.js` (rein rendernd, ohne api.js, in Node ohne DOM importierbar; Test
+  `views/lauf-detail.test.mjs`); `views/runs.js` (567 Zeilen) behält Laden, Dialogsteuerung und alle POSTs
+  (Test `views/runs-dialog.test.mjs`); `runs.test.mjs` prüft die Lageregeln F-828 und D-F10-1. `views/workflows.js`
+  nur um die Route `#/ausfuehrungen` ergänzt (schließt die Workflow-Seite). Alte Kartenregeln (`.lauf`,
+  `.startfehler-eintrag`, `#lauf-detail` mit Monospace) entfernt.
+- **i18n:** 163 Schlüssel `lauf.*`, `ausfuehrung.*` in de/en/tr/ru, Plural und Datum über Intl; Serverwerte (grund,
+  laufId, typ, Pfade, Statuswerte in Tabellen, beobachtung, Worker/Modell der Laufakte) roh.
+- **Gates:** f12 (f)/(g) lesen `views/lauf-detail.js` und prüfen Schlüssel plus de-Wert (Label↔Feld gepaart und
+  escaped, keine unqualifizierte „Modell“-Zeile; `auftrag_fehlt` genau einmal escaped über `t()` mit rohem
+  `{auftragId}`), Rotfälle belegt; f15 (f) Syntaxprüfung des neuen Moduls (Rotfall belegt), (c) unverändert;
+  f20-leitstand-shell (CI): die Klickfolge öffnet zuerst „Klärung auflösen“, IDs und POST unverändert; i18n-Gate grün.
+- **Nachweise** `features/F44/nachweise/ws5a/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner;
+  Leitstand dieses Worktrees auf Port 4381, feste Antworten): 13 Folgen, 47 WebP — Matrix je Darstellung (1440
+  dunkel und hell, 390 dunkel, 200 %, ru) über `#/ausfuehrungen`, `#/runs` mit Reitern, Lagen a, c, d und
+  `#/workflows/<id>` mit Abnahme; Dialog 390 hell; Kenntnisnahme (Pflicht, Erfolg, Zeile statt Knopf), Klärung mit
+  400 im Dialog und Escape, Rückfrage, Abbruch, „← Alle Ausführungen“ mit Fokus auf der Zeile, alle Aufklappbereiche
+  (bleiben nach „Aktualisieren“ offen), Leer- und Fehlerzustand, Detail 404. Kein waagerechter Überlauf.
+
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): alle drei „Nicht freigegeben“.
+  Eine Korrekturrunde, eingearbeitet:
+  - **Bypass-Fall im Nachlauf** (code-reviewer K1, qa 1): „Lauf abbrechen“ fehlte, „Fortsetzung“ erschien bei aktivem
+    Lauf — jetzt Abbruch an `aktiv`, `darfFortsetzen(…, aktiv)`; Test in `runs.test.mjs` (Rotfall belegt).
+  - **Abbruch angefordert** (qa 2): gesperrter Knopf statt erneut bedienbar (`runs-dialog.test.mjs`, Rotfall belegt).
+  - **Zustand beim Verlassen der View** (code-reviewer V2): ein Hash außerhalb von `#/runs`, `#/ausfuehrungen`,
+    `#/runs/<id>`, `#/workflows/<id>` schließt das Detail (späte Antworten verworfen, kein veralteter
+    `history.back()`); **Generation** je Laufwechsel (A → B → A verwirft die alte Antwort). Beides getestet, Rotfälle belegt.
+  - **Fortsetzung getestet** (code-reviewer V4, qa AT-2): Vorbelegung über `wendeWiederaufnahmeAn`, 404 als Meldung
+    mit Fokus, späte Antwort nach Laufwechsel verworfen.
+  - **Fokus statt Live-Region** für Fehler außerhalb des Dialogs, der Fortsetzung und des nicht ladbaren Details; der
+    Fehlerzustand blendet das leere Gerüst aus (Klasse `lauf-nicht-ladbar`) und eine alte Meldung.
+  - **Kettenintegrität vom Server** (Kopfdaten) statt eigener Rechnung; bei defekter Quelle bleibt `kenntnisgenommen`
+    beim letzten Stand; verworfene Antworten als `console.warn`; Zahlen im Rohstrom escaped; Timeline-Sortierung robust.
+  - **Design:** Listenzeilen bei 200 % rücken als Ganzes um statt Zeichen für Zeichen (`.lauf-zeile`, `.workflow-zeile`);
+    Checkpoint-Tabelle ohne Wortbruch; Timeline-Uhrzeit ohne Sekunden; Sidebar „Ausführungen“ → `#/ausfuehrungen`,
+    Begriffe in ru/tr vereinheitlicht; tote Regeln `.wiederaufnahme-btn`/`.details-btn` entfernt.
+  - Nachweise neu erzeugt (alle Folgen).
+  Nicht übernommen (Prüfpunkte unten): Wiederholen-Knopf im Fehlerzustand, Ergebnis einer Bedienung nach Navigation
+  während der Anfrage, zweimal Escape in Chrome, „beantwortet“-Marke in Lage c, Text der Lage d im Nachlauf,
+  Fokusverlust bei geänderter Liste.
+
+### Akzeptanzkriterien WS-5a
+- **WS5a-1** Register „Aufträge“ (`#/runs`) und „Ausführungen“ (`#/ausfuehrungen`) als Links mit `aria-current`;
+  Übersicht B16 und Projektwechsel führen nach `#/ausfuehrungen`.
+- **WS5a-2** Liste nach d_arbeit_verlauf (Titel, laufId, Bruch, Status inkl. „Läuft“, Kenntnisnahme, Zeit) samt
+  Startfehlern, Leer- und Fehlerzustand; Schreiben nur bei geändertem HTML (`lauf-detail.test.mjs`, `runs-dialog.test.mjs`).
+- **WS5a-3** Lauf-Detail als Seite nach d_ausfuehrung_failed mit Notiz je Lage a–e, Timeline, Einordnung und vier
+  Aufklappbereichen; Lageregeln F-828 unverändert (`runs.test.mjs`); Checkpoints und Kettenintegrität sichtbar.
+- **WS5a-4** Kenntnisnahme, Klärung, Rückfrage und Abbruch nur über `#lauf-dialog`: Pflichtangaben, genau ein POST,
+  späte Antworten verworfen, Stand-Änderung schließt (`runs-dialog.test.mjs`, Rotfälle belegt).
+- **WS5a-5** Prüfpunkte WS-4b erledigt (Ablehnen in einer Zeile bei 1440 px, Werte auf Höhe bei 200 %, kein
+  Schema-Pfad).
+- **WS5a-6** Texte in de/en/tr/ru, Gates f12, f15, i18n und `npm run check` grün; Render-Nachweise liegen vor.
+
+### Prüfpunkte für WS-5b
+- F1, G10, G11 in `#/projekt` nach d_auftrag_neu; „Fortsetzung vorbereiten“ landet dort (Vorbelegung über
+  `wendeWiederaufnahmeAn`) — die Vorbelegung muss im neuen Formular sichtbar bleiben.
+- In Lage a stehen drei Knöpfe; bei schmaler Hauptspalte rutscht „Aktualisieren“ in eine zweite Zeile.
+- Aus dem Prüfpass WS-5a (qa): Fehlerzustand des Details ohne „Erneut laden“; das Ergebnis einer Dialog-Bedienung geht
+  verloren, wenn man während der Anfrage die Seite verlässt (Verhalten festlegen); zweimaliges Escape während einer
+  hängenden Anfrage im echten Chrome nachprüfen; Lage c kennt nach einer gespeicherten Antwort kein „beantwortet“
+  (Server liefert kein Merkmal); Lage d im Nachlauf zeigt oben das Ergebnis, die Notiz „läuft noch“; ändert sich die
+  Liste, geht der Fokus einer Zeile verloren (wie bei „Aufträge“).
+- F-942 (Worker und Rolle in der Liste), F-363/F-365 (Detail nicht gepollt; ein 400 bei veraltetem Stand steht
+  jetzt im Dialog, „Aktualisieren“ holt den Stand) und F-941 (gemeinsames Dialogmodul) bleiben offen.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

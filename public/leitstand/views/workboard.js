@@ -5,7 +5,7 @@
  * d_arbeit_features.png; Abgleich F-725 E1–E7) samt Detail `#/workboard/<id>` (F21 WS-2) und
  * Click-to-Work (F22 WS-2, F35 WS-1 „Bauen“). Kopf „Arbeit im Überblick“ mit „Eintrag erfassen“
  * als „kommt“ (E7), Register Kanban-Board · Features · Bugs · Harness Improvements · Weitere
- * (TECH_DEBT und PROCESS_IMPROVEMENT, E5) sowie Aufträge (#/projekt) und Ausführungen (#/runs)
+ * (TECH_DEBT und PROCESS_IMPROVEMENT, E5) sowie Aufträge (#/projekt) und Ausführungen (#/ausfuehrungen, F44 WS-5a)
  * als Links.
  *
  * - Kanban-Board (E1): Spalten Geplant · In Arbeit · Braucht dich · Abgenommen nach der Regel in
@@ -229,7 +229,7 @@ function renderKopf() {
     const aktiv = tab === aktiverTab
     return `<button type="button" class="tab-knopf${aktiv ? ' active' : ''}" data-tab="${tab}" aria-pressed="${aktiv}">${tHtml(`entwicklung.tab.${tab}`)}</button>`
   }).join('')
-  document.getElementById('workboard-tabs').innerHTML = `${knoepfe}<a href="#/projekt">${tHtml('entwicklung.tab.auftraege')}</a><a href="#/runs">${tHtml('entwicklung.tab.ausfuehrungen')}</a>`
+  document.getElementById('workboard-tabs').innerHTML = `${knoepfe}<a href="#/projekt">${tHtml('entwicklung.tab.auftraege')}</a><a href="#/ausfuehrungen">${tHtml('entwicklung.tab.ausfuehrungen')}</a>`
   document.getElementById('workboard-board-bereich').hidden = aktiverTab !== 'board'
   document.getElementById('workboard-listen-bereich').hidden = aktiverTab === 'board'
 }
