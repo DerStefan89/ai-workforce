@@ -1478,6 +1478,108 @@ F-725 I1–I3 (Vermerk WS-6b unter §5.1). Nur Leitstand-UI, keine Serveränderu
   wie die Kennzahl); der Leerzustand „Keine Läufe im Zeitraum.“ bleibt.
 - Der Schlusshinweis spricht von „Modellbeobachtung“, gezählt wird „ohne Nutzungsdaten“ — Wortlaut bei Bedarf angleichen.
 
+## Stand WS-7a „Werkstatt-Gerüst, Werkzeuge, Rollen“ (02.10.2026)
+Branch `feat/f725-ws7a-werkstatt` (Basis `3aff6e4`, main mit WS-6b), nicht committet. Vorlage V10 d_harness_phasen
+(Kopf/Register), d_faehigkeiten, d_faehigkeiten_rollen; Abgleich F-725 J5–J8 (Vermerk WS-7a in §9). Nur Leitstand-UI,
+keine Server-, Schema- oder API-Änderung, keine neue Route (`registriere(/^#\/capabilities$/…)` bleibt).
+- **Seitenkopf:** Eyebrow „Workforce & Umgebung“, h1 „Deine Entwicklungswerkstatt.“, Beschreibung, „Neu laden“ rechts.
+- **Register** Harness-Aufbau | Phasen & Rollen | Fähigkeiten (Standard), clientseitig als `role=tablist`/`tab`/`tabpanel`
+  mit `aria-selected`, Roving-Tabindex und Pfeil links/rechts (umlaufend), Pos1, Ende (automatische Aktivierung). Ein
+  bestehendes Register mit Pfeiltasten gab es im Leitstand nicht (Entwicklung und Nutzung nutzen Knöpfe mit
+  `aria-pressed`); übernommen ist deren Optik (`.nutzung-zeitraum`-Regel um `.werkstatt-register [role='tab']`
+  erweitert), die Tastaturregel ist die reine Funktion `naechsterRegisterIndex`. Die Auswahl bleibt bis zum Neuladen
+  der Seite. Panels ohne fokussierbaren Inhalt tragen `tabindex="0"`; je Unterreiter eine Screenreader-h2.
+- **Harness-Aufbau** und **Phasen & Rollen**: je ein Baustein „kommt“ (`.empty` mit Badge), keine Beispieldaten.
+- **Fähigkeiten** mit Unterreitern Werkzeuge | Rollen & Besetzung | Empfehlungen (gleiche Tastaturregel).
+- **Werkzeuge (J5/J6):** Kennzahlzeile „n im Katalog · n freigegeben · n Freigabe(n) offen“ (echt gezählt, Plural über
+  `Intl.PluralRules`); Suche über id, Name, Beschreibung und Filter Typ (Alle/worker/skill/agent/extern, Beschriftung
+  übersetzt, Wert roh) und Freigabe (Alle/Freigegeben/Freigabe offen), alles clientseitig ohne Netzabruf; Kacheln mit
+  Typ-Chip, Name, Beschreibung, Fuß mit Freigabe (mint bzw. bernstein) und Verfügbarkeit (gedämpft, `.ablauf-status`;
+  rot bleibt Fehlern vorbehalten, Vorlage „Nicht verbunden“), Detailklappe (Name für Screenreader im `summary`) mit ID, Phasen, Grund (`anzeigeGrund`) und „Fehlt für Einsatz“ (leer → „nichts“);
+  eigener Leerzustand für leeren Katalog und für „keine Treffer“; leere Serverfelder als „—“. Suche, Filter und „Neu
+  laden“ rendern die Kacheln neu, offene Kachel-Details schließen sich dabei (bewusst; anders als die Rollen-Details). Darunter „Freigegeben heißt nicht gerade aktiv. …“,
+  der ASSESSED-Hinweis roh (F24 AK5) und der Startvorlagenpfad in der Klappe „Technische Angaben“. Kein
+  Aktivieren/Freigeben-Knopf.
+- **Rollen & Besetzung (J7/J8):** Einleitungsnotiz nach d_faehigkeiten_rollen; je Rolle `rollenName`, Chip
+  „Gedeckt“/„Gap offen“ (mint bzw. bernstein), „Benötigt: …“ (roh) und „Details“ (`aria-expanded`, `aria-controls`,
+  `aria-describedby` auf den Rollennamen). Eine Rolle ohne Worker zeigt „Kein registrierter erlaubter Worker.“. Darunter je Worker eine
+  Zeile mit Status, F-346-Ausnahme, fehlenden Capabilities und — nur bei echter Lücke — „Zum Workboard“ und „Kandidaten
+  suchen“ (Klassen, `data-rolle`, `data-capabilities`, Klick-Delegation an `#capabilities-abdeckung`,
+  `istScoutSucheAktiv`/`aktualisiereScoutButtonZustand` unverändert). „Details“ lädt GET `…/ressourcen/rollen/<rolle>`
+  lazy und zeigt die Ebenen 1–4 wie bisher (Texte jetzt übersetzt, Werte roh); `rollenAnfrageZaehler` bleibt, der
+  Überholschutz gilt je Detail-Container (mehrere Rollen dürfen gleichzeitig offen sein); offene Details bleiben über
+  „Neu laden“ offen und laden frisch. Das Rollen-Select entfällt. Das Scout-Panel `#capabilities-scout` steht unter der
+  Liste; Code und Optik des Panels unverändert (WS-7b), neu ist nur der waagerecht scrollbare Container
+  (`.werkstatt-scout`), damit die Kandidatentabelle bei 390 px die Seite nicht verbreitert.
+- **Empfehlungen (J9):** Notiz „Empfehlungen erscheinen im Freigabeschritt eines Ablaufs.“ mit Link `#/runs`; keine Daten.
+- **Laden:** Katalog und Abdeckung parallel, Überholschutz über `ladeZaehler`; jede Quelle rendert in eigenem try/catch
+  mit `console.error` — ein Fehler oder ein vertragswidriger Körper der einen Quelle lässt die andere unberührt; beim
+  Fehler des Katalogs verschwinden auch ASSESSED-Zeile und Startvorlage des letzten Ladens. Ein Projektwechsel lädt
+  beide Quellen neu und schließt offene Details; den Scout-Zustand setzt er in WS-7a nicht zurück (F-955, WS-7b).
+- **Abweichungen von der Vorlage** (Vermerk WS-7a in §9): kein Knopf „Fähigkeit entdecken“ (Entscheidung in WS-7b nach
+  E-F44-1), keine Icons je Kachel und kein Pfeil im Fuß, Unterzeile „Benötigt: …“ statt einer Rollenbeschreibung, Gap-Zeilen
+  aller Worker unter jeder Rolle, Unterreiter als zweite `.tabs`-Reihe.
+- **Modulschnitt:** reines Modul `faehigkeiten-anzeige.js` (Zählung, Filter, Register-Tastatur) mit
+  `faehigkeiten-anzeige.test.mjs`; `views/capabilities.js` rendert, lädt und bedient. Der Scout-Abschnitt (F27 WS-2) ist
+  byte-identisch übernommen.
+- **i18n:** 84 neue Schlüssel `werkstatt.*` in de/en/tr/ru (Seite, Register, Werkzeuge, Rollen, Ebenen 1–4, Gap-Zeilen).
+  Serverwerte (IDs, Capability-Namen, `anzeigeGrund`, `fehltFuerEinsatz`, Phasen, Pfade, ASSESSED-Hinweis) roh und
+  escaped; Scout-Texte bleiben bis WS-7b deutsch.
+- **Übrige J-Zeilen:** J1/J2/J4 → Harness-Werkstatt (Design-Finalisierung nach WS-8, F-950); J3 überholt durch Stefans
+  Entscheidung „Rollen-Kreis statt Phasen-Kreis“ (Produktübersicht neu, Design-Finalisierung, F-952); J9 erledigt in
+  WS-4a (F4/F5); J10 → WS-7b.
+- **Gates:** keines musste mitziehen (i18n-Gate, f20-tokens, f21-ws2, f24, f27 grün). Neuer Test:
+  `faehigkeiten-anzeige.test.mjs`.
+- **Nachweise** `features/F44/nachweise/ws7a/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner, eigener
+  Leitstand auf Port 4199): Matrix je Darstellung (1440 dunkel und hell, 390 dunkel, 200 %, ru) mit Werkzeugen, offener
+  Kachel, Rollen mit Gap-Zeile, offenen Details, Empfehlungen, Harness-Aufbau und Phasen & Rollen; Klicktabelle (Suche,
+  beide Filter, Leerzustand, Register per Tastatur, Details auf/zu, „Neu laden“ mit offenen Details, „Zum Workboard“);
+  lange Namen bei 390 px; ru auch bei 200 %; Zustände (leerer Katalog, Ladefehler je Quelle getrennt, Rolle ohne
+  Worker, Fehler der Details). Katalog echt, die Abdeckung fest (das Projekt hat real keine Gap-Rolle). „Kandidaten suchen“ wurde nicht geklickt (echter Lauf); der
+  Sperrzustand ist per Code-Review belegt.
+
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): design-guardian „Nicht
+  freigegeben“ (blockierend: „Neu laden“ bei 200 % abgeschnitten), code-reviewer und qa „Freigegeben mit Hinweisen“. Eine
+  Korrekturrunde, eingearbeitet: Kopf bricht um (design-guardian 1); Verfügbarkeit gedämpft, Gap bernstein statt rot
+  (dg 2); `width: 100%` an Scroll-Containern (dg 3, cr 6); ASSESSED/Startvorlage beim Katalogfehler leeren (dg 4, cr 1);
+  Kachelraster `20rem` (3 Spalten ohne Chatspalte, dg 5); Screenreader-h2 je Unterreiter (dg 7, cr 2); Vermerk zu
+  „Fähigkeit entdecken“ (dg 8); `tabindex="0"` an Panels ohne Fokusziel (dg 10, cr 7); Ladezähler und keine alten Kacheln
+  während des Ladens (cr 3, qa 7); veraltete Regel `#capabilities-library { overflow-x }` entfernt (cr 5); JSDoc und
+  Aufruferlisten in `rollen-anzeige.js`/`i18n.js` (cr 8, 9); ungenutztes `data-werkzeug-id` entfernt (cr 10); Pfade im
+  Nachweis-Skript an das Skript gebunden (cr 12); Projektwechsel lädt neu (qa 1, Teil); try/catch je Quelle mit Log
+  (qa 2); „Details“ mit Bezug für Screenreader (qa 4); Rolle ohne Worker im Fixture (qa 5); „—“ für leere Felder (qa 6);
+  Doku-Abweichungen (qa 9); en „To the tasks“, Details-Fehler mit Kontext (qa 10); Zustände getrennt belegt (qa 11),
+  Filter + „Neu laden“ und ru bei 200 % im Nachweis. Nicht übernommen: siehe „Prüfpunkte `#/capabilities`“.
+
+### Prüfpunkte `#/capabilities` (aus dem Prüfpass WS-7a; nach Route abgelegt, F-946)
+- Scout-Zustand beim Projektwechsel (qa 1): Ein laufender Scout pollt danach unter dem neuen Präfix und bleibt auf
+  „läuft…“, alle „Kandidaten suchen“ gesperrt — Änderung am Scout-Ablauf, in WS-7a ausgeschlossen (F-955, WS-7b).
+- Scout-Sperre ohne Render-Nachweis (qa 3): Der Auftrag verbietet den echten Klick; nachgestellte POST-Antworten
+  wären möglich, ein Fehlgriff startete aber einen echten Lauf. Belegt per Code-Review (`aktualisiereScoutButtonZustand`
+  nach jedem `renderAbdeckung`); in WS-7b mit dem Scout-Umbau nachweisen.
+- `.badge.stale` (ASSESSED, F-346-Ausnahme) ist Pillenstil aus der Zeit vor V10 (dg 6) — mit dem Chip-Stil in WS-7b
+  angleichen; Icons je Typ (dg 9) ebenso.
+- Gedeckte Worker kompakt in der Rollenzeile statt eigener Zeile (dg 9) — die Liste ist etwa doppelt so hoch wie in der
+  Vorlage.
+- Rolle ohne Worker hat keine Handlung („Zum Workboard“ fehlt, qa 5); eine unbekannte Freigabe zeigt die Kachel als
+  „Freigabe offen“, zählt aber nicht als offen (qa 6).
+- Trefferzahl nach Suche/Filter wird nicht angesagt; ein gesperrter „Kandidaten suchen“ ist nicht fokussierbar (qa 8).
+- Die Rollen-ID ist in der Liste nicht mehr sichtbar, nur `rollenName` (cr 11); tr ist nicht gerendert, ru-Plural
+  0/1/2/5/21 nur per i18n-Gate (Kategorien), nicht per Test (dg 10, qa 10).
+
+### Akzeptanzkriterien WS-7a
+- **WS7a-1** Kopf nach d_harness_phasen, drei Register clientseitig (Standard Fähigkeiten), Tastatur nach WAI-ARIA Tabs;
+  keine neue Route.
+- **WS7a-2** Harness-Aufbau und Phasen & Rollen als Baustein „kommt“ ohne Beispieldaten.
+- **WS7a-3** Werkzeuge: Kennzahlen echt gezählt mit Plural, Suche und zwei Filter clientseitig
+  (`faehigkeiten-anzeige.test.mjs`), Kacheln mit Detail, Leerzustände, Hinweis „nicht gerade aktiv“, ASSESSED-Hinweis,
+  Startvorlage in der Technik-Klappe; kein Aktivieren/Freigeben (Code-Review; Nachweis-Spalte „muss fehlen“).
+- **WS7a-4** Rollen & Besetzung: Liste je Rolle mit Coverage-Chip, Gap-Zeilen je Worker mit unverändertem Scout-Einstieg,
+  Details lazy mit Überholschutz; kein Rollen-Select.
+- **WS7a-5** Empfehlungen als Verweis auf den Freigabeschritt.
+- **WS7a-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor, kein waagerechter
+  Überlauf bei 390 px.
+
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:
 - Persona im hellen Theme: dunkler Fleck mit schwarzem Lid-Band auf hellem Kopf

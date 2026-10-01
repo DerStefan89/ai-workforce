@@ -1,12 +1,14 @@
 /**
  * Datei: public/leitstand/views/capabilities.js
  *
- * Zweck: View `#/capabilities` (F24 WS-1) — Library, Coverage je Rolle und
- * Rollen-Besetzung, jede eine reine Projektion über GET /api/ressourcen,
- * GET /api/ressourcen/abdeckung und GET /api/ressourcen/rollen/<rolle>
- * (scripts/leitstand-server.mjs, src/capabilities-ansicht/index.ts). Vor F24
- * war dieser Container ein bewusster Platzhalter (F20 WS-1) — siehe
- * features/F24/feature.md.
+ * Zweck: View `#/capabilities` — die Werkstatt (F44 WS-7a, Vorlage V10 d_harness_phasen Kopf/Register,
+ * d_faehigkeiten, d_faehigkeiten_rollen; Abgleich F-725 J5–J8). Drei clientseitige Register
+ * (Harness-Aufbau und Phasen & Rollen als Baustein „kommt“, Fähigkeiten als Standard), darin drei
+ * Unterreiter: Werkzeuge (Kacheln mit Suche und Filter), Rollen & Besetzung (Coverage je Rolle mit
+ * Gap-Zeilen und lazy geladenen Details) und Empfehlungen (Verweis auf den Freigabeschritt). Jede
+ * Darstellung ist eine reine Projektion über GET /api/ressourcen, GET /api/ressourcen/abdeckung und
+ * GET /api/ressourcen/rollen/<rolle> (scripts/leitstand-server.mjs, src/capabilities-ansicht/index.ts);
+ * die Regeln für Zählung, Filter und Register-Tastatur stehen in ../faehigkeiten-anzeige.js.
  *
  * Kein Poll: Library und Coverage kommen aus Dateien, die sich nur durch
  * Commits ändern (Muster views/workboard.js), die Rollen-Besetzung
@@ -17,107 +19,250 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initCapabilitiesView beim Bootstrap)
  *
- * Wichtig: rein lesend (F24-Nicht-Ziel: kein Schreibpfad) — anders als
- * views/workboard.js gibt es hier keinen Bearbeitungszustand.
- *
- * F29 WS-2b: reine Stylingumstellung auf das Komponentenvokabular aus
- * views/workboard.js (F29 WS-1b) — die drei Abschnitte (Library/Coverage/
- * Rollen-Besetzung) sind jetzt je eine .card (index.html), ihre
- * Schaltflächen tragen .btn/.btn-primary (Kandidaten suchen/Vormerken als
- * primäre Aktion, Zum Workboard/Erneut versuchen als sekundäre, Muster
- * views/workboard.js Bearbeiten/Wiederholen). Keine Verhaltensänderung,
- * kein neues Farbpaar.
+ * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2, unten unverändert) — kein
+ * Aktivieren oder Freigeben hier; eine Freigabe läuft nur über den F36-Weg im Freigabedialog.
+ * Serverwerte (IDs, Capability-Namen, anzeigeGrund, fehltFuerEinsatz, Phasen, Pfade) bleiben roh und
+ * gehen durch escapeHtml, nie durch t(). Die Scout-Texte sind bis WS-7b noch deutsch.
  */
 
 import { holeAbdeckung, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
+import { FREIGABE_FILTER, filtereWerkzeuge, naechsterRegisterIndex, WERKZEUG_TYPEN, zaehleWerkzeuge } from '../faehigkeiten-anzeige.js'
+import { formatiereZahl, t, tHtml } from '../i18n.js'
+import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
+import { rollenName } from '../rollen-anzeige.js'
 import { navigiere, registriere } from '../router.js'
 import { ableiteRessourcenId, baueVormerkenAuftragstext } from '../vormerken-auftrag.js'
 import { abonniereDetailAuffrischer } from '../zustand.js'
 
-/** Rollen, bereits alphabetisch aus der zuletzt geladenen Abdeckung — befüllt das Rollen-Select, ohne einen dritten Endpunkt zu brauchen. */
-let bekannteRollenListe = []
+// ─── Register (role=tablist) ─────────────────────────────────────────────
 
-function renderStartvorlage(startvorlagePfad) {
-  document.getElementById('capabilities-startvorlage').textContent = `Aktiv geladene Startvorlage: ${startvorlagePfad}`
+/**
+ * Wählt einen Reiter eines Registers: aria-selected, .active und tabindex (nur der gewählte ist
+ * per Tab erreichbar), dazu das zugehörige Panel (aria-controls) sichtbar, die übrigen hidden.
+ * @param tablist - Element mit role=tablist
+ * @param reiter - der zu wählende Reiter (role=tab)
+ */
+function waehleReiter(tablist, reiter) {
+  for (const tab of tablist.querySelectorAll('[role="tab"]')) {
+    const gewaehlt = tab === reiter
+    tab.setAttribute('aria-selected', String(gewaehlt))
+    tab.tabIndex = gewaehlt ? 0 : -1
+    tab.classList.toggle('active', gewaehlt)
+    document.getElementById(tab.getAttribute('aria-controls')).hidden = !gewaehlt
+  }
 }
 
-// ─── Library ─────────────────────────────────────────────────────────────
-
-const PHASE_LABEL = { DISCOVERED: 'DISCOVERED', ASSESSED: 'ASSESSED', APPROVED: 'APPROVED', AVAILABLE: 'AVAILABLE' }
-
-function renderPhasenBadges(phasen) {
-  if (phasen.length === 0) return '<span class="unbekannt">—</span>'
-  return phasen.map((p) => `<span class="badge ok">${escapeHtml(PHASE_LABEL[p] ?? p)}</span>`).join(' ')
+/**
+ * Bedienung eines Registers: Klick wählt; Pfeil links/rechts, Pos1 und Ende wählen und fokussieren
+ * (automatische Aktivierung, naechsterRegisterIndex). Die Auswahl bleibt für die Sitzung erhalten.
+ * @param id - ID des tablist-Elements (index.html)
+ */
+function initRegister(id) {
+  const tablist = document.getElementById(id)
+  tablist.addEventListener('click', (ereignis) => {
+    const reiter = ereignis.target.closest('[role="tab"]')
+    if (reiter !== null && tablist.contains(reiter)) waehleReiter(tablist, reiter)
+  })
+  tablist.addEventListener('keydown', (ereignis) => {
+    const reiter = [...tablist.querySelectorAll('[role="tab"]')]
+    const index = reiter.indexOf(ereignis.target)
+    if (index === -1) return
+    const neu = naechsterRegisterIndex(index, reiter.length, ereignis.key)
+    if (neu === null) return
+    ereignis.preventDefault()
+    waehleReiter(tablist, reiter[neu])
+    reiter[neu].focus()
+  })
 }
 
-function renderVerfuegbarBadge(verfuegbar) {
-  return verfuegbar ? '<span class="badge ok">verfügbar</span>' : '<span class="badge fehler">nicht verfügbar</span>'
+// ─── Werkzeuge (J5/J6) ───────────────────────────────────────────────────
+
+/** Zuletzt geladene Antwort von GET /api/ressourcen, oder null — Suche und Filter rechnen clientseitig darauf. */
+let letzteLibrary = null
+
+/**
+ * Übersetzter Typname; ein unbekannter Typ bleibt roh.
+ * @param typ - eintrag.typ
+ * @returns Text
+ */
+function typName(typ) {
+  return WERKZEUG_TYPEN.includes(typ) ? t(`werkstatt.typ.${typ}`) : String(typ ?? '')
 }
 
-/** F36 WS-1: Klartext aus fehltFuerEinsatz (src/ressourcen) — nur Anzeige; leer heißt einsatzbereit. @param fehlt - eintrag.fehltFuerEinsatz */
-function renderFehltFuerEinsatz(fehlt) {
-  if (!Array.isArray(fehlt) || fehlt.length === 0) return '<span class="badge ok">nichts</span>'
-  return fehlt.map((f) => `<div class="grund">${escapeHtml(f)}</div>`).join('')
+/** Füllt die beiden Filter-Selects (Beschriftung übersetzt, Wert roh); einmalig beim Init. */
+function fuelleFilter() {
+  document.getElementById('capabilities-suche').placeholder = t('werkstatt.suche.platzhalter')
+  document.getElementById('capabilities-filter-typ').innerHTML = [`<option value="">${tHtml('werkstatt.filter.typ.alle')}</option>`, ...WERKZEUG_TYPEN.map((typ) => `<option value="${escapeHtml(typ)}">${escapeHtml(typName(typ))}</option>`)].join('')
+  document.getElementById('capabilities-filter-freigabe').innerHTML = FREIGABE_FILTER.map((wert) => `<option value="${wert}">${tHtml(wert === '' ? 'werkstatt.filter.freigabe.alle' : `werkstatt.freigabe.${wert}`)}</option>`).join('')
 }
 
-function libraryZeile(eintrag) {
-  return `<tr>
-    <td><code>${escapeHtml(eintrag.id)}</code></td>
-    <td>${escapeHtml(eintrag.typ)}</td>
-    <td>${escapeHtml(eintrag.name)}</td>
-    <td>${escapeHtml(eintrag.freigabe)}</td>
-    <td>${renderVerfuegbarBadge(eintrag.verfuegbar)}</td>
-    <td>${renderPhasenBadges(eintrag.phasen)}</td>
-    <td>${escapeHtml(eintrag.anzeigeGrund)}</td>
-    <td>${renderFehltFuerEinsatz(eintrag.fehltFuerEinsatz)}</td>
-  </tr>`
+/**
+ * Inhalt des Feldes „Fehlt für Einsatz“ (F36 WS-1, fehltFuerEinsatz aus src/ressourcen) — leer heißt einsatzbereit.
+ * @param fehlt - eintrag.fehltFuerEinsatz
+ * @returns HTML
+ */
+function fehltFuerEinsatzHtml(fehlt) {
+  if (!Array.isArray(fehlt) || fehlt.length === 0) return tHtml('werkstatt.detail.nichts')
+  return fehlt.map((f) => `<span class="werkzeug-fehlt">${escapeHtml(f)}</span>`).join('')
 }
 
-const LIBRARY_TABELLE_KOPF = '<tr><th>ID</th><th>Typ</th><th>Name</th><th>Freigabe</th><th>Verfügbar</th><th>Phasen</th><th>Grund</th><th>Fehlt für Einsatz</th></tr>'
+/**
+ * Text eines Serverfelds als HTML; leer oder fehlend erscheint als „—“ (wie leere Phasen).
+ * @param wert - Feldwert
+ * @returns HTML
+ */
+function textOderStrich(wert) {
+  return typeof wert === 'string' && wert !== '' ? escapeHtml(wert) : '—'
+}
 
-/** AK5: rendert die vier Phasen — die Library-Tabelle selbst (alle Einträge, mit ihren jeweiligen Phasen-Badges) plus eine benannte Zeile für ASSESSED, die strukturell nie ein Badge trägt (kein stilles Verschwinden dieser Phase). @param ansicht - Antwort von GET /api/ressourcen */
+/**
+ * Eine Kachel: Typ-Chip, Name, Beschreibung, Fuß mit Freigabe und Verfügbarkeit, Detailklappe mit
+ * ID, Phasen, Grund und „Fehlt für Einsatz“ (alle roh). Farben nur aus .ablauf-status: freigegeben
+ * mint, Freigabe offen bernstein, Verfügbarkeit gedämpft (rot bliebe Fehlern vorbehalten, Vorlage
+ * „Nicht verbunden“). „Details“ trägt den Namen für Screenreader mit (42 gleichnamige Klappen).
+ * @param eintrag - LibraryEintrag
+ * @returns HTML
+ */
+function werkzeugKachel(eintrag) {
+  const freigegeben = eintrag.freigabe === 'FREIGEGEBEN'
+  const name = typeof eintrag.name === 'string' && eintrag.name !== '' ? eintrag.name : eintrag.id
+  const phasen = Array.isArray(eintrag.phasen) && eintrag.phasen.length > 0 ? eintrag.phasen.map(escapeHtml).join(', ') : '—'
+  return `<article class="werkzeug-karte">
+    <div class="werkzeug-karte-kopf"><span class="werkzeug-typ">${escapeHtml(typName(eintrag.typ))}</span></div>
+    <h3>${escapeHtml(name)}</h3>
+    <p class="werkzeug-beschreibung">${textOderStrich(eintrag.beschreibung)}</p>
+    <div class="werkzeug-fuss">
+      <span class="ablauf-status${freigegeben ? '' : ' warten'}">${tHtml(freigegeben ? 'werkstatt.freigabe.freigegeben' : 'werkstatt.freigabe.offen')}</span>
+      <span class="ablauf-status neutral">${tHtml(eintrag.verfuegbar === true ? 'werkstatt.verfuegbar' : 'werkstatt.nichtVerfuegbar')}</span>
+    </div>
+    <details class="werkzeug-detail">
+      <summary>${tHtml('werkstatt.detail')}<span class="sr-only">: ${escapeHtml(name)}</span></summary>
+      <dl>
+        <dt>${tHtml('werkstatt.detail.id')}</dt><dd><code>${escapeHtml(eintrag.id)}</code></dd>
+        <dt>${tHtml('werkstatt.detail.phasen')}</dt><dd>${phasen}</dd>
+        <dt>${tHtml('werkstatt.detail.grund')}</dt><dd>${textOderStrich(eintrag.anzeigeGrund)}</dd>
+        <dt>${tHtml('werkstatt.detail.fehlt')}</dt><dd>${fehltFuerEinsatzHtml(eintrag.fehltFuerEinsatz)}</dd>
+      </dl>
+    </details>
+  </article>`
+}
+
+/** Liest Suche und Filter aus den Bedienelementen. @returns { suche, typ, freigabe } */
+function aktuellerFilter() {
+  return {
+    suche: document.getElementById('capabilities-suche').value,
+    typ: document.getElementById('capabilities-filter-typ').value,
+    freigabe: document.getElementById('capabilities-filter-freigabe').value,
+  }
+}
+
+/** Rendert die Kacheln aus letzteLibrary nach Suche und Filter; eigener Leerzustand für „keine Treffer“. */
+function renderWerkzeugKacheln() {
+  const container = document.getElementById('capabilities-library')
+  if (letzteLibrary === null) return
+  const eintraege = Array.isArray(letzteLibrary.eintraege) ? letzteLibrary.eintraege : []
+  if (eintraege.length === 0) {
+    container.innerHTML = `<p class="leer">${tHtml('werkstatt.leer.katalog')}</p>`
+    return
+  }
+  const treffer = filtereWerkzeuge(eintraege, aktuellerFilter())
+  container.innerHTML = treffer.length === 0 ? `<p class="leer">${tHtml('werkstatt.leer.treffer')}</p>` : `<div class="werkzeug-raster">${treffer.map(werkzeugKachel).join('')}</div>`
+}
+
+/**
+ * AK5/AK6: Kennzahlzeile, Kacheln, ASSESSED-Hinweis (roh, bleibt sichtbar — ASSESSED trägt in v1 nie ein
+ * Badge, kein stilles Verschwinden dieser Phase) und Startvorlagenpfad in der Technik-Klappe.
+ * @param ansicht - Antwort von GET /api/ressourcen
+ */
 function renderLibrary(ansicht) {
-  const tabelle =
-    ansicht.eintraege.length === 0
-      ? '<p class="leer">Keine Ressourcen registriert.</p>'
-      : `<table><thead>${LIBRARY_TABELLE_KOPF}</thead><tbody>${ansicht.eintraege.map(libraryZeile).join('')}</tbody></table>`
-  document.getElementById('capabilities-library').innerHTML = `${tabelle}<p class="hinweis"><span class="badge stale">ASSESSED</span> ${escapeHtml(ansicht.assessedHinweis)}</p>`
+  letzteLibrary = ansicht
+  const zahlen = zaehleWerkzeuge(ansicht.eintraege)
+  document.getElementById('capabilities-kennzahlen').innerHTML = ['katalog', 'freigegeben', 'offen']
+    .map((art) => `<span>${tHtml(`werkstatt.kennzahl.${art}`, { anzahl: zahlen[art], zahl: formatiereZahl(zahlen[art]) })}</span>`)
+    .join('<span aria-hidden="true"> · </span>')
+  renderWerkzeugKacheln()
+  document.getElementById('capabilities-assessed').innerHTML = `<span class="badge stale">ASSESSED</span> ${escapeHtml(ansicht.assessedHinweis ?? '')}`
+  document.getElementById('capabilities-startvorlage').innerHTML = tHtml('werkstatt.startvorlage', {}, { pfad: `<code>${escapeHtml(ansicht.startvorlagePfad ?? '')}</code>` })
 }
 
-// ─── Coverage ────────────────────────────────────────────────────────────
+/** Suche und Filter rechnen bei jeder Eingabe neu (kein Netzabruf). */
+function initWerkzeugBedienung() {
+  fuelleFilter()
+  document.getElementById('capabilities-suche').addEventListener('input', renderWerkzeugKacheln)
+  document.getElementById('capabilities-filter-typ').addEventListener('change', renderWerkzeugKacheln)
+  document.getElementById('capabilities-filter-freigabe').addEventListener('change', renderWerkzeugKacheln)
+}
 
+// ─── Rollen & Besetzung: Coverage (J8) ──────────────────────────────────
+
+/** Rollen, deren Details gerade offen sind — nach „Neu laden“ öffnet renderAbdeckung sie wieder und lädt neu. */
+const offeneRollen = new Set()
+
+/**
+ * Gap-Zeile eines Workers im Rollenblock: Status (gedeckt mint, Gap bernstein), F-346-Ausnahme, fehlende
+ * Capabilities und — nur bei echter Lücke — „Zum Workboard“ und „Kandidaten suchen“ (F27 WS-2, Klassen und
+ * data-Attribute unverändert, die Klick-Delegation in initAbdeckungBedienung liest sie).
+ * @param rolle - Rollen-ID
+ * @param eintrag - WorkerAbdeckungsLuecke
+ * @returns HTML
+ */
 function workerAbdeckungZeile(rolle, eintrag) {
-  const status = eintrag.restFehlend.length === 0 ? '<span class="badge ok">gedeckt</span>' : '<span class="badge fehler">Gap</span>'
-  const f346 = eintrag.f346Ausnahme ? ' <span class="badge stale">F-346-Ausnahme</span>' : ''
-  const fehlendText = eintrag.restFehlend.length > 0 ? `<div class="grund">fehlt: ${eintrag.restFehlend.map(escapeHtml).join(', ')}</div>` : ''
+  const status = eintrag.restFehlend.length === 0 ? `<span class="ablauf-status">${tHtml('werkstatt.worker.gedeckt')}</span>` : `<span class="ablauf-status warten">${tHtml('werkstatt.worker.gap')}</span>`
+  const f346 = eintrag.f346Ausnahme ? ` <span class="badge stale">${tHtml('werkstatt.worker.f346')}</span>` : ''
+  const fehlendText = eintrag.restFehlend.length > 0 ? `<p class="werkstatt-gap-fehlt">${tHtml('werkstatt.worker.fehlt', { capabilities: eintrag.restFehlend.join(', ') })}</p>` : ''
   // F27 WS-2 (AK10): "Kandidaten suchen" nur an einer echten Gap-Zeile, neben dem bestehenden
   // Workboard-Link — data-capabilities trägt restFehlend als JSON (Klick-Handler braucht sie
   // unverändert, keine zweite Herleitung).
   const scoutLink =
     eintrag.restFehlend.length > 0
-      ? `<button type="button" class="btn capabilities-gap-link" data-rolle="${escapeHtml(rolle)}">Zum Workboard</button> <button type="button" class="btn btn-primary capabilities-scout-link" data-rolle="${escapeHtml(rolle)}" data-capabilities="${escapeHtml(JSON.stringify(eintrag.restFehlend))}">Kandidaten suchen</button>`
+      ? `<div class="werkstatt-gap-aktionen"><button type="button" class="button capabilities-gap-link" data-rolle="${escapeHtml(rolle)}">${tHtml('werkstatt.worker.zumWorkboard')}</button> <button type="button" class="button primary capabilities-scout-link" data-rolle="${escapeHtml(rolle)}" data-capabilities="${escapeHtml(JSON.stringify(eintrag.restFehlend))}">${tHtml('werkstatt.worker.kandidaten')}</button></div>`
       : ''
-  return `<tr>
-    <td><code>${escapeHtml(eintrag.worker)}</code></td>
-    <td>${status}${f346}</td>
-    <td>${fehlendText}${scoutLink}</td>
-  </tr>`
+  return `<div class="werkstatt-gap-zeile">
+    <div class="werkstatt-gap-kopf"><code>${escapeHtml(eintrag.worker)}</code> ${status}${f346}</div>
+    ${fehlendText}${scoutLink}
+  </div>`
 }
 
-function abdeckungBlock(eintrag) {
-  const statusBadge = eintrag.gedeckt ? '<span class="badge ok">gedeckt</span>' : '<span class="badge fehler">Gap offen</span>'
-  const zeilen = eintrag.workerAbdeckung.length === 0 ? '<tr><td colspan="3" class="unbekannt">kein registrierter erlaubter Worker</td></tr>' : eintrag.workerAbdeckung.map((w) => workerAbdeckungZeile(eintrag.rolle, w)).join('')
-  return `<div class="unterabschnitt">
-    <h3><code>${escapeHtml(eintrag.rolle)}</code> ${statusBadge}</h3>
-    <p class="hinweis">benötigt: ${eintrag.benoetigteCapabilities.map(escapeHtml).join(', ')}</p>
-    <table><thead><tr><th>Worker</th><th>Status</th><th>Lücke</th></tr></thead><tbody>${zeilen}</tbody></table>
+/**
+ * Block einer Rolle: Name (rollenName), Chip gedeckt/Gap offen, benötigte Capabilities (roh), „Details“ und
+ * darunter die Gap-Zeilen je Worker und der (zunächst verborgene) Detail-Container.
+ * @param eintrag - AbdeckungsEintrag
+ * @param index - Position in der Liste; bildet die IDs von Überschrift und Detail-Container (die Rollen-ID
+ *   selbst ist Serverinhalt und taugt nicht ungeprüft als ID)
+ * @returns HTML
+ */
+function abdeckungBlock(eintrag, index) {
+  const statusChip = eintrag.gedeckt ? `<span class="ablauf-status">${tHtml('werkstatt.rolle.gedeckt')}</span>` : `<span class="ablauf-status warten">${tHtml('werkstatt.rolle.gap')}</span>`
+  const zeilen = eintrag.workerAbdeckung.length === 0 ? `<p class="unbekannt">${tHtml('werkstatt.rolle.keinWorker')}</p>` : eintrag.workerAbdeckung.map((w) => workerAbdeckungZeile(eintrag.rolle, w)).join('')
+  const detailId = `capabilities-rollen-detail-${index}`
+  return `<div class="werkstatt-rolle" data-rolle="${escapeHtml(eintrag.rolle)}">
+    <div class="werkstatt-rolle-zeile">
+      <div class="werkstatt-rolle-text">
+        <h3 id="capabilities-rolle-titel-${index}">${escapeHtml(rollenName(eintrag.rolle))}</h3>
+        <p>${tHtml('werkstatt.rolle.benoetigt', { capabilities: eintrag.benoetigteCapabilities.join(', ') })}</p>
+      </div>
+      <div class="werkstatt-rolle-ende">
+        ${statusChip}
+        <button type="button" class="button capabilities-rolle-details" data-rolle="${escapeHtml(eintrag.rolle)}" aria-expanded="false" aria-controls="${detailId}" aria-describedby="capabilities-rolle-titel-${index}">${tHtml('werkstatt.rolle.details')}</button>
+      </div>
+    </div>
+    <div class="werkstatt-gaps">${zeilen}</div>
+    <div id="${detailId}" class="werkstatt-rollen-detail" hidden></div>
   </div>`
 }
 
 /** AK2/AK3: Coverage je Rolle, F-346-Ausnahmen markiert (workerAbdeckungZeile), echte Gaps verlinken zum Workboard. @param ansicht - Antwort von GET /api/ressourcen/abdeckung */
 function renderAbdeckung(ansicht) {
-  document.getElementById('capabilities-abdeckung').innerHTML = ansicht.rollen.length === 0 ? '<p class="leer">Keine Rollen registriert.</p>' : ansicht.rollen.map(abdeckungBlock).join('')
+  const container = document.getElementById('capabilities-abdeckung')
+  container.innerHTML = ansicht.rollen.length === 0 ? `<p class="leer">${tHtml('werkstatt.rollen.leer')}</p>` : ansicht.rollen.map(abdeckungBlock).join('')
+  // Offene Details bleiben über ein Neuladen offen (frisch geladen); verschwundene Rollen fallen weg.
+  const vorhandene = new Set(ansicht.rollen.map((r) => r.rolle))
+  for (const rolle of [...offeneRollen]) {
+    const knopf = [...container.querySelectorAll('.capabilities-rolle-details')].find((k) => k.dataset.rolle === rolle)
+    if (vorhandene.has(rolle) && knopf !== undefined) void oeffneRollenDetail(knopf)
+    else offeneRollen.delete(rolle)
+  }
   // Neu gebaute Buttons kennen scoutZustand nicht von selbst — Sperrzustand nachtragen (siehe
   // aktualisiereScoutButtonZustand, Code-Review-Befund F27 WS-2: sonst wäre ein Neuladen der
   // Coverage-Tabelle während eines laufenden Scout-Laufs ein Schlupfloch für einen zweiten Lauf).
@@ -132,6 +277,7 @@ function renderAbdeckung(ansicht) {
  * typ/status/prioritaet (src/workboard/index.ts) — eine tiefere Verlinkung
  * wäre F21-Scope, nicht F24 (QA-Pass 16.09.2026, dokumentiert statt
  * stillschweigend belassen, CLAUDE.md-Entscheidungsregel Punkt 5).
+ * F44 WS-7a: dieselbe Delegation bedient auch „Details“ je Rolle (umschaltRollenDetail).
  */
 function initAbdeckungBedienung() {
   document.getElementById('capabilities-abdeckung').addEventListener('click', (ereignis) => {
@@ -146,7 +292,10 @@ function initAbdeckungBedienung() {
       // Lauf verletzt D13/ARCHITECTURE.md §7 (Code-Review-Befund, kritisch).
       if (istScoutSucheAktiv()) return
       void starteScoutSuche(scoutButton.dataset.rolle, JSON.parse(scoutButton.dataset.capabilities))
+      return
     }
+    const detailsKnopf = ereignis.target.closest('.capabilities-rolle-details')
+    if (detailsKnopf) umschaltRollenDetail(detailsKnopf)
   })
 }
 
@@ -437,25 +586,17 @@ function initScoutBedienung() {
   })
 }
 
-// ─── Rollen-Besetzung (AK4) ──────────────────────────────────────────────
-
-function fuelleRollenAuswahl(rollen) {
-  bekannteRollenListe = [...rollen].sort()
-  const select = document.getElementById('capabilities-rollen-auswahl')
-  const aktuellerWert = select.value
-  select.innerHTML = `<option value="">— wählen —</option>${bekannteRollenListe.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('')}`
-  select.value = bekannteRollenListe.includes(aktuellerWert) ? aktuellerWert : ''
-}
+// ─── Rollen & Besetzung: Details je Rolle (AK4, J7) ─────────────────────
 
 function renderRollenvertrag(vertrag) {
   return `<div class="unterabschnitt">
-    <h3>Ebene 1 — Rollenvertrag</h3>
+    <h4>${tHtml('werkstatt.ebene1.titel')}</h4>
     <table class="lauf-kopfdaten"><tbody>
-      <tr><th>Zweck</th><td>${escapeHtml(vertrag.zweck)}</td></tr>
-      <tr><th>Erlaubte Werkzeugsatz-Arten</th><td>${vertrag.erlaubte_werkzeugsatz_arten.map(escapeHtml).join(', ')}</td></tr>
-      <tr><th>Erlaubte Worker</th><td>${vertrag.erlaubte_worker.map(escapeHtml).join(', ')}</td></tr>
-      <tr><th>Erlaubtes Output-Schema</th><td>${vertrag.erlaubtes_output_schema === null ? '<span class="unbekannt">keins</span>' : escapeHtml(vertrag.erlaubtes_output_schema)}</td></tr>
-      <tr><th>Benötigte Capabilities</th><td>${vertrag.benoetigte_capabilities.map(escapeHtml).join(', ')}</td></tr>
+      <tr><th>${tHtml('werkstatt.ebene1.zweck')}</th><td>${escapeHtml(vertrag.zweck)}</td></tr>
+      <tr><th>${tHtml('werkstatt.ebene1.werkzeugsaetze')}</th><td>${vertrag.erlaubte_werkzeugsatz_arten.map(escapeHtml).join(', ')}</td></tr>
+      <tr><th>${tHtml('werkstatt.ebene1.worker')}</th><td>${vertrag.erlaubte_worker.map(escapeHtml).join(', ')}</td></tr>
+      <tr><th>${tHtml('werkstatt.ebene1.schema')}</th><td>${vertrag.erlaubtes_output_schema === null ? `<span class="unbekannt">${tHtml('werkstatt.ebene1.schemaKeins')}</span>` : escapeHtml(vertrag.erlaubtes_output_schema)}</td></tr>
+      <tr><th>${tHtml('werkstatt.ebene1.capabilities')}</th><td>${vertrag.benoetigte_capabilities.map(escapeHtml).join(', ')}</td></tr>
     </tbody></table>
   </div>`
 }
@@ -463,91 +604,177 @@ function renderRollenvertrag(vertrag) {
 function renderVorlagenBesetzung(vorlagenBesetzung) {
   const zeilen =
     vorlagenBesetzung.length === 0
-      ? '<p class="unbekannt">Keine statische Workflow-Vorlage enthält diese Rolle (z. B. ein router-generierter Workflow ohne statisches Vorlagen-Pendant).</p>'
-      : `<table><thead><tr><th>Vorlage</th><th>Schritt</th><th>Worker</th><th>Modell</th></tr></thead><tbody>${vorlagenBesetzung
+      ? `<p class="unbekannt">${tHtml('werkstatt.ebene2.leer')}</p>`
+      : `<div class="werkstatt-tabelle"><table><thead><tr><th>${tHtml('werkstatt.ebene2.vorlage')}</th><th>${tHtml('werkstatt.ebene2.schritt')}</th><th>${tHtml('werkstatt.ebene2.worker')}</th><th>${tHtml('werkstatt.ebene2.modell')}</th></tr></thead><tbody>${vorlagenBesetzung
           .map((v) => `<tr><td>${escapeHtml(v.vorlage)}</td><td><code>${escapeHtml(v.schrittId)}</code></td><td>${escapeHtml(v.worker)}</td><td>${escapeHtml(v.modell)}</td></tr>`)
-          .join('')}</tbody></table>`
-  return `<div class="unterabschnitt"><h3>Ebene 2 — Vorlagen-Besetzung</h3>${zeilen}</div>`
+          .join('')}</tbody></table></div>`
+  return `<div class="unterabschnitt"><h4>${tHtml('werkstatt.ebene2.titel')}</h4>${zeilen}</div>`
 }
 
 function renderRealeBesetzung(letzteRealeBesetzung) {
   if (letzteRealeBesetzung.status === 'kein_lauf') {
-    return '<div class="unterabschnitt"><h3>Ebene 3+4 — Reale Besetzung</h3><p class="unbekannt">Diese Rolle ist noch in keinem realen Workflow gelaufen.</p></div>'
+    return `<div class="unterabschnitt"><h4>${tHtml('werkstatt.ebene34.titel')}</h4><p class="unbekannt">${tHtml('werkstatt.ebene34.keinLauf')}</p></div>`
   }
-  const kopf = `<p class="hinweis">Jüngster realer Lauf: Workflow <code>${escapeHtml(letzteRealeBesetzung.workflowId)}</code>, Schritt <code>${escapeHtml(letzteRealeBesetzung.schrittId)}</code>, Lauf <code>${escapeHtml(letzteRealeBesetzung.laufId)}</code></p>`
-  const gepinnt = `<tr><th>Ebene 3 — gepinnt (Workflow-Schritt)</th><td>${escapeHtml(letzteRealeBesetzung.gepinnt.worker)} / ${escapeHtml(letzteRealeBesetzung.gepinnt.modell)}</td></tr>`
+  const kopf = `<p class="hinweis">${tHtml(
+    'werkstatt.ebene34.juengster',
+    {},
+    { workflow: `<code>${escapeHtml(letzteRealeBesetzung.workflowId)}</code>`, schritt: `<code>${escapeHtml(letzteRealeBesetzung.schrittId)}</code>`, lauf: `<code>${escapeHtml(letzteRealeBesetzung.laufId)}</code>` }
+  )}</p>`
+  const gepinnt = `<tr><th>${tHtml('werkstatt.ebene34.gepinnt')}</th><td>${escapeHtml(letzteRealeBesetzung.gepinnt.worker)} / ${escapeHtml(letzteRealeBesetzung.gepinnt.modell)}</td></tr>`
   const beobachtetZeile =
     letzteRealeBesetzung.status === 'laufakte_fehlt'
-      ? '<tr><th>Ebene 4 — beobachtet (Laufakte)</th><td class="unbekannt">Laufakte nicht ladbar</td></tr>'
-      : `<tr><th>Ebene 4 — beobachtet (Laufakte)</th><td>${escapeHtml(letzteRealeBesetzung.beobachtet.worker)} / ${letzteRealeBesetzung.beobachtet.modellDeklariert === null ? '<span class="unbekannt">kein Modell deklariert</span>' : escapeHtml(letzteRealeBesetzung.beobachtet.modellDeklariert)}</td></tr>`
-  return `<div class="unterabschnitt"><h3>Ebene 3+4 — Reale Besetzung</h3>${kopf}<table class="lauf-kopfdaten"><tbody>${gepinnt}${beobachtetZeile}</tbody></table></div>`
+      ? `<tr><th>${tHtml('werkstatt.ebene34.beobachtet')}</th><td class="unbekannt">${tHtml('werkstatt.ebene34.laufakteFehlt')}</td></tr>`
+      : `<tr><th>${tHtml('werkstatt.ebene34.beobachtet')}</th><td>${escapeHtml(letzteRealeBesetzung.beobachtet.worker)} / ${letzteRealeBesetzung.beobachtet.modellDeklariert === null ? `<span class="unbekannt">${tHtml('werkstatt.ebene34.keinModell')}</span>` : escapeHtml(letzteRealeBesetzung.beobachtet.modellDeklariert)}</td></tr>`
+  return `<div class="unterabschnitt"><h4>${tHtml('werkstatt.ebene34.titel')}</h4>${kopf}<table class="lauf-kopfdaten"><tbody>${gepinnt}${beobachtetZeile}</tbody></table></div>`
 }
 
+/** Laufende Nummer aller Detail-Anfragen; der jeweilige Container merkt sich in dataset.anfrage die jüngste (Überholschutz). */
 let rollenAnfrageZaehler = 0
 
-/** AK4: lädt und rendert alle vier Ebenen für die gewählte Rolle. Überholschutz (Muster views/workboard.js anfrageZaehler) — ein schneller zweiter Rollenwechsel darf nicht mit der Antwort des ersten überschrieben werden. @param rolle - gewählte Rolle, oder '' (nichts gewählt) */
-async function ladeRollenDetail(rolle) {
+/**
+ * AK4: lädt und rendert alle vier Ebenen einer Rolle in ihren Detail-Container (lazy, beim Öffnen).
+ * Überholschutz (Muster views/workboard.js anfrageZaehler): jede Anfrage trägt eine Nummer, der
+ * Container merkt sich die jüngste — eine ältere Antwort (schnelles Zu/Auf, „Neu laden“) überschreibt
+ * nichts, und ein inzwischen ersetzter Container (isConnected) bleibt unberührt.
+ * @param rolle - Rollen-ID
+ * @param container - .werkstatt-rollen-detail dieser Rolle
+ */
+async function ladeRollenDetail(rolle, container) {
   const meineAnfrageNummer = ++rollenAnfrageZaehler
-  const container = document.getElementById('capabilities-rollen-detail')
-  if (rolle === '') {
-    container.innerHTML = ''
-    return
-  }
-  container.innerHTML = '<p class="leer">Lädt…</p>'
+  container.dataset.anfrage = String(meineAnfrageNummer)
+  const istAktuell = () => container.isConnected && container.dataset.anfrage === String(meineAnfrageNummer)
+  container.innerHTML = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
   try {
     const antwort = await holeRollenBesetzung(rolle)
-    if (meineAnfrageNummer !== rollenAnfrageZaehler) return
+    if (!istAktuell()) return
     if (!antwort.ok) {
       const inhalt = await antwort.json().catch(() => ({}))
-      container.innerHTML = `<p class="fehler">${antwort.status}: ${escapeHtml(inhalt.grund ?? 'unbekannter Fehler')}</p>`
+      if (!istAktuell()) return
+      container.innerHTML = `<p class="fehler">${tHtml('werkstatt.rolle.fehler', { status: antwort.status, grund: inhalt.grund ?? t('werkstatt.rolle.unbekannterFehler') })}</p>`
       return
     }
     const ansicht = await antwort.json()
+    if (!istAktuell()) return
     container.innerHTML = renderRollenvertrag(ansicht.rollenvertrag) + renderVorlagenBesetzung(ansicht.vorlagenBesetzung) + renderRealeBesetzung(ansicht.letzteRealeBesetzung)
   } catch (fehler) {
-    if (meineAnfrageNummer !== rollenAnfrageZaehler) return
-    container.innerHTML = `<p class="fehler">Anfrage fehlgeschlagen: ${escapeHtml(fehler.message)}</p>`
+    if (!istAktuell()) return
+    container.innerHTML = `<p class="fehler">${tHtml('werkstatt.ladeFehler', { grund: fehler.message })}</p>`
   }
 }
 
-function initRollenBedienung() {
-  document.getElementById('capabilities-rollen-auswahl').addEventListener('change', (ereignis) => {
-    void ladeRollenDetail(ereignis.target.value)
-  })
+/**
+ * Öffnet die Details einer Rolle und lädt sie (immer frisch).
+ * @param knopf - .capabilities-rolle-details
+ * @returns Promise, das nach dem Rendern (Daten oder Fehler) erfüllt ist
+ */
+function oeffneRollenDetail(knopf) {
+  const container = document.getElementById(knopf.getAttribute('aria-controls'))
+  knopf.setAttribute('aria-expanded', 'true')
+  container.hidden = false
+  offeneRollen.add(knopf.dataset.rolle)
+  return ladeRollenDetail(knopf.dataset.rolle, container)
+}
+
+/**
+ * „Details“ je Rolle: öffnet (lädt) oder schließt den Detail-Container; eine noch laufende Anfrage
+ * eines geschlossenen Containers schreibt nicht mehr hinein.
+ * @param knopf - .capabilities-rolle-details
+ */
+function umschaltRollenDetail(knopf) {
+  if (knopf.getAttribute('aria-expanded') === 'true') {
+    const container = document.getElementById(knopf.getAttribute('aria-controls'))
+    knopf.setAttribute('aria-expanded', 'false')
+    container.hidden = true
+    container.dataset.anfrage = ''
+    container.innerHTML = ''
+    offeneRollen.delete(knopf.dataset.rolle)
+    return
+  }
+  void oeffneRollenDetail(knopf)
 }
 
 // ─── Laden/Neu laden ────────────────────────────────────────────────────
 
-/** Lädt Library + Coverage parallel (AK1, AK2, AK6), befüllt danach das Rollen-Select aus der Coverage-Antwort — kein dritter Endpunkt für die Rollenliste. Ein Fehlschlag EINER der beiden Quellen zeigt sich nur in ihrem eigenen Container (Muster views/workboard.js: eine defekte Quelle blendet nicht die ganze View aus). */
-async function ladeCapabilities() {
-  document.getElementById('capabilities-library').innerHTML = '<p class="leer">Lädt…</p>'
-  document.getElementById('capabilities-abdeckung').innerHTML = '<p class="leer">Lädt…</p>'
-  const [libraryErgebnis, abdeckungErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung()])
+/** Laufende Nummer der Ladevorgänge (Neu laden, Routeneintritt, Projektwechsel) — nur der jüngste rendert. */
+let ladeZaehler = 0
 
-  if (libraryErgebnis.status === 'fulfilled') {
-    renderStartvorlage(libraryErgebnis.value.startvorlagePfad)
-    renderLibrary(libraryErgebnis.value)
-    bekannteRessourcenIds = new Set(libraryErgebnis.value.eintraege.map((eintrag) => eintrag.id))
-    if (scoutZustand?.phase === 'fertig') renderScoutPanel()
-  } else {
-    document.getElementById('capabilities-library').innerHTML = `<p class="fehler">Anfrage fehlgeschlagen: ${escapeHtml(libraryErgebnis.reason.message)}</p>`
-  }
-
-  if (abdeckungErgebnis.status === 'fulfilled') {
-    renderAbdeckung(abdeckungErgebnis.value)
-    fuelleRollenAuswahl(abdeckungErgebnis.value.rollen.map((r) => r.rolle))
-  } else {
-    document.getElementById('capabilities-abdeckung').innerHTML = `<p class="fehler">Anfrage fehlgeschlagen: ${escapeHtml(abdeckungErgebnis.reason.message)}</p>`
+/**
+ * Rendert das Ergebnis einer Quelle in ihren Container; ein Fehler (abgelehnte Anfrage ODER ein Körper, der
+ * nicht zum Vertrag passt und beim Rendern wirft) erscheint nur dort und wird geloggt — die andere Quelle
+ * rendert trotzdem (DoD: catch + Logging).
+ * @param ergebnis - Eintrag aus Promise.allSettled
+ * @param rendern - (wert) => void
+ * @param beiFehler - (grund: string) => void, schreibt den Fehlerzustand
+ * @param quelle - Name für das Log
+ */
+function rendereQuelle(ergebnis, rendern, beiFehler, quelle) {
+  try {
+    if (ergebnis.status === 'rejected') throw ergebnis.reason
+    rendern(ergebnis.value)
+  } catch (fehler) {
+    console.error(`capabilities: ${quelle} nicht darstellbar`, fehler)
+    beiFehler(fehler instanceof Error ? fehler.message : String(fehler))
   }
 }
 
-/** Initialisiert die Capabilities-View einmalig beim Bootstrap (Muster views/workboard.js initWorkboardView). */
+/** Fehlerzustand der Werkzeuge: Fehler im Kachel-Container, keine Werte des letzten Ladens daneben. @param grund - Fehlertext */
+function zeigeLibraryFehler(grund) {
+  letzteLibrary = null
+  for (const id of ['capabilities-kennzahlen', 'capabilities-assessed', 'capabilities-startvorlage']) document.getElementById(id).innerHTML = ''
+  document.getElementById('capabilities-library').innerHTML = `<p class="fehler">${tHtml('werkstatt.ladeFehler', { grund })}</p>`
+}
+
+/**
+ * Lädt Library + Coverage parallel (AK1, AK2, AK6). Ein Fehlschlag EINER der beiden Quellen zeigt sich nur in
+ * ihrem eigenen Container (Muster views/workboard.js: eine defekte Quelle blendet nicht die ganze View aus).
+ * Überholschutz über ladeZaehler; während des Ladens zeigen Suche und Filter keine alten Kacheln (letzteLibrary null).
+ */
+async function ladeCapabilities() {
+  const meineNummer = ++ladeZaehler
+  letzteLibrary = null
+  const laedt = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
+  document.getElementById('capabilities-library').innerHTML = laedt
+  document.getElementById('capabilities-abdeckung').innerHTML = laedt
+  const [libraryErgebnis, abdeckungErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung()])
+  if (meineNummer !== ladeZaehler) return
+
+  rendereQuelle(
+    libraryErgebnis,
+    (ansicht) => {
+      renderLibrary(ansicht)
+      bekannteRessourcenIds = new Set(ansicht.eintraege.map((eintrag) => eintrag.id))
+      if (scoutZustand?.phase === 'fertig') renderScoutPanel()
+    },
+    zeigeLibraryFehler,
+    'GET …/ressourcen'
+  )
+  rendereQuelle(
+    abdeckungErgebnis,
+    renderAbdeckung,
+    (grund) => {
+      document.getElementById('capabilities-abdeckung').innerHTML = `<p class="fehler">${tHtml('werkstatt.ladeFehler', { grund })}</p>`
+    },
+    'GET …/ressourcen/abdeckung'
+  )
+}
+
+/**
+ * Initialisiert die Capabilities-View einmalig beim Bootstrap (Muster views/workboard.js initWorkboardView).
+ * Ein Projektwechsel (F-860) lädt Katalog und Abdeckung des neuen Projekts und schließt offene Details; der
+ * Scout-Zustand bleibt in WS-7a unberührt (F-955, WS-7b).
+ */
 export function initCapabilitiesView() {
+  initRegister('werkstatt-register')
+  initRegister('faehigkeiten-register')
+  initWerkzeugBedienung()
   initAbdeckungBedienung()
-  initRollenBedienung()
   initScoutBedienung()
   abonniereDetailAuffrischer(() => {
     void aktualisiereScoutZustand()
+  })
+  abonniereProjektWechsel(() => {
+    offeneRollen.clear()
+    void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {
     void ladeCapabilities()

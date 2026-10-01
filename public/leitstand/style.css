@@ -1610,14 +1610,6 @@ th {
   margin-top: var(--space-2xl);
 }
 
-/* F36 WS-1 (Render-Nachweis features/F36/nachweis-ws1-ui/messung.md): die Library-Tabelle war schon
-   mit sieben Spalten breiter als die Karte (716 px in 690 px) und wurde am Kartenrand abgeschnitten —
-   mit der achten Spalte „Fehlt für Einsatz“ verschwand diese fast vollständig. Horizontal scrollen
-   innerhalb der Karte statt abschneiden; keine neue Farbe, kein neuer Schatten. */
-#capabilities-library {
-  overflow-x: auto;
-}
-
 #capabilities-scout:empty {
   margin-top: 0;
 }
@@ -6574,8 +6566,10 @@ th {
   overflow-wrap: anywhere;
 }
 
-/* Nur das Zeitraum-Register: .tabs in #/workboard trägt eigene Knöpfe (.tab-knopf), die unberührt bleiben. */
-.v10-seite .nutzung-zeitraum button {
+/* Nur das Zeitraum-Register und die Register der Werkstatt (F44 WS-7a, role=tab): .tabs in #/workboard trägt eigene
+   Knöpfe (.tab-knopf), die unberührt bleiben. */
+.v10-seite .nutzung-zeitraum button,
+.v10-seite .werkstatt-register [role='tab'] {
   display: inline-flex;
   align-items: center;
   padding: 12px 0;
@@ -6589,11 +6583,13 @@ th {
   cursor: pointer;
 }
 
-.v10-seite .nutzung-zeitraum button:hover {
+.v10-seite .nutzung-zeitraum button:hover,
+.v10-seite .werkstatt-register [role='tab']:hover {
   color: var(--ink);
 }
 
-.v10-seite .nutzung-zeitraum button.active {
+.v10-seite .nutzung-zeitraum button.active,
+.v10-seite .werkstatt-register [role='tab'].active {
   color: var(--ink);
   border-color: var(--mint);
 }
@@ -6740,7 +6736,8 @@ th {
 }
 
 /* .tabs scrollt waagerecht (overflow-x) — ein Ring außerhalb würde abgeschnitten, deshalb nach innen. */
-.v10-seite .nutzung-zeitraum button:focus-visible {
+.v10-seite .nutzung-zeitraum button:focus-visible,
+.v10-seite .werkstatt-register [role='tab']:focus-visible {
   outline: 2px solid var(--mint);
   outline-offset: -2px;
 }
@@ -6826,4 +6823,318 @@ th {
   .nutzung-gross {
     font-size: 32px;
   }
+}
+
+/* ─────────────── Werkstatt (F44 WS-7a, Vorlage V10 d_harness_phasen, d_faehigkeiten, d_faehigkeiten_rollen) ───────────────
+   #/capabilities: Kopf mit „Neu laden“, Register und Unterreiter (Knopfstil wie .nutzung-zeitraum, siehe oben),
+   Kennzahlzeile, Suchzeile mit zwei Filtern, Kacheln (Raster nach Breite der Seite, gleich hohe Karten einer Reihe,
+   Fuß unten), Rollenliste mit Gap-Zeilen und Details. Maße wie die Vorlage, Farben nur über Tokens. Kein display auf
+   Elementen, die über das hidden-Attribut umschalten (Panels, Detail-Container) — sonst überschriebe es die UA-Regel
+   [hidden] (F-622). */
+/* Kopf bricht um, sobald Titel und „Neu laden“ nicht nebeneinander passen (200 % Zoom: 720 CSS-px; Muster .workflow-seite). */
+.werkstatt-seite .page-heading {
+  flex-wrap: wrap;
+}
+
+.werkstatt-seite .page-heading > div:first-child {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+.werkstatt-seite .page-heading .button {
+  flex-shrink: 0;
+}
+
+.v10-seite .werkstatt-unterregister {
+  margin-top: 0;
+}
+
+.werkstatt-kennzahlen {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.werkstatt-suchzeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 24px;
+}
+
+/* max-width ohne width: 100% bei select und .werkzeug-typ ist gewollt — volle Breite zerrisse Suchzeile bzw. Chip. */
+.werkstatt-suchzeile input,
+.werkstatt-suchzeile select {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.werkstatt-suchzeile input {
+  flex: 1 1 15rem;
+  width: 100%;
+}
+
+.werkstatt-suchzeile select {
+  flex: 0 1 auto;
+}
+
+.werkstatt-suchzeile input::placeholder {
+  color: var(--muted);
+}
+
+.v10-seite .werkstatt-suchzeile input:focus-visible,
+.v10-seite .werkstatt-suchzeile select:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.werkzeug-raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  gap: 20px;
+}
+
+.werkzeug-karte {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.werkzeug-karte-kopf {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.werkzeug-typ {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.v10-seite .werkzeug-karte h3 {
+  margin: 0 0 8px;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.werkzeug-beschreibung {
+  margin: 0 0 20px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* margin-top: auto schiebt den Fuß in gleich hohen Karten einer Reihe an dieselbe Stelle. */
+.werkzeug-fuss {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+.werkzeug-detail {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.werkzeug-detail > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.werkzeug-detail[open] > summary {
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.werkzeug-detail dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0;
+}
+
+.werkzeug-detail dt {
+  color: var(--muted);
+}
+
+.werkzeug-detail dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.werkzeug-fehlt {
+  display: block;
+}
+
+.werkstatt-assessed {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.werkstatt-technik {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.werkstatt-technik > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.werkstatt-technik[open] > summary {
+  margin-bottom: 10px;
+  color: var(--ink);
+}
+
+.werkstatt-technik p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.v10-seite .werkzeug-detail summary:focus-visible,
+.v10-seite .werkstatt-technik summary:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+.werkstatt-rollen {
+  border-top: 1px solid var(--line);
+}
+
+.werkstatt-rolle {
+  padding: 20px 5px;
+  border-bottom: 1px solid var(--line);
+}
+
+.werkstatt-rolle-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.werkstatt-rolle-text {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.v10-seite .werkstatt-rolle h3 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  overflow-wrap: break-word;
+}
+
+.werkstatt-rolle-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.werkstatt-rolle-ende {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.werkstatt-gaps {
+  margin-top: 12px;
+}
+
+.werkstatt-gap-zeile {
+  padding: 10px 0 10px 14px;
+  border-left: 2px solid var(--line);
+  font-size: 12px;
+}
+
+.werkstatt-gap-zeile + .werkstatt-gap-zeile {
+  margin-top: 8px;
+}
+
+.werkstatt-gap-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  overflow-wrap: anywhere;
+}
+
+.werkstatt-gap-fehlt {
+  margin: 6px 0 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.werkstatt-gap-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.v10-seite .werkstatt-gap-aktionen .button {
+  white-space: normal;
+}
+
+.werkstatt-rollen-detail {
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.v10-seite .werkstatt-rollen-detail h4 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.werkstatt-rollen-detail td,
+.werkstatt-rollen-detail th {
+  font-size: 12px;
+}
+
+.werkstatt-tabelle,
+.werkstatt-scout {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.werkstatt-link {
+  margin-left: 6px;
+  color: var(--ink);
+}
+
+.werkstatt-link:hover {
+  color: var(--mint);
 }

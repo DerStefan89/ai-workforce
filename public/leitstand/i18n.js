@@ -26,7 +26,8 @@
  * - public/leitstand/i18n.test.mjs (node:test)
  * - scripts/check-f44-i18n.mjs (SPRACHEN, Wörterbücher)
  * - tHtml (F44 WS-4b): views/dashboard.js, workboard.js, workboard-detail.js, workflows.js,
- *   workflow-detail.js, workflow-abnahme.js, workflow-eingriffe.js, empfehlung-installation.js
+ *   workflow-detail.js, workflow-abnahme.js, workflow-eingriffe.js, empfehlung-installation.js;
+ *   views/capabilities.js (t, tHtml, formatiereZahl — Werkstatt, F44 WS-7a)
  *
  * Wichtig:
  * - Import-sicher: Beim Import greift dieses Modul weder auf DOM noch auf Storage

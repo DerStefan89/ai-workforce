@@ -1,0 +1,267 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-capabilities"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "jarvis",
+            "benoetigteCapabilities": [
+              "CHAT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "code-reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "CODE_REVIEW"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "ausfuehrung",
+            "benoetigteCapabilities": [
+              "CODE_WRITE"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "scout",
+            "benoetigteCapabilities": [
+              "WEB_RESEARCH"
+            ],
+            "workerAbdeckung": [],
+            "gedeckt": false
+          }
+        ]
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Register gewählt",
+        "selector": "#werkstatt-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Unterreiter gewählt",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#capabilities-kennzahlen"
+      },
+      {
+        "name": "erste Kachel",
+        "selector": "#capabilities-library .werkzeug-karte h3"
+      },
+      {
+        "name": "Leerzustand Werkzeuge",
+        "selector": "#capabilities-library .leer"
+      },
+      {
+        "name": "Details aria-expanded",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+        "attribut": "aria-expanded"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kachel-Detail offen",
+        "selector": ".werkzeug-detail[open]"
+      },
+      {
+        "name": "Gap-Zeile mit „Kandidaten suchen“",
+        "selector": ".werkstatt-gap-zeile .capabilities-scout-link"
+      },
+      {
+        "name": "Rollen-Details geladen",
+        "selector": ".werkstatt-rollen-detail:not([hidden]) .lauf-kopfdaten"
+      },
+      {
+        "name": "Rollen-Select (muss fehlen)",
+        "selector": "#capabilities-rollen-auswahl"
+      },
+      {
+        "name": "Aktivieren/Freigeben-Knopf (muss fehlen)",
+        "selector": "#view-capabilities [data-aktion=\"freigeben\"], #view-capabilities [data-aktion=\"aktivieren\"]"
+      },
+      {
+        "name": "Fehler Werkzeuge",
+        "selector": "#capabilities-library > p.fehler"
+      },
+      {
+        "name": "Fehler Abdeckung",
+        "selector": "#capabilities-abdeckung > p.fehler"
+      },
+      {
+        "name": "Fehler Details",
+        "selector": ".werkstatt-rollen-detail p.fehler"
+      },
+      {
+        "name": "ASSESSED-Zeile gefüllt",
+        "selector": "#capabilities-assessed .badge"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Werkzeuge (Standard): Kopf, Register, Unterreiter, Kennzahlen echt gezählt, Suche/Filter, Kacheln, Hinweise",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-1-werkzeuge.webp"
+    },
+    {
+      "label": "Kachel-Detail der ersten Kachel offen (ID, Phasen, Grund, Fehlt für Einsatz)",
+      "klick": "#capabilities-library .werkzeug-karte .werkzeug-detail > summary",
+      "warteAufSelector": {
+        "selector": ".werkzeug-detail[open] dl",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-2-kachel-detail.webp"
+    },
+    {
+      "label": "Unterreiter Rollen & Besetzung: Hinweis, Liste je Rolle, Gap-Zeile bei qa (Zum Workboard, Kandidaten suchen), F-346-Ausnahme",
+      "klick": "#faehigkeiten-reiter-rollen",
+      "warteAufSelector": {
+        "selector": ".werkstatt-gap-zeile .capabilities-scout-link",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-3-rollen.webp"
+    },
+    {
+      "label": "Details der Rolle qa offen: Ebenen 1–4 lazy geladen",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .werkstatt-rollen-detail .lauf-kopfdaten",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-4-rolle-details.webp"
+    },
+    {
+      "label": "Unterreiter Empfehlungen: Verweis auf den Freigabeschritt",
+      "klick": "#faehigkeiten-reiter-empfehlungen",
+      "warteAufSelector": {
+        "selector": "#faehigkeiten-bereich-empfehlungen .werkstatt-link",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-5-empfehlungen.webp"
+    },
+    {
+      "label": "Register Harness-Aufbau: Baustein „kommt“",
+      "klick": "#werkstatt-reiter-harness",
+      "warteAufSelector": {
+        "selector": "#werkstatt-bereich-harness .kommt-badge",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-6-harness.webp"
+    },
+    {
+      "label": "Register Phasen & Rollen: Baustein „kommt“",
+      "klick": "#werkstatt-reiter-phasen",
+      "warteAufSelector": {
+        "selector": "#werkstatt-bereich-phasen .kommt-badge",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-7-phasen.webp"
+    }
+  ]
+}
