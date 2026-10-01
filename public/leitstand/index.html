@@ -191,71 +191,80 @@
           </details>
         </section>
 
-        <!-- F29 WS-2a: Neu-laden-Button und Liste gemeinsam in EINER .card (Muster WS-1b
-             workboard-filter/-liste). F29 WS-D2 (Auftrag Punkt D): Kopf-Panel mit Icon, Titel,
-             Untertitel, "+ Neues Projekt" und "Neu laden" als Icon-Button; je Karte in
-             #projekte-uebersicht-liste jetzt eine Fokus-Panel-artige Karte
-             (views/projekte-uebersicht.js projektKarte) statt einer Listenzeile. Rein lesend bis
-             auf den Kartenklick (setzt nur den Client-Präfix, kein Server-Schreibpfad) — Details
-             siehe Datei-Kommentar dort.
-
-             F41 WS-2: "+ Neues Projekt" öffnet #projekte-anlegen-formular (POST /api/projekte,
-             WS-1-Backend) statt weiterhin deaktiviert zu sein. Erfolg zeigt
-             #projekte-anlegen-erfolg mit den Git-Befehlen aus naechste_schritte (reiner Text-Block
-             zum Kopieren, Muster views/workboard.js renderTerminalBlock — kein Git durch den Kern,
-             AK4f) und einem Sprung ins Coach-Interview (views/chat.js wechsleZuSparringProjekt). -->
-        <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" hidden>
-          <div class="card">
-            <div class="projekte-kopf">
-              <div class="card-kopf">
-                <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 6.5h6l1.6 2H20v9H4v-11Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg></span>
-                <div>
-                  <h2>Projekte</h2>
-                  <p class="projekte-kopf-untertitel">Deine Vorhaben im Überblick.</p>
-                </div>
+        <!-- F44 WS-6a (Vorlage V10 d_projekte und d_projekt_neu, Abgleich F-725 H1–H7): „Alle Produkte“
+             (#projekte-uebersicht-seite) und die Unterseite „Neues Produkt“ (#projekte-anlegen-seite,
+             Route #/projekte-uebersicht/neu) im selben View-Container — die Navigation „Alle Produkte“
+             bleibt auf beiden markiert. Die Karten in #projekte-uebersicht-liste baut
+             views/projekte-uebersicht.js (Zähler je Karte mit expliziter id, Klappe „Vorschau & Aufruf ·
+             Technik“ mit F43/F-849). Das Formular behält die IDs projekte-anlegen-* aus F41 WS-2 (POST
+             /api/projekte; Erfolg mit den Git-Befehlen aus naechste_schritte als reinem Text und dem
+             Sprung ins Coach-Interview). Ziel und Zielgruppe sind „kommt“ (E-F44-1 = B). Ausnahme vom
+             sonst lesenden Leitstand: Anlegen und F43 „Aufrufen“ schreiben real. -->
+        <section id="view-projekte-uebersicht" data-view="projekte-uebersicht" class="v10-seite" hidden>
+          <div id="projekte-uebersicht-seite" class="produkte-seite">
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="produkte.eyebrow">Dein Produktportfolio</div>
+                <h1 data-i18n="produkte.titel">Was entwickeln wir?</h1>
+                <p class="description" data-i18n="produkte.beschreibung">Jedes Produkt hat sein Ziel, seine Planung und seine Entscheidungen.</p>
               </div>
-              <div class="projekte-kopf-aktionen">
-                <button type="button" id="projekte-anlegen-oeffnen" class="btn">+ Neues Projekt</button>
-                <button type="button" id="projekte-uebersicht-neu-laden" class="btn projekte-neu-laden-btn" aria-label="Neu laden">
+              <div class="produkte-kopf-aktionen">
+                <button type="button" id="projekte-anlegen-oeffnen" class="button primary"><span aria-hidden="true">+</span> <span data-i18n="produkte.neu">Neues Produkt</span></button>
+                <button type="button" id="projekte-uebersicht-neu-laden" class="button produkte-neu-laden" aria-label="Neu laden" title="Neu laden" data-i18n-aria-label="produkte.neuLaden" data-i18n-title="produkte.neuLaden">
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 0 1 14-5.2M20 12a8 8 0 0 1-14 5.2M15 5h4V1M9 19H5v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
               </div>
             </div>
+            <p id="projekte-uebersicht-intro" class="produkte-intro" hidden></p>
+            <div id="projekte-uebersicht-liste" class="produkte-liste"></div>
+          </div>
 
-            <div id="projekte-anlegen-formular" class="unterabschnitt" hidden>
-              <h3>Neues Projekt anlegen</h3>
-              <label for="projekte-anlegen-id">id</label>
-              <input type="text" id="projekte-anlegen-id" placeholder="z. B. mein-projekt" />
-              <p class="hinweis">Kleinbuchstaben, Ziffern, Bindestrich — beginnt mit Buchstabe oder Ziffer (Muster <code>^[a-z0-9][a-z0-9-]{1,40}$</code>).</p>
+          <div id="projekte-anlegen-seite" class="produkt-neu-seite" hidden>
+            <a href="#/projekte-uebersicht" id="projekte-anlegen-zurueck" class="back"><span aria-hidden="true">←</span> <span data-i18n="produktNeu.zurueck">Alle Produkte</span></a>
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="produktNeu.eyebrow">Neues Produkt</div>
+                <h1 data-i18n="produktNeu.titel">Was möchtest du entwickeln?</h1>
+                <p class="description" data-i18n="produktNeu.beschreibung">Ein Name reicht für den Anfang. Ziel und Zielgruppe hältst du später fest.</p>
+              </div>
+            </div>
 
-              <label for="projekte-anlegen-name">Name</label>
-              <input type="text" id="projekte-anlegen-name" />
+            <div id="projekte-anlegen-formular" class="produkt-neu-formular">
+              <label class="field" for="projekte-anlegen-name" data-i18n="produktNeu.name">Produktname</label>
+              <input type="text" id="projekte-anlegen-name" autocomplete="off" aria-describedby="projekte-anlegen-fehler" />
+
+              <label class="field produkt-neu-kommt-label" for="projekte-anlegen-ziel"><span data-i18n="produktNeu.ziel">Was soll dein Produkt ermöglichen?</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></label>
+              <textarea id="projekte-anlegen-ziel" class="produkt-neu-kommt-feld" rows="4" readonly aria-disabled="true"></textarea>
+
+              <button type="button" class="button kommt-knopf produkt-neu-zielgruppe" aria-disabled="true"><span class="kommt-symbol" aria-hidden="true">▸</span> <span data-i18n="produktNeu.zielgruppe">Zielgruppe ergänzen · optional</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
 
               <details id="projekte-anlegen-zielordner-details">
-                <summary>Zielordner (optional)</summary>
-                <label for="projekte-anlegen-zielordner">Zielordner</label>
-                <input type="text" id="projekte-anlegen-zielordner" placeholder="Standard: Geschwisterverzeichnis von ai-workforce, benannt nach der id" />
+                <summary data-i18n="produktNeu.ordner">Projektordner · optional</summary>
+                <label class="field" for="projekte-anlegen-id" data-i18n="produktNeu.id">ID</label>
+                <input type="text" id="projekte-anlegen-id" autocomplete="off" spellcheck="false" aria-describedby="projekte-anlegen-id-hinweis projekte-anlegen-fehler" />
+                <small id="projekte-anlegen-id-hinweis" data-i18n="produktNeu.id.hinweis">Wird aus dem Namen abgeleitet, solange du sie nicht änderst. Kleinbuchstaben, Ziffern und Bindestrich, 2 bis 41 Zeichen.</small>
+                <label class="field" for="projekte-anlegen-zielordner" data-i18n="produktNeu.zielordner">Zielordner</label>
+                <input type="text" id="projekte-anlegen-zielordner" autocomplete="off" spellcheck="false" aria-describedby="projekte-anlegen-zielordner-hinweis" />
+                <small id="projekte-anlegen-zielordner-hinweis" data-i18n="produktNeu.zielordner.hinweis">Leer lassen: ein Ordner neben ai-workforce, benannt nach der ID.</small>
               </details>
 
-              <div>
-                <button type="button" id="projekte-anlegen-absenden" class="btn btn-primary">Anlegen</button>
-                <button type="button" id="projekte-anlegen-abbrechen" class="btn">Abbrechen</button>
+              <div class="action-row">
+                <button type="button" id="projekte-anlegen-absenden" class="button primary" data-i18n="produktNeu.anlegen">Produkt anlegen</button>
+                <button type="button" id="projekte-anlegen-abbrechen" class="button" data-i18n="produktNeu.abbrechen">Abbrechen</button>
               </div>
-              <p id="projekte-anlegen-fehler" class="fehler" hidden></p>
+              <p id="projekte-anlegen-fehler" class="fehler" tabindex="-1" hidden></p>
             </div>
 
-            <div id="projekte-anlegen-erfolg" class="unterabschnitt" hidden>
-              <h3>Nächste Schritte</h3>
-              <p class="hinweis" id="projekte-anlegen-erfolg-hinweis"></p>
+            <div id="projekte-anlegen-erfolg" class="produkt-neu-erfolg" hidden>
+              <h2 id="projekte-anlegen-erfolg-titel" tabindex="-1" data-i18n="produktNeu.erfolg.titel">Nächste Schritte</h2>
+              <p class="description" id="projekte-anlegen-erfolg-hinweis"></p>
               <pre id="projekte-anlegen-git-befehle"></pre>
               <p class="fehler" id="projekte-anlegen-erfolg-trust" hidden></p>
-              <div>
-                <button type="button" id="projekte-anlegen-coach" class="btn btn-primary">Zum Coach-Interview</button>
-                <button type="button" id="projekte-anlegen-erfolg-schliessen" class="btn">Schließen</button>
+              <div class="action-row">
+                <button type="button" id="projekte-anlegen-coach" class="button primary" data-i18n="produktNeu.erfolg.coach">Zum Coach-Interview</button>
+                <button type="button" id="projekte-anlegen-erfolg-schliessen" class="button" data-i18n="produktNeu.erfolg.schliessen">Schließen</button>
               </div>
             </div>
-
-            <div id="projekte-uebersicht-liste" class="projekte-liste"></div>
           </div>
         </section>
 

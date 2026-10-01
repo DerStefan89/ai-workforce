@@ -58,6 +58,7 @@
 import { holeRoadmap, holeWorkitems } from '../api.js'
 import { baueEntscheidungen, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
 import { ladeFokusNachtrag, schrittFolge, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
+import { ring } from '../fortschritt-ring.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
@@ -129,22 +130,6 @@ function nichtVerfuegbar() {
  */
 function textLink(hash, text) {
   return `<a class="text-link" href="${escapeHtml(hash)}">${escapeHtml(text)} <span aria-hidden="true">→</span></a>`
-}
-
-/**
- * Fortschrittsring der Vorlage (progress-bubble): Prozent, darunter „x/y“.
- * @param abgenommen - Zähler
- * @param gesamt - Nenner
- * @param optionen - { klein: true } für den kleinen Ring (B12), { label } für den zugänglichen Namen
- * @returns HTML
- */
-function ring(abgenommen, gesamt, optionen = {}) {
-  const prozent = gesamt > 0 ? Math.round((abgenommen / gesamt) * 100) : 0
-  const mitte = gesamt > 0 ? escapeHtml(formatiereZahl(prozent / 100, { style: 'percent' })) : '–'
-  return `<div class="progress-bubble${optionen.klein === true ? ' klein' : ''}" role="img" aria-label="${escapeHtml(optionen.label ?? '')}">
-      <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle class="bubble-track" cx="50" cy="50" r="42" /><circle class="bubble-fill" cx="50" cy="50" r="42" pathLength="100" stroke-dasharray="${prozent} 100" /></svg>
-      <div aria-hidden="true"><strong>${mitte}</strong><small>${escapeHtml(formatiereZahl(abgenommen))}/${escapeHtml(formatiereZahl(gesamt))}</small></div>
-    </div>`
 }
 
 /**

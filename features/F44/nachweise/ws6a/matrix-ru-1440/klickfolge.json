@@ -1,0 +1,489 @@
+{
+  "url": "http://127.0.0.1:4199/#/projekte-uebersicht",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-projekte-uebersicht"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "startvorlage_pfad": "startvorlagen/ai-workforce.json",
+            "profil_pfad": "profiles/ai-workforce.json",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          },
+          {
+            "id": "haushaltsbuch",
+            "name": "Haushaltsbuch",
+            "repo_pfad": "../haushaltsbuch",
+            "startvorlage_pfad": "startvorlage.json",
+            "profil_pfad": "profil.json",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IDEE",
+            "laufAktiv": true
+          },
+          {
+            "id": "rezeptbuch-familie",
+            "name": "Familien-Rezeptbuch mit Wochenplanung, Einkaufsliste und Vorratskammer",
+            "repo_pfad": "C:/Users/beispiel/Projekte/sehr/tief/verschachtelte/ordnerstruktur/familien-rezeptbuch-mit-wochenplanung-und-einkaufsliste",
+            "startvorlage_pfad": "startvorlage.json",
+            "profil_pfad": "profil.json",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "DISCOVERY",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/roadmap",
+      "json": {
+        "status": "ok",
+        "vision": "Arbeit vom klaren Auftrag bis zum abgenommenen Ergebnis verlässlich steuern.",
+        "meilensteine": [
+          {
+            "id": "M1",
+            "titel": "Fassung 1",
+            "status": "LAEUFT",
+            "features": [
+              {
+                "id": "F41",
+                "titel": "Titel F41",
+                "status": "ABGESCHLOSSEN"
+              },
+              {
+                "id": "F43",
+                "titel": "Titel F43",
+                "status": "ABGESCHLOSSEN"
+              },
+              {
+                "id": "F44",
+                "titel": "Titel F44",
+                "status": "IN_ARBEIT"
+              }
+            ]
+          },
+          {
+            "id": "M2",
+            "titel": "Fassung 2",
+            "status": "GEPLANT",
+            "features": [
+              {
+                "id": "F45",
+                "titel": "Titel F45",
+                "status": "ENTWURF"
+              },
+              {
+                "id": "F46",
+                "titel": "Titel F46",
+                "status": "keine_akte"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-a1",
+            "auftragId": "a1",
+            "ziel": "Login-Seite reparieren",
+            "versionSequenz": 1,
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s1",
+            "grund": null,
+            "schritteAnzahl": 2,
+            "naechster": {
+              "art": "haltFreigabe",
+              "grund": "Schritt s1 verlangt eine Freigabe",
+              "schrittId": "s1"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/workitems?status=OFFEN",
+      "json": {
+        "workitems": [
+          {
+            "id": "F-900",
+            "titel": "Kritischer Befund",
+            "prioritaet": "P0",
+            "status": "OFFEN",
+            "quelle": "finding"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/projekt-aufruf",
+      "methode": "GET",
+      "json": {
+        "vorschau": {
+          "url": "http://127.0.0.1:4199",
+          "erreichbar": null,
+          "grund": "nicht zulässig (Leitstand-Port)"
+        },
+        "startbefehl": null,
+        "ergebnis_datei": null,
+        "startvorlage": "startvorlagen/ai-workforce.json",
+        "aktiv": false,
+        "letzterAufruf": null
+      }
+    },
+    {
+      "muster": "**/api/projekte/haushaltsbuch/roadmap",
+      "json": {
+        "status": "nicht_vorhanden"
+      }
+    },
+    {
+      "muster": "**/api/projekte/haushaltsbuch/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte/haushaltsbuch/workitems?status=OFFEN",
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/projekte/haushaltsbuch/projekt-aufruf",
+      "methode": "GET",
+      "json": {
+        "vorschau": {
+          "url": "http://127.0.0.1:3000",
+          "erreichbar": true,
+          "grund": "HTTP 200"
+        },
+        "startbefehl": [
+          "C:/Programme/nodejs/node.exe",
+          "scripts/start.mjs"
+        ],
+        "ergebnis_datei": null,
+        "startvorlage": "startvorlage.json",
+        "aktiv": false,
+        "letzterAufruf": {
+          "ausgang": "GRUEN",
+          "exit_code": 0,
+          "dauer_ms": 812,
+          "zeitgrenze_ms": 30000,
+          "stdout_ende": "Server bereit auf Port 3000",
+          "stderr_ende": "",
+          "ergebnis_datei": null
+        }
+      }
+    },
+    {
+      "muster": "**/api/projekte/rezeptbuch-familie/roadmap",
+      "status": 500,
+      "json": {
+        "grund": "roadmap.json nicht lesbar: EACCES"
+      }
+    },
+    {
+      "muster": "**/api/projekte/rezeptbuch-familie/zustand",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte/rezeptbuch-familie/workitems?status=OFFEN",
+      "status": 500,
+      "json": {
+        "grund": "state/findings.md: Parserfehler in Zeile 12"
+      }
+    },
+    {
+      "muster": "**/api/projekte/rezeptbuch-familie/projekt-aufruf",
+      "methode": "GET",
+      "json": {
+        "vorschau": {
+          "url": null,
+          "erreichbar": null,
+          "grund": "nicht gesetzt"
+        },
+        "startbefehl": null,
+        "ergebnis_datei": null,
+        "startvorlage": "startvorlage.json",
+        "aktiv": false,
+        "letzterAufruf": null
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Nav markiert",
+        "selector": "[data-nav-view][aria-current=\"page\"]",
+        "attribut": "data-nav-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Intro",
+        "selector": "#projekte-uebersicht-intro"
+      },
+      {
+        "name": "Chip AI Workforce",
+        "selector": "[data-produkt-id=\"ai-workforce\"] [data-teil=\"lage\"]"
+      },
+      {
+        "name": "Chip Haushaltsbuch",
+        "selector": "[data-produkt-id=\"haushaltsbuch\"] [data-teil=\"lage\"]"
+      },
+      {
+        "name": "Entscheidungen lang (title)",
+        "selector": "[data-produkt-id=\"rezeptbuch-familie\"] [data-teil=\"entscheidungen\"] [title]",
+        "attribut": "title"
+      },
+      {
+        "name": "Fehler Anlegen",
+        "selector": "#projekte-anlegen-fehler"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Liste",
+        "id": "projekte-uebersicht-seite"
+      },
+      {
+        "name": "Unterseite Neues Produkt",
+        "id": "projekte-anlegen-seite"
+      },
+      {
+        "name": "Formular",
+        "id": "projekte-anlegen-formular"
+      },
+      {
+        "name": "Nächste Schritte",
+        "id": "projekte-anlegen-erfolg"
+      },
+      {
+        "name": "Fehler Anlegen",
+        "id": "projekte-anlegen-fehler"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Aktive Karte markiert",
+        "selector": ".produkt-karte.aktiv[data-produkt-id=\"ai-workforce\"]"
+      },
+      {
+        "name": "Öffnen-Link gesperrte Karte (muss fehlen)",
+        "selector": "[data-produkt-id=\"ai-workforce\"] a[target=\"_blank\"]"
+      },
+      {
+        "name": "Öffnen-Link Haushaltsbuch",
+        "selector": "[data-produkt-id=\"haushaltsbuch\"] .projekt-aufruf a[target=\"_blank\"]"
+      },
+      {
+        "name": "„Produkt bearbeiten“ kommt",
+        "selector": ".projekt-technik .kommt-knopf[aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Ziel kommt (aria-disabled)",
+        "selector": "#projekte-anlegen-ziel[aria-disabled=\"true\"][readonly]"
+      },
+      {
+        "name": "Projektordner offen",
+        "selector": "#projekte-anlegen-zielordner-details[open]"
+      },
+      {
+        "name": "Technik-Klappe offen",
+        "selector": ".projekt-technik[open]"
+      },
+      {
+        "name": "zweite Live-Region (muss fehlen)",
+        "selector": "#view-projekte-uebersicht [aria-live]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Ring AI Workforce 2/5 geladen",
+      "warteAufSelector": {
+        "selector": "[data-produkt-id=\"ai-workforce\"] .bubble-fill[stroke-dasharray=\"40 100\"]",
+        "timeoutMs": 15000,
+        "zustand": "attached"
+      }
+    },
+    {
+      "label": "Entscheidungen der langen Karte gescheitert („—“ mit Grund)",
+      "warteAufSelector": {
+        "selector": "[data-produkt-id=\"rezeptbuch-familie\"] [data-teil=\"entscheidungen\"] [title]",
+        "timeoutMs": 15000,
+        "zustand": "attached"
+      }
+    },
+    {
+      "label": "Liste: Kopf, Zeile „3 Produkte · Ausführung aktiv · …“, drei Karten (Entscheidung / Läuft / Bereit mit „—“)",
+      "warteAufSelector": {
+        "selector": "[data-produkt-id=\"haushaltsbuch\"] .projekt-aufrufen",
+        "timeoutMs": 15000,
+        "zustand": "attached"
+      },
+      "screenshot": "ru1440-1-liste.webp"
+    },
+    {
+      "label": "Technik-Klappe der langen Karte offen: ID, voller Pfad umbrechend (F-857), Status roh, „Produkt bearbeiten“ kommt, Vorschau nicht gesetzt",
+      "klick": "[data-produkt-id=\"rezeptbuch-familie\"] .projekt-technik > summary",
+      "warteAufSelector": {
+        "selector": "[data-produkt-id=\"rezeptbuch-familie\"] .projekt-technik[open]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-2-technik-offen.webp"
+    },
+    {
+      "label": "„+ Neues Produkt“ → #/projekte-uebersicht/neu, leer, Fokus im Namen",
+      "klick": "#projekte-anlegen-oeffnen",
+      "warteAufSelector": {
+        "selector": "#projekte-anlegen-seite:not([hidden])",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-3-neu-leer.webp"
+    },
+    {
+      "label": "Name tippen (ID wird abgeleitet)",
+      "tippen": {
+        "selector": "#projekte-anlegen-name",
+        "text": "Größe & Übersicht"
+      }
+    },
+    {
+      "label": "„Projektordner · optional“ öffnen: ID groesse-uebersicht",
+      "klick": "#projekte-anlegen-zielordner-details > summary",
+      "warteAufSelector": {
+        "selector": "#projekte-anlegen-zielordner-details[open]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-4-neu-ausgefuellt.webp"
+    },
+    {
+      "label": "„Produkt anlegen“ → 201: „Nächste Schritte“ auf der Unterseite, Fokus auf der Überschrift",
+      "anfragenAntworten": [
+        {
+          "muster": "**/api/projekte",
+          "methode": "POST",
+          "status": 201,
+          "json": {
+            "projekt": {
+              "id": "groesse-uebersicht",
+              "name": "Größe & Übersicht"
+            },
+            "naechste_schritte": {
+              "git": [
+                "cd ../groesse-uebersicht",
+                "git init",
+                "git add -A",
+                "git commit -m \"Projektgrundlage aus der Harness-Baseline\""
+              ],
+              "hinweis": "Der Kern führt kein Git aus — die Befehle oben im neuen Projektordner ausführen.",
+              "trust": {
+                "status": "fehlt",
+                "pfad": "../groesse-uebersicht",
+                "hinweis": "Workspace-Trust für ../groesse-uebersicht fehlt noch — beim ersten Öffnen in Claude Code bestätigen."
+              }
+            }
+          }
+        }
+      ],
+      "klick": "#projekte-anlegen-absenden",
+      "warteAufSelector": {
+        "selector": "#projekte-anlegen-erfolg:not([hidden])",
+        "timeoutMs": 15000
+      },
+      "screenshot": "ru1440-5-erfolg.webp"
+    }
+  ]
+}

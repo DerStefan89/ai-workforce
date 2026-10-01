@@ -14,6 +14,8 @@
  *   Weg zum Produkt, Auswahl des Entwicklungsstands)
  * - public/leitstand/views/workboard-detail.js (F44 WS-3a/3b: statusKategorie für den Kartenstatus von Feature-Akten,
  *   roadmapZustand für den Meilenstein im Detail)
+ * - public/leitstand/views/projekte-uebersicht.js über produkte-anzeige.js (F44 WS-6a: roadmapZustand, zaehleRoadmap —
+ *   Ring je Produktkarte)
  * - public/leitstand/roadmap-anzeige.test.mjs (node:test)
  *
  * Wichtig:
@@ -124,6 +126,19 @@ export function aktuellerMeilenstein(roadmap) {
 export function zaehleMeilenstein(meilenstein) {
   const features = Array.isArray(meilenstein?.features) ? meilenstein.features : []
   return { abgenommen: features.filter((f) => f.status === ABGESCHLOSSEN).length, gesamt: features.length }
+}
+
+/**
+ * Zählt die Features aller Meilensteine einer gültigen Projektion (F44 WS-6a, Ring „Erfasste
+ * Einträge abgenommen“ je Karte auf `#/projekte-uebersicht`, Abgleich F-725 H1). Ein Feature, das
+ * in zwei Meilensteinen steht, zählt zweimal — wie in der Projektion.
+ * @param roadmap - Antwort von GET …/roadmap
+ * @returns { abgenommen, gesamt } über alle Meilensteine; 0/0 ohne gültige Projektion
+ */
+export function zaehleRoadmap(roadmap) {
+  return meilensteineVon(roadmap)
+    .map(zaehleMeilenstein)
+    .reduce((summe, z) => ({ abgenommen: summe.abgenommen + z.abgenommen, gesamt: summe.gesamt + z.gesamt }), { abgenommen: 0, gesamt: 0 })
 }
 
 /**
