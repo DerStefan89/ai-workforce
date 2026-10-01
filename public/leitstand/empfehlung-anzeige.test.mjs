@@ -68,8 +68,10 @@ test('renderInstallierbarHinweis (F-826): Hinweis nur bei installierbarem Eintra
 })
 
 test('renderInstallierbarHinweis (F-826): beide ZWINGEND-Starts (Workflow-Bedienung, Workboard-Vorschlag) zeigen ihn direkt vor „Freigeben“', () => {
+  // F44 WS-4b (F-935): der Inhalt des Freigabedialogs wird seit dem Modulschnitt in
+  // views/workflow-eingriffe.js gerendert (rein); die Invariante „Hinweis direkt vor Freigeben“ bleibt.
   for (const [datei, knopf] of [
-    ['views/workflows.js', 'data-aktion="freigeben"'],
+    ['views/workflow-eingriffe.js', 'data-aktion="freigeben"'],
     ['views/workboard.js', 'wb-freigeben'],
   ]) {
     const quelle = readFileSync(new URL(`./${datei}`, import.meta.url), 'utf8')

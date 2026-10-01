@@ -57,10 +57,16 @@
  * KLAERUNG_ERFORDERLICH ("Stack entschieden, aber CLAUDE.md nicht gefüllt
  * (F-714)"); füllt der Lauf CLAUDE.md real, läuft der Workflow durch.
  * (i) F42 WS-4 (löst F-711, state/findings.md F-711): statisches
- * Quelltext-Gate gegen public/leitstand/views/workflows.js (Muster
- * scripts/check-f15-workflow-oberflaeche.mjs — kein Import/keine
- * Browser-Ausführung, D5) — die Vorauswahl hängt an 'option.titel ===
- * frage.empfehlung', nicht an der Options-Position.
+ * Quelltext-Gate gegen die Datei, in der renderArchitekturEntscheidung
+ * liegt (Muster scripts/check-f15-workflow-oberflaeche.mjs — kein
+ * Import/keine Browser-Ausführung, D5) — die Vorauswahl hängt an
+ * 'option.titel === frage.empfehlung', nicht an der Options-Position.
+ * F44 WS-4b (F-935): Das Formular ist mit dem Modulschnitt aus
+ * views/workflows.js nach views/workflow-eingriffe.js umgezogen (reine
+ * Render-Funktionen; der Dialog „Rückfrage beantworten“ zeigt es). Das Gate
+ * liest deshalb diese Datei und verlangt, dass renderArchitekturEntscheidung
+ * dort definiert ist — die Invariante (Vorauswahl per Titel) bleibt; der
+ * Rückfall-Schutz (index === 0) gilt für beide Dateien.
  *
  * Wird aufgerufen von: `npm run check`.
  *
@@ -959,17 +965,28 @@ try {
   // ─── (i) F42 WS-4 (löst F-711) ────────────────────────────────────────────────────────────
   {
     const vor = befunde.length
-    const workflowsQuelltext = readFileSync(join(ECHTE_INSTALL_WURZEL, 'public', 'leitstand', 'views', 'workflows.js'), 'utf8')
+    // F44 WS-4b: die Datei, in der renderArchitekturEntscheidung liegt (siehe Kopf (i)).
+    const formularDatei = 'public/leitstand/views/workflow-eingriffe.js'
+    const formularQuelltext = readFileSync(join(ECHTE_INSTALL_WURZEL, 'public', 'leitstand', 'views', 'workflow-eingriffe.js'), 'utf8')
+    const bedienQuelltext = readFileSync(join(ECHTE_INSTALL_WURZEL, 'public', 'leitstand', 'views', 'workflows.js'), 'utf8')
 
-    if (!workflowsQuelltext.includes('option.titel === frage.empfehlung')) {
-      befunde.push("(i) public/leitstand/views/workflows.js: erwartet die Vorauswahl-Bedingung 'option.titel === frage.empfehlung' (F-711) — nicht gefunden")
+    if (!/export function renderArchitekturEntscheidung\(/.test(formularQuelltext)) {
+      befunde.push(`(i) ${formularDatei}: erwartet die Definition von renderArchitekturEntscheidung — sonst liest das Gate die falsche Datei`)
     }
-    if (!/\$\{empfohlen \? ' checked' : ''\}/.test(workflowsQuelltext)) {
-      befunde.push("(i) public/leitstand/views/workflows.js: erwartet, dass das 'checked'-Attribut an die Variable 'empfohlen' gekoppelt ist — nicht gefunden")
+    if (!formularQuelltext.includes('option.titel === frage.empfehlung')) {
+      befunde.push(`(i) ${formularDatei}: erwartet die Vorauswahl-Bedingung 'option.titel === frage.empfehlung' (F-711) — nicht gefunden`)
     }
-    // Regressionsschutz: eine index-basierte Vorauswahl (z. B. 'index === 0') darf nicht wieder auftauchen.
-    if (/index\s*===\s*0\s*\?\s*' checked'/.test(workflowsQuelltext)) {
-      befunde.push('(i) public/leitstand/views/workflows.js: eine index-basierte Vorauswahl (erste Option) wäre der F-711-Rückfall')
+    if (!/\$\{empfohlen \? ' checked' : ''\}/.test(formularQuelltext)) {
+      befunde.push(`(i) ${formularDatei}: erwartet, dass das 'checked'-Attribut an die Variable 'empfohlen' gekoppelt ist — nicht gefunden`)
+    }
+    // Regressionsschutz: eine index-basierte Vorauswahl (z. B. 'index === 0') darf in keiner der beiden Dateien wieder auftauchen.
+    for (const [datei, quelltext] of [
+      [formularDatei, formularQuelltext],
+      ['public/leitstand/views/workflows.js', bedienQuelltext],
+    ]) {
+      if (/index\s*===\s*0\s*\?\s*' checked'/.test(quelltext)) {
+        befunde.push(`(i) ${datei}: eine index-basierte Vorauswahl (erste Option) wäre der F-711-Rückfall`)
+      }
     }
 
     if (befunde.length === vor) {

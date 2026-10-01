@@ -3,16 +3,18 @@
  *
  * Zweck: node:test-Fälle für rollen-anzeige.js (F44 WS-3b, F-914): Die Rollenliste deckt sich mit
  * den Rollenverträgen des Kerns, jede Rolle hat einen Namen in allen vier Wörterbüchern, eine
- * unbekannte Rolle erscheint als ID, die Spalte von „Wer macht was“ escapt Projekttexte.
+ * unbekannte Rolle erscheint als ID, die Spalte von „Wer macht was“ escapt Projekttexte. F44 WS-4b:
+ * dasselbe für die Worker (WORKER, workerName).
  *
  * Wird aufgerufen von: `npm run test` (node --test).
  */
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import { bekannteRollen } from '../../src/rollen/index.ts'
 import { WOERTERBUECHER } from './i18n.js'
-import { ROLLEN, rollenName, werSpalte } from './rollen-anzeige.js'
+import { ROLLEN, rollenName, WORKER, werSpalte, workerName } from './rollen-anzeige.js'
 
 test('ROLLEN ist genau die Menge der Rollenverträge im Kern (keine erfundene, keine fehlende Rolle)', () => {
   assert.deepEqual([...ROLLEN].sort(), [...bekannteRollen()].sort())
@@ -41,4 +43,18 @@ test('werSpalte: Rollenname statt ID, Escaping, Leerzustand, Titel mit Rolle in 
   const mitTitel = werSpalte('Jetzt', { rolle: '<x>', schritt_id: 's2' }, { titelHtml: 'Deine Freigabe', klasse: 'execution-current' })
   assert.match(mitTitel, /^<div class="execution-current">/)
   assert.match(mitTitel, /<strong>Deine Freigabe<\/strong><p>&lt;x&gt; · Schritt/)
+})
+
+// F44 WS-4b: Worker lesbar über worker.<id>, Zwilling von WORKER in src/workflow/index.ts.
+test('WORKER deckt sich mit WORKER des Kerns; je Worker ein Name in de/en/tr/ru; unbekannt als ID', () => {
+  const kern = readFileSync(new URL('../../src/workflow/index.ts', import.meta.url), 'utf8').match(/const WORKER = \[([^\]]*)\]/)
+  assert.ok(kern !== null, 'WORKER in src/workflow/index.ts nicht gefunden')
+  assert.deepEqual([...WORKER].sort(), [...kern[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).sort())
+  for (const [sprache, buch] of Object.entries(WOERTERBUECHER)) {
+    assert.deepEqual(Object.keys(buch).filter((s) => s.startsWith('worker.')).sort(), WORKER.map((w) => `worker.${w}`).sort(), sprache)
+  }
+  assert.equal(workerName('claude-code'), 'Claude Code')
+  assert.equal(workerName('codex'), 'Codex')
+  assert.equal(workerName('gemini'), 'gemini')
+  assert.equal(workerName(undefined), '')
 })

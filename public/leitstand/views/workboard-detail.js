@@ -35,7 +35,7 @@
 
 import { schrittFortschritt, workflowPhase } from '../entwicklung-daten.js'
 import { schrittFolge } from '../fokus-daten.js'
-import { formatiereZahl, t } from '../i18n.js'
+import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
 import { roadmapZustand, statusKategorie as roadmapStatusKategorie } from '../roadmap-anzeige.js'
@@ -46,16 +46,6 @@ const BEKANNTE_TYPEN = new Set(['FEATURE', 'BUG', 'HARNESS_IMPROVEMENT', 'TECH_D
 
 /** Schritt-Status mit übersetzter Bezeichnung (SCHRITT_STATUS, src/workflow/index.ts); ein anderer erscheint roh. */
 const SCHRITT_STATUS = new Set(['OFFEN', 'WARTET_FREIGABE', 'LAEUFT', 'ERFOLGREICH', 'VERWEIGERT', 'FEHLGESCHLAGEN', 'UEBERSPRUNGEN'])
-
-/**
- * Escapter, übersetzter Text (Muster views/dashboard.js).
- * @param schluessel - i18n-Schlüssel
- * @param werte - Platzhalterwerte
- * @returns HTML
- */
-function tx(schluessel, werte) {
-  return escapeHtml(t(schluessel, werte))
-}
 
 /**
  * Ordnet den Status eines Workitems einer der drei .status-punkt-Klassen zu (ok/aktiv/neutral,
@@ -98,7 +88,7 @@ export function kartenStatus(workitem) {
 export function phaseHtml(workflow) {
   const phase = workflowPhase(workflow)
   if (phase === null) return ''
-  return `<span title="${escapeHtml(workflow.status ?? '')}">${tx(`entwicklung.phase.${phase}`)}</span>`
+  return `<span title="${escapeHtml(workflow.status ?? '')}">${tHtml(`entwicklung.phase.${phase}`)}</span>`
 }
 
 /**
@@ -108,7 +98,7 @@ export function phaseHtml(workflow) {
  * @returns HTML
  */
 function phaseDesDetails(sicht) {
-  return sicht.abnahmeOffen === true && workflowPhase(sicht.workflow) === 'abgeschlossen' ? tx('entwicklung.detail.wer.abnahme') : phaseHtml(sicht.workflow)
+  return sicht.abnahmeOffen === true && workflowPhase(sicht.workflow) === 'abgeschlossen' ? tHtml('entwicklung.detail.wer.abnahme') : phaseHtml(sicht.workflow)
 }
 
 /**
@@ -140,17 +130,17 @@ export function detailStatusHtml(sicht) {
   const { workitem, workflow } = sicht
   const status = `<span class="workboard-detail-statuswert"><span class="status-punkt ${statusKategorie(workitem)}" aria-hidden="true"></span> ${kartenStatus(workitem)}</span>`
   let phase
-  if (sicht.verknuepfung === 'laedt') phase = tx('entwicklung.laedt')
-  else if (sicht.verknuepfung === 'fehlt') phase = tx('entwicklung.spalte.leer.unvollstaendig')
-  else phase = workflow === null ? tx('entwicklung.detail.status.keinAblauf') : phaseDesDetails(sicht)
+  if (sicht.verknuepfung === 'laedt') phase = tHtml('entwicklung.laedt')
+  else if (sicht.verknuepfung === 'fehlt') phase = tHtml('entwicklung.spalte.leer.unvollstaendig')
+  else phase = workflow === null ? tHtml('entwicklung.detail.status.keinAblauf') : phaseDesDetails(sicht)
   let dran = '–'
   const art = workflowPhase(workflow)
-  if (art === 'freigabe' || art === 'rueckfrage' || (art === 'abgeschlossen' && sicht.abnahmeOffen === true)) dran = tx('entwicklung.detail.status.du')
+  if (art === 'freigabe' || art === 'rueckfrage' || (art === 'abgeschlossen' && sicht.abnahmeOffen === true)) dran = tHtml('entwicklung.detail.status.du')
   else if (art !== 'abgeschlossen' && Array.isArray(sicht.schritte)) {
     const { jetzt } = schrittFolge(workflow, sicht.schritte)
     if (jetzt !== null) dran = escapeHtml(rollenName(jetzt.rolle))
   }
-  return `${status}<span>${tx('entwicklung.detail.status.phase')}: <strong>${phase}</strong></span><span>${tx('entwicklung.detail.status.dran')}: <strong>${dran}</strong></span>`
+  return `${status}<span>${tHtml('entwicklung.detail.status.phase')}: <strong>${phase}</strong></span><span>${tHtml('entwicklung.detail.status.dran')}: <strong>${dran}</strong></span>`
 }
 
 /**
@@ -171,24 +161,24 @@ function schrittStatusText(status) {
  * @returns HTML
  */
 function werBlock(sicht) {
-  const kopf = `<div class="section-label"><h2>${tx('uebersicht.wer.titel')}</h2>${sicht.workflow !== null ? `<span class="workboard-detail-phase"><span class="status-punkt aktiv" aria-hidden="true"></span> ${phaseDesDetails(sicht)}</span>` : ''}</div>`
-  if (sicht.verknuepfung === 'laedt') return `${kopf}<p class="subtle">${tx('entwicklung.laedt')}</p>`
-  if (sicht.verknuepfung === 'fehlt') return `${kopf}<p class="subtle">${tx('entwicklung.spalte.leer.unvollstaendig')}</p>`
-  if (sicht.workflow === null) return `${kopf}<p class="subtle">${tx('entwicklung.detail.wer.leer')}</p>`
-  if (sicht.schritte === undefined) return `${kopf}<p class="subtle">${tx('entwicklung.laedt')}</p>`
-  if (sicht.schritte === null) return `${kopf}<p>${tx('uebersicht.wer.fehler')}</p>`
+  const kopf = `<div class="section-label"><h2>${tHtml('uebersicht.wer.titel')}</h2>${sicht.workflow !== null ? `<span class="workboard-detail-phase"><span class="status-punkt aktiv" aria-hidden="true"></span> ${phaseDesDetails(sicht)}</span>` : ''}</div>`
+  if (sicht.verknuepfung === 'laedt') return `${kopf}<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  if (sicht.verknuepfung === 'fehlt') return `${kopf}<p class="subtle">${tHtml('entwicklung.spalte.leer.unvollstaendig')}</p>`
+  if (sicht.workflow === null) return `${kopf}<p class="subtle">${tHtml('entwicklung.detail.wer.leer')}</p>`
+  if (sicht.schritte === undefined) return `${kopf}<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  if (sicht.schritte === null) return `${kopf}<p>${tHtml('uebersicht.wer.fehler')}</p>`
   const folge = schrittFolge(sicht.workflow, sicht.schritte)
   const art = workflowPhase(sicht.workflow)
-  const menschlich = art === 'freigabe' ? tx('uebersicht.rolle.freigabe') : art === 'rueckfrage' ? tx('uebersicht.rolle.rueckfrage') : ''
+  const menschlich = art === 'freigabe' ? tHtml('uebersicht.rolle.freigabe') : art === 'rueckfrage' ? tHtml('uebersicht.rolle.rueckfrage') : ''
   const zusatz = (schritt) => (schritt === null ? '' : `<span class="model-label">${escapeHtml(schritt.worker ?? '–')} · ${escapeHtml(schrittStatusText(schritt.status))}</span>`)
   const ziel = typeof sicht.workflow.ziel === 'string' && sicht.workflow.ziel.trim() !== '' ? sicht.workflow.ziel : '–'
   let spalten
   if (art === 'abgeschlossen') {
     const zuvor = folge.jetzt ?? sicht.schritte[sicht.schritte.length - 1] ?? null
-    const titel = sicht.abnahmeOffen === true ? tx('entwicklung.detail.wer.abnahme') : tx('entwicklung.phase.abgeschlossen')
-    const unterzeile = sicht.abnahmeOffen === true ? `<p>${tx('uebersicht.rolle.menschlich')}</p>` : ''
+    const titel = sicht.abnahmeOffen === true ? tHtml('entwicklung.detail.wer.abnahme') : tHtml('entwicklung.phase.abgeschlossen')
+    const unterzeile = sicht.abnahmeOffen === true ? `<p>${tHtml('uebersicht.rolle.menschlich')}</p>` : ''
     spalten = `${werSpalte(t('uebersicht.wer.zuvor'), zuvor, { zusatz: zusatz(zuvor) })}
-      <div class="execution-current"><span class="eyebrow">${tx('uebersicht.wer.jetzt')}</span><strong>${titel}</strong>${unterzeile}</div>
+      <div class="execution-current"><span class="eyebrow">${tHtml('uebersicht.wer.jetzt')}</span><strong>${titel}</strong>${unterzeile}</div>
       ${werSpalte(t('uebersicht.wer.danach'), null)}`
   } else {
     spalten = `${werSpalte(t('uebersicht.wer.zuvor'), folge.zuvor, { zusatz: zusatz(folge.zuvor) })}
@@ -200,7 +190,7 @@ function werBlock(sicht) {
       ${spalten}
     </div>
     <div class="expected-output">
-      <span class="eyebrow">${tx('uebersicht.wer.output')}</span>
+      <span class="eyebrow">${tHtml('uebersicht.wer.output')}</span>
       <p>${escapeHtml(ziel)}</p>
     </div>`
 }
@@ -212,8 +202,8 @@ function werBlock(sicht) {
  */
 function akteHinweis(sicht) {
   const pfad = `<p><code>${escapeHtml(sicht.workitem.pfad ?? `features/${sicht.workitem.id}/feature.md`)}</code></p>`
-  if (sicht.akte?.status === 'unvollstaendig') return `<div class="note amber"><strong>${tx('entwicklung.detail.akte.unvollstaendig')}</strong><p>${escapeHtml(sicht.akte.grund ?? '')}</p>${pfad}</div>`
-  return `<div class="note red"><strong>${tx('entwicklung.detail.akte.fehler')}</strong><p><code>${escapeHtml(sicht.akte?.meldung ?? '')}</code></p>${pfad}</div>`
+  if (sicht.akte?.status === 'unvollstaendig') return `<div class="note amber"><strong>${tHtml('entwicklung.detail.akte.unvollstaendig')}</strong><p>${escapeHtml(sicht.akte.grund ?? '')}</p>${pfad}</div>`
+  return `<div class="note red"><strong>${tHtml('entwicklung.detail.akte.fehler')}</strong><p><code>${escapeHtml(sicht.akte?.meldung ?? '')}</code></p>${pfad}</div>`
 }
 
 /**
@@ -225,15 +215,15 @@ function akteHinweis(sicht) {
 function frageBlock(sicht) {
   const { workitem } = sicht
   const frage = workitem.quelle === 'feature' ? 'FEATURE' : workitem.typ === 'BUG' ? 'BUG' : 'sonst'
-  const kopf = `<h2>${tx(`entwicklung.detail.frage.${frage}`)}</h2>`
+  const kopf = `<h2>${tHtml(`entwicklung.detail.frage.${frage}`)}</h2>`
   if (workitem.quelle === 'feature') {
-    if (sicht.akte === undefined) return `${kopf}<p class="subtle">${tx('entwicklung.detail.akte.laedt')}</p>`
+    if (sicht.akte === undefined) return `${kopf}<p class="subtle">${tHtml('entwicklung.detail.akte.laedt')}</p>`
     if (sicht.akte.status === 'ok') return `${kopf}<p class="description workboard-detail-ziel">${escapeHtml(sicht.akte.ziel)}</p>`
-    if (sicht.akte.status === 'unvollstaendig') return `${kopf}<p class="subtle">${tx('entwicklung.detail.ziel.unvollstaendig')}</p>`
+    if (sicht.akte.status === 'unvollstaendig') return `${kopf}<p class="subtle">${tHtml('entwicklung.detail.ziel.unvollstaendig')}</p>`
     return `${kopf}${akteHinweis(sicht)}`
   }
-  const feld = (schluessel, wert) => `<dt>${tx(`entwicklung.detail.finding.${schluessel}`)}</dt><dd>${wert ? escapeHtml(wert) : '<span class="subtle">–</span>'}</dd>`
-  const beschreibung = workitem.beschreibung ? `<p class="description workboard-detail-ziel">${escapeHtml(workitem.beschreibung)}</p>` : `<p class="subtle">${tx('entwicklung.detail.finding.keineBeschreibung')}</p>`
+  const feld = (schluessel, wert) => `<dt>${tHtml(`entwicklung.detail.finding.${schluessel}`)}</dt><dd>${wert ? escapeHtml(wert) : '<span class="subtle">–</span>'}</dd>`
+  const beschreibung = workitem.beschreibung ? `<p class="description workboard-detail-ziel">${escapeHtml(workitem.beschreibung)}</p>` : `<p class="subtle">${tHtml('entwicklung.detail.finding.keineBeschreibung')}</p>`
   return `${kopf}${beschreibung}<dl class="workboard-detail-felder">${feld('fundstelle', workitem.fundstelle)}${feld('auswirkung', workitem.auswirkung)}${feld('massnahme', workitem.massnahme)}${feld('featureRun', workitem.featureRun)}</dl>`
 }
 
@@ -244,14 +234,14 @@ function frageBlock(sicht) {
  * @returns HTML
  */
 function standBlock(sicht) {
-  const kopf = `<h2>${tx('entwicklung.detail.stand.titel')}</h2>`
+  const kopf = `<h2>${tHtml('entwicklung.detail.stand.titel')}</h2>`
   let inhalt
-  if (sicht.verknuepfung === 'laedt') inhalt = `<p class="subtle">${tx('entwicklung.laedt')}</p>`
-  else if (sicht.verknuepfung === 'fehlt') inhalt = `<p class="subtle">${tx('entwicklung.spalte.leer.unvollstaendig')}</p>`
-  else if (sicht.workflow === null) inhalt = `<p class="subtle">${tx('entwicklung.detail.stand.leer')}</p>`
-  else if (sicht.schritte === undefined) inhalt = `<p class="subtle">${tx('entwicklung.laedt')}</p>`
-  else if (sicht.schritte === null) inhalt = `<p>${tx('uebersicht.wer.fehler')}</p>`
-  else if (sicht.schritte.length === 0) inhalt = `<p class="subtle">${tx('entwicklung.detail.stand.keineSchritte')}</p>`
+  if (sicht.verknuepfung === 'laedt') inhalt = `<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  else if (sicht.verknuepfung === 'fehlt') inhalt = `<p class="subtle">${tHtml('entwicklung.spalte.leer.unvollstaendig')}</p>`
+  else if (sicht.workflow === null) inhalt = `<p class="subtle">${tHtml('entwicklung.detail.stand.leer')}</p>`
+  else if (sicht.schritte === undefined) inhalt = `<p class="subtle">${tHtml('entwicklung.laedt')}</p>`
+  else if (sicht.schritte === null) inhalt = `<p>${tHtml('uebersicht.wer.fehler')}</p>`
+  else if (sicht.schritte.length === 0) inhalt = `<p class="subtle">${tHtml('entwicklung.detail.stand.keineSchritte')}</p>`
   else {
     const { erledigt, gesamt, prozent } = schrittFortschritt(sicht.schritte)
     const schritte = sicht.schritte
@@ -263,9 +253,9 @@ function standBlock(sicht) {
       .join('')
     inhalt = `<ol class="mini-pipeline">${schritte}</ol>
       <div class="work-progress">
-        <div class="progress-caption"><span>${tx('entwicklung.detail.stand.schritte', { anzahl: gesamt, erledigt: formatiereZahl(erledigt), gesamt: formatiereZahl(gesamt) })}</span><strong>${tx('entwicklung.detail.stand.prozent', { zahl: formatiereZahl(prozent) })}</strong></div>
-        <div class="progress-track" role="progressbar" aria-label="${tx('entwicklung.detail.stand.fortschritt')}" aria-valuemin="0" aria-valuemax="${gesamt}" aria-valuenow="${erledigt}"><span style="width: ${prozent}%"></span></div>
-        <small>${tx('entwicklung.detail.stand.hinweis')}</small>
+        <div class="progress-caption"><span>${tHtml('entwicklung.detail.stand.schritte', { anzahl: gesamt, erledigt: formatiereZahl(erledigt), gesamt: formatiereZahl(gesamt) })}</span><strong>${tHtml('entwicklung.detail.stand.prozent', { zahl: formatiereZahl(prozent) })}</strong></div>
+        <div class="progress-track" role="progressbar" aria-label="${tHtml('entwicklung.detail.stand.fortschritt')}" aria-valuemin="0" aria-valuemax="${gesamt}" aria-valuenow="${erledigt}"><span style="width: ${prozent}%"></span></div>
+        <small>${tHtml('entwicklung.detail.stand.hinweis')}</small>
       </div>`
   }
   return `<div class="pm-feature-steps">${kopf}${inhalt}</div>`
@@ -279,14 +269,14 @@ function standBlock(sicht) {
  * @returns HTML
  */
 function kriterienBlock(sicht) {
-  const kopf = `<h2>${tx('entwicklung.detail.kriterien.titel')}</h2>`
-  if (sicht.workitem.quelle !== 'feature') return `${kopf}<p class="subtle">${tx('entwicklung.detail.kriterien.finding')}</p>`
-  if (sicht.akte === undefined) return `${kopf}<p class="subtle">${tx('entwicklung.detail.akte.laedt')}</p>`
+  const kopf = `<h2>${tHtml('entwicklung.detail.kriterien.titel')}</h2>`
+  if (sicht.workitem.quelle !== 'feature') return `${kopf}<p class="subtle">${tHtml('entwicklung.detail.kriterien.finding')}</p>`
+  if (sicht.akte === undefined) return `${kopf}<p class="subtle">${tHtml('entwicklung.detail.akte.laedt')}</p>`
   if (sicht.akte.status !== 'ok') return `${kopf}${akteHinweis(sicht)}`
   const aks = sicht.akte.akzeptanzkriterien.map((ak) => `<li><span class="checkmark" aria-hidden="true">○</span><span><code>${escapeHtml(ak.id)}</code> ${escapeHtml(ak.text)}</span></li>`).join('')
   const nichtZiele =
     sicht.akte.nicht_ziele.length > 0
-      ? `<details><summary>${tx('entwicklung.detail.nichtZiele', { anzahl: sicht.akte.nicht_ziele.length, zahl: formatiereZahl(sicht.akte.nicht_ziele.length) })}</summary><ul>${sicht.akte.nicht_ziele.map((z) => `<li>${escapeHtml(z)}</li>`).join('')}</ul></details>`
+      ? `<details><summary>${tHtml('entwicklung.detail.nichtZiele', { anzahl: sicht.akte.nicht_ziele.length, zahl: formatiereZahl(sicht.akte.nicht_ziele.length) })}</summary><ul>${sicht.akte.nicht_ziele.map((z) => `<li>${escapeHtml(z)}</li>`).join('')}</ul></details>`
       : ''
   return `${kopf}<ul class="checklist">${aks}</ul>${nichtZiele}`
 }
@@ -300,9 +290,9 @@ function quelleBlock(sicht) {
   const { workitem } = sicht
   const inhalt =
     workitem.quelle === 'feature'
-      ? `<p><code>${escapeHtml(workitem.pfad ?? `features/${workitem.id}/feature.md`)}</code></p><p class="subtle">${tx('entwicklung.detail.quelle.feature')}</p>`
-      : `<p><code>state/findings.md</code></p><p class="subtle">${tx('entwicklung.detail.quelle.finding')}</p>`
-  return `<details class="workboard-detail-quelle"><summary>${tx('entwicklung.detail.quelle.titel')}</summary>${inhalt}</details>`
+      ? `<p><code>${escapeHtml(workitem.pfad ?? `features/${workitem.id}/feature.md`)}</code></p><p class="subtle">${tHtml('entwicklung.detail.quelle.feature')}</p>`
+      : `<p><code>state/findings.md</code></p><p class="subtle">${tHtml('entwicklung.detail.quelle.finding')}</p>`
+  return `<details class="workboard-detail-quelle"><summary>${tHtml('entwicklung.detail.quelle.titel')}</summary>${inhalt}</details>`
 }
 
 /**
@@ -312,11 +302,11 @@ function quelleBlock(sicht) {
  */
 function meilensteinText(sicht) {
   const zustand = sicht.roadmap === undefined ? 'laedt' : roadmapZustand(sicht.roadmap)
-  if (zustand === 'laedt') return tx('entwicklung.laedt')
-  if (zustand === 'nicht_vorhanden') return tx('entwicklung.detail.planung.keineRoadmap')
-  if (zustand !== 'ok') return tx('entwicklung.detail.planung.nichtVerfuegbar')
+  if (zustand === 'laedt') return tHtml('entwicklung.laedt')
+  if (zustand === 'nicht_vorhanden') return tHtml('entwicklung.detail.planung.keineRoadmap')
+  if (zustand !== 'ok') return tHtml('entwicklung.detail.planung.nichtVerfuegbar')
   const meilenstein = sicht.roadmap.meilensteine.find((m) => m.features.some((f) => f?.id === sicht.workitem.id))
-  return meilenstein === undefined ? tx('entwicklung.detail.planung.nichtEingeplant') : escapeHtml(meilenstein.titel ?? meilenstein.id ?? '')
+  return meilenstein === undefined ? tHtml('entwicklung.detail.planung.nichtEingeplant') : escapeHtml(meilenstein.titel ?? meilenstein.id ?? '')
 }
 
 /**
@@ -328,18 +318,18 @@ function meilensteinText(sicht) {
 function planungBlock(sicht) {
   const { workitem } = sicht
   const istFeature = workitem.quelle === 'feature'
-  const prioritaet = istFeature ? tx('entwicklung.detail.planung.ohnePrioritaet') : escapeHtml(workitem.prioritaet ?? '–')
-  const meilenstein = istFeature ? `<dt>${tx('entwicklung.detail.planung.meilenstein')}</dt><dd>${meilensteinText(sicht)}</dd>` : ''
+  const prioritaet = istFeature ? tHtml('entwicklung.detail.planung.ohnePrioritaet') : escapeHtml(workitem.prioritaet ?? '–')
+  const meilenstein = istFeature ? `<dt>${tHtml('entwicklung.detail.planung.meilenstein')}</dt><dd>${meilensteinText(sicht)}</dd>` : ''
   return `<aside class="summary pm-planning">
-      <h3>${tx('entwicklung.detail.planung.titel')}</h3>
-      <div class="planning-window"><span>${tx('entwicklung.detail.planung.zeitraum')}</span><strong>${tx('entwicklung.detail.planung.zeitraumLeer')}</strong>${kommtKnopf(t('entwicklung.detail.planung.zeitfenster'))}</div>
+      <h3>${tHtml('entwicklung.detail.planung.titel')}</h3>
+      <div class="planning-window"><span>${tHtml('entwicklung.detail.planung.zeitraum')}</span><strong>${tHtml('entwicklung.detail.planung.zeitraumLeer')}</strong>${kommtKnopf(t('entwicklung.detail.planung.zeitfenster'))}</div>
       <dl class="workboard-detail-planung">
-        <dt>${tx('entwicklung.detail.planung.prioritaet')}</dt><dd>${prioritaet}</dd>
+        <dt>${tHtml('entwicklung.detail.planung.prioritaet')}</dt><dd>${prioritaet}</dd>
         ${meilenstein}
       </dl>
       <div class="action-row">${kommtKnopf(t('entwicklung.detail.planung.aendern'))}${kommtKnopf(t('entwicklung.detail.planung.speichern'))}</div>
-      <p class="scope">${tx('entwicklung.detail.planung.hinweis')}</p>
-      ${istFeature ? `<a class="text-link" href="#/roadmap">${tx('entwicklung.detail.planung.roadmap')} <span aria-hidden="true">→</span></a>` : ''}
+      <p class="scope">${tHtml('entwicklung.detail.planung.hinweis')}</p>
+      ${istFeature ? `<a class="text-link" href="#/roadmap">${tHtml('entwicklung.detail.planung.roadmap')} <span aria-hidden="true">→</span></a>` : ''}
     </aside>`
 }
 
@@ -350,9 +340,9 @@ function planungBlock(sicht) {
  */
 function insightsBlock() {
   return `<section class="item-insights" id="workboard-detail-insights" aria-labelledby="workboard-detail-insights-titel">
-      <div class="section-label"><h2 id="workboard-detail-insights-titel">${tx('entwicklung.detail.insights.titel')}</h2>${kommtKnopf(t('entwicklung.detail.insights.hinzufuegen'))}</div>
-      <p class="subtle">${tx('entwicklung.detail.insights.leer')}</p>
-      <p class="scope">${tx('entwicklung.detail.insights.hinweis')}</p>
+      <div class="section-label"><h2 id="workboard-detail-insights-titel">${tHtml('entwicklung.detail.insights.titel')}</h2>${kommtKnopf(t('entwicklung.detail.insights.hinzufuegen'))}</div>
+      <p class="subtle">${tHtml('entwicklung.detail.insights.leer')}</p>
+      <p class="scope">${tHtml('entwicklung.detail.insights.hinweis')}</p>
     </section>`
 }
 

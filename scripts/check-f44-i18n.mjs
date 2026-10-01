@@ -15,8 +15,9 @@
  *   (5) kein `#` gefolgt von Ziffern oder 3–8 Hex-Zeichen — dasselbe Hex-Muster wie
  *       scripts/check-f20-design-tokens.mjs, das jede *.js unter public/leitstand
  *       scannt (ein „PR #145“ im Wörterbuch wäre dort ein Farbliteral);
- *   (6) jeder literale Aufruf t('…') in den Laufzeitmodulen (*.js) unter public/leitstand
- *       existiert in de. Testdateien (*.test.mjs) sind ausgenommen — sie prüfen den Rückfall
+ *   (6) jeder literale Aufruf t('…') oder tHtml('…') in den Laufzeitmodulen (*.js) unter
+ *       public/leitstand existiert in de. F44 WS-4b (F-940): tHtml (escapeHtml(t(…)), i18n.js)
+ *       ersetzt die früheren lokalen tx() der Views, deren Schlüssel das Gate nicht sah. Testdateien (*.test.mjs) sind ausgenommen — sie prüfen den Rückfall
  *       absichtlich mit fehlenden Schlüsseln. F44 WS-1b: dasselbe gilt für die Attribute
  *       data-i18n, data-i18n-aria-label und data-i18n-title in *.html (statische Shell-Texte,
  *       übersetzt von uebersetzeDokument() in i18n.js) — derselbe Schlüssel-Vertrag, nur ein
@@ -27,7 +28,7 @@
  * Wird aufgerufen von: `npm run check`
  *
  * Wichtig — bekannte Grenzen:
- * - (6) erkennt nur literale Schlüssel ('…', "…" oder `…` ohne ${}). Ein dynamischer
+ * - (6) erkennt nur literale Schlüssel ('…', "…" oder `…` ohne ${}) in t( und tHtml(. Ein dynamischer
  *   Schlüssel (t(variable), t(`a.${b}`)) wird nicht geprüft; zur Laufzeit fällt er
  *   auf den Schlüssel selbst zurück und console.warn meldet ihn (i18n.js).
  * - Das Gate prüft Vollständigkeit, nicht die Qualität der Übersetzung (F-866).
@@ -47,12 +48,13 @@ const BASIS_SPRACHE = 'de'
 // Dasselbe Hex-Muster wie FARB_MUSTER in check-f20-design-tokens.mjs, dazu '#' vor einer Ziffer.
 const RAUTE_MUSTER = /#(?:\d|[0-9a-fA-F]{3,8}\b)/
 const PLATZHALTER_MUSTER = /\{(\w+)\}/g
-// Literaler t()-Aufruf, nicht als Methode (.t) oder Teil eines Namens (split(, holeT().
-const T_AUFRUF_MUSTER = /(?<![\w$.])t\(\s*(?:'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`$\\]*)`)/g
+// Literaler t()- bzw. tHtml()-Aufruf, nicht als Methode (.t) oder Teil eines Namens (split(, holeT(,
+// txHtml(). F-940: tHtml zählt mit — sonst fiele ein fehlender Schlüssel still auf den Schlüsseltext zurück.
+const T_AUFRUF_MUSTER = /(?<![\w$.])(?:t|tHtml)\(\s*(?:'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`$\\]*)`)/g
 // F44 WS-1b: Schlüssel in HTML-Attributen (uebersetzeDokument in i18n.js).
 const HTML_SCHLUESSEL_MUSTER = /\bdata-i18n(?:-aria-label|-title)?="([^"]*)"/g
 
-console.log('\n=== F44-i18n-Check (Wörterbücher de/en/tr/ru, t()-Aufrufe) ===\n')
+console.log('\n=== F44-i18n-Check (Wörterbücher de/en/tr/ru, t()- und tHtml()-Aufrufe) ===\n')
 
 /**
  * Liefert die Texte eines Wörterbucheintrags (String oder alle Werte eines Pluralobjekts).
@@ -145,7 +147,7 @@ export function pruefeTAufrufe(pfad, text, basisBuch) {
   const befunde = []
   for (const treffer of text.matchAll(T_AUFRUF_MUSTER)) {
     const schluessel = treffer[1] ?? treffer[2] ?? treffer[3]
-    if (!Object.hasOwn(basisBuch, schluessel)) befunde.push({ regel: 6, text: `${pfad}: t('${schluessel}') fehlt in ${BASIS_SPRACHE}` })
+    if (!Object.hasOwn(basisBuch, schluessel)) befunde.push({ regel: 6, text: `${pfad}: ${treffer[0].startsWith('tHtml') ? 'tHtml' : 't'}('${schluessel}') fehlt in ${BASIS_SPRACHE}` })
   }
   for (const treffer of text.matchAll(HTML_SCHLUESSEL_MUSTER)) {
     if (!Object.hasOwn(basisBuch, treffer[1])) befunde.push({ regel: 6, text: `${pfad}: ${treffer[0]} fehlt in ${BASIS_SPRACHE}` })
@@ -226,6 +228,11 @@ for (const pfad of sammleSkripte(LEITSTAND_VERZEICHNIS)) {
     { text: 't(`a.fehlt`)', rot: true },
     { text: "x = t( 'a.fehlt', { name: 1 })", rot: true },
     { text: 't(`a.${b}`) + split(\'a.fehlt\') + i18n.t(\'a.fehlt\')', rot: false },
+    // F-940: tHtml wird wie t geprüft; ein anderer Name, der auf „tHtml(“ endet, oder eine Methode nicht.
+    { text: "tHtml('a.b') + tHtml('a.b', { name: 1 }, { x: '<code>' })", rot: false },
+    { text: "tHtml('a.fehlt')", rot: true },
+    { text: "x = tHtml( 'a.fehlt', {}, { id: '<code>x</code>' })", rot: true },
+    { text: "txHtml('a.fehlt') + ztHtml('a.fehlt') + obj.tHtml('a.fehlt')", rot: false },
     { text: '<span data-i18n="a.b">x</span><a data-i18n-aria-label="a.b" data-i18n-title="a.b">', rot: false },
     { text: '<span data-i18n="a.fehlt">x</span>', rot: true },
     { text: '<button data-i18n-aria-label="a.fehlt">', rot: true },
@@ -237,7 +244,7 @@ for (const pfad of sammleSkripte(LEITSTAND_VERZEICHNIS)) {
   }
 }
 
-console.log(`Sprachen: ${SPRACHEN.join(', ')} · Schlüssel in ${BASIS_SPRACHE}: ${Object.keys(WOERTERBUECHER[BASIS_SPRACHE]).length} · literale t()-Aufrufe und data-i18n-Schlüssel: ${anzahlAufrufe}`)
+console.log(`Sprachen: ${SPRACHEN.join(', ')} · Schlüssel in ${BASIS_SPRACHE}: ${Object.keys(WOERTERBUECHER[BASIS_SPRACHE]).length} · literale t()-/tHtml()-Aufrufe und data-i18n-Schlüssel: ${anzahlAufrufe}`)
 console.log('')
 if (befunde.length === 0) {
   console.log('✓ Keine Befunde (Selbsttest (7): Rot- und Grünfälle je Regel wie erwartet).\n')

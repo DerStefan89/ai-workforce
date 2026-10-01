@@ -25,6 +25,8 @@
  * - public/leitstand/views/attention.js, views/roadmap.js (t, formatiereDatum, F44 WS-2a)
  * - public/leitstand/i18n.test.mjs (node:test)
  * - scripts/check-f44-i18n.mjs (SPRACHEN, Wörterbücher)
+ * - tHtml (F44 WS-4b): views/dashboard.js, workboard.js, workboard-detail.js, workflows.js,
+ *   workflow-detail.js, workflow-abnahme.js, workflow-eingriffe.js, empfehlung-installation.js
  *
  * Wichtig:
  * - Import-sicher: Beim Import greift dieses Modul weder auf DOM noch auf Storage
@@ -42,6 +44,7 @@ import de from './i18n/de.js'
 import en from './i18n/en.js'
 import ru from './i18n/ru.js'
 import tr from './i18n/tr.js'
+import { escapeHtml } from './render.js'
 
 /** Unterstützte Sprachen in Anzeigereihenfolge; die erste ist Standard und Rückfall. */
 export const SPRACHEN = ['de', 'en', 'tr', 'ru']
@@ -110,6 +113,23 @@ export function t(schluessel, werte) {
     console.warn(`i18n: Schlüssel fehlt in allen Wörterbüchern: ${schluessel}`)
   }
   return schluessel
+}
+
+/**
+ * Übersetzter Text als HTML (F44 WS-4b, F-935/F-940): escapeHtml(t(…)). Ersetzt die früheren lokalen
+ * tx() der Views und txHtml() aus empfehlung-anzeige.js — ein zentraler Aufruf, den das i18n-Gate (6)
+ * wie literale t-Aufrufe prüft. Optional werden fertige HTML-Stücke (etwa <code>-IDs) eingesetzt: Sie gehen als
+ * Marken durch t() und escapeHtml und werden danach ersetzt; der übrige Text bleibt escaped.
+ * @param schluessel - i18n-Schlüssel
+ * @param werte - Text-Platzhalter (werden escaped)
+ * @param htmlWerte - HTML-Platzhalter (bereits escaptes HTML)
+ * @returns HTML
+ */
+export function tHtml(schluessel, werte = {}, htmlWerte = {}) {
+  const marken = Object.fromEntries(Object.keys(htmlWerte).map((name, i) => [name, `\u2063${i}\u2063`]))
+  let html = escapeHtml(t(schluessel, { ...werte, ...marken }))
+  for (const [name, marke] of Object.entries(marken)) html = html.split(marke).join(htmlWerte[name])
+  return html
 }
 
 /**

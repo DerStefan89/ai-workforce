@@ -16,15 +16,17 @@ Stand: 01.10.2026.
 
 **WS-4 ist geteilt** (Auftrag Stefan, 01.10.2026; Vermerk in `docs/design/abgleich-f725.md` §5.1, F-934): WS-4a „Ablauf & Freigabe“ (F0, F2, F3, F3b, F4, F5, F10, F12), WS-4b „Klärung, Reparatur & Abnahme“ (F6, F8, F9, F13–F18); F7 und F1 gehen nach WS-5.
 
-**WS-4a liegt auf Branch `feat/f725-ws4a-ablauf`** (Worktree `../aiw-f725-ws1a`, Basis `5b0b683`, nicht committet). Einzelheiten: Akte, Abschnitt „Stand WS-4a“.
-- `#/workflows/<id>` als ganze Seite: Timeline, „Auf einen Blick“, Aktionen, Aufklappbereich „Technischer Ablauf & Serverentscheidung“; Render-Modul `views/workflow-detail.js` (rein, mit Test).
-- Nativer Dialog `#workflow-dialog` für Freigeben/Ablehnen und Stoppen mit Pflichtbegründung; „Anzeige = Start“ unverändert; schließt bei Stand-Änderung; keine zweite Live-Region.
-- `#/runs` mit V10-Seitenkopf und Liste „Aufträge“; Startfehler und Läufe unverändert (WS-5).
-- F-874, F-923, F-925 erledigt, F-926 für das Workflow-Detail; F-916 verworfen; F-924, F-927, F-928 → Fixpaket Arbeitsfähigkeit B5.
-- Gates mitgezogen: f15 (liest beide Module, Schlüssel plus de-Wert), f20-leitstand-shell (CI, Dialog zuerst). `render-nachweis`: Antworten je Schritt, `warteAufSelector.zustand`, `ohneAusschnitt`.
-- Nachweise `features/F44/nachweise/ws4a/` (Leitstand dieses Worktrees, Port 4381, feste Antworten).
-- Prüfpass einmal parallel (code-reviewer und qa „Freigegeben mit Hinweisen“, design-guardian „Nicht freigegeben“, knapp); eine Korrekturrunde eingearbeitet (Akte). Neu F-935 (Größe `workflows.js`, `tx()`).
-- Nächste freie Finding-ID: F-940 (F-936 bis F-939 im Nachtrag WS-4a für das Fixpaket „Arbeitsfähigkeit“).
+**WS-4a „Ablauf & Freigabe“ ist gemergt** (#297, `493d953`). Einzelheiten: Akte, Abschnitt „Stand WS-4a“.
+
+**WS-4b liegt auf Branch `feat/f725-ws4b-abnahme`** (Worktree `../aiw-f725-ws1a`, Basis `493d953`, nicht committet). Einzelheiten: Akte, Abschnitt „Stand WS-4b“.
+- Abnahme (F13–F18) auf `#/workflows/<id>`: „Passt das Ergebnis?“ über der Timeline nur bei ABGESCHLOSSEN (Empfehlung, „Vereinbart & überprüft“, Befunde, Geänderte Dateien, Prüfbericht mit F16, Entscheidung inline); sonst bei erlaubter Aktion der Block „Ergebnis bzw. Auftrag ablehnen oder Anpassung wünschen“ unter der Timeline; sonst eine Zeile (folgt bzw. entschieden, F18 bei erzeuger kern); „Review-Urteil“ und „Deine Abnahme“ in „Auf einen Blick“.
+- Klärung (F6) und Sichtung (F9) als Notiz über der Timeline mit Dialog (Arten `klaerung`, `sichtung`; Sperre während des POST, Schließen bei Stand-Änderung); Reparatur (F8) als rote bzw. bernsteinfarbene Notiz mit Editor inline. Überschrift „Bedienung“ entfällt.
+- Modulschnitt (F-935 erledigt): `views/workflow-abnahme.js`, `views/workflow-eingriffe.js` (rein, mit Tests); `views/workflows.js` unter 1 000 Zeilen. `tHtml` zentral in `i18n.js`, i18n-Gate prüft `t(` und `tHtml(` (F-940 neu und erledigt).
+- Restpunkte WS-4a: Timeline-Status ohne Dopplung, Worker lesbar (`worker.<id>`), Checkbox-Kontrast hell (Tokens `--check-rand`, `--check-haken`, Paare im Token-Gate), F-926 Workboard-Teil (F-926 erledigt).
+- Gates mitgezogen: f15 (liest die neuen Module, Texte als Schlüssel plus de-Wert, (h) wörtlich in `workflows.js`), f42 (i) (liest `workflow-eingriffe.js`, Rotfall belegt), i18n-Gate, Token-Gate; `empfehlung-anzeige.test.mjs` liest den Freigabedialog in `workflow-eingriffe.js`.
+- Nachweise `features/F44/nachweise/ws4b/` (Leitstand dieses Worktrees, Port 4381, feste Antworten; Workboard mit echten Daten).
+- Prüfpass einmal parallel (design-guardian, code-reviewer, qa: alle „Freigegeben mit Hinweisen“), eine Korrekturrunde eingearbeitet (Akte). Neu F-941 (Dialogsteuerung als eigenes Modul).
+- Nächste freie Finding-ID: F-942.
 
 **F-800 (Scout Datenerhebung) ist gemergt** (#289, `50bbccb`).
 
@@ -33,7 +35,7 @@ Stand: 01.10.2026.
 **F36 „Capability Library wirksam machen“ ist ABGESCHLOSSEN** (Abnahme 29.09.2026, #267–#283; Details in `features/F36/feature.md`). F-831 gemergt (#286). Offene Folge-Findings: F-829 (mit F-820); F-822; F-840, F-841; F-842 bis F-844; F-834 bis F-836, F-838; `init.plugins` bleibt ungeprüft; F-815/F-816, F-818, F-791.
 
 ## Nächste Schritte
-1. F44 Design: WS-4a abschließen (Freigabe Stefan, Merge) → WS-4b → WS-5 (mit F7, F1) bis WS-8.
+1. F44 Design: WS-4b abschließen (Freigabe Stefan, Merge) → WS-5 (mit F7, F1) bis WS-8.
 2. Fixpaket „Arbeitsfähigkeit“ (E-M5-18), direkt nach WS-8 und vor F30. Eigene Challenge nach WS-8. Bausteine in dieser Reihenfolge: B1 → B2 → B5 → B3 → B4. Zuordnung der Findings und vorgeschlagene Bestehensbedingung: Abschnitt „Fixpaket Arbeitsfähigkeit“ unten.
    - B1 Harness im Lauf:
      - Agents und Projekt-Skills sind im Ausführungslauf aufrufbar (F-815, F-816).
@@ -65,7 +67,7 @@ Stand: 01.10.2026.
    - In der Challenge mitklären: F-715, F-766, F-764, F-915.
    - K2 gestufter Kontext nach F30 (F-930): erst den Verbrauch je Rolle in F30 messen, dann F38 neu schneiden — nicht im Fixpaket.
 3. F30 Opportunity Scanner — Planung vollständig in der Workforce (E-F30-4); Stack-Kandidaten aus `docs/harness/stack-kandidaten.md`.
-4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel; F-874 ist mit WS-4a erledigt, eine angefangene Begründung wird beim Wechsel verworfen).
+4. Vorgemerkt: F-765/757, F-767, F-748/751, F-755, F-762, F-834 bis F-836, F-838, F-842 bis F-848, F-850 bis F-856; aus WS-1b F-877 (wackelnde Gates), F-883 (Status bei Poll-Ausfall), F-885 (offene Eingaben beim Projektwechsel; F-874 ist mit WS-4a erledigt, eine angefangene Begründung wird beim Wechsel verworfen — auch in Abnahme, Rückfrage und Sichtung).
 
 Laufender Hinweis: Bricht ein Ort-B-Lauf mit „init.slash_commands enthält unbekannte Commands“ ab, mit `features/F36/nachweis-f831/erzeuge-nachweis.mjs` nachmessen und gegenprüfen; nur verweigerte Namen in die Referenzmenge.
 
@@ -76,14 +78,15 @@ Kommt direkt nach WS-8 und vor F30. Reihenfolge B1 → B2 → B5 → B3 → B4; 
 - **B5 Feature-Fluss:** F-924, F-927, F-928, F-917.
 - **K2 gestufter Kontext (F-930):** nach F30, nicht im Fixpaket.
 - **Vorgeschlagene Bestehensbedingung** (wird in der Fixpaket-Challenge bestätigt): Ein echter Referenzauftrag läuft vom Coach bis zur Abnahme in einem Fremdprojekt. Laufakte, AK-Urteile und Prüfbericht belegen, dass Projektkarte, Arbeitspaket mit DoD, Skill- und Agent-Nutzung und die Mindest-Gates gewirkt haben.
-- Nächste freie Finding-ID: F-940.
+- Nächste freie Finding-ID: F-942.
 
 ## Aufräumen
 - `docs/f800-scout` ist gemergt (#289): Worktree `../aiw-f800-scout` aus dem Haupt-Checkout entfernen (`git worktree remove ../aiw-f800-scout`), danach mit `git worktree list` prüfen.
 - WS-0 ist gemergt: Worktree `../aiw-f725-ws0` entfernen, falls noch vorhanden.
-- Der Worktree `../aiw-f725-ws1a` trägt jetzt WS-4a (`feat/f725-ws4a-ablauf`). Nach dessen Merge entfernen oder für WS-4b weiterverwenden.
+- Der Worktree `../aiw-f725-ws1a` trägt jetzt WS-4b (`feat/f725-ws4b-abnahme`). Nach dessen Merge entfernen oder für WS-5 weiterverwenden; der lokale Branch `feat/f725-ws4a-ablauf` ist gemergt und kann weg.
 
 ## Offene Entscheidungen Stefan
+- ~~WS-4b (QA-Fachfrage): „Passt das Ergebnis?“ im Sichtungs-Halt nach dem Bau~~ — **entschieden** (Challenger, 01.10.2026): „Passt das Ergebnis?“ nur bei ABGESCHLOSSEN; sonst bei erlaubter Aktion der Block „Ergebnis ablehnen oder Anpassung wünschen“ (nach dem Bau, mit Dateien und Prüfbericht) bzw. „Auftrag ablehnen oder Anpassung wünschen“ (vor dem Bau) unter der Timeline. Umgesetzt in WS-4b.
 - F-889: Leerer Hash — nur beim ersten Laden einer Sitzung nach `#/start` (heute) oder immer.
 - F-885: Projektwechsel mit offener Eingabe — Rückfrage oder Entwurf je Projekt halten (WS-4a verwirft heute ohne Rückfrage).
 - F-766: Der Kontrollzustand von Projekten ist gitignored. Die Reallauf-Belege liegen deshalb nur als Auszug im Repo.

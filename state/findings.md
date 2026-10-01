@@ -11967,13 +11967,14 @@ Maßnahme: Dekodierung abfangen und auf die Standardroute bzw. „nicht gefunden
 Status: erledigt (F44 WS-4a, 01.10.2026): `dispatch` dekodiert vor dem Umschalten der View; ein URIError führt ohne neuen History-Eintrag auf die Standardroute (`ersetzeRoute`), kein onEnter sieht den kaputten Wert. Test `router.test.mjs`.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
-**F-926** · `TECH_DEBT` · P3 · offen (teilweise erledigt)
+**F-926** · `TECH_DEBT` · P3 · erledigt
 Titel: „← zurück“ im Detail legt einen History-Eintrag an; nach Browser-Zurück fehlt ein Fokusziel.
 Beschreibung: Der Zurück-Knopf navigiert über `navigiere('#/workboard')`, das einen neuen Eintrag anlegt — Browser-Zurück öffnet danach das Detail wieder. Nach Browser-Zurück aus dem Detail setzt niemand den Fokus; er liegt auf der verborgenen Überschrift des Details. Die zuvor geöffnete Karte bekommt den Fokus nicht zurück.
 Fundstelle: `public/leitstand/views/workboard.js` (initListenBedienung, Route `#/workboard`).
 Auswirkung: Niedrig (Tastatur, Screenreader).
 Maßnahme: Zurück über history.back(), wenn der vorige Eintrag die Übersicht war; beim Schließen den Fokus auf die Karte bzw. Zeile des Eintrags legen.
 Status: offen, teilweise erledigt (F44 WS-4a, 01.10.2026; Kopfzeile „offen (teilweise erledigt)“, damit der Workitem-Parser den offenen Rest nicht als ERLEDIGT zählt): Für das Workflow-Detail geht „← Alle Aufträge“ per `history.back()` zurück, wenn der vorige Eintrag `#/runs` war, sonst per navigiere; danach (auch nach Browser-Zurück) liegt der Fokus auf der Zeile des Workflows. Offen bleibt der Workboard-Teil (`#/workboard/<id>`), nicht mitgebaut.
+Status: erledigt (F44 WS-4b, 01.10.2026): Auch im Workboard-Detail geht „← <Register>“ per `history.back()` zurück, wenn der vorige Eintrag `#/workboard` war, sonst per navigiere; die Route `#/workboard` legt danach (auch nach Browser-Zurück) den Fokus auf die Karte bzw. Zeile des Eintrags (`data-id`), ohne sichtbare Karte auf die Seitenüberschrift. Render-Nachweis `features/F44/nachweise/ws4b/workboard-zurueck/`.
 Feature/Run: Entdeckt: Prüfpass F44 WS-3b (qa), 01.10.2026.
 
 **F-927** · `TECH_DEBT` · P3 · offen
@@ -12048,13 +12049,13 @@ Maßnahme: Vermerk WS-4a in §5.1: WS-4 geteilt in WS-4a (F0, F2, F3, F3b, F4, F
 Status: erledigt durch den Vermerk WS-4a (F44 WS-4a, 01.10.2026).
 Feature/Run: Auftrag Stefan F44 WS-4a, 01.10.2026.
 
-**F-935** · `TECH_DEBT` · P3 · offen
+**F-935** · `TECH_DEBT` · P3 · erledigt
 Titel: `views/workflows.js` ist mit rund 1 500 Zeilen zu groß; `tx()` ist dreifach dupliziert.
 Beschreibung: WS-4a hat das Rendern von Liste und Detailseite nach `views/workflow-detail.js` ausgelagert. In `views/workflows.js` liegen weiter Abnahme, Reparaturzug, Bedienung und die neue Dialogsteuerung (offenerDialog, laufendeDialogBedienung, geretteteBegruendung). Der Helfer `tx()` (escapter, übersetzter Text) steht gleich in `views/workflows.js`, `views/workflow-detail.js` und `views/workboard-detail.js`; `txHtml` liegt in `empfehlung-anzeige.js`.
 Fundstelle: `public/leitstand/views/workflows.js`, `views/workflow-detail.js`, `views/workboard-detail.js`, `empfehlung-anzeige.js`.
 Auswirkung: Niedrig — Wartbarkeit.
 Maßnahme: In WS-4b (Abnahme und Reparatur werden ohnehin umgebaut) die Dialogsteuerung und die Abnahme in eigene Module schneiden; `tx`/`txHtml` einmal in `render.js` oder `i18n.js` anbieten. Gates f15/f23/f42 begründet mitziehen.
-Status: offen.
+Status: erledigt (F44 WS-4b, 01.10.2026): Die Abnahme rendert `views/workflow-abnahme.js`, Notizen, Dialoginhalte (Freigabe, Stopp, Rückfrage, Sichtung), Reparatureditor sowie baueReparaturEntwurf, ermittleAbgeschwaechteFreigabenAnzeige und ermittleReparaturWarnungen `views/workflow-eingriffe.js` — beide rein (kein schreibender api.js-Import, in Node ohne DOM importierbar, eigene Tests). Bedienlogik, Kennzeichen, Dialogsteuerung und alle POSTs bleiben in `views/workflows.js` (unter 1 000 Zeilen). `tHtml` steht zentral in `i18n.js` und ersetzt die fünf lokalen `tx()` (dashboard, workboard, workboard-detail, workflow-detail, workflows) und `txHtml`; siehe F-940. Gates f15 und f42 lesen die neuen Module (Begründung im Gate-Kopf); f23 liest keinen View-Quelltext und blieb unverändert.
 Feature/Run: Entdeckt: Prüfpass F44 WS-4a (code-reviewer), 01.10.2026.
 
 **F-936** · `PROCESS_IMPROVEMENT` · P1 · offen
@@ -12092,3 +12093,21 @@ Auswirkung: Mittel. Wie gut der Code wird, hängt davon ab, was der Architekt im
 Maßnahme: Fixpaket Arbeitsfähigkeit (E-M5-18), Baustein 1 bzw. 3. Eine stack-abhängige Gate-Vorlage mit allen vier Gates in `npm run check`, die der Architekt bei der Stack-Entscheidung mit anlegt. Der Prüfschritt bricht bei Rot ab.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Frage Stefan 01.10.2026.
+
+**F-940** · `HARNESS_IMPROVEMENT` · P2 · erledigt
+Titel: i18n-Gate (6) prüft tx('…')-Aufrufe nicht.
+Beschreibung: Fünf Views nutzen eine lokale Hilfsfunktion tx() (escapetes t()); das Gate erkennt nur literale t('…'); fehlende Schlüssel fielen still auf den Schlüsseltext zurück.
+Fundstelle: `scripts/check-f44-i18n.mjs` (T_AUFRUF_MUSTER).
+Auswirkung: Mittel.
+Maßnahme: tHtml zentral in i18n.js, Gate prüft t( und tHtml(.
+Status: erledigt durch diesen PR (F44 WS-4b): `i18n.js` exportiert `tHtml(schluessel, werte, htmlWerte)` = escapeHtml(t(…)) (Import-Sicherheit unverändert); die fünf lokalen `tx()` und `txHtml` (empfehlung-anzeige.js) sind ersetzt. Regel (6) prüft literale Aufrufe von `t(` und `tHtml(`, der Selbsttest (7) hat Rot- und Grünfälle für tHtml (auch: `txHtml(`, `ztHtml(`, `obj.tHtml(` zählen nicht). Geprüfte Aufrufe: 626 statt 300, kein fehlender Schlüssel.
+Feature/Run: Challenge F44 WS-4b, 01.10.2026.
+
+**F-941** · `TECH_DEBT` · P3 · offen
+Titel: `views/workflows.js` liegt mit rund 990 Zeilen knapp unter der Grenze; die Dialogsteuerung gehört in ein eigenes Modul.
+Beschreibung: Nach dem Modulschnitt WS-4b (F-935) trägt `views/workflows.js` Laden, Kennzeichen, Dialogsteuerung (offenerDialog, laufendeDialogBedienung, geretteteBegruendung, dialogUeberholt, retteBegruendung) und alle POSTs. Die Korrekturrunde (Sperre der Abnahme, Sichtung nur für den angezeigten Halt, späte Antworten) hat die Datei wieder an 1 000 Zeilen herangeführt.
+Fundstelle: `public/leitstand/views/workflows.js`.
+Auswirkung: Niedrig — Wartbarkeit; jede weitere Bedienung überschreitet die Grenze.
+Maßnahme: In WS-5 (oder vorher) die Dialogsteuerung samt Kennzeichen-Vergleich in ein eigenes Modul (z. B. `views/workflow-dialog.js`) schneiden; POSTs bleiben in `workflows.js`, Gate f15 (h) und `workflows-dialog.test.mjs` begründet mitziehen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-4b (code-reviewer), 01.10.2026.

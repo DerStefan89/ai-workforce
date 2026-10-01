@@ -47,10 +47,25 @@ test('Timeline: Schritte in Planreihenfolge, je Schritt Rollenname, Status als S
   assert.ok(reihenfolge.every((i, n) => i > 0 && (n === 0 || i > reihenfolge[n - 1])), `Reihenfolge der Rollen: ${reihenfolge}`)
   assert.match(html, /<li class="done">\s*<h3>Architekt<\/h3>\s*<p>Abgeschlossen<\/p>/)
   assert.match(html, /<li class="current">\s*<h3>Umsetzung <span class="ablauf-marke">Deine Freigabe<\/span><\/h3>\s*<p>Wartet auf deine Freigabe<\/p>/)
-  assert.match(html, /Verantwortung: claude-code · Start nur mit deiner Freigabe · <code>s2<\/code>/)
+  // F44 WS-4b: der Worker erscheint lesbar (worker.<id>), nicht als ID.
+  assert.match(html, /Verantwortung: Claude Code · Start nur mit deiner Freigabe · <code>s2<\/code>/)
   assert.match(html, /<li>\s*<h3>Code Review<\/h3>\s*<p>Noch nicht begonnen<\/p>/)
   // Keine erfundenen Zweck-Sätze: je Schritt genau ein <p> (der Status).
   assert.equal((html.match(/<p>/g) ?? []).length, 3)
+})
+
+test('Timeline (F44 WS-4b): Worker lesbar mit Rückfall auf die ID; ein laufender Schritt heißt nur „Läuft jetzt“', () => {
+  const schritte = [
+    { schritt_id: 'a', rolle: 'architekt', worker: 'codex', status: 'ERFOLGREICH', nachfolger: 'b', lauf_id: 'l-a' },
+    { schritt_id: 'b', rolle: 'ausfuehrung', worker: 'gemini<x>', status: 'LAEUFT', nachfolger: null, lauf_id: 'l-b' },
+  ]
+  const html = renderTimeline(ordneSchritteNachPlan(schritte), { aktiveLaufIds: new Set(['l-b']) })
+  assert.match(html, /Verantwortung: Codex · <code>a<\/code>/)
+  assert.match(html, /Verantwortung: gemini&lt;x&gt; · <code>b<\/code>/, 'ein unbekannter Worker bleibt die ID, escaped')
+  assert.match(html, /<p>Läuft jetzt<\/p>/)
+  assert.doesNotMatch(html, /Läuft · läuft jetzt/)
+  // Ohne aktiven Lauf bleibt es beim Statussatz.
+  assert.match(renderTimeline(ordneSchritteNachPlan(schritte)), /<p>Läuft<\/p>/)
 })
 
 test('Timeline: Zyklus und Rest außerhalb der Kette werden ausgewiesen, nicht still eingereiht (F-247)', () => {
