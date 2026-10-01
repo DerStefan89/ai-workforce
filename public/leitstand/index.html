@@ -494,32 +494,94 @@
              workflow-vorlagen/*.json und Laufakten (F24). "Kandidaten suchen"/"Vormerken" (F27
              WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen,
              freigabepflichtigen Auftrag an, kein direktes Schreiben nach ressourcen.json. -->
-        <section id="view-capabilities" data-view="capabilities" hidden>
-          <p class="hinweis">Werkzeuge, ihre Abdeckung je Rolle und wer sie zuletzt genutzt hat.</p>
-          <p id="capabilities-startvorlage" class="hinweis"></p>
-          <button type="button" id="capabilities-neu-laden" class="btn">Neu laden</button>
+        <!-- F44 WS-7a (Vorlage V10 d_harness_phasen Kopf/Register, d_faehigkeiten, d_faehigkeiten_rollen; Abgleich
+             F-725 J5–J8): Werkstatt mit drei clientseitigen Registern (role=tablist, Pfeiltasten; keine neue
+             Route), Standard „Fähigkeiten“. Harness-Aufbau und Phasen & Rollen sind Bausteine „kommt“ ohne
+             Beispieldaten. Fähigkeiten hat drei Unterreiter: Werkzeuge (Kacheln aus GET …/ressourcen),
+             Rollen & Besetzung (GET …/ressourcen/abdeckung, Details lazy aus …/ressourcen/rollen/<rolle>),
+             Empfehlungen (Verweis). views/capabilities.js schaltet die Register. -->
+        <section id="view-capabilities" data-view="capabilities" class="v10-seite werkstatt-seite" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow" data-i18n="werkstatt.eyebrow">Workforce &amp; Umgebung</div>
+              <h1 data-i18n="werkstatt.titel">Deine Entwicklungswerkstatt.</h1>
+              <p class="description" data-i18n="werkstatt.beschreibung">Was die Workforce kann, woraus ihr Harness besteht und wie die Rollen zusammenarbeiten.</p>
+            </div>
+            <button type="button" id="capabilities-neu-laden" class="button" data-i18n="werkstatt.neuLaden">Neu laden</button>
+          </div>
 
-          <section class="card unterabschnitt">
-            <h2>Library</h2>
-            <div id="capabilities-library"></div>
-          </section>
+          <div id="werkstatt-register" class="tabs werkstatt-register" role="tablist" aria-label="Bereiche der Werkstatt" data-i18n-aria-label="werkstatt.register">
+            <button type="button" role="tab" id="werkstatt-reiter-harness" aria-controls="werkstatt-bereich-harness" aria-selected="false" tabindex="-1" data-i18n="werkstatt.register.harness">Harness-Aufbau</button>
+            <button type="button" role="tab" id="werkstatt-reiter-phasen" aria-controls="werkstatt-bereich-phasen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.register.phasen">Phasen &amp; Rollen</button>
+            <button type="button" role="tab" id="werkstatt-reiter-faehigkeiten" class="active" aria-controls="werkstatt-bereich-faehigkeiten" aria-selected="true" tabindex="0" data-i18n="werkstatt.register.faehigkeiten">Fähigkeiten</button>
+          </div>
 
-          <section class="card unterabschnitt">
-            <h2>Coverage je Rolle</h2>
-            <div id="capabilities-abdeckung"></div>
-            <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
-                 "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
-                 #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
-                 ein Neuladen der Coverage-Tabelle diesen Zustand nicht mitreißt. -->
-            <div id="capabilities-scout"></div>
-          </section>
+          <div id="werkstatt-bereich-harness" role="tabpanel" aria-labelledby="werkstatt-reiter-harness" tabindex="0" hidden>
+            <section class="empty">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
+              <h2><span data-i18n="werkstatt.harness.titel">Harness-Aufbau</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+              <p data-i18n="werkstatt.harness.text">Der Aufbau deines Harness wird hier sichtbar – mit der Harness-Werkstatt.</p>
+            </section>
+          </div>
 
-          <section class="card unterabschnitt">
-            <h2>Rollen-Besetzung</h2>
-            <label for="capabilities-rollen-auswahl">Rolle</label>
-            <select id="capabilities-rollen-auswahl"><option value="">— wählen —</option></select>
-            <div id="capabilities-rollen-detail"></div>
-          </section>
+          <div id="werkstatt-bereich-phasen" role="tabpanel" aria-labelledby="werkstatt-reiter-phasen" tabindex="0" hidden>
+            <section class="empty">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
+              <h2><span data-i18n="werkstatt.phasen.titel">Phasen &amp; Rollen</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+              <p data-i18n="werkstatt.phasen.text">Der Rollen-Kreis zeigt bald, wer gerade arbeitet.</p>
+            </section>
+          </div>
+
+          <div id="werkstatt-bereich-faehigkeiten" role="tabpanel" aria-labelledby="werkstatt-reiter-faehigkeiten">
+            <div id="faehigkeiten-register" class="tabs werkstatt-register werkstatt-unterregister" role="tablist" aria-label="Bereiche der Fähigkeiten" data-i18n-aria-label="werkstatt.unterregister">
+              <button type="button" role="tab" id="faehigkeiten-reiter-werkzeuge" class="active" aria-controls="faehigkeiten-bereich-werkzeuge" aria-selected="true" tabindex="0" data-i18n="werkstatt.reiter.werkzeuge">Werkzeuge</button>
+              <button type="button" role="tab" id="faehigkeiten-reiter-rollen" aria-controls="faehigkeiten-bereich-rollen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.rollen">Rollen &amp; Besetzung</button>
+              <button type="button" role="tab" id="faehigkeiten-reiter-empfehlungen" aria-controls="faehigkeiten-bereich-empfehlungen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.empfehlungen">Empfehlungen</button>
+            </div>
+
+            <!-- J5/J6: Kennzahlen, Suche und Filter (clientseitig), Kacheln mit Detailklappe. Kein
+                 Aktivieren/Freigeben — Freigabe nur über den F36-Weg im Freigabedialog. -->
+            <div id="faehigkeiten-bereich-werkzeuge" role="tabpanel" aria-labelledby="faehigkeiten-reiter-werkzeuge">
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.werkzeuge">Werkzeuge</h2>
+              <p id="capabilities-kennzahlen" class="werkstatt-kennzahlen"></p>
+              <div class="werkstatt-suchzeile">
+                <input type="search" id="capabilities-suche" autocomplete="off" aria-label="Fähigkeiten suchen" data-i18n-aria-label="werkstatt.suche" />
+                <select id="capabilities-filter-typ" aria-label="Typ" data-i18n-aria-label="werkstatt.filter.typ"></select>
+                <select id="capabilities-filter-freigabe" aria-label="Freigabe" data-i18n-aria-label="werkstatt.filter.freigabe"></select>
+              </div>
+              <div id="capabilities-library"></div>
+              <div class="note">
+                <strong data-i18n="werkstatt.hinweis.aktiv.titel">Freigegeben heißt nicht gerade aktiv.</strong>
+                <span data-i18n="werkstatt.hinweis.aktiv.text">Ob eine Fähigkeit verwendet wurde, steht in der jeweiligen Ausführung.</span>
+              </div>
+              <p id="capabilities-assessed" class="werkstatt-assessed"></p>
+              <details class="werkstatt-technik">
+                <summary data-i18n="werkstatt.technik">Technische Angaben</summary>
+                <p id="capabilities-startvorlage"></p>
+              </details>
+            </div>
+
+            <!-- J7/J8: Liste je Rolle mit Coverage und Gap-Zeilen je Worker; Details lädt die Ebenen 1–4 lazy. -->
+            <div id="faehigkeiten-bereich-rollen" role="tabpanel" aria-labelledby="faehigkeiten-reiter-rollen" hidden>
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.rollen">Rollen &amp; Besetzung</h2>
+              <div class="note" data-i18n="werkstatt.rollen.hinweis">Eine Rolle beschreibt die Verantwortung. Der zugewiesene Worker führt sie aus. Was tatsächlich verwendet wurde, steht später im jeweiligen Arbeitsschritt.</div>
+              <div id="capabilities-abdeckung" class="werkstatt-rollen"></div>
+              <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
+                   "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
+                   #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
+                   ein Neuladen der Coverage-Liste diesen Zustand nicht mitreißt. Optik unverändert (WS-7b). -->
+              <div id="capabilities-scout" class="werkstatt-scout"></div>
+            </div>
+
+            <!-- J9: Empfehlungen sind nur im Freigabeschritt eines Ablaufs echt (F36, WS-4a F4/F5). -->
+            <div id="faehigkeiten-bereich-empfehlungen" role="tabpanel" aria-labelledby="faehigkeiten-reiter-empfehlungen" hidden>
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.empfehlungen">Empfehlungen</h2>
+              <div class="note">
+                <span data-i18n="werkstatt.empfehlungen.text">Empfehlungen erscheinen im Freigabeschritt eines Ablaufs.</span>
+                <a href="#/runs" class="werkstatt-link" data-i18n="werkstatt.empfehlungen.link">Zu den Aufträgen</a>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- F29 WS-D2 (Auftrag Punkt E): reine Client-Projektion, kein

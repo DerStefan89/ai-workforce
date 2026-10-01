@@ -12185,3 +12185,57 @@ Auswirkung: Niedrig — der Befehl scheitert sichtbar, ohne Folgen; ein neuer Br
 Maßnahme: In diesem Worktree nur `git fetch origin` und dann `git switch -c <branch> --no-track origin/main`.
 Status: offen.
 Feature/Run: Entdeckt: F44 WS-6a/6b, 01.10.2026.
+
+**F-950** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Harness-Werkstatt — Abgleich J1/J2/J4 echt machen, Design zuerst.
+Beschreibung: Die Workforce bekommt den Harness-Aufbau als verbundenes Skelett: Knoten „Dein Harness“, sechs Bausteine (Regeln, Wissen, Gedächtnis, Rollen & Fähigkeiten, Bremsen, Prüfung & Betrieb), darunter die Dateien; je Knoten Inhalt, Zweck, Abweichung zur Vorlage und nutzendes Modell; Hooks und Konfiguration sichtbar. Dazu eine Capability Library als eigener Bereich: alle Katalogeinträge, aktiv/nicht aktiv, Typ, Nutzer, Ort; Filter Typ/Status, Suche; Aktivieren nur über den F36-Weg.
+Fundstelle: `#/capabilities`, Register Harness-Aufbau (seit F44 WS-7a Baustein „kommt“); Abgleich F-725 J1, J2, J4.
+Auswirkung: Mittel — der Aufbau des Harness ist im Leitstand nicht sichtbar und nicht prüfbar.
+Maßnahme: Erst Design in der Design-Finalisierung nach WS-8, dann Funktionen: Leseendpunkt mit Allowlist ohne Secrets/.env, Erklärkatalog, Nutzung je Modell, Abgleich gegen `vorlagen/projekt-skelett`, Bearbeiten mit Diff, Pflichtbegründung und 409. Wirksame Konfiguration bis zur Entscheidung nur per Vorschlag. Aufwand ~7–9 AT.
+Status: offen.
+Feature/Run: Entdeckt: Stefan, 01.10.2026, F44.
+
+**F-951** · `TECH_DEBT` · P3 · offen
+Titel: design-guardian fehlt in `ressourcen.json`.
+Beschreibung: Der Subagent `design-guardian` liegt in `.claude/agents/` und ist seit F44 aktiv, steht aber nicht im Ressourcenkatalog. Die Werkstatt (`#/capabilities`, Werkzeuge) zeigt ihn deshalb nicht.
+Fundstelle: `ressourcen.json`; `.claude/agents/design-guardian.md`.
+Auswirkung: Niedrig — Katalog und Wirklichkeit weichen ab; Coverage und Empfehlungen kennen den Prüfer nicht.
+Maßnahme: Katalogeintrag nachtragen, auf eigenem Branch; Gates f19 und f36 beachten.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-7-Challenge / Harness-Werkstatt, 01.10.2026.
+
+**F-952** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Produktübersicht neu — Rollen-Kreis statt Phasen-Kreis.
+Beschreibung: Kopf mit „In VS Code öffnen“ (`vscode://file/<Pfad aus projekte.json>`, kein Prozessstart); Rollen-Kreis statt Phasen-Kreis (Planner/Codex, Advisor/Claude, Builder/Claude Code mit den Prüfern code-reviewer, qa und design-guardian als Satelliten, Prüfschritt ohne Modell, Reviewer/Codex, Abnahme/Mensch); Feature-Timeline aus Schätzungen und Ist; Board; Kacheln Features, Bugs, Harness Improvements. Es entfallen „Deine nächsten Entscheidungen“, „Die Workforce gerade“, „Wer macht was“ und die Liste „Entwicklungsstand“. Layout-Regel: Karten einer Reihe gleich hoch mit gleicher Kopfzeile und gleichem Fuß (in die Prüfliste des design-guardian). Ersetzt auch Abgleich J3 (Phasen-Kreis).
+Fundstelle: `#/dashboard` (Produktübersicht); `#/capabilities`, Register Phasen & Rollen (seit F44 WS-7a Baustein „kommt“).
+Auswirkung: Mittel — die Übersicht zeigt nicht, welche Rolle mit welchem Modell gerade arbeitet.
+Maßnahme: Design-Finalisierung nach WS-8, danach Umsetzung.
+Status: offen.
+Feature/Run: Entdeckt: Stefan, 01.10.2026, F44.
+
+**F-953** · `BUG` · P2 · offen
+Titel: Roadmap-Meilenstein M5 enthält F42 und F44 nicht.
+Beschreibung: In `docs/projekt/roadmap.json` fehlen F42 und F44 im Meilenstein M5; die Roadmap-Ansicht und der Fortschrittsring zählen sie deshalb nicht mit.
+Fundstelle: `docs/projekt/roadmap.json`, Meilenstein M5.
+Auswirkung: Mittel — Roadmap und Kennzahlen unterschätzen den Umfang von M5.
+Maßnahme: F42 und F44 nachtragen und ein Gate „jede Feature-Akte steht in genau einem Meilenstein“ einführen.
+Status: offen.
+Feature/Run: Entdeckt: Roadmap neu, 01.10.2026.
+
+**F-954** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Läufe schreiben ohne eigenen Branch/Worktree in den ausgecheckten Stand.
+Beschreibung: Ein Lauf schreibt direkt in den gerade ausgecheckten Branch des Projekts. Der Leitstand zeigt vor dem Start weder den Branch noch offene Änderungen.
+Fundstelle: Auftrag starten mit Arbeitsumgebung (`#/projekt`, Ablauf-Freigabe); Laufstart im Server.
+Auswirkung: Mittel — Änderungen eines Laufs mischen sich mit offener Handarbeit; der Mensch sieht das Risiko vor dem Start nicht.
+Maßnahme: Branch oder Worktree je Lauf und Anzeige von Branch und offenen Änderungen vor dem Start (Fixpaket B1).
+Status: offen.
+Feature/Run: Entdeckt: Auftrag starten mit Arbeitsumgebung, 01.10.2026.
+
+**F-955** · `BUG` · P2 · offen
+Titel: Scout-Zustand der Werkstatt überlebt einen Projektwechsel.
+Beschreibung: `views/capabilities.js` setzt `scoutZustand` beim Projektwechsel nicht zurück. Ein laufender Scout-Lauf pollt danach `laeufe/<alte laufId>` unter dem Präfix des neuen Projekts, erhält 404 und bleibt dauerhaft auf „läuft…“; alle „Kandidaten suchen“ bleiben bis zum Neuladen der Seite gesperrt, das Scout-Panel zeigt Inhalte des alten Projekts. Gleiches Muster wie der F26-Chat-Befund (`projekt-kontext.js`, abonniereProjektWechsel).
+Fundstelle: `public/leitstand/views/capabilities.js` (scoutZustand, aktualisiereScoutZustand, initCapabilitiesView).
+Auswirkung: Mittel — die Kandidatensuche ist nach einem Projektwechsel bis zum Neuladen blockiert; ein alter Lauf erscheint im falschen Projekt.
+Maßnahme: Im Projektwechsel-Abonnement `scoutZustand = null`, `vormerkenZustaende` leeren und `renderScoutPanel()` — mit dem Scout-Umbau in WS-7b (in WS-7a war jede Änderung am Scout-Ablauf ausgeschlossen). Seit WS-7a lädt der Wechsel Katalog und Abdeckung bereits neu.
+Status: offen.
+Feature/Run: Entdeckt: QA-Pass F44 WS-7a, 02.10.2026.

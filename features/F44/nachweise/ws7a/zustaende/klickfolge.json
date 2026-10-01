@@ -1,0 +1,394 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-capabilities"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "jarvis",
+            "benoetigteCapabilities": [
+              "CHAT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "code-reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "CODE_REVIEW"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "ausfuehrung",
+            "benoetigteCapabilities": [
+              "CODE_WRITE"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "scout",
+            "benoetigteCapabilities": [
+              "WEB_RESEARCH"
+            ],
+            "workerAbdeckung": [],
+            "gedeckt": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/ressourcen",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "assessedHinweis": "ASSESSED: fest (Nachweis).",
+        "eintraege": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Register gewählt",
+        "selector": "#werkstatt-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Unterreiter gewählt",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#capabilities-kennzahlen"
+      },
+      {
+        "name": "erste Kachel",
+        "selector": "#capabilities-library .werkzeug-karte h3"
+      },
+      {
+        "name": "Leerzustand Werkzeuge",
+        "selector": "#capabilities-library .leer"
+      },
+      {
+        "name": "Details aria-expanded",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+        "attribut": "aria-expanded"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kachel-Detail offen",
+        "selector": ".werkzeug-detail[open]"
+      },
+      {
+        "name": "Gap-Zeile mit „Kandidaten suchen“",
+        "selector": ".werkstatt-gap-zeile .capabilities-scout-link"
+      },
+      {
+        "name": "Rollen-Details geladen",
+        "selector": ".werkstatt-rollen-detail:not([hidden]) .lauf-kopfdaten"
+      },
+      {
+        "name": "Rollen-Select (muss fehlen)",
+        "selector": "#capabilities-rollen-auswahl"
+      },
+      {
+        "name": "Aktivieren/Freigeben-Knopf (muss fehlen)",
+        "selector": "#view-capabilities [data-aktion=\"freigeben\"], #view-capabilities [data-aktion=\"aktivieren\"]"
+      },
+      {
+        "name": "Fehler Werkzeuge",
+        "selector": "#capabilities-library > p.fehler"
+      },
+      {
+        "name": "Fehler Abdeckung",
+        "selector": "#capabilities-abdeckung > p.fehler"
+      },
+      {
+        "name": "Fehler Details",
+        "selector": ".werkstatt-rollen-detail p.fehler"
+      },
+      {
+        "name": "ASSESSED-Zeile gefüllt",
+        "selector": "#capabilities-assessed .badge"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Leerer Katalog: Kennzahlen 0, eigener Leerzustand",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .leer",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-z1-katalog-leer.webp"
+    },
+    {
+      "label": "Nur der Katalog scheitert (500): Fehler nur bei den Werkzeugen, ohne ASSESSED/Startvorlage des letzten Ladens",
+      "anfragenAntworten": [
+        {
+          "muster": "**/ressourcen",
+          "status": 500,
+          "json": {
+            "grund": "ressourcen.json nicht lesbar"
+          }
+        }
+      ],
+      "klick": "#capabilities-neu-laden",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .fehler",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-z2-katalog-fehler.webp"
+    },
+    {
+      "label": "Rollen & Besetzung lädt trotzdem (andere Quelle unberührt)",
+      "klick": "#faehigkeiten-reiter-rollen",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"scout\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-z3-rollen-ok-ohne-worker.webp"
+    },
+    {
+      "label": "Katalog wieder da, nur die Abdeckung scheitert (500): Fehler nur bei Rollen & Besetzung",
+      "anfragenAntworten": [
+        {
+          "muster": "**/ressourcen",
+          "json": {
+            "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+            "assessedHinweis": "ASSESSED: fest (Nachweis).",
+            "eintraege": []
+          }
+        },
+        {
+          "muster": "**/ressourcen/abdeckung",
+          "status": 500,
+          "json": {
+            "grund": "Startvorlage nicht lesbar"
+          }
+        }
+      ],
+      "klick": "#capabilities-neu-laden",
+      "warteAufSelector": {
+        "selector": "#capabilities-abdeckung .fehler",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-z4-abdeckung-fehler.webp"
+    },
+    {
+      "label": "Abdeckung wieder da, Details der Rolle scheitern (404) — sonst kein Fehler auf der Seite",
+      "anfragenAntworten": [
+        {
+          "muster": "**/ressourcen/abdeckung",
+          "json": {
+            "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+            "rollen": [
+              {
+                "rolle": "jarvis",
+                "benoetigteCapabilities": [
+                  "CHAT"
+                ],
+                "workerAbdeckung": [
+                  {
+                    "worker": "claude-code",
+                    "fehlend": [],
+                    "f346Ausnahme": false,
+                    "restFehlend": []
+                  }
+                ],
+                "gedeckt": true
+              },
+              {
+                "rolle": "code-reviewer",
+                "benoetigteCapabilities": [
+                  "CODE_REVIEW"
+                ],
+                "workerAbdeckung": [
+                  {
+                    "worker": "claude-code",
+                    "fehlend": [
+                      "CODE_REVIEW"
+                    ],
+                    "f346Ausnahme": true,
+                    "restFehlend": []
+                  },
+                  {
+                    "worker": "codex",
+                    "fehlend": [],
+                    "f346Ausnahme": false,
+                    "restFehlend": []
+                  }
+                ],
+                "gedeckt": true
+              },
+              {
+                "rolle": "qa",
+                "benoetigteCapabilities": [
+                  "ACCEPTANCE_TEST",
+                  "BROWSER_TEST"
+                ],
+                "workerAbdeckung": [
+                  {
+                    "worker": "claude-code",
+                    "fehlend": [],
+                    "f346Ausnahme": false,
+                    "restFehlend": []
+                  },
+                  {
+                    "worker": "codex",
+                    "fehlend": [
+                      "BROWSER_TEST"
+                    ],
+                    "f346Ausnahme": false,
+                    "restFehlend": [
+                      "BROWSER_TEST"
+                    ]
+                  }
+                ],
+                "gedeckt": false
+              },
+              {
+                "rolle": "ausfuehrung",
+                "benoetigteCapabilities": [
+                  "CODE_WRITE"
+                ],
+                "workerAbdeckung": [
+                  {
+                    "worker": "claude-code",
+                    "fehlend": [],
+                    "f346Ausnahme": false,
+                    "restFehlend": []
+                  }
+                ],
+                "gedeckt": true
+              },
+              {
+                "rolle": "scout",
+                "benoetigteCapabilities": [
+                  "WEB_RESEARCH"
+                ],
+                "workerAbdeckung": [],
+                "gedeckt": false
+              }
+            ]
+          }
+        },
+        {
+          "muster": "**/ressourcen/rollen/*",
+          "status": 404,
+          "json": {
+            "grund": "Rolle unbekannt"
+          }
+        }
+      ],
+      "klick": "#capabilities-neu-laden",
+      "warteAufSelector": {
+        "selector": ".capabilities-rolle-details",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Details qa öffnen → Fehler im Detail-Container",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rollen-detail .fehler",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-z5-details-fehler.webp"
+    }
+  ]
+}

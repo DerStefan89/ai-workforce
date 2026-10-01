@@ -1,0 +1,359 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-capabilities"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "jarvis",
+            "benoetigteCapabilities": [
+              "CHAT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "code-reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "CODE_REVIEW"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "ausfuehrung",
+            "benoetigteCapabilities": [
+              "CODE_WRITE"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "scout",
+            "benoetigteCapabilities": [
+              "WEB_RESEARCH"
+            ],
+            "workerAbdeckung": [],
+            "gedeckt": false
+          }
+        ]
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Register gewählt",
+        "selector": "#werkstatt-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Unterreiter gewählt",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#capabilities-kennzahlen"
+      },
+      {
+        "name": "erste Kachel",
+        "selector": "#capabilities-library .werkzeug-karte h3"
+      },
+      {
+        "name": "Leerzustand Werkzeuge",
+        "selector": "#capabilities-library .leer"
+      },
+      {
+        "name": "Details aria-expanded",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+        "attribut": "aria-expanded"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kachel-Detail offen",
+        "selector": ".werkzeug-detail[open]"
+      },
+      {
+        "name": "Gap-Zeile mit „Kandidaten suchen“",
+        "selector": ".werkstatt-gap-zeile .capabilities-scout-link"
+      },
+      {
+        "name": "Rollen-Details geladen",
+        "selector": ".werkstatt-rollen-detail:not([hidden]) .lauf-kopfdaten"
+      },
+      {
+        "name": "Rollen-Select (muss fehlen)",
+        "selector": "#capabilities-rollen-auswahl"
+      },
+      {
+        "name": "Aktivieren/Freigeben-Knopf (muss fehlen)",
+        "selector": "#view-capabilities [data-aktion=\"freigeben\"], #view-capabilities [data-aktion=\"aktivieren\"]"
+      },
+      {
+        "name": "Fehler Werkzeuge",
+        "selector": "#capabilities-library > p.fehler"
+      },
+      {
+        "name": "Fehler Abdeckung",
+        "selector": "#capabilities-abdeckung > p.fehler"
+      },
+      {
+        "name": "Fehler Details",
+        "selector": ".werkstatt-rollen-detail p.fehler"
+      },
+      {
+        "name": "ASSESSED-Zeile gefüllt",
+        "selector": "#capabilities-assessed .badge"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Seite geladen (Werkzeuge)",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Suche „codex“ (id/name/beschreibung, clientseitig)",
+      "tippen": {
+        "selector": "#capabilities-suche",
+        "text": "codex"
+      },
+      "screenshot": "d1440-k1-suche.webp"
+    },
+    {
+      "label": "Suche leeren, Filter Typ = extern",
+      "tippen": {
+        "selector": "#capabilities-suche",
+        "text": ""
+      },
+      "auswaehlen": {
+        "selector": "#capabilities-filter-typ",
+        "wert": "extern"
+      }
+    },
+    {
+      "label": "Filter Freigabe = Freigabe offen (kombiniert mit Typ extern)",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-freigabe",
+        "wert": "offen"
+      },
+      "screenshot": "d1440-k2-filter.webp"
+    },
+    {
+      "label": "Typ = worker bei Freigabe offen → eigener Leerzustand",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-typ",
+        "wert": "worker"
+      },
+      "warteAufSelector": {
+        "selector": "#capabilities-library .leer",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-k3-leer.webp"
+    },
+    {
+      "label": "Filter zurück auf Alle",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-typ",
+        "wert": ""
+      }
+    },
+    {
+      "label": "Filter Freigabe zurück auf Alle",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-freigabe",
+        "wert": ""
+      }
+    },
+    {
+      "label": "Filter Typ = agent, dann „Neu laden“: Filter bleibt und wirkt auf die frisch geladenen Kacheln",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-typ",
+        "wert": "agent"
+      }
+    },
+    {
+      "label": "„Neu laden“ mit aktivem Filter",
+      "klick": "#capabilities-neu-laden",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-k5-filter-neu-laden.webp"
+    },
+    {
+      "label": "Filter Typ zurück auf Alle",
+      "auswaehlen": {
+        "selector": "#capabilities-filter-typ",
+        "wert": ""
+      }
+    },
+    {
+      "label": "Tastatur: Fokus auf Fähigkeiten, Pfeil links → Phasen & Rollen gewählt und fokussiert",
+      "fokus": "#werkstatt-reiter-faehigkeiten",
+      "taste": "ArrowLeft"
+    },
+    {
+      "label": "Tastatur: Pos1 → Harness-Aufbau",
+      "taste": "Home"
+    },
+    {
+      "label": "Tastatur: Pfeil links am Anfang → läuft um zu Fähigkeiten",
+      "taste": "ArrowLeft"
+    },
+    {
+      "label": "Tastatur: Unterreiter, Fokus auf Werkzeuge, Ende → Empfehlungen",
+      "fokus": "#faehigkeiten-reiter-werkzeuge",
+      "taste": "End"
+    },
+    {
+      "label": "Tastatur: Pfeil rechts am Ende → läuft um zu Werkzeuge",
+      "taste": "ArrowRight"
+    },
+    {
+      "label": "Tastatur: Pfeil rechts → Rollen & Besetzung",
+      "taste": "ArrowRight",
+      "warteAufSelector": {
+        "selector": ".werkstatt-gap-zeile",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Details qa öffnen (aria-expanded true, lädt lazy)",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .werkstatt-rollen-detail .lauf-kopfdaten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Details qa schließen (aria-expanded false, Container hidden)",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .werkstatt-rollen-detail",
+        "timeoutMs": 5000,
+        "zustand": "hidden"
+      }
+    },
+    {
+      "label": "Details qa wieder öffnen, dann „Neu laden“: Details bleiben offen und laden frisch",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .werkstatt-rollen-detail .lauf-kopfdaten",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "„Neu laden“",
+      "klick": "#capabilities-neu-laden",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .werkstatt-rollen-detail .lauf-kopfdaten",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-k4-neu-laden.webp"
+    },
+    {
+      "label": "„Zum Workboard“ in der Gap-Zeile → #/workboard",
+      "klick": ".werkstatt-gap-zeile .capabilities-gap-link",
+      "warteAufSelector": {
+        "selector": "#view-workboard",
+        "timeoutMs": 15000
+      }
+    }
+  ]
+}

@@ -1,0 +1,283 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "jarvis",
+            "benoetigteCapabilities": [
+              "CHAT"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "code-reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [
+                  "CODE_REVIEW"
+                ],
+                "f346Ausnahme": true,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "ausfuehrung",
+            "benoetigteCapabilities": [
+              "CODE_WRITE"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "scout",
+            "benoetigteCapabilities": [
+              "WEB_RESEARCH"
+            ],
+            "workerAbdeckung": [],
+            "gedeckt": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/ressourcen",
+      "json": {
+        "startvorlagePfad": "startvorlagen/ein-sehr-langer-ordnername-fuer-startvorlagen/beispielprojekt-mit-langem-namen.json",
+        "assessedHinweis": "ASSESSED: kein Eintrag erreicht diese Phase in v1 (fest, Nachweis).",
+        "eintraege": [
+          {
+            "id": "barrierefreiheits-pruefwerkzeug-fuer-formularvalidierung-und-fehlermeldungen",
+            "typ": "skill",
+            "name": "Barrierefreiheits-Prüfwerkzeug für Formularvalidierung und Fehlermeldungsverständlichkeit",
+            "beschreibung": "Prüft Formulare, Fehlermeldungen und Tastaturbedienung gegen WCAG-Kriterien – mit ausführlicher Begründung je Befund, Quellenangabe und einem Vorschlag zur Behebung, ohne selbst etwas zu ändern.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "capabilities": [],
+            "grund": "fest (Nachweis)",
+            "anzeigeGrund": "noch nicht freigegeben",
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "fehltFuerEinsatz": [
+              "Freigabe in ressourcen.json fehlt",
+              "Installation unter .claude/skills/barrierefreiheits-pruefwerkzeug-fuer-formularvalidierung fehlt"
+            ]
+          },
+          {
+            "id": "claude-code",
+            "typ": "worker",
+            "name": "Claude Code",
+            "beschreibung": "Entwickelt Funktionen und setzt klare Arbeitsaufträge im Projekt um.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "capabilities": [],
+            "grund": "fest (Nachweis)",
+            "anzeigeGrund": "freigegeben und auflösbar",
+            "phasen": [
+              "DISCOVERED",
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": []
+          },
+          {
+            "id": "Donaudampfschifffahrtsgesellschaftskapitaensmuetzenabzeichen",
+            "typ": "extern",
+            "name": "Donaudampfschifffahrtsgesellschaftskapitänsmützenabzeichen",
+            "beschreibung": "Ein Wort ohne Trennstelle.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "capabilities": [],
+            "grund": "fest (Nachweis)",
+            "anzeigeGrund": "freigegeben und auflösbar",
+            "phasen": [
+              "DISCOVERED",
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "fehltFuerEinsatz": []
+          }
+        ]
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Register gewählt",
+        "selector": "#werkstatt-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Unterreiter gewählt",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Fokus-ID",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Kennzahlen",
+        "selector": "#capabilities-kennzahlen"
+      },
+      {
+        "name": "erste Kachel",
+        "selector": "#capabilities-library .werkzeug-karte h3"
+      },
+      {
+        "name": "Leerzustand Werkzeuge",
+        "selector": "#capabilities-library .leer"
+      },
+      {
+        "name": "Details aria-expanded",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-rolle-details",
+        "attribut": "aria-expanded"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Kachel-Detail offen",
+        "selector": ".werkzeug-detail[open]"
+      },
+      {
+        "name": "Gap-Zeile mit „Kandidaten suchen“",
+        "selector": ".werkstatt-gap-zeile .capabilities-scout-link"
+      },
+      {
+        "name": "Rollen-Details geladen",
+        "selector": ".werkstatt-rollen-detail:not([hidden]) .lauf-kopfdaten"
+      },
+      {
+        "name": "Rollen-Select (muss fehlen)",
+        "selector": "#capabilities-rollen-auswahl"
+      },
+      {
+        "name": "Aktivieren/Freigeben-Knopf (muss fehlen)",
+        "selector": "#view-capabilities [data-aktion=\"freigeben\"], #view-capabilities [data-aktion=\"aktivieren\"]"
+      },
+      {
+        "name": "Fehler Werkzeuge",
+        "selector": "#capabilities-library > p.fehler"
+      },
+      {
+        "name": "Fehler Abdeckung",
+        "selector": "#capabilities-abdeckung > p.fehler"
+      },
+      {
+        "name": "Fehler Details",
+        "selector": ".werkstatt-rollen-detail p.fehler"
+      },
+      {
+        "name": "ASSESSED-Zeile gefüllt",
+        "selector": "#capabilities-assessed .badge"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Lange Namen/Beschreibungen/IDs bei 390 px: kein waagerechter Scroll",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d390-lang-1-kacheln.webp"
+    },
+    {
+      "label": "Detail der langen Kachel offen; Technik-Klappe mit langem Pfad",
+      "klick": "#capabilities-library .werkzeug-detail > summary",
+      "warteAufSelector": {
+        "selector": ".werkzeug-detail[open] dl",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Technik-Klappe offen",
+      "klick": ".werkstatt-technik > summary",
+      "screenshot": "d390-lang-2-detail.webp"
+    }
+  ]
+}
