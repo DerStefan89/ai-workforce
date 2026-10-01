@@ -1,0 +1,237 @@
+{
+  "url": "http://127.0.0.1:4381/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-workboard"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/workitems*",
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-9001",
+            "titel": "Nachweis: Finding, dessen Workflow auf Freigabe wartet",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P1"
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F90",
+            "titel": "Nachweis: geplantes Feature",
+            "status": "ENTWURF",
+            "pfad": "features/F90/feature.md"
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F91",
+            "titel": "Nachweis: Feature in Arbeit mit einem sehr langen Titel, der in der Karte umbrechen muss, ohne das Raster zu sprengen",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F91/feature.md"
+          },
+          {
+            "quelle": "finding",
+            "typ": "HARNESS_IMPROVEMENT",
+            "id": "F-9002",
+            "titel": "Nachweis: erledigtes Finding",
+            "status": "ERLEDIGT",
+            "statusRoh": "erledigt",
+            "prioritaet": "P2"
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "id": "F-9003",
+            "titel": "Nachweis: technische Schuld",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2"
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "id": "F-9004",
+            "titel": "Nachweis: Prozessverbesserung",
+            "status": "SONSTIGES",
+            "statusRoh": "zurückgestellt",
+            "prioritaet": "P3"
+          }
+        ],
+        "befunde": [
+          {
+            "quelle": "finding",
+            "art": "nicht_parsebare_kopfzeile",
+            "meldung": "Nachweis: Kopfzeile <b>nicht</b> lesbar (Zeile 7)"
+          }
+        ],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "json": [
+        {
+          "auftragId": "nachweis-a1",
+          "titel": "Nachweis-Auftrag",
+          "erstellt_am": "2026-10-01T08:00:00Z",
+          "workitem_referenz": "workitem:finding:F-9001"
+        }
+      ]
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Überschrift",
+        "selector": "[data-view]:not([hidden]) h1"
+      },
+      {
+        "name": "aktiv in der Nav",
+        "selector": "#shell-sidebar [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "#workboard-tabs [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Ansicht-Chip aktiv",
+        "selector": "#workboard-ansicht [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Spalte Geplant (Zahl)",
+        "selector": ".board-spalte-geplant .board-column-title"
+      },
+      {
+        "name": "Spalte In Arbeit (Zahl)",
+        "selector": ".board-spalte-in_arbeit .board-column-title"
+      },
+      {
+        "name": "Spalte Braucht dich (Zahl)",
+        "selector": ".board-spalte-braucht_dich .board-column-title"
+      },
+      {
+        "name": "Spalte Abgenommen (Zahl)",
+        "selector": ".board-spalte-abgenommen .board-column-title"
+      },
+      {
+        "name": "erste Karte Braucht dich",
+        "selector": ".board-spalte-braucht_dich .board-item-titel"
+      },
+      {
+        "name": "+ x weitere (Geplant)",
+        "selector": ".board-spalte-geplant .board-weitere-zeile"
+      },
+      {
+        "name": "außerhalb",
+        "selector": "#workboard-board .board-ausserhalb"
+      },
+      {
+        "name": "Hinweis Verknüpfung",
+        "selector": "#workboard-board .note"
+      },
+      {
+        "name": "Spaltenfilter",
+        "selector": "#workboard-spaltenfilter"
+      },
+      {
+        "name": "erste Listenzeile",
+        "selector": "#workboard-liste .workboard-zeile-titel, #workboard-liste p"
+      },
+      {
+        "name": "Parser-Befunde",
+        "selector": "#workboard-befunde"
+      }
+    ],
+    "ueberlauf": true,
+    "sichtbarkeit": [
+      {
+        "name": "Board-Bereich",
+        "id": "workboard-board-bereich"
+      },
+      {
+        "name": "Listen-Bereich",
+        "id": "workboard-listen-bereich"
+      },
+      {
+        "name": "Detail",
+        "id": "workboard-detail"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "kommt (aria-disabled) in der Seite",
+        "selector": "#view-workboard [aria-disabled=\"true\"]"
+      },
+      {
+        "name": "Bento (muss fehlen)",
+        "selector": "#workboard-bento, .bento-fokus, .pipeline"
+      },
+      {
+        "name": "Filtergruppe Typ sichtbar",
+        "selector": "#workboard-filter .filter-chip-gruppe:not([hidden]) #workboard-filter-typ"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "#/workboard mit Parser-Befund (E6, HTML escaped)",
+      "warteAufSelector": {
+        "selector": "#workboard-board .pm-board, #workboard-board .note.red",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-befunde-board.webp"
+    },
+    {
+      "label": "Klick Register „Weitere“ (Typ-Chips TECH_DEBT/PROCESS_IMPROVEMENT, E5)",
+      "klick": "#workboard-tabs [data-tab=\"weitere\"]",
+      "warteAufSelector": {
+        "selector": "#workboard-liste .workboard-zeile, #workboard-liste .leer:not(:empty)",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-weitere.webp"
+    },
+    {
+      "label": "Klick Register „Features“ (keine Prioritätschips)",
+      "klick": "#workboard-tabs [data-tab=\"features\"]",
+      "warteAufSelector": {
+        "selector": "#workboard-liste .workboard-zeile, #workboard-liste .leer:not(:empty)",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-features.webp"
+    }
+  ]
+}

@@ -14,6 +14,7 @@
  * - public/leitstand/views/platzhalter.js (kommtKnopf — Brain, Produktzyklus)
  * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Projektakte, Zeitplanung; F44 WS-2a)
  * - public/leitstand/views/dashboard.js (kommtKnopf, kommtBadge — Übersicht V10, Z-Elemente B1/B4/B6/B8/B10/B13; F44 WS-2b)
+ * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
  * Wichtig:
@@ -23,7 +24,9 @@
  *   das Register „Projektakte“ der Roadmap (views/roadmap.js, span.tab-kommt mit kommtBadge) und
  *   in der Übersicht die Z-Karte „Deployer · Mensch“ und „Als Nächstes vorgesehen“
  *   (views/dashboard.js, .cockpit-deployer und .pm-next; beide ohne Links — ein Link darin wäre
- *   gesperrt); jedes künftige bekommt dieselbe Wirkung (gewollt, eine Regel).
+ *   gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
+ *   (views/workboard.js, .view-switch-knopf); jedes künftige bekommt dieselbe Wirkung (gewollt,
+ *   eine Regel).
  */
 
 import { escapeHtml } from './render.js'

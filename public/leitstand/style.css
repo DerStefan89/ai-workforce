@@ -1969,7 +1969,7 @@ th {
 /* F29 WS-D2 (Auftrag Punkt D): Projekte-Übersicht als Kopf-Panel + Fokus-Panel-artige Karten
    (views/projekte-uebersicht.js) — löst die vorherige .list-row-Zeilenoptik (.projekte-uebersicht-
    zeile-*) vollständig ab. Wiederverwendet .bento-fokus-icon/-zeile1/.bento-id-chip/.bento-meta-*
-   aus dem Workboard-Bento (dieselbe Optik, kein zweites Kartenvokabular). */
+   (seit F44 WS-3a im Block „Geteilte Kartenbausteine“; dieselbe Optik, kein zweites Kartenvokabular). */
 .projekte-kopf {
   display: flex;
   align-items: flex-start;
@@ -2680,79 +2680,15 @@ th {
   }
 }
 
-/* ─────────────────── Workboard-Bento (F29 WS-D1, Raster F29 WS-D2, Roadmap F33 WS-2) ──────
-   Übersichtsraster über der bestehenden Findings-Liste (views/workboard.js,
-   #workboard-bento), ausschließlich aus echten Daten (Auftrag Punkt 4/C).
-   Sechs Karten: Fokus (breit oben), Letzter Stand + Schnellzugriff (Reihe
-   darunter), AI Workflow (breit), Fortschritt + Roadmap (dieselbe, schmalere
-   Spalte rechts, übereinander — die "Chat mit Jarvis" — #shell-chat-spalte,
-   ein eigenständiges Geschwister-Element außerhalb von <main> — bei ≥1280px
-   optisch fortsetzt). Kollabiert unter 900px auf eine Spalte (Definition of
-   Done: mobile Darstellung). */
-#workboard-bento {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(14rem, 0.7fr);
-  grid-template-areas:
-    'fokus fokus fortschritt'
-    'letzter schnell roadmap'
-    'workflow workflow workflow';
-  gap: var(--space-2xl);
-  margin-bottom: var(--space-3xl);
-}
-
-@media (max-width: 900px) {
-  #workboard-bento {
-    grid-template-columns: 1fr;
-    grid-template-areas: 'fokus' 'fortschritt' 'roadmap' 'letzter' 'schnell' 'workflow';
-  }
-}
-
-.bento-fokus {
-  grid-area: fokus;
-}
-
-.bento-letzter-stand {
-  grid-area: letzter;
-}
-
-.bento-schnellzugriff {
-  grid-area: schnell;
-}
-
-.bento-ai-workflow {
-  grid-area: workflow;
-}
-
-.bento-fortschritt-karte {
-  grid-area: fortschritt;
-}
-
-.bento-roadmap-karte {
-  grid-area: roadmap;
-}
-
-.bento-leer {
-  color: var(--color-text-subtle);
-  font-style: italic;
-}
-
+/* ─────────────────── Geteilte Kartenbausteine (früher Workboard-Bento) ───────────────────
+   F44 WS-3a: Das Bento im Workboard ist entfernt (F-892). Diese Regeln bleiben, weil
+   views/projekte-uebersicht.js die Fokus-Innenkarte (Icon, ID-Chip, Titel) und die
+   Meta-Kacheln weiter nutzt; der Umbau der Seite nach Vorlage ist WS-6. */
 .bento-fokus-titel {
   margin: 0 0 var(--space-md);
   font-size: var(--font-size-lg);
   font-weight: 600;
   overflow-wrap: anywhere;
-}
-
-/* Innenkarte des Fokus-Panels (Auftrag Punkt C): rundes Icon, roter ID-Chip, Titel, Status-Pille
-   cyan, 1-2 Zeilen Beschreibung mit Ellipsis statt eines rohen Grund-/AK-Blocks. */
-.bento-fokus-innenkarte {
-  display: flex;
-  gap: var(--space-lg);
-  padding: var(--space-lg);
-  margin-bottom: var(--space-2xl);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
 }
 
 .bento-fokus-icon {
@@ -2772,10 +2708,6 @@ th {
   height: 1.4rem;
 }
 
-.bento-fokus-innenkarte-text {
-  min-width: 0;
-}
-
 .bento-fokus-zeile1 {
   display: flex;
   align-items: center;
@@ -2789,21 +2721,7 @@ th {
   color: var(--color-brand-strong);
 }
 
-.bento-fokus-innenkarte .bento-fokus-titel {
-  margin: 0 0 var(--space-xs);
-}
-
-.bento-fokus-beschreibung {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* Meta-Kachel-Zeile (Auftrag Punkt C: "5 Meta-Kacheln mit Icon, Label und Wert"). */
+/* Meta-Kachel-Zeile: Icon, Label und Wert. */
 .bento-meta-zeile {
   display: flex;
   flex-wrap: wrap;
@@ -2850,343 +2768,6 @@ th {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Karte "Letzter Projektstand" (Auftrag Punkt C). */
-.bento-letzter-stand-zeile {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
-}
-
-.bento-letzter-stand-text {
-  min-width: 0;
-}
-
-.bento-letzter-stand-id {
-  margin: 0 0 var(--space-xs);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-}
-
-.bento-letzter-stand-zeit {
-  margin: 0;
-  flex-shrink: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-}
-
-.bento-letzter-stand-oeffnen {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: none;
-}
-
-.bento-letzter-stand-oeffnen:hover {
-  background: rgba(var(--color-accent-rgb), 0.12);
-}
-
-/* Karte "Schnellzugriff" (Auftrag Punkt C, "im Stil von Projektübersicht"). */
-.bento-schnellzugriff-zeile {
-  width: 100%;
-  background: none;
-  border: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.bento-schnellzugriff-label {
-  flex: 1;
-  min-width: 0;
-}
-
-.bento-chevron {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: var(--color-text-subtle);
-}
-
-/* Karte "AI Workflow". */
-.bento-ai-workflow-kopfzeile {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2xl);
-}
-
-.bento-ai-workflow-kopfzeile .card-kopf {
-  margin: 0;
-}
-
-.bento-ai-workflow-badge {
-  margin-left: auto;
-}
-
-/* Workflow-Pipeline (Auftrag Punkt 4/C: "reale Rollen/Schritte des aktiven
-   Workflows") — horizontale Schrittkette, Muster renderSchrittkette
-   (views/workboard.js), hier als Icon-Kreise mit Verbindungslinie statt
-   einer <ol>. Der fällige Schritt (Server-Verdikt naechster.schrittId, D5 —
-   die Oberfläche entscheidet nichts selbst) leuchtet rot mit Glow und ist
-   größer, erledigte Schritte bleiben grün markiert, der Rest neutral/grau. */
-.pipeline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-lg);
-  overflow-x: auto;
-  padding: var(--space-md) 0;
-}
-
-.pipeline-schritt {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-sm);
-  min-width: 6.5rem;
-  max-width: 8rem;
-  text-align: center;
-}
-
-.pipeline-schritt:not(:last-child) {
-  position: relative;
-}
-
-.pipeline-schritt:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 1.3rem;
-  left: 50%;
-  width: 100%;
-  height: 2px;
-  background: var(--color-border);
-  z-index: -1;
-}
-
-.pipeline-schritt-kreis {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.6rem;
-  height: 2.6rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--color-surface-muted);
-  border: 2px solid var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.pipeline-schritt-kreis svg {
-  width: 1.3rem;
-  height: 1.3rem;
-}
-
-.pipeline-schritt.faellig .pipeline-schritt-kreis {
-  width: 3.1rem;
-  height: 3.1rem;
-  background: var(--color-brand-glow-soft);
-  border-color: var(--color-brand);
-  color: var(--color-brand-strong);
-  box-shadow: 0 0 var(--space-lg) 0 var(--color-brand-glow);
-}
-
-.pipeline-schritt.erledigt .pipeline-schritt-kreis {
-  background: var(--color-success-bg);
-  border-color: var(--color-success-text);
-  color: var(--color-success-text);
-}
-
-.pipeline-schritt-label {
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  color: var(--color-text);
-  overflow-wrap: anywhere;
-}
-
-.pipeline-schritt-kurz {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* F29 WS-D2-Korrektur: Modell-Chip je Pipeline-Knoten — bewusst bestehende Tokens
-   wiederverwendet (--color-surface-muted/--color-text-muted, wie .badge.neutral), kein neues
-   Farbpaar. */
-.pipeline-schritt-modell {
-  display: inline-block;
-  padding: var(--space-3xs) var(--space-xs);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-muted);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.bento-ai-workflow-leiste {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  margin: var(--space-lg) 0;
-  padding: var(--space-md) var(--space-lg);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-}
-
-.bento-ai-workflow-leiste span {
-  overflow-wrap: anywhere;
-}
-
-/* Aktionsleiste (Auftrag Punkt C) — Farben nur als Rahmen/Text (dezenter als eine volle
-   Füllfläche, passt zum sonstigen Glas-Look), Unterzeile klein und gedämpft. KEINE neue
-   Schreiblogik hier — die Buttons navigieren nur zur bestehenden Workflow-Bedienung
-   (workboard.js initBentoBedienung/beobachteAbnahmeVorschlag). */
-.bento-ai-workflow-aktionen {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-lg);
-}
-
-.bento-workflow-aktion {
-  flex: 1 1 10rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3xs);
-  padding: var(--space-md);
-  background: var(--color-surface-muted);
-}
-
-.bento-workflow-aktion small {
-  font-weight: 400;
-  color: var(--color-text-subtle);
-}
-
-.bento-aktion-ausgeben {
-  border-color: var(--color-success-text);
-  color: var(--color-success-text);
-}
-
-.bento-aktion-anpassung {
-  border-color: var(--color-info-text);
-  color: var(--color-info-text);
-}
-
-.bento-aktion-ablehnen {
-  border-color: var(--color-danger-text);
-  color: var(--color-danger-text);
-}
-
-.bento-workflow-aktion:disabled {
-  border-color: var(--color-border);
-  color: var(--color-text-subtle);
-}
-
-/* Kurzzeitige Hervorhebung des vorgewählten Abnahme-Buttons in views/workflows.js nach
-   Navigation aus der Bento-Aktionsleiste (workboard.js beobachteAbnahmeVorschlag) — reine
-   Optik, kein Auto-Klick. */
-.abnahme-vorgewaehlt {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-/* Fortschritt-Donut — reines CSS (conic-gradient), keine Chart-Bibliothek.
-   --donut-anteil (0-100, von workboard.js gesetzt) steuert den Rot-Bogen; der
-   Rest der Kreisbahn bleibt gedimmt. Der innere Kreis (::before) legt die
-   Prozentzahl frei, statt einer vollen Torte. */
-.bento-fortschritt-stand {
-  margin: calc(-1 * var(--space-lg)) 0 var(--space-2xl);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-}
-
-.donut {
-  --donut-anteil: 0;
-  position: relative;
-  width: 6rem;
-  height: 6rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: conic-gradient(var(--color-brand) calc(var(--donut-anteil) * 1%), var(--color-surface-muted) 0);
-  filter: drop-shadow(0 0 10px var(--color-brand-glow-soft));
-}
-
-.donut::before {
-  content: '';
-  position: absolute;
-  inset: 0.55rem;
-  border-radius: 50%;
-  background: var(--color-surface);
-}
-
-.donut-wert {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-}
-
-.bento-fortschritt {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2xl);
-  flex-wrap: wrap;
-}
-
-.bento-fortschritt-legende {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  font-size: var(--font-size-sm);
-  min-width: 0;
-}
-
-.bento-fortschritt-legende li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  list-style: none;
-}
-
-/* F33 WS-2: Karte "Roadmap" — Feature-Zeilen im hervorgehobenen aktuellen Meilenstein (Muster
-   .bento-fortschritt-legende) und kollabierte Meilenstein-Zeilen (bento-roadmap-uebrige) teilen
-   sich dasselbe Zeilen-Layout, kein zweites Klassenpaar. */
-.bento-roadmap-liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin: 0;
-  padding: 0;
-  font-size: var(--font-size-sm);
-}
-
-.bento-roadmap-liste li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  list-style: none;
-  flex-wrap: wrap;
-  overflow-wrap: anywhere;
-}
-
-.bento-roadmap-uebrige {
-  margin-top: var(--space-lg);
-  color: var(--color-text-muted);
 }
 
 /* F36 WS-5a: „Freigeben & installieren“ im Empfehlungsblock — nur bestehende Tokens; lange Werte
@@ -4916,4 +4497,357 @@ th {
 /* Sprungziel „Entwicklungsstand ansehen“ (B2): nur Lesestartpunkt, nicht bedienbar — wie die h1 ohne Fokusring. */
 #view-dashboard h2[tabindex='-1']:focus {
   outline: none;
+}
+
+/* ─────────────────── Entwicklung (F44 WS-3a, Vorlage V10 d_arbeit_board/-features) ───────────
+   #/workboard: Register als Knöpfe (.tabs .tab-knopf), Darstellung (.view-switch, E2/E3 „kommt“),
+   Ansicht-Chips (.board-filter), Status-Kanban (.pm-board, .board-column, .board-item) und die
+   Listen-Tabs (Suchzeile, Filter-Chips, .line-list). Maße wie die Vorlage, Farben nur über Tokens.
+   Die Spaltenzahl richtet sich nach der Breite der Seite (Container-Query), nicht des Viewports:
+   neben der Chatspalte ist der Hauptbereich bei 1440 px nur rund 744 px breit (Muster Übersicht).
+   Kein display auf Elementen, die über das hidden-Attribut umschalten (Bereiche, Filtergruppen) —
+   sonst überschriebe es die UA-Regel [hidden] (F-622). */
+#view-workboard {
+  container: entwicklung / inline-size;
+}
+
+#view-workboard .workboard-kopf-aktionen {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+#view-workboard .tabs .tab-knopf {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+#view-workboard .tabs .tab-knopf:hover {
+  color: var(--ink);
+}
+
+#view-workboard .tabs .tab-knopf.active {
+  color: var(--ink);
+  border-color: var(--mint);
+}
+
+#view-workboard .view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 20px;
+}
+
+#view-workboard .view-switch-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .view-switch-knopf.active {
+  background: var(--panel-hover);
+  color: var(--mint);
+  border-color: var(--mint);
+}
+
+#view-workboard .view-switch-knopf[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#view-workboard .board-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 22px;
+}
+
+#view-workboard .board-filter > span {
+  margin-right: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .board-filter-chip {
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#view-workboard .board-filter-chip:hover {
+  color: var(--ink);
+}
+
+#view-workboard .board-filter-chip[aria-pressed='true'] {
+  border-color: var(--line);
+  background: var(--soft);
+  color: var(--ink);
+}
+
+#view-workboard .pm-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+#view-workboard .pm-board.filtered-board {
+  grid-template-columns: minmax(0, 600px);
+}
+
+#view-workboard .board-column {
+  min-width: 0;
+  min-height: 320px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+}
+
+#view-workboard .board-column-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+#view-workboard .board-column-title h2 {
+  margin: 0;
+  font: 15px var(--sans);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .board-column-title > span {
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .board-spalte-braucht_dich .board-column-title {
+  color: var(--amber);
+}
+
+#view-workboard .board-spalte-abgenommen .board-column-title {
+  color: var(--mint);
+}
+
+#view-workboard .board-item {
+  display: block;
+  margin-bottom: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-workboard .board-item:hover {
+  border-color: var(--mint);
+  background: var(--surface-solid);
+}
+
+#view-workboard .board-item-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-workboard .board-item-titel {
+  display: block;
+  margin-bottom: 16px;
+  font: 17px/1.5 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .board-phase {
+  display: block;
+  font-size: 12px;
+}
+
+#view-workboard .board-owner {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .board-empty {
+  margin: 0;
+  padding: 25px 15px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+#view-workboard .board-weitere-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-workboard .board-weitere {
+  padding: 0 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--text-link-line);
+  background: transparent;
+  font-size: 12px;
+  color: var(--ink);
+}
+
+#view-workboard .board-weitere:hover {
+  color: var(--mint);
+}
+
+#view-workboard .board-ausserhalb {
+  margin: 18px 0 0;
+  font-size: 12px;
+}
+
+#view-workboard .workboard-suchzeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 18px;
+}
+
+#view-workboard .workboard-suchzeile input {
+  flex: 1 1 15rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+}
+
+#view-workboard #workboard-filter {
+  margin-bottom: 18px;
+}
+
+#view-workboard .filter-chip-gruppe[hidden] {
+  display: none;
+}
+
+#view-workboard .line-list {
+  border-top: 1px solid var(--line);
+}
+
+#view-workboard .workboard-zeile-symbol {
+  width: 1.2rem;
+  flex-shrink: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+#view-workboard .workboard-zeile-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-workboard .workboard-zeile:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+#view-workboard .tabs .tab-knopf:focus-visible,
+#view-workboard .board-item:focus-visible,
+#view-workboard .board-weitere:focus-visible,
+#view-workboard .board-filter-chip:focus-visible,
+#view-workboard .view-switch-knopf:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+@container entwicklung (max-width: 900px) {
+  #view-workboard .pm-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #view-workboard .board-column {
+    min-height: 220px;
+  }
+}
+
+@container entwicklung (max-width: 560px) {
+  #view-workboard .pm-board,
+  #view-workboard .pm-board.filtered-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #view-workboard .board-column {
+    min-height: 0;
+  }
+
+  #view-workboard .page-heading {
+    flex-direction: column;
+  }
+
+  #view-workboard .workboard-kopf-aktionen {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  /* Vorlage ≤ 700 px: größerer Kartentitel, Meta/Phase/Owner 13 px. */
+  #view-workboard .board-item-titel {
+    font-size: 21px;
+  }
+
+  #view-workboard .board-item-meta,
+  #view-workboard .board-phase,
+  #view-workboard .board-owner {
+    font-size: 13px;
+  }
+
+  /* Vorlage ≤ 800 px: Zeile oben ausgerichtet, Status unter den Text statt daneben. */
+  #view-workboard .workboard-zeile {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  #view-workboard .workboard-zeile-status {
+    flex-basis: 100%;
+    padding-left: calc(1.2rem + 12px);
+  }
 }

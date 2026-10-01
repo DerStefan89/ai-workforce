@@ -234,6 +234,7 @@ Endpunkte relativ zu `P` = `/api` bzw. `/api/projekte/<id>`.
    - Brain und Produktzyklus erscheinen als Seiten im Stil der Vorlage, aber ohne Beispielgraph und ohne Beispielnotizen.
    - Die Roadmap zeigt echte Meilensteine und Features. Die Wochenspalten erscheinen ausgegraut mit „Zeitplanung kommt“, ohne Balken auf erfundenen Terminen.
    - Das Prioritäts-Kanban zeigt die echten Prioritäten der Findings; Features haben keine Priorität und stehen unter „ohne Priorität“. Das Ziehen ist deaktiviert.
+     > **Vermerk WS-3a (Stefan, 01.10.2026, F-917):** Abweichend bleibt das Prioritäts-Kanban in F44 ein Z-Element mit „kommt“ ohne Daten; ein nur lesendes Kanban wird im Fixpaket „Arbeitsfähigkeit“ neu bewertet.
    - Deployer-Kachel, „Eintrag erfassen“, „Produkt bearbeiten“, Insights und Zeitfenster: sichtbar, deaktiviert, „kommt“.
 5. **Assets.** [EMPFEHLUNG] Die PNG-Originale kommen unverändert nach `docs/design/vorlage-v10/assets/`. Ausgeliefert werden verlustfreie WebP-Fassungen mit `exact` (streng pixelgleich): 3,6 MiB statt 5,1 MiB [Fakt, mit PIL gemessen]. `face` ersetzt `persona-gesicht.webp` unter demselben Namen; Gate f28 bleibt grün, weil es nur Existenz und MIME-Typ prüft. Der Server liefert `.webp` und `.png` aus, `.svg` dagegen als octet-stream. [Fakt, `leitstand-server.mjs:597-609`]
 

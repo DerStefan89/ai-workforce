@@ -2,14 +2,13 @@
  * Datei: public/leitstand/fokus-daten.js
  *
  * Zweck: Gemeinsames Fokus-Modul (F44 WS-2b). Welcher Workflow im Fokus steht, welcher Lauf der
- * jüngste ist und der Nachtrag zum Fokus-Workflow (Schritte, Abnahme-Flags, aktiver Lauf) — eine
- * Stelle für das Workboard (Bento, bis WS-3) und die Übersicht (#/dashboard: Aktuelle Rolle,
- * Die Workforce gerade, Wer macht was, Zuletzt umgesetzt). Die Logik ist unverändert aus
- * views/workboard.js umgezogen (waehleFokusWorkflow, waehleLetztenLauf,
- * aktualisiereFokusCache).
+ * jüngste ist und der Nachtrag zum Fokus-Workflow (Schritte, Abnahme-Flags, aktiver Lauf) für die
+ * Übersicht (#/dashboard: Aktuelle Rolle, Die Workforce gerade, Wer macht was, Zuletzt umgesetzt).
+ * Die Logik stammt aus views/workboard.js (waehleFokusWorkflow, waehleLetztenLauf,
+ * aktualisiereFokusCache); das Bento dort ist seit F44 WS-3a entfernt (F-892), mit ihm der nur dort
+ * genutzte Export LEERER_FOKUS.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/workboard.js
  * - public/leitstand/views/dashboard.js
  * - public/leitstand/fokus-daten.test.mjs (node:test, reine Funktionen)
  *
@@ -17,26 +16,26 @@
  * - Import-sicher: kein Zugriff auf DOM oder Storage beim Import; fetch nur über api.js.
  * - ladeFokusNachtrag cacht nicht selbst: Den Cache und die Regel „nur bei wechselnder
  *   Workflow-ID nachladen“ hält der Aufrufer (D5, nicht bei jedem Poll-Tick).
- * - Die Auswahl „wartet auf den Menschen“ kommt aus attention-daten.js (eine Regel).
+ * - Die Auswahl „wartet auf den Menschen“ und ihre Reihenfolge kommen aus attention-daten.js
+ *   (baueEntscheidungen: Freigabe vor Rückfrage, F-913) — eine Regel.
  */
 
 import { holeAbnahme, holeLaufDetail, holeWorkflowDetail } from './api.js'
-import { filtereAttentionWorkflows } from './attention-daten.js'
-
-/** Leerer Fokus-Nachtrag (kein Fokus-Workflow oder noch nicht geladen). */
-export const LEERER_FOKUS = Object.freeze({ workflowId: null, schritte: null, workflowStatus: null, freigabeHalt: null, aktivLauf: null })
+import { baueEntscheidungen } from './attention-daten.js'
 
 /**
- * Wählt den für die Übersicht relevantesten Workflow: zuerst einer, der auf eine menschliche
- * Aktion wartet (dieselbe Regel wie attention-daten.js — D5, die Oberfläche entscheidet nichts
- * selbst), sonst ein laufender, sonst der erste überhaupt.
+ * Wählt den für die Übersicht relevantesten Workflow: zuerst den ersten, der auf eine menschliche
+ * Aktion wartet, in der Reihenfolge von „Deine nächsten Entscheidungen“ (baueEntscheidungen:
+ * Freigaben vor Rückfragen — F-913, „Aktuelle Rolle“ und die Entscheidungsliste priorisieren so
+ * gleich; D5, die Oberfläche entscheidet nichts selbst), sonst einen laufenden, sonst den ersten
+ * überhaupt.
  * @param workflows - zustand.workflows (null bei defekter Quelle)
  * @returns ein Workflow-Eintrag, oder null
  */
 export function waehleFokusWorkflow(workflows) {
   if (!Array.isArray(workflows) || workflows.length === 0) return null
-  const wartend = filtereAttentionWorkflows(workflows)
-  if (wartend !== null && wartend.length > 0) return wartend[0]
+  const ersterWartender = baueEntscheidungen({ workflows }, []).gruppen.workflows[0]
+  if (ersterWartender !== undefined) return workflows.find((w) => w.workflowId === ersterWartender.id) ?? null
   return workflows.find((w) => w.status === 'LAEUFT') ?? workflows[0]
 }
 

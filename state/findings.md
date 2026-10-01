@@ -11661,13 +11661,13 @@ Maßnahme: Filter, Deckkraft und waagerechter Anker der Illustration als Tokens 
 Status: erledigt (F44 WS-2a, Branch `feat/f725-ws2a-entscheidungen-roadmap`, 01.10.2026; Nachweis `features/F44/nachweise/ws2a/sidebar-hell-1440/`, hell und dunkel im Vergleich).
 Feature/Run: Entdeckt in der Verifikation F44 WS-1b, 30.09.2026.
 
-**F-892** · `TECH_DEBT` · P3 · offen
+**F-892** · `TECH_DEBT` · P3 · erledigt
 Titel: Roadmap doppelt dargestellt bis WS-3.
 Beschreibung: Seit WS-2a zeigt `#/roadmap` die Roadmap mit den Regeln aus `roadmap-anzeige.js` (aktueller Meilenstein: erster mit LAEUFT, sonst erster nicht abgeschlossener). Die Bento-Karte in `views/workboard.js` zeigt dieselben Daten weiter mit abweichender Regel (hervorgehoben nur ein Meilenstein mit LAEUFT).
 Fundstelle: `public/leitstand/views/workboard.js` (bentoRoadmapKarte), `public/leitstand/roadmap-anzeige.js`.
 Auswirkung: Niedrig — zwei Darstellungen können beim aktuellen Meilenstein auseinanderlaufen.
 Maßnahme: WS-3 entfernt die Bento-Karte.
-Status: offen.
+Status: erledigt (F44 WS-3a, Branch `feat/f725-ws3a-board`, 01.10.2026): Das ganze Bento ist entfernt — Karten, Funktionen, CSS, Fokus- und Rollen-Cache; die Roadmap steht nur noch auf `#/roadmap` und in der Übersicht, beide nach `roadmap-anzeige.js`. Die von `views/projekte-uebersicht.js` mitgenutzten Kartenregeln (`bento-fokus-*`, `bento-meta-*`) bleiben bis WS-6.
 Feature/Run: F44 WS-2a, 01.10.2026.
 
 **F-893** · `TECH_DEBT` · P3 · offen
@@ -11849,3 +11849,84 @@ Auswirkung: Coach-Ideen erscheinen nicht als Feature im Board, AK werden nicht i
 Maßnahme: Fixpaket Arbeitsfähigkeit, B5.
 Status: offen.
 Feature/Run: Entdeckt: Challenger, Fragen Stefan 01.10.2026.
+
+**F-913** · `BUG` · P3 · erledigt
+Titel: „Aktuelle Rolle“ (B3) und „Deine nächsten Entscheidungen“ (B7) priorisierten verschieden.
+Beschreibung: `waehleFokusWorkflow` nahm den ersten wartenden Workflow in Quellreihenfolge, `baueEntscheidungen` stellt Freigaben vor Rückfragen. Stand eine Rückfrage vor einer Freigabe im Aggregat, zeigte B3 die Rückfrage, B7 an erster Stelle die Freigabe.
+Fundstelle: `public/leitstand/fokus-daten.js` (waehleFokusWorkflow), `public/leitstand/attention-daten.js` (baueEntscheidungen).
+Auswirkung: Niedrig — zwei Blöcke derselben Seite nannten verschiedene „nächste“ Aufgaben.
+Maßnahme: Fokuswahl folgt baueEntscheidungen (Freigabe vor Rückfrage).
+Status: erledigt (F44 WS-3a, Branch `feat/f725-ws3a-board`, 01.10.2026): `waehleFokusWorkflow` nimmt den ersten Workflow-Eintrag aus `baueEntscheidungen`; Test `fokus-daten.test.mjs` (F-913, gegen die alte Fassung rot).
+Feature/Run: Entdeckt: Verifikation F44 WS-2b.
+
+**F-914** · `TECH_DEBT` · P3 · offen
+Titel: B11 „Wer macht was“ zeigt Rollen-IDs statt lesbarer Namen.
+Beschreibung: Die Übersicht zeigt in „Wer macht was“ die Rollen-ID (z. B. `ausfuehrung`) statt eines lesbaren, übersetzten Rollennamens.
+Fundstelle: `public/leitstand/views/dashboard.js` (B11).
+Auswirkung: Niedrig — technischer Bezeichner statt Klartext.
+Maßnahme: Rollennamen über t(), wie die frühere rollenAnzeige im Workboard.
+Status: offen. Geplant: WS-3b.
+Feature/Run: Entdeckt: Verifikation F44 WS-2b.
+
+**F-915** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: 49 offene P0/P1-Befunde überlagern B10 und `#/attention`.
+Beschreibung: 49 offene P0/P1-Befunde, viele seit August unverändert, überlagern B10 und `#/attention`.
+Fundstelle: `state/findings.md`; Anzeige `public/leitstand/views/dashboard.js` (B10), `public/leitstand/views/attention.js`.
+Auswirkung: Mittel für die Orientierung — das aktuell Wichtige geht unter alten Einträgen unter.
+Maßnahme: Sichtungsrunde der alten P1 (schließen, herabstufen, bestätigen); prüfen, ob B10 mindestens die offenen Features des aktuellen Meilensteins zeigt. Kandidat Fixpaket „Arbeitsfähigkeit“.
+Status: offen.
+Feature/Run: Entdeckt: Verifikation F44 WS-2b.
+
+**F-916** · `TECH_DEBT` · P3 · offen
+Titel: Abnahme-Vorauswahl ohne Erzeuger nach dem Entfernen des Bentos.
+Beschreibung: Die Abnahme-Vorauswahl (`ABNAHME_VORSCHLAG_SCHLUESSEL`) hat nach dem Entfernen des Bentos keinen Erzeuger mehr. Korrektur zur Fundstelle des Auftrags: Erzeuger (Aktionsleiste „AI Workflow“) und Verbraucher (`beobachteAbnahmeVorschlag`, hebt in `#/workflows/<id>` den passenden Abnahme-Knopf hervor) lagen beide in `views/workboard.js` und hingen nur am Bento; mit ihm sind beide entfernt, samt der CSS-Regel `.abnahme-vorgewaehlt`. `views/workflows.js` ist unverändert und hatte keinen eigenen Verbraucher.
+Fundstelle: `public/leitstand/views/workboard.js` (bis F44 WS-3a: ABNAHME_VORSCHLAG_SCHLUESSEL, beobachteAbnahmeVorschlag, initBentoBedienung); Ziel `public/leitstand/views/workflows.js` (`#wf-abnahme-begruendung`, `.wf-abnahme-aktion`).
+Auswirkung: Niedrig — der Sprung aus einer Übersicht in die Abnahme wählt keine Aktion mehr vor; die Abnahme selbst ist unverändert.
+Maßnahme: In WS-4 aus dem neuen Abnahmeblock bzw. der Übersicht wieder anbinden oder endgültig verwerfen.
+Status: offen.
+Feature/Run: Entdeckt: Challenge F44 WS-3.
+
+**F-917** · `TECH_DEBT` · P2 · entschieden
+Titel: Prioritäts-Kanban (E2): Auftrag WS-3a und Abgleich §4 Punkt 4 widersprechen sich.
+Beschreibung: Der Auftrag WS-3a verlangt „Kanban · Priorität“ als „kommt“ ohne Daten; so ist es gebaut. `docs/design/abgleich-f725.md` §4 Punkt 4 (verbindlich über E-F44-1) sagt dagegen: Das Prioritäts-Kanban zeigt die echten Prioritäten der Findings, Features stehen unter „ohne Priorität“, nur das Ziehen ist deaktiviert. design-guardian hat die Abweichung im Prüfpass WS-3a als „hoch (Verfahren)“ gemeldet.
+Fundstelle: `public/leitstand/views/workboard.js` (baueFesteBedienung, `#workboard-modi`); `docs/design/abgleich-f725.md` §4 Punkt 4.
+Auswirkung: Mittel — ohne Entscheidung bleibt eine dokumentierte Zusage unerfüllt; die Daten lädt die Seite bereits.
+Maßnahme: Stefan entscheidet: (a) in WS-3b ein lesendes Prioritäts-Kanban (Spalten P0–P4 und „ohne Priorität“ aus den ungefilterten Workitems, Ziehen und Auswahlfelder „kommt“) oder (b) §4 Punkt 4 anpassen und E2 bleibt „kommt“.
+Status: entschieden (Stefan, 01.10.2026): E2 „Kanban · Priorität“ bleibt in F44 „kommt“ (deaktiviert, keine Daten). Ein nur lesendes Prioritäts-Kanban ist Kandidat für das Fixpaket „Arbeitsfähigkeit“ (Baustein B5 Feature-Fluss) — dort neu bewerten. Vermerk in `docs/design/abgleich-f725.md` §4 Punkt 4 und `features/F44/feature.md` (Stand WS-3a).
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
+
+**F-918** · `TECH_DEBT` · P3 · offen
+Titel: Listen-Tabs filtern mit Chips statt mit den Auswahlfeldern der Vorlage.
+Beschreibung: `d_arbeit_features` zeigt neben der Suche Auswahlfelder „Alle Status“/„Alle Prioritäten“. WS-3a behält die Filter-Chips aus F29 (`workboard-filter-*`, Gate f21-ws2 (a)) mit rohen Statuswerten als Beschriftung.
+Fundstelle: `public/leitstand/index.html` (`#workboard-filter`), `public/leitstand/views/workboard.js` (fuelleChipGruppe).
+Auswirkung: Niedrig — gleiche Funktion, andere Form; viele Status-Chips brauchen bei 390 px mehrere Zeilen.
+Maßnahme: In WS-3b Auswahlfelder mit übersetzten Optionen bauen (IDs bleiben) oder die Chips als Abweichung festhalten.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian), 01.10.2026.
+
+**F-919** · `TECH_DEBT` · P3 · offen
+Titel: Board mit echten Daten wenig aussagekräftig; „+ x weitere“ zeigt die ganze Spalte.
+Beschreibung: Mit über 500 offenen Findings zeigt „Geplant“ nur alte P0/P1-Befunde, Features stehen ohne Priorität dahinter und erscheinen kaum; „Abgenommen“ zeigt die ältesten P0-Einträge statt der zuletzt abgenommenen; „Braucht dich“ besteht aus alten Features im FEATURE_GATE. „+ x weitere“ führt in den Listen-Tab mit der ganzen Spalte (auch die Karten, die schon auf dem Board stehen) — die Zahl auf dem Knopf und die Länge der Liste passen nicht zusammen.
+Fundstelle: `public/leitstand/entwicklung-daten.js` (Sortierung in baueBoard), `public/leitstand/views/workboard.js` (renderListe mit Spaltenfilter).
+Auswirkung: Niedrig bis mittel für die Orientierung; die Regel selbst ist wie beauftragt.
+Maßnahme: Mit der Sichtung F-915 entscheiden: Sortierung von „Abgenommen“ nach Erledigungsdatum (falls verfügbar), Features im Board sichtbarer (eigene Stufe oder Priorität in der Akte), Liste nach „+ x weitere“ ohne die Karten des Boards oder Knopftext „alle x anzeigen“.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (qa), 01.10.2026.
+
+**F-920** · `TECH_DEBT` · P3 · offen
+Titel: Projektwechsel lädt die Seite „Entwicklung“ auch, wenn sie nicht offen ist.
+Beschreibung: Der Neuladen-Hook (F-860) lädt Workitems und Aufträge der Entwicklung bei jedem Projektwechsel; ist die Seite nicht offen, lädt das nächste Betreten sie ein zweites Mal.
+Fundstelle: `public/leitstand/views/workboard.js` (ladeNachProjektWechsel, betreteSeite).
+Auswirkung: Niedrig — ein überflüssiger Abruf je Wechsel.
+Maßnahme: Bei geschlossener Seite nur den Zustand zurücksetzen und `projekt-wechsel.test.mjs` auf „lädt beim nächsten Betreten“ umstellen; der Auftrag WS-3a verlangte das Laden beim Wechsel ausdrücklich.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (code-reviewer), 01.10.2026.
+
+**F-921** · `TECH_DEBT` · P3 · offen
+Titel: Board-Karte ohne Rolle und Fortschritt der Vorlage; Detail zeigt beim Deep-Link kurz „nicht gefunden“.
+Beschreibung: Die Karte der Vorlage zeigt Phase, zuständige Rolle und bei laufender Arbeit „x/y Schritte abgeschlossen“; WS-3a zeigt Status und ID. Ein Deep-Link auf `#/workboard/<id>` zeigt, bis die Workitems geladen sind, „Workitem nicht in der aktuell geladenen Liste gefunden — Filter zurücksetzen oder neu laden.“ statt eines Ladezustands.
+Fundstelle: `public/leitstand/views/workboard.js` (boardKarte, renderDetailInhalt).
+Auswirkung: Niedrig.
+Maßnahme: WS-3b (Detail E8): Ladezustand im Detail, Rolle/Fortschritt auf der Karte aus dem verknüpften Workflow.
+Status: offen. Geplant: WS-3b.
+Feature/Run: Entdeckt: Prüfpass F44 WS-3a (design-guardian, qa), 01.10.2026.
