@@ -1,0 +1,27 @@
+[
+  {
+    "label": "HTML in Dateiname (Liste, Diff-Kopf, Sichern), Branch, Diff und Commit-Betreff erscheint als Text; kein <img> aus Daten",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Platzhalter <…> im Befehlsblock (muss fehlen)": false,
+    "Reiter „Ausführungen“ in der Entwicklung (muss fehlen)": false,
+    "Ansicht": "code",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Reiter aktiv (#/code)": "Code",
+    "Reiter aktiv (#/workboard)": "Kanban-Board",
+    "Gewählte Datei": "docs/<img src=x onerror=alert(1)> <b>fett</b>.md",
+    "Diff-Pfad": "docs/<img src=x onerror=alert(1)> <b>fett</b>.md",
+    "Sichern (erste Zeile)": "git add 'docs/<img src=x onerror=alert(1)> <b>fett</b>.md' public/leitstand/views/code.js public/leitstand/views/workboa",
+    "Commit-Freigabe": "keine Freigabe",
+    "Verlauf-Filter": "Alle",
+    "Kopf GitHub": "https://github.com/DerStefan89/ai-workforce",
+    "Kopf VS Code": "vscode://file/C:/Users/stefa/Projekte/ai-workforce",
+    "Tech Debt: Auszug": "(fehlt)",
+    "Bereit zum Start": "(fehlt)",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

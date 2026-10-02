@@ -26,11 +26,14 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/chat.js (renderAntwortText, kopiereBefehlsblock)
+ * - public/leitstand/views/code.js, views/workboard.js, views/auftrag-umgebung.js (renderBefehlsblock,
+ *   kopiereBefehlsblock — Befehle mit echten Werten, F46 D4)
  * - public/leitstand/befehlsblock.test.mjs (node:test)
  *
  * Wichtig:
  * - Import-sicher: kein DOM-Zugriff beim Import; nur kopiereBefehlsblock fasst das DOM an.
- * - Kein „Ins Terminal“, kein Ausführen (Bauauftrag WS-8b, Abschnitt 3).
+ * - Kein Ausführen (Bauauftrag WS-8b, Abschnitt 3); „Ins Terminal“ steht höchstens als „kommt“ daneben
+ *   (zusatzHtml, E-F46-1).
  * - Bekannte Grenze (Prüfpass WS-8b, cr 2): renderVerlauf() ersetzt den Verlauf bei jedem Neuaufbau
  *   (z. B. Fortschritt eines laufenden Laufs). „Kopiert“, der Strg+C-Hinweis und die Markierung gehen
  *   dabei verloren; die Zwischenablage bleibt gefüllt. Akzeptiert, F-969.
@@ -118,18 +121,23 @@ export function kopierText(zeilen) {
 /**
  * Rendert einen Codeblock als Befehlsblock.
  * @param segment - { sprache, zeilen } aus zerlegeAntwort
+ * @param optionen - { zusatzHtml: weitere Knöpfe hinter „Kopieren“ (fertiges HTML, z. B. „Ins Terminal“
+ *   als „kommt“, F46 D4), echteWerte: true — alle Werte stammen aus Daten, kein Hinweis „Platzhalter
+ *   ausfüllen“ (F46 D4) }
  * @returns HTML
  */
-export function renderBefehlsblock(segment) {
+export function renderBefehlsblock(segment, optionen = {}) {
   const etikett = segment.sprache === null ? t('befehl.etikettOhne') : segment.sprache.toUpperCase()
   const anzahl = zaehleBefehle(segment.zeilen)
-  const chip = hatPlatzhalter(segment.zeilen) ? `<span class="befehlsblock-platzhalter">${tHtml('befehl.platzhalter')}</span>` : ''
+  // F46 D4: Befehle aus echten Werten (Git-Pfade, Branch) tragen keinen Platzhalter — ein Dateiname mit <…>
+  // ist dort Text, kein „ausfüllen“ (echteWerte).
+  const chip = optionen.echteWerte !== true && hatPlatzhalter(segment.zeilen) ? `<span class="befehlsblock-platzhalter">${tHtml('befehl.platzhalter')}</span>` : ''
   return `<div class="befehlsblock">
     <div class="befehlsblock-kopf">
       <span class="befehlsblock-etikett">${escapeHtml(etikett)}</span>
       <span class="befehlsblock-anzahl">${tHtml('befehl.anzahl', { anzahl })}</span>
       ${chip}
-      <button type="button" class="button befehlsblock-kopieren" data-befehl-kopieren>${tHtml('befehl.kopieren')}</button>
+      <button type="button" class="button befehlsblock-kopieren" data-befehl-kopieren>${tHtml('befehl.kopieren')}</button>${typeof optionen.zusatzHtml === 'string' ? optionen.zusatzHtml : ''}
     </div>
     <pre class="befehlsblock-code"><code>${segment.zeilen.map((zeile) => `<span class="befehlsblock-zeile">${escapeHtml(zeile)}</span>`).join('')}</code></pre>
     <p class="befehlsblock-hinweis" hidden>${tHtml('befehl.strgC')}</p>

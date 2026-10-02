@@ -18,11 +18,13 @@
  * Poll-Timer) NACH allen initXView()-Aufrufen: jede View registriert ihr
  * abonniere() bei zustand.js, bevor der erste Tick etwas zu melden hätte.
  *
- * Projekt hat kein eigenes onEnter (reine Anzeige-View ohne Detail-
- * Unterrouten wie Runs/Workflows) — seine Route registriert deshalb die
- * Shell hier zentral (F44 WS-2b: Dashboard lädt beim Betreten Roadmap und
- * Workitems und registriert #/dashboard seitdem selbst), statt jede View das für sich
- * wiederholen zu lassen. Workboard ist seit F21 WS-2, Capabilities seit
+ * F46 D4: #/projekt registriert jetzt views/auftrag-umgebung.js (initAuftragUmgebung) selbst — die
+ * rechte Spalte lädt beim Betreten den Code-Stand; bis D4 stand die Route ohne onEnter hier zentral.
+ * initCodeView() registriert #/code (views/code.js); initCodeStand() (code-stand.js) lädt die
+ * Leseroute GET …/code einmal beim Bootstrap und bei jedem Projektwechsel (Kopf: VS Code, GitHub) —
+ * nie aus dem Poll; beide nach initShell(), damit der Kopf schon gerendert ist. (F44 WS-2b:
+ * Dashboard lädt beim Betreten Roadmap und Workitems und registriert #/dashboard seitdem selbst.)
+ * Workboard ist seit F21 WS-2, Capabilities seit
  * F24 WS-1, Projekte-Übersicht seit F25 WS-2a und Chat seit F26 WS-2a die
  * Ausnahme (seit F44 WS-2b auch das Dashboard): alle brauchen beim Eintritt einen echten Abruf (onEnter)
  * und registrieren ihre Route deshalb selbst (Muster views/runs.js) — KEINE
@@ -68,9 +70,12 @@ import { initialisiereSprache } from './i18n.js'
 import { initKommt } from './kommt.js'
 import { initEntscheidungenZaehler } from './entscheidungen-zaehler.js'
 import { initLiveChip } from './live-chip.js'
-import { registriere, starteRouter } from './router.js'
+import { initCodeStand } from './code-stand.js'
+import { starteRouter } from './router.js'
 import { initAttentionView } from './views/attention.js'
+import { initAuftragUmgebung } from './views/auftrag-umgebung.js'
 import { initCapabilitiesView } from './views/capabilities.js'
+import { initCodeView } from './views/code.js'
 import { initChatView } from './views/chat.js'
 import { initDashboardView } from './views/dashboard.js'
 import { initEinstellungenView } from './views/einstellungen.js'
@@ -98,6 +103,7 @@ initProjektView()
 initChatView()
 initProjekteUebersichtView()
 initWorkboardView()
+initCodeView()
 initRunsView()
 initWorkflowsView()
 initCapabilitiesView()
@@ -112,8 +118,8 @@ initPersona()
 initLiveChip()
 initEntscheidungenZaehler()
 initShell()
-
-registriere(/^#\/projekt$/, 'projekt')
+initAuftragUmgebung()
+initCodeStand()
 
 initZustandPoll()
 leiteBeimStartEin()

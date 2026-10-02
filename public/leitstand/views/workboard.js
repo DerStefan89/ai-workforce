@@ -4,9 +4,12 @@
  * Zweck: Seite „Entwicklung“ `#/workboard` (F44 WS-3a, Vorlage V10 d_arbeit_board.png,
  * d_arbeit_features.png; Abgleich F-725 E1–E7) samt Detail `#/workboard/<id>` (F21 WS-2) und
  * Click-to-Work (F22 WS-2, F35 WS-1 „Bauen“). Kopf „Arbeit im Überblick“ mit „Eintrag erfassen“
- * als „kommt“ (E7), Register Kanban-Board · Features · Bugs · Harness Improvements · Weitere
- * (TECH_DEBT und PROCESS_IMPROVEMENT, E5) sowie Aufträge (#/projekt) und Ausführungen (#/ausfuehrungen, F44 WS-5a)
- * als Links.
+ * als „kommt“ (E7). F46 D4 (abgleich-f46.md §2): Reiterzeile Kanban-Board · Features · Bugs · Harness
+ * Improvements · Tech Debt & Prozess (Schlüssel 'weitere': TECH_DEBT und PROCESS_IMPROVEMENT) sowie
+ * Aufträge (#/runs) und Code (#/code) als Links, gebaut von entwicklung-reiter.js; der frühere Reiter
+ * „Ausführungen“ entfällt (#/ausfuehrungen bleibt über #/runs und die Seitenleiste erreichbar, F-964).
+ * „Tech Debt & Prozess“ zeigt nach Bild 06-TechDebt Art-Karten mit Anzahl als Filter, Chips Art ·
+ * Priorität · Status und eine Tabelle Art · ID · Titel · Priorität · Eingeplant (= Maßnahme, gekürzt).
  *
  * - Kanban-Board (E1): Spalten Geplant · In Arbeit · Braucht dich · Abgenommen nach der Regel in
  *   entwicklung-daten.js (baueBoard), höchstens 12 Karten je Spalte, „Alle x anzeigen“ springt in den
@@ -67,6 +70,13 @@
  */
 
 import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
+import { kopiereBefehlsblock, renderBefehlsblock } from '../befehlsblock.js'
+import { sicherBefehle } from '../code-daten.js'
+import { abonniereCodeStand, aktuellerCodeStand, ladeCodeStand } from '../code-stand.js'
+import { kuerzeText } from '../eintrag-bausteine.js'
+import { ENTWICKLUNG_REGISTER, entwicklungsReiterHtml } from '../entwicklung-reiter.js'
+import { baueVsCodeLink, pruefeGithubUrl } from '../kopf-werkzeuge.js'
+import { typChip } from '../typ-chip.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
 import { oeffneChatMitEntwurf } from '../chat-dock.js'
@@ -74,7 +84,7 @@ import { baueBoard, baueVerknuepfung, LISTEN_TABS, laufenderWorkflow, SPALTEN, s
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
-import { escapeHtml } from '../render.js'
+import { escapeHtml, formatiereUhrzeit } from '../render.js'
 import { abonniereProjektWechsel, holeAktivesProjekt, projektAusListe } from '../projekt-kontext.js'
 import { rollenName } from '../rollen-anzeige.js'
 import { naechsteKreisRolle } from '../rollen-kreis.js'
@@ -100,8 +110,22 @@ import {
   WAS_REITER,
 } from './workboard-detail.js'
 
-/** Register der Seite: das Board und die vier Listen-Tabs (LISTEN_TABS). */
-const TABS = ['board', ...Object.keys(LISTEN_TABS)]
+/** Register der Seite: das Board und die vier Listen-Tabs (LISTEN_TABS) — eine Quelle mit #/code (entwicklung-reiter.js). */
+const TABS = ENTWICKLUNG_REGISTER
+
+/** F46 D4: Typen des Registers „Tech Debt & Prozess“ (Schlüssel 'weitere') in Kartenreihenfolge. */
+const TECHDEBT_TYPEN = LISTEN_TABS.weitere
+
+/** F46 D4: Filter des Registers „Tech Debt & Prozess“ — Art ('' = alle), Priorität ('' = alle), Status ('OFFEN' oder '' = alle). */
+let tdArt = ''
+let tdPrio = ''
+let tdStatus = 'OFFEN'
+
+/** Zuletzt geschriebenes HTML der Karten und Chips von „Tech Debt & Prozess“ (Fokus bleibt beim Poll). */
+let letztesTechDebtKopfHtml = ''
+
+/** F46 D4: workflowId, für den der Code-Stand nach dem Abschluss schon neu geladen wurde (einmal je Ablauf). */
+let codeStandNachAblauf = null
 
 /** Ansicht-Chips des Boards: alle Spalten oder genau eine. */
 const ANSICHTEN = ['alle', ...SPALTEN]
@@ -249,13 +273,14 @@ function renderBefunde(befunde) {
 function renderKopf() {
   document.getElementById('workboard-titel').textContent = t(`entwicklung.tab.${aktiverTab}.titel`)
   document.getElementById('workboard-beschreibung').textContent = t(`entwicklung.tab.${aktiverTab}.beschreibung`)
-  const knoepfe = TABS.map((tab) => {
-    const aktiv = tab === aktiverTab
-    return `<button type="button" class="tab-knopf${aktiv ? ' active' : ''}" data-tab="${tab}" aria-pressed="${aktiv}">${tHtml(`entwicklung.tab.${tab}`)}</button>`
-  }).join('')
-  document.getElementById('workboard-tabs').innerHTML = `${knoepfe}<a href="#/projekt">${tHtml('entwicklung.tab.auftraege')}</a><a href="#/ausfuehrungen">${tHtml('entwicklung.tab.ausfuehrungen')}</a>`
+  // F46 D4: Reiterzeile nach §2 (entwicklung-reiter.js) — „Aufträge“ → #/runs, „Code“ → #/code.
+  document.getElementById('workboard-tabs').innerHTML = entwicklungsReiterHtml(aktiverTab)
   document.getElementById('workboard-board-bereich').hidden = aktiverTab !== 'board'
   document.getElementById('workboard-listen-bereich').hidden = aktiverTab === 'board'
+  // „Tech Debt & Prozess“ filtert über Karten und Chips (06-TechDebt) statt über die Chip-Gruppen.
+  document.getElementById('workboard-filter').hidden = aktiverTab === 'weitere'
+  document.getElementById('workboard-techdebt-kopf').hidden = aktiverTab !== 'weitere'
+  document.getElementById('workboard-liste').classList.toggle('techdebt-liste', aktiverTab === 'weitere')
 }
 
 /** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips und „Alle“-Chips der Filter. */
@@ -439,10 +464,102 @@ function renderListe() {
   }
   liste = sucheWorkitems(liste, suchText)
   const leer = suchText.trim() !== '' ? 'entwicklung.liste.keineTreffer' : 'entwicklung.liste.leer'
-  const html = liste.length === 0 ? `<p class="leer">${tHtml(leer)}</p>` : liste.map(workitemZeile).join('')
+  let html
+  if (aktiverTab === 'weitere') {
+    // F46 D4 (06-TechDebt): Karten und Chips über der Tabelle; gefiltert wird clientseitig.
+    const gezeigt = techDebtGefiltert(liste)
+    renderTechDebtKopf(liste, gezeigt.length)
+    html = gezeigt.length === 0 ? `<p class="leer">${tHtml(liste.length === 0 ? leer : 'techdebt.keineTreffer')}</p>` : techDebtTabelleHtml(gezeigt)
+  } else {
+    html = liste.length === 0 ? `<p class="leer">${tHtml(leer)}</p>` : liste.map(workitemZeile).join('')
+  }
   if (html === letztesListenHtml) return
   letztesListenHtml = html
   document.getElementById('workboard-liste').innerHTML = html
+}
+
+// ─── Tech Debt & Prozess (F46 D4, Bild 06-entwicklung-code--TechDebt, abgleich-f46.md §4.13) ───
+
+/**
+ * Wendet die Filter Art, Priorität und Status des Registers an.
+ * @param liste - Workitems des Registers (nach Spaltenfilter und Suche)
+ * @returns gefilterte Liste
+ */
+function techDebtGefiltert(liste) {
+  return liste.filter((w) => (tdArt === '' || w.typ === tdArt) && (tdPrio === '' || w.prioritaet === tdPrio) && (tdStatus === '' || w.status === tdStatus))
+}
+
+/**
+ * Art-Chip einer Zeile bzw. Karte: „Technische Schuld“ / „Prozess-Schuld“, Farbe nur über Tokens.
+ * @param typ - TECH_DEBT | PROCESS_IMPROVEMENT
+ * @returns HTML
+ */
+function techDebtChip(typ) {
+  return `<span class="techdebt-chip" data-art="${typ === 'TECH_DEBT' ? 'technik' : 'prozess'}">${tHtml(`techdebt.art.${typ}`)}</span>`
+}
+
+/**
+ * Karten je Art (Anzahl im gewählten Status, als Filter), Chips Art · Priorität · Status und die Zeile
+ * „x von y“. Schreibt nur bei geändertem HTML (Fokus bleibt).
+ * @param liste - Workitems des Registers (nach Spaltenfilter und Suche)
+ * @param gezeigt - Zahl der Zeilen nach allen Filtern
+ */
+function renderTechDebtKopf(liste, gezeigt) {
+  const imStatus = liste.filter((w) => tdStatus === '' || w.status === tdStatus)
+  const einheit = tdStatus === 'OFFEN' ? 'techdebt.offen' : 'techdebt.eintraege'
+  const karte = (typ) => {
+    const anzahl = imStatus.filter((w) => w.typ === typ).length
+    return `<button type="button" class="techdebt-karte" data-td-art="${typ}" aria-pressed="${tdArt === typ}">
+        <span class="techdebt-karte-kopf">${techDebtChip(typ)}<span class="techdebt-karte-englisch" lang="en">${tHtml(`techdebt.art.${typ}.englisch`)}</span><span class="techdebt-karte-zahl"><strong>${escapeHtml(formatiereZahl(anzahl))}</strong> ${tHtml(einheit)}</span></span>
+        <span class="techdebt-karte-titel">${tHtml(`techdebt.art.${typ}.titel`)}</span>
+        <span class="techdebt-karte-text">${tHtml(`techdebt.art.${typ}.text`)}</span>
+      </button>`
+  }
+  const chip = (art, wert, an, text) => `<button type="button" class="filter-chip" data-${art}="${escapeHtml(wert)}" aria-pressed="${an}">${text}</button>`
+  // Prioritäten aus den vorkommenden Werten; eine gewählte bleibt sichtbar, auch wenn die Suche sie ausblendet (Prüfpass qa 11).
+  const prios = [...new Set([...liste.map((w) => w.prioritaet), tdPrio].filter((p) => typeof p === 'string' && p !== ''))].sort()
+  const html = `<div class="techdebt-karten">${TECHDEBT_TYPEN.map(karte).join('')}</div>
+    <div class="techdebt-filter">
+      <div class="techdebt-chips" role="group" aria-label="${tHtml('techdebt.filter.art')}">${chip('td-art', '', tdArt === '', tHtml('entwicklung.filter.alle'))}${TECHDEBT_TYPEN.map((typ) => chip('td-art', typ, tdArt === typ, tHtml(`techdebt.art.${typ}`))).join('')}</div>
+      <div class="techdebt-chips" role="group" aria-label="${tHtml('entwicklung.filter.prioritaet')}">${prios.map((p) => chip('td-prio', p, tdPrio === p, escapeHtml(p))).join('')}</div>
+      <div class="techdebt-chips" role="group" aria-label="${tHtml('entwicklung.filter.status')}">${chip('td-status', 'OFFEN', tdStatus === 'OFFEN', tHtml('techdebt.status.offen'))}${chip('td-status', '', tdStatus === '', tHtml('techdebt.status.alle'))}</div>
+      <p class="techdebt-auszug">${tHtml(tdStatus === 'OFFEN' ? 'techdebt.auszugOffen' : 'techdebt.auszug', { zahl: formatiereZahl(gezeigt), gesamt: formatiereZahl(imStatus.length) })}</p>
+    </div>`
+  if (html === letztesTechDebtKopfHtml) return
+  letztesTechDebtKopfHtml = html
+  const container = document.getElementById('workboard-techdebt-kopf')
+  // Der Fokus bleibt auf demselben Chip bzw. derselben Karte (gleiches Attribut, gleicher Wert).
+  const fokus = document.activeElement !== null && container.contains(document.activeElement) ? document.activeElement : null
+  const attribut = fokus === null ? undefined : ['data-td-art', 'data-td-prio', 'data-td-status'].find((a) => fokus.hasAttribute(a))
+  const wert = attribut === undefined ? null : fokus.getAttribute(attribut)
+  const istKarte = fokus?.classList.contains('techdebt-karte') ?? false
+  container.innerHTML = html
+  if (attribut !== undefined) [...container.querySelectorAll(`[${attribut}]`)].find((el) => el.getAttribute(attribut) === wert && el.classList.contains('techdebt-karte') === istKarte)?.focus()
+}
+
+/**
+ * Tabelle Art · ID · Titel · Priorität · Eingeplant · Öffnen. „Eingeplant“ ist die Maßnahme des
+ * Registers, gekürzt (Bauauftrag D3, abgleich-f46.md §4.8; das strukturierte Feld bleibt K, §5).
+ * @param liste - gefilterte Workitems
+ * @returns HTML
+ */
+function techDebtTabelleHtml(liste) {
+  const zeile = (w) => {
+    const id = escapeHtml(w.id)
+    const href = `#/workboard/${encodeURIComponent(w.id)}`
+    return `<tr class="techdebt-zeile" data-id="${id}">
+        <td data-label="${tHtml('techdebt.spalte.art')}">${techDebtChip(w.typ)}</td>
+        <td data-label="${tHtml('techdebt.spalte.id')}"><code>${id}</code></td>
+        <td class="techdebt-titel">${escapeHtml(titelVon(w))}</td>
+        <td data-label="${tHtml('techdebt.spalte.prio')}">${escapeHtml(w.prioritaet ?? '–')}</td>
+        <td class="techdebt-eingeplant" data-label="${tHtml('techdebt.spalte.eingeplant')}">${escapeHtml(kuerzeText(w.massnahme, 70) ?? '–')}</td>
+        <td class="techdebt-aktion"><a class="text-link techdebt-oeffnen" href="${href}" data-id="${id}">${tHtml('techdebt.oeffnen')}<span class="sr-only"> ${id}</span></a></td>
+      </tr>`
+  }
+  return `<div class="techdebt-tabelle-rahmen" role="region" tabindex="0" aria-label="${tHtml('entwicklung.tab.weitere')}"><table class="techdebt-tabelle">
+      <thead><tr><th scope="col">${tHtml('techdebt.spalte.art')}</th><th scope="col">${tHtml('techdebt.spalte.id')}</th><th scope="col">${tHtml('techdebt.spalte.titel')}</th><th scope="col">${tHtml('techdebt.spalte.prio')}</th><th scope="col" title="${tHtml('techdebt.spalte.eingeplantTitel')}">${tHtml('techdebt.spalte.eingeplant')}<span class="sr-only"> (${tHtml('techdebt.spalte.eingeplantTitel')})</span></th><th scope="col"><span class="sr-only">${tHtml('techdebt.oeffnen')}</span></th></tr></thead>
+      <tbody>${liste.map(zeile).join('')}</tbody>
+    </table></div>`
 }
 
 /**
@@ -562,11 +679,17 @@ function betreteSeite() {
  * Wechselt das Register. Die Filter gehen auf „Alle“ zurück, die Suche wird geleert.
  * @param tab - 'board' oder ein Listen-Tab
  * @param spalte - optionaler Spaltenfilter (aus „Alle x anzeigen“)
+ * @param laden - false: nur Zustand und Anzeige setzen, die Liste lädt das anschließende Betreten der Seite
  */
-function wechsleTab(tab, spalte = null) {
+function wechsleTab(tab, spalte = null, laden = true) {
   aktiverTab = tab
   listenSpalte = spalte
   suchText = ''
+  tdArt = ''
+  tdPrio = ''
+  tdStatus = 'OFFEN'
+  letztesTechDebtKopfHtml = ''
+  document.getElementById('workboard-techdebt-kopf').innerHTML = ''
   const suche = document.getElementById('workboard-suche')
   suche.value = ''
   if (tab !== 'board') {
@@ -578,7 +701,20 @@ function wechsleTab(tab, spalte = null) {
   renderSpaltenfilter()
   renderKopf()
   if (tab === 'board') renderBoard()
-  void ladeListe()
+  if (laden) void ladeListe()
+}
+
+/**
+ * F46 D4: öffnet #/workboard mit einem Register — für die Reiterzeile auf #/code (views/code.js).
+ * Lädt nicht selbst; das Betreten der Seite lädt.
+ * @param tab - 'board' oder ein Listen-Tab
+ */
+export function oeffneEntwicklungsRegister(tab) {
+  if (!TABS.includes(tab)) return
+  if (tab !== aktiverTab || listenSpalte !== null) wechsleTab(tab, null, false)
+  navigiere('#/workboard')
+  // Erst nach dem Routing fokussieren — die Ansicht ist dann sichtbar und das Folge-Ereignis verarbeitet (Prüfpass qa 7).
+  setTimeout(() => document.getElementById('workboard-tabs').querySelector(`[data-tab="${tab}"]`)?.focus(), 0)
 }
 
 // ─── Detail (F44 WS-3b) und Click-to-Work ───────────────────────────────────
@@ -620,15 +756,32 @@ function renderSchrittkette(daten) {
   return `<ol class="workboard-kette">${daten.schritte.map(eintrag).join('')}</ol>`
 }
 
-/** Die drei git-Befehle als reiner Text-Block (F22 AK6, E11 im Stil V10) — die Oberfläche führt nichts davon aus. Platzhalter statt `git add -A`/`git add .` (CLAUDE.md, Pauschales Stagen ist ausgeschlossen); die konkreten Dateien wählt der Mensch. Befehle und Pfade werden nicht übersetzt, nur die Platzhalter in spitzen Klammern; der Skill-Name steht im Hinweis als {skill} (Satzstellung je Sprache). */
+/**
+ * Sichern nach einem abgeschlossenen Ablauf (F22 AK6, E11) — die Oberfläche führt nichts davon aus.
+ * F46 D4 (F-958): keine Platzhalter mehr. Der Befehlsblock nennt die echten geänderten Dateien des
+ * Repos, den Commit-Vorschlag aus dem Branchnamen und den Push (code-daten.js sicherBefehle, Daten aus
+ * der Leseroute über code-stand.js; nie `git add -A`/`git add .`, CLAUDE.md). Fehlt der Stand oder
+ * gibt es nichts Sicheres zu zeigen, steht der Grund da und der Weg zu #/code. Der Skill-Name steht im
+ * Hinweis als {skill} (Satzstellung je Sprache).
+ * @returns HTML
+ */
 function renderTerminalBlock() {
+  const stand = aktuellerCodeStand()
+  let block
+  if (stand.daten === null) {
+    block = `<p class="subtle">${tHtml(stand.zustand === 'fehler' ? 'code.fehler.titel' : 'entwicklung.laedt')}</p>`
+  } else {
+    const befehle = stand.daten.status === 'ok' ? sicherBefehle(stand.daten, { veraltet: stand.zustand === 'fehler' }) : { grund: 'dateienFehler' }
+    block = befehle.zeilen ? renderBefehlsblock({ sprache: 'powershell', zeilen: befehle.zeilen }, { echteWerte: true }) : `<p class="subtle">${tHtml(`code.sichern.grund.${befehle.grund}`)}</p>`
+    // Zeitpunkt des Stands, damit klar ist, worauf sich die Dateiliste bezieht.
+    if (stand.zustand === 'laedt') block = `<p class="subtle">${tHtml('code.aktualisiert')}</p>${block}`
+    else if (typeof stand.geladenAm === 'number') block = `<p class="subtle">${tHtml('code.standVon', { zeit: formatiereUhrzeit(new Date(stand.geladenAm).toISOString()) ?? '' })}</p>${block}`
+  }
   return `<section class="workboard-git" aria-labelledby="workboard-git-titel">
     <h3 id="workboard-git-titel">${tHtml('entwicklung.ctw.git.titel')}</h3>
     <p class="subtle">${tHtml('entwicklung.ctw.git.hinweis').replace('{skill}', '<code>git-flow</code>')}</p>
-    <pre>git add ${escapeHtml(`<${t('entwicklung.ctw.git.dateien')}>`)}
-git commit -m "${escapeHtml(`<${t('entwicklung.ctw.git.nachricht')}>`)}"
-git push</pre>
-    <p class="subtle">${tHtml('entwicklung.ctw.git.siehe')} <code>state/freigabe-commit.md</code></p>
+    ${block}
+    <p class="subtle"><a class="text-link" href="#/code">${tHtml('entwicklung.ctw.git.code')}</a> · ${tHtml('entwicklung.ctw.git.siehe')} <code>state/freigabe-commit.md</code></p>
   </section>`
 }
 
@@ -675,6 +828,12 @@ function renderBearbeitungsInhalt(workitem, zustand) {
   }
   if (zustand.phase === 'verworfen') return `<p class="subtle" ${FOKUS}>${tHtml('entwicklung.ctw.verworfen')}</p>`
   if (zustand.phase === 'gestartet' || zustand.phase === 'abgeschlossen') {
+    // F46 D4: Der Block „Sichern“ braucht den Stand NACH dem Lauf — einmal je Ablauf neu laden, sobald er
+    // abgeschlossen ist (Prüfpass qa 2, cr 4); ein weiterer Render-Tick aus dem Poll löst kein Git aus.
+    if (zustand.phase === 'abgeschlossen' && zustand.workflowId !== codeStandNachAblauf) {
+      codeStandNachAblauf = zustand.workflowId
+      void ladeCodeStand({ neu: true })
+    }
     return `<section class="workboard-vorschlag" aria-labelledby="workboard-kette-titel">
       <h3 id="workboard-kette-titel" ${FOKUS}>${tHtml('entwicklung.ctw.kette.titel')}</h3>
       <p>${tHtml('entwicklung.ctw.kette.status')}: <code>${escapeHtml(daten?.status ?? '')}</code> · <a href="#/workflows/${encodeURIComponent(zustand.workflowId ?? '')}">${tHtml('uebersicht.rolle.link')}</a></p>
@@ -1121,6 +1280,17 @@ function pruefeDetailNachtrag() {
 }
 
 /**
+ * Projektordner für VS-Code-Links im Detail: repo_pfad des Registers, wenn er absolut ist, sonst der
+ * absolute Pfad aus dem Code-Stand (F-968, F46 D4).
+ * @returns Pfad oder null
+ */
+function detailRepoPfad() {
+  const register = projektAusListe(holeAktivesProjekt().id)?.repo_pfad ?? null
+  if (baueVsCodeLink(register) !== null) return register
+  return aktuellerCodeStand().daten?.absoluterPfad ?? register
+}
+
+/**
  * Die Sicht des Details (views/workboard-detail.js) für workitem. Der verknüpfte Ablauf ist der
  * beim Öffnen bestimmte; Status und Halt kommen aus dem jüngsten Aggregat (die Phase bleibt
  * aktuell), sonst aus dem Eintrag zum Zeitpunkt der Bestimmung.
@@ -1148,7 +1318,9 @@ function baueDetailSicht(workitem) {
     roadmap: nachtrag?.roadmap,
     workitems: alleWorkitems,
     ctw: ctwStand(workitem),
-    repoPfad: projektAusListe(holeAktivesProjekt().id)?.repo_pfad ?? null,
+    repoPfad: detailRepoPfad(),
+    // F46 D4: Repo-Adresse für „Pull Requests auf GitHub“ aus dem Code-Stand (null = keine bzw. noch keine).
+    remoteWebUrl: pruefeGithubUrl(aktuellerCodeStand().daten?.remoteWebUrl?.url ?? null),
     kreisAuswahl: nachtrag?.kreisAuswahl ?? null,
     wasReiter: nachtrag?.wasReiter ?? null,
   }
@@ -1273,6 +1445,8 @@ function ladeDetail(id) {
   }
   detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahme: undefined, ablaufLadung: 0, wasReiter: null, kreisAuswahl: null }
   letztesDetailHtml.clear()
+  // F46 D4: „Pull Requests“ und der VS-Code-Pfad brauchen den Code-Stand — einmal laden, falls keiner da ist.
+  if (aktuellerCodeStand().zustand === 'leer') void ladeCodeStand()
   zeigeDetail(true)
   renderDetailInhalt(id)
   const titel = document.getElementById('workboard-detail-titel')
@@ -1413,9 +1587,27 @@ function initDetailBedienung() {
 function initListenBedienung() {
   const liste = document.getElementById('workboard-liste')
   liste.addEventListener('click', (ereignis) => {
-    const zeile = ereignis.target.closest('.workboard-zeile')
+    // F46 D4: Zeile bzw. „Öffnen“ der Tabelle „Tech Debt & Prozess“ — über navigiere wie die Karten (ein
+    // reiner Link löste nach „Schließen“ auf demselben Hash kein hashchange aus).
+    const zeile = ereignis.target.closest('.workboard-zeile, .techdebt-zeile')
     if (!zeile) return
+    ereignis.preventDefault()
     navigiere(`#/workboard/${encodeURIComponent(zeile.dataset.id)}`)
+  })
+  // F46 D4: Karten und Chips von „Tech Debt & Prozess“ — Radio je Gruppe; eine gewählte Karte bzw. Art
+  // abwählen heißt „alle“. Gefiltert wird clientseitig (renderListe).
+  document.getElementById('workboard-techdebt-kopf').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target.closest('[data-td-art], [data-td-prio], [data-td-status]')
+    if (knopf === null) return
+    if (knopf.hasAttribute('data-td-art')) {
+      const art = knopf.dataset.tdArt
+      tdArt = knopf.classList.contains('techdebt-karte') && tdArt === art ? '' : art
+    } else if (knopf.hasAttribute('data-td-prio')) {
+      tdPrio = tdPrio === knopf.dataset.tdPrio ? '' : knopf.dataset.tdPrio
+    } else {
+      tdStatus = knopf.dataset.tdStatus
+    }
+    renderListe()
   })
   liste.addEventListener('keydown', (ereignis) => {
     if (ereignis.key !== 'Enter') return
@@ -1439,7 +1631,7 @@ function initListenBedienung() {
  * @param id - Workitem-id des zuvor offenen Details
  */
 function fokussiereEintrag(id) {
-  const kandidaten = [...document.querySelectorAll('#workboard-board .board-item, #workboard-liste .workboard-zeile')]
+  const kandidaten = [...document.querySelectorAll('#workboard-board .board-item, #workboard-liste .workboard-zeile, #workboard-liste .techdebt-oeffnen')]
   const treffer = kandidaten.find((el) => el.dataset.id === id && el.offsetParent !== null)
   ;(treffer ?? document.getElementById('workboard-titel')).focus()
 }
@@ -1451,6 +1643,12 @@ function initBearbeitungBedienung() {
   document.getElementById('workboard-bearbeitung').addEventListener('click', (ereignis) => {
     // F-922: ein gesperrter Einstieg (disabled/aria-disabled) löst nichts aus — auch nicht über eine künstliche Klickfolge.
     if (ereignis.target.closest('[aria-disabled="true"]') !== null) return
+    // F46 D4 (F-958): „Kopieren“ im Befehlsblock „Sichern“ — nur Zwischenablage, nichts wird ausgeführt.
+    const kopieren = ereignis.target.closest('[data-befehl-kopieren]')
+    if (kopieren !== null) {
+      void kopiereBefehlsblock(kopieren)
+      return
+    }
     const bearbeitenKnopf = ereignis.target.closest('#workboard-bearbeiten')
     if (bearbeitenKnopf) {
       const workitem = findeWorkitem(bearbeitenKnopf.dataset.id)
@@ -1540,6 +1738,11 @@ export function initWorkboardView() {
   })
   abonniereDetailAuffrischer(() => {
     void aktualisiereBearbeitungsZustand()
+  })
+  // F46 D4: ein neuer Code-Stand (Laden beim Öffnen, „Aktualisieren“ auf #/code, Projektwechsel) zeichnet ein
+  // offenes Detail neu — „Pull Requests“, VS-Code-Pfad und der Block „Sichern“ hängen daran.
+  abonniereCodeStand(() => {
+    if (seiteAktiv && gewaehlteId !== null) renderDetailNachtrag()
   })
 
   // F44 WS-1a (F-860): beim Projektwechsel allen projektgebundenen Zustand verwerfen. Neu geladen

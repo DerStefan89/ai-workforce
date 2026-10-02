@@ -130,7 +130,7 @@ export function setzeAktivesProjekt(projekt) {
   void pollJetzt()
 }
 
-/** F44 WS-1b: zuletzt geladenes Projektregister ([{ id, name, repo_pfad }], repo_pfad seit WS-8b) oder null, solange noch nichts geladen ist. */
+/** F44 WS-1b: zuletzt geladenes Projektregister ([{ id, name, repo_pfad, … }], repo_pfad seit WS-8b; status, basisverzeichnis, kontext_pfad, roadmap_pfad, vorschau_url seit F46 D4) oder null, solange noch nichts geladen ist. */
 let projektListe = null
 /** F44 WS-1b: true, wenn der letzte Abruf des Registers scheiterte. */
 let projektListeFehler = false
@@ -161,7 +161,18 @@ export function renderProjektKontext() {
 export async function ladeProjektAuswahl() {
   try {
     const daten = await holeProjekte()
-    projektListe = daten.projekte.map((p) => ({ id: p.id, name: p.name, repo_pfad: typeof p.repo_pfad === 'string' ? p.repo_pfad : null }))
+    // F46 D4: zusätzlich die Felder, die „Wo gearbeitet wird“ auf #/projekt zeigt (nur lesend, je null ohne Wert).
+    const text = (wert) => (typeof wert === 'string' && wert !== '' ? wert : null)
+    projektListe = daten.projekte.map((p) => ({
+      id: p.id,
+      name: p.name,
+      repo_pfad: text(p.repo_pfad),
+      status: text(p.status),
+      basisverzeichnis: text(p.basisverzeichnis),
+      kontext_pfad: text(p.kontext_pfad),
+      roadmap_pfad: text(p.roadmap_pfad),
+      vorschau_url: text(p.vorschau_url),
+    }))
     projektListeFehler = false
   } catch (fehler) {
     console.error('Projektauswahl: Register konnte nicht geladen werden:', fehler)

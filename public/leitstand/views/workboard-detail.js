@@ -30,6 +30,7 @@
  *          (Vorschlag wartet auf Freigeben/Ablehnen), 'stoerung' (Fehler oder Konflikt mit
  *          „Wiederholen“), 'aktiv' (anderer Zwischenstand), 'keiner',
  *     repoPfad: absoluter Projektordner oder null (VS-Code-Links),
+ *     remoteWebUrl: geprüfte GitHub-Adresse des Repos oder null (F46 D4, „Pull Requests“),
  *     kreisAuswahl: gewählte Rolle im Rollen-Kreis oder null (Vorauswahl),
  *     wasReiter: gewählter Reiter in „Das Was“ oder null (Vorauswahl) }
  *
@@ -178,6 +179,16 @@ function vsCodeLink(repoPfad, relPfad, zeile, text) {
   const link = typeof repoPfad === 'string' && repoPfad !== '' ? baueVsCodeLink(`${repoPfad.replace(/[\\/]+$/, '')}/${relPfad}${zeile !== null ? `:${zeile}` : ''}`) : null
   if (link === null) return `<a class="text-link" role="link" tabindex="0" aria-disabled="true" title="${tHtml('kopf.vscodeOhne')}">${escapeHtml(text)}</a>`
   return `<a class="text-link" href="${escapeHtml(link)}">${escapeHtml(text)}</a>`
+}
+
+/**
+ * Inhalt der Kachel „Änderungen“ (F46 D4): Verweis auf den Code-Reiter. Die Leseroute kennt den
+ * Arbeitsstand des ganzen Repos, nicht die Dateien eines Eintrags — der Satz sagt das, statt eine
+ * Zuordnung zu behaupten (Regel 8 des Abgleichs).
+ * @returns HTML
+ */
+function aenderungenInhalt() {
+  return `<p><a class="text-link" href="#/code">${tHtml('eintrag.review.aenderungenLink')} <span aria-hidden="true">→</span></a></p><p class="subtle">${tHtml('eintrag.review.aenderungenHinweis')}</p>`
 }
 
 /**
@@ -648,7 +659,7 @@ function offeneBefunde(workitems) {
 }
 
 /**
- * „Code & Doku Review“ (Feature): Änderungen „kommt“ bis zur Code-Ansicht (D4), Prüfungen „kommt“
+ * „Code & Doku Review“ (Feature): Änderungen → Code-Reiter #/code (F46 D4), Prüfungen „kommt“
  * (F-962), Doku echt (Akte mit VS-Code-Link, Register mit Zahl offener Befunde), Nachweise „kommt“.
  * @param sicht - siehe Dateikopf
  * @returns HTML
@@ -664,7 +675,7 @@ function reviewBlock(sicht) {
   return `<section class="eintrag-karte" aria-labelledby="review-titel">
       <div class="eintrag-karte-kopf"><h2 id="review-titel">${tHtml('eintrag.review.titel')}</h2></div>
       <div class="eintrag-kacheln eintrag-kacheln-2">
-        ${kachel(t('eintrag.review.aenderungen'), kommtInhalt('eintrag.review.aenderungenKommt'))}
+        ${kachel(t('eintrag.review.aenderungen'), aenderungenInhalt())}
         ${kachel(t('eintrag.review.pruefungen'), kommtInhalt('eintrag.review.pruefungenKommt'))}
         ${kachel(t('eintrag.review.doku'), doku)}
         ${kachel(t('eintrag.review.nachweise'), kommtInhalt('eintrag.review.nachweiseKommt'))}
@@ -819,7 +830,7 @@ function behebungInfo(sicht, id) {
 
 /**
  * „Behebung“ (Bug) bzw. „Umsetzung“: die Schritte (behebungsSchritte), darunter Regressionstest
- * („kommt“), Änderungen („kommt“ bis zur Code-Ansicht D4) und Auftrag (Ablauf des Eintrags oder der
+ * („kommt“), Änderungen (→ Code-Reiter #/code, F46 D4) und Auftrag (Ablauf des Eintrags oder der
  * Hinweis, dass Click-to-Work ihn anlegt); aufklappbar die Schritte des Ablaufs im Einzelnen.
  * @param sicht - siehe Dateikopf
  * @returns HTML
@@ -842,7 +853,7 @@ function behebungBlock(sicht) {
       ${urteileNichtLadbar(sicht)}
       <div class="eintrag-kacheln eintrag-kacheln-3">
         ${bug ? kachel(t('eintrag.behebung.regressionstest'), kommtInhalt('eintrag.befund.feldKommt')) : ''}
-        ${kachel(t('eintrag.review.aenderungen'), kommtInhalt('eintrag.review.aenderungenKommt'))}
+        ${kachel(t('eintrag.review.aenderungen'), aenderungenInhalt())}
         ${kachel(t('eintrag.behebung.auftrag'), auftrag)}
       </div>
       ${schritteDetails(sicht)}
@@ -876,7 +887,8 @@ export function detailInhaltHtml(sicht) {
  * Rechte Spalte: Feature „Deine Planung“ (Priorität keine, Meilenstein echt; Schätzung und Speichern
  * „kommt“, Fixpaket B5), Befund „Einordnung“ (Priorität echt; Zuordnung, Schätzung, Speichern
  * „kommt“). Darunter die Links: Akte bzw. Fundstelle (nur bei eindeutigem Pfad) und Registereintrag
- * in VS Code, Pull Requests („kommt“ bis D4), Roadmap, „Frag Jarvis dazu“ (befüllt nur die Eingabe).
+ * in VS Code, Pull Requests (F46 D4: <remoteWebUrl>/pulls in neuem Tab, ohne GitHub-Remote gesperrt), Roadmap,
+ * „Frag Jarvis dazu“ (befüllt nur die Eingabe).
  * @param sicht - siehe Dateikopf
  * @returns HTML
  */
@@ -889,7 +901,11 @@ export function detailSpalteHtml(sicht) {
   const links = []
   if (feature) {
     links.push(vsCodeLink(sicht.repoPfad, workitem.pfad ?? `features/${workitem.id}/feature.md`, null, t('eintrag.spalte.akteVsCode')))
-    links.push(`<a class="text-link" role="link" tabindex="0" aria-disabled="true">${tHtml('eintrag.spalte.pullRequests')} ${kommtBadge()}</a>`)
+    links.push(
+      typeof sicht.remoteWebUrl === 'string'
+        ? `<a class="text-link" href="${escapeHtml(`${sicht.remoteWebUrl}/pulls`)}" target="_blank" rel="noopener noreferrer">${tHtml('eintrag.spalte.pullRequests')} <span aria-hidden="true">↗</span></a>`
+        : `<a class="text-link" role="link" tabindex="0" aria-disabled="true" title="${tHtml('kopf.githubOhne')}">${tHtml('eintrag.spalte.pullRequests')}</a>`
+    )
     links.push(`<a class="text-link" href="#/roadmap">${tHtml('entwicklung.detail.planung.roadmap')} <span aria-hidden="true">→</span></a>`)
   } else {
     const fund = findeFundstellenPfad(workitem.fundstelle)

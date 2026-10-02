@@ -143,7 +143,9 @@ test('Akte lädt, unvollständig (Grund und Pfad escaped) oder nicht lesbar', ()
 test('Code & Doku Review und Verlauf: Doku echt, Befunde nur laut Feld „Entdeckt“, sonst „kommt“', () => {
   const inhalt = detailInhaltHtml(sicht())
   assert.match(inhalt, /<code>state\/findings\.md<\/code> · 2 offen/, 'Zahl offener Befunde im Register')
-  assert.match(inhalt, /Änderungen[\s\S]*kommt-badge[\s\S]*Code-Ansicht \(F46 D4\)/)
+  // F46 D4: „Änderungen“ verweist auf den Code-Reiter (Arbeitsstand des ganzen Repos, keine Zuordnung behauptet).
+  assert.match(inhalt, /Änderungen<\/span><\/p><p><a class="text-link" href="#\/code">Im Code-Reiter ansehen/)
+  assert.match(inhalt, /ganzen Repos, nicht nur dieses Eintrags/)
   assert.match(inhalt, /Prüfungen[\s\S]*F-962/)
   assert.match(inhalt, /Entscheidungen[\s\S]*kommt-badge[\s\S]*F-995/)
   assert.match(inhalt, /<p class="eintrag-zahl">1 <span class="subtle">offen von 2<\/span><\/p>/)
@@ -153,12 +155,15 @@ test('Code & Doku Review und Verlauf: Doku echt, Befunde nur laut Feld „Entdec
   assert.match(detailInhaltHtml(sicht({ workitems: undefined })), /Befunde aus diesem Feature<\/span><\/p><p class="subtle">Lädt…/)
 })
 
-test('Rechte Spalte (Feature): Planung nur lesend, Speichern und Pull Requests „kommt“, Links Akte, Roadmap, Jarvis', () => {
+test('Rechte Spalte (Feature): Planung nur lesend, Speichern „kommt“, Pull Requests nach GitHub, Links Akte, Roadmap, Jarvis', () => {
   const spalte = detailSpalteHtml(sicht())
   assert.match(spalte, /<h2 id="eintrag-spalte-titel">Deine Planung<\/h2>/)
   assert.match(spalte, /<dt>Meilenstein<\/dt><dd>Verlässlich &lt;arbeiten&gt;<\/dd>/)
   assert.match(spalte, /aria-disabled="true">Planung speichern <span class="kommt-badge">kommt<\/span>/)
-  assert.match(spalte, /aria-disabled="true">Pull Requests auf GitHub <span class="kommt-badge">kommt<\/span>/)
+  // F46 D4: ohne GitHub-Remote gesperrt (ohne „kommt“), mit Remote ein Link auf /pulls in neuem Tab.
+  assert.match(spalte, /aria-disabled="true" title="[^"]*GitHub-Remote[^"]*">Pull Requests auf GitHub<\/a>/)
+  const mitRemote = detailSpalteHtml(sicht({ remoteWebUrl: 'https://github.com/o/r' }))
+  assert.match(mitRemote, /<a class="text-link" href="https:\/\/github\.com\/o\/r\/pulls" target="_blank" rel="noopener noreferrer">Pull Requests auf GitHub/)
   assert.match(spalte, /href="vscode:\/\/file\/C:\/Projekte\/Demo\/features\/F7\/feature\.md">Akte in VS Code öffnen/)
   assert.match(spalte, /href="#\/roadmap"/)
   assert.match(spalte, /data-detail-jarvis>Frag Jarvis dazu/)
