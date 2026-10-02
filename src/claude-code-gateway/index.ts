@@ -252,8 +252,13 @@ export function leseErgebnisobjekt(stdout: string): Record<string, unknown> | nu
   return null
 }
 
-/** Parameter, die ein Werkzeugziel benennen, in Prioritätsreihenfolge (Read: file_path, Grep/Glob: pattern vor path). */
-const ZIEL_PARAMETER = ['file_path', 'pattern', 'path', 'notebook_path', 'url']
+/**
+ * Parameter, die ein Werkzeugziel benennen, in Prioritätsreihenfolge (Read: file_path, Grep/Glob: pattern vor path).
+ * F46 D5 (Live-Aktivität): dahinter command (Bash), skill (Skill) und subagent_type (Task/Agent) — sonst
+ * stünden Befehle und Fähigkeiten ohne Ziel in der Aktivität. Gekürzt wird beim Abnehmer
+ * (scripts/leitstand/lauf-aktivitaet.mjs), nicht hier.
+ */
+const ZIEL_PARAMETER = ['file_path', 'pattern', 'path', 'notebook_path', 'url', 'command', 'skill', 'subagent_type']
 
 /**
  * Einzige Stelle, die die tool_use-Blöcke EINER stream-json-Zeile (type "assistant", message.content[]) liest — geteilt von leseWerkzeugaufrufe (F40 WS-1) und leseBeobachtung (F36 WS-4), damit eine Formänderung der CLI beide Pfade gleich trifft. Jede andere Zeile liefert []; wirft nie.

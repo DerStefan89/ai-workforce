@@ -153,9 +153,9 @@ test('Lage c (rueckfrage, F7): Bypass-Daten, „Rückfrage beantworten“ und Fo
   assert.match(html, /data-aktion="fortsetzung"/)
 })
 
-test('Lage d (laeuft): Hinweis „Stand beim Öffnen“, Aktualisieren und „Lauf abbrechen“, keine Entscheidung', () => {
+test('Lage d (laeuft): Hinweis „Stand von …“ (F46 D5: die Seite zieht mit dem Poll nach), Aktualisieren und „Lauf abbrechen“, keine Entscheidung', () => {
   const html = renderLaufNotiz('laeuft', { laufStatus: { status: 'KLAERUNG_ERFORDERLICH' }, geladenAm: '2026-10-01T10:42:00.000Z' })
-  assert.match(html, /Stand beim Öffnen \(/)
+  assert.match(html, /Stand von /)
   assert.match(html, /data-aktion="aktualisieren"/)
   assert.match(html, /class="button danger lauf-aktion" data-aktion="abbrechen-oeffnen"/)
   assert.doesNotMatch(html, /terminal-oeffnen|kenntnisnahme-oeffnen|fortsetzung/)

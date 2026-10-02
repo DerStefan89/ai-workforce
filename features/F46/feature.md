@@ -10,7 +10,7 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 Status: IN_ARBEIT
 
 D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 gemergt #311, ec3b831;
-D3 in Arbeit (Branch `feat/f46-d3-detail`, Basis `ec3b831`). D4 bis D6 offen.
+D3 gemergt #312, a48b344; D4 gemergt #313, 69a4638; D5 in Arbeit (Branch `feat/f46-d5-live`, Basis `69a4638`). D6 offen.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -55,7 +55,7 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 | D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | ≈ 0,2 AT (#310) |
 | D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | ≈ 0,3 AT (#311) |
 | D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | ≈ 0,4 AT (#312; Branch → Bericht 22:57) |
-| D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | |
+| D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | ≈ 0,2 AT (#313) |
 | D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
 | D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | |
 
@@ -414,7 +414,7 @@ Stehen begründet in `docs/design/abgleich-f46.md` unter §4.6 und §4.8 („Ums
 ## Stand D4 „Entwicklung: Reiterzeile, Code, Tech Debt & Prozess, Auftrag anlegen“ (02.10.2026)
 Branch `feat/f46-d4-entwicklung-code` (Basis `a48b344`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
 (Leitprinzip, §2, §3 Schritt 3 und 7, §4.11–§4.13, §5), Bilder 06-entwicklung-code--Main, --TechDebt und
-04-auftrag-anlegen--Main. Ist D3 ≈ 0,4 AT (oben in der Tabelle); Ist D4 offen.
+04-auftrag-anlegen--Main. Ist D3 ≈ 0,4 AT (oben in der Tabelle); Ist D4 ≈ 0,2 AT (#313, Tabelle).
 - **Leseroute** `scripts/leitstand/routen-code.mjs` (GET …/code und …/code/diff, je Projektinstanz über den
   Dispatcher; Test `routen-code.test.mjs`, 12 Fälle). Git nur über `execFile` (asynchron, ohne Shell), immer
   `--no-optional-locks -c core.quotePath=false -c core.fsmonitor=false -c color.ui=never`, Zeitgrenze 5 s je
@@ -495,3 +495,94 @@ Branch `feat/f46-d4-entwicklung-code` (Basis `a48b344`), nicht committet. Grundl
 
 ### Abweichungen von abgleich-f46.md (zur Kenntnis)
 Stehen begründet in `docs/design/abgleich-f46.md` unter §4.11–§4.13 („Umsetzung D4“).
+
+## Stand D5 „Live-Ansicht, beendeter Lauf, Aufträge-Liste“ (03.10.2026)
+Branch `feat/f46-d5-live` (Basis `69a4638`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
+(Leitprinzip, §0–§2, §3 Schritt 5, §4.9, §4.10, §5), Bilder 08-live--Main und --Main-nichts-laeuft.
+Ist D4 ≈ 0,2 AT (#313); Ist D5 offen.
+- **Ringpuffer** `scripts/leitstand/lauf-aktivitaet.mjs` (löst F-977): je aktivem Lauf die letzten 50
+  Werkzeugaufrufe `{ zeit, werkzeug, ziel, art }` (Ziel gekürzt auf 300 Zeichen, Werkzeugname auf 100; Art aus
+  der Tabelle WERKZEUG_ART: aendert · befehl · liest · faehigkeit, MCP als faehigkeit, sonst sonstiges),
+  Gesamtzahl und bis zu 100 eindeutige berührte Dateien (Ziele schreibender Werkzeuge). Nur Speicher, eine Map
+  mit höchstens einem Lauf (D13): `starte` bei jedem Laufstart (starteLaufUndVergiss), `beende` an allen drei
+  Reset-Stellen neben `laufAktivFortschritt`, `melde` nur für die laufId des Puffers. Ausgabe als Feld
+  `aktivitaet` in GET /api/laeufe/<laufId> (nur der aktive Lauf, sonst null); `fortschritt` bleibt. Das
+  Gateway nennt dafür auch `command` (Bash), `skill` und `subagent_type` als Ziel (ZIEL_PARAMETER).
+  Tests: `lauf-aktivitaet.test.mjs` (Grenze 50, Reset bei Start und Ende, fremde laufId, Kürzung, berührte
+  Dateien, 500 Läufe ohne Wachstum, HTTP gegen erzeugeRequestHandler), `stream-json.test.ts` (Ziele).
+- **Live** `#/live` (neu) und `#/runs/<laufId>`: dieselbe Seite (`index.html` #lauf-detail, Live-Teile in
+  `views/live.js`, Render `views/live-anzeige.js`, Daten `live-daten.js`). Kopf mit Rolle · Worker, Modell
+  (Schritt bzw. „laut Startvorlage“), Werkzeugsatz, „Zum Eintrag“; „Gerade“; Status-Block (Baustein
+  statusBlockHtml: läuft seit bzw. Dauer, Zeitgrenze mit Rest und Balken, Schätzung kommt B5, Aufrufe);
+  „Abbrechen …“ und „Laufakte“; Ablaufleiste Plan · Freigabe · Bau · Prüfschritt · Review aus den
+  Workflow-Schritten (Sichern, Merge kommt); Aktivität (neueste oben, Filter Alle · Ändert · Befehle ·
+  Fähigkeiten, Warnungen kommt) mit „Mehr dazu“ (Werkzeug, Ziel, Zeit, Schritt echt; Erklärung, Ausschnitt,
+  Im Umfang kommt B2; VS Code nur bei absolutem Pfad; „Frag Jarvis dazu“ befüllt nur die Chat-Eingabe);
+  Berührte Dateien (echt; „außerhalb des Umfangs“ kommt), Bremsen & Warnungen kommt, Fähigkeiten (vorgesehen
+  gegen genutzt kommt B1, nach dem Lauf „genutzt“ aus der Laufakte), Output je Schritt, Arbeitspaket kommt
+  B2, Kontextpaket mit Liste aus dem Lauf-Detail. Darunter der Bestand aus F44 WS-5a unverändert erreichbar
+  (Notiz je Lage, Timeline, Einordnung, vier Aufklappbereiche, G6–G9, F7).
+  Zuordnung Lauf → Workflow-Schritt über GET /api/workflows/<id> der Kandidaten (gleiche auftragId, dazu
+  laufende), neu geladen nur bei neuer versionSequenz. Aktualisierung: Detail-Auffrischer am vorhandenen
+  Poll-Tick, nur solange der angezeigte Lauf aktiv ist (ein beendeter bleibt ungepollt, F-363) — kein Timer.
+- **Nichts läuft** (#/live ohne aktiven Lauf, `#live-wartet`): „Die Workforce wartet“ mit Zuletzt (Titel,
+  Ergebnis, Dauer aus dem Detail, einmal je Lauf geladen; Bericht kommt B2; Laufakte, Code-Reiter) und Als
+  Nächstes (nächste offene Entscheidung nach baueEntscheidungen → #/attention, sonst startbereiter Schritt →
+  Ablauf, sonst „Auftrag anlegen“). #/live folgt dem aktiven Lauf über den Poll.
+- **Aufträge** `#/runs`: Reiterzeile der Entwicklung über den Registern („Aufträge“ aktiv), Register Aufträge ·
+  Ausführungen und „+ Auftrag anlegen“ wie bisher.
+- **Live-Chip**: Ziel #/live (läuft und ruhig; ein Lauf eines anderen Projekts weiter #/ausfuehrungen); Rolle
+  aus dem Lauf-Detail (kontextpaket.rolle), einmal je aktiver laufId geladen, sonst Titel wie bisher.
+- **Abbruch** (F-1003): Lauf eines laufenden Workflow-Schritts → bestehender Stopp des Ablaufs mit
+  Pflichtbegründung (Texte ablauf.dialog.stopp.*, „Stoppen“ gesperrt, solange leer; POST …/stoppen);
+  Einzellauf → bestehender Abbruch ohne Grund. Der Knopf steht im Status-Block, nicht mehr in der Notiz.
+- **Texte** de/en/tr/ru (Schlüssel `live.*`); geändert `lauf.notiz.laeuft.text` und `lauf.klaer.laeuftText`
+  (die Seite zieht während des Laufs nach).
+- **package.json**: Skript „test“ = `node --test --test-concurrency=4` (F-1002).
+- **Gate-/Test-Änderungen:** keine Gate-Datei geändert. Tests nachgezogen: `live-chip.test.mjs` (Ziel
+  #/live, Rolle aus dem Detail), `views/runs-dialog.test.mjs` (Abbruch im Status-Block, neuer Stopp-Fall),
+  `views/lauf-detail.test.mjs` und `views/runs.test.mjs` (Text „Stand von …“); neu `live-daten.test.mjs`,
+  `views/live-anzeige.test.mjs`, `scripts/leitstand/lauf-aktivitaet.test.mjs`.
+- **Nachweise** `features/F46/nachweise/d5/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste Antworten,
+  jeder POST bekäme 409 mit Marke).
+- **Register:** F-977 erledigt; neu F-1002 (erledigt), F-1003, F-1004.
+- **Messungen:** `npm run check` vorher 448 s (Testphase 79,2 s, 1506 Tests, ohne Grenze — dieser Lauf brach
+  nicht ab), mit `--test-concurrency=4` 395 s (Testphase 79,3 s, 1533 Tests). GET /api/laeufe/<id> am
+  Bestand 4–30 ms — das Nachladen alle 2 s während eines Laufs ist unkritisch.
+- **Prüfpass** (code-reviewer, design-guardian, qa parallel, einmal, frischer Kontext): alle drei „nicht
+  freigegeben“; Ringpuffer laut code-reviewer ohne Befund (Reset in allen Pfaden, laufId, Speicher, keine
+  Blockade). Eine Korrekturrunde, eingearbeitet:
+  - CSS: Klassenkollision `.live-chip` mit dem Kopf-Chip aus D0 → Seiten-Chips heißen `.live-kopf-chip`
+    (cr 1, dg 1); Reiterzeile auf #/runs gestylt (`#view-runs` in den Reiterregeln, cr 2, dg 2); Abstand der
+    Knöpfe in Karten (dg 4); Text-Links der Karten nach D1-Muster (dg 5); Kopf der Aktivität einzeilig (dg 10).
+  - Status-Block mit einem Punkt (Text statt Badge, Ton aus der Statuskategorie, dg 6); Fähigkeiten nach dem
+    Lauf lesbar mit „keine“ (dg 7); Output mit Rollenname vor der Schritt-ID (dg 8); bei offener Entscheidung
+    „Zu den Entscheidungen“ als Hauptknopf (dg 3); „Mehr dazu“ wird bei schmaler Seite ins Bild geholt (dg 11);
+    #/runs-Überschrift nennt das aktive Register (dg 12); beendeter Lauf ohne Filter und ohne „Mehr dazu“.
+  - runs.js: der Auffrischer schreibt Bestandsteile nur bei geändertem HTML (Fokus, Auswahl, aufgeklappte
+    Bereiche bleiben, cr 4, qa 2); ein Fehler beim Nachladen lässt den Stand stehen und meldet sich ohne
+    Fokuswechsel (cr 3, qa 3); #/live wechselt nicht, solange ein Dialog offen, eine Bedienung unterwegs oder
+    eine Meldung sichtbar ist (cr 7, qa 5); Fokus und Scrollen beim Wechsel durch den Poll nur, wenn der Fokus
+    auf der Seite lag (qa 1); Projektwechsel zeigt „lädt“ statt des alten Projekts (cr 11, qa 8).
+  - Zuordnung Lauf → Workflow: laufende Workflows zuerst, ein Ladefehler lässt sie offen (Abbruch gesperrt
+    statt ohne Begründung, cr 5, qa 4); Nachholen am Poll-Tick bei Kaltstart und Laufwechsel (cr 6); dabei eine
+    Neuzeichnen-Schleife gefunden und behoben (nur bei geänderter Zuordnung neu zeichnen).
+  - Fremder bzw. noch nicht gelisteter aktiver Lauf: „Als Nächstes“ ohne Startangebot, mit Hinweis (qa 6, qa 9);
+    Fokus-Rückfall auf den Container (qa 7); getippte Frage bleibt beim Neuzeichnen, Eingabe nach „Fragen“ leer
+    (qa 13); Eyebrow mit data-i18n (cr 10); kein VS-Code-Link auf ein gekürztes Ziel (cr 9).
+  - Server: `fortschritt.ziel` ebenfalls auf 300 Zeichen gekürzt; Chat zeigt Bash-/PowerShell-Befehle als Befehl
+    statt als Pfad (cr 8). Live-Chip: Rolle bis zu drei Versuche (qa 11). Kommentare in `zustand.js` und
+    `runs.js` nachgezogen (qa 14).
+  - Tests neu: Ladefehler des Workflows → Abbruch gesperrt; kein Neuschreiben bei gleichem Inhalt und Fehler
+    beim Nachladen ohne Fehlerzustand (`runs-dialog.test.mjs`); Render-Fälle (`live-anzeige.test.mjs`);
+    Kandidaten-Reihenfolge (`live-daten.test.mjs`).
+  - Nachweise neu (34 WebP, 21 Folgen): zusätzlich Kopf bei 1340 px im Ruhezustand, reduzierte Bewegung,
+    beendeter Lauf in hell/390/200 %/ru, fremder Lauf. Das Nachweis-Skript leert nur seine eigenen
+    Unterordner (Pfadprüfung).
+  - Nicht übernommen (F-1004): Balken und Knöpfe stehen unter dem Rahmen des Status-Blocks (Baustein
+    statusBlockHtml geteilt mit D3; im Abgleich vermerkt, dg 9); kein eigener Hinweis „Prüfschritt läuft“
+    (qa 10); Schlüssel eines Aufrufs bei zwei gleichen Aufrufen in derselben Millisekunde nicht eindeutig
+    (qa 12); der Nachweis belegt den Entwurf in der Chat-Eingabe nur per Bild, nicht per Protokollspalte (qa 15).
+
+### Abweichungen von abgleich-f46.md (D5)
+Stehen begründet in `docs/design/abgleich-f46.md` unter §4.10 („Umsetzung D5“).

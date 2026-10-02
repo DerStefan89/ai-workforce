@@ -6,7 +6,7 @@
  * die ganze Zeile führt zu `#/runs/<laufId>`; Startfehler), das Lauf-Detail als Seite (Notiz je Lage
  * mit ihren Aktionen, „Was passiert ist“ als Timeline aus den Checkpoints, „Einordnung“, die vier
  * Aufklappbereiche) und die Inhalte des Dialogs #lauf-dialog (Kenntnisnahme, Klärung auflösen,
- * Rückfrage beantworten, Lauf abbrechen).
+ * Rückfrage beantworten, Lauf abbrechen; seit F46 D5 „Ablauf stoppen“ für den Lauf eines Workflow-Schritts).
  *
  * Reine Render-Funktionen: Sie bekommen Serverdaten und liefern HTML. Laden, Dialogsteuerung und alle
  * POST-Aufrufe bleiben in views/runs.js — dieses Modul kennt weder fetch noch DOM und importiert keine
@@ -18,7 +18,7 @@
  * 'antwort' auch im Nachlauf, weil der Server sie dort erlaubt.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/runs.js
+ * - public/leitstand/views/runs.js, public/leitstand/views/live.js (laufStatusBadge)
  * - public/leitstand/views/runs.test.mjs, views/lauf-detail.test.mjs (node:test)
  * - scripts/check-f12-leitstand-ansicht.mjs (f)/(g) liest renderLaufakte und renderAuftrag als Quelltext
  *
@@ -270,13 +270,15 @@ function fehlerDaten(verweigertDaten, rohstrom) {
  * @param lage - Ergebnis von ermittleLaufLage
  * „Lauf abbrechen“ (G9) hängt wie bisher an aktiv, nicht an der Lage — also auch im Nachlauf des
  * Bypass-Falls; nach einem angeforderten Abbruch steht der Knopf gesperrt mit „Abbruch angefordert“.
- * @param kontext - { laufStatus, verweigertDaten, rohstrom, kenntnisgenommen, fortsetzung, geladenAm, aktiv, abbruchAngefordert }
+ * F46 D5: ohneAbbrechen true lässt den Abbruch-Knopf weg — die Live-Seite trägt ihn im Status-Block.
+ * @param kontext - { laufStatus, verweigertDaten, rohstrom, kenntnisgenommen, fortsetzung, geladenAm, aktiv, abbruchAngefordert, ohneAbbrechen }
  * @returns HTML
  */
-export function renderLaufNotiz(lage, { laufStatus, verweigertDaten = null, rohstrom, kenntnisgenommen = false, fortsetzung = false, geladenAm = null, aktiv = lage === 'laeuft', abbruchAngefordert = false } = {}) {
+export function renderLaufNotiz(lage, { laufStatus, verweigertDaten = null, rohstrom, kenntnisgenommen = false, fortsetzung = false, geladenAm = null, aktiv = lage === 'laeuft', abbruchAngefordert = false, ohneAbbrechen = false } = {}) {
   const aktualisieren = aktionsKnopf('aktualisieren', 'lauf.aktion.aktualisieren')
   let abbrechen = ''
-  if (aktiv && abbruchAngefordert) abbrechen = `<button type="button" class="button danger lauf-aktion" data-aktion="abbrechen-oeffnen" disabled>${tHtml('lauf.aktion.abbruchAngefordert')}</button>`
+  if (ohneAbbrechen) abbrechen = ''
+  else if (aktiv && abbruchAngefordert) abbrechen = `<button type="button" class="button danger lauf-aktion" data-aktion="abbrechen-oeffnen" disabled>${tHtml('lauf.aktion.abbruchAngefordert')}</button>`
   else if (aktiv) abbrechen = aktionsKnopf('abbrechen-oeffnen', 'lauf.aktion.abbrechen', 'danger', true)
   // „Fortsetzung vorbereiten“ ist nur in der Fehlerlage die Hauptaktion (Vorlage d_ausfuehrung_failed).
   const fortsetzen = (primaer) => (fortsetzung ? aktionsKnopf('fortsetzung', 'lauf.aktion.fortsetzung', primaer ? 'primary' : '') : '')
@@ -631,22 +633,29 @@ function auswahl(id, werte) {
   return `<select id="${id}">${werte.map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('')}</select>`
 }
 
-/** Pflichtfeld je Dialogart (Abbrechen: keines — der Endpunkt speichert keinen Grund). */
+/**
+ * Pflichtfeld je Dialogart (Abbrechen: keines — der Endpunkt speichert keinen Grund; Stopp: die
+ * Pflichtbegründung von POST /api/workflows/<id>/stoppen, F46 D5).
+ */
 export const LAUF_DIALOG_FELD = {
   kenntnisnahme: 'entscheidung-kenntnisnahme-begruendung',
   terminal: 'entscheidung-terminal-begruendung',
   antwort: 'entscheidung-antwort-text',
   abbrechen: null,
+  stopp: 'lauf-stopp-begruendung',
 }
 
 /**
  * Inhalt des Dialogs je Art; null, wenn die Art in der Lage nicht angeboten wird (dieselbe Regel wie
  * die Knöpfe der Notiz).
- * @param art - 'kenntnisnahme', 'terminal', 'antwort' oder 'abbrechen'
- * @param stand - { laufId, lage, kenntnisgenommen, aktiv, abbruchAngefordert } — der Abbruch hängt an aktiv
+ * F46 D5: 'stopp' — der Lauf gehört zu einem laufenden Workflow-Schritt (workflowId): der bestehende Stopp
+ * des Ablaufs mit Pflichtbegründung (dieselben Texte wie der Stoppdialog der Ablaufseite), der den Lauf
+ * abbricht. „Stoppen“ bleibt gesperrt, solange die Begründung leer ist (views/runs.js schaltet ihn frei).
+ * @param art - 'kenntnisnahme', 'terminal', 'antwort', 'abbrechen' oder 'stopp'
+ * @param stand - { laufId, lage, kenntnisgenommen, aktiv, abbruchAngefordert, workflowId } — der Abbruch hängt an aktiv
  * @returns HTML oder null
  */
-export function renderLaufDialog(art, { laufId, lage, kenntnisgenommen = false, aktiv = lage === 'laeuft', abbruchAngefordert = false }) {
+export function renderLaufDialog(art, { laufId, lage, kenntnisgenommen = false, aktiv = lage === 'laeuft', abbruchAngefordert = false, workflowId = null }) {
   const kennung = escapeHtml(laufId)
   if (art === 'kenntnisnahme' && lage === 'fehler' && !kenntnisgenommen) {
     return `${dialogKopf('lauf.dialog.kenntnis.titel')}
@@ -677,6 +686,14 @@ export function renderLaufDialog(art, { laufId, lage, kenntnisgenommen = false, 
     return `${dialogKopf('lauf.dialog.abbruch.titel')}
       <p class="subtle">${tHtml('lauf.dialog.abbruch.text')} <code>${kennung}</code></p>
       ${dialogFuss(`<button type="button" class="button danger lauf-dialog-aktion" data-aktion="abbrechen">${tHtml('lauf.dialog.abbruch.bestaetigen')}</button>`, 'lauf.dialog.abbruch.zurueck')}`
+  }
+  if (art === 'stopp' && aktiv === true && !abbruchAngefordert && typeof workflowId === 'string' && workflowId !== '') {
+    return `${dialogKopf('ablauf.dialog.stopp.titel')}
+      <p class="subtle">${tHtml('ablauf.dialog.stopp.text')} <code>${kennung}</code></p>
+      <label class="field" for="lauf-stopp-begruendung">${tHtml('ablauf.dialog.stopp.begruendung')}</label>
+      <textarea id="lauf-stopp-begruendung" rows="3" aria-required="true" aria-describedby="lauf-stopp-hinweis lauf-dialog-meldung"></textarea>
+      <p id="lauf-stopp-hinweis" class="subtle">${tHtml('live.stopp.gesperrt')}</p>
+      ${dialogFuss(`<button type="button" class="button danger lauf-dialog-aktion" data-aktion="stopp" disabled>${tHtml('ablauf.dialog.stopp.bestaetigen')}</button>`, 'lauf.dialog.abbruch.zurueck')}`
   }
   return null
 }

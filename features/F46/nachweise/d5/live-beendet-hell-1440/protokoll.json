@@ -1,0 +1,28 @@
+[
+  {
+    "label": "Beendeter Lauf",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<b> aus Daten (muss fehlen)": false,
+    "Ansicht": "runs",
+    "data-theme": "light",
+    "lang": "de",
+    "Nav aktiv": "Ausführungen",
+    "Live-Chip Ziel": "#/live",
+    "Live-Chip": "Gerade läuft nichts",
+    "Eyebrow": "Ausführung · beendet",
+    "Titel": "F46 D5 · Live-Ansicht",
+    "Gerade": "(fehlt)",
+    "Filter aktiv": "(fehlt)",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Abbrechen": "(fehlt)",
+    "Dialog: Stoppen gesperrt": "(fehlt)",
+    "Chat-Eingabe": "null",
+    "Reiter aktiv (#/runs)": "(fehlt)",
+    "Register aktiv": "(fehlt)",
+    "Fokus (id)": "lauf-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

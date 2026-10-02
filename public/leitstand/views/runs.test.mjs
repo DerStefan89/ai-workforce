@@ -69,7 +69,7 @@ test('F-828: aktiv im Nachlauf (ABGESCHLOSSEN, Prüfschritt läuft) → keine Ma
     assert.equal(laufend.lage, 'laeuft', ergebnis)
     assert.doesNotMatch(laufend.notiz, /kenntnisnahme-oeffnen|terminal-oeffnen/, ergebnis)
     assert.equal(laufend.dialog('kenntnisnahme'), null, ergebnis)
-    assert.match(laufend.notiz, /Stand beim Öffnen/)
+    assert.match(laufend.notiz, /Stand von /)
     const danach = bedienung({ status: 'ABGESCHLOSSEN', ergebnis }, { bypassVerdachtAnzahl: 0 }, false)
     assert.equal(danach.lage, 'fehler', `${ergebnis} nach Laufende`)
     assert.match(danach.dialog('kenntnisnahme'), /Fehler zur Kenntnis nehmen/, `${ergebnis} nach Laufende`)

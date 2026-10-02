@@ -12,7 +12,7 @@
     "build": "echo '[FÜLLUNG] Build-Befehl'",
     "lint": "biome lint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --test",
+    "test": "node --test --test-concurrency=4",
     "leitstand": "node scripts/leitstand-server.mjs",
     "leitstand:seed": "node scripts/leitstand-seed.mjs",
     "verify:f16-rotfall": "node scripts/verify-f16-codex-rotfall.mjs",

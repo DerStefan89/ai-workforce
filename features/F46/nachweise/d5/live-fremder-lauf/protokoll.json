@@ -1,0 +1,28 @@
+[
+  {
+    "label": "Aktiver Lauf ohne Seite in diesem Projekt (anderes Projekt, D13): „Die Workforce wartet“, Als Nächstes ohne Startangebot, Hinweis „ein Lauf zur Zeit“; Chip „arbeitet“ → #/ausfuehrungen",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<b> aus Daten (muss fehlen)": false,
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Ausführungen",
+    "Live-Chip Ziel": "#/ausfuehrungen",
+    "Live-Chip": "Workforce arbeitet · lauf-d5-",
+    "Eyebrow": "Ein Arbeitsschritt",
+    "Titel": "Die Workforce wartet",
+    "Gerade": "(fehlt)",
+    "Filter aktiv": "(fehlt)",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Abbrechen": "(fehlt)",
+    "Dialog: Stoppen gesperrt": "(fehlt)",
+    "Chat-Eingabe": "null",
+    "Reiter aktiv (#/runs)": "(fehlt)",
+    "Register aktiv": "(fehlt)",
+    "Fokus (id)": "live-wartet-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

@@ -4617,7 +4617,8 @@ th {
 #view-dashboard .text-link,
 #view-projektakte .text-link,
 #view-roadmap .rm-detail .text-link,
-#view-roadmap .rm-stand-alle .text-link {
+#view-roadmap .rm-stand-alle .text-link,
+.live-karte .text-link {
   gap: 6px;
   font: 12.5px var(--sans);
   color: var(--mint);
@@ -5646,7 +5647,7 @@ th {
   justify-content: flex-end;
 }
 
-:is(#view-workboard, #view-code) .tabs .tab-knopf {
+:is(#view-workboard, #view-code, #view-runs) .tabs .tab-knopf {
   display: inline-flex;
   align-items: center;
   padding: 12px 0;
@@ -5659,11 +5660,11 @@ th {
   white-space: nowrap;
 }
 
-:is(#view-workboard, #view-code) .tabs .tab-knopf:hover {
+:is(#view-workboard, #view-code, #view-runs) .tabs .tab-knopf:hover {
   color: var(--ink);
 }
 
-:is(#view-workboard, #view-code) .tabs .tab-knopf.active {
+:is(#view-workboard, #view-code, #view-runs) .tabs .tab-knopf.active {
   color: var(--ink);
   border-color: var(--mint);
 }
@@ -5917,7 +5918,7 @@ th {
   outline-offset: 2px;
 }
 
-:is(#view-workboard, #view-code) .tabs .tab-knopf:focus-visible,
+:is(#view-workboard, #view-code, #view-runs) .tabs .tab-knopf:focus-visible,
 #view-workboard .board-item:focus-visible,
 #view-workboard .board-weitere:focus-visible,
 #view-workboard .board-filter-chip:focus-visible,
@@ -6096,7 +6097,7 @@ th {
 }
 
 /* Status-Block (eintrag-bausteine.js statusBlockHtml): Ton der Kopfzeile über data-ton. */
-#view-workboard .status-block {
+:is(#view-workboard, #lauf-detail) .status-block {
   --ton: var(--muted);
   display: flex;
   flex-direction: column;
@@ -6109,21 +6110,21 @@ th {
   background: var(--panel);
 }
 
-#view-workboard .status-block[data-ton='ok'],
-#view-workboard .status-block[data-ton='aktiv'] {
+:is(#view-workboard, #lauf-detail) .status-block[data-ton='ok'],
+:is(#view-workboard, #lauf-detail) .status-block[data-ton='aktiv'] {
   --ton: var(--mint);
 }
 
-#view-workboard .status-block[data-ton='warten'] {
+:is(#view-workboard, #lauf-detail) .status-block[data-ton='warten'] {
   --ton: var(--amber);
   border-color: var(--amber);
 }
 
-#view-workboard .status-block[data-ton='offen'] {
+:is(#view-workboard, #lauf-detail) .status-block[data-ton='offen'] {
   --ton: var(--ebene-bug);
 }
 
-#view-workboard .status-block-kopf {
+:is(#view-workboard, #lauf-detail) .status-block-kopf {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6135,7 +6136,7 @@ th {
   overflow-wrap: anywhere;
 }
 
-#view-workboard .status-block-punkt {
+:is(#view-workboard, #lauf-detail) .status-block-punkt {
   width: 9px;
   height: 9px;
   flex-shrink: 0;
@@ -6143,7 +6144,7 @@ th {
   background: var(--ton);
 }
 
-#view-workboard .status-block-liste {
+:is(#view-workboard, #lauf-detail) .status-block-liste {
   display: grid;
   /* Lange Beschriftungen (ru „ЗАПЛАНИРОВАНО“) laufen nicht in den Wert: die Spalte wächst bis 45 %. */
   grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
@@ -6152,7 +6153,7 @@ th {
   font-size: 12.5px;
 }
 
-#view-workboard .status-block-liste dt {
+:is(#view-workboard, #lauf-detail) .status-block-liste dt {
   max-width: 13em;
   padding-top: 2px;
   overflow-wrap: anywhere;
@@ -6162,7 +6163,7 @@ th {
   color: var(--muted);
 }
 
-#view-workboard .status-block-liste dd {
+:is(#view-workboard, #lauf-detail) .status-block-liste dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -6700,7 +6701,7 @@ th {
   font-weight: 400;
 }
 
-#view-workboard .progress-track {
+:is(#view-workboard, #lauf-detail) .progress-track {
   height: 5px;
   margin: 10px 0 0;
   overflow: hidden;
@@ -6708,7 +6709,7 @@ th {
   background: var(--track);
 }
 
-#view-workboard .progress-track > span {
+:is(#view-workboard, #lauf-detail) .progress-track > span {
   display: block;
   height: 100%;
   border-radius: 8px;
@@ -11521,4 +11522,523 @@ a.umgebung-werkzeug:not([aria-disabled='true']):hover {
     text-transform: uppercase;
     color: var(--muted);
   }
+}
+
+/* ─────────── Live-Ansicht (F46 D5, abgleich-f46.md §4.9; Bilder 08-live--Main, --Main-nichts-laeuft) ───────────
+   Die Lauf-Seite #lauf-detail (.live-seite) im Aufbau des Bildes: Kopf mit Chips und „Gerade“, rechts der
+   Status-Block (Baustein statusBlockHtml; Regeln oben mit #view-workboard geteilt), Ablaufleiste,
+   Aktivität | Mehr dazu, drei Karten, zwei Karten, darunter der Bestand aus F44 WS-5a (Timeline,
+   Einordnung, Aufklappbereiche). #live-wartet ist der Zustand „Die Workforce wartet“. Farben nur über
+   Tokens; die Töne der Arten wie im Bild: liest = --ebene-feature, ändert = --amber, führt aus = --mint,
+   nutzt = --ebene-workstream. Kein display auf Containern mit hidden-Attribut (F-622). */
+#view-runs.live-wartet-offen > :not(#live-wartet) {
+  display: none;
+}
+
+#live-wartet-titel:focus,
+#live-wartet-titel:focus-visible {
+  outline: none;
+}
+
+.live-kopf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 28px;
+  align-items: start;
+  margin: 0 0 24px;
+}
+
+.live-kopf-text {
+  min-width: 0;
+}
+
+.live-kopf-text h1 {
+  margin: 6px 0 12px;
+  overflow-wrap: anywhere;
+}
+
+#lauf-detail[data-live-zustand='laeuft'] .live-eyebrow-kopf {
+  color: var(--amber);
+}
+
+.live-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-kopf-chip {
+  padding: 4px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.live-kopf-chip-link {
+  border-color: color-mix(in srgb, var(--ebene-workstream) 55%, transparent);
+  color: var(--ebene-workstream);
+  text-decoration: none;
+}
+
+.live-gerade {
+  margin: 12px 0 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.live-gerade-label {
+  color: var(--muted);
+}
+
+.live-ziel {
+  font-family: var(--font-family-mono);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.live-status {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.live-status .progress-track {
+  margin: 0;
+}
+
+.live-status-aktionen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.live-ablauf {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.live-stufe {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.live-stufe[aria-current='step'] {
+  border-color: var(--ink);
+}
+
+.live-stufe[data-status='fehler'] {
+  border-color: color-mix(in srgb, var(--red) 60%, transparent);
+}
+
+.live-stufe-nr {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.live-stufe-name {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.live-stufe-status {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.live-stufe[data-status='fertig'] .live-stufe-status {
+  border-color: color-mix(in srgb, var(--mint) 55%, transparent);
+  color: var(--mint);
+}
+
+.live-stufe[data-status='jetzt'] .live-stufe-status {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  color: var(--amber);
+}
+
+.live-stufe[data-status='fehler'] .live-stufe-status {
+  border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  color: var(--red);
+}
+
+.live-ablauf-ohne {
+  margin: 0 0 20px;
+  font-size: 12.5px;
+}
+
+.live-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 0 0 16px;
+}
+
+.live-drei {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+
+.live-zwei {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 28px;
+}
+
+.live-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.live-karte h2 {
+  margin: 0;
+  font: 400 20px/1.2 var(--serif);
+}
+
+.live-karte p {
+  margin: 0;
+}
+
+.live-karte-akzent {
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+}
+
+.live-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.live-karte-hinweis {
+  font-size: 11px;
+}
+
+.live-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.live-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-zeile {
+  display: grid;
+  grid-template-columns: 52px 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.live-zeile:hover {
+  background: var(--panel-hover);
+}
+
+.live-zeile[aria-pressed='true'] {
+  border-color: var(--line);
+  background: var(--panel-hover);
+}
+
+.live-zeit {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.live-art {
+  --art-ton: var(--muted);
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 74px;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--art-ton) 55%, transparent);
+  border-radius: 999px;
+  font-size: 10.5px;
+  text-align: center;
+  color: var(--art-ton);
+}
+
+.live-art[data-art='aendert'] {
+  --art-ton: var(--amber);
+}
+
+.live-art[data-art='befehl'] {
+  --art-ton: var(--mint);
+}
+
+.live-art[data-art='liest'] {
+  --art-ton: var(--ebene-feature);
+}
+
+.live-art[data-art='faehigkeit'] {
+  --art-ton: var(--ebene-workstream);
+}
+
+.live-fuss,
+.live-klein,
+.live-leer {
+  font-size: 11.5px;
+}
+
+.live-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.live-eyebrow-akzent {
+  color: var(--amber);
+}
+
+.live-mehr-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-felder {
+  display: grid;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.live-felder dt {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.live-felder dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.live-mehr-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-jarvis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.live-jarvis-fragen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.live-jarvis-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.live-jarvis-form input {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.live-jarvis-hinweis {
+  font-size: 11px;
+}
+
+.live-dateien,
+.live-output {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.live-dateien li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.live-dateien .live-ziel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.live-datei-punkt {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
+.live-output-zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.live-schritt-status {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.live-schritt-status[data-status='ERFOLGREICH'] {
+  color: var(--mint);
+}
+
+.live-schritt-status[data-status='LAEUFT'] {
+  color: var(--amber);
+}
+
+.live-kontext ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+.live-wartet-karte-titel {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .live-ablauf {
+    grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  }
+
+  .live-raster,
+  .live-drei {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .live-kopf,
+  .live-zwei {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .live-zeile {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .live-zeile .live-ziel {
+    grid-column: 1 / -1;
+  }
+
+  .live-filter {
+    margin-left: 0;
+  }
+}
+
+/* Leer (Laden) bzw. nicht ladbar: keine leeren Rahmen — die Karten tragen kein hidden-Attribut (F-622). */
+.live-karte:empty,
+.live-status:empty,
+.live-chips:empty {
+  display: none;
+}
+
+.lauf-seite.lauf-nicht-ladbar :is(.live-raster, .live-drei, .live-zwei) {
+  display: none;
+}
+
+/* Der Status steht im Status-Block (Kopfzeile) — der Punkt unter dem Titel entfällt dort, ohne hidden (F-622). */
+.live-seite #lauf-detail-status {
+  display: none;
+}
+
+/* Links in den Live-Karten: D1-Muster (oben bei #view-dashboard, 12,5 px Sans, Mint); hier nur die Ausrichtung. */
+.live-karte .text-link {
+  align-self: flex-start;
+}
+
+.live-karte .action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Ohne „Mehr dazu“ (beendeter Lauf) nimmt die Aktivität die ganze Breite. */
+.live-raster:has(#live-mehr:empty) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* F46 D5: Die Seitenüberschrift von #/runs nennt jetzt das Register („Aufträge“) — die gleichlautende
+   Abschnittsüberschrift bleibt für Screenreader, sichtbar stünde sie doppelt (Muster .sr-only). */
+#workflows-abschnitt > h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.live-schritt-id {
+  font-size: 11px;
+  color: var(--muted);
 }
