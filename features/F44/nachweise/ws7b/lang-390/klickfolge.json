@@ -1,0 +1,289 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "auftrag-nachweis"
+      }
+    },
+    {
+      "muster": "**/laeufe",
+      "methode": "POST",
+      "status": 202,
+      "json": {}
+    },
+    {
+      "muster": "**/auftraege/*/routen",
+      "methode": "POST",
+      "status": 202,
+      "json": {}
+    },
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "architekt",
+            "benoetigteCapabilities": [
+              "DESIGN_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "DESIGN_REVIEW"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "DESIGN_REVIEW"
+                ]
+              }
+            ],
+            "gedeckt": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/laeufe/scout-*",
+      "json": {
+        "laufStatus": {
+          "status": "LAEUFT"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Unterreiter",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Entdecken aria-disabled",
+        "selector": "#werkstatt-entdecken",
+        "attribut": "aria-disabled"
+      },
+      {
+        "name": "Scout-Panel",
+        "selector": "#capabilities-scout"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Knopf qa gesperrt",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link[disabled]"
+      },
+      {
+        "name": "Knopf architekt gesperrt",
+        "selector": ".werkstatt-rolle[data-rolle=\"architekt\"] .capabilities-scout-link[disabled]"
+      },
+      {
+        "name": "Knopf architekt frei",
+        "selector": ".werkstatt-rolle[data-rolle=\"architekt\"] .capabilities-scout-link:not([disabled])"
+      },
+      {
+        "name": "Karten",
+        "selector": ".scout-karte"
+      },
+      {
+        "name": "Kollisionshinweis",
+        "selector": ".scout-kollision"
+      },
+      {
+        "name": "ungültige Quelle unverlinkt",
+        "selector": ".scout-quelle-text"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#capabilities-scout a[href^=\"javascript\"]"
+      },
+      {
+        "name": "Link ohne noopener (muss fehlen)",
+        "selector": "#capabilities-scout a[target=\"_blank\"]:not([rel=\"noopener noreferrer\"])"
+      },
+      {
+        "name": "vorgemerkt mit Ablauf-Link",
+        "selector": ".scout-vormerken-zelle a[href^=\"#/workflows/\"]"
+      },
+      {
+        "name": "Fehlernotiz",
+        "selector": "#capabilities-scout .note.red"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Werkzeuge: Kachel-Beschreibung auf drei Zeilen, Detail der ersten Kachel offen mit Volltext",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      },
+      "klick": "#capabilities-library .werkzeug-detail > summary",
+      "screenshot": "d390-kachel-detail-volltext.webp"
+    },
+    {
+      "label": "Rollen & Besetzung",
+      "klick": "#faehigkeiten-reiter-rollen",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "Ergebnis mit langem Namen, langer Lizenz, langer Quelle und langem Risiko bei 390 px: kein waagerechter Scroll",
+      "anfragenAntworten": [
+        {
+          "muster": "**/laeufe/scout-*",
+          "json": {
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH"
+            },
+            "scoutErgebnis": {
+              "status": "ok",
+              "ergebnis": {
+                "gesuchte_capability": "BROWSER_TEST",
+                "kandidaten": [
+                  {
+                    "name": "Barrierefreiheits-Prüfwerkzeug-für-Formularvalidierung-und-Fehlermeldungsverständlichkeit",
+                    "typ": "skill",
+                    "quelle_url": "https://example.org/barrierefreiheit/pruefwerkzeug/formularvalidierung/fehlermeldungsverstaendlichkeit/version/2026/10/README.md",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "hoch",
+                    "integrationsaufwand": "gering",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": "Creative-Commons-Namensnennung-Weitergabe-unter-gleichen-Bedingungen-4.0-International",
+                    "risiken": [
+                      "Ein sehr langer Risikotext ohne Leerstellen: https://example.org/ein/sehr/langer/pfad/der/nicht/umbricht/und/trotzdem/nicht/ueberlaufen/darf"
+                    ],
+                    "empfehlung": "Prüft Formulare, Fehlermeldungen und Tastaturbedienung gegen WCAG-Kriterien – mit ausführlicher Begründung je Befund, Quellenangabe und einem Vorschlag zur Behebung.",
+                    "unsicherheiten": []
+                  },
+                  {
+                    "name": "Playwright MCP",
+                    "typ": "extern",
+                    "quelle_url": "https://github.com/microsoft/playwright-mcp",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "hoch",
+                    "integrationsaufwand": "gering",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": "Apache-2.0",
+                    "risiken": [
+                      "Startet einen echten Browser",
+                      "Netzzugriff"
+                    ],
+                    "empfehlung": "Deckt Bedienung und Darstellung im Browser ab; bereits im Katalog bekannt.",
+                    "unsicherheiten": []
+                  },
+                  {
+                    "name": "Web Checker",
+                    "typ": "skill",
+                    "quelle_url": "javascript:alert(1)",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "mittel",
+                    "integrationsaufwand": "mittel",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": null,
+                    "risiken": [],
+                    "empfehlung": "Leichter Skill für Seitenprüfungen ohne eigenen Browser.",
+                    "unsicherheiten": []
+                  },
+                  {
+                    "name": "Browser Use",
+                    "typ": "extern",
+                    "quelle_url": "https://github.com/browser-use/browser-use",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "niedrig",
+                    "integrationsaufwand": "hoch",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": "MIT",
+                    "risiken": [
+                      "Steuert den Browser frei",
+                      "Kosten je Aufruf"
+                    ],
+                    "empfehlung": "Mächtig, aber für reine Prüfungen überdimensioniert.",
+                    "unsicherheiten": [
+                      "Kostenmodell nicht verifiziert"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link",
+      "warteAufSelector": {
+        "selector": ".scout-karte",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d390-lang-ergebnis.webp"
+    }
+  ]
+}

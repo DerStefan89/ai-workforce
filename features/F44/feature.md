@@ -1580,6 +1580,74 @@ keine Server-, Schema- oder API-Änderung, keine neue Route (`registriere(/^#\/c
 - **WS7a-6** Texte in de/en/tr/ru, i18n-Gate und `npm run check` grün; Render-Nachweise liegen vor, kein waagerechter
   Überlauf bei 390 px.
 
+## Stand WS-7b „Scout“ (02.10.2026)
+Branch `feat/f725-ws7b-scout` (Basis `527a6d4`, main mit WS-7a), nicht committet. Vorlage V10 d_faehigkeiten_scout und
+d_faehigkeiten; Abgleich F-725 J10 (Vermerk WS-7b in §9). Nur Leitstand-UI, keine Server-, Schema-, API- oder
+Routenänderung, keine Freitextsuche.
+- **F-955 erledigt:** Das Projektwechsel-Abonnement ruft zusätzlich `setzeScoutZurueck()` (`scoutZustand = null`, neue
+  `vormerkenZustaende`, `geoeffneteQuellen` geleert, `renderScoutPanel()` → Knöpfe frei). Ein noch laufender Lauf
+  läuft serverseitig weiter und bleibt unter „Ausführungen“ des alten Projekts sichtbar. Neuer View-Test
+  `views/capabilities.test.mjs` (Schein-DOM, festes fetch): Sperre während des Laufs, kein zweiter Lauf (D13),
+  Auffrischer pollt; nach dem Wechsel Panel leer, Knöpfe frei, keine Abfrage der alten laufId, neue Suche möglich.
+  Rotfall per Mutation belegt (ohne Zurücksetzen scheitert der zweite Test).
+- **Scout-Ergebnis als Karten** (Raster wie die Werkzeug-Kacheln): Tag „Kandidat · Typ“, Name, Empfehlung, Passung,
+  Integrationsaufwand, Rechte, Lizenz („—“), Risiken (Liste oder „keine erkannt“), Unsicherheiten, Quelle (Link nur über
+  `istSichereQuelleUrl`, `rel="noopener noreferrer"`, „ungeprüft“ bis geöffnet; sonst reiner Text mit Hinweis),
+  Kollisionshinweis und Vormerken-Zelle mit allen Zuständen (Knopf, „Wird vorgemerkt …“, Fehler mit „Erneut
+  versuchen“, vorgemerkt mit Link zum Ablauf). Darüber „Kandidaten für <Capability>“ und der P5-Hinweis, darunter eine
+  Notiz zu Prüfung und Freigabe. Leeres Ergebnis „Keine Kandidaten gefunden.“. Zwischenzustände (wird angelegt, wird
+  gestartet, läuft mit Hinweis auf die Sperre) und Fehler als `.note` bzw. `.note.red`.
+- **Unverändert:** Ablauf und Guards von `starteScoutSuche`, `aktualisiereScoutZustand`, `vormerkenKandidat`,
+  `istScoutSucheAktiv`, `aktualisiereScoutButtonZustand`, `vormerken-auftrag.js`, `baueScoutAuftragstext` (deutsch, geht
+  an das Modell). Geändert sind dort nur die Meldungstexte (jetzt über `t()`, Serverwerte roh eingesetzt).
+- **Kopf:** „Fähigkeit entdecken“ (Lupe) rechts neben „Neu laden“ als Baustein „kommt“ (`button kommt-knopf`,
+  `aria-disabled`, Sperre über `initKommt`), title und `aria-describedby` erklären: freie Suche kommt, heute „Kandidaten
+  suchen“ je Lücke. Statisch in `index.html`, weil `kommtKnopf` weder Symbol-SVG noch Erklärung trägt.
+- **Werkzeug-Kacheln:** Beschreibung höchstens drei Zeilen (`-webkit-line-clamp`/`line-clamp` unter `@supports`,
+  Rückfall `max-height` 3 × Zeilenhöhe), Volltext als erste Zeile im Kachel-Detail („Beschreibung“).
+- **i18n:** 39 neue Schlüssel in de/en/tr/ru (`werkstatt.scout.*` einschließlich der Stufen von Passung und Aufwand,
+  `werkstatt.entdecken*`, `werkstatt.detail.beschreibung`). Typ (über `typName`), Passung und Aufwand (`stufeName`) sind
+  geschlossene Wertemengen des Schemas und werden übersetzt; Kandidatentexte, Gründe, IDs und URLs bleiben roh.
+- **Gates:** keines musste mitziehen (i18n-Gate, f20-tokens, f24, f27 grün). Neuer Test: `views/capabilities.test.mjs`
+  (drei Tests, aufeinander aufbauend): Sperre und D13, F-955, P5 (feindlicher Kandidat ohne `javascript:`-Link, mit
+  noopener, escaped; geöffnete Quelle ohne „ungeprüft“, nach Wechsel wieder) — Rotfälle für F-955 und P5 per Mutation belegt.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): alle drei „Freigegeben mit
+  Hinweisen“, nichts blockierend. Eine Korrekturrunde, eingearbeitet: Typ-Chip übersetzt (dg 1) und Passung/Aufwand
+  übersetzt (qa 4); `.werkstatt-kopf-aktionen` ohne `max-width` (dg 2, cr 4); Karten- und Rasterregeln geteilt (dg 3,
+  cr 8); Überschrift 24 px (dg 4); 200 %-Bild 3 zeigt die Karten (dg 5); veraltete Kommentare (dg 6, cr 5/13, qa 7);
+  Rückfall-title vollständig (dg 7, cr 12); P5-Test (cr 3) und schärfere Prüfung im Lauf-Test, Testreihenfolge im Kopf
+  (cr 6/7); `.werkstatt-scout` ohne `overflow-x` (cr 9, qa 7); `kommt.js`-Kopf nennt `#werkstatt-entdecken` (cr 11);
+  Rechte und Unsicherheiten in der Karte (qa 3); Kandidatenname für Screenreader an „Vormerken“/„Erneut versuchen“
+  (qa 5); Nachweise für Vormerk-Fehler mit „Erneut versuchen“ und Kachel-Detail mit Volltext (qa 6); bei Kollision
+  sekundärer statt primärer „Vormerken“ (qa 9). Nicht übernommen: siehe Prüfpunkte.
+
+### Prüfpunkte `#/capabilities` (aus dem Prüfpass WS-7b)
+- Überholschutz in `vormerkenKandidat`, Sperre nach Wechsel bei noch belegtem Lauf (409 und verwaister Auftrag),
+  unerreichbares Ergebnis des alten Laufs, try/catch im Fertig-Pfad (cr 1/2/10, qa 1/2/10, dg 8) — Änderungen an
+  Ablauf/Guards, in WS-7b ausgeschlossen: F-957.
+- Keine `aria-live`-Ansage für „Lauf fertig/fehlgeschlagen“ (qa 5, cr 14): Designregel „genau eine Live-Region“
+  (Persona); Fokus nach Neurendern des Panels geht verloren (qa 5, dg 8) — mit F-957.
+- Fehlernotizen ohne laufId und Link zum Lauf-Detail, 409 ohne Handlungshinweis (qa 8).
+- Prüfpunkt aus WS-7a nicht erledigt: `.badge.stale` (ASSESSED, F-346-Ausnahme) im Pillenstil und Icons je Typ — bleibt
+  offen für die Design-Finalisierung.
+- Ohne line-clamp-Unterstützung schneidet der Rückfall ohne Auslassungszeichen ab; tr nicht gerendert (qa 6, 11).
+- **Nachweise** `features/F44/nachweise/ws7b/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner, Port
+  4199): Matrix (1440 dunkel und hell, 390 dunkel, 200 %, ru 1440) mit Kopf und gekürzten Kacheln, „Kandidaten suchen“
+  → läuft mit gesperrten übrigen Knöpfen, Ergebnis als Karten (Kollision, ungültige Quelle `javascript:` unverlinkt,
+  leere Risiken, ohne Lizenz), Vormerken → vorgemerkt; Zustände (leeres Ergebnis, Lauf VERWEIGERT, Start 409,
+  Projektwechsel mitten im Lauf); lange Werte bei 390 px. Alle POSTs (`…/auftraege`, `…/laeufe`, `…/routen`) und
+  `GET …/laeufe/<id>` fest beantwortet; im Kontrollzustand entstand nichts. Kein waagerechter Überlauf.
+
+### Akzeptanzkriterien WS-7b
+- **WS7b-1** F-955: Projektwechsel setzt Scout-Panel, Vormerk-Zustände und geöffnete Quellen zurück, gibt die Knöpfe
+  frei und beendet das Abfragen der alten laufId (`views/capabilities.test.mjs`).
+- **WS7b-2** Ergebnis als Karten mit allen Feldern und Zuständen; Quelle nur http(s) als Link mit
+  `rel="noopener noreferrer"`; Fremdes escaped (P5); Ablauf und Guards unverändert.
+- **WS7b-3** Scout-Texte in de/en/tr/ru, Serverwerte roh; Auftragstext an das Modell deutsch.
+- **WS7b-4** „Fähigkeit entdecken“ als „kommt“ im Kopf, ohne Route.
+- **WS7b-5** Kachel-Beschreibung auf drei Zeilen, Volltext im Detail; kein Überlauf bei 390 px und 200 %.
+- **WS7b-6** `npm run check` grün; Render-Nachweise liegen vor, ohne echten Lauf.
+
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:
 - Persona im hellen Theme: dunkler Fleck mit schwarzem Lid-Band auf hellem Kopf

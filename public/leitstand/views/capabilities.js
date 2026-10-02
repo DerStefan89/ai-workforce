@@ -19,10 +19,11 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initCapabilitiesView beim Bootstrap)
  *
- * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2, unten unverändert) — kein
+ * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2; Ablauf und Guards unverändert, Darstellung seit WS-7b als Karten) — kein
  * Aktivieren oder Freigeben hier; eine Freigabe läuft nur über den F36-Weg im Freigabedialog.
  * Serverwerte (IDs, Capability-Namen, anzeigeGrund, fehltFuerEinsatz, Phasen, Pfade) bleiben roh und
- * gehen durch escapeHtml, nie durch t(). Die Scout-Texte sind bis WS-7b noch deutsch.
+ * gehen durch escapeHtml, nie durch t(). Seit WS-7b sind auch die Scout-Texte übersetzt (werkstatt.scout.*);
+ * baueScoutAuftragstext bleibt deutsch (geht an das Modell, Vertrag der Rolle scout).
  */
 
 import { holeAbdeckung, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
@@ -118,7 +119,8 @@ function textOderStrich(wert) {
 
 /**
  * Eine Kachel: Typ-Chip, Name, Beschreibung, Fuß mit Freigabe und Verfügbarkeit, Detailklappe mit
- * ID, Phasen, Grund und „Fehlt für Einsatz“ (alle roh). Farben nur aus .ablauf-status: freigegeben
+ * Beschreibung im Volltext (auf der Kachel auf drei Zeilen gekürzt, F44 WS-7b), ID, Phasen, Grund und „Fehlt für
+ * Einsatz“ (alle roh). Farben nur aus .ablauf-status: freigegeben
  * mint, Freigabe offen bernstein, Verfügbarkeit gedämpft (rot bliebe Fehlern vorbehalten, Vorlage
  * „Nicht verbunden“). „Details“ trägt den Namen für Screenreader mit (42 gleichnamige Klappen).
  * @param eintrag - LibraryEintrag
@@ -139,6 +141,7 @@ function werkzeugKachel(eintrag) {
     <details class="werkzeug-detail">
       <summary>${tHtml('werkstatt.detail')}<span class="sr-only">: ${escapeHtml(name)}</span></summary>
       <dl>
+        <dt>${tHtml('werkstatt.detail.beschreibung')}</dt><dd>${textOderStrich(eintrag.beschreibung)}</dd>
         <dt>${tHtml('werkstatt.detail.id')}</dt><dd><code>${escapeHtml(eintrag.id)}</code></dd>
         <dt>${tHtml('werkstatt.detail.phasen')}</dt><dd>${phasen}</dd>
         <dt>${tHtml('werkstatt.detail.grund')}</dt><dd>${textOderStrich(eintrag.anzeigeGrund)}</dd>
@@ -311,10 +314,10 @@ function initAbdeckungBedienung() {
  */
 let scoutZustand = null
 
-/** quelle_url-Werte, die der Mensch bereits geöffnet hat (Klick auf den Link) — AK11: das "ungeprüft"-Badge verschwindet erst dann, nie automatisch. Bewusst modulweit statt je Lauf: eine einmal geöffnete Quelle bleibt für die Sitzung als geprüft markiert. */
+/** quelle_url-Werte, die der Mensch bereits geöffnet hat (Klick auf den Link) — AK11: das "ungeprüft"-Badge verschwindet erst dann, nie automatisch. Bewusst modulweit statt je Lauf: eine einmal geöffnete Quelle bleibt bis zum Projektwechsel (setzeScoutZurueck) oder Neuladen der Seite als geprüft markiert. */
 const geoeffneteQuellen = new Set()
 
-/** Vormerken-Fortschritt je Kandidat DES AKTUELLEN scoutZustand.ergebnis, Schlüssel = Index im kandidaten-Array. Wird bei jedem neuen Scout-Lauf verworfen (siehe starteScoutSuche). */
+/** Vormerken-Fortschritt je Kandidat DES AKTUELLEN scoutZustand.ergebnis, Schlüssel = Index im kandidaten-Array. Wird bei jedem neuen Scout-Lauf (starteScoutSuche) und bei jedem Projektwechsel (setzeScoutZurueck) verworfen. */
 let vormerkenZustaende = new Map()
 
 /** ids aller aktuell registrierten Ressourcen (aus der zuletzt geladenen Library, siehe ladeCapabilities) — für einen client-seitigen Vorab-Hinweis auf eine ableiteRessourcenId-Kollision (AK13, real aufgetreten: Kandidat 'playwright-mcp' kollidiert mit einer bestehenden id). Ersetzt NICHT die echte Prüfung (validiereRessourcenDaten, src/ressourcen/index.ts) — nur ein früher, gut sichtbarer Hinweis, bevor ein Mensch eine ZWINGEND-Freigabe für einen von vornherein kollidierenden Auftrag erteilt. */
@@ -340,57 +343,108 @@ function istSichereQuelleUrl(quelleUrl) {
   return /^https?:\/\//.test(quelleUrl)
 }
 
+/**
+ * Quelle eines Kandidaten (Karte, F44 WS-7b): Link NUR für http(s) (istSichereQuelleUrl, P5), mit
+ * rel="noopener noreferrer" und dem Kennzeichen „ungeprüft“, bis der Mensch die Quelle geöffnet hat
+ * (AK11, geoeffneteQuellen); jeder andere Wert erscheint als reiner Text mit Hinweis.
+ * @param kandidat - ein Eintrag aus ergebnis.kandidaten
+ * @returns HTML
+ */
 function quelleZelle(kandidat) {
   if (!istSichereQuelleUrl(kandidat.quelle_url)) {
-    return `${escapeHtml(kandidat.quelle_url)} <span class="badge fehler">kein gültiges http(s)-Schema — nicht verlinkt</span>`
+    return `<span class="scout-quelle-text">${escapeHtml(kandidat.quelle_url)}</span> <span class="ablauf-status fehler">${tHtml('werkstatt.scout.quelleUngueltig')}</span>`
   }
   const link = `<a href="${escapeHtml(kandidat.quelle_url)}" target="_blank" rel="noopener noreferrer" class="scout-quelle-link" data-url="${escapeHtml(kandidat.quelle_url)}">${escapeHtml(kandidat.quelle_url)}</a>`
-  return geoeffneteQuellen.has(kandidat.quelle_url) ? link : `${link} <span class="badge stale">ungeprüft</span>`
+  return geoeffneteQuellen.has(kandidat.quelle_url) ? link : `${link} <span class="ablauf-status warten">${tHtml('werkstatt.scout.ungeprueft')}</span>`
+}
+
+/** Stufen von fit und integrationsaufwand (schemas/ergebnis-scout.schema.json, geschlossene Wertemengen). */
+const SCOUT_STUFEN = Object.freeze(['hoch', 'mittel', 'niedrig', 'gering'])
+
+/**
+ * Übersetzte Stufe; ein unbekannter Wert bleibt roh (Muster typName).
+ * @param stufe - kandidat.fit oder kandidat.integrationsaufwand
+ * @returns Text
+ */
+function stufeName(stufe) {
+  return SCOUT_STUFEN.includes(stufe) ? t(`werkstatt.scout.stufe.${stufe}`) : String(stufe ?? '')
 }
 
 /** Vorab-Hinweis (kein Blocker — die echte Prüfung bleibt validiereRessourcenDaten): die aus kandidat.name abgeleitete id kollidiert bereits mit einer registrierten Ressource (AK13, real aufgetreten). @param kandidat - ein Eintrag aus ergebnis.kandidaten @returns HTML-Fragment oder '' */
 function kollisionsHinweis(kandidat) {
   const id = ableiteRessourcenId(kandidat.name)
   if (!bekannteRessourcenIds.has(id)) return ''
-  return `<p class="fehler">Achtung: id "${escapeHtml(id)}" existiert bereits in ressourcen.json — ein Vormerken würde beim Schreiben real kollidieren.</p>`
+  return `<p class="fehler scout-kollision">${tHtml('werkstatt.scout.kollision', {}, { id: `<code>${escapeHtml(id)}</code>` })}</p>`
 }
 
-/** Rendert die Vormerken-Zelle eines Kandidaten je nach vormerkenZustaende[index] — Button, Fortschritt, Fehler mit Wiederholen (reicht eine bereits angelegte auftragId erneut ein statt einen zweiten, verwaisten Auftrag anzulegen, Muster views/workboard.js wiederholeRouten), oder ein Link zur normalen Workflow-Freigabe (kein Duplikat der Kette aus views/workboard.js, siehe baueVormerkenAuftragstext-Kommentar in ../vormerken-auftrag.js). @param index - Position des Kandidaten @param kandidat - der Kandidat dieser Zeile (für den Kollisions-Vorab-Hinweis) */
+/** Rendert die Vormerken-Zelle eines Kandidaten je nach vormerkenZustaende[index] — Button, Fortschritt, Fehler mit Wiederholen (reicht eine bereits angelegte auftragId erneut ein statt einen zweiten, verwaisten Auftrag anzulegen, Muster views/workboard.js wiederholeRouten), oder ein Link zur normalen Workflow-Freigabe (kein Duplikat der Kette aus views/workboard.js, siehe baueVormerkenAuftragstext-Kommentar in ../vormerken-auftrag.js). @param index - Position des Kandidaten @param kandidat - der Kandidat dieser Zeile (für den Kollisions-Vorab-Hinweis) @returns HTML */
 function vormerkenZelle(index, kandidat) {
   const zustandKandidat = vormerkenZustaende.get(index)
+  // Name für Screenreader: mehrere gleichnamige Knöpfe „Vormerken“ / „Erneut versuchen“ (Muster „Details“, WS-7a).
+  const bezug = `<span class="sr-only">: ${escapeHtml(kandidat.name)}</span>`
   if (zustandKandidat === undefined) {
-    return `${kollisionsHinweis(kandidat)}<button type="button" class="btn btn-primary scout-vormerken" data-index="${index}">Vormerken</button>`
+    const hinweis = kollisionsHinweis(kandidat)
+    // Bei Kollision ist Vormerken nicht die naheliegende Handlung — sekundärer statt primärer Knopf.
+    return `${hinweis}<button type="button" class="button${hinweis === '' ? ' primary' : ''} scout-vormerken" data-index="${index}">${tHtml('werkstatt.scout.vormerken')}${bezug}</button>`
   }
-  if (zustandKandidat.phase === 'unterwegs') return '<p class="hinweis">Wird vorgemerkt…</p>'
+  if (zustandKandidat.phase === 'unterwegs') return `<p class="hinweis">${tHtml('werkstatt.scout.wirdVorgemerkt')}</p>`
   if (zustandKandidat.phase === 'fehler') {
-    return `<p class="fehler">${escapeHtml(zustandKandidat.meldung)}</p><button type="button" class="btn scout-vormerken" data-index="${index}">Erneut versuchen</button>`
+    return `<p class="fehler">${escapeHtml(zustandKandidat.meldung)}</p><button type="button" class="button scout-vormerken" data-index="${index}">${tHtml('werkstatt.scout.erneut')}${bezug}</button>`
   }
-  return `<p class="hinweis">Vorgemerkt — Auftrag <code>${escapeHtml(zustandKandidat.auftragId)}</code>. Freigabe wie gewohnt unter <a href="#/workflows/${encodeURIComponent(zustandKandidat.workflowId)}">#/workflows/${escapeHtml(zustandKandidat.workflowId)}</a>.</p>`
+  const workflowLink = `<a href="#/workflows/${encodeURIComponent(zustandKandidat.workflowId)}">${escapeHtml(zustandKandidat.workflowId)}</a>`
+  return `<p class="hinweis">${tHtml('werkstatt.scout.vorgemerkt', {}, { auftrag: `<code>${escapeHtml(zustandKandidat.auftragId)}</code>`, ablauf: workflowLink })}</p>`
 }
 
-function kandidatZeile(kandidat, index) {
-  return `<tr>
-    <td>${escapeHtml(kandidat.name)}</td>
-    <td>${escapeHtml(kandidat.typ)}</td>
-    <td>${escapeHtml(kandidat.fit)}</td>
-    <td>${escapeHtml(kandidat.integrationsaufwand)}</td>
-    <td>${kandidat.lizenz ? escapeHtml(kandidat.lizenz) : '<span class="unbekannt">—</span>'}</td>
-    <td>${kandidat.risiken.length === 0 ? '<span class="unbekannt">keine erkannt</span>' : `<ul>${kandidat.risiken.map((risiko) => `<li>${escapeHtml(risiko)}</li>`).join('')}</ul>`}</td>
-    <td>${escapeHtml(kandidat.empfehlung)}</td>
-    <td>${quelleZelle(kandidat)}</td>
-    <td>${vormerkenZelle(index, kandidat)}</td>
-  </tr>`
+/**
+ * Karte eines Kandidaten (F44 WS-7b, Vorlage V10 d_faehigkeiten_scout: .panel mit Tag „Kandidat · Typ“):
+ * Name, Empfehlung, dann Passung, Integrationsaufwand, Rechte, Lizenz („—“), Risiken (Liste oder „keine erkannt“),
+ * Unsicherheiten und Quelle als Definitionsliste, unten die Vormerken-Zelle. Typ, Passung und Aufwand sind
+ * geschlossene Wertemengen des Schemas und werden übersetzt (typName, stufeName); ein unbekannter Wert bleibt roh. Alle Kandidatenfelder sind fremde
+ * Recherche-Inhalte (P5) und gehen roh durch escapeHtml.
+ * @param kandidat - ein Eintrag aus ergebnis.kandidaten
+ * @param index - Position im kandidaten-Array (Schlüssel für vormerkenZustaende)
+ * @returns HTML
+ */
+function kandidatKarte(kandidat, index) {
+  const liste = (werte, leerSchluessel) =>
+    Array.isArray(werte) && werte.length > 0 ? `<ul class="scout-risiken">${werte.map((wert) => `<li>${escapeHtml(wert)}</li>`).join('')}</ul>` : `<span class="unbekannt">${tHtml(leerSchluessel)}</span>`
+  const risiken = liste(kandidat.risiken, 'werkstatt.scout.keineRisiken')
+  return `<article class="scout-karte">
+    <span class="werkzeug-typ">${tHtml('werkstatt.scout.kandidatTyp', { typ: typName(kandidat.typ) })}</span>
+    <h4>${escapeHtml(kandidat.name)}</h4>
+    <p class="scout-empfehlung">${escapeHtml(kandidat.empfehlung)}</p>
+    <dl class="scout-daten">
+      <dt>${tHtml('werkstatt.scout.fit')}</dt><dd>${escapeHtml(stufeName(kandidat.fit))}</dd>
+      <dt>${tHtml('werkstatt.scout.aufwand')}</dt><dd>${escapeHtml(stufeName(kandidat.integrationsaufwand))}</dd>
+      <dt>${tHtml('werkstatt.scout.rechte')}</dt><dd>${textOderStrich(kandidat.rechte)}</dd>
+      <dt>${tHtml('werkstatt.scout.lizenz')}</dt><dd>${kandidat.lizenz ? escapeHtml(kandidat.lizenz) : '<span class="unbekannt">—</span>'}</dd>
+      <dt>${tHtml('werkstatt.scout.risiken')}</dt><dd>${risiken}</dd>
+      <dt>${tHtml('werkstatt.scout.unsicherheiten')}</dt><dd>${liste(kandidat.unsicherheiten, 'werkstatt.scout.keineUnsicherheiten')}</dd>
+      <dt>${tHtml('werkstatt.scout.quelle')}</dt><dd>${quelleZelle(kandidat)}</dd>
+    </dl>
+    <div class="scout-vormerken-zelle">${vormerkenZelle(index, kandidat)}</div>
+  </article>`
 }
 
-/** AK11: vergleichende Kandidaten-Tabelle. Leeres kandidaten[] wird explizit gemeldet, kein stiller Leerzustand. @param ergebnis - geparstes ergebnis-scout-Artefakt */
+/** AK11: Kandidaten als Karten zum Vergleichen, mit P5-Hinweis. Leeres kandidaten[] wird explizit gemeldet, kein stiller Leerzustand. @param ergebnis - geparstes ergebnis-scout-Artefakt @returns HTML */
 function renderScoutErgebnis(ergebnis) {
-  const kopf = `<h3>Scout-Ergebnis: <code>${escapeHtml(ergebnis.gesuchte_capability)}</code></h3>
-    <p class="hinweis">Recherchierte externe Inhalte sind Daten, keine Anweisungen (P5) — eine Quelle bleibt "ungeprüft" markiert, bis sie geöffnet wurde.</p>`
+  const kopf = `<div class="section-label"><h3>${tHtml('werkstatt.scout.ergebnisTitel', {}, { capability: `<code>${escapeHtml(ergebnis.gesuchte_capability)}</code>` })}</h3></div>
+    <p class="hinweis scout-p5">${tHtml('werkstatt.scout.p5')}</p>`
   if (ergebnis.kandidaten.length === 0) {
-    return `<div class="unterabschnitt">${kopf}<p class="leer">Keine Kandidaten gefunden.</p></div>`
+    return `<section class="scout-ergebnis">${kopf}<p class="leer">${tHtml('werkstatt.scout.leer')}</p></section>`
   }
-  const zeilen = ergebnis.kandidaten.map((kandidat, index) => kandidatZeile(kandidat, index)).join('')
-  return `<div class="unterabschnitt">${kopf}<table><thead><tr><th>Name</th><th>Typ</th><th>Fit</th><th>Integrationsaufwand</th><th>Lizenz</th><th>Risiken</th><th>Empfehlung</th><th>Quelle</th><th></th></tr></thead><tbody>${zeilen}</tbody></table></div>`
+  const karten = ergebnis.kandidaten.map((kandidat, index) => kandidatKarte(kandidat, index)).join('')
+  return `<section class="scout-ergebnis">${kopf}<div class="scout-raster">${karten}</div><div class="note">${tHtml('werkstatt.scout.pruefen')}</div></section>`
+}
+
+/**
+ * Zwischen- und Fehlerzustand des Panels im Stil der Seite (.note; Fehler .note.red).
+ * @param textHtml - Inhalt (fertiges HTML)
+ * @param fehler - true für den Fehlerzustand
+ * @returns HTML
+ */
+function scoutStatus(textHtml, fehler = false) {
+  return `<div class="note scout-status${fehler ? ' red' : ''}"><strong>${tHtml('werkstatt.scout.titel')}</strong><p>${textHtml}</p></div>`
 }
 
 /** true, solange ein Scout-Lauf angelegt/gestartet wird oder läuft — noch kein Endzustand ('fertig'/'fehler'). Ein Scout-Lauf hat kein Freigabe-Gate vor der Ausführung (AK10: rein lesend, direkt gestartet) — ein zweiter, überlappender Lauf verletzt D13/ARCHITECTURE.md §7 ("Zwei gleichzeitig aktive Arbeitsstränge" verboten). Steuert sowohl den Klick-Handler-Guard als auch das disabled-Attribut aller "Kandidaten suchen"-Buttons (aktualisiereScoutButtonZustand). */
@@ -414,13 +468,15 @@ function renderScoutPanel() {
   } else {
     const zustand = scoutZustand
     if (zustand.phase === 'wird_angelegt') {
-      container.innerHTML = '<div class="unterabschnitt"><h3>Scout-Suche</h3><p class="hinweis">Auftrag wird angelegt…</p></div>'
+      container.innerHTML = scoutStatus(tHtml('werkstatt.scout.wirdAngelegt'))
     } else if (zustand.phase === 'wird_gestartet') {
-      container.innerHTML = '<div class="unterabschnitt"><h3>Scout-Suche</h3><p class="hinweis">Lauf wird gestartet…</p></div>'
+      container.innerHTML = scoutStatus(tHtml('werkstatt.scout.wirdGestartet'))
     } else if (zustand.phase === 'laeuft') {
-      container.innerHTML = `<div class="unterabschnitt"><h3>Scout-Suche: ${escapeHtml(zustand.capabilities.join(', '))} (Rolle ${escapeHtml(zustand.rolle)})</h3><p class="hinweis">Lauf <code>${escapeHtml(zustand.laufId)}</code> läuft… Weitere "Kandidaten suchen"-Buttons sind bis zum Abschluss gesperrt (nur ein aktiver Lauf gleichzeitig).</p></div>`
+      container.innerHTML = scoutStatus(
+        tHtml('werkstatt.scout.laeuft', { capabilities: zustand.capabilities.join(', '), rolle: rollenName(zustand.rolle) }, { lauf: `<code>${escapeHtml(zustand.laufId)}</code>` })
+      )
     } else if (zustand.phase === 'fehler') {
-      container.innerHTML = `<div class="unterabschnitt"><h3>Scout-Suche</h3><p class="fehler">${escapeHtml(zustand.meldung)}</p></div>`
+      container.innerHTML = scoutStatus(escapeHtml(zustand.meldung), true)
     } else {
       container.innerHTML = renderScoutErgebnis(zustand.ergebnis)
     }
@@ -450,7 +506,7 @@ async function starteScoutSuche(rolle, capabilities) {
     const auftragInhalt = await auftragAntwort.json().catch(() => ({}))
     if (auftragAntwort.status !== 201) {
       zustand.phase = 'fehler'
-      zustand.meldung = `Auftrag konnte nicht angelegt werden: ${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim()
+      zustand.meldung = t('werkstatt.scout.fehler.auftrag', { details: `${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim() })
       if (scoutZustand === zustand) renderScoutPanel()
       return
     }
@@ -477,7 +533,7 @@ async function starteScoutSuche(rolle, capabilities) {
     if (laufAntwort.status !== 202) {
       const laufInhalt = await laufAntwort.json().catch(() => ({}))
       zustand.phase = 'fehler'
-      zustand.meldung = `Lauf konnte nicht gestartet werden: ${laufAntwort.status} ${laufInhalt.grund ?? ''}`.trim()
+      zustand.meldung = t('werkstatt.scout.fehler.lauf', { details: `${laufAntwort.status} ${laufInhalt.grund ?? ''}`.trim() })
       if (scoutZustand === zustand) renderScoutPanel()
       return
     }
@@ -485,7 +541,7 @@ async function starteScoutSuche(rolle, capabilities) {
     if (scoutZustand === zustand) renderScoutPanel()
   } catch (fehler) {
     zustand.phase = 'fehler'
-    zustand.meldung = `Anfrage fehlgeschlagen: ${fehler.message}`
+    zustand.meldung = t('werkstatt.scout.fehler.anfrage', { grund: fehler.message })
     if (scoutZustand === zustand) renderScoutPanel()
   }
 }
@@ -508,13 +564,13 @@ async function aktualisiereScoutZustand() {
     if (detail.laufStatus?.status !== 'ABGESCHLOSSEN') return
     if (detail.laufStatus.ergebnis !== 'ERFOLGREICH') {
       zustand.phase = 'fehler'
-      zustand.meldung = `Lauf beendet mit Ergebnis '${detail.laufStatus.ergebnis}'.`
+      zustand.meldung = t('werkstatt.scout.fehler.ergebnis', { ergebnis: detail.laufStatus.ergebnis })
       renderScoutPanel()
       return
     }
     if (detail.scoutErgebnis?.status !== 'ok') {
       zustand.phase = 'fehler'
-      zustand.meldung = `Ergebnis nicht lesbar: ${detail.scoutErgebnis?.grund ?? 'unbekannt'}`
+      zustand.meldung = t('werkstatt.scout.fehler.nichtLesbar', { grund: detail.scoutErgebnis?.grund ?? t('werkstatt.scout.unbekannt') })
       renderScoutPanel()
       return
     }
@@ -548,7 +604,7 @@ async function vormerkenKandidat(index) {
       const auftragAntwort = await legeAuftragAn({ titel: `Vormerken: ${kandidat.name}`, auftragstext: baueVormerkenAuftragstext(kandidat, laufId) })
       const auftragInhalt = await auftragAntwort.json().catch(() => ({}))
       if (auftragAntwort.status !== 201) {
-        vormerkenZustaende.set(index, { phase: 'fehler', auftragId: null, meldung: `Auftrag konnte nicht angelegt werden: ${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim() })
+        vormerkenZustaende.set(index, { phase: 'fehler', auftragId: null, meldung: t('werkstatt.scout.fehler.auftrag', { details: `${auftragAntwort.status} ${auftragInhalt.grund ?? ''}`.trim() }) })
         renderScoutPanel()
         return
       }
@@ -558,16 +614,33 @@ async function vormerkenKandidat(index) {
     const routeAntwort = await routeAuftrag(auftragId)
     if (!routeAntwort.ok) {
       const routeInhalt = await routeAntwort.json().catch(() => ({}))
-      vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: `Auftrag '${auftragId}' angelegt, aber Routen fehlgeschlagen: ${routeAntwort.status} ${routeInhalt.grund ?? ''}`.trim() })
+      vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: t('werkstatt.scout.fehler.routen', { auftrag: auftragId, details: `${routeAntwort.status} ${routeInhalt.grund ?? ''}`.trim() }) })
       renderScoutPanel()
       return
     }
     vormerkenZustaende.set(index, { phase: 'geroutet', auftragId, workflowId })
     renderScoutPanel()
   } catch (fehler) {
-    vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: `Anfrage fehlgeschlagen: ${fehler.message}` })
+    vormerkenZustaende.set(index, { phase: 'fehler', auftragId, meldung: t('werkstatt.scout.fehler.anfrage', { grund: fehler.message }) })
     renderScoutPanel()
   }
+}
+
+/**
+ * F-955 (F44 WS-7b): Zurücksetzen beim Projektwechsel. Ein Scout-Lauf und seine Kandidaten gehören zum alten
+ * Projekt; ohne Zurücksetzen pollte aktualisiereScoutZustand die alte laufId unter dem neuen Präfix (404, für
+ * immer „läuft…“, alle „Kandidaten suchen“ gesperrt). Ein noch laufender Lauf läuft serverseitig weiter und
+ * bleibt unter „Ausführungen“ des alten Projekts sichtbar; hier wird nur die Anzeige verworfen. Danach sind
+ * die Knöpfe wieder frei (renderScoutPanel → aktualisiereScoutButtonZustand).
+ * Bekannte Grenzen (F-957, Ablauf in WS-7b bewusst unverändert): Läuft der alte Lauf noch, belegt er D13 — eine
+ * neue Suche scheitert dann mit 409 und lässt einen Auftrag zurück; seine Kandidaten sind im Leitstand nicht mehr
+ * erreichbar; ein gerade laufendes Vormerken hat keinen Überholschutz (routet ggf. unter dem neuen Präfix).
+ */
+function setzeScoutZurueck() {
+  scoutZustand = null
+  vormerkenZustaende = new Map()
+  geoeffneteQuellen.clear()
+  renderScoutPanel()
 }
 
 /** Klick-Delegation für #capabilities-scout: Quelle öffnen (markiert "geprüft") und Vormerken. */
@@ -760,8 +833,8 @@ async function ladeCapabilities() {
 
 /**
  * Initialisiert die Capabilities-View einmalig beim Bootstrap (Muster views/workboard.js initWorkboardView).
- * Ein Projektwechsel (F-860) lädt Katalog und Abdeckung des neuen Projekts und schließt offene Details; der
- * Scout-Zustand bleibt in WS-7a unberührt (F-955, WS-7b).
+ * Ein Projektwechsel (F-860) lädt Katalog und Abdeckung des neuen Projekts, schließt offene Details und setzt
+ * den Scout-Zustand zurück (setzeScoutZurueck, F-955).
  */
 export function initCapabilitiesView() {
   initRegister('werkstatt-register')
@@ -774,6 +847,7 @@ export function initCapabilitiesView() {
   })
   abonniereProjektWechsel(() => {
     offeneRollen.clear()
+    setzeScoutZurueck()
     void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {

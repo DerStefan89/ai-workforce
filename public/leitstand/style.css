@@ -6841,8 +6841,22 @@ th {
   min-width: 0;
 }
 
+/* F44 WS-7b: „Neu laden“ und „Fähigkeit entdecken“ (kommt) nebeneinander; bei Platzmangel brechen sie um. */
+.werkstatt-kopf-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
 .werkstatt-seite .page-heading .button {
   flex-shrink: 0;
+}
+
+.werkstatt-seite #werkstatt-entdecken svg.icon {
+  width: 16px;
+  height: 16px;
 }
 
 .v10-seite .werkstatt-unterregister {
@@ -6896,13 +6910,16 @@ th {
   outline-offset: 2px;
 }
 
-.werkzeug-raster {
+/* .scout-raster/.scout-karte (WS-7b) teilen Raster und Kartenrahmen mit den Werkzeug-Kacheln. */
+.werkzeug-raster,
+.scout-raster {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: 20px;
 }
 
-.werkzeug-karte {
+.werkzeug-karte,
+.scout-karte {
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -6935,12 +6952,26 @@ th {
   hyphens: auto;
 }
 
+/* F44 WS-7b: höchstens drei Zeilen auf der Kachel (Volltext im Kachel-Detail). Rückfall ohne line-clamp: feste
+   Höhe von drei Zeilen (1.6 × 3), abgeschnitten ohne Auslassungszeichen. */
 .werkzeug-beschreibung {
   margin: 0 0 20px;
+  max-height: 4.8em;
+  overflow: hidden;
   font-size: 12px;
   line-height: 1.6;
   color: var(--muted);
   overflow-wrap: anywhere;
+}
+
+@supports (-webkit-line-clamp: 3) {
+  .werkzeug-beschreibung {
+    display: -webkit-box;
+    max-height: none;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
 }
 
 /* margin-top: auto schiebt den Fuß in gleich hohen Karten einer Reihe an dieselbe Stelle. */
@@ -7123,8 +7154,7 @@ th {
   font-size: 12px;
 }
 
-.werkstatt-tabelle,
-.werkstatt-scout {
+.werkstatt-tabelle {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
@@ -7137,4 +7167,115 @@ th {
 
 .werkstatt-link:hover {
   color: var(--mint);
+}
+
+/* ─────────────── Scout (F44 WS-7b, Vorlage V10 d_faehigkeiten_scout, Abgleich F-725 J10) ───────────────
+   #capabilities-scout: Zwischen- und Fehlerzustände als .note (Fehler .note.red), Ergebnis als Abschnitt mit
+   .section-label und Kartenraster (.panel der Vorlage: Tag „Kandidat · Typ“, Name, Empfehlung, Daten, Vormerken).
+   Farben nur über Tokens; Quelle und lange Werte brechen statt die Seite zu verbreitern. */
+.v10-seite .scout-status p {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.v10-seite .scout-ergebnis .section-label {
+  margin-top: 8px;
+}
+
+.v10-seite .scout-ergebnis .section-label h3 {
+  margin: 0;
+  font-size: 24px;
+  overflow-wrap: anywhere;
+}
+
+.scout-p5 {
+  margin: 0 0 18px;
+  font-size: 12px;
+}
+
+.scout-karte > .werkzeug-typ {
+  align-self: flex-start;
+}
+
+.v10-seite .scout-karte h4 {
+  margin: 16px 0 8px;
+  font: 20px/1.25 var(--serif);
+  font-weight: 400;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.scout-empfehlung {
+  margin: 0 0 16px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.scout-daten {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 14px;
+  margin: 0 0 16px;
+  font-size: 12px;
+}
+
+.scout-daten dt {
+  color: var(--muted);
+}
+
+.scout-daten dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.scout-risiken {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.scout-quelle-text {
+  overflow-wrap: anywhere;
+}
+
+/* margin-top: auto: Vormerken steht in gleich hohen Karten einer Reihe an derselben Stelle. */
+.scout-vormerken-zelle {
+  margin-top: auto;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.scout-vormerken-zelle p {
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+
+.scout-vormerken-zelle p:last-child {
+  margin-bottom: 0;
+}
+
+.v10-seite .scout-vormerken-zelle .button {
+  white-space: normal;
+}
+
+.v10-seite .scout-quelle-link {
+  color: var(--ink);
+}
+
+.v10-seite .scout-quelle-link:hover {
+  color: var(--mint);
+}
+
+@media (max-width: 700px) {
+  .scout-daten {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .scout-daten dd + dt {
+    margin-top: 8px;
+  }
 }

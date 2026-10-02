@@ -1,0 +1,292 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "screenshotAusschnitt": {
+    "selector": "#view-capabilities"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/auftraege",
+      "methode": "POST",
+      "status": 201,
+      "json": {
+        "auftragId": "auftrag-nachweis"
+      }
+    },
+    {
+      "muster": "**/laeufe",
+      "methode": "POST",
+      "status": 202,
+      "json": {}
+    },
+    {
+      "muster": "**/auftraege/*/routen",
+      "methode": "POST",
+      "status": 202,
+      "json": {}
+    },
+    {
+      "muster": "**/ressourcen/abdeckung",
+      "json": {
+        "startvorlagePfad": "startvorlagen/beispielprojekt.json",
+        "rollen": [
+          {
+            "rolle": "qa",
+            "benoetigteCapabilities": [
+              "ACCEPTANCE_TEST",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "claude-code",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              },
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          },
+          {
+            "rolle": "architekt",
+            "benoetigteCapabilities": [
+              "DESIGN_REVIEW"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "DESIGN_REVIEW"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "DESIGN_REVIEW"
+                ]
+              }
+            ],
+            "gedeckt": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/laeufe/scout-*",
+      "json": {
+        "laufStatus": {
+          "status": "LAEUFT"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Unterreiter",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Entdecken aria-disabled",
+        "selector": "#werkstatt-entdecken",
+        "attribut": "aria-disabled"
+      },
+      {
+        "name": "Scout-Panel",
+        "selector": "#capabilities-scout"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Knopf qa gesperrt",
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link[disabled]"
+      },
+      {
+        "name": "Knopf architekt gesperrt",
+        "selector": ".werkstatt-rolle[data-rolle=\"architekt\"] .capabilities-scout-link[disabled]"
+      },
+      {
+        "name": "Knopf architekt frei",
+        "selector": ".werkstatt-rolle[data-rolle=\"architekt\"] .capabilities-scout-link:not([disabled])"
+      },
+      {
+        "name": "Karten",
+        "selector": ".scout-karte"
+      },
+      {
+        "name": "Kollisionshinweis",
+        "selector": ".scout-kollision"
+      },
+      {
+        "name": "ungültige Quelle unverlinkt",
+        "selector": ".scout-quelle-text"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#capabilities-scout a[href^=\"javascript\"]"
+      },
+      {
+        "name": "Link ohne noopener (muss fehlen)",
+        "selector": "#capabilities-scout a[target=\"_blank\"]:not([rel=\"noopener noreferrer\"])"
+      },
+      {
+        "name": "vorgemerkt mit Ablauf-Link",
+        "selector": ".scout-vormerken-zelle a[href^=\"#/workflows/\"]"
+      },
+      {
+        "name": "Fehlernotiz",
+        "selector": "#capabilities-scout .note.red"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Kopf mit „Neu laden“ und „Fähigkeit entdecken“ (kommt); Kacheln mit höchstens drei Zeilen Beschreibung",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .werkzeug-karte",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-1-kopf-kacheln.webp"
+    },
+    {
+      "label": "Rollen & Besetzung: zwei Lücken, beide „Kandidaten suchen“ frei",
+      "klick": "#faehigkeiten-reiter-rollen",
+      "warteAufSelector": {
+        "selector": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link",
+        "timeoutMs": 15000
+      }
+    },
+    {
+      "label": "„Kandidaten suchen“ bei qa (fest beantwortet): läuft, übrige Knöpfe gesperrt",
+      "klick": ".werkstatt-rolle[data-rolle=\"qa\"] .capabilities-scout-link",
+      "warteAufSelector": {
+        "selector": "#capabilities-scout .scout-status",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-2-laeuft-gesperrt.webp"
+    },
+    {
+      "label": "Lauf fertig (feste Detail-Antwort): Karten mit Kollision, ungültiger Quelle, leeren Risiken, ohne Lizenz; Fokus auf „Vormerken“ scrollt die Karten ins Bild",
+      "anfragenAntworten": [
+        {
+          "muster": "**/laeufe/scout-*",
+          "json": {
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH"
+            },
+            "scoutErgebnis": {
+              "status": "ok",
+              "ergebnis": {
+                "gesuchte_capability": "BROWSER_TEST",
+                "kandidaten": [
+                  {
+                    "name": "Playwright MCP",
+                    "typ": "extern",
+                    "quelle_url": "https://github.com/microsoft/playwright-mcp",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "hoch",
+                    "integrationsaufwand": "gering",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": "Apache-2.0",
+                    "risiken": [
+                      "Startet einen echten Browser",
+                      "Netzzugriff"
+                    ],
+                    "empfehlung": "Deckt Bedienung und Darstellung im Browser ab; bereits im Katalog bekannt.",
+                    "unsicherheiten": []
+                  },
+                  {
+                    "name": "Web Checker",
+                    "typ": "skill",
+                    "quelle_url": "javascript:alert(1)",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "mittel",
+                    "integrationsaufwand": "mittel",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": null,
+                    "risiken": [],
+                    "empfehlung": "Leichter Skill für Seitenprüfungen ohne eigenen Browser.",
+                    "unsicherheiten": []
+                  },
+                  {
+                    "name": "Browser Use",
+                    "typ": "extern",
+                    "quelle_url": "https://github.com/browser-use/browser-use",
+                    "capabilities": [
+                      "BROWSER_TEST"
+                    ],
+                    "fit": "niedrig",
+                    "integrationsaufwand": "hoch",
+                    "rechte": "Browser starten, Seiten lesen",
+                    "lizenz": "MIT",
+                    "risiken": [
+                      "Steuert den Browser frei",
+                      "Kosten je Aufruf"
+                    ],
+                    "empfehlung": "Mächtig, aber für reine Prüfungen überdimensioniert.",
+                    "unsicherheiten": [
+                      "Kostenmodell nicht verifiziert"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "warteAufSelector": {
+        "selector": ".scout-karte",
+        "timeoutMs": 15000
+      },
+      "fokus": ".scout-karte:nth-child(2) .scout-vormerken",
+      "screenshot": "d1440-3-ergebnis.webp"
+    },
+    {
+      "label": "„Vormerken“ bei Browser Use (fest beantwortet): vorgemerkt mit Link zum Ablauf",
+      "klick": ".scout-karte:nth-child(3) .scout-vormerken",
+      "warteAufSelector": {
+        "selector": ".scout-vormerken-zelle a[href^=\"#/workflows/\"]",
+        "timeoutMs": 15000
+      },
+      "screenshot": "d1440-4-vorgemerkt.webp"
+    }
+  ]
+}

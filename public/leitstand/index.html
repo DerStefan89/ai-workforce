@@ -507,7 +507,14 @@
               <h1 data-i18n="werkstatt.titel">Deine Entwicklungswerkstatt.</h1>
               <p class="description" data-i18n="werkstatt.beschreibung">Was die Workforce kann, woraus ihr Harness besteht und wie die Rollen zusammenarbeiten.</p>
             </div>
-            <button type="button" id="capabilities-neu-laden" class="button" data-i18n="werkstatt.neuLaden">Neu laden</button>
+            <div class="werkstatt-kopf-aktionen">
+              <button type="button" id="capabilities-neu-laden" class="button" data-i18n="werkstatt.neuLaden">Neu laden</button>
+              <!-- F44 WS-7b (Vorlage d_faehigkeiten „Fähigkeit entdecken“, Abgleich J10 Freitext = Z): Baustein „kommt“ wie
+                   kommtKnopf (kommt.js; aria-disabled, die Sperre hängt initKommt dokumentweit an), statisch, weil er
+                   Lupe und Erklärung (title, aria-describedby) trägt. Keine Route, keine Freitextsuche. -->
+              <button type="button" id="werkstatt-entdecken" class="button kommt-knopf" aria-disabled="true" aria-describedby="werkstatt-entdecken-hinweis" title="Die freie Suche nach Fähigkeiten kommt. Heute findest du Kandidaten über „Kandidaten suchen“ an einer Lücke unter Rollen &amp; Besetzung." data-i18n-title="werkstatt.entdecken.hinweis"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.4-4.4" /></svg><span data-i18n="werkstatt.entdecken">Fähigkeit entdecken</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+              <span id="werkstatt-entdecken-hinweis" hidden data-i18n="werkstatt.entdecken.hinweis">Die freie Suche nach Fähigkeiten kommt. Heute findest du Kandidaten über „Kandidaten suchen“ an einer Lücke unter Rollen &amp; Besetzung.</span>
+            </div>
           </div>
 
           <div id="werkstatt-register" class="tabs werkstatt-register" role="tablist" aria-label="Bereiche der Werkstatt" data-i18n-aria-label="werkstatt.register">
@@ -569,7 +576,8 @@
               <!-- F27 WS-2 (AK10/AK11/AK12): Fortschritt/Ergebnis eines Scout-Laufs, ausgelöst über
                    "Kandidaten suchen" an einer Gap-Zeile oben — eigener Container, getrennt von
                    #capabilities-abdeckung (Muster #workboard-bearbeitung in views/workboard.js), damit
-                   ein Neuladen der Coverage-Liste diesen Zustand nicht mitreißt. Optik unverändert (WS-7b). -->
+                   ein Neuladen der Coverage-Liste diesen Zustand nicht mitreißt. Seit WS-7b Karten nach V10
+                   d_faehigkeiten_scout (views/capabilities.js kandidatKarte). -->
               <div id="capabilities-scout" class="werkstatt-scout"></div>
             </div>
 

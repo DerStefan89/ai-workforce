@@ -29,7 +29,8 @@
  *   (views/dashboard.js, .cockpit-deployer und .pm-next; beide ohne Links — ein Link darin wäre
  *   gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
  *   (views/workboard.js, .view-switch-knopf) sowie auf „Neues Produkt“ das Feld #projekte-anlegen-ziel
- *   (readonly) und der Knopf „Zielgruppe ergänzen“ (statisch in index.html, F44 WS-6a); jedes künftige bekommt dieselbe Wirkung (gewollt,
+ *   (readonly) und der Knopf „Zielgruppe ergänzen“ (statisch in index.html, F44 WS-6a) sowie „Fähigkeit entdecken“ im Kopf
+ *   der Werkstatt (#werkstatt-entdecken, statisch in index.html, F44 WS-7b); jedes künftige bekommt dieselbe Wirkung (gewollt,
  *   eine Regel).
  */
 
