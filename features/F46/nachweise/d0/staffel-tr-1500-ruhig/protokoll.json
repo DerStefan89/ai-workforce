@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Staffelung 1500 px, tr, kein Lauf: Zustandstext ganz (notfalls zweizeilig), Projektauswahl ungekürzt, kein Überlauf",
+    "Chip sichtbar (nicht hidden)": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> im Chip (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "tr",
+    "Persona-Status (Live-Region)": "Fikrine hazır",
+    "Chip-Text": "Şu anda çalışan bir şey yok",
+    "Menü-Chip-Text": "Şu anda çalışan bir şey yok",
+    "Chip title": "Şu anda çalışan bir şey yok",
+    "Chip href": "#/ausfuehrungen",
+    "Chip data-aktiv": "false",
+    "Punkt aria-hidden": "true",
+    "Register aktiv": "(fehlt)",
+    "Lauf-Detail Titel": "",
+    "Fokus (class)": "(fehlt)",
+    "Poll-Fehler": "(fehlt)",
+    "Live-Chip klickbar": true,
+    "Menü-Chip klickbar": false,
+    "Projektauswahl klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

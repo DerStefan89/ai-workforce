@@ -95,10 +95,11 @@ Auto-Memory-Sperre für jarvis/router #207 — abgenommen durch Stefan am
 feature.md`), F43 „Projekt aufrufen/anzeigen“ (E-F30-3, Variante A,
 vor dem Design) `ABGESCHLOSSEN` (WS-1 gemergt #287, Abnahme durch Stefan
 am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
-gemergt #288), F44 Design-Schnitt (F-725) `IN_ARBEIT` (WS-0 #290,
-WS-1a #291, WS-1b #292 gemergt; WS-2a „Entscheidungen & Roadmap“ auf Branch;
-WS-2b bis WS-8 offen) (Stand 22.09.2026; F36 29.09.2026; F43 30.09.2026;
-F44 01.10.2026).
+gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
+gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
+Seitenaufbau `IN_ARBEIT` (D0 „Grundlage“ auf Branch; danach Fixpaket
+„Arbeitsfähigkeit“ F45, dann F30 — E-M5-18, geändert 02.10.2026) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44/F46 02.10.2026).
 
 ## Erledigt
 
@@ -581,15 +582,20 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   haushaltsbuch2: Vorschau erreichbar/nicht erreichbar, Aufruf Exit 0).
   Gemergt: WS-1 (#287). F-849 (vorschau_url auf dem Leitstand-Port)
   gemergt (#288). Offene Folge-Findings F-845, F-847, F-848, F-850 bis F-856.
-- ⏳ **F44** — Design-Schnitt (F-725), Designvorlage V10. Akte
-  `features/F44/feature.md`, Status `IN_ARBEIT`. Schnitt WS-0 bis WS-8
-  nach dem Challenger-Dokument 474 (`GO_STANDARD`), Abgleich
-  `docs/design/abgleich-f725.md`; E-F44-1 = B, E-F44-2 = B (Stefan,
-  30.09.2026). WS-0 „Ablage & Harness“ auf Branch
-  `feat/f725-ws0-design-ablage` (nicht gemergt; `impeccable` offen,
-  das fremde Repo pbakaus/impeccable hat mehrere Skill-Ordner). Findings
-  F-860 bis F-868. Nach F43, vor
-  F30.
+- ✅ **F44** — Design-Schnitt (F-725), Designvorlage V10. Akte
+  `features/F44/feature.md`, Status `ABGESCHLOSSEN`, **abgenommen durch
+  Stefan am 02.10.2026** (WS-0 bis WS-8b gemergt und verifiziert, zuletzt
+  WS-8b #307, `7c6d852`). Schnitt nach dem Challenger-Dokument 474
+  (`GO_STANDARD`), Abgleich `docs/design/abgleich-f725.md`; E-F44-1 = B,
+  E-F44-2 = B. Offene Punkte F-957, F-968 bis F-971 laufen in F46 bzw. im
+  Fixpaket weiter.
+- ⏳ **F46** — Design-Nachbau nach neuem Seitenaufbau (Stefan,
+  02.10.2026). Akte `features/F46/feature.md`, Status `IN_ARBEIT`.
+  Workstreams D0 „Grundlage“ (Branch `feat/design-nachbau-d0`, nicht
+  gemergt) bis D6. Entscheidungen E-F46-1 (Terminal-Panel nicht Teil von
+  F46), E-F46-2 (Konfiguration nur lesbar). Findings F-972 bis F-983. Nach
+  F44, vor dem Fixpaket „Arbeitsfähigkeit“ (F45) und F30 (E-M5-18,
+  geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).

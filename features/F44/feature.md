@@ -7,7 +7,12 @@ F44
 Design-Schnitt (F-725): Leitstand im Stil der Designvorlage V10
 
 ## Status
-Status: IN_ARBEIT
+Status: ABGESCHLOSSEN
+
+Abschlussvermerk (Stefan, 02.10.2026): F44 ist abgenommen — WS-0 bis WS-8b gemergt und verifiziert
+(zuletzt WS-8b #307, `7c6d852`). Offene Punkte laufen weiter: F-957 sowie F-968 bis F-971 in F46
+(Design-Nachbau, `features/F46/feature.md`) bzw. im Fixpaket „Arbeitsfähigkeit“ (F45); die Prüfpunkte
+unten bleiben Prüfliste der Folgepakete.
 
 Schnitt: Challenger-Dokument „474 — Challenge F-725 Design-Schnitt“ vom
 30.09.2026, Ergebnis `GO_STANDARD`; übernommen als
@@ -24,7 +29,8 @@ gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a 
 WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) gemergt (#301, `5075215`); WS-6b „Nutzung“
 (Abschnitt I) gemergt (#302, `3aff6e4`). WS-7a „Werkstatt“ gemergt (#303, `527a6d4`); WS-7b „Scout“ gemergt
 (#304, `41eff91`). WS-8 ist geteilt (Auftrag Stefan, 02.10.2026): WS-8a „Dock & große Ansicht“ gemergt
-(#306, `bf23b06`); WS-8b „Coach & Befehle“ in Arbeit seit 02.10.2026 (Branch `feat/f725-ws8b-coach-befehle`).
+(#306, `bf23b06`); WS-8b „Coach & Befehle“ gemergt
+(#307, `7c6d852`).
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 

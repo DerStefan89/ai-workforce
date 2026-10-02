@@ -53,6 +53,9 @@
         <div id="zuletzt-verlauf"></div>
       </div>
 
+      <!-- F46 D0: der Live-Chip bis 1150 px (dort im Kopf ausgeblendet, style.css; live-chip.js setzt beide). -->
+      <a class="live-chip menue-live-chip" data-live-chip href="#/ausfuehrungen" hidden></a>
+
       <!-- F44 WS-8b: die Kopf-Werkzeuge bis 1279 px (dort im Kopf ausgeblendet, style.css). -->
       <div class="menue-werkzeuge" role="group" aria-label="Werkzeuge" data-i18n-aria-label="kopf.werkzeuge">
             <a class="button kopf-werkzeug" data-werkzeug-vscode role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.vscode">VS Code</span></a>
@@ -83,7 +86,9 @@
            F44 WS-8b: links von „Frag Jarvis“ die Werkzeuge VS Code | Terminal | GitHub. VS Code ist ein
            echter Link auf den Projektordner (kopf-werkzeuge.js setzt href oder aria-disabled), Terminal
            und GitHub sind Bausteine „kommt“ (kommt.js). Bis 1279 px stehen sie in der Sidebar bzw. im
-           mobilen Menü (.menue-werkzeuge), damit die Kopfzeile nicht überläuft (Staffelung: style.css). -->
+           mobilen Menü (.menue-werkzeuge), damit die Kopfzeile nicht überläuft (Staffelung: style.css).
+           F46 D0: unter der Statuszeile der Live-Chip #kopf-live-chip (live-chip.js), bis 1150 px in der
+           Sidebar bzw. im mobilen Menü. -->
       <header id="shell-kopf">
         <div class="top-left">
           <button type="button" id="shell-menue-oeffner" class="icon-button mobile-menu" aria-expanded="false" aria-controls="shell-sidebar" aria-label="Navigation öffnen" data-i18n-aria-label="kopf.menue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
@@ -95,6 +100,10 @@
           <button type="button" id="persona-kopf-oeffner" class="persona-button" aria-label="Startfläche öffnen" data-i18n-aria-label="kopf.personaOeffnen">
             <span id="persona-platzhalter" aria-hidden="true"></span>
           </button>
+          <!-- F46 D0: Live-Chip (live-chip.js) — ab 1151 px unter der Statuszeile, die persona.js nach dem
+               Knopf einsetzt (Raster, style.css); darunter in der Sidebar (.menue-live-chip). Nur aus dem
+               Poll, kein aria-live; verborgen, bis aktiverLauf bekannt ist. -->
+          <a id="kopf-live-chip" class="live-chip" data-live-chip href="#/ausfuehrungen" hidden></a>
         </div>
         <div class="top-right">
           <label class="language-picker"><span class="sr-only" data-i18n="kopf.sprache">Sprache</span><select id="kopf-sprache"></select></label>

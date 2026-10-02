@@ -51,6 +51,9 @@ export default {
   'kopf.terminal': 'Terminal',
   'kopf.github': 'GitHub',
   'kopf.fragJarvisNeu': 'Jarvis’e sor, yeni yanıt',
+  // F46 D0: Live-Chip in der Kopfleiste (live-chip.js).
+  'kopf.live.aktiv': 'Workforce çalışıyor',
+  'kopf.live.ruhig': 'Şu anda çalışan bir şey yok',
 
   'persona.status.idle': 'Fikrine hazır',
   'persona.status.thinking': 'Senin için çalışıyor',

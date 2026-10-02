@@ -52,6 +52,9 @@ export default {
   'kopf.terminal': 'Терминал',
   'kopf.github': 'GitHub',
   'kopf.fragJarvisNeu': 'Спросить Jarvis, новый ответ',
+  // F46 D0: Live-Chip in der Kopfleiste (live-chip.js).
+  'kopf.live.aktiv': 'Workforce работает',
+  'kopf.live.ruhig': 'Ничего не выполняется',
 
   'persona.status.idle': 'Готов к твоей идее',
   'persona.status.thinking': 'Работает для тебя',

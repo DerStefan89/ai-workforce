@@ -1,0 +1,27 @@
+[
+  {
+    "label": "GET /api/zustand scheitert (Netzfehler): kein Zustand bekannt → Chip verborgen, kein erfundener Wert",
+    "Chip sichtbar (nicht hidden)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> im Chip (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status (Live-Region)": "Bereit für deine Idee",
+    "Chip-Text": "",
+    "Menü-Chip-Text": "",
+    "Chip title": "null",
+    "Chip href": "#/ausfuehrungen",
+    "Chip data-aktiv": "null",
+    "Punkt aria-hidden": "(fehlt)",
+    "Register aktiv": "(fehlt)",
+    "Lauf-Detail Titel": "",
+    "Fokus (class)": "(fehlt)",
+    "Poll-Fehler": "Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.",
+    "Live-Chip klickbar": false,
+    "Menü-Chip klickbar": false,
+    "Projektauswahl klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

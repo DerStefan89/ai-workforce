@@ -55,6 +55,9 @@ export default {
   'kopf.terminal': 'Terminal',
   'kopf.github': 'GitHub',
   'kopf.fragJarvisNeu': 'Frag Jarvis, neue Antwort',
+  // F46 D0: Live-Chip in der Kopfleiste (live-chip.js).
+  'kopf.live.aktiv': 'Workforce arbeitet',
+  'kopf.live.ruhig': 'Gerade läuft nichts',
 
   'persona.status.idle': 'Bereit für deine Idee',
   'persona.status.thinking': 'Arbeitet für dich',
