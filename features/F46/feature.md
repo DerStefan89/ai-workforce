@@ -9,8 +9,8 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 ## Status
 Status: IN_ARBEIT
 
-D0 „Grundlage“ in Arbeit seit 02.10.2026 (Branch `feat/design-nachbau-d0`, Basis `7c6d852`, main mit
-F44 WS-8b #307). D1 bis D6 offen.
+D0 gemergt #308, 51825aa; D0b in Arbeit (Branch `feat/design-nachbau-d0b`, Basis `51825aa`). D1 bis D6
+offen.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -26,6 +26,13 @@ in dieser Akte präzisiert (Abschnitt „Stand D<n>“), bevor gebaut wird.
 Grundlage: F44 (Design-Schnitt F-725, Vorlage V10) ist abgenommen; F46 baut auf dessen Shell,
 Tokens, i18n und Bausteinen („kommt“, Befehlsblock, Kopf-Werkzeuge) auf. Reihenfolge nach
 E-M5-18 (geändert 02.10.2026): F46 → Fixpaket „Arbeitsfähigkeit“ (F45) → F30.
+
+## Grundlage
+Seitenspezifikation: `docs/design/abgleich-f46.md` (aus der Design-Vorlage übernommen, sieben Stellen nach dem Code-Abgleich D0b berichtigt).
+Design-Referenz: `docs/design/neu/` — Referenz ist das Bild (eine `.webp` je Ansicht, 1440 px, dunkel);
+exakte Werte (Farben, Abstände, Schriftgrößen, Texte) stehen im Markup unter `docs/design/neu/quelle/`.
+Das Markup ist nur Referenz und wird nie ins Produkt kopiert; Platzhalter (`[n]`, `[…]`, `[Text]`,
+`{{…}}`) nie ins Produkt (AK3). Ab D1 arbeiten Bauaufträge und design-guardian gegen diese Ablage (D0b).
 
 ## Entscheidungen
 - **E-F46-1** (Stefan, 02.10.2026) — Das Terminal-Panel neben Jarvis ist nicht Teil von F46. Es ist
@@ -43,13 +50,14 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 
 | WS | Inhalt | Serverteil | Schätzung AT | Ist |
 |---|---|---|---|---|
-| D0 | Grundlage (Akte, Roadmap mit Gate, Zielfassung, Register, F44-Abschluss, Ebenen-Farbtokens, Live-Chip in der Kopfleiste) | – | 0,3–0,5 | |
-| D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | – | 1–1,5 | |
+| D0 | Grundlage (Akte, Roadmap mit Gate, Zielfassung, Register, F44-Abschluss, Ebenen-Farbtokens, Live-Chip in der Kopfleiste) | – | 0,3–0,5 | ≈ 0,2 AT (#308) |
+| D0b | Design-Referenz und Seitenspezifikation ins Repo | – | 0,1–0,2 | |
+| D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | |
 | D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | |
-| D3 | Eintrag im Detail (Feature, Workstream, Bug); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,75–1,25 | |
+| D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | |
-| D5 | Live-Ansicht, beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
-| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | – | 1–1,5 | |
+| D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
+| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | |
 
 Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
 
@@ -82,8 +90,9 @@ Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach
   Fixpaket „Arbeitsfähigkeit“ und F30.
 
 ## Security/Permissions
-F46 ändert keine Server-Grenze. Die Serverteile von D2, D4 und D5 sind lesend (Abnahmestand in den
-Kopfdaten, Leseroute Code, Ringpuffer im Speicher). Erhalten bleiben CSRF/Origin (F-813),
+F46 ändert keine Server-Grenze. Die Serverteile von D1, D2, D4, D5 und D6 sind lesend (D1 Leseroute
+Kontextdateien, D2 Abnahmestand in den Kopfdaten, D4 Leseroute Code, D5 Ringpuffer im Speicher, D6
+Leseroute Harness-Dateien über eine feste Pfadliste). Erhalten bleiben CSRF/Origin (F-813),
 Host-Allowlist (F-814), Bindung an 127.0.0.1, F-849, Pflichtbegründung, Freigabe-Veto, „Anzeige =
 Start“, D13 und genau eine Live-Region (Persona). Konfiguration bleibt nur lesbar (E-F46-2).
 

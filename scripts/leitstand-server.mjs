@@ -875,6 +875,34 @@ function baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis) {
 }
 
 /**
+ * F-986 (b): bei NICHT_GESTARTET mit terminaler Wirkungsmarke ohne RUN_PREPARED (laufStatus.
+ * terminaleOhneRunPrepared, z. B. Startfreigabe verweigert, E-188) Ergebnis und Grund dieser Marke
+ * lesend aus der Checkpoint-Kette — damit der Chat „Lauf nicht gestartet: <Grund>“ zeigen kann.
+ * Muster baueVerweigertDatenProjektion; keine neue Schreibstelle, kein neuer Endpunkt. Der Grund
+ * steht je nach Schreiber in daten.invocation_policy.grund (src/invocation-policy, starteGateway),
+ * daten.begruendung (src/authorization-boundary, verweigereAutorisierung) oder daten.grund
+ * (src/human-transport); fehlt er überall, ist grund null — nie geraten.
+ * @param laufId - Lauf-Kennung
+ * @param laufStatus - Ergebnis von stelleLaufstatusFest, unverändert übernommen
+ * @param basisVerzeichnis - Kontrollzustand-Wurzel
+ * @returns null außer bei NICHT_GESTARTET mit terminaler Marke, sonst { ergebnis, grund } (je null, wenn nicht lesbar)
+ */
+export function baueNichtGestartetProjektion(laufId, laufStatus, basisVerzeichnis) {
+  if (laufStatus.status !== 'NICHT_GESTARTET' || !Array.isArray(laufStatus.terminaleOhneRunPrepared) || laufStatus.terminaleOhneRunPrepared.length === 0) return null
+
+  const letzteSequenz = Math.max(...laufStatus.terminaleOhneRunPrepared)
+  const kette = ladeGueltigeCheckpoints(laufId, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+  const terminal = kette.find((eintrag) => eintrag.typ === 'wirkungsmarke' && eintrag.payload.sequenz === letzteSequenz)
+  const daten = terminal?.payload?.daten
+  const grund = [daten?.invocation_policy?.grund, daten?.begruendung, daten?.grund].find((wert) => typeof wert === 'string' && wert !== '')
+
+  return {
+    ergebnis: typeof terminal?.payload?.ergebnis === 'string' ? terminal.payload.ergebnis : null,
+    grund: grund ?? null,
+  }
+}
+
+/**
  * Begrenzte, hashgeprüfte Rohstrom-Projektion (AK8). Auflösung
  * AUSSCHLIESSLICH über laufakteVersion.daten.rohstrom_referenz.pfad (nie
  * aus der laufId gebaut), Pfadsicherheit über F11s loeseEvidenzPfadAuf
@@ -5755,6 +5783,10 @@ export function erzeugeRequestHandler(optionen = {}) {
         // F40 WS-1: letzter live gemeldeter Werkzeugaufruf, nur solange DIESER Lauf aktiv ist — sonst null.
         fortschritt: laufAktiv && laufId === laufAktivLaufId ? laufAktivFortschritt : null,
         verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
+        // F-986 (b): Grund eines nie gestarteten Laufs (lesend aus der Kette) und die Lauf-Zeitgrenze der
+        // geladenen Startvorlage — der Chat hört damit auf zu warten statt ohne Ende abzufragen.
+        nichtGestartet: baueNichtGestartetProjektion(laufId, laufStatus, basisVerzeichnis),
+        startvorlageZeitgrenzeMs: typeof vorlage.zeitgrenzeMs === 'number' ? vorlage.zeitgrenzeMs : null,
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
         laufakte: baueLaufakteProjektion(laufakteVersion),

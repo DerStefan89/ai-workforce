@@ -155,3 +155,5 @@ Seitenaufbau `IN_ARBEIT` (D0 „Grundlage“ auf Branch; danach Fixpaket
 - F-791 · HARNESS_IMPROVEMENT · Die eingebauten Skills und Agents der Claude-CLI ändern sich mit der Version — eine feste Sperrliste wird bei jedem Update still undicht.
 - F-936 · PROCESS_IMPROVEMENT · Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.
 - F-972 · BUG · Offene Abnahmen erscheinen nicht unter „Deine Entscheidungen“.
+- F-986 · BUG · „Jarvis-Chat antwortet nicht“ — Lauf wird verweigert, der Chat zeigt das nicht.
+- F-987 · BUG · Jarvis-Chat insgesamt unzuverlässig: Absenden dauert lange, Antworten kommen nicht.

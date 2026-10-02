@@ -12491,3 +12491,42 @@ Auswirkung: Gering — Gefahr einer Doppelvergabe der Nummer.
 Maßnahme: Die Fixpaket-Akte wird F45; der Design-Nachbau ist F46 (`features/F46/feature.md`). Mit der Akte F45 kommt der Eintrag in die Roadmap (Gate `scripts/check-akte-meilenstein.mjs`).
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-984** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Planung ist im Leitstand nicht änderbar.
+Beschreibung: Priorität, Meilenstein, Schätzung und Reihenfolge lassen sich im Leitstand nicht ändern; in der Bug-Triage gibt es außer „Jetzt beheben lassen“ keinen Schreibweg. Die Designs `03-roadmap` und `07-eintrag-detail` sehen diese Änderungen mit Pflichtbegründung vor.
+Fundstelle: `docs/design/neu/03-roadmap--Main.webp`, `docs/design/neu/07-eintrag-detail--Main.webp`, `docs/design/neu/07-eintrag-detail--Bug.webp`; `docs/design/abgleich-f46.md`.
+Auswirkung: Mittel — Planungsänderungen gehen nur über Dateien und Git.
+Maßnahme: Fixpaket B5, zusammen mit E-F45-1.
+Status: offen.
+Feature/Run: Entdeckt: Design-Abgleich F46 D0b, 02.10.2026.
+
+**F-985** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Harness-Dokumente sind nur außerhalb des Leitstands bearbeitbar.
+Beschreibung: CLAUDE.md, ARCHITECTURE.md, `docs/`, Agents und Skills lassen sich im Leitstand nicht bearbeiten. Das Design `01-workforce-harness--Bearbeiten` sieht Bearbeiten mit Pflichtbegründung, Konfliktschutz und ohne Commit vor.
+Fundstelle: `docs/design/neu/01-workforce-harness--Bearbeiten.webp`; `docs/design/abgleich-f46.md`.
+Auswirkung: Gering — Harness-Pflege geht nur über Editor und Git.
+Maßnahme: Fixpaket B1/B5; `.claude/settings.json` und Hooks nur per Vorschlag (E-F46-2).
+Status: offen.
+Feature/Run: Entdeckt: Design-Abgleich F46 D0b, 02.10.2026.
+
+**F-986** · `BUG` · P1 · offen
+Titel: „Jarvis-Chat antwortet nicht“ — Lauf wird verweigert, der Chat zeigt das nicht.
+Beschreibung: Gemeldet von Stefan am 02.10.2026 nach #308. Diagnose (02.10.2026, nur lesend, Leitstand auf Port 4199, Playwright): POST /api/chat antwortet 202 in 27 ms; der Server verweigert den Jarvis-Lauf aber sofort vor dem Prozessstart („startfreigabe_abgelehnt: Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)“, Wirkungsmarke `terminal`/`VERWEIGERT`). Der Wirksamkeitsnachweis hält `C:\Users\stefa\Projekte\ai-workforce` fest; der Leitstand lief aus einem anderen Worktree (`process.cwd()`). Stefans eigener Lauf um 16:40 lief aus `aiw-main-ansicht` (Stand 7c6d852, vor #308) und wurde genauso verweigert — keine Regression aus #308; #308 hat `views/chat.js` nicht geändert, keine Konsolenfehler beim Laden oder Senden. Zweiter Teil: GET /api/laeufe/<id> meldet danach `aktiv: false`, `laufStatus.status: NICHT_GESTARTET` mit `terminaleOhneRunPrepared: [1]`; der Chat wertet NICHT_GESTARTET immer als „noch nicht terminal“, zeigt ohne Ende die Tipp-Punkte und „Lauf abbrechen“, keinen Fehler, und fragt den Lauf zweimal je Sekunde ab (294 Abrufe in 150 s).
+Ursache (a): Umgebung — E-188 greift bei Start des Leitstands aus einem Worktree: der Wirksamkeitsnachweis ist an `C:\Users\stefa\Projekte\ai-workforce` gebunden, das Gateway misst `process.cwd()`.
+Ursache (b): `public/leitstand/views/chat.js` (`pruefeAusstehendenLauf`) wertete einen nie gestarteten Lauf (NICHT_GESTARTET mit terminaler Marke ohne RUN_PREPARED) als „noch nicht terminal“ und fragte ohne Ende ab.
+Fundstelle: (a) `src/invocation-policy/index.ts:481` (E-188-Vergleich `arbeitsverzeichnis_pfad`) mit `src/claude-code-gateway/index.ts` (`arbeitsverzeichnis_pfad: process.cwd()`); (b) `public/leitstand/views/chat.js` (`pruefeAusstehendenLauf`).
+Auswirkung: Hoch — aus jedem Worktree außer `C:\Users\stefa\Projekte\ai-workforce` startet kein Claude-Lauf, und der Chat wartet stumm statt den Grund zu nennen.
+Einordnung: (c) Umgebung (Leitstand aus einem Worktree gestartet, E-188 greift wie vorgesehen) plus (b) kleiner Client-Fehler (verweigerter Lauf wird nicht als Ende erkannt).
+Maßnahme: (a) Fixpaket: Läufe aus Worktrees — Sicherheitsentscheidung; bis dahin den Leitstand aus `C:\Users\stefa\Projekte\ai-workforce` starten. (b) behoben in F46 D0b: `public/leitstand/chat-laufstand.js` ordnet das Lauf-Detail ein; ein nie gestarteter Lauf (terminale Marke ohne RUN_PREPARED, oder kein Detail und ein Startfehler-Eintrag zur laufId im Poll) endet im Chat mit „Lauf nicht gestartet: <Grund>“; ein nicht aktiver Lauf ohne Änderung über die Lauf-Zeitgrenze der Startvorlage (plus 60 s) beendet das Warten mit Hinweis — ein aktiver Lauf behält „Lauf abbrechen“ und endet an der Server-Zeitgrenze. Der Server liefert lesend `nichtGestartet` (Ergebnis und Grund der terminalen Marke aus `invocation_policy.grund`, `begruendung` oder `grund`, `baueNichtGestartetProjektion`) und `startvorlageZeitgrenzeMs` in GET /api/laeufe/<id>; E-188, CSRF/Origin und Host unverändert. Restgrenzen (Prüfpass): nach Neuladen der Seite wird ein ausstehender Lauf nicht weiter verfolgt (wie bisher); kein HTTP-Test für die zwei neuen Felder, Verdrahtung im Client nur per Render-Nachweis belegt. Tests `public/leitstand/chat-laufstand.test.mjs`, `scripts/leitstand-nicht-gestartet.test.mjs`; Nachweis `features/F46/nachweise/f986/`.
+Status: offen — (b) erledigt (F46 D0b, 02.10.2026); (a) offen.
+Feature/Run: Entdeckt: Meldung Stefan 02.10.2026 nach #308 / Diagnose F46 D0b.
+
+**F-987** · `BUG` · P1 · offen
+Titel: Jarvis-Chat insgesamt unzuverlässig: Absenden dauert lange, Antworten kommen nicht.
+Beschreibung: Gemeldet von Stefan am 02.10.2026, 17:20, unabhängig vom Fix F-986 (b). Kandidaten: Startweg des Chat-Laufs (Worktree/E-188, F-986 a), Latenz der Claude-CLI (frühere F-543/F-556), Poll und Antwortübergabe.
+Fundstelle: offen.
+Auswirkung: Hoch — Jarvis und Product Coach sind praktisch nicht nutzbar (Bedienweg Schritt 2).
+Maßnahme: Fixpaket „Arbeitsfähigkeit“, als erster Punkt vor B1, mit Messung (Zeit bis 202, bis Laufstart, bis Antwort) aus dem Hauptordner.
+Status: offen.
+Feature/Run: Entdeckt: F46 D0b.

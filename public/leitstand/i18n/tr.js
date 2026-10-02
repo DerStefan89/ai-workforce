@@ -1369,6 +1369,10 @@ export default {
   'chat.ende.nichtErfolgreich': 'Çalıştırma bitti ama başarısız ({ergebnis}).',
   'chat.ende.unerwartet': 'Çalıştırma beklenmedik şekilde bitti (durum: {status}).',
   'chat.ende.statusUnbekannt': 'bilinmiyor',
+  // F-986: Chat-Lauf nie gestartet bzw. ohne Änderung über die Lauf-Zeitgrenze (views/chat.js, chat-laufstand.js).
+  'chat.ende.nichtGestartet': 'Çalıştırma başlatılmadı: {grund}',
+  'chat.ende.nichtGestartetOhneGrund': 'Çalıştırma başlatılmadı (neden bildirilmedi).',
+  'chat.ende.zeitgrenze': '{minuten} dakikadan uzun süredir çalıştırmada değişiklik yok — sohbet artık beklemiyor. Durumu „Çalıştırmalar“ gösterir.',
   'chat.fortschritt.liest': '{pfad} okunuyor',
   'chat.fortschritt.liestDatei': 'bir dosya okunuyor',
   'chat.fortschritt.durchsucht': '“{muster}” aranıyor',

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Feature im Detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,select,input,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2350px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0; width: 1239px; height: 2338px">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">GitHub</a>
+</header>
+
+<main style="padding: 26px 48px 64px; display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 24px; align-items: start">
+
+<div style="display: flex; flex-direction: column; gap: 22px; min-width: 0">
+
+<a href="#" style="text-decoration: none; color: #9caeb5; font-size: 13px; align-self: flex-start">← Features</a>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: stretch">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">FEATURE · F44</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 40px; line-height: 1.15">Design-Schnitt (F-725)</h1>
+<div style="padding: 14px 16px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a; display: flex; flex-direction: column; gap: 8px; line-height: 1.55">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">KURZ GESAGT</div>
+<div><b style="font-weight: 600">Was das ist:</b> Der Leitstand bekommt Gestaltung und Interaktionen der Designvorlage V10, ohne dass heutiges Verhalten wegfällt.</div>
+<div><b style="font-weight: 600">Was gerade passiert:</b> {{gerade}}</div>
+<div><b style="font-weight: 600">Was als Nächstes kommt:</b> {{naechstes}}</div>
+</div>
+</div>
+
+<section aria-label="Status" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid {{statusRand}}">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="{{statusPunkt}}"></span>
+<span style="font-size: 11px; letter-spacing: 2px; color: {{statusFarbe}}">{{statusText}}</span>
+</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 7px 10px; font-size: 12.5px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">PHASE</span><span>{{phase}}</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">GERADE DRAN</span><span>{{dran}}</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">WORKSTREAMS</span><span>15 von 17 gemergt</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">REST</span><span>0,55–0,9 AT geschätzt</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">IST BISHER</span><span>[n] AT</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">MEILENSTEIN</span><span>M5</span>
+</div>
+<div style="height: 6px; border-radius: 3px; background: #ffffff14; overflow: hidden"><div style="width: 88%; height: 6px; background: #8bd8c1"></div></div>
+<button type="button" onClick="{{zustandUmschalten}}" style="align-self: flex-start; min-height: 30px; padding: 0 10px; border-radius: 8px; background: none; border: 1px dashed #ffffff40; color: #9caeb5; cursor: pointer; font-size: 11px">Zustand im Design umschalten</button>
+</section>
+</div>
+
+<sc-if value="{{wartet}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="jetzt-titel" style="display: flex; align-items: center; gap: 18px; padding: 18px 20px; border-radius: 14px; background: #dbc08c14; border: 1px solid #dbc08c">
+<div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #dbc08c">JETZT · DEINE ENTSCHEIDUNG</div>
+<h2 id="jetzt-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Abnahme des Features</h2>
+<div style="font-size: 12.5px; color: #c9d3d6">Alle Workstreams sind gemergt, das Review hat jedes Abnahmekriterium beurteilt. Du nimmst an, forderst eine Anpassung oder lehnst ab.</div>
+</div>
+<button type="button" style="min-height: 48px; padding: 0 22px; border-radius: 12px; background: #8bd8c1; border: 0; color: #10212b; cursor: pointer; font-size: 15px">Ergebnis prüfen →</button>
+</section>
+</sc-if>
+<sc-if value="{{laeuft}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Jetzt" style="display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #dbc08c"></span>
+<div style="flex-grow: 1; font-size: 13px; color: #c9d3d6"><b style="color: #f0ede4; font-weight: 600">Gerade wartet nichts auf dich.</b> Deine nächste Entscheidung ist die Abnahme nach WS-8b.</div>
+<a href="#" style="font-size: 12.5px">Lauf ansehen</a>
+</section>
+</sc-if>
+
+<section aria-labelledby="was-titel" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 12px">
+<h2 id="was-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Das Was</h2>
+<div style="flex-grow: 1"></div>
+<div role="tablist" aria-label="Das Was" style="display: flex; gap: 4px">
+<sc-for list="{{reiter}}" as="r" hint-placeholder-count="4">
+<button type="button" role="tab" aria-selected="{{r.an}}" onClick="{{r.waehlen}}" style="{{r.stil}}">{{r.text}}</button>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{zeigeAuftrag}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.6; color: #c9d3d6">
+<div>Der Leitstand bekommt die Gestaltung und die Interaktionen der Designvorlage V10. Grundlage ist der Abgleich <code style="font-family: Consolas, 'Courier New', monospace; color: #f0ede4">docs/design/abgleich-f725.md</code>: jede Zeile ist F (gebaut), V (echt angebunden) oder Z (kommt).</div>
+<div>Was gebaut wird: alle Seiten des Leitstands in 17 Workstreams, Texte in de/en/tr/ru, Render-Nachweise je Paket.</div>
+<a href="#" style="font-size: 12.5px">Ganze Akte öffnen</a>
+</div>
+</sc-if>
+<sc-if value="{{zeigeAk}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{aks}}" as="a" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 46px minmax(0, 1fr) 140px; gap: 12px; align-items: start; padding: 9px 0; border-top: 1px solid #ffffff0d; font-size: 12.5px; line-height: 1.5">
+<span style="font-family: Consolas, 'Courier New', monospace; color: #c9d3d6">{{a.id}}</span>
+<span>{{a.text}}</span>
+<span style="{{a.urteilStil}}">{{a.urteil}}</span>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{zeigeNicht}}" hint-placeholder-val="{{ false }}">
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.5; color: #c9d3d6">
+<li>Kein Backend für Z-Zeilen: was Daten oder Endpunkte braucht, die es nicht gibt, bleibt sichtbar und deaktiviert.</li>
+<li>Kein Vorlage-Code im Produkt; übernommen werden Gestaltung und Interaktion.</li>
+<li>Keine Fixtures, keine Beispielzahlen, kein Badge „Designvorschau“.</li>
+<li>F-776 (Katalogart „referenz“) ist nicht Teil.</li>
+<li>Keine Übersetzung von Serverantworten, Projektinhalten und Nutzereingaben.</li>
+</ul>
+</sc-if>
+<sc-if value="{{zeigeDod}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: #c9d3d6; line-height: 1.5">
+<div>Je Paket: alle Texte als Schlüssel in vier Sprachen · Render-Nachweise Desktop, Mobil, hell, dunkel, reduzierte Bewegung · <code style="font-family: Consolas, 'Courier New', monospace; color: #f0ede4">npm run check</code> grün · Akte und Register nachgezogen.</div>
+<div style="font-size: 11.5px; color: #9caeb5">Als eigenes Feld kommt die DoD mit dem Arbeitspaket-Schema (Fixpaket B2). Bis dahin steht sie im Fließtext der Akte.</div>
+</div>
+</sc-if>
+</section>
+
+<section aria-labelledby="fort-titel" style="display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; flex-direction: column; gap: 8px; align-items: center">
+<h2 id="fort-titel" style="align-self: stretch; margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Fortschritt</h2>
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5; align-self: stretch">WER ARBEITET · WS-8a</div>
+<div style="position: relative; width: 280px; height: 280px">
+<div style="position: absolute; left: 40px; top: 40px; width: 200px; height: 200px; border-radius: 50%; border: 1px solid #ffffff2e"><div style="position: absolute; left: 32px; top: 77px; width: 120px; text-align: center; font-family: Georgia, 'Times New Roman', serif; font-size: 14px">F44 · WS-8a</div></div>
+
+<sc-for list="{{rollen}}" as="r" hint-placeholder-count="6">
+<button type="button" style="{{r.stil}}"><span style="font-size: 11.5px; color: #f0ede4">{{r.name}}</span><span style="font-size: 9.5px; color: #9caeb5">{{r.modell}}</span></button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) 82px 64px 84px 60px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid #ffffff14; font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">
+<span>WS</span><span>TITEL</span><span>STATUS</span><span>PR</span><span>SCHÄTZUNG</span><span>IST</span>
+</div>
+<sc-for list="{{workstreams}}" as="w" hint-placeholder-count="8">
+<div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) 82px 64px 84px 60px; gap: 10px; align-items: center; min-height: 30px; font-size: 12px">
+<span style="font-family: Consolas, 'Courier New', monospace">{{w.id}}</span>
+<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{w.titel}}</span>
+<span style="{{w.statusStil}}">{{w.status}}</span>
+<span style="color: #9caeb5">{{w.pr}}</span>
+<span style="color: #c9d3d6">{{w.schaetzung}}</span>
+<span style="color: #c9d3d6">{{w.ist}}</span>
+</div>
+</sc-for>
+<a href="#" style="font-size: 12px; margin-top: 4px">In der Roadmap ansehen →</a>
+</div>
+</section>
+
+<section aria-labelledby="review-titel" style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: baseline; gap: 12px">
+<h2 id="review-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Code &amp; Doku Review</h2>
+<span style="font-size: 12px; color: #9caeb5">aktueller Workstream WS-8a</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{review}}" as="b" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: #10212b; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="font-size: 14px">{{b.titel}}</span>
+<div style="flex-grow: 1"></div>
+<span style="{{b.chipStil}}">{{b.chip}}</span>
+</div>
+<sc-for list="{{b.zeilen}}" as="z" hint-placeholder-count="3">
+<div style="display: flex; gap: 8px; font-size: 12px; line-height: 1.45"><span style="color: #9caeb5; min-width: 92px">{{z.k}}</span><span style="{{z.wStil}}">{{z.v}}</span></div>
+</sc-for>
+<a href="#" style="font-size: 12px">{{b.link}}</a>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="verlauf-titel" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<h2 id="verlauf-titel" style="grid-column: 1 / -1; margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Verlauf</h2>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">ENTSCHEIDUNGEN</div>
+<div style="font-size: 12.5px; line-height: 1.5"><b style="font-weight: 600">E-F44-1 = B</b> · Z-Elemente sichtbar, deaktiviert, „kommt“</div>
+<div style="font-size: 12.5px; line-height: 1.5"><b style="font-weight: 600">E-F44-2 = B</b> · Serverantworten bleiben in Originalsprache</div>
+<div style="font-size: 12.5px; line-height: 1.5"><b style="font-weight: 600">E-F44-3 = A</b> · „Ablauf vorbereiten“ ist der Hauptweg</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">BEFUNDE AUS DIESEM FEATURE</div>
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px">[n] <span style="font-size: 13px; color: #9caeb5">offen von [n]</span></div>
+<div style="font-size: 12px; color: #9caeb5">zuletzt F-958 bis F-966 aus WS-8</div>
+<a href="#" style="font-size: 12px">Befunde ansehen</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">VERBRAUCH</div>
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px">[n] <span style="font-size: 13px; color: #9caeb5">Token · [n] Läufe</span></div>
+<div style="font-size: 12px; color: #9caeb5">aufgeteilt nach Rolle und Worker</div>
+<a href="#" style="font-size: 12px">In Nutzung ansehen</a>
+</div>
+</section>
+
+</div>
+
+<aside aria-label="Planung" style="display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a; position: sticky; top: 16px; margin-top: 38px">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 19px">Deine Planung</h2>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="pl-prio" style="font-size: 11.5px; color: #9caeb5">Priorität</label>
+<select id="pl-prio" style="min-height: 40px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px"><option>keine</option><option>P1</option><option>P2</option><option>P3</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="pl-ms" style="font-size: 11.5px; color: #9caeb5">Meilenstein</label>
+<select id="pl-ms" style="min-height: 40px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px"><option>M5</option><option>V0.9</option><option>V1.0</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 11.5px; color: #9caeb5">Schätzung Rest (Arbeitstage)</span>
+<div style="display: flex; align-items: center; gap: 8px">
+<input type="text" value="0,55" aria-label="Minimum" style="width: 64px; min-height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px">
+<span style="color: #9caeb5">bis</span>
+<input type="text" value="0,9" aria-label="Maximum" style="width: 64px; min-height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="pl-grund" style="font-size: 11.5px; color: #9caeb5">Begründung (Pflicht)</label>
+<textarea id="pl-grund" rows="3" onInput="{{setzeGrund}}" style="box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 8px 10px; resize: vertical"></textarea>
+</div>
+<button type="button" disabled="{{speichernAus}}" style="{{speichernStil}}">Planung speichern</button>
+<div style="height: 1px; background: #ffffff14"></div>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px">
+<a href="#">Akte in VS Code öffnen</a>
+<a href="#">Pull Requests auf GitHub</a>
+<a href="#">Auf der Roadmap ansehen →</a>
+</div>
+</aside>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2350}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const wartet = !!st.wartet;
+    const reiterId = st.reiter || 'ak';
+
+    const reiter = [['auftrag', 'Auftrag'], ['ak', 'Abnahmekriterien · 7'], ['nicht', 'Nicht-Ziele · 5'], ['dod', 'Fertig, wenn']].map(([id, text]) => ({
+      text, an: id === reiterId ? 'true' : 'false', waehlen: () => this.setState({ reiter: id }),
+      stil: 'min-height:34px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:12px;' + (id === reiterId ? 'background:#8bd8c11f;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#c9d3d6')
+    }));
+
+    const urteil = (u) => {
+      if (u === 'erfuellt') return { urteil: 'erfüllt', urteilStil: 'justify-self:start;font-size:11px;padding:2px 9px;border-radius:999px;color:#8bd8c1;border:1px solid #8bd8c188' };
+      if (u === 'nicht') return { urteil: 'nicht erfüllt', urteilStil: 'justify-self:start;font-size:11px;padding:2px 9px;border-radius:999px;color:#ee9f7f;border:1px solid #ee9f7f88' };
+      return { urteil: 'noch kein Urteil', urteilStil: 'justify-self:start;font-size:11px;padding:2px 9px;border-radius:999px;color:#9caeb5;border:1px solid #ffffff30' };
+    };
+    const akRoh = [
+      ['AK1', 'Alle F-Zeilen der Tabelle sind im neuen Stil vorhanden. Kein heutiges Verhalten fällt weg.'],
+      ['AK2', 'Alle V-Zeilen sind echt angebunden.'],
+      ['AK3', 'Keine Fixture-Daten, keine Beispielzahlen und kein Badge „Designvorschau“ im Produkt.'],
+      ['AK4', 'Z-Elemente sind sichtbar, deaktiviert und mit „kommt“ gekennzeichnet; keines zeigt Beispieldaten.'],
+      ['AK5', 'npm run check ist grün. Die Render-Nachweise je Paket liegen vor.'],
+      ['AK6', 'Die Sicherheitsgrenzen bleiben: CSRF, Host-Allowlist, Pflichtbegründung, Freigabe-Veto, „Anzeige = Start“, ein Lauf zur Zeit, eine Live-Region.'],
+      ['AK7', 'Alle UI-Texte gibt es in de/en/tr/ru; das i18n-Gate ist grün.']
+    ];
+    const aks = akRoh.map(([id, text], i) => Object.assign({ id, text }, urteil(wartet ? (i === 1 ? 'nicht' : 'erfuellt') : 'offen')));
+
+    const lage = { fertig: '#8bd8c1', jetzt: '#dbc08c', offen: '#ffffff30' };
+    const rolle = (name, modell, x, y, s) => ({
+      name, modell,
+      stil: 'position:absolute;left:' + (x - 44) + 'px;top:' + (y - 20) + 'px;width:88px;height:40px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;color:inherit;background:' + (s === 'jetzt' ? '#dbc08c1f' : '#10212b') + ';border:1px solid ' + lage[s]
+    });
+    const rollen = wartet ? [
+      rolle('Planner', 'Codex', 140, 40, 'fertig'), rolle('Advisor', 'Claude', 228, 90, 'fertig'), rolle('Builder', 'Claude Code', 228, 190, 'fertig'),
+      rolle('Prüfschritt', 'kein Modell', 140, 240, 'fertig'), rolle('Reviewer', 'Codex', 52, 190, 'fertig'), rolle('Abnahme', 'Du', 52, 90, 'jetzt')
+    ] : [
+      rolle('Planner', 'Codex', 140, 40, 'fertig'), rolle('Advisor', 'Claude', 228, 90, 'fertig'), rolle('Builder', 'Claude Code', 228, 190, 'jetzt'),
+      rolle('Prüfschritt', 'kein Modell', 140, 240, 'offen'), rolle('Reviewer', 'Codex', 52, 190, 'offen'), rolle('Abnahme', 'Du', 52, 90, 'offen')
+    ];
+
+    const sStil = (s) => 'justify-self:start;font-size:10.5px;padding:2px 8px;border-radius:999px;white-space:nowrap;' + (s === 'gemergt' ? 'color:#8bd8c1;border:1px solid #8bd8c166' : s === 'läuft' ? 'color:#dbc08c;border:1px solid #dbc08c88' : 'color:#c9d3d6;border:1px solid #ffffff30');
+    const ws = (id, titel, status, pr, schaetzung, ist) => ({ id, titel, status, pr, schaetzung, ist, statusStil: sStil(status) });
+    const workstreams = [
+      ws('WS-0…4b', '9 Workstreams: Ablage bis Abnahme', 'gemergt', '#290–298', '[–]', '[n] AT'),
+      ws('WS-5a', 'Ausführungen', 'gemergt', '#299', '[–]', '≈ 0,15 AT'),
+      ws('WS-5b', 'Auftrag & Direktstart', 'gemergt', '#300', '0,3–0,6', '[n]'),
+      ws('WS-6a', 'Alle Produkte', 'gemergt', '#301', '0,5–1,5 (WS-6)', '[n]'),
+      ws('WS-6b', 'Nutzung', 'gemergt', '#302', '', '[n]'),
+      ws('WS-7a', 'Workforce-Werkstatt', 'gemergt', '[#]', '0,5–1,5 (WS-7)', '[n]'),
+      ws('WS-7b', 'Scout', 'gemergt', '[#]', '', '[n]'),
+      wartet ? ws('WS-8a', 'Dock & große Ansicht', 'gemergt', '[#]', '0,3–0,5', '[n]') : ws('WS-8a', 'Dock & große Ansicht', 'läuft', '–', '0,3–0,5', '[n]'),
+      wartet ? ws('WS-8b', 'Coach & Befehle', 'gemergt', '[#]', '0,25–0,4', '[n]') : ws('WS-8b', 'Coach & Befehle', 'geplant', '–', '0,25–0,4', '–')
+    ];
+
+    const chip = (text, farbe) => ({ chip: text, chipStil: 'font-size:10.5px;padding:2px 8px;border-radius:999px;color:' + farbe + ';border:1px solid ' + farbe + '88' });
+    const z = (k, v, farbe) => ({ k, v, wStil: 'color:' + (farbe || '#f0ede4') });
+    const review = [
+      Object.assign({ titel: 'Änderungen', link: 'Im Code-Reiter öffnen', zeilen: [z('Branch', 'feat/f725-ws8a-[…]'), z('Dateien', '[n] geändert · [n] neu'), z('Schwerpunkt', 'views/chat.js, shell.js, i18n')] }, chip('[n] Dateien', '#7db3f0')),
+      Object.assign({ titel: 'Prüfungen', link: 'Prüfstand öffnen', zeilen: [z('npm run check', wartet ? 'grün · [n] Tests' : 'noch nicht gelaufen', wartet ? '#8bd8c1' : '#9caeb5'), z('Gates', 'f34-product-coach, f44-i18n, f20-tokens'), z('Reviewer', wartet ? 'code-reviewer ✓ · qa ✓ · design-guardian ✓' : 'code-reviewer · qa · design-guardian: offen', wartet ? '#8bd8c1' : '#9caeb5')] }, wartet ? chip('grün', '#8bd8c1') : chip('offen', '#9caeb5')),
+      Object.assign({ titel: 'Doku', link: 'Akte öffnen', zeilen: [z('Akte', 'features/F44/feature.md · Stand WS-8a'), z('Register', 'state/findings.md · F-958 bis F-966'), z('Abgleich', 'docs/design/abgleich-f725.md · Abschnitt L')] }, chip('3 Dateien', '#7db3f0')),
+      Object.assign({ titel: 'Nachweise', link: 'Nachweisordner öffnen', zeilen: [z('Ordner', 'features/F44/nachweise/ws8a/'), z('Ansichten', 'Desktop · Mobil · hell · dunkel · reduzierte Bewegung'), z('Stand', wartet ? 'vollständig' : 'entsteht im Lauf', wartet ? '#8bd8c1' : '#9caeb5')] }, wartet ? chip('vollständig', '#8bd8c1') : chip('offen', '#9caeb5'))
+    ];
+
+    const grund = st.grund || '';
+    const speichernAus = grund.trim().length === 0;
+    return {
+      reiter, aks, rollen, workstreams, review, wartet, laeuft: !wartet,
+      zeigeAuftrag: reiterId === 'auftrag', zeigeAk: reiterId === 'ak', zeigeNicht: reiterId === 'nicht', zeigeDod: reiterId === 'dod',
+      gerade: wartet ? 'Alle Workstreams sind gemergt und geprüft. Die Abnahme liegt bei dir.' : 'WS-8a „Dock & große Ansicht“ wird gebaut (Builder · Claude Code).',
+      naechstes: wartet ? 'Nach deiner Abnahme: Fixpaket „Arbeitsfähigkeit“.' : 'WS-8b „Coach & Befehle“, danach Prüfung und deine Abnahme.',
+      statusText: wartet ? 'ABNAHME OFFEN' : 'IN ARBEIT',
+      statusFarbe: wartet ? '#dbc08c' : '#8bd8c1',
+      statusRand: wartet ? '#dbc08c' : '#ffffff1a',
+      statusPunkt: 'width:9px;height:9px;border-radius:50%;background:' + (wartet ? '#dbc08c' : '#8bd8c1'),
+      phase: wartet ? 'Abnahme' : 'Bau · WS-8a',
+      dran: wartet ? 'Du' : 'Builder · Claude Code',
+      zustandUmschalten: () => this.setState({ wartet: !wartet }),
+      setzeGrund: (e) => this.setState({ grund: e.target.value }),
+      speichernAus,
+      speichernStil: 'min-height:40px;border-radius:10px;border:0;font-size:13px;' + (speichernAus ? 'background:#ffffff14;color:#9caeb5;cursor:not-allowed' : 'background:#8bd8c1;color:#10212b;cursor:pointer')
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1382,6 +1382,10 @@ export default {
   'chat.ende.nichtErfolgreich': 'Запуск завершён, но неуспешно ({ergebnis}).',
   'chat.ende.unerwartet': 'Запуск неожиданно завершился (статус: {status}).',
   'chat.ende.statusUnbekannt': 'неизвестен',
+  // F-986: Chat-Lauf nie gestartet bzw. ohne Änderung über die Lauf-Zeitgrenze (views/chat.js, chat-laufstand.js).
+  'chat.ende.nichtGestartet': 'Запуск не начат: {grund}',
+  'chat.ende.nichtGestartetOhneGrund': 'Запуск не начат (причина не указана).',
+  'chat.ende.zeitgrenze': 'Более {minuten} мин. без изменений в запуске — чат больше не ждёт. Состояние — в разделе «Запуски».',
   'chat.fortschritt.liest': 'читает {pfad}',
   'chat.fortschritt.liestDatei': 'читает файл',
   'chat.fortschritt.durchsucht': 'ищет «{muster}»',

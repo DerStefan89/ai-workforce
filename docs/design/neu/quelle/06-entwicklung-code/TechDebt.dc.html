@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Entwicklung · Tech Debt &amp; Prozess</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1300px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px">
+<span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">GitHub</a>
+</header>
+
+<main style="padding: 32px 48px 64px; display: flex; flex-direction: column; gap: 22px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 44px">Tech Debt &amp; Prozess</h1>
+<div style="color: #9caeb5">Bewusst in Kauf genommene Schulden: im Code und in der Arbeitsweise. Nicht vergessen, sondern einplanen.</div>
+</div>
+
+<nav aria-label="Bereiche der Entwicklung" style="display: flex; gap: 4px; border-bottom: 1px solid #ffffff1a">
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Kanban-Board</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Features</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Bugs</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Harness Improvements</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; min-height: 44px; box-sizing: border-box; border-bottom: 2px solid #8bd8c1; margin-bottom: -1px">Tech Debt &amp; Prozess</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Aufträge</a>
+<a href="Main.dc.html" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Code</a>
+</nav>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<button type="button" onClick="{{zeigeTech}}" aria-pressed="{{techAn}}" style="{{techKarte}}">
+<span style="display: flex; align-items: center; gap: 10px">
+<span style="font-size: 10.5px; letter-spacing: 2px; padding: 3px 9px; border-radius: 999px; color: #7db3f0; border: 1px solid #7db3f088">TECHNISCHE SCHULD</span>
+<span style="font-size: 11px; color: #9caeb5">Tech Debt</span>
+<span style="flex-grow: 1"></span>
+<span style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px">263</span>
+<span style="font-size: 12px; color: #9caeb5">offen</span>
+</span>
+<span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px; text-align: left">Im Code: bewusst vereinfacht gebaut</span>
+<span style="font-size: 12.5px; color: #c9d3d6; line-height: 1.5; text-align: left">Zu große Dateien, doppelte Logik, fehlende Anzeige, Abkürzungen aus dem Prototyp. Wird später nachgezogen, ohne dass etwas kaputt ist.</span>
+</button>
+<button type="button" onClick="{{zeigeProzess}}" aria-pressed="{{prozessAn}}" style="{{prozessKarte}}">
+<span style="display: flex; align-items: center; gap: 10px">
+<span style="font-size: 10.5px; letter-spacing: 2px; padding: 3px 9px; border-radius: 999px; color: #ee9f7f; border: 1px solid #ee9f7f88">PROZESS-SCHULD</span>
+<span style="font-size: 11px; color: #9caeb5">Process Improvement</span>
+<span style="flex-grow: 1"></span>
+<span style="font-family: Georgia, 'Times New Roman', serif; font-size: 28px">169</span>
+<span style="font-size: 12px; color: #9caeb5">offen</span>
+</span>
+<span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px; text-align: left">In der Arbeitsweise: Rollen, Übergaben, Regeln</span>
+<span style="font-size: 12.5px; color: #c9d3d6; line-height: 1.5; text-align: left">Was der Workforce an Kontext, Vorgaben oder Ablauf fehlt, damit Rollen gut zusammenarbeiten. Betrifft nicht den Code selbst.</span>
+</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<div role="group" aria-label="Art" style="display: flex; gap: 6px">
+<sc-for list="{{arten}}" as="a" hint-placeholder-count="3">
+<button type="button" onClick="{{a.waehlen}}" aria-pressed="{{a.an}}" style="{{a.stil}}">{{a.text}}</button>
+</sc-for>
+</div>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<div role="group" aria-label="Priorität" style="display: flex; gap: 6px">
+<button type="button" aria-pressed="false" style="min-height: 36px; padding: 0 12px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 12px; cursor: pointer">P1</button>
+<button type="button" aria-pressed="false" style="min-height: 36px; padding: 0 12px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 12px; cursor: pointer">P2</button>
+<button type="button" aria-pressed="false" style="min-height: 36px; padding: 0 12px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 12px; cursor: pointer">P3</button>
+</div>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 12px; color: #9caeb5">{{anzahlText}}</span>
+</div>
+
+<div style="border-radius: 14px; border: 1px solid #ffffff1a; background: #162832; overflow: hidden">
+<div style="display: grid; grid-template-columns: 160px 70px minmax(0, 1fr) 54px 150px 120px; gap: 12px; padding: 10px 16px; font-size: 10px; letter-spacing: 1.5px; color: #9caeb5; border-bottom: 1px solid #ffffff14">
+<span>ART</span><span>ID</span><span>TITEL</span><span>PRIO</span><span>EINGEPLANT</span><span></span>
+</div>
+<sc-for list="{{zeilen}}" as="z" hint-placeholder-count="8">
+<div style="display: grid; grid-template-columns: 160px 70px minmax(0, 1fr) 54px 150px 120px; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid #ffffff0b; font-size: 12.5px">
+<span style="{{z.artStil}}">{{z.art}}</span>
+<span style="font-family: Consolas, 'Courier New', monospace; color: #c9d3d6">{{z.id}}</span>
+<span style="line-height: 1.45">{{z.titel}}</span>
+<span style="color: #c9d3d6">{{z.prio}}</span>
+<span style="color: #9caeb5; font-size: 12px">{{z.plan}}</span>
+<a href="#" style="font-size: 12px">Öffnen</a>
+</div>
+</sc-for>
+</div>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const art = st.art || 'alle';
+    const T = 'TECH_DEBT', P = 'PROCESS_IMPROVEMENT';
+    const roh = [
+      [P, 'F-936', 'Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe.', 'P1', 'Fixpaket B2'],
+      [P, 'F-929', 'Unklar, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen.', 'P2', 'Fixpaket B1'],
+      [P, 'F-938', 'Aufträge aus Findings tragen weder AK noch Nicht-Ziele, und keine Rolle bekommt eine DoD.', 'P2', 'Fixpaket B2'],
+      [P, 'F-944', 'Timeline aus Schätzungen statt Kalenderdaten.', 'P2', 'Fixpaket B5'],
+      [P, 'F-930', 'F38 als „gestufter Kontext“ neu fassen.', 'P2', 'nicht eingeplant'],
+      [T, 'F-943', 'Kette „Auftrag anlegen → routen → auf Vorschlag warten“ existiert zweimal.', 'P3', 'nicht eingeplant'],
+      [T, 'F-928', 'views/workboard.js ist mit rund 1 400 Zeilen zu groß; Click-to-Work gehört in ein eigenes Modul.', 'P3', 'Fixpaket B5'],
+      [T, 'F-941', 'views/workflows.js liegt mit rund 990 Zeilen knapp unter der Grenze.', 'P3', 'nicht eingeplant'],
+      [T, 'F-942', 'Ausführungsliste ohne Worker und Rolle.', 'P3', 'nicht eingeplant'],
+      [T, 'F-945', 'Zähler auf „Alle Produkte“ kosten je Karte drei Zusatzabrufe.', 'P3', 'nicht eingeplant'],
+      [P, 'F-933', 'Die Lernschleife /lessons gibt es in der Workforce nicht.', 'P3', 'Fixpaket B1']
+    ];
+    const artChip = (t) => t === T
+      ? { art: 'Technische Schuld', artStil: 'justify-self:start;font-size:10.5px;padding:3px 9px;border-radius:999px;white-space:nowrap;color:#7db3f0;border:1px solid #7db3f088' }
+      : { art: 'Prozess-Schuld', artStil: 'justify-self:start;font-size:10.5px;padding:3px 9px;border-radius:999px;white-space:nowrap;color:#ee9f7f;border:1px solid #ee9f7f88' };
+    const sicht = roh.filter((r) => art === 'alle' || (art === 'tech' ? r[0] === T : r[0] === P));
+    const zeilen = sicht.map(([t, id, titel, prio, plan]) => Object.assign({ id, titel, prio, plan }, artChip(t)));
+    const knopf = (an) => 'min-height:36px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:12px;' + (an ? 'background:#8bd8c11f;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#c9d3d6');
+    const arten = [['alle', 'Alle'], ['tech', 'Technische Schuld'], ['prozess', 'Prozess-Schuld']].map(([id, text]) => ({
+      text, an: id === art ? 'true' : 'false', stil: knopf(id === art), waehlen: () => this.setState({ art: id })
+    }));
+    const karte = (an, farbe) => 'display:flex;flex-direction:column;gap:10px;padding:18px;border-radius:16px;cursor:pointer;color:#f0ede4;background:#162832;' + (an ? 'border:1px solid ' + farbe : 'border:1px solid #ffffff1a');
+    return {
+      zeilen, arten,
+      anzahlText: 'Auszug · ' + zeilen.length + ' von ' + (art === 'tech' ? 263 : art === 'prozess' ? 169 : 432) + ' offenen',
+      zeigeTech: () => this.setState({ art: art === 'tech' ? 'alle' : 'tech' }),
+      zeigeProzess: () => this.setState({ art: art === 'prozess' ? 'alle' : 'prozess' }),
+      techAn: art === 'tech' ? 'true' : 'false', prozessAn: art === 'prozess' ? 'true' : 'false',
+      techKarte: karte(art === 'tech', '#7db3f0'), prozessKarte: karte(art === 'prozess', '#ee9f7f')
+    };
+  }
+}
+</script>
+</body>
+</html>

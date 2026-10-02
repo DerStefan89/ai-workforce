@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Start #/dashboard, Chat-Dock offen, leerer Verlauf",
+    "„Lauf abbrechen“": false,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "de",
+    "Persona-Status (Live-Region)": "Bereit für deine Idee",
+    "Letzte Antwort im Verlauf": "(fehlt)",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  },
+  {
+    "label": "Nachricht senden → POST …/chat 202; das Lauf-Detail meldet NICHT_GESTARTET mit terminaler Marke (VERWEIGERT, E-188)",
+    "„Lauf abbrechen“": true,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "de",
+    "Persona-Status (Live-Region)": "Bereit für deine Idee",
+    "Letzte Antwort im Verlauf": "(fehlt)",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  },
+  {
+    "label": "Fehlanzeige „Lauf nicht gestartet …“ statt endloser Tipp-Punkte; „Lauf abbrechen“ verborgen, Eingabe frei, keine zweite Live-Region",
+    "„Lauf abbrechen“": false,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "de",
+    "Persona-Status (Live-Region)": "Bereit für deine Idee",
+    "Letzte Antwort im Verlauf": "Lauf nicht gestartet: <img src=x onerror=alert(1)> Grund mit <b>HTML</b>",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  }
+]

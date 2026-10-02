@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Entwicklung · Code</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1900px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+<div style="flex-grow: 1"></div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Alle Produkte</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Nutzung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Einstellungen</a>
+<div style="border-top: 1px solid #ffffff14; margin-top: 12px; padding-top: 12px"></div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Workforce</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px">
+<span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"></path></svg>VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="m4 7 5 5-5 5M12 18h8"></path></svg>Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.6 11.6 0 0 0-6 0C6.8 2.8 5.8 3.1 5.8 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>GitHub</a>
+</header>
+
+<main style="padding: 32px 48px 64px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 44px">Code</h1>
+<div style="color: #9caeb5">Was sich im Repo geändert hat, und durch welche Arbeit. Ausgeführt wird im Terminal.</div>
+</div>
+
+<nav aria-label="Bereiche der Entwicklung" style="display: flex; gap: 4px; border-bottom: 1px solid #ffffff1a">
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Kanban-Board</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Features</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Bugs</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Harness Improvements</a>
+<a href="TechDebt.dc.html" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Tech Debt &amp; Prozess</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px; min-height: 44px; box-sizing: border-box">Aufträge</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; min-height: 44px; box-sizing: border-box; border-bottom: 2px solid #8bd8c1; margin-bottom: -1px">Code</a>
+</nav>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start">
+
+<section aria-labelledby="stand-titel" style="display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<h2 id="stand-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Arbeitsstand jetzt</h2>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid #8bd8c180; font-family: Consolas, 'Courier New', monospace; font-size: 12px">
+<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="2" aria-hidden="true"><path d="M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a9 9 0 0 1-9 9"></path></svg>feat/f725-ws7a-workforce</span>
+<span style="font-size: 12px; color: #9caeb5">von main · [n] Commits voraus</span>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 12px; color: #c9d3d6">{{anzahlText}}</span>
+</div>
+
+<div style="display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<sc-for list="{{gruppen}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5; padding: 4px 2px">{{g.ordner}}</div>
+<sc-for list="{{g.dateien}}" as="d" hint-placeholder-count="2">
+<button type="button" onClick="{{d.waehlen}}" aria-pressed="{{d.an}}" style="{{d.stil}}">
+<span style="{{d.artStil}}">{{d.art}}</span>
+<span style="flex-grow: 1; min-width: 0; text-align: left; font-family: Consolas, 'Courier New', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.name}}</span>
+<span style="font-size: 11px; color: #8bd8c1">{{d.plus}}</span>
+<span style="font-size: 11px; color: #e8a68f">{{d.minus}}</span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+</div>
+
+<div style="border-radius: 12px; border: 1px solid #ffffff1f; background: #0b1820; overflow: hidden; min-width: 0">
+<div style="display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 14px; border-bottom: 1px solid #ffffff12">
+<span style="font-family: Consolas, 'Courier New', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{auswahl.pfad}}</span>
+<div style="flex-grow: 1"></div>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 12px; white-space: nowrap">
+<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="2" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5"></path></svg>In VS Code öffnen</a>
+</div>
+<div style="padding: 10px 0; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.7">
+<sc-for list="{{auswahl.zeilen}}" as="z" hint-placeholder-count="8">
+<div style="{{z.stil}}">{{z.text}}</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<h3 style="margin: 0; font-size: 14px; font-weight: 400; color: #f0ede4">Sichern</h3>
+<span style="font-size: 12px; color: #9caeb5">Dateien und Nachricht vorgeschlagen · am Stück einfügen · erst nach grünem Prüfstand</span>
+</div>
+<div style="border-radius: 12px; border: 1px solid #ffffff1f; background: #0b1820; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid #ffffff12; background: #ffffff05">
+<span style="font-size: 10.5px; letter-spacing: 1.5px; color: #9caeb5">POWERSHELL</span>
+<span style="font-size: 10.5px; color: #9caeb5">3 Befehle · nacheinander</span>
+<div style="flex-grow: 1"></div>
+<button type="button" onClick="{{kopieren}}" style="min-height: 32px; padding: 0 10px; border-radius: 8px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 12px">{{kopierText}}</button>
+<button type="button" style="min-height: 32px; padding: 0 10px; border-radius: 8px; border: 0; background: #8bd8c1; color: #10212b; cursor: pointer; font-size: 12px">Ins Terminal</button>
+</div>
+<pre style="margin: 0; padding: 12px 14px; font-family: Consolas, 'Courier New', monospace; font-size: 12.5px; color: #f0ede4; white-space: pre-wrap; line-height: 1.6">{{sichernCode}}</pre>
+</div>
+</div>
+</section>
+
+<div style="display: flex; flex-direction: column; gap: 16px">
+
+<section aria-labelledby="freigabe-titel" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 10px">
+<h2 id="freigabe-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 19px">Commit-Freigabe</h2>
+<div style="flex-grow: 1"></div>
+<span style="{{freigabeChipStil}}">{{freigabeChip}}</span>
+</div>
+<div style="font-size: 12.5px; line-height: 1.55; color: #c9d3d6">{{freigabeText}}</div>
+<div style="display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 6px 10px; font-size: 12px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">DATEI</span><span style="font-family: Consolas, 'Courier New', monospace">state/freigabe-commit.md</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">GILT</span><span>10 Minuten nach Anlegen</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">GILT FÜR</span><span>Claude Code (Hook commit-guard). Dein Terminal nicht.</span>
+</div>
+<button type="button" onClick="{{freigabeUmschalten}}" style="align-self: flex-start; min-height: 32px; padding: 0 10px; border-radius: 8px; background: none; border: 1px dashed #ffffff40; color: #9caeb5; cursor: pointer; font-size: 11.5px">Zustand im Design umschalten</button>
+</section>
+
+<section aria-labelledby="pruef-titel" style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #dbc08c55">
+<div style="display: flex; align-items: center; gap: 10px">
+<h2 id="pruef-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 19px">Prüfstand</h2>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 11px; padding: 3px 9px; border-radius: 999px; color: #dbc08c; border: 1px solid #dbc08c88">nicht geprüft</span>
+</div>
+<div style="font-size: 12.5px; line-height: 1.55; color: #c9d3d6">Seit der letzten Änderung wurde nicht geprüft. Vor dem Sichern einmal prüfen.</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+<div style="padding: 10px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">TESTS</span><span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px">[n]</span></div>
+<div style="padding: 10px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">PRÜFSKRIPTE</span><span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px">74</span></div>
+<div style="padding: 10px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">CI · BRANCH</span><span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px">[–]</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px">
+<div style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">VON DIESER ÄNDERUNG BERÜHRT</div>
+<sc-for list="{{gates}}" as="x" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 26px">
+<span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #9caeb5; box-sizing: border-box"></span>
+<span style="font-family: Consolas, 'Courier New', monospace">{{x.name}}</span>
+<span style="color: #9caeb5">{{x.info}}</span>
+</div>
+</sc-for>
+</div>
+<div style="border-radius: 10px; border: 1px solid #ffffff1f; background: #0b1820; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; border-bottom: 1px solid #ffffff12">
+<span style="font-size: 10.5px; letter-spacing: 1.5px; color: #9caeb5">POWERSHELL</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="min-height: 30px; padding: 0 10px; border-radius: 8px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 12px">Kopieren</button>
+<button type="button" style="min-height: 30px; padding: 0 10px; border-radius: 8px; border: 0; background: #8bd8c1; color: #10212b; cursor: pointer; font-size: 12px">Ins Terminal</button>
+</div>
+<pre style="margin: 0; padding: 10px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12.5px">npm run check</pre>
+</div>
+</section>
+
+</div>
+</div>
+
+<section aria-labelledby="verlauf-titel" style="display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="verlauf-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Verlauf auf main</h2>
+<div style="font-size: 12.5px; color: #9caeb5">Jeder Merge mit der Arbeit, aus der er kam. Der Abstand zum vorigen Merge fließt als Ist in die Zeitleiste.</div>
+</div>
+<div style="flex-grow: 1"></div>
+<div role="group" aria-label="Filter" style="display: flex; gap: 6px">
+<sc-for list="{{filter}}" as="f" hint-placeholder-count="4">
+<button type="button" onClick="{{f.waehlen}}" aria-pressed="{{f.an}}" style="{{f.stil}}">{{f.text}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: 80px 90px minmax(0, 1fr) 250px 110px 70px; gap: 12px; padding: 0 4px 8px; border-bottom: 1px solid #ffffff14; font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">
+<span>COMMIT</span><span>ZEIT</span><span>NACHRICHT</span><span>GEHÖRT ZU</span><span>ABSTAND</span><span></span>
+</div>
+<sc-for list="{{verlauf}}" as="v" hint-placeholder-count="6">
+<div style="display: grid; grid-template-columns: 80px 90px minmax(0, 1fr) 250px 110px 70px; gap: 12px; align-items: center; padding: 8px 4px; border-bottom: 1px solid #ffffff0b; font-size: 12.5px">
+<span style="font-family: Consolas, 'Courier New', monospace; color: #8bd8c1">{{v.hash}}</span>
+<span style="color: #9caeb5">{{v.zeit}}</span>
+<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{v.text}}</span>
+<span style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{v.chips}}" as="c" hint-placeholder-count="3">
+<span style="{{c.stil}}">{{c.text}}</span>
+</sc-for>
+</span>
+<span style="color: #c9d3d6">{{v.abstand}}</span>
+<a href="#" style="font-size: 12px">GitHub</a>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="kommt-titel" style="display: flex; flex-direction: column; gap: 12px">
+<h2 id="kommt-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Später auf dieser Seite</h2>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{kommt}}" as="k" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; border: 1px dashed #ffffff30; min-height: 130px; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="font-size: 14px">{{k.titel}}</span>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 10px; padding: 2px 8px; border-radius: 999px; color: #9caeb5; border: 1px solid #ffffff30">kommt</span>
+</div>
+<div style="font-size: 12px; line-height: 1.5; color: #9caeb5">{{k.text}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const gewaehlt = st.datei || 'de';
+    const freigabe = !!st.freigabe;
+    const vfilter = st.vfilter || 'alle';
+
+    const artStil = (a) => 'width:18px;height:18px;flex-shrink:0;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;' + (a === 'N' ? 'background:#8bd8c133;color:#8bd8c1' : 'background:#dbc08c26;color:#dbc08c');
+    const roh = [
+      { ordner: 'PUBLIC/LEITSTAND/VIEWS', dateien: [
+        { id: 'cap', name: 'capabilities.js', pfad: 'public/leitstand/views/capabilities.js', art: 'G', plus: '+[n]', minus: '−[n]' },
+        { id: 'capt', name: 'capabilities.test.mjs', pfad: 'public/leitstand/views/capabilities.test.mjs', art: 'N', plus: '+[n]', minus: '' }
+      ] },
+      { ordner: 'PUBLIC/LEITSTAND/I18N', dateien: [
+        { id: 'de', name: 'de.js', pfad: 'public/leitstand/i18n/de.js', art: 'G', plus: '+[n]', minus: '' },
+        { id: 'en', name: 'en.js · tr.js · ru.js', pfad: 'public/leitstand/i18n/en.js', art: 'G', plus: '+[n]', minus: '' }
+      ] },
+      { ordner: 'FEATURES/F44', dateien: [
+        { id: 'fm', name: 'feature.md', pfad: 'features/F44/feature.md', art: 'G', plus: '+[n]', minus: '−[n]' }
+      ] },
+      { ordner: 'STATE', dateien: [
+        { id: 'fi', name: 'findings.md', pfad: 'state/findings.md', art: 'G', plus: '+[n]', minus: '' }
+      ] }
+    ];
+    let auswahlDatei = null;
+    let anzahl = 0;
+    const gruppen = roh.map((g) => ({
+      ordner: g.ordner,
+      dateien: g.dateien.map((d) => {
+        anzahl += 1;
+        const an = d.id === gewaehlt;
+        if (an) auswahlDatei = d;
+        return {
+          name: d.name, art: d.art, artStil: artStil(d.art), plus: d.plus, minus: d.minus, an: an ? 'true' : 'false',
+          waehlen: () => this.setState({ datei: d.id }),
+          stil: 'display:flex;align-items:center;gap:8px;width:100%;min-height:34px;padding:0 10px;border-radius:8px;cursor:pointer;color:#f0ede4;' + (an ? 'background:#8bd8c11a;border:1px solid #8bd8c166' : 'background:none;border:1px solid transparent')
+        };
+      })
+    }));
+    const z = (art, text) => ({ text, stil: 'padding:0 14px;white-space:pre;' + (art === '+' ? 'background:#8bd8c114;color:#c8f0e3' : art === '-' ? 'background:#e8a68f14;color:#f2c9bb' : art === '@' ? 'color:#7db3f0' : 'color:#9caeb5') });
+    const diff = {
+      de: [z('@', '@@ [Zeile] @@ entwicklung'), z(' ', "  'entwicklung.tab.ausfuehrungen': 'Ausführungen',"), z('+', "+ 'workforce.titel': '[Text]',"), z('+', "+ 'workforce.katalog': '[Text]',"), z('+', "+ 'workforce.rollen': '[Text]',"), z(' ', '  …')],
+      cap: [z('@', '@@ [Zeile] @@ renderKatalog'), z('-', '- [entfernte Zeile]'), z('+', '+ [neue Zeile]'), z('+', '+ [neue Zeile]'), z(' ', '  [unveränderte Zeile]')],
+      capt: [z('@', '@@ neue Datei @@'), z('+', '+ [Testinhalt]')],
+      en: [z('@', '@@ [Zeile] @@'), z('+', '+ [übersetzte Schlüssel]')],
+      fm: [z('@', '@@ Stand WS-7a @@'), z('+', '+ [Abschnitt Stand WS-7a]')],
+      fi: [z('@', '@@ [Ende des Registers] @@'), z('+', '+ [neuer Befund]')]
+    };
+    const auswahl = { pfad: auswahlDatei ? auswahlDatei.pfad : '', zeilen: diff[gewaehlt] || [] };
+
+    const sichernCode = 'git add public/leitstand/views/capabilities.js public/leitstand/views/capabilities.test.mjs public/leitstand/i18n features/F44/feature.md state/findings.md\ngit commit -m "F44 WS-7a: Workforce-Katalog nach Design"\ngit push -u origin feat/f725-ws7a-workforce';
+
+    const chip = (text, farbe) => ({ text, stil: 'font-size:10.5px;padding:2px 8px;border-radius:999px;white-space:nowrap;color:' + farbe + ';border:1px solid ' + farbe + '66' });
+    const merge = (hash, zeit, text, ws, pr, abstand, art) => ({ hash, zeit, text, abstand, art, chips: [chip('F44', '#7db3f0'), chip(ws, '#b79cf0'), chip(pr, '#9caeb5')] });
+    const alleMerges = [
+      merge('3aff6e4', '02.10. 00:11', 'Nutzung nach d_nutzung (I1–I3), Gelesen inkl. Cache …', 'WS-6b', '#302', '0:59 h', 'feature'),
+      merge('5075215', '01.10. 23:12', 'Alle Produkte nach d_projekte (H1–H7), Neues Produkt als Unterseite …', 'WS-6a', '#301', '1:13 h', 'feature'),
+      merge('ca0fbae', '01.10. 21:59', 'Auftrag als Seite nach d_auftrag_neu (F1), Ablauf vorbereiten …', 'WS-5b', '#300', '1:21 h', 'feature'),
+      merge('a91029d', '01.10. 20:38', 'Ausführungen als Register (#/ausfuehrungen, G1), Lauf-Detail als Seite …', 'WS-5a', '#299', '[–]', 'feature'),
+      merge('772f4e5', '01.10.', 'Klärung, Reparatur & Abnahme', 'WS-4b', '#298', '[–]', 'feature'),
+      merge('493d953', '01.10.', 'Ablauf & Freigabe', 'WS-4a', '#297', '[–]', 'feature')
+    ];
+    const verlauf = vfilter === 'alle' || vfilter === 'feature' ? alleMerges : [];
+    const fdef = [['alle', 'Alle'], ['feature', 'Feature-Merges'], ['fix', 'Fixes'], ['doku', 'Doku']];
+    const filter = fdef.map(([id, text]) => ({
+      text, an: id === vfilter ? 'true' : 'false', waehlen: () => this.setState({ vfilter: id }),
+      stil: 'min-height:34px;padding:0 12px;border-radius:999px;cursor:pointer;font-size:12px;' + (id === vfilter ? 'background:#8bd8c11f;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#c9d3d6')
+    }));
+
+    const gates = [
+      { name: 'check-f44-i18n', info: 'neue Schlüssel in de/en/tr/ru' },
+      { name: 'check-f24-capabilities', info: 'Katalog-Ansicht' },
+      { name: 'check-f20-design-tokens', info: 'Farben nur als Tokens' },
+      { name: 'npm run test', info: 'capabilities.test.mjs neu' }
+    ];
+    const kommt = [
+      { titel: 'Branches & Pull Requests', text: 'Offene und gemergte PRs mit Link, jeder Branch dem Feature zugeordnet. Braucht gh oder die GitHub-Schnittstelle.' },
+      { titel: 'Was hat dieser Lauf geändert?', text: 'Dateiliste je Ausführung aus der Laufakte, verlinkt mit dem Reiter Ausführungen.' },
+      { titel: 'Code-Karte', text: 'Ordner von src, public/leitstand und scripts mit zuständigem Feature und letzter Änderung.' },
+      { titel: 'Brennpunkte', text: 'Sehr große oder oft geänderte Dateien, z. B. leitstand-server.mjs, mit den zugehörigen Befunden.' }
+    ];
+
+    return {
+      gruppen, auswahl, verlauf, filter, gates, kommt, sichernCode,
+      anzahlText: anzahl + ' Dateien geändert · [n] Zeilen',
+      kopierText: st.kopiert ? 'Kopiert' : 'Kopieren',
+      kopieren: () => this.setState({ kopiert: true }),
+      freigabeUmschalten: () => this.setState({ freigabe: !freigabe }),
+      freigabeChip: freigabe ? 'gültig · noch [n] Min.' : 'keine Freigabe',
+      freigabeChipStil: 'font-size:11px;padding:3px 9px;border-radius:999px;' + (freigabe ? 'color:#8bd8c1;border:1px solid #8bd8c188' : 'color:#9caeb5;border:1px solid #ffffff30'),
+      freigabeText: freigabe ? 'Claude Code darf gerade committen und pushen. Die Freigabe läuft danach von selbst ab.' : 'Claude Code darf gerade nicht committen oder pushen. Du selbst kannst im Terminal jederzeit sichern.'
+    };
+  }
+}
+</script>
+</body>
+</html>

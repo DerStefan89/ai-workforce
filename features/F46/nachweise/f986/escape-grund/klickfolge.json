@@ -1,0 +1,192 @@
+{
+  "url": "http://127.0.0.1:4199/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 900
+  },
+  "farbschema": "dark",
+  "screenshotQualitaet": 0.8,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "true",
+    "leitstand-chat-modus": "jarvis"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:/Projekte/ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 202,
+      "json": {
+        "laufId": "jarvis-jarvis-chat-0f986000-0000-4000-8000-000000000986",
+        "auftragId": "jarvis-chat-0f986000-0000-4000-8000-000000000986"
+      }
+    },
+    {
+      "muster": "**/laeufe/jarvis-jarvis-chat-0f986000-0000-4000-8000-000000000986",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "jarvis-jarvis-chat-0f986000-0000-4000-8000-000000000986",
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T15:01:22.032Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "VERWEIGERT"
+            }
+          }
+        ],
+        "laufStatus": {
+          "status": "NICHT_GESTARTET",
+          "terminaleOhneRunPrepared": [
+            1
+          ]
+        },
+        "aktiv": false,
+        "fortschritt": null,
+        "verweigertDaten": null,
+        "nichtGestartet": {
+          "ergebnis": "VERWEIGERT",
+          "grund": "<img src=x onerror=alert(1)> Grund mit <b>HTML</b>"
+        },
+        "startvorlageZeitgrenzeMs": 1800000,
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "auftrag": {
+          "status": "nicht_vorhanden"
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "scoutErgebnis": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status (Live-Region)",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Letzte Antwort im Verlauf",
+        "selector": "#chat-verlauf .chat-bubble-reihe-jarvis:last-of-type .chat-bubble-text"
+      },
+      {
+        "name": "Eingabe disabled",
+        "selector": "#chat-eingabe",
+        "attribut": "disabled"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "„Lauf abbrechen“",
+        "id": "chat-abbrechen-btn"
+      },
+      {
+        "name": "Chat-Dock",
+        "id": "shell-chat-spalte"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "eingeschleustes <img src=x> im Verlauf (muss fehlen)",
+        "selector": "#chat-verlauf img[src=\"x\"]"
+      }
+    ]
+  },
+  "schritte": [
+    {
+      "label": "Start #/dashboard, Chat-Dock offen, leerer Verlauf",
+      "warteAufSelector": {
+        "selector": "#chat-eingabe",
+        "timeoutMs": 8000
+      },
+      "screenshot": "01-dock-leer.webp"
+    },
+    {
+      "label": "Nachricht senden → POST …/chat 202; das Lauf-Detail meldet NICHT_GESTARTET mit terminaler Marke (VERWEIGERT, E-188)",
+      "tippen": {
+        "selector": "#chat-eingabe",
+        "text": "Kurzer Test: antworte bitte nur mit OK."
+      },
+      "klick": "#chat-senden"
+    },
+    {
+      "label": "Fehlanzeige „Lauf nicht gestartet …“ statt endloser Tipp-Punkte; „Lauf abbrechen“ verborgen, Eingabe frei, keine zweite Live-Region",
+      "warteAufSelector": {
+        "selector": "#chat-verlauf .chat-bubble-text:has-text(\"Lauf nicht gestartet\")",
+        "timeoutMs": 8000
+      },
+      "screenshot": "02-lauf-nicht-gestartet.webp"
+    }
+  ]
+}

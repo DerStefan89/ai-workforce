@@ -1369,6 +1369,10 @@ export default {
   'chat.ende.nichtErfolgreich': 'Run finished but not successful ({ergebnis}).',
   'chat.ende.unerwartet': 'Run ended unexpectedly (status: {status}).',
   'chat.ende.statusUnbekannt': 'unknown',
+  // F-986: Chat-Lauf nie gestartet bzw. ohne Änderung über die Lauf-Zeitgrenze (views/chat.js, chat-laufstand.js).
+  'chat.ende.nichtGestartet': 'Run not started: {grund}',
+  'chat.ende.nichtGestartetOhneGrund': 'Run not started (no reason reported).',
+  'chat.ende.zeitgrenze': 'No change to the run for over {minuten} minutes — the chat has stopped waiting. “Executions” shows its state.',
   'chat.fortschritt.liest': 'reading {pfad}',
   'chat.fortschritt.liestDatei': 'reading a file',
   'chat.fortschritt.durchsucht': 'searching for “{muster}”',

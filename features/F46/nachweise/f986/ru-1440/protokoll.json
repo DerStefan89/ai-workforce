@@ -1,0 +1,38 @@
+[
+  {
+    "label": "Start #/dashboard, Chat-Dock offen, leerer Verlauf",
+    "„Lauf abbrechen“": false,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "ru",
+    "Persona-Status (Live-Region)": "Готов к твоей идее",
+    "Letzte Antwort im Verlauf": "(fehlt)",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  },
+  {
+    "label": "Nachricht senden → POST …/chat 202; das Lauf-Detail meldet NICHT_GESTARTET mit terminaler Marke (VERWEIGERT, E-188)",
+    "„Lauf abbrechen“": true,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "ru",
+    "Persona-Status (Live-Region)": "Готов к твоей идее",
+    "Letzte Antwort im Verlauf": "(fehlt)",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  },
+  {
+    "label": "Fehlanzeige „Запуск не начат …“ statt endloser Tipp-Punkte; „Lauf abbrechen“ verborgen, Eingabe frei, keine zweite Live-Region",
+    "„Lauf abbrechen“": false,
+    "Chat-Dock": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "eingeschleustes <img src=x> im Verlauf (muss fehlen)": false,
+    "lang": "ru",
+    "Persona-Status (Live-Region)": "Готов к твоей идее",
+    "Letzte Antwort im Verlauf": "Запуск не начат: Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)",
+    "Eingabe disabled": "null",
+    "Seite geladen": true
+  }
+]
