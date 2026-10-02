@@ -23,8 +23,8 @@ gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a 
 (#299, `a91029d`); WS-5b „Auftrag & Direktstart“ gemergt (#300, `ca0fbae`).
 WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) gemergt (#301, `5075215`); WS-6b „Nutzung“
 (Abschnitt I) gemergt (#302, `3aff6e4`). WS-7a „Werkstatt“ gemergt (#303, `527a6d4`); WS-7b „Scout“ gemergt
-(#304, `41eff91`). WS-8 ist geteilt (Auftrag Stefan, 02.10.2026): WS-8a „Dock & große Ansicht“ in Arbeit seit
-02.10.2026 (Branch `feat/f725-ws8a-chat`); WS-8b offen.
+(#304, `41eff91`). WS-8 ist geteilt (Auftrag Stefan, 02.10.2026): WS-8a „Dock & große Ansicht“ gemergt
+(#306, `bf23b06`); WS-8b „Coach & Befehle“ in Arbeit seit 02.10.2026 (Branch `feat/f725-ws8b-coach-befehle`).
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -91,7 +91,7 @@ abgehakten F-Zeilen des Pakets.
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
 | **WS-8a** Dock & große Ansicht | Abschnitt L: L1, L4–L7 nach d_jarvis und `chatDock` (Vorlage experience.js), L2/L3 funktional mitgeführt; Umstellen der Chatspalte auf das Chat-Dock (Blase), das aus WS-1 hierher wandert; ein DOM für Dock und `#/chat`; Kontextspalte; alle Chat-Texte und Vorfilter-Antworten in de/en/tr/ru | f34 (v) (Register statt aria-pressed), i18n |
-| **WS-8b** Gespräch & Befehle | Befehlsblock und Codezäune in Antworten (F-959, F-966), Kopf-Knöpfe VS Code/Terminal/GitHub, „Lieber mit dem Coach besprechen“ auf `#/projekt`, Coach-Vorschläge, Änderungen an `src/jarvis`/`src/product-coach` | offen |
+| **WS-8b** Coach & Befehle | L2/L3 nach d_jarvis_coach (Leerzustand mit zwei Knöpfen, „So gehen wir vor“, Entwurfskarte); Befehlsblock und Codezäune in Antworten (F-966 Parser, Regel „direkt ausführbar“ in `src/jarvis`, F-959); Kopf-Knöpfe VS Code/Terminal/GitHub; „Lieber mit dem Coach besprechen“ auf `#/projekt`; F-967; offene Punkte aus WS-8a (stiller Punkt, Rückkehr nach dem Coach-Interview) | f34 (v) ergänzt, f31 (l) neu, `jarvis.test.ts`, i18n |
 
 **Vermerk WS-3 (Stefan, 01.10.2026):** E13 „Eintrag bearbeiten“ bleibt in WS-3 als kommt; wird im
 Fixpaket Arbeitsfähigkeit, B5, echt (E-F45-1 = A). WS-3 ist in WS-3a „Board & Listen“ (E1–E7) und
@@ -1691,15 +1691,18 @@ API-Änderung, keine neue Route außer dem bestehenden `#/chat`, nichts an `src/
   (cr 9); „Wichtig“-Blöcke (cr 10). Nicht übernommen: siehe Prüfpunkte.
 
 ### Prüfpunkte `#/chat` (aus dem Prüfpass WS-8a; nach Route abgelegt, F-946)
-- Vorschlag „Was braucht mich?“ trifft in en/tr/ru den deutschen Vorfilter nicht und startet nach dem Senden einen echten Lauf
-  (qa 2, cr 2) — Vorfilter-Logik in 8a ausgeschlossen: F-967, WS-8b.
+- ~~Vorschlag „Was braucht mich?“ trifft in en/tr/ru den deutschen Vorfilter nicht und startet nach dem Senden einen echten Lauf
+  (qa 2, cr 2) — Vorfilter-Logik in 8a ausgeschlossen: F-967, WS-8b.~~ **Erledigt in WS-8b** (F-967).
 - Projektwechsel mitten im Lauf: Tippanzeige und „Lauf abbrechen“ verschwinden, der Lauf läuft serverseitig weiter; ein Senden im
   neuen Projekt scheitert mit 409 ohne Hinweis auf den blockierenden Lauf (qa 9; Verhalten älter, F26-Reset). Eine späte
   Verlaufsantwort des alten Projekts schreibt in den verworfenen Zustandsblock und überschreibt nichts.
 - Escape bei gleichzeitig offenem Menü (unter 700 px) und Dock schließt beide (qa 8, Rest).
-- Entscheidung Stefan (qa 14): Browser-„Zurück“ von `#/chat` landet mit geschlossenem Dock, „Gespräch verkleinern“ mit offenem;
-  kein Hinweis an der Blase, wenn eine Antwort bei geschlossenem Dock eintrifft; nach „Zum Coach-Interview“ führt „Verkleinern“
-  zurück auf die Anlege-Unterseite.
+- Challenger-Empfehlungen zu qa 14 (korrigiert in WS-8b; der frühere Vermerk „Entscheidung Stefan“ war falsch zugeordnet — es
+  waren Empfehlungen des Challengers, Auftrag WS-8b): (1) Browser-„Zurück“ von `#/chat` landet mit geschlossenem Dock, „Gespräch
+  verkleinern“ mit offenem — **bleibt so**; (2) Hinweis an Blase und Kopfknopf, wenn eine Antwort bei geschlossenem Dock eintrifft —
+  **gebaut in WS-8b** (stiller Punkt, aria-label „…, neue Antwort“, kein aria-live); (3) nach „Zum Coach-Interview“ führt
+  „Verkleinern“ zurück auf die Anlege-Unterseite — **gebaut in WS-8b** (merkeRoute bildet `#/projekte-uebersicht/neu` auf
+  `#/projekte-uebersicht` ab).
 - Ein Vorschlag ersetzt einen angefangenen Entwurf ohne Rückfrage (cr 12, nur im Leerzustand).
 - `views/chat.js` hat rund 1500 Zeilen; die Kontextspalte könnte ein eigenes Modul werden (cr 11); `naechsterRegisterIndex` gehört
   auf Dauer in ein gemeinsames Register-Modul (cr 9).
@@ -1719,6 +1722,98 @@ API-Änderung, keine neue Route außer dem bestehenden `#/chat`, nichts an `src/
 - **WS8a-5** L2–L7 funktional unverändert (Nachweis `funktionen`).
 - **WS8a-6** Chat-Texte und Vorfilter-Antworten in de/en/tr/ru; Modellausgaben escaped.
 - **WS8a-7** `npm run check` grün; Render-Nachweise ohne echten Lauf.
+
+## Stand WS-8b „Coach & Befehle“ (02.10.2026)
+Branch `feat/f725-ws8b-coach-befehle` (Basis `bf23b06`, main mit WS-8a), nicht committet. Vorlage V10 d_jarvis_coach; Abgleich
+F-725 L2/L3 (Vermerk WS-8b in §5, §9); dazu Befehlsblock, Kopf-Knöpfe, F-966, F-967 und die offenen Punkte aus WS-8a. Berührt Server
+(`scripts/leitstand-server.mjs`, nur Parser) und die Jarvis-Instruktion (`src/jarvis`); keine neue Route, kein Schema, nichts an
+`src/product-coach`, an Poll-/Sende-/D13-Logik oder am Click-to-Work-Git-Block.
+- **Coach nach d_jarvis_coach** (große Ansicht und Dock): Leerzustand „Was möchtest du möglich machen?“ mit den Knöpfen „Eine
+  Feature-Idee schärfen“ / „Ein neues Projekt durchdenken“ — sie wählen den Untermodus (`waehleUntermodus`, dieselbe Logik wie
+  `#chat-untermodus-*`) und fokussieren die Eingabe, senden nicht; der gewählte trägt `aria-pressed` und eine Mint-Kante
+  (`setzeCoachWahlZustand`, F-620-Invariante). Ohne Verlauf ersetzen sie den Untermodus-Umschalter, mit Verlauf bleibt er.
+  Platzhalter „Erzähl mir von deiner Idee …“; Kontextspalte im Coach „So gehen wir vor“ (1. Ziel verstehen · 2. Umfang eingrenzen ·
+  3. Ergebnis festlegen) statt „Nächster Schritt“.
+- **Coach → Auftrag (L3):** Hinweiskarte „Dein Entwurf ist bereit.“ mit Titel und primärem „Als Auftrag anlegen“ in der Sprechblase
+  des Entwurfs; Dialog, `legeAuftragAn`, `herkunft` und Rückverweis (F-625) unverändert; Jarvis' `auftrag_vorschlag` behält den
+  schlichten Knopf.
+- **„Lieber mit dem Coach besprechen“** auf `#/projekt` ist echt: öffnet das Dock im Product Coach, Untermodus Feature; Titel und
+  gewünschtes Ergebnis kommen als Entwurf in die Eingabe (`entwurfFuerCoach`), ohne zu senden. Steht dort schon Text, bleibt er,
+  der Entwurf folgt nach einer Leerzeile (`fuegeEntwurfEin`, Prüfpass qa S1). Kopplung über `chat-dock.js` (die Shell trägt den
+  Öffner ein; keine View importiert `shell.js`, Prüfpass cr 3).
+- **Befehlsblock** (`public/leitstand/befehlsblock.js`): zerlegt `antwort` in Text und Codeblöcke (drei Backticks am Zeilenanfang mit
+  optionalem Tag bis drei Backticks am Zeilenanfang; ein unvollständiger Zaun bleibt Text). Etikett aus dem Tag (POWERSHELL, BASH; ohne Tag
+  „Code“), „{n} Befehle · nacheinander“ (Plural über i18n), jede Befehlszeile als eigener Block mit hängendem Einzug, „Kopieren“ →
+  `navigator.clipboard.writeText` (Zeilen mit `\n`), danach kurz „Kopiert“ im Knopf; ohne Clipboard-API Markieren + „Mit Strg+C
+  kopieren“; Chip „Platzhalter ausfüllen“ bei `<…>`. Kein „Ins Terminal“, kein Ausführen; alles escaped, kein Attribut und kein
+  Link aus Modellausgabe. Jarvis- und Coach-Antworten rendern darüber. Token `--code-bg` (pre-Wert der Vorlage, beide Themes).
+- **F-966** (Server-Parser): neue Funktion `entferneAeusserstenCodezaun`; `leseRollenErgebnisRohstrom` versucht erst, wenn die
+  bisherige Kette scheitert (claude-code), den äußersten Zaun (alle Rollen, Beobachtung 'fence_entfernt') und mit
+  `jsonObjektFallback` die Objekt-Extraktion auf dem Originaltext. Kein bisher gültiges Ergebnis wird anders gelesen.
+- **Regel „direkt ausführbar“** (F-959) in `baueJarvisAuftragstext` nach der Schema-Beschreibung, erst nach F-966; das Zaun-Verbot
+  für das JSON-Objekt bleibt und wird am Ende der Regel wiederholt.
+- **F-967:** der Vorfilter erkennt „Was braucht mich?“ zusätzlich in allen vier Vorschlagstexten der Wörterbücher.
+- **Kopf-Knöpfe** links von „Frag Jarvis“: VS Code ist ein echter Link `vscode://file/` + absoluter `repo_pfad` des aktiven
+  Projekts (aus dem Register, Backslash → '/', kodiert; aktualisiert bei Projektwechsel); relativer, UNC- oder fehlender Pfad →
+  `aria-disabled` mit Grund im title (F-968: das Standardprojekt trägt '.'). Terminal und GitHub sind Bausteine „kommt“. Gestaffelt
+  nach Messung, damit Projektauswahl und Statuszeile nicht schrumpfen: ab 1500 px beschriftet, 1340–1499 Symbol + „kommt“,
+  1280–1339 nur Symbole, bis 1279 px in der Sidebar bzw. im mobilen Menü (`.menue-werkzeuge`).
+- **Offene Punkte aus WS-8a:** (1) „Zurück“ von `#/chat` unverändert; (2) stiller Punkt an Blase und Kopfknopf bei einer Antwort,
+  wenn das Dock zu und die Route nicht `#/chat` ist (`beiNeuerAntwort`), aria-label „Frag Jarvis, neue Antwort“, kein aria-live;
+  Öffnen, `#/chat` oder ein Projektwechsel nehmen ihn weg; (3) `merkeRoute` bildet `#/projekte-uebersicht/neu` auf die Liste ab.
+- **i18n:** alle neuen Texte in de/en/tr/ru (`kopf.werkzeuge`, `kopf.vscode*`, `kopf.terminal`, `kopf.github`,
+  `kopf.fragJarvisNeu`, `chat.coach.*`, `chat.kontext.vorgehen*`, `chat.entwurf.bereit`, `befehl.*`).
+- **Gates:** f34 (v) nur ergänzt (Coach-Knöpfe über `setzeCoachWahlZustand`, aria-pressed + `.gewaehlt`; F-620-Invariante, `.gewaehlt`
+  statt `btn-primary`, weil die Vorlage beide Knöpfe gleich umrandet zeigt); (j), (k), (y) unverändert. f31 (l) und f22 (a2) neu,
+  `jarvis.test.ts` um die Regel erweitert (Zaun-Verbot weiter geprüft). Neue Tests `befehlsblock.test.mjs`,
+  `kopf-werkzeuge.test.mjs`; `chat-anzeige.test.mjs` ergänzt (Vorfilter vier Sprachen, merkeRoute, entwurfFuerCoach,
+  fuegeEntwurfEin). `scripts/render-nachweis.mjs` um die Optionen `zwischenablage`, `zwischenablageEntfernen` und
+  `texte[].eigenschaft` ergänzt (generisch, kein Gate).
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): alle drei „freigegeben mit Hinweisen“, nichts
+  blockierend. Eine Korrekturrunde, eingearbeitet: Entwurf hängt an statt zu überschreiben (qa S1, cr 1); F-966 bewusst für alle
+  claude-code-Rollen, Kommentare und Router-Test nachgezogen (qa S2, cr 4); UNC und '/' ohne Link (qa S3, cr 8); ru-aria-label mit
+  sichtbarem Text „Спросить Jarvis“ (dg 1); Nachweis ohne Clipboard-API (dg 2, qa K7); Mono-Token (dg 3); ru-Chip-Text (dg 5);
+  Leerzeilen im Block behalten ihre Höhe (cr 6, qa K1); „Kopiert“-Timer je Knopf (qa K2); Test „ohne API“ mit `null` (cr 5);
+  View → Shell über `chat-dock.js` (cr 3); verwaister JSDoc an `leseRollenErgebnisRohstrom`, Kommentar an `beiNeuerAntwort` (cr 7);
+  Punkt weg beim Projektwechsel (qa K5); Testmeldung (qa K6); Kopf bei 1300 px und gefüllte Eingabe im Nachweis (qa K7). Nicht
+  übernommen: siehe Prüfpunkte und F-968 bis F-971.
+
+### Prüfpunkte `#/chat` und Kopf (aus dem Prüfpass WS-8b; nach Route abgelegt, F-946)
+- Kopierzustand und Markierung gehen beim Neuaufbau des Verlaufs verloren; Zählung „{n} Befehle“ auch ohne Tag (F-969).
+- Eingerückte Zäune, `~~~` und vier Backticks bleiben Text (F-970).
+- Antwort im nicht angezeigten Reiter bei offenem Dock ohne Hinweis; Coach-Lauf im anderen Untermodus nach „Lieber mit dem Coach
+  besprechen“ unsichtbar (F-971).
+- VS Code im Standardprojekt deaktiviert (relativer `repo_pfad`, F-968).
+- Vorfilter: NBSP oder doppelte Leerzeichen mitten im Vorschlagstext und das türkische „İ“ (`toLowerCase`) treffen nicht (qa K4,
+  cr 8).
+- Der stille Punkt nennt auch Fehlanzeigen und Coach-Antworten „Frag Jarvis, neue Antwort“ (cr 8) — der Knopf heißt so; bewusst.
+- Altes Knopf-Design: Jarvis' `auftrag_vorschlag` als `.btn`, Untermodus-Umschalter als `.btn-primary` (dg 7, nicht aus WS-8b);
+  die Liste „So gehen wir vor“ ist 18 px eingerückt, die Vorlage bündig (dg 8).
+- **Nachweise** `features/F44/nachweise/ws8b/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner per rmSync, Port
+  4199): Coach leer und mit Entwurf (1440 dunkel/hell, 390, 200 %, ru); Jarvis-Antwort mit zwei Befehlsblöcken in großer Ansicht und
+  Dock (1440 dunkel/hell, 390); Kopfzeile (1600, 1440 dunkel/hell, 1300, 390 mit Menü, 200 % mit Sidebar); `#/projekt` → Coach mit
+  Entwurf, auch bei gefüllter Eingabe; Klicktabellen `klicks` (Coach-Knöpfe, Zwischenablage, Platzhalter-Chip, VS-Code-href, „kommt“
+  per Enter/Leertaste, VS Code ohne Ordner), `klicks-punkt`, `klicks-verkleinern`, `klicks-vorfilter-en`,
+  `klicks-ohne-zwischenablage`. 21 Folgen, nur feste Antworten (kein Modell-Lauf), kein waagerechter Überlauf. Reduzierte Bewegung:
+  WS-8b führt keine Animation ein (Lauf dazu in ws8a).
+
+### Akzeptanzkriterien WS-8b
+- **WS8b-1** Coach-Leerzustand nach d_jarvis_coach mit zwei Knöpfen, die den Untermodus wählen und nicht senden; Platzhalter;
+  Umschalter mit Verlauf; „So gehen wir vor“ im Coach (Nachweis `coach-*`, `klicks`).
+- **WS8b-2** Entwurfskarte mit primärem „Als Auftrag anlegen“; Auftrag-Brücke unverändert (f34 (j)).
+- **WS8b-3** „Lieber mit dem Coach besprechen“ öffnet das Dock im Coach/Feature mit Entwurf, ohne zu senden und ohne Getipptes zu
+  verlieren (`projekt-coach*`).
+- **WS8b-4** Befehlsblock nach Spezifikation, Kopieren nur auf Klick in die Zwischenablage, Rückfall ohne API, alles escaped
+  (`befehlsblock.test.mjs`, `klicks`, `klicks-ohne-zwischenablage`).
+- **WS8b-5** F-966 behoben, bisher gültige Ergebnisse unverändert, codex unverändert (f31 (l), f22 (0)/(a2)); danach Regel „direkt
+  ausführbar“ in der Jarvis-Instruktion (`jarvis.test.ts`).
+- **WS8b-6** F-967: Vorfilter in vier Sprachen (Test, `klicks-vorfilter-en`).
+- **WS8b-7** Kopf-Knöpfe: VS-Code-Link korrekt bzw. aria-disabled, Terminal/GitHub „kommt“, kein Überlauf in allen Breiten.
+- **WS8b-8** Stiller Punkt und Rückkehr nach dem Coach-Interview; Texte in de/en/tr/ru; `npm run check` grün.
+
+### WS-8 gesamt
+Mit WS-8a (L1, L4–L7) und WS-8b (L2, L3) sind alle L-Zeilen des Abgleichs erfüllt; WS-8 ist abgeschlossen, sobald WS-8b gemergt ist.
+Offen bleiben F-968 bis F-971 und die Prüfpunkte oben (Fixpaket bzw. Folgepakete).
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

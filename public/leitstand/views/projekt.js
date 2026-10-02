@@ -31,14 +31,18 @@
  * - Keine eigene Live-Region: Fehler und Schritt 2 bekommen den Fokus.
  * - Die Kette „anlegen → routen → warten“ existiert auch in views/workboard.js (Click-to-Work);
  *   Zusammenlegen ist F-943 (beim Schnitt F-928).
+ * - F44 WS-8b: „Lieber mit dem Coach besprechen“ ist echt — öffnet das Chat-Dock im Product Coach,
+ *   Untermodus Feature (oeffneChatMitEntwurf über chat-dock.js, die Shell trägt den Öffner ein). Titel und gewünschtes Ergebnis kommen als
+ *   Entwurf in die Eingabe (entwurfFuerCoach, chat-anzeige.js); gesendet wird nichts, das Formular bleibt stehen.
  */
 
 import { holeAuftraege, holeWerkzeugsaetze, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
 import { t } from '../i18n.js'
-import { kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { navigiere } from '../router.js'
+import { oeffneChatMitEntwurf } from '../chat-dock.js'
+import { entwurfFuerCoach } from '../chat-anzeige.js'
 import { abonniere } from '../zustand.js'
 import { baueAuftragstext, pruefeAggregat, renderVorbereitung, workflowIdFuer } from './auftrag-vorbereitung.js'
 
@@ -449,14 +453,19 @@ function beiVorbereitungsKlick(ereignis) {
 /** true, wenn `#/projekt` direkt aus `#/runs` (Register „Aufträge“) betreten wurde — „← Alle Aufträge“ geht dann per history.back() zurück (F-926-Muster). */
 let ausAuftraegen = false
 
-/** Hauptformular, Notiz, „Lieber mit dem Coach besprechen“ (kommt) und „← Alle Aufträge“. */
+/** Hauptformular, Notiz, „Lieber mit dem Coach besprechen“ (seit WS-8b echt) und „← Alle Aufträge“. */
 function initAuftragFormular() {
   const felder = auftragsFelder()
   felder.titel.placeholder = t('auftrag.feld.titel.platzhalter')
   felder.ergebnis.placeholder = t('auftrag.feld.ergebnis.platzhalter')
   felder.kontext.placeholder = t('auftrag.kontext.platzhalter')
-  // Vorlage: sekundär „Lieber mit dem Coach besprechen“ — das Chat-Dock folgt in WS-8 (E-F44-1).
-  document.getElementById('auftrag-aktionen').insertAdjacentHTML('beforeend', kommtKnopf(t('auftrag.coach')))
+  // Vorlage: sekundär „Lieber mit dem Coach besprechen“ — seit WS-8b öffnet es das Dock im Coach.
+  document.getElementById('auftrag-aktionen').insertAdjacentHTML('beforeend', `<button type="button" id="auftrag-coach" class="button">${escapeHtml(t('auftrag.coach'))}</button>`)
+  const coachKnopf = document.getElementById('auftrag-coach')
+  coachKnopf.addEventListener('click', () => {
+    const entwurf = entwurfFuerCoach(felder.titel.value, felder.ergebnis.value)
+    oeffneChatMitEntwurf({ modus: 'sparring', untermodus: 'feature', entwurf }, coachKnopf)
+  })
   document.getElementById('auftrag-formular').addEventListener('submit', (ereignis) => {
     ereignis.preventDefault()
     void bereiteAblaufVor()

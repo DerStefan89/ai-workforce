@@ -24,13 +24,20 @@
  * und Serverwerte gehen roh in die Sätze. Das Modul bleibt in Node ohne DOM importierbar (i18n.js
  * ist import-sicher, in Node gilt de) — geprüft in chat-anzeige.test.mjs.
  *
+ * F44 WS-8b (löst F-967): der Vorschlag „Was braucht mich?“ füllt die Eingabe in der aktiven
+ * Sprache — „What needs me?“ ging bisher an einen echten Modell-Lauf. Zusätzlich zum deutschen
+ * Muster erkennt der Vorfilter jetzt jeden der vier Vorschlagstexte aus den Wörterbüchern
+ * (Schlüssel chat.vorschlag.braucht), nach Trim und ohne Satzzeichen am Ende, ohne Groß-/
+ * Kleinschreibung. Die Wörterbücher sind reine Daten (WOERTERBUECHER, i18n.js) — das Modul bleibt
+ * ohne DOM und ohne Storage importierbar.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/views/chat.js
  * - public/leitstand/chat-anzeige.test.mjs (node:test)
  */
 
 import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from './attention-daten.js'
-import { t } from './i18n.js'
+import { WOERTERBUECHER, t } from './i18n.js'
 
 /** "was braucht mich", "Was braucht mich?" — optionales Fragezeichen, kein weiterer Text. */
 const MUSTER_BRAUCHT_MICH = /^was\s+braucht\s+mich\??$/i
@@ -45,6 +52,22 @@ const MUSTER_BRAUCHT_MICH = /^was\s+braucht\s+mich\??$/i
 const MUSTER_STATUS = /^status(\s+[a-z0-9][a-z0-9-]*)?\??$/i
 
 /**
+ * F-967: Text ohne Leerraum und Satzzeichen am Ende, klein geschrieben — Vergleichsform für die
+ * Vorschlagstexte. @param text - Nachricht oder Wörterbuchwert @returns Vergleichsform
+ */
+function vergleichsform(text) {
+  return text.trim().replace(/[\s\p{P}]+$/u, '').toLowerCase()
+}
+
+/** F-967: die Vorschlagstexte „Was braucht mich?“ aller vier Sprachen in Vergleichsform. */
+const VORSCHLAEGE_BRAUCHT_MICH = new Set(
+  Object.values(WOERTERBUECHER)
+    .map((woerterbuch) => woerterbuch['chat.vorschlag.braucht'])
+    .filter((wert) => typeof wert === 'string' && wert.trim() !== '')
+    .map(vergleichsform)
+)
+
+/**
  * Erkennt eines der beiden deterministischen Muster in einer Chat-Nachricht.
  * Reine Funktion, kein I/O.
  * @param nachricht - die vom Menschen eingegebene Chat-Nachricht
@@ -53,6 +76,7 @@ const MUSTER_STATUS = /^status(\s+[a-z0-9][a-z0-9-]*)?\??$/i
 export function erkenneVorfilterMuster(nachricht) {
   const getrimmt = nachricht.trim()
   if (MUSTER_BRAUCHT_MICH.test(getrimmt)) return 'braucht_mich'
+  if (VORSCHLAEGE_BRAUCHT_MICH.has(vergleichsform(getrimmt))) return 'braucht_mich'
   if (MUSTER_STATUS.test(getrimmt)) return 'status'
   return null
 }

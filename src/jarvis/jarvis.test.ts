@@ -165,6 +165,21 @@ test('baueJarvisAuftragstext: nennt alle drei art-Enum-Werte und verbietet Codez
   assert.ok(/[Kk]ein[en]?\s+(Markdown|Codezaun)/.test(text) || text.includes('kein Codezaun'))
 })
 
+// ─── F44 WS-8b (F-959): Regel „direkt ausführbar“ ──────────────────────────
+
+test('baueJarvisAuftragstext: enthält die Regel „direkt ausführbar“ nach der Schema-Beschreibung, das Zaun-Verbot für das Objekt bleibt', () => {
+  const text = baueJarvisAuftragstext('Wie committe ich?')
+  const regel = text.indexOf('Regel „direkt ausführbar“')
+  assert.ok(regel !== -1, 'Regel fehlt')
+  assert.ok(regel > text.indexOf('schemas/ergebnis-jarvis.schema.json'), 'Regel muss nach der Schema-Beschreibung stehen')
+  assert.ok(regel < text.indexOf('Nachricht des Menschen:'), 'Regel muss vor der Nachricht stehen')
+  for (const teil of ["NUR im String-Wert von 'antwort'", '```powershell', 'eine Zeile je Befehl', 'PowerShell (Windows)', 'keine Prompts (PS>)', 'keine Leerzeilen', '<…>', 'getrennte Blöcke', 'Anführungszeichen', 'auf main pushen']) {
+    assert.ok(text.includes(teil), `Regelteil '${teil}' fehlt`)
+  }
+  assert.ok(text.includes('Das JSON-Objekt selbst steht NIE in einem Codezaun'))
+  assert.ok(text.includes('kein Codezaun (```)'), 'Zaun-Verbot für die Gesamtantwort fehlt')
+})
+
 // ─── F31 WS-2: baueJarvisAuftragstext mit Verlauf ──────────────────────────
 
 test('baueJarvisAuftragstext: leerer Verlauf liefert byte-identischen Text zu vor F31 WS-2', () => {

@@ -3138,6 +3138,24 @@ export function entferneCodezaun(text) {
 }
 
 /**
+ * F44 WS-8b (löst F-966): der ÄUSSERSTE Codezaun — vom ersten Öffner bis zum LETZTEN ``` im
+ * Text. entferneCodezaun endet am ersten schließenden ```; steht im Feld 'antwort' selbst ein
+ * Codeblock (```powershell …```, Regel „direkt ausführbar“, F-959), schneidet der erste Zaun
+ * das Objekt mitten im String ab. Reine Funktion, kein Wurf. Nur ein Zweitversuch in
+ * leseRollenErgebnisRohstrom, NACH allen bisherigen Stufen.
+ * @param text - roher Ergebnistext
+ * @returns der Inhalt zwischen erstem Öffner und letztem ``` (getrimmt), oder null ohne zweites ```
+ */
+export function entferneAeusserstenCodezaun(text) {
+  const oeffner = text.match(/```[a-zA-Z]*[ \t]*\r?\n?/)
+  if (oeffner === null) return null
+  const inhaltStart = oeffner.index + oeffner[0].length
+  const ende = text.lastIndexOf('```')
+  if (ende < inhaltStart) return null
+  return text.slice(inhaltStart, ende).trim()
+}
+
+/**
  * Löst das erste vollständige, balancierte {…}-JSON-Objekt aus einem Text, Prosa
  * davor/danach verworfen — Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst
  * F-506), zweite Fallback-Stufe NACH entferneCodezaun (die deckt nur den Fall mit
@@ -3179,30 +3197,6 @@ export function extrahiereErstesJsonObjekt(text) {
   return null
 }
 
-/**
- * Liest den geparsten JSON-Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
- * worker-abhängig (Codex über leseCodexEreignisse().letzteAgentMessage, claude-code
- * über leseErgebnisobjekt().result), mit Codezaun-Fallback (entferneCodezaun) NUR im
- * claude-code-Zweig (F-337/F-346). Gemeinsame Low-Level-Lesefunktion für
- * verarbeiteRouterErgebnis, leseUrteilAusLaufakte und leseScoutErgebnisAusLaufakte
- * (F27 WS-1 AK5 — vor F27 war dieser Dreisatz zweifach dupliziert, state/findings.md
- * F-406). Schema-Validierung und Artefaktbau bleiben Sache des jeweiligen Aufrufers
- * (D5) — diese Funktion liefert nur den geparsten Rohinhalt, keine Formprüfung gegen
- * ein bestimmtes Rollen-Ergebnisschema.
- * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): optionen.jsonObjektFallback
- * (Default false) schaltet eine DRITTE Fallback-Stufe frei (extrahiereErstesJsonObjekt), NUR
- * für den worker 'claude-code'-Zweig, NUR wenn die zweite Stufe (Codezaun) scheitert — bislang
- * ausschließlich von leseJarvisErgebnisAusLaufakte gesetzt. Bewusst NICHT für router/scout/
- * code-reviewer aktiviert (D2, kein stillschweigender Vertragsbruch): deren Beobachtung landet
- * in schemas/kontrollzustand-router-ergebnis-payload.schema.json' ENUM [null, 'fence_entfernt']
- * (src/router/index.ts ROUTER_ERGEBNIS_BEOBACHTUNG) — ein dritter Beobachtungswert bräche diese
- * Schemaprüfung bei jedem Router-Lauf, der die neue Stufe tatsächlich zieht. leseJarvisErgebnis-
- * AusLaufakte verwirft 'beobachtung' ohnehin ungenutzt (kein Persistenzpfad dafür), die neue
- * Stufe bleibt für sie deshalb risikofrei.
- * @param laufakteDaten - bereits geladene LaufakteV0Daten
- * @param optionen - { jsonObjektFallback } (Default false)
- * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt', 'json_objekt_extrahiert' oder null), sonst { ok: false, grund }
- */
 /**
  * Liest NUR den rohen Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
  * worker-abhängig (Codex: leseCodexEreignisse().letzteAgentMessage,
@@ -3385,20 +3379,88 @@ function formatiereAbgelehnteBefehle(befehle) {
   return rest > 0 ? `${sichtbar.join(', ')}, … (+${rest} weitere)` : sichtbar.join(', ')
 }
 
+/**
+ * Versucht JSON.parse, ohne zu werfen.
+ * @param kandidat - Text
+ * @returns { ok: true, geparst } oder { ok: false, grund }
+ */
+function versucheJsonParse(kandidat) {
+  try {
+    return { ok: true, geparst: JSON.parse(kandidat) }
+  } catch (fehler) {
+    return { ok: false, grund: fehler.message }
+  }
+}
+
+/**
+ * Liest den geparsten JSON-Ergebnistext eines Rollen-Laufs aus dessen Rohstrom —
+ * worker-abhängig (Codex über leseCodexEreignisse().letzteAgentMessage, claude-code
+ * über leseErgebnisobjekt().result), mit Codezaun-Fallback (entferneCodezaun) NUR im
+ * claude-code-Zweig (F-337/F-346). Gemeinsame Low-Level-Lesefunktion für
+ * verarbeiteRouterErgebnis, leseUrteilAusLaufakte und leseScoutErgebnisAusLaufakte
+ * (F27 WS-1 AK5 — vor F27 war dieser Dreisatz zweifach dupliziert, state/findings.md
+ * F-406). Schema-Validierung und Artefaktbau bleiben Sache des jeweiligen Aufrufers
+ * (D5) — diese Funktion liefert nur den geparsten Rohinhalt, keine Formprüfung gegen
+ * ein bestimmtes Rollen-Ergebnisschema.
+ * Task "Jarvis-Chat-Latenz senken", Runde 2, Schritt 1 (löst F-506): optionen.jsonObjektFallback
+ * (Default false) schaltet eine DRITTE Fallback-Stufe frei (extrahiereErstesJsonObjekt), NUR
+ * für den worker 'claude-code'-Zweig, NUR wenn die zweite Stufe (Codezaun) scheitert — bislang
+ * ausschließlich von leseJarvisErgebnisAusLaufakte/Coach gesetzt. Bewusst NICHT für router/scout/
+ * code-reviewer aktiviert (D2, kein stillschweigender Vertragsbruch): deren Beobachtung landet
+ * in schemas/kontrollzustand-router-ergebnis-payload.schema.json' ENUM [null, 'fence_entfernt']
+ * (src/router/index.ts ROUTER_ERGEBNIS_BEOBACHTUNG) — ein dritter Beobachtungswert bräche diese
+ * Schemaprüfung bei jedem Router-Lauf, der die neue Stufe tatsächlich zieht. leseJarvisErgebnis-
+ * AusLaufakte verwirft 'beobachtung' ohnehin ungenutzt (kein Persistenzpfad dafür), die neue
+ * Stufe bleibt für sie deshalb risikofrei.
+ * @param laufakteDaten - bereits geladene LaufakteV0Daten
+ * @param optionen - { jsonObjektFallback } (Default false)
+ * @returns bei Erfolg { ok: true, geparst, beobachtung } (beobachtung ist 'fence_entfernt', 'json_objekt_extrahiert' oder null), sonst { ok: false, grund }
+ *
+ * F44 WS-8b (löst F-966): Antworten mit einem Codeblock IM Feld 'antwort' (```powershell …```)
+ * scheitern an den bisherigen Stufen, weil der erste Zaun am inneren ``` endet. Zwei
+ * Zweitversuche, beide NUR claude-code und NUR, wenn die bisherige Kette (leseRollenErgebnisStufen)
+ * scheitert — ein bisher gültiges Ergebnis wird dadurch nie anders gelesen: (a) der äußerste Zaun
+ * (entferneAeusserstenCodezaun), Beobachtung 'fence_entfernt' wie bisher (Router-Schema-ENUM
+ * bleibt gültig); (b) nur mit jsonObjektFallback die Objekt-Extraktion auf dem Originaltext,
+ * wenn sie auf dem entzäunten Text scheiterte. Scheitern beide, bleibt der bisherige Grund.
+ * (a) gilt bewusst für ALLE claude-code-Rollen (Router, Review-Urteil, Architekt, Scout, Chat;
+ * Bauauftrag WS-8b f, Prüfpass qa S2): ein Ergebnis, das bisher nur an einem inneren Zaun
+ * scheiterte, wird jetzt gelesen und danach wie jedes andere gegen sein Rollen-Schema geprüft.
+ * Die dritte Stufe (b) bleibt auf jsonObjektFallback (Jarvis/Coach) begrenzt.
+ */
 function leseRollenErgebnisRohstrom(laufakteDaten, optionen = {}) {
   const { jsonObjektFallback = false } = optionen
   const textErgebnis = leseErgebnistextAusRohstrom(laufakteDaten)
   if (!textErgebnis.ok) return textErgebnis
   const { text, worker } = textErgebnis
+  const bisher = leseRollenErgebnisStufen(text, worker, jsonObjektFallback)
+  if (bisher.ok || worker !== 'claude-code') return bisher
 
-  const versucheJsonParse = (kandidat) => {
-    try {
-      return { ok: true, geparst: JSON.parse(kandidat) }
-    } catch (fehler) {
-      return { ok: false, grund: fehler.message }
+  const entzaunt = entferneCodezaun(text)
+  const aeusserst = entferneAeusserstenCodezaun(text)
+  if (aeusserst !== null && aeusserst !== entzaunt) {
+    const aeusserstGeparst = versucheJsonParse(aeusserst)
+    if (aeusserstGeparst.ok) return { ok: true, geparst: aeusserstGeparst.geparst, beobachtung: 'fence_entfernt' }
+  }
+  if (jsonObjektFallback && entzaunt !== null) {
+    const extrahiert = extrahiereErstesJsonObjekt(text)
+    if (extrahiert !== null) {
+      const extrahiertGeparst = versucheJsonParse(extrahiert)
+      if (extrahiertGeparst.ok) return { ok: true, geparst: extrahiertGeparst.geparst, beobachtung: 'json_objekt_extrahiert' }
     }
   }
+  return bisher
+}
 
+/**
+ * Die Stufen vor F44 WS-8b, unverändert: direkt, erster Codezaun, optional Objekt-Extraktion auf
+ * dem entzäunten bzw. Originaltext.
+ * @param text - Ergebnistext
+ * @param worker - 'claude-code' | 'codex'
+ * @param jsonObjektFallback - dritte Stufe freigeschaltet
+ * @returns bei Erfolg { ok: true, geparst, beobachtung }, sonst { ok: false, grund }
+ */
+function leseRollenErgebnisStufen(text, worker, jsonObjektFallback) {
   const direkt = versucheJsonParse(text)
   if (direkt.ok) return { ok: true, geparst: direkt.geparst, beobachtung: null }
 
@@ -3693,8 +3755,8 @@ export function leseScoutErgebnisAusLaufakte(laufakteDaten) {
  * leseRollenErgebnisRohstroms dritte Fallback-Stufe (jsonObjektFallback) freischaltet — ein
  * Chat-Turn ohne Menschen, der eine schlechte Antwort nachfragt, braucht die robustere
  * Extraktion am dringendsten (real beobachtet: Prosa vor einem ```json-Zaun). router/scout/
- * code-reviewer bleiben unverändert bei den ursprünglichen zwei Stufen (siehe Kommentar an
- * leseRollenErgebnisRohstrom, Schema-ENUM-Grund).
+ * code-reviewer bekommen die Objekt-Extraktion nicht (Schema-ENUM-Grund, siehe Kommentar an
+ * leseRollenErgebnisRohstrom); den Versuch mit dem äußersten Zaun (F-966) erhalten seit F44 WS-8b alle.
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Jarvis-Laufs
  * @returns bei Erfolg { ok: true, ergebnis }, sonst { ok: false, grund }
  */
@@ -3711,8 +3773,8 @@ export function leseJarvisErgebnisAusLaufakte(laufakteDaten) {
  * (jsonObjektFallback:true, Task "Jarvis-Chat-Latenz senken" Runde 2 Schritt 1, F-506): beide
  * Rollen sind Ein-Schuss-Chat-Läufe ohne Menschen, der eine schlechte Antwort nachfragen könnte,
  * und profitieren deshalb gleichermaßen von der robusteren Extraktion (anders als router/scout/
- * code-reviewer, die bei den ursprünglichen zwei Stufen bleiben, siehe Kommentar an
- * leseRollenErgebnisRohstrom).
+ * code-reviewer, die ohne Objekt-Extraktion bleiben — den äußersten Zaun, F-966, erhalten seit
+ * F44 WS-8b alle; siehe Kommentar an leseRollenErgebnisRohstrom).
  * @param laufakteDaten - bereits geladene LaufakteV0Daten des Laufs
  * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH ('schemaName'/'validiere')
  * @param bekannteRessourcenIds - F34 WS-3: nur für 'product-coach' im Modus 'projekt' relevant, an

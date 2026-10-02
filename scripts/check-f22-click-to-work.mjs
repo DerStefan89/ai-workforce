@@ -17,6 +17,8 @@
  *     (exportiert aus `scripts/leitstand-server.mjs`) mit präparierten
  *     Daten — kein Mock des Werkzeuglaufs, echte Artefakt-Registrierung
  *     gegen ein Wegwerf-`basisVerzeichnis`.
+ * (a2) F44 WS-8b (F-966, nur ergänzt): Router-Klassifikation (claude-code) mit innerem Codezaun
+ *     wird über den äußersten Zaun gelesen, Beobachtung bleibt 'fence_entfernt' (Schema-ENUM).
  * (b) 409 bei aktivem Lauf (D13) — real gegen einen laufenden Testserver
  *     (Muster `scripts/check-f15-workflow.mjs` Rotfall 2).
  * (c) Eine schemawidrige Klassifikation erzeugt weder Router- noch
@@ -217,6 +219,36 @@ function schreibeRohstromFixture(basisVerzeichnis, dateiname, stdout) {
     }
     if (befunde.length === befundeVor) {
       console.log(`✓ (a) AK7 strukturell: Router-Ergebnis ('router-${auftragId}') und Workflow ('${ergebnis.workflowId}') entstehen gekoppelt, im selben Durchlauf.`)
+    }
+  } finally {
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (a2) F44 WS-8b (F-966, nur ergänzt): Router-Pfad mit innerem Codezaun ──
+//
+// Der Router (claude-code, OHNE jsonObjektFallback) bekommt seit F-966 den Versuch mit dem
+// äußersten Zaun. Eine Klassifikation, deren begruendung selbst einen ```-Block trägt, wird
+// gelesen; die Beobachtung bleibt 'fence_entfernt' und damit im Schema-ENUM des Router-Artefakts.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f22-a2-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  try {
+    const auftragId = `f22-zaun-${randomUUID()}`
+    const laufId = `router-${auftragId}-${Date.now()}`
+    const klassifikation = { kontrolltiefe: 'standard', risikoklasse: 'mittel', task_typen: ['bugfix'], rueckfragen: [], begruendung: 'Prüfen mit:\n```powershell\ngit status\n```' }
+    const rohstromPfad = schreibeRohstromFixture(basisVerzeichnis, 'zaun-rohstrom.json', JSON.stringify({ type: 'result', result: `\`\`\`json\n${JSON.stringify(klassifikation)}\n\`\`\`` }))
+    const laufakte = { worker: 'claude-code', rohstrom_referenz: { pfad: rohstromPfad } }
+    const auftragVersion = { daten: { titel: 'Gate-Auftrag F22 Zaun' }, inhaltsHash: 'c'.repeat(64) }
+    const ladeOptionen = { basisVerzeichnis, schreiber: () => {} }
+    const ergebnis = verarbeiteRouterErgebnis(laufakte, auftragId, laufId, auftragVersion, REPO_WURZEL, profilReferenz, ladeOptionen)
+    const routerArtefakt = ergebnis.ok ? ladeArtefaktVersion(`router-${auftragId}`, undefined, ladeOptionen) : null
+    if (!ergebnis.ok) {
+      befunde.push(`(a2) Router mit innerem Zaun: erwartet ok:true, erhalten ${ergebnis.grund}`)
+    } else if (routerArtefakt?.daten?.beobachtung !== 'fence_entfernt') {
+      befunde.push(`(a2) Router mit innerem Zaun: Beobachtung erwartet 'fence_entfernt', erhalten ${JSON.stringify(routerArtefakt?.daten?.beobachtung)}`)
+    } else {
+      console.log("✓ (a2) F-966: Router-Klassifikation mit ```-Block in begruendung wird über den äußersten Zaun gelesen; Beobachtung 'fence_entfernt' (Schema-ENUM unverändert).")
     }
   } finally {
     raeumeVerzeichnis(basisVerzeichnis)

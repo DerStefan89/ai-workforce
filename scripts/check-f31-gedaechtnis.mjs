@@ -30,6 +30,8 @@
  * (k) F40 WS-3 (löst F-567): POST /api/auftraege/<id>/routen übergibt
  *     aufrufEingaben.disallowedTools 'Read(~/.claude/**)' an den Worker — Äquivalent zu (a),
  *     aber für den Router-Pfad statt Jarvis-Chat.
+ * (l) F44 WS-8b (löst F-966): ein Codeblock IM Feld antwort (```powershell) — roh, ```json-umzäunt,
+ *     Prosa + Zaun, Prosa + rohes Objekt; kaputtes JSON bleibt Fehlschlag, codex unverändert.
  *
  * Unit-Ebene (waehleVerlaufsfenster/baueJarvisAuftragstext-Randfälle) liegt in
  * src/jarvis/jarvis.test.ts — dieses Gate prüft nur die Server-Verdrahtung
@@ -44,7 +46,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { registriereKernArtefakt } from '../src/lineage-registry/index.ts'
-import { entferneCodezaun, erzeugeMultiProjektDispatcher, erzeugeRequestHandler, extrahiereErstesJsonObjekt, leseJarvisErgebnisAusLaufakte } from './leitstand-server.mjs'
+import { entferneAeusserstenCodezaun, entferneCodezaun, erzeugeMultiProjektDispatcher, erzeugeRequestHandler, extrahiereErstesJsonObjekt, leseJarvisErgebnisAusLaufakte } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -570,6 +572,81 @@ function baueFuehreAufgabeDurchFn(basisVerzeichnis, capture) {
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (l) F44 WS-8b (löst F-966): Codeblock IM Feld 'antwort' ───────────────
+//
+// Mit der Regel „direkt ausführbar“ (F-959) trägt 'antwort' Codezäune (```powershell …```). Der
+// erste Zaun endete bisher am inneren ```; jetzt versucht der Server zusätzlich den äußersten Zaun
+// und im Objekt-Fallback den Originaltext — beides erst, wenn die bisherige Kette scheitert.
+{
+  const befundeVor = befunde.length
+  const mitBlock = { art: 'antwort', antwort: 'Führe aus:\n```powershell\ngit status\ngit diff --stat\n```\nDanach melden.' }
+  const roh = JSON.stringify(mitBlock)
+  const basisVerzeichnis = `kontrollzustand-test-f31-ak-l-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  try {
+    mkdirSync(basisVerzeichnis, { recursive: true })
+    const schreibe = (dateiname, resultText, worker = 'claude-code') => {
+      const pfad = join(basisVerzeichnis, dateiname)
+      const stdout = worker === 'codex'
+        ? `${JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: resultText } })}\n`
+        : JSON.stringify({ type: 'result', result: resultText })
+      writeFileSync(pfad, JSON.stringify({ stdout }), 'utf8')
+      return { worker, rohstrom_referenz: { pfad } }
+    }
+    const faelle = [
+      { name: 'rohes JSON mit innerem ```powershell', text: roh },
+      { name: '```json-umzäuntes Objekt mit innerem ```powershell', text: `\`\`\`json\n${roh}\n\`\`\`` },
+      { name: 'Prosa + umzäuntes Objekt mit innerem Zaun', text: `Hier die Antwort:\n\`\`\`json\n${roh}\n\`\`\`` },
+      { name: 'Prosa + rohes Objekt mit innerem Zaun (jsonObjektFallback)', text: `Hier die Antwort: ${roh} Ende.` },
+    ]
+    for (const [index, fall] of faelle.entries()) {
+      const ergebnis = leseJarvisErgebnisAusLaufakte(schreibe(`l-${index}.json`, fall.text))
+      if (!ergebnis.ok || JSON.stringify(ergebnis.ergebnis) !== roh) {
+        befunde.push(`(l) '${fall.name}': erwartet ok:true mit dem Objekt samt Codeblock, erhalten ${JSON.stringify(ergebnis)}`)
+      }
+    }
+    // Kaputtes JSON bleibt ein Fehlschlag mit Grund — auch mit innerem Zaun.
+    const kaputt = leseJarvisErgebnisAusLaufakte(schreibe('l-kaputt.json', `\`\`\`json\n{"art":"antwort","antwort":"x \`\`\`powershell\\ngit status\\n\`\`\`"\n\`\`\``))
+    if (kaputt.ok !== false || typeof kaputt.grund !== 'string' || kaputt.grund === '') {
+      befunde.push(`(l) kaputtes JSON: erwartet ok:false mit Grund, erhalten ${JSON.stringify(kaputt)}`)
+    }
+    // codex-Pfad unverändert: kein Zaun-Zweitversuch (strukturierte Ausgabe über --output-schema).
+    const codex = leseJarvisErgebnisAusLaufakte(schreibe('l-codex.json', `\`\`\`json\n${roh}\n\`\`\``, 'codex'))
+    if (codex.ok !== false) {
+      befunde.push(`(l) codex: erwartet ok:false (kein Zaun-Fallback im codex-Pfad), erhalten ${JSON.stringify(codex)}`)
+    }
+    // Reine Funktionen: Invariante check-f22 (0) und der äußerste Zaun.
+    if (entferneCodezaun('{"a":1}') !== null || entferneAeusserstenCodezaun('{"a":1}') !== null) {
+      befunde.push('(l) Text ohne Codezaun muss für beide Entzäunungen null liefern')
+    }
+    if (entferneAeusserstenCodezaun(`\`\`\`json\n${roh}\n\`\`\``) !== roh) {
+      befunde.push(`(l) entferneAeusserstenCodezaun: erwartet das ganze Objekt, erhalten ${JSON.stringify(entferneAeusserstenCodezaun(`\`\`\`json\n${roh}\n\`\`\``))}`)
+    }
+    // CRLF: der Öffner schluckt \r\n, trim entfernt das \r vor dem Schließer (cr 4).
+    if (entferneAeusserstenCodezaun(`\`\`\`json\r\n${roh}\r\n\`\`\``) !== roh) {
+      befunde.push('(l) entferneAeusserstenCodezaun: CRLF-Zaun liefert nicht das ganze Objekt')
+    }
+    const crlf = leseJarvisErgebnisAusLaufakte(schreibe('l-crlf.json', `\`\`\`json\r\n${roh}\r\n\`\`\``))
+    if (!crlf.ok || JSON.stringify(crlf.ergebnis) !== roh) {
+      befunde.push(`(l) CRLF-umzäuntes Objekt mit innerem Zaun: erwartet ok:true, erhalten ${JSON.stringify(crlf)}`)
+    }
+    // Regression: ist der ERSTE Zaun gültig, bleibt sein Ergebnis — auch wenn danach weitere Zäune folgen.
+    const erstes = { art: 'antwort', antwort: 'erstes Objekt' }
+    const spaeter = leseJarvisErgebnisAusLaufakte(schreibe('l-erstes.json', `\`\`\`json\n${JSON.stringify(erstes)}\n\`\`\`\nNachtrag:\n\`\`\`powershell\ngit status\n\`\`\``))
+    if (!spaeter.ok || JSON.stringify(spaeter.ergebnis) !== JSON.stringify(erstes)) {
+      befunde.push(`(l) Regression: gültiger erster Zaun muss unverändert gelesen werden, erhalten ${JSON.stringify(spaeter)}`)
+    }
+    if (entferneAeusserstenCodezaun('```json\n{"a":1}') !== null) {
+      befunde.push('(l) entferneAeusserstenCodezaun: ein unvollständiger Zaun (nur Öffner) muss null liefern')
+    }
+    if (befunde.length === befundeVor) {
+      console.log('✓ (l): Antwort mit Codeblock im Feld antwort wird roh, ```json-umzäunt, mit Prosa + Zaun und mit Prosa + rohem Objekt gelesen (F-966); kaputtes JSON bleibt Fehlschlag mit Grund; codex unverändert; ohne Zaun weiter null.')
+    }
+  } finally {
     raeumeVerzeichnis(basisVerzeichnis)
   }
 }

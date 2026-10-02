@@ -12273,7 +12273,7 @@ Beschreibung: Jarvis, der Leitstand und Bauaufträge geben Befehle an Stefan in 
 Fundstelle: Jarvis-Instruktion (`src/jarvis`), Leitstand (z. B. F-958), Vorlage der Bauaufträge.
 Auswirkung: Befehle sind nicht direkt ausführbar; Fehlerquelle beim Abtippen und Ergänzen.
 Maßnahme: Regel „direkt ausführbar“: ein Block je zusammengehöriger Folge, eine Zeile je Befehl, PowerShell auf Windows, keine Platzhalter bei bekannten Werten (unvermeidbare sichtbar markieren), Fehlerabbruch beachten (schädliche Folgen in getrennte Blöcke), Pfade mit Leerzeichen quoten, keine Befehle, die Repo-Regeln umgehen. Vor der Aufnahme in die Jarvis-Instruktion F-966 beheben.
-Status: offen.
+Status: offen — für Jarvis umgesetzt (F44 WS-8b, 02.10.2026): Regel in `src/jarvis/index.ts` (baueJarvisAuftragstext, nach der Schema-Beschreibung; Zaun-Verbot für das JSON-Objekt bleibt), Test `src/jarvis/jarvis.test.ts`; der Leitstand zeigt solche Blöcke als kopierbare Befehlsblöcke (`public/leitstand/befehlsblock.js`). Offen für Leitstand-Texte (z. B. F-958) und die Vorlage der Bauaufträge.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
 **F-960** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12330,20 +12330,56 @@ Maßnahme: Register-Sichtung im Fixpaket B5.
 Status: offen.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
-**F-966** · `TECH_DEBT` · P2 · offen
+**F-966** · `TECH_DEBT` · P2 · erledigt
 Titel: entferneCodezaun paart den ersten Zaun-Öffner mit dem nächsten ```.
 Beschreibung: Trägt das Feld `antwort` eines claude-code-Ergebnisses selbst einen Codezaun und ist das Objekt umzäunt oder von Prosa umgeben (F-506-Fall), wird ein falscher Ausschnitt geparst → Lauf FEHLGESCHLAGEN.
 Fundstelle: `scripts/leitstand-server.mjs:3135` (entferneCodezaun).
 Auswirkung: Heute latent; real ab der Regel „direkt ausführbar“ (F-959) in der Jarvis-Instruktion, weil Antworten dann Codezäune tragen.
 Maßnahme: In WS-8b, vor der Regel: zusätzlich den Ausschnitt „erster Öffner bis letzter Zaun“ versuchen, mit Test; Regressionsschutz check-f22 (0) bleibt.
-Status: offen.
+Status: erledigt (F44 WS-8b, 02.10.2026): `scripts/leitstand-server.mjs` — neue reine Funktion `entferneAeusserstenCodezaun`; `leseRollenErgebnisRohstrom` versucht NUR, wenn die bisherige Kette (`leseRollenErgebnisStufen`, unverändert) scheitert, und nur für claude-code (a) den äußersten Zaun (Beobachtung 'fence_entfernt', für alle claude-code-Rollen) und (b) mit jsonObjektFallback die Objekt-Extraktion auf dem Originaltext. Tests: `scripts/check-f31-gedaechtnis.mjs` (l) (rohes JSON, ```json-umzäunt, Prosa + Zaun, Prosa + rohes Objekt, CRLF, gültiger erster Zaun unverändert, kaputtes JSON mit Grund, codex unverändert, ohne Zaun null), `scripts/check-f22-click-to-work.mjs` (a2) (Router-Pfad, Schema-ENUM) und (0) unverändert.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
-**F-967** · `BUG` · P2 · offen
+**F-967** · `BUG` · P2 · erledigt
 Titel: Vorschlag „Was braucht mich?“ trifft in en/tr/ru den Vorfilter nicht.
 Beschreibung: Die Vorschläge im Leerzustand füllen die Eingabe mit dem übersetzten Text (z. B. „What needs me?“). Die Muster des Vorfilters sind deutsch; nach dem Senden geht die Frage in en/tr/ru deshalb an einen echten Jarvis-Lauf statt an die lokale, deterministische Antwort (E-M4-3). Derselbe Knopf antwortet so je nach Sprache lokal oder über einen kostenpflichtigen Lauf; die übersetzten Vorfilter-Antworten sieht ein nicht-deutscher Nutzer praktisch nie.
 Fundstelle: `public/leitstand/views/chat.js` (initVorschlaege), `public/leitstand/jarvis-vorfilter.js` (MUSTER_BRAUCHT_MICH, MUSTER_STATUS).
 Auswirkung: Mittel — unnötige Modell-Läufe und uneinheitliches Verhalten je Sprache.
 Maßnahme: In WS-8b entscheiden: Vorschlag mit Musterschlüssel (z. B. `data-vorfilter="braucht_mich"`), der beim Senden des unveränderten Vorschlagstexts den Vorfilter direkt wählt, oder die übersetzten Vorschlagstexte als zusätzliche Muster. In WS-8a ausgeschlossen (keine Änderung an der Vorfilter-Logik).
-Status: offen.
+Status: erledigt (F44 WS-8b, 02.10.2026): zweite Variante — `public/leitstand/jarvis-vorfilter.js` erkennt zusätzlich jeden der vier Vorschlagstexte `chat.vorschlag.braucht` aus den Wörterbüchern (Trim, ohne Satzzeichen am Ende, ohne Groß-/Kleinschreibung); die bestehenden Muster bleiben, das Modul bleibt ohne DOM und Storage importierbar. Test `public/leitstand/chat-anzeige.test.mjs` (de/en/tr/ru), Render-Nachweis `features/F44/nachweise/ws8b/klicks-vorfilter-en/` („What needs me?“ → lokale Antwort, kein Lauf).
 Feature/Run: Entdeckt: Prüfpass F44 WS-8a (qa 2, code-reviewer 2), 02.10.2026.
+
+**F-968** · `TECH_DEBT` · P2 · offen
+Titel: VS-Code-Knopf ist für das Standardprojekt immer deaktiviert (relativer repo_pfad).
+Beschreibung: Der Kopf-Knopf VS Code baut `vscode://file/<repo_pfad>` nur aus einem absoluten Pfad des Projektregisters. Der Starteintrag `ai-workforce` trägt `repo_pfad '.'`, den der Server gegen sein Arbeitsverzeichnis auflöst; der Browser kennt diesen Pfad nicht. Der Knopf bleibt dort `aria-disabled`, der Grund steht nur im title. Ebenso ohne Link: UNC-Pfade (`\\server\share`), weil `vscode://file/` keinen Rechnernamen kennt.
+Fundstelle: `public/leitstand/kopf-werkzeuge.js` (baueVsCodeLink), `scripts/leitstand-server.mjs` (GET /api/projekte liefert repo_pfad roh).
+Auswirkung: Mittel — im täglichen Hauptprojekt ist VS Code nicht klickbar.
+Maßnahme: GET /api/projekte um den aufgelösten absoluten Pfad ergänzen (`repo_pfad_absolut`, nur lesend) und im Client bevorzugen; Leseroute-Änderung mit Gate-Fall. In WS-8b ausgeschlossen (keine Serverroute ändern).
+Status: offen.
+Feature/Run: Entdeckt: Bau F44 WS-8b, bestätigt Prüfpass (design-guardian, qa F5), 02.10.2026.
+
+**F-969** · `TECH_DEBT` · P3 · offen
+Titel: Befehlsblock — Rückmeldung geht beim Neuaufbau verloren; Zählung auch für Nicht-Befehle.
+Beschreibung: `renderVerlauf()` ersetzt den Verlauf bei jedem Neuaufbau (z. B. Fortschritt eines laufenden Laufs im anderen Modus). „Kopiert“, der Hinweis „Mit Strg+C kopieren“, die Markierung und der Fokus auf „Kopieren“ verschwinden; die Zwischenablage bleibt gefüllt. Außerdem zeigt jeder Block „{n} Befehle · nacheinander“, auch ein Block ohne Tag (JSON, Beispielcode) oder ein leerer Block („0 Befehle“).
+Fundstelle: `public/leitstand/befehlsblock.js` (kopiereBefehlsblock, renderBefehlsblock), `public/leitstand/views/chat.js` (renderVerlauf).
+Auswirkung: Gering — selten; im Rückfallweg ohne Clipboard-API muss erneut geklickt werden.
+Maßnahme: Kopierzustand je Block (Schlüssel aus laufId + Blockindex) im Modul halten und nach dem Rendern wiederherstellen, oder den Verlauf nur bei Änderung neu bauen; ohne Tag bzw. bei 0 Zeilen die Anzahl weglassen.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-8b (code-reviewer 2, design-guardian 4/6, qa K2/K3), 02.10.2026.
+
+**F-970** · `TECH_DEBT` · P3 · offen
+Titel: Eingerückte Codezäune, `~~~` und vier Backticks werden kein Befehlsblock.
+Beschreibung: Der Befehlsblock erkennt Zäune nur am Zeilenanfang mit genau drei Backticks (Vorgabe WS-8b). Modelle setzen Codeblöcke oft in nummerierte Listen (eingerückt) oder nutzen `~~~`; dann sieht Stefan rohe Zäune als Text.
+Fundstelle: `public/leitstand/befehlsblock.js` (OEFFNER, SCHLIESSER), `src/jarvis/index.ts` (Regel „direkt ausführbar“).
+Auswirkung: Gering — die Befehle bleiben lesbar und markierbar, nur ohne „Kopieren“.
+Maßnahme: Die Regel um „Codeblöcke nie einrücken“ ergänzen und/oder bis zu drei führende Leerzeichen tolerieren (CommonMark); bei Coach-Antworten beobachten.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F1, code-reviewer 8), 02.10.2026.
+
+**F-971** · `BUG` · P3 · offen
+Titel: Chat — Antwort oder Lauf im gerade nicht angezeigten Modus/Untermodus bleibt unsichtbar.
+Beschreibung: (1) Ist das Dock offen und trifft eine Antwort im anderen Reiter ein (Jarvis ↔ Product Coach), gibt es weder Punkt noch Markierung am Reiter. (2) Läuft ein Coach-Lauf im Untermodus Projekt und wechselt der Untermodus auf Feature (z. B. über „Lieber mit dem Coach besprechen“ auf `#/projekt`), filtert `baueAnzeigeListe` die Lauf-Blase heraus: zu sehen sind Leerzustand, „Lauf abbrechen“ und ein gesperrtes Senden ohne sichtbaren Grund (Verhalten aus F-624, der neue Knopf macht es leichter erreichbar).
+Fundstelle: `public/leitstand/views/chat.js` (baueAnzeigeListe, renderVerlauf), `public/leitstand/shell.js` (stiller Punkt nur bei geschlossenem Dock).
+Auswirkung: Gering bis mittel — eine Antwort wird übersehen; das gesperrte Senden wirkt grundlos.
+Maßnahme: Punkt auch am Reiter des anderen Modus; eine ausstehende Lauf-Blase unabhängig vom Untermodus-Filter zeigen oder einen Hinweis „Lauf im Untermodus Projekt läuft“.
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F2/F3), 02.10.2026.
