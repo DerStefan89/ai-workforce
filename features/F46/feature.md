@@ -54,7 +54,7 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 | D0b | Design-Referenz und Seitenspezifikation ins Repo | – | 0,1–0,2 | |
 | D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | ≈ 0,2 AT (#310) |
 | D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | ≈ 0,3 AT (#311) |
-| D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | |
+| D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | ≈ 0,4 AT (#312; Branch → Bericht 22:57) |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | |
 | D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
 | D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | |
@@ -410,3 +410,88 @@ Freigeben/Ablehnen des Vorschlags) und seine Sperre (F-922) sind im Verhalten un
 
 ### Abweichungen von abgleich-f46.md (zur Kenntnis)
 Stehen begründet in `docs/design/abgleich-f46.md` unter §4.6 und §4.8 („Umsetzung D3“).
+
+## Stand D4 „Entwicklung: Reiterzeile, Code, Tech Debt & Prozess, Auftrag anlegen“ (02.10.2026)
+Branch `feat/f46-d4-entwicklung-code` (Basis `a48b344`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
+(Leitprinzip, §2, §3 Schritt 3 und 7, §4.11–§4.13, §5), Bilder 06-entwicklung-code--Main, --TechDebt und
+04-auftrag-anlegen--Main. Ist D3 ≈ 0,4 AT (oben in der Tabelle); Ist D4 offen.
+- **Leseroute** `scripts/leitstand/routen-code.mjs` (GET …/code und …/code/diff, je Projektinstanz über den
+  Dispatcher; Test `routen-code.test.mjs`, 12 Fälle). Git nur über `execFile` (asynchron, ohne Shell), immer
+  `--no-optional-locks -c core.quotePath=false -c core.fsmonitor=false -c color.ui=never`, Zeitgrenze 5 s je
+  Aufruf, Ausgabe begrenzt, cwd = Repo-Wurzel; die Repo-Wurzel muss die Wurzel des Arbeitsverzeichnisses sein
+  (`rev-parse --show-toplevel`). Befehle: `rev-parse`, `symbolic-ref`, `rev-list --left-right --count`,
+  `remote get-url origin`, `status --porcelain=v1 -z --untracked-files=all`, `diff-index --numstat -z -M HEAD`,
+  `log --first-parent -n 21 <basis>`, für den Diff `diff-index -p … HEAD -- <pfad>` bzw. für neue Dateien
+  `diff --no-index -- /dev/null <pfad>`. Befund beim Bau: das Porcelain `git diff HEAD` frischt den Index auf
+  und schreibt ihn trotz `--no-optional-locks` — deshalb `diff-index` (Test „kein Lock und kein
+  Index-Schreiben“). Felder: branch, basis (origin/main, sonst main; voraus/zurück), remoteWebUrl (nur
+  github.com über https ohne Zugangsdaten oder git@github.com:), absoluterPfad, dateien (Art A/M/D/R/??,
+  +/−, gekappt bei 500), verlauf (20 Merges der ersten Elternlinie mit Zuordnung F/WS/PR, Abstand),
+  freigabeCommit (nur Dateizeit), harness (Vorhandensein), startvorlage (Allowlist-Auszug). Diff nur für
+  einen Pfad der aktuellen Liste, nach `--`, gekappt bei 64 KB. Fehler je Feld, kein Git → `nicht_verfuegbar`.
+- **Reiterzeile** `public/leitstand/entwicklung-reiter.js` für #/workboard und #/code: „Weitere“ heißt
+  „Tech Debt & Prozess“, „Aufträge“ → #/runs, „Code“ → #/code, „Ausführungen“ entfällt (F-964 erledigt).
+- **Code** `#/code` (`views/code.js`, Seitenleiste markiert „Entwicklung“): Arbeitsstand mit Dateien nach Ordnern,
+  Diff der gewählten Datei (escaped), „In VS Code öffnen“; „Sichern“ mit echten Dateien, Commit-Vorschlag
+  aus dem Branchnamen und Push (`code-daten.js`, F-958 erledigt), „Ins Terminal“ kommt; Commit-Freigabe aus
+  der Dateizeit; Prüfstand mit echtem Prüfbefehl der Startvorlage, Ergebnis/Tests/CI/„berührt“ kommen (F-962);
+  Verlauf mit Zuordnung und Filter Alle · Feature-Merges · Fixes · Doku; „Später auf dieser Seite“ vier
+  Kacheln „kommt“. Geladen über `code-stand.js` beim Bootstrap, Projektwechsel, Öffnen und „Aktualisieren“
+  — nie aus dem Poll.
+- **Tech Debt & Prozess** (Register 'weitere' in `views/workboard.js`): Art-Karten mit Anzahl als Filter,
+  Chips Art · Priorität (aus den Daten) · Status (Offen/Alle — damit Erledigtes erreichbar bleibt, Regel 7),
+  Tabelle Art · ID · Titel · Prio · Eingeplant (= Maßnahme, gekürzt) · Öffnen, Zeile → Detail; Suche bleibt.
+- **Auftrag anlegen** `#/projekt`: rechte Spalte `views/auftrag-umgebung.js` — „Bereit zum Start?“ (Formular,
+  Poll, Leseroute; Projektkarte kommt), „Wo gearbeitet wird“ (Werkzeuge, Projekt, Arbeitsordner mit
+  „Pfad kopieren“, Git, GitHub, Kontrollzustand, Projektwissen, Vorschau mit „Festlegen“ kommt, Warnung
+  zum Branch, `cd`-Befehl), „Womit gearbeitet wird“ (Startvorlage, Worker, Modell, Werkzeugsätze,
+  Prüfbefehl, Zeitgrenze, Kontextbudget). Formular und Direktstart unverändert.
+- **Kopf:** GitHub echt (remoteWebUrl, neuer Tab, `rel="noopener noreferrer"`), VS Code im Standardprojekt
+  über absoluterPfad (F-968 erledigt). **Detail:** „Änderungen“ → #/code, „Pull Requests“ → <remote>/pulls.
+- **Texte** de/en/tr/ru (Schlüssel `code.*`, `techdebt.*`, `auftrag.bereit|wo|womit.*`, `kopf.github*`);
+  entfallen: `entwicklung.tab.ausfuehrungen`, `entwicklung.ctw.git.dateien|nachricht`, `eintrag.review.aenderungenKommt`.
+- **Gate-/Test-Änderungen:** keine Gate-Datei geändert. Tests nachgezogen: `views/workboard-detail.test.mjs`
+  (Änderungen → #/code, Pull Requests nach GitHub); neu `code-daten.test.mjs`, `scripts/leitstand/routen-code.test.mjs`.
+- **Nachweise** `features/F46/nachweise/d4/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste Antworten,
+  jeder POST bekäme 409 mit Marke).
+- **Register:** F-958, F-961, F-964, F-968 erledigt; neu F-998, F-999, F-1000, F-1001.
+- **Prüfpass** (code-reviewer, design-guardian, qa parallel, einmal, frischer Kontext): alle drei „nicht
+  freigegeben“ — cr blockierend: PowerShell-Quoting ließ typografische ’ ‘ durch (Befehls-Injektion im
+  kopierten Block); qa kritisch: „Sichern“ brach bei gestagter Umbenennung/Löschung ab (Teil-Commit) und
+  zeigte nach einem Ablauf den Stand von vorher; dg hoch: „Öffnen“ brach mitten im Wort um. Eine
+  Korrekturrunde, eingearbeitet:
+  - Server: Git als absoluter Pfad aus den absoluten PATH-Einträgen (cr 3), Umgebung ohne geerbte GIT_*
+    (cr 9), `--literal-pathspecs` (cr 8), Sec-Fetch-Site-Prüfung für /api/code* und Bündelung gleichzeitiger
+    Abrufe (cr 2), Zeilenzählung neuer Dateien nacheinander mit 8-MB-Budget (cr 5), Arbeitsverzeichnis
+    geprüft (`arbeitsverzeichnis.vorhanden`, cr 6), `diff --no-index` Code 1 ohne Ausgabe = Fehler (cr 7),
+    Logging der Feldfehler (cr 11), `xy` roh und `origin`-Kennzeichen (qa 1, qa 9), Verlauf ohne Commits als
+    Leerzustand (qa 7), Prüfbefehl-Anzeige gequotet (cr 12).
+  - Sichern (`code-daten.js`): Quoting verdoppelt auch ’ ‘ ‚ ‛ und quotet alles, was nicht mit einem
+    Buchstaben beginnt (cr 1); gestagte Löschung und alter Pfad einer Umbenennung nicht mehr in `git add`
+    (qa 1); `:(literal)` für Glob-Zeichen und führendes „-“ (qa 12); `git add` aufgeteilt auf ≤ 50 Pfade bzw.
+    8 000 Zeichen je Zeile (qa 4); auf main kein Befehl (qa 3); ohne origin kein Push (qa 9); nach
+    gescheitertem Aktualisieren kein Befehl aus altem Stand (qa 5); Hinweis bei laufendem Lauf (qa 8).
+    Ausführungstest: `routen-code.test.mjs` führt die `git add`-Zeilen in PowerShell gegen ein Temp-Repo aus
+    (Umbenennung, gestagte/ungestagte Löschung, Leerzeichen, ä, ', ’, -x, a[1]) — danach nichts ungestaged.
+  - Click-to-Work: nach dem Abschluss eines Ablaufs einmal je Ablauf neu laden, „Stand von HH:MM“ (qa 2, cr 4).
+  - #/code: Commit-Freigabe läuft mit dem Poll ab (ohne Git), Chip „laut Dateizeit“ (qa 6, cr 12); Fokus nach
+    Reiterwechsel (qa 7); Basis-Grund sichtbar, Git-Fehler-Nachweis realistisch (dg 10); Summe nur bei
+    Änderungen (dg 7); Diff ohne Dateikopf-Zeilen, Umbenennung/Binär als Infozeile (dg 8); Name mit
+    führendem „-“ ohne Diff-Abruf, mit Erklärung (qa 13); Zeitüberschreitung lesbar (qa 13); Eyebrow wie
+    #/workboard (dg 4).
+  - Tabellen: nur waagerechte Trenner, Tech Debt mit Rahmen, „Öffnen“ ohne Umbruch (dg 1, dg 2), unter 640 px
+    gestapelt mit Beschriftung, Rahmen als fokussierbare Region (dg 3); Prio-Chip bleibt sichtbar (qa 11);
+    Spaltenkopf „Eingeplant“ mit „laut Maßnahme im Register“ (dg 5).
+  - #/projekt: veralteter Stand mit Hinweis (qa 5), „Fehlt noch: …“ unter der Prüfliste und laufender Lauf als
+    Warnung (dg 6), Standardpfade gekennzeichnet, absolutes basisverzeichnis direkt (cr 10).
+  - Tests neu: `views/auftrag-umgebung.test.mjs` (fand dabei einen echten Fehler: die Detailzeile las den
+    Modulzustand statt des übergebenen Laufs), Routentests für detached HEAD, ohne origin, ohne Commits,
+    > 500 Dateien, fehlenden Ordner, GIT_DIR, Herkunft; `code-daten.test.mjs` erweitert.
+  - Nachweise neu (34 WebP), dazu reduzierte Bewegung und lange Texte bei 390 px.
+  - Nicht übernommen: Kopf von #/code und #/workboard nicht deckungsgleich — die Beschreibung der Entwicklung
+    ist zweizeilig, #/code hat „Aktualisieren“ (Bauauftrag) statt „Neu laden“ (dg 4 teilweise); senkrechte
+    Linien in anderen F46-Tabellen (D1) bleiben (dg 2, Bestand); Chat-Blase → F-1001; projektweiter
+    Git-Pfad → F-1000.
+
+### Abweichungen von abgleich-f46.md (zur Kenntnis)
+Stehen begründet in `docs/design/abgleich-f46.md` unter §4.11–§4.13 („Umsetzung D4“).

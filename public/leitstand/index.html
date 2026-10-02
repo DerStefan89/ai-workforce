@@ -37,7 +37,7 @@
         <a href="#/dashboard" data-nav-view="dashboard"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 10 12 3l9 7v11h-6v-7H9v7H3Z" /></svg><span data-i18n="nav.produktuebersicht">Produktübersicht</span></a>
         <a href="#/roadmap" data-nav-view="roadmap" data-nav-auch="projektakte"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6" /></svg><span data-i18n="nav.roadmap">Roadmap</span></a>
         <div class="nav-gruppe">
-          <a href="#/workboard" data-nav-view="workboard"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21V11h4v10ZM10 21V6h4v15ZM17 21V2h4v19Z" /></svg><span data-i18n="nav.entwicklung">Entwicklung</span></a>
+          <a href="#/workboard" data-nav-view="workboard" data-nav-auch="code"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 21V11h4v10ZM10 21V6h4v15ZM17 21V2h4v19Z" /></svg><span data-i18n="nav.entwicklung">Entwicklung</span></a>
           <a href="#/ausfuehrungen" data-nav-view="runs" class="nav-unter"><span data-i18n="nav.ausfuehrungen">Ausführungen</span></a>
           <a href="#/projekt" data-nav-view="projekt" class="nav-unter"><span data-i18n="nav.auftragStart">Auftrag &amp; Start</span></a>
         </div>
@@ -60,7 +60,7 @@
       <div class="menue-werkzeuge" role="group" aria-label="Werkzeuge" data-i18n-aria-label="kopf.werkzeuge">
             <a class="button kopf-werkzeug" data-werkzeug-vscode role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.vscode">VS Code</span></a>
             <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h18v14H3ZM7 10l3 2-3 2M12 15h5" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.terminal">Terminal</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
-            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+            <a class="button kopf-werkzeug" data-werkzeug-github role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span></a>
           </div>
 
       <!-- Illustration der Vorlage (gear), rein dekorativ und nicht klickbar. Sie hängt am unteren
@@ -85,7 +85,8 @@
            #persona-kopf-oeffner bleiben die Mount- und Klickpunkte von persona.js/shell.js.
            F44 WS-8b: links von „Frag Jarvis“ die Werkzeuge VS Code | Terminal | GitHub. VS Code ist ein
            echter Link auf den Projektordner (kopf-werkzeuge.js setzt href oder aria-disabled), Terminal
-           und GitHub sind Bausteine „kommt“ (kommt.js). Bis 1279 px stehen sie in der Sidebar bzw. im
+           ist ein Baustein „kommt“ (kommt.js); GitHub ist seit F46 D4 ein echter Link auf das Repo (remoteWebUrl
+           aus GET …/code, code-stand.js), sonst aria-disabled. Bis 1279 px stehen sie in der Sidebar bzw. im
            mobilen Menü (.menue-werkzeuge), damit die Kopfzeile nicht überläuft (Staffelung: style.css).
            F46 D0: unter der Statuszeile der Live-Chip #kopf-live-chip (live-chip.js), bis 1150 px in der
            Sidebar bzw. im mobilen Menü. -->
@@ -111,7 +112,7 @@
           <div class="kopf-werkzeuge" role="group" aria-label="Werkzeuge" data-i18n-aria-label="kopf.werkzeuge">
             <a class="button kopf-werkzeug" data-werkzeug-vscode role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.vscode">VS Code</span></a>
             <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h18v14H3ZM7 10l3 2-3 2M12 15h5" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.terminal">Terminal</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
-            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+            <a class="button kopf-werkzeug" data-werkzeug-github role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span></a>
           </div>
           <button type="button" id="chat-umschalter" class="button chat-umschalter" aria-expanded="false" aria-controls="shell-chat-spalte" title="Frag Jarvis" data-i18n-title="kopf.fragJarvis"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-umschalter-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
         </div>
@@ -161,6 +162,11 @@
             <li data-schritt="3"><b aria-hidden="true">3</b><span data-i18n="auftrag.schritt.freigeben">Freigeben</span></li>
           </ol>
 
+          <!-- F46 D4 (Bild 04-auftrag-anlegen--Main, abgleich-f46.md §4.11): links Formular, Schritt 2 und Direktstart
+               unverändert (.auftrag-haupt), rechts „Bereit zum Start?“, „Wo gearbeitet wird“ und „Womit gearbeitet wird“
+               (#auftrag-umgebung, views/auftrag-umgebung.js, nur lesend). -->
+          <div class="auftrag-raster">
+          <div class="auftrag-haupt">
           <form id="auftrag-formular" class="auftrag-formular" novalidate>
             <label class="field" for="auftrag-titel" data-i18n="auftrag.feld.titel">Titel</label>
             <input type="text" id="auftrag-titel" autocomplete="off" />
@@ -215,6 +221,9 @@
             <p id="start-erfolg" class="erfolg" hidden></p>
             <p id="start-fehler" class="fehler" hidden></p>
           </details>
+          </div>
+          <aside id="auftrag-umgebung" class="auftrag-umgebung" aria-label="Startbereitschaft und Arbeitsumgebung" data-i18n-aria-label="auftrag.spalte"></aside>
+          </div>
         </section>
 
         <!-- F44 WS-6a (Vorlage V10 d_projekte und d_projekt_neu, Abgleich F-725 H1–H7): „Alle Produkte“
@@ -325,6 +334,8 @@
           </div>
 
           <div id="workboard-listen-bereich" hidden>
+            <!-- F46 D4 (06-TechDebt): Art-Karten und Chips des Registers „Tech Debt & Prozess“ (views/workboard.js). -->
+            <div id="workboard-techdebt-kopf" class="techdebt-kopf" hidden></div>
             <div class="workboard-suchzeile">
               <input type="search" id="workboard-suche" autocomplete="off" />
               <div id="workboard-spaltenfilter"></div>
@@ -382,6 +393,33 @@
               <div id="workboard-detail-spalte" class="eintrag-spalte-rahmen"></div>
             </div>
           </section>
+        </section>
+
+        <!-- F46 D4 (Bild 06-entwicklung-code--Main, abgleich-f46.md §4.12): Entwicklung › Code #/code — die
+             Seitenleiste markiert „Entwicklung“ (data-nav-auch). Kopf mit Reiterzeile; „Arbeitsstand jetzt“
+             mit Dateien, Diff und „Sichern“; rechts „Commit-Freigabe“ und „Prüfstand“; darunter „Verlauf auf
+             main“ und „Später auf dieser Seite“. Alles lesend (GET …/code, views/code.js); gesichert wird nur im
+             eigenen Terminal. -->
+        <section id="view-code" data-view="code" class="v10-seite code-seite" aria-labelledby="code-titel" hidden>
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow" data-i18n="entwicklung.eyebrow">Produktentwicklung</div>
+              <h1 id="code-titel" tabindex="-1" data-i18n="code.titel">Code</h1>
+              <p class="description" data-i18n="code.beschreibung">Was sich im Repo geändert hat, und durch welche Arbeit. Ausgeführt wird im Terminal.</p>
+            </div>
+            <button type="button" id="code-aktualisieren" class="button" data-i18n="code.aktualisieren">Aktualisieren</button>
+          </div>
+          <nav id="code-tabs" class="tabs" aria-label="Bereiche der Entwicklung" data-i18n-aria-label="entwicklung.register"></nav>
+          <div id="code-hinweis"></div>
+          <div class="code-raster">
+            <section id="code-stand" class="code-karte code-stand" aria-labelledby="code-stand-titel"></section>
+            <div class="code-spalte">
+              <section id="code-freigabe" class="code-karte" aria-labelledby="code-freigabe-titel"></section>
+              <section id="code-pruefstand" class="code-karte code-pruefstand" aria-labelledby="code-pruefstand-titel"></section>
+            </div>
+          </div>
+          <section id="code-verlauf" class="code-karte" aria-labelledby="code-verlauf-titel"></section>
+          <section id="code-spaeter" class="code-spaeter" aria-labelledby="code-spaeter-titel"></section>
         </section>
 
         <!-- F29 WS-D2 (Auftrag Punkt E): entfernte Hinweistexte — überwiegend lesende Ansicht von

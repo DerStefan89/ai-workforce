@@ -5646,7 +5646,7 @@ th {
   justify-content: flex-end;
 }
 
-#view-workboard .tabs .tab-knopf {
+:is(#view-workboard, #view-code) .tabs .tab-knopf {
   display: inline-flex;
   align-items: center;
   padding: 12px 0;
@@ -5659,11 +5659,11 @@ th {
   white-space: nowrap;
 }
 
-#view-workboard .tabs .tab-knopf:hover {
+:is(#view-workboard, #view-code) .tabs .tab-knopf:hover {
   color: var(--ink);
 }
 
-#view-workboard .tabs .tab-knopf.active {
+:is(#view-workboard, #view-code) .tabs .tab-knopf.active {
   color: var(--ink);
   border-color: var(--mint);
 }
@@ -5917,7 +5917,7 @@ th {
   outline-offset: 2px;
 }
 
-#view-workboard .tabs .tab-knopf:focus-visible,
+:is(#view-workboard, #view-code) .tabs .tab-knopf:focus-visible,
 #view-workboard .board-item:focus-visible,
 #view-workboard .board-weitere:focus-visible,
 #view-workboard .board-filter-chip:focus-visible,
@@ -10286,5 +10286,1239 @@ th {
     padding: 0 4px;
     font-size: 10px;
     transform: none;
+  }
+}
+
+
+/* ─────────────── Entwicklung › Code (F46 D4, Design 06-entwicklung-code--Main) ───────────────
+   #/code (views/code.js): Raster „Arbeitsstand jetzt“ links, „Commit-Freigabe“ und „Prüfstand“ rechts,
+   darunter „Verlauf auf main“ und „Später auf dieser Seite“. Maße aus
+   docs/design/neu/quelle/06-entwicklung-code/Main.dc.html, Farben nur über Tokens (color-mix für blasse
+   Flächen). Umbrüche über die Container-Query „code“ (Breite der Seite, nicht des Viewports). Kein display
+   auf #view-code (hidden-Attribut, F-622). */
+#view-code {
+  container: code / inline-size;
+}
+
+.code-seite .page-heading {
+  align-items: flex-start;
+}
+
+.code-seite .tabs {
+  margin-bottom: 24px;
+}
+
+.code-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.code-spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.code-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+#code-verlauf {
+  margin-top: 20px;
+}
+
+.code-karte h2 {
+  margin: 0;
+  font: 400 22px/1.2 var(--serif);
+}
+
+.code-spalte .code-karte h2 {
+  font-size: 19px;
+}
+
+.code-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.code-karte-kopf > .kommt-badge,
+.code-karte-kopf > .code-status-chip,
+.code-karte-kopf > .code-summe {
+  margin-left: auto;
+}
+
+.code-karte-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.code-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--mint) 50%, transparent);
+  border-radius: 999px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.code-branch[data-zustand='fehler'] {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.code-branch .icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--mint);
+}
+
+.code-karte-kopf .subtle {
+  font-size: 12px;
+}
+
+.code-summe {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.code-arbeitsstand {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.code-dateien {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.code-gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.code-ordner {
+  margin: 0;
+  padding: 4px 2px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.code-datei {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.code-datei:hover {
+  background: var(--button-hover-bg);
+}
+
+.code-datei[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--mint) 40%, transparent);
+  background: color-mix(in srgb, var(--mint) 10%, transparent);
+}
+
+.code-datei:focus-visible,
+.code-diff-inhalt:focus-visible,
+.techdebt-karte:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.code-art {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--amber) 15%, transparent);
+  color: var(--amber);
+}
+
+.code-art[data-art='neu'],
+.code-art[data-art='A'] {
+  background: color-mix(in srgb, var(--mint) 20%, transparent);
+  color: var(--mint);
+}
+
+.code-art[data-art='D'] {
+  background: color-mix(in srgb, var(--red) 18%, transparent);
+  color: var(--red);
+}
+
+.code-datei-name {
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.code-plus,
+.code-minus {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.code-plus {
+  color: var(--mint);
+}
+
+.code-minus {
+  color: var(--red);
+}
+
+.code-diff {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.code-diff-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.code-diff-pfad {
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.code-vscode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.code-vscode .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--mint);
+}
+
+.code-diff-inhalt {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.code-diff-text {
+  margin: 0;
+  padding: 10px 0;
+  background: transparent;
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.code-diff-zeile {
+  display: block;
+  min-width: max-content;
+  padding: 0 14px;
+  white-space: pre;
+  color: var(--muted);
+}
+
+.code-diff-zeile:empty::before {
+  content: '\200b';
+}
+
+.code-diff-zeile[data-art='plus'] {
+  background: color-mix(in srgb, var(--mint) 8%, transparent);
+  color: var(--ink);
+}
+
+.code-diff-zeile[data-art='minus'] {
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  color: var(--ink);
+}
+
+.code-diff-zeile[data-art='hunk'] {
+  color: var(--ebene-feature);
+}
+
+.code-diff-leer,
+.code-diff-gekuerzt {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+}
+
+.code-sauber {
+  margin: 0;
+  color: var(--muted);
+}
+
+.code-sichern {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.code-sichern-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.code-sichern-kopf h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.code-sichern-kopf .subtle,
+.code-sichern-grund {
+  margin: 0;
+  font-size: 12px;
+}
+
+.code-sichern .befehlsblock,
+.code-pruefstand .befehlsblock,
+.auftrag-umgebung .befehlsblock {
+  margin: 0;
+}
+
+.code-sichern .note,
+.auftrag-umgebung .note {
+  margin: 0;
+}
+
+.befehlsblock-kopf .kommt-knopf {
+  padding: 3px 10px;
+  font-size: 11px;
+}
+
+.code-status-chip {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.code-status-chip[data-ton='gueltig'] {
+  border-color: color-mix(in srgb, var(--mint) 55%, transparent);
+  color: var(--mint);
+}
+
+.code-status-chip[data-ton='abgelaufen'],
+.code-status-chip[data-ton='fehler'] {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  color: var(--amber);
+}
+
+.code-felder {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.code-felder dt {
+  padding-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.code-felder dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.code-pruef-kacheln {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.code-pruef-kachel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.code-pruef-kachel > span:first-child,
+.code-eyebrow {
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.code-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.code-verlauf-kopf {
+  align-items: flex-start;
+}
+
+.code-verlauf-kopf > div:first-child {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.code-verlauf-kopf p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+}
+
+.code-verlauf-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.code-tabelle-rahmen,
+.techdebt-tabelle-rahmen {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.code-verlauf-tabelle,
+.techdebt-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.code-verlauf-tabelle th,
+.techdebt-tabelle th {
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.code-verlauf-tabelle td,
+.techdebt-tabelle td {
+  padding: 9px 8px;
+  border-bottom: 1px solid var(--topbar-line);
+  vertical-align: middle;
+}
+
+.code-verlauf-tabelle td:first-child,
+.code-verlauf-tabelle td:nth-child(2),
+.code-verlauf-tabelle td:nth-child(5) {
+  white-space: nowrap;
+}
+
+.code-hash {
+  color: var(--mint);
+}
+
+.code-nachricht {
+  min-width: 220px;
+  max-width: 460px;
+  overflow-wrap: anywhere;
+}
+
+.code-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.code-chip {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.code-chip[data-art='feature'] {
+  border-color: color-mix(in srgb, var(--ebene-feature) 45%, transparent);
+  color: var(--ebene-feature);
+}
+
+.code-chip[data-art='ws'] {
+  border-color: color-mix(in srgb, var(--ebene-workstream) 45%, transparent);
+  color: var(--ebene-workstream);
+}
+
+.code-spaeter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.code-spaeter h2 {
+  margin: 0;
+  font: 400 22px/1.2 var(--serif);
+}
+
+.code-spaeter-kacheln {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.code-spaeter-kachel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 130px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+}
+
+.code-spaeter-kopf {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.code-spaeter-kachel .subtle {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.code-laedt {
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+
+@container code (max-width: 1040px) {
+  .code-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .code-spaeter-kacheln {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container code (max-width: 720px) {
+  .code-arbeitsstand {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .code-karte-kopf > .code-summe {
+    margin-left: 0;
+  }
+}
+
+@container code (max-width: 480px) {
+  .code-spaeter-kacheln,
+  .code-pruef-kacheln {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .code-karte {
+    padding: 16px;
+  }
+}
+
+/* ─────────────── Tech Debt & Prozess (F46 D4, Design 06-entwicklung-code--TechDebt) ───────────────
+   Register 'weitere' in #/workboard: Art-Karten mit Anzahl (Filter), Chips Art · Priorität · Status, Tabelle.
+   #workboard-techdebt-kopf trägt das hidden-Attribut und deshalb kein display (F-622). Art-Farben über
+   --ebene-feature (Technik) und --ebene-fixpaket (Prozess), keine neue Farbe. */
+.techdebt-kopf {
+  margin: 0 0 18px;
+}
+
+.techdebt-karten {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.techdebt-karte {
+  --art: var(--ebene-feature);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.techdebt-karte[data-td-art='PROCESS_IMPROVEMENT'] {
+  --art: var(--ebene-fixpaket);
+}
+
+.techdebt-karte:hover {
+  background: var(--panel-hover);
+}
+
+.techdebt-karte[aria-pressed='true'] {
+  border-color: var(--art);
+}
+
+.techdebt-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.techdebt-karte-englisch {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.techdebt-karte-zahl {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.techdebt-karte-zahl strong {
+  font: 400 26px/1 var(--serif);
+  color: var(--ink);
+}
+
+.techdebt-karte-titel {
+  font: 400 18px/1.25 var(--serif);
+}
+
+.techdebt-karte-text {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.techdebt-chip {
+  --art: var(--ebene-feature);
+  display: inline-block;
+  padding: 2px 9px;
+  border: 1px solid var(--art);
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--art);
+}
+
+.techdebt-karte .techdebt-chip {
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.techdebt-chip[data-art='prozess'],
+.techdebt-karte[data-td-art='PROCESS_IMPROVEMENT'] .techdebt-chip {
+  --art: var(--ebene-fixpaket);
+}
+
+.techdebt-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.techdebt-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.techdebt-chips:empty {
+  display: none;
+}
+
+.techdebt-chips + .techdebt-chips {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+.techdebt-auszug {
+  margin: 0 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#workboard-liste.techdebt-liste {
+  padding-top: 4px;
+}
+
+.techdebt-zeile {
+  cursor: pointer;
+}
+
+.techdebt-zeile:hover {
+  background: var(--button-hover-bg);
+}
+
+.techdebt-titel {
+  min-width: 240px;
+  overflow-wrap: anywhere;
+}
+
+.techdebt-eingeplant {
+  min-width: 160px;
+  max-width: 280px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.techdebt-tabelle td:nth-child(2),
+.techdebt-tabelle td:nth-child(4) {
+  white-space: nowrap;
+}
+
+@container entwicklung (max-width: 640px) {
+  .techdebt-karten {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .techdebt-auszug {
+    margin-left: 0;
+  }
+}
+
+/* ─────────────── Auftrag anlegen: rechte Spalte (F46 D4, Design 04-auftrag-anlegen--Main) ───────────────
+   #/projekt: links Formular, Schritt 2 und Direktstart unverändert (.auftrag-haupt), rechts drei Karten
+   (#auftrag-umgebung, views/auftrag-umgebung.js). Umbruch über die Container-Query „auftrag“. */
+#view-projekt {
+  container: auftrag / inline-size;
+}
+
+.auftrag-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 20px;
+  align-items: start;
+}
+
+.auftrag-haupt {
+  min-width: 0;
+}
+
+.auftrag-umgebung {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.umgebung-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.umgebung-karte h2 {
+  margin: 0;
+  font: 400 20px/1.2 var(--serif);
+}
+
+.umgebung-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.umgebung-chip,
+.bereit-etikett {
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.umgebung-chip[data-ton='ok'] {
+  border-color: color-mix(in srgb, var(--mint) 55%, transparent);
+  color: var(--mint);
+}
+
+.umgebung-chip[data-ton='warnung'],
+.bereit-etikett[data-ton='warnung'] {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  color: var(--amber);
+}
+
+.bereit-etikett {
+  border-color: transparent;
+  padding: 0;
+}
+
+.bereit-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bereit-zeile {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.bereit-zeichen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bereit-zeichen[data-zustand='ok'] {
+  border-color: var(--mint);
+  background: var(--mint);
+  color: var(--bg);
+}
+
+.bereit-zeichen[data-zustand='warnung'],
+.bereit-zeichen[data-zustand='fehler'] {
+  border-color: var(--amber);
+  background: var(--amber);
+  color: var(--bg);
+}
+
+.bereit-zeichen[data-zustand='kommt'] {
+  border-style: dashed;
+}
+
+.bereit-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bereit-name {
+  font-size: 13px;
+}
+
+.bereit-detail {
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.umgebung-werkzeuge {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.umgebung-werkzeug {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--ink);
+  text-align: center;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.umgebung-werkzeug .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--mint);
+}
+
+.umgebung-werkzeug[aria-disabled='true'] {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+a.umgebung-werkzeug:not([aria-disabled='true']):hover {
+  background: var(--button-hover-bg);
+}
+
+.umgebung-felder {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.umgebung-zeile {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--topbar-line);
+}
+
+.umgebung-zeile dt {
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.umgebung-zeile dd {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.umgebung-zeile dd.umgebung-aktion {
+  align-items: flex-end;
+  font-size: 12px;
+}
+
+.umgebung-wert {
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.umgebung-pfad {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.umgebung-unter {
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.umgebung-kopieren {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.umgebung-karte p {
+  margin: 0;
+}
+
+@container auftrag (max-width: 1000px) {
+  .auftrag-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container auftrag (max-width: 460px) {
+  .umgebung-zeile {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .umgebung-zeile dd.umgebung-aktion {
+    align-items: flex-start;
+  }
+}
+
+/* F46 D4: Feinheiten nach dem ersten Render-Nachweis — Links in Tabellen in Tabellenschrift, Kachel-
+   Beschriftungen ohne Bruch mitten im Wort, das Badge „kommt“ behält seine eigene Schreibweise. */
+.code-seite .text-link,
+#view-workboard .techdebt-tabelle .text-link,
+.auftrag-umgebung .text-link {
+  gap: 4px;
+  padding: 0;
+  border-bottom: 1px solid currentColor;
+  font: 12.5px var(--sans);
+  color: var(--mint);
+  overflow-wrap: anywhere;
+}
+
+.code-seite .text-link:hover,
+#view-workboard .techdebt-tabelle .text-link:hover,
+.auftrag-umgebung .text-link:hover {
+  color: var(--ink);
+}
+
+.code-seite .text-link[aria-disabled='true'],
+.auftrag-umgebung .text-link[aria-disabled='true'] {
+  border-bottom-style: dashed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.auftrag-umgebung button.text-link {
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  cursor: pointer;
+}
+
+/* Die Chip-Gruppen der Liste blendet „Tech Debt & Prozess“ über hidden aus — #workboard-filter trägt
+   display: flex, das die UA-Regel [hidden] sonst überschriebe (F-622). */
+#view-workboard #workboard-filter[hidden] {
+  display: none;
+}
+
+.umgebung-zeile dt {
+  overflow-wrap: normal;
+  letter-spacing: 1px;
+}
+
+.code-pruef-kachel > span:first-child {
+  overflow-wrap: normal;
+  letter-spacing: 1px;
+}
+
+.code-eyebrow .kommt-badge {
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/* F46 D4 (Render-Nachweis 390 px, 200 %): die absolut positionierten .sr-only-Texte in den Tabellen
+   entkamen dem scrollenden Rahmen und verbreiterten die Seite — der Rahmen ist ihr Bezug. */
+.code-tabelle-rahmen,
+.techdebt-tabelle-rahmen {
+  position: relative;
+}
+
+
+/* F46 D4, Korrekturrunde (Prüfpass dg 1–3, 8): Tabellen wie im Bild nur mit waagerechten Trennern und
+   ohne Kopf-Hintergrund (die globale Regel th, td zieht sonst senkrechte Linien), Tech Debt mit Rahmen,
+   „Öffnen“ ohne Umbruch, unter 640 px Zeilen als Blöcke mit Beschriftung (data-label) statt eines inneren
+   Scrollbereichs. Der Rahmen ist eine fokussierbare Region (Scrollen per Tastatur, falls nötig). */
+.code-verlauf-tabelle th,
+.code-verlauf-tabelle td,
+.techdebt-tabelle th,
+.techdebt-tabelle td {
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: none;
+}
+
+.techdebt-tabelle-rahmen {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.techdebt-tabelle th {
+  padding-top: 12px;
+}
+
+.techdebt-tabelle tr:last-child td {
+  border-bottom: 0;
+}
+
+.techdebt-tabelle td.techdebt-aktion,
+.techdebt-tabelle .text-link {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.techdebt-eingeplant {
+  max-width: 240px;
+}
+
+.code-tabelle-rahmen:focus-visible,
+.techdebt-tabelle-rahmen:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.code-diff-zeile[data-art='info'] {
+  font-style: italic;
+  color: var(--muted);
+}
+
+.bereit-offen {
+  font-size: 12px;
+}
+
+@container code (max-width: 640px) {
+  .code-verlauf-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .code-verlauf-tabelle,
+  .code-verlauf-tabelle tbody,
+  .code-verlauf-tabelle tr,
+  .code-verlauf-tabelle td {
+    display: block;
+  }
+
+  .code-verlauf-tabelle tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--topbar-line);
+  }
+
+  .code-verlauf-tabelle td {
+    padding: 2px 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  .code-verlauf-tabelle td[data-label]::before,
+  .techdebt-tabelle td[data-label]::before {
+    content: attr(data-label) ' ';
+    margin-right: 6px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .code-nachricht {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@container entwicklung (max-width: 640px) {
+  .techdebt-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .techdebt-tabelle,
+  .techdebt-tabelle tbody,
+  .techdebt-tabelle tr,
+  .techdebt-tabelle td {
+    display: block;
+  }
+
+  .techdebt-tabelle tr {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--topbar-line);
+  }
+
+  .techdebt-tabelle td {
+    padding: 2px 0;
+    border: 0;
+  }
+
+  .techdebt-titel,
+  .techdebt-eingeplant {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .techdebt-tabelle td[data-label]::before {
+    content: attr(data-label) ' ';
+    margin-right: 6px;
+    font-size: 9.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 }

@@ -403,6 +403,36 @@ Hauptaufgabe: Bestand filtern und einzelne Einträge öffnen.
 | Tabelle Art · ID · Titel · Priorität | U | |
 | Spalte „Eingeplant“ | U / K | nur aus einem maschinenlesbaren Feld, sonst K (Fixpaket B5) |
 
+Umsetzung D4 (Abweichungen zu §4.11–§4.13, begründet):
+- Basis des Arbeitsstands und des Verlaufs ist `origin/main`, ohne ihn `main`: Merges entstehen auf GitHub,
+  ein lokales `main` ist oft veraltet oder fehlt im Worktree. Die Seite nennt die Quelle („Quelle: origin/main“).
+- Commit-Freigabe aus der Dateizeit von `state/freigabe-commit.md` (nie der Inhalt); der Hook commit-guard
+  entscheidet nach dem Zeitstempel in der Datei — der Text sagt das, statt „darf“ absolut zu behaupten.
+- Prüfstand: statt des Chips „nicht geprüft“ ein „kommt“ (keine Quelle, F-962); der Befehlsblock nennt den
+  Prüfbefehl der Startvorlage der Instanz (bei ai-workforce `npm run check`).
+- Verlauf: Beschreibung ohne „fließt als Ist in die Zeitleiste“ (diese Verwendung gibt es noch nicht, Regel 8);
+  Zuordnung nur aus dem Betreff-Muster „F46 D3: … (#312)“; Filter „Fixes“/„Doku“ nach dem Anfang des Betreffs.
+- Dateiliste und „Sichern“ umfassen den ganzen Arbeitsbaum einschließlich neuer Dateien (Stefan entscheidet,
+  was er stagt). Ist die Liste gekappt, der Baum sauber oder kein Branch ausgecheckt, steht statt eines
+  Befehls der Grund. Die Dateien sind die des Repos, nicht die eines Eintrags — die Kachel „Änderungen“ im
+  Detail verweist deshalb auf #/code und sagt das.
+- Tech Debt & Prozess: zusätzlich Status-Chips „Offen · Alle Status“ (sonst wäre Erledigtes aus dem Register
+  nicht mehr erreichbar, Regel 7) und die bisherige Suche; Prioritäten aus den vorkommenden Werten;
+  „Eingeplant“ = Maßnahme, gekürzt (wie D3).
+- Auftrag anlegen: „GitHub · Pull Requests [n] offen“ entfällt (keine Quelle; „Branches & PRs“ ist „Später“);
+  die Warnung zum Branch steht immer, bei ausgechecktem `main` mit dem Zusatz „Gerade ist main ausgecheckt.“;
+  „Arbeitsverzeichnis gefunden“ heißt: der Ordner existiert und Git antwortet dort (ohne Git „prüfen“, die
+  Spalte ist dann nicht bereit). „Ablauf vorbereiten“ bleibt wie bisher bedienbar (Prüfung beim Klick);
+  die Spalte nennt darunter „Fehlt noch: …“ statt den Knopf zu sperren.
+- „Sichern“ schlägt keinen Befehl vor, wenn main ausgecheckt ist, das letzte Aktualisieren scheiterte, die
+  Liste gekappt oder kein Branch ausgecheckt ist; ohne Remote „origin“ entfällt der Push.
+- Diff-Vorschau ohne Dateikopf-Zeilen (der Pfad steht im Kopf der Vorschau); Umbenennung und Binärdatei
+  bleiben als Infozeile. Ein Name mit führendem „-“ bekommt keinen Diff (Schutz vor Git-Schaltern).
+- #/code trägt „Aktualisieren“ (Bauauftrag) statt „Neu laden“ der Entwicklung; der Kopf hat dieselbe
+  Eyebrow, ist aber nicht deckungsgleich, weil die Beschreibung der Entwicklung zweizeilig ist.
+- Tabellen (Verlauf, Tech Debt) unter 640 px als gestapelte Blöcke mit Beschriftung; „Eingeplant“ trägt den
+  Zusatz „laut Maßnahme im Register“.
+
 ### 4.14 Workforce — `#/capabilities` (01-workforce-harness--Main, --Library, --Bearbeiten) · D6
 Zweck: was die Workforce beim Arbeiten lädt, prüft und befolgt, und welche Fähigkeiten es gibt.
 Hauptaufgabe: den Harness verstehen; Fähigkeiten prüfen und freigeben.

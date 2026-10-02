@@ -1,0 +1,798 @@
+{
+  "url": "http://127.0.0.1:4199/#/workboard",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F46",
+            "titel": "Design-Nachbau nach neuem Seitenaufbau",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F46/feature.md"
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P1",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B2: Projektkontext in die Kontextpakete aller Planungsrollen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-936",
+            "titel": "Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B1: Regeln je Rolle festlegen und belegen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-929",
+            "titel": "Unklar, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B5: Schätzfelder im Roadmap-Schema.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-944",
+            "titel": "Timeline aus Schätzungen statt Kalenderdaten."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-930",
+            "titel": "F38 als „gestufter Kontext“ neu fassen."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Beim Schnitt F-928 zusammenlegen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-943",
+            "titel": "Kette „Auftrag anlegen → routen → auf Vorschlag warten“ existiert zweimal."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B5: Click-to-Work als eigenes Modul, Tests mitziehen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-928",
+            "titel": "views/workboard.js ist mit rund 1 400 Zeilen zu groß; Click-to-Work gehört in ein eigenes Modul."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-941",
+            "titel": "views/workflows.js liegt mit rund 990 Zeilen knapp unter der Grenze."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-942",
+            "titel": "Ausführungsliste ohne Worker und Rolle."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-945",
+            "titel": "Zähler auf „Alle Produkte“ kosten je Karte drei Zusatzabrufe."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "ERLEDIGT",
+            "statusRoh": "erledigt",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Erledigt in F44.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-906",
+            "titel": "Erledigter Eintrag (nur unter „Alle Status“)."
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F46",
+            "titel": "Design-Nachbau nach neuem Seitenaufbau",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F46/feature.md"
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P1",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B2: Projektkontext in die Kontextpakete aller Planungsrollen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-936",
+            "titel": "Architekt, Advisor und Review (Codex) bekommen Vision und Projektkontext nicht als Eingabe."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B1: Regeln je Rolle festlegen und belegen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-929",
+            "titel": "Unklar, wie Codex-Schritte (Architekt, Review) die Harness-Regeln bekommen."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B5: Schätzfelder im Roadmap-Schema.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-944",
+            "titel": "Timeline aus Schätzungen statt Kalenderdaten."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-930",
+            "titel": "F38 als „gestufter Kontext“ neu fassen."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Beim Schnitt F-928 zusammenlegen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-943",
+            "titel": "Kette „Auftrag anlegen → routen → auf Vorschlag warten“ existiert zweimal."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Fixpaket B5: Click-to-Work als eigenes Modul, Tests mitziehen.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-928",
+            "titel": "views/workboard.js ist mit rund 1 400 Zeilen zu groß; Click-to-Work gehört in ein eigenes Modul."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-941",
+            "titel": "views/workflows.js liegt mit rund 990 Zeilen knapp unter der Grenze."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-942",
+            "titel": "Ausführungsliste ohne Worker und Rolle."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-945",
+            "titel": "Zähler auf „Alle Produkte“ kosten je Karte drei Zusatzabrufe."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "ERLEDIGT",
+            "statusRoh": "erledigt",
+            "prioritaet": "P2",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": "Erledigt in F44.",
+            "featureRun": null,
+            "zeile": 1,
+            "id": "F-906",
+            "titel": "Erledigter Eintrag (nur unter „Alle Status“)."
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": []
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Nachweis",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/startvorlage/werkzeugsaetze",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "name": "lesend",
+          "modus": "DEKLARIERT",
+          "erlaubte_werkzeuge": [
+            "Read"
+          ]
+        }
+      ]
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/projekt-aufruf",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startbefehl": null,
+        "startvorlage": null,
+        "ergebnis_datei": null,
+        "aktiv": false,
+        "letzterAufruf": null,
+        "vorschau": null
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/code",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+        "arbeitsverzeichnis": {
+          "status": "ok",
+          "vorhanden": true
+        },
+        "branch": {
+          "status": "ok",
+          "name": "feat/f46-d4-entwicklung-code",
+          "losgeloest": false,
+          "commit": "a48b344"
+        },
+        "basis": {
+          "status": "ok",
+          "ref": "origin/main",
+          "voraus": 0,
+          "zurueck": 0
+        },
+        "remoteWebUrl": {
+          "status": "ok",
+          "url": "https://github.com/DerStefan89/ai-workforce",
+          "origin": true
+        },
+        "dateien": {
+          "status": "ok",
+          "eintraege": [
+            {
+              "pfad": "public/leitstand/views/code.js",
+              "art": "??",
+              "xy": "??",
+              "plus": 412,
+              "minus": 0
+            },
+            {
+              "pfad": "public/leitstand/views/workboard.js",
+              "art": "M",
+              "xy": " M",
+              "plus": 168,
+              "minus": 22
+            },
+            {
+              "pfad": "public/leitstand/i18n/de.js",
+              "art": "M",
+              "xy": " M",
+              "plus": 197,
+              "minus": 8
+            },
+            {
+              "pfad": "public/leitstand/i18n/en.js",
+              "art": "M",
+              "xy": " M",
+              "plus": 197,
+              "minus": 8
+            },
+            {
+              "pfad": "scripts/leitstand/routen-code.mjs",
+              "art": "??",
+              "xy": "??",
+              "plus": 430,
+              "minus": 0
+            },
+            {
+              "pfad": "features/F46/feature.md",
+              "art": "M",
+              "xy": " M",
+              "plus": 40,
+              "minus": 2
+            },
+            {
+              "pfad": "state/findings.md",
+              "art": "M",
+              "xy": " M",
+              "plus": 24,
+              "minus": 4
+            }
+          ],
+          "anzahl": 7,
+          "gekappt": false
+        },
+        "verlauf": {
+          "status": "ok",
+          "ref": "origin/main",
+          "eintraege": [
+            {
+              "hash": "a48b344000000000000000000000000000000000",
+              "kurz": "a48b344",
+              "zeit": "2026-10-02T23:05:26+02:00",
+              "betreff": "F46 D3: Eintrag im Detail (Feature, Bug) nach Design 07, Bausteine Kurz gesagt, Status-Block, Jetzt-Band (#312)",
+              "zuordnung": {
+                "feature": "F46",
+                "ws": "D3",
+                "pr": 312
+              },
+              "abstandMinuten": 105
+            },
+            {
+              "hash": "ec3b831000000000000000000000000000000000",
+              "kurz": "ec3b831",
+              "zeit": "2026-10-02T21:20:51+02:00",
+              "betreff": "F46 D2: Entscheidungen und Entscheiden nach Design (09), Abnahme als Entscheidungsart (#311)",
+              "zuordnung": {
+                "feature": "F46",
+                "ws": "D2",
+                "pr": 311
+              },
+              "abstandMinuten": 105
+            },
+            {
+              "hash": "add7c94000000000000000000000000000000000",
+              "kurz": "add7c94",
+              "zeit": "2026-10-02T19:36:11+02:00",
+              "betreff": "F46 D1: Produktuebersicht, Roadmap und Projektakte nach Design (02, 03, 09) (#310)",
+              "zuordnung": {
+                "feature": "F46",
+                "ws": "D1",
+                "pr": 310
+              },
+              "abstandMinuten": 105
+            },
+            {
+              "hash": "9c4bf58000000000000000000000000000000000",
+              "kurz": "9c4bf58",
+              "zeit": "2026-10-02T17:51:25+02:00",
+              "betreff": "F46 D0b: Design-Referenz ins Repo; Fix F-986 (b) Chat erkennt nie gestarteten Lauf (#309)",
+              "zuordnung": {
+                "feature": "F46",
+                "ws": "D0b",
+                "pr": 309
+              },
+              "abstandMinuten": 73
+            },
+            {
+              "hash": "51825aa000000000000000000000000000000000",
+              "kurz": "51825aa",
+              "zeit": "2026-10-02T16:38:29+02:00",
+              "betreff": "F46 D0: Grundlage Design-Nachbau, Ebenen-Tokens, Live-Chip (#308)",
+              "zuordnung": {
+                "feature": "F46",
+                "ws": "D0",
+                "pr": 308
+              },
+              "abstandMinuten": 95
+            },
+            {
+              "hash": "5d1e0aa000000000000000000000000000000000",
+              "kurz": "5d1e0aa",
+              "zeit": "2026-10-02T15:03:07+02:00",
+              "betreff": "Fix F-966: Codezaun mit innerem Zaun (#307)",
+              "zuordnung": {
+                "feature": null,
+                "ws": null,
+                "pr": 307
+              },
+              "abstandMinuten": 104
+            },
+            {
+              "hash": "41eff91000000000000000000000000000000000",
+              "kurz": "41eff91",
+              "zeit": "2026-10-02T13:18:59+02:00",
+              "betreff": "Doku: Lagebild und Abgleich nachgezogen (#306)",
+              "zuordnung": {
+                "feature": null,
+                "ws": null,
+                "pr": 306
+              },
+              "abstandMinuten": null
+            }
+          ]
+        },
+        "freigabeCommit": {
+          "status": "ok",
+          "vorhanden": false,
+          "alterMinuten": null
+        },
+        "harness": {
+          "status": "ok",
+          "claudeMd": true,
+          "settings": true,
+          "hooks": 5,
+          "agents": 5
+        },
+        "startvorlage": {
+          "status": "ok",
+          "pfad": "startvorlagen/ai-workforce.json",
+          "profilPfad": "profiles/ai-workforce.json",
+          "modell": "claude-sonnet-5",
+          "worker": [
+            "claude-code",
+            "codex"
+          ],
+          "werkzeugsaetze": [
+            "lesend",
+            "schreibend",
+            "recherchierend"
+          ],
+          "pruefbefehl": "npm run check",
+          "zeitgrenzeMs": 1800000,
+          "pruefZeitgrenzeMs": 900000,
+          "budget": {
+            "maxElemente": 20,
+            "maxBytes": 200000
+          }
+        }
+      }
+    },
+    {
+      "muster": "**/api/code/diff?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "pfad": "public/leitstand/views/code.js",
+        "art": "M",
+        "text": "diff --git a/public/leitstand/views/code.js b/public/leitstand/views/code.js\nnew file mode 100644\n--- /dev/null\n+++ b/public/leitstand/views/code.js\n@@ -0,0 +1,12 @@\n+/**\n+ * Datei: public/leitstand/views/code.js\n+ *\n+ * Zweck: Entwicklung › Code `#/code` (F46 D4).\n+ */\n+\n+import { holeCodeDiff } from '../api.js'\n+\n+/** Filter des Verlaufs in Anzeige-Reihenfolge. */\n+const VERLAUF_FILTER = ['alle', 'feature', 'fix', 'doku']\n+\n+let seiteAktiv = false\n",
+        "gekuerzt": false
+      }
+    },
+    {
+      "muster": "**/api/auftraege**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/laeufe**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/features/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Nav aktiv",
+        "selector": "#shell-nav [aria-current=\"page\"]"
+      },
+      {
+        "name": "Reiter aktiv (#/code)",
+        "selector": "#code-tabs [aria-current=\"page\"]"
+      },
+      {
+        "name": "Reiter aktiv (#/workboard)",
+        "selector": "#workboard-tabs [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Gewählte Datei",
+        "selector": "#code-stand [aria-pressed=\"true\"]",
+        "attribut": "data-pfad"
+      },
+      {
+        "name": "Diff-Pfad",
+        "selector": "#code-stand .code-diff-pfad"
+      },
+      {
+        "name": "Sichern (erste Zeile)",
+        "selector": "#code-stand .befehlsblock-zeile"
+      },
+      {
+        "name": "Commit-Freigabe",
+        "selector": "#code-freigabe .code-status-chip"
+      },
+      {
+        "name": "Verlauf-Filter",
+        "selector": "#code-verlauf [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Kopf GitHub",
+        "selector": "#shell-kopf [data-werkzeug-github]",
+        "attribut": "href"
+      },
+      {
+        "name": "Kopf VS Code",
+        "selector": "#shell-kopf [data-werkzeug-vscode]",
+        "attribut": "href"
+      },
+      {
+        "name": "Tech Debt: Auszug",
+        "selector": ".techdebt-auszug"
+      },
+      {
+        "name": "Bereit zum Start",
+        "selector": "#auftrag-umgebung .umgebung-chip"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      },
+      {
+        "name": "Platzhalter <…> im Befehlsblock (muss fehlen)",
+        "selector": ".befehlsblock-platzhalter"
+      },
+      {
+        "name": "Reiter „Ausführungen“ in der Entwicklung (muss fehlen)",
+        "selector": "#workboard-tabs a[href=\"#/ausfuehrungen\"], #code-tabs a[href=\"#/ausfuehrungen\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Tech Debt & Prozess",
+      "klick": "#workboard-tabs [data-tab=\"weitere\"]",
+      "warteAufSelector": {
+        "selector": ".techdebt-zeile",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d390-techdebt.webp"
+    }
+  ]
+}

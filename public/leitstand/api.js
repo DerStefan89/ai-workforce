@@ -23,6 +23,7 @@
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,
  *   holeProjektakte — nur lesend)
  * - public/leitstand/views/projektakte.js (F46 D1: holeProjektakte, holeRoadmap)
+ * - public/leitstand/code-stand.js (F46 D4: holeCode), public/leitstand/views/code.js (F46 D4: holeCodeDiff)
  * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
  * - public/leitstand/fokus-daten.js (F44 WS-2b: holeWorkflowDetail, holeAbnahme, holeLaufDetail)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
@@ -216,6 +217,20 @@ export const holeAuftraegeBegrenzt = () => holeJsonOderWirf(mitPraefix('/auftrae
 // Poll; Zeitlimit und Wurf bei Nicht-2xx wie holeRoadmap. Keine Parameter: die Route wählt ihre
 // Dateien selbst aus einer festen Liste.
 export const holeProjektakte = () => holeJsonOderWirf(mitPraefix('/projektakte'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+/**
+ * F46 D4: Zeitlimit der Code-Leseroute. Sie führt serverseitig mehrere Git-Befehle aus (je höchstens
+ * 5 s, teils nacheinander) — das Poll-Zeitlimit wäre zu knapp.
+ */
+const CODE_ZEITLIMIT_MS = 30000
+
+// F46 D4: Leseroute Code und Arbeitsumgebung (scripts/leitstand/routen-code.mjs) — Branch, Basis,
+// geänderte Dateien, Verlauf auf main, Remote, Commit-Freigabe (nur Metadaten), Harness, Startvorlage.
+// Nur beim Öffnen von #/code bzw. #/projekt, per „Aktualisieren“ und beim Projektwechsel (code-stand.js),
+// NIE aus dem Poll. holeCodeDiff schickt genau einen Parameter (pfad); der Server nimmt ihn nur an, wenn er in
+// der aktuellen Dateiliste steht (400 sonst → Wurf).
+export const holeCode = () => holeJsonOderWirf(mitPraefix('/code'), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
+export const holeCodeDiff = (pfad) => holeJsonOderWirf(mitPraefix(`/code/diff?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
 
 // F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite
 // „Entwicklung“ (views/workboard.js) — nur beim Öffnen des Details, nie aus dem Poll. 200 trägt

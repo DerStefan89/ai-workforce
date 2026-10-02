@@ -12258,13 +12258,13 @@ Maßnahme: Zustand und Map in `vormerkenKandidat` beim Start festhalten und nach
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F44 WS-7b (code-reviewer 1/2/10, qa 1/2/10, design-guardian 8), 02.10.2026.
 
-**F-958** · `BUG` · P3 · offen
+**F-958** · `BUG` · P3 · erledigt
 Titel: Click-to-Work-Git-Block gibt nicht ausführbare Platzhalter aus.
 Beschreibung: Der Git-Block im Workboard-Detail zeigt `git add <dateien>` und `git commit -m "<nachricht>"`, obwohl die geänderten Dateien aus der Laufakte bekannt sind.
 Fundstelle: `public/leitstand/views/workboard.js:602–610` (renderTerminalBlock).
 Auswirkung: Stefan muss die Befehle vor dem Ausführen von Hand ergänzen.
 Maßnahme: Echte Werte (Dateiliste aus der Laufakte, Commit-Nachricht) in einem Befehlsblock ausgeben — Regel „direkt ausführbar“ (F-959).
-Status: offen.
+Status: erledigt (F46 D4, 02.10.2026): Der Block „Sichern“ (Click-to-Work nach abgeschlossenem Ablauf und #/code) nennt die echten geänderten Dateien aus der Leseroute GET …/code (`git status`, nicht die Laufakte — dieselbe Menge, die tatsächlich zu sichern ist), den Commit-Vorschlag aus dem Branchnamen und `git push -u origin <branch>`, PowerShell-gequotet, ohne Platzhalter (`public/leitstand/code-daten.js` sicherBefehle, Test `code-daten.test.mjs`); ist nichts Sicheres zu zeigen (sauber, gekappt, kein Branch), steht der Grund statt eines halben Befehls.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
 **F-959** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12285,13 +12285,13 @@ Maßnahme: Eigene Spec mit Advisor-Pass (öffentliche Route mit Prozessstart = N
 Status: offen.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
-**F-961** · `PROCESS_IMPROVEMENT` · P2 · offen
+**F-961** · `PROCESS_IMPROVEMENT` · P2 · erledigt
 Titel: Idee „Entwicklung › Code“ und neue Reiterzeile der Entwicklung.
 Beschreibung: Neuer Reiter „Code“ unter Entwicklung, Reiterzeile neu: Tech Debt & Prozess, Aufträge als Liste, Ausführungen nicht mehr als Reiter. Dazu eine Leseroute `GET …/code`.
 Fundstelle: `public/leitstand/views/workboard.js` (Reiterzeile), `scripts/leitstand-server.mjs` (neue Leseroute).
 Auswirkung: Code-Stand im Leitstand sichtbar; Reiterzeile ohne Doppelung (vgl. F-964).
 Maßnahme: Spec schreiben; Leseroute ohne Schreibzugriff.
-Status: offen.
+Status: erledigt (F46 D4, 02.10.2026): Reiter „Code“ (`#/code`, `public/leitstand/views/code.js`), neue Reiterzeile, Leseroute GET …/code und …/code/diff (`scripts/leitstand/routen-code.mjs`, nur lesende Git-Befehle). Spec war abgleich-f46.md §4.12 mit Bauauftrag D4.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
 **F-962** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12312,13 +12312,13 @@ Maßnahme: Gate dafür im Fixpaket B5.
 Status: offen.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
-**F-964** · `TECH_DEBT` · P3 · offen
+**F-964** · `TECH_DEBT` · P3 · erledigt
 Titel: Reiter „Aufträge“ der Entwicklung führt aufs Formular statt auf die Liste; „Ausführungen“ steht doppelt.
 Beschreibung: Der Reiter „Aufträge“ in der Reiterzeile von `#/workboard` öffnet `#/projekt` (Formular) statt der Liste `#/runs`; „Ausführungen“ steht sowohl als Reiter als auch in der Sidebar.
 Fundstelle: `public/leitstand/views/workboard.js` (Reiterzeile), `public/leitstand/index.html` (Sidebar).
 Auswirkung: Gering — irreführendes Ziel, doppelte Navigation.
 Maßnahme: Mit F-961 neu ordnen.
-Status: offen.
+Status: erledigt (F46 D4, 02.10.2026): Reiterzeile nach abgleich-f46.md §2 (`public/leitstand/entwicklung-reiter.js`): „Aufträge“ → `#/runs` (dort seit F44 WS-5a das Register Aufträge · Ausführungen), der Reiter „Ausführungen“ entfällt; `#/ausfuehrungen` bleibt über `#/runs` und die Seitenleiste erreichbar.
 Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
 
 **F-965** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12348,13 +12348,13 @@ Maßnahme: In WS-8b entscheiden: Vorschlag mit Musterschlüssel (z. B. `data-vor
 Status: erledigt (F44 WS-8b, 02.10.2026): zweite Variante — `public/leitstand/jarvis-vorfilter.js` erkennt zusätzlich jeden der vier Vorschlagstexte `chat.vorschlag.braucht` aus den Wörterbüchern (Trim, ohne Satzzeichen am Ende, ohne Groß-/Kleinschreibung); die bestehenden Muster bleiben, das Modul bleibt ohne DOM und Storage importierbar. Test `public/leitstand/chat-anzeige.test.mjs` (de/en/tr/ru), Render-Nachweis `features/F44/nachweise/ws8b/klicks-vorfilter-en/` („What needs me?“ → lokale Antwort, kein Lauf).
 Feature/Run: Entdeckt: Prüfpass F44 WS-8a (qa 2, code-reviewer 2), 02.10.2026.
 
-**F-968** · `TECH_DEBT` · P2 · offen
+**F-968** · `TECH_DEBT` · P2 · erledigt
 Titel: VS-Code-Knopf ist für das Standardprojekt immer deaktiviert (relativer repo_pfad).
 Beschreibung: Der Kopf-Knopf VS Code baut `vscode://file/<repo_pfad>` nur aus einem absoluten Pfad des Projektregisters. Der Starteintrag `ai-workforce` trägt `repo_pfad '.'`, den der Server gegen sein Arbeitsverzeichnis auflöst; der Browser kennt diesen Pfad nicht. Der Knopf bleibt dort `aria-disabled`, der Grund steht nur im title. Ebenso ohne Link: UNC-Pfade (`\\server\share`), weil `vscode://file/` keinen Rechnernamen kennt.
 Fundstelle: `public/leitstand/kopf-werkzeuge.js` (baueVsCodeLink), `scripts/leitstand-server.mjs` (GET /api/projekte liefert repo_pfad roh).
 Auswirkung: Mittel — im täglichen Hauptprojekt ist VS Code nicht klickbar.
 Maßnahme: GET /api/projekte um den aufgelösten absoluten Pfad ergänzen (`repo_pfad_absolut`, nur lesend) und im Client bevorzugen; Leseroute-Änderung mit Gate-Fall. In WS-8b ausgeschlossen (keine Serverroute ändern).
-Status: offen.
+Status: erledigt (F46 D4, 02.10.2026): anderer Weg als die Maßnahme — der absolute Pfad kommt aus der neuen Leseroute GET …/code (`absoluterPfad`, `scripts/leitstand/routen-code.mjs`), GET /api/projekte bleibt unverändert. `kopf-werkzeuge.js` nimmt ihn, wenn repo_pfad relativ ist (code-stand.js → setzeKopfAusCodeStand); ebenso die VS-Code-Links im Eintrag-Detail. Beleg: Render-Nachweis `features/F46/nachweise/d4/` (Spalte „Kopf VS Code“ mit repo_pfad '.' im Register → `vscode://file/C:/…`). UNC-Pfade bleiben ohne Link.
 Feature/Run: Entdeckt: Bau F44 WS-8b, bestätigt Prüfpass (design-guardian, qa F5), 02.10.2026.
 
 **F-969** · `TECH_DEBT` · P3 · offen
@@ -12620,3 +12620,39 @@ Auswirkung: Gering — nach einem gescheiterten oder abgelehnten Fix fordert die
 Maßnahme: Entscheidung Stefan: Triage auch nach einem gescheiterten, gestoppten oder abgelehnten Fix-Ablauf, und „Register schließen“ als nächster Schritt nach einer Annahme (Fixpaket B5, Triage als Schreibweg).
 Status: erledigt (Entscheidung Challenger, 02.10.2026): Die Triage („Jetzt beheben lassen“ und die drei „kommt“-Knöpfe) erscheint, wenn der Bug OFFEN ist und kein verknüpfter Ablauf aktiv ist oder auf die Abnahme wartet — nach einem beendeten, abgelehnten oder gestoppten Fix-Ablauf also wieder (`detailJetzt`, `renderBearbeitungsAbschnitt`; Test in `workboard-detail.test.mjs`).
 Feature/Run: Entdeckt: F46 D3, Prüfpass qa 6.
+
+**F-998** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Challenger-Antworten sind für Claude Code und die Akte geschrieben, nicht für Stefan.
+Beschreibung: Die Antworten des Challengers richteten sich an Claude Code und an die Akte (Bauauftrag, Fachsprache, Verweise), nicht an Stefan. Stefan nutzte eine weitere KI als Übersetzer — ein ungeprüftes Glied in der Kette, in dem sich der Prompt unbemerkt verändern kann.
+Fundstelle: Kommunikation Challenger → Stefan (Bauaufträge, Antworten im Chat); keine Code-Fundstelle.
+Auswirkung: Mittel — Entscheidungen laufen über eine Übersetzung, deren Treue niemand prüft; Bauaufträge können verändert ankommen.
+Maßnahme: Antwortformat „Deine Schritte“ (E-Stefan 02.10.2026): zuerst, was Stefan tun muss, in seiner Sprache; der Teil für Claude Code getrennt darunter. Im Fixpaket als Kommunikationsregel der Workforce (B2).
+Status: offen.
+Feature/Run: Entdeckt: Frage Stefan, 02.10.2026.
+
+**F-999** · `TECH_DEBT` · P3 · offen
+Titel: Test aufraeumen-nachlauf scheitert sporadisch an einem Restordner des f16-Gates.
+Beschreibung: Der Test `aufraeumen-nachlauf` schlug in `npm run check` einmal fehl, weil ein parallel laufendes Gate (f16) einen Restordner `kontrollzustand-test/f16c-…` hinterließ; isoliert und im Wiederholungslauf grün.
+Fundstelle: `scripts/check-f16-codex-gateway.mjs` (Testordner), `scripts/aufraeumen-nachlauf.test.mjs`.
+Auswirkung: Sporadisch rote Kette ohne Codeänderung.
+Maßnahme: Das f16-Gate räumt seine Ordner vor dem Ende auf oder nutzt einen eigenen temporären Ordner (os.tmpdir).
+Status: offen.
+Feature/Run: Entdeckt: F46 D3, 02.10.2026.
+
+**F-1000** · `TECH_DEBT` · P2 · offen
+Titel: Git wird außerhalb der Code-Leseroute per bloßem Namen gestartet.
+Beschreibung: `execFileSync('git', …)` mit cwd = Repo-Wurzel des Projekts: Unter Windows sucht der Prozessstart bei einem bloßen Programmnamen zuerst im cwd — eine von einem Lauf ins Repo gelegte `git.com`/`git.exe` liefe dann im Leitstand-Prozess (außerhalb von Werkzeugsatz und Berechtigungsprofil). F46 D4 löst das nur für `scripts/leitstand/routen-code.mjs` (absoluter Pfad aus den absoluten PATH-Einträgen, `findeGitProgramm`, ohne geerbte GIT_*-Variablen).
+Fundstelle: `src/execution-controller/index.ts:156`, `src/aenderungsuebersicht/index.ts:182`, `scripts/leitstand-server.mjs` (leseAusfuehrungsVorbedingungRealGit, leseVersionierteDateien, rev-parse HEAD).
+Auswirkung: Mittel — ausnutzbar nur, wenn ein Lauf eine ausführbare Datei in die Repo-Wurzel schreibt; dann aber ohne weitere Hürde.
+Maßnahme: Einen gemeinsamen Git-Starter (absoluter Pfad, bereinigte Umgebung) für alle Aufrufe; Muster `findeGitProgramm` aus routen-code.mjs übernehmen, mit Gate-Fall.
+Status: offen.
+Feature/Run: Entdeckt: F46 D4, Prüfpass code-reviewer 3.
+
+**F-1001** · `BUG` · P3 · offen
+Titel: Die Blase „Frag Jarvis“ verdeckt Inhalte am unteren rechten Rand.
+Beschreibung: Die schwebende Blase des Chat-Docks liegt über Inhalten der Seiten — in den Nachweisen F46 D4 über dem Befehlsblock im Prüfstand (#/code), über „Öffnen“ in der Tech-Debt-Tabelle, über der Git-Zeile von #/projekt und bei 200 % über Kennzahlen.
+Fundstelle: `public/leitstand/shell.js` / `style.css` (Chat-Blase, F44 WS-8); belegt in `features/F46/nachweise/d4/` (code-aenderungen, techdebt-filter, projekt-main).
+Auswirkung: Gering — Inhalt bleibt per Scrollen erreichbar, wirkt aber abgeschnitten.
+Maßnahme: Unten rechts Platz für die Blase freihalten (Abstand bzw. `scroll-padding-bottom` im Hauptbereich) oder die Blase beim Scrollen verkleinern.
+Status: offen.
+Feature/Run: Entdeckt: F46 D4, Prüfpass design-guardian 11.

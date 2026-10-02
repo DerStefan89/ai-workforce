@@ -512,6 +512,7 @@ import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
+import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
@@ -4591,6 +4592,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let aufrufAktiv = false
   /** F43: Ergebnis des letzten Aufrufs dieser Instanz oder null — flüchtig (Begründung src/projekt-aufruf/index.ts). */
   let letzterAufruf = null
+  /** F46 D4: laufender Aufbau von GET /api/code dieser Instanz oder null — gleichzeitige Abrufe teilen ihn (keine Git-Prozess-Lawine). */
+  let codeProjektionLaufend = null
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
@@ -5903,6 +5906,35 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Feldstatus, nie 500.
     if (req.method === 'GET' && pfad === '/api/projektakte') {
       sendeJson(res, 200, baueProjektakteProjektion({ repoWurzel, kontextPfad, roadmapPfad }))
+      return
+    }
+
+    // F46 D4: Leseroute Code und Arbeitsumgebung — reine Projektion, keine Logik hier (D5), siehe
+    // scripts/leitstand/routen-code.mjs. Git nur lesend über execFile (asynchron, ohne Shell,
+    // --no-optional-locks, Zeitgrenze je Aufruf), cwd = repoWurzel dieser Instanz; Fehler als
+    // Feldstatus, nie 500. Einziger Anfrageteil, der ein Git-Argument wird: ?pfad= von /api/code/diff,
+    // geprüft und nur, wenn er in der aktuellen Liste geänderter Dateien steht (Allowlist).
+    // Prüfpass D4 (cr 2): diese GETs starten Git-Prozesse — eine fremde Seite im selben Browser darf sie nicht
+    // auslösen (Sec-Fetch-Site); gleichzeitige Abrufe derselben Instanz teilen sich einen Lauf.
+    if (req.method === 'GET' && (pfad === '/api/code' || pfad === '/api/code/diff')) {
+      const fremd = pruefeCodeHerkunft(req)
+      if (fremd !== null) {
+        sendeJson(res, 403, { grund: fremd })
+        return
+      }
+    }
+    if (req.method === 'GET' && pfad === '/api/code') {
+      if (codeProjektionLaufend === null) {
+        codeProjektionLaufend = baueCodeProjektion({ repoWurzel, vorlage, startvorlagePfad }).finally(() => {
+          codeProjektionLaufend = null
+        })
+      }
+      sendeJson(res, 200, await codeProjektionLaufend)
+      return
+    }
+    if (req.method === 'GET' && pfad === '/api/code/diff') {
+      const { http, koerper } = await baueCodeDiff({ repoWurzel, pfad: angefragteUrl.searchParams.get('pfad') })
+      sendeJson(res, http, koerper)
       return
     }
 

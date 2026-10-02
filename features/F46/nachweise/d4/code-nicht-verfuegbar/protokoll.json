@@ -1,0 +1,27 @@
+[
+  {
+    "label": "#/code ohne Git: „Kein Git-Arbeitsverzeichnis gefunden“ mit Grund; Prüfbefehl bleibt echt",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Platzhalter <…> im Befehlsblock (muss fehlen)": false,
+    "Reiter „Ausführungen“ in der Entwicklung (muss fehlen)": false,
+    "Ansicht": "code",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Reiter aktiv (#/code)": "Code",
+    "Reiter aktiv (#/workboard)": "Kanban-Board",
+    "Gewählte Datei": "(fehlt)",
+    "Diff-Pfad": "(fehlt)",
+    "Sichern (erste Zeile)": "(fehlt)",
+    "Commit-Freigabe": "keine Freigabe",
+    "Verlauf-Filter": "Alle",
+    "Kopf GitHub": "null",
+    "Kopf VS Code": "vscode://file/C:/Users/stefa/Projekte/ohne-git",
+    "Tech Debt: Auszug": "(fehlt)",
+    "Bereit zum Start": "(fehlt)",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

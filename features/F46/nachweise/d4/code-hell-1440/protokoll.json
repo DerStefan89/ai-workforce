@@ -1,0 +1,27 @@
+[
+  {
+    "label": "#/code mit Änderungen und gewählter Datei",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Platzhalter <…> im Befehlsblock (muss fehlen)": false,
+    "Reiter „Ausführungen“ in der Entwicklung (muss fehlen)": false,
+    "Ansicht": "code",
+    "data-theme": "light",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Reiter aktiv (#/code)": "Code",
+    "Reiter aktiv (#/workboard)": "Kanban-Board",
+    "Gewählte Datei": "public/leitstand/views/code.js",
+    "Diff-Pfad": "public/leitstand/views/code.js",
+    "Sichern (erste Zeile)": "git add public/leitstand/views/code.js public/leitstand/views/workboard.js public/leitstand/i18n/de.js public/leitstand/",
+    "Commit-Freigabe": "keine Freigabe",
+    "Verlauf-Filter": "Alle",
+    "Kopf GitHub": "https://github.com/DerStefan89/ai-workforce",
+    "Kopf VS Code": "vscode://file/C:/Users/stefa/Projekte/ai-workforce",
+    "Tech Debt: Auszug": "(fehlt)",
+    "Bereit zum Start": "(fehlt)",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

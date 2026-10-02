@@ -1,0 +1,27 @@
+[
+  {
+    "label": "#/projekt mit rechter Spalte",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Platzhalter <…> im Befehlsblock (muss fehlen)": false,
+    "Reiter „Ausführungen“ in der Entwicklung (muss fehlen)": false,
+    "Ansicht": "projekt",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Auftrag & Start",
+    "Reiter aktiv (#/code)": "Code",
+    "Reiter aktiv (#/workboard)": "Kanban-Board",
+    "Gewählte Datei": "(fehlt)",
+    "Diff-Pfad": "(fehlt)",
+    "Sichern (erste Zeile)": "(fehlt)",
+    "Commit-Freigabe": "(fehlt)",
+    "Verlauf-Filter": "(fehlt)",
+    "Kopf GitHub": "https://github.com/DerStefan89/ai-workforce",
+    "Kopf VS Code": "vscode://file/C:/Users/stefa/Projekte/ai-workforce",
+    "Tech Debt: Auszug": "(fehlt)",
+    "Bereit zum Start": "noch nicht bereit",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
