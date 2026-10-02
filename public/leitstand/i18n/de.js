@@ -1380,6 +1380,10 @@ export default {
   'chat.ende.nichtErfolgreich': 'Lauf abgeschlossen, aber nicht erfolgreich ({ergebnis}).',
   'chat.ende.unerwartet': 'Lauf endete unerwartet (Status: {status}).',
   'chat.ende.statusUnbekannt': 'unbekannt',
+  // F-986: Chat-Lauf nie gestartet bzw. ohne Änderung über die Lauf-Zeitgrenze (views/chat.js, chat-laufstand.js).
+  'chat.ende.nichtGestartet': 'Lauf nicht gestartet: {grund}',
+  'chat.ende.nichtGestartetOhneGrund': 'Lauf nicht gestartet (kein Grund gemeldet).',
+  'chat.ende.zeitgrenze': 'Seit über {minuten} Minuten keine Änderung am Lauf — der Chat wartet nicht länger. Den Stand zeigt „Ausführungen“.',
   'chat.fortschritt.liest': 'liest {pfad}',
   'chat.fortschritt.liestDatei': 'liest eine Datei',
   'chat.fortschritt.durchsucht': 'durchsucht nach „{muster}“',

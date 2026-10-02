@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Entscheiden</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2050px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entwicklung</a>
+<a href="Main.dc.html" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">GitHub</a>
+</header>
+
+<main style="padding: 26px 48px 64px; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 20px; min-width: 0">
+
+<div style="display: flex; align-items: center; gap: 12px">
+<a href="Main.dc.html" style="text-decoration: none; color: #9caeb5; font-size: 13px">← Deine Entscheidungen</a>
+<div style="flex-grow: 1"></div>
+<div role="tablist" aria-label="Art der Entscheidung (Design)" style="display: flex; gap: 6px">
+<button type="button" role="tab" aria-selected="{{freigabeAn}}" onClick="{{zeigeFreigabe}}" style="{{freigabeKnopf}}">Freigabe</button>
+<button type="button" role="tab" aria-selected="{{abnahmeAn}}" onClick="{{zeigeAbnahme}}" style="{{abnahmeKnopf}}">Abnahme</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 3px; color: {{eyebrowFarbe}}">{{eyebrow}}</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 38px; line-height: 1.2">{{titel}}</h1>
+<div style="font-size: 13.5px; color: #c9d3d6; line-height: 1.55; max-width: 760px">{{einleitung}}</div>
+</div>
+
+<sc-if value="{{istFreigabe}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<section aria-labelledby="was-startet" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<h2 id="was-startet" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">Was startet, wenn du freigibst</h2>
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{ablauf}}" as="s" hint-placeholder-count="5">
+<li style="display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">{{s.nr}}</span><span style="font-size: 13px">{{s.name}}</span><span style="font-size: 11px; color: #9caeb5">{{s.wer}}</span>
+</li>
+</sc-for>
+</ol>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; font-size: 12.5px">
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">KONTROLLTIEFE</span><span>standard</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">SCHÄTZUNG</span><span>0,25–0,4 AT</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">WERKZEUGSATZ</span><span>schreibend</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5">ZEITGRENZE</span><span>30 min je Lauf</span></div>
+</div>
+</section>
+<section aria-labelledby="paket-f" style="display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<h2 id="paket-f" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">Arbeitspaket</h2>
+<a href="#" style="font-size: 12px">Ganz öffnen</a>
+</div>
+<div style="display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 8px 12px; font-size: 12.5px; line-height: 1.5">
+<span style="color: #9caeb5">Umfang</span><span>Coach-Leerzustand, Coach → Auftrag, Befehlsblöcke mit Kopieren, Regel „direkt ausführbar“ für Jarvis, Kopf-Knöpfe.</span>
+<span style="color: #9caeb5">Nicht hier</span><span>Terminal-Panel, GitHub-Leseroute.</span>
+<span style="color: #9caeb5">Risiko</span><span style="color: #dbc08c">Berührt Jarvis-Instruktion und Server-Parser. Darum Prüfung durch den Challenger vor dem Merge.</span>
+<span style="color: #9caeb5">Fertig, wenn</span><span>npm run check grün · Nachweise · Akte und Register nachgezogen · Review ohne Blocker</span>
+</div>
+</section>
+<section aria-labelledby="empf-f" style="display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<h2 id="empf-f" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">Empfehlung zu Fähigkeiten</h2>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px"><span style="font-size: 10.5px; padding: 2px 8px; border-radius: 999px; color: #8bd8c1; border: 1px solid #8bd8c188">installiert</span><span>Skill frontend-design · passt zu Oberflächenarbeit</span></div>
+<div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px"><span style="font-size: 10.5px; padding: 2px 8px; border-radius: 999px; color: #dbc08c; border: 1px solid #dbc08c88">vorgeschlagen</span><span>[Fähigkeit aus dem Katalog] · [Grund]</span></div>
+<div style="font-size: 11.5px; color: #9caeb5">„Freigeben &amp; installieren“ übernimmt vorgeschlagene Fähigkeiten in einem Schritt.</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{istAbnahme}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 18px">
+<section aria-labelledby="ak-titel" style="display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px">
+<h2 id="ak-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">Abnahmekriterien</h2>
+<span style="font-size: 12px; color: #9caeb5">6 erfüllt · 1 nicht erfüllt · Urteil des Reviews, du hast das letzte Wort</span>
+</div>
+<sc-for list="{{aks}}" as="a" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: 46px minmax(0, 1fr) 120px 90px; gap: 12px; align-items: start; padding: 9px 0; border-top: 1px solid #ffffff0d; font-size: 12.5px; line-height: 1.5">
+<span style="font-family: Consolas, 'Courier New', monospace; color: #c9d3d6">{{a.id}}</span>
+<span style="display: flex; flex-direction: column; gap: 2px"><span>{{a.text}}</span><span style="font-size: 11.5px; color: #9caeb5">{{a.beleg}}</span></span>
+<span style="{{a.stil}}">{{a.urteil}}</span>
+<a href="#" style="font-size: 12px">Beleg</a>
+</div>
+</sc-for>
+</section>
+<section aria-label="Prüfungen und Nachweise" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a; font-size: 12.5px">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">PRÜFUNG</span><span style="font-family: Georgia, 'Times New Roman', serif; font-size: 18px; color: #8bd8c1">grün</span><span style="color: #9caeb5">npm run check · [n] Tests</span><a href="#" style="font-size: 12px">Prüfung wiederholen</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a; font-size: 12.5px">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">REVIEW</span><span>code-reviewer · freigegeben</span><span>qa · freigegeben</span><span>design-guardian · mit Hinweisen</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a; font-size: 12.5px">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">NACHWEISE</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<div style="aspect-ratio: 4 / 3; border-radius: 6px; border: 1px dashed #ffffff30; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9caeb5">Desktop</div>
+<div style="aspect-ratio: 4 / 3; border-radius: 6px; border: 1px dashed #ffffff30; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9caeb5">Mobil</div>
+<div style="aspect-ratio: 4 / 3; border-radius: 6px; border: 1px dashed #ffffff30; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #9caeb5">Hell</div>
+</div>
+<a href="#" style="font-size: 12px">Alle Nachweise</a>
+</div>
+</section>
+<section aria-labelledby="selbst-titel" style="display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<h2 id="selbst-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">Selbst ausprobieren</h2>
+<div style="font-size: 12.5px; color: #c9d3d6">Öffne das Produkt und prüfe den kritischen Punkt selbst: [was du prüfen solltest, aus dem nicht erfüllten Kriterium].</div>
+<div style="display: flex; gap: 8px">
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #8bd8c180; color: #f0ede4; font-size: 13px">Produkt öffnen</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Änderungen im Code-Reiter</a>
+</div>
+</section>
+</div>
+</sc-if>
+</div>
+
+<aside aria-labelledby="dein-urteil" style="display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #dbc08c; position: sticky; top: 16px; margin-top: 44px">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #dbc08c">DEINE ENTSCHEIDUNG</div>
+<h2 id="dein-urteil" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 20px">{{frage}}</h2>
+<div style="padding: 10px 12px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; font-size: 12.5px; line-height: 1.5"><span style="color: #9caeb5">Jarvis empfiehlt:</span> {{empfehlung}}</div>
+<div role="radiogroup" aria-label="Entscheidung" style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{optionen}}" as="o" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{o.an}}" onClick="{{o.waehlen}}" style="{{o.stil}}">
+<span style="font-size: 13.5px">{{o.titel}}</span>
+<span style="font-size: 11.5px; color: #9caeb5; text-align: left">{{o.info}}</span>
+</button>
+</sc-for>
+</div>
+<label for="grund" style="font-size: 11.5px; color: #9caeb5">Begründung (Pflicht)</label>
+<textarea id="grund" rows="4" onInput="{{setzeGrund}}" placeholder="Warum entscheidest du so?" style="box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 8px 10px; resize: vertical"></textarea>
+<button type="button" disabled="{{absendenAus}}" style="{{absendenStil}}">{{absendenText}}</button>
+<div style="font-size: 11px; color: #9caeb5; line-height: 1.45">Die Begründung landet in der Akte und im Verlauf „Zuletzt entschieden“.</div>
+</aside>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2050}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const art = st.art || 'freigabe';
+    const frei = art === 'freigabe';
+    const wahl = st.wahl || '';
+    const grund = st.grund || '';
+    const tab = (an) => 'min-height:34px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:12px;' + (an ? 'background:#8bd8c11f;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#c9d3d6');
+    const optRoh = frei
+      ? [['ja', 'Freigeben', 'Der Ablauf startet sofort.'], ['ja-inst', 'Freigeben & installieren', 'Mit den vorgeschlagenen Fähigkeiten.'], ['nein', 'Ablehnen', 'Veto: der Ablauf startet nicht.']]
+      : [['ja', 'Annehmen', 'Das Feature ist fertig.'], ['anpassen', 'Anpassung anfordern', 'Gezielt nachbessern, derselbe Auftrag.'], ['nein', 'Ablehnen', 'Das Ergebnis wird verworfen.']];
+    const optionen = optRoh.map(([id, titel, info]) => ({
+      titel, info, an: wahl === id ? 'true' : 'false', waehlen: () => this.setState({ wahl: id }),
+      stil: 'display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 12px;border-radius:10px;cursor:pointer;color:#f0ede4;' + (wahl === id ? 'background:#8bd8c11a;border:1px solid #8bd8c1' : 'background:#10212b;border:1px solid #ffffff26')
+    }));
+    const bereit = wahl !== '' && grund.trim().length > 0;
+    const akRoh = [
+      ['AK1', 'Kein heutiges Verhalten fällt weg.', 'erfuellt', 'Gates und Tests grün'],
+      ['AK2', 'Alle V-Zeilen sind echt angebunden.', 'nicht', '[Begründung des Reviews]'],
+      ['AK3', 'Keine Fixture-Daten, keine Beispielzahlen.', 'erfuellt', 'Gate geprüft'],
+      ['AK4', 'Z-Elemente sichtbar, deaktiviert, „kommt“.', 'erfuellt', 'Render-Nachweise'],
+      ['AK5', 'npm run check grün, Nachweise je Paket.', 'erfuellt', 'Prüfschritt'],
+      ['AK6', 'Sicherheitsgrenzen bleiben.', 'erfuellt', 'code-reviewer'],
+      ['AK7', 'Texte in vier Sprachen, i18n-Gate grün.', 'erfuellt', 'Gate geprüft']
+    ];
+    const aks = akRoh.map(([id, text, u, beleg]) => ({
+      id, text, beleg, urteil: u === 'erfuellt' ? 'erfüllt' : 'nicht erfüllt',
+      stil: 'justify-self:start;font-size:11px;padding:2px 9px;border-radius:999px;' + (u === 'erfuellt' ? 'color:#8bd8c1;border:1px solid #8bd8c188' : 'color:#ee9f7f;border:1px solid #ee9f7f88')
+    }));
+    const ablauf = [['Plan', 'Challenger'], ['Bau', 'Builder · Claude Code'], ['Prüfschritt', 'npm run check'], ['Review', 'Codex + Agents'], ['Sichern', 'Du']].map(([name, wer], i) => ({ nr: String(i + 1), name, wer }));
+    const wahlText = (optRoh.find((o) => o[0] === wahl) || [])[1];
+    return {
+      istFreigabe: frei, istAbnahme: !frei, optionen, aks, ablauf,
+      freigabeAn: frei ? 'true' : 'false', abnahmeAn: frei ? 'false' : 'true',
+      freigabeKnopf: tab(frei), abnahmeKnopf: tab(!frei),
+      zeigeFreigabe: () => this.setState({ art: 'freigabe', wahl: '' }), zeigeAbnahme: () => this.setState({ art: 'abnahme', wahl: '' }),
+      eyebrow: frei ? 'FREIGABE · F44 WS-8b' : 'ABNAHME · F44 DESIGN-SCHNITT',
+      eyebrowFarbe: frei ? '#dbc08c' : '#8bd8c1',
+      titel: frei ? 'Darf der Ablauf für WS-8b starten?' : 'Passt das Ergebnis?',
+      einleitung: frei ? 'Hier siehst du, was startet, mit welchen Rollen, in welchem Umfang und mit welchem Risiko. Freigeben braucht eine Begründung, Ablehnen ist ein Veto.' : 'Alle Workstreams sind gemergt. Das Review hat jedes Abnahmekriterium beurteilt. Ein Kriterium ist nicht erfüllt: Prüf es selbst und entscheide.',
+      frage: frei ? 'Freigeben?' : 'Abnehmen?',
+      empfehlung: frei ? 'freigeben. Umfang klar, Risiko benannt, Prüfung vor dem Merge geplant.' : 'Anpassung anfordern für AK2, der Rest ist erfüllt.',
+      setzeGrund: (e) => this.setState({ grund: e.target.value }),
+      absendenAus: !bereit,
+      absendenText: wahlText ? wahlText + ' bestätigen' : 'Option wählen',
+      absendenStil: 'min-height:44px;border-radius:10px;border:0;font-size:14px;' + (bereit ? 'background:#8bd8c1;color:#10212b;cursor:pointer' : 'background:#ffffff14;color:#9caeb5;cursor:not-allowed')
+    };
+  }
+}
+</script>
+</body>
+</html>

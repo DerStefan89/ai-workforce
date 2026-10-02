@@ -219,6 +219,15 @@
  * des Feldes 'antwort' läuft durch befehlsblock.js: Codeblöcke werden kopierbare Befehlsblöcke
  * (nur Zwischenablage, nur auf Klick; alles escaped). (e) beiNeuerAntwort meldet shell.js jede
  * terminal aufgelöste Antwort (stiller Punkt an Blase und Kopfknopf, wenn das Dock zu ist).
+ *
+ * F-986 (b): pruefeAusstehendenLauf ordnet das Lauf-Detail über chat-laufstand.js ein. Ein nie
+ * gestarteter Lauf (Startfreigabe verweigert, z. B. E-188 bei Start aus einem Worktree) endet mit
+ * der Fehlanzeige „Lauf nicht gestartet: <Grund>“ (Grund roh vom Server, detail.nichtGestartet,
+ * escaped in renderVerlauf); ebenso ein Lauf ohne Detail, zu dem die Startfehler-Liste des Polls einen
+ * Eintrag führt. Ändert sich ein NICHT aktiver Lauf länger als die Lauf-Zeitgrenze der Startvorlage
+ * (detail.startvorlageZeitgrenzeMs, plus Puffer) nicht — auch wenn das Detail nie abrufbar wird —,
+ * hört der Chat ebenfalls auf zu warten; ein aktiver Lauf behält „Lauf abbrechen“. Keine neue
+ * Live-Region; die Persona bleibt beim Poll.
  */
 
 import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
@@ -230,6 +239,7 @@ import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
 import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
 import { fuegeEntwurfEin, istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
+import { laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, zeitgrenzeUeberschritten } from '../chat-laufstand.js'
 import { kopiereBefehlsblock, renderAntwortText } from '../befehlsblock.js'
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { t, tHtml } from '../i18n.js'
@@ -967,48 +977,72 @@ function beschreibeFortschritt(fortschritt) {
 async function pruefeAusstehendenLauf(modus) {
   const zustand = zustandJeModus[modus]
   if (zustand.ausstehenderLauf === null) return
-  const { laufId, nachricht, messung } = zustand.ausstehenderLauf
+  const { laufId, messung } = zustand.ausstehenderLauf
   messung?.tickZeiten.push(performance.now())
-  let detail
+  let detail = null
   try {
     const antwort = await holeLaufDetail(laufId)
-    if (!antwort.ok) return // Lauf-Detail noch nicht abrufbar (erster Checkpoint fehlt) — nächster Tick versucht es erneut.
-    detail = await antwort.json()
+    // Nicht ok: Lauf-Detail noch nicht abrufbar (erster Checkpoint fehlt) — nächster Tick versucht es erneut.
+    if (antwort.ok) detail = await antwort.json()
   } catch {
-    return // Netzwerkfehler dieses Ticks — kein Abbruch, der nächste Tick versucht es erneut.
+    // Netzwerkfehler dieses Ticks — kein Abbruch, der nächste Tick versucht es erneut.
   }
-  // Real beobachtet (F26 WS-2a, echter curl-Nachweis gegen den echten Leitstand-Prozess): ein
-  // noch laufender Lauf zeigt laufStatus.status 'KLAERUNG_ERFORDERLICH' ("RUN_PREPARED ohne
-  // Terminalartefakt"), SOLANGE er läuft — das ist die normale Zwischenlage zwischen Start und
-  // Ende, keine echte Klärungslage. detail.aktiv (D13, dieselbe Serverinstanz) unterscheidet
-  // beides zuverlässig: erst wenn die Serverinstanz den Lauf selbst nicht mehr als aktiv führt,
-  // ist laufStatus verlässlich terminal. Ein Poll-Tick, der das ignoriert hätte, hätte hier real
-  // einen laufenden Lauf fälschlich als "hält — Klärung erforderlich" gemeldet.
-  if (detail.aktiv === true) {
+  // Code-Review-Befund F31 WS-3: der Await oben gibt den Tick frei — ein Projektwechsel
+  // (setzeChatZustandZurueck) kann währenddessen ausstehenderLauf bereits auf null gesetzt und
+  // den Poll gestoppt haben. Ohne diese erneute Prüfung würde ein schon fremder Lauf in die
+  // lokaleEintraege des NEUEN Projekts geschrieben (falsch zugeordnete Fehlanzeige) bzw.
+  // ausstehenderLauf/die Senden-Sperre eines inzwischen anders aufgelösten Zustands
+  // überschrieben — Muster initAbbrechenBedienung. Bis zur Auflösung unten folgt kein weiterer Await
+  // (Ausnahme ladeVerlauf im Erfolgszweig, dort mit eigener Prüfung).
+  if (zustand.ausstehenderLauf?.laufId !== laufId) return
+
+  // F-986 (b): Laufstand einordnen (chat-laufstand.js) — die einzige Ableitung aus detail.aktiv und
+  // laufStatus. Real beobachtet (F26 WS-2a): ein noch laufender Lauf zeigt laufStatus
+  // 'KLAERUNG_ERFORDERLICH' ("RUN_PREPARED ohne Terminalartefakt"), SOLANGE er läuft; erst wenn die
+  // Serverinstanz ihn nicht mehr als aktiv führt (detail.aktiv, D13), ist laufStatus verlässlich
+  // terminal — ordneLaufstandEin prüft deshalb aktiv zuerst. Ein nie gestarteter Lauf (Startfreigabe
+  // verweigert, z. B. E-188, oder Startfehler ohne Detail) ist terminal; ein nicht aktiver Lauf ohne
+  // Änderung über die Lauf-Zeitgrenze hinaus beendet das Warten ebenfalls — sonst fragte der Chat ohne
+  // Ende zweimal je Sekunde ab und zeigte nur die Tipp-Punkte.
+  const stand = ordneLaufstandEin(detail, { laufId, startfehler: letzterZustand?.startfehler })
+  const ausstehend = zustand.ausstehenderLauf
+  const jetzt = Date.now()
+  if (ausstehend.letzteAenderungMs === undefined) ausstehend.letzteAenderungMs = jetzt
+  if (detail !== null) {
+    const signatur = laufstandSignatur(detail)
+    if (ausstehend.letzteSignatur !== signatur) {
+      ausstehend.letzteSignatur = signatur
+      ausstehend.letzteAenderungMs = jetzt
+    }
+    if (typeof detail.startvorlageZeitgrenzeMs === 'number') ausstehend.zeitgrenzeMs = detail.startvorlageZeitgrenzeMs
+  }
+  // Nie gestartet und Zeitgrenze: ohne Latenzmessung (messung undefined) — kein Chat-Turn, der die
+  // Latenz-Auswertung verzerren soll (Prüfpass cr 6).
+  if (stand.art === 'nichtGestartet') {
+    const text = stand.grund === null ? t('chat.ende.nichtGestartetOhneGrund') : t('chat.ende.nichtGestartet', { grund: stand.grund })
+    beendeAusstehendenLaufMitFehler(modus, laufId, text, undefined, performance.now())
+    return
+  }
+  if (stand.art === 'wartet') {
+    if (zeitgrenzeUeberschritten(ausstehend.letzteAenderungMs, jetzt, ausstehend.zeitgrenzeMs)) {
+      beendeAusstehendenLaufMitFehler(modus, laufId, t('chat.ende.zeitgrenze', { minuten: Math.round(warteGrenzeMs(ausstehend.zeitgrenzeMs) / 60000) }), undefined, performance.now())
+    }
+    return // sonst noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
+  }
+  if (stand.art === 'laeuft') {
     // F40 WS-1: laufender Lauf — Werkzeug-Fortschritt anzeigen, nur bei geänderter Anzeige neu rendern.
-    // Erneute laufId-Prüfung nach dem Await (Muster unten): ein Projektwechsel darf nicht überschrieben werden.
     const fortschrittText = beschreibeFortschritt(detail.fortschritt ?? null)
-    if (zustand.ausstehenderLauf?.laufId === laufId && fortschrittText !== (zustand.ausstehenderLauf.fortschrittText ?? null)) {
-      zustand.ausstehenderLauf.fortschrittText = fortschrittText
+    if (fortschrittText !== (ausstehend.fortschrittText ?? null)) {
+      ausstehend.fortschrittText = fortschrittText
       if (modus === aktiverModus) renderVerlauf()
     }
     return
   }
   const laufStatus = detail.laufStatus
-  if (laufStatus?.status !== 'ABGESCHLOSSEN' && laufStatus?.status !== 'KLAERUNG_ERFORDERLICH') return // noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
   const tPollErgebnis = performance.now()
+  const abbruchAngefordert = ausstehend.abbruchAngefordert === true
 
-  // Code-Review-Befund F31 WS-3: die obigen Awaits geben den Tick frei — ein Projektwechsel
-  // (setzeChatZustandZurueck) kann währenddessen ausstehenderLauf bereits auf null gesetzt und
-  // den Poll gestoppt haben. Ohne diese erneute Prüfung würde der jetzt fertige, aber schon
-  // fremde laufId/nachricht in die lokaleEintraege des NEUEN Projekts geschrieben (falsch
-  // zugeordnete Fehlanzeige) bzw. ausstehenderLauf/die Senden-Sperre eines inzwischen anders
-  // aufgelösten Zustands überschreiben — Muster initAbbrechenBedienung.
-  if (zustand.ausstehenderLauf?.laufId !== laufId) return
-
-  const abbruchAngefordert = zustand.ausstehenderLauf.abbruchAngefordert === true
-
-  if (laufStatus.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'ERFOLGREICH') {
+  if (stand.art === 'erfolgreich') {
     // ausstehenderLauf bleibt gesetzt, bis ladeVerlauf() wirklich erfolgreich war (QA-Befund):
     // ein transienter Fehlschlag genau in diesem Moment ließe sonst weder die Pending-Anzeige
     // noch den fertigen Eintrag sichtbar — der nächste Tick prüft denselben, bereits terminalen
@@ -1026,22 +1060,50 @@ async function pruefeAusstehendenLauf(modus) {
     if (abbruchAngefordert && modus === aktiverModus) {
       zeigeChatFehler(t('chat.fehler.abbruchZuSpaet'))
     }
-  } else {
-    zustand.lokaleEintraege.push({
-      nachricht,
-      antwortText: beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert),
-      antwort: null,
-      quelle: 'fehler',
-      zeitstempel: new Date().toISOString(),
-      persistierterVerlaufLaengeBeiPush: zustand.persistierterVerlauf.length,
-      schluessel: `fehler-${laufId}`,
-      // F34 Fixpaket (löst F-624): der bei SENDE-Zeitpunkt aktive Untermodus (s. sendeAktuelleEingabe)
-      // — NICHT der eventuell inzwischen gewechselte aktuelle sparringUntermodus, sonst könnte diese
-      // Fehlanzeige den Filter unten umgehen/im falschen Untermodus erscheinen.
-      eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
-      auftragErstelltId: null,
-    })
+    schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis)
+    return
   }
+  beendeAusstehendenLaufMitFehler(modus, laufId, beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert), messung, tPollErgebnis)
+}
+
+/**
+ * Beendet das Warten auf einen nicht erfolgreich beendeten Lauf mit einer lokalen Fehlanzeige im
+ * Verlauf (kein Lineage-Eintrag). Seit F-986 (b) auch für nie gestartete Läufe und die Zeitgrenze.
+ * Voraussetzung: zustandJeModus[modus].ausstehenderLauf gehört noch zu laufId (prüft der Aufrufer).
+ * @param modus - 'jarvis' | 'sparring'
+ * @param laufId - der ausstehende Lauf
+ * @param text - Anzeigetext; Serverwerte darin roh, renderVerlauf escaped ihn
+ * @param messung - Latenzmessung des Laufs oder undefined
+ * @param tPollErgebnis - performance.now() beim Feststellen des Endes
+ */
+function beendeAusstehendenLaufMitFehler(modus, laufId, text, messung, tPollErgebnis) {
+  const zustand = zustandJeModus[modus]
+  zustand.lokaleEintraege.push({
+    nachricht: zustand.ausstehenderLauf.nachricht,
+    antwortText: text,
+    antwort: null,
+    quelle: 'fehler',
+    zeitstempel: new Date().toISOString(),
+    persistierterVerlaufLaengeBeiPush: zustand.persistierterVerlauf.length,
+    schluessel: `fehler-${laufId}`,
+    // F34 Fixpaket (löst F-624): der bei SENDE-Zeitpunkt aktive Untermodus (s. sendeAktuelleEingabe)
+    // — NICHT der eventuell inzwischen gewechselte aktuelle sparringUntermodus, sonst könnte diese
+    // Fehlanzeige den Filter unten umgehen/im falschen Untermodus erscheinen.
+    eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
+    auftragErstelltId: null,
+  })
+  schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis)
+}
+
+/**
+ * Gemeinsamer Abschluss eines aufgelösten ausstehenden Laufs: Latenz protokollieren, Zustand
+ * leeren, neu rendern, eigenen Poll stoppen, Abonnenten melden.
+ * @param modus - 'jarvis' | 'sparring'
+ * @param messung - Latenzmessung des Laufs oder undefined
+ * @param tPollErgebnis - performance.now() beim Feststellen des Endes
+ */
+function schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis) {
+  const zustand = zustandJeModus[modus]
   if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
   // Bug (real reproduziert, state/nachweis-jarvis-latenz.md Abschnitt "Abbruch"): ausstehenderLauf
   // MUSS vor diesem abschließenden renderVerlauf() auf null stehen — renderVerlauf() blendet den

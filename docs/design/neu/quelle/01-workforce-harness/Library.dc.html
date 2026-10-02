@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Harness-Werkstatt · Capability Library</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,input{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1520px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<div style="flex-grow: 1"></div>
+<div style="border-top: 1px solid #ffffff14; margin-top: 12px; padding-top: 12px"></div>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Workforce</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<span style="color: #9caeb5">Wartet auf dich</span>
+</header>
+
+<main style="padding: 44px 48px 64px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">WORKFORCE &amp; HARNESS</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 46px">Capability Library</h1>
+<p style="margin: 0; color: #9caeb5; font-size: 15px">Alle Fähigkeiten, die die Workforce kennt — welche aktiv sind, wer sie nutzt und wohin sie im Harness gehören.</p>
+</div>
+
+<div role="tablist" aria-label="Bereiche" style="display: flex; gap: 30px; border-bottom: 1px solid #ffffff20">
+<a role="tab" aria-selected="false" href="Main.dc.html" style="text-decoration: none; color: #9caeb5; padding: 0 0 12px">Harness-Aufbau</a>
+<button role="tab" aria-selected="true" style="background: none; border: 0; border-bottom: 2px solid #8bd8c1; color: #f0ede4; padding: 0 0 12px; cursor: pointer">Capability Library</button>
+<button role="tab" aria-selected="false" style="background: none; border: 0; color: #9caeb5; padding: 0 0 12px; cursor: pointer">Phasen &amp; Rollen</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+<div style="padding: 18px 20px; border-radius: 12px; background: #162832; border: 1px solid #ffffff14"><div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">IM KATALOG</div><div style="font-family: Georgia, 'Times New Roman', serif; font-size: 34px; margin-top: 6px">42</div></div>
+<div style="padding: 18px 20px; border-radius: 12px; background: #162832; border: 1px solid #8bd8c140"><div style="font-size: 10.5px; letter-spacing: 2px; color: #8bd8c1">AKTIV · FREIGEGEBEN</div><div style="font-family: Georgia, 'Times New Roman', serif; font-size: 34px; margin-top: 6px">15</div></div>
+<div style="padding: 18px 20px; border-radius: 12px; background: #162832; border: 1px solid #ffffff14"><div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">NICHT AKTIV · FREIGABE OFFEN</div><div style="font-family: Georgia, 'Times New Roman', serif; font-size: 34px; margin-top: 6px">27</div></div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<label for="suche" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Fähigkeiten durchsuchen</label>
+<input id="suche" type="search" placeholder="Fähigkeit suchen …" style="width: 280px; min-height: 42px; box-sizing: border-box; padding: 0 14px; border-radius: 10px; background: #0b1b2390; border: 1px solid #ffffff30; color: #f0ede4">
+<span style="width: 10px"></span>
+<sc-for list="{{typen}}" as="f" hint-placeholder-count="5"><button aria-pressed="{{f.an}}" style="{{f.stil}}">{{f.t}}</button></sc-for>
+<span style="width: 10px"></span>
+<sc-for list="{{status}}" as="f" hint-placeholder-count="3"><button aria-pressed="{{f.an}}" style="{{f.stil}}">{{f.t}}</button></sc-for>
+</div>
+
+<div style="padding: 12px 16px; border-radius: 10px; background: #dbc08c0d; border: 1px solid #dbc08c40; color: #c9d3d6; font-size: 13px"><strong style="color: #f0ede4">design-guardian</strong> liegt im Harness unter <code>.claude/agents/</code>, steht aber noch nicht im Katalog.</div>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start">
+
+<section aria-labelledby="liste-titel" style="background: #162832; border: 1px solid #ffffff14; border-radius: 12px; overflow: hidden">
+<h2 id="liste-titel" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Fähigkeiten</h2>
+<div style="display: grid; grid-template-columns: minmax(0, 2.4fr) 90px 120px 150px 150px; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #ffffff20; font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">
+<span>FÄHIGKEIT</span><span>TYP</span><span>GENUTZT VON</span><span>ORT IM HARNESS</span><span>STATUS</span>
+</div>
+<sc-for list="{{eintraege}}" as="e" hint-placeholder-count="10">
+<div style="{{e.zeile}}">
+<span style="display: flex; flex-direction: column; gap: 3px; min-width: 0">
+<span style="font-family: ui-monospace, Consolas, monospace; font-size: 13px">{{e.id}}</span>
+<span style="color: #9caeb5; font-size: 12px; line-height: 1.4">{{e.text}}</span>
+</span>
+<span style="color: #c9d3d6; font-size: 12.5px">{{e.typ}}</span>
+<span style="color: #c9d3d6; font-size: 12.5px">{{e.nutzer}}</span>
+<span style="font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: #9caeb5; overflow-wrap: anywhere">{{e.ort}}</span>
+<span style="display: flex; align-items: center; gap: 10px">
+<button role="switch" aria-checked="{{e.an}}" aria-label="{{e.schalterLabel}}" style="{{e.schalter}}"><span style="{{e.knopf}}"></span></button>
+<span style="{{e.statusStil}}">{{e.status}}</span>
+</span>
+</div>
+</sc-for>
+<div style="padding: 14px 18px; color: #9caeb5; font-size: 12.5px">12 von 42 gezeigt · <a href="#">alle anzeigen</a></div>
+</section>
+
+<aside aria-labelledby="auswahl-titel" style="display: flex; flex-direction: column; gap: 14px; background: #162832; border: 1px solid #8bd8c166; border-radius: 12px; padding: 24px">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">AUSGEWÄHLT · NICHT AKTIV</div>
+<h2 id="auswahl-titel" style="margin: 0; font-family: ui-monospace, Consolas, monospace; font-weight: 400; font-size: 22px">impeccable</h2>
+<p style="margin: 0; color: #c9d3d6; line-height: 1.55">Design-Kontext-Protokoll: Zielgruppe, Markenpersönlichkeit und Gestaltungsregeln, bevor eine Oberfläche gebaut wird.</p>
+<dl style="margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 12px; font-size: 13px">
+<dt style="color: #9caeb5">Typ</dt><dd style="margin: 0">Extern · Skill</dd>
+<dt style="color: #9caeb5">Würde nutzen</dt><dd style="margin: 0">Claude Code (Umsetzung UI)</dd>
+<dt style="color: #9caeb5">Ort im Harness</dt><dd style="margin: 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px">.claude/skills/impeccable/</dd>
+<dt style="color: #9caeb5">Quelle</dt><dd style="margin: 0">[QUELLE · SHA]</dd>
+<dt style="color: #9caeb5">Lizenz</dt><dd style="margin: 0">[LIZENZ]</dd>
+<dt style="color: #9caeb5">Kosten</dt><dd style="margin: 0">[KOSTEN]</dd>
+</dl>
+<div style="padding: 12px 14px; border-radius: 10px; background: #ffffff05; border: 1px solid #ffffff14; color: #c9d3d6; font-size: 12.5px; line-height: 1.5">Aktivieren heißt: prüfen, freigeben, installieren. Erst danach steht sie im Harness und wird im Lauf genutzt.</div>
+<button style="min-height: 44px; padding: 0 18px; border-radius: 10px; background: #8bd8c1; border: 0; color: #10212b; cursor: pointer">Prüfen &amp; freigeben</button>
+<a href="Main.dc.html" style="font-size: 13px">Im Harness-Aufbau zeigen →</a>
+</aside>
+
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const chip = (t, an) => ({ t, an: an ? 'true' : 'false', stil: 'min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font-size:13px;' + (an ? 'background:#8bd8c11a;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#9caeb5') });
+    const typen = [chip('Alle · 42', true), chip('Skills · 7', false), chip('Agents · 4', false), chip('Worker · 2', false), chip('Extern · 29', false)];
+    const status = [chip('Alle', true), chip('Aktiv', false), chip('Nicht aktiv', false)];
+    const e = (id, text, typ, nutzer, ort, aktiv, sel) => ({
+      id, text, typ, nutzer, ort,
+      an: aktiv ? 'true' : 'false',
+      schalterLabel: (aktiv ? 'Aktiv: ' : 'Nicht aktiv: ') + id,
+      status: aktiv ? 'Aktiv' : 'Freigabe offen',
+      statusStil: 'font-size:12px;' + (aktiv ? 'color:#8bd8c1' : 'color:#9caeb5'),
+      schalter: 'width:38px;height:22px;border-radius:999px;padding:2px;box-sizing:border-box;cursor:pointer;display:flex;flex-shrink:0;' + (aktiv ? 'background:#8bd8c1;border:0;justify-content:flex-end' : 'background:none;border:1px solid #ffffff40;justify-content:flex-start'),
+      knopf: 'width:18px;height:18px;border-radius:50%;' + (aktiv ? 'background:#10212b' : 'background:#9caeb5;transform:scale(.85)'),
+      zeile: 'display:grid;grid-template-columns:minmax(0,2.4fr) 90px 120px 150px 150px;gap:12px;align-items:center;padding:13px 18px;border-bottom:1px solid #ffffff10;' + (sel ? 'background:#8bd8c10f;box-shadow:inset 3px 0 0 #8bd8c1' : '')
+    });
+    const eintraege = [
+      e('claude-code', 'Baut: schreibt Code, führt Prüfungen aus.', 'Worker', '—', 'Startvorlage', true),
+      e('codex', 'Plant und prüft, nur lesend.', 'Worker', '—', 'Startvorlage', true),
+      e('advisor-pass', 'Plan vor dem Bau prüfen.', 'Skill', 'Claude Code', '.claude/skills/', true),
+      e('spec-schreiben', 'Spezifikation aus einem Auftrag.', 'Skill', 'Claude Code', '.claude/skills/', true),
+      e('code-reviewer', 'Code nach dem Bauen prüfen.', 'Agent', 'Claude Code', '.claude/agents/', true),
+      e('qa', 'Akzeptanztests und Randfälle.', 'Agent', 'Claude Code', '.claude/agents/', true),
+      e('playwright-mcp', 'Browser-Automatisierung über Accessibility-Snapshots.', 'Extern', 'Claude Code', '.claude/settings.json', true),
+      e('frontend-design', 'Erstanbieter-Plugin für bessere Frontend-Ausgabe.', 'Extern', 'Claude Code', '.claude/skills/', true),
+      e('impeccable', 'Design-Kontext-Protokoll vor dem UI-Bau.', 'Extern', '—', '.claude/skills/', false, true),
+      e('context7-mcp', 'Versionsgenaue Bibliotheks-Doku.', 'Extern', '—', '.claude/settings.json', false),
+      e('github-mcp', 'Repos, Issues und Pull Requests.', 'Extern', '—', '.claude/settings.json', false),
+      e('firecrawl-mcp', 'Web-Extraktion: scrapen, crawlen, suchen.', 'Extern', '—', '.claude/settings.json', false)
+    ];
+    return { typen, status, eintraege };
+  }
+}
+</script>
+</body>
+</html>

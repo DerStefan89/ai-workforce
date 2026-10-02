@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Bug im Detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,select,input,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2000px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">GitHub</a>
+</header>
+
+<main style="padding: 26px 48px 64px; display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 24px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 22px; min-width: 0">
+
+<a href="#" style="text-decoration: none; color: #9caeb5; font-size: 13px; align-self: flex-start">← Bugs</a>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: stretch">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #f08a8a">BUG · F-885 · P3</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 36px; line-height: 1.2">Ein Projektwechsel verwirft offene Eingaben ohne Rückfrage</h1>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px">
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid #ffffff30; color: #c9d3d6">gefunden: QA-Pass F44 WS-1b · 30.09.</span>
+<a href="#" style="text-decoration: none; padding: 4px 10px; border-radius: 999px; border: 1px solid #ffffff30; color: #c9d3d6">verwandt: F-874 · erledigt</a>
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid #ffffff30; color: #c9d3d6">Bereich: Kopf · Projektwechsel</span>
+</div>
+<div style="padding: 14px 16px; border-radius: 12px; background: #162832; border: 1px solid #ffffff1a; display: flex; flex-direction: column; gap: 8px; line-height: 1.55">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">KURZ GESAGT</div>
+<div><b style="font-weight: 600">Was passiert:</b> Wer mitten in einer Eingabe das Projekt wechselt, verliert den getippten Text, ohne Warnung.</div>
+<div><b style="font-weight: 600">Wie schlimm:</b> Mittel. Kein Datenverlust im Repo, aber eine Begründung muss neu geschrieben werden.</div>
+<div><b style="font-weight: 600">Was als Nächstes:</b> {{naechstes}}</div>
+</div>
+</div>
+
+<section aria-label="Status" style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid {{statusRand}}">
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="{{statusPunkt}}"></span>
+<span style="font-size: 11px; letter-spacing: 2px; color: {{statusFarbe}}">{{statusText}}</span>
+</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 7px 10px; font-size: 12.5px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">PRIORITÄT</span><span>P3 · gesenkt von P2</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">EINGEPLANT</span><span>{{geplant}}</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">AUSLÖSER</span><span>realer Verlust einer Eingabe</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">SCHÄTZUNG</span><span>{{schaetzung}}</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">OFFEN SEIT</span><span>30.09.2026</span>
+</div>
+<button type="button" onClick="{{zustandUmschalten}}" style="align-self: flex-start; min-height: 30px; padding: 0 10px; border-radius: 8px; background: none; border: 1px dashed #ffffff40; color: #9caeb5; cursor: pointer; font-size: 11px">Zustand im Design umschalten</button>
+</section>
+</div>
+
+<sc-if value="{{triage}}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="jetzt-bug" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 14px; background: #dbc08c14; border: 1px solid #dbc08c">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #dbc08c">JETZT · DEINE ENTSCHEIDUNG</div>
+<h2 id="jetzt-bug" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Was passiert mit diesem Bug?</h2>
+<div style="font-size: 12.5px; color: #c9d3d6">Jarvis empfiehlt: [Vorschlag mit Grund]. Du entscheidest, deine Begründung ist Pflicht.</div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; background: #8bd8c1; border: 0; color: #10212b; cursor: pointer">Jetzt beheben lassen</button>
+<button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; background: none; border: 1px solid #ffffff40; color: #f0ede4; cursor: pointer">Einplanen …</button>
+<button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; background: none; border: 1px solid #ffffff40; color: #f0ede4; cursor: pointer">Zurückstellen bis Auslöser</button>
+<button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; background: none; border: 1px solid #ffffff40; color: #f0ede4; cursor: pointer">Schließen: kein Fehler</button>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{behoben}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="jetzt-fix" style="display: flex; align-items: center; gap: 18px; padding: 18px 20px; border-radius: 14px; background: #dbc08c14; border: 1px solid #dbc08c">
+<div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #dbc08c">JETZT · DEINE ENTSCHEIDUNG</div>
+<h2 id="jetzt-fix" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Ist der Bug behoben?</h2>
+<div style="font-size: 12.5px; color: #c9d3d6">Der Fehler ist mit einem Test nachgestellt, der Fix ist gebaut, der Test ist grün. Bitte einmal selbst nachstellen.</div>
+</div>
+<button type="button" style="min-height: 48px; padding: 0 22px; border-radius: 12px; background: #8bd8c1; border: 0; color: #10212b; cursor: pointer; font-size: 15px">Ergebnis prüfen →</button>
+</section>
+</sc-if>
+
+<section aria-labelledby="fehler-titel" style="display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<h2 id="fehler-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Fehlerbild</h2>
+<div style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">SO STELLST DU IHN NACH</div>
+<ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 1.5">
+<li>Eine Freigabe öffnen und eine Begründung anfangen.</li>
+<li>Oben in der Kopfleiste ein anderes Projekt wählen.</li>
+<li>Zurück zum ersten Projekt wechseln.</li>
+</ol>
+</div>
+<div style="display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 10px; font-size: 12.5px; line-height: 1.5">
+<span style="color: #9caeb5">Erwartet</span><span>Rückfrage vor dem Wechsel oder der Entwurf ist noch da.</span>
+<span style="color: #9caeb5">Tatsächlich</span><span style="color: #f2c9bb">Text weg, kein Hinweis.</span>
+<span style="color: #9caeb5">Betrifft auch</span><span>Reparaturentwurf, Chat-Entwurf, Browser-Zurück bei offenem Dialog</span>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; font-size: 12.5px; line-height: 1.5">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">URSACHE</span>
+<span>Der Neuladen-Hook beim Projektwechsel setzt projektgebundene Ansichten zurück.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; font-size: 12.5px; line-height: 1.5">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">FUNDSTELLE</span>
+<a href="#" style="font-family: Consolas, 'Courier New', monospace; font-size: 12px">shell.js · initProjektAuswahl</a>
+<a href="#" style="font-family: Consolas, 'Courier New', monospace; font-size: 12px">projekt-kontext.js · setzeAktivesProjekt</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a; font-size: 12.5px; line-height: 1.5">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">VORGESCHLAGENE BEHEBUNG</span>
+<span>Rückfrage, wenn eine Eingabe offen ist, oder Entwurf je Projekt halten.</span>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="fix-titel" style="display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: baseline; gap: 12px">
+<h2 id="fix-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Behebung</h2>
+<span style="font-size: 12px; color: #9caeb5">Fertig, wenn: nachgestellt, behoben, Test grün, von dir bestätigt</span>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{fixSchritte}}" as="s" hint-placeholder-count="5">
+<li style="{{s.stil}}">
+<span style="font-size: 13px">{{s.name}}</span>
+<span style="font-size: 11px; color: #9caeb5; line-height: 1.4">{{s.info}}</span>
+<span style="{{s.chipStil}}">{{s.status}}</span>
+</li>
+</sc-for>
+</ol>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{fixKacheln}}" as="k" hint-placeholder-count="3">
+<a href="#" style="text-decoration: none; color: #f0ede4; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: #10212b; border: 1px solid #ffffff1a">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">{{k.titel}}</span>
+<span style="font-size: 13px">{{k.wert}}</span>
+<span style="font-size: 11.5px; color: #9caeb5">{{k.info}}</span>
+</a>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="chronik-titel" style="display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<h2 id="chronik-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Verlauf des Befunds</h2>
+<sc-for list="{{chronik}}" as="c" hint-placeholder-count="4">
+<div style="display: grid; grid-template-columns: 90px 160px minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: 1px solid #ffffff0d; font-size: 12.5px; line-height: 1.5">
+<span style="color: #9caeb5">{{c.datum}}</span>
+<span>{{c.wer}}</span>
+<span style="color: #c9d3d6">{{c.text}}</span>
+</div>
+</sc-for>
+</section>
+</div>
+
+<aside aria-label="Planung" style="display: flex; flex-direction: column; gap: 16px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a; margin-top: 38px">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 19px">Einordnung</h2>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="b-prio" style="font-size: 11.5px; color: #9caeb5">Priorität</label>
+<select id="b-prio" style="min-height: 40px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px"><option>P3</option><option>P2</option><option>P1</option><option>P0</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="b-zu" style="font-size: 11.5px; color: #9caeb5">Zugeordnet zu</label>
+<select id="b-zu" style="min-height: 40px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px"><option>Pflege &amp; Fixes</option><option>Fixpaket B1</option><option>Feature F44</option></select>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 11.5px; color: #9caeb5">Schätzung (Arbeitstage)</span>
+<div style="display: flex; align-items: center; gap: 8px">
+<input type="text" value="" placeholder="[–]" aria-label="Minimum" style="width: 64px; min-height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px">
+<span style="color: #9caeb5">bis</span>
+<input type="text" value="" placeholder="[–]" aria-label="Maximum" style="width: 64px; min-height: 40px; box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 0 10px">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="b-grund" style="font-size: 11.5px; color: #9caeb5">Begründung (Pflicht)</label>
+<textarea id="b-grund" rows="3" style="box-sizing: border-box; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; padding: 8px 10px; resize: vertical"></textarea>
+</div>
+<button type="button" disabled style="min-height: 40px; border-radius: 10px; border: 0; background: #ffffff14; color: #9caeb5; cursor: not-allowed">Speichern</button>
+<div style="height: 1px; background: #ffffff14"></div>
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px">
+<a href="#">Fundstelle in VS Code öffnen</a>
+<a href="#">Eintrag im Register öffnen</a>
+<a href="#">Verwandten Befund F-874 ansehen</a>
+</div>
+</aside>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const behoben = !!st.behoben;
+    const sChip = (s) => 'align-self:flex-start;font-size:10px;padding:1px 7px;border-radius:999px;' + (s === 'erledigt' ? 'color:#8bd8c1;border:1px solid #8bd8c166' : s === 'wartet' ? 'color:#dbc08c;border:1px solid #dbc08c88' : 'color:#9caeb5;border:1px solid #ffffff30');
+    const fRoh = behoben
+      ? [['Nachstellen', 'Test, der den Fehler zeigt', 'erledigt'], ['Beheben', 'Builder · Claude Code', 'erledigt'], ['Prüfen', 'npm run check · Test grün', 'erledigt'], ['Review', 'code-reviewer · qa', 'erledigt'], ['Bestätigen', 'Du', 'wartet']]
+      : [['Nachstellen', 'Test, der den Fehler zeigt', 'offen'], ['Beheben', 'Builder · Claude Code', 'offen'], ['Prüfen', 'npm run check · Test grün', 'offen'], ['Review', 'code-reviewer · qa', 'offen'], ['Bestätigen', 'Du', 'offen']];
+    const fixSchritte = fRoh.map(([name, info, status]) => ({
+      name, info, status, chipStil: sChip(status),
+      stil: 'display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:10px;background:#10212b;border:1px solid ' + (status === 'wartet' ? '#dbc08c' : '#ffffff1a')
+    }));
+    const fixKacheln = behoben
+      ? [{ titel: 'REGRESSIONSTEST', wert: '[Testdatei]', info: 'neu, schlägt vor dem Fix fehl' }, { titel: 'ÄNDERUNGEN', wert: '[n] Dateien', info: 'im Code-Reiter' }, { titel: 'AUFTRAG', wert: '[Auftrag]', info: 'Laufakte und Bericht' }]
+      : [{ titel: 'REGRESSIONSTEST', wert: 'noch keiner', info: 'entsteht als erster Schritt' }, { titel: 'ÄNDERUNGEN', wert: '–', info: 'noch kein Fix' }, { titel: 'AUFTRAG', wert: '–', info: '„Jetzt beheben lassen“ legt ihn an' }];
+    const chronik = [
+      { datum: '30.09.', wer: 'QA-Pass F44 WS-1b', text: 'Gefunden, als Prüfpunkt aus dem QA-Pass WS-0. Priorität P2.' },
+      { datum: '01.10.', wer: 'Challenger', text: 'Auf P3 gesenkt. Auslöser für die Umsetzung: ein realer Verlust einer Eingabe.' },
+      { datum: '01.10.', wer: 'F44 WS-4a', text: 'Auch der Freigabe- und Stoppdialog verliert eine angefangene Begründung (verwandt F-874).' },
+      { datum: behoben ? '[Datum]' : '–', wer: behoben ? 'Builder' : '–', text: behoben ? 'Fix gebaut, Regressionstest grün.' : 'Noch nicht eingeplant.' }
+    ];
+    return {
+      triage: !behoben, behoben, fixSchritte, fixKacheln, chronik,
+      naechstes: behoben ? 'Du bestätigst den Fix, dann wird der Befund geschlossen.' : 'Du entscheidest, ob er jetzt behoben, eingeplant oder zurückgestellt wird.',
+      statusText: behoben ? 'FIX BEREIT ZUR BESTÄTIGUNG' : 'OFFEN · NICHT EINGEPLANT',
+      statusFarbe: behoben ? '#dbc08c' : '#f08a8a', statusRand: behoben ? '#dbc08c' : '#ffffff1a',
+      statusPunkt: 'width:9px;height:9px;border-radius:50%;background:' + (behoben ? '#dbc08c' : '#f08a8a'),
+      geplant: behoben ? 'Fixpaket B1' : 'nein · Pflege & Fixes',
+      schaetzung: behoben ? '[n] AT · Ist [n] AT' : '[–]',
+      zustandUmschalten: () => this.setState({ behoben: !behoben })
+    };
+  }
+}
+</script>
+</body>
+</html>

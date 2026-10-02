@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Harness-Werkstatt · Harness-Aufbau</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1900px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+<div style="flex-grow: 1"></div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Alle Produkte</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Nutzung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 10px 14px">Einstellungen</a>
+<div style="border-top: 1px solid #ffffff14; margin-top: 12px; padding-top: 12px"></div>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Workforce</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<span style="color: #9caeb5">Wartet auf dich</span>
+</header>
+
+<main style="padding: 44px 48px 64px; display: flex; flex-direction: column; gap: 26px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">WORKFORCE &amp; HARNESS</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 46px">Deine Entwicklungswerkstatt.</h1>
+<p style="margin: 0; color: #9caeb5; font-size: 15px">Alles, was die Workforce beim Arbeiten an diesem Projekt lädt, prüft und befolgt — und welches Modell was davon nutzt.</p>
+</div>
+
+<div role="tablist" aria-label="Bereiche" style="display: flex; gap: 30px; border-bottom: 1px solid #ffffff20">
+<button role="tab" aria-selected="true" style="background: none; border: 0; border-bottom: 2px solid #8bd8c1; color: #f0ede4; padding: 0 0 12px; cursor: pointer">Harness-Aufbau</button>
+<a role="tab" aria-selected="false" href="Library.dc.html" style="text-decoration: none; color: #9caeb5; padding: 0 0 12px">Capability Library</a>
+<button role="tab" aria-selected="false" style="background: none; border: 0; color: #9caeb5; padding: 0 0 12px; cursor: pointer">Phasen &amp; Rollen</button>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; padding: 14px 20px; border-radius: 12px; background: #162832; border: 1px solid #ffffff14; font-size: 13px">
+<span style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">GEGEN DIE VORLAGE</span>
+<span style="display: flex; gap: 8px; align-items: center; color: #c9d3d6"><span style="width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid #9caeb5"></span>{{zaehler.gleich}} wie Vorlage</span>
+<span style="display: flex; gap: 8px; align-items: center; color: #c9d3d6"><span style="width: 9px; height: 9px; border-radius: 50%; background: #dbc08c"></span>{{zaehler.angepasst}} angepasst</span>
+<span style="display: flex; gap: 8px; align-items: center; color: #c9d3d6"><span style="width: 9px; height: 2px; background: #8bd8c1; outline: 1.5px solid #8bd8c1; outline-offset: 2px"></span>{{zaehler.neu}} nicht in der Vorlage</span>
+<span style="width: 1px; height: 18px; background: #ffffff20"></span>
+<span style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">GENUTZT VON</span>
+<span style="color: #c9d3d6"><b style="font-family: ui-monospace, Consolas, monospace">CC</b> Claude Code</span>
+<span style="color: #c9d3d6"><b style="font-family: ui-monospace, Consolas, monospace">CX</b> Codex</span>
+<span style="color: #c9d3d6"><b style="font-family: ui-monospace, Consolas, monospace">RJ</b> Router · Jarvis</span>
+<span style="color: #c9d3d6"><b style="font-family: ui-monospace, Consolas, monospace">PS</b> Prüfschritt</span>
+<span style="color: #c9d3d6"><b style="font-family: ui-monospace, Consolas, monospace">Du</b> Stefan</span>
+<span style="color: #c9d3d6; display: flex; gap: 6px; align-items: center"><span style="font-family: ui-monospace, Consolas, monospace; font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px dashed #e6a29c; color: #e6a29c">CX</span>sollte, tut es noch nicht</span>
+</div>
+
+<section aria-labelledby="skelett-titel" style="background: #162832; border: 1px solid #ffffff14; border-radius: 14px; padding: 30px 24px 34px">
+<h2 id="skelett-titel" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Harness-Skelett</h2>
+<div style="display: flex; justify-content: center">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 16px 30px; border-radius: 14px; border: 1px solid #8bd8c166; background: #10212b">
+<div style="font-size: 10.5px; letter-spacing: 3px; color: #9caeb5">DEIN HARNESS</div>
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px">ai-workforce</div>
+<div style="font-size: 12px; color: #9caeb5">Regeln · Wissen · Gedächtnis · Rollen · Bremsen · Prüfung</div>
+</div>
+</div>
+<div style="display: flex; justify-content: center"><div style="width: 1px; height: 26px; background: #ffffff40"></div></div>
+<div style="height: 1px; background: #ffffff40; margin: 0 87px"></div>
+
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px">
+<sc-for list="{{spalten}}" as="s" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: stretch">
+<div style="display: flex; justify-content: center"><div style="width: 1px; height: 22px; background: #ffffff40"></div></div>
+<div style="text-align: center; padding: 10px 8px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px">{{s.titel}}</div>
+<div style="font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #9caeb5; margin-top: 3px">{{s.ort}}</div>
+</div>
+<div style="margin-left: 14px; border-left: 1px solid #ffffff40; padding-top: 10px; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{s.knoten}}" as="k" hint-placeholder-count="4">
+<div style="display: flex; align-items: center">
+<div style="width: 12px; height: 1px; background: #ffffff40; flex-shrink: 0"></div>
+<button style="{{k.stil}}" aria-current="{{k.aktuell}}">
+<span style="display: flex; align-items: center; gap: 6px; min-width: 0">
+<span style="{{k.punkt}}" aria-label="{{k.statusText}}"></span>
+<span style="font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: #f0ede4; overflow-wrap: anywhere; text-align: left">{{k.name}}</span>
+<sc-if value="{{k.lock}}" hint-placeholder-val="{{false}}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#dbc08c" stroke-width="2.2" aria-label="nur lesend" style="flex-shrink: 0"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></sc-if>
+</span>
+<span style="display: flex; flex-wrap: wrap; gap: 4px">
+<sc-for list="{{k.nutzer}}" as="n" hint-placeholder-count="1"><span style="{{n.stil}}">{{n.t}}</span></sc-for>
+</span>
+</button>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 24px; align-items: start">
+
+<section aria-labelledby="detail-titel" style="display: flex; flex-direction: column; gap: 16px; background: #162832; border: 1px solid #dbc08c40; border-radius: 12px; padding: 26px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dbc08c" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<span style="font-size: 11px; letter-spacing: 3px; color: #dbc08c">BREMSE · HOOK · NUR LESEND</span>
+</div>
+<h2 id="detail-titel" style="margin: 0; font-family: ui-monospace, Consolas, monospace; font-weight: 400; font-size: 26px">.claude/hooks/commit-guard.cjs</h2>
+<p style="margin: 0; color: #c9d3d6; line-height: 1.55">Prüft jeden Shell-Befehl von Claude Code, bevor er läuft. Ein Commit oder Push geht nur durch, wenn du ihn freigegeben hast — eine Freigabe gilt für genau einen Commit. Merges nach main und Zugriffe auf die Rechte-Datei blockiert er immer.</p>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+<div style="padding: 12px 14px; border-radius: 10px; background: #ffffff05; border: 1px solid #ffffff14"><dt style="font-size: 10px; letter-spacing: 2px; color: #9caeb5">GENUTZT VON</dt><dd style="margin: 6px 0 0">Claude Code</dd></div>
+<div style="padding: 12px 14px; border-radius: 10px; background: #ffffff05; border: 1px solid #ffffff14"><dt style="font-size: 10px; letter-spacing: 2px; color: #9caeb5">WANN</dt><dd style="margin: 6px 0 0">Vor jedem Shell-Befehl</dd></div>
+<div style="padding: 12px 14px; border-radius: 10px; background: #ffffff05; border: 1px solid #ffffff14"><dt style="font-size: 10px; letter-spacing: 2px; color: #9caeb5">EINGEHÄNGT IN</dt><dd style="margin: 6px 0 0; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px">settings.json</dd></div>
+</dl>
+<div style="padding: 14px 16px; border-radius: 10px; background: #e6a29c0d; border: 1px solid #e6a29c40; line-height: 1.5">
+<strong>Nicht in der Vorlage.</strong> <span style="color: #c9d3d6">Ein neues Projekt bekommt diese Bremse heute nicht mit.</span>
+</div>
+<pre style="margin: 0; padding: 16px; border-radius: 10px; background: #0b1b23; border: 1px solid #ffffff14; font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.6; color: #c9d3d6; white-space: pre-wrap">/**
+ * Datei: .claude/hooks/commit-guard.cjs
+ *
+ * Zweck: PreToolUse-Hook auf Bash. Vier Aufgaben:
+ * 1. Verweigert jeden Bash-Befehl, der `.claude/settings.json` referenziert
+ * 2. Verweigert den Merge-Pfad nach main über `gh` …
+ * 3. Verweigert `git commit` / `git push`, außer eine frische Freigabe-Datei
+ *    (state/freigabe-commit.md, Frischefenster 10 Minuten) liegt vor …
+ * 4. Verweigert jeden Bash-Befehl, der `state/freigabe-commit.md` referenziert
+ */</pre>
+<div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center">
+<button style="min-height: 44px; padding: 0 18px; border-radius: 10px; background: none; border: 1px solid #dbc08c80; color: #f0ede4; cursor: pointer">Änderung vorschlagen</button>
+<button style="min-height: 44px; padding: 0 18px; border-radius: 10px; background: none; border: 1px solid #ffffff40; color: #f0ede4; cursor: pointer">Ganze Datei ansehen</button>
+<span style="color: #9caeb5; font-size: 12.5px">Sichtbar, aber nicht direkt änderbar.</span>
+</div>
+</section>
+
+<aside aria-labelledby="modelle-titel" style="display: flex; flex-direction: column; gap: 12px; background: #162832; border: 1px solid #ffffff14; border-radius: 12px; padding: 24px">
+<h2 id="modelle-titel" style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 22px">Wer nutzt den Harness?</h2>
+<sc-for list="{{modelle}}" as="m" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid #ffffff14">
+<div style="display: flex; align-items: baseline; gap: 8px"><b style="font-family: ui-monospace, Consolas, monospace; font-size: 12px; color: #8bd8c1">{{m.k}}</b><span style="font-size: 15px">{{m.name}}</span><span style="color: #9caeb5; font-size: 12px">{{m.rolle}}</span></div>
+<div style="color: #c9d3d6; font-size: 13px; line-height: 1.5">{{m.nutzt}}</div>
+<sc-if value="{{m.luecke}}" hint-placeholder-val="{{false}}"><div style="color: #e6a29c; font-size: 12.5px; line-height: 1.45">{{m.luecke}}</div></sc-if>
+</div>
+</sc-for>
+</aside>
+
+</div>
+<div style="display: flex; gap: 14px"><a href="Bearbeiten.dc.html" style="color: #9caeb5; font-size: 13px">Beispiel: CLAUDE.md bearbeiten →</a><a href="Library.dc.html" style="color: #9caeb5; font-size: 13px">Zur Capability Library →</a></div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const punkt = {
+      gleich: 'width:9px;height:9px;border-radius:50%;border:1.5px solid #9caeb5;flex-shrink:0;box-sizing:border-box',
+      angepasst: 'width:9px;height:9px;border-radius:50%;background:#dbc08c;flex-shrink:0',
+      neu: 'width:9px;height:2px;background:#8bd8c1;outline:1.5px solid #8bd8c1;outline-offset:2px;flex-shrink:0;margin:0 2px'
+    };
+    const statusText = { gleich: 'wie Vorlage', angepasst: 'angepasst', neu: 'nicht in der Vorlage' };
+    const badge = (t) => {
+      const fehlt = t.endsWith('!');
+      const txt = fehlt ? t.slice(0, -1) : t;
+      return { t: txt, stil: 'font-family:ui-monospace,Consolas,monospace;font-size:10px;padding:1px 5px;border-radius:5px;' + (fehlt ? 'border:1px dashed #e6a29c;color:#e6a29c' : 'border:1px solid #ffffff30;color:#c9d3d6') };
+    };
+    const zaehler = { gleich: 0, angepasst: 0, neu: 0 };
+    const knoten = (name, status, nutzer, extra) => {
+      const e = extra || {};
+      zaehler[status] += 1;
+      const sel = e.sel === true;
+      return {
+        name, lock: e.lock === true, statusText: statusText[status], punkt: punkt[status],
+        aktuell: sel ? 'true' : 'false',
+        nutzer: nutzer.map(badge),
+        stil: 'flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:6px;padding:8px 9px;border-radius:9px;cursor:pointer;color:inherit;text-align:left;' + (sel ? 'background:#dbc08c14;border:1px solid #dbc08c' : 'background:#10212b;border:1px solid #ffffff1c')
+      };
+    };
+    const spalten = [
+      { titel: 'Regeln', ort: '/', knoten: [
+        knoten('CLAUDE.md', 'angepasst', ['CC', 'CX!']),
+        knoten('ARCHITECTURE.md', 'angepasst', ['CC', 'CX!']),
+        knoten('README.md', 'neu', ['Du'])
+      ] },
+      { titel: 'Wissen', ort: 'docs/', knoten: [
+        knoten('STATUS.md', 'angepasst', ['CC']),
+        knoten('kommentar-standard.md', 'gleich', ['CC']),
+        knoten('adr/ · 6', 'neu', ['CX', 'CC']),
+        knoten('projekt/kontext/', 'neu', ['RJ', 'CX!']),
+        knoten('harness/', 'angepasst', ['Du'])
+      ] },
+      { titel: 'Gedächtnis', ort: 'state/', knoten: [
+        knoten('findings.md', 'neu', ['RJ', 'Du']),
+        knoten('gates.md', 'angepasst', ['CC']),
+        knoten('assumption-ledger.md', 'angepasst', ['CC']),
+        knoten('triggers.md', 'angepasst', ['CC']),
+        knoten('memory-map.md', 'angepasst', ['CC']),
+        knoten('tooling.md', 'angepasst', ['CC']),
+        knoten('zwischenstand/', 'gleich', ['CC'])
+      ] },
+      { titel: 'Rollen & Fähigkeiten', ort: '.claude/', knoten: [
+        knoten('agents/ · 5', 'angepasst', ['CC']),
+        knoten('skills/ · 7', 'angepasst', ['CC']),
+        knoten('commands/lessons', 'neu', ['CC'])
+      ] },
+      { titel: 'Bremsen', ort: '.claude/', knoten: [
+        knoten('settings.json', 'neu', ['CC'], { lock: true }),
+        knoten('hooks/commit-guard', 'neu', ['CC'], { lock: true, sel: true }),
+        knoten('hooks/guard-settings', 'neu', ['CC'], { lock: true }),
+        knoten('hooks/session-reminder', 'neu', ['CC'], { lock: true }),
+        knoten('hooks/zwischenstand-laden', 'neu', ['CC'], { lock: true }),
+        knoten('hooks/zwischenstand-pruefen', 'neu', ['CC'], { lock: true })
+      ] },
+      { titel: 'Prüfung & Betrieb', ort: 'scripts/ · .github/', knoten: [
+        knoten('check-docs.mjs', 'angepasst', ['PS']),
+        knoten('check-rules.mjs', 'angepasst', ['PS']),
+        knoten('check-contract.mjs', 'gleich', ['PS']),
+        knoten('_mode.ts', 'neu', ['PS'], { lock: true }),
+        knoten('ci.yml', 'neu', ['GitHub'], { lock: true }),
+        knoten('.worktreeinclude', 'neu', ['Du'])
+      ] }
+    ];
+    const modelle = [
+      { k: 'CC', name: 'Claude Code', rolle: 'Umsetzung', nutzt: 'Lädt CLAUDE.md und ARCHITECTURE.md, ruft Agents, Skills und /lessons auf. Jeder Befehl läuft durch die Hooks.', luecke: '' },
+      { k: 'CX', name: 'Codex', rolle: 'Architekt · Code-Review', nutzt: 'Bekommt Auftrag, Rolleninstruktion und entschiedene ADRs.', luecke: 'Fehlt noch: CLAUDE.md, ARCHITECTURE.md und Projektkarte (Fixpaket, F-936).' },
+      { k: 'RJ', name: 'Router · Jarvis', rolle: 'Einordnung · Gespräch', nutzt: 'Bekommen die Projektkarte: Beschreibung, Arbeitsweise, Roadmap, Lagebild aus den Findings.', luecke: '' },
+      { k: 'PS', name: 'Prüfschritt', rolle: 'kein Modell', nutzt: 'Führt npm run check aus, darin check-docs, check-rules und check-contract.', luecke: '' },
+      { k: 'Du', name: 'Stefan', rolle: 'Vorarbeiter', nutzt: 'Liest README und Harness-Doku, pflegt das Register, gibt frei.', luecke: '' }
+    ];
+    return { spalten, modelle, zaehler };
+  }
+}
+</script>
+</body>
+</html>

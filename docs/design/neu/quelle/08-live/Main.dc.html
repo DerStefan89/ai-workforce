@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Workforce arbeitet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,input,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2250px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Roadmap</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktzyklus</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Brain</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px 0 48px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<a href="#" style="{{kopfChipStil}}"><span style="{{kopfPunkt}}"></span>{{kopfChip}}</a>
+<div style="flex-grow: 1"></div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; background: none; border: 1px solid #ffffff30; color: #f0ede4; cursor: pointer; font-size: 13px"><span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">VS Code</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">GitHub</a>
+</header>
+
+<main style="padding: 26px 48px 64px; display: flex; flex-direction: column; gap: 22px">
+
+<div style="display: flex; align-items: center; gap: 12px">
+<a href="#" style="text-decoration: none; color: #9caeb5; font-size: 13px">← Ausführungen</a>
+<div style="flex-grow: 1"></div>
+<button type="button" onClick="{{zustandUmschalten}}" style="min-height: 30px; padding: 0 10px; border-radius: 8px; background: none; border: 1px dashed #ffffff40; color: #9caeb5; cursor: pointer; font-size: 11px">Zustand im Design umschalten</button>
+</div>
+
+<sc-if value="{{arbeitet}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 22px">
+
+<section aria-label="Was gerade läuft" style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: stretch">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 10px; height: 10px; border-radius: 50%; background: #dbc08c; box-shadow: 0 0 0 4px #dbc08c33"></span>
+<span style="font-size: 11px; letter-spacing: 3px; color: #dbc08c">LIVE · WORKFORCE ARBEITET</span>
+</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 38px; line-height: 1.15">F44 WS-8a · Dock &amp; große Ansicht</h1>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px">
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid #dbc08c88; color: #f0ede4">Builder · Claude Code</span>
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid #ffffff30; color: #c9d3d6">Modell laut Startvorlage</span>
+<span style="padding: 4px 10px; border-radius: 999px; border: 1px solid #ffffff30; color: #c9d3d6">Werkzeugsatz: schreibend</span>
+<a href="#" style="text-decoration: none; padding: 4px 10px; border-radius: 999px; border: 1px solid #b79cf088; color: #b79cf0">Zum Workstream →</a>
+</div>
+<div style="font-size: 13px; color: #c9d3d6; line-height: 1.55">Gerade: <b style="color: #f0ede4; font-weight: 600">{{aktuell}}</b></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #dbc08c66">
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 7px 10px; font-size: 12.5px">
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">LÄUFT SEIT</span><span>18 min</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">ZEITGRENZE</span><span>30 min · noch 12 min</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">SCHÄTZUNG WS</span><span>0,3–0,5 AT</span>
+<span style="font-size: 9.5px; letter-spacing: 1.5px; color: #9caeb5; padding-top: 2px">AUFRUFE</span><span>{{anzahl}} bisher</span>
+</div>
+<div role="progressbar" aria-label="Zeitgrenze" aria-valuemin="0" aria-valuemax="30" aria-valuenow="18" style="height: 6px; border-radius: 3px; background: #ffffff14; overflow: hidden"><div style="width: 60%; height: 6px; background: #dbc08c"></div></div>
+<div style="display: flex; gap: 8px; margin-top: 4px">
+<button type="button" style="flex-grow: 1; min-height: 40px; border-radius: 10px; background: none; border: 1px solid #ee9f7f88; color: #f0ede4; cursor: pointer; font-size: 13px">Abbrechen …</button>
+<button type="button" style="flex-grow: 1; min-height: 40px; border-radius: 10px; background: none; border: 1px solid #ffffff40; color: #f0ede4; cursor: pointer; font-size: 13px">Laufakte</button>
+</div>
+</div>
+</section>
+
+<ol aria-label="Ablauf" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{schritte}}" as="s" hint-placeholder-count="7">
+<li style="{{s.stil}}"><span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">{{s.nr}}</span><span style="font-size: 13px">{{s.name}}</span><span style="{{s.chipStil}}">{{s.status}}</span></li>
+</sc-for>
+</ol>
+
+<section aria-label="Aktivität und Details" style="display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 10px">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Aktivität</h2>
+<span style="font-size: 12px; color: #9caeb5">neueste oben · anklicken für Details</span>
+<div style="flex-grow: 1"></div>
+<div role="group" aria-label="Filter" style="display: flex; gap: 6px">
+<sc-for list="{{filter}}" as="f" hint-placeholder-count="5">
+<button type="button" onClick="{{f.waehlen}}" aria-pressed="{{f.an}}" style="{{f.stil}}">{{f.text}}</button>
+</sc-for>
+</div>
+</div>
+<sc-for list="{{aktivitaet}}" as="a" hint-placeholder-count="9">
+<button type="button" onClick="{{a.waehlen}}" aria-pressed="{{a.an}}" style="{{a.stil}}">
+<span style="font-size: 11px; color: #9caeb5; width: 54px; text-align: left">{{a.zeit}}</span>
+<span style="{{a.verbStil}}">{{a.verb}}</span>
+<span style="flex-grow: 1; min-width: 0; text-align: left; font-family: Consolas, 'Courier New', monospace; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{a.ziel}}</span>
+<span style="{{a.hinweisStil}}">{{a.hinweis}}</span>
+</button>
+</sc-for>
+<div style="font-size: 11.5px; color: #9caeb5">Die letzten 50 Aufrufe dieses Laufs. Ältere stehen nach dem Lauf vollständig in der Laufakte.</div>
+</div>
+
+<aside aria-label="Mehr dazu" style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #8bd8c155">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #8bd8c1">MEHR DAZU</div>
+<div style="display: flex; align-items: center; gap: 8px">
+<span style="{{d.verbStil}}">{{d.verb}}</span>
+<span style="font-family: Consolas, 'Courier New', monospace; font-size: 12.5px; word-break: break-all">{{d.ziel}}</span>
+</div>
+<div style="font-size: 12.5px; line-height: 1.55; color: #c9d3d6">{{d.erklaerung}}</div>
+<sc-if value="{{d.hatAusschnitt}}" hint-placeholder-val="{{ true }}">
+<div style="border-radius: 10px; border: 1px solid #ffffff1f; background: #0b1820; overflow: hidden">
+<div style="padding: 6px 12px; border-bottom: 1px solid #ffffff12; font-size: 10.5px; letter-spacing: 1.5px; color: #9caeb5">{{d.ausschnittTitel}}</div>
+<pre style="margin: 0; padding: 10px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; color: #c9d3d6">{{d.ausschnitt}}</pre>
+</div>
+</sc-if>
+<div style="display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 6px 10px; font-size: 12px">
+<span style="color: #9caeb5">Im Umfang?</span><span style="{{d.umfangStil}}">{{d.umfang}}</span>
+<span style="color: #9caeb5">Schritt</span><span>Bau · Builder · Claude Code</span>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<sc-for list="{{d.aktionen}}" as="x" hint-placeholder-count="2">
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 12px">{{x}}</a>
+</sc-for>
+</div>
+<div style="height: 1px; background: #ffffff14"></div>
+<label for="live-frage" style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">FRAG JARVIS DAZU</label>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<button type="button" style="min-height: 30px; padding: 0 10px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 11px; cursor: pointer">Warum diese Änderung?</button>
+<button type="button" style="min-height: 30px; padding: 0 10px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 11px; cursor: pointer">Wo steht der Lauf?</button>
+<button type="button" style="min-height: 30px; padding: 0 10px; border-radius: 999px; background: none; border: 1px solid #ffffff30; color: #c9d3d6; font-size: 11px; cursor: pointer">Ist das im Plan?</button>
+</div>
+<div style="display: flex; gap: 6px">
+<input id="live-frage" type="text" placeholder="Frage zu diesem Schritt …" style="flex-grow: 1; min-width: 0; min-height: 40px; box-sizing: border-box; padding: 0 10px; border-radius: 10px; border: 1px solid #ffffff30; background: #10212b; color: #f0ede4; font-size: 12.5px">
+<button type="button" style="min-height: 40px; padding: 0 12px; border-radius: 10px; background: #8bd8c1; border: 0; color: #10212b; cursor: pointer; font-size: 12.5px">Fragen</button>
+</div>
+<div style="font-size: 11px; color: #9caeb5">Jarvis antwortet aus Laufakte und Arbeitspaket und greift nicht in den Lauf ein.</div>
+</aside>
+</section>
+
+<section aria-label="Umfang und Bremsen" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<div style="display: flex; align-items: center; gap: 8px">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 18px">Berührte Dateien</h2>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 10.5px; padding: 2px 8px; border-radius: 999px; color: #dbc08c; border: 1px solid #dbc08c88">1 außerhalb</span>
+</div>
+<sc-for list="{{dateien}}" as="f" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; min-height: 24px">
+<span style="{{f.punkt}}"></span>
+<span style="font-family: Consolas, 'Courier New', monospace; flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.pfad}}</span>
+<span style="color: #9caeb5; font-size: 11px">{{f.art}}</span>
+</div>
+</sc-for>
+<div style="font-size: 11.5px; color: #dbc08c; line-height: 1.45">scripts/leitstand-server.mjs liegt außerhalb des Umfangs (WS-8a: keine Serveränderung).</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 18px">Bremsen &amp; Warnungen</h2>
+<div style="display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45"><span style="color: #8bd8c1">✓</span><span>Keine abgelehnten Werkzeuge</span></div>
+<div style="display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45"><span style="color: #8bd8c1">✓</span><span>Bash nur aus der Erlaubnisliste</span></div>
+<div style="display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45"><span style="color: #8bd8c1">✓</span><span>Kein Commit-Versuch</span></div>
+<div style="display: flex; gap: 8px; font-size: 12.5px; line-height: 1.45"><span style="color: #dbc08c">!</span><span>Eine Datei außerhalb des Umfangs geändert</span></div>
+<div style="font-size: 11.5px; color: #9caeb5">Abgelehnte Werkzeuge und Guard-Treffer erscheinen hier sofort.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 18px">Fähigkeiten</h2>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 6px 8px; font-size: 12px">
+<span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">VORGESEHEN</span><span style="font-size: 10px; letter-spacing: 1.5px; color: #9caeb5">GENUTZT</span>
+<span>Skill frontend-design</span><span style="color: #8bd8c1">ja</span>
+<span>Agent qa</span><span style="color: #9caeb5">noch nicht</span>
+<span>Agent design-guardian</span><span style="color: #9caeb5">noch nicht</span>
+<span>MCP playwright</span><span style="color: #8bd8c1">ja</span>
+</div>
+<div style="font-size: 11.5px; color: #9caeb5">Nicht vorgesehen, aber genutzt: keine</div>
+</div>
+</section>
+
+<section aria-label="Output und Kontext" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 18px">Output bisher</h2>
+<sc-for list="{{outputs}}" as="o" hint-placeholder-count="3">
+<details style="border-top: 1px solid #ffffff0d; padding-top: 8px">
+<summary style="cursor: pointer; min-height: 32px; display: flex; align-items: center; gap: 10px; font-size: 13px">
+<span style="{{o.chipStil}}">{{o.status}}</span><span>{{o.titel}}</span><span style="color: #9caeb5; font-size: 11.5px">{{o.wer}}</span>
+</summary>
+<div style="padding: 8px 0 4px; font-size: 12.5px; line-height: 1.55; color: #c9d3d6">{{o.inhalt}}</div>
+<a href="#" style="font-size: 12px">Ganzen Output ansehen</a>
+</details>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: #162832; border: 1px solid #ffffff1a">
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 18px">Was der Builder bekommen hat</h2>
+<div style="font-size: 12.5px; color: #c9d3d6; line-height: 1.5">Arbeitspaket mit Umfang, Nicht hier, geltenden AKs, Grenzen und „Fertig, wenn“.</div>
+<a href="#" style="font-size: 12.5px">Arbeitspaket öffnen</a>
+<details>
+<summary style="cursor: pointer; min-height: 32px; display: flex; align-items: center; font-size: 13px">Kontextpaket · [n] Dateien · [n] KB von 200 KB</summary>
+<ul style="margin: 6px 0 0; padding-left: 18px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.7; color: #c9d3d6">
+<li>CLAUDE.md</li>
+<li>features/F44/feature.md</li>
+<li>docs/design/abgleich-f725.md</li>
+<li>public/leitstand/views/chat.js</li>
+<li>[weitere]</li>
+</ul>
+</details>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ruhig}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">LIVE · GERADE LÄUFT NICHTS</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 38px">Die Workforce wartet</h1>
+<div style="color: #9caeb5">Es ist kein Lauf aktiv. Hier siehst du, was zuletzt passiert ist und was als Nächstes bereitsteht.</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+<section aria-label="Letzter Lauf" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #ffffff1a">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #9caeb5">ZULETZT · vor 6 min beendet</div>
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">F44 WS-8a · Bau</h2>
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px 10px; font-size: 12.5px; line-height: 1.5">
+<span style="color: #9caeb5">Geändert</span><span>[n] Dateien</span>
+<span style="color: #9caeb5">Geprüft</span><span>npm run check</span>
+<span style="color: #9caeb5">Erfolgreich</span><span style="color: #8bd8c1">ja</span>
+<span style="color: #9caeb5">Blocker</span><span>keine</span>
+<span style="color: #9caeb5">Dauer</span><span>24 min · [n] Aufrufe</span>
+</div>
+<div style="display: flex; gap: 8px">
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 12.5px">Laufakte</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 12.5px">Änderungen im Code-Reiter</a>
+</div>
+</section>
+<section aria-label="Als Nächstes" style="display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: 16px; background: #162832; border: 1px solid #dbc08c66">
+<div style="font-size: 10.5px; letter-spacing: 2px; color: #dbc08c">ALS NÄCHSTES</div>
+<h2 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 21px">Prüfschritt für WS-8a</h2>
+<div style="font-size: 12.5px; color: #c9d3d6; line-height: 1.55">Startet automatisch nach dem Bau. Wenn ein Schritt eine Freigabe braucht, erscheint er unter Entscheidungen.</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 12.5px">
+<div style="display: flex; gap: 10px"><span style="color: #9caeb5; min-width: 70px">danach</span><span>Review · Codex + Agents</span></div>
+<div style="display: flex; gap: 10px"><span style="color: #9caeb5; min-width: 70px">dann</span><span>Sichern und mergen · du</span></div>
+</div>
+<a href="#" style="font-size: 12.5px">Zum Workstream →</a>
+</section>
+</div>
+</div>
+</sc-if>
+
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2250}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const arbeitet = !st.ruhig;
+    const gewaehlt = st.gewaehlt || 'a2';
+    const filterId = st.filter || 'alle';
+
+    const verbFarbe = { liest: '#7db3f0', ändert: '#dbc08c', führt: '#8bd8c1', nutzt: '#b79cf0', abgelehnt: '#ee9f7f' };
+    const verbStil = (v) => 'flex-shrink:0;min-width:74px;text-align:center;font-size:10.5px;padding:2px 8px;border-radius:999px;color:' + verbFarbe[v] + ';border:1px solid ' + verbFarbe[v] + '88';
+    const roh = [
+      { id: 'a1', zeit: 'jetzt', verb: 'ändert', art: 'aendert', ziel: 'public/leitstand/i18n/de.js', hinweis: '', umfang: true,
+        erkl: 'Der Builder trägt die neuen Texte für Dock und große Ansicht als Schlüssel ein.', ausTitel: 'ÄNDERUNG (AUSSCHNITT)', aus: "+ 'chat.dock.oeffnen': '[Text]',\n+ 'chat.gross.verkleinern': '[Text]',", akt: ['In VS Code öffnen', 'Ganze Änderung'] },
+      { id: 'a2', zeit: '1 min', verb: 'ändert', art: 'aendert', ziel: 'scripts/leitstand-server.mjs', hinweis: 'außerhalb Umfang', umfang: false,
+        erkl: 'Änderung an einer Server-Datei, obwohl das Arbeitspaket „keine Serveränderung“ sagt. Das Review prüft das ohnehin; du kannst hier schon nachfragen oder abbrechen.', ausTitel: 'ÄNDERUNG (AUSSCHNITT)', aus: '[geänderte Zeilen]', akt: ['In VS Code öffnen', 'Ganze Änderung', 'Arbeitspaket: Umfang'] },
+      { id: 'a3', zeit: '2 min', verb: 'führt', art: 'fuehrt', ziel: 'npm run check', hinweis: '', umfang: true,
+        erkl: 'Der Builder prüft seinen Zwischenstand mit der vollen Prüfung.', ausTitel: 'AUSGABE (LETZTE ZEILEN)', aus: '[Ausgabe des Befehls]', akt: ['Ganze Ausgabe', 'Im Terminal wiederholen'] },
+      { id: 'a4', zeit: '4 min', verb: 'nutzt', art: 'nutzt', ziel: 'Skill frontend-design', hinweis: 'vorgesehen', umfang: true,
+        erkl: 'Ein im Arbeitspaket vorgesehener Skill wurde geladen.', ausTitel: '', aus: '', akt: ['Skill in der Werkstatt'] },
+      { id: 'a5', zeit: '6 min', verb: 'ändert', art: 'aendert', ziel: 'public/leitstand/shell.js', hinweis: '', umfang: true,
+        erkl: 'Die Chatspalte wird zum Dock; der Kopf-Knopf steuert dasselbe Dock.', ausTitel: 'ÄNDERUNG (AUSSCHNITT)', aus: '[geänderte Zeilen]', akt: ['In VS Code öffnen', 'Ganze Änderung'] },
+      { id: 'a6', zeit: '9 min', verb: 'ändert', art: 'aendert', ziel: 'public/leitstand/views/chat.js', hinweis: '', umfang: true,
+        erkl: 'Große Ansicht nach Vorlage, gleiche IDs wie bisher.', ausTitel: 'ÄNDERUNG (AUSSCHNITT)', aus: '[geänderte Zeilen]', akt: ['In VS Code öffnen', 'Ganze Änderung'] },
+      { id: 'a7', zeit: '12 min', verb: 'liest', art: 'liest', ziel: 'docs/design/vorlage-v10/experience.js', hinweis: '', umfang: true,
+        erkl: 'Der Builder liest die Vorlage für das Dock nach.', ausTitel: '', aus: '', akt: ['In VS Code öffnen'] },
+      { id: 'a8', zeit: '15 min', verb: 'liest', art: 'liest', ziel: 'features/F44/feature.md', hinweis: '', umfang: true,
+        erkl: 'Akte und Prüfpunkte gelesen.', ausTitel: '', aus: '', akt: ['Akte öffnen'] },
+      { id: 'a9', zeit: '18 min', verb: 'liest', art: 'liest', ziel: 'CLAUDE.md', hinweis: '', umfang: true,
+        erkl: 'Start des Laufs: Regeln des Projekts gelesen.', ausTitel: '', aus: '', akt: ['In VS Code öffnen'] }
+    ];
+    const passt = (r) => filterId === 'alle' || (filterId === 'warn' ? !r.umfang : r.art === filterId);
+    const aktivitaet = roh.filter(passt).map((r) => {
+      const an = r.id === gewaehlt;
+      return {
+        zeit: r.zeit, verb: r.verb === 'führt' ? 'führt aus' : r.verb, verbStil: verbStil(r.verb), ziel: r.ziel, hinweis: r.hinweis,
+        hinweisStil: r.hinweis ? 'flex-shrink:0;font-size:10.5px;padding:2px 8px;border-radius:999px;' + (r.umfang ? 'color:#9caeb5;border:1px solid #ffffff30' : 'color:#dbc08c;border:1px solid #dbc08c88') : 'display:none',
+        an: an ? 'true' : 'false', waehlen: () => this.setState({ gewaehlt: r.id }),
+        stil: 'display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border-radius:10px;cursor:pointer;color:#f0ede4;' + (an ? 'background:#8bd8c11a;border:1px solid #8bd8c166' : (!r.umfang ? 'background:#dbc08c0f;border:1px solid #dbc08c44' : 'background:none;border:1px solid transparent'))
+      };
+    });
+    const g = roh.find((r) => r.id === gewaehlt) || roh[0];
+    const d = {
+      verb: g.verb === 'führt' ? 'führt aus' : g.verb, verbStil: verbStil(g.verb), ziel: g.ziel, erklaerung: g.erkl,
+      hatAusschnitt: !!g.aus, ausschnittTitel: g.ausTitel, ausschnitt: g.aus,
+      umfang: g.umfang ? 'ja, laut Arbeitspaket' : 'nein, außerhalb des Umfangs', umfangStil: g.umfang ? 'color:#8bd8c1' : 'color:#dbc08c',
+      aktionen: g.akt
+    };
+    const knopf = (an) => 'min-height:32px;padding:0 10px;border-radius:999px;cursor:pointer;font-size:11.5px;' + (an ? 'background:#8bd8c11f;border:1px solid #8bd8c1;color:#f0ede4' : 'background:none;border:1px solid #ffffff30;color:#c9d3d6');
+    const filter = [['alle', 'Alle'], ['aendert', 'Ändert'], ['fuehrt', 'Befehle'], ['nutzt', 'Fähigkeiten'], ['warn', 'Warnungen']].map(([id, text]) => ({
+      text, an: id === filterId ? 'true' : 'false', stil: knopf(id === filterId), waehlen: () => this.setState({ filter: id })
+    }));
+
+    const sChip = (s) => 'align-self:flex-start;font-size:10px;padding:1px 7px;border-radius:999px;' + (s === 'erledigt' ? 'color:#8bd8c1;border:1px solid #8bd8c166' : s === 'läuft' ? 'color:#dbc08c;border:1px solid #dbc08c88' : 'color:#9caeb5;border:1px solid #ffffff30');
+    const schritte = [['Plan', 'erledigt'], ['Freigabe', 'erledigt'], ['Bau', 'läuft'], ['Prüfschritt', 'offen'], ['Review', 'offen'], ['Sichern', 'offen'], ['Merge', 'offen']].map(([name, status], i) => ({
+      nr: String(i + 1), name, status, chipStil: sChip(status),
+      stil: 'display:flex;flex-direction:column;gap:4px;padding:10px;border-radius:10px;background:#162832;border:1px solid ' + (status === 'läuft' ? '#dbc08c' : '#ffffff1a')
+    }));
+
+    const punkt = (ok) => 'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + (ok ? '#8bd8c1' : '#dbc08c');
+    const dateien = [
+      { pfad: 'public/leitstand/views/chat.js', art: 'geändert', punkt: punkt(true) },
+      { pfad: 'public/leitstand/shell.js', art: 'geändert', punkt: punkt(true) },
+      { pfad: 'public/leitstand/i18n/de.js', art: 'geändert', punkt: punkt(true) },
+      { pfad: 'public/leitstand/style.css', art: 'geändert', punkt: punkt(true) },
+      { pfad: 'scripts/leitstand-server.mjs', art: 'geändert', punkt: punkt(false) }
+    ];
+    const oChip = (s) => 'font-size:10px;padding:1px 7px;border-radius:999px;' + (s === 'fertig' ? 'color:#8bd8c1;border:1px solid #8bd8c166' : 'color:#dbc08c;border:1px solid #dbc08c88');
+    const outputs = [
+      { titel: 'Plan', wer: 'Challenger · Schnitt 8a/8b', status: 'fertig', chipStil: oChip('fertig'), inhalt: 'Fünf Entscheidungen, Umfang ohne Serveränderung, Schätzung 0,3–0,5 AT.' },
+      { titel: 'Freigabe', wer: 'Du', status: 'fertig', chipStil: oChip('fertig'), inhalt: 'Freigegeben mit Begründung: [deine Begründung].' },
+      { titel: 'Bau', wer: 'Builder · Claude Code', status: 'läuft', chipStil: oChip('läuft'), inhalt: 'Noch kein Bericht. Er kommt am Ende des Laufs im Format geändert / geprüft / erfolgreich / Blocker.' }
+    ];
+
+    return {
+      arbeitet, ruhig: !arbeitet, aktivitaet, d, filter, schritte, dateien, outputs,
+      anzahl: '[n]',
+      aktuell: 'ändert public/leitstand/i18n/de.js',
+      kopfChip: arbeitet ? 'Workforce arbeitet · F44 WS-8a' : 'Gerade läuft nichts',
+      kopfPunkt: 'width:8px;height:8px;border-radius:50%;background:' + (arbeitet ? '#dbc08c' : '#9caeb5'),
+      kopfChipStil: 'text-decoration:none;display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:999px;font-size:12.5px;color:#f0ede4;' + (arbeitet ? 'background:#dbc08c1a;border:1px solid #dbc08c' : 'background:none;border:1px solid #ffffff30'),
+      zustandUmschalten: () => this.setState({ ruhig: arbeitet })
+    };
+  }
+}
+</script>
+</body>
+</html>

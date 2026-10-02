@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Zugang zu Chat und Terminal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#10212b}
+a{color:#8bd8c1}a:hover{color:#f0ede4}
+button,textarea{font:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 720px; box-sizing: border-box; display: flex; background: #10212b; color: #f0ede4; font-family: Arial, Helvetica, sans-serif; font-size: 14px; overflow: hidden; position: relative">
+
+<nav aria-label="Hauptnavigation" style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 34px 20px; border-right: 1px solid #ffffff14; display: flex; flex-direction: column; gap: 6px">
+<div style="text-align: center; padding-bottom: 40px">
+<div style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; letter-spacing: 6px">JARVIS</div>
+<div style="font-size: 10px; letter-spacing: 3px; color: #9caeb5; margin-top: 6px">AI WORKFORCE</div>
+</div>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Produktübersicht</a>
+<a href="#" aria-current="page" style="text-decoration: none; color: #f0ede4; padding: 12px 14px; border-radius: 10px; background: #ffffff08; border-left: 3px solid #8bd8c1">Roadmap</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entwicklung</a>
+<a href="#" style="text-decoration: none; color: #9caeb5; padding: 12px 14px">Entscheidungen</a>
+</nav>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; min-width: 0">
+<header style="height: 84px; flex-shrink: 0; box-sizing: border-box; padding: 0 32px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid #ffffff0b">
+<span style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PROJEKT</span>
+<span style="font-size: 15px">AI Workforce</span>
+<div style="flex-grow: 1"></div>
+<button type="button" onClick="{{dockUmschalten}}" aria-pressed="{{dockAn}}" style="{{jarvisStil}}">
+<span style="width: 14px; height: 14px; border-radius: 50%; background: #dbc08c55; border: 1px solid #dbc08c"></span>Frag Jarvis</button>
+<span style="width: 1px; height: 24px; background: #ffffff26"></span>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"></path></svg>VS Code</a>
+<a href="Main.dc.html" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="m4 7 5 5-5 5M12 18h8"></path></svg>Terminal</a>
+<a href="#" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid #ffffff30; color: #f0ede4; font-size: 13px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="1.8" aria-hidden="true"><path d="M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.6 11.6 0 0 0-6 0C6.8 2.8 5.8 3.1 5.8 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4.4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"></path></svg>GitHub</a>
+</header>
+
+<main style="padding: 32px 48px; display: flex; flex-direction: column; gap: 16px">
+<div style="font-size: 11px; letter-spacing: 3px; color: #9caeb5">PRODUKTPLANUNG</div>
+<h1 style="margin: 0; font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 40px">AI Workforce · Roadmap</h1>
+<div style="height: 360px; border-radius: 16px; border: 1px dashed #ffffff26; display: flex; align-items: center; justify-content: center; color: #9caeb5">[beliebige Seite des Leitstands]</div>
+</main>
+</div>
+
+<sc-if value="{{dockOffen}}" hint-placeholder-val="{{ true }}">
+<section aria-label="Jarvis-Dock" style="position: absolute; right: 28px; bottom: 96px; width: 380px; height: 440px; display: flex; flex-direction: column; border-radius: 16px; background: #162832; border: 1px solid #ffffff26; box-shadow: 0 18px 40px #00000066">
+<div style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 16px; border-bottom: 1px solid #ffffff12">
+<span style="font-family: Georgia, 'Times New Roman', serif; font-size: 16px">Jarvis</span>
+<div style="flex-grow: 1"></div>
+<a href="Main.dc.html" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #8bd8c180; color: #f0ede4; font-size: 12px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8bd8c1" stroke-width="2" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>Große Ansicht</a>
+<button type="button" onClick="{{dockUmschalten}}" aria-label="Dock schließen" style="width: 34px; height: 34px; border-radius: 8px; background: none; border: 0; color: #9caeb5; cursor: pointer; padding: 0">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+</div>
+<div style="flex-grow: 1; padding: 16px; color: #9caeb5; font-size: 13px; line-height: 1.5">[Chatverlauf im Dock]</div>
+<div style="padding: 12px; border-top: 1px solid #ffffff12">
+<label for="dock-eingabe" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Nachricht an Jarvis</label>
+<textarea id="dock-eingabe" rows="2" placeholder="Frag Jarvis …" style="width: 100%; box-sizing: border-box; resize: none; border-radius: 10px; border: 1px solid #ffffff26; background: #10212b; color: #f0ede4; padding: 8px 10px"></textarea>
+</div>
+</section>
+</sc-if>
+
+<button type="button" onClick="{{dockUmschalten}}" aria-label="Jarvis öffnen" style="position: absolute; right: 28px; bottom: 24px; width: 56px; height: 56px; border-radius: 50%; background: #dbc08c33; border: 1px solid #dbc08c; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center">
+<span style="width: 22px; height: 22px; border-radius: 50%; background: #dbc08c88"></span></button>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const dockOffen = st.dockOffen ?? true;
+    return {
+      dockOffen,
+      dockAn: dockOffen ? 'true' : 'false',
+      dockUmschalten: () => this.setState({ dockOffen: !dockOffen }),
+      jarvisStil: 'display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:10px;cursor:pointer;font-size:13px;color:#f0ede4;' + (dockOffen ? 'background:#dbc08c1f;border:1px solid #dbc08c' : 'background:none;border:1px solid #ffffff30')
+    };
+  }
+}
+</script>
+</body>
+</html>
