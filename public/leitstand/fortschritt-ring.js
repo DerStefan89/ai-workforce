@@ -6,7 +6,7 @@
  * „Alle Produkte“ (H1) denselben Ring zeigen.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/dashboard.js (Produktfortschritt B2, Zuletzt umgesetzt B12)
+ * - public/leitstand/views/dashboard.js (Karte Fortschritt und Zuletzt umgesetzt, F46 D1)
  * - public/leitstand/views/projekte-uebersicht.js (Ring „Erfasste Einträge abgenommen“, F44 WS-6a)
  *
  * Wichtig: import-sicher (kein DOM); Zahlen über formatiereZahl (Intl, aktuelle Sprache).

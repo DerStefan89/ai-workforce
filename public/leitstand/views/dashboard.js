@@ -1,71 +1,82 @@
 /**
  * Datei: public/leitstand/views/dashboard.js
  *
- * Zweck: View `#/dashboard` „Produktübersicht“ (F44 WS-2b, Vorlage V10 d_/l_/m_uebersicht.png,
- * Abgleich F-725 Abschnitt B). Blöcke von oben nach unten:
- *  1. Kopf (B1): Eyebrow, Projektname, „Aktueller Meilenstein“ (roadmap-anzeige.js), drei
- *     Z-Knöpfe (kommt.js, E-F44-1).
- *  2. Drei Karten: Produktfortschritt (B2, Ring „x / y abgenommen“), Aktuelle Rolle (B3, aus dem
- *     Fokus-Workflow), Deployer · Mensch (B4, Z).
- *  3. Vier Werte (B5): In Arbeit, Deine Entscheidung, Abgenommen, Geplant.
- *  4. Ziel dieser Version (B6): roadmap.vision, „Ziel schärfen“ und „Zielgruppe &
- *     Erfolgskriterien“ als Z.
- *  5. Produktmanagement: statischer Einstieg nach #/produktzyklus.
- *  6. Deine nächsten Entscheidungen (B7, die ersten drei aus baueEntscheidungen) und Die
- *     Workforce gerade (B8; „Als Nächstes vorgesehen“ als Z).
- *  7. Der Weg zum Produkt (B9): alle Meilensteine kompakt (Titel, Status, „x / y abgenommen“),
- *     der aktuelle hervorgehoben; keine Featurezeilen, keine Zeitachse (F-905).
- *  8. Entwicklungsstand (B10): offene P0–P2-Findings und offene Features des aktuellen
- *     Meilensteins, höchstens acht (waehleEntwicklungsstand), Priorität lesend als Z, drei
- *     Kacheln mit offenen Workitems je Typ (F-905).
- *  9. Wer macht was (B11): Zuvor/Jetzt/Danach aus den Schritten des Fokus-Workflows.
- * 10. Zuletzt umgesetzt (B12): jüngster Lauf und sein Workflow.
- * 11. Was steckt dahinter (B13): drei Z-Knöpfe.
- * 12. Betrieb (B16): Läufe, Workflows, Startfehler als ruhige Zeile (bis WS-5).
- * 13. Leerzustand (B14): keine Workitems, keine Roadmap und keine Workflows → geführter erster
- *     Schritt statt der Blöcke 2 bis 11 (F-903: ein wartender Workflow bleibt sichtbar).
+ * Zweck: View `#/dashboard` „Produktübersicht“ — seit F46 D1 nach Design 02-produktuebersicht--Main
+ * (docs/design/abgleich-f46.md §4.1; vorher F44 WS-2b, Vorlage V10). Blöcke von oben nach unten:
+ *  1. Kopf: Eyebrow, Projektname, „Aktueller Meilenstein“; „Produkt bearbeiten“, „Architektur &
+ *     Code“ und „+ Eintrag erfassen“ als Baustein „kommt“ (Fixpaket B5 bzw. bis D4).
+ *  2. Vier gleich hohe Kopfkarten:
+ *     a) Produktmanagement (Einstieg #/produktzyklus) und Ziel dieser Version — Zielsatz aus der
+ *        Projektakte (GET …/projektakte, nur wenn eindeutig, sonst „kommt“), Link „Zielgruppe &
+ *        Erfolgskriterien“ → #/projektakte.
+ *     b) Wer arbeitet gerade: Feature in Arbeit (entwicklung-daten.js waehleFeatureInArbeit) und der
+ *        Rollen-Kreis (rollen-kreis.js) aus den Schritten seines Workflows. Ohne Feature in Arbeit,
+ *        aber mit einem nicht terminalen Ablauf (Bug, Harness, freier Auftrag) zeigt der Kreis diesen
+ *        Ablauf (fokus-daten.js waehleFokusWorkflow) — die frühere „Aktuelle Rolle“ bleibt so sichtbar.
+ *     c) Rolle im Detail (Panel des Rollen-Registers): Name, Worker, Bekommt/Liefert als „kommt“
+ *        (Fixpaket B2), „In diesem Lauf“ aus der Laufakte-Beobachtung des letzten Laufs der Rolle,
+ *        sonst „—“.
+ *     d) Fortschritt (Ring x / y abgenommen im aktuellen Meilenstein → #/roadmap) und Braucht dich
+ *        (Zahl aus baueEntscheidungen → #/attention).
+ *  3. Vier Kennzahlen: In Arbeit, Deine Entscheidung, Abgenommen, Geplant (wie F44 WS-2b).
+ *  4. „Der Weg von <Feature>“: Kopf echt, Workstream-Zeitleiste „kommt“ (Fixpaket B2/B5).
+ *  5. Kacheln Features, Bugs, Harness Improvements mit Anzahl → #/workboard.
+ *  6. Arbeitsstand mit Filter Alles · Geplant · In Arbeit · Braucht dich · Abgenommen (das
+ *     Status-Kanban aus entwicklung-daten.js baueBoard, je Spalte die ersten Karten).
+ *  7. Zuletzt umgesetzt: letztes abgenommenes Feature (aktueller Meilenstein, sonst der jüngste
+ *     davor, in Roadmap-Reihenfolge), Workstream-Ring und „Danach“ als „kommt“; darunter die letzte
+ *     Ausführung (bisheriges Verhalten, F44 B12).
+ *  8. Was steckt dahinter: drei Knöpfe „kommt“ (Code & Änderungen bis D4).
+ *  9. Betrieb: Läufe, Workflows, Startfehler als ruhige Zeile.
+ * 10. Leerzustand: keine Workitems, keine Roadmap, keine Workflows → geführter erster Schritt.
+ *
+ * Entfallen (E, abgleich §4.1) und weiter erreichbar: „Deine nächsten Entscheidungen“ (→ Braucht
+ * dich, #/attention), „Die Workforce gerade“ (→ Live-Chip), „Wer macht was“ (→ Rollen-Kreis und
+ * Rolle im Detail), Entwicklungsstand-Liste (→ #/roadmap), Vision (→ #/projektakte).
  *
  * Datenquellen: das Poll-Aggregat (abonniere, zustand.js), GET …/roadmap, GET …/workitems
- * (ungefiltert, für die Kacheln und den Leerzustand), die offenen P0/P1-Workitems
- * (attention-daten.js) und der Fokus-Nachtrag (fokus-daten.js). Die Verbrauchskarte ist seit
- * WS-2b auf #/nutzung (views/nutzung.js, F-880).
+ * (ungefiltert), GET …/auftraege (Verknüpfung Workitem ↔ Workflow), die offenen P0/P1-Workitems
+ * (attention-daten.js), GET …/projektakte (Zielsatz), die Fokus-Nachträge (fokus-daten.js) und je
+ * gewählter Rolle das Lauf-Detail ihres letzten Laufs (Beobachtung).
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initDashboardView beim Bootstrap, vor starteRouter())
  * - public/leitstand/projekt-wechsel.test.mjs (Neuladen beim Projektwechsel)
  *
  * Wichtig:
- * - Roadmap, Workitems und P0/P1 laden beim Betreten (#/dashboard) und bei jedem Projektwechsel
- *   (abonniereProjektWechsel, F-860), je mit eigenem Überholschutz — nie aus dem Poll. Das
- *   Aggregat kommt über abonniere().
- * - Der Fokus-Nachtrag (Schritte, Abnahme, aktiver Lauf) lädt nicht aus dem Poll, sondern nur,
- *   wenn die ID des Fokus-Workflows (bzw. des Workflows zum jüngsten Lauf) wechselt, beim
- *   Betreten der Seite (frischer Stand, F-899) und frühestens NACHTRAG_WIEDERHOLEN_MS nach einem
- *   Fehlschlag (neuer Versuch wie im Workboard, ohne bei einem dauerhaften Fehler jeden Tick
- *   anzufragen). Ein Projektwechsel verwirft ihn samt laufender Antworten (Generation).
- * - Jeder Block hat eigene Zustände für „lädt“ und „Fehler“; ein Fehler in einem Block blendet
- *   die anderen nicht aus — auch ein Wurf beim Rendern nicht (setzeBlock fängt ihn je Block ab).
- *   Eine defekte Quelle zeigt „nicht verfügbar“, nie 0.
- * - Die Blöcke werden einzeln und nur bei geändertem Inhalt neu geschrieben — der Poll-Tick
- *   (alle zwei Sekunden) zerstört so keinen Tastaturfokus.
- * - Keine Schreibaktion: Jede Bedienung ist ein Link, ein Sprung innerhalb der Seite, ein
- *   erneutes Laden (lesend) oder ein Z-Knopf ohne Wirkung.
- * - Projektname, Vision, Titel, IDs, Statuswerte sowie Servertexte werden nicht
- *   übersetzt und immer escaped; alle übrigen Texte über t(). Rollen erscheinen seit F44 WS-3b
- *   (F-914) mit ihrem übersetzten Namen (rollen-anzeige.js), eine unbekannte Rolle als ID.
+ * - Roadmap, Workitems, Aufträge, P0/P1 und Projektakte laden beim Betreten (#/dashboard) und bei
+ *   jedem Projektwechsel (abonniereProjektWechsel, F-860), je mit eigenem Überholschutz — nie aus
+ *   dem Poll. Das Aggregat kommt über abonniere().
+ * - Fokus-Nachträge laden bei wechselnder Workflow-ID oder wenn sich Status, Cursor oder Halt dieses
+ *   Workflows im Aggregat ändern (Prüfpass D1 cr 5 — sonst bliebe der Kreis bis zum nächsten Betreten
+ *   stehen), beim Betreten und frühestens NACHTRAG_WIEDERHOLEN_MS nach einem Fehlschlag; das
+ *   Lauf-Detail für „In diesem Lauf“ einmal je laufId (Cache bis zum Betreten/Projektwechsel). Bewusste
+ *   Ausnahme von „nie aus dem Poll“: Beides stößt render() an, also auch ein Poll-Tick, aber nur bei
+ *   einer neuen ID bzw. einem neuen Workflow-Stand — ein unveränderter Tick lädt nichts.
+ * - Jeder Block hat eigene Zustände für „lädt“ und „Fehler“; ein Wurf beim Rendern trifft nur seinen
+ *   Block (setzeBlock). Eine defekte Quelle zeigt „nicht verfügbar“, nie 0.
+ * - Blöcke werden nur bei geändertem Inhalt neu geschrieben — der Poll zerstört keinen Fokus; nach
+ *   einer Auswahl im Rollen-Register bekommt der gewählte Reiter den Fokus zurück.
+ * - Keine Schreibaktion: Links, Sprünge, Auswahl, Filter, erneutes Laden (lesend) oder „kommt“.
+ * - Projektname, Titel, IDs, Statuswerte, Zielsatz und Servertexte werden nicht übersetzt und immer
+ *   escaped; alle übrigen Texte über t().
  */
 
-import { holeRoadmap, holeWorkitems } from '../api.js'
+import { holeAuftraegeBegrenzt, holeLaufDetail, holeProjektakte, holeRoadmap, holeWorkitems } from '../api.js'
 import { baueEntscheidungen, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
-import { ladeFokusNachtrag, schrittFolge, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
+import { baueBoard, baueVerknuepfung, istNichtTerminal, SPALTEN, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from '../entwicklung-daten.js'
+import { ladeFokusNachtrag, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
 import { ring } from '../fortschritt-ring.js'
 import { formatiereDatum, formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
+import { versionsziel } from '../projektakte-anzeige.js'
 import { escapeHtml } from '../render.js'
-import { aktuellerMeilenstein, roadmapZustand, STATUS_SYMBOL, statusKategorie, waehleEntwicklungsstand, zaehleGeplant, zaehleMeilenstein } from '../roadmap-anzeige.js'
-import { rollenName, werSpalte } from '../rollen-anzeige.js'
+import { aktuellerMeilenstein, roadmapZustand, statusKategorie, zaehleGeplant, zaehleMeilenstein } from '../roadmap-anzeige.js'
+import { kreisStatus, naechsteKreisRolle, rollenKreisHtml, vorgewaehlteRolle } from '../rollen-kreis.js'
+import { workerName } from '../rollen-anzeige.js'
 import { registriere } from '../router.js'
+import { chipTypVonWorkitem, typChip } from '../typ-chip.js'
 import { abonniere } from '../zustand.js'
 
 /** Letztes Zustands-Aggregat aus dem Poll, oder null vor dem ersten Tick (bzw. nach einem Projektwechsel). */
@@ -77,8 +88,14 @@ let roadmap = null
 /** Alle Workitems: undefined = lädt, null = nicht verfügbar, sonst Liste. */
 let workitems
 
-/** Offene P0/P1-Workitems für „Deine nächsten Entscheidungen“: undefined = lädt, null = nicht verfügbar, sonst Liste. */
+/** Aufträge (Verknüpfung Workitem ↔ Workflow): undefined = lädt, null = nicht verfügbar, sonst Liste. */
+let auftraege
+
+/** Offene P0/P1-Workitems für „Braucht dich“: undefined = lädt, null = nicht verfügbar, sonst Liste. */
 let p0p1
+
+/** Antwort von GET …/projektakte: undefined = lädt, null = nicht verfügbar, sonst die Projektion. */
+let projektakte
 
 /** Fokus-Nachträge je Workflow-ID: { status: 'laedt' | 'ok' | 'fehler', daten? }. Gehalten werden nur die gerade gebrauchten IDs. */
 const nachtraege = new Map()
@@ -89,22 +106,35 @@ let nachtragGeneration = 0
 /** Frühester neuer Versuch nach einem fehlgeschlagenen Nachtrag (Millisekunden). */
 const NACHTRAG_WIEDERHOLEN_MS = 30000
 
+/** Beobachtung je laufId für „In diesem Lauf“: { status: 'laedt' | 'ok' | 'fehler', beobachtung? }. */
+const beobachtungen = new Map()
+
+/** Gewählte Rolle im Rollen-Register, oder null = vorgewählt (erste „jetzt“, sonst Builder). */
+let gewaehlteRolle = null
+
+/** Filter des Arbeitsstands: 'alles' oder eine der SPALTEN. */
+let arbeitsstandFilter = 'alles'
+
 /** Überholschutz je Lader (Muster roadmapAnfrageZaehler in views/roadmap.js). */
-const anfrageZaehler = { roadmap: 0, workitems: 0, p0p1: 0 }
+const anfrageZaehler = { roadmap: 0, workitems: 0, auftraege: 0, p0p1: 0, projektakte: 0 }
 
 /** Zuletzt geschriebenes HTML je Block — ein Block wird nur bei geändertem Inhalt neu geschrieben. */
 const blockCache = new Map()
 
-/** Anzahl der Einträge in „Deine nächsten Entscheidungen“. */
-const ENTSCHEIDUNGEN_MAX = 3
+/** Karten je Spalte im Arbeitsstand (Alles); mit Spaltenfilter bis KARTEN_GEFILTERT. */
+const KARTEN_JE_SPALTE_UEBERSICHT = 3
+const KARTEN_GEFILTERT = 12
+
+/** ID des Panels „Rolle im Detail“ (aria-controls der Rollen-Reiter). */
+const ROLLE_PANEL_ID = 'uebersicht-rolle-detail'
 
 /** Pfeil der Vorlage am Zeilenende (dekorativ). */
-const PFEIL = '<svg class="icon uebersicht-pfeil" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></svg>'
+const PFEIL = '<span class="uebersicht-pfeil" aria-hidden="true">→</span>'
 
 /** Kachelsymbole der Vorlage für Features, Bugs und Harness Improvements (dekorativ). */
 const KACHEL_SYMBOL = { FEATURE: '◇', BUG: '!', HARNESS_IMPROVEMENT: '↻' }
 
-/** Typen der drei Kacheln in Anzeigereihenfolge (B10). */
+/** Typen der drei Kacheln in Anzeigereihenfolge. */
 const KACHEL_TYPEN = ['FEATURE', 'BUG', 'HARNESS_IMPROVEMENT']
 
 // ─── Kleine Bausteine ────────────────────────────────────────────────────────
@@ -130,17 +160,6 @@ function nichtVerfuegbar() {
  */
 function textLink(hash, text) {
   return `<a class="text-link" href="${escapeHtml(hash)}">${escapeHtml(text)} <span aria-hidden="true">→</span></a>`
-}
-
-/**
- * Symbol und übersetzter Status eines Features (Kategorien aus roadmap-anzeige.js); der rohe
- * Status steht im title.
- * @param status - roher Statuswert
- * @returns HTML
- */
-function featureStatus(status) {
-  const kategorie = statusKategorie(status)
-  return `<span class="roadmap-symbol roadmap-kat-${kategorie}" aria-hidden="true">${STATUS_SYMBOL[kategorie]}</span> <span class="roadmap-status roadmap-kat-${kategorie}" title="${escapeHtml(status ?? '')}">${tHtml(`roadmap.status.${kategorie}`)}</span>`
 }
 
 /**
@@ -173,54 +192,22 @@ function setzeBlock(id, erzeuger) {
     console.error(`dashboard: Block ${id} fehlt`)
     return
   }
+  // Ein Neuschreiben (z. B. nach dem Nachladen von „In diesem Lauf“) darf den Fokus eines Reiters oder
+  // Filters nicht verlieren: das fokussierte Element wird über id bzw. data-arbeitsstand-filter
+  // wiedergefunden. Element fehlt außerhalb des Browsers (node:test mit Schein-DOM).
+  const aktiv = typeof Element !== 'undefined' && document.activeElement instanceof Element && element.contains(document.activeElement) ? document.activeElement : null
+  const filter = aktiv?.getAttribute('data-arbeitsstand-filter') ?? null
+  const ziel = aktiv?.getAttribute('href') ?? null
+  let fokusSelektor = null
+  if (aktiv !== null && aktiv.id !== '') fokusSelektor = `#${CSS.escape(aktiv.id)}`
+  else if (filter !== null) fokusSelektor = `[data-arbeitsstand-filter="${CSS.escape(filter)}"]`
+  else if (ziel !== null) fokusSelektor = `a[href="${CSS.escape(ziel)}"]`
   element.innerHTML = html
   blockCache.set(id, html)
+  if (fokusSelektor !== null) element.querySelector(fokusSelektor)?.focus()
 }
 
 // ─── Abgeleitete Lage ─────────────────────────────────────────────────────────
-
-/**
- * Fokus-Workflow, jüngster Lauf, dessen Workflow und die Nachträge dazu.
- * @returns { zustand, fokus, fokusNachtrag, lauf, laufWorkflow, laufNachtrag }
- */
-function lage() {
-  const zustand = letzterZustand
-  const workflows = Array.isArray(zustand?.workflows) ? zustand.workflows : null
-  const fokus = waehleFokusWorkflow(workflows)
-  const lauf = waehleLetztenLauf(zustand?.laeufe ?? null)
-  // „Sein Workflow“: derselbe Auftrag (auftragsbezug des Laufs = auftragId des Workflows).
-  const auftragId = lauf?.auftragsbezug?.auftragId ?? null
-  const laufWorkflow = auftragId !== null && workflows !== null ? (workflows.find((w) => w.auftragId === auftragId) ?? null) : null
-  return {
-    zustand,
-    fokus,
-    fokusNachtrag: fokus === null ? null : (nachtraege.get(fokus.workflowId) ?? null),
-    lauf,
-    laufWorkflow,
-    laufNachtrag: laufWorkflow === null ? null : (nachtraege.get(laufWorkflow.workflowId) ?? null),
-  }
-}
-
-/**
- * Lädt den Nachtrag für jeden gebrauchten Workflow, dessen ID noch nicht geladen ist, und
- * verwirft die nicht mehr gebrauchten (lädt also nur bei wechselnder ID).
- * @param workflowsGebraucht - Fokus-Workflow und Workflow zum jüngsten Lauf (je oder null)
- */
-function stelleNachtraegeSicher(workflowsGebraucht) {
-  const gebraucht = new Map(workflowsGebraucht.filter((w) => w !== null).map((w) => [w.workflowId, w]))
-  for (const id of [...nachtraege.keys()]) if (!gebraucht.has(id)) nachtraege.delete(id)
-  for (const [id, workflow] of gebraucht) {
-    const eintrag = nachtraege.get(id)
-    if (eintrag !== undefined && !(eintrag.status === 'fehler' && Date.now() >= eintrag.wiederholenAb)) continue
-    nachtraege.set(id, { status: 'laedt' })
-    const generation = nachtragGeneration
-    void ladeFokusNachtrag(workflow).then((daten) => {
-      if (generation !== nachtragGeneration || nachtraege.get(id)?.status !== 'laedt') return
-      nachtraege.set(id, daten === null ? { status: 'fehler', wiederholenAb: Date.now() + NACHTRAG_WIEDERHOLEN_MS } : { status: 'ok', daten })
-      render()
-    })
-  }
-}
 
 /**
  * Zustand der Roadmap samt aktuellem Meilenstein.
@@ -232,7 +219,102 @@ function roadmapLage() {
 }
 
 /**
- * Text für einen fehlenden aktuellen Meilenstein (B1, B9, B10).
+ * Feature in Arbeit samt Workflow, jüngster Lauf, dessen Workflow, die Nachträge dazu und der
+ * Status des Rollen-Kreises.
+ * @returns { zustand, feature, ablaufOhneFeature, featureLaedt, kreisWorkflow, kreisNachtrag, kreis, lauf, laufWorkflow, laufNachtrag }
+ */
+function lage() {
+  const zustand = letzterZustand
+  const workflows = Array.isArray(zustand?.workflows) ? zustand.workflows : null
+  const verknuepfung = baueVerknuepfung(zustand === null ? undefined : (zustand.workflows ?? null), auftraege)
+  const { meilenstein } = roadmapLage()
+  const feature = waehleFeatureInArbeit(workitems, verknuepfung, meilenstein)
+  // Ohne Feature in Arbeit: ein laufender bzw. wartender Ablauf ohne Feature (Prüfpass D1 qa 2).
+  const fokus = waehleFokusWorkflow(workflows)
+  const ablaufOhneFeature = feature === null && fokus !== null && istNichtTerminal(fokus) ? fokus : null
+  const kreisWorkflow = feature?.workflow ?? ablaufOhneFeature
+  const kreisNachtrag = kreisWorkflow === null ? null : (nachtraege.get(kreisWorkflow.workflowId) ?? null)
+  const lauf = waehleLetztenLauf(zustand?.laeufe ?? null)
+  // „Sein Workflow“: derselbe Auftrag (auftragsbezug des Laufs = auftragId des Workflows).
+  const auftragId = lauf?.auftragsbezug?.auftragId ?? null
+  const laufWorkflow = auftragId !== null && workflows !== null ? (workflows.find((w) => w.auftragId === auftragId) ?? null) : null
+  return {
+    zustand,
+    feature,
+    ablaufOhneFeature,
+    featureLaedt: workitems === undefined || roadmapZustand(roadmap) === 'laedt' || verknuepfung.laedt.length > 0,
+    kreisWorkflow,
+    kreisNachtrag,
+    kreis: kreisStatus(kreisNachtrag?.status === 'ok' ? kreisNachtrag.daten : null),
+    lauf,
+    laufWorkflow,
+    laufNachtrag: laufWorkflow === null ? null : (nachtraege.get(laufWorkflow.workflowId) ?? null),
+  }
+}
+
+/**
+ * Stand eines Workflows im Aggregat, der einen neuen Nachtrag rechtfertigt: Status, Cursor und Halt.
+ * @param workflow - Workflow-Eintrag des Aggregats
+ * @returns Vergleichsschlüssel
+ */
+function workflowStand(workflow) {
+  return [workflow.status, workflow.aktiverSchrittId ?? '', workflow.naechster?.art ?? '', workflow.naechster?.schrittId ?? ''].join('|')
+}
+
+/**
+ * Lädt den Nachtrag für jeden gebrauchten Workflow, dessen ID noch nicht geladen ist oder dessen Stand
+ * im Aggregat sich geändert hat, und verwirft die nicht mehr gebrauchten. Bei einem Neuladen wegen
+ * eines neuen Stands bleiben die alten Daten bis zur Antwort stehen (kein Flackern auf „Lädt…“).
+ * @param workflowsGebraucht - Workflow des Kreises und Workflow zum jüngsten Lauf (je oder null)
+ */
+function stelleNachtraegeSicher(workflowsGebraucht) {
+  const gebraucht = new Map(workflowsGebraucht.filter((w) => w !== null).map((w) => [w.workflowId, w]))
+  for (const id of [...nachtraege.keys()]) if (!gebraucht.has(id)) nachtraege.delete(id)
+  for (const [id, workflow] of gebraucht) {
+    const stand = workflowStand(workflow)
+    const eintrag = nachtraege.get(id)
+    const wiederholen = eintrag?.status === 'fehler' && Date.now() >= eintrag.wiederholenAb
+    if (eintrag !== undefined && eintrag.stand === stand && !wiederholen) continue
+    if (eintrag?.laedtStand === stand) continue
+    nachtraege.set(id, eintrag?.status === 'ok' ? { ...eintrag, laedtStand: stand } : { status: 'laedt', stand, laedtStand: stand })
+    const generation = nachtragGeneration
+    void ladeFokusNachtrag(workflow).then((daten) => {
+      if (generation !== nachtragGeneration || nachtraege.get(id)?.laedtStand !== stand) return
+      nachtraege.set(id, daten === null ? { status: 'fehler', stand, wiederholenAb: Date.now() + NACHTRAG_WIEDERHOLEN_MS } : { status: 'ok', stand, daten })
+      render()
+    })
+  }
+}
+
+/**
+ * Lädt die Beobachtung eines Laufs einmal (für „In diesem Lauf“); späte Antworten nach einem
+ * Projektwechsel verwirft die Generation.
+ * @param laufId - laufId des letzten Laufs der gewählten Rolle
+ */
+function stelleBeobachtungSicher(laufId) {
+  if (typeof laufId !== 'string' || laufId === '' || beobachtungen.has(laufId)) return
+  beobachtungen.set(laufId, { status: 'laedt' })
+  const generation = nachtragGeneration
+  void (async () => {
+    let eintrag
+    try {
+      const antwort = await holeLaufDetail(laufId)
+      if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
+      const detail = await antwort.json()
+      const laufakte = detail?.laufakte?.status === 'ok' ? detail.laufakte : null
+      eintrag = { status: 'ok', beobachtung: laufakte?.beobachtung ?? null }
+    } catch (fehler) {
+      console.error(`dashboard: Lauf-Detail ${laufId} nicht ladbar:`, fehler)
+      eintrag = { status: 'fehler' }
+    }
+    if (generation !== nachtragGeneration) return
+    beobachtungen.set(laufId, eintrag)
+    render()
+  })()
+}
+
+/**
+ * Text für einen fehlenden aktuellen Meilenstein.
  * @param zustand - roadmapZustand
  * @returns übersetzter Text
  */
@@ -245,19 +327,28 @@ function ohneMeilensteinText(zustand) {
 }
 
 /**
- * true, wenn der geführte erste Schritt gilt (B14): keine Workitems, keine Roadmap und keine
- * Workflows. Sind die Workflows defekt (null) oder noch nicht da, gelten die normalen Blöcke —
- * ein wartender Workflow eines neuen Produkts darf nicht verdeckt werden (F-903).
+ * true, wenn der geführte erste Schritt gilt: keine Workitems, keine Roadmap und keine Workflows.
+ * Sind die Workflows defekt (null) oder noch nicht da, gelten die normalen Blöcke — ein wartender
+ * Workflow eines neuen Produkts darf nicht verdeckt werden (F-903).
  */
 function istLeeresProdukt() {
   const workflows = letzterZustand?.workflows
   return Array.isArray(workitems) && workitems.length === 0 && roadmapZustand(roadmap) === 'nicht_vorhanden' && Array.isArray(workflows) && workflows.length === 0
 }
 
+/**
+ * Feature-Bezeichnung „<ID> · <Titel>“ (ohne Titel nur die ID).
+ * @param feature - { id, titel? }
+ * @returns Rohtext
+ */
+function featureName(feature) {
+  return typeof feature?.titel === 'string' && feature.titel.trim() !== '' ? `${feature.id} · ${feature.titel}` : String(feature?.id ?? '')
+}
+
 // ─── Blöcke ──────────────────────────────────────────────────────────────────
 
 /**
- * 1. Kopf (B1).
+ * 1. Kopf.
  * @returns HTML
  */
 function kopfBlock() {
@@ -278,81 +369,171 @@ function kopfBlock() {
 }
 
 /**
- * Karte Produktfortschritt (B2).
+ * 2a. Karte Produktmanagement und Ziel dieser Version.
  * @returns HTML
  */
-function fortschrittKarte() {
-  const { zustand, meilenstein } = roadmapLage()
-  let inhalt
-  if (meilenstein !== null) {
-    const { abgenommen, gesamt } = zaehleMeilenstein(meilenstein)
-    inhalt = `${ring(abgenommen, gesamt, { label: t('uebersicht.ring.label', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) }) })}
-      <div>
-        <span class="eyebrow">${tHtml('uebersicht.fortschritt.eyebrow')}</span>
-        <h2>${escapeHtml(formatiereZahl(abgenommen))} / ${escapeHtml(formatiereZahl(gesamt))} <span>${tHtml('uebersicht.fortschritt.abgenommen')}</span></h2>
-        <p>${tHtml('uebersicht.fortschritt.text', { titel: meilenstein.titel })}</p>
-        <button type="button" class="text-link" data-sprung="uebersicht-stand">${tHtml('uebersicht.fortschritt.link')} <span aria-hidden="true">→</span></button>
-      </div>`
-  } else {
-    const text = zustand === 'ungueltig' || zustand === 'fehler' ? nichtVerfuegbar() : escapeHtml(ohneMeilensteinText(zustand))
-    inhalt = `<div>
-        <span class="eyebrow">${tHtml('uebersicht.fortschritt.eyebrow')}</span>
-        <p>${text}</p>
-      </div>`
-  }
-  return `<article class="cockpit-progress">${inhalt}</article>`
+function produktKarte() {
+  const phasen = ['strategie', 'nutzerwissen', 'planung', 'entwicklung', 'veroeffentlichung', 'lernen'].map((p) => tHtml(`uebersicht.zyklus.phase.${p}`)).join(' · ')
+  let ziel
+  const gefunden = versionsziel(projektakte)
+  const zielStatus = projektakte?.versionsziel?.status
+  if (projektakte === undefined) ziel = laedt()
+  else if (projektakte === null) ziel = `<p>${nichtVerfuegbar()}</p>`
+  else if (gefunden !== null) ziel = `<p class="uebersicht-ziel-text" title="${escapeHtml(gefunden.zielsatz)}">${escapeHtml(gefunden.zielsatz)}</p>`
+  else if (zielStatus === 'fehlt') ziel = `<p class="subtle">${tHtml('uebersicht.ziel.zielfassungFehlt')}</p>`
+  else if (zielStatus === 'fehler') ziel = `<p>${nichtVerfuegbar()}</p>`
+  else ziel = `<p class="subtle">${tHtml('uebersicht.ziel.nichtEindeutig')} ${kommtBadge()}</p>`
+  return `<article class="uebersicht-karte uebersicht-produkt">
+      <div class="uebersicht-produkt-teil">
+        <span class="eyebrow">${tHtml('uebersicht.zyklus.eyebrow')}</span>
+        <h2>${tHtml('uebersicht.zyklus.titel')}</h2>
+        <p class="subtle">${phasen}</p>
+        ${textLink('#/produktzyklus', t('uebersicht.zyklus.link'))}
+      </div>
+      <div class="uebersicht-produkt-teil">
+        <span class="eyebrow">${tHtml('uebersicht.ziel.eyebrow')}</span>
+        ${ziel}
+        ${textLink('#/projektakte', t('uebersicht.ziel.zielgruppe'))}
+      </div>
+    </article>`
 }
 
 /**
- * Karte Aktuelle Rolle (B3): wartet auf Freigabe → „Deine Freigabe“, Rückfrage → „Deine
- * Rückfrage“, sonst die Rolle des laufenden Schritts, sonst „Keine aktive Rolle“.
+ * Zeile unter dem Titel in der Kreismitte: laufende Rolle, sonst Phase des Ablaufs.
  * @param l - lage()
  * @returns HTML
  */
-function rolleKarte(l) {
-  const kopf = `<span class="eyebrow">${tHtml('uebersicht.rolle.eyebrow')}</span>`
-  if (l.zustand === null) return `<article class="cockpit-role">${kopf}${laedt()}</article>`
-  if (!Array.isArray(l.zustand.workflows)) return `<article class="cockpit-role">${kopf}<p>${nichtVerfuegbar()}</p></article>`
-  if (l.fokus === null) return `<article class="cockpit-role">${kopf}<h2>${tHtml('uebersicht.rolle.keine')}</h2><small>${tHtml('uebersicht.rolle.keinAblauf')}</small></article>`
-
-  const art = l.fokus.naechster?.art
-  let titel
-  let unterzeile = ''
-  if (art === 'haltFreigabe' || art === 'haltKlaerung') {
-    titel = tHtml(art === 'haltFreigabe' ? 'uebersicht.rolle.freigabe' : 'uebersicht.rolle.rueckfrage')
-    unterzeile = `<small>${tHtml('uebersicht.rolle.menschlich')}</small>`
-  } else if (l.fokusNachtrag?.status === 'ok') {
-    const laufend = l.fokusNachtrag.daten.schritte.find((s) => s.status === 'LAEUFT') ?? null
-    titel = laufend !== null ? escapeHtml(rollenName(laufend.rolle)) : tHtml('uebersicht.rolle.keine')
-    if (laufend !== null) unterzeile = `<small>${tHtml('uebersicht.rolle.schritt')} <code>${escapeHtml(laufend.schritt_id)}</code></small>`
-  } else if (l.fokusNachtrag?.status === 'fehler') {
-    titel = nichtVerfuegbar()
-  } else {
-    titel = tHtml('uebersicht.laedt')
-  }
-  return `<article class="cockpit-role">
-      ${kopf}
-      <h2>${titel}</h2>
-      <p>${escapeHtml(titelVon({ id: l.fokus.workflowId, titel: l.fokus.ziel }))}</p>
-      ${unterzeile}
-      ${textLink(`#/workflows/${encodeURIComponent(l.fokus.workflowId)}`, t('uebersicht.rolle.link'))}
-    </article>`
+function kreisZeile(l) {
+  const jetzt = Object.entries(l.kreis).find(([, s]) => s.status === 'jetzt')
+  if (l.kreisWorkflow === null) return tHtml('uebersicht.wer.keinAblauf')
+  if (l.kreisNachtrag?.status === 'fehler') return tHtml('uebersicht.wer.schritteFehler')
+  if (l.kreisNachtrag?.status !== 'ok') return tHtml('uebersicht.laedt')
+  if (jetzt !== undefined) return tHtml('uebersicht.wer.rolleJetzt', { rolle: t(`kreis.rolle.${jetzt[0]}`) })
+  return tHtml(`uebersicht.wer.phase.${workflowPhase(l.kreisWorkflow) ?? 'unbekannt'}`)
 }
 
 /**
- * Karte Deployer · Mensch (B4, Z): kein Veröffentlichungsstatus, deshalb nur der Satz und „kommt“.
+ * 2b. Karte Wer arbeitet gerade: Feature in Arbeit und Rollen-Kreis.
+ * @param l - lage()
+ * @param auswahl - gewählte Rolle
  * @returns HTML
  */
-function deployerKarte() {
-  return `<article class="cockpit-deployer" aria-disabled="true">
-      <span class="eyebrow">${tHtml('uebersicht.deployer.eyebrow')}</span>
-      <h2>${tHtml('uebersicht.deployer.titel')} ${kommtBadge()}</h2>
-      <small>${tHtml('uebersicht.deployer.text')}</small>
+function werKarte(l, auswahl) {
+  const feature = l.feature
+  const kopf = feature !== null ? tHtml('uebersicht.wer.eyebrowMit', { id: feature.id }) : tHtml('uebersicht.wer.eyebrow')
+  let mitte
+  if (feature === null && l.featureLaedt) mitte = `<span class="rk-mitte-eyebrow">${tHtml('uebersicht.laedt')}</span>`
+  else if (feature === null && l.ablaufOhneFeature !== null) {
+    const ziel = titelVon({ id: l.ablaufOhneFeature.workflowId, titel: l.ablaufOhneFeature.ziel })
+    mitte = `<span class="rk-mitte-eyebrow">${tHtml('uebersicht.wer.ablaufOhneFeature')}</span><span class="rk-mitte-titel" title="${escapeHtml(ziel)}">${escapeHtml(ziel)}</span><span class="rk-mitte-zeile">${kreisZeile(l)}</span>`
+  } else if (feature === null) mitte = `<span class="rk-mitte-eyebrow">${tHtml('uebersicht.wer.featureInArbeit')}</span><span class="rk-mitte-titel">${tHtml('uebersicht.wer.keinFeature')}</span>`
+  else mitte = `<span class="rk-mitte-eyebrow">${tHtml('uebersicht.wer.featureInArbeit')}</span><span class="rk-mitte-titel" title="${escapeHtml(featureName(feature))}">${escapeHtml(featureName(feature))}</span><span class="rk-mitte-zeile">${kreisZeile(l)}</span>`
+  return `<article class="uebersicht-karte uebersicht-wer">
+      <span class="eyebrow">${kopf}</span>
+      ${rollenKreisHtml({ status: l.kreis, auswahl, panelId: ROLLE_PANEL_ID, mitteHtml: mitte })}
     </article>`
 }
 
 /**
- * Ein Wert der Vierer-Leiste (B5).
+ * „In diesem Lauf“: Skills und Subagenten aus der Beobachtung des letzten Laufs der Rolle, sonst „—“.
+ * @param schritt - Workflow-Schritt der Rolle oder null
+ * @returns HTML
+ */
+function inDiesemLauf(schritt) {
+  const laufId = typeof schritt?.lauf_id === 'string' && schritt.lauf_id !== '' ? schritt.lauf_id : null
+  if (laufId === null) return '—'
+  const eintrag = beobachtungen.get(laufId)
+  if (eintrag === undefined || eintrag.status === 'laedt') return tHtml('uebersicht.laedt')
+  if (eintrag.status === 'fehler' || eintrag.beobachtung === null || typeof eintrag.beobachtung !== 'object') return '—'
+  const liste = (feld) => (Array.isArray(eintrag.beobachtung[feld]) ? eintrag.beobachtung[feld].filter((x) => typeof x === 'string') : [])
+  const text = (werte) => (werte.length === 0 ? t('uebersicht.detail.keine') : werte.join(', '))
+  return `${tHtml('uebersicht.detail.dateien')}<br>${tHtml('uebersicht.detail.skills', { liste: text(liste('skill_aufrufe')) })}<br>${tHtml('uebersicht.detail.agents', { liste: text(liste('subagent_aufrufe')) })}`
+}
+
+/**
+ * 2c. Karte Rolle im Detail (Panel des Rollen-Registers).
+ * @param l - lage()
+ * @param auswahl - gewählte Rolle
+ * @returns HTML
+ */
+function detailKarte(l, auswahl) {
+  const eintrag = l.kreis[auswahl] ?? { status: 'offen', schritt: null }
+  const schritt = eintrag.schritt
+  const worker = typeof schritt?.worker === 'string' ? workerName(schritt.worker) : t(`kreis.worker.${auswahl}`)
+  const laufId = typeof schritt?.lauf_id === 'string' && schritt.lauf_id !== '' ? schritt.lauf_id : null
+  const modell =
+    eintrag.status === 'jetzt' && l.kreisNachtrag?.status === 'ok' && typeof l.kreisNachtrag.daten.aktivLauf?.modellBeobachtet === 'string'
+      ? `<p class="subtle">${tHtml('uebersicht.detail.modell', { modell: l.kreisNachtrag.daten.aktivLauf.modellBeobachtet })}</p>`
+      : ''
+  const links = []
+  if (laufId !== null) links.push(textLink(`#/runs/${encodeURIComponent(laufId)}`, t('uebersicht.detail.output')))
+  if (l.kreisWorkflow !== null) links.push(textLink(`#/workflows/${encodeURIComponent(l.kreisWorkflow.workflowId)}`, t('uebersicht.rolle.link')))
+  return `<article class="uebersicht-karte uebersicht-detail" id="${ROLLE_PANEL_ID}" role="tabpanel" aria-labelledby="rollen-kreis-tab-${auswahl}" data-status="${eintrag.status}">
+      <span class="eyebrow">${tHtml('uebersicht.detail.eyebrow', { status: t(`kreis.status.${eintrag.status}`) })}</span>
+      <div class="uebersicht-detail-kopf"><h2>${tHtml(`kreis.rolle.${auswahl}`)}</h2><span class="subtle">${escapeHtml(worker)} · ${tHtml(`kreis.aufgabe.${auswahl}`)}</span></div>
+      ${modell}
+      <dl class="uebersicht-detail-liste">
+        <dt>${tHtml('uebersicht.detail.bekommt')}</dt><dd>${kommtBadge()}</dd>
+        <dt>${tHtml('uebersicht.detail.liefert')}</dt><dd>${kommtBadge()}</dd>
+        <dt>${tHtml('uebersicht.detail.lauf')}</dt><dd>${inDiesemLauf(schritt)}</dd>
+      </dl>
+      ${links.length > 0 ? `<div class="uebersicht-detail-links">${links.join('')}</div>` : ''}
+    </article>`
+}
+
+/**
+ * 2d. Fortschritt (Ring) und Braucht dich (Zahl).
+ * @returns HTML
+ */
+function fortschrittSpalte() {
+  const { zustand, meilenstein } = roadmapLage()
+  let fortschritt
+  if (meilenstein !== null) {
+    const { abgenommen, gesamt } = zaehleMeilenstein(meilenstein)
+    fortschritt = `${ring(abgenommen, gesamt, { klein: true, label: t('uebersicht.ring.label', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) }) })}
+      <p>${tHtml('uebersicht.fortschritt.zahl', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })}</p>`
+  } else {
+    fortschritt = `<p>${zustand === 'ungueltig' || zustand === 'fehler' ? nichtVerfuegbar() : escapeHtml(ohneMeilensteinText(zustand))}</p>`
+    // Prüfpass D1 (qa 5): „Erneut laden“ der Roadmap bleibt auf der Übersicht erreichbar.
+    if (zustand === 'fehler') fortschritt += `<button type="button" class="button" data-uebersicht-erneut>${tHtml('roadmap.fehler.erneut')}</button>`
+  }
+
+  let brauchtDich
+  if (letzterZustand === null) brauchtDich = laedt()
+  else {
+    const { eintraege, zaehler, defekt } = baueEntscheidungen(letzterZustand, p0p1)
+    const vollstaendig = Object.values(zaehler).every((z) => typeof z === 'number')
+    if (vollstaendig) brauchtDich = `<p class="uebersicht-braucht-zahl">${tHtml('uebersicht.braucht.zahl', { anzahl: eintraege.length, zahl: formatiereZahl(eintraege.length) })}</p>`
+    else if (defekt) brauchtDich = `<p>${nichtVerfuegbar()}</p><p class="subtle">${tHtml('uebersicht.entscheidungen.defekt')}</p>`
+    else brauchtDich = laedt()
+  }
+  return `<div class="uebersicht-spalte">
+      <article class="uebersicht-karte uebersicht-fortschritt">
+        <span class="eyebrow">${tHtml('uebersicht.fortschritt.titel')}</span>
+        ${fortschritt}
+        ${textLink('#/roadmap', t('uebersicht.fortschritt.stand'))}
+      </article>
+      <article class="uebersicht-karte uebersicht-braucht">
+        <span class="eyebrow">${tHtml('uebersicht.braucht.titel')}</span>
+        ${brauchtDich}
+        <p class="subtle">${tHtml('uebersicht.braucht.text')}</p>
+        ${textLink('#/attention', t('uebersicht.braucht.link'))}
+      </article>
+    </div>`
+}
+
+/**
+ * 2. Die vier Kopfkarten.
+ * @param l - lage()
+ * @returns HTML
+ */
+function cockpitBlock(l) {
+  const auswahl = gewaehlteRolle ?? vorgewaehlteRolle(l.kreis)
+  return `${produktKarte()}${werKarte(l, auswahl)}${detailKarte(l, auswahl)}${fortschrittSpalte()}`
+}
+
+/**
+ * Ein Wert der Vierer-Leiste.
  * @param label - Titel
  * @param unterzeile - Erklärung
  * @param wertHtml - Zahl, „nicht verfügbar“ oder „Lädt…“ (fertiges HTML)
@@ -364,7 +545,7 @@ function wert(label, unterzeile, wertHtml, klasse = '') {
 }
 
 /**
- * Vier Werte (B5). In Arbeit = aktiverLauf.aktiv ? 1 : 0; Deine Entscheidung = wartende
+ * 3. Vier Kennzahlen. In Arbeit = aktiverLauf.aktiv ? 1 : 0; Deine Entscheidung = wartende
  * Workflows (filtereAttentionWorkflows); Abgenommen und Geplant aus dem aktuellen Meilenstein.
  * @returns HTML
  */
@@ -407,203 +588,27 @@ function werteBlock() {
 }
 
 /**
- * Ziel dieser Version (B6): die Vision unübersetzt; Schreiben ist Z.
- * @returns HTML
- */
-function zielBlock() {
-  const zustand = roadmapZustand(roadmap)
-  let text
-  if (zustand === 'laedt') text = tHtml('uebersicht.laedt')
-  else if (zustand === 'ok' && typeof roadmap.vision === 'string' && roadmap.vision.trim() !== '') text = escapeHtml(roadmap.vision)
-  else if (zustand === 'ok' || zustand === 'nicht_vorhanden') text = `<span class="subtle">${tHtml('uebersicht.ziel.leer')}</span>`
-  else text = nichtVerfuegbar()
-  return `<section class="product-brief-strip">
-      <div>
-        <div class="eyebrow">${tHtml('uebersicht.ziel.eyebrow')}</div>
-        <p>${text}</p>
-        <div class="uebersicht-brief-mehr">${kommtKnopf(t('uebersicht.ziel.zielgruppe'), { symbol: '▸' })}</div>
-      </div>
-      ${kommtKnopf(t('uebersicht.ziel.schaerfen'))}
-    </section>`
-}
-
-/**
- * Einstieg Produktmanagement (statisch).
- * @returns HTML
- */
-function produktzyklusBlock() {
-  const phasen = ['strategie', 'nutzerwissen', 'planung', 'entwicklung', 'veroeffentlichung', 'lernen'].map((p) => tHtml(`uebersicht.zyklus.phase.${p}`)).join(' · ')
-  return `<a class="cycle-entry" href="#/produktzyklus">
-      <div>
-        <span class="eyebrow">${tHtml('uebersicht.zyklus.eyebrow')}</span>
-        <strong>${tHtml('uebersicht.zyklus.titel')}</strong>
-        <p>${phasen}</p>
-      </div>
-      <span>${tHtml('uebersicht.zyklus.link')} <span aria-hidden="true">→</span></span>
-    </a>`
-}
-
-/**
- * Eine Zeile in „Deine nächsten Entscheidungen“; die Direktaktion ist ein Link.
- * @param eintrag - Eintrag aus baueEntscheidungen
- * @returns HTML
- */
-function entscheidungZeile(eintrag) {
-  const art = tHtml(`attention.art.${eintrag.art}`)
-  const eyebrow = eintrag.art === 'befund' ? `${art} · ${escapeHtml(eintrag.prioritaet)}` : art
-  let satz
-  if (eintrag.satz !== null) satz = escapeHtml(eintrag.satz)
-  else if (eintrag.art === 'startproblem') satz = escapeHtml(eintrag.fehler ?? '')
-  else satz = tHtml(`attention.satz.${eintrag.art}`)
-  const ziel = eintrag.hash ?? '#/attention'
-  return `<div class="pm-decision">
-      <div>
-        <div class="eyebrow">${eyebrow}</div>
-        <h3>${escapeHtml(eintrag.titel)}</h3>
-        <p>${satz}</p>
-      </div>
-      <a class="button" href="${escapeHtml(ziel)}">${tHtml(`uebersicht.entscheidungen.aktion.${eintrag.art}`)} <span aria-hidden="true">→</span></a>
-    </div>`
-}
-
-/**
- * Deine nächsten Entscheidungen (B7): die ersten drei Einträge aus baueEntscheidungen.
- * @returns HTML
- */
-function entscheidungenSpalte() {
-  const kopf = (anzahlHtml) => `<div class="section-label">
-      <h2>${tHtml('uebersicht.entscheidungen.titel')}</h2>
-      <a class="uebersicht-alle" href="#/attention">${tHtml('uebersicht.entscheidungen.alle')} <span aria-hidden="true">→</span>${anzahlHtml}</a>
-    </div>`
-  if (letzterZustand === null) return `<section class="pm-focus">${kopf('')}${laedt()}</section>`
-  const { eintraege, zaehler, defekt, alleLeer } = baueEntscheidungen(letzterZustand, p0p1)
-  // Die Gesamtzahl nur, wenn alle vier Quellen da sind — nie eine Teilsumme als Gesamtzahl.
-  const vollstaendig = Object.values(zaehler).every((z) => typeof z === 'number')
-  const anzahlText = vollstaendig ? tHtml('uebersicht.entscheidungen.offen', { zahl: formatiereZahl(eintraege.length) }) : defekt ? tHtml('uebersicht.nichtVerfuegbar') : tHtml('uebersicht.laedt')
-  const anzahl = `<span class="uebersicht-zaehler">${anzahlText}</span>`
-  const hinweis = defekt ? `<p class="subtle">${tHtml('uebersicht.entscheidungen.defekt')}</p>` : ''
-  let liste
-  if (eintraege.length > 0) liste = eintraege.slice(0, ENTSCHEIDUNGEN_MAX).map(entscheidungZeile).join('')
-  else if (alleLeer) liste = `<p class="pm-clear">${tHtml('uebersicht.entscheidungen.leer')}</p>`
-  else if (defekt) liste = ''
-  else liste = laedt()
-  return `<section class="pm-focus">${kopf(anzahl)}${hinweis}${liste}</section>`
-}
-
-/**
- * Die Workforce gerade (B8): Status aus aktiverLauf bzw. dem Fokus-Workflow; „Als Nächstes
- * vorgesehen“ ist Z.
+ * 4. „Der Weg von <Feature>“: Kopf echt, Zeitleiste „kommt“.
  * @param l - lage()
  * @returns HTML
  */
-function workforceSpalte(l) {
-  let titel
-  let text
-  let link = ''
-  if (l.zustand === null) {
-    titel = tHtml('uebersicht.laedt')
-    text = ''
-  } else if (l.zustand.aktiverLauf?.aktiv === true) {
-    titel = tHtml('uebersicht.workforce.laeuft')
-    const aufgabe = l.fokusNachtrag?.status === 'ok' ? l.fokusNachtrag.daten.aktivLauf?.aufgabe : null
-    text = aufgabe ? escapeHtml(aufgabe) : tHtml('uebersicht.workforce.laeuft.text')
-    const laufId = l.zustand.aktiverLauf.laufId
-    if (typeof laufId === 'string' && laufId !== '') link = textLink(`#/runs/${encodeURIComponent(laufId)}`, t('uebersicht.workforce.lauf'))
-  } else if (typeof l.zustand.aktiverLauf?.aktiv !== 'boolean') {
-    titel = nichtVerfuegbar()
-    text = ''
-  } else if (l.fokus !== null && (l.fokus.naechster?.art === 'haltFreigabe' || l.fokus.naechster?.art === 'haltKlaerung')) {
-    titel = tHtml('uebersicht.workforce.wartet')
-    text = tHtml('uebersicht.workforce.ruhig')
-    link = textLink(`#/workflows/${encodeURIComponent(l.fokus.workflowId)}`, t('uebersicht.rolle.link'))
-  } else {
-    titel = tHtml('uebersicht.workforce.keine')
-    text = tHtml('uebersicht.workforce.keine.text')
-  }
-  return `<aside class="pm-now">
-      <span class="eyebrow">${tHtml('uebersicht.workforce.eyebrow')}</span>
-      <h2>${titel}</h2>
-      ${text ? `<p>${text}</p>` : ''}
-      ${link}
-      <div class="pm-next" aria-disabled="true">
-        <span class="eyebrow">${tHtml('uebersicht.workforce.naechstes')} ${kommtBadge()}</span>
-        <p class="subtle">${tHtml('uebersicht.workforce.naechstes.leer')}</p>
+function wegBlock(l) {
+  const titel = l.feature !== null ? tHtml('uebersicht.weg.titelMit', { feature: featureName(l.feature) }) : tHtml('uebersicht.weg.titelOhne')
+  return `<div class="section-label uebersicht-weg-kopf">
+      <div>
+        <h2>${titel}</h2>
+        <p class="subtle">${tHtml('uebersicht.weg.text')}</p>
       </div>
-    </aside>`
-}
-
-/**
- * Der Weg zum Produkt (B9, F-905 nach Vorlage): alle Meilensteine kompakt, je eine Zeile mit
- * Titel, Status und „x / y abgenommen“; der aktuelle ist hervorgehoben. Keine Featurezeilen, keine
- * Zeitachse, keine Wochenspalten.
- * @returns HTML
- */
-function wegBlock() {
-  const kopf = `<div class="section-label"><h2>${tHtml('uebersicht.weg.titel')}</h2>${textLink('#/roadmap', t('uebersicht.weg.link'))}</div>`
-  const { zustand, meilenstein: aktueller } = roadmapLage()
-  let inhalt
-  if (zustand === 'fehler') {
-    inhalt = `<div class="note red"><strong>${tHtml('roadmap.fehler.titel')}</strong><p>${tHtml('roadmap.fehler.text')}</p><button type="button" class="button" data-uebersicht-erneut>${tHtml('roadmap.fehler.erneut')}</button></div>`
-  } else if (zustand === 'ungueltig') {
-    inhalt = `<div class="note red"><strong>${tHtml('roadmap.ungueltig.titel', { anzahl: roadmap.fehler.length })}</strong><p>${tHtml('roadmap.ungueltig.text')}</p></div>`
-  } else if (zustand !== 'ok') {
-    inhalt = `<p class="subtle">${escapeHtml(ohneMeilensteinText(zustand))}</p>`
-  } else if (roadmap.meilensteine.length === 0) {
-    inhalt = `<p class="subtle">${tHtml('roadmap.keineMeilensteine')}</p>`
-  } else {
-    const zeilen = roadmap.meilensteine
-      .map((m) => {
-        const { abgenommen, gesamt } = zaehleMeilenstein(m)
-        const istAktuell = m === aktueller
-        return `<li class="uebersicht-weg-zeile${istAktuell ? ' aktuell' : ''}"${istAktuell ? ' aria-current="step"' : ''}>
-            <span class="uebersicht-weg-titel">${istAktuell ? `<span class="eyebrow">${tHtml('roadmap.meilenstein.aktuell')}</span>` : ''}<strong>${escapeHtml(titelVon(m))}</strong></span>
-            <span class="uebersicht-weg-status">${featureStatus(m.status)}</span>
-            <small class="uebersicht-weg-zaehler">${tHtml('roadmap.meilenstein.abgenommen', { abgenommen: formatiereZahl(abgenommen), gesamt: formatiereZahl(gesamt) })}</small>
-          </li>`
-      })
-      .join('')
-    inhalt = `<ol class="uebersicht-weg uebersicht-weg-liste">${zeilen}</ol>`
-  }
-  return `${kopf}${inhalt}`
-}
-
-/**
- * Wer macht was (B11): Zuvor, Jetzt, Danach aus den Schritten des Fokus-Workflows, erwarteter
- * Output = workflow.ziel, Zeile zu Worker und beobachtetem Modell. Die Spalten baut werSpalte aus
- * rollen-anzeige.js (lesbarer Rollenname statt ID, F-914; gemeinsam mit dem Detail der Entwicklung).
- * @param l - lage()
- * @returns HTML
- */
-function werBlock(l) {
-  const kopf = `<div class="section-label"><h2>${tHtml('uebersicht.wer.titel')}</h2></div>`
-  if (l.zustand === null) return `${kopf}${laedt()}`
-  if (!Array.isArray(l.zustand.workflows)) return `${kopf}<p>${nichtVerfuegbar()}</p>`
-  if (l.fokus === null) return `${kopf}<p class="subtle">${tHtml('uebersicht.wer.leer')}</p>`
-  if (l.fokusNachtrag?.status === 'fehler') return `${kopf}<p>${tHtml('uebersicht.wer.fehler')}</p>`
-  if (l.fokusNachtrag?.status !== 'ok') return `${kopf}${laedt()}`
-
-  const { zuvor, jetzt, danach } = schrittFolge(l.fokus, l.fokusNachtrag.daten.schritte)
-  const art = l.fokus.naechster?.art
-  const menschlich = art === 'haltFreigabe' ? tHtml('uebersicht.rolle.freigabe') : art === 'haltKlaerung' ? tHtml('uebersicht.rolle.rueckfrage') : ''
-  const lauf = l.fokusNachtrag.daten.aktivLauf
-  const modell =
-    lauf !== null && typeof lauf.modellBeobachtet === 'string' && lauf.modellBeobachtet !== ''
-      ? tHtml('uebersicht.wer.modell', { worker: lauf.worker ?? '–', modell: lauf.modellBeobachtet })
-      : tHtml('uebersicht.wer.modellNichtBeobachtet')
-  return `${kopf}
-    <div class="execution-triptych">
-      ${werSpalte(t('uebersicht.wer.zuvor'), zuvor)}
-      ${werSpalte(t('uebersicht.wer.jetzt'), jetzt, { titelHtml: menschlich, zusatz: `<span class="model-label">${modell}</span>`, klasse: 'execution-current' })}
-      ${werSpalte(t('uebersicht.wer.danach'), danach)}
+      ${textLink('#/roadmap', t('uebersicht.weg.link'))}
     </div>
-    <div class="expected-output">
-      <span class="eyebrow">${tHtml('uebersicht.wer.output')}</span>
-      <p>${escapeHtml(titelVon({ id: '–', titel: l.fokus.ziel }))}</p>
+    <div class="uebersicht-weg-kommt" aria-disabled="true">
+      <strong>${tHtml('uebersicht.weg.zeitleiste')} ${kommtBadge()}</strong>
+      <p class="subtle">${tHtml('uebersicht.weg.zeitleiste.text')}</p>
     </div>`
 }
 
 /**
- * Drei Kacheln Features / Bugs / Harness Improvements mit der Zahl offener Workitems je Typ
+ * 5. Drei Kacheln Features / Bugs / Harness Improvements mit der Zahl offener Workitems je Typ
  * (Findings: Status OFFEN; Features: weder ABGESCHLOSSEN noch ABGEBROCHEN).
  * @returns HTML
  */
@@ -614,10 +619,10 @@ function kachelnBlock() {
     else if (workitems === null) zeile = nichtVerfuegbar()
     else {
       const anzahl = workitems.reduce((summe, w) => (w.typ === typ && (typ === 'FEATURE' ? w.status !== 'ABGESCHLOSSEN' && w.status !== 'ABGEBROCHEN' : w.status === 'OFFEN') ? summe + 1 : summe), 0)
-      zeile = tHtml('uebersicht.kachel.offen', { anzahl, zahl: formatiereZahl(anzahl) })
+      zeile = `${tHtml('uebersicht.kachel.offen', { anzahl, zahl: formatiereZahl(anzahl) })} · ${tHtml(`uebersicht.kachel.${typ}.text`)}`
     }
     return `<a class="pm-category-card" href="#/workboard">
-        <span aria-hidden="true">${KACHEL_SYMBOL[typ]}</span>
+        <span class="pm-category-symbol" aria-hidden="true">${KACHEL_SYMBOL[typ]}</span>
         <div><strong>${tHtml(`uebersicht.kachel.${typ}`)}</strong><small>${zeile}</small></div>
         ${PFEIL}
       </a>`
@@ -625,80 +630,141 @@ function kachelnBlock() {
 }
 
 /**
- * Eine Zeile des Entwicklungsstands: Titel (Link ins Workboard-Detail, außer Features ohne Akte),
- * ID und Art, Status, Priorität lesend als Z („ohne Priorität“ bei Features).
- * @param eintrag - Eintrag aus waehleEntwicklungsstand
+ * Eine Karte des Arbeitsstands.
+ * @param workitem - Workitem
+ * @param verknuepfung - aus baueBoard
  * @returns HTML
  */
-function standZeile(eintrag) {
-  const titel = `<strong>${escapeHtml(titelVon(eintrag))}</strong><small><code>${escapeHtml(eintrag.id)}</code> · ${tHtml(`uebersicht.stand.art.${eintrag.art}`)}</small>`
-  const ohneAkte = eintrag.art === 'feature' && statusKategorie(eintrag.status) === 'ohne_akte'
-  const name = ohneAkte ? `<span class="pm-item-name">${titel}</span>` : `<a class="pm-item-name" href="#/workboard/${encodeURIComponent(eintrag.id)}">${titel}</a>`
-  const status = eintrag.art === 'feature' ? featureStatus(eintrag.status) : `<span class="roadmap-status" title="${escapeHtml(eintrag.status ?? '')}">${tHtml('uebersicht.stand.offen')}</span>`
-  return `<div class="pm-status-row">${name}<span class="pm-row-status">${status}</span>${kommtKnopf(eintrag.prioritaet ?? t('uebersicht.stand.ohnePrioritaet'))}</div>`
+function arbeitsKarte(workitem, verknuepfung) {
+  const typ = chipTypVonWorkitem(workitem.typ)
+  const chip = typ === null ? `<span class="typ-chip typ-chip-neutral">${escapeHtml(String(workitem.typ ?? ''))}</span>` : typChip(typ)
+  const prio = typeof workitem.prioritaet === 'string' ? `<span class="uebersicht-karte-prio">${escapeHtml(workitem.prioritaet)}</span>` : ''
+  let zeile = escapeHtml(workitem.id)
+  if (workitem.quelle === 'feature') {
+    const phase = workflowPhase(verknuepfterWorkflow(workitem, verknuepfung))
+    zeile += ` · ${phase !== null ? tHtml(`uebersicht.wer.phase.${phase}`) : tHtml(`roadmap.status.${statusKategorie(workitem.status)}`)}`
+  }
+  return `<a class="uebersicht-arbeit-karte" href="#/workboard/${encodeURIComponent(workitem.id)}">
+      <span class="uebersicht-arbeit-kopf">${chip}${prio}</span>
+      <span class="uebersicht-arbeit-titel">${escapeHtml(titelVon(workitem))}</span>
+      <span class="subtle">${zeile}</span>
+    </a>`
 }
 
 /**
- * Entwicklungsstand (B10, F-905 nach Vorlage): offene P0–P2-Findings und offene Features des
- * aktuellen Meilensteins, zusammen höchstens acht, sortiert P0 → P1 → P2 → Features
- * (waehleEntwicklungsstand). Ändern der Priorität ist Z. Darunter „Alle ansehen“ und die drei
- * Typ-Kacheln. Fehlt eine der beiden Quellen, sagt eine Zeile, welche.
+ * 6. Arbeitsstand mit Filter: das Status-Kanban (baueBoard) mit den ersten Karten je Spalte.
  * @returns HTML
  */
-function standBlock() {
-  const kopf = `<div class="section-label"><h2 id="uebersicht-stand-titel" tabindex="-1">${tHtml('uebersicht.stand.titel')}</h2></div>`
-  const { zustand, meilenstein } = roadmapLage()
-  const { eintraege } = waehleEntwicklungsstand(meilenstein, workitems)
-  const hinweise = []
-  if (workitems === undefined || zustand === 'laedt') hinweise.push(tHtml('uebersicht.laedt'))
-  if (workitems === null) hinweise.push(tHtml('uebersicht.stand.befundeNichtVerfuegbar'))
-  if (zustand === 'fehler' || zustand === 'ungueltig') hinweise.push(tHtml('uebersicht.stand.featuresNichtVerfuegbar'))
-  let zeilen = ''
-  if (eintraege.length > 0) zeilen = `<div class="pm-work-table">${eintraege.map(standZeile).join('')}</div>`
-  else if (hinweise.length === 0) zeilen = `<p class="subtle">${tHtml('uebersicht.stand.leer')}</p>`
-  const hinweisHtml = hinweise.map((h) => `<p class="subtle">${h}</p>`).join('')
-  return `${kopf}${zeilen}${hinweisHtml}<p class="uebersicht-stand-alle">${textLink('#/workboard', t('uebersicht.stand.alle'))}</p>${kachelnBlock()}`
+function arbeitsstandBlock() {
+  const filter = ['alles', ...SPALTEN]
+    .map((f) => `<button type="button" class="uebersicht-filter" data-arbeitsstand-filter="${f}" aria-pressed="${arbeitsstandFilter === f}">${tHtml(`uebersicht.arbeitsstand.${f}`)}</button>`)
+    .join('')
+  const kopf = `<h2 class="sr-only">${tHtml('uebersicht.arbeitsstand.titel')}</h2>
+    <div class="uebersicht-filterzeile" role="group" aria-label="${tHtml('uebersicht.arbeitsstand.ansicht')}"><span class="subtle">${tHtml('uebersicht.arbeitsstand.ansicht')}</span>${filter}</div>`
+  if (workitems === undefined) return `${kopf}${laedt()}`
+  const board = baueBoard(workitems, letzterZustand === null ? undefined : (letzterZustand.workflows ?? null), auftraege)
+  if (board === null) return `${kopf}<p>${nichtVerfuegbar()}</p>`
+  const hinweis = board.fehlend.length > 0 ? `<p class="subtle">${tHtml('uebersicht.arbeitsstand.ohneVerknuepfung')}</p>` : ''
+  const spalten = arbeitsstandFilter === 'alles' ? SPALTEN : [arbeitsstandFilter]
+  const max = arbeitsstandFilter === 'alles' ? KARTEN_JE_SPALTE_UEBERSICHT : KARTEN_GEFILTERT
+  const html = spalten
+    .map((spalte) => {
+      const daten = board.spalten[spalte]
+      const karten = daten.karten.slice(0, max)
+      const weitere = daten.anzahl - karten.length
+      const inhalt = karten.length === 0 ? `<p class="uebersicht-arbeit-leer">${tHtml(`uebersicht.arbeitsstand.leer.${spalte}`)}</p>` : karten.map((w) => arbeitsKarte(w, board.verknuepfung)).join('')
+      const mehr = weitere > 0 ? textLink('#/workboard', t('uebersicht.arbeitsstand.weitere', { anzahl: weitere, zahl: formatiereZahl(weitere) })) : ''
+      return `<section class="uebersicht-arbeit-spalte" data-spalte="${spalte}" aria-label="${tHtml(`uebersicht.arbeitsstand.${spalte}`)}">
+          <div class="uebersicht-arbeit-spaltenkopf"><span>${tHtml(`uebersicht.arbeitsstand.${spalte}`)}</span><span class="uebersicht-zaehler">${escapeHtml(formatiereZahl(daten.anzahl))}</span></div>
+          ${inhalt}
+          ${mehr}
+        </section>`
+    })
+    .join('')
+  return `${kopf}${hinweis}<div class="uebersicht-arbeit-board${arbeitsstandFilter === 'alles' ? '' : ' gefiltert'}">${html}</div>`
 }
 
 /**
- * Zuletzt umgesetzt (B12): der jüngste Lauf und sein Workflow, Schritte „x/y“ als kleiner Ring.
+ * Die letzte Ausführung (bisheriges „Zuletzt umgesetzt“, F44 B12) als ruhige Zeile mit Links.
+ * @param l - lage()
+ * @returns HTML
+ */
+function letzteAusfuehrung(l) {
+  if (l.zustand === null) return laedt()
+  if (!Array.isArray(l.zustand.laeufe)) return `<p>${nichtVerfuegbar()}</p>`
+  if (l.lauf === null) return `<p class="subtle">${tHtml('uebersicht.zuletzt.leer')}</p>`
+  const titel = titelVon({ id: titelVon({ id: l.lauf.laufId, titel: l.lauf.auftragsbezug?.titel }), titel: l.laufWorkflow?.ziel })
+  const ergebnis = l.lauf.ergebnis ?? l.lauf.laufStatus?.status ?? null
+  const zeit = l.lauf.zeitpunkt ? ` · <time datetime="${escapeHtml(l.lauf.zeitpunkt)}">${escapeHtml(formatiereDatum(l.lauf.zeitpunkt, { dateStyle: 'medium', timeStyle: 'short' }))}</time>` : ''
+  let schritte = ''
+  if (l.laufNachtrag?.status === 'ok') {
+    const liste = l.laufNachtrag.daten.schritte
+    const erledigt = liste.filter((s) => s.status === 'ERFOLGREICH').length
+    schritte = ` · ${tHtml('uebersicht.zuletzt.schritte', { anzahl: liste.length, erledigt: formatiereZahl(erledigt), gesamt: formatiereZahl(liste.length) })}`
+  }
+  const links = [textLink(`#/runs/${encodeURIComponent(l.lauf.laufId)}`, t('uebersicht.zuletzt.lauf'))]
+  if (l.laufWorkflow !== null) links.push(textLink(`#/workflows/${encodeURIComponent(l.laufWorkflow.workflowId)}`, t('uebersicht.rolle.link')))
+  return `<p class="uebersicht-letzter-lauf"><span class="eyebrow">${tHtml('uebersicht.zuletzt.ausfuehrung')}</span> <strong>${escapeHtml(titel)}</strong> · ${tHtml('uebersicht.zuletzt.ergebnis')} ${ergebnis === null ? tHtml('uebersicht.zuletzt.offen') : `<code>${escapeHtml(ergebnis)}</code>`}${zeit}${schritte}</p>
+    <div class="action-row">${links.join('')}</div>`
+}
+
+/**
+ * Das zuletzt abgenommene Feature: im aktuellen Meilenstein das letzte ABGESCHLOSSEN in
+ * Roadmap-Reihenfolge, sonst im jüngsten Meilenstein davor mit einem solchen (ohne aktuellen
+ * Meilenstein: vom letzten rückwärts). Ein Abnahmedatum gibt es nicht — die Reihenfolge ist die der
+ * Roadmap (Prüfpass D1 qa 10).
+ * @param daten - gültige Roadmap-Projektion
+ * @returns { feature, meilenstein } oder null
+ */
+function letztesAbgenommenes(daten) {
+  const meilensteine = daten.meilensteine
+  const aktueller = aktuellerMeilenstein(daten)
+  const start = aktueller === null ? meilensteine.length - 1 : meilensteine.indexOf(aktueller)
+  for (let i = start; i >= 0; i--) {
+    const abgenommene = meilensteine[i].features.filter((f) => f?.status === 'ABGESCHLOSSEN')
+    if (abgenommene.length > 0) return { feature: abgenommene[abgenommene.length - 1], meilenstein: meilensteine[i] }
+  }
+  return null
+}
+
+/**
+ * 7. Zuletzt umgesetzt: das zuletzt abgenommene Feature (letztesAbgenommenes), Workstream-Ring und
+ * „Danach“ als „kommt“; darunter die letzte Ausführung.
  * @param l - lage()
  * @returns HTML
  */
 function zuletztBlock(l) {
-  const eyebrow = `<span class="eyebrow">${tHtml('uebersicht.zuletzt.eyebrow')}</span>`
-  if (l.zustand === null) return `<div>${eyebrow}${laedt()}</div>`
-  if (!Array.isArray(l.zustand.laeufe)) return `<div>${eyebrow}<p>${nichtVerfuegbar()}</p></div>`
-  if (l.lauf === null) return `<div>${eyebrow}<p class="subtle">${tHtml('uebersicht.zuletzt.leer')}</p></div>`
-
-  const titel = titelVon({ id: titelVon({ id: l.lauf.laufId, titel: l.lauf.auftragsbezug?.titel }), titel: l.laufWorkflow?.ziel })
-  const ergebnis = l.lauf.ergebnis ?? l.lauf.laufStatus?.status ?? null
-  const zeit = l.lauf.zeitpunkt ? ` · <time datetime="${escapeHtml(l.lauf.zeitpunkt)}">${escapeHtml(formatiereDatum(l.lauf.zeitpunkt, { dateStyle: 'medium', timeStyle: 'short' }))}</time>` : ''
-  let schritteHtml = ''
-  if (l.laufWorkflow !== null) {
-    if (l.laufNachtrag?.status === 'ok') {
-      const schritte = l.laufNachtrag.daten.schritte
-      const erledigt = schritte.filter((s) => s.status === 'ERFOLGREICH').length
-      schritteHtml = ring(erledigt, schritte.length, { klein: true, label: t('uebersicht.zuletzt.schritte', { anzahl: schritte.length, erledigt: formatiereZahl(erledigt), gesamt: formatiereZahl(schritte.length) }) })
-    } else if (l.laufNachtrag?.status === 'fehler') {
-      schritteHtml = `<p class="subtle">${tHtml('uebersicht.zuletzt.schritteNichtVerfuegbar')}</p>`
-    }
+  const zustand = roadmapZustand(roadmap)
+  let haupt
+  if (zustand === 'laedt') haupt = laedt()
+  else if (zustand !== 'ok') haupt = `<p class="subtle">${escapeHtml(ohneMeilensteinText(zustand))}</p>`
+  else {
+    const fund = letztesAbgenommenes(roadmap)
+    haupt =
+      fund === null
+        ? `<p class="subtle">${tHtml('uebersicht.zuletzt.keinFeature')}</p>`
+        : `<h2>${escapeHtml(featureName(fund.feature))}</h2>
+        <p>${tHtml('uebersicht.zuletzt.satz', { meilenstein: fund.meilenstein.titel })}</p>
+        <div class="action-row"><a class="button primary" href="#/workboard/${encodeURIComponent(fund.feature.id)}">${tHtml('uebersicht.zuletzt.ansehen')} <span aria-hidden="true">→</span></a></div>`
   }
-  const links = [textLink(`#/runs/${encodeURIComponent(l.lauf.laufId)}`, t('uebersicht.zuletzt.lauf'))]
-  if (l.laufWorkflow !== null) links.push(textLink(`#/workflows/${encodeURIComponent(l.laufWorkflow.workflowId)}`, t('uebersicht.rolle.link')))
-  return `<div class="recent-delivery">
-      <div>
-        ${eyebrow}
-        <h2>${escapeHtml(titel)}</h2>
-        <p>${tHtml('uebersicht.zuletzt.ergebnis')} ${ergebnis === null ? tHtml('uebersicht.zuletzt.offen') : `<code>${escapeHtml(ergebnis)}</code>`} · <code>${escapeHtml(l.lauf.laufId)}</code>${zeit}</p>
-        <div class="action-row">${links.join('')}</div>
+  // Der Ring der Vorlage zeigt Workstreams des Features — die sind noch keine Daten (Fixpaket B2).
+  const ringHtml = `<div class="uebersicht-zuletzt-ring" aria-disabled="true"><span class="eyebrow">${tHtml('uebersicht.zuletzt.workstreams')}</span>${kommtBadge()}</div>`
+  return `<div class="uebersicht-zuletzt">
+      <div class="uebersicht-zuletzt-haupt">
+        <span class="eyebrow">${tHtml('uebersicht.zuletzt.eyebrow')}</span>
+        ${haupt}
       </div>
-      ${schritteHtml}
-    </div>`
+      ${ringHtml}
+      <div class="uebersicht-zuletzt-danach" aria-disabled="true">
+        <span class="eyebrow">${tHtml('uebersicht.zuletzt.danach')} ${kommtBadge()}</span>
+        <p class="subtle">${tHtml('uebersicht.zuletzt.danach.text')}</p>
+      </div>
+    </div>
+    <div class="uebersicht-zuletzt-lauf">${letzteAusfuehrung(l)}</div>`
 }
 
 /**
- * Was steckt dahinter (B13): drei Z-Knöpfe.
+ * 8. Was steckt dahinter: drei Knöpfe „kommt“.
  * @returns HTML
  */
 function dahinterBlock() {
@@ -717,7 +783,7 @@ function dahinterBlock() {
 }
 
 /**
- * Betrieb (B16): Läufe, Workflows und Startfehler als ruhige Zeile mit Links.
+ * 9. Betrieb: Läufe, Workflows und Startfehler als ruhige Zeile mit Links.
  * @returns HTML
  */
 function betriebBlock() {
@@ -737,7 +803,7 @@ function betriebBlock() {
 }
 
 /**
- * Geführter erster Schritt (B14).
+ * 10. Geführter erster Schritt.
  * @returns HTML
  */
 function ersterSchrittBlock() {
@@ -759,15 +825,12 @@ function geruest() {
   return `<div id="uebersicht-b1">${l}</div>
     <div id="uebersicht-erster-schritt" hidden></div>
     <div id="uebersicht-inhalt">
-      <section class="product-cockpit" id="uebersicht-cockpit">${l}</section>
+      <section class="uebersicht-cockpit" id="uebersicht-cockpit" aria-label="${tHtml('uebersicht.cockpit')}">${l}</section>
       <div id="uebersicht-werte">${l}</div>
-      <div id="uebersicht-ziel">${l}</div>
-      <div id="uebersicht-zyklus"></div>
-      <div class="pm-focus-layout" id="uebersicht-fokus">${l}</div>
-      <section class="pm-roadmap-section" id="uebersicht-weg">${l}</section>
-      <section class="pm-roadmap-section" id="uebersicht-stand">${l}</section>
-      <section class="execution-brief" id="uebersicht-wer">${l}</section>
-      <section id="uebersicht-zuletzt">${l}</section>
+      <section class="uebersicht-weg" id="uebersicht-weg">${l}</section>
+      <div id="uebersicht-kacheln">${l}</div>
+      <section class="uebersicht-arbeitsstand" id="uebersicht-arbeitsstand">${l}</section>
+      <section class="uebersicht-zuletzt-block" id="uebersicht-zuletzt">${l}</section>
       <div id="uebersicht-dahinter"></div>
     </div>
     <div id="uebersicht-betrieb">${l}</div>`
@@ -787,7 +850,8 @@ function setzeGeruest() {
 /** Rendert alle Blöcke aus dem aktuellen Stand; jeder Block wird nur bei Änderung geschrieben. */
 function render() {
   const l = lage()
-  stelleNachtraegeSicher([l.fokus, l.laufWorkflow])
+  stelleNachtraegeSicher([l.kreisWorkflow, l.laufWorkflow])
+  stelleBeobachtungSicher(l.kreis[gewaehlteRolle ?? vorgewaehlteRolle(l.kreis)]?.schritt?.lauf_id)
   setzeBlock('uebersicht-b1', kopfBlock)
   setzeBlock('uebersicht-betrieb', betriebBlock)
 
@@ -800,14 +864,11 @@ function render() {
     setzeBlock('uebersicht-erster-schritt', ersterSchrittBlock)
     return
   }
-  setzeBlock('uebersicht-cockpit', () => fortschrittKarte() + rolleKarte(l) + deployerKarte())
+  setzeBlock('uebersicht-cockpit', () => cockpitBlock(l))
   setzeBlock('uebersicht-werte', werteBlock)
-  setzeBlock('uebersicht-ziel', zielBlock)
-  setzeBlock('uebersicht-zyklus', produktzyklusBlock)
-  setzeBlock('uebersicht-fokus', () => entscheidungenSpalte() + workforceSpalte(l))
-  setzeBlock('uebersicht-weg', wegBlock)
-  setzeBlock('uebersicht-stand', standBlock)
-  setzeBlock('uebersicht-wer', () => werBlock(l))
+  setzeBlock('uebersicht-weg', () => wegBlock(l))
+  setzeBlock('uebersicht-kacheln', kachelnBlock)
+  setzeBlock('uebersicht-arbeitsstand', arbeitsstandBlock)
   setzeBlock('uebersicht-zuletzt', () => zuletztBlock(l))
   setzeBlock('uebersicht-dahinter', dahinterBlock)
 }
@@ -835,10 +896,10 @@ async function ladeQuelle(name, abruf, uebernehmen, fehlschlag) {
   render()
 }
 
-/** Lädt die Roadmap neu (Betreten, Projektwechsel, „Erneut laden“ im Block Weg). */
+/** Lädt die Roadmap neu (Betreten, Projektwechsel). */
 function ladeRoadmap() {
   roadmap = null
-  const abruf = ladeQuelle(
+  void ladeQuelle(
     'roadmap',
     () => holeRoadmap(),
     (antwort) => {
@@ -848,54 +909,106 @@ function ladeRoadmap() {
       roadmap = { status: 'fehler', grund: fehler instanceof Error ? fehler.message : String(fehler) }
     }
   )
-  render()
-  return abruf
 }
 
-/** Lädt Roadmap, alle Workitems und P0/P1 neu und verwirft die Fokus-Nachträge (frischer Stand, F-899) — beim Betreten und beim Projektwechsel, nie aus dem Poll. */
+/**
+ * Lädt eine Liste aus einer Antwort mit einem Listenfeld.
+ * @param name - Schlüssel in anfrageZaehler
+ * @param abruf - () => Promise
+ * @param feld - Listenfeld der Antwort
+ * @param setze - (liste | null) => void
+ */
+function ladeListe(name, abruf, feld, setze) {
+  void ladeQuelle(
+    name,
+    abruf,
+    (antwort) => setze(Array.isArray(antwort?.[feld]) ? antwort[feld] : null),
+    () => setze(null)
+  )
+}
+
+/** Lädt alle Quellen neu und verwirft Nachträge und Beobachtungen (frischer Stand, F-899) — beim Betreten und beim Projektwechsel, nie aus dem Poll. */
 function ladeAlles() {
   workitems = undefined
+  auftraege = undefined
   p0p1 = undefined
+  projektakte = undefined
   nachtragGeneration++
   nachtraege.clear()
-  void ladeRoadmap()
+  beobachtungen.clear()
+  ladeRoadmap()
+  ladeListe('workitems', () => holeWorkitems(), 'workitems', (liste) => {
+    workitems = liste
+  })
+  // GET …/auftraege liefert die Liste selbst (kein Hüllobjekt, Muster views/workboard.js).
   void ladeQuelle(
-    'workitems',
-    () => holeWorkitems(),
+    'auftraege',
+    () => holeAuftraegeBegrenzt(),
     (antwort) => {
-      workitems = Array.isArray(antwort?.workitems) ? antwort.workitems : null
+      auftraege = Array.isArray(antwort) ? antwort : null
     },
     () => {
-      workitems = null
+      auftraege = null
     }
   )
+  ladeListe('p0p1', () => holeOffeneP0P1Workitems(), 'workitems', (liste) => {
+    p0p1 = liste
+  })
   void ladeQuelle(
-    'p0p1',
-    () => holeOffeneP0P1Workitems(),
+    'projektakte',
+    () => holeProjektakte(),
     (antwort) => {
-      p0p1 = Array.isArray(antwort?.workitems) ? antwort.workitems : null
+      projektakte = antwort !== null && typeof antwort === 'object' ? antwort : null
     },
     () => {
-      p0p1 = null
+      projektakte = null
     }
   )
   render()
 }
 
-/** Klick-Delegation: Sprung zum Entwicklungsstand (B2) und „Erneut laden“ der Roadmap (B9) — beide ohne Schreibwirkung. */
+/**
+ * Wählt eine Rolle im Rollen-Register und gibt dem Reiter den Fokus zurück (der Block wird neu
+ * geschrieben).
+ * @param rolle - Rollen-ID
+ * @param fokus - true, wenn der Reiter danach den Fokus bekommen soll
+ */
+function waehleRolle(rolle, fokus) {
+  gewaehlteRolle = rolle
+  render()
+  if (fokus) document.getElementById(`rollen-kreis-tab-${rolle}`)?.focus()
+}
+
+/** Klick- und Tastatur-Delegation: Rollen-Register, Filter des Arbeitsstands, „Erneut laden“ der Roadmap — ohne Schreibwirkung. */
 function initBedienung() {
-  document.getElementById('view-dashboard')?.addEventListener('click', (ereignis) => {
+  const container = document.getElementById('view-dashboard')
+  container?.addEventListener('click', (ereignis) => {
     if (!(ereignis.target instanceof Element)) return
-    const sprung = ereignis.target.closest('[data-sprung]')
-    if (sprung !== null) {
-      const ziel = document.getElementById(sprung.getAttribute('data-sprung'))
-      ziel?.scrollIntoView({ block: 'start' })
-      document.getElementById('uebersicht-stand-titel')?.focus({ preventScroll: true })
+    const reiter = ereignis.target.closest('[data-kreis-rolle]')
+    if (reiter !== null) {
+      waehleRolle(reiter.getAttribute('data-kreis-rolle'), true)
       return
     }
     if (ereignis.target.closest('[data-uebersicht-erneut]') !== null) {
-      void ladeRoadmap().then(() => document.querySelector('#view-dashboard h1')?.focus())
+      ladeRoadmap()
+      document.querySelector('#view-dashboard h1')?.focus()
+      return
     }
+    const filter = ereignis.target.closest('[data-arbeitsstand-filter]')
+    if (filter !== null) {
+      arbeitsstandFilter = filter.getAttribute('data-arbeitsstand-filter')
+      render()
+      document.querySelector(`[data-arbeitsstand-filter="${arbeitsstandFilter}"]`)?.focus()
+    }
+  })
+  container?.addEventListener('keydown', (ereignis) => {
+    if (!(ereignis.target instanceof Element)) return
+    const reiter = ereignis.target.closest('[data-kreis-rolle]')
+    if (reiter === null) return
+    const neu = naechsteKreisRolle(reiter.getAttribute('data-kreis-rolle'), ereignis.key)
+    if (neu === null) return
+    ereignis.preventDefault()
+    waehleRolle(neu, true)
   })
 }
 
@@ -908,11 +1021,12 @@ export function initDashboardView() {
     letzterZustand = zustand
     render()
   })
-  // F-860: Aggregat, Roadmap, Workitems, P0/P1 und Nachträge gehören zum Projekt — beim Wechsel
-  // verwerfen. Bis das Aggregat des neuen Projekts da ist (projekt-kontext.js stößt den Abruf an),
-  // zeigen die Blöcke „Lädt…“ statt der Daten des alten Projekts.
+  // F-860: Aggregat, Roadmap, Workitems, Aufträge, P0/P1, Projektakte und Nachträge gehören zum
+  // Projekt — beim Wechsel verwerfen. Bis das Aggregat des neuen Projekts da ist, zeigen die Blöcke
+  // „Lädt…“ statt der Daten des alten Projekts.
   abonniereProjektWechsel(() => {
     letzterZustand = null
+    gewaehlteRolle = null
     setzeGeruest()
     ladeAlles()
   })

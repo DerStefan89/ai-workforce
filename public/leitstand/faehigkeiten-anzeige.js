@@ -9,6 +9,7 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/capabilities.js
+ * - public/leitstand/rollen-kreis.js (naechsterRegisterIndex — Rollen-Register der Übersicht; F46 D1)
  * - public/leitstand/faehigkeiten-anzeige.test.mjs (node:test)
  *
  * Wichtig:

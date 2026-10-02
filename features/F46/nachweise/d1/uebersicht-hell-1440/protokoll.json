@@ -1,0 +1,25 @@
+[
+  {
+    "label": "Produktübersicht: vier Kopfkarten (Rollen-Kreis: Planner/Advisor fertig, Builder läuft), Kennzahlen, Weg („kommt“), Kacheln, Arbeitsstand, Zuletzt umgesetzt",
+    "Chat-Dock offen": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<script> im Inhalt (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "data-theme": "light",
+    "lang": "de",
+    "Nav aktiv": "Produktübersicht",
+    "Register aktiv": "(fehlt)",
+    "Rolle gewählt": "builder",
+    "Rolle im Detail": "Builder",
+    "In diesem Lauf": "—",
+    "Filter Arbeitsstand": "Alles",
+    "Roadmap-Detail": "(fehlt)",
+    "Abgeschlossene": "(fehlt)",
+    "Chat-Eingabe": "",
+    "Chat-Fehler (Senden erkannt, muss fehlen)": "(fehlt)",
+    "Fokus (id/Rolle)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

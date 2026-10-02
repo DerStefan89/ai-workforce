@@ -12530,3 +12530,30 @@ Auswirkung: Hoch — Jarvis und Product Coach sind praktisch nicht nutzbar (Bedi
 Maßnahme: Fixpaket „Arbeitsfähigkeit“, als erster Punkt vor B1, mit Messung (Zeit bis 202, bis Laufstart, bis Antwort) aus dem Hauptordner.
 Status: offen.
 Feature/Run: Entdeckt: F46 D0b.
+
+**F-988** · `TECH_DEBT` · P3 · offen
+Titel: Der Pfad der Zielfassung ist in der Projektakte fest.
+Beschreibung: GET /api/projektakte liest das Versionsziel immer aus `docs/projekt/zielfassung.md` der Repo-Wurzel. Für Kontextordner und Roadmap gibt es Registerfelder (`kontext_pfad`, `roadmap_pfad`), für die Zielfassung nicht.
+Fundstelle: `scripts/leitstand/routen-projektakte.mjs` (`ZIELFASSUNG_PFAD`).
+Auswirkung: Gering — ein Fremdprojekt mit anderer Ablage bekommt „Zielfassung fehlt“ statt seines Ziels.
+Maßnahme: Bei Bedarf ein Registerfeld `zielfassung_pfad` wie `kontext_pfad` (Fixpaket oder beim ersten Fremdprojekt).
+Status: offen.
+Feature/Run: Entdeckt: F46 D1, Prüfpass cr 9.
+
+**F-989** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Feature und Ablauf sind nur über die Auftragsreferenz verknüpft.
+Beschreibung: Der Rollen-Kreis der Übersicht findet den Ablauf eines Features nur über `workitem_referenz` des Auftrags (Click-to-Work, „Bauen“). Ein Ablauf aus einem Auftrag ohne Referenz (freier Auftrag, Chat) erscheint als „Ablauf ohne Feature“, das Feature als „Noch kein Ablauf gestartet“.
+Fundstelle: `public/leitstand/entwicklung-daten.js` (`baueVerknuepfung`, `waehleFeatureInArbeit`).
+Auswirkung: Gering — die Zuordnung ist dann unvollständig, nichts wird falsch behauptet.
+Maßnahme: Fixpaket B2 (Arbeitspaket als Daten mit Feature-Bezug).
+Status: offen.
+Feature/Run: Entdeckt: F46 D1.
+
+**F-990** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: „Zuletzt umgesetzt“ kennt kein Abnahmedatum.
+Beschreibung: Die Übersicht wählt das zuletzt abgenommene Feature nach der Reihenfolge der Roadmap, weil Akten und Roadmap kein Abnahmedatum tragen. „Danach“ hat keine maschinenlesbare Quelle und steht als „kommt“.
+Fundstelle: `public/leitstand/views/dashboard.js` (`letztesAbgenommenes`).
+Auswirkung: Gering — bei einer Abnahme außer der Reihe zeigt die Karte ein anderes Feature als das zeitlich letzte.
+Maßnahme: Fixpaket B5 (Planungs- und Statusfelder mit Datum).
+Status: offen.
+Feature/Run: Entdeckt: F46 D1, Prüfpass qa 10.

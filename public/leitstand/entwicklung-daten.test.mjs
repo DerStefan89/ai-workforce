@@ -13,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueBoard, baueVerknuepfung, KARTEN_JE_SPALTE, SPALTEN, schrittFortschritt, spalteVon, sucheWorkitems, tabFuerTyp, verknuepfterWorkflow, workflowPhase } from './entwicklung-daten.js'
+import { baueBoard, baueVerknuepfung, KARTEN_JE_SPALTE, SPALTEN, schrittFortschritt, spalteVon, sucheWorkitems, tabFuerTyp, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from './entwicklung-daten.js'
 
 const feature = (id, status, extra = {}) => ({ quelle: 'feature', typ: 'FEATURE', id, titel: `Feature ${id}`, status, ...extra })
 const finding = (id, status, prioritaet = 'P2', typ = 'BUG') => ({ quelle: 'finding', typ, id, titel: `Finding ${id}`, status, prioritaet })
@@ -288,4 +288,27 @@ test('schrittFortschritt: ERFOLGREICH zählt, ganzzahlige Prozent, leere/fehlend
   assert.deepEqual(schrittFortschritt([s('UEBERSPRUNGEN'), null]), { erledigt: 0, gesamt: 2, prozent: 0 })
   assert.deepEqual(schrittFortschritt([]), { erledigt: 0, gesamt: 0, prozent: 0 })
   assert.deepEqual(schrittFortschritt(undefined), { erledigt: 0, gesamt: 0, prozent: 0 })
+})
+
+test('F46 D1: waehleFeatureInArbeit — Feature mit laufendem Workflow vor IN_ARBEIT, Meilenstein-Reihenfolge vor Workitems', () => {
+  const workitems = [
+    { quelle: 'feature', typ: 'FEATURE', id: 'F1', titel: 'Eins', status: 'IN_ARBEIT' },
+    { quelle: 'feature', typ: 'FEATURE', id: 'F2', titel: 'Zwei', status: 'READY_FOR_TECH' },
+    { quelle: 'finding', typ: 'BUG', id: 'F-9', titel: 'Befund', status: 'OFFEN' },
+  ]
+  const auftraege = [{ auftragId: 'a2', workitem_referenz: 'workitem:feature:F2' }]
+  const laufend = baueVerknuepfung([{ workflowId: 'w2', auftragId: 'a2', status: 'LAEUFT' }], auftraege)
+  assert.deepEqual(waehleFeatureInArbeit(workitems, laufend, null), { id: 'F2', titel: 'Zwei', status: 'READY_FOR_TECH', workflow: { workflowId: 'w2', auftragId: 'a2', status: 'LAEUFT' } })
+
+  // Ohne laufenden Workflow: erstes IN_ARBEIT des Meilensteins, sonst der Workitems.
+  const fertig = baueVerknuepfung([{ workflowId: 'w2', auftragId: 'a2', status: 'ABGESCHLOSSEN' }], auftraege)
+  const meilenstein = { features: [{ id: 'F3', titel: 'Drei', status: 'ABGESCHLOSSEN' }, { id: 'F4', titel: 'Vier', status: 'IN_ARBEIT' }] }
+  assert.equal(waehleFeatureInArbeit(workitems, fertig, meilenstein).id, 'F4')
+  const ohneMeilenstein = waehleFeatureInArbeit(workitems, fertig, null)
+  assert.equal(ohneMeilenstein.id, 'F1')
+  assert.equal(ohneMeilenstein.workflow, null)
+
+  // Nichts in Arbeit, keine Quellen: null.
+  assert.equal(waehleFeatureInArbeit([{ quelle: 'feature', id: 'F5', status: 'ENTWURF' }], fertig, null), null)
+  assert.equal(waehleFeatureInArbeit(null, baueVerknuepfung(undefined, undefined), null), null)
 })

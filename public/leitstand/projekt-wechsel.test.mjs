@@ -135,6 +135,11 @@ let entscheidungW3 = 'fehlt'
  * @returns JSON-Körper
  */
 function koerperFuer(url) {
+  // F46 D1: Projektakte je Projekt (Text nennt das Projekt — für den Überholschutz-Fall).
+  if (url.includes('/projektakte')) {
+    const projekt = url.match(/projekte\/([^/]+)\/projektakte/)?.[1] ?? 'standard'
+    return { dateien: { beschreibung: { status: 'ok', pfad: 'docs/projekt/kontext/beschreibung.md', text: `## Für wen\n\nNutzer von ${projekt}` } }, versionsziel: { status: 'nicht_eindeutig', meilenstein: null } }
+  }
   // F44 WS-4a: projekt-wf mit einem Workflow im Freigabe-Halt (Detail, Aktionen, Dialog).
   if (url.includes('/projekte/projekt-wf/zustand'))
     return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'wf-1', ziel: 'Ziel WF', status: 'WARTET_FREIGABE', naechster: { art: 'haltFreigabe', schrittId: 's1' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
@@ -225,6 +230,7 @@ const { initAttentionView } = await import('./views/attention.js')
 const { initRoadmapView } = await import('./views/roadmap.js')
 const { initNutzungView } = await import('./views/nutzung.js')
 const { initWorkflowsView } = await import('./views/workflows.js')
+const { initProjektakteView } = await import('./views/projektakte.js')
 
 initWorkboardView()
 initDashboardView()
@@ -233,6 +239,7 @@ initAttentionView()
 initRoadmapView()
 initNutzungView()
 initWorkflowsView()
+initProjektakteView()
 await warte()
 
 test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart mit dem neuen Präfix', async () => {
@@ -252,8 +259,9 @@ test('F-860: nach dem Projektwechsel laden Workboard, Dashboard und Direktstart 
     assert.ok(aufrufe.some(passt), `${name} wurde nach dem Wechsel nicht mit ${neu} geladen; Aufrufe: ${aufrufe.join(', ')}`)
   }
   // F-920 (F44 WS-3b): Die Seite „Entwicklung“ ist hier (noch) nicht betreten — sie lädt beim Wechsel
-  // nichts; die Aufträge lädt nur der Direktstart. Das Laden bei offener Seite prüft der Test „F-920“ unten.
-  assert.equal(aufrufe.filter((u) => u === `${neu}/auftraege`).length, 1, `Aufrufe: ${aufrufe.join(', ')}`)
+  // nichts; die Aufträge laden der Direktstart und seit F46 D1 die Übersicht (Verknüpfung Feature ↔
+  // Ablauf für den Rollen-Kreis und den Arbeitsstand). Das Laden bei offener Seite prüft „F-920“ unten.
+  assert.equal(aufrufe.filter((u) => u === `${neu}/auftraege`).length, 2, `Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
     [],
@@ -333,8 +341,8 @@ test('F-860: Workboard-Filter gehen beim Wechsel auf „Alle“ zurück — der 
   setzeAktivesProjekt({ id: 'projekt-d', name: 'Projekt D' })
   await warte()
   assert.match(typ.innerHTML, /data-wert="" aria-pressed="true">Alle/)
-  // Ausgenommen: P0/P1 (Dashboard, Entscheidungen) und typ=FEATURE der Roadmap-Seite (F44 WS-2a) —
-  // der gesetzte Workboard-Filter war BUG.
+  // Ausgenommen: P0/P1 (Dashboard, Entscheidungen) und typ=FEATURE (seit F46 D1 lädt die Roadmap-Seite
+  // ungefiltert) — der gesetzte Workboard-Filter war BUG.
   const workitemAbrufe = aufrufe.filter((u) => u.startsWith('/api/projekte/projekt-d/workitems') && !u.includes('status=OFFEN') && !u.includes('typ=FEATURE'))
   assert.ok(workitemAbrufe.length > 0, 'Workboard lädt die Workitems des neuen Projekts')
   assert.ok(workitemAbrufe.every((u) => !u.includes('typ=')), `Filter des alten Projekts im Abruf: ${workitemAbrufe.join(', ')}`)
@@ -396,7 +404,9 @@ test('F44 WS-2a: Entscheidungen und Roadmap-Seite laden nach dem Wechsel mit dem
   // P0/P1 laden Dashboard UND Entscheidungen, die Roadmap Roadmap-Seite UND Übersicht (F44 WS-3a: ohne Bento).
   assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('status=OFFEN')) >= 2, `Entscheidungen laden P0/P1 nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.ok(anzahl((u) => u === `${neu}/roadmap`) >= 2, `Roadmap-Seite lädt nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
-  assert.ok(anzahl((u) => u.startsWith(`${neu}/workitems?`) && u.includes('typ=FEATURE')) >= 1, 'Roadmap-Seite lädt die Feature-Workitems nicht neu')
+  // F46 D1: die Roadmap-Seite lädt alle Workitems (Entwicklungsstand mit Typfilter und „Noch nicht
+  // eingeplant“) statt nur typ=FEATURE — ungefiltert laden sie Übersicht UND Roadmap-Seite.
+  assert.ok(anzahl((u) => u === `${neu}/workitems`) >= 2, `Roadmap-Seite lädt die Workitems nicht neu; Aufrufe: ${aufrufe.join(', ')}`)
   assert.deepEqual(
     aufrufe.filter((u) => !u.startsWith(neu)),
     [],
@@ -458,9 +468,11 @@ test('F44 WS-2b: eine späte Roadmap-Antwort des alten Projekts überschreibt di
   for (const freigeben of halt) freigeben()
   await warte()
   // M hat keine Roadmap und keine Workitems → B14; übernähme die Übersicht die späte Antwort von L
-  // (gültige Roadmap mit Vision), stünden die Blöcke 2–11 mit „Vision von L“ da.
+  // (gültige Roadmap ohne Meilensteine), stünde B14 nicht da und der Kopf meldete „alle
+  // abgeschlossen“ statt „keine Roadmap“. F46 D1: die Vision steht nicht mehr auf der Übersicht
+  // (Block uebersicht-ziel entfällt, Vision → #/projektakte) — geprüft wird deshalb der Kopf.
   assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, false)
-  assert.doesNotMatch(document.getElementById('uebersicht-ziel').innerHTML, /Vision von L/)
+  assert.match(document.getElementById('uebersicht-b1').innerHTML, /Noch keine Roadmap hinterlegt/)
   assert.match(document.getElementById('uebersicht-b1').innerHTML, /Projekt M/)
 })
 
@@ -469,7 +481,8 @@ test('F-903: kein Leerzustand B14, solange ein Workflow wartet — auch ohne Wor
   await warte()
   assert.equal(document.getElementById('uebersicht-erster-schritt').hidden, true, 'der geführte erste Schritt verdeckt eine wartende Freigabe')
   assert.equal(document.getElementById('uebersicht-inhalt').hidden, false)
-  assert.match(document.getElementById('uebersicht-fokus').innerHTML, /Wartet auf Freigabe/)
+  // F46 D1: „Deine nächsten Entscheidungen“ entfällt (→ Karte „Braucht dich“ mit Zahl, #/attention).
+  assert.match(document.getElementById('uebersicht-cockpit').innerHTML, />1 Entscheidung</)
 })
 
 test('F-903: kein Leerzustand B14 bei defekter Workflow-Quelle', async () => {
@@ -594,14 +607,15 @@ test('F-920: der Wechsel lädt die Entwicklung nur bei offener Seite; sonst läd
   const ansicht = document.getElementById('view-workboard')
   const auftraegeVon = (projekt) => aufrufe.filter((u) => u === `/api/projekte/${projekt}/auftraege`).length
 
-  // Seite offen: der Wechsel lädt Workitems und Aufträge der Entwicklung (Aufträge zusätzlich zum Direktstart).
+  // Seite offen: der Wechsel lädt Workitems und Aufträge der Entwicklung (Aufträge zusätzlich zu
+  // Direktstart und — seit F46 D1 — Übersicht).
   location.hash = '#/workboard'
   dispatch()
   await warte()
   aufrufe.length = 0
   setzeAktivesProjekt({ id: 'projekt-t', name: 'Projekt T' })
   await warte()
-  assert.equal(auftraegeVon('projekt-t'), 2, `offene Seite; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(auftraegeVon('projekt-t'), 3, `offene Seite; Aufrufe: ${aufrufe.join(', ')}`)
 
   // Seite verlassen (verborgen, hashchange): der Wechsel lädt für die Entwicklung nichts.
   ansicht.hidden = true
@@ -610,7 +624,7 @@ test('F-920: der Wechsel lädt die Entwicklung nur bei offener Seite; sonst läd
   aufrufe.length = 0
   setzeAktivesProjekt({ id: 'projekt-u', name: 'Projekt U' })
   await warte()
-  assert.equal(auftraegeVon('projekt-u'), 1, `geschlossene Seite lädt mit; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(auftraegeVon('projekt-u'), 2, `geschlossene Seite lädt mit; Aufrufe: ${aufrufe.join(', ')}`)
 
   // Erneutes Betreten lädt Workitems und Aufträge des neuen Projekts.
   aufrufe.length = 0
@@ -639,6 +653,9 @@ test('F44 WS-3b: Detail per Deep-Link — Ladezustand (F-921), Übersicht ausgeb
 
   // Die Übersicht lädt für ihren Fokus-Ablauf (hier derselbe) eigene Nachträge — gezählt wird nur,
   // was nach dem Eintreffen der Workitems dazukommt (vorher kennt das Detail sein Workitem nicht).
+  // F46 D1: Die Übersicht findet das Feature in Arbeit (F7) erst über dieselben, hier zurückgehaltenen
+  // Workitems und lädt den Nachtrag seines Ablaufs (Rollen-Kreis) deshalb ebenfalls danach — je
+  // einmal Übersicht und Detail, also 2; der Poll lädt danach nichts nach (unten).
   const anzahl = (ende) => aufrufe.filter((u) => u === `/api/projekte/projekt-z${ende}`).length
   const vorher = { akte: anzahl('/features/F7/akte'), schritte: anzahl('/workflows/w-z'), abnahme: anzahl('/workflows/w-z/abnahme') }
   assert.equal(vorher.akte, 0)
@@ -648,8 +665,8 @@ test('F44 WS-3b: Detail per Deep-Link — Ladezustand (F-921), Übersicht ausgeb
   await pollJetzt()
   await warte()
   assert.equal(anzahl('/features/F7/akte') - vorher.akte, 1, `Akte; Aufrufe: ${aufrufe.join(', ')}`)
-  assert.equal(anzahl('/workflows/w-z') - vorher.schritte, 1, `Ablauf-Schritte; Aufrufe: ${aufrufe.join(', ')}`)
-  assert.equal(anzahl('/workflows/w-z/abnahme') - vorher.abnahme, 1, `Abnahme; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(anzahl('/workflows/w-z') - vorher.schritte, 2, `Ablauf-Schritte; Aufrufe: ${aufrufe.join(', ')}`)
+  assert.equal(anzahl('/workflows/w-z/abnahme') - vorher.abnahme, 2, `Abnahme; Aufrufe: ${aufrufe.join(', ')}`)
   assert.equal(document.getElementById('workboard-detail-titel').textContent, 'Feature <Sieben>')
   assert.equal(document.getElementById('workboard-detail-eyebrow').textContent, 'Feature · F7')
   assert.match(inhalt.innerHTML, /Ziel &lt;b&gt;Z&lt;\/b&gt;/, 'Ziel aus der Akte, escaped')
@@ -908,4 +925,26 @@ test('F-923: Wechsel bei offenem #/workboard/<id> setzt den Hash ohne neuen Eint
   setzeAktivesProjekt({ id: 'projekt-v', name: 'Projekt V' })
   await warte()
   assert.deepEqual(ersetzt, [])
+})
+
+test('F46 D1: Projektakte — Wechsel bei offener Seite lädt mit dem neuen Präfix; eine späte Antwort des alten Projekts wird verworfen', async () => {
+  const { dispatch } = await import('./router.js')
+  location.hash = '#/projektakte'
+  dispatch()
+  await warte()
+  const halt = []
+  zurueckgehalten.set('/api/projekte/projekt-pa/projektakte', halt)
+  aufrufe.length = 0
+  setzeAktivesProjekt({ id: 'projekt-pa', name: 'Projekt PA' })
+  zurueckgehalten.clear()
+  setzeAktivesProjekt({ id: 'projekt-pb', name: 'Projekt PB' })
+  await warte()
+  for (const freigeben of halt) freigeben()
+  await warte()
+  const html = document.getElementById('view-projektakte').innerHTML
+  assert.match(html, /Projekt PB · Projektakte/)
+  assert.match(html, /Nutzer von projekt-pb/)
+  assert.doesNotMatch(html, /Nutzer von projekt-pa/, 'späte Antwort des alten Projekts')
+  assert.ok(aufrufe.includes('/api/projekte/projekt-pb/projektakte'), `Aufrufe: ${aufrufe.join(', ')}`)
+  assert.match(document.getElementById('uebersicht-cockpit').innerHTML, /Kein eindeutiges Versionsziel/, 'die Übersicht lädt die Projektakte des neuen Projekts ebenfalls')
 })

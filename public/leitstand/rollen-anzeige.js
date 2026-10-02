@@ -9,7 +9,7 @@
  * für die Worker (worker.<id>, Zwilling von WORKER in src/workflow/index.ts).
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/dashboard.js (B11 „Wer macht was“, Aktuelle Rolle)
+ * - public/leitstand/views/dashboard.js (workerName — Rolle im Detail; „Wer macht was“ entfällt dort seit F46 D1)
  * - public/leitstand/views/workboard.js, views/workboard-detail.js (Detail, Click-to-Work-Kette)
  * - public/leitstand/views/workflow-detail.js (Timeline: Rolle und Worker lesbar, F44 WS-4b)
  * - public/leitstand/views/capabilities.js (rollenName — Liste „Rollen & Besetzung“ der Werkstatt, F44 WS-7a)

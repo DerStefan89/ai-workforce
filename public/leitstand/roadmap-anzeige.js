@@ -9,9 +9,11 @@
  * Fortschrittsring der Übersicht nicht auseinanderlaufen.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/roadmap.js
- * - public/leitstand/views/dashboard.js (F44 WS-2b: aktueller Meilenstein, Fortschrittsring, Vier Werte,
- *   Weg zum Produkt, Auswahl des Entwicklungsstands)
+ * - public/leitstand/views/roadmap.js (seit F46 D1 auch waehleEntwicklungsstand mit Typfilter — der
+ *   Entwicklungsstand ist aus der Übersicht hierher gezogen)
+ * - public/leitstand/views/dashboard.js (aktueller Meilenstein, Fortschrittsring, Vier Werte, Zuletzt
+ *   umgesetzt)
+ * - public/leitstand/views/projektakte.js (F46 D1: roadmapZustand für die Vision)
  * - public/leitstand/views/workboard-detail.js (F44 WS-3a/3b: statusKategorie für den Kartenstatus von Feature-Akten,
  *   roadmapZustand für den Meilenstein im Detail)
  * - public/leitstand/views/projekte-uebersicht.js über produkte-anzeige.js (F44 WS-6a: roadmapZustand, zaehleRoadmap —
@@ -203,19 +205,23 @@ export function nichtEingeplant(roadmap, featureWorkitems) {
  * @param meilenstein - aktueller Meilenstein (aktuellerMeilenstein) oder null
  * @param workitems - alle Workitems aus GET …/workitems, null bei defekter Quelle, undefined solange geladen wird
  * @param max - Höchstzahl der Einträge (Standard ENTWICKLUNGSSTAND_MAX)
- * @returns { eintraege: [{ art: 'finding' | 'feature', id, titel, status, prioritaet }], gesamt: Anzahl vor dem Kürzen, findingsVerfuegbar: false, wenn die Workitems fehlen oder defekt sind }
+ * @param optionen - F46 D1 (Roadmap, Filter Alle · Features · Bugs · Harness · Tech Debt): { typen: Liste
+ *   der Workitem-Typen (FEATURE, BUG, …), die bleiben — ohne: alle }. Die Features des Meilensteins
+ *   zählen als Typ FEATURE.
+ * @returns { eintraege: [{ art: 'finding' | 'feature', id, titel, status, prioritaet, typ }], gesamt: Anzahl vor dem Kürzen, findingsVerfuegbar: false, wenn die Workitems fehlen oder defekt sind }
  */
-export function waehleEntwicklungsstand(meilenstein, workitems, max = ENTWICKLUNGSSTAND_MAX) {
+export function waehleEntwicklungsstand(meilenstein, workitems, max = ENTWICKLUNGSSTAND_MAX, optionen = {}) {
+  const typen = Array.isArray(optionen.typen) ? new Set(optionen.typen) : null
   const findings = Array.isArray(workitems)
     ? workitems
         .filter((w) => w !== null && typeof w === 'object' && w.quelle === 'finding' && w.status === 'OFFEN' && Object.hasOwn(ENTWICKLUNG_RANG, w.prioritaet))
         .map((w, index) => ({ w, index }))
         .sort((a, b) => ENTWICKLUNG_RANG[a.w.prioritaet] - ENTWICKLUNG_RANG[b.w.prioritaet] || a.index - b.index)
-        .map(({ w }) => ({ art: 'finding', id: w.id, titel: w.titel, status: w.status, prioritaet: w.prioritaet }))
+        .map(({ w }) => ({ art: 'finding', id: w.id, titel: w.titel, status: w.status, prioritaet: w.prioritaet, typ: w.typ ?? null }))
     : []
   const features = (Array.isArray(meilenstein?.features) ? meilenstein.features : [])
     .filter((f) => f !== null && typeof f === 'object' && !ERLEDIGT_STATUS.has(f.status))
-    .map((f) => ({ art: 'feature', id: f.id, titel: f.titel, status: f.status, prioritaet: null }))
-  const alle = [...findings, ...features]
+    .map((f) => ({ art: 'feature', id: f.id, titel: f.titel, status: f.status, prioritaet: null, typ: 'FEATURE' }))
+  const alle = [...findings, ...features].filter((e) => typen === null || typen.has(e.typ))
   return { eintraege: alle.slice(0, max), gesamt: alle.length, findingsVerfuegbar: Array.isArray(workitems) }
 }

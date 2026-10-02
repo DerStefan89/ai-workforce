@@ -36,6 +36,8 @@
  * - F44 WS-3b: verknuepfterWorkflow und workflowPhase (Phase auf der Karte und im Detail, F-921)
  *   sowie schrittFortschritt (x/y im Detail). „Wartet auf den Menschen“ kommt auch hier aus
  *   attention-daten.js (baueEntscheidungen), keine eigene Regel (Gate f21-ws2 (h)).
+ * - F46 D1: views/dashboard.js nutzt baueBoard (Arbeitsstand), baueVerknuepfung, verknuepfterWorkflow,
+ *   workflowPhase und waehleFeatureInArbeit (Feature in Arbeit für den Rollen-Kreis).
  */
 
 import { baueEntscheidungen, filtereAttentionWorkflows } from './attention-daten.js'
@@ -186,6 +188,41 @@ export function verknuepfterWorkflow(workitem, verknuepfung) {
 export function laufenderWorkflow(workitem, verknuepfung) {
   const workflows = verknuepfung?.jeReferenz.get(workitemReferenz(workitem)) ?? []
   return workflows.find((w) => NICHT_TERMINALE_WORKFLOW_STATUS.has(w?.status)) ?? null
+}
+
+/**
+ * Ob ein Workflow noch fortgesetzt werden kann (NICHT_TERMINALE_WORKFLOW_STATUS, dieselbe Menge wie
+ * Spaltenregel c) — F46 D1: Übersicht, Ablauf ohne Feature im Rollen-Kreis.
+ * @param workflow - Workflow-Eintrag des Aggregats oder null
+ * @returns true, wenn nicht terminal
+ */
+export function istNichtTerminal(workflow) {
+  return NICHT_TERMINALE_WORKFLOW_STATUS.has(workflow?.status)
+}
+
+/**
+ * Das Feature in Arbeit für „Wer arbeitet gerade“ der Übersicht (F46 D1, abgleich-f46.md §4.1): das
+ * erste Feature mit einem nicht terminalen verknüpften Workflow (laufenderWorkflow); sonst das erste
+ * Feature IN_ARBEIT bzw. WORKSTREAM_SCHNITT_GENEHMIGT — zuerst in der Reihenfolge des aktuellen
+ * Meilensteins, dann in der Reihenfolge der Workitems. Der Workflow dazu ist verknuepfterWorkflow
+ * (kann null sein: dann stehen alle Rollen des Kreises auf „offen“).
+ * @param workitems - GET …/workitems (Liste; sonst null)
+ * @param verknuepfung - Ergebnis von baueVerknuepfung
+ * @param meilenstein - aktueller Meilenstein (roadmap-anzeige.js aktuellerMeilenstein) oder null
+ * @returns { id, titel, status, workflow } oder null, wenn kein Feature in Arbeit ist
+ */
+export function waehleFeatureInArbeit(workitems, verknuepfung, meilenstein) {
+  const features = (Array.isArray(workitems) ? workitems : []).filter((w) => w !== null && typeof w === 'object' && w.quelle === 'feature' && typeof w.id === 'string')
+  const ergebnis = (eintrag) => {
+    const referenz = { quelle: 'feature', id: eintrag.id }
+    return { id: eintrag.id, titel: typeof eintrag.titel === 'string' ? eintrag.titel : null, status: eintrag.status ?? null, workflow: verknuepfterWorkflow(referenz, verknuepfung) }
+  }
+  const mitLauf = features.find((w) => laufenderWorkflow(w, verknuepfung) !== null)
+  if (mitLauf !== undefined) return ergebnis(mitLauf)
+  const ausMeilenstein = (Array.isArray(meilenstein?.features) ? meilenstein.features : []).find((f) => FEATURE_IN_ARBEIT.has(f?.status))
+  if (ausMeilenstein !== undefined) return ergebnis(ausMeilenstein)
+  const ausWorkitems = features.find((w) => FEATURE_IN_ARBEIT.has(w.status))
+  return ausWorkitems === undefined ? null : ergebnis(ausWorkitems)
 }
 
 /**

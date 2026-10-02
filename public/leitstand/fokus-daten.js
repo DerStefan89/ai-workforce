@@ -3,7 +3,9 @@
  *
  * Zweck: Gemeinsames Fokus-Modul (F44 WS-2b). Welcher Workflow im Fokus steht, welcher Lauf der
  * jüngste ist und der Nachtrag zum Fokus-Workflow (Schritte, Abnahme-Flags, aktiver Lauf) für die
- * Übersicht (#/dashboard: Aktuelle Rolle, Die Workforce gerade, Wer macht was, Zuletzt umgesetzt).
+ * Übersicht (#/dashboard). Seit F46 D1 nutzt die Übersicht ladeFokusNachtrag für den Workflow des
+ * Features in Arbeit (Rollen-Kreis, dazu die additiven Felder pruefergebnis und abnahmeEntscheidung)
+ * und waehleLetztenLauf für die letzte Ausführung; waehleFokusWorkflow nutzt sie nicht mehr.
  * Die Logik stammt aus views/workboard.js (waehleFokusWorkflow, waehleLetztenLauf,
  * aktualisiereFokusCache); das Bento dort ist seit F44 WS-3a entfernt (F-892), mit ihm der nur dort
  * genutzte Export LEERER_FOKUS.
@@ -57,7 +59,7 @@ export function waehleLetztenLauf(laeufe) {
  * (GET …/laeufe/<laufId> des Schritts mit Status LAEUFT): Startzeit aus dem ersten, Aufgabe aus
  * dem letzten Checkpoint, dazu Worker und beobachtetes Modell aus der Laufakte (WS-2b, additiv).
  * @param workflow - der Fokus-Workflow (nicht null)
- * @returns der Nachtrag { workflowId, schritte, workflowStatus, freigabeHalt, aktivLauf }, oder null, wenn das Workflow-Detail nicht ladbar war (der Aufrufer versucht es beim nächsten Tick erneut)
+ * @returns der Nachtrag { workflowId, schritte, workflowStatus, freigabeHalt, aktivLauf, pruefergebnis, abnahmeEntscheidung }, oder null, wenn das Workflow-Detail nicht ladbar war (der Aufrufer versucht es beim nächsten Tick erneut)
  */
 export async function ladeFokusNachtrag(workflow) {
   try {
@@ -94,6 +96,11 @@ export async function ladeFokusNachtrag(workflow) {
       workflowStatus: abnahme?.workflowStatus ?? workflow.status,
       freigabeHalt: abnahme?.freigabeHalt ?? null,
       aktivLauf,
+      // F46 D1 (Rollen-Kreis, rollen-kreis.js kreisStatus), additiv aus derselben Antwort: Prüfschritt
+      // aus dem deterministischen Prüfergebnis, Abnahme aus der Abnahme-Entscheidung. null, wenn
+      // GET …/abnahme nicht ladbar war — die Rollen bleiben dann „offen“, nichts wird geraten.
+      pruefergebnis: abnahme?.pruefergebnis ?? null,
+      abnahmeEntscheidung: abnahme?.entscheidung ?? null,
     }
   } catch (fehler) {
     // Netzwerkfehler beim Nachtrag: der nächste Poll-Tick versucht es erneut, kein eigener Fehlerzustand.

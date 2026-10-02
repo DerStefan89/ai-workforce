@@ -18,8 +18,10 @@
  * - public/leitstand/views/projekt.js
  * - public/leitstand/views/workflows.js
  * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme)
- * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems)
- * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems — nur lesend)
+ * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte)
+ * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,
+ *   holeProjektakte — nur lesend)
+ * - public/leitstand/views/projektakte.js (F46 D1: holeProjektakte, holeRoadmap)
  * - public/leitstand/views/nutzung.js (F44 WS-2b: holeVerbrauch)
  * - public/leitstand/fokus-daten.js (F44 WS-2b: holeWorkflowDetail, holeAbnahme, holeLaufDetail)
  * - public/leitstand/empfehlung-installation.js (F36 WS-5a)
@@ -201,6 +203,18 @@ export const holeProjektOffeneWorkitems = (id) => holeJsonOderWirf(`/api/projekt
 // Antwort (404 für ein nicht initialisiertes Projekt, 500) ging vorher als Erfolg mit einem Körper
 // ohne status durch; jetzt ist sie ein Wurf und erscheint als Fehler, nie als „keine Roadmap“.
 export const holeRoadmap = () => holeJsonOderWirf(mitPraefix('/roadmap'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+// F46 D1 (Prüfpass cr 8): Aufträge für die Übersicht mit Zeitlimit und Wurf bei Nicht-2xx — ein
+// hängender Abruf hielte „Wer arbeitet gerade“ sonst dauerhaft auf „Lädt…“. holeAuftraege oben bleibt
+// für Direktstart und Entwicklung unverändert.
+export const holeAuftraegeBegrenzt = () => holeJsonOderWirf(mitPraefix('/auftraege'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
+// F46 D1: Leseroute der Projektakte (scripts/leitstand/routen-projektakte.mjs) — Kontextdateien
+// (beschreibung, anweisungen, lagebild) als Klartext, Versionsziel aus der Zielfassung, Status der
+// Quellen. Nur beim Betreten von #/projektakte bzw. #/dashboard und bei Projektwechsel, nie aus dem
+// Poll; Zeitlimit und Wurf bei Nicht-2xx wie holeRoadmap. Keine Parameter: die Route wählt ihre
+// Dateien selbst aus einer festen Liste.
+export const holeProjektakte = () => holeJsonOderWirf(mitPraefix('/projektakte'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
 
 // F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite
 // „Entwicklung“ (views/workboard.js) — nur beim Öffnen des Details, nie aus dem Poll. 200 trägt

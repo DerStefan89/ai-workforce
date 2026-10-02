@@ -1,0 +1,708 @@
+{
+  "url": "http://127.0.0.1:4199/#/dashboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "7a1c2e90-4b3d-4f6a-8c21-d1e2f3a4b5c6",
+            "laufStatus": {
+              "status": "NICHT_GESTARTET"
+            },
+            "ergebnis": null,
+            "zeitpunkt": "2026-10-02T09:12:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-f46",
+              "titel": "Design-Nachbau D1 umsetzen"
+            },
+            "anzahlCheckpoints": 1,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "w-f46",
+            "auftragId": "a-f46",
+            "status": "LAEUFT",
+            "ziel": "Design-Nachbau D1 umsetzen",
+            "naechster": null,
+            "aktiverSchrittId": "s3"
+          },
+          {
+            "workflowId": "w-f30",
+            "auftragId": "a-f30",
+            "status": "WARTET_FREIGABE",
+            "ziel": "Scanner vorbereiten",
+            "naechster": {
+              "art": "haltFreigabe",
+              "schrittId": "s1"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": true,
+          "laufId": "7a1c2e90-4b3d-4f6a-8c21-d1e2f3a4b5c6"
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:\\Nachweis\\ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": true
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Eine lokale Orchestrierung, die ein Vorhaben von der Idee bis zum abgenommenen Ergebnis führt.",
+        "meilensteine": [
+          {
+            "id": "M3",
+            "titel": "Intelligente Orchestrierung",
+            "status": "ABGESCHLOSSEN",
+            "features": [
+              {
+                "id": "F15",
+                "titel": "Workflow",
+                "status": "ABGESCHLOSSEN"
+              },
+              {
+                "id": "F16",
+                "titel": "Zweiter Worker",
+                "status": "ABGESCHLOSSEN"
+              }
+            ]
+          },
+          {
+            "id": "M4",
+            "titel": "Jarvis Workspace",
+            "status": "ABGESCHLOSSEN",
+            "features": [
+              {
+                "id": "F20",
+                "titel": "Jarvis Shell",
+                "status": "ABGESCHLOSSEN"
+              }
+            ]
+          },
+          {
+            "id": "M5",
+            "titel": "Projektkontext, Coach, Challenge-Flow, Architektur",
+            "status": "LAEUFT",
+            "features": [
+              {
+                "id": "F44",
+                "titel": "Design-Schnitt",
+                "status": "ABGESCHLOSSEN"
+              },
+              {
+                "id": "F46",
+                "titel": "Design-Nachbau",
+                "status": "IN_ARBEIT"
+              },
+              {
+                "id": "F30",
+                "titel": "Opportunity Scanner",
+                "status": "READY_FOR_TECH"
+              },
+              {
+                "id": "F47",
+                "status": "keine_akte"
+              }
+            ]
+          },
+          {
+            "id": "V1-Backlog",
+            "titel": "Gebaut bei erfülltem Auslöser",
+            "status": "GEPLANT",
+            "features": [
+              {
+                "id": "F37",
+                "titel": "Besetzung erklären",
+                "status": "ENTWURF"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F46",
+            "titel": "Design-Nachbau",
+            "status": "IN_ARBEIT"
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F30",
+            "titel": "Opportunity Scanner",
+            "status": "READY_FOR_TECH"
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F44",
+            "titel": "Design-Schnitt",
+            "status": "ABGESCHLOSSEN"
+          },
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F37",
+            "titel": "Besetzung erklären",
+            "status": "ENTWURF"
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "id": "F-936",
+            "titel": "Planende Rollen ohne Projektkontext",
+            "status": "OFFEN",
+            "prioritaet": "P1"
+          },
+          {
+            "quelle": "finding",
+            "typ": "HARNESS_IMPROVEMENT",
+            "id": "F-939",
+            "titel": "Mindest-Gates im Projekt-Skelett",
+            "status": "OFFEN",
+            "prioritaet": "P2"
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-885",
+            "titel": "Offene Eingaben beim Projektwechsel",
+            "status": "OFFEN",
+            "prioritaet": "P2"
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "id": "F-950",
+            "titel": "Großes Stylesheet aufteilen",
+            "status": "OFFEN",
+            "prioritaet": "P2"
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-870",
+            "titel": "Fokus springt nach dem Laden",
+            "status": "ERLEDIGT",
+            "prioritaet": "P2"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?status=OFFEN",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "id": "F-936",
+            "titel": "Planende Rollen ohne Projektkontext",
+            "status": "OFFEN",
+            "prioritaet": "P1"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "auftragId": "a-f46",
+          "titel": "Design-Nachbau D1 umsetzen",
+          "erstellt_am": "2026-10-02T08:00:00.000Z",
+          "workitem_referenz": "workitem:feature:F46"
+        },
+        {
+          "auftragId": "a-f30",
+          "titel": "Scanner vorbereiten",
+          "erstellt_am": "2026-10-02T08:30:00.000Z",
+          "workitem_referenz": "workitem:feature:F30"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/projektakte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "dateien": {
+          "beschreibung": {
+            "status": "ok",
+            "pfad": "docs/projekt/kontext/beschreibung.md",
+            "absolut": "C:\\Nachweis\\ai-workforce\\docs\\projekt\\kontext\\beschreibung.md",
+            "text": "# Projektbeschreibung\n\n## Was es ist\n\nEine lokale Orchestrierung mit getrennten Rollen.\n\n## Für wen\n\nEin einziger Nutzer, der zugleich Vorarbeiter und einzige\nEntscheidungsinstanz ist. Mehrbenutzerbetrieb in einer Instanz ist kein Ziel.\n\n## Führungsprinzip\n\nDateien und Git sind der führende Zustand. Der Kontrollzustand eines Projekts liegt in\ndessen eigenem Repository, nie zentral.\n\n## Nicht das Ziel\n\nMehrbenutzerbetrieb in einer Instanz, Hosting, Abrechnung.\n",
+            "gekuerzt": false
+          },
+          "anweisungen": {
+            "status": "ok",
+            "pfad": "docs/projekt/kontext/anweisungen.md",
+            "absolut": "C:\\Nachweis\\ai-workforce\\docs\\projekt\\kontext\\anweisungen.md",
+            "text": "# Arbeitsweise\n\nKurzfassung.\n\n## Positionen und Rollenverträge\n\nRollen in getrennten Werkzeugprozessen mit eigenem Werkzeugsatz und Rollenvertrag.\n\n## Iterationsprinzip\n\nJede Iteration ist klein, prüfbar und abgeschlossen.\n\n## Freigaben und Prüfrollen\n\n- Prüfrollen sind reine Leser.\n- Kein Commit ohne Freigabe.\n",
+            "gekuerzt": false
+          },
+          "lagebild": {
+            "status": "ok",
+            "pfad": "docs/projekt/kontext/lagebild.md",
+            "absolut": "C:\\Nachweis\\ai-workforce\\docs\\projekt\\kontext\\lagebild.md",
+            "text": "# Lagebild — erzeugt\n\n## Aktuelle Phase\n\nMeilenstein M5 läuft. F46 ist in Arbeit, danach das Fixpaket.\n\n## Offene P1-Findings\n\n- F-936 — Planende Rollen ohne Projektkontext\n",
+            "gekuerzt": false
+          },
+          "roadmap": {
+            "status": "ok",
+            "pfad": "docs/projekt/roadmap.json",
+            "absolut": "C:\\Nachweis\\ai-workforce\\docs\\projekt\\roadmap.json"
+          },
+          "zielfassung": {
+            "status": "ok",
+            "pfad": "docs/projekt/zielfassung.md",
+            "absolut": "C:\\Nachweis\\ai-workforce\\docs\\projekt\\zielfassung.md"
+          }
+        },
+        "versionsziel": {
+          "meilenstein": "M5",
+          "status": "ok",
+          "zielsatz": "Die Workforce führt ein neues Produkt von der Idee bis zum abgenommenen ersten Meilenstein.",
+          "kriterien": [
+            "Der Scanner liegt in einem eigenen Repo und ist über Workflows gebaut.",
+            "Jedes AK hat ein Urteil mit Beleg."
+          ]
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-f46",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "status": "LAEUFT",
+          "aktiver_schritt_id": "s3",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "status": "ERFOLGREICH",
+              "lauf_id": "2b9d8c7e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+              "nachfolger": "s2",
+              "freigabe": "ZWINGEND"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "architecture-advisor",
+              "worker": "claude-code",
+              "status": "ERFOLGREICH",
+              "lauf_id": null,
+              "nachfolger": "s3",
+              "freigabe": "ZWINGEND"
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "status": "LAEUFT",
+              "lauf_id": "7a1c2e90-4b3d-4f6a-8c21-d1e2f3a4b5c6",
+              "nachfolger": "s4",
+              "freigabe": "ZWINGEND"
+            },
+            {
+              "schritt_id": "s4",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "status": "OFFEN",
+              "lauf_id": null,
+              "nachfolger": null,
+              "freigabe": "ZWINGEND"
+            }
+          ]
+        },
+        "naechster": null,
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-f46/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowStatus": "LAEUFT",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-f30",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s1",
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "status": "WARTET_FREIGABE",
+              "lauf_id": null,
+              "nachfolger": null,
+              "freigabe": "ZWINGEND"
+            }
+          ]
+        },
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "s1"
+        },
+        "empfehlung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-f30/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s1",
+          "grund": null
+        },
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        }
+      }
+    },
+    {
+      "muster": "**/api/laeufe/2b9d8c7e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "2b9d8c7e-1a2b-4c3d-9e8f-0a1b2c3d4e5f",
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN"
+        },
+        "aktiv": false,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-f46",
+          "titel": "Design-Nachbau D1 umsetzen"
+        },
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "laufakte": {
+          "status": "ok",
+          "worker": "codex",
+          "modellBeobachtet": "gpt-6-astra",
+          "beobachtung": {
+            "init_skills": [],
+            "init_agents": [],
+            "init_mcp_server": [],
+            "skill_aufrufe": [
+              "advisor-pass"
+            ],
+            "subagent_aufrufe": [],
+            "mcp_aufrufe": []
+          }
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T08:10:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/7a1c2e90-4b3d-4f6a-8c21-d1e2f3a4b5c6",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "7a1c2e90-4b3d-4f6a-8c21-d1e2f3a4b5c6",
+        "laufStatus": {
+          "status": "NICHT_GESTARTET"
+        },
+        "aktiv": true,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "a-f46",
+          "titel": "Design-Nachbau D1 umsetzen"
+        },
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T08:10:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/features/F46/akte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "id": "F46",
+        "titel": "Design-Nachbau",
+        "featureStatus": "IN_ARBEIT",
+        "ziel": "Der Leitstand wird nach den neuen Designs umgestaltet — überwiegend Umbau vorhandener Funktionen.",
+        "nicht_ziele": [],
+        "akzeptanzkriterien": []
+      }
+    },
+    {
+      "muster": "**/api/features/F30/akte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "id": "F30",
+        "titel": "Opportunity Scanner",
+        "featureStatus": "READY_FOR_TECH",
+        "ziel": "Ein eigenständiges Produkt wird mit der Workforce selbst gebaut.",
+        "nicht_ziele": [],
+        "akzeptanzkriterien": []
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: Senden erkannt"
+      }
+    },
+    {
+      "muster": "**/api/sparring",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: Senden erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Nav aktiv",
+        "selector": "#shell-nav [aria-current=\"page\"]"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "[data-view]:not([hidden]) .planung-register [aria-current=\"page\"]"
+      },
+      {
+        "name": "Rolle gewählt",
+        "selector": "[data-view]:not([hidden]) .rollen-kreis [aria-selected=\"true\"]",
+        "attribut": "data-kreis-rolle"
+      },
+      {
+        "name": "Rolle im Detail",
+        "selector": "[data-view]:not([hidden]) #uebersicht-rolle-detail h2"
+      },
+      {
+        "name": "In diesem Lauf",
+        "selector": "[data-view]:not([hidden]) #uebersicht-rolle-detail dd:last-of-type"
+      },
+      {
+        "name": "Filter Arbeitsstand",
+        "selector": "[data-view]:not([hidden]) [data-arbeitsstand-filter][aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Roadmap-Detail",
+        "selector": "[data-view]:not([hidden]) #rm-detail-titel"
+      },
+      {
+        "name": "Abgeschlossene",
+        "selector": "[data-view]:not([hidden]) [data-roadmap-abgeschlossene]",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Chat-Eingabe",
+        "selector": "#chat-eingabe",
+        "eigenschaft": "value"
+      },
+      {
+        "name": "Chat-Fehler (Senden erkannt, muss fehlen)",
+        "selector": "#chat-fehler:not([hidden])"
+      },
+      {
+        "name": "Fokus (id/Rolle)",
+        "selector": ":focus",
+        "attribut": "id"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Chat-Dock offen",
+        "selector": "#shell-chat-spalte:not([hidden])"
+      },
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      },
+      {
+        "name": "<script> im Inhalt (muss fehlen)",
+        "selector": "main script"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Start: Builder vorgewählt (läuft), „In diesem Lauf“ — (Lauf ohne Laufakte)",
+      "warteAufSelector": {
+        "selector": "#rollen-kreis-tab-builder[aria-selected=\"true\"]",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Klick auf Planner → Rolle im Detail Planner, „In diesem Lauf“ aus der Beobachtung (Skills: advisor-pass)",
+      "klick": "#rollen-kreis-tab-planner",
+      "warteAufSelector": {
+        "selector": "#uebersicht-rolle-detail[aria-labelledby=\"rollen-kreis-tab-planner\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k01-planner.webp"
+    },
+    {
+      "label": "Tastatur: Pfeil rechts → Advisor gewählt und fokussiert",
+      "taste": "ArrowRight",
+      "screenshot": "k02-pfeil-advisor.webp"
+    },
+    {
+      "label": "Tastatur: Ende → design-guardian (Satellit, offen, keine Quelle)",
+      "taste": "End",
+      "screenshot": "k03-ende-satellit.webp"
+    },
+    {
+      "label": "Filter Arbeitsstand „Braucht dich“ → nur diese Spalte (F30 wartet auf Freigabe)",
+      "klick": "[data-arbeitsstand-filter=\"braucht_dich\"]",
+      "screenshot": "k04-filter-braucht-dich.webp"
+    },
+    {
+      "label": "Klick „Zu den Entscheidungen“ → #/attention",
+      "klick": ".uebersicht-braucht .text-link",
+      "warteAufSelector": {
+        "selector": "#view-attention:not([hidden])",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k05-zu-entscheidungen.webp"
+    }
+  ]
+}
