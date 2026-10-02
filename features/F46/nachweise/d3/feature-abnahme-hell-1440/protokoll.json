@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Feature, Abnahme offen: Jetzt-Band mit „Ergebnis prüfen →“, Urteile je AK (erfüllt / nicht erfüllt / nicht prüfbar / noch kein Urteil), Abnahme im Kreis „läuft“",
+    "mehr als ein gefüllter Hauptknopf (muss fehlen)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "light",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Eyebrow": "Feature · F46",
+    "Titel": "Design-Nachbau nach neuem Seitenaufbau",
+    "Jetzt-Band (Zustand)": "dran",
+    "Hauptknopf Jetzt-Band": "Ergebnis prüfen →",
+    "Hauptknopf Click-to-Work": "(fehlt)",
+    "Reiter „Das Was“ gewählt": "Abnahmekriterien · 7",
+    "Rolle gewählt": "abnahme",
+    "Click-to-Work (Text „NACHWEIS“ = POST erkannt)": "Auftrag vorbereitenDer Ablauf wartet auf deine Abnahme. Prüfe zuerst das Ergebnis; danach ist ein weiterer Auftrag mögli",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Fokus (id)": "workboard-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

@@ -112,3 +112,12 @@ test('Register: neun Reiter, genau einer gewählt und per Tab erreichbar, Status
   assert.equal((html.match(/class="sr-only"/g) ?? []).length, 9)
   assert.match(html, /<span>Mitte<\/span>/)
 })
+
+test('F46 D3: eigenes ID-Präfix der Reiter (Detail neben der Übersicht im DOM), Standard bleibt rollen-kreis', () => {
+  const status = kreisStatus(null)
+  const standard = rollenKreisHtml({ status, auswahl: 'builder', panelId: 'p', mitteHtml: '' })
+  assert.match(standard, /id="rollen-kreis-tab-builder"/)
+  const detail = rollenKreisHtml({ status, auswahl: 'builder', panelId: 'p', mitteHtml: '', idPraefix: 'detail-kreis' })
+  assert.match(detail, /id="detail-kreis-tab-builder"/)
+  assert.doesNotMatch(detail, /id="rollen-kreis-tab-/)
+})

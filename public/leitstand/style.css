@@ -5532,67 +5532,6 @@ th {
   color: var(--muted);
 }
 
-/* „Wer macht was“ im Detail der Entwicklung (rollen-anzeige.js werSpalte, views/workboard-detail.js)
-   — auf der Übersicht entfallen (F46 D1), dort weiter genutzt. */
-#view-workboard .execution-brief {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 24px 0;
-  margin: 24px 0 30px;
-}
-
-#view-workboard .execution-brief > .section-label {
-  margin-top: 0;
-}
-
-#view-workboard .execution-triptych {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
-  gap: 24px;
-}
-
-#view-workboard .execution-triptych > div {
-  padding: 20px;
-  border-left: 1px solid var(--line);
-  min-width: 0;
-}
-
-#view-workboard .execution-triptych strong {
-  display: block;
-  margin: 10px 0;
-  font-size: 16px;
-  overflow-wrap: break-word;
-}
-
-#view-workboard .execution-triptych p {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 8px 0;
-}
-
-#view-workboard .execution-triptych > .execution-current {
-  background: var(--note-bg);
-  border-left-color: var(--mint);
-  border-radius: 0 10px 10px 0;
-}
-
-#view-workboard .model-label {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-#view-workboard .expected-output {
-  margin: 20px 0 0;
-  padding: 0 20px;
-}
-
-#view-workboard .expected-output p {
-  font-size: 14px;
-  line-height: 1.6;
-  max-width: 850px;
-  overflow-wrap: break-word;
-}
-
 /* F-898: „+ x weitere“ in #/attention. */
 #view-attention .attention-mehr {
   margin: 12px 0 0 2px;
@@ -6040,63 +5979,291 @@ th {
   }
 }
 
-/* ─────────────────── Entwicklung · Detail (F44 WS-3b, Vorlage V10 d_arbeit_f35) ───────────────────
-   #/workboard/<id> als ganze Seite: „←“ als Knopf im Stil .back, Z-Knöpfe (.feature-edit-actions),
-   Statuszeile (.pm-detail-status), Auftrag vorbereiten (.workboard-auftrag), „Wer macht was“
-   (.execution-brief/.execution-triptych, Regeln im Block der Produktübersicht oben), Stand der
-   Entwicklung (.pm-feature-steps, .mini-pipeline, .work-progress/.progress-track), Kriterien
-   (.checklist), Planung (.pm-planning, .planning-window) und Insights (.item-insights). Maße wie die
-   Vorlage, Farben nur über Tokens. Die Statuszeile schaltet über [hidden] — display deshalb nur für
-   :not([hidden]) (F-622). Übersicht (#workboard-uebersicht) und Detail tragen kein display. */
+/* ─────────────── Eintrag im Detail (F46 D3, Design 07-eintrag-detail--Main, --Bug) ───────────────
+   #/workboard/<id> als ganze Seite in drei Ebenen (abgleich-f46.md, Leitprinzip): Kopf mit Typ-Chip,
+   Titel, „Kurz gesagt“ und Status-Block (.eintrag-kopf), Jetzt-Band (.jetzt-band), darunter
+   Click-to-Work (.workboard-auftrag) und die Karten (.eintrag-karte); rechts „Deine Planung“ bzw.
+   „Einordnung“ (.eintrag-spalte, beim Scrollen mitlaufend). Maße aus
+   docs/design/neu/quelle/07-eintrag-detail/ (Main, Bug), Farben nur über Tokens (mit color-mix für die
+   blassen Flächen). Umbrüche über die Container-Query „entwicklung“ (#view-workboard). Kein display
+   auf Containern mit hidden-Attribut (F-622): #workboard-detail und #workboard-uebersicht tragen keins. */
+#view-workboard .eintrag-seite {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 24px;
+  align-items: start;
+}
+
+#view-workboard .eintrag-haupt {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
 #view-workboard .workboard-detail .back {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
   border: 0;
   background: transparent;
-  padding: 0;
+  font-size: 13px;
   cursor: pointer;
 }
 
-#view-workboard .workboard-detail .page-heading {
-  margin-bottom: 18px;
+#view-workboard .eintrag-kopf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: stretch;
+}
+
+#view-workboard .eintrag-kopf-text {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+#view-workboard .eintrag-eyebrow-zeile .typ-chip {
+  letter-spacing: 1px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 #view-workboard .workboard-detail h1 {
-  overflow-wrap: break-word;
+  margin: 0;
+  font: 400 38px/1.15 var(--serif);
+  overflow-wrap: anywhere;
 }
 
-#view-workboard .feature-edit-actions {
+#view-workboard .workboard-detail h1:focus,
+#view-workboard .workboard-detail h1:focus-visible {
+  outline: none;
+}
+
+#view-workboard .eintrag-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 0 0 22px;
+  gap: 8px;
 }
 
-#view-workboard .pm-detail-status:not([hidden]) {
+#view-workboard .eintrag-chips:empty {
+  display: none;
+}
+
+#view-workboard .eintrag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Kurz gesagt (eintrag-bausteine.js kurzGesagtHtml). */
+#view-workboard .kurz-gesagt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  line-height: 1.55;
+}
+
+#view-workboard .kurz-gesagt-titel {
+  margin: 0;
+  font: 10.5px var(--sans);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-workboard .kurz-zeile {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .kurz-zeile strong {
+  font-weight: 600;
+}
+
+/* Status-Block (eintrag-bausteine.js statusBlockHtml): Ton der Kopfzeile über data-ton. */
+#view-workboard .status-block {
+  --ton: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+#view-workboard .status-block[data-ton='ok'],
+#view-workboard .status-block[data-ton='aktiv'] {
+  --ton: var(--mint);
+}
+
+#view-workboard .status-block[data-ton='warten'] {
+  --ton: var(--amber);
+  border-color: var(--amber);
+}
+
+#view-workboard .status-block[data-ton='offen'] {
+  --ton: var(--ebene-bug);
+}
+
+#view-workboard .status-block-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ton);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .status-block-punkt {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ton);
+}
+
+#view-workboard .status-block-liste {
+  display: grid;
+  /* Lange Beschriftungen (ru „ЗАПЛАНИРОВАНО“) laufen nicht in den Wert: die Spalte wächst bis 45 %. */
+  grid-template-columns: minmax(96px, max-content) minmax(0, 1fr);
+  gap: 7px 10px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+#view-workboard .status-block-liste dt {
+  max-width: 13em;
+  padding-top: 2px;
+  overflow-wrap: anywhere;
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-workboard .status-block-liste dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Jetzt-Band (eintrag-bausteine.js jetztBandHtml). data-zustand am Rahmen setzt workboard.js;
+   „dran-verbunden“ schließt den Click-to-Work-Bereich darunter an (er trägt den Hauptknopf). */
+#view-workboard .jetzt-band-dran {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 22px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 17px 0;
-  margin-bottom: 28px;
+  gap: 12px 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--amber);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+
+#view-workboard .jetzt-band-text {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+#view-workboard .jetzt-band-eyebrow {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+#view-workboard .jetzt-band-text h2 {
+  margin: 0;
+  font: 400 22px/1.25 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .jetzt-band-text p:not(.jetzt-band-eyebrow) {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+#view-workboard .jetzt-band-knopf {
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+#view-workboard .jetzt-band[data-zustand='dran-verbunden'] .jetzt-band-dran {
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  padding-bottom: 6px;
+}
+
+#view-workboard .jetzt-band[data-zustand='dran-verbunden'] + .workboard-auftrag {
+  margin-top: -22px;
+  padding: 6px 20px 18px;
+  border: 1px solid var(--amber);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+
+#view-workboard .jetzt-band-ruhig {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
   font-size: 13px;
   color: var(--muted);
 }
 
-#view-workboard .pm-detail-status strong {
-  color: var(--ink);
-  font-weight: 400;
+#view-workboard .jetzt-band-ruhig > span:nth-child(2) {
+  flex: 1 1 260px;
 }
 
-#view-workboard .workboard-detail-statuswert {
-  font-size: 10px;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
+#view-workboard .jetzt-band-ruhig strong {
+  font-weight: 600;
   color: var(--ink);
 }
 
-#view-workboard .workboard-auftrag {
-  margin: 0 0 8px;
+#view-workboard .jetzt-band-punkt {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--amber);
+}
+
+/* Click-to-Work (F22 WS-2, F35 WS-1, unverändert im Verhalten). */
+#view-workboard .workboard-auftrag:empty {
+  display: none;
 }
 
 #view-workboard .workboard-auftrag-start {
@@ -6106,17 +6273,39 @@ th {
   gap: 12px 18px;
 }
 
+#view-workboard .workboard-auftrag-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 #view-workboard .workboard-auftrag-start p {
   flex: 1 1 260px;
   margin: 0;
   font-size: 12px;
 }
 
+/* F-922: gesperrter Einstieg (disabled + aria-disabled) sieht wie die kommt-Knöpfe deaktiviert aus. */
+#view-workboard .workboard-auftrag-start .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#view-workboard .workboard-auftrag-start .button:disabled:hover {
+  background: transparent;
+  border-color: var(--line);
+}
+
 #view-workboard .workboard-vorschlag {
   padding: 22px 24px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  margin: 0 0 20px;
+  margin: 0;
+}
+
+#view-workboard .jetzt-band[data-zustand='dran-verbunden'] + .workboard-auftrag .workboard-vorschlag {
+  padding: 0;
+  border: 0;
 }
 
 #view-workboard .workboard-vorschlag h3,
@@ -6125,24 +6314,26 @@ th {
 }
 
 #view-workboard .workboard-vorschlag-kopf,
-#view-workboard .workboard-detail-felder,
-#view-workboard .workboard-detail-planung {
+#view-workboard .eintrag-felder {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 6px 16px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+#view-workboard .workboard-vorschlag-kopf {
   margin: 14px 0;
   font-size: 13px;
 }
 
 #view-workboard .workboard-vorschlag-kopf dt,
-#view-workboard .workboard-detail-felder dt,
-#view-workboard .workboard-detail-planung dt {
+#view-workboard .eintrag-felder dt {
   color: var(--muted);
 }
 
 #view-workboard .workboard-vorschlag-kopf dd,
-#view-workboard .workboard-detail-felder dd,
-#view-workboard .workboard-detail-planung dd {
+#view-workboard .eintrag-felder dd {
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -6172,7 +6363,7 @@ th {
 }
 
 #view-workboard .workboard-git {
-  margin: 0 0 20px;
+  margin: 20px 0 0;
 }
 
 #view-workboard .workboard-git pre {
@@ -6184,30 +6375,272 @@ th {
   font-size: 12px;
 }
 
-#view-workboard .workboard-detail-ziel {
-  white-space: pre-line;
-  overflow-wrap: break-word;
-  font-size: 14px;
+#view-workboard a.button {
+  text-decoration: none;
 }
 
-#view-workboard .pm-feature-steps {
-  margin: 28px 0 36px;
-  padding: 24px;
+/* Karten der Hauptspalte. */
+#view-workboard .eintrag-inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+#view-workboard .eintrag-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+#view-workboard .eintrag-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+#view-workboard .eintrag-karte h2,
+#view-workboard .eintrag-verlauf h2 {
+  margin: 0;
+  font: 400 21px/1.25 var(--serif);
+}
+
+#view-workboard .eintrag-karte-kopf .subtle {
+  font-size: 12px;
+}
+
+#view-workboard .eintrag-eyebrow {
+  margin: 0;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-workboard .eintrag-kommt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 8px;
+  margin: 0;
+  font-size: 12px;
+}
+
+#view-workboard .eintrag-seite .text-link {
+  gap: 4px;
+  padding: 0;
+  border-bottom: 1px solid currentColor;
+  font: 12.5px var(--sans);
+  color: var(--mint);
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .eintrag-seite .text-link:hover {
+  color: var(--ink);
+}
+
+#view-workboard .eintrag-seite .text-link[aria-disabled='true'] {
+  border-bottom-style: dashed;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+#view-workboard .eintrag-seite button.text-link {
+  align-self: flex-start;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  cursor: pointer;
+}
+
+/* Das Was: Register und AK-Zeilen mit Urteil. */
+#view-workboard .eintrag-karte-kopf h2#was-titel {
+  flex: 1 1 auto;
+}
+
+#view-workboard .was-reiterzeile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+#view-workboard .was-reiter {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: 12px var(--sans);
+  cursor: pointer;
+}
+
+#view-workboard .was-reiter[aria-selected='true'] {
+  border-color: var(--mint);
+  background: color-mix(in srgb, var(--mint) 12%, transparent);
+  color: var(--ink);
+}
+
+#view-workboard .was-reiter:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+#view-workboard .was-panel {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#view-workboard .was-auftrag {
+  margin: 0 0 8px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .was-ak-liste,
+#view-workboard .was-nicht-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#view-workboard .was-nicht-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .was-ak-zeile {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 140px;
+  gap: 12px;
+  align-items: start;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+#view-workboard .was-ak-id {
+  color: var(--muted);
+}
+
+#view-workboard .was-ak-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .ak-beleg {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+#view-workboard .ak-urteil-chip {
+  --urteil: var(--muted);
+  justify-self: start;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--urteil) 55%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--urteil);
+}
+
+#view-workboard .ak-urteil-chip[data-urteil='keins'] {
+  border-color: var(--line);
+}
+
+#view-workboard .ak-urteil-chip[data-urteil='ERFUELLT'] {
+  --urteil: var(--mint);
+}
+
+#view-workboard .ak-urteil-chip[data-urteil='NICHT_ERFUELLT'] {
+  --urteil: var(--red);
+}
+
+#view-workboard .ak-urteil-chip[data-urteil='NICHT_PRUEFBAR'] {
+  --urteil: var(--amber);
+}
+
+/* Fortschritt: Rollen-Kreis (rollen-kreis.js) links, Workstreams rechts. */
+#view-workboard .eintrag-fortschritt {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+}
+
+#view-workboard .eintrag-fortschritt-kreis,
+#view-workboard .eintrag-fortschritt-ws {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+#view-workboard .eintrag-fortschritt-ws .text-link {
+  align-self: flex-start;
+}
+
+/* Kreismitte im Detail: die Zeile darf zweizeilig umbrechen statt abgeschnitten zu werden. */
+#view-workboard .rollen-kreis .rk-mitte-zeile {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+#view-workboard .eintrag-hinweis {
+  margin: 0;
+  font-size: 12px;
+}
+
+#view-workboard .eintrag-rolle {
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
+  background: var(--bg);
+  font-size: 12.5px;
 }
 
-#view-workboard .pm-feature-steps h2 {
-  font-size: 25px;
+#view-workboard .eintrag-rolle p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .eintrag-schritte {
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+#view-workboard .eintrag-schritte summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+#view-workboard .eintrag-schritte-ziel {
+  margin: 10px 0 0;
+  overflow-wrap: anywhere;
 }
 
 #view-workboard .mini-pipeline {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   gap: 20px;
   list-style: none;
-  margin: 26px 0 30px;
+  margin: 18px 0;
   padding: 0;
 }
 
@@ -6253,10 +6686,6 @@ th {
   overflow-wrap: anywhere;
 }
 
-#view-workboard .work-progress {
-  margin: 25px 0 0;
-}
-
 #view-workboard .progress-caption {
   display: flex;
   justify-content: space-between;
@@ -6269,12 +6698,11 @@ th {
 #view-workboard .progress-caption strong {
   color: var(--ink);
   font-weight: 400;
-  font-size: 15px;
 }
 
 #view-workboard .progress-track {
   height: 5px;
-  margin: 10px 0;
+  margin: 10px 0 0;
   overflow: hidden;
   border-radius: 8px;
   background: var(--track);
@@ -6287,69 +6715,208 @@ th {
   background: var(--mint);
 }
 
-#view-workboard .work-progress > small {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-#view-workboard .checklist {
-  list-style: none;
-  margin: 0 0 20px;
-  padding: 0;
-}
-
-#view-workboard .checklist li {
-  display: flex;
-  align-items: flex-start;
+/* Kacheln (Code & Doku Review, Verlauf, Fehlerbild, Behebung). */
+#view-workboard .eintrag-kacheln {
+  display: grid;
   gap: 12px;
-  margin: 10px 0;
+}
+
+#view-workboard .eintrag-kacheln-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#view-workboard .eintrag-kacheln-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#view-workboard .eintrag-kachel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+#view-workboard .eintrag-kachel-flaeche {
+  background: var(--panel);
+}
+
+#view-workboard .eintrag-kachel p {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
-#view-workboard .checkmark {
-  flex-shrink: 0;
-  color: var(--mint);
+#view-workboard .eintrag-kachel-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-#view-workboard .workboard-detail details {
-  margin: 18px 0;
-  padding: 12px 0;
+#view-workboard .eintrag-zahl {
+  font: 22px var(--serif);
+}
+
+#view-workboard .eintrag-zahl .subtle {
+  font: 13px var(--serif);
+}
+
+#view-workboard .eintrag-befund-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+#view-workboard .eintrag-verlauf {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Befund: Fehlerbild und Behebung. */
+#view-workboard .eintrag-fehlerbild {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+#view-workboard .eintrag-fehlerbild > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#view-workboard .eintrag-beschreibung {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+#view-workboard .eintrag-ganz {
+  padding: 10px 0 0;
   border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
 
-#view-workboard .workboard-detail summary {
+#view-workboard .eintrag-ganz summary {
   cursor: pointer;
   color: var(--muted);
 }
 
-#view-workboard .pm-planning .planning-window {
+#view-workboard .eintrag-ganz > * + * {
+  margin-top: 10px;
+}
+
+#view-workboard .behebung-schritte {
   display: grid;
-  gap: 10px;
-  padding: 16px 0;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-#view-workboard .pm-planning .planning-window > span {
-  font-size: 12px;
-  color: var(--muted);
+#view-workboard .behebung-schritt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
-#view-workboard .pm-planning .text-link {
-  font-size: 16px;
+#view-workboard .behebung-schritt[data-stand='wartet'] {
+  border-color: var(--amber);
 }
 
-#view-workboard .scope {
-  margin: 12px 0 24px;
+#view-workboard .behebung-name {
+  font-size: 13px;
+}
+
+#view-workboard .behebung-info {
   font-size: 11px;
+  line-height: 1.4;
   color: var(--muted);
 }
 
-#view-workboard .item-insights {
-  margin-top: 32px;
-  padding-top: 25px;
+#view-workboard .behebung-schritt .kommt-badge,
+#view-workboard .behebung-stand {
+  align-self: flex-start;
+}
+
+#view-workboard .behebung-stand {
+  --stand: var(--muted);
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--stand) 55%, transparent);
+  border-radius: 999px;
+  font-size: 10px;
+  color: var(--stand);
+}
+
+#view-workboard .behebung-stand[data-stand='erledigt'] {
+  --stand: var(--mint);
+}
+
+#view-workboard .behebung-stand[data-stand='laeuft'],
+#view-workboard .behebung-stand[data-stand='wartet'] {
+  --stand: var(--amber);
+}
+
+#view-workboard .behebung-stand[data-stand='fehler'] {
+  --stand: var(--red);
+}
+
+/* Rechte Spalte „Deine Planung“ / „Einordnung“ — läuft mit, auf Höhe der Eyebrow wie im Bild. */
+#view-workboard .eintrag-spalte-rahmen {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  margin-top: 38px;
+}
+
+#view-workboard .eintrag-spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+#view-workboard .eintrag-spalte h2 {
+  margin: 0;
+  font: 400 19px/1.25 var(--serif);
+}
+
+#view-workboard .eintrag-spalte .kommt-knopf {
+  align-self: stretch;
+  justify-content: center;
+}
+
+#view-workboard .eintrag-spalte-hinweis {
+  margin: 0;
+  font-size: 11px;
+}
+
+#view-workboard .eintrag-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 
@@ -6358,68 +6925,43 @@ th {
   overflow-wrap: anywhere;
 }
 
-@container entwicklung (max-width: 640px) {
-  #view-workboard .execution-triptych {
-    grid-template-columns: 1fr;
+/* Schmaler: Spalte unter den Inhalt (nicht mehr mitlaufend), dann Kopf, Fortschritt und Kacheln einspaltig. */
+@container entwicklung (max-width: 1080px) {
+  #view-workboard .eintrag-seite {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  #view-workboard .pm-feature-steps {
-    padding: 19px;
-  }
-
-  #view-workboard .pm-detail-status > span {
-    flex-basis: 100%;
-  }
-
-  #view-workboard .mini-pipeline {
-    display: grid;
+  #view-workboard .eintrag-spalte-rahmen {
+    position: static;
+    margin-top: 0;
   }
 }
 
-/* Link als Knopf („Ergebnis prüfen“) ohne Unterstreichung; die Überschrift des Details erhält den
-   Fokus nur als Lesestartpunkt (Muster .v10-seite h1:focus) und trägt deshalb keinen Fokusrahmen. */
-#view-workboard a.button {
-  text-decoration: none;
-}
+@container entwicklung (max-width: 760px) {
+  #view-workboard .eintrag-kopf,
+  #view-workboard .eintrag-fortschritt,
+  #view-workboard .eintrag-fehlerbild,
+  #view-workboard .eintrag-kacheln-2,
+  #view-workboard .eintrag-kacheln-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-#view-workboard .workboard-detail h1:focus,
-#view-workboard .workboard-detail h1:focus-visible {
-  outline: none;
-}
+  #view-workboard .workboard-detail h1 {
+    font-size: 30px;
+  }
 
-/* Phase im Kopf von „Wer macht was“ als kleines Versal-Label mit Punkt (Vorlage „● ABNAHME OFFEN“);
-   die Überschrift bricht bei schmaler Fläche um, statt das Label zu quetschen. Lange Titel ohne
-   Leerzeichen brechen im Detail-Kopf an jeder Stelle. */
-#view-workboard .workboard-detail .section-label {
-  flex-wrap: wrap;
-}
+  #view-workboard .was-ak-zeile {
+    grid-template-columns: 46px minmax(0, 1fr);
+  }
 
-#view-workboard .workboard-detail-phase {
-  font-size: 10px;
-  letter-spacing: 1.1px;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--ink);
-}
+  #view-workboard .was-ak-zeile .ak-urteil-chip {
+    grid-column: 2;
+  }
 
-#view-workboard .workboard-detail .page-heading > div:first-child {
-  min-width: 0;
-}
-
-#view-workboard .workboard-detail h1 {
-  overflow-wrap: anywhere;
-}
-
-/* F-922: gesperrter Einstieg „Auftrag vorbereiten“ (disabled + aria-disabled) sieht wie die
-   kommt-Knöpfe deaktiviert aus und reagiert nicht auf Hover. */
-#view-workboard .workboard-auftrag-start .button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-#view-workboard .workboard-auftrag-start .button:disabled:hover {
-  background: transparent;
-  border-color: var(--line);
+  #view-workboard .jetzt-band-knopf {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* ─────────── Auftrag & Ablauf (F44 WS-4a, Vorlage V10 d_workflow_neu, d_arbeit_verlauf) ───────────

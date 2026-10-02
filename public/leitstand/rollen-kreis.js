@@ -29,6 +29,7 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/views/dashboard.js (Karten „Wer arbeitet gerade“ und „Rolle im Detail“)
+ * - public/leitstand/views/workboard-detail.js (Fortschritt im Detail eines Features, F46 D3)
  * - public/leitstand/rollen-kreis.test.mjs (node:test)
  *
  * Wichtig:
@@ -125,26 +126,29 @@ export function naechsteKreisRolle(aktuell, taste) {
  * @param gewaehlt - true, wenn gewählt
  * @param panelId - ID des Panels „Rolle im Detail“
  * @param satellit - true für die Satelliten-Form (Pille)
+ * @param idPraefix - Präfix der Reiter-IDs (`<präfix>-tab-<rolle>`)
  * @returns HTML
  */
-function reiter(rolle, status, gewaehlt, panelId, satellit) {
+function reiter(rolle, status, gewaehlt, panelId, satellit, idPraefix) {
   const statusText = t(`kreis.status.${status.status}`)
   const name = `${t(`kreis.rolle.${rolle}`)}`
   const worker = t(`kreis.worker.${rolle}`)
   const inhalt = satellit
     ? `<span class="rk-punkt" aria-hidden="true"></span><span class="rk-name">${escapeHtml(name)} · ${escapeHtml(worker)}</span>`
     : `<span class="rk-zeile"><span class="rk-punkt" aria-hidden="true"></span><span class="rk-name">${escapeHtml(name)}</span></span><span class="rk-worker">${escapeHtml(worker)}</span>`
-  return `<button type="button" role="tab" id="rollen-kreis-tab-${rolle}" class="${satellit ? 'rk-satellit' : `rk-rolle rk-pos-${rolle}`}" data-kreis-rolle="${rolle}" data-status="${status.status}" aria-selected="${gewaehlt}" aria-controls="${escapeHtml(panelId)}" tabindex="${gewaehlt ? 0 : -1}" title="${escapeHtml(`${name} · ${worker} · ${statusText}`)}">${inhalt}<span class="sr-only"> · ${escapeHtml(statusText)}</span></button>`
+  return `<button type="button" role="tab" id="${escapeHtml(idPraefix)}-tab-${rolle}" class="${satellit ? 'rk-satellit' : `rk-rolle rk-pos-${rolle}`}" data-kreis-rolle="${rolle}" data-status="${status.status}" aria-selected="${gewaehlt}" aria-controls="${escapeHtml(panelId)}" tabindex="${gewaehlt ? 0 : -1}" title="${escapeHtml(`${name} · ${worker} · ${statusText}`)}">${inhalt}<span class="sr-only"> · ${escapeHtml(statusText)}</span></button>`
 }
 
 /**
  * Rendert den Rollen-Kreis.
- * @param optionen - { status: kreisStatus, auswahl: Rollen-ID, panelId, mitteHtml: fertiges HTML für die Kreismitte }
+ * @param optionen - { status: kreisStatus, auswahl: Rollen-ID, panelId, mitteHtml: fertiges HTML für die Kreismitte,
+ *   idPraefix: Präfix der Reiter-IDs, Standard 'rollen-kreis' (F46 D3: das Detail nutzt ein eigenes,
+ *   weil Übersicht und Detail gleichzeitig im DOM stehen) }
  * @returns HTML
  */
-export function rollenKreisHtml({ status, auswahl, panelId, mitteHtml }) {
-  const rollen = KREIS_ROLLEN.map((rolle) => reiter(rolle, status[rolle], rolle === auswahl, panelId, false)).join('')
-  const satelliten = SATELLITEN.map((rolle) => reiter(rolle, status[rolle], rolle === auswahl, panelId, true)).join('')
+export function rollenKreisHtml({ status, auswahl, panelId, mitteHtml, idPraefix = 'rollen-kreis' }) {
+  const rollen = KREIS_ROLLEN.map((rolle) => reiter(rolle, status[rolle], rolle === auswahl, panelId, false, idPraefix)).join('')
+  const satelliten = SATELLITEN.map((rolle) => reiter(rolle, status[rolle], rolle === auswahl, panelId, true, idPraefix)).join('')
   return `<div class="rollen-kreis" role="tablist" aria-label="${tHtml('kreis.register')}">
       <div class="rk-flaeche">
         <div class="rk-ring" aria-hidden="true"></div>

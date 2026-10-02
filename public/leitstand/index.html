@@ -353,22 +353,34 @@
           <!-- F44 WS-3b: Detail #/workboard/<id> als ganze Seite (d_arbeit_f35, Abgleich E8–E13):
                „← <Register>“, Kopf mit Typ · ID und Titel, „Ergebnis prüfen“ (nur bei offener
                Abnahme), Z-Knöpfe, Statuszeile, Auftrag vorbereiten (Click-to-Work), Inhalt. -->
+          <!-- F46 D3 (Bilder 07-eintrag-detail--Main, --Bug; abgleich-f46.md §4.6, §4.8): drei Ebenen —
+               Kopf (Typ-Chip · ID, Titel, „gefunden bei“) mit Status-Block, „Kurz gesagt“, Jetzt-Band;
+               darunter Click-to-Work und die Details; rechts „Deine Planung“ bzw. „Einordnung“. Alle
+               Bereiche rendert views/workboard-detail.js über views/workboard.js. -->
           <section id="workboard-detail" class="workboard-detail" aria-labelledby="workboard-detail-titel" hidden>
-            <button type="button" id="workboard-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span id="workboard-detail-zurueck-text"></span></button>
-            <div class="page-heading">
-              <div>
-                <div id="workboard-detail-eyebrow" class="eyebrow"></div>
-                <h1 id="workboard-detail-titel" tabindex="-1"></h1>
+            <div class="eintrag-seite">
+              <div class="eintrag-haupt">
+                <button type="button" id="workboard-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span id="workboard-detail-zurueck-text"></span></button>
+                <div class="eintrag-kopf">
+                  <div class="eintrag-kopf-text">
+                    <div id="workboard-detail-eyebrow" class="eintrag-eyebrow-zeile"></div>
+                    <h1 id="workboard-detail-titel" tabindex="-1"></h1>
+                    <div id="workboard-detail-zusatz" class="eintrag-chips"></div>
+                    <div id="workboard-detail-kurz"></div>
+                  </div>
+                  <div id="workboard-detail-status"></div>
+                </div>
+                <!-- Jetzt-Band (eintrag-bausteine.js). data-zustand="dran-verbunden": der
+                     Click-to-Work-Bereich darunter trägt den Hauptknopf und schließt optisch an. -->
+                <div id="workboard-detail-jetzt" class="jetzt-band"></div>
+                <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
+                     #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
+                     Vorschlag/Kette) überlebt so ein stilles Nachrendern des Inhalts. -->
+                <div id="workboard-bearbeitung" class="workboard-auftrag"></div>
+                <div id="workboard-detail-inhalt" class="eintrag-inhalt"></div>
               </div>
-              <div id="workboard-detail-aktion"></div>
+              <div id="workboard-detail-spalte" class="eintrag-spalte-rahmen"></div>
             </div>
-            <div id="workboard-detail-z" class="feature-edit-actions"></div>
-            <div id="workboard-detail-status" class="pm-detail-status"></div>
-            <!-- F22 WS-2: eigener Container, getrennt von #workboard-detail-inhalt (Muster
-                 #workflow-bedienung in views/workflows.js) — der Bearbeitungszustand (routet/
-                 Vorschlag/Kette) überlebt so ein stilles Nachrendern des Inhalts. -->
-            <div id="workboard-bearbeitung" class="workboard-auftrag"></div>
-            <div id="workboard-detail-inhalt"></div>
           </section>
         </section>
 

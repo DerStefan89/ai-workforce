@@ -12393,22 +12393,22 @@ Maßnahme: F46 D2: Entscheidungsart `abnahme`, Abnahmestand in den Workflow-Kopf
 Status: erledigt (F46 D2, 02.10.2026): eine Regel `ermittleAbnahmeStand` in `scripts/leitstand-server.mjs` für GET …/abnahme und die Kopfdaten (Feld `abnahme: { offen, status }`); der Cache-Stempel der Kopfdaten umfasst die Kette `lineage-entscheidung-workflow-<id>-abnahme`. `baueEntscheidungen` führt die Gruppe `abnahmen` (Art „abnahme“, Hauptknopf „Ergebnis prüfen“), der Zähler an „Entscheidungen“ zählt sie mit. Test `scripts/leitstand-abnahme-stand.test.mjs` (nach echtem POST …/abnahme sofort `offen=false`, nach neuem Bau-Lauf wieder `offen=true`).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-973** · `BUG` · P2 · offen
+**F-973** · `BUG` · P2 · erledigt
 Titel: Detailseite zeigt Akzeptanzkriterien ohne Urteil.
 Beschreibung: Die AK-Liste eines Features zeigt jedes Kriterium mit leerem Kreis. Die Urteile je AK liegen bereits in GET …/abnahme (`ak_urteile`), werden dort aber nicht gelesen.
 Fundstelle: `public/leitstand/views/workboard-detail.js:276`; `ak_urteile` in `scripts/leitstand-server.mjs`.
 Auswirkung: Mittel — Stefan sieht nicht, welches AK belegt ist.
 Maßnahme: F46 D3 (Urteil je AK aus GET …/abnahme).
-Status: offen.
+Status: erledigt (F46 D3, 02.10.2026): „Das Was“ › Abnahmekriterien zeigt je AK das Urteil aus GET …/abnahme (`ak_urteile`, einmal beim Öffnen und bei Übergängen geladen, kein Poll) mit Beleg, sonst „noch kein Urteil“ (`public/leitstand/views/workboard-detail.js` akUrteilHtml; Tests in `workboard-detail.test.mjs`).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-974** · `TECH_DEBT` · P3 · offen
+**F-974** · `TECH_DEBT` · P3 · erledigt
 Titel: Detailseite zeigt Produkt-Phasen statt des echten Ablaufs.
 Beschreibung: Das Detail eines Eintrags zeigt die Produkt-Phasen, nicht die Rollen und Schritte, die ein Eintrag tatsächlich durchläuft.
 Fundstelle: `public/leitstand/views/workboard-detail.js`.
 Auswirkung: Gering — die Anzeige erklärt den Ablauf nicht.
 Maßnahme: F46 D3 mit dem Baustein Rollen-Kreis (aus D1).
-Status: offen.
+Status: erledigt (F46 D3, 02.10.2026): Das Detail eines Features zeigt den Rollen-Kreis (`rollen-kreis.js`, eigenes ID-Präfix) mit dem Stand je Rolle aus den Schritten des verknüpften Ablaufs, Prüfergebnis und Abnahme; Befunde zeigen die Behebung in Schritten aus dem Ablauf. Die Schritte im Einzelnen bleiben aufklappbar.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-975** · `PROCESS_IMPROVEMENT` · P3 · offen
@@ -12593,3 +12593,30 @@ Auswirkung: Gering — bei offenen Befunden zeigt die Seite mehr als die Seitenl
 Maßnahme: Befundzahl in das Zustands-Aggregat aufnehmen (eine Quelle) oder den Unterschied im Titel des Zählers nennen.
 Status: offen.
 Feature/Run: Entdeckt: F46 D2.
+
+**F-995** · `TECH_DEBT` · P3 · offen
+Titel: Die Leseroute der Feature-Akte liefert die Entscheidungen nicht.
+Beschreibung: Das Detail eines Features soll unter „Verlauf“ die Entscheidungen der Akte (E-…) zeigen (abgleich-f46.md §4.6). GET …/features/<id>/akte liefert nur Titel, Status, Ziel, Nicht-Ziele und AKs; D3 durfte den Server nicht ändern. Die Kachel steht deshalb als „kommt“.
+Fundstelle: `scripts/leitstand/routen-f35.mjs` (`leseFeatureAkteFuerAnzeige`), `src/feature-auftrag/index.ts` (`leseFeatureAkteAnzeige`); Anzeige `public/leitstand/views/workboard-detail.js` (`verlaufBlock`).
+Auswirkung: Gering — die Entscheidungen bleiben über „Akte in VS Code öffnen“ erreichbar.
+Maßnahme: Die lesende Projektion um den Abschnitt „Entscheidungen“ (Zeilen mit E-…) erweitern, eine Regel mit dem Bau-Auftrag; dann die Kachel echt (D4 oder Fixpaket).
+Status: offen.
+Feature/Run: Entdeckt: F46 D3.
+
+**F-996** · `BUG` · P2 · erledigt
+Titel: Ein laufender Ablauf erscheint als Rückfrage.
+Beschreibung: Läuft ein Schritt (Workflow LAEUFT, Schritt LAEUFT mit lauf_id), liefert der Automat `haltKlaerung` („Schritt … ist nicht startbereit (status LAEUFT …)“); die Kopfdaten führen das als `naechster.art`. `filtereAttentionWorkflows` wertet jedes `haltKlaerung` als Rückfrage. Belegt an `kontrollzustand/lineage-workflow-f15-ws4-l1` (Version 2): `ermittleNaechstenSchritt` → `haltKlaerung`. Folge: Während jedes Laufs zeigen „Deine Entscheidungen“, der Zähler an „Entscheidungen“, die Spalte „Braucht dich“ und seit F46 D3 das Jetzt-Band im Detail („Rückfrage beantworten“) eine Rückfrage, die es nicht gibt.
+Fundstelle: `public/leitstand/attention-daten.js` (`filtereAttentionWorkflows`), `src/workflow/index.ts` (`ermittleNaechstenSchritt`, Regel „nicht startbereit“); Verbraucher `public/leitstand/entwicklung-daten.js` (`workflowPhase`), `public/leitstand/views/workboard-detail.js` (`detailJetzt`).
+Auswirkung: Mittel — Stefan wird während eines Laufs zu einer Entscheidung gerufen, die keine ist; „Hauptknopf nur, wenn du dran bist“ (Leitprinzip) gilt dann nicht.
+Maßnahme: In der einen Regel (`filtereAttentionWorkflows`) `haltKlaerung` nur als Rückfrage werten, wenn der Workflow nicht LAEUFT — oder der Server liefert für einen laufenden Schritt einen eigenen Ausgang. Bewusst nicht in D3: berührt D2-Flächen und Gate f21-ws2 (d); Entscheidung Stefan.
+Status: erledigt (F46 D3, Nachtrag Challenger 02.10.2026): `filtereAttentionWorkflows` in `public/leitstand/attention-daten.js` zählt `haltKlaerung` nicht als Rückfrage, solange der Workflow läuft (`laeuftGerade`: Status LAEUFT oder ein Schritt mit Status LAEUFT, wo Schritte mitgegeben werden). Eine Regel für „Deine Entscheidungen“, den Zähler an „Entscheidungen“, „Braucht dich“, Persona, Jarvis und das Jetzt-Band im Detail. Tests in `attention-daten.test.mjs` (laufend → keine Rückfrage, KLAERUNG_ERFORDERLICH → Rückfrage) und `workboard-detail.test.mjs`.
+Feature/Run: Entdeckt: F46 D3 (Nachweis „Feature in Arbeit“).
+
+**F-997** · `PROCESS_IMPROVEMENT` · P3 · erledigt
+Titel: Wann ein Bug wieder in die Triage gehört, ist nicht entschieden.
+Beschreibung: Das Jetzt-Band eines Bugs zeigt „Was passiert mit diesem Bug?“ mit „Jetzt beheben lassen“. F46 D3 zeigt die Triage nur, solange zum offenen Bug noch kein Ablauf verknüpft ist (vorsichtige, reversible Lesart). Nach einem Fix-Ablauf — auch nach einer angenommenen Abnahme, während das Register den Bug noch als offen führt — steht eine ruhige Zeile mit „Ablauf ansehen“; „Jetzt beheben lassen“ bleibt als Einstieg darunter erreichbar.
+Fundstelle: `public/leitstand/views/workboard-detail.js` (`detailJetzt`), `public/leitstand/views/workboard.js` (`renderBearbeitungsAbschnitt`); `docs/design/abgleich-f46.md` §4.8 „Umsetzung D3“.
+Auswirkung: Gering — nach einem gescheiterten oder abgelehnten Fix fordert die Seite die Entscheidung nicht aktiv ein.
+Maßnahme: Entscheidung Stefan: Triage auch nach einem gescheiterten, gestoppten oder abgelehnten Fix-Ablauf, und „Register schließen“ als nächster Schritt nach einer Annahme (Fixpaket B5, Triage als Schreibweg).
+Status: erledigt (Entscheidung Challenger, 02.10.2026): Die Triage („Jetzt beheben lassen“ und die drei „kommt“-Knöpfe) erscheint, wenn der Bug OFFEN ist und kein verknüpfter Ablauf aktiv ist oder auf die Abnahme wartet — nach einem beendeten, abgelehnten oder gestoppten Fix-Ablauf also wieder (`detailJetzt`, `renderBearbeitungsAbschnitt`; Test in `workboard-detail.test.mjs`).
+Feature/Run: Entdeckt: F46 D3, Prüfpass qa 6.

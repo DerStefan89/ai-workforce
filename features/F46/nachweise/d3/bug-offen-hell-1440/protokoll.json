@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Bug offen: BUG · F-991 · P2, gefunden, Kurz gesagt aus dem Register, Triage-Band mit „Jetzt beheben lassen“ und drei „kommt“-Knöpfen, Fehlerbild, Behebung „kommt“",
+    "mehr als ein gefüllter Hauptknopf (muss fehlen)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "light",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Eyebrow": "Bug · F-991 · P2",
+    "Titel": "Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht.",
+    "Jetzt-Band (Zustand)": "dran-verbunden",
+    "Hauptknopf Jetzt-Band": "(fehlt)",
+    "Hauptknopf Click-to-Work": "Jetzt beheben lassen",
+    "Reiter „Das Was“ gewählt": "(fehlt)",
+    "Rolle gewählt": "(fehlt)",
+    "Click-to-Work (Text „NACHWEIS“ = POST erkannt)": "Jetzt beheben lassenEinplanen … kommtZurückstellen bis Auslöser kommtSchließen: kein Fehler kommtLegt aus diesem Befund ",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Fokus (id)": "workboard-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

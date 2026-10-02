@@ -28,10 +28,12 @@
  * und Listen sind ausgeblendet, „← <Register>“ führt zum zuletzt aktiven Register zurück. Das
  * Workitem kommt aus der zuletzt geladenen Liste des Listen-Tabs bzw. der ungefilterten Liste des
  * Boards (F21 AK5); bis diese da ist, zeigt das Detail einen Ladezustand (F-921). Die Abschnitte
- * rendert views/workboard-detail.js. Nachgeladen wird beim Öffnen des Details (detailNachtrag): bei
- * Features die Akte (holeFeatureAkte) und die Roadmap (Meilenstein), für den verknüpften Ablauf
- * dessen Schritte (holeWorkflowDetail) und — steht er auf ABGESCHLOSSEN — die Abnahme (holeAbnahme,
- * „Ergebnis prüfen“, wenn noch keine Abnahme-Entscheidung gilt; Regel wie views/workflows.js). Ist
+ * rendert views/workboard-detail.js (F46 D3: Kopf, Kurz gesagt, Status-Block, Jetzt-Band, Inhalt und
+ * rechte Spalte nach den Bildern 07-Main/07-Bug; Reiter „Das Was“ und Rollen-Kreis als Register).
+ * Nachgeladen wird beim Öffnen des Details (detailNachtrag): bei Features die Akte (holeFeatureAkte)
+ * und die Roadmap (Meilenstein), für den verknüpften Ablauf dessen Schritte (holeWorkflowDetail) und
+ * die Abnahme-Projektion (holeAbnahme: Urteile je AK, Prüfergebnis, Entscheidung). Ob die Abnahme
+ * offen ist („Ergebnis prüfen“), steht im Kopfdatum abnahme.offen aus dem Poll (F46 D2). Ist
  * die Verknüpfung beim Öffnen noch nicht bestimmbar (Deep-Link vor dem ersten Poll-Tick bzw. vor den
  * Aufträgen), lädt der erste Tick, der sie bestimmbar macht. Danach lädt ein Tick die Schritte nur
  * bei einem Übergang: ein anderer Ablauf wird maßgeblich (etwa nach „Auftrag vorbereiten“ — dann
@@ -67,15 +69,36 @@
 import { baueAuftragAusFeature, holeAbnahme, holeAuftraege, holeFeatureAkte, holeRoadmap, holeWorkflowDetail, holeWorkitems, legeAuftragAn, routeAuftrag, sendeWorkflowFreigabe } from '../api.js'
 import { empfehlungIdsFuerFreigabe, renderEmpfehlung, renderInstallierbarHinweis } from '../empfehlung-anzeige.js'
 import { bindeEmpfehlungInstallation } from '../empfehlung-installation.js'
+import { oeffneChatMitEntwurf } from '../chat-dock.js'
 import { baueBoard, baueVerknuepfung, LISTEN_TABS, laufenderWorkflow, SPALTEN, spalteVon, sucheWorkitems, verknuepfterWorkflow, workflowPhase } from '../entwicklung-daten.js'
+import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { formatiereZahl, t, tHtml } from '../i18n.js'
 import { kommtBadge, kommtKnopf } from '../kommt.js'
 import { escapeHtml } from '../render.js'
-import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
+import { abonniereProjektWechsel, holeAktivesProjekt, projektAusListe } from '../projekt-kontext.js'
 import { rollenName } from '../rollen-anzeige.js'
+import { naechsteKreisRolle } from '../rollen-kreis.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
-import { detailEyebrow, detailInhaltHtml, detailStatusHtml, kartenStatus, phaseHtml, statusKategorie, titelVon, typBezeichnung } from './workboard-detail.js'
+import {
+  DETAIL_KREIS_PRAEFIX,
+  FEATURE_ENDSTATUS,
+  detailEyebrowHtml,
+  detailInhaltHtml,
+  detailJetzt,
+  detailKopfZusatzHtml,
+  detailKurzHtml,
+  detailSpalteHtml,
+  detailStatusBlockHtml,
+  istBug,
+  jarvisEntwurf,
+  kartenStatus,
+  phaseHtml,
+  statusKategorie,
+  titelVon,
+  typBezeichnung,
+  WAS_REITER,
+} from './workboard-detail.js'
 
 /** Register der Seite: das Board und die vier Listen-Tabs (LISTEN_TABS). */
 const TABS = ['board', ...Object.keys(LISTEN_TABS)]
@@ -116,17 +139,18 @@ let detailAusUebersicht = false
  * akte, roadmap (je undefined = lädt, nur Features), workflowBestimmt (false = Verknüpfung noch
  * nicht bestimmbar), workflowKennung (`<workflowId>|<Phase>` der letzten Ladung), verknuepfungFehlt
  * (Workflows oder Aufträge nicht verfügbar), workflowId (null = kein verknüpfter Ablauf),
- * workflowEintrag, schritte (undefined = lädt, null = nicht ladbar), abnahmeOffen, ablaufLadung
- * (Zähler gegen überholte Ablauf-Antworten) }, oder null ohne offenes Detail.
+ * workflowEintrag, schritte (undefined = lädt, null = nicht ladbar), abnahme (F46 D3: Antwort von
+ * GET …/abnahme für Urteile je AK, Prüfergebnis und Entscheidung — undefined = lädt, null = nicht
+ * ladbar), ablaufLadung (Zähler gegen überholte Ablauf-Antworten), wasReiter und kreisAuswahl
+ * (Bedienzustand der Register „Das Was“ und Rollen-Kreis, null = Vorauswahl) }, oder null ohne
+ * offenes Detail. Ob die Abnahme offen ist, steht im Kopfdatum abnahme.offen des Workflows (Poll).
  * Jedes Öffnen legt ein neues Objekt an; eine Antwort für ein älteres Objekt wird verworfen
  * (Überholschutz über die Identität, auch beim Projektwechsel).
  */
 let detailNachtrag = null
 
-/** Zuletzt geschriebenes HTML von Statuszeile und Inhalt des Details — ein Poll-Tick schreibt nur bei geändertem Inhalt (aufgeklappte Abschnitte bleiben). */
-let letztesDetailStatusHtml = ''
-let letztesDetailInhaltHtml = ''
-let letztesDetailAktionHtml = ''
+/** Zuletzt geschriebenes HTML je Bereich des Details (Element-id → HTML) — ein Poll-Tick schreibt nur bei geändertem Inhalt (aufgeklappte Abschnitte und Fokus bleiben). */
+const letztesDetailHtml = new Map()
 
 /** Überholschutz (Muster views/workflows.js workflowRenderZaehler): je Abrufart verwirft eine spätere Anfrage die Antwort einer früheren. */
 let anfrageZaehler = 0
@@ -234,7 +258,7 @@ function renderKopf() {
   document.getElementById('workboard-listen-bereich').hidden = aktiverTab === 'board'
 }
 
-/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips, „Alle“-Chips der Filter, die Z-Knöpfe im Detail-Kopf (E13). */
+/** Baut einmalig die festen Bedienelemente: „Eintrag erfassen“ (kommt), Board-Modi (E2/E3 kommt), Ansicht-Chips und „Alle“-Chips der Filter. */
 function baueFesteBedienung() {
   document.getElementById('workboard-erfassen').innerHTML = kommtKnopf(t('entwicklung.eintragErfassen'), { primaer: true, symbol: '+' })
   document.getElementById('workboard-modi').innerHTML = `<button type="button" class="view-switch-knopf active" aria-pressed="true">${tHtml('entwicklung.modus.status')}</button>
@@ -244,8 +268,6 @@ function baueFesteBedienung() {
     (ansicht) => `<button type="button" class="board-filter-chip" data-ansicht="${ansicht}" aria-pressed="${ansicht === boardAnsicht}">${tHtml(`entwicklung.ansicht.${ansicht}`)}</button>`
   ).join('')}`
   for (const id of ['workboard-filter-typ', 'workboard-filter-status', 'workboard-filter-prioritaet']) fuelleChipGruppe(id, [])
-  // F44 WS-3b (E13): „Eintrag bearbeiten“ und „Insights ansehen“ im Detail-Kopf sind Z-Elemente.
-  document.getElementById('workboard-detail-z').innerHTML = kommtKnopf(t('entwicklung.detail.bearbeiten')) + kommtKnopf(t('entwicklung.detail.insights'))
 }
 
 // ─── Board (E1) ──────────────────────────────────────────────────────────────
@@ -572,11 +594,10 @@ function findeWorkitem(id) {
 }
 
 /** Feature-Status, unter denen kein Bau-Auftrag mehr angelegt werden kann (F35 WS-1 AK6). */
-const FEATURE_STATUS_NICHT_BAUBAR = new Set(['ABGESCHLOSSEN', 'ABGEBROCHEN'])
 
 /** true, wenn aus workitem (Feature-Akte) noch ein Bau-Auftrag angelegt werden darf (F35 WS-1 AK6). @param workitem - ein Feature-Workitem */
 function istFeatureBaubar(workitem) {
-  return !FEATURE_STATUS_NICHT_BAUBAR.has(workitem.status)
+  return !FEATURE_ENDSTATUS.has(workitem.status)
 }
 
 // ─── F22 WS-2 / F35 WS-1: Auftrag vorbereiten (Click-to-Work) ───────────────
@@ -666,10 +687,11 @@ function renderBearbeitungsInhalt(workitem, zustand) {
 /**
  * Sperre von „Auftrag vorbereiten“ (F-922, Entscheidung Challenger 01.10.2026, reversibel): gesperrt,
  * solange ein verknüpfter Workflow nicht terminal ist (laufenderWorkflow, dieselbe Statusmenge wie
- * das Board) oder die Abnahme des maßgeblichen Ablaufs offen ist (dieselbe Angabe wie „Ergebnis
- * prüfen“, detailNachtrag.abnahmeOffen). Solange die Verknüpfung noch lädt, bleibt der Einstieg
- * ebenfalls gesperrt — sonst ließe ein Deep-Link vor dem ersten Poll-Tick einen zweiten Auftrag zu.
- * Ist eine Quelle nicht verfügbar (null), bleibt er frei (Server-Regel D13 gilt weiter).
+ * das Board) oder die Abnahme des maßgeblichen Ablaufs offen ist (F46 D3: Kopfdatum abnahme.offen
+ * aus dem Poll — dieselbe Angabe wie „Ergebnis prüfen“ im Jetzt-Band). Solange die Verknüpfung noch
+ * lädt, bleibt der Einstieg ebenfalls gesperrt — sonst ließe ein Deep-Link vor dem ersten Poll-Tick
+ * einen zweiten Auftrag zu. Ist eine Quelle nicht verfügbar (null), bleibt er frei (Server-Regel D13
+ * gilt weiter).
  * @param workitem - das Workitem des offenen Details
  * @returns null (frei) oder { grund: 'laeuft' | 'abnahme' | 'laedt', workflowId: Ziel von „Ablauf öffnen“ oder null }
  */
@@ -678,40 +700,69 @@ function auftragsSperre(workitem) {
   if (verknuepfung.laedt.length > 0) return { grund: 'laedt', workflowId: null }
   const laufend = laufenderWorkflow(workitem, verknuepfung)
   if (laufend !== null) return { grund: 'laeuft', workflowId: laufend.workflowId }
-  const nachtrag = detailNachtrag?.id === workitem.id ? detailNachtrag : null
-  if (nachtrag?.abnahmeOffen === true && typeof nachtrag.workflowId === 'string') return { grund: 'abnahme', workflowId: nachtrag.workflowId }
+  const massgeblich = verknuepfterWorkflow(workitem, verknuepfung)
+  if (massgeblich?.abnahme?.offen === true) return { grund: 'abnahme', workflowId: massgeblich.workflowId }
   return null
+}
+
+/** true, wenn workitem einen Click-to-Work-Einstieg hat (jedes Finding, eine baubare Feature-Akte). @param workitem - ein Workitem */
+function hatEinstieg(workitem) {
+  return workitem.quelle === 'finding' || (workitem.quelle === 'feature' && istFeatureBaubar(workitem))
+}
+
+/**
+ * Stand von Click-to-Work für die Sicht des Details (views/workboard-detail.js, Jetzt-Band):
+ * 'vorschlag' bzw. 'aktiv' bei einem Bearbeitungszustand dieses Eintrags, 'keiner' ohne Einstieg,
+ * sonst 'frei', 'laedt' oder 'gesperrt' nach auftragsSperre.
+ * @param workitem - das Workitem des offenen Details
+ * @returns 'frei' | 'gesperrt' | 'laedt' | 'vorschlag' | 'aktiv' | 'keiner'
+ */
+function ctwStand(workitem) {
+  if (bearbeitungsZustand !== null && bearbeitungsZustand.workitemId === workitem.id) {
+    if (bearbeitungsZustand.phase === 'vorschlag') return 'vorschlag'
+    return bearbeitungsZustand.phase === 'fehler' || bearbeitungsZustand.phase === 'konflikt' ? 'stoerung' : 'aktiv'
+  }
+  if (!hatEinstieg(workitem)) return 'keiner'
+  const sperre = auftragsSperre(workitem)
+  if (sperre === null) return 'frei'
+  return sperre.grund === 'laedt' ? 'laedt' : 'gesperrt'
 }
 
 /**
  * Rendert #workboard-bearbeitung für workitem: ohne offenen Bearbeitungszustand den Einstieg
- * „Auftrag vorbereiten“ (E9 Feature, E10 Finding; IDs #workboard-bauen bzw. #workboard-bearbeiten
- * und ihr Verhalten unverändert) — gesperrt mit Hinweis und „Ablauf öffnen“, solange
- * auftragsSperre greift (F-922) —, sonst den laufenden Zustand (beide Quellen teilen sich
- * renderBearbeitungsInhalt). Eine nicht mehr baubare Feature-Akte zeigt nur einen Hinweis.
+ * (E9 Feature, E10 Finding; IDs #workboard-bauen bzw. #workboard-bearbeiten und ihr Verhalten
+ * unverändert) — gesperrt mit Hinweis und „Ablauf öffnen“, solange auftragsSperre greift (F-922) —,
+ * sonst den laufenden Zustand (beide Quellen teilen sich renderBearbeitungsInhalt). Eine nicht mehr
+ * baubare Feature-Akte zeigt nur einen Hinweis. F46 D3 (Bild 07-Bug): Bei einem Bug heißt der
+ * Einstieg „Jetzt beheben lassen“ (dasselbe Click-to-Work); daneben stehen „Einplanen …“,
+ * „Zurückstellen bis Auslöser“ und „Schließen: kein Fehler“ als „kommt“ (Fixpaket B5) — nur solange
+ * der Einstieg frei ist (dann gehört der Bereich zum Jetzt-Band).
  * @param workitem - das aktuell im Detail gezeigte Workitem
+ * @param mitBand - true (Klick-Ketten): das Jetzt-Band zieht mit; false, wenn der Aufrufer die ganze
+ *   Seite ohnehin gerade gerendert hat (renderDetailInhalt, renderDetailNachtrag)
  */
-function renderBearbeitungsAbschnitt(workitem) {
+function renderBearbeitungsAbschnitt(workitem, mitBand = true) {
   const sperre = auftragsSperre(workitem)
+  // Nur ein offener Bug heißt „Jetzt beheben lassen“; die Triage-Knöpfe stehen beim freien Einstieg — kein
+  // verknüpfter Ablauf aktiv oder in der Abnahme (F-997, dieselbe Bedingung wie das Triage-Band, detailJetzt).
+  const bug = istBug(workitem) && workitem.status === 'OFFEN'
+  const beschriftung = tHtml(bug ? 'eintrag.ctw.beheben' : 'entwicklung.ctw.vorbereiten')
   const einstieg = (knopfId, hinweis) => {
     if (sperre === null) {
-      return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button primary" data-id="${escapeHtml(workitem.id)}" data-ctw-fokus>${tHtml('entwicklung.ctw.vorbereiten')}</button><p class="subtle">${tHtml(hinweis)}</p></div>`
+      const triage = bug ? `${kommtKnopf(t('eintrag.ctw.einplanen'))}${kommtKnopf(t('eintrag.ctw.zurueckstellen'))}${kommtKnopf(t('eintrag.ctw.schliessen'))}` : ''
+      return `<div class="workboard-auftrag-start"><div class="workboard-auftrag-knoepfe"><button type="button" id="${knopfId}" class="button primary" data-id="${escapeHtml(workitem.id)}" data-ctw-fokus>${beschriftung}</button>${triage}</div><p class="subtle">${tHtml(hinweis)}</p></div>`
     }
     const link = sperre.workflowId !== null ? ` <a href="#/workflows/${encodeURIComponent(sperre.workflowId)}">${tHtml('uebersicht.rolle.link')}</a>` : ''
-    return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button" data-id="${escapeHtml(workitem.id)}" disabled aria-disabled="true" aria-describedby="workboard-auftrag-sperre" data-ctw-fokus>${tHtml('entwicklung.ctw.vorbereiten')}</button><p class="subtle" id="workboard-auftrag-sperre">${tHtml(`entwicklung.ctw.gesperrt.${sperre.grund}`)}${link}</p></div>`
+    return `<div class="workboard-auftrag-start"><button type="button" id="${knopfId}" class="button" data-id="${escapeHtml(workitem.id)}" disabled aria-disabled="true" aria-describedby="workboard-auftrag-sperre" data-ctw-fokus>${beschriftung}</button><p class="subtle" id="workboard-auftrag-sperre">${tHtml(`entwicklung.ctw.gesperrt.${sperre.grund}`)}${link}</p></div>`
   }
   let einstiegHtml = null
   if (workitem.quelle === 'finding') einstiegHtml = einstieg('workboard-bearbeiten', 'entwicklung.ctw.hinweis.finding')
   else if (workitem.quelle === 'feature' && istFeatureBaubar(workitem)) einstiegHtml = einstieg('workboard-bauen', 'entwicklung.ctw.hinweis.feature')
-  if (einstiegHtml === null) {
-    schreibeBearbeitung(workitem.quelle === 'feature' ? `<p class="subtle">${tHtml('entwicklung.ctw.nichtBaubar')}</p>` : '')
-    return
-  }
-  if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) {
-    schreibeBearbeitung(einstiegHtml)
-    return
-  }
-  schreibeBearbeitung(renderBearbeitungsInhalt(workitem, bearbeitungsZustand))
+  if (einstiegHtml === null) schreibeBearbeitung(workitem.quelle === 'feature' ? `<p class="subtle">${tHtml('entwicklung.ctw.nichtBaubar')}</p>` : '')
+  else if (bearbeitungsZustand === null || bearbeitungsZustand.workitemId !== workitem.id) schreibeBearbeitung(einstiegHtml)
+  else schreibeBearbeitung(renderBearbeitungsInhalt(workitem, bearbeitungsZustand))
+  // F46 D3: Das Jetzt-Band hängt am Stand von Click-to-Work (Vorschlag, Triage) — es zieht mit.
+  if (mitBand && gewaehlteId === workitem.id) renderDetailJetzt(baueDetailSicht(workitem))
 }
 
 /** Markierung des Elements, das nach einem Zustandswechsel im Click-to-Work-Bereich den Fokus übernimmt (Text und Überschriften per tabindex=-1 fokussierbar, ohne in die Tab-Reihenfolge zu kommen; Knöpfe tragen nur data-ctw-fokus). */
@@ -996,10 +1047,11 @@ async function ladeAkteUndRoadmap(nachtrag) {
 }
 
 /**
- * Lädt die Schritte des verknüpften Ablaufs (GET …/workflows/<id>) und — steht er auf
- * ABGESCHLOSSEN — die Abnahme (GET …/abnahme) für „Ergebnis prüfen“. Offen ist die Abnahme nach
- * derselben Regel wie in views/workflows.js (renderAbnahmeEntscheidung): Workflow ABGESCHLOSSEN,
- * kein Freigabe-Halt, keine gültige Abnahme-Entscheidung. Eine überholte Antwort (anderes Detail,
+ * Lädt die Schritte des verknüpften Ablaufs (GET …/workflows/<id>) und die Abnahme-Projektion
+ * (GET …/abnahme) — F46 D3: Urteile je AK für „Das Was“, Prüfergebnis und Entscheidung für Rollen-Kreis
+ * und Behebung. Ob die Abnahme offen ist, entscheidet nicht diese Antwort, sondern das Kopfdatum
+ * abnahme.offen aus dem Poll (eine Regel, ermittleAbnahmeStand). Geladen wird nur beim Bestimmen und
+ * bei Übergängen (pruefeDetailNachtrag), nie periodisch. Eine überholte Antwort (anderes Detail,
  * Projektwechsel, inzwischen neuere Ladung desselben Details) wird verworfen.
  * @param nachtrag - der detailNachtrag, für den geladen wird
  * @param workflow - verknüpfter Workflow-Eintrag des Aggregats
@@ -1007,28 +1059,20 @@ async function ladeAkteUndRoadmap(nachtrag) {
 async function ladeAblaufNachtrag(nachtrag, workflow) {
   const ladung = ++nachtrag.ablaufLadung
   const aktuell = () => detailNachtrag === nachtrag && nachtrag.ablaufLadung === ladung
-  try {
+  const holeSchritte = async () => {
     const antwort = await holeWorkflowDetail(workflow.workflowId)
-    const inhalt = antwort.ok ? await antwort.json() : null
-    if (!aktuell()) return
-    nachtrag.schritte = Array.isArray(inhalt?.daten?.schritte) ? inhalt.daten.schritte : null
-  } catch (fehler) {
-    if (!aktuell()) return
-    console.error('GET …/workflows/<id> (Detail) fehlgeschlagen:', fehler)
-    nachtrag.schritte = null
+    if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`)
+    return antwort.json()
   }
-  nachtrag.abnahmeOffen = false
-  if (workflow.status === 'ABGESCHLOSSEN') {
-    try {
-      const abnahme = await holeAbnahme(workflow.workflowId)
-      if (!aktuell()) return
-      const entscheidung = abnahme?.entscheidung?.status
-      nachtrag.abnahmeOffen = abnahme?.workflowStatus === 'ABGESCHLOSSEN' && (abnahme.freigabeHalt ?? null) === null && typeof entscheidung === 'string' && entscheidung !== 'ok'
-    } catch (fehler) {
-      // Ohne Abnahme-Projektion kein „Ergebnis prüfen“; der Rest des Details bleibt.
-      console.error('GET …/abnahme (Detail) fehlgeschlagen:', fehler)
-    }
-  }
+  const [detail, abnahme] = await Promise.allSettled([holeSchritte(), holeAbnahme(workflow.workflowId)])
+  if (!aktuell()) return
+  if (detail.status === 'rejected') console.error('GET …/workflows/<id> (Detail) fehlgeschlagen:', detail.reason)
+  // holeAbnahme liefert bei 4xx/5xx den Fehlerkörper ({ grund }) — eine Projektion trägt immer workflowStatus.
+  const projektion = abnahme.status === 'fulfilled' && typeof abnahme.value?.workflowStatus === 'string' ? abnahme.value : null
+  // Ohne Abnahme-Projektion zeigt das Detail „Urteile nicht ladbar“; der Rest des Details bleibt.
+  if (projektion === null) console.error('GET …/abnahme (Detail) fehlgeschlagen:', abnahme.status === 'rejected' ? abnahme.reason : abnahme.value)
+  nachtrag.schritte = detail.status === 'fulfilled' && Array.isArray(detail.value?.daten?.schritte) ? detail.value.daten.schritte : null
+  nachtrag.abnahme = projektion
   renderDetailNachtrag()
 }
 
@@ -1058,7 +1102,10 @@ function pruefeDetailNachtrag() {
   }
   nachtrag.verknuepfungFehlt = false
   const workflow = verknuepfterWorkflow(workitem, verknuepfung)
-  const kennung = workflow === null ? null : `${workflow.workflowId}|${workflowPhase(workflow)}`
+  // F46 D3 (Prüfpass cr 1, qa 9): Übergang ist auch ein anderer Halt bzw. Cursor (laufender Schritt
+  // wechselt) und ein anderer Abnahmestand (Entscheidung in einem anderen Tab) — sonst veralteten
+  // Rollen-Kreis, Behebung und „Gerade dran“, während Status-Block und Band schon den neuen Stand zeigen.
+  const kennung = workflow === null ? null : [workflow.workflowId, workflowPhase(workflow), workflow.naechster?.art, workflow.naechster?.schrittId, workflow.aktiverSchrittId, workflow.abnahme?.offen, workflow.abnahme?.status].join('|')
   if (nachtrag.workflowBestimmt && kennung === nachtrag.workflowKennung) return
   const andererAblauf = !nachtrag.workflowBestimmt || (workflow?.workflowId ?? null) !== nachtrag.workflowId
   nachtrag.workflowBestimmt = true
@@ -1068,7 +1115,7 @@ function pruefeDetailNachtrag() {
   // Beim selben Ablauf bleiben die bisherigen Schritte stehen, bis die neuen da sind (kein Flackern).
   if (andererAblauf) {
     nachtrag.schritte = undefined
-    nachtrag.abnahmeOffen = false
+    nachtrag.abnahme = undefined
   }
   if (workflow !== null) void ladeAblaufNachtrag(nachtrag, workflow)
 }
@@ -1091,43 +1138,76 @@ function baueDetailSicht(workitem) {
   } else if (nachtrag?.verknuepfungFehlt) {
     verknuepfung = 'fehlt'
   }
-  return { workitem, workflow, verknuepfung, schritte: nachtrag?.schritte, akte: nachtrag?.akte, roadmap: nachtrag?.roadmap, abnahmeOffen: nachtrag?.abnahmeOffen === true }
+  return {
+    workitem,
+    workflow,
+    verknuepfung,
+    schritte: nachtrag?.schritte,
+    abnahme: nachtrag?.abnahme,
+    akte: nachtrag?.akte,
+    roadmap: nachtrag?.roadmap,
+    workitems: alleWorkitems,
+    ctw: ctwStand(workitem),
+    repoPfad: projektAusListe(holeAktivesProjekt().id)?.repo_pfad ?? null,
+    kreisAuswahl: nachtrag?.kreisAuswahl ?? null,
+    wasReiter: nachtrag?.wasReiter ?? null,
+  }
 }
 
 /**
- * Schreibt innerHTML nur bei geändertem Inhalt (ein Poll-Tick klappt so keine Abschnitte zu).
+ * Schreibt innerHTML eines Bereichs nur bei geändertem Inhalt (ein Poll-Tick klappt so keine
+ * Abschnitte zu und nimmt keinen Fokus weg). Muss neu geschrieben werden (Reiter gewählt, Übergang
+ * des Ablaufs), bleiben aufgeklappte Abschnitte (<details data-klappe>) offen und der Fokus liegt
+ * danach wieder auf dem Element mit derselben id (F46 D3, Prüfpass cr 2, qa 8).
  * @param id - Element-id
  * @param html - neuer Inhalt
- * @param letztes - zuletzt geschriebener Inhalt
- * @returns der jetzt gültige Inhalt
  */
-function schreibeWennGeaendert(id, html, letztes) {
-  if (html !== letztes) document.getElementById(id).innerHTML = html
-  return html
+function schreibeWennGeaendert(id, html) {
+  if (letztesDetailHtml.get(id) === html) return
+  letztesDetailHtml.set(id, html)
+  const bereich = document.getElementById(id)
+  const offen = new Set([...(bereich.querySelectorAll?.('details[data-klappe][open]') ?? [])].map((d) => d.getAttribute('data-klappe')))
+  const fokus = document.activeElement !== null && bereich.contains?.(document.activeElement) ? document.activeElement.id : ''
+  bereich.innerHTML = html
+  for (const klappe of offen) bereich.querySelector?.(`details[data-klappe="${klappe}"]`)?.setAttribute('open', '')
+  if (fokus) document.getElementById(fokus)?.focus()
 }
 
 /**
- * Rendert Kopf, Statuszeile und Inhalt des Details für ein gefundenes Workitem — ohne den
- * Click-to-Work-Bereich (#workboard-bearbeitung), damit ein Poll-Tick dessen Bedienung nicht
- * zerstört.
+ * Schreibt das Jetzt-Band und seinen Zustand (data-zustand: 'dran' | 'dran-verbunden' | 'ruhig';
+ * „verbunden“ schließt den Click-to-Work-Bereich darunter optisch an, style.css).
+ * @param sicht - Sicht des Details
+ */
+function renderDetailJetzt(sicht) {
+  const jetzt = detailJetzt(sicht)
+  const band = document.getElementById('workboard-detail-jetzt')
+  if (band.getAttribute('data-zustand') !== jetzt.zustand) band.setAttribute('data-zustand', jetzt.zustand)
+  schreibeWennGeaendert('workboard-detail-jetzt', jetzt.html)
+}
+
+/**
+ * Rendert Kopf, Kurz gesagt, Status-Block, Jetzt-Band, Inhalt und rechte Spalte des Details für ein
+ * gefundenes Workitem — ohne den Click-to-Work-Bereich (#workboard-bearbeitung), damit ein Poll-Tick
+ * dessen Bedienung nicht zerstört.
  * @param workitem - das Workitem des offenen Details
  */
 function renderDetailSeite(workitem) {
   const sicht = baueDetailSicht(workitem)
   const titel = document.getElementById('workboard-detail-titel')
   if (titel.textContent !== titelVon(workitem)) titel.textContent = titelVon(workitem)
-  document.getElementById('workboard-detail-eyebrow').textContent = detailEyebrow(workitem)
-  const aktion = sicht.abnahmeOffen && sicht.workflow !== null ? `<a class="button primary" href="#/workflows/${encodeURIComponent(sicht.workflow.workflowId)}">${tHtml('entwicklung.detail.ergebnisPruefen')}</a>` : ''
-  letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', aktion, letztesDetailAktionHtml)
-  document.getElementById('workboard-detail-z').hidden = false
-  document.getElementById('workboard-detail-status').hidden = false
-  letztesDetailStatusHtml = schreibeWennGeaendert('workboard-detail-status', detailStatusHtml(sicht), letztesDetailStatusHtml)
-  letztesDetailInhaltHtml = schreibeWennGeaendert('workboard-detail-inhalt', detailInhaltHtml(sicht), letztesDetailInhaltHtml)
+  schreibeWennGeaendert('workboard-detail-eyebrow', detailEyebrowHtml(workitem))
+  schreibeWennGeaendert('workboard-detail-zusatz', detailKopfZusatzHtml(sicht))
+  schreibeWennGeaendert('workboard-detail-kurz', detailKurzHtml(sicht))
+  schreibeWennGeaendert('workboard-detail-status', detailStatusBlockHtml(sicht))
+  renderDetailJetzt(sicht)
+  schreibeWennGeaendert('workboard-detail-inhalt', detailInhaltHtml(sicht))
+  schreibeWennGeaendert('workboard-detail-spalte', detailSpalteHtml(sicht))
 }
 
 /**
  * Detail ohne (noch) gefundenes Workitem: Ladezustand, solange die Workitems laden (F-921, kein
- * „nicht gefunden“ beim Deep-Link), sonst Fehler, „nicht verfügbar“ oder „nicht gefunden“.
+ * „nicht gefunden“ beim Deep-Link), sonst Fehler, „nicht verfügbar“ oder „nicht gefunden“. Kopf,
+ * Status-Block, Jetzt-Band und rechte Spalte bleiben leer.
  * @param id - Workitem-id aus der Route
  */
 function renderDetailOhneWorkitem(id) {
@@ -1137,13 +1217,9 @@ function renderDetailOhneWorkitem(id) {
   else if (alleWorkitems === null) html = `<div class="note red"><strong>${tHtml('entwicklung.nichtVerfuegbar')}</strong></div>`
   else html = `<div class="note amber"><strong>${tHtml('entwicklung.detail.nichtGefunden.titel')}</strong><p>${tHtml('entwicklung.detail.nichtGefunden')}</p></div>`
   document.getElementById('workboard-detail-titel').textContent = id
-  document.getElementById('workboard-detail-eyebrow').textContent = ''
-  letztesDetailAktionHtml = schreibeWennGeaendert('workboard-detail-aktion', '', letztesDetailAktionHtml)
-  // Ohne Eintrag gibt es nichts zu bearbeiten: die Z-Knöpfe des Kopfs treten mit zurück.
-  document.getElementById('workboard-detail-z').hidden = true
-  document.getElementById('workboard-detail-status').hidden = true
-  letztesDetailStatusHtml = schreibeWennGeaendert('workboard-detail-status', '', letztesDetailStatusHtml)
-  letztesDetailInhaltHtml = schreibeWennGeaendert('workboard-detail-inhalt', html, letztesDetailInhaltHtml)
+  for (const bereich of ['workboard-detail-eyebrow', 'workboard-detail-zusatz', 'workboard-detail-kurz', 'workboard-detail-status', 'workboard-detail-jetzt', 'workboard-detail-spalte']) schreibeWennGeaendert(bereich, '')
+  document.getElementById('workboard-detail-jetzt').removeAttribute('data-zustand')
+  schreibeWennGeaendert('workboard-detail-inhalt', html)
   schreibeBearbeitung('')
 }
 
@@ -1163,7 +1239,7 @@ function renderDetailInhalt(id) {
   }
   pruefeDetailNachtrag()
   renderDetailSeite(workitem)
-  renderBearbeitungsAbschnitt(workitem)
+  renderBearbeitungsAbschnitt(workitem, false)
 }
 
 /** Rendert nach einem eingetroffenen Nachtrag bzw. einem Poll-Tick das offene Detail neu; der Click-to-Work-Bereich wird nur bei geändertem HTML geschrieben (schreibeBearbeitung — etwa, wenn „Auftrag vorbereiten“ bei offener Abnahme zurücktritt). */
@@ -1173,7 +1249,7 @@ function renderDetailNachtrag() {
   if (workitem === null) return
   pruefeDetailNachtrag()
   renderDetailSeite(workitem)
-  renderBearbeitungsAbschnitt(workitem)
+  renderBearbeitungsAbschnitt(workitem, false)
 }
 
 /**
@@ -1195,10 +1271,8 @@ function ladeDetail(id) {
   if (bearbeitungsZustand !== null && bearbeitungsZustand.workitemId !== id) {
     bearbeitungsZustand = null
   }
-  detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahmeOffen: false, ablaufLadung: 0 }
-  letztesDetailStatusHtml = ''
-  letztesDetailInhaltHtml = ''
-  letztesDetailAktionHtml = ''
+  detailNachtrag = { id, projektId: holeAktivesProjekt().id, akteGestartet: false, akte: undefined, roadmap: undefined, workflowBestimmt: false, workflowKennung: null, verknuepfungFehlt: false, workflowId: undefined, workflowEintrag: null, schritte: undefined, abnahme: undefined, ablaufLadung: 0, wasReiter: null, kreisAuswahl: null }
+  letztesDetailHtml.clear()
   zeigeDetail(true)
   renderDetailInhalt(id)
   const titel = document.getElementById('workboard-detail-titel')
@@ -1276,12 +1350,67 @@ function initFilterBedienung() {
   })
 }
 
+/**
+ * F46 D3: wählt einen Reiter von „Das Was“ oder eine Rolle im Rollen-Kreis des offenen Details,
+ * rendert neu und legt den Fokus auf den gewählten Reiter (Register-Muster).
+ * @param art - 'was' | 'kreis'
+ * @param wert - Reiter- bzw. Rollen-ID
+ */
+function waehleDetailReiter(art, wert) {
+  if (detailNachtrag === null || gewaehlteId === null) return
+  if (art === 'was') detailNachtrag.wasReiter = wert
+  else detailNachtrag.kreisAuswahl = wert
+  renderDetailNachtrag()
+  document.getElementById(art === 'was' ? `was-tab-${wert}` : `${DETAIL_KREIS_PRAEFIX}-tab-${wert}`)?.focus()
+}
+
+/**
+ * F46 D3: Bedienung im Inhalt des Details — „Erneut laden“ im Fehlerzustand, Reiter von „Das Was“
+ * und Rollen des Rollen-Kreises (Klick; Pfeil links/rechts, Pos1, Ende — Muster F44 WS-7/WS-8).
+ */
+function initDetailBedienung() {
+  const inhalt = document.getElementById('workboard-detail-inhalt')
+  inhalt.addEventListener('click', (ereignis) => {
+    // Fehlerzustand des Details: „Erneut laden“ holt die Workitems neu (der Knopf der Übersicht ist ausgeblendet).
+    if (ereignis.target.closest('[data-workboard-detail-erneut]') !== null) {
+      void ladeAlleWorkitems()
+      return
+    }
+    const was = ereignis.target.closest('[data-was-reiter]')
+    if (was !== null) {
+      waehleDetailReiter('was', was.getAttribute('data-was-reiter'))
+      return
+    }
+    const rolle = ereignis.target.closest('[data-kreis-rolle]')
+    if (rolle !== null) waehleDetailReiter('kreis', rolle.getAttribute('data-kreis-rolle'))
+  })
+  inhalt.addEventListener('keydown', (ereignis) => {
+    const was = ereignis.target.closest('[data-was-reiter]')
+    if (was !== null) {
+      const index = naechsterRegisterIndex(WAS_REITER.indexOf(was.getAttribute('data-was-reiter')), WAS_REITER.length, ereignis.key)
+      if (index === null) return
+      ereignis.preventDefault()
+      waehleDetailReiter('was', WAS_REITER[index])
+      return
+    }
+    const rolle = ereignis.target.closest('[data-kreis-rolle]')
+    if (rolle === null) return
+    const neu = naechsteKreisRolle(rolle.getAttribute('data-kreis-rolle'), ereignis.key)
+    if (neu === null) return
+    ereignis.preventDefault()
+    waehleDetailReiter('kreis', neu)
+  })
+  // „Frag Jarvis dazu“ in der rechten Spalte: öffnet das Dock mit vorbefüllter Eingabe, sendet nie (chat-dock.js).
+  document.getElementById('workboard-detail-spalte').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target.closest('[data-detail-jarvis]')
+    if (knopf === null || gewaehlteId === null) return
+    const workitem = findeWorkitem(gewaehlteId)
+    if (workitem !== null) oeffneChatMitEntwurf({ modus: 'jarvis', entwurf: jarvisEntwurf(workitem) }, knopf)
+  })
+}
+
 /** Klick- und Enter-Delegation für Listenzeilen (Navigation zu `#/workboard/<id>`) und „← zurück“ im Detail — Muster views/runs.js. */
 function initListenBedienung() {
-  // Fehlerzustand des Details: „Erneut laden“ holt die Workitems neu (der Knopf der Übersicht ist ausgeblendet).
-  document.getElementById('workboard-detail-inhalt').addEventListener('click', (ereignis) => {
-    if (ereignis.target.closest('[data-workboard-detail-erneut]') !== null) void ladeAlleWorkitems()
-  })
   const liste = document.getElementById('workboard-liste')
   liste.addEventListener('click', (ereignis) => {
     const zeile = ereignis.target.closest('.workboard-zeile')
@@ -1368,6 +1497,7 @@ export function initWorkboardView() {
   renderBoard()
   initFilterBedienung()
   initListenBedienung()
+  initDetailBedienung()
   initBearbeitungBedienung()
 
   registriere(/^#\/workboard$/, 'workboard', () => {
@@ -1402,8 +1532,8 @@ export function initWorkboardView() {
     letzterZustand = zustand
     if (!seiteAktiv) return
     // Nur der sichtbare Bereich; der andere wird beim Register- bzw. Detailwechsel ohnehin gebaut.
-    // Im Detail rendert ein Tick nur neu (Phase); geladen wird höchstens der beim Öffnen noch nicht
-    // bestimmbare Ablauf, einmal (pruefeDetailNachtrag).
+    // Im Detail rendert ein Tick neu; geladen werden Schritte und Abnahme nur beim Bestimmen des Ablaufs
+    // und bei Übergängen (pruefeDetailNachtrag: Phase, Halt, laufender Schritt, Abnahmestand).
     if (gewaehlteId !== null) renderDetailNachtrag()
     else if (aktiverTab === 'board') renderBoard()
     else renderListe()

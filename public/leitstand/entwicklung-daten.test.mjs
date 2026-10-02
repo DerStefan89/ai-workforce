@@ -34,10 +34,14 @@ test('Regel b) braucht_dich: Feature FEATURE_GATE oder BLOCKIERT', () => {
 })
 
 test('Regel b) braucht_dich: ein verknüpfter Workflow wartet auf Freigabe oder Klärung', () => {
-  for (const art of ['haltFreigabe', 'haltKlaerung']) {
-    const v = baueVerknuepfung([workflow('w1', 'a1', 'LAEUFT', art)], [auftrag('a1', 'workitem:finding:F-1')])
+  // F46 D3 (F-996): eine Freigabe wartet mit WARTET_FREIGABE, eine Rückfrage mit KLAERUNG_ERFORDERLICH.
+  for (const [status, art] of [['WARTET_FREIGABE', 'haltFreigabe'], ['KLAERUNG_ERFORDERLICH', 'haltKlaerung']]) {
+    const v = baueVerknuepfung([workflow('w1', 'a1', status, art)], [auftrag('a1', 'workitem:finding:F-1')])
     assert.equal(spalteVon(finding('F-1', 'OFFEN'), v), 'braucht_dich', art)
   }
+  // haltKlaerung eines laufenden Workflows (Schritt läuft) wartet nicht auf Stefan.
+  const laufend = baueVerknuepfung([workflow('w1', 'a1', 'LAEUFT', 'haltKlaerung')], [auftrag('a1', 'workitem:feature:F1')])
+  assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), laufend), 'in_arbeit')
 })
 
 test('Regel c) in_arbeit: Feature IN_ARBEIT oder WORKSTREAM_SCHNITT_GENEHMIGT', () => {
@@ -78,7 +82,7 @@ test('Vorrang a > b: ein erledigtes Finding bleibt abgenommen, auch wenn sein Wo
 })
 
 test('Vorrang b > c: ein Feature IN_ARBEIT mit wartendem Workflow braucht dich', () => {
-  const v = baueVerknuepfung([workflow('w1', 'a1', 'LAEUFT', 'haltKlaerung')], [auftrag('a1', 'workitem:feature:F1')])
+  const v = baueVerknuepfung([workflow('w1', 'a1', 'KLAERUNG_ERFORDERLICH', 'haltKlaerung')], [auftrag('a1', 'workitem:feature:F1')])
   assert.equal(spalteVon(feature('F1', 'IN_ARBEIT'), v), 'braucht_dich')
 })
 
@@ -90,7 +94,7 @@ test('Vorrang a > c: ein abgeschlossenes Feature bleibt abgenommen, auch wenn se
 test('Vorrang b/c > e: ABGEBROCHEN bzw. SONSTIGES mit verknüpftem, nicht terminalem Workflow stehen dort, wo real noch etwas läuft', () => {
   const laeuft = baueVerknuepfung([workflow('w1', 'a1', 'LAEUFT', 'starte')], [auftrag('a1', 'workitem:feature:F1')])
   assert.equal(spalteVon(feature('F1', 'ABGEBROCHEN'), laeuft), 'in_arbeit')
-  const wartet = baueVerknuepfung([workflow('w1', 'a1', 'LAEUFT', 'haltKlaerung')], [auftrag('a1', 'workitem:finding:F-1')])
+  const wartet = baueVerknuepfung([workflow('w1', 'a1', 'KLAERUNG_ERFORDERLICH', 'haltKlaerung')], [auftrag('a1', 'workitem:finding:F-1')])
   assert.equal(spalteVon(finding('F-1', 'SONSTIGES'), wartet), 'braucht_dich')
 })
 
@@ -259,7 +263,7 @@ test('verknuepfterWorkflow: wartend vor nicht terminal vor dem letzten; ohne Ver
   const auftraege = [auftrag('a1', 'workitem:feature:F1'), auftrag('a2', 'workitem:feature:F1'), auftrag('a3', 'workitem:feature:F1')]
   const f1 = feature('F1', 'IN_ARBEIT')
   const alle = (workflows) => verknuepfterWorkflow(f1, baueVerknuepfung(workflows, auftraege))?.workflowId ?? null
-  assert.equal(alle([workflow('w1', 'a1', 'ABGESCHLOSSEN'), workflow('w2', 'a2', 'LAEUFT'), workflow('w3', 'a3', 'LAEUFT', 'haltKlaerung')]), 'w3')
+  assert.equal(alle([workflow('w1', 'a1', 'ABGESCHLOSSEN'), workflow('w2', 'a2', 'LAEUFT'), workflow('w3', 'a3', 'KLAERUNG_ERFORDERLICH', 'haltKlaerung')]), 'w3')
   // Freigabe vor Rückfrage (Reihenfolge von baueEntscheidungen).
   assert.equal(alle([workflow('w1', 'a1', 'LAEUFT', 'haltKlaerung'), workflow('w2', 'a2', 'WARTET_FREIGABE', 'haltFreigabe')]), 'w2')
   assert.equal(alle([workflow('w1', 'a1', 'ABGESCHLOSSEN'), workflow('w2', 'a2', 'LAEUFT')]), 'w2')

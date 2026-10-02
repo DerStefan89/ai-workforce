@@ -35,7 +35,20 @@ import { holeWorkitems } from './api.js'
 /** Workflows, die auf eine menschliche Aktion warten (F15 WS-3b Automaten-Verdikt). @param workflows - zustand.workflows, oder null bei defekter Quelle @returns gefilterte Liste, oder null */
 export function filtereAttentionWorkflows(workflows) {
   if (workflows === null) return null
-  return workflows.filter((w) => w.naechster?.art === 'haltFreigabe' || w.naechster?.art === 'haltKlaerung')
+  return workflows.filter((w) => w.naechster?.art === 'haltFreigabe' || (w.naechster?.art === 'haltKlaerung' && !laeuftGerade(w)))
+}
+
+/**
+ * F46 D3 (löst F-996): Läuft ein Workflow, meldet der Automat für den laufenden Schritt `haltKlaerung`
+ * („Schritt … ist nicht startbereit (status LAEUFT …)“, ermittleNaechstenSchritt) — das ist keine
+ * Rückfrage an Stefan. Laufend heißt: Status LAEUFT oder ein Schritt mit Status LAEUFT (die Kopfdaten
+ * des Polls tragen keine Schritte; wo ein Aufrufer sie mitgibt, zählen sie mit). Eine echte Rückfrage
+ * setzt den Workflow auf KLAERUNG_ERFORDERLICH und bleibt eine Rückfrage.
+ * @param workflow - Workflow-Eintrag (Kopfdaten, optional mit schritte)
+ * @returns true, solange der Workflow läuft
+ */
+export function laeuftGerade(workflow) {
+  return workflow?.status === 'LAEUFT' || (Array.isArray(workflow?.schritte) && workflow.schritte.some((s) => s?.status === 'LAEUFT'))
 }
 
 /**
