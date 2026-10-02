@@ -12231,11 +12231,29 @@ Maßnahme: Branch oder Worktree je Lauf und Anzeige von Branch und offenen Ände
 Status: offen.
 Feature/Run: Entdeckt: Auftrag starten mit Arbeitsumgebung, 01.10.2026.
 
-**F-955** · `BUG` · P2 · offen
+**F-955** · `BUG` · P2 · erledigt
 Titel: Scout-Zustand der Werkstatt überlebt einen Projektwechsel.
 Beschreibung: `views/capabilities.js` setzt `scoutZustand` beim Projektwechsel nicht zurück. Ein laufender Scout-Lauf pollt danach `laeufe/<alte laufId>` unter dem Präfix des neuen Projekts, erhält 404 und bleibt dauerhaft auf „läuft…“; alle „Kandidaten suchen“ bleiben bis zum Neuladen der Seite gesperrt, das Scout-Panel zeigt Inhalte des alten Projekts. Gleiches Muster wie der F26-Chat-Befund (`projekt-kontext.js`, abonniereProjektWechsel).
 Fundstelle: `public/leitstand/views/capabilities.js` (scoutZustand, aktualisiereScoutZustand, initCapabilitiesView).
 Auswirkung: Mittel — die Kandidatensuche ist nach einem Projektwechsel bis zum Neuladen blockiert; ein alter Lauf erscheint im falschen Projekt.
 Maßnahme: Im Projektwechsel-Abonnement `scoutZustand = null`, `vormerkenZustaende` leeren und `renderScoutPanel()` — mit dem Scout-Umbau in WS-7b (in WS-7a war jede Änderung am Scout-Ablauf ausgeschlossen). Seit WS-7a lädt der Wechsel Katalog und Abdeckung bereits neu.
-Status: offen.
+Status: erledigt (F44 WS-7b, 02.10.2026): `setzeScoutZurueck()` im Projektwechsel-Abonnement von `views/capabilities.js` (scoutZustand null, Vormerk-Zustände und geöffnete Quellen verworfen, Panel neu, Knöpfe frei); ein noch laufender Lauf läuft serverseitig weiter (Ausführungen). Test `public/leitstand/views/capabilities.test.mjs` (Rotfall per Mutation belegt), Render-Nachweis `features/F44/nachweise/ws7b/zustaende/` (Projektwechsel mitten im Lauf).
 Feature/Run: Entdeckt: QA-Pass F44 WS-7a, 02.10.2026.
+
+**F-956** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: PR gemergt vor der Challenger-Prüfung im Clone.
+Beschreibung: WS-6b (#302) und WS-7a (#303) wurden gemergt, bevor die Challenger-Prüfung im Clone lief.
+Fundstelle: Ablauf Push → PR → Merge der F44-Workstreams.
+Auswirkung: Befunde der Prüfung können nur noch per Folge-PR korrigiert werden; beide Male nachträglich grün.
+Maßnahme: Entweder die Reihenfolge Push → Challenger-Prüfung → PR → Merge einhalten, oder die nachträgliche Prüfung bei grüner CI als zulässig festschreiben (Befunde gehen in den nächsten Workstream).
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-7a-Verifikation, 02.10.2026.
+
+**F-957** · `BUG` · P2 · offen
+Titel: Scout nach Projektwechsel — Vormerken ohne Überholschutz, Knöpfe frei trotz belegtem Lauf, Ergebnis unerreichbar.
+Beschreibung: Seit F-955 setzt ein Projektwechsel die Scout-Anzeige zurück. Offen bleibt: (1) `vormerkenKandidat` hält weder Scout-Zustand noch Vormerk-Map fest; fällt der Wechsel zwischen `legeAuftragAn` und `routeAuftrag`, wird die Auftrags-ID des alten Projekts unter dem Präfix des neuen geroutet, und das Ergebnis landet in der neuen Map (ggf. falsches „Vorgemerkt“ bei gleichem Index). (2) Läuft der alte Lauf noch, belegt er D13 projektübergreifend; die Knöpfe sind trotzdem frei, eine neue Suche legt einen Auftrag an und scheitert mit 409 — der Auftrag bleibt verwaist. (3) Die Kandidaten des alten Laufs sind im Leitstand nicht mehr erreichbar (Lauf unter „Ausführungen“ sichtbar, Karten und Vormerken nicht). (4) Wirft das Rendern eines vertragswidrigen Ergebnisses im Fertig-Pfad von `aktualisiereScoutZustand`, schluckt der leere catch das als Netzwerkfehler; die Anzeige bleibt auf „läuft…“ (Server validiert das Schema, deshalb nur Absicherung). Dazu: Fokus geht nach Vormerken/Quelle verloren (Neurendern), Fehlernotiz ohne laufId/Link.
+Fundstelle: `public/leitstand/views/capabilities.js` (vormerkenKandidat, setzeScoutZurueck, aktualisiereScoutZustand).
+Auswirkung: Mittel — selten (Wechsel genau während eines Vorgangs), aber Fehlrouting und verwaiste Aufträge sind möglich.
+Maßnahme: Zustand und Map in `vormerkenKandidat` beim Start festhalten und nach jedem await abbrechen, wenn überholt; nach dem Wechsel die Sperre aus `zustand.aktiverLauf` ableiten oder einen Hinweis „Scout-Lauf <laufId> läuft in <Projekt>“ mit Link zeigen; Fertig-Pfad mit eigenem try/catch und Log. Tests mit gehaltenem fetch. In WS-7b ausgeschlossen (Ablauf und Guards des Scouts unverändert außer dem Zurücksetzen).
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-7b (code-reviewer 1/2/10, qa 1/2/10, design-guardian 8), 02.10.2026.
