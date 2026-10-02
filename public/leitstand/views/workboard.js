@@ -1387,9 +1387,9 @@ export function initWorkboardView() {
     ladeDetail(id)
   })
   // Verlassen der Seite: das nächste Betreten lädt neu. Maßgeblich ist, ob die Seite nach dem
-  // Routing noch sichtbar ist (setTimeout: erst nachdem der Router dispatcht hat) — eine
-  // überlagerte Route wie #/chat lässt sie sichtbar und das Board aktuell; ein Wechsel Board ↔
-  // Detail bleibt ohne erneuten Abruf.
+  // Routing noch sichtbar ist (setTimeout: erst nachdem der Router dispatcht hat) — ein Wechsel
+  // Board ↔ Detail bleibt ohne erneuten Abruf. (Die frühere überlagerte Route #/chat gibt es seit
+  // F44 WS-8a nicht mehr; #/chat blendet das Board aus.)
   window.addEventListener('hashchange', () => {
     // F-926: jede andere Route beendet den Merker „zuletzt die Übersicht“.
     if (location.hash !== '#/workboard') uebersichtZuletzt = false

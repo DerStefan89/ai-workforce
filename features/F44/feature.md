@@ -22,7 +22,9 @@ WS-3b „Detail, Bauen, Click-to-Work“ gemergt (#296, `5b0b683`). WS-4 ist get
 gemergt (#298, `772f4e5`). WS-5 ist geteilt (Auftrag Stefan, 01.10.2026): WS-5a „Ausführungen“ gemergt
 (#299, `a91029d`); WS-5b „Auftrag & Direktstart“ gemergt (#300, `ca0fbae`).
 WS-6a „Alle Produkte“ (Abschnitt H, Auftrag Stefan 01.10.2026) gemergt (#301, `5075215`); WS-6b „Nutzung“
-(Abschnitt I) in Arbeit seit 01.10.2026 (Branch `feat/f725-ws6b-nutzung`); WS-7 und WS-8 offen.
+(Abschnitt I) gemergt (#302, `3aff6e4`). WS-7a „Werkstatt“ gemergt (#303, `527a6d4`); WS-7b „Scout“ gemergt
+(#304, `41eff91`). WS-8 ist geteilt (Auftrag Stefan, 02.10.2026): WS-8a „Dock & große Ansicht“ in Arbeit seit
+02.10.2026 (Branch `feat/f725-ws8a-chat`); WS-8b offen.
 
 Gültige Status-Werte (geprüft vom Gate): ENTWURF, READY_FOR_TECH, WORKSTREAM_SCHNITT_GENEHMIGT, IN_ARBEIT, FEATURE_GATE, ABGESCHLOSSEN, BLOCKIERT, ABGEBROCHEN.
 
@@ -88,7 +90,8 @@ abgehakten F-Zeilen des Pakets.
 | **WS-5b** Auftrag & Direktstart | F1 (Auftrag anlegen) sowie G10 und G11 (Direktstart mit Werkzeugsatz, Evidenzdateien, laufId; Auswahl der Aufträge) in `#/projekt` nach d_auftrag_neu | `projekt-wechsel.test.mjs` (unverändert grün), f20-leitstand-shell (CI, IDs unverändert), i18n; neu `views/projekt.test.mjs` |
 | **WS-6** Produkte & Nutzung | Abschnitte H (F43/F-849 echt, F-857) und I | f43, f25, f32-ansicht |
 | **WS-7** Workforce | Abschnitt J (Katalog, Rollen, Coverage, Scout, Phasen aus Workflows) | – |
-| **WS-8** Chat | Abschnitt L (Dock und große Ansicht, alle heutigen Chat-Funktionen); dazu das Umstellen der Chatspalte auf die Blase (Chat-Dock), das aus WS-1 hierher wandert | f34 (IDs, Modus-Buttons) |
+| **WS-8a** Dock & große Ansicht | Abschnitt L: L1, L4–L7 nach d_jarvis und `chatDock` (Vorlage experience.js), L2/L3 funktional mitgeführt; Umstellen der Chatspalte auf das Chat-Dock (Blase), das aus WS-1 hierher wandert; ein DOM für Dock und `#/chat`; Kontextspalte; alle Chat-Texte und Vorfilter-Antworten in de/en/tr/ru | f34 (v) (Register statt aria-pressed), i18n |
+| **WS-8b** Gespräch & Befehle | Befehlsblock und Codezäune in Antworten (F-959, F-966), Kopf-Knöpfe VS Code/Terminal/GitHub, „Lieber mit dem Coach besprechen“ auf `#/projekt`, Coach-Vorschläge, Änderungen an `src/jarvis`/`src/product-coach` | offen |
 
 **Vermerk WS-3 (Stefan, 01.10.2026):** E13 „Eintrag bearbeiten“ bleibt in WS-3 als kommt; wird im
 Fixpaket Arbeitsfähigkeit, B5, echt (E-F45-1 = A). WS-3 ist in WS-3a „Board & Listen“ (E1–E7) und
@@ -1647,6 +1650,75 @@ Routenänderung, keine Freitextsuche.
 - **WS7b-4** „Fähigkeit entdecken“ als „kommt“ im Kopf, ohne Route.
 - **WS7b-5** Kachel-Beschreibung auf drei Zeilen, Volltext im Detail; kein Überlauf bei 390 px und 200 %.
 - **WS7b-6** `npm run check` grün; Render-Nachweise liegen vor, ohne echten Lauf.
+
+## Stand WS-8a „Dock & große Ansicht“ (02.10.2026)
+Branch `feat/f725-ws8a-chat` (Basis `41eff91`, main mit WS-7b), nicht committet. Vorlage V10 d_jarvis, d_jarvis_coach und
+`chatDock` (experience.js); Abgleich F-725 L1, L4–L7, L2/L3 funktional (Vermerk WS-8a in §5, §9). Keine Server-, Schema- oder
+API-Änderung, keine neue Route außer dem bestehenden `#/chat`, nichts an `src/jarvis`/`src/product-coach`.
+- **Ein DOM:** `#view-chat` mit allen bisherigen IDs dient Dock und großer Ansicht; `shell.js` setzt die Lage per Klasse
+  (`.chat-grossansicht` am Dock, `#shell.chat-gross` blendet den Hauptbereich aus). `#/chat` ist eine gewöhnliche Route
+  (View-Name `chat`); die Router-Option `{ ueberlagert }` entfällt, auf `#/chat` trägt kein Navigationslink `aria-current`.
+- **Dock:** überlagert unten rechts (390 px: 16 px Rand, begrenzte Höhe), nimmt keine Layoutbreite; Kopf mit Name des
+  Gegenübers, Projektname, „↗“ und „×“; darunter Register, Verlauf (scrollt beim Öffnen und bei neuem Inhalt ans Ende, außer man
+  liest weiter oben), Werkzeugzeile, Eingabe. Auslöser `#chat-umschalter` und `#chat-blase` mit `aria-expanded`/`aria-controls`;
+  Öffnen fokussiert die Eingabe, Escape und „×“ schließen mit Fokusrückgabe an den Auslöser; Escape im Auftragsdialog schließt
+  erst nur den Dialog. Zustand in `leitstand-chat-offen`, bei gesperrtem Speicher im Modul. `#/start` schließt das Dock.
+- **Große Ansicht:** Seitenkopf nach d_jarvis mit Titel je Modus und „Gespräch verkleinern“ (→ gemerkte letzte Seite mit offenem
+  Dock, ohne Merker `#/dashboard`; ein Projektwechsel bildet ein gemerktes Detail auf seine Liste ab), Register als WAI-ARIA-Tabs
+  (Pfeiltasten, Pos1, Ende; `naechsterRegisterIndex` wie WS-7), Leerzustand je Modus, Kontextspalte (Projektname, Vision über
+  GET …/<id>/roadmap, „Nächster Schritt“ aus dem gepollten Zustand, „Du entscheidest“; unter 1280 px unter dem Gespräch). Dock
+  trägt dort `role="main"`.
+- **Vorschläge füllen nur die Eingabe** und fokussieren sie; sie senden nicht (Nachweis: POST fest 500, kein Fehler, keine Blase).
+- **Unverändert:** Poll-, Timer- (500 ms), Sende-, Vorfilter-, D13-, Abbruch-, Zusammenfassen- und Auftrag-Brücken-Logik. Neu im
+  Ablauf nur: der Projektwechsel lädt den Verlauf des neuen Projekts sofort (vorher erst beim nächsten Betreten von `#/chat`).
+- **i18n:** alle Chat-Texte (index.html über `data-i18n*`, chat.js über `t()`/`tHtml()`) und die Antwortsätze des Vorfilters
+  (`vorfilter.*`, Pluralformen) in de/en/tr/ru; Modell- und Serverwerte roh. „Sparring“ heißt in den Texten „Product Coach“.
+  Bekannte Grenze: der Platzhalter `[Zusammenfassung angefordert]` spiegelt die serverseitig gespeicherte Nachricht und bleibt
+  deutsch; „Stefan“ im Blasenkopf bleibt Name.
+- **Gates:** f34 (v) zieht begründet mit (Register: `aria-selected` + `.active` über `setzeReiterZustand`, Untermodus unverändert
+  `aria-pressed` + `btn-primary`); (j), (k), (y) unverändert grün. i18n-Gate: nur neue Schlüssel. Neuer Test
+  `public/leitstand/chat-anzeige.test.mjs` (istGrossansicht, merkeRoute, zielBeimVerkleinern, leiteNaechstenSchrittAb,
+  Register-Tastatur, Vorfilter in Node importierbar mit deutschem Satz). F-884 erledigt.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): dg „nicht freigegeben“ (2 blockierend), qa
+  „nicht freigegeben“ (4 wichtig), cr „freigegeben mit Hinweisen“. Eine Korrekturrunde, eingearbeitet: Dock scrollt ans Ende (dg 1);
+  Dock-Leerzustand kompakter, Zusammenfassen nur mit Verlauf (dg 2/3, qa 10); Senden-Symbol nach rechts als Rechteck (dg 4);
+  gerade Register-Unterstriche (dg 5, auch Nutzung/Werkstatt); fehlende Nachweise (dg 6, qa 13); `role="main"` auf `#/chat`,
+  `#chat-verlauf` mit `role="region"`, kein ungenutztes `tabindex` am Titel (dg 7, qa 6, cr 8); gemerktes Detail nach
+  Projektwechsel auf die Liste (qa 1, cr 3); Präferenz im Modul bei gesperrtem Speicher (qa 3, cr 4); „Gespräch verkleinern“ im
+  Seitenkopf statt fest (qa 4); Blasen-Name = sichtbarer Text, konstant (qa 5); Kopfknopf ohne `aria-expanded` auf `#/chat` (qa 7);
+  Escape im Auftragsdialog (qa 8); Fehlertext ohne leeren Grund (qa 11); veraltete Kommentare (qa 12, cr 6); „Nächster Schritt“
+  leer präzise („Keine Freigabe, Rückfrage oder fehlgeschlagene Ausführung offen.“, cr 1); `istGrossansicht` als reine Funktion
+  (cr 9); „Wichtig“-Blöcke (cr 10). Nicht übernommen: siehe Prüfpunkte.
+
+### Prüfpunkte `#/chat` (aus dem Prüfpass WS-8a; nach Route abgelegt, F-946)
+- Vorschlag „Was braucht mich?“ trifft in en/tr/ru den deutschen Vorfilter nicht und startet nach dem Senden einen echten Lauf
+  (qa 2, cr 2) — Vorfilter-Logik in 8a ausgeschlossen: F-967, WS-8b.
+- Projektwechsel mitten im Lauf: Tippanzeige und „Lauf abbrechen“ verschwinden, der Lauf läuft serverseitig weiter; ein Senden im
+  neuen Projekt scheitert mit 409 ohne Hinweis auf den blockierenden Lauf (qa 9; Verhalten älter, F26-Reset). Eine späte
+  Verlaufsantwort des alten Projekts schreibt in den verworfenen Zustandsblock und überschreibt nichts.
+- Escape bei gleichzeitig offenem Menü (unter 700 px) und Dock schließt beide (qa 8, Rest).
+- Entscheidung Stefan (qa 14): Browser-„Zurück“ von `#/chat` landet mit geschlossenem Dock, „Gespräch verkleinern“ mit offenem;
+  kein Hinweis an der Blase, wenn eine Antwort bei geschlossenem Dock eintrifft; nach „Zum Coach-Interview“ führt „Verkleinern“
+  zurück auf die Anlege-Unterseite.
+- Ein Vorschlag ersetzt einen angefangenen Entwurf ohne Rückfrage (cr 12, nur im Leerzustand).
+- `views/chat.js` hat rund 1500 Zeilen; die Kontextspalte könnte ein eigenes Modul werden (cr 11); `naechsterRegisterIndex` gehört
+  auf Dauer in ein gemeinsames Register-Modul (cr 9).
+- Dock-Leerzustand als eigener `.dock-intro` der Vorlage (ein Vorschlag, eigene Sätze) — bewusst nicht, siehe Vermerk WS-8a.
+- **Nachweise** `features/F44/nachweise/ws8a/` (Skript `erzeuge-nachweis.mjs`, leert nur die eigenen Folge-Ordner, Port 4199):
+  `#/chat` (1440 dunkel/hell, 390 dunkel/hell, 200 %, ru) je Jarvis/Coach leer und mit Verlauf; Dock auf `#/workboard` (1440
+  dunkel/hell, 390 dunkel/hell, 200 %); Übersicht mit offenem Dock; Dock mit laufendem Lauf bei reduzierter Bewegung;
+  Kontext-Zustände; Projektwechsel mit „Verkleinern“; Klicktabelle (17 Schritte) und Funktionen L2–L7 (10 Schritte). Alle
+  Antworten fest (kein Modell-Lauf); kein waagerechter Überlauf in 17 Folgen.
+
+### Akzeptanzkriterien WS-8a
+- **WS8a-1** Ein DOM für Dock und `#/chat`, alle bisherigen IDs, keine doppelten IDs.
+- **WS8a-2** Dock auf jeder Seite außer `#/chat`, überlagert; Auslöser Kopfknopf und Blase mit `aria-expanded`; Fokus beim Öffnen in
+  der Eingabe, Escape/„×“ mit Fokusrückgabe; `#/start` schließt; 390 px ohne waagerechten Scroll.
+- **WS8a-3** `#/chat` nach d_jarvis mit Register als Tabs (Pfeiltasten), Leerzustand je Modus, Kontextspalte.
+- **WS8a-4** Vorschläge füllen nur die Eingabe.
+- **WS8a-5** L2–L7 funktional unverändert (Nachweis `funktionen`).
+- **WS8a-6** Chat-Texte und Vorfilter-Antworten in de/en/tr/ru; Modellausgaben escaped.
+- **WS8a-7** `npm run check` grün; Render-Nachweise ohne echten Lauf.
 
 ## Prüfpunkte für Folgepakete
 Aus den Prüfpässen WS-1a (30.09.2026), für WS-1b:

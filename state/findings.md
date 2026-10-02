@@ -11590,13 +11590,13 @@ Maßnahme: zustand.js meldet einen Fehlschlag an die Abonnenten (eigener Rückru
 Status: offen.
 Feature/Run: Prüfpass F44 WS-1b, 30.09.2026.
 
-**F-884** · `TECH_DEBT` · P3 · offen
+**F-884** · `TECH_DEBT` · P3 · **erledigt**
 Titel: „Frag Jarvis“ wirkt ab 1280 px nicht sichtbar.
 Beschreibung: Ab 1280 px ist die Chatspalte immer sichtbar (`#shell-chat-spalte[hidden]` mit display, F29 WS-1a). Der Knopf „Frag Jarvis“ (#chat-umschalter) schaltet dort nur die gespeicherte Vorliebe und aria-pressed, das dann `false` zeigt, obwohl die Spalte sichtbar ist. Altbestand des Umschalters, mit WS-1b in den Kopf gezogen.
 Fundstelle: `public/leitstand/style.css` (`@media (min-width: 1280px)`), `public/leitstand/shell.js` (wendeChatSichtbarkeitAn).
 Auswirkung: Niedrig — Knopf ohne sichtbare Wirkung, aria-pressed widerspricht der Anzeige.
 Maßnahme: Mit dem Chat-Dock in WS-8 auflösen (Blase statt Spalte); bis dahin unverändert.
-Status: offen.
+Status: erledigt (F44 WS-8a, 02.10.2026): die Regel `@media (min-width: 1280px)` für `#shell-chat-spalte[hidden]` ist entfallen; #chat-umschalter und #chat-blase steuern dasselbe Chat-Dock und tragen `aria-expanded` statt `aria-pressed` (`public/leitstand/shell.js` wendeChatSichtbarkeitAn), Nachweis `features/F44/nachweise/ws8a/klicks/`.
 Feature/Run: QA-Pass F44 WS-1b, 30.09.2026.
 
 **F-885** · `BUG` · P3 · offen
@@ -12257,3 +12257,93 @@ Auswirkung: Mittel — selten (Wechsel genau während eines Vorgangs), aber Fehl
 Maßnahme: Zustand und Map in `vormerkenKandidat` beim Start festhalten und nach jedem await abbrechen, wenn überholt; nach dem Wechsel die Sperre aus `zustand.aktiverLauf` ableiten oder einen Hinweis „Scout-Lauf <laufId> läuft in <Projekt>“ mit Link zeigen; Fertig-Pfad mit eigenem try/catch und Log. Tests mit gehaltenem fetch. In WS-7b ausgeschlossen (Ablauf und Guards des Scouts unverändert außer dem Zurücksetzen).
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F44 WS-7b (code-reviewer 1/2/10, qa 1/2/10, design-guardian 8), 02.10.2026.
+
+**F-958** · `BUG` · P3 · offen
+Titel: Click-to-Work-Git-Block gibt nicht ausführbare Platzhalter aus.
+Beschreibung: Der Git-Block im Workboard-Detail zeigt `git add <dateien>` und `git commit -m "<nachricht>"`, obwohl die geänderten Dateien aus der Laufakte bekannt sind.
+Fundstelle: `public/leitstand/views/workboard.js:602–610` (renderTerminalBlock).
+Auswirkung: Stefan muss die Befehle vor dem Ausführen von Hand ergänzen.
+Maßnahme: Echte Werte (Dateiliste aus der Laufakte, Commit-Nachricht) in einem Befehlsblock ausgeben — Regel „direkt ausführbar“ (F-959).
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-959** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Keine verbindliche Ausgaberegel für Befehle an Stefan.
+Beschreibung: Jarvis, der Leitstand und Bauaufträge geben Befehle an Stefan in uneinheitlicher Form aus (Platzhalter trotz bekannter Werte, mehrere Folgen in einem Block, Shell-Syntax ohne Rücksicht auf Windows).
+Fundstelle: Jarvis-Instruktion (`src/jarvis`), Leitstand (z. B. F-958), Vorlage der Bauaufträge.
+Auswirkung: Befehle sind nicht direkt ausführbar; Fehlerquelle beim Abtippen und Ergänzen.
+Maßnahme: Regel „direkt ausführbar“: ein Block je zusammengehöriger Folge, eine Zeile je Befehl, PowerShell auf Windows, keine Platzhalter bei bekannten Werten (unvermeidbare sichtbar markieren), Fehlerabbruch beachten (schädliche Folgen in getrennte Blöcke), Pfade mit Leerzeichen quoten, keine Befehle, die Repo-Regeln umgehen. Vor der Aufnahme in die Jarvis-Instruktion F-966 beheben.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-960** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Idee „Terminal neben Jarvis“.
+Beschreibung: Stufe 1: PowerShell als Kindprozess mit Pipes, Sitzungs-Token, nur same-origin, Abschalter in den Einstellungen; Läufe und Worker erreichen die Route nie (Allowlist schließt den Leitstand-Port aus). Ausführen startet nur der Mensch. Stufe 2 (node-pty + xterm.js, erste Laufzeit-Abhängigkeit) nur nach realem Bedarf.
+Fundstelle: Idee, noch ohne Code (Leitstand, `scripts/leitstand-server.mjs`).
+Auswirkung: Befehle aus dem Gespräch ließen sich ohne Fensterwechsel ausführen.
+Maßnahme: Eigene Spec mit Advisor-Pass (öffentliche Route mit Prozessstart = Nebenwirkung), Stufe 1 zuerst.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-961** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Idee „Entwicklung › Code“ und neue Reiterzeile der Entwicklung.
+Beschreibung: Neuer Reiter „Code“ unter Entwicklung, Reiterzeile neu: Tech Debt & Prozess, Aufträge als Liste, Ausführungen nicht mehr als Reiter. Dazu eine Leseroute `GET …/code`.
+Fundstelle: `public/leitstand/views/workboard.js` (Reiterzeile), `scripts/leitstand-server.mjs` (neue Leseroute).
+Auswirkung: Code-Stand im Leitstand sichtbar; Reiterzeile ohne Doppelung (vgl. F-964).
+Maßnahme: Spec schreiben; Leseroute ohne Schreibzugriff.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-962** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Das Ergebnis von `npm run check` wird nirgends festgehalten.
+Beschreibung: Ob und wann die volle Kette zuletzt grün lief und mit wie vielen Tests, steht nur in der Terminalausgabe.
+Fundstelle: `package.json` (Skript `check`).
+Auswirkung: Berichte und Challenger müssen die Testzahl erneut ermitteln oder auf Angaben vertrauen.
+Maßnahme: Kleine Ergebnisdatei nach jedem Check (Zeitpunkt, Commit, Exit-Code, Testzahl).
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-963** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Merge-Konvention „F44 WS-xx: … (#PR)“ ist nicht erzwungen.
+Beschreibung: Die Merge-Commits der F44-Workstreams folgen der Form „F44 WS-xx: … (#PR)“ nur per Absprache.
+Fundstelle: Git-Historie von main; kein Gate.
+Auswirkung: Abweichende Titel erschweren die Zuordnung von Merge und Workstream.
+Maßnahme: Gate dafür im Fixpaket B5.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-964** · `TECH_DEBT` · P3 · offen
+Titel: Reiter „Aufträge“ der Entwicklung führt aufs Formular statt auf die Liste; „Ausführungen“ steht doppelt.
+Beschreibung: Der Reiter „Aufträge“ in der Reiterzeile von `#/workboard` öffnet `#/projekt` (Formular) statt der Liste `#/runs`; „Ausführungen“ steht sowohl als Reiter als auch in der Sidebar.
+Fundstelle: `public/leitstand/views/workboard.js` (Reiterzeile), `public/leitstand/index.html` (Sidebar).
+Auswirkung: Gering — irreführendes Ziel, doppelte Navigation.
+Maßnahme: Mit F-961 neu ordnen.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-965** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: 432 offene TECH_DEBT/PROCESS-Einträge laut Kopfzeilen, nicht gesichtet.
+Beschreibung: Das Register führt laut Kopfzeilen 432 offene Einträge der Typen TECH_DEBT und PROCESS_IMPROVEMENT; eine Sichtung (erledigt, überholt, zusammenlegbar) fand nicht statt.
+Fundstelle: `state/findings.md`.
+Auswirkung: Das Register verliert als Arbeitsliste an Wert; Doppelungen und Erledigtes bleiben offen stehen.
+Maßnahme: Register-Sichtung im Fixpaket B5.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-966** · `TECH_DEBT` · P2 · offen
+Titel: entferneCodezaun paart den ersten Zaun-Öffner mit dem nächsten ```.
+Beschreibung: Trägt das Feld `antwort` eines claude-code-Ergebnisses selbst einen Codezaun und ist das Objekt umzäunt oder von Prosa umgeben (F-506-Fall), wird ein falscher Ausschnitt geparst → Lauf FEHLGESCHLAGEN.
+Fundstelle: `scripts/leitstand-server.mjs:3135` (entferneCodezaun).
+Auswirkung: Heute latent; real ab der Regel „direkt ausführbar“ (F-959) in der Jarvis-Instruktion, weil Antworten dann Codezäune tragen.
+Maßnahme: In WS-8b, vor der Regel: zusätzlich den Ausschnitt „erster Öffner bis letzter Zaun“ versuchen, mit Test; Regressionsschutz check-f22 (0) bleibt.
+Status: offen.
+Feature/Run: Entdeckt: F44 WS-8 Challenge, 02.10.2026.
+
+**F-967** · `BUG` · P2 · offen
+Titel: Vorschlag „Was braucht mich?“ trifft in en/tr/ru den Vorfilter nicht.
+Beschreibung: Die Vorschläge im Leerzustand füllen die Eingabe mit dem übersetzten Text (z. B. „What needs me?“). Die Muster des Vorfilters sind deutsch; nach dem Senden geht die Frage in en/tr/ru deshalb an einen echten Jarvis-Lauf statt an die lokale, deterministische Antwort (E-M4-3). Derselbe Knopf antwortet so je nach Sprache lokal oder über einen kostenpflichtigen Lauf; die übersetzten Vorfilter-Antworten sieht ein nicht-deutscher Nutzer praktisch nie.
+Fundstelle: `public/leitstand/views/chat.js` (initVorschlaege), `public/leitstand/jarvis-vorfilter.js` (MUSTER_BRAUCHT_MICH, MUSTER_STATUS).
+Auswirkung: Mittel — unnötige Modell-Läufe und uneinheitliches Verhalten je Sprache.
+Maßnahme: In WS-8b entscheiden: Vorschlag mit Musterschlüssel (z. B. `data-vorfilter="braucht_mich"`), der beim Senden des unveränderten Vorschlagstexts den Vorfilter direkt wählt, oder die übersetzten Vorschlagstexte als zusätzliche Muster. In WS-8a ausgeschlossen (keine Änderung an der Vorfilter-Logik).
+Status: offen.
+Feature/Run: Entdeckt: Prüfpass F44 WS-8a (qa 2, code-reviewer 2), 02.10.2026.

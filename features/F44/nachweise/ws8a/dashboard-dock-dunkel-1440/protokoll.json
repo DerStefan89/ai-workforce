@@ -1,0 +1,31 @@
+[
+  {
+    "label": "Produktübersicht mit offenem Dock (Präferenz offen): keine Layoutbreite, Dock überlagert unten rechts; Leerzustand im Dock",
+    "Dock/Ansicht sichtbar": true,
+    "Blase sichtbar": true,
+    "Leerzustand": true,
+    "Abbrechen sichtbar": false,
+    "Untermodus sichtbar": false,
+    "große Ansicht": false,
+    "Verkleinern sichtbar": false,
+    "Eingabe leer": true,
+    "Nutzerblase": false,
+    "Tippanzeige": false,
+    "Senden gesperrt": false,
+    "„Als Auftrag anlegen“": false,
+    "javascript:-Link (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "Nav aktuell": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Fokus": "(fehlt)",
+    "Blase aria-expanded": "true",
+    "Kopfknopf aria-expanded": "true",
+    "Reiter gewählt": "Jarvis",
+    "Seitentitel": "Mit Jarvis arbeiten.",
+    "Dock-Titel": "Jarvis",
+    "Fehler": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
