@@ -61,6 +61,10 @@
  * begründet in KONTRAST_AUSNAHMEN (mit Finding); eine Ausnahme, die inzwischen besteht,
  * ist selbst ein Befund. Abschnitt (5) ist der Rot/Grün-Selbsttest dazu.
  *
+ * F46 D0: KONTRAST_PAARE additiv um die sechs Ebenen-Farben (--ebene-*) gegen --panel mit 3:1
+ * (Nicht-Text-Kontrast) erweitert — ohne diese Paare kennte die Prüfung die neuen Tokens nicht.
+ * Keine bestehende Regel und keine Schwelle gelockert.
+ *
  * Wird aufgerufen von: `npm run check`
  *
  * Wichtig — bekannte Grenzen:
@@ -299,6 +303,10 @@ const KONTRAST_PAARE = [
   // Grund von Seite und Dialog (3:1). Die native disabled-Darstellung fiel im hellen Theme durch.
   ['--check-haken', '--mint', 4.5],
   ...['--mint', '--check-rand'].flatMap((vorne) => ['--color-bg', '--color-surface'].map((flaeche) => [vorne, flaeche, 3])),
+  // F46 D0 (additiv, keine Lockerung): die sechs Ebenen-Farben als Linien und Umrisse auf Karten —
+  // Nicht-Text-Kontrast 3:1 gegen --panel (WCAG 1.4.11). Ohne diese Paare kennte die Prüfung die neuen
+  // Tokens nicht; ein zu blasser Hellwert bliebe unbemerkt.
+  ...['meilenstein', 'feature', 'workstream', 'fixpaket', 'design', 'bug'].map((ebene) => [`--ebene-${ebene}`, '--panel', 3]),
 ]
 
 // Begründete Ausnahmen: Paare, die die Vorlage selbst vorgibt und die durchfallen. Form:

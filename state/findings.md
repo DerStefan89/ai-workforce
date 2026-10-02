@@ -12213,13 +12213,13 @@ Maßnahme: Design-Finalisierung nach WS-8, danach Umsetzung.
 Status: offen.
 Feature/Run: Entdeckt: Stefan, 01.10.2026, F44.
 
-**F-953** · `BUG` · P2 · offen
+**F-953** · `BUG` · P2 · erledigt
 Titel: Roadmap-Meilenstein M5 enthält F42 und F44 nicht.
 Beschreibung: In `docs/projekt/roadmap.json` fehlen F42 und F44 im Meilenstein M5; die Roadmap-Ansicht und der Fortschrittsring zählen sie deshalb nicht mit.
 Fundstelle: `docs/projekt/roadmap.json`, Meilenstein M5.
 Auswirkung: Mittel — Roadmap und Kennzahlen unterschätzen den Umfang von M5.
 Maßnahme: F42 und F44 nachtragen und ein Gate „jede Feature-Akte steht in genau einem Meilenstein“ einführen.
-Status: offen.
+Status: erledigt (F46 D0, 02.10.2026): `docs/projekt/roadmap.json` M5 trägt F42 (nach F41), F44 (nach F43) und F46 (nach F44, vor F30). Neues Gate `scripts/check-akte-meilenstein.mjs` in `npm run check`: jede Akte steht in genau einem Meilenstein, jeder Roadmap-Eintrag hat eine Akte; Ausnahmen AF-F001 (ohne Meilenstein) und F30 (ohne Akte) mit Begründung im Gate-Kopf. Tests `scripts/check-akte-meilenstein.test.mjs` (grün, fehlend, doppelt, veraltete Ausnahme); Kalibrierung `state/gates.md`.
 Feature/Run: Entdeckt: Roadmap neu, 01.10.2026.
 
 **F-954** · `HARNESS_IMPROVEMENT` · P2 · offen
@@ -12383,3 +12383,111 @@ Auswirkung: Gering bis mittel — eine Antwort wird übersehen; das gesperrte Se
 Maßnahme: Punkt auch am Reiter des anderen Modus; eine ausstehende Lauf-Blase unabhängig vom Untermodus-Filter zeigen oder einen Hinweis „Lauf im Untermodus Projekt läuft“.
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F2/F3), 02.10.2026.
+
+**F-972** · `BUG` · P1 · offen
+Titel: Offene Abnahmen erscheinen nicht unter „Deine Entscheidungen“.
+Beschreibung: `baueEntscheidungen` kennt über `filtereAttentionWorkflows` nur `haltFreigabe` und `haltKlaerung`. Die Workflow-Kopfdaten (`baueWorkflowKopfdaten`) tragen keinen Abnahmestand; die Abnahme-Entscheidung ist ein eigenes Artefakt.
+Fundstelle: `public/leitstand/attention-daten.js:33` (filtereAttentionWorkflows), `:101` (baueEntscheidungen); `scripts/leitstand-server.mjs` (baueWorkflowKopfdaten).
+Auswirkung: Hoch — ein Ergebnis wartet auf Stefan, ohne dass die Liste es zeigt.
+Maßnahme: F46 D2: Entscheidungsart `abnahme`, Abnahmestand in den Workflow-Kopfdaten; den Cache-Stempel der Kopfdaten beachten (ein neues Abnahme-Artefakt muss den Stempel ändern).
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-973** · `BUG` · P2 · offen
+Titel: Detailseite zeigt Akzeptanzkriterien ohne Urteil.
+Beschreibung: Die AK-Liste eines Features zeigt jedes Kriterium mit leerem Kreis. Die Urteile je AK liegen bereits in GET …/abnahme (`ak_urteile`), werden dort aber nicht gelesen.
+Fundstelle: `public/leitstand/views/workboard-detail.js:276`; `ak_urteile` in `scripts/leitstand-server.mjs`.
+Auswirkung: Mittel — Stefan sieht nicht, welches AK belegt ist.
+Maßnahme: F46 D3 (Urteil je AK aus GET …/abnahme).
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-974** · `TECH_DEBT` · P3 · offen
+Titel: Detailseite zeigt Produkt-Phasen statt des echten Ablaufs.
+Beschreibung: Das Detail eines Eintrags zeigt die Produkt-Phasen, nicht die Rollen und Schritte, die ein Eintrag tatsächlich durchläuft.
+Fundstelle: `public/leitstand/views/workboard-detail.js`.
+Auswirkung: Gering — die Anzeige erklärt den Ablauf nicht.
+Maßnahme: F46 D3 mit dem Baustein Rollen-Kreis (aus D1).
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-975** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Bugs haben keine strukturierten Felder.
+Beschreibung: Ein Bug ist Fließtext im Register. Es fehlen Nachstellen, Erwartet/Tatsächlich, Ursache und Regressionstest als Felder.
+Fundstelle: `state/findings.md` (Format der Einträge); Eintrag im Detail (F46 D3).
+Auswirkung: Gering — die Bug-Ansicht kann nur Text zeigen, Vollständigkeit ist nicht prüfbar.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“ B5.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-976** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Workstreams sind kein Datenobjekt.
+Beschreibung: Workstreams stehen nur als Tabellen und Abschnitte in den Akten.
+Fundstelle: `features/<id>/feature.md` (Workstream-Tabellen); Roadmap und Detail (F46 D1, D3).
+Auswirkung: Mittel — Timeline, Plan gegen Ist und Workstream-Detail sind nur als „kommt“ möglich.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2/B5.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-977** · `TECH_DEBT` · P3 · offen
+Titel: Live-Fortschritt hält nur den letzten Werkzeugaufruf.
+Beschreibung: `laufAktivFortschritt` speichert je Lauf nur den zuletzt gemeldeten Werkzeugaufruf (werkzeug, ziel); ein Verlauf fehlt.
+Fundstelle: `scripts/leitstand-server.mjs` (laufAktivFortschritt).
+Auswirkung: Gering — die Live-Ansicht kann keinen Verlauf zeigen.
+Maßnahme: F46 D5: Ringpuffer der letzten 50 Aufrufe, nur im Speicher, beim D13-Reset geleert.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-978** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Kein Umfangs-Abgleich während des Laufs.
+Beschreibung: Die vom Lauf berührten Dateien werden nicht gegen das Arbeitspaket abgeglichen.
+Fundstelle: Laufausführung (Server, Ausführungsschritt); Arbeitspaket gibt es als Datenobjekt noch nicht (F-976).
+Auswirkung: Mittel — eine Ausweitung des Umfangs fällt erst im Review auf.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-979** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: „Bereit zum Sichern“ ist kein Zustand zwischen Abnahme und Merge.
+Beschreibung: Nach der Abnahme gibt es keinen eigenen Zustand für „abgenommen, noch nicht committet/gemergt“.
+Fundstelle: Lebenszyklus eines Eintrags (Abnahme → Merge).
+Auswirkung: Gering — der Schritt zum Sichern ist im Leitstand nicht sichtbar.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-980** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Bestehensbedingung des Fixpakets: gleichwertig zum manuellen Ablauf.
+Beschreibung: Stefan, 02.10.2026 (= A): Das Fixpaket „Arbeitsfähigkeit“ besteht, wenn ein Referenzauftrag gleichwertig zum manuellen Ablauf läuft. Der Referenzauftrag belegt zusätzlich (1) Render-Nachweis im Lauf — der Werkzeugsatz „schreibend“ erlaubt heute kein `npm run render-nachweis` (`startvorlagen/ai-workforce.json`); (2) Prüferpass code-reviewer/qa/design-guardian mit höchstens einer Korrekturrunde als Schritt der Kette; (3) Schätzung gegen Ist je Arbeitspaket (F-944); (4) Rückfrage an Stefan während des Baus; (5) Verifikation in sauberer Umgebung (Branch/Worktree je Lauf, F-954).
+Fundstelle: `startvorlagen/ai-workforce.json` (werkzeugsaetze.schreibend); Workflow-Vorlagen.
+Auswirkung: Mittel — ohne diese fünf Punkte bleibt der Lauf hinter dem manuellen Ablauf zurück.
+Maßnahme: Fixpaket-Challenge.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-981** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Verbrauch je Lauf ist nicht begrenzt.
+Beschreibung: Ein Lauf hat weder ein Token- oder Kostenbudget noch eine Rundengrenze. Das `budget` des Startauftrags ist das Kontextpaket-Budget (`standardBudget`: maxElemente, maxBytes) und begrenzt nur den mitgegebenen Kontext; `{}` steht nur in Gate-Attrappen (`check-f10`, `check-f11`). Das Gateway misst den Verbrauch (`usage`), setzt aber keine Grenze. Präzisiert gegenüber dem Auftragswortlaut „budget wird als {} gesendet“.
+Fundstelle: `src/claude-code-gateway/index.ts` (Verbrauch nur gemessen); `startvorlagen/ai-workforce.json` (standardBudget).
+Auswirkung: Mittel — mit dem automatischen Rückweg aus dem Fixpaket kann Verbrauch ohne Halt entstehen.
+Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2: Budget je Arbeitspaket, höchstens ein Rückweg je Stufe, Halt bei zweimal denselben Befunden.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-982** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Nutzen der Codex-Prüfung ist nicht gemessen.
+Beschreibung: Ob die Befunde des Reviewers (Codex) über die der Claude-Prüfer hinausgehen, ist nicht ausgewertet.
+Fundstelle: Review-Schritt (Rolle code-reviewer, Worker codex) in den Workflow-Vorlagen.
+Auswirkung: Gering — Kosten und Nutzen des zweiten Workers sind nicht belegt.
+Maßnahme: Fixpaket: Befunde je Review (bestätigt/verworfen) gegen die Claude-Prüfer auswerten.
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
+
+**F-983** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: E-F45-1 verweist auf ein Feature F45 ohne Akte.
+Beschreibung: E-F45-1 (`docs/projekt/zielfassung.md` §13.6) nennt F45, es gibt aber keine Akte `features/F45/feature.md`. Die Nummer ist damit belegt, ohne dass das Gate sie sieht.
+Fundstelle: `docs/projekt/zielfassung.md` §13.6 (E-F45-1).
+Auswirkung: Gering — Gefahr einer Doppelvergabe der Nummer.
+Maßnahme: Die Fixpaket-Akte wird F45; der Design-Nachbau ist F46 (`features/F46/feature.md`). Mit der Akte F45 kommt der Eintrag in die Roadmap (Gate `scripts/check-akte-meilenstein.mjs`).
+Status: offen.
+Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.

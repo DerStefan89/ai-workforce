@@ -33,7 +33,8 @@
  * initPersona() (F28 WS-1) läuft vor initZustandPoll(), aus demselben Grund
  * wie jede View: es registriert sein abonniere() bei zustand.js, bevor der
  * erste Tick etwas zu melden hätte. initStartView() (F29 WS-1a) registriert
- * aus demselben Grund ebenfalls vor initZustandPoll().
+ * aus demselben Grund ebenfalls vor initZustandPoll(). Ebenso initLiveChip()
+ * (F46 D0, Live-Chip in der Kopfleiste, live-chip.js).
  *
  * leiteBeimStartEin() (F29 WS-1a, views/start.js) läuft NACH allen
  * initXView()-Aufrufen (die Route '#/start' muss bereits registriert sein)
@@ -63,6 +64,7 @@
 
 import { initialisiereSprache } from './i18n.js'
 import { initKommt } from './kommt.js'
+import { initLiveChip } from './live-chip.js'
 import { registriere, starteRouter } from './router.js'
 import { initAttentionView } from './views/attention.js'
 import { initCapabilitiesView } from './views/capabilities.js'
@@ -102,6 +104,7 @@ initNutzungView()
 initRoadmapView()
 initStartView()
 initPersona()
+initLiveChip()
 initShell()
 
 registriere(/^#\/projekt$/, 'projekt')

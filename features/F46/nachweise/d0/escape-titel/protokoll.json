@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Auftragstitel mit HTML (<img onerror>, <b>) erscheint als Text im Chip und im title; kein <img> im Chip",
+    "Chip sichtbar (nicht hidden)": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> im Chip (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Persona-Status (Live-Region)": "Arbeitet für dich",
+    "Chip-Text": "Workforce arbeitet · <img src=x onerror=alert(1)> Auftrag mit <b>HTML</b> im Titel",
+    "Menü-Chip-Text": "Workforce arbeitet · <img src=x onerror=alert(1)> Auftrag mit <b>HTML</b> im Titel",
+    "Chip title": "Workforce arbeitet · <img src=x onerror=alert(1)> Auftrag mit <b>HTML</b> im Titel",
+    "Chip href": "#/runs/3f2a9c71-5b4e-4d0a-9e1f-2c7b8a6d4e10",
+    "Chip data-aktiv": "true",
+    "Punkt aria-hidden": "true",
+    "Register aktiv": "(fehlt)",
+    "Lauf-Detail Titel": "",
+    "Fokus (class)": "(fehlt)",
+    "Poll-Fehler": "(fehlt)",
+    "Live-Chip klickbar": true,
+    "Menü-Chip klickbar": false,
+    "Projektauswahl klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

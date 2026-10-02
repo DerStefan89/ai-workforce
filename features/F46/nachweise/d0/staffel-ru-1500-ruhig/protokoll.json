@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Staffelung 1500 px, ru, kein Lauf: Zustandstext ganz (notfalls zweizeilig), Projektauswahl ungekürzt, kein Überlauf",
+    "Chip sichtbar (nicht hidden)": true,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> im Chip (muss fehlen)": false,
+    "Ansicht": "dashboard",
+    "data-theme": "dark",
+    "lang": "ru",
+    "Persona-Status (Live-Region)": "Готов к твоей идее",
+    "Chip-Text": "Ничего не выполняется",
+    "Menü-Chip-Text": "Ничего не выполняется",
+    "Chip title": "Ничего не выполняется",
+    "Chip href": "#/ausfuehrungen",
+    "Chip data-aktiv": "false",
+    "Punkt aria-hidden": "true",
+    "Register aktiv": "(fehlt)",
+    "Lauf-Detail Titel": "",
+    "Fokus (class)": "(fehlt)",
+    "Poll-Fehler": "(fehlt)",
+    "Live-Chip klickbar": true,
+    "Menü-Chip klickbar": false,
+    "Projektauswahl klickbar": true,
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

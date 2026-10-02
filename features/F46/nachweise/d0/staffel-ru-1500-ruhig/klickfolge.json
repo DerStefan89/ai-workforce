@@ -1,0 +1,209 @@
+{
+  "url": "http://127.0.0.1:4199/#/dashboard",
+  "viewport": {
+    "breite": 1500,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotAusschnitt": {
+    "selector": "#shell-kopf"
+  },
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:\\Users\\stefa\\Projekte\\ai workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": true
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/laeufe/3f2a9c71-5b4e-4d0a-9e1f-2c7b8a6d4e10",
+      "methode": "GET",
+      "json": {
+        "laufId": "3f2a9c71-5b4e-4d0a-9e1f-2c7b8a6d4e10",
+        "fortschritt": {
+          "werkzeug": "Edit",
+          "ziel": "public/leitstand/live-chip.js"
+        },
+        "scoutErgebnis": null,
+        "laufStatus": {
+          "status": "NICHT_GESTARTET"
+        },
+        "aktiv": true,
+        "verweigertDaten": null,
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "auftrag-nachweis-d0",
+          "titel": "Live-Chip in der Kopfleiste nachweisen",
+          "auftragstext": "Fester Auftrag des Nachweises F46 D0."
+        },
+        "kontextpaket": {
+          "status": "nicht_vorhanden"
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T09:12:00.000Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Persona-Status (Live-Region)",
+        "selector": "#persona-text-status"
+      },
+      {
+        "name": "Chip-Text",
+        "selector": "#kopf-live-chip"
+      },
+      {
+        "name": "Menü-Chip-Text",
+        "selector": ".menue-live-chip"
+      },
+      {
+        "name": "Chip title",
+        "selector": "#kopf-live-chip",
+        "attribut": "title"
+      },
+      {
+        "name": "Chip href",
+        "selector": "#kopf-live-chip",
+        "attribut": "href"
+      },
+      {
+        "name": "Chip data-aktiv",
+        "selector": "#kopf-live-chip",
+        "attribut": "data-aktiv"
+      },
+      {
+        "name": "Punkt aria-hidden",
+        "selector": "#kopf-live-chip .live-chip-punkt",
+        "attribut": "aria-hidden"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "#runs-register [aria-current=\"page\"]"
+      },
+      {
+        "name": "Lauf-Detail Titel",
+        "selector": "#lauf-detail h1"
+      },
+      {
+        "name": "Fokus (class)",
+        "selector": ":focus",
+        "attribut": "class"
+      },
+      {
+        "name": "Poll-Fehler",
+        "selector": "#poll-fehler:not([hidden])"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Chip sichtbar (nicht hidden)",
+        "selector": "#kopf-live-chip:not([hidden])"
+      },
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> im Chip (muss fehlen)",
+        "selector": "#kopf-live-chip img"
+      }
+    ],
+    "getroffen": [
+      {
+        "name": "Live-Chip klickbar",
+        "selector": "#kopf-live-chip"
+      },
+      {
+        "name": "Menü-Chip klickbar",
+        "selector": ".menue-live-chip"
+      },
+      {
+        "name": "Projektauswahl klickbar",
+        "selector": "#kopf-projekt-auswahl"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Staffelung 1500 px, ru, kein Lauf: Zustandstext ganz (notfalls zweizeilig), Projektauswahl ungekürzt, kein Überlauf",
+      "warteAufSelector": {
+        "selector": "#kopf-live-chip[data-aktiv=\"false\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "ru1500-ruhig-staffel-kopf.webp"
+    }
+  ]
+}
