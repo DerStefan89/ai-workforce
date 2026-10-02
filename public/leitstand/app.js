@@ -34,7 +34,8 @@
  * wie jede View: es registriert sein abonniere() bei zustand.js, bevor der
  * erste Tick etwas zu melden hätte. initStartView() (F29 WS-1a) registriert
  * aus demselben Grund ebenfalls vor initZustandPoll(). Ebenso initLiveChip()
- * (F46 D0, Live-Chip in der Kopfleiste, live-chip.js).
+ * (F46 D0, Live-Chip in der Kopfleiste, live-chip.js) und initEntscheidungenZaehler() (F46 D2,
+ * Zahl am Navigationspunkt „Entscheidungen“, entscheidungen-zaehler.js).
  *
  * leiteBeimStartEin() (F29 WS-1a, views/start.js) läuft NACH allen
  * initXView()-Aufrufen (die Route '#/start' muss bereits registriert sein)
@@ -65,6 +66,7 @@
 
 import { initialisiereSprache } from './i18n.js'
 import { initKommt } from './kommt.js'
+import { initEntscheidungenZaehler } from './entscheidungen-zaehler.js'
 import { initLiveChip } from './live-chip.js'
 import { registriere, starteRouter } from './router.js'
 import { initAttentionView } from './views/attention.js'
@@ -108,6 +110,7 @@ initProjektakteView()
 initStartView()
 initPersona()
 initLiveChip()
+initEntscheidungenZaehler()
 initShell()
 
 registriere(/^#\/projekt$/, 'projekt')

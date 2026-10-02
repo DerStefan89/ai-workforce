@@ -23,6 +23,9 @@ Referenzen. Du liest nur; Befunde meldest du, beheben tut sie der Bauende.
   welcher Leitstand-Ansicht gehoert, steht dort in §9.
 - Scope, Bestehensbedingung und Entscheidungen E-F44-1/E-F44-2:
   `features/F44/feature.md`.
+- Ab F46 (Design-Nachbau): Leitprinzip, Seitenspezifikation und Status je
+  Element (U/S/K/E) in `docs/design/abgleich-f46.md`, Bilder und Quell-Markup
+  unter `docs/design/neu/`; Akte `features/F46/feature.md`.
 
 ## Design-Token-Referenz
 Die Token-Bloecke in `public/leitstand/style.css`: `:root { … }` sowie
@@ -69,6 +72,22 @@ Jeden Punkt einzeln mit Fundstelle (Datei:Zeile oder Screenshot) belegen.
     (de/en/tr/ru), `html lang` passt zur Wahl, lange tr/ru-Texte zerstoeren
     das Layout nicht, Projektinhalte und Serverantworten bleiben
     unuebersetzt.
+11. **Bestand bleibt (F46, Stefan 02.10.2026):** Seitenleiste (Wortmarke,
+    Eintraege mit Symbolen, „Zuletzt geoeffnet“, unterer Bereich mit
+    Illustration `.side-art`, Profil), Bilder, Persona und Tokens bleiben; kein
+    neuer Stil. Die Designs in `docs/design/neu/` bestimmen den Aufbau der
+    Seiten, nicht den Look. Das Gate `scripts/check-f46-bestand.mjs` haelt die
+    Seitenleiste fest.
+12. **Drei Ebenen des Leitprinzips** (`docs/design/abgleich-f46.md`,
+    Abschnitt „Leitprinzip“) fuer jede geaenderte Seite: Wo bin ich?
+    (Seitentitel, aktive Markierung in der Seitenleiste, Rueckweg, Status auf
+    einen Blick) — Was ist wichtig? (oben das Wesentliche in wenigen Saetzen)
+    — Mehr bei Bedarf (Details darunter, aufklappbar oder verlinkt; nichts
+    Entscheidungsrelevantes nur in der Tiefe). Bei Widerspruch zwischen
+    Design-Bild und Leitprinzip gilt das Leitprinzip.
+13. **Genau ein Hauptknopf, wenn Stefan dran ist:** eine Seite, auf der eine
+    Entscheidung oder Aktion von Stefan wartet, zeigt genau einen
+    hervorgehobenen Hauptknopf; weitere Aktionen sind nachrangig gestaltet.
 
 ## Regeln
 - Keine neue Designsprache einfuehren.

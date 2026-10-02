@@ -6,6 +6,22 @@ Referenz: `docs/design/neu/*.webp` (19 Ansichten, 1440 px, Desktop dunkel) und
 Dieses Dokument ist die Arbeitsgrundlage für F46 D1–D6 und die Prüfliste für design-guardian.
 Rangfolge bei Widerspruch: Invarianten > dieses Dokument > Bild > Quelle.
 
+## Leitprinzip (Stefan, 02.10.2026)
+
+Bestand bleibt, der Umbau macht ihn verständlicher. Der heutige Look (Tokens, Schrift, Seitenleiste,
+Bilder, Persona) bleibt erhalten; die Designs in `docs/design/neu/` bestimmen den Aufbau der Seiten,
+nicht einen neuen Stil.
+
+Jede Seite folgt drei Ebenen:
+1. Wo bin ich? — Seitentitel, aktive Markierung in der Seitenleiste, Rückweg (Brotkrume/Reiter),
+   Status auf einen Blick.
+2. Was ist wichtig? — oben das Wesentliche in wenigen Sätzen („Kurz gesagt“ bzw. Kopfkarten); wenn
+   Stefan dran ist, genau ein Hauptknopf.
+3. Mehr bei Bedarf — Details darunter, aufklappbar oder verlinkt. Nichts Entscheidungsrelevantes steht
+   nur in der Tiefe.
+
+Bei Widerspruch zwischen Design-Bild und Leitprinzip gilt das Leitprinzip.
+
 ## 0 Regeln und Legende
 
 Status je Element:
@@ -37,6 +53,13 @@ Regeln:
 | GitHub | Repo bzw. Branch/PR des Kontexts | K → S | Remote-URL aus der Leseroute (D4) | D4 |
 | Terminal | Panel neben dem Chat | K | E-F46-1 | – |
 | Chat-Dock und große Ansicht (05) | Dock, `#/chat` | U | F44 WS-8; Terminal-Spalte K | – |
+
+**Bestand bleibt** (Stefan, 02.10.2026): Die Seitenleiste behält ihren heutigen Aufbau aus F44 (V10):
+Wortmarke JARVIS / AI WORKFORCE, Einträge mit Symbolen, ‚Zuletzt geöffnet‘, unterer Bereich mit der
+Illustration assets/gear.webp (.side-art) sowie Alle Produkte, Nutzung, Einstellungen, Profil und
+Workforce. Das Persona-Bild (persona-gesicht.webp) bleibt in Kopf, Dock und Chat. Die Designs in
+docs/design/neu/ zeigen die Seitenleiste vereinfacht; das ist keine Vorgabe zum Entfernen. Neu kommt nur
+der Zähler an ‚Entscheidungen‘ hinzu. (Gate `scripts/check-f46-bestand.mjs`, seit D2.)
 
 Gemeinsame Bausteine (jeweils mit dem ersten Verbraucher gebaut, danach wiederverwendet):
 - **Rollen-Kreis** (D1): Planner/Codex (Architekt) · Advisor/Claude · Builder/Claude Code · Prüfschritt/kein Modell · Reviewer/Codex · Abnahme/Du; Satelliten am Builder: code-reviewer, qa, design-guardian (je Claude). Reviewer und code-reviewer sind getrennte Rollen. Status je Rolle (fertig/jetzt/offen) aus den Schritten des Workflows zum Feature; ohne Workflow alle „offen“.
@@ -160,6 +183,13 @@ Hauptaufgabe: die nächste Entscheidung finden und öffnen.
 | Geprüfte Quellen mit Zahl, Defekt-Hinweis statt Entwarnung | U | wie heute; „Offene Abnahmen“ S, „Bereit zum Sichern“ K |
 | Zuletzt entschieden | K | keine Leseroute über Entscheidungsartefakte |
 
+Umsetzung D2 (Abweichungen, begründet):
+- Katalog-Empfehlung auf Freigabe-Karten: K — sie steht nur im Workflow-Detail, nicht in den Kopfdaten (kein zweiter Abruf je Karte). „blockiert“ und „Jarvis empfiehlt“ stehen einmal über der Liste als „kommt“, nicht auf jeder Karte.
+- Gefüllter Hauptknopf nur auf der obersten Karte im aktiven Filter (Leitprinzip: genau ein Hauptknopf); die übrigen Karten tragen einen einfachen Knopf.
+- Reihenfolge der Gruppen: Freigaben, Rückfragen, Abnahmen, Fehler, Startprobleme, Befunde — Freigaben und Rückfragen teilen sich die feste Sektion `attention-abschnitt-workflows` (Gate f21-ws2).
+- Zahl an „Entscheidungen“: nur Quellen aus dem Poll (ohne Befunde P0/P1, die ein eigener Abruf sind).
+- „Zum Eintrag“ nur, wenn der Auftrag eine Workitem-Referenz trägt; Startprobleme ohne Knopf (keine Detailroute).
+
 ### 4.5 Entscheiden — `#/workflows/<id>` (09-entscheidungen--Entscheiden, --Entscheiden-Abnahme) · D2
 Zweck: eine Entscheidung mit allem, was sie braucht, auf einer Seite.
 Hauptaufgabe: prüfen und mit Begründung entscheiden.
@@ -190,6 +220,14 @@ Abnahme:
 | Deine Entscheidung: Annehmen · Anpassung anfordern · Ablehnen, Begründung Pflicht | U | bestehend (F44 WS-4b) |
 
 Rechte Spalte mit der Entscheidung läuft beim Scrollen mit. Die heutigen Bereiche Klärung, Reparatur, Architekt-Entscheidung und „Technischer Ablauf“ bleiben erreichbar.
+
+Umsetzung D2 (Abweichungen, begründet):
+- Kontrolltiefe: K statt U — sie steht nur im Router-Artefakt, das keinen Lesepfad hat (F-372); Werkzeugsatz, Zeitgrenze und Risiko kommen echt aus dem fälligen Schritt.
+- Freigabe: „<Option> bestätigen“ öffnet den bestehenden Freigabedialog als Bestätigung (Kennzeichen beim Öffnen, „Anzeige = Start“, Ablehnen als Veto im selben Dialog) — ein Klick mehr als im Bild, die Invariante geht vor. Die Begründung wandert zwischen Spalte und Dialog. „Freigeben & installieren“ führt zu den Installationsknöpfen des Dialogs (kein neuer Schreibweg) und ist ohne installierbaren Vorschlag gesperrt.
+- Abnahmekriterien zeigen Kennung, Beleg und Urteil — das Review liefert den Wortlaut eines AK nicht; der Link „Beleg“ entfällt (der Beleg steht in der Zeile). Die Review-Empfehlung steht in der Kachel gekürzt, im Volltext unter „Nachweise im Einzelnen“.
+- „Jarvis empfiehlt“ in der Spalte: K (keine Quelle). Kacheln Desktop/Mobil/Hell entfallen, solange keine Nachweisdateien vorliegen.
+- Im Entscheidungsmodus ist „Der Weg zum Ergebnis“ (Timeline, Auf einen Blick, Aktionen mit Stoppen) zugeklappt; der Status steht als Zeile im Kopf. Die Seitenleiste markiert „Entscheidungen“, der Rückweg heißt „← Deine Entscheidungen“.
+
 
 ### 4.6 Eintrag im Detail: Feature — `#/workboard/<id>` (07-eintrag-detail--Main) · D3
 Zweck: alles zu einem Feature: was es ist, wo es steht, was Stefan tun muss.

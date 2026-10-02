@@ -1,0 +1,27 @@
+[
+  {
+    "label": "#/attention: Freigabe, Rückfrage, zwei Abnahmen (eine veraltet), Lauf-Fehler, Startproblem, Befund P1; Chips mit Zahl, Geprüfte Quellen, Zähler 6 an „Entscheidungen“",
+    "Freigabedialog offen": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entscheidungen6, 6 offen",
+    "Zähler „Entscheidungen“": "6, 6 offen",
+    "Filter aktiv": "Alle · 7",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Hauptknopf Liste (oberste Karte)": "Freigabe prüfen: Opportunity Scanner: Datenquellen anbinden",
+    "Hauptknopf Spalte": "(fehlt)",
+    "Absenden (Text)": "(fehlt)",
+    "Absenden gesperrt": "(fehlt)",
+    "Dialog-Begründung": "(fehlt)",
+    "Meldung am Ablauf (Text „NACHWEIS“ = POST erkannt)": "(fehlt)",
+    "Meldung der Abnahme (muss fehlen)": "(fehlt)",
+    "Meldung im Dialog (muss fehlen)": "(fehlt)",
+    "Rückweg": "Alle Aufträge",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

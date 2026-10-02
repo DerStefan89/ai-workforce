@@ -4,7 +4,8 @@
  * Zweck: node:test-Fälle für views/workflow-abnahme.js (F44 WS-4b, Abgleich F-725 F13–F18): die drei
  * Lagen (entscheidbar, offen, entschieden), die veraltete Entscheidung, der F18-Hinweis nur bei
  * erzeuger 'kern', „Prüfung wiederholen“ nach unveränderter Regel, die Zeilen für „Auf einen Blick“,
- * kein erfundener Text „Was sich verbessert hat“ und Escaping aller Serverwerte.
+ * kein erfundener Text „Was sich verbessert hat“ und Escaping aller Serverwerte. F46 D2: die Lage
+ * „entscheidbar“ als Seite Entscheiden (Hauptspalte, Spalte „Deine Entscheidung“, Vorschau, AK-Zahlen).
  *
  * Wird aufgerufen von: `npm run test` (node --test). Das Modul ist rein: der Import läuft in Node
  * ohne DOM (in Node gilt de).
@@ -12,7 +13,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
+import { abnahmeEinleitung, abnahmeLage, erlaubteAbnahmeAktionen, pruefungWiederholbar, renderAbnahme, renderAbnahmeBlick, zaehleAkUrteile } from './workflow-abnahme.js'
 
 const URTEIL = {
   status: 'ok',
@@ -45,31 +46,54 @@ test('erlaubteAbnahmeAktionen: heutige Regel (ANGENOMMEN nur bei ABGESCHLOSSEN, 
   for (const status of ['OFFEN', 'LAEUFT', 'WARTET_FREIGABE', 'GESTOPPT']) assert.deepEqual(Object.values(erlaubteAbnahmeAktionen(status)), [false, false, false], status)
 })
 
-test('entscheidbar: Abschnitt über der Timeline mit Empfehlung, Kriterien, Befunden, Dateien, Prüfbericht und Entscheidung inline', () => {
+test('entscheidbar (F46 D2): Hauptspalte mit Kriterien, Kacheln, Selbst ausprobieren und Nachweisen; Spalte „Deine Entscheidung“', () => {
   const a = abnahme()
   assert.equal(abnahmeLage(a), 'entscheidbar')
-  const { oben, unten } = renderAbnahme('w-1', a)
+  const { oben, unten, spalte } = renderAbnahme('w-1', a, { url: 'http://127.0.0.1:3000', erreichbar: true, grund: 'ok' })
   assert.equal(unten, '')
-  assert.match(oben, /<div class="eyebrow">Dein letztes Wort<\/div><h2 id="abnahme-titel">Passt das Ergebnis\?<\/h2>/)
-  assert.match(oben, /Deine Abnahme fehlt/)
-  assert.match(oben, /class="note abnahme-empfehlung"[\s\S]*Empfehlung des Code Reviewers: bereit zur Abnahme\./)
-  assert.match(oben, /Abnehmen &lt;b&gt;bitte&lt;\/b&gt;/, 'empfehlung bleibt roh und escaped')
-  assert.match(oben, /<h3>Vereinbart &amp; überprüft<\/h3>/)
-  assert.match(oben, /aria-hidden="true">✓<\/span>[\s\S]*<code>AK1<\/code> Erfüllt[\s\S]*Nachweis: Test &lt;grün&gt;/)
-  assert.match(oben, /<code>AK2<\/code> Nicht prüfbar/)
+  assert.match(oben, /<h2 id="abnahme-kriterien-titel">Abnahmekriterien<\/h2><span class="subtle">1 erfüllt · 0 nicht erfüllt · 1 nicht prüfbar · Urteil des Reviews, du hast das letzte Wort<\/span>/)
+  assert.match(oben, /<code class="ak-id">AK1<\/code>[\s\S]*Test &lt;grün&gt;[\s\S]*ak-urteil-ok[\s\S]*Erfüllt/)
+  assert.match(oben, /<code class="ak-id">AK2<\/code>[\s\S]*ak-urteil-warten[\s\S]*Nicht prüfbar/)
+  assert.match(oben, /<span class="eyebrow">Prüfung<\/span><strong class="entscheiden-wert entscheiden-wert-ok">GRÜN<\/strong>[\s\S]*Exit-Code 0/)
+  assert.match(oben, /<span class="eyebrow">Review<\/span>[\s\S]*Bereit<\/span> <span class="subtle">Codex<\/span>[\s\S]*Abnehmen &lt;b&gt;bitte&lt;\/b&gt;/, 'empfehlung bleibt roh und escaped')
+  assert.match(oben, /Urteile je Claude-Prüfer <span class="kommt-badge">kommt<\/span>/)
+  assert.match(oben, /1 Datei geändert[\s\S]*1 Befund des Reviews[\s\S]*Alle Nachweise/)
+  assert.match(oben, /<a class="button" href="http:\/\/127\.0\.0\.1:3000" target="_blank" rel="noopener noreferrer">Produkt öffnen/)
+  assert.match(oben, /Änderungen im Code-Reiter <span class="kommt-badge">kommt<\/span>/)
   assert.match(oben, /<h3>Befunde<\/h3>[\s\S]*Mittel<\/span> <code>src\/a\.ts:3<\/code>[\s\S]*Name &lt;unklar&gt;[\s\S]*Beleg: Zeile 3 &quot;x&quot;/)
   assert.match(oben, /<summary>Geänderte Dateien · 1 Datei<\/summary>[\s\S]*<code>src\/&lt;a&gt;\.ts<\/code>[\s\S]*\+3[\s\S]*—/)
   assert.match(oben, /<details class="abnahme-details"><summary>Prüfbericht &amp; Nachweise<\/summary>[\s\S]*GRÜN[\s\S]*Exit 0/)
   assert.doesNotMatch(oben, /wf-pruefung-wiederholen/, 'GRÜN bei ABGESCHLOSSEN: kein „Prüfung wiederholen“')
-  assert.match(oben, /<textarea id="wf-abnahme-begruendung"/)
-  const knoepfe = [...oben.matchAll(/class="([^"]*) wf-abnahme-aktion" data-aktion="(\w+)"[^>]*?(disabled)?>([^<]*)</g)].map((m) => [m[2], m[4], m[3] === 'disabled'])
-  assert.deepEqual(knoepfe, [
-    ['ANGENOMMEN', 'Ergebnis abnehmen', false],
-    ['ANPASSUNG_ANGEFORDERT', 'Anpassung wünschen', false],
-    ['ABGELEHNT', 'Ablehnen', false],
+  assert.doesNotMatch(oben, /wf-abnahme-begruendung|wf-abnahme-aktion/, 'die Entscheidung steht in der Spalte')
+  assert.match(spalte, /<h2 id="wf-abnahme-option-titel">Abnehmen\?<\/h2>/)
+  assert.match(spalte, /<textarea id="wf-abnahme-begruendung"/)
+  const optionen = [...spalte.matchAll(/value="(\w+)" data-bestaetigen="([^"]*)"( disabled)?/g)].map((m) => [m[1], m[2], m[3] === ' disabled'])
+  assert.deepEqual(optionen, [
+    ['ANGENOMMEN', 'Annehmen bestätigen', false],
+    ['ANPASSUNG_ANGEFORDERT', 'Anpassung anfordern', false],
+    ['ABGELEHNT', 'Ablehnen bestätigen', false],
   ])
-  assert.doesNotMatch(oben, /Was sich verbessert hat/, 'kein erfundener Text der Vorlage')
-  assert.doesNotMatch(oben, /Block „Bedienung“|Block „Bedienung"/)
+  assert.match(spalte, /class="button primary entscheidung-absenden wf-abnahme-aktion" data-workflow-id="w-1" data-aktion=""[^>]*disabled>Option wählen</, 'Absenden gesperrt, bis Option und Begründung da sind')
+  for (const html of [oben, spalte]) {
+    assert.doesNotMatch(html, /Was sich verbessert hat|\[n\]|\[…\]|\{\{/, 'kein erfundener Text, keine Platzhalter der Vorlage')
+  }
+})
+
+test('entscheidbar (F46 D2): nicht erfülltes AK in Zusammenfassung, Einleitung und „Selbst ausprobieren“; Vorschau-Zustände', () => {
+  const urteil = { ...URTEIL, ak_urteile: [{ ak_id: 'AK1', urteil: 'ERFUELLT', beleg: 'ok' }, { ak_id: 'AK<2>', urteil: 'NICHT_ERFUELLT', beleg: 'fehlt' }] }
+  const a = abnahme({ urteil })
+  const { oben } = renderAbnahme('w-1', a, null)
+  assert.match(oben, /1 erfüllt · 1 nicht erfüllt · Urteil/)
+  assert.match(oben, /ak-urteil-fehler[\s\S]*Nicht erfüllt/)
+  assert.match(oben, /was das Review als nicht erfüllt beurteilt hat: <code>AK&lt;2&gt;<\/code>\./)
+  assert.match(oben, /Die Vorschau des Projekts wird geprüft…/)
+  assert.equal(abnahmeEinleitung(a), 'Der Ablauf ist abgeschlossen. Das Review hat 1 von 2 Abnahmekriterien als erfüllt beurteilt. Prüf die übrigen selbst und entscheide.')
+  assert.equal(abnahmeEinleitung(abnahme({ urteil: { status: 'noch_nicht_gelaufen' } })), 'Der Ablauf ist abgeschlossen. Prüf das Ergebnis und entscheide.')
+  assert.match(renderAbnahme('w-1', a, { url: null, erreichbar: false, grund: 'x' }).oben, /keine Vorschau-URL/)
+  assert.match(renderAbnahme('w-1', a, { url: 'http://127.0.0.1:4100', erreichbar: null, grund: 'Leitstand-Port' }).oben, /nicht zulässig: Leitstand-Port/)
+  assert.doesNotMatch(renderAbnahme('w-1', a, { url: 'http://127.0.0.1:4100', erreichbar: null, grund: 'Leitstand-Port' }).oben, /Produkt öffnen<\/a>|href="http:\/\/127/)
+  assert.match(renderAbnahme('w-1', a, { fehler: true }).oben, /nicht abrufbar/)
+  assert.deepEqual(zaehleAkUrteile(urteil.ak_urteile), { gesamt: 2, erfuellt: 1, nichtErfuellt: 1, nichtPruefbar: 0, nichtErfuellteIds: ['AK<2>'] })
 })
 
 test('Klärung nach dem Bau (Prüfung ROT): kein „Passt das Ergebnis?“, sondern „Ergebnis ablehnen …“ mit Dateien und offenem Prüfbericht samt „Prüfung wiederholen“', () => {
@@ -121,7 +145,7 @@ test('veraltet: die frühere Entscheidung bleibt sichtbar (Audit-Spur), die Abna
   assert.equal(abnahmeLage(a), 'entscheidbar')
   const { oben } = renderAbnahme('w-1', a)
   assert.match(oben, /Frühere Entscheidung \(bezieht sich auf eine frühere Fassung\): Abgelehnt am [^—]+— „alt &lt;x&gt;“/)
-  assert.match(oben, /wf-abnahme-aktion/)
+  assert.match(renderAbnahme('w-1', a).spalte, /wf-abnahme-aktion/)
   const offen = renderAbnahme('w-1', { ...a, workflowStatus: 'WARTET_FREIGABE', freigabeHalt: { schrittId: 's2' } })
   assert.match(offen.unten, /Deine Abnahme folgt[\s\S]*Frühere Entscheidung/)
 })
@@ -178,7 +202,7 @@ test('Regel: ABGESCHLOSSEN ohne Entscheidung → „Passt das Ergebnis?“, auch
     const a = abnahme({ workflowStatus: 'ABGESCHLOSSEN', aenderungsuebersicht })
     assert.equal(abnahmeLage(a), 'entscheidbar', aenderungsuebersicht.status)
     const { oben, unten } = renderAbnahme('w-1', a)
-    assert.match(oben, /Dein letztes Wort[\s\S]*Passt das Ergebnis\?/)
+    assert.match(oben, /Abnahmekriterien/)
     assert.equal(unten, '')
   }
   // Rotfall: dieselbe Lage ohne ABGESCHLOSSEN (KLAERUNG_ERFORDERLICH nach dem Bau) darf nicht entscheidbar sein.
@@ -211,4 +235,12 @@ test('Regel: Klärung nach dem Bau (KLAERUNG_ERFORDERLICH, Prüfung GRÜN) → B
   assert.equal(abnahmeLage(offen), 'offen')
   assert.match(renderAbnahme('w-1', offen).unten, /Deine Abnahme folgt/)
   assert.doesNotMatch(renderAbnahme('w-1', offen).unten, /wf-abnahme-aktion/)
+})
+
+test('entscheidbar (F46 D2, Prüfpass): frühere Entscheidung oben, Empfehlung des Reviews im Volltext unter „Nachweise im Einzelnen“', () => {
+  const lang = `Langer Text <b>roh</b> ${'x '.repeat(400)}Ende`
+  const a = abnahme({ urteil: { ...URTEIL, empfehlung: lang }, entscheidung: { status: 'veraltet', ergebnis: 'ABGELEHNT', begruendung: 'alt', entschiedenAm: '2026-09-30T10:00:00.000Z', erzeuger: 'mensch' } })
+  const { oben } = renderAbnahme('w-1', a)
+  assert.ok(oben.indexOf('Frühere Entscheidung') < oben.indexOf('Abnahmekriterien'), 'die veraltete Entscheidung steht vor den Kriterien')
+  assert.match(oben, /<h3>Empfehlung des Reviews<\/h3><p class="entscheiden-empfehlung-voll">Langer Text &lt;b&gt;roh&lt;\/b&gt;[^<]*Ende<\/p>/)
 })

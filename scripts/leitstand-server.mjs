@@ -1284,10 +1284,15 @@ function baueWerkzeugsatzDurchsetzungProjektion(daten) {
  * der Workflow steht, nicht was in ihm steht.
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param version - geladene Artefaktversion (ladeArtefaktVersion)
+ * @param abnahmeVersion - geladene Abnahme-Entscheidung (abnahmeEntscheidungsId), oder null (F46 D2)
  * @returns Kopfdaten-Objekt für die Liste
  */
-function baueWorkflowKopfdaten(workflowId, version) {
+function baueWorkflowKopfdaten(workflowId, version, abnahmeVersion) {
   const daten = version.daten ?? {}
+  // F46 D2 (abgleich-f46.md §4.4, löst F-972): der Abnahmestand gehört in die Kopfdaten, damit
+  // „Deine Entscheidungen“ offene Abnahmen aus dem einen Poll zeigt — dieselbe Regel wie
+  // GET …/abnahme (ermittleAbnahmeStand), kein zweiter Endpunkt und kein zweiter Poll.
+  const abnahmeStand = ermittleAbnahmeStand(daten, abnahmeVersion)
   return {
     workflowId,
     auftragId: daten.auftrag_id ?? null,
@@ -1304,27 +1309,35 @@ function baueWorkflowKopfdaten(workflowId, version) {
     naechster: baueNaechsterProjektion(daten),
     schritteAnzahl: Array.isArray(daten.schritte) ? daten.schritte.length : 0,
     versionSequenz: version.versionSequenz,
+    abnahme: { offen: abnahmeStand.offen, status: abnahmeStand.status },
   }
 }
 
 /**
  * Gecachte Variante der Workflow-Kopfdaten (Perf-Fix, siehe Cache-Abschnittskopf bei
- * sammleLaufKopfdatenGecached) — anders als beim Lauf genügt hier EIN Verzeichnis-Stempel:
- * baueWorkflowKopfdaten hängt ausschließlich an der eigenen lineage-workflow-<id>-Kette
- * (status/aktiver_schritt_id/grund landen dort als neue Versionen, keine externe Kette
- * beteiligt).
+ * sammleLaufKopfdatenGecached) — wie beim Lauf ein Verbundstempel aus zwei Ketten:
+ * - die eigene lineage-workflow-<id>-Kette (status/aktiver_schritt_id/grund und die lauf_id des
+ *   Ausführungsschritts landen dort als neue Versionen — ein neuer Bau-Lauf ändert also diese
+ *   Kette; eine eigene Ausführungs-Kette liest die Abnahme-Regel nicht);
+ * - seit F46 D2 die Kette der Abnahme-Entscheidung lineage-entscheidung-workflow-<id>-abnahme
+ *   (POST …/abnahme schreibt dorthin; ANGENOMMEN ändert die Workflow-Kette NICHT). Ohne sie
+ *   bliebe kopfdaten.abnahme nach einer Abnahme bis zur nächsten Workflow-Version „offen“.
  * @param workflowId - Kennung aus dem Verzeichnisnamen
  * @param basisVerzeichnis - Kontrollzustand-Wurzel
  * @returns Kopfdaten-Objekt, oder null, wenn die Kette keine gültige Version liefert
  */
 function baueWorkflowKopfdatenGecached(workflowId, basisVerzeichnis) {
-  const stempel = leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `${WORKFLOW_VERZEICHNIS_PRAEFIX}${workflowId}`, 'checkpoints'))
+  const stempel = [
+    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `${WORKFLOW_VERZEICHNIS_PRAEFIX}${workflowId}`, 'checkpoints')),
+    leseCheckpointVerzeichnisStempel(join(basisVerzeichnis, `lineage-${abnahmeEntscheidungsId(workflowId)}`, 'checkpoints')),
+  ].join('|')
   const schluessel = `${basisVerzeichnis}::${workflowId}`
   const vorhanden = workflowKopfdatenCache.get(schluessel)
   if (vorhanden !== undefined && vorhanden.stempel === stempel) return vorhanden.kopfdaten
 
-  const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
-  const kopfdaten = version === null ? null : baueWorkflowKopfdaten(workflowId, version)
+  const ladeOptionen = { basisVerzeichnis, schreiber: STILLER_SCHREIBER }
+  const version = ladeArtefaktVersion(`workflow-${workflowId}`, undefined, ladeOptionen)
+  const kopfdaten = version === null ? null : baueWorkflowKopfdaten(workflowId, version, ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen))
   workflowKopfdatenCache.set(schluessel, { stempel, kopfdaten })
   return kopfdaten
 }
@@ -1741,6 +1754,44 @@ function findeAusfuehrungsSchritt(workflowDaten) {
 function findeReviewSchritt(workflowDaten) {
   if (!Array.isArray(workflowDaten?.schritte)) return null
   return workflowDaten.schritte.find((s) => s !== null && typeof s === 'object' && s.output_schema === 'ergebnis-code-reviewer') ?? null
+}
+
+/**
+ * Artefakt-ID der Abnahme-Entscheidung eines Workflows (F23 WS-2a) — dieselbe deterministische ID
+ * für GET …/abnahme und die Kopfdaten samt Cache-Stempel (F46 D2).
+ * @param workflowId - Kennung des Workflows
+ * @returns 'entscheidung-workflow-<id>-abnahme'
+ */
+function abnahmeEntscheidungsId(workflowId) {
+  return `entscheidung-workflow-${workflowId}-abnahme`
+}
+
+/**
+ * Die EINE Regel „Abnahme offen“ (F46 D2, herausgelöst aus GET …/abnahme, F23 WS-2a, F-384):
+ * - entscheidungStatus: 'nicht_vorhanden' ohne Abnahme-Entscheidung, 'ok', wenn sie sich auf den
+ *   aktuellen Bau bezieht (bezug.ausfuehrung_lauf_id === lauf_id des Ausführungsschritts), sonst
+ *   'veraltet' (ein neuer Bau-Lauf macht eine frühere Entscheidung veraltet, F-384);
+ * - faellig: eine Abnahme wird angeboten — Workflow ABGESCHLOSSEN mit gelaufenem
+ *   Ausführungsschritt. Das sind die Vorbedingungen, unter denen POST …/abnahme ein ANGENOMMEN
+ *   annimmt (Sachprüfung (4) und bezug (5)). Die Ansicht (views/workflow-abnahme.js abnahmeLage)
+ *   verlangt für „entscheidbar“ nur ABGESCHLOSSEN ohne aktuelle Entscheidung, nicht den gelaufenen
+ *   Ausführungsschritt — praktisch gleich, weil ABGESCHLOSSEN heute einen Bau voraussetzt; ohne Bau
+ *   bliebe die Liste hier zurückhaltend (nicht fällig), der POST antwortete ohnehin 409;
+ * - offen: fällig und keine Entscheidung zum aktuellen Bau;
+ * - status: für die Kopfdaten 'nicht_faellig', sonst entscheidungStatus.
+ * Aufrufer: GET /api/workflows/<id>/abnahme (entscheidung.status) und baueWorkflowKopfdaten
+ * (kopfdaten.abnahme). POST …/abnahme prüft seine Vorbedingungen unverändert selbst. Robust gegen
+ * eine ungültige Fassung (findeAusfuehrungsSchritt).
+ * @param workflowDaten - roher, ggf. ungültiger WORKFLOW_V0-artiger Datensatz
+ * @param abnahmeVersion - geladene Version von abnahmeEntscheidungsId(<id>), oder null
+ * @returns { entscheidungStatus, faellig, offen, status }
+ */
+export function ermittleAbnahmeStand(workflowDaten, abnahmeVersion) {
+  const ausfuehrungSchritt = findeAusfuehrungsSchritt(workflowDaten)
+  let entscheidungStatus = 'nicht_vorhanden'
+  if (abnahmeVersion !== null && abnahmeVersion !== undefined) entscheidungStatus = abnahmeVersion.daten?.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt?.lauf_id ? 'ok' : 'veraltet'
+  const faellig = workflowDaten?.status === 'ABGESCHLOSSEN' && typeof ausfuehrungSchritt?.lauf_id === 'string'
+  return { entscheidungStatus, faellig, offen: faellig && entscheidungStatus !== 'ok', status: faellig ? entscheidungStatus : 'nicht_faellig' }
 }
 
 /**
@@ -6144,8 +6195,7 @@ export function erzeugeRequestHandler(optionen = {}) {
       // Ausführungslauf (neue lauf_id) macht eine bestehende Entscheidung 'veraltet'. Der Inhalt
       // bleibt sichtbar (Audit-Spur), nur die Lesart ändert sich; die View bietet bei 'veraltet'
       // wieder ACCEPT/REJECT an (Muster renderAbnahmeEntscheidung).
-      const abnahmeArtefaktId = `entscheidung-workflow-${workflowId}-abnahme`
-      const abnahmeVersion = ladeArtefaktVersion(abnahmeArtefaktId, undefined, ladeOptionen)
+      const abnahmeVersion = ladeArtefaktVersion(abnahmeEntscheidungsId(workflowId), undefined, ladeOptionen)
       // F35 WS-3 (features/F35/feature.md): erzeuger/automatische_iteration additiv, aus der
       // Lineage-herkunft der bereits geladenen abnahmeVersion — kein zweiter Regelsatz.
       // automatische_iteration zählt über dieselbe Funktion wie der Auslöser im Automaten-Hook
@@ -6155,7 +6205,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         abnahmeVersion === null
           ? { status: 'nicht_vorhanden' }
           : {
-              status: abnahmeVersion.daten.bezug?.ausfuehrung_lauf_id === ausfuehrungSchritt?.lauf_id ? 'ok' : 'veraltet',
+              // F46 D2: dieselbe Regel wie kopfdaten.abnahme (ermittleAbnahmeStand), keine zweite.
+              status: ermittleAbnahmeStand(workflowDaten, abnahmeVersion).entscheidungStatus,
               ergebnis: abnahmeVersion.daten.ergebnis,
               begruendung: abnahmeVersion.daten.begruendung,
               entschiedenAm: abnahmeVersion.daten.entschieden_am,

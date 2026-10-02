@@ -41,7 +41,7 @@
           <a href="#/ausfuehrungen" data-nav-view="runs" class="nav-unter"><span data-i18n="nav.ausfuehrungen">Ausführungen</span></a>
           <a href="#/projekt" data-nav-view="projekt" class="nav-unter"><span data-i18n="nav.auftragStart">Auftrag &amp; Start</span></a>
         </div>
-        <a href="#/attention" data-nav-view="attention"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2ZM12 9v5M12 17v1" /></svg><span data-i18n="nav.entscheidungen">Entscheidungen</span></a>
+        <a href="#/attention" data-nav-view="attention"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 10 18H2ZM12 9v5M12 17v1" /></svg><span data-i18n="nav.entscheidungen">Entscheidungen</span><span id="nav-entscheidungen-zaehler" class="nav-zaehler" hidden></span></a>
         <a href="#/produktzyklus" data-nav-view="produktzyklus"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h10l4 4v14H5ZM14 3v5h5M8 12h8M8 16h6" /></svg><span data-i18n="nav.produktzyklus">Produktzyklus</span></a>
         <a href="#/brain" data-nav-view="brain"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg><span data-i18n="nav.brain">Brain</span></a>
       </nav>
@@ -425,47 +425,63 @@
           </div>
 
           <!-- F44 WS-4a (Vorlage V10 d_workflow_neu, Abgleich F-725 F2, F3–F5, F10, F12): das Detail
-               #/workflows/<id> als ganze Seite. Sechs Container statt einem: #workflow-detail-inhalt
-               (Timeline), #workflow-blick und #workflow-technik-inhalt ersetzt der Poll alle zwei
-               Sekunden vollständig (F15 WS-3a). #workflow-bedienung (Architekt, Sichtung, Reparatur)
-               und #workflow-aktionen werden nur bei ECHTER Zustandsänderung neu gebaut, und
-               #workflow-reparatur fasst der Poll überhaupt nicht an — der Entwurf gehört dem
-               Menschen, bis er ihn einreicht oder verwirft (F-249). Der Aufklappbereich (details)
-               liegt außerhalb der ersetzten Container, damit er beim Poll offen bleibt. -->
+               #/workflows/<id> als ganze Seite. F46 D2 (abgleich-f46.md §4.5, Bilder
+               09-entscheidungen--Entscheiden und --Entscheiden-Abnahme): steht der Ablauf auf einer
+               Freigabe oder einer offenen Abnahme, ist es die Seite Entscheiden — Kopf mit Art · Eintrag
+               und der Frage, in der Hauptspalte das, was die Entscheidung braucht (#workflow-entscheiden
+               bzw. #workflow-abnahme), rechts „Deine Entscheidung“ (#workflow-entscheidung, läuft beim
+               Scrollen mit; bei schmaler Seite unter dem Inhalt). Alles Übrige bleibt erreichbar:
+               „Der Weg zum Ergebnis“ ist dann zugeklappt (#workflow-ablauf, samt „Auf einen Blick“,
+               Aktionen mit Stoppen und der Abnahme-Zeile), Notizen (Klärung, Sichtung, Reparatur,
+               Architekt-Entscheidung) und „Technischer Ablauf“ stehen wie bisher. Ohne Entscheidung ist
+               die Seite die heutige Ablaufseite (Weg aufgeklappt, „Auf einen Blick“ rechts).
+               Containerregeln wie bisher: #workflow-detail-inhalt, #workflow-blick und
+               #workflow-technik-inhalt ersetzt der Poll vollständig (F15 WS-3a); #workflow-bedienung,
+               #workflow-aktionen, #workflow-entscheidung, #workflow-entscheiden und die Abnahme nur bei
+               ECHTER Zustandsänderung (Kennzeichen, F-249), #workflow-reparatur nie. Die Aufklappbereiche
+               (details) liegen außerhalb der ersetzten Container, damit sie beim Poll offen bleiben. -->
           <section id="workflow-detail" class="v10-seite workflow-seite" aria-labelledby="workflow-detail-titel" hidden>
-            <button type="button" id="workflow-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span data-i18n="ablauf.zurueck">Alle Aufträge</span></button>
-            <div class="page-heading">
-              <div>
-                <div class="eyebrow" data-i18n="ablauf.eyebrow">Auftrag &amp; Ablauf</div>
-                <h1 id="workflow-detail-titel" tabindex="-1"></h1>
-                <p class="description" data-i18n="ablauf.beschreibung">Jeder Schritt hat einen klaren Zweck. Du behältst die Kontrolle.</p>
-              </div>
-            </div>
-            <div id="workflow-detail-fehler" class="note red" hidden></div>
-            <div class="split">
+            <div class="split workflow-raster">
               <div class="workflow-hauptspalte">
-                <!-- F44 WS-4b (Vorlage d_workflow_klaerung, d_abnahme_f35): über der Timeline die Notizen
-                     (Rückfrage, Sichtung, Reparatur; #workflow-bedienung), darunter der Reparatureditor
-                     inline (#workflow-reparatur, vom Poll nie angefasst) und der entscheidbare
-                     Abnahme-Abschnitt (#workflow-abnahme). Notizen und Abnahme werden wie die Aktionen nur
-                     bei ECHTER Zustandsänderung neu gebaut (Kennzeichen, F-249) — eine angefangene
-                     Begründung überlebt den Poll. #workflow-abnahme-stand trägt die Zeile „Deine Abnahme
-                     folgt …“ bzw. die getroffene Entscheidung unter den Aktionen. -->
+                <!-- F46 D2: Rückweg und Kopf stehen in der Hauptspalte, damit „Deine Entscheidung“ wie im Bild
+                     09-Entscheiden oben neben dem Kopf beginnt (Prüfpass dg M3). -->
+                <button type="button" id="workflow-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span id="workflow-detail-zurueck" data-i18n="ablauf.zurueck">Alle Aufträge</span></button>
+                <div class="page-heading">
+                  <div>
+                    <div id="workflow-detail-eyebrow" class="eyebrow" data-i18n="ablauf.eyebrow">Auftrag &amp; Ablauf</div>
+                    <h1 id="workflow-detail-titel" tabindex="-1"></h1>
+                    <p id="workflow-detail-beschreibung" class="description" data-i18n="ablauf.beschreibung">Jeder Schritt hat einen klaren Zweck. Du behältst die Kontrolle.</p>
+                    <p id="workflow-detail-status" class="workflow-detail-status" hidden></p>
+                  </div>
+                </div>
+                <div id="workflow-detail-fehler" class="note red" hidden></div>
+                <div id="workflow-entscheiden"></div>
+                <!-- F44 WS-4b (Vorlage d_workflow_klaerung, d_abnahme_f35): die Notizen (Rückfrage, Sichtung,
+                     Reparatur; #workflow-bedienung), der Reparatureditor inline (#workflow-reparatur, vom
+                     Poll nie angefasst) und die Abnahme (#workflow-abnahme: seit F46 D2 die Hauptspalte der
+                     Abnahme-Entscheidung). #workflow-abnahme-stand trägt die Zeile „Deine Abnahme folgt …“
+                     bzw. die getroffene Entscheidung unter den Aktionen. -->
                 <div id="workflow-bedienung"></div>
                 <div id="workflow-reparatur"></div>
                 <div id="workflow-abnahme"></div>
-                <p id="workflow-abnahme-meldung" class="fehler" tabindex="-1" hidden></p>
-                <h2 data-i18n="ablauf.weg.titel">Der Weg zum Ergebnis</h2>
-                <div id="workflow-detail-inhalt"></div>
-                <div id="workflow-aktionen"></div>
                 <p id="workflow-bedienung-meldung" class="fehler" tabindex="-1" hidden></p>
-                <div id="workflow-abnahme-stand"></div>
+                <details id="workflow-ablauf" class="workflow-ablauf" open>
+                  <summary><h2 data-i18n="ablauf.weg.titel">Der Weg zum Ergebnis</h2></summary>
+                  <div id="workflow-blick-ablauf" class="workflow-blick-ablauf"></div>
+                  <div id="workflow-detail-inhalt"></div>
+                  <div id="workflow-aktionen"></div>
+                  <div id="workflow-abnahme-stand"></div>
+                </details>
                 <details id="workflow-technik" class="workflow-technik">
                   <summary data-i18n="ablauf.technik.titel">Technischer Ablauf &amp; Serverentscheidung</summary>
                   <div id="workflow-technik-inhalt"></div>
                 </details>
               </div>
-              <aside id="workflow-blick" class="summary"></aside>
+              <aside id="workflow-seitenspalte" class="workflow-seitenspalte">
+                <div id="workflow-entscheidung" class="workflow-entscheidung" hidden></div>
+                <p id="workflow-abnahme-meldung" class="fehler" tabindex="-1" hidden></p>
+                <div id="workflow-blick" class="summary"></div>
+              </aside>
             </div>
           </section>
 
@@ -622,61 +638,89 @@
              eigener Endpunkt/Poll (F21 Nicht-Ziele). Workflows/Läufe/Startfehler kommen aus dem
              ohnehin gepollten Zustands-Aggregat, die offenen P0/P1-Workitems aus einem einmaligen
              Abruf beim Betreten dieser Ansicht. -->
-        <!-- F44 WS-2a: „Deine Entscheidungen“ nach Vorlage V10 (d_entscheidungen.png). Die vier
-             Gruppen bleiben als eigene Sektionen mit festen IDs (Gate f21-ws2), erscheinen aber
-             als eine durchgehende Liste ohne Kartenrahmen (je Gruppe eine nur für Screenreader
-             sichtbare h2, damit die h3 der Zeilen keinen Überschriftensprung erzeugen); eine leere Gruppe ist unsichtbar, eine
-             defekte zeigt „nicht verfügbar“ (views/attention.js). -->
-        <section id="view-attention" data-view="attention" class="v10-seite" hidden>
-          <div class="page-heading">
-            <div>
-              <div class="eyebrow" data-i18n="attention.eyebrow">Dein Fokus</div>
-              <h1 id="attention-titel" tabindex="-1" data-i18n="attention.titel">Deine Entscheidungen</h1>
-              <p class="description" data-i18n="attention.beschreibung">Freigaben zuerst. Danach Rückfragen, Fehler und wichtige Befunde. Du entscheidest; Jarvis bereitet vor.</p>
+        <!-- F46 D2: „Deine Entscheidungen“ nach docs/design/neu/09-entscheidungen--Main.webp
+             (abgleich-f46.md §4.4). Hauptspalte: Kopf, Hinweis bei defekter Quelle, Filter-Chips,
+             Karten in fünf Gruppen — je Gruppe eine eigene Sektion mit fester ID (Gate f21-ws2;
+             seit D2 dazu attention-abschnitt-abnahmen) und einer nur für Screenreader sichtbaren h2,
+             damit die h3 der Karten keinen Überschriftensprung erzeugen —, darunter „Zuletzt
+             entschieden“ („kommt“). Rechte Spalte: „Wenn du nichts tust“ („kommt“) und „Geprüfte
+             Quellen“. Eine leere Gruppe ist unsichtbar, eine defekte zeigt „nicht verfügbar“
+             (views/attention.js). -->
+        <section id="view-attention" data-view="attention" class="v10-seite entscheidungen-seite" hidden>
+          <div class="entscheidungen-raster">
+            <div class="entscheidungen-haupt">
+              <div class="page-heading">
+                <div>
+                  <div class="eyebrow" data-i18n="attention.eyebrow">Dein Fokus</div>
+                  <h1 id="attention-titel" tabindex="-1" data-i18n="attention.titel">Deine Entscheidungen</h1>
+                  <p class="description" data-i18n="attention.beschreibung">Was auf dich wartet, nach Dringlichkeit. Du entscheidest, Jarvis bereitet vor.</p>
+                </div>
+              </div>
+
+              <div id="attention-hinweis" class="note amber" hidden>
+                <strong data-i18n="attention.hinweis.titel">Ein Teil der Daten ist nicht verfügbar.</strong>
+                <p data-i18n="attention.hinweis.text">Mindestens eine Quelle konnte nicht geladen werden. Daher ist keine verlässliche Entwarnung möglich.</p>
+                <button type="button" id="attention-erneut" class="button" data-i18n="attention.hinweis.erneut">Erneut laden</button>
+              </div>
+
+              <p id="attention-laedt" class="subtle" data-i18n="attention.laedt">Lädt…</p>
+
+              <div id="attention-filter" class="entscheidungen-filter" role="group" aria-label="Art der Entscheidung" data-i18n-aria-label="attention.filter.gruppe" hidden></div>
+              <p id="attention-kommt" class="entscheidungen-kommt subtle" aria-disabled="true" hidden><span data-i18n="attention.karte.kommt">Je Karte: blockiert · Jarvis empfiehlt</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></p>
+
+              <section id="attention-leer" class="empty" hidden>
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
+                <h2 data-i18n="attention.leer.titel">Für den Moment ist alles geklärt.</h2>
+                <p data-i18n="attention.leer.text">Alle Quellen wurden geprüft: wartende Abläufe, offene Abnahmen, unbestätigte Fehler, Startprobleme und wichtige Befunde.</p>
+                <a class="button primary" href="#/dashboard" data-i18n="attention.leer.link">Zur Übersicht</a>
+              </section>
+
+              <div id="attention-liste" class="entscheidungs-liste">
+                <p id="attention-filter-leer" class="subtle" data-i18n="attention.filter.leer" hidden>Keine offenen Einträge dieser Art.</p>
+                <section id="attention-abschnitt-workflows" class="attention-abschnitt" aria-labelledby="attention-gruppe-workflows" hidden>
+                  <h2 id="attention-gruppe-workflows" class="sr-only" data-i18n="attention.quelle.workflows">Wartende Abläufe</h2>
+                  <div id="attention-workflows"></div>
+                </section>
+
+                <section id="attention-abschnitt-abnahmen" class="attention-abschnitt" aria-labelledby="attention-gruppe-abnahmen" hidden>
+                  <h2 id="attention-gruppe-abnahmen" class="sr-only" data-i18n="attention.quelle.abnahmen">Offene Abnahmen</h2>
+                  <div id="attention-abnahmen"></div>
+                </section>
+
+                <section id="attention-abschnitt-laeufe" class="attention-abschnitt" aria-labelledby="attention-gruppe-laeufe" hidden>
+                  <h2 id="attention-gruppe-laeufe" class="sr-only" data-i18n="attention.quelle.laeufe">Unbestätigte Fehler</h2>
+                  <div id="attention-laeufe"></div>
+                </section>
+
+                <section id="attention-abschnitt-startfehler" class="attention-abschnitt" aria-labelledby="attention-gruppe-startfehler" hidden>
+                  <h2 id="attention-gruppe-startfehler" class="sr-only" data-i18n="attention.quelle.startfehler">Startprobleme</h2>
+                  <div id="attention-startfehler"></div>
+                </section>
+
+                <section id="attention-abschnitt-workitems" class="attention-abschnitt" aria-labelledby="attention-gruppe-workitems" hidden>
+                  <h2 id="attention-gruppe-workitems" class="sr-only" data-i18n="attention.quelle.workitems">Befunde P0 &amp; P1</h2>
+                  <div id="attention-workitems"></div>
+                </section>
+              </div>
+
+              <section class="entscheidungen-zuletzt" aria-labelledby="attention-zuletzt-titel" aria-disabled="true">
+                <h2 id="attention-zuletzt-titel"><span data-i18n="attention.zuletzt.titel">Zuletzt entschieden</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+                <p class="subtle" data-i18n="attention.zuletzt.text">Deine letzten Entscheidungen mit Begründung erscheinen hier, sobald es eine Leseroute über die Entscheidungsartefakte gibt.</p>
+              </section>
             </div>
+
+            <aside class="entscheidungen-spalte">
+              <section class="entscheidungen-lage" aria-labelledby="attention-lage-titel" aria-disabled="true">
+                <h2 id="attention-lage-titel" class="eyebrow"><span data-i18n="attention.lage.titel">Wenn du nichts tust</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+                <p class="subtle" data-i18n="attention.lage.text">Was ohne deine Entscheidung weiterläuft und was stillsteht, zeigt Jarvis hier, sobald es dafür eine Quelle gibt.</p>
+              </section>
+              <section id="attention-quellen-bereich" class="entscheidungen-quellen" aria-labelledby="attention-quellen-titel">
+                <h2 id="attention-quellen-titel" class="eyebrow" data-i18n="attention.quellen.titel">Geprüfte Quellen</h2>
+                <ul id="attention-quellen" class="quellen-liste"></ul>
+                <p class="subtle quellen-hinweis" data-i18n="attention.quellen.hinweis">Ist eine Quelle defekt, gibt es keine Entwarnung, sondern einen Hinweis.</p>
+              </section>
+            </aside>
           </div>
-
-          <div id="attention-hinweis" class="note amber" hidden>
-            <strong data-i18n="attention.hinweis.titel">Ein Teil der Daten ist nicht verfügbar.</strong>
-            <p data-i18n="attention.hinweis.text">Mindestens eine Quelle konnte nicht geladen werden. Daher ist keine verlässliche Entwarnung möglich.</p>
-            <button type="button" id="attention-erneut" class="button" data-i18n="attention.hinweis.erneut">Erneut laden</button>
-          </div>
-
-          <p id="attention-laedt" class="subtle" data-i18n="attention.laedt">Lädt…</p>
-
-          <section id="attention-leer" class="empty" hidden>
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
-            <h2 data-i18n="attention.leer.titel">Für den Moment ist alles geklärt.</h2>
-            <p data-i18n="attention.leer.text">Alle vier Quellen wurden geprüft: wartende Aufträge, unbestätigte Fehler, Startprobleme und wichtige Befunde.</p>
-            <a class="button primary" href="#/dashboard" data-i18n="attention.leer.link">Zur Übersicht</a>
-          </section>
-
-          <div id="attention-liste" class="entscheidungs-liste">
-            <section id="attention-abschnitt-workflows" class="attention-abschnitt" aria-labelledby="attention-gruppe-workflows" hidden>
-              <h2 id="attention-gruppe-workflows" class="sr-only" data-i18n="attention.quelle.workflows">Wartende Aufträge</h2>
-              <div id="attention-workflows"></div>
-            </section>
-
-            <section id="attention-abschnitt-laeufe" class="attention-abschnitt" aria-labelledby="attention-gruppe-laeufe" hidden>
-              <h2 id="attention-gruppe-laeufe" class="sr-only" data-i18n="attention.quelle.laeufe">Unbestätigte Fehler</h2>
-              <div id="attention-laeufe"></div>
-            </section>
-
-            <section id="attention-abschnitt-startfehler" class="attention-abschnitt" aria-labelledby="attention-gruppe-startfehler" hidden>
-              <h2 id="attention-gruppe-startfehler" class="sr-only" data-i18n="attention.quelle.startfehler">Startprobleme</h2>
-              <div id="attention-startfehler"></div>
-            </section>
-
-            <section id="attention-abschnitt-workitems" class="attention-abschnitt" aria-labelledby="attention-gruppe-workitems" hidden>
-              <h2 id="attention-gruppe-workitems" class="sr-only" data-i18n="attention.quelle.workitems">Wichtige Befunde</h2>
-              <div id="attention-workitems"></div>
-            </section>
-          </div>
-
-          <section id="attention-quellen-bereich" aria-labelledby="attention-quellen-titel" hidden>
-            <h2 id="attention-quellen-titel" class="quellen-titel" data-i18n="attention.quellen.titel">Die vier Quellen</h2>
-            <div id="attention-quellen" class="quellen-raster"></div>
-          </section>
         </section>
       </main>
 

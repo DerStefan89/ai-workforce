@@ -9,6 +9,14 @@
  * Blick“, Aktionen, F12), views/workflow-eingriffe.js (Notizen, Dialoginhalte, Reparatureditor) und
  * views/workflow-abnahme.js (Abnahme).
  *
+ * F46 D2 (abgleich-f46.md §4.5): steht der Ablauf auf einer Freigabe oder einer offenen Abnahme, ist
+ * das Detail die Seite Entscheiden (zeichneEntscheiden; Rendern in views/workflow-entscheiden.js,
+ * views/workflow-abnahme.js und views/entscheidung-panel.js): Kopf mit Art · Eintrag und Frage, die
+ * Hauptspalte der Entscheidung, rechts „Deine Entscheidung“ mit genau einem Hauptknopf. Die Wege
+ * bleiben: „<Option> bestätigen“ einer Freigabe öffnet den bestehenden Freigabedialog (Kennzeichen
+ * beim Öffnen, „Anzeige = Start“, Ablehnen im selben Dialog), eine Abnahme schickt POST …/abnahme wie
+ * bisher. „Der Weg zum Ergebnis“ ist dann zugeklappt (samt „Auf einen Blick“), nichts fällt weg.
+ *
  * Die Oberfläche entscheidet NICHTS selbst (D5): angeboten wird nur, was der Server ausweist
  * (naechster.art, status, architekturEntscheidung, Sichtungslage, GET …/abnahme). D13 wird nicht
  * vorhergesagt — ein 409 steht mit seinem Grundtext als Meldung da.
@@ -27,6 +35,7 @@
 import {
   holeAbnahme,
   holeLaufDetail,
+  holeProjektAufruf,
   holeWorkflowDetail,
   reicheWorkflowFassungEin,
   sendeAbnahme,
@@ -43,9 +52,11 @@ import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
 import { baueSichtungsFassung, istSichtungsHaltAnzeige } from '../sichtung-anzeige.js'
 import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
-import { pruefWertText, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
-import { ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
+import { bedienZustand } from './entscheidung-panel.js'
+import { abnahmeLage, pruefWertText, renderAbnahme, renderAbnahmeBlick } from './workflow-abnahme.js'
+import { lageBadge, ordneSchritteNachPlan, renderAktionen, renderAufEinenBlick, renderTechnik, renderTimeline, renderWorkflowListe, renderWorkflowUngueltig, seitenTitel } from './workflow-detail.js'
 import { baueReparaturEntwurf, ermittleReparaturWarnungen, renderDialogInhalt, renderEingriffe, renderReparatur, renderReparaturWarnungen } from './workflow-eingriffe.js'
+import { entscheidungsModus, FREIGABE_OPTIONEN, renderFreigabePanel, renderFreigabeSeite, seitenKopf } from './workflow-entscheiden.js'
 
 /** HTML der zuletzt gerenderten Liste „Aufträge“ — ein Poll-Tick schreibt sie nur bei geändertem Inhalt neu, sonst ginge der Tastaturfokus einer Zeile alle zwei Sekunden verloren. */
 let letzteListeHtml = null
@@ -119,12 +130,18 @@ let laufendeAbnahme = null
 function aktualisiereAbnahme(workflowId, abnahme) {
   letzteAbnahme = abnahme
   zeichneBlick()
+  // F46 D2: „Produkt öffnen“ braucht die Vorschau des Projekts — einmal je Workflow, sobald die Abnahme entscheidbar ist.
+  if (abnahmeLage(abnahme) === 'entscheidbar' && letzteVorschau?.workflowId !== workflowId) void ladeVorschau(workflowId)
+  const vorschau = letzteVorschau?.workflowId === workflowId ? letzteVorschau.wert : null
   const e = abnahme.entscheidung ?? {}
-  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}`
-  if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) return
+  const kennzeichen = `${workflowId}|${abnahme.workflowStatus}|${abnahme.freigabeHalt ? 'halt' : '-'}|${e.status}|${e.versionSequenz ?? '-'}|${abnahme.urteil?.status}|${abnahme.urteil?.laufId ?? '-'}|${abnahme.aenderungsuebersicht?.status}|${abnahme.pruefergebnis?.status ?? 'null'}|${abnahme.pruefergebnis?.ergebnis ?? 'null'}|${JSON.stringify(vorschau)}`
+  if (kennzeichen === abnahmeKennzeichen || laufendeAbnahme === workflowId) {
+    zeichneEntscheiden()
+    return
+  }
   let html
   try {
-    html = renderAbnahme(workflowId, abnahme)
+    html = renderAbnahme(workflowId, abnahme, vorschau)
   } catch (fehler) {
     // Eine unvollständige Projektion bricht nur die Anzeige ab; der nächste Tick versucht es erneut.
     console.error(`[workflows] Abnahme von '${workflowId}' nicht darstellbar:`, fehler)
@@ -139,12 +156,206 @@ function aktualisiereAbnahme(workflowId, abnahme) {
   const hatteFokus = altesFeld !== null && document.activeElement === altesFeld
   container.innerHTML = html.oben
   stand.innerHTML = html.unten
-  ;(html.lage === 'entscheidbar' ? container : stand).after?.(document.getElementById('workflow-abnahme-meldung'))
+  // F46 D2: in der Lage „entscheidbar“ steht die Entscheidung in der Spalte „Deine Entscheidung“.
+  setzePanel('abnahme', html.spalte ?? '', workflowId)
+  const panel = document.getElementById('workflow-entscheidung')
+  // Außerhalb von #workflow-ablauf (qa 2): der Weg klappt im Entscheidungsmodus zu — eine Meldung darin
+  // (etwa nach „Anpassung anfordern“, das in einen Freigabe-Halt führt) wäre samt Fokus unsichtbar.
+  ;(html.lage === 'entscheidbar' ? panel : container).after?.(document.getElementById('workflow-abnahme-meldung'))
   const neuesFeld = document.getElementById('wf-abnahme-begruendung')
-  if (angefangen !== '' && neuesFeld !== null && (container.contains(neuesFeld) || stand.contains(neuesFeld))) {
+  if (angefangen !== '' && neuesFeld !== null && (panel.contains(neuesFeld) || stand.contains(neuesFeld))) {
     neuesFeld.value = angefangen
     if (hatteFokus) neuesFeld.focus()
   }
+  aktualisierePanelKnopf()
+  zeichneEntscheiden()
+}
+
+// ─── Seite Entscheiden (F46 D2; Rendern in ./workflow-entscheiden.js, ./entscheidung-panel.js) ────
+
+/** Vorschau des Projekts für „Produkt öffnen“: { workflowId, wert } — wert null (lädt), { fehler: true } oder VorschauStatus. */
+let letzteVorschau = null
+
+/**
+ * Lädt die Vorschau des aktiven Projekts (GET /api/projekte/<id>/projekt-aufruf, F43) einmal je
+ * Workflow und zeichnet danach die Abnahme neu (die Vorschau ist Teil ihres Kennzeichens).
+ * @param workflowId - angezeigter Workflow
+ */
+async function ladeVorschau(workflowId) {
+  letzteVorschau = { workflowId, wert: null }
+  let wert
+  try {
+    const daten = await holeProjektAufruf(holeAktivesProjekt().id)
+    wert = daten?.vorschau ?? { fehler: true }
+  } catch (fehler) {
+    console.error(`[workflows] Vorschau für „Produkt öffnen“ nicht ladbar: ${fehler.message}`)
+    wert = { fehler: true }
+  }
+  if (gewaehlteWorkflowId !== workflowId || letzteVorschau?.workflowId !== workflowId) return
+  letzteVorschau = { workflowId, wert }
+  if (letzteAbnahme !== null) aktualisiereAbnahme(workflowId, letzteAbnahme)
+}
+
+/** Art der Spalte „Deine Entscheidung“ ('freigabe' | 'abnahme') oder null, dazu die Grundlage, unter der eine Auswahl und Begründung beim Neuzeichnen erhalten bleiben. */
+let panelArt = null
+let panelBasis = null
+
+/**
+ * Schreibt die Spalte „Deine Entscheidung“ einer Art; '' leert sie nur, wenn sie gerade diese Art
+ * zeigt (Freigabe und Abnahme kommen aus zwei Quellen). Bei gleicher Art und Grundlage bleiben die
+ * gewählte Option, die angefangene Begründung und der Fokus erhalten.
+ * @param art - 'freigabe' | 'abnahme'
+ * @param html - Inhalt oder ''
+ * @param basis - Grundlage (Freigabe: Bedienungs-Kennzeichen ohne Empfehlung; Abnahme: workflowId)
+ */
+function setzePanel(art, html, basis) {
+  const panel = document.getElementById('workflow-entscheidung')
+  if (html === '') {
+    if (panelArt === art) {
+      panel.innerHTML = ''
+      panelArt = null
+      panelBasis = null
+    }
+    return
+  }
+  const bewahren = panelArt === art && panelBasis === basis
+  const altesFeld = panel.querySelector('textarea')
+  const text = bewahren && altesFeld !== null ? altesFeld.value : ''
+  const option = bewahren ? (panel.querySelector('input[type="radio"]:checked')?.value ?? null) : null
+  const aktiv = panel.contains(document.activeElement) ? document.activeElement : null
+  const fokus = aktiv === null ? null : aktiv.tagName === 'TEXTAREA' ? 'textarea' : aktiv.matches('input[type="radio"]') ? `input[value="${aktiv.value}"]` : '.entscheidung-absenden'
+  panel.innerHTML = html
+  panelArt = art
+  panelBasis = basis
+  const feld = panel.querySelector('textarea')
+  if (feld !== null) feld.value = text
+  if (option !== null) {
+    const radio = [...panel.querySelectorAll('input[type="radio"]')].find((r) => r.value === option && !r.disabled)
+    if (radio !== undefined) radio.checked = true
+  }
+  aktualisierePanelKnopf()
+  if (fokus !== null) panel.querySelector(fokus)?.focus()
+}
+
+/** Setzt den Knopf der Spalte nach Auswahl und Begründung (gesperrt, bis beides da ist; Text „<Option> bestätigen“). */
+function aktualisierePanelKnopf() {
+  const panel = document.getElementById('workflow-entscheidung')
+  const knopf = panel.querySelector('.entscheidung-absenden')
+  if (knopf === null) return
+  const radio = panel.querySelector('input[type="radio"]:checked')
+  const gewaehlt = radio === null ? null : { wert: radio.value, bestaetigen: radio.dataset.bestaetigen, erlaubt: !radio.disabled }
+  const zustand = bedienZustand(gewaehlt, panel.querySelector('textarea')?.value ?? '')
+  // Während einer laufenden Abnahme-Bedienung bleibt alles gesperrt (genau ein POST).
+  knopf.disabled = zustand.gesperrt || laufendeAbnahme !== null
+  knopf.textContent = zustand.text
+  if (panelArt === 'abnahme') knopf.dataset.aktion = zustand.aktion
+  else knopf.dataset.option = zustand.aktion
+}
+
+/** Modus der zuletzt gezeichneten Seite ('freigabe' | 'abnahme' | null). */
+let modus = null
+
+/** true, wenn das offene Detail aus „Deine Entscheidungen“ geöffnet wurde (Rückweg per history.back()). */
+let detailAusAttention = false
+
+/**
+ * Text eines Elements nur bei Änderung setzen (der Poll zeichnet sonst alle zwei Sekunden neu).
+ * @param id - Element-id @param html - neuer Inhalt (HTML) @returns das Element
+ */
+function setzeHtml(id, html) {
+  const element = document.getElementById(id)
+  if (element.dataset.html !== html) {
+    element.innerHTML = html
+    element.dataset.html = html
+  }
+  return element
+}
+
+/**
+ * Zeichnet die Seite je Modus (F46 D2): Kopf (Art · Eintrag, Frage, Einleitung, Status), die
+ * Hauptspalte der Freigabe, die Spalte „Deine Entscheidung“ und die Lage von „Der Weg zum Ergebnis“
+ * (beim Wechsel in einen Entscheidungsmodus zugeklappt, samt „Auf einen Blick“; ohne Modus
+ * aufgeklappt, „Auf einen Blick“ rechts). Aus dem aktuellen Detail und der letzten Abnahme.
+ */
+function zeichneEntscheiden() {
+  if (aktuellesDetail === null) return
+  const { workflowId, daten, naechster } = aktuellesDetail
+  const modusNeu = entscheidungsModus(aktuellesDetail, letzteAbnahme)
+  const kopf = seitenKopf(modusNeu, seitenTitel(daten.ziel, workflowId), letzteAbnahme)
+  const titel = document.getElementById('workflow-detail-titel')
+  if (titel.textContent !== kopf.titel) titel.textContent = kopf.titel
+  setzeHtml('workflow-detail-eyebrow', kopf.art === null ? tHtml('ablauf.eyebrow') : `${escapeHtml(kopf.art)} · <span class="eyebrow-eintrag" title="${escapeHtml(kopf.eintrag)}">${escapeHtml(kopf.eintrag)}</span>`)
+  setzeHtml('workflow-detail-beschreibung', escapeHtml(kopf.beschreibung))
+  const status = setzeHtml('workflow-detail-status', modusNeu === null ? '' : `${lageBadge(daten.status ?? null, naechster)} <span class="subtle">· ${tHtml('entscheiden.status.du')}</span>`)
+  status.hidden = modusNeu === null
+  setzeHtml('workflow-entscheiden', modusNeu === 'freigabe' ? renderFreigabeSeite(aktuellesDetail) : '')
+  document.getElementById('workflow-entscheidung').hidden = modusNeu === null || panelArt !== modusNeu
+  document.getElementById('workflow-detail').classList.toggle('entscheiden-modus', modusNeu !== null)
+  document.getElementById('workflow-detail').classList.toggle('entscheiden-abnahme', modusNeu === 'abnahme')
+  if (modusNeu !== modus) {
+    modus = modusNeu
+    // Beim Wechsel (nicht bei jedem Tick): der Weg klappt im Entscheidungsmodus zu, sonst auf; „Auf einen Blick“ zieht mit.
+    document.getElementById('workflow-ablauf').open = modusNeu === null
+    const blick = document.getElementById('workflow-blick')
+    if (modusNeu === null) document.getElementById('workflow-seitenspalte').append?.(blick)
+    else document.getElementById('workflow-blick-ablauf').append?.(blick)
+  }
+  // Bei jedem Zeichnen (auch beim zweiten Besuch desselben Details, den der Router mit „Ausführungen“
+  // markiert), aber nur auf der Detailroute — lädt der Auffrischer das Detail auf einer anderen Seite
+  // nach, bleibt deren Markierung unangetastet (cr 1, qa 1).
+  if (/^#\/workflows\/[^/]+$/.test(location.hash ?? '')) markiereNav(modusNeu)
+  aktualisiereZurueck()
+  heileSpalte(modusNeu)
+}
+
+/** true, solange heileSpalte neu zeichnet (kein Wiedereintritt über aktualisiereAbnahme → zeichneEntscheiden). */
+let heiltSpalte = false
+
+/**
+ * Hält die Spalte „Deine Entscheidung“ beim Modus (qa 7): eine verspätete Abnahme-Antwort kann die
+ * Spalte einer Freigabe überschrieben haben (und umgekehrt). Dann wird die passende Spalte aus dem
+ * aktuellen Stand neu gebaut, statt auf die nächste echte Änderung zu warten.
+ * @param modusJetzt - Modus der Seite
+ */
+function heileSpalte(modusJetzt) {
+  if (heiltSpalte || modusJetzt === null || panelArt === modusJetzt) return
+  heiltSpalte = true
+  try {
+    if (modusJetzt === 'freigabe') {
+      const d = aktuellesDetail
+      bedienungsKennzeichen = null
+      aktualisiereWorkflowBedienung(d.workflowId, d.daten.status ?? null, d.naechster, d.ungueltig, d.architekturEntscheidung, d.empfehlung, d.sichtung)
+      document.getElementById('workflow-entscheidung').hidden = panelArt !== 'freigabe'
+    } else if (letzteAbnahme !== null) {
+      abnahmeKennzeichen = null
+      aktualisiereAbnahme(aktuellesDetail.workflowId, letzteAbnahme)
+    }
+  } finally {
+    heiltSpalte = false
+  }
+}
+
+/**
+ * „Wo bin ich?“ (Leitprinzip F46): auf der Seite Entscheiden markiert die Seitenleiste
+ * „Entscheidungen“ statt „Ausführungen“ (die Route gehört technisch zur View runs, router.js);
+ * ohne Modus gilt wieder die Markierung des Routers. Der nächste Routenwechsel setzt sie ohnehin neu.
+ * @param modusJetzt - Modus der Seite
+ */
+function markiereNav(modusJetzt) {
+  for (const link of document.querySelectorAll('#shell-nav [data-nav-view]')) {
+    const soll = modusJetzt === null ? link.dataset.navView === 'runs' : link.dataset.navView === 'attention'
+    if (link.dataset.navView !== 'runs' && link.dataset.navView !== 'attention') continue
+    if (soll) link.setAttribute('aria-current', 'page')
+    else link.removeAttribute('aria-current')
+  }
+}
+
+/** Beschriftung des Rückwegs: „Deine Entscheidungen“, wenn das Detail von dort kam oder (ohne Herkunft aus der Liste) eine Entscheidung zeigt; sonst „Alle Aufträge“. */
+function aktualisiereZurueck() {
+  const zurAttention = detailAusAttention || (!detailAusListe && modus !== null)
+  const text = zurAttention ? t('entscheiden.zurueck') : t('ablauf.zurueck')
+  const element = document.getElementById('workflow-detail-zurueck')
+  if (element.textContent !== text) element.textContent = text
 }
 
 /**
@@ -202,7 +413,7 @@ async function aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt) {
 async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
   if (laufendeAbnahme !== null) return
   zeigeAbnahmeMeldung(null)
-  const bereich = [...document.querySelectorAll('#workflow-abnahme button, #workflow-abnahme-stand button, #wf-abnahme-begruendung')]
+  const bereich = [...document.querySelectorAll('#workflow-abnahme button, #workflow-abnahme-stand button, #workflow-entscheidung button, #workflow-entscheidung input, #wf-abnahme-begruendung')]
   const gesperrt = [knopf, ...bereich].filter((el, i, alle) => !el.disabled && alle.indexOf(el) === i)
   laufendeAbnahme = workflowId
   for (const el of gesperrt) el.disabled = true
@@ -214,7 +425,10 @@ async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
     if (antwort.ok) {
       zeigeAbnahmeMeldung(erfolgstext(inhalt), 'erfolg')
       abnahmeKennzeichen = null
-      const abnahme = await holeAbnahme(workflowId).catch(() => null)
+      const abnahme = await holeAbnahme(workflowId).catch((fehler) => {
+        console.error(`[workflows] Abnahme von '${workflowId}' nach der Bedienung nicht ladbar: ${fehler.message}`)
+        return null
+      })
       if (abnahme !== null && gewaehlteWorkflowId === workflowId) aktualisiereAbnahme(workflowId, abnahme)
       document.getElementById('workflow-abnahme-meldung').focus()
     } else {
@@ -225,6 +439,8 @@ async function sendeAbnahmeBedienung(workflowId, anfrage, knopf, erfolgstext) {
   } finally {
     if (laufendeAbnahme === workflowId) laufendeAbnahme = null
     for (const el of gesperrt) el.disabled = false
+    // Der Knopf der Spalte bleibt gesperrt, solange Auswahl oder Begründung fehlen.
+    aktualisierePanelKnopf()
   }
   void pollJetzt()
 }
@@ -359,8 +575,9 @@ function pflichtBegruendung(feldId, pflichtSchluessel) {
  * Begründung (Rückfrage: auf der vorgewählten Option); eine gerettete Begründung desselben Halts
  * steht wieder im Feld.
  * @param art - 'freigabe', 'stopp', 'klaerung' oder 'sichtung'
+ * @param vorgabe - F46 D2: { begruendung, option } aus der Spalte „Deine Entscheidung“, oder null
  */
-function oeffneDialog(art) {
+function oeffneDialog(art, vorgabe = null) {
   // Solange eine Dialog-Bedienung läuft, öffnet kein neuer Dialog (sonst wäre ein zweiter POST möglich).
   if (aktuellesDetail === null || bedienungsKennzeichen === null || laufendeDialogBedienung !== null) return
   const inhalt = renderDialogInhalt(art, aktuellesDetail)
@@ -374,13 +591,41 @@ function oeffneDialog(art) {
     if (geretteteBegruendung.basis === ohneEmpfehlung(bedienungsKennzeichen)) feld.value = geretteteBegruendung.wert
     geretteteBegruendung = null
   }
+  // F46 D2: aus der Spalte „Deine Entscheidung“ kommen Begründung und gewählte Option mit. Die Spalte
+  // trägt immer den neuesten Text desselben Halts (uebernimmInSpalte schreibt ihn beim Schließen des
+  // Dialogs zurück), deshalb hat sie Vorrang vor der geretteten Begründung. Der Fokus liegt auf dem
+  // Knopf der Option (Freigeben, Ablehnen bzw. der erste Installationsknopf), ohne Option im Feld.
+  if (feld !== null && typeof vorgabe?.begruendung === 'string' && vorgabe.begruendung.trim() !== '') feld.value = vorgabe.begruendung
   if (!dialog.open) dialog.showModal()
-  ;(feld ?? dialog.querySelector('input:checked, input, textarea'))?.focus()
+  const fokusZiel = typeof vorgabe?.option === 'string' ? FOKUS_JE_OPTION[vorgabe.option] : undefined
+  const optionsKnopf = fokusZiel === undefined ? null : (dialog.querySelector(fokusZiel) ?? dialog.querySelector('[data-aktion="freigeben"]'))
+  ;(optionsKnopf ?? feld ?? dialog.querySelector('input:checked, input, textarea'))?.focus()
 }
+
+/**
+ * Schreibt die Begründung des Freigabedialogs in die Spalte „Deine Entscheidung“ zurück, wenn beide
+ * zum selben Halt gehören (qa 3): eine Nachbesserung im Dialog geht beim Schließen (Abbrechen, Escape,
+ * Stand-Änderung) nicht verloren, und der nächste „bestätigen“ öffnet mit ihr.
+ */
+function uebernimmInSpalte() {
+  if (offenerDialog?.art !== 'freigabe' || panelArt !== 'freigabe' || ohneEmpfehlung(offenerDialog.kennzeichen) !== panelBasis) return
+  const feld = document.getElementById('wf-freigabe-begruendung')
+  const spalte = document.getElementById('wf-entscheidung-begruendung')
+  if (feld === null || spalte === null || typeof feld.value !== 'string') return
+  spalte.value = feld.value
+  aktualisierePanelKnopf()
+}
+
+/** Gültige Optionen der Spalte bei einer Freigabe (FREIGABE_OPTIONEN in workflow-entscheiden.js). */
+const FREIGABE_OPTION_WERTE = new Set(FREIGABE_OPTIONEN)
+
+/** Fokusziel im Freigabedialog je Option der Spalte (F46 D2). */
+const FOKUS_JE_OPTION = { freigeben: '[data-aktion="freigeben"]', ablehnen: '[data-aktion="ablehnen"]', installieren: '[data-installation-aktion="vorbereiten"]' }
 
 /** Schließt den Dialog ohne Wirkung (Abbrechen, Erfolg, Projekt- oder Workflowwechsel); Escape schließt nativ. */
 function schliesseDialog() {
   const dialog = document.getElementById('workflow-dialog')
+  uebernimmInSpalte()
   offenerDialog = null
   if (dialog.open) dialog.close()
 }
@@ -419,8 +664,8 @@ let bedienungsKennzeichen = null
  * @param workflowId - angezeigter Workflow @param status - daten.status @param naechster - Automaten-Verdikt, oder null @param ungueltig - true bei ungültiger Fassung @param architekturEntscheidung - { schrittId, fragen }, oder null (F39 WS-2b) @param empfehlung - Katalog-Empfehlung, oder null (F36 WS-3; Teil des Kennzeichens, damit eine geänderte Empfehlung neu gerendert wird) @param sichtung - F-768: istSichtungsHaltAnzeige, oder null
  */
 function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig = false, architekturEntscheidung = null, empfehlung = null, sichtung = null) {
-  // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|').
-  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${JSON.stringify(empfehlung)}`
+  // Die Empfehlung bleibt das LETZTE Glied (F-809: ohneEmpfehlung schneidet am letzten '|'); sie steht kodiert (encodeURIComponent) darin, damit ein '|' in einem Katalogtext den Schnitt nicht verschiebt (F46 D2, qa 8).
+  const kennzeichen = `${workflowId}|${status}|${naechster?.art ?? 'null'}|${naechster?.schrittId ?? 'null'}|${ungueltig}|${architekturEntscheidung?.schrittId ?? 'null'}|${JSON.stringify(architekturEntscheidung?.fragen?.map((f) => f?.frage) ?? [])}|${sichtung?.laufId ?? 'null'}|${encodeURIComponent(JSON.stringify(empfehlung))}`
   if (kennzeichen === bedienungsKennzeichen) return
   // Während einer laufenden Dialog-Bedienung schließt der Dialog erst mit ihrer Antwort (sendeWorkflowBedienung).
   const dialogVeraltet = offenerDialog !== null && laufendeDialogBedienung === null && dialogUeberholt(offenerDialog, kennzeichen)
@@ -428,9 +673,13 @@ function aktualisiereWorkflowBedienung(workflowId, status, naechster, ungueltig 
   if (offenerDialog !== null && !dialogVeraltet && laufendeDialogBedienung === null) offenerDialog.kennzeichen = kennzeichen
   bedienungsKennzeichen = kennzeichen
   const titel = document.getElementById('workflow-detail-titel')
+  // F46 D2: bei einer Freigabe steht die Entscheidung in der Spalte „Deine Entscheidung“ — dort ist der
+  // eine Hauptknopf; „Nächsten Schritt freigeben“ unter dem Weg bleibt erreichbar, aber nicht als zweiter.
+  const freigabeSpalte = naechster?.art === 'haltFreigabe' && !ungueltig
+  setzePanel('freigabe', freigabeSpalte ? renderFreigabePanel({ workflowId, empfehlung }) : '', ohneEmpfehlung(kennzeichen))
   for (const [id, html] of [
     ['workflow-bedienung', renderEingriffe(workflowId, status, ungueltig, architekturEntscheidung, sichtung)],
-    ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig)],
+    ['workflow-aktionen', renderAktionen(workflowId, status, naechster, ungueltig, { hauptknopf: !freigabeSpalte })],
   ]) {
     const container = document.getElementById(id)
     const hatteFokus = container.contains(document.activeElement)
@@ -622,6 +871,9 @@ function zeigeDetailFehler(text) {
  */
 function zeigeDetailNichtLadbar(text) {
   for (const id of ['workflow-detail-inhalt', 'workflow-blick', 'workflow-technik-inhalt', 'workflow-aktionen', 'workflow-bedienung']) document.getElementById(id).innerHTML = ''
+  // F46 D2: aus dem alten Stand ist nichts mehr zu entscheiden — Freigabe-Teil leer, Spalte verborgen (ihr Inhalt bleibt für einen kurzen Fehler).
+  setzeHtml('workflow-entscheiden', '')
+  document.getElementById('workflow-entscheidung').hidden = true
   zeigeAbnahme(false)
   letzterBlick = null
   bedienungsKennzeichen = null
@@ -683,14 +935,15 @@ export async function ladeWorkflowDetail(workflowId, scrollen = true) {
     const naechster = detail.naechster ?? null
     zeigeDetailFehler(null)
     zeigeAbnahme(true)
-    titel.textContent = seitenTitel(daten.ziel, workflowId)
     const ungueltig = verstoesse.length > 0
     const architekturEntscheidung = detail.architekturEntscheidung ?? null
     // F-768: die Sichtung ist nur beim reinen F-760-Halt fällig (bei ungültiger Fassung allein die Reparatur).
     const sichtung = ungueltig ? null : istSichtungsHaltAnzeige(daten)
     // Erst das Detail, dann das Kennzeichen: ein Dialog, der danach öffnet, baut aus genau diesem Stand.
-    aktuellesDetail = { workflowId, daten, naechster, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung }
+    aktuellesDetail = { workflowId, daten, naechster, ungueltig, empfehlung: detail.empfehlung ?? null, architekturEntscheidung, sichtung }
     aktualisiereWorkflowBedienung(workflowId, daten.status ?? null, naechster, ungueltig, architekturEntscheidung, detail.empfehlung ?? null, sichtung)
+    // F46 D2: Kopf, Freigabe-Teil und Lage der Bereiche je Modus (Freigabe, Abnahme oder heutige Ablaufseite).
+    zeichneEntscheiden()
     // Eigener Endpunkt, eigener Überholschutz, fire-and-forget — blockiert das übrige Rendern nicht.
     void aktualisiereAbnahmeAbschnitt(workflowId, istUeberholt)
     const ungueltigBlock = verstoesse.length > 0 ? renderWorkflowUngueltig(verstoesse) : ''
@@ -728,10 +981,27 @@ function raeumeWorkflowBedienzustand() {
   letzteAbnahme = null
   letzterBlick = null
   for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-abnahme', 'workflow-abnahme-stand']) document.getElementById(id).innerHTML = ''
+  raeumeEntscheiden()
   zeigeAbnahme(true)
   zeigeBedienungsMeldung(null)
   zeigeAbnahmeMeldung(null)
   verwirfReparaturEntwurf()
+}
+
+/** F46 D2: Seite Entscheiden zurück auf die heutige Ablaufseite (Spalte leer, Weg aufgeklappt, „Auf einen Blick“ rechts, Kopf wie bisher). */
+function raeumeEntscheiden() {
+  setzePanel('freigabe', '', null)
+  setzePanel('abnahme', '', null)
+  document.getElementById('workflow-entscheidung').hidden = true
+  setzeHtml('workflow-entscheiden', '')
+  letzteVorschau = null
+  modus = null
+  document.getElementById('workflow-ablauf').open = true
+  document.getElementById('workflow-seitenspalte').append?.(document.getElementById('workflow-blick'))
+  document.getElementById('workflow-detail').classList.remove('entscheiden-modus', 'entscheiden-abnahme')
+  setzeHtml('workflow-detail-eyebrow', tHtml('ablauf.eyebrow'))
+  setzeHtml('workflow-detail-beschreibung', tHtml('ablauf.beschreibung'))
+  setzeHtml('workflow-detail-status', '').hidden = true
 }
 
 /** Schließt die Seite des Workflow-Details samt Dialog, Bedienblock und offenem Reparaturentwurf; Liste, Startfehler und Läufe erscheinen wieder. */
@@ -766,7 +1036,18 @@ async function fuehreWorkflowAktionAus(button) {
 
   const oeffnen = { 'freigabe-oeffnen': 'freigabe', 'stopp-oeffnen': 'stopp', 'klaerung-oeffnen': 'klaerung', 'sichtung-oeffnen': 'sichtung' }
   if (Object.hasOwn(oeffnen, aktion)) {
-    oeffneDialog(oeffnen[aktion])
+    const spaltenText = oeffnen[aktion] === 'freigabe' && panelArt === 'freigabe' ? (document.getElementById('wf-entscheidung-begruendung')?.value ?? '') : ''
+    oeffneDialog(oeffnen[aktion], spaltenText.trim() === '' ? null : { begruendung: spaltenText, option: null })
+    return
+  }
+
+  // F46 D2: „<Option> bestätigen“ der Spalte öffnet den bestehenden Freigabedialog (Kennzeichen beim
+  // Öffnen, „Anzeige = Start“, Ablehnen als Veto im selben Dialog); der Knopf ist ohne Option oder
+  // Begründung gesperrt, die Prüfung hier schützt nur vor einem synthetischen Klick.
+  if (aktion === 'freigabe-bestaetigen') {
+    const begruendung = document.getElementById('wf-entscheidung-begruendung')?.value ?? ''
+    if (!FREIGABE_OPTION_WERTE.has(button.dataset.option) || begruendung.trim().length === 0) return
+    oeffneDialog('freigabe', { begruendung, option: button.dataset.option })
     return
   }
 
@@ -885,7 +1166,8 @@ function initWorkflowBedienung() {
   })
   // Notizen, Aktionen und Dialog (außerhalb der Poll-Container): .wf-aktion; „Abbrechen“ und ✕ im Dialog
   // schließen ohne Wirkung (nicht während einer laufenden Anfrage), Escape nativ (close).
-  for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-dialog']) {
+  // F46 D2: dazu die Spalte „Deine Entscheidung“ (Freigabe: „<Option> bestätigen“ öffnet den Dialog).
+  for (const id of ['workflow-bedienung', 'workflow-aktionen', 'workflow-dialog', 'workflow-entscheidung']) {
     document.getElementById(id).addEventListener('click', (ereignis) => {
       if (ereignis.target.closest('.wf-dialog-abbrechen')) {
         if (laufendeDialogBedienung === null) schliesseDialog()
@@ -901,20 +1183,30 @@ function initWorkflowBedienung() {
     if (laufendeDialogBedienung !== null) ereignis.preventDefault()
   })
   dialog.addEventListener('close', () => {
+    // Escape schließt nativ — auch dann wandert die Begründung in die Spalte (qa 3).
+    uebernimmInSpalte()
     offenerDialog = null
   })
   // F36 WS-5a: „Freigeben & installieren“ im Freigabedialog, danach Detail neu laden — die geänderte
   // Empfehlung schließt den Dialog, die Begründung bleibt für denselben Halt (geretteteBegruendung).
   bindeEmpfehlungInstallation(dialog, () => (gewaehlteWorkflowId !== null ? ladeWorkflowDetail(gewaehlteWorkflowId, false) : undefined))
   // Abnahme: der Abschnitt über der Timeline und die Zeile darunter (dort ggf. „Prüfung wiederholen“).
-  for (const id of ['workflow-abnahme', 'workflow-abnahme-stand']) {
+  // F46 D2: dazu die Spalte „Deine Entscheidung“ (Abnahme) und „Alle Nachweise“ in der Kachel Nachweise.
+  for (const id of ['workflow-abnahme', 'workflow-abnahme-stand', 'workflow-entscheidung']) {
     document.getElementById(id).addEventListener('click', (ereignis) => {
       const abnahmeButton = ereignis.target.closest('.wf-abnahme-aktion')
       const pruefungButton = ereignis.target.closest('.wf-pruefung-wiederholen')
       if (abnahmeButton) void fuehreAbnahmeAktionAus(abnahmeButton)
       else if (pruefungButton) void fuehrePruefungWiederholenAus(pruefungButton)
+      else if (ereignis.target.closest('.abnahme-nachweise-zeigen')) {
+        const ziel = document.getElementById('abnahme-nachweise-titel')
+        ziel?.scrollIntoView?.({ block: 'start' })
+        ziel?.focus({ preventScroll: true })
+      }
     })
   }
+  // Auswahl und Begründung schalten den einen Knopf der Spalte frei (Absenden gesperrt, solange eins fehlt).
+  for (const art of ['input', 'change']) document.getElementById('workflow-entscheidung').addEventListener(art, aktualisierePanelKnopf)
   document.getElementById('workflow-reparatur').addEventListener('input', (ereignis) => {
     if (ereignis.target.id !== 'wf-reparatur-entwurf') return
     aktualisiereReparaturWarnungen()
@@ -931,8 +1223,10 @@ function initWorkflowBedienung() {
   // „← Alle Aufträge“ (F-926): aus der Liste per history.back() (kein neuer Eintrag), sonst navigiere;
   // die Route #/runs schließt das Detail und legt den Fokus auf die Zeile.
   document.getElementById('workflow-detail-schliessen').addEventListener('click', () => {
-    if (detailAusListe) history.back()
-    else navigiere('#/runs')
+    // F46 D2: aus „Deine Entscheidungen“ zurück dorthin (history.back()); ohne Herkunft führt eine
+    // Entscheidungsseite nach #/attention, die übrige Ablaufseite wie bisher zur Liste.
+    if (detailAusListe || detailAusAttention) history.back()
+    else navigiere(modus === null ? '#/runs' : '#/attention')
   })
 }
 
@@ -973,7 +1267,12 @@ export function initWorkflowsView() {
     void ladeWorkflowDetail(workflowId)
   })
   // Jede andere Route beendet „zuletzt die Liste“; verlässt der Hash das Detail, schließt der Dialog.
-  window.addEventListener('hashchange', () => {
+  window.addEventListener('hashchange', (ereignis) => {
+    // F46 D2: Herkunft „Deine Entscheidungen“ für den Rückweg; ein Wechsel zwischen zwei Details behält sie.
+    const istDetail = (hash) => /^#\/workflows\/[^/]+$/.test(hash)
+    const vorher = typeof ereignis?.oldURL === 'string' ? new URL(ereignis.oldURL).hash : ''
+    if (istDetail(location.hash) && !istDetail(vorher)) detailAusAttention = vorher === '#/attention'
+    if (!istDetail(location.hash)) detailAusAttention = false
     if (location.hash !== '#/runs') listeZuletzt = false
     if (!/^#\/workflows\/[^/]+$/.test(location.hash)) schliesseDialog()
   })

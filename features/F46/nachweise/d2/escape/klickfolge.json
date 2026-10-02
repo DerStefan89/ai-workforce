@@ -1,0 +1,633 @@
+{
+  "reduzierteBewegung": false,
+  "url": "http://127.0.0.1:4199/#/attention",
+  "viewport": {
+    "breite": 1600,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "9f8e7d6c-5b4a-4321-8fed-cba987654321",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN"
+            },
+            "ergebnis": "FEHLGESCHLAGEN",
+            "zeitpunkt": "2026-10-02T07:40:00.000Z",
+            "auftragsbezug": {
+              "auftragId": "a-rueck",
+              "titel": "Projektkontext für den Architekten"
+            },
+            "anzahlCheckpoints": 2,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [
+          {
+            "zeitstempel": "2026-10-02T08:05:00.000Z",
+            "laufId": "b1c2d3e4-0000-4000-8000-000000000001",
+            "fehler": "Startziel nicht gefunden"
+          }
+        ],
+        "workflows": [
+          {
+            "grund": "Schritt s2 (Umsetzung) wartet auf Freigabe (ZWINGEND). <img src=x onerror=alert(1)> <b>fett</b>",
+            "aktiverSchrittId": null,
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": false,
+              "status": "nicht_faellig"
+            },
+            "workflowId": "w-frei",
+            "auftragId": "a-frei",
+            "status": "WARTET_FREIGABE",
+            "ziel": "Opportunity Scanner: Datenquellen anbinden <img src=x onerror=alert(1)> <b>fett</b>",
+            "naechster": {
+              "art": "haltFreigabe",
+              "schrittId": "s2"
+            }
+          },
+          {
+            "grund": null,
+            "aktiverSchrittId": null,
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": true,
+              "status": "nicht_vorhanden"
+            },
+            "workflowId": "w-abn",
+            "auftragId": "a-abn",
+            "status": "ABGESCHLOSSEN",
+            "ziel": "Design-Nachbau: Entscheidungen <img src=x onerror=alert(1)> <b>fett</b>",
+            "naechster": {
+              "art": "fertig"
+            }
+          },
+          {
+            "grund": "Der Architekt braucht eine Entscheidung zu 1 Frage.",
+            "aktiverSchrittId": null,
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": false,
+              "status": "nicht_faellig"
+            },
+            "workflowId": "w-rueck",
+            "auftragId": "a-rueck",
+            "status": "KLAERUNG_ERFORDERLICH",
+            "ziel": "Projektkontext für den Architekten",
+            "naechster": {
+              "art": "haltKlaerung"
+            }
+          },
+          {
+            "grund": null,
+            "aktiverSchrittId": null,
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": true,
+              "status": "veraltet"
+            },
+            "workflowId": "w-alt",
+            "auftragId": "a-alt",
+            "status": "ABGESCHLOSSEN",
+            "ziel": "Nutzung je Feature",
+            "naechster": {
+              "art": "fertig"
+            }
+          },
+          {
+            "grund": null,
+            "aktiverSchrittId": null,
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": false,
+              "status": "ok"
+            },
+            "workflowId": "w-fertig",
+            "auftragId": "a-fertig",
+            "status": "ABGESCHLOSSEN",
+            "ziel": "Bereits abgenommen",
+            "naechster": {
+              "art": "fertig"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:\\Nachweis\\ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workitems?status=OFFEN",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "id": "F-991",
+            "titel": "Abnahmestand im Cache",
+            "status": "OFFEN",
+            "prioritaet": "P1"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "auftragId": "a-frei",
+          "titel": "Opportunity Scanner: Datenquellen anbinden",
+          "erstellt_am": "2026-10-02T06:00:00.000Z",
+          "workitem_referenz": "workitem:feature:F30"
+        },
+        {
+          "auftragId": "a-abn",
+          "titel": "Design-Nachbau: Entscheidungen",
+          "erstellt_am": "2026-10-02T05:00:00.000Z",
+          "workitem_referenz": "workitem:feature:F46"
+        },
+        {
+          "auftragId": "a-rueck",
+          "titel": "Projektkontext für den Architekten",
+          "erstellt_am": "2026-10-02T04:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/workflows/w-frei",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "workflow_schema": "v0",
+          "workflow_id": "w-frei",
+          "auftrag_id": "a-frei",
+          "version": 1,
+          "ziel": "Opportunity Scanner: Datenquellen anbinden <img src=x onerror=alert(1)> <b>fett</b>",
+          "status": "WARTET_FREIGABE",
+          "aktiver_schritt_id": "s2",
+          "grund": "Schritt s2 (Umsetzung) wartet auf Freigabe (ZWINGEND).",
+          "grenzen": {
+            "max_schritte": 6,
+            "max_replans": 1
+          },
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": "ergebnis-architektur",
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s2",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-plan"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "werkzeugsatz": "schreibend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "Risiko <img src=x onerror=alert(1)> <b>fett</b>",
+              "zeitgrenze_ms": 1800000,
+              "nachfolger": "s3",
+              "status": "WARTET_FREIGABE",
+              "lauf_id": null
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": "ergebnis-code-reviewer",
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": null,
+              "status": "OFFEN",
+              "lauf_id": null
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltFreigabe",
+          "schrittId": "s2",
+          "grund": "Schritt s2 ist ZWINGEND und noch nicht freigegeben."
+        },
+        "empfehlung": {
+          "schrittId": "s2",
+          "wirdGenutzt": [
+            {
+              "id": "skill-frontend-design",
+              "empfehlungId": "skill-frontend-design",
+              "name": "frontend-design",
+              "grund": "passt zu Oberflächenarbeit"
+            }
+          ],
+          "passtNichtImLauf": [
+            {
+              "id": "mcp-playwright",
+              "name": "Playwright MCP",
+              "grund": "Browserprüfung, nicht installiert",
+              "installierbar": true
+            }
+          ],
+          "weitereAnzahl": {
+            "wirdGenutzt": 0,
+            "passtNichtImLauf": 0
+          },
+          "nichtFreigebbarAnzahl": 0,
+          "hinweise": []
+        },
+        "versionSequenz": 4,
+        "architekturEntscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-frei/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "w-frei",
+        "workflowStatus": "WARTET_FREIGABE",
+        "freigabeHalt": {
+          "schrittId": "s2",
+          "grund": null
+        },
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen",
+          "schrittId": "s3"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen",
+          "schrittId": "s2"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen",
+          "schrittId": "s2"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-abn",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "workflow_schema": "v0",
+          "workflow_id": "w-abn",
+          "auftrag_id": "a-abn",
+          "version": 1,
+          "ziel": "Design-Nachbau: Entscheidungen <img src=x onerror=alert(1)> <b>fett</b>",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "grenzen": {
+            "max_schritte": 6,
+            "max_replans": 1
+          },
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "werkzeugsatz": "schreibend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s2",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-bau",
+              "freigabe_erteilt": true
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": "ergebnis-code-reviewer",
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": null,
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-review"
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig",
+          "schrittId": null,
+          "grund": "Alle Schritte erledigt."
+        },
+        "empfehlung": null,
+        "versionSequenz": 7,
+        "architekturEntscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-abn/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "w-abn",
+        "workflowStatus": "ABGESCHLOSSEN",
+        "workflowVersion": 1,
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "l-review",
+          "urteil": "BEREIT_NACH_KORREKTUR",
+          "empfehlung": "Bis auf AK2 erfüllt; die Liste muss offene Abnahmen ohne Neuladen zeigen.",
+          "befunde": [
+            {
+              "schwere": "MITTEL",
+              "fundstelle": "public/leitstand/views/attention.js:212",
+              "zusammenfassung": "Abnahmen erscheinen verzögert.",
+              "beleg": "Poll-Tick ohne Abnahmestand"
+            }
+          ],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "Kein heutiges Verhalten fällt weg — Gates und Tests grün."
+            },
+            {
+              "ak_id": "AK2",
+              "urteil": "NICHT_ERFUELLT",
+              "beleg": "Beleg <img src=x onerror=alert(1)> <b>fett</b>"
+            },
+            {
+              "ak_id": "AK3",
+              "urteil": "ERFUELLT",
+              "beleg": "Keine Beispielwerte, Gate geprüft."
+            },
+            {
+              "ak_id": "AK4",
+              "urteil": "NICHT_PRUEFBAR",
+              "beleg": "Render-Nachweis fehlt im Lauf."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "daten": {
+            "basis_ref": "add7c94",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/attention.js",
+                "plus": 120,
+                "minus": 40
+              },
+              {
+                "status": "A",
+                "pfad": "public/leitstand/entscheidungen-zaehler.js",
+                "plus": 50,
+                "minus": null
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/projekt-aufruf",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startbefehl": null,
+        "startvorlage": "startvorlagen/beispielprojekt.json",
+        "ergebnis_datei": null,
+        "aktiv": false,
+        "letzterAufruf": null,
+        "vorschau": {
+          "url": "http://127.0.0.1:3000",
+          "erreichbar": true,
+          "grund": "HTTP 200"
+        }
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Nav aktiv",
+        "selector": "#shell-nav [aria-current=\"page\"]"
+      },
+      {
+        "name": "Zähler „Entscheidungen“",
+        "selector": "#nav-entscheidungen-zaehler:not([hidden])"
+      },
+      {
+        "name": "Filter aktiv",
+        "selector": "[data-attention-filter][aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Überschrift Entscheiden",
+        "selector": "#workflow-detail:not([hidden]) #workflow-detail-titel"
+      },
+      {
+        "name": "Hauptknopf Liste (oberste Karte)",
+        "selector": "#view-attention:not([hidden]) #attention-liste .button.primary"
+      },
+      {
+        "name": "Hauptknopf Spalte",
+        "selector": "#workflow-detail:not([hidden]) #workflow-entscheidung:not([hidden]) .button.primary"
+      },
+      {
+        "name": "Absenden (Text)",
+        "selector": "#workflow-entscheidung .entscheidung-absenden"
+      },
+      {
+        "name": "Absenden gesperrt",
+        "selector": "#workflow-entscheidung .entscheidung-absenden",
+        "eigenschaft": "disabled"
+      },
+      {
+        "name": "Dialog-Begründung",
+        "selector": "#wf-freigabe-begruendung",
+        "eigenschaft": "value"
+      },
+      {
+        "name": "Meldung am Ablauf (Text „NACHWEIS“ = POST erkannt)",
+        "selector": "#workflow-bedienung-meldung:not([hidden])"
+      },
+      {
+        "name": "Meldung der Abnahme (muss fehlen)",
+        "selector": "#workflow-abnahme-meldung:not([hidden])"
+      },
+      {
+        "name": "Meldung im Dialog (muss fehlen)",
+        "selector": "#workflow-dialog-meldung:not([hidden])"
+      },
+      {
+        "name": "Rückweg",
+        "selector": "#workflow-detail-zurueck"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "Freigabedialog offen",
+        "selector": "#workflow-dialog[open]"
+      },
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "#/attention: HTML in Ziel und Grund erscheint als Text",
+      "warteAufSelector": {
+        "selector": "#attention-abnahmen .entscheidung-karte",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1600-escape-entscheidungen.webp"
+    },
+    {
+      "label": "Freigabe: HTML in Ziel (Eyebrow) und Risiko als Text",
+      "navigiere": "#/workflows/w-frei",
+      "warteAufSelector": {
+        "selector": "#workflow-entscheidung:not([hidden])",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1600-escape-freigabe.webp"
+    },
+    {
+      "label": "Abnahme: HTML im Beleg als Text",
+      "navigiere": "#/workflows/w-abn",
+      "warteAufSelector": {
+        "selector": "#workflow-entscheidung:not([hidden]) .wf-abnahme-aktion",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1600-escape-abnahme.webp"
+    }
+  ]
+}

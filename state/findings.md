@@ -12384,13 +12384,13 @@ Maßnahme: Punkt auch am Reiter des anderen Modus; eine ausstehende Lauf-Blase u
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F2/F3), 02.10.2026.
 
-**F-972** · `BUG` · P1 · offen
+**F-972** · `BUG` · P1 · erledigt
 Titel: Offene Abnahmen erscheinen nicht unter „Deine Entscheidungen“.
 Beschreibung: `baueEntscheidungen` kennt über `filtereAttentionWorkflows` nur `haltFreigabe` und `haltKlaerung`. Die Workflow-Kopfdaten (`baueWorkflowKopfdaten`) tragen keinen Abnahmestand; die Abnahme-Entscheidung ist ein eigenes Artefakt.
 Fundstelle: `public/leitstand/attention-daten.js:33` (filtereAttentionWorkflows), `:101` (baueEntscheidungen); `scripts/leitstand-server.mjs` (baueWorkflowKopfdaten).
 Auswirkung: Hoch — ein Ergebnis wartet auf Stefan, ohne dass die Liste es zeigt.
 Maßnahme: F46 D2: Entscheidungsart `abnahme`, Abnahmestand in den Workflow-Kopfdaten; den Cache-Stempel der Kopfdaten beachten (ein neues Abnahme-Artefakt muss den Stempel ändern).
-Status: offen.
+Status: erledigt (F46 D2, 02.10.2026): eine Regel `ermittleAbnahmeStand` in `scripts/leitstand-server.mjs` für GET …/abnahme und die Kopfdaten (Feld `abnahme: { offen, status }`); der Cache-Stempel der Kopfdaten umfasst die Kette `lineage-entscheidung-workflow-<id>-abnahme`. `baueEntscheidungen` führt die Gruppe `abnahmen` (Art „abnahme“, Hauptknopf „Ergebnis prüfen“), der Zähler an „Entscheidungen“ zählt sie mit. Test `scripts/leitstand-abnahme-stand.test.mjs` (nach echtem POST …/abnahme sofort `offen=false`, nach neuem Bau-Lauf wieder `offen=true`).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-973** · `BUG` · P2 · offen
@@ -12557,3 +12557,39 @@ Auswirkung: Gering — bei einer Abnahme außer der Reihe zeigt die Karte ein an
 Maßnahme: Fixpaket B5 (Planungs- und Statusfelder mit Datum).
 Status: offen.
 Feature/Run: Entdeckt: F46 D1, Prüfpass qa 10.
+
+**F-991** · `BUG` · P2 · offen
+Titel: Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht.
+Beschreibung: Seit F46 D2 stehen offene Abnahmen unter „Deine Entscheidungen“, im Zähler der Seitenleiste, in der Kennzahl der Übersicht und in Jarvis' „was braucht mich“. Der Persona-Zustand („wartet auf dich“), der Warte-Hinweis der Startfläche und die Spalte „Braucht dich“ der Entwicklung lesen weiter nur `filtereAttentionWorkflows` (Freigabe, Rückfrage).
+Fundstelle: `public/leitstand/persona-state.js:36`, `public/leitstand/views/start.js:66`, `public/leitstand/entwicklung-daten.js:149`.
+Auswirkung: Mittel — der Zähler zeigt eine wartende Abnahme, die Persona meldet „nichts“.
+Maßnahme: dieselbe Auswahl über `filtereOffeneAbnahmen` bzw. `baueEntscheidungen`; Gate f28-persona und Tests mitziehen. Bewusst nicht in D2 (Umfang: Liste, Zähler, Entscheiden-Seite).
+Status: offen.
+Feature/Run: Entdeckt: F46 D2, Prüfpass qa 5 / code-reviewer 2.
+
+**F-992** · `TECH_DEBT` · P3 · offen
+Titel: Markierung der Seitenleiste auf der Seite Entscheiden liegt außerhalb des Routers.
+Beschreibung: `#/workflows/<id>` gehört technisch zur View `runs`; der Router markiert deshalb „Ausführungen“. Auf einer Freigabe oder Abnahme setzt `views/workflows.js` (`markiereNav`) die Markierung auf „Entscheidungen“ um — nur auf der Detailroute, bei jedem Zeichnen.
+Fundstelle: `public/leitstand/views/workflows.js` (`markiereNav`), `public/leitstand/router.js` (`zeigeView`).
+Auswirkung: Gering — eine zweite Stelle, die `aria-current` setzt.
+Maßnahme: zustandsabhängige Markierung im Router (z. B. Rückruf je Route), dann `markiereNav` entfernen.
+Status: offen.
+Feature/Run: Entdeckt: F46 D2.
+
+**F-993** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Freigabe braucht auf der Seite Entscheiden zwei Schritte.
+Beschreibung: Nach Bild 09-Entscheiden entscheidet Stefan in der Spalte „Deine Entscheidung“. Weil „Anzeige = Start“ und die Kennzeichen-Prüfung am Freigabedialog hängen, öffnet „<Option> bestätigen“ diesen Dialog als Bestätigung (Begründung übernommen, Fokus auf der gewählten Aktion). „Freigeben & installieren“ führt zu den Installationsknöpfen des Dialogs, freigegeben wird danach.
+Fundstelle: `public/leitstand/views/workflows.js` (`freigabe-bestaetigen`, `oeffneDialog`), `public/leitstand/views/entscheidung-panel.js`.
+Auswirkung: Gering — ein Klick mehr als im Bild, dafür unveränderte Invarianten.
+Maßnahme: Entscheidung Stefan: Bestätigung im Dialog behalten oder die Kennzeichen-Prüfung auf die Spalte übertragen (eigener Sicherheitsblick).
+Status: offen.
+Feature/Run: Entdeckt: F46 D2.
+
+**F-994** · `PROCESS_IMPROVEMENT` · P3 · offen
+Titel: Zahl an „Entscheidungen“ und Chip „Alle“ können auseinanderlaufen.
+Beschreibung: Der Zähler in der Seitenleiste kommt allein aus dem Poll (Freigaben, Rückfragen, Abnahmen, Fehler, Startprobleme). Befunde P0/P1 stammen aus einem eigenen Abruf und zählen dort nicht; auf `#/attention` zählt „Alle“ sie mit.
+Fundstelle: `public/leitstand/entscheidungen-zaehler.js`, `public/leitstand/attention-daten.js` (`zaehleOffeneEntscheidungen`).
+Auswirkung: Gering — bei offenen Befunden zeigt die Seite mehr als die Seitenleiste.
+Maßnahme: Befundzahl in das Zustands-Aggregat aufnehmen (eine Quelle) oder den Unterschied im Titel des Zählers nennen.
+Status: offen.
+Feature/Run: Entdeckt: F46 D2.
