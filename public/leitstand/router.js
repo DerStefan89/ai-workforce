@@ -62,13 +62,18 @@ export function registriere(muster, view, onEnter) {
   routen.push({ muster, view, onEnter })
 }
 
-/** Blendet alle `[data-view]`-Container aus außer dem übergebenen und markiert den passenden Navigationslink (aria-current). @param view - Name des sichtbar zu haltenden Containers */
+/**
+ * Blendet alle `[data-view]`-Container aus außer dem übergebenen und markiert den passenden
+ * Navigationslink (aria-current). F46 D1: ein Link markiert sich auch für die Views in seinem
+ * Attribut data-nav-auch (Leerzeichen-Liste) — „Roadmap“ bleibt so auf #/projektakte markiert.
+ * @param view - Name des sichtbar zu haltenden Containers
+ */
 function zeigeView(view) {
   for (const element of document.querySelectorAll('[data-view]')) {
     element.hidden = element.dataset.view !== view
   }
   for (const link of document.querySelectorAll('[data-nav-view]')) {
-    if (link.dataset.navView === view) {
+    if (link.dataset.navView === view || (link.dataset.navAuch ?? '').split(' ').includes(view)) {
       link.setAttribute('aria-current', 'page')
     } else {
       link.removeAttribute('aria-current')

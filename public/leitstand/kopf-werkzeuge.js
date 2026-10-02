@@ -15,6 +15,8 @@
  * Wird aufgerufen von:
  * - public/leitstand/projekt-kontext.js (renderVsCodeLinks in renderProjektKontext — bei jedem
  *   Projektwechsel und nach dem Laden des Registers)
+ * - public/leitstand/views/projektakte.js (baueVsCodeLink — Quellen der Projektakte mit dem absoluten Pfad
+ *   aus GET …/projektakte; F46 D1)
  * - public/leitstand/kopf-werkzeuge.test.mjs (node:test)
  *
  * Wichtig:

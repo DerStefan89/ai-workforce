@@ -190,3 +190,33 @@ test('B10: waehleEntwicklungsstand kürzt auf max, ohne Meilenstein nur Findings
   assert.equal(waehleEntwicklungsstand(null, undefined).findingsVerfuegbar, false)
   assert.equal(waehleEntwicklungsstand(null, [], 3).eintraege.length, 0)
 })
+
+test('F46 D1: waehleEntwicklungsstand trägt den Typ und filtert nach Typen (Roadmap-Filter)', () => {
+  const meilenstein = { features: [{ id: 'F1', titel: 'Eins', status: 'IN_ARBEIT' }] }
+  const workitems = [
+    { quelle: 'finding', typ: 'BUG', id: 'F-1', titel: 'b', status: 'OFFEN', prioritaet: 'P1' },
+    { quelle: 'finding', typ: 'HARNESS_IMPROVEMENT', id: 'F-2', titel: 'h', status: 'OFFEN', prioritaet: 'P2' },
+    { quelle: 'finding', typ: 'TECH_DEBT', id: 'F-3', titel: 't', status: 'OFFEN', prioritaet: 'P0' },
+  ]
+  const alle = waehleEntwicklungsstand(meilenstein, workitems)
+  assert.deepEqual(
+    alle.eintraege.map((e) => [e.id, e.typ]),
+    [
+      ['F-3', 'TECH_DEBT'],
+      ['F-1', 'BUG'],
+      ['F-2', 'HARNESS_IMPROVEMENT'],
+      ['F1', 'FEATURE'],
+    ]
+  )
+  assert.deepEqual(
+    waehleEntwicklungsstand(meilenstein, workitems, 8, { typen: ['FEATURE'] }).eintraege.map((e) => e.id),
+    ['F1']
+  )
+  const bugs = waehleEntwicklungsstand(meilenstein, workitems, 8, { typen: ['BUG'] })
+  assert.deepEqual(
+    bugs.eintraege.map((e) => e.id),
+    ['F-1']
+  )
+  assert.equal(bugs.gesamt, 1)
+  assert.equal(waehleEntwicklungsstand(meilenstein, workitems, 8, { typen: [] }).eintraege.length, 0)
+})

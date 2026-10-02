@@ -10,6 +10,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/shell.js (registriereChatOeffner in initChatDock)
  * - public/leitstand/views/projekt.js (oeffneChatMitEntwurf)
+ * - public/leitstand/views/roadmap.js (oeffneChatMitEntwurf — „Jarvis zur Roadmap fragen“, „Frag Jarvis dazu“; F46 D1)
  *
  * Wichtig: Import-sicher, ohne DOM. Vor der Registrierung meldet ein Aufruf einen Fehler in der
  * Konsole und tut sonst nichts.

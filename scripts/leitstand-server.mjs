@@ -512,6 +512,7 @@ import { ladeProjektregisterMitLokal, projektOriginsAus, vorschauLeitstandSperre
 import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordner, pruefeStartbedingung1FuerRepo, pruefeVolleStartfreigabeFuerRepo, pruefeWorkspaceTrust, raeumeAngelegtenOrdnerZurueck, schreibeStartvorlageUndProfil } from '../src/projekt-anlegen/index.ts'
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
+import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -5842,6 +5843,15 @@ export function erzeugeRequestHandler(optionen = {}) {
     // Fachergebnisse im Antwortkörper).
     if (req.method === 'GET' && pfad === '/api/roadmap') {
       sendeJson(res, 200, baueRoadmapProjektion({ repoWurzel, roadmapPfad }))
+      return
+    }
+
+    // F46 D1: Leseroute der Projektakte — reine Projektion, keine Logik hier (D5), siehe
+    // scripts/leitstand/routen-projektakte.mjs. Feste Pfadliste aus der Serverinstanz
+    // (kontextPfad/roadmapPfad), kein Anfrageteil wird gelesen; Größengrenze je Datei; Fehler als
+    // Feldstatus, nie 500.
+    if (req.method === 'GET' && pfad === '/api/projektakte') {
+      sendeJson(res, 200, baueProjektakteProjektion({ repoWurzel, kontextPfad, roadmapPfad }))
       return
     }
 

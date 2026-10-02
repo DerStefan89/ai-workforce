@@ -3353,181 +3353,559 @@ th {
   color: var(--amber);
 }
 
-/* #/roadmap */
-#view-roadmap .timeline-toolbar {
+/* ─────────────── Roadmap (F46 D1, Design 03-roadmap--Main; vorher F44 WS-2a) ───────────────
+   views/roadmap.js: Kennzahlen, Gesamte Roadmap als Baum Meilenstein → Feature mit Detailpanel,
+   Entwicklungsstand mit Filter, Noch nicht eingeplant. Keine Balken: die Zeitachse ist „kommt“
+   (Fixpaket B5); die Spalte zeigt nur das gedämpfte Raster. Farben nur über Tokens, Ebenen über
+   --ebene-* (D0). Umbrüche als Container-Query auf die Breite der Seite. */
+#view-roadmap {
+  container: roadmap / inline-size;
+}
+
+#view-roadmap .page-heading {
+  flex-wrap: wrap;
+}
+
+#view-roadmap .page-heading > div:first-child {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+#view-roadmap .action-row,
+#view-projektakte .action-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin: 20px 0 14px;
-  font-size: 12px;
-  color: var(--muted);
+  gap: 10px;
 }
 
-#view-roadmap .roadmap-zeitplanung {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 7px;
+#view-roadmap .roadmap-kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px 0 24px;
+}
+
+#view-roadmap .roadmap-kennzahl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 16px;
   border: 1px solid var(--line);
-  border-radius: 4px;
-  font-size: 11px;
+  border-radius: 12px;
+  background: var(--panel);
 }
 
-#view-roadmap .roadmap-scroll {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
+#view-roadmap .roadmap-kennzahl strong {
+  font: 22px var(--serif);
+  font-weight: 400;
+  overflow-wrap: break-word;
+}
+
+#view-roadmap .roadmap-kennzahl small {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .roadmap-kennzahl.betont {
+  border-color: color-mix(in srgb, var(--amber) 33%, transparent);
+}
+
+#view-roadmap .roadmap-kennzahl.betont .eyebrow {
+  color: var(--amber);
+}
+
+#view-roadmap .rm-gesamt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
   background: var(--panel);
 }
 
-/* Schmaler als die Vorlage (260px minmax(480px, 1fr), mindestens 780 px): Die Wochen sind leer,
-   so passen alle sechs neben der Chatspalte bei 1440 px ohne Anschnitt. */
-#view-roadmap .roadmap-tabelle {
-  min-width: 680px;
+#view-roadmap .rm-gesamt-kopf h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
 }
 
-#view-roadmap .roadmap-kopfzeile,
-#view-roadmap .roadmap-gruppe-kopf,
-#view-roadmap .roadmap-zeile {
-  display: grid;
-  grid-template-columns: 260px minmax(420px, 1fr);
+#view-roadmap .rm-werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
 }
 
-#view-roadmap .roadmap-kopfzeile {
-  border-bottom: 1px solid var(--line);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+#view-roadmap .rm-legende {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 11px;
   color: var(--muted);
 }
 
-#view-roadmap .roadmap-kopfzeile > div:first-child {
-  padding: 18px;
+#view-roadmap .rm-legende-trenner {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
 }
 
-/* Ausgegraut: die Wochen sind Z (Zeitplanung kommt), deshalb gedämpft und ohne Inhalt. */
-#view-roadmap .roadmap-wochen {
+#view-roadmap .rm-knoepfe,
+#view-roadmap .rm-massstab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#view-roadmap .rm-knoepfe .button {
+  min-height: 40px;
+  font-size: 12.5px;
+}
+
+#view-roadmap .rm-raster {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  opacity: 0.55;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  align-items: start;
+  gap: 14px;
 }
 
-#view-roadmap .roadmap-wochen span {
-  padding: 18px 8px;
-  border-left: 1px solid var(--line);
-  text-align: center;
-}
-
-#view-roadmap .roadmap-wochen-zelle {
-  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px);
-  background-size: calc(100% / 6) 100%;
-  opacity: 0.55;
-}
-
-#view-roadmap .roadmap-gruppe {
-  border-bottom: 1px solid var(--line);
-}
-
-#view-roadmap .roadmap-gruppe:last-child {
-  border-bottom: 0;
-}
-
-#view-roadmap .roadmap-gruppe-kopf {
-  min-height: 67px;
-  cursor: pointer;
-  list-style: none;
-}
-
-#view-roadmap .roadmap-gruppe-kopf::-webkit-details-marker {
-  display: none;
-}
-
-#view-roadmap .roadmap-gruppe-text {
-  position: relative;
+#view-roadmap .rm-baum-rahmen {
   min-width: 0;
-  padding: 20px 18px 12px 34px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  overflow: hidden;
 }
 
-/* Auf-/Zuklappzeichen (details/summary), dreht sich beim Öffnen. */
-#view-roadmap .roadmap-gruppe-text::before {
-  content: '▸';
-  position: absolute;
-  left: 16px;
-  top: 20px;
+/* Spalten: Klappe · Eintrag · Status · Zeitachse („kommt“). Feature-Zeilen nutzen dieselbe Spur,
+   der Einzug steht in der ersten Spalte. */
+#view-roadmap .rm-kopfzeile,
+#view-roadmap .rm-zeile {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(130px, auto) minmax(90px, 0.5fr);
+  align-items: center;
+  gap: 0 10px;
+}
+
+#view-roadmap .rm-kopfzeile {
+  min-height: 40px;
+  padding-right: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--muted);
+}
+
+#view-roadmap .rm-kopfzeile > span:first-child {
+  grid-column: 1 / 3;
+  padding-left: 14px;
+}
+
+#view-roadmap .rm-achse-kopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+#view-roadmap .rm-baum,
+#view-roadmap .rm-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#view-roadmap .rm-zeile {
+  min-height: 52px;
+  padding-right: 10px;
+  border-top: 1px solid var(--track);
+}
+
+#view-roadmap .rm-baum > li:first-child > .rm-zeile {
+  border-top: 0;
+}
+
+#view-roadmap .rm-zeile.gewaehlt {
+  background: var(--note-amber-bg);
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+
+#view-roadmap .rm-gruppe.aktuell > .rm-meilenstein {
+  background: var(--note-bg);
+}
+
+#view-roadmap .rm-gruppe.aktuell > .rm-meilenstein.gewaehlt {
+  background: var(--note-amber-bg);
+}
+
+#view-roadmap .rm-klappe {
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-klappe span {
+  display: inline-block;
   transition: transform 0.15s;
 }
 
-#view-roadmap .roadmap-gruppe[open] .roadmap-gruppe-text::before {
+#view-roadmap .rm-klappe[aria-expanded='true'] span {
   transform: rotate(90deg);
 }
 
-#view-roadmap .roadmap-gruppe-text strong {
-  display: block;
-  font-size: 13px;
-  overflow-wrap: anywhere;
+#view-roadmap .rm-klappe:hover {
+  color: var(--ink);
+  background: var(--button-hover-bg);
 }
 
-#view-roadmap .roadmap-gruppe-text small {
-  display: block;
-  margin-top: 5px;
-  font-size: 12px;
-  color: var(--muted);
+#view-roadmap .rm-waehlen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-#view-roadmap .roadmap-aktuell-marke {
-  display: block;
-  margin-bottom: 4px;
+#view-roadmap .rm-feature .rm-waehlen {
+  padding-left: 16px;
+}
+
+#view-roadmap .rm-waehlen:hover .rm-name {
   color: var(--mint);
 }
 
-#view-roadmap .roadmap-gruppe-zeilen {
-  padding-bottom: 15px;
-}
-
-#view-roadmap .roadmap-feature {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
+#view-roadmap .rm-name-text {
+  flex: 1 1 0;
   min-width: 0;
-  padding: 12px 18px 12px 34px;
+}
+
+#view-roadmap .rm-detail-ziel {
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#view-roadmap .rm-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-name strong {
+  flex: 1 1 0;
+  min-width: 0;
+  font: 15px var(--serif);
+  font-weight: 400;
+}
+
+#view-roadmap .rm-name .eyebrow {
+  flex-basis: 100%;
+  color: var(--mint);
+}
+
+#view-roadmap .rm-waehlen small {
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-waehlen code {
+  font-size: 10.5px;
+}
+
+#view-roadmap .rm-punkt {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+#view-roadmap .rm-punkt-meilenstein {
+  background: var(--ebene-meilenstein);
+}
+
+#view-roadmap .rm-punkt-feature {
+  background: var(--ebene-feature);
+}
+
+#view-roadmap .rm-status {
   font-size: 12px;
-  line-height: 1.5;
-  color: var(--ink);
-  text-decoration: none;
+  white-space: nowrap;
 }
 
-#view-roadmap .roadmap-feature:hover {
-  background: var(--panel-hover);
-  color: var(--ink);
+/* Zeitachse „kommt“: nur das gedämpfte Raster, keine Balken (Fixpaket B5). */
+#view-roadmap .rm-achse {
+  align-self: stretch;
+  background-image: repeating-linear-gradient(to right, var(--track) 0 1px, transparent 1px 44px);
+  opacity: 0.6;
 }
 
-#view-roadmap .roadmap-feature-titel {
-  flex: 1;
+#view-roadmap .rm-leer {
+  padding: 12px 14px 12px 48px;
+  border-top: 1px solid var(--track);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-ausgeblendet {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 48px;
+  padding: 6px 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--track);
+  background: var(--soft);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-ausgeblendet > span:first-child {
+  color: var(--mint);
+}
+
+#view-roadmap .rm-ausgeblendet > span:nth-child(2) {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+#view-roadmap .rm-ausgeblendet .button {
+  min-height: 36px;
+  font-size: 12px;
+}
+
+#view-roadmap .roadmap-fussnote {
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--track);
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--amber) 33%, transparent);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+#view-roadmap .rm-detail-kopf {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+#view-roadmap .rm-detail-kopf h3 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-detail-felder {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 7px 10px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#view-roadmap .rm-detail-felder dt {
+  padding-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-detail-felder dd {
+  margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* ID und Status unter dem Titel, damit die schmale erste Spalte den Titel nicht zerdrückt. */
-#view-roadmap .roadmap-feature-titel small {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  color: var(--muted);
+#view-roadmap .rm-jarvis {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--track);
 }
 
-#view-roadmap .roadmap-feature code {
-  font-size: 11px;
+#view-roadmap .rm-frage-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-#view-roadmap .roadmap-leer-zeile {
+#view-roadmap .rm-frage-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+#view-roadmap .rm-frage-chip:hover {
+  border-color: var(--mint);
+}
+
+#view-roadmap .rm-frage-zeile {
+  display: flex;
+  gap: 6px;
+}
+
+#view-roadmap .rm-frage-zeile input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+#view-roadmap .rm-jarvis .subtle {
   margin: 0;
-  padding: 12px 18px 12px 34px;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#view-roadmap .rm-anpassen {
+  padding-top: 12px;
+  border-top: 1px solid var(--track);
+}
+
+#view-roadmap .rm-entwicklungsstand {
+  margin-top: 36px;
+}
+
+#view-roadmap .rm-entwicklungsstand .section-label {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+#view-roadmap .rm-entwicklungsstand .section-label p {
+  margin: 4px 0 0;
+}
+
+#view-roadmap .rm-stand-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* position: relative — der .sr-only-Kopf der letzten Spalte ist absolut positioniert; ohne
+   Bezugsrahmen hier liefe er aus dem Rollbereich und verbreiterte die Seite (390 px). */
+#view-roadmap .rm-stand-scroll {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+#view-roadmap .rm-stand {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+#view-roadmap .rm-stand th {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  text-align: left;
+  text-transform: uppercase;
   color: var(--muted);
+}
+
+#view-roadmap .rm-stand td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--track);
+  vertical-align: middle;
+}
+
+#view-roadmap .rm-stand tr:last-child td {
+  border-bottom: 0;
+}
+
+#view-roadmap .rm-stand-alle {
+  margin: 12px 0 0;
+}
+
+#view-roadmap .rm-stand-titel {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+#view-roadmap .rm-stand small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-roadmap .rm-stand .kommt-knopf,
+#view-roadmap .rm-stand .button {
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 #view-roadmap .roadmap-symbol {
@@ -3550,21 +3928,6 @@ th {
 #view-roadmap .roadmap-kat-abgebrochen,
 #view-roadmap .roadmap-kat-ohne_akte,
 #view-roadmap .roadmap-kat-unbekannt {
-  color: var(--muted);
-}
-
-#view-roadmap .roadmap-fussnote {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-#view-roadmap .roadmap-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 18px;
-  padding-top: 16px;
-  font-size: 12px;
   color: var(--muted);
 }
 
@@ -3628,9 +3991,98 @@ th {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 1150px) {
-  #view-attention .quellen-raster,
+@container roadmap (max-width: 1000px) {
+  #view-roadmap .roadmap-kennzahlen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #view-roadmap .rm-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   #view-roadmap .unplanned-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container roadmap (max-width: 620px) {
+  #view-roadmap .roadmap-kennzahlen,
+  #view-roadmap .unplanned-chips {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Schmal: die Zeitachse („kommt“) fällt weg, Status rutscht unter den Namen. */
+  #view-roadmap .rm-kopfzeile,
+  #view-roadmap .rm-zeile {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  #view-roadmap .rm-achse,
+  #view-roadmap .rm-kopfzeile > span:nth-child(n + 2) {
+    display: none;
+  }
+
+  #view-roadmap .rm-status {
+    grid-column: 2;
+    padding-bottom: 8px;
+    white-space: normal;
+  }
+
+  #view-roadmap .rm-feature .rm-status {
+    padding-left: 16px;
+  }
+
+  #view-roadmap .rm-frage-zeile {
+    flex-wrap: wrap;
+  }
+
+  /* Entwicklungsstand schmal (Prüfpass D1 dg 3): Spalte Priorität („kommt“) entfällt, die Tabelle
+     passt ohne Rollbereich in die Breite. */
+  #view-roadmap .rm-stand {
+    min-width: 0;
+  }
+
+  #view-roadmap .rm-stand th:nth-child(4),
+  #view-roadmap .rm-stand td:nth-child(4) {
+    display: none;
+  }
+
+  /* Zeilen als Karten: Titel über die volle Breite, darunter Typ · Status · Öffnen. */
+  #view-roadmap .rm-stand thead {
+    display: none;
+  }
+
+  #view-roadmap .rm-stand tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--track);
+  }
+
+  #view-roadmap .rm-stand tr:last-child {
+    border-bottom: 0;
+  }
+
+  #view-roadmap .rm-stand td {
+    padding: 6px 12px;
+    border-bottom: 0;
+  }
+
+  #view-roadmap .rm-stand td:first-child {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
+  }
+
+  #view-roadmap .roadmap-chip {
+    min-height: 44px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 1150px) {
+  #view-attention .quellen-raster {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -3644,29 +4096,6 @@ th {
   #view-attention .entscheidung-text h3 {
     font-size: 18px;
   }
-
-  #view-roadmap .roadmap-kopfzeile,
-  #view-roadmap .roadmap-gruppe-kopf,
-  #view-roadmap .roadmap-zeile {
-    grid-template-columns: 200px minmax(420px, 1fr);
-  }
-
-  #view-roadmap .roadmap-tabelle {
-    min-width: 620px;
-  }
-
-  #view-roadmap .roadmap-feature {
-    padding-left: 24px;
-  }
-
-  #view-roadmap .roadmap-chip {
-    min-height: 44px;
-    font-size: 13px;
-  }
-
-  #view-roadmap .unplanned-chips {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 420px) {
@@ -3678,25 +4107,286 @@ th {
 /* Reduzierte Bewegung: Systemeinstellung und Schalter der Einstellungen (data-reduzierte-bewegung,
    persona.js) — Muster der übrigen Bewegungsregeln in dieser Datei. */
 @media (prefers-reduced-motion: reduce) {
-  #view-roadmap .roadmap-gruppe-text::before,
+  #view-roadmap .rm-klappe span,
   #view-roadmap .roadmap-chip {
     transition: none;
   }
 }
 
-:root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-gruppe-text::before,
+:root[data-reduzierte-bewegung='true'] #view-roadmap .rm-klappe span,
 :root[data-reduzierte-bewegung='true'] #view-roadmap .roadmap-chip {
   transition: none;
 }
 
-/* ─────────────── Produktübersicht (F44 WS-2b, Vorlage V10 d_/l_/m_uebersicht) ───────────────
-   views/dashboard.js überträgt die Bausteine der Vorlage (.product-cockpit, .progress-bubble,
-   .pm-summary-strip, .product-brief-strip, .cycle-entry, .pm-focus-layout/.pm-decision/.pm-now,
-   .execution-triptych, .pm-status-row, .pm-category-card, .recent-delivery, .first-step). Maße wie
-   die Vorlage, Farben nur über Tokens. Kein display auf Block-Containern, die das hidden-Attribut
-   tragen (#uebersicht-erster-schritt, #uebersicht-inhalt). Die Umbrüche richten sich als Container-
-   Query nach der Breite des Hauptbereichs, nicht des Viewports: ab 1280 px steht die Chatspalte bis
-   WS-8 daneben, der Hauptbereich ist dann nur rund 840 px breit (Render-Nachweis WS-2b). */
+/* ─────────────── Typ-Chips (F46 D1, typ-chip.js) ───────────────
+   Text immer sichtbar; die Ebenenfarbe steht als voller Punkt neben dem Text, die blasse Fläche
+   nie allein (Prüfpunkt D0 dg 4). */
+.typ-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.typ-chip-punkt {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--muted);
+}
+
+.typ-chip-neutral .typ-chip-punkt {
+  background: none;
+  border: 1px solid var(--muted);
+}
+
+.typ-chip-meilenstein {
+  background: var(--ebene-meilenstein-blass);
+}
+
+.typ-chip-meilenstein .typ-chip-punkt {
+  background: var(--ebene-meilenstein);
+}
+
+.typ-chip-feature {
+  background: var(--ebene-feature-blass);
+}
+
+.typ-chip-feature .typ-chip-punkt {
+  background: var(--ebene-feature);
+}
+
+.typ-chip-workstream {
+  background: var(--ebene-workstream-blass);
+}
+
+.typ-chip-workstream .typ-chip-punkt {
+  background: var(--ebene-workstream);
+}
+
+.typ-chip-fixpaket {
+  background: var(--ebene-fixpaket-blass);
+}
+
+.typ-chip-fixpaket .typ-chip-punkt {
+  background: var(--ebene-fixpaket);
+}
+
+.typ-chip-design {
+  background: var(--ebene-design-blass);
+}
+
+.typ-chip-design .typ-chip-punkt {
+  background: var(--ebene-design);
+}
+
+.typ-chip-bug {
+  background: var(--ebene-bug-blass);
+}
+
+.typ-chip-bug .typ-chip-punkt {
+  background: var(--ebene-bug);
+}
+
+/* ─────────────── Produktplanung: Register (F46 D1, produktplanung-kopf.js) ─────────────── */
+.v10-seite .planung-register {
+  margin-bottom: 4px;
+}
+
+/* ─────────────── Projektakte (F46 D1, Design 09-entscheidungen--Projektakte) ───────────────
+   views/projektakte.js: Hauptspalte mit Karten, Seitenspalte Empfänger und Quellen. Dateiinhalte
+   als Klartext-Absätze (white-space: pre-line nur für Listenumbrüche). */
+#view-projektakte {
+  container: projektakte / inline-size;
+}
+
+#view-projektakte .page-heading {
+  flex-wrap: wrap;
+}
+
+#view-projektakte .page-heading > div:first-child {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+
+#view-projektakte .akte-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 22px;
+  margin-top: 22px;
+}
+
+#view-projektakte .akte-haupt,
+#view-projektakte .akte-seite {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+#view-projektakte .akte-paar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+#view-projektakte .akte-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+#view-projektakte .akte-karte p {
+  margin: 0;
+}
+
+#view-projektakte .akte-vision {
+  padding: 20px;
+  border-radius: 16px;
+}
+
+#view-projektakte .akte-vision-text {
+  font: 20px/1.45 var(--serif);
+  overflow-wrap: break-word;
+}
+
+#view-projektakte .akte-text {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+#view-projektakte .akte-zwischentitel,
+#view-projektakte .akte-unter {
+  margin-top: 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-projektakte .akte-quelle-zeile {
+  font-size: 11.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#view-projektakte .akte-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  overflow-wrap: anywhere;
+}
+
+#view-projektakte .akte-rollbereich {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+#view-projektakte .akte-mehr summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+#view-projektakte .akte-mehr[open] summary {
+  margin-bottom: 6px;
+}
+
+#view-projektakte .akte-empfaenger {
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+}
+
+#view-projektakte .akte-empfaenger .eyebrow {
+  color: var(--amber);
+}
+
+#view-projektakte .akte-empfaenger-liste,
+#view-projektakte .akte-quellen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#view-projektakte .akte-empfaenger-liste li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  font-size: 12.5px;
+}
+
+#view-projektakte .akte-chip {
+  padding: 0 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+#view-projektakte .akte-chip-ja {
+  color: var(--mint);
+}
+
+#view-projektakte .akte-chip-nein {
+  color: var(--amber);
+}
+
+#view-projektakte .akte-quellen li {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-projektakte .akte-quellen code {
+  font-size: 12px;
+}
+
+@container projektakte (max-width: 860px) {
+  #view-projektakte .akte-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container projektakte (max-width: 560px) {
+  #view-projektakte .akte-paar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #view-projektakte .akte-vision-text {
+    font-size: 18px;
+  }
+}
+
+/* ─────────────── Produktübersicht (F46 D1, Design 02-produktuebersicht--Main; vorher F44 WS-2b) ───────────────
+   views/dashboard.js: Kopf, vier gleich hohe Kopfkarten (Produktmanagement · Wer arbeitet gerade mit
+   Rollen-Kreis · Rolle im Detail · Fortschritt + Braucht dich), Kennzahlen, „Der Weg von …“
+   (Zeitleiste „kommt“), Kacheln, Arbeitsstand mit Filter, Zuletzt umgesetzt, Was steckt dahinter,
+   Betrieb, erster Schritt. Farben nur über Tokens. Kein display auf Block-Containern, die das
+   hidden-Attribut tragen (#uebersicht-erster-schritt, #uebersicht-inhalt). Umbrüche als
+   Container-Query nach der Breite des Hauptbereichs. */
 #view-dashboard {
   container: uebersicht / inline-size;
 }
@@ -3726,93 +4416,417 @@ th {
   font-size: 14px;
 }
 
-#view-dashboard .text-link {
-  font-size: 14px;
-  gap: 8px;
-}
-
-#view-dashboard button.text-link {
-  text-align: left;
-  font-weight: 400;
-  background: none;
-  border-top: 0;
-  border-left: 0;
-  border-right: 0;
-  cursor: pointer;
+/* Textlinks der Karten wie die Vorlage 02: klein, Mint, ohne Serifen (die große Serifenform bleibt
+   für Abschnittslinks anderer Seiten). */
+#view-dashboard .text-link,
+#view-projektakte .text-link,
+#view-roadmap .rm-detail .text-link,
+#view-roadmap .rm-stand-alle .text-link {
+  gap: 6px;
+  font: 12.5px var(--sans);
+  color: var(--mint);
 }
 
 #view-dashboard code {
   font-size: 11px;
 }
 
-#view-dashboard .product-cockpit {
-  display: grid;
-  grid-template-columns: 1.25fr 1fr 1fr;
-  gap: 18px;
-  margin: 18px 0 24px;
+#view-dashboard a:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
 }
 
-#view-dashboard .product-cockpit article {
+/* Kopfkarten: Rahmen wie die Vorlage (Fläche --panel), Karten auf --bg. */
+#view-dashboard .uebersicht-cockpit {
+  display: grid;
+  grid-template-columns: 250px 300px minmax(0, 1fr) 176px;
+  align-items: stretch;
+  gap: 16px;
+  margin: 18px 0 28px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 22px;
+  border-radius: 16px;
   background: var(--panel);
+}
+
+#view-dashboard .uebersicht-karte {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 9px;
+  gap: 12px;
   min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
 }
 
-#view-dashboard .product-cockpit .cockpit-progress {
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 22px;
-}
-
-#view-dashboard .product-cockpit .cockpit-progress > div:last-child {
-  flex: 1 1 180px;
-  min-width: 0;
-}
-
-#view-dashboard .product-cockpit h2 {
-  font-size: 26px;
-  margin: 6px 0;
-  line-height: 1.2;
+#view-dashboard .uebersicht-karte h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
   overflow-wrap: break-word;
 }
 
-#view-dashboard .product-cockpit h2 span {
-  font-family: inherit;
-  font-size: 16px;
-}
-
-#view-dashboard .product-cockpit p {
-  font-size: 14px;
+#view-dashboard .uebersicht-karte p {
+  margin: 0;
+  font-size: 13px;
   line-height: 1.5;
-  margin: 4px 0;
-  color: var(--muted);
   overflow-wrap: break-word;
 }
 
-#view-dashboard .product-cockpit small {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-#view-dashboard .product-cockpit .text-link {
+#view-dashboard .uebersicht-karte .text-link {
   margin-top: auto;
-  padding-top: 8px;
 }
 
-#view-dashboard .product-cockpit .cockpit-role {
-  border-top: 2px solid var(--mint);
+#view-dashboard .uebersicht-produkt-teil {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-#view-dashboard .product-cockpit .cockpit-deployer {
-  border-top: 2px solid var(--amber);
+#view-dashboard .uebersicht-produkt-teil + .uebersicht-produkt-teil {
+  flex: 1;
+  padding-top: 14px;
+  border-top: 1px solid var(--track);
+}
+
+#view-dashboard .uebersicht-produkt-teil .text-link {
+  margin-top: 4px;
+}
+
+/* Ein langer Zielsatz (bis 2000 Zeichen) hält die Kartenreihe nicht auf: sechs Zeilen, ganz im title. */
+#view-dashboard .uebersicht-ziel-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+#view-dashboard .uebersicht-wer {
+  align-items: center;
+  padding: 18px 0 16px;
+}
+
+#view-dashboard .uebersicht-wer > .eyebrow {
+  align-self: stretch;
+  padding: 0 18px;
+}
+
+#view-dashboard .uebersicht-detail[data-status='jetzt'] {
+  border-color: color-mix(in srgb, var(--amber) 33%, transparent);
+}
+
+#view-dashboard .uebersicht-detail[data-status='jetzt'] > .eyebrow {
+  color: var(--amber);
+}
+
+#view-dashboard .uebersicht-detail-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+#view-dashboard .uebersicht-detail-kopf h2 {
+  font-size: 20px;
+}
+
+#view-dashboard .uebersicht-detail-kopf .subtle {
+  font-size: 11.5px;
+}
+
+#view-dashboard .uebersicht-detail-liste {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#view-dashboard .uebersicht-detail-liste dt {
+  padding-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+#view-dashboard .uebersicht-detail-liste dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-dashboard .uebersicht-detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: auto;
+}
+
+#view-dashboard .uebersicht-spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+#view-dashboard .uebersicht-spalte > .uebersicht-karte {
+  flex: 1;
+}
+
+#view-dashboard .uebersicht-fortschritt .progress-bubble.klein {
+  width: 64px;
+  height: 64px;
+}
+
+#view-dashboard .uebersicht-fortschritt .progress-bubble.klein strong {
+  font-size: 14px;
+}
+
+#view-dashboard .uebersicht-braucht {
+  border-color: color-mix(in srgb, var(--amber) 33%, transparent);
+}
+
+#view-dashboard .uebersicht-braucht > .eyebrow {
+  color: var(--amber);
+}
+
+#view-dashboard .uebersicht-braucht-zahl {
+  font: 17px var(--serif);
+}
+
+/* ─── Rollen-Kreis (F46 D1, rollen-kreis.js) ───
+   Fläche 300 × 300 wie die Vorlage; die Rollen sitzen auf dem Kreis (Mittelpunkt der Karte minus
+   halbe Größe 92 × 42). Status nie nur über Farbe: Häkchen = fertig, gefüllter Punkt = läuft,
+   Ring = offen; dazu ein Text für Screenreader. */
+.rollen-kreis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.rollen-kreis .rk-flaeche {
+  position: relative;
+  width: 300px;
+  max-width: 100%;
+  height: 300px;
+}
+
+.rollen-kreis .rk-ring {
+  position: absolute;
+  left: 42px;
+  top: 42px;
+  width: 216px;
+  height: 216px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+
+/* Die Mitte liegt zwischen den Rollenreihen (y 117 bis 183), damit nichts überlappt. */
+.rollen-kreis .rk-mitte {
+  position: absolute;
+  left: 92px;
+  top: 117px;
+  width: 116px;
+  height: 66px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.rollen-kreis .rk-mitte-eyebrow {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rollen-kreis .rk-mitte-titel {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 13.5px/1.2 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.rollen-kreis .rk-mitte-zeile {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  color: var(--amber);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rollen-kreis .rk-rolle {
+  position: absolute;
+  width: 92px;
+  height: 42px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rollen-kreis .rk-pos-planner {
+  left: 104px;
+  top: 21px;
+}
+
+.rollen-kreis .rk-pos-advisor {
+  left: 198px;
+  top: 75px;
+}
+
+.rollen-kreis .rk-pos-builder {
+  left: 198px;
+  top: 183px;
+}
+
+.rollen-kreis .rk-pos-pruefschritt {
+  left: 104px;
+  top: 237px;
+}
+
+.rollen-kreis .rk-pos-reviewer {
+  left: 10px;
+  top: 183px;
+}
+
+.rollen-kreis .rk-pos-abnahme {
+  left: 10px;
+  top: 75px;
+}
+
+.rollen-kreis .rk-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  max-width: 100%;
+}
+
+.rollen-kreis .rk-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rollen-kreis .rk-worker {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 9.5px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rollen-kreis .rk-punkt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.rollen-kreis [data-status='jetzt'] .rk-punkt {
+  border-color: var(--amber);
+  background: var(--amber);
+}
+
+.rollen-kreis [data-status='fertig'] .rk-punkt {
+  border: 0;
+  color: var(--mint);
+}
+
+.rollen-kreis [data-status='fertig'] .rk-punkt::before {
+  content: '✓';
+}
+
+.rollen-kreis .rk-rolle[data-status='jetzt'] {
+  border-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, var(--bg));
+}
+
+.rollen-kreis [aria-selected='true'] {
+  box-shadow: 0 0 0 2px var(--mint);
+}
+
+.rollen-kreis .rk-rolle:hover,
+.rollen-kreis .rk-satellit:hover {
+  border-color: var(--mint);
+}
+
+.rollen-kreis [role='tab']:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.rollen-kreis .rk-satelliten {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.rollen-kreis .rk-satelliten-titel {
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.rollen-kreis .rk-satelliten-liste {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rollen-kreis .rk-satellit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 :is(#view-dashboard, #view-projekte-uebersicht) .progress-bubble {
@@ -3872,15 +4886,15 @@ th {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--line);
-  border-radius: 12px;
-  margin-bottom: 28px;
+  border-radius: 14px;
+  margin-bottom: 34px;
   overflow: hidden;
-  background: var(--soft);
+  background: var(--panel);
 }
 
 #view-dashboard .pm-summary {
   padding: 20px 22px;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--track);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 5px 15px;
@@ -3892,12 +4906,12 @@ th {
 }
 
 #view-dashboard .pm-summary > span {
-  font-size: 14px;
+  font-size: 16px;
   align-self: center;
 }
 
 #view-dashboard .pm-summary > strong {
-  font: 32px var(--serif);
+  font: 30px var(--serif);
   grid-row: 1 / 3;
   grid-column: 2;
   align-self: center;
@@ -3910,7 +4924,7 @@ th {
 }
 
 #view-dashboard .pm-summary > small {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
@@ -3922,402 +4936,63 @@ th {
   color: var(--mint);
 }
 
-#view-dashboard .product-brief-strip {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 25px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 20px 0;
-  margin: 0 0 24px;
-}
-
-#view-dashboard .product-brief-strip > div {
-  max-width: 800px;
-  min-width: 0;
-}
-
-#view-dashboard .product-brief-strip p {
-  font-size: 16px;
-  margin: 8px 0 5px;
-  line-height: 1.6;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .uebersicht-brief-mehr .kommt-knopf {
-  border: 0;
-  padding: 8px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-#view-dashboard .cycle-entry {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  padding: 24px 0;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  margin: 20px 0 28px;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-#view-dashboard .cycle-entry strong {
-  display: block;
-  font: 23px var(--serif);
-  margin: 8px 0;
-}
-
-#view-dashboard .cycle-entry p {
-  font-size: 14px;
-  color: var(--muted);
-  margin: 0;
-}
-
-#view-dashboard .cycle-entry > span {
-  color: var(--mint);
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-#view-dashboard a:focus-visible {
-  outline: 2px solid var(--mint);
-  outline-offset: 4px;
-}
-
-#view-dashboard .pm-focus-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(230px, 1fr);
-  gap: 28px;
-  margin-bottom: 32px;
-}
-
-#view-dashboard .pm-focus {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 22px;
-  min-width: 0;
-}
-
-#view-dashboard .pm-focus > .section-label {
-  margin: 0 0 18px;
-  flex-wrap: wrap;
-}
-
-#view-dashboard .uebersicht-alle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-#view-dashboard .uebersicht-alle:hover {
-  color: var(--mint);
-}
-
-#view-dashboard .uebersicht-zaehler {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 1px 7px;
-  font-size: 11px;
-}
-
-#view-dashboard .pm-decision {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22px;
-  padding: 17px 0;
-  border-top: 1px solid var(--line);
-}
-
-#view-dashboard .pm-decision > div {
-  min-width: 0;
-}
-
-#view-dashboard .pm-decision h3 {
-  font-size: 21px;
-  margin: 7px 0;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .pm-decision p {
-  font-size: 13px;
-  line-height: 1.65;
-  color: var(--muted);
-  margin: 0;
-  max-width: 470px;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .pm-decision .button {
-  flex-shrink: 0;
-  font-size: 13px;
-  text-decoration: none;
-}
-
-#view-dashboard .pm-clear {
-  padding: 24px 0;
-  color: var(--mint);
-}
-
-#view-dashboard .pm-now {
-  padding: 24px 0 20px 22px;
-  border-left: 1px solid var(--line);
-  min-width: 0;
-}
-
-#view-dashboard .pm-now h2 {
-  font-size: 27px;
-  margin: 13px 0;
-}
-
-#view-dashboard .pm-now > p {
-  font-size: 14px;
-  color: var(--muted);
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .pm-next {
-  border-top: 1px solid var(--line);
-  padding: 17px 0;
-  margin: 20px 0 4px;
-  display: grid;
-  gap: 10px;
-}
-
-#view-dashboard .pm-next p {
-  margin: 0;
-  font-size: 13px;
-}
-
-#view-dashboard .pm-roadmap-section {
-  margin: 0 0 30px;
-}
-
-/* B9 (F-905): alle Meilensteine als kompakte Zeilen — Titel, Status, „x / y abgenommen“; der
-   aktuelle ist hervorgehoben. */
 #view-dashboard .uebersicht-weg {
-  list-style: none;
+  margin: 0 0 34px;
+}
+
+#view-dashboard .uebersicht-weg-kopf {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+}
+
+#view-dashboard .uebersicht-weg-kopf h2 {
+  font-size: 28px;
+  overflow-wrap: anywhere;
+}
+
+#view-dashboard .uebersicht-weg-kopf p {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+#view-dashboard .uebersicht-weg-kommt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 22px;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+#view-dashboard .uebersicht-weg-kommt p {
   margin: 0;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-#view-dashboard .uebersicht-weg-zeile {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 18px;
-  padding: 13px 20px;
   font-size: 13px;
-  color: var(--ink);
-}
-
-#view-dashboard .uebersicht-weg-zeile + .uebersicht-weg-zeile {
-  border-top: 1px solid var(--line);
-}
-
-#view-dashboard .uebersicht-weg-zeile.aktuell {
-  background: var(--note-bg);
-  box-shadow: inset 2px 0 0 var(--mint);
-}
-
-#view-dashboard .uebersicht-weg-titel {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .uebersicht-weg-titel strong {
-  font-weight: 400;
-  font-size: 14px;
-}
-
-#view-dashboard .uebersicht-weg-status {
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-#view-dashboard .uebersicht-weg-zaehler {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-#view-dashboard .uebersicht-stand-alle {
-  margin: 14px 0 0;
-}
-
-#view-dashboard .roadmap-symbol {
-  display: inline-block;
-  width: 1em;
-  text-align: center;
-}
-
-#view-dashboard .roadmap-kat-abgenommen,
-#view-dashboard .roadmap-kat-in_arbeit {
-  color: var(--mint);
-}
-
-#view-dashboard .roadmap-kat-freigabe,
-#view-dashboard .roadmap-kat-klaerung {
-  color: var(--amber);
-}
-
-#view-dashboard .roadmap-kat-geplant,
-#view-dashboard .roadmap-kat-abgebrochen,
-#view-dashboard .roadmap-kat-ohne_akte,
-#view-dashboard .roadmap-kat-unbekannt {
-  color: var(--muted);
-}
-
-#view-dashboard .execution-brief,
-#view-workboard .execution-brief {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 24px 0;
-  margin: 24px 0 30px;
-}
-
-#view-dashboard .execution-brief > .section-label,
-#view-workboard .execution-brief > .section-label {
-  margin-top: 0;
-}
-
-#view-dashboard .execution-triptych,
-#view-workboard .execution-triptych {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
-  gap: 24px;
-}
-
-#view-dashboard .execution-triptych > div,
-#view-workboard .execution-triptych > div {
-  padding: 20px;
-  border-left: 1px solid var(--line);
-  min-width: 0;
-}
-
-#view-dashboard .execution-triptych strong,
-#view-workboard .execution-triptych strong {
-  display: block;
-  margin: 10px 0;
-  font-size: 16px;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .execution-triptych p,
-#view-workboard .execution-triptych p {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 8px 0;
-}
-
-#view-dashboard .execution-triptych > .execution-current,
-#view-workboard .execution-triptych > .execution-current {
-  background: var(--note-bg);
-  border-left-color: var(--mint);
-  border-radius: 0 10px 10px 0;
-}
-
-#view-dashboard .model-label,
-#view-workboard .model-label {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-#view-dashboard .expected-output,
-#view-workboard .expected-output {
-  margin: 20px 0 0;
-  padding: 0 20px;
-}
-
-#view-dashboard .expected-output p,
-#view-workboard .expected-output p {
-  font-size: 14px;
-  line-height: 1.6;
-  max-width: 850px;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .pm-work-table {
-  border-top: 1px solid var(--line);
-}
-
-#view-dashboard .pm-status-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(130px, 0.8fr) auto;
-  gap: 18px;
-  align-items: center;
-  padding: 14px 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-#view-dashboard .pm-item-name {
-  display: block;
-  min-width: 0;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-#view-dashboard a.pm-item-name:hover strong {
-  color: var(--mint);
-}
-
-#view-dashboard .pm-item-name strong {
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.5;
-  display: block;
-  overflow-wrap: break-word;
-}
-
-#view-dashboard .pm-item-name small {
-  font-size: 12px;
-  color: var(--muted);
-  display: block;
-  margin-top: 4px;
-}
-
-#view-dashboard .pm-row-status {
-  font-size: 12px;
-}
-
-#view-dashboard .pm-status-row .kommt-knopf {
-  padding: 6px 10px;
-  font-size: 11px;
 }
 
 #view-dashboard .pm-category-links {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  margin-top: 28px;
+  margin: 0 0 30px;
 }
 
 #view-dashboard .pm-category-card {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 19px;
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: 14px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
   color: var(--ink);
   text-decoration: none;
-  min-width: 0;
 }
 
-#view-dashboard .pm-category-card > span {
-  font-size: 24px;
+#view-dashboard .pm-category-symbol {
+  font-size: 20px;
   color: var(--mint);
 }
 
@@ -4327,17 +5002,17 @@ th {
 }
 
 #view-dashboard .pm-category-card strong {
-  font-weight: 400;
-  font-size: 16px;
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
+  font: 19px var(--serif);
+  font-weight: 400;
 }
 
 #view-dashboard .pm-category-card small {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.5;
   display: block;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 #view-dashboard .pm-category-card:hover {
@@ -4345,38 +5020,230 @@ th {
 }
 
 #view-dashboard .uebersicht-pfeil {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
   flex-shrink: 0;
 }
 
-#view-dashboard .recent-delivery {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 32px;
-  padding: 30px 0;
-  border-top: 1px solid var(--line);
-  margin-top: 30px;
+/* Arbeitsstand: Filter und vier Spalten. */
+#view-dashboard .uebersicht-arbeitsstand {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 34px;
 }
 
-#view-dashboard .recent-delivery > div {
+#view-dashboard .uebersicht-filterzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#view-dashboard .uebersicht-filterzeile .subtle {
+  margin-right: 8px;
+}
+
+#view-dashboard .uebersicht-filter {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+#view-dashboard .uebersicht-filter:hover {
+  color: var(--ink);
+}
+
+#view-dashboard .uebersicht-filter[aria-pressed='true'] {
+  border-color: var(--line);
+  background: var(--soft);
+  color: var(--ink);
+}
+
+#view-dashboard .uebersicht-arbeit-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+#view-dashboard .uebersicht-arbeit-board.gefiltert {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#view-dashboard .uebersicht-arbeit-board.gefiltert .uebersicht-arbeit-spalte {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+#view-dashboard .uebersicht-arbeit-board.gefiltert .uebersicht-arbeit-spaltenkopf {
+  grid-column: 1 / -1;
+}
+
+#view-dashboard .uebersicht-arbeit-spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 220px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+#view-dashboard .uebersicht-arbeit-spaltenkopf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+}
+
+#view-dashboard [data-spalte='braucht_dich'] .uebersicht-arbeit-spaltenkopf > span:first-child {
+  color: var(--amber);
+}
+
+#view-dashboard [data-spalte='abgenommen'] .uebersicht-arbeit-spaltenkopf > span:first-child {
+  color: var(--mint);
+}
+
+#view-dashboard .uebersicht-zaehler {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+#view-dashboard .uebersicht-arbeit-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+#view-dashboard .uebersicht-arbeit-karte:hover {
+  border-color: var(--mint);
+}
+
+#view-dashboard .uebersicht-arbeit-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+#view-dashboard .uebersicht-arbeit-titel {
+  font: 17px/1.3 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+#view-dashboard .uebersicht-arbeit-karte .subtle {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+#view-dashboard .uebersicht-arbeit-leer {
+  margin: 0;
+  padding: 24px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Zuletzt umgesetzt: Haupttext · Ring · Danach („kommt“), darunter die letzte Ausführung. */
+#view-dashboard .uebersicht-zuletzt-block {
+  padding: 30px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+#view-dashboard .uebersicht-zuletzt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px 300px;
+  align-items: center;
+  gap: 30px;
+}
+
+#view-dashboard .uebersicht-zuletzt-haupt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   min-width: 0;
 }
 
-#view-dashboard .recent-delivery h2 {
-  margin: 10px 0;
-  overflow-wrap: break-word;
+#view-dashboard .uebersicht-zuletzt-haupt h2 {
+  margin: 0;
+  font-size: 30px;
+  overflow-wrap: anywhere;
 }
 
-#view-dashboard .recent-delivery p {
-  line-height: 1.6;
+#view-dashboard .uebersicht-zuletzt-haupt p {
+  margin: 0;
+}
+
+#view-dashboard .uebersicht-zuletzt-haupt .button {
+  text-decoration: none;
+}
+
+#view-dashboard .uebersicht-zuletzt-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+#view-dashboard .uebersicht-zuletzt-ring {
+  padding: 18px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 50%;
+  aspect-ratio: 1;
+  justify-content: center;
+}
+
+#view-dashboard .uebersicht-zuletzt-danach {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+#view-dashboard .uebersicht-zuletzt-danach p {
+  margin: 0;
+  font-size: 13px;
+}
+
+#view-dashboard .uebersicht-zuletzt-lauf {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--track);
+}
+
+#view-dashboard .uebersicht-letzter-lauf {
+  margin: 0 0 8px;
+  font-size: 13px;
   color: var(--muted);
-  font-size: 14px;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+#view-dashboard .uebersicht-letzter-lauf strong {
+  color: var(--ink);
+  font-weight: 400;
 }
 
 #view-dashboard .uebersicht-dahinter {
@@ -4386,7 +5253,6 @@ th {
   flex-wrap: wrap;
   gap: 20px;
   padding: 30px 0;
-  border-top: 1px solid var(--line);
 }
 
 #view-dashboard .uebersicht-dahinter h2 {
@@ -4470,20 +5336,99 @@ th {
   color: var(--muted);
 }
 
+/* „Wer macht was“ im Detail der Entwicklung (rollen-anzeige.js werSpalte, views/workboard-detail.js)
+   — auf der Übersicht entfallen (F46 D1), dort weiter genutzt. */
+#view-workboard .execution-brief {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 24px 0;
+  margin: 24px 0 30px;
+}
+
+#view-workboard .execution-brief > .section-label {
+  margin-top: 0;
+}
+
+#view-workboard .execution-triptych {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 24px;
+}
+
+#view-workboard .execution-triptych > div {
+  padding: 20px;
+  border-left: 1px solid var(--line);
+  min-width: 0;
+}
+
+#view-workboard .execution-triptych strong {
+  display: block;
+  margin: 10px 0;
+  font-size: 16px;
+  overflow-wrap: break-word;
+}
+
+#view-workboard .execution-triptych p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+#view-workboard .execution-triptych > .execution-current {
+  background: var(--note-bg);
+  border-left-color: var(--mint);
+  border-radius: 0 10px 10px 0;
+}
+
+#view-workboard .model-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+#view-workboard .expected-output {
+  margin: 20px 0 0;
+  padding: 0 20px;
+}
+
+#view-workboard .expected-output p {
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 850px;
+  overflow-wrap: break-word;
+}
+
 /* F-898: „+ x weitere“ in #/attention. */
 #view-attention .attention-mehr {
   margin: 12px 0 0 2px;
 }
 
-@container uebersicht (max-width: 960px) {
-  #view-dashboard .product-cockpit {
-    grid-template-columns: 1fr 1fr;
+@container uebersicht (max-width: 1060px) {
+  #view-dashboard .uebersicht-cockpit {
+    grid-template-columns: minmax(0, 1fr) 300px;
   }
 
-  #view-dashboard .product-cockpit .cockpit-progress {
+  #view-dashboard .uebersicht-spalte {
+    flex-direction: row;
     grid-column: 1 / -1;
   }
 
+  #view-dashboard .uebersicht-arbeit-board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #view-dashboard .uebersicht-zuletzt {
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+
+  #view-dashboard .uebersicht-zuletzt-danach {
+    grid-column: 1 / -1;
+    padding: 16px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--track);
+  }
+}
+
+@container uebersicht (max-width: 960px) {
   #view-dashboard .pm-summary {
     padding: 18px 16px;
     grid-template-columns: 1fr;
@@ -4494,42 +5439,23 @@ th {
     grid-column: auto;
     font-size: 28px;
   }
-
-  #view-dashboard .pm-focus-layout {
-    grid-template-columns: minmax(0, 1.4fr) minmax(210px, 1fr);
-    gap: 20px;
-  }
-
-  #view-dashboard .pm-decision {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-  }
 }
 
 @container uebersicht (max-width: 640px) {
-  #view-dashboard .product-cockpit,
-  #view-dashboard .pm-focus-layout,
-  #view-dashboard .execution-triptych,
+  #view-dashboard .uebersicht-cockpit,
   #view-dashboard .pm-category-links,
+  #view-dashboard .uebersicht-arbeit-board,
+  #view-dashboard .uebersicht-zuletzt,
   #view-dashboard .onboarding-steps {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  #view-dashboard .pm-now {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    padding: 20px 0 0;
+  #view-dashboard .uebersicht-cockpit {
+    padding: 10px;
   }
 
-  #view-dashboard .cycle-entry {
-    align-items: flex-start;
+  #view-dashboard .uebersicht-spalte {
     flex-direction: column;
-  }
-
-  #view-dashboard .recent-delivery {
-    grid-template-columns: 1fr;
-    gap: 16px;
   }
 }
 
@@ -4543,39 +5469,26 @@ th {
   }
 
   #view-dashboard .pm-summary:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--track);
   }
 
-  #view-dashboard .product-cockpit article,
   #view-dashboard .first-step {
     padding: 18px;
   }
 
-  #view-dashboard .product-cockpit .cockpit-progress {
-    flex-wrap: wrap;
-  }
-
-  #view-dashboard .product-brief-strip {
-    flex-wrap: wrap;
-  }
-
-  #view-dashboard .pm-status-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  #view-dashboard .uebersicht-weg-zeile {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  #view-dashboard .uebersicht-weg-zaehler {
-    grid-column: 1 / -1;
+  #view-dashboard .uebersicht-weg-kopf h2,
+  #view-dashboard .uebersicht-zuletzt-haupt h2 {
+    font-size: 24px;
   }
 }
 
-/* Sprungziel „Entwicklungsstand ansehen“ (B2): nur Lesestartpunkt, nicht bedienbar — wie die h1 ohne Fokusring. */
-#view-dashboard h2[tabindex='-1']:focus {
-  outline: none;
+/* Die Rollenfläche ist 300 px breit; schmaler skaliert sie mit, statt Rollen abzuschneiden. */
+@container uebersicht (max-width: 360px) {
+  .rollen-kreis .rk-flaeche {
+    transform: scale(0.9);
+    transform-origin: top center;
+    margin-bottom: -30px;
+  }
 }
 
 /* ─────────────────── Entwicklung (F44 WS-3a, Vorlage V10 d_arbeit_board/-features) ───────────
@@ -4934,7 +5847,7 @@ th {
 /* ─────────────────── Entwicklung · Detail (F44 WS-3b, Vorlage V10 d_arbeit_f35) ───────────────────
    #/workboard/<id> als ganze Seite: „←“ als Knopf im Stil .back, Z-Knöpfe (.feature-edit-actions),
    Statuszeile (.pm-detail-status), Auftrag vorbereiten (.workboard-auftrag), „Wer macht was“
-   (.execution-brief/.execution-triptych, Regeln oben gemeinsam mit der Übersicht), Stand der
+   (.execution-brief/.execution-triptych, Regeln im Block der Produktübersicht oben), Stand der
    Entwicklung (.pm-feature-steps, .mini-pipeline, .work-progress/.progress-track), Kriterien
    (.checklist), Planung (.pm-planning, .planning-window) und Insights (.item-insights). Maße wie die
    Vorlage, Farben nur über Tokens. Die Statuszeile schaltet über [hidden] — display deshalb nur für

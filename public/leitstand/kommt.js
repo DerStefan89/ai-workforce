@@ -12,8 +12,11 @@
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initKommt beim Bootstrap, einmalig)
  * - public/leitstand/views/platzhalter.js (kommtKnopf — Brain, Produktzyklus)
- * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Projektakte, Zeitplanung; F44 WS-2a)
- * - public/leitstand/views/dashboard.js (kommtKnopf, kommtBadge — Übersicht V10, Z-Elemente B1/B4/B6/B8/B10/B13; F44 WS-2b)
+ * - public/leitstand/views/roadmap.js (kommtKnopf, kommtBadge — Eintrag erfassen, Tage/Wochen, Zeitachse, Plan gegen
+ *   Ist, Schätzung, Anpassen, Priorität; F46 D1)
+ * - public/leitstand/views/dashboard.js (kommtKnopf, kommtBadge — Kopf, Ziel, Bekommt/Liefert, Zeitleiste, Danach,
+ *   Was steckt dahinter; F46 D1)
+ * - public/leitstand/views/projektakte.js (kommtKnopf, kommtBadge — Änderung vorschlagen, Versionsziel; F46 D1)
  * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a;
  *   im Detail Eintrag bearbeiten, Insights ansehen; F44 WS-3b)
  * - public/leitstand/views/workboard-detail.js (kommtKnopf — Detail: Zeitfenster, Planung ändern/speichern, Insight hinzufügen; F44 WS-3b)
@@ -24,10 +27,9 @@
  * - Import-sicher: kein Zugriff auf DOM beim Import; erst initKommt() hängt die Sperre an.
  * - Die Sperre wirkt dokumentweit in der Einfangphase auf jedes Element mit
  *   [aria-disabled="true"] — nicht nur auf Knöpfe dieses Bausteins. Außer ihnen tragen es heute
- *   das Register „Projektakte“ der Roadmap (views/roadmap.js, span.tab-kommt mit kommtBadge) und
- *   in der Übersicht die Z-Karte „Deployer · Mensch“ und „Als Nächstes vorgesehen“
- *   (views/dashboard.js, .cockpit-deployer und .pm-next; beide ohne Links — ein Link darin wäre
- *   gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
+ *   in der Übersicht die Workstream-Zeitleiste und „Danach“ (views/dashboard.js,
+ *   .uebersicht-weg-kommt und .uebersicht-zuletzt-danach, F46 D1; beide ohne Links — ein Link darin
+ *   wäre gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
  *   (views/workboard.js, .view-switch-knopf) sowie auf „Neues Produkt“ das Feld #projekte-anlegen-ziel
  *   (readonly) und der Knopf „Zielgruppe ergänzen“ (statisch in index.html, F44 WS-6a) sowie „Fähigkeit entdecken“ im Kopf
  *   der Werkstatt (#werkstatt-entdecken, statisch in index.html, F44 WS-7b) sowie die Kopf-Werkzeuge

@@ -9,8 +9,8 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 ## Status
 Status: IN_ARBEIT
 
-D0 gemergt #308, 51825aa; D0b in Arbeit (Branch `feat/design-nachbau-d0b`, Basis `51825aa`). D1 bis D6
-offen.
+D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 in Arbeit (Branch `feat/f46-d1-uebersicht-roadmap`,
+Basis `9c4bf58`). D2 bis D6 offen.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -159,3 +159,94 @@ Serveränderung, keine neue Abhängigkeit.
 - Gold (`--ebene-meilenstein`) und Orange (`--ebene-fixpaket`) liegen im hellen Theme dicht beieinander;
   am ersten echten Verbraucher gegenprüfen (dg 5).
 - Die `--ebene-*`-Tokens haben noch keinen Verbraucher; D1 nutzt sie (cr 8).
+
+## Stand D1 „Produktübersicht, Roadmap, Projektakte“ (02.10.2026)
+Branch `feat/f46-d1-uebersicht-roadmap` (Basis `9c4bf58`), nicht committet. Grundlage
+`docs/design/abgleich-f46.md` §4.1–§4.3, Bilder 02, 03, 09-Projektakte. Keine neue Abhängigkeit, kein
+neuer Schreibweg; Entscheidungs-, Freigabe- und Laufwege unverändert.
+- **Baustein Rollen-Kreis** `public/leitstand/rollen-kreis.js` (Test `rollen-kreis.test.mjs`): sechs
+  Rollen und drei Satelliten (code-reviewer, qa, design-guardian), Reviewer und code-reviewer getrennt.
+  Abbildung Schritt-Rolle → Kreis-Rolle als Tabelle (`architekt` → Planner, `architecture-advisor` →
+  Advisor, `ausfuehrung` → Builder, `code-reviewer` → Reviewer). Status: Schritt LAEUFT → jetzt, alle
+  erledigt → fertig, sonst offen; Prüfschritt fertig nur bei Prüfergebnis GRUEN; Abnahme fertig bei
+  gültigem ANGENOMMEN, jetzt bei abgeschlossenem Workflow ohne gültige Entscheidung (nur wenn die
+  Abnahme-Quelle geladen ist); Satelliten immer offen (keine Quelle). Status nie nur über Farbe
+  (✓ / Punkt / Ring, sr-only-Text, title). Register-Muster (role=tab, Pfeile, Pos1, Ende) steuert
+  „Rolle im Detail“. `fokus-daten.js` liefert dafür additiv `pruefergebnis` und `abnahmeEntscheidung`
+  aus derselben Abnahme-Antwort.
+- **Baustein Typ-Chips** `public/leitstand/typ-chip.js` (Test `typ-chip.test.mjs`): sechs Ebenen über
+  `--ebene-*` (blasse Fläche nur mit vollem Punkt, Prüfpunkt D0 dg 4), neutrale Form für Harness, Tech
+  Debt, Prozess; Text immer sichtbar.
+- **Produktübersicht** `views/dashboard.js`: vier Kopfkarten (Produktmanagement + Ziel aus der
+  Projektakte, Rollen-Kreis, Rolle im Detail mit Bekommt/Liefert „kommt“ und „In diesem Lauf“ aus der
+  Laufakte-Beobachtung, Fortschritt + Braucht dich), Kennzahlen wie F44, „Der Weg von <Feature>“
+  (Zeitleiste „kommt“), Kacheln, Arbeitsstand (Status-Kanban aus `entwicklung-daten.js` mit Filter),
+  Zuletzt umgesetzt (letztes abgenommenes Feature; Workstream-Ring und „Danach“ „kommt“; darunter die
+  letzte Ausführung), Was steckt dahinter („kommt“), Betrieb, erster Schritt. Entfallen und weiter
+  erreichbar: Deine nächsten Entscheidungen → Braucht dich/#/attention, Die Workforce gerade →
+  Live-Chip, Wer macht was → Rollen-Kreis/Rolle im Detail, Entwicklungsstand → #/roadmap, Vision →
+  #/projektakte. Feature in Arbeit: `waehleFeatureInArbeit` (laufender verknüpfter Ablauf, sonst
+  IN_ARBEIT); ohne Feature zeigt der Kreis einen laufenden Ablauf ohne Feature (Prüfpass qa 2, damit
+  die frühere „Aktuelle Rolle“ nicht verloren geht).
+- **Roadmap** `views/roadmap.js`: Register Überblick · Roadmap · Projektakte (`produktplanung-kopf.js`,
+  aria-current), Kennzahlen (Plan gegen Ist „kommt“), Baum Meilenstein → Feature (aktueller oben,
+  abgeschlossene ausgeblendet mit „Einblenden“, „Alles aufklappen“), Zeitachse/Tage/Wochen/Balken
+  „kommt“, Detailpanel mit Ziel aus der Akte, „Frag Jarvis dazu“ über `chat-dock.js`
+  `oeffneChatMitEntwurf` (befüllt, sendet nie), „Anpassen“ „kommt“; Entwicklungsstand mit Filter Alle ·
+  Features · Bugs · Harness · Tech Debt (`waehleEntwicklungsstand` additiv mit Typ und Typfilter);
+  Noch nicht eingeplant bleibt.
+- **Projektakte** `#/projektakte` (`views/projektakte.js`, `projektakte-anzeige.js`, Seitenleiste
+  markiert Roadmap über `data-nav-auch` in `router.js`): Vision aus GET …/roadmap; Für wen,
+  Führungsprinzip, Bewusst nicht (Abschnitt „Nicht das Ziel“) aus `beschreibung.md`, Arbeitsweise aus
+  `anweisungen.md`, Lage aus `lagebild.md` (Abschnitt „Aktuelle Phase“); Ziel und Erfolgskriterien
+  aus der Zielfassung nur bei eindeutiger Fundstelle, sonst „kommt“; Texte escaped als Klartext-Absätze.
+  „Wer diese Akte bekommt“: Jarvis, Router, Product Coach ja; Architekt, Advisor, Builder, Review fehlt
+  — ein Test liest `scripts/leitstand-server.mjs` (Aufrufstellen von `baueProjektkontextAnfragen`) und
+  vergleicht. Quellen mit VS-Code-Link aus dem absoluten Pfad der Route; „Änderung vorschlagen“ „kommt“.
+- **Leseroute** `GET /api/projektakte` (`scripts/leitstand/routen-projektakte.mjs`, Registrierung nach
+  GET /api/roadmap, über den Projekt-Dispatcher als `/api/projekte/<id>/projektakte`; Client
+  `api.js` `holeProjektakte`): feste Dateinamen im Kontextordner der Instanz, dazu Status von
+  `roadmap.json` und `docs/projekt/zielfassung.md`; kein Anfrageteil wird gelesen; 64 KB je Datei mit
+  `gekuerzt`; realpath-Prüfung gegen die Repo-Wurzel; Antwort je Datei `{ status: ok | fehlt | fehler,
+  pfad, absolut?, text?, gekuerzt?, grund? }` und `versionsziel { status, meilenstein, zielsatz?,
+  kriterien? }`. Versionsziel eindeutig = genau eine Zeile `**Zielsatz <Meilenstein>` (Prüfpunkt D1
+  aus §7: für M5 eindeutig). Tests `routen-projektakte.test.mjs` (Grünfall, fehlt, zu groß, außerhalb,
+  Junction, Ordner, Versionsziel, HTTP ohne wählbaren Pfad).
+- **Texte** de/en/tr/ru; nicht mehr genutzte Schlüssel der alten Übersicht entfernt.
+- **Gate-/Test-Änderungen:** keine Gate-Datei geändert. `projekt-wechsel.test.mjs` nachgezogen (Block-IDs
+  `uebersicht-ziel`/`uebersicht-fokus` entfallen, Aufrufzahlen für Aufträge und Ablauf-Nachträge, weil
+  die Übersicht jetzt Aufträge und den Ablauf des Features lädt; Roadmap-Seite lädt Workitems
+  ungefiltert) und um den Projektwechsel der Projektakte ergänzt.
+- **Nachweise** `features/F46/nachweise/d1/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste
+  Antworten, leert nur die eigenen Ordner): Matrix je Seite 1440 dunkel, 1440 hell, 390 dunkel, 200 %,
+  ru; Klicktabellen (Rollen-Register per Klick und Tastatur, Filter, Einblenden, Aufklappen, Auswahl,
+  „Frag Jarvis“ ohne Senden — ein POST bekäme 409 mit Marke und #chat-fehler erschiene, bleibt aus);
+  Zustände (Ablauf ohne Feature, Roadmap-Abruffehler, lange Texte, Projektakte-Lücken, Abruffehler,
+  Übersicht ohne Zielsatz, Escape).
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): alle drei
+  „freigegeben mit Hinweisen“, nichts blockierend. Eine Korrekturrunde, eingearbeitet: Abnahme ohne
+  Quelle bleibt offen (cr 1), Junction-Test (cr 2), Ersatzzeichen nur bei Kürzung (cr 3), Beobachtung
+  nicht im Render-Erzeuger, Nachtrag auch bei neuem Workflow-Stand, Fokus auch für Links (cr 4–6),
+  aufgeklappte Bereiche der Projektakte bleiben offen (cr 7), Aufträge der Übersicht mit Zeitlimit
+  (cr 8); Builder-Zeile in „Wer diese Akte bekommt“ (dg 2), Entwicklungsstand bei 390 px als Karten
+  ohne Spalte Priorität (dg 3), „Alle ansehen“ (dg 4), ru/tr „Feature“ übersetzt (dg 5), Worker im
+  title (dg 6), Ring unter „Zuletzt umgesetzt“ als Workstreams „kommt“ (dg 7); Zustände des
+  Versionsziels (fehlt / nicht lesbar / lädt) statt pauschal „kommt“ (qa 1), Ablauf ohne Feature
+  (qa 2), Projektwechsel-Test der Projektakte (qa 3), Nachweis liest nur die sichtbare Ansicht und
+  erkennt Senden (qa 4), „Erneut laden“ der Roadmap auf der Übersicht (qa 5), lange Texte begrenzt und
+  belegt (qa 6), „Dateien“ in „In diesem Lauf“ (qa 7), Codeblöcke (qa 8), eigener Text für fehlende
+  Vision (qa 9), Zuletzt umgesetzt über Meilensteine hinweg (qa 10), Unterzeile „Braucht dich“ (qa 11).
+  Offen als Befund: F-988 bis F-990 (cr 9 Zielfassungspfad, Verknüpfung Feature ↔ Ablauf, Reihenfolge
+  statt Abnahmedatum).
+
+### Abweichungen von abgleich-f46.md (zur Kenntnis)
+- §4.3 „Bewusst nicht“: Quelle ist `beschreibung.md` › „Nicht das Ziel“ (eindeutig, wörtlich, Quelle
+  angezeigt), nicht die Zielfassung — dort gibt es für M5 keine eindeutige Nicht-Ziel-Stelle.
+- §4.3 „Wer diese Akte bekommt“: zusätzlich Builder „fehlt“ (das Bild zeigt die Zeile mit Platzhalter;
+  der Server versorgt den Builder nicht mit den Kontextdateien).
+- §4.1 Feature in Arbeit: ohne Feature zeigt der Kreis einen laufenden Ablauf ohne Feature (Regel 7).
+- §4.1 Zuletzt umgesetzt: der Ring der Vorlage zeigt Workstreams → „kommt“; zusätzlich die letzte
+  Ausführung (Regel 7). Die Betrieb-Zeile bleibt (Regel 7).
+- §4.2 Entwicklungsstand ohne Spalte „Verantwortlich“ (keine Quelle), Priorität als „kommt“.
+- Leseroute: Kontextordner ist der `kontext_pfad` der Instanz (Default `docs/projekt/kontext`), also
+  genau der Ordner, den die Rollen bekommen; die Dateinamen sind fest.
