@@ -967,6 +967,8 @@ function beschreibeFortschritt(fortschritt) {
   const kuerze = (text) => ([...text].length > 60 ? `${[...text].slice(0, 59).join('')}…` : text)
   const ziel = zielRoh === null ? null : kuerze(zielRoh)
   const kurzPfad = zielRoh === null ? null : kuerze(zielRoh.split(/[\\/]/).filter(Boolean).slice(-2).join('/') || zielRoh)
+  // F46 D5: Befehle (Bash, PowerShell) sind seit der Live-Aktivität ein Ziel — als Befehl zeigen, nicht wie einen Pfad zerlegen.
+  if (fortschritt.werkzeug === 'Bash' || fortschritt.werkzeug === 'PowerShell') return ziel ? t('chat.fortschritt.nutzt', { werkzeug: fortschritt.werkzeug, pfad: ziel }) : t('chat.fortschritt.nutztOhne', { werkzeug: fortschritt.werkzeug })
   if (fortschritt.werkzeug === 'Read') return kurzPfad ? t('chat.fortschritt.liest', { pfad: kurzPfad }) : t('chat.fortschritt.liestDatei')
   if (fortschritt.werkzeug === 'Grep') return ziel ? t('chat.fortschritt.durchsucht', { muster: ziel }) : t('chat.fortschritt.durchsuchtDateien')
   if (fortschritt.werkzeug === 'Glob') return ziel ? t('chat.fortschritt.sucht', { muster: ziel }) : t('chat.fortschritt.suchtDateien')

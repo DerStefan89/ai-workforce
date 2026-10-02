@@ -15,7 +15,8 @@
  *   erreichbar.
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/workboard.js (renderKopf), public/leitstand/views/code.js
+ * - public/leitstand/views/workboard.js (renderKopf), public/leitstand/views/code.js, public/leitstand/views/runs.js
+ *   (F46 D5: #/runs und #/ausfuehrungen zeigen dieselbe Zeile mit „Aufträge“ aktiv)
  *
  * Wichtig: Import-sicher (kein DOM). Texte über i18n (tHtml escapt).
  */
@@ -28,7 +29,7 @@ export const ENTWICKLUNG_REGISTER = Object.freeze(['board', ...Object.keys(LISTE
 
 /**
  * HTML der Reiterzeile.
- * @param aktiv - aktives Register ('board', ein Listen-Tab oder 'code')
+ * @param aktiv - aktives Register ('board', ein Listen-Tab, 'auftraege' oder 'code')
  * @returns HTML (Inhalt von nav.tabs)
  */
 export function entwicklungsReiterHtml(aktiv) {
@@ -36,6 +37,7 @@ export function entwicklungsReiterHtml(aktiv) {
     const an = tab === aktiv
     return `<button type="button" class="tab-knopf${an ? ' active' : ''}" data-tab="${tab}" aria-pressed="${an}">${tHtml(`entwicklung.tab.${tab}`)}</button>`
   }).join('')
-  const code = aktiv === 'code' ? `<a href="#/code" class="active" aria-current="page">${tHtml('entwicklung.tab.code')}</a>` : `<a href="#/code">${tHtml('entwicklung.tab.code')}</a>`
-  return `${knoepfe}<a href="#/runs">${tHtml('entwicklung.tab.auftraege')}</a>${code}`
+  /** Ein Link-Reiter, aktiv mit aria-current. @param ziel - Hash @param name - Register @returns HTML */
+  const link = (ziel, name) => (aktiv === name ? `<a href="${ziel}" class="active" aria-current="page">${tHtml(`entwicklung.tab.${name}`)}</a>` : `<a href="${ziel}">${tHtml(`entwicklung.tab.${name}`)}</a>`)
+  return `${knoepfe}${link('#/runs', 'auftraege')}${link('#/code', 'code')}`
 }

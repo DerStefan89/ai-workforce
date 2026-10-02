@@ -12429,13 +12429,13 @@ Maßnahme: Fixpaket „Arbeitsfähigkeit“ B2/B5.
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-977** · `TECH_DEBT` · P3 · offen
+**F-977** · `TECH_DEBT` · P3 · erledigt
 Titel: Live-Fortschritt hält nur den letzten Werkzeugaufruf.
 Beschreibung: `laufAktivFortschritt` speichert je Lauf nur den zuletzt gemeldeten Werkzeugaufruf (werkzeug, ziel); ein Verlauf fehlt.
 Fundstelle: `scripts/leitstand-server.mjs` (laufAktivFortschritt).
 Auswirkung: Gering — die Live-Ansicht kann keinen Verlauf zeigen.
 Maßnahme: F46 D5: Ringpuffer der letzten 50 Aufrufe, nur im Speicher, beim D13-Reset geleert.
-Status: offen.
+Status: erledigt (F46 D5, 03.10.2026): `scripts/leitstand/lauf-aktivitaet.mjs` hält je aktivem Lauf die letzten 50 Aufrufe (Zeit, Werkzeug, Ziel gekürzt auf 300 Zeichen, Art), die Gesamtzahl und bis zu 100 berührte Dateien; neu bei jedem Laufstart, gelöscht bei jedem Laufende, laufId-geprüft, nichts auf Platte. Ausgabe als Feld `aktivitaet` in GET /api/laeufe/<laufId>; `fortschritt` bleibt.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-978** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12656,3 +12656,30 @@ Auswirkung: Gering — Inhalt bleibt per Scrollen erreichbar, wirkt aber abgesch
 Maßnahme: Unten rechts Platz für die Blase freihalten (Abstand bzw. `scroll-padding-bottom` im Hauptbereich) oder die Blase beim Scrollen verkleinern.
 Status: offen.
 Feature/Run: Entdeckt: F46 D4, Prüfpass design-guardian 11.
+
+**F-1002** · `TECH_DEBT` · P2 · erledigt
+Titel: npm run check scheitert lokal an Arbeitsspeicher (node --test ohne Parallelitätsgrenze).
+Beschreibung: `node --test` startet ohne Grenze so viele Testprozesse, wie der Rechner Kerne hat; auf Stefans Rechner brach `npm run check` deshalb wegen Arbeitsspeicher ab (F46 D4).
+Fundstelle: `package.json` (Skript „test“).
+Auswirkung: Mittel — die volle Kette lief lokal nicht durch, Freigaben verzögerten sich.
+Maßnahme: `--test-concurrency=4`.
+Status: erledigt (F46 D5, 03.10.2026): Skript „test“ = `node --test --test-concurrency=4`; kein Gate und kein Doku-Check prüft den Wortlaut.
+Feature/Run: Entdeckt: F46 D4, 03.10.2026.
+
+**F-1003** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Abbruch eines Einzellaufs hat keine Begründung — Bauauftrag und Abgleich setzen eine voraus.
+Beschreibung: Der Bauauftrag F46 D5 und `docs/design/abgleich-f46.md` §4.9 nennen „Abbrechen … (Begründung)“ als bestehenden Dialog. Tatsächlich speichert POST /api/laeufe/<laufId>/abbrechen keinen Grund, der Dialog (F44 WS-5a, G9) hat kein Begründungsfeld. Eine Pflichtbegründung gibt es nur beim Stopp eines Ablaufs (POST /api/workflows/<id>/stoppen, Entscheidungsartefakt). D5 nutzt deshalb für den Lauf eines laufenden Workflow-Schritts den bestehenden Stopp (Pflichtbegründung, „Stoppen“ leer gesperrt, bricht den Lauf ab) und lässt den Einzellauf ohne Workflow beim bestehenden Abbruch ohne Grund — keine Änderung an der Abbruch-Logik.
+Fundstelle: `scripts/leitstand-server.mjs` (POST …/abbrechen), `public/leitstand/views/lauf-detail.js` (LAUF_DIALOG_FELD.abbrechen null), `public/leitstand/views/runs.js` (abbrechenKnopf).
+Auswirkung: Mittel — ein abgebrochener Einzellauf trägt keine bezeugte Begründung; je nach Laufart gibt es zwei Abbruchwege.
+Maßnahme: Entscheiden, ob der Einzellauf-Abbruch eine Pflichtbegründung als Entscheidungsartefakt bekommt (Serveränderung, eigener Auftrag), oder die Formulierung in Abgleich und Auftrag auf „Stopp mit Begründung bei Abläufen“ korrigieren.
+Status: offen.
+Feature/Run: Entdeckt: F46 D5, Bau 03.10.2026.
+
+**F-1004** · `TECH_DEBT` · P3 · offen
+Titel: Live-Ansicht: vier kleine Restpunkte aus dem Prüfpass D5.
+Beschreibung: (a) Zeitbalken, „Abbrechen …“ und „Laufakte“ stehen unter dem Rahmen des Status-Blocks statt darin (Bild 08); der Baustein statusBlockHtml ist mit D3 geteilt. (b) Während des Prüfschritts nach dem Bau bleibt der Lauf „aktiv“ (laufAktiv bis nach der Prüfung, F-652) — „Gerade“ zeigt minutenlang den letzten Werkzeugaufruf ohne Hinweis „Prüfschritt läuft“. (c) Der Schlüssel eines Aufrufs (Zeit, Werkzeug, Ziel) ist bei zwei gleichen Aufrufen in derselben Millisekunde nicht eindeutig (zwei Zeilen gewählt). (d) Der Render-Nachweis belegt den Entwurf in der Chat-Eingabe nur per Bild; render-nachweis.mjs liest den value eines Textfelds nicht.
+Fundstelle: `public/leitstand/eintrag-bausteine.js` (statusBlockHtml), `public/leitstand/views/live-anzeige.js` (renderStatusBlock, renderGerade), `public/leitstand/live-daten.js` (eintragSchluessel), `scripts/render-nachweis.mjs` (texte).
+Auswirkung: Gering.
+Maßnahme: (a) statusBlockHtml um einen Fußbereich erweitern; (b) die Prüfphase als Feld neben `aktivitaet` melden; (c) laufende Nummer je Aufruf im Ringpuffer; (d) Option „wert“ in den Beobachtungen.
+Status: offen.
+Feature/Run: Entdeckt: F46 D5, Prüfpass (design-guardian 9, qa 10, qa 12, qa 15), 03.10.2026.

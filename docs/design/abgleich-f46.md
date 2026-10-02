@@ -357,6 +357,35 @@ Hauptaufgabe: zuschauen; bei Bedarf mit Begründung abbrechen.
 ### 4.10 Aufträge — `#/runs` · D5
 Reiter „Aufträge“ der Entwicklung: Register Aufträge · Ausführungen (`#/ausfuehrungen`) und „+ Auftrag anlegen“ (→ `#/projekt`). U. Löst F-964.
 
+Umsetzung D5 (Abweichungen zu §4.9/§4.10, begründet):
+- „Abbrechen … (Begründung)“: Der Lauf-Abbruch speichert heute keinen Grund. Läuft der Lauf in einem
+  Workflow-Schritt, öffnet „Abbrechen …“ den bestehenden Stopp des Ablaufs mit Pflichtbegründung („Stoppen“
+  gesperrt, solange leer), der den Lauf abbricht; ein Einzellauf behält den bestehenden Abbruch ohne Grund
+  (keine Änderung an der Abbruch-Logik, F-1003). Der Knopf steht im Status-Block, nicht zusätzlich in der Notiz.
+- Aktivität und Berührte Dateien gibt es nur während des Laufs (Ringpuffer nur im Speicher, mit dem Laufende
+  gelöscht). Der beendete Lauf zeigt dort einen Hinweis bzw. den Verweis auf den Code-Reiter; „Mehr dazu“
+  entfällt nach dem Lauf; „Aufrufe“ heißt dann „nur während des Laufs gezählt“.
+- Werkzeugziele sind die Pfade, wie Claude Code sie meldet (meist absolut); sie werden nicht auf den
+  Repo-Pfad gekürzt. „In VS Code öffnen“ nur bei absolutem Pfad; „Ganze Änderung“ ist „Änderungen im
+  Code-Reiter“ (#/code zeigt den Arbeitsbaum, nicht den Lauf).
+- Kopf: „Modell“ zeigt das Modell des Workflow-Schritts; ohne Schritt „Modell laut Startvorlage“.
+  „Zum Eintrag“ nur, wenn der Auftrag eine workitem_referenz trägt.
+- Ablaufleiste: „Plan“ fasst Architekt und Advisor zusammen, „Freigabe“ ist die Freigabe des Bau-Schritts
+  (AUTOMATISCH → „entfällt“), „Prüfschritt“ kommt aus dem Prüfergebnis; ohne Workflow ein Hinweis statt
+  Stufen. Output je Schritt: Status, Rolle · Worker und Link auf den Lauf (Ergebnistexte der Schritte gibt
+  es nicht als Feld).
+- Zuletzt: Ergebnis und Dauer echt; „Geändert/Geprüft/Erfolgreich/Blocker“ als ein Feld „Bericht“ „kommt“
+  (B2). Als Nächstes: nächste offene Entscheidung (Reihenfolge wie #/attention), sonst startbereiter
+  Schritt mit dem Automaten-Grund, sonst „Auftrag anlegen“ — kein „danach/dann“ (keine Quelle).
+- „Frag Jarvis dazu“ füllt Frage plus Bezug (laufId, Aufruf) in die Chat-Eingabe; gesendet wird nichts.
+- Die Seitenleiste markiert auf #/live und #/runs/<laufId> wie bisher „Ausführungen“ (unter „Entwicklung“).
+- Status-Block: Zeitbalken, „Abbrechen …“ und „Laufakte“ stehen unter dem Rahmen statt darin — der Baustein
+  statusBlockHtml ist mit D3 geteilt (F-1004).
+- Ist ein Lauf aktiv, der hier keine Seite hat (anderes Projekt oder noch nicht in der Laufliste), zeigt #/live
+  „Die Workforce wartet“ mit einem Hinweis statt eines Startangebots (ein Lauf zur Zeit, D13).
+- #/runs: Die Überschrift nennt das aktive Register (Aufträge bzw. Ausführungen); darüber die Reiterzeile der
+  Entwicklung mit „Aufträge“ aktiv.
+
 ### 4.11 Auftrag anlegen — `#/projekt` (04-auftrag-anlegen--Main) · D4
 Zweck: einen klaren Auftrag formulieren und sehen, ob alles für den Start bereit ist.
 Hauptaufgabe: Auftrag schreiben und „Ablauf vorbereiten“.

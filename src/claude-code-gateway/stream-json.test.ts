@@ -82,6 +82,26 @@ test('leseWerkzeugaufrufe zieht Werkzeugname und Pfad-Parameter aus einer assist
   assert.deepStrictEqual(leseWerkzeugaufrufe(grep), [{ werkzeug: 'Grep', ziel: 'F-5' }])
 })
 
+test('leseWerkzeugaufrufe nennt den Befehl (Bash), den Skill und den Subagenten als Ziel (F46 D5)', () => {
+  const zeile = {
+    type: 'assistant',
+    message: {
+      content: [
+        { type: 'tool_use', name: 'Bash', input: { command: 'npm run check', description: 'Prüfung' } },
+        { type: 'tool_use', name: 'Skill', input: { skill: 'frontend-design' } },
+        { type: 'tool_use', name: 'Task', input: { subagent_type: 'qa', prompt: 'lang' } },
+        { type: 'tool_use', name: 'Edit', input: { file_path: 'a.js', command: 'nicht gemeint' } },
+      ],
+    },
+  }
+  assert.deepStrictEqual(leseWerkzeugaufrufe(zeile), [
+    { werkzeug: 'Bash', ziel: 'npm run check' },
+    { werkzeug: 'Skill', ziel: 'frontend-design' },
+    { werkzeug: 'Task', ziel: 'qa' },
+    { werkzeug: 'Edit', ziel: 'a.js' },
+  ])
+})
+
 test('leseWerkzeugaufrufe liefert [] für Nicht-assistant-Zeilen und unerwartete Formen, wirft nie', () => {
   assert.deepStrictEqual(leseWerkzeugaufrufe(JSON.parse(RESULT)), [])
   assert.deepStrictEqual(leseWerkzeugaufrufe({ type: 'assistant' }), [])

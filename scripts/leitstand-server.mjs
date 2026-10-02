@@ -513,6 +513,7 @@ import { baueNeuenProjektEintrag, kopiereBaseline, kopiereSkelett, loeseZielordn
 import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
+import { erzeugeAktivitaetsSpeicher, kuerze, ZIEL_MAX_ZEICHEN } from './leitstand/lauf-aktivitaet.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
@@ -4588,6 +4589,8 @@ export function erzeugeRequestHandler(optionen = {}) {
   let laufAktivAbortController = null
   /** F40 WS-1: letzter live gemeldeter Werkzeugaufruf des aktiven Laufs ({ werkzeug, ziel }) oder null — rein In-Memory (kein Checkpoint pro stream-json-Zeile, D4), genau einer wegen D13, zusammen mit laufAktiv zurückgesetzt. Ausgeliefert über GET /api/laeufe/<laufId> (Feld fortschritt), gelesen vom 500ms-Chat-Poll. */
   let laufAktivFortschritt = null
+  /** F46 D5 (löst F-977): Ringpuffer der letzten 50 Werkzeugaufrufe des aktiven Laufs (scripts/leitstand/lauf-aktivitaet.mjs) — nur Speicher, je Laufstart neu (starte), mit jedem Reset von laufAktivFortschritt gelöscht (beende), laufId-geprüft wie dieser. Ausgeliefert über GET /api/laeufe/<laufId> (Feld aktivitaet). */
+  const laufAktivitaet = erzeugeAktivitaetsSpeicher()
   /** F43: true, solange POST /api/projekt-aufruf den startbefehl dieses Projekts ausführt — sperrt einen zweiten Aufruf und jeden Laufstart dieser Instanz (pruefeGlobaleLaufSperre). Rein In-Memory. */
   let aufrufAktiv = false
   /** F43: Ergebnis des letzten Aufrufs dieser Instanz oder null — flüchtig (Begründung src/projekt-aufruf/index.ts). */
@@ -4695,7 +4698,9 @@ export function erzeugeRequestHandler(optionen = {}) {
       // verhindert, dass ein spät eintreffender Rückruf eines alten Laufs den Folgelauf überschreibt.
       beiWerkzeugaufruf: (aufruf) => {
         if (laufAktivLaufId !== laufId) return
-        laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: aufruf.ziel }
+        // F46 D5: seit command/skill/subagent_type Ziele sind, kann ein Ziel ein mehrere KB langer Befehl sein — gekürzt wie im Ringpuffer.
+        laufAktivFortschritt = { werkzeug: aufruf.werkzeug, ziel: kuerze(aufruf.ziel, ZIEL_MAX_ZEICHEN) }
+        laufAktivitaet.melde(laufId, aufruf)
       },
     }
 
@@ -4721,6 +4726,8 @@ export function erzeugeRequestHandler(optionen = {}) {
     // verweigereStart bereits eine reale VERWEIGERT-Wirkungsmarke, BEVOR starteGateway
     // ok:false zurückgibt — die laufId bleibt danach absichtlich belegt (F1s Hash-Kette ist
     // append-only, kein Überschreiben eines persistierten Artefakts, ARCHITECTURE.md §7).
+    // F46 D5: der Ringpuffer beginnt mit jedem Laufstart leer (D13: genau ein aktiver Lauf, ein Puffer).
+    laufAktivitaet.starte(laufId)
     fuehreAufgabeDurchFn(laufId, profilReferenz, eingaben, laufOptionen)
       .then(async (ergebnis) => {
         // D13-UEBERGABE-OHNE-FENSTER: START (F15 WS-2c, AK6b). F-652 (löst state/findings.md
@@ -4735,6 +4742,7 @@ export function erzeugeRequestHandler(optionen = {}) {
           laufAktivLaufId = null
           laufAktivAbortController = null
           laufAktivFortschritt = null
+          laufAktivitaet.beende(laufId)
           // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
           globalerLaufZustand.aktiv = false
           globalerLaufZustand.laufId = null
@@ -4839,6 +4847,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktivLaufId = null
         laufAktivAbortController = null
         laufAktivFortschritt = null
+        laufAktivitaet.beende(laufId)
         // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
         globalerLaufZustand.aktiv = false
         globalerLaufZustand.laufId = null
@@ -4851,6 +4860,7 @@ export function erzeugeRequestHandler(optionen = {}) {
         laufAktivLaufId = null
         laufAktivAbortController = null
         laufAktivFortschritt = null
+        laufAktivitaet.beende(laufId)
         // F25 WS-1 (AK5, D13): geteilter Zustand ebenso zurückgesetzt (siehe Aufbau oben).
         globalerLaufZustand.aktiv = false
         globalerLaufZustand.laufId = null
@@ -5837,6 +5847,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         aktiv: laufAktiv && laufId === laufAktivLaufId,
         // F40 WS-1: letzter live gemeldeter Werkzeugaufruf, nur solange DIESER Lauf aktiv ist — sonst null.
         fortschritt: laufAktiv && laufId === laufAktivLaufId ? laufAktivFortschritt : null,
+        // F46 D5 (löst F-977): die letzten 50 Aufrufe, Gesamtzahl und berührte Dateien — nur für den aktiven Lauf, sonst null.
+        aktivitaet: laufAktiv && laufId === laufAktivLaufId ? laufAktivitaet.lese(laufId) : null,
         verweigertDaten: baueVerweigertDatenProjektion(laufId, laufStatus, basisVerzeichnis),
         // F-986 (b): Grund eines nie gestarteten Laufs (lesend aus der Kette) und die Lauf-Zeitgrenze der
         // geladenen Startvorlage — der Chat hört damit auf zu warten statt ohne Ende abzufragen.

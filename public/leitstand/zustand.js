@@ -14,10 +14,10 @@
  *
  * Detail-Auffrischer (abonniereDetailAuffrischer(fn)) laufen NACH den
  * Abnehmern, bei JEDEM Tick — kein zweiter Timer. Das Workflow-Detail wird so
- * weiterhin gepollt, solange eines offen ist (views/workflows.js); das
- * Lauf-Detail bleibt bewusst UNGEPOLLT (TECH_DEBT F-363, unverändert aus
- * WS-1 — es hängt hier an nichts, weil views/runs.js keinen
- * Detail-Auffrischer registriert).
+ * weiterhin gepollt, solange eines offen ist (views/workflows.js). Seit F46 D5
+ * registriert auch views/runs.js einen Auffrischer: er lädt das Lauf-Detail
+ * nur, solange der angezeigte Lauf aktiv ist (Live-Ansicht) — ein beendeter
+ * Lauf bleibt ungepollt (TECH_DEBT F-363 dafür unverändert).
  *
  * pollJetzt() löst denselben Tick außerhalb des Zeitplans aus — für die
  * sofortige Rückmeldung nach einer Bedienung (F20 WS-1 Muster

@@ -1,0 +1,663 @@
+{
+  "url": "http://127.0.0.1:4199/#/runs/lauf-d5-fertig-3a9b",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "light",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-d5-fertig-3a9b",
+            "laufStatus": {
+              "status": "ABGESCHLOSSEN",
+              "ergebnis": "ERFOLGREICH"
+            },
+            "ergebnis": "ERFOLGREICH",
+            "zeitpunkt": "2026-10-02T23:25:32.169Z",
+            "auftragsbezug": {
+              "auftragId": "auftrag-d5",
+              "titel": "F46 D5 · Live-Ansicht"
+            },
+            "anzahlCheckpoints": 3,
+            "kettenintegritaet": true,
+            "kenntnisgenommen": false
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "wf-d5",
+            "auftragId": "auftrag-d5",
+            "ziel": "F46 D5 · Live-Ansicht",
+            "status": "LAEUFT",
+            "aktiverSchrittId": "schritt-2-ausfuehrung",
+            "grund": null,
+            "naechster": {
+              "art": "starte",
+              "schrittId": "schritt-3-review",
+              "grund": "Review ist startbereit (automatisch)."
+            },
+            "schritteAnzahl": 3,
+            "versionSequenz": 4,
+            "abnahme": {
+              "offen": false,
+              "status": "nicht_vorhanden"
+            }
+          },
+          {
+            "workflowId": "wf-d6",
+            "auftragId": "auftrag-d6",
+            "ziel": "F46 D6 · Workforce nach Design 01",
+            "status": "WARTET_FREIGABE",
+            "aktiverSchrittId": "s1",
+            "grund": "Schritt s1 wartet auf Freigabe (ZWINGEND).",
+            "naechster": {
+              "art": "haltFreigabe",
+              "schrittId": "s1",
+              "grund": "Schritt s1 wartet auf Freigabe (ZWINGEND)."
+            },
+            "schritteAnzahl": 2,
+            "versionSequenz": 1,
+            "abnahme": {
+              "offen": false,
+              "status": "nicht_vorhanden"
+            }
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": "npm run check",
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "auftragId": "auftrag-d5",
+          "titel": "F46 D5 · Live-Ansicht",
+          "workitem_referenz": "workitem:feature:F46"
+        }
+      ]
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/startvorlage/werkzeugsaetze",
+      "methode": "GET",
+      "status": 200,
+      "json": [
+        {
+          "name": "lesend",
+          "modus": "DEKLARIERT",
+          "erlaubte_werkzeuge": [
+            "Read"
+          ]
+        }
+      ]
+    },
+    {
+      "muster": "**/api/workflows/wf-d5",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "wf-d5",
+        "versionSequenz": 6,
+        "daten": {
+          "workflow_id": "wf-d5",
+          "auftrag_id": "auftrag-d5",
+          "ziel": "F46 D5 · Live-Ansicht",
+          "status": "LAEUFT",
+          "schritte": [
+            {
+              "schritt_id": "schritt-1-architekt",
+              "rolle": "architekt",
+              "werkzeugsatz": "lesend",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "-",
+              "zeitgrenze_ms": 1800000,
+              "nachfolger": null,
+              "status": "ERFOLGREICH",
+              "lauf_id": "lauf-d5-plan-11aa"
+            },
+            {
+              "schritt_id": "schritt-2-ausfuehrung",
+              "rolle": "ausfuehrung",
+              "werkzeugsatz": "schreibend",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "-",
+              "zeitgrenze_ms": 1800000,
+              "nachfolger": null,
+              "status": "ERFOLGREICH",
+              "lauf_id": "lauf-d5-fertig-3a9b"
+            },
+            {
+              "schritt_id": "schritt-3-review",
+              "rolle": "code-reviewer",
+              "werkzeugsatz": "lesend",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "-",
+              "zeitgrenze_ms": 1800000,
+              "nachfolger": null,
+              "status": "OFFEN",
+              "lauf_id": null
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": null,
+        "pruefergebnis": {
+          "status": "ok",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/wf-d5/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowStatus": "LAEUFT",
+        "freigabeHalt": null,
+        "pruefergebnis": null,
+        "entscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/laeufe/lauf-d5-live-7c1e",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "lauf-d5-live-7c1e",
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T23:13:32.169Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            },
+            "lineage": null
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-02T23:13:32.169Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "wirkungsmarke": null,
+            "lineage": {
+              "beschreibung": "Kontextpaket für den Bau registriert",
+              "artefaktId": "kontextpaket-2"
+            }
+          }
+        ],
+        "laufStatus": {
+          "status": "KLAERUNG_ERFORDERLICH",
+          "grund": "RUN_PREPARED ohne Terminalartefakt",
+          "blockerId": "b-1",
+          "aufloesungsbedingung": "Terminalmarke",
+          "resumeZiel": "lauf",
+          "evidenz": {
+            "offeneRunPreparedSequenzen": [
+              1
+            ]
+          }
+        },
+        "aktiv": true,
+        "fortschritt": {
+          "werkzeug": "Edit",
+          "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\i18n\\de.js"
+        },
+        "aktivitaet": {
+          "eintraege": [
+            {
+              "zeit": "2026-10-02T23:31:20.169Z",
+              "werkzeug": "Edit",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\i18n\\de.js",
+              "art": "aendert"
+            },
+            {
+              "zeit": "2026-10-02T23:30:32.169Z",
+              "werkzeug": "Edit",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\views\\live.js",
+              "art": "aendert"
+            },
+            {
+              "zeit": "2026-10-02T23:29:32.169Z",
+              "werkzeug": "Bash",
+              "ziel": "npm run check",
+              "art": "befehl"
+            },
+            {
+              "zeit": "2026-10-02T23:27:32.169Z",
+              "werkzeug": "Skill",
+              "ziel": "frontend-design",
+              "art": "faehigkeit"
+            },
+            {
+              "zeit": "2026-10-02T23:25:32.169Z",
+              "werkzeug": "Write",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\views\\live-anzeige.js",
+              "art": "aendert"
+            },
+            {
+              "zeit": "2026-10-02T23:23:32.169Z",
+              "werkzeug": "Grep",
+              "ziel": "laufAktivFortschritt",
+              "art": "liest"
+            },
+            {
+              "zeit": "2026-10-02T23:22:32.169Z",
+              "werkzeug": "Task",
+              "ziel": "code-reviewer",
+              "art": "faehigkeit"
+            },
+            {
+              "zeit": "2026-10-02T23:19:32.169Z",
+              "werkzeug": "Read",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\docs\\design\\abgleich-f46.md",
+              "art": "liest"
+            },
+            {
+              "zeit": "2026-10-02T23:16:32.169Z",
+              "werkzeug": "Read",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\features\\F46\\feature.md",
+              "art": "liest"
+            },
+            {
+              "zeit": "2026-10-02T23:13:32.169Z",
+              "werkzeug": "Read",
+              "ziel": "C:\\Users\\stefa\\Projekte\\ai-workforce\\CLAUDE.md",
+              "art": "liest"
+            }
+          ],
+          "anzahlGesamt": 37,
+          "grenze": 50,
+          "beruehrteDateien": [
+            "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\views\\live-anzeige.js",
+            "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\views\\live.js",
+            "C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\i18n\\de.js"
+          ],
+          "beruehrteGekappt": false
+        },
+        "verweigertDaten": null,
+        "nichtGestartet": null,
+        "startvorlageZeitgrenzeMs": 1800000,
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "pfad": "CLAUDE.md"
+            },
+            {
+              "pfad": "features/F46/feature.md"
+            },
+            {
+              "pfad": "docs/design/abgleich-f46.md"
+            },
+            {
+              "pfad": "public/leitstand/views/runs.js"
+            }
+          ],
+          "ausgeschlossen": []
+        },
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "auftrag-d5",
+          "titel": "F46 D5 · Live-Ansicht",
+          "auftragstext": "Live-Ansicht nach Bild 08 bauen."
+        },
+        "laufakte": {
+          "status": "nicht_vorhanden"
+        },
+        "rohstrom": {
+          "status": "laufakte_fehlt"
+        },
+        "scoutErgebnis": null
+      }
+    },
+    {
+      "muster": "**/api/laeufe/lauf-d5-fertig-3a9b",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laufId": "lauf-d5-fertig-3a9b",
+        "checkpoints": [
+          {
+            "sequenz": 1,
+            "zeitstempel": "2026-10-02T23:01:32.169Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "run_prepared"
+            },
+            "lineage": null
+          },
+          {
+            "sequenz": 2,
+            "zeitstempel": "2026-10-02T23:01:32.169Z",
+            "gueltig": true,
+            "typ": "lineage/artefakt_version",
+            "wirkungsmarke": null,
+            "lineage": {
+              "beschreibung": "Kontextpaket für den Bau registriert",
+              "artefaktId": "kontextpaket-2"
+            }
+          },
+          {
+            "sequenz": 3,
+            "zeitstempel": "2026-10-02T23:25:32.169Z",
+            "gueltig": true,
+            "typ": "wirkungsmarke",
+            "wirkungsmarke": {
+              "art": "terminal",
+              "ergebnis": "ERFOLGREICH"
+            },
+            "lineage": null
+          }
+        ],
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "ERFOLGREICH",
+          "terminalSequenz": 3
+        },
+        "aktiv": false,
+        "fortschritt": null,
+        "aktivitaet": null,
+        "verweigertDaten": null,
+        "nichtGestartet": null,
+        "startvorlageZeitgrenzeMs": 1800000,
+        "kontextpaket": {
+          "status": "ok",
+          "rolle": "ausfuehrung",
+          "elemente": [
+            {
+              "pfad": "CLAUDE.md"
+            },
+            {
+              "pfad": "features/F46/feature.md"
+            },
+            {
+              "pfad": "docs/design/abgleich-f46.md"
+            },
+            {
+              "pfad": "public/leitstand/views/runs.js"
+            }
+          ],
+          "ausgeschlossen": []
+        },
+        "auftrag": {
+          "status": "ok",
+          "auftragId": "auftrag-d5",
+          "titel": "F46 D5 · Live-Ansicht",
+          "auftragstext": "Live-Ansicht nach Bild 08 bauen."
+        },
+        "laufakte": {
+          "status": "ok",
+          "worker": "claude-code",
+          "modellDeklariert": "claude-sonnet-5",
+          "modellBeobachtet": "claude-sonnet-5",
+          "beobachtungsbasisVollstaendig": true,
+          "arbeitsverzeichnisPfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+          "beobachtung": {
+            "init_skills": [
+              "frontend-design"
+            ],
+            "init_agents": [
+              "code-reviewer",
+              "qa"
+            ],
+            "init_mcp_server": [],
+            "skill_aufrufe": [
+              "frontend-design"
+            ],
+            "subagent_aufrufe": [
+              "code-reviewer"
+            ],
+            "mcp_aufrufe": []
+          }
+        },
+        "rohstrom": {
+          "status": "ok",
+          "exitCode": 0,
+          "startfehler": null,
+          "stdoutLaenge": 48211,
+          "stderrLaenge": 0,
+          "ergebnisobjekt": {
+            "status": "ok",
+            "permissionDenials": {
+              "anzahl": 0,
+              "toolNamen": []
+            }
+          }
+        },
+        "scoutErgebnis": null
+      }
+    },
+    {
+      "muster": "**/api/laeufe/lauf-d5-kaputt-0f00",
+      "methode": "GET",
+      "status": 500,
+      "json": {
+        "grund": "Kette nicht lesbar: checkpoints/0003.json ist kein gültiges JSON"
+      }
+    },
+    {
+      "muster": "**/api/laeufe**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/entscheidungen",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Nav aktiv",
+        "selector": "#shell-nav [aria-current=\"page\"]"
+      },
+      {
+        "name": "Live-Chip Ziel",
+        "selector": "#kopf-live-chip",
+        "attribut": "href"
+      },
+      {
+        "name": "Live-Chip",
+        "selector": "#kopf-live-chip",
+        "attribut": "title"
+      },
+      {
+        "name": "Eyebrow",
+        "selector": "#lauf-detail-eyebrow"
+      },
+      {
+        "name": "Titel",
+        "selector": "#lauf-detail:not([hidden]) #lauf-detail-titel, #live-wartet:not([hidden]) #live-wartet-titel"
+      },
+      {
+        "name": "Gerade",
+        "selector": "#live-gerade:not([hidden])"
+      },
+      {
+        "name": "Filter aktiv",
+        "selector": "#live-aktivitaet [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Gewählter Aufruf",
+        "selector": "#live-aktivitaet .live-zeile[aria-pressed=\"true\"] .live-ziel"
+      },
+      {
+        "name": "Mehr dazu: Ziel",
+        "selector": "#live-mehr .live-mehr-kopf .live-ziel"
+      },
+      {
+        "name": "Abbrechen",
+        "selector": "#live-status .lauf-aktion",
+        "attribut": "data-aktion"
+      },
+      {
+        "name": "Dialog: Stoppen gesperrt",
+        "selector": "#lauf-dialog[open] [data-aktion=\"stopp\"]",
+        "attribut": "disabled"
+      },
+      {
+        "name": "Chat-Eingabe",
+        "selector": "#chat-eingabe",
+        "attribut": "value"
+      },
+      {
+        "name": "Reiter aktiv (#/runs)",
+        "selector": "#runs-entwicklung-tabs [aria-current=\"page\"]"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "#runs-register [aria-current=\"page\"]"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      },
+      {
+        "name": "<b> aus Daten (muss fehlen)",
+        "selector": "#lauf-detail b, #live-wartet b"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Beendeter Lauf",
+      "warteAufSelector": {
+        "selector": "#lauf-timeline .timeline",
+        "timeoutMs": 8000
+      },
+      "screenshot": "l1440-live-beendet.webp"
+    }
+  ]
+}

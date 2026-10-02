@@ -1,0 +1,28 @@
+[
+  {
+    "label": "#/live mit laufendem Lauf",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<b> aus Daten (muss fehlen)": false,
+    "Ansicht": "runs",
+    "data-theme": "dark",
+    "lang": "ru",
+    "Nav aktiv": "Запуски",
+    "Live-Chip Ziel": "#/live",
+    "Live-Chip": "Workforce работает · Реализация · F46 D5 · Live-Ansicht",
+    "Eyebrow": "Live · Workforce работает",
+    "Titel": "F46 D5 · Live-Ansicht",
+    "Gerade": "Сейчас: изменяет C:\\Users\\stefa\\Projekte\\ai-workforce\\public\\leitstand\\i18n\\de.js",
+    "Filter aktiv": "Все",
+    "Gewählter Aufruf": "(fehlt)",
+    "Mehr dazu: Ziel": "(fehlt)",
+    "Abbrechen": "stopp-oeffnen",
+    "Dialog: Stoppen gesperrt": "(fehlt)",
+    "Chat-Eingabe": "null",
+    "Reiter aktiv (#/runs)": "(fehlt)",
+    "Register aktiv": "(fehlt)",
+    "Fokus (id)": "lauf-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

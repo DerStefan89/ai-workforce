@@ -7,7 +7,9 @@
  * Erfolg schließt ihn und lädt Aggregat und Detail neu; eine späte Antwort zu einem inzwischen anderen
  * Lauf oder Projekt wird verworfen (F-860); ein geänderter Stand (Aktualisieren, Kenntnisnahme im
  * Aggregat) schließt einen offenen Dialog; der Abbruch schickt keinen Grund; die Liste wird nur bei
- * geändertem HTML geschrieben.
+ * geändertem HTML geschrieben. F46 D5: der Abbruch steht im Status-Block (#live-status); gehört der Lauf zu
+ * einem laufenden Workflow-Schritt, ist es der Stopp mit Pflichtbegründung („Stoppen“ gesperrt, solange sie
+ * leer ist; POST …/workflows/<id>/stoppen).
  *
  * Die echten Module laufen gegen ein minimales Schein-DOM und ein aufzeichnendes fetch — kein Browser,
  * kein Server (Muster views/workflows-dialog.test.mjs).
@@ -119,6 +121,9 @@ const detailVon = (laufId, felder = {}) => ({
 const details = new Map()
 /** zustand.laeufe — die Tests schalten kenntnisgenommen um. */
 let aggregatLaeufe = []
+/** zustand.workflows und GET /api/workflows/<id> (F46 D5, Zuordnung Lauf → Schritt). */
+let aggregatWorkflows = []
+const workflowDetails = new Map()
 /** Zurückgehaltene POST-Antworten: null = sofort, sonst Liste der Freigeber. */
 let postHalt = null
 let postStatus = 200
@@ -137,8 +142,11 @@ globalThis.fetch = (url, optionen = {}) => {
   }
   if (pfad.endsWith('/zustand')) {
     zustandAbrufe += 1
-    return Promise.resolve({ ok: true, status: 200, json: async () => ({ laeufe: aggregatLaeufe, startfehler: [], workflows: [], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }) })
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({ laeufe: aggregatLaeufe, startfehler: [], workflows: aggregatWorkflows, fehler: [], aktiverLauf: { aktiv: false, laufId: null } }) })
   }
+  const workflow = pfad.match(/\/workflows\/([^/?]+)$/)
+  if (workflow && workflow[1] === 'wf-kaputt') return Promise.resolve({ ok: false, status: 500, json: async () => ({ grund: 'kaputt' }) })
+  if (workflow && workflowDetails.has(workflow[1])) return Promise.resolve({ ok: true, status: 200, json: async () => workflowDetails.get(workflow[1]) })
   const treffer = pfad.match(/\/laeufe\/([^/?]+)$/)
   if (treffer) {
     const laufId = decodeURIComponent(treffer[1])
@@ -173,6 +181,10 @@ const dialogMeldung = () => document.getElementById('lauf-dialog-meldung')
 /** Klick auf eine Aktion der Notiz (Delegation über closest). @param aktion - data-aktion */
 function klickeNotiz(aktion) {
   document.getElementById('lauf-notiz').handler.click({ target: { closest: (s) => (s === '.lauf-aktion' ? { dataset: { aktion }, disabled: false } : null) } })
+}
+/** Klick auf eine Aktion des Status-Blocks (F46 D5: dort steht der Abbruch). @param aktion - data-aktion */
+function klickeStatus(aktion) {
+  document.getElementById('live-status').handler.click({ target: { closest: (s) => (s === '.lauf-aktion' ? { dataset: { aktion }, disabled: false } : null) } })
 }
 /** Klick auf die Hauptaktion im Dialog. @param aktion - data-aktion */
 function klickeDialog(aktion) {
@@ -320,10 +332,11 @@ test('Geänderter Stand schließt einen offenen Dialog: über „Aktualisieren�
 
 test('Lauf abbrechen (G9): Bestätigung ohne Grundfeld, POST …/abbrechen ohne Körper, danach Meldung', async () => {
   await oeffneLauf('l-3', detailVon('l-3', { aktiv: true, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'RUN_PREPARED ohne Terminalartefakt', blockerId: 'b', evidenz: { offeneRunPreparedSequenzen: [1] } } }))
-  assert.match(document.getElementById('lauf-notiz').innerHTML, /data-aktion="abbrechen-oeffnen"/)
+  assert.match(document.getElementById('live-status').innerHTML, /data-aktion="abbrechen-oeffnen" aria-haspopup="dialog"/)
+  assert.doesNotMatch(document.getElementById('lauf-notiz').innerHTML, /abbrechen-oeffnen/, 'der Abbruch steht nur einmal, im Status-Block')
   klickeNotiz('kenntnisnahme-oeffnen')
   assert.equal(dialog.open, false, 'keine Kenntnisnahme, solange der Lauf läuft (F-828)')
-  klickeNotiz('abbrechen-oeffnen')
+  klickeStatus('abbrechen-oeffnen')
   assert.equal(dialog.open, true)
   assert.doesNotMatch(dialog.innerHTML, /<textarea/)
   posts.length = 0
@@ -351,13 +364,40 @@ test('Liste: der Poll schreibt #laeufe nur bei geändertem HTML', async () => {
 
 test('Abbruch angefordert: solange der Lauf aktiv bleibt, steht der Knopf gesperrt da, der Dialog öffnet nicht erneut', async () => {
   // Fortsetzung des vorigen Abbruch-Tests: das Detail wurde nach dem 200 neu geladen und ist weiter aktiv.
-  assert.match(document.getElementById('lauf-notiz').innerHTML, /data-aktion="abbrechen-oeffnen" disabled>Abbruch angefordert</)
-  klickeNotiz('abbrechen-oeffnen')
+  assert.match(document.getElementById('live-status').innerHTML, /data-aktion="abbrechen-oeffnen" disabled>Abbruch angefordert</)
+  klickeStatus('abbrechen-oeffnen')
   assert.equal(dialog.open, false)
   details.set('l-3', detailVon('l-3', { aktiv: false, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } }))
   klickeNotiz('aktualisieren')
   await warte()
-  assert.doesNotMatch(document.getElementById('lauf-notiz').innerHTML, /Abbruch angefordert/, 'nach dem Ende verschwindet die Marke')
+  assert.doesNotMatch(document.getElementById('live-status').innerHTML, /Abbruch angefordert/, 'nach dem Ende verschwindet die Marke')
+  assert.doesNotMatch(document.getElementById('live-status').innerHTML, /abbrechen-oeffnen/, 'beendet: kein Abbruch')
+})
+
+test('F46 D5: Lauf eines laufenden Workflow-Schritts — Stopp mit Pflichtbegründung, leer gesperrt, POST …/stoppen', async () => {
+  aggregatWorkflows = [{ workflowId: 'wf-1', auftragId: 'a-1', status: 'LAEUFT', versionSequenz: 3 }]
+  workflowDetails.set('wf-1', { workflowId: 'wf-1', versionSequenz: 3, daten: { schritte: [{ schritt_id: 's-bau', rolle: 'ausfuehrung', worker: 'claude-code', status: 'LAEUFT', lauf_id: 'l-5', freigabe: 'ZWINGEND', zeitgrenze_ms: 1800000 }] }, pruefergebnis: { status: 'noch_nicht_gelaufen' } })
+  await pollJetzt()
+  await oeffneLauf('l-5', detailVon('l-5', { aktiv: true, auftrag: { status: 'ok', auftragId: 'a-1', titel: 'Live' }, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'RUN_PREPARED ohne Terminalartefakt', blockerId: 'b', evidenz: { offeneRunPreparedSequenzen: [1] } } }))
+  await warte()
+  assert.match(document.getElementById('live-status').innerHTML, /data-aktion="stopp-oeffnen"/)
+  klickeStatus('stopp-oeffnen')
+  assert.equal(dialog.open, true)
+  assert.match(dialog.innerHTML, /<textarea id="lauf-stopp-begruendung"/)
+  assert.match(dialog.innerHTML, /data-aktion="stopp" disabled>/, 'leer: Stoppen gesperrt')
+  posts.length = 0
+  klickeDialog('stopp')
+  await warte()
+  assert.equal(posts.length, 0, 'ohne Begründung kein POST')
+  assert.match(dialogMeldung().textContent, /Begründung ist Pflicht/)
+  document.getElementById('lauf-stopp-begruendung').value = 'Falscher Ordner'
+  klickeDialog('stopp')
+  await warte()
+  assert.equal(posts.length, 1)
+  assert.match(posts[0].pfad, /\/workflows\/wf-1\/stoppen$/)
+  assert.deepEqual(posts[0].koerper, { begruendung: 'Falscher Ordner' })
+  assert.equal(dialog.open, false)
+  aggregatWorkflows = []
 })
 
 test('Lauf A → B → A während einer Anfrage: die alte Antwort von A wird verworfen (Generation)', async () => {
@@ -440,4 +480,45 @@ test('F44 WS-5b (Prüfpunkt WS-5a): der Fehlerzustand des Details bietet „Erne
   assert.equal(detailAbrufe.length, abrufe + 1)
   assert.equal(detailAbrufe.at(-1), 'l-9')
   assert.equal(fehler.hidden, true, 'nach erfolgreichem Laden verschwindet der Fehler')
+})
+
+test('F46 D5 (Prüfpass): Workflow-Detail nicht ladbar → Zuordnung offen, Abbruch gesperrt statt Abbruch ohne Begründung', async () => {
+  aggregatWorkflows = [{ workflowId: 'wf-kaputt', auftragId: 'a-9', status: 'LAEUFT', versionSequenz: 1 }]
+  await pollJetzt()
+  await oeffneLauf('l-6', detailVon('l-6', { aktiv: true, auftrag: { status: 'ok', auftragId: 'a-9', titel: 'Live' }, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'x', blockerId: 'b', evidenz: { offeneRunPreparedSequenzen: [1] } } }))
+  await warte()
+  const status = document.getElementById('live-status').innerHTML
+  assert.match(status, /data-aktion="abbrechen-oeffnen" disabled>Abbrechen …</, 'solange die Zuordnung offen ist, kein Abbruch ohne Begründung')
+  aggregatWorkflows = []
+})
+
+test('F46 D5 (Prüfpass): aktiver Lauf — der Auffrischer schreibt Unverändertes nicht neu, ein Ladefehler lässt den Stand stehen', async () => {
+  const detail = detailVon('l-7', { aktiv: true, laufStatus: { status: 'KLAERUNG_ERFORDERLICH', grund: 'x', blockerId: 'b', evidenz: { offeneRunPreparedSequenzen: [1] } } })
+  await oeffneLauf('l-7', detail)
+  let schreibungen = 0
+  let html = document.getElementById('lauf-herkunft-inhalt').innerHTML
+  Object.defineProperty(document.getElementById('lauf-herkunft-inhalt'), 'innerHTML', {
+    configurable: true,
+    get: () => html,
+    set: (wert) => {
+      schreibungen += 1
+      html = wert
+    },
+  })
+  const abrufe = detailAbrufe.length
+  await pollJetzt()
+  await warte()
+  assert.ok(detailAbrufe.length > abrufe, 'der Auffrischer lädt das aktive Detail nach')
+  assert.equal(schreibungen, 0, 'gleicher Inhalt → kein Neuschreiben (Fokus, Auswahl, aufgeklappte Bereiche bleiben)')
+  details.delete('l-7')
+  await pollJetzt()
+  await warte()
+  assert.equal(document.getElementById('lauf-detail-fehler').hidden, true, 'kein Fehlerzustand der ganzen Seite')
+  assert.notEqual(document.getElementById('live-status').innerHTML, '', 'Status-Block und Abbruch bleiben')
+  assert.match(meldung().textContent, /ließ sich nicht laden/)
+  details.set('l-7', detail)
+  await pollJetzt()
+  await warte()
+  assert.equal(meldung().hidden, true, 'nach dem nächsten erfolgreichen Abruf verschwindet die Meldung')
+  delete document.getElementById('lauf-herkunft-inhalt').innerHTML
 })

@@ -5,7 +5,8 @@
  * d_ausfuehrung_failed; Abgleich F-725 G1–G9, F7): die Register „Aufträge“ (`#/runs`, Liste aus
  * views/workflows.js) und „Ausführungen“ (`#/ausfuehrungen`: Laufliste und Startfehler aus dem
  * Zustands-Aggregat, ein Poll in zustand.js) sowie das Lauf-Detail `#/runs/<laufId>` als ganze Seite
- * (GET /api/laeufe/<laufId>, nur beim Öffnen und über „Aktualisieren“ — NICHT gepollt, F-363). Hier
+ * (GET /api/laeufe/<laufId> beim Öffnen und über „Aktualisieren“; seit F46 D5 solange der Lauf aktiv ist
+ * auch über den Detail-Auffrischer am Poll-Tick — ein beendeter Lauf bleibt ungepollt, F-363). Hier
  * liegen Laden, Dialogsteuerung (#lauf-dialog) und alle POSTs der Lauf-Bedienung: Kenntnisnahme (G6),
  * Klärung auflösen (G8, art 'terminal'), Rückfrage beantworten (F7, art 'antwort'), Lauf abbrechen
  * (G9) und „Fortsetzung vorbereiten“ (G7, Wiederaufnahme über views/projekt.js). Gerendert wird im
@@ -20,6 +21,15 @@
  * - public/leitstand/views/workflows.js (Navigation zu `#/runs/<laufId>` aus der Schritttabelle)
  * - public/leitstand/views/runs-dialog.test.mjs (Dialogsteuerung)
  *
+ * F46 D5 (docs/design/abgleich-f46.md §4.9, §4.10): das Lauf-Detail ist die Live-Ansicht (Live-Teile in
+ * views/live.js). `#/live` zeigt den aktiven Lauf auf derselben Seite oder den Zustand „Die Workforce
+ * wartet“ (#live-wartet) und folgt dem aktiven Lauf über den Poll. Solange der angezeigte Lauf aktiv
+ * ist, lädt ein Detail-Auffrischer am vorhandenen Poll-Tick (zustand.js, kein zweiter Timer) das Detail
+ * nach — ein beendeter Lauf bleibt wie bisher ungepollt (F-363). Der Abbruch steht im Status-Block:
+ * gehört der Lauf zu einem laufenden Workflow-Schritt, ist es der bestehende Stopp des Ablaufs mit
+ * Pflichtbegründung (POST /api/workflows/<id>/stoppen), sonst der bestehende Lauf-Abbruch. Über den
+ * Registern steht die Reiterzeile der Entwicklung mit „Aufträge“ aktiv.
+ *
  * Wichtig: Liste und Startfehler werden bei jedem Poll-Tick nur bei geändertem HTML neu geschrieben
  * (sonst ginge der Tastaturfokus einer Zeile verloren); die Bedienung hängt per Delegation an den
  * Containern. Der Dialog wird beim Öffnen aus dem aktuellen Detail gebaut, ist während einer Anfrage
@@ -27,12 +37,14 @@
  * anderen Lauf oder Projekt wird verworfen (F-860).
  */
 
-import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage } from '../api.js'
+import { abbrichLauf, holeLaufDetail, sendeEntscheidungAnfrage, stoppeWorkflow } from '../api.js'
+import { entwicklungsReiterHtml } from '../entwicklung-reiter.js'
 import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { ersetzeListeMitFokus, escapeHtml } from '../render.js'
 import { ersetzeRoute, navigiere, registriere } from '../router.js'
-import { abonniere, pollJetzt } from '../zustand.js'
+import { abonniere, abonniereDetailAuffrischer, pollJetzt } from '../zustand.js'
+import { abbruchArt, initLive, letztesAggregat, raeumeLive, workflowZuLauf, zeichneLive, zeigeWartet } from './live.js'
 import {
   darfFortsetzen,
   ermittleLaufLage,
@@ -48,12 +60,13 @@ import {
   renderWasPassiertIst,
 } from './lauf-detail.js'
 import { wendeWiederaufnahmeAn, zeigeVorbelegungsFehler } from './projekt.js'
+import { oeffneEntwicklungsRegister } from './workboard.js'
 
-/** Muster der Lauf-Detailroute. */
-const DETAIL_MUSTER = /^#\/runs\/[^/]+$/
+/** Muster der Lauf-Detailroute (F46 D5: #/live zeigt dieselbe Seite für den aktiven Lauf). */
+const DETAIL_MUSTER = /^#\/(runs\/[^/]+|live)$/
 
-/** Alle Routen der View `runs` (Register, Lauf- und Workflow-Detail). */
-const RUNS_VIEW_MUSTER = /^#\/(runs|ausfuehrungen|workflows)(\/[^/]+)?$/
+/** Alle Routen der View `runs` (Register, Lauf- und Workflow-Detail, Live). */
+const RUNS_VIEW_MUSTER = /^#\/(runs|ausfuehrungen|workflows|live)(\/[^/]+)?$/
 
 // ─── Register und Liste (G1) ────────────────────────────────────────────────
 
@@ -69,6 +82,11 @@ let letzteLaeufe = null
  * @param register - 'auftraege' oder 'ausfuehrungen'
  */
 function zeigeRegister(register) {
+  document.getElementById('runs-entwicklung-tabs').innerHTML = entwicklungsReiterHtml('auftraege')
+  // F46 D5: die Überschrift nennt das aktive Register (Wo bin ich?); data-i18n mit, damit ein Sprachwechsel sie behält.
+  const titel = document.getElementById('runs-titel')
+  titel.dataset.i18n = register === 'auftraege' ? 'entwicklung.tab.auftraege' : 'ablauf.runs.titel'
+  titel.textContent = t(titel.dataset.i18n)
   document.getElementById('workflows-abschnitt').hidden = register !== 'auftraege'
   document.getElementById('ausfuehrungen-abschnitt').hidden = register !== 'ausfuehrungen'
   for (const reiter of document.querySelectorAll('#runs-register a[data-register]')) {
@@ -137,6 +155,43 @@ function zeigeLaufSeite(offen) {
 }
 
 /**
+ * F46 D5: Zustand „Die Workforce wartet“ (#/live ohne aktiven Lauf) zeigen bzw. verbergen.
+ * @param offen - true: zeigen
+ * @param zustand - Aggregat für Zuletzt/Als Nächstes; null zeigt „lädt“ (Projektwechsel: das letzte Aggregat gehört zum alten Projekt)
+ */
+function zeigeWartetSeite(offen, zustand = letztesAggregat()) {
+  document.getElementById('live-wartet').hidden = !offen
+  document.getElementById('view-runs').classList.toggle('live-wartet-offen', offen)
+  if (offen) zeigeWartet(zustand)
+}
+
+/** Die Container der Live-Teile (views/live.js), geleert beim Öffnen und im Fehlerzustand. */
+const LIVE_CONTAINER = ['live-chips', 'live-gerade', 'live-status', 'live-ablauf', 'live-aktivitaet', 'live-mehr', 'live-dateien', 'live-bremsen', 'live-faehigkeiten', 'live-output', 'live-paket']
+
+/** Leert die Live-Teile (vor dem Laden und im Fehlerzustand — nichts Altes bleibt bedienbar). */
+function leereLiveTeile() {
+  for (const id of LIVE_CONTAINER) document.getElementById(id).innerHTML = ''
+  document.getElementById('live-gerade').hidden = true
+  raeumeLive()
+}
+
+/**
+ * Der Abbruch-Knopf im Status-Block (F46 D5) — an aktiv und den Abbruchstand gebunden wie bisher in
+ * der Notiz. Läuft der Lauf in einem Workflow-Schritt, öffnet er den Stopp mit Pflichtbegründung;
+ * solange die Zuordnung lädt, ist er gesperrt.
+ * @param laufId - Kennung @param aktiv - detail.aktiv @param angefordert - Abbruch schon angefordert
+ * @returns HTML ('' ohne aktiven Lauf)
+ */
+function abbrechenKnopf(laufId, aktiv, angefordert) {
+  if (!aktiv) return ''
+  if (angefordert) return `<button type="button" class="button danger lauf-aktion" data-aktion="abbrechen-oeffnen" disabled>${tHtml('lauf.aktion.abbruchAngefordert')}</button>`
+  const art = abbruchArt(laufId)
+  if (art === 'offen') return `<button type="button" class="button danger lauf-aktion" data-aktion="abbrechen-oeffnen" disabled>${tHtml('live.aktion.abbrechen')}</button>`
+  const aktion = art === 'stopp' ? 'stopp-oeffnen' : 'abbrechen-oeffnen'
+  return `<button type="button" class="button danger lauf-aktion" data-aktion="${aktion}" aria-haspopup="dialog">${tHtml('live.aktion.abbrechen')}</button>`
+}
+
+/**
  * Meldung unter der Notiz (Text, nie HTML), keine Live-Region — wo nötig, bekommt sie danach den Fokus.
  * @param text - Text oder null zum Ausblenden
  * @param art - 'fehler' (Vorgabe) oder 'erfolg'
@@ -160,6 +215,8 @@ function zeigeLaufNichtLadbar(text) {
   }
   document.getElementById('lauf-detail-beschreibung').textContent = ''
   document.getElementById('lauf-aufklapp').hidden = true
+  leereLiveTeile()
+  detailHtml.clear()
   // Das leere Gerüst (Überschrift, Spalte „Einordnung“) verschwindet über eine Klasse, nicht über hidden (F-622).
   document.getElementById('lauf-detail').classList.add('lauf-nicht-ladbar')
   aktuellesDetail = null
@@ -192,11 +249,11 @@ function zeichneLaufDetail(laufId, detail, geladenAm) {
   document.getElementById('lauf-detail').classList.remove('lauf-nicht-ladbar')
   document.getElementById('lauf-detail-titel').textContent = laufTitel(detail.auftrag?.status === 'ok' ? detail.auftrag.titel : titelAusListe(laufId), laufId)
   document.getElementById('lauf-detail-beschreibung').textContent = t(`lauf.beschreibung.${lage}`)
-  document.getElementById('lauf-detail-status').innerHTML = laufStatusBadge(detail.laufStatus, detail.aktiv)
+  setzeDetailHtml('lauf-detail-status', laufStatusBadge(detail.laufStatus, detail.aktiv))
 
   const notiz = document.getElementById('lauf-notiz')
   const fokusAktion = notiz.contains(document.activeElement) ? document.activeElement?.dataset?.aktion : undefined
-  notiz.innerHTML = renderLaufNotiz(lage, {
+  const notizNeu = setzeDetailHtml('lauf-notiz', renderLaufNotiz(lage, {
     laufStatus: detail.laufStatus,
     verweigertDaten: detail.verweigertDaten ?? null,
     rohstrom: detail.rohstrom,
@@ -205,16 +262,19 @@ function zeichneLaufDetail(laufId, detail, geladenAm) {
     geladenAm,
     aktiv,
     abbruchAngefordert: aktuellesDetail.abbruchAngefordert,
-  })
-  if (fokusAktion !== undefined) (notiz.querySelector(`.lauf-aktion[data-aktion="${fokusAktion}"]`) ?? document.getElementById('lauf-detail-titel')).focus()
+    // F46 D5: der Abbruch steht im Status-Block (zeichneLive), nicht ein zweites Mal in der Notiz.
+    ohneAbbrechen: true,
+  }))
+  if (notizNeu && fokusAktion !== undefined) (notiz.querySelector(`.lauf-aktion[data-aktion="${fokusAktion}"]`) ?? document.getElementById('lauf-detail-titel')).focus()
+  zeichneLive(laufId, detail, { abbrechenKnopf: () => abbrechenKnopf(laufId, aktiv, aktuellesDetail?.laufId === laufId && aktuellesDetail.abbruchAngefordert) })
 
-  document.getElementById('lauf-timeline').innerHTML = renderWasPassiertIst(detail.checkpoints, ls.status === 'ABGESCHLOSSEN' && ls.ergebnis === 'ERFOLGREICH')
-  document.getElementById('lauf-einordnung').innerHTML = renderEinordnung(detail)
+  setzeDetailHtml('lauf-timeline', renderWasPassiertIst(detail.checkpoints, ls.status === 'ABGESCHLOSSEN' && ls.ergebnis === 'ERFOLGREICH'))
+  setzeDetailHtml('lauf-einordnung', renderEinordnung(detail))
   const inhalte = renderAufklappInhalte(detail, letzteLaeufe?.find((l) => l.laufId === laufId) ?? null)
-  document.getElementById('lauf-auftrag-inhalt').innerHTML = inhalte.auftrag
-  document.getElementById('lauf-herkunft-inhalt').innerHTML = inhalte.herkunft
-  document.getElementById('lauf-protokoll-inhalt').innerHTML = inhalte.protokoll
-  document.getElementById('lauf-faehigkeiten-inhalt').innerHTML = inhalte.faehigkeiten
+  setzeDetailHtml('lauf-auftrag-inhalt', inhalte.auftrag)
+  setzeDetailHtml('lauf-herkunft-inhalt', inhalte.herkunft)
+  setzeDetailHtml('lauf-protokoll-inhalt', inhalte.protokoll)
+  setzeDetailHtml('lauf-faehigkeiten-inhalt', inhalte.faehigkeiten)
   document.getElementById('lauf-aufklapp').hidden = false
 
   if (offenerDialog !== null && laufendeDialogBedienung === null && (offenerDialog.laufId !== laufId || offenerDialog.kennzeichen !== kennzeichen)) {
@@ -230,13 +290,17 @@ function titelAusListe(laufId) {
 }
 
 /**
- * Lädt GET /api/laeufe/<laufId> und zeichnet die Seite — beim Öffnen der Route und über
- * „Aktualisieren“, nicht im Poll (F-363). Nur der jüngste Aufruf schreibt; eine Antwort nach einem
- * Lauf- oder Projektwechsel wird verworfen (F-860).
+ * Lädt GET /api/laeufe/<laufId> und zeichnet die Seite — beim Öffnen der Route, über „Aktualisieren“ und
+ * (F46 D5) über den Detail-Auffrischer, solange der Lauf aktiv ist; ein beendeter Lauf wird nicht gepollt
+ * (F-363). Nur der jüngste Aufruf schreibt; eine Antwort nach einem Lauf- oder Projektwechsel wird
+ * verworfen (F-860).
  * @param laufId - Lauf-Kennung
  * @param oeffnen - true beim Öffnen (Ladezustand, Fokus auf den Titel), false beim Neuladen
+ * @param art - { fokussieren: false — beim Öffnen weder Fokus noch Scrollen (Wechsel durch den Poll auf #/live,
+ *   der Fokus liegt anderswo), still: true — Nachladen im Hintergrund: ein Fehler lässt den letzten Stand
+ *   stehen und meldet sich ohne Fokuswechsel, der nächste Tick versucht es erneut }
  */
-export async function ladeLaufDetail(laufId, oeffnen = true) {
+export async function ladeLaufDetail(laufId, oeffnen = true, { fokussieren = true, still = false } = {}) {
   if (gewaehlteLaufId !== null && gewaehlteLaufId !== laufId) raeumeLaufZustand()
   gewaehlteLaufId = laufId
   ladeZaehler += 1
@@ -254,9 +318,18 @@ export async function ladeLaufDetail(laufId, oeffnen = true) {
     for (const id of ['lauf-notiz', 'lauf-einordnung', 'lauf-detail-status']) document.getElementById(id).innerHTML = ''
     document.getElementById('lauf-detail-beschreibung').textContent = ''
     document.getElementById('lauf-aufklapp').hidden = true
+    leereLiveTeile()
+    detailHtml.clear()
     zeigeMeldung(null)
-    titel.focus({ preventScroll: true })
-    document.getElementById('lauf-detail').scrollIntoView({ block: 'start' })
+    if (fokussieren) {
+      titel.focus({ preventScroll: true })
+      document.getElementById('lauf-detail').scrollIntoView({ block: 'start' })
+    }
+  }
+  /** Fehler beim Nachladen im Hintergrund: letzter Stand bleibt, Meldung ohne Fokus (keine Live-Region). @param text - Grund */
+  const stillerFehler = (text) => {
+    auffrischFehler = true
+    zeigeMeldung(t('live.auffrischen.fehler', { grund: text }))
   }
 
   try {
@@ -265,19 +338,46 @@ export async function ladeLaufDetail(laufId, oeffnen = true) {
     const koerper = await antwort.json().catch(() => ({}))
     if (istUeberholt()) return
     if (!antwort.ok) {
-      zeigeLaufNichtLadbar(`${antwort.status}: ${koerper.grund ?? t('lauf.fehler.unbekannt')}`)
+      const text = `${antwort.status}: ${koerper.grund ?? t('lauf.fehler.unbekannt')}`
+      if (still && aktuellesDetail?.laufId === laufId) stillerFehler(text)
+      else zeigeLaufNichtLadbar(text)
       return
+    }
+    if (still && auffrischFehler) {
+      auffrischFehler = false
+      zeigeMeldung(null)
     }
     zeichneLaufDetail(laufId, koerper, new Date().toISOString())
   } catch (fehler) {
     if (istUeberholt()) return
-    zeigeLaufNichtLadbar(t('lauf.fehler.anfrage', { meldung: fehler.message }))
+    if (still && aktuellesDetail?.laufId === laufId) stillerFehler(fehler.message)
+    else zeigeLaufNichtLadbar(t('lauf.fehler.anfrage', { meldung: fehler.message }))
   }
+}
+
+/** true, solange eine Meldung „neuer Stand nicht ladbar“ des Auffrischers steht. */
+let auffrischFehler = false
+
+/** Zuletzt geschriebenes HTML der Bestandsteile (F46 D5): der Auffrischer schreibt nur bei Änderung — sonst gingen alle 2 s Fokus, Auswahl und aufgeklappte Bereiche verloren. */
+const detailHtml = new Map()
+
+/**
+ * Schreibt HTML in einen Bestandsteil des Details, nur bei Änderung.
+ * @param id - Element-ID @param html - HTML
+ * @returns true, wenn geschrieben wurde
+ */
+function setzeDetailHtml(id, html) {
+  if (detailHtml.get(id) === html) return false
+  document.getElementById(id).innerHTML = html
+  detailHtml.set(id, html)
+  return true
 }
 
 /** Räumt Dialog, Meldung und Detailstand auf — beim Lauf-, Routen- und Projektwechsel. */
 function raeumeLaufZustand() {
   laufGeneration += 1
+  detailHtml.clear()
+  auffrischFehler = false
   schliesseDialog()
   // Eine laufende Anfrage des alten Laufs sperrt den neuen nicht (ihre Antwort wird ohnehin verworfen).
   laufendeDialogBedienung = null
@@ -325,16 +425,18 @@ function zeigeDialogMeldung(text) {
 /**
  * Öffnet den Dialog (nativ, showModal) mit Inhalt aus dem aktuellen Detail; der Fokus liegt auf dem
  * Pflichtfeld, beim Abbruch auf „Zurück“ (die harmlose Wahl).
- * @param art - 'kenntnisnahme', 'terminal', 'antwort' oder 'abbrechen'
+ * @param art - 'kenntnisnahme', 'terminal', 'antwort', 'abbrechen' oder 'stopp' (F46 D5)
  */
 function oeffneDialog(art) {
   // Solange eine Dialog-Bedienung läuft, öffnet kein neuer Dialog (sonst wäre ein zweiter POST möglich).
   if (aktuellesDetail === null || laufendeDialogBedienung !== null) return
-  const inhalt = renderLaufDialog(art, aktuellesDetail)
+  // F46 D5: der Stopp braucht den Workflow des laufenden Schritts (views/live.js, Zuordnung).
+  const workflowId = art === 'stopp' ? (workflowZuLauf(aktuellesDetail.laufId)?.workflow?.workflowId ?? null) : null
+  const inhalt = renderLaufDialog(art, { ...aktuellesDetail, workflowId })
   if (inhalt === null) return
   const dialog = document.getElementById('lauf-dialog')
   dialog.innerHTML = inhalt
-  offenerDialog = { art, laufId: aktuellesDetail.laufId, kennzeichen: aktuellesDetail.kennzeichen }
+  offenerDialog = { art, laufId: aktuellesDetail.laufId, kennzeichen: aktuellesDetail.kennzeichen, workflowId }
   if (!dialog.open) dialog.showModal()
   const feld = LAUF_DIALOG_FELD[art] === null ? null : document.getElementById(LAUF_DIALOG_FELD[art])
   ;(feld ?? dialog.querySelector('.lauf-dialog-abbrechen.button'))?.focus()
@@ -353,16 +455,18 @@ function schliesseDialog() {
  * der Server, bei der Antwort etwas strenger (der Server prüft dort nur die Länge).
  * @param art - Dialogart
  * @param laufId - Kennung
- * @returns Körper für POST /api/entscheidungen, {} für den Abbruch, oder null bei fehlender Pflichtangabe
+ * @returns Körper für POST /api/entscheidungen, {} für den Abbruch, { begruendung } für den Stopp, oder null bei fehlender Pflichtangabe
  */
 function baueKoerper(art, laufId) {
   if (art === 'abbrechen') return {}
   const feld = document.getElementById(LAUF_DIALOG_FELD[art])
   if (feld.value.trim().length === 0) {
-    zeigeDialogMeldung(t(art === 'antwort' ? 'lauf.dialog.antwort.pflicht' : 'lauf.dialog.pflicht'))
+    const pflicht = { antwort: 'lauf.dialog.antwort.pflicht', stopp: 'ablauf.dialog.stopp.pflicht' }[art] ?? 'lauf.dialog.pflicht'
+    zeigeDialogMeldung(t(pflicht))
     feld.focus()
     return null
   }
+  if (art === 'stopp') return { begruendung: feld.value }
   if (art === 'kenntnisnahme') return { art: 'kenntnisnahme', laufId, begruendung: feld.value }
   if (art === 'terminal') return { art: 'terminal', laufId, ergebnis: document.getElementById('entscheidung-terminal-ergebnis').value, begruendung: feld.value }
   return { art: 'antwort', laufId, antwort: feld.value, einstufung: document.getElementById('entscheidung-antwort-einstufung').value }
@@ -393,7 +497,10 @@ async function sendeDialogBedienung(art) {
   const unserDialogOffen = () => offenerDialog === dialogBeimStart && dialogOffen()
   let erfolg = false
   try {
-    const antwort = art === 'abbrechen' ? await abbrichLauf(laufId) : await sendeEntscheidungAnfrage(koerper)
+    let antwort
+    if (art === 'abbrechen') antwort = await abbrichLauf(laufId)
+    else if (art === 'stopp') antwort = await stoppeWorkflow(dialogBeimStart.workflowId, koerper)
+    else antwort = await sendeEntscheidungAnfrage(koerper)
     const inhalt = await antwort.json().catch(() => ({}))
     if (!giltNoch()) {
       console.warn(`[runs] Antwort zu '${laufId}' verworfen — Lauf oder Projekt inzwischen gewechselt (HTTP ${antwort.status}).`)
@@ -401,9 +508,10 @@ async function sendeDialogBedienung(art) {
     }
     if (antwort.ok) {
       erfolg = true
-      if (art === 'abbrechen') abbruchAngefordert.add(laufId)
+      if (art === 'abbrechen' || art === 'stopp') abbruchAngefordert.add(laufId)
       if (unserDialogOffen()) schliesseDialog()
-      zeigeMeldung(t(art === 'abbrechen' ? 'lauf.meldung.abbruch' : 'lauf.meldung.gespeichert'), 'erfolg')
+      const meldung = { abbrechen: 'lauf.meldung.abbruch', stopp: 'ablauf.meldung.gestoppt' }[art] ?? 'lauf.meldung.gespeichert'
+      zeigeMeldung(t(meldung), 'erfolg')
     } else if (unserDialogOffen()) {
       zeigeDialogMeldung(`${antwort.status}: ${inhalt.grund ?? t('lauf.fehler.unbekannt')}`)
     } else {
@@ -422,6 +530,7 @@ async function sendeDialogBedienung(art) {
     // Nur die eigene Sperre lösen — nach einem Laufwechsel kann schon eine neue laufen.
     if (laufendeDialogBedienung === meine) laufendeDialogBedienung = null
     for (const el of gesperrt) el.disabled = false
+    sperreStoppOhneBegruendung()
   }
   // Das Aggregat zuerst (kenntnisgenommen), dann das Detail; die Meldung behält danach den Fokus.
   await pollJetzt()
@@ -429,6 +538,14 @@ async function sendeDialogBedienung(art) {
     await ladeLaufDetail(laufId, false)
     if (giltNoch()) document.getElementById('lauf-meldung').focus()
   }
+}
+
+/** F46 D5: „Stoppen“ bleibt gesperrt, solange die Pflichtbegründung leer ist (Nachweis „Begründung leer → gesperrt“). */
+function sperreStoppOhneBegruendung() {
+  const feld = document.getElementById('lauf-stopp-begruendung')
+  const knopf = document.querySelector('#lauf-dialog .lauf-dialog-aktion[data-aktion="stopp"]')
+  if (feld === null || knopf === null || laufendeDialogBedienung !== null) return
+  knopf.disabled = feld.value.trim().length === 0
 }
 
 // ─── Fortsetzung vorbereiten (G7, Wiederaufnahme) ───────────────────────────
@@ -484,7 +601,8 @@ function initBedienung() {
     ereignis.preventDefault()
     navigiere(`#/runs/${encodeURIComponent(zeile.dataset.laufId)}`)
   })
-  document.getElementById('lauf-notiz').addEventListener('click', (ereignis) => {
+  /** Knöpfe der Notiz und (F46 D5) des Status-Blocks — dieselben Aktionen. @param ereignis - Klick */
+  const beiAktion = (ereignis) => {
     const knopf = ereignis.target.closest('.lauf-aktion')
     if (!knopf || gewaehlteLaufId === null) return
     const aktion = knopf.dataset.aktion
@@ -496,12 +614,20 @@ function initBedienung() {
     } else if (aktion.endsWith('-oeffnen')) {
       oeffneDialog(aktion.slice(0, -'-oeffnen'.length))
     }
+  }
+  document.getElementById('lauf-notiz').addEventListener('click', beiAktion)
+  document.getElementById('live-status').addEventListener('click', beiAktion)
+  // F46 D5: Reiterzeile der Entwicklung auf #/runs — die Register-Knöpfe öffnen #/workboard mit diesem Register.
+  document.getElementById('runs-entwicklung-tabs').addEventListener('click', (ereignis) => {
+    const reiter = ereignis.target.closest('[data-tab]')
+    if (reiter !== null) oeffneEntwicklungsRegister(reiter.dataset.tab)
   })
   document.getElementById('lauf-detail-fehler').addEventListener('click', (ereignis) => {
     if (!ereignis.target.closest('[data-aktion="erneut-laden"]') || gewaehlteLaufId === null) return
     void ladeLaufDetail(gewaehlteLaufId, true)
   })
   const dialog = document.getElementById('lauf-dialog')
+  dialog.addEventListener('input', sperreStoppOhneBegruendung)
   dialog.addEventListener('click', (ereignis) => {
     if (ereignis.target.closest('.lauf-dialog-abbrechen')) {
       if (laufendeDialogBedienung === null) schliesseDialog()
@@ -531,7 +657,68 @@ function verwirfNachProjektWechsel() {
   letzteStartfehlerHtml = null
   letzteLaeufe = null
   listeZuletzt = false
-  if (DETAIL_MUSTER.test(location.hash)) ersetzeRoute('#/ausfuehrungen')
+  // F46 D5: #/live bleibt — der nächste Poll-Tick zeigt den aktiven Lauf des neuen Projekts oder „wartet“.
+  if (location.hash === '#/live') zeigeWartetSeite(true, null)
+  else if (DETAIL_MUSTER.test(location.hash)) ersetzeRoute('#/ausfuehrungen')
+}
+
+// ─── #/live (F46 D5) ────────────────────────────────────────────────────────
+
+/**
+ * Der Lauf, den #/live zeigt: der aktive laut Poll, aber nur, wenn er in der Laufliste dieses Projekts
+ * steht (aktiverLauf gilt projektübergreifend, D13; ein Lauf eines anderen Projekts hat hier keine Seite).
+ * @param zustand - Poll-Aggregat oder null
+ * @returns laufId oder null
+ */
+function liveLaufId(zustand) {
+  const aktiver = zustand?.aktiverLauf
+  if (aktiver?.aktiv !== true || typeof aktiver.laufId !== 'string') return null
+  return Array.isArray(zustand.laeufe) && zustand.laeufe.some((l) => l?.laufId === aktiver.laufId) ? aktiver.laufId : null
+}
+
+/**
+ * Stellt #/live auf den aktuellen Stand: aktiver Lauf → seine Seite (live), sonst „Die Workforce wartet“.
+ * Ein bereits angezeigter Lauf wird nicht neu geöffnet (der Detail-Auffrischer hält ihn aktuell).
+ * @param zustand - Poll-Aggregat oder null (vor dem ersten Tick)
+ * @param betreten - true beim Betreten der Route (Fokus auf den Titel)
+ */
+function wendeLiveAn(zustand, betreten = false) {
+  const laufId = liveLaufId(zustand)
+  // Ein offener Dialog, eine laufende Bedienung oder eine stehende Meldung (Ergebnis eines Abbruchs/Stopps)
+  // hält die angezeigte Seite fest — der Wechsel kommt mit dem nächsten Tick danach bzw. beim nächsten Betreten.
+  if (!betreten && gewaehlteLaufId !== null && gewaehlteLaufId !== laufId && (offenerDialog !== null || laufendeDialogBedienung !== null || !document.getElementById('lauf-meldung').hidden)) return
+  // Fokus nur dann auf die neue Überschrift, wenn er auf dieser Seite (oder nirgends) lag — wer gerade im
+  // Chat-Dock tippt, behält seinen Fokus.
+  const aktiv = document.activeElement
+  const fokussieren = betreten || aktiv === null || aktiv === document.body || document.getElementById('view-runs').contains(aktiv)
+  if (laufId !== null) {
+    if (gewaehlteLaufId === laufId && !betreten) return
+    zeigeWartetSeite(false)
+    detailAusListe = false
+    void ladeLaufDetail(laufId, true, { fokussieren })
+    return
+  }
+  if (gewaehlteLaufId !== null) schliesseLaufDetail()
+  const warVerborgen = document.getElementById('live-wartet').hidden
+  zeigeWartetSeite(true)
+  if ((betreten || warVerborgen) && fokussieren) document.getElementById('live-wartet-titel').focus({ preventScroll: true })
+}
+
+/** true, solange ein Nachladen des Details durch den Auffrischer läuft (genau eines). */
+let auffrischungLaeuft = false
+
+/**
+ * Detail-Auffrischer am vorhandenen Poll-Tick (zustand.js): lädt das Detail nach, solange der
+ * angezeigte Lauf aktiv ist — nicht für beendete Läufe (F-363 bleibt dort), nicht während einer
+ * Dialog-Bedienung, nie zwei Abrufe gleichzeitig.
+ */
+function frischeAktivenLaufAuf() {
+  if (gewaehlteLaufId === null || aktuellesDetail === null || aktuellesDetail.aktiv !== true) return
+  if (auffrischungLaeuft || laufendeDialogBedienung !== null) return
+  auffrischungLaeuft = true
+  void ladeLaufDetail(gewaehlteLaufId, false, { still: true }).finally(() => {
+    auffrischungLaeuft = false
+  })
 }
 
 /** Initialisiert die Runs-View einmalig beim Bootstrap: Bedienung, Routen, Abonnement des Zustands-Aggregats (kein eigener Poll-Timer, zustand.js), Projektwechsel. */
@@ -540,11 +727,13 @@ export function initRunsView() {
 
   registriere(/^#\/runs$/, 'runs', () => {
     schliesseLaufDetail()
+    zeigeWartetSeite(false)
     zeigeRegister('auftraege')
   })
   registriere(/^#\/ausfuehrungen$/, 'runs', () => {
     const vorher = gewaehlteLaufId
     schliesseLaufDetail()
+    zeigeWartetSeite(false)
     zeigeRegister('ausfuehrungen')
     listeZuletzt = true
     if (vorher !== null) fokussiereLaufZeile(vorher)
@@ -552,10 +741,16 @@ export function initRunsView() {
   registriere(/^#\/runs\/([^/]+)$/, 'runs', (laufId) => {
     if (gewaehlteLaufId !== laufId) detailAusListe = listeZuletzt
     listeZuletzt = false
+    zeigeWartetSeite(false)
     void ladeLaufDetail(laufId)
+  })
+  registriere(/^#\/live$/, 'runs', () => {
+    listeZuletzt = false
+    wendeLiveAn(letztesAggregat(), true)
   })
   registriere(/^#\/workflows\/([^/]+)$/, 'runs', () => {
     schliesseLaufDetail()
+    zeigeWartetSeite(false)
   })
   // Jede andere Route beendet „zuletzt die Liste“; verlässt der Hash das Detail, schließt der Dialog.
   // Verlässt der Hash die Runs-View ganz (Übersicht, Projekt …), gilt das Detail als geschlossen: späte
@@ -569,4 +764,9 @@ export function initRunsView() {
 
   abonniere(renderAusfuehrungen)
   abonniereProjektWechsel(verwirfNachProjektWechsel)
+  // F46 D5: #/live folgt dem aktiven Lauf über den Poll; der Auffrischer hält einen aktiven Lauf aktuell.
+  initLive((zustand) => {
+    if (location.hash === '#/live') wendeLiveAn(zustand)
+  })
+  abonniereDetailAuffrischer(frischeAktivenLaufAuf)
 }

@@ -442,6 +442,10 @@
               <a class="button primary" href="#/projekt"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 4v16M4 12h16" /></svg><span data-i18n="ablauf.runs.auftragAnlegen">Auftrag anlegen</span></a>
             </div>
 
+            <!-- F46 D5 (abgleich-f46.md §2, §4.10): dieselbe Reiterzeile wie #/workboard und #/code, „Aufträge“
+                 aktiv (entwicklung-reiter.js, views/runs.js) — Rückweg und Ort auf einen Blick. -->
+            <nav id="runs-entwicklung-tabs" class="tabs" aria-label="Bereiche der Entwicklung" data-i18n-aria-label="entwicklung.register"></nav>
+
             <!-- F44 WS-5a (Vorlage V10 d_arbeit_verlauf, Abgleich F-725 F0, G1): zwei echte Register als
                  Links. „Aufträge“ = #/runs, „Ausführungen“ = #/ausfuehrungen (nicht #/runs/…, das
                  Muster #/runs/<laufId> würde mit einer laufId „ausfuehrungen“ kollidieren). views/runs.js
@@ -535,26 +539,47 @@
             </div>
           </section>
 
-          <!-- F44 WS-5a (Vorlage V10 d_ausfuehrung_failed, Abgleich F-725 G2–G9, F7): das Lauf-Detail
-               #/runs/<laufId> als ganze Seite. Geladen beim Öffnen und über „Aktualisieren“, nicht
-               gepollt (F-363). Die Notiz je Lage trägt die Aktionen; Kenntnisnahme, Klärung, Rückfrage
-               und Abbruch laufen über #lauf-dialog. Die Aufklappbereiche (details) liegen außerhalb der
-               neu gerenderten Container, damit sie beim Aktualisieren offen bleiben. -->
-          <section id="lauf-detail" class="v10-seite workflow-seite lauf-seite" aria-labelledby="lauf-detail-titel" hidden>
+          <!-- F46 D5 (abgleich-f46.md §4.9; Bilder 08-live--Main und --Main-nichts-laeuft): die Live-Ansicht.
+               #/live zeigt den aktiven Lauf oder den Zustand „Die Workforce wartet“ (#live-wartet);
+               #/runs/<laufId> ist dieselbe Seite für einen Lauf — läuft er, live, sonst im Zustand „beendet“.
+               Der Bestand aus F44 WS-5a bleibt vollständig (Abgleich F-725 G2–G9, F7): Notiz je Lage mit ihren
+               Aktionen (#lauf-notiz), „Was passiert ist“ (#lauf-timeline), „Einordnung“, die vier
+               Aufklappbereiche und der Dialog #lauf-dialog. Aktualisiert wird über den einen Poll
+               (zustand.js, Detail-Auffrischer nur solange der Lauf aktiv ist) und „Aktualisieren“ — kein
+               eigener Timer. Die Aktivitätsliste ist KEINE Live-Region. Die Aufklappbereiche (details)
+               liegen außerhalb der neu gerenderten Container, damit sie offen bleiben. -->
+          <section id="lauf-detail" class="v10-seite workflow-seite lauf-seite live-seite" aria-labelledby="lauf-detail-titel" hidden>
             <button type="button" id="lauf-detail-schliessen" class="back"><span aria-hidden="true">←</span> <span data-i18n="lauf.zurueck">Alle Ausführungen</span></button>
-            <div class="page-heading">
-              <div>
-                <div class="eyebrow" data-i18n="lauf.eyebrow">Ein Arbeitsschritt</div>
+            <div class="live-kopf">
+              <div class="live-kopf-text">
+                <div id="lauf-detail-eyebrow" class="eyebrow live-eyebrow-kopf" data-i18n="lauf.eyebrow">Ein Arbeitsschritt</div>
                 <h1 id="lauf-detail-titel" tabindex="-1"></h1>
+                <div id="live-chips" class="live-chips"></div>
+                <p id="live-gerade" class="live-gerade" hidden></p>
                 <p id="lauf-detail-beschreibung" class="description"></p>
+                <div id="lauf-detail-status"></div>
               </div>
-              <div id="lauf-detail-status"></div>
+              <aside id="live-status" class="live-status"></aside>
             </div>
             <div id="lauf-detail-fehler" class="note red" tabindex="-1" hidden></div>
+            <div id="lauf-notiz"></div>
+            <p id="lauf-meldung" class="fehler" tabindex="-1" hidden></p>
+            <div id="live-ablauf"></div>
+            <div class="live-raster">
+              <section id="live-aktivitaet" class="live-karte" tabindex="-1" aria-labelledby="live-aktivitaet-titel"></section>
+              <section id="live-mehr" class="live-karte live-mehr" tabindex="-1" aria-label="Mehr dazu" data-i18n-aria-label="live.mehr.titel"></section>
+            </div>
+            <div class="live-drei">
+              <section id="live-dateien" class="live-karte"></section>
+              <section id="live-bremsen" class="live-karte"></section>
+              <section id="live-faehigkeiten" class="live-karte"></section>
+            </div>
+            <div class="live-zwei">
+              <section id="live-output" class="live-karte"></section>
+              <section id="live-paket" class="live-karte"></section>
+            </div>
             <div class="split">
               <div class="workflow-hauptspalte">
-                <div id="lauf-notiz"></div>
-                <p id="lauf-meldung" class="fehler" tabindex="-1" hidden></p>
                 <h2 data-i18n="lauf.passiert.titel">Was passiert ist</h2>
                 <div id="lauf-timeline"></div>
                 <div id="lauf-aufklapp">
@@ -577,6 +602,25 @@
                 </div>
               </div>
               <aside id="lauf-einordnung" class="summary"></aside>
+            </div>
+          </section>
+
+          <!-- F46 D5 (Bild 08-live--Main-nichts-laeuft): #/live ohne aktiven Lauf — Zuletzt (letzter Lauf mit
+               Ergebnis und Dauer, Links auf seine Seite und den Code-Reiter) und Als Nächstes (nächste offene
+               Entscheidung bzw. nächster startbereiter Schritt). Aus dem Poll; die Dauer aus dem Detail des
+               letzten Laufs, einmal je Lauf geladen. -->
+          <section id="live-wartet" class="v10-seite live-seite" aria-labelledby="live-wartet-titel" hidden>
+            <a class="back" href="#/ausfuehrungen"><span aria-hidden="true">←</span> <span data-i18n="lauf.zurueck">Alle Ausführungen</span></a>
+            <div class="page-heading">
+              <div>
+                <div class="eyebrow" data-i18n="live.eyebrow.ruhig">Live · Gerade läuft nichts</div>
+                <h1 id="live-wartet-titel" tabindex="-1" data-i18n="live.wartet.titel">Die Workforce wartet</h1>
+                <p class="description" data-i18n="live.wartet.text">Es ist kein Lauf aktiv. Hier siehst du, was zuletzt passiert ist und was als Nächstes bereitsteht.</p>
+              </div>
+            </div>
+            <div class="live-zwei">
+              <section id="live-zuletzt" class="live-karte"></section>
+              <section id="live-naechstes" class="live-karte live-karte-akzent"></section>
             </div>
           </section>
         </section>
