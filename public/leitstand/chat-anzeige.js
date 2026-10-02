@@ -20,7 +20,7 @@
  * Wichtig:
  * - '#/chat' und '#/start' werden nie als Rückkehrziel gemerkt — sonst führte „Gespräch
  *   verkleinern“ in sich selbst bzw. auf die Startfläche.
- * - Auswahl und Reihenfolge von „Nächster Schritt“ hängen an baueEntscheidungen
+ * - Auswahl und Reihenfolge von „Nächster Schritt“ (Freigabe, Rückfrage, seit F46 D2 offene Abnahme, Lauf) hängen an baueEntscheidungen
  *   (attention-daten.js); ändert sich dort die Reihenfolge der Gruppen, ändert sie sich hier mit.
  *   Ohne Workitems ist ein leeres Ergebnis nur „keine Freigabe, Rückfrage oder fehlgeschlagene
  *   Ausführung“, nicht „nichts wartet“ — der Text in der View sagt genau das.
@@ -102,19 +102,20 @@ export function zielBeimVerkleinern(gemerkt) {
 
 /**
  * „Nächster Schritt“ der Kontextspalte aus dem gepollten Zustand: die erste Freigabe, sonst die
- * erste Rückfrage, sonst der erste unbestätigte fehlgeschlagene Lauf (Reihenfolge wie „Deine
- * Entscheidungen“). Startprobleme haben keine Detailroute und zählen hier nicht.
+ * erste Rückfrage, sonst die erste offene Abnahme (F46 D2), sonst der erste unbestätigte
+ * fehlgeschlagene Lauf (Reihenfolge wie „Deine Entscheidungen“). Startprobleme haben keine
+ * Detailroute und zählen hier nicht.
  * @param zustand - Aggregat aus GET …/zustand (zustand.js), oder null vor dem ersten Tick
  * @returns { art: 'laedt' } | { art: 'defekt' } | { art: 'leer' } | { art: 'eintrag', eintragArt, titel, hash }
  */
 export function leiteNaechstenSchrittAb(zustand) {
   if (zustand === null || zustand === undefined) return { art: 'laedt' }
   const { gruppen } = baueEntscheidungen(zustand, [])
-  for (const liste of [gruppen.workflows, gruppen.laeufe]) {
+  for (const liste of [gruppen.workflows, gruppen.abnahmen, gruppen.laeufe]) {
     if (!Array.isArray(liste)) continue
     const eintrag = liste.find((e) => typeof e.hash === 'string')
     if (eintrag !== undefined) return { art: 'eintrag', eintragArt: eintrag.art, titel: eintrag.titel, hash: eintrag.hash }
   }
-  if (gruppen.workflows === null || gruppen.laeufe === null) return { art: 'defekt' }
+  if (gruppen.workflows === null || gruppen.abnahmen === null || gruppen.laeufe === null) return { art: 'defekt' }
   return { art: 'leer' }
 }

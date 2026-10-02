@@ -295,15 +295,17 @@ export function renderAufEinenBlick({ daten, naechster = null, geordnet = [], pr
  * @param status - daten.status
  * @param naechster - Automaten-Verdikt oder null
  * @param ungueltig - true, wenn die Fassung nicht gegen WORKFLOW_V0 validiert
+ * @param optionen - { hauptknopf: false } zeigt „Nächsten Schritt freigeben“ nicht als Hauptknopf (F46 D2: dann
+ *   steht der eine Hauptknopf in der Spalte „Deine Entscheidung“)
  * @returns HTML
  */
-export function renderAktionen(workflowId, status, naechster, ungueltig = false) {
+export function renderAktionen(workflowId, status, naechster, ungueltig = false, optionen = {}) {
   const art = naechster === null || naechster === undefined ? null : naechster.art
   const kennung = escapeHtml(workflowId)
   const knoepfe = []
   let hinweis = ''
   if (art === 'haltFreigabe') {
-    knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="freigabe-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tHtml('ablauf.aktion.freigeben')}</button>`)
+    knoepfe.push(`<button type="button" class="button${optionen.hauptknopf === false ? '' : ' primary'} wf-aktion" data-aktion="freigabe-oeffnen" data-workflow-id="${kennung}" aria-haspopup="dialog">${tHtml('ablauf.aktion.freigeben')}</button>`)
   }
   if (art === 'starte') {
     knoepfe.push(`<button type="button" class="button primary wf-aktion" data-aktion="starten" data-workflow-id="${kennung}">${tHtml('ablauf.aktion.starten')}</button>`)

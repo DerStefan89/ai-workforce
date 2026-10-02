@@ -63,7 +63,7 @@
  */
 
 import { holeAuftraegeBegrenzt, holeLaufDetail, holeProjektakte, holeRoadmap, holeWorkitems } from '../api.js'
-import { baueEntscheidungen, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from '../attention-daten.js'
+import { baueEntscheidungen, filtereAttentionWorkflows, filtereOffeneAbnahmen, holeOffeneP0P1Workitems } from '../attention-daten.js'
 import { baueBoard, baueVerknuepfung, istNichtTerminal, SPALTEN, verknuepfterWorkflow, waehleFeatureInArbeit, workflowPhase } from '../entwicklung-daten.js'
 import { ladeFokusNachtrag, waehleFokusWorkflow, waehleLetztenLauf } from '../fokus-daten.js'
 import { ring } from '../fortschritt-ring.js'
@@ -558,8 +558,10 @@ function werteBlock() {
   let entscheidung = laedtText
   if (zustand !== null) {
     inArbeit = typeof zustand.aktiverLauf?.aktiv === 'boolean' ? zahl(zustand.aktiverLauf.aktiv ? 1 : 0) : nichtVerfuegbar()
+    // F46 D2 (F-972): offene Abnahmen warten ebenso auf dich — dieselbe Regel wie „Deine Entscheidungen“.
     const wartend = filtereAttentionWorkflows(zustand.workflows ?? null)
-    entscheidung = wartend === null ? nichtVerfuegbar() : zahl(wartend.length)
+    const abnahmen = filtereOffeneAbnahmen(zustand.workflows ?? null)
+    entscheidung = wartend === null || abnahmen === null ? nichtVerfuegbar() : zahl(wartend.length + abnahmen.length)
   }
 
   const { zustand: rz, meilenstein } = roadmapLage()

@@ -36,7 +36,7 @@
  * - public/leitstand/chat-anzeige.test.mjs (node:test)
  */
 
-import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from './attention-daten.js'
+import { filtereAttentionLaeufe, filtereAttentionWorkflows, filtereOffeneAbnahmen, holeOffeneP0P1Workitems } from './attention-daten.js'
 import { WOERTERBUECHER, t } from './i18n.js'
 
 /** "was braucht mich", "Was braucht mich?" — optionales Fragezeichen, kein weiterer Text. */
@@ -91,7 +91,8 @@ function beantworteStatus(zustand) {
   if (zustand === null) return t('vorfilter.nichtGeladen')
   const workflowsAttention = filtereAttentionWorkflows(zustand.workflows)
   const laeufeAttention = filtereAttentionLaeufe(zustand.laeufe)
-  const attentionZahl = workflowsAttention === null || laeufeAttention === null ? t('vorfilter.nichtVerfuegbar') : String(workflowsAttention.length + laeufeAttention.length)
+  const abnahmenOffen = filtereOffeneAbnahmen(zustand.workflows)
+  const attentionZahl = workflowsAttention === null || laeufeAttention === null || abnahmenOffen === null ? t('vorfilter.nichtVerfuegbar') : String(workflowsAttention.length + abnahmenOffen.length + laeufeAttention.length)
   return [
     t('vorfilter.status.laeufe', { wert: zahlText(zustand.laeufe) }),
     t('vorfilter.status.startfehler', { wert: zahlText(zustand.startfehler) }),
@@ -104,11 +105,14 @@ function beantworteStatus(zustand) {
 function beantworteBrauchtMich(zustand, workitemsAntwort) {
   if (zustand === null) return t('vorfilter.nichtGeladen')
   const workflows = filtereAttentionWorkflows(zustand.workflows)
+  const abnahmen = filtereOffeneAbnahmen(zustand.workflows)
   const laeufe = filtereAttentionLaeufe(zustand.laeufe)
   const workitems = workitemsAntwort.workitems
 
   const teile = []
   teile.push(workflows === null ? t('vorfilter.workflows.defekt') : workflows.length === 0 ? t('vorfilter.workflows.keine') : t('vorfilter.workflows.anzahl', { anzahl: workflows.length }))
+  // F46 D2: offene Abnahmen (dieselbe Regel wie „Deine Entscheidungen“); ohne Abnahme kein Satz.
+  if (abnahmen === null || abnahmen.length > 0) teile.push(abnahmen === null ? t('vorfilter.abnahmen.defekt') : t('vorfilter.abnahmen.anzahl', { anzahl: abnahmen.length }))
   teile.push(laeufe === null ? t('vorfilter.laeufe.defekt') : laeufe.length === 0 ? t('vorfilter.laeufe.keine') : t('vorfilter.laeufe.anzahl', { anzahl: laeufe.length }))
   teile.push(workitems === null ? t('vorfilter.workitems.defekt') : workitems.length === 0 ? t('vorfilter.workitems.keine') : t('vorfilter.workitems.anzahl', { anzahl: workitems.length }))
   return teile.join(' ')

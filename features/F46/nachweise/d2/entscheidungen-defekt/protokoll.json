@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Workflows-Quelle defekt → Hinweis, „nicht verfügbar“, Chips und Quellen „–“ (keine Entwarnung), Zähler verborgen",
+    "Freigabedialog offen": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "attention",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entscheidungen",
+    "Zähler „Entscheidungen“": "(fehlt)",
+    "Filter aktiv": "Alle · – (Nicht verfügbar)",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Hauptknopf Liste (oberste Karte)": "Fehler ansehen: Projektkontext für den Architekten",
+    "Hauptknopf Spalte": "(fehlt)",
+    "Absenden (Text)": "(fehlt)",
+    "Absenden gesperrt": "(fehlt)",
+    "Dialog-Begründung": "(fehlt)",
+    "Meldung am Ablauf (Text „NACHWEIS“ = POST erkannt)": "(fehlt)",
+    "Meldung der Abnahme (muss fehlen)": "(fehlt)",
+    "Meldung im Dialog (muss fehlen)": "(fehlt)",
+    "Rückweg": "Alle Aufträge",
+    "Fokus (id)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

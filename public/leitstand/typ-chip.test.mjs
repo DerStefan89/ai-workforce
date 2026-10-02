@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { chipTypVonWorkitem, EBENEN, NEUTRALE_TYPEN, typChip } from './typ-chip.js'
+import { artChip, chipTypVonWorkitem, EBENEN, NEUTRALE_TYPEN, typChip } from './typ-chip.js'
 
 test('sechs Ebenen: Klasse je Ebene, Punkt dekorativ, Text sichtbar', () => {
   assert.deepEqual(EBENEN, ['meilenstein', 'feature', 'workstream', 'fixpaket', 'design', 'bug'])
@@ -46,4 +46,13 @@ test('style.css: jede Ebene setzt Fläche (-blass) und Punkt (volle Farbe) über
     assert.match(css, new RegExp(`\\.typ-chip-${ebene} \\{\\s*background: var\\(--ebene-${ebene}-blass\\);`), `${ebene}: Fläche`)
     assert.match(css, new RegExp(`\\.typ-chip-${ebene} \\.typ-chip-punkt \\{\\s*background: var\\(--ebene-${ebene}\\);`), `${ebene}: Punkt`)
   }
+})
+
+test('artChip (F46 D2): Farbe je Art, Fehler-Arten teilen eine Farbe, Text übersetzt, Zusatz escaped', () => {
+  assert.match(artChip('abnahme'), /class="typ-chip art-chip art-chip-abnahme"/)
+  assert.match(artChip('lauf'), /art-chip-fehler/)
+  assert.match(artChip('startproblem'), /art-chip-fehler/)
+  assert.match(artChip('befund', { zusatz: '<P0>' }), /· &lt;P0&gt;/)
+  assert.equal(artChip('sichern'), '')
+  assert.equal(artChip('unbekannt'), '')
 })

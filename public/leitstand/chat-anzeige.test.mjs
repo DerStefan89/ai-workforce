@@ -88,7 +88,7 @@ test('Vorfilter: in Node importierbar, Muster unverändert, Statussatz über i18
   const ohneZustand = await loeseVorfilterAuf('Status', null)
   assert.equal(ohneZustand.antwort, 'Der Zustand ist noch nicht geladen — bitte gleich noch einmal fragen.')
   const mitZustand = await loeseVorfilterAuf('Status?', { laeufe: [lauf], startfehler: [], workflows: null })
-  assert.equal(mitZustand.antwort, 'Läufe: 1 · Startfehler: 0 · Workflows: nicht verfügbar · Braucht Aufmerksamkeit (Workflows/Läufe): nicht verfügbar')
+  assert.equal(mitZustand.antwort, 'Läufe: 1 · Startfehler: 0 · Workflows: nicht verfügbar · Braucht Aufmerksamkeit (Abläufe, Abnahmen, Läufe): nicht verfügbar')
   assert.equal(mitZustand.quelle, 'vorfilter')
 })
 

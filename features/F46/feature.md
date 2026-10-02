@@ -9,8 +9,8 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 ## Status
 Status: IN_ARBEIT
 
-D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 in Arbeit (Branch `feat/f46-d1-uebersicht-roadmap`,
-Basis `9c4bf58`). D2 bis D6 offen.
+D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 in Arbeit (Branch
+`feat/f46-d2-entscheidungen`, Basis `add7c94`). D3 bis D6 offen.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -52,7 +52,7 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 |---|---|---|---|---|
 | D0 | Grundlage (Akte, Roadmap mit Gate, Zielfassung, Register, F44-Abschluss, Ebenen-Farbtokens, Live-Chip in der Kopfleiste) | – | 0,3–0,5 | ≈ 0,2 AT (#308) |
 | D0b | Design-Referenz und Seitenspezifikation ins Repo | – | 0,1–0,2 | |
-| D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | |
+| D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | ≈ 0,2 AT (#310) |
 | D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | |
 | D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | |
@@ -250,3 +250,76 @@ neuer Schreibweg; Entscheidungs-, Freigabe- und Laufwege unverändert.
 - §4.2 Entwicklungsstand ohne Spalte „Verantwortlich“ (keine Quelle), Priorität als „kommt“.
 - Leseroute: Kontextordner ist der `kontext_pfad` der Instanz (Default `docs/projekt/kontext`), also
   genau der Ordner, den die Rollen bekommen; die Dateinamen sind fest.
+
+## Stand D2 „Entscheidungen und Entscheiden“ (02.10.2026)
+Branch `feat/f46-d2-entscheidungen` (Basis `add7c94`), nicht committet. Grundlage
+`docs/design/abgleich-f46.md` (Leitprinzip, §4.4, §4.5), Bilder 09-Main, 09-Entscheiden,
+09-Entscheiden-Abnahme. Keine neue Abhängigkeit, kein neuer Schreibweg, kein neuer Endpunkt, kein
+zweiter Poll; die POST-Wege (Freigabe, Ablehnen, Stopp, Rückfrage, Sichtung, Reparatur, Abnahme) und
+ihre Prüfungen sind unverändert.
+- **Abnahmestand im Poll (S):** eine exportierte Regel `ermittleAbnahmeStand` in
+  `scripts/leitstand-server.mjs` für GET …/abnahme (`entscheidung.status`) und die Workflow-Kopfdaten
+  (neues Feld `abnahme: { offen, status: nicht_vorhanden | ok | veraltet | nicht_faellig }`). Fällig =
+  ABGESCHLOSSEN mit gelaufenem Ausführungsschritt (die Vorbedingungen von POST …/abnahme ANGENOMMEN).
+  Cache-Stempel der Kopfdaten: Verbund aus `lineage-workflow-<id>` und
+  `lineage-entscheidung-workflow-<id>-abnahme` (ein neuer Bau-Lauf ändert die Workflow-Kette). Test
+  `scripts/leitstand-abnahme-stand.test.mjs`: nach echtem POST …/abnahme sofort `offen=false`, nach
+  neuem Bau-Lauf `offen=true` (veraltet); Rotprobe ohne zweites Stempelglied schlägt fehl. F-972 erledigt.
+- **Entscheidungen `#/attention` (09-Main):** Art „abnahme“ (`filtereOffeneAbnahmen`, Gruppe `abnahmen`,
+  Hauptknopf „Ergebnis prüfen“), Filter-Chips mit Anzahl (Sichern „kommt“), Karten mit Art-Chip
+  (`typ-chip.js` `artChip`, Tokens `--art-*` als Verweise), Eintrag, „seit“ (nur Lauf/Startproblem), Frage,
+  Kontext, Hauptknopf (gefüllt nur auf der obersten Karte — Leitprinzip), „Zum Eintrag“ über Auftrag →
+  Workitem-Referenz (nur bei offener Seite geladen, Muster F-920); rechts „Wenn du nichts tust“ (kommt)
+  und „Geprüfte Quellen“ (Offene Abnahmen echt, Bereit zum Sichern kommt); „Zuletzt entschieden“ kommt.
+  Zahl an „Entscheidungen“ (`entscheidungen-zaehler.js`, nur Poll-Quellen, keine Live-Region). Offene
+  Abnahmen zählen auch in der Kennzahl der Übersicht, in Jarvis' „Status“ und „was braucht mich“ und im
+  „Nächsten Schritt“ des Chats.
+- **Entscheiden `#/workflows/<id>` (09-Entscheiden, -Abnahme):** je nach Zustand Freigabe oder Abnahme,
+  ohne Umschalter (`views/workflow-entscheiden.js`, `views/entscheidung-panel.js`,
+  `views/workflow-abnahme.js`). Kopf mit Art · Eintrag, Frage, Einleitung aus Daten und Statuszeile;
+  Seitenleiste markiert „Entscheidungen“, Rückweg „← Deine Entscheidungen“. Freigabe: Schritte mit Rolle,
+  fälliger Schritt, Werkzeugsatz, Zeitgrenze, Risiko echt; Kontrolltiefe (F-372), Schätzung, Arbeitspaket
+  kommt; Empfehlung zu Fähigkeiten nur lesend. Abnahme: AKs mit Urteil und Beleg, Zusammenfassung,
+  Kacheln Prüfung (mit „Prüfung wiederholen“ nach der heutigen Regel) · Review (Codex; Claude-Prüfer
+  kommt) · Nachweise, „Selbst ausprobieren“ mit „Produkt öffnen“ (vorschau_url, F43; Code-Reiter kommt
+  bis D4), „Nachweise im Einzelnen“ (Empfehlung im Volltext, Befunde, Dateien, Prüfbericht).
+  „Deine Entscheidung“ läuft mit (sticky, bei Überhöhe scrollbar; schmal vor den Aufklappbereichen),
+  Absenden gesperrt bis Option und Begründung; Freigabe öffnet den bestehenden Dialog (Kennzeichen,
+  „Anzeige = Start“, Veto), die Begründung wandert zwischen Spalte und Dialog; Abnahme schickt POST
+  …/abnahme wie bisher. Klärung, Reparatur, Architekt-Entscheidung, Sichtung, Stoppen und „Technischer
+  Ablauf“ bleiben erreichbar („Der Weg zum Ergebnis“ im Entscheidungsmodus zugeklappt).
+- **Bestand bleibt / Leitprinzip (Nachträge Stefan, 02.10.2026):** Leitprinzip und Regel „Bestand
+  bleibt“ in `docs/design/abgleich-f46.md`; Gate `scripts/check-f46-bestand.mjs` (in `npm run check`,
+  Grün-/Rotfälle `scripts/check-f46-bestand.test.mjs`); design-guardian-Prüfliste um drei Punkte ergänzt.
+- **Texte** de/en/tr/ru (Schlüssel `attention.*`, `entscheiden.*`, `vorfilter.abnahmen.*`); nicht mehr
+  genutzte Schlüssel und die CSS der alten Attention-Liste entfernt.
+- **Gate-/Test-Änderungen:** kein Gate gelockert; f21-ws2 und f15 unverändert grün (IDs bleiben, neue
+  Sektion `attention-abschnitt-abnahmen`). Tests nachgezogen: `projekt-wechsel.test.mjs` (Überschrift
+  der Freigabe ist die Frage), `workflows-dialog.test.mjs` (Abnahme-Knopf in der Spalte; neu: Spalte →
+  Dialog, Nav-Markierung, Begründung zurück in die Spalte), `workflow-abnahme.test.mjs` (Aufbau
+  „entscheidbar“), `chat-anzeige.test.mjs` (Statussatz).
+- **Nachweise** `features/F46/nachweise/d2/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste
+  Antworten, jeder POST auf `/api/workflows/**` bekäme 409 mit Marke; leert nur die eigenen Ordner):
+  Matrix je Seite (Entscheidungen, Freigabe, Abnahme) 1440 dunkel/hell, 390, 200 %, ru; reduzierte
+  Bewegung; Klicktabellen (Chips, Sichern kommt per Tastatur, Rückweg; Begründung leer → gesperrt,
+  Dialog mit Begründung, Stand-Änderung schließt den Dialog mit Hinweis; Abnahme gesperrt/frei, Alle
+  Nachweise, Weg aufklappen); Zustände defekt, leer, Escape.
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): dg und cr
+  „freigegeben mit Hinweisen“, qa „nicht freigegeben“ (vier mittlere Befunde, nichts blockierend). Eine
+  Korrekturrunde, eingearbeitet: Nav-Markierung bei jedem Zeichnen und nur auf der Detailroute (cr 1,
+  qa 1); Abnahme-Meldung außerhalb des Aufklappbereichs (qa 2); Begründung zwischen Spalte und Dialog
+  (qa 3); Empfehlung im Volltext (qa 4); Abnahmen in Übersicht-Kennzahl und Jarvis (cr 2, qa 5 teilweise
+  → F-991); Kommentar zur Regel der Ansicht (cr 4, qa 6); Spalte heilt nach verspäteter Antwort (qa 7);
+  Empfehlung im Kennzeichen kodiert (qa 8); Zählername mit Komma (qa 9); Spalte scrollbar und schmal
+  vor den Aufklappbereichen (qa 10, dg N2); Text zu „Freigeben & installieren“ (qa 11); Fokus auf Chips
+  (qa 12); Messung nur sichtbarer Bereiche (qa 13, dg M1); frühere Entscheidung oben (qa 15); Kopf in der
+  Hauptspalte, Spalte neben dem Kopf, keine Überdeckung durch den Chat-Knopf (dg M3); Zahl bei schmaler
+  Navigation am Symbol (dg N1); „kommt“-Zeile einmal (dg N3); reduzierte Bewegung (dg N4); Abweichungen
+  im Abgleich (dg M2); Aufräumen, Pflichtparameter, Logging, Fokussuche, `aria-haspopup`, Kommentare
+  (cr 3, 5–10, qa 14). Offen als Befund: F-991 bis F-994.
+
+### Abweichungen von abgleich-f46.md (zur Kenntnis)
+Stehen begründet in `docs/design/abgleich-f46.md` unter §4.4 und §4.5 („Umsetzung D2“): Kontrolltiefe
+und Katalog-Empfehlung auf Karten „kommt“, ein gefüllter Hauptknopf nur auf der obersten Karte,
+Gruppenreihenfolge, Zähler ohne Befunde, Freigabe über den bestehenden Dialog, AK-Zeilen ohne Wortlaut,
+Weg im Entscheidungsmodus zugeklappt.

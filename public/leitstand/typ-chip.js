@@ -10,6 +10,7 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/dashboard.js (Arbeitsstand-Karten)
  * - public/leitstand/views/roadmap.js (Baum, Detailpanel, Legende, Entwicklungsstand)
+ * - public/leitstand/views/attention.js (artChip, F46 D2)
  * - public/leitstand/typ-chip.test.mjs (node:test)
  *
  * Wichtig: Import-sicher, kein DOM. Die Beschriftung kommt aus dem Wörterbuch (Schlüssel typ.<Typ>).
@@ -48,4 +49,20 @@ export function typChip(typ, optionen = {}) {
   const zusatz = typeof optionen.zusatz === 'string' && optionen.zusatz !== '' ? ` · ${escapeHtml(optionen.zusatz)}` : ''
   const klasse = ebene ? `typ-chip typ-chip-${typ}` : 'typ-chip typ-chip-neutral'
   return `<span class="${klasse}"><span class="typ-chip-punkt" aria-hidden="true"></span>${escapeHtml(t(`typ.${typ}`))}${zusatz}</span>`
+}
+
+/** Entscheidungsarten mit eigener Farbe (--art-*, F46 D2); Lauf-Fehler und Startprobleme teilen sich „fehler“. */
+const FARBE_JE_ART = Object.freeze({ freigabe: 'freigabe', abnahme: 'abnahme', rueckfrage: 'rueckfrage', lauf: 'fehler', startproblem: 'fehler', befund: 'befund' })
+
+/**
+ * Art-Chip einer Entscheidung (F46 D2, Bild 09-Main) — dieselbe Chip-Form wie die Typ-Chips, als
+ * Umriss in der Farbe der Art (--art-*); der Text (attention.art.<art>) trägt die Bedeutung.
+ * @param art - Art aus attention-daten.js ENTSCHEIDUNGS_ARTEN; eine unbekannte Art ergibt ''
+ * @param optionen - { zusatz: Text hinter der Art, z. B. die Priorität eines Befunds, escaped }
+ * @returns HTML
+ */
+export function artChip(art, optionen = {}) {
+  if (!Object.hasOwn(FARBE_JE_ART, art)) return ''
+  const zusatz = typeof optionen.zusatz === 'string' && optionen.zusatz !== '' ? ` · ${escapeHtml(optionen.zusatz)}` : ''
+  return `<span class="typ-chip art-chip art-chip-${FARBE_JE_ART[art]}">${escapeHtml(t(`attention.art.${art}`))}${zusatz}</span>`
 }

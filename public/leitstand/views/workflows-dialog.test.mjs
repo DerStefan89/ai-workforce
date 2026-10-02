@@ -395,12 +395,14 @@ for (const id of ['workflow-abnahme', 'workflow-abnahme-stand']) {
   container.contains = (el) => el?.id === 'wf-abnahme-begruendung' && html.includes('id="wf-abnahme-begruendung"')
 }
 const abnahmeMeldung = () => document.getElementById('workflow-abnahme-meldung')
-const klickeAbnahme = (aktion) => klicke('workflow-abnahme', '.wf-abnahme-aktion', { aktion, workflowId: 'w-1' })
+// F46 D2: in der Lage „entscheidbar“ steht der Knopf in der Spalte „Deine Entscheidung“ (#workflow-entscheidung).
+const klickeAbnahme = (aktion) => klicke('workflow-entscheidung', '.wf-abnahme-aktion', { aktion, workflowId: 'w-1' })
 
 test('Abnahme: während des POST ist der ganze Bereich gesperrt — ein zweiter Knopf schickt keinen zweiten POST', async () => {
   abnahmeAntwort = ABNAHME_OFFEN
   await oeffneDetailMit(ABGESCHLOSSEN)
-  assert.match(document.getElementById('workflow-abnahme').innerHTML, /Passt das Ergebnis\?/)
+  assert.match(document.getElementById('workflow-abnahme').innerHTML, /Abnahmekriterien/)
+  assert.match(document.getElementById('workflow-entscheidung').innerHTML, /Abnehmen\?/)
   document.getElementById('wf-abnahme-begruendung').value = 'Passt.'
   postHalt = []
   posts.length = 0
@@ -453,7 +455,7 @@ test('Abnahme: eine angefangene Begründung überlebt den Wechsel von „vorab�
   abnahmeAntwort = ABNAHME_OFFEN
   await pollJetzt()
   await warte()
-  assert.match(document.getElementById('workflow-abnahme').innerHTML, /Passt das Ergebnis\?/)
+  assert.match(document.getElementById('workflow-entscheidung').innerHTML, /Abnehmen\?/)
   assert.equal(document.getElementById('wf-abnahme-begruendung').value, 'Halb geschrieben', 'die Begründung steht im neuen Feld')
   abnahmeAntwort = ABNAHME_HALT
 })
@@ -486,4 +488,85 @@ test('Sichtung: bestätigt wird nur der angezeigte Halt — ein inzwischen ander
   assert.equal(posts.length, 0, 'kein POST für einen nicht angezeigten Halt')
   assert.match(document.getElementById('workflow-dialog-meldung').textContent, /^409: Der Workflow steht nicht mehr auf dem F-760-Halt/)
   klicke('workflow-dialog', '.wf-dialog-abbrechen', {})
+})
+
+test('F46 D2: „<Option> bestätigen“ der Spalte öffnet den bestehenden Freigabedialog mit der Begründung; Stand-Änderung schließt ihn; ohne Begründung kein Dialog', async () => {
+  await oeffneDetail()
+  // Ohne Begründung (Knopf gesperrt; ein synthetischer Klick öffnet trotzdem nichts).
+  document.getElementById('wf-entscheidung-begruendung').value = '   '
+  klicke('workflow-entscheidung', '.wf-aktion', { aktion: 'freigabe-bestaetigen', workflowId: 'w-1', option: 'freigeben' })
+  assert.equal(dialog.open, false, 'leere Begründung: kein Dialog')
+  // Mit Begründung und Option „Ablehnen“: derselbe Dialog wie bisher (Veto im selben Dialog), Begründung übernommen.
+  document.getElementById('wf-entscheidung-begruendung').value = 'Zu riskant.'
+  klicke('workflow-entscheidung', '.wf-aktion', { aktion: 'freigabe-bestaetigen', workflowId: 'w-1', option: 'ablehnen' })
+  assert.equal(dialog.open, true)
+  assert.equal(feld().value, 'Zu riskant.')
+  assert.match(dialog.innerHTML, /data-aktion="ablehnen"/)
+  assert.match(dialog.innerHTML, /data-empfehlung-ids="\[&quot;a&quot;\]"/, '„Anzeige = Start“: der Dialog trägt die angezeigte Empfehlung')
+  // Der Stand ändert sich bei offenem Dialog → er schließt mit Hinweis (Kennzeichen beim Öffnen).
+  detail.json = { ...detail.json, daten: { ...detail.json.daten, status: 'LAEUFT' }, naechster: { art: 'haltKlaerung', grund: 'läuft' } }
+  await pollJetzt()
+  await warte()
+  assert.equal(dialog.open, false)
+  assert.equal(meldung().textContent, 'Der Stand hat sich geändert — bitte erneut prüfen.')
+  // Eine unbekannte Option öffnet nichts.
+  await oeffneDetail()
+  klicke('workflow-entscheidung', '.wf-aktion', { aktion: 'freigabe-bestaetigen', workflowId: 'w-1', option: 'freigeben-sofort' })
+  assert.equal(dialog.open, false)
+})
+
+/** Schein-Links der Seitenleiste für die Nav-Markierung (F46 D2, cr 1 / qa 1). */
+function scheinNav() {
+  const link = (navView) => ({ dataset: { navView }, attr: {}, setAttribute(k, v) { this.attr[k] = v }, removeAttribute(k) { delete this.attr[k] } })
+  const links = { runs: link('runs'), attention: link('attention') }
+  const vorher = document.querySelectorAll
+  document.querySelectorAll = (selektor) => (selektor === '#shell-nav [data-nav-view]' ? Object.values(links) : vorher(selektor))
+  return { links, aufraeumen: () => (document.querySelectorAll = vorher) }
+}
+
+test('F46 D2: Nav-Markierung — „Entscheidungen“ auf der Seite Entscheiden, auch beim zweiten Besuch; nie von einer fremden Route aus', async () => {
+  const { links, aufraeumen } = scheinNav()
+  try {
+    await oeffneDetail()
+    assert.equal(links.attention.attr['aria-current'], 'page')
+    assert.equal(links.runs.attr['aria-current'], undefined)
+    // Der Router markiert beim erneuten Betreten „Ausführungen“ (View runs) — derselbe Modus muss trotzdem neu markieren.
+    links.runs.attr['aria-current'] = 'page'
+    delete links.attention.attr['aria-current']
+    location.hash = '#/workflows/w-1'
+    dispatch()
+    await warte()
+    assert.equal(links.attention.attr['aria-current'], 'page', 'zweiter Besuch: wieder „Entscheidungen“')
+    assert.equal(links.runs.attr['aria-current'], undefined)
+    // Auf einer fremden Route lädt der Auffrischer das Detail weiter — die Markierung bleibt unangetastet.
+    links.attention.attr = {}
+    links.runs.attr = {}
+    location.hash = '#/dashboard'
+    await pollJetzt()
+    await warte()
+    assert.deepEqual([links.attention.attr, links.runs.attr], [{}, {}], 'keine Markierung von außerhalb der Detailroute')
+  } finally {
+    aufraeumen()
+    location.hash = '#/runs'
+    dispatch()
+  }
+})
+
+test('F46 D2: die Begründung wandert zwischen Spalte und Freigabedialog (Nachbesserung im Dialog geht beim Schließen nicht verloren)', async () => {
+  await oeffneDetail()
+  const spalte = document.getElementById('wf-entscheidung-begruendung')
+  spalte.value = 'Erste Fassung.'
+  klicke('workflow-entscheidung', '.wf-aktion', { aktion: 'freigabe-bestaetigen', workflowId: 'w-1', option: 'freigeben' })
+  assert.equal(dialog.open, true)
+  assert.equal(feld().value, 'Erste Fassung.')
+  feld().value = 'Im Dialog nachgebessert.'
+  klicke('workflow-dialog', '.wf-dialog-abbrechen', {})
+  assert.equal(dialog.open, false)
+  assert.equal(spalte.value, 'Im Dialog nachgebessert.', 'Abbrechen schreibt die Nachbesserung in die Spalte zurück')
+  // Der Knopf „Nächsten Schritt freigeben“ unter dem Weg nimmt den Text der Spalte ebenfalls mit.
+  feld().value = ''
+  oeffneFreigabe()
+  assert.equal(feld().value, 'Im Dialog nachgebessert.')
+  klicke('workflow-dialog', '.wf-dialog-abbrechen', {})
+  spalte.value = ''
 })

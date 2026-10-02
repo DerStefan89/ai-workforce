@@ -162,6 +162,14 @@
   --ebene-fixpaket-blass: color-mix(in srgb, var(--ebene-fixpaket) 16%, transparent);
   --ebene-design-blass: color-mix(in srgb, var(--ebene-design) 16%, transparent);
   --ebene-bug-blass: color-mix(in srgb, var(--ebene-bug) 16%, transparent);
+  /* F46 D2: Farben der Entscheidungsarten (Bild 09-Main, Art-Chip und Kartenkante) — nur Verweise
+     auf vorhandene Tokens, keine neue Farbe; das helle Theme folgt über die --ebene-*-Werte. */
+  --art-freigabe: var(--amber);
+  --art-abnahme: var(--mint);
+  --art-rueckfrage: var(--ebene-feature);
+  --art-fehler: var(--ebene-fixpaket);
+  --art-befund: var(--red);
+  --art-sichern: var(--ebene-workstream);
 
   /* ─── Farbe — Shell (F20; F44 WS-1a: Werte aus der Vorlage V10) ───
      Die Namen bleiben die API aller Views, die Werte zeigen auf die Vorlage. Wo die Vorlage
@@ -1974,43 +1982,6 @@ th {
   background: var(--color-danger-text);
 }
 
-/* F29 WS-2a: die vier Abschnitte sind jetzt .card (index.html) statt .unterabschnitt — hier nur
-   noch der Abstand zwischen den gestapelten Karten, spezifisch für diese Stelle im Layout
-   (Muster #workboard-detail oben). */
-.attention-abschnitt {
-  margin-bottom: var(--space-3xl);
-}
-
-.attention-abschnitt:last-child {
-  margin-bottom: 0;
-}
-
-/* F21 WS-2, F29 WS-2a: Attention-Einträge als .list-row-Zeile (Komponentenvokabular) — der
-   <button> selbst trägt nur Klick und Layout-Reset (volle Breite, kein Button-Chrome), die
-   Box-Optik (Padding, Trennlinie, Hover) kommt von .list-row. Navigation läuft weiterhin über
-   navigiere() (Muster router.js), nicht über <a href>. */
-.attention-zeile {
-  width: 100%;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--color-border-subtle);
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-/* QA-Befund (F29 WS-2a): Freitext aus dem Server (Workflow-grund, Lauf-/Startfehlermeldung)
-   kann lang und leerzeichenarm sein — ohne diesen Schutz würde eine solche Zeile das Layout
-   sprengen statt umzubrechen (Definition of Done), Muster .workboard-zeile-titel/
-   .projekte-uebersicht-zeile-titel. Gilt für BEIDE Zeilenarten (klickbarer .attention-zeile-Button
-   und die nicht-klickbare Startfehler-Zeile), min-width: 0 lässt den Flex-Item auch tatsächlich
-   unter seine ungebrochene Inhaltsbreite schrumpfen. */
-.attention-zeile-text {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
 /* F29 WS-D2 (Auftrag Punkt C): Sprechblasen statt Karten. Löst die WS-2a-Kartenoptik
    (.chat-eintrag/.chat-nachricht/.chat-quelle/.chat-antwort/.chat-ausstehend) vollständig ab —
    views/chat.js erzeugt seither .chat-bubble-* statt .chat-eintrag. F44 WS-8a: Kopf, Register,
@@ -3245,112 +3216,360 @@ th {
   margin-bottom: 0;
 }
 
-/* #/attention: eine durchgehende Liste; die vier Gruppen (Sektionen attention-abschnitt-*)
-   folgen ohne Rahmen aufeinander. Kein display auf den Sektionen — sonst überschriebe es das
-   hidden-Attribut (leere Gruppe unsichtbar). */
-#view-attention .entscheidungs-liste {
-  border-top: 1px solid var(--line);
+/* ─────────────── Deine Entscheidungen (F46 D2, Design 09-entscheidungen--Main) ───────────────
+   views/attention.js: Hauptspalte mit Filter-Chips, Karten in fünf Gruppen (Sektionen
+   attention-abschnitt-*, ohne display — sonst überschriebe es das hidden-Attribut einer leeren
+   Gruppe) und „Zuletzt entschieden“; rechte Spalte (300 px) mit „Wenn du nichts tust“ und
+   „Geprüfte Quellen“. Maße aus docs/design/neu/quelle/09-entscheidungen/Main.dc.html, Farben nur
+   über Tokens (--art-* für die Arten). Umbrüche als Container-Query auf die Seitenbreite. */
+#view-attention {
+  container: entscheidungen / inline-size;
+}
+
+#view-attention .entscheidungen-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+#view-attention .entscheidungen-haupt {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+#view-attention .page-heading {
+  margin: 0;
+}
+
+#view-attention .entscheidungen-filter:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#view-attention .filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#view-attention .filter-chip:hover {
+  border-color: var(--button-hover-line);
+}
+
+#view-attention .filter-chip[aria-pressed='true'] {
+  border-color: var(--mint);
+  background: color-mix(in srgb, var(--mint) 12%, transparent);
+}
+
+#view-attention .filter-chip[aria-disabled='true'] {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+#view-attention .entscheidungen-kommt:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -8px 0 0;
+  font-size: 12px;
+}
+
+#view-attention .entscheidungs-liste:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 #view-attention .attention-abschnitt {
   margin: 0;
 }
 
-#view-attention .entscheidung-zeile {
+#view-attention .attention-abschnitt > div {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 20px;
+}
+
+#view-attention .entscheidung-karte {
+  --art-farbe: var(--muted);
+  display: flex;
+  gap: 18px;
+  align-items: center;
   margin: 0;
-  padding: 20px 5px;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
-  text-decoration: none;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: inset 3px 0 0 var(--art-farbe);
 }
 
-#view-attention a.entscheidung-zeile:hover {
-  background: var(--nav-hover-bg);
-  color: var(--ink);
+#view-attention .entscheidung-karte.art-freigabe {
+  --art-farbe: var(--art-freigabe);
 }
 
-#view-attention a.entscheidung-zeile:hover .entscheidung-pfeil {
-  color: var(--mint);
+#view-attention .entscheidung-karte.art-abnahme {
+  --art-farbe: var(--art-abnahme);
 }
 
-#view-attention .entscheidung-text {
+#view-attention .entscheidung-karte.art-rueckfrage {
+  --art-farbe: var(--art-rueckfrage);
+}
+
+#view-attention .entscheidung-karte.art-lauf,
+#view-attention .entscheidung-karte.art-startproblem {
+  --art-farbe: var(--art-fehler);
+}
+
+#view-attention .entscheidung-karte.art-befund {
+  --art-farbe: var(--art-befund);
+}
+
+#view-attention .entscheidung-karte-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   flex: 1;
   min-width: 0;
 }
 
-#view-attention .entscheidung-text .eyebrow {
-  margin-bottom: 6px;
-}
-
-#view-attention .entscheidung-text h3 {
-  margin: 0 0 5px;
-  font-size: 19px;
-  overflow-wrap: anywhere;
-}
-
-#view-attention .entscheidung-text p {
-  margin: 0;
+#view-attention .entscheidung-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   font-size: 12px;
   color: var(--muted);
+}
+
+#view-attention .entscheidung-karte-eintrag {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
-#view-attention .entscheidung-pfeil {
-  color: var(--muted);
+#view-attention .entscheidung-karte h3 {
+  margin: 0;
+  font: 20px/1.3 var(--serif);
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+#view-attention .entscheidung-karte-kontext {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 80%, var(--muted));
+  overflow-wrap: anywhere;
+}
+
+#view-attention .entscheidung-karte-aktionen {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 190px;
+  text-align: center;
+}
+
+#view-attention .entscheidung-karte-aktionen .button {
+  min-height: 44px;
+  font-size: 13.5px;
+  white-space: normal;
+  text-decoration: none;
+}
+
+#view-attention .entscheidung-karte-aktionen .text-link {
+  font-size: 12px;
+}
+
+#view-attention .entscheidung-karte-ohne {
+  margin: 0;
+  font-size: 12px;
 }
 
 #view-attention .entscheidung-unbekannt {
   font-size: 13px;
   color: var(--amber);
+  box-shadow: none;
 }
 
 #view-attention .empty .button {
   text-decoration: none;
 }
 
-#view-attention .quellen-titel {
-  margin: 42px 0 20px;
+/* Art-Chip (typ-chip.js artChip): Umriss in der Farbe der Art, kein Punkt; doppelte Klasse, weil die
+   Grundregel .typ-chip weiter unten steht und sonst Textfarbe und Rand überschriebe. */
+.typ-chip.art-chip {
+  --art-farbe: var(--muted);
+  padding: 2px 9px;
+  border-color: color-mix(in srgb, var(--art-farbe) 55%, transparent);
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: var(--art-farbe);
 }
 
-#view-attention .quellen-raster {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px;
+.art-chip-freigabe {
+  --art-farbe: var(--art-freigabe);
 }
 
-#view-attention .quelle-kachel {
-  min-width: 0;
-  padding: 24px;
+.art-chip-abnahme {
+  --art-farbe: var(--art-abnahme);
+}
+
+.art-chip-rueckfrage {
+  --art-farbe: var(--art-rueckfrage);
+}
+
+.art-chip-fehler {
+  --art-farbe: var(--art-fehler);
+}
+
+.art-chip-befund {
+  --art-farbe: var(--art-befund);
+}
+
+#view-attention .entscheidungen-zuletzt,
+#view-attention .entscheidungen-lage,
+#view-attention .entscheidungen-quellen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--soft);
+  border-radius: 14px;
+  background: var(--panel);
 }
 
-/* Lange Quellennamen (ru, tr) brechen innerhalb der Kachel um statt über den Rand zu laufen. */
-#view-attention .quelle-kachel .eyebrow {
-  overflow-wrap: anywhere;
-  hyphens: auto;
+#view-attention .entscheidungen-zuletzt h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
 }
 
-#view-attention .quelle-kachel strong {
-  display: block;
-  margin: 12px 0 5px;
-  font: 30px var(--serif);
+#view-attention .entscheidungen-zuletzt p,
+#view-attention .entscheidungen-lage p {
+  margin: 0;
+  font-size: 12.5px;
 }
 
-#view-attention .quelle-kachel small {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
+#view-attention .entscheidungen-spalte {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 
-#view-attention .quelle-kachel-defekt small {
+#view-attention .entscheidungen-lage {
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
+}
+
+#view-attention .entscheidungen-spalte h2.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+#view-attention .entscheidungen-lage h2.eyebrow {
   color: var(--amber);
+}
+
+#view-attention .quellen-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#view-attention .quelle-zeile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  font-size: 12.5px;
+}
+
+#view-attention .quelle-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#view-attention .quelle-zahl {
+  color: var(--muted);
+}
+
+#view-attention .quelle-punkt {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
+#view-attention .quelle-defekt .quelle-punkt {
+  background: var(--red);
+}
+
+#view-attention .quelle-defekt .quelle-zahl {
+  color: var(--amber);
+}
+
+#view-attention .quelle-laedt .quelle-punkt,
+#view-attention .quelle-punkt-kommt {
+  background: none;
+  border: 1px solid var(--muted);
+}
+
+#view-attention .quellen-hinweis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* Unter 900 px Seitenbreite steht die rechte Spalte unter dem Inhalt; schmal (Telefon) steht der
+   Knopf einer Karte unter ihrem Text, in voller Breite. */
+@container entscheidungen (max-width: 900px) {
+  #view-attention .entscheidungen-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container entscheidungen (max-width: 600px) {
+  #view-attention .entscheidung-karte {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+
+  #view-attention .entscheidung-karte-aktionen {
+    width: 100%;
+  }
+
+  #view-attention .entscheidung-karte h3 {
+    font-size: 18px;
+  }
 }
 
 /* ─────────────── Roadmap (F46 D1, Design 03-roadmap--Main; vorher F44 WS-2a) ───────────────
@@ -4078,29 +4297,6 @@ th {
   #view-roadmap .roadmap-chip {
     min-height: 44px;
     font-size: 13px;
-  }
-}
-
-@media (max-width: 1150px) {
-  #view-attention .quellen-raster {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 700px) {
-  #view-attention .entscheidung-zeile {
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  #view-attention .entscheidung-text h3 {
-    font-size: 18px;
-  }
-}
-
-@media (max-width: 420px) {
-  #view-attention .quellen-raster {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -9001,4 +9197,552 @@ th {
   border-radius: 50%;
   background: var(--mint);
   box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* ─────────────── Seite Entscheiden (F46 D2, Design 09-entscheidungen--Entscheiden, -Abnahme) ───────────────
+   #/workflows/<id> mit der Klasse .entscheiden-modus (views/workflows.js zeichneEntscheiden):
+   Hauptspalte mit Karten (.entscheiden-karte, .entscheiden-kacheln), rechts „Deine Entscheidung“
+   (.entscheidung-panel, 360 px, beim Scrollen mitlaufend; bei schmaler Seite unter dem Inhalt und
+   nicht mehr klebend). Ohne Modus bleibt die heutige Ablaufseite. Maße aus
+   docs/design/neu/quelle/09-entscheidungen/Entscheiden.dc.html, Farben nur über Tokens; kein display
+   auf Containern mit hidden-Attribut (F-622). */
+#view-attention .entscheidung-karte-aktionen .text-link {
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--mint);
+}
+
+.workflow-seite.entscheiden-modus .workflow-raster {
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+  align-items: start;
+}
+
+.workflow-seite .workflow-seitenspalte {
+  min-width: 0;
+}
+
+.workflow-seite.entscheiden-modus .workflow-seitenspalte {
+  position: sticky;
+  top: 16px;
+  /* Wie im Bild auf Höhe der Eyebrow; höher als das Fenster scrollt die Spalte selbst, damit der
+     Bestätigen-Knopf nie erst am Seitenende erreichbar ist (Prüfpass qa 10). */
+  margin-top: 44px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.workflow-seite .eyebrow-eintrag {
+  text-transform: none;
+  letter-spacing: 0.5px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite.entscheiden-modus #workflow-detail-eyebrow {
+  color: var(--amber);
+}
+
+.workflow-seite.entscheiden-abnahme #workflow-detail-eyebrow {
+  color: var(--mint);
+}
+
+.workflow-seite.entscheiden-modus .workflow-detail-status {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+.workflow-seite .entscheiden-inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.workflow-seite .entscheiden-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.workflow-seite .entscheiden-karte h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 20px;
+}
+
+.workflow-seite .entscheiden-karte p {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.workflow-seite .entscheiden-karte-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.workflow-seite .entscheiden-karte-kopf .subtle {
+  font-size: 12px;
+}
+
+.workflow-seite .entscheiden-schritte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .entscheiden-schritt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.workflow-seite .entscheiden-schritt-faellig {
+  border-color: var(--amber);
+}
+
+.workflow-seite .entscheiden-schritt-nr {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+
+.workflow-seite .entscheiden-schritt-name {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .entscheiden-schritt-wer,
+.workflow-seite .entscheiden-schritt-marke {
+  font-size: 11px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .entscheiden-schritt-faellig .entscheiden-schritt-marke {
+  color: var(--amber);
+}
+
+.workflow-seite .entscheiden-kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.workflow-seite .entscheiden-kennzahl dt {
+  font-size: 9.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.workflow-seite .entscheiden-kennzahl dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .faehigkeiten-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .faehigkeit-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--mint) 55%, transparent);
+  border-radius: 999px;
+  font-size: 10.5px;
+  color: var(--mint);
+}
+
+.workflow-seite .faehigkeit-chip-vorgeschlagen {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  color: var(--amber);
+}
+
+.workflow-seite .ak-liste {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-seite .ak-zeile {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.workflow-seite .ak-id {
+  color: var(--muted);
+}
+
+.workflow-seite .ak-beleg {
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .ak-urteil {
+  justify-self: start;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, var(--mint) 55%, transparent);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--mint);
+  white-space: nowrap;
+}
+
+.workflow-seite .ak-urteil-fehler {
+  border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  color: var(--red);
+}
+
+.workflow-seite .ak-urteil-warten,
+.workflow-seite .ak-urteil-neutral {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  color: var(--amber);
+}
+
+.workflow-seite .entscheiden-kacheln {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workflow-seite .entscheiden-kachel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.workflow-seite .entscheiden-kachel p {
+  margin: 0;
+}
+
+.workflow-seite .entscheiden-wert {
+  font: 18px var(--serif);
+  font-weight: 400;
+}
+
+.workflow-seite .entscheiden-wert-ok {
+  color: var(--mint);
+}
+
+.workflow-seite .entscheiden-wert-fehler {
+  color: var(--red);
+}
+
+.workflow-seite .entscheiden-review-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.workflow-seite .entscheiden-kommt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.workflow-seite .text-link-knopf {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--mint);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.workflow-seite #abnahme-nachweise-titel:focus {
+  outline: none;
+}
+
+/* „Deine Entscheidung“ (views/entscheidung-panel.js). */
+.workflow-seite .entscheidung-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--amber);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.workflow-seite .entscheidung-panel .eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  color: var(--amber);
+}
+
+.workflow-seite .entscheidung-panel h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.workflow-seite .entscheidung-panel-empfehlung {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 12.5px;
+}
+
+.workflow-seite .entscheidung-optionen {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.workflow-seite .entscheidung-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.workflow-seite .entscheidung-option:has(input:checked) {
+  border-color: var(--mint);
+  background: color-mix(in srgb, var(--mint) 10%, transparent);
+}
+
+.workflow-seite .entscheidung-option:has(input:focus-visible) {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.workflow-seite .entscheidung-option input {
+  margin: 3px 0 0;
+  accent-color: var(--mint);
+}
+
+.workflow-seite .entscheidung-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workflow-seite .entscheidung-option strong {
+  font-weight: 400;
+  font-size: 13.5px;
+}
+
+.workflow-seite .entscheidung-option small {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.workflow-seite .entscheidung-option-gesperrt {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workflow-seite .entscheidung-panel textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.workflow-seite .entscheidung-panel .field {
+  margin: 0 0 -8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.workflow-seite .entscheidung-panel .entscheidung-absenden {
+  min-height: 44px;
+  font-size: 14px;
+  white-space: normal;
+}
+
+.workflow-seite .entscheidung-panel-hinweis {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.workflow-seite #workflow-abnahme-meldung {
+  margin: 12px 0 0;
+}
+
+/* „Der Weg zum Ergebnis“ als Aufklappbereich; im Entscheidungsmodus zugeklappt, samt „Auf einen Blick“. */
+.workflow-seite details.workflow-ablauf > summary {
+  cursor: pointer;
+}
+
+.workflow-seite details.workflow-ablauf > summary h2 {
+  display: inline;
+  font-size: 20px;
+}
+
+.workflow-seite .workflow-blick-ablauf .summary {
+  margin-bottom: 20px;
+  padding: 0;
+  border: 0;
+}
+
+/* Schmale Seite: eine Spalte; „Deine Entscheidung“ steht direkt nach dem Inhalt der Entscheidung und
+   vor den Aufklappbereichen „Der Weg zum Ergebnis“ und „Technischer Ablauf“ (Prüfpass dg N2, qa 10).
+   Die Hauptspalte löst sich dafür auf (display: contents), damit die Spalte per order dazwischen passt. */
+@container seite (max-width: 900px) {
+  .workflow-seite.entscheiden-modus .workflow-raster {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .workflow-seite.entscheiden-modus .workflow-hauptspalte {
+    display: contents;
+  }
+
+  .workflow-seite.entscheiden-modus .workflow-seitenspalte {
+    order: 1;
+    position: static;
+    margin: 0 0 24px;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .workflow-seite.entscheiden-modus #workflow-ablauf,
+  .workflow-seite.entscheiden-modus #workflow-technik {
+    order: 2;
+  }
+}
+
+@container seite (max-width: 640px) {
+  .workflow-seite .entscheiden-kacheln,
+  .workflow-seite .entscheiden-kennzahlen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflow-seite .ak-zeile {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .workflow-seite .ak-urteil {
+    grid-column: 2;
+  }
+}
+
+@container seite (max-width: 420px) {
+  .workflow-seite .entscheiden-kacheln {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* F46 D2: Zahl offener Entscheidungen am Navigationspunkt „Entscheidungen“ (entscheidungen-zaehler.js,
+   Bild 09-Main: Pille in Gold rechts im Eintrag). Absolut am rechten Rand des Eintrags: im Fluss
+   (gap 16 px wie die Symbole) liefe der Eintrag bei „Entscheidungen“ über die Seitenleiste hinaus
+   (gemessen 221 px gegen 199 px). Kein display ohne :not([hidden]) — sonst überschriebe es das
+   hidden-Attribut (0 bzw. unbekannt: verborgen). */
+#shell-nav .nav-zaehler:not([hidden]) {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--amber);
+  color: var(--bg);
+  font-size: 11px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+/* F46 D2: der gesperrte Hauptknopf der Spalte „Deine Entscheidung“ grau wie in der Vorlage (nicht
+   als abgeschwächtes Mint — ein gesperrter Knopf soll nicht nach Hauptaktion aussehen). */
+.workflow-seite .entscheidung-panel .button.primary:disabled {
+  border-color: transparent;
+  background: var(--track);
+  color: var(--muted);
+  opacity: 1;
+}
+
+
+/* Prüfpass dg N1: wird die Navigation schmal (200 % Zoom, lange Beschriftung), stößt die Pille am rechten
+   Rand an die Beschriftung — dann sitzt die Zahl als Abzeichen an der Ecke des Symbols (gemessen: Eintrag
+   normal 179 px breit, Beschriftung „Entscheidungen“ endet 22 px vor dem Rand). */
+#shell-nav {
+  container: seitennav / inline-size;
+}
+
+@container seitennav (max-width: 175px) {
+  #shell-nav .nav-zaehler:not([hidden]) {
+    top: 6px;
+    right: auto;
+    left: 27px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    transform: none;
+  }
 }

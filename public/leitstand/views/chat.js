@@ -1378,7 +1378,7 @@ async function ladeKontext() {
 }
 
 /** i18n-Schlüssel je Eintragsart von „Nächster Schritt“. */
-const NAECHSTER_ART_SCHLUESSEL = { freigabe: 'chat.kontext.art.freigabe', rueckfrage: 'chat.kontext.art.rueckfrage', lauf: 'chat.kontext.art.lauf' }
+const NAECHSTER_ART_SCHLUESSEL = { freigabe: 'chat.kontext.art.freigabe', rueckfrage: 'chat.kontext.art.rueckfrage', abnahme: 'chat.kontext.art.abnahme', lauf: 'chat.kontext.art.lauf' }
 
 /** Letztes gerendertes HTML von „Nächster Schritt“ — der 2-s-Poll ersetzt den Block nur bei Änderung (kein Fokusverlust auf dem Link). */
 let letzterNaechsterSchrittHtml = null

@@ -16,7 +16,8 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/runs.js
  * - public/leitstand/views/projekt.js
- * - public/leitstand/views/workflows.js
+ * - public/leitstand/views/workflows.js (F46 D2 zusätzlich holeProjektAufruf für „Produkt öffnen“)
+ * - public/leitstand/views/attention.js (F21 WS-2: holeWorkitems über attention-daten.js; F46 D2: holeAuftraegeBegrenzt für „Zum Eintrag“)
  * - public/leitstand/views/workboard.js (F22 WS-2; F44 WS-3b Detail: holeFeatureAkte, holeRoadmap, holeAbnahme)
  * - public/leitstand/views/roadmap.js (F44 WS-2a: holeRoadmap, holeWorkitems; F46 D1: holeFeatureAkte)
  * - public/leitstand/views/dashboard.js (F44 WS-2b: holeRoadmap, holeWorkitems; F46 D1: holeAuftraege, holeLaufDetail,

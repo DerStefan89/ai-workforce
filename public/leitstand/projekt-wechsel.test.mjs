@@ -864,8 +864,11 @@ test('F-874, F-923 (F44 WS-4a): Wechsel bei offenem Workflow-Detail und offenem 
   dispatch()
   await warte()
   assert.equal(document.getElementById('workflow-detail').hidden, false)
-  assert.equal(document.getElementById('workflow-detail-titel').textContent, 'Ziel WF')
+  // F46 D2: auf einer Freigabe ist die Seite „Entscheiden“ — die Überschrift ist die Frage, das Ziel steht in der Eyebrow.
+  assert.equal(document.getElementById('workflow-detail-titel').textContent, 'Darf der Ablauf starten?')
+  assert.match(document.getElementById('workflow-detail-eyebrow').innerHTML, /Freigabe · <span class="eyebrow-eintrag" title="Ziel WF">Ziel WF<\/span>/)
   assert.match(document.getElementById('workflow-aktionen').innerHTML, /data-aktion="freigabe-oeffnen"/)
+  assert.match(document.getElementById('workflow-entscheidung').innerHTML, /data-aktion="freigabe-bestaetigen"/, 'die Spalte „Deine Entscheidung“ steht da')
 
   // Dialog über die Aktionszeile öffnen; dazu ein angefangener Reparaturentwurf.
   const dialog = document.getElementById('workflow-dialog')
