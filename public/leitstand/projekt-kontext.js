@@ -25,6 +25,10 @@
  *   F44 WS-1a / F-860 — zentraler Neuladen-Hook: projektgebundene Daten, die sonst nur beim
  *   Bootstrap geladen würden, laden beim Wechsel neu)
  *
+ * F44 WS-8b: renderProjektKontext setzt zusätzlich den VS-Code-Knopf im Kopf (kopf-werkzeuge.js)
+ * auf den repo_pfad des aktiven Projekts — aus dem geladenen Register, nicht aus dem gemerkten
+ * Sitzungsobjekt. Vor dem ersten Laden und ohne Eintrag bleibt der Knopf deaktiviert.
+ *
  * Wichtig: STANDARD_PROJEKT entspricht dem Starteintrag 'ai-workforce' aus
  * projekte.json (F25 WS-1, AK1) — sein Präfix ist '/api' (api.js' eigener
  * Default, Regressionsschutz: unverändertes Verhalten ohne Projektwechsel).
@@ -52,6 +56,7 @@
 
 import { holeProjekte, setzeAktivesProjektPraefix } from './api.js'
 import { t } from './i18n.js'
+import { renderVsCodeLinks } from './kopf-werkzeuge.js'
 import { escapeHtml } from './render.js'
 import { pollJetzt, verwerfeLaufendenZustand } from './zustand.js'
 
@@ -125,7 +130,7 @@ export function setzeAktivesProjekt(projekt) {
   void pollJetzt()
 }
 
-/** F44 WS-1b: zuletzt geladenes Projektregister ([{ id, name }]) oder null, solange noch nichts geladen ist. */
+/** F44 WS-1b: zuletzt geladenes Projektregister ([{ id, name, repo_pfad }], repo_pfad seit WS-8b) oder null, solange noch nichts geladen ist. */
 let projektListe = null
 /** F44 WS-1b: true, wenn der letzte Abruf des Registers scheiterte. */
 let projektListeFehler = false
@@ -146,6 +151,7 @@ export function renderProjektKontext() {
   auswahl.innerHTML = eintraege.map((p) => `<option value="${escapeHtml(p.id)}"${p.id === aktivesProjekt.id ? ' selected' : ''}>${escapeHtml(p.name)}</option>`).join('') + fehlerOption
   auswahl.value = aktivesProjekt.id
   auswahl.title = projektListeFehler ? t('kopf.projekteFehler') : ''
+  renderVsCodeLinks(liste.find((p) => p.id === aktivesProjekt.id)?.repo_pfad ?? null)
 }
 
 /**
@@ -155,7 +161,7 @@ export function renderProjektKontext() {
 export async function ladeProjektAuswahl() {
   try {
     const daten = await holeProjekte()
-    projektListe = daten.projekte.map((p) => ({ id: p.id, name: p.name }))
+    projektListe = daten.projekte.map((p) => ({ id: p.id, name: p.name, repo_pfad: typeof p.repo_pfad === 'string' ? p.repo_pfad : null }))
     projektListeFehler = false
   } catch (fehler) {
     console.error('Projektauswahl: Register konnte nicht geladen werden:', fehler)

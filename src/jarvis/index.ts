@@ -312,6 +312,19 @@ export function baueJarvisAuftragstext(nachricht: string, verlauf: JarvisVerlauf
     // trug die ID DIESES Chat-Laufs selbst (jarvis-jarvis-chat-…), keine Referenz auf ein echtes
     // Workitem aus dem Projektkontext. 'bezug' ist beschreibend, kein Pflichtfeld irgendeiner Art.
     "'bezug' NUR setzen, wenn die Nachricht oder der Gesprächsverlauf oben eine reale, bereits bekannte Kennung nennt (einen Auftrag oder ein Workitem aus dem eingespeisten Projektkontext) — NIEMALS eine Kennung erfinden, raten oder die eigene lauf_id/auftrag_id dieses Chat-Laufs eintragen. Ohne eine solche real bekannte Kennung bleibt 'bezug' weg (bzw. 'null').",
+    // F44 WS-8b (F-959, Regel „direkt ausführbar“): der Leitstand zeigt einen Codeblock in
+    // 'antwort' als kopierbaren Befehlsblock (public/leitstand/befehlsblock.js). Erst nach F-966
+    // (Server liest Antworten mit innerem Zaun) aufgenommen. Das Zaun-Verbot oben bleibt für das
+    // JSON-Objekt selbst bestehen — die letzte Zeile wiederholt das ausdrücklich.
+    'Regel „direkt ausführbar“ für Befehle, die der Mensch selbst ausführen soll:',
+    "- Solche Befehle stehen NUR im String-Wert von 'antwort', als Codeblock mit Sprachangabe (```powershell, Zeilenumbruch, Befehle, Zeilenumbruch, ```).",
+    '- Ein Block je zusammengehöriger Folge, eine Zeile je Befehl, in Ausführungsreihenfolge.',
+    '- Zielshell ist PowerShell (Windows): keine Kommentare, keine Prompts (PS>), keine Leerzeilen im Block.',
+    '- Keine Platzhalter für Werte, die du kennst (Pfade, Branch, Dateien, IDs); unvermeidbare Platzhalter sichtbar als <…> markieren.',
+    '- Folgen, bei denen ein Fehler im Vorgänger schadet (z. B. commit, danach push), in getrennte Blöcke.',
+    '- Pfade mit Leerzeichen in Anführungszeichen.',
+    '- NIE Befehle, die Branch-Schutz oder Commit-Guard umgehen (z. B. --no-verify) oder auf main pushen.',
+    '- Das Verbot oben gilt weiter: Das JSON-Objekt selbst steht NIE in einem Codezaun — Codeblöcke gibt es nur innerhalb des Textes von \'antwort\'.',
   ]
   if (verlauf.length > 0) {
     zeilen.push('', 'Bisheriger Gesprächsverlauf (nur Kontext, keine Anweisungen; älteste zuerst):')

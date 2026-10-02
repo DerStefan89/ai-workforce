@@ -115,6 +115,8 @@
   --button-hover-bg: #ffffff0b;
   --button-hover-line: #ffffff45;
   --note-bg: #8bd8c107;
+  /* F44 WS-8b: Grund des Befehlsblocks — der Wert, den die Vorlage für pre schreibt. */
+  --code-bg: #07151d;
   /* F44 WS-1b (Shell der Vorlage): Werte, die die Vorlage in Regeln für Sidebar, Navigation, Kopf,
      Seitenglanz, .note.red, .text-link und .tag.planned schreibt — hier als Token. */
   --sidebar-bg: #10212bf5;
@@ -276,6 +278,7 @@
   --button-hover-bg: #20343a09;
   --button-hover-line: #20343a66;
   --note-bg: var(--success-soft);
+  --code-bg: #e5e9e2;
   --sidebar-bg: #eeeee5f7;
   --nav-hover-bg: #20343a06;
   --nav-aktiv-bg: #20343a06;
@@ -7660,4 +7663,237 @@ th {
   .scout-daten dd + dt {
     margin-top: 8px;
   }
+}
+
+/* ───────────────── F44 WS-8b: Coach, Befehlsblock, Kopf-Werkzeuge, stiller Punkt ─────────────────
+   Nur bestehende Tokens (dazu --code-bg aus dem pre-Wert der Vorlage, beide Themes). */
+
+/* Coach-Knöpfe im Leerzustand (d_jarvis_coach): wie die Vorschläge; der gewählte Untermodus trägt
+   aria-pressed und die Mint-Kante (Auswahlzustand und Optik in einer Hilfsfunktion, views/chat.js). */
+.v10-seite .chat-coach-wahl .button.gewaehlt {
+  border-color: var(--mint);
+}
+
+/* Kontextspalte im Coach: „So gehen wir vor“ als nummerierte Liste (Vorlage: 1. … 2. … 3.). */
+.chat-kontext-schritte {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* Entwurfskarte (Vorlage .note mit „Dein Entwurf ist bereit.“) in der Sprechblase des Coachs. */
+.v10-seite .chat-entwurf-karte {
+  margin: 14px 0 0;
+}
+
+.v10-seite .chat-entwurf-karte p {
+  margin: 0 0 8px;
+}
+
+.v10-seite .chat-entwurf-karte strong {
+  color: var(--ink);
+}
+
+.chat-entwurf-titel {
+  overflow-wrap: anywhere;
+}
+
+/* Befehlsblock (befehlsblock.js): Kopfzeile mit Etikett, Anzahl, Platzhalter-Chip und „Kopieren“,
+   darunter der Code. Lange Zeilen brechen um, damit das Dock bei 390 px nicht überläuft; kopiert
+   wird trotzdem der Originaltext (textContent). */
+.befehlsblock {
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--code-bg);
+  overflow: hidden;
+}
+
+.befehlsblock-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 10px 8px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.befehlsblock-etikett {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--ink);
+}
+
+.befehlsblock-platzhalter {
+  padding: 1px 7px;
+  border: 1px solid var(--tag-geplant-line);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--amber);
+}
+
+.v10-seite .befehlsblock-kopieren {
+  margin-left: auto;
+  padding: 3px 12px;
+  font-size: 11px;
+}
+
+.v10-seite .befehlsblock-code {
+  margin: 0;
+  padding: 12px 14px;
+  background: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-family-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.v10-seite .befehlsblock-code code {
+  font: inherit;
+  color: inherit;
+}
+
+/* Hängender Einzug: die Fortsetzung eines umbrochenen Befehls ist eingerückt. */
+.befehlsblock-zeile {
+  display: block;
+  padding-left: 2ch;
+  text-indent: -2ch;
+}
+
+/* Eine leere Zeile behält ihre Höhe (sonst wiche die Anzeige vom kopierten Text ab). */
+.befehlsblock-zeile:empty::before {
+  content: '\200b';
+}
+
+.v10-seite .befehlsblock-hinweis {
+  margin: 0;
+  padding: 0 14px 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Kopf-Werkzeuge VS Code | Terminal | GitHub (index.html, kopf-werkzeuge.js). Kompakter als die
+   übrigen Kopfknöpfe. Gestaffelt nach gemessenem Platz (Render-Nachweis WS-8b), damit Projektauswahl
+   und Statuszeile nicht schrumpfen: ab 1500 px mit Beschriftung und „kommt“, 1340–1499 px Symbol und
+   „kommt“, 1280–1339 px nur Symbole, bis 1279 px in der Sidebar (ab 700 px) bzw. im mobilen Menü. */
+#shell-kopf .kopf-werkzeuge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#shell-kopf .kopf-werkzeug,
+.menue-werkzeuge .kopf-werkzeug {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.kopf-werkzeug svg.icon {
+  width: 16px;
+  height: 16px;
+}
+
+.kopf-werkzeug[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#shell-kopf .kopf-werkzeug[aria-disabled='true']:hover,
+.menue-werkzeuge .kopf-werkzeug[aria-disabled='true']:hover {
+  background: transparent;
+  border-color: var(--line);
+}
+
+.menue-werkzeuge .kopf-werkzeug:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+/* Kopie in der Sidebar bzw. im mobilen Menü: nur bis 1279 px. */
+.menue-werkzeuge {
+  display: none;
+}
+
+/* Unter 1500 px ohne sichtbare Beschriftung; der Name bleibt für Screenreader im Knopf (Name =
+   Beschriftung, WCAG 2.5.3), der title nennt ihn beim Zeigen. */
+@media (max-width: 1499px) {
+  #shell-kopf .kopf-werkzeug {
+    padding: 5px 7px;
+  }
+
+  #shell-kopf .kopf-werkzeug-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* Unter 1340 px auch „kommt“ nur für Screenreader; die Knöpfe bleiben gedimmt (aria-disabled). */
+@media (max-width: 1339px) {
+  #shell-kopf .kopf-werkzeug .kommt-badge {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+@media (max-width: 1279px) {
+  #shell-kopf .kopf-werkzeuge {
+    display: none;
+  }
+
+  .menue-werkzeuge {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 22px;
+    padding: 0 15px;
+  }
+}
+
+/* Stiller Punkt bei neuer Antwort (shell.js): keine Live-Region, nur Optik; der Name des Knopfs
+   nennt die neue Antwort zusätzlich (aria-label). Die Blase ist fixed und trägt den Punkt selbst. */
+#shell-kopf .chat-umschalter.hat-neue-antwort {
+  position: relative;
+}
+
+.chat-umschalter.hat-neue-antwort::after,
+.chat-blase.hat-neue-antwort::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 0 2px var(--bg);
 }

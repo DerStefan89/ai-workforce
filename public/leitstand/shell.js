@@ -22,6 +22,12 @@
  *    der Kopfknopf kein aria-expanded; ein Projektwechsel bildet ein gemerktes Detail des alten
  *    Projekts auf dessen Liste ab (DETAIL_ROUTEN). Ist localStorage gesperrt, gilt die Präferenz
  *    im Modul weiter.
+ *    F44 WS-8b: Trifft eine Antwort ein (beiNeuerAntwort, views/chat.js), während das Dock zu ist
+ *    und die Route nicht '#/chat', tragen Blase und Kopfknopf einen stillen Punkt
+ *    (.hat-neue-antwort) und das aria-label „Frag Jarvis, neue Antwort“ — keine Live-Region. Öffnen
+ *    des Docks, '#/chat' oder ein Projektwechsel nimmt beides weg. oeffneChatMitEntwurf (über
+ *    chat-dock.js registriert, Aufruf aus views/projekt.js „Lieber mit dem Coach besprechen“) setzt Modus, Untermodus und Entwurf
+ *    (setzeChatEntwurf) und öffnet das Dock mit Fokus in der Eingabe — ohne zu senden.
  * 2. Persona-Knopf (#persona-kopf-oeffner) und Wortmarke der Sidebar (#shell-marke) holen die
  *    Startfläche zurück (views/start.js, zeigeStartflaeche()).
  * 3. Projektauswahl im Kopf (#kopf-projekt-auswahl, A4): setzt das aktive Projekt über
@@ -56,6 +62,9 @@ import { holeAktivesProjekt, ladeProjektAuswahl, projektAusListe, projektListeFe
 import { escapeHtml } from './render.js'
 import { navigiere } from './router.js'
 import { abonniereThemeWechsel, aktuellesTheme, setzeTheme } from './theme.js'
+import { registriereChatOeffner } from './chat-dock.js'
+import { abonniereProjektWechsel } from './projekt-kontext.js'
+import { beiNeuerAntwort, setzeChatEntwurf } from './views/chat.js'
 import { fokussiereEinstellungen } from './views/einstellungen.js'
 import { oeffneAnlegenFormularAusKopf } from './views/projekte-uebersicht.js'
 import { zeigeStartflaeche } from './views/start.js'
@@ -81,6 +90,9 @@ let gemerkteRoute = null
 
 /** Der Auslöser, der das Dock zuletzt geöffnet hat — bekommt beim Schließen den Fokus zurück. */
 let letzterAusloeser = null
+
+/** F44 WS-8b: kam eine Antwort, während das Dock zu war? (stiller Punkt, Datei-Kommentar 1) */
+let neueAntwort = false
 
 /** Zuletzt gesetzte Präferenz im Modul — gilt, wenn localStorage gesperrt ist (QA-Pass WS-8a: sonst schlösse das folgende hashchange ein gerade geöffnetes Dock wieder). */
 let chatPraeferenzImModul = null
@@ -120,6 +132,13 @@ function wendeChatSichtbarkeitAn() {
   else umschalter.setAttribute('aria-expanded', String(dockOffen))
   blase.setAttribute('aria-expanded', String(dockOffen))
   blase.hidden = gross
+  // F44 WS-8b: offenes Dock oder große Ansicht — die Antwort ist sichtbar, der Punkt geht weg.
+  if (gross || dockOffen) neueAntwort = false
+  for (const ausloeser of [umschalter, blase]) {
+    ausloeser.classList.toggle('hat-neue-antwort', neueAntwort)
+    if (neueAntwort) ausloeser.setAttribute('aria-label', t('kopf.fragJarvisNeu'))
+    else ausloeser.removeAttribute('aria-label')
+  }
   if (dockOffen && !gross) {
     // Wie die Vorlage (chatDock): beim Öffnen steht der Verlauf am Ende (neueste Antwort, Tippanzeige).
     const verlauf = document.getElementById('chat-verlauf')
@@ -200,6 +219,33 @@ function initChatDock() {
   })
   window.addEventListener('hashchange', beiRoutenwechsel)
   beiRoutenwechsel()
+  beiNeuerAntwort(() => {
+    if (dockOffen || istGrossansicht(location.hash)) return
+    neueAntwort = true
+    wendeChatSichtbarkeitAn()
+  })
+  // Prüfpass WS-8b (qa K5): die Antwort gehörte zum alten Projekt — der Punkt geht mit dem Wechsel weg.
+  abonniereProjektWechsel(() => {
+    if (!neueAntwort) return
+    neueAntwort = false
+    wendeChatSichtbarkeitAn()
+  })
+  registriereChatOeffner(oeffneChatMitEntwurf)
+}
+
+/**
+ * F44 WS-8b: öffnet das Dock im gewünschten Modus mit einem Entwurf in der Eingabe (Datei-Kommentar
+ * 1) — kein Senden. Auf '#/chat' bleibt die große Ansicht, nur die Eingabe bekommt den Fokus.
+ * @param auswahl - { modus, untermodus, entwurf } wie setzeChatEntwurf (views/chat.js)
+ * @param ausloeser - der auslösende Knopf (bekommt beim Schließen den Fokus zurück)
+ */
+function oeffneChatMitEntwurf(auswahl, ausloeser) {
+  setzeChatEntwurf(auswahl)
+  if (istGrossansicht(location.hash)) {
+    document.getElementById('chat-eingabe').focus()
+    return
+  }
+  setzeDock(true, ausloeser)
 }
 
 /** Persona-Knopf im Kopf und Wortmarke der Sidebar öffnen die Startfläche (Vorlage: Wortmarke → '#/start'). */

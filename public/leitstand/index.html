@@ -53,6 +53,13 @@
         <div id="zuletzt-verlauf"></div>
       </div>
 
+      <!-- F44 WS-8b: die Kopf-Werkzeuge bis 1279 px (dort im Kopf ausgeblendet, style.css). -->
+      <div class="menue-werkzeuge" role="group" aria-label="Werkzeuge" data-i18n-aria-label="kopf.werkzeuge">
+            <a class="button kopf-werkzeug" data-werkzeug-vscode role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.vscode">VS Code</span></a>
+            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h18v14H3ZM7 10l3 2-3 2M12 15h5" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.terminal">Terminal</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+          </div>
+
       <!-- Illustration der Vorlage (gear), rein dekorativ und nicht klickbar. Sie hängt am unteren
            Block statt am Sidebar-Rand, damit sie bei geringer Fensterhöhe (200 % Zoom) nicht über die
            Hauptnavigation wandert (F-865, minimale Korrektur). -->
@@ -72,7 +79,11 @@
            Persona-Knopf mit der Statuszeile (#persona-text-status, persona.js — die einzige
            aria-live-Region), rechts Sprache, Hell/Dunkel und „Frag Jarvis“ (#chat-umschalter,
            shell.js, seit WS-8a Auslöser des Chat-Docks wie #chat-blase). #persona-platzhalter und
-           #persona-kopf-oeffner bleiben die Mount- und Klickpunkte von persona.js/shell.js. -->
+           #persona-kopf-oeffner bleiben die Mount- und Klickpunkte von persona.js/shell.js.
+           F44 WS-8b: links von „Frag Jarvis“ die Werkzeuge VS Code | Terminal | GitHub. VS Code ist ein
+           echter Link auf den Projektordner (kopf-werkzeuge.js setzt href oder aria-disabled), Terminal
+           und GitHub sind Bausteine „kommt“ (kommt.js). Bis 1279 px stehen sie in der Sidebar bzw. im
+           mobilen Menü (.menue-werkzeuge), damit die Kopfzeile nicht überläuft (Staffelung: style.css). -->
       <header id="shell-kopf">
         <div class="top-left">
           <button type="button" id="shell-menue-oeffner" class="icon-button mobile-menu" aria-expanded="false" aria-controls="shell-sidebar" aria-label="Navigation öffnen" data-i18n-aria-label="kopf.menue"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" /></svg></button>
@@ -88,6 +99,11 @@
         <div class="top-right">
           <label class="language-picker"><span class="sr-only" data-i18n="kopf.sprache">Sprache</span><select id="kopf-sprache"></select></label>
           <button type="button" id="kopf-theme" class="icon-button theme-toggle" title="Hell / Dunkel" data-i18n-title="kopf.themeTitel"></button>
+          <div class="kopf-werkzeuge" role="group" aria-label="Werkzeuge" data-i18n-aria-label="kopf.werkzeuge">
+            <a class="button kopf-werkzeug" data-werkzeug-vscode role="link" tabindex="0" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.vscode">VS Code</span></a>
+            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 5h18v14H3ZM7 10l3 2-3 2M12 15h5" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.terminal">Terminal</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+            <button type="button" class="button kopf-werkzeug kommt-knopf" aria-disabled="true"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 3v12M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM18 9c0 4-4 5-12 6" /></svg><span class="kopf-werkzeug-text" data-i18n="kopf.github">GitHub</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+          </div>
           <button type="button" id="chat-umschalter" class="button chat-umschalter" aria-expanded="false" aria-controls="shell-chat-spalte" title="Frag Jarvis" data-i18n-title="kopf.fragJarvis"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-umschalter-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
         </div>
       </header>
@@ -715,6 +731,11 @@
                 <div id="chat-leer-coach" hidden>
                   <h2 data-i18n="chat.leer.coach.titel">Was möchtest du möglich machen?</h2>
                   <p data-i18n="chat.leer.coach.text">Eine Idee reicht. Gemeinsam machen wir daraus einen klaren Auftrag.</p>
+                  <!-- F44 WS-8b (d_jarvis_coach): wählen den Untermodus und fokussieren die Eingabe, senden nicht. -->
+                  <div class="chat-vorschlaege chat-coach-wahl" role="group" aria-label="Womit fangen wir an?" data-i18n-aria-label="chat.coach.label">
+                    <button type="button" id="chat-coach-feature-btn" class="button" aria-pressed="false" data-coach-untermodus="feature" data-i18n="chat.coach.feature">Eine Feature-Idee schärfen</button>
+                    <button type="button" id="chat-coach-projekt-btn" class="button" aria-pressed="false" data-coach-untermodus="projekt" data-i18n="chat.coach.projekt">Ein neues Projekt durchdenken</button>
+                  </div>
                 </div>
               </div>
               <div id="chat-verlauf" role="region" tabindex="0" aria-label="Gesprächsverlauf" data-i18n-aria-label="chat.verlauf.label"></div>
@@ -745,9 +766,18 @@
               <p class="eyebrow" id="chat-kontext-titel" data-i18n="chat.kontext.titel">Unser Kontext</p>
               <h3 id="chat-kontext-projekt"></h3>
               <p id="chat-kontext-ziel" class="chat-kontext-text"></p>
-              <div class="chat-kontext-eintrag">
+              <div class="chat-kontext-eintrag" id="chat-kontext-naechster-eintrag">
                 <p class="eyebrow" data-i18n="chat.kontext.naechster">Nächster Schritt</p>
                 <div id="chat-kontext-naechster"></div>
+              </div>
+              <!-- F44 WS-8b (d_jarvis_coach): im Coach statt „Nächster Schritt“. -->
+              <div class="chat-kontext-eintrag" id="chat-kontext-vorgehen-eintrag" hidden>
+                <p class="eyebrow" id="chat-kontext-vorgehen-titel" data-i18n="chat.kontext.vorgehen">So gehen wir vor</p>
+                <ol class="chat-kontext-schritte" aria-labelledby="chat-kontext-vorgehen-titel">
+                  <li data-i18n="chat.kontext.vorgehen.ziel">Ziel verstehen</li>
+                  <li data-i18n="chat.kontext.vorgehen.umfang">Umfang eingrenzen</li>
+                  <li data-i18n="chat.kontext.vorgehen.ergebnis">Ergebnis festlegen</li>
+                </ol>
               </div>
               <div class="chat-kontext-eintrag">
                 <p class="eyebrow" data-i18n="chat.kontext.entscheidest">Du entscheidest</p>

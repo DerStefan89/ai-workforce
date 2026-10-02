@@ -206,6 +206,19 @@
  * über t()/tHtml() (de/en/tr/ru), Modell- und Serverwerte roh und escaped. „Sparring“ heißt in den
  * Texten jetzt „Product Coach“; Modus-Schlüssel, Endpunkte und Gates bleiben 'sparring'. Poll-,
  * Timer-, Sende-, Vorfilter- und D13-Logik sind unverändert.
+ *
+ * F44 WS-8b (Vorlage V10 d_jarvis_coach, Abgleich F-725 L2/L3; Regel „direkt ausführbar“, F-959):
+ * (a) Coach-Leerzustand mit „Eine Feature-Idee schärfen“ / „Ein neues Projekt durchdenken“ — sie
+ * wählen den Untermodus (waehleUntermodus, dieselbe Logik wie #chat-untermodus-*) und fokussieren
+ * die Eingabe, senden aber nicht; ohne Verlauf ersetzen sie den Untermodus-Umschalter, mit Verlauf
+ * bleibt er. Die Kontextspalte zeigt im Coach „So gehen wir vor“ statt „Nächster Schritt“. (b) Ein
+ * Coach-Entwurf (scope_entwurf/projekt_entwurf) erscheint als Hinweiskarte „Dein Entwurf ist
+ * bereit.“ mit primärem „Als Auftrag anlegen“; Dialog, legeAuftragAn und herkunft unverändert. (c)
+ * setzeChatEntwurf (Aufruf über shell.js oeffneChatMitEntwurf, „Lieber mit dem Coach besprechen“
+ * auf #/projekt) setzt Modus und Untermodus und füllt die Eingabe — ohne zu senden. (d) Der Text
+ * des Feldes 'antwort' läuft durch befehlsblock.js: Codeblöcke werden kopierbare Befehlsblöcke
+ * (nur Zwischenablage, nur auf Klick; alles escaped). (e) beiNeuerAntwort meldet shell.js jede
+ * terminal aufgelöste Antwort (stiller Punkt an Blase und Kopfknopf, wenn das Dock zu ist).
  */
 
 import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
@@ -216,7 +229,8 @@ import { abonniere } from '../zustand.js'
 import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
 import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
-import { istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
+import { fuegeEntwurfEin, istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
+import { kopiereBefehlsblock, renderAntwortText } from '../befehlsblock.js'
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { t, tHtml } from '../i18n.js'
 import { roadmapKennzahlen } from '../produkte-anzeige.js'
@@ -692,6 +706,15 @@ function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
         <p>${tHtml('chat.auftrag.bereits', {}, { id: `<code>${escapeHtml(auftragErstelltId)}</code>` })} <a href="#/projekt">${tHtml('chat.auftrag.ansehen')}</a></p>
       </div>`
     }
+    // F44 WS-8b (d_jarvis_coach, L3): ein Coach-Entwurf als Hinweiskarte mit primärem Knopf; Jarvis'
+    // auftrag_vorschlag behält den schlichten Knopf. Titel aus dem Kandidaten, escaped.
+    if (modus === 'sparring') {
+      return `<div class="note chat-entwurf-karte">
+        <p><strong>${tHtml('chat.entwurf.bereit')}</strong></p>
+        <p class="chat-entwurf-titel">${escapeHtml(kandidat.titel)}</p>
+        <button type="button" class="button primary chat-auftrag-oeffnen-btn" data-auftrag-oeffnen="${escapeHtml(schluessel)}">${tHtml('chat.auftrag.anlegenOeffnen')}</button>
+      </div>`
+    }
     return `<button type="button" class="btn chat-auftrag-oeffnen-btn" data-auftrag-oeffnen="${escapeHtml(schluessel)}">${tHtml('chat.auftrag.anlegenOeffnen')}</button>`
   }
   const dialog = offenerAuftragDialog
@@ -733,7 +756,9 @@ function renderEintrag(modus, eintrag) {
   }
   const label = Object.hasOwn(QUELLE_ANTWORT_SCHLUESSEL, eintrag.quelle) ? t(QUELLE_ANTWORT_SCHLUESSEL[eintrag.quelle]) : antwortLabel(modus)
   const art = eintrag.antwort?.art
-  let inhaltHtml = `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`
+  // F44 WS-8b: Antworten von Jarvis und Coach (persistiert, quelle === modus) mit Befehlsblöcken
+  // (befehlsblock.js); lokale Einträge (Vorfilter, Fehlanzeige) bleiben ein Absatz.
+  let inhaltHtml = eintrag.quelle === modus ? renderAntwortText(eintrag.antwortText) : `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`
   if (art === 'alternativen') inhaltHtml += renderAlternativen(eintrag.antwort?.alternativen)
   if (art === 'scope_entwurf') inhaltHtml += renderScope(eintrag.antwort?.scope)
   if (art === 'projekt_entwurf') inhaltHtml += renderProjekt(eintrag.antwort?.projekt)
@@ -800,10 +825,20 @@ function renderVerlauf() {
     element.setAttribute('aria-pressed', String(gedrueckt))
     element.classList.toggle('btn-primary', gedrueckt)
   }
-  // F34 WS-3: Unterumschalter nur im Modus 'sparring' sichtbar.
-  document.getElementById('chat-untermodus-auswahl').hidden = modus !== 'sparring'
   setzeGedruecktenZustand('chat-untermodus-feature-btn', sparringUntermodus === 'feature')
   setzeGedruecktenZustand('chat-untermodus-projekt-btn', sparringUntermodus === 'projekt')
+  // F44 WS-8b: die beiden Coach-Knöpfe im Leerzustand wählen denselben Untermodus — Auswahlzustand
+  // (aria-pressed) und Optik (.gewaehlt) laufen wie beim Umschalter in EINER Hilfsfunktion (F-620).
+  const setzeCoachWahlZustand = (id, gewaehlt) => {
+    const element = document.getElementById(id)
+    element.setAttribute('aria-pressed', String(gewaehlt))
+    element.classList.toggle('gewaehlt', gewaehlt)
+  }
+  setzeCoachWahlZustand('chat-coach-feature-btn', sparringUntermodus === 'feature')
+  setzeCoachWahlZustand('chat-coach-projekt-btn', sparringUntermodus === 'projekt')
+  // F44 WS-8b: Kontextspalte — im Coach „So gehen wir vor“ statt „Nächster Schritt“ (d_jarvis_coach).
+  document.getElementById('chat-kontext-naechster-eintrag').hidden = modus === 'sparring'
+  document.getElementById('chat-kontext-vorgehen-eintrag').hidden = modus !== 'sparring'
 
   const container = document.getElementById('chat-verlauf')
   // F44 WS-8a (design-guardian): im Dock scrollt der Verlauf selbst — stand er am Ende (oder ist er
@@ -820,6 +855,9 @@ function renderVerlauf() {
   document.getElementById('chat-leer').hidden = !leerSichtbar
   for (const andererModus of Object.keys(MODI)) document.getElementById(MODI[andererModus].leerId).hidden = andererModus !== modus
   container.hidden = leerSichtbar
+  // F34 WS-3: Unterumschalter nur im Modus 'sparring' sichtbar. F44 WS-8b: im leeren Coach übernehmen
+  // die beiden Knöpfe des Leerzustands seine Aufgabe; mit Verlauf bleibt er wie bisher.
+  document.getElementById('chat-untermodus-auswahl').hidden = modus !== 'sparring' || leerSichtbar
   if (leer) {
     container.innerHTML = zustand.geladen || zustand.ladeFehlgeschlagen ? '' : `<p class="leer">${tHtml('chat.laden')}</p>`
   } else {
@@ -1023,6 +1061,7 @@ async function pruefeAusstehendenLauf(modus) {
   // gerade aktualisierten Zustand — korrekt, auch wenn 'modus' hier ein Hintergrund-Modus ist).
   renderVerlauf()
   stoppeAusstehendenLaufPoll(modus)
+  meldeNeueAntwort()
 }
 
 /** Formular „Senden": Vorfilter zuerst (lokal, kein Serverkontakt bei Treffer, NUR im Modus 'jarvis' — MODI.hatVorfilter), sonst POST /api/chat bzw. POST /api/sparring. F29 WS-D2: als benannte Funktion statt eines Inline-Klick-Handlers, damit sowohl der Senden-Button als auch Enter im Eingabefeld (initEingabeTastatur) denselben, unveränderten Ablauf auslösen. F34 WS-2 (Verifikations-Fund): die Sperr-Prüfung liest jetzt zustand.sendenLaeuft/ausstehenderLauf direkt statt des DOM-Attributs — Enter (initEingabeTastatur) ruft diese Funktion ohne je das disabled-Attribut des Buttons zu sehen, ein reiner DOM-Check hier wäre also ohnehin nur die halbe Wahrheit gewesen. */
@@ -1214,14 +1253,29 @@ function initModusUmschalter() {
   })
 }
 
-/** F44 WS-8a: Vorschläge im Leerzustand füllen NUR die Eingabe und fokussieren sie — sie senden nicht (Bauauftrag WS-8a 2e). */
+/** F44 WS-8a: Vorschläge im Leerzustand füllen NUR die Eingabe und fokussieren sie — sie senden nicht (Bauauftrag WS-8a 2e). F44 WS-8b: die Coach-Knöpfe ([data-coach-untermodus]) wählen den Untermodus und fokussieren die Eingabe — ebenfalls ohne zu senden. */
 function initVorschlaege() {
   document.getElementById('chat-leer').addEventListener('click', (ereignis) => {
-    const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-vorschlag]') : null
-    if (knopf === null) return
+    const ziel = ereignis.target instanceof Element ? ereignis.target : null
     const feld = document.getElementById('chat-eingabe')
+    const coachKnopf = ziel?.closest('[data-coach-untermodus]') ?? null
+    if (coachKnopf !== null && SPARRING_UNTERMODI.includes(coachKnopf.dataset.coachUntermodus)) {
+      waehleUntermodus(coachKnopf.dataset.coachUntermodus)
+      feld.focus()
+      return
+    }
+    const knopf = ziel?.closest('[data-vorschlag]') ?? null
+    if (knopf === null) return
     feld.value = t(knopf.dataset.vorschlag)
     feld.focus()
+  })
+}
+
+/** F44 WS-8b: „Kopieren“ in Befehlsblöcken (Klick-Delegation, die Blöcke entstehen bei jedem renderVerlauf() neu). Nur Zwischenablage, nur auf Klick (befehlsblock.js). */
+function initBefehlsbloecke() {
+  document.getElementById('chat-verlauf').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-befehl-kopieren]') : null
+    if (knopf !== null) void kopiereBefehlsblock(knopf)
   })
 }
 
@@ -1311,19 +1365,77 @@ export function wechsleZuSparringProjekt() {
 }
 
 /**
+ * F44 WS-8b: setzt Modus und (im Coach) Untermodus wie wechsleZuSparringProjekt und legt einen
+ * Entwurf in die Eingabe — es wird NICHT gesendet. Steht schon Text in der Eingabe, kommt der Entwurf
+ * nach einer Leerzeile dahinter (fuegeEntwurfEin); ein leerer Entwurf lässt die Eingabe unverändert.
+ * Aufgerufen über shell.js (oeffneChatMitEntwurf), das danach das Dock öffnet.
+ * @param auswahl - { modus: 'jarvis' | 'sparring', untermodus?: 'feature' | 'projekt', entwurf?: string }
+ */
+export function setzeChatEntwurf({ modus, untermodus, entwurf }) {
+  if (!Object.hasOwn(MODI, modus)) return
+  offenerAuftragDialog = null
+  zeigeChatFehler('')
+  if (aktiverModus !== modus) {
+    aktiverModus = modus
+    speichereModus(modus)
+  }
+  if (modus === 'sparring' && SPARRING_UNTERMODI.includes(untermodus) && sparringUntermodus !== untermodus) {
+    sparringUntermodus = untermodus
+    speichereUntermodus(untermodus)
+  }
+  // Prüfpass WS-8b (qa S1, cr 1): Getipptes bleibt stehen, der Entwurf kommt dahinter (fuegeEntwurfEin).
+  const feld = document.getElementById('chat-eingabe')
+  feld.value = fuegeEntwurfEin(feld.value, entwurf)
+  if (!zustandJeModus[modus].geladen) {
+    void ladeVerlauf(modus)
+  } else {
+    renderVerlauf()
+  }
+}
+
+/** F44 WS-8b: Abonnenten für „eine Antwort ist eingetroffen“ (shell.js, stiller Punkt). */
+const neueAntwortAbonnenten = []
+
+/**
+ * Meldet eingetroffene Antworten an einen Abonnenten (shell.js: stiller Punkt bei geschlossenem
+ * Dock). Gilt für jeden terminal aufgelösten Lauf beider Modi, auch für eine Fehlanzeige.
+ * @param fn - () => void, aufgerufen nach dem abschließenden renderVerlauf() in pruefeAusstehendenLauf
+ */
+export function beiNeuerAntwort(fn) {
+  neueAntwortAbonnenten.push(fn)
+}
+
+/** Meldet allen Abonnenten eine eingetroffene Antwort; ein werfender Abonnent blockiert die übrigen nicht. */
+function meldeNeueAntwort() {
+  for (const fn of neueAntwortAbonnenten) {
+    try {
+      fn()
+    } catch (fehler) {
+      console.error('Chat: Abonnent für neue Antworten ist fehlgeschlagen:', fehler)
+    }
+  }
+}
+
+/**
+ * F34 WS-3: wählt den Sparring-Untermodus, merkt ihn und rendert neu (No-op ohne Änderung). Seit
+ * F44 WS-8b auf Modulebene, weil auch die Coach-Knöpfe des Leerzustands sie nutzen.
+ * @param untermodus - 'feature' | 'projekt'
+ */
+function waehleUntermodus(untermodus) {
+  if (untermodus === sparringUntermodus) return
+  sparringUntermodus = untermodus
+  speichereUntermodus(untermodus)
+  offenerAuftragDialog = null
+  renderVerlauf()
+}
+
+/**
  * F34 WS-3 (E-M5-12): "Feature"/"Projekt"-Unterumschalter innerhalb des Modus 'sparring' — reine
  * Anzeige-/Zielwahl wie initModusUmschalter, aber OHNE eigenen Verlaufs-Fetch: beide Stellungen
  * teilen sich denselben 'sparring-<projektId>'-Verlauf (ein Turn trägt sein eigenes 'modus'-Feld
  * server-seitig), nur die NÄCHSTE gesendete Nachricht trägt den gewählten Unterumschalter-Wert.
  */
 function initUntermodusUmschalter() {
-  const waehleUntermodus = (untermodus) => {
-    if (untermodus === sparringUntermodus) return
-    sparringUntermodus = untermodus
-    speichereUntermodus(untermodus)
-    offenerAuftragDialog = null
-    renderVerlauf()
-  }
   document.getElementById('chat-untermodus-feature-btn').addEventListener('click', () => waehleUntermodus('feature'))
   document.getElementById('chat-untermodus-projekt-btn').addEventListener('click', () => waehleUntermodus('projekt'))
 }
@@ -1468,6 +1580,7 @@ export function initChatView() {
   initUntermodusUmschalter()
   initAuftragBruecke()
   initVorschlaege()
+  initBefehlsbloecke()
 
   // F44 WS-8a: '#/chat' ist die große Gesprächsansicht — eine gewöhnliche Route; ihr DOM liegt im
   // Chat-Dock der Shell (shell.js setzt die Lage, router.js blendet die Hauptansichten aus).

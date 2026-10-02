@@ -30,7 +30,9 @@
  *   gesperrt) sowie in der Entwicklung die Darstellungen „Kanban · Priorität“ und „Zeitleiste“
  *   (views/workboard.js, .view-switch-knopf) sowie auf „Neues Produkt“ das Feld #projekte-anlegen-ziel
  *   (readonly) und der Knopf „Zielgruppe ergänzen“ (statisch in index.html, F44 WS-6a) sowie „Fähigkeit entdecken“ im Kopf
- *   der Werkstatt (#werkstatt-entdecken, statisch in index.html, F44 WS-7b); jedes künftige bekommt dieselbe Wirkung (gewollt,
+ *   der Werkstatt (#werkstatt-entdecken, statisch in index.html, F44 WS-7b) sowie die Kopf-Werkzeuge
+ *   Terminal und GitHub und — ohne bekannten Projektordner — VS Code (statisch in index.html, Kopf und
+ *   mobiles Menü, kopf-werkzeuge.js; F44 WS-8b); jedes künftige bekommt dieselbe Wirkung (gewollt,
  *   eine Regel).
  */
 

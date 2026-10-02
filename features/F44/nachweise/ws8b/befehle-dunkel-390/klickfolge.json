@@ -1,0 +1,237 @@
+{
+  "url": "http://127.0.0.1:4199/#/chat",
+  "viewport": {
+    "breite": 390,
+    "hoehe": 844
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "true",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-chat-sparring-untermodus": "feature"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-nachweis-1",
+            "ziel": "Anmeldung mit Passkey bauen",
+            "naechster": {
+              "art": "haltFreigabe"
+            },
+            "grund": "Plan wartet auf deine Freigabe."
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        }
+      }
+    },
+    {
+      "muster": "**/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:\\Users\\stefa\\Projekte\\ai workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          },
+          {
+            "id": "zweites-projekt",
+            "name": "Zweites Projekt",
+            "repo_pfad": "../zweites-projekt",
+            "status": "DISCOVERY",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "json": {
+        "verlauf": [
+          {
+            "laufId": "chat-befehle-1",
+            "nachricht": "Wie committe ich die Änderung?",
+            "jarvisAntwort": {
+              "art": "antwort",
+              "antwort": "Dein Stand ist sauber. Erst prüfen:\n```powershell\ncd \"C:\\Users\\stefa\\Projekte\\ai workforce\"\ngit status --short\ngit diff --stat -- public/leitstand/befehlsblock.js public/leitstand/views/chat.js public/leitstand/style.css\n```\nDann mit eigener Nachricht committen (Push erst danach, eigener Schritt):\n```powershell\ngit add public/leitstand/befehlsblock.js\ngit commit -m \"<commit-nachricht>\"\n```\nModellausgabe bleibt Text: <a href=\"javascript:alert(1)\">kein Link</a>"
+            },
+            "istZusammenfassung": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Reiter gewählt",
+        "selector": "#chat-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Coach Feature aria-pressed",
+        "selector": "#chat-coach-feature-btn",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Coach Projekt aria-pressed",
+        "selector": "#chat-coach-projekt-btn",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Untermodus Projekt aria-pressed",
+        "selector": "#chat-untermodus-projekt-btn",
+        "attribut": "aria-pressed"
+      },
+      {
+        "name": "Platzhalter Eingabe",
+        "selector": "#chat-eingabe",
+        "attribut": "placeholder"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#chat-fehler:not([hidden])"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dock/Ansicht sichtbar",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "chat-leer"
+      },
+      {
+        "name": "Untermodus-Umschalter",
+        "id": "chat-untermodus-auswahl"
+      },
+      {
+        "name": "„So gehen wir vor“",
+        "id": "chat-kontext-vorgehen-eintrag"
+      },
+      {
+        "name": "„Nächster Schritt“",
+        "id": "chat-kontext-naechster-eintrag"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "große Ansicht",
+        "selector": "#shell.chat-gross #shell-chat-spalte.chat-grossansicht"
+      },
+      {
+        "name": "Eingabe leer",
+        "selector": "#chat-eingabe:placeholder-shown"
+      },
+      {
+        "name": "Nutzerblase",
+        "selector": ".chat-bubble-reihe-nutzer"
+      },
+      {
+        "name": "Entwurfskarte",
+        "selector": ".chat-entwurf-karte .button.primary"
+      },
+      {
+        "name": "zwei Befehlsblöcke",
+        "selector": ".befehlsblock ~ .befehlsblock"
+      },
+      {
+        "name": "Platzhalter-Chip",
+        "selector": ".befehlsblock-platzhalter"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#view-chat a[href^=\"javascript\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Große Ansicht: Antwort mit zwei Befehlsblöcken (POWERSHELL, Anzahl, „Kopieren“; der zweite mit „Platzhalter ausfüllen“); Link-Text der Modellausgabe bleibt Text",
+      "warteAufSelector": {
+        "selector": ".befehlsblock ~ .befehlsblock",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d390-1-gross.webp"
+    },
+    {
+      "label": "Dock (Route #/workboard, Präferenz offen): dieselbe Antwort im Dock",
+      "navigiere": "#/workboard",
+      "warteAufSelector": {
+        "selector": "#shell-chat-spalte:not(.chat-grossansicht) .befehlsblock",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d390-2-dock.webp",
+      "screenshotVollseite": false
+    }
+  ]
+}

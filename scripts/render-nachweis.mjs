@@ -107,6 +107,12 @@
  * Animationen (z. B. mit "reduzierteBewegung": true) bleibt unverändert; die Anzahl steht in der
  * Protokollspalte „Animationen angehalten“.
  *
+ * F44 WS-8b (Befehlsblock „Kopieren“): "zwischenablage": true auf oberster Ebene gewährt der Seite
+ * clipboard-read/-write und schreibt je Schritt die Spalte „Zwischenablage“ (navigator.clipboard.
+ * readText(), Zeilenumbrüche als ⏎, auf 120 Zeichen gekürzt) ins Protokoll. "zwischenablageEntfernen": true
+ * entfernt navigator.clipboard vor jedem Laden (Rückfallweg ohne Clipboard-API). In 'texte' liest
+ * "eigenschaft" (z. B. "value") statt eines Attributs die DOM-Eigenschaft (Inhalt eines Eingabefelds).
+ *
  * Aufruf: node scripts/render-nachweis.mjs <klickfolge.json> <ausgabeVerzeichnis>
  * NICHT Teil von `npm run check` (braucht eine laufende Server-Instanz UND
  * einen echten Browser) — eigenes Skript `npm run render-nachweis`.
@@ -143,7 +149,7 @@ async function leseZustand(page, beobachtete) {
     // F44 WS-1a: mehrere Textbeobachtungen ('titel' kennt nur eine); Zeilenumbrüche/Pipes entschärft für die Tabelle.
     for (const eintrag of beobachtete.texte ?? []) {
       const element = document.querySelector(eintrag.selector)
-      zeile[eintrag.name] = element ? (eintrag.attribut ? String(element.getAttribute(eintrag.attribut)) : element.textContent).replace(/\s+/g, ' ').replace(/\|/g, '/').trim().slice(0, 120) : '(fehlt)'
+      zeile[eintrag.name] = element ? (eintrag.eigenschaft ? String(element[eintrag.eigenschaft]) : eintrag.attribut ? String(element.getAttribute(eintrag.attribut)) : element.textContent).replace(/\s+/g, ' ').replace(/\|/g, '/').trim().slice(0, 120) : '(fehlt)'
     }
     // F44 WS-1a: 'getroffen' — trifft ein Klick auf die Mitte des Elements wirklich das Element (nicht
     // abgeschnitten, nicht überdeckt)? Belegt Sichtbarkeit, die 'sichtbarkeit' (display) nicht zeigt.
@@ -188,8 +194,12 @@ async function main() {
     // F-867: Browser-Zoom = schmalerer CSS-Viewport bei höherer Pixeldichte (Muster docs/design/vorlage-v10/erzeuge-screens.mjs).
     viewport: { width: Math.round((klickfolge.viewport?.breite ?? 1280) / zoom), height: Math.round((klickfolge.viewport?.hoehe ?? 800) / zoom) },
     deviceScaleFactor: zoom,
+    // F44 WS-8b: Zwischenablage lesbar machen (Datei-Kommentar, "zwischenablage").
+    ...(klickfolge.zwischenablage === true ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}),
   })
   if (klickfolge.reduzierteBewegung === true) await page.emulateMedia({ reducedMotion: 'reduce' })
+  // F44 WS-8b: Rückfallweg ohne Clipboard-API nachstellen (Datei-Kommentar, "zwischenablageEntfernen").
+  if (klickfolge.zwischenablageEntfernen === true) await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'clipboard', { get: () => undefined, configurable: true }))
   // F44 WS-1b: Netzfehler für bestimmte Anfragen nachstellen (Datei-Kommentar, "anfragenBlockieren").
   for (const muster of klickfolge.anfragenBlockieren ?? []) await page.route(muster, (route) => route.abort())
   // F44 WS-2a: feste Antwort für bestimmte Anfragen (Datei-Kommentar, "anfragenAntworten").
@@ -336,6 +346,11 @@ async function main() {
         }, schritt.animationenBei)
       }
       const zustand = await leseZustand(page, klickfolge.beobachtete)
+      if (klickfolge.zwischenablage === true) {
+        zustand.Zwischenablage = await page
+          .evaluate(async () => (await navigator.clipboard.readText()).replace(/\n/g, ' ⏎ ').replace(/\|/g, '/').slice(0, 120))
+          .catch((fehler) => `(nicht lesbar: ${fehler.message.split('\n')[0]})`)
+      }
       protokoll.push({ label: schritt.label, ...zustand, ...(angehalten === undefined ? {} : { 'Animationen angehalten': angehalten }) })
       if (schritt.screenshot) await knappesScreenshot(schritt.screenshot, schritt.screenshotVollseite ?? klickfolge.screenshotVollseite, schritt.ohneAusschnitt === true)
     }

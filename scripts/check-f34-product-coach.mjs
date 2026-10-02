@@ -67,6 +67,10 @@
  * F44 WS-8a: Jarvis | Product Coach ist seither ein Register (role=tab) — (v) prüft für diese beiden
  * IDs aria-selected + .active über setzeReiterZustand statt aria-pressed + btn-primary (dieselbe
  * F-620-Invariante, Begründung am Abschnitt (v)); der Untermodus bleibt aria-pressed + btn-primary.
+ * F44 WS-8b (Bauauftrag WS-8b §5, nur ergänzt): die Coach-Knöpfe des Leerzustands
+ * (#chat-coach-feature-btn/#chat-coach-projekt-btn) wählen denselben Untermodus — (v) prüft für sie
+ * aria-pressed + .gewaehlt in EINER Hilfsfunktion setzeCoachWahlZustand (F-620-Invariante; .gewaehlt
+ * statt btn-primary, weil die Vorlage d_jarvis_coach beide Knöpfe gleich umrandet zeigt).
  *
  * F34 Fixpaket (Feature-Review-Pass Gesamt, löst F-624/F-625) ergänzt: (w) statischer Quelltext-Scan
  * gegen die Regression von F-624 — baueAnzeigeListe taggt alle drei Eintragsquellen (persistiert/
@@ -1296,6 +1300,18 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
   for (const id of reiterIds) {
     if (!new RegExp(`setzeReiterZustand\\(\\s*'${id}'`).test(chatQuelltext)) {
       befunde.push(`(v): renderVerlauf sollte den Auswahlzustand von '${id}' über setzeReiterZustand (aria-selected + .active gleichlaufend) ableiten — kein Aufruf dafür gefunden`)
+    }
+  }
+  // F44 WS-8b (Bauauftrag WS-8b §5, f34 (v) zieht mit): die Coach-Knöpfe des Leerzustands wählen
+  // denselben Untermodus. Dieselbe F-620-Invariante — aria-pressed und Optik (.gewaehlt) in EINER
+  // Hilfsfunktion bei jedem Render; die beiden Untermodus-IDs oben bleiben unverändert geprüft.
+  const coachFunktion = chatQuelltext.match(/const setzeCoachWahlZustand = \(id, gewaehlt\) => \{([\s\S]*?)\n {2}\}/)
+  if (coachFunktion === null || !/setAttribute\('aria-pressed', String\(gewaehlt\)\)/.test(coachFunktion[1]) || !/classList\.toggle\('gewaehlt', gewaehlt\)/.test(coachFunktion[1])) {
+    befunde.push("(v): renderVerlauf sollte für die Coach-Knöpfe eine Hilfsfunktion setzeCoachWahlZustand tragen, die aria-pressed UND classList.toggle('gewaehlt') gleichlaufend setzt (F-620-Invariante)")
+  }
+  for (const id of ['chat-coach-feature-btn', 'chat-coach-projekt-btn']) {
+    if (!new RegExp(`setzeCoachWahlZustand\\(\\s*'${id}'`).test(chatQuelltext)) {
+      befunde.push(`(v): renderVerlauf sollte den Zustand von '${id}' über setzeCoachWahlZustand ableiten — kein Aufruf dafür gefunden`)
     }
   }
   if (!/\.chat-modus-auswahl\[hidden\]\s*\{\s*display:\s*none/.test(styleQuelltext)) {
