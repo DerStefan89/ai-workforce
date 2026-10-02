@@ -19,11 +19,18 @@
  * Chat-Sitzung, ein Reload verliert sie (im Unterschied zu AK4, das nur den
  * echten Jarvis-Verlauf meint).
  *
+ * F44 WS-8a: die Antwortsätze kommen aus den Wörterbüchern (t(), Schlüssel 'vorfilter.*',
+ * Pluralformen über Intl.PluralRules). Die Erkennungsmuster bleiben unverändert deutsch; Zahlen
+ * und Serverwerte gehen roh in die Sätze. Das Modul bleibt in Node ohne DOM importierbar (i18n.js
+ * ist import-sicher, in Node gilt de) — geprüft in chat-anzeige.test.mjs.
+ *
  * Wird aufgerufen von:
  * - public/leitstand/views/chat.js
+ * - public/leitstand/chat-anzeige.test.mjs (node:test)
  */
 
 import { filtereAttentionLaeufe, filtereAttentionWorkflows, holeOffeneP0P1Workitems } from './attention-daten.js'
+import { t } from './i18n.js'
 
 /** "was braucht mich", "Was braucht mich?" — optionales Fragezeichen, kein weiterer Text. */
 const MUSTER_BRAUCHT_MICH = /^was\s+braucht\s+mich\??$/i
@@ -52,34 +59,34 @@ export function erkenneVorfilterMuster(nachricht) {
 
 /** @param liste - eine Aggregat-/Projektionsliste, oder null bei defekter Quelle @returns Anzeigetext */
 function zahlText(liste) {
-  return liste === null ? 'nicht verfügbar' : String(liste.length)
+  return liste === null ? t('vorfilter.nichtVerfuegbar') : String(liste.length)
 }
 
 /** Deterministische Antwort auf "Status" — dieselben vier Zahlen wie views/dashboard.js, aus dem ohnehin gepollten Zustands-Aggregat, ohne zweiten Fetch. @param zustand - letztes Aggregat aus GET /api/zustand, oder null vor dem ersten Poll-Tick */
 function beantworteStatus(zustand) {
-  if (zustand === null) return 'Der Zustand ist noch nicht geladen — bitte gleich noch einmal fragen.'
+  if (zustand === null) return t('vorfilter.nichtGeladen')
   const workflowsAttention = filtereAttentionWorkflows(zustand.workflows)
   const laeufeAttention = filtereAttentionLaeufe(zustand.laeufe)
-  const attentionZahl = workflowsAttention === null || laeufeAttention === null ? 'nicht verfügbar' : String(workflowsAttention.length + laeufeAttention.length)
+  const attentionZahl = workflowsAttention === null || laeufeAttention === null ? t('vorfilter.nichtVerfuegbar') : String(workflowsAttention.length + laeufeAttention.length)
   return [
-    `Läufe: ${zahlText(zustand.laeufe)}`,
-    `Startfehler: ${zahlText(zustand.startfehler)}`,
-    `Workflows: ${zahlText(zustand.workflows)}`,
-    `Braucht Aufmerksamkeit (Workflows/Läufe): ${attentionZahl}`,
+    t('vorfilter.status.laeufe', { wert: zahlText(zustand.laeufe) }),
+    t('vorfilter.status.startfehler', { wert: zahlText(zustand.startfehler) }),
+    t('vorfilter.status.workflows', { wert: zahlText(zustand.workflows) }),
+    t('vorfilter.status.attention', { wert: attentionZahl }),
   ].join(' · ')
 }
 
 /** Deterministische Antwort auf "was braucht mich" — dieselbe Quelle und Filterregel wie views/attention.js (attention-daten.js), hier zu einem Fließtext statt einer Listenansicht zusammengefasst. @param zustand - letztes Aggregat aus GET /api/zustand, oder null vor dem ersten Poll-Tick @param workitemsAntwort - Ergebnis von holeOffeneP0P1Workitems() */
 function beantworteBrauchtMich(zustand, workitemsAntwort) {
-  if (zustand === null) return 'Der Zustand ist noch nicht geladen — bitte gleich noch einmal fragen.'
+  if (zustand === null) return t('vorfilter.nichtGeladen')
   const workflows = filtereAttentionWorkflows(zustand.workflows)
   const laeufe = filtereAttentionLaeufe(zustand.laeufe)
   const workitems = workitemsAntwort.workitems
 
   const teile = []
-  teile.push(workflows === null ? 'Workflows: nicht verfügbar.' : workflows.length === 0 ? 'Keine Workflows, die auf dich warten.' : `${workflows.length} Workflow(s) warten auf dich (Freigabe/Klärung).`)
-  teile.push(laeufe === null ? 'Läufe: nicht verfügbar.' : laeufe.length === 0 ? 'Keine fehlgeschlagenen, nicht kenntnisgenommenen Läufe.' : `${laeufe.length} fehlgeschlagene(r), nicht kenntnisgenommene(r) Lauf/Läufe.`)
-  teile.push(workitems === null ? 'Workitems: nicht verfügbar.' : workitems.length === 0 ? 'Keine offenen P0/P1-Workitems.' : `${workitems.length} offene(s) P0/P1-Workitem(s).`)
+  teile.push(workflows === null ? t('vorfilter.workflows.defekt') : workflows.length === 0 ? t('vorfilter.workflows.keine') : t('vorfilter.workflows.anzahl', { anzahl: workflows.length }))
+  teile.push(laeufe === null ? t('vorfilter.laeufe.defekt') : laeufe.length === 0 ? t('vorfilter.laeufe.keine') : t('vorfilter.laeufe.anzahl', { anzahl: laeufe.length }))
+  teile.push(workitems === null ? t('vorfilter.workitems.defekt') : workitems.length === 0 ? t('vorfilter.workitems.keine') : t('vorfilter.workitems.anzahl', { anzahl: workitems.length }))
   return teile.join(' ')
 }
 

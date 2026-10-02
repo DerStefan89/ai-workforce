@@ -791,9 +791,10 @@ svg.icon {
   border-radius: 4px;
 }
 
-/* „Frag Jarvis“ (#chat-umschalter): Umschalter der Chatspalte bis WS-8, mit dem Portrait der
-   Vorlage (.bubble-persona). */
-.chat-umschalter .bubble-persona {
+/* „Frag Jarvis“ (#chat-umschalter): seit WS-8a Auslöser des Chat-Docks (wie #chat-blase), mit dem
+   Portrait der Vorlage (.bubble-persona). */
+.chat-umschalter .bubble-persona,
+.chat-blase .bubble-persona {
   width: 40px;
   height: 27px;
   object-fit: contain;
@@ -804,7 +805,7 @@ svg.icon {
   padding: 5px 14px 5px 8px;
 }
 
-#shell-kopf .chat-umschalter[aria-pressed='true'] {
+#shell-kopf .chat-umschalter[aria-expanded='true'] {
   border-color: var(--mint);
 }
 
@@ -825,18 +826,6 @@ svg.icon {
   min-height: 0;
 }
 
-/* Dreispaltiges Raster ab 1280px (F29 WS-1a): die Chat-Spalte bleibt
-   dauerhaft sichtbar — [hidden] wird hier bewusst per Autor-CSS überschrieben
-   (Autor-Herkunft schlägt UA-Regel [hidden]{display:none} unabhängig von der
-   Spezifität), shell.js' Umschalter-Zustand bleibt darunter unverändert die
-   einzige Quelle für Sichtbarkeit < 1280px. */
-@media (min-width: 1280px) {
-  #shell-chat-spalte[hidden] {
-    display: flex;
-    flex-direction: column;
-  }
-}
-
 #shell-hauptbereich {
   flex: 1;
   min-width: 0;
@@ -844,22 +833,91 @@ svg.icon {
   box-sizing: border-box;
 }
 
+/* ─── Chat-Dock (F44 WS-8a, Vorlage V10 .chat-popover/.chat-bubble/.chat-shrink) ───────────────
+   #shell-chat-spalte ist ohne .chat-grossansicht ein überlagertes Popover unten rechts: fixed, nimmt
+   keine Layoutbreite. Sichtbarkeit nur über das hidden-Attribut (shell.js) — display deshalb nur für
+   :not([hidden]) (F-622). Die große Ansicht '#/chat' steht weiter unten (.chat-grossansicht). */
 #shell-chat-spalte {
-  width: min(380px, 92vw);
-  flex-shrink: 0;
+  position: fixed;
+  right: 28px;
+  bottom: 90px;
+  z-index: 60;
+  width: 390px;
+  max-width: calc(100vw - 32px);
+  height: 590px;
+  max-height: calc(100dvh - 118px);
   box-sizing: border-box;
-  background: var(--color-surface);
-  border-left: 1px solid var(--color-border);
-  padding: var(--space-4xl);
-  overflow-y: auto;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-solid);
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  box-shadow: var(--shadow);
 }
+
+#shell-chat-spalte:not([hidden]) {
+  display: flex;
+}
+
+/* Auslöser unten rechts (Vorlage .chat-bubble): dunkel Mint, hell auf Fläche. Text immer „Frag Jarvis“
+   (Name = sichtbarer Text); zu: Portrait, offen: „×“ (aria-expanded, shell.js). */
+.chat-blase {
+  position: fixed;
+  right: 28px;
+  bottom: 25px;
+  z-index: 61;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 20px;
+  background: var(--mint);
+  color: var(--bg);
+  border: 1px solid var(--mint);
+  border-radius: 30px;
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+
+.chat-blase:hover {
+  border-color: var(--ink);
+}
+
+.chat-blase[hidden] {
+  display: none;
+}
+
+.chat-blase-schliessen {
+  display: none;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.chat-blase[aria-expanded='true'] .bubble-persona {
+  display: none;
+}
+
+.chat-blase[aria-expanded='true'] .chat-blase-schliessen {
+  display: inline;
+}
+
+:root[data-theme='light'] .chat-blase {
+  background: var(--surface-solid);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme='light'] .chat-blase:hover {
+  border-color: var(--mint);
+}
+
 
 /* Startfläche offen (views/start.js setzt data-eingang): Shell ausblenden wie die Vorlage
    (.is-entrance) — dann auch per Tastatur nicht erreichbar. */
 :root[data-eingang='true'] #shell-sidebar,
 :root[data-eingang='true'] #shell-kopf,
 :root[data-eingang='true'] #poll-fehler,
-:root[data-eingang='true'] #shell-chat-spalte {
+:root[data-eingang='true'] #shell-chat-spalte,
+:root[data-eingang='true'] #chat-blase {
   display: none !important;
 }
 
@@ -1027,10 +1085,22 @@ svg.icon {
     flex-direction: column;
   }
 
+  /* Dock fast volle Breite mit 16 px Rand, begrenzte Höhe (Vorlage @media 700px). */
   #shell-chat-spalte {
-    width: 100%;
-    border-left: none;
-    border-top: 1px solid var(--color-border);
+    right: 16px;
+    bottom: 82px;
+    width: calc(100vw - 32px);
+    height: 570px;
+    max-height: calc(100dvh - 100px);
+  }
+
+  .chat-blase {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .chat-blase {
+    padding: 13px 17px;
   }
 }
 
@@ -1912,27 +1982,15 @@ th {
   overflow-wrap: anywhere;
 }
 
-/* F29 WS-D2 (Auftrag Punkt C): "Chat mit Jarvis" — Kopf mit Online-Punkt, Sprechblasen statt
-   Karten, kompakte Eingabezeile mit Icon-Buttons. Löst die WS-2a-Kartenoptik (.chat-eintrag/
-   .chat-nachricht/.chat-quelle/.chat-antwort/.chat-ausstehend) vollständig ab — views/chat.js
-   erzeugt seither .chat-bubble-* statt .chat-eintrag. */
-#view-chat .card-kopf {
-  align-items: center;
-}
-
-.chat-online-punkt {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--color-success-text);
-  margin-left: auto;
-}
-
-#chat-verlauf {
+/* F29 WS-D2 (Auftrag Punkt C): Sprechblasen statt Karten. Löst die WS-2a-Kartenoptik
+   (.chat-eintrag/.chat-nachricht/.chat-quelle/.chat-antwort/.chat-ausstehend) vollständig ab —
+   views/chat.js erzeugt seither .chat-bubble-* statt .chat-eintrag. F44 WS-8a: Kopf, Register,
+   Leerzustand, Werkzeugzeile, Eingabe und Kontextspalte für Dock und große Ansicht stehen im Block
+   „Chat-Dock und große Ansicht“ weiter unten. */
+#chat-verlauf:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: var(--space-lg);
-  margin-bottom: var(--space-md);
 }
 
 .chat-bubble-reihe {
@@ -2081,16 +2139,13 @@ th {
 }
 
 .chat-ganzen-verlauf-link {
-  display: block;
-  width: 100%;
-  margin: 0 0 var(--space-lg);
-  padding: var(--space-sm);
+  margin-right: auto;
+  padding: var(--space-2xs) 0;
   background: none;
   border: none;
   color: var(--color-accent);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 600;
-  text-align: center;
   cursor: pointer;
 }
 
@@ -2098,12 +2153,6 @@ th {
   color: var(--color-accent-strong);
 }
 
-/* F31 WS-2: eigene Zeile über dem Sendeformular, wie .chat-abbrechen-btn (Muster). */
-.chat-zusammenfassen-btn {
-  display: block;
-  width: 100%;
-  margin: 0 0 var(--space-sm);
-}
 
 /* F31 WS-2: zentrierter Trenner vor einem Zusammenfassungs-Turn (renderEintrag, views/chat.js). */
 .chat-zusammenfassung-trenner {
@@ -2319,60 +2368,61 @@ th {
   margin: 0;
 }
 
+/* F44 WS-8a (Vorlage .dock-composer/.composer): Feld oben, darunter Hinweis und Senden. */
 .chat-eingabe-zeile {
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  flex-direction: column;
+  gap: 7px;
+  margin: 0 14px 14px;
+  padding: 9px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
-.chat-eingabe-icon-btn {
-  flex-shrink: 0;
-  display: inline-flex;
+/* Fokus zeigt der Rahmen der ganzen Eingabe (Vorlage: randloses Feld im Composer). */
+.chat-eingabe-zeile:focus-within {
+  border-color: var(--mint);
+}
+
+#chat-eingabe:focus-visible {
+  outline: none;
+}
+
+.chat-eingabe-fuss {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 1.8rem;
-  height: 1.8rem;
-  padding: 0;
-  background: none;
-  border: none;
-  color: var(--color-text-subtle);
+  justify-content: space-between;
+  gap: var(--space-md);
 }
 
-.chat-eingabe-icon-btn svg {
-  width: 1.1rem;
-  height: 1.1rem;
-}
-
-/* F26 WS-2a Grundmaße (width/max-width, Definition of Done) bleiben — F29 WS-D2: Chrome
-   (Hintergrund/Rand) kommt jetzt von .chat-eingabe-zeile, das Feld selbst ist randlos und wächst
-   nicht mehr über eine feste Zeilenzahl hinaus als der Nutzer tippt (rows 1, CSS-resize aus). */
+/* F26 WS-2a Grundmaße (width/max-width, Definition of Done) bleiben — Chrome (Hintergrund/Rand)
+   kommt von .chat-eingabe-zeile, das Feld selbst ist randlos. */
 #chat-eingabe {
-  flex: 1;
   min-width: 0;
   width: 100%;
   max-width: 100%;
+  min-height: 55px;
+  max-height: 120px;
   box-sizing: border-box;
   background: none;
   border: none;
   resize: none;
   font-family: var(--font-family-base);
-  font-size: var(--font-size-base);
-  padding: var(--space-xs) var(--space-sm);
+  font-size: 14px;
+  padding: 5px;
 }
 
+/* Vorlage .button.primary mit Symbol send: abgerundetes Rechteck, Pfeil nach rechts. */
 .chat-senden-btn {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
+  width: 40px;
+  height: 36px;
   padding: 0;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: var(--color-accent);
   border: none;
   color: var(--color-accent-text);
@@ -2387,26 +2437,354 @@ th {
   height: 1.1rem;
 }
 
-.chat-eingabe-hinweis {
-  margin: var(--space-sm) 0 0;
+.v10-seite .chat-eingabe-hinweis {
+  margin: 0;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ─── Chat-Dock und große Ansicht: Inhalt (F44 WS-8a, Vorlage V10 chatDock und d_jarvis) ─────────
+   Ein DOM (#view-chat), zwei Lagen. Ohne .chat-grossansicht (Dock): Kopf mit Name und Projekt,
+   Register, scrollender Verlauf, kompakte Werkzeugzeile, Eingabe; Seitenkopf und Kontextspalte
+   ausgeblendet. Mit .chat-grossansicht ('#/chat'): Seitenkopf, Register, zweispaltig Gespräch und
+   Kontext (unter 1280 px Kontext unter dem Gespräch); der Dock-Kopf ist ausgeblendet. Maße wie in
+   der Vorlage, Farben nur über Tokens. */
+#view-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.chat-dock-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-dock-titel {
+  min-width: 0;
+}
+
+.v10-seite #chat-titel {
+  margin: 0;
+  font: 24px/1.2 var(--serif);
+}
+
+#chat-dock-projekt {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.chat-dock-aktionen {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-sm);
+}
+
+.chat-dock-aktionen .icon-button {
+  padding: 2px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.chat-dock-aktionen .icon-button:hover {
+  color: var(--ink);
+}
+
+/* id-Selektor: schlägt .v10-seite .page-heading { display: flex } unabhängig von der Reihenfolge. */
+#view-chat .chat-seitenkopf,
+#view-chat .chat-kontext {
+  display: none;
+}
+
+/* Register (Vorlage .dock-tabs bzw. .tabs); die Reiter teilen sich die Regeln der Werkstatt-Register. */
+.v10-seite .chat-register {
+  flex-shrink: 0;
+  gap: 20px;
+  margin: 0;
+  padding: 0 20px;
+}
+
+.chat-layout,
+.chat-flaeche {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+#chat-verlauf {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 23px 20px;
+}
+
+.chat-modus-auswahl {
+  padding: 12px 20px 0;
+}
+
+#chat-fehler {
+  margin: 10px 20px 0;
+  overflow-wrap: anywhere;
+}
+
+/* Leerzustand (Vorlage .dock-intro/.chat-intro) mit Vorschlägen (.suggestions). */
+.chat-intro:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  /* safe: läuft der Leerzustand im niedrigen Dock über, bleibt sein Anfang erreichbar. */
+  justify-content: safe center;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.chat-intro-bild {
+  width: 96px;
+  height: 60px;
+  margin: 0 auto 4px;
+  object-fit: contain;
+  filter: saturate(0.6);
+}
+
+.v10-seite .chat-intro h2 {
+  margin-bottom: 6px;
+  font-size: 20px;
+}
+
+.v10-seite .chat-intro p {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chat-vorschlaege {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.v10-seite .chat-vorschlaege .button {
+  padding: 7px 12px;
+}
+
+.chat-grossansicht .v10-seite .chat-vorschlaege {
+  gap: 9px;
+}
+
+.chat-grossansicht .v10-seite .chat-vorschlaege .button {
+  padding: 10px 17px;
+}
+
+.v10-seite .chat-vorschlaege .button {
+  font-size: 11px;
+  white-space: normal;
+}
+
+.v10-seite .chat-vorschlaege .button:hover {
+  border-color: var(--mint);
+}
+
+/* Werkzeugzeile: Verlauf ein-/ausklappen, Zusammenfassen, Lauf abbrechen — kompakt; leer (alle
+   drei hidden) ohne eigene Höhe. */
+.chat-werkzeuge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding: 0 14px 8px;
+}
+
+.chat-werkzeuge:not(:has(> :not([hidden]))) {
+  display: none;
+}
+
+.chat-werkzeuge .btn {
+  padding: 4px 10px;
   font-size: var(--font-size-xs);
-  color: var(--color-text-subtle);
-  text-align: right;
 }
 
-/* F30 WS-1 (Aufgabe 2): #shell-chat-spalte.chat-grossansicht — shell.js setzt die Klasse, solange
-   die Route '#/chat' ist (wendeChatSichtbarkeitAn). Reine Darstellungsänderung für mehr Platz bei
-   langen Nachrichten/Codeblöcken, analog zu Claude/ChatGPT-Chatoberflächen — die kompakte Spalte
-   (380px, jede andere Route, Regel oben) bleibt unverändert. Sprechblasen bekommen dabei bewusst
-   eine max-width (70ch) statt über die volle, jetzt breite Spalte zu laufen — sonst würde eine
-   kurze Nachricht in einer sehr breiten Blase genauso unleserlich wie eine zu schmale, langer Text
-   bricht dafür in deutlich mehr Zeilen als in der kompakten Spalte um. Nur bestehende Tokens
-   (--space-*, --font-size-*), keine neuen Farb-/Radius-Werte. */
+/* Große Ansicht '#/chat': der Hauptbereich ist leer (router.js) und wird ausgeblendet. */
+#shell.chat-gross #shell-hauptbereich {
+  display: none;
+}
+
 #shell-chat-spalte.chat-grossansicht {
-  width: min(880px, 94vw);
-  padding: var(--space-4xl) var(--space-4xl) var(--space-3xl);
+  position: static;
+  z-index: auto;
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  padding: 44px 48px 64px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
+.chat-grossansicht .chat-dock-kopf {
+  display: none;
+}
+
+.chat-grossansicht #view-chat .chat-seitenkopf {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+/* „Gespräch verkleinern“ (Vorlage .chat-shrink) im Seitenkopf — nicht fest positioniert, damit es
+   bei 390 px und 200 % nichts verdeckt (QA-Pass WS-8a). */
+.v10-seite .chat-verkleinern {
+  flex-shrink: 0;
+  background: var(--surface-solid);
+}
+
+.v10-seite .chat-verkleinern:hover {
+  border-color: var(--mint);
+}
+
+.chat-grossansicht .v10-seite .chat-register {
+  gap: 26px;
+  margin: 8px 0 28px;
+  padding: 0;
+}
+
+.chat-grossansicht .chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 245px;
+  gap: 40px;
+}
+
+.chat-grossansicht .chat-flaeche {
+  min-height: 560px;
+}
+
+.chat-grossansicht #chat-verlauf {
+  flex: 0 1 auto;
+  overflow: visible;
+  padding: 0 6px 25px;
+}
+
+.chat-grossansicht .chat-modus-auswahl {
+  padding: 0 0 var(--space-xl);
+}
+
+.chat-grossansicht #chat-fehler {
+  margin: 0 0 var(--space-xl);
+}
+
+.chat-grossansicht .chat-intro:not([hidden]) {
+  flex: 0 1 auto;
+  overflow: visible;
+  padding: 25px 20px 40px;
+}
+
+.chat-grossansicht .chat-intro-bild {
+  width: 165px;
+  height: 115px;
+}
+
+.chat-grossansicht .v10-seite .chat-intro h2 {
+  font-size: 32px;
+}
+
+.chat-grossansicht .v10-seite .chat-intro p {
+  font-size: 12px;
+}
+
+.chat-grossansicht .chat-werkzeuge {
+  padding: 0 0 var(--space-md);
+}
+
+.chat-grossansicht .chat-eingabe-zeile {
+  margin: auto 0 0;
+  padding: 12px;
+  background: var(--surface-solid);
+  border-radius: 12px;
+}
+
+.chat-grossansicht .chat-senden-btn {
+  width: 56px;
+  height: 40px;
+}
+
+.chat-grossansicht #chat-eingabe {
+  min-height: 70px;
+  max-height: none;
+  resize: vertical;
+}
+
+/* Kontextspalte (Vorlage .chat-context). */
+.chat-grossansicht #view-chat .chat-kontext {
+  display: block;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.chat-kontext .eyebrow {
+  margin-bottom: 15px;
+}
+
+.v10-seite .chat-kontext h3 {
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.v10-seite .chat-kontext-text {
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chat-kontext-eintrag {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.chat-kontext .text-link {
+  font-size: 14px;
+}
+
+@media (max-width: 1279px) {
+  .chat-grossansicht .chat-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-grossansicht #view-chat .chat-kontext {
+    padding: 24px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 1150px) {
+  #shell-chat-spalte.chat-grossansicht {
+    padding: 36px 30px 56px;
+  }
+}
+
+/* F30 WS-1 (Aufgabe 2): in der großen Ansicht bekommen Sprechblasen eine max-width (70ch), statt
+   über die volle Breite zu laufen. Nur bestehende Tokens. */
 #shell-chat-spalte.chat-grossansicht .chat-bubble-reihe-nutzer {
   margin-left: var(--space-4xl);
 }
@@ -2423,14 +2801,12 @@ th {
   font-size: var(--font-size-lg);
 }
 
-/* Definition of Done ("jeder Container mit max-width hat auch width: 100%"): die kompakte
-   700px-Regel oben (id-Selektor, gleiche Spezifität wie hier) gilt bereits für ALLE Zustände von
-   #shell-chat-spalte einschließlich .chat-grossansicht — die Klasse fügt hier nur zusätzliche
-   Spezifität hinzu (id.class > id), ohne explizite Wiederholung würde min(880px, 94vw) auf einem
-   schmalen Bildschirm die 100%-Regel deshalb überstimmen. */
+/* Unter 700 px: Ränder wie #shell-hauptbereich; die Dock-Maße der 700px-Regel oben gelten hier nicht
+   (id.class schlägt id). */
 @media (max-width: 700px) {
   #shell-chat-spalte.chat-grossansicht {
     width: 100%;
+    padding: 24px 20px 48px;
   }
 }
 
@@ -6569,11 +6945,14 @@ th {
 /* Nur das Zeitraum-Register und die Register der Werkstatt (F44 WS-7a, role=tab): .tabs in #/workboard trägt eigene
    Knöpfe (.tab-knopf), die unberührt bleiben. */
 .v10-seite .nutzung-zeitraum button,
-.v10-seite .werkstatt-register [role='tab'] {
+.v10-seite .werkstatt-register [role='tab'],
+.v10-seite .chat-register [role='tab'] {
   display: inline-flex;
   align-items: center;
   padding: 12px 0;
   border: 0;
+  /* Gerader Unterstrich wie die Vorlage (die allgemeine button-Regel rundet sonst die Enden). */
+  border-radius: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   font: inherit;
@@ -6584,12 +6963,14 @@ th {
 }
 
 .v10-seite .nutzung-zeitraum button:hover,
-.v10-seite .werkstatt-register [role='tab']:hover {
+.v10-seite .werkstatt-register [role='tab']:hover,
+.v10-seite .chat-register [role='tab']:hover {
   color: var(--ink);
 }
 
 .v10-seite .nutzung-zeitraum button.active,
-.v10-seite .werkstatt-register [role='tab'].active {
+.v10-seite .werkstatt-register [role='tab'].active,
+.v10-seite .chat-register [role='tab'].active {
   color: var(--ink);
   border-color: var(--mint);
 }
@@ -6737,7 +7118,8 @@ th {
 
 /* .tabs scrollt waagerecht (overflow-x) — ein Ring außerhalb würde abgeschnitten, deshalb nach innen. */
 .v10-seite .nutzung-zeitraum button:focus-visible,
-.v10-seite .werkstatt-register [role='tab']:focus-visible {
+.v10-seite .werkstatt-register [role='tab']:focus-visible,
+.v10-seite .chat-register [role='tab']:focus-visible {
   outline: 2px solid var(--mint);
   outline-offset: -2px;
 }

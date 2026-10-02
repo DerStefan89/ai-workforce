@@ -1,0 +1,320 @@
+{
+  "url": "http://127.0.0.1:4199/#/chat",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "reduzierteBewegung": false,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-chat-sparring-untermodus": "feature",
+    "leitstand-sprache": "ru"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-nachweis-9",
+            "ergebnis": "FEHLGESCHLAGEN",
+            "kenntnisgenommen": false,
+            "auftragsbezug": {
+              "titel": "Tests reparieren"
+            }
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-nachweis-1",
+            "ziel": "Anmeldung mit Passkey bauen",
+            "naechster": {
+              "art": "haltFreigabe"
+            },
+            "grund": "Plan wartet auf deine Freigabe."
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        }
+      }
+    },
+    {
+      "muster": "**/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Nav aktuell",
+        "selector": "[aria-current=\"page\"]",
+        "attribut": "data-nav-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Blase aria-expanded",
+        "selector": "#chat-blase",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Kopfknopf aria-expanded",
+        "selector": "#chat-umschalter",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Reiter gewählt",
+        "selector": "#chat-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Seitentitel",
+        "selector": "#chat-seitentitel"
+      },
+      {
+        "name": "Dock-Titel",
+        "selector": "#chat-titel"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#chat-fehler:not([hidden])"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dock/Ansicht sichtbar",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Blase sichtbar",
+        "id": "chat-blase"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "chat-leer"
+      },
+      {
+        "name": "Abbrechen sichtbar",
+        "id": "chat-abbrechen-btn"
+      },
+      {
+        "name": "Untermodus sichtbar",
+        "id": "chat-untermodus-auswahl"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "große Ansicht",
+        "selector": "#shell.chat-gross #shell-chat-spalte.chat-grossansicht"
+      },
+      {
+        "name": "Verkleinern sichtbar",
+        "selector": "#shell-chat-spalte.chat-grossansicht:not([hidden]) #chat-verkleinern"
+      },
+      {
+        "name": "Eingabe leer",
+        "selector": "#chat-eingabe:placeholder-shown"
+      },
+      {
+        "name": "Nutzerblase",
+        "selector": ".chat-bubble-reihe-nutzer"
+      },
+      {
+        "name": "Tippanzeige",
+        "selector": ".chat-tippindikator"
+      },
+      {
+        "name": "Senden gesperrt",
+        "selector": "#chat-senden[disabled]"
+      },
+      {
+        "name": "„Als Auftrag anlegen“",
+        "selector": ".chat-auftrag-oeffnen-btn"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#view-chat a[href^=\"javascript\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Jarvis-Register, Leerzustand: Persona, Satz, drei Vorschläge; Kontextspalte mit Vision und „Nächster Schritt“ (feste Freigabe)",
+      "warteAufSelector": {
+        "selector": "#chat-leer-jarvis",
+        "timeoutMs": 8000
+      },
+      "screenshot": "ru1440-1-jarvis-leer.webp"
+    },
+    {
+      "label": "Register Product Coach (Klick): schlichter Leerzustand, Untermodus Feature | Projekt",
+      "klick": "#chat-modus-sparring-btn",
+      "warteAufSelector": {
+        "selector": "#chat-leer-coach",
+        "timeoutMs": 8000
+      },
+      "screenshot": "ru1440-2-coach-leer.webp"
+    },
+    {
+      "label": "Mit Verlauf (feste Antworten, Neuladen; der Modus Product Coach bleibt gemerkt): Scope-Entwurf mit „Als Auftrag anlegen“",
+      "anfragenAntworten": [
+        {
+          "muster": "**/chat",
+          "methode": "GET",
+          "json": {
+            "verlauf": [
+              {
+                "laufId": "chat-alt-1",
+                "nachricht": "Was ist seit gestern passiert?",
+                "jarvisAntwort": {
+                  "art": "antwort",
+                  "antwort": "Zwei Abläufe sind durchgelaufen, einer wartet auf deine Freigabe."
+                },
+                "istZusammenfassung": false
+              },
+              {
+                "laufId": "chat-alt-2",
+                "nachricht": "Bitte prüfe den Stand der Anmeldung. Ein sehr langer Satz ohne Umbruch: https://example.org/ein/sehr/langer/pfad/der/nicht/umbricht/und/trotzdem/nicht/ueberlaufen/darf",
+                "jarvisAntwort": {
+                  "art": "antwort",
+                  "antwort": "Die Anmeldung ist geplant; der Plan wartet auf deine Freigabe. <script>alert(1)</script> bleibt Text."
+                },
+                "istZusammenfassung": false
+              },
+              {
+                "laufId": "chat-alt-3",
+                "nachricht": "Mach daraus einen Auftrag.",
+                "jarvisAntwort": {
+                  "art": "auftrag_vorschlag",
+                  "antwort": "Hier ist ein Vorschlag für den Auftrag.",
+                  "auftrag": {
+                    "titel": "Anmeldung mit Passkey",
+                    "text": "Passkey-Anmeldung nach Plan bauen, mit Tests."
+                  }
+                },
+                "istZusammenfassung": false
+              }
+            ]
+          }
+        },
+        {
+          "muster": "**/sparring",
+          "methode": "GET",
+          "json": {
+            "verlauf": [
+              {
+                "laufId": "sparring-alt-1",
+                "nachricht": "Ich möchte die Anmeldung vereinfachen.",
+                "coachAntwort": {
+                  "art": "scope_entwurf",
+                  "antwort": "Auf Basis des Gesprächs schlage ich diesen Scope für die Design-Phase vor F30 vor.",
+                  "alternativen": null,
+                  "scope": {
+                    "titel": "Design-Phase vor F30",
+                    "problem": "Mehrere Workboard-/Dashboard-Karten (u. a. Roadmap, F-596) sind optisch unfertig, jede einzeln als Restfinding dokumentiert statt gebündelt behoben.",
+                    "ziel": "Alle dokumentierten Optik-Findings vor F30 in einem gebündelten Durchgang schließen, ohne neue Funktionalität zu bauen.",
+                    "in_scope": [
+                      "Bestehende Optik-Findings der Karten Roadmap/Verbrauch",
+                      "Konsistente Design-Tokens über alle Bento-Karten"
+                    ],
+                    "out_of_scope": [
+                      "Neue Views oder Routen",
+                      "Funktionale Änderungen an bestehenden Endpunkten"
+                    ],
+                    "annahmen": [
+                      "Design-Tokens aus style.css bleiben unverändert, nur ihre Anwendung wird konsistent gemacht"
+                    ],
+                    "offene_fragen": [
+                      "Soll die Design-Phase vor oder nach F34 WS-2 laufen?"
+                    ],
+                    "erfolgskriterium": "Kein offenes Optik-Finding mehr in state/findings.md mit Bezug auf Workboard-/Dashboard-Karten."
+                  }
+                },
+                "modus": "feature",
+                "auftragErstelltId": null
+              }
+            ]
+          }
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": ".chat-scope-block",
+        "timeoutMs": 8000
+      },
+      "screenshot": "ru1440-3-coach-verlauf.webp"
+    },
+    {
+      "label": "Register Jarvis mit Verlauf: letzte zwei Einträge, „Ganzen Verlauf öffnen“, Auftragsvorschlag; Modellausgabe als Text",
+      "klick": "#chat-modus-jarvis-btn",
+      "warteAufSelector": {
+        "selector": ".chat-auftrag-oeffnen-btn",
+        "timeoutMs": 8000
+      },
+      "screenshot": "ru1440-4-jarvis-verlauf.webp"
+    }
+  ]
+}

@@ -552,8 +552,8 @@ function initAnlegenFormular() {
 
   // F41 WS-2 (AK, "Zum Coach-Interview"): wechselt den Workspace auf das neu angelegte Projekt
   // (setzeAktivesProjekt, Muster Kartenklick oben) und springt in Sparring/Modus "projekt"
-  // (views/chat.js wechsleZuSparringProjekt) — navigiere('#/chat') öffnet dabei zusätzlich die
-  // Chat-Spalte auch unter 1280px (shell.js beiRoutenwechsel erzwingt sie auf '#/chat' offen).
+  // (views/chat.js wechsleZuSparringProjekt) — navigiere('#/chat') öffnet dabei die große
+  // Gesprächsansicht (seit F44 WS-8a eine eigene Route, shell.js setzt die Lage).
   document.getElementById('projekte-anlegen-coach').addEventListener('click', () => {
     if (letztesAngelegtesProjekt === null) return
     setzeAktivesProjekt(letztesAngelegtesProjekt)

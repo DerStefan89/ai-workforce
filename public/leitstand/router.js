@@ -36,25 +36,13 @@
  * Übereinstimmung. Das erspart Cross-Imports zwischen Views nur für einen
  * Reset-Aufruf.
  *
- * F29 WS-1a (Shell-Umbau): registriere() akzeptiert optional { ueberlagert:
- * true } — Chat ist seither eine umschaltbare rechte Spalte
- * (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr.
- * Eine überlagerte Route lässt die Sichtbarkeit der `<main>`-Views
- * unangetastet (zeigeView() überspringt für sie den Ausblend-Durchlauf) —
- * `#/chat` bleibt so ein echter, verlinkbarer Hash mit eigenem onEnter
- * (views/chat.js lädt den Verlauf), ohne beim Dispatch alle Hauptansichten
- * auszublenden. Die Navigationsmarkierung ([data-nav-view], aria-current)
- * folgt DESHALB nicht dem getroffenen Routennamen, sondern dem zuletzt real
- * sichtbar geschalteten Hauptbereich (aktiveHauptView unten) — sonst zeigte
- * die Sidebar "Chat" als aktiv, während <main> sichtbar unverändert z. B.
- * Dashboard zeigt (Code-Review-Befund 18.09.2026, F29 WS-1a: aria-current
- * behauptete dort fälschlich "aktuelle Seite" für eine nicht sichtbare
- * View). Trifft der ALLERERSTE Dispatch einer Sitzung direkt eine
- * überlagerte Route (z. B. ein Deeplink auf '#/chat' ohne vorherigen
- * Hauptbereich-Dispatch), gäbe es noch keine "zuletzt sichtbare" Hauptview
- * — zeigeView() weicht in diesem einen Fall auf STANDARD_HASH aus, damit
- * <main> nicht leer bleibt (dieselbe Rückfallregel wie dispatch() für einen
- * leeren Hash).
+ * F44 WS-8a: '#/chat' ist wieder eine gewöhnliche Route (View-Name 'chat') —
+ * die große Gesprächsansicht. Ihr DOM liegt außerhalb von <main> (das Chat-Dock
+ * der Shell, public/leitstand/shell.js), deshalb gibt es keinen
+ * `[data-view="chat"]`-Container: zeigeView() blendet alle Hauptansichten aus,
+ * kein Navigationslink trägt aria-current, und shell.js blendet den leeren
+ * Hauptbereich aus. Die frühere Option { ueberlagert: true } (F29 WS-1a, Chat
+ * als Spalte NEBEN einer Hauptansicht) entfällt damit.
  */
 
 const STANDARD_HASH = '#/dashboard'
@@ -64,37 +52,23 @@ const routen = []
 /** Hash, dessen NÄCHSTES hashchange-Event einmalig übersprungen wird — gesetzt von navigiere() direkt vor ihrem eigenen synchronen dispatch()-Aufruf, siehe Datei-Kommentar. */
 let unterdrueckterHashchange = null
 
-/** Name der zuletzt real (nicht überlagert) sichtbar geschalteten `<main>`-View, oder null vor dem ersten derartigen Dispatch — Referenz für die Navigationsmarkierung bei einer überlagerten Route (Datei-Kommentar). */
-let aktiveHauptView = null
-
 /**
  * Registriert eine Route.
  * @param muster - RegExp gegen den vollständigen Hash (inkl. '#'), z. B. /^#\/runs\/([^/]+)$/
  * @param view - Name des `[data-view]`-Containers, der bei Treffer sichtbar wird
  * @param onEnter - optional: wird mit den Capture-Gruppen von `muster` aufgerufen
- * @param optionen - optional: { ueberlagert: true } lässt die `<main>`-Sichtbarkeit beim Dispatch unangetastet (Datei-Kommentar)
  */
-export function registriere(muster, view, onEnter, optionen) {
-  routen.push({ muster, view, onEnter, ueberlagert: optionen?.ueberlagert === true })
+export function registriere(muster, view, onEnter) {
+  routen.push({ muster, view, onEnter })
 }
 
-/** Blendet alle `[data-view]`-Container aus außer dem übergebenen — übersprungen für eine überlagerte Route (Datei-Kommentar). Die Navigationsmarkierung folgt in diesem Fall aktiveHauptView, nicht view (Datei-Kommentar). @param view - Name des sichtbar zu haltenden Containers @param ueberlagert - true, wenn die getroffene Route { ueberlagert: true } registriert hat */
-function zeigeView(view, ueberlagert) {
-  if (!ueberlagert) {
-    aktiveHauptView = view
-    for (const element of document.querySelectorAll('[data-view]')) {
-      element.hidden = element.dataset.view !== view
-    }
-  } else if (aktiveHauptView === null) {
-    // Allererster Dispatch überhaupt trifft direkt eine überlagerte Route — Rückfall auf
-    // STANDARD_HASH, sonst bliebe <main> ohne jede sichtbare View (Datei-Kommentar).
-    aktiveHauptView = STANDARD_HASH.slice(2)
-    for (const element of document.querySelectorAll('[data-view]')) {
-      element.hidden = element.dataset.view !== aktiveHauptView
-    }
+/** Blendet alle `[data-view]`-Container aus außer dem übergebenen und markiert den passenden Navigationslink (aria-current). @param view - Name des sichtbar zu haltenden Containers */
+function zeigeView(view) {
+  for (const element of document.querySelectorAll('[data-view]')) {
+    element.hidden = element.dataset.view !== view
   }
   for (const link of document.querySelectorAll('[data-nav-view]')) {
-    if (link.dataset.navView === aktiveHauptView) {
+    if (link.dataset.navView === view) {
       link.setAttribute('aria-current', 'page')
     } else {
       link.removeAttribute('aria-current')
@@ -130,7 +104,7 @@ export function dispatch() {
     ersetzeRoute(STANDARD_HASH)
     return
   }
-  zeigeView(treffer[0].route.view, treffer[0].route.ueberlagert)
+  zeigeView(treffer[0].route.view)
   treffer.forEach(({ route }, index) => {
     route.onEnter?.(...segmente[index])
   })

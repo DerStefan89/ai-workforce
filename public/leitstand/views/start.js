@@ -23,7 +23,7 @@
  * shell.js) hat den nächsten Eintritt ausdrücklich erzwungen.
  *
  * Solange die Fläche sichtbar ist, trägt <html> das Attribut data-eingang="true"; style.css
- * blendet damit Sidebar, Kopf und Chatspalte aus (Vorlage .is-entrance) — sie sind dann auch
+ * blendet damit Sidebar, Kopf und Chat-Dock aus (Vorlage .is-entrance) — sie sind dann auch
  * per Tastatur nicht erreichbar. Bei reduzierter Bewegung ist alles statisch (style.css).
  * Enter betritt wie bisher: Der Link trägt beim Eintritt den Fokus, und liegt der Fokus nach einem
  * Klick auf die Fläche auf body, reicht Enter ebenfalls. Ein Klick irgendwo auf die Fläche betritt

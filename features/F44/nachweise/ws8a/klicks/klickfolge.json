@@ -1,0 +1,300 @@
+{
+  "url": "http://127.0.0.1:4199/#/workboard",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "reduzierteBewegung": false,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-chat-sparring-untermodus": "feature"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-nachweis-9",
+            "ergebnis": "FEHLGESCHLAGEN",
+            "kenntnisgenommen": false,
+            "auftragsbezug": {
+              "titel": "Tests reparieren"
+            }
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-nachweis-1",
+            "ziel": "Anmeldung mit Passkey bauen",
+            "naechster": {
+              "art": "haltFreigabe"
+            },
+            "grund": "Plan wartet auf deine Freigabe."
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        }
+      }
+    },
+    {
+      "muster": "**/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Nav aktuell",
+        "selector": "[aria-current=\"page\"]",
+        "attribut": "data-nav-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Blase aria-expanded",
+        "selector": "#chat-blase",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Kopfknopf aria-expanded",
+        "selector": "#chat-umschalter",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Reiter gewählt",
+        "selector": "#chat-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Seitentitel",
+        "selector": "#chat-seitentitel"
+      },
+      {
+        "name": "Dock-Titel",
+        "selector": "#chat-titel"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#chat-fehler:not([hidden])"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dock/Ansicht sichtbar",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Blase sichtbar",
+        "id": "chat-blase"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "chat-leer"
+      },
+      {
+        "name": "Abbrechen sichtbar",
+        "id": "chat-abbrechen-btn"
+      },
+      {
+        "name": "Untermodus sichtbar",
+        "id": "chat-untermodus-auswahl"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "große Ansicht",
+        "selector": "#shell.chat-gross #shell-chat-spalte.chat-grossansicht"
+      },
+      {
+        "name": "Verkleinern sichtbar",
+        "selector": "#shell-chat-spalte.chat-grossansicht:not([hidden]) #chat-verkleinern"
+      },
+      {
+        "name": "Eingabe leer",
+        "selector": "#chat-eingabe:placeholder-shown"
+      },
+      {
+        "name": "Nutzerblase",
+        "selector": ".chat-bubble-reihe-nutzer"
+      },
+      {
+        "name": "Tippanzeige",
+        "selector": ".chat-tippindikator"
+      },
+      {
+        "name": "Senden gesperrt",
+        "selector": "#chat-senden[disabled]"
+      },
+      {
+        "name": "„Als Auftrag anlegen“",
+        "selector": ".chat-auftrag-oeffnen-btn"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#view-chat a[href^=\"javascript\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Start: Workboard, Dock zu",
+      "warteAufSelector": {
+        "selector": "#chat-blase",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Blase öffnet: Dock offen, Fokus #chat-eingabe, aria-expanded true",
+      "klick": "#chat-blase",
+      "warteAufSelector": {
+        "selector": "#chat-leer-jarvis",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k01-blase-offen.webp"
+    },
+    {
+      "label": "Escape: Dock zu, Fokus zurück auf die Blase",
+      "taste": "Escape"
+    },
+    {
+      "label": "Kopfknopf „Frag Jarvis“ öffnet dasselbe Dock",
+      "klick": "#chat-umschalter"
+    },
+    {
+      "label": "Escape: Dock zu, Fokus zurück auf den Kopfknopf",
+      "taste": "Escape"
+    },
+    {
+      "label": "Blase öffnet erneut",
+      "klick": "#chat-blase"
+    },
+    {
+      "label": "„×“ im Dock-Kopf: Dock zu, Fokus auf die Blase",
+      "klick": "#chat-schliessen"
+    },
+    {
+      "label": "Blase öffnet erneut (für den Moduswechsel)",
+      "klick": "#chat-blase"
+    },
+    {
+      "label": "Moduswechsel im Dock auf Product Coach",
+      "klick": "#chat-modus-sparring-btn",
+      "warteAufSelector": {
+        "selector": "#chat-leer-coach",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "„↗“ → #/chat: große Ansicht, Modus Product Coach bleibt, Fokus #chat-eingabe",
+      "klick": "#chat-gross-oeffnen",
+      "warteAufSelector": {
+        "selector": ".chat-grossansicht #chat-seitentitel",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k02-gross-coach.webp"
+    },
+    {
+      "label": "Pfeil links im Register: Jarvis gewählt und fokussiert",
+      "fokus": "#chat-modus-sparring-btn",
+      "taste": "ArrowLeft"
+    },
+    {
+      "label": "Pfeil rechts: Product Coach",
+      "taste": "ArrowRight"
+    },
+    {
+      "label": "Pos1: Jarvis",
+      "taste": "Home"
+    },
+    {
+      "label": "Ende: Product Coach",
+      "taste": "End"
+    },
+    {
+      "label": "Pfeil rechts läuft um: Jarvis",
+      "taste": "ArrowRight",
+      "warteAufSelector": {
+        "selector": "#chat-leer-jarvis",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Vorschlag „Was braucht mich?“: füllt nur die Eingabe, fokussiert sie; keine Nutzerblase, kein Fehler (POST wäre fest 500)",
+      "klick": "[data-vorschlag=\"chat.vorschlag.braucht\"]",
+      "screenshot": "k03-vorschlag-gefuellt.webp"
+    },
+    {
+      "label": "„Gespräch verkleinern“ → vorige Route #/workboard mit offenem Dock, Eingabe bleibt gefüllt",
+      "klick": "#chat-verkleinern",
+      "warteAufSelector": {
+        "selector": "#view-workboard",
+        "timeoutMs": 8000
+      },
+      "screenshot": "k04-verkleinert-dock-offen.webp"
+    }
+  ]
+}

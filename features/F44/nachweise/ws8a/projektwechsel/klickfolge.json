@@ -1,0 +1,333 @@
+{
+  "url": "http://127.0.0.1:4199/#/runs/lauf-nachweis-9",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "reduzierteBewegung": false,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-chat-sparring-untermodus": "feature"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-nachweis-9",
+            "ergebnis": "FEHLGESCHLAGEN",
+            "kenntnisgenommen": false,
+            "auftragsbezug": {
+              "titel": "Tests reparieren"
+            }
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-nachweis-1",
+            "ziel": "Anmeldung mit Passkey bauen",
+            "naechster": {
+              "art": "haltFreigabe"
+            },
+            "grund": "Plan wartet auf deine Freigabe."
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        }
+      }
+    },
+    {
+      "muster": "**/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "json": {
+        "verlauf": [
+          {
+            "laufId": "chat-alt-1",
+            "nachricht": "Was ist seit gestern passiert?",
+            "jarvisAntwort": {
+              "art": "antwort",
+              "antwort": "Zwei Abläufe sind durchgelaufen, einer wartet auf deine Freigabe."
+            },
+            "istZusammenfassung": false
+          },
+          {
+            "laufId": "chat-alt-2",
+            "nachricht": "Bitte prüfe den Stand der Anmeldung. Ein sehr langer Satz ohne Umbruch: https://example.org/ein/sehr/langer/pfad/der/nicht/umbricht/und/trotzdem/nicht/ueberlaufen/darf",
+            "jarvisAntwort": {
+              "art": "antwort",
+              "antwort": "Die Anmeldung ist geplant; der Plan wartet auf deine Freigabe. <script>alert(1)</script> bleibt Text."
+            },
+            "istZusammenfassung": false
+          },
+          {
+            "laufId": "chat-alt-3",
+            "nachricht": "Mach daraus einen Auftrag.",
+            "jarvisAntwort": {
+              "art": "auftrag_vorschlag",
+              "antwort": "Hier ist ein Vorschlag für den Auftrag.",
+              "auftrag": {
+                "titel": "Anmeldung mit Passkey",
+                "text": "Passkey-Anmeldung nach Plan bauen, mit Tests."
+              }
+            },
+            "istZusammenfassung": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          },
+          {
+            "id": "zweites-projekt",
+            "name": "Zweites Projekt",
+            "repo_pfad": "../zweites-projekt",
+            "status": "DISCOVERY",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/laeufe/lauf-nachweis-9",
+      "methode": "GET",
+      "json": {
+        "aktiv": false,
+        "laufStatus": {
+          "status": "ABGESCHLOSSEN",
+          "ergebnis": "FEHLGESCHLAGEN"
+        }
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Nav aktuell",
+        "selector": "[aria-current=\"page\"]",
+        "attribut": "data-nav-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Blase aria-expanded",
+        "selector": "#chat-blase",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Kopfknopf aria-expanded",
+        "selector": "#chat-umschalter",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Reiter gewählt",
+        "selector": "#chat-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Seitentitel",
+        "selector": "#chat-seitentitel"
+      },
+      {
+        "name": "Dock-Titel",
+        "selector": "#chat-titel"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#chat-fehler:not([hidden])"
+      },
+      {
+        "name": "Dock-Projekt",
+        "selector": "#chat-dock-projekt"
+      },
+      {
+        "name": "Kontext-Projekt",
+        "selector": "#chat-kontext-projekt"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dock/Ansicht sichtbar",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Blase sichtbar",
+        "id": "chat-blase"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "chat-leer"
+      },
+      {
+        "name": "Abbrechen sichtbar",
+        "id": "chat-abbrechen-btn"
+      },
+      {
+        "name": "Untermodus sichtbar",
+        "id": "chat-untermodus-auswahl"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "große Ansicht",
+        "selector": "#shell.chat-gross #shell-chat-spalte.chat-grossansicht"
+      },
+      {
+        "name": "Verkleinern sichtbar",
+        "selector": "#shell-chat-spalte.chat-grossansicht:not([hidden]) #chat-verkleinern"
+      },
+      {
+        "name": "Eingabe leer",
+        "selector": "#chat-eingabe:placeholder-shown"
+      },
+      {
+        "name": "Nutzerblase",
+        "selector": ".chat-bubble-reihe-nutzer"
+      },
+      {
+        "name": "Tippanzeige",
+        "selector": ".chat-tippindikator"
+      },
+      {
+        "name": "Senden gesperrt",
+        "selector": "#chat-senden[disabled]"
+      },
+      {
+        "name": "„Als Auftrag anlegen“",
+        "selector": ".chat-auftrag-oeffnen-btn"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#view-chat a[href^=\"javascript\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Start: Lauf-Detail #/runs/<id> des Projekts AI Workforce (wird als Rückkehrziel gemerkt)",
+      "warteAufSelector": {
+        "selector": "#chat-blase",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "„Frag Jarvis“ öffnet das Dock; „↗“ → #/chat",
+      "klick": "#chat-umschalter"
+    },
+    {
+      "label": "„↗“ → #/chat",
+      "klick": "#chat-gross-oeffnen",
+      "warteAufSelector": {
+        "selector": ".chat-grossansicht #chat-seitentitel",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Projektwechsel im Kopf auf „Zweites Projekt“ (fester leerer Verlauf): Kontext und Verlauf zeigen das neue Projekt",
+      "anfragenAntworten": [
+        {
+          "muster": "**/chat",
+          "methode": "GET",
+          "json": {
+            "verlauf": []
+          }
+        },
+        {
+          "muster": "**/sparring",
+          "methode": "GET",
+          "json": {
+            "verlauf": []
+          }
+        }
+      ],
+      "auswaehlen": {
+        "selector": "#kopf-projekt-auswahl",
+        "wert": "zweites-projekt"
+      },
+      "warteAufSelector": {
+        "selector": "#chat-leer-jarvis",
+        "timeoutMs": 8000
+      },
+      "screenshot": "p1-gross-nach-wechsel.webp"
+    },
+    {
+      "label": "„Gespräch verkleinern“ → Liste #/ausfuehrungen statt des Details des alten Projekts, Dock offen mit „Zweites Projekt“",
+      "klick": "#chat-verkleinern",
+      "warteAufSelector": {
+        "selector": "#shell-chat-spalte:not(.chat-grossansicht)",
+        "timeoutMs": 8000
+      },
+      "screenshot": "p2-verkleinert-liste.webp"
+    }
+  ]
+}

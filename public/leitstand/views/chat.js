@@ -46,17 +46,16 @@
  * s. "Bekannte Grenzen" in features/F34/feature.md).
  *
  * Der persistierte Verlauf (GET /api/chat bzw. GET /api/sparring, Checkpoint-Kette
- * 'lineage-chat-<projektId>' bzw. 'lineage-sparring-<projektId>') wird beim ersten Mount der Chat-Spalte
- * (initChatView, Shell-Bootstrap) UND zusätzlich bei jedem Betreten der
- * View '#/chat' geladen (F29 WS-D2-Korrektur: die Chat-Spalte ist ab
- * ≥1280px in jeder View sichtbar, nicht nur unter '#/chat') — ein
+ * 'lineage-chat-<projektId>' bzw. 'lineage-sparring-<projektId>') des angezeigten Modus wird beim
+ * Bootstrap (initChatView), bei jedem Betreten von '#/chat' und seit F44 WS-8a nach jedem
+ * Projektwechsel geladen (das Dock kann auf jeder Seite offen sein) — ein
  * Reload verliert dadurch nichts (AK4), ABER nur für bereits real
  * ABGESCHLOSSENE/ERFOLGREICHE Jarvis-/Sparring-Antworten. QA-Befund (WS-2a, real
  * nachvollzogen): ein Reload MITTEN in einem ausstehenden Lauf verliert die
  * Pending-Anzeige (ausstehenderLauf lebt nur im Modulspeicher) — die
  * fertige Antwort erscheint danach erst, wenn die View ein weiteres Mal
- * verlassen und wieder betreten wird (registriere-onEnter lädt dann
- * beide Modi neu und findet den inzwischen geschriebenen Eintrag). Kein
+ * verlassen und wieder betreten wird (registriere-onEnter lädt dann den
+ * angezeigten Modus neu und findet den inzwischen geschriebenen Eintrag). Kein
  * Datenverlust (der Server hat den Lauf/die Lineage unabhängig vom Client
  * geschrieben), aber kein automatisches Nachladen ohne erneuten
  * View-Eintritt — bewusste, dokumentierte Grenze statt stillschweigend
@@ -94,6 +93,7 @@
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initChatView beim Bootstrap)
+ * - public/leitstand/shell.js (indirekt: steuert Lage und Sichtbarkeit des DOM dieser View, F44 WS-8a)
  * - public/leitstand/views/projekte-uebersicht.js (wechsleZuSparringProjekt, F41 WS-2 — "Zum
  *   Coach-Interview" nach dem Anlegen eines neuen Projekts)
  *
@@ -191,16 +191,35 @@
  * /api/sparring/<laufId>/auftrag, best-effort) — GET /api/sparring projiziert ihn als
  * 'auftragErstelltId' je Turn, renderAuftragBruecke zeigt dafür einen statischen "bereits angelegt"-
  * Hinweis statt des Triggers.
+ *
+ * F44 WS-8a (Vorlage V10 chatDock und d_jarvis, Abgleich F-725 L1, L4–L7; L2/L3 funktional
+ * mitgeführt): dieselbe View dient jetzt dem Chat-Dock (Popover unten rechts auf jeder Seite außer
+ * '#/chat') UND der großen Gesprächsansicht '#/chat' — EIN DOM, die Lage setzt shell.js per Klasse.
+ * '#/chat' ist dafür eine gewöhnliche Route (router.js). Neu in dieser Datei, reine Darstellung:
+ * (a) der Moduswechsel ist ein WAI-ARIA-Register (role=tab, aria-selected, Pfeiltasten/Pos1/Ende
+ * über naechsterRegisterIndex wie WS-7), der Untermodus-Umschalter bleibt aria-pressed; (b) der
+ * Leerzustand je Modus (#chat-leer) mit Vorschlägen, die NUR die Eingabe füllen und fokussieren —
+ * kein Senden, zwei davon gingen sonst ohne Zutun an einen echten Modell-Lauf; (c) die
+ * Kontextspalte der großen Ansicht (renderKontext*): Projektname und roadmap.vision (GET
+ * …/<id>/roadmap, dieselbe Abfrage wie projekte-uebersicht.js), „Nächster Schritt“ aus
+ * letzterZustand (leiteNaechstenSchrittAb, chat-anzeige.js — keine neue Abfrage); (d) alle Texte
+ * über t()/tHtml() (de/en/tr/ru), Modell- und Serverwerte roh und escaped. „Sparring“ heißt in den
+ * Texten jetzt „Product Coach“; Modus-Schlüssel, Endpunkte und Gates bleiben 'sparring'. Poll-,
+ * Timer-, Sende-, Vorfilter- und D13-Logik sind unverändert.
  */
 
-import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
+import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
 import { escapeHtml, formatiereUhrzeit } from '../render.js'
-import { abonniereProjektWechsel } from '../projekt-kontext.js'
+import { abonniereProjektWechsel, holeAktivesProjekt } from '../projekt-kontext.js'
 import { registriere } from '../router.js'
 import { abonniere } from '../zustand.js'
 import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
 import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
+import { istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
+import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
+import { t, tHtml } from '../i18n.js'
+import { roadmapKennzahlen } from '../produkte-anzeige.js'
 
 /**
  * F34 WS-2: die einzige Stelle, an der sich 'jarvis' und 'sparring' unterscheiden — jede Funktion
@@ -210,31 +229,36 @@ import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-
  * (jarvisAntwort/coachAntwort); 'hatVorfilter'/'hatZusammenfassen' schalten Jarvis-only-Bedienung
  * für 'sparring' ab (kein lokaler Vorfilter für Sparring-Anfragen, kein POST
  * /api/sparring/zusammenfassen — F34 WS-1 Nicht-Ziel).
+ * F44 WS-8a: sichtbare Texte als i18n-Schlüssel (t() erst beim Rendern — beim Import ist die
+ * Sprache noch nicht initialisiert, app.js). 'reiterId' ist der Reiter im Register, 'leerId' die
+ * Fassung des Leerzustands.
  */
 const MODI = {
   jarvis: {
     id: 'jarvis',
-    label: 'Jarvis',
-    titelText: 'Chat mit Jarvis',
-    platzhalter: 'Nachricht an Jarvis …',
+    nameSchluessel: 'chat.modus.jarvis',
+    seitenTitelSchluessel: 'chat.seite.titel.jarvis',
+    platzhalterSchluessel: 'chat.eingabe.platzhalter.jarvis',
+    reiterId: 'chat-modus-jarvis-btn',
+    leerId: 'chat-leer-jarvis',
     holeVerlauf: holeChatVerlauf,
     sendeNachricht: sendeChatNachricht,
     leseAntwort: (eintrag) => eintrag.jarvisAntwort,
     hatVorfilter: true,
     hatZusammenfassen: true,
-    antwortLabel: 'Jarvis',
   },
   sparring: {
     id: 'sparring',
-    label: 'Sparring',
-    titelText: 'Sparring mit dem Product Coach',
-    platzhalter: 'Nachricht an den Product Coach …',
+    nameSchluessel: 'chat.modus.coach',
+    seitenTitelSchluessel: 'chat.seite.titel.coach',
+    platzhalterSchluessel: 'chat.eingabe.platzhalter.coach',
+    reiterId: 'chat-modus-sparring-btn',
+    leerId: 'chat-leer-coach',
     holeVerlauf: holeSparringVerlauf,
     sendeNachricht: sendeSparringNachricht,
     leseAntwort: (eintrag) => eintrag.coachAntwort,
     hatVorfilter: false,
     hatZusammenfassen: false,
-    antwortLabel: 'Coach',
   },
 }
 
@@ -309,6 +333,8 @@ function neuerModusZustand() {
     ausstehenderLaufTimeout: null,
     /** Verlauf wurde mindestens einmal erfolgreich geladen — steuert, ob initModusUmschalter beim ersten Wechsel in diesen Modus nachlädt. */
     geladen: false,
+    /** F44 WS-8a: der letzte Ladeversuch scheiterte — der Verlauf zeigt dann weder „lädt“ noch den Leerzustand (die Fehlermeldung steht in #chat-fehler). */
+    ladeFehlgeschlagen: false,
   }
 }
 
@@ -428,7 +454,7 @@ async function polleSofortBeiSichtbarkeit() {
 
 /** @param antwort - Rollen-Ergebnis-artiges Objekt ({ art, antwort, … }) oder null @returns Anzeigetext */
 function antwortText(antwort) {
-  if (antwort === null || typeof antwort?.antwort !== 'string') return '(keine lesbare Antwort)'
+  if (antwort === null || typeof antwort?.antwort !== 'string') return t('chat.keineAntwort')
   return antwort.antwort
 }
 
@@ -524,11 +550,17 @@ function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung) {
   return `<div class="chat-bubble-reihe chat-bubble-reihe-${ausrichtung}">${ausrichtung === 'nutzer' ? bubble + avatar : avatar + bubble}</div>`
 }
 
-const QUELLE_ANTWORT_LABEL = { vorfilter: 'Jarvis (lokal beantwortet)', fehler: 'Lauf nicht erfolgreich' }
+/** F44 WS-8a: i18n-Schlüssel des Sprechblasen-Kopfs für lokale Einträge (Vorfilter, Fehlanzeige). */
+const QUELLE_ANTWORT_SCHLUESSEL = { vorfilter: 'chat.quelle.vorfilter', fehler: 'chat.quelle.fehler' }
+
+/** F44 WS-8a: Name des Gegenübers im Sprechblasen-Kopf. @param modus - 'jarvis' | 'sparring' */
+function antwortLabel(modus) {
+  return t(MODI[modus].nameSchluessel)
+}
 
 /** @param eintraege - string[] @returns eine <ul>-Liste, oder ein Hinweistext bei leerem Array */
 function renderStringListe(eintraege) {
-  if (!Array.isArray(eintraege) || eintraege.length === 0) return '<p class="chat-scope-leer">(keine)</p>'
+  if (!Array.isArray(eintraege) || eintraege.length === 0) return `<p class="chat-scope-leer">${tHtml('chat.liste.keine')}</p>`
   return `<ul class="chat-scope-liste">${eintraege.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`
 }
 
@@ -550,26 +582,27 @@ function renderAlternativen(alternativen) {
 /** F34 WS-2: rendert daten.scope (art 'scope_entwurf') strukturiert — Problem, Ziel, In/Out of Scope, Annahmen, offene Fragen, Erfolgskriterium. @param scope - CoachScope */
 function renderScope(scope) {
   if (scope === null || typeof scope !== 'object') return ''
-  const abschnitt = (titel, inhaltHtml) => `<div class="chat-scope-abschnitt"><p class="chat-scope-abschnitt-titel">${escapeHtml(titel)}</p>${inhaltHtml}</div>`
+  const abschnitt = (titelHtml, inhaltHtml) => `<div class="chat-scope-abschnitt"><p class="chat-scope-abschnitt-titel">${titelHtml}</p>${inhaltHtml}</div>`
   return `<div class="chat-scope-block">
-    ${abschnitt('Problem', `<p>${escapeHtml(scope.problem ?? '')}</p>`)}
-    ${abschnitt('Ziel', `<p>${escapeHtml(scope.ziel ?? '')}</p>`)}
-    ${abschnitt('In Scope', renderStringListe(scope.in_scope))}
-    ${abschnitt('Out of Scope', renderStringListe(scope.out_of_scope))}
-    ${abschnitt('Annahmen', renderStringListe(scope.annahmen))}
-    ${abschnitt('Offene Fragen', renderStringListe(scope.offene_fragen))}
-    ${abschnitt('Erfolgskriterium', `<p>${escapeHtml(scope.erfolgskriterium ?? '')}</p>`)}
+    ${abschnitt(tHtml('chat.scope.problem'), `<p>${escapeHtml(scope.problem ?? '')}</p>`)}
+    ${abschnitt(tHtml('chat.scope.ziel'), `<p>${escapeHtml(scope.ziel ?? '')}</p>`)}
+    ${abschnitt(tHtml('chat.scope.inScope'), renderStringListe(scope.in_scope))}
+    ${abschnitt(tHtml('chat.scope.outOfScope'), renderStringListe(scope.out_of_scope))}
+    ${abschnitt(tHtml('chat.scope.annahmen'), renderStringListe(scope.annahmen))}
+    ${abschnitt(tHtml('chat.scope.offeneFragen'), renderStringListe(scope.offene_fragen))}
+    ${abschnitt(tHtml('chat.scope.erfolgskriterium'), `<p>${escapeHtml(scope.erfolgskriterium ?? '')}</p>`)}
   </div>`
 }
 
-const CAPABILITY_STATUS_LABEL = { vorhanden: 'vorhanden', offen: 'offen', fehlt: 'fehlt' }
+/** F44 WS-8a: i18n-Schlüssel der bekannten Capability-Status; ein unbekannter Serverwert bleibt roh. */
+const CAPABILITY_STATUS_SCHLUESSEL = { vorhanden: 'chat.capability.vorhanden', offen: 'chat.capability.offen', fehlt: 'chat.capability.fehlt' }
 
 /** F34 WS-3: rendert projekt.capabilities_bedarf mit Status-Markierung (.badge, Muster views/workboard.js). @param bedarf - CapabilityBedarf[] */
 function renderCapabilityBedarf(bedarf) {
-  if (!Array.isArray(bedarf) || bedarf.length === 0) return '<p class="chat-scope-leer">(keine)</p>'
+  if (!Array.isArray(bedarf) || bedarf.length === 0) return `<p class="chat-scope-leer">${tHtml('chat.liste.keine')}</p>`
   const eintraege = bedarf
     .map((b) => {
-      const status = CAPABILITY_STATUS_LABEL[b?.status] ?? String(b?.status ?? '')
+      const status = Object.hasOwn(CAPABILITY_STATUS_SCHLUESSEL, b?.status) ? t(CAPABILITY_STATUS_SCHLUESSEL[b.status]) : String(b?.status ?? '')
       const ressourceHtml = b?.ressource_id ? ` — <code>${escapeHtml(b.ressource_id)}</code>` : ''
       const badgeKlasse = b?.status === 'fehlt' ? 'fehler' : b?.status === 'offen' ? 'neutral' : 'ok'
       return `<li class="chat-capability-bedarf-eintrag"><span class="badge ${badgeKlasse}">${escapeHtml(status)}</span> ${escapeHtml(b?.bedarf ?? '')}${ressourceHtml}</li>`
@@ -586,7 +619,7 @@ function renderProjektMeilenstein(meilenstein) {
       (f) => `<li class="chat-projekt-feature">
         <p class="chat-projekt-feature-titel"><code>${escapeHtml(f?.id ?? '')}</code> — ${escapeHtml(entferneIdPraefix(f?.titel ?? ''))}</p>
         <p class="chat-projekt-feature-ziel">${escapeHtml(f?.ziel ?? '')}</p>
-        ${Array.isArray(f?.abhaengig_von_ids) && f.abhaengig_von_ids.length > 0 ? `<p class="chat-projekt-feature-abhaengig">Abhängig von: ${f.abhaengig_von_ids.map((id) => escapeHtml(id)).join(', ')}</p>` : ''}
+        ${Array.isArray(f?.abhaengig_von_ids) && f.abhaengig_von_ids.length > 0 ? `<p class="chat-projekt-feature-abhaengig">${tHtml('chat.projekt.abhaengigVon', { ids: f.abhaengig_von_ids.join(', ') })}</p>` : ''}
       </li>`
     )
     .join('')
@@ -600,17 +633,17 @@ function renderProjektMeilenstein(meilenstein) {
 /** F34 WS-3 (E-M5-12): rendert daten.projekt (art 'projekt_entwurf') strukturiert — Vision, Zielgruppe, Ziele, Scope In/Out, Meilensteine mit Features + zugewiesenen IDs, Capability-Bedarf mit Status, offene Fragen. @param projekt - ProjektEntwurf mit bereits vergebenen IDs */
 function renderProjekt(projekt) {
   if (projekt === null || typeof projekt !== 'object') return ''
-  const abschnitt = (titel, inhaltHtml) => `<div class="chat-scope-abschnitt"><p class="chat-scope-abschnitt-titel">${escapeHtml(titel)}</p>${inhaltHtml}</div>`
+  const abschnitt = (titelHtml, inhaltHtml) => `<div class="chat-scope-abschnitt"><p class="chat-scope-abschnitt-titel">${titelHtml}</p>${inhaltHtml}</div>`
   const meilensteine = Array.isArray(projekt.meilensteine) ? projekt.meilensteine : []
   return `<div class="chat-scope-block chat-projekt-block">
-    ${abschnitt('Vision', `<p>${escapeHtml(projekt.vision ?? '')}</p>`)}
-    ${abschnitt('Zielgruppe', `<p>${escapeHtml(projekt.zielgruppe ?? '')}</p>`)}
-    ${abschnitt('Ziele', renderStringListe(projekt.ziele))}
-    ${abschnitt('Scope In', renderStringListe(projekt.scope_in))}
-    ${abschnitt('Scope Out', renderStringListe(projekt.scope_out))}
-    ${abschnitt('Meilensteine', meilensteine.length > 0 ? meilensteine.map(renderProjektMeilenstein).join('') : '<p class="chat-scope-leer">(keine)</p>')}
-    ${abschnitt('Capability-Bedarf', renderCapabilityBedarf(projekt.capabilities_bedarf))}
-    ${abschnitt('Offene Fragen', renderStringListe(projekt.offene_fragen))}
+    ${abschnitt(tHtml('chat.projekt.vision'), `<p>${escapeHtml(projekt.vision ?? '')}</p>`)}
+    ${abschnitt(tHtml('chat.projekt.zielgruppe'), `<p>${escapeHtml(projekt.zielgruppe ?? '')}</p>`)}
+    ${abschnitt(tHtml('chat.projekt.ziele'), renderStringListe(projekt.ziele))}
+    ${abschnitt(tHtml('chat.projekt.scopeIn'), renderStringListe(projekt.scope_in))}
+    ${abschnitt(tHtml('chat.projekt.scopeOut'), renderStringListe(projekt.scope_out))}
+    ${abschnitt(tHtml('chat.projekt.meilensteine'), meilensteine.length > 0 ? meilensteine.map(renderProjektMeilenstein).join('') : `<p class="chat-scope-leer">${tHtml('chat.liste.keine')}</p>`)}
+    ${abschnitt(tHtml('chat.projekt.capabilityBedarf'), renderCapabilityBedarf(projekt.capabilities_bedarf))}
+    ${abschnitt(tHtml('chat.scope.offeneFragen'), renderStringListe(projekt.offene_fragen))}
   </div>`
 }
 
@@ -656,10 +689,10 @@ function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
   if (offenerAuftragDialog === null || offenerAuftragDialog.modus !== modus || offenerAuftragDialog.schluessel !== schluessel) {
     if (auftragErstelltId !== null) {
       return `<div class="chat-auftrag-dialog chat-auftrag-dialog-erfolg">
-        <p>Auftrag bereits angelegt (<code>${escapeHtml(auftragErstelltId)}</code>). <a href="#/projekt">Im Auftrag-Bereich ansehen</a></p>
+        <p>${tHtml('chat.auftrag.bereits', {}, { id: `<code>${escapeHtml(auftragErstelltId)}</code>` })} <a href="#/projekt">${tHtml('chat.auftrag.ansehen')}</a></p>
       </div>`
     }
-    return `<button type="button" class="btn chat-auftrag-oeffnen-btn" data-auftrag-oeffnen="${escapeHtml(schluessel)}">Als Auftrag anlegen</button>`
+    return `<button type="button" class="btn chat-auftrag-oeffnen-btn" data-auftrag-oeffnen="${escapeHtml(schluessel)}">${tHtml('chat.auftrag.anlegenOeffnen')}</button>`
   }
   const dialog = offenerAuftragDialog
   if (dialog.erfolgAuftragId !== null) {
@@ -669,20 +702,20 @@ function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
     // setzt offenerAuftragDialog schlicht auf null, der Eintrag zeigt danach wieder den
     // "Als Auftrag anlegen"-Trigger.
     return `<div class="chat-auftrag-dialog chat-auftrag-dialog-erfolg">
-      <p>Auftrag angelegt (<code>${escapeHtml(dialog.erfolgAuftragId)}</code>). <a href="#/projekt">Im Auftrag-Bereich ansehen</a></p>
-      <button type="button" class="btn" data-auftrag-abbrechen="${escapeHtml(schluessel)}">Schließen</button>
+      <p>${tHtml('chat.auftrag.angelegt', {}, { id: `<code>${escapeHtml(dialog.erfolgAuftragId)}</code>` })} <a href="#/projekt">${tHtml('chat.auftrag.ansehen')}</a></p>
+      <button type="button" class="btn" data-auftrag-abbrechen="${escapeHtml(schluessel)}">${tHtml('chat.auftrag.schliessen')}</button>
     </div>`
   }
   const fehlerHtml = dialog.fehler ? `<p class="fehler chat-auftrag-dialog-fehler">${escapeHtml(dialog.fehler)}</p>` : ''
   return `<div class="chat-auftrag-dialog">
-    <label class="chat-auftrag-dialog-label" for="chat-auftrag-titel">Titel</label>
+    <label class="chat-auftrag-dialog-label" for="chat-auftrag-titel">${tHtml('chat.auftrag.titel')}</label>
     <input type="text" id="chat-auftrag-titel" class="chat-auftrag-titel-feld" value="${escapeHtml(dialog.titel)}" ${dialog.gesperrt ? 'disabled' : ''} />
-    <label class="chat-auftrag-dialog-label" for="chat-auftrag-text">Auftragstext</label>
+    <label class="chat-auftrag-dialog-label" for="chat-auftrag-text">${tHtml('chat.auftrag.text')}</label>
     <textarea id="chat-auftrag-text" class="chat-auftrag-text-feld" rows="8" ${dialog.gesperrt ? 'disabled' : ''}>${escapeHtml(dialog.auftragstext)}</textarea>
     ${fehlerHtml}
     <div class="chat-auftrag-dialog-aktionen">
-      <button type="button" class="btn btn-primary" data-auftrag-anlegen="${escapeHtml(schluessel)}" ${dialog.gesperrt ? 'disabled' : ''}>Anlegen</button>
-      <button type="button" class="btn" data-auftrag-abbrechen="${escapeHtml(schluessel)}" ${dialog.gesperrt ? 'disabled' : ''}>Abbrechen</button>
+      <button type="button" class="btn btn-primary" data-auftrag-anlegen="${escapeHtml(schluessel)}" ${dialog.gesperrt ? 'disabled' : ''}>${tHtml('chat.auftrag.anlegen')}</button>
+      <button type="button" class="btn" data-auftrag-abbrechen="${escapeHtml(schluessel)}" ${dialog.gesperrt ? 'disabled' : ''}>${tHtml('chat.auftrag.abbrechen')}</button>
     </div>
   </div>`
 }
@@ -690,15 +723,15 @@ function renderAuftragBruecke(modus, schluessel, kandidat, auftragErstelltId) {
 /** Ein Verlaufseintrag als zwei Sprechblasen-Zeilen (Nutzerfrage + Antwort bzw. Tippindikator, solange sie aussteht). F31 WS-2: ein Zusammenfassungs-Turn (istZusammenfassung) bekommt zusätzlich einen zentrierten Trenner davor, die Nutzerzeile ("[Zusammenfassung angefordert]") tritt dezent zurück. F34 WS-2: art-abhängiger Inhalt (Text/Alternativen-Liste/strukturierter Scope) plus ggf. die Auftrag-Brücke. @param modus - 'jarvis' | 'sparring' @param eintrag - aus baueAnzeigeListe() @returns HTML-Block */
 function renderEintrag(modus, eintrag) {
   const zeitHtml = eintrag.zeitstempel ? ` <span class="chat-bubble-zeit">${escapeHtml(formatiereUhrzeit(eintrag.zeitstempel) ?? '')}</span>` : ''
-  const trennerHtml = eintrag.istZusammenfassung === true ? '<p class="chat-zusammenfassung-trenner">Zusammenfassung</p>' : ''
+  const trennerHtml = eintrag.istZusammenfassung === true ? `<p class="chat-zusammenfassung-trenner">${tHtml('chat.zusammenfassung.trenner')}</p>` : ''
   const nutzerTextKlasse = eintrag.istZusammenfassung === true ? 'chat-bubble-text chat-bubble-text-dezent' : 'chat-bubble-text'
   const nutzerZeile = chatBubbleReihe('Stefan', zeitHtml, `<p class="${nutzerTextKlasse}">${escapeHtml(eintrag.nachricht)}</p>`, 'nutzer')
   if (eintrag.quelle === 'ausstehend') {
     const tippindikator = '<p class="chat-tippindikator" aria-hidden="true"><span></span><span></span><span></span></p>'
     const fortschrittHtml = eintrag.fortschrittText ? `<p class="chat-fortschritt">${escapeHtml(eintrag.fortschrittText)} …</p>` : ''
-    return trennerHtml + nutzerZeile + chatBubbleReihe(MODI[modus].antwortLabel, '', tippindikator + fortschrittHtml, 'jarvis')
+    return trennerHtml + nutzerZeile + chatBubbleReihe(antwortLabel(modus), '', tippindikator + fortschrittHtml, 'jarvis')
   }
-  const label = QUELLE_ANTWORT_LABEL[eintrag.quelle] ?? MODI[modus].antwortLabel
+  const label = Object.hasOwn(QUELLE_ANTWORT_SCHLUESSEL, eintrag.quelle) ? t(QUELLE_ANTWORT_SCHLUESSEL[eintrag.quelle]) : antwortLabel(modus)
   const art = eintrag.antwort?.art
   let inhaltHtml = `<p class="chat-bubble-text">${escapeHtml(eintrag.antwortText)}</p>`
   if (art === 'alternativen') inhaltHtml += renderAlternativen(eintrag.antwort?.alternativen)
@@ -742,9 +775,23 @@ function renderVerlauf() {
   const modus = aktiverModus
   const konfiguration = MODI[modus]
   const zustand = zustandJeModus[modus]
-  document.getElementById('chat-titel').textContent = konfiguration.titelText
-  document.getElementById('chat-eingabe').placeholder = konfiguration.platzhalter
-  document.getElementById('chat-zusammenfassen-btn').hidden = !konfiguration.hatZusammenfassen
+  // F44 WS-8a: Dock-Kopf (Name des Gegenübers + Projekt) und Seitenkopf der großen Ansicht — beide
+  // im DOM, style.css zeigt je Lage einen.
+  document.getElementById('chat-titel').textContent = t(konfiguration.nameSchluessel)
+  document.getElementById('chat-seitentitel').textContent = t(konfiguration.seitenTitelSchluessel)
+  document.getElementById('chat-dock-projekt').textContent = holeAktivesProjekt().name
+  document.getElementById('chat-eingabe').placeholder = t(konfiguration.platzhalterSchluessel)
+  // F44 WS-8a: Register Jarvis | Product Coach (role=tab) — aria-selected, tabindex und .active
+  // laufen bei JEDEM Render gleich (Invariante aus F-620: Auswahlzustand und Optik gleichlaufend).
+  const setzeReiterZustand = (id, gewaehlt) => {
+    const element = document.getElementById(id)
+    element.setAttribute('aria-selected', String(gewaehlt))
+    element.tabIndex = gewaehlt ? 0 : -1
+    element.classList.toggle('active', gewaehlt)
+  }
+  setzeReiterZustand('chat-modus-jarvis-btn', modus === 'jarvis')
+  setzeReiterZustand('chat-modus-sparring-btn', modus === 'sparring')
+  document.getElementById('chat-gespraech').setAttribute('aria-labelledby', konfiguration.reiterId)
   // F34 WS-3 Korrekturrunde (löst F-620): 'btn-primary' muss bei JEDEM Render gleichlaufend mit
   // aria-pressed gesetzt werden — vorher aktualisierte dieser Block nur aria-pressed, die optische
   // Hervorhebung blieb dauerhaft auf dem Erstzustand stehen (Sichtprüfung, seit WS-2).
@@ -753,21 +800,37 @@ function renderVerlauf() {
     element.setAttribute('aria-pressed', String(gedrueckt))
     element.classList.toggle('btn-primary', gedrueckt)
   }
-  setzeGedruecktenZustand('chat-modus-jarvis-btn', modus === 'jarvis')
-  setzeGedruecktenZustand('chat-modus-sparring-btn', modus === 'sparring')
   // F34 WS-3: Unterumschalter nur im Modus 'sparring' sichtbar.
   document.getElementById('chat-untermodus-auswahl').hidden = modus !== 'sparring'
   setzeGedruecktenZustand('chat-untermodus-feature-btn', sparringUntermodus === 'feature')
   setzeGedruecktenZustand('chat-untermodus-projekt-btn', sparringUntermodus === 'projekt')
 
   const container = document.getElementById('chat-verlauf')
+  // F44 WS-8a (design-guardian): im Dock scrollt der Verlauf selbst — stand er am Ende (oder ist er
+  // neu), bleibt er nach dem Neurendern am Ende (neueste Antwort, Tippanzeige); wer gerade weiter
+  // oben liest, springt nicht.
+  const amEnde = container.scrollHeight - container.scrollTop - container.clientHeight < 40
   const liste = baueAnzeigeListe(modus)
   const standardAusschnitt = berechneStandardAusschnitt(liste)
   const sichtbar = zustand.zeigeAlle ? liste : standardAusschnitt
-  container.innerHTML = sichtbar.length === 0 ? '<p class="leer">Noch keine Nachrichten.</p>' : sichtbar.map((eintrag) => renderEintrag(modus, eintrag)).join('')
+  // F44 WS-8a: leer und geladen → Leerzustand des Modus (#chat-leer); leer und noch nicht geladen →
+  // kurzer Ladehinweis; leer nach einem Ladefehler → nichts (die Meldung steht in #chat-fehler).
+  const leer = liste.length === 0
+  const leerSichtbar = leer && zustand.geladen
+  document.getElementById('chat-leer').hidden = !leerSichtbar
+  for (const andererModus of Object.keys(MODI)) document.getElementById(MODI[andererModus].leerId).hidden = andererModus !== modus
+  container.hidden = leerSichtbar
+  if (leer) {
+    container.innerHTML = zustand.geladen || zustand.ladeFehlgeschlagen ? '' : `<p class="leer">${tHtml('chat.laden')}</p>`
+  } else {
+    container.innerHTML = sichtbar.map((eintrag) => renderEintrag(modus, eintrag)).join('')
+  }
+  if (amEnde && !istGrossansicht(location.hash)) container.scrollTop = container.scrollHeight
+  // Ohne Verlauf gibt es nichts zusammenzufassen (der Server antwortete mit 409) — QA/design-guardian WS-8a.
+  document.getElementById('chat-zusammenfassen-btn').hidden = !konfiguration.hatZusammenfassen || leer
   const link = document.getElementById('chat-ganzen-verlauf-link')
   link.hidden = standardAusschnitt.length === liste.length
-  link.textContent = zustand.zeigeAlle ? 'Verlauf einklappen' : 'Ganzen Verlauf öffnen'
+  link.textContent = zustand.zeigeAlle ? t('chat.verlauf.einklappen') : t('chat.verlauf.oeffnen')
 
   // Code-Review-Befund (F34 WS-2, verifiziert in einem zweiten Pass): Sende-/Zusammenfassen-Sperre UND
   // Abbrechen-Button-Text/-Sperre werden bei JEDEM Render VOLLSTÄNDIG aus zustand (dem Zustand des
@@ -788,7 +851,7 @@ function renderVerlauf() {
   const abbrechenBtn = document.getElementById('chat-abbrechen-btn')
   const abbruchAngefordert = zustand.ausstehenderLauf?.abbruchAngefordert === true
   abbrechenBtn.hidden = zustand.ausstehenderLauf === null
-  abbrechenBtn.textContent = abbruchAngefordert ? 'Abbruch angefordert' : 'Lauf abbrechen'
+  abbrechenBtn.textContent = abbruchAngefordert ? t('chat.abbruchAngefordert') : t('chat.abbrechen')
   abbrechenBtn.disabled = abbruchAngefordert
 }
 
@@ -806,9 +869,12 @@ async function ladeVerlauf(modus) {
     const antwort = await MODI[modus].holeVerlauf()
     zustand.persistierterVerlauf = antwort.verlauf
     zustand.geladen = true
+    zustand.ladeFehlgeschlagen = false
     if (modus === aktiverModus) zeigeChatFehler('')
   } catch (fehler) {
-    if (modus === aktiverModus) zeigeChatFehler(`Verlauf konnte nicht geladen werden: ${fehler.message}`)
+    console.error(`Chat: Verlauf (${modus}) nicht ladbar:`, fehler)
+    zustand.ladeFehlgeschlagen = true
+    if (modus === aktiverModus) zeigeChatFehler(t('chat.fehler.verlauf', { grund: fehler.message }))
     erfolgreich = false
   }
   if (modus === aktiverModus) renderVerlauf()
@@ -834,10 +900,10 @@ async function ladeVerlauf(modus) {
  * @param abbruchAngefordert - true, wenn diese Sitzung für DIESEN Lauf zuvor #chat-abbrechen-btn ausgelöst hat
  */
 function beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert) {
-  if (abbruchAngefordert === true && laufStatus?.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'FEHLGESCHLAGEN') return 'Lauf abgebrochen.'
-  if (laufStatus?.status === 'KLAERUNG_ERFORDERLICH') return `Lauf hält — Klärung erforderlich: ${laufStatus.grund}`
-  if (laufStatus?.status === 'ABGESCHLOSSEN') return `Lauf abgeschlossen, aber nicht erfolgreich (${laufStatus.ergebnis}).`
-  return `Lauf endete unerwartet (Status: ${laufStatus?.status ?? 'unbekannt'}).`
+  if (abbruchAngefordert === true && laufStatus?.status === 'ABGESCHLOSSEN' && laufStatus.ergebnis === 'FEHLGESCHLAGEN') return t('chat.ende.abgebrochen')
+  if (laufStatus?.status === 'KLAERUNG_ERFORDERLICH') return t('chat.ende.klaerung', { grund: laufStatus.grund })
+  if (laufStatus?.status === 'ABGESCHLOSSEN') return t('chat.ende.nichtErfolgreich', { ergebnis: laufStatus.ergebnis })
+  return t('chat.ende.unerwartet', { status: laufStatus?.status ?? t('chat.ende.statusUnbekannt') })
 }
 
 /**
@@ -853,10 +919,10 @@ function beschreibeFortschritt(fortschritt) {
   const kuerze = (text) => ([...text].length > 60 ? `${[...text].slice(0, 59).join('')}…` : text)
   const ziel = zielRoh === null ? null : kuerze(zielRoh)
   const kurzPfad = zielRoh === null ? null : kuerze(zielRoh.split(/[\\/]/).filter(Boolean).slice(-2).join('/') || zielRoh)
-  if (fortschritt.werkzeug === 'Read') return kurzPfad ? `liest ${kurzPfad}` : 'liest eine Datei'
-  if (fortschritt.werkzeug === 'Grep') return ziel ? `durchsucht nach „${ziel}“` : 'durchsucht Dateien'
-  if (fortschritt.werkzeug === 'Glob') return ziel ? `sucht ${ziel}` : 'sucht Dateien'
-  return kurzPfad ? `nutzt ${fortschritt.werkzeug} (${kurzPfad})` : `nutzt ${fortschritt.werkzeug}`
+  if (fortschritt.werkzeug === 'Read') return kurzPfad ? t('chat.fortschritt.liest', { pfad: kurzPfad }) : t('chat.fortschritt.liestDatei')
+  if (fortschritt.werkzeug === 'Grep') return ziel ? t('chat.fortschritt.durchsucht', { muster: ziel }) : t('chat.fortschritt.durchsuchtDateien')
+  if (fortschritt.werkzeug === 'Glob') return ziel ? t('chat.fortschritt.sucht', { muster: ziel }) : t('chat.fortschritt.suchtDateien')
+  return kurzPfad ? t('chat.fortschritt.nutzt', { werkzeug: fortschritt.werkzeug, pfad: kurzPfad }) : t('chat.fortschritt.nutztOhne', { werkzeug: fortschritt.werkzeug })
 }
 
 /** Bei jedem Tick des eigenen 500ms-Polls geprüft (siehe Datei-Kopf): solange ein Lauf DIESES Modus aussteht, GET /api/laeufe/<laufId> abrufen und bei Terminallage auflösen. @param modus - 'jarvis' | 'sparring' */
@@ -920,7 +986,7 @@ async function pruefeAusstehendenLauf(modus) {
     // Ohne diesen Hinweis sähe der Mensch nur seine Antwort und nie, dass sein Abbruch wirkungslos
     // blieb (genau die Beobachtung, die diesen Auftrag ausgelöst hat).
     if (abbruchAngefordert && modus === aktiverModus) {
-      zeigeChatFehler('Abbruch kam zu spät: die Antwort war bereits fertig, der Lauf wurde nicht abgebrochen.')
+      zeigeChatFehler(t('chat.fehler.abbruchZuSpaet'))
     }
   } else {
     zustand.lokaleEintraege.push({
@@ -968,7 +1034,7 @@ async function sendeAktuelleEingabe() {
   const nachricht = feld.value.trim()
   zeigeChatFehler('')
   if (nachricht === '') {
-    zeigeChatFehler('Bitte eine Nachricht eingeben.')
+    zeigeChatFehler(t('chat.fehler.leer'))
     return
   }
 
@@ -1001,13 +1067,13 @@ async function sendeAktuelleEingabe() {
         const koerper = modus === 'sparring' ? { nachricht, modus: sparringUntermodus } : { nachricht }
         antwort = await MODI[modus].sendeNachricht(koerper)
       } catch (fehler) {
-        zeigeChatFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+        zeigeChatFehler(t('chat.fehler.anfrage', { grund: fehler.message }))
         return
       }
       const tServerQuittung = performance.now()
       if (antwort.status !== 202) {
         const koerper = await antwort.json().catch(() => ({}))
-        zeigeChatFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+        zeigeChatFehler(t('chat.fehler.status', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }))
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
@@ -1050,12 +1116,12 @@ function initAbbrechenBedienung() {
       const koerper = await antwort.json().catch(() => ({}))
       zustand.ausstehenderLauf.abbruchAngefordert = false
       renderVerlauf()
-      zeigeChatFehler(`Abbruch fehlgeschlagen: ${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+      zeigeChatFehler(t('chat.fehler.abbruch', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }))
     } catch (fehler) {
       if (zustand.ausstehenderLauf?.laufId !== laufId) return
       zustand.ausstehenderLauf.abbruchAngefordert = false
       renderVerlauf()
-      zeigeChatFehler(`Abbruch-Anfrage fehlgeschlagen: ${fehler.message}`)
+      zeigeChatFehler(t('chat.fehler.abbruchAnfrage', { grund: fehler.message }))
     }
   })
 }
@@ -1074,7 +1140,7 @@ async function sendeZusammenfassungAnfrage() {
     const tServerQuittung = performance.now()
     if (antwort.status !== 202) {
       const koerper = await antwort.json().catch(() => ({}))
-      zeigeChatFehler(`${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}`)
+      zeigeChatFehler(t('chat.fehler.status', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }))
       return
     }
     const angenommen = await antwort.json().catch(() => ({}))
@@ -1087,7 +1153,7 @@ async function sendeZusammenfassungAnfrage() {
     }
     starteAusstehendenLaufPoll(modus)
   } catch (fehler) {
-    zeigeChatFehler(`Anfrage fehlgeschlagen: ${fehler.message}`)
+    zeigeChatFehler(t('chat.fehler.anfrage', { grund: fehler.message }))
   } finally {
     zustand.sendenLaeuft = false
     renderVerlauf()
@@ -1120,7 +1186,7 @@ function initGanzenVerlaufLink() {
   })
 }
 
-/** F34 WS-2: "Jarvis"/"Sparring"-Umschalter — reine Anzeige-/Zielwahl (Muster der früheren F32-Regel .verbrauch-zeitraum-auswahl, seit F44 WS-6b entfernt; btn/btn-primary). Ein Wechsel setzt weder ausstehenderLauf noch den Verlauf des jeweils anderen Modus zurück (beide leben unabhängig in zustandJeModus) — lädt den Zielmodus nur beim ERSTEN Wechsel dorthin nach (zustand.geladen), jeder weitere Wechsel zeigt den bereits geladenen/aktualisierten Stand ohne erneuten Fetch. */
+/** F34 WS-2: "Jarvis"/"Sparring"-Umschalter — reine Anzeige-/Zielwahl. Ein Wechsel setzt weder ausstehenderLauf noch den Verlauf des jeweils anderen Modus zurück (beide leben unabhängig in zustandJeModus) — lädt den Zielmodus nur beim ERSTEN Wechsel dorthin nach (zustand.geladen), jeder weitere Wechsel zeigt den bereits geladenen/aktualisierten Stand ohne erneuten Fetch. F44 WS-8a: als Register (role=tablist, #chat-register) — Klick wählt; Pfeil links/rechts, Pos1 und Ende wählen und fokussieren (automatische Aktivierung, naechsterRegisterIndex wie views/capabilities.js). */
 function initModusUmschalter() {
   const waehleModus = (modus) => {
     if (modus === aktiverModus) return
@@ -1136,6 +1202,86 @@ function initModusUmschalter() {
   }
   document.getElementById('chat-modus-jarvis-btn').addEventListener('click', () => waehleModus('jarvis'))
   document.getElementById('chat-modus-sparring-btn').addEventListener('click', () => waehleModus('sparring'))
+  const modi = Object.keys(MODI)
+  document.getElementById('chat-register').addEventListener('keydown', (ereignis) => {
+    const index = modi.findIndex((modus) => MODI[modus].reiterId === ereignis.target.id)
+    if (index === -1) return
+    const neu = naechsterRegisterIndex(index, modi.length, ereignis.key)
+    if (neu === null) return
+    ereignis.preventDefault()
+    waehleModus(modi[neu])
+    document.getElementById(MODI[modi[neu]].reiterId).focus()
+  })
+}
+
+/** F44 WS-8a: Vorschläge im Leerzustand füllen NUR die Eingabe und fokussieren sie — sie senden nicht (Bauauftrag WS-8a 2e). */
+function initVorschlaege() {
+  document.getElementById('chat-leer').addEventListener('click', (ereignis) => {
+    const knopf = ereignis.target instanceof Element ? ereignis.target.closest('[data-vorschlag]') : null
+    if (knopf === null) return
+    const feld = document.getElementById('chat-eingabe')
+    feld.value = t(knopf.dataset.vorschlag)
+    feld.focus()
+  })
+}
+
+// ─── Kontextspalte der großen Ansicht (F44 WS-8a) ───────────────────────────
+
+/** Render-Stand der Vision: ein Projektwechsel während des Abrufs verwirft die alte Antwort. */
+let kontextStand = 0
+
+/** Zustand für „Nächster Schritt“ — wie letzterZustand, aber beim Projektwechsel sofort null (kein Eintrag des alten Projekts). */
+let kontextZustand = null
+
+/**
+ * „Unser Kontext“: Projektname sofort, roadmap.vision aus GET …/<id>/roadmap (dieselbe Abfrage und
+ * Ableitung wie die Produktkarten in projekte-uebersicht.js). Ohne Vision der Hinweis „Noch kein
+ * Ziel festgehalten“, bei einem Fehler der Servergrund roh.
+ */
+async function ladeKontext() {
+  const stand = ++kontextStand
+  const projekt = holeAktivesProjekt()
+  document.getElementById('chat-kontext-projekt').textContent = projekt.name
+  const ziel = document.getElementById('chat-kontext-ziel')
+  ziel.classList.add('leer')
+  ziel.textContent = t('chat.kontext.zielLaedt')
+  let kennzahlen
+  try {
+    kennzahlen = roadmapKennzahlen(await holeProjektRoadmap(projekt.id))
+  } catch (fehler) {
+    console.error(`Chat: Roadmap von '${projekt.id}' nicht ladbar:`, fehler)
+    kennzahlen = { ok: false, grund: fehler instanceof Error ? fehler.message : String(fehler) }
+  }
+  if (stand !== kontextStand) return
+  if (!kennzahlen.ok) {
+    ziel.textContent = kennzahlen.grund === '' ? t('chat.kontext.zielFehlerOhneGrund') : t('chat.kontext.zielFehler', { grund: kennzahlen.grund })
+    return
+  }
+  ziel.classList.toggle('leer', kennzahlen.vision === null)
+  ziel.textContent = kennzahlen.vision ?? t('chat.kontext.zielFehlt')
+}
+
+/** i18n-Schlüssel je Eintragsart von „Nächster Schritt“. */
+const NAECHSTER_ART_SCHLUESSEL = { freigabe: 'chat.kontext.art.freigabe', rueckfrage: 'chat.kontext.art.rueckfrage', lauf: 'chat.kontext.art.lauf' }
+
+/** Letztes gerendertes HTML von „Nächster Schritt“ — der 2-s-Poll ersetzt den Block nur bei Änderung (kein Fokusverlust auf dem Link). */
+let letzterNaechsterSchrittHtml = null
+
+/** „Nächster Schritt“ aus dem gepollten Zustand (kontextZustand, leiteNaechstenSchrittAb, chat-anzeige.js); leer → Hinweis + Link auf '#/attention'. Titel roh, escaped. */
+function renderNaechsterSchritt() {
+  const schritt = leiteNaechstenSchrittAb(kontextZustand)
+  const alleLink = `<a class="text-link" href="#/attention">${tHtml('chat.kontext.naechster.alle')} <span aria-hidden="true">→</span></a>`
+  let html
+  if (schritt.art === 'eintrag') {
+    html = `<p class="chat-kontext-text">${tHtml(NAECHSTER_ART_SCHLUESSEL[schritt.eintragArt] ?? 'chat.kontext.art.lauf')}: ${escapeHtml(schritt.titel)}</p>
+      <a class="text-link" href="${escapeHtml(schritt.hash)}">${tHtml('chat.kontext.naechster.ansehen')} <span aria-hidden="true">→</span></a>`
+  } else {
+    const schluessel = { laedt: 'chat.kontext.naechster.laedt', defekt: 'chat.kontext.naechster.defekt', leer: 'chat.kontext.naechster.leer' }[schritt.art]
+    html = `<p class="chat-kontext-text leer">${tHtml(schluessel)}</p>${schritt.art === 'laedt' ? '' : alleLink}`
+  }
+  if (html === letzterNaechsterSchrittHtml) return
+  letzterNaechsterSchrittHtml = html
+  document.getElementById('chat-kontext-naechster').innerHTML = html
 }
 
 /**
@@ -1200,6 +1346,19 @@ function initUntermodusUmschalter() {
  * des ursprünglichen Werts anzeigt.
  */
 function initAuftragBruecke() {
+  // F44 WS-8a (QA-Pass): Escape im offenen Auftragsdialog schließt nur den Dialog (Fokus zurück auf
+  // „Als Auftrag anlegen“); preventDefault hält shell.js davon ab, zugleich das Dock zu schließen.
+  document.getElementById('chat-verlauf').addEventListener('keydown', (ereignis) => {
+    if (ereignis.key !== 'Escape' || offenerAuftragDialog === null || offenerAuftragDialog.gesperrt) return
+    if (!(ereignis.target instanceof Element) || ereignis.target.closest('.chat-auftrag-dialog') === null) return
+    ereignis.preventDefault()
+    const { schluessel } = offenerAuftragDialog
+    offenerAuftragDialog = null
+    renderVerlauf()
+    for (const knopf of document.querySelectorAll('#chat-verlauf [data-auftrag-oeffnen]')) {
+      if (knopf.dataset.auftragOeffnen === schluessel) knopf.focus()
+    }
+  })
   document.getElementById('chat-verlauf').addEventListener('input', (ereignis) => {
     if (offenerAuftragDialog === null) return
     if (ereignis.target.id === 'chat-auftrag-titel') offenerAuftragDialog.titel = ereignis.target.value
@@ -1252,7 +1411,7 @@ function initAuftragBruecke() {
         const koerper = await antwort.json().catch(() => ({}))
         if (!gehoertNochZuDiesemDialog()) return
         if (antwort.status !== 201) {
-          offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, fehler: `${antwort.status}: ${koerper.grund ?? 'unbekannter Fehler'}` }
+          offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, fehler: t('chat.fehler.status', { status: antwort.status, grund: koerper.grund ?? t('chat.fehler.unbekannt') }) }
           renderVerlauf()
           return
         }
@@ -1269,7 +1428,7 @@ function initAuftragBruecke() {
         }
       } catch (fehler) {
         if (!gehoertNochZuDiesemDialog()) return
-        offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, fehler: `Anfrage fehlgeschlagen: ${fehler.message}` }
+        offenerAuftragDialog = { ...offenerAuftragDialog, gesperrt: false, fehler: t('chat.fehler.anfrage', { grund: fehler.message }) }
         renderVerlauf()
       }
     }
@@ -1287,6 +1446,15 @@ function setzeChatZustandZurueck() {
   // Sende-/Abbrechen-Zustand braucht keinen eigenen Reset mehr: neuerModusZustand() liefert bereits
   // sendenLaeuft:false/ausstehenderLauf:null, renderVerlauf() leitet die Buttons daraus ab (s. dort).
   renderVerlauf()
+  // F44 WS-8a: Dock und große Ansicht zeigen sofort das neue Projekt — der Verlauf des neuen Projekts
+  // lädt nach (vorher blieb er bis zum nächsten Betreten von '#/chat' leer), die Kontextspalte
+  // ebenso. Der letzte Zustand gehört noch zum alten Projekt; der nächste Poll-Tick (projekt-kontext.js
+  // stößt ihn sofort an) ersetzt ihn — bis dahin zeigt „Nächster Schritt“ „lädt“. letzterZustand
+  // (Vorfilter, Auftrag-Brücke) bleibt dabei unangetastet.
+  kontextZustand = null
+  renderNaechsterSchritt()
+  void ladeVerlauf(aktiverModus)
+  if (istGrossansicht(location.hash)) void ladeKontext()
 }
 
 /** Initialisiert die Chat-View einmalig beim Bootstrap. */
@@ -1299,25 +1467,27 @@ export function initChatView() {
   initModusUmschalter()
   initUntermodusUmschalter()
   initAuftragBruecke()
+  initVorschlaege()
 
-  // F29 WS-1a: { ueberlagert: true } — Chat ist seither die umschaltbare rechte Spalte der Shell
-  // (public/leitstand/shell.js), kein `[data-view]`-Container in <main> mehr; der Dispatch auf
-  // '#/chat' lässt die Hauptansicht deshalb unangetastet (router.js Datei-Kommentar). Rein
-  // strukturelle Registrierungs-Option, keine Änderung an Verlauf/Formular-Logik dieser Datei.
+  // F44 WS-8a: '#/chat' ist die große Gesprächsansicht — eine gewöhnliche Route; ihr DOM liegt im
+  // Chat-Dock der Shell (shell.js setzt die Lage, router.js blendet die Hauptansichten aus).
   registriere(/^#\/chat$/, 'chat', () => {
     void ladeVerlauf(aktiverModus)
-  }, { ueberlagert: true })
+    void ladeKontext()
+    renderNaechsterSchritt()
+  })
 
-  // F29 WS-D2-Korrektur: #shell-chat-spalte ist ab ≥1280px in JEDER View sichtbar (shell.js),
-  // nicht nur unter '#/chat' — das obige onEnter allein lädt den Verlauf deshalb nicht mehr
-  // zuverlässig (z. B. Start → Workboard, ohne '#/chat' je betreten zu haben, blieb die Spalte
-  // leer). Einmaliger Ladeversuch hier beim Shell-Bootstrap, unabhängig von der aktiven Route —
+  // F29 WS-D2-Korrektur, seit F44 WS-8a für das Dock: es kann auf jeder Seite offen sein, ohne dass
+  // '#/chat' je betreten wurde — einmaliger Ladeversuch beim Bootstrap, unabhängig von der Route.
   // renderProjektKontext() (app.js) läuft davor, das aktive Projekt steht also bereits fest.
   void ladeVerlauf(aktiverModus)
   renderVerlauf()
+  renderNaechsterSchritt()
 
   abonniere((zustand) => {
     letzterZustand = zustand
+    kontextZustand = zustand
+    if (istGrossansicht(location.hash)) renderNaechsterSchritt()
   })
   abonniereProjektWechsel(setzeChatZustandZurueck)
 

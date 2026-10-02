@@ -1,0 +1,267 @@
+{
+  "url": "http://127.0.0.1:4199/#/chat",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "reduzierteBewegung": false,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": false,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false",
+    "leitstand-chat-modus": "jarvis",
+    "leitstand-chat-sparring-untermodus": "feature"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/zustand",
+      "methode": "GET",
+      "json": {
+        "laeufe": [
+          {
+            "laufId": "lauf-nachweis-9",
+            "ergebnis": "FEHLGESCHLAGEN",
+            "kenntnisgenommen": false,
+            "auftragsbezug": {
+              "titel": "Tests reparieren"
+            }
+          }
+        ],
+        "startfehler": [],
+        "workflows": [
+          {
+            "workflowId": "router-nachweis-1",
+            "ziel": "Anmeldung mit Passkey bauen",
+            "naechster": {
+              "art": "haltFreigabe"
+            },
+            "grund": "Plan wartet auf deine Freigabe."
+          }
+        ],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        }
+      }
+    },
+    {
+      "muster": "**/roadmap",
+      "methode": "GET",
+      "json": {
+        "status": "ok",
+        "vision": "Eine ruhige Kommandozentrale für die Zusammenarbeit mit KI.",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "POST",
+      "status": 500,
+      "json": {
+        "grund": "Nachweis: Senden ist hier nicht vorgesehen"
+      }
+    },
+    {
+      "muster": "**/chat",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/sparring",
+      "methode": "GET",
+      "json": {
+        "verlauf": []
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "Nav aktuell",
+        "selector": "[aria-current=\"page\"]",
+        "attribut": "data-nav-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Fokus",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Blase aria-expanded",
+        "selector": "#chat-blase",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Kopfknopf aria-expanded",
+        "selector": "#chat-umschalter",
+        "attribut": "aria-expanded"
+      },
+      {
+        "name": "Reiter gewählt",
+        "selector": "#chat-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Seitentitel",
+        "selector": "#chat-seitentitel"
+      },
+      {
+        "name": "Dock-Titel",
+        "selector": "#chat-titel"
+      },
+      {
+        "name": "Fehler",
+        "selector": "#chat-fehler:not([hidden])"
+      }
+    ],
+    "sichtbarkeit": [
+      {
+        "name": "Dock/Ansicht sichtbar",
+        "id": "shell-chat-spalte"
+      },
+      {
+        "name": "Blase sichtbar",
+        "id": "chat-blase"
+      },
+      {
+        "name": "Leerzustand",
+        "id": "chat-leer"
+      },
+      {
+        "name": "Abbrechen sichtbar",
+        "id": "chat-abbrechen-btn"
+      },
+      {
+        "name": "Untermodus sichtbar",
+        "id": "chat-untermodus-auswahl"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "große Ansicht",
+        "selector": "#shell.chat-gross #shell-chat-spalte.chat-grossansicht"
+      },
+      {
+        "name": "Verkleinern sichtbar",
+        "selector": "#shell-chat-spalte.chat-grossansicht:not([hidden]) #chat-verkleinern"
+      },
+      {
+        "name": "Eingabe leer",
+        "selector": "#chat-eingabe:placeholder-shown"
+      },
+      {
+        "name": "Nutzerblase",
+        "selector": ".chat-bubble-reihe-nutzer"
+      },
+      {
+        "name": "Tippanzeige",
+        "selector": ".chat-tippindikator"
+      },
+      {
+        "name": "Senden gesperrt",
+        "selector": "#chat-senden[disabled]"
+      },
+      {
+        "name": "„Als Auftrag anlegen“",
+        "selector": ".chat-auftrag-oeffnen-btn"
+      },
+      {
+        "name": "javascript:-Link (muss fehlen)",
+        "selector": "#view-chat a[href^=\"javascript\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Kontext: Roadmap ohne Vision → „Noch kein Ziel festgehalten“; Zustand ohne Freigabe/Lauf → Hinweis und „Alle Entscheidungen“",
+      "anfragenAntworten": [
+        {
+          "muster": "**/roadmap",
+          "methode": "GET",
+          "json": {
+            "status": "nicht_vorhanden"
+          }
+        },
+        {
+          "muster": "**/zustand",
+          "methode": "GET",
+          "json": {
+            "laeufe": [],
+            "startfehler": [],
+            "workflows": [],
+            "fehler": [],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            }
+          }
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#chat-kontext-naechster a[href=\"#/attention\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "z1-ziel-fehlt-nichts-offen.webp"
+    },
+    {
+      "label": "Kontext: Roadmap 500 ohne Grund → „Ziel nicht ladbar.“; Workflows-Quelle defekt → „Gerade nicht verfügbar.“",
+      "anfragenAntworten": [
+        {
+          "muster": "**/roadmap",
+          "methode": "GET",
+          "status": 500,
+          "json": {}
+        },
+        {
+          "muster": "**/zustand",
+          "methode": "GET",
+          "json": {
+            "laeufe": [],
+            "startfehler": [],
+            "workflows": null,
+            "fehler": [],
+            "aktiverLauf": {
+              "aktiv": false,
+              "laufId": null
+            }
+          }
+        }
+      ],
+      "reload": true,
+      "warteAufSelector": {
+        "selector": "#chat-kontext-naechster a[href=\"#/attention\"]",
+        "timeoutMs": 8000
+      },
+      "screenshot": "z2-ziel-fehler-defekt.webp"
+    }
+  ]
+}

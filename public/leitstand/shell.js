@@ -2,17 +2,26 @@
  * Datei: public/leitstand/shell.js
  *
  * Zweck: Verdrahtung der Shell — Sidebar und Kopf der Vorlage V10 (F44 WS-1b, F-725,
- * Abgleich A3/A4/A5/A9/A10/A14), dazu die Chatspalte, die bis WS-8 bleibt. Keine View-Logik,
+ * Abgleich A3/A4/A5/A9/A10/A14), dazu das Chat-Dock (F44 WS-8a, Abgleich L1). Keine View-Logik,
  * keine Serverdaten außer dem Projektregister für die Auswahl (projekt-kontext.js).
  *
- * 1. Chat-Spalten-Umschalter (#chat-umschalter, seit WS-1b der Knopf „Frag Jarvis“ im Kopf —
- *    gleiche ID, gleiche Logik wie seit F29 WS-1a): #shell-chat-spalte ist kein
- *    `[data-view]`-Container (router.js, "ueberlagert"). Ihre Sichtbarkeit ist ein eigener
- *    Zustand (chatSpalteSichtbar) mit drei Auslösern: (a) beim Betreten von '#/chat' erzwungen
- *    offen, (b) beim Betreten von '#/start' erzwungen geschlossen, (c) sonst die in
- *    localStorage gemerkte Präferenz. (a)/(b) greifen nur bei einem ECHTEN 'hashchange' — ein
- *    Klick auf den Umschalter danach ändert den Zustand frei bis zum nächsten Routenwechsel
- *    (QA-Befund 18.09.2026: eine ODER-Verknüpfung ließ die Spalte auf '#/chat' nie schließen).
+ * 1. Chat-Dock und große Ansicht (F44 WS-8a, Vorlage V10 chatDock): #shell-chat-spalte trägt
+ *    EIN DOM (#view-chat, views/chat.js) für beides; die Lage setzt wendeChatSichtbarkeitAn per
+ *    Klasse. Auf '#/chat' ist es die große Ansicht (.chat-grossansicht, #shell.chat-gross blendet
+ *    den Hauptbereich aus), sonst das überlagerte Popover unten rechts — offen oder zu nach dem
+ *    eigenen Zustand dockOffen: (a) '#/start' schließt es, (b) jede andere Route außer '#/chat'
+ *    übernimmt die in localStorage gemerkte Präferenz (Schlüssel wie seit F29 WS-1a). Beide
+ *    greifen nur bei einem ECHTEN 'hashchange'; ein Klick auf einen Auslöser ändert den Zustand
+ *    danach frei bis zum nächsten Routenwechsel. Auslöser sind #chat-umschalter („Frag Jarvis“
+ *    im Kopf) und #chat-blase (unten rechts) — beide mit aria-expanded/aria-controls. Öffnen
+ *    fokussiert #chat-eingabe; Escape (Fokus im Dock oder auf einem Auslöser) und „×“ schließen
+ *    und geben den Fokus an den Auslöser zurück. Kein Fokusfang, keine Live-Region. „↗“ öffnet
+ *    '#/chat' (der Modus bleibt, views/chat.js), „Gespräch verkleinern“ führt zur zuletzt
+ *    gemerkten Seite (merkeRoute, chat-anzeige.js; ohne Merker die Produktübersicht) mit offenem
+ *    Dock zurück. Auf '#/chat' trägt das Dock role=main (der Hauptbereich ist ausgeblendet) und
+ *    der Kopfknopf kein aria-expanded; ein Projektwechsel bildet ein gemerktes Detail des alten
+ *    Projekts auf dessen Liste ab (DETAIL_ROUTEN). Ist localStorage gesperrt, gilt die Präferenz
+ *    im Modul weiter.
  * 2. Persona-Knopf (#persona-kopf-oeffner) und Wortmarke der Sidebar (#shell-marke) holen die
  *    Startfläche zurück (views/start.js, zeigeStartflaeche()).
  * 3. Projektauswahl im Kopf (#kopf-projekt-auswahl, A4): setzt das aktive Projekt über
@@ -41,6 +50,7 @@
  */
 
 import { beiBestaetigterAuswahl } from './auswahl-bremse.js'
+import { istGrossansicht, merkeRoute, zielBeimVerkleinern } from './chat-anzeige.js'
 import { SPRACHEN, aktuelleSprache, setzeSprache, t, uebersetzeDokument } from './i18n.js'
 import { holeAktivesProjekt, ladeProjektAuswahl, projektAusListe, projektListeFehlt, renderProjektKontext, setzeAktivesProjekt } from './projekt-kontext.js'
 import { escapeHtml } from './render.js'
@@ -63,52 +73,130 @@ const DETAIL_ROUTEN = [
 /** Unter dieser Breite zeigt die Sprachwahl nur den Code (Datei-Kommentar 4). */
 const SCHMAL = '(max-width: 420px)'
 
-/** Aktueller, veränderlicher Sichtbarkeitszustand der Chat-Spalte — s. Datei-Kommentar (a)/(b)/(c). */
-let chatSpalteSichtbar = false
+/** Ist das Dock (außerhalb von '#/chat') offen? — s. Datei-Kommentar 1 (a)/(b). */
+let dockOffen = false
+
+/** Zuletzt geöffnete Seite außer '#/chat' und '#/start' — Ziel von „Gespräch verkleinern“. */
+let gemerkteRoute = null
+
+/** Der Auslöser, der das Dock zuletzt geöffnet hat — bekommt beim Schließen den Fokus zurück. */
+let letzterAusloeser = null
+
+/** Zuletzt gesetzte Präferenz im Modul — gilt, wenn localStorage gesperrt ist (QA-Pass WS-8a: sonst schlösse das folgende hashchange ein gerade geöffnetes Dock wieder). */
+let chatPraeferenzImModul = null
 
 function gespeicherteChatPraeferenz() {
   try {
     return localStorage.getItem(CHAT_OFFEN_SCHLUESSEL) === 'true'
   } catch {
-    return false
+    return chatPraeferenzImModul === true
   }
 }
 
 function speichereChatPraeferenz(offen) {
+  chatPraeferenzImModul = offen
   try {
     localStorage.setItem(CHAT_OFFEN_SCHLUESSEL, String(offen))
   } catch {
-    // Privates Fenster/blockierter Zugriff — die Präferenz gilt dann nur für die laufende Ansicht, kein Absturz (Muster projekt-kontext.js).
+    // Privates Fenster/blockierter Zugriff — die Präferenz gilt dann nur für diese Sitzung (chatPraeferenzImModul), kein Absturz (Muster projekt-kontext.js).
   }
 }
 
-/** Spiegelt chatSpalteSichtbar auf Spalte und Umschalter. F30 WS-1: .chat-grossansicht, solange die Route '#/chat' ist — reine Layout-Markierung für style.css. */
+/** Spiegelt Route und dockOffen auf Dock, Auslöser, Blase und „Gespräch verkleinern“ (Datei-Kommentar 1). */
 function wendeChatSichtbarkeitAn() {
-  const spalte = document.getElementById('shell-chat-spalte')
-  spalte.hidden = !chatSpalteSichtbar
-  spalte.classList.toggle('chat-grossansicht', location.hash === '#/chat')
-  document.getElementById('chat-umschalter').setAttribute('aria-pressed', String(chatSpalteSichtbar))
+  const dock = document.getElementById('shell-chat-spalte')
+  const gross = istGrossansicht(location.hash)
+  dock.hidden = !(gross || dockOffen)
+  dock.classList.toggle('chat-grossansicht', gross)
+  document.getElementById('shell').classList.toggle('chat-gross', gross)
+  // Auf '#/chat' ist das Gespräch der Hauptinhalt der Seite (<main> ist ausgeblendet) — sonst ein
+  // ergänzender Bereich (QA-Pass/design-guardian WS-8a).
+  if (gross) dock.setAttribute('role', 'main')
+  else dock.removeAttribute('role')
+  const umschalter = document.getElementById('chat-umschalter')
+  const blase = document.getElementById('chat-blase')
+  // Auf '#/chat' lässt sich nichts zuklappen — der Kopfknopf trägt dort kein aria-expanded (QA-Pass WS-8a).
+  if (gross) umschalter.removeAttribute('aria-expanded')
+  else umschalter.setAttribute('aria-expanded', String(dockOffen))
+  blase.setAttribute('aria-expanded', String(dockOffen))
+  blase.hidden = gross
+  if (dockOffen && !gross) {
+    // Wie die Vorlage (chatDock): beim Öffnen steht der Verlauf am Ende (neueste Antwort, Tippanzeige).
+    const verlauf = document.getElementById('chat-verlauf')
+    verlauf.scrollTop = verlauf.scrollHeight
+  }
 }
 
-/** Bei jedem ECHTEN Routenwechsel: Chatspalte nach (a)/(b)/(c), „Zuletzt geöffnet“ neu (ein merkeGeoeffnet() geht immer einem navigiere() voraus), mobiles Menü zu. */
+/**
+ * Öffnet oder schließt das Dock, merkt die Präferenz und setzt den Fokus: beim Öffnen auf die
+ * Eingabe, beim Schließen zurück auf den Auslöser (ohne bekannten Auslöser auf die Blase).
+ * @param offen - true: Dock öffnen
+ * @param ausloeser - das auslösende Element (nur beim Öffnen gemerkt)
+ */
+function setzeDock(offen, ausloeser) {
+  dockOffen = offen
+  speichereChatPraeferenz(offen)
+  wendeChatSichtbarkeitAn()
+  if (offen) {
+    letzterAusloeser = ausloeser ?? null
+    document.getElementById('chat-eingabe').focus()
+    return
+  }
+  const ruecksprung = letzterAusloeser ?? document.getElementById('chat-blase')
+  ruecksprung.focus()
+}
+
+/** Bei jedem ECHTEN Routenwechsel: Rückkehrziel merken, Dock nach (a)/(b), „Zuletzt geöffnet“ neu (ein merkeGeoeffnet() geht immer einem navigiere() voraus), mobiles Menü zu. */
 function beiRoutenwechsel() {
-  if (location.hash === '#/chat') {
-    chatSpalteSichtbar = true
-  } else if (location.hash === '#/start') {
-    chatSpalteSichtbar = false
-  } else {
-    chatSpalteSichtbar = gespeicherteChatPraeferenz()
+  gemerkteRoute = merkeRoute(gemerkteRoute, location.hash)
+  if (location.hash === '#/start') {
+    dockOffen = false
+  } else if (!istGrossansicht(location.hash)) {
+    dockOffen = gespeicherteChatPraeferenz()
   }
   wendeChatSichtbarkeitAn()
   renderZuletztGeoeffnet()
   setzeMenue(false)
 }
 
-function initChatUmschalter() {
-  document.getElementById('chat-umschalter').addEventListener('click', () => {
-    chatSpalteSichtbar = !chatSpalteSichtbar
-    speichereChatPraeferenz(chatSpalteSichtbar)
+/** Auslöser, Dock-Kopf, Escape und „Gespräch verkleinern“ (Datei-Kommentar 1). */
+function initChatDock() {
+  const dock = document.getElementById('shell-chat-spalte')
+  const umschalter = document.getElementById('chat-umschalter')
+  const blase = document.getElementById('chat-blase')
+  for (const ausloeser of [umschalter, blase]) {
+    ausloeser.addEventListener('click', () => {
+      // Auf '#/chat' ist das Gespräch schon groß offen — der Kopfknopf führt nur in die Eingabe.
+      if (istGrossansicht(location.hash)) {
+        document.getElementById('chat-eingabe').focus()
+        return
+      }
+      setzeDock(!dockOffen, ausloeser)
+    })
+  }
+  document.getElementById('chat-schliessen').addEventListener('click', () => setzeDock(false))
+  document.getElementById('chat-gross-oeffnen').addEventListener('click', () => {
+    // Wie die Vorlage (expand-chat): das Dock gilt danach als zu; „Gespräch verkleinern“ öffnet es wieder.
+    dockOffen = false
+    speichereChatPraeferenz(false)
+    navigiere('#/chat')
     wendeChatSichtbarkeitAn()
+    document.getElementById('chat-eingabe').focus()
+  })
+  document.getElementById('chat-verkleinern').addEventListener('click', () => {
+    speichereChatPraeferenz(true)
+    dockOffen = true
+    letzterAusloeser = null
+    navigiere(zielBeimVerkleinern(gemerkteRoute))
+    wendeChatSichtbarkeitAn()
+    document.getElementById('chat-eingabe').focus()
+  })
+  document.addEventListener('keydown', (ereignis) => {
+    // defaultPrevented: Escape hat schon eine innere Ebene geschlossen (Auftragsdialog, views/chat.js).
+    if (ereignis.key !== 'Escape' || ereignis.defaultPrevented || !dockOffen || istGrossansicht(location.hash)) return
+    const ziel = ereignis.target
+    if (!(ziel instanceof Node) || !(dock.contains(ziel) || umschalter.contains(ziel) || blase.contains(ziel))) return
+    setzeDock(false)
   })
   window.addEventListener('hashchange', beiRoutenwechsel)
   beiRoutenwechsel()
@@ -143,6 +231,10 @@ function initProjektAuswahl() {
       return
     }
     setzeAktivesProjekt(projekt)
+    // F44 WS-8a (QA-Pass): auch die für „Gespräch verkleinern“ gemerkte Seite darf nicht im Detail
+    // des alten Projekts bleiben — dieselbe Abbildung auf die Liste wie für die aktuelle Route.
+    const gemerktesDetail = DETAIL_ROUTEN.find((route) => gemerkteRoute !== null && route.muster.test(gemerkteRoute))
+    if (gemerktesDetail !== undefined) gemerkteRoute = gemerktesDetail.liste
     const detail = DETAIL_ROUTEN.find((route) => route.muster.test(location.hash))
     // replace statt navigiere: kein Verlaufseintrag auf das Detail des alten Projekts; der Router
     // folgt über hashchange.
@@ -262,7 +354,7 @@ function initZuletztGeoeffnet() {
 export function initShell() {
   uebersetzeDokument()
   initMenue()
-  initChatUmschalter()
+  initChatDock()
   initStartflaechenOeffner()
   initProjektAuswahl()
   initSprachwahl()

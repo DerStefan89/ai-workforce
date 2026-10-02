@@ -71,7 +71,7 @@
            /api/projekte) mit „+“ (F-862, öffnet das Anlegeformular F41), in der Mitte der
            Persona-Knopf mit der Statuszeile (#persona-text-status, persona.js — die einzige
            aria-live-Region), rechts Sprache, Hell/Dunkel und „Frag Jarvis“ (#chat-umschalter,
-           shell.js, bis WS-8 der Umschalter der Chatspalte). #persona-platzhalter und
+           shell.js, seit WS-8a Auslöser des Chat-Docks wie #chat-blase). #persona-platzhalter und
            #persona-kopf-oeffner bleiben die Mount- und Klickpunkte von persona.js/shell.js. -->
       <header id="shell-kopf">
         <div class="top-left">
@@ -88,7 +88,7 @@
         <div class="top-right">
           <label class="language-picker"><span class="sr-only" data-i18n="kopf.sprache">Sprache</span><select id="kopf-sprache"></select></label>
           <button type="button" id="kopf-theme" class="icon-button theme-toggle" title="Hell / Dunkel" data-i18n-title="kopf.themeTitel"></button>
-          <button type="button" id="chat-umschalter" class="button chat-umschalter" aria-pressed="false" aria-controls="shell-chat-spalte" title="Frag Jarvis" data-i18n-title="kopf.fragJarvis"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-umschalter-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
+          <button type="button" id="chat-umschalter" class="button chat-umschalter" aria-expanded="false" aria-controls="shell-chat-spalte" title="Frag Jarvis" data-i18n-title="kopf.fragJarvis"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-umschalter-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
         </div>
       </header>
 
@@ -98,7 +98,7 @@
       <main id="shell-hauptbereich">
         <!-- F29 WS-1a: Startfläche, siehe views/start.js. F44 WS-1b: Eingang der Vorlage V10
              („Enter the Rabbit hole“); solange sie sichtbar ist, blendet style.css Sidebar, Kopf und
-             Chatspalte aus. Erscheint einmal pro Sitzung (sessionStorage) oder auf Klick auf die
+             Chat-Dock aus. Erscheint einmal pro Sitzung (sessionStorage) oder auf Klick auf die
              Persona im Kopf bzw. die Wortmarke. -->
         <section id="view-start" data-view="start" hidden></section>
         <!-- F44 WS-1a: Seite „Einstellungen“ (views/einstellungen.js, Vorlage V10 d_einstellungen).
@@ -654,68 +654,114 @@
         </section>
       </main>
 
-      <!-- F29 WS-1a: Chat als umschaltbare rechte Spalte statt eigener Hauptansicht — shell.js
-           steuert das hidden-Attribut hier (localStorage-Präferenz ODER aktive Route '#/chat',
-           siehe Datei-Kommentar dort). #view-chat trägt bewusst KEIN [data-view] mehr — der
-           Router blendet Hauptansichten aus, diese Spalte liegt außerhalb davon (router.js
-           Datei-Kommentar, "ueberlagert").
-           F29 WS-D2 (Auftrag Punkt C): kompakte Sprechblasen-Optik (nur die letzten zwei
-           Einträge, "Ganzen Verlauf öffnen" klappt den Rest ein/aus) statt Karten mit
-           Erklärtext — Verhalten (Vorfilter, POST /api/chat, D13, Terminal-Erkennung, Lineage-
-           Persistenz) unverändert, siehe views/chat.js Datei-Kommentar. Statusfragen ("Status",
-           "was braucht mich") werden lokal ohne Serverkontakt beantwortet; alles andere löst
-           einen echten, einmaligen Jarvis-Lauf aus (kein Streaming). -->
-      <aside id="shell-chat-spalte" aria-label="Chat" hidden>
-        <section id="view-chat">
-          <div class="card-kopf">
-            <span class="card-kopf-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" /></svg></span>
-            <h2 id="chat-titel">Chat mit Jarvis</h2>
-            <span class="chat-online-punkt" aria-hidden="true"></span>
-            <span>Online</span>
+      <!-- F44 WS-8a (Vorlage V10 chatDock und d_jarvis, Abgleich F-725 L1, L4–L7): EIN DOM für das
+           Chat-Dock und die große Ansicht `#/chat`. shell.js setzt die Lage per Klasse — ohne
+           .chat-grossansicht ist #shell-chat-spalte das überlagerte Popover unten rechts (nimmt keine
+           Layoutbreite), mit ihr die Seite `#/chat` (Hauptbereich ausgeblendet, #shell.chat-gross).
+           Dock-Kopf und Seitenkopf liegen beide im DOM; style.css zeigt je Lage nur einen. Alle
+           bisherigen IDs bleiben (views/chat.js): Vorfilter, POST /api/chat bzw. /api/sparring, D13,
+           Zusammenfassen, Abbrechen, Auftrag-Brücke unverändert. Keine aria-live-Region hier — die
+           einzige ist die Persona. Texte über data-i18n (shell.js übersetzt beim Bootstrap). -->
+      <aside id="shell-chat-spalte" class="chat-dock" aria-label="Gespräch" data-i18n-aria-label="chat.dock.label" hidden>
+        <section id="view-chat" class="v10-seite">
+          <div class="chat-dock-kopf">
+            <div class="chat-dock-titel">
+              <h2 id="chat-titel">Jarvis</h2>
+              <small id="chat-dock-projekt"></small>
+            </div>
+            <div class="chat-dock-aktionen">
+              <button type="button" id="chat-gross-oeffnen" class="icon-button" aria-label="Gespräch groß öffnen" title="Vergrößern" data-i18n-aria-label="chat.dock.grossOeffnen" data-i18n-title="chat.dock.grossTitel"><span aria-hidden="true">↗</span></button>
+              <button type="button" id="chat-schliessen" class="icon-button" aria-label="Chat schließen" data-i18n-aria-label="chat.dock.schliessen"><span aria-hidden="true">×</span></button>
+            </div>
           </div>
-          <!-- F34 WS-2: reine Anzeige-/Zielwahl (views/chat.js initModusUmschalter) — lädt/sendet je
-               nach Modus gegen GET/POST /api/chat oder GET/POST /api/sparring. Muster
-               der früheren F32-Regel .verbrauch-zeitraum-auswahl, seit F44 WS-6b entfernt (btn/btn-primary,
-               aria-pressed spiegelt views/chat.js). -->
-          <div class="chat-modus-auswahl" role="group" aria-label="Gesprächspartner">
-            <button type="button" id="chat-modus-jarvis-btn" class="btn btn-primary" aria-pressed="true">Jarvis</button>
-            <button type="button" id="chat-modus-sparring-btn" class="btn" aria-pressed="false">Sparring</button>
+          <div class="page-heading chat-seitenkopf">
+            <div>
+              <p class="eyebrow" data-i18n="chat.seite.eyebrow">Ein Gespräch. Ein klarer nächster Schritt.</p>
+              <h1 id="chat-seitentitel">Mit Jarvis arbeiten.</h1>
+              <p class="description" data-i18n="chat.seite.unterzeile">Dein Gespräch bleibt im Kontext des ausgewählten Projekts.</p>
+            </div>
+            <!-- „Gespräch verkleinern“ (Vorlage .chat-shrink) steht im Seitenkopf statt fest unten rechts,
+                 damit es bei 390 px und 200 % keine Bedienelemente verdeckt (QA-Pass WS-8a). shell.js. -->
+            <button type="button" id="chat-verkleinern" class="button chat-verkleinern"><span aria-hidden="true">↙</span> <span data-i18n="chat.verkleinern">Gespräch verkleinern</span></button>
           </div>
-          <!-- F34 WS-3: Unterumschalter NUR im Modus 'sparring' sichtbar (views/chat.js
-               initUntermodusUmschalter) — 'Feature' (unverändertes WS-1/WS-2-Sparring, Standard) vs.
-               'Projekt' (Projekt-Interview, POST /api/sparring { modus: 'projekt' }). Muster
-               .chat-modus-auswahl. -->
-          <div class="chat-modus-auswahl" id="chat-untermodus-auswahl" role="group" aria-label="Sparring-Modus" hidden>
-            <button type="button" id="chat-untermodus-feature-btn" class="btn btn-primary" aria-pressed="true">Feature</button>
-            <button type="button" id="chat-untermodus-projekt-btn" class="btn" aria-pressed="false">Projekt</button>
+          <!-- Register Jarvis | Product Coach (WAI-ARIA Tabs, Pfeiltasten, Muster WS-7 capabilities.js);
+               views/chat.js leitet aria-selected, tabindex und .active bei jedem Render ab. Beide Reiter
+               steuern dasselbe Gesprächsfeld. -->
+          <div id="chat-register" class="tabs chat-register" role="tablist" aria-label="Gesprächspartner" data-i18n-aria-label="chat.register">
+            <button type="button" role="tab" id="chat-modus-jarvis-btn" class="active" aria-selected="true" aria-controls="chat-gespraech" tabindex="0" data-i18n="chat.modus.jarvis">Jarvis</button>
+            <button type="button" role="tab" id="chat-modus-sparring-btn" aria-selected="false" aria-controls="chat-gespraech" tabindex="-1" data-i18n="chat.modus.coach">Product Coach</button>
           </div>
-          <p id="chat-fehler" class="fehler" hidden></p>
-          <div id="chat-verlauf"></div>
-          <button type="button" id="chat-ganzen-verlauf-link" class="chat-ganzen-verlauf-link" hidden>Ganzen Verlauf öffnen</button>
-          <!-- F30 WS-1 (Aufgabe 1): sichtbar, solange chat.js' ausstehenderLauf gesetzt ist (F14 POST
-               /api/laeufe/<laufId>/abbrechen) — Sichtbarkeit/Bedienung siehe views/chat.js. -->
-          <button type="button" id="chat-abbrechen-btn" class="btn chat-abbrechen-btn" hidden>Lauf abbrechen</button>
-          <!-- F31 WS-2: immer sichtbar, deaktiviert solange chat.js' ausstehenderLauf gesetzt ist
-               (Muster Sende-Sperre, setzeSendenSperre) — POST /api/chat/zusammenfassen. -->
-          <button type="button" id="chat-zusammenfassen-btn" class="btn chat-zusammenfassen-btn">Zusammenfassen &amp; neu starten</button>
-          <div class="chat-eingabe-zeile">
-            <button type="button" class="chat-eingabe-icon-btn" disabled title="Anhänge (kommt bald)">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 12.5l6.5-6.5a3 3 0 0 1 4.2 4.2L10.5 18.4a5 5 0 0 1-7-7L12 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
-            </button>
-            <label for="chat-eingabe" class="sr-only">Nachricht</label>
-            <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a:
-                 ohne clientseitige Grenze bemerkt der Nutzer die Obergrenze erst nach dem Absenden). -->
-            <textarea id="chat-eingabe" rows="1" maxlength="8000" placeholder="Nachricht an Jarvis …"></textarea>
-            <button type="button" class="chat-eingabe-icon-btn" disabled title="Einstellungen (kommt bald)">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6" /><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18 6l-1.7 1.7M7.7 16.3L6 18M18 18l-1.7-1.7M7.7 7.7L6 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" /></svg>
-            </button>
-            <button id="chat-senden" class="chat-senden-btn" aria-label="Senden">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12l16-8-6 8 6 8-16-8Z" fill="currentColor" /></svg>
-            </button>
+          <div class="chat-layout">
+            <div id="chat-gespraech" class="chat-flaeche" role="tabpanel" aria-labelledby="chat-modus-jarvis-btn">
+              <!-- F34 WS-3: Unterumschalter nur im Modus Product Coach (aria-pressed, unverändert). -->
+              <div class="chat-modus-auswahl" id="chat-untermodus-auswahl" role="group" aria-label="Art des Coach-Gesprächs" data-i18n-aria-label="chat.untermodus.label" hidden>
+                <button type="button" id="chat-untermodus-feature-btn" class="btn btn-primary" aria-pressed="true" data-i18n="chat.untermodus.feature">Feature</button>
+                <button type="button" id="chat-untermodus-projekt-btn" class="btn" aria-pressed="false" data-i18n="chat.untermodus.projekt">Projekt</button>
+              </div>
+              <p id="chat-fehler" class="fehler" hidden></p>
+              <!-- Leerzustand (views/chat.js blendet je Modus eine Fassung ein). Vorschläge füllen nur die
+                   Eingabe und fokussieren sie — sie senden nicht. -->
+              <div id="chat-leer" class="chat-intro" hidden>
+                <img class="chat-intro-bild" src="/persona-gesicht.webp" alt="" />
+                <div id="chat-leer-jarvis">
+                  <h2 data-i18n="chat.leer.jarvis.titel">Ich bin da. Was nehmen wir uns vor?</h2>
+                  <p data-i18n="chat.leer.jarvis.text">Ich helfe dir, den Überblick zu behalten und den nächsten Schritt zu finden.</p>
+                  <div class="chat-vorschlaege" role="group" aria-label="Vorschläge" data-i18n-aria-label="chat.vorschlag.label">
+                    <button type="button" class="button" data-vorschlag="chat.vorschlag.braucht" data-i18n="chat.vorschlag.braucht">Was braucht mich?</button>
+                    <button type="button" class="button" data-vorschlag="chat.vorschlag.stand" data-i18n="chat.vorschlag.stand">Wo steht mein Projekt?</button>
+                    <button type="button" class="button" data-vorschlag="chat.vorschlag.zuletzt" data-i18n="chat.vorschlag.zuletzt">Was wurde zuletzt bearbeitet?</button>
+                  </div>
+                </div>
+                <div id="chat-leer-coach" hidden>
+                  <h2 data-i18n="chat.leer.coach.titel">Was möchtest du möglich machen?</h2>
+                  <p data-i18n="chat.leer.coach.text">Eine Idee reicht. Gemeinsam machen wir daraus einen klaren Auftrag.</p>
+                </div>
+              </div>
+              <div id="chat-verlauf" role="region" tabindex="0" aria-label="Gesprächsverlauf" data-i18n-aria-label="chat.verlauf.label"></div>
+              <!-- Werkzeugzeile: Verlauf ein-/ausklappen (F29 WS-D2), Zusammenfassen (F31 WS-2, nur Jarvis),
+                   Lauf abbrechen (F30 WS-1, nur solange ein Lauf aussteht) — Sichtbarkeit und Sperre
+                   leitet views/chat.js in renderVerlauf() ab. -->
+              <div class="chat-werkzeuge">
+                <button type="button" id="chat-ganzen-verlauf-link" class="chat-ganzen-verlauf-link" hidden data-i18n="chat.verlauf.oeffnen">Ganzen Verlauf öffnen</button>
+                <button type="button" id="chat-zusammenfassen-btn" class="btn chat-zusammenfassen-btn" data-i18n="chat.zusammenfassen">Zusammenfassen &amp; neu starten</button>
+                <button type="button" id="chat-abbrechen-btn" class="btn chat-abbrechen-btn" hidden data-i18n="chat.abbrechen">Lauf abbrechen</button>
+              </div>
+              <div class="chat-eingabe-zeile">
+                <label for="chat-eingabe" class="sr-only" data-i18n="chat.eingabe.label">Nachricht</label>
+                <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a). -->
+                <textarea id="chat-eingabe" rows="2" maxlength="8000" placeholder="Frag Jarvis oder beschreibe dein Ziel …"></textarea>
+                <div class="chat-eingabe-fuss">
+                  <p class="chat-eingabe-hinweis" data-i18n="chat.eingabe.hinweis">Enter sendet · Shift + Enter für neue Zeile</p>
+                  <button type="button" id="chat-senden" class="chat-senden-btn" aria-label="Senden" data-i18n-aria-label="chat.senden">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m3 3 18 9-18 9 4-9Zm4 9h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <!-- Kontextspalte, nur in der großen Ansicht (Vorlage d_jarvis .chat-context): Projektname und
+                 roadmap.vision (GET …/<id>/roadmap wie projekte-uebersicht.js), nächster Schritt aus dem
+                 ohnehin gepollten Zustand (wie der Vorfilter „Was braucht mich?“), fester Hinweis. -->
+            <aside class="chat-kontext" aria-labelledby="chat-kontext-titel">
+              <p class="eyebrow" id="chat-kontext-titel" data-i18n="chat.kontext.titel">Unser Kontext</p>
+              <h3 id="chat-kontext-projekt"></h3>
+              <p id="chat-kontext-ziel" class="chat-kontext-text"></p>
+              <div class="chat-kontext-eintrag">
+                <p class="eyebrow" data-i18n="chat.kontext.naechster">Nächster Schritt</p>
+                <div id="chat-kontext-naechster"></div>
+              </div>
+              <div class="chat-kontext-eintrag">
+                <p class="eyebrow" data-i18n="chat.kontext.entscheidest">Du entscheidest</p>
+                <p class="chat-kontext-text" data-i18n="chat.kontext.entscheidest.text">Ein Gespräch startet keine Arbeit. Erst ein Auftrag mit deiner Freigabe setzt die Workforce in Bewegung.</p>
+              </div>
+            </aside>
           </div>
-          <p class="chat-eingabe-hinweis">Shift + Enter für neue Zeile</p>
         </section>
       </aside>
+      <!-- F44 WS-8a: Auslöser des Docks (Vorlage .chat-bubble) — steuert dasselbe Dock wie #chat-umschalter
+           im Kopf (shell.js). Name = sichtbarer Text „Frag Jarvis“ (WCAG 2.5.3), offen/zu nur über
+           aria-expanded und das Symbol (Portrait ↔ ×). Auf `#/chat` ausgeblendet; dort führt
+           #chat-verkleinern im Seitenkopf zur zuletzt geöffneten Seite zurück, mit offenem Dock. -->
+      <button type="button" id="chat-blase" class="chat-blase" aria-expanded="false" aria-controls="shell-chat-spalte"><img class="bubble-persona" src="/persona-gesicht.webp" alt="" /><span class="chat-blase-schliessen" aria-hidden="true">×</span><span class="chat-blase-text" data-i18n="kopf.fragJarvis">Frag Jarvis</span></button>
     </div>
     </div>
   </div>

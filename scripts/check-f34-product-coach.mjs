@@ -64,6 +64,9 @@
  * mit aria-pressed toggelt (F-620) und dass style.css '.chat-modus-auswahl[hidden] { display: none; }'
  * trägt, damit die UA-[hidden]-Regel nicht durch 'display: flex' überschrieben wird (F-621). Realer
  * Render-Nachweis (Playwright) ergänzend in features/F34/nachweis-ws3.md.
+ * F44 WS-8a: Jarvis | Product Coach ist seither ein Register (role=tab) — (v) prüft für diese beiden
+ * IDs aria-selected + .active über setzeReiterZustand statt aria-pressed + btn-primary (dieselbe
+ * F-620-Invariante, Begründung am Abschnitt (v)); der Untermodus bleibt aria-pressed + btn-primary.
  *
  * F34 Fixpaket (Feature-Review-Pass Gesamt, löst F-624/F-625) ergänzt: (w) statischer Quelltext-Scan
  * gegen die Regression von F-624 — baueAnzeigeListe taggt alle drei Eintragsquellen (persistiert/
@@ -1263,12 +1266,20 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
 // beide Klassen und blieb dadurch auch im Modus 'jarvis' sichtbar (F-621). Kein DOM-Test (F-601-
 // Muster, s. Dateikopf) — statischer Quelltext-/Stylesheet-Scan als Regressionswache, ergänzt um
 // den realen Playwright-Render-Nachweis in features/F34/nachweis-ws3.md.
+//
+// F44 WS-8a (erlaubte Gate-Änderung laut Bauauftrag WS-8a §5): Jarvis | Product Coach ist seither
+// ein WAI-ARIA-Register (role=tab) — für #chat-modus-jarvis-btn/#chat-modus-sparring-btn trägt
+// aria-selected den Auswahlzustand, .active die Optik (statt aria-pressed + btn-primary). Die
+// Invariante bleibt dieselbe: Auswahlzustand und Optik werden bei JEDEM Render gemeinsam in EINER
+// Hilfsfunktion gesetzt (setzeReiterZustand), nie nur eins von beiden (F-620). Die beiden
+// Untermodus-IDs bleiben unverändert aria-pressed + btn-primary über setzeGedruecktenZustand.
 {
   const befundeVor = befunde.length
   const chatQuelltext = readFileSync('public/leitstand/views/chat.js', 'utf-8')
   const styleQuelltext = readFileSync('public/leitstand/style.css', 'utf-8')
 
-  const gedruecktIds = ['chat-modus-jarvis-btn', 'chat-modus-sparring-btn', 'chat-untermodus-feature-btn', 'chat-untermodus-projekt-btn']
+  const gedruecktIds = ['chat-untermodus-feature-btn', 'chat-untermodus-projekt-btn']
+  const reiterIds = ['chat-modus-jarvis-btn', 'chat-modus-sparring-btn']
   if (!/classList\.toggle\(\s*'btn-primary'/.test(chatQuelltext)) {
     befunde.push("(v): renderVerlauf sollte 'btn-primary' per classList.toggle setzen — kein Aufruf im Quelltext gefunden (Regression von F-620: aria-pressed allein wechselt die optische Hervorhebung nicht)")
   }
@@ -1277,11 +1288,21 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
       befunde.push(`(v): renderVerlauf sollte den gedrückten Zustand von '${id}' über setzeGedruecktenZustand (aria-pressed + btn-primary gleichlaufend) ableiten — kein Aufruf dafür gefunden`)
     }
   }
+  // Die Reiter-Hilfsfunktion muss aria-selected UND .active im selben Körper setzen.
+  const reiterFunktion = chatQuelltext.match(/const setzeReiterZustand = \(id, gewaehlt\) => \{([\s\S]*?)\n {2}\}/)
+  if (reiterFunktion === null || !/setAttribute\('aria-selected', String\(gewaehlt\)\)/.test(reiterFunktion[1]) || !/classList\.toggle\('active', gewaehlt\)/.test(reiterFunktion[1])) {
+    befunde.push("(v): renderVerlauf sollte für das Register eine Hilfsfunktion setzeReiterZustand tragen, die aria-selected UND classList.toggle('active') gleichlaufend setzt (F-620-Invariante für role=tab)")
+  }
+  for (const id of reiterIds) {
+    if (!new RegExp(`setzeReiterZustand\\(\\s*'${id}'`).test(chatQuelltext)) {
+      befunde.push(`(v): renderVerlauf sollte den Auswahlzustand von '${id}' über setzeReiterZustand (aria-selected + .active gleichlaufend) ableiten — kein Aufruf dafür gefunden`)
+    }
+  }
   if (!/\.chat-modus-auswahl\[hidden\]\s*\{\s*display:\s*none/.test(styleQuelltext)) {
     befunde.push("(v): style.css sollte eine Regel '.chat-modus-auswahl[hidden] { display: none; }' tragen — ohne sie überschreibt 'display: flex' die UA-[hidden]-Regel (Regression von F-621, #chat-untermodus-auswahl bliebe auch im Modus 'jarvis' sichtbar)")
   }
   if (befunde.length === befundeVor) {
-    console.log("✓ (v): renderVerlauf leitet 'btn-primary' für alle vier Umschalter-Buttons gleichlaufend mit aria-pressed ab, style.css trägt '.chat-modus-auswahl[hidden] { display: none; }' — F-620/F-621 real behoben.")
+    console.log("✓ (v): renderVerlauf leitet für das Register Jarvis | Product Coach aria-selected und .active, für den Untermodus aria-pressed und 'btn-primary' jeweils gleichlaufend ab; style.css trägt '.chat-modus-auswahl[hidden] { display: none; }' — F-620/F-621 bleiben behoben.")
   }
 }
 
