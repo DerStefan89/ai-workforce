@@ -1,0 +1,24 @@
+[
+  {
+    "label": "TECH_DEBT: neutraler Typ-Chip, „Worum es geht“, „Umsetzung“ ohne Nachstellen, ruhige Zeile, keine Triage; Fundstelle mit zwei Pfaden → kein VS-Code-Link",
+    "mehr als ein gefüllter Hauptknopf (muss fehlen)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Eyebrow": "Tech Debt · F-992 · P3",
+    "Titel": "Markierung der Seitenleiste auf der Seite Entscheiden liegt außerhalb des Routers.",
+    "Jetzt-Band (Zustand)": "ruhig",
+    "Hauptknopf Jetzt-Band": "(fehlt)",
+    "Hauptknopf Click-to-Work": "Auftrag vorbereiten",
+    "Reiter „Das Was“ gewählt": "(fehlt)",
+    "Rolle gewählt": "(fehlt)",
+    "Click-to-Work (Text „NACHWEIS“ = POST erkannt)": "Auftrag vorbereitenLegt aus diesem Befund einen Auftrag an und lässt den Ablauf vorschlagen. Es startet nichts ohne dein",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Fokus (id)": "workboard-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

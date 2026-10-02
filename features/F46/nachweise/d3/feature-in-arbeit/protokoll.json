@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Feature in Arbeit: Builder läuft (Rollen-Kreis), Kurz gesagt „Umsetzung arbeitet (Claude Code)“, „Auftrag vorbereiten“ gesperrt (läuft). Kopfdaten wie der echte Automat bei laufendem Schritt (naechster haltKlaerung) — seit F-996 keine Rückfrage: ruhige Zeile mit „Ablauf ansehen“, Zähler an „Entscheidungen“ ohne den Lauf",
+    "mehr als ein gefüllter Hauptknopf (muss fehlen)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Eyebrow": "Feature · F46",
+    "Titel": "Design-Nachbau nach neuem Seitenaufbau",
+    "Jetzt-Band (Zustand)": "ruhig",
+    "Hauptknopf Jetzt-Band": "(fehlt)",
+    "Hauptknopf Click-to-Work": "(fehlt)",
+    "Reiter „Das Was“ gewählt": "Abnahmekriterien · 7",
+    "Rolle gewählt": "builder",
+    "Click-to-Work (Text „NACHWEIS“ = POST erkannt)": "Auftrag vorbereitenFür diesen Eintrag läuft bereits ein Ablauf. Ein weiterer Auftrag ist erst möglich, wenn er abgeschlo",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Fokus (id)": "workboard-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

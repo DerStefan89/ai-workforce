@@ -258,6 +258,25 @@ Hauptaufgabe: Stand erfassen; wenn er dran ist, über das Jetzt-Band entscheiden
 
 Entfällt (E): „Insights“, „Offene Frage“, Phasen-Kreis des Produktzyklus (→ Rollen-Kreis).
 
+Umsetzung D3 (Abweichungen, begründet):
+- Verlauf · Entscheidungen: K statt U — die Leseroute der Akte (GET …/features/<id>/akte) liefert den
+  Abschnitt nicht, D3 ändert den Server nicht (F-995).
+- Verlauf · Befunde aus diesem Feature: Treffer der Feature-ID als eigenes Wort im Feld „Feature/Run“,
+  gekennzeichnet „laut Feld ‚Entdeckt‘“; ohne Treffer K (keine Zuordnung behauptet).
+- Status-Block: „Phase“ und „Gerade dran“ wie im Bild aus dem Ablauf; der Fortschrittsbalken entfällt mit den
+  Workstreams (K). Kopfzeile „Abnahme offen“ aus dem Kopfdatum `abnahme.offen` (eine Regel mit D2).
+- Jetzt-Band: auch bei Freigabe („Freigabe prüfen →“) und Rückfrage („Rückfrage beantworten →“), je zum
+  Ablauf; wartet der Vorschlag aus Click-to-Work auf Freigeben/Ablehnen, steht der Hauptknopf im
+  Click-to-Work-Bereich, der optisch an das Band anschließt (eigener Container, damit sein Zustand einen
+  Poll überlebt). Ein laufender Ablauf ist keine Rückfrage: die gemeinsame Regel zählt `haltKlaerung` bei
+  laufendem Workflow nicht (F-996, gilt für alle Verbraucher der Regel).
+- „Deine Planung“ ohne deaktivierte Eingabefelder: Werte nur lesend, „Planung speichern“ als „kommt“
+  (keine Felder, die nach Eingabe aussehen). Zusätzlich „Frag Jarvis dazu“ (befüllt nur die Eingabe).
+- Rückweg nennt wie bisher das zuletzt aktive Register der Entwicklung (Board oder Liste), nicht fest
+  „Features“ — sonst führte „←“ an einen anderen Ort als den, von dem Stefan kam.
+- Die Schritte des Ablaufs (bisher „Wer macht was“ und „Stand der Entwicklung“) bleiben unter dem
+  Rollen-Kreis aufklappbar (Regel 7); „Eintrag bearbeiten“ im Kopf entfällt mit „Insights“ (beide waren K).
+
 ### 4.7 Eintrag im Detail: Workstream (07-eintrag-detail--Workstream) · K
 Die ganze Ansicht ist K (Fixpaket B2/B5). Workstreams sind heute kein Datenobjekt; die Seite bestünde sonst aus Beispieldaten. Was sie zeigen würde, liegt im Nachbau an anderer Stelle: Sichern-Block → `#/code` (D4), Bericht des Builders und Aktivität → Live/Lauf (D5), Review-Urteile → Entscheiden (D2).
 
@@ -280,6 +299,33 @@ Hauptaufgabe: entscheiden, ob er jetzt behoben wird; später den Fix bestätigen
 | Verlauf des Befunds | K | Register ohne strukturierte Historie |
 | Einordnung (Priorität, Zuordnung, Schätzung, Speichern) | K | Fixpaket B5 |
 | Links: Fundstelle in VS Code, Eintrag im Register | U | VS-Code-Link nur bei eindeutigem Pfad |
+
+Umsetzung D3 (Abweichungen, begründet):
+- Jetzt-Band „Was passiert mit diesem Bug?“: „Jarvis empfiehlt“ ist K (keine Quelle); der Hauptknopf
+  „Jetzt beheben lassen“ ist der Einstieg von Click-to-Work und steht mit den drei K-Knöpfen im
+  angeschlossenen Click-to-Work-Bereich (eigener Container, Verhalten unverändert). Triage nur bei einem
+  offenen Bug, für den kein verknüpfter Ablauf aktiv ist oder auf die Abnahme wartet, und nur bei freiem
+  Einstieg — nach einem beendeten, abgelehnten oder gestoppten Fix-Ablauf erscheint sie also wieder
+  (Entscheidung Challenger 02.10.2026, F-997). „Jetzt beheben lassen“ und
+  die Triage-Knöpfe nur bei einem offenen Bug; ein erledigter heißt wie bisher „Auftrag vorbereiten“.
+- Jetzt-Band, wenn Click-to-Work Stefan braucht (Fehler oder Konflikt mit „Wiederholen“): „Der Auftrag braucht
+  dich“, an den Bereich angeschlossen. Solange die Verknüpfung lädt oder nicht bestimmbar ist, steht nur
+  „lädt“ bzw. „nicht bestimmbar“ — kein „Gerade wartet nichts auf dich“.
+- Status-Block: zusätzlich „Ablauf“ (Phase des verknüpften Ablaufs) — Status auf einen Blick, wenn schon
+  ein Fix läuft. „Eingeplant“ zeigt nach Bauauftrag D3 die Maßnahme des Registers, gekürzt; das
+  strukturierte Feld (eingeplant ja/nein, Zuordnung) bleibt K nach §5 (Fixpaket B5). „verwandt“ und
+  „Bereich“ stehen als Chips mit „kommt“; „gefunden“ ohne das Wort „Entdeckt:“ des Registers.
+- Kurz gesagt › „Was als Nächstes“: die Maßnahme nur ohne Ablauf; mit Ablauf dieselbe Regel wie beim
+  Feature (kein Widerspruch zum Jetzt-Band), bei einem erledigten Befund „nichts mehr“.
+- Behebung: Stand je Schritt aus dem Ablauf — Beheben (Ausführungsschritt), Prüfen (Prüfergebnis aus GET
+  …/abnahme), Review (Review-Schritt), Bestätigen (Abnahme offen → wartet, angenommen → erledigt);
+  Nachstellen und Regressionstest immer K (F-975); ohne Ablauf jeder Schritt K. Kachel „Änderungen“ K bis D4.
+- Fehlerbild: darunter aufklappbar der ganze Registereintrag (Beschreibung und alle Felder ungekürzt) —
+  „Kurz gesagt“ kürzt, nichts Entscheidungsrelevantes steht nur gekürzt.
+- Harness, Tech Debt, Prozess: Gerüst ohne Triage, „Worum es geht“ statt „Fehlerbild“, „Umsetzung“ in vier
+  Schritten ohne Nachstellen und Regressionstest; Einstieg „Auftrag vorbereiten“ wie bisher.
+- „Einordnung“ ohne Eingabefelder (wie „Deine Planung“): Priorität lesend, Zuordnung, Schätzung und
+  „Speichern“ K; zusätzlich „Frag Jarvis dazu“.
 
 ### 4.9 Live-Ansicht — `#/live`, `#/runs/<laufId>` (08-live--Main, --Main-nichts-laeuft) · D5
 Zweck: sehen, was die Workforce gerade tut, und eingreifen können.

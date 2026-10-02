@@ -1,0 +1,798 @@
+{
+  "url": "http://127.0.0.1:4199/#/workboard/F-973",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1000
+  },
+  "farbschema": "dark",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": "C:\\Nachweis\\ai-workforce",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F46",
+            "titel": "Design-Nachbau nach neuem Seitenaufbau",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F46/feature.md"
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": "Seit F46 D2 stehen offene Abnahmen unter „Deine Entscheidungen“, im Zähler der Seitenleiste und in der Kennzahl der Übersicht. Der Persona-Zustand, der Warte-Hinweis der Startfläche und die Spalte „Braucht dich“ lesen weiter nur Freigabe und Rückfrage.",
+            "fundstelle": "`public/leitstand/persona-state.js:36`",
+            "auswirkung": "Mittel — der Zähler zeigt eine wartende Abnahme, die Persona meldet „nichts“.",
+            "massnahme": "Dieselbe Auswahl über filtereOffeneAbnahmen bzw. baueEntscheidungen; Gate f28-persona und Tests mitziehen.",
+            "featureRun": "Entdeckt: F46 D2, Prüfpass qa 5 / code-reviewer 2.",
+            "zeile": 12561,
+            "id": "F-991",
+            "titel": "Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": "#/workflows/<id> gehört technisch zur View runs; auf einer Freigabe oder Abnahme setzt views/workflows.js die Markierung auf „Entscheidungen“ um.",
+            "fundstelle": "`public/leitstand/views/workflows.js` (markiereNav), `public/leitstand/router.js` (zeigeView)",
+            "auswirkung": "Gering — eine zweite Stelle, die aria-current setzt.",
+            "massnahme": "Zustandsabhängige Markierung im Router, dann markiereNav entfernen.",
+            "featureRun": "Entdeckt: F46 D2.",
+            "zeile": 12570,
+            "id": "F-992",
+            "titel": "Markierung der Seitenleiste auf der Seite Entscheiden liegt außerhalb des Routers."
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "ERLEDIGT",
+            "statusRoh": "erledigt",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: Design-Runde 02.10.2026 / F46 D0.",
+            "zeile": 1,
+            "id": "F-973",
+            "titel": "Detailseite zeigt Akzeptanzkriterien ohne Urteil."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: F46 D2.",
+            "zeile": 1,
+            "id": "F-993",
+            "titel": "Freigabe braucht auf der Seite Entscheiden zwei Schritte."
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: F44 WS-8.",
+            "zeile": 1,
+            "id": "F-958",
+            "titel": "Befund aus F44"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [
+          {
+            "quelle": "feature",
+            "typ": "FEATURE",
+            "id": "F46",
+            "titel": "Design-Nachbau nach neuem Seitenaufbau",
+            "status": "IN_ARBEIT",
+            "pfad": "features/F46/feature.md"
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P2",
+            "beschreibung": "Seit F46 D2 stehen offene Abnahmen unter „Deine Entscheidungen“, im Zähler der Seitenleiste und in der Kennzahl der Übersicht. Der Persona-Zustand, der Warte-Hinweis der Startfläche und die Spalte „Braucht dich“ lesen weiter nur Freigabe und Rückfrage.",
+            "fundstelle": "`public/leitstand/persona-state.js:36`",
+            "auswirkung": "Mittel — der Zähler zeigt eine wartende Abnahme, die Persona meldet „nichts“.",
+            "massnahme": "Dieselbe Auswahl über filtereOffeneAbnahmen bzw. baueEntscheidungen; Gate f28-persona und Tests mitziehen.",
+            "featureRun": "Entdeckt: F46 D2, Prüfpass qa 5 / code-reviewer 2.",
+            "zeile": 12561,
+            "id": "F-991",
+            "titel": "Persona, Startfläche und Entwicklung zählen offene Abnahmen nicht."
+          },
+          {
+            "quelle": "finding",
+            "typ": "TECH_DEBT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": "#/workflows/<id> gehört technisch zur View runs; auf einer Freigabe oder Abnahme setzt views/workflows.js die Markierung auf „Entscheidungen“ um.",
+            "fundstelle": "`public/leitstand/views/workflows.js` (markiereNav), `public/leitstand/router.js` (zeigeView)",
+            "auswirkung": "Gering — eine zweite Stelle, die aria-current setzt.",
+            "massnahme": "Zustandsabhängige Markierung im Router, dann markiereNav entfernen.",
+            "featureRun": "Entdeckt: F46 D2.",
+            "zeile": 12570,
+            "id": "F-992",
+            "titel": "Markierung der Seitenleiste auf der Seite Entscheiden liegt außerhalb des Routers."
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "ERLEDIGT",
+            "statusRoh": "erledigt",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: Design-Runde 02.10.2026 / F46 D0.",
+            "zeile": 1,
+            "id": "F-973",
+            "titel": "Detailseite zeigt Akzeptanzkriterien ohne Urteil."
+          },
+          {
+            "quelle": "finding",
+            "typ": "PROCESS_IMPROVEMENT",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: F46 D2.",
+            "zeile": 1,
+            "id": "F-993",
+            "titel": "Freigabe braucht auf der Seite Entscheiden zwei Schritte."
+          },
+          {
+            "quelle": "finding",
+            "typ": "BUG",
+            "status": "OFFEN",
+            "statusRoh": "offen",
+            "prioritaet": "P3",
+            "beschreibung": null,
+            "fundstelle": null,
+            "auswirkung": null,
+            "massnahme": null,
+            "featureRun": "Entdeckt: F44 WS-8.",
+            "zeile": 1,
+            "id": "F-958",
+            "titel": "Befund aus F44"
+          }
+        ],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": []
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Ein Leitstand für eine KI-Workforce.",
+        "meilensteine": [
+          {
+            "id": "M5",
+            "titel": "M5",
+            "status": "LAEUFT",
+            "features": [
+              {
+                "id": "F46",
+                "status": "IN_ARBEIT"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/features/F46/akte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "id": "F46",
+        "titel": "Design-Nachbau nach neuem Seitenaufbau",
+        "featureStatus": "IN_ARBEIT",
+        "ziel": "Der Leitstand wird nach den neuen Designs umgestaltet. Das ist überwiegend Umbau vorhandener Funktionen (Layout, Navigation, gemeinsame Bausteine), dazu wenige lesende Serverteile.",
+        "nicht_ziele": [
+          "Keine neuen Datenformate.",
+          "Kein Terminal-Panel (E-F46-1).",
+          "Keine Konfiguration bearbeiten (E-F46-2).",
+          "Keine neuen Schreibwege außer den bestehenden Entscheidungswegen.",
+          "Keine Beispieldaten im Produkt."
+        ],
+        "akzeptanzkriterien": [
+          {
+            "id": "AK1",
+            "text": "Alle neuen Texte stehen als Schlüssel in de/en/tr/ru; das i18n-Gate ist grün."
+          },
+          {
+            "id": "AK2",
+            "text": "Keine Farbliterale außerhalb der Token-Blöcke; Ebenen-Farben nur über Tokens."
+          },
+          {
+            "id": "AK3",
+            "text": "Keine Platzhalter aus den Designs im Produkt."
+          },
+          {
+            "id": "AK4",
+            "text": "Fehlendes erscheint als Baustein „kommt“, nie als erfundener Wert."
+          },
+          {
+            "id": "AK5",
+            "text": "Jeder Workstream liefert Render-Nachweise der geänderten Seiten."
+          },
+          {
+            "id": "AK6",
+            "text": "Invarianten unverändert: CSRF/Origin, Host-Allowlist, Pflichtbegründung, Freigabe-Veto, „Anzeige = Start“, ein Lauf zur Zeit, eine Live-Region."
+          },
+          {
+            "id": "AK7",
+            "text": "npm run check ist grün nach jedem Workstream."
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-bau",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "workflow_schema": "v0",
+          "workflow_id": "w-bau",
+          "auftrag_id": "a-bau",
+          "version": 1,
+          "ziel": "Ablauf zum Eintrag",
+          "status": "LAEUFT",
+          "aktiver_schritt_id": null,
+          "grenzen": {
+            "max_schritte": 6,
+            "max_replans": 1
+          },
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s2",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-plan"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "werkzeugsatz": "schreibend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s3",
+              "status": "LAEUFT",
+              "lauf_id": "l-bau",
+              "freigabe_erteilt": true
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": null,
+              "status": "OFFEN",
+              "lauf_id": null
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "haltKlaerung",
+          "schrittId": null,
+          "grund": "Schritt s2 läuft."
+        },
+        "empfehlung": null,
+        "versionSequenz": 4,
+        "architekturEntscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-bau/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "w-bau",
+        "workflowStatus": "LAEUFT",
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "noch_nicht_gelaufen",
+          "schrittId": "s3"
+        },
+        "aenderungsuebersicht": {
+          "status": "noch_nicht_gelaufen"
+        },
+        "pruefergebnis": {
+          "status": "noch_nicht_gelaufen"
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-abn",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "workflow_schema": "v0",
+          "workflow_id": "w-abn",
+          "auftrag_id": "a-abn",
+          "version": 1,
+          "ziel": "Ablauf zum Eintrag",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "grenzen": {
+            "max_schritte": 6,
+            "max_replans": 1
+          },
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "architekt",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s2",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-plan"
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "werkzeugsatz": "schreibend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s3",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-bau",
+              "freigabe_erteilt": true
+            },
+            {
+              "schritt_id": "s3",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": "ergebnis-code-reviewer",
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": null,
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-review"
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig",
+          "schrittId": null,
+          "grund": "Alle Schritte erledigt."
+        },
+        "empfehlung": null,
+        "versionSequenz": 4,
+        "architekturEntscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-abn/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "w-abn",
+        "workflowStatus": "ABGESCHLOSSEN",
+        "workflowVersion": 1,
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "l-review",
+          "urteil": "BEREIT_NACH_KORREKTUR",
+          "empfehlung": "Bis auf AK2 erfüllt.",
+          "befunde": [],
+          "ak_urteile": [
+            {
+              "ak_id": "AK1",
+              "urteil": "ERFUELLT",
+              "beleg": "i18n-Gate grün."
+            },
+            {
+              "ak_id": "AK2",
+              "urteil": "NICHT_ERFUELLT",
+              "beleg": "Die Persona zählt Abnahmen noch nicht (F-991)."
+            },
+            {
+              "ak_id": "AK3",
+              "urteil": "ERFUELLT",
+              "beleg": "Keine Platzhalter gefunden."
+            },
+            {
+              "ak_id": "AK5",
+              "urteil": "NICHT_PRUEFBAR",
+              "beleg": "Render-Nachweis fehlt im Lauf."
+            }
+          ]
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "daten": {
+            "basis_ref": "ec3b831",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/workboard-detail.js",
+                "plus": 400,
+                "minus": 300
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-fix",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "daten": {
+          "workflow_schema": "v0",
+          "workflow_id": "w-fix",
+          "auftrag_id": "a-fix",
+          "version": 1,
+          "ziel": "Ablauf zum Eintrag",
+          "status": "ABGESCHLOSSEN",
+          "aktiver_schritt_id": null,
+          "grenzen": {
+            "max_schritte": 6,
+            "max_replans": 1
+          },
+          "schritte": [
+            {
+              "schritt_id": "s1",
+              "rolle": "ausfuehrung",
+              "worker": "claude-code",
+              "modell": "claude-sonnet-5",
+              "werkzeugsatz": "schreibend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "ZWINGEND",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": "s2",
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-fix",
+              "freigabe_erteilt": true
+            },
+            {
+              "schritt_id": "s2",
+              "rolle": "code-reviewer",
+              "worker": "codex",
+              "modell": "gpt-6-astra",
+              "werkzeugsatz": "lesend",
+              "eingaben": [],
+              "output_schema": null,
+              "freigabe": "AUTOMATISCH",
+              "risiko": "Kein Schreibzugriff.",
+              "zeitgrenze_ms": 600000,
+              "nachfolger": null,
+              "status": "ERFOLGREICH",
+              "lauf_id": "l-fix-review"
+            }
+          ]
+        },
+        "verstoesse": [],
+        "naechster": {
+          "art": "fertig",
+          "schrittId": null,
+          "grund": "Alle Schritte erledigt."
+        },
+        "empfehlung": null,
+        "versionSequenz": 4,
+        "architekturEntscheidung": null
+      }
+    },
+    {
+      "muster": "**/api/workflows/w-fix/abnahme",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workflowId": "w-fix",
+        "workflowStatus": "ABGESCHLOSSEN",
+        "workflowVersion": 1,
+        "freigabeHalt": null,
+        "entscheidung": {
+          "status": "nicht_vorhanden"
+        },
+        "urteil": {
+          "status": "ok",
+          "laufId": "l-fix-review",
+          "urteil": "BEREIT",
+          "empfehlung": "Fix vollständig.",
+          "befunde": [],
+          "ak_urteile": []
+        },
+        "aenderungsuebersicht": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "daten": {
+            "basis_ref": "ec3b831",
+            "gekuerzt": false,
+            "dateien": [
+              {
+                "status": "M",
+                "pfad": "public/leitstand/views/workboard-detail.js",
+                "plus": 400,
+                "minus": 300
+              }
+            ]
+          }
+        },
+        "pruefergebnis": {
+          "status": "ok",
+          "laufId": "l-bau",
+          "ergebnis": "GRUEN",
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "muster": "**/api/projekte/ai-workforce/projekt-aufruf",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startbefehl": null,
+        "startvorlage": null,
+        "ergebnis_datei": null,
+        "aktiv": false,
+        "letzterAufruf": null,
+        "vorschau": null
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/features/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Nav aktiv",
+        "selector": "#shell-nav [aria-current=\"page\"]"
+      },
+      {
+        "name": "Eyebrow",
+        "selector": "#workboard-detail-eyebrow"
+      },
+      {
+        "name": "Titel",
+        "selector": "#workboard-detail-titel"
+      },
+      {
+        "name": "Jetzt-Band (Zustand)",
+        "selector": "#workboard-detail-jetzt",
+        "attribut": "data-zustand"
+      },
+      {
+        "name": "Hauptknopf Jetzt-Band",
+        "selector": "#workboard-detail-jetzt .button.primary"
+      },
+      {
+        "name": "Hauptknopf Click-to-Work",
+        "selector": "#workboard-bearbeitung .button.primary"
+      },
+      {
+        "name": "Reiter „Das Was“ gewählt",
+        "selector": "#workboard-detail [data-was-reiter][aria-selected=\"true\"]"
+      },
+      {
+        "name": "Rolle gewählt",
+        "selector": "#workboard-detail [data-kreis-rolle][aria-selected=\"true\"]",
+        "attribut": "data-kreis-rolle"
+      },
+      {
+        "name": "Click-to-Work (Text „NACHWEIS“ = POST erkannt)",
+        "selector": "#workboard-bearbeitung"
+      },
+      {
+        "name": "Überschrift Entscheiden",
+        "selector": "#workflow-detail:not([hidden]) #workflow-detail-titel"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "mehr als ein gefüllter Hauptknopf (muss fehlen)",
+        "selector": "#workboard-detail .button.primary:not([aria-disabled=\"true\"]) ~ .button.primary:not([aria-disabled=\"true\"])"
+      },
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Bug erledigt (Prüfpass qa 1): keine Triage, Einstieg „Auftrag vorbereiten“, Kurz gesagt „Nichts mehr“",
+      "warteAufSelector": {
+        "selector": "#workboard-bearbeiten",
+        "timeoutMs": 8000
+      },
+      "screenshot": "d1440-bug-erledigt.webp"
+    }
+  ]
+}

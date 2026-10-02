@@ -9,8 +9,8 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 ## Status
 Status: IN_ARBEIT
 
-D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 in Arbeit (Branch
-`feat/f46-d2-entscheidungen`, Basis `add7c94`). D3 bis D6 offen.
+D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 gemergt #311, ec3b831;
+D3 in Arbeit (Branch `feat/f46-d3-detail`, Basis `ec3b831`). D4 bis D6 offen.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -53,7 +53,7 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 | D0 | Grundlage (Akte, Roadmap mit Gate, Zielfassung, Register, F44-Abschluss, Ebenen-Farbtokens, Live-Chip in der Kopfleiste) | – | 0,3–0,5 | ≈ 0,2 AT (#308) |
 | D0b | Design-Referenz und Seitenspezifikation ins Repo | – | 0,1–0,2 | |
 | D1 | Produktübersicht, Roadmap (Meilenstein/Feature aus `roadmap.json` v0; Workstreams und Balken „kommt“), Projektakte; Baustein Rollen-Kreis | Leseroute Kontextdateien | 1–1,5 | ≈ 0,2 AT (#310) |
-| D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | |
+| D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | ≈ 0,3 AT (#311) |
 | D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | |
 | D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
@@ -323,3 +323,90 @@ Stehen begründet in `docs/design/abgleich-f46.md` unter §4.4 und §4.5 („Ums
 und Katalog-Empfehlung auf Karten „kommt“, ein gefüllter Hauptknopf nur auf der obersten Karte,
 Gruppenreihenfolge, Zähler ohne Befunde, Freigabe über den bestehenden Dialog, AK-Zeilen ohne Wortlaut,
 Weg im Entscheidungsmodus zugeklappt.
+
+## Stand D3 „Eintrag im Detail: Feature und Bug“ (02.10.2026)
+Branch `feat/f46-d3-detail` (Basis `ec3b831`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
+(Leitprinzip, §4.6, §4.7, §4.8), Bilder 07-eintrag-detail--Main und --Bug. Keine Serveränderung, keine neue
+Abhängigkeit, kein neuer Schreibweg; Click-to-Work („Auftrag vorbereiten“, „Jetzt beheben lassen“,
+Freigeben/Ablehnen des Vorschlags) und seine Sperre (F-922) sind im Verhalten unverändert.
+- **Bausteine** `public/leitstand/eintrag-bausteine.js` (Test `eintrag-bausteine.test.mjs`), rein rendernd,
+  für D4/D5 wiederverwendbar: „Kurz gesagt“ (Zeilen aus Daten, fehlender Wert „kommt“), Status-Block
+  (Schlüssel → Wert, Ton der Kopfzeile, fehlender Wert „kommt“), Jetzt-Band (dran: Eyebrow, Titel, Satz,
+  höchstens ein Hauptknopf; sonst die ruhige Zeile „Gerade wartet nichts auf dich.“). Dazu `kuerzeText`
+  (erster Satz, Abkürzungen beenden keinen Satz, Schnitt an der Wortgrenze mit „…“ — nie umformuliert),
+  `findeFundstellenPfad` (genau ein Repo-Pfad, ohne `..`, ohne absolute Pfade) und `befundeAusFeature`
+  (Feature-ID als eigenes Wort im Feld „Feature/Run“).
+- **Detail** `public/leitstand/views/workboard-detail.js` neu nach den Bildern, `index.html` mit Kopf
+  (Typ-Chip · ID · Priorität, Titel, Chips), „Kurz gesagt“, Status-Block, Jetzt-Band, Click-to-Work,
+  Inhalt und rechter Spalte; `views/workboard.js` verdrahtet (Register „Das Was“ und Rollen-Kreis per Klick
+  und Pfeiltasten, „Frag Jarvis dazu“ über `chat-dock.js`, befüllt nur die Eingabe).
+  - Ob eine Abnahme offen ist, kommt jetzt aus dem Kopfdatum `abnahme.offen` (eine Regel mit D2); GET
+    …/abnahme lädt das Detail einmal beim Bestimmen des Ablaufs und bei Übergängen, nie aus dem Poll —
+    für Urteile je AK, Prüfergebnis und Entscheidung.
+  - **Feature:** Kurz gesagt (was = erster Satz des Ziels; gerade/als Nächstes aus Phase, laufendem
+    Schritt und `naechster.art`), Status-Block (Status, Phase, Gerade dran, Meilenstein echt; Workstreams,
+    Rest, Ist „kommt“), Jetzt-Band (Abnahme → „Ergebnis prüfen →“, Freigabe → „Freigabe prüfen →“,
+    Rückfrage → „Rückfrage beantworten →“, je `#/workflows/<id>`), Das Was (Auftrag · Abnahmekriterien mit
+    Urteil und Beleg, sonst „noch kein Urteil“ · Nicht-Ziele · Fertig, wenn „kommt“), Fortschritt
+    (Rollen-Kreis mit „Rolle im Detail“; Workstreams „kommt“; Schritte im Einzelnen aufklappbar), Code &
+    Doku Review (Doku echt: Akte, Zahl offener Befunde; Änderungen bis D4, Prüfungen F-962, Nachweise
+    „kommt“), Verlauf (Befunde laut Feld „Entdeckt“; Entscheidungen F-995 und Verbrauch „kommt“), rechte
+    Spalte „Deine Planung“ (Meilenstein echt; Schätzung, Speichern, Pull Requests „kommt“; Akte in VS
+    Code, Roadmap, Jarvis).
+  - **Bug:** Kopf mit „gefunden: <Feature/Run>“ (verwandt, Bereich „kommt“), Kurz gesagt aus Beschreibung,
+    Auswirkung, Maßnahme (gekürzt), Status-Block (Priorität, Eingeplant = Maßnahme, Ablauf echt; Auslöser,
+    Schätzung, Offen seit „kommt“), Jetzt-Band „Was passiert mit diesem Bug?“ mit „Jetzt beheben lassen“
+    (bestehendes Click-to-Work) und „Einplanen …“, „Zurückstellen bis Auslöser“, „Schließen: kein Fehler“
+    als „kommt“; „Fix bereit zur Bestätigung“ bei `abnahme.offen` am Bug-Ablauf. Fehlerbild (Nachstellen,
+    Erwartet/Tatsächlich, Ursache „kommt“ — F-975; Fundstelle und vorgeschlagene Behebung echt; ganzer
+    Registereintrag aufklappbar), Behebung in fünf Schritten aus dem Ablauf (Nachstellen und
+    Regressionstest „kommt“; ohne Ablauf jeder Schritt „kommt“), Verlauf „kommt“, rechte Spalte
+    „Einordnung“ (Priorität echt; Zuordnung, Schätzung, Speichern „kommt“; Fundstelle in VS Code nur bei
+    eindeutigem Pfad, Eintrag im Register mit Zeile).
+  - **Harness, Tech Debt, Prozess:** dasselbe Gerüst ohne Triage („Worum es geht“, „Umsetzung“ in vier
+    Schritten ohne Nachstellen/Regressionstest), Einstieg „Auftrag vorbereiten“ wie bisher.
+  - Entfallen (E): Insights, „Eintrag bearbeiten“ im Kopf (beide waren „kommt“), „Wer macht was“ als
+    eigener Block (→ Rollen-Kreis und Schritte im Einzelnen). F-973 und F-974 erledigt.
+- **Rollen-Kreis** `rollen-kreis.js`: optionales ID-Präfix (`idPraefix`, Standard `rollen-kreis`), weil
+  Übersicht und Detail gleichzeitig im DOM stehen.
+- **Texte** de/en/tr/ru (Schlüssel `eintrag.*`).
+- **Gate-/Test-Änderungen:** keine Gate-Datei geändert (die IDs aus f21-ws2 (a) bleiben). Tests nachgezogen:
+  `projekt-wechsel.test.mjs` (Kopfdaten mit `abnahme`; Eyebrow als Typ-Chip; Statuszeile → Status-Block;
+  „Ergebnis prüfen“ im Jetzt-Band statt `#workboard-detail-aktion`; Bug-Einstieg „Jetzt beheben lassen“),
+  `workboard-detail.test.mjs` neu, `rollen-kreis.test.mjs` (Präfix), `eintrag-bausteine.test.mjs` neu.
+- **Nachweise** `features/F46/nachweise/d3/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste Antworten,
+  jeder POST bekäme 409 mit Marke; leert nur die eigenen Ordner): Feature in Arbeit, Abnahme offen, ohne
+  Ablauf; Bug offen, Fix bereit; TECH_DEBT; Matrix (1440 hell, 390, 200 %, ru) für Feature mit offener
+  Abnahme und Bug offen; Klicktabellen (Reiter per Klick und Pfeiltaste, Rollen-Kreis per Pfeiltaste,
+  „Einplanen …“ ohne Wirkung, ganzer Eintrag, „Ergebnis prüfen →“, Rückweg); Escape-Fall.
+- **Befund beim Nachweis, im Nachtrag behoben:** Für einen laufenden Schritt meldet der Automat
+  `haltKlaerung`; die gemeinsame Regel las das als Rückfrage (F-996, Altbefund aus D2/F44). Nachtrag
+  (Entscheidung Challenger): `filtereAttentionWorkflows` zählt `haltKlaerung` bei laufendem Workflow nicht —
+  eine Regel für Entscheidungen, Zähler, „Braucht dich“, Persona, Jarvis und das Jetzt-Band. Der Nachweis
+  `feature-in-arbeit` ist danach neu erzeugt. F-996 erledigt.
+- **Triage (F-997, Entscheidung Challenger):** „Jetzt beheben lassen“ mit den drei „kommt“-Knöpfen, wenn der
+  Bug offen ist und kein verknüpfter Ablauf aktiv ist oder auf die Abnahme wartet — nach einem beendeten,
+  abgelehnten oder gestoppten Fix also wieder. F-997 erledigt.
+- **Nachweise** nach der Korrekturrunde neu erzeugt, dazu „Bug erledigt“ (F-973): 25 WebP.
+
+- **Prüfpass** (design-guardian, code-reviewer, qa parallel, einmal, frischer Kontext): cr „freigegeben mit
+  Hinweisen“, dg und qa „nicht freigegeben“ (je drei mittlere Befunde, nichts blockierend). Eine
+  Korrekturrunde, eingearbeitet: Nachweise neu erzeugt (dg 1); „Was als Nächstes“ eines Befunds mit Ablauf
+  aus dem Ablauf, erledigt „nichts mehr“ (dg 2, qa 6 teilweise); Fundstelle mit `<code>` statt Backticks
+  (dg 4); „gefunden“ ohne „Entdeckt:“ (dg 5); Beschriftung des Status-Blocks wächst mit (ru, dg 6); kein
+  doppelter Status im Rollen-Panel (dg 7); Kreismitte zweizeilig (dg 8); „Jetzt beheben lassen“ und Triage nur
+  bei offenem Bug ohne aktiven Ablauf (qa 1; qa 6 → F-997, im Nachtrag entschieden); Jetzt-Band „Der Auftrag braucht
+  dich“ bei Fehler/Konflikt von Click-to-Work (qa 2); „lädt“/„nicht bestimmbar“ statt „nichts wartet“, Triage
+  nur bei freiem Einstieg (qa 3, cr 7); Abnahme-Antwort geprüft, Hinweis „nicht ladbar“, Logging (qa 4, cr 4);
+  Worker nur aus dem Ablauf (qa 5); aufgeklappte Abschnitte und Fokus bleiben beim Neuschreiben (qa 8, cr 2);
+  Übergang auch bei anderem Halt, Cursor oder Abnahmestand (cr 1, qa 9, Test); 26 tote Schlüssel je Sprache
+  entfernt (cr 3); eine Regel für Endstatus und Bug (cr 5); ID-Präfix in Kurz gesagt und Jetzt-Band (cr 6);
+  Band nicht doppelt gerendert (cr 8); Fundstelle verlangt einen Ordner (cr 9); Kommentar (cr 10); Tests für
+  Harness, Prozess, Abnahme bei Nicht-Bug, langen Titel (qa 7). Nicht übernommen: dg 3 („Eingeplant“ als
+  „kommt“) — der Bauauftrag legt „Eingeplant = Maßnahme“ fest; der Abgleich §4.8 nennt das jetzt ausdrücklich,
+  das strukturierte Feld bleibt K nach §5. cr 5 teilweise: `rollenStand` (Behebung) und `kreisStatus`
+  (Rollen-Kreis) bleiben getrennt — andere Stufen (fehler/wartet). Umbruch der vier Triage-Knöpfe bei 1440 px
+  hingenommen (dg 8). Offen als Befund: F-995 (F-996 und F-997 im Nachtrag erledigt).
+
+### Abweichungen von abgleich-f46.md (zur Kenntnis)
+Stehen begründet in `docs/design/abgleich-f46.md` unter §4.6 und §4.8 („Umsetzung D3“).

@@ -128,6 +128,8 @@ const zurueckgehalten = new Map()
 /** F44 WS-3b: Status des Ablaufs w-33 in projekt-w3 und seine Abnahme-Entscheidung (Tests schalten beides um). */
 let statusW3 = 'LAEUFT'
 let entscheidungW3 = 'fehlt'
+/** F46 D3 (Prüfpass qa 1): Registerstatus von F-33 (Tests schalten ihn um). */
+let statusF33 = 'OFFEN'
 
 /**
  * Antwortkörper je Endpunkt — genug, damit die Views ohne Fehler rendern.
@@ -162,10 +164,10 @@ function koerperFuer(url) {
   if (url.includes('/projekte/projekt-ctw/auftraege')) return []
   // F44 WS-3b: projekt-w3 mit einem Finding, dessen Ablauf den Status wechselt (statusW3).
   if (url.includes('/projekte/projekt-w3/workitems'))
-    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-33', titel: 'Befund W3', status: 'OFFEN', statusRoh: 'offen', prioritaet: 'P2' }], befunde: [], fehler: [] }
+    return { workitems: [{ quelle: 'finding', typ: 'BUG', id: 'F-33', titel: 'Befund W3', status: statusF33, statusRoh: statusF33.toLowerCase(), prioritaet: 'P2' }], befunde: [], fehler: [] }
   if (url.includes('/projekte/projekt-w3/auftraege')) return [{ auftragId: 'a-33', titel: 'Auftrag W3', erstellt_am: 'x', workitem_referenz: 'workitem:finding:F-33' }]
   if (url.includes('/projekte/projekt-w3/zustand'))
-    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-33', auftragId: 'a-33', status: statusW3, ziel: 'Ziel W3', naechster: null }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-33', auftragId: 'a-33', status: statusW3, ziel: 'Ziel W3', naechster: null, abnahme: { offen: statusW3 === 'ABGESCHLOSSEN' && entscheidungW3 !== 'ok', status: entscheidungW3 === 'ok' ? 'ok' : 'nicht_vorhanden' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
   if (url.includes('/projekte/projekt-w3/workflows/w-33/abnahme')) return { workflowStatus: statusW3, freigabeHalt: null, entscheidung: { status: entscheidungW3 } }
   if (url.includes('/projekte/projekt-w3/workflows/w-33')) return { daten: { status: statusW3, schritte: [{ schritt_id: 's1', rolle: 'ausfuehrung', worker: 'claude-code', status: statusW3 === 'LAEUFT' ? 'LAEUFT' : 'ERFOLGREICH', nachfolger: null }] } }
   // F44 WS-3b: projekt-z mit Feature F7, dessen abgeschlossener Ablauf (über den Auftrag) auf die Abnahme wartet.
@@ -173,7 +175,7 @@ function koerperFuer(url) {
     return { workitems: [{ quelle: 'feature', typ: 'FEATURE', id: 'F7', titel: 'Feature <Sieben>', status: 'IN_ARBEIT', pfad: 'features/F7/feature.md' }], befunde: [], fehler: [] }
   if (url.includes('/projekte/projekt-z/auftraege')) return [{ auftragId: 'a-z', titel: 'Auftrag Z', erstellt_am: 'x', workitem_referenz: 'workitem:feature:F7' }]
   if (url.includes('/projekte/projekt-z/zustand'))
-    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-z', auftragId: 'a-z', status: 'ABGESCHLOSSEN', ziel: 'Ziel Z', naechster: null }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
+    return { herkunft: url, laeufe: [], startfehler: [], workflows: [{ workflowId: 'w-z', auftragId: 'a-z', status: 'ABGESCHLOSSEN', ziel: 'Ziel Z', naechster: null, abnahme: { offen: true, status: 'nicht_vorhanden' } }], fehler: [], aktiverLauf: { aktiv: false, laufId: null } }
   if (url.includes('/projekte/projekt-z/workflows/w-z/abnahme')) return { workflowStatus: 'ABGESCHLOSSEN', freigabeHalt: null, entscheidung: { status: 'fehlt' } }
   if (url.includes('/projekte/projekt-z/workflows/w-z'))
     return { daten: { status: 'ABGESCHLOSSEN', schritte: [{ schritt_id: 's1', rolle: 'ausfuehrung', worker: 'claude-code', status: 'ERFOLGREICH', nachfolger: 's2' }, { schritt_id: 's2', rolle: 'code-reviewer', worker: 'codex', status: 'ERFOLGREICH', nachfolger: null }] } }
@@ -668,14 +670,15 @@ test('F44 WS-3b: Detail per Deep-Link — Ladezustand (F-921), Übersicht ausgeb
   assert.equal(anzahl('/workflows/w-z') - vorher.schritte, 2, `Ablauf-Schritte; Aufrufe: ${aufrufe.join(', ')}`)
   assert.equal(anzahl('/workflows/w-z/abnahme') - vorher.abnahme, 2, `Abnahme; Aufrufe: ${aufrufe.join(', ')}`)
   assert.equal(document.getElementById('workboard-detail-titel').textContent, 'Feature <Sieben>')
-  assert.equal(document.getElementById('workboard-detail-eyebrow').textContent, 'Feature · F7')
-  assert.match(inhalt.innerHTML, /Ziel &lt;b&gt;Z&lt;\/b&gt;/, 'Ziel aus der Akte, escaped')
-  assert.match(inhalt.innerHTML, /<code>AK1<\/code> Kriterium &lt;i&gt;eins&lt;\/i&gt;/, 'AK aus der Akte, escaped')
+  // F46 D3: Kopf mit Typ-Chip, Ziel in „Kurz gesagt“, AKs im Reiter „Abnahmekriterien“ (vorgewählt).
+  assert.match(document.getElementById('workboard-detail-eyebrow').innerHTML, /typ-chip-feature[\s\S]*Feature · F7/)
+  assert.match(document.getElementById('workboard-detail-kurz').innerHTML, /Ziel &lt;b&gt;Z&lt;\/b&gt;/, 'Ziel aus der Akte, escaped')
+  assert.match(inhalt.innerHTML, /<code class="was-ak-id">AK1<\/code><span class="was-ak-text">Kriterium &lt;i&gt;eins&lt;\/i&gt;/, 'AK aus der Akte, escaped')
   assert.match(inhalt.innerHTML, /2 von 2 Schritten abgeschlossen/)
   assert.match(inhalt.innerHTML, /Umsetzung/, 'Rollenname statt ID (F-914)')
-  // Abgeschlossener Ablauf mit offener Abnahme: Phase „Deine Abnahme“, gerade dran „Du“.
-  assert.match(document.getElementById('workboard-detail-status').innerHTML, /Phase: <strong>Deine Abnahme<\/strong>.*Gerade dran: <strong>Du<\/strong>/)
-  assert.match(document.getElementById('workboard-detail-aktion').innerHTML, /href="#\/workflows\/w-z">Ergebnis prüfen/)
+  // Abgeschlossener Ablauf mit offener Abnahme (Kopfdatum abnahme.offen): Phase „Deine Abnahme“, gerade dran „Du“.
+  assert.match(document.getElementById('workboard-detail-status').innerHTML, /<dt>Phase<\/dt><dd>Deine Abnahme<\/dd><dt>Gerade dran<\/dt><dd>Du<\/dd>/)
+  assert.match(document.getElementById('workboard-detail-jetzt').innerHTML, /href="#\/workflows\/w-z">Ergebnis prüfen/)
   assert.match(document.getElementById('workboard-bearbeitung').innerHTML, /id="workboard-bauen"[^>]*>Auftrag vorbereiten/)
 
   // Weitere Poll-Ticks laden nichts nach.
@@ -728,7 +731,7 @@ test('F44 WS-3b (E12): Konflikt 409 → „Wiederholen“ routet erneut, ohne ei
   dispatch()
   await warte()
   const bereich = document.getElementById('workboard-bearbeitung')
-  assert.match(bereich.innerHTML, /id="workboard-bearbeiten"[^>]*>Auftrag vorbereiten/)
+  assert.match(bereich.innerHTML, /id="workboard-bearbeiten"[^>]*>Jetzt beheben lassen/, 'F46 D3: der Einstieg eines Bugs heißt „Jetzt beheben lassen“')
 
   schreibend.length = 0
   aufrufe.length = 0
@@ -736,6 +739,8 @@ test('F44 WS-3b (E12): Konflikt 409 → „Wiederholen“ routet erneut, ohne ei
   await warte()
   assert.match(bereich.innerHTML, /Es läuft bereits eine Ausführung\./)
   assert.match(bereich.innerHTML, /Ein anderer Lauf ist aktiv &lt;D13&gt;/, 'Servergrund escaped')
+  // F46 D3 (Prüfpass qa 2): Konflikt mit „Wiederholen“ braucht Stefan — das Jetzt-Band schließt an den Bereich an.
+  assert.match(document.getElementById('workboard-detail-jetzt').innerHTML, /Der Auftrag braucht dich/)
   assert.match(bereich.innerHTML, /class="button wb-wiederholen"/)
   assert.equal(aufrufe.filter((u) => u === `${neu}/auftraege`).length, 2, `POST und danach einmal GET der Aufträge; Aufrufe: ${aufrufe.join(', ')}`)
 
@@ -769,7 +774,7 @@ test('F44 WS-3b: Ein Phasenwechsel des verknüpften Ablaufs lädt Schritte und A
   assert.equal(anzahl('/workflows/w-33') - vorher.schritte, 1, 'Schritte beim Übergang genau einmal')
   assert.equal(anzahl('/workflows/w-33/abnahme') - vorher.abnahme, 1, 'Abnahme beim Übergang nach ABGESCHLOSSEN')
   assert.match(inhalt.innerHTML, /1 von 1 Schritt abgeschlossen/)
-  assert.match(document.getElementById('workboard-detail-aktion').innerHTML, /Ergebnis prüfen/)
+  assert.match(document.getElementById('workboard-detail-jetzt').innerHTML, /Ergebnis prüfen/)
   assert.match(document.getElementById('workboard-bearbeitung').innerHTML, /class="button" data-id="F-33" disabled aria-disabled="true"/, '„Auftrag vorbereiten“ ist bei offener Abnahme gesperrt (F-922)')
 
   await pollJetzt()
@@ -846,8 +851,9 @@ test('F-922: „Auftrag vorbereiten“ gesperrt bei laufendem Ablauf und bei off
 
   entscheidungW3 = 'ok'
   await oeffne()
-  assert.match(bereich.innerHTML, /id="workboard-bearbeiten" class="button primary" data-id="F-33" data-ctw-fokus>Auftrag vorbereiten/, 'terminaler Ablauf ohne offene Abnahme: frei')
-  assert.doesNotMatch(bereich.innerHTML, /disabled/)
+  assert.match(bereich.innerHTML, /id="workboard-bearbeiten" class="button primary" data-id="F-33" data-ctw-fokus>Jetzt beheben lassen/, 'terminaler Ablauf ohne offene Abnahme: frei')
+  // F46 D3: die Triage-Knöpfe daneben sind „kommt“ (aria-disabled) — frei muss der Einstieg selbst sein.
+  assert.doesNotMatch(bereich.innerHTML, /id="workboard-bearbeiten"[^>]*disabled/)
 
   statusW3 = 'LAEUFT'
   entscheidungW3 = 'fehlt'
@@ -950,4 +956,57 @@ test('F46 D1: Projektakte — Wechsel bei offener Seite lädt mit dem neuen Prä
   assert.doesNotMatch(html, /Nutzer von projekt-pa/, 'späte Antwort des alten Projekts')
   assert.ok(aufrufe.includes('/api/projekte/projekt-pb/projektakte'), `Aufrufe: ${aufrufe.join(', ')}`)
   assert.match(document.getElementById('uebersicht-cockpit').innerHTML, /Kein eindeutiges Versionsziel/, 'die Übersicht lädt die Projektakte des neuen Projekts ebenfalls')
+})
+
+test('F46 D3 (Prüfpass cr 1, qa 9): eine Abnahme-Entscheidung bei offenem Detail lädt die Abnahme genau einmal nach; ohne Übergang nichts', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  statusW3 = 'ABGESCHLOSSEN'
+  entscheidungW3 = 'fehlt'
+  setzeAktivesProjekt({ id: 'projekt-w3', name: 'Projekt W3' })
+  location.hash = '#/workboard/F-33'
+  dispatch()
+  await warte()
+  await pollJetzt()
+  await warte()
+  assert.match(document.getElementById('workboard-detail-jetzt').innerHTML, /Ergebnis prüfen/)
+  const anzahl = () => aufrufe.filter((u) => u === '/api/projekte/projekt-w3/workflows/w-33/abnahme').length
+  const vorher = anzahl()
+  entscheidungW3 = 'ok'
+  await pollJetzt()
+  await warte()
+  assert.equal(anzahl() - vorher, 1, 'neuer Abnahmestand im Kopfdatum ist ein Übergang')
+  assert.doesNotMatch(document.getElementById('workboard-detail-jetzt').innerHTML, /Ergebnis prüfen/)
+  await pollJetzt()
+  await pollJetzt()
+  await warte()
+  assert.equal(anzahl() - vorher, 1, 'ohne Übergang kein weiterer Abruf')
+  statusW3 = 'LAEUFT'
+  entscheidungW3 = 'fehlt'
+  location.hash = '#/workboard'
+  dispatch()
+})
+
+test('F46 D3 (Prüfpass qa 1): ein erledigter Bug heißt nicht „Jetzt beheben lassen“ und zeigt keine Triage', async () => {
+  const { dispatch } = await import('./router.js')
+  const { pollJetzt } = await import('./zustand.js')
+  statusW3 = 'ABGESCHLOSSEN'
+  entscheidungW3 = 'ok'
+  statusF33 = 'ERLEDIGT'
+  setzeAktivesProjekt({ id: 'projekt-w3-erledigt', name: 'Projekt W3 erledigt' })
+  setzeAktivesProjekt({ id: 'projekt-w3', name: 'Projekt W3' })
+  location.hash = '#/workboard/F-33'
+  dispatch()
+  await warte()
+  await pollJetzt()
+  await warte()
+  const bereich = document.getElementById('workboard-bearbeitung').innerHTML
+  assert.match(bereich, /id="workboard-bearbeiten"[^>]*>Auftrag vorbereiten/)
+  assert.doesNotMatch(bereich, /Jetzt beheben lassen|Einplanen|Schließen: kein Fehler/)
+  assert.doesNotMatch(document.getElementById('workboard-detail-jetzt').innerHTML, /Was passiert mit diesem Bug/)
+  statusF33 = 'OFFEN'
+  statusW3 = 'LAEUFT'
+  entscheidungW3 = 'fehlt'
+  location.hash = '#/workboard'
+  dispatch()
 })

@@ -12,7 +12,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { baueEntscheidungen, baueReferenzJeAuftrag, passtZuFilter, zaehleJeFilter, zaehleOffeneEntscheidungen } from './attention-daten.js'
+import { baueEntscheidungen, baueReferenzJeAuftrag, filtereAttentionWorkflows, laeuftGerade, passtZuFilter, zaehleJeFilter, zaehleOffeneEntscheidungen } from './attention-daten.js'
 
 const ZUSTAND = {
   workflows: [
@@ -206,4 +206,20 @@ test('Zahl am Navigationspunkt: Poll-Quellen ohne Befunde, null bei Defekt oder 
   assert.equal(zaehleOffeneEntscheidungen(null), null)
   assert.equal(zaehleOffeneEntscheidungen({ workflows: [], laeufe: null, startfehler: [] }), null)
   assert.equal(zaehleOffeneEntscheidungen({ workflows: [], laeufe: [], startfehler: [] }), 0)
+})
+
+test('F46 D3 (F-996): haltKlaerung eines laufenden Workflows ist keine Rückfrage; eine echte Rückfrage bleibt eine', () => {
+  // So meldet der Automat einen laufenden Schritt (real an kontrollzustand/lineage-workflow-f15-ws4-l1 belegt).
+  const laufend = { workflowId: 'w-lauf', status: 'LAEUFT', aktiverSchrittId: 's1', naechster: { art: 'haltKlaerung', schrittId: null } }
+  const rueckfrage = { workflowId: 'w-frage', status: 'KLAERUNG_ERFORDERLICH', naechster: { art: 'haltKlaerung', schrittId: null } }
+  const freigabe = { workflowId: 'w-frei', status: 'WARTET_FREIGABE', naechster: { art: 'haltFreigabe', schrittId: 's2' } }
+  const schrittLaeuft = { workflowId: 'w-schritt', status: 'OFFEN', naechster: { art: 'haltKlaerung' }, schritte: [{ schritt_id: 's1', status: 'LAEUFT' }] }
+  assert.deepEqual(filtereAttentionWorkflows([laufend, rueckfrage, freigabe, schrittLaeuft]).map((w) => w.workflowId), ['w-frage', 'w-frei'])
+  assert.equal(laeuftGerade(laufend), true)
+  assert.equal(laeuftGerade(schrittLaeuft), true, 'ein laufender Schritt zählt, wo der Aufrufer Schritte mitgibt')
+  assert.equal(laeuftGerade(rueckfrage), false)
+  const { gruppen, eintraege } = baueEntscheidungen({ workflows: [laufend, rueckfrage], laeufe: [], startfehler: [] }, [])
+  assert.deepEqual(gruppen.workflows.map((e) => `${e.id}:${e.art}`), ['w-frage:rueckfrage'])
+  assert.equal(eintraege.length, 1)
+  assert.equal(zaehleOffeneEntscheidungen({ workflows: [laufend], laeufe: [], startfehler: [] }), 0, 'Zähler in der Seitenleiste: ein laufender Ablauf wartet nicht auf Stefan')
 })

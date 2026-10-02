@@ -18,8 +18,10 @@
  *   Was steckt dahinter; F46 D1)
  * - public/leitstand/views/projektakte.js (kommtKnopf, kommtBadge — Änderung vorschlagen, Versionsziel; F46 D1)
  * - public/leitstand/views/workboard.js (kommtKnopf, kommtBadge — Entwicklung: Eintrag erfassen, Kanban · Priorität, Zeitleiste; F44 WS-3a;
- *   im Detail Eintrag bearbeiten, Insights ansehen; F44 WS-3b)
- * - public/leitstand/views/workboard-detail.js (kommtKnopf — Detail: Zeitfenster, Planung ändern/speichern, Insight hinzufügen; F44 WS-3b)
+ *   im Detail die Triage-Knöpfe eines Bugs neben „Jetzt beheben lassen“; F46 D3)
+ * - public/leitstand/views/workboard-detail.js (kommtKnopf, kommtBadge — Detail: Status-Block, Planung/Einordnung,
+ *   Workstreams, Code & Doku Review, Verlauf, Fehlerbild, Behebung; F46 D3)
+ * - public/leitstand/eintrag-bausteine.js (kommtBadge — fehlende Werte in Kurz gesagt und Status-Block; F46 D3)
  * - public/leitstand/views/projekte-uebersicht.js (kommtKnopf — „Produkt bearbeiten“ in der Technik-Klappe; F44 WS-6a)
  * - public/leitstand/kommt.test.mjs (node:test)
  *

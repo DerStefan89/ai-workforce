@@ -1,0 +1,24 @@
+[
+  {
+    "label": "Feature ohne Ablauf: Kurz gesagt „kein Ablauf“, Kreis ganz offen, alle AKs „noch kein Urteil“, „Auftrag vorbereiten“ frei (einziger Hauptknopf)",
+    "mehr als ein gefüllter Hauptknopf (muss fehlen)": false,
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "Ansicht": "workboard",
+    "data-theme": "dark",
+    "lang": "de",
+    "Nav aktiv": "Entwicklung",
+    "Eyebrow": "Feature · F46",
+    "Titel": "Design-Nachbau nach neuem Seitenaufbau",
+    "Jetzt-Band (Zustand)": "ruhig",
+    "Hauptknopf Jetzt-Band": "(fehlt)",
+    "Hauptknopf Click-to-Work": "Auftrag vorbereiten",
+    "Reiter „Das Was“ gewählt": "Abnahmekriterien · 7",
+    "Rolle gewählt": "builder",
+    "Click-to-Work (Text „NACHWEIS“ = POST erkannt)": "Auftrag vorbereitenLeitet den Auftrag aus Ziel, Nicht-Zielen und Kriterien der Akte ab und lässt den Ablauf vorschlagen.",
+    "Überschrift Entscheiden": "(fehlt)",
+    "Fokus (id)": "workboard-detail-titel",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]
