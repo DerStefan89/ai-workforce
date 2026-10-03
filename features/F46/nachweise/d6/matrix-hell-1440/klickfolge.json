@@ -1,0 +1,1226 @@
+{
+  "url": "http://127.0.0.1:4199/#/capabilities",
+  "viewport": {
+    "breite": 1440,
+    "hoehe": 1300
+  },
+  "farbschema": "light",
+  "zoom": 1,
+  "screenshotQualitaet": 0.7,
+  "screenshotVollseite": true,
+  "localStorageSetzen": {
+    "leitstand-chat-offen": "false"
+  },
+  "anfragenAntworten": [
+    {
+      "muster": "**/api/zustand",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "laeufe": [],
+        "startfehler": [],
+        "workflows": [],
+        "fehler": [],
+        "aktiverLauf": {
+          "aktiv": false,
+          "laufId": null
+        },
+        "pruefbefehl": null,
+        "istAiWorkforce": true
+      }
+    },
+    {
+      "muster": "**/api/projekte",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "projekte": [
+          {
+            "id": "ai-workforce",
+            "name": "AI Workforce",
+            "repo_pfad": ".",
+            "basisverzeichnis": "kontrollzustand",
+            "status": "IN_ENTWICKLUNG",
+            "laufAktiv": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/workitems",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/workitems?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "workitems": [],
+        "befunde": [],
+        "fehler": []
+      }
+    },
+    {
+      "muster": "**/api/auftraege",
+      "methode": "GET",
+      "status": 200,
+      "json": []
+    },
+    {
+      "muster": "**/api/roadmap",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "vision": "Nachweis",
+        "meilensteine": []
+      }
+    },
+    {
+      "muster": "**/api/chat",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "verlauf": []
+      }
+    },
+    {
+      "muster": "**/api/ressourcen",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "startvorlagen/ai-workforce.json",
+        "assessedHinweis": "ASSESSED ist in v1 strukturell leer — eine Prüfung trägt noch kein eigenes Kennzeichen.",
+        "eintraege": [
+          {
+            "id": "claude-code",
+            "typ": "worker",
+            "name": "claude-code",
+            "beschreibung": "Baut: schreibt Code, führt Prüfungen aus.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "startvorlage",
+              "worker": "claude-code"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "codex",
+            "typ": "worker",
+            "name": "codex",
+            "beschreibung": "Plant und prüft, nur lesend.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "startvorlage",
+              "worker": "codex"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "advisor-pass",
+            "typ": "skill",
+            "name": "advisor-pass",
+            "beschreibung": "Plan vor dem Bau prüfen.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/advisor-pass"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "spec-schreiben",
+            "typ": "skill",
+            "name": "spec-schreiben",
+            "beschreibung": "Spezifikation aus einem Auftrag.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/spec-schreiben"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "ponytail",
+            "typ": "skill",
+            "name": "ponytail",
+            "beschreibung": "Die einfachste Lösung, die wirklich funktioniert.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "skill",
+              "pfad": ".claude/skills/ponytail"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "code-reviewer",
+            "typ": "agent",
+            "name": "code-reviewer",
+            "beschreibung": "Code nach dem Bauen prüfen.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/code-reviewer.md"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "qa",
+            "typ": "agent",
+            "name": "qa",
+            "beschreibung": "Akzeptanztests und Randfälle.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/qa.md"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "architecture-advisor",
+            "typ": "agent",
+            "name": "architecture-advisor",
+            "beschreibung": "Pläne vor dem Bau prüfen.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/architecture-advisor.md"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "scout",
+            "typ": "agent",
+            "name": "scout",
+            "beschreibung": "Kandidaten für eine fehlende Fähigkeit suchen.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "agent",
+              "pfad": ".claude/agents/scout.md"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null
+          },
+          {
+            "id": "playwright-mcp",
+            "typ": "extern",
+            "name": "playwright-mcp",
+            "beschreibung": "Browser-Automatisierung über Accessibility-Snapshots.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/microsoft/playwright-mcp"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null,
+            "unterart": "mcp"
+          },
+          {
+            "id": "frontend-design",
+            "typ": "extern",
+            "name": "frontend-design",
+            "beschreibung": "Erstanbieter-Plugin für bessere Frontend-Ausgabe.",
+            "freigabe": "FREIGEGEBEN",
+            "verfuegbar": true,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/anthropics/claude-plugins-official"
+            },
+            "capabilities": [],
+            "phasen": [
+              "APPROVED",
+              "AVAILABLE"
+            ],
+            "anzeigeGrund": "einsatzbereit",
+            "fehltFuerEinsatz": [],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": null,
+            "unterart": "skill"
+          },
+          {
+            "id": "impeccable",
+            "typ": "extern",
+            "name": "impeccable",
+            "beschreibung": "Design-Kontext-Protokoll: Zielgruppe, Markenpersönlichkeit und Gestaltungsregeln, bevor eine Oberfläche gebaut wird.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/pbakaus/impeccable"
+            },
+            "capabilities": [],
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "anzeigeGrund": "Freigabe offen — noch nicht geprüft",
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "grund": "",
+            "installierbar": true,
+            "installationsGrund": null,
+            "unterart": "skill"
+          },
+          {
+            "id": "context7-mcp",
+            "typ": "extern",
+            "name": "context7-mcp",
+            "beschreibung": "Versionsgenaue Bibliotheks-Doku.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/upstash/context7"
+            },
+            "capabilities": [],
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "anzeigeGrund": "Freigabe offen — noch nicht geprüft",
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)",
+            "unterart": "mcp"
+          },
+          {
+            "id": "github-mcp",
+            "typ": "extern",
+            "name": "github-mcp",
+            "beschreibung": "Repos, Issues und Pull Requests.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/github/github-mcp-server"
+            },
+            "capabilities": [],
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "anzeigeGrund": "Freigabe offen — noch nicht geprüft",
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)",
+            "unterart": "mcp"
+          },
+          {
+            "id": "firecrawl-mcp",
+            "typ": "extern",
+            "name": "firecrawl-mcp",
+            "beschreibung": "Web-Extraktion: scrapen, crawlen, suchen.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/firecrawl/firecrawl-mcp-server"
+            },
+            "capabilities": [],
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "anzeigeGrund": "Freigabe offen — noch nicht geprüft",
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)",
+            "unterart": "mcp"
+          },
+          {
+            "id": "taste-skill",
+            "typ": "extern",
+            "name": "taste-skill",
+            "beschreibung": "Gestaltungsgeschmack als Skill.",
+            "freigabe": "OFFEN",
+            "verfuegbar": false,
+            "herkunft": {
+              "art": "extern",
+              "url": "https://github.com/senlindesign/taste-skill"
+            },
+            "capabilities": [],
+            "phasen": [
+              "DISCOVERED"
+            ],
+            "anzeigeGrund": "Freigabe offen — noch nicht geprüft",
+            "fehltFuerEinsatz": [
+              "freigabe OFFEN",
+              "installation fehlt"
+            ],
+            "grund": "",
+            "installierbar": false,
+            "installationsGrund": "wirkung 'extern_lesend' — in V1 nur 'lokal' freigebbar (E-F36-4)",
+            "unterart": "skill"
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/abdeckung",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "startvorlagePfad": "startvorlagen/ai-workforce.json",
+        "rollen": [
+          {
+            "rolle": "architekt",
+            "benoetigteCapabilities": [
+              "PLAN"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "codex",
+                "fehlend": [],
+                "f346Ausnahme": false,
+                "restFehlend": []
+              }
+            ],
+            "gedeckt": true
+          },
+          {
+            "rolle": "reviewer",
+            "benoetigteCapabilities": [
+              "CODE_REVIEW",
+              "BROWSER_TEST"
+            ],
+            "workerAbdeckung": [
+              {
+                "worker": "codex",
+                "fehlend": [
+                  "BROWSER_TEST"
+                ],
+                "f346Ausnahme": false,
+                "restFehlend": [
+                  "BROWSER_TEST"
+                ]
+              }
+            ],
+            "gedeckt": false
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/harness",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "absoluterPfad": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+        "name": "ai-workforce",
+        "bausteine": [
+          {
+            "id": "regeln",
+            "ort": "/",
+            "eintraege": [
+              {
+                "pfad": "CLAUDE.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 8046,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "ARCHITECTURE.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 9289,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "README.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 5457,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              }
+            ]
+          },
+          {
+            "id": "wissen",
+            "ort": "docs/",
+            "eintraege": [
+              {
+                "pfad": "docs/STATUS.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 46249,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "docs/adr",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 6,
+                "eintraege": [
+                  {
+                    "name": "TEMPLATE.md",
+                    "art": "datei",
+                    "groesse": 348,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "ausfuehrung-bash-allowlist.md",
+                    "art": "datei",
+                    "groesse": 6049,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "datenformate-kontrollzustand-und-profile.md",
+                    "art": "datei",
+                    "groesse": 1093,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "ein-ebenen-profilmodell.md",
+                    "art": "datei",
+                    "groesse": 1375,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "oberflaechentechnik-leitstand.md",
+                    "art": "datei",
+                    "groesse": 988,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "technischer-stack.md",
+                    "art": "datei",
+                    "groesse": 1194,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": "docs/projekt/kontext",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 3,
+                "eintraege": [
+                  {
+                    "name": "anweisungen.md",
+                    "art": "datei",
+                    "groesse": 2525,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "beschreibung.md",
+                    "art": "datei",
+                    "groesse": 2434,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "lagebild.md",
+                    "art": "datei",
+                    "groesse": 13409,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": "docs/harness",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 6,
+                "eintraege": [
+                  {
+                    "name": "HARNESS-CHANGELOG.md",
+                    "art": "datei",
+                    "groesse": 21000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "HARNESS-GLOSSARY.md",
+                    "art": "datei",
+                    "groesse": 7000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "HARNESS-LEARNING-STATE.md",
+                    "art": "datei",
+                    "groesse": 9000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "HARNESS-OVERVIEW.md",
+                    "art": "datei",
+                    "groesse": 12000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "programm-historie",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "werkzeug-katalog.md",
+                    "art": "datei",
+                    "groesse": 15000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "gedaechtnis",
+            "ort": "state/",
+            "eintraege": [
+              {
+                "pfad": "state/findings.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 900000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/gates.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 21000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/assumption-ledger.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 30000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/triggers.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 4000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/memory-map.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 6000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/tooling.md",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 12000,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              },
+              {
+                "pfad": "state/zwischenstand",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "VORLAGE.md",
+                    "art": "datei",
+                    "groesse": 900,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "rollen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/agents",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 5,
+                "eintraege": [
+                  {
+                    "name": "architecture-advisor.md",
+                    "art": "datei",
+                    "groesse": 2090,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "code-reviewer.md",
+                    "art": "datei",
+                    "groesse": 1659,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "design-guardian.md",
+                    "art": "datei",
+                    "groesse": 5950,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "qa.md",
+                    "art": "datei",
+                    "groesse": 1066,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "scout.md",
+                    "art": "datei",
+                    "groesse": 2758,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".claude/skills",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 7,
+                "eintraege": [
+                  {
+                    "name": "advisor-pass",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "git-flow",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "handoff-vertrag",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "ponytail",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "repo-audit",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "spec-schreiben",
+                    "art": "ordner"
+                  },
+                  {
+                    "name": "werkzeug-auswahl",
+                    "art": "ordner"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".claude/commands",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "lessons.md",
+                    "art": "datei",
+                    "groesse": 1095,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              }
+            ]
+          },
+          {
+            "id": "bremsen",
+            "ort": ".claude/",
+            "eintraege": [
+              {
+                "pfad": ".claude/settings.json",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 1205,
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "geschuetzt": true
+              },
+              {
+                "pfad": ".claude/hooks",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 5,
+                "eintraege": [
+                  {
+                    "name": "commit-guard.cjs",
+                    "art": "datei",
+                    "groesse": 12107,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "guard-settings.js",
+                    "art": "datei",
+                    "groesse": 1934,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "session-reminder.cjs",
+                    "art": "datei",
+                    "groesse": 1044,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "zwischenstand-laden.cjs",
+                    "art": "datei",
+                    "groesse": 1612,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "zwischenstand-pruefen.cjs",
+                    "art": "datei",
+                    "groesse": 2289,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false,
+                "geschuetzt": true
+              }
+            ]
+          },
+          {
+            "id": "pruefung",
+            "ort": "scripts/ · .github/",
+            "eintraege": [
+              {
+                "pfad": "scripts",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 75,
+                "eintraege": [
+                  {
+                    "name": "check-akte-meilenstein.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-contract.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-docs.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-f20-design-tokens.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-f44-i18n.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-f46-bestand.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-f813-csrf.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-f814-host.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  },
+                  {
+                    "name": "check-rules.mjs",
+                    "art": "datei",
+                    "groesse": 4000,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false,
+                "muster": "check-*.mjs"
+              },
+              {
+                "pfad": ".github/workflows",
+                "art": "ordner",
+                "vorhanden": true,
+                "status": "ok",
+                "geaendert": "2026-10-02T21:20:51.000Z",
+                "anzahl": 1,
+                "eintraege": [
+                  {
+                    "name": "ci.yml",
+                    "art": "datei",
+                    "groesse": 900,
+                    "geaendert": "2026-10-02T21:20:51.000Z"
+                  }
+                ],
+                "gekappt": false
+              },
+              {
+                "pfad": ".worktreeinclude",
+                "art": "datei",
+                "vorhanden": true,
+                "status": "ok",
+                "groesse": 149,
+                "geaendert": "2026-10-02T21:20:51.000Z"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?**",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "fehlt",
+        "pfad": "unbekannt"
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?pfad=CLAUDE.md",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "pfad": "CLAUDE.md",
+        "absolut": "C:\\Users\\stefa\\Projekte\\ai-workforce\\CLAUDE.md",
+        "groesse": 8046,
+        "geaendert": "2026-10-02T21:20:51.000Z",
+        "text": "<!--\n[FÜLLUNG] Diese Datei ist zur Hälfte Skelett, zur Hälfte Füllung. Abschnitte\nohne Zusatz sind Skelett — Mechanik, unverändert übertragbar.\n-->\n\n# AI Workforce — Master-Kontext\n\n## Pflichtlektüre\nLies `ARCHITECTURE.md` bevor du Code schreibst. Alle Konventionen dort sind\nverbindlich. `docs/projekt/zielfassung.md`, wenn eine Anforderung, eine\nRolle, eine Grenze oder ein Fassung-1-Scope zu klären ist.\n",
+        "gekuerzt": false
+      }
+    },
+    {
+      "muster": "**/api/harness/datei?pfad=.claude%2Fhooks%2Fcommit-guard.cjs",
+      "methode": "GET",
+      "status": 200,
+      "json": {
+        "status": "ok",
+        "pfad": ".claude/hooks/commit-guard.cjs",
+        "absolut": "C:\\Users\\stefa\\Projekte\\ai-workforce\\.claude\\hooks\\commit-guard.cjs",
+        "groesse": 12107,
+        "geaendert": "2026-10-02T21:20:51.000Z",
+        "text": "/**\n * Datei: .claude/hooks/commit-guard.cjs\n *\n * Zweck: PreToolUse-Hook auf Bash. Vier Aufgaben:\n * 1. Verweigert jeden Bash-Befehl, der `.claude/settings.json` referenziert\n *    (schließt die Bash-Lücke von guard-settings.js).\n * 2. Verweigert den Merge-Pfad nach main über `gh` (PR-Merge-Unterbefehl\n *    oder ein API-Pfad, der auf `/merge`/`/merges` endet).\n * 3. Verweigert `git commit` / `git push`, außer eine frische Freigabe-Datei\n *    (state/freigabe-commit.md, Frischefenster 10 Minuten) liegt vor. Bei\n *    gültiger Freigabe: Datei löschen, Befehl durchlassen — eine Freigabe\n *    gilt für genau einen Commit.\n * 4. Verweigert jeden Bash-Befehl, der `state/freigabe-commit.md`\n *    referenziert.\n */\n",
+        "gekuerzt": false
+      }
+    },
+    {
+      "muster": "**/api/auftraege**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/laeufe**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/workflows/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    },
+    {
+      "muster": "**/api/ressourcen/**",
+      "methode": "POST",
+      "status": 409,
+      "json": {
+        "grund": "NACHWEIS: POST erkannt"
+      }
+    }
+  ],
+  "beobachtete": {
+    "texte": [
+      {
+        "name": "Ansicht",
+        "selector": "[data-view]:not([hidden])",
+        "attribut": "data-view"
+      },
+      {
+        "name": "data-theme",
+        "selector": "html",
+        "attribut": "data-theme"
+      },
+      {
+        "name": "lang",
+        "selector": "html",
+        "attribut": "lang"
+      },
+      {
+        "name": "Titel",
+        "selector": "#werkstatt-titel"
+      },
+      {
+        "name": "Register aktiv",
+        "selector": "#werkstatt-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Unterregister aktiv",
+        "selector": "#faehigkeiten-register [aria-selected=\"true\"]"
+      },
+      {
+        "name": "Gewählter Knoten",
+        "selector": "#harness-skelett [aria-pressed=\"true\"]",
+        "attribut": "data-harness-pfad"
+      },
+      {
+        "name": "Detail: Pfad",
+        "selector": "#harness-detail .harness-detail-pfad"
+      },
+      {
+        "name": "Detail: Satz Bremse",
+        "selector": "#harness-detail .harness-detail-satz"
+      },
+      {
+        "name": "Detail: VS Code",
+        "selector": "#harness-detail a[href^=\"vscode:\"]",
+        "attribut": "href"
+      },
+      {
+        "name": "Library: Hinweis",
+        "selector": "#library-hinweis:not([hidden])"
+      },
+      {
+        "name": "Library: gezeigt",
+        "selector": ".library-fuss"
+      },
+      {
+        "name": "Library: gewählt",
+        "selector": "#library-detail .library-detail-name"
+      },
+      {
+        "name": "Library: Chips gewählt",
+        "selector": ".library-chips [aria-pressed=\"true\"]"
+      },
+      {
+        "name": "Fokus (id)",
+        "selector": ":focus",
+        "attribut": "id"
+      },
+      {
+        "name": "Fokus (Klasse)",
+        "selector": ":focus",
+        "attribut": "class"
+      }
+    ],
+    "vorhanden": [
+      {
+        "name": "aria-live außer Persona (muss fehlen)",
+        "selector": "[aria-live]:not(#persona-text-status)"
+      },
+      {
+        "name": "<img> aus Daten (muss fehlen)",
+        "selector": "main img[src=\"x\"]"
+      },
+      {
+        "name": "<b> aus Daten (muss fehlen)",
+        "selector": "#harness-detail b, #library-detail b, #harness-skelett b"
+      },
+      {
+        "name": "Schreibknopf außerhalb „kommt“ im Harness (muss fehlen)",
+        "selector": "#werkstatt-bereich-harness button.button:not([aria-disabled=\"true\"])"
+      },
+      {
+        "name": "Freigabe-Knopf F36 im Detail",
+        "selector": "#library-detail [data-installation-aktion=\"vorbereiten\"]"
+      }
+    ],
+    "ueberlauf": true
+  },
+  "schritte": [
+    {
+      "label": "Harness mit geöffnetem Hook (Schloss)",
+      "warteAufSelector": {
+        "selector": "#harness-skelett .harness-spalte",
+        "timeoutMs": 8000
+      },
+      "klick": "#harness-skelett [data-harness-pfad=\".claude/hooks/commit-guard.cjs\"]"
+    },
+    {
+      "label": "Detail geladen",
+      "warteAufSelector": {
+        "selector": "#harness-detail .harness-detail-inhalt",
+        "timeoutMs": 8000
+      },
+      "screenshot": "l1440-harness.webp"
+    },
+    {
+      "label": "Library mit Detail impeccable",
+      "klick": "#werkstatt-reiter-faehigkeiten",
+      "warteAufSelector": {
+        "selector": "#capabilities-library .library-zeile",
+        "timeoutMs": 8000
+      }
+    },
+    {
+      "label": "Detail",
+      "klick": "#capabilities-library [data-library-id=\"impeccable\"] .library-name",
+      "warteAufSelector": {
+        "selector": "#library-detail .library-detail-name",
+        "timeoutMs": 8000
+      },
+      "screenshot": "l1440-library.webp"
+    }
+  ]
+}

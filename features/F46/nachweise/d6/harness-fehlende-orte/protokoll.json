@@ -1,0 +1,28 @@
+[
+  {
+    "label": "Fehlende Orte gestrichelt mit „fehlt“, ein Ort mit Fehler „nicht lesbar“ (Grund als Text) — kein Knopf dafür",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<b> aus Daten (muss fehlen)": false,
+    "Schreibknopf außerhalb „kommt“ im Harness (muss fehlen)": false,
+    "Freigabe-Knopf F36 im Detail": false,
+    "Ansicht": "capabilities",
+    "data-theme": "dark",
+    "lang": "de",
+    "Titel": "Deine Entwicklungswerkstatt.",
+    "Register aktiv": "Harness-Aufbau",
+    "Unterregister aktiv": "Katalog",
+    "Gewählter Knoten": "(fehlt)",
+    "Detail: Pfad": "(fehlt)",
+    "Detail: Satz Bremse": "(fehlt)",
+    "Detail: VS Code": "(fehlt)",
+    "Library: Hinweis": "design-guardian liegt im Harness unter .claude/agents/, steht aber noch nicht im Katalog.",
+    "Library: gezeigt": "12 von 16 gezeigt · Alle anzeigen",
+    "Library: gewählt": "(fehlt)",
+    "Library: Chips gewählt": "Alle · 16",
+    "Fokus (id)": "(fehlt)",
+    "Fokus (Klasse)": "(fehlt)",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

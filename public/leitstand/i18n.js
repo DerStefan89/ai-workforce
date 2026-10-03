@@ -27,7 +27,8 @@
  * - scripts/check-f44-i18n.mjs (SPRACHEN, Wörterbücher)
  * - tHtml (F44 WS-4b): views/dashboard.js, workboard.js, workboard-detail.js, workflows.js,
  *   workflow-detail.js, workflow-abnahme.js, workflow-eingriffe.js, empfehlung-installation.js;
- *   views/capabilities.js (t, tHtml, formatiereZahl — Werkstatt, F44 WS-7a)
+ *   views/capabilities.js (t, tHtml, formatiereZahl — Werkstatt, F44 WS-7a); views/harness-aufbau.js,
+ *   views/capability-library.js (t, tHtml, formatiereZahl, formatiereDatum — Workforce, F46 D6)
  *
  * Wichtig:
  * - Import-sicher: Beim Import greift dieses Modul weder auf DOM noch auf Storage

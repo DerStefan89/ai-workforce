@@ -1,0 +1,28 @@
+[
+  {
+    "label": "Steht design-guardian im Katalog, erscheint kein Hinweis (kein fester Text)",
+    "aria-live außer Persona (muss fehlen)": false,
+    "<img> aus Daten (muss fehlen)": false,
+    "<b> aus Daten (muss fehlen)": false,
+    "Schreibknopf außerhalb „kommt“ im Harness (muss fehlen)": false,
+    "Freigabe-Knopf F36 im Detail": false,
+    "Ansicht": "capabilities",
+    "data-theme": "dark",
+    "lang": "de",
+    "Titel": "Capability Library",
+    "Register aktiv": "Capability Library",
+    "Unterregister aktiv": "Katalog",
+    "Gewählter Knoten": "(fehlt)",
+    "Detail: Pfad": "(fehlt)",
+    "Detail: Satz Bremse": "(fehlt)",
+    "Detail: VS Code": "(fehlt)",
+    "Library: Hinweis": "(fehlt)",
+    "Library: gezeigt": "12 von 17 gezeigt · Alle anzeigen",
+    "Library: gewählt": "(fehlt)",
+    "Library: Chips gewählt": "Alle · 17",
+    "Fokus (id)": "werkstatt-reiter-faehigkeiten",
+    "Fokus (Klasse)": "active",
+    "waagerechter Überlauf": false,
+    "Seite geladen": true
+  }
+]

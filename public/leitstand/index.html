@@ -631,17 +631,18 @@
              WS-2) sind der einzige Schreibpfad dieser View — beide legen einen normalen,
              freigabepflichtigen Auftrag an, kein direktes Schreiben nach ressourcen.json. -->
         <!-- F44 WS-7a (Vorlage V10 d_harness_phasen Kopf/Register, d_faehigkeiten, d_faehigkeiten_rollen; Abgleich
-             F-725 J5–J8): Werkstatt mit drei clientseitigen Registern (role=tablist, Pfeiltasten; keine neue
-             Route), Standard „Fähigkeiten“. Harness-Aufbau und Phasen & Rollen sind Bausteine „kommt“ ohne
-             Beispieldaten. Fähigkeiten hat drei Unterreiter: Werkzeuge (Kacheln aus GET …/ressourcen),
-             Rollen & Besetzung (GET …/ressourcen/abdeckung, Details lazy aus …/ressourcen/rollen/<rolle>),
-             Empfehlungen (Verweis). views/capabilities.js schaltet die Register. -->
+             F-725 J5–J8), seit F46 D6 nach docs/design/abgleich-f46.md §4.14 (Bilder 01-workforce-harness--Main, --Library):
+             drei clientseitige Register (role=tablist, Pfeiltasten; keine neue Route) in der Reihenfolge des Bildes —
+             Harness-Aufbau (Standard; views/harness-aufbau.js, GET …/harness), Capability Library (Unterbereiche Katalog —
+             views/capability-library.js, GET …/ressourcen —, Rollen & Besetzung mit Scout, Empfehlungen) und Phasen & Rollen
+             (Baustein „kommt“ aus WS-7a). Titel und Beschreibung folgen dem Register (views/capabilities.js setzeKopf).
+             Kein display auf Elementen mit hidden-Attribut (F-622). -->
         <section id="view-capabilities" data-view="capabilities" class="v10-seite werkstatt-seite" hidden>
           <div class="page-heading">
             <div>
-              <div class="eyebrow" data-i18n="werkstatt.eyebrow">Workforce &amp; Umgebung</div>
-              <h1 data-i18n="werkstatt.titel">Deine Entwicklungswerkstatt.</h1>
-              <p class="description" data-i18n="werkstatt.beschreibung">Was die Workforce kann, woraus ihr Harness besteht und wie die Rollen zusammenarbeiten.</p>
+              <div class="eyebrow" data-i18n="werkstatt.eyebrow">Workforce &amp; Harness</div>
+              <h1 id="werkstatt-titel" data-i18n="werkstatt.titel">Deine Entwicklungswerkstatt.</h1>
+              <p id="werkstatt-beschreibung" class="description" data-i18n="werkstatt.beschreibung">Alles, was die Workforce beim Arbeiten an diesem Projekt lädt, prüft und befolgt.</p>
             </div>
             <div class="werkstatt-kopf-aktionen">
               <button type="button" id="capabilities-neu-laden" class="button" data-i18n="werkstatt.neuLaden">Neu laden</button>
@@ -654,47 +655,62 @@
           </div>
 
           <div id="werkstatt-register" class="tabs werkstatt-register" role="tablist" aria-label="Bereiche der Werkstatt" data-i18n-aria-label="werkstatt.register">
-            <button type="button" role="tab" id="werkstatt-reiter-harness" aria-controls="werkstatt-bereich-harness" aria-selected="false" tabindex="-1" data-i18n="werkstatt.register.harness">Harness-Aufbau</button>
+            <button type="button" role="tab" id="werkstatt-reiter-harness" class="active" aria-controls="werkstatt-bereich-harness" aria-selected="true" tabindex="0" data-i18n="werkstatt.register.harness">Harness-Aufbau</button>
+            <button type="button" role="tab" id="werkstatt-reiter-faehigkeiten" aria-controls="werkstatt-bereich-faehigkeiten" aria-selected="false" tabindex="-1" data-i18n="werkstatt.register.faehigkeiten">Capability Library</button>
             <button type="button" role="tab" id="werkstatt-reiter-phasen" aria-controls="werkstatt-bereich-phasen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.register.phasen">Phasen &amp; Rollen</button>
-            <button type="button" role="tab" id="werkstatt-reiter-faehigkeiten" class="active" aria-controls="werkstatt-bereich-faehigkeiten" aria-selected="true" tabindex="0" data-i18n="werkstatt.register.faehigkeiten">Fähigkeiten</button>
           </div>
 
-          <div id="werkstatt-bereich-harness" role="tabpanel" aria-labelledby="werkstatt-reiter-harness" tabindex="0" hidden>
-            <section class="empty">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
-              <h2><span data-i18n="werkstatt.harness.titel">Harness-Aufbau</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
-              <p data-i18n="werkstatt.harness.text">Der Aufbau deines Harness wird hier sichtbar – mit der Harness-Werkstatt.</p>
+          <!-- F46 D6: Harness-Aufbau (Bild 01-Main). Legende „Gegen die Vorlage“ und „Genutzt von“ sind „kommt“ (Vorlage
+               nicht eindeutig; Fixpaket B1), ebenso „Wer nutzt den Harness?“ und „Harness bearbeiten“ (01-Bearbeiten). -->
+          <div id="werkstatt-bereich-harness" role="tabpanel" aria-labelledby="werkstatt-reiter-harness" tabindex="0">
+            <div class="harness-legende">
+              <span class="harness-legende-teil"><span class="harness-legende-label" data-i18n="harness.legende.vorlage">Gegen die Vorlage</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></span>
+              <span class="harness-legende-trenner" aria-hidden="true"></span>
+              <span class="harness-legende-teil"><span class="harness-legende-label" data-i18n="harness.legende.genutzt">Genutzt von</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></span>
+              <span class="harness-legende-teil"><svg class="icon harness-schloss" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg><span data-i18n="harness.legende.schloss">Bremse, nur lesend</span></span>
+            </div>
+            <section class="harness-skelett" aria-labelledby="harness-skelett-titel">
+              <h2 id="harness-skelett-titel" class="sr-only" data-i18n="harness.skelett">Harness-Skelett</h2>
+              <div id="harness-skelett"></div>
             </section>
+            <div class="harness-unten">
+              <section id="harness-detail" class="harness-detail" tabindex="-1" aria-label="Detail im Harness-Aufbau" data-i18n-aria-label="harness.detail"></section>
+              <aside class="harness-nutzer" aria-labelledby="harness-nutzer-titel">
+                <h2 id="harness-nutzer-titel"><span data-i18n="harness.nutzer.titel">Wer nutzt den Harness?</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+                <p data-i18n="harness.nutzer.text">Welche Rolle welche Datei lädt, zeigt diese Seite mit dem Fixpaket „Arbeitsfähigkeit“ (B1).</p>
+              </aside>
+            </div>
+            <div class="harness-fusslinks">
+              <button type="button" class="button kommt-knopf" aria-disabled="true"><span data-i18n="harness.bearbeiten">Harness bearbeiten</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></button>
+              <button type="button" id="harness-zur-library" class="werkstatt-textlink" data-i18n="harness.zurLibrary">Zur Capability Library →</button>
+            </div>
           </div>
 
-          <div id="werkstatt-bereich-phasen" role="tabpanel" aria-labelledby="werkstatt-reiter-phasen" tabindex="0" hidden>
-            <section class="empty">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
-              <h2><span data-i18n="werkstatt.phasen.titel">Phasen &amp; Rollen</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
-              <p data-i18n="werkstatt.phasen.text">Der Rollen-Kreis zeigt bald, wer gerade arbeitet.</p>
-            </section>
-          </div>
-
-          <div id="werkstatt-bereich-faehigkeiten" role="tabpanel" aria-labelledby="werkstatt-reiter-faehigkeiten">
+          <div id="werkstatt-bereich-faehigkeiten" role="tabpanel" aria-labelledby="werkstatt-reiter-faehigkeiten" hidden>
             <div id="faehigkeiten-register" class="tabs werkstatt-register werkstatt-unterregister" role="tablist" aria-label="Bereiche der Fähigkeiten" data-i18n-aria-label="werkstatt.unterregister">
-              <button type="button" role="tab" id="faehigkeiten-reiter-werkzeuge" class="active" aria-controls="faehigkeiten-bereich-werkzeuge" aria-selected="true" tabindex="0" data-i18n="werkstatt.reiter.werkzeuge">Werkzeuge</button>
+              <button type="button" role="tab" id="faehigkeiten-reiter-werkzeuge" class="active" aria-controls="faehigkeiten-bereich-werkzeuge" aria-selected="true" tabindex="0" data-i18n="werkstatt.reiter.werkzeuge">Katalog</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-rollen" aria-controls="faehigkeiten-bereich-rollen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.rollen">Rollen &amp; Besetzung</button>
               <button type="button" role="tab" id="faehigkeiten-reiter-empfehlungen" aria-controls="faehigkeiten-bereich-empfehlungen" aria-selected="false" tabindex="-1" data-i18n="werkstatt.reiter.empfehlungen">Empfehlungen</button>
             </div>
 
-            <!-- J5/J6: Kennzahlen, Suche und Filter (clientseitig), Kacheln mit Detailklappe. Kein
-                 Aktivieren/Freigeben — Freigabe nur über den F36-Weg im Freigabedialog. -->
+            <!-- F46 D6 (Bild 01-Library): Kennzahlen, Suche, Filter-Chips, Hinweis aus dem Abgleich .claude/agents/ gegen
+                 den Katalog (#library-hinweis, nur wenn er sich ergibt), Tabelle und Detail. „Prüfen & freigeben“ im
+                 Detail ist der F36-Weg (empfehlung-installation.js) mit Bestätigung, unverändert. -->
             <div id="faehigkeiten-bereich-werkzeuge" role="tabpanel" aria-labelledby="faehigkeiten-reiter-werkzeuge">
-              <h2 class="sr-only" data-i18n="werkstatt.reiter.werkzeuge">Werkzeuge</h2>
-              <p id="capabilities-kennzahlen" class="werkstatt-kennzahlen"></p>
-              <div class="werkstatt-suchzeile">
-                <input type="search" id="capabilities-suche" autocomplete="off" aria-label="Fähigkeiten suchen" data-i18n-aria-label="werkstatt.suche" />
-                <select id="capabilities-filter-typ" aria-label="Typ" data-i18n-aria-label="werkstatt.filter.typ"></select>
-                <select id="capabilities-filter-freigabe" aria-label="Freigabe" data-i18n-aria-label="werkstatt.filter.freigabe"></select>
+              <h2 class="sr-only" data-i18n="werkstatt.reiter.werkzeuge">Katalog</h2>
+              <div id="capabilities-kennzahlen" class="library-kennzahlen"></div>
+              <div class="library-filterzeile">
+                <input type="search" id="capabilities-suche" class="library-suche" autocomplete="off" aria-label="Fähigkeiten suchen" data-i18n-aria-label="werkstatt.suche" />
+                <div id="library-filter-typ" class="library-chips" role="group" aria-label="Typ" data-i18n-aria-label="werkstatt.filter.typ"></div>
+                <div id="library-filter-status" class="library-chips" role="group" aria-label="Status" data-i18n-aria-label="library.filter.status"></div>
               </div>
-              <div id="capabilities-library"></div>
+              <div id="library-hinweis" class="note library-hinweis" hidden></div>
+              <div class="library-raster">
+                <div id="capabilities-library" class="library-liste"></div>
+                <aside id="library-detail" class="library-detail" aria-label="Detail der gewählten Fähigkeit" data-i18n-aria-label="library.detail.bereich" tabindex="-1"></aside>
+              </div>
               <div class="note">
-                <strong data-i18n="werkstatt.hinweis.aktiv.titel">Freigegeben heißt nicht gerade aktiv.</strong>
+                <strong data-i18n="werkstatt.hinweis.aktiv.titel">Aktiv heißt freigegeben und verfügbar.</strong>
                 <span data-i18n="werkstatt.hinweis.aktiv.text">Ob eine Fähigkeit verwendet wurde, steht in der jeweiligen Ausführung.</span>
               </div>
               <p id="capabilities-assessed" class="werkstatt-assessed"></p>
@@ -725,6 +741,14 @@
                 <a href="#/runs" class="werkstatt-link" data-i18n="werkstatt.empfehlungen.link">Zu den Aufträgen</a>
               </div>
             </div>
+          </div>
+
+          <div id="werkstatt-bereich-phasen" role="tabpanel" aria-labelledby="werkstatt-reiter-phasen" tabindex="0" hidden>
+            <section class="empty">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z" /></svg>
+              <h2><span data-i18n="werkstatt.phasen.titel">Phasen &amp; Rollen</span> <span class="kommt-badge" data-i18n="kommt.badge">kommt</span></h2>
+              <p data-i18n="werkstatt.phasen.text">Der Rollen-Kreis zeigt bald, wer gerade arbeitet.</p>
+            </section>
           </div>
         </section>
 

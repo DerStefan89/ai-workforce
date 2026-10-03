@@ -16,6 +16,8 @@
  * - public/leitstand/views/workflows.js (Freigabedialog im haltFreigabe, F44 WS-4a)
  * - public/leitstand/views/workboard.js (Workflow-Vorschlag)
  * - public/leitstand/empfehlung-installation.js (Zustand des Installationsablaufs)
+ * - public/leitstand/views/capability-library.js (installationsAnzeigeFuer, installationsMeldungFuer — Detail der
+ *   Capability Library, F46 D6; gleicher Ablauf über bindeEmpfehlungInstallation)
  * - public/leitstand/empfehlung-anzeige.test.mjs
  *
  * F44 WS-4a (F4/F5, Vorlage V10): Texte über i18n (Schlüssel empfehlung.*; Server- und
@@ -56,6 +58,26 @@ export function setzeInstallationsAnzeige(id, html) {
  */
 export function setzeInstallationsMeldung(id, html) {
   installationsMeldung = { id, html }
+}
+
+/**
+ * F46 D6: gespeicherter Zustand des Installationsablaufs einer id (Bestätigungsblock, Fortschritt, Fehler) —
+ * die Capability Library (views/capability-library.js) setzt ihn beim Neuzeichnen ihres Details wieder ein,
+ * wie renderInstallierenKnopf hier. Nur lesend; der Ablauf selbst bleibt in empfehlung-installation.js.
+ * @param id - Katalog-id
+ * @returns bereits escaptes HTML oder ''
+ */
+export function installationsAnzeigeFuer(id) {
+  return installationsAnzeige.get(id) ?? ''
+}
+
+/**
+ * F46 D6: letzte Erfolgsmeldung, wenn sie zu dieser id gehört (sonst '').
+ * @param id - Katalog-id
+ * @returns bereits escaptes HTML oder ''
+ */
+export function installationsMeldungFuer(id) {
+  return installationsMeldung.id === id ? installationsMeldung.html : ''
 }
 
 /**

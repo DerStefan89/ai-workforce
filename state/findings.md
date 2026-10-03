@@ -12672,7 +12672,7 @@ Beschreibung: Der Bauauftrag F46 D5 und `docs/design/abgleich-f46.md` §4.9 nenn
 Fundstelle: `scripts/leitstand-server.mjs` (POST …/abbrechen), `public/leitstand/views/lauf-detail.js` (LAUF_DIALOG_FELD.abbrechen null), `public/leitstand/views/runs.js` (abbrechenKnopf).
 Auswirkung: Mittel — ein abgebrochener Einzellauf trägt keine bezeugte Begründung; je nach Laufart gibt es zwei Abbruchwege.
 Maßnahme: Entscheiden, ob der Einzellauf-Abbruch eine Pflichtbegründung als Entscheidungsartefakt bekommt (Serveränderung, eigener Auftrag), oder die Formulierung in Abgleich und Auftrag auf „Stopp mit Begründung bei Abläufen“ korrigieren.
-Status: offen.
+Status: offen. Vermerk: Entscheidung Challenger 03.10.2026: Einzellauf-Abbruch bleibt ohne Begründung, Fixpaket.
 Feature/Run: Entdeckt: F46 D5, Bau 03.10.2026.
 
 **F-1004** · `TECH_DEBT` · P3 · offen
@@ -12683,3 +12683,21 @@ Auswirkung: Gering.
 Maßnahme: (a) statusBlockHtml um einen Fußbereich erweitern; (b) die Prüfphase als Feld neben `aktivitaet` melden; (c) laufende Nummer je Aufruf im Ringpuffer; (d) Option „wert“ in den Beobachtungen.
 Status: offen.
 Feature/Run: Entdeckt: F46 D5, Prüfpass (design-guardian 9, qa 10, qa 12, qa 15), 03.10.2026.
+
+**F-1005** · `HARNESS_IMPROVEMENT` · P3 · offen
+Titel: Live-Aktivität zeigt Bash-Befehlstexte — ein Befehl mit Geheimnis wäre dort sichtbar.
+Beschreibung: Seit F46 D5 trägt der Ringpuffer der Live-Ansicht das Ziel eines Werkzeugaufrufs, bei Bash/PowerShell den Befehlstext (gekürzt auf 300 Zeichen, escaped, nur lokal im Speicher, mit dem Laufende gelöscht). Enthält ein Befehl ein Geheimnis (Token in einer URL, `Authorization`-Kopf, `--password=…`), steht es während des Laufs lesbar in „Aktivität“ und „Mehr dazu“ des Leitstands.
+Fundstelle: `scripts/leitstand/lauf-aktivitaet.mjs` (melde, kuerze), `public/leitstand/views/live-anzeige.js` (Aktivität, Mehr dazu).
+Auswirkung: Gering — nur lokal und flüchtig, aber auf dem Bildschirm (Bildschirmfreigabe, Screenshot) sichtbar.
+Maßnahme: Fixpaket: bekannte Geheimnis-Muster (Bearer/Token-Köpfe, `password=`/`token=`-Parameter, Schlüssel-Präfixe wie `sk-`, `ghp_`) vor dem Ablegen im Ringpuffer maskieren; Test mit Rot- und Grünfall.
+Status: offen.
+Feature/Run: Entdeckt: F46 D5.
+
+**F-1006** · `TECH_DEBT` · P3 · offen
+Titel: Workforce: Restpunkte aus dem Prüfpass D6.
+Beschreibung: (a) `pruefeHarnessHerkunft` und die realpath-Prüfung in `routen-harness.mjs` doppeln `pruefeCodeHerkunft` (D4) und `liegtEchtInnerhalb` (D1). (b) Kein Test für /api/projekte/<id>/harness über den Dispatcher; der Datei-Symlink-Fall läuft unter Windows ohne Entwicklermodus nicht (übersprungen). (c) Die Zahlen an den Typ-Chips der Capability Library zählen den ganzen Katalog, unabhängig vom Status-Filter. (d) Das gewählte Register der Workforce steht nicht im URL-Hash (Zurück verlässt die Seite). (e) Die aktive Markierung „Workforce“ in der Seitenleiste ändert nur die Farbe (Bestand F44). (f) Eyebrow des Details „Bremsen · Datei“ statt „Bremse · Hook“ wie im Bild.
+Fundstelle: `scripts/leitstand/routen-harness.mjs`, `scripts/leitstand/routen-harness.test.mjs`, `public/leitstand/views/capability-library.js` (renderChips), `public/leitstand/views/capabilities.js` (Register), `public/leitstand/style.css` (.side-bottom a[aria-current]).
+Auswirkung: Gering.
+Maßnahme: (a) gemeinsamer Helfer in scripts/leitstand; (b) Dispatcher-Test, Symlink-Fall in CI; (c) bewusst so lassen oder je Status zählen; (d) Hash-Parameter je Register; (e) Fixpaket (Bestand-Gate beachten); (f) Art aus dem Ordner (hooks → Hook) ableiten.
+Status: offen.
+Feature/Run: Entdeckt: F46 D6, Prüfpass (code-reviewer 4/8, qa B13/B14, design-guardian 6d/7), 03.10.2026.

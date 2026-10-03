@@ -25,6 +25,10 @@ export interface LibraryEintrag extends AufgelosteRessource {
   phasen: LibraryPhase[]
   /** F36 WS-1: was für einen Einsatz im Lauf fehlt, in Klartext (fehltFuerEinsatz, src/ressourcen) — leer = einsatzbereit. Nur Anzeige. */
   fehltFuerEinsatz: string[]
+  /** F46 D6: über den F36-Installationsweg freigebbar (pruefeInstallierbarkeit, noch nicht installiert). Nur Anzeige. */
+  installierbar: boolean
+  /** F46 D6: Grund, warum nicht installierbar — null, wenn installierbar oder schon installiert. */
+  installationsGrund: string | null
 }
 
 export interface LibraryAnsicht {

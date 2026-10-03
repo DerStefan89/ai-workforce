@@ -515,6 +515,7 @@ import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { erzeugeAktivitaetsSpeicher, kuerze, ZIEL_MAX_ZEICHEN } from './leitstand/lauf-aktivitaet.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
+import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
 import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
@@ -5946,6 +5947,26 @@ export function erzeugeRequestHandler(optionen = {}) {
     }
     if (req.method === 'GET' && pfad === '/api/code/diff') {
       const { http, koerper } = await baueCodeDiff({ repoWurzel, pfad: angefragteUrl.searchParams.get('pfad') })
+      sendeJson(res, http, koerper)
+      return
+    }
+
+    // F46 D6: Leseroute Harness-Aufbau — reine Projektion, keine Logik hier (D5), siehe
+    // scripts/leitstand/routen-harness.mjs. Feste Liste bekannter Orte unter repoWurzel (sechs Bausteine),
+    // Ordner nur eine Ebene gezählt; /api/harness/datei liest genau einen Pfad, der in der eben gebauten
+    // Liste steht (Allowlist, realpath unter der Repo-Wurzel, höchstens 64 KB). Fehler als Feldstatus, nie
+    // 500; Herkunft wie /api/code (Sec-Fetch-Site). Nicht gepollt.
+    if (req.method === 'GET' && (pfad === '/api/harness' || pfad === '/api/harness/datei')) {
+      const fremd = pruefeHarnessHerkunft(req)
+      if (fremd !== null) {
+        sendeJson(res, 403, { grund: fremd })
+        return
+      }
+      if (pfad === '/api/harness') {
+        sendeJson(res, 200, baueHarnessProjektion({ repoWurzel }))
+        return
+      }
+      const { http, koerper } = baueHarnessDatei({ repoWurzel, pfad: angefragteUrl.searchParams.get('pfad') })
       sendeJson(res, http, koerper)
       return
     }

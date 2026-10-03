@@ -9,7 +9,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { FREIGABE_FILTER, filtereWerkzeuge, naechsterRegisterIndex, WERKZEUG_TYPEN, zaehleWerkzeuge } from './faehigkeiten-anzeige.js'
+import { AKTIV_FILTER, FREIGABE_FILTER, filtereWerkzeuge, istAktiv, naechsterRegisterIndex, ortImHarness, WERKZEUG_TYPEN, zaehleLibrary, zaehleWerkzeuge } from './faehigkeiten-anzeige.js'
 
 const KATALOG = [
   { id: 'claude-code', typ: 'worker', name: 'Claude Code', beschreibung: 'Entwickelt Funktionen', freigabe: 'FREIGEGEBEN' },
@@ -73,4 +73,33 @@ test('naechsterRegisterIndex: Pfeiltasten laufen um, Pos1/Ende springen, andere 
   assert.equal(naechsterRegisterIndex(1, 3, 'Enter'), null)
   assert.equal(naechsterRegisterIndex(1, 3, 'ArrowDown'), null)
   assert.equal(naechsterRegisterIndex(0, 0, 'ArrowRight'), null)
+})
+
+test('F46 D6: istAktiv = freigegeben und verfügbar; zaehleLibrary mit Anzahl je Typ', () => {
+  const liste = [
+    { id: 'a', typ: 'worker', freigabe: 'FREIGEGEBEN', verfuegbar: true },
+    { id: 'b', typ: 'skill', freigabe: 'FREIGEGEBEN', verfuegbar: false },
+    { id: 'c', typ: 'extern', freigabe: 'OFFEN', verfuegbar: false },
+    { id: 'd', typ: 'agent', freigabe: 'OFFEN', verfuegbar: true },
+    null,
+  ]
+  assert.equal(istAktiv(liste[0]), true)
+  assert.equal(istAktiv(liste[1]), false, 'freigegeben, aber nicht verfügbar')
+  assert.equal(istAktiv(liste[3]), false, 'verfügbar, aber Freigabe offen')
+  assert.equal(istAktiv(undefined), false)
+  assert.deepEqual(zaehleLibrary(liste), { katalog: 4, aktiv: 1, nichtAktiv: 3, offen: 2, jeTyp: { worker: 1, skill: 1, agent: 1, extern: 1 } })
+  assert.deepEqual(zaehleLibrary(undefined), { katalog: 0, aktiv: 0, nichtAktiv: 0, offen: 0, jeTyp: { worker: 0, skill: 0, agent: 0, extern: 0 } })
+  assert.deepEqual(ids(filtereWerkzeuge(liste, { aktiv: 'aktiv' })), ['a'])
+  assert.deepEqual(ids(filtereWerkzeuge(liste, { aktiv: 'nicht_aktiv' })), ['b', 'c', 'd'])
+  assert.deepEqual(ids(filtereWerkzeuge(liste, { aktiv: 'nicht_aktiv', typ: 'extern' })), ['c'])
+  assert.deepEqual([...AKTIV_FILTER], ['', 'aktiv', 'nicht_aktiv'])
+})
+
+test('F46 D6: ortImHarness nur aus herkunft — Pfad bei Skill/Agent, Startvorlage bei Worker, sonst null', () => {
+  assert.deepEqual(ortImHarness({ herkunft: { art: 'skill', pfad: '.claude/skills/advisor-pass' } }), { art: 'pfad', pfad: '.claude/skills/advisor-pass' })
+  assert.deepEqual(ortImHarness({ herkunft: { art: 'agent', pfad: '.claude/agents/qa.md' } }), { art: 'pfad', pfad: '.claude/agents/qa.md' })
+  assert.deepEqual(ortImHarness({ herkunft: { art: 'startvorlage', worker: 'codex' } }), { art: 'startvorlage' })
+  assert.equal(ortImHarness({ herkunft: { art: 'extern', url: 'https://example.org' } }), null)
+  assert.equal(ortImHarness({ herkunft: { art: 'skill', pfad: '' } }), null)
+  assert.equal(ortImHarness({}), null)
 })

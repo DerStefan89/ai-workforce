@@ -232,6 +232,14 @@ const CODE_ZEITLIMIT_MS = 30000
 export const holeCode = () => holeJsonOderWirf(mitPraefix('/code'), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
 export const holeCodeDiff = (pfad) => holeJsonOderWirf(mitPraefix(`/code/diff?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(CODE_ZEITLIMIT_MS) })
 
+// F46 D6: Leseroute Harness-Aufbau (scripts/leitstand/routen-harness.mjs) — feste Liste bekannter Orte in sechs
+// Bausteinen (Dateien mit Größe, Ordner eine Ebene gezählt) und der gekappte Inhalt genau einer Datei daraus. Nur
+// beim Betreten von #/capabilities, per „Neu laden“, beim Projektwechsel und beim Klick auf eine Datei — NIE aus dem
+// Poll. holeHarnessDatei schickt genau einen Parameter (pfad); der Server nimmt ihn nur, wenn er in seiner Liste
+// steht (400 sonst → Wurf). Zeitlimit wie holeRoadmap.
+export const holeHarness = () => holeJsonOderWirf(mitPraefix('/harness'), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+export const holeHarnessDatei = (pfad) => holeJsonOderWirf(mitPraefix(`/harness/datei?pfad=${encodeURIComponent(pfad)}`), { signal: AbortSignal.timeout(POLL_ZEITLIMIT_MS) })
+
 // F44 WS-3b: Titel, Ziel, Nicht-Ziele und AKs einer Feature-Akte für das Detail der Seite
 // „Entwicklung“ (views/workboard.js) — nur beim Öffnen des Details, nie aus dem Poll. 200 trägt
 // { status: 'ok' | 'unvollstaendig' }; 400/404/500 werfen (holeJsonOderWirf), die Ansicht zeigt

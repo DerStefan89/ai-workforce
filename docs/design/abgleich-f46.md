@@ -476,8 +476,39 @@ Hauptaufgabe: den Harness verstehen; Fähigkeiten prüfen und freigeben.
 | „Änderung vorschlagen“ | K | E-F46-2 |
 | Library: Kennzahlen im Katalog / aktiv / Freigabe offen, Filter, Suche, Tabelle | U | `GET /api/ressourcen` |
 | Library: Detail mit „Prüfen & freigeben“ | U | Installationsweg F36 |
-| Hinweis „design-guardian fehlt im Katalog“ | K (später) | nicht als fester Text; später aus dem Abgleich `.claude/agents/` gegen Katalog |
+| Hinweis „design-guardian fehlt im Katalog“ | S | nicht als fester Text; seit D6 aus dem Abgleich `.claude/agents/` gegen Katalog |
 | Bearbeiten (01-workforce-harness--Bearbeiten) | K | ganze Ansicht; Fixpaket B1/B5; settings.json und Hooks nur per Vorschlag (E-F46-2) |
+
+Umsetzung D6 (Abweichungen zu §4.14, begründet):
+- Prüfpunkt D6 (§7): Die Vorlage ist nicht eindeutig — die Startvorlage eines neuen Projekts entsteht aus der
+  Byte-Kopie der Harness-Baseline (F41), deren Stand im Zielprojekt nicht als Vergleichsbasis vorliegt. Der
+  Vergleich „wie Vorlage / angepasst / nicht in der Vorlage“ ist deshalb K (Legende und Detail), keine Punkte
+  an den Knoten. Die Leseroute nutzt nur die feste Pfadliste (`scripts/leitstand/routen-harness.mjs`).
+- Pfadliste wie im Bauauftrag; `docs/kommentar-standard.md` aus dem Bild steht nicht darin (nicht im Auftrag) und
+  ist über „In VS Code öffnen“ der Wurzel bzw. die Projektakte erreichbar. `.github/workflows/` erscheint als
+  Ordner mit Anzahl statt als einzelne Datei `ci.yml`; Prüfskripte als Muster `check-*.mjs` mit Anzahl (ohne
+  `*.test.mjs`), einzeln im Ordner-Detail.
+- Bremsen: jeder Hook ist ein eigener Knoten mit Schloss (Bild); `settings.json` ebenso. Ein Ordner der anderen
+  Bausteine ist ein Knoten mit Anzahl; sein Detail listet die direkten Einträge, Dateien davon sind öffenbar.
+- Detail: statt Beschreibungssatz, „Wann“ und „Eingehängt in“ (keine Quelle, Regel 8) stehen Größe, Zuletzt
+  geändert und „Genutzt von“/„Gegen die Vorlage“ als K; der Dateianfang im `<pre>` trägt den Datei-Kopf.
+  „Ganze Datei ansehen“ ist das Scrollen im `<pre>` (bis 64 KB) plus „In VS Code öffnen“; „Sichtbar, aber nicht
+  direkt änderbar.“ steht nur bei Bremsen.
+- „Wer nutzt den Harness?“ als Karte mit K und Satz zu Fixpaket B1; der Untertitel „— und welches Modell was
+  davon nutzt“ entfällt (B1). „Beispiel: CLAUDE.md bearbeiten“ heißt „Harness bearbeiten“ (K, 01-Bearbeiten).
+- Library: „Aktiv“ = freigegeben UND verfügbar (`istAktiv`), nicht „im Lauf genutzt“ — der Hinweis darunter sagt
+  das; freigegeben, aber nicht verfügbar heißt „Freigegeben · nicht verfügbar“. Kennzahlen Im Katalog · Aktiv ·
+  Freigabe offen; zusätzlich zum Bild der Status-Chip
+  „Freigabe offen“ (der Filter nach Freigabe bleibt erreichbar, Regel 7). Spalte „Genutzt von“ entfällt in der
+  Tabelle (nur K im Detail, B1), der Status ist ein Chip statt eines Schalters (ein Schalter suggerierte einen
+  Schreibweg, Regel 2). Detail ohne Lizenz/Kosten (keine Katalogfelder), dafür ID-Felder aus F44 (Phasen, Grund,
+  Fehlt für Einsatz). „Prüfen & freigeben“ steht nur bei offener Freigabe, die der F36-Weg installieren
+  kann (lesendes Feld `installierbar` der Projektion, dieselbe Regel wie der Server); sonst steht der Grund da.
+  Unter 900 px (auch bei 200 % Zoom) ist die Tabelle gestapelt.
+- Die Library ist ein Register mit den Unterbereichen Katalog · Rollen & Besetzung · Empfehlungen (Bestand
+  F44 WS-7a/7b); der Scout bleibt an der Lücke unter Rollen & Besetzung. Hinweis „liegt im Harness, steht nicht
+  im Katalog“ ab D6 aus dem Abgleich (nicht mehr „später“); er entfällt, wenn die Agent-Liste gekappt ist.
+- Phasen & Rollen bleibt „kommt“ (Inhalt aus F44 WS-7a); nur Reihenfolge der Register (Bild) und Kopf je Register.
 
 ### 4.15 Chat — Dock und große Ansicht (05-jarvis-terminal--Zugang, --Main)
 Vorhanden aus F44 WS-8. Terminal-Spalte und „Ins Terminal“ K (E-F46-1). Kein eigener Workstream.

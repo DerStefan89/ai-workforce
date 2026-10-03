@@ -10,7 +10,8 @@ Design-Nachbau nach neuem Seitenaufbau: Leitstand nach den neuen Designs umgesta
 Status: IN_ARBEIT
 
 D0 gemergt #308, 51825aa; D0b gemergt #309, 9c4bf58; D1 gemergt #310, add7c94; D2 gemergt #311, ec3b831;
-D3 gemergt #312, a48b344; D4 gemergt #313, 69a4638; D5 in Arbeit (Branch `feat/f46-d5-live`, Basis `69a4638`). D6 offen.
+D3 gemergt #312, a48b344; D4 gemergt #313, 69a4638; D5 gemergt #314, a445783; D6 in Arbeit (Branch
+`feat/f46-d6-workforce`, Basis `a445783`) — letzter Workstream. Status bleibt IN_ARBEIT bis zur Abnahme durch Stefan.
 
 Feature-Nummer: F45 ist durch E-F45-1 (`docs/projekt/zielfassung.md` §13.6) für das Fixpaket
 „Arbeitsfähigkeit“ vorgesehen; der Design-Nachbau ist deshalb F46 (Finding F-983).
@@ -56,8 +57,8 @@ Beide Entscheidungen stehen auch in `docs/projekt/zielfassung.md` §13.6.
 | D2 | Entscheidungen + Entscheiden (Freigabe, Abnahme); Entscheidungsart `abnahme` | Abnahmestand in den Workflow-Kopfdaten | 1–1,5 | ≈ 0,3 AT (#311) |
 | D3 | Eintrag im Detail (Feature, Bug; Workstream-Ansicht kommt (Fixpaket B2/B5)); Bausteine Kurz gesagt, Status-Block, Jetzt-Band; Urteil je AK | – (Urteile aus GET …/abnahme) | 0,5–1 | ≈ 0,4 AT (#312; Branch → Bericht 22:57) |
 | D4 | Reiterzeile Entwicklung, Code, Tech Debt & Prozess, Auftrag anlegen (rechte Spalte) | Leseroute GET /api/projekte/&lt;id&gt;/code | 1,5–2 | ≈ 0,2 AT (#313) |
-| D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | |
-| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | |
+| D5 | Live-Ansicht (#/live), beendeter Lauf, Aufträge-Liste | Ringpuffer der letzten 50 Werkzeugaufrufe | 1–1,5 | ≈ 0,2 AT (#314) |
+| D6 | Workforce: Harness-Aufbau und Library (Rollen & Besetzung und Scout aus F44 WS-7 bleiben) | Leseroute Harness-Dateien (feste Pfadliste) | 1–1,5 | offen |
 
 Die Spalte „Ist“ trägt der Challenger nach Abschluss eines Workstreams nach.
 
@@ -586,3 +587,88 @@ Ist D4 ≈ 0,2 AT (#313); Ist D5 offen.
 
 ### Abweichungen von abgleich-f46.md (D5)
 Stehen begründet in `docs/design/abgleich-f46.md` unter §4.10 („Umsetzung D5“).
+
+## Stand D6 „Workforce: Harness-Aufbau und Capability Library“ (03.10.2026)
+Branch `feat/f46-d6-workforce` (Basis `a445783`), nicht committet. Grundlage `docs/design/abgleich-f46.md`
+(Leitprinzip, §0, §1, §2 `#/capabilities`, §4.14, §5), Bilder 01-workforce-harness--Main und --Library
+(--Bearbeiten nur als „kommt“). Ist D4 ≈ 0,2 AT (#313), Ist D5 ≈ 0,2 AT (#314); Ist D6 offen.
+- **Leseroute** `scripts/leitstand/routen-harness.mjs` (GET …/harness und …/harness/datei, je Projektinstanz
+  über den Dispatcher; Test `routen-harness.test.mjs`, 13 Fälle, davon einer unter Windows ohne
+  Symlink-Recht übersprungen). Feste Liste `HARNESS_BAUSTEINE` unter der Repo-Wurzel in sechs Bausteinen:
+  Regeln (CLAUDE.md, ARCHITECTURE.md, README.md), Wissen (docs/STATUS.md, docs/adr/, docs/projekt/kontext/,
+  docs/harness/), Gedächtnis (state/findings.md, gates.md, assumption-ledger.md, triggers.md, memory-map.md,
+  tooling.md, state/zwischenstand/), Rollen & Fähigkeiten (.claude/agents/, skills/, commands/), Bremsen
+  (.claude/settings.json, .claude/hooks/ — geschützt), Prüfung & Betrieb (scripts/ mit Muster check-*.mjs ohne
+  *.test.mjs, .github/workflows/, .worktreeinclude). Je Eintrag `{ pfad, art, vorhanden, status, grund?,
+  geschuetzt?, groesse?, geaendert?, anzahl?, muster?, eintraege?, gekappt? }`; Ordner eine Ebene (höchstens
+  200 direkte Einträge genannt, alle gezählt, Punkt-Namen nicht), nie rekursiv. Detail: syntaktische Prüfung
+  (Länge, Steuerzeichen, absolut, „..“, Backslash) → Allowlist gegen die eben gebaute Liste (Datei-Eintrag oder
+  direkte reguläre Datei eines gelisteten Ordners; gelesen wird der Listenwert) → `leseKontextDatei` aus D1
+  (realpath unter der echten Repo-Wurzel, höchstens 64 KB, `gekuerzt`); NUL-Byte → `binaer` ohne Text.
+  Verstoß 400, Lesefehler als Feldstatus, nie 500; Sec-Fetch-Site-Abwehr wie /api/code (403). Nicht gepollt.
+- **Workforce** `#/capabilities`: Register in der Reihenfolge des Bildes Harness-Aufbau (Standard) · Capability
+  Library · Phasen & Rollen (WAI-ARIA wie bisher); Titel und Beschreibung folgen dem Register.
+  - Harness-Aufbau (`views/harness-aufbau.js`, Regeln `harness-anzeige.js`): Legende mit „Gegen die Vorlage“
+    und „Genutzt von“ als „kommt“, Skelett „Dein Harness · <Repo>“ mit sechs Spalten, echte Dateien und Anzahlen,
+    Hooks einzeln mit Schloss, fehlende Orte gestrichelt „fehlt“, fehlerhafte „nicht lesbar“ (Grund); Klick
+    öffnet das Detail (Baustein · Art · nur lesend, Größe, geändert, Genutzt von/Vorlage „kommt“, Inhalt escaped
+    im `<pre>`, Hinweis bei Kappung, „Änderung vorschlagen“ kommt, „In VS Code öffnen“); Bremsen mit Schloss und
+    „Sichtbar, aber nicht direkt änderbar.“; Ordner zeigt seine direkten Einträge, Dateien davon öffenbar.
+    „Wer nutzt den Harness?“ und „Harness bearbeiten“ (01-Bearbeiten) kommt; „Zur Capability Library →“.
+  - Capability Library (`views/capability-library.js`): Kennzahlen Im Katalog · Aktiv · Freigabe
+    offen, Suche, Chips Alle · Skills · Agents · Worker · Extern (mit Anzahl) und Alle · Aktiv · Nicht aktiv ·
+    Freigabe offen, Tabelle Fähigkeit · Typ · Ort im Harness · Status (12 Zeilen, „Alle anzeigen“), Detail mit
+    Typ, Genutzt von (kommt), Ort, Quelle (Link nur http(s), noopener), Phasen, Grund, Fehlt für Einsatz;
+    bei offener Freigabe, die der F36-Weg installieren kann (neues lesendes Feld `installierbar`/
+    `installationsGrund` in `projeziereLibrary`, dieselbe Regel `pruefeInstallierbarkeit`), „Prüfen & freigeben“ =
+    der bestehende F36-Weg (`empfehlung-installation.js`: vorbereiten → Bestätigungsblock → installieren,
+    unverändert; neu nur zwei lesende Getter in `empfehlung-anzeige.js`), sonst der Grund; „Im Harness-Aufbau zeigen →“. Hinweis „<Agent> liegt im Harness unter
+    .claude/agents/, steht aber noch nicht im Katalog.“ nur aus dem Abgleich (Route + /api/ressourcen; heute
+    real: design-guardian). Rollen & Besetzung und Scout bleiben als Unterbereiche erreichbar (unverändert),
+    ebenso Empfehlungen, ASSESSED-Hinweis und Technische Angaben.
+  - Phasen & Rollen: Inhalt aus F44 WS-7a („kommt“), nur Register-Reihenfolge und Kopf angepasst.
+- **Texte** de/en/tr/ru (Schlüssel `library.*`, `harness.*`, `werkstatt.phasen.beschreibung`); geändert
+  `werkstatt.eyebrow`, `.beschreibung`, `.register.faehigkeiten`, `.reiter.werkzeuge` (Katalog),
+  `.hinweis.aktiv.*`; entfernt 13 tote Schlüssel der Kacheln und des Harness-„kommt“.
+- **Gate-/Test-Änderungen:** keine Gate-Datei geändert (keine ID der Gates zog um). Tests neu:
+  `routen-harness.test.mjs`, `harness-anzeige.test.mjs`, `views/workforce.test.mjs`; erweitert
+  `faehigkeiten-anzeige.test.mjs` (istAktiv, zaehleLibrary, Aktiv-Filter, ortImHarness) und
+  `capabilities-ansicht.test.ts` (installierbar).
+- **Nachweise** `features/F46/nachweise/d6/` (Skript `erzeuge-nachweis.mjs`, Port 4199, nur feste Antworten,
+  jeder POST bekäme 409 mit Marke; das Skript leert nur eigene, direkte Unterordner).
+- **Register:** neu F-1005 und F-1006; F-1003 mit Vermerk der Entscheidung vom 03.10.2026.
+- **Prüfpass** (code-reviewer, design-guardian, qa parallel, einmal, frischer Kontext): code-reviewer „freigegeben
+  mit Hinweisen“ (Leseroute ohne Sicherheitsbefund: Allowlist, realpath, Größe, kein freier Pfad bestätigt),
+  design-guardian „nicht freigegeben“ (zwei mittlere Befunde), qa „freigegeben mit Hinweisen“ (drei mittlere).
+  Eine Korrekturrunde, eingearbeitet:
+  - Library-Tabelle: Typ und Status in festen rem-Breiten ohne Bruch im Wort, ohne senkrechte Linien und gefüllten
+    Kopf, gestapelt unter 900 px (200 % Zoom, ru; dg 1, dg 4).
+  - Fokus kehrt nach Chip, Zeilenwahl und „Alle anzeigen“ auf den neu gezeichneten Knopf zurück (dg 2, qa B2);
+    im Harness geht der Fokus unter 1100 px ins Detail (dg 3).
+  - „Prüfen & freigeben“ nur, wo der F36-Weg durchgeht (Feld `installierbar`), sonst der Grund (qa B1); „Aktiv“
+    ohne „· freigegeben“, Status „Freigegeben · nicht verfügbar“ (qa B3).
+  - Überholschutz auch beim Wechsel Datei → Ordner (cr 1, mit Test); Projektwechsel und Laden leeren Detail,
+    Kennzahlen, Chips und Hinweis des alten Stands (cr 2, qa B4); Lesefehler vor „fehlt“ (cr 5); ein Bremsen-Ordner
+    mit Unterordner oder Verknüpfung bleibt ein Ordnerknoten (cr 6, qa B7); 400 → „nicht mehr vorhanden“ (qa B5);
+    Suche und Filter zeichnen das Detail nicht neu, ein Hinweis sagt „ausgeblendet“ (qa B6, qa B10); „Im
+    Harness-Aufbau zeigen“ öffnet die Datei selbst (qa B8); Anzahl am Knoten nur einmal vorgelesen (qa B9);
+    Leerzustand ohne Orte ohne Aufforderung, Antwort ohne bausteine als Fehler (qa B11); Bereichsnamen der beiden
+    Details (dg 6c, cr 10, qa B12); mehrere fehlende Agents als ein Satz (dg 5); Link links, gewählter Knoten
+    deutlicher (dg 6a/6b).
+  - Toter Kachel-CSS-Block und toter Schlüssel entfernt (cr 7); `lesbar.has` (cr 9); bekannte Grenzen (TOCTOU,
+    Hardlink, Einstellungsdatei mit Geheimnissen) im Kopf von `routen-harness.mjs` (cr 3).
+  - Nicht übernommen (F-1006): gemeinsamer Herkunfts-/realpath-Helfer mit D1/D4 (cr 4), Dispatcher-Test und
+    Datei-Symlink-Test unter Windows (cr 8), Zahlen an den Typ-Chips unabhängig vom Status-Filter (qa B13), Register
+    nicht im URL-Hash (qa B14), schwache aktive Markierung „Workforce“ in der Seitenleiste (dg 7, Bestand),
+    Eyebrow „Bremsen · Datei“ statt „Bremse · Hook“ (dg 6d, aus Baustein und Art gebildet).
+  - Nachweise neu (33 WebP, 12 Folgen), zusätzlich „nicht installierbar“ und Fokus-Spalte im Protokoll.
+
+### Abweichungen von abgleich-f46.md (D6)
+Stehen begründet in `docs/design/abgleich-f46.md` unter §4.14 („Umsetzung D6“).
+
+## Abschlussvermerk F46 (vorbereitet, gilt erst mit Stefans Abnahme)
+D0–D6 umgesetzt (D0 #308, D0b #309, D1 #310, D2 #311, D3 #312, D4 #313, D5 #314, D6 offen). Alle Seiten aus
+`docs/design/neu/` sind nach dem Leitprinzip nachgebaut; was ohne Quelle ist, steht als „kommt“ mit Ziel
+(§5 des Abgleichs: Fixpaket B1, B2, B5, Fixpaket ohne Nummer, Terminal-Vorhaben, Später). Offene Restpunkte im
+Register (offen, Stand 03.10.2026): F-985 bis F-995, F-998 bis F-1001, F-1003 bis F-1006. Status bleibt IN_ARBEIT bis zur Abnahme; danach
+ABGESCHLOSSEN mit Datum und Ist D6. Nächste Schritte laut E-M5-18: Fixpaket „Arbeitsfähigkeit“ (F45), dann F30.

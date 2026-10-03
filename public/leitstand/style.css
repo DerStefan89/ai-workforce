@@ -8926,62 +8926,13 @@ th {
   margin-top: 0;
 }
 
-.werkstatt-kennzahlen {
-  margin: 0 0 16px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.werkstatt-suchzeile {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin: 0 0 24px;
-}
-
-/* max-width ohne width: 100% bei select und .werkzeug-typ ist gewollt — volle Breite zerrisse Suchzeile bzw. Chip. */
-.werkstatt-suchzeile input,
-.werkstatt-suchzeile select {
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 11px 13px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--field);
-  color: var(--ink);
-  font: 13px/1.5 var(--sans);
-}
-
-.werkstatt-suchzeile input {
-  flex: 1 1 15rem;
-  width: 100%;
-}
-
-.werkstatt-suchzeile select {
-  flex: 0 1 auto;
-}
-
-.werkstatt-suchzeile input::placeholder {
-  color: var(--muted);
-}
-
-.v10-seite .werkstatt-suchzeile input:focus-visible,
-.v10-seite .werkstatt-suchzeile select:focus-visible {
-  outline: 2px solid var(--mint);
-  outline-offset: 2px;
-}
-
-/* .scout-raster/.scout-karte (WS-7b) teilen Raster und Kartenrahmen mit den Werkzeug-Kacheln. */
-.werkzeug-raster,
+/* .scout-raster/.scout-karte (WS-7b): Raster und Kartenrahmen der Scout-Kandidaten (die Werkzeug-Kacheln entfielen mit F46 D6). */
 .scout-raster {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
   gap: 20px;
 }
 
-.werkzeug-karte,
 .scout-karte {
   display: flex;
   flex-direction: column;
@@ -8992,12 +8943,6 @@ th {
   background: var(--panel);
 }
 
-.werkzeug-karte-kopf {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 14px;
-}
-
 .werkzeug-typ {
   display: inline-block;
   max-width: 100%;
@@ -9006,77 +8951,6 @@ th {
   border-radius: 4px;
   font-size: 10px;
   color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-.v10-seite .werkzeug-karte h3 {
-  margin: 0 0 8px;
-  overflow-wrap: break-word;
-  hyphens: auto;
-}
-
-/* F44 WS-7b: höchstens drei Zeilen auf der Kachel (Volltext im Kachel-Detail). Rückfall ohne line-clamp: feste
-   Höhe von drei Zeilen (1.6 × 3), abgeschnitten ohne Auslassungszeichen. */
-.werkzeug-beschreibung {
-  margin: 0 0 20px;
-  max-height: 4.8em;
-  overflow: hidden;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-}
-
-@supports (-webkit-line-clamp: 3) {
-  .werkzeug-beschreibung {
-    display: -webkit-box;
-    max-height: none;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
-  }
-}
-
-/* margin-top: auto schiebt den Fuß in gleich hohen Karten einer Reihe an dieselbe Stelle. */
-.werkzeug-fuss {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin-top: auto;
-  padding-top: 15px;
-  border-top: 1px solid var(--line);
-}
-
-.werkzeug-detail {
-  margin-top: 12px;
-  font-size: 12px;
-}
-
-.werkzeug-detail > summary {
-  cursor: pointer;
-  color: var(--muted);
-}
-
-.werkzeug-detail[open] > summary {
-  margin-bottom: 12px;
-  color: var(--ink);
-}
-
-.werkzeug-detail dl {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: 6px 14px;
-  margin: 0;
-}
-
-.werkzeug-detail dt {
-  color: var(--muted);
-}
-
-.werkzeug-detail dd {
-  margin: 0;
-  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -9113,7 +8987,6 @@ th {
   overflow-wrap: anywhere;
 }
 
-.v10-seite .werkzeug-detail summary:focus-visible,
 .v10-seite .werkstatt-technik summary:focus-visible {
   outline: 2px solid var(--mint);
   outline-offset: 4px;
@@ -12041,4 +11914,917 @@ a.umgebung-werkzeug:not([aria-disabled='true']):hover {
 .live-schritt-id {
   font-size: 11px;
   color: var(--muted);
+}
+
+/* ─────────────── Workforce (F46 D6, Design 01-workforce-harness--Main und --Library) ───────────────
+   #/capabilities: Register Harness-Aufbau (Legende, Skelett mit sechs Bausteinen, Detailpanel, „Wer nutzt den
+   Harness?“) und Capability Library (Kennzahlen, Suche, Chips, Tabelle, Detail). Maße wie die Quelle
+   docs/design/neu/quelle/01-workforce-harness/, Farben nur über Tokens (Bremse bernstein, Auswahl/aktiv mint).
+   Kein display auf Elementen, die über das hidden-Attribut umschalten (Panels, #library-hinweis) — F-622. */
+.werkstatt-textlink {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 13px/1.5 var(--sans);
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.werkstatt-textlink:hover {
+  color: var(--ink);
+}
+
+.v10-seite .werkstatt-textlink:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+
+.harness-legende {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 28px;
+  margin-bottom: 26px;
+  padding: 14px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.harness-legende-teil {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.harness-legende-label {
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.harness-legende-trenner {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+
+.harness-schloss {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 2.2;
+}
+
+.harness-skelett {
+  margin-bottom: 26px;
+  padding: 30px 24px 34px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.v10-seite .harness-leer {
+  margin-top: 0;
+}
+
+/* Wurzel „Dein Harness“ mit Stiel nach unten und Querbalken über den Spalten (Bild 01-Main). */
+.harness-wurzel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto 48px;
+  padding: 16px 30px;
+  border: 1px solid var(--mint);
+  border-radius: 14px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.harness-wurzel::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 48px;
+  background: var(--line);
+}
+
+.harness-wurzel-eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.harness-wurzel strong {
+  font: 400 24px/1.2 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.harness-wurzel-teile {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Querbalken als obere Kante, je Spalte ein Stiel zum Kopf. */
+.harness-spalten {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.harness-spalte {
+  position: relative;
+  min-width: 0;
+}
+
+.harness-spalte::before {
+  content: '';
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+}
+
+.harness-spalte-kopf {
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: center;
+}
+
+.v10-seite .harness-spalte-kopf h3 {
+  margin: 0;
+  font: 400 16px/1.3 var(--serif);
+  overflow-wrap: anywhere;
+}
+
+.harness-spalte-kopf code {
+  display: block;
+  margin-top: 3px;
+  font: 11px/1.4 var(--font-family-mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.harness-knoten-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 0 14px;
+  padding: 10px 0 0;
+  border-left: 1px solid var(--line);
+  list-style: none;
+}
+
+.harness-knoten-liste > li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.harness-knoten-liste > li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 12px;
+  height: 1px;
+  background: var(--line);
+}
+
+.harness-knoten {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg);
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+}
+
+button.harness-knoten {
+  cursor: pointer;
+}
+
+button.harness-knoten:hover {
+  border-color: var(--button-hover-line);
+}
+
+.harness-knoten[aria-pressed='true'] {
+  border-color: var(--mint);
+  background: var(--success-soft);
+  box-shadow: inset 2px 0 0 var(--mint);
+}
+
+.harness-knoten[data-geschuetzt='true'][aria-pressed='true'] {
+  border-color: var(--amber);
+  background: var(--note-amber-bg);
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+
+.v10-seite button.harness-knoten:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.harness-knoten[data-zustand='fehlt'],
+.harness-knoten[data-zustand='fehler'] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* Name bricht in sich um; Anzahl und Schloss bleiben rechts daneben (Bild 01-Main). */
+.harness-knoten-zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.harness-knoten-zeile .harness-schloss {
+  margin: 2px 0 0 auto;
+}
+
+.harness-knoten-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: 11.5px/1.4 var(--font-family-mono);
+  overflow-wrap: anywhere;
+}
+
+.harness-knoten-anzahl {
+  flex-shrink: 0;
+  font: 11.5px/1.4 var(--font-family-mono);
+  color: var(--muted);
+}
+
+.harness-knoten-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.harness-knoten[data-zustand='fehler'] .harness-knoten-status {
+  color: var(--red);
+}
+
+.harness-unten {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  gap: 24px;
+  align-items: start;
+}
+
+.harness-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.harness-detail:has(.harness-detail-eyebrow.geschuetzt) {
+  border-color: var(--tag-geplant-line);
+}
+
+.v10-seite .harness-detail-leer {
+  margin: 0;
+}
+
+.harness-detail-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.harness-detail-eyebrow.geschuetzt {
+  color: var(--amber);
+}
+
+.harness-detail-eyebrow .harness-schloss {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+
+.v10-seite .harness-detail-pfad {
+  margin: 0;
+  font: 400 26px/1.25 var(--font-family-mono);
+  overflow-wrap: anywhere;
+}
+
+.harness-detail-daten {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.harness-detail-daten > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+}
+
+.harness-detail-daten dt {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.harness-detail-daten dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.harness-detail-inhalt {
+  max-height: 28rem;
+  margin: 0;
+  padding: 16px 18px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--code-bg);
+  font: 12.5px/1.6 var(--font-family-mono);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.v10-seite .harness-detail .hinweis,
+.v10-seite .harness-detail .leer,
+.v10-seite .harness-detail .note {
+  margin: 0;
+}
+
+.harness-detail-fuss {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.v10-seite .harness-detail-fuss a.button {
+  text-decoration: none;
+}
+
+.harness-detail-satz {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.harness-ordner-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.harness-ordner-liste > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.harness-ordner-eintrag {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 12.5px/1.5 var(--font-family-mono);
+  color: var(--ink);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+button.harness-ordner-eintrag {
+  color: var(--mint);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.v10-seite button.harness-ordner-eintrag:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+.harness-ordner-eintrag[data-art='ordner'],
+.harness-ordner-eintrag[data-art='sonstiges'] {
+  color: var(--muted);
+}
+
+.harness-ordner-groesse {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.harness-nutzer {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.v10-seite .harness-nutzer h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font: 400 22px/1.25 var(--serif);
+}
+
+.harness-nutzer p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.harness-fusslinks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 24px;
+  margin-top: 24px;
+}
+
+/* Capability Library */
+.library-kennzahlen {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.library-kennzahl {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.library-kennzahl.aktiv {
+  border-color: var(--mint);
+}
+
+.library-kennzahl-label {
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.library-kennzahl.aktiv .library-kennzahl-label {
+  color: var(--mint);
+}
+
+.library-kennzahl strong {
+  font: 400 32px/1 var(--serif);
+}
+
+.library-filterzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-bottom: 18px;
+}
+
+.library-suche {
+  flex: 1 1 14rem;
+  width: 100%;
+  max-width: 18rem;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--field);
+  color: var(--ink);
+  font: 13px/1.5 var(--sans);
+}
+
+.library-suche::placeholder {
+  color: var(--muted);
+}
+
+.v10-seite .library-suche:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.library-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.library-chip {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  font: 13px/1.3 var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.library-chip:hover {
+  color: var(--ink);
+}
+
+.library-chip[aria-pressed='true'] {
+  border-color: var(--mint);
+  background: var(--success-soft);
+  color: var(--ink);
+}
+
+.v10-seite .library-chip:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+
+.v10-seite .library-hinweis {
+  margin: 0 0 18px;
+  border-left-color: var(--amber);
+  background: var(--note-amber-bg);
+  color: var(--ink);
+}
+
+.v10-seite .library-hinweis strong {
+  display: inline;
+}
+
+.library-hinweis p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.library-raster {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+  gap: 24px;
+  align-items: start;
+}
+
+.library-liste {
+  min-width: 0;
+}
+
+.library-tabelle-rahmen {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.library-tabelle {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* border-box: bei table-layout fixed zählt das Padding sonst zur Prozentbreite dazu (Statusspalte kollabierte). */
+.library-tabelle th,
+.library-tabelle td {
+  box-sizing: border-box;
+}
+
+.library-tabelle th,
+.library-tabelle td {
+  border: 0;
+}
+
+.library-tabelle th {
+  background: none;
+  padding: 14px 18px;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.library-tabelle th:nth-child(2) {
+  width: 7.5rem;
+}
+
+.library-tabelle th:nth-child(3) {
+  width: 30%;
+}
+
+.library-tabelle th:nth-child(4) {
+  width: 10rem;
+}
+
+/* Typ und Status brechen nur zwischen Wörtern (ru, 200 %), nie mitten im Wort. */
+.library-tabelle th:nth-child(2),
+.library-tabelle th:nth-child(4),
+.library-tabelle td:nth-child(2),
+.library-tabelle td:nth-child(4) {
+  overflow-wrap: normal;
+  hyphens: auto;
+}
+
+.library-tabelle td {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.library-zeile {
+  cursor: pointer;
+}
+
+.library-zeile:hover {
+  background: var(--panel-hover);
+}
+
+.library-zeile[data-gewaehlt='true'] {
+  background: var(--panel-hover);
+  box-shadow: inset 3px 0 0 var(--mint);
+}
+
+.library-name {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 13.5px/1.4 var(--font-family-mono);
+  color: var(--ink);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.v10-seite .library-name:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 3px;
+}
+
+.library-anzeigename,
+.library-beschreibung {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Höchstens drei Zeilen in der Tabelle (Volltext im Detail); Rückfall ohne line-clamp: feste Höhe. */
+.library-beschreibung {
+  max-height: 4.35em;
+  overflow: hidden;
+}
+
+@supports (-webkit-line-clamp: 3) {
+  .library-beschreibung {
+    display: -webkit-box;
+    max-height: none;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+}
+
+.library-ort {
+  font: 12px/1.4 var(--font-family-mono);
+  color: var(--muted);
+}
+
+.library-fuss {
+  margin: 0;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.library-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--mint);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.v10-seite .library-detail > .leer {
+  margin: 0;
+}
+
+.library-detail-eyebrow {
+  font-size: 10.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.library-detail-eyebrow.aktiv {
+  color: var(--mint);
+}
+
+.v10-seite .library-detail-name {
+  margin: 0;
+  font: 400 22px/1.3 var(--font-family-mono);
+  overflow-wrap: anywhere;
+}
+
+.library-detail-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.library-detail-daten {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.library-detail-daten dt {
+  color: var(--muted);
+}
+
+.library-detail-daten dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.library-detail .library-zum-harness {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.v10-seite .library-detail .hinweis {
+  margin: 0;
+}
+
+.library-freigabe {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.library-freigabe > p {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--soft);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.library-freigabe > .button {
+  align-self: stretch;
+  justify-content: center;
+  white-space: normal;
+}
+
+@media (max-width: 1100px) {
+  .harness-spalten {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 28px;
+  }
+
+  .harness-unten,
+  .library-raster {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .harness-skelett {
+    padding: 20px 14px 24px;
+  }
+
+  .harness-spalten {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .library-kennzahlen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .harness-detail,
+  .library-detail {
+    padding: 18px;
+  }
+
+  .v10-seite .harness-detail-pfad {
+    font-size: 20px;
+  }
+
+  .library-detail-daten {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .library-detail-daten dd {
+    margin-bottom: 8px;
+  }
+}
+
+/* Unter 900 px (auch 1440 px bei 200 % Zoom): Tabelle als gestapelte Blöcke mit Beschriftung (Muster Tech Debt, F46 D4). */
+@media (max-width: 900px) {
+  .library-tabelle thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .library-tabelle,
+  .library-tabelle tbody,
+  .library-tabelle tr,
+  .library-tabelle td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .library-tabelle tr {
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .library-tabelle tbody tr:first-child {
+    border-top: 0;
+  }
+
+  .library-tabelle td {
+    padding: 4px 16px;
+    border-top: 0;
+  }
+
+  .library-tabelle td:not(:first-child)::before {
+    content: attr(data-spalte) ': ';
+    color: var(--muted);
+  }
+}
+
+@media (max-width: 420px) {
+  .harness-spalten {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -14,6 +14,8 @@
  * Wird aufgerufen von:
  * - public/leitstand/views/workflows.js (Freigabedialog, F44 WS-4a)
  * - public/leitstand/views/workboard.js (Workflow-Vorschlag)
+ * - public/leitstand/views/capability-library.js („Prüfen & freigeben“ im Detail der Capability Library,
+ *   F46 D6 — derselbe Ablauf mit Bestätigungsblock, unverändert)
  * - public/leitstand/empfehlung-installation.test.mjs
  *
  * F44 WS-4a (F5): Texte über i18n (Schlüssel installation.*; Server- und Katalogwerte bleiben roh),

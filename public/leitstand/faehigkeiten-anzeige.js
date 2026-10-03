@@ -8,7 +8,9 @@
  * node:test die Regeln direkt prüft (faehigkeiten-anzeige.test.mjs).
  *
  * Wird aufgerufen von:
- * - public/leitstand/views/capabilities.js
+ * - public/leitstand/views/capabilities.js (naechsterRegisterIndex, WERKZEUG_TYPEN)
+ * - public/leitstand/views/capability-library.js (istAktiv, zaehleLibrary, filtereWerkzeuge, ortImHarness — Capability
+ *   Library, F46 D6)
  * - public/leitstand/rollen-kreis.js (naechsterRegisterIndex — Rollen-Register der Übersicht; F46 D1)
  * - public/leitstand/faehigkeiten-anzeige.test.mjs (node:test)
  *
@@ -47,6 +49,45 @@ export function zaehleWerkzeuge(eintraege) {
   }
 }
 
+/** Werte des Aktiv-Filters der Capability Library (F46 D6): '' = alle. */
+export const AKTIV_FILTER = Object.freeze(['', 'aktiv', 'nicht_aktiv'])
+
+/**
+ * „Aktiv“ in der Capability Library (F46 D6, Bild 01-Library): freigegeben UND verfügbar. Das heißt
+ * einsatzbereit, nicht „gerade im Lauf genutzt“ — was ein Lauf nutzt, steht in der Ausführung.
+ * @param eintrag - ein Katalogeintrag
+ * @returns true, wenn aktiv
+ */
+export function istAktiv(eintrag) {
+  return eintrag?.freigabe === 'FREIGEGEBEN' && eintrag?.verfuegbar === true
+}
+
+/**
+ * Zählt den Katalog für die Kennzahlen und Filter-Chips der Capability Library (F46 D6).
+ * @param eintraege - ansicht.eintraege
+ * @returns { katalog, aktiv, nichtAktiv, offen, jeTyp: { worker, skill, agent, extern } }
+ */
+export function zaehleLibrary(eintraege) {
+  const liste = alsListe(eintraege)
+  const aktiv = liste.filter(istAktiv).length
+  const jeTyp = Object.fromEntries(WERKZEUG_TYPEN.map((typ) => [typ, liste.filter((e) => e.typ === typ).length]))
+  return { katalog: liste.length, aktiv, nichtAktiv: liste.length - aktiv, offen: liste.filter((e) => e.freigabe === 'OFFEN').length, jeTyp }
+}
+
+/**
+ * Ort einer Fähigkeit im Harness (Spalte „Ort im Harness“, F46 D6) — nur aus herkunft, nichts geraten:
+ * Skill und Agent mit ihrem repo-relativen Pfad, ein Worker aus der Startvorlage, sonst null.
+ * @param eintrag - ein Katalogeintrag
+ * @returns { art: 'pfad', pfad } | { art: 'startvorlage' } | null
+ */
+export function ortImHarness(eintrag) {
+  const herkunft = eintrag?.herkunft
+  if (herkunft === null || typeof herkunft !== 'object') return null
+  if ((herkunft.art === 'skill' || herkunft.art === 'agent') && typeof herkunft.pfad === 'string' && herkunft.pfad !== '') return { art: 'pfad', pfad: herkunft.pfad }
+  if (herkunft.art === 'startvorlage') return { art: 'startvorlage' }
+  return null
+}
+
 /**
  * Trifft der Suchtext auf id, name oder beschreibung (ohne Groß-/Kleinschreibung)?
  * @param eintrag - ein Katalogeintrag
@@ -60,17 +101,21 @@ function trifftSuche(eintrag, suche) {
 /**
  * Filtert die Einträge nach Suche, Typ und Freigabe; die Reihenfolge des Servers bleibt.
  * @param eintraege - ansicht.eintraege
- * @param filter - { suche: Freitext, typ: '' oder ein Typ, freigabe: '' | 'freigegeben' | 'offen' }
+ * @param filter - { suche: Freitext, typ: '' oder ein Typ, freigabe: '' | 'freigegeben' | 'offen',
+ *   aktiv: '' | 'aktiv' | 'nicht_aktiv' (F46 D6, istAktiv) }
  * @returns die passenden Einträge
  */
 export function filtereWerkzeuge(eintraege, filter = {}) {
   const suche = typeof filter.suche === 'string' ? filter.suche.trim().toLowerCase() : ''
   const typ = typeof filter.typ === 'string' ? filter.typ : ''
   const freigabe = typeof filter.freigabe === 'string' ? filter.freigabe : ''
+  const aktiv = typeof filter.aktiv === 'string' ? filter.aktiv : ''
   return alsListe(eintraege).filter((eintrag) => {
     if (typ !== '' && eintrag.typ !== typ) return false
     if (freigabe === 'freigegeben' && eintrag.freigabe !== 'FREIGEGEBEN') return false
     if (freigabe === 'offen' && eintrag.freigabe !== 'OFFEN') return false
+    if (aktiv === 'aktiv' && !istAktiv(eintrag)) return false
+    if (aktiv === 'nicht_aktiv' && istAktiv(eintrag)) return false
     return suche === '' || trifftSuche(eintrag, suche)
   })
 }

@@ -115,6 +115,18 @@ test('projeziereLibrary: F36 WS-1 — extern OFFEN mit technischem Defekt zeigt 
   assert.ok(o.anzeigeGrund.includes('noch nicht freigegeben'), o.anzeigeGrund)
 })
 
+test('projeziereLibrary: F46 D6 — installierbar nach derselben Regel wie der F36-Weg, mit Grund', () => {
+  const basis = aufgelosteRessourcen()[2]
+  const skill: AufgelosteRessource = { ...basis, typ: 'extern', unterart: 'skill', herkunft: { art: 'extern', url: 'https://github.com/pbakaus/impeccable' }, installation_vorlage: { skill_pfad: 'skills/impeccable' } }
+  const ohneVorlage: AufgelosteRessource = { ...basis, typ: 'extern', unterart: 'skill', herkunft: { art: 'extern', url: 'https://github.com/pbakaus/impeccable' } }
+  const installiert: AufgelosteRessource = { ...skill, installation: { pfad: '~/x', version: '1' } }
+  const [s, o, i] = projeziereLibrary([skill, ohneVorlage, installiert], 'x.json').eintraege
+  assert.deepStrictEqual([s.installierbar, s.installationsGrund], [true, null])
+  assert.strictEqual(o.installierbar, false)
+  assert.match(String(o.installationsGrund), /installation_vorlage/)
+  assert.deepStrictEqual([i.installierbar, i.installationsGrund], [false, null], 'schon installiert')
+})
+
 test('projeziereLibrary: AK6 — startvorlagePfad wird unverändert durchgereicht', () => {
   const ansicht = projeziereLibrary([], 'startvorlagen/ai-workforce.json')
   assert.strictEqual(ansicht.startvorlagePfad, 'startvorlagen/ai-workforce.json')
