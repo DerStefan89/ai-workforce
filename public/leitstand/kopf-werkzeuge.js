@@ -22,6 +22,7 @@
  *   aus GET …/projektakte; F46 D1)
  * - public/leitstand/code-stand.js (setzeKopfAusCodeStand, F46 D4), views/code.js und
  *   views/auftrag-umgebung.js (baueVsCodeLink, pruefeGithubUrl, F46 D4)
+ * - public/leitstand/views/harness-aufbau.js (baueVsCodeLink — Detail einer Harness-Datei, F46 D6)
  * - public/leitstand/kopf-werkzeuge.test.mjs (node:test)
  *
  * Wichtig:

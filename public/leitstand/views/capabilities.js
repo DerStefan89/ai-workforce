@@ -1,42 +1,55 @@
 /**
  * Datei: public/leitstand/views/capabilities.js
  *
- * Zweck: View `#/capabilities` — die Werkstatt (F44 WS-7a, Vorlage V10 d_harness_phasen Kopf/Register,
- * d_faehigkeiten, d_faehigkeiten_rollen; Abgleich F-725 J5–J8). Drei clientseitige Register
- * (Harness-Aufbau und Phasen & Rollen als Baustein „kommt“, Fähigkeiten als Standard), darin drei
- * Unterreiter: Werkzeuge (Kacheln mit Suche und Filter), Rollen & Besetzung (Coverage je Rolle mit
- * Gap-Zeilen und lazy geladenen Details) und Empfehlungen (Verweis auf den Freigabeschritt). Jede
- * Darstellung ist eine reine Projektion über GET /api/ressourcen, GET /api/ressourcen/abdeckung und
- * GET /api/ressourcen/rollen/<rolle> (scripts/leitstand-server.mjs, src/capabilities-ansicht/index.ts);
- * die Regeln für Zählung, Filter und Register-Tastatur stehen in ../faehigkeiten-anzeige.js.
+ * Zweck: View `#/capabilities` — die Workforce (F44 WS-7a, Vorlage V10 d_harness_phasen, d_faehigkeiten,
+ * d_faehigkeiten_rollen; seit F46 D6 nach docs/design/abgleich-f46.md §4.14, Bilder 01-workforce-harness--Main
+ * und --Library). Drei clientseitige Register in der Reihenfolge des Bildes: Harness-Aufbau (Standard;
+ * views/harness-aufbau.js über GET /api/harness), Capability Library (Unterbereiche Katalog —
+ * views/capability-library.js über GET /api/ressourcen —, Rollen & Besetzung mit Scout, Empfehlungen) und
+ * Phasen & Rollen (Baustein „kommt“ aus F44 WS-7a). Titel und Beschreibung des Kopfes folgen dem Register.
+ * Diese Datei hält die Register, Rollen & Besetzung (GET /api/ressourcen/abdeckung, Details lazy über
+ * GET /api/ressourcen/rollen/<rolle>), den Scout und das Laden; die Regeln für Zählung, Filter und
+ * Register-Tastatur stehen in ../faehigkeiten-anzeige.js, die des Harness in ../harness-anzeige.js.
  *
- * Kein Poll: Library und Coverage kommen aus Dateien, die sich nur durch
- * Commits ändern (Muster views/workboard.js), die Rollen-Besetzung
- * zusätzlich aus Laufakten, die sich nur durch einen echten Lauf ändern —
- * "Neu laden" deckt beide Fälle ab, ein Timer wäre hier reine Last ohne
- * Nutzen.
+ * Kein Poll: Katalog, Coverage und Harness kommen aus Dateien, die sich nur durch Commits bzw. Arbeit im
+ * Repo ändern (Muster views/workboard.js), die Rollen-Besetzung zusätzlich aus Laufakten — „Neu laden“ deckt
+ * das ab, ein Timer wäre hier reine Last ohne Nutzen.
  *
  * Wird aufgerufen von:
  * - public/leitstand/app.js (initCapabilitiesView beim Bootstrap)
  *
- * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2; Ablauf und Guards unverändert, Darstellung seit WS-7b als Karten) — kein
- * Aktivieren oder Freigeben hier; eine Freigabe läuft nur über den F36-Weg im Freigabedialog.
- * Serverwerte (IDs, Capability-Namen, anzeigeGrund, fehltFuerEinsatz, Phasen, Pfade) bleiben roh und
- * gehen durch escapeHtml, nie durch t(). Seit WS-7b sind auch die Scout-Texte übersetzt (werkstatt.scout.*);
+ * Wichtig: rein lesend außer dem Scout/Vormerken-Weg (F27 WS-2; Ablauf und Guards unverändert, Darstellung seit
+ * WS-7b als Karten) und — seit F46 D6 — „Prüfen & freigeben“ im Detail der Library, das ist der bestehende
+ * F36-Installationsweg mit Bestätigung (empfehlung-installation.js, unverändert). Kein Schreiben in
+ * Harness-Dateien, settings.json oder Hooks (E-F46-2).
+ * Serverwerte (IDs, Capability-Namen, anzeigeGrund, fehltFuerEinsatz, Phasen, Pfade, Dateiinhalte) bleiben roh
+ * und gehen durch escapeHtml, nie durch t(). Seit WS-7b sind auch die Scout-Texte übersetzt (werkstatt.scout.*);
  * baueScoutAuftragstext bleibt deutsch (geht an das Modell, Vertrag der Rolle scout).
  */
 
-import { holeAbdeckung, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
-import { FREIGABE_FILTER, filtereWerkzeuge, naechsterRegisterIndex, WERKZEUG_TYPEN, zaehleWerkzeuge } from '../faehigkeiten-anzeige.js'
-import { formatiereZahl, t, tHtml } from '../i18n.js'
+import { holeAbdeckung, holeHarness, holeLaufDetail, holeRessourcen, holeRollenBesetzung, legeAuftragAn, routeAuftrag, starteLauf } from '../api.js'
+import { naechsterRegisterIndex, WERKZEUG_TYPEN } from '../faehigkeiten-anzeige.js'
+import { t, tHtml } from '../i18n.js'
 import { abonniereProjektWechsel } from '../projekt-kontext.js'
 import { escapeHtml } from '../render.js'
 import { rollenName } from '../rollen-anzeige.js'
 import { navigiere, registriere } from '../router.js'
 import { ableiteRessourcenId, baueVormerkenAuftragstext } from '../vormerken-auftrag.js'
 import { abonniereDetailAuffrischer } from '../zustand.js'
+import {
+  aktualisiereLibraryHinweis,
+  initCapabilityLibrary,
+  renderCapabilityLibrary,
+  setzeCapabilityLibraryZurueck,
+  zeigeCapabilityLibraryFehler,
+  zeigeCapabilityLibraryLaedt,
+} from './capability-library.js'
+import { initHarnessAufbau, oeffneHarnessOrt, renderHarness, setzeHarnessZurueck, zeigeHarnessFehler, zeigeHarnessLaedt } from './harness-aufbau.js'
 
 // ─── Register (role=tablist) ─────────────────────────────────────────────
+
+/** Rückruf je Register (tablist-id), aufgerufen nach jeder Wahl — z. B. setzeKopf für das Hauptregister. */
+const beiWahl = new Map()
 
 /**
  * Wählt einen Reiter eines Registers: aria-selected, .active und tabindex (nur der gewählte ist
@@ -52,15 +65,18 @@ function waehleReiter(tablist, reiter) {
     tab.classList.toggle('active', gewaehlt)
     document.getElementById(tab.getAttribute('aria-controls')).hidden = !gewaehlt
   }
+  beiWahl.get(tablist.id)?.(reiter)
 }
 
 /**
  * Bedienung eines Registers: Klick wählt; Pfeil links/rechts, Pos1 und Ende wählen und fokussieren
  * (automatische Aktivierung, naechsterRegisterIndex). Die Auswahl bleibt für die Sitzung erhalten.
  * @param id - ID des tablist-Elements (index.html)
+ * @param rueckruf - optional, (reiter) => void nach jeder Wahl
  */
-function initRegister(id) {
+function initRegister(id, rueckruf) {
   const tablist = document.getElementById(id)
+  if (typeof rueckruf === 'function') beiWahl.set(id, rueckruf)
   tablist.addEventListener('click', (ereignis) => {
     const reiter = ereignis.target.closest('[role="tab"]')
     if (reiter !== null && tablist.contains(reiter)) waehleReiter(tablist, reiter)
@@ -77,124 +93,47 @@ function initRegister(id) {
   })
 }
 
-// ─── Werkzeuge (J5/J6) ───────────────────────────────────────────────────
-
-/** Zuletzt geladene Antwort von GET /api/ressourcen, oder null — Suche und Filter rechnen clientseitig darauf. */
-let letzteLibrary = null
+/** Titel und Beschreibung des Kopfes je Register (Bild 01-Main: Werkstatt, 01-Library: Capability Library). */
+const KOPF_JE_REITER = Object.freeze({
+  'werkstatt-reiter-harness': ['werkstatt.titel', 'werkstatt.beschreibung'],
+  'werkstatt-reiter-faehigkeiten': ['library.titel', 'library.beschreibung'],
+  'werkstatt-reiter-phasen': ['werkstatt.phasen.titel', 'werkstatt.phasen.beschreibung'],
+})
 
 /**
- * Übersetzter Typname; ein unbekannter Typ bleibt roh.
- * @param typ - eintrag.typ
+ * Setzt Titel und Beschreibung des Kopfes zum gewählten Register (data-i18n mit, damit eine spätere
+ * Übersetzung des Dokuments denselben Text setzt).
+ * @param reiter - gewählter Reiter oder null
+ */
+function setzeKopf(reiter) {
+  const schluessel = KOPF_JE_REITER[reiter?.id]
+  if (schluessel === undefined) return
+  for (const [id, key] of [
+    ['werkstatt-titel', schluessel[0]],
+    ['werkstatt-beschreibung', schluessel[1]],
+  ]) {
+    const element = document.getElementById(id)
+    element.dataset.i18n = key
+    element.textContent = t(key)
+  }
+}
+
+/**
+ * Übersetzter Typname; ein unbekannter Typ bleibt roh (Scout-Karten).
+ * @param typ - Typ aus Katalog oder Scout-Ergebnis
  * @returns Text
  */
 function typName(typ) {
   return WERKZEUG_TYPEN.includes(typ) ? t(`werkstatt.typ.${typ}`) : String(typ ?? '')
 }
 
-/** Füllt die beiden Filter-Selects (Beschriftung übersetzt, Wert roh); einmalig beim Init. */
-function fuelleFilter() {
-  document.getElementById('capabilities-suche').placeholder = t('werkstatt.suche.platzhalter')
-  document.getElementById('capabilities-filter-typ').innerHTML = [`<option value="">${tHtml('werkstatt.filter.typ.alle')}</option>`, ...WERKZEUG_TYPEN.map((typ) => `<option value="${escapeHtml(typ)}">${escapeHtml(typName(typ))}</option>`)].join('')
-  document.getElementById('capabilities-filter-freigabe').innerHTML = FREIGABE_FILTER.map((wert) => `<option value="${wert}">${tHtml(wert === '' ? 'werkstatt.filter.freigabe.alle' : `werkstatt.freigabe.${wert}`)}</option>`).join('')
-}
-
 /**
- * Inhalt des Feldes „Fehlt für Einsatz“ (F36 WS-1, fehltFuerEinsatz aus src/ressourcen) — leer heißt einsatzbereit.
- * @param fehlt - eintrag.fehltFuerEinsatz
- * @returns HTML
- */
-function fehltFuerEinsatzHtml(fehlt) {
-  if (!Array.isArray(fehlt) || fehlt.length === 0) return tHtml('werkstatt.detail.nichts')
-  return fehlt.map((f) => `<span class="werkzeug-fehlt">${escapeHtml(f)}</span>`).join('')
-}
-
-/**
- * Text eines Serverfelds als HTML; leer oder fehlend erscheint als „—“ (wie leere Phasen).
+ * Text eines Serverfelds als HTML; leer oder fehlend erscheint als „—“.
  * @param wert - Feldwert
  * @returns HTML
  */
 function textOderStrich(wert) {
   return typeof wert === 'string' && wert !== '' ? escapeHtml(wert) : '—'
-}
-
-/**
- * Eine Kachel: Typ-Chip, Name, Beschreibung, Fuß mit Freigabe und Verfügbarkeit, Detailklappe mit
- * Beschreibung im Volltext (auf der Kachel auf drei Zeilen gekürzt, F44 WS-7b), ID, Phasen, Grund und „Fehlt für
- * Einsatz“ (alle roh). Farben nur aus .ablauf-status: freigegeben
- * mint, Freigabe offen bernstein, Verfügbarkeit gedämpft (rot bliebe Fehlern vorbehalten, Vorlage
- * „Nicht verbunden“). „Details“ trägt den Namen für Screenreader mit (42 gleichnamige Klappen).
- * @param eintrag - LibraryEintrag
- * @returns HTML
- */
-function werkzeugKachel(eintrag) {
-  const freigegeben = eintrag.freigabe === 'FREIGEGEBEN'
-  const name = typeof eintrag.name === 'string' && eintrag.name !== '' ? eintrag.name : eintrag.id
-  const phasen = Array.isArray(eintrag.phasen) && eintrag.phasen.length > 0 ? eintrag.phasen.map(escapeHtml).join(', ') : '—'
-  return `<article class="werkzeug-karte">
-    <div class="werkzeug-karte-kopf"><span class="werkzeug-typ">${escapeHtml(typName(eintrag.typ))}</span></div>
-    <h3>${escapeHtml(name)}</h3>
-    <p class="werkzeug-beschreibung">${textOderStrich(eintrag.beschreibung)}</p>
-    <div class="werkzeug-fuss">
-      <span class="ablauf-status${freigegeben ? '' : ' warten'}">${tHtml(freigegeben ? 'werkstatt.freigabe.freigegeben' : 'werkstatt.freigabe.offen')}</span>
-      <span class="ablauf-status neutral">${tHtml(eintrag.verfuegbar === true ? 'werkstatt.verfuegbar' : 'werkstatt.nichtVerfuegbar')}</span>
-    </div>
-    <details class="werkzeug-detail">
-      <summary>${tHtml('werkstatt.detail')}<span class="sr-only">: ${escapeHtml(name)}</span></summary>
-      <dl>
-        <dt>${tHtml('werkstatt.detail.beschreibung')}</dt><dd>${textOderStrich(eintrag.beschreibung)}</dd>
-        <dt>${tHtml('werkstatt.detail.id')}</dt><dd><code>${escapeHtml(eintrag.id)}</code></dd>
-        <dt>${tHtml('werkstatt.detail.phasen')}</dt><dd>${phasen}</dd>
-        <dt>${tHtml('werkstatt.detail.grund')}</dt><dd>${textOderStrich(eintrag.anzeigeGrund)}</dd>
-        <dt>${tHtml('werkstatt.detail.fehlt')}</dt><dd>${fehltFuerEinsatzHtml(eintrag.fehltFuerEinsatz)}</dd>
-      </dl>
-    </details>
-  </article>`
-}
-
-/** Liest Suche und Filter aus den Bedienelementen. @returns { suche, typ, freigabe } */
-function aktuellerFilter() {
-  return {
-    suche: document.getElementById('capabilities-suche').value,
-    typ: document.getElementById('capabilities-filter-typ').value,
-    freigabe: document.getElementById('capabilities-filter-freigabe').value,
-  }
-}
-
-/** Rendert die Kacheln aus letzteLibrary nach Suche und Filter; eigener Leerzustand für „keine Treffer“. */
-function renderWerkzeugKacheln() {
-  const container = document.getElementById('capabilities-library')
-  if (letzteLibrary === null) return
-  const eintraege = Array.isArray(letzteLibrary.eintraege) ? letzteLibrary.eintraege : []
-  if (eintraege.length === 0) {
-    container.innerHTML = `<p class="leer">${tHtml('werkstatt.leer.katalog')}</p>`
-    return
-  }
-  const treffer = filtereWerkzeuge(eintraege, aktuellerFilter())
-  container.innerHTML = treffer.length === 0 ? `<p class="leer">${tHtml('werkstatt.leer.treffer')}</p>` : `<div class="werkzeug-raster">${treffer.map(werkzeugKachel).join('')}</div>`
-}
-
-/**
- * AK5/AK6: Kennzahlzeile, Kacheln, ASSESSED-Hinweis (roh, bleibt sichtbar — ASSESSED trägt in v1 nie ein
- * Badge, kein stilles Verschwinden dieser Phase) und Startvorlagenpfad in der Technik-Klappe.
- * @param ansicht - Antwort von GET /api/ressourcen
- */
-function renderLibrary(ansicht) {
-  letzteLibrary = ansicht
-  const zahlen = zaehleWerkzeuge(ansicht.eintraege)
-  document.getElementById('capabilities-kennzahlen').innerHTML = ['katalog', 'freigegeben', 'offen']
-    .map((art) => `<span>${tHtml(`werkstatt.kennzahl.${art}`, { anzahl: zahlen[art], zahl: formatiereZahl(zahlen[art]) })}</span>`)
-    .join('<span aria-hidden="true"> · </span>')
-  renderWerkzeugKacheln()
-  document.getElementById('capabilities-assessed').innerHTML = `<span class="badge stale">ASSESSED</span> ${escapeHtml(ansicht.assessedHinweis ?? '')}`
-  document.getElementById('capabilities-startvorlage').innerHTML = tHtml('werkstatt.startvorlage', {}, { pfad: `<code>${escapeHtml(ansicht.startvorlagePfad ?? '')}</code>` })
-}
-
-/** Suche und Filter rechnen bei jeder Eingabe neu (kein Netzabruf). */
-function initWerkzeugBedienung() {
-  fuelleFilter()
-  document.getElementById('capabilities-suche').addEventListener('input', renderWerkzeugKacheln)
-  document.getElementById('capabilities-filter-typ').addEventListener('change', renderWerkzeugKacheln)
-  document.getElementById('capabilities-filter-freigabe').addEventListener('change', renderWerkzeugKacheln)
 }
 
 // ─── Rollen & Besetzung: Coverage (J8) ──────────────────────────────────
@@ -790,35 +729,27 @@ function rendereQuelle(ergebnis, rendern, beiFehler, quelle) {
   }
 }
 
-/** Fehlerzustand der Werkzeuge: Fehler im Kachel-Container, keine Werte des letzten Ladens daneben. @param grund - Fehlertext */
-function zeigeLibraryFehler(grund) {
-  letzteLibrary = null
-  for (const id of ['capabilities-kennzahlen', 'capabilities-assessed', 'capabilities-startvorlage']) document.getElementById(id).innerHTML = ''
-  document.getElementById('capabilities-library').innerHTML = `<p class="fehler">${tHtml('werkstatt.ladeFehler', { grund })}</p>`
-}
-
 /**
- * Lädt Library + Coverage parallel (AK1, AK2, AK6). Ein Fehlschlag EINER der beiden Quellen zeigt sich nur in
- * ihrem eigenen Container (Muster views/workboard.js: eine defekte Quelle blendet nicht die ganze View aus).
- * Überholschutz über ladeZaehler; während des Ladens zeigen Suche und Filter keine alten Kacheln (letzteLibrary null).
+ * Lädt Katalog, Coverage und Harness parallel (AK1, AK2, AK6; F46 D6). Ein Fehlschlag EINER Quelle zeigt sich nur in
+ * ihrem eigenen Bereich (Muster views/workboard.js: eine defekte Quelle blendet nicht die ganze View aus).
+ * Überholschutz über ladeZaehler; während des Ladens zeigen Suche und Filter keine alten Zeilen.
  */
 async function ladeCapabilities() {
   const meineNummer = ++ladeZaehler
-  letzteLibrary = null
-  const laedt = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
-  document.getElementById('capabilities-library').innerHTML = laedt
-  document.getElementById('capabilities-abdeckung').innerHTML = laedt
-  const [libraryErgebnis, abdeckungErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung()])
+  zeigeCapabilityLibraryLaedt()
+  zeigeHarnessLaedt()
+  document.getElementById('capabilities-abdeckung').innerHTML = `<p class="leer">${tHtml('werkstatt.laedt')}</p>`
+  const [libraryErgebnis, abdeckungErgebnis, harnessErgebnis] = await Promise.allSettled([holeRessourcen(), holeAbdeckung(), holeHarness()])
   if (meineNummer !== ladeZaehler) return
 
   rendereQuelle(
     libraryErgebnis,
     (ansicht) => {
-      renderLibrary(ansicht)
+      renderCapabilityLibrary(ansicht)
       bekannteRessourcenIds = new Set(ansicht.eintraege.map((eintrag) => eintrag.id))
       if (scoutZustand?.phase === 'fertig') renderScoutPanel()
     },
-    zeigeLibraryFehler,
+    zeigeCapabilityLibraryFehler,
     'GET …/ressourcen'
   )
   rendereQuelle(
@@ -829,25 +760,59 @@ async function ladeCapabilities() {
     },
     'GET …/ressourcen/abdeckung'
   )
+  rendereQuelle(
+    harnessErgebnis,
+    (harness) => {
+      renderHarness(harness)
+      aktualisiereLibraryHinweis(harness)
+    },
+    (grund) => {
+      zeigeHarnessFehler(grund)
+      aktualisiereLibraryHinweis(null)
+    },
+    'GET …/harness'
+  )
+}
+
+/**
+ * „Im Harness-Aufbau zeigen“ (Library) und „Zur Capability Library“ (Harness): Register wechseln.
+ * @param reiterId - ID des Reiters im Register werkstatt-register
+ */
+function wechsleZuReiter(reiterId) {
+  const tablist = document.getElementById('werkstatt-register')
+  const reiter = document.getElementById(reiterId)
+  waehleReiter(tablist, reiter)
+  reiter.focus()
 }
 
 /**
  * Initialisiert die Capabilities-View einmalig beim Bootstrap (Muster views/workboard.js initWorkboardView).
- * Ein Projektwechsel (F-860) lädt Katalog und Abdeckung des neuen Projekts, schließt offene Details und setzt
- * den Scout-Zustand zurück (setzeScoutZurueck, F-955).
+ * Ein Projektwechsel (F-860) lädt Katalog, Abdeckung und Harness des neuen Projekts, schließt offene Details,
+ * verwirft Auswahlen und setzt den Scout-Zustand zurück (setzeScoutZurueck, F-955).
  */
 export function initCapabilitiesView() {
-  initRegister('werkstatt-register')
+  initRegister('werkstatt-register', setzeKopf)
   initRegister('faehigkeiten-register')
-  initWerkzeugBedienung()
+  setzeKopf(document.querySelector('#werkstatt-register [aria-selected="true"]'))
+  initHarnessAufbau()
+  initCapabilityLibrary({
+    neuLaden: () => ladeCapabilities(),
+    zeigeImHarnessAufbau: (pfad) => {
+      wechsleZuReiter('werkstatt-reiter-harness')
+      oeffneHarnessOrt(pfad)
+    },
+  })
   initAbdeckungBedienung()
   initScoutBedienung()
+  document.getElementById('harness-zur-library').addEventListener('click', () => wechsleZuReiter('werkstatt-reiter-faehigkeiten'))
   abonniereDetailAuffrischer(() => {
     void aktualisiereScoutZustand()
   })
   abonniereProjektWechsel(() => {
     offeneRollen.clear()
     setzeScoutZurueck()
+    setzeHarnessZurueck()
+    setzeCapabilityLibraryZurueck()
     void ladeCapabilities()
   })
   document.getElementById('capabilities-neu-laden').addEventListener('click', () => {

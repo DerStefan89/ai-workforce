@@ -16,6 +16,10 @@
  * waehleWorkflowVorlage: I/O bleibt beim Aufrufer, scripts/leitstand-
  * server.mjs).
  *
+ * Seit F46 D6 trägt jede Library-Zeile installierbar/installationsGrund (lesend über
+ * pruefeInstallierbarkeit, dieselbe Regel wie der F36-Installationsweg) — die Capability Library zeigt
+ * „Prüfen & freigeben“ nur, wo dieser Weg auch durchgeht; der Weg selbst bleibt unverändert.
+ *
  * F346_AUSNAHMEN trägt seit F39 WS-1 zusätzlich 'architekt'/'claude-code'
  * (dieselbe strukturelle Lücke wie 'product-coach').
  *
@@ -29,7 +33,7 @@
  * src/capabilities-ansicht/capabilities-ansicht.test.ts.
  */
 
-import { fehltFuerEinsatz } from '../ressourcen/index.ts'
+import { fehltFuerEinsatz, pruefeInstallierbarkeit } from '../ressourcen/index.ts'
 import type { AufgelosteRessource } from '../ressourcen/types.ts'
 import type { Rollenvertrag } from '../rollen/types.ts'
 import type {
@@ -73,6 +77,19 @@ function leitePhasenAb(ressource: AufgelosteRessource): LibraryPhase[] {
 }
 
 /**
+ * F46 D6: Ist der Eintrag über den F36-Installationsweg freigebbar? Nur lesend — dieselbe Regel
+ * (pruefeInstallierbarkeit), die POST …/installation/vorbereiten anwendet; ein schon installierter Eintrag
+ * ist es nicht mehr.
+ * @param ressource - aufgelöste Ressource
+ * @returns { installierbar, installationsGrund } — Grund null, wenn installierbar oder schon installiert
+ */
+function installierbarkeit(ressource: AufgelosteRessource): { installierbar: boolean; installationsGrund: string | null } {
+  if (ressource.installation !== undefined) return { installierbar: false, installationsGrund: null }
+  const grund = pruefeInstallierbarkeit(ressource)
+  return { installierbar: grund === null, installationsGrund: grund }
+}
+
+/**
  * AK1/AK5/AK6: baut die Library-Ansicht aus bereits aufgelösten Ressourcen.
  * @param aufgeloest - Ergebnis von loeseRessourcenAuf (src/ressourcen/index.ts)
  * @param startvorlagePfad - Pfad der Startvorlage, gegen die aufgeloest ermittelt wurde (AK6)
@@ -84,6 +101,7 @@ export function projeziereLibrary(aufgeloest: AufgelosteRessource[], startvorlag
     anzeigeGrund: leiteAnzeigeGrundAb(ressource),
     phasen: leitePhasenAb(ressource),
     fehltFuerEinsatz: fehltFuerEinsatz(ressource, ressource),
+    ...installierbarkeit(ressource),
   }))
   return { startvorlagePfad, eintraege, assessedHinweis: ASSESSED_HINWEIS }
 }

@@ -22,6 +22,8 @@
  * - public/leitstand/views/workboard-detail.js (kommtKnopf, kommtBadge — Detail: Status-Block, Planung/Einordnung,
  *   Workstreams, Code & Doku Review, Verlauf, Fehlerbild, Behebung; F46 D3)
  * - public/leitstand/eintrag-bausteine.js (kommtBadge — fehlende Werte in Kurz gesagt und Status-Block; F46 D3)
+ * - public/leitstand/views/harness-aufbau.js (kommtKnopf, kommtBadge — Änderung vorschlagen, Genutzt von, Vorlage; F46 D6)
+ * - public/leitstand/views/capability-library.js (kommtBadge — Genutzt von im Detail; F46 D6)
  * - public/leitstand/views/projekte-uebersicht.js (kommtKnopf — „Produkt bearbeiten“ in der Technik-Klappe; F44 WS-6a)
  * - public/leitstand/kommt.test.mjs (node:test)
  *
