@@ -24,10 +24,12 @@
  * - Die Zeitgrenze gilt nur, solange der Lauf NICHT aktiv ist (Art 'wartet'): ein aktiver Lauf hat im
  *   Chat den Knopf „Lauf abbrechen“, und der Server beendet ihn an seiner eigenen Zeitgrenze (Prüfpass
  *   qa 1: sonst gäbe der Chat die Eingabe frei, ein neuer Versuch liefe in 409, ohne Abbruchweg).
- *   Grenze ist die der Startvorlage (detail.startvorlageZeitgrenzeMs) plus Puffer; trägt die
- *   Startvorlage keine, gilt ERSATZ_ZEITGRENZE_MS. Gemessen wird mit Date.now(): nach einem Standby
- *   kann die Grenze sofort als überschritten gelten — bekanntes, akzeptiertes Restrisiko (nur für
- *   Läufe, die ohnehin nicht aktiv sind).
+ *   Grenze ist die des Laufs (detail.laufZeitgrenzeMs, F45 B0; sonst detail.startvorlageZeitgrenzeMs)
+ *   plus Puffer; ist keine bekannt, gilt ERSATZ_ZEITGRENZE_MS.
+ * - F45 B0: chatModusDesAktivenLaufs ordnet den laufenden Lauf aus /api/zustand (aktiverLauf) einem
+ *   Chat-Modus zu — damit übernimmt der Chat nach Neuladen einen laufenden Lauf wieder.
+ * - Die Wartegrenze misst mit Date.now(): nach einem Standby kann sie sofort als überschritten gelten —
+ *   bekanntes, akzeptiertes Restrisiko (nur für Läufe, die ohnehin nicht aktiv sind).
  */
 
 /** Ersatz, wenn die Startvorlage keine zeitgrenzeMs trägt — derselbe Wert wie startvorlagen/ai-workforce.json. */
@@ -73,7 +75,7 @@ export function laufstandSignatur(detail) {
 
 /**
  * Wirksame Grenze ohne Statusänderung, ab der der Chat aufhört zu warten.
- * @param zeitgrenzeMs - zeitgrenzeMs der Startvorlage, oder null/undefined
+ * @param zeitgrenzeMs - wirksame Zeitgrenze des Laufs (wirksameLaufZeitgrenzeMs), oder null/undefined
  * @returns Millisekunden (Zeitgrenze bzw. Ersatz, plus Puffer)
  */
 export function warteGrenzeMs(zeitgrenzeMs) {
@@ -82,9 +84,40 @@ export function warteGrenzeMs(zeitgrenzeMs) {
 }
 
 /**
+ * F45 B0 (F-1007): die für den Lauf wirksame Zeitgrenze aus dem Lauf-Detail — laufZeitgrenzeMs
+ * (Chat-Läufe: eigene Grenze der Rolle) vor startvorlageZeitgrenzeMs (älterer Server ohne das Feld).
+ * @param detail - Antwort von GET /api/laeufe/<laufId>
+ * @returns Millisekunden oder null
+ */
+export function wirksameLaufZeitgrenzeMs(detail) {
+  if (typeof detail?.laufZeitgrenzeMs === 'number') return detail.laufZeitgrenzeMs
+  if (typeof detail?.startvorlageZeitgrenzeMs === 'number') return detail.startvorlageZeitgrenzeMs
+  return null
+}
+
+/**
+ * F45 B0 (F-986 b Restgrenze): laufId-Präfix eines Chat-Laufs je Modus — dieselbe Form wie
+ * starteRollenChatLauf ('<rolle>-<auftragPraefix>-…'), damit kein Ad-hoc-Lauf derselben Rolle als Chat-Lauf gilt.
+ */
+export const CHAT_LAUF_PRAEFIX = { jarvis: 'jarvis-jarvis-chat-', sparring: 'product-coach-product-coach-sparring-' }
+
+/**
+ * F45 B0: zu welchem Chat-Modus gehört ein laufender Lauf aus /api/zustand (aktiverLauf)?
+ * @param aktiverLauf - { aktiv, laufId } aus dem Poll oder null/undefined
+ * @returns 'jarvis' | 'sparring' | null (kein aktiver Chat-Lauf)
+ */
+export function chatModusDesAktivenLaufs(aktiverLauf) {
+  if (aktiverLauf?.aktiv !== true || typeof aktiverLauf.laufId !== 'string') return null
+  for (const [modus, praefix] of Object.entries(CHAT_LAUF_PRAEFIX)) {
+    if (aktiverLauf.laufId.startsWith(praefix)) return modus
+  }
+  return null
+}
+
+/**
  * @param letzteAenderungMs - Zeitpunkt der letzten Statusänderung (Date.now()-Skala)
  * @param jetztMs - jetzt (Date.now()-Skala)
- * @param zeitgrenzeMs - zeitgrenzeMs der Startvorlage, oder null/undefined
+ * @param zeitgrenzeMs - wirksame Zeitgrenze des Laufs (wirksameLaufZeitgrenzeMs), oder null/undefined
  * @returns true, wenn der Lauf länger als warteGrenzeMs unverändert ist
  */
 export function zeitgrenzeUeberschritten(letzteAenderungMs, jetztMs, zeitgrenzeMs) {

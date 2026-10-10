@@ -1,0 +1,25 @@
+[
+  {
+    "label": "Leitstand aus falschem Ordner: Band oben und Hinweis über dem Eingabefeld, Senden möglich",
+    "Band oben sichtbar": true,
+    "Hinweis im Chat sichtbar": true,
+    "Sperrgrund sichtbar": false,
+    "„Lauf abbrechen“": false,
+    "Fehler-Eintrag": false,
+    "zwei Fehler-Einträge (darf nicht)": false,
+    "Tipp-Punkte": false,
+    "Punkt am Reiter Jarvis": false,
+    "Punkt am Untermodus Projekt": false,
+    "Untermodus-Hinweis": false,
+    "Auftrag-Brücke an Fehler (darf nicht)": false,
+    "aria-live außer Persona (darf nicht)": false,
+    "lang": "de",
+    "Letzte Antwort-Blase": "Jarvis F45 B0 ist in Arbeit.",
+    "Band oben": "Leitstand läuft aus C:\\Users\\stefa\\Projekte\\aiw-main-ansicht — Läufe werden verweigert (E-188). Leitstand aus C:\\Users\\s",
+    "Hinweis im Chat": "Leitstand läuft aus C:\\Users\\stefa\\Projekte\\aiw-main-ansicht — Läufe werden verweigert (E-188). Leitstand aus C:\\Users\\s",
+    "Sperrgrund": "",
+    "Reiter Jarvis aria-label": "null",
+    "Senden disabled": "null",
+    "Seite geladen": true
+  }
+]

@@ -467,7 +467,8 @@ import { leiteRepoRelativenPfadAb } from '../src/authorization-boundary/index.ts
 import { ladeStartvorlage, leiteProfilReferenzAb, loeseWerkzeugsatzAuf } from '../src/startvorlage/index.ts'
 import { registriereAuftrag, validiereAuftragHerkunft } from '../src/auftrag/index.ts'
 import { ermittleNaechstenSchritt, registriereWorkflow, validiereWorkflowDaten } from '../src/workflow/index.ts'
-import { leseErgebnisobjekt } from '../src/claude-code-gateway/index.ts'
+import { leseErgebnisobjekt, pruefeStartordner } from '../src/claude-code-gateway/index.ts'
+import { arbeitsverzeichnisseGleich } from '../src/invocation-policy/index.ts'
 import { CODEX_BERECHTIGUNGSKONTEXT, leseCodexEreignisse } from '../src/codex-gateway/index.ts'
 import { bekannteRollen, istBekannteRolle, ROLLENVERTRAEGE } from '../src/rollen/index.ts'
 import { baueWorkitemListe, parseFeatureAkten, parseFindings } from '../src/workboard/index.ts'
@@ -514,11 +515,12 @@ import { pruefeNeuesProjektFormular } from './leitstand/routen-f41.mjs'
 import { baueVerbrauchsProjektion } from './leitstand/routen-verbrauch.mjs'
 import { baueCodeDiff, baueCodeProjektion, pruefeCodeHerkunft } from './leitstand/routen-code.mjs'
 import { erzeugeAktivitaetsSpeicher, kuerze, ZIEL_MAX_ZEICHEN } from './leitstand/lauf-aktivitaet.mjs'
+import { starteEventLoopMessung } from './leitstand/event-loop-messung.mjs'
 import { baueProjektakteProjektion } from './leitstand/routen-projektakte.mjs'
 import { baueHarnessDatei, baueHarnessProjektion, pruefeHarnessHerkunft } from './leitstand/routen-harness.mjs'
 import { baueRoadmapProjektion } from './leitstand/routen-roadmap.mjs'
 import { baueUndRegistriereAuftragAusFeatureAkte, leseFeatureAkteFuerAnzeige } from './leitstand/routen-f35.mjs'
-import { baueSparringVerlaufsProjektion, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
+import { baueSparringVerlaufsProjektion, projiziereFehler, registriereSparringAuftragZuordnung, sparringLaufExistiert } from './leitstand/routen-sparring.mjs'
 import {
   findeWorkflowEntscheidungFuerSchritt,
   formatiereWorkflowEntscheidungAlsText,
@@ -552,6 +554,9 @@ import { baueAutomatischeAnpassungsBegruendung, ermittleAutomatischeAnpassung, z
  * 'fehlerAntwortPraefix' ist der Textpräfix desselben Fehler-Turns ('Jarvis-Antwort'/'Coach-Antwort'
  * konnte nicht gelesen werden: …) — byte-gleich zum bisherigen Jarvis-Text gehalten, weil
  * scripts/check-f31-gedaechtnis.mjs exakt darauf prüft (Regressionsschutz).
+ * F45 B0: 'worker' ist der feste Chat-Worker (F-544: kein Codex für Chat-Rollen, unabhängig von der
+ * Startvorlage; Router und alle anderen Rollen unverändert), 'zeitgrenzeMs' die eigene Lauf-Zeitgrenze
+ * der Rolle (F-1007: Jarvis 180 s, Coach 300 s) — überstimmt zeitgrenzeMs der Startvorlage für Chat-Läufe.
  */
 // Zwei benannte Konstanten statt eines Objekts, das über die Rollennamen selbst indiziert wäre —
 // scripts/check-f17-rollenvertrag.mjs AK1 scannt src/+scripts/ auf genau dieses Muster (ein
@@ -570,6 +575,8 @@ const KONFIGURATION_JARVIS = {
   auftragTitelPraefix: 'Jarvis-Chat',
   fehlerArt: 'antwort',
   fehlerAntwortPraefix: 'Jarvis-Antwort',
+  worker: 'claude-code',
+  zeitgrenzeMs: 180_000,
 }
 const KONFIGURATION_PRODUCT_COACH = {
   rolle: 'product-coach',
@@ -583,12 +590,21 @@ const KONFIGURATION_PRODUCT_COACH = {
   auftragTitelPraefix: 'Product-Coach-Sparring',
   fehlerArt: 'frage',
   fehlerAntwortPraefix: 'Coach-Antwort',
+  worker: 'claude-code',
+  zeitgrenzeMs: 300_000,
 }
 
 const PORT = Number(process.env.LEITSTAND_PORT ?? 4173)
 const BASISVERZEICHNIS = 'kontrollzustand'
 const PUBLIC_VERZEICHNIS = join(import.meta.dirname, '..', 'public', 'leitstand')
 const STANDARD_STARTVORLAGE_PFAD = 'startvorlagen/beispielprojekt.json'
+/**
+ * F45 B0 (F-986 a): Start-Hinweis dieses Serverprozesses ({ art: 'falscherOrdner', istPfad, sollPfad })
+ * oder null. Setzt ausschließlich der CLI-Bindeblock einmal beim Start (ermittleStartHinweis); jede
+ * Handler-Instanz liefert ihn lesend in GET /api/zustand (Feld startHinweis), Tests überschreiben ihn
+ * über die Handler-Option startHinweis. Kein Durchsetzungsort — E-188 prüft weiter bei jedem Lauf.
+ */
+let prozessStartHinweis = null
 /** F40 WS-3 (löst F-567): Wert für AufrufEingaben.disallowedTools, ausschließlich für 'jarvis'/'router' gesetzt (starteJarvisChatLauf, Router-Lauf-Handler) — eine Konstante statt zweier Literale, damit beide Stellen nicht auseinanderlaufen können. */
 const AUTO_MEMORY_DENY_REGEL = 'Read(~/.claude/**)'
 /** F25 WS-1: Pfad zum Projektregister, per Umgebungsvariable überschreibbar (Muster LEITSTAND_STARTVORLAGE_PFAD) — u.a. für AK8s realen Zwei-Projekte-Test gegen eine eigene Registerkopie, ohne das committete projekte.json anzufassen. */
@@ -4039,18 +4055,10 @@ export function sammleBestehendeIds(repoWurzel, roadmapPfad) {
  * und GAR KEINEN lineage-chat-Eintrag: der Chat-Verlauf verlor die Nachricht vollständig, die
  * Chat-UI wartete auf einen Eintrag, der nie kam (real beobachtet, state/nachweis-jarvis-
  * latenz.md "Runde 2"). Schreibt denselben Artefakttyp wie der Erfolgspfad (`chat-<projektId>`,
- * Muster verarbeiteJarvisChatErgebnis) mit jarvisAntwort.art 'antwort' (bewusst KEIN neuer
- * art-Wert — chat.js' antwortText/renderEintrag zeigen eine 'antwort' ohne jede Anpassung an,
- * kein UI-Umbau nötig) und einem für den Menschen erkennbaren Fehlertext statt einer
- * erfundenen Antwort.
- * @param projektId - Projekt-id der bedienenden Handler-Instanz
- * @param nachricht - die vom Menschen eingegebene Nachricht (Muster verarbeiteJarvisChatErgebnis)
- * @param laufId - lauf_id des Jarvis-Laufs (geht in 'herkunft')
- * @param grund - Ablehnungsgrund von verarbeiteJarvisChatErgebnis (bereits inkl. 'Jarvis-Lauf …:'-Präfix)
- * @param profilReferenz - Profilreferenz dieser Serverinstanz
- * @param ladeOptionen - basisVerzeichnis/schreiber
- * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund } (ein Fehlschlag HIER
- *   landet unverändert in startfehlerListe, Muster des bisherigen alleinigen Fehlerpfads)
+ * Muster verarbeiteJarvisChatErgebnis) mit einem für den Menschen erkennbaren Fehlertext statt
+ * einer erfundenen Antwort. Seit F45 B0 zusätzlich als Fehler gekennzeichnet (istFehler, fehler)
+ * und für jeden Misserfolg genutzt, nicht nur für ein unlesbares Ergebnis (Kopf der Funktion unten).
+ * (Parameter und Rückgabe: Kopf der Funktion unten.)
  */
 /**
  * F34 WS-1: parametrisiert über konfiguration (rolle/lineagePraefix/antwortFeld/fehlerArt) statt
@@ -4061,7 +4069,8 @@ export function sammleBestehendeIds(repoWurzel, roadmapPfad) {
  * @param projektId - Projekt-id der bedienenden Handler-Instanz
  * @param nachricht - die vom Menschen eingegebene Nachricht
  * @param laufId - lauf_id des Laufs (geht in 'herkunft')
- * @param grund - Ablehnungsgrund von leseRollenChatErgebnisAusLaufakte
+ * @param misserfolg - F45 B0: { art, grund, zeitgrenzeMs? } — 'unlesbar' (F-506, Grund von
+ *   leseRollenChatErgebnisAusLaufakte) oder ein anderer Misserfolg aus beschreibeChatMisserfolg
  * @param profilReferenz - Profilreferenz dieser Serverinstanz
  * @param ladeOptionen - basisVerzeichnis/schreiber
  * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH
@@ -4069,14 +4078,22 @@ export function sammleBestehendeIds(repoWurzel, roadmapPfad) {
  *   übernommen, damit auch ein Fehler-Turn seinen Sparring-Modus trägt (GET /api/sparring)
  * @returns bei Erfolg { ok: true, pfad, versionSequenz }, sonst { ok: false, grund }
  */
-function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, grund, profilReferenz, ladeOptionen, konfiguration, modus) {
+function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, misserfolg, profilReferenz, ladeOptionen, konfiguration, modus) {
   const artefaktId = `${konfiguration.lineagePraefix}-${projektId}`
   try {
     const { pfad, versionSequenz } = registriereKernArtefakt(
       artefaktId,
       profilReferenz,
       { quelle: `${konfiguration.rolle}-${konfiguration.lineagePraefix}`, lauf_id: laufId },
-      { nachricht, [konfiguration.antwortFeld]: { art: konfiguration.fehlerArt, antwort: `${konfiguration.fehlerAntwortPraefix} konnte nicht gelesen werden: ${grund}` }, ...(modus !== undefined ? { modus } : {}) },
+      {
+        nachricht,
+        [konfiguration.antwortFeld]: { art: konfiguration.fehlerArt, antwort: baueChatFehlerText(misserfolg, konfiguration) },
+        // F45 B0 (F-1008): Kennzeichnung als Fehler (nie eine Antwort) mit Art und Grund — der Client
+        // zeigt den Eintrag als „Lauf nicht erfolgreich“, das Verlaufsfenster des Modells lässt ihn aus.
+        istFehler: true,
+        fehler: { art: misserfolg.art, grund: misserfolg.grund ?? null, ...(misserfolg.zeitgrenzeMs !== undefined ? { zeitgrenzeMs: misserfolg.zeitgrenzeMs } : {}) },
+        ...(modus !== undefined ? { modus } : {}),
+      },
       undefined,
       ladeOptionen
     )
@@ -4084,6 +4101,85 @@ function schreibeRollenChatFehlerEintrag(projektId, nachricht, laufId, grund, pr
   } catch (fehler) {
     return { ok: false, grund: `Fehler-Lineage-${konfiguration.lineagePraefix}-Eintrag '${artefaktId}' für Lauf '${laufId}' konnte nicht registriert werden: ${fehler.message}` }
   }
+}
+
+/**
+ * F45 B0 (F-1008): ordnet das Ende eines Chat-Laufs ein — null bei Erfolg, sonst Art und Grund des
+ * Misserfolgs für den Fehler-Eintrag. Reine Funktion (Test: scripts/leitstand-chat-misserfolg.test.mjs).
+ * Reihenfolge: Wurf → nie gestartet (ok:false, z. B. Startfreigabe verweigert) → Erfolg → Abbruch
+ * (Klassifikation 'abgebrochen_manuell' oder ein angeforderter Abbruch bei FEHLGESCHLAGEN) → Zeitgrenze
+ * ('timeout') → VERWEIGERT → Klärung → übrige Ausgänge.
+ * @param ergebnis - AusfuehrungsErgebnis oder null (bei Wurf)
+ * @param fehler - Wurf aus dem Lauf oder null
+ * @param abbruchAngefordert - true, wenn das Abbruchsignal dieses Laufs ausgelöst wurde
+ * @param zeitgrenzeMs - wirksame Zeitgrenze des Laufs (geht in den Text der Zeitgrenze)
+ * @returns null oder { art, grund, zeitgrenzeMs? }
+ */
+export function beschreibeChatMisserfolg(ergebnis, fehler, abbruchAngefordert, zeitgrenzeMs) {
+  if (fehler !== null && fehler !== undefined) return { art: 'nicht_erfolgreich', grund: String(fehler?.message ?? fehler) }
+  if (ergebnis?.ok === false) return { art: 'nicht_gestartet', grund: beschreibeAblehnung(ergebnis) }
+  const status = ergebnis?.laufStatus
+  if (status?.status === 'ABGESCHLOSSEN' && status.ergebnis === 'ERFOLGREICH') return null
+  const klassifikationsGrund = typeof ergebnis?.klassifikation?.grund === 'string' ? ergebnis.klassifikation.grund : null
+  if (klassifikationsGrund === 'abgebrochen_manuell' || (abbruchAngefordert && status?.ergebnis === 'FEHLGESCHLAGEN')) return { art: 'abgebrochen', grund: null }
+  if (klassifikationsGrund === 'timeout') return { art: 'zeitgrenze', grund: null, zeitgrenzeMs }
+  if (status?.status === 'ABGESCHLOSSEN' && status.ergebnis === 'VERWEIGERT') {
+    const art = ergebnis?.klassifikation?.non_execution_kind
+    return { art: 'verweigert', grund: typeof art === 'string' && art !== '' ? art : 'Werkzeuggrenze abgelehnt' }
+  }
+  if (status?.status === 'KLAERUNG_ERFORDERLICH') return { art: 'klaerung', grund: typeof status.grund === 'string' ? status.grund : null }
+  if (status?.status === 'ABGESCHLOSSEN') return { art: 'nicht_erfolgreich', grund: klassifikationsGrund ?? status.ergebnis }
+  return { art: 'nicht_erfolgreich', grund: `unerwarteter Laufstatus ${status?.status ?? 'unbekannt'}` }
+}
+
+/**
+ * F45 B0: deutscher Klartext eines Fehler-Eintrags (persistiert im Antwortfeld; der Client übersetzt
+ * anhand fehler.art über t(), dieser Text ist der Rückfall für andere Leser). Der Text für
+ * 'unlesbar' bleibt byte-gleich zum F-506-Muster (scripts/check-f31-gedaechtnis.mjs (j)).
+ * @param misserfolg - { art, grund, zeitgrenzeMs? }
+ * @param konfiguration - KONFIGURATION_JARVIS oder KONFIGURATION_PRODUCT_COACH
+ * @returns Text
+ */
+function baueChatFehlerText(misserfolg, konfiguration) {
+  const grund = misserfolg.grund ?? 'kein Grund gemeldet'
+  if (misserfolg.art === 'unlesbar') return `${konfiguration.fehlerAntwortPraefix} konnte nicht gelesen werden: ${grund}`
+  if (misserfolg.art === 'abgebrochen') return 'Abgebrochen.'
+  if (misserfolg.art === 'zeitgrenze') return `Lauf an der Zeitgrenze (${Math.round((misserfolg.zeitgrenzeMs ?? 0) / 1000)} s) beendet — keine Antwort.`
+  if (misserfolg.art === 'nicht_gestartet') return `Lauf nicht gestartet: ${grund}`
+  if (misserfolg.art === 'verweigert') return `Lauf verweigert: ${grund}`
+  if (misserfolg.art === 'klaerung') return `Lauf hält — Klärung erforderlich: ${grund}`
+  return `Lauf nicht erfolgreich: ${grund}`
+}
+
+/**
+ * F45 B0 (F-986 a): vergleicht das Arbeitsverzeichnis des Leitstands mit dem nachgewiesenen Pfad
+ * (dieselbe Normalisierung wie E-188, arbeitsverzeichnisseGleich).
+ * @param istPfad - process.cwd() des Leitstands
+ * @param sollPfad - arbeitsverzeichnis_pfad des Wirksamkeitsnachweises
+ * @returns null bei Übereinstimmung, sonst { art: 'falscherOrdner', istPfad, sollPfad }
+ */
+export function vergleicheStartordner(istPfad, sollPfad) {
+  return arbeitsverzeichnisseGleich(istPfad, sollPfad) ? null : { art: 'falscherOrdner', istPfad, sollPfad }
+}
+
+/**
+ * F45 B0 (F-986 a): Start-Hinweis für den CLI-Bindeblock — liest den Wirksamkeitsnachweis über das
+ * Gateway (pruefeStartordner) und meldet eine Abweichung per console.warn. Ist der Nachweis nicht
+ * lesbar, gibt es keinen Hinweis (die Startfreigabe jedes Laufs meldet diesen Grund selbst).
+ * @param istPfad - process.cwd() des Leitstands
+ * @returns Start-Hinweis oder null
+ */
+function ermittleStartHinweis(istPfad) {
+  const ergebnis = pruefeStartordner(istPfad)
+  if (!ergebnis.ok) {
+    console.warn(`[leitstand] Startordner nicht prüfbar (${ergebnis.grund}) — die Startfreigabe jedes Laufs prüft selbst (E-188).`)
+    return null
+  }
+  const hinweis = vergleicheStartordner(istPfad, ergebnis.nachgewiesenerPfad)
+  if (hinweis !== null) {
+    console.warn(`[leitstand] Startordner '${istPfad}' weicht vom Wirksamkeitsnachweis ab ('${ergebnis.nachgewiesenerPfad}') — Läufe werden verweigert (E-188) — Leitstand aus ${ergebnis.nachgewiesenerPfad} starten`)
+  }
+  return hinweis
 }
 
 /**
@@ -4573,6 +4669,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     laufausgabeWurzel = join(homedir(), '.ai-workforce', 'laufausgabe'),
     // F36 WS-5a: { npm, pruefeServer } für src/ressourcen/installation.ts — undefined = echte Runner.
     installationsRunner = undefined,
+    // F45 B0 (F-986 a): überschreibt den Start-Hinweis des Prozesses (prozessStartHinweis) — nur Tests;
+    // undefined = den beim Serverstart ermittelten Wert liefern.
+    startHinweis = undefined,
   } = optionen
 
   const vorlage = ladeStartvorlage(startvorlagePfad)
@@ -4598,6 +4697,21 @@ export function erzeugeRequestHandler(optionen = {}) {
   let letzterAufruf = null
   /** F46 D4: laufender Aufbau von GET /api/code dieser Instanz oder null — gleichzeitige Abrufe teilen ihn (keine Git-Prozess-Lawine). */
   let codeProjektionLaufend = null
+
+  /**
+   * F45 B0 (F-1007): wirksame Zeitgrenze eines Laufs für GET /api/laeufe/<laufId>. Chat-Läufe erkennt die
+   * laufId (Präfix '<rolle>-<auftragPraefix>-', starteRollenChatLauf) — sie laufen immer mit der eigenen
+   * Grenze ihrer Rolle, auch nach einem Serverneustart. Jeder andere Lauf meldet die Grenze der Startvorlage
+   * (bekannte Grenze: ein Workflow-Schritt mit eigenem zeitgrenze_ms wird hier nicht unterschieden).
+   * @param laufId - laufId des Laufs
+   * @returns Millisekunden oder null (keine Grenze)
+   */
+  function wirksameZeitgrenzeMs(laufId) {
+    for (const konfiguration of [KONFIGURATION_JARVIS, KONFIGURATION_PRODUCT_COACH]) {
+      if (laufId.startsWith(`${konfiguration.rolle}-${konfiguration.auftragPraefix}-`)) return konfiguration.zeitgrenzeMs
+    }
+    return typeof vorlage.zeitgrenzeMs === 'number' ? vorlage.zeitgrenzeMs : null
+  }
 
   /** Prüft AK5(a)+(b): laufId hat bereits ein Verzeichnis unter kontrollzustand/, oder ist in dieser Serverinstanz schon reserviert. @param laufId - zu prüfende laufId @returns true, wenn laufId belegt ist */
   function laufIdBelegt(laufId) {
@@ -5855,6 +5969,8 @@ export function erzeugeRequestHandler(optionen = {}) {
         // geladenen Startvorlage — der Chat hört damit auf zu warten statt ohne Ende abzufragen.
         nichtGestartet: baueNichtGestartetProjektion(laufId, laufStatus, basisVerzeichnis),
         startvorlageZeitgrenzeMs: typeof vorlage.zeitgrenzeMs === 'number' ? vorlage.zeitgrenzeMs : null,
+        // F45 B0 (F-1007): die für DIESEN Lauf wirksame Grenze (Chat-Läufe: eigene Grenze der Rolle).
+        laufZeitgrenzeMs: wirksameZeitgrenzeMs(laufId),
         kontextpaket: baueKontextpaketProjektion(kontextpaketVersion),
         auftrag: baueAuftragsbezug(kontextpaketVersion, basisVerzeichnis),
         laufakte: baueLaufakteProjektion(laufakteVersion),
@@ -6461,7 +6577,10 @@ export function erzeugeRequestHandler(optionen = {}) {
       // ai-workforce-eigene Prüfpfade zu erfinden (F-701-Nachbarschaft).
       const pruefbefehl = vorlage.pruefbefehl ?? null
       const istAiWorkforce = repoWurzel === installWurzel
-      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce })
+      // F45 B0 (F-986 a): lesender Start-Hinweis (Leitstand aus falschem Ordner, E-188) — der Server bleibt
+      // Durchsetzungsort, Senden bleibt möglich. Option startHinweis nur für Tests.
+      const startHinweisWert = startHinweis !== undefined ? startHinweis : prozessStartHinweis
+      sendeJson(res, 200, { laeufe, startfehler: startfehlerWert, workflows, fehler, aktiverLauf, pruefbefehl, istAiWorkforce, startHinweis: startHinweisWert })
       return
     }
 
@@ -7303,37 +7422,15 @@ export function erzeugeRequestHandler(optionen = {}) {
         return
       }
 
-      // Worker-Auflösung — Muster POST /api/auftraege/<id>/routen Korrektur 4: 'codex' mit
-      // --output-schema, wenn verfügbar, sonst Rückfall auf 'claude-code' mit Fence-Stripping.
-      // VOR registriereAuftrag (Code-Review-Befund WS-1): scheitert einer der folgenden Schritte,
-      // ist noch kein Auftrag-Artefakt geschrieben — ein Fehlversuch hinterlässt keinen Orphan.
-      let ressourcenRoh
-      try {
-        ressourcenRoh = leseRessourcenRoh(installWurzel)
-      } catch (fehler) {
-        sendeJson(res, 500, { grund: `ressourcen.json nicht lesbar: ${fehler.message}` })
-        return
-      }
-      const aufgeloesteRessourcen = loeseRessourcenAuf(ressourcenRoh.ressourcen, repoWurzel, startvorlagePfad)
-      const codexEintrag = aufgeloesteRessourcen.find((r) => r.id === 'codex')
-      const codexVerfuegbar = codexEintrag !== undefined && codexEintrag.verfuegbar === true
-
-      let worker
-      let modell
-      let ausgabeSchemaPfad
-      if (codexVerfuegbar) {
-        const schemaErgebnis = loeseAusgabeSchemaAuf(konfiguration.schemaName, installWurzel)
-        if (!schemaErgebnis.ok) {
-          sendeJson(res, 500, { grund: schemaErgebnis.grund })
-          return
-        }
-        worker = 'codex'
-        modell = 'gpt-6-astra'
-        ausgabeSchemaPfad = schemaErgebnis.pfad
-      } else {
-        worker = 'claude-code'
-        modell = vorlage.modell
-      }
+      // F45 B0 (F-544): Chat-Rollen laufen fest auf konfiguration.worker ('claude-code'), unabhängig
+      // von der Startvorlage — vorher wählte diese Stelle 'codex' mit --output-schema, sobald Codex
+      // verfügbar war (startvorlagen/ai-workforce.json). Vorher-Messung: Codex war im Median nicht
+      // schneller (features/F45/nachweise/b0/messung-vorher-codex.md gegen messung-vorher-jarvis.md),
+      // und die Latenz-Hebel (MAX_THINKING_TOKENS, settingSources) wirken nur auf claude-code. Router
+      // und alle anderen Rollen lösen ihren Worker unverändert selbst auf. Die Marke bleibt, damit
+      // K2 (request_eingang → prozess_gestartet) vor und nach dem Fix dieselben Abschnitte misst.
+      const worker = konfiguration.worker
+      const modell = vorlage.modell
       markiereZeit(zeitmessung, 'ressourcen_worker_aufgeloest')
 
       const eingabenRoh = {
@@ -7369,7 +7466,6 @@ export function erzeugeRequestHandler(optionen = {}) {
         aufrufEingaben: { modell, settingSources: '', mcpConfig: '{"mcpServers":{}}', disallowedTools: AUTO_MEMORY_DENY_REGEL, ...konfiguration.aufrufEingabenZusatz },
         auftragId,
         worker,
-        ...(worker === 'codex' ? { ausgabeSchemaPfad } : {}),
       }
       // auftragstext (konfiguration.baueAuftragstext) ist der EINZIGE Eingabekanal (F-269-Muster):
       // die registrierte Auftragsakte trägt die reine Nachricht (Audit-Transparenz, unten), der
@@ -7406,23 +7502,59 @@ export function erzeugeRequestHandler(optionen = {}) {
       globalerLaufZustand.abortController = laufAktivAbortController
       sendeJson(res, 202, { laufId, auftragId })
 
+      // F45 B0 (F-1008): das Abbruchsignal DIESES Laufs — starteLaufUndVergiss setzt
+      // laufAktivAbortController vor dem nachLauf-Rückruf schon zurück.
+      const abbruchSignal = laufAktivAbortController.signal
+      /**
+       * F45 B0 (F-1008): schreibt den Fehler-Eintrag dieses Laufs (F-506-Muster, schreibeRollenChatFehlerEintrag)
+       * und protokolliert das Ergebnis; ein Schreibfehler landet in der Startfehlerliste.
+       * @param misserfolg - { art, grund, zeitgrenzeMs? } aus beschreibeChatMisserfolg bzw. 'unlesbar'
+       */
+      const schreibeFehlerEintrag = (misserfolg) => {
+        const fehlerEintrag = schreibeRollenChatFehlerEintrag(
+          projektId,
+          // Prüfpass F45 B0 (cr 4, qa 5): wie der Erfolgspfad (verarbeiteRollenChatErgebnis) — eine
+          // Zusammenfassung trägt im Verlauf nicht die lange interne Instruktion als Stefans Nachricht.
+          istZusammenfassung ? '[Zusammenfassung angefordert]' : nachricht,
+          laufId,
+          misserfolg,
+          profilReferenz,
+          { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
+          konfiguration,
+          rollenOptionen.modus
+        )
+        if (!fehlerEintrag.ok) {
+          startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: fehlerEintrag.grund })
+          console.error(`[leitstand] ${fehlerEintrag.grund}`)
+        } else {
+          console.log(`[leitstand] ${konfiguration.auftragTitelPraefix}-Lauf '${laufId}': Fehler-Lineage-Eintrag '${konfiguration.lineagePraefix}-${projektId}' (Version ${fehlerEintrag.versionSequenz}, ${misserfolg.art}) geschrieben.`)
+        }
+        markiereZeit(zeitmessung, 'chat_fehlereintrag_geschrieben')
+      }
+
       starteLaufUndVergiss(
         laufId,
         eingabenErgebnis.eingaben,
-        undefined,
+        // F45 B0 (F-1007): eigene Zeitgrenze der Chat-Rolle statt zeitgrenzeMs der Startvorlage.
+        konfiguration.zeitgrenzeMs,
         (ergebnis, fehler) => {
           // Code-Review-Befund F31 WS-3: try/finally, damit protokolliereZeitmessung IMMER
-          // feuert, auch auf jedem der drei frühen Ausstiege unten — gerade ein langsamer,
+          // feuert, auch auf jedem der frühen Ausstiege unten — gerade ein langsamer,
           // fehlgeschlagener oder abgebrochener Lauf ist diagnostisch interessant, und die bis
           // dahin gesammelten Marken (mindestens request_eingang…auftrag_registriert, oft auch
           // die Gateway-Marken) sollen nicht kommentarlos verloren gehen.
           try {
-            // Muster starteLaufUndVergiss' Aufrufer beim Router-Endpunkt oben: ein Fehlschlag/Wurf
-            // vor dem Laufende schreibt bereits einen startfehlerListe-Eintrag (starteLaufUndVergiss
-            // selbst), hier nichts Zusätzliches. 'ABGESCHLOSSEN'/'ERFOLGREICH' explizit geprüft (nicht
-            // nur ergebnis.ok) — derselbe Erfolgsbegriff wie die Änderungsübersicht-Registrierung oben.
-            if (fehler !== null || ergebnis?.ok === false) return
-            if (!(ergebnis.laufStatus?.status === 'ABGESCHLOSSEN' && ergebnis.laufStatus.ergebnis === 'ERFOLGREICH')) return
+            // F45 B0 (F-1008): jeder nicht erfolgreiche Lauf — Wurf, nie gestartet (ok:false, z. B.
+            // Startfreigabe verweigert), FEHLGESCHLAGEN, VERWEIGERT, Zeitgrenze, Abbruch, Klärung —
+            // hinterlässt genau einen als Fehler gekennzeichneten Eintrag mit Grund im Verlauf, nie
+            // eine Antwort. Vorher schrieb nur ein ERFOLGREICH-Lauf mit unlesbarem Ergebnis einen
+            // (F-506), alles andere zeigte nur der Client lokal und verlor es beim Neuladen. Der
+            // startfehlerListe-Eintrag aus starteLaufUndVergiss (Wurf, ok:false) bleibt zusätzlich.
+            const misserfolg = beschreibeChatMisserfolg(ergebnis, fehler, abbruchSignal.aborted, konfiguration.zeitgrenzeMs)
+            if (misserfolg !== null) {
+              schreibeFehlerEintrag(misserfolg)
+              return
+            }
 
             // Beginn der Chat-eigenen Nachbereitung — alles davor (Klassifikation, Laufakte,
             // terminale Wirkungsmarke) liegt in fuehreAufgabeDurch und trägt eigene Marken.
@@ -7430,7 +7562,10 @@ export function erzeugeRequestHandler(optionen = {}) {
             const laufakteVersion = ladeArtefaktVersion(`laufakte-${laufId}`, undefined, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
             markiereZeit(zeitmessung, 'laufakte_geladen')
             if (laufakteVersion === null) {
-              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: `${konfiguration.auftragTitelPraefix}-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden` })
+              const grund = `${konfiguration.auftragTitelPraefix}-Lauf '${laufId}' ok:true, aber Laufakte 'laufakte-${laufId}' nicht gefunden`
+              startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: grund })
+              // Prüfpass F45 B0 (cr 2, qa 1): auch ein Erfolg ohne lesbare Laufakte endet sichtbar.
+              schreibeFehlerEintrag({ art: 'unlesbar', grund })
               return
             }
 
@@ -7459,24 +7594,8 @@ export function erzeugeRequestHandler(optionen = {}) {
               // ABGESCHLOSSEN/ERFOLGREICH beendeter Lauf ohne lesbares Ergebnis verliert die
               // Nachricht NICHT mehr kommentarlos — ein sichtbarer Fehler-Turn ersetzt die fehlende
               // Antwort im selben '<lineagePraefix>-<projektId>'-Verlauf, den die jeweilige UI
-              // ohnehin pollt/neu lädt.
-              const fehlerEintrag = schreibeRollenChatFehlerEintrag(
-                projektId,
-                nachricht,
-                laufId,
-                verarbeitung.grund,
-                profilReferenz,
-                { basisVerzeichnis, schreiber: STILLER_SCHREIBER },
-                konfiguration,
-                rollenOptionen.modus
-              )
-              if (!fehlerEintrag.ok) {
-                startfehlerListe.push({ zeitstempel: new Date().toISOString(), laufId, fehler: fehlerEintrag.grund })
-                console.error(`[leitstand] ${fehlerEintrag.grund}`)
-              } else {
-                console.log(`[leitstand] ${konfiguration.auftragTitelPraefix}-Lauf '${laufId}': Fehler-Lineage-Eintrag '${konfiguration.lineagePraefix}-${projektId}' (Version ${fehlerEintrag.versionSequenz}) geschrieben.`)
-              }
-              markiereZeit(zeitmessung, 'chat_fehlereintrag_geschrieben')
+              // ohnehin pollt/neu lädt. Seit F45 B0 über denselben Helfer wie jeder andere Misserfolg.
+              schreibeFehlerEintrag({ art: 'unlesbar', grund: verarbeitung.grund })
             } else {
               console.log(`[leitstand] ${konfiguration.auftragTitelPraefix}-Lauf '${laufId}': Lineage-Eintrag '${konfiguration.lineagePraefix}-${projektId}' (Version ${verarbeitung.versionSequenz}) geschrieben.`)
             }
@@ -7505,7 +7624,9 @@ export function erzeugeRequestHandler(optionen = {}) {
      *   Filter (undefined, jarvis-Aufrufe) bleibt das Verhalten unverändert.
      */
     function ladeRollenVerlaufsfenster(konfiguration, maxTurns, maxZeichen, modusFilter) {
-      const versionen = listeVersionen(`${konfiguration.lineagePraefix}-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER })
+      // F45 B0 (F-1008): Fehler-Einträge (istFehler) sind keine Antwort des Modells und gehen nicht als
+      // Gesprächskontext an den nächsten Lauf.
+      const versionen = listeVersionen(`${konfiguration.lineagePraefix}-${projektId}`, { basisVerzeichnis, schreiber: STILLER_SCHREIBER }).filter((version) => version.daten?.istFehler !== true)
       const gefiltert = modusFilter === undefined ? versionen : versionen.filter((version) => (version.daten?.modus ?? 'feature') === modusFilter)
       const eintraege = gefiltert.map((version) => ({
         nachricht: version.daten?.nachricht ?? '',
@@ -7534,8 +7655,9 @@ export function erzeugeRequestHandler(optionen = {}) {
     // features/F26/feature.md "Bekannte Grenzen" dokumentierte Lücke (WS-1 kannte die
     // Projekt-id der Handler-Instanz nicht; jetzt optionen.projektId, s. erzeugeRequestHandler).
     // Jede andere Terminallage (FEHLGESCHLAGEN/VERWEIGERT/KLAERUNG_ERFORDERLICH, ok:false)
-    // schreibt bewusst NICHTS — 'Chat hat keine eigene Wahrheit', nur ein real erfolgreicher
-    // Jarvis-Lauf wird Lineage.
+    // schrieb bis F45 B0 bewusst NICHTS; seither schreibt sie genau einen als Fehler
+    // gekennzeichneten Eintrag mit Grund (F-1008, beschreibeChatMisserfolg) — nie eine Antwort,
+    // Antworten gibt es weiter nur aus einem real erfolgreichen Lauf.
     //
     // F31 WS-2: der Auftragstext bekommt zusätzlich ein begrenztes Verlaufsfenster (8 Turns/12000
     // Zeichen, ab der letzten Zusammenfassung) aus genau derselben Kette — Jarvis kennt damit den
@@ -7666,6 +7788,8 @@ export function erzeugeRequestHandler(optionen = {}) {
           nachricht: version.daten?.nachricht ?? null,
           jarvisAntwort: version.daten?.jarvisAntwort ?? null,
           istZusammenfassung: version.daten?.istZusammenfassung === true,
+          // F45 B0 (F-1008): Fehler-Einträge erkennbar (Muster routen-sparring.mjs, projiziereFehler).
+          ...projiziereFehler(version.daten),
         })),
       })
       return
@@ -9693,6 +9817,9 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   } catch {
     // ressourcen.json fehlt/ungültig — kein Startabbruch für eine reine Sichtbarkeitswarnung.
   }
+  // F45 B0 (F-986 a): Startordner gegen den Wirksamkeitsnachweis — bei Abweichung console.warn und ein
+  // lesendes Feld startHinweis in GET /api/zustand (Band oben, Hinweis im Chat). E-188 bleibt streng.
+  prozessStartHinweis = ermittleStartHinweis(process.cwd())
   // F-201: prozessübergreifender Instanz-Lock, VOR dem Binden. Dasselbe BASISVERZEICHNIS,
   // das erzeugeRequestHandler hier per Default benutzt — der Lock schützt genau dieses
   // kontrollzustand/, nicht den Port (den schützt EADDRINUSE ohnehin).
@@ -9770,5 +9897,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
       const sperre = vorschauLeitstandSperre(projekt.vorschau_url, server.address()?.port)
       if (sperre !== null) console.warn(`[leitstand] Projekt '${projekt.id}': ${sperre} (${projekt.vorschau_url}) — {projekt_origins} bleibt leer, die Vorschau wird nicht angefragt`)
     }
+    // F45 B0 (Teil 2 Punkt 6): Event-Loop-Zeile alle 60 s, nur bei LEITSTAND_ZEITMESSUNG=1 (sonst No-op).
+    starteEventLoopMessung()
   })
 }

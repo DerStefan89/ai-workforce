@@ -111,7 +111,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartfreigabe, verweigereStart } from '../invocation-policy/index.ts'
+import { ermittleIstZustand, pruefeAufrufparameter, pruefeStartfreigabe, vergleicheArbeitsverzeichnisMitNachweis, verweigereStart } from '../invocation-policy/index.ts'
 import type { BaselineReferenz, IstUebrigeFelder, IstZustand, WirksamkeitsnachweisReferenz } from '../invocation-policy/types.ts'
 import { schreibeWirkungsmarke, sha256Hex } from '../checkpoint-store/index.ts'
 import type { ProfilReferenz, Schreiber as CheckpointSchreiber } from '../checkpoint-store/types.ts'
@@ -164,6 +164,25 @@ export function leseAktuelleAutorisierung(pfad: string): AktuelleAutorisierung |
   const obj = geparst as Record<string, unknown>
   if (!istGueltigeCommitGepinnteReferenz(obj.baselineReferenz) || !istGueltigeCommitGepinnteReferenz(obj.wirksamkeitsnachweisReferenz)) return null
   return obj as unknown as AktuelleAutorisierung
+}
+
+/**
+ * F45 B0 (F-986 a): prüft beim Serverstart, ob istPfad dem arbeitsverzeichnis_pfad des geltenden
+ * Wirksamkeitsnachweises entspricht. Dieselbe Lesestelle wie starteGateway (leseAktuelleAutorisierung
+ * auf STANDARD_AKTUELLE_AUTORISIERUNG_PFAD bzw. optionen.aktuelleAutorisierungPfad) und dieselbe
+ * Normalisierung wie E-188 (vergleicheArbeitsverzeichnisMitNachweis). Rein lesend — die Durchsetzung
+ * bleibt die Startfreigabe jedes Laufs.
+ * @param istPfad - Arbeitsverzeichnis des Leitstands (process.cwd())
+ * @param optionen - aktuelleAutorisierungPfad/startfreigabeRepoWurzel wie in GatewayOptionen (Tests)
+ * @returns { ok: true, stimmtUeberein, nachgewiesenerPfad } oder { ok: false, grund }
+ */
+export function pruefeStartordner(
+  istPfad: string,
+  optionen: { aktuelleAutorisierungPfad?: string; startfreigabeRepoWurzel?: string } = {}
+): { ok: true; stimmtUeberein: boolean; nachgewiesenerPfad: string } | { ok: false; grund: string } {
+  const autorisierung = leseAktuelleAutorisierung(optionen.aktuelleAutorisierungPfad ?? STANDARD_AKTUELLE_AUTORISIERUNG_PFAD)
+  if (autorisierung === null) return { ok: false, grund: 'Referenzdatei fehlt oder hat nicht die erwartete Form, siehe state/aktuelle-autorisierung.json' }
+  return vergleicheArbeitsverzeichnisMitNachweis(autorisierung.wirksamkeitsnachweisReferenz, istPfad, { repoWurzel: optionen.startfreigabeRepoWurzel })
 }
 
 interface Optionen {

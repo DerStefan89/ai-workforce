@@ -44,6 +44,8 @@ export default {
   'kopf.themeDunkel': 'Включить тёмное оформление',
   'kopf.fragJarvis': 'Спросить Jarvis',
   'kopf.pollFehler': 'Обновление не удалось — на экране может быть устаревшее состояние.',
+  // F45 B0 (F-986 a): полоса вверху, центр управления запущен из неверной папки.
+  'start.hinweis.falscherOrdner': 'Центр управления запущен из {ist} — запуски будут отклонены (E-188). Запустите его из {soll}.',
   // F44 WS-8b: Kopf-Knöpfe VS Code | Terminal | GitHub, stiller Punkt bei neuer Antwort.
   'kopf.werkzeuge': 'Инструменты',
   'kopf.vscode': 'VS Code',
@@ -1601,6 +1603,21 @@ export default {
   'chat.ende.nichtGestartet': 'Запуск не начат: {grund}',
   'chat.ende.nichtGestartetOhneGrund': 'Запуск не начат (причина не указана).',
   'chat.ende.zeitgrenze': 'Более {minuten} мин. без изменений в запуске — чат больше не ждёт. Состояние — в разделе «Запуски».',
+  // F45 B0 (F-1008): записи об ошибках от сервера, переводятся по fehler.art.
+  'chat.ende.zeitgrenzeServer': 'Запуск остановлен по лимиту времени ({sekunden} с) — ответа нет.',
+  'chat.ende.verweigert': 'Запуск отклонён: {grund}',
+  // Prüfpass F45 B0 (design 7): der Kopf der Blase sagt schon „nicht erfolgreich“ — der Text nennt nur den Grund.
+  'chat.ende.fehlgeschlagen': 'Причина: {grund}',
+  'chat.ende.ohneEintrag': 'Запуск сообщает об успехе, но ответа в истории нет. Состояние — в разделе «Запуски».',
+  'chat.ende.unlesbar': 'Не удалось прочитать ответ: {grund}',
+  'chat.ende.grundFehlt': 'причина не указана',
+  // F45 B0 (F-971, F-986 b): точка на вкладке, причина блокировки отправки, запуск в другом подрежиме, подхваченный запуск.
+  'chat.reiter.neu': '{name}, новый ответ',
+  'chat.sperre.sendet': 'Сообщение отправляется …',
+  'chat.sperre.laeuft': 'Отправка снова станет доступна, когда придёт текущий ответ.',
+  'chat.sperre.untermodus': 'Отправка снова станет доступна, когда завершится запуск в подрежиме {untermodus}.',
+  'chat.untermodus.laeuftIn': 'Идёт запуск в подрежиме {untermodus}',
+  'chat.uebernommen.nachrichtUnbekannt': '(сообщение из идущего запуска)',
   'chat.fortschritt.liest': 'читает {pfad}',
   'chat.fortschritt.liestDatei': 'читает файл',
   'chat.fortschritt.durchsucht': 'ищет «{muster}»',

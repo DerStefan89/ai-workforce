@@ -1,0 +1,858 @@
+{
+  "parameter": {
+    "modus": "jarvis",
+    "turns": 10,
+    "etikett": "vorher-jarvis",
+    "startvorlage": null,
+    "warmlaufMin": 0,
+    "untermodus": "feature",
+    "port": 4199
+  },
+  "umgebung": {
+    "start": "2026-10-10T17:16:20.786Z",
+    "ende": "2026-10-10T17:17:53.255Z",
+    "git": "d10f9be",
+    "node": "v24.16.0",
+    "plattform": "win32 x64",
+    "arbeitsordner": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+    "startzeile": "Leitstand läuft auf http://127.0.0.1:4199 (Startvorlage: startvorlagen/beispielprojekt.json, Projekte: ai-workforce, haushaltsbuch, haushaltsbuch2)",
+    "warnungen": [
+      "[F-391] Startvorlage 'startvorlagen/beispielprojekt.json' geladen — Codex ist nicht verfügbar (Startvorlage trägt keinen vollständigen 'worker.codex'-Block (startziel/versionDeklariert/sandbox)); der Router fällt auf den fehleranfälligen claude-code-Klassifikationspfad zurück (F-337/F-373). Fix: LEITSTAND_STARTVORLAGE_PFAD=startvorlagen/ai-workforce.json"
+    ]
+  },
+  "turns": [
+    {
+      "startZeit": "2026-10-10T17:16:26.505Z",
+      "frage": "[Messung F45-B0] Antworte bitte nur mit dem Wort OK.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-f9855503-57a7-4f9e-8450-d40ff0737474",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis OK",
+      "k1NodeMs": 108,
+      "k3NodeMs": 5955,
+      "client": {
+        "absenden_bis_quittung_ms": 37,
+        "quittung_bis_pollergebnis_ms": 5777,
+        "pollergebnis_bis_darstellung_ms": 22,
+        "gesamt_ms": 5836,
+        "poll_ticks": 11,
+        "groesste_poll_luecke_ms": 603
+      },
+      "serverMarken": {
+        "request_eingang": 5615.6258,
+        "verlauf_geladen": 5632.7472,
+        "ressourcen_worker_aufgeloest": 5638.7254,
+        "auftrag_registriert": 5645.1541,
+        "kontextpaket_startfreigabe": 5895.7952,
+        "prozess_gestartet": 5899.4457,
+        "prozess_beendet": 10996.6026,
+        "rohstrom_geschrieben": 11004.387,
+        "laufakte_rohstrom_geschrieben": 11006.6385,
+        "klassifikation_begonnen": 11006.6721,
+        "terminal_checkpoint_geschrieben": 11009.5711,
+        "chat_nachbereitung_begonnen": 11010.7748,
+        "laufakte_geladen": 11011.4416,
+        "chat_eintrag_geschrieben": 11015.4364,
+        "prozess_close": 11796.1146
+      },
+      "phasen": {
+        "k2": 284,
+        "prozess": 5097,
+        "nachbereitung": 19,
+        "serverGesamt": 5400
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 37,
+      "k3Ms": 5836
+    },
+    {
+      "startZeit": "2026-10-10T17:16:36.454Z",
+      "frage": "[Messung F45-B0] Wie heißt dieses Projekt? Antworte in einem Satz.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-df378b94-aef7-41d7-bd0f-14e3d80b8174",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Dieses Projekt heißt AI Workforce — eine lokale Orchestrierungsanwendung, die ein Vorhaben von der Idee bis zum abgenommenen Ergebnis durch getrennte KI-",
+      "k1NodeMs": 92,
+      "k3NodeMs": 6827,
+      "client": {
+        "absenden_bis_quittung_ms": 26,
+        "quittung_bis_pollergebnis_ms": 6693,
+        "pollergebnis_bis_darstellung_ms": 21,
+        "gesamt_ms": 6740,
+        "poll_ticks": 13,
+        "groesste_poll_luecke_ms": 533
+      },
+      "serverMarken": {
+        "request_eingang": 15560.9255,
+        "verlauf_geladen": 15573.8347,
+        "ressourcen_worker_aufgeloest": 15575.939,
+        "auftrag_registriert": 15579.8922,
+        "kontextpaket_startfreigabe": 15823.5355,
+        "prozess_gestartet": 15825.7948,
+        "prozess_beendet": 21937.5996,
+        "rohstrom_geschrieben": 21941.3234,
+        "laufakte_rohstrom_geschrieben": 21946.557,
+        "klassifikation_begonnen": 21946.607,
+        "terminal_checkpoint_geschrieben": 21951.4517,
+        "chat_nachbereitung_begonnen": 21953.0681,
+        "laufakte_geladen": 21954.605,
+        "chat_eintrag_geschrieben": 21960.6432,
+        "prozess_close": 22536.7404
+      },
+      "phasen": {
+        "k2": 265,
+        "prozess": 6112,
+        "nachbereitung": 23,
+        "serverGesamt": 6400
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 26,
+      "k3Ms": 6740
+    },
+    {
+      "startZeit": "2026-10-10T17:16:46.396Z",
+      "frage": "[Messung F45-B0] Nenne den aktuellen Meilenstein in einem Satz.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-a4dc667b-a60d-4926-8a10-ff6363d089f2",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Der aktuelle Meilenstein ist M5 — \"Projektkontext, Coach, Challenge-Flow, Architektur, Dogfooding\" —, innerhalb dessen gerade F46 (Design-Nachbau) und da",
+      "k1NodeMs": 76,
+      "k3NodeMs": 6859,
+      "client": {
+        "absenden_bis_quittung_ms": 33,
+        "quittung_bis_pollergebnis_ms": 6678,
+        "pollergebnis_bis_darstellung_ms": 13,
+        "gesamt_ms": 6724,
+        "poll_ticks": 13,
+        "groesste_poll_luecke_ms": 517
+      },
+      "serverMarken": {
+        "request_eingang": 25480.9993,
+        "verlauf_geladen": 25494.5463,
+        "ressourcen_worker_aufgeloest": 25499.6721,
+        "auftrag_registriert": 25504.5108,
+        "kontextpaket_startfreigabe": 25720.124,
+        "prozess_gestartet": 25722.5423,
+        "prozess_beendet": 31686.1941,
+        "rohstrom_geschrieben": 31687.8032,
+        "laufakte_rohstrom_geschrieben": 31689.7738,
+        "klassifikation_begonnen": 31689.7853,
+        "terminal_checkpoint_geschrieben": 31691.6227,
+        "chat_nachbereitung_begonnen": 31692.0867,
+        "laufakte_geladen": 31692.445,
+        "chat_eintrag_geschrieben": 31694.4659,
+        "prozess_close": 32270.3603
+      },
+      "phasen": {
+        "k2": 242,
+        "prozess": 5964,
+        "nachbereitung": 8,
+        "serverGesamt": 6213
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 33,
+      "k3Ms": 6724
+    },
+    {
+      "startZeit": "2026-10-10T17:16:55.736Z",
+      "frage": "[Messung F45-B0] Was ist F45? Ein Satz genügt.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-9cebcd7f-685b-4ed8-8311-2cdfd1ab9a0a",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis F45 ist das Fixpaket \"Arbeitsfähigkeit\" innerhalb von M5, aktuell IN_ARBEIT mit dem Baustein B0 Chat (Akte in docs/projekt/fixpaket-f45.md).",
+      "k1NodeMs": 68,
+      "k3NodeMs": 6264,
+      "client": {
+        "absenden_bis_quittung_ms": 22,
+        "quittung_bis_pollergebnis_ms": 6160,
+        "pollergebnis_bis_darstellung_ms": 18,
+        "gesamt_ms": 6200,
+        "poll_ticks": 12,
+        "groesste_poll_luecke_ms": 517
+      },
+      "serverMarken": {
+        "request_eingang": 34821.0648,
+        "verlauf_geladen": 34832.2107,
+        "ressourcen_worker_aufgeloest": 34835.5332,
+        "auftrag_registriert": 34838.8469,
+        "kontextpaket_startfreigabe": 35017.2225,
+        "prozess_gestartet": 35018.8783,
+        "prozess_beendet": 40930.8753,
+        "rohstrom_geschrieben": 40933.7328,
+        "laufakte_rohstrom_geschrieben": 40935.4259,
+        "klassifikation_begonnen": 40935.4436,
+        "terminal_checkpoint_geschrieben": 40937.8563,
+        "chat_nachbereitung_begonnen": 40938.4277,
+        "laufakte_geladen": 40938.7383,
+        "chat_eintrag_geschrieben": 40941.09,
+        "prozess_close": 41534.834
+      },
+      "phasen": {
+        "k2": 198,
+        "prozess": 5912,
+        "nachbereitung": 10,
+        "serverGesamt": 6120
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 22,
+      "k3Ms": 6200
+    },
+    {
+      "startZeit": "2026-10-10T17:17:04.448Z",
+      "frage": "[Messung F45-B0] Antworte nur mit der Zahl: Wie viel ist 7 mal 6?",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-1c8278ce-7bf0-48d8-9439-fc8c1b1e795c",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis 42",
+      "k1NodeMs": 64,
+      "k3NodeMs": 5243,
+      "client": {
+        "absenden_bis_quittung_ms": 23,
+        "quittung_bis_pollergebnis_ms": 5121,
+        "pollergebnis_bis_darstellung_ms": 16,
+        "gesamt_ms": 5160,
+        "poll_ticks": 10,
+        "groesste_poll_luecke_ms": 517
+      },
+      "serverMarken": {
+        "request_eingang": 43526.2706,
+        "verlauf_geladen": 43537.4219,
+        "ressourcen_worker_aufgeloest": 43540.5869,
+        "auftrag_registriert": 43543.8911,
+        "kontextpaket_startfreigabe": 43700.4701,
+        "prozess_gestartet": 43701.8263,
+        "prozess_beendet": 48646.5351,
+        "rohstrom_geschrieben": 48649.3897,
+        "laufakte_rohstrom_geschrieben": 48651.5445,
+        "klassifikation_begonnen": 48651.5634,
+        "terminal_checkpoint_geschrieben": 48653.4087,
+        "chat_nachbereitung_begonnen": 48653.8616,
+        "laufakte_geladen": 48654.2335,
+        "chat_eintrag_geschrieben": 48656.2563,
+        "prozess_close": 49211.3375
+      },
+      "phasen": {
+        "k2": 176,
+        "prozess": 4945,
+        "nachbereitung": 10,
+        "serverGesamt": 5130
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 23,
+      "k3Ms": 5160
+    },
+    {
+      "startZeit": "2026-10-10T17:17:13.012Z",
+      "frage": "[Messung F45-B0] Nenne ein offenes P1-Finding mit ID, ohne Erklärung.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-e38b3f7e-a0fd-4876-8504-b6836e6d9a76",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis F-501",
+      "k1NodeMs": 52,
+      "k3NodeMs": 4246,
+      "client": {
+        "absenden_bis_quittung_ms": 18,
+        "quittung_bis_pollergebnis_ms": 4106,
+        "pollergebnis_bis_darstellung_ms": 15,
+        "gesamt_ms": 4138,
+        "poll_ticks": 8,
+        "groesste_poll_luecke_ms": 518
+      },
+      "serverMarken": {
+        "request_eingang": 52084.8308,
+        "verlauf_geladen": 52093.2842,
+        "ressourcen_worker_aufgeloest": 52095.5465,
+        "auftrag_registriert": 52098.9313,
+        "kontextpaket_startfreigabe": 52310.5632,
+        "prozess_gestartet": 52312.7588,
+        "prozess_beendet": 55747.6609,
+        "rohstrom_geschrieben": 55749.391,
+        "laufakte_rohstrom_geschrieben": 55751.9073,
+        "klassifikation_begonnen": 55751.9283,
+        "terminal_checkpoint_geschrieben": 55754.4231,
+        "chat_nachbereitung_begonnen": 55755.132,
+        "laufakte_geladen": 55755.5926,
+        "chat_eintrag_geschrieben": 55758.1864,
+        "prozess_close": 56307.6687
+      },
+      "phasen": {
+        "k2": 228,
+        "prozess": 3435,
+        "nachbereitung": 11,
+        "serverGesamt": 3673
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 18,
+      "k3Ms": 4138
+    },
+    {
+      "startZeit": "2026-10-10T17:17:20.183Z",
+      "frage": "[Messung F45-B0] Antworte nur mit Ja oder Nein: Ist F46 abgeschlossen?",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-6f0243b6-ba94-4544-b2af-5ffdf69546b8",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Nein",
+      "k1NodeMs": 88,
+      "k3NodeMs": 4858,
+      "client": {
+        "absenden_bis_quittung_ms": 35,
+        "quittung_bis_pollergebnis_ms": 4626,
+        "pollergebnis_bis_darstellung_ms": 39,
+        "gesamt_ms": 4701,
+        "poll_ticks": 9,
+        "groesste_poll_luecke_ms": 520
+      },
+      "serverMarken": {
+        "request_eingang": 59279.6856,
+        "verlauf_geladen": 59295.8232,
+        "ressourcen_worker_aufgeloest": 59301.2144,
+        "auftrag_registriert": 59305.6002,
+        "kontextpaket_startfreigabe": 59558.3771,
+        "prozess_gestartet": 59559.9834,
+        "prozess_beendet": 63800.8154,
+        "rohstrom_geschrieben": 63801.8062,
+        "laufakte_rohstrom_geschrieben": 63803.3297,
+        "klassifikation_begonnen": 63803.3516,
+        "terminal_checkpoint_geschrieben": 63806.0446,
+        "chat_nachbereitung_begonnen": 63806.5771,
+        "laufakte_geladen": 63806.9231,
+        "chat_eintrag_geschrieben": 63808.6273,
+        "prozess_close": 64351.9773
+      },
+      "phasen": {
+        "k2": 280,
+        "prozess": 4241,
+        "nachbereitung": 8,
+        "serverGesamt": 4529
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 35,
+      "k3Ms": 4701
+    },
+    {
+      "startZeit": "2026-10-10T17:17:27.948Z",
+      "frage": "[Messung F45-B0] In welcher Sprache ist der Code dieses Projekts geschrieben? Ein Wort.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-7d4292eb-4367-4cd3-bdc8-70ff605aad7b",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis TypeScript",
+      "k1NodeMs": 57,
+      "k3NodeMs": 4704,
+      "client": {
+        "absenden_bis_quittung_ms": 22,
+        "quittung_bis_pollergebnis_ms": 4626,
+        "pollergebnis_bis_darstellung_ms": 12,
+        "gesamt_ms": 4660,
+        "poll_ticks": 9,
+        "groesste_poll_luecke_ms": 517
+      },
+      "serverMarken": {
+        "request_eingang": 67019.5303,
+        "verlauf_geladen": 67028.9743,
+        "ressourcen_worker_aufgeloest": 67032.218,
+        "auftrag_registriert": 67035.3954,
+        "kontextpaket_startfreigabe": 67233.0234,
+        "prozess_gestartet": 67234.945,
+        "prozess_beendet": 71561.6322,
+        "rohstrom_geschrieben": 71564.6456,
+        "laufakte_rohstrom_geschrieben": 71566.7377,
+        "klassifikation_begonnen": 71566.7573,
+        "terminal_checkpoint_geschrieben": 71568.9576,
+        "chat_nachbereitung_begonnen": 71569.6838,
+        "laufakte_geladen": 71570.1655,
+        "chat_eintrag_geschrieben": 71572.6457,
+        "prozess_close": 72117.9183
+      },
+      "phasen": {
+        "k2": 215,
+        "prozess": 4327,
+        "nachbereitung": 11,
+        "serverGesamt": 4553
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 22,
+      "k3Ms": 4660
+    },
+    {
+      "startZeit": "2026-10-10T17:17:35.833Z",
+      "frage": "[Messung F45-B0] Fasse das Projektziel in höchstens zehn Wörtern zusammen.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-2a0435f8-1f3b-4a36-8a06-12aab81bbcb5",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Workforce führt Vorhaben per KI-Positionen von Idee zur Abnahme.",
+      "k1NodeMs": 85,
+      "k3NodeMs": 5787,
+      "client": {
+        "absenden_bis_quittung_ms": 34,
+        "quittung_bis_pollergebnis_ms": 5646,
+        "pollergebnis_bis_darstellung_ms": 13,
+        "gesamt_ms": 5692,
+        "poll_ticks": 11,
+        "groesste_poll_luecke_ms": 518
+      },
+      "serverMarken": {
+        "request_eingang": 74922.9992,
+        "verlauf_geladen": 74939.3538,
+        "ressourcen_worker_aufgeloest": 74945.4119,
+        "auftrag_registriert": 74950.768,
+        "kontextpaket_startfreigabe": 75146.9763,
+        "prozess_gestartet": 75148.8017,
+        "prozess_beendet": 80185.3685,
+        "rohstrom_geschrieben": 80187.6881,
+        "laufakte_rohstrom_geschrieben": 80189.7313,
+        "klassifikation_begonnen": 80189.7862,
+        "terminal_checkpoint_geschrieben": 80191.6341,
+        "chat_nachbereitung_begonnen": 80192.1358,
+        "laufakte_geladen": 80192.4417,
+        "chat_eintrag_geschrieben": 80194.2855,
+        "prozess_close": 80747.4271
+      },
+      "phasen": {
+        "k2": 226,
+        "prozess": 5037,
+        "nachbereitung": 9,
+        "serverGesamt": 5271
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 34,
+      "k3Ms": 5692
+    },
+    {
+      "startZeit": "2026-10-10T17:17:44.717Z",
+      "frage": "[Messung F45-B0] Antworte bitte nur mit dem Wort Fertig.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-b30e343a-c7b7-41dc-abca-9c4873197a1e",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Fertig",
+      "k1NodeMs": 103,
+      "k3NodeMs": 4855,
+      "client": {
+        "absenden_bis_quittung_ms": 35,
+        "quittung_bis_pollergebnis_ms": 4626,
+        "pollergebnis_bis_darstellung_ms": 22,
+        "gesamt_ms": 4684,
+        "poll_ticks": 9,
+        "groesste_poll_luecke_ms": 527
+      },
+      "serverMarken": {
+        "request_eingang": 83826.0933,
+        "verlauf_geladen": 83840.1207,
+        "ressourcen_worker_aufgeloest": 83844.9548,
+        "auftrag_registriert": 83851.8938,
+        "kontextpaket_startfreigabe": 84107.4699,
+        "prozess_gestartet": 84108.9736,
+        "prozess_beendet": 88038.3789,
+        "rohstrom_geschrieben": 88040.1167,
+        "laufakte_rohstrom_geschrieben": 88042.0808,
+        "klassifikation_begonnen": 88042.0983,
+        "terminal_checkpoint_geschrieben": 88045.3679,
+        "chat_nachbereitung_begonnen": 88046.5273,
+        "laufakte_geladen": 88047.0366,
+        "chat_eintrag_geschrieben": 88049.5998,
+        "prozess_close": 88594.7965
+      },
+      "phasen": {
+        "k2": 283,
+        "prozess": 3929,
+        "nachbereitung": 11,
+        "serverGesamt": 4224
+      },
+      "worker": "claude-code",
+      "modellDeklariert": null,
+      "modellBeobachtet": "claude-sonnet-5",
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 35,
+      "k3Ms": 4684
+    }
+  ],
+  "zustand": [
+    {
+      "zeit": 1791652586540,
+      "ms": 2948,
+      "status": 200
+    },
+    {
+      "zeit": 1791652588607,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791652590670,
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "zeit": 1791652592759,
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "zeit": 1791652596488,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791652598549,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791652600611,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791652602664,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791652604746,
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "zeit": 1791652606783,
+      "ms": 32,
+      "status": 200
+    },
+    {
+      "zeit": 1791652608840,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791652610901,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791652612939,
+      "ms": 29,
+      "status": 200
+    },
+    {
+      "zeit": 1791652615759,
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "zeit": 1791652617799,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791652619847,
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "zeit": 1791652621894,
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "zeit": 1791652624473,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791652626523,
+      "ms": 35,
+      "status": 200
+    },
+    {
+      "zeit": 1791652628559,
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "zeit": 1791652630608,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791652633034,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791652635064,
+      "ms": 28,
+      "status": 200
+    },
+    {
+      "zeit": 1791652637104,
+      "ms": 32,
+      "status": 200
+    },
+    {
+      "zeit": 1791652640211,
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "zeit": 1791652642268,
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "zeit": 1791652644329,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791652646387,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791652648432,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791652650471,
+      "ms": 32,
+      "status": 200
+    },
+    {
+      "zeit": 1791652652523,
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "zeit": 1791652655852,
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "zeit": 1791652657910,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791652659957,
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "zeit": 1791652662011,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791652664755,
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "zeit": 1791652666819,
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "zeit": 1791652668868,
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "zeit": 1791652670929,
+      "ms": 45,
+      "status": 200
+    }
+  ],
+  "eventLoop": [
+    {
+      "max": 701,
+      "p99": 46
+    }
+  ],
+  "zusammenfassung": {
+    "k1": {
+      "median": 30,
+      "p95": 37,
+      "max": 37,
+      "anzahl": 10
+    },
+    "k2": {
+      "median": 235,
+      "p95": 284,
+      "max": 284,
+      "anzahl": 10
+    },
+    "prozess": {
+      "median": 4991,
+      "p95": 6112,
+      "max": 6112,
+      "anzahl": 10
+    },
+    "nachbereitung": {
+      "median": 11,
+      "p95": 23,
+      "max": 23,
+      "anzahl": 10
+    },
+    "quittungBisPoll": {
+      "median": 5384,
+      "p95": 6693,
+      "max": 6693,
+      "anzahl": 10
+    },
+    "pollBisAnzeige": {
+      "median": 17,
+      "p95": 39,
+      "max": 39,
+      "anzahl": 10
+    },
+    "k3": {
+      "median": 5426,
+      "p95": 6740,
+      "max": 6740,
+      "anzahl": 10
+    },
+    "zustand": {
+      "median": 45,
+      "p95": 83,
+      "max": 2948,
+      "anzahl": 39
+    },
+    "eventLoopMax": {
+      "median": 701,
+      "p95": 701,
+      "max": 701,
+      "anzahl": 1
+    },
+    "antworten": 10,
+    "fehler": 0,
+    "haengt": 0,
+    "sichtbarBeendet": 10
+  }
+}

@@ -8565,12 +8565,13 @@ Auswirkung: Antworten gingen verloren, Chat faktisch unbenutzbar.
 Maßnahme: Robuste JSON-Extraktion, Fehler-Chat-Eintrag, schärferer Ausgabevertrag.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/286, claude/287.
 
-**F-544** · `TECH_DEBT` · P2 · offen
+**F-544** · `TECH_DEBT` · P2 · erledigt
 Titel: Latenz-Hebel wirken nur auf dem claude-code-Pfad, nicht auf Codex.
 Beschreibung: Mit `startvorlagen/ai-workforce.json` läuft Jarvis auf Codex; hängt an F-391.
 Fundstelle: `startvorlagen/ai-workforce.json`.
 Auswirkung: Auf dem Codex-Pfad wirken die Fixes nicht.
 Maßnahme: Bei F37 (Worker-Wahl) gleichziehen oder Jarvis fest auf claude-code setzen.
+Status: erledigt (F45 B0, 10.10.2026): Chat-Rollen laufen fest auf claude-code (KONFIGURATION_JARVIS/KONFIGURATION_PRODUCT_COACH.worker, starteRollenChatLauf in scripts/leitstand-server.mjs), unabhängig von der Startvorlage. Vorher-Messung: Codex war nicht schneller (K3-Median 6,8 s gegen 5,4 s, features/F45/nachweise/b0/messung-vorher-codex.md); Router und alle anderen Rollen unverändert. Gate scripts/check-f26-jarvis.mjs (h), Test scripts/leitstand-chat-misserfolg.test.mjs.
 Feature/Run: fix/jarvis-latenz, 21.09.2026. Quelle: claude/286.
 
 **F-545** · `BUG` · P1 · erledigt (#202)
@@ -10450,7 +10451,7 @@ Maßnahme: Knöpfe nur zeigen, wenn der Workflow-Status die jeweilige Abnahme er
 Status: offen.
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 
-**F-764** · `HARNESS_IMPROVEMENT` · P2 · behoben (PR folgt)
+**F-764** · `HARNESS_IMPROVEMENT` · P2 · erledigt (#284, ddabcf7)
 Titel: Der Allowlist-Satz in der Ausführungs-Instruktion verhindert Probebefehle nicht; jeder Baulauf endet VERWEIGERT und braucht menschliche Sichtung.
 Beschreibung: Seit F-760 (#265) nennt die Ausführungs-Instruktion die erlaubten Bash-Befehle. Im Reallauf probierte die Ausführung trotzdem in jedem Baulauf Befehle außerhalb der Allowlist: verkettete `cd … && echo … && sed -n … && cat …`, `node -v`/`npm -v`, `git status`/`git log`, `find`, `node --test | head` (Läufe `2f6509a1`, `630e4282`). Alle korrekt abgelehnt, kein Bypass-Verdacht — aber alle drei Bauläufe nach #264 endeten VERWEIGERT, jeder brauchte eine menschliche Sichtung (Halt F-760) und eine Reparaturfassung (F-768).
 Fundstelle: `src/architekt/index.ts` (`baueBashAllowlistSatz`), `startvorlagen/ai-workforce.json` (`werkzeugsaetze.schreibend`); Beleg haushaltsbuch2-Workflow `router-8b138eac-…` Versionen 22 und 29.
@@ -10459,7 +10460,7 @@ Maßnahme: Harmlose Lesebefehle erlauben oder zusammengesetzte Befehle, deren Te
 Ergänzung (F36 WS-0/WS-1, 28.09.2026): Die CLI lässt reine Lesebefehle wie `pwd` ohne Allowlist-Regel zu (`state/spike-f36-werkzeugsatz.md` P2, `general-purpose`-Subagent: `Bash pwd` erlaubt). Vor dem Fix prüfen, welche der beobachteten Probebefehle wirklich VERWEIGERT auslösen — nur die brauchen eine Regel.
 Vermerk (F36 Reallauf, 29.09.2026): Alle vier Ausführungsläufe (`1c4a1163`, `7b6d0f40`, `8cee6c98`, `74290fb5`) endeten VERWEIGERT. Der Grund waren in allen vier nur Probebefehle (`git status`/`git log`, `node scripts/…`, `npm run dev`). Jeder brauchte eine manuelle Reparaturfassung (F-768). Das Muster ist damit über zwei Reallauf-Serien stabil.
 Vermerk (Fixpaket PR 1 nach F36, 30.09.2026): `baueBashAllowlistSatz` nennt jetzt die beobachteten Formen und geht ausdrücklich der Projekt-CLAUDE.md vor. Die Vorlage `vorlagen/projekt-skelett/CLAUDE.md` verlangt `cd` am Blockanfang und `git status` am Iterationsende, das ist laut QA-Pass eine wahrscheinliche Hauptursache. Die Regeln: kein `cd`, genau ein Befehl ohne Verkettung (auch keine Zeilenumbrüche), ohne Umleitung und ohne Hintergrund, Prüfskripte nur über `npm run check`, keine Server, kein git, Versionen und Dateien über Read/Glob/Grep. Die Allowlist wurde bewusst nicht erweitert: `git log`/`git diff` erlauben per Präfix `--output`, und `git status` schreibt `index.lock`. `startvorlagen/ai-workforce.json` und `ERLAUBTE_BASH_REGELN` sind unverändert. Läufe ohne Bash-Regel bleiben bitgenau. Gate: `scripts/check-fixpaket-f36-nachlauf.mjs` (a). Neu bewerten, wenn nach dem Fix weiterhin ≥2 von 4 Bauläufen wegen Probebefehlen VERWEIGERT enden.
-Status: behoben (PR folgt).
+Status: erledigt (#284, ddabcf7).
 Feature/Run: F35-Reallauf haushaltsbuch2, 28.09.2026.
 Zugeordnet: Fixpaket Arbeitsfähigkeit (E-M5-18, 01.10.2026).
 
@@ -12375,13 +12376,13 @@ Maßnahme: Die Regel um „Codeblöcke nie einrücken“ ergänzen und/oder bis 
 Status: offen.
 Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F1, code-reviewer 8), 02.10.2026.
 
-**F-971** · `BUG` · P3 · offen
+**F-971** · `BUG` · P3 · erledigt
 Titel: Chat — Antwort oder Lauf im gerade nicht angezeigten Modus/Untermodus bleibt unsichtbar.
 Beschreibung: (1) Ist das Dock offen und trifft eine Antwort im anderen Reiter ein (Jarvis ↔ Product Coach), gibt es weder Punkt noch Markierung am Reiter. (2) Läuft ein Coach-Lauf im Untermodus Projekt und wechselt der Untermodus auf Feature (z. B. über „Lieber mit dem Coach besprechen“ auf `#/projekt`), filtert `baueAnzeigeListe` die Lauf-Blase heraus: zu sehen sind Leerzustand, „Lauf abbrechen“ und ein gesperrtes Senden ohne sichtbaren Grund (Verhalten aus F-624, der neue Knopf macht es leichter erreichbar).
 Fundstelle: `public/leitstand/views/chat.js` (baueAnzeigeListe, renderVerlauf), `public/leitstand/shell.js` (stiller Punkt nur bei geschlossenem Dock).
 Auswirkung: Gering bis mittel — eine Antwort wird übersehen; das gesperrte Senden wirkt grundlos.
 Maßnahme: Punkt auch am Reiter des anderen Modus; eine ausstehende Lauf-Blase unabhängig vom Untermodus-Filter zeigen oder einen Hinweis „Lauf im Untermodus Projekt läuft“.
-Status: offen.
+Status: erledigt (F45 B0, 10.10.2026): (1) Punkt am Reiter des anderen Modus mit aria-label „<Name>, neue Antwort“ (public/leitstand/views/chat.js, zustand.ungelesen, setzeReiterPunkt; style.css .chat-register [role=tab].hat-neue-antwort); (2) ein ausstehender Coach-Lauf steht nach dem Untermodus-Filter und damit in jedem Untermodus, mit Hinweis „Lauf im Untermodus <x> läuft“ (baueAnzeigeListe, abweichenderUntermodusDesLaufs); gesperrtes Senden nennt seinen Grund (#chat-sperrgrund, Titel des Knopfs). Render-Nachweis features/F45/nachweise/b0/render/ (reiter-punkt, untermodus).
 Feature/Run: Entdeckt: Prüfpass F44 WS-8b (qa F2/F3), 02.10.2026.
 
 **F-972** · `BUG` · P1 · erledigt
@@ -12483,13 +12484,13 @@ Maßnahme: Fixpaket: Befunde je Review (bestätigt/verworfen) gegen die Claude-P
 Status: offen.
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
-**F-983** · `PROCESS_IMPROVEMENT` · P3 · offen
+**F-983** · `PROCESS_IMPROVEMENT` · P3 · erledigt
 Titel: E-F45-1 verweist auf ein Feature F45 ohne Akte.
 Beschreibung: E-F45-1 (`docs/projekt/zielfassung.md` §13.6) nennt F45, es gibt aber keine Akte `features/F45/feature.md`. Die Nummer ist damit belegt, ohne dass das Gate sie sieht.
 Fundstelle: `docs/projekt/zielfassung.md` §13.6 (E-F45-1).
 Auswirkung: Gering — Gefahr einer Doppelvergabe der Nummer.
 Maßnahme: Die Fixpaket-Akte wird F45; der Design-Nachbau ist F46 (`features/F46/feature.md`). Mit der Akte F45 kommt der Eintrag in die Roadmap (Gate `scripts/check-akte-meilenstein.mjs`).
-Status: offen.
+Status: erledigt (F45 B0, 10.10.2026): Akte `features/F45/feature.md` angelegt, F45 in `docs/projekt/roadmap.json` M5 zwischen F46 und F30 (Gate `scripts/check-akte-meilenstein.mjs` grün).
 Feature/Run: Entdeckt: Design-Runde 02.10.2026 / F46 D0.
 
 **F-984** · `PROCESS_IMPROVEMENT` · P2 · offen
@@ -12510,7 +12511,7 @@ Maßnahme: Fixpaket B1/B5; `.claude/settings.json` und Hooks nur per Vorschlag (
 Status: offen.
 Feature/Run: Entdeckt: Design-Abgleich F46 D0b, 02.10.2026.
 
-**F-986** · `BUG` · P1 · offen
+**F-986** · `BUG` · P1 · erledigt
 Titel: „Jarvis-Chat antwortet nicht“ — Lauf wird verweigert, der Chat zeigt das nicht.
 Beschreibung: Gemeldet von Stefan am 02.10.2026 nach #308. Diagnose (02.10.2026, nur lesend, Leitstand auf Port 4199, Playwright): POST /api/chat antwortet 202 in 27 ms; der Server verweigert den Jarvis-Lauf aber sofort vor dem Prozessstart („startfreigabe_abgelehnt: Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)“, Wirkungsmarke `terminal`/`VERWEIGERT`). Der Wirksamkeitsnachweis hält `C:\Users\stefa\Projekte\ai-workforce` fest; der Leitstand lief aus einem anderen Worktree (`process.cwd()`). Stefans eigener Lauf um 16:40 lief aus `aiw-main-ansicht` (Stand 7c6d852, vor #308) und wurde genauso verweigert — keine Regression aus #308; #308 hat `views/chat.js` nicht geändert, keine Konsolenfehler beim Laden oder Senden. Zweiter Teil: GET /api/laeufe/<id> meldet danach `aktiv: false`, `laufStatus.status: NICHT_GESTARTET` mit `terminaleOhneRunPrepared: [1]`; der Chat wertet NICHT_GESTARTET immer als „noch nicht terminal“, zeigt ohne Ende die Tipp-Punkte und „Lauf abbrechen“, keinen Fehler, und fragt den Lauf zweimal je Sekunde ab (294 Abrufe in 150 s).
 Ursache (a): Umgebung — E-188 greift bei Start des Leitstands aus einem Worktree: der Wirksamkeitsnachweis ist an `C:\Users\stefa\Projekte\ai-workforce` gebunden, das Gateway misst `process.cwd()`.
@@ -12519,16 +12520,16 @@ Fundstelle: (a) `src/invocation-policy/index.ts:481` (E-188-Vergleich `arbeitsve
 Auswirkung: Hoch — aus jedem Worktree außer `C:\Users\stefa\Projekte\ai-workforce` startet kein Claude-Lauf, und der Chat wartet stumm statt den Grund zu nennen.
 Einordnung: (c) Umgebung (Leitstand aus einem Worktree gestartet, E-188 greift wie vorgesehen) plus (b) kleiner Client-Fehler (verweigerter Lauf wird nicht als Ende erkannt).
 Maßnahme: (a) Fixpaket: Läufe aus Worktrees — Sicherheitsentscheidung; bis dahin den Leitstand aus `C:\Users\stefa\Projekte\ai-workforce` starten. (b) behoben in F46 D0b: `public/leitstand/chat-laufstand.js` ordnet das Lauf-Detail ein; ein nie gestarteter Lauf (terminale Marke ohne RUN_PREPARED, oder kein Detail und ein Startfehler-Eintrag zur laufId im Poll) endet im Chat mit „Lauf nicht gestartet: <Grund>“; ein nicht aktiver Lauf ohne Änderung über die Lauf-Zeitgrenze der Startvorlage (plus 60 s) beendet das Warten mit Hinweis — ein aktiver Lauf behält „Lauf abbrechen“ und endet an der Server-Zeitgrenze. Der Server liefert lesend `nichtGestartet` (Ergebnis und Grund der terminalen Marke aus `invocation_policy.grund`, `begruendung` oder `grund`, `baueNichtGestartetProjektion`) und `startvorlageZeitgrenzeMs` in GET /api/laeufe/<id>; E-188, CSRF/Origin und Host unverändert. Restgrenzen (Prüfpass): nach Neuladen der Seite wird ein ausstehender Lauf nicht weiter verfolgt (wie bisher); kein HTTP-Test für die zwei neuen Felder, Verdrahtung im Client nur per Render-Nachweis belegt. Tests `public/leitstand/chat-laufstand.test.mjs`, `scripts/leitstand-nicht-gestartet.test.mjs`; Nachweis `features/F46/nachweise/f986/`.
-Status: offen — (b) erledigt (F46 D0b, 02.10.2026); (a) offen.
+Status: erledigt — (b) F46 D0b, 02.10.2026; (a) F45 B0, 10.10.2026: E-188 bleibt streng, der Leitstand prüft beim Start process.cwd() gegen arbeitsverzeichnis_pfad des Wirksamkeitsnachweises (dieselbe Lesestelle wie das Gateway, pruefeStartordner; Normalisierung wie E-188, arbeitsverzeichnisseGleich) und zeigt bei Abweichung console.warn, das Band #start-hinweis und den Hinweis über dem Chat-Eingabefeld (Feld startHinweis in GET /api/zustand). Restgrenze (b) „Neuladen verfolgt Lauf nicht“ ebenfalls in F45 B0 behoben (uebernimmLaufendenChatLauf). Nachweise: scripts/leitstand-chat-misserfolg.test.mjs, scripts/check-f26-jarvis.mjs (i), features/F45/nachweise/b0/render/ (start-hinweis-*, neuladen). Läufe aus einem Worktree bleiben verweigert — das ist Thema von B1a (E-F45-3).
 Feature/Run: Entdeckt: Meldung Stefan 02.10.2026 nach #308 / Diagnose F46 D0b.
 
-**F-987** · `BUG` · P1 · offen
+**F-987** · `BUG` · P1 · erledigt
 Titel: Jarvis-Chat insgesamt unzuverlässig: Absenden dauert lange, Antworten kommen nicht.
 Beschreibung: Gemeldet von Stefan am 02.10.2026, 17:20, unabhängig vom Fix F-986 (b). Kandidaten: Startweg des Chat-Laufs (Worktree/E-188, F-986 a), Latenz der Claude-CLI (frühere F-543/F-556), Poll und Antwortübergabe.
 Fundstelle: offen.
 Auswirkung: Hoch — Jarvis und Product Coach sind praktisch nicht nutzbar (Bedienweg Schritt 2).
 Maßnahme: Fixpaket „Arbeitsfähigkeit“, als erster Punkt vor B1, mit Messung (Zeit bis 202, bis Laufstart, bis Antwort) aus dem Hauptordner.
-Status: offen.
+Status: erledigt (F45 B0, 10.10.2026): K1–K5 erfüllt, gemessen mit scripts/messe-chat.mjs aus dem Hauptordner (features/F45/nachweise/b0/messung-*.md): Jarvis K1 28/39 ms, K2 251 ms, K3 Median 5,2 s / Max 5,7 s; Coach K3 Median 9,8 s / Max 23,2 s; Langlauf (30 min) K1 115/279 ms, K2 556 ms, K3 6,1 s; 20 von 20 Turns sichtbar beendet; K5 per Test und Render-Nachweis. Ursachen laut Vorher-Messung: kein Ende ohne Zeitgrenze (F-1007, ausgelöst u. a. durch Modern Standby, F-1013), Misserfolge ohne dauerhaften Eintrag und kein Weiterverfolgen nach Neuladen (F-1008), Start aus falschem Ordner unsichtbar (F-986 a). Offen in WS P: GET /api/zustand im Langlauf p95 440 ms, Event-Loop bis 2 118 ms, Speicher der Seite (F-1015).
 Feature/Run: Entdeckt: F46 D0b.
 
 **F-988** · `TECH_DEBT` · P3 · offen
@@ -12701,3 +12702,93 @@ Auswirkung: Gering.
 Maßnahme: (a) gemeinsamer Helfer in scripts/leitstand; (b) Dispatcher-Test, Symlink-Fall in CI; (c) bewusst so lassen oder je Status zählen; (d) Hash-Parameter je Register; (e) Fixpaket (Bestand-Gate beachten); (f) Art aus dem Ordner (hooks → Hook) ableiten.
 Status: offen.
 Feature/Run: Entdeckt: F46 D6, Prüfpass (code-reviewer 4/8, qa B13/B14, design-guardian 6d/7), 03.10.2026.
+
+**F-1007** · `BUG` · P1 · erledigt
+Titel: Chat-Läufe haben keine eigene Zeitgrenze.
+Beschreibung: starteRollenChatLauf übergibt keine zeitgrenzeMsUeberschreibung; ein Jarvis- oder Coach-Lauf erbt zeitgrenzeMs der Startvorlage — 30 min mit startvorlagen/ai-workforce.json, keine Grenze mit der Standard-Startvorlage startvorlagen/beispielprojekt.json. Ein hängender Chat-Lauf hält den Chat und über D13 jeden anderen Lauf bis zu dieser Grenze fest — ohne Grenze unbegrenzt; der Chat zeigt so lange nur die Tipp-Punkte.
+Fundstelle: scripts/leitstand-server.mjs (starteRollenChatLauf → starteLaufUndVergiss, zeitgrenzeMs aus vorlage), public/leitstand/chat-laufstand.js (warteGrenzeMs).
+Auswirkung: Hoch — „Antwort kommt nicht“ ohne Ende, alle Läufe gesperrt.
+Maßnahme: F45 B0: eigene Zeitgrenze je Chat-Rolle (Jarvis 180 s, Coach 300 s), wirksame Grenze im Lauf-Detail.
+Status: erledigt (F45 B0, 10.10.2026): KONFIGURATION_JARVIS.zeitgrenzeMs 180 000, KONFIGURATION_PRODUCT_COACH.zeitgrenzeMs 300 000, an starteLaufUndVergiss als zeitgrenzeMsUeberschreibung; GET /api/laeufe/<laufId> liefert laufZeitgrenzeMs (wirksameZeitgrenzeMs), public/leitstand/chat-laufstand.js nutzt sie bevorzugt (wirksameLaufZeitgrenzeMs). Ein an der Grenze beendeter Lauf hinterlässt einen Fehler-Eintrag, D13 ist danach frei (scripts/leitstand-chat-misserfolg.test.mjs, scripts/check-f26-jarvis.mjs (g)).
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1008** · `BUG` · P2 · erledigt
+Titel: Ein nicht erfolgreicher Chat-Lauf hinterlässt keinen Verlaufseintrag.
+Beschreibung: Nur ein erfolgreicher Lauf mit unlesbarem Ergebnis schreibt einen Fehler-Eintrag (F-506). FEHLGESCHLAGEN, VERWEIGERT, Zeitgrenze, Abbruch und „nie gestartet“ zeigt nur der Client lokal; nach Neuladen sind Nachricht und Grund weg, ein laufender Lauf wird nach Neuladen nicht weiter verfolgt (Restgrenze F-986 b).
+Fundstelle: scripts/leitstand-server.mjs (nachLauf-Rückruf in starteRollenChatLauf, früher Ausstieg), public/leitstand/views/chat.js (beendeAusstehendenLaufMitFehler).
+Auswirkung: Mittel — Stefan erlebt „meine Nachricht ist verschwunden, keine Antwort“.
+Maßnahme: F45 B0: Fehler-Eintrag für jeden Misserfolg (F-506-Muster), Lauf nach Neuladen aus aktiverLauf übernehmen.
+Status: erledigt (F45 B0, 10.10.2026): Jeder nicht erfolgreiche Chat-Lauf (Wurf, nie gestartet, FEHLGESCHLAGEN, VERWEIGERT, Zeitgrenze, Abbruch, Klärung) schreibt über schreibeRollenChatFehlerEintrag genau einen Eintrag mit istFehler und fehler { art, grund } (beschreibeChatMisserfolg, scripts/leitstand-server.mjs); GET /api/chat und /api/sparring projizieren beides (projiziereFehler), das Verlaufsfenster des Modells lässt Fehler-Einträge aus. Der Client lädt den Eintrag nach dem Ende nach und doppelt ihn nicht (beendeMitFehlerEintrag, Ausblenden der lokalen Fehlanzeige gleicher laufId); nach Neuladen übernimmt der Chat einen laufenden Chat-Lauf aus aktiverLauf (uebernimmLaufendenChatLauf). Tests scripts/leitstand-chat-misserfolg.test.mjs, Gates check-f26 (f), check-f34 (h2), Render-Nachweis features/F45/nachweise/b0/render/ (nicht-erfolgreich-einmal, neuladen).
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1009** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Für ai-workforce gelten je nach Startbefehl zwei verschiedene Startvorlagen.
+Beschreibung: projekte.json trägt für ai-workforce startvorlagen/ai-workforce.json; npm run leitstand ohne LEITSTAND_STARTVORLAGE_PFAD lädt startvorlagen/beispielprojekt.json (STANDARD_STARTVORLAGE_PFAD). Damit hängen Router-Worker (Codex oder claude-code-Rückfall), Chat-Worker und Lauf-Zeitgrenze (30 min oder keine) am Startbefehl. F-391 hat nur eine Warnung eingeführt.
+Fundstelle: scripts/leitstand-server.mjs (STANDARD_STARTVORLAGE_PFAD, CLI-Bindeblock), projekte.json.
+Auswirkung: Mittel — Verhalten und Messwerte sind nicht reproduzierbar.
+Maßnahme: F45 B1a: Standard-Startvorlage des eigenen Projekts aus dem Register; Startvorlage im Leitstand sichtbar.
+Status: offen.
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1010** · `BUG` · P2 · offen
+Titel: Roadmap und Akten widersprechen sich.
+Beschreibung: docs/projekt/roadmap.json führt F30 ohne Akte (Anzeige „keine_akte“), die Akte AF-F001 fehlt in der Roadmap, und M3/M4 stehen auf ABGESCHLOSSEN, obwohl F18, F20, F21, F22 und F25 auf FEATURE_GATE stehen — die Kennzahl „Features abgenommen“ passt nicht zum Meilensteinstatus. Kein Gate prüft diese Übereinstimmung.
+Fundstelle: docs/projekt/roadmap.json, features/*/feature.md (Status), scripts/check-akte-meilenstein.mjs, scripts/leitstand/routen-roadmap.mjs.
+Auswirkung: Mittel — die Roadmap zeigt einen anderen Stand als die Akten.
+Maßnahme: F45 B5b: Gate Akte ↔ Roadmap, Bereinigungsliste zur Bestätigung durch Stefan.
+Status: offen.
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1011** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Im Workforce-Lauf gibt es keine Rechte-Rückfrage wie in Claude Code in VS Code.
+Beschreibung: Ein Befehl außerhalb des Werkzeugsatzes wird im Lauf abgelehnt; der Lauf endet VERWEIGERT und braucht eine manuelle Sichtung (F-764, F-768). In VS Code fragt Claude Code stattdessen Stefan. Damit ist der Lauf nicht gleichwertig zum manuellen Ablauf.
+Fundstelle: startvorlagen/ai-workforce.json (werkzeugsaetze), src/claude-code-gateway/index.ts (Aufruf mit -p), Ausführungsschritt im Workflow.
+Auswirkung: Mittel — Normalfall wird Ausnahmefall, Stefan muss Läufe von Hand reparieren.
+Maßnahme: F45 B2b: Rechte-Rückfrage an Stefan (Spike --permission-prompt-tool; sonst Halt mit „einmal erlauben und fortsetzen“), Advisor-Pass.
+Status: offen.
+Feature/Run: Entdeckt: Challenge F45, 03.10.2026.
+
+**F-1012** · `PROCESS_IMPROVEMENT` · P2 · offen
+Titel: Fähigkeiten lassen sich nicht je Projekt aktivieren, und „aktiv“ ist nicht sichtbar.
+Beschreibung: Der Katalog kennt nur die Freigabe (FREIGEGEBEN, OFFEN); 27 externe Einträge stehen auf OFFEN. MCPs und Ort-B-Skills sind installierbar, Agents nicht („erst später“), Plugins fehlen im Modell (F-910). Ein Ein- und Ausschalten je Projekt ohne Deinstallation gibt es nicht; der Leitstand zeigt nicht, was im nächsten Lauf aktiv ist und was im letzten Lauf benutzt wurde.
+Fundstelle: ressourcen.json, src/ressourcen/index.ts (AGENT_INSTALLATION_ERST_SPAETER, pruefeInstallierbarkeit), public/leitstand/views/capability-library.js.
+Auswirkung: Mittel — Stefan kann den Werkzeugkasten der Workforce nicht wie in VS Code steuern.
+Maßnahme: F45 WS F: installieren, aktivieren/deaktivieren je Projekt, Status installiert · aktiv · benutzt sichtbar.
+Status: offen.
+Feature/Run: Entdeckt: Challenge F45, Wunsch Stefan 03.10.2026.
+
+**F-1013** · `HARNESS_IMPROVEMENT` · P2 · offen
+Titel: Ein Chat-Lauf über Modern Standby endet erst an der Zeitgrenze.
+Beschreibung: Vorher-Messung F45 B0 (Coach, Turn 4, 10.10.2026): Der Rechner ging um 17:19:03 UTC in Modern Standby (Kernel-Power 506), trennte das Netz („Adaptive Connected Standby“) und wachte um 17:23:59 auf (507). Der Claude-Prozess bekam danach keine Antwort der API mehr (letzte Rohstrom-Zeile: ein Werkzeugergebnis), der Lauf hing, bis das Messskript ihn nach 300 s abbrach. GET /api/zustand (271 s) und die Event-Loop-Zeile (max 271 657 ms) zeigten scheinbar eine Serverblockade — tatsächlich stand der ganze Rechner. Mit der Standard-Startvorlage gab es keine Zeitgrenze: ohne Abbruch hätte der Lauf Chat und über D13 jeden anderen Lauf unbegrenzt festgehalten. Seit F45 B0 endet ein solcher Lauf an der Chat-Zeitgrenze (Jarvis 180 s, Coach 300 s) mit Fehler-Eintrag; früher erkennt der Leitstand den toten Lauf nicht.
+Fundstelle: features/F45/nachweise/b0/messung-vorher-coach.md (Turn 4), kontrollzustand-roh/product-coach-product-coach-sparring-abe6413c-88e3-4858-aa85-a427e48fe90d/rohstrom.json, Windows-Ereignisprotokoll System (Kernel-Power 506/507).
+Auswirkung: Mittel — nach dem Aufwachen wartet Stefan bis zu 3 bzw. 5 min auf einen Lauf, der nicht mehr antwortet.
+Maßnahme: WS P: Leerlauf-Grenze je Lauf (keine stream-json-Zeile seit N s → Abbruch mit Grund „keine Ausgabe“) oder Standby-Ende erkennen (Zeitsprung) und den laufenden Chat-Lauf beenden. scripts/messe-chat.mjs schreibt Standby-Fenster seit F45 B0 in jede Messung.
+Status: offen.
+Feature/Run: Entdeckt: F45 B0, Vorher-Messung 10.10.2026.
+
+**F-1014** · `TECH_DEBT` · P3 · offen
+Titel: Der Codex-Pfad setzt keine Zeitmarken.
+Beschreibung: Mit LEITSTAND_ZEITMESSUNG=1 trägt ein Codex-Lauf nur die Server-Marken bis auftrag_registriert; prozess_gestartet, prozess_beendet und die Rohstrom-Marken fehlen, weil src/codex-gateway/index.ts optionen.zeitmessung nicht aufruft (src/claude-code-gateway tut es an sieben Stellen). K2 und die Prozessdauer waren in der Vorher-Messung 3b nicht messbar (messung-vorher-codex.md).
+Fundstelle: src/codex-gateway/index.ts.
+Auswirkung: Gering — Chat-Rollen laufen seit F45 B0 nicht mehr auf Codex; betrifft Router- und Review-Messungen (WS P, B2b „Codex-Nutzen messen“).
+Maßnahme: Dieselben Marken wie im Claude-Code-Gateway (prozess_gestartet, prozess_beendet, rohstrom_geschrieben, laufakte_rohstrom_geschrieben).
+Status: offen.
+Feature/Run: Entdeckt: F45 B0, Vorher-Messung 10.10.2026.
+
+**F-1015** · `BUG` · P1 · offen
+Titel: Der Speicher der Leitstand-Seite wächst im Langlauf in Stufen.
+Beschreibung: Langlauf F45 B0 (10.10.2026, 30 min Warmlauf mit offener Seite #/chat, Poll alle 2 s, danach 5 Jarvis-Turns): Working Set aller Chromium-Prozesse der Seite 396 MB nach dem Laden (18:37 UTC), Stufen auf 591 MB (18:43) und 707 MB (18:57), dazwischen nur teilweise zurück; am Ende des Warmlaufs 603 MB (+52 %). Der Leitstand-Server blieb nach einer Anlaufphase flach (82 → 113 MB, ab 18:46 konstant). Ob ein Leck (z. B. wachsende Listen, Detached DOM durch innerHTML-Rendern im Poll) oder nur verzögerte Garbage Collection vorliegt, ist nicht belegt. Im Bericht der Messung steht „Chromium 500 %“ — die Basis war eine Probe vor dem Seitenladen (98 MB); seit F45 B0 rechnet scripts/messe-chat.mjs ab der ersten Probe nach dem Laden.
+Fundstelle: features/F45/nachweise/b0/messung-langlauf.md (Speicherverlauf), public/leitstand/zustand.js und die Poll-Abnehmer.
+Auswirkung: Hoch bei Stefans Arbeitsweise (Leitstand stundenlang offen, Rechner mit wenig freiem Speicher — der erste Langlauf wurde wegen Speichermangel abgebrochen).
+Maßnahme: WS P: 2-h-Langlauf mit Heap-Snapshots (Chromium DevTools) vor/nach, Poll-Abnehmer auf wachsende Strukturen prüfen; Ziel: RSS der Seite nach 2 h ≤ 1,2 × Wert nach dem Laden.
+Status: offen.
+Feature/Run: Entdeckt: F45 B0, Langlauf 10.10.2026.
+
+**F-1016** · `TECH_DEBT` · P3 · offen
+Titel: Chat: Restpunkte aus dem Prüfpass F45 B0.
+Beschreibung: (a) Ein nach Neuladen übernommener Zusammenfassen-Lauf zeigt bis zum Ende die interne Instruktion als Nachricht (der Auftrag trägt sie; nach dem Ende steht im Verlauf „[Zusammenfassung angefordert]“). (b) Scheitert das Schreiben des Fehler-Eintrags oder startet der Server während eines Laufs neu, bleibt nur die lokale Fehlanzeige — nach Neuladen ist der Turn weg. (c) Gründe kommen roh vom Server (z. B. beobachtungsbasis_unvollstaendig, deutscher Text der D13-Ablehnung), auch in en/tr/ru. (d) Läuft ein Lauf im anderen Reiter, in einem anderen Projekt oder ein Baulauf, ist Senden nicht gesperrt und endet in 409 mit rohem Text. (e) Der Start-Hinweis wird nur beim Serverstart ermittelt. (f) K5 (Zeitgrenze, Abbruch, nie gestartet) ist mit Attrappen und Render-Nachweis belegt, nicht mit einem echten Modell-Lauf; die echten 20 Turns endeten alle mit Antwort. (g) Band und Chat-Hinweis zeigen bei offenem Chat denselben Satz (bewusst).
+Fundstelle: public/leitstand/views/chat.js (uebernimmLaufendenChatLauf, Sperrgrund), scripts/leitstand-server.mjs (beschreibeChatMisserfolg, ermittleStartHinweis).
+Auswirkung: Gering.
+Maßnahme: (a) Zusammenfassung im Auftrag kennzeichnen; (b) beim Serverstart verwaiste Chat-Läufe mit Fehler-Eintrag abschließen; (c) Gründe als Code mit i18n-Text; (d) Sperre aus aktiverLauf ableiten; (e) Hinweis je Poll; (f) in WS R echten Abbruch und „nie gestartet“ mit messe-chat.mjs messen.
+Status: offen.
+Feature/Run: Entdeckt: F45 B0, Prüfpass (qa 5/6/9/11/12/14, code-reviewer 6, design-guardian 10), 10.10.2026.

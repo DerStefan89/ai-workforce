@@ -108,7 +108,21 @@ export function baueSparringVerlaufsProjektion(basisVerzeichnis, projektId) {
         // F34 Fixpaket (F-625): Alt-Einträge ohne Zuordnung (vor diesem Fixpaket, oder nie über die
         // Brücke angelegt) projizieren weiterhin null — unverändertes Verhalten.
         auftragErstelltId: laufId === null ? null : (auftragJeLauf.get(laufId) ?? null),
+        // F45 B0 (F-1008): Fehler-Einträge erkennbar.
+        ...projiziereFehler(version.daten),
       }
     }),
   }
+}
+
+/**
+ * F45 B0 (F-1008): Fehler-Kennzeichnung eines Chat-Eintrags (Jarvis und Coach, schreibeRollenChatFehlerEintrag
+ * in scripts/leitstand-server.mjs) für GET /api/chat und GET /api/sparring — eine Stelle für beide Projektionen.
+ * Alt-Einträge ohne Feld projizieren als kein Fehler.
+ * @param daten - daten-Feld der Artefaktversion (oder undefined)
+ * @returns { istFehler, fehler } — fehler ist { art, grund, zeitgrenzeMs? } oder null
+ */
+export function projiziereFehler(daten) {
+  const istFehler = daten?.istFehler === true
+  return { istFehler, fehler: istFehler ? (daten?.fehler ?? null) : null }
 }

@@ -228,6 +228,26 @@
  * (detail.startvorlageZeitgrenzeMs, plus Puffer) nicht — auch wenn das Detail nie abrufbar wird —,
  * hört der Chat ebenfalls auf zu warten; ein aktiver Lauf behält „Lauf abbrechen“. Keine neue
  * Live-Region; die Persona bleibt beim Poll.
+ *
+ * F45 B0 (F-1008, F-1007, F-986 b Restgrenze, F-971, F-986 a) — überholt die Abschnitte oben, die
+ * Fehlanzeigen „nur lokal“ nennen und das Neuladen als Grenze beschreiben:
+ * (a) Der Server schreibt für jeden nicht erfolgreichen Chat-Lauf (FEHLGESCHLAGEN, VERWEIGERT,
+ *     Zeitgrenze, Abbruch, nie gestartet) genau einen Eintrag mit istFehler/fehler in den Verlauf. Der
+ *     Chat lädt ihn nach dem Ende nach (beendeMitFehlerEintrag) und zeigt ihn als „Lauf nicht
+ *     erfolgreich“ mit Grund, übersetzt nach fehler.art; eine lokale Fehlanzeige gibt es nur noch,
+ *     wenn der Verlauf keinen Eintrag zu dieser laufId trägt (z. B. die Wartegrenze des Chats), und
+ *     baueAnzeigeListe blendet eine lokale Fehlanzeige aus, sobald ein Server-Eintrag derselben laufId
+ *     da ist — kein doppelter Eintrag.
+ * (b) Die Wartegrenze nutzt die wirksame Grenze des Laufs (detail.laufZeitgrenzeMs, Chat 180/300 s).
+ * (c) Nach Neuladen (oder aus einem anderen Fenster) übernimmt der Chat einen laufenden Chat-Lauf aus
+ *     dem Poll (aktiverLauf) wieder als ausstehend: Tipp-Punkte, „Lauf abbrechen“, Poll bis zum Ende,
+ *     Ergebnis im Reiter seines Modus (uebernimmLaufendenChatLauf). Nichts wird neu gespeichert.
+ * (d) Kommt eine Antwort oder ein Fehler im gerade nicht angezeigten Reiter an, trägt dieser Reiter
+ *     einen Punkt (zustand.ungelesen, aria-label „…, neue Antwort“), bis er gewählt wird. Ein
+ *     ausstehender Coach-Lauf bleibt beim Wechsel des Untermodus sichtbar (mit Hinweis „Lauf im
+ *     Untermodus <x> läuft“), und gesperrtes Senden nennt seinen Grund (#chat-sperrgrund).
+ * (e) Über dem Eingabefeld steht der Start-Hinweis (Leitstand aus falschem Ordner, E-188) aus dem
+ *     Poll (zustand.startHinweis, start-hinweis.js). Senden bleibt möglich.
  */
 
 import { abbrichLauf, holeChatVerlauf, holeLaufDetail, holeProjektRoadmap, holeSparringVerlauf, legeAuftragAn, sendeChatNachricht, sendeChatZusammenfassung, sendeSparringNachricht, verknuepfeSparringAuftrag } from '../api.js'
@@ -239,7 +259,8 @@ import { loeseVorfilterAuf } from '../jarvis-vorfilter.js'
 import { baueAuftragAusScope } from '../auftrag-aus-scope.js'
 import { baueAuftragAusProjektentwurf, entferneIdPraefix } from '../auftrag-aus-projektentwurf.js'
 import { fuegeEntwurfEin, istGrossansicht, leiteNaechstenSchrittAb } from '../chat-anzeige.js'
-import { laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, zeitgrenzeUeberschritten } from '../chat-laufstand.js'
+import { chatModusDesAktivenLaufs, laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from '../chat-laufstand.js'
+import { startHinweisText } from '../start-hinweis.js'
 import { kopiereBefehlsblock, renderAntwortText } from '../befehlsblock.js'
 import { naechsterRegisterIndex } from '../faehigkeiten-anzeige.js'
 import { t, tHtml } from '../i18n.js'
@@ -359,6 +380,8 @@ function neuerModusZustand() {
     geladen: false,
     /** F44 WS-8a: der letzte Ladeversuch scheiterte — der Verlauf zeigt dann weder „lädt“ noch den Leerzustand (die Fehlermeldung steht in #chat-fehler). */
     ladeFehlgeschlagen: false,
+    /** F45 B0 (F-971): in diesem Modus kam eine Antwort oder ein Fehler an, während ein anderer Modus angezeigt war — Punkt am Reiter, bis er gewählt wird. */
+    ungelesen: false,
   }
 }
 
@@ -367,6 +390,24 @@ const zustandJeModus = { jarvis: neuerModusZustand(), sparring: neuerModusZustan
 
 /** Letztes Zustands-Aggregat aus dem Poll (für den Vorfilter), oder null vor dem ersten Tick. */
 let letzterZustand = null
+
+/**
+ * F45 B0 (F-986 b Restgrenze): laufIds, die diese Sitzung schon verfolgt, beendet oder als fremd
+ * erkannt hat — uebernimmLaufendenChatLauf übernimmt keinen davon (erneut). Beim Projektwechsel geleert.
+ */
+const bekannteLaufIds = new Set()
+
+/** F45 B0: true, solange uebernimmLaufendenChatLauf auf das Lauf-Detail wartet (höchstens eine Übernahme zur Zeit). */
+let uebernahmeLaeuft = false
+
+/** F45 B0 (Prüfpass cr 1): Zahl der 404 je laufId bei der Übernahme — erst ab UEBERNAHME_404_GRENZE gilt der Lauf als fremd. */
+const fremdeLaufVersuche = new Map()
+
+/** Poll-Ticks (je 2 s) mit 404, nach denen ein Lauf als Lauf eines anderen Projekts gilt. */
+const UEBERNAHME_404_GRENZE = 5
+
+/** F45 B0 (Prüfpass qa 3): Coach-Untermodi, in denen ein Lauf endete, während ein anderer angezeigt war (Punkt am Knopf). */
+const ungeleseneUntermodi = new Set()
 
 /**
  * F34 WS-2 (löst F-606): der gerade offene "Als Auftrag anlegen"-Bestätigungsdialog, oder null.
@@ -482,6 +523,44 @@ function antwortText(antwort) {
   return antwort.antwort
 }
 
+/** F45 B0 (F-1008): i18n-Schlüssel je fehler.art eines Server-Fehler-Eintrags (schreibeRollenChatFehlerEintrag). */
+const FEHLER_ART_SCHLUESSEL = {
+  abgebrochen: 'chat.ende.abgebrochen',
+  zeitgrenze: 'chat.ende.zeitgrenzeServer',
+  nicht_gestartet: 'chat.ende.nichtGestartet',
+  verweigert: 'chat.ende.verweigert',
+  klaerung: 'chat.ende.klaerung',
+  nicht_erfolgreich: 'chat.ende.fehlgeschlagen',
+  unlesbar: 'chat.ende.unlesbar',
+}
+
+/**
+ * F45 B0 (F-1008): Anzeigetext eines Server-Fehler-Eintrags in der aktuellen Sprache; eine unbekannte
+ * Art zeigt den Klartext des Servers. Grund roh (renderEintrag escaped).
+ * @param fehler - { art, grund, zeitgrenzeMs? } oder null
+ * @param antwortObjekt - Antwortfeld des Eintrags (Klartext des Servers als Rückfall)
+ * @returns Anzeigetext
+ */
+function fehlerEintragText(fehler, antwortObjekt) {
+  if (!Object.hasOwn(FEHLER_ART_SCHLUESSEL, fehler?.art)) return antwortText(antwortObjekt)
+  const grund = typeof fehler.grund === 'string' && fehler.grund !== '' ? fehler.grund : t('chat.ende.grundFehlt')
+  return t(FEHLER_ART_SCHLUESSEL[fehler.art], { grund, sekunden: Math.round((fehler.zeitgrenzeMs ?? 0) / 1000) })
+}
+
+/** F45 B0: i18n-Schlüssel der Untermodus-Namen (Hinweis „Lauf im Untermodus … läuft“, Sperrgrund). */
+const UNTERMODUS_NAME_SCHLUESSEL = { feature: 'chat.untermodus.feature', projekt: 'chat.untermodus.projekt' }
+
+/**
+ * F45 B0 (F-971): Untermodus eines ausstehenden Coach-Laufs, wenn er nicht der gerade angezeigte ist.
+ * @param modus - 'jarvis' | 'sparring'
+ * @returns 'feature' | 'projekt' oder null (gleich, unbekannt oder Jarvis)
+ */
+function abweichenderUntermodusDesLaufs(modus) {
+  const lauf = zustandJeModus[modus].ausstehenderLauf
+  if (modus !== 'sparring' || lauf === null || !SPARRING_UNTERMODI.includes(lauf.sparringUntermodus)) return null
+  return lauf.sparringUntermodus === sparringUntermodus ? null : lauf.sparringUntermodus
+}
+
 /**
  * Baut die Anzeigeliste: persistierter Verlauf (bereits serverseitig aufsteigend sortiert), lokale Einträge
  * jeweils an der Position einsortiert, die ihr persistierterVerlaufLaengeBeiPush entspricht (F-576, s.
@@ -505,12 +584,15 @@ function baueAnzeigeListe(modus) {
   const zustand = zustandJeModus[modus]
   const leseAntwort = MODI[modus].leseAntwort
   const persistiert = zustand.persistierterVerlauf.map((e, index) => {
-    const antwort = leseAntwort(e)
+    // F45 B0 (F-1008): ein Server-Fehler-Eintrag erscheint als „Lauf nicht erfolgreich“, nie als Antwort
+    // (antwort null: keine Auftrag-Brücke, keine Befehlsblöcke).
+    const istFehler = e.istFehler === true
+    const antwort = istFehler ? null : leseAntwort(e)
     return {
       nachricht: e.nachricht,
-      antwortText: antwortText(antwort),
+      antwortText: istFehler ? fehlerEintragText(e.fehler, leseAntwort(e)) : antwortText(antwort),
       antwort,
-      quelle: modus,
+      quelle: istFehler ? 'fehler' : modus,
       zeitstempel: null,
       istZusammenfassung: e.istZusammenfassung === true,
       schluessel: e.laufId ?? `persistiert-${index}`,
@@ -520,11 +602,14 @@ function baueAnzeigeListe(modus) {
       auftragErstelltId: e.auftragErstelltId ?? null,
     }
   })
+  // F45 B0 (F-1008): eine lokale Fehlanzeige verschwindet, sobald der Server-Eintrag derselben laufId da ist.
+  const persistierteLaufIds = new Set(zustand.persistierterVerlauf.map((e) => e.laufId).filter((laufId) => typeof laufId === 'string'))
+  const lokale = zustand.lokaleEintraege.filter((e) => typeof e.laufId !== 'string' || !persistierteLaufIds.has(e.laufId))
   const liste = []
   let naechsterLokalerIndex = 0
   for (let i = 0; i <= persistiert.length; i++) {
-    while (naechsterLokalerIndex < zustand.lokaleEintraege.length && zustand.lokaleEintraege[naechsterLokalerIndex].persistierterVerlaufLaengeBeiPush === i) {
-      liste.push(zustand.lokaleEintraege[naechsterLokalerIndex])
+    while (naechsterLokalerIndex < lokale.length && lokale[naechsterLokalerIndex].persistierterVerlaufLaengeBeiPush === i) {
+      liste.push(lokale[naechsterLokalerIndex])
       naechsterLokalerIndex++
     }
     if (i < persistiert.length) liste.push(persistiert[i])
@@ -536,12 +621,19 @@ function baueAnzeigeListe(modus) {
   // Sicherheitsnetz würde ein solcher Eintrag in keiner Schleifen-Iteration matchen und
   // kommentarlos aus der Anzeige verschwinden — angehängt bleibt er wenigstens sichtbar (Verhalten
   // vor diesem Fix), statt lautlos verloren zu gehen.
-  while (naechsterLokalerIndex < zustand.lokaleEintraege.length) {
-    liste.push(zustand.lokaleEintraege[naechsterLokalerIndex])
+  while (naechsterLokalerIndex < lokale.length) {
+    liste.push(lokale[naechsterLokalerIndex])
     naechsterLokalerIndex++
   }
+  // F34 Fixpaket (löst F-624): NUR 'sparring' filtert nach dem gerade angezeigten sparringUntermodus
+  // ('jarvis' kennt kein eintragModus-Konzept, liste bleibt dort bitgenau unverändert) — greift auf
+  // persistierte und lokale Einträge gleichermaßen, kein lokaler Eintrag kann den Filter umgehen.
+  const gefiltert = modus === 'sparring' ? liste.filter((eintrag) => eintrag.eintragModus === sparringUntermodus) : liste
+  // F45 B0 (F-971): der AUSSTEHENDE Lauf steht NACH dem Filter und damit in jedem Untermodus — vorher
+  // verschwand er beim Untermodus-Wechsel, und „Lauf abbrechen“ und das gesperrte Senden standen ohne
+  // sichtbaren Lauf da. Läuft er in einem anderen Untermodus, nennt die Blase ihn.
   if (zustand.ausstehenderLauf !== null) {
-    liste.push({
+    gefiltert.push({
       nachricht: zustand.ausstehenderLauf.nachricht,
       antwortText: null,
       antwort: null,
@@ -552,17 +644,14 @@ function baueAnzeigeListe(modus) {
       schluessel: `ausstehend-${zustand.ausstehenderLauf.laufId}`,
       eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
       auftragErstelltId: null,
+      abweichenderUntermodus: abweichenderUntermodusDesLaufs(modus),
     })
   }
-  // F34 Fixpaket (löst F-624): NUR 'sparring' filtert nach dem gerade angezeigten sparringUntermodus
-  // ('jarvis' kennt kein eintragModus-Konzept, liste bleibt dort bitgenau unverändert) — greift auf
-  // ALLE drei Quellen oben gleichermaßen (persistiert/lokal/ausstehend tragen alle ein eintragModus),
-  // kein lokaler Eintrag kann den Filter dadurch umgehen.
-  return modus === 'sparring' ? liste.filter((eintrag) => eintrag.eintragModus === sparringUntermodus) : liste
+  return gefiltert
 }
 
 /** F29 WS-D2 (Auftrag Punkt C): eine Sprechblasen-Zeile — Nutzer rechts eingerückt mit Initialen-Kreis, Jarvis/Coach links mit Mini-Avatar (statischer Ausschnitt aus persona-gesicht.webp, dasselbe Bild wie die Persona — kein neues Bild, aber KEINE eigene montierePersona()-Instanz: eine animierte Instanz pro Sprechblase wäre reiner Overhead für ein 1,5rem-Icon, F28-Nicht-Ziel bleibt unberührt). @param label - sichtbarer Name ('Jarvis'/'Coach' oder 'Stefan') @param zeitHtml - bereits fertiges Uhrzeit-HTML (leer, wenn keine Zeit bekannt) @param textHtml - bereits fertiges Inhalts-HTML @param ausrichtung - 'nutzer' | 'jarvis' */
-function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung) {
+function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung, eintragArt = null) {
   const avatar =
     ausrichtung === 'nutzer'
       ? '<span class="chat-avatar chat-avatar-stefan" aria-hidden="true">S</span>'
@@ -571,7 +660,9 @@ function chatBubbleReihe(label, zeitHtml, textHtml, ausrichtung) {
     <p class="chat-bubble-kopf">${escapeHtml(label)}${zeitHtml}</p>
     ${textHtml}
   </div>`
-  return `<div class="chat-bubble-reihe chat-bubble-reihe-${ausrichtung}">${ausrichtung === 'nutzer' ? bubble + avatar : avatar + bubble}</div>`
+  // F45 B0: data-eintrag-art="fehler" kennzeichnet eine Fehlanzeige (Server-Eintrag oder lokal) — für Messung und Nachweis.
+  const artAttribut = eintragArt === null ? '' : ` data-eintrag-art="${escapeHtml(eintragArt)}"`
+  return `<div class="chat-bubble-reihe chat-bubble-reihe-${ausrichtung}"${artAttribut}>${ausrichtung === 'nutzer' ? bubble + avatar : avatar + bubble}</div>`
 }
 
 /** F44 WS-8a: i18n-Schlüssel des Sprechblasen-Kopfs für lokale Einträge (Vorfilter, Fehlanzeige). */
@@ -762,7 +853,8 @@ function renderEintrag(modus, eintrag) {
   if (eintrag.quelle === 'ausstehend') {
     const tippindikator = '<p class="chat-tippindikator" aria-hidden="true"><span></span><span></span><span></span></p>'
     const fortschrittHtml = eintrag.fortschrittText ? `<p class="chat-fortschritt">${escapeHtml(eintrag.fortschrittText)} …</p>` : ''
-    return trennerHtml + nutzerZeile + chatBubbleReihe(antwortLabel(modus), '', tippindikator + fortschrittHtml, 'jarvis')
+    const untermodusHtml = eintrag.abweichenderUntermodus ? `<p class="chat-untermodus-hinweis">${tHtml('chat.untermodus.laeuftIn', { untermodus: t(UNTERMODUS_NAME_SCHLUESSEL[eintrag.abweichenderUntermodus]) })}</p>` : ''
+    return trennerHtml + nutzerZeile + chatBubbleReihe(antwortLabel(modus), '', untermodusHtml + tippindikator + fortschrittHtml, 'jarvis')
   }
   const label = Object.hasOwn(QUELLE_ANTWORT_SCHLUESSEL, eintrag.quelle) ? t(QUELLE_ANTWORT_SCHLUESSEL[eintrag.quelle]) : antwortLabel(modus)
   const art = eintrag.antwort?.art
@@ -773,7 +865,7 @@ function renderEintrag(modus, eintrag) {
   if (art === 'scope_entwurf') inhaltHtml += renderScope(eintrag.antwort?.scope)
   if (art === 'projekt_entwurf') inhaltHtml += renderProjekt(eintrag.antwort?.projekt)
   inhaltHtml += renderAuftragBruecke(modus, eintrag.schluessel, leseAuftragKandidat(modus, eintrag.antwort), eintrag.auftragErstelltId ?? null)
-  const jarvisZeile = chatBubbleReihe(label, zeitHtml, inhaltHtml, 'jarvis')
+  const jarvisZeile = chatBubbleReihe(label, zeitHtml, inhaltHtml, 'jarvis', eintrag.quelle === 'fehler' ? 'fehler' : null)
   return trennerHtml + nutzerZeile + jarvisZeile
 }
 
@@ -818,6 +910,9 @@ function renderVerlauf() {
   document.getElementById('chat-eingabe').placeholder = t(konfiguration.platzhalterSchluessel)
   // F44 WS-8a: Register Jarvis | Product Coach (role=tab) — aria-selected, tabindex und .active
   // laufen bei JEDEM Render gleich (Invariante aus F-620: Auswahlzustand und Optik gleichlaufend).
+  // F45 B0 (F-971): der angezeigte Modus ist gesehen; ein anderer Modus mit neuer Antwort trägt den Punkt
+  // (Klasse wie der stille Punkt der Shell) und nennt ihn im Namen des Reiters.
+  zustand.ungelesen = false
   const setzeReiterZustand = (id, gewaehlt) => {
     const element = document.getElementById(id)
     element.setAttribute('aria-selected', String(gewaehlt))
@@ -826,6 +921,15 @@ function renderVerlauf() {
   }
   setzeReiterZustand('chat-modus-jarvis-btn', modus === 'jarvis')
   setzeReiterZustand('chat-modus-sparring-btn', modus === 'sparring')
+  // F45 B0 (F-971): Punkt und Name des Reiters in EINER Hilfsfunktion (Optik und aria-label gleichlaufend).
+  const setzeReiterPunkt = (reiterModus) => {
+    const element = document.getElementById(MODI[reiterModus].reiterId)
+    const ungelesen = reiterModus !== modus && zustandJeModus[reiterModus].ungelesen === true
+    element.classList.toggle('hat-neue-antwort', ungelesen)
+    if (ungelesen) element.setAttribute('aria-label', t('chat.reiter.neu', { name: t(MODI[reiterModus].nameSchluessel) }))
+    else element.removeAttribute('aria-label')
+  }
+  for (const reiterModus of Object.keys(MODI)) setzeReiterPunkt(reiterModus)
   document.getElementById('chat-gespraech').setAttribute('aria-labelledby', konfiguration.reiterId)
   // F34 WS-3 Korrekturrunde (löst F-620): 'btn-primary' muss bei JEDEM Render gleichlaufend mit
   // aria-pressed gesetzt werden — vorher aktualisierte dieser Block nur aria-pressed, die optische
@@ -837,6 +941,8 @@ function renderVerlauf() {
   }
   setzeGedruecktenZustand('chat-untermodus-feature-btn', sparringUntermodus === 'feature')
   setzeGedruecktenZustand('chat-untermodus-projekt-btn', sparringUntermodus === 'projekt')
+  // F45 B0 (Prüfpass qa 3): Punkt am Untermodus-Knopf, in dem ein Lauf endete, während ein anderer angezeigt war.
+  for (const untermodus of SPARRING_UNTERMODI) document.getElementById(`chat-untermodus-${untermodus}-btn`).classList.toggle('hat-neue-antwort', ungeleseneUntermodi.has(untermodus))
   // F44 WS-8b: die beiden Coach-Knöpfe im Leerzustand wählen denselben Untermodus — Auswahlzustand
   // (aria-pressed) und Optik (.gewaehlt) laufen wie beim Umschalter in EINER Hilfsfunktion (F-620).
   const setzeCoachWahlZustand = (id, gewaehlt) => {
@@ -875,7 +981,8 @@ function renderVerlauf() {
   }
   if (amEnde && !istGrossansicht(location.hash)) container.scrollTop = container.scrollHeight
   // Ohne Verlauf gibt es nichts zusammenzufassen (der Server antwortete mit 409) — QA/design-guardian WS-8a.
-  document.getElementById('chat-zusammenfassen-btn').hidden = !konfiguration.hatZusammenfassen || leer
+  // F45 B0 (Prüfpass cr 5): Fehler-Einträge zählen nicht als Verlauf zum Zusammenfassen (der Server lässt sie aus).
+  document.getElementById('chat-zusammenfassen-btn').hidden = !konfiguration.hatZusammenfassen || !zustand.persistierterVerlauf.some((eintrag) => eintrag.istFehler !== true)
   const link = document.getElementById('chat-ganzen-verlauf-link')
   link.hidden = standardAusschnitt.length === liste.length
   link.textContent = zustand.zeigeAlle ? t('chat.verlauf.einklappen') : t('chat.verlauf.oeffnen')
@@ -895,6 +1002,20 @@ function renderVerlauf() {
   const gesperrt = zustand.sendenLaeuft === true || zustand.ausstehenderLauf !== null
   document.getElementById('chat-senden').disabled = gesperrt
   document.getElementById('chat-zusammenfassen-btn').disabled = gesperrt
+  // F45 B0 (F-971): gesperrtes Senden nennt seinen Grund (sichtbar unter dem Verlauf und als Titel des Knopfs).
+  const abweichend = abweichenderUntermodusDesLaufs(modus)
+  const sperrgrund = !gesperrt
+    ? ''
+    : zustand.sendenLaeuft === true
+      ? t('chat.sperre.sendet')
+      : abweichend !== null
+        ? t('chat.sperre.untermodus', { untermodus: t(UNTERMODUS_NAME_SCHLUESSEL[abweichend]) })
+        : t('chat.sperre.laeuft')
+  const sperrgrundElement = document.getElementById('chat-sperrgrund')
+  sperrgrundElement.textContent = sperrgrund
+  sperrgrundElement.hidden = sperrgrund === ''
+  if (sperrgrund === '') document.getElementById('chat-senden').removeAttribute('title')
+  else document.getElementById('chat-senden').title = sperrgrund
 
   const abbrechenBtn = document.getElementById('chat-abbrechen-btn')
   const abbruchAngefordert = zustand.ausstehenderLauf?.abbruchAngefordert === true
@@ -931,7 +1052,7 @@ async function ladeVerlauf(modus) {
 
 /**
  * Terminallage eines Chat-Laufs, der NICHT real ABGESCHLOSSEN/ERFOLGREICH endete — Text für die
- * lokale Fehlanzeige (kein Lineage-Eintrag, siehe Datei-Kopf). F-564: ein Lauf, den DIESE Sitzung selbst
+ * lokale Fehlanzeige — seit F45 B0 nur noch der Rückfall, wenn der Server keinen Fehler-Eintrag geschrieben hat (beendeMitFehlerEintrag). F-564: ein Lauf, den DIESE Sitzung selbst
  * per #chat-abbrechen-btn abgebrochen hat (abbruchAngefordert, s. initAbbrechenBedienung), endet serverseitig
  * ebenfalls als ABGESCHLOSSEN/FEHLGESCHLAGEN (scripts/check-f14-abbruch.mjs AK7: beendigungsart 'ABBRUCH' —
  * dieses Feld erreicht den Client nicht extra, ist hier aber auch nicht nötig: nur ein Abbruch DIESER
@@ -1016,18 +1137,20 @@ async function pruefeAusstehendenLauf(modus) {
       ausstehend.letzteSignatur = signatur
       ausstehend.letzteAenderungMs = jetzt
     }
-    if (typeof detail.startvorlageZeitgrenzeMs === 'number') ausstehend.zeitgrenzeMs = detail.startvorlageZeitgrenzeMs
+    // F45 B0 (F-1007): wirksame Grenze DIESES Laufs (Chat 180/300 s) vor der Grenze der Startvorlage.
+    const zeitgrenzeMs = wirksameLaufZeitgrenzeMs(detail)
+    if (zeitgrenzeMs !== null) ausstehend.zeitgrenzeMs = zeitgrenzeMs
   }
   // Nie gestartet und Zeitgrenze: ohne Latenzmessung (messung undefined) — kein Chat-Turn, der die
   // Latenz-Auswertung verzerren soll (Prüfpass cr 6).
   if (stand.art === 'nichtGestartet') {
     const text = stand.grund === null ? t('chat.ende.nichtGestartetOhneGrund') : t('chat.ende.nichtGestartet', { grund: stand.grund })
-    beendeAusstehendenLaufMitFehler(modus, laufId, text, undefined, performance.now())
+    await beendeMitFehlerEintrag(modus, laufId, text, undefined, performance.now())
     return
   }
   if (stand.art === 'wartet') {
     if (zeitgrenzeUeberschritten(ausstehend.letzteAenderungMs, jetzt, ausstehend.zeitgrenzeMs)) {
-      beendeAusstehendenLaufMitFehler(modus, laufId, t('chat.ende.zeitgrenze', { minuten: Math.round(warteGrenzeMs(ausstehend.zeitgrenzeMs) / 60000) }), undefined, performance.now())
+      await beendeMitFehlerEintrag(modus, laufId, t('chat.ende.zeitgrenze', { minuten: Math.round(warteGrenzeMs(ausstehend.zeitgrenzeMs) / 60000) }), undefined, performance.now())
     }
     return // sonst noch nicht terminal (z. B. NICHT_GESTARTET direkt nach 202)
   }
@@ -1062,15 +1185,45 @@ async function pruefeAusstehendenLauf(modus) {
     if (abbruchAngefordert && modus === aktiverModus) {
       zeigeChatFehler(t('chat.fehler.abbruchZuSpaet'))
     }
+    // Prüfpass F45 B0 (qa 1, cr 2): ein erfolgreicher Lauf ohne Verlaufseintrag (Nachbereitung
+    // gescheitert) darf nicht still verschwinden — dann bleibt die lokale Fehlanzeige.
+    if (!zustand.persistierterVerlauf.some((eintrag) => eintrag.laufId === laufId)) {
+      beendeAusstehendenLaufMitFehler(modus, laufId, t('chat.ende.ohneEintrag'), messung, tPollErgebnis)
+      return
+    }
     schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis)
     return
   }
-  beendeAusstehendenLaufMitFehler(modus, laufId, beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert), messung, tPollErgebnis)
+  await beendeMitFehlerEintrag(modus, laufId, beschreibeNichtErfolgreichesEnde(laufStatus, abbruchAngefordert), messung, tPollErgebnis)
+}
+
+/**
+ * F45 B0 (F-1008): Ende eines nicht erfolgreichen Laufs. Seit F45 B0 schreibt der Server für jeden
+ * Misserfolg selbst genau einen Fehler-Eintrag (istFehler, fehler.art, Grund) — der Chat lädt den
+ * Verlauf nach und zeigt diesen Eintrag statt einer eigenen Fehlanzeige. Trägt der Verlauf keinen
+ * Eintrag zu dieser laufId (Wartegrenze des Chats bei einem nie sichtbaren Lauf, Schreib- oder
+ * Ladefehler), bleibt die lokale Fehlanzeige mit dem übergebenen Text — das Ende ist immer sichtbar.
+ * @param modus - 'jarvis' | 'sparring'
+ * @param laufId - der ausstehende Lauf
+ * @param text - lokaler Anzeigetext für den Rückfall (Serverwerte roh, renderVerlauf escaped)
+ * @param messung - Latenzmessung des Laufs oder undefined
+ * @param tPollErgebnis - performance.now() beim Feststellen des Endes
+ */
+async function beendeMitFehlerEintrag(modus, laufId, text, messung, tPollErgebnis) {
+  const zustand = zustandJeModus[modus]
+  await ladeVerlauf(modus)
+  // ladeVerlauf ist ein Await-Punkt — Projektwechsel oder eine andere Auflösung können dazwischen liegen.
+  if (zustand !== zustandJeModus[modus] || zustand.ausstehenderLauf?.laufId !== laufId) return
+  if (zustand.persistierterVerlauf.some((eintrag) => eintrag.laufId === laufId)) {
+    schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis)
+    return
+  }
+  beendeAusstehendenLaufMitFehler(modus, laufId, text, messung, tPollErgebnis)
 }
 
 /**
  * Beendet das Warten auf einen nicht erfolgreich beendeten Lauf mit einer lokalen Fehlanzeige im
- * Verlauf (kein Lineage-Eintrag). Seit F-986 (b) auch für nie gestartete Läufe und die Zeitgrenze.
+ * Verlauf — seit F45 B0 nur der Rückfall ohne Server-Eintrag (beendeMitFehlerEintrag, Erfolg ohne Eintrag). Seit F-986 (b) auch für nie gestartete Läufe und die Zeitgrenze.
  * Voraussetzung: zustandJeModus[modus].ausstehenderLauf gehört noch zu laufId (prüft der Aufrufer).
  * @param modus - 'jarvis' | 'sparring'
  * @param laufId - der ausstehende Lauf
@@ -1088,10 +1241,14 @@ function beendeAusstehendenLaufMitFehler(modus, laufId, text, messung, tPollErge
     zeitstempel: new Date().toISOString(),
     persistierterVerlaufLaengeBeiPush: zustand.persistierterVerlauf.length,
     schluessel: `fehler-${laufId}`,
+    // F45 B0 (F-1008): für das Ausblenden, sobald ein Server-Eintrag derselben laufId da ist (baueAnzeigeListe).
+    laufId,
     // F34 Fixpaket (löst F-624): der bei SENDE-Zeitpunkt aktive Untermodus (s. sendeAktuelleEingabe)
     // — NICHT der eventuell inzwischen gewechselte aktuelle sparringUntermodus, sonst könnte diese
-    // Fehlanzeige den Filter unten umgehen/im falschen Untermodus erscheinen.
-    eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? 'feature',
+    // Fehlanzeige den Filter unten umgehen/im falschen Untermodus erscheinen. F45 B0 (Prüfpass cr 6,
+    // qa 3): ein übernommener Lauf kennt seinen Untermodus nicht — dann der gerade angezeigte, damit
+    // die Fehlanzeige sichtbar ist.
+    eintragModus: zustand.ausstehenderLauf.sparringUntermodus ?? sparringUntermodus,
     auftragErstelltId: null,
   })
   schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis)
@@ -1107,6 +1264,16 @@ function beendeAusstehendenLaufMitFehler(modus, laufId, text, messung, tPollErge
 function schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis) {
   const zustand = zustandJeModus[modus]
   if (messung !== undefined) protokolliereClientLatenz(messung, tPollErgebnis, performance.now())
+  // F45 B0: dieser Lauf ist erledigt (keine erneute Übernahme); im nicht angezeigten Modus ist er neu (Reiter-Punkt).
+  if (typeof zustand.ausstehenderLauf?.laufId === 'string') bekannteLaufIds.add(zustand.ausstehenderLauf.laufId)
+  if (modus !== aktiverModus) zustand.ungelesen = true
+  // F45 B0 (Prüfpass qa 3): endet ein Coach-Lauf in einem anderen als dem angezeigten Untermodus, trägt
+  // dessen Knopf einen Punkt. Untermodus aus dem Lauf, sonst (übernommener Lauf) aus seinem Verlaufseintrag.
+  if (modus === 'sparring') {
+    const laufId = zustand.ausstehenderLauf?.laufId
+    const untermodus = zustand.ausstehenderLauf?.sparringUntermodus ?? zustand.persistierterVerlauf.find((eintrag) => eintrag.laufId === laufId)?.modus
+    if (SPARRING_UNTERMODI.includes(untermodus) && untermodus !== sparringUntermodus) ungeleseneUntermodi.add(untermodus)
+  }
   // Bug (real reproduziert, state/nachweis-jarvis-latenz.md Abschnitt "Abbruch"): ausstehenderLauf
   // MUSS vor diesem abschließenden renderVerlauf() auf null stehen — renderVerlauf() blendet den
   // Abbrechen-Button nur aus, wenn ausstehenderLauf === null (s. dort), und setzt dessen Text/Sperre
@@ -1126,6 +1293,74 @@ function schliesseAusstehendenLaufAb(modus, messung, tPollErgebnis) {
   renderVerlauf()
   stoppeAusstehendenLaufPoll(modus)
   meldeNeueAntwort()
+}
+
+/**
+ * F45 B0 (F-986 b Restgrenze, F-1008): übernimmt einen laufenden Chat-Lauf dieses Projekts aus dem Poll
+ * (aktiverLauf, laufId-Präfix jarvis- bzw. product-coach-) wieder als ausstehend — nach Neuladen der
+ * Seite oder wenn ein anderes Fenster ihn gestartet hat: Tipp-Punkte, „Lauf abbrechen“, eigener Poll
+ * bis zum Ende, Ergebnis im Reiter seines Modus. Nichts wird neu gespeichert. Übernommen wird nur, wenn
+ * das Lauf-Detail DIESES Projekts den Lauf als aktiv meldet (ein Lauf eines anderen Projekts liefert hier
+ * 404, ein schon beendeter aktiv:false — beide merkt sich die Sitzung und fragt nicht erneut). Die
+ * Nachricht kommt aus dem Auftrag des Laufs (auftrag.auftragstext, starteRollenChatLauf registriert die
+ * Nachricht als Auftragstext); der Untermodus eines Coach-Laufs ist danach unbekannt, die Blase steht
+ * deshalb in jedem Untermodus (baueAnzeigeListe).
+ * @param aggregat - Poll-Zustand ({ aktiverLauf, … })
+ */
+async function uebernimmLaufendenChatLauf(aggregat) {
+  const modus = chatModusDesAktivenLaufs(aggregat?.aktiverLauf)
+  if (modus === null || uebernahmeLaeuft) return
+  const laufId = aggregat.aktiverLauf.laufId
+  const zustand = zustandJeModus[modus]
+  if (bekannteLaufIds.has(laufId) || zustand.ausstehenderLauf !== null || zustand.sendenLaeuft) return
+  uebernahmeLaeuft = true
+  try {
+    let antwort = null
+    try {
+      antwort = await holeLaufDetail(laufId)
+    } catch {
+      return // Netzfehler — der nächste Poll-Tick versucht es erneut.
+    }
+    // Projektwechsel oder eigener Start während des Abrufs: nichts übernehmen.
+    if (zustand !== zustandJeModus[modus] || zustand.ausstehenderLauf !== null || zustand.sendenLaeuft || bekannteLaufIds.has(laufId)) return
+    const detail = antwort.ok ? await antwort.json().catch(() => null) : null
+    if (detail?.aktiv !== true) {
+      if (detail !== null) {
+        // Prüfpass F45 B0 (qa 2): der Lauf ist schon beendet (zwischen erstem Laden und diesem Tick) —
+        // sein Ergebnis bzw. Fehler-Eintrag steht im Verlauf: einmal nachladen, dann nicht erneut fragen.
+        bekannteLaufIds.add(laufId)
+        void ladeVerlauf(modus)
+        return
+      }
+      // Prüfpass F45 B0 (cr 1): 404 heißt entweder „anderes Projekt“ oder „gerade reserviert, noch kein
+      // Laufverzeichnis“ (aktiverLauf steht schon vor dem 202). Erst nach mehreren 404 als fremd merken.
+      if (antwort.status === 404) {
+        const versuche = (fremdeLaufVersuche.get(laufId) ?? 0) + 1
+        fremdeLaufVersuche.set(laufId, versuche)
+        if (versuche >= UEBERNAHME_404_GRENZE) bekannteLaufIds.add(laufId)
+      }
+      return
+    }
+    bekannteLaufIds.add(laufId)
+    zustand.ausstehenderLauf = {
+      nachricht: detail.auftrag?.status === 'ok' && typeof detail.auftrag.auftragstext === 'string' ? detail.auftrag.auftragstext : t('chat.uebernommen.nachrichtUnbekannt'),
+      laufId,
+      zeitstempel: null,
+      uebernommen: true,
+    }
+    starteAusstehendenLaufPoll(modus)
+    renderVerlauf()
+  } finally {
+    uebernahmeLaeuft = false
+  }
+}
+
+/** F45 B0 (F-986 a): Start-Hinweis über dem Eingabefeld aus dem Poll (Text: start-hinweis.js), sonst verborgen. @param hinweis - zustand.startHinweis */
+function renderChatStartHinweis(hinweis) {
+  const element = document.getElementById('chat-start-hinweis')
+  const text = startHinweisText(hinweis)
+  element.textContent = text
+  element.hidden = text === ''
 }
 
 /** Formular „Senden": Vorfilter zuerst (lokal, kein Serverkontakt bei Treffer, NUR im Modus 'jarvis' — MODI.hatVorfilter), sonst POST /api/chat bzw. POST /api/sparring. F29 WS-D2: als benannte Funktion statt eines Inline-Klick-Handlers, damit sowohl der Senden-Button als auch Enter im Eingabefeld (initEingabeTastatur) denselben, unveränderten Ablauf auslösen. F34 WS-2 (Verifikations-Fund): die Sperr-Prüfung liest jetzt zustand.sendenLaeuft/ausstehenderLauf direkt statt des DOM-Attributs — Enter (initEingabeTastatur) ruft diese Funktion ohne je das disabled-Attribut des Buttons zu sehen, ein reiner DOM-Check hier wäre also ohnehin nur die halbe Wahrheit gewesen. */
@@ -1180,6 +1415,7 @@ async function sendeAktuelleEingabe() {
         return
       }
       const angenommen = await antwort.json().catch(() => ({}))
+      bekannteLaufIds.add(angenommen.laufId)
       zustand.ausstehenderLauf = {
         nachricht,
         laufId: angenommen.laufId,
@@ -1247,6 +1483,7 @@ async function sendeZusammenfassungAnfrage() {
       return
     }
     const angenommen = await antwort.json().catch(() => ({}))
+    bekannteLaufIds.add(angenommen.laufId)
     zustand.ausstehenderLauf = {
       nachricht: '[Zusammenfassung angefordert]',
       laufId: angenommen.laufId,
@@ -1488,6 +1725,7 @@ function meldeNeueAntwort() {
 function waehleUntermodus(untermodus) {
   if (untermodus === sparringUntermodus) return
   sparringUntermodus = untermodus
+  ungeleseneUntermodi.delete(untermodus)
   speichereUntermodus(untermodus)
   offenerAuftragDialog = null
   renderVerlauf()
@@ -1617,6 +1855,10 @@ function setzeChatZustandZurueck() {
     stoppeAusstehendenLaufPoll(modus)
     zustandJeModus[modus] = neuerModusZustand()
   }
+  // F45 B0: im neuen Projekt darf ein laufender Chat-Lauf wieder übernommen werden.
+  bekannteLaufIds.clear()
+  fremdeLaufVersuche.clear()
+  ungeleseneUntermodi.clear()
   offenerAuftragDialog = null
   zeigeChatFehler('')
   // Sende-/Abbrechen-Zustand braucht keinen eigenen Reset mehr: neuerModusZustand() liefert bereits
@@ -1665,6 +1907,9 @@ export function initChatView() {
     letzterZustand = zustand
     kontextZustand = zustand
     if (istGrossansicht(location.hash)) renderNaechsterSchritt()
+    // F45 B0: Start-Hinweis über dem Eingabefeld; ein laufender Chat-Lauf wird nach Neuladen weiter verfolgt.
+    renderChatStartHinweis(zustand?.startHinweis)
+    void uebernimmLaufendenChatLauf(zustand)
   })
   abonniereProjektWechsel(setzeChatZustandZurueck)
 

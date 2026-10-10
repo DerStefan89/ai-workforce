@@ -43,6 +43,8 @@ export default {
   'kopf.themeDunkel': 'Switch to dark design',
   'kopf.fragJarvis': 'Ask Jarvis',
   'kopf.pollFehler': 'Update failed — the display may show an outdated state.',
+  // F45 B0 (F-986 a): banner at the top, control center started from the wrong folder.
+  'start.hinweis.falscherOrdner': 'Control center is running from {ist} — runs will be refused (E-188). Start it from {soll}.',
   // F44 WS-8b: Kopf-Knöpfe VS Code | Terminal | GitHub, stiller Punkt bei neuer Antwort.
   'kopf.werkzeuge': 'Tools',
   'kopf.vscode': 'VS Code',
@@ -1588,6 +1590,21 @@ export default {
   'chat.ende.nichtGestartet': 'Run not started: {grund}',
   'chat.ende.nichtGestartetOhneGrund': 'Run not started (no reason reported).',
   'chat.ende.zeitgrenze': 'No change to the run for over {minuten} minutes — the chat has stopped waiting. “Executions” shows its state.',
+  // F45 B0 (F-1008): error entries written by the server, translated by fehler.art.
+  'chat.ende.zeitgrenzeServer': 'Run stopped at its time limit ({sekunden} s) — no answer.',
+  'chat.ende.verweigert': 'Run refused: {grund}',
+  // Prüfpass F45 B0 (design 7): der Kopf der Blase sagt schon „nicht erfolgreich“ — der Text nennt nur den Grund.
+  'chat.ende.fehlgeschlagen': 'Reason: {grund}',
+  'chat.ende.ohneEintrag': 'The run reports success, but no answer is in the history. “Executions” shows its state.',
+  'chat.ende.unlesbar': 'Answer could not be read: {grund}',
+  'chat.ende.grundFehlt': 'no reason reported',
+  // F45 B0 (F-971, F-986 b): tab dot, reason for disabled sending, run in another sub-mode, adopted run.
+  'chat.reiter.neu': '{name}, new answer',
+  'chat.sperre.sendet': 'Sending message …',
+  'chat.sperre.laeuft': 'You can send again once the current answer is in.',
+  'chat.sperre.untermodus': 'You can send again once the run in sub-mode {untermodus} ends.',
+  'chat.untermodus.laeuftIn': 'Run in sub-mode {untermodus} is in progress',
+  'chat.uebernommen.nachrichtUnbekannt': '(message from a run in progress)',
   'chat.fortschritt.liest': 'reading {pfad}',
   'chat.fortschritt.liestDatei': 'reading a file',
   'chat.fortschritt.durchsucht': 'searching for “{muster}”',

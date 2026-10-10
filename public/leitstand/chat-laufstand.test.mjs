@@ -4,12 +4,14 @@
  * Zweck: F-986 (b) — Zustandsabbildung des Chats für einen ausstehenden Lauf (chat-laufstand.js):
  * gestartet/laufend, erfolgreich, verweigert bzw. beendet, nie gestartet (mit und ohne Grund),
  * normale Lage direkt nach dem 202, Detail nicht abrufbar (mit und ohne Startfehler-Eintrag), Zeitgrenze.
+ * F45 B0: wirksame Lauf-Zeitgrenze (laufZeitgrenzeMs vor Startvorlage), Chat-Modus eines laufenden Laufs
+ * aus aktiverLauf (Übernahme nach Neuladen).
  */
 
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { ERSATZ_ZEITGRENZE_MS, ZEITGRENZE_PUFFER_MS, laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, zeitgrenzeUeberschritten } from './chat-laufstand.js'
+import { ERSATZ_ZEITGRENZE_MS, ZEITGRENZE_PUFFER_MS, chatModusDesAktivenLaufs, laufstandSignatur, ordneLaufstandEin, warteGrenzeMs, wirksameLaufZeitgrenzeMs, zeitgrenzeUeberschritten } from './chat-laufstand.js'
 
 const GRUND = "Drift im Gültigkeitsschlüssel: 'arbeitsverzeichnis_pfad' (E-188)"
 
@@ -85,4 +87,23 @@ test('nie gestartet ohne Grund im Detail: Grund aus dem Startfehler-Eintrag', ()
 test('Ersatz-Zeitgrenze entspricht startvorlagen/ai-workforce.json (Drift-Schutz)', () => {
   const vorlage = JSON.parse(readFileSync(new URL('../../startvorlagen/ai-workforce.json', import.meta.url), 'utf8'))
   assert.strictEqual(ERSATZ_ZEITGRENZE_MS, vorlage.zeitgrenzeMs)
+})
+
+test('F45 B0: wirksame Zeitgrenze — laufZeitgrenzeMs vor startvorlageZeitgrenzeMs, sonst null', () => {
+  assert.equal(wirksameLaufZeitgrenzeMs({ laufZeitgrenzeMs: 180000, startvorlageZeitgrenzeMs: 1800000 }), 180000)
+  assert.equal(wirksameLaufZeitgrenzeMs({ startvorlageZeitgrenzeMs: 1800000 }), 1800000)
+  assert.equal(wirksameLaufZeitgrenzeMs({ laufZeitgrenzeMs: null, startvorlageZeitgrenzeMs: null }), null)
+  assert.equal(wirksameLaufZeitgrenzeMs(null), null)
+  // Chat-Grenze 180 s: der Chat hört bei einem nicht aktiven, unveränderten Lauf nach 180 s + Puffer auf zu warten.
+  assert.equal(warteGrenzeMs(wirksameLaufZeitgrenzeMs({ laufZeitgrenzeMs: 180000 })), 180000 + ZEITGRENZE_PUFFER_MS)
+})
+
+test('F45 B0: chatModusDesAktivenLaufs — Jarvis und Coach aus dem laufId-Präfix, sonst null', () => {
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: 'jarvis-jarvis-chat-1' }), 'jarvis')
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: 'product-coach-product-coach-sparring-1' }), 'sparring')
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: 'router-auftrag-1' }), null)
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: 'jarvis-adhoc-1' }), null)
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: false, laufId: 'jarvis-jarvis-chat-1' }), null)
+  assert.equal(chatModusDesAktivenLaufs({ aktiv: true, laufId: null }), null)
+  assert.equal(chatModusDesAktivenLaufs(undefined), null)
 })

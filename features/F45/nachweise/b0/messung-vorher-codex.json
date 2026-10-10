@@ -1,0 +1,471 @@
+{
+  "parameter": {
+    "modus": "jarvis",
+    "turns": 5,
+    "etikett": "vorher-codex",
+    "startvorlage": "startvorlagen/ai-workforce.json",
+    "warmlaufMin": 0,
+    "untermodus": "feature",
+    "port": 4199
+  },
+  "umgebung": {
+    "start": "2026-10-10T17:25:12.411Z",
+    "ende": "2026-10-10T17:26:14.220Z",
+    "git": "d10f9be",
+    "node": "v24.16.0",
+    "plattform": "win32 x64",
+    "arbeitsordner": "C:\\Users\\stefa\\Projekte\\ai-workforce",
+    "startzeile": "Leitstand läuft auf http://127.0.0.1:4199 (Startvorlage: startvorlagen/ai-workforce.json, Projekte: ai-workforce, haushaltsbuch, haushaltsbuch2)",
+    "warnungen": []
+  },
+  "turns": [
+    {
+      "startZeit": "2026-10-10T17:25:19.197Z",
+      "frage": "[Messung F45-B0] Antworte bitte nur mit dem Wort OK.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-7e5b32a7-42fd-4c6a-8dbb-85bff4480b94",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis OK",
+      "k1NodeMs": 137,
+      "k3NodeMs": 12180,
+      "client": {
+        "absenden_bis_quittung_ms": 55,
+        "quittung_bis_pollergebnis_ms": 11945,
+        "pollergebnis_bis_darstellung_ms": 17,
+        "gesamt_ms": 12017,
+        "poll_ticks": 22,
+        "groesste_poll_luecke_ms": 1067
+      },
+      "serverMarken": {
+        "request_eingang": 6686.6244,
+        "verlauf_geladen": 6702.2832,
+        "ressourcen_worker_aufgeloest": 6726.8129,
+        "auftrag_registriert": 6732.2689,
+        "klassifikation_begonnen": 18666.3942,
+        "terminal_checkpoint_geschrieben": 18668.8543,
+        "chat_nachbereitung_begonnen": 18670.2332,
+        "laufakte_geladen": 18671.673,
+        "chat_eintrag_geschrieben": 18675.4329
+      },
+      "phasen": {
+        "k2": null,
+        "prozess": null,
+        "nachbereitung": null,
+        "serverGesamt": 11989
+      },
+      "worker": "codex",
+      "modellDeklariert": "gpt-6-astra",
+      "modellBeobachtet": null,
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 55,
+      "k3Ms": 12017
+    },
+    {
+      "startZeit": "2026-10-10T17:25:34.845Z",
+      "frage": "[Messung F45-B0] Wie heißt dieses Projekt? Antworte in einem Satz.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-77765ff2-0205-4f6a-8725-2b14b2ae8a47",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Dieses Projekt heißt AI Workforce.",
+      "k1NodeMs": 98,
+      "k3NodeMs": 6362,
+      "client": {
+        "absenden_bis_quittung_ms": 41,
+        "quittung_bis_pollergebnis_ms": 6163,
+        "pollergebnis_bis_darstellung_ms": 16,
+        "gesamt_ms": 6220,
+        "poll_ticks": 12,
+        "groesste_poll_luecke_ms": 518
+      },
+      "serverMarken": {
+        "request_eingang": 22308.976,
+        "verlauf_geladen": 22331.6344,
+        "ressourcen_worker_aufgeloest": 22337.1461,
+        "auftrag_registriert": 22341.0196,
+        "klassifikation_begonnen": 28318.4472,
+        "terminal_checkpoint_geschrieben": 28320.6287,
+        "chat_nachbereitung_begonnen": 28321.2753,
+        "laufakte_geladen": 28321.726,
+        "chat_eintrag_geschrieben": 28324.8895
+      },
+      "phasen": {
+        "k2": null,
+        "prozess": null,
+        "nachbereitung": null,
+        "serverGesamt": 6016
+      },
+      "worker": "codex",
+      "modellDeklariert": "gpt-6-astra",
+      "modellBeobachtet": null,
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 41,
+      "k3Ms": 6220
+    },
+    {
+      "startZeit": "2026-10-10T17:25:44.782Z",
+      "frage": "[Messung F45-B0] Nenne den aktuellen Meilenstein in einem Satz.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-2a4937c1-10e3-4609-880b-eb89321cf05d",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis Der aktuelle Meilenstein ist M5: Projektkontext, Coach, Challenge-Flow, Architektur und Dogfooding.",
+      "k1NodeMs": 93,
+      "k3NodeMs": 6905,
+      "client": {
+        "absenden_bis_quittung_ms": 36,
+        "quittung_bis_pollergebnis_ms": 6734,
+        "pollergebnis_bis_darstellung_ms": 16,
+        "gesamt_ms": 6786,
+        "poll_ticks": 13,
+        "groesste_poll_luecke_ms": 575
+      },
+      "serverMarken": {
+        "request_eingang": 32245.1468,
+        "verlauf_geladen": 32266.8667,
+        "ressourcen_worker_aufgeloest": 32271.6446,
+        "auftrag_registriert": 32275.6684,
+        "klassifikation_begonnen": 38688.456,
+        "terminal_checkpoint_geschrieben": 38695.7751,
+        "chat_nachbereitung_begonnen": 38699.5261,
+        "laufakte_geladen": 38702.5771,
+        "chat_eintrag_geschrieben": 38718.7534
+      },
+      "phasen": {
+        "k2": null,
+        "prozess": null,
+        "nachbereitung": null,
+        "serverGesamt": 6474
+      },
+      "worker": "codex",
+      "modellDeklariert": "gpt-6-astra",
+      "modellBeobachtet": null,
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 36,
+      "k3Ms": 6786
+    },
+    {
+      "startZeit": "2026-10-10T17:25:54.941Z",
+      "frage": "[Messung F45-B0] Was ist F45? Ein Satz genügt.",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-95b3fdb1-4eb7-481f-99ba-9eddb7ac02af",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis F45 ist das Fixpaket „Arbeitsfähigkeit“, das aktuell mit B0 zur Verbesserung der Zuverlässigkeit des Jarvis-Chats in Arbeit ist.",
+      "k1NodeMs": 65,
+      "k3NodeMs": 7881,
+      "client": {
+        "absenden_bis_quittung_ms": 29,
+        "quittung_bis_pollergebnis_ms": 7725,
+        "pollergebnis_bis_darstellung_ms": 30,
+        "gesamt_ms": 7784,
+        "poll_ticks": 15,
+        "groesste_poll_luecke_ms": 544
+      },
+      "serverMarken": {
+        "request_eingang": 42382.339,
+        "verlauf_geladen": 42400.1429,
+        "ressourcen_worker_aufgeloest": 42402.3229,
+        "auftrag_registriert": 42404.685,
+        "klassifikation_begonnen": 49929.819,
+        "terminal_checkpoint_geschrieben": 49934.2968,
+        "chat_nachbereitung_begonnen": 49934.9869,
+        "laufakte_geladen": 49935.4043,
+        "chat_eintrag_geschrieben": 49938.2274
+      },
+      "phasen": {
+        "k2": null,
+        "prozess": null,
+        "nachbereitung": null,
+        "serverGesamt": 7556
+      },
+      "worker": "codex",
+      "modellDeklariert": "gpt-6-astra",
+      "modellBeobachtet": null,
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 29,
+      "k3Ms": 7784
+    },
+    {
+      "startZeit": "2026-10-10T17:26:05.794Z",
+      "frage": "[Messung F45-B0] Antworte nur mit der Zahl: Wie viel ist 7 mal 6?",
+      "prozesse": {
+        "claude": 10,
+        "codex": 0
+      },
+      "laufId": "jarvis-jarvis-chat-079a5935-f83d-4def-a160-8646ac711ebf",
+      "endart": "Antwort",
+      "grund": null,
+      "antwortAuszug": "Jarvis 42",
+      "k1NodeMs": 57,
+      "k3NodeMs": 5774,
+      "client": {
+        "absenden_bis_quittung_ms": 21,
+        "quittung_bis_pollergebnis_ms": 5676,
+        "pollergebnis_bis_darstellung_ms": 18,
+        "gesamt_ms": 5715,
+        "poll_ticks": 11,
+        "groesste_poll_luecke_ms": 539
+      },
+      "serverMarken": {
+        "request_eingang": 53235.1507,
+        "verlauf_geladen": 53243.7053,
+        "ressourcen_worker_aufgeloest": 53247.7854,
+        "auftrag_registriert": 53251.1342,
+        "klassifikation_begonnen": 58664.8617,
+        "terminal_checkpoint_geschrieben": 58667.2718,
+        "chat_nachbereitung_begonnen": 58667.8622,
+        "laufakte_geladen": 58668.268,
+        "chat_eintrag_geschrieben": 58670.0026
+      },
+      "phasen": {
+        "k2": null,
+        "prozess": null,
+        "nachbereitung": null,
+        "serverGesamt": 5435
+      },
+      "worker": "codex",
+      "modellDeklariert": "gpt-6-astra",
+      "modellBeobachtet": null,
+      "laufStatus": {
+        "status": "ABGESCHLOSSEN",
+        "ergebnis": "ERFOLGREICH",
+        "terminalSequenz": 2,
+        "runPreparedSequenz": 1,
+        "terminaleOhneRunPrepared": []
+      },
+      "k1Ms": 21,
+      "k3Ms": 5715
+    }
+  ],
+  "zustand": [
+    {
+      "zeit": 1791653119261,
+      "ms": 2696,
+      "status": 200
+    },
+    {
+      "zeit": 1791653121317,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791653123389,
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "zeit": 1791653126098,
+      "ms": 697,
+      "status": 200
+    },
+    {
+      "zeit": 1791653128182,
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "zeit": 1791653130236,
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "zeit": 1791653132282,
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "zeit": 1791653134868,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791653136940,
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "zeit": 1791653138986,
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "zeit": 1791653141029,
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "zeit": 1791653144802,
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "zeit": 1791653146860,
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "zeit": 1791653148934,
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "zeit": 1791653150983,
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "zeit": 1791653153017,
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "zeit": 1791653155067,
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "zeit": 1791653157107,
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "zeit": 1791653159147,
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "zeit": 1791653161191,
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "zeit": 1791653163260,
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "zeit": 1791653165809,
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "zeit": 1791653167880,
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "zeit": 1791653169920,
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "zeit": 1791653171972,
+      "ms": 40,
+      "status": 200
+    }
+  ],
+  "eventLoop": [
+    {
+      "max": 1485,
+      "p99": 52
+    }
+  ],
+  "zusammenfassung": {
+    "k1": {
+      "median": 36,
+      "p95": 55,
+      "max": 55,
+      "anzahl": 5
+    },
+    "k2": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "prozess": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "nachbereitung": {
+      "median": null,
+      "p95": null,
+      "max": null,
+      "anzahl": 0
+    },
+    "quittungBisPoll": {
+      "median": 6734,
+      "p95": 11945,
+      "max": 11945,
+      "anzahl": 5
+    },
+    "pollBisAnzeige": {
+      "median": 17,
+      "p95": 30,
+      "max": 30,
+      "anzahl": 5
+    },
+    "k3": {
+      "median": 6786,
+      "p95": 12017,
+      "max": 12017,
+      "anzahl": 5
+    },
+    "zustand": {
+      "median": 48,
+      "p95": 697,
+      "max": 2696,
+      "anzahl": 25
+    },
+    "eventLoopMax": {
+      "median": 1485,
+      "p95": 1485,
+      "max": 1485,
+      "anzahl": 1
+    },
+    "antworten": 5,
+    "fehler": 0,
+    "haengt": 0,
+    "sichtbarBeendet": 5
+  }
+}

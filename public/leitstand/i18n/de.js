@@ -47,6 +47,8 @@ export default {
   'kopf.themeDunkel': 'Dunkles Design aktivieren',
   'kopf.fragJarvis': 'Frag Jarvis',
   'kopf.pollFehler': 'Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.',
+  // F45 B0 (F-986 a): Band oben, Leitstand aus falschem Ordner gestartet.
+  'start.hinweis.falscherOrdner': 'Leitstand läuft aus {ist} — Läufe werden verweigert (E-188). Leitstand aus {soll} starten.',
   // F44 WS-8b: Kopf-Knöpfe VS Code | Terminal | GitHub, stiller Punkt bei neuer Antwort.
   'kopf.werkzeuge': 'Werkzeuge',
   'kopf.vscode': 'VS Code',
@@ -1599,6 +1601,21 @@ export default {
   'chat.ende.nichtGestartet': 'Lauf nicht gestartet: {grund}',
   'chat.ende.nichtGestartetOhneGrund': 'Lauf nicht gestartet (kein Grund gemeldet).',
   'chat.ende.zeitgrenze': 'Seit über {minuten} Minuten keine Änderung am Lauf — der Chat wartet nicht länger. Den Stand zeigt „Ausführungen“.',
+  // F45 B0 (F-1008): vom Server geschriebene Fehler-Einträge, nach fehler.art übersetzt.
+  'chat.ende.zeitgrenzeServer': 'Lauf an der Zeitgrenze ({sekunden} s) beendet — keine Antwort.',
+  'chat.ende.verweigert': 'Lauf verweigert: {grund}',
+  // Prüfpass F45 B0 (design 7): der Kopf der Blase sagt schon „nicht erfolgreich“ — der Text nennt nur den Grund.
+  'chat.ende.fehlgeschlagen': 'Grund: {grund}',
+  'chat.ende.ohneEintrag': 'Der Lauf meldet Erfolg, aber im Verlauf steht keine Antwort. Den Stand zeigt „Ausführungen“.',
+  'chat.ende.unlesbar': 'Antwort konnte nicht gelesen werden: {grund}',
+  'chat.ende.grundFehlt': 'kein Grund gemeldet',
+  // F45 B0 (F-971, F-986 b): Reiter-Punkt, Grund des gesperrten Sendens, Lauf in anderem Untermodus, übernommener Lauf.
+  'chat.reiter.neu': '{name}, neue Antwort',
+  'chat.sperre.sendet': 'Nachricht wird gesendet …',
+  'chat.sperre.laeuft': 'Senden geht wieder, sobald die laufende Antwort da ist.',
+  'chat.sperre.untermodus': 'Senden geht wieder, sobald der Lauf im Untermodus {untermodus} endet.',
+  'chat.untermodus.laeuftIn': 'Lauf im Untermodus {untermodus} läuft',
+  'chat.uebernommen.nachrichtUnbekannt': '(Nachricht aus einem laufenden Lauf)',
   'chat.fortschritt.liest': 'liest {pfad}',
   'chat.fortschritt.liestDatei': 'liest eine Datei',
   'chat.fortschritt.durchsucht': 'durchsucht nach „{muster}“',

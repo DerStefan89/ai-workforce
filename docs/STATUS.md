@@ -98,8 +98,10 @@ am 30.09.2026 real an haushaltsbuch2, `features/F43/feature.md`; F-849
 gemergt #288), F44 Design-Schnitt (F-725) `ABGESCHLOSSEN` (WS-0 bis WS-8b
 gemergt, zuletzt #307; abgenommen 02.10.2026), F46 Design-Nachbau nach neuem
 Seitenaufbau `IN_ARBEIT` (D0 „Grundlage“ auf Branch; danach Fixpaket
-„Arbeitsfähigkeit“ F45, dann F30 — E-M5-18, geändert 02.10.2026) (Stand
-22.09.2026; F36 29.09.2026; F43 30.09.2026; F44/F46 02.10.2026).
+„Arbeitsfähigkeit“ F45, dann F30 — E-M5-18, geändert 02.10.2026), F45
+Fixpaket „Arbeitsfähigkeit“ `IN_ARBEIT` (Akte und Grundlage
+`docs/projekt/fixpaket-f45.md`; B0 Chat gebaut, nicht gemergt) (Stand
+22.09.2026; F36 29.09.2026; F43 30.09.2026; F44/F46 02.10.2026; F45 10.10.2026).
 
 ## Erledigt
 
@@ -596,6 +598,13 @@ Apps Hub ist nicht Teil von M4 (E-M4-1). Git bleibt beim Menschen (E-M4-5).
   F46), E-F46-2 (Konfiguration nur lesbar). Findings F-972 bis F-983. Nach
   F44, vor dem Fixpaket „Arbeitsfähigkeit“ (F45) und F30 (E-M5-18,
   geändert 02.10.2026).
+- ⏳ **F45** — Fixpaket „Arbeitsfähigkeit“ (Challenge 03.10.2026 auf
+  `d10f9be`). Akte `features/F45/feature.md`, Status `IN_ARBEIT`,
+  Grundlage `docs/projekt/fixpaket-f45.md` (Ziel, K1–K5, P1–P5, R1–R7,
+  Bestehensbedingung, Workstreams B0 bis R). B0 „Chat zuverlässig und
+  schnell“ gebaut, nicht gemergt (Branch `feat/f45-b0-chat`; K1–K5 erfüllt). Offene Entscheidungen
+  E-F45-2, E-F45-3. Findings F-1007 bis F-1016. Nach F46, vor F30
+  (E-M5-18, geändert 02.10.2026).
 - ⏳ **F37** — Besetzungs-Erklärung & Override. V1-Backlog nach F30,
   gebaut bei erfülltem Auslöser, nicht gestrichen (`features/F37/
   feature.md`, `docs/projekt/zielfassung.md` §13.6 E-M5-16).
