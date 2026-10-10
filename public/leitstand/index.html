@@ -119,6 +119,9 @@
       </header>
 
       <p id="poll-fehler" class="note red" hidden data-i18n="kopf.pollFehler">Aktualisierung fehlgeschlagen — die Anzeige zeigt möglicherweise einen veralteten Stand.</p>
+      <!-- F45 B0 (F-986 a): Leitstand aus falschem Ordner gestartet — Läufe werden verweigert (E-188). Text aus
+           GET /api/zustand (startHinweis) über start-hinweis.js; keine Live-Region. -->
+      <p id="start-hinweis" class="note red" hidden></p>
 
       <div id="shell-koerper">
       <main id="shell-hauptbereich">
@@ -919,6 +922,10 @@
                 <button type="button" id="chat-zusammenfassen-btn" class="btn chat-zusammenfassen-btn" data-i18n="chat.zusammenfassen">Zusammenfassen &amp; neu starten</button>
                 <button type="button" id="chat-abbrechen-btn" class="btn chat-abbrechen-btn" hidden data-i18n="chat.abbrechen">Lauf abbrechen</button>
               </div>
+              <!-- F45 B0: Start-Hinweis (falscher Ordner, E-188) und Grund eines gesperrten Sendens (F-971) —
+                   views/chat.js leitet beide bei jedem Render bzw. Poll ab. -->
+              <p id="chat-start-hinweis" class="note red chat-start-hinweis" hidden></p>
+              <p id="chat-sperrgrund" class="chat-sperrgrund" hidden></p>
               <div class="chat-eingabe-zeile">
                 <label for="chat-eingabe" class="sr-only" data-i18n="chat.eingabe.label">Nachricht</label>
                 <!-- maxlength 8000 spiegelt die serverseitige Grenze in POST /api/chat (QA-Hinweis WS-2a). -->

@@ -43,6 +43,8 @@ export default {
   'kopf.themeDunkel': 'Koyu tasarımı etkinleştir',
   'kopf.fragJarvis': 'Jarvis’e sor',
   'kopf.pollFehler': 'Güncelleme başarısız — ekran eski bir durumu gösteriyor olabilir.',
+  // F45 B0 (F-986 a): üstte bant, kontrol merkezi yanlış klasörden başlatıldı.
+  'start.hinweis.falscherOrdner': 'Kontrol merkezi {ist} klasöründen çalışıyor — çalıştırmalar reddedilecek (E-188). {soll} klasöründen başlatın.',
   // F44 WS-8b: Kopf-Knöpfe VS Code | Terminal | GitHub, stiller Punkt bei neuer Antwort.
   'kopf.werkzeuge': 'Araçlar',
   'kopf.vscode': 'VS Code',
@@ -1588,6 +1590,21 @@ export default {
   'chat.ende.nichtGestartet': 'Çalıştırma başlatılmadı: {grund}',
   'chat.ende.nichtGestartetOhneGrund': 'Çalıştırma başlatılmadı (neden bildirilmedi).',
   'chat.ende.zeitgrenze': '{minuten} dakikadan uzun süredir çalıştırmada değişiklik yok — sohbet artık beklemiyor. Durumu „Çalıştırmalar“ gösterir.',
+  // F45 B0 (F-1008): sunucunun yazdığı hata kayıtları, fehler.art'a göre çevrilir.
+  'chat.ende.zeitgrenzeServer': 'Çalıştırma süre sınırında ({sekunden} sn) durduruldu — yanıt yok.',
+  'chat.ende.verweigert': 'Çalıştırma reddedildi: {grund}',
+  // Prüfpass F45 B0 (design 7): der Kopf der Blase sagt schon „nicht erfolgreich“ — der Text nennt nur den Grund.
+  'chat.ende.fehlgeschlagen': 'Neden: {grund}',
+  'chat.ende.ohneEintrag': 'Çalıştırma başarılı görünüyor, ancak geçmişte yanıt yok. Durumu „Çalıştırmalar“ gösterir.',
+  'chat.ende.unlesbar': 'Yanıt okunamadı: {grund}',
+  'chat.ende.grundFehlt': 'neden bildirilmedi',
+  // F45 B0 (F-971, F-986 b): sekme noktası, gönderme kilidinin nedeni, başka alt modda çalıştırma, devralınan çalıştırma.
+  'chat.reiter.neu': '{name}, yeni yanıt',
+  'chat.sperre.sendet': 'Mesaj gönderiliyor …',
+  'chat.sperre.laeuft': 'Süren yanıt gelince yeniden gönderebilirsiniz.',
+  'chat.sperre.untermodus': '{untermodus} alt modundaki çalıştırma bitince yeniden gönderebilirsiniz.',
+  'chat.untermodus.laeuftIn': '{untermodus} alt modunda bir çalıştırma sürüyor',
+  'chat.uebernommen.nachrichtUnbekannt': '(süren bir çalıştırmadan mesaj)',
   'chat.fortschritt.liest': '{pfad} okunuyor',
   'chat.fortschritt.liestDatei': 'bir dosya okunuyor',
   'chat.fortschritt.durchsucht': '“{muster}” aranıyor',

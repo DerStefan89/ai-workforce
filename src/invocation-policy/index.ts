@@ -489,6 +489,41 @@ export function pruefeStartbedingung2(
 }
 
 /**
+ * F45 B0 (F-986 a): gleicher Pfad im Sinne von E-188 — dieselbe Normalisierung wie der
+ * arbeitsverzeichnis_pfad-Vergleich in pruefeStartbedingung2 (normalisierePfadFuerVergleich), keine
+ * zweite Regel.
+ * @param a - erster Pfad
+ * @param b - zweiter Pfad
+ * @returns true, wenn beide Pfade nach Trenner- und Groß-/Kleinschreibungs-Normalisierung gleich sind
+ */
+export function arbeitsverzeichnisseGleich(a: string, b: string): boolean {
+  return normalisierePfadFuerVergleich(a) === normalisierePfadFuerVergleich(b)
+}
+
+/**
+ * F45 B0 (F-986 a): liest den arbeitsverzeichnis_pfad eines Wirksamkeitsnachweises über dieselbe
+ * Lesekette wie pruefeStartbedingung2 (leseUndVerifiziereCommitGepinnteDatei, Schemaprüfung) und
+ * vergleicht ihn mit istPfad. Rein lesend: keine Wirkungsmarke, kein Starturteil — E-188 prüft
+ * weiterhin bei jedem Lauf selbst; dieser Vergleich macht eine Abweichung nur beim Serverstart sichtbar.
+ * @param referenz - WirksamkeitsnachweisReferenz (aus state/aktuelle-autorisierung.json)
+ * @param istPfad - zu prüfendes Arbeitsverzeichnis (process.cwd() des Leitstands)
+ * @param optionen - repoWurzel des externen Autorisierungs-Repos (Standard STANDARD_REPO_WURZEL)
+ * @returns { ok: true, stimmtUeberein, nachgewiesenerPfad } oder { ok: false, grund }, wenn der Nachweis nicht lesbar ist
+ */
+export function vergleicheArbeitsverzeichnisMitNachweis(
+  referenz: WirksamkeitsnachweisReferenz,
+  istPfad: string,
+  optionen: PruefOptionen = {}
+): { ok: true; stimmtUeberein: boolean; nachgewiesenerPfad: string } | { ok: false; grund: string } {
+  const gelesen = leseUndVerifiziereCommitGepinnteDatei(referenz, optionen.repoWurzel ?? STANDARD_REPO_WURZEL, 'Wirksamkeitsnachweis')
+  if (!gelesen.ok) return { ok: false, grund: gelesen.grund }
+  const verstoesse = validiereWirksamkeitsnachweisEintrag(gelesen.geparst)
+  if (verstoesse.length > 0) return { ok: false, grund: `Wirksamkeitsnachweis verletzt Schema: ${verstoesse.join('; ')}` }
+  const nachgewiesenerPfad = (gelesen.geparst as WirksamkeitsnachweisEintrag).gueltigkeitsschluessel.arbeitsverzeichnis_pfad
+  return { ok: true, stimmtUeberein: arbeitsverzeichnisseGleich(istPfad, nachgewiesenerPfad), nachgewiesenerPfad }
+}
+
+/**
  * Orchestrator: misst/erhält istZustand einmal (Aufrufer liefert ihn
  * bereits vollständig, F4 misst nicht selbst — Design-Entscheidung 3),
  * ruft pruefeStartbedingung1 dann pruefeStartbedingung2 (Reihenfolge E-183

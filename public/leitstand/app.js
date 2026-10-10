@@ -37,7 +37,8 @@
  * erste Tick etwas zu melden hätte. initStartView() (F29 WS-1a) registriert
  * aus demselben Grund ebenfalls vor initZustandPoll(). Ebenso initLiveChip()
  * (F46 D0, Live-Chip in der Kopfleiste, live-chip.js) und initEntscheidungenZaehler() (F46 D2,
- * Zahl am Navigationspunkt „Entscheidungen“, entscheidungen-zaehler.js).
+ * Zahl am Navigationspunkt „Entscheidungen“, entscheidungen-zaehler.js) und initStartHinweisBand() (F45 B0,
+ * Band „Leitstand aus falschem Ordner“, start-hinweis.js).
  *
  * leiteBeimStartEin() (F29 WS-1a, views/start.js) läuft NACH allen
  * initXView()-Aufrufen (die Route '#/start' muss bereits registriert sein)
@@ -91,6 +92,7 @@ import { initWorkboardView } from './views/workboard.js'
 import { initWorkflowsView } from './views/workflows.js'
 import { initPersona } from './persona.js'
 import { initShell } from './shell.js'
+import { initStartHinweisBand } from './start-hinweis.js'
 import { initialisiereTheme } from './theme.js'
 import { initZustandPoll } from './zustand.js'
 
@@ -120,6 +122,7 @@ initEntscheidungenZaehler()
 initShell()
 initAuftragUmgebung()
 initCodeStand()
+initStartHinweisBand()
 
 initZustandPoll()
 leiteBeimStartEin()

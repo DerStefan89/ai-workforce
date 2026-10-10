@@ -18,7 +18,8 @@
  * scripts/check-f31-gedaechtnis.mjs Abschnitt (a)).
  *
  * F34 WS-2 (Sparring-UI + Chat→Auftrag-Brücke, löst state/findings.md F-606) ergänzt: (h) die
- * F-506-Fehlerpfad-Regression für 'product-coach' (Muster check-f31-gedaechtnis.mjs (j)), (i)
+ * F-506-Fehlerpfad-Regression für 'product-coach' (Muster check-f31-gedaechtnis.mjs (j)), (h2) F45 B0:
+ * FEHLGESCHLAGEN schreibt genau einen als Fehler gekennzeichneten Eintrag (F-1008), (i)
  * baueAuftragAusScope-Gleichheit zwischen dem Server-Original (src/product-coach/index.ts) und
  * seiner reinen JS-Kopie für den Browser (public/leitstand/auftrag-aus-scope.js — ein Browser
  * ohne Build-Schritt kann .ts nicht laden), (j) eine statische Quelltextprüfung von
@@ -526,6 +527,44 @@ console.log('\n=== F34-Product-Coach-Check ===\n')
           console.log("✓ (h): ein real ABGESCHLOSSEN/ERFOLGREICH beendeter Product-Coach-Lauf mit unlesbarem Ergebnis schreibt GENAU einen sichtbaren Fehler-Eintrag in 'sparring-<projektId>' (coachAntwort.art 'frage', Text beginnt mit 'Coach-Antwort konnte nicht gelesen werden:') statt gar keinen.")
         }
       }
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (h2) F45 B0 (F-1008): FEHLGESCHLAGEN → genau ein als Fehler gekennzeichneter Eintrag ──
+//
+// Gegenstück zu check-f26-jarvis.mjs (f) für die Rolle product-coach — ein ABGESCHLOSSEN/FEHLGESCHLAGEN
+// beendeter Coach-Lauf schreibt genau einen Eintrag mit istFehler und fehler.art, trägt seinen
+// Untermodus und keine Antwort. Vor F45 B0 schrieb dieser Fall nichts.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f34-ak-h2-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  const fuehreAufgabeDurchFn = async () => ({ ok: true, klassifikation: { ergebnis: 'FEHLGESCHLAGEN', grund: 'beobachtungsbasis_unvollstaendig' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } })
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId: 'check-f34-ak-h2', fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const basisUrl = `http://127.0.0.1:${server.address().port}`
+  try {
+    const antwort = await fetch(`${basisUrl}/api/sparring`, { method: 'POST', body: JSON.stringify({ nachricht: 'Idee ohne Antwort', modus: 'projekt' }) })
+    if (antwort.status !== 202) {
+      befunde.push(`(h2): erwartet 202, erhalten ${antwort.status}`)
+    } else {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      const verlauf = (await (await fetch(`${basisUrl}/api/sparring`)).json()).verlauf
+      const eintrag = verlauf[0]
+      if (verlauf.length !== 1) {
+        befunde.push(`(h2): erwartet GENAU einen Eintrag (den Fehler-Eintrag), erhalten ${verlauf.length}`)
+      } else if (eintrag.istFehler !== true || eintrag.fehler?.art !== 'nicht_erfolgreich' || eintrag.modus !== 'projekt' || eintrag.nachricht !== 'Idee ohne Antwort') {
+        befunde.push(`(h2): der Eintrag muss als Fehler gekennzeichnet sein (istFehler, fehler.art 'nicht_erfolgreich'), den Untermodus und die Nachricht tragen, erhalten ${JSON.stringify(eintrag)}`)
+      } else if (eintrag.coachAntwort?.art !== 'frage' || !String(eintrag.coachAntwort.antwort).startsWith('Lauf nicht erfolgreich:')) {
+        befunde.push(`(h2): der Fehler-Eintrag trägt nur den Fehlertext, keine Antwort, erhalten ${JSON.stringify(eintrag.coachAntwort)}`)
+      }
+    }
+    if (befunde.length === befundeVor) {
+      console.log("✓ (h2): ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Product-Coach-Lauf schreibt genau einen als Fehler gekennzeichneten Eintrag (istFehler, fehler.art, Untermodus), keine Antwort (F45 B0, F-1008).")
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))

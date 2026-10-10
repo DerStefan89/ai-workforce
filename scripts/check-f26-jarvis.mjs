@@ -15,7 +15,12 @@
  * in 'eingaben' (das ist für Datei-Referenzen mit inhalts_hash reserviert) —
  * und (f, WS-2a) den automatischen Lineage-Write DURCH POST /api/chat selbst
  * (kein externes Glue-Skript mehr): ein realer Grün-/Rotfall über eine fake
- * fuehreAufgabeDurchFn, GET /api/chat als Projektion.
+ * fuehreAufgabeDurchFn, GET /api/chat als Projektion. Seit F45 B0 (F-1008)
+ * schreibt der Rotfall (FEHLGESCHLAGEN) genau einen als Fehler gekennzeichneten
+ * Eintrag (istFehler, fehler.art), keine Antwort. Neu in F45 B0: (g) eigene
+ * Chat-Zeitgrenze 180 s (F-1007) samt laufZeitgrenzeMs im Lauf-Detail, (h) fester
+ * Chat-Worker claude-code trotz verfügbarem Codex (F-544), (i) Start-Hinweis in
+ * GET /api/zustand (F-986 a). Ausführliche Fälle: scripts/leitstand-chat-misserfolg.test.mjs.
  *
  * Kein generischer JSON-Schema-Validator (D5): importiert die reale
  * validiereErgebnisJarvis/validiereLineageEintrag statt einen zweiten
@@ -42,7 +47,7 @@ import { validiereErgebnisJarvis } from '../src/jarvis/index.ts'
 import { registriereAuftrag } from '../src/auftrag/index.ts'
 import { registriereKernArtefakt, validiereLineageEintrag } from '../src/lineage-registry/index.ts'
 import { ladeGueltigeCheckpoints } from '../src/checkpoint-store/index.ts'
-import { erzeugeRequestHandler, leseJarvisErgebnisAusLaufakte, loeseAusfuehrungsEingabenAuf } from './leitstand-server.mjs'
+import { erzeugeRequestHandler, leseJarvisErgebnisAusLaufakte, loeseAusfuehrungsEingabenAuf, vergleicheStartordner } from './leitstand-server.mjs'
 import { raeumeVerzeichnis } from './_aufraeumen.ts'
 
 const befunde = []
@@ -472,8 +477,9 @@ console.log('\n=== F26-Jarvis-Check ===\n')
       }
     }
 
-    // Rotfall: real ABGESCHLOSSEN, aber NICHT ERFOLGREICH → kein automatischer Lineage-Eintrag
-    // ('Chat hat keine eigene Wahrheit', nur ein real erfolgreicher Lauf wird Lineage).
+    // Rotfall: real ABGESCHLOSSEN, aber NICHT ERFOLGREICH → seit F45 B0 (F-1008) genau EIN als Fehler
+    // gekennzeichneter Eintrag (istFehler, fehler.art), nie eine Antwort — vorher schrieb dieser Fall
+    // nichts, und nach Neuladen waren Nachricht und Grund weg.
     ergebnisModus = 'fehlgeschlagen'
     const zweite = await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Noch eine Nachricht' }) })
     if (zweite.status !== 202) {
@@ -482,19 +488,93 @@ console.log('\n=== F26-Jarvis-Check ===\n')
     await new Promise((resolve) => setTimeout(resolve, 30))
 
     const verlaufNachFehlschlag = await (await fetch(`${basisUrl}/api/chat`)).json()
-    if (verlaufNachFehlschlag.verlauf.length !== 1) {
-      befunde.push(`(f) Rotfall: ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf sollte KEINEN weiteren Lineage-Eintrag erzeugen, GET /api/chat zeigt aber ${verlaufNachFehlschlag.verlauf.length} Einträge`)
+    const fehlerEintrag = verlaufNachFehlschlag.verlauf[1]
+    if (verlaufNachFehlschlag.verlauf.length !== 2) {
+      befunde.push(`(f) Rotfall: ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf sollte GENAU einen weiteren Eintrag (den Fehler-Eintrag) erzeugen, GET /api/chat zeigt aber ${verlaufNachFehlschlag.verlauf.length} Einträge`)
+    } else if (verlaufNachFehlschlag.verlauf[0].istFehler !== false) {
+      befunde.push(`(f) Grünfall: ein erfolgreicher Eintrag darf nicht als Fehler gekennzeichnet sein, erhalten ${JSON.stringify(verlaufNachFehlschlag.verlauf[0])}`)
+    } else if (fehlerEintrag.istFehler !== true || fehlerEintrag.fehler?.art !== 'nicht_erfolgreich' || fehlerEintrag.nachricht !== 'Noch eine Nachricht') {
+      befunde.push(`(f) Rotfall: der Eintrag muss als Fehler gekennzeichnet sein (istFehler, fehler.art 'nicht_erfolgreich') und die Nachricht tragen, erhalten ${JSON.stringify(fehlerEintrag)}`)
+    } else if (typeof fehlerEintrag.jarvisAntwort?.antwort !== 'string' || !fehlerEintrag.jarvisAntwort.antwort.startsWith('Lauf nicht erfolgreich:')) {
+      befunde.push(`(f) Rotfall: der Fehler-Eintrag darf keine Antwort tragen, nur den Fehlertext, erhalten ${JSON.stringify(fehlerEintrag.jarvisAntwort)}`)
     }
 
     if (befunde.length === befundeVor) {
       console.log(
-        "✓ (f): POST /api/chat schreibt nach einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch einen gültigen 'lineage-chat-<projektId>'-Eintrag (sichtbar über GET /api/chat); ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf schreibt real KEINEN."
+        "✓ (f): POST /api/chat schreibt nach einem real ABGESCHLOSSEN/ERFOLGREICH beendeten Jarvis-Lauf automatisch einen gültigen 'lineage-chat-<projektId>'-Eintrag (sichtbar über GET /api/chat); ein ABGESCHLOSSEN/FEHLGESCHLAGEN beendeter Lauf schreibt genau einen als Fehler gekennzeichneten Eintrag, keine Antwort (F45 B0, F-1008)."
       )
     }
   } finally {
     await new Promise((resolve) => server.close(resolve))
     raeumeVerzeichnis(basisVerzeichnis)
   }
+}
+
+// ─── (g)/(h) F45 B0: eigene Chat-Zeitgrenze (F-1007) und fester Chat-Worker (F-544) ───
+//
+// Rot gegen den Stand vor F45 B0: dort erbte ein Chat-Lauf zeitgrenzeMs der Startvorlage (mit
+// startvorlagen/ai-workforce.json 1 800 000) und lief auf Codex, sobald die Startvorlage Codex
+// verfügbar machte. Grün: zeitgrenzeMs 180 000 am Lauf, laufZeitgrenzeMs 180 000 im Lauf-Detail,
+// worker claude-code (fehlendes Feld) ohne Ausgabe-Schema.
+{
+  const basisVerzeichnis = `kontrollzustand-test-f26-f45-${randomUUID()}`
+  raeumeVerzeichnis(basisVerzeichnis)
+  const befundeVor = befunde.length
+  let gesehen = null
+  const fuehreAufgabeDurchFn = async (laufId, profil, eingaben, optionen) => {
+    gesehen = { laufId, eingaben, zeitgrenzeMs: optionen.zeitgrenzeMs }
+    mkdirSync(join(basisVerzeichnis, laufId), { recursive: true })
+    return { ok: true, klassifikation: { ergebnis: 'FEHLGESCHLAGEN', grund: 'timeout' }, laufStatus: { status: 'ABGESCHLOSSEN', ergebnis: 'FEHLGESCHLAGEN' } }
+  }
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, projektId: 'check-f26-f45', startvorlagePfad: 'startvorlagen/ai-workforce.json', fuehreAufgabeDurchFn }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const basisUrl = `http://127.0.0.1:${server.address().port}`
+  try {
+    const antwort = await fetch(`${basisUrl}/api/chat`, { method: 'POST', body: JSON.stringify({ nachricht: 'Zeitgrenze?' }) })
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    if (antwort.status !== 202 || gesehen === null) {
+      befunde.push(`(g) erwartet 202 und einen Laufstart, erhalten ${antwort.status}`)
+    } else {
+      if (gesehen.zeitgrenzeMs !== 180_000) befunde.push(`(g) Chat-Lauf muss mit zeitgrenzeMs 180000 starten (nicht die 1800000 der Startvorlage), erhalten ${gesehen.zeitgrenzeMs}`)
+      const detail = await (await fetch(`${basisUrl}/api/laeufe/${gesehen.laufId}`)).json()
+      if (detail.laufZeitgrenzeMs !== 180_000) befunde.push(`(g) GET /api/laeufe/<laufId> muss laufZeitgrenzeMs 180000 melden, erhalten ${detail.laufZeitgrenzeMs}`)
+      const verlauf = (await (await fetch(`${basisUrl}/api/chat`)).json()).verlauf
+      if (verlauf.length !== 1 || verlauf[0].fehler?.art !== 'zeitgrenze') befunde.push(`(g) ein an der Zeitgrenze beendeter Lauf muss genau einen Fehler-Eintrag 'zeitgrenze' schreiben, erhalten ${JSON.stringify(verlauf)}`)
+      if ((gesehen.eingaben.worker ?? 'claude-code') !== 'claude-code' || gesehen.eingaben.ausgabeSchemaPfad !== undefined) {
+        befunde.push(`(h) Chat-Worker muss claude-code sein, auch wenn die Startvorlage Codex verfügbar macht, erhalten worker ${gesehen.eingaben.worker}, ausgabeSchemaPfad ${gesehen.eingaben.ausgabeSchemaPfad}`)
+      }
+    }
+    if (befunde.length === befundeVor) {
+      console.log('✓ (g)/(h): Chat-Lauf startet mit eigener Zeitgrenze 180 s (laufZeitgrenzeMs im Detail, Fehler-Eintrag an der Grenze) und fest auf claude-code — auch mit startvorlagen/ai-workforce.json (Codex verfügbar).')
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+}
+
+// ─── (i) F45 B0: Start-Hinweis (F-986 a) ────────────────────────────────────
+//
+// Rot: ein Pfad ungleich dem nachgewiesenen ergibt einen Hinweis mit beiden Pfaden; Grün: derselbe
+// Pfad in anderer Schreibweise (Trenner, Groß-/Kleinschreibung — Normalisierung wie E-188) ergibt
+// keinen. GET /api/zustand trägt den Hinweis lesend.
+{
+  const befundeVor = befunde.length
+  const soll = 'C:\\Users\\stefa\\Projekte\\ai-workforce'
+  if (vergleicheStartordner('c:/users/stefa/projekte/ai-workforce', soll) !== null) befunde.push('(i) Grünfall: gleiche Pfade in anderer Schreibweise dürfen keinen Start-Hinweis erzeugen')
+  const hinweis = vergleicheStartordner('C:\\Users\\stefa\\Projekte\\aiw-main-ansicht', soll)
+  if (hinweis?.art !== 'falscherOrdner' || hinweis.sollPfad !== soll) befunde.push(`(i) Rotfall: abweichender Ordner muss einen Start-Hinweis mit beiden Pfaden erzeugen, erhalten ${JSON.stringify(hinweis)}`)
+  const basisVerzeichnis = `kontrollzustand-test-f26-f45i-${randomUUID()}`
+  const server = createServer(erzeugeRequestHandler({ basisVerzeichnis, startHinweis: hinweis }))
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  try {
+    const zustand = await (await fetch(`http://127.0.0.1:${server.address().port}/api/zustand`)).json()
+    if (JSON.stringify(zustand.startHinweis) !== JSON.stringify(hinweis)) befunde.push(`(i) GET /api/zustand muss startHinweis tragen, erhalten ${JSON.stringify(zustand.startHinweis)}`)
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+    raeumeVerzeichnis(basisVerzeichnis)
+  }
+  if (befunde.length === befundeVor) console.log('✓ (i): Start-Hinweis bei abweichendem Ordner (Normalisierung wie E-188), lesend in GET /api/zustand.')
 }
 
 // ─── Ergebnis ───────────────────────────────────────────────────────────────

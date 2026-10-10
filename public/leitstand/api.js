@@ -162,7 +162,9 @@ export const holeRollenBesetzung = (rolle) => fetch(mitPraefix(`/ressourcen/roll
 // Muster routeAuftrag); holeChatVerlauf projiziert den 'lineage-chat-<projektId>'-Verlauf
 // (leer bis zum ersten real abgeschlossenen Lauf, kein Fehler).
 export const sendeChatNachricht = (koerper) => fetch(mitPraefix('/chat'), { method: 'POST', body: JSON.stringify(koerper) })
-export const holeChatVerlauf = () => fetch(mitPraefix('/chat')).then((r) => r.json())
+// F45 B0 (Prüfpass qa 4): wirft bei Nicht-2xx wie holeSparringVerlauf — sonst stand nach einem 500 der
+// Fehlerkörper als Verlauf im Modulzustand, und der Abschluss eines Laufs warf ohne Ende.
+export const holeChatVerlauf = () => holeJsonOderWirf(mitPraefix('/chat'))
 
 // F31 WS-2: löst "Zusammenfassen & neu starten" aus (202 + laufId/auftragId, 409 bei D13 oder
 // leerem Verlauf, Muster sendeChatNachricht) — leerer Body, das Gedächtnisfenster baut der Server.

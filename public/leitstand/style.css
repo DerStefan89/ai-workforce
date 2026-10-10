@@ -857,6 +857,18 @@ svg.icon {
   color: var(--muted);
 }
 
+/* F45 B0 (F-986 a): Start-Hinweis „Leitstand aus falschem Ordner“ (start-hinweis.js) — wie das
+   Poll-Fehlerbanner, kein display (hidden-Attribut wirkt). Lange Pfade brechen um. */
+#start-hinweis {
+  margin: 16px 48px 0;
+  padding: 17px 20px;
+  border-left: 2px solid var(--red);
+  background: var(--note-rot-bg);
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
 #shell-koerper {
   display: flex;
   flex: 1;
@@ -953,6 +965,7 @@ svg.icon {
 :root[data-eingang='true'] #shell-sidebar,
 :root[data-eingang='true'] #shell-kopf,
 :root[data-eingang='true'] #poll-fehler,
+:root[data-eingang='true'] #start-hinweis,
 :root[data-eingang='true'] #shell-chat-spalte,
 :root[data-eingang='true'] #chat-blase {
   display: none !important;
@@ -985,7 +998,8 @@ svg.icon {
     padding: 0 30px;
   }
 
-  #poll-fehler {
+  #poll-fehler,
+  #start-hinweis {
     margin: 16px 30px 0;
   }
 
@@ -1110,7 +1124,8 @@ svg.icon {
     height: 22px;
   }
 
-  #poll-fehler {
+  #poll-fehler,
+  #start-hinweis {
     margin: 12px 16px 0;
   }
 
@@ -2099,6 +2114,65 @@ th {
   color: var(--color-text-subtle);
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
+}
+
+/* F45 B0 (F-971): Hinweis „Lauf im Untermodus … läuft“ in der Lauf-Blase und Grund eines gesperrten
+   Sendens unter dem Verlauf — leise wie der Fortschritt, kein display (hidden-Attribut wirkt). */
+.chat-untermodus-hinweis,
+.chat-sperrgrund {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+  overflow-wrap: anywhere;
+}
+
+/* F45 B0 (F-986 a): Start-Hinweis über dem Eingabefeld (Stil .note.red), im Dock knapper als eine
+   Seitennotiz, damit der Verlauf Platz behält; lange Pfade brechen um. */
+.chat-start-hinweis {
+  overflow-wrap: anywhere;
+}
+
+.v10-seite .note.chat-start-hinweis {
+  margin: 8px 14px;
+  padding: 10px 14px;
+}
+
+/* Prüfpass F45 B0 (design 4): im Dock eingerückt wie Werkzeugzeile und Eingabe (14 px), in der großen
+   Ansicht bündig (Muster #chat-fehler). */
+.chat-sperrgrund {
+  margin: 0 14px 6px;
+}
+
+.chat-grossansicht .v10-seite .note.chat-start-hinweis,
+.chat-grossansicht .chat-sperrgrund {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* F45 B0 (F-971): Punkt am Reiter des anderen Modus, wenn dort eine Antwort oder ein Fehler ankam
+   (Farbe wie der stille Punkt der Shell); der Name des Reiters nennt es zusätzlich (aria-label). */
+.chat-register [role='tab'].hat-neue-antwort,
+.chat-modus-auswahl .btn.hat-neue-antwort {
+  position: relative;
+}
+
+/* Prüfpass F45 B0 (design 8): der Punkt sitzt neben dem Text, ohne die Nachbarn zu verschieben; derselbe
+   Punkt am Untermodus-Knopf, wenn dort ein Lauf endete (qa 3). */
+.chat-register [role='tab'].hat-neue-antwort::after,
+.chat-modus-auswahl .btn.hat-neue-antwort::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: -9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+}
+
+.chat-modus-auswahl .btn.hat-neue-antwort::after {
+  top: 3px;
+  right: 3px;
 }
 
 .chat-tippindikator span {
